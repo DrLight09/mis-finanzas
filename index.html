@@ -2458,6 +2458,7 @@ let S={
   cuentasPersonalizadas:[],
   patrimonioHistorial:[]
 };
+window.S = S;
 // patrimonioHistorial: [{fecha:'YYYY-MM-DD', valor:number}]
 // cuentasPersonalizadas: [{id, nombre, color, saldo, incluirEnTotal, movimientos:[{id,tipo,monto,fecha,nota}]}]
 // Cajita structure: {id, nombre, saldo (saldo actual total con intereses ya "materializados"), 
@@ -7108,7 +7109,7 @@ document.addEventListener('focusin', function(e){
     load();
     (function(){
       const el=document.getElementById('nuTasaGlobal');
-      if(el&&window.S.nuTasaGlobal!=null)el.value=String(window.S.nuTasaGlobal).replace('.',',');
+      if(el&&window.S&&window.S.nuTasaGlobal!=null)el.value=String(window.S.nuTasaGlobal).replace('.',',');
       if(el){
         el.addEventListener('input',function(){
           const raw=this.value.replace(',','.');

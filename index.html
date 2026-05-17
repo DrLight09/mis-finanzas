@@ -3179,7 +3179,7 @@ function verificarVencimientosCDT(){
     });
     if(vencidos.length)c.cdts=(c.cdts||[]).filter(x=>!vencidos.includes(x.id));
   });
-  if(huboLiberacion){save();refresh();}
+  if(huboLiberacion){refresh();save();}
 }
 
 function nuTotal(){
@@ -3778,7 +3778,7 @@ function getNuTasaGlobal(){
 function addCajita(){
   if(!S.cajitas)S.cajitas=[];
   if(S.cajitas.length>=MAX)return;
-  S.cajitas.push({id:uid(),nombre:'Cajita '+(S.cajitas.length+1),saldo:0,cdt:null});
+  S.cajitas.push({id:uid(),nombre:'Cajita '+(S.cajitas.length+1),saldo:0,cdts:[]});
   save();renderCajitas();
 }
 
@@ -3852,7 +3852,7 @@ async function liberarCDTManual(cajitaId,cdtId){
   c.saldo=(c.saldo||0)+k.val;
   c.fecha=hoy();
   c.cdts=(c.cdts||[]).filter(x=>x.id!==cdtId);
-  save();refresh();
+  refresh();save();
   toast(`CDT cerrado — ${fmt(k.val)} acreditados a "${c.nombre}"`,'ok',4000);
 }
 

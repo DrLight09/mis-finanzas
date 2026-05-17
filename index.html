@@ -25,7 +25,7 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
       import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut }
         from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-      import { getFirestore, doc, getDoc, setDoc, onSnapshot }
+      import { initializeFirestore, persistentLocalCache, doc, getDoc, setDoc, onSnapshot }
         from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
       const firebaseConfig = {
@@ -39,7 +39,10 @@
 
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
-      const db = getFirestore(app);
+      const db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,  // Evita ERR_QUIC_PROTOCOL_ERROR
+        localCache: persistentLocalCache()   // Guarda offline en IndexedDB
+      });
       const provider = new GoogleAuthProvider();
 
       // Exponer globalmente para que el código existente pueda usar
@@ -143,7 +146,7 @@ input[type=text],input[type=number],input[type=date],select,textarea{width:100%;
 input[type=date]{-webkit-appearance:none;-moz-appearance:none;appearance:none;color-scheme:dark;}
 input[type=date]::-webkit-date-and-time-value{text-align:left;}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
-input[type=number]{-moz-appearance:textfield;}
+input[type="number"] {-moz-appearance:textfield;appearance:textfield;}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);}
 select option{background:var(--bg3);}
 select{-webkit-appearance:none;-moz-appearance:none;appearance:none;padding-right:38px;}
@@ -219,6 +222,20 @@ textarea{resize:none;height:60px;}
 /* AGREGAR DINERO */
 .add-money-btn{background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.3);border-radius:9px;color:var(--accent);font-size:12px;font-weight:600;font-family:'DM Mono',monospace;padding:10px 14px;min-height:44px;cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;transition:background .15s;}
 .add-money-btn:active{background:rgba(200,240,96,.25);}
+/* FILTROS DE MOVIMIENTOS */
+.movs-filtros-wrap{margin-bottom:10px;}
+.movs-search-input{width:100%;padding:10px 13px 10px 36px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;box-sizing:border-box;}
+.movs-search-input:focus{border-color:var(--accent);}
+.movs-search-wrap{position:relative;margin-bottom:8px;}
+.movs-search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);}
+.movs-tipo-chips{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;flex-wrap:nowrap;}
+.movs-tipo-chips::-webkit-scrollbar{display:none;}
+.movs-chip{padding:5px 11px;border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;white-space:nowrap;flex-shrink:0;min-height:30px;display:flex;align-items:center;transition:all .15s;}
+.movs-chip.active{background:rgba(200,240,96,.15);border-color:rgba(200,240,96,.4);color:var(--accent);font-weight:600;}
+.movs-fecha-row{display:flex;gap:6px;margin-top:7px;align-items:center;}
+.movs-fecha-row input[type=date]{flex:1;padding:7px 10px;font-size:12px;}
+.movs-fecha-label{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;}
+.movs-count{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:5px;text-align:right;}
 .saldo-row{display:flex;align-items:center;gap:8px;}
 .saldo-row input{flex:1;}
 /* CONFIG TOGGLE */
@@ -732,6 +749,7 @@ textarea{resize:none;height:60px;}
               </div>
             </div>
             <div class="sec-title">Movimientos registrados</div>
+            <div id="movs-filtros-custom" class="movs-filtros-wrap"></div>
             <div id="det-custom-movs"></div>
             <button type="button" id="btn-eliminar-cuenta-custom"
               style="width:100%;margin-top:14px;padding:11px;background:rgba(240,104,104,.06);border:1px solid rgba(240,104,104,.25);border-radius:var(--radius-sm);color:var(--red);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">Eliminar
@@ -799,6 +817,7 @@ textarea{resize:none;height:60px;}
             <div id="det-nequi-encargos"></div>
             <!-- Movimientos Nequi -->
             <div class="sec-title">Movimientos registrados</div>
+            <div id="movs-filtros-nequi" class="movs-filtros-wrap"></div>
             <div id="det-nequi-movs"></div>
           </div>
 
@@ -866,6 +885,7 @@ textarea{resize:none;height:60px;}
             <div class="sec-title" style="margin-top:16px;">Movimientos
               registrados en Nu</div>
             <div id="det-nu-encargos"></div>
+            <div id="movs-filtros-nu" class="movs-filtros-wrap"></div>
             <div id="det-nu-movs"></div>
           </div>
 
@@ -930,6 +950,7 @@ textarea{resize:none;height:60px;}
             <div id="det-ef-encargos"></div>
             <!-- Movimientos Efectivo -->
             <div class="sec-title">Movimientos registrados</div>
+            <div id="movs-filtros-efectivo" class="movs-filtros-wrap"></div>
             <div id="det-ef-movs"></div>
           </div>
 
@@ -2764,9 +2785,44 @@ function abrirCustomCuenta(id){
 function renderMovsCustom(c){
   const el=document.getElementById('det-custom-movs');
   if(!el)return;
-  const movs=(c.movimientos||[]).slice().reverse();
-  if(!movs.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;">Sin movimientos registrados.</div>';return;}
-  el.innerHTML=movs.map(m=>{
+  const cuentaKey='custom';
+  const movsAll=(c.movimientos||[]).slice().reverse();
+
+  // Render filtros
+  const tiposPresentes=new Set(movsAll.map(m=>m.tipo));
+  const tiposConfig=[
+    {val:'todos',label:'Todos'},
+    {val:'ingreso',label:'Ingreso'},
+    {val:'egreso',label:'Retiro'},
+  ].filter(t=>t.val==='todos'||tiposPresentes.has(t.val));
+  const f=_getMovsFilter(cuentaKey);
+  const filtrosEl=document.getElementById('movs-filtros-custom');
+  if(filtrosEl){
+    filtrosEl.innerHTML=`
+      <div class="movs-search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="movs-search-input" placeholder="Buscar movimiento..." value="${f.q}" oninput="_movsOnSearch(this,'${cuentaKey}')">
+      </div>
+      <div class="movs-tipo-chips">
+        ${tiposConfig.map(t=>`<div class="movs-chip${f.tipo===t.val?' active':''}" onclick="_movsOnTipo('${t.val}','${cuentaKey}')">${t.label}</div>`).join('')}
+      </div>
+      <div class="movs-fecha-row">
+        <span class="movs-fecha-label">Desde</span>
+        <input type="date" value="${f.desde}" onchange="_movsOnFecha('desde',this.value,'${cuentaKey}')">
+        <span class="movs-fecha-label">Hasta</span>
+        <input type="date" value="${f.hasta}" onchange="_movsOnFecha('hasta',this.value,'${cuentaKey}')">
+        ${(f.desde||f.hasta)?`<button onclick="_movsLimpiarFechas('${cuentaKey}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:'DM Mono',monospace;white-space:nowrap;padding:0 2px;">✕ fechas</button>`:''}
+      </div>`;
+  }
+
+  // Mapear movs custom al formato genérico para filtrar
+  const movsGen=movsAll.map(m=>({...m, desc:m.nota||'Sin descripción'}));
+  const filtrados=_movsAplicarFiltro(movsGen, cuentaKey);
+
+  if(!movsAll.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0;">Sin movimientos registrados.</div>';return;}
+  if(!filtrados.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0;text-align:center;">Sin resultados para esos filtros.</div>';return;}
+
+  el.innerHTML=filtrados.map(m=>{
     const esIngreso=m.tipo==='ingreso';
     return`<div class="card card-sm" style="margin-bottom:7px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
@@ -5022,7 +5078,7 @@ function renderDetalleCuenta(tipo) {
     renderEncargosEnCuenta('det-nequi-encargos', 'nequi');
     // Movimientos relacionados con Nequi
     const movs = getMovimientosCuenta('nequi');
-    renderMovsCuenta('det-nequi-movs', movs, '#ff4da6');
+    renderMovsCuenta('det-nequi-movs', movs, '#ff4da6', 'nequi');
   } else if (tipo === 'nu') {
     // Cajitas ya se renderizan en renderCajitas()
     renderCajitas();
@@ -5030,14 +5086,14 @@ function renderDetalleCuenta(tipo) {
     renderEncargosEnCuenta('det-nu-encargos', 'nu');
     // Movimientos Nu (cajitas)
     const movs = getMovimientosCuenta('nu');
-    renderMovsCuenta('det-nu-movs', movs, 'var(--nu-light)');
+    renderMovsCuenta('det-nu-movs', movs, 'var(--nu-light)', 'nu');
   } else if (tipo === 'efectivo') {
     const saldo = S.efectivoSaldo || 0;
     document.getElementById('det-ef-saldo').textContent = fmt(saldo);
     // Encargos en Efectivo
     renderEncargosEnCuenta('det-ef-encargos', 'efectivo');
     const movs = getMovimientosCuenta('efectivo');
-    renderMovsCuenta('det-ef-movs', movs, 'var(--amber)');
+    renderMovsCuenta('det-ef-movs', movs, 'var(--amber)', 'efectivo');
   }
 }
 
@@ -5196,21 +5252,117 @@ function getMovimientosCuenta(tipo) {
   return movs;
 }
 
-function renderMovsCuenta(elId, movs, accentColor) {
+/* ---- FILTROS DE MOVIMIENTOS ---- */
+const _movsFilters = {}; // { cuentaKey: { q:'', tipo:'todos', desde:'', hasta:'' } }
+
+function _getMovsFilter(cuentaKey) {
+  if (!_movsFilters[cuentaKey]) _movsFilters[cuentaKey] = { q: '', tipo: 'todos', desde: '', hasta: '' };
+  return _movsFilters[cuentaKey];
+}
+
+function renderMovsFiltros(elId, cuentaKey, movs, accentColor) {
+  const wrap = document.getElementById(elId);
+  if (!wrap) return;
+  const f = _getMovsFilter(cuentaKey);
+
+  // Tipos presentes en los movimientos
+  const tiposPresentes = new Set(movs.map(m => m.tipo));
+  const tiposConfig = [
+    { val: 'todos', label: 'Todos' },
+    { val: 'ingreso', label: 'Ingreso' },
+    { val: 'salida_manual', label: 'Retiro' },
+    { val: 'gasto', label: 'Gasto' },
+    { val: 'transferencia', label: 'Transferencia' },
+    { val: 'mesada', label: 'Mesada' },
+    { val: 'prestamo', label: 'Préstamo' },
+    { val: 'abono', label: 'Abono' },
+  ].filter(t => t.val === 'todos' || tiposPresentes.has(t.val));
+
+  wrap.innerHTML = `
+    <div class="movs-search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" class="movs-search-input" placeholder="Buscar movimiento..." value="${f.q}" oninput="_movsOnSearch(this,'${cuentaKey}')">
+    </div>
+    <div class="movs-tipo-chips">
+      ${tiposConfig.map(t => `<div class="movs-chip${f.tipo===t.val?' active':''}" onclick="_movsOnTipo('${t.val}','${cuentaKey}')">${t.label}</div>`).join('')}
+    </div>
+    <div class="movs-fecha-row">
+      <span class="movs-fecha-label">Desde</span>
+      <input type="date" value="${f.desde}" onchange="_movsOnFecha('desde',this.value,'${cuentaKey}')">
+      <span class="movs-fecha-label">Hasta</span>
+      <input type="date" value="${f.hasta}" onchange="_movsOnFecha('hasta',this.value,'${cuentaKey}')">
+      ${(f.desde||f.hasta)?`<button onclick="_movsLimpiarFechas('${cuentaKey}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:'DM Mono',monospace;white-space:nowrap;padding:0 2px;">✕ fechas</button>`:''}
+    </div>
+  `;
+}
+
+function _movsOnSearch(input, cuentaKey) {
+  _getMovsFilter(cuentaKey).q = input.value;
+  _movsRefresh(cuentaKey);
+}
+function _movsOnTipo(tipo, cuentaKey) {
+  _getMovsFilter(cuentaKey).tipo = tipo;
+  _movsRefresh(cuentaKey);
+}
+function _movsOnFecha(campo, val, cuentaKey) {
+  _getMovsFilter(cuentaKey)[campo] = val;
+  _movsRefresh(cuentaKey);
+}
+function _movsLimpiarFechas(cuentaKey) {
+  const f = _getMovsFilter(cuentaKey);
+  f.desde = ''; f.hasta = '';
+  _movsRefresh(cuentaKey);
+}
+
+function _movsRefresh(cuentaKey) {
+  if (cuentaKey === 'custom') {
+    const c = (S.cuentasPersonalizadas||[]).find(x=>x.id===_customCuentaActualId);
+    if (c) renderMovsCustom(c);
+    return;
+  }
+  renderDetalleCuenta(cuentaKey);
+}
+
+function _movsAplicarFiltro(movs, cuentaKey) {
+  const f = _getMovsFilter(cuentaKey);
+  let res = movs;
+  if (f.tipo && f.tipo !== 'todos') res = res.filter(m => m.tipo === f.tipo);
+  if (f.q && f.q.trim()) {
+    const q = f.q.trim().toLowerCase();
+    res = res.filter(m => (m.desc||'').toLowerCase().includes(q) || (m.nota||'').toLowerCase().includes(q) || (m.fecha||'').includes(q));
+  }
+  if (f.desde) res = res.filter(m => (m.fecha||'') >= f.desde);
+  if (f.hasta) res = res.filter(m => (m.fecha||'') <= f.hasta);
+  return res;
+}
+
+function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
   const el = document.getElementById(elId);
   if (!el) return;
+
+  // Render filtros (siempre, aunque no haya movs)
+  const filtrosElId = 'movs-filtros-' + (cuentaKey || '');
+  if (cuentaKey) renderMovsFiltros(filtrosElId, cuentaKey, movs, accentColor);
+
+  // Aplicar filtros
+  const filtrados = cuentaKey ? _movsAplicarFiltro(movs, cuentaKey) : movs;
+
   if (!movs.length) {
     el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0 4px;">No hay movimientos registrados en esta cuenta.</div>';
     return;
   }
-  el.innerHTML = movs.map(m => {
+  if (!filtrados.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:10px 0 4px;text-align:center;">Sin resultados para esos filtros.</div>';
+    return;
+  }
+
+  el.innerHTML = filtrados.map(m => {
     const esSalida = m.tipo === 'salida_manual' || m.tipo === 'gasto';
     const esPositivo = esSalida ? false : m.monto > 0;
     const colorMonto = esPositivo ? 'var(--accent)' : 'var(--red)';
     const signo = esPositivo ? '+' : '−';
     const tipoLabel = { gasto: 'Gasto', ingreso: 'Ingreso', prestamo: 'Préstamo', abono: 'Abono', mesada: 'Mesada', transferencia: 'Transferencia', salida_manual: 'Salida' }[m.tipo] || m.tipo;
     const bgLabel = esPositivo ? 'bg-green' : m.tipo === 'gasto' || m.tipo === 'salida_manual' ? 'bg-red' : m.tipo === 'transferencia' ? 'bg-blue' : 'bg-amber';
-    // Build data attrs for deletion
     const dataId = m._movId ? `data-mov-id="${m._movId}"` : '';
     const dataTipo = `data-mov-tipo="${m.tipo}"`;
     const dataFuente = m._fuenteOrigen ? `data-mov-fuente="${m._fuenteOrigen}"` : '';

@@ -2505,6 +2505,8 @@ let S={
   cuentasPersonalizadas:[],
   patrimonioHistorial:[]
 };
+// Exponer S globalmente para que el módulo de Firebase pueda accederlo
+window.S = S;
 // patrimonioHistorial: [{fecha:'YYYY-MM-DD', valor:number}]
 // cuentasPersonalizadas: [{id, nombre, color, saldo, incluirEnTotal, movimientos:[{id,tipo,monto,fecha,nota}]}]
 // Cajita structure: {id, nombre, saldo (saldo actual total con intereses ya "materializados"), 
@@ -7107,6 +7109,7 @@ document.addEventListener('focusin', function(e){
       try {
         const {db, doc, setDoc} = window._fb;
         // Firestore no acepta undefined — limpiamos el objeto
+        if(!window.S){setSyncStatus("error","Error: datos no inicializados");return;}
         const data = JSON.parse(JSON.stringify(window.S));
         await setDoc(
           doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),

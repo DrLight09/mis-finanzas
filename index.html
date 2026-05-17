@@ -142,7 +142,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
 .divider{height:1px;background:var(--border);margin:10px 0;}
 .ig{margin-bottom:14px;}
 .il{font-size:12px;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;font-weight:600;}
-input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:12px 25px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;}
 input[type=date]{-webkit-appearance:none;-moz-appearance:none;appearance:none;color-scheme:dark;}
 input[type=date]::-webkit-date-and-time-value{text-align:left;}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
@@ -224,10 +224,10 @@ textarea{resize:none;height:60px;}
 .add-money-btn:active{background:rgba(200,240,96,.25);}
 /* FILTROS DE MOVIMIENTOS */
 .movs-filtros-wrap{margin-bottom:10px;}
-.movs-search-input{width:100%;padding:10px 13px 10px 36px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;box-sizing:border-box;}
+.movs-search-input{width:100%;padding:10px 13px 10px 36px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;box-sizing:border-box;position:relative;z-index:1;}
 .movs-search-input:focus{border-color:var(--accent);}
 .movs-search-wrap{position:relative;margin-bottom:8px;}
-.movs-search-wrap svg{position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);}
+.movs-search-wrap svg{position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);z-index:2;}
 .movs-tipo-chips{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;flex-wrap:nowrap;}
 .movs-tipo-chips::-webkit-scrollbar{display:none;}
 .movs-chip{padding:5px 11px;border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;white-space:nowrap;flex-shrink:0;min-height:30px;display:flex;align-items:center;transition:all .15s;}
@@ -3883,11 +3883,11 @@ function renderCajitas(){
     const totalCDT=cdts.reduce((a,cdt)=>a+calcCDT(cdt).val,0);
     const tasaDisplay=getNuTasaGlobal();
     const interesHoy=k.val>0?(k.val*(Math.pow(1+tasaDisplay/100,1/365)-1)):0;
-    // Pills CDT (uno por CDT) en la cabecera colapsada
-    const cdtPills=cdts.map(cdt=>{
-      const cdtK=calcCDT(cdt);
-      return`<button type="button" onclick="event.stopPropagation();toggleCDT(event,'${c.id}','${cdt.id}')" title="Ver CDT" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;border-radius:20px;background:rgba(176,144,240,.15);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-size:10px;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;flex-shrink:0;white-space:nowrap;transition:background .15s;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${fmt(cdtK.val)}</button>`;
-    }).join('');
+    // Pill CDT único en la cabecera colapsada (1 solo botón sin importar cuántos CDTs haya)
+    const cdtPills=hasCDTs?(()=>{
+      const label=cdts.length===1?fmt(calcCDT(cdts[0]).val):`${cdts.length} CDTs · ${fmt(totalCDT)}`;
+      return`<button type="button" onclick="event.stopPropagation();_expandCajitaCDTs('${c.id}')" title="Ver CDTs" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;border-radius:20px;background:rgba(176,144,240,.15);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-size:10px;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;flex-shrink:0;white-space:nowrap;transition:background .15s;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${label}</button>`;
+    })():'';
     // Bloques CDT (uno por CDT) dentro del body
     const cdtBoxes=cdts.map(cdt=>{
       const cdtK=calcCDT(cdt);
@@ -3979,6 +3979,25 @@ function toggleCDT(e, cajitaId, cdtId){
   }
   const isOpen=box.style.display!=='none';
   box.style.display=isOpen?'none':'block';
+}
+
+// Expande cajita y muestra todos sus CDTs (llamado desde el pill único en header)
+function _expandCajitaCDTs(cajitaId){
+  const wrap=document.getElementById("cajita-wrap-"+cajitaId);
+  if(!wrap)return;
+  const body=wrap.querySelector(".cajita-body");
+  if(body&&body.style.display==="none"){
+    body.style.display="block";
+    wrap.classList.remove("cajita-collapsed");
+    wrap.classList.add("cajita-expanded");
+    const btn=wrap.querySelector(".cajita-toggle-btn");
+    if(btn)btn.style.transform="rotate(180deg)";
+  }
+  const prefix="cajita-cdt-"+cajitaId+"-";const allBoxes=wrap.querySelectorAll("[id]");const cdtBoxes=[...allBoxes].filter(el=>el.id.startsWith(prefix));
+  cdtBoxes.forEach(box=>{ box.style.display="block"; });
+  if(cdtBoxes.length>0){
+    setTimeout(()=>{ cdtBoxes[0].scrollIntoView({behavior:"smooth",block:"nearest"}); },80);
+  }
 }
 
 function toggleCajita(e, id){

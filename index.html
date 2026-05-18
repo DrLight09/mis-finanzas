@@ -814,6 +814,8 @@ textarea{resize:none;height:60px;}
             <input type="hidden" id="nequiSaldo" class="money-input"
               data-save-refresh="true">
             <!-- Encargos en Nequi -->
+            <!-- Banner saldo inicial Nequi -->
+            <div id="banner-apertura-nequi"></div>
             <div id="det-nequi-encargos"></div>
             <!-- Movimientos Nequi -->
             <div class="sec-title">Movimientos registrados</div>
@@ -947,6 +949,8 @@ textarea{resize:none;height:60px;}
             <input type="hidden" id="efectivoSaldo" class="money-input"
               data-save-refresh="true">
             <!-- Encargos en Efectivo -->
+            <!-- Banner saldo inicial Efectivo -->
+            <div id="banner-apertura-efectivo"></div>
             <div id="det-ef-encargos"></div>
             <!-- Movimientos Efectivo -->
             <div class="sec-title">Movimientos registrados</div>
@@ -2317,7 +2321,15 @@ textarea{resize:none;height:60px;}
         <div class="ig"><label class="il">Saldo actual</label><div
             id="adSaldoActual"
             style="font-size:18px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);padding:6px 0 2px;">$0</div></div>
-        <div class="ig"><label class="il" for="adDesc">¿De dónde viene esta
+        <!-- Toggle apertura -->
+        <div id="adAperturaWrap" style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="toggleAdApertura()">
+          <input type="checkbox" id="adEsApertura" style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;" onclick="event.stopPropagation();toggleAdApertura()">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--blue);">Es saldo inicial (ya lo tenía)</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">No contará como ingreso del mes ni aparecerá en estadísticas</div>
+          </div>
+        </div>
+        <div class="ig"><label class="il" for="adDesc" id="adDescLabel">¿De dónde viene esta
             plata? <span style="color:var(--red);">*</span></label><input
             type="text" id="adDesc"
             placeholder="Ej: Mesada, regalo, venta, sueldo..."
@@ -2415,6 +2427,24 @@ textarea{resize:none;height:60px;}
       </div>
     </div>
 
+
+    <!-- EDITAR SALDO INICIAL (APERTURA) -->
+    <div class="overlay" id="sheet-editar-apertura" data-sheet-id="editar-apertura">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="eaTitle">Corregir saldo inicial</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:6px;">El saldo inicial se actualiza y la diferencia se ajusta en tu cuenta automaticamente. No cuenta como ingreso.</p>
+        <div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:8px;padding:10px 13px;margin-bottom:14px;">
+          <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Saldo inicial actual</div>
+          <div id="eaSaldoActual" style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);">$0</div>
+        </div>
+        <div class="ig"><label class="il" for="eaMonto">Nuevo saldo inicial</label>
+          <input type="text" inputmode="decimal" id="eaMonto" placeholder="0,00" class="money-input"></div>
+        <div id="eaPreview" style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
+        <button type="button" class="btn btn-primary" id="btn-confirmar-editar-apertura" style="background:var(--blue);color:#fff;border-color:transparent;">Actualizar saldo inicial</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="editar-apertura">Cancelar</button>
+      </div>
+    </div>
     <!-- TRANSFERIR ENTRE CUENTAS -->
     <div class="overlay" id="sheet-transferir" data-sheet-id="transferir">
       <div class="sheet">
@@ -2690,7 +2720,7 @@ function crearCuentaCustom(){
   const incluirEnTotal=document.getElementById('nc_incluir').checked;
   if(!S.cuentasPersonalizadas)S.cuentasPersonalizadas=[];
   const nueva={id:uid(),nombre,icono:_ncIconoSel,color:_ncColorSel,saldo,incluirEnTotal,movimientos:[]};
-  if(saldo>0) nueva.movimientos.push({id:uid(),tipo:'ingreso',monto:saldo,fecha:hoy(),nota:'Saldo inicial'});
+  if(saldo>0) nueva.movimientos.push({id:uid(),tipo:'apertura',monto:saldo,fecha:hoy(),nota:'Saldo inicial'});
   S.cuentasPersonalizadas.push(nueva);
   save();refresh();
   closeSheet('nueva-cuenta');
@@ -2823,17 +2853,22 @@ function renderMovsCustom(c){
   if(!filtrados.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:10px 0;text-align:center;">Sin resultados para esos filtros.</div>';return;}
 
   el.innerHTML=filtrados.map(m=>{
+    const esApertura=m.tipo==='apertura';
     const esIngreso=m.tipo==='ingreso';
+    const badgeStyle=esApertura?`background:rgba(96,176,240,.1);color:var(--blue)`:esIngreso?`background:rgba(200,240,96,.1);color:var(--accent)`:`background:rgba(240,104,104,.1);color:var(--red)`;
+    const badgeLabel=esApertura?'Apertura':esIngreso?'Ingreso':'Retiro';
+    const amountColor=esApertura?'var(--blue)':esIngreso?'var(--accent)':'var(--red)';
+    const amountPrefix=esApertura?'':esIngreso?'+':'−';
     return`<div class="card card-sm" style="margin-bottom:7px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:6px;">
-            <span class="badge" style="${esIngreso?`background:rgba(200,240,96,.1);color:var(--accent)`:`background:rgba(240,104,104,.1);color:var(--red)`};font-size:9px;">${esIngreso?'Ingreso':'Retiro'}</span>
+            <span class="badge" style="${badgeStyle};font-size:9px;">${badgeLabel}</span>
             ${m.nota?`<span style="font-size:11px;color:var(--text2);">${m.nota}</span>`:''}
           </div>
           <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}</div>
         </div>
-        <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esIngreso?'var(--accent)':'var(--red)'};">${esIngreso?'+':'−'} ${fmt(m.monto)}</div>
+        <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${amountColor};">${amountPrefix} ${fmt(m.monto)}</div>
       </div>
     </div>`;
   }).join('');
@@ -5162,6 +5197,8 @@ function renderDetalleCuenta(tipo) {
   if (tipo === 'nequi') {
     const saldo = S.nequiSaldo || 0;
     document.getElementById('det-nequi-saldo').textContent = fmt(saldo);
+    // Banner saldo inicial Nequi
+    renderBannerApertura('nequi');
     // Encargos en Nequi
     renderEncargosEnCuenta('det-nequi-encargos', 'nequi');
     // Movimientos relacionados con Nequi
@@ -5178,6 +5215,8 @@ function renderDetalleCuenta(tipo) {
   } else if (tipo === 'efectivo') {
     const saldo = S.efectivoSaldo || 0;
     document.getElementById('det-ef-saldo').textContent = fmt(saldo);
+    // Banner saldo inicial Efectivo
+    renderBannerApertura('efectivo');
     // Encargos en Efectivo
     renderEncargosEnCuenta('det-ef-encargos', 'efectivo');
     const movs = getMovimientosCuenta('efectivo');
@@ -5266,7 +5305,8 @@ function getMovimientosCuenta(tipo) {
       : m.fuente === tipo;
     if (matchFuente) {
       const esEntrada = m.tipo === 'entrada';
-      movs.push({ tipo: esEntrada ? 'ingreso' : 'salida_manual', fecha: m.fecha, desc: m.desc || (esEntrada ? 'Entrada de efectivo' : 'Salida manual'), monto: esEntrada ? +m.monto : -m.monto, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente });
+      const esApertura = m.tipo === 'apertura';
+      movs.push({ tipo: esApertura ? 'apertura' : esEntrada ? 'ingreso' : 'salida_manual', fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : 'Salida manual'), monto: (esEntrada||esApertura) ? +m.monto : -m.monto, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente });
     }
   });
   // Gastos variables que usaron esta fuente
@@ -5446,11 +5486,12 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
 
   el.innerHTML = filtrados.map(m => {
     const esSalida = m.tipo === 'salida_manual' || m.tipo === 'gasto';
-    const esPositivo = esSalida ? false : m.monto > 0;
-    const colorMonto = esPositivo ? 'var(--accent)' : 'var(--red)';
-    const signo = esPositivo ? '+' : '−';
-    const tipoLabel = { gasto: 'Gasto', ingreso: 'Ingreso', prestamo: 'Préstamo', abono: 'Abono', mesada: 'Mesada', transferencia: 'Transferencia', salida_manual: 'Salida' }[m.tipo] || m.tipo;
-    const bgLabel = esPositivo ? 'bg-green' : m.tipo === 'gasto' || m.tipo === 'salida_manual' ? 'bg-red' : m.tipo === 'transferencia' ? 'bg-blue' : 'bg-amber';
+    const esApertura = m.tipo === 'apertura';
+    const esPositivo = esApertura ? true : esSalida ? false : m.monto > 0;
+    const colorMonto = esApertura ? 'var(--blue)' : esPositivo ? 'var(--accent)' : 'var(--red)';
+    const signo = esApertura ? '' : esPositivo ? '+' : '−';
+    const tipoLabel = { gasto: 'Gasto', ingreso: 'Ingreso', apertura: 'Apertura', prestamo: 'Préstamo', abono: 'Abono', mesada: 'Mesada', transferencia: 'Transferencia', salida_manual: 'Salida' }[m.tipo] || m.tipo;
+    const bgLabel = esApertura ? 'bg-blue' : esPositivo ? 'bg-green' : m.tipo === 'gasto' || m.tipo === 'salida_manual' ? 'bg-red' : m.tipo === 'transferencia' ? 'bg-blue' : 'bg-amber';
     const dataId = m._movId ? `data-mov-id="${m._movId}"` : '';
     const dataTipo = `data-mov-tipo="${m.tipo}"`;
     const dataFuente = m._fuenteOrigen ? `data-mov-fuente="${m._fuenteOrigen}"` : '';
@@ -5503,8 +5544,8 @@ async function eliminarMovimiento(btn) {
       descontarFuente(tr.destino, tr.monto); // quitar del destino
       S.transferencias = S.transferencias.filter(t => t.id !== movId);
     }
-  } else if (movTipoEl === 'ingreso') {
-    // Fue una entrada manual (S.movimientos tipo 'entrada')
+  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura') {
+    // Fue una entrada manual (S.movimientos tipo 'entrada' o 'apertura')
     const m = (S.movimientos || []).find(x => x.id === movId);
     if (m) {
       descontarFuente(m.fuente, m.monto);
@@ -5603,8 +5644,31 @@ function abrirAgregarDinero(fuente,nombre){
   document.getElementById('adDesc').value='';
   document.getElementById('adFecha').value=hoy();
   document.getElementById('adPreview').textContent='';
+  // Reset apertura toggle
+  const chk=document.getElementById('adEsApertura');
+  if(chk){chk.checked=false;}
+  const lbl=document.getElementById('adDescLabel');
+  if(lbl)lbl.innerHTML='¿De dónde viene esta plata? <span style="color:var(--red);">*</span>';
+  const inp=document.getElementById('adDesc');
+  if(inp)inp.placeholder='Ej: Mesada, regalo, venta, sueldo...';
   openSheet('agregar-dinero');
   setTimeout(()=>document.getElementById('adDesc').focus(),200);
+}
+
+function toggleAdApertura(){
+  const chk=document.getElementById('adEsApertura');
+  if(!chk)return;
+  // Si se llama desde el wrapper div, toggle el checkbox
+  chk.checked=!chk.checked;
+  const lbl=document.getElementById('adDescLabel');
+  const inp=document.getElementById('adDesc');
+  if(chk.checked){
+    if(lbl)lbl.innerHTML='Nota opcional <span style="color:var(--text3);font-weight:400;">(ej: ahorros de varios meses)</span>';
+    if(inp){inp.placeholder='Ej: Ahorros de varios meses...';inp.value=inp.value||'';}
+  } else {
+    if(lbl)lbl.innerHTML='¿De dónde viene esta plata? <span style="color:var(--red);">*</span>';
+    if(inp)inp.placeholder='Ej: Mesada, regalo, venta, sueldo...';
+  }
 }
 
 document.addEventListener('input',function(e){
@@ -5621,7 +5685,8 @@ function confirmarAgregarDinero(){
   const v=parseMoney(document.getElementById('adMonto').value)||0;
   const desc=document.getElementById('adDesc').value.trim();
   const fecha=document.getElementById('adFecha').value||hoy();
-  if(!desc){toast('Describe de dónde viene esta plata','err');return;}
+  const esApertura=document.getElementById('adEsApertura')?.checked||false;
+  if(!esApertura&&!desc){toast('Describe de dónde viene esta plata','err');return;}
   if(!v||!adFuente)return;
   // Materializar intereses antes de agregar dinero a la cajita
   if(adFuente.startsWith('cajita:')){
@@ -5630,13 +5695,15 @@ function confirmarAgregarDinero(){
     if(c)materializarIntereses(c);
   }
   sumarFuente(adFuente,v);
-  // Registrar movimiento de entrada
+  // Registrar movimiento
   if(!S.movimientos)S.movimientos=[];
-  S.movimientos.push({id:uid(),tipo:'entrada',fuente:adFuente,monto:v,fecha,desc});
+  const tipoMov=esApertura?'apertura':'entrada';
+  const descFinal=desc||(esApertura?'Saldo inicial':'');
+  S.movimientos.push({id:uid(),tipo:tipoMov,fuente:adFuente,monto:v,fecha,desc:descFinal});
   save();refresh();
   closeSheet('agregar-dinero');
   adFuente='';
-  toast(fmt(v) + ' sumado — ' + desc, 'ok');
+  toast(fmt(v) + (esApertura?' registrado como saldo inicial':' sumado — ' + descFinal), 'ok');
 }
 
 function openSheet_adMenu(){
@@ -5683,6 +5750,107 @@ function confirmarAgregarDineroMenu(){
   closeSheet('agregar-dinero-menu');
   toast(fmt(v) + ' sumado — ' + desc, 'ok');
 }
+
+
+/* ---- SALDO INICIAL / APERTURA ---- */
+let _eaFuente=''; // 'nequi' | 'efectivo'
+
+function getAperturaMov(fuente){
+  // Busca el movimiento de apertura de S.movimientos para nequi/efectivo
+  return (S.movimientos||[]).find(m=>m.fuente===fuente&&m.tipo==='apertura');
+}
+
+function renderBannerApertura(fuente){
+  const elId='banner-apertura-'+fuente;
+  const el=document.getElementById(elId);
+  if(!el)return;
+  const mov=getAperturaMov(fuente);
+  const colorMap={nequi:'#ff4da6',efectivo:'var(--amber)'};
+  const color=colorMap[fuente]||'var(--blue)';
+  if(mov){
+    // Ya tiene saldo inicial — mostrar chip con valor y botón editar discreto
+    el.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:9px;padding:9px 13px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:2px;">Saldo inicial registrado</div>
+        <div style="font-size:15px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(mov.monto)}</div>
+      </div>
+      <button type="button" onclick="abrirEditarApertura('${fuente}')" style="background:none;border:1px solid rgba(96,176,240,.3);border-radius:7px;color:var(--blue);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Corregir</button>
+    </div>`;
+  } else {
+    // No tiene saldo inicial — mostrar botón para registrarlo
+    el.innerHTML=`<div style="margin-bottom:12px;">
+      <button type="button" onclick="abrirRegistrarApertura('${fuente}')" style="width:100%;padding:11px;background:rgba(96,176,240,.07);border:1.5px dashed rgba(96,176,240,.35);border-radius:9px;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Registrar saldo inicial
+      </button>
+      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:5px;">Plata que ya tenías antes de usar la app</div>
+    </div>`;
+  }
+}
+
+function abrirRegistrarApertura(fuente){
+  // Abre el sheet normal de agregar dinero con el toggle de apertura ya marcado
+  const nombreMap={nequi:'Nequi',efectivo:'Efectivo'};
+  abrirAgregarDinero(fuente, nombreMap[fuente]);
+  // Forzar toggle activo después de que abra
+  setTimeout(()=>{
+    const chk=document.getElementById('adEsApertura');
+    if(chk&&!chk.checked){
+      chk.checked=true;
+      toggleAdApertura();
+    }
+  },120);
+}
+
+function abrirEditarApertura(fuente){
+  _eaFuente=fuente;
+  const mov=getAperturaMov(fuente);
+  const actual=mov?mov.monto:0;
+  const nombreMap={nequi:'Nequi',efectivo:'Efectivo'};
+  document.getElementById('eaTitle').textContent='Corregir saldo inicial · '+nombreMap[fuente];
+  document.getElementById('eaSaldoActual').textContent=fmt(actual);
+  document.getElementById('eaMonto').value='';
+  document.getElementById('eaPreview').textContent='';
+  openSheet('editar-apertura');
+  setTimeout(()=>document.getElementById('eaMonto').focus(),200);
+}
+
+function confirmarEditarApertura(){
+  const nuevo=parseMoney(document.getElementById('eaMonto').value)||0;
+  if(!nuevo){toast('Ingresa el nuevo saldo inicial','err');return;}
+  const mov=getAperturaMov(_eaFuente);
+  const anterior=mov?mov.monto:0;
+  const diff=nuevo-anterior;
+  if(diff===0){toast('El valor es igual al actual','err');return;}
+  // Ajustar saldo de la cuenta por la diferencia
+  if(diff>0) sumarFuente(_eaFuente,diff);
+  else descontarFuente(_eaFuente,Math.abs(diff));
+  // Actualizar o crear el movimiento de apertura
+  if(mov){
+    mov.monto=nuevo;
+  } else {
+    if(!S.movimientos)S.movimientos=[];
+    S.movimientos.push({id:uid(),tipo:'apertura',fuente:_eaFuente,monto:nuevo,fecha:hoy(),desc:'Saldo inicial'});
+  }
+  save();refresh();
+  closeSheet('editar-apertura');
+  toast('Saldo inicial actualizado a '+fmt(nuevo),'ok');
+}
+
+document.addEventListener('input',function(e){
+  if(e.target.id==='eaMonto'){
+    const mov=getAperturaMov(_eaFuente);
+    const anterior=mov?mov.monto:0;
+    const nuevo=parseMoney(e.target.value)||0;
+    const prev=document.getElementById('eaPreview');
+    if(nuevo>0){
+      const diff=nuevo-anterior;
+      const signo=diff>=0?'+':'';
+      prev.textContent=fmt(anterior)+' → '+fmt(nuevo)+(diff!==0?' ('+signo+fmt(diff)+')':'');
+      prev.style.color=diff>0?'var(--accent)':diff<0?'var(--red)':'var(--text3)';
+    } else {prev.textContent='';}
+  }
+});
 
 /* ---- RESTAR DINERO ---- */
 let rdFuente='';
@@ -6049,6 +6217,8 @@ function _initEventListeners() {
   if (btnAdMenuConf) btnAdMenuConf.addEventListener('click', confirmarAgregarDineroMenu);
   const btnRdConf = document.getElementById('btn-confirmar-restar');
   if (btnRdConf) btnRdConf.addEventListener('click', confirmarRestarDinero);
+  const btnEaConf = document.getElementById('btn-confirmar-editar-apertura');
+  if (btnEaConf) btnEaConf.addEventListener('click', confirmarEditarApertura);
   const btnTrConf = document.getElementById('btn-confirmar-transferir');
   if (btnTrConf) btnTrConf.addEventListener('click', confirmarTransferir);
   const btnSwitchTr = document.getElementById('btn-switch-to-transferir');
@@ -7743,7 +7913,7 @@ document.addEventListener('focusin', function(e){
     // Movimientos de cajitas (inferidos de historial de patrimonio — no disponible directamente, usamos gastos como proxy)
     // Movimientos de cuentas personalizadas
     (S.cuentasPersonalizadas||[]).forEach(c => {
-      (c.movimientos||[]).forEach(m => todos.push({ fecha:m.fecha, desc:(m.tipo==='ingreso'?'+':'-')+' '+c.nombre+(m.nota?' · '+m.nota:''), monto:m.tipo==='ingreso'?m.monto:-m.monto, tipo:'Cuenta' }));
+      (c.movimientos||[]).forEach(m => todos.push({ fecha:m.fecha, desc:(m.tipo==='ingreso'||m.tipo==='apertura'?'+':'-')+' '+c.nombre+(m.nota?' · '+m.nota:''), monto:m.tipo==='ingreso'||m.tipo==='apertura'?m.monto:-m.monto, tipo:'Cuenta' }));
     });
 
     // Pagos de gastos fijos

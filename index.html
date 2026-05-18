@@ -227,7 +227,7 @@ textarea{resize:none;height:60px;}
 input.movs-search-input{width:100%;padding:10px 13px 10px 36px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;box-sizing:border-box;position:relative;z-index:1;}
 input.movs-search-input:focus{border-color:var(--accent);}
 .movs-search-wrap{position:relative;margin-bottom:8px;}
-.movs-search-wrap svg{position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);z-index:2;}
+.movs-search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);z-index:2;}
 .movs-tipo-chips{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;flex-wrap:nowrap;}
 .movs-tipo-chips::-webkit-scrollbar{display:none;}
 .movs-chip{padding:5px 11px;border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);cursor:pointer;white-space:nowrap;flex-shrink:0;min-height:30px;display:flex;align-items:center;transition:all .15s;}
@@ -2392,19 +2392,18 @@ input.movs-search-input:focus{border-color:var(--accent);}
             id="adSaldoActual"
             style="font-size:18px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);padding:6px 0 2px;">$0</div></div>
         <!-- Toggle apertura -->
-        <div id="adAperturaWrap"
-          style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer;"
-          onclick="toggleAdApertura()">
+        <label id="adAperturaWrap"
+          style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer;">
           <input type="checkbox" id="adEsApertura"
             style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;"
-            onclick="event.stopPropagation();toggleAdApertura()">
+            onchange="toggleAdApertura()">
           <div>
             <div style="font-size:13px;font-weight:600;color:var(--blue);">Es
               saldo inicial (ya lo tenía)</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px;">No
               contará como ingreso del mes ni aparecerá en estadísticas</div>
           </div>
-        </div>
+        </label>
         <div class="ig"><label class="il" for="adDesc" id="adDescLabel">¿De
             dónde viene esta
             plata? <span style="color:var(--red);">*</span></label><input
@@ -5239,6 +5238,9 @@ function applyModulos(){
     const b=document.getElementById('banner-apertura-'+f);
     if(b)b.style.display=mostrarBanners?'':'none';
   });
+  // Ocultar el toggle "Es saldo inicial" en el sheet de agregar dinero
+  const adAperturaWrap=document.getElementById('adAperturaWrap');
+  if(adAperturaWrap)adAperturaWrap.style.display=mostrarBanners?'':'none';
 }
 
 function toggleModulo(nombre){
@@ -5760,8 +5762,6 @@ function abrirAgregarDinero(fuente,nombre){
 function toggleAdApertura(){
   const chk=document.getElementById('adEsApertura');
   if(!chk)return;
-  // Si se llama desde el wrapper div, toggle el checkbox
-  chk.checked=!chk.checked;
   const lbl=document.getElementById('adDescLabel');
   const inp=document.getElementById('adDesc');
   if(chk.checked){

@@ -276,11 +276,36 @@ input.movs-search-input:focus{border-color:var(--accent);}
 .fb-google-btn svg{flex-shrink:0;}
 .fb-privacy{font-size:10px;color:var(--text3);margin-top:20px;
   font-family:'DM Mono',monospace;letter-spacing:.3px;}
-.fb-loading-spinner{width:36px;height:36px;border:3px solid var(--border2);
-  border-top-color:var(--accent);border-radius:50%;
-  animation:fbSpin .8s linear infinite;margin-bottom:16px;}
+/* Loading screen mejorado */
+.fb-loading-content{display:flex;flex-direction:column;align-items:center;gap:0;animation:fbLoadIn .5s cubic-bezier(.22,1,.36,1) both;}
+@keyframes fbLoadIn{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+.fb-loading-logo-wrap{width:72px;height:72px;border-radius:20px;background:rgba(200,240,96,.10);border:1.5px solid rgba(200,240,96,.25);display:flex;align-items:center;justify-content:center;margin-bottom:28px;position:relative;}
+.fb-loading-ring{position:absolute;inset:-5px;border-radius:25px;border:2px solid transparent;border-top-color:var(--accent);border-right-color:rgba(200,240,96,.3);animation:fbSpin .9s linear infinite;}
 @keyframes fbSpin{to{transform:rotate(360deg);}}
-.fb-loading-text{font-size:13px;color:var(--text3);}
+.fb-loading-text{font-size:13px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.5px;margin-top:4px;}
+.fb-loading-dots{display:inline-flex;gap:5px;margin-top:18px;}
+.fb-loading-dots span{width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.3;animation:fbDot 1.2s ease-in-out infinite;}
+.fb-loading-dots span:nth-child(2){animation-delay:.2s;}
+.fb-loading-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes fbDot{0%,80%,100%{opacity:.25;transform:scale(.85);}40%{opacity:1;transform:scale(1);}}
+/* PIN SCREEN */
+#pin-screen{position:fixed;inset:0;z-index:99998;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);padding:32px 24px;text-align:center;}
+#pin-screen.open{display:flex;}
+.pin-logo{width:64px;height:64px;border-radius:18px;background:rgba(200,240,96,.10);border:1.5px solid rgba(200,240,96,.25);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;animation:fbLoadIn .4s cubic-bezier(.22,1,.36,1) both;}
+.pin-title{font-size:22px;font-weight:700;letter-spacing:-.3px;margin-bottom:6px;animation:fbLoadIn .4s .05s cubic-bezier(.22,1,.36,1) both;}
+.pin-sub{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:32px;animation:fbLoadIn .4s .1s cubic-bezier(.22,1,.36,1) both;}
+.pin-dots{display:flex;gap:14px;justify-content:center;margin-bottom:36px;animation:fbLoadIn .4s .12s cubic-bezier(.22,1,.36,1) both;}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border2);background:transparent;transition:all .18s;}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent);transform:scale(1.1);}
+.pin-dot.error{background:var(--red);border-color:var(--red);animation:pinShake .35s ease;}
+@keyframes pinShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-5px);}40%{transform:translateX(5px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
+.pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:270px;animation:fbLoadIn .4s .15s cubic-bezier(.22,1,.36,1) both;}
+.pin-key{height:64px;border-radius:16px;background:var(--bg2);border:1.5px solid var(--border);font-size:22px;font-weight:500;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;transition:all .12s;-webkit-tap-highlight-color:transparent;user-select:none;}
+.pin-key:active{background:var(--bg3);transform:scale(.93);border-color:var(--border2);}
+.pin-key.pin-del{font-size:16px;color:var(--text2);}
+.pin-key.pin-ok{background:rgba(200,240,96,.12);border-color:rgba(200,240,96,.3);color:var(--accent);}
+.pin-key.pin-empty{visibility:hidden;}
+.pin-forgot{margin-top:22px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;cursor:pointer;padding:8px;text-decoration:underline;opacity:.7;animation:fbLoadIn .4s .2s cubic-bezier(.22,1,.36,1) both;}
 /* User chip en config */
 .fb-user-chip{display:flex;align-items:center;gap:12px;padding:14px 0;
   border-bottom:1px solid var(--border);}
@@ -453,8 +478,52 @@ input.movs-search-input:focus{border-color:var(--accent);}
   <body>
     <!-- FIREBASE: Pantalla de carga inicial -->
     <div id="fb-loading-screen" style="display:flex;">
-      <div class="fb-loading-spinner"></div>
-      <div class="fb-loading-text">Cargando Mis Finanzas…</div>
+      <div class="fb-loading-content">
+        <div class="fb-loading-logo-wrap">
+          <div class="fb-loading-ring"></div>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9" stroke="#c8f060" stroke-width="1.8"/>
+            <text x="12" y="17" font-family="sans-serif" font-size="13" font-weight="700" fill="#c8f060" text-anchor="middle">$</text>
+          </svg>
+        </div>
+        <div class="fb-loading-text">Cargando Mis Finanzas</div>
+        <div class="fb-loading-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+
+    <!-- PIN SCREEN -->
+    <div id="pin-screen">
+      <div class="pin-logo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="#c8f060" stroke-width="1.8"/>
+          <text x="12" y="17" font-family="sans-serif" font-size="13" font-weight="700" fill="#c8f060" text-anchor="middle">$</text>
+        </svg>
+      </div>
+      <div class="pin-title" id="pin-title">Ingresa tu PIN</div>
+      <div class="pin-sub" id="pin-sub">Mis Finanzas</div>
+      <div class="pin-dots" id="pin-dots">
+        <div class="pin-dot" id="pd0"></div>
+        <div class="pin-dot" id="pd1"></div>
+        <div class="pin-dot" id="pd2"></div>
+        <div class="pin-dot" id="pd3"></div>
+      </div>
+      <div class="pin-keypad">
+        <button class="pin-key" onclick="_pinKey('1')">1</button>
+        <button class="pin-key" onclick="_pinKey('2')">2</button>
+        <button class="pin-key" onclick="_pinKey('3')">3</button>
+        <button class="pin-key" onclick="_pinKey('4')">4</button>
+        <button class="pin-key" onclick="_pinKey('5')">5</button>
+        <button class="pin-key" onclick="_pinKey('6')">6</button>
+        <button class="pin-key" onclick="_pinKey('7')">7</button>
+        <button class="pin-key" onclick="_pinKey('8')">8</button>
+        <button class="pin-key" onclick="_pinKey('9')">9</button>
+        <button class="pin-key pin-empty"></button>
+        <button class="pin-key" onclick="_pinKey('0')">0</button>
+        <button class="pin-key pin-del" onclick="_pinDel()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 4H8l-7 8 7 8h13a2 2 0 002-2V6a2 2 0 00-2-2z"/><line x1="18" y1="9" x2="12" y2="15"/><line x1="12" y1="9" x2="18" y2="15"/></svg>
+        </button>
+      </div>
+      <div class="pin-forgot" id="pin-forgot-btn" onclick="_pinOlvide()" style="display:none;">¿Olvidaste el PIN? Cerrar sesión</div>
     </div>
 
     <!-- FIREBASE: Pantalla de login -->
@@ -1500,6 +1569,17 @@ input.movs-search-input:focus{border-color:var(--accent);}
               <div class="fb-sync-dot" id="fb-sync-dot"></div>
               <span id="fb-sync-text">Sincronizado con Firebase</span>
             </div>
+          </div>
+
+          <!-- PIN DE ACCESO -->
+          <div class="sec-title" style="margin-top:18px;">Seguridad</div>
+          <div class="card" style="padding:15px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+              <span style="font-size:14px;font-weight:600;">PIN de acceso</span>
+            </div>
+            <p style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:4px;">Protege la app con un PIN de 4 dígitos. Se pedirá cada vez que abras Mis Finanzas.</p>
+            <div id="pin-config-container"></div>
           </div>
 
           <div class="sec-title" style="margin-top:18px;">Módulos activos</div>
@@ -3262,25 +3342,27 @@ function materializarIntereses(c){
 }
 
 // Calcula intereses del CDT de una cajita
-// Nu aplica retención en la fuente (RTE) del 4% sobre los rendimientos del CDT.
-// Fórmula: interés_bruto_diario = saldo * tasaDiaria; interés_neto = bruto * (1 - 0.04)
-// El saldo crece día a día con el interés neto acumulado compuesto.
-// Equivalente aproximado: val = monto * (1 + tasaDiaria * 0.96)^dias
+// Nu calcula el CDT así:
+// 1. Rendimiento bruto = monto × ((1 + EA)^(dias/365) - 1)  [compuesto, base 365]
+// 2. RTE = bruto × 4%  (se aplica al TOTAL acumulado, no diariamente)
+// 3. Rendimiento neto = bruto - RTE
+// 4. Total neto = monto + rendimiento neto
+// Esta fórmula replica exactamente los valores de la app oficial de Nu.
 function calcCDT(cdt){
   if(!cdt||!cdt.monto||!cdt.inicio)return{val:cdt?cdt.monto:0,ganado:0,ganado_bruto:0,retencion:0,dias:0};
   const rate=cdt.tasa/100;
-  const tasaDiaria=Math.pow(1+rate,1/365)-1;
-  const rte=(cdt.rte!=null?cdt.rte:4)/100; // retención en fuente editable por CDT (default 4%)
-  const tasaDiariaNet=tasaDiaria*(1-rte);
+  const rte=(cdt.rte!=null?cdt.rte:4)/100; // retención en fuente (default 4%)
   const desde=new Date(cdt.inicio+'T00:00:00');
   const hasta=cdt.vence?new Date(cdt.vence+'T00:00:00'):new Date();
   const ahora=new Date();
   const fechaFin=ahora<hasta?ahora:hasta;
   const dias=Math.max(0,Math.floor((fechaFin-desde)/86400000));
-  const val=cdt.monto*Math.pow(1+tasaDiariaNet,dias);
-  const ganado=val-cdt.monto;
-  const ganado_bruto=cdt.monto*Math.pow(1+tasaDiaria,dias)-cdt.monto;
-  const retencion=ganado_bruto-ganado;
+  // Rendimiento bruto compuesto (fórmula EA base 365, igual que Nu)
+  const ganado_bruto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
+  // RTE se aplica sobre el total del bruto acumulado
+  const retencion=ganado_bruto*rte;
+  const ganado=ganado_bruto-retencion;
+  const val=cdt.monto+ganado;
   return{val,ganado,ganado_bruto,retencion,dias};
 }
 
@@ -3990,8 +4072,10 @@ async function editarCDT(cajitaId,cdtId){
   const elT=document.getElementById('cdt_tasa_'+cajitaId+'_'+cdtId);
   const elV=document.getElementById('cdt_vence_'+cajitaId+'_'+cdtId);
   const elR=document.getElementById('cdt_rte_'+cajitaId+'_'+cdtId);
+  const elI=document.getElementById('cdt_inicio_'+cajitaId+'_'+cdtId);
   if(elT){elT.removeAttribute('readonly');elT.style.opacity='1';elT.focus();}
   if(elV){elV.removeAttribute('readonly');elV.style.opacity='1';}
+  if(elI){elI.removeAttribute('readonly');elI.style.opacity='1';}
   // Cambiar el botón de lápiz por un botón de guardar
   const editBtn=document.getElementById('cdt_edit_btn_'+cajitaId+'_'+cdtId);
   if(editBtn){
@@ -4011,13 +4095,17 @@ function guardarCDT(cajitaId,cdtId){
   const elT=document.getElementById('cdt_tasa_'+cajitaId+'_'+cdtId);
   const elV=document.getElementById('cdt_vence_'+cajitaId+'_'+cdtId);
   const elR=document.getElementById('cdt_rte_'+cajitaId+'_'+cdtId);
+  const elI=document.getElementById('cdt_inicio_'+cajitaId+'_'+cdtId);
   const nuevaTasa=elT?parseFloat(String(elT.value).replace(',','.')):cdt.tasa;
   const nuevoVence=elV?elV.value:cdt.vence;
   const nuevoRte=elR?parseFloat(String(elR.value).replace(',','.')):cdt.rte;
+  const nuevoInicio=elI&&elI.value?elI.value:cdt.inicio;
   if(isNaN(nuevaTasa)||nuevaTasa<=0){toast('Tasa inválida','error');return;}
   if(!nuevoVence){toast('Fecha de vencimiento requerida','error');return;}
+  if(!nuevoInicio){toast('Fecha de apertura requerida','error');return;}
   cdt.tasa=nuevaTasa;
   cdt.vence=nuevoVence;
+  cdt.inicio=nuevoInicio;
   if(!isNaN(nuevoRte))cdt.rte=nuevoRte;
   save();refresh();
   toast('CDT actualizado','ok',3000);
@@ -4062,9 +4150,10 @@ function renderCajitas(){
         <div class="cajita-cdt-val">${fmt(cdtK.val)}</div>
         <div class="cajita-cdt-meta">Invertido: ${fmt(cdt.monto)} · +${fmt(cdtK.ganado)} neto · ${String(cdt.tasa).replace('.',',')}% EA</div>
         ${cdtK.retencion>0.01?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">Bruto: +${fmt(cdtK.ganado_bruto)} · RTE ${cdt.rte!=null?cdt.rte:4}%: -${fmt(cdtK.retencion)}</div>`:''}
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:9px;">
-          <div class="ig" style="margin-bottom:0;"><label class="il" for="cdt_tasa_${c.id}_${cdt.id}">Tasa EA %</label><input type="text" inputmode="decimal" id="cdt_tasa_${c.id}_${cdt.id}" value="${String(cdt.tasa).replace('.',',')}" readonly style="opacity:.6;" data-save-refresh="true"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px;">
+          <div class="ig" style="margin-bottom:0;"><label class="il" for="cdt_inicio_${c.id}_${cdt.id}">Apertura</label><input type="date" id="cdt_inicio_${c.id}_${cdt.id}" value="${cdt.inicio}" readonly style="opacity:.6;" data-save-refresh="true"></div>
           <div class="ig" style="margin-bottom:0;"><label class="il" for="cdt_vence_${c.id}_${cdt.id}">Vence</label><input type="date" id="cdt_vence_${c.id}_${cdt.id}" value="${cdt.vence}" readonly style="opacity:.6;" data-save-refresh="true"></div>
+          <div class="ig" style="margin-bottom:0;"><label class="il" for="cdt_tasa_${c.id}_${cdt.id}">Tasa EA %</label><input type="text" inputmode="decimal" id="cdt_tasa_${c.id}_${cdt.id}" value="${String(cdt.tasa).replace('.',',')}" readonly style="opacity:.6;" data-save-refresh="true"></div>
           <div class="ig" style="margin-bottom:0;"><label class="il" for="cdt_rte_${c.id}_${cdt.id}">RTE %</label><input type="text" inputmode="decimal" id="cdt_rte_${c.id}_${cdt.id}" value="${cdt.rte!=null?cdt.rte:4}" placeholder="4" data-save-refresh="true" style="font-family:'DM Mono',monospace;"></div>
         </div>
         ${dr!==null?`<div style="margin-top:8px;"><span class="badge ${dr>0?'bg-purple':'bg-red'}">${dr>0?dr+'d para el vencimiento':'¡Venció! Libera tu plata'}</span></div>`:''}
@@ -8490,5 +8579,214 @@ self.addEventListener('fetch', e => {
     if (el) el.setAttribute('aria-label', label);
   });
 })();
+
+
+
+</script>
+
+<script type="module">
+/* ================================================================
+   PIN — Bloqueo de acceso con PIN de 4 dígitos
+   ================================================================ */
+(function() {
+  const PIN_KEY = 'mf_pin';
+  let _pinBuffer = '';
+  let _pinMode = 'unlock'; // 'unlock' | 'set-new' | 'confirm-new'
+  let _pinTemp = '';
+  let _appReady = false;
+
+  // ── Leer/guardar PIN ────────────────────────────────────────────
+  function _getPin()  { try { return localStorage.getItem(PIN_KEY) || ''; } catch(e){ return ''; } }
+  function _setPin(p) { try { localStorage.setItem(PIN_KEY, p); } catch(e){} }
+  function _clearPin(){ try { localStorage.removeItem(PIN_KEY); } catch(e){} }
+
+  // ── Mostrar/ocultar pantalla PIN ────────────────────────────────
+  function _showPin(mode, title, sub) {
+    _pinMode = mode;
+    _pinBuffer = '';
+    document.getElementById('pin-title').textContent = title || 'Ingresa tu PIN';
+    document.getElementById('pin-sub').textContent   = sub   || 'Mis Finanzas';
+    document.getElementById('pin-forgot-btn').style.display = (mode === 'unlock') ? '' : 'none';
+    _renderDots();
+    document.getElementById('pin-screen').classList.add('open');
+  }
+
+  function _hidePin() {
+    document.getElementById('pin-screen').classList.remove('open');
+  }
+
+  function _renderDots() {
+    for (let i = 0; i < 4; i++) {
+      const d = document.getElementById('pd' + i);
+      d.classList.toggle('filled', i < _pinBuffer.length);
+      d.classList.remove('error');
+    }
+  }
+
+  function _shakeError() {
+    for (let i = 0; i < 4; i++) {
+      const d = document.getElementById('pd' + i);
+      d.classList.add('error');
+    }
+    setTimeout(() => {
+      _pinBuffer = '';
+      _renderDots();
+    }, 420);
+  }
+
+  // ── Teclado PIN ─────────────────────────────────────────────────
+  window._pinKey = function(digit) {
+    if (_pinBuffer.length >= 4) return;
+    _pinBuffer += digit;
+    _renderDots();
+    if (_pinBuffer.length === 4) {
+      setTimeout(_pinSubmit, 80);
+    }
+  };
+
+  window._pinDel = function() {
+    if (_pinBuffer.length > 0) {
+      _pinBuffer = _pinBuffer.slice(0, -1);
+      _renderDots();
+    }
+  };
+
+  function _pinSubmit() {
+    const stored = _getPin();
+
+    if (_pinMode === 'unlock') {
+      if (_pinBuffer === stored) {
+        _hidePin();
+        if (!_appReady) { _appReady = true; _launchApp(); }
+      } else {
+        _shakeError();
+      }
+
+    } else if (_pinMode === 'set-new') {
+      _pinTemp = _pinBuffer;
+      _showPin('confirm-new', 'Confirma tu PIN', 'Ingresa el mismo PIN de nuevo');
+
+    } else if (_pinMode === 'confirm-new') {
+      if (_pinBuffer === _pinTemp) {
+        _setPin(_pinBuffer);
+        _hidePin();
+        showToast('PIN guardado ✓', 'ok');
+        if (!_appReady) { _appReady = true; _launchApp(); }
+      } else {
+        _shakeError();
+        setTimeout(() => {
+          _showPin('set-new', 'Elige un PIN de 4 dígitos', 'Los PINs no coinciden, intenta de nuevo');
+        }, 450);
+      }
+    }
+  }
+
+  window._pinOlvide = async function() {
+    const ok = await dialogo('¿Olvidaste el PIN?', 'Se cerrará la sesión de Firebase y podrás volver a entrar con Google.', 'Cerrar sesión', true);
+    if (ok) window._fbSignOut();
+  };
+
+  // ── Configuración de PIN (llamado desde sección config) ─────────
+  window._pinSetNew = function() {
+    _showPin('set-new', 'Elige un PIN de 4 dígitos', 'Este PIN protegerá el acceso a Mis Finanzas');
+  };
+
+  window._pinDisable = async function() {
+    const ok = await dialogo('Deshabilitar PIN', '¿Seguro que quieres quitar el PIN de acceso?', 'Quitar PIN', true);
+    if (ok) {
+      _clearPin();
+      showToast('PIN desactivado', 'info');
+      _renderPinConfigBtn();
+    }
+  };
+
+  function _renderPinConfigBtn() {
+    const container = document.getElementById('pin-config-container');
+    if (!container) return;
+    const hasPin = !!_getPin();
+    container.innerHTML = hasPin
+      ? `<div style="display:flex;gap:8px;margin-top:4px;">
+           <button class="btn btn-ghost btn-sm" onclick="_pinSetNew()" style="flex:1;">Cambiar PIN</button>
+           <button class="btn btn-ghost btn-sm" onclick="_pinDisable()" style="flex:1;color:var(--red);border-color:var(--red);">Quitar PIN</button>
+         </div>`
+      : `<button class="btn btn-ghost btn-sm" onclick="_pinSetNew()" style="margin-top:4px;width:100%;">Configurar PIN de acceso</button>`;
+  }
+
+  // ── Hook en _fbLoadData: interceptar para pedir PIN ─────────────
+  const _origLoad = window._fbLoadData;
+  window._fbLoadData = async function() {
+    // Llamar la función original (que carga datos y muestra la app)
+    // pero la reemplazamos para insertar el PIN en medio
+    if(!window._fbUser || !window._fb) return;
+    const {db, doc, getDoc} = window._fb;
+    try {
+      const snap = await getDoc(doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'));
+      if(snap.exists() && snap.data().payload) {
+        const cloudData = JSON.parse(snap.data().payload);
+        const local = (() => { try { const r=localStorage.getItem('mf_v5'); return r?JSON.parse(r):null; } catch(e){return null;} })();
+        if(local && Object.keys(cloudData).length === 0) {
+          Object.assign(window.S, local);
+          localStorage.removeItem('mf_v5');
+          window._fbSaveToCloud();
+        } else {
+          Object.assign(window.S, cloudData);
+        }
+      } else {
+        const local = (() => { try { const r=localStorage.getItem('mf_v5'); return r?JSON.parse(r):null; } catch(e){return null;} })();
+        if(local) {
+          Object.assign(window.S, local);
+          localStorage.removeItem('mf_v5');
+          window._fbSaveToCloud();
+        }
+      }
+    } catch(e) {
+      console.error('Firebase load error:', e);
+      try { const r=localStorage.getItem('mf_v5'); if(r) Object.assign(window.S,JSON.parse(r)); } catch(_){}
+    }
+
+    // Ocultar loading
+    document.getElementById('fb-loading-screen').style.display = 'none';
+
+    // Si hay PIN configurado, pedirlo antes de mostrar la app
+    const storedPin = _getPin();
+    if (storedPin) {
+      _showPin('unlock', 'Ingresa tu PIN', 'Mis Finanzas');
+      // La app se lanza en _pinSubmit cuando el PIN sea correcto
+    } else {
+      _appReady = true;
+      _launchApp();
+    }
+  };
+
+  // ── Inicializar app (separado para poder llamar después del PIN) ──
+  function _launchApp() {
+    load();
+    (function(){
+      const el=document.getElementById('nuTasaGlobal');
+      if(el&&window.S.nuTasaGlobal!=null)el.value=String(window.S.nuTasaGlobal).replace('.',',');
+      if(el){
+        el.addEventListener('input',function(){
+          const raw=this.value.replace(',','.');
+          const v=raw===''?null:(parseFloat(raw)||null);
+          window.S.nuTasaGlobal=v;
+          save();refresh();
+        });
+        el.addEventListener('blur',function(){
+          if(this.value&&parseFloat(this.value)<=0)this.value='';
+        });
+      }
+    })();
+    refresh(); applyModulos();
+    poblarCatSelect('gv_cat',getCatsVar());
+    poblarCatSelect('gf_c',getCatsFijo());
+    _initEventListeners();
+    _injectErrorSpans();
+    verificarVencimientosCDT();
+    setSyncStatus('ok', 'Sincronizado con Firebase');
+    // Render botón de PIN en config
+    setTimeout(_renderPinConfigBtn, 500);
+  }
+})();
+
 </script>
   </body></html>

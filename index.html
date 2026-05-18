@@ -2393,11 +2393,11 @@ input.movs-search-input:focus{border-color:var(--accent);}
             style="font-size:18px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);padding:6px 0 2px;">$0</div></div>
         <!-- Toggle apertura -->
         <label id="adAperturaWrap"
-          style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer;">
+          style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer;width:100%;box-sizing:border-box;">
           <input type="checkbox" id="adEsApertura"
             style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;"
             onchange="toggleAdApertura()">
-          <div>
+          <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:600;color:var(--blue);">Es saldo inicial (ya lo tenía)</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px;">No contará como ingreso del mes ni aparecerá en estadísticas</div>
           </div>

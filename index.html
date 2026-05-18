@@ -1485,6 +1485,16 @@ textarea{resize:none;height:60px;}
                 <span class="slider"></span>
               </label>
             </div>
+            <div class="cfg-toggle">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Corregir saldo inicial</div>
+                <div class="cfg-toggle-sub">Muestra el botón para editar el saldo inicial en Nequi y Efectivo</div>
+              </div>
+              <label class="toggle-sw">
+                <input type="checkbox" id="cfg-corregirSaldo" data-modulo="corregirSaldo">
+                <span class="slider"></span>
+              </label>
+            </div>
           </div>
           <div class="sec-title" style="margin-top:18px;">Categorías</div>
           <div class="card" style="padding:15px;">
@@ -5118,7 +5128,7 @@ function showScreen(name){
 }
 
 function applyModulos(){
-  const mod=S.modulos||{mesada:true,spotify:true};
+  const mod=S.modulos||{mesada:true,spotify:true,corregirSaldo:true};
   // Spotify nav tab
   const navSp=document.getElementById('nav-spotify');
   if(navSp)navSp.style.display=mod.spotify?'':'none';
@@ -5128,8 +5138,10 @@ function applyModulos(){
   // Update config toggles
   const cfgMesada=document.getElementById('cfg-mesada');
   const cfgSpotify=document.getElementById('cfg-spotify');
+  const cfgCorregirSaldo=document.getElementById('cfg-corregirSaldo');
   if(cfgMesada)cfgMesada.checked=!!mod.mesada;
   if(cfgSpotify)cfgSpotify.checked=!!mod.spotify;
+  if(cfgCorregirSaldo)cfgCorregirSaldo.checked=(mod.corregirSaldo!==false);
   // Menu action card
   const menuCardSp=document.getElementById('menu-card-spotify');
   if(menuCardSp)menuCardSp.style.display=mod.spotify?'':'none';
@@ -5137,10 +5149,13 @@ function applyModulos(){
   if(!mod.spotify&&document.getElementById('screen-spotify').classList.contains('active')){
     showScreen('inicio');
   }
+  // Re-render banners to show/hide corregir button
+  renderBannerApertura('nequi');
+  renderBannerApertura('efectivo');
 }
 
 function toggleModulo(nombre){
-  if(!S.modulos)S.modulos={mesada:true,spotify:true};
+  if(!S.modulos)S.modulos={mesada:true,spotify:true,corregirSaldo:true};
   const el=document.getElementById('cfg-'+nombre);
   S.modulos[nombre]=el?el.checked:!S.modulos[nombre];
   save();applyModulos();
@@ -5769,12 +5784,13 @@ function renderBannerApertura(fuente){
   const color=colorMap[fuente]||'var(--blue)';
   if(mov){
     // Ya tiene saldo inicial — mostrar chip con valor y botón editar discreto
+    const mostrarCorregir=(S.modulos&&S.modulos.corregirSaldo===false)?false:true;
     el.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:9px;padding:9px 13px;margin-bottom:12px;">
       <div>
         <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:2px;">Saldo inicial registrado</div>
         <div style="font-size:15px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(mov.monto)}</div>
       </div>
-      <button type="button" onclick="abrirEditarApertura('${fuente}')" style="background:none;border:1px solid rgba(96,176,240,.3);border-radius:7px;color:var(--blue);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Corregir</button>
+      ${mostrarCorregir?`<button type="button" onclick="abrirEditarApertura('${fuente}')" style="background:none;border:1px solid rgba(96,176,240,.3);border-radius:7px;color:var(--blue);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Corregir</button>`:''}
     </div>`;
   } else {
     // No tiene saldo inicial — mostrar botón para registrarlo

@@ -224,8 +224,8 @@ textarea{resize:none;height:60px;}
 .add-money-btn:active{background:rgba(200,240,96,.25);}
 /* FILTROS DE MOVIMIENTOS */
 .movs-filtros-wrap{margin-bottom:10px;}
-.movs-search-input{width:100%;padding:10px 13px 10px 36px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;box-sizing:border-box;position:relative;z-index:1;}
-.movs-search-input:focus{border-color:var(--accent);}
+input.movs-search-input{width:100%;padding:10px 13px 10px 36px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;box-sizing:border-box;position:relative;z-index:1;}
+input.movs-search-input:focus{border-color:var(--accent);}
 .movs-search-wrap{position:relative;margin-bottom:8px;}
 .movs-search-wrap svg{position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);z-index:2;}
 .movs-tipo-chips{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;flex-wrap:nowrap;}
@@ -451,36 +451,43 @@ textarea{resize:none;height:60px;}
 </style>
   </head>
   <body>
-  <!-- FIREBASE: Pantalla de carga inicial -->
-  <div id="fb-loading-screen" style="display:flex;">
-    <div class="fb-loading-spinner"></div>
-    <div class="fb-loading-text">Cargando Mis Finanzas…</div>
-  </div>
-
-  <!-- FIREBASE: Pantalla de login -->
-  <div id="fb-login-screen">
-    <div class="fb-logo">
-      <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="9" stroke="#c8f060" stroke-width="1.8"/>
-        <text x="12" y="17" font-family="sans-serif" font-size="13" font-weight="700"
-          fill="#c8f060" text-anchor="middle">$</text>
-      </svg>
+    <!-- FIREBASE: Pantalla de carga inicial -->
+    <div id="fb-loading-screen" style="display:flex;">
+      <div class="fb-loading-spinner"></div>
+      <div class="fb-loading-text">Cargando Mis Finanzas…</div>
     </div>
-    <div class="fb-title">Mis Finanzas</div>
-    <div class="fb-sub">Tus finanzas personales, siempre sincronizadas entre el celular y el computador.</div>
-    <button class="fb-google-btn" onclick="window._fbSignIn()">
-      <svg width="20" height="20" viewBox="0 0 48 48">
-        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-      </svg>
-      Entrar con Google
-    </button>
-    <div class="fb-privacy">Tus datos se guardan de forma privada en Firebase.<br>Solo tú puedes acceder a ellos.</div>
-  </div>
 
-  <div class="app">
+    <!-- FIREBASE: Pantalla de login -->
+    <div id="fb-login-screen">
+      <div class="fb-logo">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="#c8f060" stroke-width="1.8" />
+          <text x="12" y="17" font-family="sans-serif" font-size="13"
+            font-weight="700"
+            fill="#c8f060" text-anchor="middle">$</text>
+        </svg>
+      </div>
+      <div class="fb-title">Mis Finanzas</div>
+      <div class="fb-sub">Tus finanzas personales, siempre sincronizadas entre
+        el celular y el computador.</div>
+      <button class="fb-google-btn" onclick="window._fbSignIn()">
+        <svg width="20" height="20" viewBox="0 0 48 48">
+          <path fill="#EA4335"
+            d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+          <path fill="#4285F4"
+            d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+          <path fill="#FBBC05"
+            d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+          <path fill="#34A853"
+            d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+        </svg>
+        Entrar con Google
+      </button>
+      <div class="fb-privacy">Tus datos se guardan de forma privada en
+        Firebase.<br>Solo tú puedes acceder a ellos.</div>
+    </div>
+
+    <div class="app">
       <!-- TOAST CONTAINER -->
       <div id="toast-container"></div>
       <!-- DIALOG PROPIO -->
@@ -497,26 +504,51 @@ textarea{resize:none;height:60px;}
       <header class="header">
         <div><h1>Mis finanzas</h1><p id="hDate"></p></div>
         <div style="display:flex;gap:8px;align-items:center;">
-          <button type="button" id="btn-buscar-global" style="width:38px;height:38px;border-radius:12px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all .2s;" aria-label="Buscar">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <button type="button" id="btn-buscar-global"
+            style="width:38px;height:38px;border-radius:12px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all .2s;"
+            aria-label="Buscar">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round"><circle cx="11" cy="11" r="8" /><line
+                x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
           </button>
-          <button type="button" id="btn-toggle-saldos" style="width:38px;height:38px;border-radius:12px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all .2s;" aria-label="Ocultar/mostrar saldos">
-            <svg id="ojo-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <button type="button" id="btn-toggle-saldos"
+            style="width:38px;height:38px;border-radius:12px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all .2s;"
+            aria-label="Ocultar/mostrar saldos">
+            <svg id="ojo-icon" width="15" height="15" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round"><path
+                d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle
+                cx="12" cy="12" r="3" /></svg>
           </button>
-          <button type="button" class="btn-add" id="btn-header-add" aria-label="Agregar">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <button type="button" class="btn-add" id="btn-header-add"
+            aria-label="Agregar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"><line
+                x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19"
+                y2="12" /></svg>
           </button>
         </div>
       </header>
 
       <!-- BÚSQUEDA GLOBAL OVERLAY -->
-      <div id="busqueda-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;backdrop-filter:blur(6px);flex-direction:column;padding:16px;">
-        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;">
+      <div id="busqueda-overlay"
+        style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;backdrop-filter:blur(6px);flex-direction:column;padding:16px;">
+        <div
+          style="display:flex;gap:10px;align-items:center;margin-bottom:14px;">
           <div style="flex:1;position:relative;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="busqueda-input" placeholder="Buscar transacciones, personas, cuentas..." style="width:100%;padding:13px 14px 13px 38px;background:var(--bg2);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;" autofocus>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+              stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round"
+              style="position:absolute;left:13px;top:50%;transform:translateY(-50%);pointer-events:none;"><circle
+                cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65"
+                y2="16.65" /></svg>
+            <input type="text" id="busqueda-input"
+              placeholder="Buscar transacciones, personas, cuentas..."
+              style="width:100%;padding:13px 14px 13px 38px;background:var(--bg2);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;"
+              autofocus>
           </div>
-          <button type="button" id="btn-cerrar-busqueda" style="background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:8px;white-space:nowrap;">Cancelar</button>
+          <button type="button" id="btn-cerrar-busqueda"
+            style="background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:8px;white-space:nowrap;">Cancelar</button>
         </div>
         <div id="busqueda-resultados" style="flex:1;overflow-y:auto;"></div>
       </div>
@@ -565,11 +597,13 @@ textarea{resize:none;height:60px;}
                 id="s-gtotal">$0</span></div></div>
           <!-- SALUD FINANCIERA -->
           <div class="sec-title">Salud financiera</div>
-          <div id="health-score-card" class="card" style="padding:16px;margin-bottom:9px;"></div>
+          <div id="health-score-card" class="card"
+            style="padding:16px;margin-bottom:9px;"></div>
 
           <!-- PROYECCIÓN -->
           <div class="sec-title">Proyección financiera</div>
-          <div id="proyeccion-card" class="card card-sm" style="margin-bottom:9px;"></div>
+          <div id="proyeccion-card" class="card card-sm"
+            style="margin-bottom:9px;"></div>
 
           <!-- ATENCIÓN HOY -->
           <div id="s-attn-section" style="display:none;">
@@ -862,7 +896,7 @@ textarea{resize:none;height:60px;}
                 </div>
                 <div style="display:flex;align-items:center;gap:7px;">
                   <input type="text" inputmode="decimal" id="nuTasaGlobal"
-                    value="" placeholder="9,25"
+                    value placeholder="9,25"
                     style="width:70px;padding:7px 10px;background:rgba(0,0,0,.35);border:1px solid rgba(192,96,240,.4);border-radius:8px;color:var(--nu-light);font-size:14px;font-weight:500;font-family:'DM Mono',monospace;outline:none;text-align:center;">
                   <span
                     style="font-size:12px;color:rgba(192,96,240,.7);font-family:'DM Mono',monospace;">%</span>
@@ -1435,14 +1469,18 @@ textarea{resize:none;height:60px;}
 
           <!-- HISTORIAL CONSOLIDADO -->
           <div class="sec-title">Historial consolidado</div>
-          <div id="an-historial-consolidado" class="card" style="padding:0 15px;margin-bottom:9px;"></div>
+          <div id="an-historial-consolidado" class="card"
+            style="padding:0 15px;margin-bottom:9px;"></div>
 
           <!-- PRESUPUESTOS -->
-          <div class="sec-title" style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;">
+          <div class="sec-title"
+            style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;">
             <span>Presupuestos por categoría</span>
-            <button type="button" onclick="abrirPresupuestos()" style="font-size:10px;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;font-family:'DM Sans',sans-serif;">Editar</button>
+            <button type="button" onclick="abrirPresupuestos()"
+              style="font-size:10px;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;font-family:'DM Sans',sans-serif;">Editar</button>
           </div>
-          <div id="an-presupuestos" class="card" style="padding:12px 15px;margin-bottom:20px;"></div>
+          <div id="an-presupuestos" class="card"
+            style="padding:12px 15px;margin-bottom:20px;"></div>
         </div>
 
         <div class="screen" id="screen-config">
@@ -1455,7 +1493,8 @@ textarea{resize:none;height:60px;}
                 <div class="fb-user-name" id="fb-user-name">Cargando…</div>
                 <div class="fb-user-email" id="fb-user-email"></div>
               </div>
-              <button class="fb-signout-btn" onclick="window._fbSignOut()">Salir</button>
+              <button class="fb-signout-btn"
+                onclick="window._fbSignOut()">Salir</button>
             </div>
             <div class="fb-sync-status">
               <div class="fb-sync-dot" id="fb-sync-dot"></div>
@@ -1487,11 +1526,13 @@ textarea{resize:none;height:60px;}
             </div>
             <div class="cfg-toggle">
               <div class="cfg-toggle-info">
-                <div class="cfg-toggle-label">Corregir saldo inicial</div>
-                <div class="cfg-toggle-sub">Muestra el botón para editar el saldo inicial en Nequi y Efectivo</div>
+                <div class="cfg-toggle-label">Saldo inicial</div>
+                <div class="cfg-toggle-sub">Muestra el banner de saldo inicial
+                  en Nequi y Efectivo</div>
               </div>
               <label class="toggle-sw">
-                <input type="checkbox" id="cfg-corregirSaldo" data-modulo="corregirSaldo">
+                <input type="checkbox" id="cfg-corregirSaldo"
+                  data-modulo="corregirSaldo">
                 <span class="slider"></span>
               </label>
             </div>
@@ -1578,8 +1619,14 @@ textarea{resize:none;height:60px;}
             <div style="margin-top:8px;">
               <button type="button" class="btn" id="btn-exportar-csv"
                 style="background:rgba(200,240,96,.08);border-color:rgba(200,240,96,.3);color:var(--accent);font-size:12px;">
-                <span style="display:flex;align-items:center;justify-content:center;gap:5px;">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+                <span
+                  style="display:flex;align-items:center;justify-content:center;gap:5px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round"><rect x="3" y="3" width="18"
+                      height="18" rx="2" /><line x1="3" y1="9" x2="21"
+                      y2="9" /><line x1="3" y1="15" x2="21" y2="15" /><line
+                      x1="9" y1="9" x2="9" y2="21" /></svg>
                   Exportar CSV (gastos)
                 </span>
               </button>
@@ -1598,55 +1645,55 @@ textarea{resize:none;height:60px;}
       </main><!-- scroll-area -->
 
       <footer>
-      <nav class="bottom-nav" aria-label="Navegación principal">
-        <button type="button" class="nav-item active" id="nav-inicio"
-          data-screen="inicio">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.6" stroke-linecap="round"
-            stroke-linejoin="round"><path
-              d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1z" /><rect
-              x="9" y="13" width="6" height="8" rx="1" /></svg>
-          Inicio
-        </button>
-        <button type="button" class="nav-item" id="nav-cuentas"
-          data-screen="cuentas">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.6" stroke-linecap="round"
-            stroke-linejoin="round"><rect x="2" y="6" width="20" height="13"
-              rx="2" /><path d="M2 10h20" /><circle cx="7" cy="15" r="1.2"
-              fill="currentColor" stroke="none" /><path d="M12 15h5" /></svg>
-          Cuentas
-        </button>
-        <button type="button" class="nav-item" id="nav-gastos"
-          data-screen="gastos">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.6" stroke-linecap="round"
-            stroke-linejoin="round"><path
-              d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline
-              points="14 3 14 9 20 9" /><line x1="8" y1="13" x2="16"
-              y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></svg>
-          Gastos
-        </button>
-        <button type="button" class="nav-item" id="nav-prestamos"
-          data-screen="prestamos">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.6" stroke-linecap="round"
-            stroke-linejoin="round"><circle cx="9" cy="8" r="3" /><circle
-              cx="16" cy="9" r="2.5" /><path
-              d="M1 20c0-3.3 3.6-6 8-6s8 2.7 8 6" /><path
-              d="M19 14c2.5.5 4 2 4 4" /></svg>
-          Prestado
-        </button>
-        <button type="button" class="nav-item" id="nav-mas-btn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="1.6" stroke-linecap="round"
-            stroke-linejoin="round"><circle cx="12" cy="5" r="1.5"
-              fill="currentColor" stroke="none" /><circle cx="12" cy="12"
-              r="1.5" fill="currentColor" stroke="none" /><circle cx="12"
-              cy="19" r="1.5" fill="currentColor" stroke="none" /></svg>
-          Más
-        </button>
-      </nav>
+        <nav class="bottom-nav" aria-label="Navegación principal">
+          <button type="button" class="nav-item active" id="nav-inicio"
+            data-screen="inicio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round"><path
+                d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1z" /><rect
+                x="9" y="13" width="6" height="8" rx="1" /></svg>
+            Inicio
+          </button>
+          <button type="button" class="nav-item" id="nav-cuentas"
+            data-screen="cuentas">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round"><rect x="2" y="6" width="20" height="13"
+                rx="2" /><path d="M2 10h20" /><circle cx="7" cy="15" r="1.2"
+                fill="currentColor" stroke="none" /><path d="M12 15h5" /></svg>
+            Cuentas
+          </button>
+          <button type="button" class="nav-item" id="nav-gastos"
+            data-screen="gastos">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round"><path
+                d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline
+                points="14 3 14 9 20 9" /><line x1="8" y1="13" x2="16"
+                y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></svg>
+            Gastos
+          </button>
+          <button type="button" class="nav-item" id="nav-prestamos"
+            data-screen="prestamos">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round"><circle cx="9" cy="8" r="3" /><circle
+                cx="16" cy="9" r="2.5" /><path
+                d="M1 20c0-3.3 3.6-6 8-6s8 2.7 8 6" /><path
+                d="M19 14c2.5.5 4 2 4 4" /></svg>
+            Prestado
+          </button>
+          <button type="button" class="nav-item" id="nav-mas-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="1.6" stroke-linecap="round"
+              stroke-linejoin="round"><circle cx="12" cy="5" r="1.5"
+                fill="currentColor" stroke="none" /><circle cx="12" cy="12"
+                r="1.5" fill="currentColor" stroke="none" /><circle cx="12"
+                cy="19" r="1.5" fill="currentColor" stroke="none" /></svg>
+            Más
+          </button>
+        </nav>
       </footer>
     </div>
 
@@ -2185,7 +2232,10 @@ textarea{resize:none;height:60px;}
         <div class="ig">
           <label class="il" for="sp_fecha_ingreso">Fecha de ingreso</label>
           <input type="date" id="sp_fecha_ingreso">
-          <div style="font-size:10px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace;">El cobro se calcula cada 30 días desde esta fecha, sin importar cuándo pague.</div>
+          <div
+            style="font-size:10px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace;">El
+            cobro se calcula cada 30 días desde esta fecha, sin importar cuándo
+            pague.</div>
         </div>
         <button type="button" class="btn btn-primary"
           id="btn-guardar-spotify">Guardar</button>
@@ -2204,18 +2254,28 @@ textarea{resize:none;height:60px;}
         <!-- Meses adelantados -->
         <div class="ig">
           <label class="il">¿Cuántos meses pagó?</label>
-          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px;" id="spMesesBtns">
-            <button type="button" class="sp-mes-btn" data-meses="1" onclick="selSpMeses(1)">1 mes</button>
-            <button type="button" class="sp-mes-btn" data-meses="2" onclick="selSpMeses(2)">2 meses</button>
-            <button type="button" class="sp-mes-btn" data-meses="3" onclick="selSpMeses(3)">3 meses</button>
-            <button type="button" class="sp-mes-btn" data-meses="4" onclick="selSpMeses(4)">4 meses</button>
-            <button type="button" class="sp-mes-btn" data-meses="5" onclick="selSpMeses(5)">5 meses</button>
-            <button type="button" class="sp-mes-btn" data-meses="6" onclick="selSpMeses(6)">6 meses</button>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px;"
+            id="spMesesBtns">
+            <button type="button" class="sp-mes-btn" data-meses="1"
+              onclick="selSpMeses(1)">1 mes</button>
+            <button type="button" class="sp-mes-btn" data-meses="2"
+              onclick="selSpMeses(2)">2 meses</button>
+            <button type="button" class="sp-mes-btn" data-meses="3"
+              onclick="selSpMeses(3)">3 meses</button>
+            <button type="button" class="sp-mes-btn" data-meses="4"
+              onclick="selSpMeses(4)">4 meses</button>
+            <button type="button" class="sp-mes-btn" data-meses="5"
+              onclick="selSpMeses(5)">5 meses</button>
+            <button type="button" class="sp-mes-btn" data-meses="6"
+              onclick="selSpMeses(6)">6 meses</button>
           </div>
-          <div style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:4px;" id="spMesesTotal"></div>
+          <div
+            style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:4px;"
+            id="spMesesTotal"></div>
         </div>
         <div class="divider"></div>
-        <label class="il" style="margin-top:8px;display:block;">¿A dónde metiste esa plata?</label>
+        <label class="il" style="margin-top:8px;display:block;">¿A dónde metiste
+          esa plata?</label>
         <div id="spDestinoOpts"></div>
         <div style="margin-top:6px;"></div>
         <button type="button" class="btn btn-primary"
@@ -2332,14 +2392,21 @@ textarea{resize:none;height:60px;}
             id="adSaldoActual"
             style="font-size:18px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);padding:6px 0 2px;">$0</div></div>
         <!-- Toggle apertura -->
-        <div id="adAperturaWrap" style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer;" onclick="toggleAdApertura()">
-          <input type="checkbox" id="adEsApertura" style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;" onclick="event.stopPropagation();toggleAdApertura()">
+        <div id="adAperturaWrap"
+          style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:10px;cursor:pointer;"
+          onclick="toggleAdApertura()">
+          <input type="checkbox" id="adEsApertura"
+            style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;"
+            onclick="event.stopPropagation();toggleAdApertura()">
           <div>
-            <div style="font-size:13px;font-weight:600;color:var(--blue);">Es saldo inicial (ya lo tenía)</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px;">No contará como ingreso del mes ni aparecerá en estadísticas</div>
+            <div style="font-size:13px;font-weight:600;color:var(--blue);">Es
+              saldo inicial (ya lo tenía)</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">No
+              contará como ingreso del mes ni aparecerá en estadísticas</div>
           </div>
         </div>
-        <div class="ig"><label class="il" for="adDesc" id="adDescLabel">¿De dónde viene esta
+        <div class="ig"><label class="il" for="adDesc" id="adDescLabel">¿De
+            dónde viene esta
             plata? <span style="color:var(--red);">*</span></label><input
             type="text" id="adDesc"
             placeholder="Ej: Mesada, regalo, venta, sueldo..."
@@ -2431,28 +2498,42 @@ textarea{resize:none;height:60px;}
         <div id="rdPreview"
           style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:14px;"></div>
         <button type="button" class="btn btn-primary" id="btn-confirmar-restar"
-          style="background:var(--red);color:#fff;">Restar del saldo</button>
+          style="background:var(--red);color:#fff;border-color:transparent;box-shadow:0 2px 14px rgba(239,68,68,.35);">Restar
+          del saldo</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="restar-dinero">Cancelar</button>
       </div>
     </div>
 
-
     <!-- EDITAR SALDO INICIAL (APERTURA) -->
-    <div class="overlay" id="sheet-editar-apertura" data-sheet-id="editar-apertura">
+    <div class="overlay" id="sheet-editar-apertura"
+      data-sheet-id="editar-apertura">
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title" id="eaTitle">Corregir saldo inicial</div>
-        <p style="font-size:12px;color:var(--text2);margin-bottom:6px;">El saldo inicial se actualiza y la diferencia se ajusta en tu cuenta automaticamente. No cuenta como ingreso.</p>
-        <div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:8px;padding:10px 13px;margin-bottom:14px;">
-          <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Saldo inicial actual</div>
-          <div id="eaSaldoActual" style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);">$0</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:6px;">El saldo
+          inicial se actualiza y la diferencia se ajusta en tu cuenta
+          automaticamente. No cuenta como ingreso.</p>
+        <div
+          style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:8px;padding:10px 13px;margin-bottom:14px;">
+          <div
+            style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Saldo
+            inicial actual</div>
+          <div id="eaSaldoActual"
+            style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);">$0</div>
         </div>
-        <div class="ig"><label class="il" for="eaMonto">Nuevo saldo inicial</label>
-          <input type="text" inputmode="decimal" id="eaMonto" placeholder="0,00" class="money-input"></div>
-        <div id="eaPreview" style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
-        <button type="button" class="btn btn-primary" id="btn-confirmar-editar-apertura" style="background:var(--blue);color:#fff;border-color:transparent;">Actualizar saldo inicial</button>
-        <button type="button" class="btn btn-ghost" data-close-sheet="editar-apertura">Cancelar</button>
+        <div class="ig"><label class="il" for="eaMonto">Nuevo saldo
+            inicial</label>
+          <input type="text" inputmode="decimal" id="eaMonto" placeholder="0,00"
+            class="money-input"></div>
+        <div id="eaPreview"
+          style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
+        <button type="button" class="btn btn-primary"
+          id="btn-confirmar-editar-apertura"
+          style="background:var(--blue);color:#fff;border-color:transparent;box-shadow:0 2px 14px rgba(59,130,246,.35);">Actualizar
+          saldo inicial</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="editar-apertura">Cancelar</button>
       </div>
     </div>
     <!-- TRANSFERIR ENTRE CUENTAS -->
@@ -2524,8 +2605,11 @@ textarea{resize:none;height:60px;}
             placeholder="9,25"></div>
         <div class="ig"><label class="il" for="cdt_vence">Fecha de
             vencimiento</label><input type="date" id="cdt_vence"></div>
-        <div class="ig"><label class="il" for="cdt_rte">Retefuente % <span style="font-size:10px;color:var(--text3);font-weight:400;">(Nu retiene sobre intereses · por defecto 4%)</span></label><input
-            type="text" inputmode="decimal" id="cdt_rte" placeholder="4,00"></div>
+        <div class="ig"><label class="il" for="cdt_rte">Retefuente % <span
+              style="font-size:10px;color:var(--text3);font-weight:400;">(Nu
+              retiene sobre intereses · por defecto 4%)</span></label><input
+            type="text" inputmode="decimal" id="cdt_rte"
+            placeholder="4,00"></div>
         <div id="cdt_preview"
           style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:14px;min-height:32px;line-height:1.6;"></div>
         <button type="button" class="btn btn-primary"
@@ -5149,9 +5233,12 @@ function applyModulos(){
   if(!mod.spotify&&document.getElementById('screen-spotify').classList.contains('active')){
     showScreen('inicio');
   }
-  // Re-render banners to show/hide corregir button
-  renderBannerApertura('nequi');
-  renderBannerApertura('efectivo');
+  // Mostrar u ocultar banners de saldo inicial completos
+  const mostrarBanners=(mod.corregirSaldo!==false);
+  ['nequi','efectivo'].forEach(f=>{
+    const b=document.getElementById('banner-apertura-'+f);
+    if(b)b.style.display=mostrarBanners?'':'none';
+  });
 }
 
 function toggleModulo(nombre){
@@ -5784,13 +5871,12 @@ function renderBannerApertura(fuente){
   const color=colorMap[fuente]||'var(--blue)';
   if(mov){
     // Ya tiene saldo inicial — mostrar chip con valor y botón editar discreto
-    const mostrarCorregir=(S.modulos&&S.modulos.corregirSaldo===false)?false:true;
     el.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:9px;padding:9px 13px;margin-bottom:12px;">
       <div>
         <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:2px;">Saldo inicial registrado</div>
         <div style="font-size:15px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(mov.monto)}</div>
       </div>
-      ${mostrarCorregir?`<button type="button" onclick="abrirEditarApertura('${fuente}')" style="background:none;border:1px solid rgba(96,176,240,.3);border-radius:7px;color:var(--blue);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Corregir</button>`:''}
+      <button type="button" onclick="abrirEditarApertura('${fuente}')" style="background:none;border:1px solid rgba(96,176,240,.3);border-radius:7px;color:var(--blue);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Corregir</button>
     </div>`;
   } else {
     // No tiene saldo inicial — mostrar botón para registrarlo
@@ -7506,17 +7592,19 @@ document.addEventListener('focusin', function(e){
 })();
 </script>
 
-<!-- PRESUPUESTOS SHEET -->
+    <!-- PRESUPUESTOS SHEET -->
     <div class="overlay" id="sheet-presupuestos" data-sheet-id="presupuestos">
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title">Presupuestos mensuales</div>
-        <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Define un límite mensual por categoría. Te avisaré cuando llegues al 80%.</p>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">Define
+          un límite mensual por categoría. Te avisaré cuando llegues al 80%.</p>
         <div id="presupuestos-lista"></div>
-        <button type="button" class="btn btn-ghost" data-close-sheet="presupuestos">Cerrar</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="presupuestos">Cerrar</button>
       </div>
     </div>
-<script type="module">
+    <script type="module">
   // ── Helpers de estado de sync ──────────────────────────────────────────────
   function setSyncStatus(state, text) {
     const dot = document.getElementById('fb-sync-dot');
@@ -7639,8 +7727,8 @@ document.addEventListener('focusin', function(e){
     location.reload();
   };
 </script>
-  <!-- ===== MEJORAS: JS adicional ===== -->
-<style>
+    <!-- ===== MEJORAS: JS adicional ===== -->
+    <style>
 /* Animación fade-in del dashboard */
 @keyframes dashboardIn {
   from { opacity:0; transform:translateY(10px); }
@@ -7679,7 +7767,7 @@ document.addEventListener('focusin', function(e){
 .hist-item:last-child { border-bottom:none; }
 </style>
 
-<script>
+    <script>
 (function(){
   /* ====================================================
      1. OCULTAR/MOSTRAR SALDOS
@@ -8108,10 +8196,10 @@ document.addEventListener('focusin', function(e){
 })();
 </script>
 
-<!-- ================================================================
+    <!-- ================================================================
      MEJORAS ADICIONALES: Service Worker, Gestos, Undo/Redo
      ================================================================ -->
-<script>
+    <script>
 /* ================================================================
    SERVICE WORKER — PWA offline
    ================================================================ */
@@ -8404,4 +8492,4 @@ self.addEventListener('fetch', e => {
   });
 })();
 </script>
-</body></html>
+  </body></html>

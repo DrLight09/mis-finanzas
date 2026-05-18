@@ -205,6 +205,26 @@ textarea{resize:none;height:60px;}
 .cajita-toggle-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:0;display:flex;align-items:center;transition:transform .2s;}
 .cajita-expanded .cajita-toggle-btn{transform:rotate(180deg);}
 
+/* META DE AHORRO inline dentro de cajita */
+.cajita-meta-box{margin-top:10px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.22);border-radius:9px;padding:11px 12px;}
+.cajita-meta-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.cajita-meta-title{font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;font-weight:600;}
+.cajita-meta-progress{height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;margin:6px 0 5px;}
+.cajita-meta-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .5s;}
+.cajita-meta-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px;}
+.cajita-meta-stat{background:rgba(0,0,0,.25);border-radius:7px;padding:7px 8px;}
+.cajita-meta-stat-label{font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;}
+.cajita-meta-stat-val{font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);}
+.cajita-meta-stat-val.warn{color:var(--amber);}
+.cajita-meta-stat-val.ok{color:var(--accent);}
+.cajita-meta-stat-val.late{color:var(--red);}
+.cajita-meta-aporte-row{display:flex;align-items:center;gap:6px;margin-top:7px;flex-wrap:wrap;}
+.cajita-meta-aporte-chip{font-size:10px;font-family:'DM Mono',monospace;padding:3px 8px;border-radius:20px;background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.3);color:var(--accent);}
+/* PRÉSTAMO origen múltiple */
+.prest-split-row{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+.prest-split-row select{flex:1;}
+.prest-split-row input{width:110px;flex-shrink:0;}
+.prest-split-del{background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;min-width:30px;min-height:30px;display:flex;align-items:center;justify-content:center;}
 /* CDT inline dentro de cajita */
 .cajita-cdt-box{margin-top:11px;background:rgba(176,144,240,.07);border:1px solid rgba(176,144,240,.3);border-radius:9px;padding:11px 12px;}
 .cajita-cdt-locked{display:flex;align-items:center;gap:7px;margin-bottom:8px;}
@@ -2281,12 +2301,23 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <div class="ig"><label class="il" for="mov_fecha">Fecha</label><input
             type="date" id="mov_fecha"></div>
         <div class="ig" id="mov_fuente_wrap">
-          <label class="il" for="mov_fuente">¿De dónde sacó la plata?</label>
-          <div class="select-wrap"><select id="mov_fuente"><option value>Sin
-                especificar</option></select></div>
-          <div id="mov_fuente_hint"
-            style="font-size:10px;color:var(--accent);margin-top:5px;display:none;">Se
-            descontará automáticamente del saldo</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <label class="il" style="margin-bottom:0;">¿De dónde sacó la plata?</label>
+            <button type="button" id="mov_split_toggle" onclick="togglePrestSplit()" style="font-size:10px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;">Dividir ÷</button>
+          </div>
+          <!-- Modo simple -->
+          <div id="mov_fuente_simple">
+            <div class="select-wrap"><select id="mov_fuente"><option value>Sin especificar</option></select></div>
+            <div id="mov_fuente_hint" style="font-size:10px;color:var(--accent);margin-top:5px;display:none;">Se descontará automáticamente del saldo</div>
+          </div>
+          <!-- Modo dividido -->
+          <div id="mov_fuente_split" style="display:none;">
+            <div id="mov_split_rows"></div>
+            <button type="button" id="btn-add-prest-split" style="width:100%;padding:7px;border-radius:7px;background:var(--bg3);border:1px dashed var(--border2);color:var(--text2);font-size:12px;cursor:pointer;margin-bottom:4px;">+ Agregar cuenta</button>
+            <div id="mov_split_resumen" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:16px;"></div>
+            <!-- Impacto sobre metas -->
+            <div id="mov_split_metas" style="margin-top:6px;"></div>
+          </div>
         </div>
         <div class="ig" id="mov_destino_wrap" style="display:none;">
           <label class="il" for="mov_destino">¿A dónde entra el abono?</label>
@@ -2701,6 +2732,34 @@ input.movs-search-input:focus{border-color:var(--accent);}
           id="btn-confirmar-crear-cdt">Crear CDT</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="crear-cdt">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- META DE AHORRO para cajita -->
+    <div class="overlay" id="sheet-meta-cajita" data-sheet-id="meta-cajita">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Meta de ahorro</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Define cuánto quieres ahorrar y la app te dirá cuánto deberías llevar mes a mes.</p>
+        <div class="ig"><label class="il" for="meta_objetivo">Monto objetivo</label><input type="text" inputmode="decimal" id="meta_objetivo" placeholder="Ej: 1.000.000" class="money-input"></div>
+        <div class="ig"><label class="il" for="meta_inicio">Fecha de inicio</label><input type="date" id="meta_inicio"></div>
+        <div class="ig"><label class="il" for="meta_fin">Fecha límite</label><input type="date" id="meta_fin"></div>
+        <div style="font-size:11px;color:var(--text3);margin:-6px 0 14px;font-family:'DM Mono',monospace;" id="meta_cuota_preview"></div>
+        <div class="ig" style="background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.2);border-radius:9px;padding:12px;margin-bottom:0;">
+          <div style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:10px;font-weight:600;">APORTES MENSUALES (opcional)</div>
+          <div id="meta_aportes_list"></div>
+          <button type="button" id="btn-add-meta-aporte" style="width:100%;padding:7px;border-radius:7px;background:rgba(200,240,96,.08);border:1px dashed rgba(200,240,96,.3);color:var(--accent);font-size:12px;cursor:pointer;margin-top:4px;">+ Agregar fuente de aporte mensual</button>
+        </div>
+        <div style="margin-top:10px;background:rgba(240,104,104,.07);border:1px solid rgba(240,104,104,.2);border-radius:9px;padding:11px;display:none;" id="meta_min_wrap">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-family:'DM Mono',monospace;font-weight:600;color:var(--red);">SALDO MÍNIMO A MANTENER</div>
+          <input type="text" inputmode="decimal" id="meta_minimo" placeholder="Ej: 400.000" class="money-input" style="margin-bottom:4px;">
+          <div style="font-size:10px;color:var(--text3);">Si prestas plata de aquí, la app mostrará cuánto debería haber vs. cuánto hay realmente.</div>
+        </div>
+        <button type="button" style="margin-top:10px;background:none;border:none;color:var(--text3);font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;padding:4px 0;" id="btn-toggle-meta-min" onclick="document.getElementById('meta_min_wrap').style.display=document.getElementById('meta_min_wrap').style.display==='none'?'':'none';this.textContent=document.getElementById('meta_min_wrap').style.display===''?'▲ Ocultar saldo mínimo':'▼ Configurar saldo mínimo'">▼ Configurar saldo mínimo</button>
+        <div style="height:10px;"></div>
+        <button type="button" class="btn btn-primary" id="btn-guardar-meta">Guardar meta</button>
+        <button type="button" class="btn btn-ghost" id="btn-quitar-meta" style="color:var(--red);border-color:rgba(240,104,104,.3);display:none;">Quitar meta</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="meta-cajita">Cancelar</button>
       </div>
     </div>
 
@@ -3983,7 +4042,230 @@ function renderAnalisis(){
   }
 }
 
-/* ---- CAJITAS ---- */
+/* ---- METAS DE AHORRO EN CAJITAS ---- */
+// meta = { objetivo, inicio, fin, aportes:[{desc,monto}], minimo }
+let _metaCajitaId = null;
+let _metaAportesTemp = [];
+
+function calcMetaProgreso(c){
+  const meta = c.meta;
+  if(!meta || !meta.objetivo || !meta.fin) return null;
+  const saldo = calcC(c).val;
+  const obj = meta.objetivo;
+  const hoyStr = hoy();
+  const inicio = meta.inicio || hoyStr;
+  const fin = meta.fin;
+  const totalMeses = Math.max(1, Math.round((new Date(fin+'T00:00:00') - new Date(inicio+'T00:00:00')) / (1000*60*60*24*30.44)));
+  const mesesPasados = Math.max(0, Math.round((new Date(hoyStr+'T00:00:00') - new Date(inicio+'T00:00:00')) / (1000*60*60*24*30.44)));
+  const mesesRestantes = Math.max(0, Math.round((new Date(fin+'T00:00:00') - new Date(hoyStr+'T00:00:00')) / (1000*60*60*24*30.44)));
+  const esperadoHoy = obj * (mesesPasados / totalMeses);
+  const cuotaMensual = meta.aportes && meta.aportes.length ? meta.aportes.reduce((a,ap)=>a+(ap.monto||0),0) : (obj / totalMeses);
+  const pct = Math.min(100, (saldo / obj) * 100);
+  // cuánto falta para llegar a la meta
+  const falta = Math.max(0, obj - saldo);
+  // cuánto debería haber acumulado ya
+  const diferencia = saldo - esperadoHoy; // positivo = adelantado, negativo = atrasado
+  return { saldo, obj, pct, falta, cuotaMensual, esperadoHoy, diferencia, mesesRestantes, totalMeses, mesesPasados };
+}
+
+function renderMetaProgress(c){
+  const p = calcMetaProgreso(c);
+  if(!p) return '';
+  const estado = p.diferencia >= 0 ? 'ok' : (p.diferencia > -(p.cuotaMensual*0.5) ? 'warn' : 'late');
+  const estadoLabels = {ok:'Al día ✓', warn:'Un poco atrás', late:'Atrasado/a'};
+  const estadoColors = {ok:'var(--accent)', warn:'var(--amber)', late:'var(--red)'};
+  const aportesHtml = c.meta.aportes && c.meta.aportes.length ? c.meta.aportes.map(ap=>`<span class="cajita-meta-aporte-chip">${ap.desc}: ${fmt(ap.monto)}/mes</span>`).join('') : '';
+  // saldo mínimo
+  const minInfo = c.meta.minimo ? `<div style="margin-top:8px;padding:7px 9px;background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.2);border-radius:7px;">
+    <div style="font-size:9px;color:var(--red);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Saldo mínimo configurado</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:11px;color:var(--text2);">Mínimo: <b style="color:var(--text);">${fmt(c.meta.minimo)}</b></span>
+      ${p.saldo < c.meta.minimo ? `<span style="font-size:10px;color:var(--red);font-family:'DM Mono',monospace;">¡Bajo el mínimo! Faltan ${fmt(c.meta.minimo - p.saldo)}</span>` : `<span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;">OK (${fmt(p.saldo - c.meta.minimo)} sobre el mínimo)</span>`}
+    </div>
+    ${_calcPrestadoMeta(c.id) > 0 ? `<div style="margin-top:5px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;">💸 ${fmt(_calcPrestadoMeta(c.id))} prestado de esta cajita · Debería haber: ${fmt(p.saldo + _calcPrestadoMeta(c.id))}</div>` : ''}
+  </div>` : '';
+  return `<div class="cajita-meta-box">
+    <div class="cajita-meta-header">
+      <span class="cajita-meta-title">🎯 Meta: ${fmt(p.obj)}</span>
+      <button type="button" onclick="event.stopPropagation();abrirMetaCajita('${c.id}')" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:10px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.07);">editar</button>
+    </div>
+    <div class="cajita-meta-progress"><div class="cajita-meta-fill" style="width:${p.pct.toFixed(1)}%;background:${estadoColors[estado]};"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">
+      <span>${p.pct.toFixed(0)}% logrado</span>
+      <span>${p.mesesRestantes} ${p.mesesRestantes===1?'mes':'meses'} restantes · ${fmt(p.falta)} por ahorrar</span>
+    </div>
+    <div class="cajita-meta-stats">
+      <div class="cajita-meta-stat"><div class="cajita-meta-stat-label">Cuota/mes</div><div class="cajita-meta-stat-val">${fmt(p.cuotaMensual)}</div></div>
+      <div class="cajita-meta-stat"><div class="cajita-meta-stat-label">Esperado hoy</div><div class="cajita-meta-stat-val">${fmt(p.esperadoHoy)}</div></div>
+      <div class="cajita-meta-stat"><div class="cajita-meta-stat-label">Estado</div><div class="cajita-meta-stat-val ${estado}">${estadoLabels[estado]}</div></div>
+    </div>
+    ${aportesHtml ? `<div class="cajita-meta-aporte-row">${aportesHtml}</div>` : ''}
+    ${minInfo}
+  </div>`;
+}
+
+function _calcPrestadoMeta(cajitaId){
+  // Suma todos los préstamos pendientes que incluyen esta cajita como fuente
+  let total = 0;
+  (S.deudores||[]).forEach(d=>{
+    (d.movimientos||[]).forEach(m=>{
+      if(m.tipo==='prestamo'){
+        // fuente simple
+        if(m.fuente && m.fuente === 'cajita:'+cajitaId) total += m.monto;
+        // fuente dividida
+        if(m.fuentes && Array.isArray(m.fuentes)){
+          m.fuentes.forEach(f=>{ if(f.fuente==='cajita:'+cajitaId) total += (f.monto||0); });
+        }
+      }
+      // restar abonos que pueden haber regresado a la cajita
+      if(m.tipo==='abono' && m.destino==='cajita:'+cajitaId) total -= m.monto;
+    });
+  });
+  return Math.max(0, total);
+}
+
+function abrirMetaCajita(cajitaId){
+  _metaCajitaId = cajitaId;
+  const c = (S.cajitas||[]).find(x=>x.id===cajitaId);
+  if(!c) return;
+  const meta = c.meta || {};
+  document.getElementById('meta_objetivo').value = meta.objetivo ? fmtInput(meta.objetivo) : '';
+  document.getElementById('meta_inicio').value = meta.inicio || hoy();
+  document.getElementById('meta_fin').value = meta.fin || '';
+  document.getElementById('meta_minimo').value = meta.minimo ? fmtInput(meta.minimo) : '';
+  _metaAportesTemp = (meta.aportes || []).map(a=>({...a}));
+  const wrap = document.getElementById('meta_min_wrap');
+  wrap.style.display = meta.minimo ? '' : 'none';
+  document.getElementById('btn-toggle-meta-min').textContent = meta.minimo ? '▲ Ocultar saldo mínimo' : '▼ Configurar saldo mínimo';
+  document.getElementById('btn-quitar-meta').style.display = meta.objetivo ? '' : 'none';
+  _renderMetaAportes();
+  _updateMetaCuotaPreview();
+  openSheet('meta-cajita');
+}
+
+function _renderMetaAportes(){
+  const el = document.getElementById('meta_aportes_list');
+  if(!el) return;
+  el.innerHTML = _metaAportesTemp.map((ap,i)=>`
+    <div class="prest-split-row" style="gap:6px;margin-bottom:7px;">
+      <input type="text" value="${ap.desc||''}" placeholder="Ej: Papá, Mamá" oninput="_metaAportesTemp[${i}].desc=this.value" style="flex:1;font-size:13px;padding:8px 10px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;font-family:'DM Sans',sans-serif;">
+      <input type="text" inputmode="decimal" value="${ap.monto?fmtInput(ap.monto):''}" placeholder="$0" class="money-input" oninput="_metaAportesTemp[${i}].monto=parseMoney(this.value)||0;_updateMetaCuotaPreview()" style="width:100px;flex-shrink:0;">
+      <button class="prest-split-del" onclick="_metaAportesTemp.splice(${i},1);_renderMetaAportes();_updateMetaCuotaPreview()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+function _updateMetaCuotaPreview(){
+  const obj = parseMoney(document.getElementById('meta_objetivo').value)||0;
+  const inicio = document.getElementById('meta_inicio').value;
+  const fin = document.getElementById('meta_fin').value;
+  const el = document.getElementById('meta_cuota_preview');
+  if(!el) return;
+  if(!obj || !fin){ el.textContent=''; return; }
+  const meses = Math.max(1, Math.round((new Date(fin+'T00:00:00') - new Date((inicio||hoy())+'T00:00:00')) / (1000*60*60*24*30.44)));
+  const totalAportes = _metaAportesTemp.reduce((a,ap)=>a+(ap.monto||0),0);
+  const cuota = totalAportes || (obj / meses);
+  el.textContent = `${meses} meses · cuota estimada: ${fmt(cuota)}/mes${totalAportes&&totalAportes!==cuota?' (suma de tus aportes)':''}`;
+}
+
+function guardarMetaCajita(){
+  const c = (S.cajitas||[]).find(x=>x.id===_metaCajitaId);
+  if(!c){ toast('Cajita no encontrada','err'); return; }
+  const obj = parseMoney(document.getElementById('meta_objetivo').value)||0;
+  const fin = document.getElementById('meta_fin').value;
+  if(!obj){ toast('Ingresa el monto objetivo','err'); return; }
+  if(!fin){ toast('Ingresa la fecha límite','err'); return; }
+  const minimo = parseMoney(document.getElementById('meta_minimo').value)||0;
+  const inicio = document.getElementById('meta_inicio').value || hoy();
+  if(!c.meta) c.meta = {};
+  c.meta.objetivo = obj;
+  c.meta.inicio = inicio;
+  c.meta.fin = fin;
+  c.meta.aportes = _metaAportesTemp.filter(a=>a.monto>0);
+  if(minimo) c.meta.minimo = minimo; else delete c.meta.minimo;
+  save(); refresh();
+  closeSheet('meta-cajita');
+  toast('Meta guardada ✓','ok');
+}
+
+function quitarMetaCajita(){
+  const c = (S.cajitas||[]).find(x=>x.id===_metaCajitaId);
+  if(!c) return;
+  delete c.meta;
+  save(); refresh();
+  closeSheet('meta-cajita');
+  toast('Meta eliminada','info');
+}
+
+/* ---- PRÉSTAMO CON ORIGEN DIVIDIDO ---- */
+let _prestSplitMode = false;
+let _prestSplitRows = []; // [{fuente, monto}]
+
+function togglePrestSplit(){
+  _prestSplitMode = !_prestSplitMode;
+  document.getElementById('mov_fuente_simple').style.display = _prestSplitMode ? 'none' : '';
+  document.getElementById('mov_fuente_split').style.display = _prestSplitMode ? '' : 'none';
+  document.getElementById('mov_split_toggle').textContent = _prestSplitMode ? 'Una sola fuente' : 'Dividir ÷';
+  if(_prestSplitMode && !_prestSplitRows.length){
+    _prestSplitRows = [{fuente:'', monto:0}];
+    _renderPrestSplit();
+  }
+}
+
+function _renderPrestSplit(){
+  const el = document.getElementById('mov_split_rows');
+  if(!el) return;
+  const fuentes = getFuentes();
+  const opts = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+  el.innerHTML = _prestSplitRows.map((r,i)=>`
+    <div class="prest-split-row">
+      <div class="select-wrap" style="flex:1;"><select onchange="_prestSplitRows[${i}].fuente=this.value;_updatePrestSplitResumen()" style="font-size:13px;">${opts.replace(`value="${r.fuente}"`,`value="${r.fuente}" selected`)}</select></div>
+      <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="$0" class="money-input" oninput="_prestSplitRows[${i}].monto=parseMoney(this.value)||0;_updatePrestSplitResumen()" style="width:105px;">
+      <button class="prest-split-del" onclick="_prestSplitRows.splice(${i},1);_renderPrestSplit();_updatePrestSplitResumen()" ${_prestSplitRows.length<=1?'style="visibility:hidden;"':''}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>`).join('');
+  _updatePrestSplitResumen();
+}
+
+function _updatePrestSplitResumen(){
+  const totalSplit = _prestSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+  const montoTotal = parseMoney(document.getElementById('mov_monto').value)||0;
+  const resEl = document.getElementById('mov_split_resumen');
+  if(resEl){
+    const diff = montoTotal - totalSplit;
+    if(montoTotal && Math.abs(diff)>1){
+      resEl.innerHTML = `<span style="color:var(--amber);">Total dividido: ${fmt(totalSplit)} de ${fmt(montoTotal)} · ${diff>0?'Faltan':'Sobran'} ${fmt(Math.abs(diff))}</span>`;
+    } else if(montoTotal){
+      resEl.innerHTML = `<span style="color:var(--accent);">Total: ${fmt(totalSplit)} ✓</span>`;
+    } else { resEl.textContent = ''; }
+  }
+  // Mostrar impacto en metas
+  const metaEl = document.getElementById('mov_split_metas');
+  if(!metaEl) return;
+  const impactos = [];
+  _prestSplitRows.forEach(r=>{
+    if(!r.fuente || !r.fuente.startsWith('cajita:') || !r.monto) return;
+    const cajitaId = r.fuente.split(':')[1];
+    const c = (S.cajitas||[]).find(x=>x.id===cajitaId);
+    if(!c || !c.meta) return;
+    const saldoActual = calcC(c).val;
+    const saldoTras = saldoActual - r.monto;
+    const minimo = c.meta.minimo || 0;
+    const obj = c.meta.objetivo || 0;
+    impactos.push(`<div style="padding:7px 9px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:7px;margin-top:5px;">
+      <div style="font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;margin-bottom:4px;">📊 ${c.nombre}</div>
+      <div style="font-size:11px;color:var(--text2);">Disponible ahora: <b style="color:var(--text);">${fmt(saldoActual)}</b> → tras préstamo: <b style="color:${saldoTras<0?'var(--red)':'var(--text)'};">${fmt(saldoTras)}</b></div>
+      ${obj ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;">Meta: ${fmt(obj)} · ${fmt(Math.max(0,obj-saldoTras))} aún por ahorrar (tras préstamo)</div>` : ''}
+      ${minimo && saldoTras < minimo ? `<div style="font-size:10px;color:var(--red);margin-top:2px;">⚠️ Quedarás ${fmt(minimo-saldoTras)} por debajo del mínimo (${fmt(minimo)})</div>` : ''}
+    </div>`);
+  });
+  metaEl.innerHTML = impactos.join('');
+}
+
+/* ---- FIN METAS / SPLIT ---- */
+
 function getNuTasaGlobal(){
   const el=document.getElementById('nuTasaGlobal');
   const v=el?parseFloat(el.value.replace(',','.'))||9.25:9.25;
@@ -4196,6 +4478,7 @@ function renderCajitas(){
               <button type="button" class="add-money-btn" onclick="abrirAgregarDinero('cajita:${c.id}','${c.nombre}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar</button>
               <button type="button" class="add-money-btn" style="background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);" onclick="abrirRestarDinero('cajita:${c.id}','${c.nombre}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Retirar</button>
               <button type="button" class="add-money-btn" style="background:rgba(96,176,240,.1);border-color:rgba(96,176,240,.3);color:var(--blue);" onclick="abrirTransferir('cajita:${c.id}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 9l4-4-4-4"/><path d="M19 15l-4 4 4 4"/><line x1="9" y1="5" x2="19" y2="5"/><line x1="5" y1="19" x2="15" y2="19"/></svg> Mover</button>
+              <button type="button" class="add-money-btn" style="background:rgba(200,240,96,.08);border-color:rgba(200,240,96,.25);color:var(--accent);" onclick="event.stopPropagation();abrirMetaCajita('${c.id}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${c.meta&&c.meta.objetivo?'Meta':'+ Meta'}</button>
             </div>
           </div>
           <div class="ig" style="grid-column:1/-1;display:flex;align-items:flex-end;margin-top:2px;">
@@ -4203,6 +4486,7 @@ function renderCajitas(){
           </div>
         </div>
         ${cdtBoxes}
+        ${renderMetaProgress(c)}
       </div>
     </div>`;
   }).join('');
@@ -4641,7 +4925,7 @@ function abrirDeudor(id) {
               <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : 'Abono'}</span>
               ${m.nota ? `<span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
             </div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m.fuente ? ' · ' + fuenteLabel(m.fuente) : ''}${m.destino ? ' <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ' + fuenteLabel(m.destino) : ''}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m.fuentes ? ' · ' + m.fuentes.map(f=>fuenteLabel(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + fuenteLabel(m.fuente) : '')}${m.destino ? ' <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ' + fuenteLabel(m.destino) : ''}</div>
           </div>
           <div style="text-align:right;">
             <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esPrestamo ? 'var(--amber)' : 'var(--accent)'};">${esPrestamo ? '+' : '−'} ${fmt(m.monto)}</div>
@@ -4694,6 +4978,15 @@ function initMovSheet(tipo) {
   if (hint) hint.style.display = 'none';
   const dhint = document.getElementById('mov_destino_hint');
   if (dhint) dhint.style.display = 'none';
+  // Reset split mode
+  _prestSplitMode = false;
+  _prestSplitRows = [];
+  document.getElementById('mov_fuente_simple').style.display = '';
+  document.getElementById('mov_fuente_split').style.display = 'none';
+  document.getElementById('mov_split_toggle').textContent = 'Dividir ÷';
+  document.getElementById('mov_split_rows').innerHTML = '';
+  document.getElementById('mov_split_resumen').textContent = '';
+  if(document.getElementById('mov_split_metas')) document.getElementById('mov_split_metas').innerHTML = '';
 }
 
 function confirmarMovimiento() {
@@ -4704,9 +4997,23 @@ function confirmarMovimiento() {
   const fecha = document.getElementById('mov_fecha').value || hoy();
   const nota = document.getElementById('mov_nota').value.trim();
   if (movTipo === 'prestamo') {
-    const fuente = document.getElementById('mov_fuente').value;
-    d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota });
-    descontarFuente(fuente, monto);
+    if (_prestSplitMode) {
+      // Validar que la suma de los splits coincida con el monto total
+      const totalSplit = _prestSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+      if(Math.abs(totalSplit - monto) > 1){
+        toast(`La suma de las fuentes (${fmt(totalSplit)}) no coincide con el monto (${fmt(monto)})`,'err',4000);
+        return;
+      }
+      const fuentes = _prestSplitRows.filter(r=>r.monto>0);
+      // Descontar de cada fuente
+      fuentes.forEach(r=>{ if(r.fuente) descontarFuente(r.fuente, r.monto); });
+      const fuenteLabel = fuentes.map(r=>fuenteLabel2(r.fuente)+' '+fmt(r.monto)).join(' + ');
+      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota });
+    } else {
+      const fuente = document.getElementById('mov_fuente').value;
+      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota });
+      descontarFuente(fuente, monto);
+    }
   } else {
     const destino = document.getElementById('mov_destino').value;
     d.movimientos.push({ id: uid(), tipo: 'abono', monto, fecha, destino, nota });
@@ -4715,6 +5022,8 @@ function confirmarMovimiento() {
   save(); refresh(); closeSheet('registrar-movimiento');
   abrirDeudor(deudorActualId);
 }
+
+function fuenteLabel2(f){ return f ? fuenteLabel(f) : '—'; }
 
 // Calcular total prestado para el resumen
 function totalPrestadoPendiente() {
@@ -6390,6 +6699,26 @@ function _initEventListeners() {
   // --- CDT confirm button ---
   const btnCDTConf = document.getElementById('btn-confirmar-crear-cdt');
   if (btnCDTConf) btnCDTConf.addEventListener('click', confirmarCrearCDT);
+
+  // --- Meta de ahorro en cajita ---
+  const btnGuardarMeta = document.getElementById('btn-guardar-meta');
+  if(btnGuardarMeta) btnGuardarMeta.addEventListener('click', guardarMetaCajita);
+  const btnQuitarMeta = document.getElementById('btn-quitar-meta');
+  if(btnQuitarMeta) btnQuitarMeta.addEventListener('click', quitarMetaCajita);
+  const btnAddMetaAporte = document.getElementById('btn-add-meta-aporte');
+  if(btnAddMetaAporte) btnAddMetaAporte.addEventListener('click', ()=>{ _metaAportesTemp.push({desc:'',monto:0}); _renderMetaAportes(); });
+  // Preview on date/amount change in meta sheet
+  ['meta_objetivo','meta_inicio','meta_fin'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', _updateMetaCuotaPreview);
+  });
+
+  // --- Préstamo split origin ---
+  const btnAddPrestSplit = document.getElementById('btn-add-prest-split');
+  if(btnAddPrestSplit) btnAddPrestSplit.addEventListener('click', ()=>{ _prestSplitRows.push({fuente:'',monto:0}); _renderPrestSplit(); });
+  // Update split resumen when monto changes
+  const movMonto = document.getElementById('mov_monto');
+  if(movMonto) movMonto.addEventListener('input', ()=>{ if(_prestSplitMode) _updatePrestSplitResumen(); });
 
   // --- Sheet form confirm buttons ---
   const btnGVSave = document.getElementById('btn-guardar-gasto-var');

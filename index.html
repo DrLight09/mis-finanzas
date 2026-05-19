@@ -9013,7 +9013,7 @@ document.addEventListener('focusin', function(e){
    SERVICE WORKER — PWA offline
    ================================================================ */
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/sw.js', { scope: '/' })
+  navigator.serviceWorker.register('/mis-finanzas/sw.js', { scope: '/mis-finanzas/' })
     .then(() => console.info('[SW] Registrado correctamente'))
     .catch(err => console.info('[SW] No disponible:', err.message));
 } // fin if ('serviceWorker' in navigator)

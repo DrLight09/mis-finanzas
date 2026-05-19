@@ -3870,16 +3870,16 @@ function refresh(){
     return a+(k.val>0?k.val*(Math.pow(1+tasaCajita/100,1/365)-1):0);
   },0);
 
-  document.getElementById('heroTotal').textContent=fmtNoCents(disp+prest+cdts);
-  document.getElementById('s-disp').textContent=fmt(disp);
-  document.getElementById('s-nu').textContent=fmt(cajitasLibres);
-  document.getElementById('s-ef').textContent=fmt(ef);
-  const sNequiEl=document.getElementById('s-nequi');if(sNequiEl)sNequiEl.textContent=fmt(nequi);
-  document.getElementById('s-prest').textContent=fmt(prest);
-  document.getElementById('s-cdt').textContent=fmt(cdts);
-  document.getElementById('s-gf').textContent=fmt(gfTotal);
-  document.getElementById('s-gv').textContent=fmt(gvMes);
-  document.getElementById('s-gtotal').textContent=fmt(gfTotal+gvMes);
+  document.getElementById('heroTotal').textContent=fmt(disp+prest+cdts);
+  document.getElementById('s-disp').textContent=fmtNoCents(disp);
+  document.getElementById('s-nu').textContent=fmtNoCents(cajitasLibres);
+  document.getElementById('s-ef').textContent=fmtNoCents(ef);
+  const sNequiEl=document.getElementById('s-nequi');if(sNequiEl)sNequiEl.textContent=fmtNoCents(nequi);
+  document.getElementById('s-prest').textContent=fmtNoCents(prest);
+  document.getElementById('s-cdt').textContent=fmtNoCents(cdts);
+  document.getElementById('s-gf').textContent=fmtNoCents(gfTotal);
+  document.getElementById('s-gv').textContent=fmtNoCents(gvMes);
+  document.getElementById('s-gtotal').textContent=fmtNoCents(gfTotal+gvMes);
   document.getElementById('nuTotalDisp').textContent=fmt(nu);
   const nuInterEl=document.getElementById('nuTotalIntereses');
   if(nuInterEl)nuInterEl.textContent=interesesTotalHoy>0.5?'+'+fmt(interesesTotalHoy)+' intereses estimados hoy':'';

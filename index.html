@@ -6265,10 +6265,15 @@ function getMovimientosCuenta(tipo) {
       movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 5 5 12 12 19"/></svg> ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente: t.destino, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino });
     }
   });
-  // Sort by date desc, then by insertion order desc (most recent push = highest _idx = first)
+  // Sort by date desc, then by creation time desc (_movId starts with Date.now().toString(36))
   movs.sort((a, b) => {
     const dateCmp = (b.fecha || '').localeCompare(a.fecha || '');
     if (dateCmp !== 0) return dateCmp;
+    // Use _movId as tiebreaker: uid() = Date.now().toString(36) + random,
+    // so lexicographic comparison of the base-36 timestamp gives insertion order
+    const aId = a._movId || '';
+    const bId = b._movId || '';
+    if (aId && bId) return bId.localeCompare(aId);
     return (b._idx || 0) - (a._idx || 0);
   });
   return movs;

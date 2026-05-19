@@ -4567,6 +4567,8 @@ function volverANu(){
 }
 
 function volverADetalleCajita(){
+  const c=(S.cajitas||[]).find(x=>x.id===_cajitaActualId);
+  if(c) _renderDetalleCajita(c);
   _showCuentasPanel('cuentas-detalle-cajita');
 }
 

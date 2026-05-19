@@ -3512,9 +3512,10 @@ function materializarIntereses(c){
 // Calcula intereses del CDT de una cajita
 // Nu calcula el CDT así:
 // 1. Rendimiento bruto = monto × ((1 + EA)^(dias/365) - 1)  [compuesto, base 365]
-// 2. RTE = bruto × 4%  (se aplica al TOTAL acumulado, no diariamente)
-// 3. Rendimiento neto = bruto - RTE
-// 4. Total neto = monto + rendimiento neto
+// 2. Nu trunca el bruto a entero (floor) antes de aplicar RTE — replica exactamente la app oficial
+// 3. RTE = floor(bruto) × rte%
+// 4. Rendimiento neto = floor(bruto) - RTE
+// 5. Total neto = monto + rendimiento neto
 // Esta fórmula replica exactamente los valores de la app oficial de Nu.
 function calcCDT(cdt){
   if(!cdt||!cdt.monto||!cdt.inicio)return{val:cdt?cdt.monto:0,ganado:0,ganado_bruto:0,retencion:0,dias:0};
@@ -3526,8 +3527,10 @@ function calcCDT(cdt){
   const fechaFin=ahora<hasta?ahora:hasta;
   const dias=Math.max(0,Math.floor((fechaFin-desde)/86400000));
   // Rendimiento bruto compuesto (fórmula EA base 365, igual que Nu)
-  const ganado_bruto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
-  // RTE se aplica sobre el total del bruto acumulado
+  const ganado_bruto_exacto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
+  // Nu trunca el bruto al peso entero antes de calcular RTE (replica exactamente la app oficial)
+  const ganado_bruto=Math.floor(ganado_bruto_exacto);
+  // RTE se aplica sobre el bruto truncado
   const retencion=ganado_bruto*rte;
   const ganado=ganado_bruto-retencion;
   const val=cdt.monto+ganado;
@@ -8320,6 +8323,10 @@ document.addEventListener('focusin', function(e){
   // ── Guardar en Firestore con debounce ─────────────────────────────────────
   let _saveTimer = null;
   window._fbSaveToCloud = function() {
+    // PROTECCIÓN CRÍTICA: nunca guardar si los datos no se han cargado
+    // desde Firestore. Evita sobreescribir la nube con datos vacíos
+    // si la app se reinicia abruptamente antes de terminar de cargar.
+    if(!window._dataLoaded) return;
     clearTimeout(_saveTimer);
     setSyncStatus('syncing', 'Guardando…');
     _saveTimer = window._fbSaveTimer = setTimeout(async () => {
@@ -8380,6 +8387,11 @@ document.addEventListener('focusin', function(e){
 
     // Ocultar pantalla de carga y mostrar la app
     document.getElementById('fb-loading-screen').style.display = 'none';
+
+    // PROTECCIÓN: marcar que los datos ya se cargaron correctamente.
+    // _fbSaveToCloud no guardará nada hasta que esta bandera esté activa,
+    // evitando que un reinicio abrupto sobreescriba la nube con datos vacíos.
+    window._dataLoaded = true;
 
     // Inicializar la app (equivalente al bloque de init original)
     load();

@@ -1287,7 +1287,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
               <div class="stat"><div class="stat-label">Ha pagado</div><div
                   class="stat-value c-green" id="ddPago">$0</div></div>
             </div>
-            <div style="display:flex;gap:7px;margin-bottom:14px;">
+            <div style="display:flex;gap:7px;margin-bottom:7px;">
               <button type="button" class="btn btn-primary"
                 id="btn-nuevo-prestamo" style="flex:1;">
                 <span
@@ -1308,6 +1308,18 @@ input.movs-search-input:focus{border-color:var(--accent);}
                     stroke-linecap="round"><polyline
                       points="20 6 9 17 4 12" /></svg>
                   Registrar abono
+                </span>
+              </button>
+            </div>
+            <div style="margin-bottom:14px;">
+              <button type="button" class="btn" id="btn-pagar-prestamo"
+                style="width:100%;background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.4);color:var(--amber);">
+                <span
+                  style="display:flex;align-items:center;justify-content:center;gap:6px;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                  Pagar préstamo completo
                 </span>
               </button>
             </div>
@@ -2821,9 +2833,16 @@ input.movs-search-input:focus{border-color:var(--accent);}
             style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);"
             id="cdtCajitaSaldo">$0</div>
         </div>
-        <div class="ig"><label class="il" for="cdt_monto">Monto a invertir (mín.
-            $50.000)</label><input type="text" inputmode="decimal"
-            id="cdt_monto" placeholder="0,00" class="money-input"></div>
+        <div class="ig">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <label class="il" for="cdt_monto" style="margin-bottom:0;">Monto a invertir (mín. $50.000)</label>
+            <button type="button" id="btn-cdt-invertir-todo"
+              style="font-size:10px;font-family:'DM Mono',monospace;padding:3px 9px;border-radius:20px;background:rgba(176,144,240,.15);border:1px solid rgba(176,144,240,.4);color:var(--purple);cursor:pointer;white-space:nowrap;font-weight:600;line-height:1.4;">
+              Invertir todo
+            </button>
+          </div>
+          <input type="text" inputmode="decimal" id="cdt_monto" placeholder="0,00" class="money-input">
+        </div>
         <div class="ig"><label class="il" for="cdt_tasa">Tasa EA %</label><input
             type="text" inputmode="decimal" id="cdt_tasa"
             placeholder="9,25"></div>
@@ -4458,6 +4477,15 @@ function abrirCrearCDT(cajitaId){
   document.getElementById('cdt_vence').value='';
   document.getElementById('cdt_rte').value='4,00';
   document.getElementById('cdt_preview').textContent='';
+  // Botón invertir todo
+  const btnInv=document.getElementById('btn-cdt-invertir-todo');
+  if(btnInv){
+    btnInv.onclick=function(){
+      const saldo=calcC((S.cajitas||[]).find(x=>x.id===_cdtCajitaId)||{}).val||0;
+      document.getElementById('cdt_monto').value=fmtInput(saldo);
+      document.getElementById('cdt_monto').dispatchEvent(new Event('input'));
+    };
+  }
   openSheet('crear-cdt');
 }
 
@@ -7011,6 +7039,16 @@ function _initEventListeners() {
   if (btnNuevoPrest) btnNuevoPrest.addEventListener('click', () => { openSheet('registrar-movimiento'); initMovSheet('prestamo'); });
   const btnAbono = document.getElementById('btn-registrar-abono');
   if (btnAbono) btnAbono.addEventListener('click', () => { openSheet('registrar-movimiento'); initMovSheet('abono'); });
+  const btnPagarTodo = document.getElementById('btn-pagar-prestamo');
+  if (btnPagarTodo) btnPagarTodo.addEventListener('click', () => {
+    const d = (S.deudores || []).find(x => x.id === deudorActualId);
+    if (!d) return;
+    const saldo = getDeudorSaldo(d);
+    if (saldo <= 0) { toast('No hay saldo pendiente', 'info'); return; }
+    openSheet('registrar-movimiento');
+    initMovSheet('abono');
+    document.getElementById('mov_monto').value = fmtInput(saldo);
+  });
 
   // --- Año mesada ---
   const btnAnioP = document.getElementById('btn-anio-prev');

@@ -1,5 +1,5 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v4';
+const VERSION = 'mis-finanzas-v3';
 
 const APP_SHELL = [
   '/mis-finanzas/',
@@ -32,8 +32,6 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = e.request.url;
-  // Ignorar esquemas no cacheables (chrome-extension://, data://, etc.)
-  if (!url.startsWith('http')) return;
 
   if (CACHE_FONTS.some(origin => url.startsWith(origin))) {
     e.respondWith(cacheFirst(e.request));

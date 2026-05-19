@@ -3811,7 +3811,9 @@ function refresh(){
       if(saldoEl)saldoEl.textContent=fmt(_cc.saldo||0);
       renderMovsCustom(_cc);
     }
-  } else { renderCajitas(); if(typeof _refreshCajitaDet==='function') _refreshCajitaDet(); }
+  } else { renderCajitas(); }
+  // Siempre actualizar el detalle/sub-pantallas de cajita si hay una abierta
+  if(typeof _refreshCajitaDet==='function') _refreshCajitaDet();
   renderGastosVar();
   renderGastosFijos();
   renderPrestamosList();
@@ -4286,8 +4288,9 @@ function guardarMetaCajita(){
   c.meta.fin = fin;
   c.meta.aportes = _metaAportesTemp.filter(a=>a.monto>0);
   if(minimo) c.meta.minimo = minimo; else delete c.meta.minimo;
-  save(); refresh();
+  save();
   closeSheet('meta-cajita');
+  refresh();
   toast('Meta guardada ✓','ok');
 }
 
@@ -4295,8 +4298,9 @@ function quitarMetaCajita(){
   const c = (S.cajitas||[]).find(x=>x.id===_metaCajitaId);
   if(!c) return;
   delete c.meta;
-  save(); refresh();
+  save();
   closeSheet('meta-cajita');
+  refresh();
   toast('Meta eliminada','info');
 }
 
@@ -4435,8 +4439,9 @@ function confirmarCrearCDT(){
   // Agregar CDT al array de CDTs de la cajita
   if(!c.cdts)c.cdts=[];
   c.cdts.push({id:uid(),monto,tasa,rte,inicio:hoy(),vence});
-  save();refresh();
+  save();
   closeSheet('crear-cdt');
+  refresh();
   toast(`CDT creado por ${fmt(monto)} al ${String(tasa).replace('.',',')}% EA — se libera el ${vence}`,'ok',4000);
 }
 
@@ -4497,8 +4502,9 @@ function guardarCDT(cajitaId,cdtId){
   const btn=document.querySelector('#sheet-crear-cdt .btn-primary');
   if(btn&&btn._origOnclick){ btn.onclick=btn._origOnclick; btn.textContent='Crear CDT'; delete btn._origOnclick; }
   _cdtEditId=null;
-  save();refresh();
+  save();
   closeSheet('crear-cdt');
+  refresh();
   toast('CDT actualizado','ok',3000);
 }
 
@@ -4745,8 +4751,10 @@ function abrirSubCDTs(){
 
 // Cuando se guarde/refresh, actualizar el detalle de cajita si está abierto
 function _refreshCajitaDet(){
-  if(!_cajitaActualId) return;
-  const c=(S.cajitas||[]).find(x=>x.id===_cajitaActualId);
+  // Usar _cajitaActualId, o _metaCajitaId como fallback (cuando se abre meta desde lista)
+  const idActual = _cajitaActualId || _metaCajitaId;
+  if(!idActual) return;
+  const c=(S.cajitas||[]).find(x=>x.id===idActual);
   if(!c) return;
   const panel=document.getElementById('cuentas-detalle-cajita');
   if(panel&&panel.style.display!=='none') _renderDetalleCajita(c);
@@ -6476,8 +6484,9 @@ function confirmarAgregarDinero(){
   const tipoMov=esApertura?'apertura':'entrada';
   const descFinal=desc||(esApertura?'Saldo inicial':'');
   S.movimientos.push({id:uid(),tipo:tipoMov,fuente:adFuente,monto:v,fecha,desc:descFinal});
-  save();refresh();
+  save();
   closeSheet('agregar-dinero');
+  refresh();
   adFuente='';
   toast(fmt(v) + (esApertura?' registrado como saldo inicial':' sumado — ' + descFinal), 'ok');
 }
@@ -6522,8 +6531,9 @@ function confirmarAgregarDineroMenu(){
   // Registrar movimiento de entrada
   if(!S.movimientos)S.movimientos=[];
   S.movimientos.push({id:uid(),tipo:'entrada',fuente,monto:v,fecha,desc});
-  save();refresh();
+  save();
   closeSheet('agregar-dinero-menu');
+  refresh();
   toast(fmt(v) + ' sumado — ' + desc, 'ok');
 }
 
@@ -8312,7 +8322,7 @@ document.addEventListener('focusin', function(e){
   window._fbSaveToCloud = function() {
     clearTimeout(_saveTimer);
     setSyncStatus('syncing', 'Guardando…');
-    _saveTimer = setTimeout(async () => {
+    _saveTimer = window._fbSaveTimer = setTimeout(async () => {
       if(!window._fbUser || !window._fb) return;
       try {
         const {db, doc, setDoc} = window._fb;
@@ -8416,6 +8426,24 @@ document.addEventListener('focusin', function(e){
     const ok = await dialogo('Cerrar sesión', '¿Seguro que quieres salir? Tus datos quedan guardados en la nube.', 'Cerrar sesión', true);
     if(!ok) return;
     if(!window._fb) return;
+    // Cancelar cualquier guardado pendiente antes de salir para evitar
+    // que un timer de debounce guarde datos vacíos o corruptos post-signout
+    clearTimeout(_saveTimer);
+    clearTimeout(window._saveTimer);
+    clearTimeout(window._fbSaveTimer);
+    // Guardar una última vez de forma inmediata si hay datos válidos
+    if(window._fbUser && window.S) {
+      try {
+        const {db, doc, setDoc} = window._fb;
+        const data = JSON.parse(JSON.stringify(window.S));
+        await setDoc(
+          doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
+          { payload: JSON.stringify(data), updatedAt: Date.now() }
+        );
+      } catch(e) { console.warn('Error en guardado final antes de cerrar sesión:', e); }
+    }
+    // Bloquear futuros guardados limpiando el usuario ANTES del signOut
+    window._fbUser = null;
     const {auth, signOut} = window._fb;
     await signOut(auth);
     location.reload();
@@ -9145,7 +9173,27 @@ self.addEventListener('fetch', e => {
 
   window._pinOlvide = async function() {
     const ok = await _pinDialogo('\u00bfOlvidaste el PIN?', 'Se cerrar\u00e1 la sesi\u00f3n y podr\u00e1s volver a entrar con Google.', 'Cerrar sesi\u00f3n');
-    if(ok) window._fbSignOut();
+    if(!ok) return;
+    if(!window._fb) return;
+    // Cancelar timers de guardado pendientes para no corromper datos
+    clearTimeout(window._saveTimer);
+    clearTimeout(window._fbSaveTimer);
+    // Guardar estado actual antes de cerrar sesión
+    if(window._fbUser && window.S) {
+      try {
+        const {db, doc, setDoc} = window._fb;
+        const data = JSON.parse(JSON.stringify(window.S));
+        await setDoc(
+          doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
+          { payload: JSON.stringify(data), updatedAt: Date.now() }
+        );
+      } catch(e) { console.warn('Error en guardado final desde PIN:', e); }
+    }
+    // Limpiar usuario antes de signOut para bloquear guardados posteriores
+    window._fbUser = null;
+    const {auth, signOut} = window._fb;
+    await signOut(auth);
+    location.reload();
   };
 
   function _submit() {

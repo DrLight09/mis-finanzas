@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Mis Finanzas">
     <meta name="theme-color" content="#0f0f0f">
-    <title>Mis Finanzas2</title>
+    <title>Mis Finanzas</title>
     <link rel="icon" type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f0f0f'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%23c8f060' stroke-width='3'/%3E%3Ctext x='32' y='38' font-family='sans-serif' font-size='22' font-weight='700' fill='%23c8f060' text-anchor='middle'%3E%24%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon"
@@ -345,7 +345,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
 @keyframes toastIn{from{opacity:0;transform:translateY(-14px) scale(.95);}to{opacity:1;transform:translateY(0) scale(1);}}
 @keyframes toastOut{to{opacity:0;transform:translateY(-10px) scale(.95);}}
 /* DIALOG PROPIO */
-#dialog-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9998;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+#dialog-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999999;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
 #dialog-overlay.open{display:flex;}
 #dialog-box{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:22px 20px 18px;width:calc(100% - 40px);max-width:360px;}
 #dialog-title{font-size:15px;font-weight:600;margin-bottom:8px;}
@@ -5861,7 +5861,7 @@ function showScreen(name){
     if(det)det.style.display='none';
     if(vis)vis.style.display='';
   }
-  if(name==='config') renderCatsConfig();
+  if(name==='config') { renderCatsConfig(); if(typeof window._pinRenderBtn==='function') window._pinRenderBtn(); }
   if(name==='analisis') renderAnalisis();
 }
 
@@ -9112,8 +9112,15 @@ self.addEventListener('fetch', e => {
     if(_pinBuf.length>0){ _pinBuf=_pinBuf.slice(0,-1); _dots(); }
   };
   window._pinOlvide = async function() {
-    const ok = await dialogo('¿Olvidaste el PIN?','Se cerrará la sesión y podrás volver a entrar con Google.','Cerrar sesión',true);
-    if(ok) window._fbSignOut();
+    // Bajar z-index del pin-screen para que el dialog quede encima
+    const ps = document.getElementById('pin-screen');
+    if(ps) ps.style.zIndex = '99990';
+    const ok = await dialogo('\u00bfOlvidaste el PIN?','Se cerrar\u00e1 la sesi\u00f3n y podr\u00e1s volver a entrar con Google.','Cerrar sesi\u00f3n',true);
+    if(ok) {
+      window._fbSignOut();
+    } else {
+      if(ps) ps.style.zIndex = '';
+    }
   };
 
   function _submit() {
@@ -9176,6 +9183,7 @@ self.addEventListener('fetch', e => {
     if(ok){ _delPin(); showToast('PIN desactivado','info'); _renderBtn(); }
   };
 
+  window._pinRenderBtn = _renderBtn;
   function _renderBtn() {
     const c = document.getElementById('pin-config-container');
     if(!c) return;

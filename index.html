@@ -2946,6 +2946,12 @@ function fmt(n){
   if(decPart===0){return sign+'$'+intPart.toLocaleString('es-CO');}
   return sign+'$'+intPart.toLocaleString('es-CO')+','+String(decPart).padStart(2,'0');
 }
+function fmtNoCents(n){
+  const num=n||0;
+  const sign=num<0?'-':'';
+  const intPart=Math.floor(Math.abs(num));
+  return sign+'$'+intPart.toLocaleString('es-CO');
+}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
 function hoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function mesKey(d){return d?d.substring(0,7):'';}
@@ -3864,7 +3870,7 @@ function refresh(){
     return a+(k.val>0?k.val*(Math.pow(1+tasaCajita/100,1/365)-1):0);
   },0);
 
-  document.getElementById('heroTotal').textContent=fmt(disp+prest+cdts);
+  document.getElementById('heroTotal').textContent=fmtNoCents(disp+prest+cdts);
   document.getElementById('s-disp').textContent=fmt(disp);
   document.getElementById('s-nu').textContent=fmt(cajitasLibres);
   document.getElementById('s-ef').textContent=fmt(ef);

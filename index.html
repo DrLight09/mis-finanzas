@@ -481,7 +481,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
 .mes-dot { aspect-ratio:1; border-radius:8px; font-size:10px; min-height:36px; }
 
 /* ── PIN SCREEN ── */
-#pin-screen{position:fixed;inset:0;z-index:99998;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);padding:32px 24px;text-align:center;}
+#pin-screen{position:fixed;inset:0;z-index:99998;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);padding:32px 24px;text-align:center;overflow:hidden;}
 #pin-screen.open{display:flex;}
 .pin-anim{animation:fbLoadIn .4s cubic-bezier(.22,1,.36,1) both;}
 .pin-logo{width:64px;height:64px;border-radius:18px;background:rgba(200,240,96,.10);border:1.5px solid rgba(200,240,96,.25);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
@@ -550,6 +550,17 @@ input.movs-search-input:focus{border-color:var(--accent);}
           </button>
         </div>
         <div class="pin-forgot" id="pin-forgot-btn" onclick="window._pinOlvide()" style="display:none;">¿Olvidaste el PIN? Cerrar sesión</div>
+      </div>
+      <!-- Mini-diálogo propio del PIN, dentro del pin-screen para no tener conflictos de z-index -->
+      <div id="pin-dialog" style="display:none;position:absolute;inset:0;background:rgba(0,0,0,.75);z-index:10;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+        <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:22px 20px 18px;width:calc(100% - 40px);max-width:320px;text-align:left;">
+          <div id="pin-dialog-title" style="font-size:15px;font-weight:600;margin-bottom:8px;"></div>
+          <div id="pin-dialog-msg" style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.5;"></div>
+          <div style="display:flex;gap:8px;">
+            <button type="button" id="pin-dialog-cancel" style="flex:1;padding:10px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid var(--border2);background:transparent;color:var(--text);">Cancelar</button>
+            <button type="button" id="pin-dialog-confirm" style="flex:1;padding:10px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid rgba(240,104,104,.4);background:rgba(240,104,104,.2);color:var(--red);">Confirmar</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -9111,16 +9122,30 @@ self.addEventListener('fetch', e => {
   window._pinDel = function() {
     if(_pinBuf.length>0){ _pinBuf=_pinBuf.slice(0,-1); _dots(); }
   };
+  // Mini-diálogo interno del PIN (evita conflictos de z-index con el pin-screen)
+  function _pinDialogo(titulo, msg, btnOkText) {
+    return new Promise(res => {
+      const overlay = document.getElementById('pin-dialog');
+      document.getElementById('pin-dialog-title').textContent = titulo;
+      document.getElementById('pin-dialog-msg').textContent = msg;
+      document.getElementById('pin-dialog-confirm').textContent = btnOkText;
+      overlay.style.display = 'flex';
+      function cleanup(val) {
+        overlay.style.display = 'none';
+        document.getElementById('pin-dialog-confirm').removeEventListener('click', onOk);
+        document.getElementById('pin-dialog-cancel').removeEventListener('click', onCancel);
+        res(val);
+      }
+      function onOk() { cleanup(true); }
+      function onCancel() { cleanup(false); }
+      document.getElementById('pin-dialog-confirm').addEventListener('click', onOk);
+      document.getElementById('pin-dialog-cancel').addEventListener('click', onCancel);
+    });
+  }
+
   window._pinOlvide = async function() {
-    // Bajar z-index del pin-screen para que el dialog quede encima
-    const ps = document.getElementById('pin-screen');
-    if(ps) ps.style.zIndex = '99990';
-    const ok = await dialogo('\u00bfOlvidaste el PIN?','Se cerrar\u00e1 la sesi\u00f3n y podr\u00e1s volver a entrar con Google.','Cerrar sesi\u00f3n',true);
-    if(ok) {
-      window._fbSignOut();
-    } else {
-      if(ps) ps.style.zIndex = '';
-    }
+    const ok = await _pinDialogo('\u00bfOlvidaste el PIN?', 'Se cerrar\u00e1 la sesi\u00f3n y podr\u00e1s volver a entrar con Google.', 'Cerrar sesi\u00f3n');
+    if(ok) window._fbSignOut();
   };
 
   function _submit() {
@@ -9137,8 +9162,9 @@ self.addEventListener('fetch', e => {
       if(_pinBuf===_pinTemp) {
         _setPin(_pinBuf);
         _hidePin();
-        showToast('PIN activado ✓','ok');
+        if(window.showToast) showToast('PIN activado ✓','ok');
         _renderBtn();
+        setTimeout(_renderBtn, 100);
         // Si la app no había lanzado aún (primer setup), lanzarla
         if(window._pendingLaunch) { window._pendingLaunch=false; _launchApp(); }
       } else {
@@ -9180,7 +9206,7 @@ self.addEventListener('fetch', e => {
   };
   window._pinDisable = async function() {
     const ok = await dialogo('Quitar PIN','¿Seguro que quieres desactivar el PIN de acceso?','Quitar PIN',true);
-    if(ok){ _delPin(); showToast('PIN desactivado','info'); _renderBtn(); }
+    if(ok){ _delPin(); if(window.showToast) showToast('PIN desactivado','info'); _renderBtn(); setTimeout(_renderBtn, 100); }
   };
 
   window._pinRenderBtn = _renderBtn;

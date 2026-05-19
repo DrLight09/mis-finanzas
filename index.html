@@ -5263,7 +5263,11 @@ function abrirDeudor(id) {
   document.getElementById('ddPago').textContent = fmt(totalAbonado);
 
   // Render historial
-  const movs = [...(d.movimientos || [])].sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
+  const movs = [...(d.movimientos || [])].sort((a,b)=>{
+    const fechaDiff = (b.fecha||'').localeCompare(a.fecha||'');
+    if (fechaDiff !== 0) return fechaDiff;
+    return (b.ts || 0) - (a.ts || 0);
+  });
   const histEl = document.getElementById('ddHistorial');
   if (!movs.length) {
     histEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 8px;">Sin movimientos aún.</div>';
@@ -5361,15 +5365,15 @@ function confirmarMovimiento() {
       // Descontar de cada fuente
       fuentes.forEach(r=>{ if(r.fuente) descontarFuente(r.fuente, r.monto); });
       const fuenteLabel = fuentes.map(r=>fuenteLabel2(r.fuente)+' '+fmt(r.monto)).join(' + ');
-      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota });
+      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota, ts: Date.now() });
     } else {
       const fuente = document.getElementById('mov_fuente').value;
-      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota });
+      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota, ts: Date.now() });
       descontarFuente(fuente, monto);
     }
   } else {
     const destino = document.getElementById('mov_destino').value;
-    d.movimientos.push({ id: uid(), tipo: 'abono', monto, fecha, destino, nota });
+    d.movimientos.push({ id: uid(), tipo: 'abono', monto, fecha, destino, nota, ts: Date.now() });
     sumarFuente(destino, monto);
   }
   save(); refresh(); closeSheet('registrar-movimiento');

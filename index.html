@@ -28,6 +28,12 @@
       import { initializeFirestore, persistentLocalCache, doc, getDoc, setDoc, onSnapshot }
         from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
+      // NOTA DE SEGURIDAD: Esta API Key de Firebase es de dominio público por diseño
+      // (Firebase requiere que esté en el cliente). Para reducir riesgos:
+      // 1. Restringe la clave en Firebase Console → APIs & Services → Credentials
+      //    → Application restrictions: HTTP referrers (solo tu dominio)
+      //    → API restrictions: solo Firebase APIs necesarias
+      // 2. Las reglas de seguridad de Firestore son la barrera real de acceso.
       const firebaseConfig = {
         apiKey: "AIzaSyBNGhKxrd6nuUXamRytHEgrv3ggrafr4HU",
         authDomain: "mis-finanzas-z.firebaseapp.com",
@@ -3432,6 +3438,12 @@ function parsePct(v){
 let _fbSaveTimer = null;
 
 function save(){
+  // PROTECCIÓN: no guardar si los datos aún no se han cargado desde Firebase.
+  // Esto evita sobreescribir datos válidos con el estado inicial vacío.
+  if(window._fbLoadData && !window._dataLoaded) {
+    console.warn('[save] Bloqueado: datos de Firebase aún no cargados.');
+    return;
+  }
   S.nuRate=parseMoney(document.getElementById('nuRate').value)||9.25;
   S.nequiSaldo=parseMoney(document.getElementById('nequiSaldo').value)||0;
   S.efectivoSaldo=parseMoney(document.getElementById('efectivoSaldo').value)||0;
@@ -3457,7 +3469,9 @@ function save(){
   });
   snapshotPatrimonio();
   // Guardar en Firebase con debounce de 1.5s
-  _fbSaveToCloud();
+  if(typeof window._fbSaveToCloud === 'function') {
+    window._fbSaveToCloud();
+  }
 }
 
 /* ---- SNAPSHOT PATRIMONIO ---- */
@@ -3576,8 +3590,6 @@ function gastosMes(mesK){
   return(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mesK);
 }
 
-function saveAndRefresh(){save();refresh();}
-
 /* ---- TOAST ---- */
 function toast(msg, tipo='ok', dur=2800){
   const c=document.getElementById('toast-container');
@@ -3623,6 +3635,34 @@ function debounceSave(delay=800){
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(()=>saveAndRefresh(),delay);
 }
+
+/* ---- GUARDADO DE EMERGENCIA al cerrar pestaña ---- */
+// Evita pérdida de datos si el usuario cierra antes de que el debounce dispare.
+window.addEventListener('beforeunload', function() {
+  if (_saveTimer != null) {
+    clearTimeout(_saveTimer);
+    _saveTimer = null;
+    try { save(); } catch(e) {}
+    // Intentar guardado inmediato en Firebase si hay datos pendientes
+    if (window._fbSaveToCloud && window._dataLoaded) {
+      clearTimeout(window._fbSaveTimer);
+      if (window._fbUser && window._fb && window.S) {
+        try {
+          const {db, doc, setDoc} = window._fb;
+          const data = JSON.parse(JSON.stringify(window.S));
+          // sendBeacon no funciona con Firestore; usamos un guardado síncrono best-effort
+          navigator.sendBeacon && navigator.sendBeacon(
+            'data:application/json,' + encodeURIComponent(JSON.stringify({_noop:true}))
+          );
+          // El guardado real ocurre en el siguiente ciclo si la pestaña sigue viva
+          setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),
+            {payload: JSON.stringify(data), updatedAt: Date.now()}
+          ).catch(()=>{});
+        } catch(e) {}
+      }
+    }
+  }
+});
 
 /* ---- CATEGORÍAS PERSONALIZADAS ---- */
 function renderCatsConfig(){
@@ -4951,7 +4991,17 @@ function addGastoVar(){
 async function deleteGastoVar(id){
   const ok=await dialogo('Eliminar gasto','¿Seguro que quieres eliminar este gasto? Esta acción no se puede deshacer.','Eliminar',true);
   if(!ok)return;
-  S.gastosVar=(S.gastosVar||[]).filter(g=>g.id!==id);
+  const g=(S.gastosVar||[]).find(x=>x.id===id);
+  if(g){
+    // Bug fix: devolver el dinero a la cuenta origen
+    if(g.fuente)sumarFuente(g.fuente,g.monto);
+    // Bug fix: si era pago de gasto fijo, desmarcar como pagado
+    if(g.esPagoGastoFijo&&g.gastoFijoId){
+      const mes=mesKey(g.fecha);
+      if(S.pagosGastosFijos)delete S.pagosGastosFijos[g.gastoFijoId+'_'+mes];
+    }
+  }
+  S.gastosVar=(S.gastosVar||[]).filter(x=>x.id!==id);
   save();refresh();
   toast('Gasto eliminado','ok');
 }
@@ -5933,11 +5983,14 @@ function toggleModulo(nombre){
 async function borrarTodo(){
   const ok=await dialogo('Borrar todos los datos','¿Seguro que quieres borrar TODO? Esta acción no se puede deshacer y perderás toda tu información financiera.','Borrar todo',true);
   if(!ok)return;
-  // Borrar en Firebase
+  // Borrar en Firebase — guardar estructura vacía correcta (no {} vacío que rompe el payload)
   if(window._fbUser && window._fb){
     try{
       const {db, doc, setDoc} = window._fb;
-      await setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),{});
+      await setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),{
+        payload: JSON.stringify({}),
+        updatedAt: Date.now()
+      });
     }catch(e){console.error('Error borrando en Firebase:',e);}
   }
   location.reload();
@@ -6355,6 +6408,11 @@ async function eliminarMovimiento(btn) {
     const g = (S.gastosVar || []).find(x => x.id === movId);
     if (g) {
       if (g.fuente) sumarFuente(g.fuente, g.monto); // devolver el dinero
+      // Bug fix: si era pago de gasto fijo, desmarcar como pagado
+      if(g.esPagoGastoFijo && g.gastoFijoId){
+        const mes = mesKey(g.fecha);
+        if(S.pagosGastosFijos) delete S.pagosGastosFijos[g.gastoFijoId+'_'+mes];
+      }
       S.gastosVar = S.gastosVar.filter(x => x.id !== movId);
     }
   } else if (movTipoEl === 'prestamo') {
@@ -8825,6 +8883,7 @@ document.addEventListener('focusin', function(e){
   function renderPresupuestos(){
     const el = document.getElementById('an-presupuestos');
     if(!el) return;
+    window._presupWarned = false; // Bug fix: resetear para que el aviso funcione en cada render
     const S = window.S || {};
     const presup = S.presupuestos || {};
     const cats = Object.keys(presup);
@@ -8894,14 +8953,27 @@ document.addEventListener('focusin', function(e){
   /* ====================================================
      8. HOOK EN REFRESH para nuevas funciones
   ==================================================== */
-  const _origRefresh = window.refresh;
-  window.refresh = function(){
-    if(_origRefresh) _origRefresh.apply(this, arguments);
-    try { renderHealthScore(); } catch(e){}
-    try { renderProyeccion(); } catch(e){}
-    try { renderPresupuestos(); } catch(e){}
-    try { renderHistorialConsolidado(); } catch(e){}
-  };
+  // Guard: si refresh no existe aún, esperar a que esté disponible
+  function _hookRefreshMejoras(originalFn) {
+    window.refresh = function(){
+      if(originalFn) { try { originalFn.apply(this, arguments); } catch(e){ console.error('[refresh] Error en refresh original:', e); } }
+      try { renderHealthScore(); } catch(e){}
+      try { renderProyeccion(); } catch(e){}
+      try { renderPresupuestos(); } catch(e){}
+      try { renderHistorialConsolidado(); } catch(e){}
+    };
+  }
+  if (typeof window.refresh === 'function') {
+    _hookRefreshMejoras(window.refresh);
+  } else {
+    // refresh aún no definida — esperar con polling
+    const _tRefresh = setInterval(() => {
+      if (typeof window.refresh === 'function') {
+        clearInterval(_tRefresh);
+        _hookRefreshMejoras(window.refresh);
+      }
+    }, 100);
+  }
 
   /* ====================================================
      9. VALIDACIÓN MEJORADA DE MONTOS (numéricos grandes)
@@ -8985,10 +9057,21 @@ self.addEventListener('fetch', e => {
   try {
     const blob = new Blob([swCode], { type: 'application/javascript' });
     const swUrl = URL.createObjectURL(blob);
-    navigator.serviceWorker.register(swUrl, { scope: '/' }).catch(() => {});
-  } catch(e) {}
-}
-
+    navigator.serviceWorker.register(swUrl, { scope: '/' })
+      .then(reg => {
+        // Limpiar la URL del blob después de registrar (evita memory leak)
+        setTimeout(() => URL.revokeObjectURL(swUrl), 5000);
+      })
+      .catch(err => {
+        URL.revokeObjectURL(swUrl);
+        // Fallar silenciosamente — la app funciona igual sin SW
+        console.info('[SW] Registro no disponible en este contexto:', err.message);
+      });
+  } catch(e) {
+    // Blob URL no soportado en este contexto (ej: algunos navegadores en modo privado)
+    console.info('[SW] No se pudo crear el Service Worker inline:', e.message);
+  }
+} // fin if ('serviceWorker' in navigator)
 
 /* ================================================================
    NAVEGACIÓN POR GESTOS — Swipe down para cerrar modales
@@ -9077,6 +9160,22 @@ self.addEventListener('fetch', e => {
   };
 
   const _origOpenSheet = window.openSheet;
+  if (typeof _origOpenSheet !== 'function') {
+    console.warn('[Autofocus] openSheet no estaba definida al momento del parcheo. Reintentando...');
+    // Reintentar una vez que esté disponible
+    const _t = setInterval(() => {
+      if (typeof window.openSheet === 'function' && window.openSheet !== arguments.callee) {
+        clearInterval(_t);
+        const _r = window.openSheet;
+        window.openSheet = function(id) {
+          _r.apply(this, arguments);
+          const focusId = focusMap[id];
+          if (focusId) setTimeout(() => { const el = document.getElementById(focusId); if (el && typeof el.focus === 'function') el.focus(); }, 250);
+        };
+      }
+    }, 100);
+    return;
+  }
   window.openSheet = function(id) {
     _origOpenSheet.apply(this, arguments);
     const focusId = focusMap[id];

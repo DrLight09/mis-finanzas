@@ -677,7 +677,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
           <div class="grid3">
             <div class="stat"><div class="stat-label">Disponible</div><div
                 class="stat-value c-green" id="s-disp">$0</div></div>
-            <div class="stat"><div class="stat-label">Nu total</div><div
+            <div class="stat"><div class="stat-label">Nu libre</div><div
                 class="stat-value c-nu" id="s-nu">$0</div></div>
             <div class="stat"><div class="stat-label">Efectivo</div><div
                 class="stat-value c-amber" id="s-ef">$0</div></div>
@@ -4562,6 +4562,7 @@ function _showCuentasPanel(panelId){
 
 function volverANu(){
   _cajitaActualId = null;
+  renderCajitas();
   _showCuentasPanel('cuentas-detalle-nu');
 }
 

@@ -3434,8 +3434,7 @@ function parsePct(v){
   return parseFloat(s)||0;
 }
 
-// Debounce timer para no guardar en cada keystroke
-let _fbSaveTimer = null;
+// (window._fbSaveTimer lo gestiona el módulo Firebase — no declarar aquí)
 
 function save(){
   // PROTECCIÓN: no guardar si los datos aún no se han cargado desde Firebase.
@@ -3639,7 +3638,7 @@ function debounceSave(delay=800){
 /* ---- GUARDADO DE EMERGENCIA al cerrar pestaña ---- */
 // Evita pérdida de datos si el usuario cierra antes de que el debounce dispare.
 window.addEventListener('beforeunload', function() {
-  if (_saveTimer != null) {
+  if (_saveTimer != null || window._fbSaveTimer != null) {
     clearTimeout(_saveTimer);
     _saveTimer = null;
     try { save(); } catch(e) {}
@@ -8501,9 +8500,8 @@ document.addEventListener('focusin', function(e){
     if(!window._fb) return;
     // Cancelar cualquier guardado pendiente antes de salir para evitar
     // que un timer de debounce guarde datos vacíos o corruptos post-signout
-    clearTimeout(_saveTimer);
-    clearTimeout(window._saveTimer);
-    clearTimeout(window._fbSaveTimer);
+    clearTimeout(_saveTimer);        // timer de debounceSave (script global)
+    clearTimeout(window._fbSaveTimer); // timer de _fbSaveToCloud (módulo Firebase)
     // Guardar una última vez de forma inmediata si hay datos válidos
     if(window._fbUser && window.S) {
       try {
@@ -9238,8 +9236,7 @@ if ('serviceWorker' in navigator) {
     // IMPORTANTE: NO hacer setDoc aquí. Mientras el usuario estaba en la pantalla
     // del PIN, _fbLoadData nunca corrió, así que window.S tiene valores en cero.
     // Guardar ahora sobreescribiría los datos reales de Firestore con ceros.
-    clearTimeout(window._saveTimer);
-    clearTimeout(window._fbSaveTimer);
+    clearTimeout(window._fbSaveTimer); // timer de _fbSaveToCloud (módulo Firebase)
     // Borrar el PIN para que no lo pida al volver a iniciar sesión
     _delPin();
     // Limpiar usuario antes de signOut para bloquear guardados posteriores
@@ -9263,7 +9260,7 @@ if ('serviceWorker' in navigator) {
       if(_pinBuf===_pinTemp) {
         _setPin(_pinBuf);
         _hidePin();
-        if(window.showToast) showToast('PIN activado ✓','ok');
+        if(window.toast) toast('PIN activado ✓','ok');
         _renderBtn();
         setTimeout(_renderBtn, 100);
         // Si la app no había lanzado aún (primer setup), lanzarla
@@ -9307,7 +9304,7 @@ if ('serviceWorker' in navigator) {
   };
   window._pinDisable = async function() {
     const ok = await dialogo('Quitar PIN','¿Seguro que quieres desactivar el PIN de acceso?','Quitar PIN',true);
-    if(ok){ _delPin(); if(window.showToast) showToast('PIN desactivado','info'); _renderBtn(); setTimeout(_renderBtn, 100); }
+    if(ok){ _delPin(); if(window.toast) toast('PIN desactivado','info'); _renderBtn(); setTimeout(_renderBtn, 100); }
   };
 
   window._pinRenderBtn = _renderBtn;

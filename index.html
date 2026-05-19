@@ -3806,6 +3806,28 @@ function renderAttencion(){
   const list=document.getElementById('s-attn-list');
   if(!items.length){sec.style.display='none';return;}
   sec.style.display='';
+
+  // Toggle colapsable
+  const hasRed = items.some(i=>i.tipo==='red');
+  const titleEl = sec.querySelector('.sec-title');
+  if(titleEl) {
+    const stored = sessionStorage.getItem('attn-open');
+    const isOpen = stored === null ? true : stored === '1';
+    titleEl.style.cursor = 'pointer';
+    titleEl.style.display = 'flex';
+    titleEl.style.justifyContent = 'space-between';
+    titleEl.style.alignItems = 'center';
+    titleEl.innerHTML = `Necesita atención <span style="font-size:11px;font-family:'DM Mono',monospace;color:${hasRed?'var(--red)':'var(--amber)'};background:${hasRed?'rgba(240,104,104,.12)':'rgba(240,184,64,.12)'};padding:2px 8px;border-radius:20px;">${items.length} ${isOpen?'▲':'▼'}</span>`;
+    titleEl.onclick = () => {
+      const nowOpen = list.style.display === 'none';
+      list.style.display = nowOpen ? '' : 'none';
+      sessionStorage.setItem('attn-open', nowOpen ? '1' : '0');
+      const badge = titleEl.querySelector('span');
+      if(badge) badge.textContent = `${items.length} ${nowOpen?'▲':'▼'}`;
+    };
+    list.style.display = isOpen ? '' : 'none';
+  }
+
   list.innerHTML=items.map(it=>`<div class="card card-sm ${it.tipo==='red'?'attn-card-red':'attn-card'}" style="margin-bottom:7px;">
     <div style="font-size:12px;color:${it.tipo==='red'?'var(--red)':'var(--amber)'};">${it.texto}</div>
   </div>`).join('');

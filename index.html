@@ -9189,6 +9189,8 @@ self.addEventListener('fetch', e => {
         );
       } catch(e) { console.warn('Error en guardado final desde PIN:', e); }
     }
+    // Borrar el PIN guardado para que no lo pida al volver a iniciar sesión
+    _delPin();
     // Limpiar usuario antes de signOut para bloquear guardados posteriores
     window._fbUser = null;
     const {auth, signOut} = window._fb;

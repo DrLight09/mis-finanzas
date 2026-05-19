@@ -5595,6 +5595,15 @@ function abrirDetalleMesada(parent,key,nombre){
 
 function eliminarMesadaPago(parent,key){
   const data=getMesadaData(parent);
+  const info=data[key];
+  if(info){
+    // Devolver el dinero a las cuentas correspondientes
+    if(info.splits&&info.splits.length){
+      info.splits.forEach(s=>{if(s.fuente)descontarFuente(s.fuente,s.monto);});
+    } else if(info.destino){
+      descontarFuente(info.destino,info.monto);
+    }
+  }
   delete data[key];
   save();refresh();
   closeSheet('mesada-det');
@@ -6180,13 +6189,26 @@ function getMovimientosCuenta(tipo) {
   ['papa', 'mama'].forEach(parent => {
     const data = getMesadaData(parent);
     Object.entries(data).forEach(([k, info]) => {
-      const matchDest = tipo === 'nu'
-        ? (info.destino && info.destino.startsWith('cajita:'))
-        : info.destino === tipo;
-      if (matchDest && info.monto) {
-        const [anio, mesIdx] = k.split('-');
-        // Mesadas no tienen _movId directo (se identifican por key), no se eliminan con botón
-        movs.push({ tipo: 'mesada', fecha: info.fecha || anio + '-' + String(parseInt(mesIdx) + 1).padStart(2, '0') + '-01', desc: 'Mesada de ' + (parent === 'papa' ? 'Papá' : 'Mamá'), monto: +info.monto, nota: info.nota, fuente: info.destino, _idx: _idx++ });
+      const [anio, mesIdx] = k.split('-');
+      const fechaBase = info.fecha || anio + '-' + String(parseInt(mesIdx) + 1).padStart(2, '0') + '-01';
+      const descBase = 'Mesada de ' + (parent === 'papa' ? 'Pap\u00e1' : 'Mam\u00e1');
+      if (info.splits && info.splits.length) {
+        // Mesada dividida: registrar cada split en su cuenta correspondiente
+        info.splits.forEach(s => {
+          const matchSplit = tipo === 'nu'
+            ? (s.fuente && s.fuente.startsWith('cajita:'))
+            : s.fuente === tipo;
+          if (matchSplit && s.monto) {
+            movs.push({ tipo: 'mesada', fecha: fechaBase, desc: descBase, monto: +s.monto, nota: info.nota, fuente: s.fuente, _idx: _idx++ });
+          }
+        });
+      } else {
+        const matchDest = tipo === 'nu'
+          ? (info.destino && info.destino.startsWith('cajita:'))
+          : info.destino === tipo;
+        if (matchDest && info.monto) {
+          movs.push({ tipo: 'mesada', fecha: fechaBase, desc: descBase, monto: +info.monto, nota: info.nota, fuente: info.destino, _idx: _idx++ });
+        }
       }
     });
   });

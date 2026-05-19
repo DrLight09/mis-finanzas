@@ -4,8 +4,8 @@ const VERSION = 'mis-finanzas-v2';
 
 // Recursos que se cachean al instalar (app shell)
 const APP_SHELL = [
-  '/',           // index.html desde la raíz
-  '/index.html'
+  '/mis-finanzas/',
+  '/mis-finanzas/index.html'
 ];
 
 // Recursos externos que se cachean cuando el usuario los solicita por primera vez

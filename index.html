@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Mis Finanzas">
     <meta name="theme-color" content="#0f0f0f">
-    <title>Mis Finanzas</title>
+    <title>Mis Finanzas1</title>
     <link rel="icon" type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f0f0f'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%23c8f060' stroke-width='3'/%3E%3Ctext x='32' y='38' font-family='sans-serif' font-size='22' font-weight='700' fill='%23c8f060' text-anchor='middle'%3E%24%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon"
@@ -1019,6 +1019,57 @@ input.movs-search-input:focus{border-color:var(--accent);}
             <div id="det-nu-encargos"></div>
             <div id="movs-filtros-nu" class="movs-filtros-wrap"></div>
             <div id="det-nu-movs"></div>
+          </div>
+
+          <!-- Detalle de una cajita individual -->
+          <div id="cuentas-detalle-cajita" style="display:none;">
+            <div class="detail-header">
+              <button type="button" id="btn-volver-cajita-lista" class="detail-header-back btn-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+              </button>
+              <div id="cajita-det-nombre" class="detail-header-title" style="color:var(--nu-light);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+              <button type="button" id="btn-cajita-det-del" class="btn-icon" style="color:var(--text3);margin-left:4px;" title="Eliminar cajita">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </div>
+            <!-- Hero saldo -->
+            <div style="background:linear-gradient(135deg,rgba(192,96,240,.15),rgba(192,96,240,.04));border:1px solid rgba(192,96,240,.3);border-radius:var(--radius);padding:20px;margin-bottom:10px;">
+              <div style="font-size:10px;color:rgba(192,96,240,.7);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;">Saldo disponible</div>
+              <div style="font-size:36px;font-weight:300;letter-spacing:-1px;font-family:'DM Mono',monospace;color:var(--nu-light);margin:6px 0 2px;" id="cajita-det-saldo">$0</div>
+              <div style="font-size:11px;color:var(--text3);" id="cajita-det-interes"></div>
+              <div class="cuenta-actions" style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(192,96,240,.2);">
+                <button type="button" class="cuenta-action-btn" style="background:rgba(192,96,240,.12);border-color:rgba(192,96,240,.35);color:var(--nu-light);" id="cajita-det-agregar">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span class="cuenta-action-btn-label">Agregar</span>
+                </button>
+                <button type="button" class="cuenta-action-btn" style="background:rgba(240,104,104,.08);border-color:rgba(240,104,104,.3);color:var(--red);" id="cajita-det-retirar">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span class="cuenta-action-btn-label">Retirar</span>
+                </button>
+                <button type="button" class="cuenta-action-btn" style="background:rgba(96,176,240,.08);border-color:rgba(96,176,240,.3);color:var(--blue);" id="cajita-det-mover">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 9l4-4-4-4"/><path d="M19 15l-4 4 4 4"/><line x1="9" y1="5" x2="19" y2="5"/><line x1="5" y1="19" x2="15" y2="19"/></svg>
+                  <span class="cuenta-action-btn-label">Mover</span>
+                </button>
+              </div>
+            </div>
+            <!-- Meta de ahorro -->
+            <div id="cajita-det-meta"></div>
+            <!-- CDTs -->
+            <div id="cajita-det-cdts-section" style="display:none;">
+              <div class="sec-title" style="margin-top:14px;">CDTs bloqueados</div>
+              <div id="cajita-det-cdts"></div>
+            </div>
+            <!-- Botón crear CDT -->
+            <button type="button" id="cajita-det-btn-cdt" class="btn btn-ghost" style="margin-top:10px;font-size:12px;color:var(--purple);border-color:rgba(176,144,240,.35);">
+              <span style="display:flex;align-items:center;justify-content:center;gap:5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+                Crear CDT
+              </span>
+            </button>
+            <!-- Movimientos -->
+            <div class="sec-title" style="margin-top:16px;">Movimientos</div>
+            <div id="movs-filtros-cajita-det" class="movs-filtros-wrap"></div>
+            <div id="cajita-det-movs"></div>
           </div>
 
           <!-- Detalle Efectivo -->
@@ -3702,7 +3753,11 @@ function refresh(){
   if(selEf)selEf.textContent=fmt(ef);
   // Si hay una cuenta abierta, actualizar su detalle
   if(cuentaActual)renderDetalleCuenta(cuentaActual);
-  else if(_customCuentaActualId){
+  else if(_cajitaDetId){
+    const _cdet=(S.cajitas||[]).find(x=>x.id===_cajitaDetId);
+    if(_cdet) _renderCajitaDetalle(_cdet);
+    renderCajitas(); // también actualizar la lista de fondo
+  } else if(_customCuentaActualId){
     const _cc=(S.cuentasPersonalizadas||[]).find(x=>x.id===_customCuentaActualId);
     if(_cc){
       const saldoEl=document.getElementById('det-custom-saldo');
@@ -4295,6 +4350,7 @@ async function deleteCajita(id){
   const ok=await dialogo('Eliminar cajita','¿Seguro que quieres eliminar "'+c.nombre+'"? Esta acción no se puede deshacer.','Eliminar',true);
   if(!ok)return;
   S.cajitas=(S.cajitas||[]).filter(x=>x.id!==id);save();refresh();
+  if(_cajitaDetId===id) volverCajitaLista();
   toast('Cajita eliminada','info');
 }
 
@@ -4416,24 +4472,92 @@ function renderCajitas(){
     const totalCDT=cdts.reduce((a,cdt)=>a+calcCDT(cdt).val,0);
     const tasaDisplay=getNuTasaGlobal();
     const interesHoy=k.val>0?(k.val*(Math.pow(1+tasaDisplay/100,1/365)-1)):0;
-    // Pill CDT único en la cabecera colapsada (1 solo botón sin importar cuántos CDTs haya)
-    const cdtPills=hasCDTs?(()=>{
-      const label=cdts.length===1?fmt(calcCDT(cdts[0]).val):`${cdts.length} CDTs · ${fmt(totalCDT)}`;
-      return`<button type="button" onclick="event.stopPropagation();_expandCajitaCDTs('${c.id}')" title="Ver CDTs" style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 6px;border-radius:20px;background:rgba(176,144,240,.15);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-size:10px;font-weight:600;font-family:'DM Mono',monospace;cursor:pointer;flex-shrink:0;white-space:nowrap;transition:background .15s;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${label}</button>`;
+    // Badges compactos
+    const cdtBadge=hasCDTs?`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;background:rgba(176,144,240,.15);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-size:9px;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${cdts.length===1?fmt(totalCDT):`${cdts.length} CDTs`}</span>`:'';
+    const metaBadge=c.meta&&c.meta.objetivo?(()=>{
+      const p=calcMetaProgreso(c);
+      const pct=p?Math.round(p.pct):0;
+      const color=p?(p.diferencia>=0?'var(--accent)':(p.diferencia>-(p.cuotaMensual*0.5)?'var(--amber)':'var(--red)')):'var(--accent)';
+      return`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:${color};font-size:9px;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;"><svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${pct}%</span>`;
     })():'';
-    // Bloques CDT (uno por CDT) dentro del body
-    const cdtBoxes=cdts.map(cdt=>{
-      const cdtK=calcCDT(cdt);
-      const dr=cdt.vence?Math.ceil((new Date(cdt.vence+'T00:00:00')-new Date())/86400000):null;
-      return`<div class="cajita-cdt-box" id="cajita-cdt-${c.id}-${cdt.id}" style="display:none;margin-top:9px;">
+    return`<div class="cajita" style="cursor:pointer;transition:border-color .15s;" onclick="abrirCajitaDetalle('${c.id}')"
+        onmouseenter="this.style.borderColor='rgba(192,96,240,.5)'" onmouseleave="this.style.borderColor=''">
+      <input type="hidden" id="cs_${c.id}" value="${fmtInput(c.saldo)}">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+        <span style="font-size:14px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.nombre||'Cajita'}</span>
+        <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">${cdtBadge}${metaBadge}</div>
+        <span style="font-size:15px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);flex-shrink:0;">${fmt(k.val)}</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      ${k.val>0?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;padding-left:21px;">+${fmt(interesHoy)}/día · ${String(tasaDisplay).replace('.',',')}% EA</div>`:''}
+    </div>`;
+  }).join('');
+  if(cajitas.length>=MAX){msg.innerHTML=`<div class="cajita-limit-msg">Límite alcanzado (${MAX}/${MAX})</div>`;btn.style.display='none';}
+  else{msg.innerHTML=`<div class="cajita-limit-msg">${cajitas.length}/${MAX} cajitas</div>`;btn.style.display='';}
+}
+
+/* ---- DETALLE DE CAJITA ---- */
+let _cajitaDetId = null;
+
+function abrirCajitaDetalle(id){
+  _cajitaDetId = id;
+  const c = (S.cajitas||[]).find(x=>x.id===id);
+  if(!c) return;
+  // Ocultar lista Nu y mostrar detalle cajita
+  document.getElementById('cuentas-detalle-nu').style.display = 'none';
+  document.getElementById('cuentas-detalle-cajita').style.display = '';
+  document.getElementById('scrollArea').scrollTop = 0;
+  _renderCajitaDetalle(c);
+}
+
+function _renderCajitaDetalle(c){
+  const k = calcC(c);
+  const tasaDisplay = getNuTasaGlobal();
+  const interesHoy = k.val>0 ? (k.val*(Math.pow(1+tasaDisplay/100,1/365)-1)) : 0;
+
+  // Header
+  document.getElementById('cajita-det-nombre').textContent = c.nombre || 'Cajita';
+  document.getElementById('cajita-det-saldo').textContent = fmt(k.val);
+  document.getElementById('cajita-det-interes').textContent = k.val>0
+    ? `+${fmt(interesHoy)}/día · ${String(tasaDisplay).replace('.',',')}% EA${k.ganado>0.5?' · +'+fmt(k.ganado)+' acumulado':''}`
+    : 'empieza en $0 — agrega dinero';
+
+  // Botones de acción
+  document.getElementById('cajita-det-agregar').onclick = () => abrirAgregarDinero('cajita:'+c.id, c.nombre);
+  document.getElementById('cajita-det-retirar').onclick = () => abrirRestarDinero('cajita:'+c.id, c.nombre);
+  document.getElementById('cajita-det-mover').onclick   = () => abrirTransferir('cajita:'+c.id);
+  document.getElementById('cajita-det-btn-cdt').onclick = () => abrirCrearCDT(c.id);
+  document.getElementById('btn-cajita-det-del').onclick = () => deleteCajita(c.id);
+  document.getElementById('cajita-det-btn-cdt').textContent = (c.cdts&&c.cdts.length) ? '+ Agregar otro CDT' : 'Crear CDT';
+
+  // Meta de ahorro
+  const metaEl = document.getElementById('cajita-det-meta');
+  const metaHtml = renderMetaProgress(c);
+  if(metaHtml){
+    metaEl.innerHTML = metaHtml;
+  } else {
+    metaEl.innerHTML = `<button type="button" onclick="abrirMetaCajita('${c.id}')" style="width:100%;padding:10px;margin-top:2px;border-radius:var(--radius-sm);background:rgba(200,240,96,.06);border:1px dashed rgba(200,240,96,.25);color:var(--accent);font-size:12px;font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Agregar meta de ahorro</button>`;
+  }
+  // Fix: patch meta edit button inside rendered html to use abrirMetaCajita
+  // (renderMetaProgress already sets it correctly)
+
+  // CDTs
+  const cdts = c.cdts||[];
+  const cdtSec = document.getElementById('cajita-det-cdts-section');
+  const cdtEl  = document.getElementById('cajita-det-cdts');
+  if(cdts.length){
+    cdtSec.style.display = '';
+    cdtEl.innerHTML = cdts.map(cdt=>{
+      const cdtK = calcCDT(cdt);
+      const dr = cdt.vence ? Math.ceil((new Date(cdt.vence+'T00:00:00')-new Date())/86400000) : null;
+      return`<div class="cajita-cdt-box" style="margin-bottom:9px;">
         <div class="cajita-cdt-locked">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          <div style="flex:1;">
-            <div style="font-size:10px;color:var(--purple);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">CDT Bloqueado</div>
-          </div>
+          <div style="flex:1;"><div style="font-size:10px;color:var(--purple);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">CDT Bloqueado</div></div>
           <div style="display:flex;gap:5px;">
-            <button type="button" id="cdt_edit_btn_${c.id}_${cdt.id}" class="btn-icon" style="font-size:9px;color:var(--text3);" onclick="editarCDT('${c.id}','${cdt.id}')" title="Editar CDT"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button type="button" class="btn-icon" style="font-size:9px;color:var(--accent);" onclick="liberarCDTManual('${c.id}','${cdt.id}')" title="Cerrar CDT y acreditar a cajita"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg></button>
+            <button type="button" id="cdt_edit_btn_${c.id}_${cdt.id}" class="btn-icon" style="color:var(--text3);" onclick="editarCDT('${c.id}','${cdt.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button type="button" class="btn-icon" style="color:var(--accent);" onclick="liberarCDTManual('${c.id}','${cdt.id}')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg></button>
           </div>
         </div>
         <div class="cajita-cdt-val">${fmt(cdtK.val)}</div>
@@ -4443,55 +4567,50 @@ function renderCajitas(){
           <div class="ig" style="margin-bottom:0;"><label class="il" for="cdt_inicio_${c.id}_${cdt.id}">Apertura</label><input type="date" id="cdt_inicio_${c.id}_${cdt.id}" value="${cdt.inicio}" readonly style="opacity:.6;" data-save-refresh="true"></div>
           <div class="ig" style="margin-bottom:0;"><label class="il" for="cdt_vence_${c.id}_${cdt.id}">Vence</label><input type="date" id="cdt_vence_${c.id}_${cdt.id}" value="${cdt.vence}" readonly style="opacity:.6;" data-save-refresh="true"></div>
           <div class="ig" style="margin-bottom:0;"><label class="il" for="cdt_tasa_${c.id}_${cdt.id}">Tasa EA %</label><input type="text" inputmode="decimal" id="cdt_tasa_${c.id}_${cdt.id}" value="${String(cdt.tasa).replace('.',',')}" readonly style="opacity:.6;" data-save-refresh="true"></div>
-          <div class="ig" style="margin-bottom:0;"><label class="il" for="cdt_rte_${c.id}_${cdt.id}">RTE %</label><input type="text" inputmode="decimal" id="cdt_rte_${c.id}_${cdt.id}" value="${cdt.rte!=null?cdt.rte:4}" placeholder="4" data-save-refresh="true" style="font-family:'DM Mono',monospace;"></div>
+          <div class="ig" style="margin-bottom:0;"><label class="il" for="cdt_rte_${c.id}_${cdt.id}">RTE %</label><input type="text" inputmode="decimal" id="cdt_rte_${c.id}_${cdt.id}" value="${cdt.rte!=null?cdt.rte:4}" placeholder="4" data-save-refresh="true"></div>
         </div>
         ${dr!==null?`<div style="margin-top:8px;"><span class="badge ${dr>0?'bg-purple':'bg-red'}">${dr>0?dr+'d para el vencimiento':'¡Venció! Libera tu plata'}</span></div>`:''}
-        ${dr!==null&&dr<=0?`<button type="button" class="btn btn-sm" style="margin-top:8px;width:100%;background:rgba(200,240,96,.12);border-color:rgba(200,240,96,.35);color:var(--accent);" onclick="liberarCDTManual('${c.id}','${cdt.id}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right:4px;vertical-align:middle;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>Cerrar CDT y acreditar a cajita</button>`:''}
+        ${dr!==null&&dr<=0?`<button type="button" class="btn btn-sm" style="margin-top:8px;width:100%;background:rgba(200,240,96,.12);border-color:rgba(200,240,96,.35);color:var(--accent);" onclick="liberarCDTManual('${c.id}','${cdt.id}')">Cerrar CDT y acreditar a cajita</button>`:''}
       </div>`;
     }).join('');
-    return`<div class="cajita cajita-collapsed" id="cajita-wrap-${c.id}">
-      <div class="cajita-top" style="margin-bottom:0;cursor:pointer;" onclick="toggleCajita(event,'${c.id}')">
-        <div style="display:flex;align-items:center;gap:7px;flex:1;min-width:0;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
-          <input class="cajita-name" id="cn_${c.id}" value="${c.nombre}" placeholder="Nombre" oninput="save()" onclick="event.stopPropagation()" style="cursor:text;flex:1;min-width:0;">
-          <div style="display:flex;gap:4px;flex-wrap:nowrap;overflow:hidden;">${cdtPills}</div>
-          <span style="font-size:15px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);margin-right:4px;white-space:nowrap;">${fmt(k.val)}</span>
-          <button type="button" class="cajita-toggle-btn" tabindex="-1" onclick="event.stopPropagation();toggleCajita(event,'${c.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></button>
-        </div>
-      </div>
-      <div class="cajita-body" style="display:none;margin-top:12px;">
-        <div class="row" style="margin-bottom:10px;">
-          <div>
-            <div class="cajita-val">${fmt(k.val)}</div>
-            <div class="cajita-grow">${k.val>0?'+'+fmt(interesHoy)+'/día · '+String(tasaDisplay).replace('.',',')+'% EA':'empieza en $0 · agrega dinero'}</div>
-            ${hasCDTs?`<div style="font-size:11px;color:var(--purple);font-family:'DM Mono',monospace;margin-top:2px;">${cdts.length} CDT${cdts.length>1?'s':''} · ${fmt(totalCDT)} bloqueado</div>`:''}
-          </div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            ${k.ganado>0.5?`<span class="badge bg-green">+${fmt(k.ganado)}</span>`:''}
-            <button type="button" class="btn-icon" onclick="deleteCajita('${c.id}')" style="color:var(--text3);"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-          </div>
-        </div>
-        <input type="hidden" id="cs_${c.id}" value="${fmtInput(c.saldo)}">
-        <div class="cajita-fields">
-          <div class="ig" style="grid-column:1/-1">
-            <div class="saldo-row" style="justify-content:flex-start;gap:8px;">
-              <button type="button" class="add-money-btn" onclick="abrirAgregarDinero('cajita:${c.id}','${c.nombre}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar</button>
-              <button type="button" class="add-money-btn" style="background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);" onclick="abrirRestarDinero('cajita:${c.id}','${c.nombre}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Retirar</button>
-              <button type="button" class="add-money-btn" style="background:rgba(96,176,240,.1);border-color:rgba(96,176,240,.3);color:var(--blue);" onclick="abrirTransferir('cajita:${c.id}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 9l4-4-4-4"/><path d="M19 15l-4 4 4 4"/><line x1="9" y1="5" x2="19" y2="5"/><line x1="5" y1="19" x2="15" y2="19"/></svg> Mover</button>
-              <button type="button" class="add-money-btn" style="background:rgba(200,240,96,.08);border-color:rgba(200,240,96,.25);color:var(--accent);" onclick="event.stopPropagation();abrirMetaCajita('${c.id}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> ${c.meta&&c.meta.objetivo?'Meta':'+ Meta'}</button>
+  } else {
+    cdtSec.style.display = 'none';
+  }
+
+  // Movimientos de esta cajita (del array global S.movimientos)
+  const cajitaKey = 'cajita:'+c.id;
+  const movsCajita = (S.movimientos||[]).filter(m=>
+    m.cuenta===cajitaKey || m.destino===cajitaKey || m.origen===cajitaKey
+  ).slice().reverse();
+  const movEl = document.getElementById('cajita-det-movs');
+  if(movEl){
+    if(!movsCajita.length){
+      movEl.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 0 2px;">Sin movimientos registrados.</div>';
+    } else {
+      movEl.innerHTML = movsCajita.map(m=>{
+        const esIngreso = m.cuenta===cajitaKey && (m.tipo==='deposito'||m.tipo==='ingreso'||m.tipo==='transferencia'&&m.destino===cajitaKey);
+        const esRetiro  = m.tipo==='retiro'||m.tipo==='egreso'||(m.tipo==='transferencia'&&m.origen===cajitaKey);
+        const color     = esRetiro ? 'var(--red)' : 'var(--accent)';
+        const prefix    = esRetiro ? '−' : '+';
+        return`<div class="card card-sm" style="margin-bottom:7px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:12px;color:var(--text);">${m.nota||m.tipo||'Movimiento'}</div>
+              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">${m.fecha||''}</div>
             </div>
+            <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${color};">${prefix} ${fmt(m.monto||0)}</div>
           </div>
-          <div class="ig" style="grid-column:1/-1;display:flex;align-items:flex-end;margin-top:2px;">
-            <button type="button" class="btn btn-sm" style="width:100%;background:rgba(176,144,240,.12);border-color:rgba(176,144,240,.35);color:var(--purple);font-size:10px;" onclick="abrirCrearCDT('${c.id}')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:4px;vertical-align:middle;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${hasCDTs?'Agregar otro CDT':'Crear CDT'}</button>
-          </div>
-        </div>
-        ${cdtBoxes}
-        ${renderMetaProgress(c)}
-      </div>
-    </div>`;
-  }).join('');
-  if(cajitas.length>=MAX){msg.innerHTML=`<div class="cajita-limit-msg">Límite alcanzado (${MAX}/${MAX})</div>`;btn.style.display='none';}
-  else{msg.innerHTML=`<div class="cajita-limit-msg">${cajitas.length}/${MAX} cajitas</div>`;btn.style.display='';}
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+function volverCajitaLista(){
+  _cajitaDetId = null;
+  document.getElementById('cuentas-detalle-cajita').style.display = 'none';
+  document.getElementById('cuentas-detalle-nu').style.display = '';
+  document.getElementById('scrollArea').scrollTop = 0;
 }
 
 /* ---- CAJITA TOGGLE ---- */
@@ -4515,53 +4634,6 @@ function toggleCDT(e, cajitaId, cdtId){
   }
   const isOpen=box.style.display!=='none';
   box.style.display=isOpen?'none':'block';
-}
-
-// Expande cajita y muestra todos sus CDTs (llamado desde el pill único en header)
-function _expandCajitaCDTs(cajitaId){
-  const wrap=document.getElementById("cajita-wrap-"+cajitaId);
-  if(!wrap)return;
-  const body=wrap.querySelector(".cajita-body");
-  const prefix="cajita-cdt-"+cajitaId+"-";
-  const allBoxes=wrap.querySelectorAll("[id]");
-  const cdtBoxes=[...allBoxes].filter(el=>el.id.startsWith(prefix));
-  // Toggle: si todos los CDTs están abiertos los cierra, si no los abre
-  const allOpen=cdtBoxes.length>0&&cdtBoxes.every(b=>b.style.display!=='none'&&b.style.display!=='');
-  if(allOpen){
-    cdtBoxes.forEach(box=>{ box.style.display='none'; });
-  } else {
-    if(body&&body.style.display==='none'){
-      body.style.display='block';
-      wrap.classList.remove('cajita-collapsed');
-      wrap.classList.add('cajita-expanded');
-      const btn=wrap.querySelector('.cajita-toggle-btn');
-      if(btn)btn.style.transform='rotate(180deg)';
-    }
-    cdtBoxes.forEach(box=>{ box.style.display='block'; });
-    if(cdtBoxes.length>0){
-      setTimeout(()=>{ cdtBoxes[0].scrollIntoView({behavior:'smooth',block:'nearest'}); },80);
-    }
-  }
-}
-
-function toggleCajita(e, id){
-  if(e&&e.stopPropagation)e.stopPropagation();
-  const wrap=document.getElementById('cajita-wrap-'+id);
-  if(!wrap)return;
-  const body=wrap.querySelector('.cajita-body');
-  const btn=wrap.querySelector('.cajita-toggle-btn');
-  const isOpen=wrap.classList.contains('cajita-expanded');
-  if(isOpen){
-    body.style.display='none';
-    wrap.classList.remove('cajita-expanded');
-    wrap.classList.add('cajita-collapsed');
-    if(btn)btn.style.transform='';
-  } else {
-    body.style.display='block';
-    wrap.classList.remove('cajita-collapsed');
-    wrap.classList.add('cajita-expanded');
-    if(btn)btn.style.transform='rotate(180deg)';
-  }
 }
 
 /* ---- GASTOS VARIABLES ---- */
@@ -6720,6 +6792,10 @@ function _initEventListeners() {
   const movMonto = document.getElementById('mov_monto');
   if(movMonto) movMonto.addEventListener('input', ()=>{ if(_prestSplitMode) _updatePrestSplitResumen(); });
 
+  // --- Cajita detalle: botón volver ---
+  const btnVolverCajita = document.getElementById('btn-volver-cajita-lista');
+  if(btnVolverCajita) btnVolverCajita.addEventListener('click', volverCajitaLista);
+
   // --- Sheet form confirm buttons ---
   const btnGVSave = document.getElementById('btn-guardar-gasto-var');
   if (btnGVSave) btnGVSave.addEventListener('click', addGastoVar);
@@ -8800,7 +8876,7 @@ self.addEventListener('fetch', e => {
 })();
 </script>
   
-<script type="module">
+<script>
 /* ================================================================
    PIN — Sistema de bloqueo con PIN de 4 dígitos
    La lógica usa window._pinGate() como punto de entrada

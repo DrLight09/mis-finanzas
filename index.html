@@ -9175,21 +9175,13 @@ self.addEventListener('fetch', e => {
     const ok = await _pinDialogo('\u00bfOlvidaste el PIN?', 'Se cerrar\u00e1 la sesi\u00f3n y podr\u00e1s volver a entrar con Google.', 'Cerrar sesi\u00f3n');
     if(!ok) return;
     if(!window._fb) return;
-    // Cancelar timers de guardado pendientes para no corromper datos
+    // Cancelar timers de guardado pendientes para no guardar datos vacíos en la nube.
+    // IMPORTANTE: NO hacer setDoc aquí. Mientras el usuario estaba en la pantalla
+    // del PIN, _fbLoadData nunca corrió, así que window.S tiene valores en cero.
+    // Guardar ahora sobreescribiría los datos reales de Firestore con ceros.
     clearTimeout(window._saveTimer);
     clearTimeout(window._fbSaveTimer);
-    // Guardar estado actual antes de cerrar sesión
-    if(window._fbUser && window.S) {
-      try {
-        const {db, doc, setDoc} = window._fb;
-        const data = JSON.parse(JSON.stringify(window.S));
-        await setDoc(
-          doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
-          { payload: JSON.stringify(data), updatedAt: Date.now() }
-        );
-      } catch(e) { console.warn('Error en guardado final desde PIN:', e); }
-    }
-    // Borrar el PIN guardado para que no lo pida al volver a iniciar sesión
+    // Borrar el PIN para que no lo pida al volver a iniciar sesión
     _delPin();
     // Limpiar usuario antes de signOut para bloquear guardados posteriores
     window._fbUser = null;

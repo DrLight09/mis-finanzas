@@ -5469,7 +5469,7 @@ function abrirDeudor(id) {
     histEl.innerHTML = movs.map(m => {
       const esPrestamo = m.tipo === 'prestamo';
       return `<div class="card card-sm" style="margin-bottom:7px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;">
               <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : 'Abono'}</span>
@@ -5477,8 +5477,11 @@ function abrirDeudor(id) {
             </div>
             <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m.fuentes ? ' · ' + m.fuentes.map(f=>fuenteLabel(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + fuenteLabel(m.fuente) : '')}${m.destino ? ' <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ' + fuenteLabel(m.destino) : ''}</div>
           </div>
-          <div style="text-align:right;">
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esPrestamo ? 'var(--amber)' : 'var(--accent)'};">${esPrestamo ? '+' : '−'} ${fmt(m.monto)}</div>
+            <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" onclick="eliminarMovDeudor('${id}','${m.id}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </button>
           </div>
         </div>
       </div>`;
@@ -5508,6 +5511,39 @@ async function eliminarDeudorActual() {
   S.deudores = (S.deudores || []).filter(x => x.id !== deudorActualId);
   save(); refresh(); volverDeudores();
   toast(`${d.nombre} eliminado`, 'ok');
+}
+
+async function eliminarMovDeudor(deudorId, movId) {
+  const d = (S.deudores || []).find(x => x.id === deudorId);
+  if (!d) return;
+  const m = (d.movimientos || []).find(x => x.id === movId);
+  if (!m) return;
+  const esPrestamo = m.tipo === 'prestamo';
+  const label = esPrestamo ? 'préstamo' : 'abono';
+  const ok = await dialogo(
+    'Eliminar ' + label,
+    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${esPrestamo ? 'la cuenta origen' : 'la cuenta destino'} se revertirá automáticamente.`,
+    'Eliminar', true
+  );
+  if (!ok) return;
+
+  // Revertir efecto en las cuentas
+  if (esPrestamo) {
+    // Era un préstamo: plata salió de la(s) fuente(s) → devolver
+    if (m.fuentes && m.fuentes.length) {
+      m.fuentes.forEach(f => { if (f.fuente) sumarFuente(f.fuente, f.monto); });
+    } else if (m.fuente) {
+      sumarFuente(m.fuente, m.monto);
+    }
+  } else {
+    // Era un abono: plata entró al destino → quitar
+    if (m.destino) descontarFuente(m.destino, m.monto);
+  }
+
+  d.movimientos = (d.movimientos || []).filter(x => x.id !== movId);
+  save(); refresh();
+  abrirDeudor(deudorId);
+  toast(`${esPrestamo ? 'Préstamo' : 'Abono'} eliminado — saldo revertido`, 'ok');
 }
 
 function initMovSheet(tipo) {

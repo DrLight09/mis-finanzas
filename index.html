@@ -8925,40 +8925,86 @@ document.addEventListener('focusin', function(e){
     let score = 50;
     const tips = [];
 
-    // a) Patrimonio vs gastos mensuales (ratio)
+    // ── Cálculos base ────────────────────────────────────────────────────
     const patrimonio = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
     const mes = window.mesActual ? window.mesActual() : '';
     const pagosGF = S.pagosGastosFijos || {};
+
+    // Gastos del mes: variables + fijos pagados
     const gvMes = (S.gastosVar||[]).filter(g=>window.mesKey?window.mesKey(g.fecha)===mes&&!g.esPagoGastoFijo:true).reduce((a,g)=>a+(g.monto||0),0);
     const gfTotal = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mes]?a+(g.monto||0):a,0);
     const gastosMes = gvMes + gfTotal;
 
-    if(gastosMes > 0 && patrimonio > 0){
-      const mesesCubiertos = patrimonio / gastosMes;
+    // Deuda total de tarjetas de crédito
+    const deudaTC = (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
+
+    // Ingresos del mes: mesada + movimientos tipo ingreso de cuentas personalizadas
+    const mesNum = mes ? parseInt(mes.split('-')[1])-1 : 0;
+    const anio = mes ? parseInt(mes.split('-')[0]) : 0;
+    let ingresosMes = 0;
+    if(S.modulos && S.modulos.mesada){
+      const mesadas = S.mesadas || {};
+      if(mesadas[anio+'_'+mesNum+'_papa']) ingresosMes += (S.mesadaMontoPapa||0);
+      if(mesadas[anio+'_'+mesNum+'_mama']) ingresosMes += (S.mesadaMonteMama||0);
+    }
+    // Sumar ingresos de cuentas personalizadas del mes actual
+    (S.cuentasPersonalizadas||[]).forEach(c => {
+      (c.movimientos||[]).filter(m=>(m.tipo==='ingreso')&&window.mesKey&&window.mesKey(m.fecha)===mes).forEach(m=>{ ingresosMes += (m.monto||0); });
+    });
+
+    // a) Fondo de emergencia: patrimonio líquido vs gastos mensuales
+    // Patrimonio líquido = cajitas + nequi + efectivo + cuentas (sin contar plata prestada que puede no volver)
+    const nu = (S.cajitas||[]).reduce((a,c)=>a+(window.calcC?window.calcC(c).val:c.saldo||0),0);
+    const cdtVal = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+(window.calcCDT?window.calcCDT(cdt).val:cdt.monto||0),0),0);
+    const liquido = nu + cdtVal + (S.nequiSaldo||0) + (S.efectivoSaldo||0)
+      + (S.cuentasPersonalizadas||[]).filter(c=>c.incluirEnTotal).reduce((a,c)=>a+(c.saldo||0),0)
+      - deudaTC;
+    if(gastosMes > 0 && liquido > 0){
+      const mesesCubiertos = liquido / gastosMes;
       if(mesesCubiertos >= 6) score += 20;
       else if(mesesCubiertos >= 3) score += 10;
       else { score -= 5; tips.push('Tus reservas cubren menos de 3 meses de gastos.'); }
+    } else if(liquido < 0){
+      score -= 15; tips.push('Tu deuda en tarjetas supera tu patrimonio líquido.');
     }
 
-    // b) Préstamos pendientes
-    const prest = window.totalPrestadoPendiente ? window.totalPrestadoPendiente() : 0;
-    if(prest > 0 && patrimonio > 0){
-      const ratioPrest = prest / patrimonio;
-      if(ratioPrest > 0.3){ score -= 10; tips.push('Tienes mucho dinero prestado sin cobrar.'); }
+    // b) Deuda de tarjetas de crédito vs ingresos (ratio de endeudamiento TC)
+    if(deudaTC > 0 && ingresosMes > 0){
+      const ratioTC = deudaTC / ingresosMes;
+      if(ratioTC > 3){ score -= 15; tips.push('Tu deuda en TC supera 3 meses de ingresos — prioriza pagarla.'); }
+      else if(ratioTC > 1.5){ score -= 8; tips.push('Tu deuda en tarjetas es alta respecto a tus ingresos.'); }
       else score += 5;
+    } else if(deudaTC > 0 && ingresosMes === 0){
+      // Tiene deuda TC pero no registra ingresos — al menos verificar vs patrimonio
+      if(patrimonio > 0 && deudaTC / patrimonio > 0.4){ score -= 10; tips.push('Tu deuda en tarjetas es alta — considera pagarla con tus ahorros.'); }
     }
 
-    // c) CDTs activos (ahorro estructurado)
+    // c) Plata prestada a otros (riesgo de incobrabilidad)
+    const prest = window.totalPrestadoPendiente ? window.totalPrestadoPendiente() : 0;
+    if(prest > 0 && liquido > 0){
+      const ratioPrest = prest / liquido;
+      if(ratioPrest > 0.4){ score -= 8; tips.push('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).'); }
+    }
+
+    // d) Ratio gastos/ingresos (disciplina de gasto)
+    if(ingresosMes > 0 && gastosMes > 0){
+      const ratioGasto = gastosMes / ingresosMes;
+      if(ratioGasto <= 0.7) score += 10;
+      else if(ratioGasto <= 0.9) score += 5;
+      else if(ratioGasto > 1){ score -= 10; tips.push('Estás gastando más de lo que ingresas este mes.'); }
+    }
+
+    // e) CDTs activos (ahorro estructurado)
     const cdts = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).length,0);
     if(cdts >= 1) score += 10;
-    else tips.push('Considera poner algo en un CDT para ganar más.');
+    else tips.push('Considera poner algo en un CDT para hacer crecer tus ahorros.');
 
-    // d) Gastos fijos configurados (disciplina)
+    // f) Gastos fijos configurados (disciplina de presupuesto)
     if((S.gastosFijos||[]).length >= 2) score += 5;
 
-    // e) Categorías diversificadas en gastos variables
+    // g) Categorías diversificadas en gastos variables (registro completo)
     const cats = new Set((S.gastosVar||[]).slice(-20).map(g=>g.cat));
-    if(cats.size <= 1 && gastosMes > 0){ score -= 5; tips.push('Registra las categorías de tus gastos.'); }
+    if(cats.size <= 1 && gastosMes > 0){ score -= 5; tips.push('Registra las categorías de tus gastos para mejor control.'); }
 
     score = Math.max(0, Math.min(100, score));
     if(!tips.length){
@@ -9002,28 +9048,87 @@ document.addEventListener('focusin', function(e){
     const el = document.getElementById('proyeccion-card');
     if(!el) return;
     const S = window.S || {};
+    const fmt = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
     const patrimonio = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
     if(!patrimonio){ el.innerHTML = '<div class="row"><span style="font-size:12px;color:var(--text3);">Sin datos suficientes</span></div>'; return; }
 
-    // Calcular tendencia usando historial de patrimonio
+    // ── Calcular flujo neto mensual real (ingresos - gastos - cuotas TC) ──
+    // Usamos los últimos 3 meses con datos para estimar el flujo promedio.
+    // Esto es más confiable que la tendencia del patrimonio que puede incluir
+    // saldos iniciales de encargos u otras entradas no recurrentes.
+    const mesKey = window.mesKey || (f=>(f||'').slice(0,7));
+    const mesActual = window.mesActual ? window.mesActual() : '';
+    const pagosGF = S.pagosGastosFijos || {};
+
+    // Construir meses recientes (hasta 3 meses hacia atrás)
+    const mesesRecientes = [];
+    for(let i=1; i<=3; i++){
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const mk = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+      const mesNum = d.getMonth();
+      const anio = d.getFullYear();
+
+      // Ingresos del mes (mesada + cuentas personalizadas)
+      let ing = 0;
+      if(S.modulos && S.modulos.mesada){
+        const ms = S.mesadas || {};
+        if(ms[anio+'_'+mesNum+'_papa']) ing += (S.mesadaMontoPapa||0);
+        if(ms[anio+'_'+mesNum+'_mama']) ing += (S.mesadaMonteMama||0);
+      }
+      (S.cuentasPersonalizadas||[]).forEach(c=>{
+        (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mk).forEach(m=>{ ing+=(m.monto||0); });
+      });
+
+      // Gastos del mes
+      const gv = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mk&&!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);
+      const gf = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mk]?a+(g.monto||0):a,0);
+
+      mesesRecientes.push({ mk, ing, gastos: gv+gf, tieneGastos: (gv+gf)>0 });
+    }
+
+    const mesesConDatos = mesesRecientes.filter(m=>m.tieneGastos||m.ing>0);
+
+    // Tendencia: intentar usar historial de patrimonio pero filtrando saltos grandes (saldos iniciales)
     const hist = (S.patrimonioHistorial||[]).slice(-30);
     let tendenciaMensual = 0;
-    if(hist.length >= 2){
-      const primero = hist[0].valor;
-      const ultimo = hist[hist.length-1].valor;
-      const dias = Math.max(1, hist.length);
-      tendenciaMensual = (ultimo - primero) / dias * 30;
+    let usandoFlujo = false;
+
+    if(mesesConDatos.length >= 1 && mesesConDatos.some(m=>m.ing>0)){
+      // Tenemos datos de ingresos — usar flujo neto promedio real
+      const flujoTotal = mesesConDatos.reduce((a,m)=>a+(m.ing-m.gastos),0);
+      tendenciaMensual = flujoTotal / mesesConDatos.length;
+      usandoFlujo = true;
+    } else if(hist.length >= 2){
+      // Sin ingresos registrados — usar historial de patrimonio con filtro anti-saltos
+      // Filtrar variaciones diarias > 50% del valor promedio (ej: saldos iniciales de encargos)
+      const valPromedio = hist.reduce((a,h)=>a+h.valor,0)/hist.length;
+      const umbral = valPromedio * 0.5;
+      const histFiltrado = hist.filter((h,i)=>{
+        if(i===0)return true;
+        return Math.abs(h.valor - hist[i-1].valor) < umbral;
+      });
+      if(histFiltrado.length >= 2){
+        const primero = histFiltrado[0].valor;
+        const ultimo = histFiltrado[histFiltrado.length-1].valor;
+        // Calcular diferencia real de días entre primer y último snapshot
+        const diasReales = Math.max(1, Math.round((new Date(histFiltrado[histFiltrado.length-1].fecha) - new Date(histFiltrado[0].fecha))/86400000));
+        tendenciaMensual = (ultimo - primero) / diasReales * 30;
+      }
     }
 
     const p3 = patrimonio + tendenciaMensual * 3;
     const p6 = patrimonio + tendenciaMensual * 6;
     const p12 = patrimonio + tendenciaMensual * 12;
     const col = tendenciaMensual >= 0 ? 'var(--accent)' : 'var(--red)';
-    const fmt = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
+
+    // Deuda TC actual para mostrar impacto
+    const deudaTC = (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
+    const deudaInfo = deudaTC > 0 ? `<div style="font-size:10px;color:var(--red);margin-top:5px;font-family:'DM Mono',monospace;">Deuda TC: ${fmt(deudaTC)} ya descontada del patrimonio</div>` : '';
 
     el.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <span style="font-size:12px;color:var(--text2);">Tendencia mensual</span>
+        <span style="font-size:12px;color:var(--text2);">${usandoFlujo ? 'Flujo neto mensual' : 'Tendencia mensual'}</span>
         <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${col};">${tendenciaMensual>=0?'+':''}${fmt(tendenciaMensual)}</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;">
@@ -9033,7 +9138,8 @@ document.addEventListener('focusin', function(e){
             <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${val>=patrimonio?'var(--accent)':'var(--red)'};">${fmt(Math.max(0,val))}</div>
           </div>`).join('')}
       </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:8px;font-family:'DM Mono',monospace;">Basado en los últimos ${hist.length} días · estimación</div>`;
+      ${deudaInfo}
+      <div style="font-size:10px;color:var(--text3);margin-top:8px;font-family:'DM Mono',monospace;">${usandoFlujo ? 'Basado en flujo de '+mesesConDatos.length+' mes(es) reciente(s)' : 'Basado en los últimos '+hist.length+' días'} · estimación</div>`;
   }
 
   /* ====================================================

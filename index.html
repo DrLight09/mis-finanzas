@@ -3228,7 +3228,7 @@ function renderMovsCustom(c){
   const el=document.getElementById('det-custom-movs');
   if(!el)return;
   const cuentaKey='custom';
-  const movsAll=(c.movimientos||[]).slice().reverse();
+  const movsAll=(c.movimientos||[]).slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'') || (b.id||'').localeCompare(a.id||''));
 
   // Render filtros
   const tiposPresentes=new Set(movsAll.map(m=>m.tipo));
@@ -3271,6 +3271,7 @@ function renderMovsCustom(c){
     const badgeLabel=esApertura?'Apertura':esIngreso?'Ingreso':'Retiro';
     const amountColor=esApertura?'var(--blue)':esIngreso?'var(--accent)':'var(--red)';
     const amountPrefix=esApertura?'':esIngreso?'+':'−';
+    const puedeEliminar=!esApertura;
     return`<div class="card card-sm" style="margin-bottom:7px;">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div style="flex:1;min-width:0;">
@@ -3280,10 +3281,29 @@ function renderMovsCustom(c){
           </div>
           <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}</div>
         </div>
-        <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${amountColor};">${amountPrefix} ${fmt(m.monto)}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${amountColor};">${amountPrefix} ${fmt(m.monto)}</div>
+          ${puedeEliminar?`<button type="button" onclick="deleteMovCustom('${c.id}','${m.id}')" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.55;display:flex;align-items:center;justify-content:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.55';this.style.color='var(--text3)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>`:''}
+        </div>
       </div>
     </div>`;
   }).join('');
+}
+
+async function deleteMovCustom(cuentaId, movId){
+  const ok=await dialogo('Eliminar movimiento','¿Eliminar este movimiento? El saldo de la cuenta se revertirá.','Eliminar',true);
+  if(!ok)return;
+  const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===cuentaId);
+  if(!c)return;
+  const m=(c.movimientos||[]).find(x=>x.id===movId);
+  if(!m)return;
+  // Revertir efecto en el saldo
+  if(m.tipo==='ingreso') c.saldo=Math.max(0,(c.saldo||0)-m.monto);
+  else if(m.tipo==='egreso') c.saldo=(c.saldo||0)+m.monto;
+  c.movimientos=(c.movimientos||[]).filter(x=>x.id!==movId);
+  save();refresh();
+  abrirCustomCuenta(cuentaId);
+  toast('Movimiento eliminado y saldo actualizado','info');
 }
 
 let _movCustomTipo='ingreso';

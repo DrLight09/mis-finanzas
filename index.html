@@ -6068,7 +6068,15 @@ function renderSpotify(){
     "openSheet('spotify')"
   );}
   else {
-    el.innerHTML=`<div class="card">${p.map((x,i)=>{
+    // Ordenar por proximidad al próximo pago: vencidos primero (más negativos), luego más próximos
+    const pOrdenado=[...p].map((x,i)=>({...x,_origIdx:i})).sort((a,b)=>{
+      const far=99999;
+      const dA=a.proximoPago?Math.ceil((new Date(a.proximoPago+'T00:00:00')-new Date())/86400000):far;
+      const dB=b.proximoPago?Math.ceil((new Date(b.proximoPago+'T00:00:00')-new Date())/86400000):far;
+      return dA-dB;
+    });
+    el.innerHTML=`<div class="card">${pOrdenado.map((x)=>{
+    const i=x._origIdx;
       let fechaInfo='';
       if(x.proximoPago){
         const diasRestantes=Math.ceil((new Date(x.proximoPago+'T00:00:00')-new Date())/86400000);

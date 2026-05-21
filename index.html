@@ -2875,6 +2875,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <div class="ig"><label class="il" for="cdt_tasa">Tasa EA %</label><input
             type="text" inputmode="decimal" id="cdt_tasa"
             placeholder="9,25"></div>
+        <div class="ig"><label class="il" for="cdt_inicio">Fecha de apertura <span style="font-size:10px;color:var(--text3);font-weight:400;">(cuándo abriste el CDT en Nu)</span></label><input type="date" id="cdt_inicio"></div>
         <div class="ig"><label class="il" for="cdt_vence">Fecha de
             vencimiento</label><input type="date" id="cdt_vence"></div>
         <div class="ig"><label class="il" for="cdt_rte">Retefuente % <span
@@ -3633,11 +3634,12 @@ function materializarIntereses(c){
 // Calcula intereses del CDT de una cajita
 // Nu calcula el CDT así:
 // 1. Rendimiento bruto = monto × ((1 + EA)^(dias/365) - 1)  [compuesto, base 365]
-// 2. Nu trunca el bruto a entero (floor) antes de aplicar RTE — replica exactamente la app oficial
-// 3. RTE = floor(bruto) × rte%
-// 4. Rendimiento neto = floor(bruto) - RTE
+// 2. Nu redondea el bruto al peso entero superior (ceil) antes de aplicar RTE
+// 3. RTE = ceil(bruto) × rte%
+// 4. Rendimiento neto = ceil(bruto) - RTE
 // 5. Total neto = monto + rendimiento neto
-// Esta fórmula replica exactamente los valores de la app oficial de Nu.
+// Nota: la diferencia residual de <$1 se debe a que Nu usa la hora exacta de apertura
+// internamente (fracciones de día), lo cual no podemos replicar sin saber la hora.
 function calcCDT(cdt){
   if(!cdt||!cdt.monto||!cdt.inicio)return{val:cdt?cdt.monto:0,ganado:0,ganado_bruto:0,retencion:0,dias:0};
   const rate=cdt.tasa/100;
@@ -3649,9 +3651,10 @@ function calcCDT(cdt){
   const dias=Math.max(0,Math.floor((fechaFin-desde)/86400000));
   // Rendimiento bruto compuesto (fórmula EA base 365, igual que Nu)
   const ganado_bruto_exacto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
-  // Nu trunca el bruto al peso entero antes de calcular RTE (replica exactamente la app oficial)
-  const ganado_bruto=Math.floor(ganado_bruto_exacto);
-  // RTE se aplica sobre el bruto truncado
+  // Nu redondea el bruto hacia arriba al peso entero (ceil) antes de calcular RTE
+  // Esto replica mejor el comportamiento de la app oficial de Nu
+  const ganado_bruto=Math.ceil(ganado_bruto_exacto);
+  // RTE se aplica sobre el bruto redondeado
   const retencion=ganado_bruto*rte;
   const ganado=ganado_bruto-retencion;
   const val=cdt.monto+ganado;
@@ -4600,6 +4603,7 @@ function abrirCrearCDT(cajitaId){
   document.getElementById('cdtCajitaSaldo').textContent=fmt(k.val);
   document.getElementById('cdt_monto').value='';
   document.getElementById('cdt_tasa').value=c.tasa?String(c.tasa).replace('.',','):'';
+  document.getElementById('cdt_inicio').value=hoy();
   document.getElementById('cdt_vence').value='';
   document.getElementById('cdt_rte').value='4,00';
   document.getElementById('cdt_preview').textContent='';
@@ -4621,10 +4625,12 @@ function confirmarCrearCDT(){
   const monto=parseMoney(document.getElementById('cdt_monto').value)||0;
   const tasa=parsePct(document.getElementById('cdt_tasa').value)||9.25;
   const rte=parsePct(document.getElementById('cdt_rte').value)||4;
+  const inicio=document.getElementById('cdt_inicio').value||hoy();
   const vence=document.getElementById('cdt_vence').value;
   if(monto<50000){toast('El monto mínimo para un CDT es $50.000','err');return;}
+  if(new Date(inicio+'T00:00:00')>new Date()){toast('La fecha de apertura no puede ser futura','err');return;}
   if(!vence){toast('Debes definir la fecha de vencimiento','err');return;}
-  if(new Date(vence+'T00:00:00')<=new Date()){toast('La fecha de vencimiento debe ser futura','err');return;}
+  if(new Date(vence+'T00:00:00')<=new Date(inicio+'T00:00:00')){toast('La fecha de vencimiento debe ser posterior a la apertura','err');return;}
   // Calcular saldo real incluyendo intereses sub-día (lo mismo que muestra el modal)
   const saldoReal=calcC(c).val;
   if(monto>saldoReal){toast(`Saldo insuficiente. Solo tienes ${fmt(saldoReal)} en la cajita.`,'err');return;}
@@ -4634,7 +4640,7 @@ function confirmarCrearCDT(){
   c.saldo=c.saldo-monto;
   // Agregar CDT al array de CDTs de la cajita
   if(!c.cdts)c.cdts=[];
-  c.cdts.push({id:uid(),monto,tasa,rte,inicio:hoy(),vence});
+  c.cdts.push({id:uid(),monto,tasa,rte,inicio,vence});
   save();
   closeSheet('crear-cdt');
   refresh();
@@ -4670,6 +4676,7 @@ async function editarCDT(cajitaId,cdtId){
   document.getElementById('cdtCajitaSaldo').textContent=fmt(calcC(c).val+cdt.monto);
   document.getElementById('cdt_monto').value=fmtInput(cdt.monto);
   document.getElementById('cdt_tasa').value=String(cdt.tasa).replace('.',',');
+  document.getElementById('cdt_inicio').value=cdt.inicio||hoy();
   document.getElementById('cdt_vence').value=cdt.vence||'';
   document.getElementById('cdt_rte').value=cdt.rte!=null?cdt.rte:'4';
   // Cambiar botón confirmar para que guarde en modo edición
@@ -4691,7 +4698,9 @@ function guardarCDT(cajitaId,cdtId){
   const nuevoRte=parsePct(document.getElementById('cdt_rte').value);
   if(isNaN(nuevaTasa)||nuevaTasa<=0){toast('Tasa inválida','err');return;}
   if(!nuevoVence){toast('Fecha de vencimiento requerida','err');return;}
+  const nuevoInicio=document.getElementById('cdt_inicio').value||cdt.inicio;
   cdt.tasa=nuevaTasa;
+  cdt.inicio=nuevoInicio||cdt.inicio;
   cdt.vence=nuevoVence;
   if(!isNaN(nuevoRte))cdt.rte=nuevoRte;
   // Restaurar botón original

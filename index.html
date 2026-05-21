@@ -3619,7 +3619,7 @@ function snapshotPatrimonio(){
   const hoyStr=hoy();
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
   const val=calcPatrimonioTotal();
-  if(val<=0)return;
+  if(val==null||isNaN(val))return;
   const ultimo=S.patrimonioHistorial[S.patrimonioHistorial.length-1];
   if(ultimo&&ultimo.fecha===hoyStr){ultimo.valor=val;}
   else{S.patrimonioHistorial.push({fecha:hoyStr,valor:val});}
@@ -3780,11 +3780,7 @@ window.addEventListener('beforeunload', function() {
         try {
           const {db, doc, setDoc} = window._fb;
           const data = JSON.parse(JSON.stringify(window.S));
-          // sendBeacon no funciona con Firestore; usamos un guardado síncrono best-effort
-          navigator.sendBeacon && navigator.sendBeacon(
-            'data:application/json,' + encodeURIComponent(JSON.stringify({_noop:true}))
-          );
-          // El guardado real ocurre en el siguiente ciclo si la pestaña sigue viva
+          // El guardado real ocurre inmediatamente a continuación si la pestaña sigue viva
           setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),
             {payload: JSON.stringify(data), updatedAt: Date.now()}
           ).catch(()=>{});
@@ -3906,8 +3902,10 @@ function renderAttencion(){
   (S.tarjetasCredito||[]).forEach(tc=>{
     if((tc.deuda||0)>0){
       const hoyDate=new Date();
-      const diaHoy=hoyDate.getDate();
-      const diasHastaPago=tc.fechaPago?((tc.fechaPago-diaHoy+31)%31||31):null;
+      const diasHastaPago=tc.fechaPago?(()=>{
+        const diasMes=new Date(hoyDate.getFullYear(),hoyDate.getMonth()+1,0).getDate();
+        return((tc.fechaPago-hoyDate.getDate()+diasMes)%diasMes)||diasMes;
+      })():null;
       if(diasHastaPago!==null&&diasHastaPago<=5){
         items.push({tipo:'red',texto:`${tc.nombre}: deuda ${fmt(tc.deuda)} — fecha de pago en ${diasHastaPago}d`,_tcId:tc.id});
       } else if(diasHastaPago!==null&&diasHastaPago<=10){
@@ -3932,12 +3930,19 @@ function renderAttencion(){
   if(!items.length){sec.style.display='none';return;}
   sec.style.display='';
 
-  // Toggle colapsable
+  // Toggle colapsable con detección de items nuevos
   const hasRed = items.some(i=>i.tipo==='red');
   const titleEl = sec.querySelector('.sec-title');
   if(titleEl) {
-    const stored = sessionStorage.getItem('attn-open');
-    const isOpen = stored === null ? true : stored === '1';
+    // Fingerprint = string con los textos de todos los items actuales
+    const fingerprint = items.map(i=>i.texto).sort().join('|');
+    const lastFingerprint = sessionStorage.getItem('attn-fingerprint');
+    const storedOpen = sessionStorage.getItem('attn-open');
+    // Abrir automáticamente solo si los items cambiaron desde la última vez que se vieron
+    const hayNuevos = fingerprint !== lastFingerprint;
+    const isOpen = hayNuevos ? true : (storedOpen === '1');
+    // Si había items nuevos y ahora abrimos, guardar el fingerprint como "visto"
+    if(hayNuevos) sessionStorage.setItem('attn-fingerprint', fingerprint);
     titleEl.style.cursor = 'pointer';
     titleEl.style.display = 'flex';
     titleEl.style.justifyContent = 'space-between';
@@ -3951,6 +3956,7 @@ function renderAttencion(){
       if(badge) badge.textContent = `${items.length} ${nowOpen?'▲':'▼'}`;
     };
     list.style.display = isOpen ? '' : 'none';
+    sessionStorage.setItem('attn-open', isOpen ? '1' : '0');
   }
 
   list.innerHTML=items.map(it=>`<div class="card card-sm ${it.tipo==='red'?'attn-card-red':'attn-card'}" style="margin-bottom:7px;">
@@ -10494,12 +10500,13 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 
 // Mostrar el label TC en el gasto variable al seleccionarlo
-const _origMostrarAlertaFuente=window.mostrarAlertaFuente;
-if(typeof mostrarAlertaFuente==='function'){
-  const _origMAF=mostrarAlertaFuente;
-  mostrarAlertaFuente=function(prefix){
+// Patch via window para asegurar que la referencia a la función original es correcta
+(function(){
+  const _origMAF=window.mostrarAlertaFuente;
+  if(typeof _origMAF!=='function')return;
+  window.mostrarAlertaFuente=function(prefix){
     const sel=document.getElementById(prefix+'_fuente')||document.getElementById(prefix+'fuente');
-    if(!sel)return _origMAF?_origMAF(prefix):undefined;
+    if(!sel)return _origMAF(prefix);
     const val=sel.value;
     if(val&&val.startsWith('tc:')){
       const id=val.split(':')[1];
@@ -10513,8 +10520,8 @@ if(typeof mostrarAlertaFuente==='function'){
       if(saldoEl)saldoEl.style.color='var(--red)';
       return;
     }
-    return _origMAF?_origMAF(prefix):undefined;
+    return _origMAF(prefix);
   };
-}
+})();
 </script>
   </body></html>

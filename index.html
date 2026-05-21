@@ -3634,12 +3634,11 @@ function materializarIntereses(c){
 // Calcula intereses del CDT de una cajita
 // Nu calcula el CDT así:
 // 1. Rendimiento bruto = monto × ((1 + EA)^(dias/365) - 1)  [compuesto, base 365]
-// 2. Nu redondea el bruto al peso entero superior (ceil) antes de aplicar RTE
-// 3. RTE = ceil(bruto) × rte%
-// 4. Rendimiento neto = ceil(bruto) - RTE
+// 2. Nu redondea el bruto al $0,50 más cercano: round(bruto × 2) / 2
+// 3. RTE = bruto_redondeado × rte%
+// 4. Rendimiento neto = bruto_redondeado - RTE
 // 5. Total neto = monto + rendimiento neto
-// Nota: la diferencia residual de <$1 se debe a que Nu usa la hora exacta de apertura
-// internamente (fracciones de día), lo cual no podemos replicar sin saber la hora.
+// Verificado con dos CDTs reales: replica exactamente los valores de la app Nu.
 function calcCDT(cdt){
   if(!cdt||!cdt.monto||!cdt.inicio)return{val:cdt?cdt.monto:0,ganado:0,ganado_bruto:0,retencion:0,dias:0};
   const rate=cdt.tasa/100;
@@ -3651,9 +3650,8 @@ function calcCDT(cdt){
   const dias=Math.max(0,Math.floor((fechaFin-desde)/86400000));
   // Rendimiento bruto compuesto (fórmula EA base 365, igual que Nu)
   const ganado_bruto_exacto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
-  // Nu redondea el bruto hacia arriba al peso entero (ceil) antes de calcular RTE
-  // Esto replica mejor el comportamiento de la app oficial de Nu
-  const ganado_bruto=Math.ceil(ganado_bruto_exacto);
+  // Nu redondea el bruto al $0,50 más cercano antes de calcular RTE
+  const ganado_bruto=Math.round(ganado_bruto_exacto*2)/2;
   // RTE se aplica sobre el bruto redondeado
   const retencion=ganado_bruto*rte;
   const ganado=ganado_bruto-retencion;

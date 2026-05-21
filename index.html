@@ -76,8 +76,17 @@
           if (typeof window._pinGate === 'function') {
             window._pinGate();
           } else {
-            // El módulo PIN aún no cargó — esperar
+            // El módulo PIN aún no cargó — esperar con timeout de seguridad
             window._pendingPinGate = true;
+            // Si en 5s el módulo PIN no cargó (error de sintaxis, fallo de red, etc.)
+            // arrancar la app directamente para no quedar en loading infinito.
+            window._pinGateTimeout = setTimeout(function() {
+              if (window._pendingPinGate) {
+                console.warn('[Auth] Módulo PIN no cargó en 5s — arrancando app directamente.');
+                window._pendingPinGate = false;
+                if (typeof window._fbLoadData === 'function') window._fbLoadData();
+              }
+            }, 5000);
           }
         } else {
           // No logueado — mostrar pantalla de login
@@ -3008,6 +3017,8 @@ function fmtNoCents(n){
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
 function hoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// Escapa caracteres HTML para prevenir XSS al insertar datos de usuario en innerHTML
+function escHtml(s){if(!s&&s!==0)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function mesKey(d){return d?d.substring(0,7):'';}
 
 /* ---- MOVER PLATA ENTRE CUENTAS ---- */
@@ -3573,9 +3584,20 @@ function save(){
     console.warn('[save] Bloqueado: datos de Firebase aún no cargados.');
     return;
   }
+  // Leer del DOM solo si el input existe y tiene un valor real (no vacío/placeholder).
+  // Esto evita sobreescribir S con 0 cuando el input está oculto o sin foco.
+  function _readMoney(id, fallback){
+    const el=document.getElementById(id);
+    if(!el)return fallback;
+    const v=parseMoney(el.value);
+    // Si el input está vacío o su valor parseado es 0 pero el saldo guardado es positivo,
+    // conservamos el valor de S para no sobrescribir con 0 accidentalmente.
+    if(!el.value.trim()&&fallback>0)return fallback;
+    return v||fallback||0;
+  }
   S.nuRate=parseMoney(document.getElementById('nuRate').value)||9.25;
-  S.nequiSaldo=parseMoney(document.getElementById('nequiSaldo').value)||0;
-  S.efectivoSaldo=parseMoney(document.getElementById('efectivoSaldo').value)||0;
+  S.nequiSaldo=_readMoney('nequiSaldo', S.nequiSaldo);
+  S.efectivoSaldo=_readMoney('efectivoSaldo', S.efectivoSaldo);
   S.mesadaMontoPapa=parseMoney(document.getElementById('mesadaMontoPapa')?.value)||S.mesadaMontoPapa||80000;
   S.mesadaMonteMama=parseMoney(document.getElementById('mesadaMonteMama')?.value)||S.mesadaMonteMama||80000;
   S.spotifyCosto=parseMoney(document.getElementById('spotifyCosto').value)||0;
@@ -3764,6 +3786,8 @@ var _saveTimer=null;
 function debounceSave(delay=800){
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(()=>saveAndRefresh(),delay);
+  // Exponer en window para que el módulo Firebase (scope de módulo) pueda cancelarlo en signOut
+  window._debounceTimer=_saveTimer;
 }
 
 /* ---- GUARDADO DE EMERGENCIA al cerrar pestaña ---- */
@@ -6726,8 +6750,8 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
     return `<div class="gasto-item" ${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto}>
       <div class="gasto-item-top">
         <div style="flex:1;min-width:0;">
-          <div class="row-name" style="font-size:13px;">${m.desc}</div>
-          <div class="row-sub" style="font-family:'DM Mono',monospace;">${m.fecha || '—'}</div>
+          <div class="row-name" style="font-size:13px;">${escHtml(m.desc)}</div>
+          <div class="row-sub" style="font-family:'DM Mono',monospace;">${escHtml(m.fecha) || '—'}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${colorMonto};">${signo} ${fmt(Math.abs(m.monto))}</div>
@@ -6735,11 +6759,11 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
         </div>
       </div>
       <div class="gasto-item-meta">
-        <span class="badge ${bgLabel}" style="font-size:9px;">${tipoLabel}</span>
-        ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?`<span class="badge bg-nu" style="font-size:9px;">${cn}</span>`:''; })()}
-        ${m.cat ? `<span class="badge bg-blue" style="font-size:9px;">${m.cat}</span>` : ''}
-        ${m.nota ? `<span style="font-size:10px;color:var(--text3);">${m.nota}</span>` : ''}
-        ${m.tipo === 'transferencia' && m._fuenteDestino ? `<span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">↔ ${fuenteLabel(m._fuenteDestino||m._fuenteOrigen)}</span>` : ''}
+        <span class="badge ${bgLabel}" style="font-size:9px;">${escHtml(tipoLabel)}</span>
+        ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?`<span class="badge bg-nu" style="font-size:9px;">${escHtml(cn)}</span>`:''; })()}
+        ${m.cat ? `<span class="badge bg-blue" style="font-size:9px;">${escHtml(m.cat)}</span>` : ''}
+        ${m.nota ? `<span style="font-size:10px;color:var(--text3);">${escHtml(m.nota)}</span>` : ''}
+        ${m.tipo === 'transferencia' && m._fuenteDestino ? `<span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">↔ ${escHtml(fuenteLabel(m._fuenteDestino||m._fuenteOrigen))}</span>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -6773,8 +6797,15 @@ async function eliminarMovimiento(btn) {
     // Fue una entrada manual (S.movimientos tipo 'entrada' o 'apertura')
     const m = (S.movimientos || []).find(x => x.id === movId);
     if (m) {
-      descontarFuente(m.fuente, m.monto);
+      // Usar fuente del registro; si no está, usar la del DOM como fallback
+      const fuente = m.fuente || fuenteOrigen;
+      if (fuente) descontarFuente(fuente, m.monto);
+      else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto);
       S.movimientos = S.movimientos.filter(x => x.id !== movId);
+    } else if (fuenteOrigen && monto > 0) {
+      // El movimiento no está en S.movimientos (migración antigua) pero tenemos
+      // los datos del DOM — revertir directamente con los data-attributes.
+      descontarFuente(fuenteOrigen, monto);
     }
   } else if (movTipoEl === 'salida_manual') {
     // Fue una salida manual (S.movimientos tipo 'salida_manual')
@@ -8881,7 +8912,9 @@ document.addEventListener('focusin', function(e){
       // onAuthStateChanged se encarga del resto
     } catch(e) {
       if(e.code !== 'auth/popup-closed-by-user') {
-        alert('Error al iniciar sesión: ' + e.message);
+        // Usar toast en lugar de alert() nativo para mantener consistencia con el resto de la app
+        if(typeof toast === 'function') toast('Error al iniciar sesión: ' + e.message, 'err');
+        else console.error('Error al iniciar sesión:', e.message);
       }
     }
   };
@@ -8892,9 +8925,10 @@ document.addEventListener('focusin', function(e){
     if(!ok) return;
     if(!window._fb) return;
     // Cancelar cualquier guardado pendiente antes de salir para evitar
-    // que un timer de debounce guarde datos vacíos o corruptos post-signout
-    clearTimeout(_saveTimer);        // timer de debounceSave (script global)
-    clearTimeout(window._fbSaveTimer); // timer de _fbSaveToCloud (módulo Firebase)
+    // que un timer de debounce guarde datos vacíos o corruptos post-signout.
+    // Ambos timers se exponen en window para que este módulo pueda cancelarlos.
+    clearTimeout(window._debounceTimer);     // timer de debounceSave (script global)
+    clearTimeout(window._fbSaveTimer);       // timer de _fbSaveToCloud (módulo Firebase)
     // Guardar una última vez de forma inmediata si hay datos válidos
     if(window._fbUser && window.S) {
       try {
@@ -9945,19 +9979,29 @@ function tcCupoUsadoPct(tc){
 function tcDiasHastaPago(tc){
   if(!tc.fechaPago)return null;
   const hoyDate=new Date();
+  hoyDate.setHours(0,0,0,0);
   const dia=hoyDate.getDate();
-  let dias=(tc.fechaPago-dia);
-  if(dias<0)dias+=new Date(hoyDate.getFullYear(),hoyDate.getMonth()+1,0).getDate();
-  return dias;
+  // Calcular fecha exacta del próximo día de pago
+  let targetMonth=hoyDate.getMonth(), targetYear=hoyDate.getFullYear();
+  if(tc.fechaPago<dia){targetMonth++;if(targetMonth>11){targetMonth=0;targetYear++;}}
+  // Limitar al último día del mes si la fecha de pago no existe en ese mes (ej. día 31 en febrero)
+  const lastDay=new Date(targetYear,targetMonth+1,0).getDate();
+  const targetDay=Math.min(tc.fechaPago,lastDay);
+  const target=new Date(targetYear,targetMonth,targetDay);
+  return Math.round((target-hoyDate)/86400000);
 }
 
 function tcDiasHastaCorte(tc){
   if(!tc.fechaCorte)return null;
   const hoyDate=new Date();
+  hoyDate.setHours(0,0,0,0);
   const dia=hoyDate.getDate();
-  let dias=(tc.fechaCorte-dia);
-  if(dias<0)dias+=new Date(hoyDate.getFullYear(),hoyDate.getMonth()+1,0).getDate();
-  return dias;
+  let targetMonth=hoyDate.getMonth(), targetYear=hoyDate.getFullYear();
+  if(tc.fechaCorte<dia){targetMonth++;if(targetMonth>11){targetMonth=0;targetYear++;}}
+  const lastDay=new Date(targetYear,targetMonth+1,0).getDate();
+  const targetDay=Math.min(tc.fechaCorte,lastDay);
+  const target=new Date(targetYear,targetMonth,targetDay);
+  return Math.round((target-hoyDate)/86400000);
 }
 
 // ── Render dashboard TC (en pantalla inicio) ─────────────────
@@ -10500,28 +10544,40 @@ document.addEventListener('DOMContentLoaded',function(){
 });
 
 // Mostrar el label TC en el gasto variable al seleccionarlo
-// Patch via window para asegurar que la referencia a la función original es correcta
-(function(){
-  const _origMAF=window.mostrarAlertaFuente;
-  if(typeof _origMAF!=='function')return;
-  window.mostrarAlertaFuente=function(prefix){
-    const sel=document.getElementById(prefix+'_fuente')||document.getElementById(prefix+'fuente');
-    if(!sel)return _origMAF(prefix);
-    const val=sel.value;
-    if(val&&val.startsWith('tc:')){
-      const id=val.split(':')[1];
-      const tc=getTCById(id);
-      const hint=document.getElementById(prefix+'_fuente_hint')||document.getElementById(prefix+'fuente_hint');
-      const saldoEl=document.getElementById(prefix+'_fuente_saldo')||document.getElementById(prefix+'fuente_saldo');
-      if(hint)hint.style.display='';
-      if(tc&&hint)hint.textContent='El gasto se cargará a la TC — no sale plata de tus cuentas';
-      if(tc&&hint)hint.style.color='var(--red)';
-      if(saldoEl)saldoEl.textContent='Deuda actual en TC: '+fmt(tc?tc.deuda||0:0);
-      if(saldoEl)saldoEl.style.color='var(--red)';
+// Patch via window para asegurar que la referencia a la función original es correcta.
+// Se ejecuta en DOMContentLoaded (o inmediatamente si ya cargó) para garantizar
+// que mostrarAlertaFuente ya está definida cuando aplicamos el patch.
+(function aplicarPatchMAF(){
+  function _patch(){
+    const _origMAF=window.mostrarAlertaFuente;
+    if(typeof _origMAF!=='function'){
+      console.warn('[TC] mostrarAlertaFuente no encontrada — patch de TC no aplicado.');
       return;
     }
-    return _origMAF(prefix);
-  };
+    window.mostrarAlertaFuente=function(prefix){
+      const sel=document.getElementById(prefix+'_fuente')||document.getElementById(prefix+'fuente');
+      if(!sel)return _origMAF(prefix);
+      const val=sel.value;
+      if(val&&val.startsWith('tc:')){
+        const id=val.split(':')[1];
+        const tc=getTCById(id);
+        const hint=document.getElementById(prefix+'_fuente_hint')||document.getElementById(prefix+'fuente_hint');
+        const saldoEl=document.getElementById(prefix+'_fuente_saldo')||document.getElementById(prefix+'fuente_saldo');
+        if(hint)hint.style.display='';
+        if(tc&&hint)hint.textContent='El gasto se cargará a la TC — no sale plata de tus cuentas';
+        if(tc&&hint)hint.style.color='var(--red)';
+        if(saldoEl)saldoEl.textContent='Deuda actual en TC: '+fmt(tc?tc.deuda||0:0);
+        if(saldoEl)saldoEl.style.color='var(--red)';
+        return;
+      }
+      return _origMAF(prefix);
+    };
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',_patch);
+  } else {
+    _patch();
+  }
 })();
 </script>
   </body></html>

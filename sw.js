@@ -1,5 +1,7 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v3';
+// IMPORTANTE: Actualiza VERSION en cada deploy para que los usuarios reciban
+// la versión nueva. Formato sugerido: 'mis-finanzas-v3-YYYYMMDDHHMMSS'
+const VERSION = 'mis-finanzas-v3-20260521200437';
 
 const APP_SHELL = [
   '/mis-finanzas/',

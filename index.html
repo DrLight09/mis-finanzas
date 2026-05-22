@@ -8171,7 +8171,11 @@ function abrirEncargoDetalle(id) {
       nota: ''
     });
   }
-  todosMovs.sort((a,b) => b.fecha.localeCompare(a.fecha));
+  todosMovs.sort((a,b) => {
+    const fechaDiff = b.fecha.localeCompare(a.fecha);
+    if (fechaDiff !== 0) return fechaDiff;
+    return (b.ts || 0) - (a.ts || 0);
+  });
   if (!todosMovs.length) {
     histEl.innerHTML = `<div class="empty-state" style="padding:16px 0;"><div class="empty-state-sub">Sin movimientos aún. Registrá entradas y salidas.</div></div>`;
   } else {
@@ -8371,7 +8375,8 @@ function confirmarMovEncargo() {
     monto,
     cuenta: cuenta || '',
     fecha: document.getElementById('movenc_fecha').value||hoy(),
-    nota: document.getElementById('movenc_nota').value.trim()
+    nota: document.getElementById('movenc_nota').value.trim(),
+    ts: Date.now()
   });
   save();
   closeSheet('mov-encargo');
@@ -8493,7 +8498,8 @@ function confirmarTraspasoEncargo() {
     monto,
     cuenta: cuentaOrigen,
     fecha,
-    nota: 'Traspaso a cuenta propia'
+    nota: 'Traspaso a cuenta propia',
+    ts: Date.now()
   });
 
   // 2. Sumar a mi cuenta (ya estaba físicamente ahí, solo cambia "de quién es")

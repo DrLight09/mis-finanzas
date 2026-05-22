@@ -1348,13 +1348,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
                   Pagar préstamo completo
                 </span>
               </button>
-              <button type="button" class="btn" id="btn-pago-con-extra"
-                style="width:100%;margin-top:8px;background:rgba(96,176,240,.10);border-color:rgba(96,176,240,.35);color:var(--blue);">
-                <span style="display:flex;align-items:center;justify-content:center;gap:6px;">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-                  Pagó con extra / propina
-                </span>
-              </button>
+
             </div>
             <div class="sec-title">Historial</div>
             <div id="ddHistorial"></div>
@@ -2485,12 +2479,145 @@ input.movs-search-input:focus{border-color:var(--accent);}
           </div>
         </div>
         <div class="ig" id="mov_destino_wrap" style="display:none;">
-          <label class="il" for="mov_destino">¿A dónde entra el abono?</label>
-          <div class="select-wrap"><select id="mov_destino"><option value>Sin
-                especificar</option></select></div>
-          <div id="mov_destino_hint"
-            style="font-size:10px;color:var(--accent);margin-top:5px;display:none;">Se
-            sumará automáticamente al saldo</div>
+          <!-- Header + toggle dividir -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <label class="il" style="margin-bottom:0;">¿A dónde entra el pago?</label>
+            <button type="button" id="mov_dest_split_toggle" onclick="toggleAbonoSplit()"
+              style="font-size:10px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;">Dividir ÷</button>
+          </div>
+          <!-- Modo simple -->
+          <div id="mov_destino_simple">
+            <div class="select-wrap"><select id="mov_destino"><option value>Sin especificar</option></select></div>
+            <div id="mov_destino_hint" style="font-size:10px;color:var(--accent);margin-top:5px;display:none;">Se sumará automáticamente al saldo</div>
+          </div>
+          <!-- Modo dividido -->
+          <div id="mov_destino_split" style="display:none;">
+            <div id="mov_dest_split_rows"></div>
+            <button type="button" id="btn-add-dest-split" onclick="abonoAddSplitRow()"
+              style="width:100%;padding:7px;border-radius:7px;background:var(--bg3);border:1px dashed var(--border2);color:var(--text2);font-size:12px;cursor:pointer;margin-bottom:4px;">+ Agregar cuenta</button>
+            <div id="mov_dest_split_resumen" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:16px;"></div>
+          </div>
+
+          <!-- ↩ Devolver al origen -->
+          <button type="button" id="mov_btn_origen" onclick="abonoAplicarOrigen()"
+            style="display:none;width:100%;margin-top:6px;padding:7px;border-radius:8px;font-size:11px;font-family:'DM Mono',monospace;background:rgba(240,184,64,.08);border:1.5px solid rgba(240,184,64,.3);color:var(--amber);cursor:pointer;">
+            ↩ Devolver a donde salió el préstamo
+          </button>
+          <div id="mov_origen_tags" style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;"></div>
+        </div>
+
+        <!-- ══ EXTRA (propina / regalo de más) ══ -->
+        <div id="mov_extra_wrap" style="display:none;">
+          <div style="height:1px;background:var(--border);margin:10px 0 12px;"></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <label class="il" style="margin:0;flex:1;">¿Te dio extra de más?</label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text2);">
+              <input type="checkbox" id="mov_tiene_extra" onchange="toggleExtraSection()"
+                style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;">
+              Sí, hubo extra
+            </label>
+          </div>
+
+          <div id="mov_extra_body" style="display:none;">
+            <div class="ig">
+              <label class="il" for="mov_extra_monto">¿Cuánto de extra?</label>
+              <input type="text" inputmode="decimal" id="mov_extra_monto" placeholder="0,00" class="money-input">
+            </div>
+
+            <!-- Qué hizo con el extra -->
+            <label class="il" style="font-size:10px;margin-bottom:6px;">¿Qué hiciste con ese extra?</label>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px;">
+
+              <!-- Guardar en cuenta -->
+              <div id="ext_opt_guardar" onclick="selAbonoExt('guardar')"
+                style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
+                <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;">
+                  <span style="font-size:16px;">💰</span>
+                  <div style="flex:1;font-size:13px;font-weight:600;">Lo guardé en una cuenta</div>
+                  <svg id="ext_chk_guardar" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div id="ext_body_guardar" style="display:none;padding:0 12px 12px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                    <label class="il" style="margin:0;font-size:10px;">¿A dónde?</label>
+                    <button type="button" id="ext_split_toggle" onclick="event.stopPropagation();toggleExtSplit()"
+                      style="font-size:9px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:5px;padding:2px 7px;cursor:pointer;">Dividir ÷</button>
+                  </div>
+                  <div id="ext_guardar_simple">
+                    <div class="select-wrap"><select id="ext_cuenta" onclick="event.stopPropagation()"><option value>Sin especificar</option></select></div>
+                  </div>
+                  <div id="ext_guardar_split" style="display:none;">
+                    <div id="ext_split_rows"></div>
+                    <button type="button" onclick="event.stopPropagation();extAddSplitRow()"
+                      style="width:100%;padding:6px;border-radius:6px;background:var(--bg4);border:1px dashed var(--border2);color:var(--text2);font-size:11px;cursor:pointer;margin-bottom:3px;">+ Agregar cuenta</button>
+                    <div id="ext_split_resumen" style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);min-height:12px;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Regalé -->
+              <div id="ext_opt_regalar" onclick="selAbonoExt('regalar')"
+                style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
+                <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;">
+                  <span style="font-size:16px;">🤝</span>
+                  <div style="flex:1;font-size:13px;font-weight:600;">Lo regalé / lo di a alguien</div>
+                  <svg id="ext_chk_regalar" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div id="ext_body_regalar" style="display:none;padding:0 12px 12px;">
+                  <div class="ig" style="margin-bottom:7px;">
+                    <label class="il" style="font-size:10px;">¿A quién? (opcional)</label>
+                    <input type="text" id="ext_regalar_quien" placeholder="Ej: a mi papá…" onclick="event.stopPropagation()">
+                  </div>
+                  <label class="il" style="font-size:10px;">¿Regalaste todo o solo una parte?</label>
+                  <div style="display:flex;gap:6px;margin-top:4px;margin-bottom:7px;">
+                    <button type="button" id="ext_reg_todo_btn" onclick="event.stopPropagation();extRegTodo(true)"
+                      style="flex:1;padding:7px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.15);border:1.5px solid rgba(200,240,96,.4);color:var(--accent);">Todo</button>
+                    <button type="button" id="ext_reg_parcial_btn" onclick="event.stopPropagation();extRegTodo(false)"
+                      style="flex:1;padding:7px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text2);">Solo parte</button>
+                  </div>
+                  <div id="ext_reg_parcial_wrap" style="display:none;">
+                    <div class="ig" style="margin-bottom:5px;">
+                      <label class="il" style="font-size:10px;">¿Cuánto regalaste?</label>
+                      <input type="text" inputmode="decimal" id="ext_reg_monto" placeholder="0,00" class="money-input" onclick="event.stopPropagation()" oninput="extActRestoRegalo()">
+                    </div>
+                    <div id="ext_reg_resto_label" style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:5px;min-height:13px;"></div>
+                    <div class="ig">
+                      <label class="il" style="font-size:10px;">El resto lo guardé en</label>
+                      <div class="select-wrap"><select id="ext_reg_resto_cuenta" onclick="event.stopPropagation()"><option value>Sin especificar</option></select></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lo gasté -->
+              <div id="ext_opt_gastar" onclick="selAbonoExt('gastar')"
+                style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
+                <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;">
+                  <span style="font-size:16px;">🛍️</span>
+                  <div style="flex:1;font-size:13px;font-weight:600;">Lo gasté en el momento</div>
+                  <svg id="ext_chk_gastar" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+                <div id="ext_body_gastar" style="display:none;padding:0 12px 12px;">
+                  <div class="ig" style="margin-bottom:0;">
+                    <label class="il" style="font-size:10px;">¿En qué? (opcional)</label>
+                    <input type="text" id="ext_gastar_desc" placeholder="Ej: comida, transporte…" onclick="event.stopPropagation()">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Aún no decidí -->
+              <div id="ext_opt_pendiente" onclick="selAbonoExt('pendiente')"
+                style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;transition:all .15s;">
+                <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;">
+                  <span style="font-size:16px;">⏳</span>
+                  <div style="flex:1;">
+                    <div style="font-size:13px;font-weight:600;">Aún no lo decidí</div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:1px;">Queda como ingreso sin asignar</div>
+                  </div>
+                  <svg id="ext_chk_pendiente" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="ig"><label class="il" for="mov_nota">Nota
             (opcional)</label><input type="text" id="mov_nota"
@@ -2499,201 +2626,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
           id="movBtnConfirm">Guardar</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="registrar-movimiento">Cancelar</button>
-      </div>
-    </div>
-
-    <!-- PAGO CON EXTRA — todo en un solo formulario -->
-    <div class="overlay" id="sheet-pago-con-extra" data-sheet-id="pago-con-extra">
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title">Recibir pago</div>
-
-        <!-- Deuda actual + botón devolver a origen -->
-        <div style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:11px;padding:12px 14px;margin-bottom:14px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-            <div>
-              <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Saldo pendiente</div>
-              <div id="pce_saldo_pendiente" style="font-size:22px;font-weight:500;font-family:'DM Mono',monospace;color:var(--amber);">$0</div>
-            </div>
-            <!-- Botón devolver a origen (se muestra solo si se conoce de dónde salió) -->
-            <button type="button" id="pce_btn_origen" onclick="pceAplicarOrigen()"
-              style="display:none;font-size:11px;font-family:'DM Mono',monospace;padding:6px 11px;border-radius:8px;background:rgba(240,184,64,.12);border:1.5px solid rgba(240,184,64,.35);color:var(--amber);cursor:pointer;white-space:nowrap;line-height:1.4;text-align:center;">
-              ↩ Devolver<br>al origen
-            </button>
-          </div>
-          <!-- Tags de las fuentes originales del préstamo -->
-          <div id="pce_origen_tags" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;"></div>
-        </div>
-
-        <!-- Cuánto te pagó -->
-        <div class="ig">
-          <label class="il" for="pce_monto_recibido">¿Cuánto te pagó en total?</label>
-          <input type="text" inputmode="decimal" id="pce_monto_recibido" placeholder="0,00" class="money-input">
-        </div>
-
-        <!-- Preview del extra / parcial -->
-        <div id="pce_preview" style="min-height:16px;margin-bottom:10px;font-size:12px;font-family:'DM Mono',monospace;padding:0 2px;"></div>
-
-        <!-- ── SECCIÓN: ¿A dónde entra el pago de la DEUDA? ── -->
-        <div id="pce_seccion_deuda">
-          <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin:12px 0 8px;">
-            💰 El pago de la deuda va a…
-          </div>
-
-          <!-- Modo simple / dividido -->
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-            <label class="il" style="margin:0;">Cuenta destino</label>
-            <button type="button" id="pce_split_toggle" onclick="pceTglSplit()"
-              style="font-size:10px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;">
-              Dividir ÷
-            </button>
-          </div>
-
-          <!-- Simple -->
-          <div id="pce_destino_simple">
-            <div class="select-wrap"><select id="pce_destino_pago"><option value>Sin especificar</option></select></div>
-            <div id="pce_destino_saldo" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
-          </div>
-
-          <!-- Split multi-cuenta -->
-          <div id="pce_destino_split" style="display:none;">
-            <div id="pce_split_rows"></div>
-            <button type="button" id="pce_btn_add_split" onclick="pceAddSplitRow()"
-              style="width:100%;padding:7px;border-radius:7px;background:var(--bg3);border:1px dashed var(--border2);color:var(--text2);font-size:12px;cursor:pointer;margin-bottom:4px;">
-              + Agregar cuenta
-            </button>
-            <div id="pce_split_resumen" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:16px;"></div>
-          </div>
-        </div>
-
-        <!-- ── SECCIÓN: ¿Hubo extra? (aparece dinámicamente) ── -->
-        <div id="pce_seccion_extra" style="display:none;">
-          <div style="height:1px;background:var(--border);margin:14px 0;"></div>
-          <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">
-            🎁 <span id="pce_extra_titulo">Extra recibido</span> — ¿Qué hiciste con eso?
-          </div>
-
-          <!-- Opciones del extra (tarjetas compactas) -->
-          <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:12px;">
-
-            <!-- Guardar en cuenta -->
-            <div id="pce_ext_opt_guardar" onclick="pceSelExt('guardar')"
-              style="border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
-              <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
-                <span style="font-size:18px;">💰</span>
-                <div style="flex:1;">
-                  <div style="font-size:13px;font-weight:600;">Lo guardé en una cuenta</div>
-                </div>
-                <svg id="pce_ext_chk_guardar" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-              <div id="pce_ext_guardar_body" style="display:none;padding:0 13px 13px;">
-                <!-- Modo simple / dividido para el extra -->
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-                  <label class="il" style="margin:0;font-size:10px;">¿A dónde?</label>
-                  <button type="button" id="pce_ext_split_toggle" onclick="event.stopPropagation();pceExtTglSplit()"
-                    style="font-size:9px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:5px;padding:2px 7px;cursor:pointer;">
-                    Dividir ÷
-                  </button>
-                </div>
-                <!-- Simple -->
-                <div id="pce_ext_guardar_simple">
-                  <div class="select-wrap"><select id="pce_ext_cuenta" onclick="event.stopPropagation()"><option value>Sin especificar</option></select></div>
-                </div>
-                <!-- Split -->
-                <div id="pce_ext_guardar_split" style="display:none;">
-                  <div id="pce_ext_split_rows"></div>
-                  <button type="button" onclick="event.stopPropagation();pceExtAddSplit()"
-                    style="width:100%;padding:6px;border-radius:6px;background:var(--bg4);border:1px dashed var(--border2);color:var(--text2);font-size:11px;cursor:pointer;margin-bottom:3px;">
-                    + Agregar cuenta
-                  </button>
-                  <div id="pce_ext_split_resumen" style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Regalé / di a alguien -->
-            <div id="pce_ext_opt_regalar" onclick="pceSelExt('regalar')"
-              style="border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
-              <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
-                <span style="font-size:18px;">🤝</span>
-                <div style="flex:1;">
-                  <div style="font-size:13px;font-weight:600;">Lo regalé / lo di a alguien</div>
-                </div>
-                <svg id="pce_ext_chk_regalar" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-              <div id="pce_ext_regalar_body" style="display:none;padding:0 13px 13px;">
-                <div class="ig" style="margin-bottom:8px;">
-                  <label class="il" style="font-size:10px;">¿A quién? (opcional)</label>
-                  <input type="text" id="pce_ext_regalar_quien" placeholder="Ej: a mi papá, amigo…" onclick="event.stopPropagation()">
-                </div>
-                <!-- ¿Todo o parte? -->
-                <label class="il" style="font-size:10px;">¿Regalaste todo o solo una parte?</label>
-                <div style="display:flex;gap:7px;margin-top:4px;margin-bottom:8px;">
-                  <button type="button" id="pce_ext_reg_todo_btn" onclick="event.stopPropagation();pceExtRegTodo(true)"
-                    style="flex:1;padding:8px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.15);border:1.5px solid rgba(200,240,96,.4);color:var(--accent);">Todo</button>
-                  <button type="button" id="pce_ext_reg_parcial_btn" onclick="event.stopPropagation();pceExtRegTodo(false)"
-                    style="flex:1;padding:8px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text2);">Solo parte</button>
-                </div>
-                <div id="pce_ext_reg_parcial_wrap" style="display:none;">
-                  <div class="ig" style="margin-bottom:6px;">
-                    <label class="il" style="font-size:10px;">¿Cuánto regalaste?</label>
-                    <input type="text" inputmode="decimal" id="pce_ext_reg_monto" placeholder="0,00" class="money-input" onclick="event.stopPropagation()" oninput="pceExtActRestoRegalo()">
-                  </div>
-                  <div id="pce_ext_reg_resto_label" style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:6px;min-height:14px;"></div>
-                  <div class="ig">
-                    <label class="il" style="font-size:10px;">El resto lo guardé en</label>
-                    <div class="select-wrap"><select id="pce_ext_reg_resto_cuenta" onclick="event.stopPropagation()"><option value>Sin especificar</option></select></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Lo gasté -->
-            <div id="pce_ext_opt_gastar" onclick="pceSelExt('gastar')"
-              style="border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
-              <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
-                <span style="font-size:18px;">🛍️</span>
-                <div style="flex:1;">
-                  <div style="font-size:13px;font-weight:600;">Lo gasté en el momento</div>
-                </div>
-                <svg id="pce_ext_chk_gastar" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-              <div id="pce_ext_gastar_body" style="display:none;padding:0 13px 13px;">
-                <div class="ig" style="margin-bottom:0;">
-                  <label class="il" style="font-size:10px;">¿En qué? (opcional)</label>
-                  <input type="text" id="pce_ext_gastar_desc" placeholder="Ej: comida, transporte…" onclick="event.stopPropagation()">
-                </div>
-              </div>
-            </div>
-
-            <!-- Sin decidir -->
-            <div id="pce_ext_opt_pendiente" onclick="pceSelExt('pendiente')"
-              style="border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
-              <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
-                <span style="font-size:18px;">⏳</span>
-                <div style="flex:1;">
-                  <div style="font-size:13px;font-weight:600;">Aún no lo decidí</div>
-                  <div style="font-size:11px;color:var(--text3);margin-top:1px;">Queda como ingreso sin asignar</div>
-                </div>
-                <svg id="pce_ext_chk_pendiente" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Fecha y nota (siempre visibles) -->
-        <div style="height:1px;background:var(--border);margin:10px 0 12px;"></div>
-        <div class="ig">
-          <label class="il" for="pce_fecha">Fecha</label>
-          <input type="date" id="pce_fecha">
-        </div>
-        <div class="ig">
-          <label class="il" for="pce_nota">Nota (opcional)</label>
-          <input type="text" id="pce_nota" placeholder="Ej: pagó todo en efectivo">
-        </div>
-
-        <button type="button" class="btn btn-primary" id="btn-confirmar-pce">Guardar pago ✓</button>
-        <button type="button" class="btn btn-ghost" data-close-sheet="pago-con-extra">Cancelar</button>
       </div>
     </div>
 
@@ -5869,6 +5801,8 @@ function initMovSheet(tipo) {
   movTipo = tipo;
   poblarFuente('mov_fuente');
   poblarFuente('mov_destino');
+  poblarFuente('ext_cuenta');
+  poblarFuente('ext_reg_resto_cuenta');
   document.getElementById('movSheetTitle').textContent = tipo === 'prestamo' ? 'Nuevo préstamo' : 'Registrar abono';
   document.getElementById('movBtnConfirm').textContent = tipo === 'prestamo' ? 'Guardar préstamo' : 'Guardar abono';
   document.getElementById('movBtnConfirm').style.background = tipo === 'prestamo' ? 'var(--accent)' : 'rgba(200,240,96,.2)';
@@ -5876,6 +5810,7 @@ function initMovSheet(tipo) {
   document.getElementById('movBtnConfirm').style.border = tipo === 'prestamo' ? 'none' : '1px solid rgba(200,240,96,.4)';
   document.getElementById('mov_fuente_wrap').style.display = tipo === 'prestamo' ? '' : 'none';
   document.getElementById('mov_destino_wrap').style.display = tipo === 'abono' ? '' : 'none';
+  document.getElementById('mov_extra_wrap').style.display = tipo === 'abono' ? '' : 'none';
   document.getElementById('mov_monto').value = '';
   document.getElementById('mov_fecha').value = hoy();
   document.getElementById('mov_nota').value = '';
@@ -5883,7 +5818,7 @@ function initMovSheet(tipo) {
   if (hint) hint.style.display = 'none';
   const dhint = document.getElementById('mov_destino_hint');
   if (dhint) dhint.style.display = 'none';
-  // Reset split mode
+  // Reset split préstamo fuente
   _prestSplitMode = false;
   _prestSplitRows = [];
   document.getElementById('mov_fuente_simple').style.display = '';
@@ -5892,6 +5827,35 @@ function initMovSheet(tipo) {
   document.getElementById('mov_split_rows').innerHTML = '';
   document.getElementById('mov_split_resumen').textContent = '';
   if(document.getElementById('mov_split_metas')) document.getElementById('mov_split_metas').innerHTML = '';
+  // Reset split abono destino
+  _abonoSplitMode = false;
+  _abonoSplitRows = [];
+  document.getElementById('mov_destino_simple').style.display = '';
+  document.getElementById('mov_destino_split').style.display = 'none';
+  document.getElementById('mov_dest_split_toggle').textContent = 'Dividir ÷';
+  document.getElementById('mov_dest_split_rows').innerHTML = '';
+  document.getElementById('mov_dest_split_resumen').textContent = '';
+  document.getElementById('mov_btn_origen').style.display = 'none';
+  document.getElementById('mov_origen_tags').innerHTML = '';
+  // Reset extra
+  _abonoExtOpt = '';
+  _abonoExtRegTodo = true;
+  _abonoExtSplitMode = false;
+  _abonoExtSplitRows = [];
+  document.getElementById('mov_tiene_extra').checked = false;
+  document.getElementById('mov_extra_body').style.display = 'none';
+  document.getElementById('mov_extra_monto').value = '';
+  ['guardar','regalar','gastar','pendiente'].forEach(o => extDeselect(o));
+  document.getElementById('ext_guardar_simple').style.display = '';
+  document.getElementById('ext_guardar_split').style.display = 'none';
+  document.getElementById('ext_split_toggle').textContent = 'Dividir ÷';
+  document.getElementById('ext_split_rows').innerHTML = '';
+  extRegTodo(true);
+  // Si es "Pagar todo" precargamos el botón devolver al origen
+  if (tipo === 'abono') {
+    const d = (S.deudores || []).find(x => x.id === deudorActualId);
+    if (d) movSetOrigenBtn(d);
+  }
 }
 
 function confirmarMovimiento() {
@@ -5900,35 +5864,282 @@ function confirmarMovimiento() {
   const d = (S.deudores || []).find(x => x.id === deudorActualId);
   if (!d) return;
   const fecha = document.getElementById('mov_fecha').value || hoy();
-  const nota = document.getElementById('mov_nota').value.trim();
+  const nota  = document.getElementById('mov_nota').value.trim();
+
   if (movTipo === 'prestamo') {
     if (_prestSplitMode) {
-      // Validar que la suma de los splits coincida con el monto total
       const totalSplit = _prestSplitRows.reduce((a,r)=>a+(r.monto||0),0);
       if(Math.abs(totalSplit - monto) > 1){
         toast(`La suma de las fuentes (${fmt(totalSplit)}) no coincide con el monto (${fmt(monto)})`,'err',4000);
         return;
       }
       const fuentes = _prestSplitRows.filter(r=>r.monto>0);
-      // Descontar de cada fuente
       fuentes.forEach(r=>{ if(r.fuente) descontarFuente(r.fuente, r.monto); });
-      const fuenteLabel = fuentes.map(r=>fuenteLabel2(r.fuente)+' '+fmt(r.monto)).join(' + ');
       d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota, ts: Date.now() });
     } else {
       const fuente = document.getElementById('mov_fuente').value;
       d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota, ts: Date.now() });
       descontarFuente(fuente, monto);
     }
+
   } else {
-    const destino = document.getElementById('mov_destino').value;
-    d.movimientos.push({ id: uid(), tipo: 'abono', monto, fecha, destino, nota, ts: Date.now() });
-    sumarFuente(destino, monto);
+    // ── ABONO ──
+    // 1. Registrar el abono (con o sin split de destino)
+    if (_abonoSplitMode) {
+      const totalSplit = _abonoSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+      if(Math.abs(totalSplit - monto) > 1){
+        toast(`La suma de cuentas (${fmt(totalSplit)}) no coincide con el abono (${fmt(monto)})`,'err',4000);
+        return;
+      }
+      const destinos = _abonoSplitRows.filter(r=>r.monto>0);
+      destinos.forEach(r=>{ if(r.fuente) sumarFuente(r.fuente, r.monto); });
+      d.movimientos.push({ id: uid(), tipo: 'abono', monto, fecha, destinos: destinos.map(r=>({fuente:r.fuente,monto:r.monto})), nota, ts: Date.now() });
+    } else {
+      const destino = document.getElementById('mov_destino').value;
+      d.movimientos.push({ id: uid(), tipo: 'abono', monto, fecha, destino, nota, ts: Date.now() });
+      sumarFuente(destino, monto);
+    }
+
+    // 2. Manejar el extra si aplica
+    if (document.getElementById('mov_tiene_extra').checked) {
+      if (!_abonoExtOpt) { toast('Elige qué hiciste con el extra', 'err'); return; }
+      const extra = parseMoney(document.getElementById('mov_extra_monto').value) || 0;
+      if (!extra) { toast('Ingresa el monto del extra', 'err'); return; }
+
+      if (_abonoExtOpt === 'guardar') {
+        if (_abonoExtSplitMode) {
+          const totalExtSplit = _abonoExtSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+          if(Math.abs(totalExtSplit - extra) > 1){
+            toast(`La suma del extra (${fmt(totalExtSplit)}) no coincide con ${fmt(extra)}`,'err',4000);
+            return;
+          }
+          _abonoExtSplitRows.filter(r=>r.monto>0).forEach(r=>{ if(r.fuente) sumarFuente(r.fuente, r.monto); });
+        } else {
+          const cuenta = document.getElementById('ext_cuenta').value;
+          if (cuenta) sumarFuente(cuenta, extra);
+        }
+
+      } else if (_abonoExtOpt === 'regalar') {
+        if (!_abonoExtRegTodo) {
+          const montoRegalo = parseMoney(document.getElementById('ext_reg_monto').value) || 0;
+          if (montoRegalo > extra + 1) { toast('El monto regalado supera el extra', 'err'); return; }
+          const resto = extra - montoRegalo;
+          if (resto > 0) {
+            const cResto = document.getElementById('ext_reg_resto_cuenta').value;
+            if (cResto) sumarFuente(cResto, resto);
+          }
+        }
+        // si _abonoExtRegTodo = true, no entra a ninguna cuenta
+
+      } else if (_abonoExtOpt === 'gastar') {
+        const desc = document.getElementById('ext_gastar_desc').value.trim();
+        if (!S.gastosVar) S.gastosVar = [];
+        S.gastosVar.push({ id: uid(), monto: extra, fecha, cat: 'Varios', desc: desc || 'Extra del pago de préstamo', fuente: '', ts: Date.now(), _esExtraPrestamo: true });
+
+      } else if (_abonoExtOpt === 'pendiente') {
+        if (!S.ingresosExtra) S.ingresosExtra = [];
+        S.ingresosExtra.push({ id: uid(), monto: extra, fecha, nota: 'Extra sin asignar — pago de préstamo', ts: Date.now() });
+      }
+    }
   }
+
   save(); refresh(); closeSheet('registrar-movimiento');
   abrirDeudor(deudorActualId);
 }
 
 function fuenteLabel2(f){ return f ? fuenteLabel(f) : '—'; }
+
+// ── ABONO: split destino + extra ───────────────────────────────────────────
+let _abonoSplitMode    = false;
+let _abonoSplitRows    = [];
+let _abonoExtOpt       = '';
+let _abonoExtRegTodo   = true;
+let _abonoExtSplitMode = false;
+let _abonoExtSplitRows = [];
+
+/* Split del destino del abono */
+function toggleAbonoSplit() {
+  _abonoSplitMode = !_abonoSplitMode;
+  document.getElementById('mov_destino_simple').style.display = _abonoSplitMode ? 'none' : '';
+  document.getElementById('mov_destino_split').style.display  = _abonoSplitMode ? '' : 'none';
+  document.getElementById('mov_dest_split_toggle').textContent = _abonoSplitMode ? 'Una sola cuenta' : 'Dividir ÷';
+  if (_abonoSplitMode && !_abonoSplitRows.length) abonoAddSplitRow();
+}
+
+function abonoAddSplitRow() {
+  _abonoSplitRows.push({ fuente: '', monto: 0 });
+  abonoRenderSplit();
+}
+
+function abonoRenderSplit() {
+  const cont = document.getElementById('mov_dest_split_rows');
+  const fuentes = getFuentesSinTC();
+  cont.innerHTML = _abonoSplitRows.map((r, i) => `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
+      <div class="select-wrap" style="flex:1;">
+        <select onchange="abonoSplitFuente(${i},this.value)" style="padding:9px 30px 9px 10px;font-size:13px;">
+          <option value="">Sin especificar</option>
+          ${fuentes.map(f=>`<option value="${f.val}" ${r.fuente===f.val?'selected':''}>${f.label}</option>`).join('')}
+        </select>
+      </div>
+      <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="0,00"
+        class="money-input" style="width:110px;padding:9px 10px;font-size:13px;"
+        oninput="abonoSplitMonto(${i},this.value)">
+      <button type="button" onclick="abonoSplitDel(${i})"
+        style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:28px;font-size:18px;line-height:1;">×</button>
+    </div>`).join('');
+  abonoSplitResumen();
+}
+
+function abonoSplitFuente(i,v){ _abonoSplitRows[i].fuente=v; abonoSplitResumen(); }
+function abonoSplitMonto(i,v) { _abonoSplitRows[i].monto=parseMoney(v)||0; abonoSplitResumen(); }
+function abonoSplitDel(i)     { _abonoSplitRows.splice(i,1); abonoRenderSplit(); }
+
+function abonoSplitResumen() {
+  const monto = parseMoney(document.getElementById('mov_monto').value)||0;
+  const total = _abonoSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+  const diff  = monto - total;
+  const el    = document.getElementById('mov_dest_split_resumen');
+  if(!el) return;
+  if(Math.abs(diff)<1)  el.innerHTML=`<span style="color:var(--accent);">✓ Suma exacta ${fmt(total)}</span>`;
+  else if(diff>0)       el.innerHTML=`<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`;
+  else                  el.innerHTML=`<span style="color:var(--red);">Excede el abono en ${fmt(-diff)}</span>`;
+}
+
+/* ↩ Devolver al origen */
+function movSetOrigenBtn(d) {
+  const prests = (d.movimientos||[]).filter(m=>m.tipo==='prestamo');
+  if(!prests.length){ document.getElementById('mov_btn_origen').style.display='none'; document.getElementById('mov_origen_tags').innerHTML=''; return; }
+  const ultimo = prests[prests.length-1];
+  const fuentes = ultimo.fuentes ? ultimo.fuentes : (ultimo.fuente?[{fuente:ultimo.fuente,monto:ultimo.monto}]:[]);
+  const tags = document.getElementById('mov_origen_tags');
+  if(!fuentes.length||!fuentes[0].fuente){ document.getElementById('mov_btn_origen').style.display='none'; tags.innerHTML=''; return; }
+  document.getElementById('mov_btn_origen').style.display='';
+  tags.innerHTML = fuentes.map(f=>`<span class="badge ${fuenteBadgeClass(f.fuente)}" style="font-size:9px;">${fuenteLabel(f.fuente)}${fuentes.length>1?' '+fmt(f.monto):''}</span>`).join('');
+  document.getElementById('mov_btn_origen').dataset.fuentes = JSON.stringify(fuentes);
+}
+
+function abonoAplicarOrigen() {
+  const btn = document.getElementById('mov_btn_origen');
+  const fuentes = JSON.parse(btn.dataset.fuentes||'[]');
+  if(!fuentes.length) return;
+  if(fuentes.length===1){
+    _abonoSplitMode=false;
+    document.getElementById('mov_destino_simple').style.display='';
+    document.getElementById('mov_destino_split').style.display='none';
+    document.getElementById('mov_destino').value=fuentes[0].fuente;
+  } else {
+    _abonoSplitMode=true;
+    _abonoSplitRows=fuentes.map(f=>({fuente:f.fuente,monto:f.monto}));
+    document.getElementById('mov_destino_simple').style.display='none';
+    document.getElementById('mov_destino_split').style.display='';
+    document.getElementById('mov_dest_split_toggle').textContent='Una sola cuenta';
+    abonoRenderSplit();
+  }
+  toast('Destinos del origen aplicados ↩','ok');
+}
+
+/* Toggle extra */
+function toggleExtraSection() {
+  const checked = document.getElementById('mov_tiene_extra').checked;
+  document.getElementById('mov_extra_body').style.display = checked?'':'none';
+}
+
+/* Opciones del extra */
+function extDeselect(o) {
+  const card=document.getElementById('ext_opt_'+o);
+  const body=document.getElementById('ext_body_'+o);
+  const chk=document.getElementById('ext_chk_'+o);
+  if(card){card.style.borderColor='var(--border2)';card.style.background='var(--bg3)';}
+  if(body) body.style.display='none';
+  if(chk)  chk.style.display='none';
+}
+
+function selAbonoExt(opt) {
+  ['guardar','regalar','gastar','pendiente'].forEach(o=>extDeselect(o));
+  _abonoExtOpt=opt;
+  const card=document.getElementById('ext_opt_'+opt);
+  const body=document.getElementById('ext_body_'+opt);
+  const chk=document.getElementById('ext_chk_'+opt);
+  if(card){card.style.borderColor='var(--accent)';card.style.background='rgba(200,240,96,.04)';}
+  if(body) body.style.display='';
+  if(chk)  chk.style.display='';
+}
+
+/* Split del extra */
+function toggleExtSplit() {
+  _abonoExtSplitMode=!_abonoExtSplitMode;
+  document.getElementById('ext_guardar_simple').style.display=_abonoExtSplitMode?'none':'';
+  document.getElementById('ext_guardar_split').style.display=_abonoExtSplitMode?'':'none';
+  document.getElementById('ext_split_toggle').textContent=_abonoExtSplitMode?'Una sola cuenta':'Dividir ÷';
+  if(_abonoExtSplitMode&&!_abonoExtSplitRows.length) extAddSplitRow();
+}
+
+function extAddSplitRow() {
+  _abonoExtSplitRows.push({fuente:'',monto:0});
+  extRenderSplit();
+}
+
+function extRenderSplit() {
+  const cont=document.getElementById('ext_split_rows');
+  const fuentes=getFuentesSinTC();
+  const extra=parseMoney(document.getElementById('mov_extra_monto').value)||0;
+  cont.innerHTML=_abonoExtSplitRows.map((r,i)=>`
+    <div style="display:flex;gap:5px;align-items:center;margin-bottom:5px;">
+      <div class="select-wrap" style="flex:1;">
+        <select onchange="extSplitFuente(${i},this.value)" onclick="event.stopPropagation()" style="padding:8px 26px 8px 9px;font-size:12px;">
+          <option value="">Sin especificar</option>
+          ${fuentes.map(f=>`<option value="${f.val}" ${r.fuente===f.val?'selected':''}>${f.label}</option>`).join('')}
+        </select>
+      </div>
+      <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="0,00"
+        class="money-input" style="width:95px;padding:8px 9px;font-size:12px;"
+        oninput="extSplitMonto(${i},this.value)" onclick="event.stopPropagation()">
+      <button type="button" onclick="event.stopPropagation();extSplitDel(${i})"
+        style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:22px;font-size:16px;line-height:1;">×</button>
+    </div>`).join('');
+  extSplitResumen();
+}
+
+function extSplitFuente(i,v){ _abonoExtSplitRows[i].fuente=v; extSplitResumen(); }
+function extSplitMonto(i,v) { _abonoExtSplitRows[i].monto=parseMoney(v)||0; extSplitResumen(); }
+function extSplitDel(i)     { _abonoExtSplitRows.splice(i,1); extRenderSplit(); }
+
+function extSplitResumen() {
+  const extra=parseMoney(document.getElementById('mov_extra_monto').value)||0;
+  const total=_abonoExtSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+  const diff=extra-total;
+  const el=document.getElementById('ext_split_resumen');
+  if(!el) return;
+  if(Math.abs(diff)<1) el.innerHTML=`<span style="color:var(--accent);">✓ ${fmt(total)}</span>`;
+  else if(diff>0)      el.innerHTML=`<span style="color:var(--amber);">Faltan ${fmt(diff)}</span>`;
+  else                 el.innerHTML=`<span style="color:var(--red);">Excede en ${fmt(-diff)}</span>`;
+}
+
+/* Regalo parcial del extra */
+function extRegTodo(esTodo) {
+  _abonoExtRegTodo=esTodo;
+  document.getElementById('ext_reg_parcial_wrap').style.display=esTodo?'none':'';
+  const t=document.getElementById('ext_reg_todo_btn');
+  const p=document.getElementById('ext_reg_parcial_btn');
+  t.style.background  =esTodo?'rgba(200,240,96,.15)':'var(--bg3)';
+  t.style.borderColor =esTodo?'rgba(200,240,96,.4)':'var(--border2)';
+  t.style.color       =esTodo?'var(--accent)':'var(--text2)';
+  p.style.background  =esTodo?'var(--bg3)':'rgba(200,240,96,.15)';
+  p.style.borderColor =esTodo?'var(--border2)':'rgba(200,240,96,.4)';
+  p.style.color       =esTodo?'var(--text2)':'var(--accent)';
+}
+
+function extActRestoRegalo() {
+  const extra  =parseMoney(document.getElementById('mov_extra_monto').value)||0;
+  const regalo =parseMoney(document.getElementById('ext_reg_monto').value)||0;
+  const resto  =extra-regalo;
+  const el=document.getElementById('ext_reg_resto_label');
+  if(!el) return;
+  if(resto>0)      {el.textContent=`Quedan ${fmt(resto)} para guardar`;el.style.color='var(--accent)';}
+  else if(resto<0) {el.textContent=`Supera el extra (${fmt(extra)})`;el.style.color='var(--red)';}
+  else             {el.textContent='Todo el extra regalado';el.style.color='var(--text3)';}
+}
 
 // Calcular total prestado para el resumen
 function totalPrestadoPendiente() {
@@ -7622,11 +7833,7 @@ function _initEventListeners() {
     document.getElementById('mov_monto').value = fmtInput(saldo);
   });
 
-  const btnPagoConExtra = document.getElementById('btn-pago-con-extra');
-  if (btnPagoConExtra) btnPagoConExtra.addEventListener('click', abrirPagoConExtra);
 
-  const btnConfPCE = document.getElementById('btn-confirmar-pce');
-  if (btnConfPCE) btnConfPCE.addEventListener('click', confirmarPagoConExtra);
 
   // --- Año mesada ---
   const btnAnioP = document.getElementById('btn-anio-prev');
@@ -10705,370 +10912,6 @@ async function eliminarCompraTC(tcId, compraId){
   closeSheet('detalle-tc');
   toast('Compra eliminada — deuda actualizada','ok');
 }
-
-// ── PAGO CON EXTRA — formulario unificado ─────────────────────────────────────
-let _pceSaldo      = 0;
-let _pceExtOpt     = '';     // 'guardar'|'regalar'|'gastar'|'pendiente'
-let _pceExtRegTodo = true;
-let _pceSplitMode  = false;  // split del pago de la deuda
-let _pceSplitRows  = [];
-let _pceExtSplitMode = false; // split del extra (guardar en múltiples cuentas)
-let _pceExtSplitRows = [];
-
-/* ── Abrir sheet ── */
-function abrirPagoConExtra() {
-  const d = (S.deudores || []).find(x => x.id === deudorActualId);
-  if (!d) return;
-  const saldo = getDeudorSaldo(d);
-  if (saldo <= 0) { toast('No hay saldo pendiente', 'info'); return; }
-  _pceSaldo = saldo;
-
-  // Reset estado
-  _pceExtOpt = '';
-  _pceExtRegTodo = true;
-  _pceSplitMode = false;
-  _pceSplitRows = [];
-  _pceExtSplitMode = false;
-  _pceExtSplitRows = [];
-
-  document.getElementById('pce_saldo_pendiente').textContent = fmt(saldo);
-  document.getElementById('pce_monto_recibido').value = fmtInput(saldo);
-  document.getElementById('pce_fecha').value = hoy();
-  document.getElementById('pce_nota').value = '';
-  document.getElementById('pce_preview').innerHTML = '<span style="color:var(--text3);">Pago exacto ✓</span>';
-  document.getElementById('pce_seccion_extra').style.display = 'none';
-
-  // Reset split deuda
-  document.getElementById('pce_destino_simple').style.display = '';
-  document.getElementById('pce_destino_split').style.display = 'none';
-  document.getElementById('pce_split_toggle').textContent = 'Dividir ÷';
-  document.getElementById('pce_split_rows').innerHTML = '';
-  document.getElementById('pce_split_resumen').textContent = '';
-  poblarFuente('pce_destino_pago');
-
-  // Reset ext opciones
-  ['guardar','regalar','gastar','pendiente'].forEach(o => pceExtDeselect(o));
-
-  // Reset extra split
-  document.getElementById('pce_ext_guardar_simple').style.display = '';
-  document.getElementById('pce_ext_guardar_split').style.display = 'none';
-  document.getElementById('pce_ext_split_toggle').textContent = 'Dividir ÷';
-  document.getElementById('pce_ext_split_rows').innerHTML = '';
-  document.getElementById('pce_ext_split_resumen').textContent = '';
-  poblarFuente('pce_ext_cuenta');
-  poblarFuente('pce_ext_reg_resto_cuenta');
-
-  // Botón "Devolver al origen" — buscar de dónde salió el último préstamo
-  pceSetOrigenBtn(d);
-
-  // Mostrar saldo de cuenta destino al cambiar
-  document.getElementById('pce_destino_pago').onchange = pceActualizarDestinoSaldo;
-
-  // Preview en tiempo real
-  document.getElementById('pce_monto_recibido').oninput = pceActualizarPreview;
-  pceActualizarPreview();
-
-  openSheet('pago-con-extra');
-}
-
-function pceActualizarDestinoSaldo() {
-  const sel = document.getElementById('pce_destino_pago');
-  const el  = document.getElementById('pce_destino_saldo');
-  if (!sel || !el) return;
-  const val = sel.value;
-  el.textContent = val ? 'Saldo actual: ' + fmt(getSaldoFuente(val)) : '';
-}
-
-function pceSetOrigenBtn(d) {
-  // Buscar fuentes del último préstamo
-  const prests = (d.movimientos || []).filter(m => m.tipo === 'prestamo');
-  if (!prests.length) { document.getElementById('pce_btn_origen').style.display = 'none'; document.getElementById('pce_origen_tags').innerHTML = ''; return; }
-  const ultimo = prests[prests.length - 1];
-  const fuentes = ultimo.fuentes ? ultimo.fuentes : (ultimo.fuente ? [{ fuente: ultimo.fuente, monto: ultimo.monto }] : []);
-  const tags = document.getElementById('pce_origen_tags');
-  if (!fuentes.length || !fuentes[0].fuente) {
-    document.getElementById('pce_btn_origen').style.display = 'none';
-    tags.innerHTML = '';
-    return;
-  }
-  document.getElementById('pce_btn_origen').style.display = '';
-  tags.innerHTML = fuentes.map(f =>
-    `<span class="badge ${fuenteBadgeClass(f.fuente)}" style="font-size:9px;">${fuenteLabel(f.fuente)}${fuentes.length > 1 ? ' ' + fmt(f.monto) : ''}</span>`
-  ).join('');
-  // Guardar las fuentes para usarlas al hacer clic
-  document.getElementById('pce_btn_origen').dataset.fuentes = JSON.stringify(fuentes);
-}
-
-function pceAplicarOrigen() {
-  const btn = document.getElementById('pce_btn_origen');
-  const fuentes = JSON.parse(btn.dataset.fuentes || '[]');
-  if (!fuentes.length) return;
-  if (fuentes.length === 1) {
-    // Simple
-    _pceSplitMode = false;
-    document.getElementById('pce_destino_simple').style.display = '';
-    document.getElementById('pce_destino_split').style.display = 'none';
-    document.getElementById('pce_destino_pago').value = fuentes[0].fuente;
-    pceActualizarDestinoSaldo();
-  } else {
-    // Split automático por las fuentes originales
-    _pceSplitMode = true;
-    _pceSplitRows = fuentes.map(f => ({ fuente: f.fuente, monto: f.monto }));
-    document.getElementById('pce_destino_simple').style.display = 'none';
-    document.getElementById('pce_destino_split').style.display = '';
-    document.getElementById('pce_split_toggle').textContent = 'Simplificar';
-    pceRenderSplitRows();
-  }
-  toast('Destinos del origen aplicados ↩', 'ok');
-}
-
-/* ── Toggle split destino de la deuda ── */
-function pceTglSplit() {
-  _pceSplitMode = !_pceSplitMode;
-  document.getElementById('pce_destino_simple').style.display = _pceSplitMode ? 'none' : '';
-  document.getElementById('pce_destino_split').style.display  = _pceSplitMode ? '' : 'none';
-  document.getElementById('pce_split_toggle').textContent = _pceSplitMode ? 'Simplificar' : 'Dividir ÷';
-  if (_pceSplitMode && !_pceSplitRows.length) pceAddSplitRow();
-}
-
-function pceAddSplitRow() {
-  const id = Date.now();
-  _pceSplitRows.push({ _id: id, fuente: '', monto: 0 });
-  pceRenderSplitRows();
-}
-
-function pceRenderSplitRows() {
-  const cont = document.getElementById('pce_split_rows');
-  const fuentes = getFuentesSinTC();
-  cont.innerHTML = _pceSplitRows.map((r, i) => `
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
-      <div class="select-wrap" style="flex:1;">
-        <select onchange="pceSplitRowFuente(${i},this.value)" style="padding:9px 30px 9px 10px;font-size:13px;">
-          <option value="">Sin especificar</option>
-          ${fuentes.map(f => `<option value="${f.val}" ${r.fuente===f.val?'selected':''}>${f.label}</option>`).join('')}
-        </select>
-      </div>
-      <input type="text" inputmode="decimal" value="${r.monto ? fmtInput(r.monto) : ''}" placeholder="0,00"
-        class="money-input" style="width:110px;padding:9px 10px;font-size:13px;"
-        oninput="pceSplitRowMonto(${i},this.value)">
-      <button type="button" onclick="pceSplitRowDel(${i})"
-        style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:28px;font-size:18px;line-height:1;">×</button>
-    </div>`).join('');
-  pceSplitResumen();
-}
-
-function pceSplitRowFuente(i, v) { _pceSplitRows[i].fuente = v; pceSplitResumen(); }
-function pceSplitRowMonto(i, v)  { _pceSplitRows[i].monto = parseMoney(v) || 0; pceSplitResumen(); }
-function pceSplitRowDel(i)       { _pceSplitRows.splice(i, 1); pceRenderSplitRows(); }
-
-function pceSplitResumen() {
-  const total = _pceSplitRows.reduce((a, r) => a + (r.monto || 0), 0);
-  const diff  = _pceSaldo - total;
-  const el    = document.getElementById('pce_split_resumen');
-  if (!el) return;
-  if (Math.abs(diff) < 1) { el.innerHTML = `<span style="color:var(--accent);">✓ Suma exacta ${fmt(total)}</span>`; }
-  else if (diff > 0)      { el.innerHTML = `<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`; }
-  else                    { el.innerHTML = `<span style="color:var(--red);">Excede la deuda en ${fmt(-diff)}</span>`; }
-}
-
-/* ── Preview en tiempo real ── */
-function pceActualizarPreview() {
-  const recibido = parseMoney(document.getElementById('pce_monto_recibido').value) || 0;
-  const extra = recibido - _pceSaldo;
-  const prev  = document.getElementById('pce_preview');
-  const secExtra = document.getElementById('pce_seccion_extra');
-
-  if (extra > 1) {
-    prev.innerHTML = `<span style="color:var(--accent);">+${fmt(extra)} extra recibido</span> <span style="color:var(--text3);">por encima de la deuda</span>`;
-    secExtra.style.display = '';
-    document.getElementById('pce_extra_titulo').textContent = fmt(extra);
-    // Actualizar resúmenes de split del extra
-    pceExtSplitResumen();
-    pceExtActRestoRegalo();
-  } else if (extra < -1) {
-    prev.innerHTML = `<span style="color:var(--amber);">Pago parcial — quedan ${fmt(-extra)} pendientes</span>`;
-    secExtra.style.display = 'none';
-  } else {
-    prev.innerHTML = `<span style="color:var(--text3);">Pago exacto ✓</span>`;
-    secExtra.style.display = 'none';
-  }
-}
-
-/* ── Opciones del extra ── */
-function pceExtDeselect(o) {
-  const card = document.getElementById('pce_ext_opt_' + o);
-  const body = document.getElementById('pce_ext_' + o + '_body');
-  const chk  = document.getElementById('pce_ext_chk_' + o);
-  if (card) { card.style.borderColor = 'var(--border2)'; card.style.background = 'var(--bg3)'; }
-  if (body) body.style.display = 'none';
-  if (chk)  chk.style.display = 'none';
-}
-
-function pceSelExt(opt) {
-  ['guardar','regalar','gastar','pendiente'].forEach(o => pceExtDeselect(o));
-  _pceExtOpt = opt;
-  const card = document.getElementById('pce_ext_opt_' + opt);
-  const body = document.getElementById('pce_ext_' + opt + '_body');
-  const chk  = document.getElementById('pce_ext_chk_' + opt);
-  if (card) { card.style.borderColor = 'var(--accent)'; card.style.background = 'rgba(200,240,96,.04)'; }
-  if (body) body.style.display = '';
-  if (chk)  chk.style.display = '';
-}
-
-/* ── Split del extra (guardar en varias cuentas) ── */
-function pceExtTglSplit() {
-  _pceExtSplitMode = !_pceExtSplitMode;
-  document.getElementById('pce_ext_guardar_simple').style.display = _pceExtSplitMode ? 'none' : '';
-  document.getElementById('pce_ext_guardar_split').style.display  = _pceExtSplitMode ? '' : 'none';
-  document.getElementById('pce_ext_split_toggle').textContent = _pceExtSplitMode ? 'Simplificar' : 'Dividir ÷';
-  if (_pceExtSplitMode && !_pceExtSplitRows.length) pceExtAddSplit();
-}
-
-function pceExtAddSplit() {
-  _pceExtSplitRows.push({ fuente: '', monto: 0 });
-  pceExtRenderSplit();
-}
-
-function pceExtRenderSplit() {
-  const cont = document.getElementById('pce_ext_split_rows');
-  const fuentes = getFuentesSinTC();
-  const extra = (parseMoney(document.getElementById('pce_monto_recibido').value) || 0) - _pceSaldo;
-  cont.innerHTML = _pceExtSplitRows.map((r, i) => `
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
-      <div class="select-wrap" style="flex:1;">
-        <select onchange="pceExtSplitFuente(${i},this.value)" onclick="event.stopPropagation()" style="padding:8px 28px 8px 10px;font-size:12px;">
-          <option value="">Sin especificar</option>
-          ${fuentes.map(f => `<option value="${f.val}" ${r.fuente===f.val?'selected':''}>${f.label}</option>`).join('')}
-        </select>
-      </div>
-      <input type="text" inputmode="decimal" value="${r.monto ? fmtInput(r.monto) : ''}" placeholder="0,00"
-        class="money-input" style="width:100px;padding:8px 9px;font-size:12px;"
-        oninput="pceExtSplitMonto(${i},this.value)" onclick="event.stopPropagation()">
-      <button type="button" onclick="event.stopPropagation();pceExtSplitDel(${i})"
-        style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:24px;font-size:16px;line-height:1;">×</button>
-    </div>`).join('');
-  pceExtSplitResumen();
-}
-
-function pceExtSplitFuente(i, v) { _pceExtSplitRows[i].fuente = v; pceExtSplitResumen(); }
-function pceExtSplitMonto(i, v)  { _pceExtSplitRows[i].monto = parseMoney(v) || 0; pceExtSplitResumen(); }
-function pceExtSplitDel(i)       { _pceExtSplitRows.splice(i, 1); pceExtRenderSplit(); }
-
-function pceExtSplitResumen() {
-  const extra = (parseMoney(document.getElementById('pce_monto_recibido').value) || 0) - _pceSaldo;
-  const total = _pceExtSplitRows.reduce((a, r) => a + (r.monto || 0), 0);
-  const diff  = extra - total;
-  const el    = document.getElementById('pce_ext_split_resumen');
-  if (!el) return;
-  if (Math.abs(diff) < 1) { el.innerHTML = `<span style="color:var(--accent);">✓ ${fmt(total)}</span>`; }
-  else if (diff > 0)      { el.innerHTML = `<span style="color:var(--amber);">Faltan ${fmt(diff)}</span>`; }
-  else                    { el.innerHTML = `<span style="color:var(--red);">Excede en ${fmt(-diff)}</span>`; }
-}
-
-/* ── Toggle todo/parte del regalo ── */
-function pceExtRegTodo(esTodo) {
-  _pceExtRegTodo = esTodo;
-  document.getElementById('pce_ext_reg_parcial_wrap').style.display = esTodo ? 'none' : '';
-  const tonBtn = document.getElementById('pce_ext_reg_todo_btn');
-  const parBtn = document.getElementById('pce_ext_reg_parcial_btn');
-  tonBtn.style.background   = esTodo ? 'rgba(200,240,96,.15)' : 'var(--bg3)';
-  tonBtn.style.borderColor  = esTodo ? 'rgba(200,240,96,.4)'  : 'var(--border2)';
-  tonBtn.style.color        = esTodo ? 'var(--accent)'        : 'var(--text2)';
-  parBtn.style.background   = esTodo ? 'var(--bg3)'  : 'rgba(200,240,96,.15)';
-  parBtn.style.borderColor  = esTodo ? 'var(--border2)' : 'rgba(200,240,96,.4)';
-  parBtn.style.color        = esTodo ? 'var(--text2)' : 'var(--accent)';
-}
-
-function pceExtActRestoRegalo() {
-  const extra   = (parseMoney(document.getElementById('pce_monto_recibido').value) || 0) - _pceSaldo;
-  const regalo  = parseMoney(document.getElementById('pce_ext_reg_monto').value) || 0;
-  const resto   = extra - regalo;
-  const el      = document.getElementById('pce_ext_reg_resto_label');
-  if (!el) return;
-  if (resto > 0)       { el.textContent = `Quedan ${fmt(resto)} para guardar`; el.style.color = 'var(--accent)'; }
-  else if (resto < 0)  { el.textContent = `El monto supera el extra (${fmt(extra)})`; el.style.color = 'var(--red)'; }
-  else                 { el.textContent = 'Todo el extra regalado'; el.style.color = 'var(--text3)'; }
-}
-
-/* ── Confirmar todo ── */
-function confirmarPagoConExtra() {
-  const d = (S.deudores || []).find(x => x.id === deudorActualId);
-  if (!d) return;
-  const recibido = parseMoney(document.getElementById('pce_monto_recibido').value) || 0;
-  if (!recibido) { toast('Ingresa el monto recibido', 'err'); return; }
-
-  const fecha = document.getElementById('pce_fecha').value || hoy();
-  const nota  = document.getElementById('pce_nota').value.trim();
-  const extra = recibido - _pceSaldo;
-
-  // ── 1. Registrar el abono por la DEUDA ──
-  if (_pceSplitMode) {
-    const totalSplit = _pceSplitRows.reduce((a, r) => a + (r.monto || 0), 0);
-    if (Math.abs(totalSplit - _pceSaldo) > 1) {
-      toast(`La suma de cuentas (${fmt(totalSplit)}) no coincide con la deuda (${fmt(_pceSaldo)})`, 'err', 4000);
-      return;
-    }
-    const fuentes = _pceSplitRows.filter(r => r.monto > 0);
-    d.movimientos.push({ id: uid(), tipo: 'abono', monto: _pceSaldo, fecha, destinos: fuentes.map(r => ({ fuente: r.fuente, monto: r.monto })), nota: nota || 'Pago total', ts: Date.now() });
-    fuentes.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto); });
-  } else {
-    const destino = document.getElementById('pce_destino_pago').value;
-    d.movimientos.push({ id: uid(), tipo: 'abono', monto: _pceSaldo, fecha, destino, nota: nota || 'Pago total', ts: Date.now() });
-    if (destino) sumarFuente(destino, _pceSaldo);
-  }
-
-  // ── 2. Manejar el extra (si lo hay) ──
-  if (extra > 1) {
-    if (!_pceExtOpt) { toast('Elige qué hiciste con el extra', 'err'); return; }
-
-    if (_pceExtOpt === 'guardar') {
-      if (_pceExtSplitMode) {
-        const totalExtSplit = _pceExtSplitRows.reduce((a, r) => a + (r.monto || 0), 0);
-        if (Math.abs(totalExtSplit - extra) > 1) {
-          toast(`La suma del extra (${fmt(totalExtSplit)}) no coincide con ${fmt(extra)}`, 'err', 4000);
-          return;
-        }
-        _pceExtSplitRows.filter(r => r.monto > 0).forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto); });
-      } else {
-        const cuenta = document.getElementById('pce_ext_cuenta').value;
-        if (cuenta) sumarFuente(cuenta, extra);
-      }
-
-    } else if (_pceExtOpt === 'regalar') {
-      if (_pceExtRegTodo) {
-        // No entra a ninguna cuenta — solo log
-      } else {
-        const montoRegalo = parseMoney(document.getElementById('pce_ext_reg_monto').value) || 0;
-        if (montoRegalo > extra + 1) { toast('El monto regalado supera el extra', 'err'); return; }
-        const resto = extra - montoRegalo;
-        if (resto > 0) {
-          const cResto = document.getElementById('pce_ext_reg_resto_cuenta').value;
-          if (cResto) sumarFuente(cResto, resto);
-        }
-      }
-
-    } else if (_pceExtOpt === 'gastar') {
-      const desc = document.getElementById('pce_ext_gastar_desc').value.trim();
-      if (!S.gastosVar) S.gastosVar = [];
-      S.gastosVar.push({ id: uid(), monto: extra, fecha, cat: 'Varios', desc: desc || 'Extra del pago de préstamo', fuente: '', ts: Date.now(), _esExtraPrestamo: true });
-
-    } else if (_pceExtOpt === 'pendiente') {
-      if (!S.ingresosExtra) S.ingresosExtra = [];
-      S.ingresosExtra.push({ id: uid(), monto: extra, fecha, nota: 'Extra sin asignar — pago de préstamo', ts: Date.now() });
-    }
-  }
-
-  save(); refresh(); closeSheet('pago-con-extra');
-  abrirDeudor(deudorActualId);
-
-  const partes = [`Deuda de ${fmt(_pceSaldo)} pagada`];
-  if (extra > 1) {
-    const labels = { guardar: 'extra guardado', regalar: 'extra regalado', gastar: 'extra como gasto', pendiente: 'extra sin asignar' };
-    partes.push(`${fmt(extra)} ${labels[_pceExtOpt] || ''}`);
-  }
-  toast(partes.join(' · ') + ' ✓', 'ok');
-}
-
 // ── Navegar a pantalla TC ────────────────────────────────────
 function navTo(screen){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));

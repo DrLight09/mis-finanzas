@@ -2521,102 +2521,21 @@ input.movs-search-input:focus{border-color:var(--accent);}
           <div id="mov_extra_body" style="display:none;">
             <div class="ig">
               <label class="il" for="mov_extra_monto">¿Cuánto de extra?</label>
-              <input type="text" inputmode="decimal" id="mov_extra_monto" placeholder="0,00" class="money-input">
+              <input type="text" inputmode="decimal" id="mov_extra_monto" placeholder="0,00" class="money-input" oninput="extResumenPartes()">
             </div>
 
-            <!-- Qué hizo con el extra -->
-            <label class="il" style="font-size:10px;margin-bottom:6px;">¿Qué hiciste con ese extra?</label>
-            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:4px;">
-
-              <!-- Guardar en cuenta -->
-              <div id="ext_opt_guardar" onclick="selAbonoExt('guardar')"
-                style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
-                <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;">
-                  <span style="font-size:16px;">💰</span>
-                  <div style="flex:1;font-size:13px;font-weight:600;">Lo guardé en una cuenta</div>
-                  <svg id="ext_chk_guardar" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-                <div id="ext_body_guardar" style="display:none;padding:0 12px 12px;">
-                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-                    <label class="il" style="margin:0;font-size:10px;">¿A dónde?</label>
-                    <button type="button" id="ext_split_toggle" onclick="event.stopPropagation();toggleExtSplit()"
-                      style="font-size:9px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:5px;padding:2px 7px;cursor:pointer;">Dividir ÷</button>
-                  </div>
-                  <div id="ext_guardar_simple">
-                    <div class="select-wrap"><select id="ext_cuenta" onclick="event.stopPropagation()"><option value>Sin especificar</option></select></div>
-                  </div>
-                  <div id="ext_guardar_split" style="display:none;">
-                    <div id="ext_split_rows"></div>
-                    <button type="button" onclick="event.stopPropagation();extAddSplitRow()"
-                      style="width:100%;padding:6px;border-radius:6px;background:var(--bg4);border:1px dashed var(--border2);color:var(--text2);font-size:11px;cursor:pointer;margin-bottom:3px;">+ Agregar cuenta</button>
-                    <div id="ext_split_resumen" style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);min-height:12px;"></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Regalé -->
-              <div id="ext_opt_regalar" onclick="selAbonoExt('regalar')"
-                style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
-                <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;">
-                  <span style="font-size:16px;">🤝</span>
-                  <div style="flex:1;font-size:13px;font-weight:600;">Lo regalé / lo di a alguien</div>
-                  <svg id="ext_chk_regalar" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-                <div id="ext_body_regalar" style="display:none;padding:0 12px 12px;">
-                  <div class="ig" style="margin-bottom:7px;">
-                    <label class="il" style="font-size:10px;">¿A quién? (opcional)</label>
-                    <input type="text" id="ext_regalar_quien" placeholder="Ej: a mi papá…" onclick="event.stopPropagation()">
-                  </div>
-                  <label class="il" style="font-size:10px;">¿Regalaste todo o solo una parte?</label>
-                  <div style="display:flex;gap:6px;margin-top:4px;margin-bottom:7px;">
-                    <button type="button" id="ext_reg_todo_btn" onclick="event.stopPropagation();extRegTodo(true)"
-                      style="flex:1;padding:7px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.15);border:1.5px solid rgba(200,240,96,.4);color:var(--accent);">Todo</button>
-                    <button type="button" id="ext_reg_parcial_btn" onclick="event.stopPropagation();extRegTodo(false)"
-                      style="flex:1;padding:7px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text2);">Solo parte</button>
-                  </div>
-                  <div id="ext_reg_parcial_wrap" style="display:none;">
-                    <div class="ig" style="margin-bottom:5px;">
-                      <label class="il" style="font-size:10px;">¿Cuánto regalaste?</label>
-                      <input type="text" inputmode="decimal" id="ext_reg_monto" placeholder="0,00" class="money-input" onclick="event.stopPropagation()" oninput="extActRestoRegalo()">
-                    </div>
-                    <div id="ext_reg_resto_label" style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:5px;min-height:13px;"></div>
-                    <div class="ig">
-                      <label class="il" style="font-size:10px;">El resto lo guardé en</label>
-                      <div class="select-wrap"><select id="ext_reg_resto_cuenta" onclick="event.stopPropagation()"><option value>Sin especificar</option></select></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Lo gasté -->
-              <div id="ext_opt_gastar" onclick="selAbonoExt('gastar')"
-                style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
-                <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;">
-                  <span style="font-size:16px;">🛍️</span>
-                  <div style="flex:1;font-size:13px;font-weight:600;">Lo gasté en el momento</div>
-                  <svg id="ext_chk_gastar" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-                <div id="ext_body_gastar" style="display:none;padding:0 12px 12px;">
-                  <div class="ig" style="margin-bottom:0;">
-                    <label class="il" style="font-size:10px;">¿En qué? (opcional)</label>
-                    <input type="text" id="ext_gastar_desc" placeholder="Ej: comida, transporte…" onclick="event.stopPropagation()">
-                  </div>
-                </div>
-              </div>
-
-              <!-- Aún no decidí -->
-              <div id="ext_opt_pendiente" onclick="selAbonoExt('pendiente')"
-                style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;transition:all .15s;">
-                <div style="display:flex;align-items:center;gap:9px;padding:10px 12px;">
-                  <span style="font-size:16px;">⏳</span>
-                  <div style="flex:1;">
-                    <div style="font-size:13px;font-weight:600;">Aún no lo decidí</div>
-                    <div style="font-size:11px;color:var(--text3);margin-top:1px;">Queda como ingreso sin asignar</div>
-                  </div>
-                  <svg id="ext_chk_pendiente" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
-                </div>
-              </div>
-            </div>
+            <!-- Qué hizo con el extra — sistema de partes libres -->
+            <label class="il" style="font-size:10px;margin-bottom:8px;">¿Qué hiciste con ese extra? Puedes dividirlo como quieras.</label>
+            <!-- Lista de partes -->
+            <div id="ext_partes_list" style="display:flex;flex-direction:column;gap:7px;margin-bottom:6px;"></div>
+            <!-- Botón agregar parte -->
+            <button type="button" id="btn_ext_add_parte" onclick="extAddParte()"
+              style="width:100%;padding:9px;border-radius:8px;background:var(--bg3);border:1.5px dashed var(--border2);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'DM Sans',sans-serif;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Agregar parte
+            </button>
+            <!-- Resumen -->
+            <div id="ext_partes_resumen" style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);min-height:14px;margin-top:5px;"></div>
           </div>
         </div>
         <div class="ig"><label class="il" for="mov_nota">Nota
@@ -5801,8 +5720,7 @@ function initMovSheet(tipo) {
   movTipo = tipo;
   poblarFuente('mov_fuente');
   poblarFuente('mov_destino');
-  poblarFuente('ext_cuenta');
-  poblarFuente('ext_reg_resto_cuenta');
+  // ext selects se pueblan dinámicamente en extRenderPartes()
   document.getElementById('movSheetTitle').textContent = tipo === 'prestamo' ? 'Nuevo préstamo' : 'Registrar abono';
   document.getElementById('movBtnConfirm').textContent = tipo === 'prestamo' ? 'Guardar préstamo' : 'Guardar abono';
   document.getElementById('movBtnConfirm').style.background = tipo === 'prestamo' ? 'var(--accent)' : 'rgba(200,240,96,.2)';
@@ -5837,20 +5755,17 @@ function initMovSheet(tipo) {
   document.getElementById('mov_dest_split_resumen').textContent = '';
   document.getElementById('mov_btn_origen').style.display = 'none';
   document.getElementById('mov_origen_tags').innerHTML = '';
-  // Reset extra
-  _abonoExtOpt = '';
-  _abonoExtRegTodo = true;
-  _abonoExtSplitMode = false;
-  _abonoExtSplitRows = [];
+  // Reset extra (sistema de partes libres)
+  _extPartes = [];
   document.getElementById('mov_tiene_extra').checked = false;
   document.getElementById('mov_extra_body').style.display = 'none';
   document.getElementById('mov_extra_monto').value = '';
-  ['guardar','regalar','gastar','pendiente'].forEach(o => extDeselect(o));
-  document.getElementById('ext_guardar_simple').style.display = '';
-  document.getElementById('ext_guardar_split').style.display = 'none';
-  document.getElementById('ext_split_toggle').textContent = 'Dividir ÷';
-  document.getElementById('ext_split_rows').innerHTML = '';
-  extRegTodo(true);
+  const extList = document.getElementById('ext_partes_list');
+  if (extList) extList.innerHTML = '';
+  const extRes = document.getElementById('ext_partes_resumen');
+  if (extRes) extRes.innerHTML = '';
+  // compat vars
+  _abonoExtOpt = ''; _abonoExtRegTodo = true; _abonoExtSplitMode = false; _abonoExtSplitRows = [];
   // Si es "Pagar todo" precargamos el botón devolver al origen
   if (tipo === 'abono') {
     const d = (S.deudores || []).find(x => x.id === deudorActualId);
@@ -5900,45 +5815,29 @@ function confirmarMovimiento() {
       sumarFuente(destino, monto);
     }
 
-    // 2. Manejar el extra si aplica
+    // 2. Manejar el extra si aplica (sistema de partes libres)
     if (document.getElementById('mov_tiene_extra').checked) {
-      if (!_abonoExtOpt) { toast('Elige qué hiciste con el extra', 'err'); return; }
       const extra = parseMoney(document.getElementById('mov_extra_monto').value) || 0;
       if (!extra) { toast('Ingresa el monto del extra', 'err'); return; }
-
-      if (_abonoExtOpt === 'guardar') {
-        if (_abonoExtSplitMode) {
-          const totalExtSplit = _abonoExtSplitRows.reduce((a,r)=>a+(r.monto||0),0);
-          if(Math.abs(totalExtSplit - extra) > 1){
-            toast(`La suma del extra (${fmt(totalExtSplit)}) no coincide con ${fmt(extra)}`,'err',4000);
-            return;
-          }
-          _abonoExtSplitRows.filter(r=>r.monto>0).forEach(r=>{ if(r.fuente) sumarFuente(r.fuente, r.monto); });
-        } else {
-          const cuenta = document.getElementById('ext_cuenta').value;
-          if (cuenta) sumarFuente(cuenta, extra);
+      if (!_extPartes.length) { toast('Agrega al menos una parte para el extra', 'err'); return; }
+      const totalPartes = _extPartes.reduce((a,p)=>a+(p.monto||0),0);
+      if (Math.abs(totalPartes - extra) > 1) {
+        toast(`Las partes suman ${fmt(totalPartes)} pero el extra es ${fmt(extra)}`, 'err', 4000);
+        return;
+      }
+      for (const p of _extPartes) {
+        if (!p.monto || p.monto <= 0) continue;
+        if (p.tipo === 'guardar') {
+          if (p.cuenta) sumarFuente(p.cuenta, p.monto);
+        } else if (p.tipo === 'gastar') {
+          if (!S.gastosVar) S.gastosVar = [];
+          S.gastosVar.push({ id: uid(), monto: p.monto, fecha, cat: 'Varios', desc: p.desc || 'Extra del pago de préstamo', fuente: '', ts: Date.now(), _esExtraPrestamo: true });
+        } else if (p.tipo === 'regalar') {
+          // no modifica cuentas
+        } else if (p.tipo === 'pendiente') {
+          if (!S.ingresosExtra) S.ingresosExtra = [];
+          S.ingresosExtra.push({ id: uid(), monto: p.monto, fecha, nota: 'Extra sin asignar — pago de préstamo', ts: Date.now() });
         }
-
-      } else if (_abonoExtOpt === 'regalar') {
-        if (!_abonoExtRegTodo) {
-          const montoRegalo = parseMoney(document.getElementById('ext_reg_monto').value) || 0;
-          if (montoRegalo > extra + 1) { toast('El monto regalado supera el extra', 'err'); return; }
-          const resto = extra - montoRegalo;
-          if (resto > 0) {
-            const cResto = document.getElementById('ext_reg_resto_cuenta').value;
-            if (cResto) sumarFuente(cResto, resto);
-          }
-        }
-        // si _abonoExtRegTodo = true, no entra a ninguna cuenta
-
-      } else if (_abonoExtOpt === 'gastar') {
-        const desc = document.getElementById('ext_gastar_desc').value.trim();
-        if (!S.gastosVar) S.gastosVar = [];
-        S.gastosVar.push({ id: uid(), monto: extra, fecha, cat: 'Varios', desc: desc || 'Extra del pago de préstamo', fuente: '', ts: Date.now(), _esExtraPrestamo: true });
-
-      } else if (_abonoExtOpt === 'pendiente') {
-        if (!S.ingresosExtra) S.ingresosExtra = [];
-        S.ingresosExtra.push({ id: uid(), monto: extra, fecha, nota: 'Extra sin asignar — pago de préstamo', ts: Date.now() });
       }
     }
   }
@@ -5956,6 +5855,7 @@ let _abonoExtOpt       = '';
 let _abonoExtRegTodo   = true;
 let _abonoExtSplitMode = false;
 let _abonoExtSplitRows = [];
+let _extPartes         = []; // sistema de partes libres del extra
 
 /* Split del destino del abono */
 function toggleAbonoSplit() {
@@ -6043,103 +5943,119 @@ function abonoAplicarOrigen() {
 function toggleExtraSection() {
   const checked = document.getElementById('mov_tiene_extra').checked;
   document.getElementById('mov_extra_body').style.display = checked?'':'none';
+  if (checked && !_extPartes.length) extAddParte();
 }
 
-/* Opciones del extra */
-function extDeselect(o) {
-  const card=document.getElementById('ext_opt_'+o);
-  const body=document.getElementById('ext_body_'+o);
-  const chk=document.getElementById('ext_chk_'+o);
-  if(card){card.style.borderColor='var(--border2)';card.style.background='var(--bg3)';}
-  if(body) body.style.display='none';
-  if(chk)  chk.style.display='none';
+/* ── Sistema de partes libres para el extra ──────────────────────── */
+// Cada parte: { tipo: 'guardar'|'gastar'|'regalar'|'pendiente', monto: 0, cuenta: '', desc: '', quien: '' }
+// _extPartes declarado globalmente arriba junto a _abonoSplitMode etc.
+
+const _extTipos = {
+  guardar:   { label: 'Lo guardé en cuenta', color: 'var(--blue)',
+    icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>' },
+  gastar:    { label: 'Lo gasté',             color: 'var(--amber)',
+    icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>' },
+  regalar:   { label: 'Lo regalé / lo di',   color: 'var(--purple)',
+    icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>' },
+  pendiente: { label: 'Sin decidir aún',      color: 'var(--text2)',
+    icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
+};
+
+function extAddParte() {
+  _extPartes.push({ tipo: 'guardar', monto: 0, cuenta: '', desc: '', quien: '' });
+  extRenderPartes();
+  extResumenPartes();
 }
 
-function selAbonoExt(opt) {
-  ['guardar','regalar','gastar','pendiente'].forEach(o=>extDeselect(o));
-  _abonoExtOpt=opt;
-  const card=document.getElementById('ext_opt_'+opt);
-  const body=document.getElementById('ext_body_'+opt);
-  const chk=document.getElementById('ext_chk_'+opt);
-  if(card){card.style.borderColor='var(--accent)';card.style.background='rgba(200,240,96,.04)';}
-  if(body) body.style.display='';
-  if(chk)  chk.style.display='';
+function extDelParte(i) {
+  _extPartes.splice(i, 1);
+  extRenderPartes();
+  extResumenPartes();
 }
 
-/* Split del extra */
-function toggleExtSplit() {
-  _abonoExtSplitMode=!_abonoExtSplitMode;
-  document.getElementById('ext_guardar_simple').style.display=_abonoExtSplitMode?'none':'';
-  document.getElementById('ext_guardar_split').style.display=_abonoExtSplitMode?'':'none';
-  document.getElementById('ext_split_toggle').textContent=_abonoExtSplitMode?'Una sola cuenta':'Dividir ÷';
-  if(_abonoExtSplitMode&&!_abonoExtSplitRows.length) extAddSplitRow();
+function extSetTipo(i, tipo) {
+  _extPartes[i].tipo = tipo;
+  extRenderPartes();
+  extResumenPartes();
 }
 
-function extAddSplitRow() {
-  _abonoExtSplitRows.push({fuente:'',monto:0});
-  extRenderSplit();
-}
+function extSetMonto(i, v) { _extPartes[i].monto = parseMoney(v)||0; extResumenPartes(); }
+function extSetCuenta(i, v) { _extPartes[i].cuenta = v; }
+function extSetDesc(i, v)   { _extPartes[i].desc = v; }
+function extSetQuien(i, v)  { _extPartes[i].quien = v; }
 
-function extRenderSplit() {
-  const cont=document.getElementById('ext_split_rows');
-  const fuentes=getFuentesSinTC();
-  const extra=parseMoney(document.getElementById('mov_extra_monto').value)||0;
-  cont.innerHTML=_abonoExtSplitRows.map((r,i)=>`
-    <div style="display:flex;gap:5px;align-items:center;margin-bottom:5px;">
-      <div class="select-wrap" style="flex:1;">
-        <select onchange="extSplitFuente(${i},this.value)" onclick="event.stopPropagation()" style="padding:8px 26px 8px 9px;font-size:12px;">
-          <option value="">Sin especificar</option>
-          ${fuentes.map(f=>`<option value="${f.val}" ${r.fuente===f.val?'selected':''}>${f.label}</option>`).join('')}
+function extRenderPartes() {
+  const cont = document.getElementById('ext_partes_list');
+  if (!cont) return;
+  const fuentes = getFuentesSinTC();
+  cont.innerHTML = _extPartes.map((p, i) => {
+    const tipoInfo = _extTipos[p.tipo] || _extTipos.guardar;
+    const extraDetails = p.tipo === 'guardar' ? `
+      <div class="select-wrap" style="margin-top:7px;">
+        <select onchange="extSetCuenta(${i},this.value)" onclick="event.stopPropagation()" style="font-size:12px;padding:7px 26px 7px 9px;">
+          <option value="">¿A cuál cuenta?</option>
+          ${fuentes.map(f=>`<option value="${f.val}" ${p.cuenta===f.val?'selected':''}>${f.label}</option>`).join('')}
         </select>
+      </div>` :
+    p.tipo === 'gastar' ? `
+      <input type="text" value="${p.desc||''}" placeholder="¿En qué? (opcional)" onclick="event.stopPropagation()"
+        oninput="extSetDesc(${i},this.value)"
+        style="margin-top:7px;width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:inherit;">` :
+    p.tipo === 'regalar' ? `
+      <input type="text" value="${p.quien||''}" placeholder="¿A quién? (opcional)" onclick="event.stopPropagation()"
+        oninput="extSetQuien(${i},this.value)"
+        style="margin-top:7px;width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:inherit;">` : '';
+
+    return `<div style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);padding:10px 11px;position:relative;">
+      <!-- Fila principal: tipo + monto + borrar -->
+      <div style="display:flex;align-items:center;gap:7px;">
+        <!-- Selector de tipo -->
+        <div style="position:relative;flex:1;">
+          <select onchange="extSetTipo(${i},this.value)" onclick="event.stopPropagation()"
+            style="width:100%;appearance:none;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 28px 7px 32px;font-size:12px;font-weight:600;color:${tipoInfo.color};font-family:inherit;cursor:pointer;">
+            ${Object.entries(_extTipos).map(([k,v])=>`<option value="${k}" ${p.tipo===k?'selected':''}>${v.label}</option>`).join('')}
+          </select>
+          <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:${tipoInfo.color};">${tipoInfo.icon}</span>
+          <svg style="position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <!-- Monto -->
+        <input type="text" inputmode="decimal" value="${p.monto?fmtInput(p.monto):''}" placeholder="0,00"
+          class="money-input" onclick="event.stopPropagation()"
+          oninput="extSetMonto(${i},this.value)"
+          style="width:100px;padding:7px 9px;font-size:13px;flex-shrink:0;">
+        <!-- Borrar -->
+        <button type="button" onclick="event.stopPropagation();extDelParte(${i})"
+          style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:24px;min-height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" ${_extPartes.length<=1?'style="visibility:hidden;"':''}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
-      <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="0,00"
-        class="money-input" style="width:95px;padding:8px 9px;font-size:12px;"
-        oninput="extSplitMonto(${i},this.value)" onclick="event.stopPropagation()">
-      <button type="button" onclick="event.stopPropagation();extSplitDel(${i})"
-        style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:22px;font-size:16px;line-height:1;">×</button>
-    </div>`).join('');
-  extSplitResumen();
+      ${extraDetails}
+    </div>`;
+  }).join('');
 }
 
-function extSplitFuente(i,v){ _abonoExtSplitRows[i].fuente=v; extSplitResumen(); }
-function extSplitMonto(i,v) { _abonoExtSplitRows[i].monto=parseMoney(v)||0; extSplitResumen(); }
-function extSplitDel(i)     { _abonoExtSplitRows.splice(i,1); extRenderSplit(); }
-
-function extSplitResumen() {
-  const extra=parseMoney(document.getElementById('mov_extra_monto').value)||0;
-  const total=_abonoExtSplitRows.reduce((a,r)=>a+(r.monto||0),0);
-  const diff=extra-total;
-  const el=document.getElementById('ext_split_resumen');
-  if(!el) return;
-  if(Math.abs(diff)<1) el.innerHTML=`<span style="color:var(--accent);">✓ ${fmt(total)}</span>`;
-  else if(diff>0)      el.innerHTML=`<span style="color:var(--amber);">Faltan ${fmt(diff)}</span>`;
-  else                 el.innerHTML=`<span style="color:var(--red);">Excede en ${fmt(-diff)}</span>`;
+function extResumenPartes() {
+  const extra = parseMoney(document.getElementById('mov_extra_monto').value)||0;
+  const total = _extPartes.reduce((a,p)=>a+(p.monto||0),0);
+  const diff  = extra - total;
+  const el    = document.getElementById('ext_partes_resumen');
+  if (!el) return;
+  if (!extra) { el.innerHTML=''; return; }
+  if (Math.abs(diff)<1) el.innerHTML=`<span style="color:var(--accent);">Suma exacta — listo</span>`;
+  else if (diff>0)      el.innerHTML=`<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`;
+  else                  el.innerHTML=`<span style="color:var(--red);">Excede el extra en ${fmt(-diff)}</span>`;
 }
 
-/* Regalo parcial del extra */
-function extRegTodo(esTodo) {
-  _abonoExtRegTodo=esTodo;
-  document.getElementById('ext_reg_parcial_wrap').style.display=esTodo?'none':'';
-  const t=document.getElementById('ext_reg_todo_btn');
-  const p=document.getElementById('ext_reg_parcial_btn');
-  t.style.background  =esTodo?'rgba(200,240,96,.15)':'var(--bg3)';
-  t.style.borderColor =esTodo?'rgba(200,240,96,.4)':'var(--border2)';
-  t.style.color       =esTodo?'var(--accent)':'var(--text2)';
-  p.style.background  =esTodo?'var(--bg3)':'rgba(200,240,96,.15)';
-  p.style.borderColor =esTodo?'var(--border2)':'rgba(200,240,96,.4)';
-  p.style.color       =esTodo?'var(--text2)':'var(--accent)';
-}
-
-function extActRestoRegalo() {
-  const extra  =parseMoney(document.getElementById('mov_extra_monto').value)||0;
-  const regalo =parseMoney(document.getElementById('ext_reg_monto').value)||0;
-  const resto  =extra-regalo;
-  const el=document.getElementById('ext_reg_resto_label');
-  if(!el) return;
-  if(resto>0)      {el.textContent=`Quedan ${fmt(resto)} para guardar`;el.style.color='var(--accent)';}
-  else if(resto<0) {el.textContent=`Supera el extra (${fmt(extra)})`;el.style.color='var(--red)';}
-  else             {el.textContent='Todo el extra regalado';el.style.color='var(--text3)';}
-}
+/* Compatibilidad: funciones antiguas que pudo quedar referenciadas */
+function selAbonoExt(){}
+function toggleExtSplit(){}
+function extAddSplitRow(){}
+function extRegTodo(){}
+function extActRestoRegalo(){}
+function extSplitFuente(){}
+function extSplitMonto(){}
+function extSplitDel(){}
+function extDeselect(){}
 
 // Calcular total prestado para el resumen
 function totalPrestadoPendiente() {

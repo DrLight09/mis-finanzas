@@ -5825,18 +5825,41 @@ function confirmarMovimiento() {
         toast(`Las partes suman ${fmt(totalPartes)} pero el extra es ${fmt(extra)}`, 'err', 4000);
         return;
       }
+      const nombreDeudor = d ? d.nombre : 'préstamo';
       for (const p of _extPartes) {
         if (!p.monto || p.monto <= 0) continue;
         if (p.tipo === 'guardar') {
-          if (p.cuenta) sumarFuente(p.cuenta, p.monto);
+          if (!p.cuenta) continue;
+          // Sumar saldo
+          sumarFuente(p.cuenta, p.monto);
+          // Registrar movimiento visible en el historial de la cuenta
+          const descMovExtra = `Extra de abono — ${nombreDeudor}`;
+          if (p.cuenta === 'efectivo' || p.cuenta === 'nequi') {
+            if (!S.movimientos) S.movimientos = [];
+            S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra });
+          } else if (p.cuenta.startsWith('custom:')) {
+            const cId = p.cuenta.split(':')[1];
+            const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+            if (cObj) {
+              if (!cObj.movimientos) cObj.movimientos = [];
+              cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra });
+            }
+          } else if (p.cuenta.startsWith('cajita:')) {
+            const cId = p.cuenta.split(':')[1];
+            const cObj = (S.cajitas || []).find(x => x.id === cId);
+            if (cObj) {
+              if (!cObj.historial) cObj.historial = [];
+              cObj.historial.push({ id: uid(), tipo: 'entrada', monto: p.monto, fecha, nota: descMovExtra });
+            }
+          }
         } else if (p.tipo === 'gastar') {
           if (!S.gastosVar) S.gastosVar = [];
-          S.gastosVar.push({ id: uid(), monto: p.monto, fecha, cat: 'Varios', desc: p.desc || 'Extra del pago de préstamo', fuente: '', ts: Date.now(), _esExtraPrestamo: true });
+          S.gastosVar.push({ id: uid(), monto: p.monto, fecha, cat: 'Varios', desc: p.desc || `Extra de abono — ${nombreDeudor}`, fuente: '', ts: Date.now(), _esExtraPrestamo: true });
         } else if (p.tipo === 'regalar') {
-          // no modifica cuentas
+          // No entra a ninguna cuenta — solo queda registrado en el abono del deudor
         } else if (p.tipo === 'pendiente') {
           if (!S.ingresosExtra) S.ingresosExtra = [];
-          S.ingresosExtra.push({ id: uid(), monto: p.monto, fecha, nota: 'Extra sin asignar — pago de préstamo', ts: Date.now() });
+          S.ingresosExtra.push({ id: uid(), monto: p.monto, fecha, nota: `Extra sin asignar — ${nombreDeudor}`, ts: Date.now() });
         }
       }
     }
@@ -6895,8 +6918,21 @@ function getMovimientosCuenta(tipo) {
         : m.destino === tipo;
       if (m.tipo === 'prestamo' && matchFuente) {
         movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -m.monto, nota: m.nota, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente });
+        // Préstamo con fuentes split
+        if (m.fuentes) {
+          m.fuentes.forEach(f => {
+            const mfSplit = tipo === 'nu' ? (f.fuente && f.fuente.startsWith('cajita:')) : f.fuente === tipo;
+            if (mfSplit && f.monto) movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -f.monto, nota: m.nota, fuente: f.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: f.fuente });
+          });
+        }
       } else if (m.tipo === 'abono' && matchDestino) {
         movs.push({ tipo: 'abono', fecha: m.fecha, desc: 'Abono de ' + d.nombre, monto: +m.monto, nota: m.nota, fuente: m.destino, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.destino });
+      } else if (m.tipo === 'abono' && m.destinos) {
+        // Abono con destino dividido entre varias cuentas
+        m.destinos.forEach(dest => {
+          const matchDest2 = tipo === 'nu' ? (dest.fuente && dest.fuente.startsWith('cajita:')) : dest.fuente === tipo;
+          if (matchDest2 && dest.monto) movs.push({ tipo: 'abono', fecha: m.fecha, desc: 'Abono de ' + d.nombre, monto: +dest.monto, nota: m.nota, fuente: dest.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: dest.fuente });
+        });
       }
     });
   });

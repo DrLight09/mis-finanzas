@@ -5638,14 +5638,38 @@ function abrirDeudor(id) {
     let saldoAcum = saldo;
     histEl.innerHTML = movs.map(m => {
       const esPrestamo = m.tipo === 'prestamo';
+      // Destino info line
+      const arrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
+      let destinoInfo = '';
+      if (m.destinos && m.destinos.length) {
+        destinoInfo = ' ' + arrowSvg + ' ' + m.destinos.map(r => fuenteLabel(r.fuente) + ' ' + fmt(r.monto)).join(' + ');
+      } else if (m.destino) {
+        destinoInfo = ' ' + arrowSvg + ' ' + fuenteLabel(m.destino);
+      }
+      // Extra parts breakdown
+      let extraHtml = '';
+      if (!esPrestamo && m._extPartes && m._extPartes.length) {
+        const extraTotal = m._extPartes.reduce((a,p)=>a+(p.monto||0),0);
+        const partesTexto = m._extPartes.map(p => {
+          if (p.tipo === 'guardar') return `${fuenteLabel(p.cuenta)} ${fmt(p.monto)}`;
+          if (p.tipo === 'gastar') return `Gasto ${fmt(p.monto)}`;
+          if (p.tipo === 'regalar') return `Regalo ${fmt(p.monto)}`;
+          if (p.tipo === 'pendiente') return `Sin asignar ${fmt(p.monto)}`;
+          return '';
+        }).filter(Boolean).join(' · ');
+        extraHtml = `<div style="margin-top:5px;padding:5px 7px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--blue);">
+          Extra ${fmt(extraTotal)}: ${partesTexto}
+        </div>`;
+      }
       return `<div class="card card-sm" style="margin-bottom:7px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;">
-              <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : 'Abono'}</span>
+              <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : 'Pago'}</span>
               ${m.nota ? `<span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
             </div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m.fuentes ? ' · ' + m.fuentes.map(f=>fuenteLabel(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + fuenteLabel(m.fuente) : '')}${m.destino ? ' <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ' + fuenteLabel(m.destino) : ''}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m.fuentes ? ' · ' + m.fuentes.map(f=>fuenteLabel(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + fuenteLabel(m.fuente) : '')}${destinoInfo}</div>
+            ${extraHtml}
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esPrestamo ? 'var(--amber)' : 'var(--accent)'};">${esPrestamo ? '+' : '−'} ${fmt(m.monto)}</div>
@@ -5689,10 +5713,12 @@ async function eliminarMovDeudor(deudorId, movId) {
   const m = (d.movimientos || []).find(x => x.id === movId);
   if (!m) return;
   const esPrestamo = m.tipo === 'prestamo';
-  const label = esPrestamo ? 'préstamo' : 'abono';
+  const label = esPrestamo ? 'préstamo' : 'pago';
+  const tieneExtra = !esPrestamo && m._extPartes && m._extPartes.length > 0;
+  const extraAviso = tieneExtra ? ' El extra (cajitas, gastos, etc.) también se revertirá.' : '';
   const ok = await dialogo(
     'Eliminar ' + label,
-    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${esPrestamo ? 'la cuenta origen' : 'la cuenta destino'} se revertirá automáticamente.`,
+    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${esPrestamo ? 'la cuenta origen' : 'la cuenta destino'} se revertirá automáticamente.${extraAviso}`,
     'Eliminar', true
   );
   if (!ok) return;
@@ -5707,7 +5733,39 @@ async function eliminarMovDeudor(deudorId, movId) {
     }
   } else {
     // Era un abono: plata entró al destino → quitar
-    if (m.destino) descontarFuente(m.destino, m.monto);
+    if (m.destinos && m.destinos.length) {
+      m.destinos.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto); });
+    } else if (m.destino) {
+      descontarFuente(m.destino, m.monto);
+    }
+
+    // Revertir el extra si lo tenía
+    if (m._extPartes && m._extPartes.length) {
+      for (const p of m._extPartes) {
+        if (p.tipo === 'guardar' && p.cuenta) {
+          // Quitar el saldo que se sumó
+          descontarFuente(p.cuenta, p.monto);
+          // Eliminar el movimiento de historial asociado
+          if (p.movExtraId) {
+            if (p.cuenta === 'efectivo' || p.cuenta === 'nequi') {
+              if (S.movimientos) S.movimientos = S.movimientos.filter(x => x.id !== p.movExtraId);
+            } else if (p.cuenta.startsWith('custom:')) {
+              const cId = p.cuenta.split(':')[1];
+              const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+              if (cObj && cObj.movimientos) cObj.movimientos = cObj.movimientos.filter(x => x.id !== p.movExtraId);
+            } else if (p.cuenta.startsWith('cajita:')) {
+              const cId = p.cuenta.split(':')[1];
+              const cObj = (S.cajitas || []).find(x => x.id === cId);
+              if (cObj && cObj.historial) cObj.historial = cObj.historial.filter(x => x.id !== p.movExtraId);
+            }
+          }
+        } else if (p.tipo === 'gastar' && p.gastoId) {
+          if (S.gastosVar) S.gastosVar = S.gastosVar.filter(x => x.id !== p.gastoId);
+        } else if (p.tipo === 'pendiente' && p.ingrId) {
+          if (S.ingresosExtra) S.ingresosExtra = S.ingresosExtra.filter(x => x.id !== p.ingrId);
+        }
+      }
+    }
   }
 
   d.movimientos = (d.movimientos || []).filter(x => x.id !== movId);
@@ -5830,6 +5888,11 @@ function confirmarMovimiento() {
         return;
       }
       const nombreDeudor = d ? d.nombre : 'préstamo';
+      // Guardar snapshot de las partes en el último movimiento registrado (el abono recién guardado)
+      // para poder revertirlas si se elimina
+      const ultimoMov = d.movimientos[d.movimientos.length - 1];
+      if (ultimoMov) ultimoMov._extPartes = [];
+
       for (const p of _extPartes) {
         if (!p.monto || p.monto <= 0) continue;
         if (p.tipo === 'guardar') {
@@ -5837,33 +5900,42 @@ function confirmarMovimiento() {
           // Sumar saldo
           sumarFuente(p.cuenta, p.monto);
           // Registrar movimiento visible en el historial de la cuenta
-          const descMovExtra = `Extra de abono — ${nombreDeudor}`;
+          const descMovExtra = `Extra de pago — ${nombreDeudor}`;
+          let movExtraId = uid();
           if (p.cuenta === 'efectivo' || p.cuenta === 'nequi') {
             if (!S.movimientos) S.movimientos = [];
-            S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra });
+            S.movimientos.push({ id: movExtraId, tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra });
           } else if (p.cuenta.startsWith('custom:')) {
             const cId = p.cuenta.split(':')[1];
             const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
             if (cObj) {
               if (!cObj.movimientos) cObj.movimientos = [];
-              cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra });
+              cObj.movimientos.push({ id: movExtraId, tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra });
             }
           } else if (p.cuenta.startsWith('cajita:')) {
             const cId = p.cuenta.split(':')[1];
             const cObj = (S.cajitas || []).find(x => x.id === cId);
             if (cObj) {
               if (!cObj.historial) cObj.historial = [];
-              cObj.historial.push({ id: uid(), tipo: 'entrada', monto: p.monto, fecha, nota: descMovExtra });
+              cObj.historial.push({ id: movExtraId, tipo: 'entrada', monto: p.monto, fecha, nota: descMovExtra });
             }
           }
+          // Guardar referencia para reversión
+          if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'guardar', cuenta: p.cuenta, monto: p.monto, movExtraId });
         } else if (p.tipo === 'gastar') {
           if (!S.gastosVar) S.gastosVar = [];
-          S.gastosVar.push({ id: uid(), monto: p.monto, fecha, cat: 'Varios', desc: p.desc || `Extra de abono — ${nombreDeudor}`, fuente: '', ts: Date.now(), _esExtraPrestamo: true });
+          const gastoId = uid();
+          S.gastosVar.push({ id: gastoId, monto: p.monto, fecha, cat: 'Varios', desc: p.desc || `Extra de pago — ${nombreDeudor}`, fuente: '', ts: Date.now(), _esExtraPrestamo: true });
+          // Guardar referencia para reversión
+          if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'gastar', gastoId, monto: p.monto });
         } else if (p.tipo === 'regalar') {
           // No entra a ninguna cuenta — solo queda registrado en el abono del deudor
+          if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'regalar', monto: p.monto });
         } else if (p.tipo === 'pendiente') {
           if (!S.ingresosExtra) S.ingresosExtra = [];
-          S.ingresosExtra.push({ id: uid(), monto: p.monto, fecha, nota: `Extra sin asignar — ${nombreDeudor}`, ts: Date.now() });
+          const ingrId = uid();
+          S.ingresosExtra.push({ id: ingrId, monto: p.monto, fecha, nota: `Extra sin asignar — ${nombreDeudor}`, ts: Date.now() });
+          if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'pendiente', ingrId, monto: p.monto });
         }
       }
     }

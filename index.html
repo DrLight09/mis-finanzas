@@ -5717,18 +5717,22 @@ async function eliminarMovDeudor(deudorId, movId) {
 }
 
 function initMovSheet(tipo) {
-  movTipo = tipo;
+  // Internamente 'pago-completo' se guarda igual que 'abono'
+  movTipo = tipo === 'pago-completo' ? 'abono' : tipo;
   poblarFuente('mov_fuente');
   poblarFuente('mov_destino');
   // ext selects se pueblan dinámicamente en extRenderPartes()
-  document.getElementById('movSheetTitle').textContent = tipo === 'prestamo' ? 'Nuevo préstamo' : 'Registrar abono';
-  document.getElementById('movBtnConfirm').textContent = tipo === 'prestamo' ? 'Guardar préstamo' : 'Guardar abono';
-  document.getElementById('movBtnConfirm').style.background = tipo === 'prestamo' ? 'var(--accent)' : 'rgba(200,240,96,.2)';
-  document.getElementById('movBtnConfirm').style.color = tipo === 'prestamo' ? '#0a0a0a' : 'var(--accent)';
-  document.getElementById('movBtnConfirm').style.border = tipo === 'prestamo' ? 'none' : '1px solid rgba(200,240,96,.4)';
-  document.getElementById('mov_fuente_wrap').style.display = tipo === 'prestamo' ? '' : 'none';
-  document.getElementById('mov_destino_wrap').style.display = tipo === 'abono' ? '' : 'none';
-  document.getElementById('mov_extra_wrap').style.display = tipo === 'abono' ? '' : 'none';
+  const esPrestamo = tipo === 'prestamo';
+  const esPagoCompleto = tipo === 'pago-completo';
+  const esAbono = tipo === 'abono' || esPagoCompleto;
+  document.getElementById('movSheetTitle').textContent = esPrestamo ? 'Nuevo préstamo' : esPagoCompleto ? 'Pagar préstamo completo' : 'Registrar abono';
+  document.getElementById('movBtnConfirm').textContent = esPrestamo ? 'Guardar préstamo' : esPagoCompleto ? 'Confirmar pago total' : 'Guardar abono';
+  document.getElementById('movBtnConfirm').style.background = esPrestamo ? 'var(--accent)' : esPagoCompleto ? 'rgba(240,184,64,.2)' : 'rgba(200,240,96,.2)';
+  document.getElementById('movBtnConfirm').style.color = esPrestamo ? '#0a0a0a' : esPagoCompleto ? 'var(--amber)' : 'var(--accent)';
+  document.getElementById('movBtnConfirm').style.border = esPrestamo ? 'none' : esPagoCompleto ? '1px solid rgba(240,184,64,.4)' : '1px solid rgba(200,240,96,.4)';
+  document.getElementById('mov_fuente_wrap').style.display = esPrestamo ? '' : 'none';
+  document.getElementById('mov_destino_wrap').style.display = esAbono ? '' : 'none';
+  document.getElementById('mov_extra_wrap').style.display = esAbono ? '' : 'none';
   document.getElementById('mov_monto').value = '';
   document.getElementById('mov_fecha').value = hoy();
   document.getElementById('mov_nota').value = '';
@@ -5766,8 +5770,8 @@ function initMovSheet(tipo) {
   if (extRes) extRes.innerHTML = '';
   // compat vars
   _abonoExtOpt = ''; _abonoExtRegTodo = true; _abonoExtSplitMode = false; _abonoExtSplitRows = [];
-  // Si es "Pagar todo" precargamos el botón devolver al origen
-  if (tipo === 'abono') {
+  // Si es abono o pago completo, precargar el botón devolver al origen
+  if (tipo === 'abono' || tipo === 'pago-completo') {
     const d = (S.deudores || []).find(x => x.id === deudorActualId);
     if (d) movSetOrigenBtn(d);
   }
@@ -7781,7 +7785,7 @@ function _initEventListeners() {
     const saldo = getDeudorSaldo(d);
     if (saldo <= 0) { toast('No hay saldo pendiente', 'info'); return; }
     openSheet('registrar-movimiento');
-    initMovSheet('abono');
+    initMovSheet('pago-completo');
     document.getElementById('mov_monto').value = fmtInput(saldo);
   });
 

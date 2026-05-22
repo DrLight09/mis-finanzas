@@ -2502,154 +2502,198 @@ input.movs-search-input:focus{border-color:var(--accent);}
       </div>
     </div>
 
-    <!-- PAGO CON EXTRA -->
+    <!-- PAGO CON EXTRA — todo en un solo formulario -->
     <div class="overlay" id="sheet-pago-con-extra" data-sheet-id="pago-con-extra">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title">💸 Pago recibido con extra</div>
-        <p style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5;">
-          Registra cuánto te pagó y si te dio de más. Luego te pregunto qué hiciste con el extra.
-        </p>
+        <div class="sheet-title">Recibir pago</div>
 
-        <!-- Saldo pendiente -->
-        <div style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;">
-          <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Saldo pendiente</div>
-          <div id="pce_saldo_pendiente" style="font-size:22px;font-weight:500;font-family:'DM Mono',monospace;color:var(--amber);">$0</div>
+        <!-- Deuda actual + botón devolver a origen -->
+        <div style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:11px;padding:12px 14px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div>
+              <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Saldo pendiente</div>
+              <div id="pce_saldo_pendiente" style="font-size:22px;font-weight:500;font-family:'DM Mono',monospace;color:var(--amber);">$0</div>
+            </div>
+            <!-- Botón devolver a origen (se muestra solo si se conoce de dónde salió) -->
+            <button type="button" id="pce_btn_origen" onclick="pceAplicarOrigen()"
+              style="display:none;font-size:11px;font-family:'DM Mono',monospace;padding:6px 11px;border-radius:8px;background:rgba(240,184,64,.12);border:1.5px solid rgba(240,184,64,.35);color:var(--amber);cursor:pointer;white-space:nowrap;line-height:1.4;text-align:center;">
+              ↩ Devolver<br>al origen
+            </button>
+          </div>
+          <!-- Tags de las fuentes originales del préstamo -->
+          <div id="pce_origen_tags" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;"></div>
         </div>
 
+        <!-- Cuánto te pagó -->
         <div class="ig">
           <label class="il" for="pce_monto_recibido">¿Cuánto te pagó en total?</label>
           <input type="text" inputmode="decimal" id="pce_monto_recibido" placeholder="0,00" class="money-input">
         </div>
 
-        <!-- Preview del extra -->
-        <div id="pce_preview" style="min-height:18px;margin-bottom:14px;font-size:12px;font-family:'DM Mono',monospace;"></div>
+        <!-- Preview del extra / parcial -->
+        <div id="pce_preview" style="min-height:16px;margin-bottom:10px;font-size:12px;font-family:'DM Mono',monospace;padding:0 2px;"></div>
 
-        <div class="ig">
-          <label class="il" for="pce_destino_pago">¿A dónde entra el pago de la deuda?</label>
-          <div class="select-wrap"><select id="pce_destino_pago"><option value>Sin especificar</option></select></div>
+        <!-- ── SECCIÓN: ¿A dónde entra el pago de la DEUDA? ── -->
+        <div id="pce_seccion_deuda">
+          <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin:12px 0 8px;">
+            💰 El pago de la deuda va a…
+          </div>
+
+          <!-- Modo simple / dividido -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <label class="il" style="margin:0;">Cuenta destino</label>
+            <button type="button" id="pce_split_toggle" onclick="pceTglSplit()"
+              style="font-size:10px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;">
+              Dividir ÷
+            </button>
+          </div>
+
+          <!-- Simple -->
+          <div id="pce_destino_simple">
+            <div class="select-wrap"><select id="pce_destino_pago"><option value>Sin especificar</option></select></div>
+            <div id="pce_destino_saldo" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+          </div>
+
+          <!-- Split multi-cuenta -->
+          <div id="pce_destino_split" style="display:none;">
+            <div id="pce_split_rows"></div>
+            <button type="button" id="pce_btn_add_split" onclick="pceAddSplitRow()"
+              style="width:100%;padding:7px;border-radius:7px;background:var(--bg3);border:1px dashed var(--border2);color:var(--text2);font-size:12px;cursor:pointer;margin-bottom:4px;">
+              + Agregar cuenta
+            </button>
+            <div id="pce_split_resumen" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:16px;"></div>
+          </div>
         </div>
 
+        <!-- ── SECCIÓN: ¿Hubo extra? (aparece dinámicamente) ── -->
+        <div id="pce_seccion_extra" style="display:none;">
+          <div style="height:1px;background:var(--border);margin:14px 0;"></div>
+          <div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">
+            🎁 <span id="pce_extra_titulo">Extra recibido</span> — ¿Qué hiciste con eso?
+          </div>
+
+          <!-- Opciones del extra (tarjetas compactas) -->
+          <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:12px;">
+
+            <!-- Guardar en cuenta -->
+            <div id="pce_ext_opt_guardar" onclick="pceSelExt('guardar')"
+              style="border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
+              <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
+                <span style="font-size:18px;">💰</span>
+                <div style="flex:1;">
+                  <div style="font-size:13px;font-weight:600;">Lo guardé en una cuenta</div>
+                </div>
+                <svg id="pce_ext_chk_guardar" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div id="pce_ext_guardar_body" style="display:none;padding:0 13px 13px;">
+                <!-- Modo simple / dividido para el extra -->
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                  <label class="il" style="margin:0;font-size:10px;">¿A dónde?</label>
+                  <button type="button" id="pce_ext_split_toggle" onclick="event.stopPropagation();pceExtTglSplit()"
+                    style="font-size:9px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:5px;padding:2px 7px;cursor:pointer;">
+                    Dividir ÷
+                  </button>
+                </div>
+                <!-- Simple -->
+                <div id="pce_ext_guardar_simple">
+                  <div class="select-wrap"><select id="pce_ext_cuenta" onclick="event.stopPropagation()"><option value>Sin especificar</option></select></div>
+                </div>
+                <!-- Split -->
+                <div id="pce_ext_guardar_split" style="display:none;">
+                  <div id="pce_ext_split_rows"></div>
+                  <button type="button" onclick="event.stopPropagation();pceExtAddSplit()"
+                    style="width:100%;padding:6px;border-radius:6px;background:var(--bg4);border:1px dashed var(--border2);color:var(--text2);font-size:11px;cursor:pointer;margin-bottom:3px;">
+                    + Agregar cuenta
+                  </button>
+                  <div id="pce_ext_split_resumen" style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Regalé / di a alguien -->
+            <div id="pce_ext_opt_regalar" onclick="pceSelExt('regalar')"
+              style="border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
+              <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
+                <span style="font-size:18px;">🤝</span>
+                <div style="flex:1;">
+                  <div style="font-size:13px;font-weight:600;">Lo regalé / lo di a alguien</div>
+                </div>
+                <svg id="pce_ext_chk_regalar" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div id="pce_ext_regalar_body" style="display:none;padding:0 13px 13px;">
+                <div class="ig" style="margin-bottom:8px;">
+                  <label class="il" style="font-size:10px;">¿A quién? (opcional)</label>
+                  <input type="text" id="pce_ext_regalar_quien" placeholder="Ej: a mi papá, amigo…" onclick="event.stopPropagation()">
+                </div>
+                <!-- ¿Todo o parte? -->
+                <label class="il" style="font-size:10px;">¿Regalaste todo o solo una parte?</label>
+                <div style="display:flex;gap:7px;margin-top:4px;margin-bottom:8px;">
+                  <button type="button" id="pce_ext_reg_todo_btn" onclick="event.stopPropagation();pceExtRegTodo(true)"
+                    style="flex:1;padding:8px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.15);border:1.5px solid rgba(200,240,96,.4);color:var(--accent);">Todo</button>
+                  <button type="button" id="pce_ext_reg_parcial_btn" onclick="event.stopPropagation();pceExtRegTodo(false)"
+                    style="flex:1;padding:8px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text2);">Solo parte</button>
+                </div>
+                <div id="pce_ext_reg_parcial_wrap" style="display:none;">
+                  <div class="ig" style="margin-bottom:6px;">
+                    <label class="il" style="font-size:10px;">¿Cuánto regalaste?</label>
+                    <input type="text" inputmode="decimal" id="pce_ext_reg_monto" placeholder="0,00" class="money-input" onclick="event.stopPropagation()" oninput="pceExtActRestoRegalo()">
+                  </div>
+                  <div id="pce_ext_reg_resto_label" style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:6px;min-height:14px;"></div>
+                  <div class="ig">
+                    <label class="il" style="font-size:10px;">El resto lo guardé en</label>
+                    <div class="select-wrap"><select id="pce_ext_reg_resto_cuenta" onclick="event.stopPropagation()"><option value>Sin especificar</option></select></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lo gasté -->
+            <div id="pce_ext_opt_gastar" onclick="pceSelExt('gastar')"
+              style="border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
+              <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
+                <span style="font-size:18px;">🛍️</span>
+                <div style="flex:1;">
+                  <div style="font-size:13px;font-weight:600;">Lo gasté en el momento</div>
+                </div>
+                <svg id="pce_ext_chk_gastar" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <div id="pce_ext_gastar_body" style="display:none;padding:0 13px 13px;">
+                <div class="ig" style="margin-bottom:0;">
+                  <label class="il" style="font-size:10px;">¿En qué? (opcional)</label>
+                  <input type="text" id="pce_ext_gastar_desc" placeholder="Ej: comida, transporte…" onclick="event.stopPropagation()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Sin decidir -->
+            <div id="pce_ext_opt_pendiente" onclick="pceSelExt('pendiente')"
+              style="border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;overflow:hidden;transition:all .15s;">
+              <div style="display:flex;align-items:center;gap:10px;padding:11px 13px;">
+                <span style="font-size:18px;">⏳</span>
+                <div style="flex:1;">
+                  <div style="font-size:13px;font-weight:600;">Aún no lo decidí</div>
+                  <div style="font-size:11px;color:var(--text3);margin-top:1px;">Queda como ingreso sin asignar</div>
+                </div>
+                <svg id="pce_ext_chk_pendiente" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" style="display:none;flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fecha y nota (siempre visibles) -->
+        <div style="height:1px;background:var(--border);margin:10px 0 12px;"></div>
         <div class="ig">
           <label class="il" for="pce_fecha">Fecha</label>
           <input type="date" id="pce_fecha">
         </div>
-
         <div class="ig">
           <label class="il" for="pce_nota">Nota (opcional)</label>
           <input type="text" id="pce_nota" placeholder="Ej: pagó todo en efectivo">
         </div>
 
-        <button type="button" class="btn btn-primary" id="btn-confirmar-pce">Continuar →</button>
+        <button type="button" class="btn btn-primary" id="btn-confirmar-pce">Guardar pago ✓</button>
         <button type="button" class="btn btn-ghost" data-close-sheet="pago-con-extra">Cancelar</button>
-      </div>
-    </div>
-
-    <!-- ¿QUÉ HICISTE CON EL EXTRA? -->
-    <div class="overlay" id="sheet-destino-extra" data-sheet-id="destino-extra">
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title">🎁 ¿Qué hiciste con el extra?</div>
-
-        <!-- Resumen del extra -->
-        <div style="background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.25);border-radius:9px;padding:12px 14px;margin-bottom:18px;">
-          <div style="font-size:10px;color:var(--accent);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:4px;">Extra recibido</div>
-          <div id="extra_monto_label" style="font-size:26px;font-weight:300;font-family:'DM Mono',monospace;color:var(--accent);">$0</div>
-          <div id="extra_desc_label" style="font-size:11px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace;"></div>
-        </div>
-
-        <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.5;">
-          Ese extra no está registrado todavía. ¿Qué pasó con esa plata?
-        </p>
-
-        <!-- Opciones de destino del extra -->
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:18px;" id="extra_opciones">
-
-          <!-- Opción 1: Lo guardé en una cuenta -->
-          <div id="extra_opt_guardar" onclick="selExtraOpt('guardar')"
-            style="padding:14px;border-radius:11px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;transition:all .15s;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">💰</div>
-              <div>
-                <div style="font-size:14px;font-weight:600;">Lo guardé en una cuenta</div>
-                <div style="font-size:11px;color:var(--text3);margin-top:2px;">Entra al saldo de Efectivo, Bancolombia, Nequi…</div>
-              </div>
-            </div>
-            <div id="extra_guardar_campos" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
-              <label class="il" for="extra_cuenta_destino">¿A dónde lo guardaste?</label>
-              <div class="select-wrap"><select id="extra_cuenta_destino"><option value>Sin especificar</option></select></div>
-            </div>
-          </div>
-
-          <!-- Opción 2: Lo regalé / lo di -->
-          <div id="extra_opt_regalar" onclick="selExtraOpt('regalar')"
-            style="padding:14px;border-radius:11px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;transition:all .15s;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:rgba(176,144,240,.1);border:1px solid rgba(176,144,240,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🤝</div>
-              <div>
-                <div style="font-size:14px;font-weight:600;">Lo regalé / lo di a alguien</div>
-                <div style="font-size:11px;color:var(--text3);margin-top:2px;">No entra a ninguna cuenta tuya</div>
-              </div>
-            </div>
-            <div id="extra_regalar_campos" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
-              <label class="il" for="extra_regalar_quien">¿A quién? (opcional)</label>
-              <input type="text" id="extra_regalar_quien" placeholder="Ej: a mi mamá, a un amigo…">
-              <!-- Sub-campo: ¿parte o todo? -->
-              <div style="margin-top:10px;">
-                <label class="il">¿Regalaste todo el extra o solo una parte?</label>
-                <div style="display:flex;gap:8px;margin-top:4px;">
-                  <button type="button" id="extra_reg_todo_btn" onclick="selExtraRegTodo(true)"
-                    style="flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.15);border:1.5px solid rgba(200,240,96,.4);color:var(--accent);">Todo</button>
-                  <button type="button" id="extra_reg_parcial_btn" onclick="selExtraRegTodo(false)"
-                    style="flex:1;padding:9px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text2);">Solo una parte</button>
-                </div>
-              </div>
-              <!-- Monto parcial + cuenta para el resto -->
-              <div id="extra_reg_parcial_wrap" style="display:none;margin-top:10px;">
-                <div class="ig" style="margin-bottom:8px;">
-                  <label class="il" for="extra_reg_monto_regalo">¿Cuánto regalaste?</label>
-                  <input type="text" inputmode="decimal" id="extra_reg_monto_regalo" placeholder="0,00" class="money-input" oninput="actualizarRestoRegalo()">
-                </div>
-                <div id="extra_reg_resto_label" style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:8px;min-height:16px;"></div>
-                <div class="ig">
-                  <label class="il" for="extra_reg_resto_cuenta">El resto lo guardé en</label>
-                  <div class="select-wrap"><select id="extra_reg_resto_cuenta"><option value>Sin especificar</option></select></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Opción 3: Lo gasté en el momento -->
-          <div id="extra_opt_gastar" onclick="selExtraOpt('gastar')"
-            style="padding:14px;border-radius:11px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;transition:all .15s;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:rgba(240,104,104,.1);border:1px solid rgba(240,104,104,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🛍️</div>
-              <div>
-                <div style="font-size:14px;font-weight:600;">Lo gasté en el momento</div>
-                <div style="font-size:11px;color:var(--text3);margin-top:2px;">No quedó en ninguna cuenta</div>
-              </div>
-            </div>
-            <div id="extra_gastar_campos" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;">
-              <label class="il" for="extra_gastar_desc">¿En qué lo gastaste? (opcional)</label>
-              <input type="text" id="extra_gastar_desc" placeholder="Ej: comida, transporte…">
-            </div>
-          </div>
-
-          <!-- Opción 4: Aún no lo he decidido -->
-          <div id="extra_opt_pendiente" onclick="selExtraOpt('pendiente')"
-            style="padding:14px;border-radius:11px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;transition:all .15s;">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div style="width:36px;height:36px;border-radius:10px;background:rgba(96,176,240,.1);border:1px solid rgba(96,176,240,.2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⏳</div>
-              <div>
-                <div style="font-size:14px;font-weight:600;">Aún no lo he decidido</div>
-                <div style="font-size:11px;color:var(--text3);margin-top:2px;">Se registrará como ingreso sin destino</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <button type="button" class="btn btn-primary" id="btn-confirmar-extra">Guardar todo ✓</button>
-        <button type="button" class="btn btn-ghost" data-close-sheet="destino-extra">Cancelar</button>
       </div>
     </div>
 
@@ -7584,9 +7628,6 @@ function _initEventListeners() {
   const btnConfPCE = document.getElementById('btn-confirmar-pce');
   if (btnConfPCE) btnConfPCE.addEventListener('click', confirmarPagoConExtra);
 
-  const btnConfExtra = document.getElementById('btn-confirmar-extra');
-  if (btnConfExtra) btnConfExtra.addEventListener('click', confirmarDestinoExtra);
-
   // --- Año mesada ---
   const btnAnioP = document.getElementById('btn-anio-prev');
   if (btnAnioP) btnAnioP.addEventListener('click', () => cambiarAnio(-1));
@@ -10659,191 +10700,367 @@ async function eliminarCompraTC(tcId, compraId){
   toast('Compra eliminada — deuda actualizada','ok');
 }
 
-// ── PAGO CON EXTRA ────────────────────────────────────────────────────────────
-let _pceExtraMonto = 0;
-let _pceExtraOpcion = ''; // 'guardar' | 'regalar' | 'gastar' | 'pendiente'
-let _pceRegTodo = true;   // true = todo el extra regalado
+// ── PAGO CON EXTRA — formulario unificado ─────────────────────────────────────
+let _pceSaldo      = 0;
+let _pceExtOpt     = '';     // 'guardar'|'regalar'|'gastar'|'pendiente'
+let _pceExtRegTodo = true;
+let _pceSplitMode  = false;  // split del pago de la deuda
+let _pceSplitRows  = [];
+let _pceExtSplitMode = false; // split del extra (guardar en múltiples cuentas)
+let _pceExtSplitRows = [];
 
+/* ── Abrir sheet ── */
 function abrirPagoConExtra() {
   const d = (S.deudores || []).find(x => x.id === deudorActualId);
   if (!d) return;
   const saldo = getDeudorSaldo(d);
   if (saldo <= 0) { toast('No hay saldo pendiente', 'info'); return; }
+  _pceSaldo = saldo;
+
+  // Reset estado
+  _pceExtOpt = '';
+  _pceExtRegTodo = true;
+  _pceSplitMode = false;
+  _pceSplitRows = [];
+  _pceExtSplitMode = false;
+  _pceExtSplitRows = [];
 
   document.getElementById('pce_saldo_pendiente').textContent = fmt(saldo);
   document.getElementById('pce_monto_recibido').value = fmtInput(saldo);
   document.getElementById('pce_fecha').value = hoy();
   document.getElementById('pce_nota').value = '';
-  document.getElementById('pce_preview').textContent = '';
+  document.getElementById('pce_preview').innerHTML = '<span style="color:var(--text3);">Pago exacto ✓</span>';
+  document.getElementById('pce_seccion_extra').style.display = 'none';
 
+  // Reset split deuda
+  document.getElementById('pce_destino_simple').style.display = '';
+  document.getElementById('pce_destino_split').style.display = 'none';
+  document.getElementById('pce_split_toggle').textContent = 'Dividir ÷';
+  document.getElementById('pce_split_rows').innerHTML = '';
+  document.getElementById('pce_split_resumen').textContent = '';
   poblarFuente('pce_destino_pago');
 
+  // Reset ext opciones
+  ['guardar','regalar','gastar','pendiente'].forEach(o => pceExtDeselect(o));
+
+  // Reset extra split
+  document.getElementById('pce_ext_guardar_simple').style.display = '';
+  document.getElementById('pce_ext_guardar_split').style.display = 'none';
+  document.getElementById('pce_ext_split_toggle').textContent = 'Dividir ÷';
+  document.getElementById('pce_ext_split_rows').innerHTML = '';
+  document.getElementById('pce_ext_split_resumen').textContent = '';
+  poblarFuente('pce_ext_cuenta');
+  poblarFuente('pce_ext_reg_resto_cuenta');
+
+  // Botón "Devolver al origen" — buscar de dónde salió el último préstamo
+  pceSetOrigenBtn(d);
+
+  // Mostrar saldo de cuenta destino al cambiar
+  document.getElementById('pce_destino_pago').onchange = pceActualizarDestinoSaldo;
+
   // Preview en tiempo real
-  const inp = document.getElementById('pce_monto_recibido');
-  inp.oninput = () => {
-    const recibido = parseMoney(inp.value) || 0;
-    const extra = recibido - saldo;
-    const prev = document.getElementById('pce_preview');
-    if (extra > 0) {
-      prev.innerHTML = `<span style="color:var(--accent);">+${fmt(extra)} extra</span> <span style="color:var(--text3);">por encima de la deuda</span>`;
-    } else if (extra < 0) {
-      prev.innerHTML = `<span style="color:var(--amber);">Pago parcial — quedan ${fmt(-extra)} pendientes</span>`;
-    } else {
-      prev.innerHTML = `<span style="color:var(--text3);">Pago exacto ✓</span>`;
-    }
-  };
-  inp.oninput();
+  document.getElementById('pce_monto_recibido').oninput = pceActualizarPreview;
+  pceActualizarPreview();
 
   openSheet('pago-con-extra');
 }
 
+function pceActualizarDestinoSaldo() {
+  const sel = document.getElementById('pce_destino_pago');
+  const el  = document.getElementById('pce_destino_saldo');
+  if (!sel || !el) return;
+  const val = sel.value;
+  el.textContent = val ? 'Saldo actual: ' + fmt(getSaldoFuente(val)) : '';
+}
+
+function pceSetOrigenBtn(d) {
+  // Buscar fuentes del último préstamo
+  const prests = (d.movimientos || []).filter(m => m.tipo === 'prestamo');
+  if (!prests.length) { document.getElementById('pce_btn_origen').style.display = 'none'; document.getElementById('pce_origen_tags').innerHTML = ''; return; }
+  const ultimo = prests[prests.length - 1];
+  const fuentes = ultimo.fuentes ? ultimo.fuentes : (ultimo.fuente ? [{ fuente: ultimo.fuente, monto: ultimo.monto }] : []);
+  const tags = document.getElementById('pce_origen_tags');
+  if (!fuentes.length || !fuentes[0].fuente) {
+    document.getElementById('pce_btn_origen').style.display = 'none';
+    tags.innerHTML = '';
+    return;
+  }
+  document.getElementById('pce_btn_origen').style.display = '';
+  tags.innerHTML = fuentes.map(f =>
+    `<span class="badge ${fuenteBadgeClass(f.fuente)}" style="font-size:9px;">${fuenteLabel(f.fuente)}${fuentes.length > 1 ? ' ' + fmt(f.monto) : ''}</span>`
+  ).join('');
+  // Guardar las fuentes para usarlas al hacer clic
+  document.getElementById('pce_btn_origen').dataset.fuentes = JSON.stringify(fuentes);
+}
+
+function pceAplicarOrigen() {
+  const btn = document.getElementById('pce_btn_origen');
+  const fuentes = JSON.parse(btn.dataset.fuentes || '[]');
+  if (!fuentes.length) return;
+  if (fuentes.length === 1) {
+    // Simple
+    _pceSplitMode = false;
+    document.getElementById('pce_destino_simple').style.display = '';
+    document.getElementById('pce_destino_split').style.display = 'none';
+    document.getElementById('pce_destino_pago').value = fuentes[0].fuente;
+    pceActualizarDestinoSaldo();
+  } else {
+    // Split automático por las fuentes originales
+    _pceSplitMode = true;
+    _pceSplitRows = fuentes.map(f => ({ fuente: f.fuente, monto: f.monto }));
+    document.getElementById('pce_destino_simple').style.display = 'none';
+    document.getElementById('pce_destino_split').style.display = '';
+    document.getElementById('pce_split_toggle').textContent = 'Simplificar';
+    pceRenderSplitRows();
+  }
+  toast('Destinos del origen aplicados ↩', 'ok');
+}
+
+/* ── Toggle split destino de la deuda ── */
+function pceTglSplit() {
+  _pceSplitMode = !_pceSplitMode;
+  document.getElementById('pce_destino_simple').style.display = _pceSplitMode ? 'none' : '';
+  document.getElementById('pce_destino_split').style.display  = _pceSplitMode ? '' : 'none';
+  document.getElementById('pce_split_toggle').textContent = _pceSplitMode ? 'Simplificar' : 'Dividir ÷';
+  if (_pceSplitMode && !_pceSplitRows.length) pceAddSplitRow();
+}
+
+function pceAddSplitRow() {
+  const id = Date.now();
+  _pceSplitRows.push({ _id: id, fuente: '', monto: 0 });
+  pceRenderSplitRows();
+}
+
+function pceRenderSplitRows() {
+  const cont = document.getElementById('pce_split_rows');
+  const fuentes = getFuentesSinTC();
+  cont.innerHTML = _pceSplitRows.map((r, i) => `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
+      <div class="select-wrap" style="flex:1;">
+        <select onchange="pceSplitRowFuente(${i},this.value)" style="padding:9px 30px 9px 10px;font-size:13px;">
+          <option value="">Sin especificar</option>
+          ${fuentes.map(f => `<option value="${f.val}" ${r.fuente===f.val?'selected':''}>${f.label}</option>`).join('')}
+        </select>
+      </div>
+      <input type="text" inputmode="decimal" value="${r.monto ? fmtInput(r.monto) : ''}" placeholder="0,00"
+        class="money-input" style="width:110px;padding:9px 10px;font-size:13px;"
+        oninput="pceSplitRowMonto(${i},this.value)">
+      <button type="button" onclick="pceSplitRowDel(${i})"
+        style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:28px;font-size:18px;line-height:1;">×</button>
+    </div>`).join('');
+  pceSplitResumen();
+}
+
+function pceSplitRowFuente(i, v) { _pceSplitRows[i].fuente = v; pceSplitResumen(); }
+function pceSplitRowMonto(i, v)  { _pceSplitRows[i].monto = parseMoney(v) || 0; pceSplitResumen(); }
+function pceSplitRowDel(i)       { _pceSplitRows.splice(i, 1); pceRenderSplitRows(); }
+
+function pceSplitResumen() {
+  const total = _pceSplitRows.reduce((a, r) => a + (r.monto || 0), 0);
+  const diff  = _pceSaldo - total;
+  const el    = document.getElementById('pce_split_resumen');
+  if (!el) return;
+  if (Math.abs(diff) < 1) { el.innerHTML = `<span style="color:var(--accent);">✓ Suma exacta ${fmt(total)}</span>`; }
+  else if (diff > 0)      { el.innerHTML = `<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`; }
+  else                    { el.innerHTML = `<span style="color:var(--red);">Excede la deuda en ${fmt(-diff)}</span>`; }
+}
+
+/* ── Preview en tiempo real ── */
+function pceActualizarPreview() {
+  const recibido = parseMoney(document.getElementById('pce_monto_recibido').value) || 0;
+  const extra = recibido - _pceSaldo;
+  const prev  = document.getElementById('pce_preview');
+  const secExtra = document.getElementById('pce_seccion_extra');
+
+  if (extra > 1) {
+    prev.innerHTML = `<span style="color:var(--accent);">+${fmt(extra)} extra recibido</span> <span style="color:var(--text3);">por encima de la deuda</span>`;
+    secExtra.style.display = '';
+    document.getElementById('pce_extra_titulo').textContent = fmt(extra);
+    // Actualizar resúmenes de split del extra
+    pceExtSplitResumen();
+    pceExtActRestoRegalo();
+  } else if (extra < -1) {
+    prev.innerHTML = `<span style="color:var(--amber);">Pago parcial — quedan ${fmt(-extra)} pendientes</span>`;
+    secExtra.style.display = 'none';
+  } else {
+    prev.innerHTML = `<span style="color:var(--text3);">Pago exacto ✓</span>`;
+    secExtra.style.display = 'none';
+  }
+}
+
+/* ── Opciones del extra ── */
+function pceExtDeselect(o) {
+  const card = document.getElementById('pce_ext_opt_' + o);
+  const body = document.getElementById('pce_ext_' + o + '_body');
+  const chk  = document.getElementById('pce_ext_chk_' + o);
+  if (card) { card.style.borderColor = 'var(--border2)'; card.style.background = 'var(--bg3)'; }
+  if (body) body.style.display = 'none';
+  if (chk)  chk.style.display = 'none';
+}
+
+function pceSelExt(opt) {
+  ['guardar','regalar','gastar','pendiente'].forEach(o => pceExtDeselect(o));
+  _pceExtOpt = opt;
+  const card = document.getElementById('pce_ext_opt_' + opt);
+  const body = document.getElementById('pce_ext_' + opt + '_body');
+  const chk  = document.getElementById('pce_ext_chk_' + opt);
+  if (card) { card.style.borderColor = 'var(--accent)'; card.style.background = 'rgba(200,240,96,.04)'; }
+  if (body) body.style.display = '';
+  if (chk)  chk.style.display = '';
+}
+
+/* ── Split del extra (guardar en varias cuentas) ── */
+function pceExtTglSplit() {
+  _pceExtSplitMode = !_pceExtSplitMode;
+  document.getElementById('pce_ext_guardar_simple').style.display = _pceExtSplitMode ? 'none' : '';
+  document.getElementById('pce_ext_guardar_split').style.display  = _pceExtSplitMode ? '' : 'none';
+  document.getElementById('pce_ext_split_toggle').textContent = _pceExtSplitMode ? 'Simplificar' : 'Dividir ÷';
+  if (_pceExtSplitMode && !_pceExtSplitRows.length) pceExtAddSplit();
+}
+
+function pceExtAddSplit() {
+  _pceExtSplitRows.push({ fuente: '', monto: 0 });
+  pceExtRenderSplit();
+}
+
+function pceExtRenderSplit() {
+  const cont = document.getElementById('pce_ext_split_rows');
+  const fuentes = getFuentesSinTC();
+  const extra = (parseMoney(document.getElementById('pce_monto_recibido').value) || 0) - _pceSaldo;
+  cont.innerHTML = _pceExtSplitRows.map((r, i) => `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+      <div class="select-wrap" style="flex:1;">
+        <select onchange="pceExtSplitFuente(${i},this.value)" onclick="event.stopPropagation()" style="padding:8px 28px 8px 10px;font-size:12px;">
+          <option value="">Sin especificar</option>
+          ${fuentes.map(f => `<option value="${f.val}" ${r.fuente===f.val?'selected':''}>${f.label}</option>`).join('')}
+        </select>
+      </div>
+      <input type="text" inputmode="decimal" value="${r.monto ? fmtInput(r.monto) : ''}" placeholder="0,00"
+        class="money-input" style="width:100px;padding:8px 9px;font-size:12px;"
+        oninput="pceExtSplitMonto(${i},this.value)" onclick="event.stopPropagation()">
+      <button type="button" onclick="event.stopPropagation();pceExtSplitDel(${i})"
+        style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:24px;font-size:16px;line-height:1;">×</button>
+    </div>`).join('');
+  pceExtSplitResumen();
+}
+
+function pceExtSplitFuente(i, v) { _pceExtSplitRows[i].fuente = v; pceExtSplitResumen(); }
+function pceExtSplitMonto(i, v)  { _pceExtSplitRows[i].monto = parseMoney(v) || 0; pceExtSplitResumen(); }
+function pceExtSplitDel(i)       { _pceExtSplitRows.splice(i, 1); pceExtRenderSplit(); }
+
+function pceExtSplitResumen() {
+  const extra = (parseMoney(document.getElementById('pce_monto_recibido').value) || 0) - _pceSaldo;
+  const total = _pceExtSplitRows.reduce((a, r) => a + (r.monto || 0), 0);
+  const diff  = extra - total;
+  const el    = document.getElementById('pce_ext_split_resumen');
+  if (!el) return;
+  if (Math.abs(diff) < 1) { el.innerHTML = `<span style="color:var(--accent);">✓ ${fmt(total)}</span>`; }
+  else if (diff > 0)      { el.innerHTML = `<span style="color:var(--amber);">Faltan ${fmt(diff)}</span>`; }
+  else                    { el.innerHTML = `<span style="color:var(--red);">Excede en ${fmt(-diff)}</span>`; }
+}
+
+/* ── Toggle todo/parte del regalo ── */
+function pceExtRegTodo(esTodo) {
+  _pceExtRegTodo = esTodo;
+  document.getElementById('pce_ext_reg_parcial_wrap').style.display = esTodo ? 'none' : '';
+  const tonBtn = document.getElementById('pce_ext_reg_todo_btn');
+  const parBtn = document.getElementById('pce_ext_reg_parcial_btn');
+  tonBtn.style.background   = esTodo ? 'rgba(200,240,96,.15)' : 'var(--bg3)';
+  tonBtn.style.borderColor  = esTodo ? 'rgba(200,240,96,.4)'  : 'var(--border2)';
+  tonBtn.style.color        = esTodo ? 'var(--accent)'        : 'var(--text2)';
+  parBtn.style.background   = esTodo ? 'var(--bg3)'  : 'rgba(200,240,96,.15)';
+  parBtn.style.borderColor  = esTodo ? 'var(--border2)' : 'rgba(200,240,96,.4)';
+  parBtn.style.color        = esTodo ? 'var(--text2)' : 'var(--accent)';
+}
+
+function pceExtActRestoRegalo() {
+  const extra   = (parseMoney(document.getElementById('pce_monto_recibido').value) || 0) - _pceSaldo;
+  const regalo  = parseMoney(document.getElementById('pce_ext_reg_monto').value) || 0;
+  const resto   = extra - regalo;
+  const el      = document.getElementById('pce_ext_reg_resto_label');
+  if (!el) return;
+  if (resto > 0)       { el.textContent = `Quedan ${fmt(resto)} para guardar`; el.style.color = 'var(--accent)'; }
+  else if (resto < 0)  { el.textContent = `El monto supera el extra (${fmt(extra)})`; el.style.color = 'var(--red)'; }
+  else                 { el.textContent = 'Todo el extra regalado'; el.style.color = 'var(--text3)'; }
+}
+
+/* ── Confirmar todo ── */
 function confirmarPagoConExtra() {
   const d = (S.deudores || []).find(x => x.id === deudorActualId);
   if (!d) return;
-  const saldo = getDeudorSaldo(d);
   const recibido = parseMoney(document.getElementById('pce_monto_recibido').value) || 0;
   if (!recibido) { toast('Ingresa el monto recibido', 'err'); return; }
 
-  const destino = document.getElementById('pce_destino_pago').value;
-  const fecha   = document.getElementById('pce_fecha').value || hoy();
-  const nota    = document.getElementById('pce_nota').value.trim();
-  const extra   = recibido - saldo;
+  const fecha = document.getElementById('pce_fecha').value || hoy();
+  const nota  = document.getElementById('pce_nota').value.trim();
+  const extra = recibido - _pceSaldo;
 
-  // Si el pago es parcial o exacto, usar flujo normal
-  if (extra <= 0) {
-    const montoAbono = Math.min(recibido, saldo);
-    d.movimientos.push({ id: uid(), tipo: 'abono', monto: montoAbono, fecha, destino, nota, ts: Date.now() });
-    if (destino) sumarFuente(destino, montoAbono);
-    save(); refresh(); closeSheet('pago-con-extra');
-    abrirDeudor(deudorActualId);
-    toast('Pago registrado', 'ok');
-    return;
-  }
-
-  // Hay extra → guardar contexto y abrir segundo sheet
-  _pceExtraMonto = extra;
-  _pceExtraOpcion = '';
-  _pceRegTodo = true;
-
-  // Registrar el abono por el saldo exacto
-  d.movimientos.push({ id: uid(), tipo: 'abono', monto: saldo, fecha, destino, nota: nota || 'Pago total', ts: Date.now() });
-  if (destino) sumarFuente(destino, saldo);
-  save(); refresh();
-  closeSheet('pago-con-extra');
-
-  // Abrir sheet de destino del extra
-  document.getElementById('extra_monto_label').textContent = fmt(extra);
-  document.getElementById('extra_desc_label').textContent = `De un pago total de ${fmt(recibido)} — la deuda era ${fmt(saldo)}`;
-  poblarFuente('extra_cuenta_destino');
-  poblarFuente('extra_reg_resto_cuenta');
-  // Reset opciones
-  selExtraOpt('');
-  _pceRegTodo = true;
-  selExtraRegTodo(true);
-
-  openSheet('destino-extra');
-}
-
-function selExtraOpt(opt) {
-  _pceExtraOpcion = opt;
-  const opts = ['guardar', 'regalar', 'gastar', 'pendiente'];
-  opts.forEach(o => {
-    const el = document.getElementById('extra_opt_' + o);
-    const campos = document.getElementById('extra_' + o + '_campos');
-    if (!el) return;
-    const active = o === opt;
-    el.style.borderColor = active ? 'var(--accent)' : 'var(--border2)';
-    el.style.background = active ? 'rgba(200,240,96,.05)' : 'var(--bg3)';
-    if (campos) campos.style.display = active ? '' : 'none';
-  });
-}
-
-function selExtraRegTodo(esTodo) {
-  _pceRegTodo = esTodo;
-  const parWrap = document.getElementById('extra_reg_parcial_wrap');
-  if (parWrap) parWrap.style.display = esTodo ? 'none' : '';
-  document.getElementById('extra_reg_todo_btn').style.background   = esTodo ? 'rgba(200,240,96,.15)' : 'var(--bg3)';
-  document.getElementById('extra_reg_todo_btn').style.borderColor  = esTodo ? 'rgba(200,240,96,.4)'  : 'var(--border2)';
-  document.getElementById('extra_reg_todo_btn').style.color        = esTodo ? 'var(--accent)'        : 'var(--text2)';
-  document.getElementById('extra_reg_parcial_btn').style.background  = esTodo ? 'var(--bg3)' : 'rgba(200,240,96,.15)';
-  document.getElementById('extra_reg_parcial_btn').style.borderColor = esTodo ? 'var(--border2)' : 'rgba(200,240,96,.4)';
-  document.getElementById('extra_reg_parcial_btn').style.color       = esTodo ? 'var(--text2)'   : 'var(--accent)';
-}
-
-function actualizarRestoRegalo() {
-  const regalo = parseMoney(document.getElementById('extra_reg_monto_regalo').value) || 0;
-  const resto  = _pceExtraMonto - regalo;
-  const el     = document.getElementById('extra_reg_resto_label');
-  if (resto > 0) {
-    el.textContent = `Quedan ${fmt(resto)} para guardar en cuenta`;
-    el.style.color = 'var(--accent)';
-  } else if (resto < 0) {
-    el.textContent = `El monto regalado supera el extra (${fmt(_pceExtraMonto)})`;
-    el.style.color = 'var(--red)';
-  } else {
-    el.textContent = 'Todo el extra regalado';
-    el.style.color = 'var(--text3)';
-  }
-}
-
-function confirmarDestinoExtra() {
-  if (!_pceExtraOpcion) { toast('Elige qué hiciste con el extra', 'err'); return; }
-  const fecha = hoy();
-  const extra = _pceExtraMonto;
-
-  if (_pceExtraOpcion === 'guardar') {
-    const cuenta = document.getElementById('extra_cuenta_destino').value;
-    if (cuenta) sumarFuente(cuenta, extra);
-    // Registrar como ingreso extra en el historial general
-    if (!S.ingresosExtra) S.ingresosExtra = [];
-    S.ingresosExtra.push({ id: uid(), monto: extra, fecha, destino: cuenta, nota: 'Extra en pago de préstamo', ts: Date.now() });
-    save(); refresh(); closeSheet('destino-extra');
-    abrirDeudor(deudorActualId);
-    toast(`${fmt(extra)} guardados en ${cuenta ? fuenteLabel(cuenta) : 'tu cuenta'} ✓`, 'ok');
-
-  } else if (_pceExtraOpcion === 'regalar') {
-    const quien = document.getElementById('extra_regalar_quien').value.trim();
-    if (_pceRegTodo) {
-      // Todo regalado — no entra a ninguna cuenta
-      save(); refresh(); closeSheet('destino-extra');
-      abrirDeudor(deudorActualId);
-      const msg = quien ? `${fmt(extra)} regalados a ${quien} ✓` : `${fmt(extra)} regalados — no entran a ninguna cuenta ✓`;
-      toast(msg, 'ok');
-    } else {
-      // Parcial
-      const montoRegalo = parseMoney(document.getElementById('extra_reg_monto_regalo').value) || 0;
-      const resto        = extra - montoRegalo;
-      if (montoRegalo > extra) { toast('El monto regalado supera el extra', 'err'); return; }
-      if (resto > 0) {
-        const cuentaResto = document.getElementById('extra_reg_resto_cuenta').value;
-        if (cuentaResto) sumarFuente(cuentaResto, resto);
-      }
-      if (!S.ingresosExtra) S.ingresosExtra = [];
-      if (resto > 0) S.ingresosExtra.push({ id: uid(), monto: resto, fecha, destino: document.getElementById('extra_reg_resto_cuenta').value, nota: 'Resto del extra — pago de préstamo', ts: Date.now() });
-      save(); refresh(); closeSheet('destino-extra');
-      abrirDeudor(deudorActualId);
-      const parts = [];
-      if (montoRegalo > 0) parts.push(`${fmt(montoRegalo)} regalados${quien ? ' a ' + quien : ''}`);
-      if (resto > 0) parts.push(`${fmt(resto)} guardados`);
-      toast(parts.join(' · ') + ' ✓', 'ok');
+  // ── 1. Registrar el abono por la DEUDA ──
+  if (_pceSplitMode) {
+    const totalSplit = _pceSplitRows.reduce((a, r) => a + (r.monto || 0), 0);
+    if (Math.abs(totalSplit - _pceSaldo) > 1) {
+      toast(`La suma de cuentas (${fmt(totalSplit)}) no coincide con la deuda (${fmt(_pceSaldo)})`, 'err', 4000);
+      return;
     }
-
-  } else if (_pceExtraOpcion === 'gastar') {
-    const desc = document.getElementById('extra_gastar_desc').value.trim();
-    // Registrar como gasto variable rápido sin impactar cuentas (ya salió en efectivo)
-    if (!S.gastosVar) S.gastosVar = [];
-    S.gastosVar.push({ id: uid(), monto: extra, fecha, cat: 'Varios', desc: desc || 'Extra del pago', fuente: '', ts: Date.now(), _esExtraPrestamo: true });
-    save(); refresh(); closeSheet('destino-extra');
-    abrirDeudor(deudorActualId);
-    toast(`${fmt(extra)} registrados como gasto ✓`, 'ok');
-
-  } else if (_pceExtraOpcion === 'pendiente') {
-    if (!S.ingresosExtra) S.ingresosExtra = [];
-    S.ingresosExtra.push({ id: uid(), monto: extra, fecha, destino: '', nota: 'Extra pendiente de asignar — pago de préstamo', ts: Date.now() });
-    save(); refresh(); closeSheet('destino-extra');
-    abrirDeudor(deudorActualId);
-    toast(`${fmt(extra)} guardados como ingreso sin asignar`, 'info');
+    const fuentes = _pceSplitRows.filter(r => r.monto > 0);
+    d.movimientos.push({ id: uid(), tipo: 'abono', monto: _pceSaldo, fecha, destinos: fuentes.map(r => ({ fuente: r.fuente, monto: r.monto })), nota: nota || 'Pago total', ts: Date.now() });
+    fuentes.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto); });
+  } else {
+    const destino = document.getElementById('pce_destino_pago').value;
+    d.movimientos.push({ id: uid(), tipo: 'abono', monto: _pceSaldo, fecha, destino, nota: nota || 'Pago total', ts: Date.now() });
+    if (destino) sumarFuente(destino, _pceSaldo);
   }
+
+  // ── 2. Manejar el extra (si lo hay) ──
+  if (extra > 1) {
+    if (!_pceExtOpt) { toast('Elige qué hiciste con el extra', 'err'); return; }
+
+    if (_pceExtOpt === 'guardar') {
+      if (_pceExtSplitMode) {
+        const totalExtSplit = _pceExtSplitRows.reduce((a, r) => a + (r.monto || 0), 0);
+        if (Math.abs(totalExtSplit - extra) > 1) {
+          toast(`La suma del extra (${fmt(totalExtSplit)}) no coincide con ${fmt(extra)}`, 'err', 4000);
+          return;
+        }
+        _pceExtSplitRows.filter(r => r.monto > 0).forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto); });
+      } else {
+        const cuenta = document.getElementById('pce_ext_cuenta').value;
+        if (cuenta) sumarFuente(cuenta, extra);
+      }
+
+    } else if (_pceExtOpt === 'regalar') {
+      if (_pceExtRegTodo) {
+        // No entra a ninguna cuenta — solo log
+      } else {
+        const montoRegalo = parseMoney(document.getElementById('pce_ext_reg_monto').value) || 0;
+        if (montoRegalo > extra + 1) { toast('El monto regalado supera el extra', 'err'); return; }
+        const resto = extra - montoRegalo;
+        if (resto > 0) {
+          const cResto = document.getElementById('pce_ext_reg_resto_cuenta').value;
+          if (cResto) sumarFuente(cResto, resto);
+        }
+      }
+
+    } else if (_pceExtOpt === 'gastar') {
+      const desc = document.getElementById('pce_ext_gastar_desc').value.trim();
+      if (!S.gastosVar) S.gastosVar = [];
+      S.gastosVar.push({ id: uid(), monto: extra, fecha, cat: 'Varios', desc: desc || 'Extra del pago de préstamo', fuente: '', ts: Date.now(), _esExtraPrestamo: true });
+
+    } else if (_pceExtOpt === 'pendiente') {
+      if (!S.ingresosExtra) S.ingresosExtra = [];
+      S.ingresosExtra.push({ id: uid(), monto: extra, fecha, nota: 'Extra sin asignar — pago de préstamo', ts: Date.now() });
+    }
+  }
+
+  save(); refresh(); closeSheet('pago-con-extra');
+  abrirDeudor(deudorActualId);
+
+  const partes = [`Deuda de ${fmt(_pceSaldo)} pagada`];
+  if (extra > 1) {
+    const labels = { guardar: 'extra guardado', regalar: 'extra regalado', gastar: 'extra como gasto', pendiente: 'extra sin asignar' };
+    partes.push(`${fmt(extra)} ${labels[_pceExtOpt] || ''}`);
+  }
+  toast(partes.join(' · ') + ' ✓', 'ok');
 }
 
 // ── Navegar a pantalla TC ────────────────────────────────────

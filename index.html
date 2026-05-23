@@ -3364,6 +3364,7 @@ function crearCuentaCustom(){
   save();refresh();
   closeSheet('nueva-cuenta');
   toast(`Cuenta "${nombre}" creada`,'ok');
+  if(window.logCambio)logCambio('Creaste cuenta "'+nombre+'"','',saldo||0,'cajita');
 }
 
 function renderCustomCuentasList(){
@@ -4829,8 +4830,10 @@ function getNuTasaGlobal(){
 function addCajita(){
   if(!S.cajitas)S.cajitas=[];
   if(S.cajitas.length>=MAX)return;
-  S.cajitas.push({id:uid(),nombre:'Cajita '+(S.cajitas.length+1),saldo:0,cdts:[]});
+  const nombre='Cajita '+(S.cajitas.length+1);
+  S.cajitas.push({id:uid(),nombre,saldo:0,cdts:[]});
   save();renderCajitas();
+  if(window.logCambio)logCambio('Creaste una cajita',nombre,0,'cajita');
 }
 
 async function deleteCajita(id){
@@ -4847,8 +4850,10 @@ async function deleteCajita(id){
   }
   const ok=await dialogo('Eliminar cajita','¿Seguro que quieres eliminar "'+c.nombre+'"? Esta acción no se puede deshacer.','Eliminar',true);
   if(!ok)return;
+  const nombreEl=c.nombre;
   S.cajitas=(S.cajitas||[]).filter(x=>x.id!==id);save();refresh();
   toast('Cajita eliminada','info');
+  if(window.logCambio)logCambio('Eliminaste cajita "'+nombreEl+'"','',0,'eliminar');
 }
 
 let _cdtCajitaId=null;
@@ -5110,7 +5115,23 @@ function _renderDetalleCajita(c){
   document.getElementById('cajita-det-interes').textContent=interesHoy>0.1?'+'+fmt(interesHoy)+'/día · '+String(tasaDisplay).replace('.',',')+'% EA':'';
   // Input nombre editable — sync con el campo
   const nameInput=document.getElementById('cajita-det-name-input');
-  if(nameInput){ nameInput.value=c.nombre; nameInput.oninput=()=>{ c.nombre=nameInput.value; document.getElementById('cajita-det-nombre').textContent=nameInput.value; save(); }; }
+  if(nameInput){
+    nameInput.value=c.nombre;
+    let _renameTimer=null;
+    let _nombreAntes=c.nombre;
+    nameInput.oninput=()=>{
+      c.nombre=nameInput.value;
+      document.getElementById('cajita-det-nombre').textContent=nameInput.value;
+      save();
+      clearTimeout(_renameTimer);
+      _renameTimer=setTimeout(()=>{
+        if(nameInput.value&&nameInput.value!==_nombreAntes){
+          if(window.logCambio)logCambio('Renombraste cajita a "'+nameInput.value+'"',_nombreAntes?'antes: '+_nombreAntes:'',0,'editar');
+          _nombreAntes=nameInput.value;
+        }
+      },1200);
+    };
+  }
 
   // Botones acción
   document.getElementById('cajita-det-agregar').onclick=()=>abrirAgregarDinero('cajita:'+c.id, c.nombre);
@@ -7090,6 +7111,9 @@ function toggleModulo(nombre){
 async function borrarTodo(){
   const ok=await dialogo('Borrar todos los datos','¿Seguro que quieres borrar TODO? Esta acción no se puede deshacer y perderás toda tu información financiera.','Borrar todo',true);
   if(!ok)return;
+  // Registrar en historial antes de borrar todo (quedará como primer evento visible si el historial no se borra)
+  // Luego limpiar también el historial local para que no queden registros huérfanos
+  localStorage.removeItem('mf_historial_v1');
   // Borrar en Firebase — guardar estructura vacía correcta (no {} vacío que rompe el payload)
   if(window._fbUser && window._fb){
     try{
@@ -11463,17 +11487,34 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   // Iconos por tipo de acción
+  // SVG icons — sin emojis
+  const _SVG = {
+    gasto:   `<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`,
+    ingreso: `<svg viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`,
+    prestamo:`<svg viewBox="0 0 24 24" fill="none" stroke="#60b0f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+    abono:   `<svg viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>`,
+    ahorro:  `<svg viewBox="0 0 24 24" fill="none" stroke="#c060f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/><path d="M3 21h18"/><path d="M9 21v-4a2 2 0 0 1 4 0v4"/></svg>`,
+    transferencia:`<svg viewBox="0 0 24 24" fill="none" stroke="#60b0f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+    gasto_fijo:`<svg viewBox="0 0 24 24" fill="none" stroke="#f0b840" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+    editar:  `<svg viewBox="0 0 24 24" fill="none" stroke="#888880" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+    eliminar:`<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
+    cajita:  `<svg viewBox="0 0 24 24" fill="none" stroke="#c060f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`,
+    reset:   `<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>`,
+    default: `<svg viewBox="0 0 24 24" fill="none" stroke="#888880" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+  };
   const ICONOS = {
-    gasto:    { bg:'rgba(240,104,104,.15)', icon:'💸' },
-    ingreso:  { bg:'rgba(200,240,96,.15)',  icon:'💰' },
-    prestamo: { bg:'rgba(96,176,240,.15)',  icon:'🤝' },
-    abono:    { bg:'rgba(200,240,96,.12)',  icon:'✅' },
-    ahorro:   { bg:'rgba(192,96,240,.15)', icon:'🏦' },
-    transferencia:{ bg:'rgba(96,176,240,.12)', icon:'↔️' },
-    gasto_fijo:{ bg:'rgba(240,184,64,.12)', icon:'📋' },
-    editar:   { bg:'rgba(136,136,128,.12)', icon:'✏️' },
-    eliminar: { bg:'rgba(240,104,104,.12)', icon:'🗑️' },
-    default:  { bg:'rgba(136,136,128,.1)',  icon:'📝' },
+    gasto:    { bg:'rgba(240,104,104,.15)', svg:_SVG.gasto },
+    ingreso:  { bg:'rgba(200,240,96,.15)',  svg:_SVG.ingreso },
+    prestamo: { bg:'rgba(96,176,240,.15)',  svg:_SVG.prestamo },
+    abono:    { bg:'rgba(200,240,96,.12)',  svg:_SVG.abono },
+    ahorro:   { bg:'rgba(192,96,240,.15)', svg:_SVG.ahorro },
+    transferencia:{ bg:'rgba(96,176,240,.12)', svg:_SVG.transferencia },
+    gasto_fijo:{ bg:'rgba(240,184,64,.12)', svg:_SVG.gasto_fijo },
+    editar:   { bg:'rgba(136,136,128,.12)', svg:_SVG.editar },
+    eliminar: { bg:'rgba(240,104,104,.12)', svg:_SVG.eliminar },
+    cajita:   { bg:'rgba(192,96,240,.12)', svg:_SVG.cajita },
+    reset:    { bg:'rgba(240,104,104,.12)', svg:_SVG.reset },
+    default:  { bg:'rgba(136,136,128,.1)',  svg:_SVG.default },
   };
 
   // Formatear fecha relativa
@@ -11525,7 +11566,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const colorMonto = ['gasto','eliminar','gasto_fijo'].includes(item.tipo) ? 'var(--red)' :
                          ['ingreso','abono','ahorro'].includes(item.tipo) ? 'var(--accent)' : 'var(--text2)';
       return `<div class="feed-item">
-        <div class="feed-icon" style="background:${ik.bg};">${ik.icon}</div>
+        <div class="feed-icon" style="background:${ik.bg};display:flex;align-items:center;justify-content:center;">${ik.svg}</div>
         <div class="feed-body">
           <div class="feed-accion">${item.accion}</div>
           ${item.entidad?`<div class="feed-meta">${item.entidad} · ${_fechaRel(item.ts)}</div>`:`<div class="feed-meta">${_fechaRel(item.ts)}</div>`}

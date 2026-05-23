@@ -7720,8 +7720,8 @@ function confirmarAgregarDinero(){
   save();
   closeSheet('agregar-dinero');
   refresh();
-  adFuente='';
   if(window.logCambio){const _fLabel=fuenteLabel(adFuente);const _accion=esApertura?'Saldo inicial en '+_fLabel:'Sumaste dinero en '+_fLabel;logCambio(_accion,descFinal||'',v,'ingreso');}
+  adFuente='';
 toast(fmt(v) + (esApertura?' registrado como saldo inicial':' sumado — ' + descFinal), 'ok');
 }
 

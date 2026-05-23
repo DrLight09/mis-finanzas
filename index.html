@@ -9735,6 +9735,33 @@ document.addEventListener('focusin', function(e){
       mesesRecientes.push({ mk, ing, gastos: gv+gf, tieneGastos: (gv+gf)>0 });
     }
 
+    // También incluir el mes actual en el análisis de ingresos
+    {
+      const dHoy = new Date();
+      const mkHoy = dHoy.getFullYear()+'-'+String(dHoy.getMonth()+1).padStart(2,'0');
+      const mesNumHoy = dHoy.getMonth();
+      const anioHoy = dHoy.getFullYear();
+      let ingHoy = 0;
+      if(S.modulos && S.modulos.mesada){
+        const ms = S.mesadas || {};
+        if(ms[anioHoy+'_'+mesNumHoy+'_papa']) ingHoy += (S.mesadaMontoPapa||0);
+        if(ms[anioHoy+'_'+mesNumHoy+'_mama']) ingHoy += (S.mesadaMonteMama||0);
+      }
+      (S.cuentasPersonalizadas||[]).forEach(c=>{
+        (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mkHoy).forEach(m=>{ ingHoy+=(m.monto||0); });
+      });
+      (S.movimientos||[]).filter(m=>
+        m.tipo==='entrada' &&
+        (m.fuente==='nequi'||m.fuente==='efectivo') &&
+        mesKey(m.fecha)===mkHoy
+      ).forEach(m=>{ ingHoy+=(m.monto||0); });
+      const gvHoy = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mkHoy&&!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);
+      const gfHoy = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mkHoy]?a+(g.monto||0):a,0);
+      if(ingHoy > 0 || (gvHoy+gfHoy) > 0){
+        mesesRecientes.unshift({ mk: mkHoy, ing: ingHoy, gastos: gvHoy+gfHoy, tieneGastos: (gvHoy+gfHoy)>0, esMesActual: true });
+      }
+    }
+
     const mesesConDatos = mesesRecientes.filter(m=>m.tieneGastos||m.ing>0);
 
     // Tendencia: intentar usar historial de patrimonio pero filtrando saltos grandes (saldos iniciales)
@@ -9744,17 +9771,27 @@ document.addEventListener('focusin', function(e){
 
     if(mesesConDatos.length >= 1 && mesesConDatos.some(m=>m.ing>0)){
       // Tenemos datos de ingresos — usar flujo neto promedio real
-      const flujoTotal = mesesConDatos.reduce((a,m)=>a+(m.ing-m.gastos),0);
-      tendenciaMensual = flujoTotal / mesesConDatos.length;
+      // Excluir el mes actual del promedio si solo tiene datos parciales (menos de 15 días transcurridos)
+      const diaDelMes = new Date().getDate();
+      const mesesParaPromedio = mesesConDatos.filter(m=>{
+        if(!m.esMesActual) return true;
+        // Incluir mes actual solo si ya pasó más de la mitad del mes (más representativo)
+        return diaDelMes >= 15;
+      });
+      const mesesBase = mesesParaPromedio.length >= 1 ? mesesParaPromedio : mesesConDatos;
+      const flujoTotal = mesesBase.reduce((a,m)=>a+(m.ing-m.gastos),0);
+      tendenciaMensual = flujoTotal / mesesBase.length;
       usandoFlujo = true;
     } else if(hist.length >= 2){
       // Sin ingresos registrados — usar historial de patrimonio con filtro anti-saltos
-      // Filtrar variaciones diarias > 50% del valor promedio (ej: saldos iniciales de encargos)
+      // Solo filtrar BAJADAS bruscas (pérdidas grandes), no subidas (pueden ser ingresos reales)
       const valPromedio = hist.reduce((a,h)=>a+h.valor,0)/hist.length;
       const umbral = valPromedio * 0.5;
       const histFiltrado = hist.filter((h,i)=>{
         if(i===0)return true;
-        return Math.abs(h.valor - hist[i-1].valor) < umbral;
+        const diff = h.valor - hist[i-1].valor;
+        // Filtrar solo caídas bruscas (probables correcciones de datos), no subidas
+        return diff > -umbral;
       });
       if(histFiltrado.length >= 2){
         const primero = histFiltrado[0].valor;

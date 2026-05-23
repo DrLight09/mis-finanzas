@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Mis Finanzas">
     <meta name="theme-color" content="#0f0f0f">
-    <title>Mis Finanzas2</title>
+    <title>Mis Finanzas</title>
     <link rel="icon" type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f0f0f'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%23c8f060' stroke-width='3'/%3E%3Ctext x='32' y='38' font-family='sans-serif' font-size='22' font-weight='700' fill='%23c8f060' text-anchor='middle'%3E%24%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon"
@@ -1306,6 +1306,21 @@ input.movs-search-input:focus{border-color:var(--accent);}
                 <div id="ddSaldoLabel"
                   style="font-size:11px;font-family:'DM Mono',monospace;"></div>
               </div>
+              <button type="button" class="detail-header-action btn-icon"
+                id="btn-editar-deudor" style="color:var(--accent);" title="Editar persona">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button type="button" class="detail-header-action btn-icon"
+                id="btn-eliminar-deudor" style="color:var(--red);" title="Eliminar persona">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round"><polyline points="3 6 5 6 21 6" /><path
+                    d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path
+                    d="M10 11v6M14 11v6" /><path
+                    d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" /></svg>
+              </button>
             </div>
             <div class="grid2" style="margin-bottom:10px;">
               <div class="stat"><div class="stat-label">Total prestado</div><div
@@ -1352,12 +1367,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
             </div>
             <div class="sec-title">Historial</div>
             <div id="ddHistorial"></div>
-            <div style="margin-top:10px;">
-              <button type="button" class="btn btn-ghost"
-                id="btn-eliminar-deudor"
-                style="color:var(--red);border-color:rgba(240,104,104,.3);font-size:12px;">Eliminar
-                esta persona</button>
-            </div>
           </div>
 
         </div>
@@ -1571,6 +1580,12 @@ input.movs-search-input:focus{border-color:var(--accent);}
                 <div id="encargoSaldoLabel"
                   style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
               </div>
+              <button type="button" class="detail-header-action btn-icon"
+                id="btn-editar-encargo" style="color:var(--accent);" title="Editar encargo">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
               <button type="button" class="detail-header-action btn-icon"
                 id="btn-eliminar-encargo" style="color:var(--red);">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -2330,6 +2345,22 @@ input.movs-search-input:focus{border-color:var(--accent);}
       </div>
     </div>
 
+    <!-- EDITAR ENCARGO -->
+    <div class="overlay" id="sheet-editar-encargo" data-sheet-id="editar-encargo">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Editar encargo</div>
+        <div class="ig"><label class="il" for="enc_edit_nombre">¿De quién es la plata?</label><input type="text" id="enc_edit_nombre"
+            placeholder="Ej: Papá, Carlos, Mamá..."></div>
+        <div class="ig"><label class="il" for="enc_edit_nota">Nota (opcional)</label><input type="text" id="enc_edit_nota"
+            placeholder="Ej: plata del arriendo, ahorros..."></div>
+        <button type="button" class="btn btn-primary"
+          id="btn-guardar-editar-encargo">Guardar cambios</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="editar-encargo">Cancelar</button>
+      </div>
+    </div>
+
     <!-- MOVIMIENTO DE ENCARGO (entrada / salida) -->
     <div class="overlay" id="sheet-mov-encargo" data-sheet-id="mov-encargo">
       <div class="sheet">
@@ -2410,10 +2441,45 @@ input.movs-search-input:focus{border-color:var(--accent);}
       </div>
     </div>
 
-    <div class="overlay" id="sheet-nueva-persona" data-sheet-id="nueva-persona">
+    <div class="overlay" id="sheet-editar-deudor" data-sheet-id="editar-deudor">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title">Nueva persona</div>
+        <div class="sheet-title">Editar persona</div>
+        <div class="ig"><label class="il" for="np_edit_nombre">Nombre</label><input
+            type="text" id="np_edit_nombre"
+            placeholder="Ej: Papá, Carlos, Mamá..."></div>
+        <div class="ig">
+          <label class="il">Color del avatar</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;"
+            id="np_edit_colores">
+            <div class="avatar-color-opt" data-color="#60b0f0"
+              style="width:30px;height:30px;border-radius:50%;background:#60b0f0;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#60b0f0"></div>
+            <div class="avatar-color-opt" data-color="#c8f060"
+              style="width:30px;height:30px;border-radius:50%;background:#c8f060;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#c8f060"></div>
+            <div class="avatar-color-opt" data-color="#f0b840"
+              style="width:30px;height:30px;border-radius:50%;background:#f0b840;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#f0b840"></div>
+            <div class="avatar-color-opt" data-color="#b090f0"
+              style="width:30px;height:30px;border-radius:50%;background:#b090f0;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#b090f0"></div>
+            <div class="avatar-color-opt" data-color="#f06868"
+              style="width:30px;height:30px;border-radius:50%;background:#f06868;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#f06868"></div>
+            <div class="avatar-color-opt" data-color="#c060f0"
+              style="width:30px;height:30px;border-radius:50%;background:#c060f0;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#c060f0"></div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary"
+          id="btn-guardar-editar-deudor">Guardar cambios</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="editar-deudor">Cancelar</button>
+      </div>
+    </div>
+
+
         <div class="ig"><label class="il" for="np_nombre">Nombre</label><input
             type="text" id="np_nombre"
             placeholder="Ej: Papá, Carlos, Mamá..."></div>
@@ -2570,6 +2636,28 @@ input.movs-search-input:focus{border-color:var(--accent);}
           id="btn-guardar-spotify">Guardar</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="spotify">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- SPOTIFY - Editar persona -->
+    <div class="overlay" id="sheet-editar-spotify" data-sheet-id="editar-spotify">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Editar persona en Spotify</div>
+        <div class="ig"><label class="il" for="sp_edit_n">Nombre</label><input
+            type="text" id="sp_edit_n" placeholder="Ej: Carlos"></div>
+        <div class="ig"><label class="il" for="sp_edit_m">Cuota mensual</label><input
+            type="text" inputmode="decimal" id="sp_edit_m" placeholder="0,00"
+            class="money-input"></div>
+        <div class="ig">
+          <label class="il" for="sp_edit_fecha_ingreso">Fecha de ingreso</label>
+          <input type="date" id="sp_edit_fecha_ingreso">
+          <div style="font-size:10px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace;">Cambia la fecha para recalcular el próximo cobro.</div>
+        </div>
+        <button type="button" class="btn btn-primary"
+          id="btn-guardar-editar-spotify">Guardar cambios</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="editar-spotify">Cancelar</button>
       </div>
     </div>
 
@@ -6525,6 +6613,7 @@ function renderSpotify(){
         </div>
         <div style="display:flex;align-items:center;gap:7px;">
           <span class="badge ${x.pagado?'bg-green':'bg-red'}" onclick="marcarPagoSpotify(${i})" style="cursor:pointer;">${x.pagado?'Pagó':'Pendiente'}</span>
+          <button type="button" class="btn-icon" style="color:var(--accent);" onclick="editarSpotify(${i})" title="Editar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
           <button type="button" class="btn-icon" onclick="deleteSpotify(${i})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
         </div>
       </div>`;
@@ -6723,6 +6812,96 @@ function addSpotify(){
   toast(`${n} agregado · primer cobro el ${proximoPago}`,'ok');
 }
 function deleteSpotify(i){S.spotifyPersonas.splice(i,1);save();refresh();}
+
+let _spEditIdx = null;
+function editarSpotify(i) {
+  const p = S.spotifyPersonas[i];
+  if (!p) return;
+  _spEditIdx = i;
+  document.getElementById('sp_edit_n').value = p.nombre || '';
+  // Cargar monto
+  const mEl = document.getElementById('sp_edit_m');
+  if (mEl) { mEl.value = fmtInput(p.monto || 0); mEl.dispatchEvent(new Event('input', {bubbles:true})); }
+  document.getElementById('sp_edit_fecha_ingreso').value = p.fechaIngreso || '';
+  openSheet('editar-spotify');
+}
+function guardarEditarSpotify() {
+  if (_spEditIdx === null) return;
+  const p = S.spotifyPersonas[_spEditIdx];
+  if (!p) return;
+  const n = document.getElementById('sp_edit_n').value.trim();
+  if (!n) { toast('Ingresa el nombre', 'err'); return; }
+  const m = parseMoney(document.getElementById('sp_edit_m').value) || 0;
+  const fechaIngresoRaw = document.getElementById('sp_edit_fecha_ingreso').value;
+  p.nombre = n;
+  p.monto = m;
+  if (fechaIngresoRaw) {
+    p.fechaIngreso = fechaIngresoRaw;
+    // Recalcular próximo pago si cambió fecha de ingreso
+    const dIng = new Date(fechaIngresoRaw + 'T00:00:00');
+    dIng.setDate(dIng.getDate() + 30);
+    p.proximoPago = dIng.toISOString().split('T')[0];
+  }
+  _spEditIdx = null;
+  save(); refresh(); closeSheet('editar-spotify');
+  toast(n + ' actualizado', 'ok');
+}
+
+let _deudorEditColor = null;
+function editarDeudorActual() {
+  if (!deudorActualId) return;
+  const d = (S.deudores || []).find(x => x.id === deudorActualId);
+  if (!d) return;
+  _deudorEditColor = d.color || '#60b0f0';
+  document.getElementById('np_edit_nombre').value = d.nombre || '';
+  // Inicializar color picker de edición
+  document.querySelectorAll('#np_edit_colores .avatar-color-opt').forEach(el => {
+    el.style.border = el.dataset.pickColor === _deudorEditColor ? '2px solid white' : '2px solid transparent';
+    el.onclick = function() {
+      _deudorEditColor = this.dataset.pickColor;
+      document.querySelectorAll('#np_edit_colores .avatar-color-opt').forEach(e => e.style.border = '2px solid transparent');
+      this.style.border = '2px solid white';
+    };
+  });
+  openSheet('editar-deudor');
+}
+function guardarEditarDeudor() {
+  if (!deudorActualId) return;
+  const d = (S.deudores || []).find(x => x.id === deudorActualId);
+  if (!d) return;
+  const nombre = document.getElementById('np_edit_nombre').value.trim();
+  if (!nombre) { toast('Ingresa el nombre', 'err'); return; }
+  d.nombre = nombre;
+  if (_deudorEditColor) d.color = _deudorEditColor;
+  save(); refresh();
+  // Refrescar detalle
+  abrirDeudor(deudorActualId);
+  closeSheet('editar-deudor');
+  toast(nombre + ' actualizado', 'ok');
+}
+
+function editarEncargoActual() {
+  if (!encargoActualId) return;
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+  document.getElementById('enc_edit_nombre').value = enc.nombre || '';
+  document.getElementById('enc_edit_nota').value = enc.nota || '';
+  openSheet('editar-encargo');
+}
+function guardarEditarEncargo() {
+  if (!encargoActualId) return;
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+  const nombre = document.getElementById('enc_edit_nombre').value.trim();
+  if (!nombre) { toast('Ingresa el nombre', 'err'); return; }
+  enc.nombre = nombre;
+  enc.nota = document.getElementById('enc_edit_nota').value.trim();
+  save();
+  abrirEncargoDetalle(encargoActualId);
+  closeSheet('editar-encargo');
+  toast(nombre + ' actualizado', 'ok');
+}
+
 
 function mostrarAlertaFuente(prefix){
   const fuenteEl=document.getElementById(prefix+'_fuente');
@@ -7846,6 +8025,10 @@ function _initEventListeners() {
   if (btnVolver) btnVolver.addEventListener('click', volverDeudores);
   const btnElimDeudor = document.getElementById('btn-eliminar-deudor');
   if (btnElimDeudor) btnElimDeudor.addEventListener('click', eliminarDeudorActual);
+  const btnEditDeudor = document.getElementById('btn-editar-deudor');
+  if (btnEditDeudor) btnEditDeudor.addEventListener('click', editarDeudorActual);
+  const btnGuardarEditDeudor = document.getElementById('btn-guardar-editar-deudor');
+  if (btnGuardarEditDeudor) btnGuardarEditDeudor.addEventListener('click', guardarEditarDeudor);
   const btnNuevoPrest = document.getElementById('btn-nuevo-prestamo');
   if (btnNuevoPrest) btnNuevoPrest.addEventListener('click', () => { openSheet('registrar-movimiento'); initMovSheet('prestamo'); });
   const btnAbono = document.getElementById('btn-registrar-abono');
@@ -8802,6 +8985,15 @@ document.addEventListener('DOMContentLoaded', function(){}, false);
 
   const btn_eliminar = document.getElementById('btn-eliminar-encargo');
   if (btn_eliminar) btn_eliminar.addEventListener('click', eliminarEncargoActual);
+
+  const btn_editar_enc = document.getElementById('btn-editar-encargo');
+  if (btn_editar_enc) btn_editar_enc.addEventListener('click', editarEncargoActual);
+
+  const btn_guardar_edit_enc = document.getElementById('btn-guardar-editar-encargo');
+  if (btn_guardar_edit_enc) btn_guardar_edit_enc.addEventListener('click', guardarEditarEncargo);
+
+  const btn_guardar_edit_sp = document.getElementById('btn-guardar-editar-spotify');
+  if (btn_guardar_edit_sp) btn_guardar_edit_sp.addEventListener('click', guardarEditarSpotify);
 
   const btn_mov = document.getElementById('btn-confirmar-mov-encargo');
   if (btn_mov) btn_mov.addEventListener('click', confirmarMovEncargo);

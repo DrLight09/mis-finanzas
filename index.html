@@ -505,19 +505,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
 .feed-monto{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;flex-shrink:0;margin-left:4px;}
 .feed-empty{text-align:center;padding:40px 0;font-size:13px;color:var(--text3);}
 
-/* ── FAB MODO RÁPIDO ── */
-#fab-container{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom));right:16px;z-index:500;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:10px;}
-#fab-main{width:52px;height:52px;border-radius:16px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(200,240,96,.4);transition:all .25s cubic-bezier(.34,1.56,.64,1);-webkit-tap-highlight-color:transparent;}
-#fab-main:active{transform:scale(.9);}
-#fab-main svg{transition:transform .25s;}
-#fab-main.open svg{transform:rotate(45deg);}
-.fab-actions{display:flex;flex-direction:column-reverse;gap:8px;overflow:hidden;max-height:0;transition:max-height .3s cubic-bezier(.4,0,.2,1),opacity .25s;opacity:0;pointer-events:none;}
-.fab-actions.open{max-height:280px;opacity:1;pointer-events:all;}
-.fab-action{display:flex;align-items:center;gap:10px;justify-content:flex-end;}
-.fab-action-label{font-size:12px;font-weight:600;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:6px 12px;color:var(--text);white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);}
-.fab-action-btn{width:44px;height:44px;border-radius:13px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.25);transition:transform .15s;-webkit-tap-highlight-color:transparent;}
-.fab-action-btn:active{transform:scale(.9);}
-
 /* ── BÚSQUEDA MEJORADA ── */
 .busqueda-section-title{font-size:9px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:12px 0 6px;border-bottom:1px solid var(--border);margin-bottom:4px;}
 .busqueda-item{cursor:pointer;transition:border-color .15s;}
@@ -2007,33 +1994,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
           </button>
         </nav>
       </footer>
-    </div>
-
-    <!-- FAB MODO RÁPIDO -->
-    <div id="fab-container" style="display:none;">
-      <div class="fab-actions" id="fab-actions">
-        <div class="fab-action">
-          <span class="fab-action-label">Gasto rápido</span>
-          <button class="fab-action-btn" style="background:rgba(240,104,104,.9);" onclick="fabAccion('gasto')" aria-label="Gasto rápido">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
-        </div>
-        <div class="fab-action">
-          <span class="fab-action-label">Sumar dinero</span>
-          <button class="fab-action-btn" style="background:rgba(200,240,96,.95);" onclick="fabAccion('sumar')" aria-label="Sumar dinero">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="12" cy="15" r="2"/></svg>
-          </button>
-        </div>
-        <div class="fab-action">
-          <span class="fab-action-label">Nuevo préstamo</span>
-          <button class="fab-action-btn" style="background:rgba(96,176,240,.9);" onclick="fabAccion('prestamo')" aria-label="Nuevo préstamo">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><path d="M1 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>
-          </button>
-        </div>
-      </div>
-      <button id="fab-main" aria-label="Acciones rápidas">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
     </div>
 
     <!-- MÁS MENU OVERLAY -->
@@ -11535,72 +11495,6 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 })();
 
-/* ================================================================
-   MEJORA 2 — FAB MODO RÁPIDO
-   ================================================================ */
-(function(){
-  let fabOpen = false;
 
-  function _showFab(){
-    const fc = document.getElementById('fab-container');
-    if(fc) fc.style.display = 'flex';
-  }
-  function _hideFab(){
-    const fc = document.getElementById('fab-container');
-    if(fc) fc.style.display = 'none';
-    _closeFab();
-  }
-  function _openFab(){
-    fabOpen = true;
-    document.getElementById('fab-main').classList.add('open');
-    document.getElementById('fab-actions').classList.add('open');
-  }
-  function _closeFab(){
-    fabOpen = false;
-    const m = document.getElementById('fab-main');
-    const a = document.getElementById('fab-actions');
-    if(m) m.classList.remove('open');
-    if(a) a.classList.remove('open');
-  }
-
-  window.fabAccion = function(tipo){
-    _closeFab();
-    if(tipo === 'gasto'){
-      // Abrir sheet gasto variable
-      if(window.openSheet) window.openSheet('gasto-var');
-      else document.querySelector('.btn-open-gasto-var')?.click();
-    } else if(tipo === 'sumar'){
-      // Abrir sheet agregar dinero
-      if(window.openSheet) window.openSheet('menu');
-      setTimeout(()=>{ document.getElementById('menu-agregar-dinero')?.click(); }, 100);
-    } else if(tipo === 'prestamo'){
-      // Ir a préstamos
-      if(window.navTo) window.navTo('prestamos');
-      setTimeout(()=>{ document.getElementById('btn-nueva-persona')?.click(); }, 150);
-    }
-  };
-
-  document.addEventListener('DOMContentLoaded', function(){
-    const fabMain = document.getElementById('fab-main');
-    if(!fabMain) return;
-
-    _showFab();
-
-    fabMain.addEventListener('click', function(e){
-      e.stopPropagation();
-      fabOpen ? _closeFab() : _openFab();
-    });
-
-    // Cerrar FAB al tocar fuera
-    document.addEventListener('click', function(e){
-      if(fabOpen && !e.target.closest('#fab-container')){ _closeFab(); }
-    });
-
-    // Cerrar FAB al abrir un sheet o menú
-    document.addEventListener('click', function(e){
-      if(e.target.closest('.overlay, .mas-menu-overlay, #btn-header-add')){ _closeFab(); }
-    });
-  });
-})();
 </script>
   </body></html>

@@ -4833,7 +4833,8 @@ function addCajita(){
   const nombre='Cajita '+(S.cajitas.length+1);
   S.cajitas.push({id:uid(),nombre,saldo:0,cdts:[]});
   save();renderCajitas();
-  if(window.logCambio)logCambio('Creaste una cajita',nombre,0,'cajita');
+  const _newId=S.cajitas[S.cajitas.length-1].id;
+  if(window.logCambio)logCambio('Creaste una cajita',nombre,0,'cajita',_newId);
 }
 
 async function deleteCajita(id){
@@ -4906,7 +4907,7 @@ function confirmarCrearCDT(){
   save();
   closeSheet('crear-cdt');
   refresh();
-  if(window.logCambio)logCambio('Creaste CDT en "'+c.nombre+'"',fmt(monto)+' al '+String(tasa).replace('.',',')+' % EA · vence '+vence,monto,'ahorro');
+  if(window.logCambio)logCambio('Invertiste en un CDT en "'+c.nombre+'"',fmt(monto)+' al '+String(tasa).replace('.',',')+' % EA · vence '+vence,monto,'ahorro',c.id);
   toast(`CDT creado por ${fmt(monto)} al ${String(tasa).replace('.',',')}% EA — se libera el ${vence}`,'ok',4000);
 }
 
@@ -4923,7 +4924,7 @@ async function liberarCDTManual(cajitaId,cdtId){
   c.fecha=hoy();
   c.cdts=(c.cdts||[]).filter(x=>x.id!==cdtId);
   refresh();save();
-  if(window.logCambio)logCambio('Cerraste CDT en "'+c.nombre+'"','Capital '+fmt(cdt.monto)+' + intereses acreditados',k.val,'ingreso');
+  if(window.logCambio)logCambio('Cerraste CDT en "'+c.nombre+'"','Capital '+fmt(cdt.monto)+' + intereses acreditados',k.val,'ingreso',c.id);
   toast(`CDT cerrado — ${fmt(k.val)} acreditados a "${c.nombre}"`,'ok',4000);
 }
 
@@ -4977,7 +4978,7 @@ async function confirmarCobrarCDT(){
   c.cdts=(c.cdts||[]).filter(x=>x.id!==cdtId);
   closeSheet('cobrar-cdt');
   refresh();save();
-  if(window.logCambio)logCambio('Cobraste CDT de "'+c.nombre+'"','Valor real acreditado a la cajita',valorReal,'ingreso');
+  if(window.logCambio)logCambio('Cobraste CDT de "'+c.nombre+'"','Valor real acreditado a la cajita',valorReal,'ingreso',c.id);
   toast('CDT cobrado — '+fmt(valorReal)+' acreditados a "'+c.nombre+'"','ok',4000);
 }
 
@@ -5028,7 +5029,7 @@ function guardarCDT(cajitaId,cdtId){
   save();
   closeSheet('crear-cdt');
   refresh();
-  if(window.logCambio){const _ce=(S.cajitas||[]).find(x=>x.id===cajitaId);if(_ce)logCambio('Editaste CDT en "'+_ce.nombre+'"','Tasa o fechas modificadas',0,'editar');}
+  if(window.logCambio){const _ce=(S.cajitas||[]).find(x=>x.id===cajitaId);if(_ce)logCambio('Editaste CDT en "'+_ce.nombre+'"','Tasa o fechas modificadas',0,'editar',cajitaId);}
   toast('CDT actualizado','ok',3000);
 }
 
@@ -5130,7 +5131,7 @@ function _renderDetalleCajita(c){
       clearTimeout(_renameTimer);
       _renameTimer=setTimeout(()=>{
         if(nameInput.value&&nameInput.value!==_nombreAntes){
-          if(window.logCambio)logCambio('Renombraste cajita a "'+nameInput.value+'"',_nombreAntes?'antes: '+_nombreAntes:'',0,'editar');
+          if(window.logCambio)logCambio('Renombraste cajita a "'+nameInput.value+'"',_nombreAntes?'antes: '+_nombreAntes:'',0,'editar',c.id);
           _nombreAntes=nameInput.value;
         }
       },1200);
@@ -7724,7 +7725,7 @@ function confirmarAgregarDinero(){
   save();
   closeSheet('agregar-dinero');
   refresh();
-  if(window.logCambio){const _fLabel=fuenteLabel(adFuente);const _accion=esApertura?'Saldo inicial en '+_fLabel:'Sumaste dinero en '+_fLabel;logCambio(_accion,descFinal||'',v,'ingreso');}
+  if(window.logCambio){const _fLabel=fuenteLabel(adFuente);const _accion=esApertura?'Saldo inicial en '+_fLabel:'Sumaste dinero en '+_fLabel;const _cjId=adFuente&&adFuente.startsWith('cajita:')?adFuente.split(':')[1]:null;logCambio(_accion,descFinal||'',v,'ingreso',_cjId);}
   adFuente='';
 toast(fmt(v) + (esApertura?' registrado como saldo inicial':' sumado — ' + descFinal), 'ok');
 }
@@ -7772,7 +7773,7 @@ function confirmarAgregarDineroMenu(){
   save();
   closeSheet('agregar-dinero-menu');
   refresh();
-  if(window.logCambio){const _fLabel=fuenteLabel(fuente);logCambio('Sumaste dinero en '+_fLabel,desc,v,'ingreso');}
+  if(window.logCambio){const _fLabel=fuenteLabel(fuente);const _cjId2=fuente&&fuente.startsWith('cajita:')?fuente.split(':')[1]:null;logCambio('Sumaste dinero en '+_fLabel,desc,v,'ingreso',_cjId2);}
   toast(fmt(v) + ' sumado — ' + desc, 'ok');
 }
 
@@ -7920,7 +7921,7 @@ function confirmarRestarDinero(){
   S.movimientos.push({id:uid(),tipo:'salida_manual',fuente:rdFuente,monto:v,fecha,desc});
   save();refresh();
   closeSheet('restar-dinero');
-  if(window.logCambio){const _fLabel=fuenteLabel(rdFuente);logCambio('Retiraste dinero de '+_fLabel,desc,v,'gasto');}
+  if(window.logCambio){const _fLabel=fuenteLabel(rdFuente);const _cjId3=rdFuente&&rdFuente.startsWith('cajita:')?rdFuente.split(':')[1]:null;logCambio('Retiraste dinero de '+_fLabel,desc,v,'gasto',_cjId3);}
   rdFuente='';
   toast('− '+fmt(v)+' restado — '+desc,'info');
 }
@@ -11651,15 +11652,34 @@ document.addEventListener('DOMContentLoaded',function(){
     return d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
   }
 
+  // Resuelve el nombre actual de una cajita en un texto de acción
+  function _resolverNombreCajita(texto, cajitaId){
+    if(!cajitaId || !texto) return texto;
+    try {
+      const Sx = window.S || {};
+      const cx = (Sx.cajitas||[]).find(function(x){ return x.id===cajitaId; });
+      if(!cx) return texto;
+      // Caso 1: nombre entre comillas tipográficas "…"
+      var resultado = texto.replace(/“[^”]*”/g, function(){ return '“'+cx.nombre+'”'; });
+      // Caso 2: nombre entre comillas normales "…"
+      resultado = resultado.replace(/"[^"]*"/g, function(){ return '"'+cx.nombre+'"'; });
+      // Caso 3: "…en NOMBRE (Nu)" o "…de NOMBRE (Nu)" — sin comillas
+      resultado = resultado.replace(/(en|de) ([^(]+) \(Nu\)/g, function(m, prep){ return prep+' '+cx.nombre+' (Nu)'; });
+      return resultado;
+    } catch(e){ return texto; }
+  }
+
   // API pública: registrar un cambio
-  window.logCambio = function(accion, entidad, monto, tipo){
+  // cajitaId (opcional): id de la cajita — permite actualizar el nombre si cambia después
+  window.logCambio = function(accion, entidad, monto, tipo, cajitaId){
     const hist = _cargarHist();
     const item = {
       ts: Date.now(),
       accion: accion,      // "Registraste gasto", "Editaste préstamo de Juan", etc.
       entidad: entidad||'', // nombre de la entidad (cuenta, persona, etc.)
       monto: monto||0,
-      tipo: tipo||'default' // gasto, ingreso, prestamo, ahorro, editar, eliminar...
+      tipo: tipo||'default', // gasto, ingreso, prestamo, ahorro, editar, eliminar...
+      cajitaId: cajitaId||null // para actualizar el nombre dinámicamente si cambia
     };
     hist.unshift(item);
     _guardarHist(hist);
@@ -11687,10 +11707,12 @@ document.addEventListener('DOMContentLoaded',function(){
       const montoStr = item.monto ? f(item.monto) : '';
       const colorMonto = ['gasto','eliminar','gasto_fijo'].includes(item.tipo) ? 'var(--red)' :
                          ['ingreso','abono','ahorro'].includes(item.tipo) ? 'var(--accent)' : 'var(--text2)';
+      // Si el item tiene cajitaId, resolver el nombre actual de la cajita en el texto
+      const accionTexto = item.cajitaId ? _resolverNombreCajita(item.accion, item.cajitaId) : item.accion;
       return `<div class="feed-item">
         <div class="feed-icon" style="background:${ik.bg};display:flex;align-items:center;justify-content:center;">${ik.svg}</div>
         <div class="feed-body">
-          <div class="feed-accion">${item.accion}</div>
+          <div class="feed-accion">${accionTexto}</div>
           ${item.entidad?`<div class="feed-meta">${item.entidad} · ${_fechaRel(item.ts)}</div>`:`<div class="feed-meta">${_fechaRel(item.ts)}</div>`}
         </div>
         ${montoStr?`<div class="feed-monto" style="color:${colorMonto};">${montoStr}</div>`:''}

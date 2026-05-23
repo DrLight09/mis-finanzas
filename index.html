@@ -6606,7 +6606,7 @@ function abrirDetalleMesada(parent,key,nombre){
   const esSaldoIniDet=!!(info&&info.esSaldoInicial);
   let html=`
     <div class="card card-sm" style="margin-bottom:10px;">
-      ${esSaldoIniDet?`<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:6px;padding:3px 9px;">⚙ SALDO INICIAL</span><span style="font-size:11px;color:var(--text3);">No cuenta en estadísticas</span></div>`:''}
+      ${esSaldoIniDet?`<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:6px;padding:3px 9px;"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"11\" height=\"11\" style=\"vertical-align:middle;margin-right:3px;\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/></svg> SALDO INICIAL</span><span style="font-size:11px;color:var(--text3);">No cuenta en estadísticas</span></div>`:''}
       <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Monto</span><span class="row-amount ${esSaldoIniDet?'c-blue':'c-green'}">${fmt(info.monto)}</span></div>
       <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Fecha</span><span style="font-size:13px;font-family:'DM Mono',monospace;">${info.fecha||'—'}</span></div>
       ${destinoHtml}
@@ -10007,7 +10007,7 @@ document.addEventListener('focusin', function(e){
     });
 
     if(!resultados.length){
-      busquedaResultados.innerHTML = '<div style="text-align:center;padding:48px 0;"><div style="font-size:28px;margin-bottom:10px;">🔍</div><div style="font-size:13px;color:var(--text3);">Sin resultados para <b style="color:var(--text);">"'+q+'"</b></div></div>';
+      busquedaResultados.innerHTML = '<div style="text-align:center;padding:48px 0;"><div style="margin-bottom:10px;display:flex;justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div style="font-size:13px;color:var(--text3);">Sin resultados para <b style="color:var(--text);">"'+q+'"</b></div></div>';
       return;
     }
 
@@ -11071,7 +11071,7 @@ function renderTCDashboard(){
       const pct=deudaTotal>0?Math.min(100,Math.round(saldoCajita/deudaTotal*100)):100;
       return`<div style="margin-top:10px;background:${bg};border:1px solid ${borderC};border-radius:9px;padding:10px 12px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <div style="font-size:10px;color:${color};text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;font-weight:600;">💳 Cajita ${cajitaTarjeta.nombre}</div>
+          <div style="font-size:10px;color:${color};text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;font-weight:600;"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"12\" height=\"12\" style=\"vertical-align:middle;margin-right:3px;\"><rect x=\"1\" y=\"4\" width=\"22\" height=\"16\" rx=\"2\" ry=\"2\"/><line x1=\"1\" y1=\"10\" x2=\"23\" y2=\"10\"/></svg> Cajita ${cajitaTarjeta.nombre}</div>
           <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${color};">${fmt(saldoCajita)}</div>
         </div>
         <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:6px;">

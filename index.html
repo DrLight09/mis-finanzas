@@ -495,6 +495,34 @@ input.movs-search-input:focus{border-color:var(--accent);}
 /* Mes dot más grande en móvil */
 .mes-dot { aspect-ratio:1; border-radius:8px; font-size:10px; min-height:36px; }
 
+/* ── HISTORIAL DE CAMBIOS (feed) ── */
+.feed-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+.feed-item:last-child{border-bottom:none;}
+.feed-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;}
+.feed-body{flex:1;min-width:0;}
+.feed-accion{font-size:13px;font-weight:600;color:var(--text);}
+.feed-meta{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;}
+.feed-monto{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;flex-shrink:0;margin-left:4px;}
+.feed-empty{text-align:center;padding:40px 0;font-size:13px;color:var(--text3);}
+
+/* ── FAB MODO RÁPIDO ── */
+#fab-container{position:fixed;bottom:calc(72px + env(safe-area-inset-bottom));right:16px;z-index:500;display:flex;flex-direction:column-reverse;align-items:flex-end;gap:10px;}
+#fab-main{width:52px;height:52px;border-radius:16px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(200,240,96,.4);transition:all .25s cubic-bezier(.34,1.56,.64,1);-webkit-tap-highlight-color:transparent;}
+#fab-main:active{transform:scale(.9);}
+#fab-main svg{transition:transform .25s;}
+#fab-main.open svg{transform:rotate(45deg);}
+.fab-actions{display:flex;flex-direction:column-reverse;gap:8px;overflow:hidden;max-height:0;transition:max-height .3s cubic-bezier(.4,0,.2,1),opacity .25s;opacity:0;pointer-events:none;}
+.fab-actions.open{max-height:280px;opacity:1;pointer-events:all;}
+.fab-action{display:flex;align-items:center;gap:10px;justify-content:flex-end;}
+.fab-action-label{font-size:12px;font-weight:600;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:6px 12px;color:var(--text);white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+.fab-action-btn{width:44px;height:44px;border-radius:13px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.25);transition:transform .15s;-webkit-tap-highlight-color:transparent;}
+.fab-action-btn:active{transform:scale(.9);}
+
+/* ── BÚSQUEDA MEJORADA ── */
+.busqueda-section-title{font-size:9px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:12px 0 6px;border-bottom:1px solid var(--border);margin-bottom:4px;}
+.busqueda-item{cursor:pointer;transition:border-color .15s;}
+.busqueda-item:active{border-color:var(--accent);}
+
 /* ── PIN SCREEN ── */
 #pin-screen{position:fixed;inset:0;z-index:99998;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);padding:32px 24px;text-align:center;overflow:hidden;}
 #pin-screen.open{display:flex;}
@@ -750,6 +778,17 @@ input.movs-search-input:focus{border-color:var(--accent);}
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Agregar tarjeta de crédito
           </button>
+        </div>
+
+        <!-- HISTORIAL DE CAMBIOS -->
+        <div class="screen" id="screen-historial">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="sec-title" style="margin:14px 0 8px;">Actividad reciente</div>
+            <button type="button" onclick="limpiarHistorial()" style="font-size:10px;background:none;border:none;color:var(--text3);cursor:pointer;padding:6px;font-family:'DM Mono',monospace;">Limpiar todo</button>
+          </div>
+          <div class="card" style="padding:4px 15px 8px;">
+            <div id="feed-historial"><div class="feed-empty">Aún no hay actividad registrada.<br>Cada cambio que hagas aparecerá aquí.</div></div>
+          </div>
         </div>
 
         <!-- CUENTAS -->
@@ -1970,6 +2009,33 @@ input.movs-search-input:focus{border-color:var(--accent);}
       </footer>
     </div>
 
+    <!-- FAB MODO RÁPIDO -->
+    <div id="fab-container" style="display:none;">
+      <div class="fab-actions" id="fab-actions">
+        <div class="fab-action">
+          <span class="fab-action-label">Gasto rápido</span>
+          <button class="fab-action-btn" style="background:rgba(240,104,104,.9);" onclick="fabAccion('gasto')" aria-label="Gasto rápido">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+        <div class="fab-action">
+          <span class="fab-action-label">Sumar dinero</span>
+          <button class="fab-action-btn" style="background:rgba(200,240,96,.95);" onclick="fabAccion('sumar')" aria-label="Sumar dinero">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="12" cy="15" r="2"/></svg>
+          </button>
+        </div>
+        <div class="fab-action">
+          <span class="fab-action-label">Nuevo préstamo</span>
+          <button class="fab-action-btn" style="background:rgba(96,176,240,.9);" onclick="fabAccion('prestamo')" aria-label="Nuevo préstamo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><path d="M1 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>
+          </button>
+        </div>
+      </div>
+      <button id="fab-main" aria-label="Acciones rápidas">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+
     <!-- MÁS MENU OVERLAY -->
     <div class="mas-menu-overlay" id="mas-menu-overlay"></div>
     <div class="mas-menu" id="mas-menu" style="display:none;">
@@ -2040,6 +2106,15 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <div>
           <div class="mas-item-label">Encargos</div>
           <div class="mas-item-sub">Plata que administrás (no es tuya)</div>
+        </div>
+      </div>
+      <div class="mas-item" id="mas-historial" data-screen="historial">
+        <div class="mas-item-icon" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.25);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/></svg>
+        </div>
+        <div>
+          <div class="mas-item-label">Historial de cambios</div>
+          <div class="mas-item-sub" id="mas-historial-sub">Últimas acciones realizadas</div>
         </div>
       </div>
       <div class="mas-item" id="mas-config" data-screen="config">
@@ -5450,6 +5525,7 @@ function addGastoVar(){
   } else {
     descontarFuente(fuente,monto);
     toast('Gasto registrado','ok');
+  if(window.logCambio){const _gvd=document.getElementById('gv_desc');const _gvm=parseMoney(document.getElementById('gv_monto').value);logCambio('Registraste un gasto',_gvd?_gvd.value:'',_gvm,'gasto');}
   }
   document.getElementById('gv_desc').value='';
   document.getElementById('gv_monto').value='';
@@ -5488,6 +5564,7 @@ async function deleteGastoVar(id){
   S.gastosVar=(S.gastosVar||[]).filter(x=>x.id!==id);
   save();refresh();
   toast('Gasto eliminado','ok');
+  if(window.logCambio&&g)logCambio('Eliminaste un gasto',g.desc||'',g.monto,'eliminar');
 }
 
 /* ---- GASTOS FIJOS ---- */
@@ -5555,6 +5632,7 @@ function addGastoFijo(){
   S.gastosFijos.push({id:uid(),nombre:n,monto:m,cat:document.getElementById('gf_c').value});
   document.getElementById('gf_n').value='';document.getElementById('gf_m').value='';
   save();refresh();closeSheet('gasto-fijo');
+  if(window.logCambio){const _gfn=document.getElementById('gf_n');const _gfm=parseMoney(document.getElementById('gf_m').value);logCambio('Agregaste gasto fijo',_gfn?_gfn.value:'',_gfm,'gasto_fijo');}
   toast('Gasto fijo agregado','ok');
 }
 
@@ -5632,6 +5710,7 @@ function confirmarPagarGastoFijo(){
   S.pagosGastosFijos[gf.id+'_'+mesActual()]={fecha,fuente,monto:gf.monto};
   save();refresh();
   closeSheet('pagar-gasto-fijo');
+  if(window.logCambio){const _pgfg=(S.gastosFijos||[]).find(x=>x.id===pgfIdActual);if(_pgfg)logCambio('Pagaste '+_pgfg.nombre,'',_pgfg.monto,'gasto_fijo');}
   toast('Pago registrado correctamente','ok');
 }
 
@@ -6035,6 +6114,11 @@ function confirmarMovimiento() {
     }
   }
 
+  // Log cambio
+  if(window.logCambio && d){
+    const tipolog = tipo === 'prestamo' ? 'prestamo' : 'abono';
+    logCambio(tipo==='prestamo'?'Prestaste a '+d.nombre:'Registraste abono de '+d.nombre, d.nombre, monto, tipolog);
+  }
   save(); refresh(); closeSheet('registrar-movimiento');
   abrirDeudor(deudorActualId);
 }
@@ -7599,7 +7683,8 @@ function confirmarAgregarDinero(){
   closeSheet('agregar-dinero');
   refresh();
   adFuente='';
-  toast(fmt(v) + (esApertura?' registrado como saldo inicial':' sumado — ' + descFinal), 'ok');
+  if(window.logCambio){const _tipo=(descFinal||'').toLowerCase().includes('nequi')||descFinal?'ingreso':'ingreso';logCambio('Sumaste dinero',descFinal||'',v,'ingreso');}
+toast(fmt(v) + (esApertura?' registrado como saldo inicial':' sumado — ' + descFinal), 'ok');
 }
 
 function openSheet_adMenu(){
@@ -8673,6 +8758,7 @@ function crearEncargo() {
   document.getElementById('enc_cuenta_wrap').style.display = 'none';
   save(); renderEncargosList();
   closeSheet('nuevo-encargo');
+  if(window.logCambio){const _enomEl=document.getElementById('enc_nombre');logCambio('Creaste un encargo',_enomEl?_enomEl.value:'','','editar');}
   toast('Encargo creado', 'ok');
 }
 
@@ -8833,6 +8919,7 @@ async function eliminarEncargoActual() {
   S.encargos = (S.encargos||[]).filter(e=>e.id!==encargoActualId);
   save();
   volverEncargosLista();
+  if(window.logCambio)logCambio('Eliminaste un encargo','','','eliminar');
   toast('Encargo eliminado', 'info');
 }
 
@@ -9743,19 +9830,78 @@ document.addEventListener('focusin', function(e){
       if((e.nombre||'').toLowerCase().includes(q) || (e.nota||'').toLowerCase().includes(q)){
         resultados.push({ tipo:'Encargo', desc:e.nombre||'Encargo', meta: window.fmt?window.fmt(e.saldo||0):'', color:'var(--blue)' });
       }
+      // Movimientos de encargos
+      (e.movimientos||[]).forEach(m => {
+        if((m.desc||'').toLowerCase().includes(q)||(m.nota||'').toLowerCase().includes(q)){
+          resultados.push({ tipo:'Mov. encargo', desc:(m.desc||e.nombre||'Encargo'), meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'var(--blue)' });
+        }
+      });
+    });
+
+    // Préstamos individuales
+    (S.deudores||[]).forEach(d => {
+      (d.prestamos||[]).forEach(p => {
+        if((p.concepto||p.nota||'').toLowerCase().includes(q)){
+          resultados.push({ tipo:'Préstamo · '+d.nombre, desc:p.concepto||p.nota||'Préstamo', meta:(window.fmt?window.fmt(p.monto):'')+(p.fecha?' · '+p.fecha:''), color:'var(--blue)' });
+        }
+      });
+      (d.abonos||[]).forEach(a => {
+        if((a.nota||'').toLowerCase().includes(q)){
+          resultados.push({ tipo:'Abono · '+d.nombre, desc:a.nota||'Abono', meta:(window.fmt?window.fmt(a.monto):'')+(a.fecha?' · '+a.fecha:''), color:'var(--accent)' });
+        }
+      });
+    });
+
+    // Movimientos Nequi
+    (S.movimientosNequi||[]).forEach(m => {
+      if((m.desc||m.nota||'').toLowerCase().includes(q)){
+        resultados.push({ tipo:'Mov. Nequi', desc:m.desc||m.nota||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'#ff4da6' });
+      }
+    });
+
+    // Movimientos Efectivo
+    (S.movimientosEfectivo||[]).forEach(m => {
+      if((m.desc||m.nota||'').toLowerCase().includes(q)){
+        resultados.push({ tipo:'Mov. Efectivo', desc:m.desc||m.nota||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'var(--amber)' });
+      }
+    });
+
+    // Movimientos cuentas personalizadas
+    (S.cuentasPersonalizadas||[]).forEach(c => {
+      (c.movimientos||[]).forEach(m => {
+        if((m.desc||m.nota||'').toLowerCase().includes(q)){
+          resultados.push({ tipo:'Mov. '+c.nombre, desc:m.desc||m.nota||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'var(--blue)' });
+        }
+      });
     });
 
     if(!resultados.length){
-      busquedaResultados.innerHTML = '<div style="text-align:center;padding:32px 0;font-size:13px;color:var(--text3);">Sin resultados para "'+q+'"</div>';
-      return;
+    busquedaResultados.innerHTML = '<div style="text-align:center;padding:48px 0;"><div style="font-size:28px;margin-bottom:10px;">🔍</div><div style="font-size:13px;color:var(--text3);">Sin resultados para <b style="color:var(--text);">"'+q+'"</b></div></div>';
+    return;
     }
 
-    busquedaResultados.innerHTML = resultados.slice(0,20).map(r => `
-      <div class="busqueda-item">
-        <div class="busqueda-tipo" style="color:${r.color};">${r.tipo}</div>
-        <div class="busqueda-desc">${r.desc}</div>
-        <div class="busqueda-meta">${r.meta}</div>
-      </div>`).join('');
+    // Agrupar por tipo
+    const grupos = {};
+    resultados.forEach(r => {
+      const g = r.tipo.split(' · ')[0];
+      if(!grupos[g]) grupos[g] = [];
+      grupos[g].push(r);
+    });
+
+    let html = '';
+    Object.keys(grupos).forEach(g => {
+      html += `<div class="busqueda-section-title">${g} (${grupos[g].length})</div>`;
+      html += grupos[g].slice(0,8).map(r => `
+        <div class="busqueda-item">
+          <div class="busqueda-tipo" style="color:${r.color};">${r.tipo}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <div class="busqueda-desc" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.desc}</div>
+            ${r.monto?`<div class="feed-monto" style="color:${r.color};">${r.monto}</div>`:''}
+          </div>
+          <div class="busqueda-meta">${r.meta}</div>
+        </div>`).join('');
+    });
+    busquedaResultados.innerHTML = html;
   });
 
   /* ====================================================
@@ -10380,6 +10526,7 @@ if ('serviceWorker' in navigator) {
     'screen-prestamos': 'Préstamos',
     'screen-analisis': 'Análisis',
     'screen-config': 'Configuración',
+    'screen-historial': 'Historial de cambios',
   };
   Object.entries(screenLabels).forEach(([id, label]) => {
     const el = document.getElementById(id);
@@ -11097,6 +11244,7 @@ function confirmarPagarTC(){
 
   closeSheet('pagar-tc');
   save();refresh();renderTCScreen();
+  if(window.logCambio)logCambio('Pagaste tarjeta '+tc.nombre,'',parseFloat(document.getElementById('ptc_monto')?.value?.replace(/[^0-9]/g,''))||0,'abono');
   toast('Pago registrado — deuda restante: '+fmt(tc.deuda),'ok',3500);
 }
 
@@ -11277,6 +11425,182 @@ document.addEventListener('DOMContentLoaded',function(){
   } else {
     _patch();
   }
+})();
+
+/* ================================================================
+   MEJORA 1 — HISTORIAL DE CAMBIOS
+   ================================================================ */
+(function(){
+  const MAX_HIST = 80;
+  const KEY_HIST = 'mf_historial_v1';
+
+  function _cargarHist(){
+    try{ return JSON.parse(localStorage.getItem(KEY_HIST)||'[]'); }catch(e){ return []; }
+  }
+  function _guardarHist(arr){
+    try{ localStorage.setItem(KEY_HIST, JSON.stringify(arr.slice(0,MAX_HIST))); }catch(e){}
+  }
+
+  // Iconos por tipo de acción
+  const ICONOS = {
+    gasto:    { bg:'rgba(240,104,104,.15)', icon:'💸' },
+    ingreso:  { bg:'rgba(200,240,96,.15)',  icon:'💰' },
+    prestamo: { bg:'rgba(96,176,240,.15)',  icon:'🤝' },
+    abono:    { bg:'rgba(200,240,96,.12)',  icon:'✅' },
+    ahorro:   { bg:'rgba(192,96,240,.15)', icon:'🏦' },
+    transferencia:{ bg:'rgba(96,176,240,.12)', icon:'↔️' },
+    gasto_fijo:{ bg:'rgba(240,184,64,.12)', icon:'📋' },
+    editar:   { bg:'rgba(136,136,128,.12)', icon:'✏️' },
+    eliminar: { bg:'rgba(240,104,104,.12)', icon:'🗑️' },
+    default:  { bg:'rgba(136,136,128,.1)',  icon:'📝' },
+  };
+
+  // Formatear fecha relativa
+  function _fechaRel(ts){
+    const ahora = Date.now();
+    const diff = Math.floor((ahora - ts) / 1000);
+    if(diff < 60) return 'hace un momento';
+    if(diff < 3600) return 'hace '+Math.floor(diff/60)+'m';
+    if(diff < 86400) return 'hace '+Math.floor(diff/3600)+'h';
+    if(diff < 172800) return 'ayer';
+    const d = new Date(ts);
+    return d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
+  }
+
+  // API pública: registrar un cambio
+  window.logCambio = function(accion, entidad, monto, tipo){
+    const hist = _cargarHist();
+    const item = {
+      ts: Date.now(),
+      accion: accion,      // "Registraste gasto", "Editaste préstamo de Juan", etc.
+      entidad: entidad||'', // nombre de la entidad (cuenta, persona, etc.)
+      monto: monto||0,
+      tipo: tipo||'default' // gasto, ingreso, prestamo, ahorro, editar, eliminar...
+    };
+    hist.unshift(item);
+    _guardarHist(hist);
+    _renderFeed();
+    _actualizarBadge();
+  };
+
+  function _actualizarBadge(){
+    const hist = _cargarHist();
+    const sub = document.getElementById('mas-historial-sub');
+    if(sub && hist.length) sub.textContent = hist.length + ' acción' + (hist.length!==1?'es':'') + ' registrada' + (hist.length!==1?'s':'');
+  }
+
+  function _renderFeed(){
+    const el = document.getElementById('feed-historial');
+    if(!el) return;
+    const hist = _cargarHist();
+    if(!hist.length){
+      el.innerHTML = '<div class="feed-empty">Aún no hay actividad registrada.<br>Cada cambio que hagas aparecerá aquí.</div>';
+      return;
+    }
+    const f = window.fmt || (v => '$'+Math.round(v).toLocaleString('es-CO'));
+    el.innerHTML = hist.map(item => {
+      const ik = ICONOS[item.tipo] || ICONOS.default;
+      const montoStr = item.monto ? f(item.monto) : '';
+      const colorMonto = ['gasto','eliminar','gasto_fijo'].includes(item.tipo) ? 'var(--red)' :
+                         ['ingreso','abono','ahorro'].includes(item.tipo) ? 'var(--accent)' : 'var(--text2)';
+      return `<div class="feed-item">
+        <div class="feed-icon" style="background:${ik.bg};">${ik.icon}</div>
+        <div class="feed-body">
+          <div class="feed-accion">${item.accion}</div>
+          ${item.entidad?`<div class="feed-meta">${item.entidad} · ${_fechaRel(item.ts)}</div>`:`<div class="feed-meta">${_fechaRel(item.ts)}</div>`}
+        </div>
+        ${montoStr?`<div class="feed-monto" style="color:${colorMonto};">${montoStr}</div>`:''}
+      </div>`;
+    }).join('');
+  }
+
+  window.limpiarHistorial = async function(){
+    const ok = await (window.dialogo ? window.dialogo('Limpiar historial','¿Borrar toda la actividad registrada? Esto no afecta tus datos.','Limpiar',true) : Promise.resolve(confirm('¿Limpiar historial?')));
+    if(!ok) return;
+    localStorage.removeItem(KEY_HIST);
+    _renderFeed();
+    _actualizarBadge();
+    if(window.toast) window.toast('Historial limpiado','ok');
+  };
+
+  // Render inicial al cargar
+  document.addEventListener('DOMContentLoaded', function(){
+    _renderFeed();
+    _actualizarBadge();
+    // Re-render cuando se navega a historial
+    document.addEventListener('click', function(e){
+      const ni = e.target.closest('[data-screen="historial"], #mas-historial');
+      if(ni){ setTimeout(_renderFeed, 80); }
+    });
+  });
+})();
+
+/* ================================================================
+   MEJORA 2 — FAB MODO RÁPIDO
+   ================================================================ */
+(function(){
+  let fabOpen = false;
+
+  function _showFab(){
+    const fc = document.getElementById('fab-container');
+    if(fc) fc.style.display = 'flex';
+  }
+  function _hideFab(){
+    const fc = document.getElementById('fab-container');
+    if(fc) fc.style.display = 'none';
+    _closeFab();
+  }
+  function _openFab(){
+    fabOpen = true;
+    document.getElementById('fab-main').classList.add('open');
+    document.getElementById('fab-actions').classList.add('open');
+  }
+  function _closeFab(){
+    fabOpen = false;
+    const m = document.getElementById('fab-main');
+    const a = document.getElementById('fab-actions');
+    if(m) m.classList.remove('open');
+    if(a) a.classList.remove('open');
+  }
+
+  window.fabAccion = function(tipo){
+    _closeFab();
+    if(tipo === 'gasto'){
+      // Abrir sheet gasto variable
+      if(window.openSheet) window.openSheet('gasto-var');
+      else document.querySelector('.btn-open-gasto-var')?.click();
+    } else if(tipo === 'sumar'){
+      // Abrir sheet agregar dinero
+      if(window.openSheet) window.openSheet('menu');
+      setTimeout(()=>{ document.getElementById('menu-agregar-dinero')?.click(); }, 100);
+    } else if(tipo === 'prestamo'){
+      // Ir a préstamos
+      if(window.navTo) window.navTo('prestamos');
+      setTimeout(()=>{ document.getElementById('btn-nueva-persona')?.click(); }, 150);
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const fabMain = document.getElementById('fab-main');
+    if(!fabMain) return;
+
+    _showFab();
+
+    fabMain.addEventListener('click', function(e){
+      e.stopPropagation();
+      fabOpen ? _closeFab() : _openFab();
+    });
+
+    // Cerrar FAB al tocar fuera
+    document.addEventListener('click', function(e){
+      if(fabOpen && !e.target.closest('#fab-container')){ _closeFab(); }
+    });
+
+    // Cerrar FAB al abrir un sheet o menú
+    document.addEventListener('click', function(e){
+      if(e.target.closest('.overlay, .mas-menu-overlay, #btn-header-add')){ _closeFab(); }
+    });
+  });
 })();
 </script>
   </body></html>

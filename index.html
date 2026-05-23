@@ -7242,8 +7242,8 @@ async function eliminarMovimiento(btn) {
       descontarFuente(tr.destino, tr.monto); // quitar del destino
       S.transferencias = S.transferencias.filter(t => t.id !== movId);
     }
-  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura') {
-    // Fue una entrada manual (S.movimientos tipo 'entrada' o 'apertura')
+  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada') {
+    // Fue una entrada manual (S.movimientos tipo 'entrada', 'apertura', o legacy 'ingreso')
     const m = (S.movimientos || []).find(x => x.id === movId);
     if (m) {
       // Usar fuente del registro; si no está, usar la del DOM como fallback
@@ -9711,7 +9711,7 @@ document.addEventListener('focusin', function(e){
       const mesNum = d.getMonth();
       const anio = d.getFullYear();
 
-      // Ingresos del mes (mesada + cuentas personalizadas)
+      // Ingresos del mes (mesada + cuentas personalizadas + entradas manuales a Nequi/Efectivo)
       let ing = 0;
       if(S.modulos && S.modulos.mesada){
         const ms = S.mesadas || {};
@@ -9721,6 +9721,12 @@ document.addEventListener('focusin', function(e){
       (S.cuentasPersonalizadas||[]).forEach(c=>{
         (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mk).forEach(m=>{ ing+=(m.monto||0); });
       });
+      // Entradas manuales a Nequi y Efectivo (tipo 'entrada', excluye apertura para no distorsionar)
+      (S.movimientos||[]).filter(m=>
+        m.tipo==='entrada' &&
+        (m.fuente==='nequi'||m.fuente==='efectivo') &&
+        mesKey(m.fecha)===mk
+      ).forEach(m=>{ ing+=(m.monto||0); });
 
       // Gastos del mes
       const gv = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mk&&!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);

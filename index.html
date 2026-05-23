@@ -11301,7 +11301,7 @@ function confirmarCompraTC(){
   S.gastosVar.push({
     id:uid(),desc,monto,fecha,cat,
     fuente:'tc:'+tc.id,
-    nota:nota||(nota?nota:'Compra en '+tc.nombre),
+    nota:nota||'Compra en '+tc.nombre,
     _esCompraTC:true,
     _tcId:tc.id,
     _tcCompraId:compraId
@@ -11413,7 +11413,7 @@ function confirmarPagarTC(){
 
   closeSheet('pagar-tc');
   save();refresh();renderTCScreen();
-  if(window.logCambio)logCambio('Pagaste tarjeta '+tc.nombre,'',parseFloat(document.getElementById('ptc_monto')?.value?.replace(/[^0-9]/g,''))||0,'abono');
+  if(window.logCambio)logCambio('Pagaste tarjeta '+tc.nombre,'',monto,'abono');
   toast('Pago registrado — deuda restante: '+fmt(tc.deuda),'ok',3500);
 }
 

@@ -191,6 +191,7 @@ textarea{resize:none;height:60px;}
 .mesada-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;}
 .mes-dot{aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;cursor:pointer;font-family:'DM Mono',monospace;border:1px solid var(--border);background:var(--bg3);color:var(--text3);transition:all .15s;user-select:none;}
 .mes-dot.on{background:rgba(200,240,96,.15);border-color:var(--accent);color:var(--accent);}
+.mes-dot.mes-dot-ini{background:rgba(96,176,240,.13);border-color:var(--blue);color:var(--blue);}
 .sp-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);}
 .sp-row:last-child{border-bottom:none;}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--blue);font-family:'DM Mono',monospace;flex-shrink:0;margin-right:10px;}
@@ -2812,6 +2813,18 @@ input.movs-search-input:focus{border-color:var(--accent);}
         </div>
         <div id="mpPreview"
           style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--accent);"></div>
+        <!-- Toggle saldo inicial -->
+        <div id="mpAperturaWrap" onclick="document.getElementById('mpEsApertura').click()"
+          style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;display:flex;">
+          <input type="checkbox" id="mpEsApertura"
+            style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;"
+            onclick="event.stopPropagation()"
+            onchange="toggleMpApertura()">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--blue);">Es saldo inicial (configuración)</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">No contará como ingreso del mes ni afectará estadísticas</div>
+          </div>
+        </div>
         <div class="ig">
           <label class="il" for="mpNota">Nota (opcional)</label>
           <input type="text" id="mpNota"
@@ -4264,10 +4277,21 @@ function renderAnalisis(){
   let ingresosEstimados=0;
   if(S.modulos&&S.modulos.mesada){
     const mesadas=S.mesadas||{};
+    const v2=(S.mesadasV2||{});
     const keyPapa=anio+'_'+mesNum+'_papa';
     const keyMama=anio+'_'+mesNum+'_mama';
-    if(mesadas[keyPapa]) ingresosEstimados+=(S.mesadaMontoPapa||0);
-    if(mesadas[keyMama]) ingresosEstimados+=(S.mesadaMonteMama||0);
+    // S.mesadasV2 usa la clave ANIO-MES (ej: "2025-4"); excluir saldo inicial
+    const v2KeyPapa=anio+'-'+mesNum;
+    const v2KeyMama=anio+'-'+mesNum;
+    const infoPapa=(v2['papa']||{})[v2KeyPapa];
+    const infoMama=(v2['mama']||{})[v2KeyMama];
+    const papaEsSaldoIni=infoPapa&&infoPapa.esSaldoInicial;
+    const mamaEsSaldoIni=infoMama&&infoMama.esSaldoInicial;
+    if(mesadas[keyPapa]&&!papaEsSaldoIni) ingresosEstimados+=(S.mesadaMontoPapa||0);
+    if(mesadas[keyMama]&&!mamaEsSaldoIni) ingresosEstimados+=(S.mesadaMonteMama||0);
+    // También leer de mesadasV2 directamente (datos nuevos que sólo viven allí)
+    if(!mesadas[keyPapa]&&infoPapa&&!papaEsSaldoIni) ingresosEstimados+=(infoPapa.monto||S.mesadaMontoPapa||0);
+    if(!mesadas[keyMama]&&infoMama&&!mamaEsSaldoIni) ingresosEstimados+=(infoMama.monto||S.mesadaMonteMama||0);
   }
 
   // ── Balance ────────────────────────────────────────────────────────────
@@ -4428,8 +4452,9 @@ function renderAnalisis(){
     let totalMesada=0;
     for(let m=0;m<12;m++){
       const k=anio+'-'+m;
-      if(dataPapa[k]) totalMesada+=(dataPapa[k].monto||S.mesadaMontoPapa||0);
-      if(dataMama[k]) totalMesada+=(dataMama[k].monto||S.mesadaMonteMama||0);
+      // Excluir meses marcados como saldo inicial del total de mesada
+      if(dataPapa[k]&&!dataPapa[k].esSaldoInicial) totalMesada+=(dataPapa[k].monto||S.mesadaMontoPapa||0);
+      if(dataMama[k]&&!dataMama[k].esSaldoInicial) totalMesada+=(dataMama[k].monto||S.mesadaMonteMama||0);
     }
     mesadaTotal.textContent=fmt(totalMesada);
   } else if(mesadaSection) mesadaSection.style.display='none';
@@ -6344,9 +6369,12 @@ function renderMesada(){
       const k=a+'-'+i;
       const info=data[k];
       const pagado=!!info;
-      if(pagado){totalRecibido+=(info.monto||cuota);mesesPagados++;}
-      const tooltip=pagado?(info.fecha?info.fecha:'pagado'):'';
-      return`<div class="mes-dot ${pagado?'on':''}" title="${tooltip}"
+      const esSaldoIni=pagado&&!!info.esSaldoInicial;
+      // Contar en totales solo si no es saldo inicial
+      if(pagado&&!esSaldoIni){totalRecibido+=(info.monto||cuota);mesesPagados++;}
+      const tooltip=esSaldoIni?'Saldo inicial ('+(info.fecha||'')+ ')':pagado?(info.fecha?info.fecha:'pagado'):'';
+      const dotClass=esSaldoIni?'mes-dot on mes-dot-ini':pagado?'mes-dot on':'mes-dot';
+      return`<div class="${dotClass}" title="${tooltip}"
         onclick="clickMesDot('${parent}','${k}','${m} ${a}')">${m}</div>`;
     }).join('');
 
@@ -6365,7 +6393,8 @@ function renderMesada(){
     for(let i=0;i<12;i++){
       const k=a+'-'+i;
       const info=data[k];
-      if(info){totalAnio+=(info.monto||cuota);pagadosAnio++;}
+      // Excluir saldo inicial del resumen de año
+      if(info&&!info.esSaldoInicial){totalAnio+=(info.monto||cuota);pagadosAnio++;}
     }
   });
   document.getElementById('ms-total').textContent=fmt(totalAnio);
@@ -6455,6 +6484,10 @@ function abrirRegistrarMesada(parent,key,nombre){
   poblarFuente('mpDestino');
   const sel=document.getElementById('mpDestino');
   sel.innerHTML='<option value="">No especificar / lo gasté</option>'+sel.innerHTML.replace('<option value="">Sin especificar</option>','');
+  // Resetear toggle saldo inicial
+  const chk=document.getElementById('mpEsApertura');
+  if(chk){ chk.checked=false; }
+  toggleMpApertura();
   openSheet('mesada-pago');
 }
 
@@ -6484,14 +6517,33 @@ function actualizarMpPreview(){
   }
 }
 
+function toggleMpApertura(){
+  const chk=document.getElementById('mpEsApertura');
+  const esAp=chk&&chk.checked;
+  // Ocultar/mostrar las secciones de destino — no tiene sentido asignar plata si es saldo inicial
+  const modoSimple=document.getElementById('mpModoSimple');
+  const modoDividido=document.getElementById('mpModoDividido');
+  const splitToggle=document.getElementById('mpSplitToggle');
+  const preview=document.getElementById('mpPreview');
+  if(modoSimple)modoSimple.style.display=esAp?'none':'';
+  if(modoDividido&&mpSplitMode)modoDividido.style.display=esAp?'none':'';
+  if(splitToggle)splitToggle.style.display=esAp?'none':'';
+  if(preview&&esAp){preview.textContent='Se registrará sin afectar estadísticas del mes.';preview.style.color='var(--blue)';}
+  else if(preview&&!esAp){preview.textContent='';actualizarMpPreview();}
+}
+
 function confirmarMesadaPago(){
   const monto=parseMoney(document.getElementById('mpMonto').value)||0;
   const fecha=document.getElementById('mpFecha').value||hoy();
   const nota=document.getElementById('mpNota').value.trim();
   if(!monto||!mpParent||!mpMesKey)return;
   const data=getMesadaData(mpParent);
+  const esApertura=!!(document.getElementById('mpEsApertura')&&document.getElementById('mpEsApertura').checked);
 
-  if(mpSplitMode){
+  if(esApertura){
+    // Saldo inicial: guardar sin mover cuentas ni contar en ingresos
+    data[mpMesKey]={monto,fecha,destino:'',nota,esSaldoInicial:true};
+  } else if(mpSplitMode){
     const splits=getMpSplitData();
     const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
     if(totalSplit>monto+1){
@@ -6524,14 +6576,16 @@ function abrirDetalleMesada(parent,key,nombre){
   } else if(info.destino){
     destinoHtml=`<div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Lo metiste en</span><span class="badge ${fuenteBadgeClass(info.destino)}">${fuenteLabel(info.destino)}</span></div>`;
   }
+  const esSaldoIniDet=!!(info&&info.esSaldoInicial);
   let html=`
     <div class="card card-sm" style="margin-bottom:10px;">
-      <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Monto recibido</span><span class="row-amount c-green">${fmt(info.monto)}</span></div>
+      ${esSaldoIniDet?`<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:6px;padding:3px 9px;">⚙ SALDO INICIAL</span><span style="font-size:11px;color:var(--text3);">No cuenta en estadísticas</span></div>`:''}
+      <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Monto</span><span class="row-amount ${esSaldoIniDet?'c-blue':'c-green'}">${fmt(info.monto)}</span></div>
       <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Fecha</span><span style="font-size:13px;font-family:'DM Mono',monospace;">${info.fecha||'—'}</span></div>
       ${destinoHtml}
       ${info.nota?`<div style="font-size:12px;color:var(--text2);margin-top:4px;">${info.nota}</div>`:''}
     </div>
-    <button type="button" class="btn" style="background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);" onclick="eliminarMesadaPago('${parent}','${key}')">Borrar este pago</button>
+    <button type="button" class="btn" style="background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);" onclick="eliminarMesadaPago('${parent}','${key}')">Borrar este registro</button>
   `;
   document.getElementById('mdContent').innerHTML=html;
   openSheet('mesada-det');
@@ -9892,8 +9946,15 @@ document.addEventListener('focusin', function(e){
     let ingresosMes = 0;
     if(S.modulos && S.modulos.mesada){
       const mesadas = S.mesadas || {};
-      if(mesadas[anio+'_'+mesNum+'_papa']) ingresosMes += (S.mesadaMontoPapa||0);
-      if(mesadas[anio+'_'+mesNum+'_mama']) ingresosMes += (S.mesadaMonteMama||0);
+      const _v2m=(S.mesadasV2||{});
+      const _mk=anio+'-'+mesNum;
+      const _infoPapa=(_v2m['papa']||{})[_mk];
+      const _infoMama=(_v2m['mama']||{})[_mk];
+      if(mesadas[anio+'_'+mesNum+'_papa']&&!(_infoPapa&&_infoPapa.esSaldoInicial)) ingresosMes += (S.mesadaMontoPapa||0);
+      if(mesadas[anio+'_'+mesNum+'_mama']&&!(_infoMama&&_infoMama.esSaldoInicial)) ingresosMes += (S.mesadaMonteMama||0);
+      // mesadasV2 sin legacy
+      if(!mesadas[anio+'_'+mesNum+'_papa']&&_infoPapa&&!_infoPapa.esSaldoInicial) ingresosMes += (_infoPapa.monto||S.mesadaMontoPapa||0);
+      if(!mesadas[anio+'_'+mesNum+'_mama']&&_infoMama&&!_infoMama.esSaldoInicial) ingresosMes += (_infoMama.monto||S.mesadaMonteMama||0);
     }
     // Sumar ingresos de cuentas personalizadas del mes actual
     (S.cuentasPersonalizadas||[]).forEach(c => {

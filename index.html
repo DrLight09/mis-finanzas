@@ -7721,7 +7721,7 @@ function confirmarAgregarDinero(){
   closeSheet('agregar-dinero');
   refresh();
   adFuente='';
-  if(window.logCambio){const _tipo=(descFinal||'').toLowerCase().includes('nequi')||descFinal?'ingreso':'ingreso';logCambio('Sumaste dinero',descFinal||'',v,'ingreso');}
+  if(window.logCambio){const _fLabel=fuenteLabel(adFuente);const _accion=esApertura?'Saldo inicial en '+_fLabel:'Sumaste dinero en '+_fLabel;logCambio(_accion,descFinal||'',v,'ingreso');}
 toast(fmt(v) + (esApertura?' registrado como saldo inicial':' sumado — ' + descFinal), 'ok');
 }
 
@@ -7768,6 +7768,7 @@ function confirmarAgregarDineroMenu(){
   save();
   closeSheet('agregar-dinero-menu');
   refresh();
+  if(window.logCambio){const _fLabel=fuenteLabel(fuente);logCambio('Sumaste dinero en '+_fLabel,desc,v,'ingreso');}
   toast(fmt(v) + ' sumado — ' + desc, 'ok');
 }
 
@@ -7915,6 +7916,7 @@ function confirmarRestarDinero(){
   S.movimientos.push({id:uid(),tipo:'salida_manual',fuente:rdFuente,monto:v,fecha,desc});
   save();refresh();
   closeSheet('restar-dinero');
+  if(window.logCambio){const _fLabel=fuenteLabel(rdFuente);logCambio('Retiraste dinero de '+_fLabel,desc,v,'gasto');}
   rdFuente='';
   toast('− '+fmt(v)+' restado — '+desc,'info');
 }

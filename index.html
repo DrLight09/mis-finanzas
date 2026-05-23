@@ -4906,6 +4906,7 @@ function confirmarCrearCDT(){
   save();
   closeSheet('crear-cdt');
   refresh();
+  if(window.logCambio)logCambio('Creaste CDT en "'+c.nombre+'"',fmt(monto)+' al '+String(tasa).replace('.',',')+' % EA · vence '+vence,monto,'ahorro');
   toast(`CDT creado por ${fmt(monto)} al ${String(tasa).replace('.',',')}% EA — se libera el ${vence}`,'ok',4000);
 }
 
@@ -4922,6 +4923,7 @@ async function liberarCDTManual(cajitaId,cdtId){
   c.fecha=hoy();
   c.cdts=(c.cdts||[]).filter(x=>x.id!==cdtId);
   refresh();save();
+  if(window.logCambio)logCambio('Cerraste CDT en "'+c.nombre+'"','Capital '+fmt(cdt.monto)+' + intereses acreditados',k.val,'ingreso');
   toast(`CDT cerrado — ${fmt(k.val)} acreditados a "${c.nombre}"`,'ok',4000);
 }
 
@@ -4975,6 +4977,7 @@ async function confirmarCobrarCDT(){
   c.cdts=(c.cdts||[]).filter(x=>x.id!==cdtId);
   closeSheet('cobrar-cdt');
   refresh();save();
+  if(window.logCambio)logCambio('Cobraste CDT de "'+c.nombre+'"','Valor real acreditado a la cajita',valorReal,'ingreso');
   toast('CDT cobrado — '+fmt(valorReal)+' acreditados a "'+c.nombre+'"','ok',4000);
 }
 
@@ -5025,6 +5028,7 @@ function guardarCDT(cajitaId,cdtId){
   save();
   closeSheet('crear-cdt');
   refresh();
+  if(window.logCambio){const _ce=(S.cajitas||[]).find(x=>x.id===cajitaId);if(_ce)logCambio('Editaste CDT en "'+_ce.nombre+'"','Tasa o fechas modificadas',0,'editar');}
   toast('CDT actualizado','ok',3000);
 }
 
@@ -11598,7 +11602,6 @@ document.addEventListener('DOMContentLoaded',function(){
     });
   });
 })();
-
 
 </script>
   </body></html>

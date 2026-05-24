@@ -7109,6 +7109,9 @@ function applyModulos(){
   // Ocultar el toggle "Es saldo inicial" en el sheet de agregar dinero
   const adAperturaWrap=document.getElementById('adAperturaWrap');
   if(adAperturaWrap)adAperturaWrap.style.display=mostrarBanners?'flex':'none';
+  // Ocultar el toggle "Es saldo inicial" en el sheet de registrar mesada
+  const mpAperturaWrap=document.getElementById('mpAperturaWrap');
+  if(mpAperturaWrap)mpAperturaWrap.style.display=mostrarBanners?'flex':'none';
 }
 
 function toggleModulo(nombre){

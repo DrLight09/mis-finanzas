@@ -2521,10 +2521,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
     </div>
 
 
-    <div class="overlay" id="sheet-nueva-persona" data-sheet-id="nueva-persona">
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title">Nueva persona</div>
         <div class="ig"><label class="il" for="np_nombre">Nombre</label><input
             type="text" id="np_nombre"
             placeholder="Ej: Papá, Carlos, Mamá..."></div>
@@ -6401,8 +6397,9 @@ function renderMesada(){
       const info=data[k];
       const pagado=!!info;
       const esSaldoIni=pagado&&!!info.esSaldoInicial;
-      // Contar en totales solo si no es saldo inicial
+      // Saldo inicial suma al total recibido pero no cuenta como mes pagado
       if(pagado&&!esSaldoIni){totalRecibido+=(info.monto||cuota);mesesPagados++;}
+      else if(pagado&&esSaldoIni){totalRecibido+=(info.monto||cuota);}
       const tooltip=esSaldoIni?'Saldo inicial ('+(info.fecha||'')+ ')':pagado?(info.fecha?info.fecha:'pagado'):'';
       const dotClass=esSaldoIni?'mes-dot on mes-dot-ini':pagado?'mes-dot on':'mes-dot';
       return`<div class="${dotClass}" title="${tooltip}"
@@ -6424,8 +6421,9 @@ function renderMesada(){
     for(let i=0;i<12;i++){
       const k=a+'-'+i;
       const info=data[k];
-      // Excluir saldo inicial del resumen de año
+      // Saldo inicial suma al total recibido pero no cuenta como mes pagado
       if(info&&!info.esSaldoInicial){totalAnio+=(info.monto||cuota);pagadosAnio++;}
+      else if(info&&info.esSaldoInicial){totalAnio+=(info.monto||cuota);}
     }
   });
   document.getElementById('ms-total').textContent=fmt(totalAnio);

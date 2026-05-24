@@ -6397,9 +6397,8 @@ function renderMesada(){
       const info=data[k];
       const pagado=!!info;
       const esSaldoIni=pagado&&!!info.esSaldoInicial;
-      // Saldo inicial suma al total recibido pero no cuenta como mes pagado
-      if(pagado&&!esSaldoIni){totalRecibido+=(info.monto||cuota);mesesPagados++;}
-      else if(pagado&&esSaldoIni){totalRecibido+=(info.monto||cuota);}
+      // Saldo inicial cuenta en meses pagados y en total recibido (sí se recibió)
+      if(pagado){totalRecibido+=(info.monto||cuota);mesesPagados++;}
       const tooltip=esSaldoIni?'Saldo inicial ('+(info.fecha||'')+ ')':pagado?(info.fecha?info.fecha:'pagado'):'';
       const dotClass=esSaldoIni?'mes-dot on mes-dot-ini':pagado?'mes-dot on':'mes-dot';
       return`<div class="${dotClass}" title="${tooltip}"
@@ -6421,9 +6420,8 @@ function renderMesada(){
     for(let i=0;i<12;i++){
       const k=a+'-'+i;
       const info=data[k];
-      // Saldo inicial suma al total recibido pero no cuenta como mes pagado
-      if(info&&!info.esSaldoInicial){totalAnio+=(info.monto||cuota);pagadosAnio++;}
-      else if(info&&info.esSaldoInicial){totalAnio+=(info.monto||cuota);}
+      // Saldo inicial cuenta en meses pagados y total recibido (sí se recibió)
+      if(info){totalAnio+=(info.monto||cuota);pagadosAnio++;}
     }
   });
   document.getElementById('ms-total').textContent=fmt(totalAnio);

@@ -6132,8 +6132,8 @@ function confirmarMovimiento() {
 
   // Log cambio
   if(window.logCambio && d){
-    const tipolog = tipo === 'prestamo' ? 'prestamo' : 'abono';
-    logCambio(tipo==='prestamo'?'Prestaste a '+d.nombre:'Registraste abono de '+d.nombre, d.nombre, monto, tipolog);
+    const tipolog = movTipo === 'prestamo' ? 'prestamo' : 'abono';
+    logCambio(movTipo==='prestamo'?'Prestaste a '+d.nombre:'Registraste abono de '+d.nombre, d.nombre, monto, tipolog);
   }
   save(); refresh(); closeSheet('registrar-movimiento');
   abrirDeudor(deudorActualId);
@@ -8175,7 +8175,13 @@ function _initEventListeners() {
   const btnNuevoPrest = document.getElementById('btn-nuevo-prestamo');
   if (btnNuevoPrest) btnNuevoPrest.addEventListener('click', () => { openSheet('registrar-movimiento'); initMovSheet('prestamo'); });
   const btnAbono = document.getElementById('btn-registrar-abono');
-  if (btnAbono) btnAbono.addEventListener('click', () => { openSheet('registrar-movimiento'); initMovSheet('abono'); });
+  if (btnAbono) btnAbono.addEventListener('click', () => {
+    const d = (S.deudores || []).find(x => x.id === deudorActualId);
+    if (!d) return;
+    const saldo = getDeudorSaldo(d);
+    if (saldo <= 0) { toast('No hay saldo pendiente', 'info'); return; }
+    openSheet('registrar-movimiento'); initMovSheet('abono');
+  });
   const btnPagarTodo = document.getElementById('btn-pagar-prestamo');
   if (btnPagarTodo) btnPagarTodo.addEventListener('click', () => {
     const d = (S.deudores || []).find(x => x.id === deudorActualId);

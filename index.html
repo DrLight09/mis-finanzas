@@ -4136,12 +4136,14 @@ function renderAttencion(){
       }
     }
   });
-  // Spotify personas vencidas
-  (S.spotifyPersonas||[]).forEach(p=>{
-    if(p.proximoPago&&p.proximoPago<hoyStr&&!p.pagado){
-      items.push({tipo:'red',texto:`Cobro Spotify de ${p.nombre} vencido`});
-    }
-  });
+  // Spotify personas vencidas (solo si el módulo está activo)
+  if(S.modulos&&S.modulos.spotify){
+    (S.spotifyPersonas||[]).forEach(p=>{
+      if(p.proximoPago&&p.proximoPago<hoyStr&&!p.pagado){
+        items.push({tipo:'red',texto:`Cobro Spotify de ${p.nombre} vencido`});
+      }
+    });
+  }
   // Cajitas con CDT próximas a vencer (7 días)
   (S.cajitas||[]).forEach(c=>{(c.cdts||[]).filter(cdt=>cdt.vence).forEach(cdt=>{
     const diasRestantes=Math.ceil((new Date(cdt.vence+'T00:00:00')-new Date())/86400000);

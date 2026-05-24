@@ -9949,10 +9949,12 @@ document.addEventListener('focusin', function(e){
         // Firestore no acepta undefined — limpiamos el objeto
         if(!window.S){setSyncStatus("error","Error: datos no inicializados");return;}
         const data = JSON.parse(JSON.stringify(window.S));
+        const savedAt = Date.now();
         await setDoc(
           doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
-          { payload: JSON.stringify(data), updatedAt: Date.now() }
+          { payload: JSON.stringify(data), updatedAt: savedAt }
         );
+        window._lastSavedAt = savedAt; // Registrar cuándo guardamos por última vez
         setSyncStatus('ok', 'Guardado en la nube · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
       } catch(e) {
         console.error('Firebase save error:', e);
@@ -9961,52 +9963,8 @@ document.addEventListener('focusin', function(e){
     }, 1500);
   };
 
-  // ── Cargar datos desde Firestore ──────────────────────────────────────────
-  window._fbLoadData = async function() {
-    if(!window._fbUser || !window._fb) return;
-    const {db, doc, getDoc} = window._fb;
-    try {
-      const snap = await getDoc(
-        doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas')
-      );
-      if(snap.exists() && snap.data().payload) {
-        const cloudData = JSON.parse(snap.data().payload);
-        // Migración: si hay datos en localStorage, preguntar si importar
-        const local = (() => { try { const r=localStorage.getItem('mf_v5'); return r?JSON.parse(r):null; } catch(e){return null;} })();
-        if(local && Object.keys(cloudData).length === 0) {
-          // Nube vacía pero localStorage tiene datos → migrar automáticamente
-          Object.assign(window.S, local);
-          localStorage.removeItem('mf_v5');
-          window._fbSaveToCloud();
-          console.log('Datos migrados desde localStorage a Firebase.');
-        } else {
-          Object.assign(window.S, cloudData);
-        }
-      } else {
-        // Sin datos en nube — revisar localStorage para migrar
-        const local = (() => { try { const r=localStorage.getItem('mf_v5'); return r?JSON.parse(r):null; } catch(e){return null;} })();
-        if(local) {
-          Object.assign(window.S, local);
-          localStorage.removeItem('mf_v5');
-          window._fbSaveToCloud();
-          console.log('Datos migrados desde localStorage a Firebase (primera vez).');
-        }
-      }
-    } catch(e) {
-      console.error('Firebase load error:', e);
-      // Fallback a localStorage si hay error de red
-      try { const r=localStorage.getItem('mf_v5'); if(r) Object.assign(window.S,JSON.parse(r)); } catch(_){}
-    }
-
-    // Ocultar pantalla de carga y mostrar la app
-    document.getElementById('fb-loading-screen').style.display = 'none';
-
-    // PROTECCIÓN: marcar que los datos ya se cargaron correctamente.
-    // _fbSaveToCloud no guardará nada hasta que esta bandera esté activa,
-    // evitando que un reinicio abrupto sobreescriba la nube con datos vacíos.
-    window._dataLoaded = true;
-
-    // Inicializar la app (equivalente al bloque de init original)
+  // ── Inicializar la app una sola vez tras la primera carga ─────────────────
+  function _initAppUI() {
     load();
     (function(){
       const el=document.getElementById('nuTasaGlobal');
@@ -10029,8 +9987,144 @@ document.addEventListener('focusin', function(e){
     _initEventListeners();
     _injectErrorSpans();
     verificarVencimientosCDT();
-    setSyncStatus('ok', 'Sincronizado con Firebase');
+  }
+
+  // ── Cargar datos desde Firestore con escucha en tiempo real ───────────────
+  // Usamos onSnapshot en lugar de getDoc para que cualquier cambio desde otro
+  // dispositivo o pestaña se refleje automáticamente sin recargar la página.
+  let _unsubscribeSnapshot = null; // Para poder cancelar el listener si hace falta
+
+  window._fbLoadData = function() {
+    if(!window._fbUser || !window._fb) return;
+    const {db, doc, onSnapshot} = window._fb;
+    const docRef = doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas');
+
+    // Cancelar listener anterior si existía (ej: re-login)
+    if(_unsubscribeSnapshot) { _unsubscribeSnapshot(); _unsubscribeSnapshot = null; }
+
+    // _firstLoad: true mientras esperamos la primera respuesta del servidor.
+    // Firebase puede entregar primero datos del caché local (fromCache=true)
+    // antes de confirmar con el servidor; los ignoramos para el arranque inicial
+    // y solo inicializamos la app cuando tengamos datos confirmados del servidor
+    // (o cuando no haya datos en absoluto).
+    let _firstLoad = true;
+
+    _unsubscribeSnapshot = onSnapshot(docRef,
+      { includeMetadataChanges: true },
+      (snap) => {
+        const fromCache = snap.metadata.fromCache;
+        const hasPendingWrites = snap.metadata.hasPendingWrites;
+
+        // Si tenemos escrituras locales pendientes, es un eco de nuestro propio
+        // guardado → ignorar para no hacer refresh innecesario y no crear bucle.
+        if(hasPendingWrites) return;
+
+        // Primera entrega: si viene del caché y la app aún no inició,
+        // esperar a que llegue la versión del servidor para evitar mostrar
+        // datos obsoletos. Si en 8s no llega nada del servidor, usar el caché.
+        if(_firstLoad && fromCache) {
+          // Programar fallback: si el servidor no responde en 8s, usar caché
+          if(!window._fbCacheFallbackTimer) {
+            window._fbCacheFallbackTimer = setTimeout(() => {
+              if(_firstLoad) {
+                console.warn('[Sync] Servidor no respondió en 8s — usando caché local.');
+                _applyCloudData(snap);
+                _firstLoad = false;
+                _finishFirstLoad();
+              }
+            }, 8000);
+          }
+          return; // Esperar datos del servidor
+        }
+
+        // Cancelar el fallback timer si ya llegaron datos del servidor
+        if(window._fbCacheFallbackTimer) {
+          clearTimeout(window._fbCacheFallbackTimer);
+          window._fbCacheFallbackTimer = null;
+        }
+
+        if(_firstLoad) {
+          // Primera carga real del servidor
+          _applyCloudData(snap);
+          _firstLoad = false;
+          _finishFirstLoad();
+        } else {
+          // Actualización en tiempo real desde otro dispositivo/pestaña.
+          // Solo aplicar si los datos de la nube son más nuevos que los locales.
+          // Esto evita que un dispositivo lento pise cambios recientes de otro.
+          if(!snap.exists()) return;
+          const remoteData = snap.data();
+          const remoteTs = remoteData.updatedAt || 0;
+          const localTs = window._lastSavedAt || 0;
+
+          // Si los datos remotos son más nuevos que lo que guardamos por última
+          // vez (con margen de 2s para latencia de red), aplicar la actualización.
+          if(remoteTs > localTs + 2000) {
+            console.log('[Sync] Datos más nuevos del servidor — aplicando actualización en tiempo real.');
+            _applyCloudData(snap);
+            // Re-renderizar la UI sin reinicializar event listeners
+            if(window._dataLoaded) {
+              load();
+              refresh();
+              if(window.applyModulos) applyModulos();
+              setSyncStatus('ok', 'Sincronizado · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
+              if(window.toast) window.toast('Datos actualizados desde otro dispositivo', 'info', 3000);
+            }
+          }
+        }
+      },
+      (error) => {
+        console.error('[Sync] Error en onSnapshot:', error);
+        setSyncStatus('error', 'Error de conexión — reintentando…');
+        // Si es la primera carga y falla, intentar con localStorage como fallback
+        if(_firstLoad) {
+          _firstLoad = false;
+          try { const r=localStorage.getItem('mf_v5'); if(r) Object.assign(window.S,JSON.parse(r)); } catch(_){}
+          _finishFirstLoad();
+        }
+      }
+    );
   };
+
+  // Aplica datos de un snapshot de Firestore a window.S
+  function _applyCloudData(snap) {
+    if(snap.exists() && snap.data().payload) {
+      try {
+        const cloudData = JSON.parse(snap.data().payload);
+        // Migración: nube vacía pero localStorage tiene datos → migrar
+        const local = (() => { try { const r=localStorage.getItem('mf_v5'); return r?JSON.parse(r):null; } catch(e){return null;} })();
+        if(local && Object.keys(cloudData).length === 0) {
+          Object.assign(window.S, local);
+          localStorage.removeItem('mf_v5');
+          window._fbSaveToCloud();
+          console.log('[Sync] Datos migrados desde localStorage a Firebase.');
+        } else {
+          Object.assign(window.S, cloudData);
+        }
+      } catch(e) {
+        console.error('[Sync] Error al parsear datos de la nube:', e);
+      }
+    } else {
+      // Sin datos en nube — revisar localStorage para migrar
+      const local = (() => { try { const r=localStorage.getItem('mf_v5'); return r?JSON.parse(r):null; } catch(e){return null;} })();
+      if(local) {
+        Object.assign(window.S, local);
+        localStorage.removeItem('mf_v5');
+        window._fbSaveToCloud();
+        console.log('[Sync] Datos migrados desde localStorage a Firebase (primera vez).');
+      }
+    }
+  }
+
+  // Finaliza la primera carga: muestra la app e inicializa la UI
+  function _finishFirstLoad() {
+    document.getElementById('fb-loading-screen').style.display = 'none';
+    // PROTECCIÓN: marcar que los datos ya se cargaron correctamente.
+    // _fbSaveToCloud no guardará nada hasta que esta bandera esté activa.
+    window._dataLoaded = true;
+    _initAppUI();
+    setSyncStatus('ok', 'Sincronizado con Firebase');
+  }
 
   // ── Login con Google ──────────────────────────────────────────────────────
   window._fbSignIn = async function() {
@@ -10069,7 +10163,15 @@ document.addEventListener('focusin', function(e){
         );
       } catch(e) { console.warn('Error en guardado final antes de cerrar sesión:', e); }
     }
+    // Cancelar el listener de tiempo real para evitar actualizaciones fantasma tras logout
+    if(typeof _unsubscribeSnapshot === 'function') {
+      _unsubscribeSnapshot();
+      _unsubscribeSnapshot = null;
+    }
+    if(window._fbCacheFallbackTimer) { clearTimeout(window._fbCacheFallbackTimer); window._fbCacheFallbackTimer = null; }
     // Bloquear futuros guardados limpiando el usuario ANTES del signOut
+    window._dataLoaded = false;
+    window._lastSavedAt = 0;
     window._fbUser = null;
     const {auth, signOut} = window._fb;
     await signOut(auth);
@@ -10914,12 +11016,19 @@ document.addEventListener('focusin', function(e){
   /* ====================================================
      10. ANIMACIÓN DE CARGA INICIAL (fade-in del app)
   ==================================================== */
-  const _origFbLoad = window._fbLoadData;
-  window._fbLoadData = async function(){
-    if(_origFbLoad) await _origFbLoad.apply(this, arguments);
+  // Animacion fade-in: se aplica cuando _finishFirstLoad oculta el loader.
+  // Ya no envolvemos _fbLoadData porque ahora usa onSnapshot (no es awaitable).
+  (function(){
     const app = document.querySelector('.app');
-    if(app){ app.style.opacity='0'; app.style.transition='opacity .4s'; requestAnimationFrame(()=>{ app.style.opacity='1'; }); }
-  };
+    const loadingEl = document.getElementById('fb-loading-screen');
+    if(app && loadingEl){
+      app.style.opacity='0'; app.style.transition='opacity .4s';
+      const _obs = new MutationObserver(()=>{
+        if(loadingEl.style.display==='none'){ requestAnimationFrame(()=>{ app.style.opacity='1'; }); _obs.disconnect(); }
+      });
+      _obs.observe(loadingEl,{attributes:true,attributeFilter:['style']});
+    }
+  })();
 
 })();
 </script>

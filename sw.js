@@ -33,6 +33,9 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const url = e.request.url;
 
+  // Ignore non-http(s) schemes (chrome-extension://, blob:, data:, etc.)
+  if (!url.startsWith('http://') && !url.startsWith('https://')) return;
+
   if (CACHE_FONTS.some(origin => url.startsWith(origin))) {
     e.respondWith(cacheFirst(e.request));
     return;
@@ -61,7 +64,7 @@ async function cacheFirst(request) {
   if (cached) return cached;
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (response.ok && request.url.startsWith('http')) {
       const cache = await caches.open(VERSION);
       cache.put(request, response.clone());
     }
@@ -74,7 +77,7 @@ async function cacheFirst(request) {
 async function networkFirst(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    if (response.ok && request.url.startsWith('http')) {
       const cache = await caches.open(VERSION);
       cache.put(request, response.clone());
     }
@@ -95,7 +98,7 @@ async function networkFirst(request) {
 async function staleWhileRevalidate(request) {
   const cached = await caches.match(request);
   const fetchPromise = fetch(request).then(response => {
-    if (response.ok) {
+    if (response.ok && request.url.startsWith('http')) {
       const toCache = response.clone();
       caches.open(VERSION).then(cache => cache.put(request, toCache));
     }

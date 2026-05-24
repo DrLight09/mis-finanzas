@@ -3834,6 +3834,34 @@ async function eliminarCuentaCustom(id){
     await dialogo('No se puede eliminar','Para eliminar "'+c.nombre+'" primero retira todo el saldo. Disponible: '+fmt(c.saldo||0)+'.','Entendido',false);
     return;
   }
+  // Verificar si algún encargo tiene saldo en esta cuenta
+  const tipoCuenta='custom:'+id;
+  const encargosConSaldo=[];
+  (S.encargos||[]).forEach(enc=>{
+    const mapRaw={};
+    if(enc.saldoInicial>0){
+      const k=enc.cuentaInicial||'__sin__';
+      mapRaw[k]=(mapRaw[k]||0)+enc.saldoInicial;
+    }
+    (enc.movimientos||[]).forEach(m=>{
+      const k=m.cuenta||'__sin__';
+      if(m.tipo==='entrada') mapRaw[k]=(mapRaw[k]||0)+m.monto;
+      else mapRaw[k]=(mapRaw[k]||0)-m.monto;
+    });
+    let saldo=0;
+    Object.entries(mapRaw).forEach(([k,v])=>{if(k===tipoCuenta)saldo+=v;});
+    if(saldo>0) encargosConSaldo.push({nombre:enc.nombre,saldo});
+  });
+  if(encargosConSaldo.length>0){
+    const lista=encargosConSaldo.map(e=>'• '+e.nombre+': '+fmt(e.saldo)).join('\n');
+    await dialogo(
+      'No se puede eliminar',
+      'La cuenta "'+c.nombre+'" tiene plata de encargos guardada aquí:\n\n'+lista+'\n\nPrimero devuelve o mueve ese dinero desde cada encargo.',
+      'Entendido',
+      false
+    );
+    return;
+  }
   const ok=await dialogo('Eliminar cuenta','¿Eliminar "'+c.nombre+'" y su historial? Esta acción no se puede deshacer.','Eliminar',true);
   if(!ok)return;
   S.cuentasPersonalizadas=(S.cuentasPersonalizadas||[]).filter(x=>x.id!==id);

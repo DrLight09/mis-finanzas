@@ -10124,19 +10124,33 @@ document.addEventListener('focusin', function(e){
       (c.movimientos||[]).filter(m=>(m.tipo==='ingreso')&&window.mesKey&&window.mesKey(m.fecha)===mes).forEach(m=>{ ingresosMes += (m.monto||0); });
     });
 
-    // a) Fondo de emergencia: patrimonio líquido vs gastos mensuales
-    // Patrimonio líquido = cajitas + nequi + efectivo + cuentas (sin contar plata prestada que puede no volver)
+    // ── Liquidez real (solo cuentas disponibles, sin CDTs bloqueados) ─────
     const nu = (S.cajitas||[]).reduce((a,c)=>a+(window.calcC?window.calcC(c).val:c.saldo||0),0);
     const cdtVal = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+(window.calcCDT?window.calcCDT(cdt).val:cdt.monto||0),0),0);
-    const liquido = nu + cdtVal + (S.nequiSaldo||0) + (S.efectivoSaldo||0)
+    // CORRECCIÓN: liquido excluye CDTs (son ahorros bloqueados, no disponibles mañana)
+    const liquidoReal = nu + (S.nequiSaldo||0) + (S.efectivoSaldo||0)
       + (S.cuentasPersonalizadas||[]).filter(c=>c.incluirEnTotal).reduce((a,c)=>a+(c.saldo||0),0)
       - deudaTC;
-    if(gastosMes > 0 && liquido > 0){
-      const mesesCubiertos = liquido / gastosMes;
+    // patrimonio total sí incluye CDTs para otros cálculos
+    const liquidoConCDTs = liquidoReal + cdtVal;
+
+    // ── Plata prestada a otros ────────────────────────────────────────────
+    const prest = window.totalPrestadoPendiente ? window.totalPrestadoPendiente() : 0;
+
+    // ── Hay datos suficientes para evaluar? ───────────────────────────────
+    const tieneAlgo = patrimonio > 0 || prest > 0 || deudaTC > 0 || gastosMes > 0;
+
+    // a) Fondo de emergencia: liquidez real vs gastos mensuales
+    // CORRECCIÓN: usamos liquidoReal (sin CDTs) para esta evaluación
+    if(gastosMes > 0 && liquidoReal > 0){
+      const mesesCubiertos = liquidoReal / gastosMes;
       if(mesesCubiertos >= 6) score += 20;
       else if(mesesCubiertos >= 3) score += 10;
       else { score -= 5; tips.push('Tus reservas cubren menos de 3 meses de gastos.'); }
-    } else if(liquido < 0){
+    } else if(gastosMes > 0 && liquidoReal <= 0 && liquidoConCDTs > 0){
+      // Tiene gastos pero su liquidez inmediata es cero o negativa — salvado por CDTs
+      score -= 8; tips.push('Tu liquidez disponible es muy baja — tus ahorros están en CDTs, no en cuentas libres.');
+    } else if(liquidoReal < 0){
       score -= 15; tips.push('Tu deuda en tarjetas supera tu patrimonio líquido.');
     }
 
@@ -10147,15 +10161,31 @@ document.addEventListener('focusin', function(e){
       else if(ratioTC > 1.5){ score -= 8; tips.push('Tu deuda en tarjetas es alta respecto a tus ingresos.'); }
       else score += 5;
     } else if(deudaTC > 0 && ingresosMes === 0){
-      // Tiene deuda TC pero no registra ingresos — al menos verificar vs patrimonio
-      if(patrimonio > 0 && deudaTC / patrimonio > 0.4){ score -= 10; tips.push('Tu deuda en tarjetas es alta — considera pagarla con tus ahorros.'); }
+      // Tiene deuda TC pero no registra ingresos — verificar vs patrimonio total
+      // CORRECCIÓN: usar Math.abs para evitar división con patrimonio negativo
+      if(patrimonio > 0 && deudaTC / patrimonio > 0.4){
+        score -= 10; tips.push('Tu deuda en tarjetas es alta — considera pagarla con tus ahorros.');
+      } else if(patrimonio <= 0 && deudaTC > 0){
+        // Deuda TC con patrimonio nulo o negativo — situación crítica
+        score -= 15; tips.push('Tienes deuda en tarjetas y tu patrimonio no la cubre — prioriza pagarla.');
+      }
     }
 
-    // c) Plata prestada a otros (riesgo de incobrabilidad)
-    const prest = window.totalPrestadoPendiente ? window.totalPrestadoPendiente() : 0;
-    if(prest > 0 && liquido > 0){
-      const ratioPrest = prest / liquido;
-      if(ratioPrest > 0.4){ score -= 8; tips.push('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).'); }
+    // c) Plata prestada a otros (riesgo de incobrabilidad / inmovilización)
+    if(prest > 0){
+      if(liquidoReal <= 0){
+        // CORRECCIÓN (bug principal): toda la plata está prestada, liquidez real = 0
+        score -= 12; tips.push('Toda tu liquidez está prestada — no tienes nada disponible para emergencias.');
+      } else {
+        const ratioPrest = prest / liquidoReal;
+        if(ratioPrest > 1){
+          // Prestó más de lo que tiene líquido (cubierto por CDTs o similar)
+          score -= 10; tips.push('Tienes más plata prestada que tu liquidez disponible — queda poco para emergencias.');
+        } else if(ratioPrest > 0.4){
+          score -= 8; tips.push('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).');
+        }
+        // Si ratioPrest <= 0.4 y tiene plata prestada: situación sana, no penalizar ni tip
+      }
     }
 
     // d) Ratio gastos/ingresos (disciplina de gasto)
@@ -10167,22 +10197,29 @@ document.addEventListener('focusin', function(e){
     }
 
     // e) CDTs activos (ahorro estructurado)
+    // CORRECCIÓN: solo sugerir CDT si el usuario ya tiene plata para ahorrar
     const cdts = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).length,0);
-    if(cdts >= 1) score += 10;
-    else tips.push('Considera poner algo en un CDT para hacer crecer tus ahorros.');
+    if(cdts >= 1){
+      score += 10;
+    } else if(tieneAlgo && liquidoReal > 0){
+      // Solo tip de CDT si tiene liquidez y aún no tiene uno
+      tips.push('Considera poner algo en un CDT para hacer crecer tus ahorros.');
+    }
 
     // f) Gastos fijos configurados (disciplina de presupuesto)
     if((S.gastosFijos||[]).length >= 2) score += 5;
 
     // g) Categorías diversificadas en gastos variables (registro completo)
+    // CORRECCIÓN: solo evaluar si hay gastos variables registrados (no solo fijos)
     const cats = new Set((S.gastosVar||[]).slice(-20).map(g=>g.cat));
-    if(cats.size <= 1 && gastosMes > 0){ score -= 5; tips.push('Registra las categorías de tus gastos para mejor control.'); }
+    if(gvMes > 0 && cats.size <= 1){ score -= 5; tips.push('Registra las categorías de tus gastos para mejor control.'); }
 
     score = Math.max(0, Math.min(100, score));
     if(!tips.length){
       if(score >= 80) tips.push('¡Excelente! Tus finanzas están muy bien.');
       else if(score >= 60) tips.push('Vas bien, sigue así.');
-      else tips.push('Hay espacio para mejorar.');
+      else if(tieneAlgo) tips.push('Hay espacio para mejorar.');
+      else tips.push('Registra más movimientos para un análisis más preciso.');
     }
     return { score, tip: tips[0] };
   }

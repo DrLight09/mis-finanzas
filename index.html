@@ -4435,7 +4435,9 @@ function leerArchivoImport(e){
       const data=JSON.parse(ev.target.result);
       const ok=await dialogo('Importar datos','¿Reemplazar todos los datos actuales con el archivo importado? Esta acción no se puede deshacer.','Importar',true);
       if(!ok)return;
-      S=data;
+      // Reemplazar CONTENIDO de S sin romper la referencia de window.S
+      Object.keys(S).forEach(k => delete S[k]);
+      Object.assign(S, data);
       // Marcar timestamp ANTES del debounce de guardado
       const _impTs = Date.now();
       window._lastSavedAt = _impTs;
@@ -8804,7 +8806,9 @@ leerArchivoImport = async function(e) {
         '¿Reemplazar todos los datos actuales con el archivo importado? Esta acción no se puede deshacer.',
         'Importar', true);
       if (!ok) return;
-      S = data;
+      // Reemplazar CONTENIDO de S sin romper la referencia de window.S
+      Object.keys(S).forEach(k => delete S[k]);
+      Object.assign(S, data);
       // Marcar timestamp ANTES del debounce de guardado para que cualquier
       // snapshot entrante de Firestore no pise los datos recién importados.
       const importTs = Date.now();

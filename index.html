@@ -10983,9 +10983,9 @@ document.addEventListener('focusin', function(e){
     (S.gastosVar||[]).forEach(g => todos.push({ fecha:g.fecha, desc:g.desc||'Gasto', monto:-(g.monto||0), tipo:'Gasto', cat:g.cat }));
 
     // Movimientos de cajitas (inferidos de historial de patrimonio — no disponible directamente, usamos gastos como proxy)
-    // Movimientos de cuentas personalizadas
+    // Movimientos de cuentas personalizadas (excluir aperturas — son configuración, no movimientos reales)
     (S.cuentasPersonalizadas||[]).forEach(c => {
-      (c.movimientos||[]).forEach(m => todos.push({ fecha:m.fecha, desc:(m.tipo==='ingreso'||m.tipo==='apertura'?'+':'-')+' '+c.nombre+(m.nota?' · '+m.nota:''), monto:m.tipo==='ingreso'||m.tipo==='apertura'?m.monto:-m.monto, tipo:'Cuenta' }));
+      (c.movimientos||[]).filter(m => m.tipo !== 'apertura').forEach(m => todos.push({ fecha:m.fecha, desc:(m.tipo==='ingreso'?'+':'-')+' '+c.nombre+(m.nota?' · '+m.nota:''), monto:m.tipo==='ingreso'?m.monto:-m.monto, tipo:'Cuenta' }));
     });
 
     // Pagos de gastos fijos

@@ -10665,15 +10665,21 @@ document.addEventListener('focusin', function(e){
     }
 
     // c) Plata prestada a otros (riesgo de incobrabilidad / inmovilización)
+    // Penalización escalonada por ratio — independiente del bonus de CDTs
+    let ratioPrest = 0;
     if(prest > 0){
       if(liquidoReal <= 0){
-        // CORRECCIÓN (bug principal): toda la liquidez está prestada — antes no penalizaba nada
-        score -= 12; tips.push('Toda tu liquidez está prestada — no tienes nada disponible para emergencias.');
+        // Toda la liquidez está prestada — caso crítico
+        score -= 15; tips.push('Toda tu liquidez está prestada — no tienes nada disponible para emergencias.');
+        ratioPrest = Infinity;
       } else {
-        const ratioPrest = prest / liquidoReal;
-        if(ratioPrest > 1){
+        ratioPrest = prest / liquidoReal;
+        if(ratioPrest > 2){
+          // Más del doble de la liquidez prestada — muy comprometido
+          score -= 18; tips.push('Tienes más del doble de tu liquidez prestada — tu situación financiera es muy vulnerable.');
+        } else if(ratioPrest > 1){
           // Prestó más de lo que tiene líquido
-          score -= 10; tips.push('Tienes más plata prestada que tu liquidez disponible — queda poco para emergencias.');
+          score -= 13; tips.push('Tienes más plata prestada que tu liquidez disponible — queda poco para emergencias.');
         } else if(ratioPrest > 0.4){
           score -= 8; tips.push('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).');
         }
@@ -10690,10 +10696,12 @@ document.addEventListener('focusin', function(e){
     }
 
     // e) CDTs activos (ahorro estructurado)
-    // CORRECCIÓN: solo sugerir CDT si ya tienes liquidez disponible para meterle
+    // Si el riesgo de prestado es alto (ratio > 1), el CDT no compensa — bonus reducido a +3
+    // Solo cuando la situación de liquidez es sana merece el bonus completo
     const cdts = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).length,0);
     if(cdts >= 1){
-      score += 10;
+      const cdtBonus = ratioPrest > 1 ? 3 : 10;
+      score += cdtBonus;
     } else if(tieneAlgo && liquidoReal > 0){
       tips.push('Considera poner algo en un CDT para hacer crecer tus ahorros.');
     }

@@ -7037,7 +7037,23 @@ function renderSpotify(){
   document.getElementById('spPend').textContent=fmt(cobPend);
   document.getElementById('spProg').style.width=(costo>0?Math.min(100,cob/costo*100):0).toFixed(0)+'%';
   document.getElementById('spProgLabel').textContent=(costo>0?Math.round(cob/costo*100)+'% recaudado':'');
-  
+
+  // Aviso cuando no está configurado el costo del plan
+  let warnEl=document.getElementById('sp-costo-warn');
+  if(costo===0){
+    if(!warnEl){
+      warnEl=document.createElement('div');
+      warnEl.id='sp-costo-warn';
+      warnEl.style.cssText='display:flex;align-items:center;gap:8px;background:rgba(240,184,64,0.12);border:1.5px solid var(--amber);border-radius:var(--radius-sm);padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--amber);cursor:pointer;';
+      warnEl.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>No configuraste el costo del plan — los cálculos de ganancia no son precisos. <u>Configurar ahora</u></span>';
+      warnEl.onclick=()=>{ const inp=document.getElementById('spotifyCosto'); if(inp){ inp.focus(); inp.select(); } };
+      const spList=document.getElementById('spotifyList');
+      if(spList&&spList.parentNode) spList.parentNode.insertBefore(warnEl,spList);
+    }
+  } else {
+    if(warnEl) warnEl.remove();
+  }
+
   // Ganancia = cajita - costo (si cajita tiene más que el costo)
   const cajitaEl=document.getElementById('spCajitaSaldo');
   cajitaEl.textContent=fmt(cajitaSaldo);
@@ -10908,9 +10924,9 @@ document.addEventListener('focusin', function(e){
     (S.gastosVar||[]).forEach(g => todos.push({ fecha:g.fecha, desc:g.desc||'Gasto', monto:-(g.monto||0), tipo:'Gasto', cat:g.cat }));
 
     // Movimientos de cajitas (inferidos de historial de patrimonio — no disponible directamente, usamos gastos como proxy)
-    // Movimientos de cuentas personalizadas
+    // Movimientos de cuentas personalizadas (excluir aperturas — son configuración, no movimientos reales)
     (S.cuentasPersonalizadas||[]).forEach(c => {
-      (c.movimientos||[]).forEach(m => todos.push({ fecha:m.fecha, desc:(m.tipo==='ingreso'||m.tipo==='apertura'?'+':'-')+' '+c.nombre+(m.nota?' · '+m.nota:''), monto:m.tipo==='ingreso'||m.tipo==='apertura'?m.monto:-m.monto, tipo:'Cuenta' }));
+      (c.movimientos||[]).filter(m => m.tipo !== 'apertura').forEach(m => todos.push({ fecha:m.fecha, desc:(m.tipo==='ingreso'?'+':'-')+' '+c.nombre+(m.nota?' · '+m.nota:''), monto:m.tipo==='ingreso'?m.monto:-m.monto, tipo:'Cuenta' }));
     });
 
     // Pagos de gastos fijos

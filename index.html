@@ -4336,24 +4336,24 @@ function debounceSave(delay=800){
 /* ---- GUARDADO DE EMERGENCIA al cerrar pestaña ---- */
 // Evita pérdida de datos si el usuario cierra antes de que el debounce dispare.
 window.addEventListener('beforeunload', function() {
-  if (_saveTimer != null || window._fbSaveTimer != null) {
-    clearTimeout(_saveTimer);
-    _saveTimer = null;
-    try { save(); } catch(e) {}
-    // Intentar guardado inmediato en Firebase si hay datos pendientes
-    if (window._fbSaveToCloud && window._dataLoaded) {
-      clearTimeout(window._fbSaveTimer);
-      if (window._fbUser && window._fb && window.S) {
-        try {
-          const {db, doc, setDoc} = window._fb;
-          const data = JSON.parse(JSON.stringify(window.S));
-          // El guardado real ocurre inmediatamente a continuación si la pestaña sigue viva
-          setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),
-            {payload: JSON.stringify(data), updatedAt: Date.now()}
-          ).catch(()=>{});
-        } catch(e) {}
-      }
-    }
+  if (!window._dataLoaded) return; // Nunca guardar si los datos no se cargaron
+  // Siempre intentar guardar al cerrar si hay datos cargados, haya o no timer pendiente
+  if (window._fbUser && window._fb && window.S) {
+    try {
+      clearTimeout(_saveTimer); _saveTimer = null;
+      clearTimeout(window._fbSaveTimer); window._fbSaveTimer = null;
+      const {db, doc, setDoc} = window._fb;
+      const data = JSON.parse(JSON.stringify(window.S));
+      const closingTs = Date.now();
+      // Persistir el timestamp ANTES de cerrar para que al reabrir
+      // la página sepa que "yo fui el último en guardar" y no deje
+      // que un snapshot antiguo de otro dispositivo pise estos datos.
+      try { localStorage.setItem('mf_lastSavedAt', String(closingTs)); } catch(_){}
+      window._lastSavedAt = closingTs;
+      setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),
+        {payload: JSON.stringify(data), updatedAt: closingTs}
+      ).catch(()=>{});
+    } catch(e) {}
   }
 });
 
@@ -4436,6 +4436,10 @@ function leerArchivoImport(e){
       const ok=await dialogo('Importar datos','¿Reemplazar todos los datos actuales con el archivo importado? Esta acción no se puede deshacer.','Importar',true);
       if(!ok)return;
       S=data;
+      // Marcar timestamp ANTES del debounce de guardado
+      const _impTs = Date.now();
+      window._lastSavedAt = _impTs;
+      try { localStorage.setItem('mf_lastSavedAt', String(_impTs)); } catch(_){}
       save();load();refresh();applyModulos();
       toast('Datos importados correctamente','ok');
     }catch(err){
@@ -7478,9 +7482,12 @@ async function borrarTodo(){
   if(window._fbUser && window._fb){
     try{
       const {db, doc, setDoc} = window._fb;
+      const resetTs = Date.now();
+      try { localStorage.setItem('mf_lastSavedAt', String(resetTs)); } catch(_){}
+      window._lastSavedAt = resetTs;
       await setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),{
         payload: JSON.stringify({}),
-        updatedAt: Date.now()
+        updatedAt: resetTs
       });
     }catch(e){console.error('Error borrando en Firebase:',e);}
   }
@@ -8798,6 +8805,11 @@ leerArchivoImport = async function(e) {
         'Importar', true);
       if (!ok) return;
       S = data;
+      // Marcar timestamp ANTES del debounce de guardado para que cualquier
+      // snapshot entrante de Firestore no pise los datos recién importados.
+      const importTs = Date.now();
+      window._lastSavedAt = importTs;
+      try { localStorage.setItem('mf_lastSavedAt', String(importTs)); } catch(_){}
       save(); load(); refresh(); applyModulos();
       toast('Datos importados correctamente', 'ok');
     } catch(err) {
@@ -9983,6 +9995,8 @@ document.addEventListener('focusin', function(e){
           { payload: JSON.stringify(data), updatedAt: savedAt }
         );
         window._lastSavedAt = savedAt; // Registrar cuándo guardamos por última vez
+        // Persistir en localStorage para sobrevivir recargas de página
+        try { localStorage.setItem('mf_lastSavedAt', String(savedAt)); } catch(_){}
         setSyncStatus('ok', 'Guardado en la nube · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
       } catch(e) {
         console.error('Firebase save error:', e);
@@ -10030,6 +10044,16 @@ document.addEventListener('focusin', function(e){
     // Cancelar listener anterior si existía (ej: re-login)
     if(_unsubscribeSnapshot) { _unsubscribeSnapshot(); _unsubscribeSnapshot = null; }
 
+    // Restaurar _lastSavedAt desde localStorage para sobrevivir recargas.
+    // Esto evita que al recargar la página, un snapshot del servidor con
+    // timestamp reciente sobreescriba datos que nosotros mismos acabamos de guardar.
+    if(!window._lastSavedAt) {
+      try {
+        const saved = localStorage.getItem('mf_lastSavedAt');
+        if(saved) window._lastSavedAt = parseInt(saved, 10);
+      } catch(_){}
+    }
+
     // _firstLoad: true mientras esperamos la primera respuesta del servidor.
     // Firebase puede entregar primero datos del caché local (fromCache=true)
     // antes de confirmar con el servidor; los ignoramos para el arranque inicial
@@ -10043,9 +10067,14 @@ document.addEventListener('focusin', function(e){
         const fromCache = snap.metadata.fromCache;
         const hasPendingWrites = snap.metadata.hasPendingWrites;
 
-        // Si tenemos escrituras locales pendientes, es un eco de nuestro propio
-        // guardado → ignorar para no hacer refresh innecesario y no crear bucle.
-        if(hasPendingWrites) return;
+        // Si tenemos escrituras locales pendientes Y la app ya está corriendo,
+        // es un eco de nuestro propio guardado → ignorar para no hacer refresh
+        // innecesario y no crear bucle.
+        // CRÍTICO: durante _firstLoad NO ignorar — el celular que nunca abrió la app
+        // no tiene caché local. Si el servidor manda el snapshot con hasPendingWrites
+        // (porque otro dispositivo acaba de guardar) y lo ignoramos, el celular se
+        // queda sin datos y muestra todo en cero.
+        if(hasPendingWrites && !_firstLoad) return;
 
         // Primera entrega: si viene del caché y la app aún no inició,
         // esperar a que llegue la versión del servidor para evitar mostrar
@@ -10086,8 +10115,8 @@ document.addEventListener('focusin', function(e){
           const localTs = window._lastSavedAt || 0;
 
           // Si los datos remotos son más nuevos que lo que guardamos por última
-          // vez (con margen de 2s para latencia de red), aplicar la actualización.
-          if(remoteTs > localTs + 2000) {
+          // vez (con margen de 5s para latencia de red y desfase de relojes), aplicar la actualización.
+          if(remoteTs > localTs + 5000) {
             console.log('[Sync] Datos más nuevos del servidor — aplicando actualización en tiempo real.');
             _applyCloudData(snap);
             // Re-renderizar la UI sin reinicializar event listeners
@@ -10119,6 +10148,7 @@ document.addEventListener('focusin', function(e){
     if(snap.exists() && snap.data().payload) {
       try {
         const cloudData = JSON.parse(snap.data().payload);
+        console.log('[Sync] _applyCloudData: keys=' + Object.keys(cloudData).length + ' updatedAt=' + snap.data().updatedAt);
         // Migración: nube vacía pero localStorage tiene datos → migrar
         const local = (() => { try { const r=localStorage.getItem('mf_v5'); return r?JSON.parse(r):null; } catch(e){return null;} })();
         if(local && Object.keys(cloudData).length === 0) {
@@ -10126,6 +10156,10 @@ document.addEventListener('focusin', function(e){
           localStorage.removeItem('mf_v5');
           window._fbSaveToCloud();
           console.log('[Sync] Datos migrados desde localStorage a Firebase.');
+        } else if(Object.keys(cloudData).length === 0) {
+          // Nube vacía y sin localStorage — no pisar S con objeto vacío,
+          // dejar los valores por defecto de S intactos.
+          console.warn('[Sync] Nube vacía (sin payload real) — manteniendo estado por defecto.');
         } else {
           Object.assign(window.S, cloudData);
         }
@@ -10133,6 +10167,7 @@ document.addEventListener('focusin', function(e){
         console.error('[Sync] Error al parsear datos de la nube:', e);
       }
     } else {
+      console.warn('[Sync] _applyCloudData: snap.exists()=' + snap.exists() + ' — sin datos en nube.');
       // Sin datos en nube — revisar localStorage para migrar
       const local = (() => { try { const r=localStorage.getItem('mf_v5'); return r?JSON.parse(r):null; } catch(e){return null;} })();
       if(local) {
@@ -10185,9 +10220,11 @@ document.addEventListener('focusin', function(e){
       try {
         const {db, doc, setDoc} = window._fb;
         const data = JSON.parse(JSON.stringify(window.S));
+        const signOutTs = Date.now();
+        try { localStorage.setItem('mf_lastSavedAt', String(signOutTs)); } catch(_){}
         await setDoc(
           doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
-          { payload: JSON.stringify(data), updatedAt: Date.now() }
+          { payload: JSON.stringify(data), updatedAt: signOutTs }
         );
       } catch(e) { console.warn('Error en guardado final antes de cerrar sesión:', e); }
     }

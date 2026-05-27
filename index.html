@@ -4326,7 +4326,11 @@ document.getElementById('dialog-overlay').addEventListener('click',function(e){
 
 /* ---- DEBOUNCE SAVE ---- */
 var _saveTimer=null;
+// Flag: true solo si este dispositivo hizo cambios reales en esta sesión.
+// Evita que un dispositivo que solo abrió y leyó datos pise Firestore al cerrar.
+window._locallyModified = false;
 function debounceSave(delay=800){
+  window._locallyModified = true; // El usuario tocó algo en este dispositivo
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(()=>saveAndRefresh(),delay);
   // Exponer en window para que el módulo Firebase (scope de módulo) pueda cancelarlo en signOut
@@ -4337,6 +4341,11 @@ function debounceSave(delay=800){
 // Evita pérdida de datos si el usuario cierra antes de que el debounce dispare.
 window.addEventListener('beforeunload', function() {
   if (!window._dataLoaded) return; // Nunca guardar si los datos no se cargaron
+  // CRÍTICO: Solo guardar si este dispositivo realmente modificó algo en esta sesión.
+  // Si el dispositivo solo abrió y leyó datos (sin editar), NO sobreescribir Firestore.
+  // Esto evita que abrir la app en PC/otra pestaña con datos desactualizados pise
+  // los cambios recientes hechos desde otro dispositivo (ej: celular todo el día).
+  if (!window._locallyModified) return;
   // Siempre intentar guardar al cerrar si hay datos cargados, haya o no timer pendiente
   if (window._fbUser && window._fb && window.S) {
     try {

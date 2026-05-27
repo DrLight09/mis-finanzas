@@ -10894,8 +10894,15 @@ document.addEventListener('focusin', function(e){
       let ing = 0;
       if(S.modulos && S.modulos.mesada){
         const ms = S.mesadas || {};
+        const ms2 = S.mesadasV2 || {};
+        // Formato viejo: mesadas
         if(ms[anio+'_'+mesNum+'_papa']) ing += (S.mesadaMontoPapa||0);
         if(ms[anio+'_'+mesNum+'_mama']) ing += (S.mesadaMonteMama||0);
+        // Formato nuevo: mesadasV2 (excluir saldos iniciales)
+        const v2papa = (ms2.papa||{})[anio+'-'+mesNum];
+        const v2mama = (ms2.mama||{})[anio+'-'+mesNum];
+        if(v2papa && !v2papa.esSaldoInicial) ing += (S.mesadaMontoPapa||0);
+        if(v2mama && !v2mama.esSaldoInicial) ing += (S.mesadaMonteMama||0);
       }
       (S.cuentasPersonalizadas||[]).forEach(c=>{
         (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mk).forEach(m=>{ ing+=(m.monto||0); });
@@ -10923,8 +10930,15 @@ document.addEventListener('focusin', function(e){
       let ingHoy = 0;
       if(S.modulos && S.modulos.mesada){
         const ms = S.mesadas || {};
+        const ms2 = S.mesadasV2 || {};
+        // Formato viejo: mesadas
         if(ms[anioHoy+'_'+mesNumHoy+'_papa']) ingHoy += (S.mesadaMontoPapa||0);
         if(ms[anioHoy+'_'+mesNumHoy+'_mama']) ingHoy += (S.mesadaMonteMama||0);
+        // Formato nuevo: mesadasV2 (excluir saldos iniciales)
+        const v2papaH = (ms2.papa||{})[anioHoy+'-'+mesNumHoy];
+        const v2mamaH = (ms2.mama||{})[anioHoy+'-'+mesNumHoy];
+        if(v2papaH && !v2papaH.esSaldoInicial) ingHoy += (S.mesadaMontoPapa||0);
+        if(v2mamaH && !v2mamaH.esSaldoInicial) ingHoy += (S.mesadaMonteMama||0);
       }
       (S.cuentasPersonalizadas||[]).forEach(c=>{
         (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mkHoy).forEach(m=>{ ingHoy+=(m.monto||0); });

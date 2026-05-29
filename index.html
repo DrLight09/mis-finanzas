@@ -12507,4 +12507,940 @@ document.addEventListener('DOMContentLoaded',function(){
 })();
 
 </script>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     MÓDULO: PLATA COMPROMETIDA
+     Registra ingresos futuros que ya tienen destino definido
+     (ej: arriendo que llega el 3 de junio pero ya está comprometido).
+     No toca ningún saldo existente: el "recibir" lo hace el usuario
+     manualmente cuando la plata llega de verdad.
+══════════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+
+/* ── INYECTAR PANTALLA EN EL DOM ─────────────────────────────────── */
+function _injectScreen(){
+  const main = document.getElementById('scrollArea');
+  if(!main || document.getElementById('screen-comprometida')) return;
+
+  const screen = document.createElement('div');
+  screen.className = 'screen';
+  screen.id = 'screen-comprometida';
+  screen.innerHTML = `
+    <!-- Hero -->
+    <div style="background:linear-gradient(135deg,rgba(240,184,64,.12) 0%,rgba(240,184,64,.04) 100%);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius);padding:20px;margin-bottom:10px;position:relative;overflow:hidden;">
+      <div style="position:absolute;top:-30px;right:-30px;width:110px;height:110px;background:rgba(240,184,64,.06);border-radius:50%;"></div>
+      <div style="font-size:10px;color:rgba(240,184,64,.7);letter-spacing:1.5px;text-transform:uppercase;font-family:'DM Mono',monospace;font-weight:600;">Plata por llegar</div>
+      <div style="font-size:36px;font-weight:300;margin:6px 0 4px;letter-spacing:-2px;font-family:'DM Mono',monospace;color:var(--amber);" id="cp-hero-total">$0</div>
+      <div style="font-size:11px;color:var(--text3);" id="cp-hero-sub">En ingresos futuros registrados</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid2" style="margin-bottom:9px;">
+      <div class="stat"><div class="stat-label">Ya comprometido</div><div class="stat-value c-red" id="cp-stat-comprometido">$0</div></div>
+      <div class="stat"><div class="stat-label">Libre al llegar</div><div class="stat-value c-green" id="cp-stat-libre">$0</div></div>
+    </div>
+
+    <!-- Lista -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px;">
+      <div class="sec-title" style="margin:0;">Ingresos comprometidos</div>
+      <button type="button" onclick="window._cpAbrirNuevo()" style="display:flex;align-items:center;gap:5px;background:rgba(240,184,64,.12);border:1px solid rgba(240,184,64,.35);color:var(--amber);border-radius:8px;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo
+      </button>
+    </div>
+    <div id="cp-lista"></div>
+
+    <!-- Tip -->
+    <div style="background:rgba(200,240,96,.05);border:1px solid rgba(200,240,96,.15);border-radius:var(--radius-sm);padding:12px 14px;margin-top:10px;">
+      <div style="font-size:10px;font-weight:700;color:rgba(200,240,96,.6);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;margin-bottom:5px;">¿Cómo funciona?</div>
+      <div style="font-size:11px;color:var(--text3);line-height:1.6;">Registrá aquí ingresos que todavía no te han llegado pero que ya sabés que van a tener destino. Cuando la plata llegue de verdad, tocás <b style="color:var(--text2);">Recibir</b> y la app te guía a distribuirla sin enredos.</div>
+    </div>
+  `;
+  main.appendChild(screen);
+}
+
+/* ── INYECTAR ÍTEM EN MENÚ MÁS ──────────────────────────────────── */
+function _injectMasItem(){
+  const masMenu = document.getElementById('mas-menu');
+  if(!masMenu || document.getElementById('mas-comprometida')) return;
+  const item = document.createElement('div');
+  item.className = 'mas-item';
+  item.id = 'mas-comprometida';
+  item.setAttribute('data-screen', 'comprometida');
+  item.innerHTML = `
+    <div class="mas-item-icon" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.25);">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="20" height="13" rx="2"/>
+        <path d="M2 10h20"/>
+        <path d="M12 14v2M8 14h2M14 14h2"/>
+        <path d="M6 6V4M18 6V4"/>
+      </svg>
+    </div>
+    <div>
+      <div class="mas-item-label">Plata comprometida</div>
+      <div class="mas-item-sub">Ingresos futuros con destino</div>
+    </div>
+  `;
+  // Insertar antes del item de historial
+  const masHistorial = document.getElementById('mas-historial');
+  if(masHistorial) masMenu.insertBefore(item, masHistorial);
+  else masMenu.appendChild(item);
+}
+
+/* ── INYECTAR SHEET PRINCIPAL ───────────────────────────────────── */
+function _injectSheet(){
+  if(document.getElementById('sheet-cp-nuevo')) return;
+  const html = `
+  <!-- NUEVO INGRESO COMPROMETIDO -->
+  <div class="overlay" id="sheet-cp-nuevo" data-sheet-id="cp-nuevo">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title" id="cp-sheet-title">Nuevo ingreso comprometido</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.5;">Registrá plata que todavía no llegó pero que ya tiene destino.<br>Los saldos <b style="color:var(--text);">no se tocan</b> hasta que vos confirmes que llegó.</div>
+
+      <div class="ig">
+        <label class="il" for="cp-desc">¿Qué plata es? <span style="color:var(--red);">*</span></label>
+        <input type="text" id="cp-desc" placeholder="Ej: Arriendo de mamá, Pago de Juan..." maxlength="80">
+      </div>
+      <div class="ig">
+        <label class="il" for="cp-monto-total">Monto total que va a llegar <span style="color:var(--red);">*</span></label>
+        <input type="text" inputmode="decimal" id="cp-monto-total" placeholder="0,00" class="money-input">
+      </div>
+      <div class="ig">
+        <label class="il" for="cp-fecha-llegada">¿Cuándo llega? <span style="color:var(--red);">*</span></label>
+        <input type="date" id="cp-fecha-llegada">
+      </div>
+      <div class="ig">
+        <label class="il" for="cp-cuenta-destino">¿A qué cuenta cae?</label>
+        <div class="select-wrap"><select id="cp-cuenta-destino"><option value="">Sin especificar</option></select></div>
+      </div>
+
+      <!-- Destinos / compromisos -->
+      <div style="margin-top:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <label class="il" style="margin:0;">¿A dónde va esta plata?</label>
+          <button type="button" onclick="window._cpAgregarDestino()" style="font-size:10px;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">+ Agregar destino</button>
+        </div>
+        <div id="cp-destinos-list"></div>
+        <div id="cp-balance-preview" style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;padding:8px 0;"></div>
+      </div>
+
+      <button type="button" class="btn btn-primary" onclick="window._cpGuardar()" style="background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.3);">Guardar</button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="cp-nuevo" onclick="window._cpCancelSheet()">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- SHEET DESTINO -->
+  <div class="overlay" id="sheet-cp-destino" data-sheet-id="cp-destino">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Agregar destino</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">¿Para qué va a usarse parte de este ingreso?</div>
+      <div class="ig">
+        <label class="il" for="cpd-tipo">Tipo de destino</label>
+        <div class="select-wrap">
+          <select id="cpd-tipo" onchange="window._cpdTipoChange()">
+            <option value="servicios">Servicios / Gastos que cubro mientras</option>
+            <option value="abono_deuda">Abono a lo que me deben</option>
+            <option value="prestamo">Pago de préstamo a otra persona</option>
+            <option value="tc">Pago de tarjeta de crédito</option>
+            <option value="libre">Queda libre para mí</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+      </div>
+      <div class="ig">
+        <label class="il" for="cpd-desc">Descripción <span style="color:var(--red);">*</span></label>
+        <input type="text" id="cpd-desc" placeholder="Ej: Internet + servicios, Abono mamá..." maxlength="60">
+      </div>
+      <div class="ig">
+        <label class="il" for="cpd-monto">Monto <span style="color:var(--red);">*</span></label>
+        <input type="text" inputmode="decimal" id="cpd-monto" placeholder="0,00" class="money-input">
+      </div>
+      <!-- Selector de persona (para abono_deuda / prestamo) -->
+      <div class="ig" id="cpd-persona-wrap" style="display:none;">
+        <label class="il" for="cpd-persona">¿Quién?</label>
+        <div class="select-wrap"><select id="cpd-persona"><option value="">Sin especificar</option></select></div>
+      </div>
+      <!-- Selector TC (para tc) -->
+      <div class="ig" id="cpd-tc-wrap" style="display:none;">
+        <label class="il" for="cpd-tc">Tarjeta de crédito</label>
+        <div class="select-wrap"><select id="cpd-tc"><option value="">Sin especificar</option></select></div>
+      </div>
+      <!-- Cuenta destino del libre (para libre) -->
+      <div class="ig" id="cpd-cuenta-wrap" style="display:none;">
+        <label class="il" for="cpd-cuenta">¿A qué cuenta entra?</label>
+        <div class="select-wrap"><select id="cpd-cuenta"><option value="">Sin especificar</option></select></div>
+      </div>
+      <button type="button" class="btn btn-primary" onclick="window._cpdConfirmar()" style="background:var(--amber);color:#0a0a0a;border:none;">Agregar este destino</button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="cp-destino">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- SHEET RECIBIR (ejecutar el ingreso) -->
+  <div class="overlay" id="sheet-cp-recibir" data-sheet-id="cp-recibir">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">¡Llegó la plata! 🎉</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">Revisá el plan y confirma qué se va a hacer con cada parte.</div>
+
+      <div id="cp-recibir-desc-card" style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;">
+        <div style="font-size:10px;color:rgba(240,184,64,.7);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Ingreso</div>
+        <div style="font-size:16px;font-weight:600;" id="cp-recibir-desc">—</div>
+        <div style="font-size:13px;font-family:'DM Mono',monospace;color:var(--amber);margin-top:2px;" id="cp-recibir-monto">$0</div>
+      </div>
+
+      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">Distribución</div>
+      <div id="cp-recibir-plan"></div>
+
+      <div id="cp-recibir-sobrante-wrap" style="display:none;margin-top:8px;padding:12px 14px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius-sm);">
+        <div style="font-size:10px;color:rgba(200,240,96,.7);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Sobrante libre</div>
+        <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);" id="cp-recibir-sobrante">$0</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px;">Entra a la cuenta destino del ingreso</div>
+      </div>
+
+      <div class="ig" style="margin-top:14px;">
+        <label class="il" for="cp-recibir-fecha">Fecha de recibo</label>
+        <input type="date" id="cp-recibir-fecha">
+      </div>
+
+      <button type="button" class="btn btn-primary" onclick="window._cpConfirmarRecibir()" style="background:var(--accent);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(200,240,96,.25);">Confirmar y distribuir</button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="cp-recibir">Cancelar</button>
+    </div>
+  </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+/* ── ESTADO DEL MÓDULO ───────────────────────────────────────────── */
+let _cpEditId = null;
+let _cpDestinosTmp = [];   // destinos mientras se construye el nuevo ingreso
+let _cpRecibirId = null;
+
+/* ── HELPERS ─────────────────────────────────────────────────────── */
+function _cpData(){
+  if(!window.S) return [];
+  if(!S.plataCometida) S.plataCometida = [];
+  return S.plataCometida;
+}
+
+function _cpFmt(v){
+  return typeof window.fmt === 'function' ? fmt(v) : '$'+Math.round(v||0).toLocaleString('es-CO');
+}
+
+function _cpHoy(){
+  return typeof window.hoy === 'function' ? hoy() : new Date().toISOString().slice(0,10);
+}
+
+function _cpUid(){
+  return typeof window.uid === 'function' ? uid() : Date.now().toString(36)+Math.random().toString(36).slice(2);
+}
+
+function _cpSave(){
+  if(typeof window.save === 'function') save();
+}
+
+function _cpToast(msg, tipo){
+  if(typeof window.toast === 'function') toast(msg, tipo||'ok');
+}
+
+function _cpOpenSheet(id){
+  if(typeof window.openSheet === 'function') openSheet(id);
+  else { const el=document.getElementById('sheet-'+id); if(el) el.classList.add('open'); }
+}
+
+function _cpCloseSheet(id){
+  if(typeof window.closeSheet === 'function') closeSheet(id);
+  else { const el=document.getElementById('sheet-'+id); if(el) el.classList.remove('open'); }
+}
+
+function _cpPoblarCuentas(selId, incluirTC){
+  const sel = document.getElementById(selId);
+  if(!sel) return;
+  const fuentes = typeof window.getFuentes === 'function'
+    ? (incluirTC ? getFuentes() : getFuentesSinTC())
+    : [];
+  sel.innerHTML = '<option value="">Sin especificar</option>';
+  fuentes.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.val;
+    opt.textContent = f.label;
+    sel.appendChild(opt);
+  });
+}
+
+function _cpPoblarPersonas(selId){
+  const sel = document.getElementById(selId);
+  if(!sel) return;
+  const deudores = (window.S && S.deudores) ? S.deudores : [];
+  sel.innerHTML = '<option value="">Sin especificar</option>';
+  deudores.forEach(d => {
+    const saldo = typeof getDeudorSaldo === 'function' ? getDeudorSaldo(d) : 0;
+    const opt = document.createElement('option');
+    opt.value = d.id;
+    opt.textContent = d.nombre + (saldo > 0 ? ' — te debe '+_cpFmt(saldo) : '');
+    sel.appendChild(opt);
+  });
+}
+
+function _cpPoblarTC(selId){
+  const sel = document.getElementById(selId);
+  if(!sel) return;
+  const tcs = (window.S && S.tarjetasCredito) ? S.tarjetasCredito : [];
+  sel.innerHTML = '<option value="">Sin especificar</option>';
+  tcs.forEach(tc => {
+    const opt = document.createElement('option');
+    opt.value = tc.id;
+    opt.textContent = tc.nombre + (tc.deuda ? ' — deuda '+_cpFmt(tc.deuda) : '');
+    sel.appendChild(opt);
+  });
+}
+
+function _cpFuenteLabel(val){
+  return typeof fuenteLabel === 'function' ? fuenteLabel(val) : (val||'Sin especificar');
+}
+
+/* ── TIPOS DE DESTINO ────────────────────────────────────────────── */
+const _CP_TIPO_LABELS = {
+  servicios:   { label:'Servicios / Gastos que cubrí',  color:'var(--red)',    bg:'rgba(240,104,104,.1)',  border:'rgba(240,104,104,.25)' },
+  abono_deuda: { label:'Abono a deuda pendiente',        color:'var(--accent)', bg:'rgba(200,240,96,.08)', border:'rgba(200,240,96,.2)' },
+  prestamo:    { label:'Pago de préstamo',               color:'var(--blue)',   bg:'rgba(96,176,240,.08)', border:'rgba(96,176,240,.2)' },
+  tc:          { label:'Pago tarjeta de crédito',        color:'var(--red)',    bg:'rgba(240,104,104,.08)', border:'rgba(240,104,104,.2)' },
+  libre:       { label:'Libre para mí',                  color:'var(--accent)', bg:'rgba(200,240,96,.08)', border:'rgba(200,240,96,.2)' },
+  otro:        { label:'Otro',                           color:'var(--text2)',  bg:'rgba(136,136,128,.08)', border:'rgba(136,136,128,.2)' },
+};
+
+/* ── RENDER LISTA PRINCIPAL ──────────────────────────────────────── */
+function _cpRenderLista(){
+  const el = document.getElementById('cp-lista');
+  if(!el) return;
+  const items = _cpData();
+  const pendientes = items.filter(i => !i.recibido);
+  const recibidos = items.filter(i => i.recibido);
+
+  // Stats hero
+  const totalPorLlegar = pendientes.reduce((a,i)=>a+(i.montoTotal||0),0);
+  const totalComprometido = pendientes.reduce((a,i)=>{
+    return a + (i.destinos||[]).filter(d=>d.tipo!=='libre').reduce((s,d)=>s+(d.monto||0),0);
+  },0);
+  const totalLibre = pendientes.reduce((a,i)=>{
+    const comp = (i.destinos||[]).filter(d=>d.tipo!=='libre').reduce((s,d)=>s+(d.monto||0),0);
+    return a + Math.max(0,(i.montoTotal||0)-comp);
+  },0);
+
+  const heroEl = document.getElementById('cp-hero-total');
+  const subEl = document.getElementById('cp-hero-sub');
+  const statComp = document.getElementById('cp-stat-comprometido');
+  const statLibre = document.getElementById('cp-stat-libre');
+  if(heroEl) heroEl.textContent = _cpFmt(totalPorLlegar);
+  if(subEl) subEl.textContent = pendientes.length
+    ? pendientes.length + ' ingreso'+(pendientes.length>1?'s':'')+' por llegar'
+    : 'Sin ingresos futuros registrados';
+  if(statComp) statComp.textContent = _cpFmt(totalComprometido);
+  if(statLibre) statLibre.textContent = _cpFmt(totalLibre);
+
+  if(!items.length){
+    el.innerHTML = `<div style="text-align:center;padding:32px 16px;">
+      <div style="width:48px;height:48px;border-radius:14px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 6V4M18 6V4"/></svg>
+      </div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:5px;">Sin ingresos registrados</div>
+      <div style="font-size:11px;color:var(--text3);line-height:1.5;">Tocá <b style="color:var(--text2);">Nuevo</b> para registrar plata que va a llegar.</div>
+    </div>`;
+    return;
+  }
+
+  let html = '';
+
+  // Pendientes
+  if(pendientes.length){
+    html += `<div class="sec-title" style="margin-top:4px;">Por llegar</div>`;
+    pendientes.sort((a,b)=>(a.fechaLlegada||'').localeCompare(b.fechaLlegada||''));
+    pendientes.forEach(item => {
+      const comp = (item.destinos||[]).filter(d=>d.tipo!=='libre').reduce((s,d)=>s+(d.monto||0),0);
+      const libre = Math.max(0,(item.montoTotal||0)-comp);
+      const pctComp = item.montoTotal > 0 ? Math.min(100,(comp/item.montoTotal)*100) : 0;
+      const hoy = _cpHoy();
+      const diasStr = _cpDiasHastaStr(item.fechaLlegada);
+
+      html += `<div class="card" style="margin-bottom:9px;padding:15px 15px 12px;">
+        <!-- Header -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_cpEscape(item.desc)}</div>
+            <div style="font-size:11px;color:${diasStr.urgente?'var(--amber)':'var(--text3)'};font-family:'DM Mono',monospace;margin-top:2px;">${diasStr.texto}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;margin-left:10px;">
+            <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${_cpFmt(item.montoTotal)}</div>
+            ${item.cuentaDestino ? `<div style="font-size:9px;color:var(--text3);margin-top:1px;">${_cpFuenteLabel(item.cuentaDestino)}</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Barra de compromisos -->
+        ${pctComp > 0 ? `
+        <div style="margin-bottom:10px;">
+          <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-bottom:4px;">
+            <div style="height:100%;width:${pctComp.toFixed(1)}%;background:var(--red);border-radius:2px;transition:width .4s;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;font-family:'DM Mono',monospace;">
+            <span style="color:var(--red);">Comprometido: ${_cpFmt(comp)}</span>
+            <span style="color:var(--accent);">Libre: ${_cpFmt(libre)}</span>
+          </div>
+        </div>` : `
+        <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:10px;">Sin compromisos asignados — todo queda libre</div>`}
+
+        <!-- Destinos chips -->
+        ${(item.destinos||[]).length ? `
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
+          ${(item.destinos||[]).map(d=>{
+            const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
+            return `<span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:${ti.bg};border:1px solid ${ti.border};color:${ti.color};font-family:'DM Mono',monospace;">${_cpEscape(d.desc)}: ${_cpFmt(d.monto)}</span>`;
+          }).join('')}
+        </div>` : ''}
+
+        <!-- Acciones -->
+        <div style="display:flex;gap:7px;">
+          <button type="button" onclick="window._cpAbrirRecibir('${item.id}')"
+            style="flex:1;padding:8px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.12);border:1.5px solid rgba(200,240,96,.35);color:var(--accent);display:flex;align-items:center;justify-content:center;gap:5px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            ¡Llegó!
+          </button>
+          <button type="button" onclick="window._cpAbrirEditar('${item.id}')"
+            style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(136,136,128,.08);border:1.5px solid var(--border2);color:var(--text2);">
+            Editar
+          </button>
+          <button type="button" onclick="window._cpEliminar('${item.id}')"
+            style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;background:rgba(240,104,104,.08);border:1.5px solid rgba(240,104,104,.2);color:var(--red);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+          </button>
+        </div>
+      </div>`;
+    });
+  }
+
+  // Recibidos recientes (últimos 5)
+  if(recibidos.length){
+    html += `<div class="sec-title" style="margin-top:14px;">Recibidos recientemente</div>`;
+    recibidos.sort((a,b)=>(b.fechaRecibido||'').localeCompare(a.fechaRecibido||'')).slice(0,5).forEach(item=>{
+      html += `<div class="card card-sm" style="margin-bottom:7px;opacity:.65;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text2);">${_cpEscape(item.desc)}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">Recibido el ${item.fechaRecibido||'—'}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text2);">${_cpFmt(item.montoTotal)}</span>
+            <button type="button" onclick="window._cpEliminar('${item.id}')" style="padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.2);color:var(--red);">✕</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+
+  el.innerHTML = html;
+}
+
+function _cpDiasHastaStr(fecha){
+  if(!fecha) return { texto:'Sin fecha definida', urgente:false };
+  const hoyMs = new Date(_cpHoy()+'T00:00:00').getTime();
+  const llegaMs = new Date(fecha+'T00:00:00').getTime();
+  const dias = Math.round((llegaMs - hoyMs)/86400000);
+  if(dias < 0)  return { texto:`Llegaba hace ${Math.abs(dias)} día${Math.abs(dias)!==1?'s':''} — ¿ya recibiste?`, urgente:true };
+  if(dias === 0) return { texto:'Llega hoy', urgente:true };
+  if(dias === 1) return { texto:'Llega mañana', urgente:true };
+  if(dias <= 5)  return { texto:`Llega en ${dias} días (${fecha})`, urgente:true };
+  return { texto:`Llega el ${fecha}`, urgente:false };
+}
+
+function _cpEscape(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── NUEVO / EDITAR ──────────────────────────────────────────────── */
+window._cpAbrirNuevo = function(){
+  _cpEditId = null;
+  _cpDestinosTmp = [];
+  document.getElementById('cp-sheet-title').textContent = 'Nuevo ingreso comprometido';
+  document.getElementById('cp-desc').value = '';
+  document.getElementById('cp-monto-total').value = '';
+  document.getElementById('cp-fecha-llegada').value = '';
+  _cpPoblarCuentas('cp-cuenta-destino', false);
+  document.getElementById('cp-cuenta-destino').value = '';
+  _cpRenderDestinosTmp();
+  _cpOpenSheet('cp-nuevo');
+  setTimeout(()=>document.getElementById('cp-desc').focus(), 200);
+};
+
+window._cpAbrirEditar = function(id){
+  const items = _cpData();
+  const item = items.find(i=>i.id===id);
+  if(!item) return;
+  _cpEditId = id;
+  _cpDestinosTmp = JSON.parse(JSON.stringify(item.destinos||[]));
+  document.getElementById('cp-sheet-title').textContent = 'Editar ingreso';
+  document.getElementById('cp-desc').value = item.desc||'';
+  if(typeof window._moneyDigits !== 'undefined' && window.fmtInput)
+    document.getElementById('cp-monto-total').value = fmtInput(item.montoTotal||0);
+  else
+    document.getElementById('cp-monto-total').value = String(item.montoTotal||0).replace('.',',');
+  document.getElementById('cp-fecha-llegada').value = item.fechaLlegada||'';
+  _cpPoblarCuentas('cp-cuenta-destino', false);
+  document.getElementById('cp-cuenta-destino').value = item.cuentaDestino||'';
+  _cpRenderDestinosTmp();
+  _cpOpenSheet('cp-nuevo');
+};
+
+window._cpCancelSheet = function(){
+  _cpEditId = null;
+  _cpDestinosTmp = [];
+};
+
+window._cpGuardar = function(){
+  const desc = (document.getElementById('cp-desc').value||'').trim();
+  if(!desc){ _cpToast('Escribí de qué plata es','err'); return; }
+
+  const montoStr = document.getElementById('cp-monto-total').value||'';
+  const monto = typeof parseMoney === 'function' ? parseMoney(montoStr) : parseFloat(montoStr.replace(/\./g,'').replace(',','.'));
+  if(!monto || monto <= 0){ _cpToast('Ingresá el monto total','err'); return; }
+
+  const fecha = document.getElementById('cp-fecha-llegada').value;
+  if(!fecha){ _cpToast('Indicá cuándo llega','err'); return; }
+
+  const cuentaDestino = document.getElementById('cp-cuenta-destino').value||'';
+
+  const totalComp = _cpDestinosTmp.reduce((a,d)=>a+(d.monto||0),0);
+  if(totalComp > monto){
+    _cpToast('Los destinos superan el monto total','err'); return;
+  }
+
+  _cpData(); // asegurar que existe S.plataCometida
+  if(_cpEditId){
+    const item = S.plataCometida.find(i=>i.id===_cpEditId);
+    if(item){
+      item.desc = desc;
+      item.montoTotal = monto;
+      item.fechaLlegada = fecha;
+      item.cuentaDestino = cuentaDestino;
+      item.destinos = JSON.parse(JSON.stringify(_cpDestinosTmp));
+    }
+  } else {
+    S.plataCometida.push({
+      id: _cpUid(),
+      desc,
+      montoTotal: monto,
+      fechaLlegada: fecha,
+      cuentaDestino,
+      destinos: JSON.parse(JSON.stringify(_cpDestinosTmp)),
+      recibido: false,
+      creadoEn: _cpHoy(),
+    });
+  }
+
+  _cpSave();
+  _cpCloseSheet('cp-nuevo');
+  _cpRenderLista();
+  _cpToast(_cpEditId ? 'Ingreso actualizado' : 'Ingreso registrado ✓', 'ok');
+  _cpEditId = null;
+  _cpDestinosTmp = [];
+
+  if(window.logCambio) logCambio(
+    (_cpEditId?'Editaste':'Registraste')+' plata comprometida: "'+desc+'"', '', monto, 'ingreso'
+  );
+
+  // Agregar a "Necesita atención" si llega pronto
+  if(typeof renderAttencion === 'function') renderAttencion();
+};
+
+/* ── DESTINOS TEMPORALES ─────────────────────────────────────────── */
+window._cpAgregarDestino = function(){
+  _cpPoblarPersonas('cpd-persona');
+  _cpPoblarTC('cpd-tc');
+  _cpPoblarCuentas('cpd-cuenta', false);
+  document.getElementById('cpd-tipo').value = 'servicios';
+  document.getElementById('cpd-desc').value = '';
+  document.getElementById('cpd-monto').value = '';
+  _cpdTipoChange();
+  _cpOpenSheet('cp-destino');
+  setTimeout(()=>document.getElementById('cpd-desc').focus(), 200);
+};
+
+window._cpdTipoChange = function(){
+  const tipo = document.getElementById('cpd-tipo').value;
+  const personaWrap = document.getElementById('cpd-persona-wrap');
+  const tcWrap = document.getElementById('cpd-tc-wrap');
+  const cuentaWrap = document.getElementById('cpd-cuenta-wrap');
+
+  if(personaWrap) personaWrap.style.display = (tipo==='abono_deuda'||tipo==='prestamo') ? '' : 'none';
+  if(tcWrap)      tcWrap.style.display      = tipo==='tc'    ? '' : 'none';
+  if(cuentaWrap)  cuentaWrap.style.display  = tipo==='libre' ? '' : 'none';
+
+  // Sugerir descripción
+  const descInput = document.getElementById('cpd-desc');
+  if(descInput && !descInput.value){
+    const sugs = {
+      servicios:'Internet + servicios', abono_deuda:'Abono deuda', prestamo:'Pago préstamo',
+      tc:'Pago TC', libre:'Para mí', otro:'Otro destino'
+    };
+    descInput.placeholder = sugs[tipo]||'Descripción';
+  }
+};
+
+window._cpdConfirmar = function(){
+  const tipo  = document.getElementById('cpd-tipo').value;
+  const desc  = (document.getElementById('cpd-desc').value||'').trim();
+  if(!desc){ _cpToast('Describí para qué es','err'); return; }
+
+  const montoStr = document.getElementById('cpd-monto').value||'';
+  const monto = typeof parseMoney === 'function' ? parseMoney(montoStr) : parseFloat(montoStr.replace(/\./g,'').replace(',','.'));
+  if(!monto || monto <= 0){ _cpToast('Ingresá el monto','err'); return; }
+
+  const personaId = document.getElementById('cpd-persona') ? document.getElementById('cpd-persona').value : '';
+  const tcId      = document.getElementById('cpd-tc')      ? document.getElementById('cpd-tc').value      : '';
+  const cuentaId  = document.getElementById('cpd-cuenta')  ? document.getElementById('cpd-cuenta').value  : '';
+
+  _cpDestinosTmp.push({ id: _cpUid(), tipo, desc, monto, personaId, tcId, cuentaId });
+  _cpCloseSheet('cp-destino');
+  _cpRenderDestinosTmp();
+};
+
+function _cpRenderDestinosTmp(){
+  const el = document.getElementById('cp-destinos-list');
+  const balEl = document.getElementById('cp-balance-preview');
+  if(!el) return;
+
+  if(!_cpDestinosTmp.length){
+    el.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:4px 0 6px;font-family:'DM Mono',monospace;">Sin destinos — todo queda libre para vos.</div>`;
+  } else {
+    el.innerHTML = _cpDestinosTmp.map((d,i)=>{
+      const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:12px;font-weight:600;">${_cpEscape(d.desc)}</div>
+          <div style="font-size:10px;color:${ti.color};font-family:'DM Mono',monospace;">${ti.label}</div>
+        </div>
+        <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${ti.color};">${_cpFmt(d.monto)}</div>
+        <button type="button" onclick="window._cpQuitarDestino(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;line-height:1;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>`;
+    }).join('');
+  }
+
+  // Preview balance
+  if(balEl){
+    const montoStr = document.getElementById('cp-monto-total') ? document.getElementById('cp-monto-total').value : '';
+    const total = typeof parseMoney === 'function' ? parseMoney(montoStr)||0 : 0;
+    const comp = _cpDestinosTmp.reduce((a,d)=>a+(d.monto||0),0);
+    const libre = total - comp;
+    if(total > 0){
+      const color = libre < 0 ? 'var(--red)' : 'var(--accent)';
+      balEl.style.color = color;
+      balEl.textContent = comp > 0
+        ? `Comprometido: ${_cpFmt(comp)} · Libre: ${_cpFmt(Math.max(0,libre))}${libre<0?' ⚠ excede el total':''}`
+        : `Todo libre: ${_cpFmt(total)}`;
+    } else {
+      balEl.textContent = '';
+    }
+  }
+}
+
+window._cpQuitarDestino = function(i){
+  _cpDestinosTmp.splice(i,1);
+  _cpRenderDestinosTmp();
+};
+
+/* ── RECIBIR ─────────────────────────────────────────────────────── */
+window._cpAbrirRecibir = function(id){
+  const item = _cpData().find(i=>i.id===id);
+  if(!item) return;
+  _cpRecibirId = id;
+
+  document.getElementById('cp-recibir-desc').textContent = item.desc||'';
+  document.getElementById('cp-recibir-monto').textContent = _cpFmt(item.montoTotal);
+  document.getElementById('cp-recibir-fecha').value = _cpHoy();
+
+  const comp = (item.destinos||[]).reduce((a,d)=>a+(d.monto||0),0);
+  const sobrante = Math.max(0,(item.montoTotal||0)-comp);
+
+  // Render plan
+  const planEl = document.getElementById('cp-recibir-plan');
+  if(planEl){
+    if(!(item.destinos||[]).length){
+      planEl.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:4px 0 10px;">Sin compromisos — todo el monto queda libre.</div>`;
+    } else {
+      planEl.innerHTML = (item.destinos||[]).map(d=>{
+        const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
+        let detalle = '';
+        if(d.tipo==='abono_deuda'||d.tipo==='prestamo'){
+          const deu = (S.deudores||[]).find(x=>x.id===d.personaId);
+          if(deu) detalle = ` · ${deu.nombre}`;
+        }
+        if(d.tipo==='tc'){
+          const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.tcId);
+          if(tc) detalle = ` · ${tc.nombre}`;
+        }
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:6px;">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:${ti.color};">${_cpEscape(d.desc)}${detalle}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${ti.label}</div>
+          </div>
+          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${ti.color};">${_cpFmt(d.monto)}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Sobrante
+  const sobWrap = document.getElementById('cp-recibir-sobrante-wrap');
+  const sobEl   = document.getElementById('cp-recibir-sobrante');
+  if(sobWrap && sobEl){
+    if(sobrante > 0 || !(item.destinos||[]).length){
+      sobWrap.style.display = '';
+      sobEl.textContent = _cpFmt(sobrante > 0 ? sobrante : item.montoTotal||0);
+    } else {
+      sobWrap.style.display = 'none';
+    }
+  }
+
+  _cpOpenSheet('cp-recibir');
+};
+
+window._cpConfirmarRecibir = function(){
+  const id = _cpRecibirId;
+  const items = _cpData();
+  const item = items.find(i=>i.id===id);
+  if(!item){ _cpCloseSheet('cp-recibir'); return; }
+
+  const fecha = document.getElementById('cp-recibir-fecha').value || _cpHoy();
+
+  // Ejecutar cada destino
+  let errores = [];
+  (item.destinos||[]).forEach(d => {
+    try {
+      if(d.tipo === 'abono_deuda' && d.personaId){
+        // Registrar abono a deudor
+        const deu = (S.deudores||[]).find(x=>x.id===d.personaId);
+        if(deu){
+          if(!deu.movimientos) deu.movimientos = [];
+          deu.movimientos.push({id:_cpUid(), tipo:'abono', monto:d.monto, fecha, nota:'Abono desde: '+item.desc, ts:Date.now()});
+          if(window.logCambio) logCambio('Registraste abono de '+deu.nombre, _cpFmt(d.monto)+' de plata comprometida', d.monto, 'abono');
+        }
+      }
+      else if(d.tipo === 'tc' && d.tcId){
+        // Registrar pago de TC
+        const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.tcId);
+        if(tc){
+          tc.deuda = Math.max(0,(tc.deuda||0)-d.monto);
+          if(window.logCambio) logCambio('Pagaste TC "'+tc.nombre+'" desde plata comprometida', _cpFmt(d.monto), d.monto, 'gasto');
+        }
+      }
+      else if(d.tipo === 'prestamo' && d.personaId){
+        // Registrar abono/pago desde la persona hacia nosotros (ellos nos pagan)
+        const deu = (S.deudores||[]).find(x=>x.id===d.personaId);
+        if(deu){
+          if(!deu.movimientos) deu.movimientos = [];
+          deu.movimientos.push({id:_cpUid(), tipo:'abono', monto:d.monto, fecha, nota:'Pago desde: '+item.desc, ts:Date.now()});
+          if(window.logCambio) logCambio('Abono de préstamo de '+deu.nombre, _cpFmt(d.monto), d.monto, 'abono');
+        }
+      }
+      // libre y servicios y otro: solo se registran como nota, no afectan saldos automáticamente
+      // (el usuario ya pagó los servicios desde su TC, eso ya está registrado)
+    } catch(e){
+      errores.push(d.desc);
+    }
+  });
+
+  // Sobrante → sumar a la cuenta destino si existe
+  const comp = (item.destinos||[]).reduce((a,d)=>a+(d.monto||0),0);
+  const sobrante = Math.max(0,(item.montoTotal||0)-comp);
+  if(sobrante > 0 && item.cuentaDestino){
+    try {
+      if(typeof sumarFuente === 'function'){
+        // Materializar intereses si es cajita
+        if(item.cuentaDestino.startsWith('cajita:')){
+          const cajId = item.cuentaDestino.split(':')[1];
+          const caj = (S.cajitas||[]).find(x=>x.id===cajId);
+          if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+        }
+        sumarFuente(item.cuentaDestino, sobrante);
+        if(!S.movimientos) S.movimientos = [];
+        S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:item.cuentaDestino, monto:sobrante, fecha, desc:'Ingreso: '+item.desc+' (sobrante libre)'});
+        if(window.logCambio) logCambio('Ingreso libre: "'+item.desc+'"', _cpFmt(sobrante)+' sumado a '+_cpFuenteLabel(item.cuentaDestino), sobrante, 'ingreso');
+      }
+    } catch(e){ errores.push('Sobrante'); }
+  }
+
+  // Marcar como recibido
+  item.recibido = true;
+  item.fechaRecibido = fecha;
+
+  _cpSave();
+  if(typeof refresh === 'function') refresh();
+  _cpCloseSheet('cp-recibir');
+  _cpRenderLista();
+  _cpRecibirId = null;
+
+  if(errores.length){
+    _cpToast('Recibido con errores menores en: '+errores.join(', '),'err');
+  } else {
+    _cpToast('¡Plata distribuida correctamente! ✓','ok');
+  }
+
+  if(typeof renderAttencion === 'function') renderAttencion();
+};
+
+/* ── ELIMINAR ────────────────────────────────────────────────────── */
+window._cpEliminar = async function(id){
+  const item = _cpData().find(i=>i.id===id);
+  if(!item) return;
+  const ok = typeof dialogo === 'function'
+    ? await dialogo('Eliminar ingreso', '¿Eliminar "'+item.desc+'"? Esta acción no se puede deshacer.', 'Eliminar', true)
+    : confirm('¿Eliminar este ingreso comprometido?');
+  if(!ok) return;
+  S.plataCometida = S.plataCometida.filter(i=>i.id!==id);
+  _cpSave();
+  _cpRenderLista();
+  _cpToast('Ingreso eliminado','ok');
+};
+
+/* ── INTEGRACIÓN CON renderAttencion ────────────────────────────── */
+(function(){
+  const _origRA = window.renderAttencion;
+  window.renderAttencion = function(){
+    if(typeof _origRA === 'function') _origRA();
+    // Agregar alertas de plata que llega pronto o ya llegó
+    const items = _cpData ? _cpData() : [];
+    const list = document.getElementById('s-attn-list');
+    const sec  = document.getElementById('s-attn-section');
+    if(!list || !sec) return;
+    const hoyStr = _cpHoy();
+    items.filter(i=>!i.recibido).forEach(item => {
+      const dias = item.fechaLlegada
+        ? Math.round((new Date(item.fechaLlegada+'T00:00:00')-new Date(hoyStr+'T00:00:00'))/86400000)
+        : null;
+      if(dias === null) return;
+      let txt = '', tipo = '';
+      if(dias < 0){ txt = `"${item.desc}" ya debía haber llegado — ¿recibiste?`; tipo='amber'; }
+      else if(dias === 0){ txt = `Hoy llega "${item.desc}" (${_cpFmt(item.montoTotal)})`; tipo='amber'; }
+      else if(dias === 1){ txt = `Mañana llega "${item.desc}" (${_cpFmt(item.montoTotal)})`; tipo='amber'; }
+      else if(dias <= 3){ txt = `En ${dias} días llega "${item.desc}" (${_cpFmt(item.montoTotal)})`; tipo='amber'; }
+      if(txt){
+        sec.style.display = '';
+        const chip = document.createElement('div');
+        chip.className = 'card card-sm attn-card';
+        chip.style.marginBottom='7px';
+        chip.style.cursor='pointer';
+        chip.innerHTML = `<div style="font-size:12px;color:var(--amber);">${txt}</div>`;
+        chip.onclick = ()=>{ if(typeof showScreen==='function') showScreen('comprometida'); setTimeout(_cpRenderLista,100); };
+        list.appendChild(chip);
+      }
+    });
+  };
+})();
+
+/* ── INTEGRACIÓN: swipe/sheet handle para los nuevos sheets ─────── */
+function _cpInitSwipe(){
+  ['cp-nuevo','cp-destino','cp-recibir'].forEach(sheetId=>{
+    const overlay = document.getElementById('sheet-'+sheetId);
+    if(!overlay) return;
+    const handle = overlay.querySelector('.sheet-handle');
+    const sheet  = overlay.querySelector('.sheet');
+    if(!handle||!sheet) return;
+    let startY=0, curY=0, drag=false;
+    handle.addEventListener('touchstart',e=>{
+      if(document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+      startY=e.touches[0].clientY; drag=true; sheet.style.transition='none';
+    },{passive:true});
+    handle.addEventListener('touchmove',e=>{
+      if(!drag) return;
+      curY=e.touches[0].clientY-startY;
+      if(curY<0) return;
+      sheet.style.transform=`translateY(${curY}px)`;
+    },{passive:true});
+    handle.addEventListener('touchend',()=>{
+      if(!drag) return;
+      drag=false; sheet.style.transition='transform .25s ease';
+      if(curY>80) _cpCloseSheet(sheetId);
+      else sheet.style.transform='translateY(0)';
+      curY=0;
+    });
+  });
+}
+
+/* ── INICIALIZAR ─────────────────────────────────────────────────── */
+function _cpInit(){
+  _injectScreen();
+  _injectMasItem();
+  _injectSheet();
+  _cpInitSwipe();
+
+  // Conectar con el menú Más (el listener ya existe pero hay que incluir el nuevo item)
+  const masItem = document.getElementById('mas-comprometida');
+  if(masItem){
+    masItem.addEventListener('click', ()=>{
+      // cerrar menú más
+      const masMenu = document.getElementById('mas-menu');
+      const masOverlay = document.getElementById('mas-menu-overlay');
+      const masBtn = document.getElementById('nav-mas-btn');
+      if(masMenu){ masMenu.style.transform='translateY(100%)'; setTimeout(()=>{masMenu.style.display='none';},280); }
+      if(masOverlay) masOverlay.classList.remove('open');
+      if(masBtn) masBtn.classList.remove('active');
+      // ir a pantalla
+      if(typeof showScreen==='function'){ showScreen('comprometida'); _cpRenderLista(); }
+    });
+  }
+
+  // Actualizar input de balance en tiempo real cuando cambia el monto total
+  const montoInput = document.getElementById('cp-monto-total');
+  if(montoInput){
+    montoInput.addEventListener('input', ()=>_cpRenderDestinosTmp());
+  }
+
+  // Conectar botones data-close-sheet de los nuevos sheets
+  document.querySelectorAll('[data-close-sheet="cp-nuevo"],[data-close-sheet="cp-destino"],[data-close-sheet="cp-recibir"]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-close-sheet');
+      _cpCloseSheet(id);
+    });
+  });
+
+  // Render cuando se navega a la pantalla (via click en cualquier parte del DOM)
+  document.addEventListener('click', e=>{
+    const target = e.target.closest('[data-screen="comprometida"], #mas-comprometida');
+    if(target) setTimeout(_cpRenderLista, 100);
+  });
+
+  // Integrar con refresh global para mantener stats actualizados
+  const _origRefreshCP = window.refresh;
+  if(typeof _origRefreshCP === 'function'){
+    window.refresh = function(){
+      _origRefreshCP.apply(this, arguments);
+      // Actualizar stats si la pantalla está activa
+      const screen = document.getElementById('screen-comprometida');
+      if(screen && screen.classList.contains('active')) _cpRenderLista();
+    };
+  }
+
+  // Render inicial si hay datos
+  if(window.S && (window.S.plataCometida||[]).length) _cpRenderLista();
+}
+
+// Arrancar: esperar a que la app esté lista
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(_cpInit, 400));
+} else {
+  setTimeout(_cpInit, 400);
+}
+
+// También arrancar después de que Firebase cargue los datos
+const _cpOrigFbLoad = window._fbLoadData;
+window._fbLoadData = function(){
+  if(typeof _cpOrigFbLoad === 'function') _cpOrigFbLoad.apply(this, arguments);
+  setTimeout(_cpInit, 800);
+};
+
+})();
+</script>
   </body></html>

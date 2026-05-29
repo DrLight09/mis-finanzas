@@ -1800,6 +1800,14 @@ input.movs-search-input:focus{border-color:var(--accent);}
                       y2="5" /><line x1="5" y1="19" x2="15" y2="19" /></svg>
                   <span class="cuenta-action-btn-label">Me lo regalaron</span>
                 </button>
+                <button type="button" class="cuenta-action-btn"
+                  style="background:rgba(240,184,64,.08);border-color:rgba(240,184,64,.3);color:var(--amber);"
+                  onclick="abrirMoverEntreCuentasEncargo()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                  <span class="cuenta-action-btn-label">Mover de cuenta</span>
+                </button>
               </div>
               <div
                 style="margin-top:10px;font-size:10px;color:rgba(96,176,240,.5);font-family:'DM Mono',monospace;">Esta
@@ -2628,6 +2636,46 @@ input.movs-search-input:focus{border-color:var(--accent);}
           traspaso</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="traspaso-encargo">Cancelar</button>
+      </div>
+    </div>
+
+
+    <!-- MOVER PLATA DE ENCARGO ENTRE CUENTAS -->
+    <div class="overlay" id="sheet-mover-enc-cuentas" data-sheet-id="mover-enc-cuentas">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Mover entre cuentas</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;">
+          Movés plata del encargo de una cuenta a otra. El saldo total del encargo <b style="color:var(--text);">no cambia</b> — solo cambia dónde está guardada físicamente.
+        </p>
+        <div style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;">
+          Encargo: <span id="moverEncNombre" style="font-weight:600;"></span>
+          &middot; Saldo total: <span id="moverEncSaldo"></span>
+        </div>
+        <div class="ig">
+          <label class="il" for="moverenc_origen">&iquest;De qu&eacute; cuenta sale?</label>
+          <div class="select-wrap"><select id="moverenc_origen"><option value="">Seleccionar cuenta origen</option></select></div>
+          <div id="moverenc_origen_hint" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+        </div>
+        <div class="ig">
+          <label class="il" for="moverenc_destino">&iquest;A qu&eacute; cuenta va?</label>
+          <div class="select-wrap"><select id="moverenc_destino"><option value="">Seleccionar cuenta destino</option></select></div>
+          <div id="moverenc_destino_hint" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+        </div>
+        <div class="ig">
+          <label class="il" for="moverenc_monto">&iquest;Cu&aacute;nto vas a mover?</label>
+          <input type="text" inputmode="decimal" id="moverenc_monto" placeholder="0,00" class="money-input">
+        </div>
+        <div class="ig">
+          <label class="il" for="moverenc_fecha">Fecha</label>
+          <input type="date" id="moverenc_fecha">
+        </div>
+        <div id="moverenc_preview" style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:12px;min-height:16px;line-height:1.6;"></div>
+        <button type="button" class="btn" id="btn-confirmar-mover-enc-cuentas"
+          style="background:rgba(240,184,64,.18);color:var(--amber);border:1px solid rgba(240,184,64,.4);box-shadow:none;font-weight:600;">
+          Confirmar movimiento
+        </button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="mover-enc-cuentas">Cancelar</button>
       </div>
     </div>
 
@@ -9526,6 +9574,180 @@ function confirmarTraspasoEncargo() {
   abrirEncargoDetalle(encargoActualId);
   toast(`${fmt(monto)} traspasado a ${fuenteLabel(destino)}`, 'ok', 3500);
 }
+
+
+// ── MOVER PLATA DE ENCARGO ENTRE CUENTAS ──────────────────────────────────
+// Permite reubicar fisicamente la plata de un encargo de una cuenta a otra
+// sin alterar el saldo total del encargo.
+
+function abrirMoverEntreCuentasEncargo() {
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+  const saldo = encargoSaldo(enc);
+  if (saldo <= 0) { toast('El encargo no tiene saldo disponible', 'err'); return; }
+
+  document.getElementById('moverEncNombre').textContent = enc.nombre;
+  document.getElementById('moverEncSaldo').textContent = fmt(saldo);
+  document.getElementById('moverenc_monto').value = '';
+  document.getElementById('moverenc_fecha').value = hoy();
+  document.getElementById('moverenc_preview').innerHTML = '';
+  document.getElementById('moverenc_origen_hint').textContent = '';
+  document.getElementById('moverenc_destino_hint').textContent = '';
+
+  const fuentes = getFuentes();
+  const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc); // [{cuenta, saldo}]
+
+  // Select origen: solo cuentas donde el encargo tiene plata
+  const selOrigen = document.getElementById('moverenc_origen');
+  selOrigen.innerHTML = '<option value="">Seleccionar cuenta origen</option>' +
+    fuentes.map(f => {
+      const encargoEnCuenta = cuentasConSaldo.find(c => c.cuenta === f.val);
+      const saldoEnc = encargoEnCuenta ? encargoEnCuenta.saldo : 0;
+      const disabled = saldoEnc <= 0 ? 'disabled' : '';
+      const label = saldoEnc > 0 ? f.label + ' (' + fmt(saldoEnc) + ' del encargo)' : f.label + ' (sin saldo del encargo)';
+      return '<option value="' + f.val + '" ' + disabled + '>' + label + '</option>';
+    }).join('');
+
+  // Pre-seleccionar la cuenta con más saldo del encargo
+  if (cuentasConSaldo.length > 0) {
+    selOrigen.value = cuentasConSaldo[0].cuenta;
+    _actualizarMoverEncOrigenHint(enc);
+  }
+
+  // Select destino: todas las cuentas
+  const selDestino = document.getElementById('moverenc_destino');
+  selDestino.innerHTML = '<option value="">Seleccionar cuenta destino</option>' +
+    fuentes.map(f => '<option value="' + f.val + '">' + f.label + '</option>').join('');
+
+  // Listeners
+  selOrigen.onchange = function() {
+    _actualizarMoverEncOrigenHint(enc);
+    _actualizarMoverEncPreview(enc);
+    // Si destino es igual al nuevo origen, limpiar destino
+    if (selDestino.value === selOrigen.value) selDestino.value = '';
+  };
+  selDestino.onchange = function() {
+    _actualizarMoverEncDestinoHint();
+    _actualizarMoverEncPreview(enc);
+  };
+  document.getElementById('moverenc_monto').oninput = function() {
+    _actualizarMoverEncPreview(enc);
+  };
+
+  openSheet('mover-enc-cuentas');
+  setTimeout(() => document.getElementById('moverenc_monto').focus(), 220);
+}
+
+function _actualizarMoverEncOrigenHint(enc) {
+  const sel = document.getElementById('moverenc_origen');
+  const hint = document.getElementById('moverenc_origen_hint');
+  if (!hint) return;
+  const val = sel.value;
+  if (!val) { hint.textContent = ''; return; }
+  const cuentas = _getEncargoSaldoPorCuenta(enc);
+  const encontrada = cuentas.find(c => c.cuenta === val);
+  const saldoEnc = encontrada ? encontrada.saldo : 0;
+  hint.textContent = saldoEnc > 0
+    ? 'Del encargo en esta cuenta: ' + fmt(saldoEnc)
+    : 'El encargo no tiene plata en esta cuenta';
+  hint.style.color = saldoEnc > 0 ? 'var(--amber)' : 'var(--red)';
+}
+
+function _actualizarMoverEncDestinoHint() {
+  const sel = document.getElementById('moverenc_destino');
+  const hint = document.getElementById('moverenc_destino_hint');
+  if (!hint) return;
+  const val = sel.value;
+  if (!val) { hint.textContent = ''; return; }
+  hint.textContent = 'Saldo actual de la cuenta: ' + fmt(getSaldoActual(val));
+  hint.style.color = 'var(--text3)';
+}
+
+function _actualizarMoverEncPreview(enc) {
+  const monto = parseMoney(document.getElementById('moverenc_monto').value) || 0;
+  const origen = document.getElementById('moverenc_origen').value;
+  const destino = document.getElementById('moverenc_destino').value;
+  const prev = document.getElementById('moverenc_preview');
+  if (!prev) return;
+  if (!monto || !origen || !destino) { prev.innerHTML = ''; return; }
+  if (origen === destino) {
+    prev.innerHTML = '<span style="color:var(--red);">Origen y destino no pueden ser la misma cuenta</span>';
+    return;
+  }
+  const cuentas = _getEncargoSaldoPorCuenta(enc);
+  const encontrada = cuentas.find(c => c.cuenta === origen);
+  const saldoEnOrigen = encontrada ? encontrada.saldo : 0;
+  const excede = monto > saldoEnOrigen;
+  const colorOrigen = excede ? 'var(--red)' : 'var(--amber)';
+  const nuevoOrigen = saldoEnOrigen - monto;
+  const cuentaDestEnc = cuentas.find(c => c.cuenta === destino);
+  const saldoEnDestino = cuentaDestEnc ? cuentaDestEnc.saldo : 0;
+  const nuevoDestino = saldoEnDestino + monto;
+  prev.innerHTML =
+    '<span style="color:' + colorOrigen + ';">' + fuenteLabel(origen) + ' (encargo): ' + fmt(saldoEnOrigen) + ' → ' + fmt(nuevoOrigen) + '</span><br>' +
+    '<span style="color:var(--blue);">' + fuenteLabel(destino) + ' (encargo): ' + fmt(saldoEnDestino) + ' → ' + fmt(nuevoDestino) + '</span>' +
+    (excede ? '<br><span style="color:var(--red);font-size:10px;">Excede lo que el encargo tiene en esa cuenta</span>' : '');
+}
+
+function confirmarMoverEncCuentas() {
+  const monto = parseMoney(document.getElementById('moverenc_monto').value) || 0;
+  const origen = document.getElementById('moverenc_origen').value;
+  const destino = document.getElementById('moverenc_destino').value;
+  const fecha = document.getElementById('moverenc_fecha').value || hoy();
+
+  if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
+  if (!origen) { toast('Selecciona la cuenta de origen', 'err'); return; }
+  if (!destino) { toast('Selecciona la cuenta de destino', 'err'); return; }
+  if (origen === destino) { toast('Origen y destino no pueden ser la misma cuenta', 'err'); return; }
+
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+
+  // Verificar saldo del encargo en la cuenta origen
+  const cuentas = _getEncargoSaldoPorCuenta(enc);
+  const encontrada = cuentas.find(c => c.cuenta === origen);
+  const saldoEnOrigen = encontrada ? encontrada.saldo : 0;
+  if (monto > saldoEnOrigen) {
+    toast('El encargo solo tiene ' + fmt(saldoEnOrigen) + ' en ' + fuenteLabel(origen), 'err');
+    return;
+  }
+
+  // Registrar dos movimientos internos: salida de origen, entrada a destino
+  if (!enc.movimientos) enc.movimientos = [];
+
+  enc.movimientos.push({
+    id: uid(),
+    tipo: 'salida',
+    desc: 'Reubicación → ' + fuenteLabel(destino),
+    monto,
+    cuenta: origen,
+    fecha,
+    nota: 'Movimiento interno entre cuentas',
+    ts: Date.now()
+  });
+
+  enc.movimientos.push({
+    id: uid(),
+    tipo: 'entrada',
+    desc: 'Reubicación ← ' + fuenteLabel(origen),
+    monto,
+    cuenta: destino,
+    fecha,
+    nota: 'Movimiento interno entre cuentas',
+    ts: Date.now() + 1
+  });
+
+  save();
+  closeSheet('mover-enc-cuentas');
+  abrirEncargoDetalle(encargoActualId);
+  toast(fmt(monto) + ' reubicados de ' + fuenteLabel(origen) + ' a ' + fuenteLabel(destino), 'ok', 3500);
+}
+
+// Listener para el botón confirmar
+(function() {
+  const btn = document.getElementById('btn-confirmar-mover-enc-cuentas');
+  if (btn) btn.addEventListener('click', confirmarMoverEncCuentas);
+})();
 
 // Hook into refresh
 const _origRefreshEncargos = refresh;

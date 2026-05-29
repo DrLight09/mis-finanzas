@@ -12642,12 +12642,12 @@ function _injectSheet(){
         <label class="il" for="cpd-tipo">Tipo de destino</label>
         <div class="select-wrap">
           <select id="cpd-tipo" onchange="window._cpdTipoChange()">
-            <option value="servicios">Servicios / Gastos que cubro mientras</option>
+            <option value="reposicion">Repone plata que ya saqué de una cajita/cuenta</option>
+            <option value="servicios">Cubre gastos que ya pagué con TC (no repone saldo)</option>
             <option value="abono_deuda">Abono a lo que me deben</option>
-            <option value="prestamo">Pago de préstamo a otra persona</option>
             <option value="tc">Pago de tarjeta de crédito</option>
-            <option value="libre">Queda libre para mí</option>
-            <option value="otro">Otro</option>
+            <option value="ingreso_neto">Ingreso real mío — ganancia neta</option>
+            <option value="otro">Otro (solo registro, sin efecto)</option>
           </select>
         </div>
       </div>
@@ -12804,12 +12804,12 @@ function _cpFuenteLabel(val){
 
 /* ── TIPOS DE DESTINO ────────────────────────────────────────────── */
 const _CP_TIPO_LABELS = {
-  servicios:   { label:'Servicios / Gastos que cubrí',  color:'var(--red)',    bg:'rgba(240,104,104,.1)',  border:'rgba(240,104,104,.25)' },
-  abono_deuda: { label:'Abono a deuda pendiente',        color:'var(--accent)', bg:'rgba(200,240,96,.08)', border:'rgba(200,240,96,.2)' },
-  prestamo:    { label:'Pago de préstamo',               color:'var(--blue)',   bg:'rgba(96,176,240,.08)', border:'rgba(96,176,240,.2)' },
-  tc:          { label:'Pago tarjeta de crédito',        color:'var(--red)',    bg:'rgba(240,104,104,.08)', border:'rgba(240,104,104,.2)' },
-  libre:       { label:'Libre para mí',                  color:'var(--accent)', bg:'rgba(200,240,96,.08)', border:'rgba(200,240,96,.2)' },
-  otro:        { label:'Otro',                           color:'var(--text2)',  bg:'rgba(136,136,128,.08)', border:'rgba(136,136,128,.2)' },
+  reposicion:  { label:'Repone cajita/cuenta que ya usé', color:'var(--purple)', bg:'rgba(176,144,240,.1)',  border:'rgba(176,144,240,.3)' },
+  servicios:   { label:'Cubre gastos que ya pagué (TC)',   color:'var(--red)',    bg:'rgba(240,104,104,.1)',  border:'rgba(240,104,104,.25)' },
+  abono_deuda: { label:'Abono a deuda pendiente',          color:'var(--accent)', bg:'rgba(200,240,96,.08)', border:'rgba(200,240,96,.2)' },
+  tc:          { label:'Pago tarjeta de crédito',          color:'var(--red)',    bg:'rgba(240,104,104,.08)', border:'rgba(240,104,104,.2)' },
+  ingreso_neto:{ label:'Ingreso real mío (ganancia)',      color:'var(--accent)', bg:'rgba(200,240,96,.12)', border:'rgba(200,240,96,.3)' },
+  otro:        { label:'Otro (sin efecto en saldos)',       color:'var(--text2)',  bg:'rgba(136,136,128,.08)', border:'rgba(136,136,128,.2)' },
 };
 
 /* ── RENDER LISTA PRINCIPAL ──────────────────────────────────────── */
@@ -13069,19 +13069,30 @@ window._cpAgregarDestino = function(){
 window._cpdTipoChange = function(){
   const tipo = document.getElementById('cpd-tipo').value;
   const personaWrap = document.getElementById('cpd-persona-wrap');
-  const tcWrap = document.getElementById('cpd-tc-wrap');
-  const cuentaWrap = document.getElementById('cpd-cuenta-wrap');
+  const tcWrap      = document.getElementById('cpd-tc-wrap');
+  const cuentaWrap  = document.getElementById('cpd-cuenta-wrap');
 
-  if(personaWrap) personaWrap.style.display = (tipo==='abono_deuda'||tipo==='prestamo') ? '' : 'none';
-  if(tcWrap)      tcWrap.style.display      = tipo==='tc'    ? '' : 'none';
-  if(cuentaWrap)  cuentaWrap.style.display  = tipo==='libre' ? '' : 'none';
+  // Persona: solo para abono_deuda
+  if(personaWrap) personaWrap.style.display = tipo==='abono_deuda' ? '' : 'none';
+  // TC: solo para pago TC
+  if(tcWrap)      tcWrap.style.display      = tipo==='tc' ? '' : 'none';
+  // Cuenta destino: para reposicion e ingreso_neto
+  if(cuentaWrap)  cuentaWrap.style.display  = (tipo==='reposicion'||tipo==='ingreso_neto') ? '' : 'none';
+
+  // Actualizar label del selector según tipo
+  const cuentaLabel = cuentaWrap ? cuentaWrap.querySelector('label') : null;
+  if(cuentaLabel){
+    cuentaLabel.textContent = tipo==='reposicion'
+      ? '¿A qué cajita/cuenta reponer?'
+      : '¿A qué cuenta entra este ingreso?';
+  }
 
   // Sugerir descripción
   const descInput = document.getElementById('cpd-desc');
   if(descInput && !descInput.value){
     const sugs = {
-      servicios:'Internet + servicios', abono_deuda:'Abono deuda', prestamo:'Pago préstamo',
-      tc:'Pago TC', libre:'Para mí', otro:'Otro destino'
+      reposicion:'Plata que ya saqué de la cajita', servicios:'Internet + servicios (TC)',
+      abono_deuda:'Abono de mamá', tc:'Pago TC', ingreso_neto:'Ganancia neta', otro:'Otro'
     };
     descInput.placeholder = sugs[tipo]||'Descripción';
   }
@@ -13100,6 +13111,7 @@ window._cpdConfirmar = function(){
   const tcId      = document.getElementById('cpd-tc')      ? document.getElementById('cpd-tc').value      : '';
   const cuentaId  = document.getElementById('cpd-cuenta')  ? document.getElementById('cpd-cuenta').value  : '';
 
+  // Para reposicion e ingreso_neto la cuenta va en cuentaId
   _cpDestinosTmp.push({ id: _cpUid(), tipo, desc, monto, personaId, tcId, cuentaId });
   _cpCloseSheet('cp-destino');
   _cpRenderDestinosTmp();
@@ -13219,7 +13231,37 @@ window._cpConfirmarRecibir = function(){
   let errores = [];
   (item.destinos||[]).forEach(d => {
     try {
-      if(d.tipo === 'abono_deuda' && d.personaId){
+      if(d.tipo === 'reposicion'){
+        // Devuelve la plata a la cajita/cuenta de donde ya la sacaste
+        const cuenta = d.cuentaId || item.cuentaDestino;
+        if(cuenta && typeof sumarFuente === 'function'){
+          if(cuenta.startsWith('cajita:')){
+            const cajId = cuenta.split(':')[1];
+            const caj = (S.cajitas||[]).find(x=>x.id===cajId);
+            if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+          }
+          sumarFuente(cuenta, d.monto);
+          if(!S.movimientos) S.movimientos = [];
+          S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc});
+          if(window.logCambio) logCambio('Reposición en '+_cpFuenteLabel(cuenta), _cpFmt(d.monto)+' de "'+item.desc+'"', d.monto, 'ingreso');
+        }
+      }
+      else if(d.tipo === 'ingreso_neto'){
+        // Ingreso real tuyo — suma a la cuenta indicada o a la cuenta destino del ingreso
+        const cuenta = d.cuentaId || item.cuentaDestino;
+        if(cuenta && typeof sumarFuente === 'function'){
+          if(cuenta.startsWith('cajita:')){
+            const cajId = cuenta.split(':')[1];
+            const caj = (S.cajitas||[]).find(x=>x.id===cajId);
+            if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+          }
+          sumarFuente(cuenta, d.monto);
+          if(!S.movimientos) S.movimientos = [];
+          S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Ingreso neto: '+d.desc});
+          if(window.logCambio) logCambio('Ingreso neto: "'+d.desc+'"', _cpFmt(d.monto)+' sumado a '+_cpFuenteLabel(cuenta), d.monto, 'ingreso');
+        }
+      }
+      else if(d.tipo === 'abono_deuda' && d.personaId){
         // Registrar abono a deudor
         const deu = (S.deudores||[]).find(x=>x.id===d.personaId);
         if(deu){
@@ -13229,36 +13271,25 @@ window._cpConfirmarRecibir = function(){
         }
       }
       else if(d.tipo === 'tc' && d.tcId){
-        // Registrar pago de TC
+        // Registrar pago de TC — reduce la deuda
         const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.tcId);
         if(tc){
           tc.deuda = Math.max(0,(tc.deuda||0)-d.monto);
           if(window.logCambio) logCambio('Pagaste TC "'+tc.nombre+'" desde plata comprometida', _cpFmt(d.monto), d.monto, 'gasto');
         }
       }
-      else if(d.tipo === 'prestamo' && d.personaId){
-        // Registrar abono/pago desde la persona hacia nosotros (ellos nos pagan)
-        const deu = (S.deudores||[]).find(x=>x.id===d.personaId);
-        if(deu){
-          if(!deu.movimientos) deu.movimientos = [];
-          deu.movimientos.push({id:_cpUid(), tipo:'abono', monto:d.monto, fecha, nota:'Pago desde: '+item.desc, ts:Date.now()});
-          if(window.logCambio) logCambio('Abono de préstamo de '+deu.nombre, _cpFmt(d.monto), d.monto, 'abono');
-        }
-      }
-      // libre y servicios y otro: solo se registran como nota, no afectan saldos automáticamente
-      // (el usuario ya pagó los servicios desde su TC, eso ya está registrado)
+      // servicios y otro: solo registro visual, ya estaban pagados, no tocan saldos
     } catch(e){
       errores.push(d.desc);
     }
   });
 
-  // Sobrante → sumar a la cuenta destino si existe
-  const comp = (item.destinos||[]).reduce((a,d)=>a+(d.monto||0),0);
-  const sobrante = Math.max(0,(item.montoTotal||0)-comp);
-  if(sobrante > 0 && item.cuentaDestino){
+  // Sobrante (si el total no estaba 100% asignado) → va a cuenta destino del ingreso
+  const totalAsignado = (item.destinos||[]).reduce((a,d)=>a+(d.monto||0),0);
+  const sobrante = Math.max(0,(item.montoTotal||0)-totalAsignado);
+  if(sobrante > 0.99 && item.cuentaDestino){
     try {
       if(typeof sumarFuente === 'function'){
-        // Materializar intereses si es cajita
         if(item.cuentaDestino.startsWith('cajita:')){
           const cajId = item.cuentaDestino.split(':')[1];
           const caj = (S.cajitas||[]).find(x=>x.id===cajId);
@@ -13266,8 +13297,8 @@ window._cpConfirmarRecibir = function(){
         }
         sumarFuente(item.cuentaDestino, sobrante);
         if(!S.movimientos) S.movimientos = [];
-        S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:item.cuentaDestino, monto:sobrante, fecha, desc:'Ingreso: '+item.desc+' (sobrante libre)'});
-        if(window.logCambio) logCambio('Ingreso libre: "'+item.desc+'"', _cpFmt(sobrante)+' sumado a '+_cpFuenteLabel(item.cuentaDestino), sobrante, 'ingreso');
+        S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:item.cuentaDestino, monto:sobrante, fecha, desc:'Sobrante libre: '+item.desc});
+        if(window.logCambio) logCambio('Sobrante libre: "'+item.desc+'"', _cpFmt(sobrante)+' → '+_cpFuenteLabel(item.cuentaDestino), sobrante, 'ingreso');
       }
     } catch(e){ errores.push('Sobrante'); }
   }

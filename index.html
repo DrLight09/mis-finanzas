@@ -12865,10 +12865,9 @@ function _injectSheet(){
         <div class="select-wrap">
           <select id="cpd-tipo" onchange="window._cpdTipoChange()">
             <option value="reposicion">Repone plata que ya saqué de una cajita/cuenta</option>
-            <option value="servicios">Cubre gastos que ya pagué con TC (no repone saldo)</option>
+            <option value="servicios">Cubre gastos pendientes de pagar (servicios, etc.)</option>
             <option value="abono_deuda">Abono a lo que me deben</option>
             <option value="tc">Pago de tarjeta de crédito</option>
-            <option value="ingreso_neto">Ingreso real mío — ganancia neta</option>
             <option value="otro">Otro (solo registro, sin efecto)</option>
           </select>
         </div>
@@ -12893,8 +12892,41 @@ function _injectSheet(){
       </div>
       <!-- Cuenta destino del libre (para libre) -->
       <div class="ig" id="cpd-cuenta-wrap" style="display:none;">
-        <label class="il" for="cpd-cuenta">¿A qué cuenta entra?</label>
+        <label class="il" for="cpd-cuenta">¿A qué cajita/cuenta reponer?</label>
         <div class="select-wrap"><select id="cpd-cuenta"><option value="">Sin especificar</option></select></div>
+      </div>
+      <!-- ¿Ya saqué esta plata? (solo para reposicion) -->
+      <div class="ig" id="cpd-ya-saque-wrap" style="display:none;">
+        <label class="il" style="margin-bottom:8px;">¿Ya adelantaste esta plata?</label>
+        <div style="display:flex;gap:8px;">
+          <button type="button" id="cpd-ya-saque-si"
+            onclick="window._cpdSetYaSaque(true)"
+            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid var(--border2);color:var(--text2);background:transparent;transition:all .15s;">
+            ✓ Sí, ya la saqué
+          </button>
+          <button type="button" id="cpd-ya-saque-no"
+            onclick="window._cpdSetYaSaque(false)"
+            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(200,240,96,.4);color:var(--accent);background:rgba(200,240,96,.08);transition:all .15s;">
+            ○ No, esperaré
+          </button>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.5;">Si ya la sacaste, la app descuenta el saldo ahora y lo repone cuando llegue el ingreso.</div>
+      </div>
+      <!-- ¿Ya lo pagué? (para servicios, tc, otro) -->
+      <div class="ig" id="cpd-ya-pague-wrap" style="display:none;">
+        <label class="il" style="margin-bottom:8px;">¿Ya lo pagaste?</label>
+        <div style="display:flex;gap:8px;">
+          <button type="button" id="cpd-ya-pague-si"
+            onclick="window._cpdSetYaPague(true)"
+            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid var(--border2);color:var(--text2);background:transparent;transition:all .15s;">
+            ✓ Sí, ya lo pagué
+          </button>
+          <button type="button" id="cpd-ya-pague-no"
+            onclick="window._cpdSetYaPague(false)"
+            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(240,184,64,.4);color:var(--amber);background:rgba(240,184,64,.08);transition:all .15s;">
+            ○ Pendiente de pagar
+          </button>
+        </div>
       </div>
       <button type="button" class="btn btn-primary" onclick="window._cpdConfirmar()" style="background:var(--amber);color:#0a0a0a;border:none;">Agregar este destino</button>
       <button type="button" class="btn btn-ghost" data-close-sheet="cp-destino">Cancelar</button>
@@ -13027,10 +13059,9 @@ function _cpFuenteLabel(val){
 /* ── TIPOS DE DESTINO ────────────────────────────────────────────── */
 const _CP_TIPO_LABELS = {
   reposicion:  { label:'Repone cajita/cuenta que ya usé', color:'var(--purple)', bg:'rgba(176,144,240,.1)',  border:'rgba(176,144,240,.3)' },
-  servicios:   { label:'Cubre gastos que ya pagué (TC)',   color:'var(--red)',    bg:'rgba(240,104,104,.1)',  border:'rgba(240,104,104,.25)' },
+  servicios:   { label:'Gasto pendiente de pagar',        color:'var(--amber)',  bg:'rgba(240,184,64,.08)', border:'rgba(240,184,64,.2)' },
   abono_deuda: { label:'Abono a deuda pendiente',          color:'var(--accent)', bg:'rgba(200,240,96,.08)', border:'rgba(200,240,96,.2)' },
   tc:          { label:'Pago tarjeta de crédito',          color:'var(--red)',    bg:'rgba(240,104,104,.08)', border:'rgba(240,104,104,.2)' },
-  ingreso_neto:{ label:'Ingreso real mío (ganancia)',      color:'var(--accent)', bg:'rgba(200,240,96,.12)', border:'rgba(200,240,96,.3)' },
   otro:        { label:'Otro (sin efecto en saldos)',       color:'var(--text2)',  bg:'rgba(136,136,128,.08)', border:'rgba(136,136,128,.2)' },
 };
 
@@ -13108,26 +13139,41 @@ function _cpRenderLista(){
           </div>
           <div style="display:flex;justify-content:space-between;font-size:10px;font-family:'DM Mono',monospace;">
             <span style="color:var(--red);">Comprometido: ${_cpFmt(comp)}</span>
-            <span style="color:var(--accent);">Libre: ${_cpFmt(libre)}</span>
+            <span style="color:var(--accent);">💰 Tu ganancia: ${_cpFmt(libre)}</span>
           </div>
         </div>` : `
-        <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:10px;">Sin compromisos asignados — todo queda libre</div>`}
+        <div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:10px;">💰 Tu ganancia: ${_cpFmt(item.montoTotal)} (nada comprometido)</div>`}
 
-        <!-- Destinos chips -->
+        <!-- Destinos chips con estado -->
         ${(item.destinos||[]).length ? `
         <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
           ${(item.destinos||[]).map(d=>{
             const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
-            return `<span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:${ti.bg};border:1px solid ${ti.border};color:${ti.color};font-family:'DM Mono',monospace;">${_cpEscape(d.desc)}: ${_cpFmt(d.monto)}</span>`;
+            let estadoBadge = '';
+            if(d.tipo === 'reposicion'){
+              estadoBadge = d.yaSaque
+                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(176,144,240,.2);color:var(--purple);vertical-align:middle;">✓ saqué</span>`
+                : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(200,240,96,.1);color:var(--accent);vertical-align:middle;">pendiente</span>`;
+            } else {
+              estadoBadge = d.yaPague
+                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(200,240,96,.15);color:var(--accent);vertical-align:middle;">✓ pagado</span>`
+                : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(240,184,64,.12);color:var(--amber);vertical-align:middle;">⏳ por pagar</span>`;
+            }
+            return `<span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:${ti.bg};border:1px solid ${ti.border};color:${ti.color};font-family:'DM Mono',monospace;">${_cpEscape(d.desc)}: ${_cpFmt(d.monto)}${estadoBadge}</span>`;
           }).join('')}
         </div>` : ''}
 
         <!-- Acciones -->
-        <div style="display:flex;gap:7px;">
+        <div style="display:flex;gap:7px;flex-wrap:wrap;">
           <button type="button" onclick="window._cpAbrirRecibir('${item.id}')"
-            style="flex:1;padding:8px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.12);border:1.5px solid rgba(200,240,96,.35);color:var(--accent);display:flex;align-items:center;justify-content:center;gap:5px;">
+            style="flex:1;min-width:80px;padding:8px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.12);border:1.5px solid rgba(200,240,96,.35);color:var(--accent);display:flex;align-items:center;justify-content:center;gap:5px;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
             ¡Llegó!
+          </button>
+          <button type="button" onclick="window._cpMarcarPagos('${item.id}')"
+            style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(240,184,64,.08);border:1.5px solid rgba(240,184,64,.3);color:var(--amber);"
+            title="Marcar qué ya pagaste">
+            ✓ Pagos
           </button>
           <button type="button" onclick="window._cpAbrirEditar('${item.id}')"
             style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(136,136,128,.08);border:1.5px solid var(--border2);color:var(--text2);">
@@ -13290,35 +13336,86 @@ window._cpAgregarDestino = function(){
 
 window._cpdTipoChange = function(){
   const tipo = document.getElementById('cpd-tipo').value;
-  const personaWrap = document.getElementById('cpd-persona-wrap');
-  const tcWrap      = document.getElementById('cpd-tc-wrap');
-  const cuentaWrap  = document.getElementById('cpd-cuenta-wrap');
+  const personaWrap  = document.getElementById('cpd-persona-wrap');
+  const tcWrap       = document.getElementById('cpd-tc-wrap');
+  const cuentaWrap   = document.getElementById('cpd-cuenta-wrap');
+  const yaSaqueWrap  = document.getElementById('cpd-ya-saque-wrap');
+  const yaPagueWrap  = document.getElementById('cpd-ya-pague-wrap');
 
   // Persona: solo para abono_deuda
   if(personaWrap) personaWrap.style.display = tipo==='abono_deuda' ? '' : 'none';
   // TC: solo para pago TC
   if(tcWrap)      tcWrap.style.display      = tipo==='tc' ? '' : 'none';
-  // Cuenta destino: para reposicion e ingreso_neto
-  if(cuentaWrap)  cuentaWrap.style.display  = (tipo==='reposicion'||tipo==='ingreso_neto') ? '' : 'none';
+  // Cuenta destino: solo para reposicion
+  if(cuentaWrap)  cuentaWrap.style.display  = tipo==='reposicion' ? '' : 'none';
+  // ¿Ya saqué?: solo para reposicion
+  if(yaSaqueWrap) yaSaqueWrap.style.display = tipo==='reposicion' ? '' : 'none';
+  // ¿Ya pagué?: para servicios, tc, abono_deuda, otro
+  if(yaPagueWrap) yaPagueWrap.style.display = (tipo !== 'reposicion') ? '' : 'none';
 
-  // Actualizar label del selector según tipo
+  // Actualizar label
   const cuentaLabel = cuentaWrap ? cuentaWrap.querySelector('label') : null;
-  if(cuentaLabel){
-    cuentaLabel.textContent = tipo==='reposicion'
-      ? '¿A qué cajita/cuenta reponer?'
-      : '¿A qué cuenta entra este ingreso?';
-  }
+  if(cuentaLabel) cuentaLabel.textContent = '¿A qué cajita/cuenta reponer?';
+
+  // Inicializar estados por defecto
+  window._cpdSetYaSaque(false);
+  window._cpdSetYaPague(false);
 
   // Sugerir descripción
   const descInput = document.getElementById('cpd-desc');
   if(descInput && !descInput.value){
     const sugs = {
-      reposicion:'Plata que ya saqué de la cajita', servicios:'Internet + servicios (TC)',
-      abono_deuda:'Abono de mamá', tc:'Pago TC', ingreso_neto:'Ganancia neta', otro:'Otro'
+      reposicion:'Plata que ya saqué de la cajita', servicios:'Servicios públicos',
+      abono_deuda:'Abono de mamá', tc:'Pago TC', otro:'Otro'
     };
     descInput.placeholder = sugs[tipo]||'Descripción';
   }
 };
+
+window._cpdSetYaSaque = function(val){
+  window._cpdYaSaqueVal = val;
+  const si = document.getElementById('cpd-ya-saque-si');
+  const no = document.getElementById('cpd-ya-saque-no');
+  if(!si || !no) return;
+  if(val){
+    si.style.background = 'rgba(176,144,240,.2)';
+    si.style.borderColor = 'var(--purple)';
+    si.style.color = 'var(--purple)';
+    no.style.background = 'transparent';
+    no.style.borderColor = 'var(--border2)';
+    no.style.color = 'var(--text2)';
+  } else {
+    no.style.background = 'rgba(200,240,96,.08)';
+    no.style.borderColor = 'rgba(200,240,96,.4)';
+    no.style.color = 'var(--accent)';
+    si.style.background = 'transparent';
+    si.style.borderColor = 'var(--border2)';
+    si.style.color = 'var(--text2)';
+  }
+};
+
+window._cpdSetYaPague = function(val){
+  window._cpdYaPagueVal = val;
+  const si = document.getElementById('cpd-ya-pague-si');
+  const no = document.getElementById('cpd-ya-pague-no');
+  if(!si || !no) return;
+  if(val){
+    si.style.background = 'rgba(200,240,96,.15)';
+    si.style.borderColor = 'var(--accent)';
+    si.style.color = 'var(--accent)';
+    no.style.background = 'transparent';
+    no.style.borderColor = 'var(--border2)';
+    no.style.color = 'var(--text2)';
+  } else {
+    no.style.background = 'rgba(240,184,64,.08)';
+    no.style.borderColor = 'rgba(240,184,64,.4)';
+    no.style.color = 'var(--amber)';
+    si.style.background = 'transparent';
+    si.style.borderColor = 'var(--border2)';
+    si.style.color = 'var(--text2)';
+  }
+};
+
 
 window._cpdConfirmar = function(){
   const tipo  = document.getElementById('cpd-tipo').value;
@@ -13333,8 +13430,30 @@ window._cpdConfirmar = function(){
   const tcId      = document.getElementById('cpd-tc')      ? document.getElementById('cpd-tc').value      : '';
   const cuentaId  = document.getElementById('cpd-cuenta')  ? document.getElementById('cpd-cuenta').value  : '';
 
-  // Para reposicion e ingreso_neto la cuenta va en cuentaId
-  _cpDestinosTmp.push({ id: _cpUid(), tipo, desc, monto, personaId, tcId, cuentaId });
+  // Leer flags de estado
+  const yaSaque = tipo === 'reposicion' ? (window._cpdYaSaqueVal === true) : false;
+  const yaPague = tipo !== 'reposicion' ? (window._cpdYaPagueVal === true) : false;
+
+  // Si ya sacó la plata, descontar el saldo AHORA
+  if(yaSaque && cuentaId && typeof sumarFuente === 'function'){
+    try {
+      if(cuentaId.startsWith('cajita:')){
+        const cajId = cuentaId.split(':')[1];
+        const caj = (S.cajitas||[]).find(x=>x.id===cajId);
+        if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+      }
+      sumarFuente(cuentaId, -monto);
+      if(!S.movimientos) S.movimientos = [];
+      S.movimientos.push({
+        id: _cpUid(), tipo:'salida', fuente:cuentaId, monto, fecha:_cpHoy(),
+        desc:'Adelanto comprometido: '+desc
+      });
+      if(window.logCambio) logCambio('Adelantaste plata de '+_cpFuenteLabel(cuentaId), _cpFmt(monto)+' — será repuesto al llegar el ingreso', monto, 'gasto');
+      if(typeof refresh === 'function') refresh();
+    } catch(e){ _cpToast('No se pudo descontar el saldo: '+e.message,'err'); }
+  }
+
+  _cpDestinosTmp.push({ id: _cpUid(), tipo, desc, monto, personaId, tcId, cuentaId, yaSaque, yaPague });
   _cpCloseSheet('cp-destino');
   _cpRenderDestinosTmp();
 };
@@ -13349,10 +13468,20 @@ function _cpRenderDestinosTmp(){
   } else {
     el.innerHTML = _cpDestinosTmp.map((d,i)=>{
       const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
+      let badge = '';
+      if(d.tipo === 'reposicion'){
+        badge = d.yaSaque
+          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.18);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-family:'DM Mono',monospace;white-space:nowrap;">✓ Ya saqué</span>`
+          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-family:'DM Mono',monospace;white-space:nowrap;">Pendiente</span>`;
+      } else {
+        badge = d.yaPague
+          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.15);border:1px solid rgba(200,240,96,.4);color:var(--accent);font-family:'DM Mono',monospace;white-space:nowrap;">✓ Pagado</span>`
+          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.35);color:var(--amber);font-family:'DM Mono',monospace;white-space:nowrap;">⏳ Pendiente</span>`;
+      }
       return `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);">
         <div style="flex:1;min-width:0;">
           <div style="font-size:12px;font-weight:600;">${_cpEscape(d.desc)}</div>
-          <div style="font-size:10px;color:${ti.color};font-family:'DM Mono',monospace;">${ti.label}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">${badge}<span style="font-size:10px;color:${ti.color};font-family:'DM Mono',monospace;">${ti.label}</span></div>
         </div>
         <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${ti.color};">${_cpFmt(d.monto)}</div>
         <button type="button" onclick="window._cpQuitarDestino(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;line-height:1;">
@@ -13362,18 +13491,26 @@ function _cpRenderDestinosTmp(){
     }).join('');
   }
 
-  // Preview balance
+  // Preview balance — ganancia = lo que sobre después de todos los destinos
   if(balEl){
     const montoStr = document.getElementById('cp-monto-total') ? document.getElementById('cp-monto-total').value : '';
     const total = typeof parseMoney === 'function' ? parseMoney(montoStr)||0 : 0;
     const comp = _cpDestinosTmp.reduce((a,d)=>a+(d.monto||0),0);
-    const libre = total - comp;
+    const ganancia = total - comp;
     if(total > 0){
-      const color = libre < 0 ? 'var(--red)' : 'var(--accent)';
-      balEl.style.color = color;
-      balEl.textContent = comp > 0
-        ? `Comprometido: ${_cpFmt(comp)} · Libre: ${_cpFmt(Math.max(0,libre))}${libre<0?' ⚠ excede el total':''}`
-        : `Todo libre: ${_cpFmt(total)}`;
+      if(ganancia < 0){
+        balEl.style.color = 'var(--red)';
+        balEl.innerHTML = `⚠ Los destinos superan el total por ${_cpFmt(Math.abs(ganancia))}`;
+      } else if(ganancia > 0.99){
+        balEl.style.color = 'var(--accent)';
+        balEl.innerHTML = `Comprometido: ${_cpFmt(comp)} · <b style="color:var(--accent);">💰 Tu ganancia: ${_cpFmt(ganancia)}</b>`;
+      } else if(comp > 0){
+        balEl.style.color = 'var(--text3)';
+        balEl.innerHTML = `Comprometido: ${_cpFmt(comp)} · Todo asignado`;
+      } else {
+        balEl.style.color = 'var(--accent)';
+        balEl.innerHTML = `💰 Tu ganancia: ${_cpFmt(total)} (nada comprometido)`;
+      }
     } else {
       balEl.textContent = '';
     }
@@ -13454,33 +13591,34 @@ window._cpConfirmarRecibir = function(){
   (item.destinos||[]).forEach(d => {
     try {
       if(d.tipo === 'reposicion'){
-        // Devuelve la plata a la cajita/cuenta de donde ya la sacaste
-        const cuenta = d.cuentaId || item.cuentaDestino;
-        if(cuenta && typeof sumarFuente === 'function'){
-          if(cuenta.startsWith('cajita:')){
-            const cajId = cuenta.split(':')[1];
-            const caj = (S.cajitas||[]).find(x=>x.id===cajId);
-            if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+        // Repone la cajita/cuenta — SOLO si no la había adelantado antes (evitar doble conteo)
+        if(!d.yaSaque){
+          const cuenta = d.cuentaId || item.cuentaDestino;
+          if(cuenta && typeof sumarFuente === 'function'){
+            if(cuenta.startsWith('cajita:')){
+              const cajId = cuenta.split(':')[1];
+              const caj = (S.cajitas||[]).find(x=>x.id===cajId);
+              if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+            }
+            sumarFuente(cuenta, d.monto);
+            if(!S.movimientos) S.movimientos = [];
+            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc});
+            if(window.logCambio) logCambio('Reposición en '+_cpFuenteLabel(cuenta), _cpFmt(d.monto)+' de "'+item.desc+'"', d.monto, 'ingreso');
           }
-          sumarFuente(cuenta, d.monto);
-          if(!S.movimientos) S.movimientos = [];
-          S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc});
-          if(window.logCambio) logCambio('Reposición en '+_cpFuenteLabel(cuenta), _cpFmt(d.monto)+' de "'+item.desc+'"', d.monto, 'ingreso');
-        }
-      }
-      else if(d.tipo === 'ingreso_neto'){
-        // Ingreso real tuyo — suma a la cuenta indicada o a la cuenta destino del ingreso
-        const cuenta = d.cuentaId || item.cuentaDestino;
-        if(cuenta && typeof sumarFuente === 'function'){
-          if(cuenta.startsWith('cajita:')){
-            const cajId = cuenta.split(':')[1];
-            const caj = (S.cajitas||[]).find(x=>x.id===cajId);
-            if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+        } else {
+          // Ya fue adelantada: la plata ya estaba descontada, ahora entra el arriendo y repone
+          const cuenta = d.cuentaId || item.cuentaDestino;
+          if(cuenta && typeof sumarFuente === 'function'){
+            if(cuenta.startsWith('cajita:')){
+              const cajId = cuenta.split(':')[1];
+              const caj = (S.cajitas||[]).find(x=>x.id===cajId);
+              if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+            }
+            sumarFuente(cuenta, d.monto);
+            if(!S.movimientos) S.movimientos = [];
+            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición (adelantada): '+item.desc});
+            if(window.logCambio) logCambio('Reposición (ya adelantada) en '+_cpFuenteLabel(cuenta), _cpFmt(d.monto)+' repuesto', d.monto, 'ingreso');
           }
-          sumarFuente(cuenta, d.monto);
-          if(!S.movimientos) S.movimientos = [];
-          S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Ingreso neto: '+d.desc});
-          if(window.logCambio) logCambio('Ingreso neto: "'+d.desc+'"', _cpFmt(d.monto)+' sumado a '+_cpFuenteLabel(cuenta), d.monto, 'ingreso');
         }
       }
       else if(d.tipo === 'abono_deuda' && d.personaId){
@@ -13500,16 +13638,16 @@ window._cpConfirmarRecibir = function(){
           if(window.logCambio) logCambio('Pagaste TC "'+tc.nombre+'" desde plata comprometida', _cpFmt(d.monto), d.monto, 'gasto');
         }
       }
-      // servicios y otro: solo registro visual, ya estaban pagados, no tocan saldos
+      // servicios y otro: solo registro, no tocan saldos
     } catch(e){
       errores.push(d.desc);
     }
   });
 
-  // Sobrante (si el total no estaba 100% asignado) → va a cuenta destino del ingreso
+  // Ganancia: lo que sobre después de todos los destinos → va a cuenta destino del ingreso
   const totalAsignado = (item.destinos||[]).reduce((a,d)=>a+(d.monto||0),0);
-  const sobrante = Math.max(0,(item.montoTotal||0)-totalAsignado);
-  if(sobrante > 0.99 && item.cuentaDestino){
+  const ganancia = Math.max(0,(item.montoTotal||0)-totalAsignado);
+  if(ganancia > 0.99 && item.cuentaDestino){
     try {
       if(typeof sumarFuente === 'function'){
         if(item.cuentaDestino.startsWith('cajita:')){
@@ -13517,12 +13655,12 @@ window._cpConfirmarRecibir = function(){
           const caj = (S.cajitas||[]).find(x=>x.id===cajId);
           if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
         }
-        sumarFuente(item.cuentaDestino, sobrante);
+        sumarFuente(item.cuentaDestino, ganancia);
         if(!S.movimientos) S.movimientos = [];
-        S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:item.cuentaDestino, monto:sobrante, fecha, desc:'Sobrante libre: '+item.desc});
-        if(window.logCambio) logCambio('Sobrante libre: "'+item.desc+'"', _cpFmt(sobrante)+' → '+_cpFuenteLabel(item.cuentaDestino), sobrante, 'ingreso');
+        S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:item.cuentaDestino, monto:ganancia, fecha, desc:'Ganancia: '+item.desc});
+        if(window.logCambio) logCambio('💰 Tu ganancia de "'+item.desc+'"', _cpFmt(ganancia)+' → '+_cpFuenteLabel(item.cuentaDestino), ganancia, 'ingreso');
       }
-    } catch(e){ errores.push('Sobrante'); }
+    } catch(e){ errores.push('Ganancia'); }
   }
 
   // Marcar como recibido
@@ -13538,13 +13676,146 @@ window._cpConfirmarRecibir = function(){
   if(errores.length){
     _cpToast('Recibido con errores menores en: '+errores.join(', '),'err');
   } else {
-    _cpToast('¡Plata distribuida correctamente! ✓','ok');
+    const gananciaMsg = ganancia > 0.99 ? ` · Tu ganancia: ${_cpFmt(ganancia)}` : '';
+    _cpToast('¡Plata distribuida correctamente! ✓'+gananciaMsg,'ok');
   }
 
   if(typeof renderAttencion === 'function') renderAttencion();
 };
 
-/* ── ELIMINAR ────────────────────────────────────────────────────── */
+/* ── MARCAR PAGOS INDIVIDUALES ───────────────────────────────────── */
+window._cpMarcarPagos = function(id){
+  const item = _cpData().find(i=>i.id===id);
+  if(!item || !(item.destinos||[]).length){
+    _cpToast('Este ingreso no tiene destinos para marcar','err'); return;
+  }
+
+  // Construir un mini-modal inline rápido (usamos el alert/dialogo nativo con un approach diferente)
+  // Creamos un sheet temporal o usamos un approach de confirm encadenados
+  // Para no añadir un sheet extra, lo hacemos con toggles directos en la lista
+  // Flip individual: recorremos los destinos y les cambiamos el estado
+  let cambiado = false;
+  const pendientes = item.destinos.filter(d => d.tipo !== 'reposicion' && !d.yaPague);
+  const pendientesSaque = item.destinos.filter(d => d.tipo === 'reposicion' && !d.yaSaque);
+
+  if(!pendientes.length && !pendientesSaque.length){
+    _cpToast('¡Todo ya está marcado como pagado!','ok'); return;
+  }
+
+  // Mostrar sheet dinámico de marcado
+  let existingSheet = document.getElementById('sheet-cp-marcar');
+  if(!existingSheet){
+    const div = document.createElement('div');
+    div.className = 'overlay';
+    div.id = 'sheet-cp-marcar';
+    div.setAttribute('data-sheet-id','cp-marcar');
+    div.innerHTML = `<div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Marcar estado de pagos</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">Tocá cada ítem para cambiar su estado.</div>
+      <div id="cp-marcar-list"></div>
+      <button type="button" class="btn btn-primary" onclick="window._cpGuardarMarcados()" style="background:var(--accent);color:#0a0a0a;border:none;margin-top:8px;">Guardar</button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="cp-marcar" onclick="if(typeof closeSheet==='function')closeSheet('cp-marcar');">Cancelar</button>
+    </div>`;
+    document.body.appendChild(div);
+    // Swipe
+    const handle = div.querySelector('.sheet-handle');
+    const sheet = div.querySelector('.sheet');
+    let sy=0,cy=0,drag=false;
+    handle.addEventListener('touchstart',e=>{sy=e.touches[0].clientY;drag=true;sheet.style.transition='none';},{passive:true});
+    handle.addEventListener('touchmove',e=>{if(!drag)return;cy=e.touches[0].clientY-sy;if(cy<0)return;sheet.style.transform=`translateY(${cy}px)`;},{passive:true});
+    handle.addEventListener('touchend',()=>{drag=false;sheet.style.transition='transform .25s ease';if(cy>80){if(typeof closeSheet==='function')closeSheet('cp-marcar');}else sheet.style.transform='translateY(0)';cy=0;});
+  }
+
+  window._cpMarcarId = id;
+  window._cpMarcarTmp = JSON.parse(JSON.stringify(item.destinos));
+
+  const listEl = document.getElementById('cp-marcar-list');
+  if(listEl) _cpRenderMarcarList();
+
+  if(typeof openSheet === 'function') openSheet('cp-marcar');
+  else { const el=document.getElementById('sheet-cp-marcar'); if(el) el.classList.add('open'); }
+};
+
+function _cpRenderMarcarList(){
+  const listEl = document.getElementById('cp-marcar-list');
+  if(!listEl) return;
+  listEl.innerHTML = (window._cpMarcarTmp||[]).map((d,i)=>{
+    const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
+    const esReposicion = d.tipo === 'reposicion';
+    const estado = esReposicion ? d.yaSaque : d.yaPague;
+    const labelOff = esReposicion ? '○ No la saqué aún' : '⏳ Pendiente de pagar';
+    const labelOn  = esReposicion ? '✓ Ya la saqué' : '✓ Ya lo pagué';
+    const colorOn  = esReposicion ? 'var(--purple)' : 'var(--accent)';
+    const bgOn     = esReposicion ? 'rgba(176,144,240,.15)' : 'rgba(200,240,96,.12)';
+    const borderOn = esReposicion ? 'rgba(176,144,240,.4)' : 'rgba(200,240,96,.4)';
+    return `<div style="padding:12px 0;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+        <div>
+          <div style="font-size:13px;font-weight:600;">${_cpEscape(d.desc)}</div>
+          <div style="font-size:10px;color:${ti.color};font-family:'DM Mono',monospace;">${_cpFmt(d.monto)} · ${ti.label}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:7px;">
+        <button type="button" onclick="window._cpToggleMarcar(${i},false)"
+          style="flex:1;padding:8px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;
+          background:${!estado?'rgba(136,136,128,.15)':'transparent'};border:1.5px solid ${!estado?'var(--border2)':'var(--border)'};color:${!estado?'var(--text2)':'var(--text3)'};">
+          ${labelOff}
+        </button>
+        <button type="button" onclick="window._cpToggleMarcar(${i},true)"
+          style="flex:1;padding:8px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;
+          background:${estado?bgOn:'transparent'};border:1.5px solid ${estado?borderOn:'var(--border)'};color:${estado?colorOn:'var(--text3)'};">
+          ${labelOn}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window._cpToggleMarcar = function(i, val){
+  if(!window._cpMarcarTmp || !window._cpMarcarTmp[i]) return;
+  const d = window._cpMarcarTmp[i];
+  if(d.tipo === 'reposicion') d.yaSaque = val;
+  else d.yaPague = val;
+  _cpRenderMarcarList();
+};
+
+window._cpGuardarMarcados = function(){
+  const id = window._cpMarcarId;
+  const item = _cpData().find(i=>i.id===id);
+  if(!item){ if(typeof closeSheet==='function') closeSheet('cp-marcar'); return; }
+
+  // Detectar si alguna reposicion pasó de false→true (acaba de marcarla como "ya saqué")
+  (window._cpMarcarTmp||[]).forEach((dNuevo,i)=>{
+    const dViejo = item.destinos[i];
+    if(dNuevo.tipo==='reposicion' && !dViejo.yaSaque && dNuevo.yaSaque){
+      // Descontar el saldo ahora
+      const cuentaId = dNuevo.cuentaId || item.cuentaDestino;
+      if(cuentaId && typeof sumarFuente === 'function'){
+        try {
+          if(cuentaId.startsWith('cajita:')){
+            const cajId = cuentaId.split(':')[1];
+            const caj = (S.cajitas||[]).find(x=>x.id===cajId);
+            if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+          }
+          sumarFuente(cuentaId, -dNuevo.monto);
+          if(!S.movimientos) S.movimientos = [];
+          S.movimientos.push({id:_cpUid(),tipo:'salida',fuente:cuentaId,monto:dNuevo.monto,fecha:_cpHoy(),desc:'Adelanto comprometido: '+dNuevo.desc});
+          if(window.logCambio) logCambio('Adelantaste plata de '+_cpFuenteLabel(cuentaId), _cpFmt(dNuevo.monto)+' — será repuesto al llegar el ingreso', dNuevo.monto, 'gasto');
+        } catch(e){}
+      }
+    }
+  });
+
+  item.destinos = JSON.parse(JSON.stringify(window._cpMarcarTmp));
+  _cpSave();
+  if(typeof refresh === 'function') refresh();
+  if(typeof closeSheet==='function') closeSheet('cp-marcar');
+  _cpRenderLista();
+  _cpToast('Estados actualizados ✓','ok');
+};
+
+
 window._cpEliminar = async function(id){
   const item = _cpData().find(i=>i.id===id);
   if(!item) return;

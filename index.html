@@ -16,6 +16,7 @@
       href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAADuElEQVR42u3dy40bMRBFUWYwKTpch+MMbAzgrb9oslnvHQF3Od2DqgNKG7XWuvz18fHxXXe1vIAFHmABDrHgBllgg6x42BakGNiWohjUlqEI1BagGNiGrhjUhq0Y1IasGNSGqxjUhqoY1IapKNQGqRjQhqgY1IanGNSGpijUBqYY0IalKNQGpRjQhqQo1AakGNCGoyjUBiOgpRtBG8pzff325a8zr02oDQRooAU00EADvRm0YZzBC/kh1AbxLmDAgY5HDDfQ0ZDBBjoOMdxAx2OGGugoyGADHQkZ7J+gYYYaaJDBBhpmqIGGGWqgQe6FvWCGGmiYfwvkxN9BXQT6bQxvXAfqUNA3AHjzeu2ogd6w9BuuCzTMjy37puu3oV4wP7/gG+/TgnrB/Pxib71XA2qgNyz05vsBXYI54TEGUA8HfesCp9w7EXU96MQHzQANc9yTk1pR14JueBQY0E5noIejXjBnP6yxDfXyUSP/6aNAh4Jufpwu0E5noAeiXk7nDtAtp/RyOgOdhHo5nXtAN5zSQAMNtCXMBZ2OGmiggZ6ygAn/r5kCDTTQc0FPfHtMBn07aqCBBtpb43zQqR87gAYaaEMHGmiggQYaaLMFGmiggQYaaEMHGugTQ5/0P5sv0E5oJzTQQAMNNNBAGzrQQANttkADDTTQQAMNNNBA+8aKb6wADbS5+tY30D5uAA000D52eHIS0EADDfT4JXj6KNBAmyPQnuCfO8N40JNOF7+xAnTUCeNXsICOOmX8TiHQUSeNX5IF+thy/NY30FAPBd2GeSzo299GU0BPdFELeufCpv0PQEN9NehWzEBvWt6UewMN9dWg2zFHgH5ykU8t8+b7JWMGetNSb70X0FBfDRrmYNA7Fvy/S77p+k2Y40DvWva/LvyG6zZiBnrT8t+8HtBhoE8A+BOCN64DczDoUxh+BePE38FcBvoNIJNK3Xk0aKi7MFeABrsDch3odtQtO64C3Yq6ab91oJtgN+61FnQ66tadVoNOhN2+S6BDYNsf0DGo7Q3o8bjtB+gI2PYB9Hjc5g503bdkBHTV43SBFtBAC2iggRbQQAtooIEW0EADDfRboD9fBiGgJaAloCWgBbQEtAS0tBM01IrCDLSAloCWDoGGWlGYgRbQ0s2goVYUZqAVBxpqRWEGWnGgoVYUZqAVBxpqRWGGWnGYoVYcZqAVBxpqRWGGWnGYoVYcZqgVhxlqxWGGWnGYwVYcZKgViRlqxWEGW3GQwVYkZLAVCRluRSIGHOBTrx99JAP6M2MbjQAAAABJRU5ErkJggg==">
     <link rel="manifest"
       href="data:application/json,%7B%22name%22%3A%22Mis%20Finanzas%22%2C%22short_name%22%3A%22Finanzas%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f0f0f%22%2C%22theme_color%22%3A%22%230f0f0f%22%2C%22start_url%22%3A%22/mis-finanzas/%22%2C%22scope%22%3A%22/mis-finanzas/%22%7D">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"
@@ -2832,7 +2833,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
           <button type="button" id="mov_btn_origen"
             onclick="abonoAplicarOrigen()"
             style="display:none;width:100%;margin-top:6px;padding:7px;border-radius:8px;font-size:11px;font-family:'DM Mono',monospace;background:rgba(240,184,64,.08);border:1.5px solid rgba(240,184,64,.3);color:var(--amber);cursor:pointer;">
-            ↩ Devolver a donde salió el préstamo
+            <i class="fa-solid fa-arrow-rotate-left" style="margin-right:5px;"></i>Devolver a donde salió el préstamo
           </button>
           <div id="mov_origen_tags"
             style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;"></div>
@@ -3432,7 +3433,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <button type="button"
           style="margin-top:10px;background:none;border:none;color:var(--text3);font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;padding:4px 0;"
           id="btn-toggle-meta-min"
-          onclick="document.getElementById('meta_min_wrap').style.display=document.getElementById('meta_min_wrap').style.display==='none'?'':'none';this.textContent=document.getElementById('meta_min_wrap').style.display===''?'▲ Ocultar saldo mínimo':'▼ Configurar saldo mínimo'">▼
+          onclick="document.getElementById('meta_min_wrap').style.display=document.getElementById('meta_min_wrap').style.display==='none'?'':'none';this.innerHTML=document.getElementById('meta_min_wrap').style.display===''?'<i class=\'fa-solid fa-chevron-up\' style=\'margin-right:4px;\'></i>Ocultar saldo mínimo':'<i class=\'fa-solid fa-chevron-down\' style=\'margin-right:4px;\'></i>Configurar saldo mínimo'"><i class="fa-solid fa-chevron-down" style="margin-right:4px;"></i>Configurar saldo mínimo
           Configurar saldo mínimo</button>
         <div style="height:10px;"></div>
         <button type="button" class="btn btn-primary"
@@ -4579,13 +4580,13 @@ function renderAttencion(){
     titleEl.style.display = 'flex';
     titleEl.style.justifyContent = 'space-between';
     titleEl.style.alignItems = 'center';
-    titleEl.innerHTML = `Necesita atención <span style="font-size:11px;font-family:'DM Mono',monospace;color:${hasRed?'var(--red)':'var(--amber)'};background:${hasRed?'rgba(240,104,104,.12)':'rgba(240,184,64,.12)'};padding:2px 8px;border-radius:20px;">${items.length} ${isOpen?'▲':'▼'}</span>`;
+    titleEl.innerHTML = `Necesita atención <span style="font-size:11px;font-family:'DM Mono',monospace;color:${hasRed?'var(--red)':'var(--amber)'};background:${hasRed?'rgba(240,104,104,.12)':'rgba(240,184,64,.12)'};padding:2px 8px;border-radius:20px;">${items.length} <i class="fa-solid ${isOpen?'fa-chevron-up':'fa-chevron-down'}"></i></span>`;
     titleEl.onclick = () => {
       const nowOpen = list.style.display === 'none';
       list.style.display = nowOpen ? '' : 'none';
       sessionStorage.setItem('attn-open', nowOpen ? '1' : '0');
       const badge = titleEl.querySelector('span');
-      if(badge) badge.textContent = `${items.length} ${nowOpen?'▲':'▼'}`;
+      if(badge) badge.innerHTML = `${items.length} <i class="fa-solid ${nowOpen?'fa-chevron-up':'fa-chevron-down'}"></i>`;
     };
     list.style.display = isOpen ? '' : 'none';
     sessionStorage.setItem('attn-open', isOpen ? '1' : '0');
@@ -4920,7 +4921,7 @@ function renderAnalisis(){
     const diffBalance=balance-balancePrev;
     const hayDatos=totalPrev>0;
 
-    function arrow(val){ return val>0?'▲':'▼'; }
+    function arrow(val){ return val>0?'<i class="fa-solid fa-arrow-up"></i>':'<i class="fa-solid fa-arrow-down"></i>'; }
     function diffColor(val,invertir){ return invertir?(val<0?'var(--accent)':'var(--red)'):(val>0?'var(--accent)':'var(--red)'); }
 
     if(!hayDatos){
@@ -5103,7 +5104,7 @@ function abrirMetaCajita(cajitaId){
   _metaAportesTemp = (meta.aportes || []).map(a=>({...a}));
   const wrap = document.getElementById('meta_min_wrap');
   wrap.style.display = meta.minimo ? '' : 'none';
-  document.getElementById('btn-toggle-meta-min').textContent = meta.minimo ? '▲ Ocultar saldo mínimo' : '▼ Configurar saldo mínimo';
+  document.getElementById('btn-toggle-meta-min').textContent = meta.minimo ? '<i class="fa-solid fa-chevron-up" style="margin-right:4px;"></i>Ocultar saldo mínimo' : '<i class="fa-solid fa-chevron-down" style="margin-right:4px;"></i>Configurar saldo mínimo';
   document.getElementById('btn-quitar-meta').style.display = meta.objetivo ? '' : 'none';
   _renderMetaAportes();
   _updateMetaCuotaPreview();
@@ -5225,7 +5226,7 @@ function _updatePrestSplitResumen(){
     const obj = c.meta.objetivo || 0;
     impactos.push(`<div style="padding:7px 9px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:7px;margin-top:5px;">
       <div style="font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;margin-bottom:4px;">${c.nombre}</div>
-      <div style="font-size:11px;color:var(--text2);">Disponible ahora: <b style="color:var(--text);">${fmt(saldoActual)}</b> → tras préstamo: <b style="color:${saldoTras<0?'var(--red)':'var(--text)'};">${fmt(saldoTras)}</b></div>
+      <div style="font-size:11px;color:var(--text2);">Disponible ahora: <b style="color:var(--text);">${fmt(saldoActual)}</b> <i class="fa-solid fa-arrow-right" style="margin:0 3px;font-size:10px;"></i>tras préstamo: <b style="color:${saldoTras<0?'var(--red)':'var(--text)'};">${fmt(saldoTras)}</b></div>
       ${obj ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;">Meta: ${fmt(obj)} · ${fmt(Math.max(0,obj-saldoTras))} aún por ahorrar (tras préstamo)</div>` : ''}
       ${minimo && saldoTras < minimo ? `<div style="font-size:10px;color:var(--red);margin-top:2px;">Quedarás ${fmt(minimo-saldoTras)} por debajo del mínimo (${fmt(minimo)})</div>` : ''}
     </div>`);
@@ -5367,7 +5368,7 @@ function abrirCobrarCDT(cajitaId,cdtId){
     if(!v||isNaN(v)){diff.textContent='';return;}
     const d=v-k.val;
     const abs=Math.abs(d).toFixed(2);
-    if(Math.abs(d)<0.01){diff.textContent='✓ Coincide exacto con el estimado';diff.style.color='var(--accent)';}
+    if(Math.abs(d)<0.01){diff.innerHTML='<i class="fa-solid fa-check" style="margin-right:4px;"></i>Coincide exacto con el estimado';diff.style.color='var(--accent)';}
     else if(d>0){diff.textContent='↑ +$'+abs.replace('.',',') +' más que el estimado';diff.style.color='var(--purple)';}
     else{diff.textContent='↓ −$'+abs.replace('.',',')+' menos que el estimado';diff.style.color='var(--text3)';}
   };
@@ -6604,7 +6605,7 @@ function abonoSplitResumen() {
   const diff  = monto - total;
   const el    = document.getElementById('mov_dest_split_resumen');
   if(!el) return;
-  if(Math.abs(diff)<1)  el.innerHTML=`<span style="color:var(--accent);">✓ Suma exacta ${fmt(total)}</span>`;
+  if(Math.abs(diff)<1)  el.innerHTML=`<span style="color:var(--accent);"><i class="fa-solid fa-check" style="margin-right:4px;"></i>Suma exacta ${fmt(total)}</span>`;
   else if(diff>0)       el.innerHTML=`<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`;
   else                  el.innerHTML=`<span style="color:var(--red);">Excede el abono en ${fmt(-diff)}</span>`;
 }
@@ -6639,7 +6640,7 @@ function abonoAplicarOrigen() {
     document.getElementById('mov_dest_split_toggle').textContent='Una sola cuenta';
     abonoRenderSplit();
   }
-  toast('Destinos del origen aplicados ↩','ok');
+  toast('Destinos del origen aplicados','ok');
 }
 
 /* Toggle extra */
@@ -7200,7 +7201,7 @@ function renderSpotify(){
         return Math.ceil((d - hoy) / 86400000) < 0;
       });
       if(vencidos.length){
-        subEl.innerHTML = `<span style="color:var(--red);font-weight:600;">⚠ ${vencidos.length} pago${vencidos.length>1?'s':''} vencido${vencidos.length>1?'s':''}</span>`;
+        subEl.innerHTML = `<span style="color:var(--red);font-weight:600;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:4px;"></i>${vencidos.length} pago${vencidos.length>1?'s':''} vencido${vencidos.length>1?'s':''}</span>`;
       } else if(proximos.length){
         subEl.innerHTML = `<span style="color:var(--amber);font-weight:600;">⚡ ${proximos.length} pago${proximos.length>1?'s':''} en ≤3 días</span>`;
       } else {
@@ -8354,7 +8355,7 @@ document.addEventListener('input',function(e){
     if(nuevo>0){
       const diff=nuevo-anterior;
       const signo=diff>=0?'+':'';
-      prev.textContent=fmt(anterior)+' → '+fmt(nuevo)+(diff!==0?' ('+signo+fmt(diff)+')':'');
+      prev.innerHTML=fmt(anterior)+' <i class="fa-solid fa-arrow-right" style="margin:0 3px;font-size:10px;"></i> '+fmt(nuevo)+(diff!==0?' ('+signo+fmt(diff)+')':'');
       prev.style.color=diff>0?'var(--accent)':diff<0?'var(--red)':'var(--text3)';
     } else {prev.textContent='';}
   }
@@ -11890,7 +11891,9 @@ if ('serviceWorker' in navigator) {
             type="text" inputmode="decimal" id="ctc_monto" placeholder="0,00"
             class="money-input"></div>
         <div class="ig"><label class="il" for="ctc_fecha">Fecha</label><input
-            type="date" id="ctc_fecha"></div>
+            type="date" id="ctc_fecha" onchange="tcActualizarCicloCompra()"></div>
+        <!-- Aviso de ciclo -->
+        <div id="ctc-ciclo-aviso" style="display:none;font-size:11px;border-radius:8px;padding:8px 11px;margin-top:-6px;margin-bottom:4px;font-family:'DM Mono',monospace;line-height:1.5;"></div>
         <div class="ig"><label class="il" for="ctc_cat">Categoría</label>
           <div class="select-wrap"><select id="ctc_cat"></select></div>
         </div>
@@ -11999,11 +12002,39 @@ function tcDiasHastaCorte(tc){
   hoyDate.setHours(0,0,0,0);
   const dia=hoyDate.getDate();
   let targetMonth=hoyDate.getMonth(), targetYear=hoyDate.getFullYear();
+  // Si el corte ya pasó (estrictamente menor), va al mes siguiente
   if(tc.fechaCorte<dia){targetMonth++;if(targetMonth>11){targetMonth=0;targetYear++;}}
   const lastDay=new Date(targetYear,targetMonth+1,0).getDate();
   const targetDay=Math.min(tc.fechaCorte,lastDay);
   const target=new Date(targetYear,targetMonth,targetDay);
   return Math.round((target-hoyDate)/86400000);
+}
+
+// Fecha hasta la que está facturado el extracto actual = día anterior al corte
+function tcFechaFacturadoHasta(tc){
+  if(!tc.fechaCorte)return null;
+  const hoyDate=new Date();
+  hoyDate.setHours(0,0,0,0);
+  const dia=hoyDate.getDate();
+  let targetMonth=hoyDate.getMonth(), targetYear=hoyDate.getFullYear();
+  if(tc.fechaCorte<dia){targetMonth++;if(targetMonth>11){targetMonth=0;targetYear++;}}
+  const lastDay=new Date(targetYear,targetMonth+1,0).getDate();
+  const targetDay=Math.min(tc.fechaCorte,lastDay);
+  // El extracto cubre hasta el día ANTERIOR al corte
+  const corteDate=new Date(targetYear,targetMonth,targetDay);
+  corteDate.setDate(corteDate.getDate()-1);
+  return corteDate;
+}
+
+// Retorna true si una compra (fecha string 'YYYY-MM-DD') cae en el ciclo actual
+// (ya está en el extracto que vence en fechaPago próximo)
+// vs false si es del ciclo siguiente (se paga el mes después)
+function tcCompraEnCicloActual(tc, fechaCompraStr){
+  if(!tc.fechaCorte)return true;
+  const corteDate=tcFechaFacturadoHasta(tc); // último día facturado
+  if(!corteDate)return true;
+  const compra=new Date(fechaCompraStr+'T00:00:00');
+  return compra<=corteDate;
 }
 
 // ── Render dashboard TC (en pantalla inicio) ─────────────────
@@ -12064,7 +12095,7 @@ function renderTCDashboard(){
           <div style="height:100%;width:${pct}%;background:${color};border-radius:2px;transition:width .4s;"></div>
         </div>
         <div style="font-size:11px;font-family:'DM Mono',monospace;color:${color};">
-          ${alcanza?'✓ Tienes para cubrir la deuda · Te sobra '+fmt(diferencia):'Faltan '+fmt(-diferencia)+' para cubrir la deuda ('+pct+'% cubierto)'}
+          ${alcanza?'<i class="fa-solid fa-check" style="margin-right:4px;"></i>Tienes para cubrir la deuda · Te sobra '+fmt(diferencia):'Faltan '+fmt(-diferencia)+' para cubrir la deuda ('+pct+'% cubierto)'}
         </div>
       </div>`;
     })()}
@@ -12111,8 +12142,13 @@ function renderTCScreen(){
     const pct=cupo?Math.min(100,(deuda/cupo)*100):0;
     const diasPago=tcDiasHastaPago(tc);
     const diasCorte=tcDiasHastaCorte(tc);
-    const comprasEsteMes=(tc.compras||[]).filter(c=>mesKey(c.fecha)===mesActual());
-    const totalComprasMes=comprasEsteMes.reduce((a,c)=>a+(c.monto||0),0);
+    const comprasActual=(tc.compras||[]).filter(c=>tcCompraEnCicloActual(tc,c.fecha));
+    const comprasSig=(tc.compras||[]).filter(c=>!tcCompraEnCicloActual(tc,c.fecha));
+    const totalActual=comprasActual.reduce((a,c)=>a+(c.monto||0),0);
+    const totalSig=comprasSig.reduce((a,c)=>a+(c.monto||0),0);
+    const facturadoHasta=tcFechaFacturadoHasta(tc);
+    const meses2=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const facturadoLabel=facturadoHasta?facturadoHasta.getDate()+' '+meses2[facturadoHasta.getMonth()]:null;
     const urgente=diasPago!==null&&diasPago<=5;
     const proximo=diasPago!==null&&diasPago<=10;
 
@@ -12124,6 +12160,7 @@ function renderTCScreen(){
           </div>
           ${tc.fechaCorte||tc.fechaPago?`<div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">
             ${tc.fechaCorte?'Corte día '+tc.fechaCorte:''}${tc.fechaCorte&&tc.fechaPago?' · ':''}${tc.fechaPago?'Pago día '+tc.fechaPago:''}
+            ${facturadoLabel?' · Facturado hasta el <b>'+facturadoLabel+'</b>':''}
           </div>`:''}
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;">
@@ -12139,11 +12176,19 @@ function renderTCScreen(){
           ${cupo?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(cupo)}</div>`:''}
         </div>
         <div style="background:var(--bg3);border-radius:9px;padding:10px 12px;">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Compras este mes</div>
-          <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(totalComprasMes)}</div>
-          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${comprasEsteMes.length} compra${comprasEsteMes.length!==1?'s':''}</div>
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Extracto actual</div>
+          <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(totalActual)}</div>
+          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${comprasActual.length} compra${comprasActual.length!==1?'s':''}</div>
         </div>
       </div>
+
+      ${totalSig>0?`<div style="background:rgba(200,240,96,.05);border:1px solid rgba(200,240,96,.2);border-radius:9px;padding:8px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;font-weight:600;">Próximo extracto</div>
+          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${comprasSig.length} compra${comprasSig.length!==1?'s':''} · se pagan el mes siguiente</div>
+        </div>
+        <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(totalSig)}</div>
+      </div>`:''}
 
       ${cupo?`<div style="margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
@@ -12159,7 +12204,8 @@ function renderTCScreen(){
         <span style="font-size:12px;padding:5px 11px;border-radius:20px;background:${urgente?'rgba(240,104,104,.2)':proximo?'rgba(240,184,64,.15)':'rgba(255,255,255,.07)'};color:${urgente?'var(--red)':proximo?'var(--amber)':'var(--text3)'};font-family:'DM Mono',monospace;font-weight:600;">
           ${diasPago===0?'Vence hoy !':'Pago en '+diasPago+' día'+(diasPago!==1?'s':'')}
         </span>
-        ${diasCorte!==null?`<span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Corte en ${diasCorte}d</span>`:''}
+        ${diasCorte!==null&&diasCorte>0?`<span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Corte en ${diasCorte}d</span>`:''}
+        ${diasCorte===0?`<span style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;"><i class="fa-solid fa-rotate" style="margin-right:5px;"></i>Hoy es el corte</span>`:''}
       </div>`:''}
 
       <div style="display:flex;gap:8px;">
@@ -12251,6 +12297,50 @@ async function eliminarTC(id){
 }
 
 // ── Registrar compra en TC ───────────────────────────────────
+function tcActualizarCicloCompra(){
+  const tc=getTCById(_tcCompraTcId);
+  const el=document.getElementById('ctc-ciclo-aviso');
+  if(!el)return;
+  if(!tc||!tc.fechaCorte){el.style.display='none';return;}
+  const fechaVal=document.getElementById('ctc_fecha').value;
+  if(!fechaVal){el.style.display='none';return;}
+  const enCicloActual=tcCompraEnCicloActual(tc,fechaVal);
+  const facturadoHasta=tcFechaFacturadoHasta(tc);
+  const diasPago=tcDiasHastaPago(tc);
+  // Formatear fecha de pago próxima
+  let labelPago='';
+  if(tc.fechaPago&&diasPago!==null){
+    const hoy2=new Date(); hoy2.setHours(0,0,0,0);
+    const pagoDate=new Date(hoy2.getTime()+diasPago*86400000);
+    const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    labelPago=pagoDate.getDate()+' '+meses[pagoDate.getMonth()];
+  }
+  if(enCicloActual){
+    el.style.display='';
+    el.style.background='rgba(240,104,104,.08)';
+    el.style.border='1px solid rgba(240,104,104,.25)';
+    el.style.color='var(--red)';
+    el.innerHTML=`<i class="fa-solid fa-file-invoice" style="margin-right:5px;"></i>Esta compra va al <b>extracto actual</b> — se paga${labelPago?' el <b>'+labelPago+'</b>':''}${diasPago!==null?' (en '+diasPago+'d)':''}`;
+  } else {
+    el.style.display='';
+    el.style.background='rgba(200,240,96,.06)';
+    el.style.border='1px solid rgba(200,240,96,.25)';
+    el.style.color='var(--accent)';
+    // calcular cuándo sería el pago del ciclo siguiente
+    let labelPagoSig='';
+    if(tc.fechaPago){
+      const hoy2=new Date(); hoy2.setHours(0,0,0,0);
+      const pagoDate=new Date(hoy2.getTime()+diasPago*86400000);
+      // pago siguiente = mismo día del mes siguiente
+      const pagoSig=new Date(pagoDate);
+      pagoSig.setMonth(pagoSig.getMonth()+1);
+      const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      labelPagoSig=pagoSig.getDate()+' '+meses[pagoSig.getMonth()];
+    }
+    el.innerHTML=`<i class="fa-solid fa-check" style="margin-right:5px;"></i>Esta compra va al <b>próximo extracto</b> — tienes hasta${labelPagoSig?' el <b>'+labelPagoSig+'</b>':' el mes siguiente'} para pagar`;
+  }
+}
+
 function abrirCompraTC(tcId){
   _tcCompraTcId=tcId;
   const tc=getTCById(tcId);
@@ -12263,7 +12353,10 @@ function abrirCompraTC(tcId){
   document.getElementById('ctc_nota').value='';
   poblarCatSelect('ctc_cat',getCatsVar());
   openSheet('compra-tc');
-  setTimeout(()=>document.getElementById('ctc_desc').focus(),200);
+  setTimeout(()=>{
+    tcActualizarCicloCompra();
+    document.getElementById('ctc_desc').focus();
+  },200);
 }
 
 function confirmarCompraTC(){
@@ -12277,12 +12370,15 @@ function confirmarCompraTC(){
   const cat=document.getElementById('ctc_cat').value;
   const nota=document.getElementById('ctc_nota').value.trim();
 
+  // Determinar si la compra cae en el ciclo actual o el siguiente
+  const enCicloActual=tcCompraEnCicloActual(tc,fecha);
+  const ciclo=enCicloActual?'actual':'siguiente';
+
   if(!tc.compras)tc.compras=[];
   const compraId=uid();
-  tc.compras.push({id:compraId,desc,monto,fecha,cat,nota});
+  tc.compras.push({id:compraId,desc,monto,fecha,cat,nota,ciclo});
   tc.deuda=(tc.deuda||0)+monto;
 
-  // También registrar como gasto variable con fuente 'tc:id' para que aparezca en el historial
   if(!S.gastosVar)S.gastosVar=[];
   S.gastosVar.push({
     id:uid(),desc,monto,fecha,cat,
@@ -12295,7 +12391,8 @@ function confirmarCompraTC(){
 
   closeSheet('compra-tc');
   save();refresh();renderTCScreen();
-  toast('Compra registrada — deuda: '+fmt(tc.deuda),'info',3500);
+  const cicloMsg=enCicloActual?' (extracto actual)':' (próximo extracto)';
+  toast('Compra registrada'+cicloMsg+' — deuda: '+fmt(tc.deuda),'info',3500);
 }
 
 // ── Pagar TC ─────────────────────────────────────────────────
@@ -12358,7 +12455,7 @@ function ptcActualizarPreview(){
   }
   if(monto>0){
     const nuevaDeuda=Math.max(0,(tc.deuda||0)-monto);
-    prevEl.textContent='Deuda: '+fmt(tc.deuda)+' → '+fmt(nuevaDeuda);
+    prevEl.innerHTML='Deuda: '+fmt(tc.deuda)+' <i class="fa-solid fa-arrow-right" style="margin:0 3px;font-size:10px;"></i> '+fmt(nuevaDeuda);
     prevEl.style.color=nuevaDeuda<(tc.deuda||0)?'var(--accent)':'var(--text3)';
   } else {
     prevEl.textContent='';
@@ -12865,9 +12962,8 @@ function _injectSheet(){
         <div class="select-wrap">
           <select id="cpd-tipo" onchange="window._cpdTipoChange()">
             <option value="reposicion">Repone plata que ya saqué de una cajita/cuenta</option>
-            <option value="servicios">Cubre gastos pendientes de pagar (servicios, etc.)</option>
+            <option value="gasto">Cubre un gasto (servicios, internet, etc.)</option>
             <option value="abono_deuda">Abono a lo que me deben</option>
-            <option value="tc">Pago de tarjeta de crédito</option>
             <option value="otro">Otro (solo registro, sin efecto)</option>
           </select>
         </div>
@@ -12885,12 +12981,32 @@ function _injectSheet(){
         <label class="il" for="cpd-persona">¿Quién?</label>
         <div class="select-wrap"><select id="cpd-persona"><option value="">Sin especificar</option></select></div>
       </div>
-      <!-- Selector TC (para tc) -->
-      <div class="ig" id="cpd-tc-wrap" style="display:none;">
-        <label class="il" for="cpd-tc">Tarjeta de crédito</label>
-        <div class="select-wrap"><select id="cpd-tc"><option value="">Sin especificar</option></select></div>
+      <!-- ¿De dónde salió el gasto? (para gasto) -->
+      <div class="ig" id="cpd-gasto-origen-wrap" style="display:none;">
+        <label class="il" style="margin-bottom:8px;">¿De dónde salió o va a salir esta plata?</label>
+        <div style="display:flex;gap:7px;margin-bottom:8px;">
+          <button type="button" id="cpd-origen-cajita-btn"
+            onclick="window._cpdSetGastoOrigen('cajita')"
+            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(176,144,240,.4);color:var(--purple);background:rgba(176,144,240,.1);transition:all .15s;">
+            <i class="fa-solid fa-box" style="margin-right:5px;"></i>De una cajita
+          </button>
+          <button type="button" id="cpd-origen-tc-btn"
+            onclick="window._cpdSetGastoOrigen('tc')"
+            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid var(--border2);color:var(--text2);background:transparent;transition:all .15s;">
+            <i class="fa-solid fa-credit-card" style="margin-right:5px;"></i>De la tarjeta
+          </button>
+        </div>
+        <div id="cpd-gasto-cajita-wrap" style="display:none;">
+          <label class="il" for="cpd-gasto-cajita" style="font-size:11px;margin-bottom:4px;">¿Qué cajita o cuenta?</label>
+          <div class="select-wrap"><select id="cpd-gasto-cajita"><option value="">Sin especificar</option></select></div>
+        </div>
+        <div id="cpd-gasto-tc-wrap" style="display:none;">
+          <label class="il" for="cpd-gasto-tc" style="font-size:11px;margin-bottom:4px;">¿Qué tarjeta?</label>
+          <div class="select-wrap"><select id="cpd-gasto-tc"><option value="">Sin especificar</option></select></div>
+          <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.5;">Al llegar el ingreso, la deuda de la tarjeta aumenta y la plata va a tu cajita TC para pagarla.</div>
+        </div>
       </div>
-      <!-- Cuenta destino del libre (para libre) -->
+      <!-- Cuenta destino: solo para reposicion -->
       <div class="ig" id="cpd-cuenta-wrap" style="display:none;">
         <label class="il" for="cpd-cuenta">¿A qué cajita/cuenta reponer?</label>
         <div class="select-wrap"><select id="cpd-cuenta"><option value="">Sin especificar</option></select></div>
@@ -12902,12 +13018,12 @@ function _injectSheet(){
           <button type="button" id="cpd-ya-saque-si"
             onclick="window._cpdSetYaSaque(true)"
             style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid var(--border2);color:var(--text2);background:transparent;transition:all .15s;">
-            ✓ Sí, ya la saqué
+            <i class="fa-solid fa-check" style="margin-right:5px;"></i>Sí, ya la saqué
           </button>
           <button type="button" id="cpd-ya-saque-no"
             onclick="window._cpdSetYaSaque(false)"
             style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(200,240,96,.4);color:var(--accent);background:rgba(200,240,96,.08);transition:all .15s;">
-            ○ No, esperaré
+            <i class="fa-regular fa-circle" style="margin-right:5px;"></i>No, esperaré
           </button>
         </div>
         <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.5;">Si ya la sacaste, la app descuenta el saldo ahora y lo repone cuando llegue el ingreso.</div>
@@ -12919,12 +13035,12 @@ function _injectSheet(){
           <button type="button" id="cpd-ya-pague-si"
             onclick="window._cpdSetYaPague(true)"
             style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid var(--border2);color:var(--text2);background:transparent;transition:all .15s;">
-            ✓ Sí, ya lo pagué
+            <i class="fa-solid fa-check" style="margin-right:5px;"></i>Sí, ya lo pagué
           </button>
           <button type="button" id="cpd-ya-pague-no"
             onclick="window._cpdSetYaPague(false)"
             style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(240,184,64,.4);color:var(--amber);background:rgba(240,184,64,.08);transition:all .15s;">
-            ○ Pendiente de pagar
+            <i class="fa-regular fa-circle" style="margin-right:5px;"></i>Pendiente de pagar
           </button>
         </div>
       </div>
@@ -12937,7 +13053,7 @@ function _injectSheet(){
   <div class="overlay" id="sheet-cp-recibir" data-sheet-id="cp-recibir">
     <div class="sheet">
       <div class="sheet-handle"></div>
-      <div class="sheet-title">¡Llegó la plata! 🎉</div>
+      <div class="sheet-title">¡Llegó la plata! <i class="fa-solid fa-star" style="margin-left:4px;color:var(--accent);font-size:14px;"></i></div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">Revisá el plan y confirma qué se va a hacer con cada parte.</div>
 
       <div id="cp-recibir-desc-card" style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;">
@@ -13059,9 +13175,8 @@ function _cpFuenteLabel(val){
 /* ── TIPOS DE DESTINO ────────────────────────────────────────────── */
 const _CP_TIPO_LABELS = {
   reposicion:  { label:'Repone cajita/cuenta que ya usé', color:'var(--purple)', bg:'rgba(176,144,240,.1)',  border:'rgba(176,144,240,.3)' },
-  servicios:   { label:'Gasto pendiente de pagar',        color:'var(--amber)',  bg:'rgba(240,184,64,.08)', border:'rgba(240,184,64,.2)' },
+  gasto:       { label:'Gasto pendiente',                  color:'var(--amber)',  bg:'rgba(240,184,64,.08)', border:'rgba(240,184,64,.2)' },
   abono_deuda: { label:'Abono a deuda pendiente',          color:'var(--accent)', bg:'rgba(200,240,96,.08)', border:'rgba(200,240,96,.2)' },
-  tc:          { label:'Pago tarjeta de crédito',          color:'var(--red)',    bg:'rgba(240,104,104,.08)', border:'rgba(240,104,104,.2)' },
   otro:        { label:'Otro (sin efecto en saldos)',       color:'var(--text2)',  bg:'rgba(136,136,128,.08)', border:'rgba(136,136,128,.2)' },
 };
 
@@ -13139,10 +13254,10 @@ function _cpRenderLista(){
           </div>
           <div style="display:flex;justify-content:space-between;font-size:10px;font-family:'DM Mono',monospace;">
             <span style="color:var(--red);">Comprometido: ${_cpFmt(comp)}</span>
-            <span style="color:var(--accent);">💰 Tu ganancia: ${_cpFmt(libre)}</span>
+            <span style="color:var(--accent);"><i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Tu ganancia: ${_cpFmt(libre)}</span>
           </div>
         </div>` : `
-        <div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:10px;">💰 Tu ganancia: ${_cpFmt(item.montoTotal)} (nada comprometido)</div>`}
+        <div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:10px;"><i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Tu ganancia: ${_cpFmt(item.montoTotal)} (nada comprometido)</div>`}
 
         <!-- Destinos chips con estado -->
         ${(item.destinos||[]).length ? `
@@ -13152,12 +13267,20 @@ function _cpRenderLista(){
             let estadoBadge = '';
             if(d.tipo === 'reposicion'){
               estadoBadge = d.yaSaque
-                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(176,144,240,.2);color:var(--purple);vertical-align:middle;">✓ saqué</span>`
+                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(176,144,240,.2);color:var(--purple);vertical-align:middle;"><i class="fa-solid fa-check" style="margin-right:2px;"></i>saqué</span>`
                 : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(200,240,96,.1);color:var(--accent);vertical-align:middle;">pendiente</span>`;
+            } else if(d.tipo === 'gasto'){
+              const origenTag = d.gastoOrigen === 'tc'
+                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(240,104,104,.12);color:var(--red);vertical-align:middle;"><i class="fa-solid fa-credit-card" style="margin-right:3px;"></i>TC</span>`
+                : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(176,144,240,.12);color:var(--purple);vertical-align:middle;"><i class="fa-solid fa-box" style="margin-right:3px;"></i>cajita</span>`;
+              const pagoTag = d.yaPague
+                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(200,240,96,.15);color:var(--accent);vertical-align:middle;"><i class="fa-solid fa-check"></i></span>`
+                : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(240,184,64,.12);color:var(--amber);vertical-align:middle;"><i class="fa-regular fa-clock"></i></span>`;
+              estadoBadge = origenTag + pagoTag;
             } else {
               estadoBadge = d.yaPague
-                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(200,240,96,.15);color:var(--accent);vertical-align:middle;">✓ pagado</span>`
-                : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(240,184,64,.12);color:var(--amber);vertical-align:middle;">⏳ por pagar</span>`;
+                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(200,240,96,.15);color:var(--accent);vertical-align:middle;"><i class="fa-solid fa-check" style="margin-right:2px;"></i>pagado</span>`
+                : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(240,184,64,.12);color:var(--amber);vertical-align:middle;"><i class="fa-regular fa-clock" style="margin-right:3px;"></i>por pagar</span>`;
             }
             return `<span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:${ti.bg};border:1px solid ${ti.border};color:${ti.color};font-family:'DM Mono',monospace;">${_cpEscape(d.desc)}: ${_cpFmt(d.monto)}${estadoBadge}</span>`;
           }).join('')}
@@ -13173,7 +13296,7 @@ function _cpRenderLista(){
           <button type="button" onclick="window._cpMarcarPagos('${item.id}')"
             style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(240,184,64,.08);border:1.5px solid rgba(240,184,64,.3);color:var(--amber);"
             title="Marcar qué ya pagaste">
-            ✓ Pagos
+            <i class="fa-solid fa-check-double" style="margin-right:5px;"></i>Pagos
           </button>
           <button type="button" onclick="window._cpAbrirEditar('${item.id}')"
             style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(136,136,128,.08);border:1.5px solid var(--border2);color:var(--text2);">
@@ -13309,7 +13432,7 @@ window._cpGuardar = function(){
   _cpSave();
   _cpCloseSheet('cp-nuevo');
   _cpRenderLista();
-  _cpToast(_cpEditId ? 'Ingreso actualizado' : 'Ingreso registrado ✓', 'ok');
+  _cpToast(_cpEditId ? 'Ingreso actualizado' : 'Ingreso registrado <i class="fa-solid fa-check"></i>', 'ok');
   _cpEditId = null;
   _cpDestinosTmp = [];
 
@@ -13336,39 +13459,82 @@ window._cpAgregarDestino = function(){
 
 window._cpdTipoChange = function(){
   const tipo = document.getElementById('cpd-tipo').value;
-  const personaWrap  = document.getElementById('cpd-persona-wrap');
-  const tcWrap       = document.getElementById('cpd-tc-wrap');
-  const cuentaWrap   = document.getElementById('cpd-cuenta-wrap');
-  const yaSaqueWrap  = document.getElementById('cpd-ya-saque-wrap');
-  const yaPagueWrap  = document.getElementById('cpd-ya-pague-wrap');
+  const personaWrap     = document.getElementById('cpd-persona-wrap');
+  const gastoOrigenWrap = document.getElementById('cpd-gasto-origen-wrap');
+  const cuentaWrap      = document.getElementById('cpd-cuenta-wrap');
+  const yaSaqueWrap     = document.getElementById('cpd-ya-saque-wrap');
+  const yaPagueWrap     = document.getElementById('cpd-ya-pague-wrap');
 
-  // Persona: solo para abono_deuda
-  if(personaWrap) personaWrap.style.display = tipo==='abono_deuda' ? '' : 'none';
-  // TC: solo para pago TC
-  if(tcWrap)      tcWrap.style.display      = tipo==='tc' ? '' : 'none';
-  // Cuenta destino: solo para reposicion
-  if(cuentaWrap)  cuentaWrap.style.display  = tipo==='reposicion' ? '' : 'none';
-  // ¿Ya saqué?: solo para reposicion
-  if(yaSaqueWrap) yaSaqueWrap.style.display = tipo==='reposicion' ? '' : 'none';
-  // ¿Ya pagué?: para servicios, tc, abono_deuda, otro
-  if(yaPagueWrap) yaPagueWrap.style.display = (tipo !== 'reposicion') ? '' : 'none';
+  if(personaWrap)     personaWrap.style.display     = tipo==='abono_deuda' ? '' : 'none';
+  if(gastoOrigenWrap) gastoOrigenWrap.style.display  = tipo==='gasto' ? '' : 'none';
+  if(cuentaWrap)      cuentaWrap.style.display       = tipo==='reposicion' ? '' : 'none';
+  if(yaSaqueWrap)     yaSaqueWrap.style.display      = tipo==='reposicion' ? '' : 'none';
+  if(yaPagueWrap)     yaPagueWrap.style.display      = (tipo==='gasto'||tipo==='otro') ? '' : 'none';
 
-  // Actualizar label
-  const cuentaLabel = cuentaWrap ? cuentaWrap.querySelector('label') : null;
-  if(cuentaLabel) cuentaLabel.textContent = '¿A qué cajita/cuenta reponer?';
+  if(tipo==='gasto'){
+    window._cpdSetGastoOrigen(window._cpdGastoOrigenVal||'cajita');
+    _cpdPoblarGastoSelectores();
+  }
 
-  // Inicializar estados por defecto
   window._cpdSetYaSaque(false);
   window._cpdSetYaPague(false);
 
-  // Sugerir descripción
   const descInput = document.getElementById('cpd-desc');
   if(descInput && !descInput.value){
     const sugs = {
-      reposicion:'Plata que ya saqué de la cajita', servicios:'Servicios públicos',
-      abono_deuda:'Abono de mamá', tc:'Pago TC', otro:'Otro'
+      reposicion:'Plata que ya saqué de la cajita', gasto:'Servicios públicos',
+      abono_deuda:'Abono de mamá', otro:'Otro'
     };
     descInput.placeholder = sugs[tipo]||'Descripción';
+  }
+};
+
+function _cpdPoblarGastoSelectores(){
+  const selCaj = document.getElementById('cpd-gasto-cajita');
+  if(selCaj && selCaj.options.length <= 1){
+    (S.cajitas||[]).forEach(c=>{
+      const o = document.createElement('option');
+      o.value = 'cajita:'+c.id;
+      o.textContent = c.nombre||c.id;
+      selCaj.appendChild(o);
+    });
+    (S.cuentas||[]).forEach(c=>{
+      const o = document.createElement('option');
+      o.value = 'cuenta:'+c.id;
+      o.textContent = c.nombre||c.id;
+      selCaj.appendChild(o);
+    });
+  }
+  const selTc = document.getElementById('cpd-gasto-tc');
+  if(selTc && selTc.options.length <= 1){
+    (S.tarjetasCredito||[]).forEach(t=>{
+      const o = document.createElement('option');
+      o.value = t.id;
+      o.textContent = t.nombre||t.id;
+      selTc.appendChild(o);
+    });
+  }
+}
+
+window._cpdSetGastoOrigen = function(val){
+  window._cpdGastoOrigenVal = val;
+  const cajBtn  = document.getElementById('cpd-origen-cajita-btn');
+  const tcBtn   = document.getElementById('cpd-origen-tc-btn');
+  const cajWrap = document.getElementById('cpd-gasto-cajita-wrap');
+  const tcWrap  = document.getElementById('cpd-gasto-tc-wrap');
+  if(!cajBtn) return;
+  if(val==='cajita'){
+    cajBtn.style.cssText += ';background:rgba(176,144,240,.15);border-color:var(--purple);color:var(--purple);';
+    tcBtn.style.cssText  += ';background:transparent;border-color:var(--border2);color:var(--text2);';
+    if(cajWrap) cajWrap.style.display = '';
+    if(tcWrap)  tcWrap.style.display  = 'none';
+    _cpdPoblarGastoSelectores();
+  } else {
+    tcBtn.style.cssText  += ';background:rgba(240,104,104,.12);border-color:rgba(240,104,104,.5);color:var(--red);';
+    cajBtn.style.cssText += ';background:transparent;border-color:var(--border2);color:var(--text2);';
+    if(tcWrap)  tcWrap.style.display  = '';
+    if(cajWrap) cajWrap.style.display = 'none';
+    _cpdPoblarGastoSelectores();
   }
 };
 
@@ -13427,14 +13593,26 @@ window._cpdConfirmar = function(){
   if(!monto || monto <= 0){ _cpToast('Ingresá el monto','err'); return; }
 
   const personaId = document.getElementById('cpd-persona') ? document.getElementById('cpd-persona').value : '';
-  const tcId      = document.getElementById('cpd-tc')      ? document.getElementById('cpd-tc').value      : '';
   const cuentaId  = document.getElementById('cpd-cuenta')  ? document.getElementById('cpd-cuenta').value  : '';
 
-  // Leer flags de estado
-  const yaSaque = tipo === 'reposicion' ? (window._cpdYaSaqueVal === true) : false;
-  const yaPague = tipo !== 'reposicion' ? (window._cpdYaPagueVal === true) : false;
+  // Para tipo gasto: leer origen (cajita o TC)
+  let gastoOrigen = '';   // 'cajita' | 'tc'
+  let gastoCajita = '';   // id de cajita/cuenta si origen=cajita
+  let gastoTcId   = '';   // id de TC si origen=tc
+  if(tipo === 'gasto'){
+    gastoOrigen = window._cpdGastoOrigenVal || 'cajita';
+    if(gastoOrigen === 'cajita'){
+      gastoCajita = document.getElementById('cpd-gasto-cajita') ? document.getElementById('cpd-gasto-cajita').value : '';
+    } else {
+      gastoTcId = document.getElementById('cpd-gasto-tc') ? document.getElementById('cpd-gasto-tc').value : '';
+      if(!gastoTcId){ _cpToast('Elegí una tarjeta de crédito','err'); return; }
+    }
+  }
 
-  // Si ya sacó la plata, descontar el saldo AHORA
+  const yaSaque = tipo === 'reposicion' ? (window._cpdYaSaqueVal === true) : false;
+  const yaPague = (tipo === 'gasto' || tipo === 'otro') ? (window._cpdYaPagueVal === true) : false;
+
+  // Si ya adelantó plata de una cajita (reposicion)
   if(yaSaque && cuentaId && typeof sumarFuente === 'function'){
     try {
       if(cuentaId.startsWith('cajita:')){
@@ -13444,16 +13622,13 @@ window._cpdConfirmar = function(){
       }
       sumarFuente(cuentaId, -monto);
       if(!S.movimientos) S.movimientos = [];
-      S.movimientos.push({
-        id: _cpUid(), tipo:'salida', fuente:cuentaId, monto, fecha:_cpHoy(),
-        desc:'Adelanto comprometido: '+desc
-      });
+      S.movimientos.push({ id:_cpUid(), tipo:'salida', fuente:cuentaId, monto, fecha:_cpHoy(), desc:'Adelanto comprometido: '+desc });
       if(window.logCambio) logCambio('Adelantaste plata de '+_cpFuenteLabel(cuentaId), _cpFmt(monto)+' — será repuesto al llegar el ingreso', monto, 'gasto');
       if(typeof refresh === 'function') refresh();
     } catch(e){ _cpToast('No se pudo descontar el saldo: '+e.message,'err'); }
   }
 
-  _cpDestinosTmp.push({ id: _cpUid(), tipo, desc, monto, personaId, tcId, cuentaId, yaSaque, yaPague });
+  _cpDestinosTmp.push({ id:_cpUid(), tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId });
   _cpCloseSheet('cp-destino');
   _cpRenderDestinosTmp();
 };
@@ -13471,12 +13646,20 @@ function _cpRenderDestinosTmp(){
       let badge = '';
       if(d.tipo === 'reposicion'){
         badge = d.yaSaque
-          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.18);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-family:'DM Mono',monospace;white-space:nowrap;">✓ Ya saqué</span>`
+          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.18);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-family:'DM Mono',monospace;white-space:nowrap;"><i class="fa-solid fa-check" style="margin-right:3px;"></i>Ya saqué</span>`
           : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-family:'DM Mono',monospace;white-space:nowrap;">Pendiente</span>`;
+      } else if(d.tipo === 'gasto'){
+        const origenBadge = d.gastoOrigen === 'tc'
+          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,104,104,.12);border:1px solid rgba(240,104,104,.3);color:var(--red);font-family:'DM Mono',monospace;white-space:nowrap;"><i class='fa-solid fa-credit-card' style='margin-right:3px;'></i>TC</span>`
+          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.12);border:1px solid rgba(176,144,240,.3);color:var(--purple);font-family:'DM Mono',monospace;white-space:nowrap;"><i class='fa-solid fa-box' style='margin-right:3px;'></i>Cajita</span>`;
+        const pagoBadge = d.yaPague
+          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.15);border:1px solid rgba(200,240,96,.4);color:var(--accent);font-family:'DM Mono',monospace;white-space:nowrap;"><i class="fa-solid fa-check" style="margin-right:3px;"></i>Pagado</span>`
+          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.35);color:var(--amber);font-family:'DM Mono',monospace;white-space:nowrap;"><i class="fa-regular fa-clock" style="margin-right:3px;"></i>Pendiente</span>`;
+        badge = origenBadge + pagoBadge;
       } else {
         badge = d.yaPague
-          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.15);border:1px solid rgba(200,240,96,.4);color:var(--accent);font-family:'DM Mono',monospace;white-space:nowrap;">✓ Pagado</span>`
-          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.35);color:var(--amber);font-family:'DM Mono',monospace;white-space:nowrap;">⏳ Pendiente</span>`;
+          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.15);border:1px solid rgba(200,240,96,.4);color:var(--accent);font-family:'DM Mono',monospace;white-space:nowrap;"><i class="fa-solid fa-check" style="margin-right:3px;"></i>Pagado</span>`
+          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.35);color:var(--amber);font-family:'DM Mono',monospace;white-space:nowrap;"><i class="fa-regular fa-clock" style="margin-right:3px;"></i>Pendiente</span>`;
       }
       return `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);">
         <div style="flex:1;min-width:0;">
@@ -13500,16 +13683,16 @@ function _cpRenderDestinosTmp(){
     if(total > 0){
       if(ganancia < 0){
         balEl.style.color = 'var(--red)';
-        balEl.innerHTML = `⚠ Los destinos superan el total por ${_cpFmt(Math.abs(ganancia))}`;
+        balEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="margin-right:5px;"></i>Los destinos superan el total por ${_cpFmt(Math.abs(ganancia))}`;
       } else if(ganancia > 0.99){
         balEl.style.color = 'var(--accent)';
-        balEl.innerHTML = `Comprometido: ${_cpFmt(comp)} · <b style="color:var(--accent);">💰 Tu ganancia: ${_cpFmt(ganancia)}</b>`;
+        balEl.innerHTML = `Comprometido: ${_cpFmt(comp)} · <b style="color:var(--accent);"><i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Tu ganancia: ${_cpFmt(ganancia)}</b>`;
       } else if(comp > 0){
         balEl.style.color = 'var(--text3)';
         balEl.innerHTML = `Comprometido: ${_cpFmt(comp)} · Todo asignado`;
       } else {
         balEl.style.color = 'var(--accent)';
-        balEl.innerHTML = `💰 Tu ganancia: ${_cpFmt(total)} (nada comprometido)`;
+        balEl.innerHTML = `<i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Tu ganancia: ${_cpFmt(total)} (nada comprometido)`;
       }
     } else {
       balEl.textContent = '';
@@ -13622,7 +13805,6 @@ window._cpConfirmarRecibir = function(){
         }
       }
       else if(d.tipo === 'abono_deuda' && d.personaId){
-        // Registrar abono a deudor
         const deu = (S.deudores||[]).find(x=>x.id===d.personaId);
         if(deu){
           if(!deu.movimientos) deu.movimientos = [];
@@ -13630,15 +13812,40 @@ window._cpConfirmarRecibir = function(){
           if(window.logCambio) logCambio('Registraste abono de '+deu.nombre, _cpFmt(d.monto)+' de plata comprometida', d.monto, 'abono');
         }
       }
-      else if(d.tipo === 'tc' && d.tcId){
-        // Registrar pago de TC — reduce la deuda
-        const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.tcId);
-        if(tc){
-          tc.deuda = Math.max(0,(tc.deuda||0)-d.monto);
-          if(window.logCambio) logCambio('Pagaste TC "'+tc.nombre+'" desde plata comprometida', _cpFmt(d.monto), d.monto, 'gasto');
+      else if(d.tipo === 'gasto'){
+        if(d.gastoOrigen === 'tc' && d.gastoTcId){
+          // Gasto pagado con TC: sumar deuda a la TC y llevar la plata a la cajita TC
+          const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
+          if(tc){
+            tc.deuda = (tc.deuda||0) + d.monto;
+            if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado', _cpFmt(d.monto)+' sumado a la deuda', d.monto, 'gasto');
+            // Llevar la plata a la cajita TC si existe
+            const cajitaTc = (S.cajitas||[]).find(c => c.esCajitaTC && c.tcId === d.gastoTcId);
+            if(cajitaTc && typeof sumarFuente === 'function'){
+              if(typeof materializarIntereses === 'function') materializarIntereses(cajitaTc);
+              sumarFuente('cajita:'+cajitaTc.id, d.monto);
+              if(!S.movimientos) S.movimientos = [];
+              S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:'cajita:'+cajitaTc.id, monto:d.monto, fecha, desc:'Para pagar TC: '+d.desc});
+              if(window.logCambio) logCambio('Plata para pagar TC', _cpFmt(d.monto)+' → cajita "'+cajitaTc.nombre+'"', d.monto, 'ingreso');
+            }
+          }
+        } else if(d.gastoOrigen === 'cajita' && d.gastoCajita){
+          // Gasto de cajita: reponer esa cajita con el ingreso
+          if(typeof sumarFuente === 'function'){
+            if(d.gastoCajita.startsWith('cajita:')){
+              const cajId = d.gastoCajita.split(':')[1];
+              const caj = (S.cajitas||[]).find(x=>x.id===cajId);
+              if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+            }
+            sumarFuente(d.gastoCajita, d.monto);
+            if(!S.movimientos) S.movimientos = [];
+            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:d.gastoCajita, monto:d.monto, fecha, desc:'Reposición gasto: '+d.desc});
+            if(window.logCambio) logCambio('Repuesto gasto en '+_cpFuenteLabel(d.gastoCajita), _cpFmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
+          }
         }
+        // si no tiene origen definido: solo registro, sin efecto
       }
-      // servicios y otro: solo registro, no tocan saldos
+      // otro: solo registro, sin efecto en saldos
     } catch(e){
       errores.push(d.desc);
     }
@@ -13658,7 +13865,7 @@ window._cpConfirmarRecibir = function(){
         sumarFuente(item.cuentaDestino, ganancia);
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:item.cuentaDestino, monto:ganancia, fecha, desc:'Ganancia: '+item.desc});
-        if(window.logCambio) logCambio('💰 Tu ganancia de "'+item.desc+'"', _cpFmt(ganancia)+' → '+_cpFuenteLabel(item.cuentaDestino), ganancia, 'ingreso');
+        if(window.logCambio) logCambio('<i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Tu ganancia de "'+item.desc+'"', _cpFmt(ganancia)+' → '+_cpFuenteLabel(item.cuentaDestino), ganancia, 'ingreso');
       }
     } catch(e){ errores.push('Ganancia'); }
   }
@@ -13677,7 +13884,7 @@ window._cpConfirmarRecibir = function(){
     _cpToast('Recibido con errores menores en: '+errores.join(', '),'err');
   } else {
     const gananciaMsg = ganancia > 0.99 ? ` · Tu ganancia: ${_cpFmt(ganancia)}` : '';
-    _cpToast('¡Plata distribuida correctamente! ✓'+gananciaMsg,'ok');
+    _cpToast('¡Plata distribuida correctamente! <i class="fa-solid fa-check"></i>'+gananciaMsg,'ok');
   }
 
   if(typeof renderAttencion === 'function') renderAttencion();
@@ -13743,9 +13950,12 @@ function _cpRenderMarcarList(){
   listEl.innerHTML = (window._cpMarcarTmp||[]).map((d,i)=>{
     const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
     const esReposicion = d.tipo === 'reposicion';
+    const esAbono = d.tipo === 'abono_deuda';
+    if(esAbono) return ''; // los abonos son plata que te llega, no hay nada que marcar como pagado
+    const esGastoTC = d.tipo === 'gasto' && d.gastoOrigen === 'tc';
     const estado = esReposicion ? d.yaSaque : d.yaPague;
-    const labelOff = esReposicion ? '○ No la saqué aún' : '⏳ Pendiente de pagar';
-    const labelOn  = esReposicion ? '✓ Ya la saqué' : '✓ Ya lo pagué';
+    const labelOff = esReposicion ? '<i class="fa-regular fa-circle" style="margin-right:4px;"></i>No la saqué aún' : '<i class="fa-regular fa-clock" style="margin-right:3px;"></i>Pendiente de pagar';
+    const labelOn  = esReposicion ? '<i class="fa-solid fa-check" style="margin-right:4px;"></i>Ya la saqué' : (esGastoTC ? '<i class="fa-solid fa-check" style="margin-right:4px;"></i>Ya lo cargué a la TC' : '<i class="fa-solid fa-check" style="margin-right:4px;"></i>Ya lo pagué');
     const colorOn  = esReposicion ? 'var(--purple)' : 'var(--accent)';
     const bgOn     = esReposicion ? 'rgba(176,144,240,.15)' : 'rgba(200,240,96,.12)';
     const borderOn = esReposicion ? 'rgba(176,144,240,.4)' : 'rgba(200,240,96,.4)';
@@ -13812,7 +14022,7 @@ window._cpGuardarMarcados = function(){
   if(typeof refresh === 'function') refresh();
   if(typeof closeSheet==='function') closeSheet('cp-marcar');
   _cpRenderLista();
-  _cpToast('Estados actualizados ✓','ok');
+  _cpToast('Estados actualizados <i class="fa-solid fa-check"></i>','ok');
 };
 
 

@@ -7685,7 +7685,86 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
   const el = document.getElementById(elId);
   if (!el) return;
   const encargos = S.encargos || [];
-  // Para cada encargo, calcular cuánto tiene en esta cuenta
+
+  // Para Nu: construir filas por cajita específica (no agrupado)
+  // Para otras cuentas: comportamiento normal
+  if (tipoCuenta === 'nu') {
+    // Estructura: [{enc, cajitaId, saldoEncargo}]
+    const filas = [];
+    encargos.forEach(enc => {
+      const mapRaw = {};
+      if (enc.saldoInicial > 0) {
+        const k = enc.cuentaInicial || '__sin__';
+        mapRaw[k] = (mapRaw[k]||0) + enc.saldoInicial;
+      }
+      (enc.movimientos||[]).forEach(m => {
+        const k = m.cuenta || '__sin__';
+        if (m.tipo === 'entrada') mapRaw[k] = (mapRaw[k]||0) + m.monto;
+        else mapRaw[k] = (mapRaw[k]||0) - m.monto;
+      });
+      // Una fila por cajita específica
+      Object.entries(mapRaw).forEach(([k, v]) => {
+        if (v > 0 && k && k.startsWith('cajita:')) {
+          filas.push({ enc, cajitaId: k.split(':')[1], saldoEncargo: v });
+        }
+      });
+    });
+    if (!filas.length) { el.innerHTML = ''; return; }
+
+    // Calcular intereses por cajita: la porción del encargo genera intereses proporcionales
+    // Interés que me corresponde = saldoCajita * tasaDiaria * (saldoEncargo / saldoCajita) = saldoEncargo * tasaDiaria
+    const tasa = getNuTasaGlobal ? getNuTasaGlobal() : (S.nuTasaGlobal || 9.25);
+    const tasaDiaria = Math.pow(1 + tasa / 100, 1 / 365) - 1;
+
+    let totalEncargosNu = 0;
+    let totalInteresesMios = 0;
+    const filasHtml = filas.map(({enc, cajitaId, saldoEncargo}) => {
+      totalEncargosNu += saldoEncargo;
+      const cajita = (S.cajitas||[]).find(x => x.id === cajitaId);
+      const cajitaNombre = cajita ? (cajita.nombre || 'Cajita Nu') : 'Cajita Nu';
+      // Interés diario que genera esa porción del encargo (es mío, no del encargo)
+      const interesMio = saldoEncargo * tasaDiaria;
+      totalInteresesMios += interesMio;
+      return `
+        <div style="background:rgba(96,176,240,.04);border:1px solid rgba(96,176,240,.12);border-radius:9px;padding:10px 12px;margin-bottom:6px;cursor:pointer;" onclick="abrirEncargoDesdeCuenta('${enc.id}')">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div class="avatar" style="width:26px;height:26px;font-size:9px;background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;margin-right:0;">${iniciales(enc.nombre)}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${enc.nombre}</div>
+              ${enc.nota?`<div style="font-size:10px;color:var(--text3);">${enc.nota}</div>`:''}
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(saldoEncargo)}</div>
+              <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(encargoSaldo(enc))} total</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;padding-top:6px;border-top:1px solid rgba(96,176,240,.1);">
+            <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:rgba(192,96,240,.8);font-family:'DM Mono',monospace;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+              ${cajitaNombre}
+            </span>
+            ${interesMio >= 0.01 ? `<span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;">+${fmt(interesMio)}/día <span style="font-size:9px;opacity:.7;">(tuyo)</span></span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="sec-title">Encargos en Nu</div>
+      <div style="background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;">
+        <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:10px;">Plata que administrás de otras personas, guardada en tus cajitas — los intereses que genera son tuyos</div>
+        ${filasHtml}
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;margin-top:2px;border-top:1px solid rgba(96,176,240,.12);">
+          <div>
+            <div style="font-size:10px;color:var(--text3);">Total encargos en Nu</div>
+            ${totalInteresesMios >= 0.01 ? `<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;">+${fmt(totalInteresesMios)}/día que ganás vos</div>` : ''}
+          </div>
+          <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(totalEncargosNu)}</span>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // ── Comportamiento normal para cuentas no-Nu ──
   const filas = [];
   encargos.forEach(enc => {
     const mapRaw = {};
@@ -7698,14 +7777,11 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
       if (m.tipo === 'entrada') mapRaw[k] = (mapRaw[k]||0) + m.monto;
       else mapRaw[k] = (mapRaw[k]||0) - m.monto;
     });
-    // Sumar todo lo que coincida con la cuenta/tipo
     let saldoEnCuenta = 0;
     Object.entries(mapRaw).forEach(([k, v]) => {
-      const match = tipoCuenta === 'nu'
-        ? (k && k.startsWith('cajita:'))
-        : tipoCuenta.startsWith('custom:')
-          ? k === tipoCuenta
-          : k === tipoCuenta;
+      const match = tipoCuenta.startsWith('custom:')
+        ? k === tipoCuenta
+        : k === tipoCuenta;
       if (match) saldoEnCuenta += v;
     });
     if (saldoEnCuenta > 0) {
@@ -7713,7 +7789,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
     }
   });
   if (!filas.length) { el.innerHTML = ''; return; }
-  const colorMap = { nequi: '#ff4da6', efectivo: 'var(--amber)', nu: 'var(--nu-light)' };
+  const colorMap = { nequi: '#ff4da6', efectivo: 'var(--amber)' };
   let color = colorMap[tipoCuenta] || 'var(--blue)';
   if (tipoCuenta.startsWith('custom:')) {
     const cId = tipoCuenta.split(':')[1];
@@ -9190,14 +9266,22 @@ function abrirEncargoDetalle(id) {
     });
     const hayMultiple = Object.keys(mapRaw).filter(k => (mapRaw[k]||0) > 0).length > 0;
     if (hayMultiple && saldo > 0) {
+      const tasaNU = getNuTasaGlobal ? getNuTasaGlobal() : (S.nuTasaGlobal || 9.25);
+      const tasaDiaria = Math.pow(1 + tasaNU / 100, 1 / 365) - 1;
       const filas = Object.entries(mapRaw)
         .filter(([k,v]) => v > 0)
         .sort((a,b) => b[1]-a[1])
         .map(([k,v]) => {
           const lbl = k === '__sin__' ? 'Sin especificar' : fuenteLabel(k);
           const pct = saldo > 0 ? Math.round(v/saldo*100) : 0;
+          // Si está en una cajita de Nu, calcular interés diario que genera (es mío)
+          const esCajita = k && k.startsWith('cajita:');
+          const interesMio = esCajita ? v * tasaDiaria : 0;
           return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-            <span style="font-size:10px;color:rgba(96,176,240,.8);font-family:'DM Mono',monospace;">${lbl}</span>
+            <div>
+              <span style="font-size:10px;color:rgba(96,176,240,.8);font-family:'DM Mono',monospace;">${lbl}</span>
+              ${interesMio >= 0.01 ? `<div style="font-size:9px;color:var(--accent);font-family:'DM Mono',monospace;">+${fmt(interesMio)}/día tuyo</div>` : ''}
+            </div>
             <span style="font-size:11px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(v)} <span style="font-size:9px;opacity:.6;">${pct}%</span></span>
           </div>`;
         }).join('');

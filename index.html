@@ -1823,6 +1823,17 @@ input.movs-search-input:focus{border-color:var(--accent);}
                   class="stat-value c-red"
                   id="encargoTotalSalidas">$0</div></div>
             </div>
+            <!-- PARTES COMPROMETIDAS del encargo -->
+            <div id="encargo-partes-section">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px;">
+                <div class="sec-title" style="margin:0;">¿Para qué es esta plata?</div>
+                <button type="button" onclick="abrirNuevaParte()" style="display:flex;align-items:center;gap:4px;background:rgba(96,176,240,.1);border:1px solid rgba(96,176,240,.3);color:var(--blue);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Agregar parte
+                </button>
+              </div>
+              <div id="encargo-partes-lista"></div>
+            </div>
             <div class="sec-title">Movimientos</div>
             <div id="encargoHistorial"></div>
           </div>
@@ -2640,6 +2651,33 @@ input.movs-search-input:focus{border-color:var(--accent);}
       </div>
     </div>
 
+
+    <!-- PARTE COMPROMETIDA DEL ENCARGO -->
+    <div class="overlay" id="sheet-parte-encargo" data-sheet-id="parte-encargo">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="parte-sheet-title">Agregar parte</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5;">
+          Marcá para qué está destinada una porción de esta plata.<br>
+          <b style="color:var(--text);">No mueve ningún saldo</b> — es solo una etiqueta para que vos (y quien te pregunta) sepan cuánto queda libre.
+        </p>
+        <div class="ig">
+          <label class="il" for="parte-desc">¿Para qué es? <span style="color:var(--red);">*</span></label>
+          <input type="text" id="parte-desc" placeholder="Ej: Cuota banco, Pasajes, Servicio de agua..." maxlength="80">
+        </div>
+        <div class="ig">
+          <label class="il" for="parte-monto">Monto <span style="color:var(--red);">*</span></label>
+          <input type="text" inputmode="decimal" id="parte-monto" placeholder="0,00" class="money-input">
+        </div>
+        <div class="ig">
+          <label class="il" for="parte-fecha">¿Cuándo la vas a usar? (opcional)</label>
+          <input type="date" id="parte-fecha">
+        </div>
+        <div id="parte-balance-preview" style="font-size:12px;font-family:'DM Mono',monospace;min-height:16px;padding:6px 0 10px;color:var(--text3);"></div>
+        <button type="button" class="btn btn-primary" onclick="guardarParte()" style="background:var(--blue);color:#fff;border:none;">Guardar</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="parte-encargo" onclick="cerrarPartSheet()">Cancelar</button>
+      </div>
+    </div>
 
     <!-- MOVER PLATA DE ENCARGO ENTRE CUENTAS -->
     <div class="overlay" id="sheet-mover-enc-cuentas" data-sheet-id="mover-enc-cuentas">
@@ -9353,6 +9391,210 @@ function abrirEncargoDetalle(id) {
   }
 }
 
+/* ── PARTES COMPROMETIDAS DEL ENCARGO ─────────────────────────────────── */
+let _parteEditId = null;
+
+function renderEncargoParts(enc) {
+  const el = document.getElementById('encargo-partes-lista');
+  if (!el) return;
+  const partes = (enc.partes || []).filter(p => !p.usada);
+  const usadas = (enc.partes || []).filter(p => p.usada);
+  const saldo = encargoSaldo(enc);
+  const totalComp = partes.reduce((a, p) => a + (p.monto || 0), 0);
+  const libre = Math.max(0, saldo - totalComp);
+
+  if (!partes.length && !usadas.length) {
+    el.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:4px 0 10px;line-height:1.6;">
+      Toda la plata está sin asignar — <b style="color:var(--text2);">tuyo para usar: ${fmt(saldo)}</b>.
+      <br>Agrega partes para saber cuánto de este encargo ya tiene destino.
+    </div>`;
+    return;
+  }
+
+  // Resumen rápido
+  let html = '';
+  if (partes.length) {
+    html += `<div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:2px;">Comprometido</div>
+        <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">-${fmt(totalComp)}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:2px;">Libre / tuyo</div>
+        <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(libre)}</div>
+      </div>
+    </div>`;
+  }
+
+  // Lista activas
+  html += partes.map(p => {
+    const hoyStr = hoy();
+    let fechaInfo = '';
+    if (p.fecha) {
+      const dias = Math.round((new Date(p.fecha + 'T00:00:00') - new Date(hoyStr + 'T00:00:00')) / 86400000);
+      if (dias < 0) fechaInfo = `<span style="font-size:9px;color:var(--red);">venció hace ${Math.abs(dias)}d</span>`;
+      else if (dias === 0) fechaInfo = `<span style="font-size:9px;color:var(--red);">hoy</span>`;
+      else if (dias === 1) fechaInfo = `<span style="font-size:9px;color:var(--amber);">mañana</span>`;
+      else if (dias <= 5) fechaInfo = `<span style="font-size:9px;color:var(--amber);">en ${dias}d (${p.fecha})</span>`;
+      else fechaInfo = `<span style="font-size:9px;color:var(--text3);">uso: ${p.fecha}</span>`;
+    }
+    return `<div class="card card-sm" style="margin-bottom:7px;border-color:rgba(96,176,240,.25);">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;">${p.desc}</div>
+          ${fechaInfo ? `<div style="margin-top:2px;">${fechaInfo}</div>` : ''}
+        </div>
+        <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue);white-space:nowrap;">${fmt(p.monto)}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button type="button" onclick="usarParte('${enc.id}','${p.id}')" style="flex:1;padding:7px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(200,240,96,.4);background:rgba(200,240,96,.08);color:var(--accent);">
+          <i class="fa-solid fa-check" style="margin-right:4px;"></i>Ya la usé
+        </button>
+        <button type="button" onclick="editarParte('${enc.id}','${p.id}')" style="padding:7px 11px;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;border:1.5px solid var(--border2);background:transparent;color:var(--text2);">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button type="button" onclick="eliminarParte('${enc.id}','${p.id}')" style="padding:7px 11px;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;border:1.5px solid rgba(240,104,104,.3);background:rgba(240,104,104,.06);color:var(--red);">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Usadas recientes
+  if (usadas.length) {
+    html += `<div style="margin-top:6px;">`;
+    html += usadas.slice(-3).reverse().map(p => `<div class="card card-sm" style="margin-bottom:5px;opacity:.5;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:11px;color:var(--text2);">${p.desc}</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);"><s>${fmt(p.monto)}</s></span>
+          <button type="button" onclick="eliminarParte('${enc.id}','${p.id}')" style="font-size:9px;padding:2px 6px;border-radius:5px;border:1px solid rgba(240,104,104,.2);background:rgba(240,104,104,.05);color:var(--red);cursor:pointer;">✕</button>
+        </div>
+      </div>
+    </div>`).join('');
+    html += `</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function abrirNuevaParte() {
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+  _parteEditId = null;
+  document.getElementById('parte-sheet-title').textContent = 'Agregar parte';
+  document.getElementById('parte-desc').value = '';
+  document.getElementById('parte-monto').value = '';
+  document.getElementById('parte-fecha').value = '';
+  _actualizarPartePreview(enc);
+  openSheet('parte-encargo');
+  setTimeout(() => { const d = document.getElementById('parte-desc'); if(d) d.focus(); }, 200);
+}
+
+function editarParte(encId, parteId) {
+  const enc = getEncargo(encId);
+  if (!enc) return;
+  const parte = (enc.partes || []).find(p => p.id === parteId);
+  if (!parte) return;
+  encargoActualId = encId;
+  _parteEditId = parteId;
+  document.getElementById('parte-sheet-title').textContent = 'Editar parte';
+  document.getElementById('parte-desc').value = parte.desc || '';
+  if (typeof fmtInput === 'function') document.getElementById('parte-monto').value = fmtInput(parte.monto || 0);
+  else document.getElementById('parte-monto').value = String(parte.monto || 0).replace('.', ',');
+  document.getElementById('parte-fecha').value = parte.fecha || '';
+  _actualizarPartePreview(enc);
+  openSheet('parte-encargo');
+}
+
+function _actualizarPartePreview(enc) {
+  const prevEl = document.getElementById('parte-balance-preview');
+  if (!prevEl) return;
+  const saldo = encargoSaldo(enc);
+  const partes = (enc.partes || []).filter(p => !p.usada && p.id !== _parteEditId);
+  const yaComp = partes.reduce((a, p) => a + (p.monto || 0), 0);
+  const libre = saldo - yaComp;
+  prevEl.textContent = 'Saldo del encargo: ' + fmt(saldo) + ' · Ya comprometido: ' + fmt(yaComp) + ' · Libre: ' + fmt(Math.max(0, libre));
+}
+
+function cerrarPartSheet() {
+  _parteEditId = null;
+}
+
+function guardarParte() {
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+  const desc = (document.getElementById('parte-desc').value || '').trim();
+  if (!desc) { toast('Escribí para qué es', 'err'); return; }
+  const montoStr = document.getElementById('parte-monto').value || '';
+  const monto = typeof parseMoney === 'function' ? parseMoney(montoStr) : parseFloat(montoStr.replace(/\./g, '').replace(',', '.'));
+  if (!monto || monto <= 0) { toast('Ingresá el monto', 'err'); return; }
+  const fecha = document.getElementById('parte-fecha').value || '';
+
+  // Validar que no sobrepase el saldo
+  const saldo = encargoSaldo(enc);
+  const otrasPartes = (enc.partes || []).filter(p => !p.usada && p.id !== _parteEditId).reduce((a, p) => a + (p.monto || 0), 0);
+  if (otrasPartes + monto > saldo + 0.01) {
+    toast('El total comprometido supera el saldo del encargo (' + fmt(saldo) + ')', 'err'); return;
+  }
+
+  if (!enc.partes) enc.partes = [];
+  if (_parteEditId) {
+    const p = enc.partes.find(x => x.id === _parteEditId);
+    if (p) { p.desc = desc; p.monto = monto; p.fecha = fecha; }
+    toast('Parte actualizada', 'ok');
+  } else {
+    enc.partes.push({ id: uid(), desc, monto, fecha, usada: false, creadaEn: hoy() });
+    toast('Parte agregada', 'ok');
+  }
+  save();
+  closeSheet('parte-encargo');
+  _parteEditId = null;
+  abrirEncargoDetalle(encargoActualId);
+}
+
+async function usarParte(encId, parteId) {
+  const enc = getEncargo(encId);
+  if (!enc) return;
+  const parte = (enc.partes || []).find(p => p.id === parteId);
+  if (!parte) return;
+  const ok = await dialogo('Ya la usé', '¿Marcar "' + parte.desc + '" (' + fmt(parte.monto) + ') como usada?', 'Confirmar', false);
+  if (!ok) return;
+  parte.usada = true;
+  parte.usadaEn = hoy();
+  save();
+  abrirEncargoDetalle(encId);
+  toast('Listo — esa parte ya no está comprometida', 'ok');
+}
+
+async function eliminarParte(encId, parteId) {
+  const enc = getEncargo(encId);
+  if (!enc) return;
+  const ok = await dialogo('Eliminar parte', '¿Eliminar esta parte del registro?', 'Eliminar', true);
+  if (!ok) return;
+  enc.partes = (enc.partes || []).filter(p => p.id !== parteId);
+  save();
+  abrirEncargoDetalle(encId);
+  toast('Parte eliminada', 'info');
+}
+
+// Hook: agregar renderEncargoParts al final de abrirEncargoDetalle
+const _origAbrirDetalle = abrirEncargoDetalle;
+abrirEncargoDetalle = function(id) {
+  _origAbrirDetalle(id);
+  const enc = getEncargo(id);
+  if (enc) renderEncargoParts(enc);
+  // Listener para preview en tiempo real del monto
+  const montoInput = document.getElementById('parte-monto');
+  if (montoInput && !montoInput._parteListenerAdded) {
+    montoInput.addEventListener('input', () => {
+      const e = getEncargo(encargoActualId);
+      if (e) _actualizarPartePreview(e);
+    });
+    montoInput._parteListenerAdded = true;
+  }
+};
+
 function volverEncargosLista() {
   encargoActualId = null;
   document.getElementById('encargoDetalle').style.display = 'none';
@@ -14261,4 +14503,5 @@ window._fbLoadData = function(){
 
 })();
 </script>
+
   </body></html>

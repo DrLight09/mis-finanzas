@@ -9420,7 +9420,7 @@ function renderEncargoParts(enc) {
         <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">-${fmt(totalComp)}</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:2px;">Libre / tuyo</div>
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:2px;">Libre (de él)</div>
         <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(libre)}</div>
       </div>
     </div>`;
@@ -13580,10 +13580,10 @@ function _cpRenderLista(){
           </div>
           <div style="display:flex;justify-content:space-between;font-size:10px;font-family:'DM Mono',monospace;">
             <span style="color:var(--red);">Comprometido: ${_cpFmt(comp)}</span>
-            <span style="color:var(--accent);"><i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Tu ganancia: ${_cpFmt(libre)}</span>
+            <span style="color:var(--accent);">Le sobra: ${_cpFmt(libre)}</span>
           </div>
         </div>` : `
-        <div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:10px;"><i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Tu ganancia: ${_cpFmt(item.montoTotal)} (nada comprometido)</div>`}
+        <div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:10px;">Le sobra: ${_cpFmt(item.montoTotal)} (nada comprometido)</div>`}
 
         <!-- Destinos chips con estado -->
         ${(item.destinos||[]).length ? `
@@ -14012,13 +14012,13 @@ function _cpRenderDestinosTmp(){
         balEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="margin-right:5px;"></i>Los destinos superan el total por ${_cpFmt(Math.abs(ganancia))}`;
       } else if(ganancia > 0.99){
         balEl.style.color = 'var(--accent)';
-        balEl.innerHTML = `Comprometido: ${_cpFmt(comp)} · <b style="color:var(--accent);"><i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Tu ganancia: ${_cpFmt(ganancia)}</b>`;
+        balEl.innerHTML = `Comprometido: ${_cpFmt(comp)} · <b style="color:var(--accent);">Le sobra: ${_cpFmt(ganancia)}</b>`;
       } else if(comp > 0){
         balEl.style.color = 'var(--text3)';
         balEl.innerHTML = `Comprometido: ${_cpFmt(comp)} · Todo asignado`;
       } else {
         balEl.style.color = 'var(--accent)';
-        balEl.innerHTML = `<i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Tu ganancia: ${_cpFmt(total)} (nada comprometido)`;
+        balEl.innerHTML = `Le sobra: ${_cpFmt(total)} (nada comprometido)`;
       }
     } else {
       balEl.textContent = '';
@@ -14191,7 +14191,7 @@ window._cpConfirmarRecibir = function(){
         sumarFuente(item.cuentaDestino, ganancia);
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:item.cuentaDestino, monto:ganancia, fecha, desc:'Ganancia: '+item.desc});
-        if(window.logCambio) logCambio('<i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Tu ganancia de "'+item.desc+'"', _cpFmt(ganancia)+' → '+_cpFuenteLabel(item.cuentaDestino), ganancia, 'ingreso');
+        if(window.logCambio) logCambio('<i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Sobrante de "'+item.desc+'"', _cpFmt(ganancia)+' → '+_cpFuenteLabel(item.cuentaDestino), ganancia, 'ingreso');
       }
     } catch(e){ errores.push('Ganancia'); }
   }
@@ -14209,7 +14209,7 @@ window._cpConfirmarRecibir = function(){
   if(errores.length){
     _cpToast('Recibido con errores menores en: '+errores.join(', '),'err');
   } else {
-    const gananciaMsg = ganancia > 0.99 ? ` · Tu ganancia: ${_cpFmt(ganancia)}` : '';
+    const gananciaMsg = ganancia > 0.99 ? ` · Sobrante: ${_cpFmt(ganancia)}` : '';
     _cpToast('¡Plata distribuida correctamente! <i class="fa-solid fa-check"></i>'+gananciaMsg,'ok');
   }
 

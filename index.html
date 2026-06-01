@@ -12340,31 +12340,42 @@ function tcDiasHastaCorte(tc){
   return Math.round((target-hoyDate)/86400000);
 }
 
-// Fecha hasta la que está facturado el extracto actual = día anterior al corte
-function tcFechaFacturadoHasta(tc){
+// Fecha del corte ANTERIOR (el que ya pasó y generó la deuda vigente)
+function tcFechaCorteAnterior(tc){
   if(!tc.fechaCorte)return null;
   const hoyDate=new Date();
   hoyDate.setHours(0,0,0,0);
   const dia=hoyDate.getDate();
   let targetMonth=hoyDate.getMonth(), targetYear=hoyDate.getFullYear();
-  if(tc.fechaCorte<dia){targetMonth++;if(targetMonth>11){targetMonth=0;targetYear++;}}
+  // Si el corte aún no ha pasado este mes, el corte anterior fue el mes pasado
+  if(tc.fechaCorte>=dia){targetMonth--;if(targetMonth<0){targetMonth=11;targetYear--;}}
   const lastDay=new Date(targetYear,targetMonth+1,0).getDate();
   const targetDay=Math.min(tc.fechaCorte,lastDay);
-  // El extracto cubre hasta el día ANTERIOR al corte
-  const corteDate=new Date(targetYear,targetMonth,targetDay);
-  corteDate.setDate(corteDate.getDate()-1);
-  return corteDate;
+  return new Date(targetYear,targetMonth,targetDay);
 }
 
-// Retorna true si una compra (fecha string 'YYYY-MM-DD') cae en el ciclo actual
-// (ya está en el extracto que vence en fechaPago próximo)
-// vs false si es del ciclo siguiente (se paga el mes después)
+// Fecha hasta la que está facturado el extracto actual = día anterior al corte ANTERIOR
+// Es decir: las compras <= esta fecha están en el extracto vigente (pago mínimo)
+// Las compras > esta fecha son nuevas (próximo extracto)
+function tcFechaFacturadoHasta(tc){
+  if(!tc.fechaCorte)return null;
+  const corteAnt=tcFechaCorteAnterior(tc);
+  if(!corteAnt)return null;
+  // El extracto vigente cubre hasta el día ANTERIOR al corte que ya pasó
+  const hasta=new Date(corteAnt);
+  hasta.setDate(hasta.getDate()-1);
+  return hasta;
+}
+
+// Retorna true si una compra (fecha string 'YYYY-MM-DD') está en el extracto vigente
+// (pasó el corte anterior → forma parte del pago mínimo actual)
+// Retorna false si es una compra nueva hecha después del último corte
 function tcCompraEnCicloActual(tc, fechaCompraStr){
   if(!tc.fechaCorte)return true;
-  const corteDate=tcFechaFacturadoHasta(tc); // último día facturado
-  if(!corteDate)return true;
+  const hasta=tcFechaFacturadoHasta(tc);
+  if(!hasta)return true;
   const compra=new Date(fechaCompraStr+'T00:00:00');
-  return compra<=corteDate;
+  return compra<=hasta;
 }
 
 // ── Render dashboard TC (en pantalla inicio) ─────────────────

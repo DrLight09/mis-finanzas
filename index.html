@@ -10779,6 +10779,14 @@ document.addEventListener('focusin', function(e){
           console.warn('[Sync] Nube vacía (sin payload real) — manteniendo estado por defecto.');
         } else {
           Object.assign(window.S, cloudData);
+          // Migración: limpiar pagoMinimo que fue autorellenado con deudaIni incorrectamente.
+          // Si pagoMinimo === deuda y no hay compras registradas, lo borramos para
+          // que el render lo calcule automáticamente como (deuda - comprasNuevas).
+          (window.S.tarjetasCredito||[]).forEach(tc=>{
+            if(tc.pagoMinimo && tc.pagoMinimo === tc.deuda && !(tc.compras||[]).length){
+              tc.pagoMinimo = 0;
+            }
+          });
         }
       } catch(e) {
         console.error('[Sync] Error al parsear datos de la nube:', e);
@@ -12143,7 +12151,7 @@ if ('serviceWorker' in navigator) {
             que ya debes)</label><input type="text" inputmode="decimal"
             id="tc_deuda_ini" placeholder="0,00" class="money-input"></div>
         <div class="ig"><label class="il" for="tc_pago_minimo">Pago mínimo del extracto
-            <span style="font-size:10px;color:var(--text3);font-weight:400;">(la deuda al momento del corte — no cambia con compras nuevas)</span></label><input type="text" inputmode="decimal"
+            <span style="font-size:10px;color:var(--text3);font-weight:400;">(lo que debes de antes del último corte — opcional si no tienes extracto)</span></label><input type="text" inputmode="decimal"
             id="tc_pago_minimo" placeholder="0,00" class="money-input"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
           <div class="ig">
@@ -12548,12 +12556,11 @@ function renderTCScreen(){
 
       <!-- Bloque ¿Cuánto pagar? -->
       ${(()=>{
-        // El pago mínimo es lo que ya pasó el corte (totalActual).
-        // Si el usuario ingresó un valor manual (tc.pagoMinimo) se usa ese; si no, se usa totalActual.
-        // Si no hay fecha de corte configurada, se usa la deuda total como fallback.
+        // Pago mínimo: lo que ingresó el usuario manualmente (campo "pago mínimo del extracto").
+        // Si no lo ingresó: deuda total menos las compras nuevas = lo que quedó del extracto anterior.
         const pmManual=tc.pagoMinimo||0;
-        const pm=pmManual>0?pmManual:(totalActual>0?totalActual:deuda);
-        // Compras nuevas = las que aún no pasaron el corte (próximo extracto)
+        const pm=pmManual>0?pmManual:Math.max(0,deuda-totalSig);
+        // Compras nuevas = las que se hicieron después del último corte
         const ptotal=pm+totalSig;
         // Solo mostrar el bloque si hay deuda
         if(deuda<=0)return '';
@@ -12685,7 +12692,7 @@ function guardarTC(){
   } else {
     S.tarjetasCredito.push({
       id:uid(),nombre,cupo:cupo||0,deuda:deudaIni,
-      pagoMinimo:pagoMinimoForm||deudaIni,
+      pagoMinimo:pagoMinimoForm||0,
       fechaCorte,fechaPago,
       compras:[],pagos:[]
     });

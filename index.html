@@ -12141,6 +12141,9 @@ if ('serviceWorker' in navigator) {
         <div class="ig"><label class="il" for="tc_deuda_ini">Deuda actual (saldo
             que ya debes)</label><input type="text" inputmode="decimal"
             id="tc_deuda_ini" placeholder="0,00" class="money-input"></div>
+        <div class="ig"><label class="il" for="tc_pago_minimo">Pago mínimo del extracto
+            <span style="font-size:10px;color:var(--text3);font-weight:400;">(la deuda al momento del corte — no cambia con compras nuevas)</span></label><input type="text" inputmode="decimal"
+            id="tc_pago_minimo" placeholder="0,00" class="money-input"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
           <div class="ig">
             <label class="il" for="tc_fecha_corte">Día de corte</label>
@@ -12497,24 +12500,59 @@ function renderTCScreen(){
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
         <div style="background:rgba(240,104,104,.07);border-radius:9px;padding:10px 12px;">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Deuda actual</div>
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Deuda total</div>
           <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(deuda)}</div>
           ${cupo?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(cupo)}</div>`:''}
         </div>
         <div style="background:var(--bg3);border-radius:9px;padding:10px 12px;">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Extracto actual</div>
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Extracto (${comprasActual.length} compra${comprasActual.length!==1?'s':''})</div>
           <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(totalActual)}</div>
-          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${comprasActual.length} compra${comprasActual.length!==1?'s':''}</div>
+          ${facturadoLabel?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">hasta el ${facturadoLabel}</div>`:''}
         </div>
       </div>
 
-      ${totalSig>0?`<div style="background:rgba(200,240,96,.05);border:1px solid rgba(200,240,96,.2);border-radius:9px;padding:8px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
-        <div>
-          <div style="font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;font-weight:600;">Próximo extracto</div>
-          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${comprasSig.length} compra${comprasSig.length!==1?'s':''} · se pagan el mes siguiente</div>
-        </div>
-        <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(totalSig)}</div>
-      </div>`:''}
+      <!-- Bloque ¿Cuánto pagar? -->
+      ${(()=>{
+        const pm=tc.pagoMinimo||0;
+        const hayPM=pm>0;
+        const ptotal=hayPM?pm+totalSig:deuda+totalSig;
+        if(!hayPM&&totalSig===0)return `
+        <div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="1" fill="var(--amber)" stroke="none"/></svg>
+          <div style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;">Registra el <b>pago mínimo</b> del extracto en <button type="button" onclick="abrirEditarTC('${tc.id}')" style="background:none;border:none;padding:0;color:var(--amber);font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;text-decoration:underline;font-weight:600;">Editar tarjeta</button></div>
+        </div>`;
+        return `
+        <div style="background:rgba(240,104,104,.04);border:1px solid rgba(240,104,104,.2);border-radius:10px;padding:11px 13px;margin-bottom:12px;">
+          <div style="font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;font-weight:700;margin-bottom:9px;">¿Cuánto pagar?</div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${totalSig>0?'6':'2'}px;">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text);">Pago mínimo</div>
+              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">Fijo del extracto — no cambia con compras nuevas</div>
+            </div>
+            <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">${fmt(hayPM?pm:deuda)}</div>
+          </div>
+
+          ${totalSig>0?`
+          <div style="border-top:1px solid rgba(240,104,104,.15);margin:7px 0;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--text);">+ Compras nuevas</div>
+              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${comprasSig.length} compra${comprasSig.length!==1?'s':''} hechas después del corte</div>
+            </div>
+            <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(totalSig)}</div>
+          </div>
+          <div style="border-top:1px solid rgba(240,104,104,.25);margin:7px 0;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text);">Pago total</div>
+              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">Mínimo + compras nuevas</div>
+            </div>
+            <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">${fmt(ptotal)}</div>
+          </div>
+          `:'<div style="font-size:10px;color:var(--text3);font-family:\'DM Mono\',monospace;margin-top:3px;">Sin compras nuevas · pago total = pago mínimo</div>'}
+        </div>`;
+      })()}
 
       ${cupo?`<div style="margin-bottom:12px;">
         <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
@@ -12524,7 +12562,7 @@ function renderTCScreen(){
         <div style="height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;">
           <div style="height:100%;width:${pct.toFixed(0)}%;background:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--accent)'};border-radius:3px;transition:width .4s;"></div>
         </div>
-      </div>`:''}
+      </div>`:''}\
 
       ${diasPago!==null?`<div style="display:flex;align-items:center;gap:7px;margin-bottom:12px;">
         <span style="font-size:12px;padding:5px 11px;border-radius:20px;background:${urgente?'rgba(240,104,104,.2)':proximo?'rgba(240,184,64,.15)':'rgba(255,255,255,.07)'};color:${urgente?'var(--red)':proximo?'var(--amber)':'var(--text3)'};font-family:'DM Mono',monospace;font-weight:600;">
@@ -12532,7 +12570,7 @@ function renderTCScreen(){
         </span>
         ${diasCorte!==null&&diasCorte>0?`<span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Corte en ${diasCorte}d</span>`:''}
         ${diasCorte===0?`<span style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;"><i class="fa-solid fa-rotate" style="margin-right:5px;"></i>Hoy es el corte</span>`:''}
-      </div>`:''}
+      </div>`:''}\
 
       <div style="display:flex;gap:8px;">
         <button type="button" onclick="abrirCompraTC('${tc.id}')" style="flex:1;padding:10px;background:rgba(240,104,104,.12);border:1px solid rgba(240,104,104,.35);border-radius:9px;color:var(--red);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
@@ -12558,6 +12596,7 @@ function abrirNuevaTarjeta(){
   document.getElementById('tc_nombre').value='';
   document.getElementById('tc_cupo').value='';
   document.getElementById('tc_deuda_ini').value='';
+  document.getElementById('tc_pago_minimo').value='';
   document.getElementById('tc_fecha_corte').value='20';
   document.getElementById('tc_fecha_pago').value='1';
   document.getElementById('tc-fechas-preview').textContent='';
@@ -12574,6 +12613,7 @@ function abrirEditarTC(id){
   document.getElementById('tc_nombre').value=tc.nombre||'';
   document.getElementById('tc_cupo').value=tc.cupo?fmtInput(tc.cupo):'';
   document.getElementById('tc_deuda_ini').value=tc.deuda?fmtInput(tc.deuda):'';
+  document.getElementById('tc_pago_minimo').value=tc.pagoMinimo?fmtInput(tc.pagoMinimo):'';
   document.getElementById('tc_fecha_corte').value=String(tc.fechaCorte||20);
   document.getElementById('tc_fecha_pago').value=String(tc.fechaPago||1);
   document.getElementById('btn-guardar-tc').textContent='Guardar cambios';
@@ -12585,6 +12625,7 @@ function guardarTC(){
   if(!nombre){toast('Ingresa el nombre de la tarjeta','err');return;}
   const cupo=parseMoney(document.getElementById('tc_cupo').value)||0;
   const deudaIni=parseMoney(document.getElementById('tc_deuda_ini').value)||0;
+  const pagoMinimoForm=parseMoney(document.getElementById('tc_pago_minimo').value)||0;
   const fechaCorte=parseInt(document.getElementById('tc_fecha_corte').value)||20;
   const fechaPago=parseInt(document.getElementById('tc_fecha_pago').value)||1;
   if(!S.tarjetasCredito)S.tarjetasCredito=[];
@@ -12597,11 +12638,14 @@ function guardarTC(){
       tc.fechaPago=fechaPago;
       // Si cambió la deuda manualmente
       if(deudaIni!==tc.deuda)tc.deuda=deudaIni;
+      // Actualizar pago mínimo si se ingresó
+      tc.pagoMinimo=pagoMinimoForm||tc.pagoMinimo||0;
     }
     toast('Tarjeta actualizada','ok');
   } else {
     S.tarjetasCredito.push({
       id:uid(),nombre,cupo:cupo||0,deuda:deudaIni,
+      pagoMinimo:pagoMinimoForm||deudaIni,
       fechaCorte,fechaPago,
       compras:[],pagos:[]
     });

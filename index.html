@@ -784,6 +784,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
                 style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
             </div>
           </div>
+          <div id="tc-pm-alert" style="margin-bottom:8px;"></div>
           <div id="tc-lista" style="margin-bottom:10px;"></div>
           <button type="button" class="btn btn-ghost"
             onclick="abrirNuevaTarjeta()"
@@ -12455,6 +12456,29 @@ function renderTCScreen(){
   if(hero)hero.textContent=fmt(deudaTotal);
   if(heroCupo)heroCupo.textContent=cupoTotal?'Cupo total: '+fmt(cupoTotal):'';
 
+  // ── Aviso: actualizar pago mínimo si ya pasó el corte ──
+  const pmAlertEl=document.getElementById('tc-pm-alert');
+  if(pmAlertEl){
+    const tcConPMVencido=tarjetas.filter(tc=>{
+      if(!(tc.pagoMinimo>0)||!tc.fechaCorte)return false;
+      // Días hasta el próximo corte; si son pocos (<=5) el extracto ya giró
+      const dias=tcDiasHastaCorte(tc);
+      return dias!==null&&dias<=5&&(tc.deuda||0)>0;
+    });
+    if(tcConPMVencido.length){
+      const nombres=tcConPMVencido.map(tc=>tc.nombre).join(', ');
+      pmAlertEl.innerHTML=`<div style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.3);border-radius:10px;padding:10px 12px;display:flex;align-items:flex-start;gap:9px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:3px;">Actualiza el pago mínimo</div>
+          <div style="font-size:10px;color:var(--text2);font-family:'DM Mono',monospace;line-height:1.5;">${nombres} — el corte está próximo o ya pasó. El pago mínimo puede haber cambiado en tu nuevo extracto.</div>
+        </div>
+      </div>`;
+    } else {
+      pmAlertEl.innerHTML='';
+    }
+  }
+
   if(!tarjetas.length){
     lista.innerHTML=`<div class="empty-state">
       <div class="empty-state-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="var(--red)" stroke="none"/></svg></div>
@@ -12551,6 +12575,10 @@ function renderTCScreen(){
             <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">${fmt(ptotal)}</div>
           </div>
           `:'<div style="font-size:10px;color:var(--text3);font-family:\'DM Mono\',monospace;margin-top:3px;">Sin compras nuevas · pago total = pago mínimo</div>'}
+        ${hayPM?`<div style="margin-top:9px;padding:7px 10px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.18);border-radius:8px;display:flex;align-items:flex-start;gap:7px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px;"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          <div style="font-size:10px;color:var(--text2);font-family:'DM Mono',monospace;line-height:1.5;">Pagando el mínimo cumples el extracto. El resto de la deuda lo puedes abonar cuando quieras — <b style="color:var(--accent);">el mínimo puede cambiar el próximo mes</b> según tu nuevo extracto.</div>
+        </div>`:''}
         </div>`;
       })()}
 

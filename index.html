@@ -2806,6 +2806,51 @@ input.movs-search-input:focus{border-color:var(--accent);}
           style="width:100%;margin-bottom:14px;padding:8px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid rgba(200,240,96,.3);background:rgba(200,240,96,.08);color:var(--accent);">
           Dividir ÷
         </button>
+
+        <!-- DIFERENCIAL EN USAR PARTE -->
+        <div style="height:1px;background:var(--border);margin:2px 0 14px;"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;">Diferencial cobrado</div>
+            <div style="font-size:10px;color:var(--text3);margin-top:2px;">Le dijiste que costó más de lo real. Repartí quién se queda con qué.</div>
+          </div>
+          <div id="usarParte_dif_toggle_track" style="width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border2);position:relative;transition:all .2s;cursor:pointer;flex-shrink:0;" onclick="toggleUsarParteDif()">
+            <div id="usarParte_dif_toggle_thumb" style="width:14px;height:14px;border-radius:50%;background:var(--text3);position:absolute;top:2px;left:2px;transition:all .2s;"></div>
+          </div>
+        </div>
+        <div id="usarParte_dif_panel" style="display:none;margin-bottom:10px;">
+          <div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+              <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;">Monto cobrado</span>
+              <span id="usarParte_dif_cobrado_label" style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+              <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;">Costo real de la parte</span>
+              <span id="usarParte_dif_parte_label" style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">—</span>
+            </div>
+            <div style="height:1px;background:rgba(240,184,64,.2);margin:6px 0;"></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;font-weight:700;">Diferencial</span>
+              <span id="usarParte_dif_total_label" style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);">—</span>
+            </div>
+            <div id="usarParte_dif_sin_asignar_wrap" style="display:none;margin-top:4px;">
+              <span style="font-size:10px;font-family:'DM Mono',monospace;" id="usarParte_dif_sin_asignar_label"></span>
+            </div>
+          </div>
+          <div class="ig">
+            <label class="il" for="usarParte_dif_cobrado">¿Cuánto le dijiste que costó? <span style="color:var(--red);">*</span></label>
+            <input type="text" inputmode="decimal" id="usarParte_dif_cobrado" placeholder="0,00" class="money-input">
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+            <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;">¿Quién se quedó con qué?</div>
+            <button type="button" onclick="usarParteDifAddBenef()" style="display:flex;align-items:center;gap:4px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.3);color:var(--amber);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Agregar
+            </button>
+          </div>
+          <div id="usarParte_dif_benef_list"></div>
+        </div>
+
         <div class="ig">
           <label class="il" for="usarParte_fecha">Fecha</label>
           <input type="date" id="usarParte_fecha">
@@ -9677,6 +9722,7 @@ function usarParte(encId, parteId) {
   _usarParteId    = parteId;
   _usarParteSplit = false;
   _usarParteSplitRows = [];
+  _resetUsarParteDif();
 
   // Info label
   document.getElementById('usarParte_desc').textContent  = parte.desc;
@@ -9835,12 +9881,149 @@ function _usarParteSplitResumen(totalParte) {
     : `<span style="color:var(--amber);">Suma: ${fmt(suma)} de ${fmt(totalParte)} · ${diff > 0 ? 'Faltan' : 'Sobran'} ${fmt(Math.abs(diff))}</span>`;
 }
 
+/* ── DIFERENCIAL EN USAR PARTE ──────────────────────────────────────── */
+let _usarParteDifActivo = false;
+let _usarParteDifBenefs = [];
+
+function _resetUsarParteDif() {
+  _usarParteDifActivo = false;
+  _usarParteDifBenefs = [];
+  const panel = document.getElementById('usarParte_dif_panel');
+  const track = document.getElementById('usarParte_dif_toggle_track');
+  const thumb = document.getElementById('usarParte_dif_toggle_thumb');
+  if (panel) panel.style.display = 'none';
+  if (track) { track.style.background = 'var(--bg3)'; track.style.borderColor = 'var(--border2)'; }
+  if (thumb) { thumb.style.left = '2px'; thumb.style.background = 'var(--text3)'; }
+  const inp = document.getElementById('usarParte_dif_cobrado');
+  if (inp) inp.value = '';
+  _renderUsarParteDifBenefs();
+  _actualizarUsarParteDifResumen();
+}
+
+function toggleUsarParteDif() {
+  _usarParteDifActivo = !_usarParteDifActivo;
+  const panel = document.getElementById('usarParte_dif_panel');
+  const track = document.getElementById('usarParte_dif_toggle_track');
+  const thumb = document.getElementById('usarParte_dif_toggle_thumb');
+  if (_usarParteDifActivo) {
+    if (panel) panel.style.display = 'block';
+    if (track) { track.style.background = 'rgba(240,184,64,.4)'; track.style.borderColor = 'var(--amber)'; }
+    if (thumb) { thumb.style.left = '18px'; thumb.style.background = 'var(--amber)'; }
+    if (!_usarParteDifBenefs.length) usarParteDifAddBenef();
+    const inp = document.getElementById('usarParte_dif_cobrado');
+    if (inp) inp.oninput = _actualizarUsarParteDifResumen;
+  } else {
+    if (panel) panel.style.display = 'none';
+    if (track) { track.style.background = 'var(--bg3)'; track.style.borderColor = 'var(--border2)'; }
+    if (thumb) { thumb.style.left = '2px'; thumb.style.background = 'var(--text3)'; }
+  }
+}
+
+function _actualizarUsarParteDifResumen() {
+  const enc = getEncargo(_usarParteEncId);
+  const parte = enc ? (enc.partes || []).find(p => p.id === _usarParteId) : null;
+  const montoParte = parte ? parte.monto : 0;
+  const montoCobrado = parseMoney(document.getElementById('usarParte_dif_cobrado')?.value) || 0;
+  const diferencial = Math.max(0, montoCobrado - montoParte);
+  const totalAsig = _usarParteDifBenefs.reduce((a, b) => a + (b.monto || 0), 0);
+  const sinAsignar = diferencial - totalAsig;
+
+  const lCob = document.getElementById('usarParte_dif_cobrado_label');
+  const lPar = document.getElementById('usarParte_dif_parte_label');
+  const lTot = document.getElementById('usarParte_dif_total_label');
+  const sinW = document.getElementById('usarParte_dif_sin_asignar_wrap');
+  const sinL = document.getElementById('usarParte_dif_sin_asignar_label');
+
+  if (lCob) lCob.textContent = montoCobrado > 0 ? fmt(montoCobrado) : '—';
+  if (lPar) lPar.textContent = montoParte > 0 ? fmt(montoParte) : '—';
+  if (lTot) {
+    lTot.textContent = diferencial > 0 ? fmt(diferencial) : '—';
+    lTot.style.color = diferencial > 0 ? 'var(--amber)' : 'var(--text3)';
+  }
+  if (sinW && sinL) {
+    if (_usarParteDifActivo && diferencial > 0 && Math.abs(sinAsignar) > 1) {
+      sinW.style.display = 'block';
+      sinL.textContent = sinAsignar > 0 ? `Sin asignar: ${fmt(sinAsignar)}` : `Excede el diferencial en ${fmt(Math.abs(sinAsignar))}`;
+      sinL.style.color = sinAsignar > 0 ? 'var(--amber)' : 'var(--red)';
+    } else {
+      sinW.style.display = 'none';
+    }
+  }
+}
+
+function usarParteDifAddBenef() {
+  _usarParteDifBenefs.push({ id: uid(), nombre: '', monto: 0, cuenta: '' });
+  _renderUsarParteDifBenefs();
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.usarparte-dif-nombre');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 80);
+}
+
+function usarParteDifRemoveBenef(id) {
+  _usarParteDifBenefs = _usarParteDifBenefs.filter(b => b.id !== id);
+  _renderUsarParteDifBenefs();
+  _actualizarUsarParteDifResumen();
+}
+
+function _renderUsarParteDifBenefs() {
+  const el = document.getElementById('usarParte_dif_benef_list');
+  if (!el) return;
+  if (!_usarParteDifBenefs.length) {
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:6px 0 10px;font-family:'DM Mono',monospace;">Agrega al menos un beneficiario.</div>';
+    return;
+  }
+  const fuentes = typeof getFuentes === 'function' ? getFuentes() : [];
+  el.innerHTML = _usarParteDifBenefs.map(b => {
+    const optsF = '<option value="">Sin especificar</option>' + fuentes.map(f =>
+      '<option value="' + f.val + '"' + (b.cuenta === f.val ? ' selected' : '') + '>' + f.label + '</option>'
+    ).join('');
+    const montoVal = b.monto > 0 ? (typeof fmtInput === 'function' ? fmtInput(b.monto) : String(b.monto).replace('.', ',')) : '';
+    return '<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 11px;margin-bottom:7px;">' +
+      '<div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">' +
+        '<input type="text" class="usarparte-dif-nombre" data-id="' + b.id + '" placeholder="\u00bfQui\xe9n? (Ej: Mi t\xeda, Yo...)" value="' + (b.nombre||'').replace(/"/g,'&quot;') + '" oninput="usarParteDifUpNombre('' + b.id + '',this.value)" style="flex:1;padding:8px 10px;font-size:13px;border-radius:var(--radius-sm);border:1.5px solid var(--border2);background:var(--bg4);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;">' +
+        '<button type="button" onclick="usarParteDifRemoveBenef('' + b.id + '')" style="padding:7px 9px;border-radius:var(--radius-sm);background:rgba(240,104,104,.07);border:1px solid rgba(240,104,104,.2);color:var(--red);cursor:pointer;flex-shrink:0;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">' +
+        '<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;margin-bottom:4px;">Monto</div>' +
+        '<input type="text" inputmode="decimal" data-id="' + b.id + '" placeholder="0,00" value="' + montoVal + '" oninput="usarParteDifUpMonto('' + b.id + '',this.value)" style="width:100%;padding:8px 10px;font-size:13px;border-radius:var(--radius-sm);border:1.5px solid var(--border2);background:var(--bg4);color:var(--text);font-family:'DM Mono',monospace;outline:none;"></div>' +
+        '<div><div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;margin-bottom:4px;">Va a</div>' +
+        '<div class="select-wrap" style="position:relative;"><select data-id="' + b.id + '" onchange="usarParteDifUpCuenta('' + b.id + '',this.value)" style="width:100%;padding:8px 10px;font-size:12px;border-radius:var(--radius-sm);border:1.5px solid var(--border2);background:var(--bg4);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;-webkit-appearance:none;padding-right:28px;">' + optsF + '</select>' +
+        '<div style="pointer-events:none;position:absolute;right:9px;top:50%;transform:translateY(-50%);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div></div></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function usarParteDifUpNombre(id, val) { const b = _usarParteDifBenefs.find(x => x.id === id); if (b) b.nombre = val; }
+function usarParteDifUpMonto(id, val) {
+  const b = _usarParteDifBenefs.find(x => x.id === id);
+  if (b) b.monto = typeof parseMoney === 'function' ? parseMoney(val) : parseFloat((val||'0').replace(/\./g,'').replace(',','.')) || 0;
+  _actualizarUsarParteDifResumen();
+}
+function usarParteDifUpCuenta(id, val) { const b = _usarParteDifBenefs.find(x => x.id === id); if (b) b.cuenta = val; }
+
 function confirmarUsarParte() {
   const enc   = getEncargo(_usarParteEncId);
   if (!enc) return;
   const parte = (enc.partes || []).find(p => p.id === _usarParteId);
   if (!parte) return;
   const fecha = document.getElementById('usarParte_fecha').value || hoy();
+
+  // Validar diferencial si está activo
+  let difDataParte = null;
+  if (_usarParteDifActivo) {
+    const montoCobrado = parseMoney(document.getElementById('usarParte_dif_cobrado')?.value) || 0;
+    if (montoCobrado <= parte.monto) { toast('El monto cobrado debe ser mayor al costo real de la parte', 'err'); return; }
+    const benefs = _usarParteDifBenefs.filter(b => b.nombre && b.monto > 0);
+    if (!benefs.length) { toast('Agrega al menos un beneficiario con nombre y monto', 'err'); return; }
+    const totalAsig = benefs.reduce((a, b) => a + b.monto, 0);
+    const diferencial = montoCobrado - parte.monto;
+    if (Math.abs(totalAsig - diferencial) > 1) {
+      toast('Los beneficiarios suman ' + fmt(totalAsig) + ' pero el diferencial es ' + fmt(diferencial), 'err', 4000); return;
+    }
+    difDataParte = { cobrado: montoCobrado, diferencial, benefs };
+  }
 
   if (_usarParteSplit) {
     // Validar que la suma cuadre
@@ -9878,13 +10061,47 @@ function confirmarUsarParte() {
     if (cuenta) _descontarDeCuenta(cuenta, parte.monto);
   }
 
+  // Aplicar diferencial de la parte si aplica
+  if (difDataParte) {
+    // Agregar snapshot al último movimiento registrado (el que acabamos de push)
+    if (enc.movimientos && enc.movimientos.length) {
+      const ultimo = enc.movimientos[enc.movimientos.length - 1];
+      ultimo.diferencial = {
+        cobrado: difDataParte.cobrado,
+        total: difDataParte.diferencial,
+        benefs: difDataParte.benefs.map(b => ({ nombre: b.nombre, monto: b.monto, cuenta: b.cuenta }))
+      };
+    }
+    // Acreditar a cuentas
+    difDataParte.benefs.forEach(b => {
+      if (!b.cuenta) return;
+      if (!S.transacciones) S.transacciones = [];
+      S.transacciones.push({
+        id: uid(),
+        tipo: 'ingreso',
+        desc: 'Diferencial parte · ' + b.nombre,
+        monto: b.monto,
+        fuente: b.cuenta,
+        fecha: document.getElementById('usarParte_fecha')?.value || hoy(),
+        nota: 'Diferencial cobrado en parte "' + parte.desc + '" (' + (getEncargo(_usarParteEncId)?.nombre || '') + ')',
+        ts: Date.now()
+      });
+    });
+  }
+
   // Marcar la parte como usada
   parte.usada   = true;
   parte.usadaEn = hoy();
   save();
   closeSheet('usar-parte');
+  _resetUsarParteDif();
   abrirEncargoDetalle(_usarParteEncId);
-  toast('¡Listo! Parte usada y saldo descontado', 'ok');
+  if (difDataParte) {
+    const nombres = difDataParte.benefs.map(b => b.nombre + ' +' + fmt(b.monto)).join(', ');
+    toast('Parte usada · Diferencial ' + fmt(difDataParte.diferencial) + ': ' + nombres, 'ok', 5000);
+  } else {
+    toast('¡Listo! Parte usada y saldo descontado', 'ok');
+  }
 }
 
 // Descuenta de la cuenta propia (espejo de lo que hace confirmarMovEncargo)

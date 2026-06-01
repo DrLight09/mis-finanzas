@@ -2719,6 +2719,52 @@ input.movs-search-input:focus{border-color:var(--accent);}
       </div>
     </div>
 
+    <!-- USAR PARTE — registrar de dónde salió la plata -->
+    <div class="overlay" id="sheet-usar-parte" data-sheet-id="usar-parte">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">¿De dónde salió la plata?</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;">
+          Registrá de cuál cuenta sacaste el dinero. El encargo se descuenta y tus cuentas también.
+        </p>
+        <!-- Info de la parte -->
+        <div id="usarParte_info" style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:11px;color:var(--blue);font-family:'DM Mono',monospace;">
+          <span id="usarParte_desc" style="font-weight:600;"></span> · <span id="usarParte_monto"></span>
+        </div>
+        <!-- Modo simple / dividido -->
+        <div id="usarParte_modoSimple">
+          <div class="ig">
+            <label class="il" for="usarParte_cuenta">¿De cuál cuenta?</label>
+            <div class="select-wrap"><select id="usarParte_cuenta"><option value="">Sin especificar</option></select></div>
+            <div id="usarParte_cuentaHint" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+          </div>
+        </div>
+        <div id="usarParte_modoDividido" style="display:none;">
+          <div id="usarParte_splitRows"></div>
+          <button type="button" onclick="usarParteAddSplit()"
+            style="width:100%;margin-bottom:10px;padding:7px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;border:1.5px dashed var(--border2);background:transparent;color:var(--text2);">
+            <i class="fa-solid fa-plus" style="margin-right:4px;"></i>Otra cuenta
+          </button>
+          <div id="usarParte_splitResumen" style="font-size:11px;font-family:'DM Mono',monospace;padding:7px 10px;border-radius:var(--radius-sm);background:rgba(0,0,0,.15);margin-bottom:10px;min-height:22px;"></div>
+        </div>
+        <!-- Toggle dividir -->
+        <button type="button" id="usarParteSplitToggle" onclick="usarParteToggleSplit()"
+          style="width:100%;margin-bottom:14px;padding:8px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid rgba(200,240,96,.3);background:rgba(200,240,96,.08);color:var(--accent);">
+          Dividir ÷
+        </button>
+        <div class="ig">
+          <label class="il" for="usarParte_fecha">Fecha</label>
+          <input type="date" id="usarParte_fecha">
+        </div>
+        <button type="button" class="btn" id="btn-confirmar-usar-parte"
+          style="background:rgba(200,240,96,.18);color:var(--accent);border:1px solid rgba(200,240,96,.4);box-shadow:none;font-weight:600;"
+          onclick="confirmarUsarParte()">
+          <i class="fa-solid fa-check" style="margin-right:6px;"></i>Confirmar uso
+        </button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="usar-parte">Cancelar</button>
+      </div>
+    </div>
+
     <div class="overlay" id="sheet-editar-deudor" data-sheet-id="editar-deudor">
       <div class="sheet">
         <div class="sheet-handle"></div>
@@ -9554,18 +9600,257 @@ function guardarParte() {
   abrirEncargoDetalle(encargoActualId);
 }
 
-async function usarParte(encId, parteId) {
-  const enc = getEncargo(encId);
+/* ── USAR PARTE — sheet con selección de cuentas ──────────────────────── */
+let _usarParteEncId   = null;
+let _usarParteId      = null;
+let _usarParteSplit   = false;   // modo dividido
+let _usarParteSplitRows = [];    // [{cuenta:'', monto:0}]
+
+function usarParte(encId, parteId) {
+  const enc   = getEncargo(encId);
   if (!enc) return;
   const parte = (enc.partes || []).find(p => p.id === parteId);
   if (!parte) return;
-  const ok = await dialogo('Ya la usé', '¿Marcar "' + parte.desc + '" (' + fmt(parte.monto) + ') como usada?', 'Confirmar', false);
-  if (!ok) return;
-  parte.usada = true;
+
+  _usarParteEncId = encId;
+  _usarParteId    = parteId;
+  _usarParteSplit = false;
+  _usarParteSplitRows = [];
+
+  // Info label
+  document.getElementById('usarParte_desc').textContent  = parte.desc;
+  document.getElementById('usarParte_monto').textContent = fmt(parte.monto);
+
+  // Fecha de hoy
+  document.getElementById('usarParte_fecha').value = hoy();
+
+  // Poblar select cuenta — solo cuentas que tienen saldo en el encargo
+  const porCuenta = _getEncargoSaldoPorCuenta(enc);
+  const sel = document.getElementById('usarParte_cuenta');
+  let optsHtml = '<option value="">Sin especificar</option>';
+  if (porCuenta.length) {
+    optsHtml += porCuenta.map(c =>
+      `<option value="${c.cuenta}">${c.label} (${fmt(c.saldo)})</option>`
+    ).join('');
+  } else {
+    // Fallback: todas las fuentes
+    optsHtml += getFuentes().map(f =>
+      `<option value="${f.val}">${f.label}</option>`
+    ).join('');
+  }
+  sel.innerHTML = optsHtml;
+  _usarParteCuentaHint();
+  sel.onchange = _usarParteCuentaHint;
+
+  // Resetear modos
+  document.getElementById('usarParte_modoSimple').style.display    = '';
+  document.getElementById('usarParte_modoDividido').style.display  = 'none';
+  const tog = document.getElementById('usarParteSplitToggle');
+  tog.textContent = 'Dividir ÷';
+  tog.style.background   = 'rgba(200,240,96,.08)';
+  tog.style.borderColor  = 'rgba(200,240,96,.3)';
+  tog.style.color        = 'var(--accent)';
+
+  openSheet('usar-parte');
+}
+
+function _usarParteCuentaHint() {
+  const enc  = getEncargo(_usarParteEncId);
+  const sel  = document.getElementById('usarParte_cuenta');
+  const hint = document.getElementById('usarParte_cuentaHint');
+  if (!enc || !sel || !hint) return;
+  const val = sel.value;
+  if (!val) { hint.textContent = ''; return; }
+  const saldoEnc   = _getEncargoSaldoEnCuenta(enc, val);
+  const saldoPropio = getSaldoFuente(val);
+  hint.textContent = `Encargo: ${fmt(saldoEnc)} · Tuyo en ${fuenteLabel(val)}: ${fmt(saldoPropio)}`;
+}
+
+function usarParteToggleSplit() {
+  const enc  = getEncargo(_usarParteEncId);
+  if (!enc) return;
+  const parte = (enc.partes || []).find(p => p.id === _usarParteId);
+  if (!parte) return;
+
+  _usarParteSplit = !_usarParteSplit;
+  document.getElementById('usarParte_modoSimple').style.display   = _usarParteSplit ? 'none' : '';
+  document.getElementById('usarParte_modoDividido').style.display = _usarParteSplit ? ''     : 'none';
+
+  const tog = document.getElementById('usarParteSplitToggle');
+  if (_usarParteSplit) {
+    tog.textContent      = 'Una sola cuenta';
+    tog.style.background  = 'rgba(240,184,64,.1)';
+    tog.style.borderColor = 'rgba(240,184,64,.3)';
+    tog.style.color       = 'var(--amber)';
+    if (!_usarParteSplitRows.length) {
+      // Pre-llenar con la primera cuenta con saldo y el total
+      const porCuenta = _getEncargoSaldoPorCuenta(enc);
+      const cuentaPre = porCuenta.length ? porCuenta[0].cuenta : '';
+      _usarParteSplitRows = [{ cuenta: cuentaPre, monto: parte.monto }];
+    }
+  } else {
+    tog.textContent      = 'Dividir ÷';
+    tog.style.background  = 'rgba(200,240,96,.08)';
+    tog.style.borderColor = 'rgba(200,240,96,.3)';
+    tog.style.color       = 'var(--accent)';
+    _usarParteSplitRows = [];
+  }
+  _usarParteRenderSplit(enc, parte.monto);
+}
+
+function usarParteAddSplit() {
+  _usarParteSplitRows.push({ cuenta: '', monto: 0 });
+  const enc   = getEncargo(_usarParteEncId);
+  const parte = enc ? (enc.partes || []).find(p => p.id === _usarParteId) : null;
+  _usarParteRenderSplit(enc, parte ? parte.monto : 0);
+}
+
+function _usarParteRenderSplit(enc, totalParte) {
+  const cont = document.getElementById('usarParte_splitRows');
+  if (!cont) return;
+  const porCuenta = _getEncargoSaldoPorCuenta(enc);
+
+  const optsBase = () => {
+    let h = '<option value="">Sin especificar</option>';
+    if (porCuenta.length) {
+      h += porCuenta.map(c =>
+        `<option value="${c.cuenta}">${c.label} (${fmt(c.saldo)})</option>`
+      ).join('');
+    } else {
+      h += getFuentes().map(f =>
+        `<option value="${f.val}">${f.label}</option>`
+      ).join('');
+    }
+    return h;
+  };
+
+  cont.innerHTML = _usarParteSplitRows.map((r, i) => `
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+      <div class="select-wrap" style="flex:1;">
+        <select onchange="_usarParteSplitRows[${i}].cuenta=this.value;_usarParteSplitHint(${i})">
+          ${optsBase().replace(`value="${r.cuenta}"`, `value="${r.cuenta}" selected`)}
+        </select>
+      </div>
+      <input type="text" inputmode="decimal" class="money-input"
+        placeholder="0,00"
+        value="${r.monto ? fmtInput(r.monto) : ''}"
+        oninput="_usarParteSplitRows[${i}].monto=parseMoney(this.value)||0;_usarParteSplitResumen(${totalParte})"
+        style="width:110px;flex-shrink:0;">
+      ${_usarParteSplitRows.length > 1
+        ? `<button type="button" onclick="_usarParteSplitRows.splice(${i},1);_usarParteRenderSplit(getEncargo(_usarParteEncId),${totalParte})"
+            style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:28px;min-height:28px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="fa-solid fa-xmark"></i>
+          </button>`
+        : '<div style="width:28px;flex-shrink:0;"></div>'
+      }
+    </div>
+    <div id="usarParteSplitHint_${i}" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin:-2px 0 6px;min-height:12px;"></div>
+  `).join('');
+
+  _usarParteSplitResumen(totalParte);
+  // Actualizar hints existentes
+  _usarParteSplitRows.forEach((_, i) => _usarParteSplitHint(i));
+}
+
+function _usarParteSplitHint(i) {
+  const enc  = getEncargo(_usarParteEncId);
+  const hint = document.getElementById('usarParteSplitHint_' + i);
+  if (!hint || !enc) return;
+  const r = _usarParteSplitRows[i];
+  if (!r || !r.cuenta) { if(hint) hint.textContent = ''; return; }
+  const saldoEnc   = _getEncargoSaldoEnCuenta(enc, r.cuenta);
+  const saldoPropio = getSaldoFuente(r.cuenta);
+  if (hint) hint.textContent = `Encargo: ${fmt(saldoEnc)} · Tuyo: ${fmt(saldoPropio)}`;
+}
+
+function _usarParteSplitResumen(totalParte) {
+  const res  = document.getElementById('usarParte_splitResumen');
+  if (!res) return;
+  const suma = _usarParteSplitRows.reduce((a, r) => a + (r.monto || 0), 0);
+  const diff = totalParte - suma;
+  const ok   = Math.abs(diff) < 1;
+  res.innerHTML = ok
+    ? `<span style="color:var(--accent);">✓ Suma exacta: ${fmt(suma)}</span>`
+    : `<span style="color:var(--amber);">Suma: ${fmt(suma)} de ${fmt(totalParte)} · ${diff > 0 ? 'Faltan' : 'Sobran'} ${fmt(Math.abs(diff))}</span>`;
+}
+
+function confirmarUsarParte() {
+  const enc   = getEncargo(_usarParteEncId);
+  if (!enc) return;
+  const parte = (enc.partes || []).find(p => p.id === _usarParteId);
+  if (!parte) return;
+  const fecha = document.getElementById('usarParte_fecha').value || hoy();
+
+  if (_usarParteSplit) {
+    // Validar que la suma cuadre
+    const suma = _usarParteSplitRows.reduce((a, r) => a + (r.monto || 0), 0);
+    if (Math.abs(suma - parte.monto) > 1) {
+      toast(`Las partes suman ${fmt(suma)} pero la parte es ${fmt(parte.monto)}`, 'err', 4000);
+      return;
+    }
+    if (!_usarParteSplitRows.length) { toast('Agrega al menos una fila', 'err'); return; }
+    // Registrar una salida por cada fila
+    if (!enc.movimientos) enc.movimientos = [];
+    for (const r of _usarParteSplitRows) {
+      if (!r.monto) continue;
+      enc.movimientos.push({
+        id: uid(), tipo: 'salida',
+        desc: parte.desc,
+        monto: r.monto,
+        cuenta: r.cuenta || '',
+        fecha, nota: '', ts: Date.now()
+      });
+      // Descontar de la cuenta propia si está especificada
+      if (r.cuenta) _descontarDeCuenta(r.cuenta, r.monto);
+    }
+  } else {
+    // Modo simple — una sola cuenta
+    const cuenta = document.getElementById('usarParte_cuenta').value || '';
+    if (!enc.movimientos) enc.movimientos = [];
+    enc.movimientos.push({
+      id: uid(), tipo: 'salida',
+      desc: parte.desc,
+      monto: parte.monto,
+      cuenta,
+      fecha, nota: '', ts: Date.now()
+    });
+    if (cuenta) _descontarDeCuenta(cuenta, parte.monto);
+  }
+
+  // Marcar la parte como usada
+  parte.usada   = true;
   parte.usadaEn = hoy();
   save();
-  abrirEncargoDetalle(encId);
-  toast('Listo — esa parte ya no está comprometida', 'ok');
+  closeSheet('usar-parte');
+  abrirEncargoDetalle(_usarParteEncId);
+  toast('¡Listo! Parte usada y saldo descontado', 'ok');
+}
+
+// Descuenta de la cuenta propia (espejo de lo que hace confirmarMovEncargo)
+function _descontarDeCuenta(cuentaVal, monto) {
+  if (!cuentaVal) return;
+  if (cuentaVal === 'nequi') {
+    S.nequiSaldo = (S.nequiSaldo || 0) - monto;
+  } else if (cuentaVal === 'efectivo') {
+    S.efectivoSaldo = (S.efectivoSaldo || 0) - monto;
+  } else if (cuentaVal.startsWith('cajita:')) {
+    const id = cuentaVal.split(':')[1];
+    const c  = (S.cajitas || []).find(x => x.id === id);
+    if (c) {
+      if (!c.movimientos) c.movimientos = [];
+      c.movimientos.push({ id: uid(), tipo: 'retiro', monto, fecha: hoy(), nota: 'Pago de encargo' });
+      c.saldo = (c.saldo || 0) - monto;
+    }
+  } else if (cuentaVal.startsWith('custom:')) {
+    const id = cuentaVal.split(':')[1];
+    const c  = (S.cuentasPersonalizadas || []).find(x => x.id === id);
+    if (c) {
+      c.movimientos = c.movimientos || [];
+      c.movimientos.push({ id: uid(), tipo: 'retiro', monto, fecha: hoy(), nota: 'Pago de encargo' });
+      c.saldo = (c.saldo || 0) - monto;
+    }
+  }
+  // TC: no descontamos (deuda, no saldo)
 }
 
 async function eliminarParte(encId, parteId) {
@@ -14231,12 +14516,14 @@ window._cpConfirmarRecibir = function(){
       }
       else if(d.tipo === 'gasto'){
         if(d.gastoOrigen === 'tc' && d.gastoTcId){
-          // Gasto pagado con TC: sumar deuda a la TC y llevar la plata a la cajita TC
           const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
           if(tc){
-            tc.deuda = (tc.deuda||0) + d.monto;
-            if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado', _cpFmt(d.monto)+' sumado a la deuda', d.monto, 'gasto');
-            // Llevar la plata a la cajita TC si existe
+            if(!d.yaPague){
+              // La deuda aún no había sido sumada → sumarla ahora
+              tc.deuda = (tc.deuda||0) + d.monto;
+              if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado', _cpFmt(d.monto)+' sumado a la deuda', d.monto, 'gasto');
+            }
+            // En ambos casos: llevar la plata a la cajita TC para cubrir esa deuda
             const cajitaTc = (S.cajitas||[]).find(c => c.esCajitaTC && c.tcId === d.gastoTcId);
             if(cajitaTc && typeof sumarFuente === 'function'){
               if(typeof materializarIntereses === 'function') materializarIntereses(cajitaTc);
@@ -14244,6 +14531,21 @@ window._cpConfirmarRecibir = function(){
               if(!S.movimientos) S.movimientos = [];
               S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:'cajita:'+cajitaTc.id, monto:d.monto, fecha, desc:'Para pagar TC: '+d.desc});
               if(window.logCambio) logCambio('Plata para pagar TC', _cpFmt(d.monto)+' → cajita "'+cajitaTc.nombre+'"', d.monto, 'ingreso');
+            } else if(!cajitaTc && typeof sumarFuente === 'function'){
+              // No hay cajita TC dedicada → llevar la plata a la cuenta destino del ingreso
+              // para que quede disponible y el usuario la use para pagar la tarjeta manualmente
+              const cuentaFallback = item.cuentaDestino;
+              if(cuentaFallback){
+                if(cuentaFallback.startsWith('cajita:')){
+                  const cajId = cuentaFallback.split(':')[1];
+                  const caj = (S.cajitas||[]).find(x=>x.id===cajId);
+                  if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+                }
+                sumarFuente(cuentaFallback, d.monto);
+                if(!S.movimientos) S.movimientos = [];
+                S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuentaFallback, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+')'});
+                if(window.logCambio) logCambio('Plata para cubrir TC "'+tc.nombre+'"', _cpFmt(d.monto)+' → '+_cpFuenteLabel(cuentaFallback), d.monto, 'ingreso');
+              }
             }
           }
         } else if(d.gastoOrigen === 'cajita' && d.gastoCajita){

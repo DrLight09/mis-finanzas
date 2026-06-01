@@ -2801,55 +2801,57 @@ input.movs-search-input:focus{border-color:var(--accent);}
           </button>
           <div id="usarParte_splitResumen" style="font-size:11px;font-family:'DM Mono',monospace;padding:7px 10px;border-radius:var(--radius-sm);background:rgba(0,0,0,.15);margin-bottom:10px;min-height:22px;"></div>
         </div>
+        <!-- DIFERENCIAL EN USAR PARTE — aparece antes del Dividir para ser visible sin scroll -->
+        <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:10px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--amber);">¿Cobraste más de lo que costó?</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:2px;">Activá para repartir el diferencial</div>
+            </div>
+            <div id="usarParte_dif_toggle_track" style="width:36px;height:20px;border-radius:10px;background:var(--bg4);border:1.5px solid var(--border2);position:relative;transition:all .2s;cursor:pointer;flex-shrink:0;" onclick="toggleUsarParteDif()">
+              <div id="usarParte_dif_toggle_thumb" style="width:14px;height:14px;border-radius:50%;background:var(--text3);position:absolute;top:2px;left:2px;transition:all .2s;"></div>
+            </div>
+          </div>
+          <!-- Panel expandible -->
+          <div id="usarParte_dif_panel" style="display:none;margin-top:12px;">
+            <div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:8px;padding:9px 11px;margin-bottom:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+                <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Cobrado</span>
+                <span id="usarParte_dif_cobrado_label" style="font-size:12px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+                <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Costo real</span>
+                <span id="usarParte_dif_parte_label" style="font-size:12px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">—</span>
+              </div>
+              <div style="height:1px;background:rgba(240,184,64,.2);margin:5px 0;"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;font-weight:700;">Diferencial</span>
+                <span id="usarParte_dif_total_label" style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);">—</span>
+              </div>
+              <div id="usarParte_dif_sin_asignar_wrap" style="display:none;margin-top:3px;">
+                <span style="font-size:10px;font-family:'DM Mono',monospace;" id="usarParte_dif_sin_asignar_label"></span>
+              </div>
+            </div>
+            <div class="ig">
+              <label class="il" for="usarParte_dif_cobrado">¿Cuánto le dijiste que costó? <span style="color:var(--red);">*</span></label>
+              <input type="text" inputmode="decimal" id="usarParte_dif_cobrado" placeholder="0,00" class="money-input">
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+              <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;font-family:'DM Mono',monospace;">¿Quién se quedó con qué?</div>
+              <button type="button" onclick="usarParteDifAddBenef()" style="display:flex;align-items:center;gap:4px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.3);color:var(--amber);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Agregar
+              </button>
+            </div>
+            <div id="usarParte_dif_benef_list"></div>
+          </div>
+        </div>
+
         <!-- Toggle dividir -->
         <button type="button" id="usarParteSplitToggle" onclick="usarParteToggleSplit()"
           style="width:100%;margin-bottom:14px;padding:8px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid rgba(200,240,96,.3);background:rgba(200,240,96,.08);color:var(--accent);">
           Dividir ÷
         </button>
-
-        <!-- DIFERENCIAL EN USAR PARTE -->
-        <div style="height:1px;background:var(--border);margin:2px 0 14px;"></div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <div>
-            <div style="font-size:12px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;">Diferencial cobrado</div>
-            <div style="font-size:10px;color:var(--text3);margin-top:2px;">Le dijiste que costó más de lo real. Repartí quién se queda con qué.</div>
-          </div>
-          <div id="usarParte_dif_toggle_track" style="width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border2);position:relative;transition:all .2s;cursor:pointer;flex-shrink:0;" onclick="toggleUsarParteDif()">
-            <div id="usarParte_dif_toggle_thumb" style="width:14px;height:14px;border-radius:50%;background:var(--text3);position:absolute;top:2px;left:2px;transition:all .2s;"></div>
-          </div>
-        </div>
-        <div id="usarParte_dif_panel" style="display:none;margin-bottom:10px;">
-          <div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:10px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-              <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;">Monto cobrado</span>
-              <span id="usarParte_dif_cobrado_label" style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-              <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;">Costo real de la parte</span>
-              <span id="usarParte_dif_parte_label" style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">—</span>
-            </div>
-            <div style="height:1px;background:rgba(240,184,64,.2);margin:6px 0;"></div>
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <span style="font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;font-weight:700;">Diferencial</span>
-              <span id="usarParte_dif_total_label" style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);">—</span>
-            </div>
-            <div id="usarParte_dif_sin_asignar_wrap" style="display:none;margin-top:4px;">
-              <span style="font-size:10px;font-family:'DM Mono',monospace;" id="usarParte_dif_sin_asignar_label"></span>
-            </div>
-          </div>
-          <div class="ig">
-            <label class="il" for="usarParte_dif_cobrado">¿Cuánto le dijiste que costó? <span style="color:var(--red);">*</span></label>
-            <input type="text" inputmode="decimal" id="usarParte_dif_cobrado" placeholder="0,00" class="money-input">
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
-            <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;">¿Quién se quedó con qué?</div>
-            <button type="button" onclick="usarParteDifAddBenef()" style="display:flex;align-items:center;gap:4px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.3);color:var(--amber);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Agregar
-            </button>
-          </div>
-          <div id="usarParte_dif_benef_list"></div>
-        </div>
 
         <div class="ig">
           <label class="il" for="usarParte_fecha">Fecha</label>

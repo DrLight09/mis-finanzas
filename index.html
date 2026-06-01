@@ -14341,6 +14341,30 @@ window._cpGuardarMarcados = function(){
         } catch(e){}
       }
     }
+    // Detectar si un gasto pagado con TC pasó de false→true (acaba de marcar "ya lo pagué")
+    if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='tc' && dNuevo.gastoTcId && !dViejo.yaPague && dNuevo.yaPague){
+      try {
+        const tc = (S.tarjetasCredito||[]).find(x=>x.id===dNuevo.gastoTcId);
+        if(tc){
+          tc.deuda = Math.max(0, (tc.deuda||0) - dNuevo.monto);
+          if(!tc.pagos) tc.pagos = [];
+          tc.pagos.push({id:_cpUid(), monto:dNuevo.monto, fecha:_cpHoy(), fuente:'plata-comprometida', nota:'Pago desde plata comprometida: '+dNuevo.desc});
+          if(!S.gastosVar) S.gastosVar = [];
+          S.gastosVar.push({id:_cpUid(), desc:'Pago tarjeta '+tc.nombre+' (comprometida)', monto:dNuevo.monto, fecha:_cpHoy(), cat:'Servicios', fuente:'plata-comprometida', nota:dNuevo.desc, _esPagoTC:true, _tcId:tc.id});
+          if(window.logCambio) logCambio('Pagaste tarjeta '+tc.nombre+' (plata comprometida)', _cpFmt(dNuevo.monto)+' descontado de la deuda', dNuevo.monto, 'gasto');
+        }
+      } catch(e){}
+    }
+    // Detectar si un gasto pagado con TC pasó de true→false (desmarcó el pago — revertir)
+    if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='tc' && dNuevo.gastoTcId && dViejo.yaPague && !dNuevo.yaPague){
+      try {
+        const tc = (S.tarjetasCredito||[]).find(x=>x.id===dNuevo.gastoTcId);
+        if(tc){
+          tc.deuda = (tc.deuda||0) + dNuevo.monto;
+          if(window.logCambio) logCambio('Revertiste pago de '+tc.nombre+' (plata comprometida)', _cpFmt(dNuevo.monto)+' devuelto a la deuda', dNuevo.monto, 'ingreso');
+        }
+      } catch(e){}
+    }
   });
 
   item.destinos = JSON.parse(JSON.stringify(window._cpMarcarTmp));

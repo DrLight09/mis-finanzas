@@ -14341,27 +14341,28 @@ window._cpGuardarMarcados = function(){
         } catch(e){}
       }
     }
-    // Detectar si un gasto pagado con TC pasó de false→true (acaba de marcar "ya lo pagué")
+    // Detectar si un gasto con TC pasó de false→true (acaba de marcar "ya lo cargué a la TC")
+    // Esto significa que el gasto ya se realizó con la tarjeta → la deuda SUBE
     if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='tc' && dNuevo.gastoTcId && !dViejo.yaPague && dNuevo.yaPague){
       try {
         const tc = (S.tarjetasCredito||[]).find(x=>x.id===dNuevo.gastoTcId);
         if(tc){
-          tc.deuda = Math.max(0, (tc.deuda||0) - dNuevo.monto);
-          if(!tc.pagos) tc.pagos = [];
-          tc.pagos.push({id:_cpUid(), monto:dNuevo.monto, fecha:_cpHoy(), fuente:'plata-comprometida', nota:'Pago desde plata comprometida: '+dNuevo.desc});
-          if(!S.gastosVar) S.gastosVar = [];
-          S.gastosVar.push({id:_cpUid(), desc:'Pago tarjeta '+tc.nombre+' (comprometida)', monto:dNuevo.monto, fecha:_cpHoy(), cat:'Servicios', fuente:'plata-comprometida', nota:dNuevo.desc, _esPagoTC:true, _tcId:tc.id});
-          if(window.logCambio) logCambio('Pagaste tarjeta '+tc.nombre+' (plata comprometida)', _cpFmt(dNuevo.monto)+' descontado de la deuda', dNuevo.monto, 'gasto');
+          tc.deuda = (tc.deuda||0) + dNuevo.monto;
+          if(!tc.compras) tc.compras = [];
+          tc.compras.push({id:_cpUid(), desc:dNuevo.desc, monto:dNuevo.monto, fecha:_cpHoy(), _desdeCP:true});
+          if(window.logCambio) logCambio('Gasto cargado a '+tc.nombre+' (plata comprometida)', _cpFmt(dNuevo.monto)+' sumado a la deuda', dNuevo.monto, 'gasto');
         }
       } catch(e){}
     }
-    // Detectar si un gasto pagado con TC pasó de true→false (desmarcó el pago — revertir)
+    // Detectar si un gasto con TC pasó de true→false (desmarcó — revertir la deuda)
     if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='tc' && dNuevo.gastoTcId && dViejo.yaPague && !dNuevo.yaPague){
       try {
         const tc = (S.tarjetasCredito||[]).find(x=>x.id===dNuevo.gastoTcId);
         if(tc){
-          tc.deuda = (tc.deuda||0) + dNuevo.monto;
-          if(window.logCambio) logCambio('Revertiste pago de '+tc.nombre+' (plata comprometida)', _cpFmt(dNuevo.monto)+' devuelto a la deuda', dNuevo.monto, 'ingreso');
+          tc.deuda = Math.max(0, (tc.deuda||0) - dNuevo.monto);
+          // Quitar la compra que se había agregado desde plata comprometida
+          if(tc.compras) tc.compras = tc.compras.filter(c=>!(c._desdeCP && c.desc===dNuevo.desc && c.monto===dNuevo.monto));
+          if(window.logCambio) logCambio('Revertiste cargo a '+tc.nombre+' (plata comprometida)', _cpFmt(dNuevo.monto)+' quitado de la deuda', dNuevo.monto, 'ingreso');
         }
       } catch(e){}
     }

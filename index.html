@@ -12537,14 +12537,15 @@ function renderTCScreen(){
 
       <!-- Bloque ¿Cuánto pagar? -->
       ${(()=>{
-        const pm=tc.pagoMinimo||0;
-        const hayPM=pm>0;
-        const ptotal=hayPM?pm+totalSig:deuda+totalSig;
-        if(!hayPM&&totalSig===0)return `
-        <div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:9px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="1" fill="var(--amber)" stroke="none"/></svg>
-          <div style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;">Registra el <b>pago mínimo</b> del extracto en <button type="button" onclick="abrirEditarTC('${tc.id}')" style="background:none;border:none;padding:0;color:var(--amber);font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;text-decoration:underline;font-weight:600;">Editar tarjeta</button></div>
-        </div>`;
+        // El pago mínimo es lo que ya pasó el corte (totalActual).
+        // Si el usuario ingresó un valor manual (tc.pagoMinimo) se usa ese; si no, se usa totalActual.
+        // Si no hay fecha de corte configurada, se usa la deuda total como fallback.
+        const pmManual=tc.pagoMinimo||0;
+        const pm=pmManual>0?pmManual:(totalActual>0?totalActual:deuda);
+        // Compras nuevas = las que aún no pasaron el corte (próximo extracto)
+        const ptotal=pm+totalSig;
+        // Solo mostrar el bloque si hay deuda
+        if(deuda<=0)return '';
         return `
         <div style="background:rgba(240,104,104,.04);border:1px solid rgba(240,104,104,.2);border-radius:10px;padding:11px 13px;margin-bottom:12px;">
           <div style="font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;font-weight:700;margin-bottom:9px;">¿Cuánto pagar?</div>
@@ -12552,9 +12553,9 @@ function renderTCScreen(){
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${totalSig>0?'6':'2'}px;">
             <div>
               <div style="font-size:12px;font-weight:600;color:var(--text);">Pago mínimo</div>
-              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">Fijo del extracto — no cambia con compras nuevas</div>
+              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">Deuda del extracto — no cambia con compras nuevas</div>
             </div>
-            <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">${fmt(hayPM?pm:deuda)}</div>
+            <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">${fmt(pm)}</div>
           </div>
 
           ${totalSig>0?`
@@ -12575,10 +12576,10 @@ function renderTCScreen(){
             <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">${fmt(ptotal)}</div>
           </div>
           `:'<div style="font-size:10px;color:var(--text3);font-family:\'DM Mono\',monospace;margin-top:3px;">Sin compras nuevas · pago total = pago mínimo</div>'}
-        ${hayPM?`<div style="margin-top:9px;padding:7px 10px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.18);border-radius:8px;display:flex;align-items:flex-start;gap:7px;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px;"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-          <div style="font-size:10px;color:var(--text2);font-family:'DM Mono',monospace;line-height:1.5;">Pagando el mínimo cumples el extracto. El resto de la deuda lo puedes abonar cuando quieras — <b style="color:var(--accent);">el mínimo puede cambiar el próximo mes</b> según tu nuevo extracto.</div>
-        </div>`:''}
+          <div style="margin-top:9px;padding:7px 10px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.18);border-radius:8px;display:flex;align-items:flex-start;gap:7px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px;"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            <div style="font-size:10px;color:var(--text2);font-family:'DM Mono',monospace;line-height:1.5;">Pagando el mínimo cumples el extracto. El resto de la deuda lo puedes abonar cuando quieras — <b style="color:var(--accent);">el mínimo puede cambiar el próximo mes</b> según tu nuevo extracto.</div>
+          </div>
         </div>`;
       })()}
 

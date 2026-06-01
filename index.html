@@ -2602,6 +2602,60 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <div class="ig"><label class="il" for="movenc_nota">Nota
             (opcional)</label><input type="text" id="movenc_nota"
             placeholder="Detalle adicional"></div>
+
+        <!-- DIFERENCIAL: solo visible en salidas -->
+        <div id="movenc_diferencial_wrap" style="display:none;">
+          <div style="height:1px;background:var(--border);margin:4px 0 14px;"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div>
+              <div style="font-size:12px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;">Diferencial cobrado</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:2px;">Le dijiste que era más de lo que costó. Repartí quién se quedó con qué.</div>
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 0;">
+              <div id="movenc_dif_toggle_track" style="width:36px;height:20px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border2);position:relative;transition:all .2s;cursor:pointer;" onclick="toggleDiferencial()">
+                <div id="movenc_dif_toggle_thumb" style="width:14px;height:14px;border-radius:50%;background:var(--text3);position:absolute;top:2px;left:2px;transition:all .2s;"></div>
+              </div>
+            </label>
+          </div>
+          <!-- Panel diferencial expandible -->
+          <div id="movenc_dif_panel" style="display:none;">
+            <div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+                <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;">Monto cobrado (real)</span>
+                <span id="movenc_dif_cobrado_label" style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);">$0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+                <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;">Salida del encargo</span>
+                <span id="movenc_dif_salida_label" style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">$0</span>
+              </div>
+              <div style="height:1px;background:rgba(240,184,64,.2);margin:6px 0;"></div>
+              <div style="display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;font-weight:700;">Diferencial total</span>
+                <span id="movenc_dif_total_label" style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);">$0</span>
+              </div>
+              <div id="movenc_dif_sin_asignar_wrap" style="display:none;margin-top:4px;">
+                <span style="font-size:10px;font-family:'DM Mono',monospace;" id="movenc_dif_sin_asignar_label"></span>
+              </div>
+            </div>
+
+            <!-- Campo monto cobrado -->
+            <div class="ig">
+              <label class="il" for="movenc_dif_cobrado">¿Cuánto le cobraste / le dijiste que costó? <span style="color:var(--red);">*</span></label>
+              <input type="text" inputmode="decimal" id="movenc_dif_cobrado" placeholder="0,00" class="money-input">
+            </div>
+
+            <!-- Lista de beneficiarios -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+              <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;">¿Quién se quedó con qué?</div>
+              <button type="button" onclick="difAddBenef()" style="display:flex;align-items:center;gap:4px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.3);color:var(--amber);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Agregar
+              </button>
+            </div>
+            <div id="movenc_dif_benef_list"></div>
+          </div>
+        </div>
+
         <button type="button" class="btn" id="btn-confirmar-mov-encargo"
           style="background:rgba(96,176,240,.25);color:var(--blue);border:1px solid rgba(96,176,240,.5);box-shadow:none;font-weight:600;">Guardar</button>
         <button type="button" class="btn btn-ghost"
@@ -9414,7 +9468,12 @@ function abrirEncargoDetalle(id) {
       }
       const esEntrada = m.tipo === 'entrada';
       const lblCuenta = m.cuenta ? fuenteLabel(m.cuenta) : '';
-      return `<div class="gasto-item" style="border-color:${esEntrada?'rgba(96,176,240,.2)':'rgba(240,104,104,.15)'};">
+      const difSnap = m.diferencial;
+      const difHtml = difSnap ? `<div style="margin-top:5px;background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.2);border-radius:6px;padding:6px 9px;">
+        <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;font-weight:700;margin-bottom:4px;">Diferencial cobrado: +${fmt(difSnap.total)}</div>
+        ${difSnap.benefs.map(b=>`<div style="display:flex;justify-content:space-between;font-size:10px;font-family:'DM Mono',monospace;color:var(--text2);"><span>${b.nombre}</span><span style="color:var(--amber);">+${fmt(b.monto)}</span></div>`).join('')}
+      </div>` : '';
+      return `<div class="gasto-item" style="border-color:${esEntrada?'rgba(96,176,240,.2)':'rgba(240,104,104,.15)'};${difSnap?'border-color:rgba(240,184,64,.3);':''}">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;">
             <div class="row-name" style="font-size:13px;">${m.desc}</div>
@@ -9428,8 +9487,10 @@ function abrirEncargoDetalle(id) {
           </div>
         </div>
         ${m.nota?`<div class="gasto-item-meta"><span style="font-size:10px;color:var(--text3);">${m.nota}</span></div>`:''}
+        ${difHtml}
         <div class="gasto-item-meta">
           <span class="badge ${esEntrada?'bg-blue':'bg-red'}" style="font-size:9px;">${esEntrada?'Entrada':'Salida'}</span>
+          ${difSnap?`<span class="badge bg-amber" style="font-size:9px;">+${fmt(difSnap.total)} diferencial</span>`:''}
           ${lblCuenta?`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuenta}</span>`:''}
         </div>
       </div>`;
@@ -9915,6 +9976,192 @@ function crearEncargo() {
   toast('Encargo creado', 'ok');
 }
 
+/* ── DIFERENCIAL DE ENCARGO ─────────────────────────────────────────────
+   Cuando se registra una SALIDA, el usuario puede marcar que cobró más
+   de lo que realmente costó. El diferencial se desglosa por beneficiario
+   (nombre + monto) y cada porción se acredita como ingreso a una cuenta.
+─────────────────────────────────────────────────────────────────────── */
+let _difActivo = false;
+let _difBenefs = []; // [{id, nombre, monto, cuenta}]
+
+function _resetDiferencial() {
+  _difActivo = false;
+  _difBenefs = [];
+  const panel = document.getElementById('movenc_dif_panel');
+  const track = document.getElementById('movenc_dif_toggle_track');
+  const thumb = document.getElementById('movenc_dif_toggle_thumb');
+  if (panel) panel.style.display = 'none';
+  if (track) { track.style.background = 'var(--bg3)'; track.style.borderColor = 'var(--border2)'; }
+  if (thumb) { thumb.style.left = '2px'; thumb.style.background = 'var(--text3)'; }
+  const cobrado = document.getElementById('movenc_dif_cobrado');
+  if (cobrado) cobrado.value = '';
+  _renderDifBenefs();
+  _actualizarDifResumen();
+}
+
+function toggleDiferencial() {
+  _difActivo = !_difActivo;
+  const panel = document.getElementById('movenc_dif_panel');
+  const track = document.getElementById('movenc_dif_toggle_track');
+  const thumb = document.getElementById('movenc_dif_toggle_thumb');
+  if (_difActivo) {
+    if (panel) panel.style.display = 'block';
+    if (track) { track.style.background = 'rgba(240,184,64,.4)'; track.style.borderColor = 'var(--amber)'; }
+    if (thumb) { thumb.style.left = '18px'; thumb.style.background = 'var(--amber)'; }
+    // Si no hay beneficiarios aún, agregar uno vacío
+    if (!_difBenefs.length) difAddBenef();
+  } else {
+    if (panel) panel.style.display = 'none';
+    if (track) { track.style.background = 'var(--bg3)'; track.style.borderColor = 'var(--border2)'; }
+    if (thumb) { thumb.style.left = '2px'; thumb.style.background = 'var(--text3)'; }
+  }
+}
+
+function _actualizarDifResumen() {
+  const montoSalida = parseMoney(document.getElementById('movenc_monto').value) || 0;
+  const montoCobrado = parseMoney(document.getElementById('movenc_dif_cobrado')?.value) || 0;
+  const diferencial = Math.max(0, montoCobrado - montoSalida);
+  const totalAsig = _difBenefs.reduce((a, b) => a + (b.monto || 0), 0);
+  const sinAsignar = diferencial - totalAsig;
+
+  const lblCobrado = document.getElementById('movenc_dif_cobrado_label');
+  const lblSalida = document.getElementById('movenc_dif_salida_label');
+  const lblTotal = document.getElementById('movenc_dif_total_label');
+  const sinWrap = document.getElementById('movenc_dif_sin_asignar_wrap');
+  const sinLbl = document.getElementById('movenc_dif_sin_asignar_label');
+
+  if (lblCobrado) lblCobrado.textContent = montoCobrado > 0 ? fmt(montoCobrado) : '—';
+  if (lblSalida) lblSalida.textContent = montoSalida > 0 ? fmt(montoSalida) : '—';
+  if (lblTotal) {
+    lblTotal.textContent = diferencial > 0 ? fmt(diferencial) : '—';
+    lblTotal.style.color = diferencial > 0 ? 'var(--amber)' : 'var(--text3)';
+  }
+  if (sinWrap && sinLbl) {
+    if (_difActivo && diferencial > 0 && Math.abs(sinAsignar) > 1) {
+      sinWrap.style.display = 'block';
+      if (sinAsignar > 0) {
+        sinLbl.textContent = `Sin asignar: ${fmt(sinAsignar)}`;
+        sinLbl.style.color = 'var(--amber)';
+      } else {
+        sinLbl.textContent = `Excede el diferencial en ${fmt(Math.abs(sinAsignar))}`;
+        sinLbl.style.color = 'var(--red)';
+      }
+    } else {
+      sinWrap.style.display = 'none';
+    }
+  }
+}
+
+function difAddBenef() {
+  _difBenefs.push({ id: uid(), nombre: '', monto: 0, cuenta: '' });
+  _renderDifBenefs();
+  // focus en el último nombre
+  setTimeout(() => {
+    const inputs = document.querySelectorAll('.dif-benef-nombre');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 80);
+}
+
+function difRemoveBenef(id) {
+  _difBenefs = _difBenefs.filter(b => b.id !== id);
+  _renderDifBenefs();
+  _actualizarDifResumen();
+}
+
+function _renderDifBenefs() {
+  const el = document.getElementById('movenc_dif_benef_list');
+  if (!el) return;
+  if (!_difBenefs.length) {
+    el.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:6px 0 10px;font-family:'DM Mono',monospace;">Agrega al menos un beneficiario.</div>`;
+    return;
+  }
+  const fuentes = typeof getFuentes === 'function' ? getFuentes() : [];
+  el.innerHTML = _difBenefs.map((b, i) => {
+    const optsF = `<option value="">Sin especificar</option>` + fuentes.map(f =>
+      `<option value="${f.val}"${b.cuenta === f.val ? ' selected' : ''}>${f.label}</option>`
+    ).join('');
+    return `<div class="dif-benef-row" data-id="${b.id}" style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 11px;margin-bottom:7px;">
+      <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px;">
+        <input type="text" class="dif-benef-nombre money-input" data-id="${b.id}"
+          placeholder="¿Quién? (Ej: Mi tía, Yo...)"
+          value="${b.nombre || ''}"
+          oninput="difUpdateNombre('${b.id}', this.value)"
+          style="flex:1;padding:8px 10px;font-size:13px;border-radius:var(--radius-sm);border:1.5px solid var(--border2);background:var(--bg4);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;">
+        <button type="button" onclick="difRemoveBenef('${b.id}')" style="padding:7px 9px;border-radius:var(--radius-sm);background:rgba(240,104,104,.07);border:1px solid rgba(240,104,104,.2);color:var(--red);cursor:pointer;flex-shrink:0;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+        <div>
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;margin-bottom:4px;">Monto</div>
+          <input type="text" inputmode="decimal" class="dif-benef-monto money-input" data-id="${b.id}"
+            placeholder="0,00"
+            value="${b.monto > 0 ? (typeof fmtInput === 'function' ? fmtInput(b.monto) : String(b.monto).replace('.', ',')) : ''}"
+            oninput="difUpdateMonto('${b.id}', this.value)"
+            style="width:100%;padding:8px 10px;font-size:13px;border-radius:var(--radius-sm);border:1.5px solid var(--border2);background:var(--bg4);color:var(--text);font-family:'DM Mono',monospace;outline:none;">
+        </div>
+        <div>
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;margin-bottom:4px;">Va a</div>
+          <div class="select-wrap" style="position:relative;">
+            <select class="dif-benef-cuenta" data-id="${b.id}"
+              onchange="difUpdateCuenta('${b.id}', this.value)"
+              style="width:100%;padding:8px 10px;font-size:12px;border-radius:var(--radius-sm);border:1.5px solid var(--border2);background:var(--bg4);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;-webkit-appearance:none;padding-right:28px;">
+              ${optsF}
+            </select>
+            <div style="pointer-events:none;position:absolute;right:9px;top:50%;transform:translateY(-50%);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function difUpdateNombre(id, val) {
+  const b = _difBenefs.find(x => x.id === id);
+  if (b) b.nombre = val;
+}
+function difUpdateMonto(id, val) {
+  const b = _difBenefs.find(x => x.id === id);
+  if (b) { b.monto = typeof parseMoney === 'function' ? parseMoney(val) : parseFloat((val||'0').replace(/\./g,'').replace(',','.')) || 0; }
+  _actualizarDifResumen();
+}
+function difUpdateCuenta(id, val) {
+  const b = _difBenefs.find(x => x.id === id);
+  if (b) b.cuenta = val;
+}
+
+function _getDiferencialData() {
+  // Devuelve {cobrado, diferencial, benefs} o null si no aplica
+  if (!_difActivo) return null;
+  const montoSalida = parseMoney(document.getElementById('movenc_monto').value) || 0;
+  const montoCobrado = parseMoney(document.getElementById('movenc_dif_cobrado')?.value) || 0;
+  const diferencial = montoCobrado - montoSalida;
+  return { cobrado: montoCobrado, diferencial, benefs: _difBenefs.filter(b => b.nombre && b.monto > 0) };
+}
+
+function _aplicarDiferencialComoIngreso(difData) {
+  // Cada beneficiario con cuenta definida recibe un ingreso en esa cuenta
+  if (!difData || !difData.benefs.length) return;
+  difData.benefs.forEach(b => {
+    if (!b.cuenta) return; // sin cuenta → no se puede acreditar automáticamente
+    // Agregar transacción de ingreso al estado global
+    const nueva = {
+      id: uid(),
+      tipo: 'ingreso',
+      desc: `Diferencial encargo · ${b.nombre}`,
+      monto: b.monto,
+      fuente: b.cuenta,
+      fecha: document.getElementById('movenc_fecha')?.value || hoy(),
+      nota: `Diferencial cobrado en encargo de ${getEncargo(encargoActualId)?.nombre || ''}`,
+      ts: Date.now()
+    };
+    if (!S.transacciones) S.transacciones = [];
+    S.transacciones.push(nueva);
+  });
+}
+
+function function_abrirMovEncargo_ORIG() {} // placeholder — reemplazado abajo
+
 function abrirMovEncargo(tipo) {
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
@@ -9950,6 +10197,17 @@ function abrirMovEncargo(tipo) {
   // Listener para mostrar saldo de encargo en esa cuenta
   sel.onchange = function() { _actualizarMovEncCuentaHint(enc, sel.value); };
 
+  // Sección diferencial: solo en salidas
+  const difWrap = document.getElementById('movenc_diferencial_wrap');
+  if (difWrap) difWrap.style.display = tipo === 'salida' ? 'block' : 'none';
+  _resetDiferencial();
+
+  // Listener monto → actualiza resumen diferencial
+  const montoInput = document.getElementById('movenc_monto');
+  montoInput.oninput = function() { if (_difActivo) _actualizarDifResumen(); };
+  const cobradoInput = document.getElementById('movenc_dif_cobrado');
+  if (cobradoInput) cobradoInput.oninput = _actualizarDifResumen;
+
   // Style the confirm button
   const btn = document.getElementById('btn-confirmar-mov-encargo');
   if (tipo === 'entrada') {
@@ -9965,6 +10223,8 @@ function abrirMovEncargo(tipo) {
   }
   openSheet('mov-encargo');
 }
+
+
 
 function _actualizarMovEncCuentaHint(enc, cuentaVal) {
   const hint = document.getElementById('movenc_cuenta_hint');
@@ -10019,13 +10279,13 @@ function confirmarMovEncargo() {
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
   if (!enc.movimientos) enc.movimientos = [];
+
   // Validar que no quede saldo negativo al salir
   if (movEncargoTipo === 'salida') {
     const saldoActual = encargoSaldo(enc);
     if (monto > saldoActual) {
       toast(`El saldo del encargo es solo ${fmt(saldoActual)}`, 'err'); return;
     }
-    // Validar saldo en la cuenta específica si se especificó
     if (cuenta) {
       const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuenta);
       if (monto > saldoEnCuenta) {
@@ -10033,6 +10293,24 @@ function confirmarMovEncargo() {
       }
     }
   }
+
+  // Validar diferencial si está activo
+  let difData = null;
+  if (movEncargoTipo === 'salida' && _difActivo) {
+    difData = _getDiferencialData();
+    if (!difData || difData.cobrado <= monto) {
+      toast('El monto cobrado debe ser mayor a la salida del encargo', 'err'); return;
+    }
+    if (!difData.benefs.length) {
+      toast('Agrega al menos un beneficiario con nombre y monto', 'err'); return;
+    }
+    const totalAsig = difData.benefs.reduce((a, b) => a + b.monto, 0);
+    if (Math.abs(totalAsig - difData.diferencial) > 1) {
+      toast(`Los beneficiarios suman ${fmt(totalAsig)} pero el diferencial es ${fmt(difData.diferencial)}`, 'err', 4000); return;
+    }
+  }
+
+  // Guardar movimiento del encargo
   enc.movimientos.push({
     id: uid(),
     tipo: movEncargoTipo,
@@ -10041,12 +10319,23 @@ function confirmarMovEncargo() {
     cuenta: cuenta || '',
     fecha: document.getElementById('movenc_fecha').value||hoy(),
     nota: document.getElementById('movenc_nota').value.trim(),
-    ts: Date.now()
+    ts: Date.now(),
+    // Snapshot del diferencial para historial
+    ...(difData ? { diferencial: { cobrado: difData.cobrado, total: difData.diferencial, benefs: difData.benefs.map(b=>({nombre:b.nombre,monto:b.monto,cuenta:b.cuenta})) } } : {})
   });
+
+  // Acreditar diferencial como ingresos propios
+  if (difData) _aplicarDiferencialComoIngreso(difData);
+
   save();
   closeSheet('mov-encargo');
-  abrirEncargoDetalle(encargoActualId); // refresh detalle
-  toast(movEncargoTipo==='entrada'?'Entrada registrada':'Salida registrada', 'ok');
+  abrirEncargoDetalle(encargoActualId);
+  if (difData) {
+    const nombres = difData.benefs.map(b => `${b.nombre} +${fmt(b.monto)}`).join(', ');
+    toast(`Salida registrada · Diferencial ${fmt(difData.diferencial)}: ${nombres}`, 'ok', 5000);
+  } else {
+    toast(movEncargoTipo==='entrada'?'Entrada registrada':'Salida registrada', 'ok');
+  }
 }
 
 async function deleteMovEncargo(encId, movId) {

@@ -9988,12 +9988,12 @@ async function _confirmarUsarParte() {
     if (val) fuentesOrigen = [{ fuente: val, monto: parte.monto }];
   }
 
-  // Validar que el saldo real alcance en cada cuenta (solo si se especificó origen)
+  // Validar que el saldo del encargo en esa cuenta alcance
   for (const f of fuentesOrigen) {
     if (!f.fuente) continue;
-    const saldoReal = getSaldoActual(f.fuente);
-    if (f.monto > saldoReal + 0.5) {
-      toast(`Saldo insuficiente en ${fuenteLabel(f.fuente)} — disponible: ${fmt(saldoReal)}`, 'err');
+    const saldoEnc = _getEncargoSaldoEnCuenta(enc, f.fuente);
+    if (f.monto > saldoEnc + 0.5) {
+      toast(`El encargo solo tiene ${fmt(saldoEnc)} guardado en ${fuenteLabel(f.fuente)}`, 'err');
       return;
     }
   }
@@ -10023,14 +10023,7 @@ async function _confirmarUsarParte() {
     delete parte.fuente;
   }
 
-  // Restar de las cuentas reales (la plata salió físicamente)
-  for (const f of fuentesOrigen) {
-    if (f.fuente && f.monto > 0) {
-      descontarFuente(f.fuente, f.monto);
-    }
-  }
-
-  // También registrar la salida en los movimientos del encargo para mantener contabilidad
+  // Registrar la salida en los movimientos del encargo (descuenta del saldo del encargo en esa cuenta)
   if (fuentesOrigen.length > 0) {
     if (!enc.movimientos) enc.movimientos = [];
     if (fuentesOrigen.length === 1 && fuentesOrigen[0].fuente) {

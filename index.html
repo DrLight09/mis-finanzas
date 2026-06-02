@@ -9902,13 +9902,10 @@ function _usarParteSplitToggle() {
 function _getUsarParteFuentesOptions(selectedVal) {
   const enc = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
   const fuentesConSaldo = enc ? _getEncargoSaldoPorCuenta(enc) : [];
-  const fuentes = getFuentesSinTC();
-  // Mostrar primero las que tienen saldo, marcadas
+  // Solo mostrar las cuentas donde el encargo tiene plata guardada
   return '<option value="">Sin especificar</option>' +
-    fuentes.map(f => {
-      const conSaldo = fuentesConSaldo.find(x => x.cuenta === f.val);
-      const label = conSaldo ? `${f.label} (${fmt(conSaldo.saldo)})` : f.label;
-      return `<option value="${f.val}"${f.val === selectedVal ? ' selected' : ''}>${label}</option>`;
+    fuentesConSaldo.map(f => {
+      return `<option value="${f.cuenta}"${f.cuenta === selectedVal ? ' selected' : ''}>${f.label} (${fmt(f.saldo)})</option>`;
     }).join('');
 }
 
@@ -9965,9 +9962,9 @@ function _usarParteFuentePreview() {
     if (val) {
       const enc2 = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
       const saldoEnc = enc2 ? _getEncargoSaldoEnCuenta(enc2, val) : 0;
-      const saldoCuenta = getSaldoActual(val);
-      el.innerHTML = `${fuenteLabel(val)}: encargo guardado ahí <span style="color:var(--text)">${fmt(saldoEnc)}</span> · saldo real <span style="color:var(--text)">${fmt(saldoCuenta)}</span>`;
+      el.innerHTML = `Del encargo guardado en ${fuenteLabel(val)}: <span style="color:var(--text)">${fmt(saldoEnc)}</span>`;
       el.style.color = 'var(--text2)';
+
     } else {
       el.textContent = '';
     }

@@ -2714,6 +2714,35 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <div class="sheet-title">Ya la usé</div>
         <div id="usar-parte-info" style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:12px;color:var(--blue);font-family:'DM Mono',monospace;"></div>
 
+        <!-- ¿De dónde sacaste la plata? -->
+        <div style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <label class="il" style="margin-bottom:0;">¿De dónde sacaste la plata?</label>
+            <button type="button" id="usarParteSplitToggle" onclick="_usarParteSplitToggle()"
+              style="padding:5px 11px;border-radius:var(--radius-sm);border:1.5px solid rgba(200,240,96,.3);background:rgba(200,240,96,.1);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+              Dividir ÷
+            </button>
+          </div>
+          <!-- Modo simple: un solo select -->
+          <div id="usarParteModoSimple">
+            <div class="select-wrap">
+              <select id="usar_parte_fuente" style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;width:100%;">
+                <option value="">Sin especificar</option>
+              </select>
+            </div>
+          </div>
+          <!-- Modo dividido: filas split -->
+          <div id="usarParteModoDividido" style="display:none;">
+            <div id="usarParteSplitRows"></div>
+            <button type="button" onclick="_usarParteAgregarSplitRow()"
+              style="width:100%;padding:7px;border-radius:var(--radius-sm);border:1.5px dashed rgba(200,240,96,.3);background:transparent;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;margin-top:4px;font-family:'DM Sans',sans-serif;">
+              + Agregar cuenta
+            </button>
+          </div>
+          <!-- Preview distribución -->
+          <div id="usar-parte-fuente-preview" style="margin-top:7px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:18px;"></div>
+        </div>
+
         <!-- Diferencial opcional -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:0;" onclick="_usarParteDifToggle()">
           <div style="display:flex;align-items:center;gap:8px;">
@@ -9848,11 +9877,129 @@ function _usarParteDifResumen() {
   el.innerHTML = html.replace(/\n/g, '<br>');
 }
 
+/* ─── Fuente (origen) en "Ya la usé" ──────────────────────────── */
+let _usarParteSplitMode = false;
+
+function _usarParteSplitToggle() {
+  _usarParteSplitMode = !_usarParteSplitMode;
+  document.getElementById('usarParteModoSimple').style.display = _usarParteSplitMode ? 'none' : '';
+  document.getElementById('usarParteModoDividido').style.display = _usarParteSplitMode ? '' : 'none';
+  const btn = document.getElementById('usarParteSplitToggle');
+  if (btn) {
+    btn.textContent = _usarParteSplitMode ? 'Una sola cuenta' : 'Dividir ÷';
+    btn.style.background = _usarParteSplitMode ? 'rgba(240,184,64,.1)' : 'rgba(200,240,96,.1)';
+    btn.style.borderColor = _usarParteSplitMode ? 'rgba(240,184,64,.3)' : 'rgba(200,240,96,.3)';
+    btn.style.color = _usarParteSplitMode ? 'var(--amber)' : 'var(--accent)';
+  }
+  const rows = document.getElementById('usarParteSplitRows');
+  if (_usarParteSplitMode && rows && rows.children.length === 0) {
+    _usarParteAgregarSplitRow();
+    _usarParteAgregarSplitRow();
+  }
+  _usarParteFuentePreview();
+}
+
+function _getUsarParteFuentesOptions(selectedVal) {
+  const enc = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
+  const fuentesConSaldo = enc ? _getEncargoSaldoPorCuenta(enc) : [];
+  const fuentes = getFuentesSinTC();
+  // Mostrar primero las que tienen saldo, marcadas
+  return '<option value="">Sin especificar</option>' +
+    fuentes.map(f => {
+      const conSaldo = fuentesConSaldo.find(x => x.cuenta === f.val);
+      const label = conSaldo ? `${f.label} (${fmt(conSaldo.saldo)})` : f.label;
+      return `<option value="${f.val}"${f.val === selectedVal ? ' selected' : ''}>${label}</option>`;
+    }).join('');
+}
+
+function _usarParteAgregarSplitRow() {
+  const container = document.getElementById('usarParteSplitRows');
+  if (!container) return;
+  const id = 'upsr_' + uid();
+  const div = document.createElement('div');
+  div.id = id;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:7px;';
+  div.innerHTML = `
+    <div class="select-wrap"><select onchange="_usarParteFuentePreview()" style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">${_getUsarParteFuentesOptions('')}</select></div>
+    <input type="text" inputmode="decimal" placeholder="monto" oninput="_usarParteFuentePreview()" class="money-input" style="width:96px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Mono',monospace;outline:none;">
+    <button type="button" onclick="document.getElementById('${id}').remove();_usarParteFuentePreview();" style="width:28px;height:36px;background:rgba(240,104,104,.1);border:1px solid rgba(240,104,104,.2);border-radius:7px;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>`;
+  container.appendChild(div);
+}
+
+function _getUsarParteSplitData() {
+  const rows = document.getElementById('usarParteSplitRows');
+  if (!rows) return [];
+  const result = [];
+  for (const row of rows.children) {
+    const sel = row.querySelector('select');
+    const inp = row.querySelector('input');
+    const fuente = sel ? sel.value : '';
+    const monto = parseMoney(inp ? inp.value : '') || 0;
+    if (monto > 0) result.push({ fuente, monto });
+  }
+  return result;
+}
+
+function _usarParteFuentePreview() {
+  const el = document.getElementById('usar-parte-fuente-preview');
+  if (!el) return;
+  const enc = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
+  const parte = enc ? (enc.partes || []).find(p => p.id === _usarParteId) : null;
+  const monto = parte ? (parte.monto || 0) : 0;
+  if (!monto) { el.textContent = ''; return; }
+
+  if (_usarParteSplitMode) {
+    const splits = _getUsarParteSplitData();
+    const total = splits.reduce((a, s) => a + s.monto, 0);
+    const restante = monto - total;
+    if (splits.length === 0) { el.textContent = ''; return; }
+    let lines = splits.map(s => `${s.fuente ? fuenteLabel(s.fuente) : 'Sin esp.'}: ${fmt(s.monto)}`).join(' · ');
+    if (restante > 0) { el.textContent = lines + ` · Sin asignar: ${fmt(restante)}`; el.style.color = 'var(--amber)'; }
+    else if (restante < -0.5) { el.textContent = lines + ` · Excede: ${fmt(-restante)}`; el.style.color = 'var(--red)'; }
+    else { el.textContent = lines + ' ✓'; el.style.color = 'var(--accent)'; }
+  } else {
+    const sel = document.getElementById('usar_parte_fuente');
+    const val = sel ? sel.value : '';
+    if (val) {
+      const enc2 = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
+      const saldoEnc = enc2 ? _getEncargoSaldoEnCuenta(enc2, val) : 0;
+      const saldoCuenta = getSaldoActual(val);
+      el.innerHTML = `${fuenteLabel(val)}: encargo guardado ahí <span style="color:var(--text)">${fmt(saldoEnc)}</span> · saldo real <span style="color:var(--text)">${fmt(saldoCuenta)}</span>`;
+      el.style.color = 'var(--text2)';
+    } else {
+      el.textContent = '';
+    }
+  }
+}
+
+
 async function _confirmarUsarParte() {
   const enc = getEncargo(_usarParteEncId);
   if (!enc) return;
   const parte = (enc.partes || []).find(p => p.id === _usarParteId);
   if (!parte) return;
+
+  // Leer origen de la plata (fuente simple o split)
+  let fuentesOrigen = [];
+  if (_usarParteSplitMode) {
+    fuentesOrigen = _getUsarParteSplitData();
+  } else {
+    const sel = document.getElementById('usar_parte_fuente');
+    const val = sel ? sel.value : '';
+    if (val) fuentesOrigen = [{ fuente: val, monto: parte.monto }];
+  }
+
+  // Validar que el saldo real alcance en cada cuenta (solo si se especificó origen)
+  for (const f of fuentesOrigen) {
+    if (!f.fuente) continue;
+    const saldoReal = getSaldoActual(f.fuente);
+    if (f.monto > saldoReal + 0.5) {
+      toast(`Saldo insuficiente en ${fuenteLabel(f.fuente)} — disponible: ${fmt(saldoReal)}`, 'err');
+      return;
+    }
+  }
 
   // Guardar diferencial como registro (sin mover plata)
   const difBody = document.getElementById('usar-parte-dif-body');
@@ -9867,6 +10014,52 @@ async function _confirmarUsarParte() {
         dijo, real, margen,
         beneficiarios: _usarParteDifBenefs.filter(b => b.nombre || b.monto > 0).map(b => ({ nombre: b.nombre, monto: b.monto }))
       };
+    }
+  }
+
+  // Guardar origen en la parte
+  if (fuentesOrigen.length === 1 && fuentesOrigen[0].fuente) {
+    parte.fuente = fuentesOrigen[0].fuente;
+    delete parte.fuentes;
+  } else if (fuentesOrigen.length > 1) {
+    parte.fuentes = fuentesOrigen;
+    delete parte.fuente;
+  }
+
+  // Restar de las cuentas reales (la plata salió físicamente)
+  for (const f of fuentesOrigen) {
+    if (f.fuente && f.monto > 0) {
+      descontarFuente(f.fuente, f.monto);
+    }
+  }
+
+  // También registrar la salida en los movimientos del encargo para mantener contabilidad
+  if (fuentesOrigen.length > 0) {
+    if (!enc.movimientos) enc.movimientos = [];
+    if (fuentesOrigen.length === 1 && fuentesOrigen[0].fuente) {
+      enc.movimientos.push({
+        id: uid(),
+        tipo: 'salida',
+        monto: parte.monto,
+        cuenta: fuentesOrigen[0].fuente,
+        desc: `Parte usada: ${parte.desc}`,
+        fecha: hoy(),
+        _parteId: parte.id
+      });
+    } else if (fuentesOrigen.length > 1) {
+      fuentesOrigen.forEach(f => {
+        if (f.fuente && f.monto > 0) {
+          enc.movimientos.push({
+            id: uid(),
+            tipo: 'salida',
+            monto: f.monto,
+            cuenta: f.fuente,
+            desc: `Parte usada: ${parte.desc}`,
+            fecha: hoy(),
+            _parteId: parte.id
+          });
+        }
+      });
     }
   }
 
@@ -9889,6 +10082,33 @@ function abrirUsarParteSheet(encId, parteId) {
 
   const infoEl = document.getElementById('usar-parte-info');
   if (infoEl) infoEl.textContent = `"${parte.desc}" · Le dijiste: ${fmt(parte.monto)}`;
+
+  // Reset fuente/split
+  _usarParteSplitMode = false;
+  document.getElementById('usarParteModoSimple').style.display = '';
+  document.getElementById('usarParteModoDividido').style.display = 'none';
+  document.getElementById('usarParteSplitRows').innerHTML = '';
+  const splitBtn = document.getElementById('usarParteSplitToggle');
+  if (splitBtn) {
+    splitBtn.textContent = 'Dividir ÷';
+    splitBtn.style.background = 'rgba(200,240,96,.1)';
+    splitBtn.style.borderColor = 'rgba(200,240,96,.3)';
+    splitBtn.style.color = 'var(--accent)';
+  }
+  // Poblar select con fuentes, preseleccionando la de mayor saldo en el encargo
+  const sel = document.getElementById('usar_parte_fuente');
+  if (sel) {
+    sel.innerHTML = _getUsarParteFuentesOptions('');
+    // Preseleccionar la cuenta con más saldo del encargo
+    const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
+    if (cuentasConSaldo.length > 0) {
+      sel.value = cuentasConSaldo[0].cuenta;
+    }
+    sel.onchange = _usarParteFuentePreview;
+  }
+  const prevEl = document.getElementById('usar-parte-fuente-preview');
+  if (prevEl) { prevEl.textContent = ''; }
+  _usarParteFuentePreview();
 
   // Reset diferencial
   const difBody = document.getElementById('usar-parte-dif-body');
@@ -9916,12 +10136,23 @@ function _difRenderHistorial(mov) {
 }
 
 function _difRenderHistorialParte(parte) {
-  if (!parte.diferencial) return '';
-  const d = parte.diferencial;
-  const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b =>
-    `${b.nombre} ${fmt(b.monto)}`
-  ).join(' · ');
-  return `<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);">💰 margen ${fmt(d.margen)}${benefs ? ': ' + benefs : ''}</span>`;
+  let out = '';
+  // Mostrar origen de la plata si se registró
+  if (parte.fuentes && parte.fuentes.length > 0) {
+    const labels = parte.fuentes.map(f => `${fuenteLabel(f.fuente)} ${fmt(f.monto)}`).join(' + ');
+    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);">📤 ${labels}</span>`;
+  } else if (parte.fuente) {
+    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);">📤 ${fuenteLabel(parte.fuente)}</span>`;
+  }
+  // Mostrar diferencial si existe
+  if (parte.diferencial) {
+    const d = parte.diferencial;
+    const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b =>
+      `${b.nombre} ${fmt(b.monto)}`
+    ).join(' · ');
+    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);">💰 margen ${fmt(d.margen)}${benefs ? ': ' + benefs : ''}</span>`;
+  }
+  return out;
 }
 
 function abrirMovEncargo(tipo) {

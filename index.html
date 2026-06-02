@@ -2765,6 +2765,15 @@ input.movs-search-input:focus{border-color:var(--accent);}
             + Agregar persona
           </button>
           <div id="usar-parte-dif-resumen" style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
+          <!-- ¿Dónde te cayó el margen que te quedaste? -->
+          <div id="usar-parte-dif-mi-cuenta-wrap" style="display:none;margin-top:10px;">
+            <label class="il" style="color:var(--amber);margin-bottom:6px;">¿En qué cuenta te cayó ese margen?</label>
+            <div class="select-wrap">
+              <select id="usar_parte_dif_mi_cuenta" style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;width:100%;">
+                <option value="">Sin especificar</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <button type="button" class="btn" onclick="_confirmarUsarParte()" style="background:rgba(200,240,96,.2);color:var(--accent);border:1px solid rgba(200,240,96,.4);font-weight:600;">Confirmar — ya la usé</button>
@@ -9866,15 +9875,31 @@ function _usarParteDifResumen() {
   if (!real) { el.textContent = ''; return; }
 
   let html = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>  Real: <span style="color:var(--text2)">${fmt(real)}</span>  Margen: <span style="color:${margen>=0?'var(--accent)':'var(--red)'}">${margen>=0?'+':''}${fmt(margen)}</span>`;
-  if (_usarParteDifBenefs.length && margen > 0) {
+  let pendiente = margen;
+  if (margen > 0) {
     const asignado = _usarParteDifBenefs.reduce((a, b) => a + (b.monto || 0), 0);
-    const pendiente = margen - asignado;
-    html += `<br>Asignado: <span style="color:var(--text2)">${fmt(asignado)}</span>  `;
-    if (Math.abs(pendiente) < 1) html += `<span style="color:var(--accent)">✓ Cuadra</span>`;
-    else if (pendiente > 0) html += `<span style="color:var(--amber)">Sin asignar: ${fmt(pendiente)}</span>`;
-    else html += `<span style="color:var(--red)">Te pasaste: ${fmt(Math.abs(pendiente))}</span>`;
+    pendiente = margen - asignado;
+    if (_usarParteDifBenefs.length) {
+      html += `<br>Asignado: <span style="color:var(--text2)">${fmt(asignado)}</span>  `;
+      if (Math.abs(pendiente) < 1) html += `<span style="color:var(--accent)">✓ Cuadra</span>`;
+      else if (pendiente > 0) html += `<span style="color:var(--amber)">Te quedan: ${fmt(pendiente)}</span>`;
+      else html += `<span style="color:var(--red)">Te pasaste: ${fmt(Math.abs(pendiente))}</span>`;
+    }
   }
   el.innerHTML = html.replace(/\n/g, '<br>');
+
+  // Mostrar/ocultar el select de cuenta propia según si hay margen que te quedaste vos
+  const miCuentaWrap = document.getElementById('usar-parte-dif-mi-cuenta-wrap');
+  const miCuentaSel = document.getElementById('usar_parte_dif_mi_cuenta');
+  if (miCuentaWrap && miCuentaSel) {
+    const yoMeQuedo = margen > 0 && pendiente > 0.5;
+    miCuentaWrap.style.display = yoMeQuedo ? '' : 'none';
+    if (yoMeQuedo) {
+      const prevVal = miCuentaSel.value;
+      miCuentaSel.innerHTML = '<option value="">Sin especificar</option>' +
+        getFuentesSinTC().map(f => `<option value="${f.val}"${f.val === prevVal ? ' selected' : ''}>${f.label}</option>`).join('');
+    }
+  }
 }
 
 /* ─── Fuente (origen) en "Ya la usé" ──────────────────────────── */
@@ -9998,7 +10023,7 @@ async function _confirmarUsarParte() {
     }
   }
 
-  // Guardar diferencial como registro (sin mover plata)
+  // Guardar diferencial y mover margen a cuenta propia si aplica
   const difBody = document.getElementById('usar-parte-dif-body');
   const realEl  = document.getElementById('usar_parte_dif_real');
   const difActivo = difBody && difBody.style.display !== 'none';
@@ -10007,10 +10032,24 @@ async function _confirmarUsarParte() {
     if (real > 0) {
       const dijo   = parte.monto;
       const margen = dijo - real;
+      const benefs = _usarParteDifBenefs.filter(b => b.nombre || b.monto > 0).map(b => ({ nombre: b.nombre, monto: b.monto }));
+      const asignado = benefs.reduce((a, b) => a + (b.monto || 0), 0);
+      const yoMeQuedo = Math.max(0, margen - asignado);
+
+      // Leer cuenta donde cayó el margen propio
+      const miCuentaSel = document.getElementById('usar_parte_dif_mi_cuenta');
+      const miCuenta = miCuentaSel ? miCuentaSel.value : '';
+
       parte.diferencial = {
         dijo, real, margen,
-        beneficiarios: _usarParteDifBenefs.filter(b => b.nombre || b.monto > 0).map(b => ({ nombre: b.nombre, monto: b.monto }))
+        beneficiarios: benefs,
+        ...(miCuenta && yoMeQuedo > 0.5 ? { miCuenta, yoMeQuedo } : {})
       };
+
+      // Sumar el margen propio a la cuenta elegida
+      if (miCuenta && yoMeQuedo > 0.5) {
+        sumarFuente(miCuenta, yoMeQuedo);
+      }
     }
   }
 
@@ -10110,6 +10149,10 @@ function abrirUsarParteSheet(encId, parteId) {
   _usarParteDifRender();
   const resEl = document.getElementById('usar-parte-dif-resumen');
   if (resEl) resEl.textContent = '';
+  const miCuentaWrap = document.getElementById('usar-parte-dif-mi-cuenta-wrap');
+  if (miCuentaWrap) miCuentaWrap.style.display = 'none';
+  const miCuentaSel = document.getElementById('usar_parte_dif_mi_cuenta');
+  if (miCuentaSel) miCuentaSel.value = '';
 
   openSheet('usar-parte');
 }
@@ -10140,7 +10183,9 @@ function _difRenderHistorialParte(parte) {
     const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b =>
       `${b.nombre} ${fmt(b.monto)}`
     ).join(' · ');
-    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);">💰 margen ${fmt(d.margen)}${benefs ? ': ' + benefs : ''}</span>`;
+    const miParte = d.miCuenta && d.yoMeQuedo > 0 ? `Yo (${fuenteLabel(d.miCuenta)}) ${fmt(d.yoMeQuedo)}` : '';
+    const todas = [benefs, miParte].filter(Boolean).join(' · ');
+    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);">💰 margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`;
   }
   return out;
 }

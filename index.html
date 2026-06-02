@@ -11161,7 +11161,7 @@ function abrirCompraConTC() {
 
   // Poblar tarjetas de credito
   const selTC = document.getElementById('ctc_tarjeta');
-  const tarjetas = (S.tarjetas || []);
+  const tarjetas = (S.tarjetasCredito || []);
   if (tarjetas.length === 0) {
     selTC.innerHTML = '<option value="">No hay TC registradas</option>';
   } else {

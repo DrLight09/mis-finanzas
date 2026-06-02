@@ -2643,6 +2643,11 @@ input.movs-search-input:focus{border-color:var(--accent);}
               + Agregar persona
             </button>
             <div id="movenc-dif-resumen" style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
+            <!-- Select de cuenta propia para el sobrante sin asignar -->
+            <div id="movenc-dif-mi-cuenta-wrap" style="display:none;margin-top:10px;">
+              <label class="il" style="color:var(--accent);margin-bottom:6px;">¿A cuál de tus cuentas entra ese sobrante?</label>
+              <div class="select-wrap"><select id="movenc_dif_mi_cuenta"><option value="">Sin especificar</option></select></div>
+            </div>
           </div>
         </div>
 
@@ -9800,19 +9805,41 @@ function _difResumen() {
   const real    = realEl  ? (parseMoney(realEl.value)  || 0) : 0;
   const margen  = dijo - real;
 
-  if (!dijo && !real) { el.textContent = ''; return; }
+  if (!dijo && !real) { el.textContent = ''; _difActualizarMiCuenta(false); return; }
 
   let html = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>  Real: <span style="color:var(--text2)">${fmt(real)}</span>  Margen: <span style="color:${margen>=0?'var(--accent)':'var(--red)'}">${margen>=0?'+':''}${fmt(margen)}</span>`;
 
+  let sinAsignar = margen; // Por defecto todo el margen es "mío"
   if (_difBenefs.length && margen > 0) {
     const asignado = _difBenefs.reduce((a, b) => a + (b.monto || 0), 0);
-    const pendiente = margen - asignado;
+    sinAsignar = margen - asignado;
     html += `<br>Asignado: <span style="color:var(--text2)">${fmt(asignado)}</span>  `;
-    if (Math.abs(pendiente) < 1) html += `<span style="color:var(--accent)">✓ Cuadra</span>`;
-    else if (pendiente > 0) html += `<span style="color:var(--amber)">Sin asignar: ${fmt(pendiente)}</span>`;
-    else html += `<span style="color:var(--red)">Te pasaste: ${fmt(Math.abs(pendiente))}</span>`;
+    if (Math.abs(sinAsignar) < 1) {
+      html += `<span style="color:var(--accent)">✓ Cuadra</span>`;
+      sinAsignar = 0;
+    } else if (sinAsignar > 0) {
+      html += `<span style="color:var(--accent)">Tuyo: ${fmt(sinAsignar)}</span>`;
+    } else {
+      html += `<span style="color:var(--red)">Te pasaste: ${fmt(Math.abs(sinAsignar))}</span>`;
+      sinAsignar = 0;
+    }
   }
   el.innerHTML = html.replace(/\n/g, '<br>');
+
+  // Mostrar select de cuenta propia si hay margen positivo sin asignar
+  _difActualizarMiCuenta(margen > 0 && sinAsignar > 0.5);
+}
+
+function _difActualizarMiCuenta(mostrar) {
+  const wrap = document.getElementById('movenc-dif-mi-cuenta-wrap');
+  const sel  = document.getElementById('movenc_dif_mi_cuenta');
+  if (!wrap || !sel) return;
+  wrap.style.display = mostrar ? '' : 'none';
+  if (mostrar) {
+    const prevVal = sel.value;
+    sel.innerHTML = '<option value="">Sin especificar (queda como nota)</option>' +
+      getFuentesSinTC().map(f => `<option value="${f.val}"${f.val === prevVal ? ' selected' : ''}>${f.label}</option>`).join('');
+  }
 }
 
 function _procesarDiferencial(movimiento) {
@@ -9825,12 +9852,39 @@ function _procesarDiferencial(movimiento) {
   const dijo = movimiento.monto; // ya guardado = lo que dijo
   const margen = dijo - real;
   if (margen <= 0 && !_difBenefs.length) return;
+
+  const beneficiarios = _difBenefs.filter(b => b.nombre || b.monto > 0).map(b => ({ nombre: b.nombre, monto: b.monto }));
+  const asignado = beneficiarios.reduce((a, b) => a + (b.monto || 0), 0);
+  const sinAsignar = margen - asignado;
+
+  // ¿Hay cuenta propia donde meter el sobrante?
+  const miCuentaSel = document.getElementById('movenc_dif_mi_cuenta');
+  const miCuenta = miCuentaSel ? miCuentaSel.value : '';
+  const yoMeQuedo = (sinAsignar > 0.5 && miCuenta) ? sinAsignar : 0;
+
   movimiento.diferencial = {
     dijo,
     real,
     margen,
-    beneficiarios: _difBenefs.filter(b => b.nombre || b.monto > 0).map(b => ({ nombre: b.nombre, monto: b.monto }))
+    beneficiarios,
+    miCuenta: yoMeQuedo > 0 ? miCuenta : '',
+    yoMeQuedo
   };
+
+  // Si hay sobrante mío con cuenta destino → crear un ingreso real en mis cuentas
+  if (yoMeQuedo > 0 && miCuenta) {
+    const gastos = S.gastos || (S.gastos = []);
+    gastos.push({
+      id: uid(),
+      desc: 'Margen de encargo — ' + (movimiento.desc || ''),
+      monto: yoMeQuedo,
+      cuenta: miCuenta,
+      tipo: 'ingreso',
+      fecha: movimiento.fecha || hoy(),
+      nota: 'Generado automáticamente por el diferencial del encargo',
+      ts: Date.now()
+    });
+  }
 }
 
 /* ─── Diferencial en "Ya la usé" ────────────────────────────── */
@@ -10198,8 +10252,12 @@ function _difRenderHistorial(mov) {
   const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b =>
     `${b.nombre} ${fmt(b.monto)}`
   ).join(' · ');
+  const miParte = d.miCuenta && d.yoMeQuedo > 0
+    ? `Yo → ${fuenteLabel(d.miCuenta)} ${fmt(d.yoMeQuedo)}`
+    : (d.yoMeQuedo > 0 ? `Yo ${fmt(d.yoMeQuedo)}` : '');
+  const todas = [benefs, miParte].filter(Boolean).join(' · ');
   return `<div style="margin-top:4px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;">
-    💰 Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${benefs ? ' · ' + benefs : ''}
+    💰 Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${todas ? ' · ' + todas : ''}
   </div>`;
 }
 
@@ -10288,6 +10346,11 @@ function abrirMovEncargo(tipo) {
       _difBenefs = [];
       _difRenderBenefs();
       _difResumen();
+      // Ocultar select de cuenta propia
+      const miCuentaWrap = document.getElementById('movenc-dif-mi-cuenta-wrap');
+      const miCuentaSel  = document.getElementById('movenc_dif_mi_cuenta');
+      if (miCuentaWrap) miCuentaWrap.style.display = 'none';
+      if (miCuentaSel)  miCuentaSel.value = '';
     } else {
       difWrap.style.display = 'none';
     }

@@ -7873,20 +7873,47 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
     });
     if (!filas.length) { el.innerHTML = ''; return; }
 
-    // Calcular intereses por cajita: la porción del encargo genera intereses proporcionales
-    // Interés que me corresponde = saldoCajita * tasaDiaria * (saldoEncargo / saldoCajita) = saldoEncargo * tasaDiaria
-    const tasa = getNuTasaGlobal ? getNuTasaGlobal() : (S.nuTasaGlobal || 9.25);
-    const tasaDiaria = Math.pow(1 + tasa / 100, 1 / 365) - 1;
+    // Calcular intereses por cajita usando interés compuesto proporcional.
+    // La porción del encargo crece al mismo ritmo que la cajita entera.
+    // Proporción del encargo = saldoEncargo / saldo_base_cajita (el saldo guardado, sin intereses futuros)
+    // Valor actual de esa porción = calcC(cajita).val * proporción
+    // Interés de HOY de esa porción = valor_actual_porción * tasaDiaria
+    // Esto replica exactamente lo que Nu hace: el dinero del encargo genera interés compuesto
+    // acumulado desde que se depositó (fecha de la cajita), y el de hoy es sobre la base ya crecida.
 
-    let totalEncargosNu = 0;
-    let totalInteresesMios = 0;
+    let totalEncargosNu = 0;      // saldo nominal (lo que le debes al encargante)
+    let totalInteresesMios = 0;   // interés de hoy sobre la porción del encargo (es tuyo)
+    let totalValorActual = 0;     // valor actual de la porción (nominal + intereses acumulados = ganancia tuya)
     const filasHtml = filas.map(({enc, cajitaId, saldoEncargo}) => {
       totalEncargosNu += saldoEncargo;
       const cajita = (S.cajitas||[]).find(x => x.id === cajitaId);
       const cajitaNombre = cajita ? (cajita.nombre || 'Cajita Nu') : 'Cajita Nu';
-      // Interés diario que genera esa porción del encargo (es mío, no del encargo)
-      const interesMio = saldoEncargo * tasaDiaria;
-      totalInteresesMios += interesMio;
+
+      // Calcular valor actual proporcional de la porción del encargo
+      let interesMioHoy = 0;
+      let valorActualPorcion = saldoEncargo;
+      let interesAcumulado = 0;
+      if (cajita && cajita.saldo > 0) {
+        const k = calcC(cajita);
+        const proporcion = saldoEncargo / cajita.saldo; // fracción del saldo base que es del encargo
+        valorActualPorcion = k.val * proporcion;        // valor actual de esa fracción (crece con la cajita)
+        interesAcumulado = valorActualPorcion - saldoEncargo; // ganancia acumulada tuya hasta ahora
+        // Interés de hoy = sobre la base ya crecida (interés compuesto)
+        interesMioHoy = valorActualPorcion * k.tasaDiaria;
+      } else {
+        // Cajita sin fecha o sin saldo: usar tasa global simple
+        const tasa = getNuTasaGlobal ? getNuTasaGlobal() : (S.nuTasaGlobal || 9.25);
+        const tasaDiaria = Math.pow(1 + tasa / 100, 1 / 365) - 1;
+        interesMioHoy = saldoEncargo * tasaDiaria;
+      }
+      totalInteresesMios += interesMioHoy;
+      totalValorActual += valorActualPorcion;
+
+      // Mostrar interés acumulado sólo si es significativo
+      const acumuladoTag = interesAcumulado > 0.5
+        ? `<span style="font-size:9px;color:var(--accent);font-family:'DM Mono',monospace;opacity:.8;">+${fmt(interesAcumulado)} acumulado tuyo</span>`
+        : '';
+
       return `
         <div style="background:rgba(96,176,240,.04);border:1px solid rgba(96,176,240,.12);border-radius:9px;padding:10px 12px;margin-bottom:6px;cursor:pointer;" onclick="abrirEncargoDesdeCuenta('${enc.id}')">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
@@ -7905,11 +7932,15 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
               ${cajitaNombre}
             </span>
-            ${interesMio >= 0.01 ? `<span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;">+${fmt(interesMio)}/día <span style="font-size:9px;opacity:.7;">(tuyo)</span></span>` : ''}
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
+              ${interesMioHoy >= 0.01 ? `<span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;">+${fmt(interesMioHoy)}/día <span style="font-size:9px;opacity:.7;">(tuyo)</span></span>` : ''}
+              ${acumuladoTag}
+            </div>
           </div>
         </div>`;
     }).join('');
 
+    const totalAcumulado = totalValorActual - totalEncargosNu; // ganancia acumulada total tuya
     el.innerHTML = `
       <div class="sec-title">Encargos en Nu</div>
       <div style="background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;">
@@ -7919,6 +7950,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
           <div>
             <div style="font-size:10px;color:var(--text3);">Total encargos en Nu</div>
             ${totalInteresesMios >= 0.01 ? `<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;">+${fmt(totalInteresesMios)}/día que ganás vos</div>` : ''}
+            ${totalAcumulado > 0.5 ? `<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;opacity:.75;">+${fmt(totalAcumulado)} ganados hasta hoy</div>` : ''}
           </div>
           <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(totalEncargosNu)}</span>
         </div>

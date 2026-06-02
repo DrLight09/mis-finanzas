@@ -9873,14 +9873,17 @@ function _procesarDiferencial(movimiento) {
 
   // Si hay sobrante mío con cuenta destino → crear un ingreso real en mis cuentas
   if (yoMeQuedo > 0 && miCuenta) {
-    const gastos = S.gastos || (S.gastos = []);
-    gastos.push({
+    // Sumar al saldo real de la cuenta para que el balance refleje el ingreso
+    sumarFuente(miCuenta, yoMeQuedo);
+    // Guardar en S.movimientos (con fuente) para que aparezca en los movimientos de Nu/Nequi/etc.
+    if (!S.movimientos) S.movimientos = [];
+    S.movimientos.push({
       id: uid(),
-      desc: 'Margen de encargo — ' + (movimiento.desc || ''),
+      tipo: 'entrada',
+      fuente: miCuenta,
       monto: yoMeQuedo,
-      cuenta: miCuenta,
-      tipo: 'ingreso',
       fecha: movimiento.fecha || hoy(),
+      desc: 'Margen de encargo — ' + (movimiento.desc || ''),
       nota: 'Generado automáticamente por el diferencial del encargo',
       ts: Date.now()
     });

@@ -11272,7 +11272,7 @@ function _ctcActualizarPreview() {
   const margen = difActivo && real > 0 && real < monto ? (monto - real) : 0;
 
   // TC info
-  const tc = tcId ? (S.tarjetas||[]).find(t=>t.id===tcId) : null;
+  const tc = tcId ? (S.tarjetasCredito||[]).find(t=>t.id===tcId) : null;
   const deudaTC = tc ? (tc.deuda||0) : 0;
   const nombreTC = tc ? tc.nombre : (tcId ? tcId : 'TC');
 
@@ -11344,7 +11344,7 @@ function confirmarCompraConTC() {
   sumarFuente(destino, monto);
 
   // ── 3. Aumentar la deuda de la TC por el valor REAL (no margen)
-  const tc = (S.tarjetas||[]).find(t=>t.id===tcId);
+  const tc = (S.tarjetasCredito||[]).find(t=>t.id===tcId);
   if (tc) {
     tc.deuda = (tc.deuda||0) + tcMonto;
   }
@@ -13494,7 +13494,7 @@ if ('serviceWorker' in navigator) {
             (opcional)</label><input type="text" id="ctc_nota"
             placeholder="Detalle adicional"></div>
         <button type="button" class="btn btn-primary"
-          id="btn-confirmar-compra-tc"
+          id="btn-confirmar-compra-tc-tarjetas"
           style="background:var(--red);border-color:transparent;color:#fff;">Registrar
           compra</button>
         <button type="button" class="btn btn-ghost"
@@ -14279,8 +14279,8 @@ document.addEventListener('DOMContentLoaded',function(){
   const btnGuardarTC=document.getElementById('btn-guardar-tc');
   if(btnGuardarTC)btnGuardarTC.addEventListener('click',guardarTC);
 
-  // Compra TC
-  const btnCompraTC=document.getElementById('btn-confirmar-compra-tc');
+  // Compra TC (sheet de tarjetas, no de encargos — el sheet de encargos tiene su propio listener)
+  const btnCompraTC=document.getElementById('btn-confirmar-compra-tc-tarjetas');
   if(btnCompraTC)btnCompraTC.addEventListener('click',confirmarCompraTC);
 
   // Pagar TC

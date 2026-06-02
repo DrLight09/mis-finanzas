@@ -7563,7 +7563,7 @@ function confirmarSpDestino(){
   // Registrar en historial (un registro por cada mes cobrado)
   if(!S.spotifyHistorial)S.spotifyHistorial=[];
   for(let m=0;m<meses;m++){
-    S.spotifyHistorial.push({tipo:'cobro',nombre:p.nombre,monto:p.monto||0,fuente:spDestinoSel||'',fecha:hoy(),nota:meses>1?`Mes ${m+1} de ${meses} (pago adelantado)`:''});
+    S.spotifyHistorial.push({id:uid(),tipo:'cobro',nombre:p.nombre,monto:p.monto||0,fuente:spDestinoSel||'',fecha:hoy(),nota:meses>1?`Mes ${m+1} de ${meses} (pago adelantado)`:''});
   }
   spDestinoIdx=null;spDestinoSel='';spMesesSel=1;
   save();refresh();closeSheet('sp-destino');
@@ -8200,7 +8200,9 @@ function getMovimientosCuenta(tipo) {
       ? (h.fuente && h.fuente.startsWith('cajita:'))
       : h.fuente === tipo;
     if (matchFuente) {
-      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente: h.fuente, _idx: _idx++ });
+      // Usar h.id si existe, o fabricar un _movId estable a partir del índice para que el sort
+      // funcione igual que los demás movimientos (por timestamp de registro, no por orden de iteración)
+      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente: h.fuente, _idx: _idx++, _movId: h.id || null });
     }
   });
   // Transferencias entre cuentas
@@ -8227,6 +8229,9 @@ function getMovimientosCuenta(tipo) {
     const aId = a._movId || '';
     const bId = b._movId || '';
     if (aId && bId) return bId.localeCompare(aId);
+    // Si solo uno tiene _movId, ese va primero (tiene timestamp confiable)
+    if (aId) return -1;
+    if (bId) return 1;
     return (b._idx || 0) - (a._idx || 0);
   });
   return movs;
@@ -10725,14 +10730,43 @@ function confirmarMovEncargo() {
 }
 
 async function deleteMovEncargo(encId, movId) {
-  const ok = await dialogo('Eliminar movimiento', '¿Eliminar este movimiento del encargo?', 'Eliminar', true);
+  const ok = await dialogo('Eliminar movimiento', '¿Eliminar este movimiento del encargo? Se revertirán todos los efectos en tus cuentas.', 'Eliminar', true);
   if (!ok) return;
   const enc = getEncargo(encId);
   if (!enc) return;
+
+  const mov = (enc.movimientos||[]).find(m=>m.id===movId);
+
+  // Revertir efectos secundarios de una compra TC de encargo
+  if (mov && mov._esTcEncargo) {
+    // Revertir el sumarFuente del paso 2 (el dinero del encargo que pasó a ser "mío")
+    if (mov._destino && mov.monto) descontarFuente(mov._destino, mov.monto);
+
+    // Revertir la deuda de la TC (paso 3)
+    if (mov._tcId && mov._tcMonto) {
+      const tc = (S.tarjetasCredito||[]).find(t=>t.id===mov._tcId);
+      if (tc) tc.deuda = Math.max(0, (tc.deuda||0) - mov._tcMonto);
+    }
+
+    // Borrar el movimiento de historial de TC vinculado (paso 4)
+    if (S.tcMovimientos) {
+      S.tcMovimientos = S.tcMovimientos.filter(t => t._encMovId !== movId);
+    }
+
+    // Borrar el S.movimientos de diferencial vinculado (paso 5) y revertir sumarFuente del margen
+    if (S.movimientos) {
+      const difMovs = S.movimientos.filter(m => m._encMovId === movId);
+      difMovs.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto); });
+      S.movimientos = S.movimientos.filter(m => m._encMovId !== movId);
+    }
+  }
+
   enc.movimientos = (enc.movimientos||[]).filter(m=>m.id!==movId);
   save();
+  refresh();
+  if (cuentaActual) renderDetalleCuenta(cuentaActual);
   abrirEncargoDetalle(encId);
-  toast('Movimiento eliminado', 'info');
+  toast('Movimiento eliminado y saldos revertidos', 'info');
 }
 
 async function eliminarEncargoActual() {
@@ -11327,8 +11361,9 @@ function confirmarCompraConTC() {
 
   // ── 1. Registrar SALIDA en el encargo (el dinero deja de ser de ellos)
   if (!enc.movimientos) enc.movimientos = [];
+  const _encMovId = uid(); // ID del movimiento del encargo — usado para vincular efectos secundarios
   enc.movimientos.push({
-    id: uid(),
+    id: _encMovId,
     tipo: 'salida',
     desc: `Compra pagada con TC: ${desc}`,
     monto,
@@ -11336,6 +11371,9 @@ function confirmarCompraConTC() {
     fecha,
     nota: nota || 'Compra de encargo pagada con TC — dinero convertido para pago de tarjeta.',
     _esTcEncargo: true,
+    _destino: destino,   // guardar destino para poder revertir el sumarFuente al eliminar
+    _tcId: tcId,         // guardar TC para revertir la deuda al eliminar
+    _tcMonto: tcMonto,   // monto real cargado a la TC
     ts: Date.now()
   });
 
@@ -11359,7 +11397,8 @@ function confirmarCompraConTC() {
     monto: tcMonto,
     fecha,
     nota: nota || 'Cargo de encargo — no es gasto propio',
-    encId: enc.id
+    encId: enc.id,
+    _encMovId  // vínculo para poder limpiar al eliminar el movimiento del encargo
   });
 
   // ── 5. Si hay diferencial, registrar como ingreso propio
@@ -11373,7 +11412,8 @@ function confirmarCompraConTC() {
         fuente: margenCuenta,
         monto: margen,
         fecha,
-        desc: `Diferencial encargo ${enc.nombre} — ${desc}`
+        desc: `Diferencial encargo ${enc.nombre} — ${desc}`,
+        _encMovId  // vínculo: al eliminar el movimiento del encargo, también se borra este
       });
     }
   }

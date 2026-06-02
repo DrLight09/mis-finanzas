@@ -9904,6 +9904,7 @@ function _usarParteDifResumen() {
 
 /* ─── Fuente (origen) en "Ya la usé" ──────────────────────────── */
 let _usarParteSplitMode = false;
+let _usarParteMargenPendiente = null;
 
 function _usarParteSplitToggle() {
   _usarParteSplitMode = !_usarParteSplitMode;
@@ -10046,9 +10047,10 @@ async function _confirmarUsarParte() {
         ...(miCuenta && yoMeQuedo > 0.5 ? { miCuenta, yoMeQuedo } : {})
       };
 
-      // Sumar el margen propio a la cuenta elegida
+      // Guardar cuenta del margen para usarla al final (después de los movimientos del encargo)
       if (miCuenta && yoMeQuedo > 0.5) {
         sumarFuente(miCuenta, yoMeQuedo);
+        _usarParteMargenPendiente = { fuente: miCuenta, monto: yoMeQuedo };
       }
     }
   }
@@ -10094,6 +10096,22 @@ async function _confirmarUsarParte() {
 
   parte.usada = true;
   parte.usadaEn = hoy();
+
+  // Registrar el ingreso del margen al final, para que su uid() sea mayor que los de salida del encargo
+  if (_usarParteMargenPendiente) {
+    const { fuente, monto } = _usarParteMargenPendiente;
+    if (!S.movimientos) S.movimientos = [];
+    S.movimientos.push({
+      id: uid(),
+      tipo: 'entrada',
+      fuente,
+      monto,
+      fecha: hoy(),
+      desc: `Margen encargo ${enc.nombre} — ${parte.desc}`
+    });
+    _usarParteMargenPendiente = null;
+  }
+
   save();
   closeSheet('usar-parte');
   abrirEncargoDetalle(_usarParteEncId);

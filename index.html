@@ -10344,22 +10344,32 @@ function abrirMovEncargo(tipo) {
 
   // Poblar select de cuentas (modo simple)
   const sel = document.getElementById('movenc_cuenta');
-  const fuentes = getFuentes();
-  sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
 
   // Cambiar label según tipo y mostrar/ocultar botón dividir
   const label = document.getElementById('movenc_cuenta_label');
   if (tipo === 'entrada') {
+    // Entrada: mostrar todas las fuentes disponibles
+    const fuentes = getFuentes();
+    sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
     label.textContent = '¿En qué cuenta guardaste esa plata?';
     if (splitToggleBtn) splitToggleBtn.style.display = 'none';
   } else {
+    // Salida: solo cuentas donde el encargo tiene plata
+    const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
+    if (cuentasConSaldo.length === 0) {
+      // Si no hay distribución por cuenta, mostrar todas
+      const fuentes = getFuentes();
+      sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+    } else {
+      sel.innerHTML = '<option value="">Sin especificar</option>' +
+        cuentasConSaldo.map(f=>`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+    }
     label.textContent = '¿De qué cuenta sacaste esa plata?';
     if (splitToggleBtn) splitToggleBtn.style.display = '';
     // Pre-seleccionar la cuenta con más saldo del encargo
-    const cuentasPrincipales = _getEncargoSaldoPorCuenta(enc);
-    if (cuentasPrincipales.length > 0) {
-      sel.value = cuentasPrincipales[0].cuenta;
-      _actualizarMovEncCuentaHint(enc, cuentasPrincipales[0].cuenta);
+    if (cuentasConSaldo.length > 0) {
+      sel.value = cuentasConSaldo[0].cuenta;
+      _actualizarMovEncCuentaHint(enc, cuentasConSaldo[0].cuenta);
     }
   }
 

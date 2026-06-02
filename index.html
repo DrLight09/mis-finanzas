@@ -7685,6 +7685,7 @@ function mostrarAlertaFuente(prefix){
   const destEl=document.getElementById(prefix+'_destino');
   if(destEl){const val=destEl.value;const hint=document.getElementById(prefix+'_destino_hint');if(hint)hint.style.display=val?'block':'none';}
 }
+window.mostrarAlertaFuente = mostrarAlertaFuente;
 
 /* ---- NAV / SHEETS ---- */
 function openSheet(id){
@@ -7696,6 +7697,7 @@ function openSheet(id){
   if(id==='spotify'){const fd=document.getElementById('sp_fecha_ingreso');if(fd&&!fd.value)fd.value=hoy();}
   document.getElementById('sheet-'+id).classList.add('open');
 }
+window.openSheet = openSheet;
 function closeSheet(id){document.getElementById('sheet-'+id).classList.remove('open');}
 
 function showScreen(name){
@@ -9972,7 +9974,7 @@ function _renderUsarParteDifBenefs() {
   const el = document.getElementById('usarParte_dif_benef_list');
   if (!el) return;
   if (!_usarParteDifBenefs.length) {
-    el.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:6px 0 10px;font-family:'DM Mono',monospace;">Agrega al menos un beneficiario.</div>';
+    el.innerHTML = '<div style="font-size:11px;color:var(--text3);padding:6px 0 10px;font-family:\'DM Mono\',monospace;">Agrega al menos un beneficiario.</div>';
     return;
   }
   const fuentes = typeof getFuentes === 'function' ? getFuentes() : [];
@@ -11417,7 +11419,7 @@ document.addEventListener('focusin', function(e){
 
   // ── Inicializar la app una sola vez tras la primera carga ─────────────────
   function _initAppUI() {
-    load();
+    window.load();
     (function(){
       const el=document.getElementById('nuTasaGlobal');
       if(el&&window.S.nuTasaGlobal!=null)el.value=String(window.S.nuTasaGlobal).replace('.',',');
@@ -11426,14 +11428,14 @@ document.addEventListener('focusin', function(e){
           const raw=this.value.replace(',','.');
           const v=raw===''?null:(parseFloat(raw)||null);
           window.S.nuTasaGlobal=v;
-          save();refresh();
+          window.save();window.refresh();
         });
         el.addEventListener('blur',function(){
           if(this.value&&parseFloat(this.value)<=0)this.value='';
         });
       }
     })();
-    refresh(); applyModulos();
+    window.refresh(); window.applyModulos();
     poblarCatSelect('gv_cat',getCatsVar());
     poblarCatSelect('gf_c',getCatsFijo());
     _initEventListeners();
@@ -11531,9 +11533,9 @@ document.addEventListener('focusin', function(e){
             _applyCloudData(snap);
             // Re-renderizar la UI sin reinicializar event listeners
             if(window._dataLoaded) {
-              load();
-              refresh();
-              if(window.applyModulos) applyModulos();
+              window.load();
+              window.refresh();
+              if(window.applyModulos) window.applyModulos();
               setSyncStatus('ok', 'Sincronizado · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
               if(window.toast) window.toast('Datos actualizados desde otro dispositivo', 'info', 3000);
             }
@@ -11558,6 +11560,10 @@ document.addEventListener('focusin', function(e){
     if(snap.exists() && snap.data().payload) {
       try {
         const cloudData = JSON.parse(snap.data().payload);
+        // Guard: cloudData puede ser null si el payload era "null" o inválido
+        if(cloudData === null || typeof cloudData !== 'object' || Array.isArray(cloudData)) {
+          console.warn('[Sync] Payload de la nube no es un objeto válido — ignorando.');
+        } else {
         console.log('[Sync] _applyCloudData: keys=' + Object.keys(cloudData).length + ' updatedAt=' + snap.data().updatedAt);
         // Migración: nube vacía pero localStorage tiene datos → migrar
         const local = (() => { try { const r=localStorage.getItem('mf_v5'); return r?JSON.parse(r):null; } catch(e){return null;} })();
@@ -11581,6 +11587,7 @@ document.addEventListener('focusin', function(e){
             }
           });
         }
+        } // cierre del guard null
       } catch(e) {
         console.error('[Sync] Error al parsear datos de la nube:', e);
       }
@@ -11607,7 +11614,7 @@ document.addEventListener('focusin', function(e){
     // Snapshot diario: guardar patrimonio del día aunque no haya otros cambios.
     // Esto llena la gráfica de patrimonio sin que el usuario tenga que hacer nada.
     if(typeof snapshotPatrimonio === 'function'){
-      snapshotPatrimonio();
+      window.snapshotPatrimonio();
       if(typeof window._fbSaveToCloud === 'function') window._fbSaveToCloud();
     }
     // Resumen de cierre de mes: detectar si cambió el mes desde la última apertura
@@ -12686,33 +12693,29 @@ if ('serviceWorker' in navigator) {
     'transferir': 'tr_monto',
   };
 
-  const _origOpenSheet = window.openSheet;
-  if (typeof _origOpenSheet !== 'function') {
-    console.warn('[Autofocus] openSheet no estaba definida al momento del parcheo. Reintentando...');
-    // Reintentar una vez que esté disponible
-    const _t = setInterval(() => {
-      if (typeof window.openSheet === 'function' && window.openSheet !== arguments.callee) {
-        clearInterval(_t);
-        const _r = window.openSheet;
-        window.openSheet = function(id) {
-          _r.apply(this, arguments);
-          const focusId = focusMap[id];
-          if (focusId) setTimeout(() => { const el = document.getElementById(focusId); if (el && typeof el.focus === 'function') el.focus(); }, 250);
-        };
+  function _applyAutofocusPatch() {
+    const _origOpenSheet = window.openSheet;
+    if (typeof _origOpenSheet !== 'function') return;
+    // Evitar doble-parcheo
+    if (_origOpenSheet._autofocusPatched) return;
+    window.openSheet = function(id) {
+      _origOpenSheet.apply(this, arguments);
+      const focusId = focusMap[id];
+      if (focusId) {
+        setTimeout(() => {
+          const el = document.getElementById(focusId);
+          if (el && typeof el.focus === 'function') el.focus();
+        }, 250);
       }
-    }, 100);
-    return;
+    };
+    window.openSheet._autofocusPatched = true;
   }
-  window.openSheet = function(id) {
-    _origOpenSheet.apply(this, arguments);
-    const focusId = focusMap[id];
-    if (focusId) {
-      setTimeout(() => {
-        const el = document.getElementById(focusId);
-        if (el && typeof el.focus === 'function') el.focus();
-      }, 250);
-    }
-  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _applyAutofocusPatch);
+  } else {
+    _applyAutofocusPatch();
+  }
 })();
 
 /* ================================================================

@@ -2588,14 +2588,31 @@ input.movs-search-input:focus{border-color:var(--accent);}
             placeholder="Ej: pago servicios, depósito..."></div>
         <div class="ig"><label class="il" for="movenc_monto">Monto</label><input
             type="text" inputmode="decimal" id="movenc_monto" placeholder="0,00"
-            class="money-input"></div>
+            class="money-input" oninput="_movEncSplitPreview()"></div>
         <div class="ig" id="movenc_cuenta_wrap">
-          <label class="il" for="movenc_cuenta" id="movenc_cuenta_label">¿En qué
-            cuenta está esa plata?</label>
-          <div class="select-wrap"><select id="movenc_cuenta"><option value>Sin
-                especificar</option></select></div>
-          <div id="movenc_cuenta_hint"
-            style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <label class="il" style="margin-bottom:0;" id="movenc_cuenta_label">¿En qué cuenta está esa plata?</label>
+            <button type="button" id="movenc_split_toggle" onclick="_movEncSplitToggle()"
+              style="display:none;padding:4px 10px;border-radius:var(--radius-sm);border:1.5px solid rgba(200,240,96,.3);background:rgba(200,240,96,.1);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+              Dividir ÷
+            </button>
+          </div>
+          <!-- Modo simple -->
+          <div id="movenc_cuenta_simple">
+            <div class="select-wrap"><select id="movenc_cuenta"><option value="">Sin especificar</option></select></div>
+            <div id="movenc_cuenta_hint"
+              style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+          </div>
+          <!-- Modo dividido (solo visible en salidas) -->
+          <div id="movenc_cuenta_split" style="display:none;">
+            <div id="movencSplitRows"></div>
+            <button type="button" onclick="_movEncAgregarSplitRow()"
+              style="width:100%;padding:7px;border-radius:var(--radius-sm);border:1.5px dashed rgba(200,240,96,.3);background:transparent;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;margin-top:4px;font-family:'DM Sans',sans-serif;">
+              + Agregar cuenta
+            </button>
+          </div>
+          <!-- Preview distribución -->
+          <div id="movenc_split_preview" style="margin-top:7px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:18px;"></div>
         </div>
         <div class="ig"><label class="il" for="movenc_fecha">Fecha</label><input
             type="date" id="movenc_fecha"></div>
@@ -10221,17 +10238,30 @@ function abrirMovEncargo(tipo) {
   document.getElementById('movenc_nota').value = '';
   document.getElementById('movenc_fecha').value = hoy();
 
-  // Poblar select de cuentas
+  // Resetear modo split
+  _movEncSplitMode = false;
+  const splitToggleBtn = document.getElementById('movenc_split_toggle');
+  const simpleModo     = document.getElementById('movenc_cuenta_simple');
+  const splitModo      = document.getElementById('movenc_cuenta_split');
+  const splitPreview   = document.getElementById('movenc_split_preview');
+  if (splitToggleBtn) { splitToggleBtn.textContent = 'Dividir ÷'; splitToggleBtn.style.background='rgba(200,240,96,.1)'; splitToggleBtn.style.borderColor='rgba(200,240,96,.3)'; splitToggleBtn.style.color='var(--accent)'; }
+  if (simpleModo) simpleModo.style.display = '';
+  if (splitModo)  { splitModo.style.display = 'none'; document.getElementById('movencSplitRows').innerHTML = ''; }
+  if (splitPreview) splitPreview.textContent = '';
+
+  // Poblar select de cuentas (modo simple)
   const sel = document.getElementById('movenc_cuenta');
   const fuentes = getFuentes();
   sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
 
-  // Cambiar label según tipo
+  // Cambiar label según tipo y mostrar/ocultar botón dividir
   const label = document.getElementById('movenc_cuenta_label');
   if (tipo === 'entrada') {
     label.textContent = '¿En qué cuenta guardaste esa plata?';
+    if (splitToggleBtn) splitToggleBtn.style.display = 'none';
   } else {
     label.textContent = '¿De qué cuenta sacaste esa plata?';
+    if (splitToggleBtn) splitToggleBtn.style.display = '';
     // Pre-seleccionar la cuenta con más saldo del encargo
     const cuentasPrincipales = _getEncargoSaldoPorCuenta(enc);
     if (cuentasPrincipales.length > 0) {
@@ -10287,6 +10317,93 @@ function _actualizarMovEncCuentaHint(enc, cuentaVal) {
   hint.textContent = 'Del encargo en esta cuenta: ' + fmt(saldoEnCuenta);
 }
 
+/* ─── Split de fuente en "Retirar plata" del encargo ─────────────── */
+let _movEncSplitMode = false;
+
+function _movEncSplitToggle() {
+  _movEncSplitMode = !_movEncSplitMode;
+  document.getElementById('movenc_cuenta_simple').style.display = _movEncSplitMode ? 'none' : '';
+  document.getElementById('movenc_cuenta_split').style.display  = _movEncSplitMode ? '' : 'none';
+  const btn = document.getElementById('movenc_split_toggle');
+  if (btn) {
+    btn.textContent    = _movEncSplitMode ? 'Una sola cuenta' : 'Dividir ÷';
+    btn.style.background   = _movEncSplitMode ? 'rgba(240,184,64,.1)'  : 'rgba(200,240,96,.1)';
+    btn.style.borderColor  = _movEncSplitMode ? 'rgba(240,184,64,.3)'  : 'rgba(200,240,96,.3)';
+    btn.style.color        = _movEncSplitMode ? 'var(--amber)'         : 'var(--accent)';
+  }
+  // Arrancar con 2 filas vacías
+  const rows = document.getElementById('movencSplitRows');
+  if (_movEncSplitMode && rows && rows.children.length === 0) {
+    _movEncAgregarSplitRow();
+    _movEncAgregarSplitRow();
+  }
+  _movEncSplitPreview();
+}
+
+function _movEncGetFuentesOptions(selectedVal) {
+  const enc = encargoActualId ? getEncargo(encargoActualId) : null;
+  const cuentasConSaldo = enc ? _getEncargoSaldoPorCuenta(enc) : [];
+  // Si el encargo no tiene distribución por cuenta, mostrar todas las fuentes
+  if (cuentasConSaldo.length === 0) {
+    const fuentes = getFuentes();
+    return '<option value="">Sin especificar</option>' +
+      fuentes.map(f => `<option value="${f.val}"${f.val === selectedVal ? ' selected' : ''}>${f.label}</option>`).join('');
+  }
+  return '<option value="">Sin especificar</option>' +
+    cuentasConSaldo.map(f =>
+      `<option value="${f.cuenta}"${f.cuenta === selectedVal ? ' selected' : ''}>${f.label} (${fmt(f.saldo)})</option>`
+    ).join('');
+}
+
+function _movEncAgregarSplitRow() {
+  const container = document.getElementById('movencSplitRows');
+  if (!container) return;
+  const id = 'mesr_' + uid();
+  const div = document.createElement('div');
+  div.id = id;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:7px;';
+  div.innerHTML = `
+    <div class="select-wrap"><select onchange="_movEncSplitPreview()" style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">${_movEncGetFuentesOptions('')}</select></div>
+    <input type="text" inputmode="decimal" placeholder="monto" oninput="_movEncSplitPreview()" class="money-input" style="width:96px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Mono',monospace;outline:none;">
+    <button type="button" onclick="document.getElementById('${id}').remove();_movEncSplitPreview();" style="width:28px;height:36px;background:rgba(240,104,104,.1);border:1px solid rgba(240,104,104,.2);border-radius:7px;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>`;
+  container.appendChild(div);
+}
+
+function _movEncGetSplitData() {
+  const rows = document.getElementById('movencSplitRows');
+  if (!rows) return [];
+  const result = [];
+  for (const row of rows.children) {
+    const sel = row.querySelector('select');
+    const inp = row.querySelector('input');
+    const fuente = sel ? sel.value : '';
+    const monto  = parseMoney(inp ? inp.value : '') || 0;
+    if (monto > 0) result.push({ fuente, monto });
+  }
+  return result;
+}
+
+function _movEncSplitPreview() {
+  const el = document.getElementById('movenc_split_preview');
+  if (!el) return;
+  const montoTotal = parseMoney(document.getElementById('movenc_monto').value) || 0;
+  if (!_movEncSplitMode) { el.textContent = ''; return; }
+  const splits  = _movEncGetSplitData();
+  const asignado = splits.reduce((a, s) => a + s.monto, 0);
+  const restante = montoTotal - asignado;
+  if (splits.length === 0) { el.textContent = ''; return; }
+  let lines = splits.map(s => `${s.fuente ? fuenteLabel(s.fuente) : 'Sin esp.'}: ${fmt(s.monto)}`).join(' · ');
+  if (montoTotal > 0) {
+    if (restante > 0.5)       { el.textContent = lines + ` · Sin asignar: ${fmt(restante)}`; el.style.color = 'var(--amber)'; }
+    else if (restante < -0.5) { el.textContent = lines + ` · Excede: ${fmt(-restante)}`;     el.style.color = 'var(--red)'; }
+    else                      { el.textContent = lines + ' ✓';                               el.style.color = 'var(--accent)'; }
+  } else {
+    el.textContent = lines; el.style.color = 'var(--text2)';
+  }
+}
+
 function _getEncargoSaldoPorCuenta(enc) {
   // Returns [{cuenta, label, saldo}] sorted by saldo desc
   const map = {};
@@ -10324,48 +10441,92 @@ function _getEncargoSaldoEnCuenta(enc, cuentaVal) {
 }
 
 function confirmarMovEncargo() {
-  const desc = document.getElementById('movenc_desc').value.trim();
-  const monto = parseMoney(document.getElementById('movenc_monto').value)||0;
-  const cuenta = document.getElementById('movenc_cuenta').value;
-  if (!desc) { toast('Ingresa una descripción', 'err'); return; }
+  const desc  = document.getElementById('movenc_desc').value.trim();
+  const monto = parseMoney(document.getElementById('movenc_monto').value) || 0;
+  if (!desc)  { toast('Ingresa una descripción', 'err'); return; }
   if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
   if (!enc.movimientos) enc.movimientos = [];
-  // Validar que no quede saldo negativo al salir
-  if (movEncargoTipo === 'salida') {
+
+  if (movEncargoTipo === 'salida' && _movEncSplitMode) {
+    // ── MODO SPLIT ──────────────────────────────────────────────────
+    const splits = _movEncGetSplitData();
+    const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
+    if (splits.length === 0) { toast('Agrega al menos una cuenta en el split', 'err'); return; }
+    if (Math.abs(totalSplit - monto) > 0.5) {
+      toast(`La suma del split (${fmt(totalSplit)}) debe ser igual al monto (${fmt(monto)})`, 'err'); return;
+    }
+    // Validar saldo del encargo total
     const saldoActual = encargoSaldo(enc);
     if (monto > saldoActual) {
       toast(`El saldo del encargo es solo ${fmt(saldoActual)}`, 'err'); return;
     }
-    // Validar saldo en la cuenta específica si se especificó
-    if (cuenta) {
-      const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuenta);
-      if (monto > saldoEnCuenta) {
-        toast(`En ${fuenteLabel(cuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+    // Validar saldo por cuenta individualmente
+    for (const s of splits) {
+      if (!s.fuente) continue;
+      const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, s.fuente);
+      if (s.monto > saldoEnCuenta + 0.5) {
+        toast(`En ${fuenteLabel(s.fuente)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
       }
     }
+    // Registrar un movimiento por cada porción del split
+    const fecha = document.getElementById('movenc_fecha').value || hoy();
+    const nota  = document.getElementById('movenc_nota').value.trim();
+    splits.forEach((s, i) => {
+      const mov = {
+        id: uid(),
+        tipo: 'salida',
+        desc,
+        monto: s.monto,
+        cuenta: s.fuente || '',
+        fecha,
+        nota,
+        ts: Date.now() + i,
+        ...(splits.length > 1 ? { _splitTotal: monto, _splitParte: i + 1, _splitDe: splits.length } : {})
+      };
+      enc.movimientos.push(mov);
+      // Procesar diferencial solo en el primer movimiento del grupo
+      if (i === 0) _procesarDiferencial(mov);
+    });
+    save();
+    closeSheet('mov-encargo');
+    abrirEncargoDetalle(encargoActualId);
+    toast('Salida registrada', 'ok');
+
+  } else {
+    // ── MODO SIMPLE ──────────────────────────────────────────────────
+    const cuenta = document.getElementById('movenc_cuenta').value;
+    // Validar que no quede saldo negativo al salir
+    if (movEncargoTipo === 'salida') {
+      const saldoActual = encargoSaldo(enc);
+      if (monto > saldoActual) {
+        toast(`El saldo del encargo es solo ${fmt(saldoActual)}`, 'err'); return;
+      }
+      if (cuenta) {
+        const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuenta);
+        if (monto > saldoEnCuenta) {
+          toast(`En ${fuenteLabel(cuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+        }
+      }
+    }
+    const nuevoMov = {
+      id: uid(),
+      tipo: movEncargoTipo,
+      desc,
+      monto,
+      cuenta: cuenta || '',
+      fecha: document.getElementById('movenc_fecha').value || hoy(),
+      nota: document.getElementById('movenc_nota').value.trim(),
+      ts: Date.now()
+    };
+    enc.movimientos.push(nuevoMov);
+    if (movEncargoTipo === 'salida') _procesarDiferencial(nuevoMov);
+    save();
+    closeSheet('mov-encargo');
+    abrirEncargoDetalle(encargoActualId);
+    toast(movEncargoTipo === 'entrada' ? 'Entrada registrada' : 'Salida registrada', 'ok');
   }
-
-  const nuevoMov = {
-    id: uid(),
-    tipo: movEncargoTipo,
-    desc,
-    monto,
-    cuenta: cuenta || '',
-    fecha: document.getElementById('movenc_fecha').value||hoy(),
-    nota: document.getElementById('movenc_nota').value.trim(),
-    ts: Date.now()
-  };
-  enc.movimientos.push(nuevoMov);
-
-  // Guardar diferencial como registro (no mueve plata)
-  if (movEncargoTipo === 'salida') _procesarDiferencial(nuevoMov);
-
-  save();
-  closeSheet('mov-encargo');
-  abrirEncargoDetalle(encargoActualId); // refresh detalle
-  toast(movEncargoTipo==='entrada'?'Entrada registrada':'Salida registrada', 'ok');
 }
 
 async function deleteMovEncargo(encId, movId) {

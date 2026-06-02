@@ -14370,6 +14370,47 @@ function _injectSheet(){
       <button type="button" class="btn btn-ghost" data-close-sheet="cp-recibir">Cancelar</button>
     </div>
   </div>
+
+  <!-- SHEET: USÉ MI TC (compra del encargo pagada con tarjeta de crédito) -->
+  <div class="overlay" id="sheet-cp-use-tc" data-sheet-id="cp-use-tc">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title" style="display:flex;align-items:center;gap:9px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.4" fill="var(--red)" stroke="none"/></svg>
+        Compré con mi TC
+      </div>
+      <div style="background:rgba(240,104,104,.07);border:1px solid rgba(240,104,104,.22);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:16px;">
+        <div style="font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;font-weight:700;margin-bottom:4px;">¿Qué hace esto?</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.55;">El dinero del encargo <b style="color:var(--text);">no desaparece</b> — pasa a ser tuyo porque vos adelantaste el pago con la tarjeta. La deuda de tu TC sube y ese dinero queda reservado en la cajita TC para pagarlo.</div>
+      </div>
+      <div id="cp-use-tc-encargo-card" style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;">
+        <div style="font-size:10px;color:rgba(240,184,64,.7);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Encargo</div>
+        <div style="font-size:15px;font-weight:600;" id="cp-use-tc-desc">—</div>
+        <div style="font-size:14px;font-family:'DM Mono',monospace;color:var(--amber);margin-top:2px;" id="cp-use-tc-total-encargo">$0 disponibles</div>
+      </div>
+      <div class="ig">
+        <label class="il" for="cp-use-tc-monto">Valor de la compra <span style="color:var(--red);">*</span></label>
+        <input type="text" inputmode="decimal" id="cp-use-tc-monto" placeholder="0,00" class="money-input">
+        <div style="font-size:11px;color:var(--text3);margin-top:5px;font-family:'DM Mono',monospace;" id="cp-use-tc-monto-hint"></div>
+      </div>
+      <div class="ig">
+        <label class="il" for="cp-use-tc-sel">¿Con qué tarjeta? <span style="color:var(--red);">*</span></label>
+        <div class="select-wrap"><select id="cp-use-tc-sel"><option value="">— elegí una tarjeta —</option></select></div>
+      </div>
+      <div class="ig">
+        <label class="il" for="cp-use-tc-nota">Nota (opcional)</label>
+        <input type="text" id="cp-use-tc-nota" placeholder="Ej: Mercado, ropa del encargo...">
+      </div>
+      <div id="cp-use-tc-preview" style="display:none;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;">
+        <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;font-weight:700;margin-bottom:8px;">Vista previa del resultado</div>
+        <div style="display:flex;flex-direction:column;gap:6px;" id="cp-use-tc-preview-rows"></div>
+      </div>
+      <button type="button" class="btn btn-primary" id="cp-use-tc-confirm-btn" onclick="window._cpConfirmarUseTc()" style="background:var(--red);color:#fff;border:none;box-shadow:0 2px 14px rgba(240,104,104,.3);">
+        <i class="fa-solid fa-credit-card" style="margin-right:7px;"></i>Registrar compra con TC
+      </button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="cp-use-tc">Cancelar</button>
+    </div>
+  </div>
   `;
   document.body.insertAdjacentHTML('beforeend', html);
 }
@@ -14378,6 +14419,7 @@ function _injectSheet(){
 let _cpEditId = null;
 let _cpDestinosTmp = [];   // destinos mientras se construye el nuevo ingreso
 let _cpRecibirId = null;
+let _cpUseTcId = null;     // id del encargo en el flujo "Usé mi TC"
 
 /* ── HELPERS ─────────────────────────────────────────────────────── */
 function _cpData(){
@@ -14468,6 +14510,7 @@ const _CP_TIPO_LABELS = {
   gasto:       { label:'Gasto pendiente',                  color:'var(--amber)',  bg:'rgba(240,184,64,.08)', border:'rgba(240,184,64,.2)' },
   abono_deuda: { label:'Abono a deuda pendiente',          color:'var(--accent)', bg:'rgba(200,240,96,.08)', border:'rgba(200,240,96,.2)' },
   otro:        { label:'Otro (sin efecto en saldos)',       color:'var(--text2)',  bg:'rgba(136,136,128,.08)', border:'rgba(136,136,128,.2)' },
+  compra_tc:   { label:'Compra pagada con TC',              color:'var(--red)',    bg:'rgba(240,104,104,.1)', border:'rgba(240,104,104,.3)' },
 };
 
 /* ── RENDER LISTA PRINCIPAL ──────────────────────────────────────── */
@@ -14555,7 +14598,10 @@ function _cpRenderLista(){
           ${(item.destinos||[]).map(d=>{
             const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
             let estadoBadge = '';
-            if(d.tipo === 'reposicion'){
+            if(d.tipo === 'compra_tc'){
+              const tcNom = d.tcId ? ((S.tarjetasCredito||[]).find(t=>t.id===d.tcId)||{}).nombre||'TC' : 'TC';
+              estadoBadge = ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(240,104,104,.15);color:var(--red);vertical-align:middle;"><i class="fa-solid fa-credit-card" style="margin-right:2px;"></i>${tcNom}</span>`;
+            } else if(d.tipo === 'reposicion'){
               estadoBadge = d.yaSaque
                 ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(176,144,240,.2);color:var(--purple);vertical-align:middle;"><i class="fa-solid fa-check" style="margin-right:2px;"></i>saqué</span>`
                 : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(200,240,96,.1);color:var(--accent);vertical-align:middle;">pendiente</span>`;
@@ -14582,6 +14628,12 @@ function _cpRenderLista(){
             style="flex:1;min-width:80px;padding:8px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.12);border:1.5px solid rgba(200,240,96,.35);color:var(--accent);display:flex;align-items:center;justify-content:center;gap:5px;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
             ¡Llegó!
+          </button>
+          <button type="button" onclick="window._cpAbrirUseTc('${item.id}')"
+            style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(240,104,104,.1);border:1.5px solid rgba(240,104,104,.35);color:var(--red);display:flex;align-items:center;gap:5px;"
+            title="Registrar que compré esto del encargo con mi tarjeta de crédito">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>
+            Usé mi TC
           </button>
           <button type="button" onclick="window._cpMarcarPagos('${item.id}')"
             style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(240,184,64,.08);border:1.5px solid rgba(240,184,64,.3);color:var(--amber);"
@@ -14995,6 +15047,249 @@ window._cpQuitarDestino = function(i){
   _cpRenderDestinosTmp();
 };
 
+/* ── USÉ MI TC ───────────────────────────────────────────────────── */
+// Flujo: el usuario compró algo del encargo pagando con su tarjeta de crédito.
+// El dinero del encargo NO desaparece — cambia de dueño: ahora es del usuario
+// (quien adelantó el pago). La deuda TC sube, y ese dinero va a la cajita TC.
+
+window._cpAbrirUseTc = function(id){
+  const item = _cpData().find(i=>i.id===id);
+  if(!item){ return; }
+  _cpUseTcId = id;
+
+  // Calcular cuánto queda libre en el encargo
+  const comp = (item.destinos||[]).reduce((a,d)=>a+(d.monto||0),0);
+  const disponible = Math.max(0,(item.montoTotal||0)-comp);
+
+  // Poblar info
+  const descEl = document.getElementById('cp-use-tc-desc');
+  const totalEl = document.getElementById('cp-use-tc-total-encargo');
+  if(descEl) descEl.textContent = item.desc||'';
+  if(totalEl) totalEl.textContent = _cpFmt(disponible) + ' disponibles en el encargo';
+
+  // Limpiar campos
+  const montoEl = document.getElementById('cp-use-tc-monto');
+  const notaEl  = document.getElementById('cp-use-tc-nota');
+  const hintEl  = document.getElementById('cp-use-tc-monto-hint');
+  const prevEl  = document.getElementById('cp-use-tc-preview');
+  if(montoEl){ montoEl.value = ''; }
+  if(notaEl){ notaEl.value = ''; }
+  if(hintEl){ hintEl.textContent = 'Máx. disponible en el encargo: '+_cpFmt(disponible); }
+  if(prevEl){ prevEl.style.display = 'none'; }
+
+  // Poblar selector de tarjetas
+  const sel = document.getElementById('cp-use-tc-sel');
+  if(sel){
+    sel.innerHTML = '<option value="">— elegí una tarjeta —</option>';
+    (window.S && S.tarjetasCredito ? S.tarjetasCredito : []).forEach(tc => {
+      const o = document.createElement('option');
+      o.value = tc.id;
+      o.textContent = tc.nombre + (tc.deuda > 0 ? ' — deuda '+_cpFmt(tc.deuda) : '');
+      sel.appendChild(o);
+    });
+  }
+
+  // Listener para actualizar preview en tiempo real
+  if(montoEl && !montoEl._cpUseTcListenerAdded){
+    montoEl._cpUseTcListenerAdded = true;
+    montoEl.addEventListener('input', _cpUseTcActualizarPreview);
+  }
+  if(sel && !sel._cpUseTcListenerAdded){
+    sel._cpUseTcListenerAdded = true;
+    sel.addEventListener('change', _cpUseTcActualizarPreview);
+  }
+
+  _cpOpenSheet('cp-use-tc');
+  setTimeout(()=>{ if(montoEl) montoEl.focus(); }, 200);
+};
+
+function _cpUseTcActualizarPreview(){
+  const item = _cpData().find(i=>i.id===_cpUseTcId);
+  if(!item) return;
+
+  const comp = (item.destinos||[]).reduce((a,d)=>a+(d.monto||0),0);
+  const disponible = Math.max(0,(item.montoTotal||0)-comp);
+
+  const montoStr = (document.getElementById('cp-use-tc-monto')||{}).value||'';
+  const monto = typeof parseMoney === 'function' ? parseMoney(montoStr)||0 : parseFloat(montoStr.replace(/\./g,'').replace(',','.'))||0;
+  const tcId = (document.getElementById('cp-use-tc-sel')||{}).value||'';
+  const tc = tcId ? (window.S&&S.tarjetasCredito?S.tarjetasCredito:[]).find(t=>t.id===tcId) : null;
+
+  const prevEl = document.getElementById('cp-use-tc-preview');
+  const rowsEl = document.getElementById('cp-use-tc-preview-rows');
+  if(!prevEl || !rowsEl) return;
+
+  if(monto <= 0 || !tc){
+    prevEl.style.display = 'none';
+    return;
+  }
+
+  const excede = monto > disponible + 0.99;
+  const cajitaTc = (window.S&&S.cajitas?S.cajitas:[]).find(c=>c.esCajitaTC && c.tcId===tcId);
+
+  const rows = [
+    { label:'Encargo — saldo libre', antes: _cpFmt(disponible), despues: excede ? '<span style="color:var(--red);">¡supera el disponible!</span>' : _cpFmt(Math.max(0,disponible-monto)), color: excede ? 'var(--red)' : 'var(--accent)' },
+    { label:'Deuda TC "'+tc.nombre+'"', antes: _cpFmt(tc.deuda||0), despues: _cpFmt((tc.deuda||0)+monto), color: 'var(--red)' },
+    { label: cajitaTc ? 'Cajita "'+cajitaTc.nombre+'"' : 'Cajita TC (nueva)', antes: cajitaTc ? _cpFmt(typeof cajitaTc.saldo!=='undefined'?cajitaTc.saldo:cajitaTc.balance||0) : '$0', despues: cajitaTc ? _cpFmt((typeof cajitaTc.saldo!=='undefined'?cajitaTc.saldo:cajitaTc.balance||0)+monto) : _cpFmt(monto), color: 'var(--blue)' },
+  ];
+
+  rowsEl.innerHTML = rows.map(r=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;font-family:'DM Mono',monospace;padding:4px 0;border-bottom:1px solid rgba(96,176,240,.1);">
+      <div style="color:var(--text2);font-size:11px;">${r.label}</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="color:var(--text3);text-decoration:line-through;">${r.antes}</span>
+        <span style="font-size:11px;color:var(--text3);">→</span>
+        <span style="color:${r.color};font-weight:700;">${r.despues}</span>
+      </div>
+    </div>`).join('');
+
+  prevEl.style.display = '';
+
+  // Deshabilitar botón si excede
+  const btn = document.getElementById('cp-use-tc-confirm-btn');
+  if(btn){ btn.disabled = excede; btn.style.opacity = excede ? '.45' : '1'; }
+}
+
+window._cpConfirmarUseTc = function(){
+  const id = _cpUseTcId;
+  const items = _cpData();
+  const item = items.find(i=>i.id===id);
+  if(!item){ _cpCloseSheet('cp-use-tc'); return; }
+
+  const montoStr = (document.getElementById('cp-use-tc-monto')||{}).value||'';
+  const monto = typeof parseMoney === 'function' ? parseMoney(montoStr)||0 : parseFloat(montoStr.replace(/\./g,'').replace(',','.'))||0;
+  if(!monto || monto <= 0){ _cpToast('Ingresá el valor de la compra','err'); return; }
+
+  const tcId = (document.getElementById('cp-use-tc-sel')||{}).value||'';
+  if(!tcId){ _cpToast('Elegí la tarjeta con la que pagaste','err'); return; }
+
+  const tc = (window.S&&S.tarjetasCredito?S.tarjetasCredito:[]).find(t=>t.id===tcId);
+  if(!tc){ _cpToast('Tarjeta no encontrada','err'); return; }
+
+  const nota = ((document.getElementById('cp-use-tc-nota')||{}).value||'').trim();
+  const fecha = _cpHoy();
+
+  // Validar que el monto no supere lo disponible en el encargo
+  const comp = (item.destinos||[]).reduce((a,d)=>a+(d.monto||0),0);
+  const disponible = Math.max(0,(item.montoTotal||0)-comp);
+  if(monto > disponible + 0.99){
+    _cpToast('El valor supera lo disponible en el encargo ('+_cpFmt(disponible)+')','err'); return;
+  }
+
+  // ── 1. Reducir el encargo: agregar un destino especial tipo "compra_tc"
+  //    Esto deja registrado qué parte del encargo fue usada.
+  if(!item.destinos) item.destinos = [];
+  item.destinos.push({
+    id: _cpUid(),
+    tipo: 'compra_tc',
+    desc: nota || 'Compra con TC',
+    monto,
+    tcId,
+    fecha,
+    _label: 'Compra pagada con TC'
+  });
+
+  // ── 2. Aumentar deuda de la TC (NO es un gasto del usuario, es solo deuda)
+  tc.deuda = (tc.deuda||0) + monto;
+  if(!tc.compras) tc.compras = [];
+  tc.compras.push({
+    id: _cpUid(),
+    desc: (nota || 'Compra de encargo') + ' — de: ' + item.desc,
+    monto,
+    fecha,
+    _fromEncargo: id,
+    _esEncargo: true  // flag: NO contar como gasto propio en estadísticas
+  });
+
+  // ── 3. Llevar la plata a la cajita TC (o crearla si no existe)
+  let cajitaTc = (window.S&&S.cajitas?S.cajitas:[]).find(c=>c.esCajitaTC && c.tcId===tcId);
+  if(!cajitaTc){
+    // Crear cajita TC automáticamente
+    if(!S.cajitas) S.cajitas = [];
+    cajitaTc = {
+      id: _cpUid(),
+      nombre: 'Pago ' + tc.nombre,
+      saldo: 0,
+      esCajitaTC: true,
+      tcId,
+      creadaEn: fecha
+    };
+    S.cajitas.push(cajitaTc);
+  }
+
+  // Sumar a la cajita TC usando la función canónica (igual que el resto del módulo TC)
+  if(typeof materializarIntereses === 'function') materializarIntereses(cajitaTc);
+  if(typeof sumarFuente === 'function'){
+    sumarFuente('cajita:'+cajitaTc.id, monto);
+  } else {
+    // Fallback si sumarFuente no está disponible
+    const campoSaldo = 'saldo' in cajitaTc ? 'saldo' : 'balance';
+    cajitaTc[campoSaldo] = (cajitaTc[campoSaldo]||0) + monto;
+  }
+
+  // ── 4. Registrar movimiento (sin tipo 'ingreso' — es una conversión interna)
+  if(!S.movimientos) S.movimientos = [];
+  const descMov = 'Compra de encargo "'+item.desc+'" pagada con TC "'+tc.nombre+'" — '+_cpFmt(monto)+' convertidos para pago de tarjeta';
+  S.movimientos.push({
+    id: _cpUid(),
+    tipo: 'conversion_tc',   // tipo especial — no es ingreso ni gasto
+    fuente: 'cajita:'+cajitaTc.id,
+    monto,
+    fecha,
+    desc: descMov,
+    _fromEncargo: id,
+    _tcId: tcId
+  });
+
+  // ── 5. Log en historial de cambios (sin contarlo como ingreso)
+  if(window.logCambio) logCambio(
+    '<i class="fa-solid fa-credit-card" style="margin-right:5px;color:var(--red);"></i>Compra de encargo con TC',
+    '"'+item.desc+'" → TC "'+tc.nombre+'" · Plata reservada en cajita TC',
+    monto,
+    'conversion'
+  );
+
+  _cpSave();
+  if(typeof refresh === 'function') refresh();
+  _cpCloseSheet('cp-use-tc');
+  _cpRenderLista();
+  _cpUseTcId = null;
+
+  _cpToast(
+    '<i class="fa-solid fa-credit-card" style="margin-right:5px;"></i>Listo — '+_cpFmt(monto)+' reservados en cajita TC para pagar '+tc.nombre,
+    'ok'
+  );
+};
+
+// Inicializar swipe para el nuevo sheet
+function _cpInitSwipeUseTc(){
+  const sheetId = 'cp-use-tc';
+  const overlay = document.getElementById('sheet-'+sheetId);
+  if(!overlay || overlay._swipeInited) return;
+  overlay._swipeInited = true;
+  const handle = overlay.querySelector('.sheet-handle');
+  const sheet  = overlay.querySelector('.sheet');
+  if(!handle||!sheet) return;
+  let startY=0, curY=0, drag=false;
+  handle.addEventListener('touchstart',e=>{
+    if(document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+    startY=e.touches[0].clientY; drag=true; sheet.style.transition='none';
+  },{passive:true});
+  handle.addEventListener('touchmove',e=>{
+    if(!drag) return;
+    curY=e.touches[0].clientY-startY;
+    if(curY<0) return;
+    sheet.style.transform=`translateY(${curY}px)`;
+  },{passive:true});
+  handle.addEventListener('touchend',()=>{
+    if(!drag) return;
+    drag=false; sheet.style.transition='transform .25s ease';
+    if(curY>80) _cpCloseSheet(sheetId);
+    else sheet.style.transform='translateY(0)';
+    curY=0;
+  });
+}
+
 /* ── RECIBIR ─────────────────────────────────────────────────────── */
 window._cpAbrirRecibir = function(id){
   const item = _cpData().find(i=>i.id===id);
@@ -15024,6 +15319,10 @@ window._cpAbrirRecibir = function(id){
         if(d.tipo==='tc'){
           const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.tcId);
           if(tc) detalle = ` · ${tc.nombre}`;
+        }
+        if(d.tipo==='compra_tc'){
+          const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.tcId);
+          if(tc) detalle = ` · TC ${tc.nombre} — ya registrado`;
         }
         return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:6px;">
           <div>
@@ -15062,6 +15361,8 @@ window._cpConfirmarRecibir = function(){
   // Ejecutar cada destino
   let errores = [];
   (item.destinos||[]).forEach(d => {
+    // compra_tc: ya fue procesado cuando el usuario apretó "Usé mi TC" — omitir
+    if(d.tipo === 'compra_tc') return;
     try {
       if(d.tipo === 'reposicion'){
         // Repone la cajita/cuenta — SOLO si no la había adelantado antes (evitar doble conteo)
@@ -15391,7 +15692,7 @@ window._cpEliminar = async function(id){
 
 /* ── INTEGRACIÓN: swipe/sheet handle para los nuevos sheets ─────── */
 function _cpInitSwipe(){
-  ['cp-nuevo','cp-destino','cp-recibir'].forEach(sheetId=>{
+  ['cp-nuevo','cp-destino','cp-recibir','cp-use-tc'].forEach(sheetId=>{
     const overlay = document.getElementById('sheet-'+sheetId);
     if(!overlay) return;
     const handle = overlay.querySelector('.sheet-handle');
@@ -15448,7 +15749,7 @@ function _cpInit(){
   }
 
   // Conectar botones data-close-sheet de los nuevos sheets
-  document.querySelectorAll('[data-close-sheet="cp-nuevo"],[data-close-sheet="cp-destino"],[data-close-sheet="cp-recibir"]').forEach(btn=>{
+  document.querySelectorAll('[data-close-sheet="cp-nuevo"],[data-close-sheet="cp-destino"],[data-close-sheet="cp-recibir"],[data-close-sheet="cp-use-tc"]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = btn.getAttribute('data-close-sheet');
       _cpCloseSheet(id);

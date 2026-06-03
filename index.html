@@ -2632,7 +2632,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <div id="movenc-dif-wrap" style="display:none;margin-top:4px;">
           <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;" onclick="_difToggle()">
             <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:15px;">💰</span>
+              <span style="font-size:15px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span>
               <div>
                 <div style="font-size:12px;font-weight:600;color:var(--amber);">El valor real era diferente</div>
                 <div style="font-size:10px;color:var(--text3);">Registrar margen cobrado</div>
@@ -2855,7 +2855,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <!-- Diferencial opcional -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:0;" onclick="_usarParteDifToggle()">
           <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:15px;">💰</span>
+            <span style="font-size:15px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span>
             <div>
               <div style="font-size:12px;font-weight:600;color:var(--amber);">Le dije un valor diferente</div>
               <div style="font-size:10px;color:var(--text3);">Registrar diferencial</div>
@@ -7457,7 +7457,7 @@ function renderSpotify(){
       if(vencidos.length){
         subEl.innerHTML = `<span style="color:var(--red);font-weight:600;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:4px;"></i>${vencidos.length} pago${vencidos.length>1?'s':''} vencido${vencidos.length>1?'s':''}</span>`;
       } else if(proximos.length){
-        subEl.innerHTML = `<span style="color:var(--amber);font-weight:600;">⚡ ${proximos.length} pago${proximos.length>1?'s':''} en ≤3 días</span>`;
+        subEl.innerHTML = `<span style="color:var(--amber);font-weight:600;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:13px;height:13px;fill:currentColor;vertical-align:middle;"><path d="M5.52.359A.5.5 0 0 1 6 0h4a.5.5 0 0 1 .474.658L8.694 6H12.5a.5.5 0 0 1 .395.807l-7 9a.5.5 0 0 1-.873-.454L6.823 9.5H3.5a.5.5 0 0 1-.48-.641l2.5-8.5z"/></svg> ${proximos.length} pago${proximos.length>1?'s':''} en ≤3 días</span>`;
       } else {
         subEl.textContent = 'Cobro compartido';
       }
@@ -8381,7 +8381,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
         ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?`<span class="badge bg-nu" style="font-size:9px;">${escHtml(cn)}</span>`:''; })()}
         ${m.cat ? `<span class="badge bg-blue" style="font-size:9px;">${escHtml(m.cat)}</span>` : ''}
         ${m.nota ? `<span style="font-size:10px;color:var(--text3);">${escHtml(m.nota)}</span>` : ''}
-        ${m.tipo === 'transferencia' && m._fuenteDestino ? `<span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">↔ ${escHtml(fuenteLabel(m._fuenteDestino||m._fuenteOrigen))}</span>` : ''}
+        ${m.tipo === 'transferencia' && m._fuenteDestino ? `<span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg> ${escHtml(fuenteLabel(m._fuenteDestino||m._fuenteOrigen))}</span>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -9729,7 +9729,7 @@ function renderEncargoParts(enc) {
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);"><s>${fmt(p.monto)}</s></span>
           ${typeof _difRenderHistorialParte === 'function' ? _difRenderHistorialParte(p) : ''}
-          <button type="button" onclick="eliminarParte('${enc.id}','${p.id}')" style="font-size:9px;padding:2px 6px;border-radius:5px;border:1px solid rgba(240,104,104,.2);background:rgba(240,104,104,.05);color:var(--red);cursor:pointer;">✕</button>
+          <button type="button" onclick="eliminarParte('${enc.id}','${p.id}')" style="font-size:9px;padding:2px 6px;border-radius:5px;border:1px solid rgba(240,104,104,.2);background:rgba(240,104,104,.05);color:var(--red);cursor:pointer;">&#x2715;</button>
         </div>
       </div>
     </div>`).join('');
@@ -9927,7 +9927,7 @@ function _difRenderBenefs() {
       <input type="text" inputmode="decimal" placeholder="Monto" value="${b.monto ? (typeof fmtInput==='function'?fmtInput(b.monto):String(b.monto)) : ''}"
         oninput="_difSetMonto(${i},this.value)"
         style="flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--amber);font-size:13px;font-family:'DM Mono',monospace;">
-      <button type="button" onclick="_difRemoveBenef(${i})" style="padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;">✕</button>
+      <button type="button" onclick="_difRemoveBenef(${i})" style="padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;">&#x2715;</button>
     </div>`).join('');
 }
 
@@ -9950,7 +9950,7 @@ function _difResumen() {
     sinAsignar = margen - asignado;
     html += `<br>Asignado: <span style="color:var(--text2)">${fmt(asignado)}</span>  `;
     if (Math.abs(sinAsignar) < 1) {
-      html += `<span style="color:var(--accent)">✓ Cuadra</span>`;
+      html += `<span style="color:var(--accent)">&#x2713; Cuadra</span>`;
       sinAsignar = 0;
     } else if (sinAsignar > 0) {
       html += `<span style="color:var(--accent)">Tuyo: ${fmt(sinAsignar)}</span>`;
@@ -10066,7 +10066,7 @@ function _usarParteDifRender() {
       <input type="text" inputmode="decimal" placeholder="Monto" value="${b.monto ? (typeof fmtInput==='function'?fmtInput(b.monto):String(b.monto)) : ''}"
         oninput="_usarParteSetMonto(${i},this.value)"
         style="flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--amber);font-size:13px;font-family:'DM Mono',monospace;">
-      <button type="button" onclick="_usarParteRemoveBenef(${i})" style="padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;">✕</button>
+      <button type="button" onclick="_usarParteRemoveBenef(${i})" style="padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;">&#x2715;</button>
     </div>`).join('');
 }
 
@@ -10090,7 +10090,7 @@ function _usarParteDifResumen() {
     pendiente = margen - asignado;
     if (_usarParteDifBenefs.length) {
       html += `<br>Asignado: <span style="color:var(--text2)">${fmt(asignado)}</span>  `;
-      if (Math.abs(pendiente) < 1) html += `<span style="color:var(--accent)">✓ Cuadra</span>`;
+      if (Math.abs(pendiente) < 1) html += `<span style="color:var(--accent)">&#x2713; Cuadra</span>`;
       else if (pendiente > 0) html += `<span style="color:var(--amber)">Te quedan: ${fmt(pendiente)}</span>`;
       else html += `<span style="color:var(--red)">Te pasaste: ${fmt(Math.abs(pendiente))}</span>`;
     }
@@ -10190,7 +10190,7 @@ function _usarParteFuentePreview() {
     let lines = splits.map(s => `${s.fuente ? fuenteLabel(s.fuente) : 'Sin esp.'}: ${fmt(s.monto)}`).join(' · ');
     if (restante > 0) { el.textContent = lines + ` · Sin asignar: ${fmt(restante)}`; el.style.color = 'var(--amber)'; }
     else if (restante < -0.5) { el.textContent = lines + ` · Excede: ${fmt(-restante)}`; el.style.color = 'var(--red)'; }
-    else { el.textContent = lines + ' ✓'; el.style.color = 'var(--accent)'; }
+    else { el.textContent = lines + ' &#x2713;'; el.style.color = 'var(--accent)'; }
   } else {
     const sel = document.getElementById('usar_parte_fuente');
     const val = sel ? sel.value : '';
@@ -10395,7 +10395,7 @@ function _difRenderHistorial(mov) {
     : (d.yoMeQuedo > 0 ? `Yo ${fmt(d.yoMeQuedo)}` : '');
   const todas = [benefs, miParte].filter(Boolean).join(' · ');
   return `<div style="margin-top:4px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;">
-    💰 Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${todas ? ' · ' + todas : ''}
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${todas ? ' · ' + todas : ''}
   </div>`;
 }
 
@@ -10404,9 +10404,9 @@ function _difRenderHistorialParte(parte) {
   // Mostrar origen de la plata si se registró
   if (parte.fuentes && parte.fuentes.length > 0) {
     const labels = parte.fuentes.map(f => `${fuenteLabel(f.fuente)} ${fmt(f.monto)}`).join(' + ');
-    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);">📤 ${labels}</span>`;
+    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${labels}</span>`;
   } else if (parte.fuente) {
-    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);">📤 ${fuenteLabel(parte.fuente)}</span>`;
+    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${fuenteLabel(parte.fuente)}</span>`;
   }
   // Mostrar diferencial si existe
   if (parte.diferencial) {
@@ -10416,7 +10416,7 @@ function _difRenderHistorialParte(parte) {
     ).join(' · ');
     const miParte = d.miCuenta && d.yoMeQuedo > 0 ? `Yo (${fuenteLabel(d.miCuenta)}) ${fmt(d.yoMeQuedo)}` : '';
     const todas = [benefs, miParte].filter(Boolean).join(' · ');
-    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);">💰 margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`;
+    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`;
   }
   return out;
 }
@@ -10609,7 +10609,7 @@ function _movEncSplitPreview() {
   if (montoTotal > 0) {
     if (restante > 0.5)       { el.textContent = lines + ` · Sin asignar: ${fmt(restante)}`; el.style.color = 'var(--amber)'; }
     else if (restante < -0.5) { el.textContent = lines + ` · Excede: ${fmt(-restante)}`;     el.style.color = 'var(--red)'; }
-    else                      { el.textContent = lines + ' ✓';                               el.style.color = 'var(--accent)'; }
+    else                      { el.textContent = lines + ' \u2713';                               el.style.color = 'var(--accent)'; }
   } else {
     el.textContent = lines; el.style.color = 'var(--text2)';
   }
@@ -15054,7 +15054,7 @@ function _cpRenderLista(){
           </div>
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text2);">${_cpFmt(item.montoTotal)}</span>
-            <button type="button" onclick="window._cpEliminar('${item.id}')" style="padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.2);color:var(--red);">✕</button>
+            <button type="button" onclick="window._cpEliminar('${item.id}')" style="padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.2);color:var(--red);">&#x2715;</button>
           </div>
         </div>
       </div>`;
@@ -16347,7 +16347,7 @@ function abrirPerfilPersona(personaId) {
     const color2 = saldo > 0 ? 'var(--amber)' : saldo < 0 ? 'var(--red)' : 'var(--accent)';
     html += `<div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">💵 Préstamos</div>
+        <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path d="M4 10.781c.148 1.667 1.513 2.85 3.591 3.003V15h1.043v-1.216c2.27-.179 3.678-1.438 3.678-3.3 0-1.59-.947-2.51-2.956-3.028l-.722-.187V3.467c1.122.11 1.879.714 2.07 1.616h1.47c-.166-1.6-1.54-2.748-3.54-2.875V1H7.591v1.233c-1.939.23-3.27 1.472-3.27 3.156 0 1.454.966 2.483 2.661 2.917l.61.162v4.031c-1.149-.17-1.94-.8-2.131-1.718H4zm3.391-3.836c-1.043-.263-1.6-.825-1.6-1.616 0-.944.704-1.641 1.8-1.828v3.495l-.2-.051zm1.591 1.872c1.287.323 1.852.859 1.852 1.769 0 1.097-.826 1.828-2.2 1.939V8.73l.348.087z"/></svg> Préstamos</div>
         <button type="button" onclick="_irADeudor('${d.id}')" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver detalle →</button>
       </div>
       <div class="grid2" style="margin:0;">
@@ -16362,7 +16362,7 @@ function abrirPerfilPersona(personaId) {
     const totalEnc = datos.saldoEncargos;
     html += `<div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">📦 Encargos</div>
+        <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5 8 5.961 14.154 3.5 8.186 1.113zM15 4.239l-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.761V6.838L1 4.239v7.923l6.5 2.6zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.35a1.5 1.5 0 0 1-.872 1.36l-7 2.8a1.5 1.5 0 0 1-1.256 0l-7-2.8A1.5 1.5 0 0 1 0 11.85V3.5a.5.5 0 0 1 .314-.464L7.443.184z"/></svg> Encargos</div>
         <span style="font-size:12px;color:var(--text2);">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>
       </div>
       ${datos.encargos.map(e => {
@@ -16615,7 +16615,7 @@ abrirEncargoDetalle = function(id) {
     const chip = document.createElement('button');
     chip.id = 'enc-det-perfil-chip';
     chip.type = 'button';
-    chip.textContent = '👤 Ver perfil completo';
+    chip.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:12px;height:12px;fill:currentColor;vertical-align:middle;"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg> Ver perfil completo';
     chip.style.cssText = 'font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:"DM Mono",monospace;padding:0;margin-top:2px;display:block;';
     chip.addEventListener('click', () => abrirPerfilPersona(p.id));
     nombreEl.after(chip);

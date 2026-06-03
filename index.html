@@ -13503,48 +13503,16 @@ if ('serviceWorker' in navigator) {
             id="tc_pago_minimo" placeholder="0,00" class="money-input"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
           <div class="ig">
-            <label class="il" for="tc_fecha_corte">Día de corte</label>
-            <div class="select-wrap"><select id="tc_fecha_corte"><option
-                  value="1">1</option><option value="2">2</option><option
-                  value="3">3</option><option value="4">4</option><option
-                  value="5">5</option><option value="6">6</option><option
-                  value="7">7</option><option value="8">8</option><option
-                  value="9">9</option><option value="10">10</option><option
-                  value="11">11</option><option value="12">12</option><option
-                  value="13">13</option><option value="14">14</option><option
-                  value="15">15</option><option value="16">16</option><option
-                  value="17">17</option><option value="18">18</option><option
-                  value="19">19</option><option value="20">20</option><option
-                  value="21">21</option><option value="22">22</option><option
-                  value="23">23</option><option value="24">24</option><option
-                  value="25">25</option><option value="26">26</option><option
-                  value="27">27</option><option value="28">28</option><option
-                  value="29">29</option><option value="30">30</option><option
-                  value="31">31</option></select></div>
+            <label class="il" for="tc_proximo_corte">Fecha próximo corte</label>
+            <input type="date" id="tc_proximo_corte" onchange="tcActualizarFechasPreview()">
           </div>
           <div class="ig">
-            <label class="il" for="tc_fecha_pago">Día de pago</label>
-            <div class="select-wrap"><select id="tc_fecha_pago"><option
-                  value="1">1</option><option value="2">2</option><option
-                  value="3">3</option><option value="4">4</option><option
-                  value="5">5</option><option value="6">6</option><option
-                  value="7">7</option><option value="8">8</option><option
-                  value="9">9</option><option value="10">10</option><option
-                  value="11">11</option><option value="12">12</option><option
-                  value="13">13</option><option value="14">14</option><option
-                  value="15">15</option><option value="16">16</option><option
-                  value="17">17</option><option value="18">18</option><option
-                  value="19">19</option><option value="20">20</option><option
-                  value="21">21</option><option value="22">22</option><option
-                  value="23">23</option><option value="24">24</option><option
-                  value="25">25</option><option value="26">26</option><option
-                  value="27">27</option><option value="28">28</option><option
-                  value="29">29</option><option value="30">30</option><option
-                  value="31">31</option></select></div>
+            <label class="il" for="tc_fecha_limite_pago">Fecha límite de pago</label>
+            <input type="date" id="tc_fecha_limite_pago" onchange="tcActualizarFechasPreview()">
           </div>
         </div>
         <div
-          style="font-size:11px;color:var(--text3);margin:-4px 0 14px;font-family:'DM Mono',monospace;"
+          style="font-size:11px;color:var(--text3);margin:-4px 0 14px;font-family:'DM Mono',monospace;line-height:1.6;"
           id="tc-fechas-preview"></div>
         <button type="button" class="btn btn-primary"
           id="btn-guardar-tc">Guardar tarjeta</button>
@@ -13668,14 +13636,18 @@ function tcCupoUsadoPct(tc){
 }
 
 function tcDiasHastaPago(tc){
-  if(!tc.fechaPago)return null;
   const hoyDate=new Date();
   hoyDate.setHours(0,0,0,0);
+  // Preferir fecha exacta de límite de pago si existe
+  if(tc.fechaLimitePago){
+    const target=new Date(tc.fechaLimitePago+'T00:00:00');
+    return Math.round((target-hoyDate)/86400000);
+  }
+  // Fallback: campo numérico legado
+  if(!tc.fechaPago)return null;
   const dia=hoyDate.getDate();
-  // Calcular fecha exacta del próximo día de pago
   let targetMonth=hoyDate.getMonth(), targetYear=hoyDate.getFullYear();
   if(tc.fechaPago<dia){targetMonth++;if(targetMonth>11){targetMonth=0;targetYear++;}}
-  // Limitar al último día del mes si la fecha de pago no existe en ese mes (ej. día 31 en febrero)
   const lastDay=new Date(targetYear,targetMonth+1,0).getDate();
   const targetDay=Math.min(tc.fechaPago,lastDay);
   const target=new Date(targetYear,targetMonth,targetDay);
@@ -13683,12 +13655,17 @@ function tcDiasHastaPago(tc){
 }
 
 function tcDiasHastaCorte(tc){
-  if(!tc.fechaCorte)return null;
   const hoyDate=new Date();
   hoyDate.setHours(0,0,0,0);
+  // Preferir fecha exacta del próximo corte si existe
+  if(tc.proximoCorte){
+    const target=new Date(tc.proximoCorte+'T00:00:00');
+    return Math.round((target-hoyDate)/86400000);
+  }
+  // Fallback: campo numérico legado
+  if(!tc.fechaCorte)return null;
   const dia=hoyDate.getDate();
   let targetMonth=hoyDate.getMonth(), targetYear=hoyDate.getFullYear();
-  // Si el corte ya pasó (estrictamente menor), va al mes siguiente
   if(tc.fechaCorte<dia){targetMonth++;if(targetMonth>11){targetMonth=0;targetYear++;}}
   const lastDay=new Date(targetYear,targetMonth+1,0).getDate();
   const targetDay=Math.min(tc.fechaCorte,lastDay);
@@ -13696,14 +13673,23 @@ function tcDiasHastaCorte(tc){
   return Math.round((target-hoyDate)/86400000);
 }
 
-// Fecha del corte ANTERIOR (el que ya pasó y generó la deuda vigente)
+// Fecha del corte ANTERIOR (el que ya pasó y generó el extracto vigente)
+// Si existe proximoCorte exacto, el corte anterior es el mes anterior a esa fecha.
+// Si no, usa el campo numérico legado.
 function tcFechaCorteAnterior(tc){
-  if(!tc.fechaCorte)return null;
   const hoyDate=new Date();
   hoyDate.setHours(0,0,0,0);
+  if(tc.proximoCorte){
+    // El corte anterior es ~1 mes antes del próximo corte
+    const proximo=new Date(tc.proximoCorte+'T00:00:00');
+    const anterior=new Date(proximo);
+    anterior.setMonth(anterior.getMonth()-1);
+    return anterior;
+  }
+  // Fallback legado
+  if(!tc.fechaCorte)return null;
   const dia=hoyDate.getDate();
   let targetMonth=hoyDate.getMonth(), targetYear=hoyDate.getFullYear();
-  // Si el corte aún no ha pasado este mes, el corte anterior fue el mes pasado
   if(tc.fechaCorte>=dia){targetMonth--;if(targetMonth<0){targetMonth=11;targetYear--;}}
   const lastDay=new Date(targetYear,targetMonth+1,0).getDate();
   const targetDay=Math.min(tc.fechaCorte,lastDay);
@@ -13711,23 +13697,29 @@ function tcFechaCorteAnterior(tc){
 }
 
 // Fecha hasta la que está facturado el extracto actual = día anterior al corte ANTERIOR
-// Es decir: las compras <= esta fecha están en el extracto vigente (pago mínimo)
+// Las compras <= esta fecha están en el extracto vigente (pago mínimo)
 // Las compras > esta fecha son nuevas (próximo extracto)
 function tcFechaFacturadoHasta(tc){
+  // Si hay fecha exacta del próximo corte, el extracto vigente cubre
+  // hasta el día anterior al próximo corte (el corte cierra el ciclo anterior)
+  if(tc.proximoCorte){
+    const proximo=new Date(tc.proximoCorte+'T00:00:00');
+    const hasta=new Date(proximo);
+    hasta.setDate(hasta.getDate()-1);
+    return hasta;
+  }
+  // Fallback legado
   if(!tc.fechaCorte)return null;
   const corteAnt=tcFechaCorteAnterior(tc);
   if(!corteAnt)return null;
-  // El extracto vigente cubre hasta el día ANTERIOR al corte que ya pasó
   const hasta=new Date(corteAnt);
   hasta.setDate(hasta.getDate()-1);
   return hasta;
 }
 
 // Retorna true si una compra (fecha string 'YYYY-MM-DD') está en el extracto vigente
-// (pasó el corte anterior → forma parte del pago mínimo actual)
-// Retorna false si es una compra nueva hecha después del último corte
+// Retorna false si es una compra nueva hecha después del último corte (próximo extracto)
 function tcCompraEnCicloActual(tc, fechaCompraStr){
-  if(!tc.fechaCorte)return true;
   const hasta=tcFechaFacturadoHasta(tc);
   if(!hasta)return true;
   const compra=new Date(fechaCompraStr+'T00:00:00');
@@ -13827,7 +13819,8 @@ function renderTCScreen(){
   const pmAlertEl=document.getElementById('tc-pm-alert');
   if(pmAlertEl){
     const tcConPMVencido=tarjetas.filter(tc=>{
-      if(!(tc.pagoMinimo>0)||!tc.fechaCorte)return false;
+      if(!(tc.pagoMinimo>0))return false;
+      if(!tc.proximoCorte&&!tc.fechaCorte)return false;
       // Días hasta el próximo corte; si son pocos (<=5) el extracto ya giró
       const dias=tcDiasHastaCorte(tc);
       return dias!==null&&dias<=5&&(tc.deuda||0)>0;
@@ -13878,8 +13871,8 @@ function renderTCScreen(){
           <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:inline-block;vertical-align:middle;margin-right:4px;flex-shrink:0;"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>${tc.nombre}
           </div>
-          ${tc.fechaCorte||tc.fechaPago?`<div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">
-            ${tc.fechaCorte?'Corte día '+tc.fechaCorte:''}${tc.fechaCorte&&tc.fechaPago?' · ':''}${tc.fechaPago?'Pago día '+tc.fechaPago:''}
+          ${tc.proximoCorte||tc.fechaLimitePago||tc.fechaCorte||tc.fechaPago?`<div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">
+            ${tc.proximoCorte?'Corte '+tcFmtFecha(tc.proximoCorte):(tc.fechaCorte?'Corte día '+tc.fechaCorte:'')}${(tc.proximoCorte||tc.fechaCorte)&&(tc.fechaLimitePago||tc.fechaPago)?' · ':''}${tc.fechaLimitePago?'Límite pago '+tcFmtFecha(tc.fechaLimitePago):(tc.fechaPago?'Pago día '+tc.fechaPago:'')}
             ${facturadoLabel?' · Facturado hasta el <b>'+facturadoLabel+'</b>':''}
           </div>`:''}
         </div>
@@ -13992,8 +13985,8 @@ function abrirNuevaTarjeta(){
   document.getElementById('tc_cupo').value='';
   document.getElementById('tc_deuda_ini').value='';
   document.getElementById('tc_pago_minimo').value='';
-  document.getElementById('tc_fecha_corte').value='20';
-  document.getElementById('tc_fecha_pago').value='1';
+  document.getElementById('tc_proximo_corte').value='';
+  document.getElementById('tc_fecha_limite_pago').value='';
   document.getElementById('tc-fechas-preview').textContent='';
   document.getElementById('btn-guardar-tc').textContent='Guardar tarjeta';
   openSheet('nueva-tc');
@@ -14009,10 +14002,71 @@ function abrirEditarTC(id){
   document.getElementById('tc_cupo').value=tc.cupo?fmtInput(tc.cupo):'';
   document.getElementById('tc_deuda_ini').value=tc.deuda?fmtInput(tc.deuda):'';
   document.getElementById('tc_pago_minimo').value=tc.pagoMinimo?fmtInput(tc.pagoMinimo):'';
-  document.getElementById('tc_fecha_corte').value=String(tc.fechaCorte||20);
-  document.getElementById('tc_fecha_pago').value=String(tc.fechaPago||1);
+  // Usar fechas exactas si existen; si no, construir fecha aproximada desde campos numéricos legado
+  document.getElementById('tc_proximo_corte').value=tc.proximoCorte||tcInferirProximoCorte(tc);
+  document.getElementById('tc_fecha_limite_pago').value=tc.fechaLimitePago||tcInferirFechaLimite(tc);
+  tcActualizarFechasPreview();
   document.getElementById('btn-guardar-tc').textContent='Guardar cambios';
   openSheet('nueva-tc');
+}
+
+// Infiere el próximo corte (string YYYY-MM-DD) a partir del campo numérico legado
+function tcInferirProximoCorte(tc){
+  if(!tc||!tc.fechaCorte)return '';
+  const hoy=new Date();
+  hoy.setHours(0,0,0,0);
+  const dia=hoy.getDate();
+  let m=hoy.getMonth(), y=hoy.getFullYear();
+  // Si el día de corte ya pasó en este mes, el próximo es el mes que viene
+  if(tc.fechaCorte<dia){m++;if(m>11){m=0;y++;}}
+  const lastDay=new Date(y,m+1,0).getDate();
+  const d=Math.min(tc.fechaCorte,lastDay);
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+// Infiere la fecha límite de pago (string YYYY-MM-DD) a partir del campo numérico legado
+function tcInferirFechaLimite(tc){
+  if(!tc||!tc.fechaPago)return '';
+  const hoy=new Date();
+  hoy.setHours(0,0,0,0);
+  const dia=hoy.getDate();
+  let m=hoy.getMonth(), y=hoy.getFullYear();
+  if(tc.fechaPago<dia){m++;if(m>11){m=0;y++;}}
+  const lastDay=new Date(y,m+1,0).getDate();
+  const d=Math.min(tc.fechaPago,lastDay);
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+// Formatea una fecha 'YYYY-MM-DD' en texto legible
+function tcFmtFecha(str){
+  if(!str)return '';
+  const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const d=new Date(str+'T00:00:00');
+  return d.getDate()+' '+meses[d.getMonth()]+' '+d.getFullYear();
+}
+
+// Actualiza el preview de fechas en el formulario de TC
+function tcActualizarFechasPreview(){
+  const corte=document.getElementById('tc_proximo_corte')?.value;
+  const pago=document.getElementById('tc_fecha_limite_pago')?.value;
+  const prev=document.getElementById('tc-fechas-preview');
+  if(!prev)return;
+  if(corte&&pago){
+    const hoy=new Date(); hoy.setHours(0,0,0,0);
+    const dCorte=new Date(corte+'T00:00:00');
+    const dPago=new Date(pago+'T00:00:00');
+    const diasCorte=Math.round((dCorte-hoy)/86400000);
+    const diasPago=Math.round((dPago-hoy)/86400000);
+    prev.innerHTML=`Próximo corte: <b>${tcFmtFecha(corte)}</b> (en ${diasCorte} día${diasCorte!==1?'s':''})`+
+      `<br>Fecha límite de pago: <b>${tcFmtFecha(pago)}</b> (en ${diasPago} día${diasPago!==1?'s':''})`;
+  } else if(corte){
+    const hoy=new Date(); hoy.setHours(0,0,0,0);
+    const dCorte=new Date(corte+'T00:00:00');
+    const diasCorte=Math.round((dCorte-hoy)/86400000);
+    prev.innerHTML=`Próximo corte: <b>${tcFmtFecha(corte)}</b> (en ${diasCorte} día${diasCorte!==1?'s':''})`;
+  } else {
+    prev.innerHTML='';
+  }
 }
 
 function guardarTC(){
@@ -14021,16 +14075,19 @@ function guardarTC(){
   const cupo=parseMoney(document.getElementById('tc_cupo').value)||0;
   const deudaIni=parseMoney(document.getElementById('tc_deuda_ini').value)||0;
   const pagoMinimoForm=parseMoney(document.getElementById('tc_pago_minimo').value)||0;
-  const fechaCorte=parseInt(document.getElementById('tc_fecha_corte').value)||20;
-  const fechaPago=parseInt(document.getElementById('tc_fecha_pago').value)||1;
+  const proximoCorte=document.getElementById('tc_proximo_corte').value||null;
+  const fechaLimitePago=document.getElementById('tc_fecha_limite_pago').value||null;
   if(!S.tarjetasCredito)S.tarjetasCredito=[];
   if(_tcEditId){
     const tc=getTCById(_tcEditId);
     if(tc){
       tc.nombre=nombre;
       if(cupo)tc.cupo=cupo;
-      tc.fechaCorte=fechaCorte;
-      tc.fechaPago=fechaPago;
+      tc.proximoCorte=proximoCorte;
+      tc.fechaLimitePago=fechaLimitePago;
+      // También actualizar campos numéricos legado para compatibilidad
+      if(proximoCorte){const d=new Date(proximoCorte+'T00:00:00');tc.fechaCorte=d.getDate();}
+      if(fechaLimitePago){const d=new Date(fechaLimitePago+'T00:00:00');tc.fechaPago=d.getDate();}
       // Si cambió la deuda manualmente
       if(deudaIni!==tc.deuda)tc.deuda=deudaIni;
       // Actualizar pago mínimo si se ingresó
@@ -14038,12 +14095,15 @@ function guardarTC(){
     }
     toast('Tarjeta actualizada','ok');
   } else {
-    S.tarjetasCredito.push({
+    const nuevo={
       id:uid(),nombre,cupo:cupo||0,deuda:deudaIni,
       pagoMinimo:pagoMinimoForm||0,
-      fechaCorte,fechaPago,
+      proximoCorte,fechaLimitePago,
       compras:[],pagos:[]
-    });
+    };
+    if(proximoCorte){const d=new Date(proximoCorte+'T00:00:00');nuevo.fechaCorte=d.getDate();}
+    if(fechaLimitePago){const d=new Date(fechaLimitePago+'T00:00:00');nuevo.fechaPago=d.getDate();}
+    S.tarjetasCredito.push(nuevo);
     toast('Tarjeta agregada','ok');
   }
   closeSheet('nueva-tc');
@@ -14066,18 +14126,20 @@ function tcActualizarCicloCompra(){
   const tc=getTCById(_tcCompraTcId);
   const el=document.getElementById('ctc-ciclo-aviso');
   if(!el)return;
-  if(!tc||!tc.fechaCorte){el.style.display='none';return;}
+  if(!tc||((!tc.proximoCorte)&&(!tc.fechaCorte))){el.style.display='none';return;}
   const fechaVal=document.getElementById('ctc_fecha').value;
   if(!fechaVal){el.style.display='none';return;}
   const enCicloActual=tcCompraEnCicloActual(tc,fechaVal);
-  const facturadoHasta=tcFechaFacturadoHasta(tc);
   const diasPago=tcDiasHastaPago(tc);
-  // Formatear fecha de pago próxima
+  const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  // Etiqueta de fecha límite de pago actual
   let labelPago='';
-  if(tc.fechaPago&&diasPago!==null){
+  if(tc.fechaLimitePago){
+    const d=new Date(tc.fechaLimitePago+'T00:00:00');
+    labelPago=d.getDate()+' '+meses[d.getMonth()];
+  } else if(diasPago!==null){
     const hoy2=new Date(); hoy2.setHours(0,0,0,0);
     const pagoDate=new Date(hoy2.getTime()+diasPago*86400000);
-    const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
     labelPago=pagoDate.getDate()+' '+meses[pagoDate.getMonth()];
   }
   if(enCicloActual){
@@ -14091,18 +14153,7 @@ function tcActualizarCicloCompra(){
     el.style.background='rgba(200,240,96,.06)';
     el.style.border='1px solid rgba(200,240,96,.25)';
     el.style.color='var(--accent)';
-    // calcular cuándo sería el pago del ciclo siguiente
-    let labelPagoSig='';
-    if(tc.fechaPago){
-      const hoy2=new Date(); hoy2.setHours(0,0,0,0);
-      const pagoDate=new Date(hoy2.getTime()+diasPago*86400000);
-      // pago siguiente = mismo día del mes siguiente
-      const pagoSig=new Date(pagoDate);
-      pagoSig.setMonth(pagoSig.getMonth()+1);
-      const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-      labelPagoSig=pagoSig.getDate()+' '+meses[pagoSig.getMonth()];
-    }
-    el.innerHTML=`<i class="fa-solid fa-check" style="margin-right:5px;"></i>Esta compra va al <b>próximo extracto</b> — tienes hasta${labelPagoSig?' el <b>'+labelPagoSig+'</b>':' el mes siguiente'} para pagar`;
+    el.innerHTML=`<i class="fa-solid fa-check" style="margin-right:5px;"></i>Esta compra va al <b>próximo extracto</b> — tienes hasta el mes siguiente para pagar`;
   }
 }
 
@@ -14391,20 +14442,6 @@ document.addEventListener('DOMContentLoaded',function(){
   if(masTarjetas)masTarjetas.addEventListener('click',function(){
     navTo('tarjetas');
   });
-
-  // Fechas preview en nueva TC
-  function actualizarTCFechasPreview(){
-    const corte=document.getElementById('tc_fecha_corte').value;
-    const pago=document.getElementById('tc_fecha_pago').value;
-    const prev=document.getElementById('tc-fechas-preview');
-    if(corte&&pago){
-      prev.textContent=`Tu extracto se genera el día ${corte} y debes pagar antes del día ${pago}`;
-    }
-  }
-  const tcCorte=document.getElementById('tc_fecha_corte');
-  const tcPago=document.getElementById('tc_fecha_pago');
-  if(tcCorte)tcCorte.addEventListener('change',actualizarTCFechasPreview);
-  if(tcPago)tcPago.addEventListener('change',actualizarTCFechasPreview);
 });
 
 // Mostrar el label TC en el gasto variable al seleccionarlo

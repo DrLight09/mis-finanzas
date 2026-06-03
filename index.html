@@ -4369,8 +4369,6 @@ function load(){
   if(!S.catsFijo)S.catsFijo=[];
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
   if(!S.personas)S.personas=[];
-  // ── Migración: crear S.personas[] a partir de deudores y encargos existentes ──
-  _migrarPersonas();
   // Migrar cajitas antiguas al modelo multi-CDT (c.cdts = array)
   if(S.cajitas){
     S.cajitas=S.cajitas.map(c=>{
@@ -9152,16 +9150,17 @@ function _initEventListeners() {
   const btnSwitchTr = document.getElementById('btn-switch-to-transferir');
   if (btnSwitchTr) btnSwitchTr.addEventListener('click', () => { closeSheet('agregar-dinero-menu'); abrirTransferir(); });
 
-  // --- Close sheets via data-close-sheet ---
-  document.querySelectorAll('[data-close-sheet]').forEach(btn => {
-    btn.addEventListener('click', () => closeSheet(btn.dataset.closeSheet));
+  // --- Close sheets via data-close-sheet (delegated — cubre sheets inyectados dinámicamente) ---
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-close-sheet]');
+    if (btn) closeSheet(btn.dataset.closeSheet);
   });
 
-  // --- Close sheets on overlay click (backdrop) ---
-  document.querySelectorAll('.overlay[data-sheet-id]').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) closeSheet(overlay.dataset.sheetId);
-    });
+  // --- Close sheets on overlay click (backdrop) — delegated ---
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('overlay') && e.target.dataset.sheetId) {
+      closeSheet(e.target.dataset.sheetId);
+    }
   });
 
   // --- Cuenta selector ---
@@ -16065,35 +16064,7 @@ window._fbLoadData = function(){
 /* ── COLORES DE AVATAR ─────────────────────────────────────────── */
 const PERSONA_COLORES = ['#60b0f0','#c8f060','#f0b840','#b090f0','#f06868','#c060f0','#60d0b0','#f0a060'];
 
-/* ── MIGRACIÓN AUTOMÁTICA ──────────────────────────────────────── */
-function _migrarPersonas() {
-  if (!S.personas) S.personas = [];
 
-  // 1. Migrar deudores → crear persona si no existe, vincular personaId
-  (S.deudores || []).forEach(d => {
-    if (d.personaId) return; // ya migrado
-    // Buscar por nombre (case-insensitive)
-    let p = S.personas.find(x => x.nombre.trim().toLowerCase() === d.nombre.trim().toLowerCase());
-    if (!p) {
-      p = { id: uid(), nombre: d.nombre, color: d.color || '#60b0f0', creadoEn: hoy() };
-      S.personas.push(p);
-    } else if (!p.color && d.color) {
-      p.color = d.color;
-    }
-    d.personaId = p.id;
-  });
-
-  // 2. Migrar encargos → crear persona si no existe, vincular personaId
-  (S.encargos || []).forEach(enc => {
-    if (enc.personaId) return; // ya migrado
-    let p = S.personas.find(x => x.nombre.trim().toLowerCase() === enc.nombre.trim().toLowerCase());
-    if (!p) {
-      p = { id: uid(), nombre: enc.nombre, color: '#60b0f0', creadoEn: hoy() };
-      S.personas.push(p);
-    }
-    enc.personaId = p.id;
-  });
-}
 
 /* ── HELPERS ───────────────────────────────────────────────────── */
 function getPersona(id) {
@@ -16659,7 +16630,6 @@ const _origFbLoadDataPersonas = window._fbLoadData;
 window._fbLoadData = function() {
   if (typeof _origFbLoadDataPersonas === 'function') _origFbLoadDataPersonas.apply(this, arguments);
   setTimeout(() => {
-    _migrarPersonas();
     _inyectarPersonaSheets();
   }, 600);
 };
@@ -16667,7 +16637,7 @@ window._fbLoadData = function() {
 // También correr si ya cargó
 if (document.readyState !== 'loading') {
   setTimeout(() => {
-    if (window.S) { _migrarPersonas(); _inyectarPersonaSheets(); }
+    if (window.S) { _inyectarPersonaSheets(); }
   }, 1000);
 }
 </script>

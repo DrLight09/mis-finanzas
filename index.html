@@ -3713,6 +3713,7 @@ function poblarCatSelect(selectId, cats, valorActual){
 
 let S={
   nuRate:9.25,cajitas:[],nequiSaldo:0,efectivoSaldo:0,
+  personas:[],
   deudores:[],prestamos:[],mesadas:{},mesadaMonto:0,mesadaAnio:new Date().getFullYear(),
   spotifyPersonas:[],spotifyCosto:0,spotifyCajitaId:'',spotifyHistorial:[],
   gastosFijos:[],
@@ -3727,6 +3728,9 @@ let S={
   patrimonioHistorial:[],
   tarjetasCredito:[]
   // tarjetasCredito: [{id, nombre, cupo, deuda, fechaCorte (1-28), fechaPago (1-28), color, icono, compras:[{id,desc,monto,fecha,cat,pagadoEnTC:false}], pagos:[{id,monto,fecha,fuente,nota}]}]
+  // personas: [{id, nombre, color, alias, notas, creadoEn}]
+  // deudores[].personaId → referencia a personas[]
+  // encargos[].personaId → referencia a personas[]
 };
 // Exponer S globalmente para que el módulo de Firebase pueda accederlo
 window.S = S;
@@ -4364,6 +4368,9 @@ function load(){
   if(!S.catsVar)S.catsVar=[];
   if(!S.catsFijo)S.catsFijo=[];
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
+  if(!S.personas)S.personas=[];
+  // ── Migración: crear S.personas[] a partir de deudores y encargos existentes ──
+  _migrarPersonas();
   // Migrar cajitas antiguas al modelo multi-CDT (c.cdts = array)
   if(S.cajitas){
     S.cajitas=S.cajitas.map(c=>{
@@ -7735,6 +7742,11 @@ function guardarEditarEncargo() {
   if (!nombre) { toast('Ingresa el nombre', 'err'); return; }
   enc.nombre = nombre;
   enc.nota = document.getElementById('enc_edit_nota').value.trim();
+  // Sincronizar nombre en S.personas si hay vínculo
+  if (enc.personaId) {
+    const p = (S.personas || []).find(x => x.id === enc.personaId);
+    if (p) p.nombre = nombre;
+  }
   save();
   abrirEncargoDetalle(encargoActualId);
   closeSheet('editar-encargo');
@@ -16045,4 +16057,618 @@ window._fbLoadData = function(){
 })();
 </script>
 
-  </body></html>
+<!-- ═══════════════════════════════════════════════════════════════
+     SISTEMA DE PERSONAS — Libreta central vinculada
+     Encargos y Préstamos comparten la misma identidad de persona.
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+/* ── COLORES DE AVATAR ─────────────────────────────────────────── */
+const PERSONA_COLORES = ['#60b0f0','#c8f060','#f0b840','#b090f0','#f06868','#c060f0','#60d0b0','#f0a060'];
+
+/* ── MIGRACIÓN AUTOMÁTICA ──────────────────────────────────────── */
+function _migrarPersonas() {
+  if (!S.personas) S.personas = [];
+
+  // 1. Migrar deudores → crear persona si no existe, vincular personaId
+  (S.deudores || []).forEach(d => {
+    if (d.personaId) return; // ya migrado
+    // Buscar por nombre (case-insensitive)
+    let p = S.personas.find(x => x.nombre.trim().toLowerCase() === d.nombre.trim().toLowerCase());
+    if (!p) {
+      p = { id: uid(), nombre: d.nombre, color: d.color || '#60b0f0', creadoEn: hoy() };
+      S.personas.push(p);
+    } else if (!p.color && d.color) {
+      p.color = d.color;
+    }
+    d.personaId = p.id;
+  });
+
+  // 2. Migrar encargos → crear persona si no existe, vincular personaId
+  (S.encargos || []).forEach(enc => {
+    if (enc.personaId) return; // ya migrado
+    let p = S.personas.find(x => x.nombre.trim().toLowerCase() === enc.nombre.trim().toLowerCase());
+    if (!p) {
+      p = { id: uid(), nombre: enc.nombre, color: '#60b0f0', creadoEn: hoy() };
+      S.personas.push(p);
+    }
+    enc.personaId = p.id;
+  });
+}
+
+/* ── HELPERS ───────────────────────────────────────────────────── */
+function getPersona(id) {
+  return (S.personas || []).find(p => p.id === id);
+}
+
+function getPersonaNombre(id) {
+  const p = getPersona(id);
+  return p ? p.nombre : '—';
+}
+
+function getPersonaColor(id) {
+  const p = getPersona(id);
+  return p ? (p.color || '#60b0f0') : '#60b0f0';
+}
+
+// Datos vinculados a una persona
+function getPersonaDatos(personaId) {
+  const encargos = (S.encargos || []).filter(e => e.personaId === personaId);
+  const deudor = (S.deudores || []).find(d => d.personaId === personaId);
+  const saldoEncargos = encargos.reduce((a, e) => a + encargoSaldo(e), 0);
+  const saldoPrestamo = deudor ? (typeof getDeudorSaldo === 'function' ? getDeudorSaldo(deudor) : 0) : 0;
+  return { encargos, deudor, saldoEncargos, saldoPrestamo };
+}
+
+/* ── SHEET SELECTOR DE PERSONA ─────────────────────────────────── */
+// Inyectar HTML del sheet selector y del sheet crear-persona-global
+function _inyectarPersonaSheets() {
+  if (document.getElementById('sheet-sel-persona')) return;
+
+  // Sheet: seleccionar persona (para nuevo encargo)
+  const sheetSel = document.createElement('div');
+  sheetSel.className = 'overlay';
+  sheetSel.id = 'sheet-sel-persona';
+  sheetSel.dataset.sheetId = 'sel-persona';
+  sheetSel.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">¿De quién es la plata?</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Elige una persona existente o crea una nueva.</p>
+      <div id="sel-persona-buscar-wrap" class="ig" style="position:relative;">
+        <input type="text" id="sel-persona-buscar" placeholder="Buscar persona..." autocomplete="off"
+          style="padding-left:36px;" oninput="_selPersonaFiltrar()">
+        <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </div>
+      <div id="sel-persona-lista" style="max-height:300px;overflow-y:auto;"></div>
+      <button type="button" class="btn btn-ghost" style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="_abrirCrearPersonaGlobal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nueva persona
+      </button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="sel-persona" style="margin-top:6px;">Cancelar</button>
+    </div>`;
+  document.body.appendChild(sheetSel);
+
+  // Sheet: crear persona global (desde cualquier módulo)
+  const sheetCreate = document.createElement('div');
+  sheetCreate.className = 'overlay';
+  sheetCreate.id = 'sheet-crear-persona-global';
+  sheetCreate.dataset.sheetId = 'crear-persona-global';
+  sheetCreate.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Nueva persona</div>
+      <div class="ig"><label class="il" for="cpg_nombre">Nombre</label>
+        <input type="text" id="cpg_nombre" placeholder="Ej: Papá, Carlos, Mamá..."></div>
+      <div class="ig"><label class="il">Color del avatar</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;" id="cpg_colores"></div>
+      </div>
+      <button type="button" class="btn btn-primary" onclick="_crearPersonaGlobal()">Crear persona</button>
+      <button type="button" class="btn btn-ghost" onclick="_volverASelPersona()" style="margin-top:6px;">← Volver</button>
+    </div>`;
+  document.body.appendChild(sheetCreate);
+
+  // Sheet: perfil de persona
+  const sheetPerfil = document.createElement('div');
+  sheetPerfil.className = 'overlay';
+  sheetPerfil.id = 'sheet-perfil-persona';
+  sheetPerfil.dataset.sheetId = 'perfil-persona';
+  sheetPerfil.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div id="pperf-header" style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
+        <div id="pperf-avatar" class="avatar" style="width:46px;height:46px;font-size:16px;margin-right:0;flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;">
+          <div id="pperf-nombre" style="font-size:17px;font-weight:700;"></div>
+          <div id="pperf-sub" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"></div>
+        </div>
+        <button type="button" class="btn-icon" onclick="_editarPersonaDesdePerfilSheet()" title="Editar" style="color:var(--accent);">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+      </div>
+      <div id="pperf-body"></div>
+      <button type="button" class="btn btn-ghost" data-close-sheet="perfil-persona" style="margin-top:10px;">Cerrar</button>
+    </div>`;
+  document.body.appendChild(sheetPerfil);
+
+  // Sheet: editar persona global
+  const sheetEdit = document.createElement('div');
+  sheetEdit.className = 'overlay';
+  sheetEdit.id = 'sheet-editar-persona-global';
+  sheetEdit.dataset.sheetId = 'editar-persona-global';
+  sheetEdit.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Editar persona</div>
+      <div class="ig"><label class="il" for="epg_nombre">Nombre</label>
+        <input type="text" id="epg_nombre" placeholder="Ej: Papá, Carlos, Mamá..."></div>
+      <div class="ig"><label class="il">Color del avatar</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;" id="epg_colores"></div>
+      </div>
+      <button type="button" class="btn btn-primary" onclick="_guardarEditarPersonaGlobal()">Guardar cambios</button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="editar-persona-global" style="margin-top:6px;">Cancelar</button>
+    </div>`;
+  document.body.appendChild(sheetEdit);
+}
+
+/* ── SELECTOR DE PERSONA ───────────────────────────────────────── */
+let _selPersonaCallback = null; // fn(personaId) llamada al seleccionar
+
+function abrirSelPersona(callback) {
+  _selPersonaCallback = callback;
+  _inyectarPersonaSheets();
+  const buscarEl = document.getElementById('sel-persona-buscar');
+  if (buscarEl) buscarEl.value = '';
+  _selPersonaFiltrar();
+  document.getElementById('sheet-sel-persona').classList.add('open');
+  setTimeout(() => { if (buscarEl) buscarEl.focus(); }, 200);
+}
+
+function _selPersonaFiltrar() {
+  const q = (document.getElementById('sel-persona-buscar')?.value || '').toLowerCase().trim();
+  const lista = document.getElementById('sel-persona-lista');
+  if (!lista) return;
+  const personas = (S.personas || []).filter(p => !q || p.nombre.toLowerCase().includes(q));
+  if (!personas.length) {
+    lista.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:10px 0;">No se encontró "${q}". Creá una nueva persona.</div>`;
+    return;
+  }
+  lista.innerHTML = personas.map(p => {
+    const datos = getPersonaDatos(p.id);
+    const badges = [];
+    if (datos.deudor) {
+      const saldo = datos.saldoPrestamo;
+      if (saldo > 0) badges.push(`<span class="badge bg-amber" style="font-size:9px;">Préstamo ${fmt(saldo)}</span>`);
+      else badges.push(`<span class="badge bg-blue" style="font-size:9px;">Préstamos</span>`);
+    }
+    if (datos.encargos.length) badges.push(`<span class="badge bg-blue" style="font-size:9px;">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>`);
+    return `<div onclick="_selPersonaElegir('${p.id}')" style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border);cursor:pointer;" class="_sel-persona-row">
+      <div class="avatar" style="width:36px;height:36px;font-size:12px;margin-right:0;flex-shrink:0;background:${p.color}18;color:${p.color};border-color:${p.color}33;">${iniciales(p.nombre)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;">${escHtml(p.nombre)}</div>
+        ${badges.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">${badges.join('')}</div>` : ''}
+      </div>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>`;
+  }).join('');
+  // Hover effect
+  lista.querySelectorAll('._sel-persona-row').forEach(row => {
+    row.addEventListener('mouseenter', () => { row.style.background = 'var(--bg3)'; row.style.borderRadius = '8px'; });
+    row.addEventListener('mouseleave', () => { row.style.background = ''; });
+  });
+}
+
+function _selPersonaElegir(personaId) {
+  document.getElementById('sheet-sel-persona').classList.remove('open');
+  if (typeof _selPersonaCallback === 'function') {
+    setTimeout(() => { _selPersonaCallback(personaId); }, 180);
+  }
+}
+
+/* ── CREAR PERSONA GLOBAL ──────────────────────────────────────── */
+let _cpgColorSel = '#60b0f0';
+
+function _abrirCrearPersonaGlobal() {
+  document.getElementById('sheet-sel-persona').classList.remove('open');
+  setTimeout(() => {
+    _inyectarPersonaSheets();
+    _cpgColorSel = PERSONA_COLORES[0];
+    document.getElementById('cpg_nombre').value = '';
+    _renderColorPicker('cpg_colores', '_cpgColorSel');
+    document.getElementById('sheet-crear-persona-global').classList.add('open');
+    setTimeout(() => document.getElementById('cpg_nombre').focus(), 200);
+  }, 180);
+}
+
+function _volverASelPersona() {
+  document.getElementById('sheet-crear-persona-global').classList.remove('open');
+  setTimeout(() => { abrirSelPersona(_selPersonaCallback); }, 180);
+}
+
+function _crearPersonaGlobal() {
+  const nombre = document.getElementById('cpg_nombre').value.trim();
+  if (!nombre) { toast('Escribe el nombre', 'err'); return; }
+  if (!S.personas) S.personas = [];
+  const p = { id: uid(), nombre, color: _cpgColorSel, creadoEn: hoy() };
+  S.personas.push(p);
+  save();
+  document.getElementById('sheet-crear-persona-global').classList.remove('open');
+  toast(nombre + ' creado/a', 'ok');
+  setTimeout(() => {
+    if (typeof _selPersonaCallback === 'function') _selPersonaCallback(p.id);
+  }, 180);
+}
+
+/* ── EDITAR PERSONA GLOBAL ─────────────────────────────────────── */
+let _editPersonaGlobalId = null;
+let _epgColorSel = '#60b0f0';
+
+function abrirEditarPersonaGlobal(personaId) {
+  const p = getPersona(personaId);
+  if (!p) return;
+  _editPersonaGlobalId = personaId;
+  _epgColorSel = p.color || PERSONA_COLORES[0];
+  _inyectarPersonaSheets();
+  document.getElementById('epg_nombre').value = p.nombre;
+  _renderColorPicker('epg_colores', '_epgColorSel');
+  document.getElementById('sheet-editar-persona-global').classList.add('open');
+  setTimeout(() => document.getElementById('epg_nombre').focus(), 200);
+}
+
+function _guardarEditarPersonaGlobal() {
+  const p = getPersona(_editPersonaGlobalId);
+  if (!p) return;
+  const nombre = document.getElementById('epg_nombre').value.trim();
+  if (!nombre) { toast('Escribe el nombre', 'err'); return; }
+  const nombreAnterior = p.nombre;
+  p.nombre = nombre;
+  p.color = _epgColorSel;
+  // Sincronizar nombre en deudores vinculados
+  (S.deudores || []).forEach(d => { if (d.personaId === p.id) { d.nombre = nombre; d.color = _epgColorSel; } });
+  // Sincronizar nombre en encargos vinculados
+  (S.encargos || []).forEach(e => { if (e.personaId === p.id) e.nombre = nombre; });
+  save(); refresh();
+  document.getElementById('sheet-editar-persona-global').classList.remove('open');
+  toast(nombre + ' actualizado', 'ok');
+  // Si había perfil abierto, refrescar
+  if (document.getElementById('sheet-perfil-persona')?.classList.contains('open')) {
+    setTimeout(() => abrirPerfilPersona(p.id), 200);
+  }
+}
+
+/* ── PERFIL DE PERSONA ─────────────────────────────────────────── */
+let _perfilPersonaId = null;
+
+function abrirPerfilPersona(personaId) {
+  const p = getPersona(personaId);
+  if (!p) return;
+  _perfilPersonaId = personaId;
+  _inyectarPersonaSheets();
+
+  const color = p.color || '#60b0f0';
+  const av = document.getElementById('pperf-avatar');
+  const nm = document.getElementById('pperf-nombre');
+  const sb = document.getElementById('pperf-sub');
+  if (av) {
+    av.textContent = iniciales(p.nombre);
+    av.style.background = color + '22';
+    av.style.color = color;
+    av.style.borderColor = color + '44';
+  }
+  if (nm) nm.textContent = p.nombre;
+
+  const datos = getPersonaDatos(personaId);
+  const partes = [];
+  if (datos.deudor) partes.push('Préstamos');
+  if (datos.encargos.length) partes.push(datos.encargos.length + ' encargo' + (datos.encargos.length !== 1 ? 's' : ''));
+  if (sb) sb.textContent = partes.length ? partes.join(' · ') : 'Sin actividad registrada';
+
+  const body = document.getElementById('pperf-body');
+  if (!body) return;
+
+  let html = '';
+
+  // ── Sección Préstamos ──
+  if (datos.deudor) {
+    const d = datos.deudor;
+    const saldo = datos.saldoPrestamo;
+    const totalPrestado = (d.movimientos || []).filter(m => m.tipo === 'prestamo').reduce((a, m) => a + m.monto, 0);
+    const totalAbonado = (d.movimientos || []).filter(m => m.tipo === 'abono').reduce((a, m) => a + m.monto, 0);
+    const color2 = saldo > 0 ? 'var(--amber)' : saldo < 0 ? 'var(--red)' : 'var(--accent)';
+    html += `<div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">💵 Préstamos</div>
+        <button type="button" onclick="_irADeudor('${d.id}')" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver detalle →</button>
+      </div>
+      <div class="grid2" style="margin:0;">
+        <div><div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Pendiente</div><div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:${color2};">${fmt(saldo)}</div></div>
+        <div><div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Prestado</div><div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(totalPrestado)}</div></div>
+      </div>
+    </div>`;
+  }
+
+  // ── Sección Encargos ──
+  if (datos.encargos.length) {
+    const totalEnc = datos.saldoEncargos;
+    html += `<div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">📦 Encargos</div>
+        <span style="font-size:12px;color:var(--text2);">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>
+      </div>
+      ${datos.encargos.map(e => {
+        const saldoE = encargoSaldo(e);
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(e.nota || e.nombre)}</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(saldoE)}</div>
+            <button type="button" onclick="_irAEncargo('${e.id}')" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver →</button>
+          </div>
+        </div>`;
+      }).join('')}
+      <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:4px;">
+        <div style="font-size:11px;color:var(--text3);">Total en encargos</div>
+        <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(totalEnc)}</div>
+      </div>
+    </div>`;
+  }
+
+  if (!datos.deudor && !datos.encargos.length) {
+    html += `<div style="font-size:12px;color:var(--text3);padding:8px 0 14px;line-height:1.6;">Esta persona no tiene préstamos ni encargos registrados todavía.</div>`;
+  }
+
+  body.innerHTML = html;
+  document.getElementById('sheet-perfil-persona').classList.add('open');
+}
+
+function _editarPersonaDesdePerfilSheet() {
+  if (!_perfilPersonaId) return;
+  document.getElementById('sheet-perfil-persona').classList.remove('open');
+  setTimeout(() => abrirEditarPersonaGlobal(_perfilPersonaId), 180);
+}
+
+function _irADeudor(deudorId) {
+  document.getElementById('sheet-perfil-persona').classList.remove('open');
+  setTimeout(() => { showScreen('prestamos'); abrirDeudor(deudorId); }, 180);
+}
+
+function _irAEncargo(encargoId) {
+  document.getElementById('sheet-perfil-persona').classList.remove('open');
+  setTimeout(() => { showScreen('encargos'); abrirEncargoDetalle(encargoId); }, 180);
+}
+
+/* ── RENDERIZADO DEL COLOR PICKER ──────────────────────────────── */
+function _renderColorPicker(containerId, varName) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const current = window[varName] || PERSONA_COLORES[0];
+  el.innerHTML = PERSONA_COLORES.map(c =>
+    `<div onclick="window['${varName}']='${c}';_renderColorPicker('${containerId}','${varName}')"
+      style="width:30px;height:30px;border-radius:50%;background:${c};cursor:pointer;
+      border:${c === current ? '2.5px solid var(--accent)' : '2px solid transparent'};
+      box-shadow:${c === current ? '0 0 0 2px rgba(200,240,96,.35)' : 'none'};
+      transition:all .15s;"></div>`
+  ).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INTEGRACIÓN: Nuevo encargo usa selector de persona
+   ═══════════════════════════════════════════════════════════════ */
+let _nuevoEncargoPersonaId = null;
+
+function _initNuevoEncargoPersonaSelector() {
+  const sheet = document.getElementById('sheet-nuevo-encargo');
+  if (!sheet || sheet._personaHook) return;
+  sheet._personaHook = true;
+
+  // Reemplazar el campo de texto "enc_nombre" con un selector de persona
+  const encNombreEl = document.getElementById('enc_nombre');
+  if (!encNombreEl) return;
+  const ig = encNombreEl.closest('.ig');
+  if (!ig) return;
+
+  ig.innerHTML = `
+    <label class="il">¿De quién es la plata?</label>
+    <div id="enc-persona-btn" onclick="abrirSelPersona(_onSelPersonaNuevoEncargo)"
+      style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
+      border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
+      cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
+      <div id="enc-persona-avatar" class="avatar" style="width:28px;height:28px;font-size:10px;margin:0;display:none;flex-shrink:0;"></div>
+      <span id="enc-persona-label">Seleccionar persona...</span>
+      <svg style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <input type="hidden" id="enc_nombre" value="">`;
+}
+
+function _onSelPersonaNuevoEncargo(personaId) {
+  const p = getPersona(personaId);
+  if (!p) return;
+  _nuevoEncargoPersonaId = personaId;
+  document.getElementById('enc_nombre').value = p.nombre;
+
+  const btn = document.getElementById('enc-persona-btn');
+  const lbl = document.getElementById('enc-persona-label');
+  const av = document.getElementById('enc-persona-avatar');
+  if (btn) btn.style.borderColor = 'var(--accent)';
+  if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
+  if (av) {
+    av.style.display = 'flex';
+    av.style.background = (p.color || '#60b0f0') + '22';
+    av.style.color = p.color || '#60b0f0';
+    av.style.borderColor = (p.color || '#60b0f0') + '44';
+    av.textContent = iniciales(p.nombre);
+  }
+}
+
+/* ── Hook en openSheet para inicializar el selector ───────────── */
+const _origOpenSheetPersonas = openSheet;
+openSheet = function(id) {
+  if (id === 'nuevo-encargo') {
+    _inyectarPersonaSheets();
+    _nuevoEncargoPersonaId = null;
+    // Inicializar el selector después de que el sheet sea visible
+    setTimeout(_initNuevoEncargoPersonaSelector, 30);
+    // Resetear UI del selector
+    setTimeout(() => {
+      const lbl = document.getElementById('enc-persona-label');
+      const av = document.getElementById('enc-persona-avatar');
+      const btn = document.getElementById('enc-persona-btn');
+      if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
+      if (av) av.style.display = 'none';
+      if (btn) btn.style.borderColor = 'var(--border2)';
+      const encNombreEl = document.getElementById('enc_nombre');
+      if (encNombreEl) encNombreEl.value = '';
+    }, 50);
+  }
+  _origOpenSheetPersonas.apply(this, arguments);
+};
+
+/* ── Hook en crearEncargo para guardar personaId ──────────────── */
+const _origCrearEncargo = crearEncargo;
+crearEncargo = function() {
+  // Si hay personaId seleccionado, asegurarlo en enc.personaId después de crear
+  const pId = _nuevoEncargoPersonaId;
+  _origCrearEncargo.apply(this, arguments);
+  // Asignar personaId al último encargo creado
+  if (pId && S.encargos && S.encargos.length) {
+    const last = S.encargos[S.encargos.length - 1];
+    if (last && !last.personaId) {
+      last.personaId = pId;
+      // También asegurar nombre sincronizado
+      const p = getPersona(pId);
+      if (p) last.nombre = p.nombre;
+      save();
+    }
+  }
+  _nuevoEncargoPersonaId = null;
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   INTEGRACIÓN: Nueva persona de Préstamos también usa S.personas
+   ═══════════════════════════════════════════════════════════════ */
+const _origAddDeudorPersonas = addDeudor;
+addDeudor = function() {
+  // Cuando se crea un deudor, también crear/vincular en S.personas
+  const nombre = document.getElementById('np_nombre').value.trim();
+  const color = typeof npColorSel !== 'undefined' ? npColorSel : '#60b0f0';
+  if (!nombre) { _origAddDeudorPersonas.apply(this, arguments); return; }
+
+  // Llamar al original primero (crea el deudor en S.deudores)
+  _origAddDeudorPersonas.apply(this, arguments);
+
+  // Vincular el deudor recién creado a S.personas
+  const deudor = (S.deudores || []).find(d => d.nombre === nombre && !d.personaId);
+  if (deudor) {
+    let p = (S.personas || []).find(x => x.nombre.trim().toLowerCase() === nombre.toLowerCase());
+    if (!p) {
+      if (!S.personas) S.personas = [];
+      p = { id: uid(), nombre, color: color, creadoEn: hoy() };
+      S.personas.push(p);
+    } else {
+      p.color = color;
+    }
+    deudor.personaId = p.id;
+    save();
+  }
+};
+
+/* ── Hook en guardar-editar-deudor para sincronizar S.personas ── */
+const _origGuardarEditarDeudor = guardarEditarDeudor;
+if (typeof guardarEditarDeudor === 'function') {
+  guardarEditarDeudor = function() {
+    _origGuardarEditarDeudor.apply(this, arguments);
+    // Sincronizar en S.personas
+    const d = (S.deudores || []).find(x => x.id === deudorActualId);
+    if (d && d.personaId) {
+      const p = getPersona(d.personaId);
+      if (p) { p.nombre = d.nombre; p.color = d.color; save(); }
+    }
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BOTÓN DE PERFIL EN LISTA DE ENCARGOS Y DEUDORES
+   ═══════════════════════════════════════════════════════════════ */
+
+// Agregar botón "perfil" al avatar del encargo en la lista
+const _origRenderEncargosList = renderEncargosList;
+renderEncargosList = function() {
+  _origRenderEncargosList.apply(this, arguments);
+  // Agregar mini botón perfil en cada card de encargo
+  const lista = document.getElementById('encargosList');
+  if (!lista) return;
+  (S.encargos || []).forEach(enc => {
+    if (!enc.personaId) return;
+    const card = lista.querySelector(`[onclick*="'${enc.id}'"]`);
+    if (!card) return;
+    const av = card.querySelector('.avatar');
+    if (av && !av._perfilHook) {
+      av._perfilHook = true;
+      av.title = 'Ver perfil';
+      av.style.cursor = 'pointer';
+      av.addEventListener('click', e => {
+        e.stopPropagation();
+        abrirPerfilPersona(enc.personaId);
+      });
+      // Aplicar color de persona
+      const p = getPersona(enc.personaId);
+      if (p) {
+        av.style.background = (p.color || '#60b0f0') + '1a';
+        av.style.color = p.color || '#60b0f0';
+        av.style.borderColor = (p.color || '#60b0f0') + '33';
+      }
+    }
+  });
+};
+
+// Agregar botón de perfil al header del detalle de encargo
+const _origAbrirEncargoDetallePersonas = abrirEncargoDetalle;
+abrirEncargoDetalle = function(id) {
+  _origAbrirEncargoDetallePersonas.apply(this, arguments);
+  const enc = getEncargo(id);
+  if (!enc || !enc.personaId) return;
+  const p = getPersona(enc.personaId);
+  if (!p) return;
+  // Aplicar color de la persona al avatar del detalle
+  const av = document.getElementById('encargoAvatar');
+  if (av) {
+    av.style.background = (p.color || '#60b0f0') + '22';
+    av.style.color = p.color || '#60b0f0';
+    av.style.borderColor = (p.color || '#60b0f0') + '44';
+    // Hacer clickeable para abrir perfil
+    av.onclick = () => abrirPerfilPersona(p.id);
+    av.title = 'Ver perfil de ' + p.nombre;
+    av.style.cursor = 'pointer';
+  }
+  // Agregar chip de "Ver perfil" bajo el nombre si no existe
+  const nombreEl = document.getElementById('encargoNombreDet');
+  if (nombreEl && !document.getElementById('enc-det-perfil-chip')) {
+    const chip = document.createElement('button');
+    chip.id = 'enc-det-perfil-chip';
+    chip.type = 'button';
+    chip.textContent = '👤 Ver perfil completo';
+    chip.style.cssText = 'font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:"DM Mono",monospace;padding:0;margin-top:2px;display:block;';
+    chip.addEventListener('click', () => abrirPerfilPersona(p.id));
+    nombreEl.after(chip);
+  } else if (document.getElementById('enc-det-perfil-chip')) {
+    const chip = document.getElementById('enc-det-perfil-chip');
+    chip.onclick = () => abrirPerfilPersona(p.id);
+  }
+};
+
+/* ── Inicializar todo cuando la app cargue ─────────────────────── */
+const _origFbLoadDataPersonas = window._fbLoadData;
+window._fbLoadData = function() {
+  if (typeof _origFbLoadDataPersonas === 'function') _origFbLoadDataPersonas.apply(this, arguments);
+  setTimeout(() => {
+    _migrarPersonas();
+    _inyectarPersonaSheets();
+  }, 600);
+};
+
+// También correr si ya cargó
+if (document.readyState !== 'loading') {
+  setTimeout(() => {
+    if (window.S) { _migrarPersonas(); _inyectarPersonaSheets(); }
+  }, 1000);
+}
+</script>
+</body></html>

@@ -14715,7 +14715,11 @@ function _injectSheet(){
         <div id="cpd-gasto-tc-wrap" style="display:none;">
           <label class="il" for="cpd-gasto-tc" style="font-size:11px;margin-bottom:4px;">¿Qué tarjeta?</label>
           <div class="select-wrap"><select id="cpd-gasto-tc"><option value="">Sin especificar</option></select></div>
-          <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.5;">Al llegar el ingreso, la deuda de la tarjeta aumenta y la plata va a tu cajita TC para pagarla.</div>
+          <div style="margin-top:10px;">
+            <label class="il" for="cpd-gasto-tc-cajita" style="font-size:11px;margin-bottom:4px;">¿A qué cajita va esta plata cuando llegue el ingreso?</label>
+            <div class="select-wrap"><select id="cpd-gasto-tc-cajita"><option value="">Sin especificar</option></select></div>
+            <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.5;">Ej: tu cajita "Tarjeta" para tener la plata lista al pagar el extracto.</div>
+          </div>
         </div>
       </div>
       <!-- Cuenta destino: solo para reposicion -->
@@ -15230,6 +15234,23 @@ function _cpdPoblarGastoSelectores(){
       selTc.appendChild(o);
     });
   }
+  // Selector de cajita destino para gastos con TC (siempre repoblar)
+  const selTcCaj = document.getElementById('cpd-gasto-tc-cajita');
+  if(selTcCaj){
+    selTcCaj.innerHTML = '<option value="">Sin especificar</option>';
+    (S.cajitas||[]).forEach(c=>{
+      const o = document.createElement('option');
+      o.value = 'cajita:'+c.id;
+      o.textContent = c.nombre||c.id;
+      selTcCaj.appendChild(o);
+    });
+    (S.cuentas||[]).forEach(c=>{
+      const o = document.createElement('option');
+      o.value = 'cuenta:'+c.id;
+      o.textContent = c.nombre||c.id;
+      selTcCaj.appendChild(o);
+    });
+  }
 }
 
 window._cpdSetGastoOrigen = function(val){
@@ -15315,6 +15336,7 @@ window._cpdConfirmar = function(){
   let gastoOrigen = '';   // 'cajita' | 'tc'
   let gastoCajita = '';   // id de cajita/cuenta si origen=cajita
   let gastoTcId   = '';   // id de TC si origen=tc
+  let gastoTcCajita = ''; // cajita donde va la plata al llegar el ingreso (si origen=tc)
   if(tipo === 'gasto'){
     gastoOrigen = window._cpdGastoOrigenVal || 'cajita';
     if(gastoOrigen === 'cajita'){
@@ -15322,6 +15344,7 @@ window._cpdConfirmar = function(){
     } else {
       gastoTcId = document.getElementById('cpd-gasto-tc') ? document.getElementById('cpd-gasto-tc').value : '';
       if(!gastoTcId){ _cpToast('Elegí una tarjeta de crédito','err'); return; }
+      gastoTcCajita = document.getElementById('cpd-gasto-tc-cajita') ? document.getElementById('cpd-gasto-tc-cajita').value : '';
     }
   }
 
@@ -15344,7 +15367,7 @@ window._cpdConfirmar = function(){
     } catch(e){ _cpToast('No se pudo descontar el saldo: '+e.message,'err'); }
   }
 
-  _cpDestinosTmp.push({ id:_cpUid(), tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId });
+  _cpDestinosTmp.push({ id:_cpUid(), tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId, gastoTcCajita });
   _cpCloseSheet('cp-destino');
   _cpRenderDestinosTmp();
 };
@@ -15473,17 +15496,18 @@ window._cpAbrirRecibir = function(id){
           if(d.gastoOrigen==='tc' && d.gastoTcId){
             const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
             const tcNombre = tc ? tc.nombre : 'Tarjeta de crédito';
+            const cajDestLabel = d.gastoTcCajita && typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoTcCajita) : null;
             if(d.yaPague){
               subLabel = `Pagado con ${tcNombre}`;
               extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(200,240,96,.1);border-radius:6px;">
                 <i class="fa-solid fa-check" style="font-size:9px;color:var(--accent);"></i>
-                <span style="font-size:10px;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace;">Ya pagado · La plata irá a la cajita TC</span>
+                <span style="font-size:10px;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace;">Ya pagado${cajDestLabel ? ` · La plata va a "${_cpEscape(cajDestLabel)}"` : ''}</span>
               </div>`;
             } else {
               subLabel = `Pendiente · Se cargará a ${tcNombre}`;
               extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(240,104,104,.1);border-radius:6px;">
                 <i class="fa-solid fa-credit-card" style="font-size:9px;color:var(--red);"></i>
-                <span style="font-size:10px;font-weight:600;color:var(--red);font-family:'DM Mono',monospace;">Se cargará a ${_cpEscape(tcNombre)}</span>
+                <span style="font-size:10px;font-weight:600;color:var(--red);font-family:'DM Mono',monospace;">Se cargará a ${_cpEscape(tcNombre)}${cajDestLabel ? ` · plata → "${_cpEscape(cajDestLabel)}"` : ''}</span>
               </div>`;
             }
           } else if(d.gastoOrigen==='cajita' && d.gastoCajita){
@@ -15626,20 +15650,24 @@ window._cpConfirmarRecibir = function(){
       }
       else if(d.tipo === 'gasto'){
         if(d.gastoOrigen === 'tc' && d.gastoTcId){
-          // Gasto pagado con TC: sumar deuda a la TC y llevar la plata a la cajita TC
+          // Gasto pagado con TC: sumar deuda a la TC y llevar la plata a la cajita elegida
           const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
           if(tc){
             tc.deuda = (tc.deuda||0) + d.monto;
             if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado', _cpFmt(d.monto)+' sumado a la deuda', d.monto, 'gasto');
-            // Llevar la plata a la cajita TC si existe
-            const cajitaTc = (S.cajitas||[]).find(c => c.esCajitaTC && c.tcId === d.gastoTcId);
-            if(cajitaTc && typeof sumarFuente === 'function'){
-              if(typeof materializarIntereses === 'function') materializarIntereses(cajitaTc);
-              sumarFuente('cajita:'+cajitaTc.id, d.monto);
-              if(!S.movimientos) S.movimientos = [];
-              S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:'cajita:'+cajitaTc.id, monto:d.monto, fecha, desc:'Para pagar TC: '+d.desc});
-              if(window.logCambio) logCambio('Plata para pagar TC', _cpFmt(d.monto)+' → cajita "'+cajitaTc.nombre+'"', d.monto, 'ingreso');
+          }
+          // Llevar la plata a la cajita que el usuario eligió (gastoTcCajita)
+          const destCajita = d.gastoTcCajita;
+          if(destCajita && typeof sumarFuente === 'function'){
+            if(destCajita.startsWith('cajita:')){
+              const cajId = destCajita.split(':')[1];
+              const caj = (S.cajitas||[]).find(x=>x.id===cajId);
+              if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
             }
+            sumarFuente(destCajita, d.monto);
+            if(!S.movimientos) S.movimientos = [];
+            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc});
+            if(window.logCambio) logCambio('Plata para pagar TC → '+_cpFuenteLabel(destCajita), _cpFmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
           }
         } else if(d.gastoOrigen === 'cajita' && d.gastoCajita){
           // Gasto de cajita: reponer esa cajita con el ingreso

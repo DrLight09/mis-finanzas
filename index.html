@@ -1101,7 +1101,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
                 </div>
                 <div style="display:flex;align-items:center;gap:7px;">
                   <input type="text" inputmode="decimal" id="nuTasaGlobal"
-                    value placeholder="9,25"
+                    value="" placeholder="9,25"
                     style="width:70px;padding:7px 10px;background:rgba(0,0,0,.35);border:1px solid rgba(192,96,240,.4);border-radius:8px;color:var(--nu-light);font-size:14px;font-weight:500;font-family:'DM Mono',monospace;outline:none;text-align:center;">
                   <span
                     style="font-size:12px;color:rgba(192,96,240,.7);font-family:'DM Mono',monospace;">%</span>
@@ -1171,8 +1171,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
                   style="font-size:10px;color:rgba(192,96,240,.6);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:6px;">Nombre
                   de la cajita</div>
                 <input type="text" id="cajita-det-name-input"
-                  style="width:100%;padding:9px 12px;background:rgba(0,0,0,.3);border:1px solid rgba(192,96,240,.35);border-radius:8px;color:var(--nu-light);font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;outline:none;"
-                  oninput="save()">
+                  style="width:100%;padding:9px 12px;background:rgba(0,0,0,.3);border:1px solid rgba(192,96,240,.35);border-radius:8px;color:var(--nu-light);font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;outline:none;">
               </div>
             </div>
             <!-- Acciones -->
@@ -4494,21 +4493,53 @@ function snapshotPatrimonio(){
   if(S.patrimonioHistorial.length>365)S.patrimonioHistorial=S.patrimonioHistorial.slice(-365);
   // (No localStorage — Firebase lo guarda _fbSaveToCloud)
 }
+// Calcula cuánta plata de encargos está físicamente en una cajita específica.
+// Nu genera interés sobre TODO el dinero de la cajita (propio + encargos),
+// y esos intereses son del dueño de la cajita.
+function _saldoEncargosEnCajita(cajitaId){
+  if(!S||!S.encargos||!cajitaId)return 0;
+  const claveCajita='cajita:'+cajitaId;
+  let total=0;
+  (S.encargos||[]).forEach(enc=>{
+    const map={};
+    if((enc.saldoInicial||0)>0){
+      const k=enc.cuentaInicial||'__sin__';
+      map[k]=(map[k]||0)+(enc.saldoInicial||0);
+    }
+    (enc.movimientos||[]).forEach(m=>{
+      const k=m.cuenta||'__sin__';
+      if(m.tipo==='entrada')map[k]=(map[k]||0)+(m.monto||0);
+      else map[k]=(map[k]||0)-(m.monto||0);
+    });
+    const v=map[claveCajita]||0;
+    if(v>0)total+=v;
+  });
+  return total;
+}
+
 function calcC(c){
-  // Interés diario compuesto sobre el saldo total actual.
+  // Interés diario compuesto sobre el saldo total en la cajita.
   // El saldo guardado (c.saldo) ya incluye los intereses materializados anteriormente.
+  // La base real para el interés = c.saldo (propio) + saldo de encargos en esta cajita.
+  // Nu genera interés sobre todo el dinero físico; los intereses son del dueño de la cajita.
   // La tasa diaria = (1 + tasaEA/100)^(1/365) - 1
-  // Usamos la tasa global de Nu; si la cajita no tiene fecha, no crece (esperamos al final del día).
   const tasa=getNuTasaGlobal?getNuTasaGlobal():(S.nuTasaGlobal||9.25);
   const rate=tasa/100;
-  const saldo=c.saldo||0;
-  if(!c.fecha||!saldo)return{val:saldo,ganado:0,dias:0,tasaDiaria:0,tasa};
+  const saldoPropio=c.saldo||0;
+  // Saldo de encargos que están físicamente en esta cajita (genera interés a mi favor)
+  const saldoEncargos=_saldoEncargosEnCajita(c.id);
+  const saldoBase=saldoPropio+saldoEncargos;
+  if(!c.fecha||!saldoBase)return{val:saldoPropio,ganado:0,dias:0,tasaDiaria:0,tasa,saldoEncargos};
   const desde=new Date(c.fecha+'T00:00:00');
   const ahora=new Date();
   const dias=Math.max(0,Math.floor((ahora-desde)/86400000));
   const tasaDiaria=Math.pow(1+rate,1/365)-1;
-  const val=saldo*Math.pow(1+tasaDiaria,dias);
-  return{val,ganado:val-saldo,dias,tasaDiaria,tasa};
+  // El interés se calcula sobre la base completa (propio + encargos)
+  const valTotal=saldoBase*Math.pow(1+tasaDiaria,dias);
+  // Lo que le corresponde al saldo propio después de crecer
+  const val=valTotal-saldoEncargos;
+  const ganado=val-saldoPropio;
+  return{val,ganado,dias,tasaDiaria,tasa,saldoEncargos};
 }
 
 // Materializa los intereses acumulados en el saldo (llama esto antes de depósitos/retiros)
@@ -4874,12 +4905,14 @@ function refresh(){
   // Excluir de variables los que son pagos de gastos fijos (ya se cuentan en gfTotal)
   const gvMes=gastosMes(mes).filter(g=>!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);
 
-  // Total intereses generados hoy en cajitas libres (usa tasa propia de cada cajita)
+  // Total intereses generados hoy en cajitas libres (base = saldo propio + encargos en la cajita)
   const _globalTasa=S.nuTasaGlobal||9.25;
   const interesesTotalHoy=(S.cajitas||[]).reduce((a,c)=>{
     const k=calcC(c);
     const tasaCajita=(!(c.cdts&&c.cdts.length)&&c.tasa!=null)?c.tasa:_globalTasa;
-    return a+(k.val>0?k.val*(Math.pow(1+tasaCajita/100,1/365)-1):0);
+    // Incluir saldo de encargos en la base del interés (son intereses a mi favor)
+    const baseInteres=k.val+(k.saldoEncargos||0);
+    return a+(baseInteres>0?baseInteres*(Math.pow(1+tasaCajita/100,1/365)-1):0);
   },0);
 
   const deudaTCTotal=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
@@ -5718,7 +5751,9 @@ function renderCajitas(){
     const hasCDTs=cdts.length>0;
     const totalCDT=cdts.reduce((a,cdt)=>a+calcCDT(cdt).val,0);
     const tasaDisplay=getNuTasaGlobal();
-    const interesHoy=k.val>0?(k.val*(Math.pow(1+tasaDisplay/100,1/365)-1)):0;
+    // El interés diario se calcula sobre la base completa (saldo propio + encargos en la cajita)
+    const _baseInteresRender=k.val+(k.saldoEncargos||0);
+    const interesHoy=_baseInteresRender>0?(_baseInteresRender*(Math.pow(1+tasaDisplay/100,1/365)-1)):0;
     const hasMeta=!!(c.meta&&c.meta.objetivo);
     const metaPct=hasMeta?Math.min(100,(k.val/c.meta.objetivo)*100):0;
     // Badges indicadores
@@ -5777,7 +5812,9 @@ function _renderDetalleCajita(c){
   if(!c) return;
   const k=calcC(c);
   const tasaDisplay=getNuTasaGlobal();
-  const interesHoy=k.val>0?(k.val*(Math.pow(1+tasaDisplay/100,1/365)-1)):0;
+  // Interés diario sobre la base completa (saldo propio + encargos en la cajita)
+  const _baseInteresDet=k.val+(k.saldoEncargos||0);
+  const interesHoy=_baseInteresDet>0?(_baseInteresDet*(Math.pow(1+tasaDisplay/100,1/365)-1)):0;
   const cdts=c.cdts||[];
   const hasCDTs=cdts.length>0;
   const totalCDT=cdts.reduce((a,cdt)=>a+calcCDT(cdt).val,0);
@@ -12126,6 +12163,11 @@ document.addEventListener('focusin', function(e){
     // Resumen de cierre de mes: detectar si cambió el mes desde la última apertura
     _checkCierreMes();
     setSyncStatus('ok', 'Sincronizado con Firebase');
+    // Notificar a módulos inline que los datos están listos.
+    // Los scripts inline no pueden sobrescribir window._fbLoadData de forma confiable
+    // porque este módulo (type="module") se ejecuta DESPUÉS que ellos, sobreescribiendo
+    // cualquier wrapper que hayan puesto. El evento 'appDataLoaded' es el canal correcto.
+    window.dispatchEvent(new CustomEvent('appDataLoaded'));
   }
 
   // ── Resumen de cierre de mes ─────────────────────────────────────────────
@@ -16046,12 +16088,11 @@ if(document.readyState === 'loading'){
   setTimeout(_cpInit, 400);
 }
 
-// También arrancar después de que Firebase cargue los datos
-const _cpOrigFbLoad = window._fbLoadData;
-window._fbLoadData = function(){
-  if(typeof _cpOrigFbLoad === 'function') _cpOrigFbLoad.apply(this, arguments);
-  setTimeout(_cpInit, 800);
-};
+// Arrancar también cuando Firebase termina de cargar los datos.
+// Usamos el evento 'appDataLoaded' en lugar de sobrescribir window._fbLoadData,
+// porque este script es inline y se ejecuta ANTES que los módulos (type="module"),
+// por lo que cualquier wrapper sobre _fbLoadData quedaría sobreescrito por el módulo.
+window.addEventListener('appDataLoaded', function(){ setTimeout(_cpInit, 800); });
 
 })();
 </script>
@@ -16626,13 +16667,14 @@ abrirEncargoDetalle = function(id) {
 };
 
 /* ── Inicializar todo cuando la app cargue ─────────────────────── */
-const _origFbLoadDataPersonas = window._fbLoadData;
-window._fbLoadData = function() {
-  if (typeof _origFbLoadDataPersonas === 'function') _origFbLoadDataPersonas.apply(this, arguments);
+// Usamos el evento 'appDataLoaded' en lugar de sobrescribir window._fbLoadData,
+// porque este script es inline y se ejecuta ANTES que los módulos (type="module"),
+// por lo que cualquier wrapper sobre _fbLoadData quedaría sobreescrito por el módulo.
+window.addEventListener('appDataLoaded', function() {
   setTimeout(() => {
     _inyectarPersonaSheets();
   }, 600);
-};
+});
 
 // También correr si ya cargó
 if (document.readyState !== 'loading') {

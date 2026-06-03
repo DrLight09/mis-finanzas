@@ -14779,9 +14779,13 @@ function _injectSheet(){
 
       <div id="cp-recibir-sobrante-wrap" style="display:none;margin-top:8px;padding:12px 14px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius-sm);">
         <div style="font-size:10px;color:rgba(200,240,96,.7);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Sobrante libre</div>
-        <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);" id="cp-recibir-sobrante">$0</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:2px;">Entra a la cuenta destino del ingreso</div>
+        <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);margin-bottom:8px;" id="cp-recibir-sobrante">$0</div>
+        <label class="il" style="font-size:10px;margin-bottom:6px;">¿A dónde va este sobrante?</label>
+        <div class="select-wrap"><select id="cp-recibir-sobrante-cuenta" style="font-size:13px;padding:9px 12px;"><option value="">Sin especificar</option></select></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.4;">Si no elegís, entra a la cuenta destino del ingreso.</div>
       </div>
+
+      <div id="cp-recibir-recordatorios" style="display:none;"></div>
 
       <div class="ig" style="margin-top:14px;">
         <label class="il" for="cp-recibir-fecha">Fecha de recibo</label>
@@ -15439,6 +15443,9 @@ window._cpAbrirRecibir = function(id){
       planEl.innerHTML = (item.destinos||[]).map(d=>{
         const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
         let detalle = '';
+        let subLabel = ti.label;
+        let extraInfo = '';
+
         if(d.tipo==='abono_deuda'||d.tipo==='prestamo'){
           const deu = (S.deudores||[]).find(x=>x.id===d.personaId);
           if(deu) detalle = ` · ${deu.nombre}`;
@@ -15447,12 +15454,67 @@ window._cpAbrirRecibir = function(id){
           const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.tcId);
           if(tc) detalle = ` · ${tc.nombre}`;
         }
-        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:6px;">
-          <div>
-            <div style="font-size:12px;font-weight:600;color:${ti.color};">${_cpEscape(d.desc)}${detalle}</div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${ti.label}</div>
+
+        // Reposición: mostrar qué cajita/cuenta recibe la plata
+        if(d.tipo==='reposicion'){
+          const cuentaId = d.cuentaId || item.cuentaDestino;
+          if(cuentaId){
+            const label = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(cuentaId) : cuentaId;
+            subLabel = 'Repone cajita/cuenta';
+            extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(176,144,240,.12);border-radius:6px;">
+              <i class="fa-solid fa-box" style="font-size:9px;color:var(--purple);"></i>
+              <span style="font-size:10px;font-weight:600;color:var(--purple);font-family:'DM Mono',monospace;">${_cpEscape(label)} recibe ${_cpFmt(d.monto)}</span>
+            </div>`;
+          }
+        }
+
+        // Gasto: mostrar estado real (pagado con TC / pendiente en cajita)
+        if(d.tipo==='gasto'){
+          if(d.gastoOrigen==='tc' && d.gastoTcId){
+            const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
+            const tcNombre = tc ? tc.nombre : 'Tarjeta de crédito';
+            if(d.yaPague){
+              subLabel = `Pagado con ${tcNombre}`;
+              extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(200,240,96,.1);border-radius:6px;">
+                <i class="fa-solid fa-check" style="font-size:9px;color:var(--accent);"></i>
+                <span style="font-size:10px;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace;">Ya pagado · La plata irá a la cajita TC</span>
+              </div>`;
+            } else {
+              subLabel = `Pendiente · Se cargará a ${tcNombre}`;
+              extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(240,104,104,.1);border-radius:6px;">
+                <i class="fa-solid fa-credit-card" style="font-size:9px;color:var(--red);"></i>
+                <span style="font-size:10px;font-weight:600;color:var(--red);font-family:'DM Mono',monospace;">Se cargará a ${_cpEscape(tcNombre)}</span>
+              </div>`;
+            }
+          } else if(d.gastoOrigen==='cajita' && d.gastoCajita){
+            const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
+            if(d.yaPague){
+              subLabel = 'Ya pagado';
+              extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(200,240,96,.1);border-radius:6px;">
+                <i class="fa-solid fa-check" style="font-size:9px;color:var(--accent);"></i>
+                <span style="font-size:10px;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace;">Repone "${_cpEscape(cajLabel)}"</span>
+              </div>`;
+            } else {
+              subLabel = 'Gasto pendiente';
+              extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;">
+                <i class="fa-regular fa-clock" style="font-size:9px;color:var(--amber);"></i>
+                <span style="font-size:10px;font-weight:600;color:var(--amber);font-family:'DM Mono',monospace;">Guardada en "${_cpEscape(cajLabel)}" hasta vencimiento</span>
+              </div>`;
+            }
+          } else {
+            subLabel = d.yaPague ? 'Ya pagado' : 'Gasto pendiente';
+          }
+        }
+
+        return `<div style="padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:6px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:600;color:${ti.color};">${_cpEscape(d.desc)}${detalle}</div>
+              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">${subLabel}</div>
+              ${extraInfo}
+            </div>
+            <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${ti.color};flex-shrink:0;">${_cpFmt(d.monto)}</div>
           </div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${ti.color};">${_cpFmt(d.monto)}</div>
         </div>`;
       }).join('');
     }
@@ -15461,12 +15523,50 @@ window._cpAbrirRecibir = function(id){
   // Sobrante
   const sobWrap = document.getElementById('cp-recibir-sobrante-wrap');
   const sobEl   = document.getElementById('cp-recibir-sobrante');
+  const sobCuenta = document.getElementById('cp-recibir-sobrante-cuenta');
   if(sobWrap && sobEl){
     if(sobrante > 0 || !(item.destinos||[]).length){
       sobWrap.style.display = '';
       sobEl.textContent = _cpFmt(sobrante > 0 ? sobrante : item.montoTotal||0);
+      // Poblar selector de destino del sobrante
+      if(sobCuenta){
+        _cpPoblarCuentas('cp-recibir-sobrante-cuenta', false);
+        sobCuenta.value = item.cuentaDestino || '';
+      }
     } else {
       sobWrap.style.display = 'none';
+    }
+  }
+
+  // Recordatorios de gastos pendientes (no pagados, sin TC)
+  const recWrap = document.getElementById('cp-recibir-recordatorios');
+  if(recWrap){
+    const pendientesConFecha = (item.destinos||[]).filter(d =>
+      d.tipo === 'gasto' && !d.yaPague && d.gastoOrigen !== 'tc' && d.gastoCajita
+    );
+    if(pendientesConFecha.length){
+      recWrap.style.display = '';
+      recWrap.innerHTML = `
+        <div style="margin-top:10px;padding:10px 12px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.22);border-radius:var(--radius-sm);">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;">
+            <i class="fa-solid fa-bell" style="color:var(--amber);font-size:11px;"></i>
+            <span style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;">Recordatorio de pagos pendientes</span>
+          </div>
+          ${pendientesConFecha.map(d=>{
+            const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
+            return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(240,184,64,.12);">
+              <div>
+                <div style="font-size:11px;font-weight:600;">${_cpEscape(d.desc)}</div>
+                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">La plata queda en "${_cpEscape(cajLabel)}"</div>
+              </div>
+              <span style="font-size:11px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${_cpFmt(d.monto)}</span>
+            </div>`;
+          }).join('')}
+          <div style="font-size:10px;color:var(--text3);margin-top:7px;line-height:1.4;"><i class="fa-solid fa-circle-info" style="margin-right:4px;color:var(--text3);"></i>Cuando llegue la fecha de pago, usá la plata de esas cajitas.</div>
+        </div>`;
+    } else {
+      recWrap.style.display = 'none';
+      recWrap.innerHTML = '';
     }
   }
 
@@ -15563,21 +15663,23 @@ window._cpConfirmarRecibir = function(){
     }
   });
 
-  // Ganancia: lo que sobre después de todos los destinos → va a cuenta destino del ingreso
+  // Ganancia: lo que sobre después de todos los destinos → va a cuenta elegida o por defecto la destino del ingreso
   const totalAsignado = (item.destinos||[]).reduce((a,d)=>a+(d.monto||0),0);
   const ganancia = Math.max(0,(item.montoTotal||0)-totalAsignado);
-  if(ganancia > 0.99 && item.cuentaDestino){
+  const sobranteCuentaEl = document.getElementById('cp-recibir-sobrante-cuenta');
+  const sobranteCuenta = (sobranteCuentaEl && sobranteCuentaEl.value) ? sobranteCuentaEl.value : item.cuentaDestino;
+  if(ganancia > 0.99 && sobranteCuenta){
     try {
       if(typeof sumarFuente === 'function'){
-        if(item.cuentaDestino.startsWith('cajita:')){
-          const cajId = item.cuentaDestino.split(':')[1];
+        if(sobranteCuenta.startsWith('cajita:')){
+          const cajId = sobranteCuenta.split(':')[1];
           const caj = (S.cajitas||[]).find(x=>x.id===cajId);
           if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
         }
-        sumarFuente(item.cuentaDestino, ganancia);
+        sumarFuente(sobranteCuenta, ganancia);
         if(!S.movimientos) S.movimientos = [];
-        S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:item.cuentaDestino, monto:ganancia, fecha, desc:'Ganancia: '+item.desc});
-        if(window.logCambio) logCambio('<i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Sobrante de "'+item.desc+'"', _cpFmt(ganancia)+' → '+_cpFuenteLabel(item.cuentaDestino), ganancia, 'ingreso');
+        S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:sobranteCuenta, monto:ganancia, fecha, desc:'Ganancia: '+item.desc});
+        if(window.logCambio) logCambio('<i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Sobrante de "'+item.desc+'"', _cpFmt(ganancia)+' → '+_cpFuenteLabel(sobranteCuenta), ganancia, 'ingreso');
       }
     } catch(e){ errores.push('Ganancia'); }
   }

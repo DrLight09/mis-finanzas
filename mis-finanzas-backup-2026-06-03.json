@@ -1,0 +1,1126 @@
+{
+  "nuRate": 925,
+  "cajitas": [
+    {
+      "id": "mpkd8wccs4m",
+      "nombre": "CDTS",
+      "saldo": 0,
+      "cdts": [
+        {
+          "id": "mpkdad15qom",
+          "monto": 500000,
+          "tasa": 9.6,
+          "rte": 4,
+          "inicio": "2026-02-18",
+          "vence": "2026-06-18"
+        }
+      ],
+      "tasa": 9.25,
+      "fecha": "2026-05-24"
+    },
+    {
+      "id": "mpkdagjpqao",
+      "nombre": "Mesada",
+      "saldo": 420650.06,
+      "cdts": [],
+      "tasa": 9.25,
+      "fecha": "2026-06-02",
+      "meta": {
+        "objetivo": 1000000,
+        "inicio": "2026-01-01",
+        "fin": "2027-01-31",
+        "aportes": [
+          {
+            "desc": "Mesada Madre",
+            "monto": 42000
+          },
+          {
+            "desc": "Mesada Padre",
+            "monto": 42000
+          }
+        ]
+      }
+    },
+    {
+      "id": "mpkdc4oqsly",
+      "nombre": "Ahorro",
+      "saldo": 0,
+      "cdts": [
+        {
+          "id": "mpkdd02gehq",
+          "monto": 1000000,
+          "tasa": 9.5,
+          "rte": 4,
+          "inicio": "2026-03-15",
+          "vence": "2026-06-13"
+        }
+      ],
+      "tasa": 9.25,
+      "fecha": "2026-05-24"
+    },
+    {
+      "id": "mpkdd4sk6ok",
+      "nombre": "Sobra",
+      "saldo": 694717.3601383634,
+      "cdts": [],
+      "tasa": 9.25,
+      "fecha": "2026-06-03"
+    },
+    {
+      "id": "mpkddp6739k",
+      "nombre": "Spotify",
+      "saldo": 19366.80796166796,
+      "cdts": [],
+      "tasa": 9.25,
+      "fecha": "2026-06-02"
+    },
+    {
+      "id": "mpkde6f31uu",
+      "nombre": "Padre",
+      "saldo": 3135.15,
+      "cdts": [],
+      "tasa": 9.25,
+      "fecha": "2026-06-02"
+    },
+    {
+      "id": "mpkdex5cksh",
+      "nombre": "Tarjeta",
+      "saldo": 339541.53,
+      "cdts": [],
+      "tasa": 9.25,
+      "fecha": "2026-06-02"
+    },
+    {
+      "id": "mpqel9nqjiz",
+      "nombre": "Hermanito",
+      "saldo": 193.29301176727745,
+      "cdts": [],
+      "tasa": 9.25,
+      "fecha": "2026-06-03"
+    }
+  ],
+  "nequiSaldo": 0.39,
+  "efectivoSaldo": 22000,
+  "personas": [
+    {
+      "id": "mpxfybplflp",
+      "nombre": "Hermanito",
+      "color": "#60b0f0",
+      "creadoEn": "2026-06-02"
+    },
+    {
+      "id": "mpxfybplrfr",
+      "nombre": "Madre",
+      "color": "#f06868",
+      "creadoEn": "2026-06-02"
+    },
+    {
+      "id": "mpxfybplb6s",
+      "nombre": "Padre",
+      "color": "#c8f060",
+      "creadoEn": "2026-06-02"
+    },
+    {
+      "id": "mpxfybpl6ne",
+      "nombre": "Esteban",
+      "color": "#f0b840",
+      "creadoEn": "2026-06-02"
+    },
+    {
+      "id": "mpxfybpljqc",
+      "nombre": "Samuel",
+      "color": "#c8f060",
+      "creadoEn": "2026-06-02"
+    }
+  ],
+  "deudores": [
+    {
+      "id": "mpkahoqngzj",
+      "nombre": "Hermanito",
+      "color": "#60b0f0",
+      "movimientos": [
+        {
+          "id": "mpkan5zvoxu",
+          "tipo": "prestamo",
+          "monto": 208000,
+          "fecha": "2026-05-24",
+          "fuente": "",
+          "nota": "Servicios",
+          "ts": 1779658369051
+        },
+        {
+          "id": "mpkanffj0wp",
+          "tipo": "prestamo",
+          "monto": 119000,
+          "fecha": "2026-05-24",
+          "fuente": "",
+          "nota": "Internet",
+          "ts": 1779658381279
+        },
+        {
+          "id": "mpkaoamhygf",
+          "tipo": "abono",
+          "monto": 150000,
+          "fecha": "2026-05-24",
+          "destino": "",
+          "nota": "Abono entregado por madre",
+          "ts": 1779658421705
+        },
+        {
+          "id": "mpkatceuy7s",
+          "tipo": "abono",
+          "monto": 77000,
+          "fecha": "2026-05-24",
+          "destino": "",
+          "nota": "Entregado personalmente",
+          "ts": 1779658657302,
+          "_extPartes": [
+            {
+              "tipo": "pendiente",
+              "ingrId": "mpkatcevuat",
+              "monto": 3000
+            }
+          ]
+        },
+        {
+          "id": "mpkau2rktvs",
+          "tipo": "prestamo",
+          "monto": 1030000,
+          "fecha": "2026-05-24",
+          "fuente": "",
+          "nota": "Cuota banco",
+          "ts": 1779658691456
+        }
+      ],
+      "personaId": "mpxfybplflp"
+    },
+    {
+      "id": "mpkahrqe6dz",
+      "nombre": "Madre",
+      "color": "#f06868",
+      "movimientos": [
+        {
+          "id": "mpkalyc5u99",
+          "tipo": "prestamo",
+          "monto": 405000,
+          "fecha": "2026-01-01",
+          "fuente": "",
+          "nota": "",
+          "ts": 1779658312469
+        },
+        {
+          "id": "mpnc1ui0q3t",
+          "tipo": "prestamo",
+          "monto": 6000,
+          "fecha": "2026-05-26",
+          "fuente": "cajita:mpkdd4sk6ok",
+          "nota": "Recarga",
+          "ts": 1779842132136
+        },
+        {
+          "id": "mpndcc2ox1z",
+          "tipo": "abono",
+          "monto": 6000,
+          "fecha": "2026-05-26",
+          "destino": "efectivo",
+          "nota": "",
+          "ts": 1779844301088
+        },
+        {
+          "id": "mpor5ruv4jc",
+          "tipo": "prestamo",
+          "monto": 50000,
+          "fecha": "2026-05-27",
+          "fuente": "efectivo",
+          "nota": "",
+          "ts": 1779927975751
+        },
+        {
+          "id": "mpxe6q5rrg4",
+          "tipo": "abono",
+          "monto": 102000,
+          "fecha": "2026-06-02",
+          "nota": "Abono desde: Arriendo mamá",
+          "ts": 1780450380783
+        },
+        {
+          "id": "mpygaz7ob5t",
+          "tipo": "prestamo",
+          "monto": 100000,
+          "fecha": "2026-06-03",
+          "fuente": "cajita:mpkdd4sk6ok",
+          "nota": "",
+          "ts": 1780514404548
+        }
+      ],
+      "personaId": "mpxfybplrfr"
+    },
+    {
+      "id": "mpkai02ymqk",
+      "nombre": "Padre",
+      "color": "#c8f060",
+      "movimientos": [
+        {
+          "id": "mpkammxk31k",
+          "tipo": "prestamo",
+          "monto": 200000,
+          "fecha": "2026-01-01",
+          "fuente": "",
+          "nota": "",
+          "ts": 1779658344344
+        }
+      ],
+      "personaId": "mpxfybplb6s"
+    },
+    {
+      "id": "mpkai56uhco",
+      "nombre": "Esteban",
+      "color": "#f0b840",
+      "movimientos": [
+        {
+          "id": "mpkaiegcloh",
+          "tipo": "prestamo",
+          "monto": 7000,
+          "fecha": "2026-05-20",
+          "fuente": "",
+          "nota": "",
+          "ts": 1779658146732
+        },
+        {
+          "id": "mpxmcllyngm",
+          "tipo": "abono",
+          "monto": 7000,
+          "fecha": "2026-06-02",
+          "destino": "",
+          "nota": "",
+          "ts": 1780464091750
+        }
+      ],
+      "personaId": "mpxfybpl6ne"
+    },
+    {
+      "id": "mpnbybggqxf",
+      "nombre": "Samuel",
+      "color": "#c8f060",
+      "movimientos": [
+        {
+          "id": "mpncky80mp9",
+          "tipo": "prestamo",
+          "monto": 1000,
+          "fecha": "2026-05-26",
+          "fuente": "efectivo",
+          "nota": "Le di 4mil para la gaseosa y eran 3mil",
+          "ts": 1779843023424
+        },
+        {
+          "id": "mpncmyehgei",
+          "tipo": "prestamo",
+          "monto": 12000,
+          "fecha": "2026-05-26",
+          "fuente": "efectivo",
+          "nota": "Le di 20mil así 3mil que sobró del indriver + 9mil que le toca",
+          "ts": 1779843116969
+        },
+        {
+          "id": "mpwucakad3e",
+          "tipo": "abono",
+          "monto": 13000,
+          "fecha": "2026-06-02",
+          "destino": "cajita:mpkdd4sk6ok",
+          "nota": "",
+          "ts": 1780417048186
+        }
+      ],
+      "personaId": "mpxfybpljqc"
+    }
+  ],
+  "prestamos": [],
+  "mesadas": {},
+  "mesadaMonto": 0,
+  "mesadaAnio": 2026,
+  "spotifyPersonas": [
+    {
+      "nombre": "Cárdenas",
+      "monto": 5100,
+      "pagado": false,
+      "proximoPago": "2026-06-08",
+      "fechaIngreso": "2026-05-09",
+      "ultimoDestino": "",
+      "mesesAdelantados": 1
+    },
+    {
+      "nombre": "AM: Esteban",
+      "monto": 5100,
+      "pagado": false,
+      "proximoPago": "2026-06-18",
+      "fechaIngreso": "2026-05-19",
+      "ultimoDestino": "",
+      "mesesAdelantados": 1
+    },
+    {
+      "nombre": "Óscar",
+      "monto": 5100,
+      "pagado": false,
+      "proximoPago": "2026-06-17",
+      "fechaIngreso": "2026-05-18",
+      "ultimoDestino": "",
+      "mesesAdelantados": 1
+    },
+    {
+      "nombre": "Samuel",
+      "monto": 5100,
+      "pagado": true,
+      "proximoPago": "2026-07-02",
+      "fechaIngreso": "2026-05-03",
+      "ultimoDestino": "cajita:mpkddp6739k",
+      "mesesAdelantados": 1
+    },
+    {
+      "nombre": "Esteban",
+      "monto": 5100,
+      "pagado": false,
+      "proximoPago": "2026-06-23",
+      "fechaIngreso": "2026-05-24",
+      "ultimoDestino": "",
+      "mesesAdelantados": 1
+    }
+  ],
+  "spotifyCosto": 30500,
+  "spotifyCajitaId": "mpkddp6739k",
+  "spotifyHistorial": [
+    {
+      "tipo": "cobro",
+      "nombre": "Samuel",
+      "monto": 5100,
+      "fuente": "cajita:mpkddp6739k",
+      "fecha": "2026-06-02",
+      "nota": ""
+    }
+  ],
+  "gastosFijos": [],
+  "pagosGastosFijos": {},
+  "gastosVar": [
+    {
+      "id": "mpnck09h7vb",
+      "desc": "Gaseosa - Samuel",
+      "monto": 3000,
+      "fecha": "2026-05-26",
+      "cat": "Alimentación",
+      "fuente": "efectivo",
+      "nota": ""
+    },
+    {
+      "id": "mpncnvjjtkz",
+      "desc": "Pago indriver - Samuel",
+      "monto": 8000,
+      "fecha": "2026-05-26",
+      "cat": "Transporte",
+      "fuente": "efectivo",
+      "nota": ""
+    },
+    {
+      "id": "mpndigictgy",
+      "desc": "Reserva",
+      "monto": 6000,
+      "fecha": "2026-05-26",
+      "cat": "Otro",
+      "fuente": "efectivo",
+      "nota": ""
+    },
+    {
+      "id": "mpor6m3s0xf",
+      "desc": "Regalo a Mamá por la ayuda",
+      "monto": 20000,
+      "fecha": "2026-05-27",
+      "cat": "Otro",
+      "fuente": "efectivo",
+      "nota": ""
+    },
+    {
+      "id": "mpupzssakdj",
+      "desc": "Pago tarjeta MasterCard NU (comprometida)",
+      "monto": 111243,
+      "fecha": "2026-05-31",
+      "cat": "Servicios",
+      "fuente": "plata-comprometida",
+      "nota": "Internet",
+      "_esPagoTC": true,
+      "_tcId": "mpkff0xk0eb"
+    }
+  ],
+  "encargos": [
+    {
+      "id": "mpkbj82ggqg",
+      "nombre": "Hermanito",
+      "nota": "",
+      "saldoInicial": 0,
+      "cuentaInicial": "",
+      "fechaCreacion": "2026-05-24",
+      "movimientos": [
+        {
+          "id": "mpkbm49uvfb",
+          "tipo": "entrada",
+          "desc": "Sobrante",
+          "monto": 45000,
+          "cuenta": "nequi",
+          "fecha": "2026-05-20",
+          "nota": "",
+          "ts": 1779659999778
+        },
+        {
+          "id": "mpkfdaex4hv",
+          "tipo": "entrada",
+          "desc": "Transferencia desde Bancolombia",
+          "monto": 1000000,
+          "cuenta": "custom:mpkfcmvrymv",
+          "fecha": "2026-05-21",
+          "nota": "",
+          "ts": 1779666306297
+        },
+        {
+          "id": "mpkfdtmuj4m",
+          "tipo": "salida",
+          "desc": "Envió a 321 883 1966",
+          "monto": 150000,
+          "cuenta": "custom:mpkfcmvrymv",
+          "fecha": "2026-05-24",
+          "nota": "",
+          "ts": 1779666331206
+        },
+        {
+          "id": "mporj4epb7g",
+          "tipo": "salida",
+          "desc": "Envío a 36619954721",
+          "monto": 70000,
+          "cuenta": "custom:mpkfcmvrymv",
+          "fecha": "2026-05-27",
+          "nota": "Mas info en el chat de mamá",
+          "ts": 1779928598545
+        },
+        {
+          "id": "mpp0psi983g",
+          "tipo": "entrada",
+          "desc": "Arriendo",
+          "monto": 770000,
+          "cuenta": "nequi",
+          "fecha": "2026-05-27",
+          "nota": "",
+          "ts": 1779944026258
+        },
+        {
+          "id": "mpq958eyi51",
+          "tipo": "salida",
+          "desc": "Regalo a mamá",
+          "monto": 100000,
+          "cuenta": "custom:mpkfcmvrymv",
+          "fecha": "2026-05-28",
+          "nota": "",
+          "ts": 1780018649818
+        },
+        {
+          "id": "mpqeofsfqg8",
+          "tipo": "salida",
+          "desc": "Reubicación → Hermanito (Nu)",
+          "monto": 270000,
+          "cuenta": "nequi",
+          "fecha": "2026-05-28",
+          "nota": "Movimiento interno entre cuentas",
+          "ts": 1780027943919
+        },
+        {
+          "id": "mpqeofsfeux",
+          "tipo": "entrada",
+          "desc": "Reubicación ← Nequi",
+          "monto": 270000,
+          "cuenta": "cajita:mpqel9nqjiz",
+          "fecha": "2026-05-28",
+          "nota": "Movimiento interno entre cuentas",
+          "ts": 1780027943920
+        },
+        {
+          "id": "mpu54c5ir4b",
+          "tipo": "entrada",
+          "desc": "Recarga Desde Bancolombia",
+          "monto": 100000,
+          "cuenta": "nequi",
+          "fecha": "2026-05-29",
+          "nota": "",
+          "ts": 1780253754246
+        },
+        {
+          "id": "mpu54w2r22d",
+          "tipo": "entrada",
+          "desc": "MARIA CAMILA GALLO LONDOÑO",
+          "monto": 150000,
+          "cuenta": "nequi",
+          "fecha": "2026-05-30",
+          "nota": "",
+          "ts": 1780253780067
+        },
+        {
+          "id": "mpumvmmkzzw",
+          "tipo": "entrada",
+          "desc": "Arriendo",
+          "monto": 650000,
+          "cuenta": "nequi",
+          "fecha": "2026-05-31",
+          "nota": "",
+          "ts": 1780283581004
+        },
+        {
+          "id": "mpvjdfnh83r",
+          "tipo": "entrada",
+          "desc": "David Patino Naranjo",
+          "monto": 70000,
+          "cuenta": "nequi",
+          "fecha": "2026-06-01",
+          "nota": "",
+          "ts": 1780338159485
+        },
+        {
+          "id": "mpw3l0l1sfh",
+          "tipo": "salida",
+          "monto": 680000,
+          "cuenta": "custom:mpkfcmvrymv",
+          "desc": "Parte usada: Cuota del banco",
+          "fecha": "2026-06-01",
+          "_parteId": "mptbirxqu77"
+        },
+        {
+          "id": "mpw3l0l165n",
+          "tipo": "salida",
+          "monto": 117000,
+          "cuenta": "nequi",
+          "desc": "Parte usada: Cuota del banco",
+          "fecha": "2026-06-01",
+          "_parteId": "mptbirxqu77"
+        },
+        {
+          "id": "mpw7azpdje6",
+          "tipo": "salida",
+          "desc": "Impuesto predial",
+          "monto": 130000,
+          "cuenta": "nequi",
+          "fecha": "2026-06-02",
+          "nota": "",
+          "ts": 1780378356289,
+          "diferencial": {
+            "dijo": 130000,
+            "real": 108653,
+            "margen": 21347,
+            "beneficiarios": [
+              {
+                "nombre": "Mamá",
+                "monto": 10000
+              }
+            ],
+            "miCuenta": "cajita:mpkdd4sk6ok",
+            "yoMeQuedo": 11347
+          }
+        },
+        {
+          "id": "mpwy8g7x69g",
+          "tipo": "salida",
+          "desc": "Regalo a mamá",
+          "monto": 50000,
+          "cuenta": "nequi",
+          "fecha": "2026-06-02",
+          "nota": "",
+          "ts": 1780423587357
+        },
+        {
+          "id": "mpwyohev1yz",
+          "tipo": "salida",
+          "desc": "Reubicación → Hermanito (Nu)",
+          "monto": 620000,
+          "cuenta": "nequi",
+          "fecha": "2026-06-02",
+          "nota": "Movimiento interno entre cuentas",
+          "ts": 1780424335399
+        },
+        {
+          "id": "mpwyohevrr0",
+          "tipo": "entrada",
+          "desc": "Reubicación ← Nequi",
+          "monto": 620000,
+          "cuenta": "cajita:mpqel9nqjiz",
+          "fecha": "2026-06-02",
+          "nota": "Movimiento interno entre cuentas",
+          "ts": 1780424335400
+        },
+        {
+          "id": "mpx6tskoobg",
+          "tipo": "salida",
+          "desc": "Compra pagada con TC: Compra en Farmatodo",
+          "monto": 95000,
+          "cuenta": "cajita:mpqel9nqjiz",
+          "fecha": "2026-06-02",
+          "nota": "Compra de encargo pagada con TC — dinero convertido para pago de tarjeta.",
+          "_esTcEncargo": true,
+          "ts": 1780438020072
+        },
+        {
+          "id": "mpygcjxfvvi",
+          "tipo": "salida",
+          "desc": "Reubicación → Hermanito (Nu)",
+          "monto": 100000,
+          "cuenta": "nequi",
+          "fecha": "2026-06-03",
+          "nota": "Movimiento interno entre cuentas",
+          "ts": 1780514478051
+        },
+        {
+          "id": "mpygcjxfvwp",
+          "tipo": "entrada",
+          "desc": "Reubicación ← Nequi",
+          "monto": 100000,
+          "cuenta": "cajita:mpqel9nqjiz",
+          "fecha": "2026-06-03",
+          "nota": "Movimiento interno entre cuentas",
+          "ts": 1780514478052
+        }
+      ],
+      "partes": [],
+      "personaId": "mpxfybplflp"
+    }
+  ],
+  "movimientos": [
+    {
+      "id": "mpkd981lcgd",
+      "tipo": "apertura",
+      "fuente": "cajita:mpkd8wccs4m",
+      "monto": 500000,
+      "fecha": "2026-05-24",
+      "desc": "Saldo inicial"
+    },
+    {
+      "id": "mpkdc09mtw1",
+      "tipo": "apertura",
+      "fuente": "cajita:mpkdagjpqao",
+      "monto": 419733.43,
+      "fecha": "2026-05-24",
+      "desc": "Saldo inicial"
+    },
+    {
+      "id": "mpkdcji5s1q",
+      "tipo": "apertura",
+      "fuente": "cajita:mpkdc4oqsly",
+      "monto": 1000000,
+      "fecha": "2026-05-24",
+      "desc": "Saldo inicial"
+    },
+    {
+      "id": "mpkddlgsz4b",
+      "tipo": "apertura",
+      "fuente": "cajita:mpkdd4sk6ok",
+      "monto": 631910.38,
+      "fecha": "2026-05-24",
+      "desc": "Saldo inicial"
+    },
+    {
+      "id": "mpkde4mtasq",
+      "tipo": "apertura",
+      "fuente": "cajita:mpkddp6739k",
+      "monto": 14235.72,
+      "fecha": "2026-05-24",
+      "desc": "Saldo inicial"
+    },
+    {
+      "id": "mpkdes6gp4e",
+      "tipo": "apertura",
+      "fuente": "cajita:mpkde6f31uu",
+      "monto": 3128.31,
+      "fecha": "2026-05-24",
+      "desc": "Saldo inicial"
+    },
+    {
+      "id": "mpkdfif9h59",
+      "tipo": "apertura",
+      "fuente": "cajita:mpkdex5cksh",
+      "monto": 139294.34,
+      "fecha": "2026-05-24",
+      "desc": "Saldo inicial"
+    },
+    {
+      "id": "mpkdhn4dfvo",
+      "tipo": "apertura",
+      "fuente": "nequi",
+      "monto": 0.39,
+      "fecha": "2026-05-24",
+      "desc": "Saldo inicial"
+    },
+    {
+      "id": "mpkooj2t7pc",
+      "tipo": "apertura",
+      "fuente": "efectivo",
+      "monto": 24000,
+      "fecha": "2026-05-24",
+      "desc": "Saldo inicial"
+    },
+    {
+      "id": "mpor4r6arls",
+      "tipo": "entrada",
+      "fuente": "efectivo",
+      "monto": 100000,
+      "fecha": "2026-05-27",
+      "desc": "Pago - Trabajo"
+    },
+    {
+      "id": "mprtp1qtcyo",
+      "tipo": "salida",
+      "fuente": "cajita:mpkdd4sk6ok",
+      "monto": 270000,
+      "fecha": "2026-05-29",
+      "desc": "Adelanto comprometido: Plata que le sobraba"
+    },
+    {
+      "id": "mpwytnl8pp3",
+      "tipo": "entrada",
+      "fuente": "cajita:mpkdd4sk6ok",
+      "monto": 6300,
+      "fecha": "2026-06-02",
+      "desc": "Margen de encargo — Compra en Farmatodo",
+      "nota": "Generado automáticamente por el diferencial del encargo",
+      "ts": 1780424576684
+    },
+    {
+      "id": "mpx5q0yqzm8",
+      "tipo": "entrada",
+      "fuente": "cajita:mpkdd4sk6ok",
+      "monto": 6300,
+      "fecha": "2026-06-02",
+      "desc": "Diferencial encargo Hermanito — Compra en Farmatodo"
+    },
+    {
+      "id": "mpx6tskppa3",
+      "tipo": "entrada",
+      "fuente": "cajita:mpkdd4sk6ok",
+      "monto": 6300,
+      "fecha": "2026-06-02",
+      "desc": "Diferencial encargo Hermanito — Compra en Farmatodo"
+    },
+    {
+      "id": "mpxe6q5vu22",
+      "tipo": "entrada",
+      "fuente": "cajita:mpkdd4sk6ok",
+      "monto": 95522,
+      "fecha": "2026-06-02",
+      "desc": "Reposición gasto: Servicios"
+    },
+    {
+      "id": "mpxe6q5yium",
+      "tipo": "entrada",
+      "fuente": "cajita:mpkdd4sk6ok",
+      "monto": 270000,
+      "fecha": "2026-06-02",
+      "desc": "Reposición (adelantada): Arriendo mamá"
+    },
+    {
+      "id": "mpxe6q60eg6",
+      "tipo": "entrada",
+      "fuente": "cajita:mpkdd4sk6ok",
+      "monto": 1235,
+      "fecha": "2026-06-02",
+      "desc": "Ganancia: Arriendo mamá"
+    },
+    {
+      "id": "mpxitic5k1b",
+      "tipo": "salida_manual",
+      "fuente": "efectivo",
+      "monto": 8000,
+      "fecha": "2026-06-02",
+      "desc": "Arreglo"
+    },
+    {
+      "id": "mpxnruzleto",
+      "tipo": "salida_manual",
+      "fuente": "cajita:mpqel9nqjiz",
+      "monto": 963.7,
+      "fecha": "2026-06-03",
+      "desc": "Balance"
+    }
+  ],
+  "modulos": {
+    "mesada": true,
+    "spotify": true,
+    "corregirSaldo": false
+  },
+  "catsVar": [],
+  "catsFijo": [],
+  "cuentasPersonalizadas": [
+    {
+      "id": "mpkfcmvrymv",
+      "nombre": "Madre",
+      "icono": "nequi",
+      "color": "#ff4da6",
+      "saldo": 0.5,
+      "incluirEnTotal": true,
+      "movimientos": [
+        {
+          "id": "mpkfcmvr4pg",
+          "tipo": "apertura",
+          "monto": 0.5,
+          "fecha": "2026-05-24",
+          "nota": "Saldo inicial"
+        }
+      ]
+    }
+  ],
+  "patrimonioHistorial": [
+    {
+      "fecha": "2026-05-24",
+      "valor": 4363779.87
+    },
+    {
+      "fecha": "2026-05-25",
+      "valor": 4364439.4936057385
+    },
+    {
+      "fecha": "2026-05-26",
+      "valor": 4348098.708214017
+    },
+    {
+      "fecha": "2026-05-27",
+      "valor": 4428756.539386641
+    },
+    {
+      "fecha": "2026-05-28",
+      "valor": 4429415.401243659
+    },
+    {
+      "fecha": "2026-05-29",
+      "valor": 4160073.3738022037
+    },
+    {
+      "fecha": "2026-05-30",
+      "valor": 4160666.9265862685
+    },
+    {
+      "fecha": "2026-05-31",
+      "valor": 4050017.534240339
+    },
+    {
+      "fecha": "2026-06-01",
+      "valor": 4050610.716777716
+    },
+    {
+      "fecha": "2026-06-02",
+      "valor": 4370810.957961667
+    },
+    {
+      "fecha": "2026-06-03",
+      "valor": 4364753.783255117
+    }
+  ],
+  "tarjetasCredito": [
+    {
+      "id": "mpkff0xk0eb",
+      "nombre": "MasterCard NU",
+      "cupo": 475000,
+      "deuda": 338911,
+      "fechaCorte": 29,
+      "fechaPago": 18,
+      "compras": [
+        {
+          "id": "mpuqact506k",
+          "desc": "Internet",
+          "monto": 111243,
+          "fecha": "2026-05-31",
+          "_desdeCP": true
+        }
+      ],
+      "pagos": [
+        {
+          "id": "mpupzss9zty",
+          "monto": 111243,
+          "fecha": "2026-05-31",
+          "fuente": "plata-comprometida",
+          "nota": "Pago desde plata comprometida: Internet"
+        }
+      ],
+      "pagoMinimo": 138968
+    }
+  ],
+  "mesadasV2": {
+    "papa": {
+      "2026-0": {
+        "monto": 80000,
+        "fecha": "2026-01-30",
+        "destino": "",
+        "nota": "",
+        "esSaldoInicial": true
+      },
+      "2026-1": {
+        "monto": 80000,
+        "fecha": "2026-05-24",
+        "destino": "",
+        "nota": "",
+        "esSaldoInicial": true
+      },
+      "2026-2": {
+        "monto": 80000,
+        "fecha": "2026-03-30",
+        "destino": "",
+        "nota": "",
+        "esSaldoInicial": true
+      },
+      "2026-3": {
+        "monto": 80000,
+        "fecha": "2026-04-30",
+        "destino": "",
+        "nota": "",
+        "esSaldoInicial": true
+      }
+    },
+    "mama": {
+      "2026-0": {
+        "monto": 80000,
+        "fecha": "2026-01-01",
+        "destino": "",
+        "nota": "",
+        "esSaldoInicial": true
+      },
+      "2026-1": {
+        "monto": 80000,
+        "fecha": "2026-02-01",
+        "destino": "",
+        "nota": "",
+        "esSaldoInicial": true
+      },
+      "2026-2": {
+        "monto": 80000,
+        "fecha": "2026-03-01",
+        "destino": "",
+        "nota": "",
+        "esSaldoInicial": true
+      },
+      "2026-3": {
+        "monto": 80000,
+        "fecha": "2026-04-01",
+        "destino": "",
+        "nota": "",
+        "esSaldoInicial": true
+      },
+      "2026-4": {
+        "monto": 80000,
+        "fecha": "2026-05-01",
+        "destino": "",
+        "nota": "",
+        "esSaldoInicial": true
+      }
+    }
+  },
+  "plataCometida": [
+    {
+      "id": "mprtpjxln5y",
+      "desc": "Arriendo mamá",
+      "montoTotal": 580000,
+      "fechaLlegada": "2026-06-03",
+      "cuentaDestino": "nequi",
+      "destinos": [
+        {
+          "id": "mprtkmvawlo",
+          "tipo": "abono_deuda",
+          "desc": "Abono",
+          "monto": 102000,
+          "personaId": "mpkahrqe6dz",
+          "cuentaId": "",
+          "yaSaque": false,
+          "yaPague": false,
+          "gastoOrigen": "",
+          "gastoCajita": "",
+          "gastoTcId": ""
+        },
+        {
+          "id": "mprtmd2bqar",
+          "tipo": "gasto",
+          "desc": "Servicios",
+          "monto": 95522,
+          "personaId": "",
+          "cuentaId": "",
+          "yaSaque": false,
+          "yaPague": false,
+          "gastoOrigen": "cajita",
+          "gastoCajita": "cajita:mpkdd4sk6ok",
+          "gastoTcId": ""
+        },
+        {
+          "id": "mprtnbmvt83",
+          "tipo": "gasto",
+          "desc": "Internet",
+          "monto": 111243,
+          "personaId": "",
+          "cuentaId": "",
+          "yaSaque": false,
+          "yaPague": true,
+          "gastoOrigen": "tc",
+          "gastoCajita": "",
+          "gastoTcId": "mpkff0xk0eb"
+        },
+        {
+          "id": "mprtp1ruhr5",
+          "tipo": "reposicion",
+          "desc": "Plata que le sobraba",
+          "monto": 270000,
+          "personaId": "",
+          "cuentaId": "cajita:mpkdd4sk6ok",
+          "yaSaque": true,
+          "yaPague": false,
+          "gastoOrigen": "",
+          "gastoCajita": "",
+          "gastoTcId": ""
+        }
+      ],
+      "recibido": true,
+      "creadoEn": "2026-05-29",
+      "fechaRecibido": "2026-06-02"
+    }
+  ],
+  "mesadaMontoPapa": 80000,
+  "mesadaMonteMama": 80000,
+  "ingresosExtra": [
+    {
+      "id": "mpkatcevuat",
+      "monto": 3000,
+      "fecha": "2026-05-24",
+      "nota": "Extra sin asignar — Hermanito",
+      "ts": 1779658657303
+    }
+  ],
+  "nuTasaGlobal": 9.25,
+  "_ultimoMesVisto": "2026-06",
+  "gastos": [
+    {
+      "id": "mpw7azpexbi",
+      "desc": "Margen de encargo — Impuesto predial",
+      "monto": 11347,
+      "cuenta": "cajita:mpkdd4sk6ok",
+      "tipo": "ingreso",
+      "fecha": "2026-06-02",
+      "nota": "Generado automáticamente por el diferencial del encargo",
+      "ts": 1780378356290
+    }
+  ],
+  "tcMovimientos": [
+    {
+      "id": "mpx5q0yqn8n",
+      "tcId": "mpkff0xk0eb",
+      "tipo": "cargo_encargo",
+      "desc": "Compra encargo Hermanito: Compra en Farmatodo",
+      "monto": 88700,
+      "fecha": "2026-06-02",
+      "nota": "Cargo de encargo — no es gasto propio",
+      "encId": "mpkbj82ggqg"
+    },
+    {
+      "id": "mpx6tskp5y4",
+      "tcId": "mpkff0xk0eb",
+      "tipo": "cargo_encargo",
+      "desc": "Compra encargo Hermanito: Compra en Farmatodo",
+      "monto": 88700,
+      "fecha": "2026-06-02",
+      "nota": "Cargo de encargo — no es gasto propio",
+      "encId": "mpkbj82ggqg"
+    }
+  ]
+}

@@ -3014,7 +3014,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <div class="sheet-title" id="movSheetTitle">Nuevo préstamo</div>
         <div class="ig"><label class="il" for="mov_monto">Monto</label><input
             type="text" inputmode="decimal" id="mov_monto" placeholder="0,00"
-            class="money-input"></div>
+            class="money-input" oninput="_onMovMontoInput()"></div>
         <div class="ig"><label class="il" for="mov_fecha">Fecha</label><input
             type="date" id="mov_fecha"></div>
         <div class="ig" id="mov_fuente_wrap">
@@ -3085,6 +3085,35 @@ input.movs-search-input:focus{border-color:var(--accent);}
           </button>
           <div id="mov_origen_tags"
             style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;"></div>
+        </div>
+
+        <!-- ══ DESDE UN ENCARGO ══ -->
+        <div id="mov_enc_wrap" style="display:none;">
+          <div style="height:1px;background:var(--border);margin:10px 0 12px;"></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <label class="il" style="margin:0;flex:1;">¿Viene de un encargo?</label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text2);">
+              <input type="checkbox" id="mov_desde_encargo" onchange="toggleDesdeEncargo()"
+                style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer;">
+              Sí, es de un encargo
+            </label>
+          </div>
+          <div id="mov_enc_body" style="display:none;">
+            <div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.25);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:10px;font-size:11px;color:var(--text2);line-height:1.5;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:4px;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/></svg>
+              El pago sale del encargo — <b style="color:var(--text);">no entra a ninguna cuenta tuya</b>. El saldo del encargo baja y la deuda queda saldada.
+            </div>
+            <div class="ig" style="margin-bottom:8px;">
+              <label class="il" for="mov_enc_sel">¿De qué encargo?</label>
+              <div class="select-wrap"><select id="mov_enc_sel" onchange="onChangeMov_enc_sel()"><option value="">Seleccionar encargo</option></select></div>
+            </div>
+            <div class="ig" id="mov_enc_cuenta_wrap" style="display:none;">
+              <label class="il" for="mov_enc_cuenta">¿De qué cuenta del encargo sale?</label>
+              <div class="select-wrap"><select id="mov_enc_cuenta" onchange="onChangeMov_enc_cuenta()"><option value="">Sin especificar</option></select></div>
+              <div id="mov_enc_cuenta_hint" style="font-size:10px;color:var(--blue);margin-top:5px;display:none;font-family:'DM Mono',monospace;"></div>
+            </div>
+            <div id="mov_enc_saldo_preview" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:16px;"></div>
+          </div>
         </div>
 
         <!-- ══ EXTRA (propina / regalo de más) ══ -->
@@ -6532,7 +6561,9 @@ function abrirDeudor(id) {
       // Destino info line
       const arrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
       let destinoInfo = '';
-      if (m.destinos && m.destinos.length) {
+      if (m._viaEncargo && m._encNombre) {
+        destinoInfo = ` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">encargo de ${escHtml(m._encNombre)}</span>`;
+      } else if (m.destinos && m.destinos.length) {
         destinoInfo = ' ' + arrowSvg + ' ' + m.destinos.map(r => fuenteLabel(r.fuente) + ' ' + fmt(r.monto)).join(' + ');
       } else if (m.destino) {
         destinoInfo = ' ' + arrowSvg + ' ' + fuenteLabel(m.destino);
@@ -6624,7 +6655,13 @@ async function eliminarMovDeudor(deudorId, movId) {
     }
   } else {
     // Era un abono: plata entró al destino → quitar
-    if (m.destinos && m.destinos.length) {
+    if (m._viaEncargo && m._encId && m._encMovId) {
+      // Abono vía encargo: revertir la salida del encargo
+      const enc = (S.encargos || []).find(e => e.id === m._encId);
+      if (enc) {
+        enc.movimientos = (enc.movimientos || []).filter(x => x.id !== m._encMovId);
+      }
+    } else if (m.destinos && m.destinos.length) {
       m.destinos.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto); });
     } else if (m.destino) {
       descontarFuente(m.destino, m.monto);
@@ -6719,6 +6756,40 @@ function initMovSheet(tipo) {
   if (extRes) extRes.innerHTML = '';
   // compat vars
   _abonoExtOpt = ''; _abonoExtRegTodo = true; _abonoExtSplitMode = false; _abonoExtSplitRows = [];
+  // Reset desde-encargo
+  _abonoDesdeEncargo = false;
+  _abonoEncId = '';
+  _abonoEncCuenta = '';
+  const encWrap = document.getElementById('mov_enc_wrap');
+  const encChk  = document.getElementById('mov_desde_encargo');
+  const encBody = document.getElementById('mov_enc_body');
+  const encSel  = document.getElementById('mov_enc_sel');
+  const encCuentaWrap = document.getElementById('mov_enc_cuenta_wrap');
+  const encPreview    = document.getElementById('mov_enc_saldo_preview');
+  if (encWrap)      encWrap.style.display = esAbono ? '' : 'none';
+  if (encChk)       encChk.checked = false;
+  if (encBody)      encBody.style.display = 'none';
+  if (encCuentaWrap) encCuentaWrap.style.display = 'none';
+  if (encPreview)   encPreview.textContent = '';
+  if (encSel)       encSel.innerHTML = '<option value="">Seleccionar encargo</option>';
+  // Pre-detectar encargo vinculado a la misma persona
+  if (esAbono) {
+    const d = (S.deudores || []).find(x => x.id === deudorActualId);
+    if (d && d.personaId) {
+      const encsVinculados = (S.encargos || []).filter(e => e.personaId === d.personaId && encargoSaldo(e) > 0);
+      if (encsVinculados.length > 0 && encWrap) {
+        // Mostrar badge de sugerencia en el label
+        const lbl = encWrap.querySelector('label.il');
+        if (lbl && !lbl.querySelector('.enc-sugerencia')) {
+          const badge = document.createElement('span');
+          badge.className = 'enc-sugerencia';
+          badge.style.cssText = 'margin-left:6px;font-size:9px;background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-family:DM Mono,monospace;vertical-align:middle;';
+          badge.textContent = 'Tienen encargo';
+          lbl.appendChild(badge);
+        }
+      }
+    }
+  }
   // Si es abono o pago completo, precargar el botón devolver al origen
   if (tipo === 'abono' || tipo === 'pago-completo') {
     const d = (S.deudores || []).find(x => x.id === deudorActualId);
@@ -6752,6 +6823,64 @@ function confirmarMovimiento() {
 
   } else {
     // ── ABONO ──
+
+    // ── Rama: viene de un encargo ──────────────────────────────────
+    if (_abonoDesdeEncargo) {
+      if (!_abonoEncId) { toast('Selecciona un encargo', 'err'); return; }
+      const enc = (S.encargos || []).find(e => e.id === _abonoEncId);
+      if (!enc) { toast('Encargo no encontrado', 'err'); return; }
+
+      const saldoTotal = encargoSaldo(enc);
+      if (monto > saldoTotal + 0.5) {
+        toast(`El encargo solo tiene ${fmt(saldoTotal)} disponible`, 'err'); return;
+      }
+      if (_abonoEncCuenta) {
+        const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
+        if (monto > saldoEnCuenta + 0.5) {
+          toast(`En ${fuenteLabel(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+        }
+      }
+
+      // 1. Registrar salida en el encargo (descuenta su saldo)
+      const encMovId = uid();
+      if (!enc.movimientos) enc.movimientos = [];
+      enc.movimientos.push({
+        id: encMovId,
+        tipo: 'salida',
+        monto,
+        cuenta: _abonoEncCuenta || '',
+        desc: `Pago de préstamo — ${d.nombre}`,
+        fecha,
+        nota,
+        ts: Date.now(),
+        _esAbonoDeudor: true,
+        _deudorId: deudorActualId
+      });
+
+      // 2. Registrar abono en el deudor (saldo la deuda), sin destino de cuenta
+      const abonMovId = uid();
+      d.movimientos.push({
+        id: abonMovId,
+        tipo: 'abono',
+        monto,
+        fecha,
+        nota,
+        destino: '',
+        _viaEncargo: true,
+        _encId: enc.id,
+        _encNombre: enc.nombre,
+        _encMovId: encMovId,
+        ts: Date.now()
+      });
+
+      if(window.logCambio) logCambio(`Abono de ${d.nombre} vía encargo de ${enc.nombre}`, d.nombre, monto, 'abono');
+      save(); refresh(); closeSheet('registrar-movimiento');
+      abrirDeudor(deudorActualId);
+      toast(`✓ ${fmt(monto)} descontado del encargo de ${enc.nombre}`, 'ok', 3500);
+      return;
+    }
+
+    // ── Rama normal: destino a cuenta propia ──────────────────────
     // 1. Registrar el abono (con o sin split de destino)
     if (_abonoSplitMode) {
       const totalSplit = _abonoSplitRows.reduce((a,r)=>a+(r.monto||0),0);
@@ -6843,6 +6972,140 @@ function confirmarMovimiento() {
 
 function fuenteLabel2(f){ return f ? fuenteLabel(f) : '—'; }
 
+/* ── ABONO: desde un encargo ──────────────────────────────────────── */
+function toggleDesdeEncargo() {
+  const chk  = document.getElementById('mov_desde_encargo');
+  const body = document.getElementById('mov_enc_body');
+  const destWrap = document.getElementById('mov_destino_wrap');
+  _abonoDesdeEncargo = chk.checked;
+  if (!body) return;
+  body.style.display = _abonoDesdeEncargo ? '' : 'none';
+  // Cuando viene de encargo, el campo "¿A dónde entra el pago?" no aplica
+  if (destWrap) destWrap.style.display = _abonoDesdeEncargo ? 'none' : '';
+
+  if (!_abonoDesdeEncargo) {
+    _abonoEncId = '';
+    _abonoEncCuenta = '';
+    document.getElementById('mov_enc_saldo_preview').textContent = '';
+    document.getElementById('mov_enc_cuenta_wrap').style.display = 'none';
+    return;
+  }
+
+  // Poblar el select de encargos con saldo > 0
+  const sel = document.getElementById('mov_enc_sel');
+  const d = (S.deudores || []).find(x => x.id === deudorActualId);
+  const encargosDisponibles = (S.encargos || []).filter(e => encargoSaldo(e) > 0);
+
+  // Ordenar: primero los vinculados a la misma persona
+  const mismaPersona = d && d.personaId
+    ? encargosDisponibles.filter(e => e.personaId === d.personaId)
+    : [];
+  const otros = encargosDisponibles.filter(e => !mismaPersona.includes(e));
+
+  let opts = '<option value="">Seleccionar encargo</option>';
+  if (mismaPersona.length > 0) {
+    opts += `<optgroup label="De ${escHtml(d.nombre)}">`;
+    mismaPersona.forEach(e => {
+      opts += `<option value="${e.id}">${escHtml(e.nombre)} (${fmt(encargoSaldo(e))})</option>`;
+    });
+    opts += '</optgroup>';
+  }
+  if (otros.length > 0) {
+    opts += mismaPersona.length > 0 ? '<optgroup label="Otros encargos">' : '';
+    otros.forEach(e => {
+      opts += `<option value="${e.id}">${escHtml(e.nombre)} (${fmt(encargoSaldo(e))})</option>`;
+    });
+    if (mismaPersona.length > 0) opts += '</optgroup>';
+  }
+  sel.innerHTML = opts;
+
+  // Auto-seleccionar si solo hay uno vinculado a la misma persona
+  if (mismaPersona.length === 1) {
+    sel.value = mismaPersona[0].id;
+    onChangeMov_enc_sel();
+  } else {
+    _abonoEncId = '';
+    _abonoEncCuenta = '';
+    document.getElementById('mov_enc_cuenta_wrap').style.display = 'none';
+    document.getElementById('mov_enc_saldo_preview').textContent = '';
+  }
+}
+
+function onChangeMov_enc_sel() {
+  const sel = document.getElementById('mov_enc_sel');
+  _abonoEncId = sel.value;
+  _abonoEncCuenta = '';
+  const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null;
+  const cuentaWrap = document.getElementById('mov_enc_cuenta_wrap');
+  const preview    = document.getElementById('mov_enc_saldo_preview');
+  const cuentaSel  = document.getElementById('mov_enc_cuenta');
+  if (!enc) {
+    if (cuentaWrap) cuentaWrap.style.display = 'none';
+    if (preview) preview.textContent = '';
+    return;
+  }
+  // Poblar cuentas del encargo con saldo
+  const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
+  if (cuentasConSaldo.length === 0) {
+    if (cuentaWrap) cuentaWrap.style.display = 'none';
+    if (preview) {
+      preview.style.color = 'var(--accent)';
+      preview.textContent = `Saldo disponible: ${fmt(encargoSaldo(enc))} (sin cuenta especificada)`;
+    }
+    _abonoEncCuenta = '';
+    return;
+  }
+  if (cuentaSel) {
+    cuentaSel.innerHTML = '<option value="">Sin especificar</option>' +
+      cuentasConSaldo.map(f => `<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+    // Pre-seleccionar la de mayor saldo
+    cuentaSel.value = cuentasConSaldo[0].cuenta;
+    _abonoEncCuenta = cuentasConSaldo[0].cuenta;
+  }
+  if (cuentaWrap) cuentaWrap.style.display = '';
+  _actualizarEncPreview(enc);
+}
+
+function onChangeMov_enc_cuenta() {
+  const sel = document.getElementById('mov_enc_cuenta');
+  _abonoEncCuenta = sel ? sel.value : '';
+  const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null;
+  if (enc) _actualizarEncPreview(enc);
+}
+
+function _actualizarEncPreview(enc) {
+  const preview = document.getElementById('mov_enc_saldo_preview');
+  const monto   = parseMoney(document.getElementById('mov_monto').value) || 0;
+  const hint    = document.getElementById('mov_enc_cuenta_hint');
+  if (!enc || !preview) return;
+  const saldoTotal = encargoSaldo(enc);
+  if (_abonoEncCuenta) {
+    const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
+    if (hint) {
+      hint.textContent = `Disponible en ${fuenteLabel(_abonoEncCuenta)}: ${fmt(saldoEnCuenta)}`;
+      hint.style.display = '';
+      hint.style.color = monto > saldoEnCuenta ? 'var(--red)' : 'var(--blue)';
+    }
+    preview.style.color = monto > saldoEnCuenta ? 'var(--red)' : 'var(--accent)';
+    preview.textContent = monto > saldoEnCuenta
+      ? `\u26a0 Solo hay ${fmt(saldoEnCuenta)} en esa cuenta del encargo`
+      : monto > 0 ? `\u2713 El encargo tiene ${fmt(saldoEnCuenta)} en ${fuenteLabel(_abonoEncCuenta)}` : '';
+  } else {
+    if (hint) hint.style.display = 'none';
+    preview.style.color = monto > saldoTotal ? 'var(--red)' : 'var(--accent)';
+    preview.textContent = monto > saldoTotal
+      ? `\u26a0 El encargo solo tiene ${fmt(saldoTotal)} disponible`
+      : monto > 0 ? `\u2713 Saldo total del encargo: ${fmt(saldoTotal)}` : '';
+  }
+}
+
+function _onMovMontoInput() {
+  if (_abonoDesdeEncargo && _abonoEncId) {
+    const enc = (S.encargos || []).find(e => e.id === _abonoEncId);
+    if (enc) _actualizarEncPreview(enc);
+  }
+}
+
 // ── ABONO: split destino + extra ───────────────────────────────────────────
 let _abonoSplitMode    = false;
 let _abonoSplitRows    = [];
@@ -6850,6 +7113,9 @@ let _abonoExtOpt       = '';
 let _abonoExtRegTodo   = true;
 let _abonoExtSplitMode = false;
 let _abonoExtSplitRows = [];
+let _abonoDesdeEncargo = false;
+let _abonoEncId        = '';
+let _abonoEncCuenta    = '';
 let _extPartes         = []; // sistema de partes libres del extra
 
 /* Split del destino del abono */
@@ -9663,22 +9929,23 @@ function abrirEncargoDetalle(id) {
       }
       const esEntrada = m.tipo === 'entrada';
       const lblCuenta = m.cuenta ? fuenteLabel(m.cuenta) : '';
-      return `<div class="gasto-item" style="border-color:${esEntrada?'rgba(96,176,240,.2)':'rgba(240,104,104,.15)'};">
+      const esAbonoPrestamo = !esEntrada && m._esAbonoDeudor;
+      return `<div class="gasto-item" style="border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':'rgba(240,104,104,.15)'};">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;">
-            <div class="row-name" style="font-size:13px;">${m.desc}</div>
+            <div class="row-name" style="font-size:13px;">${escHtml(m.desc)}</div>
             <div class="row-sub">${m.fecha}${lblCuenta?' · '+lblCuenta:''}</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
-            <span class="row-amount ${esEntrada?'c-blue':'c-red'}">${esEntrada?'+':'−'}${fmt(m.monto)}</span>
+            <span class="row-amount ${esEntrada?'c-blue':esAbonoPrestamo?'c-amber':'c-red'}">${esEntrada?'+':'−'}${fmt(m.monto)}</span>
             <button type="button" onclick="deleteMovEncargo('${enc.id}','${m.id}')" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.55;display:flex;align-items:center;justify-content:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.55';this.style.color='var(--text3)'">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             </button>
           </div>
         </div>
-        ${m.nota?`<div class="gasto-item-meta"><span style="font-size:10px;color:var(--text3);">${m.nota}</span></div>`:''}
+        ${m.nota?`<div class="gasto-item-meta"><span style="font-size:10px;color:var(--text3);">${escHtml(m.nota)}</span></div>`:''}
         <div class="gasto-item-meta">
-          <span class="badge ${esEntrada?'bg-blue':'bg-red'}" style="font-size:9px;">${esEntrada?'Entrada':'Salida'}</span>
+          <span class="badge ${esEntrada?'bg-blue':esAbonoPrestamo?'bg-amber':'bg-red'}" style="font-size:9px;">${esEntrada?'Entrada':esAbonoPrestamo?'Pago préstamo':'Salida'}</span>
           ${lblCuenta?`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuenta}</span>`:''}
         </div>
         ${typeof _difRenderHistorial === 'function' ? _difRenderHistorial(m) : ''}
@@ -10784,6 +11051,15 @@ async function deleteMovEncargo(encId, movId) {
   if (!enc) return;
 
   const mov = (enc.movimientos||[]).find(m=>m.id===movId);
+
+  // Revertir efectos secundarios de un pago de préstamo vía encargo
+  if (mov && mov._esAbonoDeudor && mov._deudorId) {
+    const d = (S.deudores || []).find(x => x.id === mov._deudorId);
+    if (d) {
+      // Eliminar el abono correspondiente del deudor (vinculado por _encMovId)
+      d.movimientos = (d.movimientos || []).filter(x => !(x._viaEncargo && x._encMovId === movId));
+    }
+  }
 
   // Revertir efectos secundarios de una compra TC de encargo
   if (mov && mov._esTcEncargo) {

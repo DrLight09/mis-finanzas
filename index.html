@@ -1481,12 +1481,19 @@ input.movs-search-input:focus{border-color:var(--accent);}
                     points="15 18 9 12 15 6" /></svg>
               </button>
               <div id="ddAvatar" class="avatar"
-                style="width:38px;height:38px;font-size:14px;margin-right:0;flex-shrink:0;"></div>
+                style="width:38px;height:38px;font-size:14px;margin-right:0;flex-shrink:0;cursor:pointer;"
+                onclick="_abrirPerfilDesdeDeudor(deudorActualId)"
+                title="Ver perfil"></div>
               <div style="flex:1;min-width:0;">
                 <div id="ddNombre"
                   style="font-size:15px;font-weight:600;"></div>
                 <div id="ddSaldoLabel"
                   style="font-size:11px;font-family:'DM Mono',monospace;"></div>
+                <button type="button" id="dd-perfil-chip" onclick="_abrirPerfilDesdeDeudor(deudorActualId)"
+                  style="display:none;font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;padding:0;margin-top:2px;">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:10px;height:10px;fill:currentColor;vertical-align:middle;margin-right:2px;"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg>
+                  Ver perfil completo
+                </button>
               </div>
               <div style="display:flex;align-items:center;gap:2px;">
                 <button type="button" class="detail-header-action btn-icon"
@@ -2274,6 +2281,23 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <div>
           <div class="mas-item-label">Encargos</div>
           <div class="mas-item-sub">Plata que administrás (no es tuya)</div>
+        </div>
+      </div>
+      <div class="mas-item" id="mas-personas" onclick="_abrirListaPersonas()">
+        <div class="mas-item-icon"
+          style="background:rgba(176,144,240,.1);border-color:rgba(176,144,240,.25);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="var(--purple)" stroke-width="1.7" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+        </div>
+        <div>
+          <div class="mas-item-label">Personas</div>
+          <div class="mas-item-sub" id="mas-personas-sub">Perfiles y actividad financiera</div>
         </div>
       </div>
       <div class="mas-item" id="mas-historial" data-screen="historial">
@@ -6521,6 +6545,7 @@ function getDeudorSaldo(d) {
 function renderDeudoresList() {
   const el = document.getElementById('deudoresList');
   const list = S.deudores || [];
+  if (typeof _actualizarMasPersonasSub === 'function') _actualizarMasPersonasSub();
   if (!list.length) {
     el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 10px;">Aún no has agregado personas. Puedes crear a tu papá, mamá, amigos...</div>';
     return;
@@ -6528,13 +6553,14 @@ function renderDeudoresList() {
   el.innerHTML = list.map(d => {
     const saldo = getDeudorSaldo(d);
     const initials = d.nombre.substring(0, 2).toUpperCase();
-    const totalPrestado = (d.movimientos || []).filter(m => m.tipo === 'prestamo').reduce((a, m) => a + m.monto, 0);
-    const totalAbonado = (d.movimientos || []).filter(m => m.tipo === 'abono').reduce((a, m) => a + m.monto, 0);
     const ultimoMov = (d.movimientos || []).slice(-1)[0];
-    return `<div class="card card-sm" style="margin-bottom:8px;cursor:pointer;" onclick="abrirDeudor('${d.id}')">
-      <div style="display:flex;align-items:center;">
-        <div class="avatar" style="color:${d.color};border-color:${d.color}33;background:${d.color}18;width:38px;height:38px;font-size:13px;margin-right:11px;">${initials}</div>
-        <div style="flex:1;min-width:0;">
+    const tienePerfil = !!d.personaId;
+    return `<div class="card card-sm" style="margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button type="button" class="avatar" onclick="${tienePerfil ? `_abrirPerfilDesdeDeudor('${d.id}')` : `abrirDeudor('${d.id}')`}"
+          style="color:${d.color};border-color:${d.color}33;background:${d.color}18;width:38px;height:38px;font-size:13px;margin-right:0;flex-shrink:0;border:1px solid;cursor:pointer;${tienePerfil ? 'box-shadow:0 0 0 2px '+d.color+'33;' : ''}"
+          title="${tienePerfil ? 'Ver perfil de '+d.nombre : d.nombre}">${initials}</button>
+        <div style="flex:1;min-width:0;cursor:pointer;" onclick="abrirDeudor('${d.id}')">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <div class="row-name">${d.nombre}</div>
             <div class="row-amount ${saldo > 0 ? 'c-amber' : saldo < 0 ? 'c-red' : 'c-green'}">${fmt(saldo)}</div>
@@ -6544,7 +6570,7 @@ function renderDeudoresList() {
             ${ultimoMov ? `<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimoMov.fecha}</span>` : ''}
           </div>
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="margin-left:8px;flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;cursor:pointer;" onclick="abrirDeudor('${d.id}')"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>`;
   }).join('');
@@ -6632,6 +6658,32 @@ function abrirDeudor(id) {
   document.getElementById('mesadaSection').style.display = 'none';
   document.getElementById('deudorDetalle').style.display = 'block';
   document.getElementById('scrollArea').scrollTop = 0;
+
+  // Mostrar chip "Ver perfil" si tiene personaId
+  const chip = document.getElementById('dd-perfil-chip');
+  if (chip) chip.style.display = d.personaId ? '' : 'none';
+}
+
+// Abre el perfil de un deudor; si aún no tiene personaId crea/vincula uno automáticamente
+function _abrirPerfilDesdeDeudor(deudorId) {
+  if (!deudorId) return;
+  const d = (S.deudores || []).find(x => x.id === deudorId);
+  if (!d) return;
+  _inyectarPersonaSheets();
+  if (d.personaId) {
+    abrirPerfilPersona(d.personaId);
+    return;
+  }
+  // Crear persona vinculada
+  if (!S.personas) S.personas = [];
+  let p = S.personas.find(x => x.nombre.trim().toLowerCase() === d.nombre.trim().toLowerCase());
+  if (!p) {
+    p = { id: uid(), nombre: d.nombre, color: d.color || '#60b0f0', creadoEn: hoy() };
+    S.personas.push(p);
+  }
+  d.personaId = p.id;
+  save();
+  abrirPerfilPersona(p.id);
 }
 
 function volverDeudores() {
@@ -16547,9 +16599,117 @@ function _inyectarPersonaSheets() {
       <button type="button" class="btn btn-ghost" data-close-sheet="editar-persona-global" style="margin-top:6px;">Cancelar</button>
     </div>`;
   document.body.appendChild(sheetEdit);
+
+  // Sheet: lista de todas las personas (desde menú Más)
+  if (!document.getElementById('sheet-lista-personas')) {
+    const sheetLista = document.createElement('div');
+    sheetLista.className = 'overlay';
+    sheetLista.id = 'sheet-lista-personas';
+    sheetLista.dataset.sheetId = 'lista-personas';
+    sheetLista.innerHTML = `
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div class="sheet-title" style="margin-bottom:0;">Personas</div>
+          <button type="button" onclick="_abrirCrearPersonaGlobal(true)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;background:rgba(176,144,240,.12);border:1.5px solid rgba(176,144,240,.3);color:var(--purple);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nueva
+          </button>
+        </div>
+        <div id="lista-personas-body" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div id="lista-personas-empty" style="display:none;text-align:center;padding:32px 0 16px;">
+          <div style="font-size:36px;margin-bottom:10px;">👥</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:6px;">Sin personas registradas</div>
+          <div style="font-size:12px;color:var(--text3);line-height:1.6;">Las personas se crean automáticamente cuando agregás un deudor o encargo.</div>
+        </div>
+        <button type="button" class="btn btn-ghost" data-close-sheet="lista-personas" style="margin-top:10px;">Cerrar</button>
+      </div>`;
+    document.body.appendChild(sheetLista);
+  }
 }
 
-/* ── SELECTOR DE PERSONA ───────────────────────────────────────── */
+/* ── LISTA DE PERSONAS (desde menú Más) ────────────────────────── */
+function _abrirListaPersonas() {
+  _inyectarPersonaSheets();
+  _renderListaPersonas();
+  document.getElementById('sheet-lista-personas').classList.add('open');
+  // Cerrar el menú Más si está abierto
+  const masOverlay = document.getElementById('mas-menu-overlay');
+  if (masOverlay) masOverlay.classList.remove('open');
+}
+
+function _renderListaPersonas() {
+  const body = document.getElementById('lista-personas-body');
+  const empty = document.getElementById('lista-personas-empty');
+  if (!body) return;
+
+  // Reunir personas: las de S.personas + deudores sin personaId que aún no están
+  const personas = [...(S.personas || [])];
+  // También incluir deudores no vinculados como "sin perfil"
+  const sinPerfil = (S.deudores || []).filter(d => !d.personaId);
+
+  const total = personas.length + sinPerfil.length;
+  if (!total) {
+    body.innerHTML = '';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  let html = '';
+
+  // Personas con perfil
+  personas.forEach(p => {
+    const color = p.color || '#60b0f0';
+    const datos = getPersonaDatos(p.id);
+    const partes = [];
+    if (datos.deudor) {
+      const saldo = datos.saldoPrestamo;
+      if (saldo !== 0) partes.push('<span style="color:var(--amber);">$' + fmt(saldo) + ' pendiente</span>');
+      else partes.push('<span style="color:var(--accent);">Al día</span>');
+    }
+    if (datos.encargos.length) partes.push(datos.encargos.length + ' encargo' + (datos.encargos.length !== 1 ? 's' : ''));
+    const subTexto = partes.length ? partes.join(' · ') : '<span style="color:var(--text3);">Sin actividad</span>';
+
+    html += `<div onclick="abrirPerfilPersona('${p.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='${color}44'" onmouseleave="this.style.borderColor='var(--border)'">
+      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${iniciales(p.nombre)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;">${escHtml(p.nombre)}</div>
+        <div style="font-size:11px;margin-top:2px;font-family:'DM Mono',monospace;">${subTexto}</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>`;
+  });
+
+  // Deudores sin perfil vinculado
+  sinPerfil.forEach(d => {
+    const color = d.color || '#60b0f0';
+    const saldo = getDeudorSaldo(d);
+    const sub = saldo > 0
+      ? `<span style="color:var(--amber);">${fmt(saldo)} pendiente</span>`
+      : saldo < 0
+        ? `<span style="color:var(--red);">Saldo a su favor</span>`
+        : `<span style="color:var(--accent);">Al día</span>`;
+    html += `<div onclick="_abrirPerfilDesdeDeudor('${d.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='${color}44'" onmouseleave="this.style.borderColor='var(--border)'">
+      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:600;">${escHtml(d.nombre)}</div>
+        <div style="font-size:11px;margin-top:2px;font-family:'DM Mono',monospace;">${sub}</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+    </div>`;
+  });
+
+  body.innerHTML = html;
+}
+
+// Actualizar el sub-texto del ítem Personas en el menú Más
+function _actualizarMasPersonasSub() {
+  const sub = document.getElementById('mas-personas-sub');
+  if (!sub) return;
+  const total = (S.personas || []).length + (S.deudores || []).filter(d => !d.personaId).length;
+  sub.textContent = total ? total + ' persona' + (total !== 1 ? 's' : '') + ' registrada' + (total !== 1 ? 's' : '') : 'Perfiles y actividad financiera';
+}
 let _selPersonaCallback = null; // fn(personaId) llamada al seleccionar
 
 function abrirSelPersona(callback) {
@@ -16606,8 +16766,15 @@ function _selPersonaElegir(personaId) {
 /* ── CREAR PERSONA GLOBAL ──────────────────────────────────────── */
 let _cpgColorSel = '#60b0f0';
 
-function _abrirCrearPersonaGlobal() {
-  document.getElementById('sheet-sel-persona').classList.remove('open');
+let _cpgDesdeListaPersonas = false;
+
+function _abrirCrearPersonaGlobal(desdeListaPersonas) {
+  _cpgDesdeListaPersonas = !!desdeListaPersonas;
+  if (desdeListaPersonas) {
+    document.getElementById('sheet-lista-personas').classList.remove('open');
+  } else {
+    document.getElementById('sheet-sel-persona').classList.remove('open');
+  }
   setTimeout(() => {
     _inyectarPersonaSheets();
     _cpgColorSel = PERSONA_COLORES[0];
@@ -16620,7 +16787,13 @@ function _abrirCrearPersonaGlobal() {
 
 function _volverASelPersona() {
   document.getElementById('sheet-crear-persona-global').classList.remove('open');
-  setTimeout(() => { abrirSelPersona(_selPersonaCallback); }, 180);
+  setTimeout(() => {
+    if (_cpgDesdeListaPersonas) {
+      _abrirListaPersonas();
+    } else {
+      abrirSelPersona(_selPersonaCallback);
+    }
+  }, 180);
 }
 
 function _crearPersonaGlobal() {
@@ -16632,9 +16805,13 @@ function _crearPersonaGlobal() {
   save();
   document.getElementById('sheet-crear-persona-global').classList.remove('open');
   toast(nombre + ' creado/a', 'ok');
-  setTimeout(() => {
-    if (typeof _selPersonaCallback === 'function') _selPersonaCallback(p.id);
-  }, 180);
+  if (_cpgDesdeListaPersonas) {
+    setTimeout(() => { _abrirListaPersonas(); }, 180);
+  } else {
+    setTimeout(() => {
+      if (typeof _selPersonaCallback === 'function') _selPersonaCallback(p.id);
+    }, 180);
+  }
 }
 
 /* ── EDITAR PERSONA GLOBAL ─────────────────────────────────────── */

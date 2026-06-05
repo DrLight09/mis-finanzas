@@ -16561,9 +16561,11 @@ function _inyectarPersonaSheets() {
     document.body.appendChild(sheetLista);
   }
 
-  if (document.getElementById('sheet-sel-persona')) return;
-
   // Sheet: seleccionar persona (para nuevo encargo)
+  if (document.getElementById('sheet-sel-persona')) {
+    // Los demás sheets se crean junto con este, si ya existe todos existen
+    return;
+  }
   const sheetSel = document.createElement('div');
   sheetSel.className = 'overlay';
   sheetSel.id = 'sheet-sel-persona';
@@ -16653,10 +16655,18 @@ function _inyectarPersonaSheets() {
 function _abrirListaPersonas() {
   _inyectarPersonaSheets();
   _renderListaPersonas();
-  document.getElementById('sheet-lista-personas').classList.add('open');
-  // Cerrar el menú Más si está abierto
+  // Cerrar el menú Más completamente
   const masOverlay = document.getElementById('mas-menu-overlay');
+  const masMenu = document.getElementById('mas-menu');
   if (masOverlay) masOverlay.classList.remove('open');
+  if (masMenu) {
+    masMenu.style.transform = 'translateY(100%)';
+    setTimeout(() => { masMenu.style.display = 'none'; }, 280);
+  }
+  // Abrir sheet con pequeño delay para que el menú cierre primero
+  setTimeout(() => {
+    document.getElementById('sheet-lista-personas').classList.add('open');
+  }, 180);
 }
 
 function _renderListaPersonas() {

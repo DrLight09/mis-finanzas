@@ -8025,22 +8025,14 @@ function addSpotify(){
   const dIng=new Date(fechaIngresoRaw+'T00:00:00');
   dIng.setDate(dIng.getDate()+30);
   const proximoPago=dIng.toISOString().split('T')[0];
-  // Vincular o crear en S.personas
-  if(!S.personas)S.personas=[];
-  let p=S.personas.find(x=>x.nombre.trim().toLowerCase()===n.toLowerCase());
-  if(!p){p={id:uid(),nombre:n,color:'#1ed760',creadoEn:hoy()};S.personas.push(p);}
-  S.spotifyPersonas.push({nombre:n,monto:m,pagado:false,proximoPago,fechaIngreso:fechaIngresoRaw,ultimoDestino:'',mesesAdelantados:1,personaId:p.id});
+  S.spotifyPersonas.push({nombre:n,monto:m,pagado:false,proximoPago,fechaIngreso:fechaIngresoRaw,ultimoDestino:'',mesesAdelantados:1});
   document.getElementById('sp_n').value='';
   document.getElementById('sp_m').value='';
   document.getElementById('sp_fecha_ingreso').value='';
   save();refresh();closeSheet('spotify');
   toast(`${n} agregado · primer cobro el ${proximoPago}`,'ok');
 }
-function deleteSpotify(i){
-  const sp=S.spotifyPersonas[i];
-  // No borrar la persona de S.personas al eliminar de Spotify (puede tener otros vínculos)
-  S.spotifyPersonas.splice(i,1);save();refresh();
-}
+function deleteSpotify(i){S.spotifyPersonas.splice(i,1);save();refresh();}
 
 let _spEditIdx = null;
 function editarSpotify(i) {
@@ -8070,17 +8062,6 @@ function guardarEditarSpotify() {
     const dIng = new Date(fechaIngresoRaw + 'T00:00:00');
     dIng.setDate(dIng.getDate() + 30);
     p.proximoPago = dIng.toISOString().split('T')[0];
-  }
-  // Sincronizar nombre en S.personas si hay vínculo
-  if (p.personaId) {
-    const persona = (S.personas || []).find(x => x.id === p.personaId);
-    if (persona) persona.nombre = n;
-  } else {
-    // Crear vínculo si no existe
-    if (!S.personas) S.personas = [];
-    let persona = S.personas.find(x => x.nombre.trim().toLowerCase() === n.toLowerCase());
-    if (!persona) { persona = { id: uid(), nombre: n, color: '#1ed760', creadoEn: hoy() }; S.personas.push(persona); }
-    p.personaId = persona.id;
   }
   _spEditIdx = null;
   save(); refresh(); closeSheet('editar-spotify');
@@ -16526,46 +16507,15 @@ function getPersonaDatos(personaId) {
   const deudor = (S.deudores || []).find(d => d.personaId === personaId);
   const saldoEncargos = encargos.reduce((a, e) => a + encargoSaldo(e), 0);
   const saldoPrestamo = deudor ? (typeof getDeudorSaldo === 'function' ? getDeudorSaldo(deudor) : 0) : 0;
-  // Spotify: buscar persona de Spotify vinculada por personaId
-  const spotifyPersona = (S.spotifyPersonas || []).find(sp => sp.personaId === personaId);
-  return { encargos, deudor, saldoEncargos, saldoPrestamo, spotifyPersona };
+  return { encargos, deudor, saldoEncargos, saldoPrestamo };
 }
 
 /* ── SHEET SELECTOR DE PERSONA ─────────────────────────────────── */
 // Inyectar HTML del sheet selector y del sheet crear-persona-global
 function _inyectarPersonaSheets() {
-  // Siempre asegurar que sheet-lista-personas exista (puede haberse creado antes que los demás)
-  if (!document.getElementById('sheet-lista-personas')) {
-    const sheetLista = document.createElement('div');
-    sheetLista.className = 'overlay';
-    sheetLista.id = 'sheet-lista-personas';
-    sheetLista.dataset.sheetId = 'lista-personas';
-    sheetLista.innerHTML = `
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-          <div class="sheet-title" style="margin-bottom:0;">Personas</div>
-          <button type="button" onclick="_abrirCrearPersonaGlobal(true)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;background:rgba(176,144,240,.12);border:1.5px solid rgba(176,144,240,.3);color:var(--purple);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nueva
-          </button>
-        </div>
-        <div id="lista-personas-body" style="display:flex;flex-direction:column;gap:8px;"></div>
-        <div id="lista-personas-empty" style="display:none;text-align:center;padding:32px 0 16px;">
-          <div style="font-size:36px;margin-bottom:10px;">👥</div>
-          <div style="font-size:14px;font-weight:600;margin-bottom:6px;">Sin personas registradas</div>
-          <div style="font-size:12px;color:var(--text3);line-height:1.6;">Las personas se crean automáticamente cuando agregás un deudor o encargo.</div>
-        </div>
-        <button type="button" class="btn btn-ghost" data-close-sheet="lista-personas" style="margin-top:10px;">Cerrar</button>
-      </div>`;
-    document.body.appendChild(sheetLista);
-  }
+  if (document.getElementById('sheet-sel-persona')) return;
 
   // Sheet: seleccionar persona (para nuevo encargo)
-  if (document.getElementById('sheet-sel-persona')) {
-    // Los demás sheets se crean junto con este, si ya existe todos existen
-    return;
-  }
   const sheetSel = document.createElement('div');
   sheetSel.className = 'overlay';
   sheetSel.id = 'sheet-sel-persona';
@@ -16649,24 +16599,43 @@ function _inyectarPersonaSheets() {
       <button type="button" class="btn btn-ghost" data-close-sheet="editar-persona-global" style="margin-top:6px;">Cancelar</button>
     </div>`;
   document.body.appendChild(sheetEdit);
+
+  // Sheet: lista de todas las personas (desde menú Más)
+  if (!document.getElementById('sheet-lista-personas')) {
+    const sheetLista = document.createElement('div');
+    sheetLista.className = 'overlay';
+    sheetLista.id = 'sheet-lista-personas';
+    sheetLista.dataset.sheetId = 'lista-personas';
+    sheetLista.innerHTML = `
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div class="sheet-title" style="margin-bottom:0;">Personas</div>
+          <button type="button" onclick="_abrirCrearPersonaGlobal(true)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;background:rgba(176,144,240,.12);border:1.5px solid rgba(176,144,240,.3);color:var(--purple);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nueva
+          </button>
+        </div>
+        <div id="lista-personas-body" style="display:flex;flex-direction:column;gap:8px;"></div>
+        <div id="lista-personas-empty" style="display:none;text-align:center;padding:32px 0 16px;">
+          <div style="font-size:36px;margin-bottom:10px;">👥</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:6px;">Sin personas registradas</div>
+          <div style="font-size:12px;color:var(--text3);line-height:1.6;">Las personas se crean automáticamente cuando agregás un deudor o encargo.</div>
+        </div>
+        <button type="button" class="btn btn-ghost" data-close-sheet="lista-personas" style="margin-top:10px;">Cerrar</button>
+      </div>`;
+    document.body.appendChild(sheetLista);
+  }
 }
 
 /* ── LISTA DE PERSONAS (desde menú Más) ────────────────────────── */
 function _abrirListaPersonas() {
   _inyectarPersonaSheets();
   _renderListaPersonas();
-  // Cerrar el menú Más completamente
+  document.getElementById('sheet-lista-personas').classList.add('open');
+  // Cerrar el menú Más si está abierto
   const masOverlay = document.getElementById('mas-menu-overlay');
-  const masMenu = document.getElementById('mas-menu');
   if (masOverlay) masOverlay.classList.remove('open');
-  if (masMenu) {
-    masMenu.style.transform = 'translateY(100%)';
-    setTimeout(() => { masMenu.style.display = 'none'; }, 280);
-  }
-  // Abrir sheet con pequeño delay para que el menú cierre primero
-  setTimeout(() => {
-    document.getElementById('sheet-lista-personas').classList.add('open');
-  }, 180);
 }
 
 function _renderListaPersonas() {
@@ -16676,11 +16645,10 @@ function _renderListaPersonas() {
 
   // Reunir personas: las de S.personas + deudores sin personaId que aún no están
   const personas = [...(S.personas || [])];
+  // También incluir deudores no vinculados como "sin perfil"
   const sinPerfil = (S.deudores || []).filter(d => !d.personaId);
-  // Personas de Spotify sin personaId (no vinculadas aún)
-  const spSinPerfil = (S.spotifyPersonas || []).filter(sp => !sp.personaId);
 
-  const total = personas.length + sinPerfil.length + spSinPerfil.length;
+  const total = personas.length + sinPerfil.length;
   if (!total) {
     body.innerHTML = '';
     if (empty) empty.style.display = '';
@@ -16688,7 +16656,6 @@ function _renderListaPersonas() {
   }
   if (empty) empty.style.display = 'none';
 
-  const SP_ICON = '<svg viewBox="0 0 24 24" style="width:9px;height:9px;fill:#1ed760;vertical-align:middle;display:inline;"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>';
   let html = '';
 
   // Personas con perfil
@@ -16702,10 +16669,8 @@ function _renderListaPersonas() {
       else partes.push('<span style="color:var(--accent);">Al día</span>');
     }
     if (datos.encargos.length) partes.push(datos.encargos.length + ' encargo' + (datos.encargos.length !== 1 ? 's' : ''));
-    if (datos.spotifyPersona) {
-      partes.push(SP_ICON + ' <span style="color:#1ed760;">' + fmt(datos.spotifyPersona.monto || 0) + '/mes</span>');
-    }
     const subTexto = partes.length ? partes.join(' · ') : '<span style="color:var(--text3);">Sin actividad</span>';
+
     html += `<div onclick="abrirPerfilPersona('${p.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='${color}44'" onmouseleave="this.style.borderColor='var(--border)'">
       <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${iniciales(p.nombre)}</div>
       <div style="flex:1;min-width:0;">
@@ -16722,7 +16687,9 @@ function _renderListaPersonas() {
     const saldo = getDeudorSaldo(d);
     const sub = saldo > 0
       ? `<span style="color:var(--amber);">${fmt(saldo)} pendiente</span>`
-      : saldo < 0 ? `<span style="color:var(--red);">Saldo a su favor</span>` : `<span style="color:var(--accent);">Al día</span>`;
+      : saldo < 0
+        ? `<span style="color:var(--red);">Saldo a su favor</span>`
+        : `<span style="color:var(--accent);">Al día</span>`;
     html += `<div onclick="_abrirPerfilDesdeDeudor('${d.id}')" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='${color}44'" onmouseleave="this.style.borderColor='var(--border)'">
       <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
       <div style="flex:1;min-width:0;">
@@ -16733,41 +16700,14 @@ function _renderListaPersonas() {
     </div>`;
   });
 
-  // Personas de Spotify sin personaId (toca vincular/crear perfil)
-  spSinPerfil.forEach(sp => {
-    const spIdx = (S.spotifyPersonas || []).indexOf(sp);
-    html += `<div onclick="_vincularSpotifyAPersona(${spIdx})" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid rgba(30,215,96,.22);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='rgba(30,215,96,.5)'" onmouseleave="this.style.borderColor='rgba(30,215,96,.22)'">
-      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:#1ed760;background:rgba(30,215,96,.12);border-color:rgba(30,215,96,.25);">${iniciales(sp.nombre)}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:600;">${escHtml(sp.nombre)}</div>
-        <div style="font-size:11px;margin-top:2px;font-family:'DM Mono',monospace;">${SP_ICON} <span style="color:#1ed760;">Spotify · ${fmt(sp.monto||0)}/mes</span></div>
-      </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>`;
-  });
-
   body.innerHTML = html;
-}
-
-// Vincular automáticamente una persona de Spotify sin personaId al perfil (crear si no existe)
-function _vincularSpotifyAPersona(spIdx) {
-  const sp = (S.spotifyPersonas || [])[spIdx];
-  if (!sp) return;
-  if (!S.personas) S.personas = [];
-  let p = S.personas.find(x => x.nombre.trim().toLowerCase() === sp.nombre.trim().toLowerCase());
-  if (!p) { p = { id: uid(), nombre: sp.nombre, color: '#1ed760', creadoEn: hoy() }; S.personas.push(p); }
-  sp.personaId = p.id;
-  save();
-  document.getElementById('sheet-lista-personas').classList.remove('open');
-  setTimeout(() => abrirPerfilPersona(p.id), 180);
 }
 
 // Actualizar el sub-texto del ítem Personas en el menú Más
 function _actualizarMasPersonasSub() {
   const sub = document.getElementById('mas-personas-sub');
   if (!sub) return;
-  const spSinPerfil = (S.spotifyPersonas || []).filter(sp => !sp.personaId).length;
-  const total = (S.personas || []).length + (S.deudores || []).filter(d => !d.personaId).length + spSinPerfil;
+  const total = (S.personas || []).length + (S.deudores || []).filter(d => !d.personaId).length;
   sub.textContent = total ? total + ' persona' + (total !== 1 ? 's' : '') + ' registrada' + (total !== 1 ? 's' : '') : 'Perfiles y actividad financiera';
 }
 let _selPersonaCallback = null; // fn(personaId) llamada al seleccionar
@@ -16920,6 +16860,12 @@ function abrirPerfilPersona(personaId) {
   _perfilPersonaId = personaId;
   _inyectarPersonaSheets();
 
+  // Cerrar el sheet de lista de personas si está abierto, para que el perfil quede encima
+  const listaSheet = document.getElementById('sheet-lista-personas');
+  if (listaSheet && listaSheet.classList.contains('open')) {
+    listaSheet.classList.remove('open');
+  }
+
   const color = p.color || '#60b0f0';
   const av = document.getElementById('pperf-avatar');
   const nm = document.getElementById('pperf-nombre');
@@ -16936,7 +16882,6 @@ function abrirPerfilPersona(personaId) {
   const partes = [];
   if (datos.deudor) partes.push('Préstamos');
   if (datos.encargos.length) partes.push(datos.encargos.length + ' encargo' + (datos.encargos.length !== 1 ? 's' : ''));
-  if (datos.spotifyPersona) partes.push('Spotify');
   if (sb) sb.textContent = partes.length ? partes.join(' · ') : 'Sin actividad registrada';
 
   const body = document.getElementById('pperf-body');
@@ -16988,42 +16933,9 @@ function abrirPerfilPersona(personaId) {
     </div>`;
   }
 
-  if (!datos.deudor && !datos.encargos.length && !datos.spotifyPersona) {
-    html += `<div style="font-size:12px;color:var(--text3);padding:8px 0 14px;line-height:1.6;">Esta persona no tiene préstamos, encargos ni Spotify registrados todavía.</div>`;
+  if (!datos.deudor && !datos.encargos.length) {
+    html += `<div style="font-size:12px;color:var(--text3);padding:8px 0 14px;line-height:1.6;">Esta persona no tiene préstamos ni encargos registrados todavía.</div>`;
   }
-
-  // ── Sección Spotify ──
-  if (datos.spotifyPersona) {
-    const sp = datos.spotifyPersona;
-    const spIdx = (S.spotifyPersonas || []).indexOf(sp);
-    let diasRestantes = null;
-    let vencido = false;
-    if (sp.proximoPago) {
-      diasRestantes = Math.ceil((new Date(sp.proximoPago + 'T00:00:00') - new Date()) / 86400000);
-      vencido = diasRestantes < 0;
-    }
-    const estadoColor = sp.pagado ? 'var(--accent)' : vencido ? 'var(--red)' : 'var(--purple)';
-    const estadoTxt = sp.pagado ? 'Pagó este mes' : vencido ? 'Vencido hace ' + Math.abs(diasRestantes) + 'd' : diasRestantes === 0 ? 'Vence hoy' : diasRestantes !== null ? 'Paga en ' + diasRestantes + 'd' : 'Pendiente';
-    html += `<div style="background:rgba(30,215,96,.07);border:1px solid rgba(30,215,96,.22);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-size:10px;color:#1ed760;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">
-          <svg viewBox="0 0 24 24" style="width:11px;height:11px;fill:#1ed760;vertical-align:middle;"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
-          Spotify
-        </div>
-        <button type="button" onclick="_irASpotify()" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver plan →</button>
-      </div>
-      <div class="grid2" style="margin:0;">
-        <div>
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Cuota mensual</div>
-          <div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(sp.monto || 0)}</div>
-        </div>
-        <div>
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Estado</div>
-          <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${estadoColor};">${estadoTxt}</div>
-        </div>
-      </div>
-      ${sp.proximoPago && !sp.pagado ? `<div style="font-size:11px;color:var(--text3);margin-top:8px;font-family:'DM Mono',monospace;">Próximo cobro: ${sp.proximoPago}</div>` : ''}
-    </div>`;\n  }
 
   body.innerHTML = html;
   document.getElementById('sheet-perfil-persona').classList.add('open');
@@ -17043,11 +16955,6 @@ function _irADeudor(deudorId) {
 function _irAEncargo(encargoId) {
   document.getElementById('sheet-perfil-persona').classList.remove('open');
   setTimeout(() => { showScreen('encargos'); abrirEncargoDetalle(encargoId); }, 180);
-}
-
-function _irASpotify() {
-  document.getElementById('sheet-perfil-persona').classList.remove('open');
-  setTimeout(() => { showScreen('spotify'); }, 180);
 }
 
 /* ── RENDERIZADO DEL COLOR PICKER ──────────────────────────────── */
@@ -17269,22 +17176,255 @@ abrirEncargoDetalle = function(id) {
   }
 };
 
-/* ── Migrar personas de Spotify existentes → S.personas ─────────── */
-function _migrarSpotifyAPersonas() {
-  if (!S || !S.spotifyPersonas) return;
-  let changed = false;
-  if (!S.personas) S.personas = [];
-  S.spotifyPersonas.forEach(sp => {
-    if (sp.personaId) return; // ya vinculado
-    let p = S.personas.find(x => x.nombre.trim().toLowerCase() === sp.nombre.trim().toLowerCase());
-    if (!p) {
-      p = { id: uid(), nombre: sp.nombre, color: '#1ed760', creadoEn: sp.fechaIngreso || hoy() };
-      S.personas.push(p);
+/* ═══════════════════════════════════════════════════════════════
+   INTEGRACIÓN SPOTIFY ↔ PERSONAS
+   Conecta el módulo Spotify con el sistema de personas para que
+   los miembros del plan sean personas reales de S.personas.
+   ═══════════════════════════════════════════════════════════════ */
+
+let _spPersonaId = null;       // personaId seleccionado en "Agregar"
+let _spEditPersonaId = null;   // personaId en "Editar"
+
+/* ── Reemplazar campo de texto en sheet-spotify con selector de persona ── */
+function _initSpotifyPersonaSelector() {
+  const sheet = document.getElementById('sheet-spotify');
+  if (!sheet || sheet._personaHook) return;
+  sheet._personaHook = true;
+
+  const spNEl = document.getElementById('sp_n');
+  if (!spNEl) return;
+  const ig = spNEl.closest('.ig');
+  if (!ig) return;
+
+  ig.innerHTML = `
+    <label class="il">¿Quién es?</label>
+    <div id="sp-persona-btn" onclick="abrirSelPersona(_onSelPersonaSpotify)"
+      style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
+      border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
+      cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
+      <div id="sp-persona-avatar" class="avatar" style="width:28px;height:28px;font-size:10px;margin:0;display:none;flex-shrink:0;"></div>
+      <span id="sp-persona-label">Seleccionar persona...</span>
+      <svg style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <input type="hidden" id="sp_n" value="">`;
+}
+
+function _onSelPersonaSpotify(personaId) {
+  const p = getPersona(personaId);
+  if (!p) return;
+  _spPersonaId = personaId;
+  document.getElementById('sp_n').value = p.nombre;
+
+  const btn = document.getElementById('sp-persona-btn');
+  const lbl = document.getElementById('sp-persona-label');
+  const av  = document.getElementById('sp-persona-avatar');
+  if (btn) btn.style.borderColor = 'var(--accent)';
+  if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
+  if (av) {
+    av.style.display = 'flex';
+    av.style.background = (p.color || '#60b0f0') + '22';
+    av.style.color = p.color || '#60b0f0';
+    av.style.borderColor = (p.color || '#60b0f0') + '44';
+    av.textContent = iniciales(p.nombre);
+  }
+}
+
+/* ── Reemplazar campo de texto en sheet-editar-spotify con selector ── */
+function _initSpotifyEditPersonaSelector() {
+  const sheet = document.getElementById('sheet-editar-spotify');
+  if (!sheet || sheet._personaEditHook) return;
+  sheet._personaEditHook = true;
+
+  const spEditNEl = document.getElementById('sp_edit_n');
+  if (!spEditNEl) return;
+  const ig = spEditNEl.closest('.ig');
+  if (!ig) return;
+
+  ig.innerHTML = `
+    <label class="il">¿Quién es?</label>
+    <div id="sp-edit-persona-btn" onclick="abrirSelPersona(_onSelPersonaSpotifyEdit)"
+      style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
+      border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
+      cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
+      <div id="sp-edit-persona-avatar" class="avatar" style="width:28px;height:28px;font-size:10px;margin:0;display:none;flex-shrink:0;"></div>
+      <span id="sp-edit-persona-label">Seleccionar persona...</span>
+      <svg style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <input type="hidden" id="sp_edit_n" value="">`;
+}
+
+function _onSelPersonaSpotifyEdit(personaId) {
+  const p = getPersona(personaId);
+  if (!p) return;
+  _spEditPersonaId = personaId;
+  document.getElementById('sp_edit_n').value = p.nombre;
+
+  const btn = document.getElementById('sp-edit-persona-btn');
+  const lbl = document.getElementById('sp-edit-persona-label');
+  const av  = document.getElementById('sp-edit-persona-avatar');
+  if (btn) btn.style.borderColor = 'var(--accent)';
+  if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
+  if (av) {
+    av.style.display = 'flex';
+    av.style.background = (p.color || '#60b0f0') + '22';
+    av.style.color = p.color || '#60b0f0';
+    av.style.borderColor = (p.color || '#60b0f0') + '44';
+    av.textContent = iniciales(p.nombre);
+  }
+}
+
+/* ── Hook en openSheet para inicializar los selectores ─────────── */
+const _origOpenSheetSpotifyPersonas = openSheet;
+openSheet = function(id) {
+  if (id === 'spotify') {
+    _inyectarPersonaSheets();
+    _spPersonaId = null;
+    setTimeout(_initSpotifyPersonaSelector, 30);
+    // Resetear UI del selector
+    setTimeout(() => {
+      const lbl = document.getElementById('sp-persona-label');
+      const av  = document.getElementById('sp-persona-avatar');
+      const btn = document.getElementById('sp-persona-btn');
+      if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
+      if (av)  av.style.display = 'none';
+      if (btn) btn.style.borderColor = 'var(--border2)';
+      const spN = document.getElementById('sp_n');
+      if (spN) spN.value = '';
+    }, 50);
+  }
+  if (id === 'editar-spotify') {
+    _inyectarPersonaSheets();
+    setTimeout(_initSpotifyEditPersonaSelector, 30);
+  }
+  _origOpenSheetSpotifyPersonas.apply(this, arguments);
+};
+
+/* ── Hook en addSpotify para guardar personaId ──────────────────── */
+const _origAddSpotifyPersonas = addSpotify;
+addSpotify = function() {
+  // Validar que se seleccionó una persona (ya que sp_n es ahora input oculto)
+  const spN = document.getElementById('sp_n');
+  if (spN && !spN.value.trim()) {
+    const btn = document.getElementById('sp-persona-btn');
+    if (btn) {
+      btn.style.borderColor = 'var(--red)';
+      setTimeout(() => { if (btn) btn.style.borderColor = 'var(--border2)'; }, 2000);
     }
-    sp.personaId = p.id;
-    changed = true;
+    toast('Seleccioná una persona', 'err');
+    return;
+  }
+  const pId = _spPersonaId;
+  _origAddSpotifyPersonas.apply(this, arguments);
+  // Asignar personaId al último spotifyPersona creado
+  if (pId && S.spotifyPersonas && S.spotifyPersonas.length) {
+    const last = S.spotifyPersonas[S.spotifyPersonas.length - 1];
+    if (last && !last.personaId) {
+      last.personaId = pId;
+      // Sincronizar nombre con la persona
+      const p = getPersona(pId);
+      if (p) last.nombre = p.nombre;
+      save();
+    }
+  }
+  _spPersonaId = null;
+};
+
+/* ── Hook en editarSpotify para pre-cargar la persona vinculada ─── */
+const _origEditarSpotifyPersonas = editarSpotify;
+editarSpotify = function(i) {
+  _origEditarSpotifyPersonas.apply(this, arguments);
+  const sp = (S.spotifyPersonas || [])[i];
+  if (!sp) return;
+  _spEditPersonaId = sp.personaId || null;
+  // Pre-cargar UI del selector tras abrir el sheet
+  setTimeout(() => {
+    _initSpotifyEditPersonaSelector();
+    if (sp.personaId) {
+      const p = getPersona(sp.personaId);
+      if (p) _onSelPersonaSpotifyEdit(sp.personaId);
+    } else {
+      // Rellenar con el nombre directo si no tiene personaId
+      const lbl = document.getElementById('sp-edit-persona-label');
+      const btn = document.getElementById('sp-edit-persona-btn');
+      const spEditN = document.getElementById('sp_edit_n');
+      if (lbl && sp.nombre) { lbl.textContent = sp.nombre; lbl.style.color = 'var(--text)'; }
+      if (btn && sp.nombre) btn.style.borderColor = 'var(--accent)';
+      if (spEditN) spEditN.value = sp.nombre || '';
+    }
+  }, 80);
+};
+
+/* ── Hook en guardarEditarSpotify para guardar personaId ────────── */
+const _origGuardarEditarSpotifyPersonas = guardarEditarSpotify;
+guardarEditarSpotify = function() {
+  // Capturar idx ANTES de llamar al original (que lo pone a null)
+  const idxAntes = _spEditIdx;
+  _origGuardarEditarSpotifyPersonas.apply(this, arguments);
+  // Asignar personaId al spotifyPersona editado
+  if (idxAntes !== null && S.spotifyPersonas && S.spotifyPersonas[idxAntes]) {
+    const sp = S.spotifyPersonas[idxAntes];
+    if (_spEditPersonaId) {
+      sp.personaId = _spEditPersonaId;
+      const p = getPersona(_spEditPersonaId);
+      if (p) sp.nombre = p.nombre;
+      save();
+    }
+  }
+  _spEditPersonaId = null;
+};
+
+/* ── Hook en renderSpotify para aplicar color de persona ─────────── */
+const _origRenderSpotifyPersonas = renderSpotify;
+renderSpotify = function() {
+  _origRenderSpotifyPersonas.apply(this, arguments);
+  // Aplicar color y nombre correcto a cada avatar del listado Spotify
+  const lista = document.getElementById('spotifyList');
+  if (!lista) return;
+  const p = S.spotifyPersonas || [];
+  // Ordenar igual que en renderSpotify
+  const pOrdenado = [...p].map((x, i) => ({ ...x, _origIdx: i })).sort((a, b) => {
+    const far = 99999;
+    const dA = a.proximoPago ? Math.ceil((new Date(a.proximoPago + 'T00:00:00') - new Date()) / 86400000) : far;
+    const dB = b.proximoPago ? Math.ceil((new Date(b.proximoPago + 'T00:00:00') - new Date()) / 86400000) : far;
+    return dA - dB;
   });
-  if (changed) save();
+  const rows = lista.querySelectorAll('.sp-row');
+  rows.forEach((row, idx) => {
+    const sp = pOrdenado[idx];
+    if (!sp || !sp.personaId) return;
+    const persona = getPersona(sp.personaId);
+    if (!persona) return;
+    const av = row.querySelector('.avatar');
+    if (av) {
+      const color = persona.color || '#60b0f0';
+      av.style.background = color + '22';
+      av.style.color = color;
+      av.style.border = '1.5px solid ' + color + '44';
+      av.textContent = iniciales(persona.nombre);
+    }
+    // Actualizar nombre si cambió
+    const nameEl = row.querySelector('.row-name');
+    if (nameEl) nameEl.textContent = persona.nombre;
+  });
+};
+
+/* ── Vincular automáticamente spotifyPersonas existentes a S.personas ─ */
+// Cuando carga la app, si hay spotifyPersonas con un nombre que coincide con
+// una persona existente (y aún no tienen personaId), vincularlos.
+function _vincularSpotifyPersonasExistentes() {
+  if (!window.S) return;
+  let cambios = false;
+  (S.spotifyPersonas || []).forEach(sp => {
+    if (sp.personaId) return; // ya vinculado
+    const nombre = (sp.nombre || '').trim().toLowerCase();
+    if (!nombre) return;
+    const match = (S.personas || []).find(p => p.nombre.trim().toLowerCase() === nombre);
+    if (match) {
+      sp.personaId = match.id;
+      cambios = true;
+    }
+  });
+  if (cambios) save();
 }
 
 /* ── Inicializar todo cuando la app cargue ─────────────────────── */
@@ -17294,15 +17434,14 @@ function _migrarSpotifyAPersonas() {
 window.addEventListener('appDataLoaded', function() {
   setTimeout(() => {
     _inyectarPersonaSheets();
-    // Migrar personas de Spotify existentes sin personaId → vincular a S.personas
-    _migrarSpotifyAPersonas();
+    _vincularSpotifyPersonasExistentes();
   }, 600);
 });
 
 // También correr si ya cargó
 if (document.readyState !== 'loading') {
   setTimeout(() => {
-    if (window.S) { _inyectarPersonaSheets(); }
+    if (window.S) { _inyectarPersonaSheets(); _vincularSpotifyPersonasExistentes(); }
   }, 1000);
 }
 </script>

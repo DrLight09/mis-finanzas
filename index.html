@@ -17413,16 +17413,26 @@ renderSpotify = function() {
 // una persona existente (y aún no tienen personaId), vincularlos.
 function _vincularSpotifyPersonasExistentes() {
   if (!window.S) return;
+  if (!S.personas) S.personas = [];
   let cambios = false;
   (S.spotifyPersonas || []).forEach(sp => {
     if (sp.personaId) return; // ya vinculado
-    const nombre = (sp.nombre || '').trim().toLowerCase();
+    const nombre = (sp.nombre || '').trim();
     if (!nombre) return;
-    const match = (S.personas || []).find(p => p.nombre.trim().toLowerCase() === nombre);
-    if (match) {
-      sp.personaId = match.id;
-      cambios = true;
+    // Buscar persona existente con el mismo nombre (case-insensitive)
+    let match = S.personas.find(p => p.nombre.trim().toLowerCase() === nombre.toLowerCase());
+    if (!match) {
+      // No existe -> crear persona nueva en S.personas
+      match = {
+        id: uid(),
+        nombre: nombre,
+        color: PERSONA_COLORES[S.personas.length % PERSONA_COLORES.length],
+        creadoEn: hoy()
+      };
+      S.personas.push(match);
     }
+    sp.personaId = match.id;
+    cambios = true;
   });
   if (cambios) save();
 }

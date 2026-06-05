@@ -14134,7 +14134,12 @@ function renderTCScreen(){
     const comprasActual=(tc.compras||[]).filter(c=>tcCompraEnCicloActual(tc,c.fecha));
     const comprasSig=(tc.compras||[]).filter(c=>!tcCompraEnCicloActual(tc,c.fecha));
     const totalActual=comprasActual.reduce((a,c)=>a+(c.monto||0),0);
-    const totalSig=comprasSig.reduce((a,c)=>a+(c.monto||0),0);
+    // Incluir cargo_encargo de tcMovimientos que cayeron despues del corte
+    // Deduplicar por encId+monto+fecha para evitar dobles registros del mismo cargo
+    const _tcMovsSigRaw=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&!tcCompraEnCicloActual(tc,m.fecha));
+    const _tcMovsVistos=new Set();
+    const tcMovsSig=_tcMovsSigRaw.filter(m=>{const k=(m.encId||m.id)+'|'+m.monto+'|'+m.fecha;if(_tcMovsVistos.has(k))return false;_tcMovsVistos.add(k);return true;});
+    const totalSig=comprasSig.reduce((a,c)=>a+(c.monto||0),0)+tcMovsSig.reduce((a,m)=>a+(m.monto||0),0);
     const facturadoHasta=tcFechaFacturadoHasta(tc);
     const meses2=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
     const facturadoLabel=facturadoHasta?facturadoHasta.getDate()+' '+meses2[facturadoHasta.getMonth()]:null;
@@ -14193,7 +14198,7 @@ function renderTCScreen(){
           ${totalSig>0?`
           <div style="border-top:1px solid rgba(240,104,104,.15);margin:7px 0;"></div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-size:12px;font-weight:600;color:var(--text);">+ Compras nuevas <span style="font-size:10px;font-weight:400;color:var(--text3);">(${comprasSig.length})</span></div>
+            <div style="font-size:12px;font-weight:600;color:var(--text);">+ Compras nuevas <span style="font-size:10px;font-weight:400;color:var(--text3);">(${comprasSig.length+tcMovsSig.length})</span></div>
             <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(totalSig)}</div>
           </div>
           <div style="border-top:1px solid rgba(240,104,104,.25);margin:7px 0;"></div>

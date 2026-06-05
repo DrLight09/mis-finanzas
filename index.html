@@ -11749,13 +11749,6 @@ function confirmarCompraConTC() {
     }
   }
 
-  // ── 6. Registrar en historial de cambios`,
-      fmt(monto),
-      tc ? tc.nombre : tcId,
-      'tc_encargo'
-    );
-  }
-
   save();
   closeSheet('compra-tc-encargo');
   abrirEncargoDetalle(encargoActualId);

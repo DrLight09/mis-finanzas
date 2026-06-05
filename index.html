@@ -513,6 +513,43 @@ input.movs-search-input:focus{border-color:var(--accent);}
 .busqueda-item{cursor:pointer;transition:border-color .15s;}
 .busqueda-item:active{border-color:var(--accent);}
 
+/* ── MEJORAS DE FORMULARIO CONSISTENTES ── */
+/* Fila label + botón (patrón "Dividir ÷" y similares) */
+.field-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;}
+.field-header .il{margin-bottom:0;flex:1;min-width:0;}
+/* Botón "Dividir ÷" unificado */
+.btn-split{font-size:10px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.25);color:var(--accent);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s,border-color .15s;line-height:1.4;}
+.btn-split:active{background:rgba(200,240,96,.18);border-color:rgba(200,240,96,.45);}
+/* Toggle checkbox fila (patrón "¿Viene de un encargo?") */
+.toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.toggle-row .il{margin:0;flex:1;min-width:0;}
+.toggle-label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text2);white-space:nowrap;flex-shrink:0;font-family:'DM Sans',sans-serif;}
+.toggle-label input[type=checkbox]{width:16px;height:16px;cursor:pointer;flex-shrink:0;}
+/* Badge de sugerencia inline — no parte el texto del label */
+.enc-sugerencia{display:inline-flex;align-items:center;margin-left:6px;font-size:9px;background:rgba(96,176,240,.13);color:var(--blue);border:1px solid rgba(96,176,240,.28);border-radius:4px;padding:1px 5px;font-family:'DM Mono',monospace;vertical-align:middle;white-space:nowrap;flex-shrink:0;}
+/* Divider entre secciones de formulario */
+.form-divider{height:1px;background:var(--border);margin:12px 0 14px;}
+/* Info box (patrón azul/amarillo informativo) */
+.info-box{border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;font-size:11px;line-height:1.55;}
+.info-box-blue{background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.22);color:var(--text2);}
+.info-box-amber{background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.22);color:var(--text2);}
+.info-box-green{background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.22);color:var(--text2);}
+/* Hints pequeños bajo inputs */
+.field-hint{font-size:10px;font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;color:var(--text3);}
+.field-hint-blue{color:var(--blue);}
+.field-hint-green{color:var(--accent);}
+/* Toggle-card (patrón checkbox tarjeta, apertura/inicio) */
+.toggle-card{display:flex;align-items:center;gap:10px;border-radius:9px;padding:11px 13px;margin-bottom:14px;cursor:pointer;border:1px solid;}
+.toggle-card-blue{background:rgba(96,176,240,.07);border-color:rgba(96,176,240,.2);}
+.toggle-card-icon{font-size:13px;font-weight:600;flex:1;min-width:0;}
+.toggle-card-icon-color-blue{color:var(--blue);}
+.toggle-card-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+/* Botón de agregar cuenta (dashed) */
+.btn-add-cuenta{width:100%;padding:7px;border-radius:var(--radius-sm);background:var(--bg3);border:1px dashed var(--border2);color:var(--text2);font-size:12px;cursor:pointer;margin-bottom:4px;font-family:'DM Sans',sans-serif;transition:border-color .15s,color .15s;}
+.btn-add-cuenta:active{border-color:var(--accent);color:var(--accent);}
+/* Separador de sección con título */
+.form-section-sep{height:1px;background:var(--border);margin:14px 0 12px;}
+
 /* ── PIN SCREEN ── */
 #pin-screen{position:fixed;inset:0;z-index:99998;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);padding:32px 24px;text-align:center;overflow:hidden;}
 #pin-screen.open{display:flex;}
@@ -2584,9 +2621,8 @@ input.movs-search-input:focus{border-color:var(--accent);}
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title" id="movEncTitle">Registrar movimiento</div>
-        <div
-          style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:11px;color:var(--blue);font-family:'DM Mono',monospace;">
-          Encargo: <span id="movEncNombre" style="font-weight:600;"></span> ·
+        <div class="info-box info-box-blue" style="font-family:'DM Mono',monospace;">
+          Encargo: <span id="movEncNombre" style="font-weight:600;color:var(--blue);"></span> ·
           Saldo: <span id="movEncSaldo"></span>
         </div>
         <div class="ig"><label class="il"
@@ -2597,24 +2633,23 @@ input.movs-search-input:focus{border-color:var(--accent);}
             type="text" inputmode="decimal" id="movenc_monto" placeholder="0,00"
             class="money-input" oninput="_movEncSplitPreview()"></div>
         <div class="ig" id="movenc_cuenta_wrap">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-            <label class="il" style="margin-bottom:0;" id="movenc_cuenta_label">¿En qué cuenta está esa plata?</label>
+          <div class="field-header">
+            <label class="il" id="movenc_cuenta_label">¿En qué cuenta está esa plata?</label>
             <button type="button" id="movenc_split_toggle" onclick="_movEncSplitToggle()"
-              style="display:none;padding:4px 10px;border-radius:var(--radius-sm);border:1.5px solid rgba(200,240,96,.3);background:rgba(200,240,96,.1);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+              class="btn-split" style="display:none;">
               Dividir ÷
             </button>
           </div>
           <!-- Modo simple -->
           <div id="movenc_cuenta_simple">
             <div class="select-wrap"><select id="movenc_cuenta"><option value="">Sin especificar</option></select></div>
-            <div id="movenc_cuenta_hint"
-              style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+            <div id="movenc_cuenta_hint" class="field-hint"></div>
           </div>
           <!-- Modo dividido (solo visible en salidas) -->
           <div id="movenc_cuenta_split" style="display:none;">
             <div id="movencSplitRows"></div>
             <button type="button" onclick="_movEncAgregarSplitRow()"
-              style="width:100%;padding:7px;border-radius:var(--radius-sm);border:1.5px dashed rgba(200,240,96,.3);background:transparent;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;margin-top:4px;font-family:'DM Sans',sans-serif;">
+              class="btn-add-cuenta" style="margin-top:4px;">
               + Agregar cuenta
             </button>
           </div>
@@ -2675,9 +2710,8 @@ input.movs-search-input:focus{border-color:var(--accent);}
           style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;">Esta
           plata sale del encargo y entra a tus cuentas como tuya. El encargo
           queda con menos saldo.</p>
-        <div
-          style="background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.2);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;">
-          Encargo: <span id="traspasoEncNombre" style="font-weight:600;"></span>
+        <div class="info-box info-box-green" style="font-family:'DM Mono',monospace;">
+          Encargo: <span id="traspasoEncNombre" style="font-weight:600;color:var(--accent);"></span>
           · Saldo: <span id="traspasoEncSaldo"></span>
         </div>
         <div class="ig"><label class="il" for="traspaso_monto">¿Cuánto te
@@ -2688,8 +2722,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
             entra?</label>
           <div class="select-wrap"><select id="traspaso_destino"><option
                 value>Seleccionar cuenta</option></select></div>
-          <div id="traspaso_saldo_hint"
-            style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+          <div id="traspaso_saldo_hint" class="field-hint"></div>
         </div>
         <div class="ig"><label class="il"
             for="traspaso_desc">Descripción</label><input type="text"
@@ -2719,8 +2752,8 @@ input.movs-search-input:focus{border-color:var(--accent);}
           Hiciste una compra del encargo con tu tarjeta de credito.<br>
           <b style="color:var(--text);">El dinero no desaparece</b> &mdash; deja de ser del encargo y pasa a ser tuyo para pagar la TC.
         </p>
-        <div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:11px;color:var(--blue);font-family:'DM Mono',monospace;">
-          Encargo: <span id="compraTcEncNombre" style="font-weight:600;"></span> &middot; Saldo: <span id="compraTcEncSaldo"></span>
+        <div class="info-box info-box-blue" style="font-family:'DM Mono',monospace;">
+          Encargo: <span id="compraTcEncNombre" style="font-weight:600;color:var(--blue);"></span> &middot; Saldo: <span id="compraTcEncSaldo"></span>
         </div>
         <div class="ig">
           <label class="il" for="ctc_desc">Que compraste?</label>
@@ -2824,10 +2857,10 @@ input.movs-search-input:focus{border-color:var(--accent);}
 
         <!-- ¿De dónde sacaste la plata? -->
         <div style="margin-bottom:14px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div class="field-header" style="margin-bottom:8px;">
             <label class="il" style="margin-bottom:0;">¿De dónde sacaste la plata?</label>
             <button type="button" id="usarParteSplitToggle" onclick="_usarParteSplitToggle()"
-              style="padding:5px 11px;border-radius:var(--radius-sm);border:1.5px solid rgba(200,240,96,.3);background:rgba(200,240,96,.1);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+              class="btn-split">
               Dividir ÷
             </button>
           </div>
@@ -2843,7 +2876,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
           <div id="usarParteModoDividido" style="display:none;">
             <div id="usarParteSplitRows"></div>
             <button type="button" onclick="_usarParteAgregarSplitRow()"
-              style="width:100%;padding:7px;border-radius:var(--radius-sm);border:1.5px dashed rgba(200,240,96,.3);background:transparent;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer;margin-top:4px;font-family:'DM Sans',sans-serif;">
+              class="btn-add-cuenta" style="border-color:rgba(200,240,96,.3);color:var(--accent);margin-top:4px;">
               + Agregar cuenta
             </button>
           </div>
@@ -3018,29 +3051,26 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <div class="ig"><label class="il" for="mov_fecha">Fecha</label><input
             type="date" id="mov_fecha"></div>
         <div class="ig" id="mov_fuente_wrap">
-          <div
-            style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div class="field-header">
             <label class="il" style="margin-bottom:0;">¿De dónde sacó la
               plata?</label>
             <button type="button" id="mov_split_toggle"
               onclick="togglePrestSplit()"
-              style="font-size:10px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;">Dividir
-              ÷</button>
+              class="btn-split">Dividir ÷</button>
           </div>
           <!-- Modo simple -->
           <div id="mov_fuente_simple">
             <div class="select-wrap"><select id="mov_fuente"><option value>Sin
                   especificar</option></select></div>
             <div id="mov_fuente_hint"
-              style="font-size:10px;color:var(--accent);margin-top:5px;display:none;">Se
+              class="field-hint field-hint-green" style="display:none;">Se
               descontará automáticamente del saldo</div>
           </div>
           <!-- Modo dividido -->
           <div id="mov_fuente_split" style="display:none;">
             <div id="mov_split_rows"></div>
             <button type="button" id="btn-add-prest-split"
-              style="width:100%;padding:7px;border-radius:7px;background:var(--bg3);border:1px dashed var(--border2);color:var(--text2);font-size:12px;cursor:pointer;margin-bottom:4px;">+
-              Agregar cuenta</button>
+              class="btn-add-cuenta" style="margin-bottom:4px;">+ Agregar cuenta</button>
             <div id="mov_split_resumen"
               style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:16px;"></div>
             <!-- Impacto sobre metas -->
@@ -3049,21 +3079,19 @@ input.movs-search-input:focus{border-color:var(--accent);}
         </div>
         <div class="ig" id="mov_destino_wrap" style="display:none;">
           <!-- Header + toggle dividir -->
-          <div
-            style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div class="field-header">
             <label class="il" style="margin-bottom:0;">¿A dónde entra el
               pago?</label>
             <button type="button" id="mov_dest_split_toggle"
               onclick="toggleAbonoSplit()"
-              style="font-size:10px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;">Dividir
-              ÷</button>
+              class="btn-split">Dividir ÷</button>
           </div>
           <!-- Modo simple -->
           <div id="mov_destino_simple">
             <div class="select-wrap"><select id="mov_destino"><option value>Sin
                   especificar</option></select></div>
             <div id="mov_destino_hint"
-              style="font-size:10px;color:var(--accent);margin-top:5px;display:none;">Se
+              class="field-hint field-hint-green" style="display:none;">Se
               sumará automáticamente al saldo</div>
           </div>
           <!-- Modo dividido -->
@@ -3071,7 +3099,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
             <div id="mov_dest_split_rows"></div>
             <button type="button" id="btn-add-dest-split"
               onclick="abonoAddSplitRow()"
-              style="width:100%;padding:7px;border-radius:7px;background:var(--bg3);border:1px dashed var(--border2);color:var(--text2);font-size:12px;cursor:pointer;margin-bottom:4px;">+
+              class="btn-add-cuenta" style="margin-bottom:4px;">+
               Agregar cuenta</button>
             <div id="mov_dest_split_resumen"
               style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:16px;"></div>
@@ -3089,18 +3117,18 @@ input.movs-search-input:focus{border-color:var(--accent);}
 
         <!-- ══ DESDE UN ENCARGO ══ -->
         <div id="mov_enc_wrap" style="display:none;">
-          <div style="height:1px;background:var(--border);margin:10px 0 12px;"></div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-            <label class="il" style="margin:0;flex:1;">¿Viene de un encargo?</label>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text2);">
+          <div class="form-divider"></div>
+          <div class="toggle-row">
+            <label class="il" style="margin:0;display:inline-flex;align-items:center;flex-wrap:nowrap;gap:4px;flex:1;min-width:0;">¿Viene de un encargo?</label>
+            <label class="toggle-label">
               <input type="checkbox" id="mov_desde_encargo" onchange="toggleDesdeEncargo()"
-                style="width:16px;height:16px;accent-color:var(--blue);cursor:pointer;">
+                style="accent-color:var(--blue);">
               Sí, es de un encargo
             </label>
           </div>
           <div id="mov_enc_body" style="display:none;">
-            <div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.25);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:10px;font-size:11px;color:var(--text2);line-height:1.5;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:4px;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/></svg>
+            <div class="info-box info-box-blue">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:4px;flex-shrink:0;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/></svg>
               El pago sale del encargo — <b style="color:var(--text);">no entra a ninguna cuenta tuya</b>. El saldo del encargo baja y la deuda queda saldada.
             </div>
             <div class="ig" style="margin-bottom:8px;">
@@ -3110,7 +3138,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
             <div class="ig" id="mov_enc_cuenta_wrap" style="display:none;">
               <label class="il" for="mov_enc_cuenta">¿De qué cuenta del encargo sale?</label>
               <div class="select-wrap"><select id="mov_enc_cuenta" onchange="onChangeMov_enc_cuenta()"><option value="">Sin especificar</option></select></div>
-              <div id="mov_enc_cuenta_hint" style="font-size:10px;color:var(--blue);margin-top:5px;display:none;font-family:'DM Mono',monospace;"></div>
+              <div id="mov_enc_cuenta_hint" class="field-hint field-hint-blue" style="display:none;"></div>
             </div>
             <div id="mov_enc_saldo_preview" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:16px;"></div>
           </div>
@@ -3118,17 +3146,13 @@ input.movs-search-input:focus{border-color:var(--accent);}
 
         <!-- ══ EXTRA (propina / regalo de más) ══ -->
         <div id="mov_extra_wrap" style="display:none;">
-          <div
-            style="height:1px;background:var(--border);margin:10px 0 12px;"></div>
-          <div
-            style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-            <label class="il" style="margin:0;flex:1;">¿Te dio extra de
-              más?</label>
-            <label
-              style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text2);">
+          <div class="form-divider"></div>
+          <div class="toggle-row">
+            <label class="il" style="margin:0;flex:1;">¿Te dio extra de más?</label>
+            <label class="toggle-label">
               <input type="checkbox" id="mov_tiene_extra"
                 onchange="toggleExtraSection()"
-                style="width:16px;height:16px;accent-color:var(--accent);cursor:pointer;">
+                style="accent-color:var(--accent);">
               Sí, hubo extra
             </label>
           </div>
@@ -3311,12 +3335,11 @@ input.movs-search-input:focus{border-color:var(--accent);}
           <input type="date" id="mpFecha">
         </div>
         <!-- Modo destino: simple o dividido -->
-        <div
-          style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="field-header" style="margin-bottom:8px;">
           <label class="il" style="margin-bottom:0;">¿Qué hiciste con esa
             plata?</label>
           <button type="button" id="mpSplitToggle"
-            style="font-size:10px;font-family:'DM Mono',monospace;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;">Dividir
+            class="btn-split">Dividir
             ÷</button>
         </div>
         <!-- Modo simple -->
@@ -3329,7 +3352,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
         <div id="mpModoDividido" style="display:none;">
           <div id="mpSplitRows"></div>
           <button type="button" id="btn-add-split-row"
-            style="width:100%;padding:7px;border-radius:7px;background:var(--bg3);border:1px dashed var(--border2);color:var(--text2);font-size:12px;cursor:pointer;margin-bottom:8px;">+
+            class="btn-add-cuenta" style="margin-bottom:8px;">+
             Agregar cuenta</button>
         </div>
         <div id="mpPreview"
@@ -6783,7 +6806,6 @@ function initMovSheet(tipo) {
         if (lbl && !lbl.querySelector('.enc-sugerencia')) {
           const badge = document.createElement('span');
           badge.className = 'enc-sugerencia';
-          badge.style.cssText = 'margin-left:6px;font-size:9px;background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-family:DM Mono,monospace;vertical-align:middle;';
           badge.textContent = 'Tienen encargo';
           lbl.appendChild(badge);
         }

@@ -12684,6 +12684,18 @@ document.addEventListener('focusin', function(e){
       }, 80);
     } else if (r.navTipo === 'gastos') {
       showScreen('gastos');
+    } else if (r.navTipo === 'spotify') {
+      showScreen('gastos');
+      setTimeout(() => {
+        // Intentar hacer scroll o abrir la sección de Spotify si existe
+        const spSection = document.querySelector('[data-section="spotify"], #spotify-section, .spotify-wrap');
+        if (spSection) spSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    } else if (r.navTipo === 'persona') {
+      // Cerrar overlay primero, luego abrir perfil
+      if (typeof abrirPerfilPersona === 'function') {
+        abrirPerfilPersona(r.navId);
+      }
     } else {
       // fallback: solo cerrar
     }
@@ -12701,6 +12713,8 @@ document.addEventListener('focusin', function(e){
       nequi: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
       efectivo: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>`,
       gastos: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`,
+      persona: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+      spotify: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M8 11.2c2.7-.8 5.5-.6 8 .6M7 14.5c2.2-.6 4.5-.5 6.5.5M9 17.5c1.5-.4 3-.3 4.5.3"/></svg>`,
     };
     return icons[navTipo] || `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
   }
@@ -12808,6 +12822,32 @@ document.addEventListener('focusin', function(e){
       });
     });
 
+    // Personas
+    (S.personas||[]).forEach(p => {
+      if((p.nombre||'').toLowerCase().includes(q)||(p.alias||'').toLowerCase().includes(q)||(p.notas||'').toLowerCase().includes(q)){
+        const color = p.color || 'var(--purple)';
+        resultados.push({ tipo:'Persona', desc:p.nombre, meta:(p.alias?p.alias+' · ':'')+(p.notas||''), color:color, navTipo:'persona', navId:p.id });
+      }
+    });
+
+    // Spotify (cobros)
+    (S.spotifyPersonas||[]).forEach(sp => {
+      if((sp.nombre||'').toLowerCase().includes(q)||(sp.plan||'').toLowerCase().includes(q)){
+        resultados.push({ tipo:'Spotify', desc:sp.nombre||'Plan Spotify', meta:(window.fmt?window.fmt(sp.monto||0):'')+(sp.proximoPago?' · próx. '+sp.proximoPago:''), color:'#1db954', navTipo:'spotify', navId:null });
+      }
+    });
+
+    // Movimientos generales de cuentas (S.movimientos — entradas y salidas)
+    (S.movimientos||[]).forEach(m => {
+      if(m.tipo==='apertura') return; // excluir apertura de búsqueda
+      if((m.desc||'').toLowerCase().includes(q)){
+        const esEntrada = m.tipo==='entrada';
+        const fuente = m.fuente||'';
+        const label = fuente.startsWith('cajita:') ? 'Nu' : fuente.charAt(0).toUpperCase()+fuente.slice(1);
+        resultados.push({ tipo:(esEntrada?'Entrada':'Salida')+' · '+label, desc:m.desc||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:esEntrada?'var(--accent)':'var(--red)', navTipo: fuente==='nequi'?'nequi': fuente==='efectivo'?'efectivo': fuente.startsWith('cajita:')?'cajita': fuente, navId: fuente.startsWith('cajita:')?fuente.replace('cajita:',''):null });
+      }
+    });
+
     if(!resultados.length){
       busquedaResultados.innerHTML = '<div style="text-align:center;padding:48px 0;"><div style="margin-bottom:10px;display:flex;justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div style="font-size:13px;color:var(--text3);">Sin resultados para <b style="color:var(--text);">"'+q+'"</b></div></div>';
       return;
@@ -12839,7 +12879,7 @@ document.addEventListener('focusin', function(e){
         return `
         <div class="busqueda-item" data-bidx="${r._idx}" style="cursor:${tieneNav?'pointer':'default'};">
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:36px;height:36px;border-radius:10px;background:${r.color.replace('var(--red)','rgba(240,104,104,.12)').replace('var(--amber)','rgba(240,184,64,.12)').replace('var(--blue)','rgba(96,176,240,.12)').replace('var(--nu-light)','rgba(192,96,240,.12)').replace('var(--accent)','rgba(200,240,96,.12)').replace('#ff4da6','rgba(255,77,166,.12)')};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${iconoSvg}</div>
+            <div style="width:36px;height:36px;border-radius:10px;background:${r.color.replace('var(--red)','rgba(240,104,104,.12)').replace('var(--amber)','rgba(240,184,64,.12)').replace('var(--blue)','rgba(96,176,240,.12)').replace('var(--nu-light)','rgba(192,96,240,.12)').replace('var(--accent)','rgba(200,240,96,.12)').replace('var(--purple)','rgba(176,144,240,.12)').replace('#ff4da6','rgba(255,77,166,.12)').replace('#1db954','rgba(29,185,84,.12)')};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${iconoSvg}</div>
             <div style="flex:1;min-width:0;">
               <div class="busqueda-tipo" style="color:${r.color};">${r.tipo}</div>
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">

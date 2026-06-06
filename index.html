@@ -498,16 +498,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
 /* Mes dot más grande en móvil */
 .mes-dot { aspect-ratio:1; border-radius:8px; font-size:10px; min-height:36px; }
 
-/* ── HISTORIAL DE CAMBIOS (feed) ── */
-.feed-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
-.feed-item:last-child{border-bottom:none;}
-.feed-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;}
-.feed-body{flex:1;min-width:0;}
-.feed-accion{font-size:13px;font-weight:600;color:var(--text);}
-.feed-meta{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;}
-.feed-monto{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;flex-shrink:0;margin-left:4px;}
-.feed-empty{text-align:center;padding:40px 0;font-size:13px;color:var(--text3);}
-
 /* ── BÚSQUEDA MEJORADA ── */
 .busqueda-section-title{font-size:9px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:12px 0 6px;border-bottom:1px solid var(--border);margin-bottom:4px;}
 .busqueda-item{cursor:pointer;transition:border-color .15s;}
@@ -832,23 +822,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
                 y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             Agregar tarjeta de crédito
           </button>
-        </div>
-
-        <!-- HISTORIAL DE CAMBIOS -->
-        <div class="screen" id="screen-historial">
-          <div
-            style="display:flex;align-items:center;justify-content:space-between;">
-            <div class="sec-title" style="margin:14px 0 8px;">Actividad
-              reciente</div>
-            <button type="button" onclick="limpiarHistorial()"
-              style="font-size:10px;background:none;border:none;color:var(--text3);cursor:pointer;padding:6px;font-family:'DM Mono',monospace;">Limpiar
-              todo</button>
-          </div>
-          <div class="card" style="padding:4px 15px 8px;">
-            <div id="feed-historial"><div class="feed-empty">Aún no hay
-                actividad registrada.<br>Cada cambio que hagas aparecerá
-                aquí.</div></div>
-          </div>
         </div>
 
         <!-- CUENTAS -->
@@ -2300,18 +2273,15 @@ input.movs-search-input:focus{border-color:var(--accent);}
           <div class="mas-item-sub" id="mas-personas-sub">Perfiles y actividad financiera</div>
         </div>
       </div>
-      <div class="mas-item" id="mas-historial" data-screen="historial">
-        <div class="mas-item-icon"
-          style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.25);">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round"
-            stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><polyline
-              points="12 7 12 12 16 14" /></svg>
+      <div class="mas-item" id="mas-comprometida" data-screen="comprometida">
+        <div class="mas-item-icon" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.25);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M12 14v2M8 14h2M14 14h2"/><path d="M6 6V4M18 6V4"/>
+          </svg>
         </div>
         <div>
-          <div class="mas-item-label">Historial de cambios</div>
-          <div class="mas-item-sub" id="mas-historial-sub">Últimas acciones
-            realizadas</div>
+          <div class="mas-item-label">Plata comprometida</div>
+          <div class="mas-item-sub">Ingresos futuros con destino</div>
         </div>
       </div>
       <div class="mas-item" id="mas-config" data-screen="config">
@@ -3994,7 +3964,6 @@ function crearCuentaCustom(){
   save();refresh();
   closeSheet('nueva-cuenta');
   toast(`Cuenta "${nombre}" creada`,'ok');
-  if(window.logCambio)logCambio('Creaste cuenta "'+nombre+'"','',saldo||0,'cajita');
 }
 
 function renderCustomCuentasList(){
@@ -4293,7 +4262,6 @@ function editarCuentaCustom(id){
       // Volver a abrir la cuenta con datos actualizados
       abrirCustomCuenta(id);
       toast(`Cuenta "${nombre}" actualizada`,'ok');
-      if(window.logCambio)logCambio('Editaste cuenta "'+nombre+'"','',0,'editar');
       // Resetear estado del sheet
       _resetSheetNuevaCuenta();
     };
@@ -5613,7 +5581,6 @@ function addCajita(){
   S.cajitas.push({id:uid(),nombre,saldo:0,cdts:[]});
   save();renderCajitas();
   const _newId=S.cajitas[S.cajitas.length-1].id;
-  if(window.logCambio)logCambio('Creaste una cajita',nombre,0,'cajita',_newId);
 }
 
 async function deleteCajita(id){
@@ -5633,7 +5600,6 @@ async function deleteCajita(id){
   const nombreEl=c.nombre;
   S.cajitas=(S.cajitas||[]).filter(x=>x.id!==id);save();refresh();
   toast('Cajita eliminada','info');
-  if(window.logCambio)logCambio('Eliminaste cajita "'+nombreEl+'"','',0,'eliminar');
 }
 
 let _cdtCajitaId=null;
@@ -5686,7 +5652,6 @@ function confirmarCrearCDT(){
   save();
   closeSheet('crear-cdt');
   refresh();
-  if(window.logCambio)logCambio('Invertiste en un CDT en "'+c.nombre+'"',fmt(monto)+' al '+String(tasa).replace('.',',')+' % EA · vence '+vence,monto,'ahorro',c.id);
   toast(`CDT creado por ${fmt(monto)} al ${String(tasa).replace('.',',')}% EA — se libera el ${vence}`,'ok',4000);
 }
 
@@ -5703,7 +5668,6 @@ async function liberarCDTManual(cajitaId,cdtId){
   c.fecha=hoy();
   c.cdts=(c.cdts||[]).filter(x=>x.id!==cdtId);
   refresh();save();
-  if(window.logCambio)logCambio('Cerraste CDT en "'+c.nombre+'"','Capital '+fmt(cdt.monto)+' + intereses acreditados',k.val,'ingreso',c.id);
   toast(`CDT cerrado — ${fmt(k.val)} acreditados a "${c.nombre}"`,'ok',4000);
 }
 
@@ -5757,7 +5721,6 @@ async function confirmarCobrarCDT(){
   c.cdts=(c.cdts||[]).filter(x=>x.id!==cdtId);
   closeSheet('cobrar-cdt');
   refresh();save();
-  if(window.logCambio)logCambio('Cobraste CDT de "'+c.nombre+'"','Valor real acreditado a la cajita',valorReal,'ingreso',c.id);
   toast('CDT cobrado — '+fmt(valorReal)+' acreditados a "'+c.nombre+'"','ok',4000);
 }
 
@@ -5808,7 +5771,6 @@ function guardarCDT(cajitaId,cdtId){
   save();
   closeSheet('crear-cdt');
   refresh();
-  if(window.logCambio){const _ce=(S.cajitas||[]).find(x=>x.id===cajitaId);if(_ce)logCambio('Editaste CDT en "'+_ce.nombre+'"','Tasa o fechas modificadas',0,'editar',cajitaId);}
   toast('CDT actualizado','ok',3000);
 }
 
@@ -5914,7 +5876,6 @@ function _renderDetalleCajita(c){
       clearTimeout(_renameTimer);
       _renameTimer=setTimeout(()=>{
         if(nameInput.value&&nameInput.value!==_nombreAntes){
-          if(window.logCambio)logCambio('Renombraste cajita a "'+nameInput.value+'"',_nombreAntes?'antes: '+_nombreAntes:'',0,'editar',c.id);
           _nombreAntes=nameInput.value;
         }
       },1200);
@@ -6319,7 +6280,6 @@ function addGastoVar(){
   } else {
     descontarFuente(fuente,monto);
     toast('Gasto registrado','ok');
-  if(window.logCambio){const _gvd=document.getElementById('gv_desc');const _gvm=parseMoney(document.getElementById('gv_monto').value);logCambio('Registraste un gasto',_gvd?_gvd.value:'',_gvm,'gasto');}
   }
   document.getElementById('gv_desc').value='';
   document.getElementById('gv_monto').value='';
@@ -6358,7 +6318,6 @@ async function deleteGastoVar(id){
   S.gastosVar=(S.gastosVar||[]).filter(x=>x.id!==id);
   save();refresh();
   toast('Gasto eliminado','ok');
-  if(window.logCambio&&g)logCambio('Eliminaste un gasto',g.desc||'',g.monto,'eliminar');
 }
 
 /* ---- GASTOS FIJOS ---- */
@@ -6426,7 +6385,6 @@ function addGastoFijo(){
   S.gastosFijos.push({id:uid(),nombre:n,monto:m,cat:document.getElementById('gf_c').value});
   document.getElementById('gf_n').value='';document.getElementById('gf_m').value='';
   save();refresh();closeSheet('gasto-fijo');
-  if(window.logCambio){const _gfn=document.getElementById('gf_n');const _gfm=parseMoney(document.getElementById('gf_m').value);logCambio('Agregaste gasto fijo',_gfn?_gfn.value:'',_gfm,'gasto_fijo');}
   toast('Gasto fijo agregado','ok');
 }
 
@@ -6504,7 +6462,6 @@ function confirmarPagarGastoFijo(){
   S.pagosGastosFijos[gf.id+'_'+mesActual()]={fecha,fuente,monto:gf.monto};
   save();refresh();
   closeSheet('pagar-gasto-fijo');
-  if(window.logCambio){const _pgfg=(S.gastosFijos||[]).find(x=>x.id===pgfIdActual);if(_pgfg)logCambio('Pagaste '+_pgfg.nombre,'',_pgfg.monto,'gasto_fijo');}
   toast('Pago registrado correctamente','ok');
 }
 
@@ -6947,7 +6904,6 @@ function confirmarMovimiento() {
         ts: Date.now()
       });
 
-      if(window.logCambio) logCambio(`Abono de ${d.nombre} vía encargo de ${enc.nombre}`, d.nombre, monto, 'abono');
       save(); refresh(); closeSheet('registrar-movimiento');
       abrirDeudor(deudorActualId);
       toast(`✓ ${fmt(monto)} descontado del encargo de ${enc.nombre}`, 'ok', 3500);
@@ -7036,10 +6992,6 @@ function confirmarMovimiento() {
   }
 
   // Log cambio
-  if(window.logCambio && d){
-    const tipolog = movTipo === 'prestamo' ? 'prestamo' : 'abono';
-    logCambio(movTipo==='prestamo'?'Prestaste a '+d.nombre:'Registraste abono de '+d.nombre, d.nombre, monto, tipolog);
-  }
   save(); refresh(); closeSheet('registrar-movimiento');
   abrirDeudor(deudorActualId);
 }
@@ -8225,9 +8177,6 @@ function toggleModulo(nombre){
 async function borrarTodo(){
   const ok=await dialogo('Borrar todos los datos','¿Seguro que quieres borrar TODO? Esta acción no se puede deshacer y perderás toda tu información financiera.','Borrar todo',true);
   if(!ok)return;
-  // Registrar en historial antes de borrar todo (quedará como primer evento visible si el historial no se borra)
-  // Luego limpiar también el historial local para que no queden registros huérfanos
-  localStorage.removeItem('mf_historial_v1');
   // Borrar en Firebase — guardar estructura vacía correcta (no {} vacío que rompe el payload)
   if(window._fbUser && window._fb){
     try{
@@ -8957,7 +8906,6 @@ function confirmarAgregarDinero(){
   save();
   closeSheet('agregar-dinero');
   refresh();
-  if(window.logCambio){const _fLabel=fuenteLabel(adFuente);const _accion=esApertura?'Saldo inicial en '+_fLabel:'Sumaste dinero en '+_fLabel;const _cjId=adFuente&&adFuente.startsWith('cajita:')?adFuente.split(':')[1]:null;logCambio(_accion,descFinal||'',v,'ingreso',_cjId);}
   adFuente='';
 toast(fmt(v) + (esApertura?' registrado como saldo inicial':' sumado — ' + descFinal), 'ok');
 }
@@ -9005,7 +8953,6 @@ function confirmarAgregarDineroMenu(){
   save();
   closeSheet('agregar-dinero-menu');
   refresh();
-  if(window.logCambio){const _fLabel=fuenteLabel(fuente);const _cjId2=fuente&&fuente.startsWith('cajita:')?fuente.split(':')[1]:null;logCambio('Sumaste dinero en '+_fLabel,desc,v,'ingreso',_cjId2);}
   toast(fmt(v) + ' sumado — ' + desc, 'ok');
 }
 
@@ -9153,7 +9100,6 @@ function confirmarRestarDinero(){
   S.movimientos.push({id:uid(),tipo:'salida_manual',fuente:rdFuente,monto:v,fecha,desc});
   save();refresh();
   closeSheet('restar-dinero');
-  if(window.logCambio){const _fLabel=fuenteLabel(rdFuente);const _cjId3=rdFuente&&rdFuente.startsWith('cajita:')?rdFuente.split(':')[1]:null;logCambio('Retiraste dinero de '+_fLabel,desc,v,'gasto',_cjId3);}
   rdFuente='';
   toast('− '+fmt(v)+' restado — '+desc,'info');
 }
@@ -10255,7 +10201,6 @@ function crearEncargo() {
   document.getElementById('enc_cuenta_wrap').style.display = 'none';
   save(); renderEncargosList();
   closeSheet('nuevo-encargo');
-  if(window.logCambio){const _enomEl=document.getElementById('enc_nombre');logCambio('Creaste un encargo',_enomEl?_enomEl.value:'','','editar');}
   toast('Encargo creado', 'ok');
 }
 
@@ -11179,7 +11124,6 @@ async function eliminarEncargoActual() {
   S.encargos = (S.encargos||[]).filter(e=>e.id!==encargoActualId);
   save();
   volverEncargosLista();
-  if(window.logCambio)logCambio('Eliminaste un encargo','','','eliminar');
   toast('Encargo eliminado', 'info');
 }
 
@@ -11814,16 +11758,6 @@ function confirmarCompraConTC() {
         _encMovId  // vínculo: al eliminar el movimiento del encargo, también se borra este
       });
     }
-  }
-
-  // ── 6. Registrar en historial de cambios
-  if (window.logCambio) {
-    logCambio(
-      `Compra TC encargo ${enc.nombre}`,
-      fmt(monto),
-      tc ? tc.nombre : tcId,
-      'tc_encargo'
-    );
   }
 
   save();
@@ -13636,7 +13570,6 @@ if ('serviceWorker' in navigator) {
     'screen-prestamos': 'Préstamos',
     'screen-analisis': 'Análisis',
     'screen-config': 'Configuración',
-    'screen-historial': 'Historial de cambios',
   };
   Object.entries(screenLabels).forEach(([id, label]) => {
     const el = document.getElementById(id);
@@ -14654,7 +14587,6 @@ function confirmarPagarTC(){
 
   closeSheet('pagar-tc');
   save();refresh();renderTCScreen();
-  if(window.logCambio)logCambio('Pagaste tarjeta '+tc.nombre,'',monto,'abono');
   toast('Pago registrado — deuda restante: '+fmt(tc.deuda),'ok',3500);
 }
 
@@ -14823,152 +14755,6 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 })();
 
-/* ================================================================
-   MEJORA 1 — HISTORIAL DE CAMBIOS
-   ================================================================ */
-(function(){
-  const MAX_HIST = 80;
-  const KEY_HIST = 'mf_historial_v1';
-
-  function _cargarHist(){
-    try{ return JSON.parse(localStorage.getItem(KEY_HIST)||'[]'); }catch(e){ return []; }
-  }
-  function _guardarHist(arr){
-    try{ localStorage.setItem(KEY_HIST, JSON.stringify(arr.slice(0,MAX_HIST))); }catch(e){}
-  }
-
-  // Iconos por tipo de acción
-  // SVG icons — sin emojis
-  const _SVG = {
-    gasto:   `<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`,
-    ingreso: `<svg viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`,
-    prestamo:`<svg viewBox="0 0 24 24" fill="none" stroke="#60b0f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-    abono:   `<svg viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>`,
-    ahorro:  `<svg viewBox="0 0 24 24" fill="none" stroke="#c060f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/><path d="M3 21h18"/><path d="M9 21v-4a2 2 0 0 1 4 0v4"/></svg>`,
-    transferencia:`<svg viewBox="0 0 24 24" fill="none" stroke="#60b0f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
-    gasto_fijo:`<svg viewBox="0 0 24 24" fill="none" stroke="#f0b840" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
-    editar:  `<svg viewBox="0 0 24 24" fill="none" stroke="#888880" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
-    eliminar:`<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
-    cajita:  `<svg viewBox="0 0 24 24" fill="none" stroke="#c060f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`,
-    reset:   `<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>`,
-    default: `<svg viewBox="0 0 24 24" fill="none" stroke="#888880" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-  };
-  const ICONOS = {
-    gasto:    { bg:'rgba(240,104,104,.15)', svg:_SVG.gasto },
-    ingreso:  { bg:'rgba(200,240,96,.15)',  svg:_SVG.ingreso },
-    prestamo: { bg:'rgba(96,176,240,.15)',  svg:_SVG.prestamo },
-    abono:    { bg:'rgba(200,240,96,.12)',  svg:_SVG.abono },
-    ahorro:   { bg:'rgba(192,96,240,.15)', svg:_SVG.ahorro },
-    transferencia:{ bg:'rgba(96,176,240,.12)', svg:_SVG.transferencia },
-    gasto_fijo:{ bg:'rgba(240,184,64,.12)', svg:_SVG.gasto_fijo },
-    editar:   { bg:'rgba(136,136,128,.12)', svg:_SVG.editar },
-    eliminar: { bg:'rgba(240,104,104,.12)', svg:_SVG.eliminar },
-    cajita:   { bg:'rgba(192,96,240,.12)', svg:_SVG.cajita },
-    reset:    { bg:'rgba(240,104,104,.12)', svg:_SVG.reset },
-    default:  { bg:'rgba(136,136,128,.1)',  svg:_SVG.default },
-  };
-
-  // Formatear fecha relativa
-  function _fechaRel(ts){
-    const ahora = Date.now();
-    const diff = Math.floor((ahora - ts) / 1000);
-    if(diff < 60) return 'hace un momento';
-    if(diff < 3600) return 'hace '+Math.floor(diff/60)+'m';
-    if(diff < 86400) return 'hace '+Math.floor(diff/3600)+'h';
-    if(diff < 172800) return 'ayer';
-    const d = new Date(ts);
-    return d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
-  }
-
-  // Resuelve el nombre actual de una cajita en un texto de acción
-  function _resolverNombreCajita(texto, cajitaId){
-    if(!cajitaId || !texto) return texto;
-    try {
-      const Sx = window.S || {};
-      const cx = (Sx.cajitas||[]).find(function(x){ return x.id===cajitaId; });
-      if(!cx) return texto;
-      // Caso 1: nombre entre comillas tipográficas "…"
-      var resultado = texto.replace(/“[^”]*”/g, function(){ return '“'+cx.nombre+'”'; });
-      // Caso 2: nombre entre comillas normales "…"
-      resultado = resultado.replace(/"[^"]*"/g, function(){ return '"'+cx.nombre+'"'; });
-      // Caso 3: "…en NOMBRE (Nu)" o "…de NOMBRE (Nu)" — sin comillas
-      resultado = resultado.replace(/(en|de) ([^(]+) \(Nu\)/g, function(m, prep){ return prep+' '+cx.nombre+' (Nu)'; });
-      return resultado;
-    } catch(e){ return texto; }
-  }
-
-  // API pública: registrar un cambio
-  // cajitaId (opcional): id de la cajita — permite actualizar el nombre si cambia después
-  window.logCambio = function(accion, entidad, monto, tipo, cajitaId){
-    const hist = _cargarHist();
-    const item = {
-      ts: Date.now(),
-      accion: accion,      // "Registraste gasto", "Editaste préstamo de Juan", etc.
-      entidad: entidad||'', // nombre de la entidad (cuenta, persona, etc.)
-      monto: monto||0,
-      tipo: tipo||'default', // gasto, ingreso, prestamo, ahorro, editar, eliminar...
-      cajitaId: cajitaId||null // para actualizar el nombre dinámicamente si cambia
-    };
-    hist.unshift(item);
-    _guardarHist(hist);
-    _renderFeed();
-    _actualizarBadge();
-  };
-
-  function _actualizarBadge(){
-    const hist = _cargarHist();
-    const sub = document.getElementById('mas-historial-sub');
-    if(sub && hist.length) sub.textContent = hist.length + ' acción' + (hist.length!==1?'es':'') + ' registrada' + (hist.length!==1?'s':'');
-  }
-
-  function _renderFeed(){
-    const el = document.getElementById('feed-historial');
-    if(!el) return;
-    const hist = _cargarHist();
-    if(!hist.length){
-      el.innerHTML = '<div class="feed-empty">Aún no hay actividad registrada.<br>Cada cambio que hagas aparecerá aquí.</div>';
-      return;
-    }
-    const f = window.fmt || (v => '$'+Math.round(v).toLocaleString('es-CO'));
-    el.innerHTML = hist.map(item => {
-      const ik = ICONOS[item.tipo] || ICONOS.default;
-      const montoStr = item.monto ? f(item.monto) : '';
-      const colorMonto = ['gasto','eliminar','gasto_fijo'].includes(item.tipo) ? 'var(--red)' :
-                         ['ingreso','abono','ahorro'].includes(item.tipo) ? 'var(--accent)' : 'var(--text2)';
-      // Si el item tiene cajitaId, resolver el nombre actual de la cajita en el texto
-      const accionTexto = item.cajitaId ? _resolverNombreCajita(item.accion, item.cajitaId) : item.accion;
-      return `<div class="feed-item">
-        <div class="feed-icon" style="background:${ik.bg};display:flex;align-items:center;justify-content:center;">${ik.svg}</div>
-        <div class="feed-body">
-          <div class="feed-accion">${accionTexto}</div>
-          ${item.entidad?`<div class="feed-meta">${item.entidad} · ${_fechaRel(item.ts)}</div>`:`<div class="feed-meta">${_fechaRel(item.ts)}</div>`}
-        </div>
-        ${montoStr?`<div class="feed-monto" style="color:${colorMonto};">${montoStr}</div>`:''}
-      </div>`;
-    }).join('');
-  }
-
-  window.limpiarHistorial = async function(){
-    const ok = await (window.dialogo ? window.dialogo('Limpiar historial','¿Borrar toda la actividad registrada? Esto no afecta tus datos.','Limpiar',true) : Promise.resolve(confirm('¿Limpiar historial?')));
-    if(!ok) return;
-    localStorage.removeItem(KEY_HIST);
-    _renderFeed();
-    _actualizarBadge();
-    if(window.toast) window.toast('Historial limpiado','ok');
-  };
-
-  // Render inicial al cargar
-  document.addEventListener('DOMContentLoaded', function(){
-    _renderFeed();
-    _actualizarBadge();
-    // Re-render cuando se navega a historial
-    document.addEventListener('click', function(e){
-      const ni = e.target.closest('[data-screen="historial"], #mas-historial');
-      if(ni){ setTimeout(_renderFeed, 80); }
-    });
-  });
-})();
-
 </script>
 
 <!-- ══════════════════════════════════════════════════════════════════
@@ -15046,9 +14832,9 @@ function _injectMasItem(){
       <div class="mas-item-sub">Ingresos futuros con destino</div>
     </div>
   `;
-  // Insertar antes del item de historial
-  const masHistorial = document.getElementById('mas-historial');
-  if(masHistorial) masMenu.insertBefore(item, masHistorial);
+  // Insertar antes del item de configuración
+  const masConfig = document.getElementById('mas-config');
+  if(masConfig) masMenu.insertBefore(item, masConfig);
   else masMenu.appendChild(item);
 }
 
@@ -15588,9 +15374,6 @@ window._cpGuardar = function(){
   _cpEditId = null;
   _cpDestinosTmp = [];
 
-  if(window.logCambio) logCambio(
-    (_cpEditId?'Editaste':'Registraste')+' plata comprometida: "'+desc+'"', '', monto, 'ingreso'
-  );
 
   // Agregar a "Necesita atención" si llega pronto
   if(typeof renderAttencion === 'function') renderAttencion();
@@ -15794,7 +15577,6 @@ window._cpdConfirmar = function(){
       sumarFuente(cuentaId, -monto);
       if(!S.movimientos) S.movimientos = [];
       S.movimientos.push({ id:_cpUid(), tipo:'salida', fuente:cuentaId, monto, fecha:_cpHoy(), desc:'Adelanto comprometido: '+desc });
-      if(window.logCambio) logCambio('Adelantaste plata de '+_cpFuenteLabel(cuentaId), _cpFmt(monto)+' — será repuesto al llegar el ingreso', monto, 'gasto');
       if(typeof refresh === 'function') refresh();
     } catch(e){ _cpToast('No se pudo descontar el saldo: '+e.message,'err'); }
   }
@@ -16054,7 +15836,6 @@ window._cpConfirmarRecibir = function(){
             sumarFuente(cuenta, d.monto);
             if(!S.movimientos) S.movimientos = [];
             S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc});
-            if(window.logCambio) logCambio('Reposición en '+_cpFuenteLabel(cuenta), _cpFmt(d.monto)+' de "'+item.desc+'"', d.monto, 'ingreso');
           }
         } else {
           // Ya fue adelantada: la plata ya estaba descontada, ahora entra el arriendo y repone
@@ -16068,7 +15849,6 @@ window._cpConfirmarRecibir = function(){
             sumarFuente(cuenta, d.monto);
             if(!S.movimientos) S.movimientos = [];
             S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición (adelantada): '+item.desc});
-            if(window.logCambio) logCambio('Reposición (ya adelantada) en '+_cpFuenteLabel(cuenta), _cpFmt(d.monto)+' repuesto', d.monto, 'ingreso');
           }
         }
       }
@@ -16077,7 +15857,6 @@ window._cpConfirmarRecibir = function(){
         if(deu){
           if(!deu.movimientos) deu.movimientos = [];
           deu.movimientos.push({id:_cpUid(), tipo:'abono', monto:d.monto, fecha, nota:'Abono desde: '+item.desc, ts:Date.now()});
-          if(window.logCambio) logCambio('Registraste abono de '+deu.nombre, _cpFmt(d.monto)+' de plata comprometida', d.monto, 'abono');
         }
       }
       else if(d.tipo === 'gasto'){
@@ -16086,7 +15865,6 @@ window._cpConfirmarRecibir = function(){
           const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
           if(tc){
             tc.deuda = (tc.deuda||0) + d.monto;
-            if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado', _cpFmt(d.monto)+' sumado a la deuda', d.monto, 'gasto');
           }
           // Llevar la plata a la cajita que el usuario eligió (gastoTcCajita)
           const destCajita = d.gastoTcCajita;
@@ -16099,7 +15877,6 @@ window._cpConfirmarRecibir = function(){
             sumarFuente(destCajita, d.monto);
             if(!S.movimientos) S.movimientos = [];
             S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc});
-            if(window.logCambio) logCambio('Plata para pagar TC → '+_cpFuenteLabel(destCajita), _cpFmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
           }
         } else if(d.gastoOrigen === 'cajita' && d.gastoCajita){
           // Gasto de cajita: reponer esa cajita con el ingreso
@@ -16112,7 +15889,6 @@ window._cpConfirmarRecibir = function(){
             sumarFuente(d.gastoCajita, d.monto);
             if(!S.movimientos) S.movimientos = [];
             S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:d.gastoCajita, monto:d.monto, fecha, desc:'Reposición gasto: '+d.desc});
-            if(window.logCambio) logCambio('Repuesto gasto en '+_cpFuenteLabel(d.gastoCajita), _cpFmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
           }
         }
         // si no tiene origen definido: solo registro, sin efecto
@@ -16139,9 +15915,6 @@ window._cpConfirmarRecibir = function(){
         sumarFuente(sobranteCuenta, ganancia);
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:sobranteCuenta, monto:ganancia, fecha, desc:'Ganancia: '+item.desc});
-        if(window.logCambio) logCambio('<i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Sobrante de "'+item.desc+'"', _cpFmt(ganancia)+' → '+_cpFuenteLabel(sobranteCuenta), ganancia, 'ingreso');
-      }
-    } catch(e){ errores.push('Ganancia'); }
   }
 
   // Marcar como recibido
@@ -16285,7 +16058,6 @@ window._cpGuardarMarcados = function(){
           sumarFuente(cuentaId, -dNuevo.monto);
           if(!S.movimientos) S.movimientos = [];
           S.movimientos.push({id:_cpUid(),tipo:'salida',fuente:cuentaId,monto:dNuevo.monto,fecha:_cpHoy(),desc:'Adelanto comprometido: '+dNuevo.desc});
-          if(window.logCambio) logCambio('Adelantaste plata de '+_cpFuenteLabel(cuentaId), _cpFmt(dNuevo.monto)+' — será repuesto al llegar el ingreso', dNuevo.monto, 'gasto');
         } catch(e){}
       }
     }
@@ -16298,7 +16070,6 @@ window._cpGuardarMarcados = function(){
           tc.deuda = (tc.deuda||0) + dNuevo.monto;
           if(!tc.compras) tc.compras = [];
           tc.compras.push({id:_cpUid(), desc:dNuevo.desc, monto:dNuevo.monto, fecha:_cpHoy(), _desdeCP:true});
-          if(window.logCambio) logCambio('Gasto cargado a '+tc.nombre+' (plata comprometida)', _cpFmt(dNuevo.monto)+' sumado a la deuda', dNuevo.monto, 'gasto');
         }
       } catch(e){}
     }
@@ -16310,7 +16081,6 @@ window._cpGuardarMarcados = function(){
           tc.deuda = Math.max(0, (tc.deuda||0) - dNuevo.monto);
           // Quitar la compra que se había agregado desde plata comprometida
           if(tc.compras) tc.compras = tc.compras.filter(c=>!(c._desdeCP && c.desc===dNuevo.desc && c.monto===dNuevo.monto));
-          if(window.logCambio) logCambio('Revertiste cargo a '+tc.nombre+' (plata comprometida)', _cpFmt(dNuevo.monto)+' quitado de la deuda', dNuevo.monto, 'ingreso');
         }
       } catch(e){}
     }

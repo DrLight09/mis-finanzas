@@ -1757,6 +1757,9 @@ input.movs-search-input:focus{border-color:var(--accent);}
               Agregar persona
             </span>
           </button>
+          <!-- Estadísticas Spotify -->
+          <div class="sec-title" style="margin-top:16px;">Estadísticas</div>
+          <div id="spStats"></div>
           <!-- Historial pagos Spotify -->
           <div class="sec-title" style="margin-top:16px;">Historial de
             pagos</div>
@@ -7879,6 +7882,8 @@ function renderSpotify(){
 
   // Historial
   renderSpHistorial();
+  // Estadísticas
+  renderSpStats();
 }
 
 function renderSpHistorial(){
@@ -7901,6 +7906,180 @@ function renderSpHistorial(){
         </div>
       </div>
     </div>`).join('');
+}
+
+function renderSpStats(){
+  const el=document.getElementById('spStats');
+  if(!el)return;
+  const personas=S.spotifyPersonas||[];
+  const hist=S.spotifyHistorial||[];
+  const costo=S.spotifyCosto||0;
+
+  if(!personas.length&&!hist.length){
+    el.innerHTML='';
+    return;
+  }
+
+  // ── Cobros del historial (tipo cobro)
+  const cobros=hist.filter(h=>h.tipo==='cobro');
+  const pagosSpotify=hist.filter(h=>h.tipo==='pago');
+
+  // ── Total cobrado a personas (acumulado histórico)
+  const totalCobradoHist=cobros.reduce((a,h)=>a+(h.monto||0),0);
+  // ── Total pagado a Spotify (acumulado histórico)
+  const totalPagadoHist=pagosSpotify.reduce((a,h)=>a+(h.monto||0),0);
+  // ── Ganancia acumulada real (cobrado - pagado)
+  const gananciaReal=totalCobradoHist-totalPagadoHist;
+
+  // ── Quien más ha pagado (mayor cobro acumulado)
+  const porPersona={};
+  const cobrosCount={};
+  const montosPorPersona={};
+  cobros.forEach(h=>{
+    const n=h.nombre||'?';
+    porPersona[n]=(porPersona[n]||0)+(h.monto||0);
+    cobrosCount[n]=(cobrosCount[n]||0)+1;
+    if(!montosPorPersona[n])montosPorPersona[n]=[];
+    montosPorPersona[n].push(h.monto||0);
+  });
+  const personasOrdenadas=Object.entries(porPersona).sort((a,b)=>b[1]-a[1]);
+  const topPersona=personasOrdenadas[0];
+  const bottomPersona=personasOrdenadas[personasOrdenadas.length-1];
+
+  // ── Mayor cobro individual en toda la historia
+  const mayorCobro=cobros.length?cobros.reduce((mx,h)=>(h.monto||0)>(mx.monto||0)?h:mx,cobros[0]):null;
+
+  // ── Promedio mensual cobrado por persona activa
+  const promedioMensual=personas.length?personas.reduce((a,p)=>a+(p.monto||0),0)/personas.length:0;
+
+  // ── Persona con más meses adelantados actualmente
+  const masAdelantada=personas.length?[...personas].sort((a,b)=>(b.mesesAdelantados||1)-(a.mesesAdelantados||1))[0]:null;
+
+  // ── Veces que alguien pagó adelantado (> 1 mes)
+  const cobrosAdelantados=cobros.filter(h=>h.nota&&h.nota.includes('adelantado'));
+
+  // ── Persona más antigua (fechaIngreso)
+  const conFecha=personas.filter(p=>p.fechaIngreso).sort((a,b)=>a.fechaIngreso.localeCompare(b.fechaIngreso));
+  const personaAntigua=conFecha[0];
+
+  // ── Racha de pagos consecutivos (persona más constante)
+  const conteoConst=Object.entries(cobrosCount).sort((a,b)=>b[1]-a[1]);
+  const masConstante=conteoConst[0];
+
+  // ── Ingreso mensual estimado (personas activas)
+  const ingresoEstimado=personas.reduce((a,p)=>a+(p.monto||0),0);
+  const margen=costo>0?ingresoEstimado-costo:0;
+
+  // ── Color según valor
+  const cV=(v)=>v>0?'var(--accent)':v<0?'var(--red)':'var(--text2)';
+  const fmtS=(v,prefix='')=>prefix+(v>=0?'+':'')+fmt(Math.abs(v));
+
+  let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px;">`;
+
+  // Ingresos estimados vs costo
+  html+=`<div class="stat" style="grid-column:1/-1;">
+    <div class="stat-label">Flujo mensual estimado</div>
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+      <div class="stat-value" style="color:${cV(margen)};">${margen>=0?'+':''}${fmt(Math.abs(margen))}</div>
+      <div style="font-size:11px;color:var(--text2);">cobras ${fmt(ingresoEstimado)} · pagas ${costo>0?fmt(costo):'—'}</div>
+    </div>
+  </div>`;
+
+  // Total cobrado histórico
+  html+=`<div class="stat">
+    <div class="stat-label">Total cobrado</div>
+    <div class="stat-value c-green">${fmt(totalCobradoHist)}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px;">${cobros.length} cobro${cobros.length!==1?'s':''}</div>
+  </div>`;
+
+  // Ganancia acumulada real
+  html+=`<div class="stat">
+    <div class="stat-label">Ganancia acumulada</div>
+    <div class="stat-value" style="color:${cV(gananciaReal)};">${gananciaReal>=0?'+':''}${fmt(Math.abs(gananciaReal))}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px;">cobrado − pagado a Spotify</div>
+  </div>`;
+
+  html+=`</div>`;
+
+  // Fila de personas destacadas
+  if(topPersona){
+    html+=`<div class="card card-sm" style="margin-bottom:7px;">
+      <div class="sec-title" style="margin:0 0 10px;font-size:9px;">🏆 Ranking personas</div>`;
+
+    // Listar todas las personas con total y conteo
+    personasOrdenadas.forEach(([nombre,total],idx)=>{
+      const p=personas.find(x=>x.nombre===nombre);
+      const color=p&&p.personaId?(()=>{const per=(S.personas||[]).find(x=>x.id===p.personaId);return per?per.color:'var(--blue)';})():'var(--blue)';
+      const maxVal=personasOrdenadas[0][1]||1;
+      const pct=Math.round(total/maxVal*100);
+      const medalla=idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':'';
+      html+=`<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <div style="font-size:12px;font-weight:600;">${medalla} ${escHtml(nombre)}</div>
+          <div style="font-size:12px;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(total)}</div>
+        </div>
+        <div style="height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:var(--accent);border-radius:2px;transition:width .4s;"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px;">${cobrosCount[nombre]||0} cobro${(cobrosCount[nombre]||0)!==1?'s':''} registrados</div>
+      </div>`;
+    });
+    html+=`</div>`;
+  }
+
+  // Destacados individuales
+  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px;">`;
+
+  if(mayorCobro){
+    html+=`<div class="stat">
+      <div class="stat-label">Mayor cobro único</div>
+      <div class="stat-value c-amber">${fmt(mayorCobro.monto)}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">${escHtml(mayorCobro.nombre)} · ${mayorCobro.fecha||''}</div>
+    </div>`;
+  }
+
+  if(masAdelantada&&(masAdelantada.mesesAdelantados||1)>1){
+    html+=`<div class="stat">
+      <div class="stat-label">Más adelantada</div>
+      <div class="stat-value c-purple">${masAdelantada.mesesAdelantados}m</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">${escHtml(masAdelantada.nombre)}</div>
+    </div>`;
+  } else if(masConstante){
+    html+=`<div class="stat">
+      <div class="stat-label">Más constante</div>
+      <div class="stat-value c-blue">${masConstante[1]}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">${escHtml(masConstante[0])}</div>
+    </div>`;
+  }
+
+  if(personas.length>0){
+    html+=`<div class="stat">
+      <div class="stat-label">Cuota promedio</div>
+      <div class="stat-value c-nu">${fmt(promedioMensual)}/mes</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">${personas.length} persona${personas.length!==1?'s':''} activa${personas.length!==1?'s':''}</div>
+    </div>`;
+  }
+
+  if(personaAntigua){
+    const dias=Math.floor((new Date()-new Date(personaAntigua.fechaIngreso+'T00:00:00'))/86400000);
+    html+=`<div class="stat">
+      <div class="stat-label">Más antiguo/a</div>
+      <div class="stat-value" style="color:var(--text2);font-size:13px;">${escHtml(personaAntigua.nombre)}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">${dias} días en el plan</div>
+    </div>`;
+  }
+
+  if(cobrosAdelantados.length>0){
+    html+=`<div class="stat">
+      <div class="stat-label">Pagos adelantados</div>
+      <div class="stat-value c-green">${cobrosAdelantados.length}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">veces que alguien pagó +1 mes</div>
+    </div>`;
+  }
+
+  html+=`</div>`;
+
+  el.innerHTML=html;
 }
 
 async function deleteSpHistorial(i){

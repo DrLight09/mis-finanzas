@@ -1925,7 +1925,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
             style="border-radius:var(--radius);padding:20px;margin-bottom:10px;"></div>
           <div class="grid2" style="margin-bottom:9px;">
             <div class="stat"><div class="stat-label">Ingresos
-                del mes</div><div class="stat-value c-green"
+                estimados</div><div class="stat-value c-green"
                 id="an-ingresos">$0</div></div>
             <div class="stat"><div class="stat-label">Gastos totales</div><div
                 class="stat-value c-red" id="an-gastos">$0</div></div>
@@ -4734,64 +4734,6 @@ function gastosMes(mesK){
   return(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mesK);
 }
 
-/**
- * calcIngresosDelMes(mk)
- * Fuente única de verdad para ingresos de un mes (formato 'YYYY-MM').
- * Suma TODAS las fuentes de ingreso real:
- *   1. Mesada de papá y mamá (módulo mesada)
- *   2. Movimientos tipo 'ingreso' en cuentas personalizadas
- *   3. Cobros de Spotify a personas (spotifyHistorial tipo 'cobro')
- *   4. Entradas manuales a Nequi y Efectivo (tipo 'entrada', excluye apertura)
- *   5. Sobrantes de plata comprometida recibida (S.movimientos _esSobrante)
- * NO incluye: transferencias entre cuentas, saldos iniciales, reposiciones.
- */
-function calcIngresosDelMes(mk){
-  let total = 0;
-  const anioN = parseInt((mk||'').split('-')[0]);
-  const mesN  = parseInt((mk||'').split('-')[1]) - 1; // 0-based para keys legacy
-
-  // 1. Mesada
-  if(S.modulos && S.modulos.mesada){
-    const mesadas = S.mesadas || {};
-    const v2 = S.mesadasV2 || {};
-    const mkV2 = anioN + '-' + mesN; // formato de mesadasV2
-    const infoPapa = (v2['papa']||{})[mkV2];
-    const infoMama = (v2['mama']||{})[mkV2];
-    const papaEsSaldoIni = infoPapa && infoPapa.esSaldoInicial;
-    const mamaEsSaldoIni = infoMama && infoMama.esSaldoInicial;
-    // Legacy (S.mesadas)
-    if(mesadas[anioN+'_'+mesN+'_papa'] && !papaEsSaldoIni) total += (S.mesadaMontoPapa||0);
-    if(mesadas[anioN+'_'+mesN+'_mama'] && !mamaEsSaldoIni) total += (S.mesadaMonteMama||0);
-    // V2 sin legacy duplicado
-    if(!mesadas[anioN+'_'+mesN+'_papa'] && infoPapa && !papaEsSaldoIni) total += (infoPapa.monto||S.mesadaMontoPapa||0);
-    if(!mesadas[anioN+'_'+mesN+'_mama'] && infoMama && !mamaEsSaldoIni) total += (infoMama.monto||S.mesadaMonteMama||0);
-  }
-
-  // 2. Cuentas personalizadas (movimientos tipo 'ingreso')
-  (S.cuentasPersonalizadas||[]).forEach(c=>{
-    (c.movimientos||[]).filter(m=>m.tipo==='ingreso' && mesKey(m.fecha)===mk)
-      .forEach(m=>{ total += (m.monto||0); });
-  });
-
-  // 3. Spotify: cobros a personas (tipo 'cobro' en spotifyHistorial)
-  // Cada cobro es plata real que entró a tu cuenta ese mes
-  if(S.modulos && S.modulos.spotify){
-    (S.spotifyHistorial||[]).filter(h=>h.tipo==='cobro' && mesKey(h.fecha)===mk)
-      .forEach(h=>{ total += (h.monto||0); });
-  }
-
-  // 4. Entradas manuales a Nequi y Efectivo
-  // Excluye 'apertura' (saldo inicial) y sobrantes de plataCometida (ya los contamos arriba en cuentas custom,
-  // pero si el destino es nequi/efectivo los contamos aquí via _esSobrante)
-  (S.movimientos||[]).filter(m=>
-    m.tipo === 'entrada' &&
-    (m.fuente==='nequi' || m.fuente==='efectivo') &&
-    mesKey(m.fecha) === mk
-  ).forEach(m=>{ total += (m.monto||0); });
-
-  return total;
-}
-
 /* ---- TOAST ---- */
 function toast(msg, tipo='ok', dur=2800){
   const c=document.getElementById('toast-container');
@@ -5148,10 +5090,28 @@ function renderAnalisis(){
   const gfTotal=(S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mes]?a+(g.monto||0):a,0);
   const gastosTotalMes=gvTotal+gfTotal;
 
-  // ── Ingresos del mes (todas las fuentes) ──────────────────────────────
+  // ── Ingresos estimados del mes (mesada) ───────────────────────────────
   const mesNum=parseInt(mes.split('-')[1])-1;
   const anio=parseInt(mes.split('-')[0]);
-  const ingresosEstimados = calcIngresosDelMes(mes);
+  let ingresosEstimados=0;
+  if(S.modulos&&S.modulos.mesada){
+    const mesadas=S.mesadas||{};
+    const v2=(S.mesadasV2||{});
+    const keyPapa=anio+'_'+mesNum+'_papa';
+    const keyMama=anio+'_'+mesNum+'_mama';
+    // S.mesadasV2 usa la clave ANIO-MES (ej: "2025-4"); excluir saldo inicial
+    const v2KeyPapa=anio+'-'+mesNum;
+    const v2KeyMama=anio+'-'+mesNum;
+    const infoPapa=(v2['papa']||{})[v2KeyPapa];
+    const infoMama=(v2['mama']||{})[v2KeyMama];
+    const papaEsSaldoIni=infoPapa&&infoPapa.esSaldoInicial;
+    const mamaEsSaldoIni=infoMama&&infoMama.esSaldoInicial;
+    if(mesadas[keyPapa]&&!papaEsSaldoIni) ingresosEstimados+=(S.mesadaMontoPapa||0);
+    if(mesadas[keyMama]&&!mamaEsSaldoIni) ingresosEstimados+=(S.mesadaMonteMama||0);
+    // También leer de mesadasV2 directamente (datos nuevos que sólo viven allí)
+    if(!mesadas[keyPapa]&&infoPapa&&!papaEsSaldoIni) ingresosEstimados+=(infoPapa.monto||S.mesadaMontoPapa||0);
+    if(!mesadas[keyMama]&&infoMama&&!mamaEsSaldoIni) ingresosEstimados+=(infoMama.monto||S.mesadaMonteMama||0);
+  }
 
   // ── Balance ────────────────────────────────────────────────────────────
   const balance=ingresosEstimados-gastosTotalMes;
@@ -5165,7 +5125,7 @@ function renderAnalisis(){
     const mes2d=MESES_NOMBRE[mesNum]+' '+anio;
     const emoji=sinIngresos?'':esPositivo?'↑':' ↓';
     let mensaje='';
-    if(sinIngresos) mensaje='Sin ingresos registrados este mes.';
+    if(sinIngresos) mensaje='Registrá tus ingresos en Mesada para ver el balance.';
     else if(esPositivo) mensaje='¡Vas bien! Gastaste menos de lo que entraste.';
     else mensaje='Ojo: gastaste más de lo que entraste este mes.';
     hero.style.cssText='border-radius:var(--radius);padding:20px;margin-bottom:10px;background:'+bgColor+';border:1px solid '+borderColor+';';
@@ -5349,7 +5309,14 @@ function renderAnalisis(){
     const mesNomPrev=MESES_NOMBRE[dPrev.getMonth()]+' '+dPrev.getFullYear();
 
     // Ingresos mes anterior
-    const ingresosPrev = calcIngresosDelMes(mesPrev);
+    const mesNumPrev=dPrev.getMonth();
+    const anioPrev=dPrev.getFullYear();
+    let ingresosPrev=0;
+    if(S.modulos&&S.modulos.mesada){
+      const ms=S.mesadas||{};
+      if(ms[anioPrev+'_'+mesNumPrev+'_papa']) ingresosPrev+=(S.mesadaMontoPapa||0);
+      if(ms[anioPrev+'_'+mesNumPrev+'_mama']) ingresosPrev+=(S.mesadaMonteMama||0);
+    }
     const balancePrev=ingresosPrev-totalPrev;
 
     const diffGastos=gastosTotalMes-totalPrev;
@@ -7953,30 +7920,26 @@ function renderSpStats(){
     return;
   }
 
-  // ── Cobros del historial (tipo cobro)
+  // ── Cobros y pagos del historial
   const cobros=hist.filter(h=>h.tipo==='cobro');
   const pagosSpotify=hist.filter(h=>h.tipo==='pago');
-
-  // ── Total cobrado a personas (acumulado histórico)
   const totalCobradoHist=cobros.reduce((a,h)=>a+(h.monto||0),0);
-  // ── Total pagado a Spotify (acumulado histórico)
   const totalPagadoHist=pagosSpotify.reduce((a,h)=>a+(h.monto||0),0);
 
-  // ── Ganancia acumulada: cobrado - pagado + cuota propia ahorrada por ciclo
-  // El admin tiene plan gratis, su cuota equivale a costo/6 aprox pero se
-  // calcula como: por cada pago a Spotify registrado, se suma una cuota ahorrada.
-  // Cuota del admin = costo de Spotify / (personas activas + 1 admin)
+  // ── Cuota del admin (su "plan gratis")
   const totalSlots=(personas.length||5)+1;
   const cuotaAdmin=costo>0?Math.round(costo/totalSlots):0;
   const ciclosPagados=pagosSpotify.length;
   const ahorroCuotaAdmin=cuotaAdmin*ciclosPagados;
-  const gananciaReal=totalCobradoHist-totalPagadoHist+ahorroCuotaAdmin;
 
   // ── Ingreso mensual estimado (personas activas)
   const ingresoEstimado=personas.reduce((a,p)=>a+(p.monto||0),0);
   const margen=costo>0?ingresoEstimado-costo+cuotaAdmin:0;
 
-  // ── Color según valor
+  // ── Ganancia real: solo calculable cuando hay pagos registrados
+  const gananciaReal=totalCobradoHist-totalPagadoHist+ahorroCuotaAdmin;
+  const hayCiclo=ciclosPagados>0;
+
   const cV=(v)=>v>0?'var(--accent)':v<0?'var(--red)':'var(--text2)';
 
   let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px;">`;
@@ -7991,25 +7954,51 @@ function renderSpStats(){
     ${cuotaAdmin>0?`<div style="font-size:10px;color:var(--text3);margin-top:3px;">incluye tu cuota ahorrada ${fmt(cuotaAdmin)}</div>`:''}
   </div>`;
 
-  // Total cobrado histórico
+  // Total cobrado
   html+=`<div class="stat">
     <div class="stat-label">Total cobrado</div>
     <div class="stat-value c-green">${fmt(totalCobradoHist)}</div>
     <div style="font-size:10px;color:var(--text3);margin-top:3px;">${cobros.length} cobro${cobros.length!==1?'s':''}</div>
   </div>`;
 
-  // Ganancia acumulada (cobrado - pagado + cuotas propias ahorradas)
-  html+=`<div class="stat">
-    <div class="stat-label">Ganancia acumulada</div>
-    <div class="stat-value" style="color:${cV(gananciaReal)};">${gananciaReal>=0?'+':''}${fmt(Math.abs(gananciaReal))}</div>
-    <div style="font-size:10px;color:var(--text3);margin-top:3px;">cobrado − pagado${ahorroCuotaAdmin>0?' + tu cuota':''}</div>
-  </div>`;
+  // Segunda stat: ganancia real si hay ciclo, balance del ciclo si no
+  if(!hayCiclo&&totalCobradoHist>0&&costo>0){
+    // Sin pagos a Spotify aún: mostrar cuánto falta/sobra para cubrir el costo
+    const pendiente=costo-totalCobradoHist;
+    const sobra=totalCobradoHist-costo;
+    html+=`<div class="stat">
+      <div class="stat-label">Balance del ciclo</div>
+      ${pendiente>0
+        ?`<div class="stat-value" style="color:var(--amber);">\u2212${fmt(pendiente)}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;">falta recaudar para cubrir Spotify</div>`
+        :`<div class="stat-value" style="color:var(--accent);">+${fmt(sobra)}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;">ya cubriste Spotify — esto es ganancia</div>`
+      }
+    </div>`;
+  } else if(hayCiclo){
+    html+=`<div class="stat">
+      <div class="stat-label">Ganancia acumulada</div>
+      <div class="stat-value" style="color:${cV(gananciaReal)};">${gananciaReal>=0?'+':''}${fmt(Math.abs(gananciaReal))}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">cobrado \u2212 pagado${ahorroCuotaAdmin>0?' + tu cuota':''}</div>
+    </div>`;
+  } else {
+    html+=`<div class="stat">
+      <div class="stat-label">Ganancia acumulada</div>
+      <div class="stat-value" style="color:var(--text3);">\u2014</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">sin cobros aún</div>
+    </div>`;
+  }
+
+  // Aviso contextual mientras no haya un ciclo pagado
+  if(!hayCiclo&&costo>0){
+    html+=`<div style="grid-column:1/-1;font-size:10px;color:var(--text3);padding:6px 0 2px;">
+      Registrá el pago a Spotify cuando lo hagas para ver la ganancia real acumulada.
+    </div>`;
+  }
 
   html+=`</div>`;
-
   el.innerHTML=html;
 }
-
 async function deleteSpHistorial(i){
   const ok=await dialogo('Eliminar movimiento','¿Eliminar este registro del historial? Esta acción no se puede deshacer.','Eliminar',true);
   if(!ok)return;
@@ -13158,8 +13147,23 @@ document.addEventListener('focusin', function(e){
     // Ingresos del mes: mesada + movimientos tipo ingreso de cuentas personalizadas
     const mesNum = mes ? parseInt(mes.split('-')[1])-1 : 0;
     const anio = mes ? parseInt(mes.split('-')[0]) : 0;
-    // Ingresos del mes (todas las fuentes via helper central)
-    const ingresosMes = calcIngresosDelMes(mes);
+    let ingresosMes = 0;
+    if(S.modulos && S.modulos.mesada){
+      const mesadas = S.mesadas || {};
+      const _v2m=(S.mesadasV2||{});
+      const _mk=anio+'-'+mesNum;
+      const _infoPapa=(_v2m['papa']||{})[_mk];
+      const _infoMama=(_v2m['mama']||{})[_mk];
+      if(mesadas[anio+'_'+mesNum+'_papa']&&!(_infoPapa&&_infoPapa.esSaldoInicial)) ingresosMes += (S.mesadaMontoPapa||0);
+      if(mesadas[anio+'_'+mesNum+'_mama']&&!(_infoMama&&_infoMama.esSaldoInicial)) ingresosMes += (S.mesadaMonteMama||0);
+      // mesadasV2 sin legacy
+      if(!mesadas[anio+'_'+mesNum+'_papa']&&_infoPapa&&!_infoPapa.esSaldoInicial) ingresosMes += (_infoPapa.monto||S.mesadaMontoPapa||0);
+      if(!mesadas[anio+'_'+mesNum+'_mama']&&_infoMama&&!_infoMama.esSaldoInicial) ingresosMes += (_infoMama.monto||S.mesadaMonteMama||0);
+    }
+    // Sumar ingresos de cuentas personalizadas del mes actual
+    (S.cuentasPersonalizadas||[]).forEach(c => {
+      (c.movimientos||[]).filter(m=>(m.tipo==='ingreso')&&window.mesKey&&window.mesKey(m.fecha)===mes).forEach(m=>{ ingresosMes += (m.monto||0); });
+    });
 
     // ── Liquidez real (solo cuentas disponibles, sin CDTs bloqueados) ─────
     const nu = (S.cajitas||[]).reduce((a,c)=>a+(window.calcC?window.calcC(c).val:c.saldo||0),0);
@@ -13330,8 +13334,29 @@ document.addEventListener('focusin', function(e){
       const mesNum = d.getMonth();
       const anio = d.getFullYear();
 
-      // Ingresos del mes (todas las fuentes via helper central)
-      const ing = calcIngresosDelMes(mk);
+      // Ingresos del mes (mesada + cuentas personalizadas + entradas manuales a Nequi/Efectivo)
+      let ing = 0;
+      if(S.modulos && S.modulos.mesada){
+        const ms = S.mesadas || {};
+        const ms2 = S.mesadasV2 || {};
+        // Formato viejo: mesadas
+        if(ms[anio+'_'+mesNum+'_papa']) ing += (S.mesadaMontoPapa||0);
+        if(ms[anio+'_'+mesNum+'_mama']) ing += (S.mesadaMonteMama||0);
+        // Formato nuevo: mesadasV2 (excluir saldos iniciales)
+        const v2papa = (ms2.papa||{})[anio+'-'+mesNum];
+        const v2mama = (ms2.mama||{})[anio+'-'+mesNum];
+        if(v2papa && !v2papa.esSaldoInicial) ing += (S.mesadaMontoPapa||0);
+        if(v2mama && !v2mama.esSaldoInicial) ing += (S.mesadaMonteMama||0);
+      }
+      (S.cuentasPersonalizadas||[]).forEach(c=>{
+        (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mk).forEach(m=>{ ing+=(m.monto||0); });
+      });
+      // Entradas manuales a Nequi y Efectivo (tipo 'entrada', excluye apertura para no distorsionar)
+      (S.movimientos||[]).filter(m=>
+        m.tipo==='entrada' &&
+        (m.fuente==='nequi'||m.fuente==='efectivo') &&
+        mesKey(m.fecha)===mk
+      ).forEach(m=>{ ing+=(m.monto||0); });
 
       // Gastos del mes
       const gv = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mk&&!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);
@@ -13344,7 +13369,29 @@ document.addEventListener('focusin', function(e){
     {
       const dHoy = new Date();
       const mkHoy = dHoy.getFullYear()+'-'+String(dHoy.getMonth()+1).padStart(2,'0');
-      const ingHoy = calcIngresosDelMes(mkHoy);
+      const mesNumHoy = dHoy.getMonth();
+      const anioHoy = dHoy.getFullYear();
+      let ingHoy = 0;
+      if(S.modulos && S.modulos.mesada){
+        const ms = S.mesadas || {};
+        const ms2 = S.mesadasV2 || {};
+        // Formato viejo: mesadas
+        if(ms[anioHoy+'_'+mesNumHoy+'_papa']) ingHoy += (S.mesadaMontoPapa||0);
+        if(ms[anioHoy+'_'+mesNumHoy+'_mama']) ingHoy += (S.mesadaMonteMama||0);
+        // Formato nuevo: mesadasV2 (excluir saldos iniciales)
+        const v2papaH = (ms2.papa||{})[anioHoy+'-'+mesNumHoy];
+        const v2mamaH = (ms2.mama||{})[anioHoy+'-'+mesNumHoy];
+        if(v2papaH && !v2papaH.esSaldoInicial) ingHoy += (S.mesadaMontoPapa||0);
+        if(v2mamaH && !v2mamaH.esSaldoInicial) ingHoy += (S.mesadaMonteMama||0);
+      }
+      (S.cuentasPersonalizadas||[]).forEach(c=>{
+        (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mkHoy).forEach(m=>{ ingHoy+=(m.monto||0); });
+      });
+      (S.movimientos||[]).filter(m=>
+        m.tipo==='entrada' &&
+        (m.fuente==='nequi'||m.fuente==='efectivo') &&
+        mesKey(m.fecha)===mkHoy
+      ).forEach(m=>{ ingHoy+=(m.monto||0); });
       const gvHoy = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mkHoy&&!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);
       const gfHoy = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mkHoy]?a+(g.monto||0):a,0);
       if(ingHoy > 0 || (gvHoy+gfHoy) > 0){
@@ -13403,7 +13450,7 @@ document.addEventListener('focusin', function(e){
 
     el.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <span style="font-size:12px;color:var(--text2);">${usandoFlujo ? 'Flujo neto mensual (mesada + Spotify + otros)' : 'Tendencia mensual'}</span>
+        <span style="font-size:12px;color:var(--text2);">${usandoFlujo ? 'Flujo neto mensual' : 'Tendencia mensual'}</span>
         <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${col};">${tendenciaMensual>=0?'+':''}${fmt(tendenciaMensual)}</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;">

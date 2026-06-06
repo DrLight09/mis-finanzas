@@ -2757,7 +2757,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
         </div>
 
         <button type="button" class="btn" id="btn-confirmar-mov-encargo"
-          style="background:rgba(96,176,240,.25);color:var(--blue);border:1px solid rgba(96,176,240,.5);box-shadow:none;font-weight:600;">Guardar</button>
+          style="margin-top:14px;background:rgba(96,176,240,.25);color:var(--blue);border:1px solid rgba(96,176,240,.5);box-shadow:none;font-weight:600;">Guardar</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="mov-encargo">Cancelar</button>
       </div>
@@ -2873,7 +2873,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
         </div>
         <div id="ctc_preview" style="font-size:11px;font-family:'DM Mono',monospace;margin-bottom:12px;min-height:24px;line-height:1.7;padding:8px 10px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);display:none;"></div>
         <button type="button" class="btn" id="btn-confirmar-compra-tc"
-          style="background:rgba(240,104,104,.75);color:#fff;border:none;box-shadow:none;font-weight:600;">
+          style="margin-top:14px;background:rgba(240,104,104,.75);color:#fff;border:none;box-shadow:none;font-weight:600;">
           <span style="display:flex;align-items:center;justify-content:center;gap:7px;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/></svg>
             Confirmar compra con TC
@@ -2906,7 +2906,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
           <input type="date" id="parte-fecha">
         </div>
         <div id="parte-balance-preview" style="font-size:12px;font-family:'DM Mono',monospace;min-height:16px;padding:6px 0 10px;color:var(--text3);"></div>
-        <button type="button" class="btn btn-primary" onclick="guardarParte()" style="background:var(--blue);color:#fff;border:none;">Guardar</button>
+        <button type="button" class="btn btn-primary" onclick="guardarParte()" style="background:var(--blue);color:#fff;border:none;box-shadow:0 2px 14px rgba(96,176,240,.3);">Guardar</button>
         <button type="button" class="btn btn-ghost" data-close-sheet="parte-encargo" onclick="cerrarPartSheet()">Cancelar</button>
       </div>
     </div>
@@ -2980,7 +2980,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
           </div>
         </div>
 
-        <button type="button" class="btn" onclick="_confirmarUsarParte()" style="background:rgba(200,240,96,.2);color:var(--accent);border:1px solid rgba(200,240,96,.4);font-weight:600;">Confirmar — ya la usé</button>
+        <button type="button" class="btn" onclick="_confirmarUsarParte()" style="margin-top:14px;background:rgba(200,240,96,.2);color:var(--accent);border:1px solid rgba(200,240,96,.4);font-weight:600;">Confirmar — ya la usé</button>
         <button type="button" class="btn btn-ghost" data-close-sheet="usar-parte">Cancelar</button>
       </div>
     </div>
@@ -11019,6 +11019,7 @@ function abrirMovEncargo(tipo) {
   if (!enc) return;
   movEncargoTipo = tipo;
   const saldo = encargoSaldo(enc);
+  if (tipo === 'salida' && saldo <= 0) { toast('El encargo no tiene saldo disponible', 'err'); return; }
   document.getElementById('movEncTitle').textContent = tipo==='entrada'?'Registrar entrada de plata':'Registrar salida de plata';
   document.getElementById('movEncNombre').textContent = enc.nombre;
   document.getElementById('movEncSaldo').textContent = fmt(saldo);

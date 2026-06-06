@@ -17311,28 +17311,107 @@ function abrirPerfilPersona(personaId) {
   if (datos.deudor) {
     const d = datos.deudor;
     const saldo = datos.saldoPrestamo;
-    const totalPrestado = (d.movimientos || []).filter(m => m.tipo === 'prestamo').reduce((a, m) => a + m.monto, 0);
-    const totalAbonado = (d.movimientos || []).filter(m => m.tipo === 'abono').reduce((a, m) => a + m.monto, 0);
+    const movs = d.movimientos || [];
+    const prestamos = movs.filter(m => m.tipo === 'prestamo');
+    const abonos   = movs.filter(m => m.tipo === 'abono');
+    const totalPrestado = prestamos.reduce((a, m) => a + (m.monto || 0), 0);
+    const totalAbonado  = abonos.reduce((a, m) => a + (m.monto || 0), 0);
     const color2 = saldo > 0 ? 'var(--amber)' : saldo < 0 ? 'var(--red)' : 'var(--accent)';
+    const pct = totalPrestado > 0 ? Math.min(100, Math.round(totalAbonado / totalPrestado * 100)) : 0;
+
+    // Stats interesantes
+    const mayorPrestamo = prestamos.length ? prestamos.reduce((mx, m) => m.monto > mx.monto ? m : mx, prestamos[0]) : null;
+    const mayorAbono    = abonos.length    ? abonos.reduce((mx, m) => m.monto > mx.monto ? m : mx, abonos[0])       : null;
+    const cuantasveces  = prestamos.length;
+    const diasDesde     = movs.length ? Math.floor((new Date() - new Date(movs[0].fecha + 'T00:00:00')) / 86400000) : null;
+    const ultimoMov     = movs.length ? movs[movs.length - 1] : null;
+
     html += `<div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path d="M4 10.781c.148 1.667 1.513 2.85 3.591 3.003V15h1.043v-1.216c2.27-.179 3.678-1.438 3.678-3.3 0-1.59-.947-2.51-2.956-3.028l-.722-.187V3.467c1.122.11 1.879.714 2.07 1.616h1.47c-.166-1.6-1.54-2.748-3.54-2.875V1H7.591v1.233c-1.939.23-3.27 1.472-3.27 3.156 0 1.454.966 2.483 2.661 2.917l.61.162v4.031c-1.149-.17-1.94-.8-2.131-1.718H4zm3.391-3.836c-1.043-.263-1.6-.825-1.6-1.616 0-.944.704-1.641 1.8-1.828v3.495l-.2-.051zm1.591 1.872c1.287.323 1.852.859 1.852 1.769 0 1.097-.826 1.828-2.2 1.939V8.73l.348.087z"/></svg> Préstamos</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">💸 Préstamos</div>
         <button type="button" onclick="_irADeudor('${d.id}')" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver detalle →</button>
       </div>
-      <div class="grid2" style="margin:0;">
-        <div><div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Pendiente</div><div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:${color2};">${fmt(saldo)}</div></div>
-        <div><div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Prestado</div><div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(totalPrestado)}</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Pendiente</div>
+          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:${color2};">${fmt(saldo)}</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Prestado</div>
+          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(totalPrestado)}</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Abonado</div>
+          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(totalAbonado)}</div>
+        </div>
       </div>
+      ${totalPrestado > 0 ? `<div style="margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;">
+          <span>Progreso de pago</span><span>${pct}%</span>
+        </div>
+        <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;">
+          <div style="width:${pct}%;height:100%;background:${pct===100?'var(--accent)':'var(--amber)'};border-radius:2px;transition:width .4s;"></div>
+        </div>
+      </div>` : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
+        ${mayorPrestamo ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor préstamo</div>
+          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(mayorPrestamo.monto)}</div>
+          ${mayorPrestamo.fecha ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorPrestamo.fecha}</div>` : ''}
+        </div>` : ''}
+        ${mayorAbono ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor abono</div>
+          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(mayorAbono.monto)}</div>
+          ${mayorAbono.fecha ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorAbono.fecha}</div>` : ''}
+        </div>` : ''}
+        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Veces prestado</div>
+          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${cuantasveces}x</div>
+        </div>
+        ${diasDesde !== null ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Relación activa</div>
+          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${diasDesde}d</div>
+        </div>` : ''}
+      </div>
+      ${ultimoMov ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
+        Último movimiento: <span style="color:var(--text2);font-weight:500;">${ultimoMov.tipo === 'prestamo' ? 'Préstamo' : 'Abono'} de ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? ' · <i>' + escHtml(ultimoMov.nota) + '</i>' : ''}
+      </div>` : ''}
     </div>`;
   }
 
   // ── Sección Encargos ──
   if (datos.encargos.length) {
     const totalEnc = datos.saldoEncargos;
+    // Stats encargos
+    const todosMovEnc = datos.encargos.flatMap(e => (e.movimientos || []).map(m => ({...m, _enc: e})));
+    const entradasEnc = todosMovEnc.filter(m => m.tipo === 'entrada' || m.tipo === 'deposito' || !m.tipo || m.monto > 0);
+    const mayorEntrada = entradasEnc.length ? entradasEnc.reduce((mx, m) => (m.monto||0) > (mx.monto||0) ? m : mx, entradasEnc[0]) : null;
+    const encargoMayor = datos.encargos.length ? [...datos.encargos].sort((a,b) => encargoSaldo(b) - encargoSaldo(a))[0] : null;
+
     html += `<div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path d="M8.186 1.113a.5.5 0 0 0-.372 0L1.846 3.5 8 5.961 14.154 3.5 8.186 1.113zM15 4.239l-6.5 2.6v7.922l6.5-2.6V4.24zM7.5 14.761V6.838L1 4.239v7.923l6.5 2.6zM7.443.184a1.5 1.5 0 0 1 1.114 0l7.129 2.852A.5.5 0 0 1 16 3.5v8.35a1.5 1.5 0 0 1-.872 1.36l-7 2.8a1.5 1.5 0 0 1-1.256 0l-7-2.8A1.5 1.5 0 0 1 0 11.85V3.5a.5.5 0 0 1 .314-.464L7.443.184z"/></svg> Encargos</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">📦 Encargos</div>
         <span style="font-size:12px;color:var(--text2);">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px;">
+        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Total activo</div>
+          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(totalEnc)}</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Cantidad</div>
+          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${datos.encargos.length}</div>
+        </div>
+        ${encargoMayor ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Encargo mayor</div>
+          <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(encargoSaldo(encargoMayor))}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(encargoMayor.nota||encargoMayor.nombre)}</div>
+        </div>` : ''}
+        ${mayorEntrada ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor entrada</div>
+          <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(mayorEntrada.monto)}</div>
+          ${mayorEntrada.fecha ? `<div style="font-size:10px;color:var(--text3);margin-top:1px;">${mayorEntrada.fecha}</div>` : ''}
+        </div>` : ''}
       </div>
       ${datos.encargos.map(e => {
         const saldoE = encargoSaldo(e);
@@ -17344,10 +17423,6 @@ function abrirPerfilPersona(personaId) {
           </div>
         </div>`;
       }).join('')}
-      <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:4px;">
-        <div style="font-size:11px;color:var(--text3);">Total en encargos</div>
-        <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(totalEnc)}</div>
-      </div>
     </div>`;
   }
 
@@ -17366,19 +17441,50 @@ function abrirPerfilPersona(personaId) {
     const estadoBadge = spEntry.pagado
       ? '<span class="badge bg-green" style="font-size:9px;">Pagó este ciclo</span>'
       : '<span class="badge bg-red" style="font-size:9px;">Pendiente</span>';
+
+    // Stats Spotify de esta persona
+    const histSp = (S.spotifyHistorial || []).filter(h => h.tipo === 'cobro' && h.nombre === spEntry.nombre);
+    const totalCobradoSp = histSp.reduce((a, h) => a + (h.monto || 0), 0);
+    const mayorCobroSp   = histSp.length ? histSp.reduce((mx, h) => h.monto > mx.monto ? h : mx, histSp[0]) : null;
+    const diasEnPlan     = spEntry.fechaIngreso
+      ? Math.floor((new Date() - new Date(spEntry.fechaIngreso + 'T00:00:00')) / 86400000)
+      : null;
+    const mesesEstimados = diasEnPlan !== null ? Math.floor(diasEnPlan / 30) : null;
+
     html += `<div style="background:rgba(30,215,96,.06);border:1px solid rgba(30,215,96,.25);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="font-size:10px;color:#1ed760;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 64 64" style="vertical-align:middle;margin-right:3px;"><path d="M32 0C14.3 0 0 14.337 0 32c0 17.7 14.337 32 32 32 17.7 0 32-14.337 32-32S49.663 0 32 0zm14.68 46.184c-.573.956-1.797 1.223-2.753.65-7.532-4.588-16.975-5.62-28.14-3.097-1.07.23-2.14-.42-2.37-1.49s.42-2.14 1.49-2.37c12.196-2.79 22.67-1.606 31.082 3.556a2 2 0 0 1 .688 2.753zm3.9-8.717c-.726 1.185-2.256 1.53-3.44.84-8.602-5.276-21.716-6.805-31.885-3.747-1.338.382-2.714-.344-3.097-1.644-.382-1.338.344-2.714 1.682-3.097 11.622-3.517 26.074-1.835 35.976 4.244 1.147.688 1.49 2.217.765 3.403zm.344-9.1c-10.323-6.117-27.336-6.69-37.2-3.708-1.568.497-3.25-.42-3.747-1.988s.42-3.25 1.988-3.747c11.317-3.44 30.127-2.753 41.98 4.282 1.415.84 1.873 2.676 1.032 4.09-.765 1.453-2.638 1.912-4.053 1.07z" fill="#1ed760"/></svg>
           Spotify
         </div>
         <button type="button" onclick="_irASpotify()" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver módulo →</button>
       </div>
-      <div class="grid2" style="margin:0 0 8px;">
-        <div><div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Cuota mensual</div><div style="font-size:16px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(spEntry.monto || 0)}</div></div>
-        <div><div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Estado</div><div style="margin-top:2px;">${estadoBadge}</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px;">
+        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Cuota</div>
+          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(spEntry.monto || 0)}/mes</div>
+        </div>
+        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Estado</div>
+          <div style="margin-top:4px;">${estadoBadge}</div>
+        </div>
+        ${totalCobradoSp > 0 ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Total cobrado</div>
+          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:#1ed760;">${fmt(totalCobradoSp)}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:1px;">${histSp.length} cobro${histSp.length !== 1 ? 's' : ''}</div>
+        </div>` : ''}
+        ${diasEnPlan !== null ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">En el plan</div>
+          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${mesesEstimados !== null ? mesesEstimados + ' mes' + (mesesEstimados !== 1 ? 'es' : '') : diasEnPlan + 'd'}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:1px;">desde ${spEntry.fechaIngreso}</div>
+        </div>` : ''}
+        ${mayorCobroSp ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;grid-column:1/-1;">
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor cobro registrado</div>
+          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:#1ed760;">${fmt(mayorCobroSp.monto)}${mayorCobroSp.nota ? ' <span style="font-size:10px;color:var(--text3);font-weight:400;">· ' + escHtml(mayorCobroSp.nota) + '</span>' : ''}</div>
+          ${mayorCobroSp.fecha ? `<div style="font-size:10px;color:var(--text3);margin-top:1px;">${mayorCobroSp.fecha}</div>` : ''}
+        </div>` : ''}
       </div>
-      ${badgeText ? `<div>${estadoBadge.includes('Pagó') ? '' : `<span class="badge ${badgeClass}" style="font-size:9px;">${badgeText}</span>`}</div>` : ''}
+      ${badgeText ? `<div>${spEntry.pagado ? '' : `<span class="badge ${badgeClass}" style="font-size:9px;">${badgeText}</span>`}</div>` : ''}
     </div>`;
   }
 

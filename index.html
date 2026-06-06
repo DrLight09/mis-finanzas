@@ -568,6 +568,14 @@ input.movs-search-input:focus{border-color:var(--accent);}
 .pin-key.pin-del{font-size:15px;color:var(--text2);}
 .pin-key.pin-empty{visibility:hidden;pointer-events:none;}
 .pin-forgot{margin-top:24px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;cursor:pointer;padding:8px;text-decoration:underline;opacity:.65;}
+.pin-bio-btn{display:none;flex-direction:column;align-items:center;gap:6px;margin-top:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;opacity:.9;transition:opacity .15s;}
+.pin-bio-btn:active{opacity:.5;}
+.pin-bio-icon{width:52px;height:52px;border-radius:16px;background:rgba(200,240,96,.10);border:1.5px solid rgba(200,240,96,.25);display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.pin-bio-icon.scanning{background:rgba(200,240,96,.18);border-color:rgba(200,240,96,.6);box-shadow:0 0 16px rgba(200,240,96,.25);}
+.pin-bio-icon.success{background:rgba(200,240,96,.22);border-color:var(--accent);box-shadow:0 0 20px rgba(200,240,96,.35);}
+.pin-bio-icon.error{background:rgba(240,104,104,.12);border-color:rgba(240,104,104,.5);}
+.pin-bio-label{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.3px;}
+@keyframes bioScan{0%,100%{opacity:1;}50%{opacity:.4;}}
 </style>
   </head>
   <body>
@@ -626,6 +634,21 @@ input.movs-search-input:focus{border-color:var(--accent);}
                 x1="18" y1="9" x2="12" y2="15" /><line x1="12" y1="9" x2="18"
                 y2="15" /></svg>
           </button>
+        </div>
+        <!-- Botón de huella / Face ID -->
+        <div class="pin-bio-btn" id="pin-bio-btn" onclick="window._pinBioTrigger()">
+          <div class="pin-bio-icon" id="pin-bio-icon">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z" stroke-opacity=".35"/>
+              <path d="M12 6a6 6 0 0 1 6 6"/>
+              <path d="M12 6a6 6 0 0 0-6 6c0 1.5.3 3 1 4"/>
+              <path d="M12 10a2 2 0 0 1 2 2c0 1.4-.5 3-1.2 4.5"/>
+              <path d="M12 10a2 2 0 0 0-2 2c0 2 .8 4 2 5.5"/>
+              <path d="M9 16.5c.5 1 1.2 2 2 2.8"/>
+              <path d="M7.5 8A7 7 0 0 0 7 12"/>
+            </svg>
+          </div>
+          <div class="pin-bio-label" id="pin-bio-label">Usar huella</div>
         </div>
         <div class="pin-forgot" id="pin-forgot-btn"
           onclick="window._pinOlvide()" style="display:none;">¿Olvidaste el PIN?
@@ -2011,6 +2034,19 @@ input.movs-search-input:focus{border-color:var(--accent);}
               la app con un PIN de 4 dígitos. Se pedirá cada vez que abras Mis
               Finanzas.</p>
             <div id="pin-config-container"></div>
+          </div>
+          <!-- BIOMETRÍA -->
+          <div class="card" id="bio-config-card" style="padding:15px;display:none;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2z" stroke-opacity=".4"/>
+                <path d="M12 6a6 6 0 0 1 6 6"/><path d="M12 6a6 6 0 0 0-6 6"/>
+                <path d="M12 10a2 2 0 0 1 2 2"/><path d="M12 10a2 2 0 0 0-2 2c0 2 .8 4 2 5.5"/>
+              </svg>
+              <span style="font-size:14px;font-weight:600;">Huella / Face ID</span>
+            </div>
+            <p style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:8px;">Desbloquea la app con tu biometría en lugar de escribir el PIN.</p>
+            <div id="bio-config-container"></div>
           </div>
 
           <div class="sec-title" style="margin-top:18px;">Módulos activos</div>
@@ -13702,20 +13738,74 @@ if ('serviceWorker' in navigator) {
 
     <script type="module">
 /* ================================================================
-   PIN — Sistema de bloqueo con PIN de 4 dígitos
-   La lógica usa window._pinGate() como punto de entrada
-   que onAuthStateChanged llama en lugar de _fbLoadData directamente.
+   PIN + BIOMETRÍA — Sistema de bloqueo con PIN de 4 dígitos y
+   soporte opcional para WebAuthn (huella dactilar / Face ID).
+   Punto de entrada: window._pinGate() llamado por onAuthStateChanged.
    ================================================================ */
 (function() {
-  const PIN_KEY = 'mf_pin';
-  let _pinBuf = '';
+  const PIN_KEY  = 'mf_pin';
+  const BIO_KEY  = 'mf_bio_enabled';   // 'true' si el usuario activó biometría
+  const CRED_KEY = 'mf_bio_cred';      // credentialId (base64url) guardado
+
+  let _pinBuf  = '';
   let _pinMode = 'unlock'; // 'unlock' | 'set-new' | 'confirm-new'
   let _pinTemp = '';
 
   // ── Storage ──────────────────────────────────────────────────────
-  function _getPin()  { try { return localStorage.getItem(PIN_KEY)||''; }catch(e){return '';} }
-  function _setPin(v) { try { localStorage.setItem(PIN_KEY,v); }catch(e){} }
-  function _delPin()  { try { localStorage.removeItem(PIN_KEY); }catch(e){} }
+  function _getPin()    { try { return localStorage.getItem(PIN_KEY)||''; }catch(e){return '';} }
+  function _setPin(v)   { try { localStorage.setItem(PIN_KEY,v); }catch(e){} }
+  function _delPin()    { try { localStorage.removeItem(PIN_KEY); }catch(e){} }
+  function _bioEnabled(){ try { return localStorage.getItem(BIO_KEY)==='true'; }catch(e){return false;} }
+  function _setBioEnabled(v){ try { localStorage.setItem(BIO_KEY, v?'true':'false'); }catch(e){} }
+  function _getCredId() { try { return localStorage.getItem(CRED_KEY)||''; }catch(e){return '';} }
+  function _setCredId(v){ try { localStorage.setItem(CRED_KEY,v); }catch(e){} }
+  function _delCred()   { try { localStorage.removeItem(CRED_KEY); localStorage.removeItem(BIO_KEY); }catch(e){} }
+
+  // ── WebAuthn helpers ─────────────────────────────────────────────
+  function _b64urlToUint8(b64) {
+    const pad = b64.replace(/-/g,'+').replace(/_/g,'/');
+    const bin = atob(pad);
+    return Uint8Array.from(bin, c=>c.charCodeAt(0));
+  }
+  function _uint8ToB64url(buf) {
+    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  }
+  function _bioAvailable() {
+    return !!(window.PublicKeyCredential &&
+              typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function');
+  }
+
+  // Registrar nueva credential biométrica
+  async function _bioRegister() {
+    const uid = (window._fbUser && window._fbUser.uid) || 'mf_user';
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const options = {
+      challenge,
+      rp: { name: 'Mis Finanzas' },
+      user: { id: _b64urlToUint8(btoa(uid).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'')), name: uid, displayName: 'Mis Finanzas' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
+      timeout: 60000,
+    };
+    const cred = await navigator.credentials.create({ publicKey: options });
+    _setCredId(_uint8ToB64url(cred.rawId));
+    return true;
+  }
+
+  // Autenticar con credential existente
+  async function _bioAuthenticate() {
+    const credId = _getCredId();
+    const challenge = crypto.getRandomValues(new Uint8Array(32));
+    const options = {
+      challenge,
+      allowCredentials: credId ? [{ type: 'public-key', id: _b64urlToUint8(credId) }] : [],
+      userVerification: 'required',
+      timeout: 60000,
+    };
+    await navigator.credentials.get({ publicKey: options });
+    return true;
+  }
 
   // ── UI ───────────────────────────────────────────────────────────
   function _showPin(mode, title, sub) {
@@ -13726,9 +13816,17 @@ if ('serviceWorker' in navigator) {
     document.getElementById('pin-forgot-btn').style.display = mode==='unlock' ? '' : 'none';
     _dots();
     document.getElementById('pin-screen').classList.add('open');
+    // Mostrar botón biométrico sólo en modo unlock si está habilitado y hay PIN
+    const bioBtn = document.getElementById('pin-bio-btn');
+    if(bioBtn) {
+      const showBio = mode==='unlock' && _bioEnabled() && _getCredId() && _bioAvailable();
+      bioBtn.style.display = showBio ? 'flex' : 'none';
+      if(showBio) _updateBioLabel();
+    }
   }
   function _hidePin() {
     document.getElementById('pin-screen').classList.remove('open');
+    _setBioState('idle');
   }
   function _dots(err) {
     for(let i=0;i<4;i++){
@@ -13742,7 +13840,36 @@ if ('serviceWorker' in navigator) {
     setTimeout(()=>{ _pinBuf=''; _dots(false); }, 430);
   }
 
-  // ── Teclado (expuesto globalmente para los onclick del HTML) ─────
+  // ── Estado visual del botón biométrico ───────────────────────────
+  function _setBioState(state) {
+    const icon  = document.getElementById('pin-bio-icon');
+    const label = document.getElementById('pin-bio-label');
+    if(!icon||!label) return;
+    icon.className  = 'pin-bio-icon' + (state!=='idle' ? ' '+state : '');
+    if(state==='scanning') {
+      icon.style.animation = 'bioScan .8s ease-in-out infinite';
+      label.textContent = 'Verificando…';
+    } else if(state==='success') {
+      icon.style.animation = '';
+      label.textContent = '¡Listo!';
+    } else if(state==='error') {
+      icon.style.animation = '';
+      label.textContent = 'Intenta de nuevo';
+      setTimeout(()=>_setBioState('idle'), 2000);
+    } else {
+      icon.style.animation = '';
+      _updateBioLabel();
+    }
+  }
+  function _updateBioLabel() {
+    const label = document.getElementById('pin-bio-label');
+    if(!label) return;
+    // Intentar detectar si es Face ID o huella (heurística por plataforma)
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    label.textContent = isIOS ? 'Face ID / Huella' : 'Usar huella';
+  }
+
+  // ── Teclado ───────────────────────────────────────────────────────
   window._pinKey = function(d) {
     if(_pinBuf.length>=4) return;
     _pinBuf += d;
@@ -13752,7 +13879,22 @@ if ('serviceWorker' in navigator) {
   window._pinDel = function() {
     if(_pinBuf.length>0){ _pinBuf=_pinBuf.slice(0,-1); _dots(); }
   };
-  // Mini-diálogo interno del PIN (evita conflictos de z-index con el pin-screen)
+
+  // ── Trigger biométrico (botón en pantalla de unlock) ─────────────
+  window._pinBioTrigger = async function() {
+    if(!_bioEnabled()||!_getCredId()) return;
+    _setBioState('scanning');
+    try {
+      await _bioAuthenticate();
+      _setBioState('success');
+      setTimeout(()=>{ _hidePin(); _launchApp(); }, 350);
+    } catch(e) {
+      console.warn('[Bio] Auth failed:', e.name, e.message);
+      _setBioState('error');
+    }
+  };
+
+  // ── Mini-diálogo interno ─────────────────────────────────────────
   function _pinDialogo(titulo, msg, btnOkText) {
     return new Promise(res => {
       const overlay = document.getElementById('pin-dialog');
@@ -13777,14 +13919,9 @@ if ('serviceWorker' in navigator) {
     const ok = await _pinDialogo('\u00bfOlvidaste el PIN?', 'Se cerrar\u00e1 la sesi\u00f3n y podr\u00e1s volver a entrar con Google.', 'Cerrar sesi\u00f3n');
     if(!ok) return;
     if(!window._fb) return;
-    // Cancelar timers de guardado pendientes para no guardar datos vacíos en la nube.
-    // IMPORTANTE: NO hacer setDoc aquí. Mientras el usuario estaba en la pantalla
-    // del PIN, _fbLoadData nunca corrió, así que window.S tiene valores en cero.
-    // Guardar ahora sobreescribiría los datos reales de Firestore con ceros.
-    clearTimeout(window._fbSaveTimer); // timer de _fbSaveToCloud (módulo Firebase)
-    // Borrar el PIN para que no lo pida al volver a iniciar sesión
+    clearTimeout(window._fbSaveTimer);
     _delPin();
-    // Limpiar usuario antes de signOut para bloquear guardados posteriores
+    _delCred();
     window._fbUser = null;
     const {auth, signOut} = window._fb;
     await signOut(auth);
@@ -13796,11 +13933,9 @@ if ('serviceWorker' in navigator) {
     if(_pinMode==='unlock') {
       if(_pinBuf===stored) { _hidePin(); _launchApp(); }
       else _shake();
-
     } else if(_pinMode==='set-new') {
       _pinTemp = _pinBuf;
       _showPin('confirm-new','Confirma el PIN','Repite los 4 dígitos');
-
     } else if(_pinMode==='confirm-new') {
       if(_pinBuf===_pinTemp) {
         _setPin(_pinBuf);
@@ -13808,7 +13943,6 @@ if ('serviceWorker' in navigator) {
         if(window.toast) toast('PIN activado','ok');
         _renderBtn();
         setTimeout(_renderBtn, 100);
-        // Si la app no había lanzado aún (primer setup), lanzarla
         if(window._pendingLaunch) { window._pendingLaunch=false; _launchApp(); }
       } else {
         _shake();
@@ -13817,39 +13951,71 @@ if ('serviceWorker' in navigator) {
     }
   }
 
-  // ── Punto de entrada: llamado por onAuthStateChanged ─────────────
+  // ── Punto de entrada ─────────────────────────────────────────────
   window._pinGate = function() {
     const stored = _getPin();
     if(stored) {
-      // Hay PIN → mostrarlo. _launchApp se llama cuando el PIN sea correcto
       document.getElementById('fb-loading-screen').style.display='none';
       _showPin('unlock','Ingresa tu PIN','Mis Finanzas');
+      // Auto-trigger biometría si está activa (sin que el usuario toque nada)
+      if(_bioEnabled() && _getCredId() && _bioAvailable()) {
+        setTimeout(window._pinBioTrigger, 400);
+      }
     } else {
-      // Sin PIN → lanzar directamente
       _launchApp();
     }
   };
 
-  // Si onAuthStateChanged disparó antes de que este módulo cargara
   if(window._pendingPinGate) {
     window._pendingPinGate = false;
     window._pinGate();
   }
 
-  // ── Lanzar la app (lo que antes hacía _fbLoadData al final) ──────
   function _launchApp() {
     window._fbLoadData();
   }
 
-  // ── Configurar PIN desde Config ───────────────────────────────────
+  // ── Config desde pantalla de configuración ───────────────────────
   window._pinSetNew = function() {
     _showPin('set-new','Elige un PIN de 4 dígitos','Este PIN protegerá el acceso a la app');
-    // Cuando se confirme, _submit() llamará _renderBtn() pero NO _launchApp() (app ya está abierta)
     window._pendingLaunch = false;
   };
   window._pinDisable = async function() {
     const ok = await dialogo('Quitar PIN','¿Seguro que quieres desactivar el PIN de acceso?','Quitar PIN',true);
-    if(ok){ _delPin(); if(window.toast) toast('PIN desactivado','info'); _renderBtn(); setTimeout(_renderBtn, 100); }
+    if(ok){
+      _delPin();
+      _delCred();
+      if(window.toast) toast('PIN desactivado','info');
+      _renderBtn();
+      setTimeout(_renderBtn, 100);
+      _renderBioBtn();
+    }
+  };
+
+  // Activar biometría desde config
+  window._bioSetup = async function() {
+    if(!_bioAvailable()) { if(window.toast) toast('Biometría no disponible en este dispositivo','err'); return; }
+    try {
+      const avail = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+      if(!avail) { if(window.toast) toast('Este dispositivo no tiene sensor biométrico','err'); return; }
+    } catch(e) {}
+    try {
+      await _bioRegister();
+      _setBioEnabled(true);
+      if(window.toast) toast('Huella activada','ok');
+      _renderBioBtn();
+    } catch(e) {
+      console.warn('[Bio] Setup failed:', e.name, e.message);
+      if(e.name==='NotAllowedError') {
+        if(window.toast) toast('Permiso denegado','err');
+      } else {
+        if(window.toast) toast('No se pudo activar la biometría','err');
+      }
+    }
+  };
+  window._bioDisable = async function() {
+    const ok = await dialogo('Quitar huella','¿Quieres desactivar el desbloqueo con huella?','Quitar',true);
+    if(ok){ _delCred(); if(window.toast) toast('Huella desactivada','info'); _renderBioBtn(); }
   };
 
   window._pinRenderBtn = _renderBtn;
@@ -13865,10 +14031,27 @@ if ('serviceWorker' in navigator) {
       : `<button class="btn btn-primary btn-sm" onclick="window._pinSetNew()" style="width:100%;">
            Activar PIN de acceso
          </button>`;
+    _renderBioBtn();
   }
 
-  // Renderizar botón cuando la config esté visible
-  // (la app llama refresh(), esperamos un tick)
+  function _renderBioBtn() {
+    // Mostrar card de biometría sólo si hay PIN activo y WebAuthn está disponible
+    const card = document.getElementById('bio-config-card');
+    const c    = document.getElementById('bio-config-container');
+    if(!card||!c) return;
+    const hasPIN = !!_getPin();
+    const bioOk  = _bioAvailable();
+    card.style.display = (hasPIN && bioOk) ? '' : 'none';
+    if(!hasPIN||!bioOk) return;
+    const enabled = _bioEnabled() && !!_getCredId();
+    const isIOS   = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const label   = isIOS ? 'Face ID / Huella' : 'Huella dactilar';
+    c.innerHTML = enabled
+      ? `<button class="btn btn-ghost btn-sm" onclick="window._bioDisable()" style="width:100%;color:var(--red);border-color:rgba(240,104,104,.4);">Desactivar ${label}</button>`
+      : `<button class="btn btn-primary btn-sm" onclick="window._bioSetup()" style="width:100%;">Activar ${label}</button>`;
+  }
+
+  // Hook en refresh para re-renderizar botones cuando se abre Config
   const _origRefresh = window.refresh;
   if(typeof _origRefresh === 'function') {
     window.refresh = function() {
@@ -13876,7 +14059,6 @@ if ('serviceWorker' in navigator) {
       _renderBtn();
     };
   } else {
-    // refresh aún no definida — hacer polling
     const _t = setInterval(()=>{
       if(typeof window.refresh === 'function'){
         clearInterval(_t);

@@ -12750,6 +12750,28 @@ document.addEventListener('focusin', function(e){
       }, 80);
     } else if (r.navTipo === 'gastos') {
       showScreen('gastos');
+    } else if (r.navTipo === 'persona') {
+      // Abrir perfil de persona directamente
+      setTimeout(() => {
+        if (typeof abrirPerfilPersona === 'function') abrirPerfilPersona(r.navId);
+      }, 80);
+    } else if (r.navTipo === 'spotify') {
+      // Navegar al módulo de Spotify (Más → Spotify)
+      showScreen('mas');
+      setTimeout(() => {
+        const el = document.getElementById('mas-spotify');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 150);
+    } else if (r.navTipo === 'movimiento_general') {
+      // Movimiento de cuenta personalizada o general → ir a cuentas
+      if (r.navId) {
+        showScreen('cuentas');
+        setTimeout(() => {
+          if (typeof abrirCuenta === 'function') abrirCuenta(r.navId);
+        }, 80);
+      } else {
+        showScreen('cuentas');
+      }
     } else {
       // fallback: solo cerrar
     }
@@ -12767,6 +12789,9 @@ document.addEventListener('focusin', function(e){
       nequi: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
       efectivo: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>`,
       gastos: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`,
+      persona: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+      spotify: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M8 11.8c2.5-1.1 5.5-1.1 8 0"/><path d="M7 15c2.9-1.2 6.1-1.2 9 0"/><path d="M9 8.6c2.1-.9 4.9-.9 7 0"/></svg>`,
+      movimiento_general: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
     };
     return icons[navTipo] || `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
   }
@@ -12874,6 +12899,36 @@ document.addEventListener('focusin', function(e){
       });
     });
 
+    // Personas
+    (S.personas||[]).forEach(p => {
+      if((p.nombre||'').toLowerCase().includes(q)||(p.alias||'').toLowerCase().includes(q)||(p.notas||'').toLowerCase().includes(q)){
+        resultados.push({ tipo:'Persona', desc:p.nombre, meta:(p.alias?'@'+p.alias+' · ':'')+(p.notas||'Sin notas'), color:p.color||'var(--blue)', navTipo:'persona', navId:p.id });
+      }
+    });
+
+    // Spotify — personas del plan
+    (S.spotifyPersonas||[]).forEach(p => {
+      if((p.nombre||'').toLowerCase().includes(q)){
+        const estado = p.pagado ? 'Al día' : 'Pendiente';
+        resultados.push({ tipo:'Spotify', desc:p.nombre, meta:(window.fmt?window.fmt(p.monto||0):'')+' / mes · '+estado, color:'#1db954', navTipo:'spotify', navId:null });
+      }
+    });
+    // Spotify — historial de cobros y pagos
+    (S.spotifyHistorial||[]).forEach(h => {
+      const texto = h.tipo==='pago' ? 'Pago a Spotify' : 'Cobro de '+(h.nombre||'');
+      if(texto.toLowerCase().includes(q)||(h.nota||'').toLowerCase().includes(q)){
+        resultados.push({ tipo:'Mov. Spotify', desc:texto, meta:(window.fmt?window.fmt(h.monto||0):'')+(h.fecha?' · '+h.fecha:''), color:'#1db954', navTipo:'spotify', navId:null });
+      }
+    });
+
+    // Movimientos generales de cuentas (S.movimientos)
+    (S.movimientos||[]).forEach(m => {
+      if((m.desc||m.nota||'').toLowerCase().includes(q)){
+        const fuente = m.fuente ? ' · '+m.fuente : '';
+        resultados.push({ tipo:'Movimiento', desc:m.desc||m.nota||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:'')+fuente, color:'var(--accent)', navTipo:m.fuente==='nequi'?'nequi':m.fuente==='efectivo'?'efectivo':'movimiento_general', navId:m.fuente||null });
+      }
+    });
+
     if(!resultados.length){
       busquedaResultados.innerHTML = '<div style="text-align:center;padding:48px 0;"><div style="margin-bottom:10px;display:flex;justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div style="font-size:13px;color:var(--text3);">Sin resultados para <b style="color:var(--text);">"'+q+'"</b></div></div>';
       return;
@@ -12905,7 +12960,7 @@ document.addEventListener('focusin', function(e){
         return `
         <div class="busqueda-item" data-bidx="${r._idx}" style="cursor:${tieneNav?'pointer':'default'};">
           <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:36px;height:36px;border-radius:10px;background:${r.color.replace('var(--red)','rgba(240,104,104,.12)').replace('var(--amber)','rgba(240,184,64,.12)').replace('var(--blue)','rgba(96,176,240,.12)').replace('var(--nu-light)','rgba(192,96,240,.12)').replace('var(--accent)','rgba(200,240,96,.12)').replace('#ff4da6','rgba(255,77,166,.12)')};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${iconoSvg}</div>
+            <div style="width:36px;height:36px;border-radius:10px;background:${r.color.replace('var(--red)','rgba(240,104,104,.12)').replace('var(--amber)','rgba(240,184,64,.12)').replace('var(--blue)','rgba(96,176,240,.12)').replace('var(--nu-light)','rgba(192,96,240,.12)').replace('var(--accent)','rgba(200,240,96,.12)').replace('#ff4da6','rgba(255,77,166,.12)').replace('#1db954','rgba(29,185,84,.12)')};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${iconoSvg}</div>
             <div style="flex:1;min-width:0;">
               <div class="busqueda-tipo" style="color:${r.color};">${r.tipo}</div>
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">

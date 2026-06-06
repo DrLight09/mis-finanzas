@@ -15106,18 +15106,24 @@ function abrirDetalleTCSheet(tcId){
   if(!compras.length){
     html+=`<div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Sin compras registradas.</div>`;
   } else {
-    html+=compras.slice(0,20).map(c=>`<div class="gasto-item" style="margin-bottom:7px;">
+    html+=compras.slice(0,20).map(c=>{
+      const esFavor = c._esFavor || c._desdeCP;
+      const favorBadge = esFavor
+        ? `<span style="font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;"><i class="fa-solid fa-handshake" style="margin-right:3px;font-size:7px;"></i>favor</span>`
+        : '';
+      return `<div class="gasto-item" style="margin-bottom:7px;${esFavor?'border-color:rgba(96,176,240,.25);':''}">
       <div class="gasto-item-top">
-        <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${c.desc}</div><div class="row-sub">${c.fecha}</div></div>
+        <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${c.desc}${favorBadge}</div><div class="row-sub">${c.fecha}</div></div>
         <div style="display:flex;align-items:center;gap:6px;">
-          <span class="row-amount c-red">${fmt(c.monto)}</span>
+          <span class="row-amount" style="color:${esFavor?'var(--blue)':'var(--red)'};">${fmt(c.monto)}</span>
           <button type="button" onclick="eliminarCompraTC('${tc.id}','${c.id}')" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);opacity:.6;display:flex;align-items:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
           </button>
         </div>
       </div>
-      <div class="gasto-item-meta"><span class="badge bg-red" style="font-size:9px;">${c.cat||'Sin cat.'}</span>${c.nota?`<span style="font-size:10px;color:var(--text3);">${c.nota}</span>`:''}</div>
-    </div>`).join('');
+      <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)'};color:${esFavor?'var(--blue)':'var(--red)'};">${esFavor?'Favor cubierto':c.cat||'Sin cat.'}</span>${c.nota?`<span style="font-size:10px;color:var(--text3);">${c.nota}</span>`:''}</div>
+    </div>`;
+    }).join('');
   }
 
   // Pagos
@@ -15517,17 +15523,41 @@ function _injectSheet(){
       <div class="sheet-handle"></div>
       <div class="sheet-title">Agregar destino</div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">¿Para qué va a usarse parte de este ingreso?</div>
-      <div class="ig">
-        <label class="il" for="cpd-tipo">Tipo de destino</label>
-        <div class="select-wrap">
-          <select id="cpd-tipo" onchange="window._cpdTipoChange()">
-            <option value="reposicion">Repone plata que ya saqué de una cajita/cuenta</option>
-            <option value="gasto">Cubre un gasto (servicios, internet, etc.)</option>
-            <option value="abono_deuda">Abono a lo que me deben</option>
-            <option value="otro">Otro (solo registro, sin efecto)</option>
-          </select>
+
+      <!-- Tipo: tarjetas visuales -->
+      <div style="margin-bottom:14px;">
+        <label class="il" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;font-weight:700;">Tipo de destino</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;" id="cpd-tipo-cards">
+          <button type="button" class="cpd-tipo-card" data-tipo="reposicion" onclick="window._cpdSetTipo('reposicion')"
+            style="padding:11px 10px;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;border:1.5px solid rgba(176,144,240,.35);background:rgba(176,144,240,.1);color:var(--purple);transition:all .15s;">
+            <div style="font-size:13px;margin-bottom:2px;"><i class="fa-solid fa-rotate-left" style="margin-right:5px;font-size:12px;"></i>Reponer</div>
+            <div style="font-size:9px;opacity:.75;line-height:1.3;">Devolver plata de una cajita que ya usé</div>
+          </button>
+          <button type="button" class="cpd-tipo-card" data-tipo="gasto" onclick="window._cpdSetTipo('gasto')"
+            style="padding:11px 10px;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;border:1.5px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s;">
+            <div style="font-size:13px;margin-bottom:2px;"><i class="fa-solid fa-receipt" style="margin-right:5px;font-size:12px;"></i>Gasto</div>
+            <div style="font-size:9px;opacity:.75;line-height:1.3;">Cubrir un pago próximo o en TC</div>
+          </button>
+          <button type="button" class="cpd-tipo-card" data-tipo="abono_deuda" onclick="window._cpdSetTipo('abono_deuda')"
+            style="padding:11px 10px;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;border:1.5px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s;">
+            <div style="font-size:13px;margin-bottom:2px;"><i class="fa-solid fa-handshake" style="margin-right:5px;font-size:12px;"></i>Me devuelven</div>
+            <div style="font-size:9px;opacity:.75;line-height:1.3;">Abono a lo que me deben</div>
+          </button>
+          <button type="button" class="cpd-tipo-card" data-tipo="otro" onclick="window._cpdSetTipo('otro')"
+            style="padding:11px 10px;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;border:1.5px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s;">
+            <div style="font-size:13px;margin-bottom:2px;"><i class="fa-solid fa-tag" style="margin-right:5px;font-size:12px;"></i>Otro</div>
+            <div style="font-size:9px;opacity:.75;line-height:1.3;">Solo registro, sin mover saldos</div>
+          </button>
         </div>
+        <!-- Hidden select para compatibilidad con el código existente -->
+        <select id="cpd-tipo" onchange="window._cpdTipoChange()" style="display:none;">
+          <option value="reposicion">Repone plata que ya saqué de una cajita/cuenta</option>
+          <option value="gasto">Cubre un gasto (servicios, internet, etc.)</option>
+          <option value="abono_deuda">Abono a lo que me deben</option>
+          <option value="otro">Otro (solo registro, sin efecto)</option>
+        </select>
       </div>
+
       <div class="ig">
         <label class="il" for="cpd-desc">Descripción <span style="color:var(--red);">*</span></label>
         <input type="text" id="cpd-desc" placeholder="Ej: Internet + servicios, Abono mamá..." maxlength="60">
@@ -15536,10 +15566,11 @@ function _injectSheet(){
         <label class="il" for="cpd-monto">Monto <span style="color:var(--red);">*</span></label>
         <input type="text" inputmode="decimal" id="cpd-monto" placeholder="0,00" class="money-input">
       </div>
-      <!-- Selector de persona (para abono_deuda / prestamo) -->
+      <!-- Selector de persona (para abono_deuda) — solo personas que me deben -->
       <div class="ig" id="cpd-persona-wrap" style="display:none;">
-        <label class="il" for="cpd-persona">¿Quién?</label>
-        <div class="select-wrap"><select id="cpd-persona"><option value="">Sin especificar</option></select></div>
+        <label class="il" for="cpd-persona">¿Quién te devuelve?</label>
+        <div class="select-wrap"><select id="cpd-persona"><option value="">Seleccionar persona</option></select></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4;"><i class="fa-solid fa-circle-info" style="margin-right:4px;color:var(--blue);font-size:9px;"></i>Solo aparecen personas que te deben plata.</div>
       </div>
       <!-- ¿De dónde salió el gasto? (para gasto) -->
       <div class="ig" id="cpd-gasto-origen-wrap" style="display:none;">
@@ -15567,6 +15598,11 @@ function _injectSheet(){
             <label class="il" for="cpd-gasto-tc-cajita" style="font-size:11px;margin-bottom:4px;">¿A qué cajita va esta plata cuando llegue el ingreso?</label>
             <div class="select-wrap"><select id="cpd-gasto-tc-cajita"><option value="">Sin especificar</option></select></div>
             <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.5;">Ej: tu cajita "Tarjeta" para tener la plata lista al pagar el extracto.</div>
+          </div>
+          <!-- Aviso: deuda de TC como favor -->
+          <div style="margin-top:10px;padding:9px 11px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);display:flex;align-items:flex-start;gap:8px;">
+            <i class="fa-solid fa-circle-info" style="color:var(--blue);font-size:11px;margin-top:1px;flex-shrink:0;"></i>
+            <div style="font-size:10px;color:var(--text3);line-height:1.5;">La deuda de la TC va a subir, pero la app sabe que <b style="color:var(--text2);">no es deuda tuya</b> — es un favor cubierto por este ingreso. Se marcará así en la pantalla de tarjetas.</div>
           </div>
         </div>
       </div>
@@ -15630,11 +15666,14 @@ function _injectSheet(){
       <div id="cp-recibir-plan"></div>
 
       <div id="cp-recibir-sobrante-wrap" style="display:none;margin-top:8px;padding:12px 14px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius-sm);">
-        <div style="font-size:10px;color:rgba(200,240,96,.7);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Sobrante libre</div>
-        <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);margin-bottom:8px;" id="cp-recibir-sobrante">$0</div>
-        <label class="il" style="font-size:10px;margin-bottom:6px;">¿A dónde va este sobrante?</label>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(200,240,96,.8)" stroke-width="2.5" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          <div style="font-size:10px;color:rgba(200,240,96,.7);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;font-weight:700;">Ingreso libre</div>
+        </div>
+        <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);margin-bottom:8px;" id="cp-recibir-sobrante">$0</div>
+        <label class="il" style="font-size:10px;margin-bottom:6px;">¿A dónde va este ingreso?</label>
         <div class="select-wrap"><select id="cp-recibir-sobrante-cuenta" style="font-size:13px;padding:9px 12px;"><option value="">Sin especificar</option></select></div>
-        <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.4;">Si no elegís, entra a la cuenta destino del ingreso.</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.4;">Esta plata es tuya — entra como ingreso a la cuenta que elijas.</div>
       </div>
 
       <div id="cp-recibir-recordatorios" style="display:none;"></div>
@@ -15713,14 +15752,27 @@ function _cpPoblarPersonas(selId){
   const sel = document.getElementById(selId);
   if(!sel) return;
   const deudores = (window.S && S.deudores) ? S.deudores : [];
-  sel.innerHTML = '<option value="">Sin especificar</option>';
-  deudores.forEach(d => {
+  // Solo mostrar personas que realmente me deben plata (saldo > 0)
+  const conDeuda = deudores.filter(d => {
     const saldo = typeof getDeudorSaldo === 'function' ? getDeudorSaldo(d) : 0;
-    const opt = document.createElement('option');
-    opt.value = d.id;
-    opt.textContent = d.nombre + (saldo > 0 ? ' — te debe '+_cpFmt(saldo) : '');
-    sel.appendChild(opt);
+    return saldo > 0;
   });
+  sel.innerHTML = '<option value="">Seleccionar persona</option>';
+  if(conDeuda.length === 0){
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '— Nadie te debe plata aún —';
+    opt.disabled = true;
+    sel.appendChild(opt);
+  } else {
+    conDeuda.forEach(d => {
+      const saldo = typeof getDeudorSaldo === 'function' ? getDeudorSaldo(d) : 0;
+      const opt = document.createElement('option');
+      opt.value = d.id;
+      opt.textContent = d.nombre + ' — te debe ' + _cpFmt(saldo);
+      sel.appendChild(opt);
+    });
+  }
 }
 
 function _cpPoblarTC(selId){
@@ -16013,14 +16065,42 @@ window._cpGuardar = function(){
 };
 
 /* ── DESTINOS TEMPORALES ─────────────────────────────────────────── */
+window._cpdSetTipo = function(tipo){
+  // Actualizar hidden select
+  const sel = document.getElementById('cpd-tipo');
+  if(sel){ sel.value = tipo; }
+  // Actualizar tarjetas visuales
+  const colors = {
+    reposicion: { border:'rgba(176,144,240,.4)', bg:'rgba(176,144,240,.12)', color:'var(--purple)' },
+    gasto:      { border:'rgba(240,184,64,.4)',  bg:'rgba(240,184,64,.08)',  color:'var(--amber)' },
+    abono_deuda:{ border:'rgba(200,240,96,.4)',  bg:'rgba(200,240,96,.08)', color:'var(--accent)' },
+    otro:       { border:'rgba(136,136,128,.35)',bg:'rgba(136,136,128,.08)',color:'var(--text2)' },
+  };
+  document.querySelectorAll('.cpd-tipo-card').forEach(btn => {
+    const t = btn.getAttribute('data-tipo');
+    if(t === tipo){
+      const c = colors[t]||colors.otro;
+      btn.style.borderColor = c.border;
+      btn.style.background = c.bg;
+      btn.style.color = c.color;
+    } else {
+      btn.style.borderColor = 'var(--border2)';
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--text3)';
+    }
+  });
+  // Llamar el handler original
+  if(typeof window._cpdTipoChange === 'function') window._cpdTipoChange();
+};
+
 window._cpAgregarDestino = function(){
   _cpPoblarPersonas('cpd-persona');
   _cpPoblarTC('cpd-tc');
   _cpPoblarCuentas('cpd-cuenta', false);
-  document.getElementById('cpd-tipo').value = 'servicios';
   document.getElementById('cpd-desc').value = '';
   document.getElementById('cpd-monto').value = '';
-  _cpdTipoChange();
+  // Activar "reposicion" por defecto con UI de tarjeta
+  window._cpdSetTipo('reposicion');
   _cpOpenSheet('cp-destino');
   setTimeout(()=>document.getElementById('cpd-desc').focus(), 200);
 };
@@ -16225,43 +16305,64 @@ function _cpRenderDestinosTmp(){
   const balEl = document.getElementById('cp-balance-preview');
   if(!el) return;
 
+  const _tipoIcon = {
+    reposicion:  `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.7"/></svg>`,
+    gasto:       `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>`,
+    abono_deuda: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 7H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-5"/><path d="M10 14L20 4"/><path d="M15 4h5v5"/></svg>`,
+    otro:        `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/></svg>`,
+  };
+
   if(!_cpDestinosTmp.length){
-    el.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:4px 0 6px;font-family:'DM Mono',monospace;">Sin destinos — todo queda libre para vos.</div>`;
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:12px;background:var(--bg3);border-radius:var(--radius-sm);border:1px dashed var(--border2);">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Sin destinos — todo queda libre para vos.</div>
+    </div>`;
   } else {
     el.innerHTML = _cpDestinosTmp.map((d,i)=>{
       const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
-      let badge = '';
+      const icon = _tipoIcon[d.tipo]||_tipoIcon.otro;
+      let badges = '';
       if(d.tipo === 'reposicion'){
-        badge = d.yaSaque
-          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.18);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-family:'DM Mono',monospace;white-space:nowrap;"><i class="fa-solid fa-check" style="margin-right:3px;"></i>Ya saqué</span>`
-          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-family:'DM Mono',monospace;white-space:nowrap;">Pendiente</span>`;
+        badges = d.yaSaque
+          ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.18);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-family:'DM Mono',monospace;"><i class="fa-solid fa-check" style="font-size:8px;"></i>Ya saqué</span>`
+          : `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-regular fa-clock" style="font-size:8px;"></i>Pendiente</span>`;
+        if(d.cuentaId){
+          const label = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.cuentaId) : d.cuentaId;
+          badges += ` <span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.1);color:var(--purple);font-family:'DM Mono',monospace;">${_cpEscape(label)}</span>`;
+        }
       } else if(d.tipo === 'gasto'){
         const origenBadge = d.gastoOrigen === 'tc'
-          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,104,104,.12);border:1px solid rgba(240,104,104,.3);color:var(--red);font-family:'DM Mono',monospace;white-space:nowrap;"><i class='fa-solid fa-credit-card' style='margin-right:3px;'></i>TC</span>`
-          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.12);border:1px solid rgba(176,144,240,.3);color:var(--purple);font-family:'DM Mono',monospace;white-space:nowrap;"><i class='fa-solid fa-box' style='margin-right:3px;'></i>Cajita</span>`;
+          ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,104,104,.12);border:1px solid rgba(240,104,104,.3);color:var(--red);font-family:'DM Mono',monospace;"><i class="fa-solid fa-credit-card" style="font-size:8px;"></i>TC</span>`
+          : `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.12);border:1px solid rgba(176,144,240,.3);color:var(--purple);font-family:'DM Mono',monospace;"><i class="fa-solid fa-box" style="font-size:8px;"></i>Cajita</span>`;
         const pagoBadge = d.yaPague
-          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.15);border:1px solid rgba(200,240,96,.4);color:var(--accent);font-family:'DM Mono',monospace;white-space:nowrap;"><i class="fa-solid fa-check" style="margin-right:3px;"></i>Pagado</span>`
-          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.35);color:var(--amber);font-family:'DM Mono',monospace;white-space:nowrap;"><i class="fa-regular fa-clock" style="margin-right:3px;"></i>Pendiente</span>`;
-        badge = origenBadge + pagoBadge;
+          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.15);border:1px solid rgba(200,240,96,.4);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-solid fa-check"></i> Pagado</span>`
+          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.35);color:var(--amber);font-family:'DM Mono',monospace;"><i class="fa-regular fa-clock"></i> Pendiente</span>`;
+        badges = origenBadge + ' ' + pagoBadge;
+      } else if(d.tipo === 'abono_deuda' && d.personaId){
+        const deu = (window.S && S.deudores) ? (S.deudores||[]).find(x=>x.id===d.personaId) : null;
+        if(deu) badges = `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.25);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-solid fa-user" style="font-size:8px;margin-right:2px;"></i>${_cpEscape(deu.nombre)}</span>`;
       } else {
-        badge = d.yaPague
-          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.15);border:1px solid rgba(200,240,96,.4);color:var(--accent);font-family:'DM Mono',monospace;white-space:nowrap;"><i class="fa-solid fa-check" style="margin-right:3px;"></i>Pagado</span>`
-          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.35);color:var(--amber);font-family:'DM Mono',monospace;white-space:nowrap;"><i class="fa-regular fa-clock" style="margin-right:3px;"></i>Pendiente</span>`;
+        badges = d.yaPague
+          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.15);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-solid fa-check"></i> Pagado</span>`
+          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);color:var(--amber);font-family:'DM Mono',monospace;"><i class="fa-regular fa-clock"></i> Pendiente</span>`;
       }
-      return `<div style="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);">
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:7px;">
+        <div style="width:28px;height:28px;border-radius:8px;background:${ti.bg};border:1px solid ${ti.border};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${ti.color};">${icon}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:600;">${_cpEscape(d.desc)}</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">${badge}<span style="font-size:10px;color:${ti.color};font-family:'DM Mono',monospace;">${ti.label}</span></div>
+          <div style="font-size:12px;font-weight:600;color:${ti.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_cpEscape(d.desc)}</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:4px;flex-wrap:wrap;">${badges}</div>
         </div>
-        <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${ti.color};">${_cpFmt(d.monto)}</div>
-        <button type="button" onclick="window._cpQuitarDestino(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;line-height:1;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        </button>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:${ti.color};">${_cpFmt(d.monto)}</div>
+          <button type="button" onclick="window._cpQuitarDestino(${i})" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;line-height:1;margin-top:2px;" title="Quitar">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
       </div>`;
     }).join('');
   }
 
-  // Preview balance — ganancia = lo que sobre después de todos los destinos
+  // Preview balance
   if(balEl){
     const montoStr = document.getElementById('cp-monto-total') ? document.getElementById('cp-monto-total').value : '';
     const total = typeof parseMoney === 'function' ? parseMoney(montoStr)||0 : 0;
@@ -16269,19 +16370,20 @@ function _cpRenderDestinosTmp(){
     const ganancia = total - comp;
     if(total > 0){
       if(ganancia < 0){
-        balEl.style.color = 'var(--red)';
+        balEl.style.cssText = 'color:var(--red);font-size:11px;font-family:"DM Mono",monospace;padding:8px 10px;background:rgba(240,104,104,.07);border:1px solid rgba(240,104,104,.2);border-radius:var(--radius-sm);';
         balEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="margin-right:5px;"></i>Los destinos superan el total por ${_cpFmt(Math.abs(ganancia))}`;
       } else if(ganancia > 0.99){
-        balEl.style.color = 'var(--accent)';
-        balEl.innerHTML = `Comprometido: ${_cpFmt(comp)} · <b style="color:var(--accent);">Le sobra: ${_cpFmt(ganancia)}</b>`;
+        balEl.style.cssText = 'font-size:11px;font-family:"DM Mono",monospace;padding:8px 10px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius-sm);display:flex;justify-content:space-between;align-items:center;';
+        balEl.innerHTML = `<span style="color:var(--text3);">Comprometido: ${_cpFmt(comp)}</span><b style="color:var(--accent);">Libre: ${_cpFmt(ganancia)} <i class="fa-solid fa-check" style="font-size:10px;"></i></b>`;
       } else if(comp > 0){
-        balEl.style.color = 'var(--text3)';
-        balEl.innerHTML = `Comprometido: ${_cpFmt(comp)} · Todo asignado`;
+        balEl.style.cssText = 'font-size:11px;font-family:"DM Mono",monospace;padding:8px 10px;background:rgba(200,240,96,.05);border:1px solid rgba(200,240,96,.15);border-radius:var(--radius-sm);color:var(--text3);text-align:center;';
+        balEl.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--accent);margin-right:5px;"></i>Todo asignado — ${_cpFmt(comp)} comprometido`;
       } else {
-        balEl.style.color = 'var(--accent)';
-        balEl.innerHTML = `Le sobra: ${_cpFmt(total)} (nada comprometido)`;
+        balEl.style.cssText = 'font-size:11px;font-family:"DM Mono",monospace;padding:8px 10px;background:rgba(200,240,96,.05);border:1px solid rgba(200,240,96,.15);border-radius:var(--radius-sm);color:var(--accent);';
+        balEl.innerHTML = `<i class="fa-solid fa-infinity" style="margin-right:5px;"></i>Libre: ${_cpFmt(total)} (nada comprometido)`;
       }
     } else {
+      balEl.style.cssText = '';
       balEl.textContent = '';
     }
   }
@@ -16381,11 +16483,12 @@ window._cpAbrirRecibir = function(id){
         return `<div style="padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:6px;">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
             <div style="flex:1;min-width:0;">
-              <div style="font-size:12px;font-weight:600;color:${ti.color};">${_cpEscape(d.desc)}${detalle}</div>
-              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">${subLabel}</div>
+              <div style="font-size:12px;font-weight:600;color:${ti.color};display:flex;align-items:center;gap:5px;">${_cpEscape(d.desc)}${detalle}${d.tipo==='abono_deuda'?'<span style="font-size:8px;padding:1px 5px;border-radius:6px;background:rgba(200,240,96,.15);color:var(--accent);font-family:\'DM Mono\',monospace;">te devuelven</span>':''}</div>
+              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">${subLabel}</div>
               ${extraInfo}
+              ${(d.tipo==='gasto' && d.gastoOrigen==='tc') ? `<div style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:9px;padding:3px 7px;background:rgba(96,176,240,.1);border:1px solid rgba(96,176,240,.2);border-radius:6px;color:var(--blue);font-family:'DM Mono',monospace;"><i class="fa-solid fa-handshake" style="font-size:8px;"></i>La app sabe que es un favor</div>` : ''}
             </div>
-            <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${ti.color};flex-shrink:0;">${_cpFmt(d.monto)}</div>
+            <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:${ti.color};flex-shrink:0;">${_cpFmt(d.monto)}</div>
           </div>
         </div>`;
       }).join('');
@@ -16499,10 +16602,18 @@ window._cpConfirmarRecibir = function(){
       else if(d.tipo === 'gasto'){
         if(d.gastoOrigen === 'tc' && d.gastoTcId){
           // Gasto pagado con TC: sumar deuda a la TC y llevar la plata a la cajita elegida
+          // Nota: esta deuda es un FAVOR — la plata del ingreso cubre la TC, NO es deuda propia
           const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
           if(tc){
             tc.deuda = (tc.deuda||0) + d.monto;
-            if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado', _cpFmt(d.monto)+' sumado a la deuda', d.monto, 'gasto');
+            // Registrar en tc.compras con _esFavor para diferenciarlo visualmente
+            if(!tc.compras) tc.compras = [];
+            tc.compras.push({
+              id: _cpUid(), desc: d.desc, monto: d.monto, fecha,
+              cat: 'Plata comprometida', nota: 'Favor — cubierto por ingreso: '+item.desc,
+              _desdeCP: true, _esFavor: true
+            });
+            if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado (favor)', _cpFmt(d.monto)+' sumado a la deuda — cubierto por "'+item.desc+'"', d.monto, 'gasto');
           }
           // Llevar la plata a la cajita que el usuario eligió (gastoTcCajita)
           const destCajita = d.gastoTcCajita;
@@ -16539,7 +16650,8 @@ window._cpConfirmarRecibir = function(){
     }
   });
 
-  // Ganancia: lo que sobre después de todos los destinos → va a cuenta elegida o por defecto la destino del ingreso
+  // ── SOBRANTE: lo que sobre después de todos los destinos
+  // Este dinero SÍ es tuyo — entra como ingreso a la cuenta destino
   const totalAsignado = (item.destinos||[]).reduce((a,d)=>a+(d.monto||0),0);
   const ganancia = Math.max(0,(item.montoTotal||0)-totalAsignado);
   const sobranteCuentaEl = document.getElementById('cp-recibir-sobrante-cuenta');
@@ -16554,10 +16666,25 @@ window._cpConfirmarRecibir = function(){
         }
         sumarFuente(sobranteCuenta, ganancia);
         if(!S.movimientos) S.movimientos = [];
-        S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:sobranteCuenta, monto:ganancia, fecha, desc:'Ganancia: '+item.desc});
-        if(window.logCambio) logCambio('<i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>Sobrante de "'+item.desc+'"', _cpFmt(ganancia)+' → '+_cpFuenteLabel(sobranteCuenta), ganancia, 'ingreso');
+        S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:sobranteCuenta, monto:ganancia, fecha,
+          desc:'Ingreso libre: '+item.desc, _esSobrante:true});
+        // Si es cuenta personalizada: registrar también en sus movimientos para que cuente en análisis
+        if(sobranteCuenta.startsWith('custom:')){
+          const cId = sobranteCuenta.split(':')[1];
+          const cObj = (S.cuentasPersonalizadas||[]).find(x=>x.id===cId);
+          if(cObj){
+            if(!cObj.movimientos) cObj.movimientos = [];
+            cObj.movimientos.push({id:_cpUid(), tipo:'ingreso', monto:ganancia, fecha,
+              nota:'Ingreso libre de "'+item.desc+'"'});
+          }
+        }
+        if(window.logCambio) logCambio(
+          '<i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>¡Ingreso libre de "'+item.desc+'"!',
+          _cpFmt(ganancia)+' → '+_cpFuenteLabel(sobranteCuenta),
+          ganancia, 'ingreso'
+        );
       }
-    } catch(e){ errores.push('Ganancia'); }
+    } catch(e){ errores.push('Sobrante'); }
   }
 
   // Marcar como recibido
@@ -16573,8 +16700,10 @@ window._cpConfirmarRecibir = function(){
   if(errores.length){
     _cpToast('Recibido con errores menores en: '+errores.join(', '),'err');
   } else {
-    const gananciaMsg = ganancia > 0.99 ? ` · Sobrante: ${_cpFmt(ganancia)}` : '';
-    _cpToast('¡Plata distribuida correctamente! <i class="fa-solid fa-check"></i>'+gananciaMsg,'ok');
+    const gananciaMsg = ganancia > 0.99
+      ? ` · <b>+${_cpFmt(ganancia)}</b> libres`
+      : (totalAsignado > 0.99 ? ' · Todo asignado' : '');
+    _cpToast('¡Plata distribuida! <i class="fa-solid fa-check" style="margin-left:3px;"></i>'+gananciaMsg,'ok');
   }
 
   if(typeof renderAttencion === 'function') renderAttencion();
@@ -16707,14 +16836,17 @@ window._cpGuardarMarcados = function(){
     }
     // Detectar si un gasto con TC pasó de false→true (acaba de marcar "ya lo cargué a la TC")
     // Esto significa que el gasto ya se realizó con la tarjeta → la deuda SUBE
+    // Nota: esta deuda es un FAVOR — cubierta por la plata del ingreso comprometido
     if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='tc' && dNuevo.gastoTcId && !dViejo.yaPague && dNuevo.yaPague){
       try {
         const tc = (S.tarjetasCredito||[]).find(x=>x.id===dNuevo.gastoTcId);
         if(tc){
           tc.deuda = (tc.deuda||0) + dNuevo.monto;
           if(!tc.compras) tc.compras = [];
-          tc.compras.push({id:_cpUid(), desc:dNuevo.desc, monto:dNuevo.monto, fecha:_cpHoy(), _desdeCP:true});
-          if(window.logCambio) logCambio('Gasto cargado a '+tc.nombre+' (plata comprometida)', _cpFmt(dNuevo.monto)+' sumado a la deuda', dNuevo.monto, 'gasto');
+          tc.compras.push({id:_cpUid(), desc:dNuevo.desc, monto:dNuevo.monto, fecha:_cpHoy(),
+            cat:'Plata comprometida', nota:'Favor — cubierto por ingreso comprometido',
+            _desdeCP:true, _esFavor:true});
+          if(window.logCambio) logCambio('Gasto cargado a '+tc.nombre+' (plata comprometida — favor)', _cpFmt(dNuevo.monto)+' sumado a la deuda', dNuevo.monto, 'gasto');
         }
       } catch(e){}
     }

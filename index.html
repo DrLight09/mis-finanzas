@@ -8101,9 +8101,15 @@ function openSheet(id){
 function closeSheet(id){document.getElementById('sheet-'+id).classList.remove('open');}
 
 function showScreen(name){
+  // Si la pantalla no existe aún (ej: inyectada dinámicamente), intentar inicializar el módulo
+  if(!document.getElementById('screen-'+name)){
+    if(name==='comprometida' && typeof window._cpInit==='function'){ window._cpInit(); }
+  }
+  const targetScreen = document.getElementById('screen-'+name);
+  if(!targetScreen){ console.warn('showScreen: pantalla no encontrada:', name); return; }
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-  document.getElementById('screen-'+name).classList.add('active');
+  targetScreen.classList.add('active');
   const navEl=document.getElementById('nav-'+name);
   if(navEl)navEl.classList.add('active');
   document.getElementById('scrollArea').scrollTop=0;
@@ -11856,6 +11862,7 @@ document.addEventListener('input',function(e){
       const screen = item.getAttribute('data-screen');
       closeMas();
       showScreen(screen);
+      if(screen==='comprometida' && typeof window._cpRenderLista==='function') setTimeout(window._cpRenderLista, 80);
       if(typeof refresh==='function') refresh();
     });
   });
@@ -16276,6 +16283,10 @@ if(document.readyState === 'loading'){
 } else {
   setTimeout(_cpInit, 400);
 }
+
+// Exponer funciones clave al scope global para que showScreen y el menú Más puedan llamarlas
+window._cpInit = _cpInit;
+window._cpRenderLista = _cpRenderLista;
 
 // Arrancar también cuando Firebase termina de cargar los datos.
 // Usamos el evento 'appDataLoaded' en lugar de sobrescribir window._fbLoadData,

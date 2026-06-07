@@ -15212,21 +15212,55 @@ document.addEventListener('DOMContentLoaded',function(){
   // ── NORMALIZAR FUENTES ─────────────────────────────────────────────
 
   function _normMovimientos(S) {
-    return (S.movimientos || [])
-      .filter(function(m){ return m.tipo !== 'apertura'; })
+    // S.movimientos unifica Nequi, Efectivo, Cajitas Nu y cuentas custom via campo fuente
+    // Tipos: 'entrada' | 'salida_manual' | 'salida' | 'apertura' (apertura excluida)
+    // Excluimos movimientos internos generados automáticamente por encargos (_encMovId,
+    // "Margen de encargo", "Margen encargo") para evitar duplicados con _normEncargos.
+    var fl = (typeof fuenteLabel === 'function') ? fuenteLabel : function(v){ return v || ''; };
+    var items = (S.movimientos || [])
+      .filter(function(m){
+        if (m.tipo === 'apertura') return false;
+        if (m._encMovId) return false; // generado como efecto secundario de un encargo
+        var desc = (m.desc || '').toLowerCase();
+        if (desc.indexOf('margen de encargo') === 0) return false;
+        if (desc.indexOf('margen encargo') === 0) return false;
+        return true;
+      })
       .map(function(m){
+        var esEntrada = m.tipo === 'entrada';
+        var fLabel = m.fuente ? fl(m.fuente) : '';
         return {
           id:        'mov_' + m.id,
           fecha:     m.fecha || '0000-00-00',
           ts:        m.ts || 0,
-          tipo:      m.tipo === 'entrada' ? 'ingreso' : 'gasto',
-          signo:     m.tipo === 'entrada' ? '+' : '-',
+          tipo:      esEntrada ? 'ingreso' : 'gasto',
+          signo:     esEntrada ? '+' : '-',
           monto:     m.monto || 0,
-          titulo:    m.desc || m.fuente || (m.tipo === 'entrada' ? 'Ingreso' : 'Gasto'),
-          subtitulo: (m.fuente && m.desc) ? m.fuente : '',
+          titulo:    m.desc || (esEntrada ? 'Ingreso' : 'Retiro'),
+          subtitulo: fLabel,
           fuente:    'movimientos',
         };
       });
+
+    // Cuentas personalizadas tienen sus propios movimientos[{tipo:'ingreso'|'egreso'}]
+    (S.cuentasPersonalizadas || []).forEach(function(c){
+      (c.movimientos || []).forEach(function(m){
+        var esIngreso = m.tipo === 'ingreso';
+        items.push({
+          id:        'custom_' + c.id + '_' + m.id,
+          fecha:     m.fecha || '0000-00-00',
+          ts:        m.ts || 0,
+          tipo:      esIngreso ? 'ingreso' : 'gasto',
+          signo:     esIngreso ? '+' : '-',
+          monto:     m.monto || 0,
+          titulo:    m.nota || (esIngreso ? 'Ingreso' : 'Retiro'),
+          subtitulo: c.nombre || '',
+          fuente:    'cuentasPersonalizadas',
+        });
+      });
+    });
+
+    return items;
   }
 
   function _normGastos(S) {
@@ -15286,9 +15320,21 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   function _normEncargos(S) {
+    // enc.movimientos usa tipo: 'entrada' | 'salida'
+    // 'entrada' = dinero que entra al encargo (abono recibido)
+    // 'salida'  = dinero que sale del encargo (pago, gasto, traspaso)
+    // Excluimos:
+    //   - reubicaciones internas entre cuentas (_parteId sin desc real, nota 'Movimiento interno...')
+    //   - movimientos de abono a deudor (_esAbonoDeudor) — ya aparecen en _normDeudores
     var items = [];
     (S.encargos || []).forEach(function(enc){
       (enc.movimientos || []).forEach(function(m){
+        // Saltar movimientos internos de reubicación
+        if (m._esAbonoDeudor) return;
+        var nota = (m.nota || '').toLowerCase();
+        if (nota === 'movimiento interno entre cuentas') return;
+        if (nota === 'traspaso a cuenta propia') return;
+
         var esEntrada = m.tipo === 'entrada';
         items.push({
           id:        'enc_' + enc.id + '_' + m.id,
@@ -15297,8 +15343,8 @@ document.addEventListener('DOMContentLoaded',function(){
           tipo:      'encargo',
           signo:     esEntrada ? '+' : '-',
           monto:     m.monto || 0,
-          titulo:    (esEntrada ? 'Abono encargo' : 'Pago encargo') + ' · ' + (enc.nombre || ''),
-          subtitulo: m.nota || m.desc || '',
+          titulo:    (esEntrada ? 'Entrada encargo' : 'Salida encargo') + ' · ' + (enc.nombre || ''),
+          subtitulo: m.desc || m.nota || '',
           fuente:    'encargos',
         });
       });
@@ -15437,6 +15483,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var Sx2 = window.S || {};
     var total = [].concat(
       (Sx2.movimientos||[]).filter(function(m){ return m.tipo !== 'apertura'; }),
+      (Sx2.cuentasPersonalizadas||[]).reduce(function(a,c){ return a.concat(c.movimientos||[]); },[]),
       (Sx2.gastosVar||[]),
       (Sx2.deudores||[]).reduce(function(a,d){ return a.concat(d.movimientos||[]); },[]),
       (Sx2.spotifyHistorial||[]).filter(function(h){ return h.tipo==='cobro'; }),

@@ -8801,10 +8801,10 @@ function getMovimientosCuenta(tipo) {
       ? (t.destino && t.destino.startsWith('cajita:'))
       : t.destino === tipo;
     if (estaEnOrigen) {
-      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ' + fuenteLabel(t.destino), monto: -t.monto, nota: t.nota, fuente: t.origen, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino });
+      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia → ' + fuenteLabel(t.destino), monto: -t.monto, nota: t.nota, fuente: t.origen, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino });
     }
     if (estaEnDestino) {
-      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 5 5 12 12 19"/></svg> ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente: t.destino, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino });
+      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia ← ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente: t.destino, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino });
     }
   });
   // Sort by date desc, then by creation time desc (_movId starts with Date.now().toString(36))

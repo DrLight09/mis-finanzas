@@ -2768,8 +2768,20 @@ input.movs-search-input:focus{border-color:var(--accent);}
             <div id="movenc-dif-resumen" style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
             <!-- Select de cuenta propia para el sobrante sin asignar -->
             <div id="movenc-dif-mi-cuenta-wrap" style="display:none;margin-top:10px;">
-              <label class="il" style="color:var(--accent);margin-bottom:6px;">¿A cuál de tus cuentas entra ese sobrante?</label>
-              <div class="select-wrap"><select id="movenc_dif_mi_cuenta"><option value="">Sin especificar</option></select></div>
+              <label class="il" style="color:var(--accent);margin-bottom:8px;">¿Ese sobrante es tuyo?</label>
+              <!-- Opción: lo pagué yo de mi bolsillo -->
+              <label id="movenc-dif-bolsillo-wrap" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(200,240,96,.05);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:8px;">
+                <input type="checkbox" id="movenc_dif_bolsillo" onchange="_difBolsilloToggle()" style="width:17px;height:17px;accent-color:var(--accent);flex-shrink:0;margin-top:1px;">
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--accent);">Lo pagué yo de mi bolsillo</div>
+                  <div style="font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4;">Esos <span id="movenc-dif-bolsillo-monto"></span> los pusiste vos en efectivo, así que quedan como ingreso a tu efectivo (sin mover plata, ya la pusiste)</div>
+                </div>
+              </label>
+              <!-- Select cuenta digital (alternativa al bolsillo) -->
+              <div id="movenc-dif-cuenta-sel-wrap">
+                <label class="il" style="font-size:11px;color:var(--text2);margin-bottom:4px;">O elegí a cuál cuenta digital entra:</label>
+                <div class="select-wrap"><select id="movenc_dif_mi_cuenta"><option value="">Sin especificar (queda como nota)</option></select></div>
+              </div>
             </div>
           </div>
         </div>
@@ -10825,11 +10837,30 @@ function _difActualizarMiCuenta(mostrar) {
     const prevVal = sel.value;
     sel.innerHTML = '<option value="">Sin especificar (queda como nota)</option>' +
       getFuentesSinTC().map(f => `<option value="${f.val}"${f.val === prevVal ? ' selected' : ''}>${f.label}</option>`).join('');
+    // Actualizar el monto en la etiqueta del checkbox bolsillo
+    const dijoEl = document.getElementById('movenc_monto');
+    const realEl = document.getElementById('movenc_dif_real');
+    const dijo   = dijoEl ? (parseMoney(dijoEl.value) || 0) : 0;
+    const real   = realEl ? (parseMoney(realEl.value) || 0) : 0;
+    const asignado = _difBenefs.reduce((a, b) => a + (b.monto || 0), 0);
+    const sinAsignar = dijo - real - asignado;
+    const montoSpan = document.getElementById('movenc-dif-bolsillo-monto');
+    if (montoSpan) montoSpan.textContent = fmt(Math.max(0, sinAsignar));
+  } else {
+    // Limpiar checkbox al ocultar
+    const chk = document.getElementById('movenc_dif_bolsillo');
+    if (chk && chk.checked) { chk.checked = false; _difBolsilloToggle(true); }
   }
 }
 
+function _difBolsilloToggle(forzarOcultar) {
+  const chk     = document.getElementById('movenc_dif_bolsillo');
+  const selWrap = document.getElementById('movenc-dif-cuenta-sel-wrap');
+  const marcado = forzarOcultar ? false : (chk ? chk.checked : false);
+  if (selWrap) selWrap.style.display = marcado ? 'none' : '';
+}
+
 function _procesarDiferencial(movimiento) {
-  // Solo guarda el diferencial en el movimiento como registro. No mueve plata.
   const difBody = document.getElementById('movenc-dif-body');
   if (!difBody || difBody.style.display === 'none') return;
   const realEl = document.getElementById('movenc_dif_real');
@@ -10843,10 +10874,15 @@ function _procesarDiferencial(movimiento) {
   const asignado = beneficiarios.reduce((a, b) => a + (b.monto || 0), 0);
   const sinAsignar = margen - asignado;
 
+  // ¿Usó la opción "Lo pagué yo de mi bolsillo"?
+  const chkBolsillo = document.getElementById('movenc_dif_bolsillo');
+  const esBolsillo  = chkBolsillo ? chkBolsillo.checked : false;
+
   // ¿Hay cuenta propia donde meter el sobrante?
-  const miCuentaSel = document.getElementById('movenc_dif_mi_cuenta');
-  const miCuenta = miCuentaSel ? miCuentaSel.value : '';
-  const yoMeQuedo = (sinAsignar > 0.5 && miCuenta) ? sinAsignar : 0;
+  const miCuentaSel  = document.getElementById('movenc_dif_mi_cuenta');
+  const miCuentaVal  = (!esBolsillo && miCuentaSel) ? miCuentaSel.value : '';
+  const miCuenta     = esBolsillo ? 'efectivo' : miCuentaVal;
+  const yoMeQuedo    = (sinAsignar > 0.5 && (miCuenta || esBolsillo)) ? sinAsignar : 0;
 
   movimiento.diferencial = {
     dijo,
@@ -10854,15 +10890,32 @@ function _procesarDiferencial(movimiento) {
     margen,
     beneficiarios,
     miCuenta: yoMeQuedo > 0 ? miCuenta : '',
-    yoMeQuedo
+    yoMeQuedo,
+    ...(esBolsillo && yoMeQuedo > 0 ? { _bolsillo: true } : {})
   };
 
-  // Si hay sobrante mío con cuenta destino → crear un ingreso real en mis cuentas
-  if (yoMeQuedo > 0 && miCuenta) {
-    // Sumar al saldo real de la cuenta para que el balance refleje el ingreso
+  if (!S.movimientos) S.movimientos = [];
+
+  if (esBolsillo && yoMeQuedo > 0) {
+    // ── CASO BOLSILLO ──────────────────────────────────────────────
+    // Vos pusiste esa plata de tu efectivo → egreso real de efectivo
+    descontarFuente('efectivo', yoMeQuedo);
+    S.movimientos.push({
+      id: uid(),
+      tipo: 'egreso',
+      fuente: 'efectivo',
+      monto: yoMeQuedo,
+      fecha: movimiento.fecha || hoy(),
+      desc: movimiento.desc || 'Pago de bolsillo',
+      nota: 'Pagaste de tu efectivo lo que el encargo reportó como diferencial',
+      ts: Date.now(),
+      _bolsillo: true,
+      _encMovId: movimiento.id  // vínculo para revertir al eliminar el movimiento del encargo
+    });
+  } else if (!esBolsillo && yoMeQuedo > 0 && miCuenta) {
+    // ── CASO MARGEN NORMAL ─────────────────────────────────────────
+    // El margen entra a tu cuenta como ingreso
     sumarFuente(miCuenta, yoMeQuedo);
-    // Guardar en S.movimientos (con fuente) para que aparezca en los movimientos de Nu/Nequi/etc.
-    if (!S.movimientos) S.movimientos = [];
     S.movimientos.push({
       id: uid(),
       tipo: 'entrada',
@@ -10871,7 +10924,8 @@ function _procesarDiferencial(movimiento) {
       fecha: movimiento.fecha || hoy(),
       desc: 'Margen de encargo — ' + (movimiento.desc || ''),
       nota: 'Generado automáticamente por el diferencial del encargo',
-      ts: Date.now()
+      ts: Date.now(),
+      _encMovId: movimiento.id  // vínculo para revertir al eliminar el movimiento del encargo
     });
   }
 }
@@ -11349,8 +11403,10 @@ function abrirMovEncargo(tipo) {
       // Ocultar select de cuenta propia
       const miCuentaWrap = document.getElementById('movenc-dif-mi-cuenta-wrap');
       const miCuentaSel  = document.getElementById('movenc_dif_mi_cuenta');
+      const chkBolsillo  = document.getElementById('movenc_dif_bolsillo');
       if (miCuentaWrap) miCuentaWrap.style.display = 'none';
       if (miCuentaSel)  miCuentaSel.value = '';
+      if (chkBolsillo)  { chkBolsillo.checked = false; _difBolsilloToggle(true); }
     } else {
       difWrap.style.display = 'none';
     }
@@ -11625,10 +11681,19 @@ async function deleteMovEncargo(encId, movId) {
       S.tcMovimientos = S.tcMovimientos.filter(t => t._encMovId !== movId);
     }
 
-    // Borrar el S.movimientos de diferencial vinculado (paso 5) y revertir sumarFuente del margen
+    // Borrar el S.movimientos de diferencial vinculado (paso 5) y revertir saldos
     if (S.movimientos) {
       const difMovs = S.movimientos.filter(m => m._encMovId === movId);
-      difMovs.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto); });
+      difMovs.forEach(m => {
+        if (!m.fuente || !m.monto) return;
+        if (m._bolsillo) {
+          // Era un egreso de efectivo → revertir sumando de vuelta
+          sumarFuente(m.fuente, m.monto);
+        } else {
+          // Era una entrada de margen → revertir descontando
+          descontarFuente(m.fuente, m.monto);
+        }
+      });
       S.movimientos = S.movimientos.filter(m => m._encMovId !== movId);
     }
   }

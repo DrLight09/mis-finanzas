@@ -10945,13 +10945,14 @@ function _procesarDiferencial(movimiento) {
     yoMeQuedo
   };
 
-  // 1) Sobrante libre → ingreso a mi cuenta
+  // 1) Sobrante libre → ingreso a mi cuenta (vinculado con _encMovId para poder revertir al eliminar)
   if (yoMeQuedo > 0 && miCuenta) {
     sumarFuente(miCuenta, yoMeQuedo);
     S.movimientos.push({
       id: uid(),
       tipo: 'entrada',
       fuente: miCuenta,
+      _encMovId: movimiento.id,
       monto: yoMeQuedo,
       fecha,
       desc: 'Margen de encargo — ' + (movimiento.desc || ''),
@@ -10968,7 +10969,7 @@ function _procesarDiferencial(movimiento) {
     const nombreBenef   = b.nombre || 'Persona';
     const descBase      = movimiento.desc || '';
 
-    // Egreso de mi cuenta propia (le di el efectivo a la persona) — tipo transferencia, no es gasto
+    // Egreso de mi cuenta propia — tipo transferencia, vinculado al movimiento del encargo con _encMovId
     if (cuentaSalida) {
       descontarFuente(cuentaSalida, b.monto);
       S.movimientos.push({
@@ -10976,6 +10977,9 @@ function _procesarDiferencial(movimiento) {
         tipo: 'transferencia',
         fuente: cuentaSalida,
         _fuenteDestino: cuentaEntrada || '',
+        _encMovId: movimiento.id,       // vínculo: al eliminar el mov. del encargo, se borra este también
+        _esIntercambioEncargo: true,
+        _intercambioSalida: true,       // este es el egreso (para revertir correctamente)
         monto: b.monto,
         fecha,
         desc: `Intercambio encargo: le di a ${nombreBenef} de mi ${fuenteLabel(cuentaSalida)}`,
@@ -10984,7 +10988,7 @@ function _procesarDiferencial(movimiento) {
       });
     }
 
-    // Recupero del encargo a mi cuenta destino — tipo transferencia, no es ingreso
+    // Recupero del encargo a mi cuenta destino — tipo transferencia, vinculado al movimiento del encargo
     if (cuentaEntrada) {
       sumarFuente(cuentaEntrada, b.monto);
       S.movimientos.push({
@@ -10992,6 +10996,9 @@ function _procesarDiferencial(movimiento) {
         tipo: 'transferencia',
         fuente: cuentaEntrada,
         _fuenteDestino: cuentaSalida || '',
+        _encMovId: movimiento.id,       // vínculo: al eliminar el mov. del encargo, se borra este también
+        _esIntercambioEncargo: true,
+        _intercambioEntrada: true,      // este es el ingreso (para revertir correctamente)
         monto: b.monto,
         fecha,
         desc: `Intercambio encargo: recupero de ${nombreBenef} en ${fuenteLabel(cuentaEntrada)}`,
@@ -11753,10 +11760,29 @@ async function deleteMovEncargo(encId, movId) {
     }
 
     // Borrar el S.movimientos de diferencial vinculado (paso 5) y revertir sumarFuente del margen
+    // (excluye los de intercambio — esos los maneja el bloque siguiente)
     if (S.movimientos) {
-      const difMovs = S.movimientos.filter(m => m._encMovId === movId);
+      const difMovs = S.movimientos.filter(m => m._encMovId === movId && !m._esIntercambioEncargo);
       difMovs.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto); });
-      S.movimientos = S.movimientos.filter(m => m._encMovId !== movId);
+      S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && !m._esIntercambioEncargo));
+    }
+  }
+
+  // Revertir intercambios "lo pagué yo" del diferencial (salida normal sin _esTcEncargo)
+  if (mov && mov.diferencial && (mov.diferencial.beneficiarios || []).some(b => b.pagadoPorMi)) {
+    if (S.movimientos) {
+      const intercambioMovs = S.movimientos.filter(m => m._encMovId === movId && m._esIntercambioEncargo);
+      intercambioMovs.forEach(m => {
+        if (!m.fuente || !m.monto) return;
+        if (m._intercambioSalida) {
+          // Era un egreso de mi cuenta → revertir sumando de vuelta
+          sumarFuente(m.fuente, m.monto);
+        } else if (m._intercambioEntrada) {
+          // Era un ingreso a mi cuenta → revertir descontando
+          descontarFuente(m.fuente, m.monto);
+        }
+      });
+      S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && m._esIntercambioEncargo));
     }
   }
 

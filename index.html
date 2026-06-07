@@ -11452,13 +11452,15 @@ function abrirMoverEntreCuentasEncargo() {
 
   // Select origen: solo cuentas donde el encargo tiene plata
   const selOrigen = document.getElementById('moverenc_origen');
+  const fuentesConSaldo = fuentes.filter(f => {
+    const encargoEnCuenta = cuentasConSaldo.find(c => c.cuenta === f.val);
+    return encargoEnCuenta && encargoEnCuenta.saldo > 0;
+  });
   selOrigen.innerHTML = '<option value="">Seleccionar cuenta origen</option>' +
-    fuentes.map(f => {
+    fuentesConSaldo.map(f => {
       const encargoEnCuenta = cuentasConSaldo.find(c => c.cuenta === f.val);
-      const saldoEnc = encargoEnCuenta ? encargoEnCuenta.saldo : 0;
-      const disabled = saldoEnc <= 0 ? 'disabled' : '';
-      const label = saldoEnc > 0 ? f.label + ' (' + fmt(saldoEnc) + ' del encargo)' : f.label + ' (sin saldo del encargo)';
-      return '<option value="' + f.val + '" ' + disabled + '>' + label + '</option>';
+      const saldoEnc = encargoEnCuenta.saldo;
+      return '<option value="' + f.val + '">' + f.label + ' (' + fmt(saldoEnc) + ' del encargo)</option>';
     }).join('');
 
   // Pre-seleccionar la cuenta con más saldo del encargo

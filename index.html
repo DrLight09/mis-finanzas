@@ -1907,6 +1907,12 @@ input.movs-search-input:focus{border-color:var(--accent);}
                     stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M7 15h.01"/><path d="M11 15h4"/></svg>
                   <span class="cuenta-action-btn-label">Pagué con mi TC</span>
                 </button>
+                <button type="button" class="cuenta-action-btn"
+                  style="background:rgba(176,144,240,.10);border-color:rgba(176,144,240,.4);color:var(--purple);flex-basis:100%;"
+                  onclick="abrirSobranteDiferencia()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12l7-7 7 7"/><rect x="3" y="17" width="5" height="4" rx="1"/><path d="M16 19h5"/></svg>
+                  <span class="cuenta-action-btn-label">Sobrante · devolví efectivo</span>
+                </button>
               </div>
               <div
                 style="margin-top:10px;font-size:10px;color:rgba(96,176,240,.5);font-family:'DM Mono',monospace;">Esta
@@ -2768,20 +2774,8 @@ input.movs-search-input:focus{border-color:var(--accent);}
             <div id="movenc-dif-resumen" style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
             <!-- Select de cuenta propia para el sobrante sin asignar -->
             <div id="movenc-dif-mi-cuenta-wrap" style="display:none;margin-top:10px;">
-              <label class="il" style="color:var(--accent);margin-bottom:8px;">¿Ese sobrante es tuyo?</label>
-              <!-- Opción: lo pagué yo de mi bolsillo -->
-              <label id="movenc-dif-bolsillo-wrap" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(200,240,96,.05);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:8px;">
-                <input type="checkbox" id="movenc_dif_bolsillo" onchange="_difBolsilloToggle()" style="width:17px;height:17px;accent-color:var(--accent);flex-shrink:0;margin-top:1px;">
-                <div>
-                  <div style="font-size:13px;font-weight:600;color:var(--accent);">Lo pagué yo de mi bolsillo</div>
-                  <div style="font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4;">Esos <span id="movenc-dif-bolsillo-monto"></span> los pusiste vos en efectivo, así que quedan como ingreso a tu efectivo (sin mover plata, ya la pusiste)</div>
-                </div>
-              </label>
-              <!-- Select cuenta digital (alternativa al bolsillo) -->
-              <div id="movenc-dif-cuenta-sel-wrap">
-                <label class="il" style="font-size:11px;color:var(--text2);margin-bottom:4px;">O elegí a cuál cuenta digital entra:</label>
-                <div class="select-wrap"><select id="movenc_dif_mi_cuenta"><option value="">Sin especificar (queda como nota)</option></select></div>
-              </div>
+              <label class="il" style="color:var(--accent);margin-bottom:6px;">¿A cuál de tus cuentas entra ese sobrante?</label>
+              <div class="select-wrap"><select id="movenc_dif_mi_cuenta"><option value="">Sin especificar</option></select></div>
             </div>
           </div>
         </div>
@@ -2910,6 +2904,82 @@ input.movs-search-input:focus{border-color:var(--accent);}
           </span>
         </button>
         <button type="button" class="btn btn-ghost" data-close-sheet="compra-tc-encargo">Cancelar</button>
+      </div>
+    </div>
+
+
+    <!-- SOBRANTE DE ENCARGO · DEVOLVÍ EFECTIVO -->
+    <!-- Caso: el encargo tenía registrado más de lo que realmente se gastó.
+         El sobrante pasa a ser mío (digital), y yo devuelvo ese mismo monto
+         en efectivo a quien me lo pidió. Mi efectivo baja, el sobrante digital queda como ingreso mío. -->
+    <div class="overlay" id="sheet-sobrante-diferencia" data-sheet-id="sobrante-diferencia">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Sobrante · devolví efectivo</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.6;">
+          Se gastó <b style="color:var(--text);">menos de lo registrado</b> en el encargo. El sobrante te lo quedás digitalmente, pero le devolvés ese mismo valor en <b style="color:var(--text);">efectivo</b> a quien lo pedía.<br><br>
+          <span style="color:var(--purple);font-weight:600;">Es un intercambio</span> — tu plata no aumenta ni disminuye, solo cambia de forma. El Nequi sube pero <b style="color:var(--text);">no cuenta como ingreso</b>.
+        </p>
+        <div class="info-box info-box-blue" style="font-family:'DM Mono',monospace;margin-bottom:14px;">
+          Encargo: <span id="sobDifEncNombre" style="font-weight:600;color:var(--blue);"></span>
+          &nbsp;·&nbsp; Saldo actual: <span id="sobDifEncSaldo" style="color:var(--blue);font-weight:600;"></span>
+        </div>
+
+        <!-- Gasto real (opcional, para referencia) -->
+        <div class="ig">
+          <label class="il" for="sobdif_gasto_real">¿Cuánto costó realmente? <span style="color:var(--text3);font-weight:400;">(opcional, para referencia)</span></label>
+          <input type="text" inputmode="decimal" id="sobdif_gasto_real" placeholder="Ej: 60.000" class="money-input">
+          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">Se queda guardado como nota en el movimiento del encargo.</div>
+        </div>
+
+        <!-- Sobrante -->
+        <div class="ig">
+          <label class="il" for="sobdif_monto">¿Cuánto es el sobrante (diferencia)? <span style="color:var(--red);">*</span></label>
+          <input type="text" inputmode="decimal" id="sobdif_monto" placeholder="Ej: 10.000" class="money-input">
+          <div id="sobdif_monto_hint" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+        </div>
+
+        <!-- Cuenta del encargo -->
+        <div class="ig">
+          <label class="il" for="sobdif_cuenta_enc">¿En qué cuenta estaba esa plata del encargo? <span style="color:var(--red);">*</span></label>
+          <div class="select-wrap"><select id="sobdif_cuenta_enc"><option value="">Seleccionar cuenta</option></select></div>
+          <div id="sobdif_cuenta_enc_hint" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+        </div>
+
+        <!-- Efectivo entregado -->
+        <div class="ig">
+          <label class="il" for="sobdif_ef_origen">¿De dónde sacás el efectivo que le entregás? <span style="color:var(--red);">*</span></label>
+          <div class="select-wrap"><select id="sobdif_ef_origen"><option value="">Seleccionar cuenta</option></select></div>
+          <div id="sobdif_ef_hint" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+        </div>
+
+        <!-- Destino digital -->
+        <div class="ig">
+          <label class="il" for="sobdif_destino_mio">¿A cuál de tus cuentas queda el sobrante digital? <span style="color:var(--red);">*</span></label>
+          <div class="select-wrap"><select id="sobdif_destino_mio"><option value="">Seleccionar cuenta</option></select></div>
+          <div id="sobdif_destino_hint" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+        </div>
+
+        <div class="ig">
+          <label class="il" for="sobdif_desc">Descripción <span style="color:var(--red);">*</span></label>
+          <input type="text" id="sobdif_desc" placeholder="Ej: compra del mercado — sobrante mamá">
+        </div>
+        <div class="ig">
+          <label class="il" for="sobdif_fecha">Fecha</label>
+          <input type="date" id="sobdif_fecha">
+        </div>
+
+        <!-- Preview -->
+        <div id="sobdif_preview" style="background:rgba(176,144,240,.07);border:1px solid rgba(176,144,240,.22);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:14px;font-size:11px;font-family:'DM Mono',monospace;line-height:1.9;display:none;"></div>
+
+        <button type="button" class="btn" id="btn-confirmar-sobrante-diferencia"
+          style="background:rgba(176,144,240,.22);color:var(--purple);border:1px solid rgba(176,144,240,.45);box-shadow:none;font-weight:600;">
+          <span style="display:flex;align-items:center;justify-content:center;gap:7px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Confirmar intercambio
+          </span>
+        </button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="sobrante-diferencia">Cancelar</button>
       </div>
     </div>
 
@@ -10837,30 +10907,11 @@ function _difActualizarMiCuenta(mostrar) {
     const prevVal = sel.value;
     sel.innerHTML = '<option value="">Sin especificar (queda como nota)</option>' +
       getFuentesSinTC().map(f => `<option value="${f.val}"${f.val === prevVal ? ' selected' : ''}>${f.label}</option>`).join('');
-    // Actualizar el monto en la etiqueta del checkbox bolsillo
-    const dijoEl = document.getElementById('movenc_monto');
-    const realEl = document.getElementById('movenc_dif_real');
-    const dijo   = dijoEl ? (parseMoney(dijoEl.value) || 0) : 0;
-    const real   = realEl ? (parseMoney(realEl.value) || 0) : 0;
-    const asignado = _difBenefs.reduce((a, b) => a + (b.monto || 0), 0);
-    const sinAsignar = dijo - real - asignado;
-    const montoSpan = document.getElementById('movenc-dif-bolsillo-monto');
-    if (montoSpan) montoSpan.textContent = fmt(Math.max(0, sinAsignar));
-  } else {
-    // Limpiar checkbox al ocultar
-    const chk = document.getElementById('movenc_dif_bolsillo');
-    if (chk && chk.checked) { chk.checked = false; _difBolsilloToggle(true); }
   }
 }
 
-function _difBolsilloToggle(forzarOcultar) {
-  const chk     = document.getElementById('movenc_dif_bolsillo');
-  const selWrap = document.getElementById('movenc-dif-cuenta-sel-wrap');
-  const marcado = forzarOcultar ? false : (chk ? chk.checked : false);
-  if (selWrap) selWrap.style.display = marcado ? 'none' : '';
-}
-
 function _procesarDiferencial(movimiento) {
+  // Solo guarda el diferencial en el movimiento como registro. No mueve plata.
   const difBody = document.getElementById('movenc-dif-body');
   if (!difBody || difBody.style.display === 'none') return;
   const realEl = document.getElementById('movenc_dif_real');
@@ -10874,15 +10925,10 @@ function _procesarDiferencial(movimiento) {
   const asignado = beneficiarios.reduce((a, b) => a + (b.monto || 0), 0);
   const sinAsignar = margen - asignado;
 
-  // ¿Usó la opción "Lo pagué yo de mi bolsillo"?
-  const chkBolsillo = document.getElementById('movenc_dif_bolsillo');
-  const esBolsillo  = chkBolsillo ? chkBolsillo.checked : false;
-
   // ¿Hay cuenta propia donde meter el sobrante?
-  const miCuentaSel  = document.getElementById('movenc_dif_mi_cuenta');
-  const miCuentaVal  = (!esBolsillo && miCuentaSel) ? miCuentaSel.value : '';
-  const miCuenta     = esBolsillo ? 'efectivo' : miCuentaVal;
-  const yoMeQuedo    = (sinAsignar > 0.5 && (miCuenta || esBolsillo)) ? sinAsignar : 0;
+  const miCuentaSel = document.getElementById('movenc_dif_mi_cuenta');
+  const miCuenta = miCuentaSel ? miCuentaSel.value : '';
+  const yoMeQuedo = (sinAsignar > 0.5 && miCuenta) ? sinAsignar : 0;
 
   movimiento.diferencial = {
     dijo,
@@ -10890,32 +10936,15 @@ function _procesarDiferencial(movimiento) {
     margen,
     beneficiarios,
     miCuenta: yoMeQuedo > 0 ? miCuenta : '',
-    yoMeQuedo,
-    ...(esBolsillo && yoMeQuedo > 0 ? { _bolsillo: true } : {})
+    yoMeQuedo
   };
 
-  if (!S.movimientos) S.movimientos = [];
-
-  if (esBolsillo && yoMeQuedo > 0) {
-    // ── CASO BOLSILLO ──────────────────────────────────────────────
-    // Vos pusiste esa plata de tu efectivo → egreso real de efectivo
-    descontarFuente('efectivo', yoMeQuedo);
-    S.movimientos.push({
-      id: uid(),
-      tipo: 'egreso',
-      fuente: 'efectivo',
-      monto: yoMeQuedo,
-      fecha: movimiento.fecha || hoy(),
-      desc: movimiento.desc || 'Pago de bolsillo',
-      nota: 'Pagaste de tu efectivo lo que el encargo reportó como diferencial',
-      ts: Date.now(),
-      _bolsillo: true,
-      _encMovId: movimiento.id  // vínculo para revertir al eliminar el movimiento del encargo
-    });
-  } else if (!esBolsillo && yoMeQuedo > 0 && miCuenta) {
-    // ── CASO MARGEN NORMAL ─────────────────────────────────────────
-    // El margen entra a tu cuenta como ingreso
+  // Si hay sobrante mío con cuenta destino → crear un ingreso real en mis cuentas
+  if (yoMeQuedo > 0 && miCuenta) {
+    // Sumar al saldo real de la cuenta para que el balance refleje el ingreso
     sumarFuente(miCuenta, yoMeQuedo);
+    // Guardar en S.movimientos (con fuente) para que aparezca en los movimientos de Nu/Nequi/etc.
+    if (!S.movimientos) S.movimientos = [];
     S.movimientos.push({
       id: uid(),
       tipo: 'entrada',
@@ -10924,8 +10953,7 @@ function _procesarDiferencial(movimiento) {
       fecha: movimiento.fecha || hoy(),
       desc: 'Margen de encargo — ' + (movimiento.desc || ''),
       nota: 'Generado automáticamente por el diferencial del encargo',
-      ts: Date.now(),
-      _encMovId: movimiento.id  // vínculo para revertir al eliminar el movimiento del encargo
+      ts: Date.now()
     });
   }
 }
@@ -11403,10 +11431,8 @@ function abrirMovEncargo(tipo) {
       // Ocultar select de cuenta propia
       const miCuentaWrap = document.getElementById('movenc-dif-mi-cuenta-wrap');
       const miCuentaSel  = document.getElementById('movenc_dif_mi_cuenta');
-      const chkBolsillo  = document.getElementById('movenc_dif_bolsillo');
       if (miCuentaWrap) miCuentaWrap.style.display = 'none';
       if (miCuentaSel)  miCuentaSel.value = '';
-      if (chkBolsillo)  { chkBolsillo.checked = false; _difBolsilloToggle(true); }
     } else {
       difWrap.style.display = 'none';
     }
@@ -11681,19 +11707,10 @@ async function deleteMovEncargo(encId, movId) {
       S.tcMovimientos = S.tcMovimientos.filter(t => t._encMovId !== movId);
     }
 
-    // Borrar el S.movimientos de diferencial vinculado (paso 5) y revertir saldos
+    // Borrar el S.movimientos de diferencial vinculado (paso 5) y revertir sumarFuente del margen
     if (S.movimientos) {
       const difMovs = S.movimientos.filter(m => m._encMovId === movId);
-      difMovs.forEach(m => {
-        if (!m.fuente || !m.monto) return;
-        if (m._bolsillo) {
-          // Era un egreso de efectivo → revertir sumando de vuelta
-          sumarFuente(m.fuente, m.monto);
-        } else {
-          // Era una entrada de margen → revertir descontando
-          descontarFuente(m.fuente, m.monto);
-        }
-      });
+      difMovs.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto); });
       S.movimientos = S.movimientos.filter(m => m._encMovId !== movId);
     }
   }
@@ -12081,6 +12098,257 @@ if (_origNavEncargos) {
       if (!encargoActualId) renderEncargosList();
     }, 50);
   });
+}
+
+
+/* ================================================================
+   SOBRANTE DE ENCARGO · DEVOLVÍ EFECTIVO
+   Situación: el encargo registraba más de lo que realmente se gastó.
+   El sobrante (diferencia) pasa a ser tuyo (digital), pero vos le
+   devolvés ese mismo valor en efectivo a quien lo pidió.
+
+   Flujo:
+   1. El encargo pierde el sobrante (salida del encargo).
+   2. Tu efectivo (u otra cuenta) baja ese sobrante (lo entregaste físicamente).
+   3. El sobrante digital que estaba en la cuenta del encargo pasa a ser
+      tuyo — es decir, sube en la cuenta donde estaba esa plata.
+
+   Resultado del ejemplo:
+   - Encargo papá: 40.000 → 30.000   (saldo del encargo baja 10.000)
+   - Efectivo: 80.000 → 70.000        (tu efectivo baja 10.000 — lo diste)
+   - Nequi: 0 → 10.000                (el digital sobrante del encargo ahora es tuyo)
+   ================================================================ */
+
+function abrirSobranteDiferencia() {
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+  const saldo = encargoSaldo(enc);
+  if (saldo <= 0) { toast('El encargo no tiene saldo disponible', 'err'); return; }
+
+  document.getElementById('sobDifEncNombre').textContent = enc.nombre;
+  document.getElementById('sobDifEncSaldo').textContent = fmt(saldo);
+  document.getElementById('sobdif_gasto_real').value = '';
+  document.getElementById('sobdif_monto').value = '';
+  document.getElementById('sobdif_desc').value = 'Sobrante de encargo — ' + enc.nombre;
+  document.getElementById('sobdif_fecha').value = hoy();
+  document.getElementById('sobdif_monto_hint').textContent = '';
+  document.getElementById('sobdif_ef_hint').textContent = '';
+  document.getElementById('sobdif_destino_hint').textContent = '';
+  document.getElementById('sobdif_cuenta_enc_hint').textContent = '';
+  document.getElementById('sobdif_preview').style.display = 'none';
+  document.getElementById('sobdif_preview').innerHTML = '';
+
+  const fuentes = getFuentes();
+  const cuentasConSaldoEnc = _getEncargoSaldoPorCuenta(enc);
+
+  // Select: cuenta donde está la plata del encargo
+  const selCuenta = document.getElementById('sobdif_cuenta_enc');
+  const fuentesConEnc = fuentes.filter(f => {
+    const enE = cuentasConSaldoEnc.find(c => c.cuenta === f.val);
+    return enE && enE.saldo > 0;
+  });
+  selCuenta.innerHTML = '<option value="">Seleccionar cuenta</option>' +
+    fuentesConEnc.map(f => {
+      const enE = cuentasConSaldoEnc.find(c => c.cuenta === f.val);
+      return `<option value="${f.val}">${f.label} (${fmt(enE.saldo)} del encargo)</option>`;
+    }).join('');
+  // Pre-seleccionar la cuenta con más saldo del encargo
+  if (cuentasConSaldoEnc.length > 0) selCuenta.value = cuentasConSaldoEnc[0].cuenta;
+  _sobDifActualizarCuentaEncHint();
+
+  // Select: de dónde sacás el efectivo (todas las cuentas, sin TC)
+  const selEf = document.getElementById('sobdif_ef_origen');
+  selEf.innerHTML = '<option value="">Seleccionar cuenta</option>' +
+    getFuentes().map(f => `<option value="${f.val}">${f.label}</option>`).join('');
+  // Pre-seleccionar efectivo por defecto
+  selEf.value = 'efectivo';
+  _sobDifActualizarEfHint();
+
+  // Select: a cuál de tus cuentas entra el sobrante digital
+  const selDest = document.getElementById('sobdif_destino_mio');
+  selDest.innerHTML = '<option value="">Seleccionar cuenta</option>' +
+    fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
+  // Intentar preseleccionar la misma cuenta donde está el encargo
+  if (cuentasConSaldoEnc.length > 0) selDest.value = cuentasConSaldoEnc[0].cuenta;
+  _sobDifActualizarDestinoHint();
+
+  // Listeners para actualizar preview en tiempo real
+  document.getElementById('sobdif_gasto_real').oninput = _sobDifActualizarPreview;
+  document.getElementById('sobdif_monto').oninput = _sobDifActualizarPreview;
+  document.getElementById('sobdif_cuenta_enc').onchange = function() {
+    _sobDifActualizarCuentaEncHint();
+    _sobDifActualizarPreview();
+  };
+  document.getElementById('sobdif_ef_origen').onchange = function() {
+    _sobDifActualizarEfHint();
+    _sobDifActualizarPreview();
+  };
+  document.getElementById('sobdif_destino_mio').onchange = function() {
+    _sobDifActualizarDestinoHint();
+    _sobDifActualizarPreview();
+  };
+
+  openSheet('sobrante-diferencia');
+  setTimeout(() => document.getElementById('sobdif_monto').focus(), 200);
+}
+
+function _sobDifActualizarCuentaEncHint() {
+  const sel = document.getElementById('sobdif_cuenta_enc');
+  const hint = document.getElementById('sobdif_cuenta_enc_hint');
+  if (!hint) return;
+  const enc = getEncargo(encargoActualId);
+  if (!enc || !sel.value) { hint.textContent = ''; return; }
+  const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
+  const enE = cuentasConSaldo.find(c => c.cuenta === sel.value);
+  hint.textContent = enE ? `Del encargo hay ${fmt(enE.saldo)} en esta cuenta` : '';
+}
+
+function _sobDifActualizarEfHint() {
+  const sel = document.getElementById('sobdif_ef_origen');
+  const hint = document.getElementById('sobdif_ef_hint');
+  if (!hint || !sel.value) { if(hint) hint.textContent=''; return; }
+  hint.textContent = 'Saldo actual: ' + fmt(getSaldoActual(sel.value));
+}
+
+function _sobDifActualizarDestinoHint() {
+  const sel = document.getElementById('sobdif_destino_mio');
+  const hint = document.getElementById('sobdif_destino_hint');
+  if (!hint || !sel.value) { if(hint) hint.textContent=''; return; }
+  hint.textContent = 'Saldo actual: ' + fmt(getSaldoActual(sel.value));
+}
+
+function _sobDifActualizarPreview() {
+  const monto = parseMoney(document.getElementById('sobdif_monto').value) || 0;
+  const gastoReal = parseMoney(document.getElementById('sobdif_gasto_real').value) || 0;
+  const cuentaEnc = document.getElementById('sobdif_cuenta_enc').value;
+  const efOrigen = document.getElementById('sobdif_ef_origen').value;
+  const destMio = document.getElementById('sobdif_destino_mio').value;
+  const prev = document.getElementById('sobdif_preview');
+  if (!prev) return;
+
+  if (!monto || !cuentaEnc || !efOrigen || !destMio) {
+    prev.style.display = 'none';
+    prev.innerHTML = '';
+    return;
+  }
+
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+  const saldoEnc = encargoSaldo(enc);
+  const saldoEf = getSaldoActual(efOrigen);
+  const saldoDest = getSaldoActual(destMio);
+
+  const colorEncNuevo = (saldoEnc - monto) < 0 ? 'var(--red)' : 'var(--blue)';
+  const colorEfNuevo = (saldoEf - monto) < 0 ? 'var(--red)' : 'var(--text2)';
+
+  let html = `<div style="font-size:10px;color:var(--purple);font-weight:700;letter-spacing:.8px;margin-bottom:7px;text-transform:uppercase;">Lo que va a pasar:</div>`;
+
+  if (gastoReal > 0) {
+    html += `<span style="color:var(--text3);">🧾 Gasto real registrado: ${fmt(gastoReal)} (quedará como nota)</span><br>`;
+  }
+
+  html += `<span style="color:${colorEncNuevo};">📋 Encargo ${enc.nombre}: ${fmt(saldoEnc)} → ${fmt(saldoEnc - monto)}</span><br>`;
+  html += `<span style="color:${colorEfNuevo};">💵 ${fuenteLabel(efOrigen)}: ${fmt(saldoEf)} → ${fmt(saldoEf - monto)}</span><span style="color:var(--text3);font-size:9px;"> · efectivo entregado a tu mamá</span><br>`;
+  html += `<span style="color:var(--accent);">📱 ${fuenteLabel(destMio)}: ${fmt(saldoDest)} → ${fmt(saldoDest + monto)}</span>`;
+  html += `<span style="background:rgba(176,144,240,.18);color:var(--purple);font-size:9px;padding:1px 6px;border-radius:8px;margin-left:5px;font-weight:600;">intercambio · no ingreso</span>`;
+
+  if ((saldoEnc - monto) < 0) {
+    html += `<br><span style="color:var(--red);font-size:10px;">⚠ El monto supera el saldo del encargo</span>`;
+  }
+  if ((saldoEf - monto) < 0) {
+    html += `<br><span style="color:var(--red);font-size:10px;">⚠ No tenés suficiente en ${fuenteLabel(efOrigen)}</span>`;
+  }
+
+  prev.innerHTML = html;
+  prev.style.display = 'block';
+}
+
+function confirmarSobranteDiferencia() {
+  const monto = parseMoney(document.getElementById('sobdif_monto').value) || 0;
+  const gastoReal = parseMoney(document.getElementById('sobdif_gasto_real').value) || 0;
+  const cuentaEnc = document.getElementById('sobdif_cuenta_enc').value;
+  const efOrigen = document.getElementById('sobdif_ef_origen').value;
+  const destMio = document.getElementById('sobdif_destino_mio').value;
+  const desc = document.getElementById('sobdif_desc').value.trim();
+  const fecha = document.getElementById('sobdif_fecha').value || hoy();
+
+  if (!monto) { toast('Ingresá el monto del sobrante', 'err'); return; }
+  if (!cuentaEnc) { toast('Indicá en qué cuenta estaba la plata del encargo', 'err'); return; }
+  if (!efOrigen) { toast('Indicá de dónde sacás el efectivo para entregar', 'err'); return; }
+  if (!destMio) { toast('Indicá a cuál de tus cuentas entra el sobrante digital', 'err'); return; }
+  if (!desc) { toast('Agregá una descripción', 'err'); return; }
+
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+
+  const saldoEnc = encargoSaldo(enc);
+  if (monto > saldoEnc) {
+    toast(`El encargo solo tiene ${fmt(saldoEnc)}`, 'err'); return;
+  }
+
+  const saldoEf = getSaldoActual(efOrigen);
+  if (monto > saldoEf) {
+    toast(`${fuenteLabel(efOrigen)} solo tiene ${fmt(saldoEf)}`, 'err'); return;
+  }
+
+  // ── 1. Registrar salida del sobrante en el encargo ─────────────────
+  if (!enc.movimientos) enc.movimientos = [];
+  const notaEnc = gastoReal > 0
+    ? `Gasto real: ${fmt(gastoReal)} · Sobrante de ${fmt(monto)} devuelto en efectivo — el digital pasa a ${fuenteLabel(destMio)}`
+    : `Sobrante de ${fmt(monto)}: devolví efectivo, el digital pasa a ${fuenteLabel(destMio)}`;
+  enc.movimientos.push({
+    id: uid(),
+    tipo: 'salida',
+    desc: desc,
+    monto,
+    cuenta: cuentaEnc,
+    fecha,
+    nota: notaEnc,
+    _tipoEspecial: 'sobrante-intercambio',
+    ts: Date.now()
+  });
+
+  // ── 2. Mi efectivo baja (se lo entregué físicamente) ───────────────
+  descontarFuente(efOrigen, monto);
+
+  // ── 3. El digital sobrante del encargo pasa a mi cuenta ────────────
+  //    IMPORTANTE: sumarFuente actualiza el saldo de la cuenta,
+  //    pero NO lo registramos como "entrada" en S.movimientos
+  //    porque no es un ingreso — es un intercambio de forma (digital ↔ efectivo).
+  sumarFuente(destMio, monto);
+
+  // ── 4. Registrar en movimientos generales como INTERCAMBIO ─────────
+  //    Usamos tipo 'transferencia' para que no sume al patrimonio como ingreso.
+  //    Es equivalente a mover plata entre cuentas propias.
+  if (!S.movimientos) S.movimientos = [];
+
+  // Salida de efectivo (lo entregué a otra persona)
+  S.movimientos.push({
+    id: uid(),
+    tipo: 'salida',
+    fuente: efOrigen,
+    monto,
+    fecha,
+    desc: desc + ' — entregué efectivo (sobrante encargo ' + enc.nombre + ')',
+    _tipoEspecial: 'sobrante-intercambio'
+  });
+
+  // Movimiento en la cuenta destino — tipo 'transferencia' (no ingreso)
+  // Así aparece en el historial de esa cuenta pero no infla los ingresos del mes.
+  S.movimientos.push({
+    id: uid(),
+    tipo: 'transferencia',
+    fuente: destMio,
+    monto,
+    fecha,
+    desc: desc + ' — sobrante digital de encargo ' + enc.nombre + ' (intercambio, no ingreso)',
+    _tipoEspecial: 'sobrante-intercambio'
+  });
+
+  save();
+  closeSheet('sobrante-diferencia');
+  abrirEncargoDetalle(encargoActualId);
+  toast(`Listo · Encargo −${fmt(monto)} · Efectivo −${fmt(monto)} · ${fuenteLabel(destMio)} +${fmt(monto)} (no como ingreso)`, 'ok', 5000);
 }
 
 
@@ -15566,6 +15834,10 @@ document.addEventListener('DOMContentLoaded',function(){
   // Compra TC (sheet de tarjetas, no de encargos — el sheet de encargos tiene su propio listener)
   const btnCompraTC=document.getElementById('btn-confirmar-compra-tc-tarjetas');
   if(btnCompraTC)btnCompraTC.addEventListener('click',confirmarCompraTC);
+
+  // Sobrante con devolución en efectivo
+  const btnSobDif = document.getElementById('btn-confirmar-sobrante-diferencia');
+  if (btnSobDif) btnSobDif.addEventListener('click', confirmarSobranteDiferencia);
 
   // Pagar TC
   const btnPagarTC=document.getElementById('btn-confirmar-pagar-tc');

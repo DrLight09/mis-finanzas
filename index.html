@@ -5197,17 +5197,69 @@ function renderAnalisis(){
   const barEl=document.getElementById('an-grafico-barras');
   const labEl=document.getElementById('an-grafico-labels');
   if(barEl&&labEl){
-    barEl.innerHTML=hoy12.map(({k,total})=>{
-      const pct=Math.max(total>0?Math.round((total/maxBar)*100):0,2);
-      const esMesActual=k===mes;
-      const col=esMesActual?'var(--accent)':'var(--bg3)';
-      const border=esMesActual?'none':'1px solid var(--border2)';
-      return`<div style="flex:1;background:${col};border:${border};border-radius:4px 4px 0 0;height:${pct}%;min-height:${total>0?4:2}px;transition:height .4s;" title="${fmt(total)}"></div>`;
-    }).join('');
-    labEl.innerHTML=hoy12.map(({label,k})=>{
-      const esMesActual=k===mes;
-      return`<div style="flex:1;text-align:center;font-size:8px;font-family:'DM Mono',monospace;color:${esMesActual?'var(--accent)':'var(--text3)'};font-weight:${esMesActual?'700':'400'};">${label}</div>`;
-    }).join('');
+    // Tooltip para gráfica de barras
+    let _barTooltipEl = document.getElementById('_bar-chart-tooltip');
+    if(!_barTooltipEl){
+      _barTooltipEl = document.createElement('div');
+      _barTooltipEl.id = '_bar-chart-tooltip';
+      _barTooltipEl.style.cssText = 'display:none;position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% + 8px);background:var(--bg4);border:1px solid var(--border2);border-radius:10px;padding:9px 13px;font-family:\'DM Mono\',monospace;font-size:12px;white-space:nowrap;z-index:10;pointer-events:none;box-shadow:0 4px 18px rgba(0,0,0,.45);min-width:140px;text-align:center;';
+      const barWrapper = barEl.parentElement;
+      if(barWrapper){ barWrapper.style.position='relative'; barWrapper.appendChild(_barTooltipEl); }
+    }
+
+    const MESES_FULL=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+    let _barSelIdx = -1;
+    function _renderBars(selIdx){
+      barEl.innerHTML = hoy12.map(({k,total},idx)=>{
+        const pct=Math.max(total>0?Math.round((total/maxBar)*100):0,2);
+        const esMesActual=k===mes;
+        const esSel = idx===selIdx;
+        let col, border;
+        if(esSel){ col='var(--blue)'; border='none'; }
+        else if(esMesActual){ col='var(--accent)'; border='none'; }
+        else { col='var(--bg3)'; border='1px solid var(--border2)'; }
+        return`<div data-bar-idx="${idx}" style="flex:1;background:${col};border:${border};border-radius:4px 4px 0 0;height:${pct}%;min-height:${total>0?4:2}px;transition:all .2s;cursor:pointer;"></div>`;
+      }).join('');
+      labEl.innerHTML = hoy12.map(({label,k},idx)=>{
+        const esMesActual=k===mes;
+        const esSel = idx===selIdx;
+        let color, weight;
+        if(esSel){ color='var(--blue)'; weight='700'; }
+        else if(esMesActual){ color='var(--accent)'; weight='700'; }
+        else { color='var(--text3)'; weight='400'; }
+        return`<div style="flex:1;text-align:center;font-size:8px;font-family:'DM Mono',monospace;color:${color};font-weight:${weight};">${label}</div>`;
+      }).join('');
+      // Re-attach listeners después de innerHTML
+      barEl.querySelectorAll('[data-bar-idx]').forEach(el=>{
+        el.addEventListener('click', function(e){
+          e.stopPropagation();
+          const idx = parseInt(this.dataset.barIdx);
+          if(_barSelIdx===idx){ _barSelIdx=-1; _barTooltipEl.style.display='none'; _renderBars(-1); return; }
+          _barSelIdx = idx;
+          const {k,label,total} = hoy12[idx];
+          const [ay,am] = k.split('-');
+          const mesNom = MESES_FULL[parseInt(am)-1];
+          const esMesActual = k===mes;
+          _barTooltipEl.innerHTML = `<div style="font-size:10px;color:var(--text3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.8px;">${mesNom} ${ay}${esMesActual?' · Este mes':''}</div><div style="font-size:15px;font-weight:600;color:var(--red);">${total>0?fmt(total):'Sin gastos'}</div>${total>0?`<div style="margin-top:5px;height:2px;background:var(--border);border-radius:2px;overflow:hidden;"><div style="height:100%;width:${Math.round(total/maxBar*100)}%;background:var(--blue);border-radius:2px;"></div></div>`:''}`;
+          _barTooltipEl.style.display = 'block';
+          _renderBars(idx);
+          // Posicionar tooltip sobre la barra tocada
+          const barRect = this.getBoundingClientRect();
+          const wrapRect = barEl.parentElement.getBoundingClientRect();
+          const barCenterX = barRect.left - wrapRect.left + barRect.width/2;
+          _barTooltipEl.style.left = Math.max(70, Math.min(wrapRect.width-70, barCenterX)) + 'px';
+        });
+      });
+    }
+    _renderBars(-1);
+
+    // Cerrar tooltip al tocar fuera
+    document.addEventListener('click', function _barOutside(e){
+      if(!barEl.contains(e.target) && !_barTooltipEl.contains(e.target)){
+        _barSelIdx=-1; _barTooltipEl.style.display='none'; _renderBars(-1);
+      }
+    }, {passive:true});
   }
 
   // ── Ranking meses ──────────────────────────────────────────────────────
@@ -5385,28 +5437,100 @@ function renderAnalisis(){
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
           <div>
             <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;">Últimos ${hist.length} días</div>
-            <div style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;margin-top:2px;">${fmt(ultimo2.valor)}</div>
+            <div id="_patri-display-val" style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;margin-top:2px;">${fmt(ultimo2.valor)}</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:${diffColor};">${diffTotal>=0?'+':''}${fmt(diffTotal)}</div>
-            <div style="font-size:10px;color:${diffColor};font-family:'DM Mono',monospace;">${diffPct>=0?'+':''}${diffPct.toFixed(1)}%</div>
+            <div id="_patri-display-diff" style="font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:${diffColor};">${diffTotal>=0?'+':''}${fmt(diffTotal)}</div>
+            <div id="_patri-display-pct" style="font-size:10px;color:${diffColor};font-family:'DM Mono',monospace;">${diffPct>=0?'+':''}${diffPct.toFixed(1)}%</div>
           </div>
         </div>
-        <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:90px;display:block;">
-          <defs>
-            <linearGradient id="pgGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0.25"/>
-              <stop offset="100%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <path d="${areaPath}" fill="url(#pgGrad)"/>
-          <polyline points="${polyline}" fill="none" stroke="${diffColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="3" fill="${diffColor}"/>
-        </svg>
+        <div style="position:relative;cursor:crosshair;">
+          <svg id="_patri-svg" viewBox="0 0 ${W} ${H}" style="width:100%;height:90px;display:block;">
+            <defs>
+              <linearGradient id="pgGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="${areaPath}" fill="url(#pgGrad)"/>
+            <polyline points="${polyline}" fill="none" stroke="${diffColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <line id="_patri-cursor-line" x1="0" y1="0" x2="0" y2="${H}" stroke="rgba(255,255,255,.2)" stroke-width="1" stroke-dasharray="3,3" style="display:none;"/>
+            <circle id="_patri-cursor-dot" cx="0" cy="0" r="4.5" fill="${diffColor}" stroke="var(--bg2)" stroke-width="2" style="display:none;"/>
+            ${pts.map(([px,py],i)=>`<rect data-pi="${i}" x="${px-((W/(hist.length||1))/2)}" y="0" width="${W/(hist.length||1)}" height="${H}" fill="transparent" style="cursor:pointer;"/>`).join('')}
+          </svg>
+        </div>
         <div style="display:flex;justify-content:space-between;margin-top:4px;">
-          <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${primero.fecha.slice(5)}</span>
-          <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimo2.fecha.slice(5)}</span>
+          <span id="_patri-label-inicio" style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${primero.fecha.slice(5)}</span>
+          <span id="_patri-label-fin" style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimo2.fecha.slice(5)}</span>
         </div>`;
+
+      // Interactividad de la gráfica de línea
+      (function(){
+        const svg = document.getElementById('_patri-svg');
+        const cursorLine = document.getElementById('_patri-cursor-line');
+        const cursorDot = document.getElementById('_patri-cursor-dot');
+        const displayVal = document.getElementById('_patri-display-val');
+        const displayDiff = document.getElementById('_patri-display-diff');
+        const displayPct = document.getElementById('_patri-display-pct');
+        const labelInicio = document.getElementById('_patri-label-inicio');
+        const labelFin = document.getElementById('_patri-label-fin');
+        if(!svg||!cursorLine||!cursorDot) return;
+
+        // _pts, _hist, _diffColor disponibles por closure
+        const _pts = pts;
+        const _hist = hist;
+        const _dc = diffColor;
+
+        function _showPoint(i){
+          const [px,py] = _pts[i];
+          const punto = _hist[i];
+          cursorLine.setAttribute('x1', px); cursorLine.setAttribute('x2', px);
+          cursorLine.style.display='';
+          cursorDot.setAttribute('cx', px); cursorDot.setAttribute('cy', py);
+          cursorDot.style.display='';
+          displayVal.textContent = fmt(punto.valor);
+          // Delta respecto al punto anterior
+          const prev = i>0 ? _hist[i-1] : null;
+          const delta = prev ? punto.valor - prev.valor : 0;
+          const deltaColor = delta>=0 ? 'var(--accent)' : 'var(--red)';
+          displayDiff.style.color = deltaColor;
+          displayPct.style.color = deltaColor;
+          if(prev){
+            displayDiff.textContent = (delta>=0?'+':'')+fmt(delta);
+            const deltaPct = prev.valor>0?(delta/prev.valor*100):0;
+            displayPct.textContent = (deltaPct>=0?'+':'')+deltaPct.toFixed(1)+'% vs día ant.';
+          } else {
+            displayDiff.textContent = '—';
+            displayPct.textContent = 'Primer registro';
+          }
+          // Fecha en los labels
+          labelInicio.textContent = punto.fecha ? punto.fecha.slice(5)+' '+punto.fecha.slice(0,4) : '';
+          labelFin.textContent = '';
+        }
+
+        function _resetDisplay(){
+          cursorLine.style.display='none';
+          cursorDot.style.display='none';
+          displayVal.textContent = fmt(ultimo2.valor);
+          displayDiff.style.color = _dc;
+          displayPct.style.color = _dc;
+          displayDiff.textContent = (diffTotal>=0?'+':'')+fmt(diffTotal);
+          displayPct.textContent = (diffPct>=0?'+':'')+diffPct.toFixed(1)+'%';
+          labelInicio.textContent = primero.fecha.slice(5);
+          labelFin.textContent = ultimo2.fecha.slice(5);
+        }
+
+        // Zonas invisibles por punto
+        svg.querySelectorAll('[data-pi]').forEach(rect=>{
+          const i = parseInt(rect.dataset.pi);
+          rect.addEventListener('click', function(e){ e.stopPropagation(); _showPoint(i); });
+          rect.addEventListener('touchstart', function(e){ e.preventDefault(); _showPoint(i); }, {passive:false});
+          rect.addEventListener('mouseenter', function(){ _showPoint(i); });
+        });
+        svg.addEventListener('mouseleave', _resetDisplay);
+        document.addEventListener('click', function(e){ if(!svg.contains(e.target)) _resetDisplay(); }, {passive:true});
+      })();
+
     }
   }
 }

@@ -5267,22 +5267,40 @@ function renderAnalisis(){
       const esMesActual=k===mes;
       const col=esMesActual?'var(--accent)':'var(--bg3)';
       const border=esMesActual?'none':'1px solid var(--border2)';
-      return`<div data-bar-idx="${idx}" data-bar-label="${label}" data-bar-val="${total}" style="flex:1;background:${col};border:${border};border-radius:4px 4px 0 0;height:${pct}%;min-height:${total>0?4:2}px;transition:height .4s;cursor:pointer;position:relative;" onclick="_mostrarTooltipBarra(this,event)"></div>`;
+      return`<div data-bar-label="${label}" data-bar-val="${total}" data-bar-mes="${k}" style="flex:1;background:${col};border:${border};border-radius:4px 4px 0 0;height:${pct}%;min-height:${total>0?4:2}px;transition:height .4s;cursor:pointer;-webkit-tap-highlight-color:rgba(200,240,96,.18);"></div>`;
     }).join('');
     labEl.innerHTML=hoy12.map(({label,k})=>{
       const esMesActual=k===mes;
       return`<div style="flex:1;text-align:center;font-size:8px;font-family:'DM Mono',monospace;color:${esMesActual?'var(--accent)':'var(--text3)'};font-weight:${esMesActual?'700':'400'};">${label}</div>`;
     }).join('');
-    // Cerrar tooltip al tocar fuera
-    if(!window._barTooltipListenerAdded){
-      window._barTooltipListenerAdded=true;
-      document.addEventListener('click',function(e){
-        if(!e.target.closest('[data-bar-idx]')){
-          const tt=document.getElementById('_bar-tooltip');
-          if(tt) tt.remove();
-        }
-      });
-    }
+    // Event delegation en el contenedor — funciona para touch y click
+    barEl.ontouchstart = barEl.onclick = function(e){
+      const bar = e.target.closest('[data-bar-val]');
+      if(!bar) return;
+      const fmt2 = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
+      const label = bar.dataset.barLabel || '';
+      const val = parseFloat(bar.dataset.barVal) || 0;
+      // Limpiar tooltip previo
+      const old = document.getElementById('_bar-tt');
+      if(old){ old.remove(); if(old._lastBar === bar){ return; } }
+      if(!val) return;
+      const tt = document.createElement('div');
+      tt.id = '_bar-tt';
+      tt._lastBar = bar;
+      tt.style.cssText = 'position:fixed;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:9px 13px;font-family:\'DM Mono\',monospace;z-index:99999;pointer-events:none;box-shadow:0 4px 24px rgba(0,0,0,.8);text-align:center;min-width:90px;';
+      tt.innerHTML = `<div style="color:#888880;font-size:9px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">${label}</div><div style="color:${val>0?'#f06868':'#888880'};font-size:14px;font-weight:700;">${fmt2(val)}</div>`;
+      document.body.appendChild(tt);
+      const rect = bar.getBoundingClientRect();
+      const ttW = tt.offsetWidth || 110;
+      let left = rect.left + rect.width/2 - ttW/2;
+      if(left < 8) left = 8;
+      if(left + ttW > window.innerWidth - 8) left = window.innerWidth - ttW - 8;
+      const top = rect.top - tt.offsetHeight - 8;
+      tt.style.left = left + 'px';
+      tt.style.top = (top < 8 ? rect.bottom + 8 : top) + 'px';
+      clearTimeout(window._barTT_t);
+      window._barTT_t = setTimeout(()=>{ const t=document.getElementById('_bar-tt'); if(t) t.remove(); }, 2500);
+    };
   }
 
   // ── Ranking meses ──────────────────────────────────────────────────────
@@ -5467,25 +5485,89 @@ function renderAnalisis(){
             <div style="font-size:10px;color:${diffColor};font-family:'DM Mono',monospace;">${diffPct>=0?'+':''}${diffPct.toFixed(1)}%</div>
           </div>
         </div>
-        <div style="position:relative;">
-        <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:90px;display:block;" id="patrimonio-svg">
-          <defs>
-            <linearGradient id="pgGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0.25"/>
-              <stop offset="100%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <path d="${areaPath}" fill="url(#pgGrad)"/>
-          <polyline points="${polyline}" fill="none" stroke="${diffColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="3" fill="${diffColor}"/>
-          ${pts.map(([px,py],i)=>`<circle cx="${px}" cy="${py}" r="10" fill="transparent" data-fecha="${hist[i].fecha}" data-valor="${hist[i].valor}" class="patrimonio-pt" style="cursor:pointer;" onclick="_mostrarTooltipPatrimonio(this,event)"/>`).join('')}
-        </svg>
-        <div id="_pat-tooltip" style="display:none;position:absolute;background:#1e1e1e;border:1px solid var(--border2);border-radius:8px;padding:7px 10px;font-family:'DM Mono',monospace;font-size:11px;pointer-events:none;z-index:50;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.5);"></div>
+        <div id="_pat-wrap" style="position:relative;touch-action:pan-y;">
+          <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:90px;display:block;">
+            <defs>
+              <linearGradient id="pgGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="${areaPath}" fill="url(#pgGrad)"/>
+            <polyline points="${polyline}" fill="none" stroke="${diffColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle id="_pat-dot" cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="4" fill="${diffColor}"/>
+            <line id="_pat-line" x1="0" y1="0" x2="0" y2="${H}" stroke="${diffColor}" stroke-width="1" stroke-dasharray="3,3" opacity="0" style="pointer-events:none;"/>
+          </svg>
+          <div id="_pat-tt" style="display:none;position:absolute;top:0;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:8px 12px;font-family:'DM Mono',monospace;pointer-events:none;z-index:50;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.8);transform:translateX(-50%);"></div>
+          <div id="_pat-overlay" style="position:absolute;inset:0;cursor:crosshair;" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:hist[i].valor})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:4px;">
           <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${primero.fecha.slice(5)}</span>
           <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimo2.fecha.slice(5)}</span>
         </div>`;
+      // Bind touch/click on the transparent overlay
+      (function(){
+        const overlay = patriEl.querySelector('#_pat-overlay');
+        const tt = patriEl.querySelector('#_pat-tt');
+        const dot = patriEl.querySelector('#_pat-dot');
+        const vline = patriEl.querySelector('#_pat-line');
+        if(!overlay||!tt||!dot||!vline) return;
+        const ptsData = JSON.parse(overlay.dataset.pts);
+        const svgW = parseInt(overlay.dataset.w);
+        const svgH = parseInt(overlay.dataset.h);
+        const diffCol = overlay.dataset.diffcolor;
+        const fmt2 = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
+        const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+        function getClosest(clientX){
+          const rect = overlay.getBoundingClientRect();
+          const relX = (clientX - rect.left) / rect.width; // 0-1
+          const svgX = relX * svgW;
+          let best = 0, bestD = Infinity;
+          ptsData.forEach((p,i)=>{ const d=Math.abs(p.px - svgX); if(d<bestD){bestD=d;best=i;} });
+          return ptsData[best];
+        }
+        function showTT(clientX){
+          const p = getClosest(clientX);
+          if(!p) return;
+          const rect = overlay.getBoundingClientRect();
+          const relX = p.px / svgW;
+          const leftPx = relX * rect.width;
+          // Fecha bonita
+          let fechaFmt = p.fecha;
+          if(p.fecha && p.fecha.length>=10){
+            const [y,m,d] = p.fecha.slice(0,10).split('-');
+            fechaFmt = `${parseInt(d)} ${MESES[parseInt(m)-1]}`;
+          }
+          tt.innerHTML = `<div style="color:#888880;font-size:9px;margin-bottom:3px;">${fechaFmt}</div><div style="color:#f0ede8;font-size:13px;font-weight:700;">${fmt2(p.valor)}</div>`;
+          tt.style.display = 'block';
+          // Centrar horizontalmente pero sin salirse
+          const ttW = tt.offsetWidth || 100;
+          let ttLeft = leftPx;
+          const wrapW = rect.width;
+          if(ttLeft - ttW/2 < 0) ttLeft = ttW/2;
+          if(ttLeft + ttW/2 > wrapW) ttLeft = wrapW - ttW/2;
+          tt.style.left = ttLeft + 'px';
+          tt.style.top = '2px';
+          // Mover punto activo
+          dot.setAttribute('cx', p.px / svgW * svgW);
+          dot.setAttribute('cy', p.py);
+          dot.setAttribute('cx', p.px);
+          // Línea vertical
+          vline.setAttribute('x1', p.px); vline.setAttribute('x2', p.px);
+          vline.setAttribute('opacity','0.5');
+        }
+        function hideTT(){
+          tt.style.display='none';
+          vline.setAttribute('opacity','0');
+          // Restaurar dot al último punto
+          const last = ptsData[ptsData.length-1];
+          dot.setAttribute('cx',last.px); dot.setAttribute('cy',last.py);
+        }
+        overlay.addEventListener('touchstart', function(e){ e.stopPropagation(); showTT(e.touches[0].clientX); }, {passive:true});
+        overlay.addEventListener('touchmove', function(e){ showTT(e.touches[0].clientX); }, {passive:true});
+        overlay.addEventListener('touchend', function(){ clearTimeout(window._patTT_t); window._patTT_t=setTimeout(hideTT,2000); }, {passive:true});
+        overlay.addEventListener('click', function(e){ showTT(e.clientX); clearTimeout(window._patTT_t); window._patTT_t=setTimeout(hideTT,2500); });
+      })();
     }
   }
 }
@@ -13723,15 +13805,14 @@ document.addEventListener('focusin', function(e){
     ];
 
     el.innerHTML = `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer;" onclick="_mostrarTooltipProyHeader(this,event)" title="Toca para más info">
-        <span style="font-size:12px;color:var(--text2);">${usandoFlujo ? 'Flujo neto mensual' : 'Tendencia mensual'}</span>
+      <div id="_proy-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer;padding:2px 0;" data-tendencia="${tendenciaMensual}" data-usando-flujo="${usandoFlujo?'1':'0'}">
+        <span style="font-size:12px;color:var(--text2);">${usandoFlujo ? 'Flujo neto mensual' : 'Tendencia mensual'}<span style="font-size:9px;color:var(--text3);margin-left:5px;">ⓘ</span></span>
         <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${col};">${tendenciaMensual>=0?'+':''}${fmt(tendenciaMensual)}</span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:relative;">
+      <div id="_proy-cards-wrap" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:relative;">
         ${proyCards.map(({lbl,key,val,meses})=>{
           const diff = val - patrimonio;
           const pct = patrimonio > 0 ? ((diff/patrimonio)*100).toFixed(1) : '0.0';
-          const signo = diff >= 0 ? '+' : '';
           return`<div
             data-proy-key="${key}"
             data-proy-lbl="${lbl}"
@@ -13739,176 +13820,42 @@ document.addEventListener('focusin', function(e){
             data-proy-diff="${diff}"
             data-proy-pct="${pct}"
             data-proy-meses="${meses}"
-            data-proy-tendencia="${tendenciaMensual}"
-            onclick="_mostrarTooltipProyCard(this,event)"
-            style="text-align:center;background:var(--bg3);border-radius:8px;padding:10px 6px;cursor:pointer;transition:background .15s;-webkit-tap-highlight-color:transparent;"
-            ontouchstart="this.style.background='var(--bg4)'" ontouchend="this.style.background='var(--bg3)'">
+            style="text-align:center;background:var(--bg3);border-radius:8px;padding:10px 6px;cursor:pointer;-webkit-tap-highlight-color:rgba(200,240,96,.12);transition:background .12s;">
             <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:4px;">${key}</div>
             <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${val>=patrimonio?'var(--accent)':'var(--red)'};">${fmt(Math.max(0,val))}</div>
           </div>`;
         }).join('')}
-        <div id="_proy-tooltip" style="display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#1e1e1e;border:1px solid var(--border2);border-radius:10px;padding:10px 13px;font-family:'DM Mono',monospace;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,.6);"></div>
+        <div id="_proy-tt" style="display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#1a1a1a;border:1px solid #383838;border-radius:10px;padding:10px 13px;font-family:'DM Mono',monospace;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,.7);"></div>
       </div>
       ${deudaInfo}
       <div style="font-size:10px;color:var(--text3);margin-top:8px;font-family:'DM Mono',monospace;">${usandoFlujo ? 'Basado en flujo de '+mesesConDatos.length+' mes(es) reciente(s)' : 'Basado en los últimos '+hist.length+' días'} · estimación</div>`;
+
+    // Bind listeners DESPUÉS de setear innerHTML
+    (function(){
+      const fmt2 = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
+      const tt = el.querySelector('#_proy-tt');
+      if(!tt) return;
+      function showTT(html){ tt.innerHTML=html; tt.style.display='block'; clearTimeout(window._proyTT_t); window._proyTT_t=setTimeout(()=>{ tt.style.display='none'; },3000); }
+      // Header (flujo neto)
+      const header = el.querySelector('#_proy-header');
+      if(header){
+        function bindHeader(ev){ ev.stopPropagation(); const t=parseFloat(header.dataset.tendencia)||0; const pos=t>=0; showTT(`<div style="font-size:10px;color:#888880;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">¿Qué significa esto?</div><div style="font-size:11px;color:#f0ede8;line-height:1.5;">Promedio mensual de <b style="color:${pos?'#c8f060':'#f06868'}">ingresos − gastos</b>.</div><div style="font-size:9px;color:#6a6a60;margin-top:4px;">${pos?'Estás ahorrando ~'+fmt2(t)+' por mes en promedio.':'Estás gastando más de lo que entra (~'+fmt2(Math.abs(t))+'/mes).'}</div>`); }
+        header.addEventListener('click', bindHeader);
+        header.addEventListener('touchend', function(e){ e.preventDefault(); bindHeader(e); });
+      }
+      // Cards 3m/6m/12m
+      const wrap = el.querySelector('#_proy-cards-wrap');
+      if(wrap){
+        function bindCard(card, e){ e.stopPropagation(); const lbl=card.dataset.proyLbl; const val=parseFloat(card.dataset.proyVal)||0; const diff=parseFloat(card.dataset.proyDiff)||0; const pct=card.dataset.proyPct; const meses=card.dataset.proyMeses; const col2=diff>=0?'#c8f060':'#f06868'; const ico=diff>=0?'↑':'↓'; showTT(`<div style="font-size:10px;color:#888880;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Proyección a ${lbl}</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size:14px;font-weight:700;color:#f0ede8;">${fmt2(Math.max(0,val))}</span><span style="font-size:11px;font-weight:600;color:${col2};">${ico} ${diff>=0?'+':''}${fmt2(diff)}</span></div><div style="font-size:9px;color:#6a6a60;">${diff>=0?'+':''}${pct}% vs hoy · acumulado ${meses} meses</div>`); card.style.background='var(--bg4)'; setTimeout(()=>{ card.style.background='var(--bg3)'; },200); }
+        wrap.addEventListener('click', function(e){ const card=e.target.closest('[data-proy-key]'); if(card) bindCard(card,e); });
+        wrap.addEventListener('touchend', function(e){ const card=e.target.closest('[data-proy-key]'); if(card){ e.preventDefault(); bindCard(card,e); } });
+      }
+      // Cerrar al tocar fuera
+      document.addEventListener('click', function(e){ if(!e.target.closest('#proyeccion-card')){ tt.style.display='none'; } });
+    })();
   }
   }
 
-  /* ====================================================
-     TOOLTIP HELPERS — gráficas interactivas
-  ==================================================== */
-
-  // ── Tooltip barras de gastos por mes ──────────────────────────────────
-  window._mostrarTooltipBarra = function(el, e) {
-    e.stopPropagation();
-    const fmt = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
-    const label = el.dataset.barLabel || '';
-    const val = parseFloat(el.dataset.barVal) || 0;
-    // Quitar tooltip anterior
-    const old = document.getElementById('_bar-tooltip');
-    if(old) old.remove();
-    if(!val) return;
-    const tt = document.createElement('div');
-    tt.id = '_bar-tooltip';
-    tt.style.cssText = 'position:fixed;background:#1e1e1e;border:1px solid #303030;border-radius:8px;padding:8px 12px;font-family:\'DM Mono\',monospace;font-size:11px;z-index:9999;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.7);white-space:nowrap;';
-    tt.innerHTML = `<div style="color:#888880;font-size:9px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:3px;">${label}</div><div style="color:#f06868;font-size:13px;font-weight:600;">${fmt(val)}</div>`;
-    document.body.appendChild(tt);
-    // Posicionar sobre la barra
-    const rect = el.getBoundingClientRect();
-    const ttW = 120;
-    let left = rect.left + rect.width/2 - ttW/2;
-    if(left < 8) left = 8;
-    if(left + ttW > window.innerWidth - 8) left = window.innerWidth - ttW - 8;
-    tt.style.left = left + 'px';
-    tt.style.top = (rect.top - 60) + 'px';
-    tt.style.width = ttW + 'px';
-    tt.style.textAlign = 'center';
-    // Esconder después de 2.5s
-    clearTimeout(window._barTTTimeout);
-    window._barTTTimeout = setTimeout(()=>{ const t=document.getElementById('_bar-tooltip'); if(t)t.remove(); }, 2500);
-  };
-
-  // ── Tooltip puntos de línea de patrimonio ─────────────────────────────
-  window._mostrarTooltipPatrimonio = function(el, e) {
-    e.stopPropagation();
-    const fmt = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
-    const fecha = el.dataset.fecha || '';
-    const valor = parseFloat(el.dataset.valor) || 0;
-    const tt = document.getElementById('_pat-tooltip');
-    if(!tt) return;
-    // Formatear fecha bonita
-    let fechaFmt = fecha;
-    if(fecha.length >= 10){
-      const [y,m,d] = fecha.slice(0,10).split('-');
-      const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-      fechaFmt = `${parseInt(d)} ${MESES[parseInt(m)-1]} ${y}`;
-    }
-    tt.innerHTML = `<div style="color:#888880;font-size:9px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;">${fechaFmt}</div><div style="color:#f0ede8;font-size:13px;font-weight:600;">${fmt(valor)}</div>`;
-    // Calcular posición relativa al SVG
-    const svg = document.getElementById('patrimonio-svg');
-    if(!svg) return;
-    const svgRect = svg.getBoundingClientRect();
-    const ptRect = el.getBoundingClientRect();
-    const cx = ptRect.left + ptRect.width/2 - svgRect.left;
-    const pctX = cx / svgRect.width;
-    tt.style.display = 'block';
-    // Actualizar posición izquierda según el punto
-    const parentW = tt.parentElement.offsetWidth || 300;
-    const ttW = Math.min(150, parentW);
-    let left = cx - ttW/2;
-    if(left < 0) left = 0;
-    if(left + ttW > parentW) left = parentW - ttW;
-    tt.style.left = left + 'px';
-    tt.style.width = ttW + 'px';
-    // Mostrar encima del punto
-    const svgH = svgRect.height;
-    const ptRelY = ptRect.top + ptRect.height/2 - svgRect.top;
-    if(ptRelY < svgH/2) {
-      tt.style.top = (ptRelY + 14) + 'px';
-      tt.style.bottom = 'auto';
-    } else {
-      tt.style.top = 'auto';
-      tt.style.bottom = (svgH - ptRelY + 8) + 'px';
-    }
-    // Resaltar punto activo
-    document.querySelectorAll('.patrimonio-pt').forEach(p=>{
-      p.setAttribute('r','10');
-      p.style.fill='transparent';
-    });
-    const svgEl = svg.querySelector(`circle.patrimonio-pt[data-fecha="${fecha}"]`);
-    if(svgEl){ svgEl.setAttribute('r','8'); svgEl.style.fill='rgba(200,240,96,.2)'; }
-    // Cerrar al tocar fuera
-    clearTimeout(window._patTTTimeout);
-    window._patTTTimeout = setTimeout(()=>{ tt.style.display='none'; document.querySelectorAll('.patrimonio-pt').forEach(p=>{p.setAttribute('r','10');p.style.fill='transparent';}); }, 2500);
-  };
-  document.addEventListener('click', function(e){
-    if(!e.target.closest('#an-patrimonio-chart')){
-      const tt=document.getElementById('_pat-tooltip');
-      if(tt) tt.style.display='none';
-      document.querySelectorAll('.patrimonio-pt').forEach(p=>{p.setAttribute('r','10');p.style.fill='transparent';});
-    }
-  });
-
-  // ── Tooltip cabecera proyección (flujo neto) ───────────────────────────
-  window._mostrarTooltipProyHeader = function(el, e) {
-    e.stopPropagation();
-    const fmt = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
-    const tt = document.getElementById('_proy-tooltip');
-    if(!tt) return;
-    const card = el.closest('#proyeccion-card');
-    const srcEl = card ? card.querySelector('[data-proy-tendencia]') : null;
-    const tendencia = srcEl ? parseFloat(srcEl.dataset.proyTendencia) : null;
-    if(tendencia === null) return;
-    const positivo = tendencia >= 0;
-    tt.innerHTML = `
-      <div style="font-size:10px;color:#888880;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">¿Qué es el flujo neto?</div>
-      <div style="font-size:11px;color:#f0ede8;line-height:1.5;">
-        Es el promedio mensual de <span style="color:${positivo?'#c8f060':'#f06868'}">ingresos menos gastos</span> de los últimos meses.<br>
-        <span style="color:#888880;">Valor: <b style="color:${positivo?'#c8f060':'#f06868'}">${tendencia>=0?'+':''}${fmt(tendencia)}/mes</b></span>
-      </div>
-      <div style="font-size:9px;color:#6a6a60;margin-top:5px;">${positivo?'Estás ahorrando en promedio este monto cada mes.':'En promedio estás gastando más de lo que entra cada mes.'}</div>`;
-    tt.style.display = 'block';
-    clearTimeout(window._proyTTTimeout);
-    window._proyTTTimeout = setTimeout(()=>{ tt.style.display='none'; }, 3500);
-  };
-
-  // ── Tooltip tarjetas 3m/6m/12m ────────────────────────────────────────
-  window._mostrarTooltipProyCard = function(el, e) {
-    e.stopPropagation();
-    const fmt = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
-    const tt = document.getElementById('_proy-tooltip');
-    if(!tt) return;
-    const lbl = el.dataset.proyLbl;
-    const val = parseFloat(el.dataset.proyVal) || 0;
-    const diff = parseFloat(el.dataset.proyDiff) || 0;
-    const pct = el.dataset.proyPct;
-    const meses = parseInt(el.dataset.proyMeses);
-    const signo = diff >= 0 ? '+' : '';
-    const col = diff >= 0 ? '#c8f060' : '#f06868';
-    const icon = diff >= 0 ? '↑' : '↓';
-    tt.innerHTML = `
-      <div style="font-size:10px;color:#888880;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">Proyección a ${lbl}</div>
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
-        <span style="font-size:13px;font-weight:700;color:#f0ede8;">${fmt(Math.max(0,val))}</span>
-        <span style="font-size:11px;font-weight:600;color:${col};">${icon} ${signo}${fmt(diff)}</span>
-      </div>
-      <div style="font-size:9px;color:#6a6a60;">
-        ${signo}${pct}% vs. patrimonio actual · ${meses} meses de tendencia acumulada
-      </div>`;
-    tt.style.display = 'block';
-    clearTimeout(window._proyTTTimeout);
-    window._proyTTTimeout = setTimeout(()=>{ tt.style.display='none'; }, 3000);
-    // Cerrar al tocar fuera
-    if(!window._proyTTListenerAdded){
-      window._proyTTListenerAdded = true;
-      document.addEventListener('click', function(ev){
-        if(!ev.target.closest('#proyeccion-card')){
-          const t=document.getElementById('_proy-tooltip');
-          if(t) t.style.display='none';
-        }
-      });
-    }
-  };
 
   /* ====================================================
      5. HISTORIAL CONSOLIDADO

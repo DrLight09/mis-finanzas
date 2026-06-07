@@ -8810,7 +8810,10 @@ function getMovimientosCuenta(tipo) {
     if (matchFuente) {
       const esEntrada = m.tipo === 'entrada';
       const esApertura = m.tipo === 'apertura';
-      movs.push({ tipo: esApertura ? 'apertura' : esEntrada ? 'ingreso' : 'salida_manual', fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : 'Salida manual'), monto: (esEntrada||esApertura) ? +m.monto : -m.monto, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente });
+      const esTransferencia = m.tipo === 'transferencia';
+      const tipoDisplay = esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'salida_manual';
+      const montoDisplay = (esEntrada||esApertura||esTransferencia) ? +m.monto : -m.monto;
+      movs.push({ tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : esTransferencia ? 'Intercambio' : 'Salida manual'), monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '' });
     }
   });
   // Gastos variables que usaron esta fuente
@@ -10753,7 +10756,7 @@ function _difToggle() {
 }
 
 function _difAddBenef() {
-  _difBenefs.push({ nombre: '', monto: 0 });
+  _difBenefs.push({ nombre: '', monto: 0, pagadoPorMi: false, miCuentaSalida: '', miCuentaEntrada: '' });
   _difRenderBenefs();
   _difResumen();
 }
@@ -10767,39 +10770,94 @@ function _difRemoveBenef(i) {
 function _difSetNombre(i, v) { _difBenefs[i].nombre = v; }
 function _difSetMonto(i, v)  { _difBenefs[i].monto = parseMoney(v) || 0; _difResumen(); }
 
+function _difTogglePagoYo(i) {
+  _difBenefs[i].pagadoPorMi = !(_difBenefs[i].pagadoPorMi || false);
+  if (!_difBenefs[i].pagadoPorMi) {
+    _difBenefs[i].miCuentaSalida = '';
+    _difBenefs[i].miCuentaEntrada = '';
+  }
+  _difRenderBenefs();
+  _difResumen();
+}
+
+function _difSetCuentaSalida(i, v) { _difBenefs[i].miCuentaSalida = v; _difResumen(); }
+function _difSetCuentaEntrada(i, v) { _difBenefs[i].miCuentaEntrada = v; _difResumen(); }
+
+function _difFuentesOptsHtml(selectedVal) {
+  return '<option value="">Sin especificar</option>' +
+    getFuentesSinTC().map(f => `<option value="${f.val}"${f.val === selectedVal ? ' selected' : ''}>${f.label}</option>`).join('');
+}
+
 function _difRenderBenefs() {
   const cont = document.getElementById('movenc-dif-beneficiarios');
   if (!cont) return;
-  cont.innerHTML = _difBenefs.map((b, i) => `
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-      <input type="text" placeholder="Nombre (ej: Mi tía, Yo)" value="${b.nombre}"
-        oninput="_difSetNombre(${i},this.value)"
-        style="flex:2;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
-      <input type="text" inputmode="decimal" placeholder="Monto" value="${b.monto ? (typeof fmtInput==='function'?fmtInput(b.monto):String(b.monto)) : ''}"
-        oninput="_difSetMonto(${i},this.value)"
-        style="flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--amber);font-size:13px;font-family:'DM Mono',monospace;">
-      <button type="button" onclick="_difRemoveBenef(${i})" style="padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;">&#x2715;</button>
-    </div>`).join('');
+  cont.innerHTML = _difBenefs.map((b, i) => {
+    const pagoYo = b.pagadoPorMi || false;
+    const cuentaSalida = b.miCuentaSalida || '';
+    const cuentaEntrada = b.miCuentaEntrada || '';
+    const montoFmt = b.monto ? (typeof fmtInput==='function'?fmtInput(b.monto):String(b.monto)) : '';
+    return `
+    <div style="margin-bottom:10px;background:rgba(0,0,0,.15);border-radius:var(--radius-sm);padding:8px 10px;">
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <input type="text" placeholder="Nombre (ej: Mi mamá)" value="${b.nombre}"
+          oninput="_difSetNombre(${i},this.value)"
+          style="flex:2;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
+        <input type="text" inputmode="decimal" placeholder="Monto" value="${montoFmt}"
+          oninput="_difSetMonto(${i},this.value)"
+          style="flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--amber);font-size:13px;font-family:'DM Mono',monospace;">
+        <button type="button" onclick="_difRemoveBenef(${i})" style="padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;">&#x2715;</button>
+      </div>
+      <!-- Toggle "lo pagué yo" -->
+      <button type="button" onclick="_difTogglePagoYo(${i})"
+        style="width:100%;padding:6px 10px;border-radius:var(--radius-sm);border:1.5px solid ${pagoYo?'rgba(96,176,240,.5)':'rgba(96,176,240,.2)'};background:${pagoYo?'rgba(96,176,240,.12)':'transparent'};color:${pagoYo?'var(--blue)':'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;display:flex;align-items:center;gap:7px;margin-bottom:${pagoYo?'8px':'0'};">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1H0zm0 3h16v5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm3 2a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1zm2.5 0a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1z"/></svg>
+        ${pagoYo ? '✓ Lo pagué yo (de mi cuenta)' : 'Lo pagué yo (de mi cuenta)'}
+      </button>
+      ${pagoYo ? `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 0 2px;">
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">De mi cuenta (sale)</div>
+          <div class="select-wrap"><select onchange="_difSetCuentaSalida(${i},this.value)" style="font-size:12px;padding:7px 10px;">${_difFuentesOptsHtml(cuentaSalida)}</select></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--accent);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Y recupero en (entra)</div>
+          <div class="select-wrap"><select onchange="_difSetCuentaEntrada(${i},this.value)" style="font-size:12px;padding:7px 10px;">${_difFuentesOptsHtml(cuentaEntrada)}</select></div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--blue);margin-top:5px;font-family:'DM Mono',monospace;opacity:.8;">
+        ↔ Intercambio: yo pago ${b.monto>0?fmt(b.monto):'?'} de mi cuenta, y recupero ese monto del encargo a la cuenta que elijo.
+      </div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 function _difResumen() {
   const el = document.getElementById('movenc-dif-resumen');
   if (!el) return;
   const realEl  = document.getElementById('movenc_dif_real');
-  const dijoEl  = document.getElementById('movenc_monto'); // lo que dijo = monto principal
+  const dijoEl  = document.getElementById('movenc_monto');
   const dijo    = dijoEl  ? (parseMoney(dijoEl.value)  || 0) : 0;
   const real    = realEl  ? (parseMoney(realEl.value)  || 0) : 0;
   const margen  = dijo - real;
 
   if (!dijo && !real) { el.textContent = ''; _difActualizarMiCuenta(false); return; }
 
-  let html = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>  Real: <span style="color:var(--text2)">${fmt(real)}</span>  Margen: <span style="color:${margen>=0?'var(--accent)':'var(--red)'}">${margen>=0?'+':''}${fmt(margen)}</span>`;
+  let html = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>  Real: <span style="color:var(--text2)">${fmt(real)}</span>  Margen: <span style="color:${margen>=0?'var(--accent)':'var(--red)'}">+${fmt(margen)}</span>`;
 
-  let sinAsignar = margen; // Por defecto todo el margen es "mío"
+  // Separar benefs normales de los "pagados por mí"
+  const benefsNormales = _difBenefs.filter(b => !b.pagadoPorMi);
+  const benefsYoPague  = _difBenefs.filter(b => b.pagadoPorMi);
+  const asignadoNormal = benefsNormales.reduce((a, b) => a + (b.monto || 0), 0);
+  const asignadoYo     = benefsYoPague.reduce((a, b) => a + (b.monto || 0), 0);
+
+  let sinAsignar = margen;
   if (_difBenefs.length && margen > 0) {
-    const asignado = _difBenefs.reduce((a, b) => a + (b.monto || 0), 0);
-    sinAsignar = margen - asignado;
-    html += `<br>Asignado: <span style="color:var(--text2)">${fmt(asignado)}</span>  `;
+    const totalAsignado = asignadoNormal + asignadoYo;
+    sinAsignar = margen - totalAsignado;
+    html += `<br>Asignado: <span style="color:var(--text2)">${fmt(totalAsignado)}</span>  `;
+    if (asignadoYo > 0) {
+      html += `<span style="color:var(--blue)">Intercambio tuyo: ${fmt(asignadoYo)}</span>  `;
+    }
     if (Math.abs(sinAsignar) < 1) {
       html += `<span style="color:var(--accent)">&#x2713; Cuadra</span>`;
       sinAsignar = 0;
@@ -10810,9 +10868,19 @@ function _difResumen() {
       sinAsignar = 0;
     }
   }
+
+  // Mostrar detalle de cada intercambio
+  benefsYoPague.forEach(b => {
+    if (b.monto > 0) {
+      const salida  = b.miCuentaSalida  ? fuenteLabel(b.miCuentaSalida)  : '?';
+      const entrada = b.miCuentaEntrada ? fuenteLabel(b.miCuentaEntrada) : '?';
+      html += `<br><span style="color:var(--blue)">↔ ${b.nombre||'Tú'}: sale ${fmt(b.monto)} de ${salida} · entra ${fmt(b.monto)} a ${entrada}</span>`;
+    }
+  });
+
   el.innerHTML = html.replace(/\n/g, '<br>');
 
-  // Mostrar select de cuenta propia si hay margen positivo sin asignar
+  // Solo mostrar selector "¿a cuál de tus cuentas?" para el sobrante sin asignar (no intercambios)
   _difActualizarMiCuenta(margen > 0 && sinAsignar > 0.5);
 }
 
@@ -10829,52 +10897,108 @@ function _difActualizarMiCuenta(mostrar) {
 }
 
 function _procesarDiferencial(movimiento) {
-  // Solo guarda el diferencial en el movimiento como registro. No mueve plata.
   const difBody = document.getElementById('movenc-dif-body');
   if (!difBody || difBody.style.display === 'none') return;
   const realEl = document.getElementById('movenc_dif_real');
   const real = realEl ? (parseMoney(realEl.value) || 0) : 0;
   if (!real) return;
-  const dijo = movimiento.monto; // ya guardado = lo que dijo
+  const dijo = movimiento.monto;
   const margen = dijo - real;
   if (margen <= 0 && !_difBenefs.length) return;
 
-  const beneficiarios = _difBenefs.filter(b => b.nombre || b.monto > 0).map(b => ({ nombre: b.nombre, monto: b.monto }));
-  const asignado = beneficiarios.reduce((a, b) => a + (b.monto || 0), 0);
-  const sinAsignar = margen - asignado;
+  const fecha = movimiento.fecha || hoy();
+  if (!S.movimientos) S.movimientos = [];
 
-  // ¿Hay cuenta propia donde meter el sobrante?
+  // Separar benefs normales y los que "pagué yo"
+  const benefsNormales = _difBenefs.filter(b => !b.pagadoPorMi && (b.nombre || b.monto > 0));
+  const benefsYoPague  = _difBenefs.filter(b => b.pagadoPorMi && b.monto > 0);
+
+  const asignadoNormal = benefsNormales.reduce((a, b) => a + (b.monto || 0), 0);
+  const asignadoYo     = benefsYoPague.reduce((a, b) => a + (b.monto || 0), 0);
+  const sinAsignar     = margen - asignadoNormal - asignadoYo;
+
+  // ¿Hay cuenta propia donde meter el sobrante "libre"?
   const miCuentaSel = document.getElementById('movenc_dif_mi_cuenta');
-  const miCuenta = miCuentaSel ? miCuentaSel.value : '';
-  const yoMeQuedo = (sinAsignar > 0.5 && miCuenta) ? sinAsignar : 0;
+  const miCuenta    = miCuentaSel ? miCuentaSel.value : '';
+  const yoMeQuedo   = (sinAsignar > 0.5 && miCuenta) ? sinAsignar : 0;
+
+  // Guardar el diferencial en el movimiento para historial
+  const beneficiariosGuardados = [
+    ...benefsNormales.map(b => ({ nombre: b.nombre, monto: b.monto })),
+    ...benefsYoPague.map(b => ({
+      nombre: b.nombre, monto: b.monto,
+      pagadoPorMi: true,
+      miCuentaSalida: b.miCuentaSalida || '',
+      miCuentaEntrada: b.miCuentaEntrada || ''
+    }))
+  ];
 
   movimiento.diferencial = {
     dijo,
     real,
     margen,
-    beneficiarios,
+    beneficiarios: beneficiariosGuardados,
     miCuenta: yoMeQuedo > 0 ? miCuenta : '',
     yoMeQuedo
   };
 
-  // Si hay sobrante mío con cuenta destino → crear un ingreso real en mis cuentas
+  // 1) Sobrante libre → ingreso a mi cuenta
   if (yoMeQuedo > 0 && miCuenta) {
-    // Sumar al saldo real de la cuenta para que el balance refleje el ingreso
     sumarFuente(miCuenta, yoMeQuedo);
-    // Guardar en S.movimientos (con fuente) para que aparezca en los movimientos de Nu/Nequi/etc.
-    if (!S.movimientos) S.movimientos = [];
     S.movimientos.push({
       id: uid(),
       tipo: 'entrada',
       fuente: miCuenta,
       monto: yoMeQuedo,
-      fecha: movimiento.fecha || hoy(),
+      fecha,
       desc: 'Margen de encargo — ' + (movimiento.desc || ''),
       nota: 'Generado automáticamente por el diferencial del encargo',
       ts: Date.now()
     });
   }
+
+  // 2) Intercambios "lo pagué yo" → egreso de mi cuenta + ingreso del equivalente del encargo a mi cuenta destino
+  benefsYoPague.forEach((b, idx) => {
+    if (!b.monto || b.monto <= 0) return;
+    const cuentaSalida  = b.miCuentaSalida;
+    const cuentaEntrada = b.miCuentaEntrada;
+    const nombreBenef   = b.nombre || 'Persona';
+    const descBase      = movimiento.desc || '';
+
+    // Egreso de mi cuenta propia (le di el efectivo a la persona) — tipo transferencia, no es gasto
+    if (cuentaSalida) {
+      descontarFuente(cuentaSalida, b.monto);
+      S.movimientos.push({
+        id: uid(),
+        tipo: 'transferencia',
+        fuente: cuentaSalida,
+        _fuenteDestino: cuentaEntrada || '',
+        monto: b.monto,
+        fecha,
+        desc: `Intercambio encargo: le di a ${nombreBenef} de mi ${fuenteLabel(cuentaSalida)}`,
+        nota: 'Movimiento contable neutro — no es ingreso ni gasto. Pagué de mi bolsillo, recupero del encargo.',
+        ts: Date.now() + idx + 1
+      });
+    }
+
+    // Recupero del encargo a mi cuenta destino — tipo transferencia, no es ingreso
+    if (cuentaEntrada) {
+      sumarFuente(cuentaEntrada, b.monto);
+      S.movimientos.push({
+        id: uid(),
+        tipo: 'transferencia',
+        fuente: cuentaEntrada,
+        _fuenteDestino: cuentaSalida || '',
+        monto: b.monto,
+        fecha,
+        desc: `Intercambio encargo: recupero de ${nombreBenef} en ${fuenteLabel(cuentaEntrada)}`,
+        nota: 'Movimiento contable neutro — no es ingreso ni gasto. Equivale al efectivo que di de mi bolsillo.',
+        ts: Date.now() + idx + 2
+      });
+    }
+  });
 }
+
 
 /* ─── Diferencial en "Ya la usé" ────────────────────────────── */
 let _usarParteEncId = null;
@@ -15619,6 +15743,7 @@ document.addEventListener('DOMContentLoaded',function(){
     var items = (S.movimientos || [])
       .filter(function(m){
         if (m.tipo === 'apertura') return false;
+        if (m.tipo === 'transferencia') return false; // intercambios contables, no son ingresos ni gastos
         if (m._encMovId) return false; // generado como efecto secundario de un encargo
         var desc = (m.desc || '').toLowerCase();
         if (desc.indexOf('margen de encargo') === 0) return false;

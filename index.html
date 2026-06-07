@@ -498,15 +498,22 @@ input.movs-search-input:focus{border-color:var(--accent);}
 /* Mes dot más grande en móvil */
 .mes-dot { aspect-ratio:1; border-radius:8px; font-size:10px; min-height:36px; }
 
-/* ── HISTORIAL DE CAMBIOS (feed) ── */
-.feed-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);}
+/* ── FEED DE ACTIVIDAD (nuevo) ── */
+.feed-item{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);}
 .feed-item:last-child{border-bottom:none;}
-.feed-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;}
+.feed-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .feed-body{flex:1;min-width:0;}
-.feed-accion{font-size:13px;font-weight:600;color:var(--text);}
+.feed-titulo{font-size:13px;font-weight:500;color:var(--text);line-height:1.3;}
+.feed-sub{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.feed-monto{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;flex-shrink:0;margin-left:4px;align-self:center;}
+.feed-empty{text-align:center;padding:40px 0;font-size:13px;color:var(--text3);line-height:1.6;}
+.feed-group-header{font-size:9px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:14px 0 6px;border-bottom:1px solid var(--border);margin-bottom:2px;}
+.feed-group-header:first-child{padding-top:6px;}
+.feed-badge-fijo{display:inline-flex;align-items:center;margin-left:6px;font-size:9px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:.5px;text-transform:uppercase;color:var(--amber);background:rgba(240,184,64,.12);border:1px solid rgba(240,184,64,.3);border-radius:4px;padding:1px 5px;vertical-align:middle;line-height:1.4;}
+/* legacy — mantener compatibilidad con código existente */
+.feed-accion{font-size:13px;font-weight:500;color:var(--text);}
 .feed-meta{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;}
-.feed-monto{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;flex-shrink:0;margin-left:4px;}
-.feed-empty{text-align:center;padding:40px 0;font-size:13px;color:var(--text3);}
+
 
 /* ── BÚSQUEDA MEJORADA ── */
 .busqueda-section-title{font-size:9px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);padding:12px 0 6px;border-bottom:1px solid var(--border);margin-bottom:4px;}
@@ -859,18 +866,12 @@ input.movs-search-input:focus{border-color:var(--accent);}
 
         <!-- HISTORIAL DE CAMBIOS -->
         <div class="screen" id="screen-historial">
-          <div
-            style="display:flex;align-items:center;justify-content:space-between;">
-            <div class="sec-title" style="margin:14px 0 8px;">Actividad
-              reciente</div>
-            <button type="button" onclick="limpiarHistorial()"
-              style="font-size:10px;background:none;border:none;color:var(--text3);cursor:pointer;padding:6px;font-family:'DM Mono',monospace;">Limpiar
-              todo</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div class="sec-title" style="margin:14px 0 8px;">Actividad reciente</div>
+            <div id="feed-historial-count" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;padding:6px;"></div>
           </div>
           <div class="card" style="padding:4px 15px 8px;">
-            <div id="feed-historial"><div class="feed-empty">Aún no hay
-                actividad registrada.<br>Cada cambio que hagas aparecerá
-                aquí.</div></div>
+            <div id="feed-historial"><div class="feed-empty">Cargando actividad…</div></div>
           </div>
         </div>
 
@@ -2341,16 +2342,14 @@ input.movs-search-input:focus{border-color:var(--accent);}
       </div>
       <div class="mas-item" id="mas-historial" data-screen="historial">
         <div class="mas-item-icon"
-          style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.25);">
+          style="background:rgba(200,240,96,.1);border-color:rgba(200,240,96,.25);">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round"
-            stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><polyline
-              points="12 7 12 12 16 14" /></svg>
+            stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round"
+            stroke-linejoin="round"><path d="M3 3h18v4H3z"/><path d="M3 10h11"/><path d="M3 15h7"/><circle cx="18" cy="17" r="4"/><path d="M16 17l1.5 1.5L20 15"/></svg>
         </div>
         <div>
-          <div class="mas-item-label">Historial de cambios</div>
-          <div class="mas-item-sub" id="mas-historial-sub">Últimas acciones
-            realizadas</div>
+          <div class="mas-item-label">Actividad reciente</div>
+          <div class="mas-item-sub" id="mas-historial-sub">Todos tus movimientos</div>
         </div>
       </div>
       <div class="mas-item" id="mas-config" data-screen="config">
@@ -13830,7 +13829,7 @@ if ('serviceWorker' in navigator) {
     'screen-prestamos': 'Préstamos',
     'screen-analisis': 'Análisis',
     'screen-config': 'Configuración',
-    'screen-historial': 'Historial de cambios',
+    'screen-historial': 'Actividad reciente',
   };
   Object.entries(screenLabels).forEach(([id, label]) => {
     const el = document.getElementById(id);
@@ -15170,149 +15169,292 @@ document.addEventListener('DOMContentLoaded',function(){
 })();
 
 /* ================================================================
-   MEJORA 1 — HISTORIAL DE CAMBIOS
+   FEED DE ACTIVIDAD FINANCIERA
+   Lee directamente de S — sin localStorage — solo lectura
    ================================================================ */
 (function(){
-  const MAX_HIST = 80;
-  const KEY_HIST = 'mf_historial_v1';
+  'use strict';
 
-  function _cargarHist(){
-    try{ return JSON.parse(localStorage.getItem(KEY_HIST)||'[]'); }catch(e){ return []; }
-  }
-  function _guardarHist(arr){
-    try{ localStorage.setItem(KEY_HIST, JSON.stringify(arr.slice(0,MAX_HIST))); }catch(e){}
-  }
+  const MAX_ITEMS = 50;
 
-  // Iconos por tipo de acción
-  // SVG icons — sin emojis
-  const _SVG = {
-    gasto:   `<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`,
-    ingreso: `<svg viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`,
-    prestamo:`<svg viewBox="0 0 24 24" fill="none" stroke="#60b0f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-    abono:   `<svg viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>`,
-    ahorro:  `<svg viewBox="0 0 24 24" fill="none" stroke="#c060f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/><path d="M3 21h18"/><path d="M9 21v-4a2 2 0 0 1 4 0v4"/></svg>`,
-    transferencia:`<svg viewBox="0 0 24 24" fill="none" stroke="#60b0f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
-    gasto_fijo:`<svg viewBox="0 0 24 24" fill="none" stroke="#f0b840" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
-    editar:  `<svg viewBox="0 0 24 24" fill="none" stroke="#888880" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
-    eliminar:`<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`,
-    cajita:  `<svg viewBox="0 0 24 24" fill="none" stroke="#c060f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>`,
-    reset:   `<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.5"/></svg>`,
-    default: `<svg viewBox="0 0 24 24" fill="none" stroke="#888880" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
-  };
+  // ── SVG ICONOS ────────────────────────────────────────────────────
   const ICONOS = {
-    gasto:    { bg:'rgba(240,104,104,.15)', svg:_SVG.gasto },
-    ingreso:  { bg:'rgba(200,240,96,.15)',  svg:_SVG.ingreso },
-    prestamo: { bg:'rgba(96,176,240,.15)',  svg:_SVG.prestamo },
-    abono:    { bg:'rgba(200,240,96,.12)',  svg:_SVG.abono },
-    ahorro:   { bg:'rgba(192,96,240,.15)', svg:_SVG.ahorro },
-    transferencia:{ bg:'rgba(96,176,240,.12)', svg:_SVG.transferencia },
-    gasto_fijo:{ bg:'rgba(240,184,64,.12)', svg:_SVG.gasto_fijo },
-    editar:   { bg:'rgba(136,136,128,.12)', svg:_SVG.editar },
-    eliminar: { bg:'rgba(240,104,104,.12)', svg:_SVG.eliminar },
-    cajita:   { bg:'rgba(192,96,240,.12)', svg:_SVG.cajita },
-    reset:    { bg:'rgba(240,104,104,.12)', svg:_SVG.reset },
-    default:  { bg:'rgba(136,136,128,.1)',  svg:_SVG.default },
+    ingreso: {
+      bg: 'rgba(200,240,96,.15)',
+      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`
+    },
+    gasto: {
+      bg: 'rgba(240,104,104,.15)',
+      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`
+    },
+    prestamo: {
+      bg: 'rgba(96,176,240,.15)',
+      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#60b0f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+    },
+    abono: {
+      bg: 'rgba(200,240,96,.12)',
+      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>`
+    },
+    spotify: {
+      bg: 'rgba(30,215,96,.12)',
+      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#1ed760" stroke-width="2" stroke-linecap="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M8 14.5c2.5-1 5.5-.8 7.5.5"/><path d="M7.5 11.5c3-1.3 7-1 9.5.8"/><path d="M7 8.5c3.5-1.5 8.5-1.2 11 1"/></svg>`
+    },
+    encargo: {
+      bg: 'rgba(176,144,240,.15)',
+      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#b090f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`
+    },
+    tc: {
+      bg: 'rgba(240,184,64,.12)',
+      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0b840" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`
+    },
   };
 
-  // Formatear fecha relativa
-  function _fechaRel(ts){
-    const ahora = Date.now();
-    const diff = Math.floor((ahora - ts) / 1000);
-    if(diff < 60) return 'hace un momento';
-    if(diff < 3600) return 'hace '+Math.floor(diff/60)+'m';
-    if(diff < 86400) return 'hace '+Math.floor(diff/3600)+'h';
-    if(diff < 172800) return 'ayer';
-    const d = new Date(ts);
-    return d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
+  // ── NORMALIZAR FUENTES ─────────────────────────────────────────────
+
+  function _normMovimientos(S) {
+    return (S.movimientos || [])
+      .filter(function(m){ return m.tipo !== 'apertura'; })
+      .map(function(m){
+        return {
+          id:        'mov_' + m.id,
+          fecha:     m.fecha || '0000-00-00',
+          ts:        m.ts || 0,
+          tipo:      m.tipo === 'entrada' ? 'ingreso' : 'gasto',
+          signo:     m.tipo === 'entrada' ? '+' : '-',
+          monto:     m.monto || 0,
+          titulo:    m.desc || m.fuente || (m.tipo === 'entrada' ? 'Ingreso' : 'Gasto'),
+          subtitulo: (m.fuente && m.desc) ? m.fuente : '',
+          fuente:    'movimientos',
+        };
+      });
   }
 
-  // Resuelve el nombre actual de una cajita en un texto de acción
-  function _resolverNombreCajita(texto, cajitaId){
-    if(!cajitaId || !texto) return texto;
-    try {
-      const Sx = window.S || {};
-      const cx = (Sx.cajitas||[]).find(function(x){ return x.id===cajitaId; });
-      if(!cx) return texto;
-      // Caso 1: nombre entre comillas tipográficas "…"
-      var resultado = texto.replace(/“[^”]*”/g, function(){ return '“'+cx.nombre+'”'; });
-      // Caso 2: nombre entre comillas normales "…"
-      resultado = resultado.replace(/"[^"]*"/g, function(){ return '"'+cx.nombre+'"'; });
-      // Caso 3: "…en NOMBRE (Nu)" o "…de NOMBRE (Nu)" — sin comillas
-      resultado = resultado.replace(/(en|de) ([^(]+) \(Nu\)/g, function(m, prep){ return prep+' '+cx.nombre+' (Nu)'; });
-      return resultado;
-    } catch(e){ return texto; }
+  function _normGastos(S) {
+    return (S.gastosVar || []).map(function(g){
+      return {
+        id:          'gv_' + g.id,
+        fecha:       g.fecha || '0000-00-00',
+        ts:          g.ts || 0,
+        tipo:        'gasto',
+        signo:       '-',
+        monto:       g.monto || 0,
+        titulo:      g.desc || 'Gasto',
+        subtitulo:   g.cat || '',
+        fuente:      'gastosVar',
+        _esPagoFijo: !!g.esPagoGastoFijo,
+      };
+    });
   }
 
-  // API pública: registrar un cambio
-  // cajitaId (opcional): id de la cajita — permite actualizar el nombre si cambia después
-  window.logCambio = function(accion, entidad, monto, tipo, cajitaId){
-    const hist = _cargarHist();
-    const item = {
-      ts: Date.now(),
-      accion: accion,      // "Registraste gasto", "Editaste préstamo de Juan", etc.
-      entidad: entidad||'', // nombre de la entidad (cuenta, persona, etc.)
-      monto: monto||0,
-      tipo: tipo||'default', // gasto, ingreso, prestamo, ahorro, editar, eliminar...
-      cajitaId: cajitaId||null // para actualizar el nombre dinámicamente si cambia
-    };
-    hist.unshift(item);
-    _guardarHist(hist);
-    _renderFeed();
-    _actualizarBadge();
-  };
-
-  function _actualizarBadge(){
-    const hist = _cargarHist();
-    const sub = document.getElementById('mas-historial-sub');
-    if(sub && hist.length) sub.textContent = hist.length + ' acción' + (hist.length!==1?'es':'') + ' registrada' + (hist.length!==1?'s':'');
+  function _normDeudores(S) {
+    var items = [];
+    (S.deudores || []).forEach(function(d){
+      (d.movimientos || []).forEach(function(m){
+        var esPrestamo = m.tipo === 'prestamo';
+        items.push({
+          id:        'deu_' + d.id + '_' + m.id,
+          fecha:     m.fecha || '0000-00-00',
+          ts:        m.ts || 0,
+          tipo:      esPrestamo ? 'prestamo' : 'abono',
+          signo:     esPrestamo ? '-' : '+',
+          monto:     m.monto || 0,
+          titulo:    esPrestamo ? 'Préstamo a ' + d.nombre : 'Abono de ' + d.nombre,
+          subtitulo: m.nota || '',
+          fuente:    'deudores',
+        });
+      });
+    });
+    return items;
   }
 
-  function _renderFeed(){
-    const el = document.getElementById('feed-historial');
-    if(!el) return;
-    const hist = _cargarHist();
-    if(!hist.length){
-      el.innerHTML = '<div class="feed-empty">Aún no hay actividad registrada.<br>Cada cambio que hagas aparecerá aquí.</div>';
+  function _normSpotify(S) {
+    return (S.spotifyHistorial || [])
+      .filter(function(h){ return h.tipo === 'cobro'; })
+      .map(function(h){
+        return {
+          id:        'sp_' + (h.id || Math.random()),
+          fecha:     h.fecha || '0000-00-00',
+          ts:        h.ts || 0,
+          tipo:      'spotify',
+          signo:     '+',
+          monto:     h.monto || 0,
+          titulo:    'Cobro Spotify · ' + (h.nombre || ''),
+          subtitulo: h.nota || '',
+          fuente:    'spotifyHistorial',
+        };
+      });
+  }
+
+  function _normEncargos(S) {
+    var items = [];
+    (S.encargos || []).forEach(function(enc){
+      (enc.movimientos || []).forEach(function(m){
+        var esEntrada = m.tipo === 'entrada';
+        items.push({
+          id:        'enc_' + enc.id + '_' + m.id,
+          fecha:     m.fecha || '0000-00-00',
+          ts:        m.ts || 0,
+          tipo:      'encargo',
+          signo:     esEntrada ? '+' : '-',
+          monto:     m.monto || 0,
+          titulo:    (esEntrada ? 'Abono encargo' : 'Pago encargo') + ' · ' + (enc.nombre || ''),
+          subtitulo: m.nota || m.desc || '',
+          fuente:    'encargos',
+        });
+      });
+    });
+    return items;
+  }
+
+  function _normTC(S) {
+    var items = [];
+    (S.tarjetasCredito || []).forEach(function(tc){
+      (tc.pagos || []).forEach(function(p){
+        items.push({
+          id:        'tc_' + tc.id + '_' + p.id,
+          fecha:     p.fecha || '0000-00-00',
+          ts:        p.ts || 0,
+          tipo:      'tc',
+          signo:     '-',
+          monto:     p.monto || 0,
+          titulo:    'Pago TC · ' + (tc.nombre || ''),
+          subtitulo: p.nota || '',
+          fuente:    'tarjetasCredito',
+        });
+      });
+    });
+    return items;
+  }
+
+  // ── LABEL DE FECHA AGRUPADA ────────────────────────────────────────
+
+  function _labelFecha(fechaStr) {
+    if (!fechaStr || fechaStr === '0000-00-00') return 'Sin fecha';
+    var hoyStr = (typeof hoy === 'function') ? hoy() : new Date().toISOString().slice(0, 10);
+    if (fechaStr === hoyStr) return 'Hoy';
+    var dHoy = new Date(hoyStr + 'T12:00:00');
+    dHoy.setDate(dHoy.getDate() - 1);
+    var ayerStr = dHoy.toISOString().slice(0, 10);
+    if (fechaStr === ayerStr) return 'Ayer';
+    var meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    var partes = fechaStr.split('-');
+    return parseInt(partes[2], 10) + ' ' + meses[parseInt(partes[1], 10) - 1];
+  }
+
+  // ── RENDER PRINCIPAL ───────────────────────────────────────────────
+
+  function renderFeedActividad() {
+    var el = document.getElementById('feed-historial');
+    if (!el) return;
+
+    var Sx = window.S || {};
+    var f  = window.fmt || function(v){ return '$' + Math.round(v).toLocaleString('es-CO'); };
+    var esc = window.escHtml || function(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+
+    // Recopilar y mezclar todas las fuentes
+    var todos = [].concat(
+      _normMovimientos(Sx),
+      _normGastos(Sx),
+      _normDeudores(Sx),
+      _normSpotify(Sx),
+      _normEncargos(Sx),
+      _normTC(Sx)
+    );
+
+    // Ordenar: fecha desc, ts como desempate
+    todos.sort(function(a, b) {
+      var fc = b.fecha.localeCompare(a.fecha);
+      if (fc !== 0) return fc;
+      return (b.ts || 0) - (a.ts || 0);
+    });
+
+    // Actualizar badge del menú Más
+    var sub = document.getElementById('mas-historial-sub');
+    if (sub) sub.textContent = todos.length + ' movimiento' + (todos.length !== 1 ? 's' : '');
+    var countEl = document.getElementById('feed-historial-count');
+    if (countEl && todos.length > MAX_ITEMS) countEl.textContent = 'últimos ' + MAX_ITEMS;
+    else if (countEl) countEl.textContent = '';
+
+    // Tomar los primeros MAX_ITEMS
+    var visibles = todos.slice(0, MAX_ITEMS);
+
+    if (!visibles.length) {
+      el.innerHTML = '<div class="feed-empty">Aún no hay actividad registrada.</div>';
       return;
     }
-    const f = window.fmt || (v => '$'+Math.round(v).toLocaleString('es-CO'));
-    el.innerHTML = hist.map(item => {
-      const ik = ICONOS[item.tipo] || ICONOS.default;
-      const montoStr = item.monto ? f(item.monto) : '';
-      const colorMonto = ['gasto','eliminar','gasto_fijo'].includes(item.tipo) ? 'var(--red)' :
-                         ['ingreso','abono','ahorro'].includes(item.tipo) ? 'var(--accent)' : 'var(--text2)';
-      // Si el item tiene cajitaId, resolver el nombre actual de la cajita en el texto
-      const accionTexto = item.cajitaId ? _resolverNombreCajita(item.accion, item.cajitaId) : item.accion;
-      return `<div class="feed-item">
-        <div class="feed-icon" style="background:${ik.bg};display:flex;align-items:center;justify-content:center;">${ik.svg}</div>
-        <div class="feed-body">
-          <div class="feed-accion">${accionTexto}</div>
-          ${item.entidad?`<div class="feed-meta">${item.entidad} · ${_fechaRel(item.ts)}</div>`:`<div class="feed-meta">${_fechaRel(item.ts)}</div>`}
-        </div>
-        ${montoStr?`<div class="feed-monto" style="color:${colorMonto};">${montoStr}</div>`:''}
-      </div>`;
-    }).join('');
+
+    // Agrupar por fecha
+    var grupos = {};
+    var orden  = [];
+    visibles.forEach(function(item) {
+      if (!grupos[item.fecha]) {
+        grupos[item.fecha] = [];
+        orden.push(item.fecha);
+      }
+      grupos[item.fecha].push(item);
+    });
+
+    // Construir HTML
+    var html = '';
+    orden.forEach(function(fecha) {
+      var label = _labelFecha(fecha);
+      html += '<div class="feed-group-header">' + label + '</div>';
+      grupos[fecha].forEach(function(item) {
+        var ik  = ICONOS[item.tipo] || ICONOS.gasto;
+        var colorMonto = item.signo === '+' ? 'var(--accent)' : 'var(--red)';
+        var colorReal  = item.tipo === 'spotify' ? '#1ed760' : colorMonto;
+        var badge = item._esPagoFijo ? '<span class="feed-badge-fijo">Gasto fijo</span>' : '';
+        html += '<div class="feed-item">'
+          + '<div class="feed-icon" style="background:' + ik.bg + ';">' + ik.svg + '</div>'
+          + '<div class="feed-body">'
+          + '<div class="feed-titulo">' + esc(item.titulo) + badge + '</div>'
+          + (item.subtitulo ? '<div class="feed-sub">' + esc(item.subtitulo) + '</div>' : '')
+          + '</div>'
+          + '<div class="feed-monto" style="color:' + colorReal + ';">' + item.signo + f(item.monto) + '</div>'
+          + '</div>';
+      });
+    });
+
+    el.innerHTML = html;
   }
 
-  window.limpiarHistorial = async function(){
-    const ok = await (window.dialogo ? window.dialogo('Limpiar historial','¿Borrar toda la actividad registrada? Esto no afecta tus datos.','Limpiar',true) : Promise.resolve(confirm('¿Limpiar historial?')));
-    if(!ok) return;
-    localStorage.removeItem(KEY_HIST);
-    _renderFeed();
-    _actualizarBadge();
-    if(window.toast) window.toast('Historial limpiado','ok');
+  // Exponer globalmente
+  window.renderFeedActividad = renderFeedActividad;
+
+  // Hook: navegar a historial
+  document.addEventListener('click', function(e) {
+    var ni = e.target.closest('[data-screen="historial"], #mas-historial');
+    if (ni) { setTimeout(renderFeedActividad, 80); }
+  });
+
+  // Wrap refresh() para mantener el feed actualizado
+  var _origRefresh = window.refresh;
+  window.refresh = function() {
+    if (typeof _origRefresh === 'function') _origRefresh.apply(this, arguments);
+    var activa = document.querySelector('.screen.active');
+    if (activa && activa.id === 'screen-historial') renderFeedActividad();
+    // Actualizar badge siempre
+    var Sx2 = window.S || {};
+    var total = [].concat(
+      (Sx2.movimientos||[]).filter(function(m){ return m.tipo !== 'apertura'; }),
+      (Sx2.gastosVar||[]),
+      (Sx2.deudores||[]).reduce(function(a,d){ return a.concat(d.movimientos||[]); },[]),
+      (Sx2.spotifyHistorial||[]).filter(function(h){ return h.tipo==='cobro'; }),
+      (Sx2.encargos||[]).reduce(function(a,e){ return a.concat(e.movimientos||[]); },[]),
+      (Sx2.tarjetasCredito||[]).reduce(function(a,tc){ return a.concat(tc.pagos||[]); },[])
+    ).length;
+    var sub2 = document.getElementById('mas-historial-sub');
+    if (sub2) sub2.textContent = total + ' movimiento' + (total !== 1 ? 's' : '');
   };
 
-  // Render inicial al cargar
-  document.addEventListener('DOMContentLoaded', function(){
-    _renderFeed();
-    _actualizarBadge();
-    // Re-render cuando se navega a historial
-    document.addEventListener('click', function(e){
-      const ni = e.target.closest('[data-screen="historial"], #mas-historial');
-      if(ni){ setTimeout(_renderFeed, 80); }
-    });
+  // logCambio sigue existiendo como no-op para no romper el código que lo llama
+  window.logCambio = function(){ /* no-op: el feed ahora lee de S directamente */ };
+
+  // Render inicial tras carga de datos (Firebase puede tardar)
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(renderFeedActividad, 600);
   });
+
 })();
 
 </script>

@@ -8811,8 +8811,11 @@ function getMovimientosCuenta(tipo) {
       const esEntrada = m.tipo === 'entrada';
       const esApertura = m.tipo === 'apertura';
       const esTransferencia = m.tipo === 'transferencia';
+      // Para transferencias de intercambio: si _fuenteDestino existe y es distinto a esta cuenta,
+      // la plata salió de aquí → monto negativo (como las transferencias normales del sistema)
+      const esIntercambioSalida = esTransferencia && m._fuenteDestino && m._fuenteDestino !== m.fuente;
       const tipoDisplay = esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'salida_manual';
-      const montoDisplay = (esEntrada||esApertura||esTransferencia) ? +m.monto : -m.monto;
+      const montoDisplay = (esApertura) ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto;
       movs.push({ tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : esTransferencia ? 'Intercambio' : 'Salida manual'), monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '' });
     }
   });

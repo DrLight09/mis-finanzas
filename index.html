@@ -8309,6 +8309,10 @@ function showScreen(name){
   if(name==='encargos') {
     if(typeof renderEncargosList==='function') renderEncargosList();
   }
+  // Re-renderizar mesada al entrar a esa pantalla
+  if(name==='mesada') {
+    if(typeof renderMesada==='function') renderMesada();
+  }
 }
 
 function applyModulos(){

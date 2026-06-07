@@ -1169,6 +1169,25 @@ input.movs-search-input:focus{border-color:var(--accent);}
                 </div>
               </div>
             </div>
+            <!-- Botones entrada/salida Nu -->
+            <div class="cuenta-actions" style="margin-bottom:14px;">
+              <button type="button" class="cuenta-action-btn" id="btn-nu-entro"
+                style="background:rgba(192,96,240,.12);border-color:rgba(192,96,240,.35);color:var(--nu-light);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span class="cuenta-action-btn-label">Entró plata</span>
+              </button>
+              <button type="button" class="cuenta-action-btn" id="btn-nu-salio"
+                style="background:rgba(240,104,104,.08);border-color:rgba(240,104,104,.3);color:var(--red);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                <span class="cuenta-action-btn-label">Salió plata</span>
+              </button>
+              <button type="button" class="cuenta-action-btn"
+                style="background:rgba(96,176,240,.08);border-color:rgba(96,176,240,.3);color:var(--blue);"
+                onclick="abrirTransferir()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 9l4-4-4-4"/><path d="M19 15l-4 4 4 4"/><line x1="9" y1="5" x2="19" y2="5"/><line x1="5" y1="19" x2="15" y2="19"/></svg>
+                <span class="cuenta-action-btn-label">Mover a otra cuenta</span>
+              </button>
+            </div>
             <!-- Cajitas -->
             <div class="sec-title">Cajitas</div>
             <div id="cajitasList"></div>
@@ -3554,6 +3573,52 @@ input.movs-search-input:focus{border-color:var(--accent);}
     </div>
 
     <!-- RESTAR DINERO -->
+    <!-- ENTRÓ / SALIÓ PLATA EN NU -->
+    <div class="overlay" id="sheet-nu-movimiento" data-sheet-id="nu-movimiento">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="nuMovTitle">Entró plata a Nu</div>
+        <p id="nuMovSubtitle" style="font-size:12px;color:var(--text2);margin-bottom:16px;">El valor se <b style="color:var(--nu-light);">sumará</b> a la cajita que elijas.</p>
+
+        <!-- Selector de cajita -->
+        <div class="ig">
+          <label class="il">¿A qué cajita? <span style="color:var(--red);">*</span></label>
+          <div id="nuMovCajitasWrap" style="display:flex;flex-direction:column;gap:7px;margin-top:4px;"></div>
+        </div>
+
+        <!-- Toggle saldo inicial -->
+        <div id="nuMovAperturaWrap"
+          onclick="document.getElementById('nuMovEsApertura').click()"
+          style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;display:flex;">
+          <input type="checkbox" id="nuMovEsApertura"
+            style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;"
+            onclick="event.stopPropagation()"
+            onchange="_nuMovToggleApertura()">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--blue);">Es saldo inicial (ya lo tenía)</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">No contará como ingreso del mes ni aparecerá en estadísticas</div>
+          </div>
+        </div>
+
+        <div class="ig">
+          <label class="il" id="nuMovDescLabel">¿De dónde viene esta plata? <span style="color:var(--red);">*</span></label>
+          <input type="text" id="nuMovDesc" placeholder="Ej: Salario, mesada, bono..." maxlength="80">
+        </div>
+        <div class="ig">
+          <label class="il" id="nuMovMontoLabel">¿Cuánto recibiste?</label>
+          <input type="text" inputmode="decimal" id="nuMovMonto" placeholder="0,00" class="money-input">
+        </div>
+        <div class="ig">
+          <label class="il" for="nuMovFecha">Fecha</label>
+          <input type="date" id="nuMovFecha">
+        </div>
+        <div id="nuMovPreview" style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
+        <button type="button" class="btn btn-primary" id="btn-confirmar-nu-mov"
+          style="background:rgba(192,96,240,.85);border-color:transparent;box-shadow:0 2px 14px rgba(192,96,240,.3);">Confirmar</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="nu-movimiento">Cancelar</button>
+      </div>
+    </div>
+
     <div class="overlay" id="sheet-restar-dinero" data-sheet-id="restar-dinero">
       <div class="sheet">
         <div class="sheet-handle"></div>
@@ -5197,81 +5262,17 @@ function renderAnalisis(){
   const barEl=document.getElementById('an-grafico-barras');
   const labEl=document.getElementById('an-grafico-labels');
   if(barEl&&labEl){
-    const MESES_FULL_B=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-    // Panel de info fijo debajo de los labels — siempre visible, nunca se sale
-    let infoPanel = document.getElementById('_bar-info-panel');
-    if(!infoPanel){
-      infoPanel = document.createElement('div');
-      infoPanel.id = '_bar-info-panel';
-      infoPanel.style.cssText = 'margin-top:10px;padding:11px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;display:none;';
-      labEl.parentElement.appendChild(infoPanel);
-    }
-
-    let _barSelIdx = -1;
-
-    function _renderBars(selIdx){
-      barEl.innerHTML = hoy12.map(({k,total},idx)=>{
-        const pct = Math.max(total>0?Math.round((total/maxBar)*100):0,2);
-        const esMesActual = k===mes;
-        const esSel = idx===selIdx;
-        const col = esSel?'var(--blue)':esMesActual?'var(--accent)':'var(--bg3)';
-        const border = (esSel||esMesActual)?'none':'1px solid var(--border2)';
-        return`<div data-bidx="${idx}" style="flex:1;background:${col};border:${border};border-radius:4px 4px 0 0;height:${pct}%;min-height:${total>0?4:2}px;transition:all .18s;cursor:pointer;touch-action:manipulation;"></div>`;
-      }).join('');
-
-      labEl.innerHTML = hoy12.map(({label,k},idx)=>{
-        const esMesActual = k===mes;
-        const esSel = idx===selIdx;
-        const color = esSel?'var(--blue)':esMesActual?'var(--accent)':'var(--text3)';
-        return`<div style="flex:1;text-align:center;font-size:8px;font-family:'DM Mono',monospace;color:${color};font-weight:${esSel||esMesActual?'700':'400'};transition:color .18s;">${label}</div>`;
-      }).join('');
-
-      // Actualizar panel de info
-      if(selIdx>=0){
-        const {k,label,total} = hoy12[selIdx];
-        const [ay,am] = k.split('-');
-        const mesNom = MESES_FULL_B[parseInt(am)-1];
-        const esMesActual = k===mes;
-        const barPct = Math.round(total/maxBar*100);
-        infoPanel.style.display = 'block';
-        infoPanel.innerHTML =
-          `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">` +
-            `<div style="font-size:13px;font-weight:600;">${mesNom} ${ay}${esMesActual?'<span style="font-size:10px;color:var(--accent);margin-left:6px;font-family:\'DM Mono\',monospace;">· mes actual</span>':''}</div>` +
-            `<div style="font-size:15px;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--red);">${total>0?fmt(total):'$0'}</div>` +
-          `</div>` +
-          (total>0
-            ? `<div style="height:5px;background:var(--bg4);border-radius:3px;overflow:hidden;">` +
-                `<div style="height:100%;width:${barPct}%;background:var(--blue);border-radius:3px;transition:width .3s;"></div>` +
-              `</div>` +
-              `<div style="font-size:10px;color:var(--text3);font-family:\'DM Mono\',monospace;margin-top:5px;">${barPct}% del mes con más gastos</div>`
-            : `<div style="font-size:11px;color:var(--text3);">Sin gastos registrados este mes.</div>`
-          );
-      } else {
-        infoPanel.style.display = 'none';
-      }
-
-      // Re-attach click listeners
-      barEl.querySelectorAll('[data-bidx]').forEach(el=>{
-        el.addEventListener('click', function(e){
-          e.stopPropagation();
-          const idx = parseInt(this.dataset.bidx);
-          if(_barSelIdx===idx){ _barSelIdx=-1; }
-          else { _barSelIdx=idx; }
-          _renderBars(_barSelIdx);
-        });
-      });
-    }
-
-    _renderBars(-1);
-
-    // Cerrar al tocar fuera del bloque de la gráfica
-    document.addEventListener('click', function(e){
-      if(_barSelIdx<0) return;
-      if(!barEl.contains(e.target) && !infoPanel.contains(e.target)){
-        _barSelIdx=-1; _renderBars(-1);
-      }
-    }, {passive:true});
+    barEl.innerHTML=hoy12.map(({k,total})=>{
+      const pct=Math.max(total>0?Math.round((total/maxBar)*100):0,2);
+      const esMesActual=k===mes;
+      const col=esMesActual?'var(--accent)':'var(--bg3)';
+      const border=esMesActual?'none':'1px solid var(--border2)';
+      return`<div style="flex:1;background:${col};border:${border};border-radius:4px 4px 0 0;height:${pct}%;min-height:${total>0?4:2}px;transition:height .4s;" title="${fmt(total)}"></div>`;
+    }).join('');
+    labEl.innerHTML=hoy12.map(({label,k})=>{
+      const esMesActual=k===mes;
+      return`<div style="flex:1;text-align:center;font-size:8px;font-family:'DM Mono',monospace;color:${esMesActual?'var(--accent)':'var(--text3)'};font-weight:${esMesActual?'700':'400'};">${label}</div>`;
+    }).join('');
   }
 
   // ── Ranking meses ──────────────────────────────────────────────────────
@@ -5449,15 +5450,14 @@ function renderAnalisis(){
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
           <div>
             <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;">Últimos ${hist.length} días</div>
-            <div id="_pv" style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;margin-top:2px;">${fmt(ultimo2.valor)}</div>
-            <div id="_pd" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;min-height:14px;"></div>
+            <div style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;margin-top:2px;">${fmt(ultimo2.valor)}</div>
           </div>
           <div style="text-align:right;">
-            <div id="_pdiff" style="font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:${diffColor};">${diffTotal>=0?'+':''}${fmt(diffTotal)}</div>
-            <div id="_ppct" style="font-size:10px;color:${diffColor};font-family:'DM Mono',monospace;">${diffPct>=0?'+':''}${diffPct.toFixed(1)}%</div>
+            <div style="font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:${diffColor};">${diffTotal>=0?'+':''}${fmt(diffTotal)}</div>
+            <div style="font-size:10px;color:${diffColor};font-family:'DM Mono',monospace;">${diffPct>=0?'+':''}${diffPct.toFixed(1)}%</div>
           </div>
         </div>
-        <svg id="_psvg" viewBox="0 0 ${W} ${H}" style="width:100%;height:90px;display:block;cursor:pointer;">
+        <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:90px;display:block;">
           <defs>
             <linearGradient id="pgGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0.25"/>
@@ -5466,70 +5466,12 @@ function renderAnalisis(){
           </defs>
           <path d="${areaPath}" fill="url(#pgGrad)"/>
           <polyline points="${polyline}" fill="none" stroke="${diffColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <line id="_pcl" x1="0" y1="0" x2="0" y2="${H}" stroke="rgba(255,255,255,.25)" stroke-width="1" stroke-dasharray="3,2" display="none"/>
-          <circle id="_pcd" cx="0" cy="0" r="4" fill="${diffColor}" stroke="var(--bg2)" stroke-width="2" display="none"/>
-          ${pts.map(([px,py],i)=>`<rect data-pi="${i}" x="${px-(W/(hist.length*1.0||1))/2}" y="0" width="${W/(hist.length||1)}" height="${H}" fill="transparent" style="cursor:pointer;"/>`).join('')}
+          <circle cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="3" fill="${diffColor}"/>
         </svg>
         <div style="display:flex;justify-content:space-between;margin-top:4px;">
-          <span id="_pfi" style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${primero.fecha.slice(5)}</span>
-          <span id="_pff" style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimo2.fecha.slice(5)}</span>
+          <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${primero.fecha.slice(5)}</span>
+          <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimo2.fecha.slice(5)}</span>
         </div>`;
-      // Interactividad línea de patrimonio
-      (function(){
-        const svg=document.getElementById('_psvg');
-        const cl=document.getElementById('_pcl');
-        const cd=document.getElementById('_pcd');
-        const elV=document.getElementById('_pv');
-        const elD=document.getElementById('_pd');
-        const elDiff=document.getElementById('_pdiff');
-        const elPct=document.getElementById('_ppct');
-        const elFi=document.getElementById('_pfi');
-        const elFf=document.getElementById('_pff');
-        if(!svg||!cl||!cd) return;
-        function show(i){
-          const [px,py]=pts[i];
-          cl.setAttribute('x1',px); cl.setAttribute('x2',px); cl.removeAttribute('display');
-          cd.setAttribute('cx',px); cd.setAttribute('cy',py); cd.removeAttribute('display');
-          const p=hist[i];
-          elV.textContent=fmt(p.valor);
-          // Fecha legible
-          const fd=p.fecha||'';
-          const partes=fd.split('-');
-          const MESES_L=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-          elD.textContent=partes.length>=3?partes[2]+' '+MESES_L[parseInt(partes[1])-1]+' '+partes[0]:'';
-          elD.style.color='var(--text3)';
-          // Delta vs anterior
-          const prev=i>0?hist[i-1]:null;
-          if(prev){
-            const delta=p.valor-prev.valor;
-            const dColor=delta>=0?'var(--accent)':'var(--red)';
-            const dPct=prev.valor>0?(delta/prev.valor*100):0;
-            elDiff.textContent=(delta>=0?'+':'')+fmt(delta);
-            elDiff.style.color=dColor;
-            elPct.textContent=(dPct>=0?'+':'')+dPct.toFixed(1)+'% vs ant.';
-            elPct.style.color=dColor;
-          } else {
-            elDiff.textContent='Primer día'; elDiff.style.color='var(--text3)';
-            elPct.textContent=''; 
-          }
-          elFi.textContent=fd.slice(5); elFf.textContent='';
-        }
-        function reset(){
-          cl.setAttribute('display','none'); cd.setAttribute('display','none');
-          elV.textContent=fmt(ultimo2.valor); elD.textContent='';
-          elDiff.textContent=(diffTotal>=0?'+':'')+fmt(diffTotal); elDiff.style.color=diffColor;
-          elPct.textContent=(diffPct>=0?'+':'')+diffPct.toFixed(1)+'%'; elPct.style.color=diffColor;
-          elFi.textContent=primero.fecha.slice(5); elFf.textContent=ultimo2.fecha.slice(5);
-        }
-        svg.querySelectorAll('[data-pi]').forEach(r=>{
-          const i=parseInt(r.dataset.pi);
-          r.addEventListener('click',e=>{e.stopPropagation();show(i);});
-          r.addEventListener('touchstart',e=>{e.preventDefault();show(i);},{passive:false});
-          r.addEventListener('mouseenter',()=>show(i));
-        });
-        svg.addEventListener('mouseleave',reset);
-        document.addEventListener('click',e=>{if(!svg.contains(e.target))reset();},{passive:true});
-      })();
     }
   }
 }
@@ -9371,6 +9313,172 @@ document.addEventListener('input',function(e){
 /* ---- RESTAR DINERO ---- */
 let rdFuente='';
 
+/* ---- ENTRÓ / SALIÓ PLATA EN NU ---- */
+let _nuMovTipo = 'entrada'; // 'entrada' | 'salida'
+let _nuMovCajitaSel = null; // fuente seleccionada: 'cajita:id'
+
+function abrirNuMovimiento(tipo) {
+  save();
+  _nuMovTipo = tipo;
+  _nuMovCajitaSel = null;
+  const esEntrada = tipo === 'entrada';
+
+  document.getElementById('nuMovTitle').textContent = esEntrada ? 'Entró plata a Nu' : 'Salió plata de Nu';
+  document.getElementById('nuMovSubtitle').innerHTML = esEntrada
+    ? 'El valor se <b style="color:var(--nu-light);">sumará</b> a la cajita que elijas y contará como ingreso del mes.'
+    : 'El valor se <b style="color:var(--red);">restará</b> de la cajita que elijas.';
+  document.getElementById('nuMovDescLabel').innerHTML = esEntrada
+    ? '¿De dónde viene esta plata? <span style="color:var(--red);">*</span>'
+    : '¿En qué se gastó o a dónde fue? <span style="color:var(--red);">*</span>';
+  document.getElementById('nuMovMontoLabel').textContent = esEntrada ? '¿Cuánto recibiste?' : '¿Cuánto vas a restar?';
+  const btnConf = document.getElementById('btn-confirmar-nu-mov');
+  if (btnConf) {
+    btnConf.textContent = esEntrada ? 'Registrar ingreso' : 'Registrar salida';
+    btnConf.style.background = esEntrada ? 'rgba(192,96,240,.85)' : 'var(--red)';
+    btnConf.style.boxShadow = esEntrada ? '0 2px 14px rgba(192,96,240,.3)' : '0 2px 14px rgba(240,104,104,.3)';
+  }
+
+  // Ocultar toggle apertura en salida
+  const aperturaWrap = document.getElementById('nuMovAperturaWrap');
+  if (aperturaWrap) aperturaWrap.style.display = esEntrada ? 'flex' : 'none';
+  const chk = document.getElementById('nuMovEsApertura');
+  if (chk) chk.checked = false;
+
+  // Resetear campos
+  document.getElementById('nuMovDesc').value = '';
+  document.getElementById('nuMovMonto').value = '';
+  document.getElementById('nuMovFecha').value = hoy();
+  document.getElementById('nuMovPreview').textContent = '';
+
+  // Renderizar selector de cajitas
+  _nuMovRenderCajitas();
+
+  openSheet('nu-movimiento');
+  setTimeout(() => document.getElementById('nuMovDesc').focus(), 200);
+}
+
+function _nuMovRenderCajitas() {
+  const wrap = document.getElementById('nuMovCajitasWrap');
+  if (!wrap) return;
+  const cajitas = S.cajitas || [];
+  if (!cajitas.length) {
+    wrap.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">No tenés cajitas. Creá una primero desde la pantalla de Nu.</div>';
+    return;
+  }
+  wrap.innerHTML = cajitas.map(c => {
+    const saldo = typeof calcC === 'function' ? calcC(c).val : (c.saldo || 0);
+    return `<div data-nu-cajita="cajita:${c.id}"
+      style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;transition:all .15s;">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);">${c.nombre||'Cajita'}</div>
+        <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--nu-light);margin-top:2px;">${fmt(saldo)}</div>
+      </div>
+      <div id="_nuMovCheck_${c.id}" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;"></div>
+    </div>`;
+  }).join('');
+
+  wrap.querySelectorAll('[data-nu-cajita]').forEach(el => {
+    el.addEventListener('click', function() {
+      _nuMovCajitaSel = this.dataset.nuCajita;
+      // Resaltar selección
+      wrap.querySelectorAll('[data-nu-cajita]').forEach(e => {
+        e.style.borderColor = 'var(--border2)';
+        e.style.background = 'var(--bg3)';
+        const cid = e.dataset.nuCajita.split(':')[1];
+        const chkEl = document.getElementById('_nuMovCheck_'+cid);
+        if (chkEl) chkEl.innerHTML = '';
+      });
+      this.style.borderColor = 'var(--nu-light)';
+      this.style.background = 'rgba(192,96,240,.08)';
+      const selId = _nuMovCajitaSel.split(':')[1];
+      const chkEl = document.getElementById('_nuMovCheck_'+selId);
+      if (chkEl) chkEl.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      _nuMovActualizarPreview();
+    });
+  });
+
+  // Auto-seleccionar si solo hay una cajita
+  if (cajitas.length === 1) {
+    const único = wrap.querySelector('[data-nu-cajita]');
+    if (único) único.click();
+  }
+}
+
+function _nuMovToggleApertura() {
+  const chk = document.getElementById('nuMovEsApertura');
+  const lbl = document.getElementById('nuMovDescLabel');
+  const inp = document.getElementById('nuMovDesc');
+  if (!chk) return;
+  if (chk.checked) {
+    if (lbl) lbl.innerHTML = 'Nota opcional <span style="color:var(--text3);font-weight:400;">(ej: ahorros acumulados)</span>';
+    if (inp) inp.placeholder = 'Ej: Ahorros de varios meses...';
+  } else {
+    if (lbl) lbl.innerHTML = '¿De dónde viene esta plata? <span style="color:var(--red);">*</span>';
+    if (inp) inp.placeholder = 'Ej: Salario, mesada, bono...';
+  }
+}
+
+function _nuMovActualizarPreview() {
+  const prev = document.getElementById('nuMovPreview');
+  if (!prev || !_nuMovCajitaSel) return;
+  const v = parseMoney(document.getElementById('nuMovMonto').value) || 0;
+  if (!v) { prev.textContent = ''; return; }
+  const cid = _nuMovCajitaSel.split(':')[1];
+  const caj = (S.cajitas || []).find(x => x.id === cid);
+  if (!caj) return;
+  const saldoActual = typeof calcC === 'function' ? calcC(caj).val : (caj.saldo || 0);
+  if (_nuMovTipo === 'entrada') {
+    prev.textContent = fmt(saldoActual) + ' + ' + fmt(v) + ' = ' + fmt(saldoActual + v);
+    prev.style.color = 'var(--accent)';
+  } else {
+    const resultado = saldoActual - v;
+    prev.textContent = fmt(saldoActual) + ' − ' + fmt(v) + ' = ' + fmt(resultado);
+    prev.style.color = resultado < 0 ? 'var(--red)' : 'var(--accent)';
+  }
+}
+
+function confirmarNuMovimiento() {
+  const v = parseMoney(document.getElementById('nuMovMonto').value) || 0;
+  const desc = document.getElementById('nuMovDesc').value.trim();
+  const fecha = document.getElementById('nuMovFecha').value || hoy();
+  const esApertura = _nuMovTipo === 'entrada' && (document.getElementById('nuMovEsApertura')?.checked || false);
+
+  if (!_nuMovCajitaSel) { toast('Seleccioná una cajita', 'err'); return; }
+  if (!v) { toast('Ingresá el monto', 'err'); return; }
+  if (!esApertura && !desc) {
+    toast(_nuMovTipo === 'entrada' ? 'Describí de dónde viene la plata' : 'Describí en qué se gastó', 'err');
+    return;
+  }
+
+  const cid = _nuMovCajitaSel.split(':')[1];
+  const caj = (S.cajitas || []).find(x => x.id === cid);
+  if (!caj) { toast('Cajita no encontrada', 'err'); return; }
+
+  // Materializar intereses antes de tocar el saldo
+  if (typeof materializarIntereses === 'function') materializarIntereses(caj);
+
+  if (_nuMovTipo === 'entrada') {
+    sumarFuente(_nuMovCajitaSel, v);
+    if (!S.movimientos) S.movimientos = [];
+    const tipoMov = esApertura ? 'apertura' : 'entrada';
+    const descFinal = desc || (esApertura ? 'Saldo inicial' : '');
+    S.movimientos.push({ id: uid(), tipo: tipoMov, fuente: _nuMovCajitaSel, monto: v, fecha, desc: descFinal });
+    if (window.logCambio) logCambio('Entró plata a ' + (caj.nombre || 'cajita'), descFinal, v, 'ingreso', cid);
+    toast(fmt(v) + (esApertura ? ' registrado como saldo inicial en ' : ' sumado a ') + (caj.nombre || 'cajita'), 'ok');
+  } else {
+    descontarFuente(_nuMovCajitaSel, v);
+    if (!S.movimientos) S.movimientos = [];
+    S.movimientos.push({ id: uid(), tipo: 'salida_manual', fuente: _nuMovCajitaSel, monto: v, fecha, desc });
+    if (window.logCambio) logCambio('Salió plata de ' + (caj.nombre || 'cajita'), desc, v, 'gasto', cid);
+    toast('− ' + fmt(v) + ' de ' + (caj.nombre || 'cajita') + ' — ' + desc, 'info');
+  }
+
+  save();
+  closeSheet('nu-movimiento');
+  refresh();
+  _nuMovCajitaSel = null;
+}
+
 function abrirRestarDinero(fuente,nombre){
   save();
   rdFuente=fuente;
@@ -9816,6 +9924,17 @@ function _initEventListeners() {
   if (btnAgrEfDet) btnAgrEfDet.addEventListener('click', () => abrirAgregarDinero('efectivo'));
   const btnRestEfDet = document.getElementById('btn-restar-efectivo-det');
   if (btnRestEfDet) btnRestEfDet.addEventListener('click', () => abrirRestarDinero('efectivo'));
+
+  // --- Nu entró / salió plata ---
+  const btnNuEntro = document.getElementById('btn-nu-entro');
+  if (btnNuEntro) btnNuEntro.addEventListener('click', () => abrirNuMovimiento('entrada'));
+  const btnNuSalio = document.getElementById('btn-nu-salio');
+  if (btnNuSalio) btnNuSalio.addEventListener('click', () => abrirNuMovimiento('salida'));
+  const btnNuMovConf = document.getElementById('btn-confirmar-nu-mov');
+  if (btnNuMovConf) btnNuMovConf.addEventListener('click', confirmarNuMovimiento);
+  document.addEventListener('input', function(e) {
+    if (e.target.id === 'nuMovMonto') _nuMovActualizarPreview();
+  });
 
 
   // --- Cajita add button ---
@@ -13479,10 +13598,10 @@ document.addEventListener('focusin', function(e){
       (S.cuentasPersonalizadas||[]).forEach(c=>{
         (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mk).forEach(m=>{ ing+=(m.monto||0); });
       });
-      // Entradas manuales a Nequi y Efectivo (tipo 'entrada', excluye apertura para no distorsionar)
+      // Entradas manuales a Nequi, Efectivo y cajitas de Nu (tipo 'entrada', excluye apertura para no distorsionar)
       (S.movimientos||[]).filter(m=>
         m.tipo==='entrada' &&
-        (m.fuente==='nequi'||m.fuente==='efectivo') &&
+        (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))) &&
         mesKey(m.fecha)===mk
       ).forEach(m=>{ ing+=(m.monto||0); });
 
@@ -13517,7 +13636,7 @@ document.addEventListener('focusin', function(e){
       });
       (S.movimientos||[]).filter(m=>
         m.tipo==='entrada' &&
-        (m.fuente==='nequi'||m.fuente==='efectivo') &&
+        (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))) &&
         mesKey(m.fecha)===mkHoy
       ).forEach(m=>{ ingHoy+=(m.monto||0); });
       const gvHoy = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mkHoy&&!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);

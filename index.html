@@ -14014,14 +14014,19 @@ document.addEventListener('focusin', function(e){
   /* ====================================================
      8. HOOK EN REFRESH para nuevas funciones
   ==================================================== */
+  // Renderizar salud y proyección directamente (sin depender del hook de refresh)
+  function _renderMejoras() {
+    try { renderHealthScore(); } catch(e){}
+    try { renderProyeccion(); } catch(e){}
+    try { renderPresupuestos(); } catch(e){}
+    try { renderHistorialConsolidado(); } catch(e){}
+  }
+
   // Guard: si refresh no existe aún, esperar a que esté disponible
   function _hookRefreshMejoras(originalFn) {
     window.refresh = function(){
       if(originalFn) { try { originalFn.apply(this, arguments); } catch(e){ console.error('[refresh] Error en refresh original:', e); } }
-      try { renderHealthScore(); } catch(e){}
-      try { renderProyeccion(); } catch(e){}
-      try { renderPresupuestos(); } catch(e){}
-      try { renderHistorialConsolidado(); } catch(e){}
+      _renderMejoras();
     };
   }
   if (typeof window.refresh === 'function') {
@@ -14035,6 +14040,13 @@ document.addEventListener('focusin', function(e){
       }
     }, 100);
   }
+
+  // Llamar directamente cuando Firebase termina de cargar los datos.
+  // Necesario porque los módulos type="module" se ejecutan DESPUÉS que los scripts
+  // inline, por lo que cuando _initAppUI llama refresh() el hook aún no está instalado.
+  window.addEventListener('appDataLoaded', function() {
+    setTimeout(_renderMejoras, 300);
+  });
 
   /* ====================================================
      9. VALIDACIÓN MEJORADA DE MONTOS (numéricos grandes)

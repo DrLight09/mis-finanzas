@@ -11687,6 +11687,7 @@ function confirmarMovEncargo() {
       if (i === 0) _procesarDiferencial(mov);
     });
     save();
+    refresh();
     closeSheet('mov-encargo');
     abrirEncargoDetalle(encargoActualId);
     toast('Salida registrada', 'ok');
@@ -11720,6 +11721,7 @@ function confirmarMovEncargo() {
     enc.movimientos.push(nuevoMov);
     if (movEncargoTipo === 'salida') _procesarDiferencial(nuevoMov);
     save();
+    refresh();
     closeSheet('mov-encargo');
     abrirEncargoDetalle(encargoActualId);
     toast(movEncargoTipo === 'entrada' ? 'Entrada registrada' : 'Salida registrada', 'ok');

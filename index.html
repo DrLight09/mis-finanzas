@@ -13742,6 +13742,17 @@ document.addEventListener('focusin', function(e){
     (S.cuentasPersonalizadas||[]).forEach(c => {
       (c.movimientos||[]).filter(m=>(m.tipo==='ingreso')&&window.mesKey&&window.mesKey(m.fecha)===mes).forEach(m=>{ ingresosMes += (m.monto||0); });
     });
+    // Entradas manuales a Nequi, Efectivo y cajitas (igual que el análisis de tendencia)
+    // Excluir: apertura, _encMovId (encargos), _esReposicionCP (plata comprometida devuelta)
+    if(window.mesKey){
+      (S.movimientos||[]).filter(m=>
+        m.tipo==='entrada' &&
+        !m._esReposicionCP &&
+        !m._encMovId &&
+        (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))) &&
+        window.mesKey(m.fecha)===mes
+      ).forEach(m=>{ ingresosMes += (m.monto||0); });
+    }
 
     // ── Liquidez real (solo cuentas disponibles, sin CDTs bloqueados) ─────
     const nu = (S.cajitas||[]).reduce((a,c)=>a+(window.calcC?window.calcC(c).val:c.saldo||0),0);
@@ -13930,8 +13941,10 @@ document.addEventListener('focusin', function(e){
         (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mk).forEach(m=>{ ing+=(m.monto||0); });
       });
       // Entradas manuales a Nequi, Efectivo y cajitas de Nu (tipo 'entrada', excluye apertura para no distorsionar)
+      // Excluir reposiciones de plata comprometida (_esReposicionCP): no son ingresos nuevos sino devoluciones
       (S.movimientos||[]).filter(m=>
         m.tipo==='entrada' &&
+        !m._esReposicionCP &&
         (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))) &&
         mesKey(m.fecha)===mk
       ).forEach(m=>{ ing+=(m.monto||0); });
@@ -13965,8 +13978,10 @@ document.addEventListener('focusin', function(e){
       (S.cuentasPersonalizadas||[]).forEach(c=>{
         (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mkHoy).forEach(m=>{ ingHoy+=(m.monto||0); });
       });
+      // Excluir reposiciones de plata comprometida (_esReposicionCP): no son ingresos nuevos
       (S.movimientos||[]).filter(m=>
         m.tipo==='entrada' &&
+        !m._esReposicionCP &&
         (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))) &&
         mesKey(m.fecha)===mkHoy
       ).forEach(m=>{ ingHoy+=(m.monto||0); });
@@ -15855,9 +15870,53 @@ document.addEventListener('DOMContentLoaded',function(){
       bg: 'rgba(240,184,64,.12)',
       svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0b840" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`
     },
+    comprometida: {
+      bg: 'rgba(96,216,240,.12)',
+      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#60d8f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`
+    },
   };
 
   // ── NORMALIZAR FUENTES ─────────────────────────────────────────────
+
+  function _normCP(S) {
+    // Muestra los registros de plata comprometida en el feed (solo los recibidos y los pendientes)
+    // Los movimientos individuales (Reposición, Ingreso libre) ya aparecen en _normMovimientos.
+    // Aquí mostramos el evento de alto nivel: "Llegó plata comprometida" o "Plata comprometida pendiente".
+    var items = [];
+    (S.plataCometida || []).forEach(function(item) {
+      if (!item || !item.monto) return;
+      if (item.recibido) {
+        // Ya llegó: mostrar el evento de recibo
+        items.push({
+          id:        'cp_' + item.id,
+          fecha:     item.fechaRecibido || item.fecha || '0000-00-00',
+          ts:        item.tsRecibido || item.ts || 0,
+          tipo:      'comprometida',
+          signo:     '+',
+          monto:     item.monto || 0,
+          titulo:    'Llegó: ' + (item.desc || 'Plata comprometida'),
+          subtitulo: (item.destinos && item.destinos.length)
+                       ? item.destinos.length + ' destino' + (item.destinos.length !== 1 ? 's' : '')
+                       : '',
+          fuente:    'plataCometida',
+        });
+      } else {
+        // Pendiente: mostrar la expectativa registrada
+        items.push({
+          id:        'cp_pend_' + item.id,
+          fecha:     item.fecha || '0000-00-00',
+          ts:        item.ts || 0,
+          tipo:      'comprometida',
+          signo:     '+',
+          monto:     item.monto || 0,
+          titulo:    '⏳ Esperando: ' + (item.desc || 'Plata comprometida'),
+          subtitulo: 'Registrado, pendiente de recibo',
+          fuente:    'plataCometida',
+        });
+      }
+    });
+    return items;
+  }
 
   function _normMovimientos(S) {
     // S.movimientos unifica Nequi, Efectivo, Cajitas Nu y cuentas custom via campo fuente
@@ -16053,7 +16112,8 @@ document.addEventListener('DOMContentLoaded',function(){
       _normDeudores(Sx),
       _normSpotify(Sx),
       _normEncargos(Sx),
-      _normTC(Sx)
+      _normTC(Sx),
+      _normCP(Sx)
     );
 
     // Ordenar: fecha desc, ts como desempate
@@ -16467,6 +16527,13 @@ let _cpRecibirId = null;
 /* ── HELPERS ─────────────────────────────────────────────────────── */
 function _cpData(){
   if(!window.S) return [];
+  // Migración one-time: el array vivía como 'plataCometida' (typo sin r).
+  // Si Firebase devuelve datos con ese nombre los movemos al nombre correcto
+  // y borramos la key vieja para que en el próximo save() ya no se guarde.
+  if(S.plataCometida && !S.plataCometida){
+    S.plataCometida = S.plataCometida;
+    delete S.plataCometida;
+  }
   if(!S.plataCometida) S.plataCometida = [];
   return S.plataCometida;
 }
@@ -17409,7 +17476,8 @@ window._cpConfirmarRecibir = function(){
             }
             sumarFuente(cuenta, d.monto);
             if(!S.movimientos) S.movimientos = [];
-            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc});
+            // _esReposicionCP:true → excluido del análisis de tendencia (no es ingreso nuevo, es devolución)
+            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc, _esReposicionCP:true});
             if(window.logCambio) logCambio('Reposición en '+_cpFuenteLabel(cuenta), _cpFmt(d.monto)+' de "'+item.desc+'"', d.monto, 'ingreso');
           }
         } else {
@@ -17423,7 +17491,8 @@ window._cpConfirmarRecibir = function(){
             }
             sumarFuente(cuenta, d.monto);
             if(!S.movimientos) S.movimientos = [];
-            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición (adelantada): '+item.desc});
+            // _esReposicionCP:true → excluido del análisis de tendencia (devolución de plata que ya salió)
+            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición (adelantada): '+item.desc, _esReposicionCP:true});
             if(window.logCambio) logCambio('Reposición (ya adelantada) en '+_cpFuenteLabel(cuenta), _cpFmt(d.monto)+' repuesto', d.monto, 'ingreso');
           }
         }
@@ -17442,16 +17511,18 @@ window._cpConfirmarRecibir = function(){
           // Nota: esta deuda es un FAVOR — la plata del ingreso cubre la TC, NO es deuda propia
           const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
           if(tc){
-            tc.deuda = (tc.deuda||0) + d.monto;
-            // Registrar en tc.compras con _esFavor para diferenciarlo visualmente
-            if(!tc.compras) tc.compras = [];
-            tc.compras.push({
-              id: _cpUid(), desc: d.desc, monto: d.monto, fecha,
-              cat: 'Plata comprometida', nota: 'Favor — cubierto por ingreso: '+item.desc,
-              _desdeCP: true, _esFavor: true
-            });
-            if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado (favor)', _cpFmt(d.monto)+' sumado a la deuda — cubierto por "'+item.desc+'"', d.monto, 'gasto');
-          }
+            // FIX double-entry: si el usuario ya marcó yaPague=true via _cpGuardarMarcados,
+            // la deuda ya fue subida allí. No volver a subirla al confirmar el recibo.
+            if(!d.yaPague){
+              tc.deuda = (tc.deuda||0) + d.monto;
+              if(!tc.compras) tc.compras = [];
+              tc.compras.push({
+                id: _cpUid(), desc: d.desc, monto: d.monto, fecha,
+                cat: 'Plata comprometida', nota: 'Favor — cubierto por ingreso: '+item.desc,
+                _desdeCP: true, _esFavor: true
+              });
+              if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado (favor)', _cpFmt(d.monto)+' sumado a la deuda — cubierto por "'+item.desc+'"', d.monto, 'gasto');
+            }
           // Llevar la plata a la cajita que el usuario eligió (gastoTcCajita)
           const destCajita = d.gastoTcCajita;
           if(destCajita && typeof sumarFuente === 'function'){
@@ -17462,7 +17533,8 @@ window._cpConfirmarRecibir = function(){
             }
             sumarFuente(destCajita, d.monto);
             if(!S.movimientos) S.movimientos = [];
-            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc});
+            // _esReposicionCP:true → excluido del análisis de tendencia (es plata del ingreso comprometido, no tuya)
+            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc, _esReposicionCP:true});
             if(window.logCambio) logCambio('Plata para pagar TC → '+_cpFuenteLabel(destCajita), _cpFmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
           }
         } else if(d.gastoOrigen === 'cajita' && d.gastoCajita){
@@ -17475,7 +17547,8 @@ window._cpConfirmarRecibir = function(){
             }
             sumarFuente(d.gastoCajita, d.monto);
             if(!S.movimientos) S.movimientos = [];
-            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:d.gastoCajita, monto:d.monto, fecha, desc:'Reposición gasto: '+d.desc});
+            // _esReposicionCP:true → excluido del análisis de tendencia (repone cajita, no es ingreso nuevo)
+            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:d.gastoCajita, monto:d.monto, fecha, desc:'Reposición gasto: '+d.desc, _esReposicionCP:true});
             if(window.logCambio) logCambio('Repuesto gasto en '+_cpFuenteLabel(d.gastoCajita), _cpFmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
           }
         }
@@ -17713,14 +17786,149 @@ window._cpGuardarMarcados = function(){
 window._cpEliminar = async function(id){
   const item = _cpData().find(i=>i.id===id);
   if(!item) return;
+
+  // ── Calcular efectos secundarios que se revertirán ───────────────
+  const hayAdelantos = (item.destinos||[]).some(d=>d.tipo==='reposicion' && d.yaSaque);
+  const hayTcMarcada = (item.destinos||[]).some(d=>d.tipo==='gasto' && d.gastoOrigen==='tc' && d.yaPague);
+  const yaRecibido   = !!item.recibido;
+
+  // Construir mensaje de advertencia con el detalle de lo que se revertirá
+  let advertencia = '¿Eliminar «' + item.desc + '»?';
+  if(yaRecibido){
+    advertencia += '
+
+⚠️ Este ingreso ya fue marcado como recibido. Al eliminarlo se revertirán todos los movimientos generados (reposiciones en cuentas, entradas en cajitas) y las compras de TC asociadas.';
+  } else {
+    if(hayAdelantos){
+      advertencia += '
+
+⚠️ Hay plata adelantada de tus cuentas. Al eliminar se revertirán esos descuentos y quedarán como si nunca se hubieron hecho.';
+    }
+    if(hayTcMarcada){
+      advertencia += '
+
+⚠️ Hay gastos marcados como cargados a TC. Al eliminar se revertirá la deuda sumada a la tarjeta.';
+    }
+    if(!hayAdelantos && !hayTcMarcada){
+      advertencia += '
+
+Este ingreso no ha generado movimientos — se puede eliminar sin efectos secundarios.';
+    }
+  }
+  advertencia += '
+
+Esta acción no se puede deshacer.';
+
   const ok = typeof dialogo === 'function'
-    ? await dialogo('Eliminar ingreso', '¿Eliminar "'+item.desc+'"? Esta acción no se puede deshacer.', 'Eliminar', true)
-    : confirm('¿Eliminar este ingreso comprometido?');
+    ? await dialogo('Eliminar ingreso comprometido', advertencia, 'Sí, eliminar y revertir', true)
+    : confirm(advertencia);
   if(!ok) return;
+
+  // ── Revertir efectos secundarios ─────────────────────────────────
+  try {
+    if(yaRecibido){
+      // El ingreso ya se distribuyó: revertir todos los movimientos generados en _cpConfirmarRecibir
+      // 1) Revertir entradas en S.movimientos que fueron creadas por este ingreso comprometido
+      //    Identificamos los movimientos por su desc que contiene el nombre del item.
+      //    Usamos la bandera _esReposicionCP para los de reposición,
+      //    y para los de "Ingreso libre" buscamos por desc exacta.
+      if(S.movimientos){
+        S.movimientos = S.movimientos.filter(m => {
+          const desc = m.desc || '';
+          // Reposiciones marcadas con el flag (nuevo formato)
+          if(m._esReposicionCP && desc.includes(item.desc)) return false;
+          // Ingreso libre: coincide desc e id generado desde este item
+          if(m._esSobrante && desc.includes(item.desc)) return false;
+          // Reposiciones antiguas (sin flag): buscar por desc exacta
+          if(m.tipo==='entrada' && (
+            desc === 'Reposición: '+item.desc ||
+            desc === 'Reposición (adelantada): '+item.desc ||
+            desc.startsWith('Para pagar TC (') && desc.endsWith('): '+item.desc) ||
+            desc === 'Ingreso libre: '+item.desc
+          )) return false;
+          return true;
+        });
+      }
+      // 2) Revertir sumarFuente de cada destino de reposición
+      (item.destinos||[]).forEach(d => {
+        try {
+          if(d.tipo==='reposicion'){
+            const cuenta = d.cuentaId || item.cuentaDestino;
+            if(cuenta && typeof descontarFuente==='function'){
+              if(cuenta.startsWith('cajita:')){
+                const caj=(S.cajitas||[]).find(x=>x.id===cuenta.split(':')[1]);
+                if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
+              }
+              descontarFuente(cuenta, d.monto);
+            }
+          } else if(d.tipo==='gasto' && d.gastoOrigen==='tc' && d.gastoTcId){
+            // Revertir deuda y compra de TC generada al recibir
+            const tc=(S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
+            if(tc){
+              tc.deuda = Math.max(0,(tc.deuda||0)-d.monto);
+              if(tc.compras) tc.compras=tc.compras.filter(c=>!(c._desdeCP && c.desc===d.desc && c.monto===d.monto));
+              // También revertir la cajita a la que se movió la plata para pagar TC
+              if(d.gastoTcCajita && typeof descontarFuente==='function'){
+                if(d.gastoTcCajita.startsWith('cajita:')){
+                  const caj=(S.cajitas||[]).find(x=>x.id===d.gastoTcCajita.split(':')[1]);
+                  if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
+                }
+                descontarFuente(d.gastoTcCajita, d.monto);
+              }
+            }
+          } else if(d.tipo==='gasto' && d.gastoOrigen==='cajita' && d.gastoCajita){
+            // Revertir la reposición del gasto de cajita
+            if(typeof descontarFuente==='function'){
+              if(d.gastoCajita.startsWith('cajita:')){
+                const caj=(S.cajitas||[]).find(x=>x.id===d.gastoCajita.split(':')[1]);
+                if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
+              }
+              descontarFuente(d.gastoCajita, d.monto);
+            }
+          }
+        } catch(e){ console.warn('[CP] Error revirtiendo destino al eliminar:', e); }
+      });
+    } else {
+      // No recibido: solo revertir adelantos (yaSaque) y TC marcadas (yaPague)
+      (item.destinos||[]).forEach(d => {
+        try {
+          if(d.tipo==='reposicion' && d.yaSaque){
+            const cuenta = d.cuentaId || item.cuentaDestino;
+            if(cuenta && typeof sumarFuente==='function'){
+              if(cuenta.startsWith('cajita:')){
+                const caj=(S.cajitas||[]).find(x=>x.id===cuenta.split(':')[1]);
+                if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
+              }
+              // Revertir el descuento que se hizo al adelantar (devolver la plata a la cajita)
+              sumarFuente(cuenta, d.monto);
+              // Quitar el movimiento de salida generado por el adelanto
+              if(S.movimientos){
+                S.movimientos = S.movimientos.filter(m => !(
+                  m.tipo==='salida' &&
+                  m.fuente===cuenta &&
+                  m.monto===d.monto &&
+                  (m.desc||'').includes(d.desc||item.desc)
+                ));
+              }
+            }
+          } else if(d.tipo==='gasto' && d.gastoOrigen==='tc' && d.gastoTcId && d.yaPague){
+            const tc=(S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
+            if(tc){
+              tc.deuda = Math.max(0,(tc.deuda||0)-d.monto);
+              if(tc.compras) tc.compras=tc.compras.filter(c=>!(c._desdeCP && c.desc===d.desc && c.monto===d.monto));
+            }
+          }
+        } catch(e){ console.warn('[CP] Error revirtiendo adelanto al eliminar:', e); }
+      });
+    }
+  } catch(e){ console.error('[CP] Error en reversión al eliminar:', e); }
+
+  // ── Eliminar el registro ─────────────────────────────────────────
   S.plataCometida = S.plataCometida.filter(i=>i.id!==id);
   _cpSave();
+  if(typeof refresh==='function') refresh();
   _cpRenderLista();
-  _cpToast('Ingreso eliminado','ok');
+  _cpToast('Ingreso eliminado y efectos revertidos ✓','ok');
 };
 
 /* ── INTEGRACIÓN CON renderAttencion ────────────────────────────── */

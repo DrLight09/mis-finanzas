@@ -4966,8 +4966,11 @@ function leerArchivoImport(e){
       try { localStorage.setItem('mf_lastSavedAt', String(_impTs)); } catch(_){}
       window._importing = true;
       setTimeout(() => { window._importing = false; }, 5000);
-      save();
-      setTimeout(() => { location.reload(); }, 2500);
+      // Usar _fbSaveToCloud() en lugar de save() para guardar window.S
+      // directamente sin leer del DOM (que aún muestra valores viejos).
+      if(window._fbSaveToCloud) window._fbSaveToCloud();
+      // Recargar cuando el debounce de 1.5s + escritura en Firestore hayan terminado.
+      setTimeout(() => { location.reload(); }, 4000);
       toast('Datos importados correctamente — recargando…','ok');
     }catch(err){
       toast('Error al leer el archivo JSON','err');
@@ -10162,10 +10165,11 @@ leerArchivoImport = async function(e) {
       // El debounce de save() tarda 1.5s; bloqueamos 5s por seguridad.
       window._importing = true;
       setTimeout(() => { window._importing = false; }, 5000);
-      save();
-      // Recargar la página una vez que el guardado haya terminado (debounce 1.5s + margen).
-      // Así la UI arranca limpia desde los datos recién guardados en Firestore.
-      setTimeout(() => { location.reload(); }, 2500);
+      // Usar _fbSaveToCloud() en lugar de save() para guardar window.S
+      // directamente sin leer del DOM (que aún muestra valores viejos).
+      if(window._fbSaveToCloud) window._fbSaveToCloud();
+      // Recargar cuando el debounce de 1.5s + escritura en Firestore hayan terminado.
+      setTimeout(() => { location.reload(); }, 4000);
       toast('Datos importados correctamente — recargando…', 'ok');
     } catch(err) {
       if (err instanceof SyntaxError) {

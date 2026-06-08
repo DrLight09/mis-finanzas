@@ -16390,6 +16390,12 @@ function _injectSheet(){
         </div>
         <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.5;">Si ya la sacaste, la app descuenta el saldo ahora y lo repone cuando llegue el ingreso.</div>
       </div>
+      <!-- Fecha límite de pago (para gastos de cajita no pagados) -->
+      <div class="ig" id="cpd-fecha-pago-wrap" style="display:none;">
+        <label class="il" for="cpd-fecha-pago">¿Para cuándo hay que pagarlo? <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label>
+        <input type="date" id="cpd-fecha-pago">
+        <div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4;"><i class="fa-solid fa-bell" style="margin-right:4px;color:var(--amber);"></i>Unos días antes te recordamos que usés la plata de la cajita.</div>
+      </div>
       <!-- ¿Ya lo pagué? (para servicios, tc, otro) -->
       <div class="ig" id="cpd-ya-pague-wrap" style="display:none;">
         <label class="il" style="margin-bottom:8px;">¿Ya lo pagaste?</label>
@@ -16695,19 +16701,63 @@ function _cpRenderLista(){
 
   // Recibidos recientes (últimos 5)
   if(recibidos.length){
+    const hoyMs = new Date(_cpHoy()+'T00:00:00').getTime();
     html += `<div class="sec-title" style="margin-top:14px;">Recibidos recientemente</div>`;
     recibidos.sort((a,b)=>(b.fechaRecibido||'').localeCompare(a.fechaRecibido||'')).slice(0,5).forEach(item=>{
-      html += `<div class="card card-sm" style="margin-bottom:7px;opacity:.65;">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div>
-            <div style="font-size:13px;font-weight:600;color:var(--text2);">${_cpEscape(item.desc)}</div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">Recibido el ${item.fechaRecibido||'—'}</div>
+      // Gastos pendientes de cajita con plata guardada
+      const gastosGuardados = (item.destinos||[]).filter(d =>
+        d.tipo === 'gasto' && !d.yaPague && d.gastoOrigen === 'cajita' && d.gastoCajita
+      );
+      let guardadaHtml = '';
+      if(gastosGuardados.length){
+        guardadaHtml = `<div style="margin-top:9px;padding:9px 11px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.18);border-radius:var(--radius-sm);">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">
+            <i class="fa-solid fa-vault" style="color:var(--accent);font-size:10px;"></i>
+            <span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;">Plata guardada para pagar</span>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;">
+          ${gastosGuardados.map(d => {
+            const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
+            let fechaInfo = '';
+            if(d.fechaPago){
+              const diasFecha = Math.round((new Date(d.fechaPago+'T00:00:00').getTime() - hoyMs)/86400000);
+              let colorFecha = 'var(--text3)';
+              let iconoFecha = 'fa-calendar';
+              let textoFecha = 'Pagar el '+d.fechaPago;
+              if(diasFecha < 0){ colorFecha='var(--red)'; iconoFecha='fa-triangle-exclamation'; textoFecha='¡Venció! ('+d.fechaPago+')'; }
+              else if(diasFecha === 0){ colorFecha='var(--amber)'; iconoFecha='fa-bell'; textoFecha='¡Pagar hoy!'; }
+              else if(diasFecha === 1){ colorFecha='var(--amber)'; iconoFecha='fa-bell'; textoFecha='Pagar mañana'; }
+              else if(diasFecha <= 4){ colorFecha='var(--amber)'; iconoFecha='fa-clock'; textoFecha='Pagar en '+diasFecha+' días ('+d.fechaPago+')'; }
+              fechaInfo = ` · <i class="fa-solid ${iconoFecha}" style="color:${colorFecha};font-size:9px;margin-right:2px;"></i><span style="color:${colorFecha};">${textoFecha}</span>`;
+            }
+            return `<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(200,240,96,.1);">
+              <div style="min-width:0;flex:1;">
+                <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_cpEscape(d.desc)}</div>
+                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;"><i class="fa-solid fa-box" style="font-size:9px;margin-right:3px;color:var(--purple);"></i>${_cpEscape(cajLabel)}${fechaInfo}</div>
+              </div>
+              <span style="font-size:11px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);margin-left:8px;flex-shrink:0;">${_cpFmt(d.monto)}</span>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }
+
+      const tieneUrgente = gastosGuardados.some(d => {
+        if(!d.fechaPago) return false;
+        const dias = Math.round((new Date(d.fechaPago+'T00:00:00').getTime() - hoyMs)/86400000);
+        return dias <= 3;
+      });
+
+      html += `<div class="card card-sm" style="margin-bottom:7px;${tieneUrgente?'border-color:rgba(240,184,64,.4);':'opacity:.75;'}">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <div style="min-width:0;flex:1;">
+            <div style="font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_cpEscape(item.desc)}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">Recibido el ${item.fechaRecibido||'—'}${tieneUrgente?' <span style="color:var(--amber);font-weight:700;">· Pago próximo</span>':''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:8px;">
             <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text2);">${_cpFmt(item.montoTotal)}</span>
             <button type="button" onclick="window._cpEliminar('${item.id}')" style="padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.2);color:var(--red);">&#x2715;</button>
           </div>
         </div>
+        ${guardadaHtml}
       </div>`;
     });
   }
@@ -16861,6 +16911,8 @@ window._cpAgregarDestino = function(){
   _cpPoblarCuentas('cpd-cuenta', false);
   document.getElementById('cpd-desc').value = '';
   document.getElementById('cpd-monto').value = '';
+  const fpInput = document.getElementById('cpd-fecha-pago');
+  if(fpInput) fpInput.value = '';
   // Activar "reposicion" por defecto con UI de tarjeta
   window._cpdSetTipo('reposicion');
   _cpOpenSheet('cp-destino');
@@ -16880,6 +16932,9 @@ window._cpdTipoChange = function(){
   if(cuentaWrap)      cuentaWrap.style.display       = tipo==='reposicion' ? '' : 'none';
   if(yaSaqueWrap)     yaSaqueWrap.style.display      = tipo==='reposicion' ? '' : 'none';
   if(yaPagueWrap)     yaPagueWrap.style.display      = (tipo==='gasto'||tipo==='otro') ? '' : 'none';
+  // fechaPago solo aplica a gastos de cajita, se controla después en _cpdSetYaPague/_cpdSetGastoOrigen
+  const fechaPagoWrap = document.getElementById('cpd-fecha-pago-wrap');
+  if(fechaPagoWrap) fechaPagoWrap.style.display = 'none';
 
   if(tipo==='gasto'){
     window._cpdSetGastoOrigen(window._cpdGastoOrigenVal||'cajita');
@@ -16956,12 +17011,18 @@ window._cpdSetGastoOrigen = function(val){
     if(cajWrap) cajWrap.style.display = '';
     if(tcWrap)  tcWrap.style.display  = 'none';
     _cpdPoblarGastoSelectores();
+    // Mostrar fecha pago solo si es cajita y no está ya pagado
+    const fechaPagoWrapG = document.getElementById('cpd-fecha-pago-wrap');
+    if(fechaPagoWrapG) fechaPagoWrapG.style.display = window._cpdYaPagueVal ? 'none' : '';
   } else {
     tcBtn.style.cssText  += ';background:rgba(240,104,104,.12);border-color:rgba(240,104,104,.5);color:var(--red);';
     cajBtn.style.cssText += ';background:transparent;border-color:var(--border2);color:var(--text2);';
     if(tcWrap)  tcWrap.style.display  = '';
     if(cajWrap) cajWrap.style.display = 'none';
     _cpdPoblarGastoSelectores();
+    // Ocultar fecha pago para TC
+    const fechaPagoWrapG = document.getElementById('cpd-fecha-pago-wrap');
+    if(fechaPagoWrapG) fechaPagoWrapG.style.display = 'none';
   }
 };
 
@@ -17006,6 +17067,13 @@ window._cpdSetYaPague = function(val){
     si.style.background = 'transparent';
     si.style.borderColor = 'var(--border2)';
     si.style.color = 'var(--text2)';
+  }
+  // Controlar visibilidad de fecha de pago: solo cuando no está pagado y es cajita
+  const fpWrap = document.getElementById('cpd-fecha-pago-wrap');
+  if(fpWrap){
+    const esGastoCajita = document.getElementById('cpd-tipo') && document.getElementById('cpd-tipo').value === 'gasto'
+      && window._cpdGastoOrigenVal === 'cajita';
+    fpWrap.style.display = (esGastoCajita && !val) ? '' : 'none';
   }
 };
 
@@ -17057,7 +17125,14 @@ window._cpdConfirmar = function(){
     } catch(e){ _cpToast('No se pudo descontar el saldo: '+e.message,'err'); }
   }
 
-  _cpDestinosTmp.push({ id:_cpUid(), tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId, gastoTcCajita });
+  // Leer fecha de pago (solo para gastos de cajita no pagados)
+  let fechaPago = '';
+  if(tipo === 'gasto' && gastoOrigen === 'cajita' && !yaPague){
+    const fpEl = document.getElementById('cpd-fecha-pago');
+    fechaPago = fpEl ? (fpEl.value || '') : '';
+  }
+
+  _cpDestinosTmp.push({ id:_cpUid(), tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId, gastoTcCajita, fechaPago });
   _cpCloseSheet('cp-destino');
   _cpRenderDestinosTmp();
 };
@@ -17679,6 +17754,31 @@ window._cpEliminar = async function(id){
         chip.onclick = ()=>{ if(typeof showScreen==='function') showScreen('comprometida'); setTimeout(_cpRenderLista,100); };
         list.appendChild(chip);
       }
+    });
+
+    // Alertas de gastos pendientes con fecha de pago próxima (plata guardada en cajita)
+    items.filter(i => i.recibido).forEach(item => {
+      (item.destinos||[]).filter(d =>
+        d.tipo === 'gasto' && !d.yaPague && d.gastoOrigen === 'cajita' && d.gastoCajita && d.fechaPago
+      ).forEach(d => {
+        const diasG = Math.round((new Date(d.fechaPago+'T00:00:00') - new Date(hoyStr+'T00:00:00'))/86400000);
+        let txtG = '', tipoG = '';
+        if(diasG < 0){ txtG = `Vencido: "${d.desc}" de "${item.desc}" debía pagarse el ${d.fechaPago} — tenés ${_cpFmt(d.monto)} en ${typeof _cpFuenteLabel==='function'?_cpFuenteLabel(d.gastoCajita):d.gastoCajita}`; tipoG='red'; }
+        else if(diasG === 0){ txtG = `¡Hoy hay que pagar "${d.desc}"! Tenés ${_cpFmt(d.monto)} guardado`; tipoG='amber'; }
+        else if(diasG === 1){ txtG = `Mañana vence "${d.desc}" — tenés ${_cpFmt(d.monto)} en ${typeof _cpFuenteLabel==='function'?_cpFuenteLabel(d.gastoCajita):d.gastoCajita}`; tipoG='amber'; }
+        else if(diasG <= 3){ txtG = `En ${diasG} días vence "${d.desc}" (${d.fechaPago}) — tenés ${_cpFmt(d.monto)} guardado`; tipoG='amber'; }
+        if(txtG){
+          sec.style.display = '';
+          const chipG = document.createElement('div');
+          chipG.className = 'card card-sm attn-card';
+          chipG.style.marginBottom='7px';
+          chipG.style.cursor='pointer';
+          chipG.style.borderColor = tipoG==='red' ? 'rgba(240,104,104,.4)' : '';
+          chipG.innerHTML = `<div style="font-size:12px;color:var(--${tipoG});">${txtG}</div>`;
+          chipG.onclick = ()=>{ if(typeof showScreen==='function') showScreen('comprometida'); setTimeout(_cpRenderLista,100); };
+          list.appendChild(chipG);
+        }
+      });
     });
   };
 })();

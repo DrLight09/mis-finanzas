@@ -13936,8 +13936,8 @@ document.addEventListener('focusin', function(e){
         mesKey(m.fecha)===mk
       ).forEach(m=>{ ing+=(m.monto||0); });
 
-      // Gastos del mes
-      const gv = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mk&&!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);
+      // Gastos del mes (excluir pagos de TC y gastos con plata-comprometida: no son flujo propio)
+      const gv = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mk&&!g.esPagoGastoFijo&&!g._esPagoTC&&g.fuente!=='plata-comprometida').reduce((a,g)=>a+(g.monto||0),0);
       const gf = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mk]?a+(g.monto||0):a,0);
 
       mesesRecientes.push({ mk, ing, gastos: gv+gf, tieneGastos: (gv+gf)>0 });
@@ -13970,7 +13970,7 @@ document.addEventListener('focusin', function(e){
         (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))) &&
         mesKey(m.fecha)===mkHoy
       ).forEach(m=>{ ingHoy+=(m.monto||0); });
-      const gvHoy = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mkHoy&&!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);
+      const gvHoy = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mkHoy&&!g.esPagoGastoFijo&&!g._esPagoTC&&g.fuente!=='plata-comprometida').reduce((a,g)=>a+(g.monto||0),0);
       const gfHoy = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mkHoy]?a+(g.monto||0):a,0);
       if(ingHoy > 0 || (gvHoy+gfHoy) > 0){
         mesesRecientes.unshift({ mk: mkHoy, ing: ingHoy, gastos: gvHoy+gfHoy, tieneGastos: (gvHoy+gfHoy)>0, esMesActual: true });

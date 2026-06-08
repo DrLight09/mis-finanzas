@@ -8817,9 +8817,15 @@ function getMovimientosCuenta(tipo) {
       const esEntrada = m.tipo === 'entrada';
       const esApertura = m.tipo === 'apertura';
       const esTransferencia = m.tipo === 'transferencia';
-      // Para transferencias de intercambio: si _fuenteDestino existe y es distinto a esta cuenta,
-      // la plata salió de aquí → monto negativo (como las transferencias normales del sistema)
-      const esIntercambioSalida = esTransferencia && m._fuenteDestino && m._fuenteDestino !== m.fuente;
+      // Para transferencias de intercambio encargo: usar los flags semánticos directamente.
+      // _intercambioSalida = plata que salió de esta cuenta (negativo)
+      // _intercambioEntrada = plata que entró a esta cuenta (positivo)
+      // Sin esos flags, caer al comportamiento anterior: _fuenteDestino distinto → salida
+      const esIntercambioSalida = esTransferencia && (
+        m._intercambioSalida ? true :
+        m._intercambioEntrada ? false :
+        !!(m._fuenteDestino && m._fuenteDestino !== m.fuente)
+      );
       const tipoDisplay = esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'salida_manual';
       const montoDisplay = (esApertura) ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto;
       movs.push({ tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : esTransferencia ? 'Intercambio' : 'Salida manual'), monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '' });

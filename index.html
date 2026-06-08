@@ -11888,6 +11888,31 @@ async function eliminarEncargoActual() {
     : `¿Eliminar el encargo de ${enc.nombre}? Esta acción no se puede deshacer.`;
   const ok = await dialogo('Eliminar encargo', msg, 'Eliminar', true);
   if (!ok) return;
+
+  // Recoger todos los IDs de movimientos del encargo para limpiar efectos secundarios
+  const encMovIds = new Set((enc.movimientos||[]).map(m => m.id));
+
+  // Limpiar S.movimientos vinculados por _encMovId (diferenciales, intercambios, margen)
+  if (S.movimientos && encMovIds.size > 0) {
+    S.movimientos = S.movimientos.filter(m => !encMovIds.has(m._encMovId));
+  }
+  // Limpiar también movimientos huérfanos viejos sin _encMovId: detectar por patrón de descripción
+  if (S.movimientos) {
+    const prefijosEncargo = [
+      `Diferencial encargo ${enc.nombre} —`,
+      `Margen de encargo —`,
+      `Margen encargo ${enc.nombre}`
+    ];
+    S.movimientos = S.movimientos.filter(m =>
+      !(m.tipo === 'entrada' && prefijosEncargo.some(p => (m.desc||'').startsWith(p)))
+    );
+  }
+
+  // Limpiar S.tcMovimientos vinculados por _encMovId
+  if (S.tcMovimientos && encMovIds.size > 0) {
+    S.tcMovimientos = S.tcMovimientos.filter(m => !encMovIds.has(m._encMovId));
+  }
+
   S.encargos = (S.encargos||[]).filter(e=>e.id!==encargoActualId);
   save();
   volverEncargosLista();
@@ -13769,10 +13794,12 @@ document.addEventListener('focusin', function(e){
     });
     // Entradas manuales a Nequi, Efectivo y cajitas (igual que el análisis de tendencia)
     // Excluir: apertura, _encMovId (encargos), _esReposicionCP (plata comprometida devuelta)
+    // Fallback por desc para movimientos viejos sin _esReposicionCP
     if(window.mesKey){
       (S.movimientos||[]).filter(m=>
         m.tipo==='entrada' &&
         !m._esReposicionCP &&
+        !/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'') &&
         !m._encMovId &&
         (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))) &&
         window.mesKey(m.fecha)===mes
@@ -13967,9 +13994,11 @@ document.addEventListener('focusin', function(e){
       });
       // Entradas manuales a Nequi, Efectivo y cajitas de Nu (tipo 'entrada', excluye apertura para no distorsionar)
       // Excluir reposiciones de plata comprometida (_esReposicionCP): no son ingresos nuevos sino devoluciones
+      // Fallback por desc para movimientos viejos sin _esReposicionCP
       (S.movimientos||[]).filter(m=>
         m.tipo==='entrada' &&
         !m._esReposicionCP &&
+        !/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'') &&
         (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))) &&
         mesKey(m.fecha)===mk
       ).forEach(m=>{ ing+=(m.monto||0); });
@@ -14004,9 +14033,11 @@ document.addEventListener('focusin', function(e){
         (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mkHoy).forEach(m=>{ ingHoy+=(m.monto||0); });
       });
       // Excluir reposiciones de plata comprometida (_esReposicionCP): no son ingresos nuevos
+      // Fallback por desc para movimientos viejos sin _esReposicionCP
       (S.movimientos||[]).filter(m=>
         m.tipo==='entrada' &&
         !m._esReposicionCP &&
+        !/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'') &&
         (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))) &&
         mesKey(m.fecha)===mkHoy
       ).forEach(m=>{ ingHoy+=(m.monto||0); });

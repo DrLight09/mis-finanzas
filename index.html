@@ -17523,19 +17523,20 @@ window._cpConfirmarRecibir = function(){
               });
               if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado (favor)', _cpFmt(d.monto)+' sumado a la deuda — cubierto por "'+item.desc+'"', d.monto, 'gasto');
             }
-          // Llevar la plata a la cajita que el usuario eligió (gastoTcCajita)
-          const destCajita = d.gastoTcCajita;
-          if(destCajita && typeof sumarFuente === 'function'){
-            if(destCajita.startsWith('cajita:')){
-              const cajId = destCajita.split(':')[1];
-              const caj = (S.cajitas||[]).find(x=>x.id===cajId);
-              if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+            // Llevar la plata a la cajita que el usuario eligió (gastoTcCajita)
+            const destCajita = d.gastoTcCajita;
+            if(destCajita && typeof sumarFuente === 'function'){
+              if(destCajita.startsWith('cajita:')){
+                const cajId = destCajita.split(':')[1];
+                const caj = (S.cajitas||[]).find(x=>x.id===cajId);
+                if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+              }
+              sumarFuente(destCajita, d.monto);
+              if(!S.movimientos) S.movimientos = [];
+              // _esReposicionCP:true → excluido del análisis de tendencia (es plata del ingreso comprometido, no tuya)
+              S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc, _esReposicionCP:true});
+              if(window.logCambio) logCambio('Plata para pagar TC → '+_cpFuenteLabel(destCajita), _cpFmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
             }
-            sumarFuente(destCajita, d.monto);
-            if(!S.movimientos) S.movimientos = [];
-            // _esReposicionCP:true → excluido del análisis de tendencia (es plata del ingreso comprometido, no tuya)
-            S.movimientos.push({id:_cpUid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc, _esReposicionCP:true});
-            if(window.logCambio) logCambio('Plata para pagar TC → '+_cpFuenteLabel(destCajita), _cpFmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
           }
         } else if(d.gastoOrigen === 'cajita' && d.gastoCajita){
           // Gasto de cajita: reponer esa cajita con el ingreso
@@ -17795,29 +17796,19 @@ window._cpEliminar = async function(id){
   // Construir mensaje de advertencia con el detalle de lo que se revertirá
   let advertencia = '¿Eliminar «' + item.desc + '»?';
   if(yaRecibido){
-    advertencia += '
-
-⚠️ Este ingreso ya fue marcado como recibido. Al eliminarlo se revertirán todos los movimientos generados (reposiciones en cuentas, entradas en cajitas) y las compras de TC asociadas.';
+    advertencia += '\n\n⚠️ Este ingreso ya fue marcado como recibido. Al eliminarlo se revertirán todos los movimientos generados (reposiciones en cuentas, entradas en cajitas) y las compras de TC asociadas.';
   } else {
     if(hayAdelantos){
-      advertencia += '
-
-⚠️ Hay plata adelantada de tus cuentas. Al eliminar se revertirán esos descuentos y quedarán como si nunca se hubieron hecho.';
+      advertencia += '\n\n⚠️ Hay plata adelantada de tus cuentas. Al eliminar se revertirán esos descuentos y quedarán como si nunca se hubieron hecho.';
     }
     if(hayTcMarcada){
-      advertencia += '
-
-⚠️ Hay gastos marcados como cargados a TC. Al eliminar se revertirá la deuda sumada a la tarjeta.';
+      advertencia += '\n\n⚠️ Hay gastos marcados como cargados a TC. Al eliminar se revertirá la deuda sumada a la tarjeta.';
     }
     if(!hayAdelantos && !hayTcMarcada){
-      advertencia += '
-
-Este ingreso no ha generado movimientos — se puede eliminar sin efectos secundarios.';
+      advertencia += '\n\nEste ingreso no ha generado movimientos — se puede eliminar sin efectos secundarios.';
     }
   }
-  advertencia += '
-
-Esta acción no se puede deshacer.';
+  advertencia += '\n\nEsta acción no se puede deshacer.';
 
   const ok = typeof dialogo === 'function'
     ? await dialogo('Eliminar ingreso comprometido', advertencia, 'Sí, eliminar y revertir', true)

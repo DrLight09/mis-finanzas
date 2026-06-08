@@ -4650,6 +4650,28 @@ function save(){
 }
 
 /* ---- SNAPSHOT PATRIMONIO ---- */
+function _saldoCPAjeno(){
+  // Calcula cuánta plata comprometida ajena está físicamente en cuentas propias.
+  // Son destinos de ingresos ya recibidos donde el dinero es de otra persona
+  // (gastos de cajita/nequi/efectivo pendientes de pagar, y plata para TC aún en cajita).
+  // Una vez que se paga (yaPague=true) la plata ya salió → no restar.
+  let total = 0;
+  (S.plataCometida||[]).forEach(item => {
+    if(!item.recibido) return; // aún no llegó → no está en ninguna cuenta
+    (item.destinos||[]).forEach(d => {
+      if(d.yaPague) return; // ya se pagó → salió de la cuenta
+      if(d.tipo === 'gasto' && d.gastoOrigen === 'cajita' && d.gastoCajita){
+        // Plata de otra persona guardada en cajita esperando el pago
+        total += (d.monto||0);
+      } else if(d.tipo === 'gasto' && d.gastoOrigen === 'tc' && d.gastoTcCajita){
+        // Plata para pagar TC guardada en cajita intermediaria
+        total += (d.monto||0);
+      }
+    });
+  });
+  return total;
+}
+
 function calcPatrimonioTotal(){
   const nu=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
@@ -4658,7 +4680,10 @@ function calcPatrimonioTotal(){
   const prest=typeof totalPrestadoPendiente==="function"?totalPrestadoPendiente():0;
   const custom=(S.cuentasPersonalizadas||[]).filter(c=>c.incluirEnTotal).reduce((a,c)=>a+(c.saldo||0),0);
   const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
-  return nu+cdts+nequi+ef+prest+custom-deudaTC;
+  // Restar plata comprometida ajena que está físicamente en cuentas propias
+  // (igual que se restan encargos) — es plata de otras personas que administrás
+  const cpAjeno = _saldoCPAjeno();
+  return nu+cdts+nequi+ef+prest+custom-deudaTC-cpAjeno;
 }
 
 function snapshotPatrimonio(){

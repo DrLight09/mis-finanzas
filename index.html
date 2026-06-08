@@ -10786,9 +10786,22 @@ function _difTogglePagoYo(i) {
 function _difSetCuentaSalida(i, v) { _difBenefs[i].miCuentaSalida = v; _difResumen(); }
 function _difSetCuentaEntrada(i, v) { _difBenefs[i].miCuentaEntrada = v; _difResumen(); }
 
-function _difFuentesOptsHtml(selectedVal) {
-  return '<option value="">Sin especificar</option>' +
-    getFuentesSinTC().map(f => `<option value="${f.val}"${f.val === selectedVal ? ' selected' : ''}>${f.label}</option>`).join('');
+function _difFuentesOptsHtml(selectedVal, soloConSaldo) {
+  // soloConSaldo=true → selector "De mi cuenta (sale)": ocultar cuentas sin saldo disponible
+  const fuentes = getFuentesSinTC();
+  const opts = fuentes
+    .map(f => {
+      const saldo = getSaldoFuente(f.val);
+      if (soloConSaldo && saldo <= 0) return null; // omitir cuentas vacías
+      const label = soloConSaldo ? `${f.label} (${fmt(saldo)})` : f.label;
+      return `<option value="${f.val}"${f.val === selectedVal ? ' selected' : ''}>${label}</option>`;
+    })
+    .filter(Boolean)
+    .join('');
+  const placeholder = soloConSaldo
+    ? '<option value="">Seleccionar cuenta</option>'
+    : '<option value="">Sin especificar</option>';
+  return placeholder + opts;
 }
 
 function _difRenderBenefs() {
@@ -10820,7 +10833,7 @@ function _difRenderBenefs() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 0 2px;">
         <div>
           <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">De mi cuenta (sale)</div>
-          <div class="select-wrap"><select onchange="_difSetCuentaSalida(${i},this.value)" style="font-size:12px;padding:7px 10px;">${_difFuentesOptsHtml(cuentaSalida)}</select></div>
+          <div class="select-wrap"><select onchange="_difSetCuentaSalida(${i},this.value)" style="font-size:12px;padding:7px 10px;">${_difFuentesOptsHtml(cuentaSalida, true)}</select></div>
         </div>
         <div>
           <div style="font-size:10px;color:var(--accent);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Y recupero en (entra)</div>
@@ -10897,6 +10910,20 @@ function _difActualizarMiCuenta(mostrar) {
     sel.innerHTML = '<option value="">Sin especificar (queda como nota)</option>' +
       getFuentesSinTC().map(f => `<option value="${f.val}"${f.val === prevVal ? ' selected' : ''}>${f.label}</option>`).join('');
   }
+}
+
+function _validarIntercambiosBenefs() {
+  // Retorna un string con el error si algún intercambio supera el saldo, o null si todo ok
+  const benefsYoPague = _difBenefs.filter(b => b.pagadoPorMi && b.monto > 0);
+  for (const b of benefsYoPague) {
+    if (!b.miCuentaSalida) continue;
+    const saldo = getSaldoFuente(b.miCuentaSalida);
+    if (b.monto > saldo + 0.5) {
+      const nombre = b.nombre ? `"${b.nombre}"` : 'una persona';
+      return `No tenés ${fmt(b.monto)} en ${fuenteLabel(b.miCuentaSalida)} para pagarle a ${nombre}. Disponible: ${fmt(saldo)}.`;
+    }
+  }
+  return null;
 }
 
 function _procesarDiferencial(movimiento) {
@@ -11667,6 +11694,9 @@ function confirmarMovEncargo() {
         toast(`En ${fuenteLabel(s.fuente)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
       }
     }
+    // Validar intercambios antes de registrar
+    const _errIntSplit = _validarIntercambiosBenefs();
+    if (_errIntSplit) { toast(_errIntSplit, 'err', 5000); return; }
     // Registrar un movimiento por cada porción del split
     const fecha = document.getElementById('movenc_fecha').value || hoy();
     const nota  = document.getElementById('movenc_nota').value.trim();
@@ -11719,7 +11749,11 @@ function confirmarMovEncargo() {
       ts: Date.now()
     };
     enc.movimientos.push(nuevoMov);
-    if (movEncargoTipo === 'salida') _procesarDiferencial(nuevoMov);
+    if (movEncargoTipo === 'salida') {
+      const _errInt = _validarIntercambiosBenefs();
+      if (_errInt) { toast(_errInt, 'err', 5000); return; }
+      _procesarDiferencial(nuevoMov);
+    }
     save();
     refresh();
     closeSheet('mov-encargo');

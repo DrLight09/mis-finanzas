@@ -411,20 +411,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
 /* ===== MEJORAS UX MÓVIL ===== */
 
 /* 1. Sheet swipe: handle más grande y fácil de agarrar */
-.sheet-handle {
-  width: 44px; height: 5px; background: var(--border2); border-radius: 3px;
-  margin: 0 auto 0; cursor: grab;
-  /* Área táctil generosa: 48px de alto aunque el pill visual sea de 5px */
-  padding: 21px 0;
-  background-clip: content-box;
-  /* Centrar el pill dentro del padding */
-  box-sizing: content-box;
-  /* Indicar visualmente que es draggable */
-  transition: background .15s;
-}
-.sheet-handle:active { background-color: var(--accent); cursor: grabbing; }
-/* El margin-bottom viene del padding ahora — usar 4px extra abajo */
-.sheet > .sheet-handle { margin-top: 0; margin-bottom: 10px; }
+.sheet-handle { width:40px;height:5px;background:var(--border2);border-radius:3px;margin:14px auto 20px;cursor:grab; }
 
 /* 2. Botones de cuentas: compactos en fila */
 .cuenta-actions { display:flex;flex-direction:row;gap:7px;margin-bottom:14px;flex-wrap:wrap; }
@@ -461,9 +448,8 @@ input.movs-search-input:focus{border-color:var(--accent);}
 .detail-header-title { font-size:16px;font-weight:600;flex:1;min-width:0; }
 .detail-header-action { min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center; }
 
-/* 6. Swipe sheet support — solo el handle puede arrastrar, el resto es scroll normal */
-.sheet { touch-action: pan-y; overflow-y: auto; }
-.sheet-handle { touch-action: none; } /* El handle captura el drag, no el scroll */
+/* 6. Swipe sheet support */
+.sheet { touch-action: pan-y; }
 .overlay { touch-action: none; }
 
 /* 7. Atención section — always prominent */
@@ -12651,51 +12637,26 @@ document.addEventListener('input',function(e){
 })();
 
 // ── 2. SHEET SWIPE-TO-CLOSE ──────────────────────────────────────────────────
-// Solo se activa cuando el dedo toca el handle (el pill gris de arriba).
-// Si hay teclado abierto, el drag se cancela automáticamente.
 (function(){
-  function _isKeyboardOpen(){
-    // Si hay un input/textarea/select con foco, el teclado probablemente está abierto.
-    const ae = document.activeElement;
-    if(ae && ['INPUT','TEXTAREA','SELECT'].includes(ae.tagName)) return true;
-    // Verificar también con visualViewport: si el viewport es significativamente
-    // más pequeño que la ventana, hay teclado.
-    if(window.visualViewport){
-      const shrink = window.innerHeight - window.visualViewport.height;
-      if(shrink > 150) return true;
-    }
-    return false;
-  }
-
-  function _attachSwipe(handle){
+  document.querySelectorAll('.sheet-handle').forEach(handle => {
     const sheet = handle.closest('.sheet');
     const overlay = handle.closest('.overlay');
     if(!sheet || !overlay) return;
 
     let startY = 0, currentY = 0, isDragging = false;
 
-    // El swipe SOLO comienza si el toque está dentro del handle pill.
-    // Usamos un área generosa (±24px alrededor del handle) para que sea fácil.
     handle.addEventListener('touchstart', e=>{
-      // Bloquear completamente si hay teclado activo
-      if(_isKeyboardOpen()) return;
+      // Don't initiate swipe when keyboard/input is active
+      if(document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
       startY = e.touches[0].clientY;
-      currentY = 0;
       isDragging = true;
       sheet.style.transition = 'none';
     }, {passive:true});
 
     handle.addEventListener('touchmove', e=>{
       if(!isDragging) return;
-      // Cancelar si el teclado se abrió durante el drag (ej: focus por otro motivo)
-      if(_isKeyboardOpen()){
-        isDragging = false;
-        sheet.style.transform = 'translateY(0)';
-        sheet.style.transition = 'transform .25s ease';
-        return;
-      }
       currentY = e.touches[0].clientY - startY;
-      if(currentY < 0){ currentY = 0; return; }
+      if(currentY < 0) return;
       sheet.style.transform = `translateY(${currentY}px)`;
     }, {passive:true});
 
@@ -12703,36 +12664,16 @@ document.addEventListener('input',function(e){
       if(!isDragging) return;
       isDragging = false;
       sheet.style.transition = 'transform .25s ease';
-      if(currentY > 72){
-        sheet.style.transform = `translateY(${sheet.offsetHeight}px)`;
-        setTimeout(()=>{
-          sheet.style.transform = '';
-          sheet.style.transition = '';
-          const sheetId = overlay.getAttribute('data-sheet-id');
-          if(sheetId && typeof closeSheet==='function') closeSheet(sheetId);
-          else overlay.classList.remove('open');
-        }, 240);
+      if(currentY > 80) {
+        const sheetId = overlay.getAttribute('data-sheet-id');
+        if(sheetId && typeof closeSheet==='function') closeSheet(sheetId);
+        else overlay.classList.remove('open');
       } else {
         sheet.style.transform = 'translateY(0)';
       }
       currentY = 0;
     });
-
-    // Cancelar si el dedo sale del handle sin levantar
-    handle.addEventListener('touchcancel', ()=>{
-      if(!isDragging) return;
-      isDragging = false;
-      currentY = 0;
-      sheet.style.transition = 'transform .25s ease';
-      sheet.style.transform = 'translateY(0)';
-    }, {passive:true});
-  }
-
-  // Adjuntar a todos los handles existentes
-  document.querySelectorAll('.sheet-handle').forEach(_attachSwipe);
-
-  // Exponer para que sheets inyectados dinámicamente también lo usen
-  window._attachSheetSwipe = _attachSwipe;
+  });
 })();
 
 // ── 3. SCROLL INTO VIEW ON INPUT FOCUS (sheet keyboard fix) ─────────────────
@@ -12741,47 +12682,36 @@ document.addEventListener('focusin', function(e){
   if(!['INPUT','TEXTAREA','SELECT'].includes(input.tagName)) return;
   const sheet = input.closest('.sheet');
   if(!sheet) return;
-  // Delay to let keyboard animate in fully, then scroll the input into view.
-  // If visualViewport is available, it handles this via onViewportResize.
-  // Fallback for browsers without visualViewport.
-  if(!window.visualViewport){
-    setTimeout(()=>{
-      try {
-        input.scrollIntoView({behavior:'smooth', block:'center'});
-      } catch(ex) {
-        input.scrollIntoView(false);
-      }
-    }, 350);
-  }
+  // Delay to let keyboard animate in, then scroll the input into center view
+  setTimeout(()=>{
+    try {
+      input.scrollIntoView({behavior:'smooth', block:'center'});
+    } catch(ex) {
+      input.scrollIntoView(false);
+    }
+  }, 350);
 });
 
 // ── 3b. VISUAL VIEWPORT: reposition overlay when keyboard opens (Android fix) ─
+// Usa debounce para evitar que el sheet "tiemble" mientras el teclado anima su entrada.
 (function(){
   if(!window.visualViewport) return;
+  var _vvTimer = null;
+  var _lastAppliedKb = -1; // evitar relayouts innecesarios
 
-  let _lastKbHeight = 0;
-
-  function onViewportResize(){
-    const vv = window.visualViewport;
-    // Teclado = diferencia entre la ventana total y el viewport visible
-    const kbHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-    _lastKbHeight = kbHeight;
-    const kbOpen = kbHeight > 100;
+  function applyKbLayout(){
+    var vv = window.visualViewport;
+    var kbHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    // Solo actuar si el cambio es significativo (>20px) para evitar micro-ajustes
+    if(Math.abs(kbHeight - _lastAppliedKb) < 20) return;
+    _lastAppliedKb = kbHeight;
 
     document.querySelectorAll('.overlay.open').forEach(function(overlay){
-      const sheet = overlay.querySelector('.sheet');
+      var sheet = overlay.querySelector('.sheet');
       if(!sheet) return;
-      if(kbOpen){
-        // Subir el sheet para que el input activo quede visible sobre el teclado
+      if(kbHeight > 100){
         sheet.style.marginBottom = kbHeight + 'px';
-        sheet.style.maxHeight = (vv.height * 0.95) + 'px';
-        // Dar tiempo al teclado de terminar de animar y luego hacer scroll al input
-        setTimeout(()=>{
-          const ae = document.activeElement;
-          if(ae && sheet.contains(ae)){
-            try { ae.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
-          }
-        }, 180);
+        sheet.style.maxHeight = (vv.height * 0.92) + 'px';
       } else {
         sheet.style.marginBottom = '';
         sheet.style.maxHeight = '';
@@ -12789,16 +12719,22 @@ document.addEventListener('focusin', function(e){
     });
   }
 
+  function onViewportResize(){
+    // Debounce: esperar 120ms después del último evento antes de aplicar
+    clearTimeout(_vvTimer);
+    _vvTimer = setTimeout(applyKbLayout, 120);
+  }
+
   window.visualViewport.addEventListener('resize', onViewportResize);
   window.visualViewport.addEventListener('scroll', onViewportResize);
 
-  // Reset when sheet closes (handled by overlay class removal)
-  const _sheetObserver = new MutationObserver(function(mutations){
+  // Reset when sheet closes
+  var _sheetObserver = new MutationObserver(function(mutations){
     mutations.forEach(function(m){
       if(m.type === 'attributes' && m.attributeName === 'class'){
-        const overlay = m.target;
+        var overlay = m.target;
         if(!overlay.classList.contains('open')){
-          const sheet = overlay.querySelector('.sheet');
+          var sheet = overlay.querySelector('.sheet');
           if(sheet){ sheet.style.marginBottom = ''; sheet.style.maxHeight = ''; }
         }
       }
@@ -12866,12 +12802,13 @@ document.addEventListener('focusin', function(e){
   }
 })();
 
-// ── 7. SWIPE TO CLOSE — mas-menu únicamente (sheets ya tienen su propio handler) ─
+// ── 7. SWIPE TO CLOSE — bottom sheets y mas-menu ─────────────────────────────
 (function(){
-  // Solo para el mas-menu — los .overlay .sheet ya tienen el sistema del bloque 2.
-  const CLOSE_THRESHOLD = 90;
-  const VELOCITY_THRESHOLD = 0.4;
+  // Umbral de píxeles hacia abajo para cerrar, y velocidad mínima
+  const CLOSE_THRESHOLD = 90;   // px
+  const VELOCITY_THRESHOLD = 0.4; // px/ms
 
+  // Helper: check if keyboard is likely open
   function isKeyboardOpen() {
     if(window.visualViewport) {
       return window.innerHeight - window.visualViewport.height > 150;
@@ -12879,36 +12816,67 @@ document.addEventListener('focusin', function(e){
     return document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
   }
 
-  function makeMasMenuSwipeable(panel, closeFn) {
-    // Zona de drag: solo el handle del mas-menu
-    const handle = panel.querySelector('.mas-menu-handle');
-    if(!handle) return;
+  // ── Helper: aplicar swipe a un contenedor tipo sheet ──
+  function makeSwipeable(panel, closeFn, opts) {
+    opts = opts || {};
+    // La zona de agarre es el handle si existe, de lo contrario todo el panel
+    const handle = panel.querySelector('.sheet-handle, .mas-menu-handle');
+    // Zona de drag: handle amplificado o el top del panel
+    const dragZone = handle || panel;
 
-    let startY = 0, lastY = 0, lastT = 0, dragging = false, animating = false;
+    // Cursor grab en el handle
+    if(handle) {
+      handle.style.cursor = 'grab';
+    }
+
+    let startY = 0, startScrollTop = 0, lastY = 0, lastT = 0;
+    let dragging = false, animating = false;
+
+    // Scroll container: el .sheet dentro del overlay, o el propio panel
+    const scrollEl = panel.classList.contains('sheet') ? panel : (panel.querySelector('.sheet') || panel);
 
     function onStart(e) {
-      if(animating || isKeyboardOpen()) return;
+      if(animating) return;
+      // Don't initiate swipe if keyboard is open — user may be scrolling/typing
+      if(isKeyboardOpen()) { dragging = false; return; }
       const touch = e.touches ? e.touches[0] : e;
       startY = touch.clientY;
       lastY = startY;
       lastT = Date.now();
-      dragging = true;
-      panel.style.transition = 'none';
+      startScrollTop = scrollEl.scrollTop || 0;
+      dragging = false;
     }
 
     function onMove(e) {
-      if(!dragging || animating) return;
+      if(animating) return;
       const touch = e.touches ? e.touches[0] : e;
       const dy = touch.clientY - startY;
       const now = Date.now();
-      if(dy > 0) {
+
+      // Solo activar drag si se desliza hacia abajo Y el scroll está al tope
+      if(!dragging) {
+        if(dy > 8 && (scrollEl.scrollTop || 0) <= 0) {
+          dragging = true;
+        } else {
+          lastY = touch.clientY;
+          lastT = now;
+          return;
+        }
+      }
+
+      if(dragging && dy > 0) {
+        // Resistencia: movimiento más lento cuanto más bajo va
         const resistance = Math.pow(dy, 0.85);
+        panel.style.transition = 'none';
         panel.style.transform = 'translateY(' + resistance + 'px)';
-        const overlay = document.getElementById('mas-menu-overlay');
-        if(overlay) {
+        // Dimear el overlay proporcionalmente
+        const overlay = panel.closest('.overlay') || panel.closest('.mas-menu-overlay') ||
+                        document.getElementById('mas-menu-overlay');
+        if(overlay && overlay !== panel) {
           const pct = Math.max(0, 1 - resistance / 300);
           overlay.style.opacity = pct;
         }
+        if(e.cancelable) e.preventDefault();
       }
       lastY = touch.clientY;
       lastT = now;
@@ -12921,53 +12889,76 @@ document.addEventListener('focusin', function(e){
       const dy = touch.clientY - startY;
       const dt = Date.now() - lastT;
       const velocity = dt > 0 ? (touch.clientY - lastY) / dt : 0;
-      const overlay = document.getElementById('mas-menu-overlay');
+
+      const overlay = panel.closest('.overlay') || document.getElementById('mas-menu-overlay');
 
       if(dy > CLOSE_THRESHOLD || velocity > VELOCITY_THRESHOLD) {
+        // Cerrar con animación rápida
         animating = true;
         panel.style.transition = 'transform .22s cubic-bezier(.4,0,1,1)';
         panel.style.transform = 'translateY(110%)';
-        if(overlay) { overlay.style.transition = 'opacity .22s'; overlay.style.opacity = '0'; }
+        if(overlay && overlay !== panel) {
+          overlay.style.transition = 'opacity .22s';
+          overlay.style.opacity = '0';
+        }
         setTimeout(()=>{
           animating = false;
-          panel.style.transform = ''; panel.style.transition = '';
-          if(overlay) { overlay.style.opacity = ''; overlay.style.transition = ''; }
+          panel.style.transform = '';
+          panel.style.transition = '';
+          if(overlay && overlay !== panel) {
+            overlay.style.opacity = '';
+            overlay.style.transition = '';
+          }
           closeFn();
         }, 220);
       } else {
+        // Rebotar de vuelta
         panel.style.transition = 'transform .3s cubic-bezier(.34,1.4,.64,1)';
         panel.style.transform = 'translateY(0)';
-        if(overlay) { overlay.style.transition = 'opacity .3s'; overlay.style.opacity = '1'; }
+        if(overlay && overlay !== panel) {
+          overlay.style.transition = 'opacity .3s';
+          overlay.style.opacity = '1';
+        }
         setTimeout(()=>{
-          panel.style.transform = ''; panel.style.transition = '';
-          if(overlay) { overlay.style.opacity = ''; overlay.style.transition = ''; }
+          panel.style.transform = '';
+          panel.style.transition = '';
+          if(overlay && overlay !== panel) {
+            overlay.style.opacity = '';
+            overlay.style.transition = '';
+          }
         }, 300);
       }
     }
 
-    function onCancel() {
-      if(!dragging) return;
-      dragging = false;
-      panel.style.transition = 'transform .25s ease';
-      panel.style.transform = 'translateY(0)';
-    }
-
-    // Solo escuchar en el handle
-    handle.addEventListener('touchstart', onStart, { passive: true });
-    handle.addEventListener('touchmove',  onMove,  { passive: true });
-    handle.addEventListener('touchend',   onEnd,   { passive: true });
-    handle.addEventListener('touchcancel',onCancel,{ passive: true });
+    // Escuchar en handle (agarre preciso) y también en todo el panel para velocidad
+    const listenerTargets = dragZone === panel ? [panel] : [dragZone, panel];
+    listenerTargets.forEach(el => {
+      el.addEventListener('touchstart', onStart, { passive: true });
+      el.addEventListener('touchmove',  onMove,  { passive: false });
+      el.addEventListener('touchend',   onEnd,   { passive: true });
+    });
   }
 
-  // Swipe solo para el mas-menu (los sheets usan el bloque 2)
+  // ── Swipe para .overlay > .sheet ──────────────────────────────────────────
+  document.querySelectorAll('.overlay').forEach(overlay => {
+    const sheet = overlay.querySelector('.sheet');
+    if(!sheet) return;
+    const sheetId = overlay.id ? overlay.id.replace('sheet-','') : null;
+    const closeFn = sheetId
+      ? () => { overlay.style.opacity=''; overlay.classList.remove('open'); }
+      : () => overlay.classList.remove('open');
+    makeSwipeable(sheet, closeFn);
+  });
+
+  // ── Swipe para el mas-menu ─────────────────────────────────────────────────
   const masMenu = document.getElementById('mas-menu');
   const masOverlay = document.getElementById('mas-menu-overlay');
   const masBtn = document.getElementById('nav-mas-btn');
   if(masMenu) {
-    makeMasMenuSwipeable(masMenu, ()=>{
+    makeSwipeable(masMenu, ()=>{
       masMenu.style.display = 'none';
       if(masOverlay) { masOverlay.style.opacity = ''; masOverlay.classList.remove('open'); }
-      if(masBtn) masBtn.classList.remove('active');
+      masBtn && masBtn.classList.remove('active');
     });
   }
 })();
@@ -14337,13 +14328,90 @@ if ('serviceWorker' in navigator) {
 
 /* ================================================================
    NAVEGACIÓN POR GESTOS — Swipe down para cerrar modales
+   Solo se activa cuando el sheet está en el tope del scroll
+   Y el teclado virtual NO está abierto.
    ================================================================ */
 (function() {
-  // Sistema de swipe-to-close desde CUALQUIER parte del sheet fue eliminado.
-  // Ahora el swipe solo se activa desde el handle (pill gris), manejado por el bloque 2.
-  // Este bloque se mantiene vacío para no romper referencias, pero ya no registra listeners
-  // de touchstart/move/end en el documento. Eso resuelve el bug de cierre accidental
-  // cuando el usuario hace scroll hasta arriba dentro del sheet.
+  let _swipeStart = null;
+  let _swipeSheet = null;
+  let _swipeOverlay = null;
+
+  function _kbOpen() {
+    // El teclado está abierto si hay un input/select/textarea con foco
+    const ae = document.activeElement;
+    if (ae && ['INPUT','TEXTAREA','SELECT'].includes(ae.tagName)) return true;
+    // O si visualViewport reporta que el viewport se achicó significativamente
+    if (window.visualViewport) {
+      return (window.innerHeight - window.visualViewport.height) > 150;
+    }
+    return false;
+  }
+
+  document.addEventListener('touchstart', function(e) {
+    // No iniciar swipe si el teclado está abierto
+    if (_kbOpen()) { _swipeStart = null; return; }
+    const sheet = e.target.closest('.sheet');
+    if (!sheet) return;
+    const overlay = sheet.closest('.overlay');
+    if (!overlay || !overlay.classList.contains('open')) return;
+    _swipeSheet = sheet;
+    _swipeOverlay = overlay;
+    const t = e.touches[0];
+    _swipeStart = { y: t.clientY, x: t.clientX, scrollTop: sheet.scrollTop };
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!_swipeStart || !_swipeSheet) return;
+    // Cancelar si el teclado se abrió durante el gesto
+    if (_kbOpen()) {
+      _swipeStart = null; _swipeSheet = null; _swipeOverlay = null;
+      return;
+    }
+    const t = e.touches[0];
+    const dy = t.clientY - _swipeStart.y;
+    const dx = Math.abs(t.clientX - _swipeStart.x);
+    // Solo swipe vertical hacia abajo, si el sheet estaba en la parte superior al inicio
+    if (dy > 0 && dx < 60 && _swipeStart.scrollTop <= 2) {
+      const progress = Math.min(dy, 280);
+      _swipeSheet.style.transform = `translateY(${progress}px)`;
+      _swipeSheet.style.transition = 'none';
+      if (_swipeOverlay) {
+        const opacity = Math.max(0.1, 1 - progress / 280);
+        _swipeOverlay.style.background = `rgba(0,0,0,${0.75 * opacity})`;
+      }
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', function(e) {
+    if (!_swipeStart || !_swipeSheet || !_swipeOverlay) {
+      _swipeStart = null; _swipeSheet = null; _swipeOverlay = null;
+      return;
+    }
+    const t = e.changedTouches[0];
+    const dy = t.clientY - _swipeStart.y;
+
+    _swipeSheet.style.transition = 'transform .3s cubic-bezier(.4,0,.2,1)';
+    _swipeOverlay.style.transition = 'background .3s';
+
+    if (dy > 100 && Math.abs(t.clientX - _swipeStart.x) < 80) {
+      // Cerrar: animar hacia abajo y luego cerrar
+      _swipeSheet.style.transform = 'translateY(100%)';
+      const sheetToClose = _swipeOverlay;
+      setTimeout(() => {
+        sheetToClose.classList.remove('open');
+        const sh = sheetToClose.querySelector('.sheet');
+        if (sh) { sh.style.transform = ''; sh.style.transition = ''; }
+        sheetToClose.style.background = '';
+        sheetToClose.style.transition = '';
+      }, 300);
+    } else {
+      // Cancelar: volver a posición original
+      _swipeSheet.style.transform = '';
+      _swipeOverlay.style.background = '';
+    }
+
+    _swipeStart = null; _swipeSheet = null; _swipeOverlay = null;
+  }, { passive: true });
 })();
 
 /* ================================================================
@@ -17438,22 +17506,13 @@ window._cpMarcarPagos = function(id){
       <button type="button" class="btn btn-ghost" data-close-sheet="cp-marcar" onclick="if(typeof closeSheet==='function')closeSheet('cp-marcar');">Cancelar</button>
     </div>`;
     document.body.appendChild(div);
-    // Swipe — usar el sistema global si está disponible
+    // Swipe
     const handle = div.querySelector('.sheet-handle');
-    if(handle){
-      if(typeof window._attachSheetSwipe === 'function'){
-        window._attachSheetSwipe(handle);
-      } else {
-        const sheet = div.querySelector('.sheet');
-        let sy=0,cy=0,drag=false;
-        handle.addEventListener('touchstart',e=>{
-          if(document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName))return;
-          sy=e.touches[0].clientY;drag=true;sheet.style.transition='none';
-        },{passive:true});
-        handle.addEventListener('touchmove',e=>{if(!drag)return;cy=e.touches[0].clientY-sy;if(cy<0)return;sheet.style.transform=`translateY(${cy}px)`;},{passive:true});
-        handle.addEventListener('touchend',()=>{drag=false;sheet.style.transition='transform .25s ease';if(cy>80){if(typeof closeSheet==='function')closeSheet('cp-marcar');}else sheet.style.transform='translateY(0)';cy=0;});
-      }
-    }
+    const sheet = div.querySelector('.sheet');
+    let sy=0,cy=0,drag=false;
+    handle.addEventListener('touchstart',e=>{sy=e.touches[0].clientY;drag=true;sheet.style.transition='none';},{passive:true});
+    handle.addEventListener('touchmove',e=>{if(!drag)return;cy=e.touches[0].clientY-sy;if(cy<0)return;sheet.style.transform=`translateY(${cy}px)`;},{passive:true});
+    handle.addEventListener('touchend',()=>{drag=false;sheet.style.transition='transform .25s ease';if(cy>80){if(typeof closeSheet==='function')closeSheet('cp-marcar');}else sheet.style.transform='translateY(0)';cy=0;});
   }
 
   window._cpMarcarId = id;
@@ -17630,32 +17689,26 @@ function _cpInitSwipe(){
     const overlay = document.getElementById('sheet-'+sheetId);
     if(!overlay) return;
     const handle = overlay.querySelector('.sheet-handle');
-    if(!handle) return;
-    // Usar el sistema global unificado si está disponible
-    if(typeof window._attachSheetSwipe === 'function'){
-      window._attachSheetSwipe(handle);
-    } else {
-      const sheet = overlay.querySelector('.sheet');
-      if(!sheet) return;
-      let startY=0, curY=0, drag=false;
-      handle.addEventListener('touchstart',e=>{
-        if(document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
-        startY=e.touches[0].clientY; drag=true; sheet.style.transition='none';
-      },{passive:true});
-      handle.addEventListener('touchmove',e=>{
-        if(!drag) return;
-        curY=e.touches[0].clientY-startY;
-        if(curY<0) return;
-        sheet.style.transform=`translateY(${curY}px)`;
-      },{passive:true});
-      handle.addEventListener('touchend',()=>{
-        if(!drag) return;
-        drag=false; sheet.style.transition='transform .25s ease';
-        if(curY>80) _cpCloseSheet(sheetId);
-        else sheet.style.transform='translateY(0)';
-        curY=0;
-      });
-    }
+    const sheet  = overlay.querySelector('.sheet');
+    if(!handle||!sheet) return;
+    let startY=0, curY=0, drag=false;
+    handle.addEventListener('touchstart',e=>{
+      if(document.activeElement&&['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+      startY=e.touches[0].clientY; drag=true; sheet.style.transition='none';
+    },{passive:true});
+    handle.addEventListener('touchmove',e=>{
+      if(!drag) return;
+      curY=e.touches[0].clientY-startY;
+      if(curY<0) return;
+      sheet.style.transform=`translateY(${curY}px)`;
+    },{passive:true});
+    handle.addEventListener('touchend',()=>{
+      if(!drag) return;
+      drag=false; sheet.style.transition='transform .25s ease';
+      if(curY>80) _cpCloseSheet(sheetId);
+      else sheet.style.transform='translateY(0)';
+      curY=0;
+    });
   });
 }
 

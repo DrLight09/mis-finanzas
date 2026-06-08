@@ -4960,12 +4960,15 @@ function leerArchivoImport(e){
       // Reemplazar CONTENIDO de S sin romper la referencia de window.S
       Object.keys(S).forEach(k => delete S[k]);
       Object.assign(S, data);
-      // Timestamp blindado para que Firestore no pise los datos recién importados
-      const _impTs = 4102444800000; // 2099-01-01
+      // Marcar timestamp ANTES del debounce de guardado
+      const _impTs = Date.now();
       window._lastSavedAt = _impTs;
       try { localStorage.setItem('mf_lastSavedAt', String(_impTs)); } catch(_){}
-      save();load();refresh();applyModulos();
-      toast('Datos importados correctamente','ok');
+      window._importing = true;
+      setTimeout(() => { window._importing = false; }, 5000);
+      save();
+      setTimeout(() => { location.reload(); }, 2500);
+      toast('Datos importados correctamente — recargando…','ok');
     }catch(err){
       toast('Error al leer el archivo JSON','err');
     }
@@ -9915,9 +9918,7 @@ function _initEventListeners() {
   const btnBorrar = document.getElementById('btn-borrar-todo');
   if (btnBorrar) btnBorrar.addEventListener('click', borrarTodo);
   const importFile = document.getElementById('importFileInput');
-  // Usar wrapper para que siempre se invoque la versión más reciente de
-  // leerArchivoImport (el override de MEJORA 5 se asigna después de este punto).
-  if (importFile) importFile.addEventListener('change', (e) => leerArchivoImport(e));
+  if (importFile) importFile.addEventListener('change', leerArchivoImport);
 
   // --- Menu action cards ---
   const menuGastoVar = document.getElementById('menu-gasto-var');
@@ -10152,14 +10153,20 @@ leerArchivoImport = async function(e) {
       // Reemplazar CONTENIDO de S sin romper la referencia de window.S
       Object.keys(S).forEach(k => delete S[k]);
       Object.assign(S, data);
-      // Poner _lastSavedAt muy alto (año 2099) para blindar contra cualquier
-      // snapshot de Firestore que llegue mientras el save sube a la nube.
-      // _fbSaveToCloud() lo reemplazará con el timestamp real al confirmar.
-      const importTs = 4102444800000; // 2099-01-01 — siempre mayor que remoteTs
+      // Marcar timestamp ANTES del debounce de guardado para que cualquier
+      // snapshot entrante de Firestore no pise los datos recién importados.
+      const importTs = Date.now();
       window._lastSavedAt = importTs;
       try { localStorage.setItem('mf_lastSavedAt', String(importTs)); } catch(_){}
-      save(); load(); refresh(); applyModulos();
-      toast('Datos importados correctamente', 'ok');
+      // Bloquear snapshots de Firestore mientras se guarda en la nube.
+      // El debounce de save() tarda 1.5s; bloqueamos 5s por seguridad.
+      window._importing = true;
+      setTimeout(() => { window._importing = false; }, 5000);
+      save();
+      // Recargar la página una vez que el guardado haya terminado (debounce 1.5s + margen).
+      // Así la UI arranca limpia desde los datos recién guardados en Firestore.
+      setTimeout(() => { location.reload(); }, 2500);
+      toast('Datos importados correctamente — recargando…', 'ok');
     } catch(err) {
       if (err instanceof SyntaxError) {
         toast('El archivo no es un JSON válido', 'err');
@@ -13057,6 +13064,9 @@ document.addEventListener('focusin', function(e){
         // (porque otro dispositivo acaba de guardar) y lo ignoramos, el celular se
         // queda sin datos y muestra todo en cero.
         if(hasPendingWrites && !_firstLoad) return;
+        // Si hay una importación en curso, ignorar snapshots de Firestore
+        // para evitar que los datos viejos de la nube pisen los recién importados.
+        if(window._importing && !_firstLoad) return;
 
         // Primera entrega: si viene del caché y la app aún no inició,
         // esperar a que llegue la versión del servidor para evitar mostrar

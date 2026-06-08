@@ -8515,6 +8515,9 @@ function applyModulos(){
   // Ocultar el toggle "Es saldo inicial" en el sheet de registrar mesada
   const mpAperturaWrap=document.getElementById('mpAperturaWrap');
   if(mpAperturaWrap)mpAperturaWrap.style.display=mostrarBanners?'flex':'none';
+  // Ocultar el toggle "Es saldo inicial" en el sheet de Nu (entra plata)
+  const nuMovAperturaWrap=document.getElementById('nuMovAperturaWrap');
+  if(nuMovAperturaWrap&&!mostrarBanners)nuMovAperturaWrap.style.display='none';
 }
 
 function toggleModulo(nombre){
@@ -9452,9 +9455,10 @@ function abrirNuMovimiento(tipo) {
     btnConf.style.boxShadow = esEntrada ? '0 2px 14px rgba(192,96,240,.3)' : '0 2px 14px rgba(240,104,104,.3)';
   }
 
-  // Ocultar toggle apertura en salida
+  // Ocultar toggle apertura en salida, y también si la config lo desactiva
   const aperturaWrap = document.getElementById('nuMovAperturaWrap');
-  if (aperturaWrap) aperturaWrap.style.display = esEntrada ? 'flex' : 'none';
+  const _mostrarApertura = esEntrada && (S.modulos?.corregirSaldo !== false);
+  if (aperturaWrap) aperturaWrap.style.display = _mostrarApertura ? 'flex' : 'none';
   const chk = document.getElementById('nuMovEsApertura');
   if (chk) chk.checked = false;
 

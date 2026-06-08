@@ -7155,7 +7155,7 @@ function confirmarMovimiento() {
       if(window.logCambio) logCambio(`Abono de ${d.nombre} vía encargo de ${enc.nombre}`, d.nombre, monto, 'abono');
       save(); refresh(); closeSheet('registrar-movimiento');
       abrirDeudor(deudorActualId);
-      toast(`✓ ${fmt(monto)} descontado del encargo de ${enc.nombre}`, 'ok', 3500);
+      toast(`${fmt(monto)} descontado del encargo de ${enc.nombre}`, 'ok', 3500);
       return;
     }
 
@@ -10847,7 +10847,7 @@ function _difRenderBenefs() {
       <button type="button" onclick="_difTogglePagoYo(${i})"
         style="width:100%;padding:6px 10px;border-radius:var(--radius-sm);border:1.5px solid ${pagoYo?'rgba(96,176,240,.5)':'rgba(96,176,240,.2)'};background:${pagoYo?'rgba(96,176,240,.12)':'transparent'};color:${pagoYo?'var(--blue)':'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;display:flex;align-items:center;gap:7px;margin-bottom:${pagoYo?'8px':'0'};">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1H0zm0 3h16v5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm3 2a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1zm2.5 0a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1z"/></svg>
-        ${pagoYo ? '✓ Lo pagué yo (de mi cuenta)' : 'Lo pagué yo (de mi cuenta)'}
+        ${pagoYo ? '<i class="fa-solid fa-check" style="font-size:10px;"></i> Lo pagué yo (de mi cuenta)' : 'Lo pagué yo (de mi cuenta)'}
       </button>
       ${pagoYo ? `
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 0 2px;">
@@ -17891,7 +17891,7 @@ function _inyectarPersonaSheets() {
         </div>
         <div id="lista-personas-body" style="display:flex;flex-direction:column;gap:8px;"></div>
         <div id="lista-personas-empty" style="display:none;text-align:center;padding:32px 0 16px;">
-          <div style="font-size:36px;margin-bottom:10px;">👥</div>
+          <div style="margin-bottom:10px;display:flex;justify-content:center;"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
           <div style="font-size:14px;font-weight:600;margin-bottom:6px;">Sin personas registradas</div>
           <div style="font-size:12px;color:var(--text3);line-height:1.6;">Las personas se crean automáticamente cuando agregás un deudor o encargo.</div>
         </div>
@@ -18185,7 +18185,7 @@ function abrirPerfilPersona(personaId) {
 
     html += `<div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">💸 Préstamos</div>
+        <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Préstamos</div>
         <button type="button" onclick="_irADeudor('${d.id}')" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver detalle →</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
@@ -18247,7 +18247,7 @@ function abrirPerfilPersona(personaId) {
 
     html += `<div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">📦 Encargos</div>
+        <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Encargos</div>
         <span style="font-size:12px;color:var(--text2);">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px;">

@@ -16766,11 +16766,14 @@ function _cpRenderLista(){
     });
   }
 
-  // Recibidos recientes (últimos 5)
-  if(recibidos.length){
+  // Recibidos recientes: solo mostrar los que tienen pagos de cajita AÚN pendientes
+  const recibidosConPendientes = recibidos.filter(item =>
+    (item.destinos||[]).some(d => d.tipo==='gasto' && !d.yaPague && d.gastoOrigen==='cajita' && d.gastoCajita)
+  );
+  if(recibidosConPendientes.length){
     const hoyMs = new Date(_cpHoy()+'T00:00:00').getTime();
-    html += `<div class="sec-title" style="margin-top:14px;">Recibidos recientemente</div>`;
-    recibidos.sort((a,b)=>(b.fechaRecibido||'').localeCompare(a.fechaRecibido||'')).slice(0,5).forEach(item=>{
+    html += `<div class="sec-title" style="margin-top:14px;">Plata guardada para pagar</div>`;
+    recibidosConPendientes.sort((a,b)=>(b.fechaRecibido||'').localeCompare(a.fechaRecibido||'')).slice(0,5).forEach(item=>{
       // Gastos pendientes de cajita con plata guardada
       const gastosGuardados = (item.destinos||[]).filter(d =>
         d.tipo === 'gasto' && !d.yaPague && d.gastoOrigen === 'cajita' && d.gastoCajita
@@ -16813,18 +16816,19 @@ function _cpRenderLista(){
         return dias <= 3;
       });
 
-      html += `<div class="card card-sm" style="margin-bottom:7px;${tieneUrgente?'border-color:rgba(240,184,64,.4);':'opacity:.75;'}">
+      html += `<div class="card card-sm" style="margin-bottom:7px;${tieneUrgente?'border-color:rgba(240,184,64,.4);':''}">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div style="min-width:0;flex:1;">
             <div style="font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_cpEscape(item.desc)}</div>
             <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">Recibido el ${item.fechaRecibido||'—'}${tieneUrgente?' <span style="color:var(--amber);font-weight:700;">· Pago próximo</span>':''}</div>
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:8px;">
-            <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text2);">${_cpFmt(item.montoTotal)}</span>
-            <button type="button" onclick="window._cpEliminar('${item.id}')" style="padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.2);color:var(--red);">&#x2715;</button>
-          </div>
+          <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text2);margin-left:8px;flex-shrink:0;">${_cpFmt(item.montoTotal)}</span>
         </div>
         ${guardadaHtml}
+        <button type="button" onclick="window._cpMarcarPagos('${item.id}')"
+          style="width:100%;margin-top:10px;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.1);border:1.5px solid rgba(200,240,96,.3);color:var(--accent);">
+          <i class="fa-solid fa-check" style="margin-right:5px;"></i>Marcar como pagado
+        </button>
       </div>`;
     });
   }
@@ -17744,6 +17748,35 @@ window._cpGuardarMarcados = function(){
           if(window.logCambio) logCambio('Adelantaste plata de '+_cpFuenteLabel(cuentaId), _cpFmt(dNuevo.monto)+' — será repuesto al llegar el ingreso', dNuevo.monto, 'gasto');
         } catch(e){}
       }
+    }
+    // Detectar si un gasto de cajita pasó de false→true (acaba de marcar "ya lo pagué")
+    // La plata ya estaba guardada en la cajita desde _cpConfirmarRecibir → ahora hay que descontarla
+    if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='cajita' && dNuevo.gastoCajita && !dViejo.yaPague && dNuevo.yaPague){
+      try {
+        const cajId2 = dNuevo.gastoCajita.startsWith('cajita:') ? dNuevo.gastoCajita.split(':')[1] : null;
+        const caj2 = cajId2 ? (S.cajitas||[]).find(x=>x.id===cajId2) : null;
+        if(caj2 && typeof materializarIntereses==='function') materializarIntereses(caj2);
+        if(typeof descontarFuente==='function') descontarFuente(dNuevo.gastoCajita, dNuevo.monto);
+        else if(typeof sumarFuente==='function') sumarFuente(dNuevo.gastoCajita, -dNuevo.monto);
+        if(!S.movimientos) S.movimientos = [];
+        S.movimientos.push({id:_cpUid(), tipo:'salida', fuente:dNuevo.gastoCajita, monto:dNuevo.monto,
+          fecha:_cpHoy(), desc:'Pago: '+dNuevo.desc});
+        if(window.logCambio) logCambio('Pagaste '+dNuevo.desc, _cpFmt(dNuevo.monto)+' de '+_cpFuenteLabel(dNuevo.gastoCajita), dNuevo.monto, 'gasto');
+      } catch(e){ console.warn('[CP] Error descontando cajita al marcar pago:', e); }
+    }
+    // Detectar si un gasto de cajita pasó de true→false (desmarcó — revertir el descuento)
+    if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='cajita' && dNuevo.gastoCajita && dViejo.yaPague && !dNuevo.yaPague){
+      try {
+        const cajId3 = dNuevo.gastoCajita.startsWith('cajita:') ? dNuevo.gastoCajita.split(':')[1] : null;
+        const caj3 = cajId3 ? (S.cajitas||[]).find(x=>x.id===cajId3) : null;
+        if(caj3 && typeof materializarIntereses==='function') materializarIntereses(caj3);
+        if(typeof sumarFuente==='function') sumarFuente(dNuevo.gastoCajita, dNuevo.monto);
+        if(S.movimientos) S.movimientos = S.movimientos.filter(m=>!(
+          m.tipo==='salida' && m.fuente===dNuevo.gastoCajita && m.monto===dNuevo.monto &&
+          (m.desc||'').startsWith('Pago: '+dNuevo.desc)
+        ));
+        if(window.logCambio) logCambio('Revertiste pago de '+dNuevo.desc, _cpFmt(dNuevo.monto)+' devuelto a '+_cpFuenteLabel(dNuevo.gastoCajita), dNuevo.monto, 'ingreso');
+      } catch(e){ console.warn('[CP] Error revirtiendo pago cajita:', e); }
     }
     // Detectar si un gasto con TC pasó de false→true (acaba de marcar "ya lo cargué a la TC")
     // Esto significa que el gasto ya se realizó con la tarjeta → la deuda SUBE

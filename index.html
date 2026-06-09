@@ -5332,6 +5332,16 @@ function renderAnalisis(){
   }
   // Sumar ingresos fijos configurados (sueldo, freelance, etc.)
   ingresosEstimados+=getIngresosFijosMes(mes);
+  // Sumar entradas reales registradas en movimientos (trabajos puntuales, regalos, etc.)
+  // Excluir: apertura, transferencias, intercambios de encargo, reposiciones de plata comprometida, margenes de encargo
+  (S.movimientos||[]).forEach(function(m){
+    if(m.tipo==='entrada' && mesKey(m.fecha)===mes){
+      if(m._esReposicionCP) return;
+      if(m._esIntercambioEncargo||m._intercambioEntrada) return;
+      if((m.desc||'').startsWith('Margen')) return;
+      ingresosEstimados+=m.monto||0;
+    }
+  });
 
   // ── Balance ────────────────────────────────────────────────────────────
   const balance=ingresosEstimados-gastosTotalMes;
@@ -5411,7 +5421,7 @@ function renderAnalisis(){
     const dd=new Date(d.getFullYear(),d.getMonth()-i,1);
     const k=dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0');
     const label=MESES_NOMBRE[dd.getMonth()];
-    const gv=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===k&&!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);
+    const gv=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===k&&!g.esPagoGastoFijo&&!g._esPagoTC&&g.fuente!=='plata-comprometida').reduce((a,g)=>a+(g.monto||0),0);
     const gf=(S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+k]?a+(g.monto||0):a,0);
     hoy12.push({k,label,total:gv+gf});
   }
@@ -5464,7 +5474,7 @@ function renderAnalisis(){
   // Recopilar todos los meses con datos
   const mesesConDatos={};
   (S.gastosVar||[]).forEach(g=>{
-    if(!g.esPagoGastoFijo&&!g._esPagoTC){
+    if(!g.esPagoGastoFijo&&!g._esPagoTC&&g.fuente!=='plata-comprometida'){
       const k=mesKey(g.fecha);
       if(k) mesesConDatos[k]=(mesesConDatos[k]||0)+(g.monto||0);
     }
@@ -5567,6 +5577,14 @@ function renderAnalisis(){
       if(ms[anioPrev+'_'+mesNumPrev+'_mama']) ingresosPrev+=(S.mesadaMonteMama||0);
     }
     ingresosPrev+=getIngresosFijosMes(mesPrev);
+    (S.movimientos||[]).forEach(function(m){
+      if(m.tipo==='entrada' && mesKey(m.fecha)===mesPrev){
+        if(m._esReposicionCP) return;
+        if(m._esIntercambioEncargo||m._intercambioEntrada) return;
+        if((m.desc||'').startsWith('Margen')) return;
+        ingresosPrev+=m.monto||0;
+      }
+    });
     const balancePrev=ingresosPrev-totalPrev;
 
     const diffGastos=gastosTotalMes-totalPrev;

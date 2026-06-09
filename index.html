@@ -16071,53 +16071,89 @@ function abrirDetalleTCSheet(tcId){
   document.getElementById('detalle-tc-title').textContent=tc.nombre;
   const compras=(tc.compras||[]).slice().sort((a,b)=>b.fecha.localeCompare(a.fecha));
   const pagos=(tc.pagos||[]).slice().sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  // tcMovimientos de esta TC (encargos y préstamos), ordenados más reciente primero
+  const tcMovs=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id).slice().sort((a,b)=>b.fecha.localeCompare(a.fecha));
   const mesClave=mesActual();
 
   let html='';
 
-  // Resumen
+  // Resumen — "Este mes" incluye compras + tcMovimientos del mes
   const deuda=tc.deuda||0;
   const cupo=tc.cupo||0;
   const comprasMes=compras.filter(c=>mesKey(c.fecha)===mesClave);
-  const totalMes=comprasMes.reduce((a,c)=>a+(c.monto||0),0);
+  const tcMovsMes=tcMovs.filter(m=>mesKey(m.fecha)===mesClave);
+  const totalMes=comprasMes.reduce((a,c)=>a+(c.monto||0),0)+tcMovsMes.reduce((a,m)=>a+(m.monto||0),0);
+  const totalItems=comprasMes.length+tcMovsMes.length;
   html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
     <div style="background:rgba(240,104,104,.07);border-radius:9px;padding:11px 12px;">
       <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:3px;">Deuda total</div>
       <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(deuda)}</div>
     </div>
     <div style="background:var(--bg3);border-radius:9px;padding:11px 12px;">
-      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:3px;">Este mes</div>
+      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:3px;">Este mes <span style="font-weight:400;font-size:8px;">(${totalItems})</span></div>
       <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;">${fmt(totalMes)}</div>
     </div>
   </div>`;
 
-  // Compras
-  html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">Compras</div>`;
-  if(!compras.length){
+  // ── Compras ──
+  // Unificar tc.compras y tcMovimientos en una sola lista ordenada por fecha
+  const itemsCompras=[
+    ...compras.map(c=>({_tipo:'compra',...c})),
+    ...tcMovs.map(m=>({_tipo:'tcmov',...m}))
+  ].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+
+  html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">Compras <span style="font-weight:400;font-size:9px;">(${itemsCompras.length})</span></div>`;
+  if(!itemsCompras.length){
     html+=`<div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Sin compras registradas.</div>`;
   } else {
-    html+=compras.slice(0,20).map(c=>{
-      const esFavor = c._esFavor || c._desdeCP;
-      const favorBadge = esFavor
-        ? `<span style="font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;"><i class="fa-solid fa-handshake" style="margin-right:3px;font-size:7px;"></i>favor</span>`
-        : '';
-      return `<div class="gasto-item" style="margin-bottom:7px;${esFavor?'border-color:rgba(96,176,240,.25);':''}">
-      <div class="gasto-item-top">
-        <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${c.desc}${favorBadge}</div><div class="row-sub">${c.fecha}</div></div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span class="row-amount" style="color:${esFavor?'var(--blue)':'var(--red)'};">${fmt(c.monto)}</span>
-          <button type="button" onclick="eliminarCompraTC('${tc.id}','${c.id}')" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);opacity:.6;display:flex;align-items:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-          </button>
+    html+=itemsCompras.slice(0,30).map(item=>{
+      if(item._tipo==='compra'){
+        const c=item;
+        const esFavor = c._esFavor || c._desdeCP;
+        const favorBadge = esFavor
+          ? `<span style="font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;"><i class="fa-solid fa-handshake" style="margin-right:3px;font-size:7px;"></i>favor</span>`
+          : '';
+        return `<div class="gasto-item" style="margin-bottom:7px;${esFavor?'border-color:rgba(96,176,240,.25);':''}">
+        <div class="gasto-item-top">
+          <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${c.desc}${favorBadge}</div><div class="row-sub">${c.fecha}</div></div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="row-amount" style="color:${esFavor?'var(--blue)':'var(--red)'};">${fmt(c.monto)}</span>
+            <button type="button" onclick="eliminarCompraTC('${tc.id}','${c.id}')" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);opacity:.6;display:flex;align-items:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)'};color:${esFavor?'var(--blue)':'var(--red)'};">${esFavor?'Favor cubierto':c.cat||'Sin cat.'}</span>${c.nota?`<span style="font-size:10px;color:var(--text3);">${c.nota}</span>`:''}</div>
-    </div>`;
+        <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)'};color:${esFavor?'var(--blue)':'var(--red)'};">${esFavor?'Favor cubierto':c.cat||'Sin cat.'}</span>${c.nota?`<span style="font-size:10px;color:var(--text3);">${c.nota}</span>`:''}</div>
+      </div>`;
+      } else {
+        // tcMovimiento — cargo de encargo o préstamo
+        const m=item;
+        const esEncargo=m.tipo==='cargo_encargo';
+        const esPrestamo=m.tipo==='cargo_prestamo';
+        const colorBorde=esEncargo?'rgba(240,184,64,.3)':'rgba(150,120,240,.3)';
+        const colorMonto=esEncargo?'var(--amber)':'rgba(180,140,255,1)';
+        const colorBadgeBg=esEncargo?'rgba(240,184,64,.12)':'rgba(150,120,240,.12)';
+        const colorBadgeTxt=esEncargo?'var(--amber)':'rgba(180,140,255,1)';
+        const labelBadge=esEncargo?'Encargo':'Préstamo';
+        const iconoBadge=esEncargo
+          ? `<i class="fa-solid fa-box" style="margin-right:3px;font-size:7px;"></i>`
+          : `<i class="fa-solid fa-hand-holding-dollar" style="margin-right:3px;font-size:7px;"></i>`;
+        return `<div class="gasto-item" style="margin-bottom:7px;border-color:${colorBorde};">
+        <div class="gasto-item-top">
+          <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${m.desc}</div><div class="row-sub">${m.fecha}</div></div>
+          <span class="row-amount" style="color:${colorMonto};">${fmt(m.monto)}</span>
+        </div>
+        <div class="gasto-item-meta">
+          <span class="badge" style="font-size:9px;background:${colorBadgeBg};color:${colorBadgeTxt};">${iconoBadge}${labelBadge}</span>
+          ${m.nota?`<span style="font-size:10px;color:var(--text3);">${m.nota}</span>`:''}
+        </div>
+      </div>`;
+      }
     }).join('');
   }
 
-  // Pagos
-  html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin:14px 0 8px;">Pagos realizados</div>`;
+  // ── Pagos ──
+  html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin:14px 0 8px;">Pagos realizados <span style="font-weight:400;font-size:9px;">(${pagos.length})</span></div>`;
   if(!pagos.length){
     html+=`<div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Sin pagos registrados.</div>`;
   } else {

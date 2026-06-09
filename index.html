@@ -15119,39 +15119,37 @@ if ('serviceWorker' in navigator) {
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title" id="pagar-tc-title">Pagar tarjeta</div>
-        <div
-          style="background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.25);border-radius:9px;padding:14px;margin-bottom:14px;">
-          <div
-            style="font-size:10px;color:var(--text3);margin-bottom:2px;font-family:'DM Mono',monospace;">DEUDA
-            TOTAL</div>
-          <div
-            style="font-size:24px;font-weight:500;font-family:'DM Mono',monospace;color:var(--red);"
-            id="ptc-deuda-total">$0</div>
-          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;"
-            id="ptc-opciones-rapidas"></div>
+
+        <!-- Cabecera: deuda + fecha límite -->
+        <div style="background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.25);border-radius:9px;padding:14px;margin-bottom:14px;">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px;font-family:'DM Mono',monospace;">DEUDA TOTAL</div>
+          <div style="font-size:24px;font-weight:500;font-family:'DM Mono',monospace;color:var(--red);" id="ptc-deuda-total">$0</div>
+          <div id="ptc-info-ciclo" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:5px;min-height:15px;"></div>
         </div>
-        <div class="ig"><label class="il" for="ptc_monto">¿Cuánto vas a
-            pagar?</label><input type="text" inputmode="decimal" id="ptc_monto"
-            placeholder="0,00" class="money-input"></div>
+
+        <!-- Opciones de pago estilo Nu -->
+        <div style="margin-bottom:14px;" id="ptc-opciones-bloque">
+          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:8px;">¿Cuánto quieres pagar?</div>
+          <div id="ptc-opciones-rapidas" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+
+        <!-- Campo de monto libre (siempre visible) -->
+        <div class="ig" id="ptc-monto-grupo">
+          <label class="il" for="ptc_monto" id="ptc-monto-label">Abona a tu deuda</label>
+          <input type="text" inputmode="decimal" id="ptc_monto" placeholder="0,00" class="money-input">
+          <div id="ptc-monto-hint" style="font-size:11px;color:var(--text3);margin-top:3px;min-height:14px;"></div>
+        </div>
+
         <div class="ig">
-          <label class="il" for="ptc_fuente">¿Con qué cuenta pagas? <span
-              style="color:var(--red);">*</span></label>
-          <div class="select-wrap"><select id="ptc_fuente"><option
-                value>Seleccionar cuenta</option></select></div>
-          <div id="ptc-fuente-saldo"
-            style="font-size:11px;font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+          <label class="il" for="ptc_fuente">¿Con qué cuenta pagas? <span style="color:var(--red);">*</span></label>
+          <div class="select-wrap"><select id="ptc_fuente"><option value>Seleccionar cuenta</option></select></div>
+          <div id="ptc-fuente-saldo" style="font-size:11px;font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
         </div>
-        <div class="ig"><label class="il" for="ptc_fecha">Fecha de
-            pago</label><input type="date" id="ptc_fecha"></div>
-        <div class="ig"><label class="il" for="ptc_nota">Nota
-            (opcional)</label><input type="text" id="ptc_nota"
-            placeholder="Ej: pago mínimo, pago total..."></div>
-        <div id="ptc-preview"
-          style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:10px;min-height:16px;"></div>
-        <button type="button" class="btn btn-primary"
-          id="btn-confirmar-pagar-tc">Confirmar pago</button>
-        <button type="button" class="btn btn-ghost"
-          data-close-sheet="pagar-tc">Cancelar</button>
+        <div class="ig"><label class="il" for="ptc_fecha">Fecha de pago</label><input type="date" id="ptc_fecha"></div>
+        <div class="ig"><label class="il" for="ptc_nota">Nota (opcional)</label><input type="text" id="ptc_nota" placeholder="Ej: pago mínimo, pago total..."></div>
+        <div id="ptc-preview" style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:10px;min-height:16px;"></div>
+        <button type="button" class="btn btn-primary" id="btn-confirmar-pagar-tc">Confirmar pago</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="pagar-tc">Cancelar</button>
       </div>
     </div>
 
@@ -15755,29 +15753,126 @@ function confirmarCompraTC(){
 }
 
 // ── Pagar TC ─────────────────────────────────────────────────
+
+// Calcula cuánto se ha pagado en el ciclo actual (desde el último corte)
+function _ptcPagadoCicloActual(tc){
+  if(!(tc.pagos||[]).length) return 0;
+  const corteAnt = tcFechaCorteAnterior(tc);
+  if(!corteAnt) return 0; // sin fecha de corte: no podemos saber, asumir 0
+  return (tc.pagos||[]).reduce((sum,p)=>{
+    const fp = new Date(p.fecha+'T00:00:00');
+    return fp >= corteAnt ? sum + (p.monto||0) : sum;
+  }, 0);
+}
+
 function abrirPagarTC(tcId){
   _tcActualId=tcId;
   const tc=getTCById(tcId);
   if(!tc)return;
   document.getElementById('pagar-tc-title').textContent='Pagar '+tc.nombre;
-  document.getElementById('ptc-deuda-total').textContent=fmt(tc.deuda||0);
   document.getElementById('ptc_monto').value='';
   document.getElementById('ptc_nota').value='';
   document.getElementById('ptc_fecha').value=hoy();
   document.getElementById('ptc-preview').textContent='';
+  document.getElementById('ptc-monto-hint').textContent='';
 
-  // Opciones rápidas
   const deuda=tc.deuda||0;
+  document.getElementById('ptc-deuda-total').textContent=fmt(deuda);
+
+  // Info de ciclo (fecha límite + periodo facturado)
+  const infoEl=document.getElementById('ptc-info-ciclo');
+  if(infoEl){
+    const partes=[];
+    if(tc.fechaLimitePago) partes.push('Límite: '+tcFmtFecha(tc.fechaLimitePago));
+    const hasta=tcFechaFacturadoHasta(tc);
+    const corteAnt=tcFechaCorteAnterior(tc);
+    if(corteAnt&&hasta){
+      const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      partes.push('Periodo: '+corteAnt.getDate()+' '+meses[corteAnt.getMonth()]+' – '+hasta.getDate()+' '+meses[hasta.getMonth()]);
+    }
+    infoEl.textContent=partes.join(' · ');
+  }
+
+  // Calcular pago mínimo real y cuánto ya se pagó en este ciclo
+  const pmManual=tc.pagoMinimo||0;
+  const pagoMinEstimado=Math.min(deuda,Math.max(deuda*0.05,50000));
+  const pagoMin=pmManual>0?pmManual:pagoMinEstimado;
+  const pagadoCiclo=_ptcPagadoCicloActual(tc);
+  const minimoRestante=Math.max(0,pagoMin-pagadoCiclo);
+  const minimoYaPagado=minimoRestante<=0;
+
+  // Construir opciones estilo Nu
   const optsEl=document.getElementById('ptc-opciones-rapidas');
   if(optsEl){
-    const min=Math.min(deuda,Math.max(deuda*0.05,50000));
-    const opts=[
-      {label:'Mínimo',val:Math.round(min)},
-      {label:'50%',val:Math.round(deuda*0.5)},
-      {label:'Total',val:Math.round(deuda)}
-    ].filter(o=>o.val>0);
-    optsEl.innerHTML=opts.map(o=>`<button type="button" onclick="ptcSetMonto(${o.val})" style="padding:5px 12px;border-radius:20px;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Mono',monospace;">${o.label} ${fmt(o.val)}</button>`).join('');
+    const opts=[];
+
+    // Opción: Pago mínimo
+    if(minimoYaPagado){
+      opts.push({
+        label:'Pago mínimo',
+        sublabel:'Ya cubierto este período ✓',
+        val:0,
+        disabled:true,
+        color:'var(--accent)'
+      });
+    } else {
+      opts.push({
+        label:'Pago mínimo',
+        sublabel:fmt(minimoRestante)+(!pmManual?' (estimado — actualiza en editar)':''),
+        val:minimoRestante,
+        disabled:false,
+        color:'var(--red)'
+      });
+    }
+
+    // Opción: Pago total
+    if(deuda>0){
+      opts.push({
+        label:'Pago total',
+        sublabel:fmt(deuda)+' — libera todo el cupo',
+        val:deuda,
+        disabled:false,
+        color:'var(--text)'
+      });
+    }
+
+    optsEl.innerHTML=opts.map(o=>{
+      if(o.disabled){
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:10px;background:rgba(200,240,96,.06);border:1.5px solid rgba(200,240,96,.25);opacity:.7;">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:${o.color};">${o.label}</div>
+            <div style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;">${o.sublabel}</div>
+          </div>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>`;
+      }
+      return `<button type="button" onclick="ptcSetMonto(${o.val})" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border2);cursor:pointer;width:100%;text-align:left;">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:${o.color};">${o.label}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">${o.sublabel}</div>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>`;
+    }).join('');
   }
+
+  // Label del campo libre según estado del mínimo
+  const labelEl=document.getElementById('ptc-monto-label');
+  const hintEl=document.getElementById('ptc-monto-hint');
+  if(labelEl) labelEl.textContent='Abona a tu deuda';
+  if(hintEl){
+    if(minimoYaPagado){
+      hintEl.textContent='Mínimo cubierto — ingresa lo que quieras pagar';
+      hintEl.style.color='var(--accent)';
+    } else {
+      hintEl.textContent='Mínimo pendiente: '+fmt(minimoRestante)+' — no pagues menos';
+      hintEl.style.color='var(--amber)';
+    }
+  }
+
+  // Guardar datos de validación en el elemento para confirmarPagarTC
+  document.getElementById('ptc_monto').dataset.minimoRestante=minimoRestante;
+  document.getElementById('ptc_monto').dataset.minimoYaPagado=minimoYaPagado?'1':'0';
 
   // Poblar fuentes (solo cuentas reales, no TC)
   const fuentesSel=document.getElementById('ptc_fuente');
@@ -15799,10 +15894,12 @@ function ptcSetMonto(val){
 }
 
 function ptcActualizarPreview(){
-  const monto=parseMoney(document.getElementById('ptc_monto').value)||0;
+  const montoEl=document.getElementById('ptc_monto');
+  const monto=parseMoney(montoEl.value)||0;
   const fuente=document.getElementById('ptc_fuente').value;
   const prevEl=document.getElementById('ptc-preview');
   const saldoEl=document.getElementById('ptc-fuente-saldo');
+  const hintEl=document.getElementById('ptc-monto-hint');
   const tc=getTCById(_tcActualId);
   if(!tc){prevEl.textContent='';return;}
   if(fuente){
@@ -15811,6 +15908,24 @@ function ptcActualizarPreview(){
     saldoEl.style.color=saldo>=monto?'var(--accent)':'var(--red)';
   } else {
     saldoEl.textContent='';
+  }
+  // Hint de mínimo dinámico
+  if(hintEl){
+    const minimoYaPagado=montoEl.dataset.minimoYaPagado==='1';
+    const minimoRestante=parseFloat(montoEl.dataset.minimoRestante)||0;
+    if(minimoYaPagado){
+      hintEl.textContent='Mínimo cubierto — ingresa lo que quieras pagar';
+      hintEl.style.color='var(--accent)';
+    } else if(monto>0 && monto<minimoRestante){
+      hintEl.textContent='⚠ Debes pagar al menos '+fmt(minimoRestante);
+      hintEl.style.color='var(--red)';
+    } else if(monto>=minimoRestante && minimoRestante>0){
+      hintEl.textContent='✓ Supera el mínimo pendiente ('+fmt(minimoRestante)+')';
+      hintEl.style.color='var(--accent)';
+    } else {
+      hintEl.textContent='Mínimo pendiente: '+fmt(minimoRestante)+' — no pagues menos';
+      hintEl.style.color='var(--amber)';
+    }
   }
   if(monto>0){
     const nuevaDeuda=Math.max(0,(tc.deuda||0)-monto);
@@ -15824,12 +15939,22 @@ function ptcActualizarPreview(){
 function confirmarPagarTC(){
   const tc=getTCById(_tcActualId);
   if(!tc){toast('Tarjeta no encontrada','err');return;}
-  const monto=parseMoney(document.getElementById('ptc_monto').value)||0;
+  const montoEl=document.getElementById('ptc_monto');
+  const monto=parseMoney(montoEl.value)||0;
   const fuente=document.getElementById('ptc_fuente').value;
   const fecha=document.getElementById('ptc_fecha').value||hoy();
   const nota=document.getElementById('ptc_nota').value.trim();
   if(!monto){toast('Ingresa el monto a pagar','err');return;}
   if(!fuente){toast('Selecciona la cuenta de pago','err');return;}
+
+  // Validar pago mínimo (solo si aún no está cubierto)
+  const minimoYaPagado=montoEl.dataset.minimoYaPagado==='1';
+  const minimoRestante=parseFloat(montoEl.dataset.minimoRestante)||0;
+  if(!minimoYaPagado && minimoRestante>0 && monto<minimoRestante){
+    toast('El mínimo pendiente es '+fmt(minimoRestante)+' — no puedes pagar menos','err',4000);
+    return;
+  }
+
   const saldo=getSaldoFuente(fuente);
   if(saldo<monto){toast('Saldo insuficiente en '+fuenteLabel(fuente)+' — disponible: '+fmt(saldo),'err');return;}
 

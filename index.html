@@ -5206,7 +5206,8 @@ function refresh(){
   },0);
 
   const deudaTCTotal=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
-  document.getElementById('heroTotal').textContent=fmt(disp+prest+cdts-deudaTCTotal);
+  const _cpAjenoHero=typeof _saldoCPAjeno==='function'?_saldoCPAjeno():0;
+  document.getElementById('heroTotal').textContent=fmt(disp+prest+cdts-deudaTCTotal-_cpAjenoHero);
   document.getElementById('s-disp').textContent=fmtNoCents(disp);
   document.getElementById('s-nu').textContent=fmtNoCents(cajitasLibres);
   document.getElementById('s-ef').textContent=fmtNoCents(ef);

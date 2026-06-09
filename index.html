@@ -5192,8 +5192,8 @@ function refresh(){
   // _spFijo eliminado: el costo mensual de Spotify es solo un valor de referencia para el módulo.
   // Se cuenta como gasto real únicamente cuando se registra el pago (queda en gastosVar).
   const gfTotal=_gfFijos;
-  // Excluir de variables los que son pagos de gastos fijos (ya se cuentan en gfTotal)
-  const gvMes=gastosMes(mes).filter(g=>!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);
+  // Excluir de variables los que son pagos de gastos fijos (ya se cuentan en gfTotal) y los pagos de TC (no son gasto real)
+  const gvMes=gastosMes(mes).filter(g=>!g.esPagoGastoFijo&&!g._esPagoTC).reduce((a,g)=>a+(g.monto||0),0);
 
   // Total intereses generados hoy en cajitas libres (base = saldo propio + encargos en la cajita)
   const _globalTasa=S.nuTasaGlobal||9.25;

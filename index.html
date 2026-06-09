@@ -3144,7 +3144,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
         </div>
         <div class="ig">
           <label class="il" for="ptc_monto">Monto</label>
-          <input type="text" inputmode="decimal" id="ptc_monto" placeholder="0,00" class="money-input" oninput="_ptcDifResumen()">
+          <input type="text" inputmode="decimal" id="ptc_monto" placeholder="0,00" class="money-input">
         </div>
         <div class="ig">
           <label class="il" for="ptc_fecha">Fecha</label>
@@ -3159,38 +3159,28 @@ input.movs-search-input:focus{border-color:var(--accent);}
           <input type="text" id="ptc_nota" placeholder="Ej: La pedí a nombre mío, la paga él">
         </div>
 
-        <!-- ── Le dije un valor diferente ── -->
+        <!-- Diferencial opcional -->
         <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:0;" onclick="_ptcDifToggle()">
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:15px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span>
             <div>
               <div style="font-size:12px;font-weight:600;color:var(--amber);">Le dije un valor diferente</div>
-              <div style="font-size:10px;color:var(--text3);">Lo que te cobró la TC ≠ lo que le dijiste a él/ella</div>
+              <div style="font-size:10px;color:var(--text3);">Registrar diferencial</div>
             </div>
           </div>
           <div id="ptc-dif-icon" style="font-size:16px;color:var(--amber);transition:transform .2s;">›</div>
         </div>
         <div id="ptc-dif-body" style="display:none;background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;margin-bottom:10px;">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:10px;line-height:1.5;">El campo <b style="color:var(--text)">Monto</b> es lo que te cobró la TC. Acá registrás lo que le dijiste que costó.</div>
           <div class="ig" style="margin-bottom:10px;">
-            <label class="il" style="color:var(--amber);">¿Cuánto le dijiste que costó?</label>
-            <input type="text" inputmode="decimal" id="ptc_dif_deudor" placeholder="0,00" class="money-input" oninput="_ptcDifResumen()">
+            <label class="il" style="color:var(--amber);">¿Cuánto era en realidad?</label>
+            <input type="text" inputmode="decimal" id="ptc_dif_real" placeholder="0,00" class="money-input" oninput="_ptcDifResumen()">
           </div>
           <div id="ptc-dif-resumen" style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
-          <!-- ¿En qué cuenta te cayó el margen? (solo si dijiste más) -->
+          <!-- ¿Dónde te cayó el margen que te quedaste? -->
           <div id="ptc-dif-mi-cuenta-wrap" style="display:none;margin-top:10px;">
             <label class="il" style="color:var(--amber);margin-bottom:6px;">¿En qué cuenta te cayó ese margen?</label>
             <div class="select-wrap">
               <select id="ptc_dif_mi_cuenta" style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;width:100%;">
-                <option value="">Sin especificar</option>
-              </select>
-            </div>
-          </div>
-          <!-- ¿De qué cuenta absorbés la diferencia? (solo si dijiste menos) -->
-          <div id="ptc-dif-absorber-wrap" style="display:none;margin-top:10px;">
-            <label class="il" style="color:var(--amber);margin-bottom:6px;">¿De qué cuenta cubrís la diferencia?</label>
-            <div class="select-wrap">
-              <select id="ptc_dif_absorber" style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;width:100%;">
                 <option value="">Sin especificar</option>
               </select>
             </div>
@@ -7757,10 +7747,9 @@ function abrirSheetPrestamoTC() {
   const difIcon = document.getElementById('ptc-dif-icon');
   if (difBody) difBody.style.display = 'none';
   if (difIcon) { difIcon.textContent = '›'; difIcon.style.transform = ''; }
-  const difDed = document.getElementById('ptc_dif_deudor'); if (difDed) difDed.value = '';
-  const difRes = document.getElementById('ptc-dif-resumen'); if (difRes) difRes.textContent = '';
-  const miWrap = document.getElementById('ptc-dif-mi-cuenta-wrap'); if (miWrap) miWrap.style.display = 'none';
-  const absWrap = document.getElementById('ptc-dif-absorber-wrap'); if (absWrap) absWrap.style.display = 'none';
+  const difReal = document.getElementById('ptc_dif_real'); if (difReal) difReal.value = '';
+  const difRes  = document.getElementById('ptc-dif-resumen'); if (difRes) difRes.textContent = '';
+  const miWrap  = document.getElementById('ptc-dif-mi-cuenta-wrap'); if (miWrap) miWrap.style.display = 'none';
   openSheet('prestamo-tc');
 }
 
@@ -7768,111 +7757,87 @@ function confirmarPrestamoTC() {
   const d = (S.deudores || []).find(x => x.id === deudorActualId);
   if (!d) return;
   const desc  = (document.getElementById('ptc_desc').value || '').trim();
-  const monto = parseMoney(document.getElementById('ptc_monto').value) || 0;
+  const dijo  = parseMoney(document.getElementById('ptc_monto').value) || 0; // lo que le dijiste al deudor
   const tcId  = document.getElementById('ptc_tarjeta').value;
   const fecha = document.getElementById('ptc_fecha').value || hoy();
   const nota  = (document.getElementById('ptc_nota').value || '').trim();
 
   if (!desc)  { toast('Ingresa una descripción', 'err'); return; }
-  if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
+  if (!dijo)  { toast('Ingresa un monto válido', 'err'); return; }
   if (!tcId)  { toast('Selecciona la tarjeta de crédito', 'err'); return; }
 
   const tc = (S.tarjetasCredito || []).find(t => t.id === tcId);
   if (!tc) { toast('TC no encontrada', 'err'); return; }
 
-  // ── Leer diferencial (valor diferente) ──────────────────────────────────
-  const difBody = document.getElementById('ptc-dif-body');
+  // Leer diferencial si está activo
+  const difBody  = document.getElementById('ptc-dif-body');
   const difActivo = difBody && difBody.style.display !== 'none';
-  let montoDeudor = monto; // por defecto el deudor debe lo mismo que la TC cobró
-  let difData = null;
+  const real = difActivo ? (parseMoney(document.getElementById('ptc_dif_real')?.value) || 0) : 0;
+  const margen = real > 0 ? dijo - real : 0; // >0 → te quedás con la diferencia
+  const miCuenta = (margen > 0.5 && difActivo)
+    ? (document.getElementById('ptc_dif_mi_cuenta')?.value || '') : '';
 
-  if (difActivo) {
-    const rawDif = parseMoney(document.getElementById('ptc_dif_deudor')?.value) || 0;
-    if (rawDif > 0 && Math.abs(rawDif - monto) > 0.5) {
-      montoDeudor = rawDif;
-      const margen = montoDeudor - monto; // >0 → ganás; <0 → perdés
-      difData = { montoTC: monto, montoDeudor, margen };
-      if (margen > 0) {
-        difData.miCuenta = document.getElementById('ptc_dif_mi_cuenta')?.value || '';
-      } else {
-        difData.absorberDe = document.getElementById('ptc_dif_absorber')?.value || '';
-      }
-    }
-  }
+  // Monto real de la TC = real si hay diferencial, si no = dijo
+  const montoTC = (difActivo && real > 0) ? real : dijo;
 
-  // 1. Registrar el préstamo en el deudor (con el monto que le dijiste)
+  // 1. Registrar el préstamo en el deudor con el monto que le dijiste
   if (!d.movimientos) d.movimientos = [];
   const movId = uid();
-  d.movimientos.push({
+  const movObj = {
     id: movId,
     tipo: 'prestamo',
-    monto: montoDeudor,
+    monto: dijo,
     fecha,
     nota: nota || `Compra con ${tc.nombre}: ${desc}`,
     _viaTC: true,
     _tcId: tcId,
-    _tcMonto: monto,
+    _tcMonto: montoTC,
     _tcDesc: desc,
-    ...(difData ? { _diferencial: difData } : {}),
     ts: Date.now()
-  });
+  };
+  if (difActivo && real > 0) {
+    movObj._diferencial = { dijo, real: montoTC, margen };
+  }
+  d.movimientos.push(movObj);
 
-  // 2. Aumentar la deuda de la TC con el monto REAL cobrado
-  tc.deuda = (tc.deuda || 0) + monto;
+  // 2. Aumentar la deuda de la TC con el monto real cobrado
+  tc.deuda = (tc.deuda || 0) + montoTC;
 
-  // 3. Registrar en tcMovimientos como cargo_prestamo (monto real de la TC)
+  // 3. Registrar en tcMovimientos como cargo_prestamo con el monto real de la TC
   if (!S.tcMovimientos) S.tcMovimientos = [];
   S.tcMovimientos.push({
     id: uid(),
     tcId,
     tipo: 'cargo_prestamo',
     desc: `Préstamo ${d.nombre}: ${desc}`,
-    monto,
+    monto: montoTC,
     fecha,
     nota: nota || 'Compra a nombre propio para prestarle a alguien — no es gasto tuyo',
     deudorId: d.id,
     _deudorMovId: movId
   });
 
-  // 4. Manejar el diferencial en cuentas propias
-  if (difData) {
-    const margen = difData.margen;
-    if (margen > 0 && difData.miCuenta) {
-      // Ganaste un margen → entra a tu cuenta
-      if (!S.movimientos) S.movimientos = [];
-      S.movimientos.push({
-        id: uid(),
-        tipo: 'entrada',
-        fuente: difData.miCuenta,
-        monto: margen,
-        fecha,
-        desc: `Margen préstamo TC — ${d.nombre}: ${desc}`
-      });
-      sumarFuente(difData.miCuenta, margen);
-    } else if (margen < 0 && difData.absorberDe) {
-      // Le dijiste menos de lo que te costó → sale de tu bolsillo
-      const diferencia = Math.abs(margen);
-      if (!S.movimientos) S.movimientos = [];
-      S.movimientos.push({
-        id: uid(),
-        tipo: 'salida',
-        fuente: difData.absorberDe,
-        monto: diferencia,
-        fecha,
-        desc: `Diferencia absorbida préstamo TC — ${d.nombre}: ${desc}`
-      });
-      sumarFuente(difData.absorberDe, -diferencia);
-    }
+  // 4. Si hay margen positivo, registrarlo como ingreso propio
+  if (margen > 0.5 && miCuenta) {
+    if (!S.movimientos) S.movimientos = [];
+    S.movimientos.push({
+      id: uid(),
+      tipo: 'entrada',
+      fuente: miCuenta,
+      monto: margen,
+      fecha,
+      desc: `Margen préstamo TC — ${d.nombre}: ${desc}`
+    });
+    sumarFuente(miCuenta, margen);
   }
 
   save(); refresh();
   closeSheet('prestamo-tc');
   abrirDeudor(deudorActualId);
-  const montoDisplay = difData ? montoDeudor : monto;
-  toast(`Préstamo con TC registrado — ${d.nombre} te debe ${fmt(montoDisplay)}`, 'ok', 3500);
+  toast(`Préstamo con TC registrado — ${d.nombre} te debe ${fmt(dijo)}`, 'ok', 3500);
 }
 
-/* ─── Helpers "Le dije un valor diferente" — Préstamo TC ──────────────── */
+/* ─── Helpers diferencial — Préstamo TC ──────────────────────────────── */
 function _ptcDifToggle() {
   const body = document.getElementById('ptc-dif-body');
   const icon = document.getElementById('ptc-dif-icon');
@@ -7886,47 +7851,27 @@ function _ptcDifToggle() {
 function _ptcDifResumen() {
   const el = document.getElementById('ptc-dif-resumen');
   if (!el) return;
-  const montoTC = parseMoney(document.getElementById('ptc_monto')?.value) || 0;
-  const montoDeudorEl = document.getElementById('ptc_dif_deudor');
-  const montoDeudor = montoDeudorEl ? (parseMoney(montoDeudorEl.value) || 0) : 0;
+  const dijo = parseMoney(document.getElementById('ptc_monto')?.value) || 0;
+  const real = parseMoney(document.getElementById('ptc_dif_real')?.value) || 0;
+  const margen = dijo - real;
 
-  if (!montoDeudor) { el.textContent = ''; _ptcDifActualizarCuentas(null); return; }
-  if (!montoTC) { el.innerHTML = '<span style="color:var(--amber)">Ingresá primero el monto de la TC</span>'; return; }
+  if (!real) { el.textContent = ''; _ptcDifMiCuenta(false); return; }
 
-  const margen = montoDeudor - montoTC;
-  let html = `TC cobró: <span style="color:var(--text)">${fmt(montoTC)}</span>  Le dijiste: <span style="color:var(--text)">${fmt(montoDeudor)}</span>  `;
-  if (Math.abs(margen) < 0.5) {
-    html += `<span style="color:var(--text3)">Sin diferencia</span>`;
-  } else if (margen > 0) {
-    html += `<span style="color:var(--accent)">Ganás: +${fmt(margen)}</span>`;
-  } else {
-    html += `<span style="color:var(--red)">Absorbés: ${fmt(Math.abs(margen))}</span>`;
-  }
+  let html = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>  Real: <span style="color:var(--text2)">${fmt(real)}</span>  Margen: <span style="color:${margen >= 0 ? 'var(--accent)' : 'var(--red)'}">${margen >= 0 ? '+' : ''}${fmt(margen)}</span>`;
   el.innerHTML = html;
-  _ptcDifActualizarCuentas(margen);
+
+  _ptcDifMiCuenta(margen > 0.5);
 }
 
-function _ptcDifActualizarCuentas(margen) {
-  const miCuentaWrap   = document.getElementById('ptc-dif-mi-cuenta-wrap');
-  const absorberWrap   = document.getElementById('ptc-dif-absorber-wrap');
-  const miCuentaSel    = document.getElementById('ptc_dif_mi_cuenta');
-  const absorberSel    = document.getElementById('ptc_dif_absorber');
-  if (!miCuentaWrap || !absorberWrap) return;
-
-  const opciones = '<option value="">Sin especificar</option>' +
-    getFuentesSinTC().map(f => `<option value="${f.val}">${f.label}</option>`).join('');
-
-  if (margen !== null && margen > 0.5) {
-    miCuentaWrap.style.display = '';
-    absorberWrap.style.display = 'none';
-    if (miCuentaSel) miCuentaSel.innerHTML = opciones;
-  } else if (margen !== null && margen < -0.5) {
-    absorberWrap.style.display = '';
-    miCuentaWrap.style.display = 'none';
-    if (absorberSel) absorberSel.innerHTML = opciones;
-  } else {
-    miCuentaWrap.style.display = 'none';
-    absorberWrap.style.display = 'none';
+function _ptcDifMiCuenta(mostrar) {
+  const wrap = document.getElementById('ptc-dif-mi-cuenta-wrap');
+  const sel  = document.getElementById('ptc_dif_mi_cuenta');
+  if (!wrap) return;
+  wrap.style.display = mostrar ? '' : 'none';
+  if (mostrar && sel) {
+    const prev = sel.value;
+    sel.innerHTML = '<option value="">Sin especificar</option>' +
+      getFuentesSinTC().map(f => `<option value="${f.val}"${f.val === prev ? ' selected' : ''}>${f.label}</option>`).join('');
   }
 }
 

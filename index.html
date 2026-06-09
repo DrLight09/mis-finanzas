@@ -15758,8 +15758,15 @@ function confirmarCompraTC(){
 function _ptcPagadoCicloActual(tc){
   if(!(tc.pagos||[]).length) return 0;
   const corteAnt = tcFechaCorteAnterior(tc);
-  if(!corteAnt) return 0; // sin fecha de corte: no podemos saber, asumir 0
+  if(!corteAnt) return 0;
+  // Solo contar pagos desde cuentas reales — ignorar fuentes internas
+  // como 'plata-comprometida' que son registros contables, no abonos reales al extracto
+  function esFuenteReal(f){
+    if(!f) return false;
+    return f==='nequi'||f==='efectivo'||f.startsWith('cajita:')||f.startsWith('custom:');
+  }
   return (tc.pagos||[]).reduce((sum,p)=>{
+    if(!esFuenteReal(p.fuente)) return sum;
     const fp = new Date(p.fecha+'T00:00:00');
     return fp >= corteAnt ? sum + (p.monto||0) : sum;
   }, 0);

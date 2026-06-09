@@ -1593,9 +1593,19 @@ input.movs-search-input:focus{border-color:var(--accent);}
                 </span>
               </button>
             </div>
-            <div style="margin-bottom:14px;">
+            <div style="display:flex;gap:7px;margin-bottom:7px;">
+              <button type="button" class="btn" id="btn-prestamo-tc"
+                style="flex:1;background:rgba(96,176,240,.1);border-color:rgba(96,176,240,.3);color:var(--blue);">
+                <span
+                  style="display:flex;align-items:center;justify-content:center;gap:5px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>
+                  Préstamo con TC
+                </span>
+              </button>
               <button type="button" class="btn" id="btn-pagar-prestamo"
-                style="width:100%;background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.4);color:var(--amber);">
+                style="flex:1;background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.4);color:var(--amber);">
                 <span
                   style="display:flex;align-items:center;justify-content:center;gap:6px;">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -1603,10 +1613,9 @@ input.movs-search-input:focus{border-color:var(--accent);}
                     stroke-linecap="round"><rect x="2" y="5" width="20"
                       height="14" rx="2" /><line x1="2" y1="10" x2="22"
                       y2="10" /></svg>
-                  Pagar préstamo completo
+                  Pagar completo
                 </span>
               </button>
-
             </div>
             <div class="sec-title">Historial</div>
             <div id="ddHistorial"></div>
@@ -3117,6 +3126,41 @@ input.movs-search-input:focus{border-color:var(--accent);}
           id="btn-crear-deudor">Crear persona</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="nueva-persona">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- PRÉSTAMO CON TARJETA DE CRÉDITO -->
+    <div class="overlay" id="sheet-prestamo-tc" data-sheet-id="prestamo-tc">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Préstamo con TC</div>
+        <div class="info-box info-box-blue" style="margin-bottom:12px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:4px;flex-shrink:0;"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/></svg>
+          Le compraste algo a esta persona con tu TC. Queda registrado como deuda de él/ella hacia vos, y el cargo <b>no cuenta como gasto tuyo</b>.
+        </div>
+        <div class="ig">
+          <label class="il" for="ptc_desc">Descripción</label>
+          <input type="text" id="ptc_desc" placeholder="Ej: Tenis Nike, Medicamentos...">
+        </div>
+        <div class="ig">
+          <label class="il" for="ptc_monto">Monto</label>
+          <input type="text" inputmode="decimal" id="ptc_monto" placeholder="0,00" class="money-input">
+        </div>
+        <div class="ig">
+          <label class="il" for="ptc_fecha">Fecha</label>
+          <input type="date" id="ptc_fecha">
+        </div>
+        <div class="ig">
+          <label class="il" for="ptc_tarjeta">Tarjeta de crédito usada</label>
+          <div class="select-wrap"><select id="ptc_tarjeta"><option value="">Seleccionar TC</option></select></div>
+        </div>
+        <div class="ig">
+          <label class="il" for="ptc_nota">Nota (opcional)</label>
+          <input type="text" id="ptc_nota" placeholder="Ej: La pedí a nombre mío, la paga él">
+        </div>
+        <div id="ptc_preview" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:14px;margin-bottom:4px;"></div>
+        <button type="button" class="btn btn-primary" onclick="confirmarPrestamoTC()">Guardar préstamo con TC</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="prestamo-tc">Cancelar</button>
       </div>
     </div>
 
@@ -4670,6 +4714,22 @@ function _saldoCPAjeno(){
     });
   });
   return total;
+}
+
+// Calcula la deuda TC que realmente es mía
+// Excluye: encargos (cargo_encargo), plata comprometida (_desdeCP) y préstamos TC (cargo_prestamo)
+function calcDeudaTcPropia() {
+  let deudaAjena = 0;
+  // 1. Cargos de encargos y préstamos TC registrados en tcMovimientos
+  (S.tcMovimientos||[]).forEach(m => {
+    if (m.tipo === 'cargo_encargo' || m.tipo === 'cargo_prestamo') deudaAjena += (m.monto||0);
+  });
+  // 2. Compras de plata comprometida (_desdeCP en tc.compras)
+  (S.tarjetasCredito||[]).forEach(tc => {
+    (tc.compras||[]).forEach(c => { if (c._desdeCP) deudaAjena += (c.monto||0); });
+  });
+  const deudaTotal = (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
+  return Math.max(0, deudaTotal - deudaAjena);
 }
 
 function calcPatrimonioTotal(){
@@ -6865,11 +6925,12 @@ function abrirDeudor(id) {
       return `<div class="card card-sm" style="margin-bottom:7px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div style="flex:1;min-width:0;">
-            <div style="display:flex;align-items:center;gap:6px;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : 'Pago'}</span>
+              ${m._viaTC ? `<span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
               ${m.nota ? `<span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
             </div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m.fuentes ? ' · ' + m.fuentes.map(f=>fuenteLabel(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + fuenteLabel(m.fuente) : '')}${destinoInfo}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m._viaTC ? '' : (m.fuentes ? ' · ' + m.fuentes.map(f=>fuenteLabel(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + fuenteLabel(m.fuente) : ''))}${destinoInfo}</div>
             ${extraHtml}
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
@@ -6943,9 +7004,10 @@ async function eliminarMovDeudor(deudorId, movId) {
   const label = esPrestamo ? 'préstamo' : 'pago';
   const tieneExtra = !esPrestamo && m._extPartes && m._extPartes.length > 0;
   const extraAviso = tieneExtra ? ' El extra (cajitas, gastos, etc.) también se revertirá.' : '';
+  const tcAviso = esPrestamo && m._viaTC ? ' La deuda en la TC también se revertirá automáticamente.' : '';
   const ok = await dialogo(
     'Eliminar ' + label,
-    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${esPrestamo ? 'la cuenta origen' : 'la cuenta destino'} se revertirá automáticamente.${extraAviso}`,
+    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${esPrestamo ? (m._viaTC ? 'la TC' : 'la cuenta origen') : 'la cuenta destino'} se revertirá automáticamente.${extraAviso}${tcAviso}`,
     'Eliminar', true
   );
   if (!ok) return;
@@ -6953,7 +7015,12 @@ async function eliminarMovDeudor(deudorId, movId) {
   // Revertir efecto en las cuentas
   if (esPrestamo) {
     // Era un préstamo: plata salió de la(s) fuente(s) → devolver
-    if (m.fuentes && m.fuentes.length) {
+    if (m._viaTC) {
+      // Préstamo vía TC: revertir la deuda de la TC y limpiar tcMovimientos
+      const tc = (S.tarjetasCredito || []).find(t => t.id === m._tcId);
+      if (tc) tc.deuda = Math.max(0, (tc.deuda || 0) - (m._tcMonto || m.monto));
+      if (S.tcMovimientos) S.tcMovimientos = S.tcMovimientos.filter(x => x._deudorMovId !== m.id);
+    } else if (m.fuentes && m.fuentes.length) {
       m.fuentes.forEach(f => { if (f.fuente) sumarFuente(f.fuente, f.monto); });
     } else if (m.fuente) {
       sumarFuente(m.fuente, m.monto);
@@ -7628,6 +7695,80 @@ function totalPrestadoPendiente() {
     const saldo = getDeudorSaldo(d);
     return a + (saldo > 0 ? saldo : 0);
   }, 0);
+}
+
+/* ── PRÉSTAMO CON TARJETA DE CRÉDITO ─────────────────────────────────────── */
+function abrirSheetPrestamoTC() {
+  if (!deudorActualId) return;
+  const tcs = S.tarjetasCredito || [];
+  if (!tcs.length) { toast('No tenés tarjetas de crédito configuradas', 'err', 3000); return; }
+  const sel = document.getElementById('ptc_tarjeta');
+  if (sel) {
+    sel.innerHTML = '<option value="">Seleccionar TC</option>' +
+      tcs.map(tc => `<option value="${tc.id}">${tc.nombre}${tc.deuda ? ' — deuda: ' + fmt(tc.deuda) : ''}</option>`).join('');
+  }
+  const fecEl = document.getElementById('ptc_fecha');
+  if (fecEl) fecEl.value = hoy();
+  const descEl = document.getElementById('ptc_desc'); if (descEl) descEl.value = '';
+  const montoEl = document.getElementById('ptc_monto'); if (montoEl) montoEl.value = '';
+  const notaEl = document.getElementById('ptc_nota'); if (notaEl) notaEl.value = '';
+  const prev = document.getElementById('ptc_preview'); if (prev) prev.textContent = '';
+  openSheet('prestamo-tc');
+}
+
+function confirmarPrestamoTC() {
+  const d = (S.deudores || []).find(x => x.id === deudorActualId);
+  if (!d) return;
+  const desc  = (document.getElementById('ptc_desc').value || '').trim();
+  const monto = parseMoney(document.getElementById('ptc_monto').value) || 0;
+  const tcId  = document.getElementById('ptc_tarjeta').value;
+  const fecha = document.getElementById('ptc_fecha').value || hoy();
+  const nota  = (document.getElementById('ptc_nota').value || '').trim();
+
+  if (!desc)  { toast('Ingresa una descripción', 'err'); return; }
+  if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
+  if (!tcId)  { toast('Selecciona la tarjeta de crédito', 'err'); return; }
+
+  const tc = (S.tarjetasCredito || []).find(t => t.id === tcId);
+  if (!tc) { toast('TC no encontrada', 'err'); return; }
+
+  // 1. Registrar el préstamo en el deudor (marcado como _viaTC)
+  if (!d.movimientos) d.movimientos = [];
+  const movId = uid();
+  d.movimientos.push({
+    id: movId,
+    tipo: 'prestamo',
+    monto,
+    fecha,
+    nota: nota || `Compra con ${tc.nombre}: ${desc}`,
+    _viaTC: true,
+    _tcId: tcId,
+    _tcMonto: monto,
+    _tcDesc: desc,
+    ts: Date.now()
+  });
+
+  // 2. Aumentar la deuda de la TC
+  tc.deuda = (tc.deuda || 0) + monto;
+
+  // 3. Registrar en tcMovimientos como cargo_prestamo (no cuenta como gasto propio)
+  if (!S.tcMovimientos) S.tcMovimientos = [];
+  S.tcMovimientos.push({
+    id: uid(),
+    tcId,
+    tipo: 'cargo_prestamo',
+    desc: `Préstamo ${d.nombre}: ${desc}`,
+    monto,
+    fecha,
+    nota: nota || 'Compra a nombre propio para prestarle a alguien — no es gasto tuyo',
+    deudorId: d.id,
+    _deudorMovId: movId
+  });
+
+  save(); refresh();
+  closeSheet('prestamo-tc');
+  abrirDeudor(deudorActualId);
+  toast(`Préstamo con TC registrado — ${d.nombre} te debe ${fmt(monto)}`, 'ok', 3500);
 }
 
 /* ---- COMPAT: mantener S.prestamos para datos antiguos ---- */
@@ -9910,6 +10051,8 @@ function _initEventListeners() {
   if (btnGuardarEditDeudor) btnGuardarEditDeudor.addEventListener('click', guardarEditarDeudor);
   const btnNuevoPrest = document.getElementById('btn-nuevo-prestamo');
   if (btnNuevoPrest) btnNuevoPrest.addEventListener('click', () => { openSheet('registrar-movimiento'); initMovSheet('prestamo'); });
+  const btnPrestamoTC = document.getElementById('btn-prestamo-tc');
+  if (btnPrestamoTC) btnPrestamoTC.addEventListener('click', () => { abrirSheetPrestamoTC(); });
   const btnAbono = document.getElementById('btn-registrar-abono');
   if (btnAbono) btnAbono.addEventListener('click', () => {
     const d = (S.deudores || []).find(x => x.id === deudorActualId);
@@ -13769,8 +13912,8 @@ document.addEventListener('focusin', function(e){
     const gfTotal = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mes]?a+(g.monto||0):a,0);
     const gastosMes = gvMes + gfTotal;
 
-    // Deuda total de tarjetas de crédito
-    const deudaTC = (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
+    // Deuda TC que realmente es mía (excluye encargos, plata comprometida, préstamos TC)
+    const deudaTC = calcDeudaTcPropia();
 
     // Ingresos del mes: mesada + movimientos tipo ingreso de cuentas personalizadas
     const mesNum = mes ? parseInt(mes.split('-')[1])-1 : 0;
@@ -14093,9 +14236,9 @@ document.addEventListener('focusin', function(e){
     const p12 = patrimonio + tendenciaMensual * 12;
     const col = tendenciaMensual >= 0 ? 'var(--accent)' : 'var(--red)';
 
-    // Deuda TC actual para mostrar impacto
-    const deudaTC = (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
-    const deudaInfo = deudaTC > 0 ? `<div style="font-size:10px;color:var(--red);margin-top:5px;font-family:'DM Mono',monospace;">Deuda TC: ${fmt(deudaTC)} ya descontada del patrimonio</div>` : '';
+    // Deuda TC propia para mostrar impacto (excluye encargos y PC)
+    const deudaTC = calcDeudaTcPropia();
+    const deudaInfo = deudaTC > 0 ? `<div style="font-size:10px;color:var(--red);margin-top:5px;font-family:'DM Mono',monospace;">Deuda TC propia: ${fmt(deudaTC)} ya descontada del patrimonio</div>` : '';
 
     // Calcular diferencias absolutas para el tooltip de cada card
     const proyCards = [

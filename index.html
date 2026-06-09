@@ -14130,8 +14130,8 @@ document.addEventListener('focusin', function(e){
     const mes = window.mesActual ? window.mesActual() : '';
     const pagosGF = S.pagosGastosFijos || {};
 
-    // Gastos del mes: variables + fijos pagados
-    const gvMes = (S.gastosVar||[]).filter(g=>window.mesKey?window.mesKey(g.fecha)===mes&&!g.esPagoGastoFijo:true).reduce((a,g)=>a+(g.monto||0),0);
+    // Gastos del mes: variables + fijos pagados (excluye pagos de TC — son cancelación de deuda, no gasto nuevo)
+    const gvMes = (S.gastosVar||[]).filter(g=>window.mesKey?window.mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC:true).reduce((a,g)=>a+(g.monto||0),0);
     const gfTotal = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mes]?a+(g.monto||0):a,0);
     const gastosMes = gvMes + gfTotal;
 

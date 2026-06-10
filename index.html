@@ -161,9 +161,9 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
 .bg-blue{background:rgba(96,176,240,.1);color:var(--blue);}
 .bg-nequi{background:rgba(229,0,116,.1);color:#ff4da6;}
 .divider{height:1px;background:var(--border);margin:10px 0;}
-.ig{margin-bottom:14px;}
-.il{font-size:12px;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;font-weight:600;}
-input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s;}
+.ig{margin-bottom:13px;}
+.il{font-size:11.5px;color:var(--text2);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.6px;font-family:'DM Mono',monospace;font-weight:600;}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .2s,box-shadow .2s;}
 input[type=date]{-webkit-appearance:none;-moz-appearance:none;appearance:none;color-scheme:dark;}
 input[type=date]::-webkit-date-and-time-value{text-align:left;}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
@@ -180,13 +180,15 @@ textarea{resize:none;height:60px;}
 .btn-primary{background:var(--accent);color:#0a0a0a;border:none;font-weight:600;box-shadow:0 2px 14px rgba(200,240,96,.25);}
 .btn-primary:active{box-shadow:none;}
 .btn-ghost{background:transparent;border:1.5px solid var(--border2);color:var(--text2);}
+.btn-ghost:active{background:rgba(255,255,255,.04);border-color:var(--border2);}
 .btn-ghost:not(.btn-sm){margin-top:8px;}
 .btn-sm{width:auto;padding:6px 12px;font-size:12px;}
 .btn-icon{background:none;border:none;cursor:pointer;color:var(--text3);padding:0;display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;transition:color .15s;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);overflow:hidden;}
 .overlay.open{display:flex;}
 .sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:0 18px 38px;width:100%;max-width:430px;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-.sheet-handle{width:44px;height:5px;background:var(--border2);border-radius:3px;margin:14px auto 22px;cursor:grab;}
+/* Handle unificado — una sola definición */
+.sheet-handle{width:40px;height:5px;background:var(--border2);border-radius:3px;margin:14px auto 20px;cursor:grab;opacity:.7;}
 .sheet-title{font-size:18px;font-weight:700;margin-bottom:20px;letter-spacing:-.2px;}
 .progress{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:8px;}
 .progress-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .4s;}
@@ -410,8 +412,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
 
 /* ===== MEJORAS UX MÓVIL ===== */
 
-/* 1. Sheet swipe: handle más grande y fácil de agarrar */
-.sheet-handle { width:40px;height:5px;background:var(--border2);border-radius:3px;margin:14px auto 20px;cursor:grab; }
+/* 1. Sheet swipe: handle unificado en el bloque principal de CSS */
 
 /* 2. Botones de cuentas: compactos en fila */
 .cuenta-actions { display:flex;flex-direction:row;gap:7px;margin-bottom:14px;flex-wrap:wrap; }
@@ -583,6 +584,33 @@ input.movs-search-input:focus{border-color:var(--accent);}
 .pin-bio-icon.error{background:rgba(240,104,104,.12);border-color:rgba(240,104,104,.5);}
 .pin-bio-label{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.3px;}
 @keyframes bioScan{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* ── PULIDO DE DISEÑO GLOBAL ── */
+
+/* Input focus: glow sutil para mejor feedback */
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(200,240,96,.08);}
+
+/* btn-split: estado activo coherente (amber = modo dividido activo) */
+.btn-split.active{background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.3);color:var(--amber);}
+
+/* Sheet title con separación ligera del handle */
+.sheet-title{margin-bottom:18px;}
+
+/* info-box: padding y radius coherente en los tres colores */
+.info-box{border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:10px;font-size:11px;line-height:1.6;}
+
+/* form-divider: margen estandarizado */
+.form-divider{height:1px;background:var(--border);margin:14px 0 16px;}
+.form-section-sep{height:1px;background:var(--border);margin:14px 0 14px;}
+
+/* field-hint con tamaño consistente */
+.field-hint{font-size:10.5px;font-family:'DM Mono',monospace;margin-top:4px;color:var(--text3);line-height:1.4;}
+
+/* Botón ghost secundario de cancelar en sheets: sin margen top extra cuando está al final y precedido de btn-primary */
+.btn-primary + .btn-ghost{margin-top:7px;}
+
+/* Select focus glow igual que inputs */
+.select-wrap:focus-within::after{opacity:.7;}
 </style>
   </head>
   <body>
@@ -13052,45 +13080,7 @@ document.addEventListener('input',function(e){
   setTimeout(window.applyModulos, 100);
 })();
 
-// ── 2. SHEET SWIPE-TO-CLOSE ──────────────────────────────────────────────────
-(function(){
-  document.querySelectorAll('.sheet-handle').forEach(handle => {
-    const sheet = handle.closest('.sheet');
-    const overlay = handle.closest('.overlay');
-    if(!sheet || !overlay) return;
-
-    let startY = 0, currentY = 0, isDragging = false;
-
-    handle.addEventListener('touchstart', e=>{
-      // Don't initiate swipe when keyboard/input is active
-      if(document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
-      startY = e.touches[0].clientY;
-      isDragging = true;
-      sheet.style.transition = 'none';
-    }, {passive:true});
-
-    handle.addEventListener('touchmove', e=>{
-      if(!isDragging) return;
-      currentY = e.touches[0].clientY - startY;
-      if(currentY < 0) return;
-      sheet.style.transform = `translateY(${currentY}px)`;
-    }, {passive:true});
-
-    handle.addEventListener('touchend', ()=>{
-      if(!isDragging) return;
-      isDragging = false;
-      sheet.style.transition = 'transform .25s ease';
-      if(currentY > 80) {
-        const sheetId = overlay.getAttribute('data-sheet-id');
-        if(sheetId && typeof closeSheet==='function') closeSheet(sheetId);
-        else overlay.classList.remove('open');
-      } else {
-        sheet.style.transform = 'translateY(0)';
-      }
-      currentY = 0;
-    });
-  });
-})();
+// ── 2. SHEET SWIPE-TO-CLOSE — manejado por makeSwipeable() en sección 7 ──────
 
 // ── 3. SCROLL INTO VIEW ON INPUT FOCUS (sheet keyboard fix) ─────────────────
 document.addEventListener('focusin', function(e){
@@ -13273,6 +13263,8 @@ document.addEventListener('focusin', function(e){
       if(!dragging) {
         if(dy > 8 && (scrollEl.scrollTop || 0) <= 0) {
           dragging = true;
+          // Bloquear scroll del sheet mientras dura el gesto hacia abajo
+          scrollEl.style.overflowY = 'hidden';
         } else {
           lastY = touch.clientY;
           lastT = now;
@@ -13301,6 +13293,8 @@ document.addEventListener('focusin', function(e){
     function onEnd(e) {
       if(!dragging) return;
       dragging = false;
+      // Restaurar scroll del sheet
+      scrollEl.style.overflowY = '';
       const touch = e.changedTouches ? e.changedTouches[0] : e;
       const dy = touch.clientY - startY;
       const dt = Date.now() - lastT;
@@ -13342,6 +13336,8 @@ document.addEventListener('focusin', function(e){
             overlay.style.opacity = '';
             overlay.style.transition = '';
           }
+          // Asegurar que el scroll quede restaurado también en rebote
+          scrollEl.style.overflowY = '';
         }, 300);
       }
     }
@@ -14770,92 +14766,8 @@ if ('serviceWorker' in navigator) {
 } // fin if ('serviceWorker' in navigator)
 
 /* ================================================================
-   NAVEGACIÓN POR GESTOS — Swipe down para cerrar modales
-   Solo se activa cuando el sheet está en el tope del scroll
-   Y el teclado virtual NO está abierto.
+   NAVEGACIÓN POR GESTOS — manejado por makeSwipeable() (sección 7)
    ================================================================ */
-(function() {
-  let _swipeStart = null;
-  let _swipeSheet = null;
-  let _swipeOverlay = null;
-
-  function _kbOpen() {
-    // El teclado está abierto si hay un input/select/textarea con foco
-    const ae = document.activeElement;
-    if (ae && ['INPUT','TEXTAREA','SELECT'].includes(ae.tagName)) return true;
-    // O si visualViewport reporta que el viewport se achicó significativamente
-    if (window.visualViewport) {
-      return (window.innerHeight - window.visualViewport.height) > 150;
-    }
-    return false;
-  }
-
-  document.addEventListener('touchstart', function(e) {
-    // No iniciar swipe si el teclado está abierto
-    if (_kbOpen()) { _swipeStart = null; return; }
-    const sheet = e.target.closest('.sheet');
-    if (!sheet) return;
-    const overlay = sheet.closest('.overlay');
-    if (!overlay || !overlay.classList.contains('open')) return;
-    _swipeSheet = sheet;
-    _swipeOverlay = overlay;
-    const t = e.touches[0];
-    _swipeStart = { y: t.clientY, x: t.clientX, scrollTop: sheet.scrollTop };
-  }, { passive: true });
-
-  document.addEventListener('touchmove', function(e) {
-    if (!_swipeStart || !_swipeSheet) return;
-    // Cancelar si el teclado se abrió durante el gesto
-    if (_kbOpen()) {
-      _swipeStart = null; _swipeSheet = null; _swipeOverlay = null;
-      return;
-    }
-    const t = e.touches[0];
-    const dy = t.clientY - _swipeStart.y;
-    const dx = Math.abs(t.clientX - _swipeStart.x);
-    // Solo swipe vertical hacia abajo, si el sheet estaba en la parte superior al inicio
-    if (dy > 0 && dx < 60 && _swipeStart.scrollTop <= 2) {
-      const progress = Math.min(dy, 280);
-      _swipeSheet.style.transform = `translateY(${progress}px)`;
-      _swipeSheet.style.transition = 'none';
-      if (_swipeOverlay) {
-        const opacity = Math.max(0.1, 1 - progress / 280);
-        _swipeOverlay.style.background = `rgba(0,0,0,${0.75 * opacity})`;
-      }
-    }
-  }, { passive: true });
-
-  document.addEventListener('touchend', function(e) {
-    if (!_swipeStart || !_swipeSheet || !_swipeOverlay) {
-      _swipeStart = null; _swipeSheet = null; _swipeOverlay = null;
-      return;
-    }
-    const t = e.changedTouches[0];
-    const dy = t.clientY - _swipeStart.y;
-
-    _swipeSheet.style.transition = 'transform .3s cubic-bezier(.4,0,.2,1)';
-    _swipeOverlay.style.transition = 'background .3s';
-
-    if (dy > 100 && Math.abs(t.clientX - _swipeStart.x) < 80) {
-      // Cerrar: animar hacia abajo y luego cerrar
-      _swipeSheet.style.transform = 'translateY(100%)';
-      const sheetToClose = _swipeOverlay;
-      setTimeout(() => {
-        sheetToClose.classList.remove('open');
-        const sh = sheetToClose.querySelector('.sheet');
-        if (sh) { sh.style.transform = ''; sh.style.transition = ''; }
-        sheetToClose.style.background = '';
-        sheetToClose.style.transition = '';
-      }, 300);
-    } else {
-      // Cancelar: volver a posición original
-      _swipeSheet.style.transform = '';
-      _swipeOverlay.style.background = '';
-    }
-
-    _swipeStart = null; _swipeSheet = null; _swipeOverlay = null;
-  }, { passive: true });
-})();
 
 /* ================================================================
    AUTOFOCUS en formularios al abrirse
@@ -18255,13 +18167,14 @@ window._cpMarcarPagos = function(id){
       <button type="button" class="btn btn-ghost" data-close-sheet="cp-marcar" onclick="if(typeof closeSheet==='function')closeSheet('cp-marcar');">Cancelar</button>
     </div>`;
     document.body.appendChild(div);
-    // Swipe
+    // Swipe — usando mismo patrón que makeSwipeable
     const handle = div.querySelector('.sheet-handle');
     const sheet = div.querySelector('.sheet');
-    let sy=0,cy=0,drag=false;
-    handle.addEventListener('touchstart',e=>{sy=e.touches[0].clientY;drag=true;sheet.style.transition='none';},{passive:true});
-    handle.addEventListener('touchmove',e=>{if(!drag)return;cy=e.touches[0].clientY-sy;if(cy<0)return;sheet.style.transform=`translateY(${cy}px)`;},{passive:true});
-    handle.addEventListener('touchend',()=>{drag=false;sheet.style.transition='transform .25s ease';if(cy>80){if(typeof closeSheet==='function')closeSheet('cp-marcar');}else sheet.style.transform='translateY(0)';cy=0;});
+    let sy=0, lastY2=0, lastT2=0, cy=0, drag=false, anim=false;
+    function _isKb(){ const ae=document.activeElement; return ae&&['INPUT','TEXTAREA','SELECT'].includes(ae.tagName); }
+    handle.addEventListener('touchstart',e=>{if(anim||_isKb())return;sy=e.touches[0].clientY;lastY2=sy;lastT2=Date.now();cy=0;drag=false;sheet.style.transition='none';},{passive:true});
+    handle.addEventListener('touchmove',e=>{if(anim)return;const t=e.touches[0];cy=t.clientY-sy;if(!drag){if(cy>8&&(sheet.scrollTop||0)<=0){drag=true;sheet.style.overflowY='hidden';}else{lastY2=t.clientY;lastT2=Date.now();return;}}if(drag&&cy>0){const r=Math.pow(cy,0.85);sheet.style.transform=`translateY(${r}px)`;if(e.cancelable)e.preventDefault();}lastY2=t.clientY;lastT2=Date.now();},{passive:false});
+    handle.addEventListener('touchend',e=>{if(!drag)return;drag=false;sheet.style.overflowY='';const t=e.changedTouches[0];const dy=t.clientY-sy;const vel=(Date.now()-lastT2)>0?(t.clientY-lastY2)/(Date.now()-lastT2):0;sheet.style.transition='transform .25s ease';if(dy>80||vel>0.4){anim=true;sheet.style.transform='translateY(110%)';setTimeout(()=>{anim=false;sheet.style.transform='';sheet.style.transition='';if(typeof closeSheet==='function')closeSheet('cp-marcar');},230);}else{sheet.style.transform='translateY(0)';setTimeout(()=>{sheet.style.transform='';sheet.style.transition='';},300);}cy=0;});
   }
 
   window._cpMarcarId = id;

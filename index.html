@@ -13235,22 +13235,23 @@ document.addEventListener('focusin', function(e){
       handle.style.cursor = 'grab';
     }
 
-    let startY = 0, startScrollTop = 0, lastY = 0, lastT = 0;
+    let startY = 0, lastY = 0, lastT = 0;
     let dragging = false, animating = false;
+    let fromHandle = false; // ¿El touch inició en el handle?
 
     // Scroll container: el .sheet dentro del overlay, o el propio panel
     const scrollEl = panel.classList.contains('sheet') ? panel : (panel.querySelector('.sheet') || panel);
 
     function onStart(e) {
       if(animating) return;
-      // Don't initiate swipe if keyboard is open — user may be scrolling/typing
       if(isKeyboardOpen()) { dragging = false; return; }
       const touch = e.touches ? e.touches[0] : e;
       startY = touch.clientY;
       lastY = startY;
       lastT = Date.now();
-      startScrollTop = scrollEl.scrollTop || 0;
       dragging = false;
+      // Si el touch empezó dentro del handle, no necesitamos verificar scrollTop
+      fromHandle = handle ? handle.contains(e.target) : false;
     }
 
     function onMove(e) {
@@ -13259,12 +13260,19 @@ document.addEventListener('focusin', function(e){
       const dy = touch.clientY - startY;
       const now = Date.now();
 
-      // Solo activar drag si se desliza hacia abajo Y el scroll está al tope
       if(!dragging) {
-        if(dy > 8 && (scrollEl.scrollTop || 0) <= 0) {
-          dragging = true;
-          // Bloquear scroll del sheet mientras dura el gesto hacia abajo
-          scrollEl.style.overflowY = 'hidden';
+        if(dy > 8) {
+          // Desde el handle: siempre permitir drag hacia abajo
+          // Desde el cuerpo del sheet: solo si el scroll está al tope
+          if(fromHandle || (scrollEl.scrollTop || 0) <= 0) {
+            dragging = true;
+            // Bloquear scroll del sheet para que no interfiera con el gesto
+            scrollEl.style.overflowY = 'hidden';
+          } else {
+            lastY = touch.clientY;
+            lastT = now;
+            return;
+          }
         } else {
           lastY = touch.clientY;
           lastT = now;
@@ -13273,11 +13281,9 @@ document.addEventListener('focusin', function(e){
       }
 
       if(dragging && dy > 0) {
-        // Resistencia: movimiento más lento cuanto más bajo va
         const resistance = Math.pow(dy, 0.85);
         panel.style.transition = 'none';
         panel.style.transform = 'translateY(' + resistance + 'px)';
-        // Dimear el overlay proporcionalmente
         const overlay = panel.closest('.overlay') || panel.closest('.mas-menu-overlay') ||
                         document.getElementById('mas-menu-overlay');
         if(overlay && overlay !== panel) {
@@ -13342,13 +13348,15 @@ document.addEventListener('focusin', function(e){
       }
     }
 
-    // Escuchar en handle (agarre preciso) y también en todo el panel para velocidad
-    const listenerTargets = dragZone === panel ? [panel] : [dragZone, panel];
-    listenerTargets.forEach(el => {
-      el.addEventListener('touchstart', onStart, { passive: true });
-      el.addEventListener('touchmove',  onMove,  { passive: false });
-      el.addEventListener('touchend',   onEnd,   { passive: true });
-    });
+    // touchstart: solo en el handle (zona de agarre), para no duplicar cuando toca el body del sheet
+    // touchmove/end: en el panel completo para no perder el gesto si el dedo se mueve fuera del handle
+    if(handle) {
+      handle.addEventListener('touchstart', onStart, { passive: true });
+    } else {
+      panel.addEventListener('touchstart', onStart, { passive: true });
+    }
+    panel.addEventListener('touchmove', onMove, { passive: false });
+    panel.addEventListener('touchend',  onEnd,  { passive: true });
   }
 
   // ── Swipe para .overlay > .sheet ──────────────────────────────────────────

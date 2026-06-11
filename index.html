@@ -3193,28 +3193,28 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           Le compraste algo a esta persona con tu TC. Queda registrado como deuda de él/ella hacia vos, y el cargo <b>no cuenta como gasto tuyo</b>.
         </div>
         <div class="ig">
-          <label class="il" for="ptc_desc">Descripción</label>
-          <input type="text" id="ptc_desc" placeholder="Ej: Tenis Nike, Medicamentos...">
+          <label class="il" for="prtc_desc">Descripción</label>
+          <input type="text" id="prtc_desc" placeholder="Ej: Tenis Nike, Medicamentos...">
         </div>
         <div class="ig">
-          <label class="il" for="ptc_monto">Monto</label>
-          <input type="text" inputmode="decimal" id="ptc_monto" placeholder="0,00" class="money-input">
+          <label class="il" for="prtc_monto">Monto</label>
+          <input type="text" inputmode="decimal" id="prtc_monto" placeholder="0,00" class="money-input">
         </div>
         <div class="ig">
-          <label class="il" for="ptc_fecha">Fecha</label>
-          <input type="date" id="ptc_fecha">
+          <label class="il" for="prtc_fecha">Fecha</label>
+          <input type="date" id="prtc_fecha">
         </div>
         <div class="ig">
-          <label class="il" for="ptc_tarjeta">Tarjeta de crédito usada</label>
-          <div class="select-wrap"><select id="ptc_tarjeta"><option value="">Seleccionar TC</option></select></div>
+          <label class="il" for="prtc_tarjeta">Tarjeta de crédito usada</label>
+          <div class="select-wrap"><select id="prtc_tarjeta"><option value="">Seleccionar TC</option></select></div>
         </div>
         <div class="ig">
-          <label class="il" for="ptc_nota">Nota (opcional)</label>
-          <input type="text" id="ptc_nota" placeholder="Ej: La pedí a nombre mío, la paga él">
+          <label class="il" for="prtc_nota">Nota (opcional)</label>
+          <input type="text" id="prtc_nota" placeholder="Ej: La pedí a nombre mío, la paga él">
         </div>
 
         <!-- Diferencial opcional -->
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:0;" onclick="_ptcDifToggle()">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:0;" onclick="_prtcDifToggle()">
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:15px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span>
             <div>
@@ -3222,17 +3222,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               <div style="font-size:10px;color:var(--text3);">Registrar diferencial</div>
             </div>
           </div>
-          <div id="ptc-dif-icon" style="font-size:16px;color:var(--amber);transition:transform .2s;">&#x203a;</div>
+          <div id="prtc-dif-icon" style="font-size:16px;color:var(--amber);transition:transform .2s;">&#x203a;</div>
         </div>
-        <div id="ptc-dif-body" style="display:none;background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;margin-bottom:10px;">
+        <div id="prtc-dif-body" style="display:none;background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;margin-bottom:10px;">
           <div class="ig" style="margin-bottom:10px;">
             <label class="il" style="color:var(--amber);">&#191;Cu&#225;nto era en realidad?</label>
-            <input type="text" inputmode="decimal" id="ptc_dif_real" placeholder="0,00" class="money-input" oninput="_ptcDifResumen()">
+            <input type="text" inputmode="decimal" id="prtc_dif_real" placeholder="0,00" class="money-input" oninput="_prtcDifResumen()">
           </div>
-          <div id="ptc-dif-resumen" style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
+          <div id="prtc-dif-resumen" style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
         </div>
 
-        <div id="ptc_preview" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:14px;margin-bottom:4px;margin-top:8px;"></div>
+        <div id="prtc_preview" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:14px;margin-bottom:4px;margin-top:8px;"></div>
         <button type="button" class="btn btn-primary" onclick="confirmarPrestamoTC()">Guardar pr&#233;stamo con TC</button>
         <button type="button" class="btn btn-ghost" data-close-sheet="prestamo-tc">Cancelar</button>
       </div>
@@ -7927,35 +7927,35 @@ function abrirSheetPrestamoTC() {
   if (!deudorActualId) return;
   const tcs = S.tarjetasCredito || [];
   if (!tcs.length) { toast('No tenés tarjetas de crédito configuradas', 'err', 3000); return; }
-  const sel = document.getElementById('ptc_tarjeta');
+  const sel = document.getElementById('prtc_tarjeta');
   if (sel) {
     sel.innerHTML = '<option value="">Seleccionar TC</option>' +
       tcs.map(tc => `<option value="${tc.id}">${tc.nombre}${tc.deuda ? ' — deuda: ' + fmt(tc.deuda) : ''}</option>`).join('');
   }
-  const fecEl = document.getElementById('ptc_fecha');
+  const fecEl = document.getElementById('prtc_fecha');
   if (fecEl) fecEl.value = hoy();
-  const descEl = document.getElementById('ptc_desc'); if (descEl) descEl.value = '';
-  const montoEl = document.getElementById('ptc_monto'); if (montoEl) montoEl.value = '';
-  const notaEl = document.getElementById('ptc_nota'); if (notaEl) notaEl.value = '';
-  const prev = document.getElementById('ptc_preview'); if (prev) prev.textContent = '';
+  const descEl = document.getElementById('prtc_desc'); if (descEl) descEl.value = '';
+  const montoEl = document.getElementById('prtc_monto'); if (montoEl) montoEl.value = '';
+  const notaEl = document.getElementById('prtc_nota'); if (notaEl) notaEl.value = '';
+  const prev = document.getElementById('prtc_preview'); if (prev) prev.textContent = '';
   // Reset diferencial
-  const difBody = document.getElementById('ptc-dif-body');
-  const difIcon = document.getElementById('ptc-dif-icon');
+  const difBody = document.getElementById('prtc-dif-body');
+  const difIcon = document.getElementById('prtc-dif-icon');
   if (difBody) difBody.style.display = 'none';
   if (difIcon) { difIcon.innerHTML = '&#x203a;'; difIcon.style.transform = ''; }
-  const difReal = document.getElementById('ptc_dif_real'); if (difReal) difReal.value = '';
-  const difRes  = document.getElementById('ptc-dif-resumen'); if (difRes) difRes.textContent = '';
+  const difReal = document.getElementById('prtc_dif_real'); if (difReal) difReal.value = '';
+  const difRes  = document.getElementById('prtc-dif-resumen'); if (difRes) difRes.textContent = '';
   openSheet('prestamo-tc');
 }
 
 function confirmarPrestamoTC() {
   const d = (S.deudores || []).find(x => x.id === deudorActualId);
   if (!d) return;
-  const desc  = (document.getElementById('ptc_desc').value || '').trim();
-  const dijo  = parseMoney(document.getElementById('ptc_monto').value) || 0;
-  const tcId  = document.getElementById('ptc_tarjeta').value;
-  const fecha = document.getElementById('ptc_fecha').value || hoy();
-  const nota  = (document.getElementById('ptc_nota').value || '').trim();
+  const desc  = (document.getElementById('prtc_desc').value || '').trim();
+  const dijo  = parseMoney(document.getElementById('prtc_monto').value) || 0;
+  const tcId  = document.getElementById('prtc_tarjeta').value;
+  const fecha = document.getElementById('prtc_fecha').value || hoy();
+  const nota  = (document.getElementById('prtc_nota').value || '').trim();
 
   if (!desc)  { toast('Ingresa una descripción', 'err'); return; }
   if (!dijo)  { toast('Ingresa un monto válido', 'err'); return; }
@@ -7965,9 +7965,9 @@ function confirmarPrestamoTC() {
   if (!tc) { toast('TC no encontrada', 'err'); return; }
 
   // Leer diferencial si está activo
-  const difBody   = document.getElementById('ptc-dif-body');
+  const difBody   = document.getElementById('prtc-dif-body');
   const difActivo = difBody && difBody.style.display !== 'none';
-  const real      = difActivo ? (parseMoney(document.getElementById('ptc_dif_real')?.value) || 0) : 0;
+  const real      = difActivo ? (parseMoney(document.getElementById('prtc_dif_real')?.value) || 0) : 0;
   // Monto real que cobró la TC: si hay diferencial es 'real', si no es igual a lo que dijiste
   const montoTC   = (difActivo && real > 0) ? real : dijo;
   const margen    = dijo - montoTC; // >0 cuando dijiste más de lo que costó
@@ -8028,21 +8028,21 @@ function confirmarPrestamoTC() {
 }
 
 /* ─── Helpers diferencial — Préstamo TC ──────────────────────────────── */
-function _ptcDifToggle() {
-  const body = document.getElementById('ptc-dif-body');
-  const icon = document.getElementById('ptc-dif-icon');
+function _prtcDifToggle() {
+  const body = document.getElementById('prtc-dif-body');
+  const icon = document.getElementById('prtc-dif-icon');
   if (!body) return;
   const abierto = body.style.display !== 'none';
   body.style.display = abierto ? 'none' : '';
   if (icon) { icon.innerHTML = abierto ? '&#x203a;' : '&#x2039;'; icon.style.transform = abierto ? '' : 'rotate(90deg)'; }
-  if (!abierto) _ptcDifResumen();
+  if (!abierto) _prtcDifResumen();
 }
 
-function _ptcDifResumen() {
-  const el = document.getElementById('ptc-dif-resumen');
+function _prtcDifResumen() {
+  const el = document.getElementById('prtc-dif-resumen');
   if (!el) return;
-  const dijo = parseMoney(document.getElementById('ptc_monto')?.value) || 0;
-  const real = parseMoney(document.getElementById('ptc_dif_real')?.value) || 0;
+  const dijo = parseMoney(document.getElementById('prtc_monto')?.value) || 0;
+  const real = parseMoney(document.getElementById('prtc_dif_real')?.value) || 0;
   if (!real) { el.textContent = ''; return; }
   const margen = dijo - real;
   el.innerHTML = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>&nbsp;&nbsp;Real: <span style="color:var(--text2)">${fmt(real)}</span>&nbsp;&nbsp;Margen: <span style="color:${margen >= 0 ? 'var(--accent)' : 'var(--red)'}">${margen >= 0 ? '+' : ''}${fmt(margen)}</span>`;

@@ -3317,19 +3317,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <!-- ══ DESDE UN ENCARGO ══ -->
         <div id="mov_enc_wrap" style="display:none;">
           <div class="form-divider"></div>
-          <div class="toggle-row">
-            <label class="il" style="margin:0;display:inline-flex;align-items:center;flex-wrap:nowrap;gap:4px;flex:1;min-width:0;">¿Viene de un encargo?</label>
-            <label class="toggle-label">
-              <input type="checkbox" id="mov_desde_encargo" onchange="toggleDesdeEncargo()"
-                style="accent-color:var(--blue);">
-              Sí, es de un encargo
+          <div class="cfg-toggle" style="padding:0 0 12px;border-bottom:none;">
+            <div class="cfg-toggle-info">
+              <div class="cfg-toggle-label" style="font-size:13px;">¿Viene de un encargo?</div>
+              <div class="cfg-toggle-sub">El pago sale del saldo del encargo</div>
+            </div>
+            <label class="toggle-sw">
+              <input type="checkbox" id="mov_desde_encargo" onchange="toggleDesdeEncargo()">
+              <span class="slider"></span>
             </label>
           </div>
           <div id="mov_enc_body" style="display:none;">
-            <div class="info-box info-box-blue">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" style="vertical-align:middle;margin-right:4px;flex-shrink:0;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/></svg>
-              El pago sale del encargo — <b style="color:var(--text);">el dinero te llega a ti</b>. El saldo del encargo baja y tú decides a qué cuenta entra.
-            </div>
             <div class="ig" style="margin-bottom:8px;">
               <label class="il" for="mov_enc_sel">¿De qué encargo?</label>
               <div class="select-wrap"><select id="mov_enc_sel" onchange="onChangeMov_enc_sel()"><option value="">Seleccionar encargo</option></select></div>
@@ -3346,13 +3344,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <!-- ══ EXTRA (propina / regalo de más) ══ -->
         <div id="mov_extra_wrap" style="display:none;">
           <div class="form-divider"></div>
-          <div class="toggle-row">
-            <label class="il" style="margin:0;flex:1;">¿Te dio extra de más?</label>
-            <label class="toggle-label">
-              <input type="checkbox" id="mov_tiene_extra"
-                onchange="toggleExtraSection()"
-                style="accent-color:var(--accent);">
-              Sí, hubo extra
+          <div class="cfg-toggle" style="padding:0 0 12px;border-bottom:none;">
+            <div class="cfg-toggle-info">
+              <div class="cfg-toggle-label" style="font-size:13px;">¿Te dio extra de más?</div>
+              <div class="cfg-toggle-sub">Propina o diferencial a tu favor</div>
+            </div>
+            <label class="toggle-sw">
+              <input type="checkbox" id="mov_tiene_extra" onchange="toggleExtraSection()">
+              <span class="slider"></span>
             </label>
           </div>
 
@@ -7348,7 +7347,7 @@ function initMovSheet(tipo) {
       const encsVinculados = (S.encargos || []).filter(e => e.personaId === d.personaId && encargoSaldo(e) > 0);
       if (encsVinculados.length > 0 && encWrap) {
         // Mostrar badge de sugerencia en el label
-        const lbl = encWrap.querySelector('label.il');
+        const lbl = encWrap.querySelector('.cfg-toggle-label');
         if (lbl && !lbl.querySelector('.enc-sugerencia')) {
           const badge = document.createElement('span');
           badge.className = 'enc-sugerencia';

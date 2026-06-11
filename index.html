@@ -13259,9 +13259,9 @@ document.addEventListener('focusin', function(e){
 
     let startY = 0, lastY = 0, lastT = 0;
     let dragging = false, animating = false;
-    // started: true solo si onStart fue invocado desde el handle en este toque.
-    // Evita que onMove/onEnd actúen sobre touches que comenzaron en el body del sheet.
-    let started = false;
+    // started: true cuando el toque es elegible para convertirse en gesto de cierre.
+    // fromHandle: true cuando el toque empezó exactamente en el handle.
+    let started = false, fromHandle = false;
 
     // scrollEl: el .sheet mismo (que tiene overflow-y:auto)
     const scrollEl = panel.classList.contains('sheet') ? panel : (panel.querySelector('.sheet') || panel);
@@ -13270,15 +13270,17 @@ document.addEventListener('focusin', function(e){
       if(animating) return;
       if(isKeyboardOpen()) { started = false; return; }
       const touch = e.touches ? e.touches[0] : e;
-      startY = touch.clientY;
-      lastY  = startY;
-      lastT  = Date.now();
-      dragging = false;
-      started  = true;
+      startY    = touch.clientY;
+      lastY     = startY;
+      lastT     = Date.now();
+      dragging  = false;
+      // Determinar si el toque viene del handle o del cuerpo del sheet
+      fromHandle = handle ? handle.contains(e.target) : false;
+      // Elegible si: viene del handle, O el sheet está completamente al tope (sin scroll)
+      started = fromHandle || (scrollEl.scrollTop <= 0);
     }
 
     function onMove(e) {
-      // Ignorar completamente si el touch no empezó desde el handle
       if(!started || animating) return;
       const touch = e.touches ? e.touches[0] : e;
       const dy  = touch.clientY - startY;
@@ -13286,15 +13288,20 @@ document.addEventListener('focusin', function(e){
 
       if(!dragging) {
         if(dy > 8) {
-          // Desde el handle: permitir siempre hacia abajo.
-          // Comprobación de scrollTop ya no necesaria porque el touchstart
-          // solo se registra en el handle — el usuario no puede iniciar el
-          // gesto desde el cuerpo del sheet.
+          // Solo iniciar el drag hacia abajo si:
+          // • viene del handle (siempre permitido), O
+          // • el sheet sigue en scrollTop=0 en este momento
+          if(!fromHandle && scrollEl.scrollTop > 0) {
+            // El sheet se scrolleó antes de que el dedo se moviera suficiente;
+            // dejar que el scroll nativo maneje el gesto
+            started = false;
+            return;
+          }
           dragging = true;
           // Bloquear scroll del sheet mientras dure el gesto de cierre
           scrollEl.style.overflowY = 'hidden';
         } else if(dy < -4) {
-          // El usuario empezó a scrollear hacia arriba desde el handle: cancelar
+          // El usuario scrollea hacia arriba: cancelar gesto de cierre
           started = false;
           return;
         } else {
@@ -13371,12 +13378,8 @@ document.addEventListener('focusin', function(e){
       }
     }
 
-    // touchstart SOLO en el handle: así onMove/onEnd ignoran touches del cuerpo
-    if(handle) {
-      handle.addEventListener('touchstart', onStart, { passive: true });
-    } else {
-      panel.addEventListener('touchstart', onStart, { passive: true });
-    }
+    // touchstart en el panel completo: la lógica de elegibilidad está en onStart/onMove
+    panel.addEventListener('touchstart', onStart, { passive: true });
     // touchmove/end en el panel completo para no perder el gesto si el dedo
     // se desliza fuera del handle durante el drag
     panel.addEventListener('touchmove', onMove, { passive: false });

@@ -5173,11 +5173,7 @@ function renderAttencion(){
   // Tarjetas de crédito con deuda
   (S.tarjetasCredito||[]).forEach(tc=>{
     if((tc.deuda||0)>0){
-      const hoyDate=new Date();
-      const diasHastaPago=tc.fechaPago?(()=>{
-        const diasMes=new Date(hoyDate.getFullYear(),hoyDate.getMonth()+1,0).getDate();
-        return((tc.fechaPago-hoyDate.getDate()+diasMes)%diasMes)||diasMes;
-      })():null;
+      const diasHastaPago=tcDiasHastaPago(tc);
       if(diasHastaPago!==null&&diasHastaPago<=5){
         items.push({tipo:'red',texto:`${tc.nombre}: deuda ${fmt(tc.deuda)} — fecha de pago en ${diasHastaPago}d`,_tcId:tc.id});
       } else if(diasHastaPago!==null&&diasHastaPago<=10){

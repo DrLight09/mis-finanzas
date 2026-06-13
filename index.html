@@ -3593,6 +3593,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       </div>
     </div>
 
+    <!-- DETALLE DE MOVIMIENTO -->
+    <div class="overlay" id="sheet-mov-detalle" data-sheet-id="mov-detalle">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Detalle del movimiento</div>
+        <div id="mvdContent"></div>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="mov-detalle">Cerrar</button>
+      </div>
+    </div>
+
     <!-- AGREGAR DINERO (desde botón de cuenta) -->
     <div class="overlay" id="sheet-agregar-dinero"
       data-sheet-id="agregar-dinero">
@@ -4360,7 +4371,7 @@ function renderMovsCustom(c){
     const amountColor=esApertura?'var(--blue)':esIngreso?'var(--accent)':'var(--red)';
     const amountPrefix=esApertura?'':esIngreso?'+':'−';
     const puedeEliminar=!esApertura;
-    return`<div class="card card-sm" style="margin-bottom:7px;">
+    return`<div class="card card-sm" style="margin-bottom:7px;cursor:pointer;" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-fuente-real="custom:${c.id}" data-cuenta-key="custom" data-mov-monto="${Math.abs(m.monto)}" data-mov-origen="Cuenta personalizada" onclick="abrirDetalleMov(this)">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div style="flex:1;min-width:0;">
           <div style="display:flex;align-items:center;gap:6px;">
@@ -4371,7 +4382,7 @@ function renderMovsCustom(c){
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${amountColor};">${amountPrefix} ${fmt(m.monto)}</div>
-          ${puedeEliminar?`<button type="button" onclick="deleteMovCustom('${c.id}','${m.id}')" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.55;display:flex;align-items:center;justify-content:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.55';this.style.color='var(--text3)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>`:''}
+          ${puedeEliminar?`<button type="button" onclick="event.stopPropagation();deleteMovCustom('${c.id}','${m.id}')" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.55;display:flex;align-items:center;justify-content:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.55';this.style.color='var(--text3)'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>`:''}
         </div>
       </div>
     </div>`;
@@ -9376,7 +9387,18 @@ function getMovimientosCuenta(tipo) {
       );
       const tipoDisplay = esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'salida_manual';
       const montoDisplay = (esApertura) ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto;
-      movs.push({ tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : esTransferencia ? 'Intercambio' : 'Salida manual'), monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '' });
+      let _origen, _otrasCuentas = null;
+      if (esApertura) { _origen = 'Saldo inicial'; }
+      else if (m._esIntercambioEncargo) {
+        _origen = 'Encargos · Intercambio';
+        const hermano = (S.movimientos || []).find(x => x._esIntercambioEncargo && x._encMovId === m._encMovId && x.id !== m.id);
+        if (hermano) _otrasCuentas = [{ fuente: hermano.fuente, monto: hermano._intercambioSalida ? -hermano.monto : +hermano.monto }];
+      }
+      else if (esTransferencia) { _origen = 'Cuentas · Movimiento manual'; if (m._fuenteDestino) _otrasCuentas = [{ fuente: m._fuenteDestino, monto: esIntercambioSalida ? +m.monto : -m.monto }]; }
+      else if (m._esReposicionCP) { _origen = 'Plata comprometida'; }
+      else if (m._encMovId || /encargo/i.test(m.desc||'')) { _origen = 'Encargos'; }
+      else { _origen = 'Cuentas · Movimiento manual'; }
+      movs.push({ tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : esTransferencia ? 'Intercambio' : 'Salida manual'), monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '', _origen, _otrasCuentas });
     }
   });
   // Gastos variables que usaron esta fuente
@@ -9384,7 +9406,10 @@ function getMovimientosCuenta(tipo) {
     const match = tipo === 'nu'
       ? (g.fuente && g.fuente.startsWith('cajita:'))
       : g.fuente === tipo;
-    if (match) movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente });
+    if (match) {
+      const _origen = g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota||'') ? 'Encargos' : 'Gastos';
+      movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null });
+    }
   });
   // Préstamos dados desde esta fuente
   (S.deudores || []).forEach(d => {
@@ -9395,22 +9420,33 @@ function getMovimientosCuenta(tipo) {
       const matchDestino = tipo === 'nu'
         ? (m.destino && m.destino.startsWith('cajita:'))
         : m.destino === tipo;
-      if (m.tipo === 'prestamo' && matchFuente) {
-        movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -m.monto, nota: m.nota, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente });
+      if (m.tipo === 'prestamo' && (matchFuente || (m.fuentes && m.fuentes.length))) {
+        const _origenP = 'Préstamos · ' + d.nombre;
+        if (matchFuente) {
+          const otrasFuentesSplit = (m.fuentes||[]).filter(f=>f.fuente!==m.fuente).map(f=>({fuente:f.fuente, monto:-f.monto}));
+          movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -m.monto, nota: m.nota, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _origen: _origenP, _otrasCuentas: otrasFuentesSplit.length ? otrasFuentesSplit : null });
+        }
         // Préstamo con fuentes split
         if (m.fuentes) {
           m.fuentes.forEach(f => {
             const mfSplit = tipo === 'nu' ? (f.fuente && f.fuente.startsWith('cajita:')) : f.fuente === tipo;
-            if (mfSplit && f.monto) movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -f.monto, nota: m.nota, fuente: f.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: f.fuente });
+            if (mfSplit && f.monto) {
+              const otras = (m.fuentes||[]).filter(f2=>f2.fuente!==f.fuente).map(f2=>({fuente:f2.fuente, monto:-f2.monto}));
+              if (m.fuente) otras.push({fuente:m.fuente, monto:-m.monto});
+              movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -f.monto, nota: m.nota, fuente: f.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: f.fuente, _origen: _origenP, _otrasCuentas: otras.length ? otras : null });
+            }
           });
         }
       } else if (m.tipo === 'abono' && matchDestino) {
-        movs.push({ tipo: 'abono', fecha: m.fecha, desc: 'Abono de ' + d.nombre, monto: +m.monto, nota: m.nota, fuente: m.destino, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.destino });
+        movs.push({ tipo: 'abono', fecha: m.fecha, desc: 'Abono de ' + d.nombre, monto: +m.monto, nota: m.nota, fuente: m.destino, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.destino, _origen: 'Préstamos · ' + d.nombre, _otrasCuentas: null });
       } else if (m.tipo === 'abono' && m.destinos) {
         // Abono con destino dividido entre varias cuentas
         m.destinos.forEach(dest => {
           const matchDest2 = tipo === 'nu' ? (dest.fuente && dest.fuente.startsWith('cajita:')) : dest.fuente === tipo;
-          if (matchDest2 && dest.monto) movs.push({ tipo: 'abono', fecha: m.fecha, desc: 'Abono de ' + d.nombre, monto: +dest.monto, nota: m.nota, fuente: dest.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: dest.fuente });
+          if (matchDest2 && dest.monto) {
+            const otras = (m.destinos||[]).filter(d2=>d2.fuente!==dest.fuente).map(d2=>({fuente:d2.fuente, monto:+d2.monto}));
+            movs.push({ tipo: 'abono', fecha: m.fecha, desc: 'Abono de ' + d.nombre, monto: +dest.monto, nota: m.nota, fuente: dest.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: dest.fuente, _origen: 'Préstamos · ' + d.nombre, _otrasCuentas: otras.length ? otras : null });
+          }
         });
       }
     });
@@ -9429,7 +9465,8 @@ function getMovimientosCuenta(tipo) {
             ? (s.fuente && s.fuente.startsWith('cajita:'))
             : s.fuente === tipo;
           if (matchSplit && s.monto) {
-            movs.push({ tipo: 'mesada', fecha: fechaBase, desc: descBase, monto: +s.monto, nota: info.nota, fuente: s.fuente, _idx: _idx++ });
+            const otras = (info.splits||[]).filter(s2=>s2.fuente!==s.fuente).map(s2=>({fuente:s2.fuente, monto:+s2.monto}));
+            movs.push({ tipo: 'mesada', fecha: fechaBase, desc: descBase, monto: +s.monto, nota: info.nota, fuente: s.fuente, _idx: _idx++, _origen: 'Mesadas', _otrasCuentas: otras.length ? otras : null });
           }
         });
       } else {
@@ -9437,7 +9474,7 @@ function getMovimientosCuenta(tipo) {
           ? (info.destino && info.destino.startsWith('cajita:'))
           : info.destino === tipo;
         if (matchDest && info.monto) {
-          movs.push({ tipo: 'mesada', fecha: fechaBase, desc: descBase, monto: +info.monto, nota: info.nota, fuente: info.destino, _idx: _idx++ });
+          movs.push({ tipo: 'mesada', fecha: fechaBase, desc: descBase, monto: +info.monto, nota: info.nota, fuente: info.destino, _idx: _idx++, _origen: 'Mesadas', _otrasCuentas: null });
         }
       }
     });
@@ -9451,7 +9488,7 @@ function getMovimientosCuenta(tipo) {
     if (matchFuente) {
       // Usar h.id si existe, o fabricar un _movId estable a partir del índice para que el sort
       // funcione igual que los demás movimientos (por timestamp de registro, no por orden de iteración)
-      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente: h.fuente, _idx: _idx++, _movId: h.id || null });
+      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente: h.fuente, _idx: _idx++, _movId: h.id || null, _origen: 'Spotify', _otrasCuentas: null });
     }
   });
   // Transferencias entre cuentas
@@ -9463,10 +9500,10 @@ function getMovimientosCuenta(tipo) {
       ? (t.destino && t.destino.startsWith('cajita:'))
       : t.destino === tipo;
     if (estaEnOrigen) {
-      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia → ' + fuenteLabel(t.destino), monto: -t.monto, nota: t.nota, fuente: t.origen, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino });
+      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia → ' + fuenteLabel(t.destino), monto: -t.monto, nota: t.nota, fuente: t.origen, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino, _origen: 'Cuentas · Transferencia', _otrasCuentas: [{fuente:t.destino, monto:+t.monto}] });
     }
     if (estaEnDestino) {
-      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia ← ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente: t.destino, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino });
+      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia ← ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente: t.destino, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino, _origen: 'Cuentas · Transferencia', _otrasCuentas: [{fuente:t.origen, monto:-t.monto}] });
     }
   });
   // Sort by date desc, then by creation time desc (_movId starts with Date.now().toString(36))
@@ -9486,7 +9523,109 @@ function getMovimientosCuenta(tipo) {
   return movs;
 }
 
-/* ---- FILTROS DE MOVIMIENTOS ---- */
+/* ---- DETALLE DE MOVIMIENTO (sheet) ---- */
+// Abre un sheet con el detalle de un movimiento y el saldo de la cuenta
+// (de la fuente involucrada) antes y después de ese movimiento.
+// `el` es el .gasto-item / .card clickeado, con data-mov-* attributes.
+function abrirDetalleMov(el){
+  if(!el) return;
+  const movId = el.dataset.movId;
+  const movTipo = el.dataset.movTipo || '';
+  const fuente = el.dataset.movFuenteReal || el.dataset.movFuente || '';
+  const montoAbs = parseFloat(el.dataset.movMonto) || 0;
+  const cuentaKey = el.dataset.cuentaKey || '';
+
+  if(!fuente){
+    // Sin fuente identificable (ej: mesadas/Spotify legacy sin _fuenteOrigen) — no hay saldo que calcular
+    return;
+  }
+
+  // Reconstruir la lista de movimientos de esta fuente para hallar el saldo histórico
+  let lista, idx, monto, fecha, desc, signedFn;
+  if(cuentaKey==='custom' && fuente.startsWith('custom:')){
+    const cid = fuente.split(':')[1];
+    const c = (S.cuentasPersonalizadas||[]).find(x=>x.id===cid);
+    if(!c) return;
+    lista = (c.movimientos||[]).slice().sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'') || (b.id||'').localeCompare(a.id||''));
+    idx = lista.findIndex(m=>m.id===movId);
+    if(idx===-1) return;
+    signedFn = m => (m.tipo==='egreso' ? -Math.abs(m.monto) : Math.abs(m.monto));
+    const m = lista[idx];
+    monto = signedFn(m);
+    fecha = m.fecha; desc = m.nota || (m.tipo==='ingreso'?'Ingreso':'Retiro');
+  } else {
+    // Cuentas estándar: nequi / efectivo / nu (cajitas) — m.monto ya viene con signo correcto
+    const tipoCuenta = fuente.startsWith('cajita:') ? 'nu' : fuente;
+    lista = getMovimientosCuenta(tipoCuenta).filter(m=>m.fuente===fuente);
+    idx = lista.findIndex(m=> movId ? m._movId===movId : (m.fecha===el.dataset.movFecha && Math.abs(m.monto)===montoAbs));
+    if(idx===-1) return;
+    signedFn = m => m.monto;
+    const m = lista[idx];
+    monto = m.monto; fecha = m.fecha; desc = m.desc;
+  }
+
+  // saldoActual - suma de montos de movimientos más recientes (idx 0..idx-1) = saldo justo después de este mov
+  const saldoActual = getSaldoFuente(fuente);
+  let sumaPosteriores = 0;
+  for(let j=0;j<idx;j++) sumaPosteriores += signedFn(lista[j]);
+  const saldoDespues = saldoActual - sumaPosteriores;
+  const saldoAntes = saldoDespues - monto;
+
+  const esPositivo = monto >= 0;
+  const colorMonto = esPositivo ? 'var(--accent)' : 'var(--red)';
+  const signo = esPositivo ? '+' : '−';
+  const tipoLabel = { gasto:'Gasto', ingreso:'Ingreso', egreso:'Retiro', apertura:'Apertura', prestamo:'Préstamo', abono:'Abono', mesada:'Mesada', transferencia:'Transferencia', salida_manual:'Salida' }[movTipo] || movTipo;
+
+  // Sección de origen (módulo donde se registró este movimiento)
+  const origenLabel = el.dataset.movOrigen || '';
+  const origenHtml = origenLabel ? `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;font-size:11px;color:var(--text3);">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>
+      Registrado desde <span style="color:var(--text2);font-weight:500;">${escHtml(origenLabel)}</span>
+    </div>` : '';
+
+  // Otras cuentas implicadas en este mismo movimiento (transferencias, splits, etc.)
+  let otrasCuentas = [];
+  try { otrasCuentas = JSON.parse(el.dataset.movOtras || '[]'); } catch(_){ otrasCuentas = []; }
+  const otrasHtml = (otrasCuentas && otrasCuentas.length) ? `
+    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px 15px;margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Otras cuentas implicadas</div>
+      ${otrasCuentas.map(oc=>{
+        const ocPos = oc.monto>=0;
+        return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;">
+          <span class="badge ${fuenteBadgeClass(oc.fuente)}" style="font-size:9px;">${escHtml(fuenteLabel(oc.fuente))}</span>
+          <span style="font-size:13px;font-family:'DM Mono',monospace;color:${ocPos?'var(--accent)':'var(--red)'};">${ocPos?'+':'−'} ${fmt(Math.abs(oc.monto))}</span>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  document.getElementById('mvdContent').innerHTML = `
+    <div style="text-align:center;padding:6px 0 18px;">
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">${escHtml(tipoLabel)}</div>
+      <div style="font-size:28px;font-weight:600;font-family:'DM Mono',monospace;color:${colorMonto};margin-bottom:6px;">${signo} ${fmt(Math.abs(monto))}</div>
+      <div style="font-size:13px;color:var(--text2);">${escHtml(desc)}</div>
+      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${escHtml(fecha)}</div>
+    </div>
+    ${origenHtml}
+    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px 15px;margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Saldo en ${escHtml(fuenteLabel(fuente))}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Antes</div>
+          <div style="font-size:15px;font-family:'DM Mono',monospace;color:var(--text2);">${fmt(saldoAntes)}</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Después</div>
+          <div style="font-size:15px;font-family:'DM Mono',monospace;color:${colorMonto};font-weight:600;">${fmt(saldoDespues)}</div>
+        </div>
+      </div>
+    </div>
+    ${otrasHtml}`;
+  openSheet('mov-detalle');
+}
+
+
 const _movsFilters = {}; // { cuentaKey: { q:'', tipo:'todos', desde:'', hasta:'' } }
 
 function _getMovsFilter(cuentaKey) {
@@ -9603,8 +9742,13 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
     const dataFuente = m._fuenteOrigen ? `data-mov-fuente="${m._fuenteOrigen}"` : '';
     const dataDestino = m._fuenteDestino ? `data-mov-destino="${m._fuenteDestino}"` : '';
     const dataMonto = `data-mov-monto="${Math.abs(m.monto)}"`;
+    const dataFuenteReal = m.fuente ? `data-mov-fuente-real="${escHtml(m.fuente)}"` : '';
+    const dataFecha = `data-mov-fecha="${escHtml(m.fecha)}"`;
+    const dataOrigen = m._origen ? `data-mov-origen="${escHtml(m._origen)}"` : '';
+    const dataOtras = m._otrasCuentas ? `data-mov-otras="${escHtml(JSON.stringify(m._otrasCuentas))}"` : '';
     const puedeEliminar = !!m._movId;
-    return `<div class="gasto-item" ${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto}>
+    const puedeVerDetalle = !!m.fuente;
+    return `<div class="gasto-item" ${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto} ${dataFuenteReal} ${dataFecha} ${dataOrigen} ${dataOtras} ${puedeVerDetalle ? 'data-cuenta-key="'+cuentaKey+'" style="cursor:pointer;" onclick="abrirDetalleMov(this)"' : ''}>
       <div class="gasto-item-top">
         <div style="flex:1;min-width:0;">
           <div class="row-name" style="font-size:13px;">${escHtml(m.desc)}</div>
@@ -9612,7 +9756,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${colorMonto};">${signo} ${fmt(Math.abs(m.monto))}</div>
-          ${puedeEliminar ? `<button type="button" class="btn-icon" onclick="eliminarMovimiento(this)" title="Eliminar movimiento" style="color:var(--text3);min-width:32px;min-height:32px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : ''}
+          ${puedeEliminar ? `<button type="button" class="btn-icon" onclick="event.stopPropagation();eliminarMovimiento(this)" title="Eliminar movimiento" style="color:var(--text3);min-width:32px;min-height:32px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : ''}
         </div>
       </div>
       <div class="gasto-item-meta">

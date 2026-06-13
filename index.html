@@ -15657,10 +15657,16 @@ function renderTCScreen(){
     const diasCorte=tcDiasHastaCorte(tc);
     const comprasActual=(tc.compras||[]).filter(c=>tcCompraEnCicloActual(tc,c.fecha));
     const comprasSig=(tc.compras||[]).filter(c=>!tcCompraEnCicloActual(tc,c.fecha));
-    const totalActual=comprasActual.reduce((a,c)=>a+(c.monto||0),0);
+    // Cargos de tcMovimientos (cargo_encargo/cargo_prestamo) que caen en el ciclo
+    // actual (ya facturados) — se excluyen avisos de corte, que no son cargos.
+    const _tcMovsActualRaw=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&m.tipo!=='corte_aviso'&&tcCompraEnCicloActual(tc,m.fecha));
+    const _tcMovsVistosActual=new Set();
+    const tcMovsActual=_tcMovsActualRaw.filter(m=>{const k=(m.encId||m.id)+'|'+m.monto+'|'+m.fecha;if(_tcMovsVistosActual.has(k))return false;_tcMovsVistosActual.add(k);return true;});
+    const itemsActual=comprasActual.length+tcMovsActual.length;
+    const totalActual=comprasActual.reduce((a,c)=>a+(c.monto||0),0)+tcMovsActual.reduce((a,m)=>a+(m.monto||0),0);
     // Incluir cargo_encargo de tcMovimientos que cayeron despues del corte
     // Deduplicar por encId+monto+fecha para evitar dobles registros del mismo cargo
-    const _tcMovsSigRaw=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&!tcCompraEnCicloActual(tc,m.fecha));
+    const _tcMovsSigRaw=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&m.tipo!=='corte_aviso'&&!tcCompraEnCicloActual(tc,m.fecha));
     const _tcMovsVistos=new Set();
     const tcMovsSig=_tcMovsSigRaw.filter(m=>{const k=(m.encId||m.id)+'|'+m.monto+'|'+m.fecha;if(_tcMovsVistos.has(k))return false;_tcMovsVistos.add(k);return true;});
     const totalSig=comprasSig.reduce((a,c)=>a+(c.monto||0),0)+tcMovsSig.reduce((a,m)=>a+(m.monto||0),0);
@@ -15694,7 +15700,7 @@ function renderTCScreen(){
           ${cupo?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(cupo)}</div>`:''}
         </div>
         <div style="background:var(--bg3);border-radius:9px;padding:10px 12px;">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Extracto (${comprasActual.length} compra${comprasActual.length!==1?'s':''})</div>
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Extracto (${itemsActual} compra${itemsActual!==1?'s':''})</div>
           <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(totalActual)}</div>
           ${facturadoLabel?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">hasta el ${facturadoLabel}</div>`:''}
         </div>

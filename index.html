@@ -16200,10 +16200,10 @@ function abrirDetalleTCSheet(tcId){
   const tc=getTCById(tcId);
   if(!tc)return;
   document.getElementById('detalle-tc-title').textContent=tc.nombre;
-  const compras=(tc.compras||[]).slice().sort((a,b)=>b.fecha.localeCompare(a.fecha));
-  const pagos=(tc.pagos||[]).slice().sort((a,b)=>b.fecha.localeCompare(a.fecha));
-  // tcMovimientos de esta TC (encargos y préstamos), ordenados más reciente primero
-  const tcMovs=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id).slice().sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  const compras=(tc.compras||[]);
+  const pagos=(tc.pagos||[]);
+  // tcMovimientos de esta TC (encargos y préstamos)
+  const tcMovs=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id);
   const mesClave=mesActual();
 
   let html='';
@@ -16215,7 +16215,7 @@ function abrirDetalleTCSheet(tcId){
   const tcMovsMes=tcMovs.filter(m=>mesKey(m.fecha)===mesClave);
   const totalMes=comprasMes.reduce((a,c)=>a+(c.monto||0),0)+tcMovsMes.reduce((a,m)=>a+(m.monto||0),0);
   const totalItems=comprasMes.length+tcMovsMes.length;
-  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
+  html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
     <div style="background:rgba(240,104,104,.07);border-radius:9px;padding:11px 12px;">
       <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:3px;">Deuda total</div>
       <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(deuda)}</div>
@@ -16226,18 +16226,74 @@ function abrirDetalleTCSheet(tcId){
     </div>
   </div>`;
 
-  // ── Compras ──
-  // Unificar tc.compras y tcMovimientos en una sola lista ordenada por fecha
-  const itemsCompras=[
-    ...compras.map(c=>({_tipo:'compra',...c})),
-    ...tcMovs.map(m=>({_tipo:'tcmov',...m}))
-  ].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  // Próximo corte / fecha límite de pago
+  if(tc.proximoCorte||tc.fechaLimitePago){
+    html+=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:14px;padding:8px 10px;background:var(--bg3);border-radius:8px;">
+      ${tc.proximoCorte?`<span><i class="fa-solid fa-rotate" style="margin-right:4px;color:var(--amber);"></i>Próximo corte: <b style="color:var(--text);">${tcFmtFecha(tc.proximoCorte)}</b></span>`:''}
+      ${tc.fechaLimitePago?`<span><i class="fa-solid fa-circle-check" style="margin-right:4px;color:var(--accent);"></i>Límite de pago: <b style="color:var(--text);">${tcFmtFecha(tc.fechaLimitePago)}</b></span>`:''}
+    </div>`;
+  }
 
-  html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">Compras <span style="font-weight:400;font-size:9px;">(${itemsCompras.length})</span></div>`;
-  if(!itemsCompras.length){
-    html+=`<div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Sin compras registradas.</div>`;
+  // ── Construir línea de tiempo unificada: compras + tcMovimientos + pagos + cortes ──
+  const itemsLinea=[
+    ...compras.map(c=>({_tipo:'compra',...c})),
+    ...tcMovs.map(m=>({_tipo:'tcmov',...m})),
+    ...pagos.map(p=>({_tipo:'pago',...p}))
+  ];
+
+  // Hitos de "Corte" — generados retrocediendo mes a mes desde tc.proximoCorte (o legado),
+  // cubriendo desde hoy hasta la fecha del movimiento más antiguo registrado.
+  const fechasCorte=[];
+  let corteBase=null;
+  if(tc.proximoCorte){
+    corteBase=new Date(tc.proximoCorte+'T00:00:00');
+  } else if(tc.fechaCorte){
+    const inferida=tcInferirProximoCorte(tc);
+    if(inferida)corteBase=new Date(inferida+'T00:00:00');
+  }
+  if(corteBase){
+    // Fecha más antigua presente en la línea de tiempo (para no generar cortes de sobra)
+    let fechaMin=null;
+    itemsLinea.forEach(it=>{
+      if(it.fecha&&(!fechaMin||it.fecha<fechaMin))fechaMin=it.fecha;
+    });
+    const limiteAntiguo=fechaMin?new Date(fechaMin+'T00:00:00'):null;
+    let cursor=new Date(corteBase);
+    for(let i=0;i<24;i++){
+      fechasCorte.push(cursor.getFullYear()+'-'+String(cursor.getMonth()+1).padStart(2,'0')+'-'+String(cursor.getDate()).padStart(2,'0'));
+      if(limiteAntiguo&&cursor<=limiteAntiguo)break;
+      if(!limiteAntiguo&&fechasCorte.length>=2)break; // sin movimientos: mostrar próximo + último corte
+      cursor.setMonth(cursor.getMonth()-1);
+    }
+  }
+  fechasCorte.forEach(f=>itemsLinea.push({_tipo:'corte',fecha:f}));
+
+  // Ordenar todo por fecha descendente (más reciente primero); en caso de igualdad,
+  // el hito de "Corte" va primero para marcar el límite del ciclo.
+  itemsLinea.sort((a,b)=>{
+    if(a.fecha!==b.fecha)return b.fecha.localeCompare(a.fecha);
+    if(a._tipo==='corte'&&b._tipo!=='corte')return -1;
+    if(b._tipo==='corte'&&a._tipo!=='corte')return 1;
+    return 0;
+  });
+
+  html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">Movimientos <span style="font-weight:400;font-size:9px;">(${compras.length+tcMovs.length+pagos.length})</span></div>`;
+
+  if(!itemsLinea.some(it=>it._tipo!=='corte')){
+    html+=`<div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Sin movimientos registrados.</div>`;
   } else {
-    html+=itemsCompras.slice(0,30).map(item=>{
+    html+=itemsLinea.slice(0,60).map(item=>{
+      if(item._tipo==='corte'){
+        const hoyStr=new Date().toISOString().substring(0,10);
+        const esPasado=item.fecha<hoyStr;
+        return `<div style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+          <div style="flex:1;height:1px;background:${esPasado?'var(--border2)':'rgba(240,184,64,.4)'};"></div>
+          <span style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:${esPasado?'var(--text3)':'var(--amber)'};white-space:nowrap;">
+            <i class="fa-solid fa-rotate" style="margin-right:4px;"></i>Corte · ${tcFmtFecha(item.fecha)}
+          </span>
+          <div style="flex:1;height:1px;background:${esPasado?'var(--border2)':'rgba(240,184,64,.4)'};"></div>
+        </div>`;
+      }
       if(item._tipo==='compra'){
         const c=item;
         const esFavor = c._esFavor || c._desdeCP;
@@ -16256,11 +16312,11 @@ function abrirDetalleTCSheet(tcId){
         </div>
         <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)'};color:${esFavor?'var(--blue)':'var(--red)'};">${esFavor?'Favor cubierto':c.cat||'Sin cat.'}</span>${c.nota?`<span style="font-size:10px;color:var(--text3);">${c.nota}</span>`:''}</div>
       </div>`;
-      } else {
+      }
+      if(item._tipo==='tcmov'){
         // tcMovimiento — cargo de encargo o préstamo
         const m=item;
         const esEncargo=m.tipo==='cargo_encargo';
-        const esPrestamo=m.tipo==='cargo_prestamo';
         const colorBorde=esEncargo?'rgba(240,184,64,.3)':'rgba(150,120,240,.3)';
         const colorMonto=esEncargo?'var(--amber)':'rgba(180,140,255,1)';
         const colorBadgeBg=esEncargo?'rgba(240,184,64,.12)':'rgba(150,120,240,.12)';
@@ -16280,25 +16336,20 @@ function abrirDetalleTCSheet(tcId){
         </div>
       </div>`;
       }
+      // pago
+      const p=item;
+      return `<div class="gasto-item" style="border-color:rgba(200,240,96,.25);margin-bottom:7px;">
+        <div class="gasto-item-top">
+          <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">Pago</div><div class="row-sub">${p.fecha}</div></div>
+          <span class="row-amount c-green">${fmt(p.monto)}</span>
+        </div>
+        <div class="gasto-item-meta">
+          <span class="badge bg-green" style="font-size:9px;">Pagado</span>
+          <span class="badge ${fuenteBadgeClass(p.fuente)}" style="font-size:9px;">${fuenteLabel(p.fuente)}</span>
+          ${p.nota?`<span style="font-size:10px;color:var(--text3);">${p.nota}</span>`:''}
+        </div>
+      </div>`;
     }).join('');
-  }
-
-  // ── Pagos ──
-  html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin:14px 0 8px;">Pagos realizados <span style="font-weight:400;font-size:9px;">(${pagos.length})</span></div>`;
-  if(!pagos.length){
-    html+=`<div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Sin pagos registrados.</div>`;
-  } else {
-    html+=pagos.map(p=>`<div class="gasto-item" style="border-color:rgba(200,240,96,.25);margin-bottom:7px;">
-      <div class="gasto-item-top">
-        <div style="flex:1;"><div class="row-name" style="font-size:13px;">Pago</div><div class="row-sub">${p.fecha}</div></div>
-        <span class="row-amount c-green">${fmt(p.monto)}</span>
-      </div>
-      <div class="gasto-item-meta">
-        <span class="badge bg-green" style="font-size:9px;">Pagado</span>
-        <span class="badge ${fuenteBadgeClass(p.fuente)}" style="font-size:9px;">${fuenteLabel(p.fuente)}</span>
-        ${p.nota?`<span style="font-size:10px;color:var(--text3);">${p.nota}</span>`:''}
-      </div>
-    </div>`).join('');
   }
 
   document.getElementById('detalle-tc-content').innerHTML=html;

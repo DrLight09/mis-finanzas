@@ -15670,11 +15670,6 @@ function renderTCScreen(){
     const _tcMovsVistos=new Set();
     const tcMovsSig=_tcMovsSigRaw.filter(m=>{const k=(m.encId||m.id)+'|'+m.monto+'|'+m.fecha;if(_tcMovsVistos.has(k))return false;_tcMovsVistos.add(k);return true;});
     const totalSig=comprasSig.reduce((a,c)=>a+(c.monto||0),0)+tcMovsSig.reduce((a,m)=>a+(m.monto||0),0);
-    // Abonos hechos desde el corte anterior — para contextualizar el Extracto
-    // (la deuda total puede seguir siendo distinta porque arrastra saldo de ciclos previos)
-    const corteAnteriorDate=tcFechaCorteAnterior(tc);
-    const corteAnteriorStr=corteAnteriorDate?(corteAnteriorDate.getFullYear()+'-'+String(corteAnteriorDate.getMonth()+1).padStart(2,'0')+'-'+String(corteAnteriorDate.getDate()).padStart(2,'0')):null;
-    const abonadoCiclo=corteAnteriorStr?(tc.pagos||[]).filter(p=>p.fecha>corteAnteriorStr).reduce((a,p)=>a+(p.monto||0),0):0;
     const facturadoHasta=tcFechaFacturadoHasta(tc);
     const meses2=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
     const facturadoLabel=facturadoHasta?facturadoHasta.getDate()+' '+meses2[facturadoHasta.getMonth()]:null;
@@ -15708,7 +15703,6 @@ function renderTCScreen(){
           <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Extracto (${itemsActual} compra${itemsActual!==1?'s':''})</div>
           <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(totalActual)}</div>
           ${facturadoLabel?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">hasta el ${facturadoLabel}</div>`:''}
-          ${abonadoCiclo>0?`<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;">Abonado: ${fmt(abonadoCiclo)}</div>`:''}
         </div>
       </div>
 

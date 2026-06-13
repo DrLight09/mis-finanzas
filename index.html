@@ -16273,14 +16273,6 @@ function abrirDetalleTCSheet(tcId){
     </div>
   </div>`;
 
-  // Próximo corte / fecha límite de pago
-  if(tc.proximoCorte||tc.fechaLimitePago){
-    html+=`<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:14px;padding:8px 10px;background:var(--bg3);border-radius:8px;">
-      ${tc.proximoCorte?`<span><i class="fa-solid fa-rotate" style="margin-right:4px;color:var(--amber);"></i>Próximo corte: <b style="color:var(--text);">${tcFmtFecha(tc.proximoCorte)}</b></span>`:''}
-      ${tc.fechaLimitePago?`<span><i class="fa-solid fa-circle-check" style="margin-right:4px;color:var(--accent);"></i>Límite de pago: <b style="color:var(--text);">${tcFmtFecha(tc.fechaLimitePago)}</b></span>`:''}
-    </div>`;
-  }
-
   // ── Construir línea de tiempo unificada: compras + tcMovimientos + pagos + cortes ──
   const itemsLinea=[
     ...compras.map(c=>({_tipo:'compra',...c})),
@@ -16319,7 +16311,9 @@ function abrirDetalleTCSheet(tcId){
   fechasCorte.filter(f=>!fechasConAvisoReal.has(f)).forEach(f=>itemsLinea.push({_tipo:'corte',fecha:f}));
 
   // Ordenar todo por fecha descendente (más reciente primero); en caso de igualdad,
-  // el hito de "Corte" va primero para marcar el límite del ciclo.
+  // el hito de "Corte" va primero para marcar el límite del ciclo. El sort es estable
+  // (ES2019+), así que para items del mismo día se conserva el orden de inserción
+  // (compras, luego tcMovimientos, luego pagos en el orden en que se registraron).
   itemsLinea.sort((a,b)=>{
     if(a.fecha!==b.fecha)return b.fecha.localeCompare(a.fecha);
     if(a._tipo==='corte'&&b._tipo!=='corte')return -1;
@@ -16396,17 +16390,20 @@ function abrirDetalleTCSheet(tcId){
         </div>
       </div>`;
       }
-      // pago
+      // pago — abono que reduce la deuda de la tarjeta (no es un gasto/cargo)
       const p=item;
-      return `<div class="gasto-item" style="border-color:rgba(200,240,96,.25);margin-bottom:7px;">
+      const descPago = p.nota
+        ? p.nota
+        : 'Abono a la deuda de '+(tc.nombre||'tu tarjeta')+' — no corresponde a una compra específica';
+      return `<div class="gasto-item" style="border-color:rgba(200,240,96,.3);border-left:3px solid var(--accent);margin-bottom:7px;background:rgba(200,240,96,.04);">
         <div class="gasto-item-top">
-          <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">Pago</div><div class="row-sub">${p.fecha}</div></div>
-          <span class="row-amount c-green">${fmt(p.monto)}</span>
+          <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">Abono a tu deuda</div><div class="row-sub">${p.fecha}</div></div>
+          <span class="row-amount c-green">−${fmt(p.monto)}</span>
         </div>
         <div class="gasto-item-meta">
-          <span class="badge bg-green" style="font-size:9px;">Pagado</span>
-          <span class="badge ${fuenteBadgeClass(p.fuente)}" style="font-size:9px;">${fuenteLabel(p.fuente)}</span>
-          ${p.nota?`<span style="font-size:10px;color:var(--text3);">${p.nota}</span>`:''}
+          <span class="badge bg-green" style="font-size:9px;"><i class="fa-solid fa-arrow-down" style="margin-right:3px;font-size:7px;"></i>Reduce deuda</span>
+          <span class="badge ${fuenteBadgeClass(p.fuente)}" style="font-size:9px;">Desde ${fuenteLabel(p.fuente)}</span>
+          <span style="font-size:10px;color:var(--text3);">${descPago}</span>
         </div>
       </div>`;
     }).join('');
@@ -16757,8 +16754,8 @@ document.addEventListener('DOMContentLoaded',function(){
           tipo:      'tc',
           signo:     '-',
           monto:     p.monto || 0,
-          titulo:    'Pago TC · ' + (tc.nombre || ''),
-          subtitulo: p.nota || '',
+          titulo:    'Abono a deuda · ' + (tc.nombre || ''),
+          subtitulo: p.nota || 'No corresponde a una compra específica',
           fuente:    'tarjetasCredito',
         });
       });

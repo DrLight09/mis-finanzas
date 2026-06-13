@@ -3928,7 +3928,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-cobrar-cdt">Cobrar y acreditar a cajita</button>
         <button type="button" class="btn btn-ghost"
-          data-close-sheet="cobrar-cdt">Cancelar</button>
+          data-close-sheet="cobrar-cdt" onclick="_cancelarCobrarCDT()">Cancelar</button>
       </div>
     </div>
 
@@ -4927,29 +4927,91 @@ function calcCDT(cdt){
   return{val,ganado,ganado_bruto,retencion,dias};
 }
 
-// Verifica y libera CDTs vencidos automáticamente
-function verificarVencimientosCDT(){
-  let huboLiberacion=false;
+// Rendimiento neto acumulado de un CDT después de N días (misma fórmula que calcCDT, sin fechas).
+function _rendimientoCDTaDias(cdt,dias){
+  if(dias<=0)return 0;
+  const rate=cdt.tasa/100;
+  const rte=(cdt.rte!=null?cdt.rte:4)/100;
+  const ganado_bruto_exacto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
+  const ganado_bruto=Math.round(ganado_bruto_exacto*2)/2;
+  const retencion=ganado_bruto*rte;
+  return ganado_bruto-retencion;
+}
+
+// Calcula el rendimiento neto de un CDT que corresponde específicamente a un mes dado (formato 'YYYY-MM').
+// No es flujo de caja disponible (el dinero sigue bloqueado en el CDT), pero sí es
+// "rendimiento generado" ese mes — patrimonio que aumenta día a día aunque el efectivo
+// disponible no cambie (Opción 2: patrimonio real, sin movimiento visible).
+function calcRendimientoCDTMes(cdt,mesK){
+  if(!cdt||!cdt.monto||!cdt.inicio||!mesK)return 0;
+  const inicio=new Date(cdt.inicio+'T00:00:00');
+  const [anioM,mesM]=mesK.split('-').map(Number);
+  const inicioMes=new Date(anioM,mesM-1,1);
+  const finMes=new Date(anioM,mesM,0); // último día del mes
+  const ahora=new Date();
+  const vence=cdt.vence?new Date(cdt.vence+'T00:00:00'):null;
+  const limiteSup=vence&&vence<ahora?vence:ahora;
+  if(limiteSup<inicioMes||inicio>finMes)return 0;
+  // Días acumulados desde el inicio del CDT hasta el corte de inicio/fin de este mes
+  const cortePrev=inicioMes>inicio?inicioMes:inicio;
+  const corteFin=limiteSup<finMes?limiteSup:finMes;
+  const diasPrev=Math.max(0,Math.floor((cortePrev-inicio)/86400000));
+  const diasFin=Math.max(0,Math.floor((corteFin-inicio)/86400000));
+  if(diasFin<=diasPrev)return 0;
+  return Math.max(0,_rendimientoCDTaDias(cdt,diasFin)-_rendimientoCDTaDias(cdt,diasPrev));
+}
+
+// Suma el rendimiento de TODOS los CDTs (en todas las cajitas) generado durante un mes dado.
+// Esto es "rendimiento acumulado/patrimonio" — el patrimonio total aumenta, pero NO es
+// efectivo disponible (el dinero sigue bloqueado hasta que el CDT venza/se cobre).
+function calcRendimientoCDTsMes(mesK){
+  let total=0;
   (S.cajitas||[]).forEach(c=>{
-    const vencidos=[];
+    (c.cdts||[]).forEach(cdt=>{
+      total+=calcRendimientoCDTMes(cdt,mesK);
+    });
+  });
+  return total;
+}
+
+// Verifica y libera CDTs vencidos automáticamente
+// Cola de CDTs vencidos pendientes de confirmar (uno a la vez vía sheet 'cobrar-cdt')
+let _colaCDTsVencidos=[];
+
+// Detecta CDTs vencidos y los encola para que el usuario confirme el valor REAL
+// depositado por Nu (igual que abrirCobrarCDT/confirmarCobrarCDT).
+// Ya NO acredita automáticamente el estimado de la app — eso causaba que el
+// monto (a veces ligeramente distinto al real) entrara solo, sin que el usuario
+// pudiera corregirlo, porque el CDT ya se había borrado del array antes de
+// que la pantalla terminara de cargar.
+function verificarVencimientosCDT(){
+  _colaCDTsVencidos=[];
+  (S.cajitas||[]).forEach(c=>{
     (c.cdts||[]).forEach(cdt=>{
       if(cdt.vence){
         const vence=new Date(cdt.vence+'T00:00:00');
         if(new Date()>=vence){
-          const k=calcCDT(cdt);
-          materializarIntereses(c);
-          c.saldo=(c.saldo||0)+k.val;
-          c.fecha=hoy();
-          const ganado=k.val-cdt.monto;
-          toast(`CDT "${c.nombre}" venció — ${fmt(k.val)} regresaron a tu cajita (+${fmt(ganado)} de intereses)`,'ok',5000);
-          vencidos.push(cdt.id);
-          huboLiberacion=true;
+          _colaCDTsVencidos.push({cajitaId:c.id,cdtId:cdt.id});
         }
       }
     });
-    if(vencidos.length)c.cdts=(c.cdts||[]).filter(x=>!vencidos.includes(x.id));
   });
-  if(huboLiberacion){refresh();save();}
+  _procesarSiguienteCDTVencido();
+}
+
+// Abre el sheet de cobro real para el siguiente CDT vencido en cola (si hay).
+function _procesarSiguienteCDTVencido(){
+  if(!_colaCDTsVencidos.length)return;
+  const {cajitaId,cdtId}=_colaCDTsVencidos[0];
+  const c=(S.cajitas||[]).find(x=>x.id===cajitaId);
+  const cdt=c&&(c.cdts||[]).find(x=>x.id===cdtId);
+  // Si ya no existe (cobrado/editado/borrado entretanto), saltar al siguiente
+  if(!c||!cdt){
+    _colaCDTsVencidos.shift();
+    _procesarSiguienteCDTVencido();
+    return;
+  }
+  abrirCobrarCDT(cajitaId,cdtId,true);
 }
 
 function nuTotal(){
@@ -6124,7 +6186,7 @@ async function liberarCDTManual(cajitaId,cdtId){
 
 let _cobrarCajitaId=null, _cobrarCdtId=null;
 
-function abrirCobrarCDT(cajitaId,cdtId){
+function abrirCobrarCDT(cajitaId,cdtId,esVencimientoAuto){
   const c=(S.cajitas||[]).find(x=>x.id===cajitaId);
   if(!c)return;
   const cdt=(c.cdts||[]).find(x=>x.id===cdtId);
@@ -6135,6 +6197,12 @@ function abrirCobrarCDT(cajitaId,cdtId){
   document.getElementById('cobrar_estimado').textContent=fmt(k.val);
   document.getElementById('cobrar_detalle_est').textContent=
     'Capital '+fmt(cdt.monto)+' + '+fmt(k.ganado)+' netos (RTE '+fmt(k.retencion)+')';
+  // Título y aviso del sheet: si viene del chequeo automático de vencimientos,
+  // aclaramos que el CDT ya venció y se necesita el valor real antes de acreditar.
+  const tituloEl=document.querySelector('#sheet-cobrar-cdt .sheet-title');
+  if(tituloEl)tituloEl.textContent=esVencimientoAuto
+    ?'CDT "'+c.nombre+'" venció'
+    :'Cobrar CDT vencido';
   const inp=document.getElementById('cobrar_valor');
   inp.value='';
   document.getElementById('cobrar_diff').textContent='';
@@ -6173,6 +6241,26 @@ async function confirmarCobrarCDT(){
   refresh();save();
   if(window.logCambio)logCambio('Cobraste CDT de "'+c.nombre+'"','Valor real acreditado a la cajita',valorReal,'ingreso',c.id);
   toast('CDT cobrado — '+fmt(valorReal)+' acreditados a "'+c.nombre+'"','ok',4000);
+  // Si este CDT venía de la cola de vencimientos automáticos, sacarlo y seguir
+  // con el siguiente pendiente (si hay más vencidos esperando confirmación).
+  if(_colaCDTsVencidos.length&&_colaCDTsVencidos[0].cajitaId===cajitaId&&_colaCDTsVencidos[0].cdtId===cdtId){
+    _colaCDTsVencidos.shift();
+    setTimeout(_procesarSiguienteCDTVencido,400);
+  }
+}
+
+// Si el usuario cancela el sheet de "Cobrar CDT" sin confirmar:
+// - El CDT sigue en S.cdts con fecha vencida (volverá a preguntarse después).
+// - Si hay más CDTs vencidos en cola, mostramos el siguiente (no nos quedamos
+//   atorados esperando que el usuario abra el sheet manualmente).
+function _cancelarCobrarCDT(){
+  if(_colaCDTsVencidos.length){
+    const {cajitaId,cdtId}=_colaCDTsVencidos[0];
+    if(cajitaId===_cobrarCajitaId&&cdtId===_cobrarCdtId){
+      _colaCDTsVencidos.shift();
+      setTimeout(_procesarSiguienteCDTVencido,400);
+    }
+  }
 }
 
 async function editarCDT(cajitaId,cdtId){
@@ -14251,6 +14339,13 @@ document.addEventListener('focusin', function(e){
     // Ingresos fijos configurados (sueldo, freelance, etc.)
     if(window.getIngresosFijosMes) ingresosMes+=getIngresosFijosMes(mes);
 
+    // ── Rendimiento de CDTs generado este mes (Opción 2: patrimonio real) ──
+    // Es plata que el patrimonio total ya ganó este mes, pero sigue bloqueada
+    // dentro del CDT — NO es efectivo disponible, así que NO se suma a ingresosMes
+    // (que mide flujo de caja real para los ratios de deuda/gasto).
+    // Se expone aparte para que la app "sepa" que ese rendimiento existe.
+    const rendimientoCDTMes = window.calcRendimientoCDTsMes ? window.calcRendimientoCDTsMes(mes) : 0;
+
     // ── Liquidez real (solo cuentas disponibles, sin CDTs bloqueados) ─────
     const nu = (S.cajitas||[]).reduce((a,c)=>a+(window.calcC?window.calcC(c).val:c.saldo||0),0);
     const cdtVal = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+(window.calcCDT?window.calcCDT(cdt).val:cdt.monto||0),0),0);
@@ -14354,7 +14449,7 @@ document.addEventListener('focusin', function(e){
       else if(tieneAlgo) tips.push('Hay espacio para mejorar.');
       else tips.push('Registra más movimientos para un análisis más preciso.');
     }
-    return { score, tips };
+    return { score, tips, ingresosMes, rendimientoCDTMes };
   }
 
   function renderHealthScore(){

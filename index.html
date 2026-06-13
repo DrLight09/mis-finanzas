@@ -5235,6 +5235,10 @@ function renderAttencion(){
 }
 
 function refresh(){
+  // Verificar si llegó el corte de alguna TC — genera aviso y avanza fechas
+  if(typeof tcVerificarCortes==='function'){
+    if(tcVerificarCortes())save();
+  }
   const nu=nuTotal();
   const nequi=S.nequiSaldo||0;
   const ef=S.efectivoSaldo||0;
@@ -15479,6 +15483,49 @@ function tcCompraEnCicloActual(tc, fechaCompraStr){
   return compra<=hasta;
 }
 
+// ── Avanza una fecha 'YYYY-MM-DD' un mes, conservando el día (clamp a fin de mes) ──
+function _tcSumarMes(fechaStr){
+  const d=new Date(fechaStr+'T00:00:00');
+  const dia=d.getDate();
+  let m=d.getMonth()+1, y=d.getFullYear();
+  if(m>11){m=0;y++;}
+  const lastDay=new Date(y,m+1,0).getDate();
+  const diaFinal=Math.min(dia,lastDay);
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(diaFinal).padStart(2,'0')}`;
+}
+
+// ── Verifica si llegó el corte de alguna TC; si es así, genera un aviso
+//    en tcMovimientos con la deuda pendiente y avanza proximoCorte/fechaLimitePago
+//    un mes (para no repetir el aviso). Se ejecuta en cada refresh().
+function tcVerificarCortes(){
+  let cambio=false;
+  const hoyStr=hoy();
+  (S.tarjetasCredito||[]).forEach(tc=>{
+    if(!tc.proximoCorte)return;
+    // Puede haber pasado más de un corte (app cerrada varios meses) — procesar todos
+    let guard=0;
+    while(tc.proximoCorte&&tc.proximoCorte<=hoyStr&&guard<24){
+      guard++;
+      if(!S.tcMovimientos)S.tcMovimientos=[];
+      S.tcMovimientos.push({
+        id:uid(),
+        tcId:tc.id,
+        tipo:'corte_aviso',
+        desc:'Corte de '+tc.nombre,
+        monto:tc.deuda||0,
+        fecha:tc.proximoCorte,
+        nota:'Llegó el corte — debes pagar lo facturado hasta esta fecha'
+      });
+      // Avanzar fechas de corte y límite de pago un mes
+      const nuevoCorte=_tcSumarMes(tc.proximoCorte);
+      if(tc.fechaLimitePago)tc.fechaLimitePago=_tcSumarMes(tc.fechaLimitePago);
+      tc.proximoCorte=nuevoCorte;
+      cambio=true;
+    }
+  });
+  return cambio;
+}
+
 // ── Render dashboard TC (en pantalla inicio) ─────────────────
 function renderTCDashboard(){
   const el=document.getElementById('tc-deuda-card');
@@ -16266,7 +16313,10 @@ function abrirDetalleTCSheet(tcId){
       cursor.setMonth(cursor.getMonth()-1);
     }
   }
-  fechasCorte.forEach(f=>itemsLinea.push({_tipo:'corte',fecha:f}));
+  // No generar el hito sintético "Corte" para fechas que ya tienen un
+  // aviso de corte real (tcMovimiento tipo 'corte_aviso') — ese se muestra como tcmov.
+  const fechasConAvisoReal=new Set(tcMovs.filter(m=>m.tipo==='corte_aviso').map(m=>m.fecha));
+  fechasCorte.filter(f=>!fechasConAvisoReal.has(f)).forEach(f=>itemsLinea.push({_tipo:'corte',fecha:f}));
 
   // Ordenar todo por fecha descendente (más reciente primero); en caso de igualdad,
   // el hito de "Corte" va primero para marcar el límite del ciclo.
@@ -16312,6 +16362,16 @@ function abrirDetalleTCSheet(tcId){
         </div>
         <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)'};color:${esFavor?'var(--blue)':'var(--red)'};">${esFavor?'Favor cubierto':c.cat||'Sin cat.'}</span>${c.nota?`<span style="font-size:10px;color:var(--text3);">${c.nota}</span>`:''}</div>
       </div>`;
+      }
+      if(item._tipo==='tcmov'&&item.tipo==='corte_aviso'){
+        const m=item;
+        return `<div style="display:flex;align-items:center;gap:8px;margin:10px 0;">
+          <div style="flex:1;height:1px;background:rgba(240,104,104,.4);"></div>
+          <span style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:var(--red);white-space:nowrap;">
+            <i class="fa-solid fa-rotate" style="margin-right:4px;"></i>Corte ${tcFmtFecha(m.fecha)} · Debes ${fmt(m.monto)}
+          </span>
+          <div style="flex:1;height:1px;background:rgba(240,104,104,.4);"></div>
+        </div>`;
       }
       if(item._tipo==='tcmov'){
         // tcMovimiento — cargo de encargo o préstamo
@@ -16495,6 +16555,10 @@ document.addEventListener('DOMContentLoaded',function(){
     comprometida: {
       bg: 'rgba(96,216,240,.12)',
       svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#60d8f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`
+    },
+    corte: {
+      bg: 'rgba(240,104,104,.15)',
+      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>`
     },
   };
 
@@ -16697,6 +16761,21 @@ document.addEventListener('DOMContentLoaded',function(){
           subtitulo: p.nota || '',
           fuente:    'tarjetasCredito',
         });
+      });
+    });
+    // Avisos de corte: tcMovimientos con tipo 'corte_aviso'
+    (S.tcMovimientos || []).filter(function(m){ return m.tipo === 'corte_aviso'; }).forEach(function(m){
+      var tc = (S.tarjetasCredito || []).find(function(x){ return x.id === m.tcId; });
+      items.push({
+        id:        'tcaviso_' + m.id,
+        fecha:     m.fecha || '0000-00-00',
+        ts:        m.ts || 0,
+        tipo:      'corte',
+        signo:     '-',
+        monto:     m.monto || 0,
+        titulo:    'Corte llegó · ' + (tc ? tc.nombre : ''),
+        subtitulo: 'Debes ' + (window.fmt ? window.fmt(m.monto) : m.monto) + ' antes del límite de pago',
+        fuente:    'tcMovimientos',
       });
     });
     return items;

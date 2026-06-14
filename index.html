@@ -9625,6 +9625,131 @@ function abrirDetalleMov(el){
       }).join('')}
     </div>` : '';
 
+  // ── Buscar el objeto raw del movimiento para mostrar info rica ────────────
+  let _rawMov = null;
+  try {
+    if (movId) {
+      if (cuentaKey === 'encargo') {
+        const enc = getEncargo(encargoActualId);
+        if (enc) _rawMov = (enc.movimientos||[]).find(m=>m.id===movId) || null;
+      } else if (cuentaKey === 'deudor') {
+        for (const d of (S.deudores||[])) {
+          const found = (d.movimientos||[]).find(m=>m.id===movId);
+          if (found) { _rawMov = found; break; }
+        }
+      } else if (cuentaKey === 'tc') {
+        for (const tc of (S.tarjetasCredito||[])) {
+          _rawMov = (tc.compras||[]).find(m=>m.id===movId)
+                 || (tc.pagos||[]).find(m=>m.id===movId)
+                 || null;
+          if (_rawMov) break;
+        }
+        if (!_rawMov) _rawMov = (S.tcMovimientos||[]).find(m=>m.id===movId) || null;
+      } else {
+        // Cuentas estándar/custom: busca en gastosVar, S.movimientos, transferencias, deudores (abonos), mesadas, Spotify
+        _rawMov = (S.gastosVar||[]).find(m=>m.id===movId)
+               || (S.movimientos||[]).find(m=>m.id===movId)
+               || (S.transferencias||[]).find(m=>m.id===movId)
+               || null;
+        if (!_rawMov) {
+          for (const d of (S.deudores||[])) {
+            const found = (d.movimientos||[]).find(m=>m.id===movId);
+            if (found) { _rawMov = found; break; }
+          }
+        }
+        if (!_rawMov && fuente.startsWith('custom:')) {
+          const cid = fuente.split(':')[1];
+          const c = (S.cuentasPersonalizadas||[]).find(x=>x.id===cid);
+          if (c) _rawMov = (c.movimientos||[]).find(m=>m.id===movId) || null;
+        }
+      }
+    }
+  } catch(_){}
+
+  // ── Info rica del movimiento raw ─────────────────────────────────────────
+  let richHtml = '';
+  if (_rawMov) {
+    const rm = _rawMov;
+    const richParts = [];
+
+    // 1. Nota del movimiento
+    if (rm.nota && rm.nota !== desc) {
+      richParts.push(`<div style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:12px;color:var(--text2);line-height:1.5;">${escHtml(rm.nota)}</div>`);
+    }
+
+    // 2. Diferencial / margen (encargos, cuentas estándar)
+    if (rm.diferencial) {
+      const difHtml = _difRenderHistorial(rm);
+      if (difHtml) richParts.push(difHtml);
+    }
+
+    // 3. Extra partes del abono (deudores)
+    if (rm._extPartes && rm._extPartes.length) {
+      const extraTotal = rm._extPartes.reduce((a,p)=>a+(p.monto||0),0);
+      const partesTexto = rm._extPartes.map(p => {
+        if (p.tipo==='guardar')   return `${fuenteLabel(p.cuenta)} ${fmt(p.monto)}`;
+        if (p.tipo==='gastar')    return `Gasto ${fmt(p.monto)}`;
+        if (p.tipo==='regalar')   return `Regalo ${fmt(p.monto)}`;
+        if (p.tipo==='pendiente') return `Sin asignar ${fmt(p.monto)}`;
+        return '';
+      }).filter(Boolean).join(' · ');
+      richParts.push(`<div style="padding:10px 12px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);font-size:11px;font-family:'DM Mono',monospace;color:var(--blue);">
+        Extra ${fmt(extraTotal)}: ${partesTexto}
+      </div>`);
+    }
+
+    // 4. Ganancia virtual (préstamos con parte "de ganancia")
+    if (rm._gananciaVirtual) {
+      richParts.push(`<div style="padding:8px 12px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius-sm);font-size:11px;font-family:'DM Mono',monospace;color:var(--accent);">
+        💰 Incluye ${fmt(rm._gananciaVirtual)} de ganancia (no desembolsada)
+      </div>`);
+    }
+
+    // 5. Fuentes de préstamo split (si no están ya en otrasHtml)
+    if (rm.fuentes && rm.fuentes.length && !otrasCuentas.length) {
+      const fuentesText = rm.fuentes.map(f=>`${fuenteLabel(f.fuente)} ${fmt(f.monto)}`).join(' + ');
+      richParts.push(`<div style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:11px;color:var(--text2);">
+        Salió de: ${fuentesText}
+      </div>`);
+    }
+
+    // 6. Destino(s) del abono (si no están ya en otrasHtml)
+    if (!otrasCuentas.length) {
+      if (rm.destinos && rm.destinos.length) {
+        const destText = rm.destinos.map(r=>`${fuenteLabel(r.fuente)} ${fmt(r.monto)}`).join(' + ');
+        richParts.push(`<div style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:11px;color:var(--text2);">
+          Entró a: ${destText}
+        </div>`);
+      } else if (rm.destino) {
+        richParts.push(`<div style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:11px;color:var(--text2);">
+          Entró a: ${escHtml(fuenteLabel(rm.destino))}
+        </div>`);
+      }
+    }
+
+    // 7. Vía TC (si el abono del deudor pasó por TC)
+    if (rm._viaTC && rm._tcId) {
+      const tcName = ((S.tarjetasCredito||[]).find(t=>t.id===rm._tcId)||{}).nombre||'';
+      if (tcName) richParts.push(`<div style="padding:8px 12px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);font-size:11px;color:var(--blue);">
+        Via tarjeta: ${escHtml(tcName)}
+      </div>`);
+    }
+
+    // 8. Vía encargo (abono que pasó por un encargo)
+    if (rm._viaEncargo && rm._encNombre) {
+      richParts.push(`<div style="padding:8px 12px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);font-size:11px;color:var(--blue);">
+        Via encargo de ${escHtml(rm._encNombre)}
+      </div>`);
+    }
+
+    if (richParts.length) {
+      richHtml = `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+        <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Detalles</div>
+        ${richParts.join('')}
+      </div>`;
+    }
+  }
+
   document.getElementById('mvdContent').innerHTML = `
     <div style="text-align:center;padding:6px 0 18px;">
       <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">${escHtml(tipoLabel)}</div>
@@ -9647,7 +9772,8 @@ function abrirDetalleMov(el){
         </div>
       </div>
     </div>
-    ${otrasHtml}`;
+    ${otrasHtml}
+    ${richHtml}`;
   openSheet('mov-detalle');
 }
 

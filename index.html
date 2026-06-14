@@ -3029,6 +3029,31 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         </div>
 
         <!-- Diferencial opcional -->
+        <!-- YO PUSE LA PLATA (sin diferencial de valor) -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.25);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:8px;" onclick="_usarParteMiaToggle()">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:15px;color:var(--accent);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752a.5.5 0 0 1 .5 0c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893a.5.5 0 0 1 .5.46v10.392a.5.5 0 0 1-.683.464c-.795-.319-2.001-.69-3.103-.81-1.197-.129-2.024.063-2.343.513a.5.5 0 0 1-.814 0c-.319-.45-1.146-.642-2.343-.513-1.102.12-2.308.491-3.103.81a.5.5 0 0 1-.683-.464V3.288a.5.5 0 0 1 .5-.46z"/></svg></span>
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--accent);">Yo puse la plata</div>
+              <div style="font-size:10px;color:var(--text3);">Usé mi efectivo/saldo y me quedo con esto</div>
+            </div>
+          </div>
+          <div id="usar-parte-mia-icon" style="font-size:16px;color:var(--accent);transition:transform .2s;">›</div>
+        </div>
+        <div id="usar-parte-mia-body" style="display:none;background:rgba(200,240,96,.04);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius-sm);padding:13px;margin-bottom:10px;">
+          <p style="font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.5;">
+            La parte queda como usada, pero el saldo del encargo se traslada a una de tus cuentas porque vos pusiste la plata de tu bolsillo.
+          </p>
+          <div class="ig" style="margin-bottom:0;">
+            <label class="il" style="color:var(--accent);margin-bottom:6px;">¿En qué cuenta tuya entra esta plata?</label>
+            <div class="select-wrap">
+              <select id="usar_parte_mia_cuenta" style="padding:9px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;width:100%;">
+                <option value="">Sin especificar</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:0;" onclick="_usarParteDifToggle()">
           <div style="display:flex;align-items:center;gap:8px;">
             <span style="font-size:15px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span>
@@ -11963,6 +11988,32 @@ let _usarParteEncId = null;
 let _usarParteId    = null;
 let _usarParteDifBenefs = [];
 
+/* ─── "Yo puse la plata" (sin diferencial de valor) ───────────── */
+function _usarParteMiaToggle() {
+  const body = document.getElementById('usar-parte-mia-body');
+  const icon = document.getElementById('usar-parte-mia-icon');
+  if (!body) return;
+  const abierto = body.style.display !== 'none';
+  body.style.display = abierto ? 'none' : '';
+  if (icon) { icon.textContent = abierto ? '›' : '‹'; icon.style.transform = abierto ? '' : 'rotate(90deg)'; }
+  if (!abierto) {
+    // Mutuamente excluyente con el diferencial: solo uno puede estar activo a la vez
+    const difBody = document.getElementById('usar-parte-dif-body');
+    const difIcon = document.getElementById('usar-parte-dif-icon');
+    if (difBody && difBody.style.display !== 'none') {
+      difBody.style.display = 'none';
+      if (difIcon) { difIcon.textContent = '›'; difIcon.style.transform = ''; }
+    }
+    // Poblar select de cuentas propias
+    const sel = document.getElementById('usar_parte_mia_cuenta');
+    if (sel) {
+      const prevVal = sel.value;
+      sel.innerHTML = '<option value="">Sin especificar</option>' +
+        getFuentesSinTC().map(f => `<option value="${f.val}"${f.val === prevVal ? ' selected' : ''}>${f.label}</option>`).join('');
+    }
+  }
+}
+
 function _usarParteDifToggle() {
   const body = document.getElementById('usar-parte-dif-body');
   const icon = document.getElementById('usar-parte-dif-icon');
@@ -11970,7 +12021,16 @@ function _usarParteDifToggle() {
   const abierto = body.style.display !== 'none';
   body.style.display = abierto ? 'none' : '';
   if (icon) { icon.textContent = abierto ? '›' : '‹'; icon.style.transform = abierto ? '' : 'rotate(90deg)'; }
-  if (!abierto) _usarParteDifResumen();
+  if (!abierto) {
+    _usarParteDifResumen();
+    // Mutuamente excluyente con "Yo puse la plata"
+    const miaBody = document.getElementById('usar-parte-mia-body');
+    const miaIcon = document.getElementById('usar-parte-mia-icon');
+    if (miaBody && miaBody.style.display !== 'none') {
+      miaBody.style.display = 'none';
+      if (miaIcon) { miaIcon.textContent = '›'; miaIcon.style.transform = ''; }
+    }
+  }
 }
 
 function _usarParteAddBenef() {
@@ -12166,6 +12226,26 @@ async function _confirmarUsarParte() {
     }
   }
 
+  // "Yo puse la plata": el 100% del monto pasa a ser tuyo (sin diferencial de valor)
+  const miaBody = document.getElementById('usar-parte-mia-body');
+  const miaActivo = miaBody && miaBody.style.display !== 'none';
+  if (miaActivo) {
+    const miaSel = document.getElementById('usar_parte_mia_cuenta');
+    const miCuenta = miaSel ? miaSel.value : '';
+    if (!miCuenta) {
+      toast('Elegí en qué cuenta tuya entra esta plata', 'err');
+      return;
+    }
+    const dijo = parte.monto;
+    parte.diferencial = {
+      dijo, real: 0, margen: dijo,
+      beneficiarios: [],
+      miCuenta, yoMeQuedo: dijo,
+      tipo: 'yoPuseLaPlata'
+    };
+    sumarFuente(miCuenta, dijo);
+    _usarParteMargenPendiente = { fuente: miCuenta, monto: dijo };
+  } else {
   // Guardar diferencial y mover margen a cuenta propia si aplica
   const difBody = document.getElementById('usar-parte-dif-body');
   const realEl  = document.getElementById('usar_parte_dif_real');
@@ -12195,6 +12275,7 @@ async function _confirmarUsarParte() {
         _usarParteMargenPendiente = { fuente: miCuenta, monto: yoMeQuedo };
       }
     }
+  }
   }
 
   // Guardar origen en la parte
@@ -12239,17 +12320,20 @@ async function _confirmarUsarParte() {
   parte.usada = true;
   parte.usadaEn = hoy();
 
-  // Registrar el ingreso del margen al final, para que su uid() sea mayor que los de salida del encargo
+  // Registrar el ingreso del margen/reembolso al final, para que su uid() sea mayor que los de salida del encargo
   if (_usarParteMargenPendiente) {
     const { fuente, monto } = _usarParteMargenPendiente;
     if (!S.movimientos) S.movimientos = [];
+    const esMia = parte.diferencial && parte.diferencial.tipo === 'yoPuseLaPlata';
     S.movimientos.push({
       id: uid(),
       tipo: 'entrada',
       fuente,
       monto,
       fecha: hoy(),
-      desc: `Margen encargo ${enc.nombre} — ${parte.desc}`
+      desc: esMia
+        ? `Te devuelve encargo ${enc.nombre} — ${parte.desc} (vos pusiste la plata)`
+        : `Margen encargo ${enc.nombre} — ${parte.desc}`
     });
     _usarParteMargenPendiente = null;
   }
@@ -12314,6 +12398,14 @@ function abrirUsarParteSheet(encId, parteId) {
   const miCuentaSel = document.getElementById('usar_parte_dif_mi_cuenta');
   if (miCuentaSel) miCuentaSel.value = '';
 
+  // Reset "Yo puse la plata"
+  const miaBody = document.getElementById('usar-parte-mia-body');
+  const miaIcon = document.getElementById('usar-parte-mia-icon');
+  if (miaBody) miaBody.style.display = 'none';
+  if (miaIcon) { miaIcon.textContent = '›'; miaIcon.style.transform = ''; }
+  const miaSel = document.getElementById('usar_parte_mia_cuenta');
+  if (miaSel) miaSel.value = '';
+
   openSheet('usar-parte');
 }
 
@@ -12327,6 +12419,11 @@ function _difRenderHistorial(mov) {
     ? `Yo → ${fuenteLabel(d.miCuenta)} ${fmt(d.yoMeQuedo)}`
     : (d.yoMeQuedo > 0 ? `Yo ${fmt(d.yoMeQuedo)}` : '');
   const todas = [benefs, miParte].filter(Boolean).join(' · ');
+  if (d.tipo === 'yoPuseLaPlata') {
+    return `<div style="margin-top:4px;padding:5px 8px;background:rgba(200,240,96,.08);border-radius:6px;font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752a.5.5 0 0 1 .5 0c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893a.5.5 0 0 1 .5.46v10.392a.5.5 0 0 1-.683.464c-.795-.319-2.001-.69-3.103-.81-1.197-.129-2.024.063-2.343.513a.5.5 0 0 1-.814 0c-.319-.45-1.146-.642-2.343-.513-1.102.12-2.308.491-3.103.81a.5.5 0 0 1-.683-.464V3.288a.5.5 0 0 1 .5-.46z"/></svg> Vos pusiste la plata — ${fmt(d.margen)} ${todas ? ' · ' + todas : ''}
+    </div>`;
+  }
   return `<div style="margin-top:4px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${todas ? ' · ' + todas : ''}
   </div>`;
@@ -12349,7 +12446,11 @@ function _difRenderHistorialParte(parte) {
     ).join(' · ');
     const miParte = d.miCuenta && d.yoMeQuedo > 0 ? `Yo (${fuenteLabel(d.miCuenta)}) ${fmt(d.yoMeQuedo)}` : '';
     const todas = [benefs, miParte].filter(Boolean).join(' · ');
-    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`;
+    if (d.tipo === 'yoPuseLaPlata') {
+      out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(200,240,96,.12);border-radius:5px;font-size:9px;color:var(--accent);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752a.5.5 0 0 1 .5 0c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893a.5.5 0 0 1 .5.46v10.392a.5.5 0 0 1-.683.464c-.795-.319-2.001-.69-3.103-.81-1.197-.129-2.024.063-2.343.513a.5.5 0 0 1-.814 0c-.319-.45-1.146-.642-2.343-.513-1.102.12-2.308.491-3.103.81a.5.5 0 0 1-.683-.464V3.288a.5.5 0 0 1 .5-.46z"/></svg> vos pusiste la plata${todas ? ': ' + todas : ''}</span>`;
+    } else {
+      out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`;
+    }
   }
   return out;
 }

@@ -7201,9 +7201,13 @@ function abrirDeudor(id) {
   if (!movs.length) {
     histEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 8px;">Sin movimientos aún.</div>';
   } else {
-    let saldoAcum = saldo;
+    let saldoCorriente = saldo; // saldo de deuda ANTES de descontar la entry actual (al iterar desc, arranca en el saldo actual = saldo "después" del primer item)
     histEl.innerHTML = movs.map(m => {
       const esPrestamo = m.tipo === 'prestamo';
+      const efectoDeuda = esPrestamo ? +m.monto : -m.monto; // cuánto sumó/restó esta entry a la deuda
+      const saldoDespuesDeuda = saldoCorriente;
+      const saldoAntesDeuda = saldoCorriente - efectoDeuda;
+      saldoCorriente = saldoAntesDeuda;
       // Destino info line
       const arrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
       let destinoInfo = '';
@@ -7229,7 +7233,18 @@ function abrirDeudor(id) {
           Extra ${fmt(extraTotal)}: ${partesTexto}
         </div>`;
       }
-      return `<div class="card card-sm" style="margin-bottom:7px;">
+      // Origen y otras cuentas implicadas (para sheet de detalle)
+      const origenDD = m._viaTC ? 'Tarjeta de crédito' : m._viaEncargo ? ('Encargos · ' + (m._encNombre||'')) : ('Préstamos · ' + d.nombre);
+      let otrasCuentasDD = [];
+      if (esPrestamo) {
+        if (m.fuentes && m.fuentes.length) otrasCuentasDD = m.fuentes.map(f=>({fuente:f.fuente, monto:-f.monto}));
+        else if (m.fuente) otrasCuentasDD = [{fuente:m.fuente, monto:-m.monto}];
+      } else {
+        if (m.destinos && m.destinos.length) otrasCuentasDD = m.destinos.map(r=>({fuente:r.fuente, monto:+r.monto}));
+        else if (m.destino) otrasCuentasDD = [{fuente:m.destino, monto:+m.monto}];
+      }
+      const dataOtrasDD = otrasCuentasDD.length ? `data-mov-otras="${escHtml(JSON.stringify(otrasCuentasDD))}"` : '';
+      return `<div class="card card-sm" style="margin-bottom:7px;cursor:pointer;" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-mov-origen="${escHtml(origenDD)}" ${dataOtrasDD} data-mov-saldo-antes="${saldoAntesDeuda}" data-mov-saldo-despues="${saldoDespuesDeuda}" data-mov-saldo-label="Deuda de ${escHtml(d.nombre)}" data-mov-desc="${escHtml(m.nota || (esPrestamo?'Préstamo':'Pago'))}" data-mov-fecha="${escHtml(m.fecha)}" onclick="abrirDetalleMov(this)">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -7243,7 +7258,7 @@ function abrirDeudor(id) {
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esPrestamo ? 'var(--amber)' : 'var(--accent)'};">${esPrestamo ? '+' : '−'} ${fmt(m.monto)}</div>
-            <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" onclick="eliminarMovDeudor('${id}','${m.id}')">
+            <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" onclick="event.stopPropagation();eliminarMovDeudor('${id}','${m.id}')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </button>
           </div>
@@ -9534,14 +9549,23 @@ function abrirDetalleMov(el){
   const fuente = el.dataset.movFuenteReal || el.dataset.movFuente || '';
   const montoAbs = parseFloat(el.dataset.movMonto) || 0;
   const cuentaKey = el.dataset.cuentaKey || '';
+  let monto, fecha, desc, saldoAntes, saldoDespues, saldoLabel;
 
-  if(!fuente){
+  if(cuentaKey==='deudor' || cuentaKey==='tc' || cuentaKey==='encargo'){
+    // Movimiento que afecta una deuda/saldo de terceros (préstamo/abono, compra/pago TC, entrada/salida encargo)
+    const aumentaSaldo = (movTipo === 'prestamo' || movTipo === 'compra' || movTipo === 'entrada');
+    monto = aumentaSaldo ? montoAbs : -montoAbs;
+    fecha = el.dataset.movFecha || '';
+    desc = el.dataset.movDesc || (aumentaSaldo ? 'Entrada' : 'Salida');
+    saldoAntes = parseFloat(el.dataset.movSaldoAntes) || 0;
+    saldoDespues = parseFloat(el.dataset.movSaldoDespues) || 0;
+    saldoLabel = el.dataset.movSaldoLabel || 'Saldo';
+  } else if(!fuente){
     // Sin fuente identificable (ej: mesadas/Spotify legacy sin _fuenteOrigen) — no hay saldo que calcular
     return;
-  }
-
+  } else {
   // Reconstruir la lista de movimientos de esta fuente para hallar el saldo histórico
-  let lista, idx, monto, fecha, desc, signedFn;
+  let lista, idx, signedFn;
   if(cuentaKey==='custom' && fuente.startsWith('custom:')){
     const cid = fuente.split(':')[1];
     const c = (S.cuentasPersonalizadas||[]).find(x=>x.id===cid);
@@ -9568,13 +9592,15 @@ function abrirDetalleMov(el){
   const saldoActual = getSaldoFuente(fuente);
   let sumaPosteriores = 0;
   for(let j=0;j<idx;j++) sumaPosteriores += signedFn(lista[j]);
-  const saldoDespues = saldoActual - sumaPosteriores;
-  const saldoAntes = saldoDespues - monto;
+  saldoDespues = saldoActual - sumaPosteriores;
+  saldoAntes = saldoDespues - monto;
+  saldoLabel = fuenteLabel(fuente);
+  }
 
   const esPositivo = monto >= 0;
   const colorMonto = esPositivo ? 'var(--accent)' : 'var(--red)';
   const signo = esPositivo ? '+' : '−';
-  const tipoLabel = { gasto:'Gasto', ingreso:'Ingreso', egreso:'Retiro', apertura:'Apertura', prestamo:'Préstamo', abono:'Abono', mesada:'Mesada', transferencia:'Transferencia', salida_manual:'Salida' }[movTipo] || movTipo;
+  const tipoLabel = { gasto:'Gasto', ingreso:'Ingreso', egreso:'Retiro', apertura:'Apertura', prestamo:'Préstamo', abono:'Abono', compra:'Compra', mesada:'Mesada', transferencia:'Transferencia', salida_manual:'Salida' }[movTipo] || movTipo;
 
   // Sección de origen (módulo donde se registró este movimiento)
   const origenLabel = el.dataset.movOrigen || '';
@@ -9608,7 +9634,7 @@ function abrirDetalleMov(el){
     </div>
     ${origenHtml}
     <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px 15px;margin-bottom:14px;">
-      <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Saldo en ${escHtml(fuenteLabel(fuente))}</div>
+      <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">${(cuentaKey==='deudor'||cuentaKey==='tc'||cuentaKey==='encargo') ? escHtml(saldoLabel) : 'Saldo en ' + escHtml(saldoLabel)}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <div>
           <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Antes</div>
@@ -11182,14 +11208,33 @@ function abrirEncargoDetalle(id) {
     if (fechaDiff !== 0) return fechaDiff;
     return (b.ts || 0) - (a.ts || 0);
   });
+
+  // Precalcular saldo del encargo (antes/después) para cada movimiento
+  const _encSaldoPorId = new Map();
+  {
+    let _saldoCorriente = saldo;
+    todosMovs.forEach(m=>{
+      const efecto = m.tipo==='entrada' ? +m.monto : -m.monto;
+      const despues = _saldoCorriente;
+      const antes = _saldoCorriente - efecto;
+      _encSaldoPorId.set(m.id, {antes, despues});
+      _saldoCorriente = antes;
+    });
+  }
   if (!todosMovs.length) {
     histEl.innerHTML = `<div class="empty-state" style="padding:16px 0;"><div class="empty-state-sub">Sin movimientos aún. Registrá entradas y salidas.</div></div>`;
   } else {
     let html = '';
+    // Helper: construye atributos data-mov-* para abrir el sheet de detalle (saldo = saldo del encargo)
+    const _encAttrs=(m, origenLbl)=>{
+      const sd=_encSaldoPorId.get(m.id);
+      if(!sd) return '';
+      return `data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="encargo" data-mov-origen="${escHtml(origenLbl)}" data-mov-saldo-antes="${sd.antes}" data-mov-saldo-despues="${sd.despues}" data-mov-saldo-label="Saldo de ${escHtml(enc.nombre)}" data-mov-desc="${escHtml(m.desc||'')}" data-mov-fecha="${escHtml(m.fecha)}" style="cursor:pointer;" onclick="abrirDetalleMov(this)"`;
+    };
     html += todosMovs.map((m,i) => {
       if (m._esSaldoInicial) {
         const lblCuentaIni = m.cuenta ? fuenteLabel(m.cuenta) : '';
-        return `<div class="gasto-item" style="border-color:rgba(96,176,240,.2);">
+        return `<div class="gasto-item" ${_encAttrs(m,'Encargos · '+enc.nombre)} style="cursor:pointer;border-color:rgba(96,176,240,.2);">
           <div class="gasto-item-top">
             <div style="flex:1;"><div class="row-name" style="font-size:13px;">Saldo inicial</div><div class="row-sub">${m.fecha!=='0000-00-00'?m.fecha:''}${lblCuentaIni?' · '+lblCuentaIni:''}</div></div>
             <span class="row-amount c-blue">${fmt(m.monto)}</span>
@@ -11200,7 +11245,8 @@ function abrirEncargoDetalle(id) {
       const esEntrada = m.tipo === 'entrada';
       const lblCuenta = m.cuenta ? fuenteLabel(m.cuenta) : '';
       const esAbonoPrestamo = !esEntrada && m._esAbonoDeudor;
-      return `<div class="gasto-item" style="border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':'rgba(240,104,104,.15)'};">
+      const origenEnc = esAbonoPrestamo ? ('Préstamos · ' + (((S.deudores||[]).find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+enc.nombre);
+      return `<div class="gasto-item" ${_encAttrs(m,origenEnc)} style="cursor:pointer;border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':'rgba(240,104,104,.15)'};">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;">
             <div class="row-name" style="font-size:13px;">${escHtml(m.desc)}</div>
@@ -11208,7 +11254,7 @@ function abrirEncargoDetalle(id) {
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span class="row-amount ${esEntrada?'c-blue':esAbonoPrestamo?'c-amber':'c-red'}">${esEntrada?'+':'−'}${fmt(m.monto)}</span>
-            <button type="button" onclick="deleteMovEncargo('${enc.id}','${m.id}')" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.55;display:flex;align-items:center;justify-content:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.55';this.style.color='var(--text3)'">
+            <button type="button" onclick="event.stopPropagation();deleteMovEncargo('${enc.id}','${m.id}')" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.55;display:flex;align-items:center;justify-content:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.55';this.style.color='var(--text3)'">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             </button>
           </div>
@@ -16580,11 +16626,34 @@ function abrirDetalleTCSheet(tcId){
     return 0;
   });
 
+  // Precalcular deuda histórica (antes/después) para cada item que afecta tc.deuda
+  // (compras y tcmov suman, pagos restan; cortes y corte_aviso no afectan)
+  const _tcDeudaPorId = new Map();
+  {
+    let _deudaCorriente = tc.deuda||0;
+    itemsLinea.forEach(it=>{
+      if(it._tipo==='corte') return;
+      if(it._tipo==='tcmov' && it.tipo==='corte_aviso') return;
+      const efecto = it._tipo==='pago' ? -(it.monto||0) : +(it.monto||0);
+      const despues = _deudaCorriente;
+      const antes = _deudaCorriente - efecto;
+      if(it.id) _tcDeudaPorId.set(it.id, {antes, despues, efecto});
+      _deudaCorriente = antes;
+    });
+  }
+
   html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">Movimientos <span style="font-weight:400;font-size:9px;">(${compras.length+tcMovs.length+pagos.length})</span></div>`;
 
   if(!itemsLinea.some(it=>it._tipo!=='corte')){
     html+=`<div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Sin movimientos registrados.</div>`;
   } else {
+    // Helper: construye atributos data-mov-* para abrir el sheet de detalle (saldo = deuda de la TC)
+    const _tcAttrs=(item, origenLbl, otrasCuentas, descOverride)=>{
+      const sd=_tcDeudaPorId.get(item.id);
+      if(!sd) return '';
+      const otras = otrasCuentas ? `data-mov-otras="${escHtml(JSON.stringify(otrasCuentas))}"` : '';
+      return `data-mov-id="${item.id}" data-mov-tipo="${item._tipo==='pago'?'abono':'compra'}" data-mov-monto="${Math.abs(item.monto)}" data-cuenta-key="tc" data-mov-origen="${escHtml(origenLbl)}" ${otras} data-mov-saldo-antes="${sd.antes}" data-mov-saldo-despues="${sd.despues}" data-mov-saldo-label="Deuda ${escHtml(tc.nombre)}" data-mov-desc="${escHtml(descOverride||item.desc||'')}" data-mov-fecha="${escHtml(item.fecha)}" style="cursor:pointer;" onclick="abrirDetalleMov(this)"`;
+    };
     html+=itemsLinea.slice(0,60).map(item=>{
       if(item._tipo==='corte'){
         const hoyStr=new Date().toISOString().substring(0,10);
@@ -16603,12 +16672,13 @@ function abrirDetalleTCSheet(tcId){
         const favorBadge = esFavor
           ? `<span style="font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;"><i class="fa-solid fa-handshake" style="margin-right:3px;font-size:7px;"></i>favor</span>`
           : '';
-        return `<div class="gasto-item" style="margin-bottom:7px;${esFavor?'border-color:rgba(96,176,240,.25);':''}">
+        const _origenC = c._desdeCP ? 'Plata comprometida' : 'Tarjeta de crédito';
+        return `<div class="gasto-item" ${_tcAttrs(c,_origenC,null)} style="margin-bottom:7px;cursor:pointer;${esFavor?'border-color:rgba(96,176,240,.25);':''}">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${c.desc}${favorBadge}</div><div class="row-sub">${c.fecha}</div></div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span class="row-amount" style="color:${esFavor?'var(--blue)':'var(--red)'};">${fmt(c.monto)}</span>
-            <button type="button" onclick="eliminarCompraTC('${tc.id}','${c.id}')" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);opacity:.6;display:flex;align-items:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
+            <button type="button" onclick="event.stopPropagation();eliminarCompraTC('${tc.id}','${c.id}')" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);opacity:.6;display:flex;align-items:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
             </button>
           </div>
@@ -16638,7 +16708,8 @@ function abrirDetalleTCSheet(tcId){
         const iconoBadge=esEncargo
           ? `<i class="fa-solid fa-box" style="margin-right:3px;font-size:7px;"></i>`
           : `<i class="fa-solid fa-hand-holding-dollar" style="margin-right:3px;font-size:7px;"></i>`;
-        return `<div class="gasto-item" style="margin-bottom:7px;border-color:${colorBorde};">
+        const _origenM = esEncargo ? 'Encargos' : ('Préstamos · ' + (((S.deudores||[]).find(x=>x.id===m.deudorId)||{}).nombre||''));
+        return `<div class="gasto-item" ${_tcAttrs(m,_origenM,null)} style="margin-bottom:7px;cursor:pointer;border-color:${colorBorde};">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${m.desc}</div><div class="row-sub">${m.fecha}</div></div>
           <span class="row-amount" style="color:${colorMonto};">${fmt(m.monto)}</span>
@@ -16654,7 +16725,8 @@ function abrirDetalleTCSheet(tcId){
       const descPago = p.nota
         ? p.nota
         : 'Abono a la deuda de '+(tc.nombre||'tu tarjeta')+' — no corresponde a una compra específica';
-      return `<div class="gasto-item" style="border-color:rgba(200,240,96,.3);border-left:3px solid var(--accent);margin-bottom:7px;background:rgba(200,240,96,.04);">
+      const otrasPago = p.fuente ? [{fuente:p.fuente, monto:-p.monto}] : null;
+      return `<div class="gasto-item" ${_tcAttrs(p,'Tarjeta de crédito',otrasPago,'Abono a tu deuda')} style="border-color:rgba(200,240,96,.3);border-left:3px solid var(--accent);margin-bottom:7px;background:rgba(200,240,96,.04);cursor:pointer;">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">Abono a tu deuda</div><div class="row-sub">${p.fecha}</div></div>
           <span class="row-amount c-green">−${fmt(p.monto)}</span>

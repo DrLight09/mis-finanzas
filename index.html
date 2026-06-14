@@ -9666,87 +9666,119 @@ function abrirDetalleMov(el){
     }
   } catch(_){}
 
-  // ── Info rica del movimiento raw ─────────────────────────────────────────
+  // ── Info rica del movimiento raw en lenguaje claro ──────────────────────
   let richHtml = '';
   if (_rawMov) {
     const rm = _rawMov;
     const richParts = [];
 
-    // 1. Nota del movimiento
-    if (rm.nota && rm.nota !== desc) {
-      richParts.push(`<div style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:12px;color:var(--text2);line-height:1.5;">${escHtml(rm.nota)}</div>`);
+    // Nota del movimiento (si es distinta a la descripción principal)
+    if (rm.nota && rm.nota !== desc && !/automáticamente|contable neutro/i.test(rm.nota)) {
+      richParts.push(`
+        <div style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);">
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Nota</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.5;">${escHtml(rm.nota)}</div>
+        </div>`);
     }
 
-    // 2. Diferencial / margen (encargos, cuentas estándar)
+    // ── Diferencial / margen ────────────────────────────────────────────────
     if (rm.diferencial) {
-      const difHtml = _difRenderHistorial(rm);
-      if (difHtml) richParts.push(difHtml);
+      const d = rm.diferencial;
+      const benefs = (d.beneficiarios || []).filter(b => b.nombre || b.monto > 0);
+      const benefsNorm   = benefs.filter(b => !b.pagadoPorMi);
+      const benefsYoPague = benefs.filter(b => b.pagadoPorMi);
+
+      // Frase 1: qué dijo vs qué costó realmente
+      richParts.push(`
+        <div style="padding:12px 14px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;font-weight:600;">¿Qué pasó con el precio?</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.7;">
+            Le dijiste que costó <strong style="color:var(--text1);">${fmt(d.dijo)}</strong>, pero en realidad costó <strong style="color:var(--text1);">${fmt(d.real)}</strong>.
+            La diferencia de <strong style="color:var(--amber);">${fmt(d.margen)}</strong> ${d.margen > 0 ? 'es tu margen' : 'es pérdida tuya'}.
+          </div>
+          ${d.yoMeQuedo > 0 && d.miCuenta ? `
+          <div style="font-size:12px;color:var(--text2);">
+            Guardaste <strong style="color:var(--accent);">${fmt(d.yoMeQuedo)}</strong> en <strong>${escHtml(fuenteLabel(d.miCuenta))}</strong>.
+          </div>` : ''}
+          ${benefsNorm.length ? `
+          <div style="font-size:12px;color:var(--text2);">
+            Del margen le diste:
+            ${benefsNorm.map(b => `<span style="display:inline-block;margin-top:3px;padding:2px 8px;background:rgba(240,184,64,.12);border-radius:4px;font-size:11px;"><strong>${escHtml(b.nombre)}</strong> → ${fmt(b.monto)}</span>`).join(' ')}
+          </div>` : ''}
+          ${benefsYoPague.length ? `
+          <div style="font-size:12px;color:var(--text2);">
+            Pagaste de tu bolsillo por:
+            ${benefsYoPague.map(b => `<span style="display:inline-block;margin-top:3px;padding:2px 8px;background:rgba(96,176,240,.1);border-radius:4px;font-size:11px;color:var(--blue);"><strong>${escHtml(b.nombre)}</strong> ${fmt(b.monto)}${b.miCuentaSalida ? ' desde ' + escHtml(fuenteLabel(b.miCuentaSalida)) : ''}${b.miCuentaEntrada ? ' → recuperas en ' + escHtml(fuenteLabel(b.miCuentaEntrada)) : ''}</span>`).join(' ')}
+            <div style="font-size:11px;color:var(--text3);margin-top:4px;">Pusiste esa plata de tu cuenta pero se te descuenta del encargo, así que es plata neutra.</div>
+          </div>` : ''}
+        </div>`);
     }
 
-    // 3. Extra partes del abono (deudores)
+    // ── Extra del abono (deudores: dónde fue el extra del pago) ───────────
     if (rm._extPartes && rm._extPartes.length) {
       const extraTotal = rm._extPartes.reduce((a,p)=>a+(p.monto||0),0);
-      const partesTexto = rm._extPartes.map(p => {
-        if (p.tipo==='guardar')   return `${fuenteLabel(p.cuenta)} ${fmt(p.monto)}`;
-        if (p.tipo==='gastar')    return `Gasto ${fmt(p.monto)}`;
-        if (p.tipo==='regalar')   return `Regalo ${fmt(p.monto)}`;
-        if (p.tipo==='pendiente') return `Sin asignar ${fmt(p.monto)}`;
-        return '';
-      }).filter(Boolean).join(' · ');
-      richParts.push(`<div style="padding:10px 12px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);font-size:11px;font-family:'DM Mono',monospace;color:var(--blue);">
-        Extra ${fmt(extraTotal)}: ${partesTexto}
-      </div>`);
+      richParts.push(`
+        <div style="padding:12px 14px;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:6px;">
+          <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;font-weight:600;">¿A dónde fue el extra del pago? (${fmt(extraTotal)})</div>
+          ${rm._extPartes.map(p => {
+            if (p.tipo==='guardar')   return `<div style="font-size:12px;color:var(--text2);">→ Guardaste <strong style="color:var(--accent);">${fmt(p.monto)}</strong> en <strong>${escHtml(fuenteLabel(p.cuenta))}</strong></div>`;
+            if (p.tipo==='gastar')    return `<div style="font-size:12px;color:var(--text2);">→ Se usó como gasto <strong>${fmt(p.monto)}</strong></div>`;
+            if (p.tipo==='regalar')   return `<div style="font-size:12px;color:var(--text2);">→ Lo regalaste: <strong>${fmt(p.monto)}</strong></div>`;
+            if (p.tipo==='pendiente') return `<div style="font-size:12px;color:var(--text2);">→ Quedó sin asignar: <strong>${fmt(p.monto)}</strong></div>`;
+            return '';
+          }).filter(Boolean).join('')}
+        </div>`);
     }
 
-    // 4. Ganancia virtual (préstamos con parte "de ganancia")
+    // ── Ganancia virtual en préstamo (no salió plata real) ─────────────────
     if (rm._gananciaVirtual) {
-      richParts.push(`<div style="padding:8px 12px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius-sm);font-size:11px;font-family:'DM Mono',monospace;color:var(--accent);">
-        💰 Incluye ${fmt(rm._gananciaVirtual)} de ganancia (no desembolsada)
-      </div>`);
+      richParts.push(`
+        <div style="padding:12px 14px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.18);border-radius:var(--radius-sm);">
+          <div style="font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:5px;">Ganancia incluida</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.6;">
+            De este préstamo, <strong style="color:var(--accent);">${fmt(rm._gananciaVirtual)}</strong> son ganancia tuya que se registró como si los hubieras prestado, pero no salieron de ninguna cuenta.
+          </div>
+        </div>`);
     }
 
-    // 5. Fuentes de préstamo split (si no están ya en otrasHtml)
+    // ── Fuentes split del préstamo ──────────────────────────────────────────
     if (rm.fuentes && rm.fuentes.length && !otrasCuentas.length) {
-      const fuentesText = rm.fuentes.map(f=>`${fuenteLabel(f.fuente)} ${fmt(f.monto)}`).join(' + ');
-      richParts.push(`<div style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:11px;color:var(--text2);">
-        Salió de: ${fuentesText}
-      </div>`);
+      richParts.push(`
+        <div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);">
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Salió de</div>
+          ${rm.fuentes.map(f=>`<div style="font-size:12px;color:var(--text2);padding:2px 0;"><strong>${escHtml(fuenteLabel(f.fuente))}</strong> → ${fmt(f.monto)}</div>`).join('')}
+        </div>`);
     }
 
-    // 6. Destino(s) del abono (si no están ya en otrasHtml)
-    if (!otrasCuentas.length) {
-      if (rm.destinos && rm.destinos.length) {
-        const destText = rm.destinos.map(r=>`${fuenteLabel(r.fuente)} ${fmt(r.monto)}`).join(' + ');
-        richParts.push(`<div style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:11px;color:var(--text2);">
-          Entró a: ${destText}
+    // ── Destinos del abono ──────────────────────────────────────────────────
+    if (!otrasCuentas.length && (rm.destinos?.length || rm.destino)) {
+      const destinos = rm.destinos?.length ? rm.destinos : [{fuente: rm.destino, monto: rm.monto}];
+      richParts.push(`
+        <div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);">
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Entró a</div>
+          ${destinos.map(r=>`<div style="font-size:12px;color:var(--text2);padding:2px 0;"><strong>${escHtml(fuenteLabel(r.fuente))}</strong>${r.monto ? ' → ' + fmt(r.monto) : ''}</div>`).join('')}
         </div>`);
-      } else if (rm.destino) {
-        richParts.push(`<div style="padding:8px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:11px;color:var(--text2);">
-          Entró a: ${escHtml(fuenteLabel(rm.destino))}
-        </div>`);
-      }
     }
 
-    // 7. Vía TC (si el abono del deudor pasó por TC)
+    // ── Vía tarjeta de crédito ──────────────────────────────────────────────
     if (rm._viaTC && rm._tcId) {
       const tcName = ((S.tarjetasCredito||[]).find(t=>t.id===rm._tcId)||{}).nombre||'';
-      if (tcName) richParts.push(`<div style="padding:8px 12px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);font-size:11px;color:var(--blue);">
-        Via tarjeta: ${escHtml(tcName)}
-      </div>`);
+      if (tcName) richParts.push(`
+        <div style="padding:10px 12px;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);">
+          <div style="font-size:12px;color:var(--text2);">Compra hecha con la tarjeta <strong>${escHtml(tcName)}</strong> — la deuda la tiene el deudor, no tu tarjeta.</div>
+        </div>`);
     }
 
-    // 8. Vía encargo (abono que pasó por un encargo)
+    // ── Vía encargo ─────────────────────────────────────────────────────────
     if (rm._viaEncargo && rm._encNombre) {
-      richParts.push(`<div style="padding:8px 12px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);font-size:11px;color:var(--blue);">
-        Via encargo de ${escHtml(rm._encNombre)}
-      </div>`);
+      richParts.push(`
+        <div style="padding:10px 12px;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);">
+          <div style="font-size:12px;color:var(--text2);">Este pago salió del encargo de <strong>${escHtml(rm._encNombre)}</strong>, no de tu bolsillo directamente.</div>
+        </div>`);
     }
 
     if (richParts.length) {
-      richHtml = `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
-        <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Detalles</div>
-        ${richParts.join('')}
-      </div>`;
+      richHtml = `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">${richParts.join('')}</div>`;
     }
   }
 

@@ -4115,11 +4115,12 @@ function descontarFuente(fuente,monto){
     // Plata virtual: no salió de ninguna cuenta real, es ganancia futura
     return;
   }
-  if(fuente==='nequi'||fuente==='efectivo'){
-    // Nequi y Efectivo usan saldo calculado desde movimientos (_calcSaldoCuenta).
-    // No hay número mutable que actualizar aquí — el movimiento ya fue
-    // registrado en S.movimientos / S.gastosVar antes de llamar descontarFuente.
-    return;
+  if(fuente==='nequi'){
+    S.nequiSaldo=Math.max(0,(S.nequiSaldo||0)-monto);
+    document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
+  } else if(fuente==='efectivo'){
+    S.efectivoSaldo=Math.max(0,(S.efectivoSaldo||0)-monto);
+    document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
   } else if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -4141,10 +4142,12 @@ function descontarFuente(fuente,monto){
 }
 function sumarFuente(fuente,monto){
   if(!fuente||!monto)return;
-  if(fuente==='nequi'||fuente==='efectivo'){
-    // Nequi y Efectivo usan saldo calculado desde movimientos (_calcSaldoCuenta).
-    // No hay número mutable que actualizar aquí.
-    return;
+  if(fuente==='nequi'){
+    S.nequiSaldo=(S.nequiSaldo||0)+monto;
+    document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
+  } else if(fuente==='efectivo'){
+    S.efectivoSaldo=(S.efectivoSaldo||0)+monto;
+    document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
   } else if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -4641,78 +4644,10 @@ function poblarFuente(selectId, required=false){
   sel.innerHTML=placeholder+fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
 }
 
-/* ---- SALDO CALCULADO DESDE MOVIMIENTOS (nequi / efectivo) ----
-   En vez de guardar S.nequiSaldo y S.efectivoSaldo como números mutables
-   en Firestore (que pueden desincronizarse si un movimiento se registra sin
-   actualizar el saldo), los calculamos on-the-fly sumando todos los
-   movimientos de S.movimientos + S.gastosVar que tienen esa fuente.
-   Esto garantiza que el saldo siempre sea consistente con el historial.
-   S.nequiSaldo / S.efectivoSaldo se mantienen en Firestore solo para
-   compatibilidad con backups antiguos; se ignoran en runtime.
------------------------------------------------------------------ */
-function _calcSaldoCuenta(fuente){
-  if(fuente!=='nequi'&&fuente!=='efectivo')return 0;
-  let saldo=0;
-  // Movimientos manuales: apertura, entrada suman; salida_manual, salida restan
-  (S.movimientos||[]).forEach(m=>{
-    if(m.fuente!==fuente)return;
-    if(m.tipo==='apertura'||m.tipo==='entrada')saldo+=m.monto||0;
-    else if(m.tipo==='salida_manual'||m.tipo==='salida')saldo-=m.monto||0;
-    else if(m.tipo==='transferencia'){
-      // _intercambioEntrada / _intercambioSalida determinan el signo semántico
-      if(m._intercambioEntrada)saldo+=m.monto||0;
-      else if(m._intercambioSalida)saldo-=m.monto||0;
-      else if(m._fuenteDestino&&m._fuenteDestino!==fuente)saldo-=m.monto||0; // salida hacia otro destino
-      else saldo+=m.monto||0; // llegó a esta cuenta
-    }
-  });
-  // Gastos que salieron de esta fuente
-  (S.gastosVar||[]).forEach(g=>{if(g.fuente===fuente)saldo-=g.monto||0;});
-  // Préstamos dados (salieron) y abonos recibidos (entraron)
-  (S.deudores||[]).forEach(d=>{
-    (d.movimientos||[]).forEach(m=>{
-      if(m.tipo==='prestamo'){
-        if(m.fuente===fuente)saldo-=m.monto||0;
-        (m.fuentes||[]).forEach(f=>{if(f.fuente===fuente)saldo-=f.monto||0;});
-      } else if(m.tipo==='abono'){
-        if(m.destino===fuente)saldo+=m.monto||0;
-        (m.destinos||[]).forEach(dest=>{if(dest.fuente===fuente)saldo+=dest.monto||0;});
-      }
-    });
-  });
-  // Transferencias entre cuentas (S.transferencias)
-  (S.transferencias||[]).forEach(t=>{
-    if(t.origen===fuente)saldo-=t.monto||0;
-    if(t.destino===fuente)saldo+=t.monto||0;
-  });
-  // Mesadas recibidas
-  ['papa','mama'].forEach(parent=>{
-    const data=getMesadaData(parent);
-    Object.values(data).forEach(info=>{
-      if(info.esSaldoInicial)return;
-      if(info.splits&&info.splits.length){
-        info.splits.forEach(s=>{if(s.fuente===fuente)saldo+=s.monto||0;});
-      } else if(info.destino===fuente){saldo+=info.monto||0;}
-    });
-  });
-  // Cobros de Spotify
-  (S.spotifyHistorial||[]).forEach(h=>{
-    if(h.tipo==='cobro'&&h.fuente===fuente)saldo+=h.monto||0;
-  });
-  // Plata comprometida: reposiciones y sobrantes que llegan a esta fuente
-  (S.plataCometida||[]).forEach(item=>{
-    if(!item.recibido)return;
-    (item.destinos||[]).forEach(dest=>{
-      if((dest.tipo==='reposicion'||dest.tipo==='otro')&&dest.fuente===fuente)saldo+=dest.monto||0;
-    });
-  });
-  return Math.max(0,saldo);
-}
-
 function getSaldoFuente(fuente){
   if(!fuente)return 0;
-  if(fuente==='nequi')return _calcSaldoCuenta('nequi');
-  if(fuente==='efectivo')return _calcSaldoCuenta('efectivo');
+  if(fuente==='nequi')return S.nequiSaldo||0;
+  if(fuente==='efectivo')return S.efectivoSaldo||0;
   if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -4805,9 +4740,8 @@ function load(){
   document.getElementById('nuRate').value=S.nuRate||9.25;
   const nuTasaEl=document.getElementById('nuTasaGlobal');
   if(nuTasaEl)nuTasaEl.value=(S.nuTasaGlobal!=null)?String(S.nuTasaGlobal).replace('.',','):'';
-  // Nota: nequiSaldo y efectivoSaldo ya no se guardan como números mutables
-  // — se calculan desde S.movimientos via _calcSaldoCuenta(). Los inputs
-  // hidden #nequiSaldo / #efectivoSaldo ya no se usan en runtime.
+  document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
+  document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
   if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(S.mesadaMontoPapa);
   if(document.getElementById('mesadaMonteMama'))document.getElementById('mesadaMonteMama').value=fmtInput(S.mesadaMonteMama);
   document.getElementById('spotifyCosto').value=fmtInput(S.spotifyCosto);
@@ -4854,8 +4788,8 @@ function save(){
     return v||fallback||0;
   }
   S.nuRate=parseMoney(document.getElementById('nuRate').value)||9.25;
-  // S.nequiSaldo y S.efectivoSaldo ya no se leen del DOM ni se guardan en Firestore
-  // — el saldo se deriva de S.movimientos via _calcSaldoCuenta() en cada render.
+  S.nequiSaldo=_readMoney('nequiSaldo', S.nequiSaldo);
+  S.efectivoSaldo=_readMoney('efectivoSaldo', S.efectivoSaldo);
   S.mesadaMontoPapa=parseMoney(document.getElementById('mesadaMontoPapa')?.value)||S.mesadaMontoPapa||80000;
   S.mesadaMonteMama=parseMoney(document.getElementById('mesadaMonteMama')?.value)||S.mesadaMonteMama||80000;
   S.spotifyCosto=parseMoney(document.getElementById('spotifyCosto').value)||0;
@@ -4925,8 +4859,8 @@ function calcDeudaTcPropia() {
 function calcPatrimonioTotal(){
   const nu=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
-  const nequi=_calcSaldoCuenta('nequi');
-  const ef=_calcSaldoCuenta('efectivo');
+  const nequi=S.nequiSaldo||0;
+  const ef=S.efectivoSaldo||0;
   const prest=typeof totalPrestadoPendiente==="function"?totalPrestadoPendiente():0;
   const custom=(S.cuentasPersonalizadas||[]).filter(c=>c.incluirEnTotal).reduce((a,c)=>a+(c.saldo||0),0);
   const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
@@ -5133,17 +5067,6 @@ function mesActual(){const d=new Date();return d.getFullYear()+'-'+String(d.getM
 
 function gastosMes(mesK){
   return(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mesK);
-}
-
-/* ---- HELPER: ¿Se pagó un gasto fijo en un mes dado? ----
-   En vez de leer S.pagosGastosFijos (objeto duplicado), busca directamente
-   en S.gastosVar. Retorna el objeto del gasto si fue pagado, o undefined.
-   mesK formato: 'YYYY-MM'
----------------------------------------------------------------- */
-function _gastoFijoPagadoEnMes(gfId, mesK){
-  return (S.gastosVar||[]).find(g=>
-    g.esPagoGastoFijo && g.gastoFijoId===gfId && mesKey(g.fecha)===mesK
-  );
 }
 
 // Suma los ingresos fijos configurados que aplican para un mes dado (YYYY-MM)
@@ -5426,8 +5349,8 @@ function refresh(){
     if(tcVerificarCortes())save();
   }
   const nu=nuTotal();
-  const nequi=_calcSaldoCuenta('nequi');
-  const ef=_calcSaldoCuenta('efectivo');
+  const nequi=S.nequiSaldo||0;
+  const ef=S.efectivoSaldo||0;
   const prest=totalPrestadoPendiente();
   // CDTs value comes from calcCDT nested in cajitas
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
@@ -5436,9 +5359,11 @@ function refresh(){
   const customTotal=(S.cuentasPersonalizadas||[]).filter(c=>c.incluirEnTotal).reduce((a,c)=>a+(c.saldo||0),0);
   const disp=cajitasLibres+nequi+ef+customTotal;
   const mes=mesActual();
-  const _gfFijos=(S.gastosFijos||[]).reduce((a,g)=>
-    _gastoFijoPagadoEnMes(g.id,mes)?a+(g.monto||0):a
-  ,0);
+  const _gfFijos=(S.gastosFijos||[]).reduce((a,g)=>{
+    // Solo sumar si fue pagado este mes
+    const pagos=S.pagosGastosFijos||{};
+    return pagos[g.id+'_'+mes]?a+(g.monto||0):a;
+  },0);
   // _spFijo eliminado: el costo mensual de Spotify es solo un valor de referencia para el módulo.
   // Se cuenta como gasto real únicamente cuando se registra el pago (queda en gastosVar).
   const gfTotal=_gfFijos;
@@ -5515,7 +5440,8 @@ function renderAnalisis(){
   const gvMes=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC);
   const gvTotal=gvMes.reduce((a,g)=>a+(g.monto||0),0);
 
-  const gfTotal=(S.gastosFijos||[]).reduce((a,g)=>_gastoFijoPagadoEnMes(g.id,mes)?a+(g.monto||0):a,0);
+  const pagosGF=S.pagosGastosFijos||{};
+  const gfTotal=(S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mes]?a+(g.monto||0):a,0);
   const gastosTotalMes=gvTotal+gfTotal;
 
   // ── Ingresos estimados del mes (mesada + ingresos fijos) ─────────────
@@ -6966,8 +6892,11 @@ async function deleteGastoVar(id){
       // Gasto normal: devolver el dinero a la cuenta origen
       if(g.fuente)sumarFuente(g.fuente,g.monto);
     }
-    // Nota: al eliminar el gasto de gastosVar abajo, _gastoFijoPagadoEnMes
-    // ya no lo encontrará — no hay objeto separado que limpiar.
+    // Bug fix: si era pago de gasto fijo, desmarcar como pagado
+    if(g.esPagoGastoFijo&&g.gastoFijoId){
+      const mes=mesKey(g.fecha);
+      if(S.pagosGastosFijos)delete S.pagosGastosFijos[g.gastoFijoId+'_'+mes];
+    }
   }
   S.gastosVar=(S.gastosVar||[]).filter(x=>x.id!==id);
   save();refresh();
@@ -7073,7 +7002,8 @@ function renderGastosFijos(){
   const todos=[...extras,...g];
   // totalGF: solo contar gastos fijos reales que ya fueron PAGADOS este mes (no los virtuales ni los pendientes)
   const mesClaveTot=mesActual();
-  const totalGFPagado=g.reduce((a,x)=>_gastoFijoPagadoEnMes(x.id,mesClaveTot)?a+(x.monto||0):a,0);
+  const pagosTot=S.pagosGastosFijos||{};
+  const totalGFPagado=g.reduce((a,x)=>pagosTot[x.id+'_'+mesClaveTot]?a+(x.monto||0):a,0);
   document.getElementById('totalGF').textContent=fmt(totalGFPagado);
   if(!todos.length){el.innerHTML=emptyState(
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
@@ -7084,7 +7014,8 @@ function renderGastosFijos(){
   );return;}
   const mesClave=mesActual();
   el.innerHTML=todos.map((x,i)=>{
-    const infoPago=(!x._virtual&&x.id)?_gastoFijoPagadoEnMes(x.id,mesClave):null;
+    const pagos=S.pagosGastosFijos||{};
+    const infoPago=(!x._virtual&&x.id)?pagos[x.id+'_'+mesClave]:null;
     const pagado=!!infoPago;
     let accionHtml='';
     if(pagado){
@@ -7130,8 +7061,9 @@ async function deleteGastoFijo(id){
   const ok=await dialogo('Eliminar gasto fijo','¿Seguro que quieres eliminar este gasto fijo? Se perderá también su historial de pagos del mes.','Eliminar',true);
   if(!ok)return;
   S.gastosFijos=(S.gastosFijos||[]).filter(x=>x.id!==id);
-  // Limpiar pagos de este gasto fijo en gastosVar (fuente única de verdad)
-  S.gastosVar=(S.gastosVar||[]).filter(g=>!(g.esPagoGastoFijo&&g.gastoFijoId===id));
+  // Limpiar pagos registrados de este gasto fijo
+  const pagos=S.pagosGastosFijos||{};
+  Object.keys(pagos).forEach(k=>{if(k.startsWith(id+'_'))delete pagos[k];});
   save();refresh();
   toast('Gasto fijo eliminado','ok');
 }
@@ -7178,7 +7110,8 @@ function confirmarPagarGastoFijo(){
   const gf=(S.gastosFijos||[]).find(x=>x.id===pgfIdActual);
   if(!gf)return;
   // Verificar si ya fue pagado este mes
-  if(_gastoFijoPagadoEnMes(gf.id,mesActual())){
+  if(!S.pagosGastosFijos)S.pagosGastosFijos={};
+  if(S.pagosGastosFijos[gf.id+'_'+mesActual()]){
     errEl.textContent='Este gasto ya fue pagado este mes.';errEl.style.display='block';return;
   }
   const saldo=getSaldoActual(fuente);
@@ -7190,9 +7123,12 @@ function confirmarPagarGastoFijo(){
   // Descontar saldo
   descontarFuente(fuente,gf.monto);
   const nota=document.getElementById('pgf-nota')?document.getElementById('pgf-nota').value.trim():'';
-  // Registrar pago — gastosVar es la única fuente de verdad (no se duplica en pagosGastosFijos)
+  // Crear gasto variable automático
   if(!S.gastosVar)S.gastosVar=[];
   S.gastosVar.push({id:uid(),desc:'Pago de '+gf.nombre,monto:gf.monto,fecha,cat:gf.cat,fuente,nota:nota||'Pago de gasto fijo',esPagoGastoFijo:true,gastoFijoId:gf.id});
+  // Registrar pago del mes
+  if(!S.pagosGastosFijos)S.pagosGastosFijos={};
+  S.pagosGastosFijos[gf.id+'_'+mesActual()]={fecha,fuente,monto:gf.monto};
   save();refresh();
   closeSheet('pagar-gasto-fijo');
   if(window.logCambio){const _pgfg=(S.gastosFijos||[]).find(x=>x.id===pgfIdActual);if(_pgfg)logCambio('Pagaste '+_pgfg.nombre,'',_pgfg.monto,'gasto_fijo');}
@@ -9258,7 +9194,7 @@ function volverSelector() {
 
 function renderDetalleCuenta(tipo) {
   if (tipo === 'nequi') {
-    const saldo = _calcSaldoCuenta('nequi');
+    const saldo = S.nequiSaldo || 0;
     document.getElementById('det-nequi-saldo').textContent = fmt(saldo);
     // Banner saldo inicial Nequi
     renderBannerApertura('nequi');
@@ -9276,7 +9212,7 @@ function renderDetalleCuenta(tipo) {
     const movs = getMovimientosCuenta('nu');
     renderMovsCuenta('det-nu-movs', movs, 'var(--nu-light)', 'nu');
   } else if (tipo === 'efectivo') {
-    const saldo = _calcSaldoCuenta('efectivo');
+    const saldo = S.efectivoSaldo || 0;
     document.getElementById('det-ef-saldo').textContent = fmt(saldo);
     // Banner saldo inicial Efectivo
     renderBannerApertura('efectivo');
@@ -10098,7 +10034,11 @@ async function eliminarMovimiento(btn) {
     const g = (S.gastosVar || []).find(x => x.id === movId);
     if (g) {
       if (g.fuente) sumarFuente(g.fuente, g.monto); // devolver el dinero
-      // Al filtrar gastosVar abajo, _gastoFijoPagadoEnMes ya no lo encontrará.
+      // Bug fix: si era pago de gasto fijo, desmarcar como pagado
+      if(g.esPagoGastoFijo && g.gastoFijoId){
+        const mes = mesKey(g.fecha);
+        if(S.pagosGastosFijos) delete S.pagosGastosFijos[g.gastoFijoId+'_'+mes];
+      }
       S.gastosVar = S.gastosVar.filter(x => x.id !== movId);
     }
   } else if (movTipoEl === 'prestamo') {
@@ -10154,8 +10094,8 @@ async function eliminarMovimiento(btn) {
 let adFuente='';
 
 function getSaldoActual(fuente){
-  if(fuente==='nequi')return _calcSaldoCuenta('nequi');
-  if(fuente==='efectivo')return _calcSaldoCuenta('efectivo');
+  if(fuente==='nequi')return S.nequiSaldo||0;
+  if(fuente==='efectivo')return S.efectivoSaldo||0;
   if(fuente&&fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -11260,8 +11200,8 @@ function _checkGastoAlto() {
   const gvMes = gastosMes(mes).reduce((a,g) => a + (g.monto||0), 0);
   const gfTotal = (S.gastosFijos||[]).reduce((a,g) => a + (g.monto||0), 0);
   const nu = nuTotal();
-  const nequi = _calcSaldoCuenta('nequi');
-  const ef = _calcSaldoCuenta('efectivo');
+  const nequi = S.nequiSaldo || 0;
+  const ef = S.efectivoSaldo || 0;
   const disp = nu + nequi + ef;
   const indicator = document.getElementById('hero-change-indicator');
   if (!indicator) return;
@@ -13879,7 +13819,8 @@ document.addEventListener('focusin', function(e){
       return;
     }
     progressCard.style.display = 'block';
-    const pagados = fijos.filter(g => !!_gastoFijoPagadoEnMes(g.id,mes)).length;
+    const pagos = S.pagosGastosFijos || {};
+    const pagados = fijos.filter(g => !!pagos[g.id+'_'+mes]).length;
     const pct = Math.round((pagados/total)*100);
     document.getElementById('fijos-progress-fill').style.width = pct+'%';
     document.getElementById('fijos-progress-title').textContent =
@@ -14397,8 +14338,9 @@ document.addEventListener('focusin', function(e){
     const fmt = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
     const S = window.S;
     const mesK = ultimoMesVisto;
+    const pagosGF = S.pagosGastosFijos || {};
     const gvMes = (S.gastosVar||[]).filter(g=>(g.fecha||'').startsWith(mesK)&&!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);
-    const gfMes = (S.gastosFijos||[]).reduce((a,g)=>_gastoFijoPagadoEnMes(g.id,mesK)?a+(g.monto||0):a,0);
+    const gfMes = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mesK]?a+(g.monto||0):a,0);
     const totalGastos = gvMes + gfMes;
     // Patrimonio al cierre (último registro del mes anterior en el historial)
     const hist = S.patrimonioHistorial || [];
@@ -14863,9 +14805,11 @@ document.addEventListener('focusin', function(e){
     // ── Cálculos base ────────────────────────────────────────────────────
     const patrimonio = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
     const mes = window.mesActual ? window.mesActual() : '';
+    const pagosGF = S.pagosGastosFijos || {};
+
     // Gastos del mes: variables + fijos pagados (excluye pagos de TC — son cancelación de deuda, no gasto nuevo)
     const gvMes = (S.gastosVar||[]).filter(g=>window.mesKey?window.mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC:true).reduce((a,g)=>a+(g.monto||0),0);
-    const gfTotal = (S.gastosFijos||[]).reduce((a,g)=>_gastoFijoPagadoEnMes(g.id,mes)?a+(g.monto||0):a,0);
+    const gfTotal = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mes]?a+(g.monto||0):a,0);
     const gastosMes = gvMes + gfTotal;
 
     // Deuda TC que realmente es mía (excluye encargos, plata comprometida, préstamos TC)
@@ -14918,7 +14862,7 @@ document.addEventListener('focusin', function(e){
     const nu = (S.cajitas||[]).reduce((a,c)=>a+(window.calcC?window.calcC(c).val:c.saldo||0),0);
     const cdtVal = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+(window.calcCDT?window.calcCDT(cdt).val:cdt.monto||0),0),0);
     // CORRECCIÓN: liquido excluye CDTs (son ahorros bloqueados, no disponibles de inmediato)
-    const liquidoReal = nu + _calcSaldoCuenta('nequi') + _calcSaldoCuenta('efectivo')
+    const liquidoReal = nu + (S.nequiSaldo||0) + (S.efectivoSaldo||0)
       + (S.cuentasPersonalizadas||[]).filter(c=>c.incluirEnTotal).reduce((a,c)=>a+(c.saldo||0),0)
       - deudaTC;
     // patrimonio total sí incluye CDTs para otros cálculos
@@ -15072,6 +15016,7 @@ document.addEventListener('focusin', function(e){
     // saldos iniciales de encargos u otras entradas no recurrentes.
     const mesKey = window.mesKey || (f=>(f||'').slice(0,7));
     const mesActual = window.mesActual ? window.mesActual() : '';
+    const pagosGF = S.pagosGastosFijos || {};
 
     // Construir meses recientes (hasta 3 meses hacia atrás)
     const mesesRecientes = [];
@@ -15114,7 +15059,7 @@ document.addEventListener('focusin', function(e){
 
       // Gastos del mes (excluir pagos de TC y gastos con plata-comprometida: no son flujo propio)
       const gv = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mk&&!g.esPagoGastoFijo&&!g._esPagoTC&&g.fuente!=='plata-comprometida').reduce((a,g)=>a+(g.monto||0),0);
-      const gf = (S.gastosFijos||[]).reduce((a,g)=>_gastoFijoPagadoEnMes(g.id,mk)?a+(g.monto||0):a,0);
+      const gf = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mk]?a+(g.monto||0):a,0);
 
       mesesRecientes.push({ mk, ing, gastos: gv+gf, tieneGastos: (gv+gf)>0 });
     }
@@ -15286,10 +15231,13 @@ document.addEventListener('focusin', function(e){
       (c.movimientos||[]).filter(m => m.tipo !== 'apertura').forEach(m => todos.push({ fecha:m.fecha, desc:(m.tipo==='ingreso'?'+':'-')+' '+c.nombre+(m.nota?' · '+m.nota:''), monto:m.tipo==='ingreso'?m.monto:-m.monto, tipo:'Cuenta' }));
     });
 
-    // Pagos de gastos fijos (leídos directamente desde gastosVar — fuente única)
-    (S.gastosVar||[]).filter(g=>g.esPagoGastoFijo&&g.gastoFijoId).forEach(g => {
-      const gf = (S.gastosFijos||[]).find(x=>x.id===g.gastoFijoId);
-      if(gf) todos.push({ fecha:g.fecha, desc:gf.nombre+' (fijo)', monto:-(g.monto||0), tipo:'Fijo' });
+    // Pagos de gastos fijos
+    Object.keys(S.pagosGastosFijos||{}).forEach(key => {
+      const parts = key.split('_');
+      const mesK = parts[parts.length-1];
+      const gfId = parts.slice(0,-1).join('_');
+      const gf = (S.gastosFijos||[]).find(g=>g.id===gfId);
+      if(gf) todos.push({ fecha:mesK+'-01', desc:gf.nombre+' (fijo)', monto:-(gf.monto||0), tipo:'Fijo' });
     });
 
     if(!todos.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:13px 0;text-align:center;">Sin movimientos registrados.</div>'; return; }
@@ -15359,13 +15307,15 @@ document.addEventListener('focusin', function(e){
     const fmt = window.fmt || (x=>String(x));
     const mes = window.mesActual ? window.mesActual() : '';
     const mesKey = window.mesKey || (f=>(f||'').slice(0,7));
+    const pagosGF = S.pagosGastosFijos || {};
+
     // Calcular gasto por categoría este mes
     const gastoCat = {};
     (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mes&&!g.esPagoGastoFijo).forEach(g=>{
       const c=g.cat||'Otro';
       gastoCat[c]=(gastoCat[c]||0)+(g.monto||0);
     });
-    (S.gastosFijos||[]).forEach(g=>{ if(_gastoFijoPagadoEnMes(g.id,mes)){ const c=g.cat||'Otro'; gastoCat[c]=(gastoCat[c]||0)+(g.monto||0); } });
+    (S.gastosFijos||[]).forEach(g=>{ if(pagosGF[g.id+'_'+mes]){ const c=g.cat||'Otro'; gastoCat[c]=(gastoCat[c]||0)+(g.monto||0); } });
 
     el.innerHTML = cats.map(cat => {
       const limite = presup[cat];
@@ -15395,8 +15345,11 @@ document.addEventListener('focusin', function(e){
       rows.push([g.fecha||'',g.desc||'',g.cat||'',-(g.monto||0),'Variable',window.fuenteLabel?window.fuenteLabel(g.fuente):(g.fuente||'')]);
     });
     (S.gastosFijos||[]).forEach(g=>{
-      (S.gastosVar||[]).filter(gv=>gv.esPagoGastoFijo&&gv.gastoFijoId===g.id).forEach(gv=>{
-        rows.push([gv.fecha||'',g.nombre,g.cat||'',-(g.monto||0),'Fijo',window.fuenteLabel?window.fuenteLabel(gv.fuente):(gv.fuente||'')]);
+      Object.keys(S.pagosGastosFijos||{}).forEach(key=>{
+        if(key.startsWith(g.id+'_')){
+          const mes=key.split('_').pop();
+          rows.push([mes+'-01',g.nombre,g.cat||'',-(g.monto||0),'Fijo','']);
+        }
       });
     });
     const csv = rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');

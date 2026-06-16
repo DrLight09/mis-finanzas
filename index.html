@@ -4104,6 +4104,14 @@ function fmtNoCents(n){
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
 function hoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+function crearMovimientoApertura(monto,fecha,nota){
+  // Objeto de movimiento "apertura" estándar. Cualquier sheet que necesite
+  // registrar un saldo inicial en un array de movimientos propio (ej: cuenta
+  // personalizada recién creada) debe usar esto en vez de armar el objeto a mano,
+  // así el tipo y la forma del movimiento quedan consistentes en toda la app.
+  return {id:uid(),tipo:'apertura',monto,fecha:fecha||hoy(),desc:nota||'Saldo inicial',nota:nota||'Saldo inicial'};
+}
 // Escapa caracteres HTML para prevenir XSS al insertar datos de usuario en innerHTML
 function escHtml(s){if(!s&&s!==0)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function mesKey(d){return d?d.substring(0,7):'';}
@@ -4257,7 +4265,7 @@ function crearCuentaCustom(){
   const incluirEnTotal=document.getElementById('nc_incluir').checked;
   if(!S.cuentasPersonalizadas)S.cuentasPersonalizadas=[];
   const nueva={id:uid(),nombre,icono:_ncIconoSel,color:_ncColorSel,saldo,incluirEnTotal,movimientos:[]};
-  if(saldo>0) nueva.movimientos.push({id:uid(),tipo:'apertura',monto:saldo,fecha:hoy(),nota:'Saldo inicial'});
+  if(saldo>0) nueva.movimientos.push(crearMovimientoApertura(saldo,hoy(),'Saldo inicial'));
   S.cuentasPersonalizadas.push(nueva);
   save();refresh();
   closeSheet('nueva-cuenta');
@@ -10132,18 +10140,50 @@ function abrirAgregarDinero(fuente,nombre){
   setTimeout(()=>document.getElementById('adDesc').focus(),200);
 }
 
-function toggleAdApertura(){
-  const chk=document.getElementById('adEsApertura');
+/* ---- SALDO INICIAL / APERTURA — núcleo reutilizable ----
+   Cualquier sheet que agregue dinero a una fuente (cuenta, cajita, etc.)
+   y quiera ofrecer el toggle "Es saldo inicial" debe usar estas 2 funciones
+   en vez de reimplementar el comportamiento:
+     1) _aperturaToggleUI(ids)   -> maneja el cambio de label/placeholder al marcar/desmarcar
+     2) registrarEntradaConApertura(...) -> aplica el saldo + crea el movimiento correcto
+   Así, agregar un nuevo sheet con este patrón es solo: poner el wrap HTML
+   (copiando el de adAperturaWrap), darle ids propios, y llamar estas 2 funciones. */
+
+function _aperturaToggleUI(ids){
+  // ids = {chk, lbl, inp, notaPlaceholder, descPlaceholder}
+  const chk=document.getElementById(ids.chk);
   if(!chk)return;
-  const lbl=document.getElementById('adDescLabel');
-  const inp=document.getElementById('adDesc');
+  const lbl=ids.lbl?document.getElementById(ids.lbl):null;
+  const inp=ids.inp?document.getElementById(ids.inp):null;
+  const notaPh=ids.notaPlaceholder||'Ej: Ahorros de varios meses...';
+  const descPh=ids.descPlaceholder||'Ej: Mesada, regalo, venta, sueldo...';
   if(chk.checked){
     if(lbl)lbl.innerHTML='Nota opcional <span style="color:var(--text3);font-weight:400;">(ej: ahorros de varios meses)</span>';
-    if(inp){inp.placeholder='Ej: Ahorros de varios meses...';inp.value=inp.value||'';}
+    if(inp)inp.placeholder=notaPh;
   } else {
     if(lbl)lbl.innerHTML='¿De dónde viene esta plata? <span style="color:var(--red);">*</span>';
-    if(inp)inp.placeholder='Ej: Mesada, regalo, venta, sueldo...';
+    if(inp)inp.placeholder=descPh;
   }
+}
+
+function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura){
+  // Aplica el monto a la fuente y registra el movimiento con el tipo correcto.
+  // Devuelve la descripción final (por si el caller la necesita para toasts/log).
+  sumarFuente(fuente,monto);
+  if(!S.movimientos)S.movimientos=[];
+  let mov;
+  if(esApertura){
+    mov=crearMovimientoApertura(monto,fecha,desc);
+    mov.fuente=fuente;
+  } else {
+    mov={id:uid(),tipo:'entrada',fuente,monto,fecha,desc:desc||''};
+  }
+  S.movimientos.push(mov);
+  return mov.desc;
+}
+
+function toggleAdApertura(){
+  _aperturaToggleUI({chk:'adEsApertura',lbl:'adDescLabel',inp:'adDesc'});
 }
 
 document.addEventListener('input',function(e){
@@ -10169,12 +10209,7 @@ function confirmarAgregarDinero(){
     const c=(S.cajitas||[]).find(x=>x.id===id);
     if(c)materializarIntereses(c);
   }
-  sumarFuente(adFuente,v);
-  // Registrar movimiento
-  if(!S.movimientos)S.movimientos=[];
-  const tipoMov=esApertura?'apertura':'entrada';
-  const descFinal=desc||(esApertura?'Saldo inicial':'');
-  S.movimientos.push({id:uid(),tipo:tipoMov,fuente:adFuente,monto:v,fecha,desc:descFinal});
+  const descFinal=registrarEntradaConApertura(adFuente,v,fecha,desc,esApertura);
   save();
   closeSheet('agregar-dinero');
   refresh();
@@ -10309,7 +10344,9 @@ function confirmarEditarApertura(){
     mov.monto=nuevo;
   } else {
     if(!S.movimientos)S.movimientos=[];
-    S.movimientos.push({id:uid(),tipo:'apertura',fuente:_eaFuente,monto:nuevo,fecha:hoy(),desc:'Saldo inicial'});
+    const movNuevo=crearMovimientoApertura(nuevo,hoy(),'Saldo inicial');
+    movNuevo.fuente=_eaFuente;
+    S.movimientos.push(movNuevo);
   }
   save();refresh();
   closeSheet('editar-apertura');
@@ -10427,17 +10464,7 @@ function _nuMovRenderCajitas() {
 }
 
 function _nuMovToggleApertura() {
-  const chk = document.getElementById('nuMovEsApertura');
-  const lbl = document.getElementById('nuMovDescLabel');
-  const inp = document.getElementById('nuMovDesc');
-  if (!chk) return;
-  if (chk.checked) {
-    if (lbl) lbl.innerHTML = 'Nota opcional <span style="color:var(--text3);font-weight:400;">(ej: ahorros acumulados)</span>';
-    if (inp) inp.placeholder = 'Ej: Ahorros de varios meses...';
-  } else {
-    if (lbl) lbl.innerHTML = '¿De dónde viene esta plata? <span style="color:var(--red);">*</span>';
-    if (inp) inp.placeholder = 'Ej: Salario, mesada, bono...';
-  }
+  _aperturaToggleUI({chk:'nuMovEsApertura',lbl:'nuMovDescLabel',inp:'nuMovDesc',descPlaceholder:'Ej: Salario, mesada, bono...'});
 }
 
 function _nuMovActualizarPreview() {
@@ -10480,11 +10507,7 @@ function confirmarNuMovimiento() {
   if (typeof materializarIntereses === 'function') materializarIntereses(caj);
 
   if (_nuMovTipo === 'entrada') {
-    sumarFuente(_nuMovCajitaSel, v);
-    if (!S.movimientos) S.movimientos = [];
-    const tipoMov = esApertura ? 'apertura' : 'entrada';
-    const descFinal = desc || (esApertura ? 'Saldo inicial' : '');
-    S.movimientos.push({ id: uid(), tipo: tipoMov, fuente: _nuMovCajitaSel, monto: v, fecha, desc: descFinal });
+    const descFinal = registrarEntradaConApertura(_nuMovCajitaSel, v, fecha, desc, esApertura);
     if (window.logCambio) logCambio('Entró plata a ' + (caj.nombre || 'cajita'), descFinal, v, 'ingreso', cid);
     toast(fmt(v) + (esApertura ? ' registrado como saldo inicial en ' : ' sumado a ') + (caj.nombre || 'cajita'), 'ok');
   } else {

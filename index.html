@@ -4050,7 +4050,7 @@ function poblarCatSelect(selectId, cats, valorActual){
 let S={
   nuRate:9.25,cajitas:[],nequiSaldo:0,efectivoSaldo:0,
   personas:[],
-  deudores:[],prestamos:[],mesadas:{},mesadaMonto:0,mesadaAnio:new Date().getFullYear(),
+  deudores:[],mesadas:{},mesadaMonto:0,mesadaAnio:new Date().getFullYear(),
   spotifyPersonas:[],spotifyCosto:0,spotifyCajitaId:'',spotifyHistorial:[],
   gastosFijos:[],
   pagosGastosFijos:{},
@@ -5418,7 +5418,7 @@ function refresh(){
   if(typeof _refreshCajitaDet==='function') _refreshCajitaDet();
   renderGastosVar();
   renderGastosFijos();
-  renderPrestamosList();
+  renderDeudoresList();
   renderMesada();
   renderSpotify();
   renderMesFiltros();
@@ -6886,7 +6886,11 @@ async function deleteGastoVar(id){
     } else if(g._esPagoTC&&g._tcId){
       // Revertir pago: restaurar la deuda en la TC y devolver plata a la cuenta
       const tc=(S.tarjetasCredito||[]).find(x=>x.id===g._tcId);
-      if(tc)tc.deuda=(tc.deuda||0)+g.monto;
+      if(tc){
+        tc.deuda=(tc.deuda||0)+g.monto;
+        // Limpiar la entrada de tc.pagos vinculada (via _tcPagoId guardado al crear)
+        if(g._tcPagoId)tc.pagos=(tc.pagos||[]).filter(p=>p.id!==g._tcPagoId);
+      }
       if(g.fuente)sumarFuente(g.fuente,g.monto);
     } else {
       // Gasto normal: devolver el dinero a la cuenta origen
@@ -8205,9 +8209,6 @@ function _prtcDifResumen() {
   const margen = dijo - real;
   el.innerHTML = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>&nbsp;&nbsp;Real: <span style="color:var(--text2)">${fmt(real)}</span>&nbsp;&nbsp;Margen: <span style="color:${margen >= 0 ? 'var(--accent)' : 'var(--red)'}">${margen >= 0 ? '+' : ''}${fmt(margen)}</span>`;
 }
-
-/* ---- COMPAT: mantener S.prestamos para datos antiguos ---- */
-function renderPrestamosList() { renderDeudoresList(); }
 
 /* ---- MESADA ---- */
 // S.mesadasV2 = { 'papa': { '2025-0': {monto,fecha,destino,nota}, ... }, 'mama': { ... } }
@@ -14661,11 +14662,6 @@ document.addEventListener('focusin', function(e){
 
     // Préstamos individuales
     (S.deudores||[]).forEach(d => {
-      (d.prestamos||[]).forEach(p => {
-        if((p.concepto||p.nota||'').toLowerCase().includes(q)){
-          resultados.push({ tipo:'Préstamo · '+d.nombre, desc:p.concepto||p.nota||'Préstamo', meta:(window.fmt?window.fmt(p.monto):'')+(p.fecha?' · '+p.fecha:''), color:'var(--blue)', navTipo:'prestamo_mov', navId:d.id });
-        }
-      });
       (d.abonos||[]).forEach(a => {
         if((a.nota||'').toLowerCase().includes(q)){
           resultados.push({ tipo:'Abono · '+d.nombre, desc:a.nota||'Abono', meta:(window.fmt?window.fmt(a.monto):'')+(a.fecha?' · '+a.fecha:''), color:'var(--accent)', navTipo:'prestamo_mov', navId:d.id });
@@ -14678,20 +14674,6 @@ document.addEventListener('focusin', function(e){
           if(!already) resultados.push({ tipo:'Mov. · '+d.nombre, desc:m.concepto||m.nota||m.desc||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'var(--blue)', navTipo:'prestamo_mov', navId:d.id });
         }
       });
-    });
-
-    // Movimientos Nequi
-    (S.movimientosNequi||[]).forEach(m => {
-      if((m.desc||m.nota||'').toLowerCase().includes(q)){
-        resultados.push({ tipo:'Mov. Nequi', desc:m.desc||m.nota||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'#ff4da6', navTipo:'nequi', navId:null });
-      }
-    });
-
-    // Movimientos Efectivo
-    (S.movimientosEfectivo||[]).forEach(m => {
-      if((m.desc||m.nota||'').toLowerCase().includes(q)){
-        resultados.push({ tipo:'Mov. Efectivo', desc:m.desc||m.nota||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'var(--amber)', navTipo:'efectivo', navId:null });
-      }
     });
 
     // Movimientos cuentas personalizadas
@@ -16849,7 +16831,8 @@ function confirmarPagarTC(){
   tc.deuda=Math.max(0,(tc.deuda||0)-monto);
   // Guardar pago en historial
   if(!tc.pagos)tc.pagos=[];
-  tc.pagos.push({id:uid(),monto,fecha,fuente,nota});
+  const _pagoTcId=uid();
+  tc.pagos.push({id:_pagoTcId,monto,fecha,fuente,nota});
   // Registrar como gasto variable para que aparezca en el historial de gastos
   if(!S.gastosVar)S.gastosVar=[];
   S.gastosVar.push({
@@ -16860,7 +16843,8 @@ function confirmarPagarTC(){
     fuente,
     nota:nota||'Pago de tarjeta de crédito',
     _esPagoTC:true,
-    _tcId:tc.id
+    _tcId:tc.id,
+    _tcPagoId:_pagoTcId
   });
 
   closeSheet('pagar-tc');

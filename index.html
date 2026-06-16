@@ -10182,6 +10182,18 @@ function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura){
   return mov.desc;
 }
 
+function registrarSalida(fuente,monto,fecha,desc){
+  // Simétrico a registrarEntradaConApertura: descuenta de la fuente y registra
+  // el movimiento de salida manual. Cualquier sheet que reste dinero de una
+  // fuente (cuenta, cajita, etc.) debe usar esto en vez de reimplementar
+  // descontarFuente + push manual a S.movimientos.
+  descontarFuente(fuente,monto);
+  if(!S.movimientos)S.movimientos=[];
+  const mov={id:uid(),tipo:'salida_manual',fuente,monto,fecha,desc:desc||''};
+  S.movimientos.push(mov);
+  return mov.desc;
+}
+
 function toggleAdApertura(){
   _aperturaToggleUI({chk:'adEsApertura',lbl:'adDescLabel',inp:'adDesc'});
 }
@@ -10511,9 +10523,7 @@ function confirmarNuMovimiento() {
     if (window.logCambio) logCambio('Entró plata a ' + (caj.nombre || 'cajita'), descFinal, v, 'ingreso', cid);
     toast(fmt(v) + (esApertura ? ' registrado como saldo inicial en ' : ' sumado a ') + (caj.nombre || 'cajita'), 'ok');
   } else {
-    descontarFuente(_nuMovCajitaSel, v);
-    if (!S.movimientos) S.movimientos = [];
-    S.movimientos.push({ id: uid(), tipo: 'salida_manual', fuente: _nuMovCajitaSel, monto: v, fecha, desc });
+    registrarSalida(_nuMovCajitaSel, v, fecha, desc);
     if (window.logCambio) logCambio('Salió plata de ' + (caj.nombre || 'cajita'), desc, v, 'gasto', cid);
     toast('− ' + fmt(v) + ' de ' + (caj.nombre || 'cajita') + ' — ' + desc, 'info');
   }
@@ -10558,10 +10568,7 @@ function confirmarRestarDinero(){
   const fecha=document.getElementById('rdFecha').value||hoy();
   if(!desc){toast('Describe en qué se gastó o a dónde fue','err');return;}
   if(!v||!rdFuente)return;
-  descontarFuente(rdFuente,v);
-  // Registrar movimiento de salida manual
-  if(!S.movimientos)S.movimientos=[];
-  S.movimientos.push({id:uid(),tipo:'salida_manual',fuente:rdFuente,monto:v,fecha,desc});
+  registrarSalida(rdFuente,v,fecha,desc);
   save();refresh();
   closeSheet('restar-dinero');
   if(window.logCambio){const _fLabel=fuenteLabel(rdFuente);const _cjId3=rdFuente&&rdFuente.startsWith('cajita:')?rdFuente.split(':')[1]:null;logCambio('Retiraste dinero de '+_fLabel,desc,v,'gasto',_cjId3);}

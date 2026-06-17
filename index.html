@@ -7966,6 +7966,22 @@ function abonoAplicarOrigen() {
   toast('Destinos del origen aplicados','ok');
 }
 
+/* ─── "¿Te dio extra de más?" — usa el motor común para el cálculo
+   dijo/real/margen (instancia 'extra'), con dijo=0 fijo: aquí no hay
+   "le dije X", solo "me dieron de más". margen = dijo - real = 0 - (-extra) = extra,
+   el mismo fenómeno matemático que el resto de instancias, solo que el reparto
+   usa un menú de tipos de destino (guardar/gastar/regalar/pendiente) en vez de
+   simples beneficiarios — por eso el render de partes vive aparte (extRenderPartes),
+   pero los números (toggle/resumen) sí vienen del motor. ─── */
+
+diffRegistrarInstancia('extra', {
+  ids: { wrap: 'mov_extra_wrap', body: 'mov_extra_body', real: 'mov_extra_monto', resumen: 'ext_partes_resumen' },
+  permiteBeneficiarios: false, // el reparto de "extra" usa su propio render (extRenderPartes), no beneficiarios genéricos
+  permiteIntercambio: false,
+  permiteMiCuenta: false,
+  getDijo: () => 0 // no hay "dijiste X" — el extra siempre es 100% margen
+});
+
 /* Toggle extra */
 function toggleExtraSection() {
   const checked = document.getElementById('mov_tiene_extra').checked;
@@ -8062,7 +8078,9 @@ function extRenderPartes() {
 }
 
 function extResumenPartes() {
-  const extra = parseMoney(document.getElementById('mov_extra_monto').value)||0;
+  // El motor común calcula dijo=0 y real=extra recibido (margen=dijo-real=-extra,
+  // así que para esta instancia el monto a repartir es directamente "real", no "margen").
+  const extra = diffCalcular('extra').real;
   const total = _extPartes.reduce((a,p)=>a+(p.monto||0),0);
   const diff  = extra - total;
   const el    = document.getElementById('ext_partes_resumen');
@@ -8093,6 +8111,21 @@ function totalPrestadoPendiente() {
 }
 
 /* ── PRÉSTAMO CON TARJETA DE CRÉDITO ─────────────────────────────────────── */
+
+diffRegistrarInstancia('prtc', {
+  ids: { wrap: 'prtc-dif-wrap', body: 'prtc-dif-body', icon: 'prtc-dif-icon', real: 'prtc_dif_real', resumen: 'prtc-dif-resumen' },
+  permiteBeneficiarios: false,
+  permiteIntercambio: false,
+  permiteMiCuenta: false, // el margen quedó prestado directamente — nunca tocó una cuenta tuya
+  flagIngresoFantasma: '_prestadoDirectamente',
+  getDijo: () => parseMoney(document.getElementById('prtc_monto')?.value) || 0,
+  descMargen: (mov) => `Margen préstamo TC — ${mov._deudorNombre || ''}: `
+});
+
+// Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual
+function _prtcDifToggle() { diffToggle('prtc'); }
+function _prtcDifResumen() { diffResumen('prtc'); }
+
 function abrirSheetPrestamoTC() {
   if (!deudorActualId) return;
   const tcs = S.tarjetasCredito || [];
@@ -8108,13 +8141,7 @@ function abrirSheetPrestamoTC() {
   const montoEl = document.getElementById('prtc_monto'); if (montoEl) montoEl.value = '';
   const notaEl = document.getElementById('prtc_nota'); if (notaEl) notaEl.value = '';
   const prev = document.getElementById('prtc_preview'); if (prev) prev.textContent = '';
-  // Reset diferencial
-  const difBody = document.getElementById('prtc-dif-body');
-  const difIcon = document.getElementById('prtc-dif-icon');
-  if (difBody) difBody.style.display = 'none';
-  if (difIcon) { difIcon.innerHTML = '&#x203a;'; difIcon.style.transform = ''; }
-  const difReal = document.getElementById('prtc_dif_real'); if (difReal) difReal.value = '';
-  const difRes  = document.getElementById('prtc-dif-resumen'); if (difRes) difRes.textContent = '';
+  diffReset('prtc');
   openSheet('prestamo-tc');
 }
 
@@ -8134,13 +8161,13 @@ function confirmarPrestamoTC() {
   const tc = (S.tarjetasCredito || []).find(t => t.id === tcId);
   if (!tc) { toast('TC no encontrada', 'err'); return; }
 
-  // Leer diferencial si está activo
-  const difBody   = document.getElementById('prtc-dif-body');
-  const difActivo = difBody && difBody.style.display !== 'none';
-  const real      = difActivo ? (parseMoney(document.getElementById('prtc_dif_real')?.value) || 0) : 0;
+  // Leer diferencial si está activo, vía el motor común
+  const difActivo = diffEstaAbierto('prtc');
+  const calc = difActivo ? diffCalcular('prtc') : null;
+  const real = calc ? calc.real : 0;
   // Monto real que cobró la TC: si hay diferencial es 'real', si no es igual a lo que dijiste
-  const montoTC   = (difActivo && real > 0) ? real : dijo;
-  const margen    = dijo - montoTC; // >0 cuando dijiste más de lo que costó
+  const montoTC = (real > 0) ? real : dijo;
+  const margen  = dijo - montoTC; // >0 cuando dijiste más de lo que costó
 
   // 1. Registrar el préstamo en el deudor con el monto que le dijiste
   if (!d.movimientos) d.movimientos = [];
@@ -8157,7 +8184,6 @@ function confirmarPrestamoTC() {
     _tcDesc: desc,
     ts: Date.now()
   };
-  if (difActivo && real > 0) movObj._diferencial = { dijo, real: montoTC, margen };
   d.movimientos.push(movObj);
 
   // 2. La TC se carga solo con lo que realmente costó
@@ -8177,45 +8203,18 @@ function confirmarPrestamoTC() {
     _deudorMovId: movId
   });
 
-  // 4. El margen es un ingreso real — solo que quedó prestado directamente, nunca tocó una cuenta
+  // 4. El margen es un ingreso real — solo que quedó prestado directamente, nunca tocó una cuenta.
+  //    El motor lo registra como ingreso fantasma (fuente:'', flag _prestadoDirectamente) y
+  //    deja el resumen en movObj.diferencial para futuro uso en el historial.
   if (margen > 0.5) {
-    if (!S.movimientos) S.movimientos = [];
-    S.movimientos.push({
-      id: uid(),
-      tipo: 'entrada',
-      fuente: '',
-      monto: margen,
-      fecha,
-      desc: `Margen préstamo TC — ${d.nombre}: ${desc}`,
-      _prestadoDirectamente: true
-    });
+    const diferencial = diffAplicar('prtc', { desc, fecha, _deudorNombre: d.nombre });
+    if (diferencial) movObj.diferencial = diferencial;
   }
 
   save(); refresh();
   closeSheet('prestamo-tc');
   abrirDeudor(deudorActualId);
   toast(`Préstamo con TC registrado — ${d.nombre} te debe ${fmt(dijo)}`, 'ok', 3500);
-}
-
-/* ─── Helpers diferencial — Préstamo TC ──────────────────────────────── */
-function _prtcDifToggle() {
-  const body = document.getElementById('prtc-dif-body');
-  const icon = document.getElementById('prtc-dif-icon');
-  if (!body) return;
-  const abierto = body.style.display !== 'none';
-  body.style.display = abierto ? 'none' : '';
-  if (icon) { icon.innerHTML = abierto ? '&#x203a;' : '&#x2039;'; icon.style.transform = abierto ? '' : 'rotate(90deg)'; }
-  if (!abierto) _prtcDifResumen();
-}
-
-function _prtcDifResumen() {
-  const el = document.getElementById('prtc-dif-resumen');
-  if (!el) return;
-  const dijo = parseMoney(document.getElementById('prtc_monto')?.value) || 0;
-  const real = parseMoney(document.getElementById('prtc_dif_real')?.value) || 0;
-  if (!real) { el.textContent = ''; return; }
-  const margen = dijo - real;
-  el.innerHTML = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>&nbsp;&nbsp;Real: <span style="color:var(--text2)">${fmt(real)}</span>&nbsp;&nbsp;Margen: <span style="color:${margen >= 0 ? 'var(--accent)' : 'var(--red)'}">${margen >= 0 ? '+' : ''}${fmt(margen)}</span>`;
 }
 
 /* ---- MESADA ---- */
@@ -11721,93 +11720,156 @@ function crearEncargo() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   DIFERENCIAL DE ENCARGO — Registro de margen cobrado (solo info)
-   El monto principal = lo que le dijiste a la persona.
-   El diferencial = el valor real (menor). La diferencia = tu margen.
-   No mueve cuentas ni crea ingresos — es solo un registro.
+   MOTOR DE DIFERENCIAL — Registro de margen entre "lo que dijiste/
+   correspondía" (dijo) y "lo que realmente costó/recibiste" (real).
+   margen = dijo - real. El margen se reparte en partes: cada parte
+   es "alguien o algo se quedó con tanto", y opcionalmente puede ser
+   un INTERCAMBIO (la plata salió de tu bolsillo y la recuperás del
+   encargo en otra cuenta).
+
+   Todos los sheets con un bloque "El valor real era diferente" /
+   "Le dije un valor diferente" / "¿Te dio extra de más?" usan este
+   mismo motor. Cada sheet solo registra una instancia con su propia
+   config (ids de elementos del DOM + qué capacidades habilita) y
+   llama a las funciones genéricas de abajo. Para agregar un sheet
+   nuevo con este patrón: copiar el bloque HTML de diffHtmlBloque(),
+   llamar a diffRegistrarInstancia(), y usar diffAplicar() al
+   confirmar. No hace falta escribir lógica nueva.
    ═══════════════════════════════════════════════════════════════ */
 
-// Estado del diferencial en "Salió plata"
-let _difBenefs = []; // [{nombre, monto}]
+// Registro de instancias activas: { [instanciaId]: { cfg, partes, abierto } }
+const _diffInstancias = {};
 
-function _difToggle() {
-  const body = document.getElementById('movenc-dif-body');
-  const icon = document.getElementById('movenc-dif-toggle-icon');
+/**
+ * Crea (o resetea) una instancia del motor de diferencial.
+ * cfg:
+ *   ids: { wrap, body, icon, real, partesList, resumen, miCuentaWrap, miCuenta }
+ *   permiteBeneficiarios: bool — muestra lista "quién se quedó con qué"
+ *   permiteIntercambio: bool — cada beneficiario puede ser "lo pagué yo" (sale de mi cuenta, entra a otra)
+ *   permiteMiCuenta: bool — muestra selector de cuenta propia para el sobrante libre
+ *   getDijo: () => number — de dónde sacar el monto "dijiste/correspondía"
+ *   exigeMargenPositivo: bool — si true, margen<=0 se muestra como error (no permite "cobré de más")
+ *   labelMargenNegativo / placeholderSinReal: textos opcionales
+ *   descMargen: (movimiento) => string — prefijo de la descripción del ingreso del sobrante libre
+ *   onToggle / onResumen: hooks opcionales para sheets con comportamiento extra (preview de saldos, etc.)
+ */
+function diffRegistrarInstancia(instId, cfg) {
+  _diffInstancias[instId] = { cfg, partes: [], abierto: false };
+  return _diffInstancias[instId];
+}
+
+function diffInst(instId) { return _diffInstancias[instId]; }
+
+function diffReset(instId) {
+  const inst = diffInst(instId);
+  if (!inst) return;
+  inst.partes = [];
+  inst.abierto = false;
+  const { ids } = inst.cfg;
+  const body = document.getElementById(ids.body);
+  const icon = document.getElementById(ids.icon);
+  const real = document.getElementById(ids.real);
+  const resumen = document.getElementById(ids.resumen);
+  if (body) body.style.display = 'none';
+  if (icon) { icon.textContent = '›'; icon.style.transform = ''; }
+  if (real) real.value = '';
+  if (resumen) resumen.textContent = '';
+  if (ids.miCuentaWrap) { const w = document.getElementById(ids.miCuentaWrap); if (w) w.style.display = 'none'; }
+  if (ids.partesList) { const l = document.getElementById(ids.partesList); if (l) l.innerHTML = ''; }
+}
+
+function diffToggle(instId) {
+  const inst = diffInst(instId);
+  if (!inst) return;
+  const { ids } = inst.cfg;
+  const body = document.getElementById(ids.body);
+  const icon = document.getElementById(ids.icon);
   if (!body) return;
-  const abierto = body.style.display !== 'none';
-  body.style.display = abierto ? 'none' : '';
-  if (icon) { icon.textContent = abierto ? '›' : '‹'; icon.style.transform = abierto ? '' : 'rotate(90deg)'; }
-  if (!abierto) _difResumen();
+  inst.abierto = body.style.display === 'none';
+  body.style.display = inst.abierto ? '' : 'none';
+  if (icon) { icon.textContent = inst.abierto ? '‹' : '›'; icon.style.transform = inst.abierto ? 'rotate(90deg)' : ''; }
+  if (inst.abierto) diffResumen(instId);
+  if (inst.cfg.onToggle) inst.cfg.onToggle(inst.abierto);
 }
 
-function _difAddBenef() {
-  _difBenefs.push({ nombre: '', monto: 0, pagadoPorMi: false, miCuentaSalida: '', miCuentaEntrada: '' });
-  _difRenderBenefs();
-  _difResumen();
+function diffEstaAbierto(instId) {
+  const inst = diffInst(instId);
+  if (!inst) return false;
+  const body = document.getElementById(inst.cfg.ids.body);
+  return !!body && body.style.display !== 'none';
 }
 
-function _difRemoveBenef(i) {
-  _difBenefs.splice(i, 1);
-  _difRenderBenefs();
-  _difResumen();
+function diffAddParte(instId) {
+  const inst = diffInst(instId);
+  if (!inst) return;
+  inst.partes.push({ nombre: '', monto: 0, pagadoPorMi: false, miCuentaSalida: '', miCuentaEntrada: '' });
+  diffRenderPartes(instId);
+  diffResumen(instId);
 }
 
-function _difSetNombre(i, v) { _difBenefs[i].nombre = v; }
-function _difSetMonto(i, v)  { _difBenefs[i].monto = parseMoney(v) || 0; _difResumen(); }
-
-function _difTogglePagoYo(i) {
-  _difBenefs[i].pagadoPorMi = !(_difBenefs[i].pagadoPorMi || false);
-  if (!_difBenefs[i].pagadoPorMi) {
-    _difBenefs[i].miCuentaSalida = '';
-    _difBenefs[i].miCuentaEntrada = '';
-  }
-  _difRenderBenefs();
-  _difResumen();
+function diffRemoveParte(instId, i) {
+  const inst = diffInst(instId);
+  if (!inst) return;
+  inst.partes.splice(i, 1);
+  diffRenderPartes(instId);
+  diffResumen(instId);
 }
 
-function _difSetCuentaSalida(i, v) { _difBenefs[i].miCuentaSalida = v; _difResumen(); }
-function _difSetCuentaEntrada(i, v) { _difBenefs[i].miCuentaEntrada = v; _difResumen(); }
+function diffSetNombre(instId, i, v) { const inst = diffInst(instId); if (inst) inst.partes[i].nombre = v; }
+function diffSetMonto(instId, i, v) { const inst = diffInst(instId); if (!inst) return; inst.partes[i].monto = parseMoney(v) || 0; diffResumen(instId); }
 
-function _difFuentesOptsHtml(selectedVal, soloConSaldo) {
-  // soloConSaldo=true → selector "De mi cuenta (sale)": ocultar cuentas sin saldo disponible
+function diffTogglePagoYo(instId, i) {
+  const inst = diffInst(instId);
+  if (!inst) return;
+  const p = inst.partes[i];
+  p.pagadoPorMi = !(p.pagadoPorMi || false);
+  if (!p.pagadoPorMi) { p.miCuentaSalida = ''; p.miCuentaEntrada = ''; }
+  diffRenderPartes(instId);
+  diffResumen(instId);
+}
+
+function diffSetCuentaSalida(instId, i, v) { const inst = diffInst(instId); if (inst) { inst.partes[i].miCuentaSalida = v; diffResumen(instId); } }
+function diffSetCuentaEntrada(instId, i, v) { const inst = diffInst(instId); if (inst) { inst.partes[i].miCuentaEntrada = v; diffResumen(instId); } }
+
+function _diffFuentesOptsHtml(selectedVal, soloConSaldo) {
   const fuentes = getFuentesSinTC();
   const opts = fuentes
     .map(f => {
       const saldo = getSaldoFuente(f.val);
-      if (soloConSaldo && saldo <= 0) return null; // omitir cuentas vacías
+      if (soloConSaldo && saldo <= 0) return null;
       const label = soloConSaldo ? `${f.label} (${fmt(saldo)})` : f.label;
       return `<option value="${f.val}"${f.val === selectedVal ? ' selected' : ''}>${label}</option>`;
     })
     .filter(Boolean)
     .join('');
-  const placeholder = soloConSaldo
-    ? '<option value="">Seleccionar cuenta</option>'
-    : '<option value="">Sin especificar</option>';
+  const placeholder = soloConSaldo ? '<option value="">Seleccionar cuenta</option>' : '<option value="">Sin especificar</option>';
   return placeholder + opts;
 }
 
-function _difRenderBenefs() {
-  const cont = document.getElementById('movenc-dif-beneficiarios');
+function diffRenderPartes(instId) {
+  const inst = diffInst(instId);
+  if (!inst) return;
+  const { ids, permiteIntercambio } = inst.cfg;
+  if (!ids.partesList) return;
+  const cont = document.getElementById(ids.partesList);
   if (!cont) return;
-  cont.innerHTML = _difBenefs.map((b, i) => {
-    const pagoYo = b.pagadoPorMi || false;
-    const cuentaSalida = b.miCuentaSalida || '';
-    const cuentaEntrada = b.miCuentaEntrada || '';
-    const montoFmt = b.monto ? (typeof fmtInput==='function'?fmtInput(b.monto):String(b.monto)) : '';
+  cont.innerHTML = inst.partes.map((b, i) => {
+    const pagoYo = permiteIntercambio && (b.pagadoPorMi || false);
+    const montoFmt = b.monto ? (typeof fmtInput === 'function' ? fmtInput(b.monto) : String(b.monto)) : '';
     return `
     <div style="margin-bottom:10px;background:rgba(0,0,0,.15);border-radius:var(--radius-sm);padding:8px 10px;">
       <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
         <input type="text" placeholder="Nombre (ej: Mi mamá)" value="${b.nombre}"
-          oninput="_difSetNombre(${i},this.value)"
+          oninput="diffSetNombre('${instId}',${i},this.value)"
           style="flex:2;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
         <input type="text" inputmode="decimal" placeholder="Monto" value="${montoFmt}"
-          oninput="_difSetMonto(${i},this.value)"
+          oninput="diffSetMonto('${instId}',${i},this.value)"
           style="flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--amber);font-size:13px;font-family:'DM Mono',monospace;">
-        <button type="button" onclick="_difRemoveBenef(${i})" style="padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;">&#x2715;</button>
+        <button type="button" onclick="diffRemoveParte('${instId}',${i})" style="padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;">&#x2715;</button>
       </div>
-      <!-- Toggle "lo pagué yo" -->
-      <button type="button" onclick="_difTogglePagoYo(${i})"
-        style="width:100%;padding:6px 10px;border-radius:var(--radius-sm);border:1.5px solid ${pagoYo?'rgba(96,176,240,.5)':'rgba(96,176,240,.2)'};background:${pagoYo?'rgba(96,176,240,.12)':'transparent'};color:${pagoYo?'var(--blue)':'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;display:flex;align-items:center;gap:7px;margin-bottom:${pagoYo?'8px':'0'};">
+      ${permiteIntercambio ? `
+      <button type="button" onclick="diffTogglePagoYo('${instId}',${i})"
+        style="width:100%;padding:6px 10px;border-radius:var(--radius-sm);border:1.5px solid ${pagoYo ? 'rgba(96,176,240,.5)' : 'rgba(96,176,240,.2)'};background:${pagoYo ? 'rgba(96,176,240,.12)' : 'transparent'};color:${pagoYo ? 'var(--blue)' : 'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;display:flex;align-items:center;gap:7px;margin-bottom:${pagoYo ? '8px' : '0'};">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1H0zm0 3h16v5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm3 2a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1zm2.5 0a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1z"/></svg>
         ${pagoYo ? '<i class="fa-solid fa-check" style="font-size:10px;"></i> Lo pagué yo (de mi cuenta)' : 'Lo pagué yo (de mi cuenta)'}
       </button>
@@ -11815,76 +11877,100 @@ function _difRenderBenefs() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 0 2px;">
         <div>
           <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">De mi cuenta (sale)</div>
-          <div class="select-wrap"><select onchange="_difSetCuentaSalida(${i},this.value)" style="font-size:12px;padding:7px 10px;">${_difFuentesOptsHtml(cuentaSalida, true)}</select></div>
+          <div class="select-wrap"><select onchange="diffSetCuentaSalida('${instId}',${i},this.value)" style="font-size:12px;padding:7px 10px;">${_diffFuentesOptsHtml(b.miCuentaSalida || '', true)}</select></div>
         </div>
         <div>
           <div style="font-size:10px;color:var(--accent);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Y recupero en (entra)</div>
-          <div class="select-wrap"><select onchange="_difSetCuentaEntrada(${i},this.value)" style="font-size:12px;padding:7px 10px;">${_difFuentesOptsHtml(cuentaEntrada)}</select></div>
+          <div class="select-wrap"><select onchange="diffSetCuentaEntrada('${instId}',${i},this.value)" style="font-size:12px;padding:7px 10px;">${_diffFuentesOptsHtml(b.miCuentaEntrada || '', false)}</select></div>
         </div>
       </div>
       <div style="font-size:10px;color:var(--blue);margin-top:5px;font-family:'DM Mono',monospace;opacity:.8;">
-        ↔ Intercambio: yo pago ${b.monto>0?fmt(b.monto):'?'} de mi cuenta, y recupero ese monto del encargo a la cuenta que elijo.
-      </div>` : ''}
+        ↔ Intercambio: yo pago ${b.monto > 0 ? fmt(b.monto) : '?'} de mi cuenta, y recupero ese monto del encargo a la cuenta que elijo.
+      </div>` : ''}` : ''}
     </div>`;
   }).join('');
 }
 
-function _difResumen() {
-  const el = document.getElementById('movenc-dif-resumen');
+/** Calcula dijo/real/margen y el reparto actual de una instancia, sin tocar el DOM. */
+function diffCalcular(instId) {
+  const inst = diffInst(instId);
+  if (!inst) return null;
+  const { cfg } = inst;
+  const realEl = document.getElementById(cfg.ids.real);
+  const dijo = cfg.getDijo ? (cfg.getDijo() || 0) : 0;
+  const real = realEl ? (parseMoney(realEl.value) || 0) : 0;
+  const margen = dijo - real;
+
+  const partes = cfg.permiteBeneficiarios ? inst.partes : [];
+  const normales = partes.filter(b => !b.pagadoPorMi && (b.nombre || b.monto > 0));
+  const intercambios = partes.filter(b => b.pagadoPorMi && b.monto > 0);
+  const asignadoNormal = normales.reduce((a, b) => a + (b.monto || 0), 0);
+  const asignadoIntercambio = intercambios.reduce((a, b) => a + (b.monto || 0), 0);
+  const sinAsignar = margen - asignadoNormal - asignadoIntercambio;
+
+  return { dijo, real, margen, normales, intercambios, asignadoNormal, asignadoIntercambio, sinAsignar };
+}
+
+function diffResumen(instId) {
+  const inst = diffInst(instId);
+  if (!inst) return;
+  const { cfg } = inst;
+  const el = document.getElementById(cfg.ids.resumen);
   if (!el) return;
-  const realEl  = document.getElementById('movenc_dif_real');
-  const dijoEl  = document.getElementById('movenc_monto');
-  const dijo    = dijoEl  ? (parseMoney(dijoEl.value)  || 0) : 0;
-  const real    = realEl  ? (parseMoney(realEl.value)  || 0) : 0;
-  const margen  = dijo - real;
+  const calc = diffCalcular(instId);
+  const { dijo, real, margen, normales, intercambios, sinAsignar } = calc;
 
-  if (!dijo && !real) { el.textContent = ''; _difActualizarMiCuenta(false); return; }
+  if (!dijo && !real) { el.textContent = ''; _diffActualizarMiCuenta(instId, false); if (cfg.onResumen) cfg.onResumen(calc); return; }
+  if (!real) { el.textContent = cfg.placeholderSinReal || ''; el.style.color = 'var(--text3)'; _diffActualizarMiCuenta(instId, false); if (cfg.onResumen) cfg.onResumen(calc); return; }
 
-  let html = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>  Real: <span style="color:var(--text2)">${fmt(real)}</span>  Margen: <span style="color:${margen>=0?'var(--accent)':'var(--red)'}">+${fmt(margen)}</span>`;
+  if (margen <= 0 && cfg.exigeMargenPositivo) {
+    el.innerHTML = `<span style="color:var(--red);">${cfg.labelMargenNegativo || 'El valor real debe ser menor que el monto original'}</span>`;
+    _diffActualizarMiCuenta(instId, false);
+    if (cfg.onResumen) cfg.onResumen(calc);
+    return;
+  }
 
-  // Separar benefs normales de los "pagados por mí"
-  const benefsNormales = _difBenefs.filter(b => !b.pagadoPorMi);
-  const benefsYoPague  = _difBenefs.filter(b => b.pagadoPorMi);
-  const asignadoNormal = benefsNormales.reduce((a, b) => a + (b.monto || 0), 0);
-  const asignadoYo     = benefsYoPague.reduce((a, b) => a + (b.monto || 0), 0);
+  el.style.color = 'var(--text2)';
+  let html = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>  Real: <span style="color:var(--text2)">${fmt(real)}</span>  Margen: <span style="color:${margen >= 0 ? 'var(--accent)' : 'var(--red)'}">${margen >= 0 ? '+' : ''}${fmt(margen)}</span>`;
 
-  let sinAsignar = margen;
-  if (_difBenefs.length && margen > 0) {
-    const totalAsignado = asignadoNormal + asignadoYo;
-    sinAsignar = margen - totalAsignado;
+  let sinAsignarMostrar = sinAsignar;
+  if (cfg.permiteBeneficiarios && inst.partes.length && margen > 0) {
+    const totalAsignado = calc.asignadoNormal + calc.asignadoIntercambio;
     html += `<br>Asignado: <span style="color:var(--text2)">${fmt(totalAsignado)}</span>  `;
-    if (asignadoYo > 0) {
-      html += `<span style="color:var(--blue)">Intercambio tuyo: ${fmt(asignadoYo)}</span>  `;
-    }
-    if (Math.abs(sinAsignar) < 1) {
+    if (calc.asignadoIntercambio > 0) html += `<span style="color:var(--blue)">Intercambio tuyo: ${fmt(calc.asignadoIntercambio)}</span>  `;
+    if (Math.abs(sinAsignarMostrar) < 1) {
       html += `<span style="color:var(--accent)">&#x2713; Cuadra</span>`;
-      sinAsignar = 0;
-    } else if (sinAsignar > 0) {
-      html += `<span style="color:var(--accent)">Tuyo: ${fmt(sinAsignar)}</span>`;
+      sinAsignarMostrar = 0;
+    } else if (sinAsignarMostrar > 0) {
+      html += `<span style="color:var(--accent)">Tuyo: ${fmt(sinAsignarMostrar)}</span>`;
     } else {
-      html += `<span style="color:var(--red)">Te pasaste: ${fmt(Math.abs(sinAsignar))}</span>`;
-      sinAsignar = 0;
+      html += `<span style="color:var(--red)">Te pasaste: ${fmt(Math.abs(sinAsignarMostrar))}</span>`;
+      sinAsignarMostrar = 0;
     }
   }
 
-  // Mostrar detalle de cada intercambio
-  benefsYoPague.forEach(b => {
+  intercambios.forEach(b => {
     if (b.monto > 0) {
-      const salida  = b.miCuentaSalida  ? fuenteLabel(b.miCuentaSalida)  : '?';
+      const salida = b.miCuentaSalida ? fuenteLabel(b.miCuentaSalida) : '?';
       const entrada = b.miCuentaEntrada ? fuenteLabel(b.miCuentaEntrada) : '?';
-      html += `<br><span style="color:var(--blue)">↔ ${b.nombre||'Tú'}: sale ${fmt(b.monto)} de ${salida} · entra ${fmt(b.monto)} a ${entrada}</span>`;
+      html += `<br><span style="color:var(--blue);">↔ ${b.nombre || 'Tú'}: sale ${fmt(b.monto)} de ${salida} · entra ${fmt(b.monto)} a ${entrada}</span>`;
     }
   });
 
-  el.innerHTML = html.replace(/\n/g, '<br>');
+  el.innerHTML = html;
 
-  // Solo mostrar selector "¿a cuál de tus cuentas?" para el sobrante sin asignar (no intercambios)
-  _difActualizarMiCuenta(margen > 0 && sinAsignar > 0.5);
+  const margenPositivoLibre = margen > 0 && sinAsignarMostrar > 0.5;
+  _diffActualizarMiCuenta(instId, !!cfg.permiteMiCuenta && margenPositivoLibre);
+  if (cfg.onResumen) cfg.onResumen(calc);
 }
 
-function _difActualizarMiCuenta(mostrar) {
-  const wrap = document.getElementById('movenc-dif-mi-cuenta-wrap');
-  const sel  = document.getElementById('movenc_dif_mi_cuenta');
+function _diffActualizarMiCuenta(instId, mostrar) {
+  const inst = diffInst(instId);
+  if (!inst) return;
+  const { ids } = inst.cfg;
+  if (!ids.miCuentaWrap || !ids.miCuenta) return;
+  const wrap = document.getElementById(ids.miCuentaWrap);
+  const sel = document.getElementById(ids.miCuenta);
   if (!wrap || !sel) return;
   wrap.style.display = mostrar ? '' : 'none';
   if (mostrar) {
@@ -11894,10 +11980,12 @@ function _difActualizarMiCuenta(mostrar) {
   }
 }
 
-function _validarIntercambiosBenefs() {
-  // Retorna un string con el error si algún intercambio supera el saldo, o null si todo ok
-  const benefsYoPague = _difBenefs.filter(b => b.pagadoPorMi && b.monto > 0);
-  for (const b of benefsYoPague) {
+/** Valida que los intercambios "lo pagué yo" tengan saldo suficiente. Retorna string de error o null. */
+function diffValidarIntercambios(instId) {
+  const inst = diffInst(instId);
+  if (!inst) return null;
+  const intercambios = inst.partes.filter(b => b.pagadoPorMi && b.monto > 0);
+  for (const b of intercambios) {
     if (!b.miCuentaSalida) continue;
     const saldo = getSaldoFuente(b.miCuentaSalida);
     if (b.monto > saldo + 0.5) {
@@ -11907,6 +11995,193 @@ function _validarIntercambiosBenefs() {
   }
   return null;
 }
+
+/**
+ * Aplica los efectos del diferencial sobre `movimiento` (un objeto que ya
+ * existe — el préstamo, el abono, el movimiento del encargo, etc).
+ * Genera el campo movimiento.diferencial = {dijo, real, margen, beneficiarios, miCuenta, yoMeQuedo}
+ * y, si linkId está presente, encadena cada efecto secundario con _encMovId=linkId
+ * para que deleteMovEncargo() pueda revertirlos (mismo contrato que usaba el código viejo).
+ *
+ * Si cfg.permiteMiCuenta es false (ej. "Préstamo con TC": el margen quedó
+ * prestado directamente, nunca tocó una cuenta), el sobrante sin asignar se
+ * registra igual como un ingreso "fantasma" (fuente:'', sin sumarFuente) para
+ * que siga contando en analíticas de ingresos, marcado con cfg.flagIngresoFantasma.
+ *
+ * Retorna el objeto diferencial guardado, o null si no había nada que aplicar.
+ */
+function diffAplicar(instId, movimiento, linkId) {
+  const inst = diffInst(instId);
+  if (!inst) return null;
+  if (!diffEstaAbierto(instId)) return null;
+  const calc = diffCalcular(instId);
+  if (!calc) return null;
+  const { dijo, real, margen, normales, intercambios, asignadoNormal, asignadoIntercambio } = calc;
+  if (!real) return null;
+  if (margen <= 0 && !inst.partes.length) return null;
+
+  const fecha = movimiento.fecha || hoy();
+  if (!S.movimientos) S.movimientos = [];
+
+  const sinAsignar = margen - asignadoNormal - asignadoIntercambio;
+  const miCuentaSel = inst.cfg.permiteMiCuenta && inst.cfg.ids.miCuenta ? document.getElementById(inst.cfg.ids.miCuenta) : null;
+  const miCuenta = miCuentaSel ? miCuentaSel.value : '';
+  const yoMeQuedo = (sinAsignar > 0.5 && miCuenta) ? sinAsignar : 0;
+  // Modo "ingreso fantasma": no hay selector de cuenta propia en este sheet, pero el sobrante
+  // sigue siendo plata tuya — se registra igual, sin tocar ninguna fuente.
+  const yoMeQuedoFantasma = (!inst.cfg.permiteMiCuenta && sinAsignar > 0.5) ? sinAsignar : 0;
+
+  const beneficiariosGuardados = [
+    ...normales.map(b => ({ nombre: b.nombre, monto: b.monto })),
+    ...intercambios.map(b => ({ nombre: b.nombre, monto: b.monto, pagadoPorMi: true, miCuentaSalida: b.miCuentaSalida || '', miCuentaEntrada: b.miCuentaEntrada || '' }))
+  ];
+
+  const diferencial = { dijo, real, margen, beneficiarios: beneficiariosGuardados, miCuenta: yoMeQuedo > 0 ? miCuenta : '', yoMeQuedo: yoMeQuedo || yoMeQuedoFantasma };
+  movimiento.diferencial = diferencial;
+
+  // 1) Sobrante libre → ingreso a mi cuenta
+  if (yoMeQuedo > 0 && miCuenta) {
+    sumarFuente(miCuenta, yoMeQuedo);
+    S.movimientos.push({
+      id: uid(), tipo: 'entrada', fuente: miCuenta,
+      ...(linkId ? { _encMovId: linkId } : {}),
+      monto: yoMeQuedo, fecha,
+      desc: (inst.cfg.descMargen ? inst.cfg.descMargen(movimiento) : 'Margen — ') + (movimiento.desc || ''),
+      nota: 'Generado automáticamente por el diferencial.',
+      ts: Date.now()
+    });
+  }
+
+  // 1b) Sobrante libre sin cuenta propia disponible en este sheet → ingreso fantasma (fuente vacía)
+  if (yoMeQuedoFantasma > 0) {
+    S.movimientos.push({
+      id: uid(), tipo: 'entrada', fuente: '',
+      ...(linkId ? { _encMovId: linkId } : {}),
+      monto: yoMeQuedoFantasma, fecha,
+      desc: (inst.cfg.descMargen ? inst.cfg.descMargen(movimiento) : 'Margen — ') + (movimiento.desc || ''),
+      [inst.cfg.flagIngresoFantasma || '_prestadoDirectamente']: true,
+      ts: Date.now()
+    });
+  }
+
+  // 2) Intercambios "lo pagué yo" → egreso de mi cuenta + ingreso equivalente a mi cuenta destino
+  intercambios.forEach((b, idx) => {
+    if (!b.monto || b.monto <= 0) return;
+    const cuentaSalida = b.miCuentaSalida;
+    const cuentaEntrada = b.miCuentaEntrada;
+    const nombreBenef = b.nombre || 'Persona';
+
+    if (cuentaSalida) {
+      descontarFuente(cuentaSalida, b.monto);
+      S.movimientos.push({
+        id: uid(), tipo: 'transferencia', fuente: cuentaSalida, _fuenteDestino: cuentaEntrada || '',
+        ...(linkId ? { _encMovId: linkId } : {}),
+        _esIntercambioEncargo: true, _intercambioSalida: true,
+        monto: b.monto, fecha,
+        desc: `Intercambio: le di a ${nombreBenef} de mi ${fuenteLabel(cuentaSalida)}`,
+        nota: 'Movimiento contable neutro — no es ingreso ni gasto. Pagué de mi bolsillo, recupero del encargo.',
+        ts: Date.now() + idx + 1
+      });
+    }
+    if (cuentaEntrada) {
+      sumarFuente(cuentaEntrada, b.monto);
+      S.movimientos.push({
+        id: uid(), tipo: 'transferencia', fuente: cuentaEntrada, _fuenteDestino: cuentaSalida || '',
+        ...(linkId ? { _encMovId: linkId } : {}),
+        _esIntercambioEncargo: true, _intercambioEntrada: true,
+        monto: b.monto, fecha,
+        desc: `Intercambio: recupero de ${nombreBenef} en ${fuenteLabel(cuentaEntrada)}`,
+        nota: 'Movimiento contable neutro — no es ingreso ni gasto. Equivale al efectivo que di de mi bolsillo.',
+        ts: Date.now() + idx + 2
+      });
+    }
+  });
+
+  return diferencial;
+}
+
+/** Genera el HTML del bloque colapsable de diferencial para un sheet nuevo. */
+function diffHtmlBloque(ids, opts) {
+  opts = opts || {};
+  const titulo = opts.titulo || 'El valor real era diferente';
+  const subtitulo = opts.subtitulo || 'Registrar margen';
+  return `
+  <div id="${ids.wrap}" style="display:none;margin-top:4px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;" onclick="diffToggle('${opts.instId}')">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:15px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span>
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--amber);">${titulo}</div>
+          <div style="font-size:10px;color:var(--text3);">${subtitulo}</div>
+        </div>
+      </div>
+      <div id="${ids.icon}" style="font-size:16px;color:var(--amber);transition:transform .2s;">›</div>
+    </div>
+    <div id="${ids.body}" style="display:none;background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;">
+      <div class="ig" style="margin-bottom:10px;">
+        <label class="il" style="color:var(--amber);">${opts.labelReal || '¿Cuánto era en realidad?'}</label>
+        <input type="text" inputmode="decimal" id="${ids.real}" placeholder="0,00" class="money-input" oninput="diffResumen('${opts.instId}')">
+      </div>
+      ${opts.permiteBeneficiarios ? `
+      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;">Quién se quedó con qué (opcional)</div>
+      <div id="${ids.partesList}"></div>
+      <button type="button" onclick="diffAddParte('${opts.instId}')" style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1.5px dashed rgba(240,184,64,.35);background:transparent;color:var(--amber);font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px;font-family:'DM Sans',sans-serif;">+ Agregar persona</button>
+      ` : ''}
+      <div id="${ids.resumen}" style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
+      ${opts.permiteMiCuenta ? `
+      <div id="${ids.miCuentaWrap}" style="display:none;margin-top:10px;">
+        <label class="il" style="color:var(--accent);margin-bottom:6px;">¿A cuál de tus cuentas entra ese sobrante?</label>
+        <div class="select-wrap"><select id="${ids.miCuenta}"><option value="">Sin especificar</option></select></div>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+/** Renderiza el resumen de un diferencial ya guardado, para el historial. Reemplaza a _difRenderHistorial. */
+function diffRenderHistorial(diferencial) {
+  if (!diferencial) return '';
+  const d = diferencial;
+  const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b => `${b.nombre} ${fmt(b.monto)}`).join(' · ');
+  const miParte = d.miCuenta && d.yoMeQuedo > 0 ? `Yo → ${fuenteLabel(d.miCuenta)} ${fmt(d.yoMeQuedo)}` : (d.yoMeQuedo > 0 ? `Yo ${fmt(d.yoMeQuedo)}` : '');
+  const todas = [benefs, miParte].filter(Boolean).join(' · ');
+  return `<div style="margin-top:4px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${todas ? ' · ' + todas : ''}
+  </div>`;
+}
+
+/* ─── Compatibilidad retro: alias del nombre viejo, por si quedó alguna referencia ─── */
+function _difRenderHistorial(mov) { return mov && mov.diferencial ? diffRenderHistorial(mov.diferencial) : ''; }
+
+/* ═══════════════════════════════════════════════════════════════
+   INSTANCIA 1 — "Salió plata" de un encargo (movenc-dif)
+   ═══════════════════════════════════════════════════════════════ */
+
+diffRegistrarInstancia('movenc', {
+  ids: {
+    wrap: 'movenc-dif-wrap', body: 'movenc-dif-body', icon: 'movenc-dif-toggle-icon',
+    real: 'movenc_dif_real', partesList: 'movenc-dif-beneficiarios',
+    resumen: 'movenc-dif-resumen', miCuentaWrap: 'movenc-dif-mi-cuenta-wrap', miCuenta: 'movenc_dif_mi_cuenta'
+  },
+  permiteBeneficiarios: true,
+  permiteIntercambio: true,
+  permiteMiCuenta: true,
+  getDijo: () => parseMoney(document.getElementById('movenc_monto')?.value) || 0,
+  descMargen: () => 'Margen de encargo — '
+});
+
+// Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual, cero cambios de markup
+function _difToggle() { diffToggle('movenc'); }
+function _difAddBenef() { diffAddParte('movenc'); }
+function _difRemoveBenef(i) { diffRemoveParte('movenc', i); }
+function _difSetNombre(i, v) { diffSetNombre('movenc', i, v); }
+function _difSetMonto(i, v) { diffSetMonto('movenc', i, v); }
+function _difTogglePagoYo(i) { diffTogglePagoYo('movenc', i); }
+function _difSetCuentaSalida(i, v) { diffSetCuentaSalida('movenc', i, v); }
+function _difSetCuentaEntrada(i, v) { diffSetCuentaEntrada('movenc', i, v); }
+function _difResumen() { diffResumen('movenc'); }
+function _validarIntercambiosBenefs() { return diffValidarIntercambios('movenc'); }
+// _difBenefs expuesto como alias en vivo por compatibilidad (algo viejo podría leer/asignar esta variable)
+Object.defineProperty(window, '_difBenefs', { get() { return diffInst('movenc').partes; }, set(v) { diffInst('movenc').partes = v; } });
 
 /* ─── "Yo puse la plata" — intercambio simple sin diferencial ─────
    Para cuando lo que dijiste = lo real, pero la plata no salió de la
@@ -12010,201 +12285,40 @@ function _procesarMovEncMia(movimiento) {
 }
 
 function _procesarDiferencial(movimiento) {
-  const difBody = document.getElementById('movenc-dif-body');
-  if (!difBody || difBody.style.display === 'none') return;
-  const realEl = document.getElementById('movenc_dif_real');
-  const real = realEl ? (parseMoney(realEl.value) || 0) : 0;
-  if (!real) return;
-  const dijo = movimiento.monto;
-  const margen = dijo - real;
-  if (margen <= 0 && !_difBenefs.length) return;
-
-  const fecha = movimiento.fecha || hoy();
-  if (!S.movimientos) S.movimientos = [];
-
-  // Separar benefs normales y los que "pagué yo"
-  const benefsNormales = _difBenefs.filter(b => !b.pagadoPorMi && (b.nombre || b.monto > 0));
-  const benefsYoPague  = _difBenefs.filter(b => b.pagadoPorMi && b.monto > 0);
-
-  const asignadoNormal = benefsNormales.reduce((a, b) => a + (b.monto || 0), 0);
-  const asignadoYo     = benefsYoPague.reduce((a, b) => a + (b.monto || 0), 0);
-  const sinAsignar     = margen - asignadoNormal - asignadoYo;
-
-  // ¿Hay cuenta propia donde meter el sobrante "libre"?
-  const miCuentaSel = document.getElementById('movenc_dif_mi_cuenta');
-  const miCuenta    = miCuentaSel ? miCuentaSel.value : '';
-  const yoMeQuedo   = (sinAsignar > 0.5 && miCuenta) ? sinAsignar : 0;
-
-  // Guardar el diferencial en el movimiento para historial
-  const beneficiariosGuardados = [
-    ...benefsNormales.map(b => ({ nombre: b.nombre, monto: b.monto })),
-    ...benefsYoPague.map(b => ({
-      nombre: b.nombre, monto: b.monto,
-      pagadoPorMi: true,
-      miCuentaSalida: b.miCuentaSalida || '',
-      miCuentaEntrada: b.miCuentaEntrada || ''
-    }))
-  ];
-
-  movimiento.diferencial = {
-    dijo,
-    real,
-    margen,
-    beneficiarios: beneficiariosGuardados,
-    miCuenta: yoMeQuedo > 0 ? miCuenta : '',
-    yoMeQuedo
-  };
-
-  // 1) Sobrante libre → ingreso a mi cuenta (vinculado con _encMovId para poder revertir al eliminar)
-  if (yoMeQuedo > 0 && miCuenta) {
-    sumarFuente(miCuenta, yoMeQuedo);
-    S.movimientos.push({
-      id: uid(),
-      tipo: 'entrada',
-      fuente: miCuenta,
-      _encMovId: movimiento.id,
-      monto: yoMeQuedo,
-      fecha,
-      desc: 'Margen de encargo — ' + (movimiento.desc || ''),
-      nota: 'Generado automáticamente por el diferencial del encargo',
-      ts: Date.now()
-    });
-  }
-
-  // 2) Intercambios "lo pagué yo" → egreso de mi cuenta + ingreso del equivalente del encargo a mi cuenta destino
-  benefsYoPague.forEach((b, idx) => {
-    if (!b.monto || b.monto <= 0) return;
-    const cuentaSalida  = b.miCuentaSalida;
-    const cuentaEntrada = b.miCuentaEntrada;
-    const nombreBenef   = b.nombre || 'Persona';
-    const descBase      = movimiento.desc || '';
-
-    // Egreso de mi cuenta propia — tipo transferencia, vinculado al movimiento del encargo con _encMovId
-    if (cuentaSalida) {
-      descontarFuente(cuentaSalida, b.monto);
-      S.movimientos.push({
-        id: uid(),
-        tipo: 'transferencia',
-        fuente: cuentaSalida,
-        _fuenteDestino: cuentaEntrada || '',
-        _encMovId: movimiento.id,       // vínculo: al eliminar el mov. del encargo, se borra este también
-        _esIntercambioEncargo: true,
-        _intercambioSalida: true,       // este es el egreso (para revertir correctamente)
-        monto: b.monto,
-        fecha,
-        desc: `Intercambio encargo: le di a ${nombreBenef} de mi ${fuenteLabel(cuentaSalida)}`,
-        nota: 'Movimiento contable neutro — no es ingreso ni gasto. Pagué de mi bolsillo, recupero del encargo.',
-        ts: Date.now() + idx + 1
-      });
-    }
-
-    // Recupero del encargo a mi cuenta destino — tipo transferencia, vinculado al movimiento del encargo
-    if (cuentaEntrada) {
-      sumarFuente(cuentaEntrada, b.monto);
-      S.movimientos.push({
-        id: uid(),
-        tipo: 'transferencia',
-        fuente: cuentaEntrada,
-        _fuenteDestino: cuentaSalida || '',
-        _encMovId: movimiento.id,       // vínculo: al eliminar el mov. del encargo, se borra este también
-        _esIntercambioEncargo: true,
-        _intercambioEntrada: true,      // este es el ingreso (para revertir correctamente)
-        monto: b.monto,
-        fecha,
-        desc: `Intercambio encargo: recupero de ${nombreBenef} en ${fuenteLabel(cuentaEntrada)}`,
-        nota: 'Movimiento contable neutro — no es ingreso ni gasto. Equivale al efectivo que di de mi bolsillo.',
-        ts: Date.now() + idx + 2
-      });
-    }
-  });
+  diffAplicar('movenc', movimiento, movimiento.id);
 }
 
 
 /* ─── Diferencial en "Ya la usé" ────────────────────────────── */
+/* ─── Diferencial en "Ya la usé" — instancia del motor común ───── */
 let _usarParteEncId = null;
 let _usarParteId    = null;
-let _usarParteDifBenefs = [];
 
-function _usarParteDifToggle() {
-  const body = document.getElementById('usar-parte-dif-body');
-  const icon = document.getElementById('usar-parte-dif-icon');
-  if (!body) return;
-  const abierto = body.style.display !== 'none';
-  body.style.display = abierto ? 'none' : '';
-  if (icon) { icon.textContent = abierto ? '›' : '‹'; icon.style.transform = abierto ? '' : 'rotate(90deg)'; }
-  if (!abierto) _usarParteDifResumen();
-}
+diffRegistrarInstancia('usarParte', {
+  ids: {
+    wrap: 'usar-parte-dif-wrap', body: 'usar-parte-dif-body', icon: 'usar-parte-dif-icon',
+    real: 'usar_parte_dif_real', partesList: 'usar-parte-dif-benefs',
+    resumen: 'usar-parte-dif-resumen', miCuentaWrap: 'usar-parte-dif-mi-cuenta-wrap', miCuenta: 'usar_parte_dif_mi_cuenta'
+  },
+  permiteBeneficiarios: true,
+  permiteIntercambio: false, // "Ya la usé" no soporta intercambio "lo pagué yo" — el dinero ya estaba en el encargo
+  permiteMiCuenta: true,
+  // El "dijo" de esta instancia viene de la parte del encargo, no de un input del DOM
+  getDijo: () => {
+    const enc = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
+    const parte = enc ? (enc.partes || []).find(p => p.id === _usarParteId) : null;
+    return parte ? (parte.monto || 0) : 0;
+  },
+  descMargen: (mov) => `Margen encargo ${mov._encNombre || ''} — `
+});
 
-function _usarParteAddBenef() {
-  _usarParteDifBenefs.push({ nombre: '', monto: 0 });
-  _usarParteDifRender();
-  _usarParteDifResumen();
-}
-
-function _usarParteRemoveBenef(i) {
-  _usarParteDifBenefs.splice(i, 1);
-  _usarParteDifRender();
-  _usarParteDifResumen();
-}
-
-function _usarParteSetNombre(i, v) { _usarParteDifBenefs[i].nombre = v; }
-function _usarParteSetMonto(i, v)  { _usarParteDifBenefs[i].monto = parseMoney(v) || 0; _usarParteDifResumen(); }
-
-function _usarParteDifRender() {
-  const cont = document.getElementById('usar-parte-dif-benefs');
-  if (!cont) return;
-  cont.innerHTML = _usarParteDifBenefs.map((b, i) => `
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-      <input type="text" placeholder="Nombre (ej: Mi tía, Yo)" value="${b.nombre}"
-        oninput="_usarParteSetNombre(${i},this.value)"
-        style="flex:2;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
-      <input type="text" inputmode="decimal" placeholder="Monto" value="${b.monto ? (typeof fmtInput==='function'?fmtInput(b.monto):String(b.monto)) : ''}"
-        oninput="_usarParteSetMonto(${i},this.value)"
-        style="flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--amber);font-size:13px;font-family:'DM Mono',monospace;">
-      <button type="button" onclick="_usarParteRemoveBenef(${i})" style="padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;">&#x2715;</button>
-    </div>`).join('');
-}
-
-function _usarParteDifResumen() {
-  const el = document.getElementById('usar-parte-dif-resumen');
-  if (!el) return;
-  const realEl = document.getElementById('usar_parte_dif_real');
-  // El monto "dijo" viene de la parte en sí (que ya tiene guardado lo que dijo)
-  const enc = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
-  const parte = enc ? (enc.partes || []).find(p => p.id === _usarParteId) : null;
-  const dijo  = parte ? (parte.monto || 0) : 0;
-  const real  = realEl ? (parseMoney(realEl.value) || 0) : 0;
-  const margen = dijo - real;
-
-  if (!real) { el.textContent = ''; return; }
-
-  let html = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>  Real: <span style="color:var(--text2)">${fmt(real)}</span>  Margen: <span style="color:${margen>=0?'var(--accent)':'var(--red)'}">${margen>=0?'+':''}${fmt(margen)}</span>`;
-  let pendiente = margen;
-  if (margen > 0) {
-    const asignado = _usarParteDifBenefs.reduce((a, b) => a + (b.monto || 0), 0);
-    pendiente = margen - asignado;
-    if (_usarParteDifBenefs.length) {
-      html += `<br>Asignado: <span style="color:var(--text2)">${fmt(asignado)}</span>  `;
-      if (Math.abs(pendiente) < 1) html += `<span style="color:var(--accent)">&#x2713; Cuadra</span>`;
-      else if (pendiente > 0) html += `<span style="color:var(--amber)">Te quedan: ${fmt(pendiente)}</span>`;
-      else html += `<span style="color:var(--red)">Te pasaste: ${fmt(Math.abs(pendiente))}</span>`;
-    }
-  }
-  el.innerHTML = html.replace(/\n/g, '<br>');
-
-  // Mostrar/ocultar el select de cuenta propia según si hay margen que te quedaste vos
-  const miCuentaWrap = document.getElementById('usar-parte-dif-mi-cuenta-wrap');
-  const miCuentaSel = document.getElementById('usar_parte_dif_mi_cuenta');
-  if (miCuentaWrap && miCuentaSel) {
-    const yoMeQuedo = margen > 0 && pendiente > 0.5;
-    miCuentaWrap.style.display = yoMeQuedo ? '' : 'none';
-    if (yoMeQuedo) {
-      const prevVal = miCuentaSel.value;
-      miCuentaSel.innerHTML = '<option value="">Sin especificar</option>' +
-        getFuentesSinTC().map(f => `<option value="${f.val}"${f.val === prevVal ? ' selected' : ''}>${f.label}</option>`).join('');
-    }
-  }
-}
+// Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual
+function _usarParteDifToggle() { diffToggle('usarParte'); }
+function _usarParteAddBenef() { diffAddParte('usarParte'); }
+function _usarParteRemoveBenef(i) { diffRemoveParte('usarParte', i); }
+function _usarParteSetNombre(i, v) { diffSetNombre('usarParte', i, v); }
+function _usarParteSetMonto(i, v) { diffSetMonto('usarParte', i, v); }
+function _usarParteDifResumen() { diffResumen('usarParte'); }
 
 /* ─── Fuente (origen) en "Ya la usé" ──────────────────────────── */
 let _usarParteSplitMode = false;
@@ -12328,30 +12442,26 @@ async function _confirmarUsarParte() {
     }
   }
 
-  // Guardar diferencial y mover margen a cuenta propia si aplica
-  const difBody = document.getElementById('usar-parte-dif-body');
-  const realEl  = document.getElementById('usar_parte_dif_real');
-  const difActivo = difBody && difBody.style.display !== 'none';
-  if (difActivo && realEl) {
-    const real = parseMoney(realEl.value) || 0;
-    if (real > 0) {
-      const dijo   = parte.monto;
-      const margen = dijo - real;
-      const benefs = _usarParteDifBenefs.filter(b => b.nombre || b.monto > 0).map(b => ({ nombre: b.nombre, monto: b.monto }));
-      const asignado = benefs.reduce((a, b) => a + (b.monto || 0), 0);
-      const yoMeQuedo = Math.max(0, margen - asignado);
+  // Guardar diferencial y mover margen a cuenta propia si aplica — vía el motor común.
+  // Nota: el sumarFuente/push del margen se difiere a _usarParteMargenPendiente (ver más abajo)
+  // para que su uid() salga después de los movimientos de salida del encargo, igual que antes.
+  if (diffEstaAbierto('usarParte')) {
+    const calc = diffCalcular('usarParte');
+    if (calc.real > 0) {
+      const { dijo, real, margen, normales, asignadoNormal } = calc;
+      const benefs = normales.map(b => ({ nombre: b.nombre, monto: b.monto }));
+      const yoMeQuedo = Math.max(0, margen - asignadoNormal);
 
-      // Leer cuenta donde cayó el margen propio
       const miCuentaSel = document.getElementById('usar_parte_dif_mi_cuenta');
       const miCuenta = miCuentaSel ? miCuentaSel.value : '';
 
       parte.diferencial = {
         dijo, real, margen,
         beneficiarios: benefs,
-        ...(miCuenta && yoMeQuedo > 0.5 ? { miCuenta, yoMeQuedo } : {})
+        miCuenta: (miCuenta && yoMeQuedo > 0.5) ? miCuenta : '',
+        yoMeQuedo: (miCuenta && yoMeQuedo > 0.5) ? yoMeQuedo : 0
       };
 
-      // Guardar cuenta del margen para usarla al final (después de los movimientos del encargo)
       if (miCuenta && yoMeQuedo > 0.5) {
         sumarFuente(miCuenta, yoMeQuedo);
         _usarParteMargenPendiente = { fuente: miCuenta, monto: yoMeQuedo };
@@ -12429,7 +12539,6 @@ function abrirUsarParteSheet(encId, parteId) {
   if (!parte) return;
   _usarParteEncId = encId;
   _usarParteId = parteId;
-  _usarParteDifBenefs = [];
 
   const infoEl = document.getElementById('usar-parte-info');
   if (infoEl) infoEl.textContent = `"${parte.desc}" · Le dijiste: ${fmt(parte.monto)}`;
@@ -12462,36 +12571,9 @@ function abrirUsarParteSheet(encId, parteId) {
   _usarParteFuentePreview();
 
   // Reset diferencial
-  const difBody = document.getElementById('usar-parte-dif-body');
-  const difIcon = document.getElementById('usar-parte-dif-icon');
-  if (difBody) difBody.style.display = 'none';
-  if (difIcon) { difIcon.textContent = '›'; difIcon.style.transform = ''; }
-  const realEl = document.getElementById('usar_parte_dif_real');
-  if (realEl) realEl.value = '';
-  _usarParteDifRender();
-  const resEl = document.getElementById('usar-parte-dif-resumen');
-  if (resEl) resEl.textContent = '';
-  const miCuentaWrap = document.getElementById('usar-parte-dif-mi-cuenta-wrap');
-  if (miCuentaWrap) miCuentaWrap.style.display = 'none';
-  const miCuentaSel = document.getElementById('usar_parte_dif_mi_cuenta');
-  if (miCuentaSel) miCuentaSel.value = '';
+  diffReset('usarParte');
 
   openSheet('usar-parte');
-}
-
-function _difRenderHistorial(mov) {
-  if (!mov.diferencial) return '';
-  const d = mov.diferencial;
-  const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b =>
-    `${b.nombre} ${fmt(b.monto)}`
-  ).join(' · ');
-  const miParte = d.miCuenta && d.yoMeQuedo > 0
-    ? `Yo → ${fuenteLabel(d.miCuenta)} ${fmt(d.yoMeQuedo)}`
-    : (d.yoMeQuedo > 0 ? `Yo ${fmt(d.yoMeQuedo)}` : '');
-  const todas = [benefs, miParte].filter(Boolean).join(' · ');
-  return `<div style="margin-top:4px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${todas ? ' · ' + todas : ''}
-  </div>`;
 }
 
 function _difRenderHistorialParte(parte) {
@@ -12577,24 +12659,10 @@ function abrirMovEncargo(tipo) {
 
   // Mostrar/ocultar diferencial según tipo
   const difWrap = document.getElementById('movenc-dif-wrap');
-  const difBody = document.getElementById('movenc-dif-body');
-  const difIcon = document.getElementById('movenc-dif-toggle-icon');
   if (difWrap) {
     if (tipo === 'salida') {
       difWrap.style.display = '';
-      // Reset estado diferencial
-      if (difBody) difBody.style.display = 'none';
-      if (difIcon) { difIcon.textContent = '›'; difIcon.style.transform = ''; }
-      const realEl = document.getElementById('movenc_dif_real');
-      if (realEl) realEl.value = '';
-      _difBenefs = [];
-      _difRenderBenefs();
-      _difResumen();
-      // Ocultar select de cuenta propia
-      const miCuentaWrap = document.getElementById('movenc-dif-mi-cuenta-wrap');
-      const miCuentaSel  = document.getElementById('movenc_dif_mi_cuenta');
-      if (miCuentaWrap) miCuentaWrap.style.display = 'none';
-      if (miCuentaSel)  miCuentaSel.value = '';
+      diffReset('movenc');
     } else {
       difWrap.style.display = 'none';
     }
@@ -13354,10 +13422,30 @@ if (_origNavEncargos) {
    - El encargo pierde el saldo (salida)
    - El dinero NO desaparece: se mueve a una cuenta propia (para pagar TC)
    - La deuda de la TC sube por el valor REAL de la compra
-   - Si hay diferencial (dijo X, costó Y), el margen es un ingreso propio
+   - El diferencial usa el motor común (instancia 'ctc'): sin beneficiarios
+     ni intercambio, solo "real" + cuenta propia para el margen.
    ================================================================ */
 
-let _ctcDifOpen = false;
+diffRegistrarInstancia('ctc', {
+  ids: {
+    wrap: 'ctc-dif-wrap', body: 'ctc-dif-body', icon: 'ctc-dif-icon',
+    real: 'ctc_dif_real', resumen: 'ctc-dif-resumen',
+    miCuentaWrap: 'ctc-dif-margen-wrap', miCuenta: 'ctc_dif_margen_cuenta'
+  },
+  permiteBeneficiarios: false,
+  permiteIntercambio: false,
+  permiteMiCuenta: true,
+  exigeMargenPositivo: true,
+  placeholderSinReal: 'Ingresa el valor real para ver el resumen',
+  labelMargenNegativo: 'El valor real debe ser menor que el monto del encargo',
+  getDijo: () => parseMoney(document.getElementById('ctc_monto')?.value) || 0,
+  descMargen: (mov) => `Diferencial encargo ${mov._encNombre || ''} — `,
+  onResumen: () => _ctcActualizarPreview()
+});
+
+// Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual
+function _ctcDifToggle() { diffToggle('ctc'); }
+function _ctcDifResumen() { diffResumen('ctc'); }
 
 function abrirCompraConTC() {
   const enc = getEncargo(encargoActualId);
@@ -13371,18 +13459,7 @@ function abrirCompraConTC() {
   document.getElementById('ctc_monto').value = '';
   document.getElementById('ctc_nota').value = '';
   document.getElementById('ctc_fecha').value = hoy();
-  document.getElementById('ctc_dif_real').value = '';
-
-  // Reset diferencial
-  _ctcDifOpen = false;
-  const difBody = document.getElementById('ctc-dif-body');
-  const difIcon = document.getElementById('ctc-dif-icon');
-  if (difBody) difBody.style.display = 'none';
-  if (difIcon) { difIcon.textContent = '›'; difIcon.style.transform = ''; }
-  const difResEl = document.getElementById('ctc-dif-resumen');
-  if (difResEl) difResEl.textContent = '';
-  const margenWrap = document.getElementById('ctc-dif-margen-wrap');
-  if (margenWrap) margenWrap.style.display = 'none';
+  diffReset('ctc');
 
   // Poblar select de cuentas del encargo
   const selEnc = document.getElementById('ctc_cuenta_enc');
@@ -13420,12 +13497,6 @@ function abrirCompraConTC() {
   });
   if (cajitaTC) selDest.value = 'cajita:' + cajitaTC.id;
 
-  // Poblar select de cuenta para diferencial
-  const selMargen = document.getElementById('ctc_dif_margen_cuenta');
-  if (selMargen) {
-    selMargen.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
-  }
-
   _ctcActualizarDestinoHint();
   _ctcActualizarPreview();
 
@@ -13458,38 +13529,6 @@ function _ctcActualizarDestinoHint() {
   hint.style.color = 'var(--text3)';
 }
 
-function _ctcDifToggle() {
-  _ctcDifOpen = !_ctcDifOpen;
-  const body = document.getElementById('ctc-dif-body');
-  const icon = document.getElementById('ctc-dif-icon');
-  if (body) body.style.display = _ctcDifOpen ? '' : 'none';
-  if (icon) { icon.textContent = _ctcDifOpen ? '›' : '›'; icon.style.transform = _ctcDifOpen ? 'rotate(90deg)' : ''; }
-  if (_ctcDifOpen) _ctcDifResumen();
-  _ctcActualizarPreview();
-}
-
-function _ctcDifResumen() {
-  const monto = parseMoney(document.getElementById('ctc_monto').value) || 0;
-  const real = parseMoney(document.getElementById('ctc_dif_real').value) || 0;
-  const resEl = document.getElementById('ctc-dif-resumen');
-  const margenWrap = document.getElementById('ctc-dif-margen-wrap');
-  if (!resEl) return;
-  if (!real || !monto) { resEl.textContent = 'Ingresa el valor real para ver el resumen'; resEl.style.color = 'var(--text3)'; if(margenWrap) margenWrap.style.display = 'none'; return; }
-  const margen = monto - real;
-  if (margen <= 0) {
-    resEl.innerHTML = '<span style="color:var(--red);">El valor real debe ser menor que el monto del encargo</span>';
-    if(margenWrap) margenWrap.style.display = 'none';
-  } else {
-    resEl.innerHTML =
-      `<span style="color:var(--amber);">Al encargo le dijiste: ${fmt(monto)}</span><br>` +
-      `<span style="color:var(--blue);">La TC cobró: ${fmt(real)}</span><br>` +
-      `<span style="color:var(--accent);">Diferencial tuyo: +${fmt(margen)}</span>`;
-    resEl.style.color = 'var(--text2)';
-    if(margenWrap) margenWrap.style.display = '';
-  }
-  _ctcActualizarPreview();
-}
-
 function _ctcActualizarPreview() {
   const prev = document.getElementById('ctc_preview');
   if (!prev) return;
@@ -13503,11 +13542,12 @@ function _ctcActualizarPreview() {
   const saldoEnc = enc ? encargoSaldo(enc) : 0;
   const saldoEncCuenta = (enc && cuentaEnc) ? _getEncargoSaldoEnCuenta(enc, cuentaEnc) : saldoEnc;
 
-  // Diferencial
-  const difActivo = _ctcDifOpen;
-  const real = difActivo ? (parseMoney(document.getElementById('ctc_dif_real').value) || 0) : 0;
-  const tcMonto = difActivo && real > 0 && real < monto ? real : monto;
-  const margen = difActivo && real > 0 && real < monto ? (monto - real) : 0;
+  // Diferencial — vía motor común
+  const difActivo = diffEstaAbierto('ctc');
+  const calc = difActivo ? diffCalcular('ctc') : null;
+  const real = calc ? calc.real : 0;
+  const tcMonto = calc && real > 0 && real < monto ? real : monto;
+  const margen = calc && real > 0 && real < monto ? calc.margen : 0;
 
   // TC info
   const tc = tcId ? (S.tarjetasCredito||[]).find(t=>t.id===tcId) : null;
@@ -13556,17 +13596,17 @@ function confirmarCompraConTC() {
     }
   }
 
-  // Diferencial
-  const difActivo = _ctcDifOpen;
-  const realRaw = difActivo ? (parseMoney(document.getElementById('ctc_dif_real').value) || 0) : 0;
-  const tcMonto = (difActivo && realRaw > 0 && realRaw < monto) ? realRaw : monto;
-  const margen = (difActivo && realRaw > 0 && realRaw < monto) ? (monto - realRaw) : 0;
-  const margenCuenta = margen > 0.5 ? (document.getElementById('ctc_dif_margen_cuenta').value || '') : '';
+  // Diferencial — vía motor común. tcMonto/margen dependen de si el real es válido (real>0 y real<monto).
+  const difActivo = diffEstaAbierto('ctc');
+  const calc = difActivo ? diffCalcular('ctc') : null;
+  const realValido = calc && calc.real > 0 && calc.real < monto;
+  const tcMonto = realValido ? calc.real : monto;
+  const margen = realValido ? calc.margen : 0;
 
   // ── 1. Registrar SALIDA en el encargo (el dinero deja de ser de ellos)
   if (!enc.movimientos) enc.movimientos = [];
   const _encMovId = uid(); // ID del movimiento del encargo — usado para vincular efectos secundarios
-  enc.movimientos.push({
+  const movEncargo = {
     id: _encMovId,
     tipo: 'salida',
     desc: `Compra pagada con TC: ${desc}`,
@@ -13579,7 +13619,8 @@ function confirmarCompraConTC() {
     _tcId: tcId,         // guardar TC para revertir la deuda al eliminar
     _tcMonto: tcMonto,   // monto real cargado a la TC
     ts: Date.now()
-  });
+  };
+  enc.movimientos.push(movEncargo);
 
   // ── 2. Mover el dinero del encargo a la cuenta destino (SIN registrar como ingreso)
   //    El dinero ya existía físicamente ahí; solo cambia de "del encargo" a "tuyo"
@@ -13605,21 +13646,11 @@ function confirmarCompraConTC() {
     _encMovId  // vínculo para poder limpiar al eliminar el movimiento del encargo
   });
 
-  // ── 5. Si hay diferencial, registrar como ingreso propio
+  // ── 5. Si hay diferencial, registrar el margen vía el motor común (usa el mismo _encMovId para poder revertir)
   if (margen > 0.5) {
-    if (margenCuenta) {
-      sumarFuente(margenCuenta, margen);
-      if (!S.movimientos) S.movimientos = [];
-      S.movimientos.push({
-        id: uid(),
-        tipo: 'entrada',
-        fuente: margenCuenta,
-        monto: margen,
-        fecha,
-        desc: `Diferencial encargo ${enc.nombre} — ${desc}`,
-        _encMovId  // vínculo: al eliminar el movimiento del encargo, también se borra este
-      });
-    }
+    const movTemp = { desc, fecha, _encNombre: enc.nombre };
+    const diferencial = diffAplicar('ctc', movTemp, _encMovId);
+    if (diferencial) movEncargo.diferencial = diferencial;
   }
 
   // ── 6. Registrar en historial de cambios
@@ -13648,6 +13679,8 @@ function confirmarCompraConTC() {
   const selDest = document.getElementById('ctc_destino');
   if (selDest) selDest.addEventListener('change', _ctcActualizarDestinoHint);
 })();
+
+/* ================================================================ */
 
 /* ================================================================ */
 

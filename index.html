@@ -7932,8 +7932,6 @@ function initMovSheet(tipo) {
   if (extList) extList.innerHTML = '';
   const extRes = document.getElementById('ext_partes_resumen');
   if (extRes) extRes.innerHTML = '';
-  // compat vars
-  _abonoExtOpt = ''; _abonoExtRegTodo = true; _abonoExtSplitMode = false; _abonoExtSplitRows = [];
   // Reset desde-encargo
   _abonoDesdeEncargo = false;
   _abonoEncId = '';
@@ -8316,10 +8314,6 @@ function _onMovMontoInput() {
 // ── ABONO: split destino + extra ───────────────────────────────────────────
 let _abonoSplitMode    = false;
 let _abonoSplitRows    = [];
-let _abonoExtOpt       = '';
-let _abonoExtRegTodo   = true;
-let _abonoExtSplitMode = false;
-let _abonoExtSplitRows = [];
 let _abonoDesdeEncargo = false;
 let _abonoEncId        = '';
 let _abonoEncCuenta    = '';
@@ -8532,17 +8526,6 @@ function extResumenPartes() {
   else                  el.innerHTML=`<span style="color:var(--red);">Excede el extra en ${fmt(-diff)}</span>`;
 }
 
-/* Compatibilidad: funciones antiguas que pudo quedar referenciadas */
-function selAbonoExt(){}
-function toggleExtSplit(){}
-function extAddSplitRow(){}
-function extRegTodo(){}
-function extActRestoRegalo(){}
-function extSplitFuente(){}
-function extSplitMonto(){}
-function extSplitDel(){}
-function extDeselect(){}
-
 // Calcular total prestado para el resumen
 function totalPrestadoPendiente() {
   return (S.deudores || []).reduce((a, d) => {
@@ -8740,56 +8723,122 @@ function clickMesDot(parent,key,nombre){
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   MOTOR GENÉRICO "SPLIT DE FUENTES" (mismo patrón que diffRegistrarInstancia)
+   ───────────────────────────────────────────────────────────────
+   Esto estaba triplicado: Mesada, MovEnc y UsarParte tenían cada
+   uno su propio toggle / agregarRow / getData, casi idénticos.
+   Ahora hay un solo motor parametrizado por instancia. Cada módulo
+   registra su config con crearSplitWidget() y expone wrappers con
+   el nombre de siempre (toggleMpSplit, _movEncSplitToggle, etc.)
+   para no tener que tocar el resto del archivo ni el HTML, que
+   siguen llamando a esas funciones por su nombre de toda la vida.
+
+   crearSplitWidget(instId, cfg):
+     simpleId, splitId, toggleId, rowsId : ids de los elementos del DOM
+     getModo()/setModo(v)  : leer/escribir el flag de modo split.
+                              Es un closure sobre el `let` propio de
+                              cada módulo (mpSplitMode, etc.) — así el
+                              resto del archivo, que lee esa variable
+                              directamente, sigue funcionando sin tocar
+                              una sola línea más.
+     getFuentesFn(selectedVal) : HTML de <option>s — la única pieza
+                              que de verdad difiere entre módulos.
+     onPreview()            : se llama tras cualquier cambio (toggle,
+                              agregar/borrar fila, escribir un monto).
+
+   Nota: las filas ahora usan input type="text" + class="money-input"
+   (igual que el resto de la app, parseMoney) en vez del type="number"
+   + parseFloat que tenía Mesada — eso era una inconsistencia real
+   preexistente (mpMonto, el campo padre, ya usaba money-input), no
+   un cambio de comportamiento que se inventa este refactor.
+   ═══════════════════════════════════════════════════════════════ */
+const _splitInstancias = {};
+
+function crearSplitWidget(instId, cfg){
+  _splitInstancias[instId] = cfg;
+  return cfg;
+}
+
+function splitToggle(instId){
+  const cfg = _splitInstancias[instId]; if(!cfg) return;
+  const modo = !cfg.getModo();
+  cfg.setModo(modo);
+  const simple = document.getElementById(cfg.simpleId);
+  const split  = document.getElementById(cfg.splitId);
+  if(simple) simple.style.display = modo ? 'none' : '';
+  if(split)  split.style.display  = modo ? '' : 'none';
+  const btn = document.getElementById(cfg.toggleId);
+  if(btn){
+    btn.textContent   = modo ? 'Una sola cuenta' : 'Dividir ÷';
+    btn.style.background  = modo ? 'rgba(240,184,64,.1)' : 'rgba(200,240,96,.1)';
+    btn.style.borderColor = modo ? 'rgba(240,184,64,.3)' : 'rgba(200,240,96,.3)';
+    btn.style.color       = modo ? 'var(--amber)' : 'var(--accent)';
+  }
+  const rows = document.getElementById(cfg.rowsId);
+  if(modo && rows && rows.children.length===0){
+    splitAgregarRow(instId);
+    splitAgregarRow(instId);
+  }
+  cfg.onPreview && cfg.onPreview();
+}
+
+function splitAgregarRow(instId){
+  const cfg = _splitInstancias[instId]; if(!cfg) return;
+  const container = document.getElementById(cfg.rowsId);
+  if(!container) return;
+  const id = 'spr_'+uid();
+  const div = document.createElement('div');
+  div.id = id;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:7px;';
+  div.innerHTML = `
+    <div class="select-wrap"><select onchange="splitPreview('${instId}')" style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">${cfg.getFuentesFn('')}</select></div>
+    <input type="text" inputmode="decimal" placeholder="monto" oninput="splitPreview('${instId}')" class="money-input" style="width:96px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Mono',monospace;outline:none;">
+    <button type="button" onclick="document.getElementById('${id}').remove();splitPreview('${instId}');" style="width:28px;height:36px;background:rgba(240,104,104,.1);border:1px solid rgba(240,104,104,.2);border-radius:7px;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>`;
+  container.appendChild(div);
+}
+
+function splitGetData(instId){
+  const cfg = _splitInstancias[instId]; if(!cfg) return [];
+  const rows = document.getElementById(cfg.rowsId);
+  if(!rows) return [];
+  const result = [];
+  for(const row of rows.children){
+    const sel = row.querySelector('select');
+    const inp = row.querySelector('input');
+    const fuente = sel ? sel.value : '';
+    const monto = parseMoney(inp ? inp.value : '') || 0;
+    if(monto>0) result.push({fuente,monto});
+  }
+  return result;
+}
+
+function splitPreview(instId){
+  const cfg = _splitInstancias[instId]; if(!cfg) return;
+  cfg.onPreview && cfg.onPreview();
+}
+
 let mpSplitMode=false;
 
-function toggleMpSplit(){
-  mpSplitMode=!mpSplitMode;
-  document.getElementById('mpModoSimple').style.display=mpSplitMode?'none':'';
-  document.getElementById('mpModoDividido').style.display=mpSplitMode?'':'none';
-  document.getElementById('mpSplitToggle').textContent=mpSplitMode?'Una sola cuenta':'Dividir ÷';
-  document.getElementById('mpSplitToggle').style.background=mpSplitMode?'rgba(240,184,64,.1)':'rgba(200,240,96,.1)';
-  document.getElementById('mpSplitToggle').style.borderColor=mpSplitMode?'rgba(240,184,64,.3)':'rgba(200,240,96,.3)';
-  document.getElementById('mpSplitToggle').style.color=mpSplitMode?'var(--amber)':'var(--accent)';
-  if(mpSplitMode&&document.getElementById('mpSplitRows').children.length===0){
-    agregarMpSplitRow();
-    agregarMpSplitRow();
-  }
-  actualizarMpPreview();
-}
+crearSplitWidget('mp', {
+  simpleId:'mpModoSimple', splitId:'mpModoDividido', toggleId:'mpSplitToggle', rowsId:'mpSplitRows',
+  getModo:()=>mpSplitMode, setModo:v=>{mpSplitMode=v;},
+  getFuentesFn:getFuentesOptions,
+  onPreview:actualizarMpPreview
+});
+
+function toggleMpSplit(){ splitToggle('mp'); }
 
 function getFuentesOptions(selectedVal){
   const fuentes=getFuentes();
   return'<option value="">No especificar</option>'+fuentes.map(f=>`<option value="${f.val}"${f.val===selectedVal?' selected':''}>${f.label}</option>`).join('');
 }
 
-function agregarMpSplitRow(){
-  const container=document.getElementById('mpSplitRows');
-  const id='spr_'+uid();
-  const div=document.createElement('div');
-  div.id=id;
-  div.style.cssText='display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:7px;';
-  div.innerHTML=`
-    <div class="select-wrap"><select onchange="actualizarMpPreview()" style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:\'DM Sans\',sans-serif;outline:none;">${getFuentesOptions('')}</select></div>
-    <input type="number" placeholder="monto" oninput="actualizarMpPreview()" style="width:96px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:\'DM Mono\',monospace;outline:none;">
-    <button type="button" onclick="document.getElementById('${id}').remove();actualizarMpPreview();" style="width:28px;height:36px;background:rgba(240,104,104,.1);border:1px solid rgba(240,104,104,.2);border-radius:7px;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>`;
-  container.appendChild(div);
-}
+function agregarMpSplitRow(){ splitAgregarRow('mp'); }
 
-function getMpSplitData(){
-  // Returns array of {fuente, monto}
-  const rows=document.getElementById('mpSplitRows').children;
-  const result=[];
-  for(const row of rows){
-    const sel=row.querySelector('select');
-    const inp=row.querySelector('input[type=number]');
-    const fuente=sel?sel.value:'';
-    const monto=parseFloat(inp?inp.value:0)||0;
-    if(monto>0)result.push({fuente,monto});
-  }
-  return result;
-}
+function getMpSplitData(){ return splitGetData('mp'); }
 
 function abrirRegistrarMesada(parent,key,nombre){
   mpParent=parent;mpMesKey=key;mpMesNombre=nombre;
@@ -12413,24 +12462,14 @@ function _usarParteDifResumen() { diffResumen('usarParte'); }
 let _usarParteSplitMode = false;
 let _usarParteMargenPendiente = null;
 
-function _usarParteSplitToggle() {
-  _usarParteSplitMode = !_usarParteSplitMode;
-  document.getElementById('usarParteModoSimple').style.display = _usarParteSplitMode ? 'none' : '';
-  document.getElementById('usarParteModoDividido').style.display = _usarParteSplitMode ? '' : 'none';
-  const btn = document.getElementById('usarParteSplitToggle');
-  if (btn) {
-    btn.textContent = _usarParteSplitMode ? 'Una sola cuenta' : 'Dividir ÷';
-    btn.style.background = _usarParteSplitMode ? 'rgba(240,184,64,.1)' : 'rgba(200,240,96,.1)';
-    btn.style.borderColor = _usarParteSplitMode ? 'rgba(240,184,64,.3)' : 'rgba(200,240,96,.3)';
-    btn.style.color = _usarParteSplitMode ? 'var(--amber)' : 'var(--accent)';
-  }
-  const rows = document.getElementById('usarParteSplitRows');
-  if (_usarParteSplitMode && rows && rows.children.length === 0) {
-    _usarParteAgregarSplitRow();
-    _usarParteAgregarSplitRow();
-  }
-  _usarParteFuentePreview();
-}
+crearSplitWidget('usarParte', {
+  simpleId:'usarParteModoSimple', splitId:'usarParteModoDividido', toggleId:'usarParteSplitToggle', rowsId:'usarParteSplitRows',
+  getModo:()=>_usarParteSplitMode, setModo:v=>{_usarParteSplitMode=v;},
+  getFuentesFn:_getUsarParteFuentesOptions,
+  onPreview:_usarParteFuentePreview
+});
+
+function _usarParteSplitToggle(){ splitToggle('usarParte'); }
 
 function _getUsarParteFuentesOptions(selectedVal) {
   const enc = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
@@ -12442,35 +12481,9 @@ function _getUsarParteFuentesOptions(selectedVal) {
     }).join('');
 }
 
-function _usarParteAgregarSplitRow() {
-  const container = document.getElementById('usarParteSplitRows');
-  if (!container) return;
-  const id = 'upsr_' + uid();
-  const div = document.createElement('div');
-  div.id = id;
-  div.style.cssText = 'display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:7px;';
-  div.innerHTML = `
-    <div class="select-wrap"><select onchange="_usarParteFuentePreview()" style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">${_getUsarParteFuentesOptions('')}</select></div>
-    <input type="text" inputmode="decimal" placeholder="monto" oninput="_usarParteFuentePreview()" class="money-input" style="width:96px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Mono',monospace;outline:none;">
-    <button type="button" onclick="document.getElementById('${id}').remove();_usarParteFuentePreview();" style="width:28px;height:36px;background:rgba(240,104,104,.1);border:1px solid rgba(240,104,104,.2);border-radius:7px;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>`;
-  container.appendChild(div);
-}
+function _usarParteAgregarSplitRow(){ splitAgregarRow('usarParte'); }
 
-function _getUsarParteSplitData() {
-  const rows = document.getElementById('usarParteSplitRows');
-  if (!rows) return [];
-  const result = [];
-  for (const row of rows.children) {
-    const sel = row.querySelector('select');
-    const inp = row.querySelector('input');
-    const fuente = sel ? sel.value : '';
-    const monto = parseMoney(inp ? inp.value : '') || 0;
-    if (monto > 0) result.push({ fuente, monto });
-  }
-  return result;
-}
+function _getUsarParteSplitData(){ return splitGetData('usarParte'); }
 
 function _usarParteFuentePreview() {
   const el = document.getElementById('usar-parte-fuente-preview');
@@ -12804,25 +12817,14 @@ function _actualizarMovEncCuentaHint(enc, cuentaVal) {
 /* ─── Split de fuente en "Retirar plata" del encargo ─────────────── */
 let _movEncSplitMode = false;
 
-function _movEncSplitToggle() {
-  _movEncSplitMode = !_movEncSplitMode;
-  document.getElementById('movenc_cuenta_simple').style.display = _movEncSplitMode ? 'none' : '';
-  document.getElementById('movenc_cuenta_split').style.display  = _movEncSplitMode ? '' : 'none';
-  const btn = document.getElementById('movenc_split_toggle');
-  if (btn) {
-    btn.textContent    = _movEncSplitMode ? 'Una sola cuenta' : 'Dividir ÷';
-    btn.style.background   = _movEncSplitMode ? 'rgba(240,184,64,.1)'  : 'rgba(200,240,96,.1)';
-    btn.style.borderColor  = _movEncSplitMode ? 'rgba(240,184,64,.3)'  : 'rgba(200,240,96,.3)';
-    btn.style.color        = _movEncSplitMode ? 'var(--amber)'         : 'var(--accent)';
-  }
-  // Arrancar con 2 filas vacías
-  const rows = document.getElementById('movencSplitRows');
-  if (_movEncSplitMode && rows && rows.children.length === 0) {
-    _movEncAgregarSplitRow();
-    _movEncAgregarSplitRow();
-  }
-  _movEncSplitPreview();
-}
+crearSplitWidget('movenc', {
+  simpleId:'movenc_cuenta_simple', splitId:'movenc_cuenta_split', toggleId:'movenc_split_toggle', rowsId:'movencSplitRows',
+  getModo:()=>_movEncSplitMode, setModo:v=>{_movEncSplitMode=v;},
+  getFuentesFn:_movEncGetFuentesOptions,
+  onPreview:_movEncSplitPreview
+});
+
+function _movEncSplitToggle(){ splitToggle('movenc'); }
 
 function _movEncGetFuentesOptions(selectedVal) {
   const enc = encargoActualId ? getEncargo(encargoActualId) : null;
@@ -12839,35 +12841,9 @@ function _movEncGetFuentesOptions(selectedVal) {
     ).join('');
 }
 
-function _movEncAgregarSplitRow() {
-  const container = document.getElementById('movencSplitRows');
-  if (!container) return;
-  const id = 'mesr_' + uid();
-  const div = document.createElement('div');
-  div.id = id;
-  div.style.cssText = 'display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:7px;';
-  div.innerHTML = `
-    <div class="select-wrap"><select onchange="_movEncSplitPreview()" style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">${_movEncGetFuentesOptions('')}</select></div>
-    <input type="text" inputmode="decimal" placeholder="monto" oninput="_movEncSplitPreview()" class="money-input" style="width:96px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Mono',monospace;outline:none;">
-    <button type="button" onclick="document.getElementById('${id}').remove();_movEncSplitPreview();" style="width:28px;height:36px;background:rgba(240,104,104,.1);border:1px solid rgba(240,104,104,.2);border-radius:7px;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>`;
-  container.appendChild(div);
-}
+function _movEncAgregarSplitRow(){ splitAgregarRow('movenc'); }
 
-function _movEncGetSplitData() {
-  const rows = document.getElementById('movencSplitRows');
-  if (!rows) return [];
-  const result = [];
-  for (const row of rows.children) {
-    const sel = row.querySelector('select');
-    const inp = row.querySelector('input');
-    const fuente = sel ? sel.value : '';
-    const monto  = parseMoney(inp ? inp.value : '') || 0;
-    if (monto > 0) result.push({ fuente, monto });
-  }
-  return result;
-}
+function _movEncGetSplitData(){ return splitGetData('movenc'); }
 
 function _movEncSplitPreview() {
   const el = document.getElementById('movenc_split_preview');

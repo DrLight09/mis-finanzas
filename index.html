@@ -15188,10 +15188,13 @@ document.addEventListener('focusin', function(e){
       });
       // Entradas manuales a Nequi, Efectivo y cajitas de Nu (tipo 'entrada', excluye apertura para no distorsionar)
       // Excluir reposiciones de plata comprometida (_esReposicionCP): no son ingresos nuevos sino devoluciones
+      // Excluir entradas de TC-encargo (_esTcEncargo) y diferenciales (_esDiferencialEncargo): no son ingresos propios
       // Fallback por desc para movimientos viejos sin _esReposicionCP
       (S.movimientos||[]).filter(m=>
         m.tipo==='entrada' &&
         !m._esReposicionCP &&
+        !m._esTcEncargo &&
+        !m._esDiferencialEncargo &&
         !/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'') &&
         (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))||m._prestadoDirectamente) &&
         mesKey(m.fecha)===mk
@@ -15229,10 +15232,13 @@ document.addEventListener('focusin', function(e){
         (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mkHoy).forEach(m=>{ ingHoy+=(m.monto||0); });
       });
       // Excluir reposiciones de plata comprometida (_esReposicionCP): no son ingresos nuevos
+      // Excluir entradas de TC-encargo (_esTcEncargo) y diferenciales (_esDiferencialEncargo): no son ingresos propios
       // Fallback por desc para movimientos viejos sin _esReposicionCP
       (S.movimientos||[]).filter(m=>
         m.tipo==='entrada' &&
         !m._esReposicionCP &&
+        !m._esTcEncargo &&
+        !m._esDiferencialEncargo &&
         !/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'') &&
         (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))||m._prestadoDirectamente) &&
         mesKey(m.fecha)===mkHoy

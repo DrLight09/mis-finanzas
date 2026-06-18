@@ -19907,30 +19907,27 @@ let _cpgDesdeListaPersonas = false;
 
 function _abrirCrearPersonaGlobal(desdeListaPersonas) {
   _cpgDesdeListaPersonas = !!desdeListaPersonas;
+  _inyectarPersonaSheets();
+  _cpgColorSel = PERSONA_COLORES[0];
+  document.getElementById('cpg_nombre').value = '';
+  _renderColorPicker('cpg_colores', '_cpgColorSel');
+  // Abrir el nuevo sheet primero (antes de cerrar el anterior) para evitar el flash del fondo
+  document.getElementById('sheet-crear-persona-global').classList.add('open');
   if (desdeListaPersonas) {
     document.getElementById('sheet-lista-personas').classList.remove('open');
   } else {
     document.getElementById('sheet-sel-persona').classList.remove('open');
   }
-  setTimeout(() => {
-    _inyectarPersonaSheets();
-    _cpgColorSel = PERSONA_COLORES[0];
-    document.getElementById('cpg_nombre').value = '';
-    _renderColorPicker('cpg_colores', '_cpgColorSel');
-    document.getElementById('sheet-crear-persona-global').classList.add('open');
-    setTimeout(() => document.getElementById('cpg_nombre').focus(), 200);
-  }, 180);
+  setTimeout(() => document.getElementById('cpg_nombre').focus(), 200);
 }
 
 function _volverASelPersona() {
+  if (_cpgDesdeListaPersonas) {
+    _abrirListaPersonas();
+  } else {
+    abrirSelPersona(_selPersonaCallback);
+  }
   document.getElementById('sheet-crear-persona-global').classList.remove('open');
-  setTimeout(() => {
-    if (_cpgDesdeListaPersonas) {
-      _abrirListaPersonas();
-    } else {
-      abrirSelPersona(_selPersonaCallback);
-    }
-  }, 180);
 }
 
 function _crearPersonaGlobal() {
@@ -20219,8 +20216,8 @@ function abrirPerfilPersona(personaId) {
 
 function _editarPersonaDesdePerfilSheet() {
   if (!_perfilPersonaId) return;
+  abrirEditarPersonaGlobal(_perfilPersonaId);
   document.getElementById('sheet-perfil-persona').classList.remove('open');
-  setTimeout(() => abrirEditarPersonaGlobal(_perfilPersonaId), 180);
 }
 
 function _irADeudor(deudorId) {

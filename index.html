@@ -13054,8 +13054,12 @@ async function deleteMovEncargo(encId, movId) {
 
   // Revertir efectos secundarios de una compra TC de encargo
   if (mov && mov._esTcEncargo) {
-    // Revertir el sumarFuente del paso 2 (el dinero del encargo que pasó a ser "mío")
-    if (mov._destino && mov.monto) descontarFuente(mov._destino, mov.monto);
+    // Revertir el sumarFuente del paso 2: usar _destinoMonto si existe (tcMonto guardado),
+    // con fallback a _tcMonto y luego a monto para compatibilidad con registros anteriores.
+    if (mov._destino) {
+      const montoARevertir = mov._destinoMonto || mov._tcMonto || mov.monto;
+      if (montoARevertir) descontarFuente(mov._destino, montoARevertir);
+    }
 
     // Revertir la deuda de la TC (paso 3)
     if (mov._tcId && mov._tcMonto) {
@@ -13068,8 +13072,8 @@ async function deleteMovEncargo(encId, movId) {
       S.tcMovimientos = S.tcMovimientos.filter(t => t._encMovId !== movId);
     }
 
-    // Borrar el S.movimientos de diferencial vinculado (paso 5) y revertir sumarFuente del margen
-    // (excluye los de intercambio — esos los maneja el bloque siguiente)
+    // Borrar todos los S.movimientos vinculados (destino + diferencial, pasos 2 y 5)
+    // y revertir sus sumas. Excluye los de intercambio — esos los maneja el bloque siguiente.
     if (S.movimientos) {
       const difMovs = S.movimientos.filter(m => m._encMovId === movId && !m._esIntercambioEncargo);
       difMovs.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto); });
@@ -13707,15 +13711,30 @@ function confirmarCompraConTC() {
     _encId: enc.id,      // guardar encargo origen para poder encontrar el raw desde detalle
     _destino: destino,   // guardar destino para poder revertir el sumarFuente al eliminar
     _tcId: tcId,         // guardar TC para revertir la deuda al eliminar
-    _tcMonto: tcMonto,   // monto real cargado a la TC
-    _dijoMonto: monto,   // monto que se le dijo al encargo (puede diferir del real si hay margen)
+    _tcMonto: tcMonto,      // monto real cargado a la TC
+    _dijoMonto: monto,      // monto que se le dijo al encargo (puede diferir del real si hay margen)
+    _destinoMonto: tcMonto, // monto que realmente entra a la cuenta destino (= tcMonto, para reversión)
     ts: Date.now()
   };
   enc.movimientos.push(movEncargo);
 
-  // ── 2. Mover el dinero del encargo a la cuenta destino (SIN registrar como ingreso)
-  //    El dinero ya existía físicamente ahí; solo cambia de "del encargo" a "tuyo"
-  sumarFuente(destino, monto);
+  // ── 2. Mover el dinero del encargo a la cuenta destino
+  //    Solo entra el valor real cobrado por la TC (tcMonto), no el total del encargo.
+  //    La diferencia (margen) ya fue separada como ganancia tuya en el paso diferencial.
+  sumarFuente(destino, tcMonto);
+  if (!S.movimientos) S.movimientos = [];
+  S.movimientos.push({
+    id: uid(),
+    tipo: 'entrada',
+    fuente: destino,
+    _encMovId,
+    _esTcEncargo: true,
+    monto: tcMonto,
+    fecha,
+    desc: `TC encargo ${enc.nombre}: ${desc}`,
+    nota: 'Dinero del encargo recibido para pagar la tarjeta de crédito.',
+    ts: Date.now()
+  });
 
   // ── 3. Aumentar la deuda de la TC por el valor REAL (no margen)
   const tc = (S.tarjetasCredito||[]).find(t=>t.id===tcId);
@@ -13755,6 +13774,7 @@ function confirmarCompraConTC() {
   }
 
   save();
+  refresh();
   closeSheet('compra-tc-encargo');
   abrirEncargoDetalle(encargoActualId);
   toast(`${fmt(monto)} del encargo → ${fuenteLabel(destino)} · TC sube ${fmt(tcMonto)}`, 'ok', 4000);

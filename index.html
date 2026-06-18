@@ -186,6 +186,12 @@ textarea{resize:none;height:60px;}
 .btn-icon{background:none;border:none;cursor:pointer;color:var(--text3);padding:0;display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;transition:color .15s;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);overflow:hidden;}
 .overlay.open{display:flex;}
+/* Sheet stack: el overlay activo sube a z-index 1001; el enterrado queda en 999
+   con su sheet escalaodao/apagado y sin pointer-events */
+.overlay.open:not(.sheet-background){z-index:1001;}
+.overlay.sheet-background{display:flex;z-index:999;background:rgba(0,0,0,.0) !important;backdrop-filter:none !important;pointer-events:none;}
+.overlay.sheet-background .sheet{transform:scale(0.93) translateY(-10px);opacity:0.3;pointer-events:none;will-change:transform,opacity;}
+.overlay.open:not(.sheet-background) .sheet{transform:scale(1) translateY(0);opacity:1;will-change:transform,opacity;}
 .sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:0 18px 38px;width:100%;max-width:430px;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 /* Handle unificado — una sola definición */
 .sheet-handle{width:40px;height:5px;background:var(--border2);border-radius:3px;margin:14px auto 20px;cursor:grab;opacity:.7;}
@@ -9565,16 +9571,49 @@ function mostrarAlertaFuente(prefix){
 }
 
 /* ---- NAV / SHEETS ---- */
+
+/* ── Sheet stack manager ────────────────────────────────────────────────────
+   Permite apilar sheets: cuando se abre uno sobre otro, el anterior se
+   "empuja" hacia atrás con escala+opacidad reducida. Al cerrar el superior,
+   el anterior recupera el foco automáticamente.
+   ─────────────────────────────────────────────────────────────────────── */
+const _sheetStack = [];
+
 function openSheet(id){
+  // Efectos secundarios por sheet específico
   if(id==='gasto-var'){poblarFuente('gv_fuente',true);const h=document.getElementById('gv_fuente_hint');if(h)h.style.display='none';document.getElementById('gv_fuente').onchange=function(){const sd=document.getElementById('gv_fuente_saldo');if(!sd)return;const s=getSaldoFuente(this.value);sd.textContent=this.value?'Saldo disponible: '+fmt(s):'';sd.style.color=s>0?'var(--accent)':'var(--red)';};}
   if(id==='nueva-persona'){initColorPicker();document.getElementById('np_nombre').value='';}
   if(id==='registrar-movimiento'){poblarFuente('mov_fuente');poblarFuente('mov_destino');}
   if(id==='agregar-dinero-menu'){save();openSheet_adMenu();}
   if(id==='pagar-spotify'){save();openSheet_pagarSpotify();}
   if(id==='spotify'){const fd=document.getElementById('sp_fecha_ingreso');if(fd&&!fd.value)fd.value=hoy();}
-  document.getElementById('sheet-'+id).classList.add('open');
+  // Si ya estaba en la pila, sacarlo para reposicionarlo al tope
+  const _ssExist = _sheetStack.indexOf(id);
+  if(_ssExist !== -1) _sheetStack.splice(_ssExist, 1);
+  // Empujar el sheet actual hacia atrás (escala + opacidad reducida)
+  if(_sheetStack.length > 0){
+    const _ssPrevId = _sheetStack[_sheetStack.length - 1];
+    const _ssPrevEl = document.getElementById('sheet-' + _ssPrevId);
+    if(_ssPrevEl) _ssPrevEl.classList.add('sheet-background');
+  }
+  _sheetStack.push(id);
+  const _ssEl = document.getElementById('sheet-' + id);
+  if(_ssEl){ _ssEl.classList.add('open'); _ssEl.classList.remove('sheet-background'); }
 }
-function closeSheet(id){document.getElementById('sheet-'+id).classList.remove('open');}
+
+function closeSheet(id){
+  const _csEl = document.getElementById('sheet-' + id);
+  if(_csEl){ _csEl.classList.remove('open'); _csEl.classList.remove('sheet-background'); }
+  // Quitar de la pila
+  const _csIdx = _sheetStack.indexOf(id);
+  if(_csIdx !== -1) _sheetStack.splice(_csIdx, 1);
+  // Restaurar el sheet anterior si queda alguno en la pila
+  if(_sheetStack.length > 0){
+    const _csPrevId = _sheetStack[_sheetStack.length - 1];
+    const _csPrevEl = document.getElementById('sheet-' + _csPrevId);
+    if(_csPrevEl){ _csPrevEl.classList.remove('sheet-background'); }
+  }
+}
 
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -14175,7 +14214,7 @@ document.addEventListener('focusin', function(e){
       if(!sheet) return;
       const sheetId = overlay.id ? overlay.id.replace('sheet-','') : null;
       const closeFn = sheetId
-        ? () => { overlay.style.opacity=''; overlay.classList.remove('open'); }
+        ? () => { overlay.style.opacity=''; closeSheet(sheetId); }
         : () => overlay.classList.remove('open');
       makeSwipeable(sheet, closeFn);
     });

@@ -4149,19 +4149,50 @@ function diffTogglePagoYo(instId, i) {
 function diffSetCuentaSalida(instId, i, v) { const inst = diffInst(instId); if (inst) { inst.partes[i].miCuentaSalida = v; diffResumen(instId); } }
 function diffSetCuentaEntrada(instId, i, v) { const inst = diffInst(instId); if (inst) { inst.partes[i].miCuentaEntrada = v; diffResumen(instId); } }
 
-function _diffFuentesOptsHtml(selectedVal, soloConSaldo) {
-  const fuentes = getFuentesSinTC();
+/**
+ * buildFuentesOptsHtml — función canónica para generar <option>s de fuentes.
+ * Reemplaza: getFuentesOptions, _diffFuentesOptsHtml, poblarFuente,
+ *            _cpPoblarCuentas (y sirve de base para las variantes de encargos).
+ *
+ * @param {Object}  opts
+ * @param {string}  [opts.selectedVal='']         Valor a pre-seleccionar.
+ * @param {boolean} [opts.soloConSaldo=false]      Omitir fuentes con saldo <= 0.
+ * @param {boolean} [opts.incluirTC=true]          Incluir tarjetas de crédito.
+ * @param {boolean} [opts.mostrarSaldo=false]      Mostrar saldo entre paréntesis.
+ * @param {string}  [opts.placeholder='Sin especificar']  Texto del option vacío.
+ * @param {Array}   [opts.fuentesCustom=null]      Lista custom (ej: cuentas de encargo).
+ *                  Cada item debe tener { val, label } o { cuenta, label, saldo }.
+ */
+function buildFuentesOptsHtml({
+  selectedVal = '',
+  soloConSaldo = false,
+  incluirTC = true,
+  mostrarSaldo = false,
+  placeholder = 'Sin especificar',
+  fuentesCustom = null
+} = {}) {
+  const fuentes = fuentesCustom ?? (incluirTC ? getFuentes() : getFuentesSinTC());
   const opts = fuentes
     .map(f => {
-      const saldo = getSaldoFuente(f.val);
+      const val   = f.val ?? f.cuenta;
+      const saldo = mostrarSaldo || soloConSaldo ? (f.saldo !== undefined ? f.saldo : getSaldoFuente(val)) : 0;
       if (soloConSaldo && saldo <= 0) return null;
-      const label = soloConSaldo ? `${f.label} (${fmt(saldo)})` : f.label;
-      return `<option value="${f.val}"${f.val === selectedVal ? ' selected' : ''}>${label}</option>`;
+      const label = mostrarSaldo ? `${f.label} (${fmt(saldo)})` : f.label;
+      return `<option value="${val}"${val === selectedVal ? ' selected' : ''}>${label}</option>`;
     })
     .filter(Boolean)
     .join('');
-  const placeholder = soloConSaldo ? '<option value="">Seleccionar cuenta</option>' : '<option value="">Sin especificar</option>';
-  return placeholder + opts;
+  return `<option value="">${placeholder}</option>${opts}`;
+}
+
+function _diffFuentesOptsHtml(selectedVal, soloConSaldo) {
+  return buildFuentesOptsHtml({
+    selectedVal,
+    soloConSaldo,
+    mostrarSaldo: soloConSaldo,
+    incluirTC: false,
+    placeholder: soloConSaldo ? 'Seleccionar cuenta' : 'Sin especificar'
+  });
 }
 
 function diffRenderPartes(instId) {
@@ -5088,9 +5119,7 @@ function fuenteBadgeClass(val){
 function poblarFuente(selectId, required=false){
   const sel=document.getElementById(selectId);
   if(!sel)return;
-  const fuentes=getFuentes();
-  const placeholder=required?'<option value="">Seleccionar cuenta</option>':'<option value="">Sin especificar</option>';
-  sel.innerHTML=placeholder+fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+  sel.innerHTML=buildFuentesOptsHtml({ placeholder: required ? 'Seleccionar cuenta' : 'Sin especificar' });
 }
 
 function getSaldoFuente(fuente){
@@ -8835,8 +8864,7 @@ crearSplitWidget('mp', {
 function toggleMpSplit(){ splitToggle('mp'); }
 
 function getFuentesOptions(selectedVal){
-  const fuentes=getFuentes();
-  return'<option value="">No especificar</option>'+fuentes.map(f=>`<option value="${f.val}"${f.val===selectedVal?' selected':''}>${f.label}</option>`).join('');
+  return buildFuentesOptsHtml({ selectedVal, placeholder: 'No especificar' });
 }
 
 function agregarMpSplitRow(){ splitAgregarRow('mp'); }
@@ -12461,11 +12489,10 @@ function _usarParteSplitToggle(){ splitToggle('usarParte'); }
 function _getUsarParteFuentesOptions(selectedVal) {
   const enc = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
   const fuentesConSaldo = enc ? _getEncargoSaldoPorCuenta(enc) : [];
-  // Solo mostrar las cuentas donde el encargo tiene plata guardada
-  return '<option value="">Sin especificar</option>' +
-    fuentesConSaldo.map(f => {
-      return `<option value="${f.cuenta}"${f.cuenta === selectedVal ? ' selected' : ''}>${f.label} (${fmt(f.saldo)})</option>`;
-    }).join('');
+  // Solo mostrar las cuentas donde el encargo tiene plata guardada.
+  // Los items de fuentesConSaldo tienen { cuenta, label, saldo } — buildFuentesOptsHtml
+  // los normaliza via { val: f.val ?? f.cuenta }.
+  return buildFuentesOptsHtml({ selectedVal, mostrarSaldo: true, fuentesCustom: fuentesConSaldo });
 }
 
 function _usarParteAgregarSplitRow(){ splitAgregarRow('usarParte'); }
@@ -12816,16 +12843,12 @@ function _movEncSplitToggle(){ splitToggle('movenc'); }
 function _movEncGetFuentesOptions(selectedVal) {
   const enc = encargoActualId ? getEncargo(encargoActualId) : null;
   const cuentasConSaldo = enc ? _getEncargoSaldoPorCuenta(enc) : [];
-  // Si el encargo no tiene distribución por cuenta, mostrar todas las fuentes
+  // Si el encargo no tiene distribución por cuenta, mostrar todas las fuentes sin saldo.
+  // Con distribución, mostrar solo las cuentas del encargo con su saldo.
   if (cuentasConSaldo.length === 0) {
-    const fuentes = getFuentes();
-    return '<option value="">Sin especificar</option>' +
-      fuentes.map(f => `<option value="${f.val}"${f.val === selectedVal ? ' selected' : ''}>${f.label}</option>`).join('');
+    return buildFuentesOptsHtml({ selectedVal });
   }
-  return '<option value="">Sin especificar</option>' +
-    cuentasConSaldo.map(f =>
-      `<option value="${f.cuenta}"${f.cuenta === selectedVal ? ' selected' : ''}>${f.label} (${fmt(f.saldo)})</option>`
-    ).join('');
+  return buildFuentesOptsHtml({ selectedVal, mostrarSaldo: true, fuentesCustom: cuentasConSaldo });
 }
 
 function _movEncAgregarSplitRow(){ splitAgregarRow('movenc'); }
@@ -18013,16 +18036,7 @@ function _cpData(){
 function _cpPoblarCuentas(selId, incluirTC){
   const sel = document.getElementById(selId);
   if(!sel) return;
-  const fuentes = typeof window.getFuentes === 'function'
-    ? (incluirTC ? getFuentes() : getFuentesSinTC())
-    : [];
-  sel.innerHTML = '<option value="">Sin especificar</option>';
-  fuentes.forEach(f => {
-    const opt = document.createElement('option');
-    opt.value = f.val;
-    opt.textContent = f.label;
-    sel.appendChild(opt);
-  });
+  sel.innerHTML = buildFuentesOptsHtml({ incluirTC: !!incluirTC });
 }
 
 function _cpPoblarPersonas(selId){

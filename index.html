@@ -5114,6 +5114,9 @@ function getSaldoFuente(fuente){
   }
   return 0;
 }
+// Alias canónico: getSaldoFuente es la función completa (maneja tc:, guard null).
+// getSaldoActual se mantiene como alias para compatibilidad con todos los call sites existentes.
+const getSaldoActual = getSaldoFuente;
 
 /* ---- LOAD / SAVE ---- */
 function fmtInput(n){
@@ -10668,22 +10671,6 @@ async function eliminarMovimiento(btn) {
 
 /* ---- AGREGAR DINERO ---- */
 let adFuente='';
-
-function getSaldoActual(fuente){
-  if(fuente==='nequi')return S.nequiSaldo||0;
-  if(fuente==='efectivo')return S.efectivoSaldo||0;
-  if(fuente&&fuente.startsWith('cajita:')){
-    const id=fuente.split(':')[1];
-    const c=(S.cajitas||[]).find(x=>x.id===id);
-    return c?calcC(c).val:0;
-  }
-  if(fuente&&fuente.startsWith('custom:')){
-    const id=fuente.split(':')[1];
-    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
-    return c?c.saldo||0:0;
-  }
-  return 0;
-}
 
 function abrirAgregarDinero(fuente,nombre){
   save();

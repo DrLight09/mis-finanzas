@@ -4363,6 +4363,8 @@ function diffAplicar(instId, movimiento, linkId) {
     S.movimientos.push({
       id: uid(), tipo: 'entrada', fuente: miCuenta,
       ...(linkId ? { _encMovId: linkId } : {}),
+      _esDiferencialEncargo: true,
+      _difDijo: dijo, _difReal: real, _difMargen: margen,
       monto: yoMeQuedo, fecha,
       desc: (inst.cfg.descMargen ? inst.cfg.descMargen(movimiento) : 'Margen — ') + (movimiento.desc || ''),
       nota: 'Generado automáticamente por el diferencial.',
@@ -4375,6 +4377,8 @@ function diffAplicar(instId, movimiento, linkId) {
     S.movimientos.push({
       id: uid(), tipo: 'entrada', fuente: '',
       ...(linkId ? { _encMovId: linkId } : {}),
+      _esDiferencialEncargo: true,
+      _difDijo: dijo, _difReal: real, _difMargen: margen,
       monto: yoMeQuedoFantasma, fecha,
       desc: (inst.cfg.descMargen ? inst.cfg.descMargen(movimiento) : 'Margen — ') + (movimiento.desc || ''),
       [inst.cfg.flagIngresoFantasma || '_prestadoDirectamente']: true,
@@ -10105,8 +10109,18 @@ function abrirDetalleMov(el){
   try {
     if (movId) {
       if (cuentaKey === 'encargo') {
-        const enc = getEncargo(encargoActualId);
-        if (enc) _rawMov = (enc.movimientos||[]).find(m=>m.id===movId) || null;
+        // Buscar en todos los encargos (no solo el activo, para cubrir casos donde el usuario navegó)
+        const encIdHint = el.dataset.movEncId || null;
+        const todosEncs = (S.encargos||[]);
+        for (const enc of todosEncs) {
+          const found = (enc.movimientos||[]).find(m=>m.id===movId);
+          if (found) { _rawMov = found; break; }
+        }
+        // Fallback al encargo activo
+        if (!_rawMov) {
+          const enc = getEncargo(encargoActualId);
+          if (enc) _rawMov = (enc.movimientos||[]).find(m=>m.id===movId) || null;
+        }
       } else if (cuentaKey === 'deudor') {
         for (const d of (S.deudores||[])) {
           const found = (d.movimientos||[]).find(m=>m.id===movId);
@@ -10153,6 +10167,37 @@ function abrirDetalleMov(el){
         <div style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);">
           <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Nota</div>
           <div style="font-size:12px;color:var(--text2);line-height:1.5;">${escHtml(rm.nota)}</div>
+        </div>`);
+    }
+
+    // ── Sobrante del diferencial de encargo (ingreso generado automáticamente) ─
+    if (rm._esDiferencialEncargo) {
+      const encMovRef = rm._encMovId ? (() => {
+        for (const enc of (S.encargos||[])) {
+          const m = (enc.movimientos||[]).find(x=>x.id===rm._encMovId);
+          if (m) return { enc, mov: m };
+        }
+        return null;
+      })() : null;
+      const dijo  = rm._difDijo  || (encMovRef?.mov?.monto) || 0;
+      const real  = rm._difReal  || 0;
+      const margenVal = rm._difMargen || (dijo - real) || 0;
+      const encNombre = encMovRef?.enc?.nombre || '';
+      const tcUsada = encMovRef?.mov?._tcId ? ((S.tarjetasCredito||[]).find(t=>t.id===encMovRef.mov._tcId)||{}).nombre : '';
+      const destino = encMovRef?.mov?._destino ? fuenteLabel(encMovRef.mov._destino) : '';
+
+      richParts.push(`
+        <div style="padding:12px 14px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.22);border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;font-weight:600;">Sobrante del diferencial — generado automáticamente</div>
+          <div style="font-size:12px;color:var(--text3);line-height:1.6;">
+            Este ingreso es el margen que quedó a tu favor porque le dijiste al encargo un valor diferente al real cargado a la tarjeta.
+          </div>
+          ${dijo ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--text2);">Le dijiste al encargo</span><span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--text);">${fmt(dijo)}</span></div>` : ''}
+          ${real ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--text2);">Costó realmente (TC)</span><span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--blue);">${fmt(real)}</span></div>` : ''}
+          ${margenVal ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--amber);">Margen a tu favor</span><span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--amber);">+ ${fmt(margenVal)}</span></div>` : ''}
+          ${tcUsada ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--text2);">Tarjeta que se usó</span><span style="font-weight:600;color:var(--blue);">${escHtml(tcUsada)}</span></div>` : ''}
+          ${encNombre ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--text2);">Encargo origen</span><span style="font-weight:600;color:var(--text2);">${escHtml(encNombre)}</span></div>` : ''}
+          ${destino ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--text2);">Fondos para pagar la TC en</span><span style="font-weight:600;color:var(--accent);">${escHtml(destino)}</span></div>` : ''}
         </div>`);
     }
 
@@ -10232,6 +10277,43 @@ function abrirDetalleMov(el){
         <div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);">
           <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Entró a</div>
           ${destinos.map(r=>`<div style="font-size:12px;color:var(--text2);padding:2px 0;"><strong>${escHtml(fuenteLabel(r.fuente))}</strong>${r.monto ? ' → ' + fmt(r.monto) : ''}</div>`).join('')}
+        </div>`);
+    }
+
+    // ── Compra de encargo pagada con TC ────────────────────────────────────
+    if (rm._esTcEncargo) {
+      const tc = (S.tarjetasCredito||[]).find(t=>t.id===rm._tcId);
+      const tcNombre = tc ? tc.nombre : (rm._tcId || 'tarjeta desconocida');
+      const montoEnc = rm.monto;         // lo que salió del encargo (= lo que se le dijo)
+      const montoReal = rm._tcMonto || montoEnc;  // lo que realmente se cargó a la TC
+      const hayMargen = montoEnc !== montoReal && Math.abs(montoEnc - montoReal) > 0.5;
+      const destinoLabel = rm._destino ? fuenteLabel(rm._destino) : '';
+
+      richParts.push(`
+        <div style="padding:12px 14px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.22);border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;font-weight:600;">Compra pagada con tarjeta de crédito</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--text2);">Tarjeta usada</span>
+            <span style="font-size:12px;font-weight:600;color:var(--blue);">${escHtml(tcNombre)}</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--text2);">Salió del encargo</span>
+            <span style="font-size:13px;font-family:'DM Mono',monospace;font-weight:600;color:var(--red);">− ${fmt(montoEnc)}</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--text2);">Cargado a la TC</span>
+            <span style="font-size:13px;font-family:'DM Mono',monospace;font-weight:600;color:var(--blue);">+ ${fmt(montoReal)}</span>
+          </div>
+          ${hayMargen ? `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--amber);">Diferencia (tu margen)</span>
+            <span style="font-size:13px;font-family:'DM Mono',monospace;font-weight:600;color:var(--amber);">+ ${fmt(montoEnc - montoReal)}</span>
+          </div>` : ''}
+          ${destinoLabel ? `
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:12px;color:var(--text2);">Fondos reservados para pagar la TC</span>
+            <span style="font-size:12px;font-weight:600;color:var(--accent);">${escHtml(destinoLabel)}</span>
+          </div>` : ''}
         </div>`);
     }
 
@@ -11900,12 +11982,14 @@ function abrirEncargoDetalle(id) {
       const esEntrada = m.tipo === 'entrada';
       const lblCuenta = m.cuenta ? fuenteLabel(m.cuenta) : '';
       const esAbonoPrestamo = !esEntrada && m._esAbonoDeudor;
+      const esTcEncargo = !esEntrada && m._esTcEncargo;
+      const tcNombreLbl = esTcEncargo && m._tcId ? ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{}).nombre||'' : '';
       const origenEnc = esAbonoPrestamo ? ('Préstamos · ' + (((S.deudores||[]).find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+enc.nombre);
-      return `<div class="gasto-item" ${_encAttrs(m,origenEnc)} style="cursor:pointer;border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':'rgba(240,104,104,.15)'};">
+      return `<div class="gasto-item" ${_encAttrs(m,origenEnc)} style="cursor:pointer;border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':esTcEncargo?'rgba(96,176,240,.25)':'rgba(240,104,104,.15)'};">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;">
             <div class="row-name" style="font-size:13px;">${escHtml(m.desc)}</div>
-            <div class="row-sub">${m.fecha}${lblCuenta?' · '+lblCuenta:''}</div>
+            <div class="row-sub">${m.fecha}${lblCuenta?' · '+lblCuenta:''}${tcNombreLbl?' · '+tcNombreLbl:''}</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span class="row-amount ${esEntrada?'c-blue':esAbonoPrestamo?'c-amber':'c-red'}">${esEntrada?'+':'−'}${fmt(m.monto)}</span>
@@ -11914,10 +11998,11 @@ function abrirEncargoDetalle(id) {
             </button>
           </div>
         </div>
-        ${m.nota?`<div class="gasto-item-meta"><span style="font-size:10px;color:var(--text3);">${escHtml(m.nota)}</span></div>`:''}
+        ${m.nota&&!esTcEncargo?`<div class="gasto-item-meta"><span style="font-size:10px;color:var(--text3);">${escHtml(m.nota)}</span></div>`:''}
         <div class="gasto-item-meta">
-          <span class="badge ${esEntrada?'bg-blue':esAbonoPrestamo?'bg-amber':'bg-red'}" style="font-size:9px;">${esEntrada?'Entrada':esAbonoPrestamo?'Pago préstamo':'Salida'}</span>
+          <span class="badge ${esEntrada?'bg-blue':esAbonoPrestamo?'bg-amber':esTcEncargo?'bg-blue':'bg-red'}" style="font-size:9px;">${esEntrada?'Entrada':esAbonoPrestamo?'Pago préstamo':esTcEncargo?'Pagado con TC':'Salida'}</span>
           ${lblCuenta?`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuenta}</span>`:''}
+          ${tcNombreLbl?`<span class="badge bg-blue" style="font-size:9px;">${escHtml(tcNombreLbl)}</span>`:''}
         </div>
         ${typeof _difRenderHistorial === 'function' ? _difRenderHistorial(m) : ''}
       </div>`;
@@ -13619,9 +13704,11 @@ function confirmarCompraConTC() {
     fecha,
     nota: nota || 'Compra de encargo pagada con TC — dinero convertido para pago de tarjeta.',
     _esTcEncargo: true,
+    _encId: enc.id,      // guardar encargo origen para poder encontrar el raw desde detalle
     _destino: destino,   // guardar destino para poder revertir el sumarFuente al eliminar
     _tcId: tcId,         // guardar TC para revertir la deuda al eliminar
     _tcMonto: tcMonto,   // monto real cargado a la TC
+    _dijoMonto: monto,   // monto que se le dijo al encargo (puede diferir del real si hay margen)
     ts: Date.now()
   };
   enc.movimientos.push(movEncargo);

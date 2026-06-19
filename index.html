@@ -5203,6 +5203,20 @@ function load(){
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
   if(!S.personas)S.personas=[];
   if(!S.ingresosFijos)S.ingresosFijos=[];
+  // Migración retroactiva: calcular el monto exacto de aperturas (saldo inicial) por fecha
+  // en el historial de patrimonio que ya existía antes de este fix. Así la tendencia mensual
+  // descuenta solo esa parte del cambio del día y conserva cualquier ingreso real que haya
+  // ocurrido la misma fecha, sin tener que esperar a un nuevo snapshot.
+  if(S.patrimonioHistorial.length){
+    const montoAperturaPorFecha = {};
+    const sumarApertura=(m)=>{ if(m.tipo==='apertura'){ montoAperturaPorFecha[m.fecha]=(montoAperturaPorFecha[m.fecha]||0)+(m.monto||0); } };
+    (S.movimientos||[]).forEach(sumarApertura);
+    (S.cuentasPersonalizadas||[]).forEach(c=>(c.movimientos||[]).forEach(sumarApertura));
+    S.patrimonioHistorial.forEach(h=>{
+      if(montoAperturaPorFecha[h.fecha]>0){ h.montoBase=montoAperturaPorFecha[h.fecha]; }
+      else { delete h.baseAjustada; } // limpiar flag de versión anterior del fix, si existe
+    });
+  }
   // Migrar cajitas antiguas al modelo multi-CDT (c.cdts = array)
   if(S.cajitas){
     S.cajitas=S.cajitas.map(c=>{
@@ -5373,9 +5387,24 @@ function snapshotPatrimonio(){
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
   const val=calcPatrimonioTotal();
   if(val==null||isNaN(val))return;
+  // ¿Hoy se registró algún saldo inicial (cajita nueva, Nequi, Efectivo, cuenta personalizada)?
+  // La app ya sabe distinguir esto vía tipo:'apertura' (ver crearMovimientoApertura).
+  // Si sí, guardamos el MONTO exacto de esas aperturas (no solo un flag) para que el
+  // cálculo de tendencia pueda restar únicamente esa parte del cambio del día y conservar
+  // cualquier ingreso real que haya ocurrido el mismo día (ej. apertura + mesada el mismo día).
+  const montoAperturaHoy =
+    (S.movimientos||[]).filter(m=>m.tipo==='apertura'&&m.fecha===hoyStr).reduce((a,m)=>a+(m.monto||0),0)
+    + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.movimientos||[]).filter(m=>m.tipo==='apertura'&&m.fecha===hoyStr).reduce((b,m)=>b+(m.monto||0),0),0);
   const ultimo=S.patrimonioHistorial[S.patrimonioHistorial.length-1];
-  if(ultimo&&ultimo.fecha===hoyStr){ultimo.valor=val;}
-  else{S.patrimonioHistorial.push({fecha:hoyStr,valor:val});}
+  if(ultimo&&ultimo.fecha===hoyStr){
+    ultimo.valor=val;
+    if(montoAperturaHoy>0)ultimo.montoBase=montoAperturaHoy; else delete ultimo.montoBase;
+  }
+  else{
+    const punto={fecha:hoyStr,valor:val};
+    if(montoAperturaHoy>0)punto.montoBase=montoAperturaHoy;
+    S.patrimonioHistorial.push(punto);
+  }
   if(S.patrimonioHistorial.length>365)S.patrimonioHistorial=S.patrimonioHistorial.slice(-365);
   // (No localStorage — Firebase lo guarda _fbSaveToCloud)
 }
@@ -15358,6 +15387,11 @@ document.addEventListener('focusin', function(e){
     const hist = (S.patrimonioHistorial||[]).slice(-30);
     let tendenciaMensual = 0;
     let usandoFlujo = false;
+    let historialInsuficiente = false;
+
+    // Mínimo de separación temporal real para confiar en una proyección por historial de patrimonio.
+    // Con menos días, un solo movimiento grande (ej. saldo inicial) se extrapola de forma absurda.
+    const MIN_DIAS_PARA_TENDENCIA = 7;
 
     if(mesesConDatos.length >= 1 && mesesConDatos.some(m=>m.ing>0)){
       // Tenemos datos de ingresos — usar flujo neto promedio real
@@ -15373,23 +15407,28 @@ document.addEventListener('focusin', function(e){
       tendenciaMensual = flujoTotal / mesesBase.length;
       usandoFlujo = true;
     } else if(hist.length >= 2){
-      // Sin ingresos registrados — usar historial de patrimonio con filtro anti-saltos
-      // Solo filtrar BAJADAS bruscas (pérdidas grandes), no subidas (pueden ser ingresos reales)
-      const valPromedio = hist.reduce((a,h)=>a+h.valor,0)/hist.length;
-      const umbral = valPromedio * 0.5;
-      const histFiltrado = hist.filter((h,i)=>{
-        if(i===0)return true;
-        const diff = h.valor - hist[i-1].valor;
-        // Filtrar solo caídas bruscas (probables correcciones de datos), no subidas
-        return diff > -umbral;
-      });
-      if(histFiltrado.length >= 2){
-        const primero = histFiltrado[0].valor;
-        const ultimo = histFiltrado[histFiltrado.length-1].valor;
-        // Calcular diferencia real de días entre primer y último snapshot
-        const diasReales = Math.max(1, Math.round((new Date(histFiltrado[histFiltrado.length-1].fecha) - new Date(histFiltrado[0].fecha))/86400000));
-        tendenciaMensual = (ultimo - primero) / diasReales * 30;
+      // Sin ingresos registrados — usar historial de patrimonio, restando de cada cambio
+      // diario el monto exacto que correspondió a un saldo inicial ese día (montoBase:
+      // cajita nueva, alta de Nequi/Efectivo, cuenta personalizada, corrección de saldo
+      // inicial). La app ya sabe distinguir esto (tipo:'apertura' en S.movimientos), así
+      // que no hace falta adivinar con umbrales de %, y si ese mismo día también hubo un
+      // ingreso real (ej. apertura + mesada el mismo día), ese ingreso real sigue contando.
+      let sumaCambiosReales = 0;
+      let diasReales = 0;
+      for(let i=1;i<hist.length;i++){
+        const diasEntre = Math.max(1, Math.round((new Date(hist[i].fecha) - new Date(hist[i-1].fecha))/86400000));
+        const cambioDelDia = (hist[i].valor - hist[i-1].valor) - (hist[i].montoBase||0);
+        sumaCambiosReales += cambioDelDia;
+        diasReales += diasEntre;
       }
+      // 1 día de margen no es suficiente para confiar en una extrapolación a 30 días.
+      if(diasReales < MIN_DIAS_PARA_TENDENCIA){
+        historialInsuficiente = true;
+      } else {
+        tendenciaMensual = sumaCambiosReales / diasReales * 30;
+      }
+    } else {
+      historialInsuficiente = true;
     }
 
     const p3 = patrimonio + tendenciaMensual * 3;
@@ -15408,7 +15447,16 @@ document.addEventListener('focusin', function(e){
       { lbl:'1 año',   key:'12m', val:p12, meses:12 }
     ];
 
-    el.innerHTML = `
+    el.innerHTML = historialInsuficiente ? `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:2px 0;">
+        <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;">ⓘ</span></span>
+        <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text3);">—</span>
+      </div>
+      <div style="text-align:center;background:var(--bg3);border-radius:8px;padding:16px 10px;">
+        <div style="font-size:11px;color:var(--text3);line-height:1.5;">Aún no hay suficiente historial para proyectar.<br>Vuelve en unos días para ver tendencias y proyecciones.</div>
+      </div>
+      ${deudaInfo}
+    ` : `
       <div id="_proy-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer;padding:2px 0;" data-tendencia="${tendenciaMensual}" data-usando-flujo="${usandoFlujo?'1':'0'}">
         <span style="font-size:12px;color:var(--text2);">${usandoFlujo ? 'Flujo neto mensual' : 'Tendencia mensual'}<span style="font-size:9px;color:var(--text3);margin-left:5px;">ⓘ</span></span>
         <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${col};">${tendenciaMensual>=0?'+':''}${fmt(tendenciaMensual)}</span>

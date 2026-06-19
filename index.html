@@ -5947,7 +5947,6 @@ function renderAnalisis(){
   const anio=parseInt(mes.split('-')[0]);
   let ingresosEstimados=0;
   if(S.modulos&&S.modulos.mesada){
-    if(window._migrarMesadas)_migrarMesadas();
     const mesKey2=anio+'-'+mesNum;
     const infoPapa=getMesadaData('papa')[mesKey2];
     const infoMama=getMesadaData('mama')[mesKey2];
@@ -6147,7 +6146,6 @@ function renderAnalisis(){
   const mesadaTotal=document.getElementById('an-mesada-total');
   if(S.modulos&&S.modulos.mesada&&mesadaSection&&mesadaTotal){
     mesadaSection.style.display='';
-    if(window._migrarMesadas)_migrarMesadas();
     const dataPapa=getMesadaData('papa');
     const dataMama=getMesadaData('mama');
     let totalMesada=0;
@@ -8692,42 +8690,6 @@ let mpMesKey=''; // '2025-3'
 let mpMesNombre=''; // 'Abril 2025'
 
 // ── Migración única desde mesadasV2 + mesadaMontoPapa/Mama legacy ──────────
-function _migrarMesadas(){
-  if(!S.mesadas||typeof S.mesadas!=='object')S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}};
-  ['papa','mama'].forEach(p=>{
-    if(!S.mesadas[p])S.mesadas[p]={cuotas:{},pagos:{}};
-    if(!S.mesadas[p].cuotas)S.mesadas[p].cuotas={};
-    if(!S.mesadas[p].pagos)S.mesadas[p].pagos={};
-  });
-  // Migrar cuota global antigua → cuota del año actual si no hay cuotas por año
-  const anioActual=String(new Date().getFullYear());
-  if(!Object.keys(S.mesadas.papa.cuotas).length&&S.mesadaMontoPapa){
-    S.mesadas.papa.cuotas[anioActual]=S.mesadaMontoPapa;
-  }
-  if(!Object.keys(S.mesadas.mama.cuotas).length&&S.mesadaMonteMama){
-    S.mesadas.mama.cuotas[anioActual]=S.mesadaMonteMama;
-  }
-  // Migrar pagos de mesadasV2
-  const v2=S.mesadasV2||{};
-  ['papa','mama'].forEach(p=>{
-    const src=v2[p]||{};
-    Object.entries(src).forEach(([k,info])=>{
-      if(!S.mesadas[p].pagos[k]) S.mesadas[p].pagos[k]=info;
-    });
-  });
-  // Migrar S.mesadas legacies (boolean flat keys: "2025_3_papa")
-  const flat=S._mesadasLegacy||{};
-  Object.entries(flat).forEach(([k,v])=>{
-    const m=k.match(/^(\d+)_(\d+)_(papa|mama)$/);
-    if(!m||!v)return;
-    const [,anio,mes,p]=m;
-    const key=anio+'-'+mes;
-    if(!S.mesadas[p].pagos[key]){
-      // Solo sabemos que se pagó, no cuánto ni cuándo
-      S.mesadas[p].pagos[key]={monto:_getCuotaAnio(p,parseInt(anio)),fecha:'',destino:'',nota:''};
-    }
-  });
-}
 
 function _ensureMesadas(){
   if(!S.mesadas)S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}};
@@ -8761,9 +8723,16 @@ function getMontoPadre(parent){
 }
 
 function renderMesada(){
-  _migrarMesadas();
+  _ensureMesadas();
   const a=S.mesadaAnio||new Date().getFullYear();
+  const hoy=new Date().getFullYear();
   document.getElementById('anioLabel').textContent=a;
+
+  // Deshabilitar botones en los límites ±2
+  const btnP=document.getElementById('btn-anio-prev');
+  const btnN=document.getElementById('btn-anio-next');
+  if(btnP)btnP.disabled=(a<=hoy-2);
+  if(btnN)btnN.disabled=(a>=hoy+2);
 
   // Poner el año en los labels de cuota
   const lblP=document.getElementById('ms-papa-anio-label');
@@ -9127,7 +9096,7 @@ function eliminarMesadaPago(parent,key){
   closeSheet('mesada-det');
 }
 
-function cambiarAnio(d){S.mesadaAnio=(S.mesadaAnio||new Date().getFullYear())+d;save();renderMesada();}
+function cambiarAnio(d){const hoy=new Date().getFullYear();const nuevo=(S.mesadaAnio||hoy)+d;if(nuevo<hoy-2||nuevo>hoy+2)return;S.mesadaAnio=nuevo;save();renderMesada();}
 
 /* ---- SPOTIFY ---- */
 let spDestinoIdx=null;
@@ -14614,7 +14583,6 @@ document.addEventListener('focusin', function(e){
     // _fbSaveToCloud no guardará nada hasta que esta bandera esté activa.
     window._dataLoaded = true;
     // Migración única: mesadasV2 + legacy flat → nueva estructura S.mesadas
-    if(typeof _migrarMesadas === 'function') _migrarMesadas();
     _initAppUI();
     // Snapshot diario: guardar patrimonio del día aunque no haya otros cambios.
     // Esto llena la gráfica de patrimonio sin que el usuario tenga que hacer nada.
@@ -15109,7 +15077,6 @@ document.addEventListener('focusin', function(e){
     const anio = mes ? parseInt(mes.split('-')[0]) : 0;
     let ingresosMes = 0;
     if(S.modulos && S.modulos.mesada){
-      if(window._migrarMesadas)_migrarMesadas();
       const _mk=anio+'-'+mesNum;
       const _infoPapa=getMesadaData('papa')[_mk];
       const _infoMama=getMesadaData('mama')[_mk];
@@ -15315,7 +15282,6 @@ document.addEventListener('focusin', function(e){
       // Ingresos del mes (mesada + cuentas personalizadas + entradas manuales a Nequi/Efectivo)
       let ing = 0;
       if(S.modulos && S.modulos.mesada){
-        if(window._migrarMesadas)_migrarMesadas();
         const _mk2=anio+'-'+mesNum;
         const _ip=getMesadaData('papa')[_mk2];
         const _im=getMesadaData('mama')[_mk2];
@@ -15356,7 +15322,6 @@ document.addEventListener('focusin', function(e){
       const anioHoy = dHoy.getFullYear();
       let ingHoy = 0;
       if(S.modulos && S.modulos.mesada){
-        if(window._migrarMesadas)_migrarMesadas();
         const _mkH=anioHoy+'-'+mesNumHoy;
         const _ipH=getMesadaData('papa')[_mkH];
         const _imH=getMesadaData('mama')[_mkH];

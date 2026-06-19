@@ -202,6 +202,7 @@ textarea{resize:none;height:60px;}
 .mes-dot{aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;cursor:pointer;font-family:'DM Mono',monospace;border:1px solid var(--border);background:var(--bg3);color:var(--text3);transition:all .15s;user-select:none;}
 .mes-dot.on{background:rgba(200,240,96,.15);border-color:var(--accent);color:var(--accent);}
 .mes-dot.mes-dot-ini{background:rgba(96,176,240,.13);border-color:var(--blue);color:var(--blue);}
+.mes-dot.perdido{background:rgba(240,104,104,.10);border-color:rgba(240,104,104,.35);color:var(--red);}
 .sp-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);}
 .sp-row:last-child{border-bottom:none;}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--blue);font-family:'DM Mono',monospace;flex-shrink:0;margin-right:10px;}
@@ -1701,7 +1702,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 <div style="text-align:right;">
                   <div
                     style="font-size:10px;color:var(--text3);margin-bottom:3px;">Cuota
-                    mensual</div>
+                    <span id="ms-papa-anio-label"></span></div>
                   <input type="text" inputmode="decimal" id="mesadaMontoPapa"
                     placeholder="80000" aria-label="Cuota mensual papá"
                     style="width:90px;padding:4px 8px;font-size:12px;text-align:right;"
@@ -1727,7 +1728,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 <div style="text-align:right;">
                   <div
                     style="font-size:10px;color:var(--text3);margin-bottom:3px;">Cuota
-                    mensual</div>
+                    <span id="ms-mama-anio-label"></span></div>
                   <input type="text" inputmode="decimal" id="mesadaMonteMama"
                     placeholder="80000" aria-label="Cuota mensual mamá"
                     style="width:90px;padding:4px 8px;font-size:12px;text-align:right;"
@@ -4528,7 +4529,7 @@ function poblarCatSelect(selectId, cats, valorActual){
 let S={
   nuRate:9.25,cajitas:[],nequiSaldo:0,efectivoSaldo:0,
   personas:[],
-  deudores:[],mesadas:{},mesadaMonto:0,mesadaAnio:new Date().getFullYear(),
+  deudores:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
   spotifyPersonas:[],spotifyCosto:0,spotifyCajitaId:'',spotifyHistorial:[],
   gastosFijos:[],
   pagosGastosFijos:{},
@@ -5229,8 +5230,8 @@ function load(){
   if(nuTasaEl)nuTasaEl.value=(S.nuTasaGlobal!=null)?String(S.nuTasaGlobal).replace('.',','):'';
   document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
   document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
-  if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(S.mesadaMontoPapa);
-  if(document.getElementById('mesadaMonteMama'))document.getElementById('mesadaMonteMama').value=fmtInput(S.mesadaMonteMama);
+  if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(_getCuotaAnio('papa',S.mesadaAnio||new Date().getFullYear()));
+  if(document.getElementById('mesadaMonteMama'))document.getElementById('mesadaMonteMama').value=fmtInput(_getCuotaAnio('mama',S.mesadaAnio||new Date().getFullYear()));
   document.getElementById('spotifyCosto').value=fmtInput(S.spotifyCosto);
   document.getElementById('gv_fecha').value=hoy();
   document.getElementById('mov_fecha').value=hoy();
@@ -5277,8 +5278,18 @@ function save(){
   S.nuRate=parseMoney(document.getElementById('nuRate').value)||9.25;
   S.nequiSaldo=_readMoney('nequiSaldo', S.nequiSaldo);
   S.efectivoSaldo=_readMoney('efectivoSaldo', S.efectivoSaldo);
-  S.mesadaMontoPapa=parseMoney(document.getElementById('mesadaMontoPapa')?.value)||S.mesadaMontoPapa||80000;
-  S.mesadaMonteMama=parseMoney(document.getElementById('mesadaMonteMama')?.value)||S.mesadaMonteMama||80000;
+  // Cuota mensual por año — guardada en S.mesadas[parent].cuotas[anio]
+  const _anioActivo=S.mesadaAnio||new Date().getFullYear();
+  if(!S.mesadas)S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}};
+  ['papa','mama'].forEach(p=>{
+    if(!S.mesadas[p])S.mesadas[p]={cuotas:{},pagos:{}};
+    if(!S.mesadas[p].cuotas)S.mesadas[p].cuotas={};
+    if(!S.mesadas[p].pagos)S.mesadas[p].pagos={};
+  });
+  const _elPapa=document.getElementById('mesadaMontoPapa');
+  const _elMama=document.getElementById('mesadaMonteMama');
+  if(_elPapa&&_elPapa.value.trim()){const v=parseMoney(_elPapa.value);if(v)S.mesadas.papa.cuotas[String(_anioActivo)]=v;}
+  if(_elMama&&_elMama.value.trim()){const v=parseMoney(_elMama.value);if(v)S.mesadas.mama.cuotas[String(_anioActivo)]=v;}
   S.spotifyCosto=parseMoney(document.getElementById('spotifyCosto').value)||0;
   (S.cajitas||[]).forEach(c=>{
     const elN=document.getElementById('cn_'+c.id);
@@ -5936,22 +5947,12 @@ function renderAnalisis(){
   const anio=parseInt(mes.split('-')[0]);
   let ingresosEstimados=0;
   if(S.modulos&&S.modulos.mesada){
-    const mesadas=S.mesadas||{};
-    const v2=(S.mesadasV2||{});
-    const keyPapa=anio+'_'+mesNum+'_papa';
-    const keyMama=anio+'_'+mesNum+'_mama';
-    // S.mesadasV2 usa la clave ANIO-MES (ej: "2025-4"); excluir saldo inicial
-    const v2KeyPapa=anio+'-'+mesNum;
-    const v2KeyMama=anio+'-'+mesNum;
-    const infoPapa=(v2['papa']||{})[v2KeyPapa];
-    const infoMama=(v2['mama']||{})[v2KeyMama];
-    const papaEsSaldoIni=infoPapa&&infoPapa.esSaldoInicial;
-    const mamaEsSaldoIni=infoMama&&infoMama.esSaldoInicial;
-    if(mesadas[keyPapa]&&!papaEsSaldoIni) ingresosEstimados+=(S.mesadaMontoPapa||0);
-    if(mesadas[keyMama]&&!mamaEsSaldoIni) ingresosEstimados+=(S.mesadaMonteMama||0);
-    // También leer de mesadasV2 directamente (datos nuevos que sólo viven allí)
-    if(!mesadas[keyPapa]&&infoPapa&&!papaEsSaldoIni) ingresosEstimados+=(infoPapa.monto||S.mesadaMontoPapa||0);
-    if(!mesadas[keyMama]&&infoMama&&!mamaEsSaldoIni) ingresosEstimados+=(infoMama.monto||S.mesadaMonteMama||0);
+    if(window._migrarMesadas)_migrarMesadas();
+    const mesKey2=anio+'-'+mesNum;
+    const infoPapa=getMesadaData('papa')[mesKey2];
+    const infoMama=getMesadaData('mama')[mesKey2];
+    if(infoPapa&&!infoPapa.esSaldoInicial) ingresosEstimados+=(infoPapa.monto||_getCuotaAnio('papa',anio)||0);
+    if(infoMama&&!infoMama.esSaldoInicial) ingresosEstimados+=(infoMama.monto||_getCuotaAnio('mama',anio)||0);
   }
   // Sumar ingresos fijos configurados (sueldo, freelance, etc.)
   ingresosEstimados+=getIngresosFijosMes(mes);
@@ -6146,16 +6147,15 @@ function renderAnalisis(){
   const mesadaTotal=document.getElementById('an-mesada-total');
   if(S.modulos&&S.modulos.mesada&&mesadaSection&&mesadaTotal){
     mesadaSection.style.display='';
-    // S.mesadasV2 = { 'papa': { '2025-0': {monto,...}, ... }, 'mama': {...} }
-    const v2=S.mesadasV2||{};
-    const dataPapa=v2['papa']||{};
-    const dataMama=v2['mama']||{};
+    if(window._migrarMesadas)_migrarMesadas();
+    const dataPapa=getMesadaData('papa');
+    const dataMama=getMesadaData('mama');
     let totalMesada=0;
     for(let m=0;m<12;m++){
       const k=anio+'-'+m;
       // Excluir meses marcados como saldo inicial del total de mesada
-      if(dataPapa[k]&&!dataPapa[k].esSaldoInicial) totalMesada+=(dataPapa[k].monto||S.mesadaMontoPapa||0);
-      if(dataMama[k]&&!dataMama[k].esSaldoInicial) totalMesada+=(dataMama[k].monto||S.mesadaMonteMama||0);
+      if(dataPapa[k]&&!dataPapa[k].esSaldoInicial) totalMesada+=(dataPapa[k].monto||_getCuotaAnio('papa',anio)||0);
+      if(dataMama[k]&&!dataMama[k].esSaldoInicial) totalMesada+=(dataMama[k].monto||_getCuotaAnio('mama',anio)||0);
     }
     mesadaTotal.textContent=fmt(totalMesada);
   } else if(mesadaSection) mesadaSection.style.display='none';
@@ -6195,9 +6195,11 @@ function renderAnalisis(){
     const anioPrev=dPrev.getFullYear();
     let ingresosPrev=0;
     if(S.modulos&&S.modulos.mesada){
-      const ms=S.mesadas||{};
-      if(ms[anioPrev+'_'+mesNumPrev+'_papa']) ingresosPrev+=(S.mesadaMontoPapa||0);
-      if(ms[anioPrev+'_'+mesNumPrev+'_mama']) ingresosPrev+=(S.mesadaMonteMama||0);
+      const mkPrev=anioPrev+'-'+mesNumPrev;
+      const iPapa=getMesadaData('papa')[mkPrev];
+      const iMama=getMesadaData('mama')[mkPrev];
+      if(iPapa&&!iPapa.esSaldoInicial) ingresosPrev+=(iPapa.monto||_getCuotaAnio('papa',anioPrev)||0);
+      if(iMama&&!iMama.esSaldoInicial) ingresosPrev+=(iMama.monto||_getCuotaAnio('mama',anioPrev)||0);
     }
     ingresosPrev+=getIngresosFijosMes(mesPrev);
     (S.movimientos||[]).forEach(function(m){
@@ -8680,69 +8682,173 @@ function confirmarPrestamoTC() {
 }
 
 /* ---- MESADA ---- */
-// S.mesadasV2 = { 'papa': { '2025-0': {monto,fecha,destino,nota}, ... }, 'mama': { ... } }
-// S.mesadaMontoPapa, S.mesadaMonteMama = cuota mensual de cada uno
+// S.mesadas = {
+//   papa: { cuotas: { "2025": 90000 }, pagos: { "2025-3": {monto,fecha,destino,nota,splits,esSaldoInicial} } },
+//   mama: { cuotas: { "2025": 80000 }, pagos: { "2025-3": {...} } }
+// }
+
 let mpParent=''; // 'papa' | 'mama'
-let mpMesKey=''; // '2025-0'
-let mpMesNombre=''; // 'Enero 2025'
+let mpMesKey=''; // '2025-3'
+let mpMesNombre=''; // 'Abril 2025'
+
+// ── Migración única desde mesadasV2 + mesadaMontoPapa/Mama legacy ──────────
+function _migrarMesadas(){
+  if(!S.mesadas||typeof S.mesadas!=='object')S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}};
+  ['papa','mama'].forEach(p=>{
+    if(!S.mesadas[p])S.mesadas[p]={cuotas:{},pagos:{}};
+    if(!S.mesadas[p].cuotas)S.mesadas[p].cuotas={};
+    if(!S.mesadas[p].pagos)S.mesadas[p].pagos={};
+  });
+  // Migrar cuota global antigua → cuota del año actual si no hay cuotas por año
+  const anioActual=String(new Date().getFullYear());
+  if(!Object.keys(S.mesadas.papa.cuotas).length&&S.mesadaMontoPapa){
+    S.mesadas.papa.cuotas[anioActual]=S.mesadaMontoPapa;
+  }
+  if(!Object.keys(S.mesadas.mama.cuotas).length&&S.mesadaMonteMama){
+    S.mesadas.mama.cuotas[anioActual]=S.mesadaMonteMama;
+  }
+  // Migrar pagos de mesadasV2
+  const v2=S.mesadasV2||{};
+  ['papa','mama'].forEach(p=>{
+    const src=v2[p]||{};
+    Object.entries(src).forEach(([k,info])=>{
+      if(!S.mesadas[p].pagos[k]) S.mesadas[p].pagos[k]=info;
+    });
+  });
+  // Migrar S.mesadas legacies (boolean flat keys: "2025_3_papa")
+  const flat=S._mesadasLegacy||{};
+  Object.entries(flat).forEach(([k,v])=>{
+    const m=k.match(/^(\d+)_(\d+)_(papa|mama)$/);
+    if(!m||!v)return;
+    const [,anio,mes,p]=m;
+    const key=anio+'-'+mes;
+    if(!S.mesadas[p].pagos[key]){
+      // Solo sabemos que se pagó, no cuánto ni cuándo
+      S.mesadas[p].pagos[key]={monto:_getCuotaAnio(p,parseInt(anio)),fecha:'',destino:'',nota:''};
+    }
+  });
+}
+
+function _ensureMesadas(){
+  if(!S.mesadas)S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}};
+  ['papa','mama'].forEach(p=>{
+    if(!S.mesadas[p])S.mesadas[p]={cuotas:{},pagos:{}};
+    if(!S.mesadas[p].cuotas)S.mesadas[p].cuotas={};
+    if(!S.mesadas[p].pagos)S.mesadas[p].pagos={};
+  });
+}
 
 function getMesadaData(parent){
-  if(!S.mesadasV2)S.mesadasV2={};
-  if(!S.mesadasV2[parent])S.mesadasV2[parent]={};
-  return S.mesadasV2[parent];
+  _ensureMesadas();
+  return S.mesadas[parent].pagos;
+}
+
+function _getCuotaAnio(parent,anio){
+  _ensureMesadas();
+  const cuotas=S.mesadas[parent].cuotas;
+  const key=String(anio);
+  if(cuotas[key])return cuotas[key];
+  // Buscar el año más cercano hacia atrás
+  const anios=Object.keys(cuotas).map(Number).sort((a,b)=>b-a);
+  for(const a of anios){ if(a<=anio)return cuotas[String(a)]; }
+  // Fallback al más antiguo disponible
+  if(anios.length)return cuotas[String(anios[anios.length-1])];
+  return 80000;
 }
 
 function getMontoPadre(parent){
-  return parent==='papa'?(S.mesadaMontoPapa||80000):(S.mesadaMonteMama||80000);
+  return _getCuotaAnio(parent,S.mesadaAnio||new Date().getFullYear());
 }
 
 function renderMesada(){
+  _migrarMesadas();
   const a=S.mesadaAnio||new Date().getFullYear();
   document.getElementById('anioLabel').textContent=a;
 
-  // Sync inputs
+  // Poner el año en los labels de cuota
+  const lblP=document.getElementById('ms-papa-anio-label');
+  const lblM=document.getElementById('ms-mama-anio-label');
+  if(lblP)lblP.textContent=a;
+  if(lblM)lblM.textContent=a;
+
+  // Sync inputs de cuota para el año visible
+  const cuotaPapa=_getCuotaAnio('papa',a);
+  const cuotaMama=_getCuotaAnio('mama',a);
   const elPapa=document.getElementById('mesadaMontoPapa');
   const elMama=document.getElementById('mesadaMonteMama');
-  if(elPapa&&!document.activeElement.id.includes('Papa'))elPapa.value=fmtInput(S.mesadaMontoPapa);
-  if(elMama&&!document.activeElement.id.includes('Mama'))elMama.value=fmtInput(S.mesadaMonteMama);
+  if(elPapa&&document.activeElement!==elPapa)elPapa.value=fmtInput(cuotaPapa);
+  if(elMama&&document.activeElement!==elMama)elMama.value=fmtInput(cuotaMama);
+
+  const hoyD=new Date();
+  const anioActual=hoyD.getFullYear();
+  const mesActualNum=hoyD.getMonth(); // 0-based
+  const diaActual=hoyD.getDate();
 
   ['papa','mama'].forEach(parent=>{
     const data=getMesadaData(parent);
     const gridId=parent==='papa'?'mesadaGridPapa':'mesadaGridMama';
     const subId=parent==='papa'?'ms-papa-sub':'ms-mama-sub';
-    const cuota=getMontoPadre(parent);
+    const cuota=_getCuotaAnio(parent,a);
     let totalRecibido=0;
     let mesesPagados=0;
+    let mesesPerdidos=0;
 
     document.getElementById(gridId).innerHTML=MC.map((m,i)=>{
       const k=a+'-'+i;
       const info=data[k];
       const pagado=!!info;
       const esSaldoIni=pagado&&!!info.esSaldoInicial;
-      // Saldo inicial cuenta en meses pagados y en total recibido (sí se recibió)
+
       if(pagado){totalRecibido+=(info.monto||cuota);mesesPagados++;}
-      const tooltip=esSaldoIni?'Saldo inicial ('+(info.fecha||'')+ ')':pagado?(info.fecha?info.fecha:'pagado'):'';
-      const dotClass=esSaldoIni?'mes-dot on mes-dot-ini':pagado?'mes-dot on':'mes-dot';
+
+      // Determinar si el mes ya pasó sin pago (puede marcarse rojo)
+      // Un mes "pasado" es cualquier mes cuya fecha esperada ya venció:
+      // - Para papá: día 30 del mes i del año a
+      // - Para mamá: día 1 del mes i+1 del año a (o sea el 1 del mes siguiente)
+      // Simplificamos: el mes ya es pasado si (a < anioActual) o
+      //   (a === anioActual && i < mesActualNum) o
+      //   (a === anioActual && i === mesActualNum && diaActual > (parent==='papa'?30:1))
+      let esPasado=false;
+      if(a<anioActual){
+        esPasado=true;
+      } else if(a===anioActual){
+        if(i<mesActualNum) esPasado=true;
+        else if(i===mesActualNum){
+          // Papa: vence el 30; Mama: vence el 1 (o sea el primer día ya venció)
+          const diaCorte=parent==='papa'?30:1;
+          esPasado=(diaActual>diaCorte);
+        }
+      }
+      const esPerdido=esPasado&&!pagado;
+      if(esPerdido)mesesPerdidos++;
+
+      const tooltip=esSaldoIni?'Saldo inicial ('+(info.fecha||'')+')'
+        :pagado?(info.fecha||'pagado')
+        :esPerdido?'Sin pagar'
+        :'';
+      const dotClass=esSaldoIni?'mes-dot on mes-dot-ini'
+        :pagado?'mes-dot on'
+        :esPerdido?'mes-dot perdido'
+        :'mes-dot';
       return`<div class="${dotClass}" title="${tooltip}"
         onclick="clickMesDot('${parent}','${k}','${m} ${a}')">${m}</div>`;
     }).join('');
 
-    document.getElementById(subId).textContent=fmt(totalRecibido)+' recibidos ('+mesesPagados+'/12)';
+    let subTxt=fmt(totalRecibido)+' recibidos ('+mesesPagados+'/12)';
+    if(mesesPerdidos>0) subTxt+=' · '+mesesPerdidos+' sin pagar';
+    document.getElementById(subId).textContent=subTxt;
   });
 
   // Resumen global año
   let totalAnio=0,pagadosAnio=0,esperadosAnio=0;
-  const mesActualNum=new Date().getMonth();
-  const anioActual=new Date().getFullYear();
   const mesesHastahoy=a<anioActual?12:(a===anioActual?mesActualNum+1:0);
   esperadosAnio=mesesHastahoy*2; // papa + mama
   ['papa','mama'].forEach(parent=>{
     const data=getMesadaData(parent);
-    const cuota=getMontoPadre(parent);
+    const cuota=_getCuotaAnio(parent,a);
     for(let i=0;i<12;i++){
       const k=a+'-'+i;
       const info=data[k];
-      // Saldo inicial cuenta en meses pagados y total recibido (sí se recibió)
       if(info){totalAnio+=(info.monto||cuota);pagadosAnio++;}
     }
   });
@@ -14507,6 +14613,8 @@ document.addEventListener('focusin', function(e){
     // PROTECCIÓN: marcar que los datos ya se cargaron correctamente.
     // _fbSaveToCloud no guardará nada hasta que esta bandera esté activa.
     window._dataLoaded = true;
+    // Migración única: mesadasV2 + legacy flat → nueva estructura S.mesadas
+    if(typeof _migrarMesadas === 'function') _migrarMesadas();
     _initAppUI();
     // Snapshot diario: guardar patrimonio del día aunque no haya otros cambios.
     // Esto llena la gráfica de patrimonio sin que el usuario tenga que hacer nada.
@@ -15001,16 +15109,12 @@ document.addEventListener('focusin', function(e){
     const anio = mes ? parseInt(mes.split('-')[0]) : 0;
     let ingresosMes = 0;
     if(S.modulos && S.modulos.mesada){
-      const mesadas = S.mesadas || {};
-      const _v2m=(S.mesadasV2||{});
+      if(window._migrarMesadas)_migrarMesadas();
       const _mk=anio+'-'+mesNum;
-      const _infoPapa=(_v2m['papa']||{})[_mk];
-      const _infoMama=(_v2m['mama']||{})[_mk];
-      if(mesadas[anio+'_'+mesNum+'_papa']&&!(_infoPapa&&_infoPapa.esSaldoInicial)) ingresosMes += (S.mesadaMontoPapa||0);
-      if(mesadas[anio+'_'+mesNum+'_mama']&&!(_infoMama&&_infoMama.esSaldoInicial)) ingresosMes += (S.mesadaMonteMama||0);
-      // mesadasV2 sin legacy
-      if(!mesadas[anio+'_'+mesNum+'_papa']&&_infoPapa&&!_infoPapa.esSaldoInicial) ingresosMes += (_infoPapa.monto||S.mesadaMontoPapa||0);
-      if(!mesadas[anio+'_'+mesNum+'_mama']&&_infoMama&&!_infoMama.esSaldoInicial) ingresosMes += (_infoMama.monto||S.mesadaMonteMama||0);
+      const _infoPapa=getMesadaData('papa')[_mk];
+      const _infoMama=getMesadaData('mama')[_mk];
+      if(_infoPapa&&!_infoPapa.esSaldoInicial) ingresosMes += (_infoPapa.monto||_getCuotaAnio('papa',anio)||0);
+      if(_infoMama&&!_infoMama.esSaldoInicial) ingresosMes += (_infoMama.monto||_getCuotaAnio('mama',anio)||0);
     }
     // Sumar ingresos de cuentas personalizadas del mes actual
     (S.cuentasPersonalizadas||[]).forEach(c => {
@@ -15211,16 +15315,12 @@ document.addEventListener('focusin', function(e){
       // Ingresos del mes (mesada + cuentas personalizadas + entradas manuales a Nequi/Efectivo)
       let ing = 0;
       if(S.modulos && S.modulos.mesada){
-        const ms = S.mesadas || {};
-        const ms2 = S.mesadasV2 || {};
-        // Formato viejo: mesadas
-        if(ms[anio+'_'+mesNum+'_papa']) ing += (S.mesadaMontoPapa||0);
-        if(ms[anio+'_'+mesNum+'_mama']) ing += (S.mesadaMonteMama||0);
-        // Formato nuevo: mesadasV2 (excluir saldos iniciales)
-        const v2papa = (ms2.papa||{})[anio+'-'+mesNum];
-        const v2mama = (ms2.mama||{})[anio+'-'+mesNum];
-        if(v2papa && !v2papa.esSaldoInicial) ing += (S.mesadaMontoPapa||0);
-        if(v2mama && !v2mama.esSaldoInicial) ing += (S.mesadaMonteMama||0);
+        if(window._migrarMesadas)_migrarMesadas();
+        const _mk2=anio+'-'+mesNum;
+        const _ip=getMesadaData('papa')[_mk2];
+        const _im=getMesadaData('mama')[_mk2];
+        if(_ip&&!_ip.esSaldoInicial) ing+=(_ip.monto||_getCuotaAnio('papa',anio)||0);
+        if(_im&&!_im.esSaldoInicial) ing+=(_im.monto||_getCuotaAnio('mama',anio)||0);
       }
       (S.cuentasPersonalizadas||[]).forEach(c=>{
         (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mk).forEach(m=>{ ing+=(m.monto||0); });
@@ -15256,16 +15356,12 @@ document.addEventListener('focusin', function(e){
       const anioHoy = dHoy.getFullYear();
       let ingHoy = 0;
       if(S.modulos && S.modulos.mesada){
-        const ms = S.mesadas || {};
-        const ms2 = S.mesadasV2 || {};
-        // Formato viejo: mesadas
-        if(ms[anioHoy+'_'+mesNumHoy+'_papa']) ingHoy += (S.mesadaMontoPapa||0);
-        if(ms[anioHoy+'_'+mesNumHoy+'_mama']) ingHoy += (S.mesadaMonteMama||0);
-        // Formato nuevo: mesadasV2 (excluir saldos iniciales)
-        const v2papaH = (ms2.papa||{})[anioHoy+'-'+mesNumHoy];
-        const v2mamaH = (ms2.mama||{})[anioHoy+'-'+mesNumHoy];
-        if(v2papaH && !v2papaH.esSaldoInicial) ingHoy += (S.mesadaMontoPapa||0);
-        if(v2mamaH && !v2mamaH.esSaldoInicial) ingHoy += (S.mesadaMonteMama||0);
+        if(window._migrarMesadas)_migrarMesadas();
+        const _mkH=anioHoy+'-'+mesNumHoy;
+        const _ipH=getMesadaData('papa')[_mkH];
+        const _imH=getMesadaData('mama')[_mkH];
+        if(_ipH&&!_ipH.esSaldoInicial) ingHoy+=(_ipH.monto||_getCuotaAnio('papa',anioHoy)||0);
+        if(_imH&&!_imH.esSaldoInicial) ingHoy+=(_imH.monto||_getCuotaAnio('mama',anioHoy)||0);
       }
       (S.cuentasPersonalizadas||[]).forEach(c=>{
         (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mkHoy).forEach(m=>{ ingHoy+=(m.monto||0); });
@@ -20678,9 +20774,6 @@ renderSpotify = function() {
   });
 };
 
-/* ── Vincular automáticamente spotifyPersonas existentes a S.personas ─ */
-// Cuando carga la app, si hay spotifyPersonas con un nombre que coincide con
-// una persona existente (y aún no tienen personaId), vincularlos.
 /* ── Inicializar todo cuando la app cargue ─────────────────────── */
 // Usamos el evento 'appDataLoaded' en lugar de sobrescribir window._fbLoadData,
 // porque este script es inline y se ejecuta ANTES que los módulos (type="module"),

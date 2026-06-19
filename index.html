@@ -19925,11 +19925,15 @@ function _crearPersonaGlobal() {
   const p = { id: uid(), nombre, color: _cpgColorSel, creadoEn: hoy() };
   S.personas.push(p);
   save();
-  document.getElementById('sheet-crear-persona-global').classList.remove('open');
   toast(nombre + ' creado/a', 'ok');
   if (_cpgDesdeListaPersonas) {
-    setTimeout(() => { _abrirListaPersonas(); }, 180);
+    // Primero abrir lista, luego cerrar crear — igual al patrón de _abrirCrearPersonaGlobal
+    // para que nunca haya un instante con todos los sheets cerrados (flash de pantalla Más)
+    _renderListaPersonas();
+    document.getElementById('sheet-lista-personas').classList.add('open');
+    document.getElementById('sheet-crear-persona-global').classList.remove('open');
   } else {
+    document.getElementById('sheet-crear-persona-global').classList.remove('open');
     setTimeout(() => {
       if (typeof _selPersonaCallback === 'function') _selPersonaCallback(p.id);
     }, 180);

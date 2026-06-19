@@ -819,8 +819,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             <div class="hero-label">Patrimonio total</div>
             <div class="hero-amount c-green" id="heroTotal">$0</div>
             <div class="row" style="margin-top:8px;">
-              <div style="font-size:11px;color:var(--text3);">Nu + Nequi +
-                Efectivo + Prestado + CDTs − Deuda TC</div>
+              <div style="font-size:11px;color:var(--text3);">Líquido + Ahorro + Por cobrar − Pasivos</div>
               <div id="hero-change-indicator"
                 style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
             </div>
@@ -2025,6 +2024,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div class="sec-title">Comparación con el mes anterior</div>
           <div id="an-comparacion" class="card"
             style="padding:14px 15px;margin-bottom:9px;"></div>
+          <!-- BALANCE DE PATRIMONIO -->
+          <div class="sec-title">Balance patrimonial</div>
+          <div id="an-balance-patrimonio" style="margin-bottom:9px;"></div>
           <!-- HISTORIAL DE PATRIMONIO -->
           <div class="sec-title">Historial de patrimonio</div>
           <div class="card"
@@ -5368,18 +5370,100 @@ function calcDeudaTcPropia() {
   return Math.max(0, deudaTotal - deudaAjena);
 }
 
-function calcPatrimonioTotal(){
-  const nu=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
-  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
-  const nequi=S.nequiSaldo||0;
-  const ef=S.efectivoSaldo||0;
-  const prest=typeof totalPrestadoPendiente==="function"?totalPrestadoPendiente():0;
-  const custom=(S.cuentasPersonalizadas||[]).filter(c=>c.incluirEnTotal).reduce((a,c)=>a+(c.saldo||0),0);
-  const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
-  // Restar plata comprometida ajena que está físicamente en cuentas propias
-  // (igual que se restan encargos) — es plata de otras personas que administrás
+/* ── BALANCE DE PATRIMONIO ─────────────────────────────────────────────────
+   calcBalancePatrimonio() → desglose completo estructurado por categoría.
+   calcPatrimonioTotal()  → alias neto para compatibilidad con todo el código existente.
+
+   ESTRUCTURA DE ACTIVOS:
+     · Líquidos     : Nequi + Efectivo + cajitas Nu disponibles + cuentas custom
+     · Ahorro/inv.  : CDTs activos  [+ ETFs/acciones: ranura preparada, sin UI aún]
+     · Por cobrar   : plata prestada a otros (deudores)
+
+   ESTRUCTURA DE PASIVOS:
+     · Deuda TC propia         (excluye encargos y plata comprometida)
+     · Gastos fijos vencidos   (fecha pasada + no marcados como pagados)
+     · Plata comprometida ajena (físicamente en cuentas propias, es de otros)
+
+   ENCARGOS: fuera del cálculo — se exponen como encargosAdmin
+             para mostrar en la UI como nota informativa.
+────────────────────────────────────────────────────────────────────────── */
+function calcBalancePatrimonio(){
+  // ── ACTIVOS LÍQUIDOS ──────────────────────────────────────────────────
+  const cajitasLibres = (S.cajitas||[]).reduce((a,c)=>a+calcC(c).val, 0);
+  const nequi         = S.nequiSaldo||0;
+  const ef            = S.efectivoSaldo||0;
+  const custom        = (S.cuentasPersonalizadas||[])
+                          .filter(c=>c.incluirEnTotal)
+                          .reduce((a,c)=>a+(c.saldo||0), 0);
+  const totalLiquido  = cajitasLibres + nequi + ef + custom;
+
+  // ── ACTIVOS AHORRO / INVERSIÓN ────────────────────────────────────────
+  const cdts = (S.cajitas||[]).reduce((a,c)=>
+    a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val, 0), 0);
+  // ETFs / acciones: preparado para el futuro (suma 0 hasta que se implemente UI)
+  const inversiones = 0;
+  const totalAhorro = cdts + inversiones;
+
+  // ── CUENTAS POR COBRAR ────────────────────────────────────────────────
+  const prestado    = typeof totalPrestadoPendiente==='function' ? totalPrestadoPendiente() : 0;
+  const totalCobrar = prestado;
+
+  // ── TOTAL ACTIVOS ─────────────────────────────────────────────────────
+  const totalActivos = totalLiquido + totalAhorro + totalCobrar;
+
+  // ── PASIVOS: DEUDA TC PROPIA ──────────────────────────────────────────
+  const deudaTC = calcDeudaTcPropia();
+
+  // ── PASIVOS: GASTOS FIJOS VENCIDOS SIN PAGAR ─────────────────────────
+  // Solo los que ya pasaron su fecha de vencimiento y no están marcados como pagados.
+  // Los compromisos futuros del mes en curso NO son pasivo todavía.
+  const hoyStr   = hoy();
+  const mesHoy   = mesActual();
+  const pagosGF  = S.pagosGastosFijos||{};
+  const gfVencidosSinPagar = (S.gastosFijos||[]).reduce((a,g)=>{
+    const pagado = !!pagosGF[g.id+'_'+mesHoy];
+    if(pagado) return a;
+    if(g.fechaVence && g.fechaVence < hoyStr) return a+(g.monto||0);
+    return a;
+  }, 0);
+
+  // ── PASIVOS: PLATA COMPROMETIDA AJENA ────────────────────────────────
   const cpAjeno = _saldoCPAjeno();
-  return nu+cdts+nequi+ef+prest+custom-deudaTC-cpAjeno;
+
+  // ── TOTAL PASIVOS ─────────────────────────────────────────────────────
+  const totalPasivos = deudaTC + gfVencidosSinPagar + cpAjeno;
+
+  // ── PATRIMONIO NETO ───────────────────────────────────────────────────
+  const patrimonioNeto = totalActivos - totalPasivos;
+
+  // ── ENCARGOS ADMINISTRADOS (informativo, fuera del cálculo) ──────────
+  const encargosItems = (S.encargos||[]).map(e=>({
+    nombre: e.nombre,
+    saldo:  typeof encargoSaldo==='function' ? encargoSaldo(e) : 0
+  })).filter(e=>e.saldo>0);
+  const totalEncargosAdmin = encargosItems.reduce((a,e)=>a+e.saldo, 0);
+
+  return {
+    activos: {
+      liquido: { total: totalLiquido, cajitas: cajitasLibres, nequi, ef, custom },
+      ahorro:  { total: totalAhorro, cdts, inversiones },
+      cobrar:  { total: totalCobrar, prestado },
+      total:   totalActivos
+    },
+    pasivos: {
+      deudaTC,
+      gfVencidos: gfVencidosSinPagar,
+      cpAjeno,
+      total: totalPasivos
+    },
+    patrimonioNeto,
+    encargosAdmin: { items: encargosItems, total: totalEncargosAdmin }
+  };
+}
+
+function calcPatrimonioTotal(){
+  // Alias canónico — mantiene compatibilidad con todos los call sites existentes.
+  return calcBalancePatrimonio().patrimonioNeto;
 }
 
 function snapshotPatrimonio(){
@@ -5955,10 +6039,121 @@ function refresh(){
 }
 
 
-/* ---- ANÁLISIS FINANCIERO ---- */
+/* ── RENDER BALANCE PATRIMONIAL ────────────────────────────────────────── */
+function renderBalancePatrimonio(){
+  const el=document.getElementById('an-balance-patrimonio');
+  if(!el) return;
+  const b=calcBalancePatrimonio();
+  const f=fmt;
+
+  // Íconos SVG inline (consistentes con el resto de la app)
+  const icoLiq=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`;
+  const icoAho=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`;
+  const icoCob=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
+  const icoTC=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
+  const icoGF=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+  const icoCP=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
+  const icoEnc=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg>`;
+
+  // Fila de detalle (sub-ítem dentro de una categoría)
+  function filaDetalle(label, valor, ocultar0=true){
+    if(ocultar0 && valor===0) return '';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0 3px 18px;">
+      <span style="font-size:11px;color:var(--text3);">${label}</span>
+      <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);">${f(valor)}</span>
+    </div>`;
+  }
+
+  // Fila de categoría principal
+  function filaCat(ico, label, valor, color='var(--accent)'){
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px;">${ico} ${label}</span>
+      <span style="font-size:13px;font-family:'DM Mono',monospace;font-weight:600;color:${color};">${f(valor)}</span>
+    </div>`;
+  }
+
+  // Fila de total de sección
+  function filaTotalSeccion(label, valor, color){
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0 4px;">
+      <span style="font-size:12px;font-weight:600;color:var(--text);">${label}</span>
+      <span style="font-size:14px;font-family:'DM Mono',monospace;font-weight:600;color:${color};">${f(valor)}</span>
+    </div>`;
+  }
+
+  // ── ACTIVOS ────────────────────────────────────────────────────────────
+  const {activos:A, pasivos:P, patrimonioNeto, encargosAdmin} = b;
+
+  const htmlActivos = `
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:4px;">Activos</div>
+    <div class="card" style="padding:10px 14px;margin-bottom:8px;">
+      ${filaCat(icoLiq,'Activos líquidos', A.liquido.total)}
+      ${filaDetalle('Nequi', A.liquido.nequi)}
+      ${filaDetalle('Efectivo', A.liquido.ef)}
+      ${filaDetalle('Cajitas Nu disponibles', A.liquido.cajitas)}
+      ${A.liquido.custom>0?filaDetalle('Cuentas personalizadas', A.liquido.custom):''}
+      ${filaCat(icoAho,'Ahorro e inversión', A.ahorro.total)}
+      ${filaDetalle('CDTs activos', A.ahorro.cdts)}
+      ${A.ahorro.inversiones>0?filaDetalle('ETFs / acciones', A.ahorro.inversiones):''}
+      ${A.ahorro.total===0&&A.ahorro.cdts===0?`<div style="padding:3px 0 3px 18px;font-size:11px;color:var(--text3);font-style:italic;">Sin CDTs activos</div>`:''}
+      ${A.cobrar.total>0?filaCat(icoCob,'Cuentas por cobrar', A.cobrar.total):''}
+      ${A.cobrar.total>0?filaDetalle('Plata prestada a otros', A.cobrar.prestado):''}
+      <div style="border-top:1px solid var(--border);margin-top:4px;"></div>
+      ${filaTotalSeccion('Total activos', A.total, 'var(--accent)')}
+    </div>`;
+
+  // ── PASIVOS ────────────────────────────────────────────────────────────
+  const hayPasivos = P.total > 0;
+  const htmlPasivos = `
+    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:4px;">Pasivos</div>
+    <div class="card" style="padding:10px 14px;margin-bottom:8px;">
+      ${P.deudaTC>0   ? filaCat(icoTC, 'Deuda TC propia', P.deudaTC, 'var(--red)') : ''}
+      ${P.gfVencidos>0? filaCat(icoGF, 'Gastos fijos vencidos', P.gfVencidos, 'var(--red)') : ''}
+      ${P.cpAjeno>0   ? filaCat(icoCP, 'Plata comprometida ajena', P.cpAjeno, 'var(--red)') : ''}
+      ${!hayPasivos   ? `<div style="font-size:12px;color:var(--text3);padding:4px 0;">Sin pasivos registrados.</div>` : ''}
+      ${hayPasivos    ? `<div style="border-top:1px solid var(--border);margin-top:4px;"></div>${filaTotalSeccion('Total pasivos', P.total, 'var(--red)')}` : ''}
+    </div>`;
+
+  // ── PATRIMONIO NETO ────────────────────────────────────────────────────
+  const colNeto = patrimonioNeto>=0 ? 'var(--accent)' : 'var(--red)';
+  const htmlNeto = `
+    <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:8px;">
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:4px;">Patrimonio neto</div>
+      <div style="font-size:26px;font-family:'DM Mono',monospace;font-weight:300;letter-spacing:-1px;color:${colNeto};">${f(patrimonioNeto)}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">Activos ${f(A.total)} − Pasivos ${f(P.total)}</div>
+    </div>`;
+
+  // ── ENCARGOS ADMINISTRADOS ─────────────────────────────────────────────
+  let htmlEncargos = '';
+  if(encargosAdmin.total > 0){
+    const itemsHtml = encargosAdmin.items.map(e=>
+      `<div style="display:flex;justify-content:space-between;padding:3px 0;">
+        <span style="font-size:11px;color:var(--text3);">${e.nombre}</span>
+        <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">${f(e.saldo)}</span>
+      </div>`
+    ).join('');
+    htmlEncargos = `
+      <div style="border:1px dashed var(--border2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px;">${icoEnc} Administrado por mí
+            <span style="font-size:9px;padding:2px 6px;border-radius:20px;background:var(--bg3);color:var(--text3);border:1px solid var(--border);">ajeno</span>
+          </span>
+          <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text3);">${f(encargosAdmin.total)}</span>
+        </div>
+        ${itemsHtml}
+        <div style="font-size:10px;color:var(--text3);margin-top:5px;">No suma al patrimonio · solo informativo</div>
+      </div>`;
+  }
+
+  el.innerHTML = htmlActivos + htmlPasivos + htmlNeto + htmlEncargos;
+}
+
+/* ── ANÁLISIS FINANCIERO ── */
 function renderAnalisis(){
   const mes=mesActual();
   const MESES_NOMBRE=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  // ── Balance patrimonial (nuevo sistema) ───────────────────────────────
+  renderBalancePatrimonio();
 
   // ── Ingresos fijos (card editable) ────────────────────────────────────
   renderIngresosFijos();

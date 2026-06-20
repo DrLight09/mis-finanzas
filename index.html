@@ -819,7 +819,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             <div class="hero-label">Patrimonio total</div>
             <div class="hero-amount c-green" id="heroTotal">$0</div>
             <div class="row" style="margin-top:8px;">
-              <div style="font-size:11px;color:var(--text3);">Líquido + Ahorro + Por cobrar − Pasivos</div>
+              <div style="font-size:11px;color:var(--text3);">Nu + Nequi +
+                Efectivo + Prestado + CDTs − Deuda TC</div>
               <div id="hero-change-indicator"
                 style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
             </div>
@@ -1534,6 +1535,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 
         <!-- PRESTAMOS -->
         <div class="screen" id="screen-prestamos">
+          <div style="display:flex;gap:6px;margin-bottom:14px;" id="prestamos-tabs">
+            <button type="button" class="btn" id="tab-me-deben" onclick="cambiarTabPrestamos('me-deben')"
+              style="flex:1;background:rgba(200,240,96,.12);border-color:rgba(200,240,96,.4);color:var(--accent);">
+              Me deben
+            </button>
+            <button type="button" class="btn btn-ghost" id="tab-yo-debo" onclick="cambiarTabPrestamos('yo-debo')"
+              style="flex:1;">
+              Yo debo
+            </button>
+          </div>
           <div id="deudoresView">
             <div class="sec-title">Personas a quienes presto</div>
             <div id="deudoresList"></div>
@@ -1653,6 +1664,73 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             </div>
             <div class="sec-title">Historial</div>
             <div id="ddHistorial"></div>
+          </div>
+
+          <!-- YO DEBO -->
+          <div id="misDeudasView" style="display:none;">
+            <div class="sec-title">Personas a quienes les debo</div>
+            <div id="misDeudasList"></div>
+            <button type="button" class="btn btn-ghost" id="btn-nueva-deuda">
+              <span style="display:flex;align-items:center;justify-content:center;gap:5px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2.5"
+                  stroke-linecap="round"><line x1="12" y1="5" x2="12"
+                    y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                Agregar deuda
+              </span>
+            </button>
+          </div>
+          <div id="miDeudaDetalle" style="display:none;">
+            <div class="detail-header" style="margin-bottom:14px;">
+              <button type="button" class="detail-header-back btn-icon" id="btn-volver-mis-deudas">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2.5"
+                  stroke-linecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+              </button>
+              <div id="mdAvatar" class="avatar"
+                style="width:38px;height:38px;font-size:14px;margin-right:0;flex-shrink:0;"></div>
+              <div style="flex:1;min-width:0;">
+                <div id="mdNombre" style="font-size:15px;font-weight:600;"></div>
+                <div id="mdSaldoLabel" style="font-size:11px;font-family:'DM Mono',monospace;"></div>
+              </div>
+              <button type="button" class="detail-header-action btn-icon" id="btn-eliminar-mi-deuda"
+                style="color:var(--red);min-width:34px;min-height:34px;" title="Eliminar deuda">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round"><polyline points="3 6 5 6 21 6" /><path
+                    d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" /><path
+                    d="M10 11v6M14 11v6" /><path
+                    d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" /></svg>
+              </button>
+            </div>
+            <div class="grid2" style="margin-bottom:10px;">
+              <div class="stat"><div class="stat-label">Me prestaron</div><div
+                  class="stat-value c-amber" id="mdRecibido">$0</div></div>
+              <div class="stat"><div class="stat-label">He pagado</div><div
+                  class="stat-value c-green" id="mdPagado">$0</div></div>
+            </div>
+            <div style="display:flex;gap:7px;margin-bottom:14px;">
+              <button type="button" class="btn btn-primary" id="btn-nueva-deuda-mov" style="flex:1;">
+                <span style="display:flex;align-items:center;justify-content:center;gap:5px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke="#0a0a0a" stroke-width="2.5"
+                    stroke-linecap="round"><line x1="12" y1="5" x2="12"
+                      y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  Me prestó más
+                </span>
+              </button>
+              <button type="button" class="btn" id="btn-pagar-mi-deuda"
+                style="flex:1;background:rgba(200,240,96,.1);border-color:rgba(200,240,96,.3);color:var(--accent);">
+                <span style="display:flex;align-items:center;justify-content:center;gap:5px;">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  Registrar pago
+                </span>
+              </button>
+            </div>
+            <div class="sec-title">Historial</div>
+            <div id="mdHistorial"></div>
           </div>
 
         </div>
@@ -2024,9 +2102,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div class="sec-title">Comparación con el mes anterior</div>
           <div id="an-comparacion" class="card"
             style="padding:14px 15px;margin-bottom:9px;"></div>
-          <!-- BALANCE DE PATRIMONIO -->
-          <div class="sec-title">Balance patrimonial</div>
-          <div id="an-balance-patrimonio" style="margin-bottom:9px;"></div>
           <!-- HISTORIAL DE PATRIMONIO -->
           <div class="sec-title">Historial de patrimonio</div>
           <div class="card"
@@ -3219,6 +3294,57 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           id="btn-crear-deudor">Crear persona</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="nueva-persona">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- NUEVA DEUDA (yo le debo a alguien) -->
+    <div class="overlay" id="sheet-nueva-deuda" data-sheet-id="nueva-deuda">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Nueva deuda</div>
+        <div class="ig"><label class="il" for="nd_nombre">¿A quién le debes?</label>
+          <input type="text" id="nd_nombre" placeholder="Ej: Papá, Carlos, Mamá...">
+        </div>
+        <div class="ig"><label class="il" for="nd_monto">¿Cuánto te prestó?</label>
+          <input type="text" inputmode="decimal" id="nd_monto" placeholder="0,00" class="money-input">
+        </div>
+        <div class="ig"><label class="il" for="nd_fecha">Fecha</label>
+          <input type="date" id="nd_fecha">
+        </div>
+        <div class="ig">
+          <label class="il">¿A qué cuenta entró la plata?</label>
+          <div class="select-wrap"><select id="nd_destino"><option value>Sin especificar</option></select></div>
+          <div class="field-hint field-hint-green">Se sumará automáticamente al saldo de esa cuenta</div>
+        </div>
+        <div class="ig"><label class="il" for="nd_nota">Nota (opcional)</label>
+          <input type="text" id="nd_nota" placeholder="Ej: Para el arriendo">
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-crear-mi-deuda">Crear deuda</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="nueva-deuda">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- MOVIMIENTO DE MI DEUDA (me prestó más / le pagué) -->
+    <div class="overlay" id="sheet-mov-mi-deuda" data-sheet-id="mov-mi-deuda">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="mdMovSheetTitle">Me prestó más</div>
+        <div class="ig"><label class="il" for="md_monto">Monto</label>
+          <input type="text" inputmode="decimal" id="md_monto" placeholder="0,00" class="money-input">
+        </div>
+        <div class="ig"><label class="il" for="md_fecha">Fecha</label>
+          <input type="date" id="md_fecha">
+        </div>
+        <div class="ig" id="md_cuenta_wrap">
+          <label class="il" id="md_cuenta_label">¿A qué cuenta entró la plata?</label>
+          <div class="select-wrap"><select id="md_cuenta"><option value>Sin especificar</option></select></div>
+          <div class="field-hint field-hint-green" id="md_cuenta_hint">Se sumará automáticamente al saldo de esa cuenta</div>
+        </div>
+        <div class="ig"><label class="il" for="md_nota">Nota (opcional)</label>
+          <input type="text" id="md_nota" placeholder="Ej: Abono parcial">
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-confirmar-mov-mi-deuda">Guardar</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="mov-mi-deuda">Cancelar</button>
       </div>
     </div>
 
@@ -4531,7 +4657,7 @@ function poblarCatSelect(selectId, cats, valorActual){
 let S={
   nuRate:9.25,cajitas:[],nequiSaldo:0,efectivoSaldo:0,
   personas:[],
-  deudores:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
+  deudores:[],misDeudas:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
   spotifyPersonas:[],spotifyCosto:0,spotifyCajitaId:'',spotifyHistorial:[],
   gastosFijos:[],
   pagosGastosFijos:{},
@@ -5205,17 +5331,23 @@ function load(){
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
   if(!S.personas)S.personas=[];
   if(!S.ingresosFijos)S.ingresosFijos=[];
-  // Migración retroactiva: calcular el monto exacto de aperturas (saldo inicial) por fecha
-  // en el historial de patrimonio que ya existía antes de este fix. Así la tendencia mensual
-  // descuenta solo esa parte del cambio del día y conserva cualquier ingreso real que haya
-  // ocurrido la misma fecha, sin tener que esperar a un nuevo snapshot.
+  if(!S.misDeudas)S.misDeudas=[];
+  // Migración retroactiva: calcular el monto exacto de aperturas y ajustes de saldo inicial
+  // (incluyendo borrados de apertura, que generan un ajuste negativo en _ajustesBaseLog)
+  // por fecha en el historial de patrimonio que ya existía antes de este fix. Así la
+  // tendencia mensual descuenta solo esa parte del cambio del día y conserva cualquier
+  // ingreso real que haya ocurrido la misma fecha, sin tener que esperar a un nuevo snapshot.
   if(S.patrimonioHistorial.length){
     const montoAperturaPorFecha = {};
-    const sumarApertura=(m)=>{ if(m.tipo==='apertura'){ montoAperturaPorFecha[m.fecha]=(montoAperturaPorFecha[m.fecha]||0)+(m.monto||0); } };
+    const sumarApertura=(m)=>{
+      if(m.tipo==='apertura'){ montoAperturaPorFecha[m.fecha]=(montoAperturaPorFecha[m.fecha]||0)+(m.monto||0); }
+      if(m._ajustes){ m._ajustes.forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); }); }
+    };
     (S.movimientos||[]).forEach(sumarApertura);
     (S.cuentasPersonalizadas||[]).forEach(c=>(c.movimientos||[]).forEach(sumarApertura));
+    (S._ajustesBaseLog||[]).forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); });
     S.patrimonioHistorial.forEach(h=>{
-      if(montoAperturaPorFecha[h.fecha]>0){ h.montoBase=montoAperturaPorFecha[h.fecha]; }
+      if(montoAperturaPorFecha[h.fecha]&&montoAperturaPorFecha[h.fecha]!==0){ h.montoBase=montoAperturaPorFecha[h.fecha]; }
       else { delete h.baseAjustada; } // limpiar flag de versión anterior del fix, si existe
     });
   }
@@ -5370,100 +5502,21 @@ function calcDeudaTcPropia() {
   return Math.max(0, deudaTotal - deudaAjena);
 }
 
-/* ── BALANCE DE PATRIMONIO ─────────────────────────────────────────────────
-   calcBalancePatrimonio() → desglose completo estructurado por categoría.
-   calcPatrimonioTotal()  → alias neto para compatibilidad con todo el código existente.
-
-   ESTRUCTURA DE ACTIVOS:
-     · Líquidos     : Nequi + Efectivo + cajitas Nu disponibles + cuentas custom
-     · Ahorro/inv.  : CDTs activos  [+ ETFs/acciones: ranura preparada, sin UI aún]
-     · Por cobrar   : plata prestada a otros (deudores)
-
-   ESTRUCTURA DE PASIVOS:
-     · Deuda TC propia         (excluye encargos y plata comprometida)
-     · Gastos fijos vencidos   (fecha pasada + no marcados como pagados)
-     · Plata comprometida ajena (físicamente en cuentas propias, es de otros)
-
-   ENCARGOS: fuera del cálculo — se exponen como encargosAdmin
-             para mostrar en la UI como nota informativa.
-────────────────────────────────────────────────────────────────────────── */
-function calcBalancePatrimonio(){
-  // ── ACTIVOS LÍQUIDOS ──────────────────────────────────────────────────
-  const cajitasLibres = (S.cajitas||[]).reduce((a,c)=>a+calcC(c).val, 0);
-  const nequi         = S.nequiSaldo||0;
-  const ef            = S.efectivoSaldo||0;
-  const custom        = (S.cuentasPersonalizadas||[])
-                          .filter(c=>c.incluirEnTotal)
-                          .reduce((a,c)=>a+(c.saldo||0), 0);
-  const totalLiquido  = cajitasLibres + nequi + ef + custom;
-
-  // ── ACTIVOS AHORRO / INVERSIÓN ────────────────────────────────────────
-  const cdts = (S.cajitas||[]).reduce((a,c)=>
-    a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val, 0), 0);
-  // ETFs / acciones: preparado para el futuro (suma 0 hasta que se implemente UI)
-  const inversiones = 0;
-  const totalAhorro = cdts + inversiones;
-
-  // ── CUENTAS POR COBRAR ────────────────────────────────────────────────
-  const prestado    = typeof totalPrestadoPendiente==='function' ? totalPrestadoPendiente() : 0;
-  const totalCobrar = prestado;
-
-  // ── TOTAL ACTIVOS ─────────────────────────────────────────────────────
-  const totalActivos = totalLiquido + totalAhorro + totalCobrar;
-
-  // ── PASIVOS: DEUDA TC PROPIA ──────────────────────────────────────────
-  const deudaTC = calcDeudaTcPropia();
-
-  // ── PASIVOS: GASTOS FIJOS VENCIDOS SIN PAGAR ─────────────────────────
-  // Solo los que ya pasaron su fecha de vencimiento y no están marcados como pagados.
-  // Los compromisos futuros del mes en curso NO son pasivo todavía.
-  const hoyStr   = hoy();
-  const mesHoy   = mesActual();
-  const pagosGF  = S.pagosGastosFijos||{};
-  const gfVencidosSinPagar = (S.gastosFijos||[]).reduce((a,g)=>{
-    const pagado = !!pagosGF[g.id+'_'+mesHoy];
-    if(pagado) return a;
-    if(g.fechaVence && g.fechaVence < hoyStr) return a+(g.monto||0);
-    return a;
-  }, 0);
-
-  // ── PASIVOS: PLATA COMPROMETIDA AJENA ────────────────────────────────
-  const cpAjeno = _saldoCPAjeno();
-
-  // ── TOTAL PASIVOS ─────────────────────────────────────────────────────
-  const totalPasivos = deudaTC + gfVencidosSinPagar + cpAjeno;
-
-  // ── PATRIMONIO NETO ───────────────────────────────────────────────────
-  const patrimonioNeto = totalActivos - totalPasivos;
-
-  // ── ENCARGOS ADMINISTRADOS (informativo, fuera del cálculo) ──────────
-  const encargosItems = (S.encargos||[]).map(e=>({
-    nombre: e.nombre,
-    saldo:  typeof encargoSaldo==='function' ? encargoSaldo(e) : 0
-  })).filter(e=>e.saldo>0);
-  const totalEncargosAdmin = encargosItems.reduce((a,e)=>a+e.saldo, 0);
-
-  return {
-    activos: {
-      liquido: { total: totalLiquido, cajitas: cajitasLibres, nequi, ef, custom },
-      ahorro:  { total: totalAhorro, cdts, inversiones },
-      cobrar:  { total: totalCobrar, prestado },
-      total:   totalActivos
-    },
-    pasivos: {
-      deudaTC,
-      gfVencidos: gfVencidosSinPagar,
-      cpAjeno,
-      total: totalPasivos
-    },
-    patrimonioNeto,
-    encargosAdmin: { items: encargosItems, total: totalEncargosAdmin }
-  };
-}
-
 function calcPatrimonioTotal(){
-  // Alias canónico — mantiene compatibilidad con todos los call sites existentes.
-  return calcBalancePatrimonio().patrimonioNeto;
+  const nu=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
+  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
+  const nequi=S.nequiSaldo||0;
+  const ef=S.efectivoSaldo||0;
+  const prest=typeof totalPrestadoPendiente==="function"?totalPrestadoPendiente():0;
+  const custom=(S.cuentasPersonalizadas||[]).filter(c=>c.incluirEnTotal).reduce((a,c)=>a+(c.saldo||0),0);
+  const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
+  // Lo que le debo a otras personas (S.misDeudas) — esa plata está físicamente en
+  // mis cuentas pero no es mía, así que se resta igual que la deuda de TC.
+  const misDeudas=typeof totalMisDeudasPendiente==="function"?totalMisDeudasPendiente():0;
+  // Restar plata comprometida ajena que está físicamente en cuentas propias
+  // (igual que se restan encargos) — es plata de otras personas que administrás
+  const cpAjeno = _saldoCPAjeno();
+  return nu+cdts+nequi+ef+prest+custom-deudaTC-misDeudas-cpAjeno;
 }
 
 function snapshotPatrimonio(){
@@ -5471,22 +5524,30 @@ function snapshotPatrimonio(){
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
   const val=calcPatrimonioTotal();
   if(val==null||isNaN(val))return;
-  // ¿Hoy se registró algún saldo inicial (cajita nueva, Nequi, Efectivo, cuenta personalizada)?
-  // La app ya sabe distinguir esto vía tipo:'apertura' (ver crearMovimientoApertura).
-  // Si sí, guardamos el MONTO exacto de esas aperturas (no solo un flag) para que el
-  // cálculo de tendencia pueda restar únicamente esa parte del cambio del día y conservar
-  // cualquier ingreso real que haya ocurrido el mismo día (ej. apertura + mesada el mismo día).
+  // ¿Hoy se registró algún saldo inicial (cajita nueva, Nequi, Efectivo, cuenta personalizada)
+  // o se corrigió uno existente? La app ya sabe distinguir esto vía tipo:'apertura' (ver
+  // crearMovimientoApertura) y vía _ajustes (ver confirmarEditarApertura). Guardamos el
+  // MONTO exacto (no solo un flag) para que el cálculo de tendencia pueda restar únicamente
+  // esa parte del cambio del día y conservar cualquier ingreso real que haya ocurrido el
+  // mismo día (ej. apertura + mesada el mismo día).
+  const sumarAperturasYAjustesDeHoy = (movs)=> (movs||[]).reduce((a,m)=>{
+    let t = 0;
+    if(m.tipo==='apertura'&&m.fecha===hoyStr) t += (m.monto||0);
+    if(m._ajustes) t += m._ajustes.filter(aj=>aj.fecha===hoyStr).reduce((b,aj)=>b+(aj.monto||0),0);
+    return a+t;
+  },0);
   const montoAperturaHoy =
-    (S.movimientos||[]).filter(m=>m.tipo==='apertura'&&m.fecha===hoyStr).reduce((a,m)=>a+(m.monto||0),0)
-    + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.movimientos||[]).filter(m=>m.tipo==='apertura'&&m.fecha===hoyStr).reduce((b,m)=>b+(m.monto||0),0),0);
+    sumarAperturasYAjustesDeHoy(S.movimientos)
+    + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+sumarAperturasYAjustesDeHoy(c.movimientos),0)
+    + (S._ajustesBaseLog||[]).filter(aj=>aj.fecha===hoyStr).reduce((a,aj)=>a+(aj.monto||0),0);
   const ultimo=S.patrimonioHistorial[S.patrimonioHistorial.length-1];
   if(ultimo&&ultimo.fecha===hoyStr){
     ultimo.valor=val;
-    if(montoAperturaHoy>0)ultimo.montoBase=montoAperturaHoy; else delete ultimo.montoBase;
+    if(montoAperturaHoy!==0)ultimo.montoBase=montoAperturaHoy; else delete ultimo.montoBase;
   }
   else{
     const punto={fecha:hoyStr,valor:val};
-    if(montoAperturaHoy>0)punto.montoBase=montoAperturaHoy;
+    if(montoAperturaHoy!==0)punto.montoBase=montoAperturaHoy;
     S.patrimonioHistorial.push(punto);
   }
   if(S.patrimonioHistorial.length>365)S.patrimonioHistorial=S.patrimonioHistorial.slice(-365);
@@ -6039,121 +6100,10 @@ function refresh(){
 }
 
 
-/* ── RENDER BALANCE PATRIMONIAL ────────────────────────────────────────── */
-function renderBalancePatrimonio(){
-  const el=document.getElementById('an-balance-patrimonio');
-  if(!el) return;
-  const b=calcBalancePatrimonio();
-  const f=fmt;
-
-  // Íconos SVG inline (consistentes con el resto de la app)
-  const icoLiq=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`;
-  const icoAho=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`;
-  const icoCob=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
-  const icoTC=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`;
-  const icoGF=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
-  const icoCP=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`;
-  const icoEnc=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg>`;
-
-  // Fila de detalle (sub-ítem dentro de una categoría)
-  function filaDetalle(label, valor, ocultar0=true){
-    if(ocultar0 && valor===0) return '';
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0 3px 18px;">
-      <span style="font-size:11px;color:var(--text3);">${label}</span>
-      <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);">${f(valor)}</span>
-    </div>`;
-  }
-
-  // Fila de categoría principal
-  function filaCat(ico, label, valor, color='var(--accent)'){
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-      <span style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:5px;">${ico} ${label}</span>
-      <span style="font-size:13px;font-family:'DM Mono',monospace;font-weight:600;color:${color};">${f(valor)}</span>
-    </div>`;
-  }
-
-  // Fila de total de sección
-  function filaTotalSeccion(label, valor, color){
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0 4px;">
-      <span style="font-size:12px;font-weight:600;color:var(--text);">${label}</span>
-      <span style="font-size:14px;font-family:'DM Mono',monospace;font-weight:600;color:${color};">${f(valor)}</span>
-    </div>`;
-  }
-
-  // ── ACTIVOS ────────────────────────────────────────────────────────────
-  const {activos:A, pasivos:P, patrimonioNeto, encargosAdmin} = b;
-
-  const htmlActivos = `
-    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:4px;">Activos</div>
-    <div class="card" style="padding:10px 14px;margin-bottom:8px;">
-      ${filaCat(icoLiq,'Activos líquidos', A.liquido.total)}
-      ${filaDetalle('Nequi', A.liquido.nequi)}
-      ${filaDetalle('Efectivo', A.liquido.ef)}
-      ${filaDetalle('Cajitas Nu disponibles', A.liquido.cajitas)}
-      ${A.liquido.custom>0?filaDetalle('Cuentas personalizadas', A.liquido.custom):''}
-      ${filaCat(icoAho,'Ahorro e inversión', A.ahorro.total)}
-      ${filaDetalle('CDTs activos', A.ahorro.cdts)}
-      ${A.ahorro.inversiones>0?filaDetalle('ETFs / acciones', A.ahorro.inversiones):''}
-      ${A.ahorro.total===0&&A.ahorro.cdts===0?`<div style="padding:3px 0 3px 18px;font-size:11px;color:var(--text3);font-style:italic;">Sin CDTs activos</div>`:''}
-      ${A.cobrar.total>0?filaCat(icoCob,'Cuentas por cobrar', A.cobrar.total):''}
-      ${A.cobrar.total>0?filaDetalle('Plata prestada a otros', A.cobrar.prestado):''}
-      <div style="border-top:1px solid var(--border);margin-top:4px;"></div>
-      ${filaTotalSeccion('Total activos', A.total, 'var(--accent)')}
-    </div>`;
-
-  // ── PASIVOS ────────────────────────────────────────────────────────────
-  const hayPasivos = P.total > 0;
-  const htmlPasivos = `
-    <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:4px;">Pasivos</div>
-    <div class="card" style="padding:10px 14px;margin-bottom:8px;">
-      ${P.deudaTC>0   ? filaCat(icoTC, 'Deuda TC propia', P.deudaTC, 'var(--red)') : ''}
-      ${P.gfVencidos>0? filaCat(icoGF, 'Gastos fijos vencidos', P.gfVencidos, 'var(--red)') : ''}
-      ${P.cpAjeno>0   ? filaCat(icoCP, 'Plata comprometida ajena', P.cpAjeno, 'var(--red)') : ''}
-      ${!hayPasivos   ? `<div style="font-size:12px;color:var(--text3);padding:4px 0;">Sin pasivos registrados.</div>` : ''}
-      ${hayPasivos    ? `<div style="border-top:1px solid var(--border);margin-top:4px;"></div>${filaTotalSeccion('Total pasivos', P.total, 'var(--red)')}` : ''}
-    </div>`;
-
-  // ── PATRIMONIO NETO ────────────────────────────────────────────────────
-  const colNeto = patrimonioNeto>=0 ? 'var(--accent)' : 'var(--red)';
-  const htmlNeto = `
-    <div style="background:var(--bg2);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:8px;">
-      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:4px;">Patrimonio neto</div>
-      <div style="font-size:26px;font-family:'DM Mono',monospace;font-weight:300;letter-spacing:-1px;color:${colNeto};">${f(patrimonioNeto)}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:3px;">Activos ${f(A.total)} − Pasivos ${f(P.total)}</div>
-    </div>`;
-
-  // ── ENCARGOS ADMINISTRADOS ─────────────────────────────────────────────
-  let htmlEncargos = '';
-  if(encargosAdmin.total > 0){
-    const itemsHtml = encargosAdmin.items.map(e=>
-      `<div style="display:flex;justify-content:space-between;padding:3px 0;">
-        <span style="font-size:11px;color:var(--text3);">${e.nombre}</span>
-        <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);">${f(e.saldo)}</span>
-      </div>`
-    ).join('');
-    htmlEncargos = `
-      <div style="border:1px dashed var(--border2);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <span style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px;">${icoEnc} Administrado por mí
-            <span style="font-size:9px;padding:2px 6px;border-radius:20px;background:var(--bg3);color:var(--text3);border:1px solid var(--border);">ajeno</span>
-          </span>
-          <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text3);">${f(encargosAdmin.total)}</span>
-        </div>
-        ${itemsHtml}
-        <div style="font-size:10px;color:var(--text3);margin-top:5px;">No suma al patrimonio · solo informativo</div>
-      </div>`;
-  }
-
-  el.innerHTML = htmlActivos + htmlPasivos + htmlNeto + htmlEncargos;
-}
-
-/* ── ANÁLISIS FINANCIERO ── */
+/* ---- ANÁLISIS FINANCIERO ---- */
 function renderAnalisis(){
   const mes=mesActual();
   const MESES_NOMBRE=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-
-  // ── Balance patrimonial (nuevo sistema) ───────────────────────────────
-  renderBalancePatrimonio();
 
   // ── Ingresos fijos (card editable) ────────────────────────────────────
   renderIngresosFijos();
@@ -6480,23 +6430,38 @@ function renderAnalisis(){
     if(hist.length<2){
       patriEl.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:10px 0;">Se irá construyendo automáticamente cada vez que uses la app.<br><span style="font-size:10px;font-family:\'DM Mono\',monospace;opacity:.6;">Necesitas al menos 2 días de datos.</span></div>';
     } else {
-      const vals=hist.map(x=>x.valor);
-      const maxV=Math.max(...vals);
-      const minV=Math.min(...vals);
+      // Construir serie de valores "reales" (sin los montos de saldo inicial/ajustes
+      // acumulados). Para cada punto reconstruimos cuánto saldo base acumulado hubo hasta
+      // ese día (montoBase: aperturas, correcciones y eliminaciones de saldo inicial — ver
+      // snapshotPatrimonio) y lo descontamos del valor, dejando solo el patrimonio
+      // ganado/perdido realmente. Así la gráfica no muestra picos verticales falsos al
+      // configurar una cuenta nueva, ni caídas falsas al corregir o borrar un saldo inicial.
+      let aperturaAcumulada = 0;
+      const valsReales = hist.map(h => {
+        aperturaAcumulada += (h.montoBase || 0);
+        return h.valor - aperturaAcumulada;
+      });
+      const maxV=Math.max(...valsReales);
+      const minV=Math.min(...valsReales);
       const rng=maxV-minV||1;
       const W=320,H=90,PAD=4;
-      const pts=hist.map((x,i)=>{
+      const pts=valsReales.map((v,i)=>{
         const px=PAD+i*(W-PAD*2)/(hist.length-1);
-        const py=PAD+(1-(x.valor-minV)/rng)*(H-PAD*2);
+        const py=PAD+(1-(v-minV)/rng)*(H-PAD*2);
         return[px,py];
       });
       const polyline=pts.map(([x,y])=>x+','+y).join(' ');
       const areaPath='M '+pts[0][0]+','+H+' L '+pts.map(([x,y])=>x+','+y).join(' L ')+' L '+pts[pts.length-1][0]+','+H+' Z';
       const primero=hist[0];
       const ultimo2=hist[hist.length-1];
-      const diffTotal=ultimo2.valor-primero.valor;
+      // diffTotal: cambio real de patrimonio en la ventana, calculado sobre la serie ya
+      // ajustada (valsReales) — no restando aperturas aparte del cambio crudo, porque eso
+      // doble-cuenta el montoBase del primer punto (que ya forma parte de "primero.valor").
+      const primeroReal = valsReales[0];
+      const ultimoReal = valsReales[valsReales.length-1];
+      const diffTotal = ultimoReal - primeroReal;
       const diffColor=diffTotal>=0?'var(--accent)':'var(--red)';
-      const diffPct=primero.valor>0?(diffTotal/primero.valor*100):0;
+      const diffPct = primeroReal!==0 ? (diffTotal/Math.abs(primeroReal)*100) : 0;
       patriEl.innerHTML=`
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
           <div>
@@ -6522,7 +6487,7 @@ function renderAnalisis(){
             <line id="_pat-line" x1="0" y1="0" x2="0" y2="${H}" stroke="${diffColor}" stroke-width="1" stroke-dasharray="3,3" opacity="0" style="pointer-events:none;"/>
           </svg>
           <div id="_pat-tt" style="display:none;position:absolute;top:0;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:8px 12px;font-family:'DM Mono',monospace;pointer-events:none;z-index:50;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.8);transform:translateX(-50%);"></div>
-          <div id="_pat-overlay" style="position:absolute;inset:0;cursor:crosshair;" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:hist[i].valor})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
+          <div id="_pat-overlay" style="position:absolute;inset:0;cursor:crosshair;" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:valsReales[i]})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:4px;">
           <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${primero.fecha.slice(5)}</span>
@@ -8796,6 +8761,260 @@ function totalPrestadoPendiente() {
   }, 0);
 }
 
+/* ── MIS DEUDAS (yo le debo a una persona) ───────────────────────────────
+   Simétrico a S.deudores, pero con efecto inverso: cuando "me prestan"
+   plata, ENTRA a una de mis cuentas (sumarFuente) y queda como pasivo
+   pendiente. Cuando pago, SALE de una cuenta (descontarFuente) y el
+   pasivo baja. El saldo pendiente se RESTA de calcPatrimonioTotal(),
+   igual que ya se hace con la deuda de tarjeta de crédito — es plata
+   que tengo físicamente pero no es mía. */
+let miDeudaActualId = null;
+
+function getMiDeudaSaldo(d) {
+  return (d.movimientos || []).reduce((a, m) => m.tipo === 'recibido' ? a + m.monto : a - m.monto, 0);
+}
+
+function totalMisDeudasPendiente() {
+  return (S.misDeudas || []).reduce((a, d) => {
+    const saldo = getMiDeudaSaldo(d);
+    return a + (saldo > 0 ? saldo : 0);
+  }, 0);
+}
+
+function cambiarTabPrestamos(tab) {
+  const tabMeDeben = document.getElementById('tab-me-deben');
+  const tabYoDebo = document.getElementById('tab-yo-debo');
+  const viewMeDeben = document.getElementById('deudoresView');
+  const detalleMeDeben = document.getElementById('deudorDetalle');
+  const viewYoDebo = document.getElementById('misDeudasView');
+  const detalleYoDebo = document.getElementById('miDeudaDetalle');
+  if (tab === 'yo-debo') {
+    tabYoDebo.className = 'btn';
+    tabYoDebo.style.background = 'rgba(200,240,96,.12)';
+    tabYoDebo.style.borderColor = 'rgba(200,240,96,.4)';
+    tabYoDebo.style.color = 'var(--accent)';
+    tabMeDeben.className = 'btn btn-ghost';
+    tabMeDeben.style.background = '';
+    tabMeDeben.style.borderColor = '';
+    tabMeDeben.style.color = '';
+    viewMeDeben.style.display = 'none';
+    detalleMeDeben.style.display = 'none';
+    viewYoDebo.style.display = '';
+    detalleYoDebo.style.display = 'none';
+    renderMisDeudasList();
+  } else {
+    tabMeDeben.className = 'btn';
+    tabMeDeben.style.background = 'rgba(200,240,96,.12)';
+    tabMeDeben.style.borderColor = 'rgba(200,240,96,.4)';
+    tabMeDeben.style.color = 'var(--accent)';
+    tabYoDebo.className = 'btn btn-ghost';
+    tabYoDebo.style.background = '';
+    tabYoDebo.style.borderColor = '';
+    tabYoDebo.style.color = '';
+    viewYoDebo.style.display = 'none';
+    detalleYoDebo.style.display = 'none';
+    viewMeDeben.style.display = '';
+  }
+}
+
+function _ndPoblarSelectDestino() {
+  const sel = document.getElementById('nd_destino');
+  if (!sel) return;
+  const fuentes = getFuentesSinTC();
+  sel.innerHTML = '<option value>Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
+}
+
+function crearMiDeuda() {
+  const nombre = (document.getElementById('nd_nombre').value || '').trim();
+  if (!nombre) { toast('Ingresa el nombre de la persona', 'err'); return; }
+  const monto = parseMoney(document.getElementById('nd_monto').value) || 0;
+  if (!monto) { toast('Ingresa cuánto te prestó', 'err'); return; }
+  const fecha = document.getElementById('nd_fecha').value || hoy();
+  const destino = document.getElementById('nd_destino').value;
+  const nota = (document.getElementById('nd_nota').value || '').trim();
+  if (!S.misDeudas) S.misDeudas = [];
+  // Vincular a una persona existente si ya hay alguien con ese nombre
+  let personaId = null;
+  if (S.personas) {
+    const p = S.personas.find(x => x.nombre.trim().toLowerCase() === nombre.toLowerCase());
+    if (p) personaId = p.id;
+  }
+  const colores = ['#60b0f0', '#c8f060', '#f0b840', '#b090f0', '#f06868', '#c060f0'];
+  const d = {
+    id: uid(), nombre, personaId,
+    color: colores[(S.misDeudas.length) % colores.length],
+    movimientos: [{ id: uid(), tipo: 'recibido', monto, fecha, destino: destino || undefined, nota, ts: Date.now() }]
+  };
+  if (destino) sumarFuente(destino, monto);
+  S.misDeudas.push(d);
+  document.getElementById('nd_nombre').value = '';
+  document.getElementById('nd_monto').value = '';
+  document.getElementById('nd_nota').value = '';
+  save(); refresh(); closeSheet('nueva-deuda');
+  toast(`Deuda con ${nombre} agregada`, 'ok');
+}
+
+function renderMisDeudasList() {
+  const el = document.getElementById('misDeudasList');
+  if (!el) return;
+  const list = S.misDeudas || [];
+  if (!list.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 10px;">Aún no registras deudas. Si alguien te presta plata, agrégala aquí.</div>';
+    return;
+  }
+  el.innerHTML = list.map(d => {
+    const saldo = getMiDeudaSaldo(d);
+    const initials = d.nombre.substring(0, 2).toUpperCase();
+    const ultimoMov = (d.movimientos || []).slice(-1)[0];
+    return `<div class="card card-sm" style="margin-bottom:8px;cursor:pointer;" onclick="abrirMiDeuda('${d.id}')">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="avatar" style="color:${d.color};border-color:${d.color}33;background:${d.color}18;width:38px;height:38px;font-size:13px;margin-right:0;flex-shrink:0;border:1px solid;">${initials}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div class="row-name">${escHtml(d.nombre)}</div>
+            <div class="row-amount ${saldo > 0 ? 'c-red' : 'c-green'}">${fmt(Math.abs(saldo))}</div>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:3px;">
+            <div class="row-sub">${saldo > 0 ? 'Le debes' : saldo < 0 ? 'Saldo a tu favor' : 'Al día'}</div>
+            ${ultimoMov ? `<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimoMov.fecha}</span>` : ''}
+          </div>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function abrirMiDeuda(id) {
+  miDeudaActualId = id;
+  const d = (S.misDeudas || []).find(x => x.id === id);
+  if (!d) return;
+  const saldo = getMiDeudaSaldo(d);
+  const totalRecibido = (d.movimientos || []).filter(m => m.tipo === 'recibido').reduce((a, m) => a + m.monto, 0);
+  const totalPagado = (d.movimientos || []).filter(m => m.tipo === 'pago').reduce((a, m) => a + m.monto, 0);
+
+  document.getElementById('mdAvatar').textContent = d.nombre.substring(0, 2).toUpperCase();
+  document.getElementById('mdAvatar').style.color = d.color;
+  document.getElementById('mdAvatar').style.borderColor = d.color + '44';
+  document.getElementById('mdAvatar').style.background = d.color + '20';
+  document.getElementById('mdNombre').textContent = d.nombre;
+  document.getElementById('mdSaldoLabel').textContent = saldo > 0 ? 'Le debes ' + fmt(saldo) : saldo < 0 ? 'Saldo a tu favor: ' + fmt(-saldo) : 'Estás al día';
+  document.getElementById('mdSaldoLabel').style.color = saldo > 0 ? 'var(--red)' : saldo < 0 ? 'var(--amber)' : 'var(--accent)';
+  document.getElementById('mdRecibido').textContent = fmt(totalRecibido);
+  document.getElementById('mdPagado').textContent = fmt(totalPagado);
+
+  const movs = [...(d.movimientos || [])].sort((a, b) => {
+    const fechaDiff = (b.fecha || '').localeCompare(a.fecha || '');
+    if (fechaDiff !== 0) return fechaDiff;
+    return (b.ts || 0) - (a.ts || 0);
+  });
+  const histEl = document.getElementById('mdHistorial');
+  if (!movs.length) {
+    histEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 8px;">Sin movimientos aún.</div>';
+  } else {
+    histEl.innerHTML = movs.map(m => {
+      const esRecibido = m.tipo === 'recibido';
+      const cuentaRef = esRecibido ? m.destino : m.fuente;
+      return `<div class="card card-sm" style="margin-bottom:7px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span class="badge ${esRecibido ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esRecibido ? 'Me prestó' : 'Pago'}</span>
+              ${m.nota ? `<span style="font-size:11px;color:var(--text2);">${escHtml(m.nota)}</span>` : ''}
+            </div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${cuentaRef ? ' · ' + fuenteLabel(cuentaRef) : ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esRecibido ? 'var(--red)' : 'var(--accent)'};">${esRecibido ? '+' : '−'} ${fmt(m.monto)}</div>
+            <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" onclick="eliminarMovMiDeuda('${d.id}','${m.id}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('misDeudasView').style.display = 'none';
+  document.getElementById('miDeudaDetalle').style.display = 'block';
+  document.getElementById('scrollArea').scrollTop = 0;
+}
+
+function volverMisDeudas() {
+  miDeudaActualId = null;
+  document.getElementById('misDeudasView').style.display = '';
+  document.getElementById('miDeudaDetalle').style.display = 'none';
+}
+
+let _mdMovTipo = 'recibido';
+function abrirMovMiDeuda(tipo) {
+  _mdMovTipo = tipo;
+  document.getElementById('mdMovSheetTitle').textContent = tipo === 'recibido' ? 'Me prestó más' : 'Registrar pago';
+  document.getElementById('md_cuenta_label').textContent = tipo === 'recibido' ? '¿A qué cuenta entró la plata?' : '¿De qué cuenta sale el pago?';
+  document.getElementById('md_cuenta_hint').textContent = tipo === 'recibido' ? 'Se sumará automáticamente al saldo de esa cuenta' : 'Se descontará automáticamente del saldo de esa cuenta';
+  const sel = document.getElementById('md_cuenta');
+  const fuentes = getFuentesSinTC();
+  sel.innerHTML = '<option value>Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
+  document.getElementById('md_monto').value = '';
+  document.getElementById('md_fecha').value = hoy();
+  document.getElementById('md_nota').value = '';
+  openSheet('mov-mi-deuda');
+}
+
+function confirmarMovMiDeuda() {
+  const d = (S.misDeudas || []).find(x => x.id === miDeudaActualId);
+  if (!d) return;
+  const monto = parseMoney(document.getElementById('md_monto').value) || 0;
+  if (!monto) { toast('Ingresa un monto', 'err'); return; }
+  const fecha = document.getElementById('md_fecha').value || hoy();
+  const cuenta = document.getElementById('md_cuenta').value;
+  const nota = (document.getElementById('md_nota').value || '').trim();
+
+  if (_mdMovTipo === 'recibido') {
+    if (cuenta) sumarFuente(cuenta, monto);
+    d.movimientos.push({ id: uid(), tipo: 'recibido', monto, fecha, destino: cuenta || undefined, nota, ts: Date.now() });
+  } else {
+    const saldoActual = getMiDeudaSaldo(d);
+    if (monto > saldoActual + 1) {
+      toast(`Solo le debes ${fmt(saldoActual)}`, 'err');
+      return;
+    }
+    if (cuenta) descontarFuente(cuenta, monto);
+    d.movimientos.push({ id: uid(), tipo: 'pago', monto, fecha, fuente: cuenta || undefined, nota, ts: Date.now() });
+  }
+  save(); refresh(); closeSheet('mov-mi-deuda');
+  abrirMiDeuda(d.id);
+  toast('Movimiento registrado', 'ok');
+}
+
+function eliminarMovMiDeuda(deudaId, movId) {
+  const d = (S.misDeudas || []).find(x => x.id === deudaId);
+  if (!d) return;
+  const m = (d.movimientos || []).find(x => x.id === movId);
+  if (!m) return;
+  // Revertir el efecto en la cuenta involucrada
+  if (m.tipo === 'recibido' && m.destino) descontarFuente(m.destino, m.monto);
+  else if (m.tipo === 'pago' && m.fuente) sumarFuente(m.fuente, m.monto);
+  d.movimientos = d.movimientos.filter(x => x.id !== movId);
+  save(); refresh();
+  abrirMiDeuda(deudaId);
+}
+
+async function eliminarMiDeuda() {
+  const d = (S.misDeudas || []).find(x => x.id === miDeudaActualId);
+  if (!d) return;
+  const saldo = getMiDeudaSaldo(d);
+  if (Math.abs(saldo) > 1) {
+    await dialogo('No se puede eliminar', `Aún le debes ${fmt(saldo)} a ${d.nombre}. Registra el pago completo antes de eliminar.`, 'Entendido', false);
+    return;
+  }
+  const ok = await dialogo('Eliminar deuda', `¿Eliminar el registro de deuda con ${d.nombre}? Esta acción no se puede deshacer.`, 'Eliminar', true);
+  if (!ok) return;
+  S.misDeudas = (S.misDeudas || []).filter(x => x.id !== miDeudaActualId);
+  save(); refresh();
+  volverMisDeudas();
+}
+
 /* ── PRÉSTAMO CON TARJETA DE CRÉDITO ─────────────────────────────────────── */
 
 diffRegistrarInstancia('prtc', {
@@ -10961,11 +11180,23 @@ async function eliminarMovimiento(btn) {
       const fuente = m.fuente || fuenteOrigen;
       if (fuente) descontarFuente(fuente, m.monto);
       else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto);
+      // Si era una apertura (saldo inicial), el descuento de saldo de HOY no es una
+      // pérdida real — es la reversión de una base. Lo registramos en un log aparte
+      // (sobrevive al borrado del movimiento original) para que snapshotPatrimonio()
+      // lo siga descontando del cambio del día y no se cuente como pérdida en la tendencia.
+      if (m.tipo === 'apertura') {
+        if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
+        S._ajustesBaseLog.push({ fecha: hoy(), monto: -(m.monto||0) });
+      }
       S.movimientos = S.movimientos.filter(x => x.id !== movId);
     } else if (fuenteOrigen && monto > 0) {
       // El movimiento no está en S.movimientos (migración antigua) pero tenemos
       // los datos del DOM — revertir directamente con los data-attributes.
       descontarFuente(fuenteOrigen, monto);
+      if (movTipoEl === 'apertura') {
+        if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
+        S._ajustesBaseLog.push({ fecha: hoy(), monto: -monto });
+      }
     }
   } else if (movTipoEl === 'salida_manual') {
     // Fue una salida manual (S.movimientos tipo 'salida_manual')
@@ -11274,6 +11505,12 @@ function confirmarEditarApertura(){
   // Actualizar o crear el movimiento de apertura
   if(mov){
     mov.monto=nuevo;
+    // No cambiamos mov.fecha (preserva la fecha original de creación de la cuenta),
+    // pero registramos cuándo y por cuánto se ajustó: snapshotPatrimonio() usa esto
+    // para que el cambio de patrimonio de HOY (el día de la corrección) también se
+    // reste del cálculo de tendencia, igual que una apertura nueva.
+    mov._ajustes=mov._ajustes||[];
+    mov._ajustes.push({fecha:hoy(),monto:diff});
   } else {
     if(!S.movimientos)S.movimientos=[];
     const movNuevo=crearMovimientoApertura(nuevo,hoy(),'Saldo inicial');
@@ -11759,6 +11996,32 @@ function _initEventListeners() {
     initMovSheet('pago-completo');
     document.getElementById('mov_monto').value = fmtInput(saldo);
   });
+
+  // --- Mis deudas (yo le debo a alguien) ---
+  const btnNuevaDeuda = document.getElementById('btn-nueva-deuda');
+  if (btnNuevaDeuda) btnNuevaDeuda.addEventListener('click', () => {
+    document.getElementById('nd_fecha').value = hoy();
+    _ndPoblarSelectDestino();
+    openSheet('nueva-deuda');
+  });
+  const btnCrearMiDeuda = document.getElementById('btn-crear-mi-deuda');
+  if (btnCrearMiDeuda) btnCrearMiDeuda.addEventListener('click', crearMiDeuda);
+  const btnVolverMisDeudas = document.getElementById('btn-volver-mis-deudas');
+  if (btnVolverMisDeudas) btnVolverMisDeudas.addEventListener('click', volverMisDeudas);
+  const btnElimMiDeuda = document.getElementById('btn-eliminar-mi-deuda');
+  if (btnElimMiDeuda) btnElimMiDeuda.addEventListener('click', eliminarMiDeuda);
+  const btnNuevaDeudaMov = document.getElementById('btn-nueva-deuda-mov');
+  if (btnNuevaDeudaMov) btnNuevaDeudaMov.addEventListener('click', () => abrirMovMiDeuda('recibido'));
+  const btnPagarMiDeuda = document.getElementById('btn-pagar-mi-deuda');
+  if (btnPagarMiDeuda) btnPagarMiDeuda.addEventListener('click', () => {
+    const d = (S.misDeudas || []).find(x => x.id === miDeudaActualId);
+    if (!d) return;
+    const saldo = getMiDeudaSaldo(d);
+    if (saldo <= 0) { toast('No hay saldo pendiente', 'info'); return; }
+    abrirMovMiDeuda('pago');
+  });
+  const btnConfirmarMovMiDeuda = document.getElementById('btn-confirmar-mov-mi-deuda');
+  if (btnConfirmarMovMiDeuda) btnConfirmarMovMiDeuda.addEventListener('click', confirmarMovMiDeuda);
 
 
 
@@ -15486,128 +15749,23 @@ document.addEventListener('focusin', function(e){
     const patrimonio = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
     if(!patrimonio){ el.innerHTML = '<div class="row"><span style="font-size:12px;color:var(--text3);">Sin datos suficientes</span></div>'; return; }
 
-    // ── Calcular flujo neto mensual real (ingresos - gastos - cuotas TC) ──
-    // Usamos los últimos 3 meses con datos para estimar el flujo promedio.
-    // Esto es más confiable que la tendencia del patrimonio que puede incluir
-    // saldos iniciales de encargos u otras entradas no recurrentes.
-    const mesKey = window.mesKey || (f=>(f||'').slice(0,7));
-    const mesActual = window.mesActual ? window.mesActual() : '';
-    const pagosGF = S.pagosGastosFijos || {};
-
-    // Construir meses recientes (hasta 3 meses hacia atrás)
-    const mesesRecientes = [];
-    for(let i=1; i<=3; i++){
-      const d = new Date();
-      d.setMonth(d.getMonth() - i);
-      const mk = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-      const mesNum = d.getMonth();
-      const anio = d.getFullYear();
-
-      // Ingresos del mes (mesada + cuentas personalizadas + entradas manuales a Nequi/Efectivo)
-      let ing = 0;
-      if(S.modulos && S.modulos.mesada){
-        const _mk2=anio+'-'+mesNum;
-        const _ip=getMesadaData('papa')[_mk2];
-        const _im=getMesadaData('mama')[_mk2];
-        if(_ip&&!_ip.esSaldoInicial) ing+=(_ip.monto||_getCuotaAnio('papa',anio)||0);
-        if(_im&&!_im.esSaldoInicial) ing+=(_im.monto||_getCuotaAnio('mama',anio)||0);
-      }
-      (S.cuentasPersonalizadas||[]).forEach(c=>{
-        (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mk).forEach(m=>{ ing+=(m.monto||0); });
-      });
-      // Entradas manuales a Nequi, Efectivo y cajitas de Nu (tipo 'entrada', excluye apertura para no distorsionar)
-      // Excluir reposiciones de plata comprometida (_esReposicionCP): no son ingresos nuevos sino devoluciones
-      // Excluir _esTcEncargo: es plata del encargo (del cliente), no ingreso propio
-      // NO excluir _esDiferencialEncargo: es la ganancia real propia del diferencial cobrado
-      // Fallback por desc para movimientos viejos sin _esReposicionCP
-      (S.movimientos||[]).filter(m=>
-        m.tipo==='entrada' &&
-        !m._esReposicionCP &&
-        !m._esTcEncargo &&
-        !/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'') &&
-        (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))||m._prestadoDirectamente) &&
-        mesKey(m.fecha)===mk
-      ).forEach(m=>{ ing+=(m.monto||0); });
-      // Ingresos fijos configurados (sueldo, freelance, etc.)
-      if(window.getIngresosFijosMes) ing+=getIngresosFijosMes(mk);
-
-      // Gastos del mes (excluir pagos de TC y gastos con plata-comprometida: no son flujo propio)
-      const gv = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mk&&!g.esPagoGastoFijo&&!g._esPagoTC&&g.fuente!=='plata-comprometida').reduce((a,g)=>a+(g.monto||0),0);
-      const gf = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mk]?a+(g.monto||0):a,0);
-
-      mesesRecientes.push({ mk, ing, gastos: gv+gf, tieneGastos: (gv+gf)>0 });
-    }
-
-    // También incluir el mes actual en el análisis de ingresos
-    {
-      const dHoy = new Date();
-      const mkHoy = dHoy.getFullYear()+'-'+String(dHoy.getMonth()+1).padStart(2,'0');
-      const mesNumHoy = dHoy.getMonth();
-      const anioHoy = dHoy.getFullYear();
-      let ingHoy = 0;
-      if(S.modulos && S.modulos.mesada){
-        const _mkH=anioHoy+'-'+mesNumHoy;
-        const _ipH=getMesadaData('papa')[_mkH];
-        const _imH=getMesadaData('mama')[_mkH];
-        if(_ipH&&!_ipH.esSaldoInicial) ingHoy+=(_ipH.monto||_getCuotaAnio('papa',anioHoy)||0);
-        if(_imH&&!_imH.esSaldoInicial) ingHoy+=(_imH.monto||_getCuotaAnio('mama',anioHoy)||0);
-      }
-      (S.cuentasPersonalizadas||[]).forEach(c=>{
-        (c.movimientos||[]).filter(m=>m.tipo==='ingreso'&&mesKey(m.fecha)===mkHoy).forEach(m=>{ ingHoy+=(m.monto||0); });
-      });
-      // Excluir reposiciones de plata comprometida (_esReposicionCP): no son ingresos nuevos
-      // Excluir _esTcEncargo: es plata del encargo (del cliente), no ingreso propio
-      // NO excluir _esDiferencialEncargo: es la ganancia real propia del diferencial cobrado
-      // Fallback por desc para movimientos viejos sin _esReposicionCP
-      (S.movimientos||[]).filter(m=>
-        m.tipo==='entrada' &&
-        !m._esReposicionCP &&
-        !m._esTcEncargo &&
-        !/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'') &&
-        (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))||m._prestadoDirectamente) &&
-        mesKey(m.fecha)===mkHoy
-      ).forEach(m=>{ ingHoy+=(m.monto||0); });
-      // Ingresos fijos configurados (sueldo, freelance, etc.)
-      if(window.getIngresosFijosMes) ingHoy+=getIngresosFijosMes(mkHoy);
-      const gvHoy = (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mkHoy&&!g.esPagoGastoFijo&&!g._esPagoTC&&g.fuente!=='plata-comprometida').reduce((a,g)=>a+(g.monto||0),0);
-      const gfHoy = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mkHoy]?a+(g.monto||0):a,0);
-      if(ingHoy > 0 || (gvHoy+gfHoy) > 0){
-        mesesRecientes.unshift({ mk: mkHoy, ing: ingHoy, gastos: gvHoy+gfHoy, tieneGastos: (gvHoy+gfHoy)>0, esMesActual: true });
-      }
-    }
-
-    const mesesConDatos = mesesRecientes.filter(m=>m.tieneGastos||m.ing>0);
-
-    // Tendencia: intentar usar historial de patrimonio pero filtrando saltos grandes (saldos iniciales)
-    const hist = (S.patrimonioHistorial||[]).slice(-30);
+    // ── Tendencia mensual: única fuente de verdad = crecimiento real del patrimonio ──
+    // crecimiento real = cambio de patrimonio día a día, restando exactamente el monto
+    // que correspondió a saldos iniciales o ajustes de base ese día (montoBase, ver
+    // snapshotPatrimonio). No se usan ingresos/gastos registrados por separado: cualquier
+    // cambio real de patrimonio (ingreso, gasto, interés de cajita, rendimiento, pérdida)
+    // ya queda reflejado aquí, sin depender de si el usuario registró un movimiento formal.
+    // Transferencias entre cuentas propias y préstamos a terceros no afectan el patrimonio
+    // total, así que tampoco distorsionan este cálculo.
+    const hist = (S.patrimonioHistorial||[]).slice(-90);
     let tendenciaMensual = 0;
-    let usandoFlujo = false;
     let historialInsuficiente = false;
 
-    // Mínimo de separación temporal real para confiar en una proyección por historial de patrimonio.
-    // Con menos días, un solo movimiento grande (ej. saldo inicial) se extrapola de forma absurda.
+    // Mínimo de separación temporal real para confiar en una proyección. Con menos días,
+    // un solo movimiento grande se extrapola de forma absurda.
     const MIN_DIAS_PARA_TENDENCIA = 7;
 
-    if(mesesConDatos.length >= 1 && mesesConDatos.some(m=>m.ing>0)){
-      // Tenemos datos de ingresos — usar flujo neto promedio real
-      // Excluir el mes actual del promedio si solo tiene datos parciales (menos de 15 días transcurridos)
-      const diaDelMes = new Date().getDate();
-      const mesesParaPromedio = mesesConDatos.filter(m=>{
-        if(!m.esMesActual) return true;
-        // Incluir mes actual solo si ya pasó más de la mitad del mes (más representativo)
-        return diaDelMes >= 15;
-      });
-      const mesesBase = mesesParaPromedio.length >= 1 ? mesesParaPromedio : mesesConDatos;
-      const flujoTotal = mesesBase.reduce((a,m)=>a+(m.ing-m.gastos),0);
-      tendenciaMensual = flujoTotal / mesesBase.length;
-      usandoFlujo = true;
-    } else if(hist.length >= 2){
-      // Sin ingresos registrados — usar historial de patrimonio, restando de cada cambio
-      // diario el monto exacto que correspondió a un saldo inicial ese día (montoBase:
-      // cajita nueva, alta de Nequi/Efectivo, cuenta personalizada, corrección de saldo
-      // inicial). La app ya sabe distinguir esto (tipo:'apertura' en S.movimientos), así
-      // que no hace falta adivinar con umbrales de %, y si ese mismo día también hubo un
-      // ingreso real (ej. apertura + mesada el mismo día), ese ingreso real sigue contando.
+    if(hist.length >= 2){
       let sumaCambiosReales = 0;
       let diasReales = 0;
       for(let i=1;i<hist.length;i++){
@@ -15616,7 +15774,6 @@ document.addEventListener('focusin', function(e){
         sumaCambiosReales += cambioDelDia;
         diasReales += diasEntre;
       }
-      // 1 día de margen no es suficiente para confiar en una extrapolación a 30 días.
       if(diasReales < MIN_DIAS_PARA_TENDENCIA){
         historialInsuficiente = true;
       } else {
@@ -15652,8 +15809,8 @@ document.addEventListener('focusin', function(e){
       </div>
       ${deudaInfo}
     ` : `
-      <div id="_proy-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer;padding:2px 0;" data-tendencia="${tendenciaMensual}" data-usando-flujo="${usandoFlujo?'1':'0'}">
-        <span style="font-size:12px;color:var(--text2);">${usandoFlujo ? 'Flujo neto mensual' : 'Tendencia mensual'}<span style="font-size:9px;color:var(--text3);margin-left:5px;">ⓘ</span></span>
+      <div id="_proy-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer;padding:2px 0;" data-tendencia="${tendenciaMensual}">
+        <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;">ⓘ</span></span>
         <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${col};">${tendenciaMensual>=0?'+':''}${fmt(tendenciaMensual)}</span>
       </div>
       <div id="_proy-cards-wrap" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:relative;">
@@ -15675,7 +15832,7 @@ document.addEventListener('focusin', function(e){
         <div id="_proy-tt" style="display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#1a1a1a;border:1px solid #383838;border-radius:10px;padding:10px 13px;font-family:'DM Mono',monospace;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,.7);"></div>
       </div>
       ${deudaInfo}
-      <div style="font-size:10px;color:var(--text3);margin-top:8px;font-family:'DM Mono',monospace;">${usandoFlujo ? 'Basado en flujo de '+mesesConDatos.length+' mes(es) reciente(s)' : 'Basado en los últimos '+hist.length+' días'} · estimación</div>`;
+      <div style="font-size:10px;color:var(--text3);margin-top:8px;font-family:'DM Mono',monospace;">Basado en los últimos ${hist.length} días de patrimonio · estimación</div>`;
 
     // Bind listeners DESPUÉS de setear innerHTML
     (function(){
@@ -15683,10 +15840,10 @@ document.addEventListener('focusin', function(e){
       const tt = el.querySelector('#_proy-tt');
       if(!tt) return;
       function showTT(html){ tt.innerHTML=html; tt.style.display='block'; clearTimeout(window._proyTT_t); window._proyTT_t=setTimeout(()=>{ tt.style.display='none'; },3000); }
-      // Header (flujo neto)
+      // Header (tendencia mensual)
       const header = el.querySelector('#_proy-header');
       if(header){
-        function bindHeader(ev){ ev.stopPropagation(); const t=parseFloat(header.dataset.tendencia)||0; const pos=t>=0; showTT(`<div style="font-size:10px;color:#888880;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">¿Qué significa esto?</div><div style="font-size:11px;color:#f0ede8;line-height:1.5;">Promedio mensual de <b style="color:${pos?'#c8f060':'#f06868'}">ingresos − gastos</b>.</div><div style="font-size:9px;color:#6a6a60;margin-top:4px;">${pos?'Estás ahorrando ~'+fmt2(t)+' por mes en promedio.':'Estás gastando más de lo que entra (~'+fmt2(Math.abs(t))+'/mes).'}</div>`); }
+        function bindHeader(ev){ ev.stopPropagation(); const t=parseFloat(header.dataset.tendencia)||0; const pos=t>=0; showTT(`<div style="font-size:10px;color:#888880;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">¿Qué significa esto?</div><div style="font-size:11px;color:#f0ede8;line-height:1.5;">Ritmo mensual de <b style="color:${pos?'#c8f060':'#f06868'}">crecimiento real del patrimonio</b> (ingresos, gastos, intereses y rendimientos — sin contar saldos iniciales ni ajustes de base).</div><div style="font-size:9px;color:#6a6a60;margin-top:4px;">${pos?'Tu patrimonio está creciendo ~'+fmt2(t)+' por mes en promedio.':'Tu patrimonio está bajando ~'+fmt2(Math.abs(t))+'/mes en promedio.'}</div>`); }
         header.addEventListener('click', bindHeader);
         header.addEventListener('touchend', function(e){ e.preventDefault(); bindHeader(e); });
       }

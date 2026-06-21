@@ -15760,27 +15760,48 @@ document.addEventListener('focusin', function(e){
     const hist = (S.patrimonioHistorial||[]).slice(-90);
     let tendenciaMensual = 0;
     let historialInsuficiente = false;
+    // Niveles: 'insuficiente' | 'preliminar' | 'normal' | 'estable'
+    let nivelConfianza = 'insuficiente';
 
     // Mínimo de separación temporal real para confiar en una proyección. Con menos días,
     // un solo movimiento grande se extrapola de forma absurda.
     const MIN_DIAS_PARA_TENDENCIA = 7;
 
+    let diasReales = 0; // declarado en scope externo para usarlo en el template del footer
     if(hist.length >= 2){
-      let sumaCambiosReales = 0;
-      let diasReales = 0;
+      // Construir array de tasas de cambio diarias normalizadas (COP/día)
+      // para poder aplicar trimmed mean y eliminar outliers extremos.
+      const tasasDiarias = [];
       for(let i=1;i<hist.length;i++){
         const diasEntre = Math.max(1, Math.round((new Date(hist[i].fecha) - new Date(hist[i-1].fecha))/86400000));
         const cambioDelDia = (hist[i].valor - hist[i-1].valor) - (hist[i].montoBase||0);
-        sumaCambiosReales += cambioDelDia;
+        // Normalizar a COP/día para que días con gaps largos no distorsionen el promedio
+        tasasDiarias.push(cambioDelDia / diasEntre);
         diasReales += diasEntre;
       }
+
       if(diasReales < MIN_DIAS_PARA_TENDENCIA){
         historialInsuficiente = true;
+        nivelConfianza = 'insuficiente';
       } else {
-        tendenciaMensual = sumaCambiosReales / diasReales * 30;
+        // Trimmed mean: con 5+ puntos descartamos el día más alto y el más bajo en valor
+        // absoluto (outliers como un ingreso puntual grande o un gasto extraordinario).
+        // Con menos de 5 puntos usamos todos — no hay suficiente para recortar.
+        let tasasParaPromedio = tasasDiarias.slice().sort((a,b)=>a-b);
+        if(tasasParaPromedio.length >= 5){
+          tasasParaPromedio = tasasParaPromedio.slice(1, -1); // descarta min y max
+        }
+        const tasaPromedioDia = tasasParaPromedio.reduce((s,v)=>s+v,0) / tasasParaPromedio.length;
+        tendenciaMensual = tasaPromedioDia * 30;
+
+        // Nivel de confianza escalonado según días de historial disponible
+        if(diasReales >= 60)       nivelConfianza = 'estable';
+        else if(diasReales >= 30)  nivelConfianza = 'normal';
+        else                       nivelConfianza = 'preliminar';
       }
     } else {
       historialInsuficiente = true;
+      nivelConfianza = 'insuficiente';
     }
 
     const p3 = patrimonio + tendenciaMensual * 3;
@@ -15832,7 +15853,15 @@ document.addEventListener('focusin', function(e){
         <div id="_proy-tt" style="display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#1a1a1a;border:1px solid #383838;border-radius:10px;padding:10px 13px;font-family:'DM Mono',monospace;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,.7);"></div>
       </div>
       ${deudaInfo}
-      <div style="font-size:10px;color:var(--text3);margin-top:8px;font-family:'DM Mono',monospace;">Basado en los últimos ${hist.length} días de patrimonio · estimación</div>`;
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
+        <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">Basado en ${diasReales} días de historial</span>
+        ${nivelConfianza==='preliminar'
+          ? `<span style="font-size:9px;font-family:'DM Mono',monospace;color:#e8a838;background:rgba(232,168,56,.12);border:1px solid rgba(232,168,56,.25);border-radius:4px;padding:1px 6px;letter-spacing:.3px;">PRELIMINAR</span>`
+          : nivelConfianza==='estable'
+          ? `<span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--accent);background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.2);border-radius:4px;padding:1px 6px;letter-spacing:.3px;">ESTABLE</span>`
+          : `<span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);border-radius:4px;padding:1px 6px;">estimación</span>`
+        }
+      </div>`;
 
     // Bind listeners DESPUÉS de setear innerHTML
     (function(){

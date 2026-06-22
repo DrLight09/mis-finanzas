@@ -2529,20 +2529,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             <div><div class="action-card-label">Gasto</div><div
                 class="action-card-sub">Variable o puntual</div></div>
           </div>
-          <div class="action-card" id="menu-prestamos">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="1.6" stroke-linecap="round"><circle cx="9" cy="8"
-                r="3" /><path d="M1 20c0-3.3 3.6-6 8-6s8 2.7 8 6" /></svg>
-            <div><div class="action-card-label">Prestado</div><div
-                class="action-card-sub">Gestionar personas</div></div>
-          </div>
-          <div class="action-card" id="menu-cdt">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="1.6" stroke-linecap="round"><polyline
-                points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
-            <div><div class="action-card-label">CDT en Nu</div><div
-                class="action-card-sub">Cajita tipo CDT</div></div>
-          </div>
+
           <div class="action-card" id="menu-gasto-fijo">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
               stroke-width="1.6" stroke-linecap="round"><path
@@ -2568,17 +2555,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             <div><div class="action-card-label">Sumar dinero</div><div
                 class="action-card-sub">Agregar a Nequi, cajita...</div></div>
           </div>
-          <div class="action-card" id="menu-card-spotify">
-            <svg width="24" height="24" viewBox="0 0 25 26" fill="none"
-              xmlns="http://www.w3.org/2000/svg"><path
-                d="M18.7609 11.1851C18.5408 11.1851 18.4053 11.1293 18.2148 11.0176C15.2002 9.19139 9.81052 8.75311 6.32182 9.74139C6.1694 9.78436 5.97887 9.85311 5.77565 9.85311C5.21678 9.85311 4.78915 9.41053 4.78915 8.83904C4.78915 8.25467 5.1448 7.92381 5.52585 7.81209C7.01617 7.36951 8.68431 7.15897 10.5006 7.15897C13.5914 7.15897 16.8303 7.81209 19.197 9.21287C19.5273 9.40623 19.7432 9.67264 19.7432 10.184C19.7432 10.7683 19.2775 11.1851 18.7609 11.1851ZM17.4484 14.4594C17.2283 14.4594 17.0801 14.3605 16.9277 14.2789C14.2815 12.689 10.3355 12.0488 6.82565 13.0156C6.62242 13.0715 6.51234 13.1273 6.32182 13.1273C5.86879 13.1273 5.50044 12.7535 5.50044 12.2937C5.50044 11.834 5.72061 11.5289 6.15669 11.4043C7.33371 11.0691 8.53613 10.8199 10.2974 10.8199C13.0452 10.8199 15.6998 11.5117 17.7914 12.775C18.1343 12.9812 18.2698 13.2476 18.2698 13.6215C18.2656 14.0855 17.9099 14.4594 17.4484 14.4594ZM16.3095 17.2781C16.1317 17.2781 16.0216 17.2222 15.8565 17.1234C13.2146 15.5078 10.1408 15.439 7.10508 16.0707C6.93996 16.1137 6.72403 16.1824 6.60125 16.1824C6.19057 16.1824 5.9323 15.8515 5.9323 15.5035C5.9323 15.0609 6.19057 14.8504 6.50811 14.7816C9.97565 14.0039 13.5194 14.0726 16.5424 15.9074C16.8006 16.075 16.9531 16.2254 16.9531 16.6164C16.9531 17.0074 16.6525 17.2781 16.3095 17.2781Z"
-                fill="currentColor" /><path
-                d="M12.046 23.6856C18.257 23.6856 23.292 18.5625 23.292 12.2428C23.292 5.92312 18.257 0.800003 12.046 0.800003C5.835 0.800003 0.799988 5.92312 0.799988 12.2428C0.799988 18.5625 5.835 23.6856 12.046 23.6856Z"
-                stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-                stroke-linejoin="round" /></svg>
-            <div><div class="action-card-label">Spotify</div><div
-                class="action-card-sub">Cobro compartido</div></div>
-          </div>
+
         </div>
       </div>
     </div>
@@ -9675,30 +9652,6 @@ function renderSpotify(){
   }
   
   // Badge en home: avisar si hay pagos próximos o vencidos (<= 3 días)
-  const menuCardSp = document.getElementById('menu-card-spotify');
-  if(menuCardSp){
-    const subEl = menuCardSp.querySelector('.action-card-sub');
-    if(subEl){
-      const hoy = new Date(); hoy.setHours(0,0,0,0);
-      const proximos = p.filter(x => {
-        if(x.pagado || !x.proximoPago) return false;
-        const d = new Date(x.proximoPago + 'T00:00:00');
-        const dias = Math.ceil((d - hoy) / 86400000);
-        return dias <= 3;
-      });
-      const vencidos = proximos.filter(x => {
-        const d = new Date(x.proximoPago + 'T00:00:00');
-        return Math.ceil((d - hoy) / 86400000) < 0;
-      });
-      if(vencidos.length){
-        subEl.innerHTML = `<span style="color:var(--red);font-weight:600;"><i class="fa-solid fa-triangle-exclamation" style="margin-right:4px;"></i>${vencidos.length} pago${vencidos.length>1?'s':''} vencido${vencidos.length>1?'s':''}</span>`;
-      } else if(proximos.length){
-        subEl.innerHTML = `<span style="color:var(--amber);font-weight:600;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:13px;height:13px;fill:currentColor;vertical-align:middle;"><path d="M5.52.359A.5.5 0 0 1 6 0h4a.5.5 0 0 1 .474.658L8.694 6H12.5a.5.5 0 0 1 .395.807l-7 9a.5.5 0 0 1-.873-.454L6.823 9.5H3.5a.5.5 0 0 1-.48-.641l2.5-8.5z"/></svg> ${proximos.length} pago${proximos.length>1?'s':''} en ≤3 días</span>`;
-      } else {
-        subEl.textContent = 'Cobro compartido';
-      }
-    }
-  }
 
   // Historial
   renderSpHistorial();
@@ -10183,9 +10136,6 @@ function applyModulos(){
   if(cfgMesada)cfgMesada.checked=!!mod.mesada;
   if(cfgSpotify)cfgSpotify.checked=!!mod.spotify;
   if(cfgCorregirSaldo)cfgCorregirSaldo.checked=(mod.corregirSaldo!==false);
-  // Menu action card
-  const menuCardSp=document.getElementById('menu-card-spotify');
-  if(menuCardSp)menuCardSp.style.display=mod.spotify?'':'none';
   // If currently on spotify screen and it's disabled, go to inicio
   if(!mod.spotify&&document.getElementById('screen-spotify').classList.contains('active')){
     showScreen('inicio');
@@ -12055,16 +12005,12 @@ function _initEventListeners() {
   // --- Menu action cards ---
   const menuGastoVar = document.getElementById('menu-gasto-var');
   if (menuGastoVar) menuGastoVar.addEventListener('click', () => { closeSheet('menu'); poblarCatSelect('gv_cat',getCatsVar()); openSheet('gasto-var'); });
-  const menuPrest = document.getElementById('menu-prestamos');
-  if (menuPrest) menuPrest.addEventListener('click', () => { closeSheet('menu'); showScreen('prestamos'); });
-  const menuCDT = document.getElementById('menu-cdt');
-  if (menuCDT) menuCDT.addEventListener('click', () => { closeSheet('menu'); showScreen('cuentas'); setTimeout(()=>abrirCuenta('nu'),100); });
+
   const menuGastoFijo = document.getElementById('menu-gasto-fijo');
   if (menuGastoFijo) menuGastoFijo.addEventListener('click', () => { closeSheet('menu'); poblarCatSelect('gf_c',getCatsFijo()); openSheet('gasto-fijo'); });
   const menuAD = document.getElementById('menu-agregar-dinero');
   if (menuAD) menuAD.addEventListener('click', () => { closeSheet('menu'); openSheet('agregar-dinero-menu'); });
-  const menuSp = document.getElementById('menu-card-spotify');
-  if (menuSp) menuSp.addEventListener('click', () => { closeSheet('menu'); openSheet('spotify'); });
+
   const menuTransferir = document.getElementById('menu-transferir');
   if (menuTransferir) menuTransferir.addEventListener('click', () => { closeSheet('menu'); abrirTransferir(); });
 

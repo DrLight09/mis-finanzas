@@ -20058,10 +20058,11 @@ function getPersonaColor(id) {
 // Datos vinculados a una persona
 function getPersonaDatos(personaId) {
   const encargos = (S.encargos || []).filter(e => e.personaId === personaId);
-  const deudor = (S.deudores || []).find(d => d.personaId === personaId);
+  const deudores = (S.deudores || []).filter(d => d.personaId === personaId);
+  const deudor = deudores[0] || null; // compatibilidad: primer deudor para referencias puntuales
   const saldoEncargos = encargos.reduce((a, e) => a + encargoSaldo(e), 0);
-  const saldoPrestamo = deudor ? (typeof getDeudorSaldo === 'function' ? getDeudorSaldo(deudor) : 0) : 0;
-  return { encargos, deudor, saldoEncargos, saldoPrestamo };
+  const saldoPrestamo = deudores.reduce((a, d) => a + (typeof getDeudorSaldo === 'function' ? getDeudorSaldo(d) : 0), 0);
+  return { encargos, deudor, deudores, saldoEncargos, saldoPrestamo };
 }
 
 /* ── SHEET SELECTOR DE PERSONA ─────────────────────────────────── */
@@ -20226,7 +20227,7 @@ function _renderListaPersonas() {
     const partes = [];
     if (datos.deudor) {
       const saldo = datos.saldoPrestamo;
-      if (saldo !== 0) partes.push('<span style="color:var(--amber);">$' + fmt(saldo) + ' pendiente</span>');
+      if (saldo !== 0) partes.push('<span style="color:var(--amber);">' + fmt(saldo) + ' pendiente</span>');
       else partes.push('<span style="color:var(--accent);">Al día</span>');
     }
     if (datos.encargos.length) partes.push(datos.encargos.length + ' encargo' + (datos.encargos.length !== 1 ? 's' : ''));
@@ -20457,7 +20458,9 @@ function abrirPerfilPersona(personaId) {
   if (datos.deudor) {
     const d = datos.deudor;
     const saldo = datos.saldoPrestamo;
-    const movs = d.movimientos || [];
+    // Consolidar movimientos de TODOS los deudores vinculados a esta persona
+    const movs = (datos.deudores || [datos.deudor]).flatMap(dd => dd.movimientos || [])
+      .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
     const prestamos = movs.filter(m => m.tipo === 'prestamo');
     const abonos   = movs.filter(m => m.tipo === 'abono');
     const totalPrestado = prestamos.reduce((a, m) => a + (m.monto || 0), 0);

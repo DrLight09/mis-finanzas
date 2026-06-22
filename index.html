@@ -8098,6 +8098,7 @@ function initMovSheet(tipo) {
   document.getElementById('movBtnConfirm').style.background = esPrestamo ? 'var(--accent)' : esPagoCompleto ? 'rgba(240,184,64,.2)' : 'rgba(200,240,96,.2)';
   document.getElementById('movBtnConfirm').style.color = esPrestamo ? '#0a0a0a' : esPagoCompleto ? 'var(--amber)' : 'var(--accent)';
   document.getElementById('movBtnConfirm').style.border = esPrestamo ? 'none' : esPagoCompleto ? '1px solid rgba(240,184,64,.4)' : '1px solid rgba(200,240,96,.4)';
+  document.getElementById('movBtnConfirm').style.boxShadow = esPrestamo ? '0 2px 14px rgba(200,240,96,.25)' : 'none';
   document.getElementById('mov_fuente_wrap').style.display = esPrestamo ? '' : 'none';
   document.getElementById('mov_destino_wrap').style.display = esAbono ? '' : 'none';
   document.getElementById('mov_extra_wrap').style.display = esAbono ? '' : 'none';

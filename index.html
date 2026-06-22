@@ -2134,11 +2134,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             </div>
           </div>
 
-          <!-- HISTORIAL CONSOLIDADO -->
-          <div class="sec-title">Historial consolidado</div>
-          <div id="an-historial-consolidado" class="card"
-            style="padding:0 15px;margin-bottom:9px;"></div>
-
           <!-- PRESUPUESTOS -->
           <div class="sec-title"
             style="display:flex;align-items:center;justify-content:space-between;margin-top:18px;">
@@ -15157,9 +15152,6 @@ document.addEventListener('focusin', function(e){
 .busqueda-desc { font-size:13px; font-weight:600; }
 .busqueda-meta { font-size:11px; color:var(--text2); margin-top:2px; }
 
-/* Historial consolidado items */
-.hist-item { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
-.hist-item:last-child { border-bottom:none; }
 </style>
 
     <script>
@@ -15837,54 +15829,6 @@ document.addEventListener('focusin', function(e){
 
 
   /* ====================================================
-     5. HISTORIAL CONSOLIDADO
-  ==================================================== */
-  function renderHistorialConsolidado(){
-    const el = document.getElementById('an-historial-consolidado');
-    if(!el) return;
-    const S = window.S || {};
-    const fmt = window.fmt || (x=>String(x));
-    const todos = [];
-
-    // Gastos variables
-    (S.gastosVar||[]).forEach(g => todos.push({ fecha:g.fecha, desc:g.desc||'Gasto', monto:-(g.monto||0), tipo:'Gasto', cat:g.cat }));
-
-    // Movimientos de cajitas (inferidos de historial de patrimonio — no disponible directamente, usamos gastos como proxy)
-    // Movimientos de cuentas personalizadas (excluir aperturas — son configuración, no movimientos reales)
-    (S.cuentasPersonalizadas||[]).forEach(c => {
-      (c.movimientos||[]).filter(m => m.tipo !== 'apertura').forEach(m => todos.push({ fecha:m.fecha, desc:(m.tipo==='ingreso'?'+':'-')+' '+c.nombre+(m.nota?' · '+m.nota:''), monto:m.tipo==='ingreso'?m.monto:-m.monto, tipo:'Cuenta' }));
-    });
-
-    // Pagos de gastos fijos
-    Object.keys(S.pagosGastosFijos||{}).forEach(key => {
-      const parts = key.split('_');
-      const mesK = parts[parts.length-1];
-      const gfId = parts.slice(0,-1).join('_');
-      const gf = (S.gastosFijos||[]).find(g=>g.id===gfId);
-      if(gf) todos.push({ fecha:mesK+'-01', desc:gf.nombre+' (fijo)', monto:-(gf.monto||0), tipo:'Fijo' });
-    });
-
-    if(!todos.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:13px 0;text-align:center;">Sin movimientos registrados.</div>'; return; }
-
-    // Ordenar por fecha descendente
-    todos.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
-    const recientes = todos.slice(0,15);
-
-    el.innerHTML = recientes.map((m,i) => {
-      const esPos = m.monto >= 0;
-      const col = esPos ? 'var(--accent)' : 'var(--red)';
-      const tipoColor = { Gasto:'var(--red)', Fijo:'var(--amber)', Cuenta:'var(--blue)' }[m.tipo]||'var(--text3)';
-      return `<div class="hist-item">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.desc}</div>
-          <div style="font-size:10px;color:${tipoColor};font-family:'DM Mono',monospace;margin-top:1px;">${m.tipo} · ${m.fecha||''}</div>
-        </div>
-        <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${col};flex-shrink:0;margin-left:10px;">${esPos?'+':''}${fmt(Math.abs(m.monto))}</div>
-      </div>`;
-    }).join('');
-  }
-
-  /* ====================================================
      6. PRESUPUESTOS
   ==================================================== */
   function abrirPresupuestos(){
@@ -15998,7 +15942,6 @@ document.addEventListener('focusin', function(e){
     try { renderHealthScore(); } catch(e){}
     try { renderProyeccion(); } catch(e){}
     try { renderPresupuestos(); } catch(e){}
-    try { renderHistorialConsolidado(); } catch(e){}
   }
 
   // Guard: si refresh no existe aún, esperar a que esté disponible

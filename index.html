@@ -18122,13 +18122,16 @@ document.addEventListener('DOMContentLoaded',function(){
     });
 
     // Actualizar badge del menú Más y Config
+    var visibleCount = Math.min(todos.length, MAX_ITEMS);
+    var badgeTxt = todos.length > MAX_ITEMS
+      ? 'últimos ' + MAX_ITEMS
+      : visibleCount + ' movimiento' + (visibleCount !== 1 ? 's' : '');
     var sub = document.getElementById('mas-historial-sub');
-    if (sub) sub.textContent = todos.length + ' movimiento' + (todos.length !== 1 ? 's' : '');
+    if (sub) sub.textContent = badgeTxt;
     var cfgSub = document.getElementById('cfg-historial-sub');
-    if (cfgSub) cfgSub.textContent = todos.length + ' movimiento' + (todos.length !== 1 ? 's' : '');
+    if (cfgSub) cfgSub.textContent = badgeTxt;
     var countEl = document.getElementById('feed-historial-count');
-    if (countEl && todos.length > MAX_ITEMS) countEl.textContent = 'últimos ' + MAX_ITEMS;
-    else if (countEl) countEl.textContent = '';
+    if (countEl) countEl.textContent = todos.length > MAX_ITEMS ? 'últimos ' + MAX_ITEMS : '';
 
     // Tomar los primeros MAX_ITEMS
     var visibles = todos.slice(0, MAX_ITEMS);
@@ -18188,27 +18191,20 @@ document.addEventListener('DOMContentLoaded',function(){
     if (typeof _origRefresh === 'function') _origRefresh.apply(this, arguments);
     var activa = document.querySelector('.screen.active');
     if (activa && activa.id === 'screen-historial') renderFeedActividad();
-    // Actualizar badge siempre
-    var Sx2 = window.S || {};
-    var total = [].concat(
-      (Sx2.movimientos||[]).filter(function(m){ return m.tipo !== 'apertura'; }),
-      (Sx2.cuentasPersonalizadas||[]).reduce(function(a,c){ return a.concat(c.movimientos||[]); },[]),
-      (Sx2.gastosVar||[]),
-      (Sx2.deudores||[]).reduce(function(a,d){ return a.concat(d.movimientos||[]); },[]),
-      (Sx2.spotifyHistorial||[]).filter(function(h){ return h.tipo==='cobro'; }),
-      (Sx2.encargos||[]).reduce(function(a,e){ return a.concat(e.movimientos||[]); },[]),
-      (Sx2.tarjetasCredito||[]).reduce(function(a,tc){ return a.concat(tc.pagos||[]); },[])
-    ).length;
-    var sub2 = document.getElementById('mas-historial-sub');
-    if (sub2) sub2.textContent = total + ' movimiento' + (total !== 1 ? 's' : '');
+    // El badge (mas-historial-sub / cfg-historial-sub) lo actualiza renderFeedActividad
+    // con el texto correcto — no se toca aquí para evitar mostrar totales brutos.
   };
 
   // logCambio sigue existiendo como no-op para no romper el código que lo llama
   window.logCambio = function(){ /* no-op: el feed ahora lee de S directamente */ };
 
-  // Render inicial tras carga de datos (Firebase puede tardar)
+  // Render inicial tras carga de datos
   document.addEventListener('DOMContentLoaded', function() {
     setTimeout(renderFeedActividad, 600);
+  });
+  // Actualizar badge cuando Firebase termina de cargar (puede tardar más que DOMContentLoaded)
+  window.addEventListener('appDataLoaded', function() {
+    setTimeout(renderFeedActividad, 300);
   });
 
 })();

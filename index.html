@@ -2184,6 +2184,23 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             style="padding:12px 15px;margin-bottom:20px;"></div>
         </div>
 
+        <!-- PERSONAS -->
+        <div class="screen" id="screen-personas">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div class="sec-title" style="margin:14px 0 8px;">Personas</div>
+            <button type="button" onclick="_abrirCrearPersonaGlobal(true)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;background:rgba(176,144,240,.12);border:1.5px solid rgba(176,144,240,.3);color:var(--purple);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nueva
+            </button>
+          </div>
+          <div id="lista-personas-body" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <div id="lista-personas-empty" style="display:none;text-align:center;padding:32px 0 16px;">
+            <div style="margin-bottom:10px;display:flex;justify-content:center;"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:6px;">Sin personas registradas</div>
+            <div style="font-size:12px;color:var(--text3);line-height:1.6;">Las personas se crean automáticamente cuando agregás un deudor o encargo.</div>
+          </div>
+        </div>
+
         <div class="screen" id="screen-config">
           <!-- FIREBASE: Usuario conectado -->
           <div class="sec-title" style="margin-top:4px;">Cuenta</div>
@@ -2387,7 +2404,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <!-- ACCESOS DIRECTOS: secciones poco usadas -->
           <div class="sec-title" style="margin-top:18px;">Herramientas</div>
           <div class="card" style="padding:0 15px;">
-            <div class="cfg-toggle" onclick="_abrirListaPersonas()" style="cursor:pointer;">
+            <div class="cfg-toggle" onclick="showScreen('personas')" style="cursor:pointer;">
               <div class="cfg-toggle-info">
                 <div class="cfg-toggle-label">Personas</div>
                 <div class="cfg-toggle-sub" id="cfg-personas-sub">Perfiles y actividad financiera</div>
@@ -10173,6 +10190,7 @@ function showScreen(name){
   }
   if(name==='config') { renderCatsConfig(); if(typeof window._pinRenderBtn==='function') window._pinRenderBtn(); }
   if(name==='analisis') renderAnalisis();
+  if(name==='personas') { _inyectarPersonaSheets(); _renderListaPersonas(); _actualizarMasPersonasSub(); }
   // Re-renderizar la cuenta abierta al volver a cuentas, para reflejar cambios
   // hechos en otras pantallas (ej: eliminar un encargo desde Más → Encargos)
   if(name==='cuentas') {
@@ -16165,6 +16183,7 @@ if ('serviceWorker' in navigator) {
     'screen-analisis': 'Análisis',
     'screen-config': 'Configuración',
     'screen-historial': 'Actividad reciente',
+    'screen-personas': 'Personas',
   };
   Object.entries(screenLabels).forEach(([id, label]) => {
     const el = document.getElementById(id);
@@ -20171,35 +20190,9 @@ function _inyectarPersonaSheets() {
     </div>`;
   document.body.appendChild(sheetEdit);
 
-  // Sheet: lista de todas las personas (desde menú Más)
-  if (!document.getElementById('sheet-lista-personas')) {
-    const sheetLista = document.createElement('div');
-    sheetLista.className = 'overlay';
-    sheetLista.id = 'sheet-lista-personas';
-    sheetLista.dataset.sheetId = 'lista-personas';
-    sheetLista.innerHTML = `
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-          <div class="sheet-title" style="margin-bottom:0;">Personas</div>
-          <button type="button" onclick="_abrirCrearPersonaGlobal(true)" style="display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;background:rgba(176,144,240,.12);border:1.5px solid rgba(176,144,240,.3);color:var(--purple);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nueva
-          </button>
-        </div>
-        <div id="lista-personas-body" style="display:flex;flex-direction:column;gap:8px;"></div>
-        <div id="lista-personas-empty" style="display:none;text-align:center;padding:32px 0 16px;">
-          <div style="margin-bottom:10px;display:flex;justify-content:center;"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-          <div style="font-size:14px;font-weight:600;margin-bottom:6px;">Sin personas registradas</div>
-          <div style="font-size:12px;color:var(--text3);line-height:1.6;">Las personas se crean automáticamente cuando agregás un deudor o encargo.</div>
-        </div>
-        <button type="button" class="btn btn-ghost" data-close-sheet="lista-personas" style="margin-top:10px;">Cerrar</button>
-      </div>`;
-    document.body.appendChild(sheetLista);
-  }
   // Registrar swipe en todos los sheets de personas recién inyectados
   if(typeof window._makeSheetSwipeable === 'function') {
-    ['sheet-sel-persona','sheet-crear-persona-global','sheet-perfil-persona','sheet-lista-personas'].forEach(id => {
+    ['sheet-sel-persona','sheet-crear-persona-global','sheet-perfil-persona'].forEach(id => {
       const el = document.getElementById(id);
       if(el) window._makeSheetSwipeable(el);
     });
@@ -20210,7 +20203,7 @@ function _inyectarPersonaSheets() {
 function _abrirListaPersonas() {
   _inyectarPersonaSheets();
   _renderListaPersonas();
-  document.getElementById('sheet-lista-personas').classList.add('open');
+  showScreen('personas');
   // Cerrar el menú Más si está abierto
   const masOverlay = document.getElementById('mas-menu-overlay');
   if (masOverlay) masOverlay.classList.remove('open');
@@ -20355,9 +20348,7 @@ function _abrirCrearPersonaGlobal(desdeListaPersonas) {
   _renderColorPicker('cpg_colores', '_cpgColorSel');
   // Abrir el nuevo sheet primero (antes de cerrar el anterior) para evitar el flash del fondo
   document.getElementById('sheet-crear-persona-global').classList.add('open');
-  if (desdeListaPersonas) {
-    document.getElementById('sheet-lista-personas').classList.remove('open');
-  } else {
+  if (!desdeListaPersonas) {
     document.getElementById('sheet-sel-persona').classList.remove('open');
   }
   setTimeout(() => document.getElementById('cpg_nombre').focus(), 200);
@@ -20381,11 +20372,9 @@ function _crearPersonaGlobal() {
   save();
   toast(nombre + ' creado/a', 'ok');
   if (_cpgDesdeListaPersonas) {
-    // Primero abrir lista, luego cerrar crear — igual al patrón de _abrirCrearPersonaGlobal
-    // para que nunca haya un instante con todos los sheets cerrados (flash de pantalla Más)
     _renderListaPersonas();
-    document.getElementById('sheet-lista-personas').classList.add('open');
     document.getElementById('sheet-crear-persona-global').classList.remove('open');
+    showScreen('personas');
   } else {
     document.getElementById('sheet-crear-persona-global').classList.remove('open');
     setTimeout(() => {
@@ -20439,12 +20428,6 @@ function abrirPerfilPersona(personaId) {
   if (!p) return;
   _perfilPersonaId = personaId;
   _inyectarPersonaSheets();
-
-  // Cerrar el sheet de lista de personas si está abierto, para que el perfil quede encima
-  const listaSheet = document.getElementById('sheet-lista-personas');
-  if (listaSheet && listaSheet.classList.contains('open')) {
-    listaSheet.classList.remove('open');
-  }
 
   const color = p.color || '#60b0f0';
   const av = document.getElementById('pperf-avatar');

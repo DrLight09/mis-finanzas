@@ -14465,6 +14465,7 @@ document.addEventListener('input',function(e){
     masOverlay.classList.remove('open');
     masBtn.classList.remove('active');
   }
+  window.closeMas = closeMas;
 
   masBtn && masBtn.addEventListener('click', ()=>{
     if(masMenu.style.display==='block') closeMas(); else openMas();
@@ -18120,9 +18121,11 @@ document.addEventListener('DOMContentLoaded',function(){
       return (b.ts || 0) - (a.ts || 0);
     });
 
-    // Actualizar badge del menú Más
+    // Actualizar badge del menú Más y Config
     var sub = document.getElementById('mas-historial-sub');
     if (sub) sub.textContent = todos.length + ' movimiento' + (todos.length !== 1 ? 's' : '');
+    var cfgSub = document.getElementById('cfg-historial-sub');
+    if (cfgSub) cfgSub.textContent = todos.length + ' movimiento' + (todos.length !== 1 ? 's' : '');
     var countEl = document.getElementById('feed-historial-count');
     if (countEl && todos.length > MAX_ITEMS) countEl.textContent = 'últimos ' + MAX_ITEMS;
     else if (countEl) countEl.textContent = '';
@@ -18175,7 +18178,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
   // Hook: navegar a historial
   document.addEventListener('click', function(e) {
-    var ni = e.target.closest('[data-screen="historial"], #mas-historial');
+    var ni = e.target.closest('[data-screen="historial"], #mas-historial, #cfg-historial-row');
     if (ni) { setTimeout(renderFeedActividad, 80); }
   });
 
@@ -18198,8 +18201,6 @@ document.addEventListener('DOMContentLoaded',function(){
     ).length;
     var sub2 = document.getElementById('mas-historial-sub');
     if (sub2) sub2.textContent = total + ' movimiento' + (total !== 1 ? 's' : '');
-    var cfgSub2 = document.getElementById('cfg-historial-sub');
-    if (cfgSub2) cfgSub2.textContent = total + ' movimiento' + (total !== 1 ? 's' : '');
   };
 
   // logCambio sigue existiendo como no-op para no romper el código que lo llama

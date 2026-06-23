@@ -910,6 +910,45 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           </div>
         </div>
 
+        <!-- ALCANCÍA OCULTA -->
+        <div class="screen" id="screen-alcancia">
+          <div class="hero" style="background:linear-gradient(135deg,rgba(240,184,64,.1) 0%,rgba(240,184,64,.03) 100%);border-color:rgba(240,184,64,.2);">
+            <div class="hero-label" style="color:rgba(240,184,64,.7);">Alcancía oculta</div>
+            <div class="hero-amount" id="alcancia-hero-saldo" style="color:var(--amber);filter:blur(8px);user-select:none;">$??</div>
+            <div class="row" style="margin-top:8px;">
+              <div style="font-size:11px;color:var(--text3);" id="alcancia-hero-sub">El saldo se revela al destapar</div>
+            </div>
+          </div>
+          <div id="alcancia-no-iniciada" style="display:none;">
+            <div class="card" style="text-align:center;padding:28px 20px;">
+              <div style="margin-bottom:14px;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v1h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1V6a4 4 0 0 1 4-4z"/><circle cx="12" cy="14" r="1.5" fill="var(--amber)" stroke="none"/></svg>
+              </div>
+              <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:8px;">No hay alcancía activa</div>
+              <div style="font-size:13px;color:var(--text3);margin-bottom:18px;">Inicia una nueva alcancía para empezar a guardar plata de forma oculta</div>
+              <button type="button" class="btn btn-primary" onclick="alcanciaIniciarNueva()" style="background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.3);">Iniciar alcancía</button>
+            </div>
+          </div>
+          <div id="alcancia-activa">
+            <div class="grid2" style="margin-bottom:9px;">
+              <div class="stat"><div class="stat-label">Depósitos</div><div class="stat-value" style="color:var(--amber);" id="alcancia-stat-depositos">0</div></div>
+              <div class="stat"><div class="stat-label">Tiempo activa</div><div class="stat-value" style="color:var(--text2);font-size:13px;" id="alcancia-stat-tiempo">—</div></div>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="openSheet('alcancia-depositar')" style="background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.25);margin-bottom:9px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Guardar en la alcancía
+            </button>
+            <button type="button" class="btn btn-ghost" onclick="openSheet('alcancia-destapar')" style="margin-bottom:18px;border-color:rgba(240,184,64,.3);color:var(--amber);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right:6px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Destapar alcancía
+            </button>
+            <div class="sec-title">Historial de alcancías</div>
+            <div id="alcancia-historial-lista">
+              <div class="feed-empty">Aún no has destapado ninguna alcancía.</div>
+            </div>
+          </div>
+        </div>
+
         <!-- CUENTAS -->
         <div class="screen" id="screen-cuentas">
           <!-- Selector de cuenta -->
@@ -4667,7 +4706,10 @@ let S={
   cuentasPersonalizadas:[],
   patrimonioHistorial:[],
   tarjetasCredito:[],
-  ingresosFijos:[]
+  ingresosFijos:[],
+  alcancia:null
+  // alcancia: {saldoRegistrado, depositos, fechaInicio, movimientos:[{id,monto,fecha,fuenteOrigen,ts}], historial:[...]}
+  // alcanciaSaldoOfuscado: string (XOR+Base64 del JSON {saldo:N}) — guardado en S pero no visible en UI
   // ingresosFijos: [{id, nombre, monto, desde}]
   // desde: 'YYYY-MM' — el mes desde el cual aplica este ingreso (para escalar en el futuro)
   // tarjetasCredito: [{id, nombre, cupo, deuda, fechaCorte (1-28), fechaPago (1-28), color, icono, compras:[{id,desc,monto,fecha,cat,pagadoEnTC:false}], pagos:[{id,monto,fecha,fuente,nota}]}]
@@ -6038,7 +6080,7 @@ function refresh(){
   // Se cuenta como gasto real únicamente cuando se registra el pago (queda en gastosVar).
   const gfTotal=_gfFijos;
   // Excluir de variables los que son pagos de gastos fijos (ya se cuentan en gfTotal) y los pagos de TC (no son gasto real)
-  const gvMes=gastosMes(mes).filter(g=>!g.esPagoGastoFijo&&!g._esPagoTC).reduce((a,g)=>a+(g.monto||0),0);
+  const gvMes=gastosMes(mes).filter(g=>!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia).reduce((a,g)=>a+(g.monto||0),0);
 
   // Total intereses generados hoy en cajitas libres (base = saldo propio + encargos en la cajita)
   const _globalTasa=S.nuTasaGlobal||9.25;
@@ -6107,7 +6149,7 @@ function renderAnalisis(){
   renderIngresosFijos();
 
   // ── Gastos del mes actual ──────────────────────────────────────────────
-  const gvMes=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC);
+  const gvMes=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia);
   const gvTotal=gvMes.reduce((a,g)=>a+(g.monto||0),0);
 
   const pagosGF=S.pagosGastosFijos||{};
@@ -6216,7 +6258,7 @@ function renderAnalisis(){
     const dd=new Date(d.getFullYear(),d.getMonth()-i,1);
     const k=dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0');
     const label=MESES_NOMBRE[dd.getMonth()];
-    const gv=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===k&&!g.esPagoGastoFijo&&!g._esPagoTC&&g.fuente!=='plata-comprometida').reduce((a,g)=>a+(g.monto||0),0);
+    const gv=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===k&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia&&g.fuente!=='plata-comprometida').reduce((a,g)=>a+(g.monto||0),0);
     const gf=(S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+k]?a+(g.monto||0):a,0);
     hoy12.push({k,label,total:gv+gf});
   }
@@ -6269,7 +6311,7 @@ function renderAnalisis(){
   // Recopilar todos los meses con datos
   const mesesConDatos={};
   (S.gastosVar||[]).forEach(g=>{
-    if(!g.esPagoGastoFijo&&!g._esPagoTC&&g.fuente!=='plata-comprometida'){
+    if(!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia&&g.fuente!=='plata-comprometida'){
       const k=mesKey(g.fecha);
       if(k) mesesConDatos[k]=(mesesConDatos[k]||0)+(g.monto||0);
     }
@@ -6355,7 +6397,7 @@ function renderAnalisis(){
     // Calcular mes anterior
     const dPrev=new Date(parseInt(mes.split('-')[0]),parseInt(mes.split('-')[1])-2,1);
     const mesPrev=dPrev.getFullYear()+'-'+String(dPrev.getMonth()+1).padStart(2,'0');
-    const gvPrev=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mesPrev&&!g.esPagoGastoFijo&&!g._esPagoTC).reduce((a,g)=>a+(g.monto||0),0);
+    const gvPrev=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mesPrev&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia).reduce((a,g)=>a+(g.monto||0),0);
     const gfPrev=(S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mesPrev]?a+(g.monto||0):a,0);
     const totalPrev=gvPrev+gfPrev;
     const mesNomPrev=MESES_NOMBRE[dPrev.getMonth()]+' '+dPrev.getFullYear();
@@ -7413,7 +7455,7 @@ function renderGastosVar(){
   if(mesFilter!=='todos')gastos=gastos.filter(g=>mesKey(g.fecha)===mesFilter);
   gastos=[...gastos].sort((a,b)=>b.fecha.localeCompare(a.fecha));
   // Separar: pagos de fijos van al total de fijos, no al de variables
-  const gastosVarPuros=gastos.filter(g=>!g.esPagoGastoFijo&&!g._esPagoTC);
+  const gastosVarPuros=gastos.filter(g=>!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia);
   const gastosFijosEnHistorial=gastos.filter(g=>g.esPagoGastoFijo);
   const gastosTC=gastos.filter(g=>g._esCompraTC);
   const gastosPagoTC=gastos.filter(g=>g._esPagoTC);
@@ -15087,7 +15129,7 @@ document.addEventListener('focusin', function(e){
     const S = window.S;
     const mesK = ultimoMesVisto;
     const pagosGF = S.pagosGastosFijos || {};
-    const gvMes = (S.gastosVar||[]).filter(g=>(g.fecha||'').startsWith(mesK)&&!g.esPagoGastoFijo).reduce((a,g)=>a+(g.monto||0),0);
+    const gvMes = (S.gastosVar||[]).filter(g=>(g.fecha||'').startsWith(mesK)&&!g.esPagoGastoFijo&&!g._esAlcancia).reduce((a,g)=>a+(g.monto||0),0);
     const gfMes = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mesK]?a+(g.monto||0):a,0);
     const totalGastos = gvMes + gfMes;
     // Patrimonio al cierre (último registro del mes anterior en el historial)
@@ -15534,7 +15576,7 @@ document.addEventListener('focusin', function(e){
     const pagosGF = S.pagosGastosFijos || {};
 
     // Gastos del mes: variables + fijos pagados (excluye pagos de TC — son cancelación de deuda, no gasto nuevo)
-    const gvMes = (S.gastosVar||[]).filter(g=>window.mesKey?window.mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC:true).reduce((a,g)=>a+(g.monto||0),0);
+    const gvMes = (S.gastosVar||[]).filter(g=>window.mesKey?window.mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia:true).reduce((a,g)=>a+(g.monto||0),0);
     const gfTotal = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mes]?a+(g.monto||0):a,0);
     const gastosMes = gvMes + gfTotal;
 
@@ -15922,7 +15964,7 @@ document.addEventListener('focusin', function(e){
 
     // Calcular gasto por categoría este mes
     const gastoCat = {};
-    (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mes&&!g.esPagoGastoFijo).forEach(g=>{
+    (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esAlcancia).forEach(g=>{
       const c=g.cat||'Otro';
       gastoCat[c]=(gastoCat[c]||0)+(g.monto||0);
     });
@@ -17877,6 +17919,7 @@ document.addEventListener('DOMContentLoaded',function(){
         if (m.tipo === 'apertura') return false;
         if (m.tipo === 'transferencia') return false; // intercambios contables, no son ingresos ni gastos
         if (m._encMovId) return false; // generado como efecto secundario de un encargo
+        if (m._esAlcancia) return false; // movimientos internos de alcancía oculta
         var desc = (m.desc || '').toLowerCase();
         if (desc.indexOf('margen de encargo') === 0) return false;
         if (desc.indexOf('margen encargo') === 0) return false;
@@ -17920,7 +17963,7 @@ document.addEventListener('DOMContentLoaded',function(){
   }
 
   function _normGastos(S) {
-    return (S.gastosVar || []).map(function(g){
+    return (S.gastosVar || []).filter(function(g){ return !g._esAlcancia; }).map(function(g){
       return {
         id:          'gv_' + g.id,
         fecha:       g.fecha || '0000-00-00',
@@ -21120,5 +21163,747 @@ if (document.readyState !== 'loading') {
     if (window.S) { _inyectarPersonaSheets(); }
   }, 1000);
 }
+</script>
+
+<!-- ===== MÓDULO ALCANCÍA OCULTA ===== -->
+<script>
+(function(){
+'use strict';
+
+/* ─── OFUSCACIÓN XOR+BASE64 ────────────────────────────────────────────────
+   Clave fija. No es cifrado fuerte — solo esconde el número del JSON plano.  */
+const _ALC_KEY = 0x4D;
+function _alcEncode(saldo){
+  const raw = JSON.stringify({s: saldo});
+  const bytes = new TextEncoder().encode(raw);
+  const xored = bytes.map(b => b ^ _ALC_KEY);
+  return btoa(String.fromCharCode(...xored));
+}
+function _alcDecode(str){
+  try {
+    const xored = Uint8Array.from(atob(str), c => c.charCodeAt(0));
+    const raw = new TextDecoder().decode(xored.map(b => b ^ _ALC_KEY));
+    return JSON.parse(raw).s || 0;
+  } catch(e){ return 0; }
+}
+
+/* ─── ESTADO INTERNO ────────────────────────────────────────────────────── */
+function _getA(){ return window.S.alcancia || null; }
+function _initA(){
+  if(!window.S.alcancia){
+    window.S.alcancia = {
+      saldoRegistrado: 0,
+      depositos: 0,
+      fechaInicio: (typeof hoy==='function'?hoy():new Date().toISOString().slice(0,10)),
+      movimientos: [],
+      historial: []
+    };
+  }
+}
+function _saldoRegistrado(){
+  const a = _getA(); if(!a) return 0;
+  return a.saldoRegistrado || 0;
+}
+function _setSaldoOfuscado(saldo){
+  window.S.alcanciaSaldoOfuscado = _alcEncode(saldo);
+}
+function _getSaldoOfuscado(){
+  const str = window.S.alcanciaSaldoOfuscado;
+  if(!str) return _saldoRegistrado();
+  return _alcDecode(str);
+}
+
+/* ─── TIEMPO ────────────────────────────────────────────────────────────── */
+function _diasDesde(fechaStr){
+  if(!fechaStr) return 0;
+  const inicio = new Date(fechaStr + 'T12:00:00');
+  const ahora  = new Date();
+  return Math.max(0, Math.round((ahora - inicio) / 86400000));
+}
+function _fmtTiempo(dias){
+  if(dias === 0) return 'Hoy';
+  if(dias < 7) return dias + (dias===1?' día':' días');
+  if(dias < 30){ const s=Math.round(dias/7); return s+(s===1?' semana':' semanas'); }
+  const m=Math.round(dias/30); return m+(m===1?' mes':' meses');
+}
+
+/* ─── INYECTAR SHEETS ───────────────────────────────────────────────────── */
+function _inyectarAlcanciaSheets(){
+  if(document.getElementById('sheet-alcancia-depositar')) return;
+
+  /* ---------- SHEET: Depositar ---------- */
+  const sheetDep = document.createElement('div');
+  sheetDep.className = 'overlay';
+  sheetDep.id = 'sheet-alcancia-depositar';
+  sheetDep.setAttribute('data-sheet-id','alcancia-depositar');
+  sheetDep.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Guardar en la alcancía</div>
+      <div class="ig">
+        <label class="il">Monto a guardar</label>
+        <div class="money-input-wrap">
+          <span class="money-prefix">$</span>
+          <input type="text" inputmode="decimal" class="money-input" id="alc_dep_monto" placeholder="0,00" autocomplete="off">
+        </div>
+      </div>
+      <div class="ig">
+        <label class="il">¿De dónde sale?</label>
+        <div class="select-wrap">
+          <select id="alc_dep_fuente"></select>
+        </div>
+        <div id="alc_dep_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
+      </div>
+      <div class="ig">
+        <label class="il">Fecha</label>
+        <input type="date" id="alc_dep_fecha" class="input-fecha">
+      </div>
+      <button type="button" class="btn btn-primary" onclick="alcanciaConfirmarDeposito()" style="background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.25);">Guardar</button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="alcancia-depositar" style="margin-top:6px;">Cancelar</button>
+    </div>`;
+  document.body.appendChild(sheetDep);
+
+  /* ---------- SHEET: Destapar paso 1 — resumen ---------- */
+  const sheetD1 = document.createElement('div');
+  sheetD1.className = 'overlay';
+  sheetD1.id = 'sheet-alcancia-destapar';
+  sheetD1.setAttribute('data-sheet-id','alcancia-destapar');
+  sheetD1.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Destapar alcancía</div>
+      <div id="alc-destapar-resumen" style="margin-bottom:18px;"></div>
+      <div class="ig">
+        <label class="il">¿Cuánto dinero encontraste realmente?</label>
+        <div class="money-input-wrap">
+          <span class="money-prefix">$</span>
+          <input type="text" inputmode="decimal" class="money-input" id="alc_real_monto" placeholder="0,00" autocomplete="off">
+        </div>
+        <div id="alc_diferencia_hint" style="font-size:12px;margin-top:6px;font-family:'DM Mono',monospace;"></div>
+      </div>
+      <div class="ig">
+        <label class="il">¿Dónde vas a guardar este dinero?</label>
+        <div class="select-wrap">
+          <select id="alc_destino"></select>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary" onclick="alcanciaConfirmarDestapar()" style="background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.25);">Confirmar y destapar</button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="alcancia-destapar" style="margin-top:6px;">Cancelar</button>
+    </div>`;
+  document.body.appendChild(sheetD1);
+
+  /* ---------- SHEET: Destapar resultado ---------- */
+  const sheetRes = document.createElement('div');
+  sheetRes.className = 'overlay';
+  sheetRes.id = 'sheet-alcancia-resultado';
+  sheetRes.setAttribute('data-sheet-id','alcancia-resultado');
+  sheetRes.innerHTML = `
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Resultado</div>
+      <div id="alc-resultado-body" style="margin-bottom:18px;"></div>
+      <button type="button" class="btn btn-primary" onclick="alcanciaIniciarNueva()" style="background:var(--amber);color:#0a0a0a;border:none;margin-bottom:8px;">Iniciar nueva alcancía</button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="alcancia-resultado" onclick="if(typeof closeSheet==='function')closeSheet('alcancia-resultado');">Cerrar</button>
+    </div>`;
+  document.body.appendChild(sheetRes);
+
+  /* ---------- Swipe y data-close-sheet para los nuevos sheets ---------- */
+  [sheetDep, sheetD1, sheetRes].forEach(sh => {
+    const panel = sh.querySelector('.sheet');
+    if(panel && typeof makeSwipeable === 'function'){
+      const sid = sh.getAttribute('data-sheet-id');
+      makeSwipeable(panel, ()=>{ if(typeof closeSheet==='function') closeSwipeSheet(sid, sh); });
+    }
+    sh.querySelectorAll('[data-close-sheet]').forEach(btn => {
+      const sid = btn.getAttribute('data-close-sheet');
+      btn.addEventListener('click', ()=>{ if(typeof closeSheet==='function') closeSheet(sid); });
+    });
+    sh.addEventListener('click', e => {
+      if(e.target === sh){
+        const sid = sh.getAttribute('data-sheet-id');
+        if(typeof closeSheet==='function') closeSheet(sid);
+      }
+    });
+  });
+
+  /* ---------- Money inputs ---------- */
+  _initMoneyInput('alc_dep_monto');
+  _initMoneyInput('alc_real_monto');
+
+  /* ---------- Fuente selector hint ---------- */
+  const fuenteSel = document.getElementById('alc_dep_fuente');
+  if(fuenteSel){
+    fuenteSel.addEventListener('change', function(){
+      const hint = document.getElementById('alc_dep_saldo_hint');
+      if(!hint) return;
+      const s = (typeof getSaldoFuente==='function') ? getSaldoFuente(this.value) : 0;
+      hint.textContent = this.value ? 'Saldo disponible: ' + (typeof fmt==='function'?fmt(s):s) : '';
+      hint.style.color = s > 0 ? 'var(--accent)' : 'var(--red)';
+    });
+  }
+
+  /* ---------- Diferencia hint en destapar ---------- */
+  const realInput = document.getElementById('alc_real_monto');
+  if(realInput){
+    realInput.addEventListener('input', _actualizarDiferenciaHint);
+  }
+}
+
+function closeSwipeSheet(sid, el){
+  if(typeof closeSheet==='function') closeSheet(sid);
+}
+
+function _initMoneyInput(id){
+  const el = document.getElementById(id);
+  if(!el || el._alcInited) return;
+  el._alcInited = true;
+  if(typeof moneyInputAttach === 'function'){
+    moneyInputAttach(el);
+  } else {
+    // Fallback: parseMoney/fmt nativo
+    el.addEventListener('input', function(){
+      const raw = this.value.replace(/[^\d,]/g,'').replace(',','.');
+      const n = parseFloat(raw) || 0;
+      el._rawVal = n;
+    });
+  }
+}
+
+function _getMoneyVal(id){
+  const el = document.getElementById(id);
+  if(!el) return 0;
+  if(typeof parseMoney === 'function') return parseMoney(el.value) || 0;
+  return parseFloat((el.value||'').replace(/\./g,'').replace(',','.')) || 0;
+}
+
+function _actualizarDiferenciaHint(){
+  const hint = document.getElementById('alc_diferencia_hint');
+  if(!hint) return;
+  const real = _getMoneyVal('alc_real_monto');
+  const reg  = _saldoRegistrado();
+  if(!real){ hint.textContent = ''; return; }
+  const dif = real - reg;
+  if(Math.abs(dif) < 1){
+    hint.style.color = 'var(--text3)';
+    hint.textContent = 'Todo el dinero estaba registrado.';
+  } else if(dif > 0){
+    hint.style.color = 'var(--accent)';
+    hint.textContent = '+ ' + (typeof fmt==='function'?fmt(dif):dif) + ' encontrados sin registro → se suman al patrimonio.';
+  } else {
+    hint.style.color = 'var(--red)';
+    hint.textContent = '− ' + (typeof fmt==='function'?fmt(Math.abs(dif)):Math.abs(dif)) + ' de diferencia → se restan del patrimonio.';
+  }
+}
+
+/* ─── OPEN SHEET HOOK ───────────────────────────────────────────────────── */
+const _origOpenSheetAlcancia = openSheet;
+openSheet = function(id){
+  if(id === 'alcancia-depositar'){
+    _inyectarAlcanciaSheets();
+    setTimeout(()=>{
+      const fsel = document.getElementById('alc_dep_fuente');
+      if(fsel && typeof buildFuentesOptsHtml==='function'){
+        fsel.innerHTML = buildFuentesOptsHtml({incluirTC:false,placeholder:'Seleccionar cuenta'});
+      }
+      const fd = document.getElementById('alc_dep_fecha');
+      if(fd) fd.value = (typeof hoy==='function'?hoy():new Date().toISOString().slice(0,10));
+      const mi = document.getElementById('alc_dep_monto');
+      if(mi){ mi.value = '0,00'; if(typeof moneyInputAttach==='function') moneyInputAttach(mi); }
+      const h = document.getElementById('alc_dep_saldo_hint');
+      if(h) h.textContent = '';
+    }, 30);
+  }
+  if(id === 'alcancia-destapar'){
+    _inyectarAlcanciaSheets();
+    setTimeout(()=>{
+      const mi = document.getElementById('alc_real_monto');
+      if(mi){ mi.value = '0,00'; if(typeof moneyInputAttach==='function') moneyInputAttach(mi); }
+      const dest = document.getElementById('alc_destino');
+      if(dest && typeof buildFuentesOptsHtml==='function'){
+        dest.innerHTML = buildFuentesOptsHtml({incluirTC:false,placeholder:'Seleccionar cuenta'});
+      }
+      const hint = document.getElementById('alc_diferencia_hint');
+      if(hint) hint.textContent = '';
+      // Resumen
+      const a = _getA();
+      const res = document.getElementById('alc-destapar-resumen');
+      if(res && a){
+        const dias = _diasDesde(a.fechaInicio);
+        res.innerHTML = `
+          <div class="card" style="background:rgba(240,184,64,.07);border-color:rgba(240,184,64,.2);padding:14px 16px;">
+            <div class="row" style="margin-bottom:8px;">
+              <span style="font-size:12px;color:var(--text3);">Tiempo activa</span>
+              <span style="font-size:13px;font-weight:600;color:var(--amber);">${_fmtTiempo(dias)}</span>
+            </div>
+            <div class="row" style="margin-bottom:8px;">
+              <span style="font-size:12px;color:var(--text3);">Depósitos registrados</span>
+              <span style="font-size:13px;font-weight:600;color:var(--text);">${a.depositos || 0}</span>
+            </div>
+            <div class="row">
+              <span style="font-size:12px;color:var(--text3);">Saldo esperado (registrado)</span>
+              <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${typeof fmt==='function'?fmt(a.saldoRegistrado||0):'$'+a.saldoRegistrado}</span>
+            </div>
+          </div>`;
+      }
+    }, 30);
+  }
+  _origOpenSheetAlcancia.apply(this, arguments);
+};
+
+/* ─── RENDER PANTALLA ───────────────────────────────────────────────────── */
+window.renderAlcancia = function(){
+  const a = _getA();
+  const activa = !!(a && (a.depositos > 0 || a.saldoRegistrado > 0));
+
+  const elNoIniciada = document.getElementById('alcancia-no-iniciada');
+  const elActiva     = document.getElementById('alcancia-activa');
+  if(elNoIniciada) elNoIniciada.style.display = activa ? 'none' : '';
+  if(elActiva)     elActiva.style.display     = activa ? '' : 'none';
+
+  const heroSaldo = document.getElementById('alcancia-hero-saldo');
+  if(heroSaldo){
+    heroSaldo.textContent = activa ? '$??' : '$0';
+    heroSaldo.style.filter = activa ? 'blur(8px)' : 'none';
+  }
+  const heroSub = document.getElementById('alcancia-hero-sub');
+  if(heroSub){
+    if(!activa) heroSub.textContent = 'Sin alcancía activa';
+    else {
+      const dias = _diasDesde(a.fechaInicio);
+      heroSub.textContent = 'Activa hace ' + _fmtTiempo(dias);
+    }
+  }
+
+  if(activa && a){
+    const statDep = document.getElementById('alcancia-stat-depositos');
+    const statTiempo = document.getElementById('alcancia-stat-tiempo');
+    if(statDep) statDep.textContent = a.depositos || 0;
+    if(statTiempo) statTiempo.textContent = _fmtTiempo(_diasDesde(a.fechaInicio));
+
+    // Historial de alcancías destapadas
+    const listaEl = document.getElementById('alcancia-historial-lista');
+    if(listaEl){
+      const hist = a.historial || [];
+      if(!hist.length){
+        listaEl.innerHTML = '<div class="feed-empty">Aún no has destapado ninguna alcancía.</div>';
+      } else {
+        listaEl.innerHTML = [...hist].reverse().map((h,i) => {
+          const dif = (h.saldoReal||0) - (h.saldoRegistrado||0);
+          const difFmt = Math.abs(dif) < 1 ? 'Exacto'
+            : dif > 0 ? '+' + (typeof fmt==='function'?fmt(dif):dif)
+            : '−' + (typeof fmt==='function'?fmt(Math.abs(dif)):Math.abs(dif));
+          const difColor = Math.abs(dif) < 1 ? 'var(--text3)' : dif > 0 ? 'var(--accent)' : 'var(--red)';
+          return `
+          <div class="card card-sm" style="margin-bottom:8px;">
+            <div class="row" style="margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:700;color:var(--text);">Alcancía #${hist.length - i}</span>
+              <span style="font-size:11px;color:var(--text3);">${h.fechaInicio||''} → ${h.fechaFin||''}</span>
+            </div>
+            <div class="row" style="margin-bottom:4px;">
+              <span style="font-size:11px;color:var(--text3);">Duración</span>
+              <span style="font-size:12px;color:var(--text2);">${_fmtTiempo(h.diasDuracion||0)}</span>
+            </div>
+            <div class="row" style="margin-bottom:4px;">
+              <span style="font-size:11px;color:var(--text3);">Depósitos</span>
+              <span style="font-size:12px;color:var(--text2);">${h.depositos||0}</span>
+            </div>
+            <div class="row" style="margin-bottom:4px;">
+              <span style="font-size:11px;color:var(--text3);">Registrado</span>
+              <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--amber);">${typeof fmt==='function'?fmt(h.saldoRegistrado||0):'$'+h.saldoRegistrado}</span>
+            </div>
+            <div class="row" style="margin-bottom:4px;">
+              <span style="font-size:11px;color:var(--text3);">Real encontrado</span>
+              <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text);">${typeof fmt==='function'?fmt(h.saldoReal||0):'$'+h.saldoReal}</span>
+            </div>
+            <div class="row">
+              <span style="font-size:11px;color:var(--text3);">Diferencia</span>
+              <span style="font-size:12px;font-family:'DM Mono',monospace;color:${difColor};">${difFmt}</span>
+            </div>
+          </div>`;
+        }).join('');
+      }
+    }
+  }
+};
+
+/* ─── ACCIONES ──────────────────────────────────────────────────────────── */
+
+/* Iniciar nueva alcancía (o reiniciar tras destapar) */
+window.alcanciaIniciarNueva = function(){
+  _initA();
+  const a = window.S.alcancia;
+  a.saldoRegistrado = 0;
+  a.depositos = 0;
+  a.fechaInicio = (typeof hoy==='function'?hoy():new Date().toISOString().slice(0,10));
+  a.movimientos = [];
+  if(!a.historial) a.historial = [];
+  _setSaldoOfuscado(0);
+  if(typeof save==='function') save();
+  if(typeof closeSheet==='function') closeSheet('alcancia-resultado');
+  window.renderAlcancia();
+  if(typeof showScreen==='function') showScreen('alcancia');
+  if(typeof toast==='function') toast('Alcancía iniciada', 'ok');
+};
+
+/* Confirmar depósito */
+window.alcanciaConfirmarDeposito = function(){
+  const monto  = _getMoneyVal('alc_dep_monto');
+  const fuente = (document.getElementById('alc_dep_fuente')||{}).value || '';
+  const fecha  = (document.getElementById('alc_dep_fecha')||{}).value  || (typeof hoy==='function'?hoy():'');
+
+  if(!monto || monto <= 0){
+    if(typeof toast==='function') toast('Ingresá un monto válido', 'err'); return;
+  }
+  if(!fuente){
+    if(typeof toast==='function') toast('Seleccioná una cuenta de origen', 'err'); return;
+  }
+
+  const saldoDisp = typeof getSaldoFuente==='function' ? getSaldoFuente(fuente) : 0;
+  if(monto > saldoDisp + 0.5){
+    if(typeof toast==='function') toast('Saldo insuficiente en la cuenta seleccionada', 'err'); return;
+  }
+
+  _initA();
+  const a = window.S.alcancia;
+
+  // 1. Registrar en gastosVar con flag _esAlcancia (descuenta de cuenta, pero no aparece en estadísticas)
+  const movId = typeof uid==='function' ? uid() : Date.now().toString(36);
+  window.S.gastosVar = window.S.gastosVar || [];
+  window.S.gastosVar.push({
+    id: movId,
+    desc: 'Alcancía',
+    monto: monto,
+    fecha: fecha,
+    cat: 'Ahorro',
+    fuente: fuente,
+    nota: 'Depósito en alcancía oculta',
+    _esAlcancia: true,
+    ts: Date.now()
+  });
+
+  // 2. Actualizar estado alcancía
+  a.saldoRegistrado = (a.saldoRegistrado || 0) + monto;
+  a.depositos = (a.depositos || 0) + 1;
+  a.movimientos = a.movimientos || [];
+  a.movimientos.push({ id: movId, monto, fecha, fuenteOrigen: fuente, ts: Date.now() });
+  _setSaldoOfuscado(a.saldoRegistrado);
+
+  if(typeof save==='function') save();
+  if(typeof closeSheet==='function') closeSheet('alcancia-depositar');
+  if(typeof refresh==='function') refresh();
+  window.renderAlcancia();
+  if(typeof toast==='function') toast('Guardado en la alcancía', 'ok');
+};
+
+/* Confirmar destapar */
+window.alcanciaConfirmarDestapar = function(){
+  const saldoReal = _getMoneyVal('alc_real_monto');
+  const destino   = (document.getElementById('alc_destino')||{}).value || '';
+
+  if(saldoReal <= 0){
+    if(typeof toast==='function') toast('Ingresá el monto real encontrado', 'err'); return;
+  }
+  if(!destino){
+    if(typeof toast==='function') toast('Seleccioná una cuenta destino', 'err'); return;
+  }
+
+  _initA();
+  const a = window.S.alcancia;
+  const saldoReg = a.saldoRegistrado || 0;
+  const dif = saldoReal - saldoReg;
+  const hoyStr = typeof hoy==='function' ? hoy() : new Date().toISOString().slice(0,10);
+
+  // ── Movimiento 1: transferir saldo registrado desde alcancía → destino
+  // Los gastos marcados _esAlcancia ya descontaron el dinero de las cuentas.
+  // Ahora lo reponemos en la cuenta destino como ingreso neutral interno.
+  if(saldoReg > 0){
+    window.S.movimientos = window.S.movimientos || [];
+    window.S.movimientos.push({
+      id: typeof uid==='function' ? uid() : Date.now().toString(36),
+      tipo: 'ingreso',
+      fuente: destino,
+      monto: saldoReg,
+      fecha: hoyStr,
+      desc: 'Alcancía destapada — saldo registrado',
+      nota: 'Transferencia interna desde alcancía',
+      _esAlcancia: true,
+      ts: Date.now()
+    });
+    // Actualizar saldo de la cuenta destino
+    _sumarASaldo(destino, saldoReg);
+  }
+
+  // ── Movimiento 2: diferencia positiva → ingreso real
+  if(dif > 1){
+    window.S.movimientos = window.S.movimientos || [];
+    window.S.movimientos.push({
+      id: typeof uid==='function' ? uid() : Date.now().toString(36),
+      tipo: 'ingreso',
+      fuente: destino,
+      monto: dif,
+      fecha: hoyStr,
+      desc: 'Dinero extra encontrado en alcancía',
+      nota: 'Ajuste: dinero físico no registrado previamente',
+      _esAlcancia: true,
+      ts: Date.now()
+    });
+    _sumarASaldo(destino, dif);
+  }
+
+  // ── Movimiento 3: diferencia negativa → gasto de ajuste
+  if(dif < -1){
+    const absDif = Math.abs(dif);
+    window.S.gastosVar = window.S.gastosVar || [];
+    window.S.gastosVar.push({
+      id: typeof uid==='function' ? uid() : Date.now().toString(36),
+      desc: 'Ajuste alcancía — faltante',
+      monto: absDif,
+      fecha: hoyStr,
+      cat: 'Ajuste',
+      fuente: destino,
+      nota: 'Diferencia negativa al destapar alcancía',
+      _esAlcanciaAjuste: true,
+      ts: Date.now()
+    });
+  }
+
+  // ── Guardar en historial
+  const diasDuracion = _diasDesde(a.fechaInicio);
+  if(!a.historial) a.historial = [];
+  const entradaHist = {
+    fechaInicio:      a.fechaInicio,
+    fechaFin:         hoyStr,
+    diasDuracion,
+    depositos:        a.depositos || 0,
+    saldoRegistrado:  saldoReg,
+    saldoReal,
+    diferencia:       dif
+  };
+  a.historial.push(entradaHist);
+
+  // ── Preparar resultado para mostrar
+  const resBody = document.getElementById('alc-resultado-body');
+  if(resBody){
+    const fmt2 = typeof fmt==='function' ? fmt : v=>'$'+Math.round(v).toLocaleString('es-CO');
+    const hist = a.historial;
+    const prev = hist.length >= 2 ? hist[hist.length - 2] : null;
+    let comparHtml = '';
+    if(!prev){
+      comparHtml = `<div style="font-size:12px;color:var(--text3);text-align:center;margin-top:10px;">Esta es tu primera alcancía. ¡Se inicia tu historial de ahorro!</div>`;
+    } else {
+      const difMonto  = saldoReg - (prev.saldoRegistrado||0);
+      const difDias   = diasDuracion - (prev.diasDuracion||0);
+      comparHtml = `
+        <div class="card" style="margin-top:10px;padding:12px 14px;background:rgba(255,255,255,.04);">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">vs. alcancía anterior</div>
+          <div class="row" style="margin-bottom:4px;">
+            <span style="font-size:12px;color:var(--text3);">Monto</span>
+            <span style="font-size:12px;font-family:'DM Mono',monospace;color:${difMonto>=0?'var(--accent)':'var(--red)'};">${difMonto>=0?'+':''} ${fmt2(difMonto)}</span>
+          </div>
+          <div class="row">
+            <span style="font-size:12px;color:var(--text3);">Duración</span>
+            <span style="font-size:12px;color:${difDias>=0?'var(--accent)':'var(--red)'};">${difDias>=0?'+':''} ${difDias} días</span>
+          </div>
+        </div>`;
+    }
+    const difMsgColor = Math.abs(dif)<1 ? 'var(--text3)' : dif>0 ? 'var(--accent)' : 'var(--red)';
+    const difMsg = Math.abs(dif)<1
+      ? 'El dinero encontrado coincide exactamente con lo registrado.'
+      : dif > 0
+        ? `Encontraste ${fmt2(dif)} adicionales que no estaban registrados. Se suman al patrimonio.`
+        : `Faltan ${fmt2(Math.abs(dif))} respecto a lo registrado. Se ajusta el patrimonio.`;
+    resBody.innerHTML = `
+      <div class="card" style="background:rgba(240,184,64,.07);border-color:rgba(240,184,64,.3);padding:16px;margin-bottom:10px;text-align:center;">
+        <div style="font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);margin-bottom:4px;">${fmt2(saldoReal)}</div>
+        <div style="font-size:12px;color:var(--text3);">encontraste en la alcancía</div>
+      </div>
+      <div class="card card-sm" style="margin-bottom:8px;">
+        <div class="row" style="margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--text3);">Registrado por la app</span>
+          <span style="font-size:13px;font-family:'DM Mono',monospace;color:var(--amber);">${fmt2(saldoReg)}</span>
+        </div>
+        <div class="row" style="margin-bottom:6px;">
+          <span style="font-size:12px;color:var(--text3);">Real encontrado</span>
+          <span style="font-size:13px;font-family:'DM Mono',monospace;color:var(--text);">${fmt2(saldoReal)}</span>
+        </div>
+        <div class="row">
+          <span style="font-size:12px;color:var(--text3);">Diferencia</span>
+          <span style="font-size:13px;font-family:'DM Mono',monospace;color:${difMsgColor};">${Math.abs(dif)<1?'$0':dif>0?'+'+fmt2(dif):'−'+fmt2(Math.abs(dif))}</span>
+        </div>
+      </div>
+      <div style="font-size:12px;color:${difMsgColor};padding:8px 12px;background:${Math.abs(dif)<1?'rgba(255,255,255,.04)':dif>0?'rgba(200,240,96,.06)':'rgba(240,104,104,.06)'};border-radius:var(--radius-sm);margin-bottom:4px;">${difMsg}</div>
+      ${comparHtml}`;
+  }
+
+  // ── Resetear alcancía para la siguiente
+  a.saldoRegistrado = 0;
+  a.depositos = 0;
+  a.fechaInicio = hoyStr;
+  a.movimientos = [];
+  _setSaldoOfuscado(0);
+
+  if(typeof save==='function') save();
+  if(typeof closeSheet==='function') closeSheet('alcancia-destapar');
+  setTimeout(()=>{ if(typeof openSheet==='function') openSheet('alcancia-resultado'); }, 200);
+  if(typeof refresh==='function') refresh();
+  window.renderAlcancia();
+};
+
+/* ─── SUMAR A SALDO DE CUENTA ───────────────────────────────────────────── */
+function _sumarASaldo(fuente, monto){
+  if(!fuente || !monto) return;
+  const S = window.S;
+  if(fuente === 'nequi'){ S.nequiSaldo = (S.nequiSaldo||0) + monto; return; }
+  if(fuente === 'efectivo'){ S.efectivoSaldo = (S.efectivoSaldo||0) + monto; return; }
+  if(fuente.startsWith('cajita:')){
+    const id = fuente.split(':')[1];
+    const c  = (S.cajitas||[]).find(x=>x.id===id);
+    if(c) c.saldo = (c.saldo||0) + monto;
+    return;
+  }
+  if(fuente.startsWith('custom:')){
+    const id = fuente.split(':')[1];
+    const c  = (S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+    if(c){
+      c.saldo = (c.saldo||0) + monto;
+      c.movimientos = c.movimientos || [];
+      c.movimientos.push({
+        id: typeof uid==='function'?uid():Date.now().toString(36),
+        tipo: 'entrada', monto, fecha: typeof hoy==='function'?hoy():'',
+        desc: 'Alcancía destapada', nota: ''
+      });
+    }
+    return;
+  }
+}
+
+/* ─── MIGRACIÓN AUTOMÁTICA ──────────────────────────────────────────────── */
+function _migrarReservas(){
+  const S = window.S;
+  if(S.alcanciaMigrada) return; // ya migrado
+  const reservas = (S.gastosVar||[]).filter(g =>
+    (g.desc||'').trim().toLowerCase() === 'reserva' && !g._esAlcancia
+  );
+  if(!reservas.length){ S.alcanciaMigrada = true; return; }
+
+  _initA();
+  const a = S.alcancia;
+  // Ordenar por fecha
+  reservas.sort((x,y)=>(x.fecha||'').localeCompare(y.fecha||''));
+  // Usar la fecha más antigua como inicio de la alcancía
+  if(!a.depositos || a.depositos === 0){
+    a.fechaInicio = reservas[0].fecha;
+  }
+
+  reservas.forEach(g => {
+    // Marcarlos como _esAlcancia en vez de eliminarlos (conserva integridad de saldos)
+    g._esAlcancia = true;
+    g.desc = 'Alcancía'; // normalizar descripción
+    g.nota = g.nota || 'Migrado desde Reserva';
+
+    a.saldoRegistrado = (a.saldoRegistrado||0) + (g.monto||0);
+    a.depositos = (a.depositos||0) + 1;
+    a.movimientos = a.movimientos || [];
+    a.movimientos.push({
+      id: g.id, monto: g.monto, fecha: g.fecha,
+      fuenteOrigen: g.fuente||'', ts: g.ts||0, _migrado: true
+    });
+  });
+
+  _setSaldoOfuscado(a.saldoRegistrado);
+  S.alcanciaMigrada = true;
+  console.log('[Alcancía] Migrados ' + reservas.length + ' depósitos "Reserva" → alcancía. Total: ' + a.saldoRegistrado);
+  if(typeof save==='function') save();
+  if(typeof toast==='function') toast('Alcancía: ' + reservas.length + ' depósitos migrados', 'info', 4000);
+}
+
+/* ─── INTEGRACIÓN CON MÁS MENU ─────────────────────────────────────────── */
+function _inyectarMasMenuItem(){
+  const masMenu = document.getElementById('mas-menu');
+  if(!masMenu || document.getElementById('mas-alcancia')) return;
+  const configItem = document.getElementById('mas-config');
+  const item = document.createElement('div');
+  item.className = 'mas-item';
+  item.id = 'mas-alcancia';
+  item.setAttribute('data-screen','alcancia');
+  item.innerHTML = `
+    <div class="mas-item-icon" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.25);">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a4 4 0 0 1 4 4v1h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1V6a4 4 0 0 1 4-4z"/>
+        <circle cx="12" cy="14" r="1.5" fill="var(--amber)" stroke="none"/>
+      </svg>
+    </div>
+    <div>
+      <div class="mas-item-label">Alcancía oculta</div>
+      <div class="mas-item-sub">Ahorro sorpresa — saldo oculto</div>
+    </div>`;
+  if(configItem) masMenu.insertBefore(item, configItem);
+  else masMenu.appendChild(item);
+
+  // Registrar en el sistema de navegación
+  item.addEventListener('click', ()=>{
+    if(typeof closeMas==='function') closeMas();
+    else {
+      const ov = document.getElementById('mas-menu-overlay');
+      const mn = document.getElementById('mas-menu');
+      if(ov) ov.style.display='none'; if(mn) mn.style.display='none';
+    }
+    if(typeof showScreen==='function'){
+      showScreen('alcancia');
+      window.renderAlcancia();
+    }
+  });
+}
+
+/* ─── showScreen HOOK ────────────────────────────────────────────────────── */
+const _origShowScreenAlcancia = showScreen;
+showScreen = function(name){
+  _origShowScreenAlcancia.apply(this, arguments);
+  if(name === 'alcancia') window.renderAlcancia();
+};
+
+/* ─── INTEGRACIÓN CON data-screen en el mas-menu ────────────────────────── */
+// El sistema nativo usa data-screen en .mas-item → querySelectorAll detecta el click.
+// Pero nuestro item es inyectado dinámicamente, así que usamos addEventListener arriba.
+// Aun así hay que registrar el screen en el mapa de nombres si la app los valida.
+if(window._screenNames){
+  window._screenNames['screen-alcancia'] = 'Alcancía';
+}
+
+/* ─── ARRANQUE ──────────────────────────────────────────────────────────── */
+function _alcanciaInit(){
+  _inyectarMasMenuItem();
+  _inyectarAlcanciaSheets();
+  // Registrar refresh en el sistema de navegación nativo (mas-item data-screen clicks)
+  document.querySelectorAll('.nav-item[data-screen]').forEach(btn => {
+    if(btn.getAttribute('data-screen') === 'alcancia'){
+      btn.addEventListener('click', ()=> window.renderAlcancia());
+    }
+  });
+}
+
+window.addEventListener('appDataLoaded', function(){
+  _migrarReservas();
+  setTimeout(_alcanciaInit, 700);
+});
+
+// Fallback si ya cargó
+if(window._dataLoaded){
+  _migrarReservas();
+  setTimeout(_alcanciaInit, 500);
+} else if(document.readyState !== 'loading'){
+  // Intentar después de que S esté disponible
+  let _alcTries = 0;
+  const _alcPoll = setInterval(()=>{
+    _alcTries++;
+    if(window.S && window._dataLoaded){
+      clearInterval(_alcPoll);
+      _migrarReservas();
+      _alcanciaInit();
+    } else if(_alcTries > 40) clearInterval(_alcPoll);
+  }, 300);
+}
+
+})(); // end IIFE
 </script>
 </body></html>

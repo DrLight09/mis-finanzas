@@ -2383,6 +2383,25 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 todos los datos</button>
             </div>
           </div>
+
+          <!-- ACCESOS DIRECTOS: secciones poco usadas -->
+          <div class="sec-title" style="margin-top:18px;">Herramientas</div>
+          <div class="card" style="padding:0 15px;">
+            <div class="cfg-toggle" onclick="_abrirListaPersonas()" style="cursor:pointer;">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Personas</div>
+                <div class="cfg-toggle-sub" id="cfg-personas-sub">Perfiles y actividad financiera</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+            <div class="cfg-toggle" id="cfg-comprometida-row" style="cursor:pointer;">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Plata comprometida</div>
+                <div class="cfg-toggle-sub">Ingresos futuros con destino</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </div>
         </div>
 
       </main><!-- scroll-area -->
@@ -2515,23 +2534,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div class="mas-item-sub">Plata que administrás (no es tuya)</div>
         </div>
       </div>
-      <div class="mas-item" id="mas-personas" onclick="_abrirListaPersonas()">
-        <div class="mas-item-icon"
-          style="background:rgba(176,144,240,.1);border-color:rgba(176,144,240,.25);">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="var(--purple)" stroke-width="1.7" stroke-linecap="round"
-            stroke-linejoin="round">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <circle cx="9" cy="7" r="4"/>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-          </svg>
-        </div>
-        <div>
-          <div class="mas-item-label">Personas</div>
-          <div class="mas-item-sub" id="mas-personas-sub">Perfiles y actividad financiera</div>
-        </div>
-      </div>
+
       <div class="mas-item" id="mas-historial" data-screen="historial">
         <div class="mas-item-icon"
           style="background:rgba(200,240,96,.1);border-color:rgba(200,240,96,.25);">
@@ -18274,32 +18277,18 @@ function _injectScreen(){
   main.appendChild(screen);
 }
 
-/* ── INYECTAR ÍTEM EN MENÚ MÁS ──────────────────────────────────── */
+/* ── INYECTAR ÍTEM EN CONFIGURACIÓN (ya no en Más) ──────────────── */
 function _injectMasItem(){
-  const masMenu = document.getElementById('mas-menu');
-  if(!masMenu || document.getElementById('mas-comprometida')) return;
-  const item = document.createElement('div');
-  item.className = 'mas-item';
-  item.id = 'mas-comprometida';
-  item.setAttribute('data-screen', 'comprometida');
-  item.innerHTML = `
-    <div class="mas-item-icon" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.25);">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="2" y="6" width="20" height="13" rx="2"/>
-        <path d="M2 10h20"/>
-        <path d="M12 14v2M8 14h2M14 14h2"/>
-        <path d="M6 6V4M18 6V4"/>
-      </svg>
-    </div>
-    <div>
-      <div class="mas-item-label">Plata comprometida</div>
-      <div class="mas-item-sub">Ingresos futuros con destino</div>
-    </div>
-  `;
-  // Insertar antes del item de historial
-  const masHistorial = document.getElementById('mas-historial');
-  if(masHistorial) masMenu.insertBefore(item, masHistorial);
-  else masMenu.appendChild(item);
+  // El ítem estático ya está en screen-config como #cfg-comprometida-row.
+  // Solo hace falta conectar el click listener si aún no se hizo.
+  const row = document.getElementById('cfg-comprometida-row');
+  if(!row || row._cpWired) return;
+  row._cpWired = true;
+  row.addEventListener('click', function(){
+    _injectScreen();
+    _injectSheet();
+    if(typeof showScreen === 'function') showScreen('comprometida');
+  });
 }
 
 /* ── INYECTAR SHEET PRINCIPAL ───────────────────────────────────── */
@@ -19993,21 +19982,8 @@ function _cpInit(){
   _injectSheet();
   _cpInitSwipe();
 
-  // Conectar con el menú Más (el listener ya existe pero hay que incluir el nuevo item)
-  const masItem = document.getElementById('mas-comprometida');
-  if(masItem){
-    masItem.addEventListener('click', ()=>{
-      // cerrar menú más
-      const masMenu = document.getElementById('mas-menu');
-      const masOverlay = document.getElementById('mas-menu-overlay');
-      const masBtn = document.getElementById('nav-mas-btn');
-      if(masMenu){ masMenu.style.transform='translateY(100%)'; setTimeout(()=>{masMenu.style.display='none';},280); }
-      if(masOverlay) masOverlay.classList.remove('open');
-      if(masBtn) masBtn.classList.remove('active');
-      // ir a pantalla
-      if(typeof showScreen==='function'){ showScreen('comprometida'); _cpRenderLista(); }
-    });
-  }
+  // El acceso a Plata comprometida ahora está en Configuración (#cfg-comprometida-row).
+  // El listener se conecta en _injectMasItem() al detectar ese elemento.
 
   // Actualizar input de balance en tiempo real cuando cambia el monto total
   const montoInput = document.getElementById('cp-monto-total');
@@ -20295,12 +20271,13 @@ function _renderListaPersonas() {
   body.innerHTML = html;
 }
 
-// Actualizar el sub-texto del ítem Personas en el menú Más
+// Actualizar el sub-texto del ítem Personas (ahora en Configuración)
 function _actualizarMasPersonasSub() {
-  const sub = document.getElementById('mas-personas-sub');
-  if (!sub) return;
   const total = (S.personas || []).length + (S.deudores || []).filter(d => !d.personaId).length;
-  sub.textContent = total ? total + ' persona' + (total !== 1 ? 's' : '') + ' registrada' + (total !== 1 ? 's' : '') : 'Perfiles y actividad financiera';
+  const txt = total ? total + ' persona' + (total !== 1 ? 's' : '') + ' registrada' + (total !== 1 ? 's' : '') : 'Perfiles y actividad financiera';
+  // Actualizar en Config
+  const cfgSub = document.getElementById('cfg-personas-sub');
+  if (cfgSub) cfgSub.textContent = txt;
 }
 let _selPersonaCallback = null; // fn(personaId) llamada al seleccionar
 
@@ -21777,47 +21754,7 @@ function _sumarASaldo(fuente, monto){
   }
 }
 
-/* ─── MIGRACIÓN AUTOMÁTICA ──────────────────────────────────────────────── */
-function _migrarReservas(){
-  const S = window.S;
-  if(S.alcanciaMigrada) return; // ya migrado
-  const reservas = (S.gastosVar||[]).filter(g =>
-    (g.desc||'').trim().toLowerCase() === 'reserva' && !g._esAlcancia
-  );
-  if(!reservas.length){ S.alcanciaMigrada = true; return; }
-
-  _initA();
-  const a = S.alcancia;
-  // Ordenar por fecha
-  reservas.sort((x,y)=>(x.fecha||'').localeCompare(y.fecha||''));
-  // Usar la fecha más antigua como inicio de la alcancía
-  if(!a.depositos || a.depositos === 0){
-    a.fechaInicio = reservas[0].fecha;
-  }
-
-  reservas.forEach(g => {
-    // Marcarlos como _esAlcancia en vez de eliminarlos (conserva integridad de saldos)
-    g._esAlcancia = true;
-    g.desc = 'Alcancía'; // normalizar descripción
-    g.nota = g.nota || 'Migrado desde Reserva';
-
-    a.saldoRegistrado = (a.saldoRegistrado||0) + (g.monto||0);
-    a.depositos = (a.depositos||0) + 1;
-    a.movimientos = a.movimientos || [];
-    a.movimientos.push({
-      id: g.id, monto: g.monto, fecha: g.fecha,
-      fuenteOrigen: g.fuente||'', ts: g.ts||0, _migrado: true
-    });
-  });
-
-  _setSaldoOfuscado(a.saldoRegistrado);
-  S.alcanciaMigrada = true;
-  console.log('[Alcancía] Migrados ' + reservas.length + ' depósitos "Reserva" → alcancía. Total: ' + a.saldoRegistrado);
-  if(typeof save==='function') save();
-  if(typeof toast==='function') toast('Alcancía: ' + reservas.length + ' depósitos migrados', 'info', 4000);
-}
-
-/* ─── INTEGRACIÓN CON MÁS MENU ─────────────────────────────────────────── */
+/* ─── INYECTAR MAS MENU ITEM ─────────────────────────────────────────────── */
 function _inyectarMasMenuItem(){
   const masMenu = document.getElementById('mas-menu');
   if(!masMenu || document.getElementById('mas-alcancia')) return;
@@ -21883,22 +21820,18 @@ function _alcanciaInit(){
 }
 
 window.addEventListener('appDataLoaded', function(){
-  _migrarReservas();
   setTimeout(_alcanciaInit, 700);
 });
 
 // Fallback si ya cargó
 if(window._dataLoaded){
-  _migrarReservas();
   setTimeout(_alcanciaInit, 500);
 } else if(document.readyState !== 'loading'){
-  // Intentar después de que S esté disponible
   let _alcTries = 0;
   const _alcPoll = setInterval(()=>{
     _alcTries++;
     if(window.S && window._dataLoaded){
       clearInterval(_alcPoll);
-      _migrarReservas();
       _alcanciaInit();
     } else if(_alcTries > 40) clearInterval(_alcPoll);
   }, 300);

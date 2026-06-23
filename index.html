@@ -2394,10 +2394,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
-            <div class="cfg-toggle" id="cfg-comprometida-row" style="cursor:pointer;">
+            <div class="cfg-toggle" id="cfg-historial-row" style="cursor:pointer;" onclick="if(typeof showScreen==='function')showScreen('historial')">
               <div class="cfg-toggle-info">
-                <div class="cfg-toggle-label">Plata comprometida</div>
-                <div class="cfg-toggle-sub">Ingresos futuros con destino</div>
+                <div class="cfg-toggle-label">Actividad reciente</div>
+                <div class="cfg-toggle-sub" id="cfg-historial-sub">Todos tus movimientos</div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
@@ -2535,18 +2535,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         </div>
       </div>
 
-      <div class="mas-item" id="mas-historial" data-screen="historial">
-        <div class="mas-item-icon"
-          style="background:rgba(200,240,96,.1);border-color:rgba(200,240,96,.25);">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round"
-            stroke-linejoin="round"><path d="M3 3h18v4H3z"/><path d="M3 10h11"/><path d="M3 15h7"/><circle cx="18" cy="17" r="4"/><path d="M16 17l1.5 1.5L20 15"/></svg>
-        </div>
-        <div>
-          <div class="mas-item-label">Actividad reciente</div>
-          <div class="mas-item-sub" id="mas-historial-sub">Todos tus movimientos</div>
-        </div>
-      </div>
       <div class="mas-item" id="mas-config" data-screen="config">
         <div class="mas-item-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -18210,6 +18198,8 @@ document.addEventListener('DOMContentLoaded',function(){
     ).length;
     var sub2 = document.getElementById('mas-historial-sub');
     if (sub2) sub2.textContent = total + ' movimiento' + (total !== 1 ? 's' : '');
+    var cfgSub2 = document.getElementById('cfg-historial-sub');
+    if (cfgSub2) cfgSub2.textContent = total + ' movimiento' + (total !== 1 ? 's' : '');
   };
 
   // logCambio sigue existiendo como no-op para no romper el código que lo llama
@@ -18277,14 +18267,37 @@ function _injectScreen(){
   main.appendChild(screen);
 }
 
-/* ── INYECTAR ÍTEM EN CONFIGURACIÓN (ya no en Más) ──────────────── */
+/* ── INYECTAR ÍTEM EN MENÚ MÁS ──────────────────────────────────── */
 function _injectMasItem(){
-  // El ítem estático ya está en screen-config como #cfg-comprometida-row.
-  // Solo hace falta conectar el click listener si aún no se hizo.
-  const row = document.getElementById('cfg-comprometida-row');
-  if(!row || row._cpWired) return;
-  row._cpWired = true;
-  row.addEventListener('click', function(){
+  const masMenu = document.getElementById('mas-menu');
+  if(!masMenu || document.getElementById('mas-comprometida')) return;
+  const item = document.createElement('div');
+  item.className = 'mas-item';
+  item.id = 'mas-comprometida';
+  item.setAttribute('data-screen', 'comprometida');
+  item.innerHTML = `
+    <div class="mas-item-icon" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.25);">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="20" height="13" rx="2"/>
+        <path d="M2 10h20"/>
+        <path d="M12 14v2M8 14h2M14 14h2"/>
+        <path d="M6 6V4M18 6V4"/>
+      </svg>
+    </div>
+    <div>
+      <div class="mas-item-label">Plata comprometida</div>
+      <div class="mas-item-sub">Ingresos futuros con destino</div>
+    </div>
+  `;
+  // Insertar antes de Alcancía o antes de Configuración
+  const masAlcancia = document.getElementById('mas-alcancia');
+  const masConfig   = document.getElementById('mas-config');
+  const anchor = masAlcancia || masConfig;
+  if(anchor) masMenu.insertBefore(item, anchor);
+  else masMenu.appendChild(item);
+
+  item.addEventListener('click', ()=>{
+    if(typeof closeMas === 'function') closeMas();
     _injectScreen();
     _injectSheet();
     if(typeof showScreen === 'function') showScreen('comprometida');
@@ -19982,8 +19995,8 @@ function _cpInit(){
   _injectSheet();
   _cpInitSwipe();
 
-  // El acceso a Plata comprometida ahora está en Configuración (#cfg-comprometida-row).
-  // El listener se conecta en _injectMasItem() al detectar ese elemento.
+  // El acceso a Plata comprometida está en el menú Más (#mas-comprometida).
+  // El listener se conecta en _injectMasItem() al inyectar el ítem.
 
   // Actualizar input de balance en tiempo real cuando cambia el monto total
   const montoInput = document.getElementById('cp-monto-total');

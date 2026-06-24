@@ -2285,17 +2285,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 <span class="slider"></span>
               </label>
             </div>
-            <div class="cfg-toggle">
-              <div class="cfg-toggle-info">
-                <div class="cfg-toggle-label">Préstamos anteriores</div>
-                <div class="cfg-toggle-sub">Marca préstamos que ya existían antes de la app</div>
-              </div>
-              <label class="toggle-sw">
-                <input type="checkbox" id="cfg-prestamoPrevio"
-                  data-modulo="prestamoPrevio">
-                <span class="slider"></span>
-              </label>
-            </div>
+
           </div>
           <div class="sec-title" style="margin-top:18px;">Categorías</div>
           <div class="card" style="padding:15px;">
@@ -3578,20 +3568,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);min-height:14px;margin-top:5px;"></div>
           </div>
         </div>
-        <!-- PRÉSTAMO ANTERIOR -->
-        <div id="mov_previo_wrap" style="display:none;">
-          <div class="form-divider"></div>
-          <div class="cfg-toggle" style="padding:0 0 12px;border-bottom:none;">
-            <div class="cfg-toggle-info">
-              <div class="cfg-toggle-label" style="font-size:13px;">¿Ya existía antes de la app?</div>
-              <div class="cfg-toggle-sub">No sumará al patrimonio al registrarlo</div>
-            </div>
-            <label class="toggle-sw">
-              <input type="checkbox" id="mov_es_previo">
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
+
         <div class="ig"><label class="il" for="mov_nota">Nota
             (opcional)</label><input type="text" id="mov_nota"
             placeholder="Ej: para el arriendo"></div>
@@ -5554,7 +5531,6 @@ function calcPatrimonioTotal(){
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
   const nequi=S.nequiSaldo||0;
   const ef=S.efectivoSaldo||0;
-  // Usar versión patrimonio: excluye préstamos _sinImpacto (preexistentes o sin fuente registrada)
   const prest=(S.deudores||[]).reduce((a,d)=>{ const s=getDeudorSaldoPatrimonio(d); return a+(s>0?s:0); },0);
   const custom=(S.cuentasPersonalizadas||[]).filter(c=>c.incluirEnTotal).reduce((a,c)=>a+(c.saldo||0),0);
   const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
@@ -7896,12 +7872,11 @@ function addDeudor() {
 function getDeudorSaldo(d) {
   return (d.movimientos || []).reduce((a, m) => m.tipo === 'prestamo' ? a + m.monto : a - m.monto, 0);
 }
-// Saldo que SÍ impacta el patrimonio: excluye préstamos marcados como _sinImpacto
+// Saldo que impacta el patrimonio: todos los préstamos cuentan, sin excepción
 function getDeudorSaldoPatrimonio(d) {
-  return (d.movimientos || []).reduce((a, m) => {
-    if (m.tipo === 'prestamo') return m._sinImpacto ? a : a + m.monto;
-    return a - m.monto; // abonos siempre reducen
-  }, 0);
+  return (d.movimientos || []).reduce((a, m) =>
+    m.tipo === 'prestamo' ? a + m.monto : a - m.monto
+  , 0);
 }
 
 function renderDeudoresList() {
@@ -8014,7 +7989,6 @@ function abrirDeudor(id) {
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : 'Pago'}</span>
-              ${m._sinImpacto ? `<span style="background:rgba(96,176,240,.1);color:var(--blue);border:1px solid rgba(96,176,240,.25);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">Anterior · sin impacto</span>` : ''}
               ${m._gananciaVirtual ? `<span style="background:rgba(200,240,96,.15);color:var(--accent);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">💰 Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
               ${m._viaTC ? `<span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
               ${m.nota ? `<span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
@@ -8207,12 +8181,6 @@ function initMovSheet(tipo) {
   document.getElementById('mov_dest_split_resumen').textContent = '';
   document.getElementById('mov_btn_origen').style.display = 'none';
   document.getElementById('mov_origen_tags').innerHTML = '';
-  // Toggle préstamo previo — solo visible en préstamos y si el módulo está activo
-  const previoWrap = document.getElementById('mov_previo_wrap');
-  const previoChk  = document.getElementById('mov_es_previo');
-  const modPrevio  = !!(S.modulos && S.modulos.prestamoPrevio);
-  if (previoWrap) previoWrap.style.display = (esPrestamo && modPrevio) ? '' : 'none';
-  if (previoChk)  previoChk.checked = false;
   // Reset extra (sistema de partes libres)
   _extPartes = [];
   document.getElementById('mov_tiene_extra').checked = false;
@@ -8271,7 +8239,6 @@ function confirmarMovimiento() {
   const nota  = document.getElementById('mov_nota').value.trim();
 
   if (movTipo === 'prestamo') {
-    const _esPrevio = !!(document.getElementById('mov_es_previo') && document.getElementById('mov_es_previo').checked);
     if (_prestSplitMode) {
       const totalSplit = _prestSplitRows.reduce((a,r)=>a+(r.monto||0),0);
       if(Math.abs(totalSplit - monto) > 1){
@@ -8281,10 +8248,10 @@ function confirmarMovimiento() {
       const fuentes = _prestSplitRows.filter(r=>r.monto>0);
       fuentes.forEach(r=>{ if(r.fuente) descontarFuente(r.fuente, r.monto); });
       const _gananciaVirtual = fuentes.filter(r=>r.fuente==='ganancia').reduce((a,r)=>a+r.monto,0);
-      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota, _gananciaVirtual: _gananciaVirtual||undefined, _sinImpacto: _esPrevio||undefined, ts: Date.now() });
+      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota, _gananciaVirtual: _gananciaVirtual||undefined, ts: Date.now() });
     } else {
       const fuente = document.getElementById('mov_fuente').value;
-      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota, _sinImpacto: _esPrevio||undefined, ts: Date.now() });
+      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota, ts: Date.now() });
       descontarFuente(fuente, monto);
     }
 
@@ -10221,11 +10188,9 @@ function applyModulos(){
   const cfgMesada=document.getElementById('cfg-mesada');
   const cfgSpotify=document.getElementById('cfg-spotify');
   const cfgCorregirSaldo=document.getElementById('cfg-corregirSaldo');
-  const cfgPrestamoPrevio=document.getElementById('cfg-prestamoPrevio');
   if(cfgMesada)cfgMesada.checked=!!mod.mesada;
   if(cfgSpotify)cfgSpotify.checked=!!mod.spotify;
   if(cfgCorregirSaldo)cfgCorregirSaldo.checked=(mod.corregirSaldo!==false);
-  if(cfgPrestamoPrevio)cfgPrestamoPrevio.checked=!!mod.prestamoPrevio;
   // If currently on spotify screen and it's disabled, go to inicio
   if(!mod.spotify&&document.getElementById('screen-spotify').classList.contains('active')){
     showScreen('inicio');

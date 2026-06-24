@@ -1189,7 +1189,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               data-save-refresh="true">
             <!-- Encargos en Nequi -->
             <!-- Banner saldo inicial Nequi -->
-
+            <div id="banner-apertura-nequi"></div>
             <div id="det-nequi-encargos"></div>
             <!-- Movimientos Nequi -->
             <div class="sec-title">Movimientos registrados</div>
@@ -1511,7 +1511,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               data-save-refresh="true">
             <!-- Encargos en Efectivo -->
             <!-- Banner saldo inicial Efectivo -->
-
+            <div id="banner-apertura-efectivo"></div>
             <div id="det-ef-encargos"></div>
             <!-- Movimientos Efectivo -->
             <div class="sec-title">Movimientos registrados</div>
@@ -2273,8 +2273,29 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 <span class="slider"></span>
               </label>
             </div>
-
-
+            <div class="cfg-toggle">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Saldo inicial</div>
+                <div class="cfg-toggle-sub">Muestra el banner de saldo inicial
+                  en Nequi y Efectivo</div>
+              </div>
+              <label class="toggle-sw">
+                <input type="checkbox" id="cfg-corregirSaldo"
+                  data-modulo="corregirSaldo">
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="cfg-toggle">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Préstamos anteriores</div>
+                <div class="cfg-toggle-sub">Marca préstamos que ya existían antes de la app</div>
+              </div>
+              <label class="toggle-sw">
+                <input type="checkbox" id="cfg-prestamoPrevio"
+                  data-modulo="prestamoPrevio">
+                <span class="slider"></span>
+              </label>
+            </div>
           </div>
           <div class="sec-title" style="margin-top:18px;">Categorías</div>
           <div class="card" style="padding:15px;">
@@ -3557,7 +3578,20 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);min-height:14px;margin-top:5px;"></div>
           </div>
         </div>
-
+        <!-- PRÉSTAMO ANTERIOR -->
+        <div id="mov_previo_wrap" style="display:none;">
+          <div class="form-divider"></div>
+          <div class="cfg-toggle" style="padding:0 0 12px;border-bottom:none;">
+            <div class="cfg-toggle-info">
+              <div class="cfg-toggle-label" style="font-size:13px;">¿Ya existía antes de la app?</div>
+              <div class="cfg-toggle-sub">No sumará al patrimonio al registrarlo</div>
+            </div>
+            <label class="toggle-sw">
+              <input type="checkbox" id="mov_es_previo">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
         <div class="ig"><label class="il" for="mov_nota">Nota
             (opcional)</label><input type="text" id="mov_nota"
             placeholder="Ej: para el arriendo"></div>
@@ -3952,6 +3986,37 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       </div>
     </div>
 
+    <!-- EDITAR SALDO INICIAL (APERTURA) -->
+    <div class="overlay" id="sheet-editar-apertura"
+      data-sheet-id="editar-apertura">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="eaTitle">Corregir saldo inicial</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:6px;">El saldo
+          inicial se actualiza y la diferencia se ajusta en tu cuenta
+          automaticamente. No cuenta como ingreso.</p>
+        <div
+          style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:8px;padding:10px 13px;margin-bottom:14px;">
+          <div
+            style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Saldo
+            inicial actual</div>
+          <div id="eaSaldoActual"
+            style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);">$0</div>
+        </div>
+        <div class="ig"><label class="il" for="eaMonto">Nuevo saldo
+            inicial</label>
+          <input type="text" inputmode="decimal" id="eaMonto" placeholder="0,00"
+            class="money-input"></div>
+        <div id="eaPreview"
+          style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
+        <button type="button" class="btn btn-primary"
+          id="btn-confirmar-editar-apertura"
+          style="background:var(--blue);color:#fff;border-color:transparent;box-shadow:0 2px 14px rgba(59,130,246,.35);">Actualizar
+          saldo inicial</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="editar-apertura">Cancelar</button>
+      </div>
+    </div>
     <!-- TRANSFERIR ENTRE CUENTAS -->
     <div class="overlay" id="sheet-transferir" data-sheet-id="transferir">
       <div class="sheet">
@@ -5314,6 +5379,25 @@ function load(){
   if(!S.personas)S.personas=[];
   if(!S.ingresosFijos)S.ingresosFijos=[];
   if(!S.misDeudas)S.misDeudas=[];
+  // Migración retroactiva: calcular el monto exacto de aperturas y ajustes de saldo inicial
+  // (incluyendo borrados de apertura, que generan un ajuste negativo en _ajustesBaseLog)
+  // por fecha en el historial de patrimonio que ya existía antes de este fix. Así la
+  // tendencia mensual descuenta solo esa parte del cambio del día y conserva cualquier
+  // ingreso real que haya ocurrido la misma fecha, sin tener que esperar a un nuevo snapshot.
+  if(S.patrimonioHistorial.length){
+    const montoAperturaPorFecha = {};
+    const sumarApertura=(m)=>{
+      if(m.tipo==='apertura'){ montoAperturaPorFecha[m.fecha]=(montoAperturaPorFecha[m.fecha]||0)+(m.monto||0); }
+      if(m._ajustes){ m._ajustes.forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); }); }
+    };
+    (S.movimientos||[]).forEach(sumarApertura);
+    (S.cuentasPersonalizadas||[]).forEach(c=>(c.movimientos||[]).forEach(sumarApertura));
+    (S._ajustesBaseLog||[]).forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); });
+    S.patrimonioHistorial.forEach(h=>{
+      if(montoAperturaPorFecha[h.fecha]&&montoAperturaPorFecha[h.fecha]!==0){ h.montoBase=montoAperturaPorFecha[h.fecha]; }
+      else { delete h.baseAjustada; } // limpiar flag de versión anterior del fix, si existe
+    });
+  }
   // Migrar cajitas antiguas al modelo multi-CDT (c.cdts = array)
   if(S.cajitas){
     S.cajitas=S.cajitas.map(c=>{
@@ -5470,7 +5554,8 @@ function calcPatrimonioTotal(){
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
   const nequi=S.nequiSaldo||0;
   const ef=S.efectivoSaldo||0;
-  const prest=(S.deudores||[]).reduce((a,d)=>{ const s=getDeudorSaldo(d); return a+(s>0?s:0); },0);
+  // Usar versión patrimonio: excluye préstamos _sinImpacto (preexistentes o sin fuente registrada)
+  const prest=(S.deudores||[]).reduce((a,d)=>{ const s=getDeudorSaldoPatrimonio(d); return a+(s>0?s:0); },0);
   const custom=(S.cuentasPersonalizadas||[]).filter(c=>c.incluirEnTotal).reduce((a,c)=>a+(c.saldo||0),0);
   const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
   // Lo que le debo a otras personas (S.misDeudas) — esa plata está físicamente en
@@ -5487,12 +5572,31 @@ function snapshotPatrimonio(){
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
   const val=calcPatrimonioTotal();
   if(val==null||isNaN(val))return;
+  // ¿Hoy se registró algún saldo inicial (cajita nueva, Nequi, Efectivo, cuenta personalizada)
+  // o se corrigió uno existente? La app ya sabe distinguir esto vía tipo:'apertura' (ver
+  // crearMovimientoApertura) y vía _ajustes (ver confirmarEditarApertura). Guardamos el
+  // MONTO exacto (no solo un flag) para que el cálculo de tendencia pueda restar únicamente
+  // esa parte del cambio del día y conservar cualquier ingreso real que haya ocurrido el
+  // mismo día (ej. apertura + mesada el mismo día).
+  const sumarAperturasYAjustesDeHoy = (movs)=> (movs||[]).reduce((a,m)=>{
+    let t = 0;
+    if(m.tipo==='apertura'&&m.fecha===hoyStr) t += (m.monto||0);
+    if(m._ajustes) t += m._ajustes.filter(aj=>aj.fecha===hoyStr).reduce((b,aj)=>b+(aj.monto||0),0);
+    return a+t;
+  },0);
+  const montoAperturaHoy =
+    sumarAperturasYAjustesDeHoy(S.movimientos)
+    + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+sumarAperturasYAjustesDeHoy(c.movimientos),0)
+    + (S._ajustesBaseLog||[]).filter(aj=>aj.fecha===hoyStr).reduce((a,aj)=>a+(aj.monto||0),0);
   const ultimo=S.patrimonioHistorial[S.patrimonioHistorial.length-1];
   if(ultimo&&ultimo.fecha===hoyStr){
     ultimo.valor=val;
+    if(montoAperturaHoy!==0)ultimo.montoBase=montoAperturaHoy; else delete ultimo.montoBase;
   }
   else{
-    S.patrimonioHistorial.push({fecha:hoyStr,valor:val});
+    const punto={fecha:hoyStr,valor:val};
+    if(montoAperturaHoy!==0)punto.montoBase=montoAperturaHoy;
+    S.patrimonioHistorial.push(punto);
   }
   if(S.patrimonioHistorial.length>365)S.patrimonioHistorial=S.patrimonioHistorial.slice(-365);
   // (No localStorage — Firebase lo guarda _fbSaveToCloud)
@@ -6374,12 +6478,22 @@ function renderAnalisis(){
     if(hist.length<2){
       patriEl.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:10px 0;">Se irá construyendo automáticamente cada vez que uses la app.<br><span style="font-size:10px;font-family:\'DM Mono\',monospace;opacity:.6;">Necesitas al menos 2 días de datos.</span></div>';
     } else {
-      const vals = hist.map(h => h.valor);
-      const maxV=Math.max(...vals);
-      const minV=Math.min(...vals);
+      // Construir serie de valores "reales" (sin los montos de saldo inicial/ajustes
+      // acumulados). Para cada punto reconstruimos cuánto saldo base acumulado hubo hasta
+      // ese día (montoBase: aperturas, correcciones y eliminaciones de saldo inicial — ver
+      // snapshotPatrimonio) y lo descontamos del valor, dejando solo el patrimonio
+      // ganado/perdido realmente. Así la gráfica no muestra picos verticales falsos al
+      // configurar una cuenta nueva, ni caídas falsas al corregir o borrar un saldo inicial.
+      let aperturaAcumulada = 0;
+      const valsReales = hist.map(h => {
+        aperturaAcumulada += (h.montoBase || 0);
+        return h.valor - aperturaAcumulada;
+      });
+      const maxV=Math.max(...valsReales);
+      const minV=Math.min(...valsReales);
       const rng=maxV-minV||1;
       const W=320,H=90,PAD=4;
-      const pts=vals.map((v,i)=>{
+      const pts=valsReales.map((v,i)=>{
         const px=PAD+i*(W-PAD*2)/(hist.length-1);
         const py=PAD+(1-(v-minV)/rng)*(H-PAD*2);
         return[px,py];
@@ -6388,9 +6502,14 @@ function renderAnalisis(){
       const areaPath='M '+pts[0][0]+','+H+' L '+pts.map(([x,y])=>x+','+y).join(' L ')+' L '+pts[pts.length-1][0]+','+H+' Z';
       const primero=hist[0];
       const ultimo2=hist[hist.length-1];
-      const diffTotal = vals[vals.length-1] - vals[0];
+      // diffTotal: cambio real de patrimonio en la ventana, calculado sobre la serie ya
+      // ajustada (valsReales) — no restando aperturas aparte del cambio crudo, porque eso
+      // doble-cuenta el montoBase del primer punto (que ya forma parte de "primero.valor").
+      const primeroReal = valsReales[0];
+      const ultimoReal = valsReales[valsReales.length-1];
+      const diffTotal = ultimoReal - primeroReal;
       const diffColor=diffTotal>=0?'var(--accent)':'var(--red)';
-      const diffPct = vals[0]!==0 ? (diffTotal/Math.abs(vals[0])*100) : 0;
+      const diffPct = primeroReal!==0 ? (diffTotal/Math.abs(primeroReal)*100) : 0;
       patriEl.innerHTML=`
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
           <div>
@@ -6416,7 +6535,7 @@ function renderAnalisis(){
             <line id="_pat-line" x1="0" y1="0" x2="0" y2="${H}" stroke="${diffColor}" stroke-width="1" stroke-dasharray="3,3" opacity="0" style="pointer-events:none;"/>
           </svg>
           <div id="_pat-tt" style="display:none;position:absolute;top:0;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:8px 12px;font-family:'DM Mono',monospace;pointer-events:none;z-index:50;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.8);transform:translateX(-50%);"></div>
-          <div id="_pat-overlay" style="position:absolute;inset:0;cursor:crosshair;" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:vals[i],valorReal:hist[i].valor})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
+          <div id="_pat-overlay" style="position:absolute;inset:0;cursor:crosshair;" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:valsReales[i],valorReal:hist[i].valor})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:4px;">
           <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${primero.fecha.slice(5)}</span>
@@ -7777,6 +7896,13 @@ function addDeudor() {
 function getDeudorSaldo(d) {
   return (d.movimientos || []).reduce((a, m) => m.tipo === 'prestamo' ? a + m.monto : a - m.monto, 0);
 }
+// Saldo que SÍ impacta el patrimonio: excluye préstamos marcados como _sinImpacto
+function getDeudorSaldoPatrimonio(d) {
+  return (d.movimientos || []).reduce((a, m) => {
+    if (m.tipo === 'prestamo') return m._sinImpacto ? a : a + m.monto;
+    return a - m.monto; // abonos siempre reducen
+  }, 0);
+}
 
 function renderDeudoresList() {
   const el = document.getElementById('deudoresList');
@@ -7888,7 +8014,7 @@ function abrirDeudor(id) {
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : 'Pago'}</span>
-
+              ${m._sinImpacto ? `<span style="background:rgba(96,176,240,.1);color:var(--blue);border:1px solid rgba(96,176,240,.25);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">Anterior · sin impacto</span>` : ''}
               ${m._gananciaVirtual ? `<span style="background:rgba(200,240,96,.15);color:var(--accent);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">💰 Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
               ${m._viaTC ? `<span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
               ${m.nota ? `<span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
@@ -8081,6 +8207,12 @@ function initMovSheet(tipo) {
   document.getElementById('mov_dest_split_resumen').textContent = '';
   document.getElementById('mov_btn_origen').style.display = 'none';
   document.getElementById('mov_origen_tags').innerHTML = '';
+  // Toggle préstamo previo — solo visible en préstamos y si el módulo está activo
+  const previoWrap = document.getElementById('mov_previo_wrap');
+  const previoChk  = document.getElementById('mov_es_previo');
+  const modPrevio  = !!(S.modulos && S.modulos.prestamoPrevio);
+  if (previoWrap) previoWrap.style.display = (esPrestamo && modPrevio) ? '' : 'none';
+  if (previoChk)  previoChk.checked = false;
   // Reset extra (sistema de partes libres)
   _extPartes = [];
   document.getElementById('mov_tiene_extra').checked = false;
@@ -8139,6 +8271,7 @@ function confirmarMovimiento() {
   const nota  = document.getElementById('mov_nota').value.trim();
 
   if (movTipo === 'prestamo') {
+    const _esPrevio = !!(document.getElementById('mov_es_previo') && document.getElementById('mov_es_previo').checked);
     if (_prestSplitMode) {
       const totalSplit = _prestSplitRows.reduce((a,r)=>a+(r.monto||0),0);
       if(Math.abs(totalSplit - monto) > 1){
@@ -8148,10 +8281,10 @@ function confirmarMovimiento() {
       const fuentes = _prestSplitRows.filter(r=>r.monto>0);
       fuentes.forEach(r=>{ if(r.fuente) descontarFuente(r.fuente, r.monto); });
       const _gananciaVirtual = fuentes.filter(r=>r.fuente==='ganancia').reduce((a,r)=>a+r.monto,0);
-      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota, _gananciaVirtual: _gananciaVirtual||undefined, ts: Date.now() });
+      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota, _gananciaVirtual: _gananciaVirtual||undefined, _sinImpacto: _esPrevio||undefined, ts: Date.now() });
     } else {
       const fuente = document.getElementById('mov_fuente').value;
-      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota, ts: Date.now() });
+      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota, _sinImpacto: _esPrevio||undefined, ts: Date.now() });
       descontarFuente(fuente, monto);
     }
 
@@ -10077,7 +10210,7 @@ function showScreen(name){
 }
 
 function applyModulos(){
-  const mod=S.modulos||{mesada:true,spotify:true};
+  const mod=S.modulos||{mesada:true,spotify:true,corregirSaldo:true};
   // Spotify nav tab
   const navSp=document.getElementById('nav-spotify');
   if(navSp)navSp.style.display=mod.spotify?'':'none';
@@ -10087,16 +10220,35 @@ function applyModulos(){
   // Update config toggles
   const cfgMesada=document.getElementById('cfg-mesada');
   const cfgSpotify=document.getElementById('cfg-spotify');
+  const cfgCorregirSaldo=document.getElementById('cfg-corregirSaldo');
+  const cfgPrestamoPrevio=document.getElementById('cfg-prestamoPrevio');
   if(cfgMesada)cfgMesada.checked=!!mod.mesada;
   if(cfgSpotify)cfgSpotify.checked=!!mod.spotify;
+  if(cfgCorregirSaldo)cfgCorregirSaldo.checked=(mod.corregirSaldo!==false);
+  if(cfgPrestamoPrevio)cfgPrestamoPrevio.checked=!!mod.prestamoPrevio;
   // If currently on spotify screen and it's disabled, go to inicio
   if(!mod.spotify&&document.getElementById('screen-spotify').classList.contains('active')){
     showScreen('inicio');
   }
+  // Mostrar u ocultar banners de saldo inicial completos
+  const mostrarBanners=(mod.corregirSaldo!==false);
+  ['nequi','efectivo'].forEach(f=>{
+    const b=document.getElementById('banner-apertura-'+f);
+    if(b)b.style.display=mostrarBanners?'':'none';
+  });
+  // Ocultar el toggle "Es saldo inicial" en el sheet de agregar dinero
+  const adAperturaWrap=document.getElementById('adAperturaWrap');
+  if(adAperturaWrap)adAperturaWrap.style.display=mostrarBanners?'flex':'none';
+  // Ocultar el toggle "Es saldo inicial" en el sheet de registrar mesada
+  const mpAperturaWrap=document.getElementById('mpAperturaWrap');
+  if(mpAperturaWrap)mpAperturaWrap.style.display=mostrarBanners?'flex':'none';
+  // Ocultar el toggle "Es saldo inicial" en el sheet de Nu (entra plata)
+  const nuMovAperturaWrap=document.getElementById('nuMovAperturaWrap');
+  if(nuMovAperturaWrap&&!mostrarBanners)nuMovAperturaWrap.style.display='none';
 }
 
 function toggleModulo(nombre){
-  if(!S.modulos)S.modulos={mesada:true,spotify:true};
+  if(!S.modulos)S.modulos={mesada:true,spotify:true,corregirSaldo:true};
   const el=document.getElementById('cfg-'+nombre);
   S.modulos[nombre]=el?el.checked:!S.modulos[nombre];
   save();applyModulos();
@@ -10170,6 +10322,8 @@ function renderDetalleCuenta(tipo) {
   if (tipo === 'nequi') {
     const saldo = S.nequiSaldo || 0;
     document.getElementById('det-nequi-saldo').textContent = fmt(saldo);
+    // Banner saldo inicial Nequi
+    renderBannerApertura('nequi');
     // Encargos en Nequi
     renderEncargosEnCuenta('det-nequi-encargos', 'nequi');
     // Movimientos relacionados con Nequi
@@ -10186,6 +10340,8 @@ function renderDetalleCuenta(tipo) {
   } else if (tipo === 'efectivo') {
     const saldo = S.efectivoSaldo || 0;
     document.getElementById('det-ef-saldo').textContent = fmt(saldo);
+    // Banner saldo inicial Efectivo
+    renderBannerApertura('efectivo');
     // Encargos en Efectivo
     renderEncargosEnCuenta('det-ef-encargos', 'efectivo');
     const movs = getMovimientosCuenta('efectivo');
@@ -11064,11 +11220,23 @@ async function eliminarMovimiento(btn) {
       const fuente = m.fuente || fuenteOrigen;
       if (fuente) descontarFuente(fuente, m.monto);
       else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto);
+      // Si era una apertura (saldo inicial), el descuento de saldo de HOY no es una
+      // pérdida real — es la reversión de una base. Lo registramos en un log aparte
+      // (sobrevive al borrado del movimiento original) para que snapshotPatrimonio()
+      // lo siga descontando del cambio del día y no se cuente como pérdida en la tendencia.
+      if (m.tipo === 'apertura') {
+        if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
+        S._ajustesBaseLog.push({ fecha: hoy(), monto: -(m.monto||0) });
+      }
       S.movimientos = S.movimientos.filter(x => x.id !== movId);
     } else if (fuenteOrigen && monto > 0) {
       // El movimiento no está en S.movimientos (migración antigua) pero tenemos
       // los datos del DOM — revertir directamente con los data-attributes.
       descontarFuente(fuenteOrigen, monto);
+      if (movTipoEl === 'apertura') {
+        if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
+        S._ajustesBaseLog.push({ fecha: hoy(), monto: -monto });
+      }
     }
   } else if (movTipoEl === 'salida_manual') {
     // Fue una salida manual (S.movimientos tipo 'salida_manual')
@@ -11301,8 +11469,105 @@ function confirmarAgregarDineroMenu(){
 }
 
 
+/* ---- SALDO INICIAL / APERTURA ---- */
+let _eaFuente=''; // 'nequi' | 'efectivo'
 
+function getAperturaMov(fuente){
+  // Busca el movimiento de apertura de S.movimientos para nequi/efectivo
+  return (S.movimientos||[]).find(m=>m.fuente===fuente&&m.tipo==='apertura');
+}
 
+function renderBannerApertura(fuente){
+  const elId='banner-apertura-'+fuente;
+  const el=document.getElementById(elId);
+  if(!el)return;
+  const mov=getAperturaMov(fuente);
+  const colorMap={nequi:'#ff4da6',efectivo:'var(--amber)'};
+  const color=colorMap[fuente]||'var(--blue)';
+  if(mov){
+    // Ya tiene saldo inicial — mostrar chip con valor y botón editar discreto
+    el.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:9px;padding:9px 13px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:2px;">Saldo inicial registrado</div>
+        <div style="font-size:15px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(mov.monto)}</div>
+      </div>
+      <button type="button" onclick="abrirEditarApertura('${fuente}')" style="background:none;border:1px solid rgba(96,176,240,.3);border-radius:7px;color:var(--blue);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Corregir</button>
+    </div>`;
+  } else {
+    // No tiene saldo inicial — mostrar botón para registrarlo
+    el.innerHTML=`<div style="margin-bottom:12px;">
+      <button type="button" onclick="abrirRegistrarApertura('${fuente}')" style="width:100%;padding:11px;background:rgba(96,176,240,.07);border:1.5px dashed rgba(96,176,240,.35);border-radius:9px;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Registrar saldo inicial
+      </button>
+      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:5px;">Plata que ya tenías antes de usar la app</div>
+    </div>`;
+  }
+}
+
+function abrirRegistrarApertura(fuente){
+  // Abre el sheet normal de agregar dinero con el toggle de apertura ya marcado
+  const nombreMap={nequi:'Nequi',efectivo:'Efectivo'};
+  abrirAgregarDinero(fuente, nombreMap[fuente]);
+  // Forzar toggle activo después de que abra
+  setTimeout(()=>{
+    const chk=document.getElementById('adEsApertura');
+    if(chk&&!chk.checked){
+      chk.checked=true;
+      toggleAdApertura();
+    }
+  },120);
+}
+
+function abrirEditarApertura(fuente){
+  _eaFuente=fuente;
+  const mov=getAperturaMov(fuente);
+  const actual=mov?mov.monto:0;
+  const nombreMap={nequi:'Nequi',efectivo:'Efectivo'};
+  document.getElementById('eaTitle').textContent='Corregir saldo inicial · '+nombreMap[fuente];
+  document.getElementById('eaSaldoActual').textContent=fmt(actual);
+  document.getElementById('eaMonto').value='';
+  document.getElementById('eaPreview').textContent='';
+  openSheet('editar-apertura');
+  setTimeout(()=>document.getElementById('eaMonto').focus(),200);
+}
+
+function confirmarEditarApertura(){
+  const nuevo=parseMoney(document.getElementById('eaMonto').value)||0;
+  if(!nuevo){toast('Ingresa el nuevo saldo inicial','err');return;}
+  const mov=getAperturaMov(_eaFuente);
+  const anterior=mov?mov.monto:0;
+  const diff=nuevo-anterior;
+  if(diff===0){toast('El valor es igual al actual','err');return;}
+  // Ajustar saldo de la cuenta por la diferencia
+  if(diff>0) sumarFuente(_eaFuente,diff);
+  else descontarFuente(_eaFuente,Math.abs(diff));
+  // Actualizar o crear el movimiento de apertura
+  if(mov){
+    mov.monto=nuevo;
+    // No cambiamos mov.fecha (preserva la fecha original de creación de la cuenta),
+    // pero registramos cuándo y por cuánto se ajustó: snapshotPatrimonio() usa esto
+    // para que el cambio de patrimonio de HOY (el día de la corrección) también se
+    // reste del cálculo de tendencia, igual que una apertura nueva.
+    mov._ajustes=mov._ajustes||[];
+    mov._ajustes.push({fecha:hoy(),monto:diff});
+  } else {
+    if(!S.movimientos)S.movimientos=[];
+    const movNuevo=crearMovimientoApertura(nuevo,hoy(),'Saldo inicial');
+    movNuevo.fuente=_eaFuente;
+    S.movimientos.push(movNuevo);
+  }
+  save();refresh();
+  closeSheet('editar-apertura');
+  toast('Saldo inicial actualizado a '+fmt(nuevo),'ok');
+}
+
+document.addEventListener('input',function(e){
+  if(e.target.id==='eaMonto'){
+    const mov=getAperturaMov(_eaFuente);
+    const anterior=mov?mov.monto:0;
+    const nuevo=parseMoney(e.target.value)||0;
+    const prev=document.getElementById('eaPreview');
     if(nuevo>0){
       const diff=nuevo-anterior;
       const signo=diff>=0?'+':'';
@@ -11340,9 +11605,10 @@ function abrirNuMovimiento(tipo) {
     btnConf.style.boxShadow = esEntrada ? '0 2px 14px rgba(192,96,240,.3)' : '0 2px 14px rgba(240,104,104,.3)';
   }
 
-  // Ocultar toggle apertura en salida
+  // Ocultar toggle apertura en salida, y también si la config lo desactiva
   const aperturaWrap = document.getElementById('nuMovAperturaWrap');
-  if (aperturaWrap) aperturaWrap.style.display = esEntrada ? 'flex' : 'none';
+  const _mostrarApertura = esEntrada && (S.modulos?.corregirSaldo !== false);
+  if (aperturaWrap) aperturaWrap.style.display = _mostrarApertura ? 'flex' : 'none';
   const chk = document.getElementById('nuMovEsApertura');
   if (chk) chk.checked = false;
 
@@ -11895,6 +12161,8 @@ function _initEventListeners() {
   if (btnAdMenuConf) btnAdMenuConf.addEventListener('click', confirmarAgregarDineroMenu);
   const btnRdConf = document.getElementById('btn-confirmar-restar');
   if (btnRdConf) btnRdConf.addEventListener('click', confirmarRestarDinero);
+  const btnEaConf = document.getElementById('btn-confirmar-editar-apertura');
+  if (btnEaConf) btnEaConf.addEventListener('click', confirmarEditarApertura);
   const btnTrConf = document.getElementById('btn-confirmar-transferir');
   if (btnTrConf) btnTrConf.addEventListener('click', confirmarTransferir);
   const btnSwitchTr = document.getElementById('btn-switch-to-transferir');
@@ -15515,19 +15783,33 @@ document.addEventListener('focusin', function(e){
     const patrimonio = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
     if(!patrimonio){ el.innerHTML = '<div class="row"><span style="font-size:12px;color:var(--text3);">Sin datos suficientes</span></div>'; return; }
 
-    // ── Tendencia mensual: crecimiento real del patrimonio ──
-    // cambio día a día reflejado directamente en el historial de patrimonio.
+    // ── Tendencia mensual: única fuente de verdad = crecimiento real del patrimonio ──
+    // crecimiento real = cambio de patrimonio día a día, restando exactamente el monto
+    // que correspondió a saldos iniciales o ajustes de base ese día (montoBase, ver
+    // snapshotPatrimonio). No se usan ingresos/gastos registrados por separado: cualquier
+    // cambio real de patrimonio (ingreso, gasto, interés de cajita, rendimiento, pérdida)
+    // ya queda reflejado aquí, sin depender de si el usuario registró un movimiento formal.
+    // Transferencias entre cuentas propias y préstamos a terceros no afectan el patrimonio
+    // total, así que tampoco distorsionan este cálculo.
     const hist = (S.patrimonioHistorial||[]).slice(-90);
     let tendenciaMensual = 0;
     let historialInsuficiente = false;
+    // Niveles: 'insuficiente' | 'preliminar' | 'normal' | 'estable'
     let nivelConfianza = 'insuficiente';
+
+    // Mínimo de separación temporal real para confiar en una proyección. Con menos días,
+    // un solo movimiento grande se extrapola de forma absurda.
     const MIN_DIAS_PARA_TENDENCIA = 7;
-    let diasReales = 0;
+
+    let diasReales = 0; // declarado en scope externo para usarlo en el template del footer
     if(hist.length >= 2){
+      // Construir array de tasas de cambio diarias normalizadas (COP/día)
+      // para poder aplicar trimmed mean y eliminar outliers extremos.
       const tasasDiarias = [];
       for(let i=1;i<hist.length;i++){
         const diasEntre = Math.max(1, Math.round((new Date(hist[i].fecha) - new Date(hist[i-1].fecha))/86400000));
-        const cambioDelDia = hist[i].valor - hist[i-1].valor;
+        const cambioDelDia = (hist[i].valor - hist[i-1].valor) - (hist[i].montoBase||0);
+        // Normalizar a COP/día para que días con gaps largos no distorsionen el promedio
         tasasDiarias.push(cambioDelDia / diasEntre);
         diasReales += diasEntre;
       }

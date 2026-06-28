@@ -21136,6 +21136,69 @@ function _fmtTiempo(dias){
   const m=Math.round(dias/30); return m+(m===1?' mes':' meses');
 }
 
+/* ─── DESGLOSE DE ORIGEN ─────────────────────────────────────────────────── */
+/**
+ * Genera el HTML del desglose de origen de los depósitos de una alcancía.
+ * @param {Array} movimientos  - Array de movimientos de la alcancía
+ * @param {Function} fmtFn     - Función de formateo de moneda
+ * @returns {string} HTML del desglose (vacío si no hay movimientos)
+ */
+function _alcDesgloseHtml(movimientos, fmtFn){
+  if(!movimientos || !movimientos.length) return '';
+  const f = typeof fmtFn === 'function' ? fmtFn : v => '$' + Math.round(v).toLocaleString('es-CO');
+
+  // Acumular por categoría
+  let yo         = 0; // yo-directo + yo-cuenta + tu parte del split (sin fuente o con fuente)
+  let mandado    = 0; // tipo === 'mandado'
+  let regalo     = 0; // tipo === 'regalo'
+  let mama       = 0; // parte de mamá en splits
+  let splitTotal = 0; // splits completos (para no doble contar)
+
+  movimientos.forEach(m => {
+    const tipo = m.tipo || '';
+    const monto = m.monto || 0;
+    if(tipo === 'yo-directo' || tipo === 'yo-cuenta'){
+      yo += monto;
+    } else if(tipo === 'mandado'){
+      mandado += monto;
+    } else if(tipo === 'regalo'){
+      regalo += monto;
+    } else if(tipo === 'split'){
+      const splitYo   = m._splitYo   || 0;
+      const splitMama = m._splitMama || 0;
+      yo   += splitYo;
+      mama += splitMama;
+    }
+  });
+
+  // Construir filas sólo con montos > 0
+  const iconYo      = '💰';
+  const iconMandado = '🛵';
+  const iconRegalo  = '🎁';
+  const iconMama    = '👩';
+
+  const filas = [];
+  if(yo > 0)      filas.push({ icon: iconYo,      label: 'Ahorrado con mi propio dinero',    monto: yo      });
+  if(mandado > 0) filas.push({ icon: iconMandado,  label: 'Dinero recibido por hacer mandados', monto: mandado });
+  if(regalo > 0)  filas.push({ icon: iconRegalo,   label: 'Dinero que me regalaron',           monto: regalo  });
+  if(mama > 0)    filas.push({ icon: iconMama,     label: 'Aporte de mamá (split)',             monto: mama    });
+
+  if(!filas.length) return '';
+
+  const filasHtml = filas.map(row => `
+    <div class="row" style="margin-bottom:5px;align-items:center;gap:6px;">
+      <span style="font-size:14px;flex-shrink:0;">${row.icon}</span>
+      <span style="font-size:11px;color:var(--text3);flex:1;min-width:0;">${row.label}</span>
+      <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--amber);flex-shrink:0;">${f(row.monto)}</span>
+    </div>`).join('');
+
+  return `
+  <div class="card card-sm" style="margin-top:10px;padding:12px 14px;background:rgba(240,184,64,.04);border-color:rgba(240,184,64,.15);">
+    <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">📊 Origen del dinero acumulado</div>
+    ${filasHtml}
+  </div>`;
+}
+
 /* ─── TIPO ORIGEN TOGGLE ─────────────────────────────────────────────────── */
 function _alcanciaActualizarTipo(){
   const tipo = (document.getElementById('alc_dep_tipo')||{}).value || 'yo-directo';
@@ -21580,10 +21643,14 @@ window.renderAlcancia = function(){
             : dif > 0 ? '+' + (typeof fmt==='function'?fmt(dif):dif)
             : '−' + (typeof fmt==='function'?fmt(Math.abs(dif)):Math.abs(dif));
           const difColor = Math.abs(dif) < 1 ? 'var(--text3)' : dif > 0 ? 'var(--accent)' : 'var(--red)';
+          const histIdx = hist.length - i; // número de alcancía (1-based, más reciente = mayor)
+          const desgloseId = 'alc-hist-desglose-' + histIdx;
+          const desgloseFmt = typeof fmt === 'function' ? fmt : v => '$' + Math.round(v).toLocaleString('es-CO');
+          const desgloseHtml = _alcDesgloseHtml(h.movimientos || [], desgloseFmt);
           return `
           <div class="card card-sm" style="margin-bottom:8px;">
             <div class="row" style="margin-bottom:6px;">
-              <span style="font-size:12px;font-weight:700;color:var(--text);">Alcancía #${hist.length - i}</span>
+              <span style="font-size:12px;font-weight:700;color:var(--text);">Alcancía #${histIdx}</span>
               <span style="font-size:11px;color:var(--text3);">${h.fechaInicio||''} → ${h.fechaFin||''}</span>
             </div>
             <div class="row" style="margin-bottom:4px;">
@@ -21606,20 +21673,14 @@ window.renderAlcancia = function(){
               <span style="font-size:11px;color:var(--text3);">Diferencia</span>
               <span style="font-size:12px;font-family:'DM Mono',monospace;color:${difColor};">${difFmt}</span>
             </div>
-            ${(() => {
-              // Calcular cuánto puso mamá en esta alcancía destapada
-              const movs = h.movimientos || [];
-              let totalMama = 0;
-              movs.forEach(m => {
-                if(m.tipo === 'regalo' || m.tipo === 'mandado') totalMama += (m.monto || 0);
-                if(m.tipo === 'split' && m._splitMama) totalMama += m._splitMama;
-              });
-              if(totalMama < 1) return '';
-              return `<div class="row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">
-                <span style="font-size:11px;color:var(--text3);">Aportó tu mamá</span>
-                <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--amber);">${typeof fmt==='function'?fmt(totalMama):'$'+totalMama}</span>
-              </div>`;
-            })()}
+            ${desgloseHtml ? `
+            <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">
+              <button type="button" onclick="(function(btn){var el=document.getElementById('${desgloseId}');if(!el)return;var open=el.style.display!=='none';el.style.display=open?'none':'';btn.querySelector('.alc-hist-chevron').style.transform=open?'':'rotate(180deg)';})(this)" style="display:flex;align-items:center;gap:5px;background:none;border:none;padding:0;cursor:pointer;color:var(--amber);font-size:11px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;width:100%;">
+                <span>📊 Ver origen del dinero</span>
+                <svg class="alc-hist-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div id="${desgloseId}" style="display:none;margin-top:4px;">${desgloseHtml}</div>
+            </div>` : ''}
           </div>`;
         }).join('');
       }
@@ -22031,6 +22092,7 @@ window.alcanciaConfirmarDestapar = function(){
         </div>
       </div>
       <div style="font-size:12px;color:${difMsgColor};padding:8px 12px;background:${Math.abs(dif)<1?'rgba(255,255,255,.04)':dif>0?'rgba(200,240,96,.06)':'rgba(240,104,104,.06)'};border-radius:var(--radius-sm);margin-bottom:4px;">${difMsg}</div>
+      ${_alcDesgloseHtml(a.movimientos, fmt2)}
       ${comparHtml}`;
   }
 

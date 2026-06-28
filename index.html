@@ -21494,7 +21494,9 @@ openSheet = function(id){
 /* ─── RENDER PANTALLA ───────────────────────────────────────────────────── */
 window.renderAlcancia = function(){
   const a = _getA();
-  const activa = !!(a && (a.fechaInicio || a.depositos > 0 || a.saldoRegistrado > 0));
+  // Una alcancía destapada pero no reiniciada se trata como "no activa"
+  // para que la pantalla principal no muestre una alcancía fantasma vacía.
+  const activa = !!(a && !a._destapada && (a.fechaInicio || a.depositos > 0 || a.saldoRegistrado > 0));
 
   const elNoIniciada = document.getElementById('alcancia-no-iniciada');
   const elActiva     = document.getElementById('alcancia-activa');
@@ -21632,6 +21634,7 @@ window.alcanciaIniciarNueva = function(){
   a.fechaInicio = (typeof hoy==='function'?hoy():new Date().toISOString().slice(0,10));
   a.movimientos = [];
   if(!a.historial) a.historial = [];
+  delete a._destapada;
   _setSaldoOfuscado(0);
   if(typeof save==='function') save();
   if(typeof closeSheet==='function') closeSheet('alcancia-resultado');
@@ -22027,12 +22030,10 @@ window.alcanciaConfirmarDestapar = function(){
       ${comparHtml}`;
   }
 
-  // ── Resetear alcancía para la siguiente
-  a.saldoRegistrado = 0;
-  a.depositos = 0;
-  a.fechaInicio = hoyStr;
-  a.movimientos = [];
-  _setSaldoOfuscado(0);
+  // ── Marcar la alcancía como destapada (sin iniciar una nueva automáticamente)
+  // El reset real ocurre solo cuando el usuario elige "Iniciar nueva alcancía".
+  // Si pulsa "Cerrar", la alcancía queda en estado _destapada hasta que decida.
+  a._destapada = true;
 
   // ── Sincronizar DOM antes de save() ─────────────────────────────────────
   // _sumarASaldo actualiza S.nequiSaldo y S.efectivoSaldo directamente,

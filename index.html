@@ -950,10 +950,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             <div id="alcancia-movimientos-lista" style="margin-bottom:18px;">
               <div class="feed-empty">Aún no hay movimientos en esta alcancía.</div>
             </div>
-            <div class="sec-title">Historial de alcancías</div>
-            <div id="alcancia-historial-lista">
-              <div class="feed-empty">Aún no has destapado ninguna alcancía.</div>
-            </div>
+          </div>
+          <div class="sec-title" id="alcancia-historial-titulo" style="margin-top:4px;">Historial de alcancías</div>
+          <div id="alcancia-historial-lista">
+            <div class="feed-empty">Aún no has destapado ninguna alcancía.</div>
           </div>
         </div>
 
@@ -21562,11 +21562,15 @@ window.renderAlcancia = function(){
         }).join('');
       }
     }
+  }
 
-    // Historial de alcancías destapadas
-    const listaEl = document.getElementById('alcancia-historial-lista');
+  // ── Historial de alcancías destapadas (siempre visible, haya o no alcancía activa)
+  if(a){
+    const listaEl  = document.getElementById('alcancia-historial-lista');
+    const tituloEl = document.getElementById('alcancia-historial-titulo');
     if(listaEl){
       const hist = a.historial || [];
+      if(tituloEl) tituloEl.style.display = hist.length ? '' : 'none';
       if(!hist.length){
         listaEl.innerHTML = '<div class="feed-empty">Aún no has destapado ninguna alcancía.</div>';
       } else {

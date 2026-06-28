@@ -5247,7 +5247,7 @@ function getFuentesSinTC(){
 
 function fuenteLabel(val){
   if(!val)return'Sin especificar';
-  if(val==='ganancia')return'💰 Ganancia (no desembolsada)';
+  if(val==='ganancia')return'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no desembolsada)';
   if(val==='nequi')return'Nequi';
   if(val==='efectivo')return'Efectivo';
   if(val.startsWith('cajita:')){
@@ -6765,7 +6765,7 @@ function _renderPrestSplit(){
   const el = document.getElementById('mov_split_rows');
   if(!el) return;
   const fuentes = getFuentes();
-  const opts = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('') + '<option value="ganancia">💰 Ganancia (no salió plata)</option>';
+  const opts = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('') + '<option value="ganancia"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>';
   el.innerHTML = _prestSplitRows.map((r,i)=>`
     <div class="prest-split-row">
       <div class="select-wrap" style="flex:1;"><select onchange="_prestSplitRows[${i}].fuente=this.value;_updatePrestSplitResumen()" style="font-size:13px;">${opts.replace(`value="${r.fuente}"`,`value="${r.fuente}" selected`)}</select></div>
@@ -6796,7 +6796,7 @@ function _updatePrestSplitResumen(){
   const gananciaTotal = _prestSplitRows.filter(r=>r.fuente==='ganancia').reduce((a,r)=>a+(r.monto||0),0);
   if(gananciaTotal>0){
     impactos.push(`<div style="padding:7px 9px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.25);border-radius:7px;margin-top:5px;">
-      <div style="font-size:11px;color:var(--accent);">💰 ${fmt(gananciaTotal)} de este préstamo es <b>ganancia tuya</b> que aún no recibiste — no se descuenta de ninguna cuenta. Cuando te paguen el préstamo completo, esa parte se sumará como ganancia.</div>
+      <div style="font-size:11px;color:var(--accent);"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> ${fmt(gananciaTotal)} de este préstamo es <b>ganancia tuya</b> que aún no recibiste — no se descuenta de ninguna cuenta. Cuando te paguen el préstamo completo, esa parte se sumará como ganancia.</div>
     </div>`);
   }
   _prestSplitRows.forEach(r=>{
@@ -7993,7 +7993,7 @@ function abrirDeudor(id) {
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : 'Pago'}</span>
-              ${m._gananciaVirtual ? `<span style="background:rgba(200,240,96,.15);color:var(--accent);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">💰 Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
+              ${m._gananciaVirtual ? `<span style="background:rgba(200,240,96,.15);color:var(--accent);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
               ${m._viaTC ? `<span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
               ${m.nota ? `<span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
             </div>
@@ -11149,7 +11149,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
       </div>
       <div class="gasto-item-meta">
         <span class="badge ${bgLabel}" style="font-size:9px;">${escHtml(tipoLabel)}</span>
-        ${m._origen === 'Alcancía oculta' ? `<span class="badge" style="font-size:9px;background:rgba(240,184,64,.18);color:var(--amber);border:none;">🔒 Alcancía</span>` : ''}
+        ${m._origen === 'Alcancía oculta' ? `<span class="badge" style="font-size:9px;background:rgba(240,184,64,.18);color:var(--amber);border:none;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
         ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?`<span class="badge bg-nu" style="font-size:9px;">${escHtml(cn)}</span>`:''; })()}
         ${m.cat ? `<span class="badge bg-blue" style="font-size:9px;">${escHtml(m.cat)}</span>` : ''}
         ${m.nota ? `<span style="font-size:10px;color:var(--text3);">${escHtml(m.nota)}</span>` : ''}
@@ -15827,7 +15827,7 @@ document.addEventListener('focusin', function(e){
 
     el.innerHTML = historialInsuficiente ? `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:2px 0;">
-        <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;">ⓘ</span></span>
+        <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
         <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text3);">—</span>
       </div>
       <div style="text-align:center;background:var(--bg3);border-radius:8px;padding:16px 10px;">
@@ -15836,7 +15836,7 @@ document.addEventListener('focusin', function(e){
       ${deudaInfo}
     ` : `
       <div id="_proy-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer;padding:2px 0;" data-tendencia="${tendenciaMensual}">
-        <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;">ⓘ</span></span>
+        <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
         <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${col};">${tendenciaMensual>=0?'+':''}${fmt(tendenciaMensual)}</span>
       </div>
       <div id="_proy-cards-wrap" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:relative;">
@@ -17329,7 +17329,7 @@ function abrirPagarTC(tcId){
     if(minimoYaPagado){
       opts.push({
         label:'Pago mínimo',
-        sublabel:'Ya cubierto este período ✓',
+        sublabel:'Ya cubierto este período <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 6 9 17 4 12"/></svg>',
         val:0,
         disabled:true,
         color:'var(--accent)'
@@ -17436,10 +17436,10 @@ function ptcActualizarPreview(){
       hintEl.textContent='Mínimo cubierto — ingresa lo que quieras pagar';
       hintEl.style.color='var(--accent)';
     } else if(monto>0 && monto<minimoRestante){
-      hintEl.textContent='⚠ Debes pagar al menos '+fmt(minimoRestante);
+      hintEl.textContent='<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Debes pagar al menos '+fmt(minimoRestante);
       hintEl.style.color='var(--red)';
     } else if(monto>=minimoRestante && minimoRestante>0){
-      hintEl.textContent='✓ Supera el mínimo pendiente ('+fmt(minimoRestante)+')';
+      hintEl.textContent='<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 6 9 17 4 12"/></svg> Supera el mínimo pendiente ('+fmt(minimoRestante)+')';
       hintEl.style.color='var(--accent)';
     } else {
       hintEl.textContent='Mínimo pendiente: '+fmt(minimoRestante)+' — no pagues menos';
@@ -19778,13 +19778,13 @@ window._cpEliminar = async function(id){
   // Construir mensaje de advertencia con el detalle de lo que se revertirá
   let advertencia = '¿Eliminar «' + item.desc + '»?';
   if(yaRecibido){
-    advertencia += '\n\n⚠️ Este ingreso ya fue marcado como recibido. Al eliminarlo se revertirán todos los movimientos generados (reposiciones en cuentas, entradas en cajitas) y las compras de TC asociadas.';
+    advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Este ingreso ya fue marcado como recibido. Al eliminarlo se revertirán todos los movimientos generados (reposiciones en cuentas, entradas en cajitas) y las compras de TC asociadas.';
   } else {
     if(hayAdelantos){
-      advertencia += '\n\n⚠️ Hay plata adelantada de tus cuentas. Al eliminar se revertirán esos descuentos y quedarán como si nunca se hubieron hecho.';
+      advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Hay plata adelantada de tus cuentas. Al eliminar se revertirán esos descuentos y quedarán como si nunca se hubieron hecho.';
     }
     if(hayTcMarcada){
-      advertencia += '\n\n⚠️ Hay gastos marcados como cargados a TC. Al eliminar se revertirá la deuda sumada a la tarjeta.';
+      advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Hay gastos marcados como cargados a TC. Al eliminar se revertirá la deuda sumada a la tarjeta.';
     }
     if(!hayAdelantos && !hayTcMarcada){
       advertencia += '\n\nEste ingreso no ha generado movimientos — se puede eliminar sin efectos secundarios.';
@@ -19901,7 +19901,7 @@ window._cpEliminar = async function(id){
   save();
   if(typeof refresh==='function') refresh();
   _cpRenderLista();
-  toast('Ingreso eliminado y efectos revertidos ✓','ok');
+  toast('Ingreso eliminado y efectos revertidos <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 6 9 17 4 12"/></svg>','ok');
 };
 
 /* ── INTEGRACIÓN CON renderAttencion ────────────────────────────── */
@@ -21238,11 +21238,11 @@ function _inyectarAlcanciaSheets(){
         <label class="il">¿De dónde viene este dinero?</label>
         <div class="select-wrap">
           <select id="alc_dep_tipo">
-            <option value="yo-directo">💰 Lo tenía yo (no sale de ninguna cuenta)</option>
-            <option value="yo-cuenta">🏦 Lo saqué de una de mis cuentas</option>
-            <option value="regalo">🎁 Me lo regaló mi mamá</option>
-            <option value="mandado">🛍️ Me lo dio mi mamá por un mandado</option>
-            <option value="split">🤝 Pusimos entre los dos</option>
+            <option value="yo-directo"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Lo tenía yo (no sale de ninguna cuenta)</option>
+            <option value="yo-cuenta"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg> Lo saqué de una de mis cuentas</option>
+            <option value="regalo"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Me lo regaló mi mamá</option>
+            <option value="mandado"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Me lo dio mi mamá por un mandado</option>
+            <option value="split"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg> Pusimos entre los dos</option>
           </select>
         </div>
       </div>
@@ -21563,10 +21563,10 @@ window.renderAlcancia = function(){
       if(!movs.length){
         movsEl.innerHTML = '<div class="feed-empty">Aún no hay movimientos en esta alcancía.</div>';
       } else {
-        const tipoIcon = { yo: '💰', regalo: '🎁', mandado: '🛍️', split: '🤝' };
+        const tipoIcon = { yo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>', regalo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', mandado: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>', split: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg>' };
         const tipoColor = { yo: 'var(--accent)', regalo: 'var(--amber)', mandado: 'var(--amber)', split: 'var(--amber)' };
         movsEl.innerHTML = [...movs].reverse().map(m => {
-          const icon  = tipoIcon[m.tipo]  || '💰';
+          const icon  = tipoIcon[m.tipo]  || '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>';
           const color = tipoColor[m.tipo] || 'var(--accent)';
           const label = m.tipoLabel || (m.fuenteOrigen ? 'Propio' : 'Externo');
           const fmtFuente = m.fuenteOrigen

@@ -10543,11 +10543,12 @@ function getMovimientosCuenta(tipo) {
   });
   // Gastos variables que usaron esta fuente
   (S.gastosVar || []).forEach(g => {
+    if (g._esAlcancia) return; // oculto mientras la alcancía está activa
     const match = tipo === 'nu'
       ? (g.fuente && g.fuente.startsWith('cajita:'))
       : g.fuente === tipo;
     if (match) {
-      const _origen = g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : g._esAlcancia ? 'Alcancía oculta' : /encargo/i.test(g.nota||'') ? 'Encargos' : 'Gastos';
+      const _origen = g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota||'') ? 'Encargos' : 'Gastos';
       movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null });
     }
   });
@@ -21169,11 +21170,10 @@ function _fmtTiempo(dias){
 
 /* ─── TIPO ORIGEN TOGGLE ─────────────────────────────────────────────────── */
 function _alcanciaActualizarTipo(){
-  const tipo = (document.getElementById('alc_dep_tipo')||{}).value || 'yo';
+  const tipo = (document.getElementById('alc_dep_tipo')||{}).value || 'yo-directo';
   const fuenteWrap = document.getElementById('alc_dep_fuente_wrap');
-  // Solo cuando el dinero sale de una cuenta hay que seleccionar fuente
   if(fuenteWrap){
-    fuenteWrap.style.display = (tipo === 'yo') ? '' : 'none';
+    fuenteWrap.style.display = (tipo === 'yo-cuenta') ? '' : 'none';
   }
 }
 
@@ -21191,14 +21191,11 @@ function _inyectarAlcanciaSheets(){
       <div class="sheet-handle"></div>
       <div class="sheet-title">Guardar en la alcancía</div>
       <div class="ig">
-        <label class="il">Descripción</label>
-        <input type="text" id="alc_dep_desc" placeholder="Ej: ahorro semanal, regalo, vuelto...">
-      </div>
-      <div class="ig">
         <label class="il">¿De dónde viene este dinero?</label>
         <div class="select-wrap">
           <select id="alc_dep_tipo">
-            <option value="yo">💰 Lo metí yo</option>
+            <option value="yo-directo">💰 Lo tenía yo (no sale de ninguna cuenta)</option>
+            <option value="yo-cuenta">🏦 Lo saqué de una de mis cuentas</option>
             <option value="regalo">🎁 Me lo regaló mi mamá</option>
             <option value="mandado">🛍️ Me lo dio mi mamá por un mandado</option>
           </select>
@@ -21218,6 +21215,10 @@ function _inyectarAlcanciaSheets(){
       <div class="ig">
         <label class="il">Fecha</label>
         <input type="date" id="alc_dep_fecha" class="input-fecha">
+      </div>
+      <div class="ig">
+        <label class="il">Descripción <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label>
+        <input type="text" id="alc_dep_desc" placeholder="Ej: ahorro semanal, regalo, vuelto...">
       </div>
       <button type="button" class="btn btn-primary" onclick="alcanciaConfirmarDeposito()" style="background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.25);">Guardar</button>
       <button type="button" class="btn btn-ghost" data-close-sheet="alcancia-depositar" style="margin-top:6px;">Cancelar</button>
@@ -21378,7 +21379,7 @@ openSheet = function(id){
       const desc = document.getElementById('alc_dep_desc');
       if(desc) desc.value = '';
       const tipo = document.getElementById('alc_dep_tipo');
-      if(tipo) { tipo.value = 'yo'; _alcanciaActualizarTipo(); }
+      if(tipo) { tipo.value = 'yo-directo'; _alcanciaActualizarTipo(); }
     }, 30);
   }
   if(id === 'alcancia-destapar'){
@@ -21448,9 +21449,12 @@ window.renderAlcancia = function(){
     if(statDep) statDep.textContent = a.depositos || 0;
     if(statTiempo) statTiempo.textContent = _fmtTiempo(_diasDesde(a.fechaInicio));
 
-    // ── Movimientos actuales de la alcancía
+    // ── Movimientos: ocultos mientras la alcancía está activa (se revelan al destapar)
+    const movsTitulo = document.getElementById('alcancia-movs-titulo');
     const movsEl = document.getElementById('alcancia-movimientos-lista');
-    if(movsEl){
+    if(movsTitulo) movsTitulo.style.display = 'none';
+    if(movsEl) movsEl.style.display = 'none';
+    if(false){ // bloque desactivado — movimientos solo visibles en las cuentas de origen
       const movs = (a.movimientos || []);
       if(!movs.length){
         movsEl.innerHTML = '<div class="feed-empty">Aún no hay movimientos en esta alcancía.</div>';
@@ -21553,7 +21557,7 @@ window.alcanciaIniciarNueva = function(){
 /* Confirmar depósito */
 window.alcanciaConfirmarDeposito = function(){
   const monto  = _getMoneyVal('alc_dep_monto');
-  const tipo   = (document.getElementById('alc_dep_tipo')||{}).value || 'yo';
+  const tipo   = (document.getElementById('alc_dep_tipo')||{}).value || 'yo-directo';
   const fuente = (document.getElementById('alc_dep_fuente')||{}).value || '';
   const fecha  = (document.getElementById('alc_dep_fecha')||{}).value  || (typeof hoy==='function'?hoy():'');
   const descEl = document.getElementById('alc_dep_desc');
@@ -21563,8 +21567,8 @@ window.alcanciaConfirmarDeposito = function(){
     if(typeof toast==='function') toast('Ingresá un monto válido', 'err'); return;
   }
 
-  // Solo requiere fuente cuando el dinero sale de una cuenta propia
-  if(tipo === 'yo'){
+  // Solo requiere fuente cuando el dinero sale de una cuenta
+  if(tipo === 'yo-cuenta'){
     if(!fuente){
       if(typeof toast==='function') toast('Seleccioná la cuenta de origen', 'err'); return;
     }
@@ -21578,15 +21582,22 @@ window.alcanciaConfirmarDeposito = function(){
   const a = window.S.alcancia;
 
   const movId = typeof uid==='function' ? uid() : Date.now().toString(36);
-  const tipoLabel = { yo: 'Propio', regalo: 'Regalo mamá', mandado: 'Mandado mamá' }[tipo] || tipo;
+  const tipoLabel = {
+    'yo-directo': 'Propio (directo)',
+    'yo-cuenta':  'Propio (de cuenta)',
+    'regalo':     'Regalo mamá',
+    'mandado':    'Mandado mamá'
+  }[tipo] || tipo;
 
-  // Etiqueta descriptiva para la descripción
-  const descFinal = descVal ||
-    (tipo === 'regalo' ? 'Regalo de mamá' :
-     tipo === 'mandado' ? 'Mandado de mamá' : 'Depósito en alcancía');
+  const descFinal = descVal || {
+    'yo-directo': 'Depósito en alcancía',
+    'yo-cuenta':  'Depósito en alcancía',
+    'regalo':     'Regalo de mamá',
+    'mandado':    'Mandado de mamá'
+  }[tipo] || 'Depósito en alcancía';
 
-  if(tipo === 'yo'){
-    // Descontar de la cuenta de origen (gastosVar con _esAlcancia)
+  // Solo yo-cuenta descuenta de una cuenta existente
+  if(tipo === 'yo-cuenta'){
     window.S.gastosVar = window.S.gastosVar || [];
     window.S.gastosVar.push({
       id: movId,
@@ -21601,8 +21612,7 @@ window.alcanciaConfirmarDeposito = function(){
       ts: Date.now()
     });
   }
-  // Para regalo y mandado: el dinero llega de afuera, no sale de ninguna cuenta interna.
-  // Solo se registra en alcancia.movimientos.
+  // yo-directo, regalo, mandado: plata externa, no toca ninguna cuenta
 
   // Actualizar estado alcancía
   a.saldoRegistrado = (a.saldoRegistrado || 0) + monto;
@@ -21612,7 +21622,7 @@ window.alcanciaConfirmarDeposito = function(){
     id: movId,
     monto,
     fecha,
-    fuenteOrigen: tipo === 'yo' ? fuente : null,
+    fuenteOrigen: tipo === 'yo-cuenta' ? fuente : null,
     tipo,
     tipoLabel,
     desc: descFinal,

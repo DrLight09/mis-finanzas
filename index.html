@@ -942,6 +942,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin-right:6px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               Destapar alcancía
             </button>
+            <div class="sec-title" id="alcancia-movs-titulo">Movimientos actuales</div>
+            <div id="alcancia-movimientos-lista" style="margin-bottom:18px;">
+              <div class="feed-empty">Aún no hay movimientos en esta alcancía.</div>
+            </div>
             <div class="sec-title">Historial de alcancías</div>
             <div id="alcancia-historial-lista">
               <div class="feed-empty">Aún no has destapado ninguna alcancía.</div>
@@ -10543,7 +10547,7 @@ function getMovimientosCuenta(tipo) {
       ? (g.fuente && g.fuente.startsWith('cajita:'))
       : g.fuente === tipo;
     if (match) {
-      const _origen = g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota||'') ? 'Encargos' : 'Gastos';
+      const _origen = g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : g._esAlcancia ? 'Alcancía oculta' : /encargo/i.test(g.nota||'') ? 'Encargos' : 'Gastos';
       movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null });
     }
   });
@@ -11144,6 +11148,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
       </div>
       <div class="gasto-item-meta">
         <span class="badge ${bgLabel}" style="font-size:9px;">${escHtml(tipoLabel)}</span>
+        ${m._origen === 'Alcancía oculta' ? `<span class="badge" style="font-size:9px;background:rgba(240,184,64,.18);color:var(--amber);border:none;">🔒 Alcancía</span>` : ''}
         ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?`<span class="badge bg-nu" style="font-size:9px;">${escHtml(cn)}</span>`:''; })()}
         ${m.cat ? `<span class="badge bg-blue" style="font-size:9px;">${escHtml(m.cat)}</span>` : ''}
         ${m.nota ? `<span style="font-size:10px;color:var(--text3);">${escHtml(m.nota)}</span>` : ''}
@@ -21162,6 +21167,16 @@ function _fmtTiempo(dias){
   const m=Math.round(dias/30); return m+(m===1?' mes':' meses');
 }
 
+/* ─── TIPO ORIGEN TOGGLE ─────────────────────────────────────────────────── */
+function _alcanciaActualizarTipo(){
+  const tipo = (document.getElementById('alc_dep_tipo')||{}).value || 'yo';
+  const fuenteWrap = document.getElementById('alc_dep_fuente_wrap');
+  // Solo cuando el dinero sale de una cuenta hay que seleccionar fuente
+  if(fuenteWrap){
+    fuenteWrap.style.display = (tipo === 'yo') ? '' : 'none';
+  }
+}
+
 /* ─── INYECTAR SHEETS ───────────────────────────────────────────────────── */
 function _inyectarAlcanciaSheets(){
   if(document.getElementById('sheet-alcancia-depositar')) return;
@@ -21176,18 +21191,29 @@ function _inyectarAlcanciaSheets(){
       <div class="sheet-handle"></div>
       <div class="sheet-title">Guardar en la alcancía</div>
       <div class="ig">
-        <label class="il">Monto a guardar</label>
-        <div class="money-input-wrap">
-          <span class="money-prefix">$</span>
-          <input type="text" inputmode="decimal" class="money-input" id="alc_dep_monto" placeholder="0,00" autocomplete="off">
-        </div>
+        <label class="il">Descripción</label>
+        <input type="text" id="alc_dep_desc" placeholder="Ej: ahorro semanal, regalo, vuelto...">
       </div>
       <div class="ig">
-        <label class="il">¿De dónde sale?</label>
+        <label class="il">¿De dónde viene este dinero?</label>
+        <div class="select-wrap">
+          <select id="alc_dep_tipo">
+            <option value="yo">💰 Lo metí yo</option>
+            <option value="regalo">🎁 Me lo regaló mi mamá</option>
+            <option value="mandado">🛍️ Me lo dio mi mamá por un mandado</option>
+          </select>
+        </div>
+      </div>
+      <div class="ig" id="alc_dep_fuente_wrap">
+        <label class="il">¿De qué cuenta sale?</label>
         <div class="select-wrap">
           <select id="alc_dep_fuente"></select>
         </div>
         <div id="alc_dep_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
+      </div>
+      <div class="ig">
+        <label class="il">Monto</label>
+        <input type="text" inputmode="decimal" class="money-input" id="alc_dep_monto" placeholder="0,00" autocomplete="off">
       </div>
       <div class="ig">
         <label class="il">Fecha</label>
@@ -21210,10 +21236,7 @@ function _inyectarAlcanciaSheets(){
       <div id="alc-destapar-resumen" style="margin-bottom:18px;"></div>
       <div class="ig">
         <label class="il">¿Cuánto dinero encontraste realmente?</label>
-        <div class="money-input-wrap">
-          <span class="money-prefix">$</span>
-          <input type="text" inputmode="decimal" class="money-input" id="alc_real_monto" placeholder="0,00" autocomplete="off">
-        </div>
+        <input type="text" inputmode="decimal" class="money-input" id="alc_real_monto" placeholder="0,00" autocomplete="off">
         <div id="alc_diferencia_hint" style="font-size:12px;margin-top:6px;font-family:'DM Mono',monospace;"></div>
       </div>
       <div class="ig">
@@ -21264,6 +21287,12 @@ function _inyectarAlcanciaSheets(){
   /* ---------- Money inputs ---------- */
   _initMoneyInput('alc_dep_monto');
   _initMoneyInput('alc_real_monto');
+
+  /* ---------- Tipo origen selector (muestra/oculta fuente) ---------- */
+  const tipoSel = document.getElementById('alc_dep_tipo');
+  if(tipoSel){
+    tipoSel.addEventListener('change', _alcanciaActualizarTipo);
+  }
 
   /* ---------- Fuente selector hint ---------- */
   const fuenteSel = document.getElementById('alc_dep_fuente');
@@ -21346,6 +21375,10 @@ openSheet = function(id){
       if(mi){ mi.value = '0,00'; if(typeof moneyInputAttach==='function') moneyInputAttach(mi); }
       const h = document.getElementById('alc_dep_saldo_hint');
       if(h) h.textContent = '';
+      const desc = document.getElementById('alc_dep_desc');
+      if(desc) desc.value = '';
+      const tipo = document.getElementById('alc_dep_tipo');
+      if(tipo) { tipo.value = 'yo'; _alcanciaActualizarTipo(); }
     }, 30);
   }
   if(id === 'alcancia-destapar'){
@@ -21415,6 +21448,43 @@ window.renderAlcancia = function(){
     if(statDep) statDep.textContent = a.depositos || 0;
     if(statTiempo) statTiempo.textContent = _fmtTiempo(_diasDesde(a.fechaInicio));
 
+    // ── Movimientos actuales de la alcancía
+    const movsEl = document.getElementById('alcancia-movimientos-lista');
+    if(movsEl){
+      const movs = (a.movimientos || []);
+      if(!movs.length){
+        movsEl.innerHTML = '<div class="feed-empty">Aún no hay movimientos en esta alcancía.</div>';
+      } else {
+        const tipoIcon = { yo: '💰', regalo: '🎁', mandado: '🛍️' };
+        const tipoColor = { yo: 'var(--accent)', regalo: 'var(--amber)', mandado: 'var(--amber)' };
+        movsEl.innerHTML = [...movs].reverse().map(m => {
+          const icon  = tipoIcon[m.tipo]  || '💰';
+          const color = tipoColor[m.tipo] || 'var(--accent)';
+          const label = m.tipoLabel || (m.fuenteOrigen ? 'Propio' : 'Externo');
+          const fmtFuente = m.fuenteOrigen
+            ? (() => {
+                const f = m.fuenteOrigen;
+                if(f === 'nequi') return 'Nequi';
+                if(f === 'efectivo') return 'Efectivo';
+                if(f.startsWith('cajita:')){ const id=f.split(':')[1]; const c=(window.S&&window.S.cajitas||[]).find(x=>x.id===id); return c?c.nombre:'Cajita'; }
+                if(f.startsWith('custom:')){ const id=f.split(':')[1]; const c=(window.S&&window.S.cuentasPersonalizadas||[]).find(x=>x.id===id); return c?c.nombre:'Cuenta'; }
+                return f;
+              })()
+            : null;
+          return `
+          <div class="card card-sm" style="margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
+            <div style="font-size:18px;flex-shrink:0;margin-top:1px;">${icon}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;">${m.desc || 'Depósito'}</div>
+              <div style="font-size:11px;color:var(--text3);">${m.fecha}${fmtFuente ? ' · de ' + fmtFuente : ''}</div>
+              <div style="font-size:10px;color:${color};margin-top:2px;">${label}</div>
+            </div>
+            <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);flex-shrink:0;">+${typeof fmt==='function'?fmt(m.monto):m.monto}</div>
+          </div>`;
+        }).join('');
+      }
+    }
+
     // Historial de alcancías destapadas
     const listaEl = document.getElementById('alcancia-historial-lista');
     if(listaEl){
@@ -21483,44 +21553,71 @@ window.alcanciaIniciarNueva = function(){
 /* Confirmar depósito */
 window.alcanciaConfirmarDeposito = function(){
   const monto  = _getMoneyVal('alc_dep_monto');
+  const tipo   = (document.getElementById('alc_dep_tipo')||{}).value || 'yo';
   const fuente = (document.getElementById('alc_dep_fuente')||{}).value || '';
   const fecha  = (document.getElementById('alc_dep_fecha')||{}).value  || (typeof hoy==='function'?hoy():'');
+  const descEl = document.getElementById('alc_dep_desc');
+  const descVal = (descEl ? descEl.value.trim() : '') || '';
 
   if(!monto || monto <= 0){
     if(typeof toast==='function') toast('Ingresá un monto válido', 'err'); return;
   }
-  if(!fuente){
-    if(typeof toast==='function') toast('Seleccioná una cuenta de origen', 'err'); return;
-  }
 
-  const saldoDisp = typeof getSaldoFuente==='function' ? getSaldoFuente(fuente) : 0;
-  if(monto > saldoDisp + 0.5){
-    if(typeof toast==='function') toast('Saldo insuficiente en la cuenta seleccionada', 'err'); return;
+  // Solo requiere fuente cuando el dinero sale de una cuenta propia
+  if(tipo === 'yo'){
+    if(!fuente){
+      if(typeof toast==='function') toast('Seleccioná la cuenta de origen', 'err'); return;
+    }
+    const saldoDisp = typeof getSaldoFuente==='function' ? getSaldoFuente(fuente) : 0;
+    if(monto > saldoDisp + 0.5){
+      if(typeof toast==='function') toast('Saldo insuficiente en la cuenta seleccionada', 'err'); return;
+    }
   }
 
   _initA();
   const a = window.S.alcancia;
 
-  // 1. Registrar en gastosVar con flag _esAlcancia (descuenta de cuenta, pero no aparece en estadísticas)
   const movId = typeof uid==='function' ? uid() : Date.now().toString(36);
-  window.S.gastosVar = window.S.gastosVar || [];
-  window.S.gastosVar.push({
-    id: movId,
-    desc: 'Alcancía',
-    monto: monto,
-    fecha: fecha,
-    cat: 'Ahorro',
-    fuente: fuente,
-    nota: 'Depósito en alcancía oculta',
-    _esAlcancia: true,
-    ts: Date.now()
-  });
+  const tipoLabel = { yo: 'Propio', regalo: 'Regalo mamá', mandado: 'Mandado mamá' }[tipo] || tipo;
 
-  // 2. Actualizar estado alcancía
+  // Etiqueta descriptiva para la descripción
+  const descFinal = descVal ||
+    (tipo === 'regalo' ? 'Regalo de mamá' :
+     tipo === 'mandado' ? 'Mandado de mamá' : 'Depósito en alcancía');
+
+  if(tipo === 'yo'){
+    // Descontar de la cuenta de origen (gastosVar con _esAlcancia)
+    window.S.gastosVar = window.S.gastosVar || [];
+    window.S.gastosVar.push({
+      id: movId,
+      desc: descFinal || 'Alcancía',
+      monto: monto,
+      fecha: fecha,
+      cat: 'Ahorro',
+      fuente: fuente,
+      nota: 'Guardado en alcancía oculta' + (descVal ? ': ' + descVal : ''),
+      _esAlcancia: true,
+      _alcTipo: tipo,
+      ts: Date.now()
+    });
+  }
+  // Para regalo y mandado: el dinero llega de afuera, no sale de ninguna cuenta interna.
+  // Solo se registra en alcancia.movimientos.
+
+  // Actualizar estado alcancía
   a.saldoRegistrado = (a.saldoRegistrado || 0) + monto;
   a.depositos = (a.depositos || 0) + 1;
   a.movimientos = a.movimientos || [];
-  a.movimientos.push({ id: movId, monto, fecha, fuenteOrigen: fuente, ts: Date.now() });
+  a.movimientos.push({
+    id: movId,
+    monto,
+    fecha,
+    fuenteOrigen: tipo === 'yo' ? fuente : null,
+    tipo,
+    tipoLabel,
+    desc: descFinal,
+    ts: Date.now()
+  });
   _setSaldoOfuscado(a.saldoRegistrado);
 
   if(typeof save==='function') save();

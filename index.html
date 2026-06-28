@@ -21266,6 +21266,13 @@ function _inyectarAlcanciaSheets(){
           </div>
         </div>
         <div id="alc_split_total_hint" style="font-size:12px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace;"></div>
+        <div id="alc_split_fuente_wrap" style="margin-top:10px;">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">¿De qué cuenta sale tu parte? <span style="opacity:.6;">(opcional)</span></div>
+          <div class="select-wrap">
+            <select id="alc_split_fuente"></select>
+          </div>
+          <div id="alc_split_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
+        </div>
       </div>
       <div class="ig">
         <label class="il">Monto total</label>
@@ -21374,6 +21381,22 @@ function _inyectarAlcanciaSheets(){
     });
   }
 
+  /* ---------- Split fuente selector hint ---------- */
+  const splitFuenteSel = document.getElementById('alc_split_fuente');
+  if(splitFuenteSel){
+    splitFuenteSel.addEventListener('change', function(){
+      const hint = document.getElementById('alc_split_saldo_hint');
+      if(!hint) return;
+      if(!this.value){
+        hint.textContent = '';
+        return;
+      }
+      const s = (typeof getSaldoFuente==='function') ? getSaldoFuente(this.value) : 0;
+      hint.textContent = 'Saldo disponible: ' + (typeof fmt==='function'?fmt(s):s);
+      hint.style.color = s > 0 ? 'var(--accent)' : 'var(--red)';
+    });
+  }
+
   /* ---------- Diferencia hint en destapar ---------- */
   const realInput = document.getElementById('alc_real_monto');
   if(realInput){
@@ -21452,6 +21475,13 @@ openSheet = function(id){
       if(splitMama) { splitMama.value = '0,00'; if(typeof moneyInputAttach==='function') moneyInputAttach(splitMama); }
       const splitHint = document.getElementById('alc_split_total_hint');
       if(splitHint) splitHint.textContent = '';
+      // Split fuente: poblar y limpiar hint
+      const splitFsel = document.getElementById('alc_split_fuente');
+      if(splitFsel && typeof buildFuentesOptsHtml==='function'){
+        splitFsel.innerHTML = buildFuentesOptsHtml({incluirTC:false,placeholder:'Lo tenía yo (efectivo)'});
+      }
+      const splitSaldoHint = document.getElementById('alc_split_saldo_hint');
+      if(splitSaldoHint) splitSaldoHint.textContent = '';
       const tipo = document.getElementById('alc_dep_tipo');
       if(tipo) { tipo.value = 'yo-directo'; _alcanciaActualizarTipo(); }
     }, 30);
@@ -21652,8 +21682,9 @@ window.alcanciaConfirmarDeposito = function(){
   const descVal = (descEl ? descEl.value.trim() : '') || '';
 
   // Valores split
-  const splitYo   = tipo === 'split' ? (_getMoneyVal('alc_split_yo')   || 0) : 0;
-  const splitMama = tipo === 'split' ? (_getMoneyVal('alc_split_mama') || 0) : 0;
+  const splitYo      = tipo === 'split' ? (_getMoneyVal('alc_split_yo')   || 0) : 0;
+  const splitMama    = tipo === 'split' ? (_getMoneyVal('alc_split_mama') || 0) : 0;
+  const splitFuente  = tipo === 'split' ? ((document.getElementById('alc_split_fuente')||{}).value || '') : '';
 
   if(!monto || monto <= 0){
     if(typeof toast==='function') toast('Ingresá un monto válido', 'err'); return;
@@ -21679,6 +21710,14 @@ window.alcanciaConfirmarDeposito = function(){
     const saldoDisp = typeof getSaldoFuente==='function' ? getSaldoFuente(fuente) : 0;
     if(monto > saldoDisp + 0.5){
       if(typeof toast==='function') toast('Saldo insuficiente en la cuenta seleccionada', 'err'); return;
+    }
+  }
+
+  // Split con fuente: validar que hay saldo suficiente para la parte tuya
+  if(tipo === 'split' && splitFuente && splitYo > 0){
+    const saldoDisp = typeof getSaldoFuente==='function' ? getSaldoFuente(splitFuente) : 0;
+    if(splitYo > saldoDisp + 0.5){
+      if(typeof toast==='function') toast('Saldo insuficiente en la cuenta seleccionada para tu parte', 'err'); return;
     }
   }
 
@@ -21718,7 +21757,23 @@ window.alcanciaConfirmarDeposito = function(){
       ts: Date.now()
     });
   }
-  // yo-directo, regalo, mandado, split: plata externa, no toca ninguna cuenta
+  // Split con fuente: solo descuenta la parte tuya de la cuenta
+  if(tipo === 'split' && splitFuente && splitYo > 0){
+    window.S.gastosVar = window.S.gastosVar || [];
+    window.S.gastosVar.push({
+      id: movId,
+      desc: descFinal || 'Alcancía',
+      monto: splitYo,
+      fecha: fecha,
+      cat: 'Ahorro',
+      fuente: splitFuente,
+      nota: 'Guardado en alcancía (tu parte)' + (descVal ? ': ' + descVal : ''),
+      _esAlcancia: true,
+      _alcTipo: 'split',
+      ts: Date.now()
+    });
+  }
+  // yo-directo, regalo, mandado, split sin fuente: plata externa, no toca ninguna cuenta
 
   // Actualizar estado alcancía
   a.saldoRegistrado = (a.saldoRegistrado || 0) + monto;
@@ -21736,8 +21791,9 @@ window.alcanciaConfirmarDeposito = function(){
   };
   // Guardar las partes del split
   if(tipo === 'split'){
-    movEntry._splitYo   = splitYo;
-    movEntry._splitMama = splitMama;
+    movEntry._splitYo     = splitYo;
+    movEntry._splitMama   = splitMama;
+    if(splitFuente) movEntry._splitFuente = splitFuente;
   }
   a.movimientos.push(movEntry);
   _setSaldoOfuscado(a.saldoRegistrado);

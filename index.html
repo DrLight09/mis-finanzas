@@ -8044,7 +8044,12 @@ async function eliminarMovDeudor(deudorId, movId) {
   const esPrestamo = m.tipo === 'prestamo';
   const label = esPrestamo ? 'préstamo' : 'pago';
   const tieneExtra = !esPrestamo && m._extPartes && m._extPartes.length > 0;
-  const extraAviso = tieneExtra ? ' El extra (cajitas, gastos, etc.) también se revertirá.' : '';
+  const tieneExtraEncargo = !esPrestamo && m._viaEncargo && m._encExtraMovId;
+  const extraAviso = tieneExtra
+    ? (tieneExtraEncargo
+        ? ' El extra (que también salió del encargo) y sus destinos se revertirán.'
+        : ' El extra (cajitas, gastos, etc.) también se revertirá.')
+    : '';
   const tcAviso = esPrestamo && m._viaTC ? ' La deuda en la TC también se revertirá automáticamente.' : '';
   const ok = await dialogo(
     'Eliminar ' + label,
@@ -8069,10 +8074,14 @@ async function eliminarMovDeudor(deudorId, movId) {
   } else {
     // Era un abono: plata entró al destino → quitar
     if (m._viaEncargo && m._encId && m._encMovId) {
-      // Abono vía encargo: revertir la salida del encargo
+      // Abono vía encargo: revertir la salida del encargo (abono principal y extra si hubo)
       const enc = (S.encargos || []).find(e => e.id === m._encId);
       if (enc) {
         enc.movimientos = (enc.movimientos || []).filter(x => x.id !== m._encMovId);
+        // Si el abono tenía extra, también eliminar su salida del encargo
+        if (m._encExtraMovId) {
+          enc.movimientos = (enc.movimientos || []).filter(x => x.id !== m._encExtraMovId);
+        }
       }
     } else if (m.destinos && m.destinos.length) {
       m.destinos.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto); });
@@ -8253,7 +8262,25 @@ function confirmarMovimiento() {
         }
       }
 
-      // 1. Registrar salida en el encargo (descuenta su saldo)
+      // Verificar si hay extra y si el encargo tiene saldo suficiente para cubrirlo también
+      const tieneExtra = document.getElementById('mov_tiene_extra').checked;
+      const extraMonto = tieneExtra ? (parseMoney(document.getElementById('mov_extra_monto').value) || 0) : 0;
+      if (tieneExtra && extraMonto > 0) {
+        const saldoTotal2 = encargoSaldo(enc);
+        if (monto + extraMonto > saldoTotal2 + 0.5) {
+          toast(`El encargo solo tiene ${fmt(saldoTotal2)} — no alcanza para el abono (${fmt(monto)}) más el extra (${fmt(extraMonto)})`, 'err', 4500);
+          return;
+        }
+        if (_abonoEncCuenta) {
+          const saldoEnCuenta2 = _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
+          if (monto + extraMonto > saldoEnCuenta2 + 0.5) {
+            toast(`En ${fuenteLabel(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta2)} — no alcanza para abono + extra`, 'err', 4500);
+            return;
+          }
+        }
+      }
+
+      // 1. Registrar salida del abono en el encargo (descuenta su saldo)
       const encMovId = uid();
       if (!enc.movimientos) enc.movimientos = [];
       enc.movimientos.push({
@@ -8261,7 +8288,7 @@ function confirmarMovimiento() {
         tipo: 'salida',
         monto,
         cuenta: _abonoEncCuenta || '',
-        desc: `Pago de préstamo — ${d.nombre}`,
+        desc: `Pago de deuda — ${d.nombre}`,
         fecha,
         nota,
         ts: Date.now(),
@@ -8271,6 +8298,7 @@ function confirmarMovimiento() {
 
       // 2. Leer destino (el dinero llega a una cuenta del usuario)
       let abonoDestino = '';
+      let abonMovId = uid();
       if (_abonoSplitMode) {
         const totalSplit = _abonoSplitRows.reduce((a,r)=>a+(r.monto||0),0);
         if(Math.abs(totalSplit - monto) > 1){
@@ -8280,7 +8308,6 @@ function confirmarMovimiento() {
         const destinos = _abonoSplitRows.filter(r=>r.monto>0);
         destinos.forEach(r=>{ if(r.fuente) sumarFuente(r.fuente, r.monto); });
         // Registrar abono con destinos múltiples
-        const abonMovId = uid();
         d.movimientos.push({
           id: abonMovId,
           tipo: 'abono',
@@ -8298,7 +8325,6 @@ function confirmarMovimiento() {
         abonoDestino = document.getElementById('mov_destino').value;
         if (abonoDestino) sumarFuente(abonoDestino, monto);
         // Registrar abono con destino simple
-        const abonMovId = uid();
         d.movimientos.push({
           id: abonMovId,
           tipo: 'abono',
@@ -8314,10 +8340,83 @@ function confirmarMovimiento() {
         });
       }
 
+      // 3. Manejar el extra si aplica (también sale del encargo)
+      if (tieneExtra && extraMonto > 0) {
+        if (!_extPartes.length) { toast('Agrega al menos una parte para el extra', 'err'); return; }
+        const totalPartes = _extPartes.reduce((a,p)=>a+(p.monto||0),0);
+        if (Math.abs(totalPartes - extraMonto) > 1) {
+          toast(`Las partes suman ${fmt(totalPartes)} pero el extra es ${fmt(extraMonto)}`, 'err', 4000);
+          return;
+        }
+
+        // Registrar la salida del extra en el encargo (movimiento separado y descriptivo)
+        const encExtraMovId = uid();
+        enc.movimientos.push({
+          id: encExtraMovId,
+          tipo: 'salida',
+          monto: extraMonto,
+          cuenta: _abonoEncCuenta || '',
+          desc: `Extra / propina — ${d.nombre} (parte del pago de deuda)`,
+          fecha,
+          ts: Date.now(),
+          _esExtraAbonoDeudor: true,
+          _deudorId: deudorActualId,
+          _abonoEncMovId: encMovId
+        });
+
+        // Adjuntar referencia al abono del deudor para reversión
+        const ultimoMov = d.movimientos[d.movimientos.length - 1];
+        if (ultimoMov) {
+          ultimoMov._extPartes = [];
+          ultimoMov._encExtraMovId = encExtraMovId;
+        }
+
+        for (const p of _extPartes) {
+          if (!p.monto || p.monto <= 0) continue;
+          if (p.tipo === 'guardar') {
+            if (!p.cuenta) continue;
+            sumarFuente(p.cuenta, p.monto);
+            const descMovExtra = `Extra del pago de ${d.nombre} — vía encargo ${enc.nombre}`;
+            let movExtraId = uid();
+            if (p.cuenta === 'efectivo' || p.cuenta === 'nequi') {
+              if (!S.movimientos) S.movimientos = [];
+              S.movimientos.push({ id: movExtraId, tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra });
+            } else if (p.cuenta.startsWith('custom:')) {
+              const cId = p.cuenta.split(':')[1];
+              const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+              if (cObj) {
+                if (!cObj.movimientos) cObj.movimientos = [];
+                cObj.movimientos.push({ id: movExtraId, tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra });
+              }
+            } else if (p.cuenta.startsWith('cajita:')) {
+              const cId = p.cuenta.split(':')[1];
+              const cObj = (S.cajitas || []).find(x => x.id === cId);
+              if (cObj) {
+                if (!cObj.historial) cObj.historial = [];                cObj.historial.push({ id: movExtraId, tipo: 'entrada', monto: p.monto, fecha, nota: descMovExtra });
+              }
+            }
+            if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'guardar', cuenta: p.cuenta, monto: p.monto, movExtraId });
+          } else if (p.tipo === 'gastar') {
+            if (!S.gastosVar) S.gastosVar = [];
+            const gastoId = uid();
+            S.gastosVar.push({ id: gastoId, monto: p.monto, fecha, cat: 'Varios', desc: p.desc || `Extra del pago de ${d.nombre} — vía encargo ${enc.nombre}`, fuente: '', ts: Date.now(), _esExtraPrestamo: true });
+            if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'gastar', gastoId, monto: p.monto });
+          } else if (p.tipo === 'regalar') {
+            if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'regalar', monto: p.monto });
+          } else if (p.tipo === 'pendiente') {
+            if (!S.ingresosExtra) S.ingresosExtra = [];
+            const ingrId = uid();
+            S.ingresosExtra.push({ id: ingrId, monto: p.monto, fecha, nota: `Extra sin asignar — ${d.nombre} vía encargo ${enc.nombre}`, ts: Date.now() });
+            if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'pendiente', ingrId, monto: p.monto });
+          }
+        }
+      }
+
       if(window.logCambio) logCambio(`Abono de ${d.nombre} vía encargo de ${enc.nombre}`, d.nombre, monto, 'abono');
       save(); refresh(); closeSheet('registrar-movimiento');
       abrirDeudor(deudorActualId);
-      toast(`${fmt(monto)} descontado del encargo de ${enc.nombre}`, 'ok', 3500);
+      const msgExtra = extraMonto > 0 ? ` + ${fmt(extraMonto)} de extra` : '';
+      toast(`${fmt(monto)}${msgExtra} descontados del encargo de ${enc.nombre}`, 'ok', 3500);
       return;
     }
 

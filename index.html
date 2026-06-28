@@ -8083,6 +8083,25 @@ async function eliminarMovDeudor(deudorId, movId) {
           enc.movimientos = (enc.movimientos || []).filter(x => x.id !== m._encExtraMovId);
         }
       }
+      // Revertir el saldo de la cuenta destino del abono y su movimiento de historial
+      if (m.destino) {
+        descontarFuente(m.destino, m.monto);
+        if (m._abonoDestinoMovId) {
+          if (m.destino === 'efectivo' || m.destino === 'nequi') {
+            if (S.movimientos) S.movimientos = S.movimientos.filter(x => x.id !== m._abonoDestinoMovId);
+          } else if (m.destino.startsWith('custom:')) {
+            const cId = m.destino.split(':')[1];
+            const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+            if (cObj && cObj.movimientos) cObj.movimientos = cObj.movimientos.filter(x => x.id !== m._abonoDestinoMovId);
+          } else if (m.destino.startsWith('cajita:')) {
+            const cId = m.destino.split(':')[1];
+            const cObj = (S.cajitas || []).find(x => x.id === cId);
+            if (cObj && cObj.historial) cObj.historial = cObj.historial.filter(x => x.id !== m._abonoDestinoMovId);
+          }
+        }
+      } else if (m.destinos && m.destinos.length) {
+        m.destinos.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto); });
+      }
     } else if (m.destinos && m.destinos.length) {
       m.destinos.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto); });
     } else if (m.destino) {
@@ -8263,12 +8282,20 @@ function confirmarMovimiento() {
       }
 
       // Verificar si hay extra y si el encargo tiene saldo suficiente para cubrirlo también
+      // IMPORTANTE: todas las validaciones deben ocurrir ANTES de escribir datos
       const tieneExtra = document.getElementById('mov_tiene_extra').checked;
       const extraMonto = tieneExtra ? (parseMoney(document.getElementById('mov_extra_monto').value) || 0) : 0;
       if (tieneExtra && extraMonto > 0) {
-        const saldoTotal2 = encargoSaldo(enc);
-        if (monto + extraMonto > saldoTotal2 + 0.5) {
-          toast(`El encargo solo tiene ${fmt(saldoTotal2)} — no alcanza para el abono (${fmt(monto)}) más el extra (${fmt(extraMonto)})`, 'err', 4500);
+        // Validar reparto del extra antes de tocar el encargo
+        if (!_extPartes.length) { toast('Agrega al menos una parte para el extra', 'err'); return; }
+        const totalPartesPreview = _extPartes.reduce((a,p)=>a+(p.monto||0),0);
+        if (Math.abs(totalPartesPreview - extraMonto) > 1) {
+          toast(`Falta asignar ${fmt(extraMonto - totalPartesPreview)} del extra antes de continuar.`, 'err', 4000);
+          return;
+        }
+        // Validar saldo del encargo para abono + extra (usando saldo antes de cualquier escritura)
+        if (monto + extraMonto > saldoTotal + 0.5) {
+          toast(`El encargo solo tiene ${fmt(saldoTotal)} — no alcanza para el abono (${fmt(monto)}) más el extra (${fmt(extraMonto)})`, 'err', 4500);
           return;
         }
         if (_abonoEncCuenta) {
@@ -8277,6 +8304,14 @@ function confirmarMovimiento() {
             toast(`En ${fuenteLabel(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta2)} — no alcanza para abono + extra`, 'err', 4500);
             return;
           }
+        }
+      }
+      // Validar split destino antes de escribir datos
+      if (_abonoSplitMode) {
+        const totalSplitPre = _abonoSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+        if(Math.abs(totalSplitPre - monto) > 1){
+          toast(`La suma de cuentas (${fmt(totalSplitPre)}) no coincide con el abono (${fmt(monto)})`,'err',4000);
+          return;
         }
       }
 
@@ -8300,11 +8335,6 @@ function confirmarMovimiento() {
       let abonoDestino = '';
       let abonMovId = uid();
       if (_abonoSplitMode) {
-        const totalSplit = _abonoSplitRows.reduce((a,r)=>a+(r.monto||0),0);
-        if(Math.abs(totalSplit - monto) > 1){
-          toast(`La suma de cuentas (${fmt(totalSplit)}) no coincide con el abono (${fmt(monto)})`,'err',4000);
-          return;
-        }
         const destinos = _abonoSplitRows.filter(r=>r.monto>0);
         destinos.forEach(r=>{ if(r.fuente) sumarFuente(r.fuente, r.monto); });
         // Registrar abono con destinos múltiples
@@ -8324,6 +8354,30 @@ function confirmarMovimiento() {
       } else {
         abonoDestino = document.getElementById('mov_destino').value;
         if (abonoDestino) sumarFuente(abonoDestino, monto);
+        // Registrar movimiento visible en el historial de la cuenta destino
+        let abonoDestinoMovId = null;
+        if (abonoDestino) {
+          abonoDestinoMovId = uid();
+          const descAbonoDest = `Abono de deuda — ${d.nombre} (vía encargo ${enc.nombre})`;
+          if (abonoDestino === 'efectivo' || abonoDestino === 'nequi') {
+            if (!S.movimientos) S.movimientos = [];
+            S.movimientos.push({ id: abonoDestinoMovId, tipo: 'entrada', fuente: abonoDestino, monto, fecha, desc: descAbonoDest });
+          } else if (abonoDestino.startsWith('custom:')) {
+            const cId = abonoDestino.split(':')[1];
+            const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+            if (cObj) {
+              if (!cObj.movimientos) cObj.movimientos = [];
+              cObj.movimientos.push({ id: abonoDestinoMovId, tipo: 'ingreso', monto, fecha, nota: descAbonoDest });
+            }
+          } else if (abonoDestino.startsWith('cajita:')) {
+            const cId = abonoDestino.split(':')[1];
+            const cObj = (S.cajitas || []).find(x => x.id === cId);
+            if (cObj) {
+              if (!cObj.historial) cObj.historial = [];
+              cObj.historial.push({ id: abonoDestinoMovId, tipo: 'entrada', monto, fecha, nota: descAbonoDest });
+            }
+          }
+        }
         // Registrar abono con destino simple
         d.movimientos.push({
           id: abonMovId,
@@ -8336,18 +8390,14 @@ function confirmarMovimiento() {
           _encId: enc.id,
           _encNombre: enc.nombre,
           _encMovId: encMovId,
+          _abonoDestinoMovId: abonoDestinoMovId,
           ts: Date.now()
         });
       }
 
       // 3. Manejar el extra si aplica (también sale del encargo)
+      // (Validaciones de reparto y saldo ya hechas antes del paso 1)
       if (tieneExtra && extraMonto > 0) {
-        if (!_extPartes.length) { toast('Agrega al menos una parte para el extra', 'err'); return; }
-        const totalPartes = _extPartes.reduce((a,p)=>a+(p.monto||0),0);
-        if (Math.abs(totalPartes - extraMonto) > 1) {
-          toast(`Las partes suman ${fmt(totalPartes)} pero el extra es ${fmt(extraMonto)}`, 'err', 4000);
-          return;
-        }
 
         // Registrar la salida del extra en el encargo (movimiento separado y descriptivo)
         const encExtraMovId = uid();
@@ -8444,7 +8494,7 @@ function confirmarMovimiento() {
       if (!_extPartes.length) { toast('Agrega al menos una parte para el extra', 'err'); return; }
       const totalPartes = _extPartes.reduce((a,p)=>a+(p.monto||0),0);
       if (Math.abs(totalPartes - extra) > 1) {
-        toast(`Las partes suman ${fmt(totalPartes)} pero el extra es ${fmt(extra)}`, 'err', 4000);
+        toast(`Falta asignar ${fmt(extra - totalPartes)} del extra antes de continuar.`, 'err', 4000);
         return;
       }
       const nombreDeudor = d ? d.nombre : 'préstamo';

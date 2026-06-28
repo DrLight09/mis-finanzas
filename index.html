@@ -21909,7 +21909,7 @@ window.alcanciaConfirmarDestapar = function(){
     window.S.movimientos = window.S.movimientos || [];
     window.S.movimientos.push({
       id: typeof uid==='function' ? uid() : Date.now().toString(36),
-      tipo: 'ingreso',
+      tipo: 'transferencia',
       fuente: destino,
       monto: saldoReg,
       fecha: hoyStr,
@@ -21927,7 +21927,7 @@ window.alcanciaConfirmarDestapar = function(){
     window.S.movimientos = window.S.movimientos || [];
     window.S.movimientos.push({
       id: typeof uid==='function' ? uid() : Date.now().toString(36),
-      tipo: 'ingreso',
+      tipo: 'entrada',
       fuente: destino,
       monto: dif,
       fecha: hoyStr,
@@ -22062,7 +22062,7 @@ function _sumarASaldo(fuente, monto){
       const esNegativo = monto < 0;
       c.movimientos.push({
         id: typeof uid==='function'?uid():Date.now().toString(36),
-        tipo: esNegativo ? 'egreso' : 'entrada',
+        tipo: esNegativo ? 'egreso' : 'ingreso',
         monto: Math.abs(monto),
         fecha: typeof hoy==='function'?hoy():'',
         desc: esNegativo ? 'Ajuste alcancía — faltante' : 'Alcancía destapada',

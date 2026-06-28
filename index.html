@@ -816,13 +816,17 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <!-- INICIO -->
         <div class="screen active" id="screen-inicio">
           <div class="hero">
-            <div class="hero-label">Patrimonio total</div>
+            <div class="hero-label" id="hero-patrimonio-label">Patrimonio total</div>
             <div class="hero-amount c-green" id="heroTotal">$0</div>
             <div class="row" style="margin-top:8px;">
               <div style="font-size:11px;color:var(--text3);">Nu + Nequi +
                 Efectivo + Prestado + CDTs − Deuda TC</div>
               <div id="hero-change-indicator"
                 style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
+            </div>
+            <div id="hero-alcancia-indicator" style="display:none;margin-top:8px;padding:6px 10px;background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.2);border-radius:8px;">
+              <span style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;">🔒 +$?? en alcancía oculta</span>
+              <span style="font-size:10px;color:var(--text3);margin-left:6px;">— se revela al destapar</span>
             </div>
           </div>
           <div class="grid3">
@@ -5544,7 +5548,9 @@ function calcPatrimonioTotal(){
   // Restar plata comprometida ajena que está físicamente en cuentas propias
   // (igual que se restan encargos) — es plata de otras personas que administrás
   const cpAjeno = _saldoCPAjeno();
-  return nu+cdts+nequi+ef+prest+custom-deudaTC-misDeudas-cpAjeno;
+  // Alcancía: el saldo registrado es plata real tuya aunque esté "oculta"
+  const alcancia = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
+  return nu+cdts+nequi+ef+prest+custom+alcancia-deudaTC-misDeudas-cpAjeno;
 }
 
 function snapshotPatrimonio(){
@@ -6082,7 +6088,22 @@ function refresh(){
 
   const deudaTCTotal=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
   const _cpAjenoHero=typeof _saldoCPAjeno==='function'?_saldoCPAjeno():0;
-  document.getElementById('heroTotal').textContent=fmt(disp+prest+cdts-deudaTCTotal-_cpAjenoHero);
+  // Alcancía: el patrimonio real la incluye, pero el hero la oculta para mantener la sorpresa
+  const _alcSaldo = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
+  const _patrimonioVisible = disp+prest+cdts-deudaTCTotal-_cpAjenoHero; // sin alcancía
+  document.getElementById('heroTotal').textContent=fmt(_patrimonioVisible);
+  // Indicador de alcancía en el hero
+  const _heroAlcInd = document.getElementById('hero-alcancia-indicator');
+  const _heroLabel  = document.getElementById('hero-patrimonio-label');
+  if(_heroAlcInd){
+    if(_alcSaldo > 0){
+      _heroAlcInd.style.display = '';
+      if(_heroLabel) _heroLabel.textContent = 'Patrimonio visible';
+    } else {
+      _heroAlcInd.style.display = 'none';
+      if(_heroLabel) _heroLabel.textContent = 'Patrimonio total';
+    }
+  }
   document.getElementById('s-disp').textContent=fmtNoCents(disp);
   document.getElementById('s-nu').textContent=fmtNoCents(cajitasLibres);
   document.getElementById('s-ef').textContent=fmtNoCents(ef);

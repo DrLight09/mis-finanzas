@@ -21494,7 +21494,7 @@ openSheet = function(id){
 /* ─── RENDER PANTALLA ───────────────────────────────────────────────────── */
 window.renderAlcancia = function(){
   const a = _getA();
-  const activa = !!(a && (a.depositos > 0 || a.saldoRegistrado > 0));
+  const activa = !!(a && (a.fechaInicio || a.depositos > 0 || a.saldoRegistrado > 0));
 
   const elNoIniciada = document.getElementById('alcancia-no-iniciada');
   const elActiva     = document.getElementById('alcancia-activa');

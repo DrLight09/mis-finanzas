@@ -22027,6 +22027,19 @@ window.alcanciaConfirmarDestapar = function(){
       ${comparHtml}`;
   }
 
+  // ── Marcar la reubicación del saldo registrado como ajuste de base ──────
+  // El saldoReg ya estaba contado en el patrimonio (como alcancia.saldoRegistrado).
+  // Al destapar, esa plata se mueve a una cuenta real (_sumarASaldo), pero
+  // simultáneamente alcancia.saldoRegistrado pasa a 0. El cambio neto en patrimonio
+  // debería ser solo la diferencia real (dif), no el saldoReg completo.
+  // Sin este ajuste, snapshotPatrimonio ve un salto de +saldoReg en el valor del día
+  // que distorsiona la tendencia mensual (inflando artificialmente el cambio diario).
+  // _ajustesBaseLog le dice al cálculo de tendencia que ese monto era plata ya contada.
+  if(saldoReg > 0){
+    if(!window.S._ajustesBaseLog) window.S._ajustesBaseLog = [];
+    window.S._ajustesBaseLog.push({ fecha: hoyStr, monto: saldoReg });
+  }
+
   // ── Resetear alcancía para la siguiente
   a.saldoRegistrado = 0;
   a.depositos = 0;

@@ -21741,7 +21741,7 @@ window.alcanciaConfirmarDeposito = function(){
     'split':      'Depósito compartido'
   }[tipo] || 'Depósito en alcancía';
 
-  // Solo yo-cuenta descuenta de una cuenta existente
+  // ── yo-cuenta: descuenta de la cuenta elegida (gasto interno de alcancía)
   if(tipo === 'yo-cuenta'){
     window.S.gastosVar = window.S.gastosVar || [];
     window.S.gastosVar.push({
@@ -21756,24 +21756,135 @@ window.alcanciaConfirmarDeposito = function(){
       _alcTipo: tipo,
       ts: Date.now()
     });
+    // Restar el saldo físico de la cuenta de origen
+    if(typeof sumarFuente === 'function') sumarFuente(fuente, -monto);
   }
-  // Split con fuente: solo descuenta la parte tuya de la cuenta
-  if(tipo === 'split' && splitFuente && splitYo > 0){
-    window.S.gastosVar = window.S.gastosVar || [];
-    window.S.gastosVar.push({
+
+  // ── yo-directo: plata que tenías en efectivo sin registrar → es un ingreso nuevo
+  if(tipo === 'yo-directo'){
+    window.S.movimientos = window.S.movimientos || [];
+    window.S.movimientos.push({
       id: movId,
-      desc: descFinal || 'Alcancía',
-      monto: splitYo,
+      tipo: 'entrada',
+      fuente: 'efectivo',
+      monto: monto,
       fecha: fecha,
-      cat: 'Ahorro',
-      fuente: splitFuente,
-      nota: 'Guardado en alcancía (tu parte)' + (descVal ? ': ' + descVal : ''),
-      _esAlcancia: true,
-      _alcTipo: 'split',
+      desc: descFinal || 'Depósito en alcancía',
+      nota: 'Ingreso registrado al guardar en alcancía (dinero directo)',
+      _esAlcanciaIngreso: true,
       ts: Date.now()
     });
+    // Suma a efectivo para que el saldo refleje ese dinero... y luego lo resta
+    // porque ahora está "en" la alcancía (no disponible en efectivo).
+    // Neto: 0 en efectivo, pero el ingreso queda en estadísticas del mes.
+    if(typeof sumarFuente === 'function'){
+      sumarFuente('efectivo', monto);
+      sumarFuente('efectivo', -monto);
+    }
   }
-  // yo-directo, regalo, mandado, split sin fuente: plata externa, no toca ninguna cuenta
+
+  // ── regalo: dinero que mamá regaló → es un ingreso real tuyo
+  if(tipo === 'regalo'){
+    window.S.movimientos = window.S.movimientos || [];
+    window.S.movimientos.push({
+      id: movId,
+      tipo: 'entrada',
+      fuente: 'efectivo',
+      monto: monto,
+      fecha: fecha,
+      desc: descFinal || 'Regalo de mamá',
+      nota: 'Ingreso: regalo de mamá guardado en alcancía',
+      _esAlcanciaIngreso: true,
+      ts: Date.now()
+    });
+    // Igual que yo-directo: el ingreso se registra pero no queda disponible en efectivo
+    if(typeof sumarFuente === 'function'){
+      sumarFuente('efectivo', monto);
+      sumarFuente('efectivo', -monto);
+    }
+  }
+
+  // ── mandado: pago de mamá por un servicio → es un ingreso tuyo
+  if(tipo === 'mandado'){
+    window.S.movimientos = window.S.movimientos || [];
+    window.S.movimientos.push({
+      id: movId,
+      tipo: 'entrada',
+      fuente: 'efectivo',
+      monto: monto,
+      fecha: fecha,
+      desc: descFinal || 'Mandado de mamá',
+      nota: 'Ingreso: pago de mandado guardado en alcancía',
+      _esAlcanciaIngreso: true,
+      ts: Date.now()
+    });
+    if(typeof sumarFuente === 'function'){
+      sumarFuente('efectivo', monto);
+      sumarFuente('efectivo', -monto);
+    }
+  }
+
+  // ── split: tu parte puede venir de cuenta (resta) o de efectivo directo (ingreso).
+  //    La parte de mamá siempre es ingreso nuevo para ti.
+  if(tipo === 'split'){
+    // Parte de mamá → ingreso real (ella te dio esa plata)
+    if(splitMama > 0){
+      window.S.movimientos = window.S.movimientos || [];
+      window.S.movimientos.push({
+        id: (typeof uid==='function' ? uid() : Date.now().toString(36)+'_m'),
+        tipo: 'entrada',
+        fuente: 'efectivo',
+        monto: splitMama,
+        fecha: fecha,
+        desc: (descVal || 'Depósito compartido') + ' (parte mamá)',
+        nota: 'Ingreso: aporte de mamá al split de alcancía',
+        _esAlcanciaIngreso: true,
+        ts: Date.now()
+      });
+      // El ingreso de mamá se registra pero no queda en efectivo (va a la alcancía)
+      if(typeof sumarFuente === 'function'){
+        sumarFuente('efectivo', splitMama);
+        sumarFuente('efectivo', -splitMama);
+      }
+    }
+
+    // Tu parte: si viene de una cuenta → restar esa cuenta (movimiento interno)
+    if(splitFuente && splitYo > 0){
+      window.S.gastosVar = window.S.gastosVar || [];
+      window.S.gastosVar.push({
+        id: movId,
+        desc: descFinal || 'Alcancía',
+        monto: splitYo,
+        fecha: fecha,
+        cat: 'Ahorro',
+        fuente: splitFuente,
+        nota: 'Guardado en alcancía (tu parte)' + (descVal ? ': ' + descVal : ''),
+        _esAlcancia: true,
+        _alcTipo: 'split',
+        ts: Date.now()
+      });
+      // Restar el saldo físico de la cuenta de origen
+      if(typeof sumarFuente === 'function') sumarFuente(splitFuente, -splitYo);
+    } else if(!splitFuente && splitYo > 0){
+      // Tu parte es efectivo directo (sin cuenta) → ingreso nuevo
+      window.S.movimientos = window.S.movimientos || [];
+      window.S.movimientos.push({
+        id: movId,
+        tipo: 'entrada',
+        fuente: 'efectivo',
+        monto: splitYo,
+        fecha: fecha,
+        desc: (descVal || 'Depósito compartido') + ' (tu parte)',
+        nota: 'Ingreso: tu aporte al split de alcancía (efectivo directo)',
+        _esAlcanciaIngreso: true,
+        ts: Date.now()
+      });
+      if(typeof sumarFuente === 'function'){
+        sumarFuente('efectivo', splitYo);
+        sumarFuente('efectivo', -splitYo);
+      }
+    }
+  }
 
   // Actualizar estado alcancía
   a.saldoRegistrado = (a.saldoRegistrado || 0) + monto;
@@ -21783,7 +21894,7 @@ window.alcanciaConfirmarDeposito = function(){
     id: movId,
     monto,
     fecha,
-    fuenteOrigen: tipo === 'yo-cuenta' ? fuente : null,
+    fuenteOrigen: tipo === 'yo-cuenta' ? fuente : (tipo === 'split' && splitFuente ? splitFuente : null),
     tipo,
     tipoLabel,
     desc: descFinal,
@@ -21875,6 +21986,8 @@ window.alcanciaConfirmarDestapar = function(){
       _esAlcanciaAjuste: true,
       ts: Date.now()
     });
+    // Restar la diferencia del saldo de la cuenta destino
+    _sumarASaldo(destino, -absDif);
   }
 
   // ── Guardar en historial
@@ -21887,7 +22000,8 @@ window.alcanciaConfirmarDestapar = function(){
     depositos:        a.depositos || 0,
     saldoRegistrado:  saldoReg,
     saldoReal,
-    diferencia:       dif
+    diferencia:       dif,
+    movimientos:      [...(a.movimientos || [])]
   };
   a.historial.push(entradaHist);
 
@@ -21977,10 +22091,14 @@ function _sumarASaldo(fuente, monto){
     if(c){
       c.saldo = (c.saldo||0) + monto;
       c.movimientos = c.movimientos || [];
+      const esNegativo = monto < 0;
       c.movimientos.push({
         id: typeof uid==='function'?uid():Date.now().toString(36),
-        tipo: 'entrada', monto, fecha: typeof hoy==='function'?hoy():'',
-        desc: 'Alcancía destapada', nota: ''
+        tipo: esNegativo ? 'egreso' : 'entrada',
+        monto: Math.abs(monto),
+        fecha: typeof hoy==='function'?hoy():'',
+        desc: esNegativo ? 'Ajuste alcancía — faltante' : 'Alcancía destapada',
+        nota: ''
       });
     }
     return;

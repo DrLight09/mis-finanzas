@@ -2616,11 +2616,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title">Nueva cuenta</div>
-        <div class="ig"><label class="il" for="nc_nombre">Nombre de la
-            cuenta</label><input type="text" id="nc_nombre"
+        <div class="ig"><label class="il" for="nc_nombre">Nombre de la cuenta</label><input type="text" id="nc_nombre"
             placeholder="Ej: Nequi trabajo, Bancolombia..."></div>
-        <div class="ig"><label class="il" for="nc_saldo">Saldo
-            inicial</label><input type="text" inputmode="decimal" id="nc_saldo"
+        <div class="ig"><label class="il" for="nc_saldo">Saldo inicial</label><input type="text" inputmode="decimal" id="nc_saldo"
             placeholder="0,00" class="money-input"></div>
         <!-- Selector de ícono/banco -->
         <div class="ig">
@@ -2683,14 +2681,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title" id="mcc-title">Agregar dinero</div>
+        <div class="ig"><label class="il" for="mcc-nota">Descripción <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input type="text" id="mcc-nota"
+            placeholder="Ej: encargo de Juan, pago recibido..."></div>
         <div class="ig"><label class="il" for="mcc-monto">Monto</label><input
             type="text" inputmode="decimal" id="mcc-monto" placeholder="0,00"
             class="money-input"></div>
         <div class="ig"><label class="il" for="mcc-fecha">Fecha</label><input
             type="date" id="mcc-fecha"></div>
-        <div class="ig"><label class="il" for="mcc-nota">Nota
-            (opcional)</label><input type="text" id="mcc-nota"
-            placeholder="Ej: encargo de Juan, pago recibido..."></div>
         <button type="button" class="btn btn-primary" id="mcc-btn"
           onclick="confirmarMovCustom()">Agregar</button>
         <button type="button" class="btn btn-ghost"
@@ -2703,8 +2700,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title">Registrar gasto</div>
-        <div class="ig"><label class="il"
-            for="gv_desc">Descripción</label><input type="text" id="gv_desc"
+        <div class="ig"><label class="il" for="gv_desc">Descripción</label><input type="text" id="gv_desc"
             placeholder="Ej: Mercado, Uber, Farmacia..."></div>
         <div class="ig"><label class="il" for="gv_monto">Monto</label><input
             type="text" inputmode="decimal" id="gv_monto" placeholder="0,00"
@@ -2717,8 +2713,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               id="gv_cat"><option>Alimentación</option><option>Transporte</option><option>Salud</option><option>Entretenimiento</option><option>Ropa</option><option>Hogar</option><option>Educación</option><option>Servicios</option><option>Otro</option></select></div>
         </div>
         <div class="ig">
-          <label class="il" for="gv_fuente">¿De dónde salió la plata? <span
-              style="color:var(--red);">*</span></label>
+          <label class="il" for="gv_fuente">¿De dónde salió la plata? <span style="color:var(--red);">*</span></label>
           <div class="select-wrap"><select id="gv_fuente"><option
                 value>Seleccionar cuenta</option></select></div>
           <div id="gv_fuente_hint"
@@ -2727,8 +2722,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="gv_fuente_saldo"
             style="font-size:10px;font-family:'DM Mono',monospace;margin-top:5px;min-height:14px;"></div>
         </div>
-        <div class="ig"><label class="il" for="gv_nota">Nota
-            (opcional)</label><input type="text" id="gv_nota"
+        <div class="ig"><label class="il" for="gv_nota">Nota (opcional)</label><input type="text" id="gv_nota"
             placeholder="Detalle adicional"></div>
         <button type="button" class="btn btn-primary"
           id="btn-guardar-gasto-var">Guardar gasto</button>
@@ -2799,8 +2793,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div style="font-size:11px;color:var(--text3);text-align:right;"
             id="pgf-cat-badge"></div>
         </div>
-        <div class="ig"><label class="il" for="pgf-fuente">Cuenta / Fuente de
-            pago</label>
+        <div class="ig"><label class="il" for="pgf-fuente">Cuenta / Fuente de pago</label>
           <div class="select-wrap"><select id="pgf-fuente"
               onchange="pgfActualizarSaldo()">
               <option value>Seleccionar cuenta</option>
@@ -2811,8 +2804,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div class="ig"><label class="il" for="pgf-fecha">Fecha de pago</label>
           <input type="date" id="pgf-fecha">
         </div>
-        <div class="ig"><label class="il" for="pgf-nota">Descripción / Nota
-            (opcional)</label><input type="text" id="pgf-nota"
+        <div class="ig"><label class="il" for="pgf-nota">Nota (opcional)</label><input type="text" id="pgf-nota"
             placeholder="Ej: pago mes de mayo, número de referencia..."></div>
         <div id="pgf-error"
           style="font-size:12px;color:var(--red);margin-bottom:12px;display:none;padding:10px;background:rgba(240,104,104,.1);border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);"></div>
@@ -2831,20 +2823,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div class="sheet-title">Nuevo encargo</div>
         <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Plata
           de otra persona que vas a administrar. No afecta tu patrimonio.</p>
-        <div class="ig"><label class="il" for="enc_nombre">¿De quién es la
-            plata?</label><input type="text" id="enc_nombre"
+        <div class="ig"><label class="il" for="enc_nombre">¿De quién es la plata?</label><input type="text" id="enc_nombre"
             placeholder="Ej: Papá, Carlos, Mamá..."></div>
-        <div class="ig"><label class="il" for="enc_saldo">Saldo inicial
-            (opcional)</label><input type="text" inputmode="decimal"
+        <div class="ig"><label class="il" for="enc_saldo">Saldo inicial (opcional)</label><input type="text" inputmode="decimal"
             id="enc_saldo" placeholder="0,00" class="money-input"></div>
         <div class="ig" id="enc_cuenta_wrap" style="display:none;">
-          <label class="il" for="enc_cuenta_ini">¿En qué cuenta está ese
-            saldo?</label>
+          <label class="il" for="enc_cuenta_ini">¿En qué cuenta está ese saldo?</label>
           <div class="select-wrap"><select id="enc_cuenta_ini"><option value>Sin
                 especificar</option></select></div>
         </div>
-        <div class="ig"><label class="il" for="enc_nota">Nota
-            (opcional)</label><input type="text" id="enc_nota"
+        <div class="ig"><label class="il" for="enc_nota">Nota (opcional)</label><input type="text" id="enc_nota"
             placeholder="Ej: plata del arriendo, ahorros..."></div>
         <button type="button" class="btn btn-primary"
           id="btn-crear-encargo">Crear encargo</button>
@@ -2859,11 +2847,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title">Editar encargo</div>
-        <div class="ig"><label class="il" for="enc_edit_nombre">¿De quién es la
-            plata?</label><input type="text" id="enc_edit_nombre"
+        <div class="ig"><label class="il" for="enc_edit_nombre">¿De quién es la plata?</label><input type="text" id="enc_edit_nombre"
             placeholder="Ej: Papá, Carlos, Mamá..."></div>
-        <div class="ig"><label class="il" for="enc_edit_nota">Nota
-            (opcional)</label><input type="text" id="enc_edit_nota"
+        <div class="ig"><label class="il" for="enc_edit_nota">Nota (opcional)</label><input type="text" id="enc_edit_nota"
             placeholder="Ej: plata del arriendo, ahorros..."></div>
         <button type="button" class="btn btn-primary"
           id="btn-guardar-editar-encargo">Guardar cambios</button>
@@ -2881,8 +2867,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           Encargo: <span id="movEncNombre" style="font-weight:600;color:var(--blue);"></span> ·
           Saldo: <span id="movEncSaldo"></span>
         </div>
-        <div class="ig"><label class="il"
-            for="movenc_desc">Descripción</label><input type="text"
+        <div class="ig"><label class="il" for="movenc_desc">Descripción</label><input type="text"
             id="movenc_desc"
             placeholder="Ej: pago servicios, depósito..."></div>
         <div class="ig"><label class="il" for="movenc_monto">Monto</label><input
@@ -2914,8 +2899,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         </div>
         <div class="ig"><label class="il" for="movenc_fecha">Fecha</label><input
             type="date" id="movenc_fecha"></div>
-        <div class="ig"><label class="il" for="movenc_nota">Nota
-            (opcional)</label><input type="text" id="movenc_nota"
+        <div class="ig"><label class="il" for="movenc_nota">Nota (opcional)</label><input type="text" id="movenc_nota"
             placeholder="Detalle adicional"></div>
 
         <!-- DIFERENCIAL DE SALIDA -->
@@ -3000,22 +2984,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           Encargo: <span id="traspasoEncNombre" style="font-weight:600;color:var(--accent);"></span>
           · Saldo: <span id="traspasoEncSaldo"></span>
         </div>
-        <div class="ig"><label class="il" for="traspaso_monto">¿Cuánto te
-            regalaron?</label><input type="text" inputmode="decimal"
+        <div class="ig"><label class="il" for="traspaso_desc">Descripción <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input type="text"
+            id="traspaso_desc"
+            placeholder="Ej: sobrante del encargo, me lo regaló..."></div>
+        <div class="ig"><label class="il" for="traspaso_monto">¿Cuánto te regalaron?</label><input type="text" inputmode="decimal"
             id="traspaso_monto" placeholder="0,00" class="money-input"></div>
         <div class="ig">
-          <label class="il" for="traspaso_destino">¿A cuál de tus cuentas
-            entra?</label>
+          <label class="il" for="traspaso_destino">¿A cuál de tus cuentas entra?</label>
           <div class="select-wrap"><select id="traspaso_destino"><option
                 value>Seleccionar cuenta</option></select></div>
           <div id="traspaso_saldo_hint" class="field-hint"></div>
         </div>
-        <div class="ig"><label class="il"
-            for="traspaso_desc">Descripción</label><input type="text"
-            id="traspaso_desc"
-            placeholder="Ej: sobrante del encargo, me lo regaló..."></div>
-        <div class="ig"><label class="il"
-            for="traspaso_fecha">Fecha</label><input type="date"
+        <div class="ig"><label class="il" for="traspaso_fecha">Fecha</label><input type="date"
             id="traspaso_fecha"></div>
         <div id="traspaso_preview"
           style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:12px;min-height:16px;line-height:1.6;"></div>
@@ -3036,30 +3016,30 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div class="sheet-title">Pague con mi TC</div>
         <p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;">
           Hiciste una compra del encargo con tu tarjeta de credito.<br>
-          <b style="color:var(--text);">El dinero no desaparece</b> &mdash; deja de ser del encargo y pasa a ser tuyo para pagar la TC.
+          <b style="color:var(--text);">El dinero no desaparece</b> — deja de ser del encargo y pasa a ser tuyo para pagar la TC.
         </p>
         <div class="info-box info-box-blue" style="font-family:'DM Mono',monospace;">
-          Encargo: <span id="compraTcEncNombre" style="font-weight:600;color:var(--blue);"></span> &middot; Saldo: <span id="compraTcEncSaldo"></span>
+          Encargo: <span id="compraTcEncNombre" style="font-weight:600;color:var(--blue);"></span> · Saldo: <span id="compraTcEncSaldo"></span>
         </div>
         <div class="ig">
-          <label class="il" for="ctc_desc">Que compraste?</label>
+          <label class="il" for="ctc_desc">¿Qué compraste?</label>
           <input type="text" id="ctc_desc" placeholder="Ej: mercado, farmacia, ropa...">
         </div>
         <div class="ig">
-          <label class="il" for="ctc_monto">Monto cobrado al encargo</label>
+          <label class="il" for="ctc_monto">Monto del encargo</label>
           <input type="text" inputmode="decimal" id="ctc_monto" placeholder="0,00" class="money-input" oninput="_ctcActualizarPreview()">
         </div>
         <div class="ig">
-          <label class="il" for="ctc_cuenta_enc">De que cuenta salia esa plata del encargo?</label>
+          <label class="il" for="ctc_cuenta_enc">¿De qué cuenta salía esa plata del encargo?</label>
           <div class="select-wrap"><select id="ctc_cuenta_enc" onchange="_ctcActualizarPreview()"><option value="">Sin especificar</option></select></div>
           <div id="ctc_cuenta_enc_hint" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
         </div>
         <div class="ig">
-          <label class="il" for="ctc_tarjeta">Con cual tarjeta de credito pagaste?</label>
+          <label class="il" for="ctc_tarjeta">¿Con cuál tarjeta de crédito pagaste?</label>
           <div class="select-wrap"><select id="ctc_tarjeta" onchange="_ctcActualizarPreview()"><option value="">Seleccionar TC</option></select></div>
         </div>
         <div class="ig">
-          <label class="il" for="ctc_destino">A donde va el dinero del encargo? (para pagar la TC)</label>
+          <label class="il" for="ctc_destino">¿A dónde va el dinero del encargo? (para pagar la TC)</label>
           <div class="select-wrap"><select id="ctc_destino" onchange="_ctcActualizarPreview()"><option value="">Seleccionar cuenta</option></select></div>
           <div id="ctc_destino_hint" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
         </div>
@@ -3081,7 +3061,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             </div>
             <div id="ctc-dif-resumen" style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
             <div id="ctc-dif-margen-wrap" style="display:none;margin-top:10px;">
-              <label class="il" style="color:var(--accent);margin-bottom:6px;">A cual de tus cuentas entra el diferencial?</label>
+              <label class="il" style="color:var(--accent);margin-bottom:6px;">¿A cuál de tus cuentas entra el diferencial?</label>
               <div class="select-wrap"><select id="ctc_dif_margen_cuenta"><option value="">Sin especificar</option></select></div>
             </div>
           </div>
@@ -3218,20 +3198,20 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         </p>
         <div style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:8px;padding:9px 12px;margin-bottom:14px;font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;">
           Encargo: <span id="moverEncNombre" style="font-weight:600;"></span>
-          &middot; Saldo total: <span id="moverEncSaldo"></span>
+          · Saldo total: <span id="moverEncSaldo"></span>
         </div>
         <div class="ig">
-          <label class="il" for="moverenc_origen">&iquest;De qu&eacute; cuenta sale?</label>
+          <label class="il" for="moverenc_origen">¿De qué cuenta sale?</label>
           <div class="select-wrap"><select id="moverenc_origen"><option value="">Seleccionar cuenta origen</option></select></div>
           <div id="moverenc_origen_hint" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
         </div>
         <div class="ig">
-          <label class="il" for="moverenc_destino">&iquest;A qu&eacute; cuenta va?</label>
+          <label class="il" for="moverenc_destino">¿A qué cuenta va?</label>
           <div class="select-wrap"><select id="moverenc_destino"><option value="">Seleccionar cuenta destino</option></select></div>
           <div id="moverenc_destino_hint" style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
         </div>
         <div class="ig">
-          <label class="il" for="moverenc_monto">&iquest;Cu&aacute;nto vas a mover?</label>
+          <label class="il" for="moverenc_monto">¿Cuánto vas a mover?</label>
           <input type="text" inputmode="decimal" id="moverenc_monto" placeholder="0,00" class="money-input">
         </div>
         <div class="ig">
@@ -3251,8 +3231,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title">Editar persona</div>
-        <div class="ig"><label class="il"
-            for="np_edit_nombre">Nombre</label><input
+        <div class="ig"><label class="il" for="np_edit_nombre">Nombre</label><input
             type="text" id="np_edit_nombre"
             placeholder="Ej: Papá, Carlos, Mamá..."></div>
         <div class="ig">
@@ -3415,18 +3394,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               <div style="font-size:10px;color:var(--text3);">Registrar margen cobrado</div>
             </div>
           </div>
-          <div id="prtc-dif-icon" style="font-size:16px;color:var(--amber);transition:transform .2s;">&#x203a;</div>
+          <div id="prtc-dif-icon" style="font-size:16px;color:var(--amber);transition:transform .2s;">›</div>
         </div>
         <div id="prtc-dif-body" style="display:none;background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;margin-bottom:10px;">
           <div class="ig" style="margin-bottom:10px;">
-            <label class="il" style="color:var(--amber);">&#191;Cu&#225;nto era en realidad?</label>
+            <label class="il" style="color:var(--amber);">¿Cuánto era en realidad?</label>
             <input type="text" inputmode="decimal" id="prtc_dif_real" placeholder="0,00" class="money-input" oninput="_prtcDifResumen()">
           </div>
           <div id="prtc-dif-resumen" style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
         </div>
 
         <div id="prtc_preview" style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:14px;margin-bottom:4px;margin-top:8px;"></div>
-        <button type="button" class="btn btn-primary" onclick="confirmarPrestamoTC()">Guardar pr&#233;stamo con TC</button>
+        <button type="button" class="btn btn-primary" onclick="confirmarPrestamoTC()">Guardar préstamo con TC</button>
         <button type="button" class="btn btn-ghost" data-close-sheet="prestamo-tc">Cancelar</button>
       </div>
     </div>
@@ -3444,8 +3423,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             type="date" id="mov_fecha"></div>
         <div class="ig" id="mov_fuente_wrap">
           <div class="field-header">
-            <label class="il" style="margin-bottom:0;">¿De dónde sacó la
-              plata?</label>
+            <label class="il" style="margin-bottom:0;">¿De dónde sacó la plata?</label>
             <button type="button" id="mov_split_toggle"
               onclick="togglePrestSplit()"
               class="btn-split">Dividir ÷</button>
@@ -3472,8 +3450,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div class="ig" id="mov_destino_wrap" style="display:none;">
           <!-- Header + toggle dividir -->
           <div class="field-header">
-            <label class="il" style="margin-bottom:0;">¿A dónde entra el
-              pago?</label>
+            <label class="il" style="margin-bottom:0;">¿A dónde entra el pago?</label>
             <button type="button" id="mov_dest_split_toggle"
               onclick="toggleAbonoSplit()"
               class="btn-split">Dividir ÷</button>
@@ -3557,8 +3534,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             </div>
 
             <!-- Qué hizo con el extra — sistema de partes libres -->
-            <label class="il" style="font-size:10px;margin-bottom:8px;">¿Qué
-              hiciste con ese extra? Puedes dividirlo como quieras.</label>
+            <label class="il" style="font-size:10px;margin-bottom:8px;">¿Qué hiciste con ese extra? Puedes dividirlo como quieras.</label>
             <!-- Lista de partes -->
             <div id="ext_partes_list"
               style="display:flex;flex-direction:column;gap:7px;margin-bottom:6px;"></div>
@@ -3577,8 +3553,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           </div>
         </div>
 
-        <div class="ig"><label class="il" for="mov_nota">Nota
-            (opcional)</label><input type="text" id="mov_nota"
+        <div class="ig"><label class="il" for="mov_nota">Nota (opcional)</label><input type="text" id="mov_nota"
             placeholder="Ej: para el arriendo"></div>
         <button type="button" class="btn btn-primary"
           id="movBtnConfirm">Guardar</button>
@@ -3620,8 +3595,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div class="sheet-title">Editar persona en Spotify</div>
         <div class="ig"><label class="il" for="sp_edit_n">Nombre</label><input
             type="text" id="sp_edit_n" placeholder="Ej: Carlos"></div>
-        <div class="ig"><label class="il" for="sp_edit_m">Cuota
-            mensual</label><input
+        <div class="ig"><label class="il" for="sp_edit_m">Cuota mensual</label><input
             type="text" inputmode="decimal" id="sp_edit_m" placeholder="0,00"
             class="money-input"></div>
         <div class="ig">
@@ -3668,8 +3642,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             id="spMesesTotal"></div>
         </div>
         <div class="divider"></div>
-        <label class="il" style="margin-top:8px;display:block;">¿A dónde metiste
-          esa plata?</label>
+        <label class="il" style="margin-top:8px;display:block;">¿A dónde metiste esa plata?</label>
         <div id="spDestinoOpts"></div>
         <div style="margin-top:6px;"></div>
         <button type="button" class="btn btn-primary"
@@ -3688,19 +3661,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           vas a pagar?</p>
         <div id="spPagarSaldoInfo"
           style="font-size:11px;color:var(--nu-light);font-family:'DM Mono',monospace;margin-bottom:14px;"></div>
-        <div class="ig"><label class="il" for="spPagarMonto">Monto a
-            pagar</label><input type="text" inputmode="decimal"
+        <div class="ig"><label class="il" for="spPagarMonto">Monto a pagar</label><input type="text" inputmode="decimal"
             id="spPagarMonto" placeholder="0,00" class="money-input"></div>
         <div id="spPagarPreview"
           style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:4px;"></div>
-        <div class="ig" style="margin-top:8px;"><label class="il"
-            for="spPagarFuente">¿De dónde sacas la plata?</label>
+        <div class="ig" style="margin-top:8px;"><label class="il" for="spPagarFuente">¿De dónde sacas la plata?</label>
           <div class="select-wrap"><select id="spPagarFuente"></select></div>
         </div>
         <div id="spPagarFuenteSaldo"
           style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:14px;"></div>
-        <div class="ig"><label class="il" for="spPagarNota">Nota
-            (opcional)</label><input type="text" id="spPagarNota"
+        <div class="ig"><label class="il" for="spPagarNota">Nota (opcional)</label><input type="text" id="spPagarNota"
             placeholder="Ej: mes de mayo, pago con intereses..."></div>
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-pagar-spotify"
@@ -3728,8 +3698,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         </div>
         <!-- Modo destino: simple o dividido -->
         <div class="field-header" style="margin-bottom:8px;">
-          <label class="il" style="margin-bottom:0;">¿Qué hiciste con esa
-            plata?</label>
+          <label class="il" style="margin-bottom:0;">¿Qué hiciste con esa plata?</label>
           <button type="button" id="mpSplitToggle"
             class="btn-split">Dividir
             ÷</button>
@@ -3825,17 +3794,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               contará como ingreso del mes ni aparecerá en estadísticas</div>
           </div>
         </div>
-        <div class="ig"><label class="il" for="adDesc" id="adDescLabel">¿De
-            dónde viene esta
-            plata? <span style="color:var(--red);">*</span></label><input
+        <div class="ig"><label class="il" for="adDesc" id="adDescLabel">¿De dónde viene esta plata? <span style="color:var(--red);">*</span></label><input
             type="text" id="adDesc"
             placeholder="Ej: Mesada, regalo, venta, sueldo..."
             maxlength="80"></div>
-        <div class="ig"><label class="il" for="adMonto">¿Cuánto
-            recibiste?</label><input type="text" inputmode="decimal"
+        <div class="ig"><label class="il" for="adMonto">¿Cuánto recibiste?</label><input type="text" inputmode="decimal"
             id="adMonto" placeholder="0,00" class="money-input" autofocus></div>
         <div class="ig"><label class="il" for="adFecha">Fecha</label><input
             type="date" id="adFecha"></div>
+        <div class="ig"><label class="il" for="adNota">Nota <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input type="text" id="adNota"
+            placeholder="Detalle adicional"></div>
         <div id="adPreview"
           style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
         <button type="button" class="btn btn-primary"
@@ -3875,16 +3843,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         </div>
         <div id="adMenuSaldo"
           style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:12px;min-height:16px;"></div>
-        <div class="ig"><label class="il" for="adMenuDesc">¿De dónde viene esta
-            plata? <span style="color:var(--red);">*</span></label><input
+        <div class="ig"><label class="il" for="adMenuDesc">¿De dónde viene esta plata? <span style="color:var(--red);">*</span></label><input
             type="text" id="adMenuDesc"
             placeholder="Ej: Mesada, regalo, venta, sueldo..."
             maxlength="80"></div>
-        <div class="ig"><label class="il" for="adMenuMonto">¿Cuánto
-            recibiste?</label><input type="text" inputmode="decimal"
+        <div class="ig"><label class="il" for="adMenuMonto">¿Cuánto recibiste?</label><input type="text" inputmode="decimal"
             id="adMenuMonto" placeholder="0,00" class="money-input"></div>
         <div class="ig"><label class="il" for="adMenuFecha">Fecha</label><input
             type="date" id="adMenuFecha"></div>
+        <div class="ig"><label class="il" for="adMenuNota">Nota <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input type="text" id="adMenuNota"
+            placeholder="Detalle adicional"></div>
         <div id="adMenuPreview"
           style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
         <button type="button" class="btn btn-primary"
@@ -3934,6 +3902,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <label class="il" for="nuMovFecha">Fecha</label>
           <input type="date" id="nuMovFecha">
         </div>
+        <div class="ig"><label class="il" for="nuMovNota">Nota <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input type="text" id="nuMovNota"
+            placeholder="Detalle adicional"></div>
         <div id="nuMovPreview" style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
         <button type="button" class="btn btn-primary" id="btn-confirmar-nu-mov"
           style="background:rgba(192,96,240,.85);border-color:transparent;box-shadow:0 2px 14px rgba(192,96,240,.3);">Confirmar</button>
@@ -3951,13 +3921,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div class="ig"><label class="il">Saldo actual</label><div
             id="rdSaldoActual"
             style="font-size:18px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);padding:6px 0 2px;">$0</div></div>
-        <div class="ig"><label class="il" for="rdDesc">¿En qué se gastó o a
-            dónde fue? <span style="color:var(--red);">*</span></label><input
+        <div class="ig"><label class="il" for="rdDesc">¿En qué se gastó o a dónde fue? <span style="color:var(--red);">*</span></label><input
             type="text" id="rdDesc"
             placeholder="Ej: Mercado, pasajes, pago de deuda..."
             maxlength="80"></div>
-        <div class="ig"><label class="il" for="rdMonto">¿Cuánto vas a
-            restar?</label><input type="text" inputmode="decimal" id="rdMonto"
+        <div class="ig"><label class="il" for="rdMonto">¿Cuánto vas a restar?</label><input type="text" inputmode="decimal" id="rdMonto"
             placeholder="0,00" class="money-input"></div>
         <div class="ig"><label class="il" for="rdFecha">Fecha</label><input
             type="date" id="rdFecha"></div>
@@ -3988,8 +3956,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="eaSaldoActual"
             style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);">$0</div>
         </div>
-        <div class="ig"><label class="il" for="eaMonto">Nuevo saldo
-            inicial</label>
+        <div class="ig"><label class="il" for="eaMonto">Nuevo saldo inicial</label>
           <input type="text" inputmode="decimal" id="eaMonto" placeholder="0,00"
             class="money-input"></div>
         <div id="eaPreview"
@@ -4029,8 +3996,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         </div>
         <div id="tr_preview"
           style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:8px;line-height:1.7;"></div>
-        <div class="ig"><label class="il" for="tr_nota">Nota
-            (opcional)</label><input type="text" id="tr_nota"
+        <div class="ig"><label class="il" for="tr_nota">Nota (opcional)</label><input type="text" id="tr_nota"
             placeholder="Ej: pasé del efectivo a Nequi"></div>
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-transferir">Transferir <svg
@@ -4066,8 +4032,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div class="ig">
           <div
             style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-            <label class="il" for="cdt_monto" style="margin-bottom:0;">Monto a
-              invertir (mín. $50.000)</label>
+            <label class="il" for="cdt_monto" style="margin-bottom:0;">Monto a invertir (mín. $50.000)</label>
             <button type="button" id="btn-cdt-invertir-todo"
               style="font-size:10px;font-family:'DM Mono',monospace;padding:3px 9px;border-radius:20px;background:rgba(176,144,240,.15);border:1px solid rgba(176,144,240,.4);color:var(--purple);cursor:pointer;white-space:nowrap;font-weight:600;line-height:1.4;">
               Invertir todo
@@ -4079,16 +4044,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div class="ig"><label class="il" for="cdt_tasa">Tasa EA %</label><input
             type="text" inputmode="decimal" id="cdt_tasa"
             placeholder="9,25"></div>
-        <div class="ig"><label class="il" for="cdt_inicio">Fecha de apertura
-            <span
-              style="font-size:10px;color:var(--text3);font-weight:400;">(cuándo
-              abriste el CDT en Nu)</span></label><input type="date"
+        <div class="ig"><label class="il" for="cdt_inicio">Fecha de apertura <span style="font-size:10px;color:var(--text3);font-weight:400;">(cuándo abriste el CDT en Nu)</span></label><input type="date"
             id="cdt_inicio"></div>
-        <div class="ig"><label class="il" for="cdt_vence">Fecha de
-            vencimiento</label><input type="date" id="cdt_vence"></div>
-        <div class="ig"><label class="il" for="cdt_rte">Retefuente % <span
-              style="font-size:10px;color:var(--text3);font-weight:400;">(Nu
-              retiene sobre intereses · por defecto 4%)</span></label><input
+        <div class="ig"><label class="il" for="cdt_vence">Fecha de vencimiento</label><input type="date" id="cdt_vence"></div>
+        <div class="ig"><label class="il" for="cdt_rte">Retefuente % <span style="font-size:10px;color:var(--text3);font-weight:400;">(Nu retiene sobre intereses · por defecto 4%)</span></label><input
             type="text" inputmode="decimal" id="cdt_rte"
             placeholder="4,00"></div>
         <div id="cdt_preview"
@@ -4120,10 +4079,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             id="cobrar_detalle_est"></div>
         </div>
         <div class="ig">
-          <label class="il" for="cobrar_valor">Valor real depositado por Nu
-            <span
-              style="font-size:10px;color:var(--text3);font-weight:400;">(copia
-              el "Total neto actual" de la app)</span></label>
+          <label class="il" for="cobrar_valor">Valor real depositado por Nu <span style="font-size:10px;color:var(--text3);font-weight:400;">(copia el "Total neto actual" de la app)</span></label>
           <input type="text" inputmode="decimal" id="cobrar_valor"
             placeholder="0,00" class="money-input">
         </div>
@@ -4145,14 +4101,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Define
           cuánto quieres ahorrar y la app te dirá cuánto deberías llevar mes a
           mes.</p>
-        <div class="ig"><label class="il" for="meta_objetivo">Monto
-            objetivo</label><input type="text" inputmode="decimal"
+        <div class="ig"><label class="il" for="meta_objetivo">Monto objetivo</label><input type="text" inputmode="decimal"
             id="meta_objetivo" placeholder="Ej: 1.000.000"
             class="money-input"></div>
-        <div class="ig"><label class="il" for="meta_inicio">Fecha de
-            inicio</label><input type="date" id="meta_inicio"></div>
-        <div class="ig"><label class="il" for="meta_fin">Fecha
-            límite</label><input type="date" id="meta_fin"></div>
+        <div class="ig"><label class="il" for="meta_inicio">Fecha de inicio</label><input type="date" id="meta_inicio"></div>
+        <div class="ig"><label class="il" for="meta_fin">Fecha límite</label><input type="date" id="meta_fin"></div>
         <div
           style="font-size:11px;color:var(--text3);margin:-6px 0 14px;font-family:'DM Mono',monospace;"
           id="meta_cuota_preview"></div>
@@ -4752,7 +4705,7 @@ function crearMovimientoApertura(monto,fecha,nota){
   return {id:uid(),tipo:'apertura',monto,fecha:fecha||hoy(),desc:nota||'Saldo inicial',nota:nota||'Saldo inicial'};
 }
 // Escapa caracteres HTML para prevenir XSS al insertar datos de usuario en innerHTML
-function escHtml(s){if(!s&&s!==0)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function escHtml(s){if(!s&&s!==0)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'"').replace(/'/g,'&#39;');}
 function mesKey(d){return d?d.substring(0,7):'';}
 
 /* ---- MOVER PLATA ENTRE CUENTAS ---- */
@@ -16524,17 +16477,13 @@ if ('serviceWorker' in navigator) {
         <div class="sheet-handle"></div>
         <div class="sheet-title" id="tc-form-title">Nueva tarjeta de
           crédito</div>
-        <div class="ig"><label class="il" for="tc_nombre">Nombre de la
-            tarjeta</label><input type="text" id="tc_nombre"
+        <div class="ig"><label class="il" for="tc_nombre">Nombre de la tarjeta</label><input type="text" id="tc_nombre"
             placeholder="Ej: Visa Bancolombia, Mastercard Nu..."></div>
-        <div class="ig"><label class="il" for="tc_cupo">Cupo total
-            (opcional)</label><input type="text" inputmode="decimal"
+        <div class="ig"><label class="il" for="tc_cupo">Cupo total (opcional)</label><input type="text" inputmode="decimal"
             id="tc_cupo" placeholder="0,00" class="money-input"></div>
-        <div class="ig"><label class="il" for="tc_deuda_ini">Deuda actual (saldo
-            que ya debes)</label><input type="text" inputmode="decimal"
+        <div class="ig"><label class="il" for="tc_deuda_ini">Deuda actual (saldo que ya debes)</label><input type="text" inputmode="decimal"
             id="tc_deuda_ini" placeholder="0,00" class="money-input"></div>
-        <div class="ig"><label class="il" for="tc_pago_minimo">Pago mínimo del extracto
-            <span style="font-size:10px;color:var(--text3);font-weight:400;">(lo que debes de antes del último corte — opcional si no tienes extracto)</span></label><input type="text" inputmode="decimal"
+        <div class="ig"><label class="il" for="tc_pago_minimo">Pago mínimo del extracto <span style="font-size:10px;color:var(--text3);font-weight:400;">(lo que debes de antes del último corte — opcional si no tienes extracto)</span></label><input type="text" inputmode="decimal"
             id="tc_pago_minimo" placeholder="0,00" class="money-input"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
           <div class="ig">
@@ -16573,8 +16522,7 @@ if ('serviceWorker' in navigator) {
             style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;"
             id="compra-tc-nombre-header"></div>
         </div>
-        <div class="ig"><label class="il"
-            for="ctc_desc">Descripción</label><input type="text" id="ctc_desc"
+        <div class="ig"><label class="il" for="ctc_desc">Descripción</label><input type="text" id="ctc_desc"
             placeholder="Ej: Mercado, Ropa, Amazon..."></div>
         <div class="ig"><label class="il" for="ctc_monto">Monto</label><input
             type="text" inputmode="decimal" id="ctc_monto" placeholder="0,00"
@@ -16586,8 +16534,7 @@ if ('serviceWorker' in navigator) {
         <div class="ig"><label class="il" for="ctc_cat">Categoría</label>
           <div class="select-wrap"><select id="ctc_cat"></select></div>
         </div>
-        <div class="ig"><label class="il" for="ctc_nota">Nota
-            (opcional)</label><input type="text" id="ctc_nota"
+        <div class="ig"><label class="il" for="ctc_nota">Nota (opcional)</label><input type="text" id="ctc_nota"
             placeholder="Detalle adicional"></div>
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-compra-tc-tarjetas"

@@ -22027,25 +22027,32 @@ window.alcanciaConfirmarDestapar = function(){
       ${comparHtml}`;
   }
 
-  // ── Marcar la reubicación del saldo registrado como ajuste de base ──────
-  // El saldoReg ya estaba contado en el patrimonio (como alcancia.saldoRegistrado).
-  // Al destapar, esa plata se mueve a una cuenta real (_sumarASaldo), pero
-  // simultáneamente alcancia.saldoRegistrado pasa a 0. El cambio neto en patrimonio
-  // debería ser solo la diferencia real (dif), no el saldoReg completo.
-  // Sin este ajuste, snapshotPatrimonio ve un salto de +saldoReg en el valor del día
-  // que distorsiona la tendencia mensual (inflando artificialmente el cambio diario).
-  // _ajustesBaseLog le dice al cálculo de tendencia que ese monto era plata ya contada.
-  if(saldoReg > 0){
-    if(!window.S._ajustesBaseLog) window.S._ajustesBaseLog = [];
-    window.S._ajustesBaseLog.push({ fecha: hoyStr, monto: saldoReg });
-  }
-
   // ── Resetear alcancía para la siguiente
   a.saldoRegistrado = 0;
   a.depositos = 0;
   a.fechaInicio = hoyStr;
   a.movimientos = [];
   _setSaldoOfuscado(0);
+
+  // ── Sincronizar DOM antes de save() ─────────────────────────────────────
+  // _sumarASaldo actualiza S.nequiSaldo y S.efectivoSaldo directamente,
+  // pero save() los vuelve a leer del input DOM (document.getElementById('nequiSaldo').value).
+  // Si el input no se actualiza primero, save() sobreescribe S con el valor
+  // viejo del DOM, y snapshotPatrimonio() registra un patrimonio incorrecto
+  // (sin los 70k del destapar), distorsionando la tendencia mensual.
+  if(typeof fmtInput === 'function'){
+    const _elNq = document.getElementById('nequiSaldo');
+    const _elEf = document.getElementById('efectivoSaldo');
+    if(_elNq) _elNq.value = fmtInput(window.S.nequiSaldo || 0);
+    if(_elEf) _elEf.value = fmtInput(window.S.efectivoSaldo || 0);
+    // Si el destino fue una cajita, sincronizar también su input de saldo
+    if(destino && destino.startsWith('cajita:')){
+      const _cajId = destino.split(':')[1];
+      const _cajEl = document.getElementById('cs_' + _cajId);
+      const _caj = (window.S.cajitas||[]).find(c=>c.id===_cajId);
+      if(_cajEl && _caj && !(_caj.cdts && _caj.cdts.length)) _cajEl.value = fmtInput(_caj.saldo || 0);
+    }
+  }
 
   if(typeof save==='function') save();
   if(typeof closeSheet==='function') closeSheet('alcancia-destapar');

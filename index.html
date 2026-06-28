@@ -21172,8 +21172,52 @@ function _fmtTiempo(dias){
 function _alcanciaActualizarTipo(){
   const tipo = (document.getElementById('alc_dep_tipo')||{}).value || 'yo-directo';
   const fuenteWrap = document.getElementById('alc_dep_fuente_wrap');
-  if(fuenteWrap){
-    fuenteWrap.style.display = (tipo === 'yo-cuenta') ? '' : 'none';
+  const splitWrap  = document.getElementById('alc_dep_split_wrap');
+  const montoLabel = document.querySelector('label[for="alc_dep_monto"]') ||
+                     (() => { const ig = document.getElementById('alc_dep_monto'); return ig ? ig.closest('.ig')?.querySelector('label') : null; })();
+
+  if(fuenteWrap) fuenteWrap.style.display = (tipo === 'yo-cuenta') ? '' : 'none';
+  if(splitWrap)  splitWrap.style.display  = (tipo === 'split')    ? '' : 'none';
+
+  // Cuando es split el campo total se auto-llena
+  const montoInput = document.getElementById('alc_dep_monto');
+  if(montoInput){
+    if(tipo === 'split'){
+      // Deshabilitar edición manual del total cuando es split
+      montoInput.readOnly = true;
+      montoInput.style.opacity = '0.6';
+    } else {
+      montoInput.readOnly = false;
+      montoInput.style.opacity = '';
+    }
+  }
+}
+
+function _alcSplitActualizarTotal(){
+  const yo   = _getMoneyVal('alc_split_yo')   || 0;
+  const mama = _getMoneyVal('alc_split_mama') || 0;
+  const total = yo + mama;
+  const hint  = document.getElementById('alc_split_total_hint');
+  const montoInput = document.getElementById('alc_dep_monto');
+
+  if(hint){
+    if(yo > 0 || mama > 0){
+      hint.textContent = 'Total: ' + (typeof fmt === 'function' ? fmt(total) : total);
+      hint.style.color = 'var(--amber)';
+    } else {
+      hint.textContent = '';
+    }
+  }
+
+  // Sincronizar el campo de monto total
+  if(montoInput && total > 0){
+    // Formatear igual que lo hacen los money-inputs: sin símbolo, con coma decimal
+    const formatted = total.toFixed(2).replace('.', ',');
+    montoInput.value = formatted;
+    montoInput.dispatchEvent(new Event('input'));
+  } else if(montoInput && total === 0){
+    montoInput.value = '';
+    montoInput.dispatchEvent(new Event('input'));
   }
 }
 
@@ -21198,6 +21242,7 @@ function _inyectarAlcanciaSheets(){
             <option value="yo-cuenta">🏦 Lo saqué de una de mis cuentas</option>
             <option value="regalo">🎁 Me lo regaló mi mamá</option>
             <option value="mandado">🛍️ Me lo dio mi mamá por un mandado</option>
+            <option value="split">🤝 Pusimos entre los dos</option>
           </select>
         </div>
       </div>
@@ -21208,8 +21253,22 @@ function _inyectarAlcanciaSheets(){
         </div>
         <div id="alc_dep_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
       </div>
+      <div class="ig" id="alc_dep_split_wrap" style="display:none;">
+        <label class="il">¿Cuánto puso cada uno?</label>
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="flex:1;">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:500;">Vos</div>
+            <input type="text" inputmode="decimal" class="money-input" id="alc_split_yo" placeholder="0,00" autocomplete="off">
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:500;">Tu mamá</div>
+            <input type="text" inputmode="decimal" class="money-input" id="alc_split_mama" placeholder="0,00" autocomplete="off">
+          </div>
+        </div>
+        <div id="alc_split_total_hint" style="font-size:12px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace;"></div>
+      </div>
       <div class="ig">
-        <label class="il">Monto</label>
+        <label class="il">Monto total</label>
         <input type="text" inputmode="decimal" class="money-input" id="alc_dep_monto" placeholder="0,00" autocomplete="off">
       </div>
       <div class="ig">
@@ -21288,6 +21347,14 @@ function _inyectarAlcanciaSheets(){
   /* ---------- Money inputs ---------- */
   _initMoneyInput('alc_dep_monto');
   _initMoneyInput('alc_real_monto');
+  _initMoneyInput('alc_split_yo');
+  _initMoneyInput('alc_split_mama');
+
+  /* ---------- Split: recalcular total al cambiar cada campo ---------- */
+  ['alc_split_yo','alc_split_mama'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.addEventListener('input', _alcSplitActualizarTotal);
+  });
 
   /* ---------- Tipo origen selector (muestra/oculta fuente) ---------- */
   const tipoSel = document.getElementById('alc_dep_tipo');
@@ -21378,6 +21445,13 @@ openSheet = function(id){
       if(h) h.textContent = '';
       const desc = document.getElementById('alc_dep_desc');
       if(desc) desc.value = '';
+      // Reset split
+      const splitYo   = document.getElementById('alc_split_yo');
+      const splitMama = document.getElementById('alc_split_mama');
+      if(splitYo)   { splitYo.value = '0,00';   if(typeof moneyInputAttach==='function') moneyInputAttach(splitYo); }
+      if(splitMama) { splitMama.value = '0,00'; if(typeof moneyInputAttach==='function') moneyInputAttach(splitMama); }
+      const splitHint = document.getElementById('alc_split_total_hint');
+      if(splitHint) splitHint.textContent = '';
       const tipo = document.getElementById('alc_dep_tipo');
       if(tipo) { tipo.value = 'yo-directo'; _alcanciaActualizarTipo(); }
     }, 30);
@@ -21459,8 +21533,8 @@ window.renderAlcancia = function(){
       if(!movs.length){
         movsEl.innerHTML = '<div class="feed-empty">Aún no hay movimientos en esta alcancía.</div>';
       } else {
-        const tipoIcon = { yo: '💰', regalo: '🎁', mandado: '🛍️' };
-        const tipoColor = { yo: 'var(--accent)', regalo: 'var(--amber)', mandado: 'var(--amber)' };
+        const tipoIcon = { yo: '💰', regalo: '🎁', mandado: '🛍️', split: '🤝' };
+        const tipoColor = { yo: 'var(--accent)', regalo: 'var(--amber)', mandado: 'var(--amber)', split: 'var(--amber)' };
         movsEl.innerHTML = [...movs].reverse().map(m => {
           const icon  = tipoIcon[m.tipo]  || '💰';
           const color = tipoColor[m.tipo] || 'var(--accent)';
@@ -21528,6 +21602,20 @@ window.renderAlcancia = function(){
               <span style="font-size:11px;color:var(--text3);">Diferencia</span>
               <span style="font-size:12px;font-family:'DM Mono',monospace;color:${difColor};">${difFmt}</span>
             </div>
+            ${(() => {
+              // Calcular cuánto puso mamá en esta alcancía destapada
+              const movs = h.movimientos || [];
+              let totalMama = 0;
+              movs.forEach(m => {
+                if(m.tipo === 'regalo' || m.tipo === 'mandado') totalMama += (m.monto || 0);
+                if(m.tipo === 'split' && m._splitMama) totalMama += m._splitMama;
+              });
+              if(totalMama < 1) return '';
+              return `<div class="row" style="margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">
+                <span style="font-size:11px;color:var(--text3);">Aportó tu mamá</span>
+                <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--amber);">${typeof fmt==='function'?fmt(totalMama):'$'+totalMama}</span>
+              </div>`;
+            })()}
           </div>`;
         }).join('');
       }
@@ -21563,8 +21651,24 @@ window.alcanciaConfirmarDeposito = function(){
   const descEl = document.getElementById('alc_dep_desc');
   const descVal = (descEl ? descEl.value.trim() : '') || '';
 
+  // Valores split
+  const splitYo   = tipo === 'split' ? (_getMoneyVal('alc_split_yo')   || 0) : 0;
+  const splitMama = tipo === 'split' ? (_getMoneyVal('alc_split_mama') || 0) : 0;
+
   if(!monto || monto <= 0){
     if(typeof toast==='function') toast('Ingresá un monto válido', 'err'); return;
+  }
+
+  // Validación split: que la suma cuadre con el total
+  if(tipo === 'split'){
+    if(splitYo <= 0 && splitMama <= 0){
+      if(typeof toast==='function') toast('Ingresá cuánto puso cada uno', 'err'); return;
+    }
+    const sumaPartes = Math.round((splitYo + splitMama) * 100);
+    const totalMonto = Math.round(monto * 100);
+    if(sumaPartes !== totalMonto){
+      if(typeof toast==='function') toast('La suma de las partes no coincide con el total', 'err'); return;
+    }
   }
 
   // Solo requiere fuente cuando el dinero sale de una cuenta
@@ -21586,14 +21690,16 @@ window.alcanciaConfirmarDeposito = function(){
     'yo-directo': 'Propio (directo)',
     'yo-cuenta':  'Propio (de cuenta)',
     'regalo':     'Regalo mamá',
-    'mandado':    'Mandado mamá'
+    'mandado':    'Mandado mamá',
+    'split':      'Entre los dos'
   }[tipo] || tipo;
 
   const descFinal = descVal || {
     'yo-directo': 'Depósito en alcancía',
     'yo-cuenta':  'Depósito en alcancía',
     'regalo':     'Regalo de mamá',
-    'mandado':    'Mandado de mamá'
+    'mandado':    'Mandado de mamá',
+    'split':      'Depósito compartido'
   }[tipo] || 'Depósito en alcancía';
 
   // Solo yo-cuenta descuenta de una cuenta existente
@@ -21612,13 +21718,13 @@ window.alcanciaConfirmarDeposito = function(){
       ts: Date.now()
     });
   }
-  // yo-directo, regalo, mandado: plata externa, no toca ninguna cuenta
+  // yo-directo, regalo, mandado, split: plata externa, no toca ninguna cuenta
 
   // Actualizar estado alcancía
   a.saldoRegistrado = (a.saldoRegistrado || 0) + monto;
   a.depositos = (a.depositos || 0) + 1;
   a.movimientos = a.movimientos || [];
-  a.movimientos.push({
+  const movEntry = {
     id: movId,
     monto,
     fecha,
@@ -21627,7 +21733,13 @@ window.alcanciaConfirmarDeposito = function(){
     tipoLabel,
     desc: descFinal,
     ts: Date.now()
-  });
+  };
+  // Guardar las partes del split
+  if(tipo === 'split'){
+    movEntry._splitYo   = splitYo;
+    movEntry._splitMama = splitMama;
+  }
+  a.movimientos.push(movEntry);
   _setSaldoOfuscado(a.saldoRegistrado);
 
   if(typeof save==='function') save();

@@ -13833,8 +13833,15 @@ async function deleteMovEncargo(encId, movId) {
   if (mov && mov._traspasoEncargo) {
     // Revertir el sumarFuente que se hizo en el paso 2
     if (mov._destino && mov.monto) descontarFuente(mov._destino, mov.monto);
-    // Borrar el S.movimientos de entrada vinculado por _encMovId
-    if (S.movimientos) {
+    // Borrar el movimiento de ingreso vinculado (puede estar en c.movimientos de una
+    // cuenta custom o en S.movimientos para cuentas estándar).
+    if (mov._destino && mov._destino.startsWith('custom:')) {
+      const customId = mov._destino.split(':')[1];
+      const cDest = (S.cuentasPersonalizadas || []).find(x => x.id === customId);
+      if (cDest && cDest.movimientos) {
+        cDest.movimientos = cDest.movimientos.filter(m => m._encMovId !== movId);
+      }
+    } else if (S.movimientos) {
       S.movimientos = S.movimientos.filter(m => m._encMovId !== movId);
     }
   }
@@ -13886,6 +13893,14 @@ async function eliminarEncargoActual() {
   // Limpiar S.movimientos vinculados por _encMovId (diferenciales, intercambios, margen, traspasos)
   if (S.movimientos && encMovIds.size > 0) {
     S.movimientos = S.movimientos.filter(m => !encMovIds.has(m._encMovId));
+  }
+  // Limpiar movimientos secundarios en cuentas custom (traspasos "Me lo regalaron")
+  if (encMovIds.size > 0) {
+    (S.cuentasPersonalizadas || []).forEach(c => {
+      if (c.movimientos) {
+        c.movimientos = c.movimientos.filter(m => !encMovIds.has(m._encMovId));
+      }
+    });
   }
   // Limpiar también movimientos huérfanos viejos sin _encMovId: detectar por patrón de descripción
   if (S.movimientos) {
@@ -14006,22 +14021,44 @@ function confirmarTraspasoEncargo() {
     ts: Date.now()
   });
 
-  // 2. Sumar a mi cuenta (ya estaba físicamente ahí, solo cambia "de quién es")
+  // 2. Sumar a mi cuenta (cambia "de quién es" la plata)
   sumarFuente(destino, monto);
 
-  // 3. Registrar ingreso en movimientos generales, vinculado por _encMovId
-  if (!S.movimientos) S.movimientos = [];
-  S.movimientos.push({
-    id: uid(),
-    tipo: 'entrada',
-    fuente: destino,
-    monto,
-    fecha,
-    desc: desc + ' (de encargo ' + enc.nombre + ')',
-    _encMovId: encMovId    // vínculo para que deleteMovEncargo lo encuentre y borre
-  });
+  // 3. Registrar ingreso visible en el historial de la cuenta destino.
+  //    Cuentas custom: va en c.movimientos (lo que renderMovsCustom lee).
+  //    Cuentas estándar: va en S.movimientos.
+  if (destino.startsWith('custom:')) {
+    const customId = destino.split(':')[1];
+    const cDest = (S.cuentasPersonalizadas || []).find(x => x.id === customId);
+    if (cDest) {
+      if (!cDest.movimientos) cDest.movimientos = [];
+      cDest.movimientos.push({
+        id: uid(),
+        tipo: 'ingreso',
+        monto,
+        fecha,
+        nota: desc + ' (de encargo ' + enc.nombre + ')',
+        _secundario: true,
+        _origenSeccion: 'Encargos',
+        _encMovId: encMovId,
+        ts: Date.now()
+      });
+    }
+  } else {
+    if (!S.movimientos) S.movimientos = [];
+    S.movimientos.push({
+      id: uid(),
+      tipo: 'entrada',
+      fuente: destino,
+      monto,
+      fecha,
+      desc: desc + ' (de encargo ' + enc.nombre + ')',
+      _encMovId: encMovId
+    });
+  }
 
   save();
+  refresh();
   closeSheet('traspaso-encargo');
   abrirEncargoDetalle(encargoActualId);
   toast(`${fmt(monto)} traspasado a ${fuenteLabel(destino)}`, 'ok', 3500);

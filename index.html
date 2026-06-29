@@ -6614,7 +6614,7 @@ function _calcPrestadoMeta(cajitaId){
         }
       }
       // restar abonos que pueden haber regresado a la cajita
-      if(m.tipo==='abono' && m.destino==='cajita:'+cajitaId) total -= m.monto;
+      if((m.tipo==='abono' || m.tipo==='pago-completo') && m.destino==='cajita:'+cajitaId) total -= m.monto;
     });
   });
   return Math.max(0, total);
@@ -7880,7 +7880,7 @@ function abrirDeudor(id) {
   if (!d) return;
   const saldo = getDeudorSaldo(d);
   const totalPrestado = (d.movimientos || []).filter(m => m.tipo === 'prestamo').reduce((a, m) => a + m.monto, 0);
-  const totalAbonado = (d.movimientos || []).filter(m => m.tipo === 'abono').reduce((a, m) => a + m.monto, 0);
+  const totalAbonado = (d.movimientos || []).filter(m => m.tipo === 'abono' || m.tipo === 'pago-completo').reduce((a, m) => a + m.monto, 0);
 
   document.getElementById('ddAvatar').textContent = d.nombre.substring(0, 2).toUpperCase();
   document.getElementById('ddAvatar').style.color = d.color;
@@ -7905,6 +7905,7 @@ function abrirDeudor(id) {
     let saldoCorriente = saldo; // saldo de deuda ANTES de descontar la entry actual (al iterar desc, arranca en el saldo actual = saldo "después" del primer item)
     histEl.innerHTML = movs.map(m => {
       const esPrestamo = m.tipo === 'prestamo';
+      const esPagoCompleto = m.tipo === 'pago-completo';
       const efectoDeuda = esPrestamo ? +m.monto : -m.monto; // cuánto sumó/restó esta entry a la deuda
       const saldoDespuesDeuda = saldoCorriente;
       const saldoAntesDeuda = saldoCorriente - efectoDeuda;
@@ -7945,11 +7946,11 @@ function abrirDeudor(id) {
         else if (m.destino) otrasCuentasDD = [{fuente:m.destino, monto:+m.monto}];
       }
       const dataOtrasDD = otrasCuentasDD.length ? `data-mov-otras="${escHtml(JSON.stringify(otrasCuentasDD))}"` : '';
-      return `<div class="card card-sm" style="margin-bottom:7px;cursor:pointer;" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-mov-origen="${escHtml(origenDD)}" ${dataOtrasDD} data-mov-saldo-antes="${saldoAntesDeuda}" data-mov-saldo-despues="${saldoDespuesDeuda}" data-mov-saldo-label="Deuda de ${escHtml(d.nombre)}" data-mov-desc="${escHtml(m.nota || (esPrestamo?'Préstamo':'Pago'))}" data-mov-fecha="${escHtml(m.fecha)}" onclick="abrirDetalleMov(this)">
+      return `<div class="card card-sm" style="margin-bottom:7px;cursor:pointer;" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-mov-origen="${escHtml(origenDD)}" ${dataOtrasDD} data-mov-saldo-antes="${saldoAntesDeuda}" data-mov-saldo-despues="${saldoDespuesDeuda}" data-mov-saldo-label="Deuda de ${escHtml(d.nombre)}" data-mov-desc="${escHtml(m.nota || (esPrestamo?'Préstamo': esPagoCompleto?'Pago completo':'Abono'))}" data-mov-fecha="${escHtml(m.fecha)}" onclick="abrirDetalleMov(this)">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : 'Pago'}</span>
+              <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : esPagoCompleto ? 'Pago completo' : 'Abono'}</span>
               ${m._gananciaVirtual ? `<span style="background:rgba(200,240,96,.15);color:var(--accent);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
               ${m._viaTC ? `<span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
               ${m.nota ? `<span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
@@ -8140,8 +8141,8 @@ async function eliminarMovDeudor(deudorId, movId) {
 }
 
 function initMovSheet(tipo) {
-  // Internamente 'pago-completo' se guarda igual que 'abono'
-  movTipo = tipo === 'pago-completo' ? 'abono' : tipo;
+  // Preservar 'pago-completo' para distinguirlo de un abono normal
+  movTipo = tipo; // 'prestamo' | 'abono' | 'pago-completo'
   poblarFuente('mov_fuente');
   poblarFuente('mov_destino');
   // ext selects se pueblan dinámicamente en extRenderPartes()
@@ -8158,6 +8159,16 @@ function initMovSheet(tipo) {
   document.getElementById('mov_destino_wrap').style.display = esAbono ? '' : 'none';
   document.getElementById('mov_extra_wrap').style.display = esAbono ? '' : 'none';
   document.getElementById('mov_monto').value = '';
+  const montoInput = document.getElementById('mov_monto');
+  if (esPagoCompleto) {
+    montoInput.readOnly = true;
+    montoInput.style.opacity = '0.6';
+    montoInput.style.cursor = 'default';
+  } else {
+    montoInput.readOnly = false;
+    montoInput.style.opacity = '';
+    montoInput.style.cursor = '';
+  }
   document.getElementById('mov_fecha').value = hoy();
   document.getElementById('mov_nota').value = '';
   const hint = document.getElementById('mov_fuente_hint');
@@ -8330,13 +8341,15 @@ function confirmarMovimiento() {
       // 2. Leer destino (el dinero llega a una cuenta del usuario)
       let abonoDestino = '';
       let abonMovId = uid();
+      const esPagoCompletoEncargo = movTipo === 'pago-completo';
+      const tipoGuardarEncargo = esPagoCompletoEncargo ? 'pago-completo' : 'abono';
       if (_abonoSplitMode) {
         const destinos = _abonoSplitRows.filter(r=>r.monto>0);
         destinos.forEach(r=>{ if(r.fuente) sumarFuente(r.fuente, r.monto); });
         // Registrar abono con destinos múltiples
         d.movimientos.push({
           id: abonMovId,
-          tipo: 'abono',
+          tipo: tipoGuardarEncargo,
           monto,
           fecha,
           nota,
@@ -8354,7 +8367,9 @@ function confirmarMovimiento() {
         let abonoDestinoMovId = null;
         if (abonoDestino) {
           abonoDestinoMovId = uid();
-          const descAbonoDest = `Abono de deuda — ${d.nombre} (vía encargo ${enc.nombre})`;
+          const descAbonoDest = esPagoCompletoEncargo
+            ? `Pago de deuda completo — ${d.nombre} (vía encargo ${enc.nombre})`
+            : `Abono de deuda — ${d.nombre} (vía encargo ${enc.nombre})`;
           if (abonoDestino === 'efectivo' || abonoDestino === 'nequi') {
             if (!S.movimientos) S.movimientos = [];
             S.movimientos.push({ id: abonoDestinoMovId, tipo: 'entrada', fuente: abonoDestino, monto, fecha, desc: descAbonoDest, _secundario: true, _origenSeccion: 'Prestado' });
@@ -8377,7 +8392,7 @@ function confirmarMovimiento() {
         // Registrar abono con destino simple
         d.movimientos.push({
           id: abonMovId,
-          tipo: 'abono',
+          tipo: tipoGuardarEncargo,
           monto,
           fecha,
           nota,
@@ -8468,6 +8483,9 @@ function confirmarMovimiento() {
 
     // ── Rama normal: destino a cuenta propia ──────────────────────
     // 1. Registrar el abono (con o sin split de destino)
+    const esPagoCompletoActual = movTipo === 'pago-completo';
+    const tipoGuardar = esPagoCompletoActual ? 'pago-completo' : 'abono';
+    const descMovSecundario = esPagoCompletoActual ? `Pago de deuda completo — ${d.nombre}` : `Abono de deuda — ${d.nombre}`;
     if (_abonoSplitMode) {
       const totalSplit = _abonoSplitRows.reduce((a,r)=>a+(r.monto||0),0);
       if(Math.abs(totalSplit - monto) > 1){
@@ -8479,7 +8497,7 @@ function confirmarMovimiento() {
       // Registrar movimiento visible en cada cuenta destino
       destinos.forEach(r=>{
         if (!r.fuente) return;
-        const descSplit = `Abono de deuda — ${d.nombre}`;
+        const descSplit = descMovSecundario;
         if (r.fuente === 'efectivo' || r.fuente === 'nequi') {
           if (!S.movimientos) S.movimientos = [];
           S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: r.fuente, monto: r.monto, fecha, desc: descSplit, _secundario: true, _origenSeccion: 'Prestado' });
@@ -8499,29 +8517,29 @@ function confirmarMovimiento() {
           }
         }
       });
-      d.movimientos.push({ id: uid(), tipo: 'abono', monto, fecha, destinos: destinos.map(r=>({fuente:r.fuente,monto:r.monto})), nota, ts: Date.now() });
+      d.movimientos.push({ id: uid(), tipo: tipoGuardar, monto, fecha, destinos: destinos.map(r=>({fuente:r.fuente,monto:r.monto})), nota, ts: Date.now() });
     } else {
       const destino = document.getElementById('mov_destino').value;
       const abonoMovId = uid();
-      d.movimientos.push({ id: abonoMovId, tipo: 'abono', monto, fecha, destino, nota, ts: Date.now() });
+      d.movimientos.push({ id: abonoMovId, tipo: tipoGuardar, monto, fecha, destino, nota, ts: Date.now() });
       sumarFuente(destino, monto);
       // Registrar movimiento visible en la cuenta destino
       if (destino === 'efectivo' || destino === 'nequi') {
         if (!S.movimientos) S.movimientos = [];
-        S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: destino, monto, fecha, desc: `Abono de deuda — ${d.nombre}`, _secundario: true, _origenSeccion: 'Prestado' });
+        S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: destino, monto, fecha, desc: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado' });
       } else if (destino.startsWith('custom:')) {
         const cId = destino.split(':')[1];
         const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
         if (cObj) {
           if (!cObj.movimientos) cObj.movimientos = [];
-          cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto, fecha, nota: `Abono de deuda — ${d.nombre}`, _secundario: true, _origenSeccion: 'Prestado' });
+          cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto, fecha, nota: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado' });
         }
       } else if (destino.startsWith('cajita:')) {
         const cId = destino.split(':')[1];
         const cObj = (S.cajitas || []).find(x => x.id === cId);
         if (cObj) {
           if (!cObj.historial) cObj.historial = [];
-          cObj.historial.push({ id: uid(), tipo: 'entrada', monto, fecha, nota: `Abono de deuda — ${d.nombre}`, _secundario: true, _origenSeccion: 'Prestado' });
+          cObj.historial.push({ id: uid(), tipo: 'entrada', monto, fecha, nota: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado' });
         }
       }
     }
@@ -10743,15 +10761,17 @@ function getMovimientosCuenta(tipo) {
             }
           });
         }
-      } else if (m.tipo === 'abono' && matchDestino) {
-        movs.push({ tipo: 'abono', fecha: m.fecha, desc: 'Abono de ' + d.nombre, monto: +m.monto, nota: m.nota, fuente: m.destino, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.destino, _origen: 'Préstamos · ' + d.nombre, _otrasCuentas: null });
-      } else if (m.tipo === 'abono' && m.destinos) {
+      } else if ((m.tipo === 'abono' || m.tipo === 'pago-completo') && matchDestino) {
+        const descMov = m.tipo === 'pago-completo' ? 'Pago completo de ' + d.nombre : 'Abono de ' + d.nombre;
+        movs.push({ tipo: m.tipo, fecha: m.fecha, desc: descMov, monto: +m.monto, nota: m.nota, fuente: m.destino, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.destino, _origen: 'Préstamos · ' + d.nombre, _otrasCuentas: null });
+      } else if ((m.tipo === 'abono' || m.tipo === 'pago-completo') && m.destinos) {
         // Abono con destino dividido entre varias cuentas
+        const descMov = m.tipo === 'pago-completo' ? 'Pago completo de ' + d.nombre : 'Abono de ' + d.nombre;
         m.destinos.forEach(dest => {
           const matchDest2 = tipo === 'nu' ? (dest.fuente && dest.fuente.startsWith('cajita:')) : dest.fuente === tipo;
           if (matchDest2 && dest.monto) {
             const otras = (m.destinos||[]).filter(d2=>d2.fuente!==dest.fuente).map(d2=>({fuente:d2.fuente, monto:+d2.monto}));
-            movs.push({ tipo: 'abono', fecha: m.fecha, desc: 'Abono de ' + d.nombre, monto: +dest.monto, nota: m.nota, fuente: dest.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: dest.fuente, _origen: 'Préstamos · ' + d.nombre, _otrasCuentas: otras.length ? otras : null });
+            movs.push({ tipo: m.tipo, fecha: m.fecha, desc: descMov, monto: +dest.monto, nota: m.nota, fuente: dest.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: dest.fuente, _origen: 'Préstamos · ' + d.nombre, _otrasCuentas: otras.length ? otras : null });
           }
         });
       }
@@ -20658,7 +20678,7 @@ function abrirPerfilPersona(personaId) {
     const movs = (datos.deudores || [datos.deudor]).flatMap(dd => dd.movimientos || [])
       .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
     const prestamos = movs.filter(m => m.tipo === 'prestamo');
-    const abonos   = movs.filter(m => m.tipo === 'abono');
+    const abonos   = movs.filter(m => m.tipo === 'abono' || m.tipo === 'pago-completo');
     const totalPrestado = prestamos.reduce((a, m) => a + (m.monto || 0), 0);
     const totalAbonado  = abonos.reduce((a, m) => a + (m.monto || 0), 0);
     const color2 = saldo > 0 ? 'var(--amber)' : saldo < 0 ? 'var(--red)' : 'var(--accent)';

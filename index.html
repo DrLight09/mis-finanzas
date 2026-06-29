@@ -1077,21 +1077,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               <div
                 style="font-size:36px;font-weight:300;letter-spacing:-1px;font-family:'DM Mono',monospace;margin:6px 0 14px;"
                 id="det-custom-saldo">$0</div>
-              <!-- Toggle incluir en total -->
-              <div
-                style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid rgba(255,255,255,.1);">
-                <div>
-                  <div style="font-size:12px;font-weight:600;">Incluir en total
-                    general</div>
-                  <div
-                    style="font-size:10px;opacity:.6;font-family:'DM Mono',monospace;margin-top:2px;">Suma
-                    al saldo disponible del dashboard</div>
-                </div>
-                <label class="toggle-sw">
-                  <input type="checkbox" id="det-custom-incluir">
-                  <span class="slider"></span>
-                </label>
-              </div>
+
               <div class="cuenta-actions" style="margin-top:14px;">
                 <button type="button" class="cuenta-action-btn"
                   id="btn-agregar-custom-det">
@@ -2648,16 +2634,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               onclick="selColorNC('#f0a060')"></div>
           </div>
         </div>
-        <div class="cfg-toggle" style="border-top:none;padding-top:4px;">
-          <div class="cfg-toggle-info">
-            <div class="cfg-toggle-label" style="font-size:13px;">Incluir en
-              total general</div>
-            <div class="cfg-toggle-sub">Sumará al saldo disponible del
-              dashboard</div>
-          </div>
-          <label class="toggle-sw"><input type="checkbox" id="nc_incluir"
-              checked><span class="slider"></span></label>
-        </div>
+
         <button type="button" class="btn btn-primary"
           id="btn-crear-cuenta-custom" style="margin-top:12px;">Crear
           cuenta</button>
@@ -4834,10 +4811,8 @@ function abrirNuevaCuenta(){
   });
   const ni=document.getElementById('nc_nombre');
   const si=document.getElementById('nc_saldo');
-  const incl=document.getElementById('nc_incluir');
   if(ni)ni.value='';
   if(si){si.value='';_moneyDigits.delete(si);}
-  if(incl)incl.checked=true;
   openSheet('nueva-cuenta');
 }
 
@@ -4845,9 +4820,8 @@ function crearCuentaCustom(){
   const nombre=(document.getElementById('nc_nombre').value||'').trim();
   if(!nombre){toast('Escribe un nombre para la cuenta','err');return;}
   const saldo=parseMoney(document.getElementById('nc_saldo').value)||0;
-  const incluirEnTotal=document.getElementById('nc_incluir').checked;
   if(!S.cuentasPersonalizadas)S.cuentasPersonalizadas=[];
-  const nueva={id:uid(),nombre,icono:_ncIconoSel,color:_ncColorSel,saldo,incluirEnTotal,movimientos:[]};
+  const nueva={id:uid(),nombre,icono:_ncIconoSel,color:_ncColorSel,saldo,incluirEnTotal:true,movimientos:[]};
   if(saldo>0) nueva.movimientos.push(crearMovimientoApertura(saldo,hoy(),'Saldo inicial'));
   S.cuentasPersonalizadas.push(nueva);
   save();refresh();
@@ -4927,14 +4901,7 @@ function abrirCustomCuenta(id){
   if(saldoEl){saldoEl.textContent=fmt(c.saldo||0);saldoEl.style.color=hex;}
   const labelEl=document.getElementById('det-custom-label');
   if(labelEl)labelEl.style.color=hex;
-  const togEl=document.getElementById('det-custom-incluir');
-  if(togEl){
-    togEl.checked=!!c.incluirEnTotal;
-    togEl.onchange=function(){
-      const cc=(S.cuentasPersonalizadas||[]).find(x=>x.id===_customCuentaActualId);
-      if(cc){cc.incluirEnTotal=this.checked;save();refresh();}
-    };
-  }
+
   const btnAg=document.getElementById('btn-agregar-custom-det');
   if(btnAg){
     btnAg.style.background=`rgba(${hexRgb},.12)`;
@@ -5139,11 +5106,9 @@ function editarCuentaCustom(id){
   // Rellenar el sheet reutilizando el mismo form de nueva cuenta
   const ni=document.getElementById('nc_nombre');
   const si=document.getElementById('nc_saldo');
-  const incl=document.getElementById('nc_incluir');
   if(ni) ni.value=c.nombre;
   // Saldo no editable aquí (se maneja con depósitos/retiros), ocultarlo
   if(si){si.value='';si.closest('.ig').style.display='none';}
-  if(incl) incl.checked=!!c.incluirEnTotal;
   // Preseleccionar ícono y color actuales
   _ncIconoSel=c.icono||'banco';
   _ncColorSel=c.color||'#60b0f0';
@@ -5170,7 +5135,7 @@ function editarCuentaCustom(id){
       cc.nombre=nombre;
       cc.icono=_ncIconoSel;
       cc.color=_ncColorSel;
-      cc.incluirEnTotal=document.getElementById('nc_incluir').checked;
+      cc.incluirEnTotal=true;
       save();refresh();
       closeSheet('nueva-cuenta');
       // Volver a abrir la cuenta con datos actualizados
@@ -5343,6 +5308,8 @@ function load(){
   if(!S.encargos)S.encargos=[];
   if(!S.movimientos)S.movimientos=[];
   if(!S.cuentasPersonalizadas)S.cuentasPersonalizadas=[];
+  // Migración: incluirEnTotal siempre true — el toggle fue eliminado
+  S.cuentasPersonalizadas.forEach(c=>{c.incluirEnTotal=true;});
   if(!S.catsVar)S.catsVar=[];
   if(!S.catsFijo)S.catsFijo=[];
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];

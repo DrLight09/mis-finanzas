@@ -21362,11 +21362,9 @@ function _alcDesgloseHtml(movimientos, fmtFn){
   const f = typeof fmtFn === 'function' ? fmtFn : v => '$' + Math.round(v).toLocaleString('es-CO');
 
   // Acumular por categoría
-  let yo         = 0; // yo-directo + yo-cuenta + tu parte del split (sin fuente o con fuente)
-  let mandado    = 0; // tipo === 'mandado'
-  let regalo     = 0; // tipo === 'regalo'
-  let mama       = 0; // parte de mamá en splits
-  let splitTotal = 0; // splits completos (para no doble contar)
+  let yo      = 0; // yo-directo + yo-cuenta + tu parte del split
+  let mandado = 0; // tipo === 'mandado'
+  let mama    = 0; // regalo de mamá (tipo === 'regalo') + parte de mamá en splits
 
   movimientos.forEach(m => {
     const tipo = m.tipo || '';
@@ -21376,7 +21374,7 @@ function _alcDesgloseHtml(movimientos, fmtFn){
     } else if(tipo === 'mandado'){
       mandado += monto;
     } else if(tipo === 'regalo'){
-      regalo += monto;
+      mama += monto;
     } else if(tipo === 'split'){
       const splitYo   = m._splitYo   || 0;
       const splitMama = m._splitMama || 0;
@@ -21388,14 +21386,12 @@ function _alcDesgloseHtml(movimientos, fmtFn){
   // Construir filas sólo con montos > 0
   const iconYo      = '💰';
   const iconMandado = '🛵';
-  const iconRegalo  = '🎁';
-  const iconMama    = '👩';
+  const iconMama    = '🎁';
 
   const filas = [];
-  if(yo > 0)      filas.push({ icon: iconYo,      label: 'Ahorrado con mi propio dinero',    monto: yo      });
-  if(mandado > 0) filas.push({ icon: iconMandado,  label: 'Dinero recibido por hacer mandados', monto: mandado });
-  if(regalo > 0)  filas.push({ icon: iconRegalo,   label: 'Dinero que me regalaron',           monto: regalo  });
-  if(mama > 0)    filas.push({ icon: iconMama,     label: 'Aporte de mamá (split)',             monto: mama    });
+  if(yo > 0)      filas.push({ icon: iconYo,      label: 'Ahorrado con mi propio dinero',      monto: yo      });
+  if(mandado > 0) filas.push({ icon: iconMandado,  label: 'Mamá me pagó por hacer un mandado', monto: mandado });
+  if(mama > 0)    filas.push({ icon: iconMama,     label: 'Me regaló mamá',                    monto: mama    });
 
   if(!filas.length) return '';
 

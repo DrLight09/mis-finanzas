@@ -8476,11 +8476,54 @@ function confirmarMovimiento() {
       }
       const destinos = _abonoSplitRows.filter(r=>r.monto>0);
       destinos.forEach(r=>{ if(r.fuente) sumarFuente(r.fuente, r.monto); });
+      // Registrar movimiento visible en cada cuenta destino
+      destinos.forEach(r=>{
+        if (!r.fuente) return;
+        const descSplit = `Abono de deuda — ${d.nombre}`;
+        if (r.fuente === 'efectivo' || r.fuente === 'nequi') {
+          if (!S.movimientos) S.movimientos = [];
+          S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: r.fuente, monto: r.monto, fecha, desc: descSplit, _secundario: true, _origenSeccion: 'Prestado' });
+        } else if (r.fuente.startsWith('custom:')) {
+          const cId = r.fuente.split(':')[1];
+          const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+          if (cObj) {
+            if (!cObj.movimientos) cObj.movimientos = [];
+            cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto: r.monto, fecha, nota: descSplit, _secundario: true, _origenSeccion: 'Prestado' });
+          }
+        } else if (r.fuente.startsWith('cajita:')) {
+          const cId = r.fuente.split(':')[1];
+          const cObj = (S.cajitas || []).find(x => x.id === cId);
+          if (cObj) {
+            if (!cObj.historial) cObj.historial = [];
+            cObj.historial.push({ id: uid(), tipo: 'entrada', monto: r.monto, fecha, nota: descSplit, _secundario: true, _origenSeccion: 'Prestado' });
+          }
+        }
+      });
       d.movimientos.push({ id: uid(), tipo: 'abono', monto, fecha, destinos: destinos.map(r=>({fuente:r.fuente,monto:r.monto})), nota, ts: Date.now() });
     } else {
       const destino = document.getElementById('mov_destino').value;
-      d.movimientos.push({ id: uid(), tipo: 'abono', monto, fecha, destino, nota, ts: Date.now() });
+      const abonoMovId = uid();
+      d.movimientos.push({ id: abonoMovId, tipo: 'abono', monto, fecha, destino, nota, ts: Date.now() });
       sumarFuente(destino, monto);
+      // Registrar movimiento visible en la cuenta destino
+      if (destino === 'efectivo' || destino === 'nequi') {
+        if (!S.movimientos) S.movimientos = [];
+        S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: destino, monto, fecha, desc: `Abono de deuda — ${d.nombre}`, _secundario: true, _origenSeccion: 'Prestado' });
+      } else if (destino.startsWith('custom:')) {
+        const cId = destino.split(':')[1];
+        const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+        if (cObj) {
+          if (!cObj.movimientos) cObj.movimientos = [];
+          cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto, fecha, nota: `Abono de deuda — ${d.nombre}`, _secundario: true, _origenSeccion: 'Prestado' });
+        }
+      } else if (destino.startsWith('cajita:')) {
+        const cId = destino.split(':')[1];
+        const cObj = (S.cajitas || []).find(x => x.id === cId);
+        if (cObj) {
+          if (!cObj.historial) cObj.historial = [];
+          cObj.historial.push({ id: uid(), tipo: 'entrada', monto, fecha, nota: `Abono de deuda — ${d.nombre}`, _secundario: true, _origenSeccion: 'Prestado' });
+        }
+      }
     }
 
     // 2. Manejar el extra si aplica (sistema de partes libres)

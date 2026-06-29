@@ -825,7 +825,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
             </div>
             <div id="hero-alcancia-indicator" style="display:none;margin-top:8px;padding:6px 10px;background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.2);border-radius:8px;">
-              <span style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;">🔒 +$?? en alcancía oculta</span>
+              <span style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;display:inline-flex;align-items:center;gap:4px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> +$?? en alcancía oculta</span>
               <span style="font-size:10px;color:var(--text3);margin-left:6px;">— se revela al destapar</span>
             </div>
           </div>
@@ -18063,7 +18063,7 @@ document.addEventListener('DOMContentLoaded',function(){
           tipo:      'comprometida',
           signo:     '+',
           monto:     item.monto || 0,
-          titulo:    '⏳ Esperando: ' + (item.desc || 'Plata comprometida'),
+          titulo:    'Esperando: ' + (item.desc || 'Plata comprometida'),
           subtitulo: 'Registrado, pendiente de recibo',
           fuente:    'plataCometida',
         });
@@ -21384,9 +21384,9 @@ function _alcDesgloseHtml(movimientos, fmtFn){
   });
 
   // Construir filas sólo con montos > 0
-  const iconYo      = '💰';
-  const iconMandado = '🛵';
-  const iconMama    = '🎁';
+  const iconYo      = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v2m0 8v2M9.5 9.5a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5m0 1h.01"/></svg>';
+  const iconMandado = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M10 18H6.5M14 18h3.5M4 10h12l2 5H2l2-5z"/><path d="M10 10V7l4-2"/></svg>';
+  const iconMama    = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v10H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>';
 
   const filas = [];
   if(yo > 0)      filas.push({ icon: iconYo,      label: 'Ahorrado con mi propio dinero',      monto: yo      });
@@ -21397,14 +21397,14 @@ function _alcDesgloseHtml(movimientos, fmtFn){
 
   const filasHtml = filas.map(row => `
     <div class="row" style="margin-bottom:5px;align-items:center;gap:6px;">
-      <span style="font-size:14px;flex-shrink:0;">${row.icon}</span>
+      <span style="flex-shrink:0;display:inline-flex;align-items:center;">${row.icon}</span>
       <span style="font-size:11px;color:var(--text3);flex:1;min-width:0;">${row.label}</span>
       <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--amber);flex-shrink:0;">${f(row.monto)}</span>
     </div>`).join('');
 
   return `
   <div class="card card-sm" style="margin-top:10px;padding:12px 14px;background:rgba(240,184,64,.04);border-color:rgba(240,184,64,.15);">
-    <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">📊 Origen del dinero acumulado</div>
+    <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Origen del dinero acumulado</div>
     ${filasHtml}
   </div>`;
 }
@@ -21886,7 +21886,7 @@ window.renderAlcancia = function(){
             ${desgloseHtml ? `
             <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">
               <button type="button" onclick="(function(btn){var el=document.getElementById('${desgloseId}');if(!el)return;var open=el.style.display!=='none';el.style.display=open?'none':'';btn.querySelector('.alc-hist-chevron').style.transform=open?'':'rotate(180deg)';})(this)" style="display:flex;align-items:center;gap:5px;background:none;border:none;padding:0;cursor:pointer;color:var(--amber);font-size:11px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;width:100%;">
-                <span>📊 Ver origen del dinero</span>
+                <span style="display:inline-flex;align-items:center;gap:4px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Ver origen del dinero</span>
                 <svg class="alc-hist-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <div id="${desgloseId}" style="display:none;margin-top:4px;">${desgloseHtml}</div>

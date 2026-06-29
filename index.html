@@ -12850,24 +12850,29 @@ function abrirEncargoDetalle(id) {
       const lblCuenta = m.cuenta ? fuenteLabel(m.cuenta) : '';
       const esAbonoPrestamo = !esEntrada && m._esAbonoDeudor;
       const esTcEncargo = !esEntrada && m._esTcEncargo;
+      const esMia = !esEntrada && !!m._miaCuentaSale;
       const tcNombreLbl = esTcEncargo && m._tcId ? ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{}).nombre||'' : '';
+      const miaSaleLbl  = esMia ? fuenteLabel(m._miaCuentaSale) : '';
+      const miaEntraLbl = esMia && m._miaCuentaEntra ? fuenteLabel(m._miaCuentaEntra) : '';
       const origenEnc = esAbonoPrestamo ? ('Préstamos · ' + (((S.deudores||[]).find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+enc.nombre);
       return `<div class="gasto-item" ${_encAttrs(m,origenEnc)} style="cursor:pointer;border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':esTcEncargo?'rgba(96,176,240,.25)':'rgba(240,104,104,.15)'};">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;">
             <div class="row-name" style="font-size:13px;">${escHtml(m.desc)}</div>
-            <div class="row-sub">${m.fecha}${lblCuenta?' · '+lblCuenta:''}${tcNombreLbl?' · '+tcNombreLbl:''}</div>
+            <div class="row-sub">${m.fecha}${lblCuenta?' · '+lblCuenta:''}${tcNombreLbl?' · '+tcNombreLbl:''}${esMia?' · Yo puse la plata':''}</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span class="row-amount ${esEntrada?'c-blue':esAbonoPrestamo?'c-amber':'c-red'}">${esEntrada?'+':'−'}${fmt(m.monto)}</span>
-            <button type="button" onclick="event.stopPropagation();deleteMovEncargo('${enc.id}','${m.id}')" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.55;display:flex;align-items:center;justify-content:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.55';this.style.color='var(--text3)'">
+            <button type="button" onclick="event.stopPropagation();deleteMovEncargo('${enc.id}','${m.id}')" title="Eliminar (también elimina movimientos secundarios en tus cuentas)" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.55;display:flex;align-items:center;justify-content:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.55';this.style.color='var(--text3)'">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             </button>
           </div>
         </div>
-        ${m.nota&&!esTcEncargo?`<div class="gasto-item-meta"><span style="font-size:10px;color:var(--text3);">${escHtml(m.nota)}</span></div>`:''}
+        ${m.nota&&!esTcEncargo&&!esMia?`<div class="gasto-item-meta"><span style="font-size:10px;color:var(--text3);">${escHtml(m.nota)}</span></div>`:''}
+        ${esMia?`<div class="gasto-item-meta" style="margin-top:3px;"><span style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:10px;height:10px;fill:currentColor;flex-shrink:0;color:var(--amber);"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg>Salió de <strong style="color:var(--text2);">${escHtml(miaSaleLbl)}</strong>${miaEntraLbl?' · Entró a <strong style="color:var(--text2);">'+escHtml(miaEntraLbl)+'</strong>':''}</span></div>`:''}
         <div class="gasto-item-meta">
           <span class="badge ${esEntrada?'bg-blue':esAbonoPrestamo?'bg-amber':esTcEncargo?'bg-blue':'bg-red'}" style="font-size:9px;">${esEntrada?'Entrada':esAbonoPrestamo?'Pago préstamo':esTcEncargo?'Pagado con TC':'Salida'}</span>
+          ${esMia?`<span class="badge" style="font-size:9px;background:rgba(240,184,64,.15);color:var(--amber);border:none;">Yo puse la plata</span>`:''}
           ${lblCuenta?`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuenta}</span>`:''}
           ${tcNombreLbl?`<span class="badge bg-blue" style="font-size:9px;">${escHtml(tcNombreLbl)}</span>`:''}
         </div>
@@ -13210,10 +13215,12 @@ function _procesarMovEncMia(movimiento) {
     _encMovId: movimiento.id,
     _esIntercambioEncargo: true,
     _intercambioSalida: true,
+    _secundario: true,
+    _origenSeccion: 'Encargos',
     monto,
     fecha,
     desc: `Yo puse la plata: ${movimiento.desc || ''}`,
-    nota: 'Movimiento contable neutro — no es ingreso ni gasto. Pagué de mi bolsillo, recupero del encargo.',
+    nota: `Salida de ${fuenteLabel(sale)} — generado automáticamente al registrar "Yo puse la plata" en encargo.`,
     ts: Date.now() + 1
   });
 
@@ -13228,10 +13235,12 @@ function _procesarMovEncMia(movimiento) {
       _encMovId: movimiento.id,
       _esIntercambioEncargo: true,
       _intercambioEntrada: true,
+      _secundario: true,
+      _origenSeccion: 'Encargos',
       monto,
       fecha,
       desc: `Recupero de encargo: ${movimiento.desc || ''}`,
-      nota: 'Movimiento contable neutro — no es ingreso ni gasto. Equivale al efectivo que di de mi bolsillo.',
+      nota: `Entrada a ${fuenteLabel(entra)} — generado automáticamente al registrar "Yo puse la plata" en encargo.`,
       ts: Date.now() + 2
     });
   }
@@ -13894,10 +13903,26 @@ async function deleteMovEncargo(encId, movId) {
       intercambioMovs.forEach(m => {
         if (!m.fuente || !m.monto) return;
         if (m._intercambioSalida) {
-          // Era un egreso de mi cuenta → revertir sumando de vuelta
           sumarFuente(m.fuente, m.monto);
         } else if (m._intercambioEntrada) {
-          // Era un ingreso a mi cuenta → revertir descontando
+          descontarFuente(m.fuente, m.monto);
+        }
+      });
+      S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && m._esIntercambioEncargo));
+    }
+  }
+
+  // Revertir intercambio simple "Yo puse la plata" (sin diferencial — _miaCuentaSale en el mov principal)
+  if (mov && mov._miaCuentaSale && !(mov.diferencial && (mov.diferencial.beneficiarios || []).some(b => b.pagadoPorMi))) {
+    if (S.movimientos) {
+      const intercambioMovs = S.movimientos.filter(m => m._encMovId === movId && m._esIntercambioEncargo);
+      intercambioMovs.forEach(m => {
+        if (!m.fuente || !m.monto) return;
+        if (m._intercambioSalida) {
+          // Pagué de mi bolsillo → revertir sumando de vuelta a esa cuenta
+          sumarFuente(m.fuente, m.monto);
+        } else if (m._intercambioEntrada) {
+          // Recuperé en mi cuenta → revertir descontando
           descontarFuente(m.fuente, m.monto);
         }
       });

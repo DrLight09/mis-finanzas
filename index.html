@@ -1044,17 +1044,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 stroke-linecap="round"><polyline
                   points="9 18 15 12 9 6" /></svg>
             </div>
-            <!-- Cuentas personalizadas -->
+            <!-- Cuentas personalizadas + botón agregar (renderizados dinámicamente) -->
             <div id="custom-cuentas-list"></div>
-            <!-- Botón agregar cuenta -->
-            <button type="button" id="btn-agregar-cuenta-custom"
-              style="width:100%;margin-top:8px;padding:12px;background:var(--bg3);border:1.5px dashed var(--border2);border-radius:var(--radius-sm);color:var(--text3);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'DM Sans',sans-serif;transition:border-color .2s,color .2s;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round"><line x1="12" y1="5" x2="12"
-                  y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-              Agregar cuenta
-            </button>
           </div>
 
           <!-- Detalle cuenta personalizada -->
@@ -4869,22 +4860,38 @@ function renderCustomCuentasList(){
   const el=document.getElementById('custom-cuentas-list');
   if(!el)return;
   const cuentas=S.cuentasPersonalizadas||[];
-  if(!cuentas.length){el.innerHTML='';return;}
-  el.innerHTML=cuentas.map(c=>{
+
+  const btnAgregar=`<button type="button" id="btn-agregar-cuenta-custom" onclick="abrirNuevaCuenta()" style="width:100%;margin-top:10px;padding:12px;background:var(--bg3);border:1.5px dashed var(--border2);border-radius:var(--radius-sm);color:var(--text3);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'DM Sans',sans-serif;transition:border-color .2s,color .2s;">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    Agregar cuenta
+  </button>`;
+
+  if(!cuentas.length){el.innerHTML=btnAgregar;return;}
+
+  // Tarjetas en grid 2-col — mismo peso visual que Nequi/Nu
+  const items=cuentas.map(c=>{
     const hex=c.color||(getIconoData(c.icono).color)||'#60b0f0';
     const hexRgb=hexToRgb(hex);
-    const iconoHtml=renderIconoCustom(c,30);
-    return`<div data-cuenta-custom="${c.id}" style="margin-top:8px;background:linear-gradient(135deg,rgba(${hexRgb},.12) 0%,rgba(${hexRgb},.04) 100%);border:1px solid rgba(${hexRgb},.35);border-radius:var(--radius-sm);padding:13px 15px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:10px;">
+    const iconoHtml=renderIconoCustom(c,34);
+    return`<div data-cuenta-custom="${c.id}" style="background:linear-gradient(135deg,rgba(${hexRgb},.18) 0%,rgba(${hexRgb},.06) 100%);border:1px solid rgba(${hexRgb},.35);border-radius:var(--radius);padding:18px 15px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
         ${iconoHtml}
-        <div>
-          <div style="font-size:13px;font-weight:600;color:${hex};">${c.nombre}</div>
-          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;display:flex;align-items:center;gap:4px;">${c.incluirEnTotal?'<span style="color:var(--accent);font-size:9px;">●</span>':''} ${fmt(c.saldo||0)}</div>
-        </div>
+        <span style="font-size:14px;font-weight:600;color:${hex};">${escHtml(c.nombre)}</span>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${hex}" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      <div style="font-size:10px;color:rgba(${hexRgb},.7);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Saldo</div>
+      <div style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:${hex};" data-custom-saldo-id="${c.id}">${fmt(c.saldo||0)}</div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(${hexRgb},.4)" stroke-width="2" stroke-linecap="round" style="position:absolute;bottom:12px;right:12px;"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`;
-  }).join('');
+  });
+
+  // Si número impar → la última ocupa 2 cols (igual que el grid de Nu + Nequi)
+  const itemsHtml=items.map((it,i)=>
+    (cuentas.length%2===1 && i===cuentas.length-1)
+      ? it.replace('position:relative','grid-column:1/-1;position:relative')
+      : it
+  ).join('');
+
+  el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;">${itemsHtml}</div>${btnAgregar}`;
   el.querySelectorAll('[data-cuenta-custom]').forEach(div=>{
     div.addEventListener('click',()=>abrirCustomCuenta(div.dataset.cuentaCustom));
   });
@@ -5223,7 +5230,15 @@ function fuenteLabel(val){
   if(val.startsWith('custom:')){
     const id=val.split(':')[1];
     const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
-    return c?c.nombre:val;
+    if(!c)return val;
+    // Si la cuenta tiene un icono reconocido, mostrarlo inline (igual que Nequi/Nu)
+    const icono=c.icono&&c.icono!=='otro'?getIconoData(c.icono):null;
+    if(icono){
+      const hex=c.color||icono.color||'currentColor';
+      const svgInline=icono.svg.replace(/width="[^"]*"/g,'width="14"').replace(/height="[^"]*"/g,'height="14"');
+      return`<span style="display:inline-flex;align-items:center;gap:4px;vertical-align:middle;color:${hex};">${svgInline} ${c.nombre}</span>`;
+    }
+    return c.nombre;
   }
   if(val.startsWith('tc:')){
     const id=val.split(':')[1];
@@ -5239,7 +5254,16 @@ function fuenteBadgeClass(val){
   if(val==='nequi')return'bg-nequi';
   if(val==='efectivo')return'bg-amber';
   if(val.startsWith('cajita:'))return'bg-nu';
-  if(val.startsWith('custom:'))return'bg-blue';
+  if(val.startsWith('custom:')){
+    const id=val.split(':')[1];
+    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+    if(c&&c.icono){
+      if(c.icono==='nequi')return'bg-nequi';
+      if(c.icono==='nu')return'bg-nu';
+      if(c.icono==='daviplata'||c.icono==='davivienda')return'bg-red';
+    }
+    return'bg-blue';
+  }
   if(val.startsWith('tc:'))return'bg-red';
   return'bg-nu';
 }
@@ -6085,6 +6109,11 @@ function refresh(){
   if(selNequi)selNequi.textContent=fmt(nequi);
   if(selNu)selNu.textContent=fmt(nu);
   if(selEf)selEf.textContent=fmt(ef);
+  // Actualizar saldos de cuentas custom en el selector de forma quirúrgica (sin re-renderizar el grid)
+  (S.cuentasPersonalizadas||[]).forEach(c=>{
+    const el=document.querySelector(`[data-custom-saldo-id="${c.id}"]`);
+    if(el)el.textContent=fmt(c.saldo||0);
+  });
   // Si hay una cuenta abierta, actualizar su detalle
   if(cuentaActual)renderDetalleCuenta(cuentaActual);
   else if(_customCuentaActualId){
@@ -12230,8 +12259,7 @@ function _initEventListeners() {
   if (menuTransferir) menuTransferir.addEventListener('click', () => { closeSheet('menu'); abrirTransferir(); });
 
   // --- Cuentas personalizadas ---
-  const btnAgregarCuentaCustom = document.getElementById('btn-agregar-cuenta-custom');
-  if (btnAgregarCuentaCustom) btnAgregarCuentaCustom.addEventListener('click', abrirNuevaCuenta);
+  // btn-agregar-cuenta-custom se renderiza dinámicamente en renderCustomCuentasList con onclick directo
   const btnCrearCuentaCustom = document.getElementById('btn-crear-cuenta-custom');
   if (btnCrearCuentaCustom) btnCrearCuentaCustom.onclick = crearCuentaCustom;
 

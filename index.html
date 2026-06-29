@@ -10333,6 +10333,9 @@ function applyModulos(){
   // Ocultar el toggle "Es saldo inicial" en el sheet de Nu (entra plata)
   const nuMovAperturaWrap=document.getElementById('nuMovAperturaWrap');
   if(nuMovAperturaWrap&&!mostrarBanners)nuMovAperturaWrap.style.display='none';
+  // Actualizar "Necesita atención" en Inicio para reflejar el nuevo estado de módulos
+  // (ej: avisos de Spotify deben aparecer/desaparecer al activar/desactivar el módulo)
+  if(typeof renderAttencion==='function') renderAttencion();
 }
 
 function toggleModulo(nombre){

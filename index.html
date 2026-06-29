@@ -5226,9 +5226,14 @@ function getSaldoFuente(fuente){
     return c?c.saldo||0:0;
   }
   if(fuente.startsWith('tc:')){
-    // TC: retornar un valor grande para que la validación de saldo no bloquee
-    // (el gasto en TC no descuenta plata real, solo aumenta la deuda)
-    return 999999999;
+    // TC: retornar el cupo disponible real (cupo - deuda).
+    // Si la TC no tiene cupo configurado, retornar Infinity para no bloquear
+    // (el gasto en TC no descuenta plata real, solo aumenta la deuda).
+    const tcId=fuente.split(':')[1];
+    const tc=(S.tarjetasCredito||[]).find(x=>x.id===tcId);
+    if(!tc)return 0;
+    if(!tc.cupo)return 999999999; // sin cupo configurado: sin restricción
+    return Math.max(0,(tc.cupo||0)-(tc.deuda||0));
   }
   return 0;
 }
@@ -7481,7 +7486,14 @@ function addGastoVar(){
   if(!monto){toast('Ingresa un monto válido','err');return;}
   if(!fuente){toast('Selecciona de dónde salió la plata','err');return;}
   const saldoDisp=getSaldoFuente(fuente);
-  if(saldoDisp<monto){toast('Saldo insuficiente en '+fuenteLabel(fuente)+' — disponible: '+fmt(saldoDisp),'err');return;}
+  if(fuente.startsWith('tc:')){
+    // Validar cupo solo si la TC tiene cupo configurado
+    const tcId=fuente.split(':')[1];
+    const tc=(S.tarjetasCredito||[]).find(x=>x.id===tcId);
+    if(tc&&tc.cupo&&saldoDisp<monto){toast('Cupo insuficiente en '+fuenteLabel(fuente)+' — cupo disponible: '+fmt(saldoDisp),'err');return;}
+  } else {
+    if(saldoDisp<monto){toast('Saldo insuficiente en '+fuenteLabel(fuente)+' — disponible: '+fmt(saldoDisp),'err');return;}
+  }
   const compraId=uid();
   const fechaGasto=document.getElementById('gv_fecha').value||hoy();
   const catGasto=document.getElementById('gv_cat').value;
@@ -10217,7 +10229,7 @@ const _sheetStack = [];
 
 function openSheet(id){
   // Efectos secundarios por sheet específico
-  if(id==='gasto-var'){poblarFuente('gv_fuente',true);const h=document.getElementById('gv_fuente_hint');if(h)h.style.display='none';document.getElementById('gv_fuente').onchange=function(){const sd=document.getElementById('gv_fuente_saldo');if(!sd)return;const s=getSaldoFuente(this.value);sd.textContent=this.value?'Saldo disponible: '+fmt(s):'';sd.style.color=s>0?'var(--accent)':'var(--red)';};}
+  if(id==='gasto-var'){poblarFuente('gv_fuente',true);const h=document.getElementById('gv_fuente_hint');if(h)h.style.display='none';document.getElementById('gv_fuente').onchange=function(){const sd=document.getElementById('gv_fuente_saldo');if(!sd)return;const val=this.value;if(!val){sd.textContent='';return;}const esTC=val.startsWith('tc:');const s=getSaldoFuente(val);if(esTC){const tcId=val.split(':')[1];const tc=(S.tarjetasCredito||[]).find(x=>x.id===tcId);const sinCupo=!tc||!tc.cupo;if(sinCupo){sd.textContent='El gasto se cargará a la TC — no sale plata de tus cuentas.';sd.style.color='var(--text2)';}else{sd.textContent='Cupo disponible: '+fmt(s);sd.style.color=s>0?'var(--accent)':'var(--red)';}}else{sd.textContent='Saldo disponible: '+fmt(s);sd.style.color=s>0?'var(--accent)':'var(--red)';}};}
   if(id==='nueva-persona'){initColorPicker();document.getElementById('np_nombre').value='';}
   if(id==='registrar-movimiento'){poblarFuente('mov_fuente');poblarFuente('mov_destino');}
   if(id==='agregar-dinero-menu'){save();openSheet_adMenu();}
@@ -13470,8 +13482,8 @@ function abrirMovEncargo(tipo) {
   // Cambiar label según tipo y mostrar/ocultar botón dividir
   const label = document.getElementById('movenc_cuenta_label');
   if (tipo === 'entrada') {
-    // Entrada: mostrar todas las fuentes disponibles
-    const fuentes = getFuentes();
+    // Entrada: mostrar fuentes reales (sin TC — no se puede guardar plata ajena en una TC)
+    const fuentes = getFuentesSinTC();
     sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
     label.textContent = '¿En qué cuenta guardaste esa plata?';
     if (splitToggleBtn) splitToggleBtn.style.display = 'none';
@@ -13479,8 +13491,8 @@ function abrirMovEncargo(tipo) {
     // Salida: solo cuentas donde el encargo tiene plata
     const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
     if (cuentasConSaldo.length === 0) {
-      // Si no hay distribución por cuenta, mostrar todas
-      const fuentes = getFuentes();
+      // Si no hay distribución por cuenta, mostrar todas (sin TC)
+      const fuentes = getFuentesSinTC();
       sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
     } else {
       sel.innerHTML = '<option value="">Sin especificar</option>' +
@@ -14224,7 +14236,7 @@ document.addEventListener('DOMContentLoaded', function(){}, false);
     // Poblar select de cuentas para saldo inicial
     const sel = document.getElementById('enc_cuenta_ini');
     if (sel) {
-      const fuentes = getFuentes();
+      const fuentes = getFuentesSinTC();
       sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
     }
     openSheet('nuevo-encargo');

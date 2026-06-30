@@ -8307,20 +8307,20 @@ function confirmarMovimiento() {
             : `Abono de deuda — ${d.nombre} (vía encargo ${enc.nombre})`;
           if (abonoDestino === 'efectivo' || abonoDestino === 'nequi') {
             if (!S.movimientos) S.movimientos = [];
-            S.movimientos.push({ id: abonoDestinoMovId, tipo: 'entrada', fuente: abonoDestino, monto, fecha, desc: descAbonoDest, _secundario: true, _origenSeccion: 'Prestado' });
+            S.movimientos.push({ id: abonoDestinoMovId, tipo: 'entrada', fuente: abonoDestino, monto, fecha, desc: descAbonoDest, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
           } else if (abonoDestino.startsWith('custom:')) {
             const cId = abonoDestino.split(':')[1];
             const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
             if (cObj) {
               if (!cObj.movimientos) cObj.movimientos = [];
-              cObj.movimientos.push({ id: abonoDestinoMovId, tipo: 'ingreso', monto, fecha, nota: descAbonoDest, _secundario: true, _origenSeccion: 'Prestado' });
+              cObj.movimientos.push({ id: abonoDestinoMovId, tipo: 'ingreso', monto, fecha, nota: descAbonoDest, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
             }
           } else if (abonoDestino.startsWith('cajita:')) {
             const cId = abonoDestino.split(':')[1];
             const cObj = (S.cajitas || []).find(x => x.id === cId);
             if (cObj) {
               if (!cObj.historial) cObj.historial = [];
-              cObj.historial.push({ id: abonoDestinoMovId, tipo: 'entrada', monto, fecha, nota: descAbonoDest, _secundario: true, _origenSeccion: 'Prestado' });
+              cObj.historial.push({ id: abonoDestinoMovId, tipo: 'entrada', monto, fecha, nota: descAbonoDest, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
             }
           }
         }
@@ -8376,19 +8376,19 @@ function confirmarMovimiento() {
             let movExtraId = uid();
             if (p.cuenta === 'efectivo' || p.cuenta === 'nequi') {
               if (!S.movimientos) S.movimientos = [];
-              S.movimientos.push({ id: movExtraId, tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra, _secundario: true, _origenSeccion: 'Prestado' });
+              S.movimientos.push({ id: movExtraId, tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
             } else if (p.cuenta.startsWith('custom:')) {
               const cId = p.cuenta.split(':')[1];
               const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
               if (cObj) {
                 if (!cObj.movimientos) cObj.movimientos = [];
-                cObj.movimientos.push({ id: movExtraId, tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado' });
+                cObj.movimientos.push({ id: movExtraId, tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
               }
             } else if (p.cuenta.startsWith('cajita:')) {
               const cId = p.cuenta.split(':')[1];
               const cObj = (S.cajitas || []).find(x => x.id === cId);
               if (cObj) {
-                if (!cObj.historial) cObj.historial = [];                cObj.historial.push({ id: movExtraId, tipo: 'entrada', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado' });
+                if (!cObj.historial) cObj.historial = [];                cObj.historial.push({ id: movExtraId, tipo: 'entrada', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
               }
             }
             if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'guardar', cuenta: p.cuenta, monto: p.monto, movExtraId });
@@ -8435,20 +8435,20 @@ function confirmarMovimiento() {
         const descSplit = descMovSecundario;
         if (r.fuente === 'efectivo' || r.fuente === 'nequi') {
           if (!S.movimientos) S.movimientos = [];
-          S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: r.fuente, monto: r.monto, fecha, desc: descSplit, _secundario: true, _origenSeccion: 'Prestado' });
+          S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: r.fuente, monto: r.monto, fecha, desc: descSplit, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
         } else if (r.fuente.startsWith('custom:')) {
           const cId = r.fuente.split(':')[1];
           const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
           if (cObj) {
             if (!cObj.movimientos) cObj.movimientos = [];
-            cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto: r.monto, fecha, nota: descSplit, _secundario: true, _origenSeccion: 'Prestado' });
+            cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto: r.monto, fecha, nota: descSplit, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
           }
         } else if (r.fuente.startsWith('cajita:')) {
           const cId = r.fuente.split(':')[1];
           const cObj = (S.cajitas || []).find(x => x.id === cId);
           if (cObj) {
             if (!cObj.historial) cObj.historial = [];
-            cObj.historial.push({ id: uid(), tipo: 'entrada', monto: r.monto, fecha, nota: descSplit, _secundario: true, _origenSeccion: 'Prestado' });
+            cObj.historial.push({ id: uid(), tipo: 'entrada', monto: r.monto, fecha, nota: descSplit, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
           }
         }
       });
@@ -8461,20 +8461,20 @@ function confirmarMovimiento() {
       // Registrar movimiento visible en la cuenta destino
       if (destino === 'efectivo' || destino === 'nequi') {
         if (!S.movimientos) S.movimientos = [];
-        S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: destino, monto, fecha, desc: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado' });
+        S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: destino, monto, fecha, desc: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
       } else if (destino.startsWith('custom:')) {
         const cId = destino.split(':')[1];
         const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
         if (cObj) {
           if (!cObj.movimientos) cObj.movimientos = [];
-          cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto, fecha, nota: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado' });
+          cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto, fecha, nota: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
         }
       } else if (destino.startsWith('cajita:')) {
         const cId = destino.split(':')[1];
         const cObj = (S.cajitas || []).find(x => x.id === cId);
         if (cObj) {
           if (!cObj.historial) cObj.historial = [];
-          cObj.historial.push({ id: uid(), tipo: 'entrada', monto, fecha, nota: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado' });
+          cObj.historial.push({ id: uid(), tipo: 'entrada', monto, fecha, nota: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
         }
       }
     }
@@ -8506,20 +8506,20 @@ function confirmarMovimiento() {
           let movExtraId = uid();
           if (p.cuenta === 'efectivo' || p.cuenta === 'nequi') {
             if (!S.movimientos) S.movimientos = [];
-            S.movimientos.push({ id: movExtraId, tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra, _secundario: true, _origenSeccion: 'Prestado' });
+            S.movimientos.push({ id: movExtraId, tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
           } else if (p.cuenta.startsWith('custom:')) {
             const cId = p.cuenta.split(':')[1];
             const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
             if (cObj) {
               if (!cObj.movimientos) cObj.movimientos = [];
-              cObj.movimientos.push({ id: movExtraId, tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado' });
+              cObj.movimientos.push({ id: movExtraId, tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
             }
           } else if (p.cuenta.startsWith('cajita:')) {
             const cId = p.cuenta.split(':')[1];
             const cObj = (S.cajitas || []).find(x => x.id === cId);
             if (cObj) {
               if (!cObj.historial) cObj.historial = [];
-              cObj.historial.push({ id: movExtraId, tipo: 'entrada', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado' });
+              cObj.historial.push({ id: movExtraId, tipo: 'entrada', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
             }
           }
           // Guardar referencia para reversión
@@ -9128,20 +9128,20 @@ function confirmarMovMiDeuda() {
       const descSec = `Me prestó — ${d.nombre}`;
       if (cuenta === 'efectivo' || cuenta === 'nequi') {
         if (!S.movimientos) S.movimientos = [];
-        S.movimientos.push({ id: movSecId, tipo: 'entrada', fuente: cuenta, monto, fecha, desc: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+        S.movimientos.push({ id: movSecId, tipo: 'entrada', fuente: cuenta, monto, fecha, desc: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
       } else if (cuenta.startsWith('custom:')) {
         const cId = cuenta.split(':')[1];
         const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
         if (cObj) {
           if (!cObj.movimientos) cObj.movimientos = [];
-          cObj.movimientos.push({ id: movSecId, tipo: 'ingreso', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+          cObj.movimientos.push({ id: movSecId, tipo: 'ingreso', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
         }
       } else if (cuenta.startsWith('cajita:')) {
         const cId = cuenta.split(':')[1];
         const cObj = (S.cajitas || []).find(x => x.id === cId);
         if (cObj) {
           if (!cObj.historial) cObj.historial = [];
-          cObj.historial.push({ id: movSecId, tipo: 'entrada', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+          cObj.historial.push({ id: movSecId, tipo: 'entrada', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
         }
       }
     }
@@ -9159,20 +9159,20 @@ function confirmarMovMiDeuda() {
       const descSec = `Pago de deuda — ${d.nombre}`;
       if (cuenta === 'efectivo' || cuenta === 'nequi') {
         if (!S.movimientos) S.movimientos = [];
-        S.movimientos.push({ id: movSecId, tipo: 'salida', fuente: cuenta, monto, fecha, desc: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+        S.movimientos.push({ id: movSecId, tipo: 'salida', fuente: cuenta, monto, fecha, desc: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
       } else if (cuenta.startsWith('custom:')) {
         const cId = cuenta.split(':')[1];
         const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
         if (cObj) {
           if (!cObj.movimientos) cObj.movimientos = [];
-          cObj.movimientos.push({ id: movSecId, tipo: 'egreso', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+          cObj.movimientos.push({ id: movSecId, tipo: 'egreso', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
         }
       } else if (cuenta.startsWith('cajita:')) {
         const cId = cuenta.split(':')[1];
         const cObj = (S.cajitas || []).find(x => x.id === cId);
         if (cObj) {
           if (!cObj.historial) cObj.historial = [];
-          cObj.historial.push({ id: movSecId, tipo: 'salida', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+          cObj.historial.push({ id: movSecId, tipo: 'salida', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
         }
       }
     }
@@ -10859,10 +10859,24 @@ function getMovimientosCuenta(tipo) {
       else if (esTransferencia) { _origen = 'Cuentas · Movimiento manual'; if (m._fuenteDestino) _otrasCuentas = [{ fuente: m._fuenteDestino, monto: esIntercambioSalida ? +m.monto : -m.monto }]; }
       else if (m._esReposicionCP) { _origen = 'Plata comprometida'; }
       else if (m._encMovId || /encargo/i.test(m.desc||'')) { _origen = 'Encargos'; }
+      else if (m._secundario && m._origenSeccion) { _origen = m._origenSeccion; }
       else { _origen = 'Cuentas · Movimiento manual'; }
-      movs.push({ tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : esTransferencia ? 'Intercambio' : 'Salida manual'), monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '', _origen, _otrasCuentas });
+      movs.push({ tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : esTransferencia ? 'Intercambio' : 'Salida manual'), monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '', _origen, _otrasCuentas, _secundario: m._secundario || false, _origenSeccion: m._origenSeccion || '' });
     }
   });
+  // Movimientos secundarios guardados en cajita.historial (tipo 'nu' o cajita específica)
+  if (tipo === 'nu') {
+    (S.cajitas || []).forEach(c => {
+      (c.historial || []).forEach(h => {
+        if (!h._secundario) return; // solo secundarios — los manuales ya van por otro path
+        const esEntradaH = h.tipo === 'entrada';
+        const montoH = esEntradaH ? +h.monto : -h.monto;
+        const tipoH = esEntradaH ? 'ingreso' : 'salida_manual';
+        const cajitaFuente = 'cajita:' + c.id;
+        movs.push({ tipo: tipoH, fecha: h.fecha, desc: h.nota || h.desc || (esEntradaH ? 'Entrada' : 'Salida'), monto: montoH, fuente: cajitaFuente, _idx: _idx++, _movId: h.id, _fuenteOrigen: cajitaFuente, _fuenteDestino: '', _origen: h._origenSeccion || 'Automático', _otrasCuentas: null, _secundario: true, _origenSeccion: h._origenSeccion || '' });
+      });
+    });
+  }
   // Gastos variables que usaron esta fuente
   (S.gastosVar || []).forEach(g => {
     if (g._esAlcancia) return; // oculto mientras la alcancía está activa
@@ -11493,10 +11507,12 @@ async function eliminarMovimiento(btn) {
 
   // Bloquear si es un movimiento secundario (generado automáticamente por otra sección)
   const movObj = (S.movimientos || []).find(x => x.id === movId)
-    || (() => { for (const enc of (S.encargos||[])) { const m=(enc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })();
+    || (() => { for (const enc of (S.encargos||[])) { const m=(enc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
+    || (() => { for (const caj of (S.cajitas||[])) { const m=(caj.historial||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
+    || (() => { for (const cc of (S.cuentasPersonalizadas||[])) { const m=(cc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })();
   if (movObj && movObj._secundario) {
     const seccion = movObj._origenSeccion || 'la sección de origen';
-    await dialogo('Movimiento vinculado', `Este movimiento fue generado automáticamente desde <strong>${seccion}</strong>.<br><br>Para eliminarlo, ve a ${seccion} y borra el movimiento principal — eso revertirá todo.`, 'Entendido', false);
+    await dialogo('Movimiento vinculado', `Este movimiento fue generado automáticamente desde ${seccion}. Para eliminarlo, ve a ${seccion} y borra el movimiento principal — eso revertirá todo.`, 'Entendido', false);
     return;
   }
 

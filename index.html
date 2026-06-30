@@ -9121,16 +9121,62 @@ function confirmarMovMiDeuda() {
   const nota = (document.getElementById('md_nota').value || '').trim();
 
   if (_mdMovTipo === 'recibido') {
-    if (cuenta) sumarFuente(cuenta, monto);
-    d.movimientos.push({ id: uid(), tipo: 'recibido', monto, fecha, destino: cuenta || undefined, nota, ts: Date.now() });
+    let movSecId = null;
+    if (cuenta) {
+      sumarFuente(cuenta, monto);
+      movSecId = uid();
+      const descSec = `Me prestó — ${d.nombre}`;
+      if (cuenta === 'efectivo' || cuenta === 'nequi') {
+        if (!S.movimientos) S.movimientos = [];
+        S.movimientos.push({ id: movSecId, tipo: 'entrada', fuente: cuenta, monto, fecha, desc: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+      } else if (cuenta.startsWith('custom:')) {
+        const cId = cuenta.split(':')[1];
+        const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+        if (cObj) {
+          if (!cObj.movimientos) cObj.movimientos = [];
+          cObj.movimientos.push({ id: movSecId, tipo: 'ingreso', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+        }
+      } else if (cuenta.startsWith('cajita:')) {
+        const cId = cuenta.split(':')[1];
+        const cObj = (S.cajitas || []).find(x => x.id === cId);
+        if (cObj) {
+          if (!cObj.historial) cObj.historial = [];
+          cObj.historial.push({ id: movSecId, tipo: 'entrada', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+        }
+      }
+    }
+    d.movimientos.push({ id: uid(), tipo: 'recibido', monto, fecha, destino: cuenta || undefined, nota, ts: Date.now(), _movSecId: movSecId || undefined });
   } else {
     const saldoActual = getMiDeudaSaldo(d);
     if (monto > saldoActual + 1) {
       toast(`Solo le debes ${fmt(saldoActual)}`, 'err');
       return;
     }
-    if (cuenta) descontarFuente(cuenta, monto);
-    d.movimientos.push({ id: uid(), tipo: 'pago', monto, fecha, fuente: cuenta || undefined, nota, ts: Date.now() });
+    let movSecId = null;
+    if (cuenta) {
+      descontarFuente(cuenta, monto);
+      movSecId = uid();
+      const descSec = `Pago de deuda — ${d.nombre}`;
+      if (cuenta === 'efectivo' || cuenta === 'nequi') {
+        if (!S.movimientos) S.movimientos = [];
+        S.movimientos.push({ id: movSecId, tipo: 'salida', fuente: cuenta, monto, fecha, desc: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+      } else if (cuenta.startsWith('custom:')) {
+        const cId = cuenta.split(':')[1];
+        const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+        if (cObj) {
+          if (!cObj.movimientos) cObj.movimientos = [];
+          cObj.movimientos.push({ id: movSecId, tipo: 'egreso', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+        }
+      } else if (cuenta.startsWith('cajita:')) {
+        const cId = cuenta.split(':')[1];
+        const cObj = (S.cajitas || []).find(x => x.id === cId);
+        if (cObj) {
+          if (!cObj.historial) cObj.historial = [];
+          cObj.historial.push({ id: movSecId, tipo: 'salida', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado' });
+        }
+      }
+    }
+    d.movimientos.push({ id: uid(), tipo: 'pago', monto, fecha, fuente: cuenta || undefined, nota, ts: Date.now(), _movSecId: movSecId || undefined });
   }
   save(); refresh(); closeSheet('mov-mi-deuda');
   abrirMiDeuda(d.id);
@@ -9142,9 +9188,42 @@ function eliminarMovMiDeuda(deudaId, movId) {
   if (!d) return;
   const m = (d.movimientos || []).find(x => x.id === movId);
   if (!m) return;
+
   // Revertir el efecto en la cuenta involucrada
-  if (m.tipo === 'recibido' && m.destino) descontarFuente(m.destino, m.monto);
-  else if (m.tipo === 'pago' && m.fuente) sumarFuente(m.fuente, m.monto);
+  if (m.tipo === 'recibido' && m.destino) {
+    descontarFuente(m.destino, m.monto);
+    // Eliminar movimiento secundario si existe
+    if (m._movSecId) {
+      if (m.destino === 'efectivo' || m.destino === 'nequi') {
+        S.movimientos = (S.movimientos || []).filter(x => x.id !== m._movSecId);
+      } else if (m.destino.startsWith('custom:')) {
+        const cId = m.destino.split(':')[1];
+        const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+        if (cObj && cObj.movimientos) cObj.movimientos = cObj.movimientos.filter(x => x.id !== m._movSecId);
+      } else if (m.destino.startsWith('cajita:')) {
+        const cId = m.destino.split(':')[1];
+        const cObj = (S.cajitas || []).find(x => x.id === cId);
+        if (cObj && cObj.historial) cObj.historial = cObj.historial.filter(x => x.id !== m._movSecId);
+      }
+    }
+  } else if (m.tipo === 'pago' && m.fuente) {
+    sumarFuente(m.fuente, m.monto);
+    // Eliminar movimiento secundario si existe
+    if (m._movSecId) {
+      if (m.fuente === 'efectivo' || m.fuente === 'nequi') {
+        S.movimientos = (S.movimientos || []).filter(x => x.id !== m._movSecId);
+      } else if (m.fuente.startsWith('custom:')) {
+        const cId = m.fuente.split(':')[1];
+        const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+        if (cObj && cObj.movimientos) cObj.movimientos = cObj.movimientos.filter(x => x.id !== m._movSecId);
+      } else if (m.fuente.startsWith('cajita:')) {
+        const cId = m.fuente.split(':')[1];
+        const cObj = (S.cajitas || []).find(x => x.id === cId);
+        if (cObj && cObj.historial) cObj.historial = cObj.historial.filter(x => x.id !== m._movSecId);
+      }
+    }
+  }
+
   d.movimientos = d.movimientos.filter(x => x.id !== movId);
   save(); refresh();
   abrirMiDeuda(deudaId);

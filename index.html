@@ -8931,7 +8931,9 @@ function totalMisDeudasPendiente() {
   }, 0);
 }
 
+let prestamosTabActiva = 'me-deben'; // Recuerda qué pestaña (Me deben / Yo debo) quedó activa, para restaurarla al volver a la pantalla
 function cambiarTabPrestamos(tab) {
+  prestamosTabActiva = tab;
   const tabMeDeben = document.getElementById('tab-me-deben');
   const tabYoDebo = document.getElementById('tab-yo-debo');
   const viewMeDeben = document.getElementById('deudoresView');
@@ -10348,10 +10350,23 @@ function showScreen(name){
   // Reset deudor detalle when leaving prestamos
   if(name!=='prestamos'){
     deudorActualId=null;
+    miDeudaActualId=null;
     const det=document.getElementById('deudorDetalle');
+    const detMD=document.getElementById('miDeudaDetalle');
     const vis=document.getElementById('deudoresView');
+    const visMD=document.getElementById('misDeudasView');
     if(det)det.style.display='none';
-    if(vis)vis.style.display='';
+    if(detMD)detMD.style.display='none';
+    // Restaurar solo la lista de la pestaña que estaba activa (Me deben / Yo debo).
+    // Antes esto siempre forzaba "Me deben" visible sin ocultar "Yo debo", así que
+    // si volvías a Prestado estando en "Yo debo" aparecían las dos listas juntas.
+    if(prestamosTabActiva==='yo-debo'){
+      if(vis)vis.style.display='none';
+      if(visMD)visMD.style.display='';
+    } else {
+      if(vis)vis.style.display='';
+      if(visMD)visMD.style.display='none';
+    }
   }
   if(name==='config') { renderCatsConfig(); if(typeof window._pinRenderBtn==='function') window._pinRenderBtn(); }
   if(name==='analisis') renderAnalisis();

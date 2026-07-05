@@ -10383,14 +10383,25 @@ function guardarEditarSpotify() {
   p.nombre = n;
   p.monto = m;
   if (fechaIngresoRaw) {
-    p.fechaIngreso = fechaIngresoRaw;
     // Recalcular próximo pago SOLO si la fecha de ingreso realmente cambió — si no,
     // se pisaría el avance ya ganado por pagos adelantados o ciclos ya cobrados.
     if (fechaIngresoRaw !== fechaAnterior) {
-      const dIng = new Date(fechaIngresoRaw + 'T00:00:00');
-      dIng.setDate(dIng.getDate() + 30);
-      p.proximoPago = dIng.toISOString().split('T')[0];
+      if (fechaAnterior && p.proximoPago) {
+        // Es una corrección de una fecha de ingreso que ya se venía usando (no la primera
+        // vez que se define): desplazar proximoPago por la misma cantidad de días que
+        // cambió la fecha de ingreso, para no perder los períodos que ya se pagaron.
+        const deltaDias = Math.round((new Date(fechaIngresoRaw + 'T00:00:00') - new Date(fechaAnterior + 'T00:00:00')) / 86400000);
+        const dProx = new Date(p.proximoPago + 'T00:00:00');
+        dProx.setDate(dProx.getDate() + deltaDias);
+        p.proximoPago = dProx.toISOString().split('T')[0];
+      } else {
+        // No había fecha de ingreso previa: es la primera vez que se calcula, cálculo normal.
+        const dIng = new Date(fechaIngresoRaw + 'T00:00:00');
+        dIng.setDate(dIng.getDate() + 30);
+        p.proximoPago = dIng.toISOString().split('T')[0];
+      }
     }
+    p.fechaIngreso = fechaIngresoRaw;
   }
   _spEditIdx = null;
   save(); refresh(); closeSheet('editar-spotify');

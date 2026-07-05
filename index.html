@@ -7398,18 +7398,21 @@ function renderGastosVar(){
     const esFijo=!!g.esPagoGastoFijo;
     const esTC=!!g._esCompraTC;
     const esPagoTC=!!g._esPagoTC;
+    const esSecundario=!!g._secundario;
     const colorMonto=esFijo?'var(--text2)':esTC?'var(--red)':esPagoTC?'var(--accent)':'var(--red)';
     return`<div class="gasto-item" style="${(esFijo||esPagoTC)?'opacity:.75;':''}">
       <div class="gasto-item-top">
         <div style="flex:1;min-width:0;">
-          <div class="row-name" style="font-size:13px;">${g.desc}</div>
+          <div class="row-name" style="font-size:13px;display:flex;align-items:center;gap:6px;">${g.desc}${esSecundario?`<span title="Generado desde ${escHtml(g._origenSeccion||'otra sección')} — elimínalo desde allá" style="display:inline-flex;align-items:center;gap:2px;font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:1px 5px;white-space:nowrap;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>`:''}</div>
           <div class="row-sub">${g.fecha}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="row-amount" style="color:${colorMonto};">${esPagoTC?'-':''}${fmt(g.monto)}</span>
-          <button type="button" onclick="deleteGastoVar('${g.id}')" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.6;" onmouseenter="this.style.opacity='1';this.style.color='var(--red,#f44)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
+          ${esSecundario
+            ?`<span title="Generado automáticamente — elimínalo desde ${escHtml(g._origenSeccion||'la sección de origen')}" style="display:flex;align-items:center;justify-content:center;padding:4px;color:var(--text3);opacity:.4;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
+            :`<button type="button" onclick="deleteGastoVar('${g.id}')" title="Eliminar" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.6;" onmouseenter="this.style.opacity='1';this.style.color='var(--red,#f44)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-          </button>
+          </button>`}
         </div>
       </div>
       <div class="gasto-item-meta">
@@ -7509,9 +7512,14 @@ function addGastoVar(){
 }
 
 async function deleteGastoVar(id){
+  const g=(S.gastosVar||[]).find(x=>x.id===id);
+  if(g&&g._secundario){
+    const seccion=g._origenSeccion||'la sección de origen';
+    await dialogo('Movimiento vinculado', `Este gasto fue generado automáticamente desde ${seccion}. Para eliminarlo, ve a ${seccion} y borra el registro allá — eso revertirá todo correctamente.`, 'Entendido', false);
+    return;
+  }
   const ok=await dialogo('Eliminar gasto','¿Seguro que quieres eliminar este gasto? Esta acción no se puede deshacer.','Eliminar',true);
   if(!ok)return;
-  const g=(S.gastosVar||[]).find(x=>x.id===id);
   if(g){
     if(g._esCompraTC&&g._tcId){
       // Revertir: marcar la compra como eliminada (nunca se borra físicamente) y recalcular
@@ -10228,7 +10236,7 @@ function confirmarSpDestino(){
   // Registrar en historial (un registro por cada mes cobrado)
   if(!S.spotifyHistorial)S.spotifyHistorial=[];
   for(let m=0;m<meses;m++){
-    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:p.nombre,monto:p.monto||0,fuente:spDestinoSel||'',fecha:hoy(),nota:meses>1?`Mes ${m+1} de ${meses} (pago adelantado)`:'',proximoPagoAntes});
+    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:p.nombre,monto:p.monto||0,fuente:spDestinoSel||'',fecha:hoy(),nota:meses>1?`Mes ${m+1} de ${meses} (pago adelantado)`:'',proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'});
   }
   spDestinoIdx=null;
   save();refresh();closeSheet('sp-destino');
@@ -10292,7 +10300,7 @@ function confirmarPagarSpotify(){
   // Registrar también como gasto variable para que aparezca en la sección Gastos
   if(!S.gastosVar)S.gastosVar=[];
   const gastoId=uid();
-  S.gastosVar.push({id:gastoId,desc:'Spotify Premium',monto,fecha:hoy(),cat:'Suscripciones',fuente,nota:nota||'Pago mensual Spotify'});
+  S.gastosVar.push({id:gastoId,desc:'Spotify Premium',monto,fecha:hoy(),cat:'Suscripciones',fuente,nota:nota||'Pago mensual Spotify',_secundario:true,_origenSeccion:'Spotify'});
   S.spotifyHistorial.push({id:uid(),tipo:'pago',monto,fuente,fecha:hoy(),nota,_gastoVarId:gastoId});
   // Reset pagados del ciclo
   (S.spotifyPersonas||[]).forEach(p=>{p.pagado=false;});
@@ -10905,8 +10913,8 @@ function _getMovimientosCuentaCustom(fuente) {
   // 3. Gastos variables pagados desde esta cuenta
   (S.gastosVar || []).forEach(g => {
     if (g.fuente !== fuente) return;
-    const _origen = g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : 'Gastos';
-    movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, fuente, _idx: _idx++, _movId: g.id, _fuenteOrigen: fuente, _origen, _otrasCuentas: null });
+    const _origen = g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : 'Gastos';
+    movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, fuente, _idx: _idx++, _movId: g.id, _fuenteOrigen: fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario, _origenSeccion: g._origenSeccion || '' });
   });
 
   // 4. Préstamos dados desde esta cuenta
@@ -10949,7 +10957,7 @@ function _getMovimientosCuentaCustom(fuente) {
   // 6. Cobros Spotify
   (S.spotifyHistorial || []).forEach(h => {
     if (h.tipo === 'pago' || h.fuente !== fuente) return;
-    movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente, _idx: _idx++, _movId: h.id || null, _origen: 'Spotify', _otrasCuentas: null });
+    movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente, _idx: _idx++, _movId: h.id || null, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
   });
 
   // Sort: fecha desc, luego _movId desc (timestamp base-36)
@@ -11024,8 +11032,8 @@ function getMovimientosCuenta(tipo) {
       ? (g.fuente && g.fuente.startsWith('cajita:'))
       : g.fuente === tipo;
     if (match) {
-      const _origen = g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota||'') ? 'Encargos' : 'Gastos';
-      movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null });
+      const _origen = g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota||'') ? 'Encargos' : 'Gastos';
+      movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario, _origenSeccion: g._origenSeccion || '' });
     }
   });
   // Préstamos dados desde esta fuente
@@ -11107,7 +11115,7 @@ function getMovimientosCuenta(tipo) {
     if (matchFuente) {
       // Usar h.id si existe, o fabricar un _movId estable a partir del índice para que el sort
       // funcione igual que los demás movimientos (por timestamp de registro, no por orden de iteración)
-      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente: h.fuente, _idx: _idx++, _movId: h.id || null, _origen: 'Spotify', _otrasCuentas: null });
+      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente: h.fuente, _idx: _idx++, _movId: h.id || null, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
     }
   });
   // Transferencias entre cuentas
@@ -11649,7 +11657,9 @@ async function eliminarMovimiento(btn) {
   const movObj = (S.movimientos || []).find(x => x.id === movId)
     || (() => { for (const enc of (S.encargos||[])) { const m=(enc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (() => { for (const caj of (S.cajitas||[])) { const m=(caj.historial||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
-    || (() => { for (const cc of (S.cuentasPersonalizadas||[])) { const m=(cc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })();
+    || (() => { for (const cc of (S.cuentasPersonalizadas||[])) { const m=(cc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
+    || (S.gastosVar || []).find(x => x.id === movId)
+    || (S.spotifyHistorial || []).find(x => x.id === movId);
   if (movObj && movObj._secundario) {
     const seccion = movObj._origenSeccion || 'la sección de origen';
     await dialogo('Movimiento vinculado', `Este movimiento fue generado automáticamente desde ${seccion}. Para eliminarlo, ve a ${seccion} y borra el movimiento principal — eso revertirá todo.`, 'Entendido', false);

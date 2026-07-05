@@ -10041,7 +10041,7 @@ function renderSpStats(){
   const totalPagadoHist=pagosSpotify.reduce((a,h)=>a+(h.monto||0),0);
 
   // ── Cuota del admin (su "plan gratis")
-  const totalSlots=(personas.length||5)+1;
+  const totalSlots=personas.length+1;
   const cuotaAdmin=costo>0?Math.round(costo/totalSlots):0;
   const ciclosPagados=pagosSpotify.length;
   // Se usa la cuota guardada en cada pago (según la cantidad de personas de esa época);
@@ -20727,7 +20727,15 @@ function _selPersonaFiltrar() {
   if (!lista) return;
   const personas = (S.personas || []).filter(p => !q || p.nombre.toLowerCase().includes(q));
   if (!personas.length) {
-    lista.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:10px 0;">No se encontró "${q}". Creá una nueva persona.</div>`;
+    lista.innerHTML = q
+      ? `<div style="padding:10px 0;">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">No se encontró "${escHtml(q)}".</div>
+          <button type="button" onclick="_selPersonaCrearDirecto()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border-radius:var(--radius-sm);background:rgba(200,240,96,.12);border:1.5px solid var(--accent);color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Crear a "${escHtml(q)}"
+          </button>
+        </div>`
+      : `<div style="font-size:12px;color:var(--text3);padding:10px 0;">No hay personas todavía. Creá una nueva.</div>`;
     return;
   }
   lista.innerHTML = personas.map(p => {
@@ -20765,6 +20773,17 @@ function _selPersonaElegir(personaId) {
   if (typeof _selPersonaCallback === 'function') {
     setTimeout(() => { _selPersonaCallback(personaId); }, 180);
   }
+}
+
+// Un solo tap desde "No se encontró": precarga el nombre ya escrito y abre
+// directamente "Nueva persona", en vez de obligar a escribirlo de nuevo.
+function _selPersonaCrearDirecto() {
+  const q = document.getElementById('sel-persona-buscar')?.value.trim() || '';
+  _abrirCrearPersonaGlobal();
+  setTimeout(() => {
+    const nEl = document.getElementById('cpg_nombre');
+    if (nEl) nEl.value = q;
+  }, 210);
 }
 
 /* ── CREAR PERSONA GLOBAL ──────────────────────────────────────── */
@@ -21449,7 +21468,7 @@ function _initSpotifyEditPersonaSelector() {
 
   ig.innerHTML = `
     <label class="il">¿Quién es?</label>
-    <div id="sp-edit-persona-btn" onclick="abrirSelPersona(_onSelPersonaSpotifyEdit)"
+    <div id="sp-edit-persona-btn" onclick="_abrirSelPersonaSpotifyEdit()"
       style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
       border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
       cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
@@ -21460,10 +21479,21 @@ function _initSpotifyEditPersonaSelector() {
     <input type="hidden" id="sp_edit_n" value="">`;
 }
 
+let _spEditPersonaPickerAbierto = false;    // se puso true al abrir el buscador en "Editar"
+let _spEditPersonaPickerConfirmado = false; // se puso true solo si de verdad se eligió/creó alguien
+
+// Wrapper del botón "¿Quién es?" en Editar: además de abrir el buscador, marca que
+// se abrió, para poder detectar si se cierra sin confirmar ninguna selección nueva.
+function _abrirSelPersonaSpotifyEdit() {
+  _spEditPersonaPickerAbierto = true;
+  abrirSelPersona(_onSelPersonaSpotifyEdit);
+}
+
 function _onSelPersonaSpotifyEdit(personaId) {
   const p = getPersona(personaId);
   if (!p) return;
   _spEditPersonaId = personaId;
+  _spEditPersonaPickerConfirmado = true;
   document.getElementById('sp_edit_n').value = p.nombre;
 
   const btn = document.getElementById('sp-edit-persona-btn');
@@ -21562,12 +21592,23 @@ editarSpotify = function(i) {
       if (btn && sp.nombre) btn.style.borderColor = 'var(--accent)';
       if (spEditN) spEditN.value = sp.nombre || '';
     }
+    // Resetear banderas DESPUÉS de precargar: mostrar el estado actual no cuenta
+    // como una selección nueva confirmada por el usuario.
+    _spEditPersonaPickerAbierto = false;
+    _spEditPersonaPickerConfirmado = false;
   }, 80);
 };
 
 /* ── Hook en guardarEditarSpotify para guardar personaId ────────── */
 const _origGuardarEditarSpotifyPersonas = guardarEditarSpotify;
 guardarEditarSpotify = function() {
+  // Si se abrió el buscador de "¿Quién es?" pero se cerró sin confirmar ninguna
+  // selección (ni elegir a alguien de la lista, ni crear una persona nueva), el
+  // input oculto sigue con el nombre anterior — avisar en vez de guardarlo en silencio.
+  if (_spEditPersonaPickerAbierto && !_spEditPersonaPickerConfirmado) {
+    const spActual = (S.spotifyPersonas || [])[_spEditIdx];
+    toast(`No se seleccionó una persona nueva — se mantuvo a "${spActual ? spActual.nombre : 'la persona anterior'}"`, 'err', 4000);
+  }
   // Capturar idx ANTES de llamar al original (que lo pone a null)
   const idxAntes = _spEditIdx;
   _origGuardarEditarSpotifyPersonas.apply(this, arguments);
@@ -21582,6 +21623,8 @@ guardarEditarSpotify = function() {
     }
   }
   _spEditPersonaId = null;
+  _spEditPersonaPickerAbierto = false;
+  _spEditPersonaPickerConfirmado = false;
 };
 
 /* ── Hook en renderSpotify para aplicar color de persona ─────────── */

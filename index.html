@@ -10032,9 +10032,29 @@ function renderSpStats(){
   const ciclosPagados=pagosSpotify.length;
   const ahorroCuotaAdmin=cuotaAdmin*ciclosPagados;
 
-  // ── Ingreso mensual estimado (personas activas)
+  // ── Ingreso mensual estimado (personas activas) — solo se usa como respaldo
+  // mientras no haya ningún ciclo pagado todavía
   const ingresoEstimado=personas.reduce((a,p)=>a+(p.monto||0),0);
   const margen=costo>0?ingresoEstimado-costo+cuotaAdmin:0;
+
+  // ── Ganancia REAL por ciclo pagado: recorre el historial y corta un "ciclo"
+  // cada vez que aparece un pago real a Spotify. Así el flujo mensual deja de
+  // ser un número teórico fijo y refleja lo que de verdad ganaste cada mes.
+  const ciclosCompletos=[];
+  {
+    let cobroAcum=0;
+    for(const h of hist){
+      if(h.tipo==='cobro'){ cobroAcum+=(h.monto||0); }
+      else if(h.tipo==='pago'){
+        ciclosCompletos.push({fecha:h.fecha, cobrado:cobroAcum, pagado:h.monto||0, ganancia:cobroAcum-(h.monto||0)+cuotaAdmin});
+        cobroAcum=0;
+      }
+    }
+  }
+  const promedioCiclo=ciclosCompletos.length?ciclosCompletos.reduce((a,c)=>a+c.ganancia,0)/ciclosCompletos.length:null;
+  const ultimoCiclo=ciclosCompletos.length?ciclosCompletos[ciclosCompletos.length-1].ganancia:null;
+  const mejorCiclo=ciclosCompletos.length?Math.max(...ciclosCompletos.map(c=>c.ganancia)):null;
+  const peorCiclo=ciclosCompletos.length?Math.min(...ciclosCompletos.map(c=>c.ganancia)):null;
 
   // ── Ganancia real: solo calculable cuando hay pagos registrados
   const gananciaReal=totalCobradoHist-totalPagadoHist+ahorroCuotaAdmin;
@@ -10044,15 +10064,27 @@ function renderSpStats(){
 
   let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px;">`;
 
-  // Flujo mensual estimado (ancho completo)
-  html+=`<div class="stat" style="grid-column:1/-1;">
-    <div class="stat-label">Flujo mensual estimado</div>
-    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
-      <div class="stat-value" style="color:${cV(margen)};">${margen>=0?'+':''}${fmt(Math.abs(margen))}</div>
-      <div style="font-size:11px;color:var(--text2);">cobras ${fmt(ingresoEstimado)} · pagas ${costo>0?fmt(costo):'—'}</div>
-    </div>
-    ${cuotaAdmin>0?`<div style="font-size:10px;color:var(--text3);margin-top:3px;">incluye tu cuota ahorrada ${fmt(cuotaAdmin)}</div>`:''}
-  </div>`;
+  // Flujo mensual: promedio real por ciclo pagado (si ya hay al menos uno),
+  // o una proyección teórica mientras tanto — claramente marcada como tal.
+  if(promedioCiclo!==null){
+    html+=`<div class="stat" style="grid-column:1/-1;">
+      <div class="stat-label">Promedio real por ciclo pagado</div>
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <div class="stat-value" style="color:${cV(promedioCiclo)};">${promedioCiclo>=0?'+':'\u2212'}${fmt(Math.abs(promedioCiclo))}</div>
+        <div style="font-size:11px;color:var(--text2);">basado en ${ciclosCompletos.length} ciclo${ciclosCompletos.length!==1?'s':''} pagado${ciclosCompletos.length!==1?'s':''}</div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">último: ${ultimoCiclo>=0?'+':'\u2212'}${fmt(Math.abs(ultimoCiclo))}${ciclosCompletos.length>1?` · mejor: +${fmt(mejorCiclo)} · peor: ${peorCiclo>=0?'+':'\u2212'}${fmt(Math.abs(peorCiclo))}`:''}</div>
+    </div>`;
+  } else {
+    html+=`<div class="stat" style="grid-column:1/-1;">
+      <div class="stat-label">Flujo mensual proyectado</div>
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <div class="stat-value" style="color:${cV(margen)};">${margen>=0?'+':''}${fmt(Math.abs(margen))}</div>
+        <div style="font-size:11px;color:var(--text2);">cobras ${fmt(ingresoEstimado)} · pagas ${costo>0?fmt(costo):'—'}</div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">estimado con tus personas actuales — registrá un pago a Spotify para empezar a ver el promedio real</div>
+    </div>`;
+  }
 
   // Total cobrado
   html+=`<div class="stat">

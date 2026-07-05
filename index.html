@@ -10044,7 +10044,9 @@ function renderSpStats(){
   const totalSlots=(personas.length||5)+1;
   const cuotaAdmin=costo>0?Math.round(costo/totalSlots):0;
   const ciclosPagados=pagosSpotify.length;
-  const ahorroCuotaAdmin=cuotaAdmin*ciclosPagados;
+  // Se usa la cuota guardada en cada pago (según la cantidad de personas de esa época);
+  // los registros antiguos que no la tengan usan la cuota actual como respaldo.
+  const ahorroCuotaAdmin=pagosSpotify.reduce((a,h)=>a+(h._cuotaAdmin!=null?h._cuotaAdmin:cuotaAdmin),0);
 
   // ── Ingreso mensual estimado (personas activas) — solo se usa como respaldo
   // mientras no haya ningún ciclo pagado todavía
@@ -10060,7 +10062,8 @@ function renderSpStats(){
     for(const h of hist){
       if(h.tipo==='cobro'){ cobroAcum+=(h.monto||0); }
       else if(h.tipo==='pago'){
-        ciclosCompletos.push({fecha:h.fecha, cobrado:cobroAcum, pagado:h.monto||0, ganancia:cobroAcum-(h.monto||0)+cuotaAdmin});
+        const cuotaAdminDeEseCiclo=h._cuotaAdmin!=null?h._cuotaAdmin:cuotaAdmin;
+        ciclosCompletos.push({fecha:h.fecha, cobrado:cobroAcum, pagado:h.monto||0, ganancia:cobroAcum-(h.monto||0)+cuotaAdminDeEseCiclo});
         cobroAcum=0;
       }
     }
@@ -10307,7 +10310,12 @@ function confirmarPagarSpotify(){
   if(!S.gastosVar)S.gastosVar=[];
   const gastoId=uid();
   S.gastosVar.push({id:gastoId,desc:'Spotify Premium',monto,fecha:hoy(),cat:'Suscripciones',fuente,nota:nota||'Pago mensual Spotify',_secundario:true,_origenSeccion:'Spotify'});
-  S.spotifyHistorial.push({id:uid(),tipo:'pago',monto,fuente,fecha:hoy(),nota,_gastoVarId:gastoId});
+  // Se guarda la cuota del administrador vigente EN ESTE MOMENTO (según cuántas personas
+  // hay ahora), para que si la cantidad de integrantes cambia en el futuro, la ganancia
+  // de este ciclo ya pagado no se recalcule con datos de otra época.
+  const totalSlotsAhora=(S.spotifyPersonas||[]).length+1;
+  const cuotaAdminAhora=S.spotifyCosto>0?Math.round(S.spotifyCosto/totalSlotsAhora):0;
+  S.spotifyHistorial.push({id:uid(),tipo:'pago',monto,fuente,fecha:hoy(),nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora});
   // Reset pagados del ciclo — pero respeta a quienes ya prepagaron períodos futuros:
   // si su próxima fecha de cobro sigue en el futuro, su "Pagó" sigue vigente y no debe
   // volver a Pendiente solo porque yo ya le pagué a Spotify.
@@ -10371,14 +10379,18 @@ function guardarEditarSpotify() {
   if (!n) { toast('Ingresa el nombre', 'err'); return; }
   const m = parseMoney(document.getElementById('sp_edit_m').value) || 0;
   const fechaIngresoRaw = document.getElementById('sp_edit_fecha_ingreso').value;
+  const fechaAnterior = p.fechaIngreso;
   p.nombre = n;
   p.monto = m;
   if (fechaIngresoRaw) {
     p.fechaIngreso = fechaIngresoRaw;
-    // Recalcular próximo pago si cambió fecha de ingreso
-    const dIng = new Date(fechaIngresoRaw + 'T00:00:00');
-    dIng.setDate(dIng.getDate() + 30);
-    p.proximoPago = dIng.toISOString().split('T')[0];
+    // Recalcular próximo pago SOLO si la fecha de ingreso realmente cambió — si no,
+    // se pisaría el avance ya ganado por pagos adelantados o ciclos ya cobrados.
+    if (fechaIngresoRaw !== fechaAnterior) {
+      const dIng = new Date(fechaIngresoRaw + 'T00:00:00');
+      dIng.setDate(dIng.getDate() + 30);
+      p.proximoPago = dIng.toISOString().split('T')[0];
+    }
   }
   _spEditIdx = null;
   save(); refresh(); closeSheet('editar-spotify');

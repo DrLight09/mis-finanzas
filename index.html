@@ -9893,7 +9893,13 @@ function renderSpotify(){
   // no desde el flag "pagado" — así no se descuadran si solo tocas el badge para corregir un error.
   const cicloCobros=spCicloCobrosActual();
   const cob=cicloCobros.reduce((a,h)=>a+(h.monto||0),0);
-  const cobPend=p.reduce((a,x)=>a+Math.max(0,(x.monto||0)-spCobradoDePersona(x,cicloCobros)),0);
+  // Si alguien prepagó varios períodos, su cobertura puede caer en un ciclo anterior
+  // (antes del último pago real) y "desaparecer" de cicloCobros — pero mientras su
+  // proximoPago siga en el futuro, sigue cubierto y no debe contar como pendiente.
+  const cobPend=p.reduce((a,x)=>{
+    if(spPersonaPagadaVigente(x))return a;
+    return a+Math.max(0,(x.monto||0)-spCobradoDePersona(x,cicloCobros));
+  },0);
   const cajitaSaldo=getSpCajitaSaldo();
   
   document.getElementById('spCob').textContent=fmt(cob);
@@ -10302,8 +10308,14 @@ function confirmarPagarSpotify(){
   const gastoId=uid();
   S.gastosVar.push({id:gastoId,desc:'Spotify Premium',monto,fecha:hoy(),cat:'Suscripciones',fuente,nota:nota||'Pago mensual Spotify',_secundario:true,_origenSeccion:'Spotify'});
   S.spotifyHistorial.push({id:uid(),tipo:'pago',monto,fuente,fecha:hoy(),nota,_gastoVarId:gastoId});
-  // Reset pagados del ciclo
-  (S.spotifyPersonas||[]).forEach(p=>{p.pagado=false;});
+  // Reset pagados del ciclo — pero respeta a quienes ya prepagaron períodos futuros:
+  // si su próxima fecha de cobro sigue en el futuro, su "Pagó" sigue vigente y no debe
+  // volver a Pendiente solo porque yo ya le pagué a Spotify.
+  (S.spotifyPersonas||[]).forEach(p=>{
+    const hoy0=new Date();hoy0.setHours(0,0,0,0);
+    const sigueVigente=p.proximoPago&&new Date(p.proximoPago+'T00:00:00')>hoy0;
+    if(!sigueVigente)p.pagado=false;
+  });
   save();refresh();closeSheet('pagar-spotify');
 }
 
@@ -10324,7 +10336,15 @@ function addSpotify(){
   save();refresh();closeSheet('spotify');
   toast(`${n} agregado · primer cobro el ${proximoPago}`,'ok');
 }
-function deleteSpotify(i){S.spotifyPersonas.splice(i,1);save();refresh();}
+async function deleteSpotify(i){
+  const p=(S.spotifyPersonas||[])[i];
+  if(!p)return;
+  const ok=await dialogo('Eliminar integrante',`¿Eliminar a ${p.nombre} de Spotify? Esta acción no se puede deshacer. Su historial de cobros anteriores se conserva en las estadísticas, pero dejará de aparecer en la lista.`,'Eliminar',true);
+  if(!ok)return;
+  S.spotifyPersonas.splice(i,1);
+  save();refresh();
+  toast(`${p.nombre} eliminado de Spotify`,'ok');
+}
 
 let _spEditIdx = null;
 function editarSpotify(i) {

@@ -890,7 +890,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
             </div>
           </div>
-          <div id="tc-pm-alert" style="margin-bottom:8px;"></div>
           <div id="tc-lista" style="margin-bottom:10px;"></div>
           <button type="button" class="btn btn-ghost"
             onclick="abrirNuevaTarjeta()"
@@ -5122,7 +5121,7 @@ function getFuentes(){
   arr.push({val:'nequi',label:'Nequi'});
   arr.push({val:'efectivo',label:'Efectivo'});
   (S.cuentasPersonalizadas||[]).forEach(c=>arr.push({val:'custom:'+c.id,label:c.nombre}));
-  (S.tarjetasCredito||[]).forEach(tc=>arr.push({val:'tc:'+tc.id,label:tc.nombre+' (TC)'}));
+  (S.tarjetasCredito||[]).filter(tc=>(tc.estado||'activa')==='activa').forEach(tc=>arr.push({val:'tc:'+tc.id,label:tc.nombre+' (TC)'}));
   return arr;
 }
 
@@ -5428,11 +5427,12 @@ function calcDeudaTcPropia() {
   let deudaAjena = 0;
   // 1. Cargos de encargos y préstamos TC registrados en tcMovimientos
   (S.tcMovimientos||[]).forEach(m => {
+    if (m.eliminado) return;
     if (m.tipo === 'cargo_encargo' || m.tipo === 'cargo_prestamo') deudaAjena += (m.monto||0);
   });
   // 2. Compras de plata comprometida (_desdeCP en tc.compras)
   (S.tarjetasCredito||[]).forEach(tc => {
-    (tc.compras||[]).forEach(c => { if (c._desdeCP) deudaAjena += (c.monto||0); });
+    (tc.compras||[]).forEach(c => { if (!c.eliminado && c._desdeCP) deudaAjena += (c.monto||0); });
   });
   const deudaTotal = (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
   return Math.max(0, deudaTotal - deudaAjena);
@@ -5889,15 +5889,17 @@ function renderAttencion(){
     const s=getDeudorSaldo(d);
     if(s>0) items.push({tipo:'amber',texto:`${d.nombre} te debe ${fmt(s)}`});
   });
-  // Tarjetas de crédito con deuda
+  // Tarjetas de crédito con el cupo casi agotado (sin fechas — este modelo no
+  // simula ciclos de facturación, solo avisa cuando el cupo disponible es bajo)
   (S.tarjetasCredito||[]).forEach(tc=>{
-    if((tc.deuda||0)>0){
-      const diasHastaPago=tcDiasHastaPago(tc);
-      if(diasHastaPago!==null&&diasHastaPago<=5){
-        items.push({tipo:'red',texto:`${tc.nombre}: deuda ${fmt(tc.deuda)} — fecha de pago en ${diasHastaPago}d`,_tcId:tc.id});
-      } else if(diasHastaPago!==null&&diasHastaPago<=10){
-        items.push({tipo:'amber',texto:`${tc.nombre}: deuda ${fmt(tc.deuda)} — fecha de pago en ${diasHastaPago}d`,_tcId:tc.id});
-      }
+    if((tc.estado||'activa')!=='activa')return;
+    const cupo=tc.cupo||0;
+    if(!cupo)return;
+    const pct=tcCupoUsadoPct(tc);
+    if(pct>=100){
+      items.push({tipo:'red',texto:`${tc.nombre}: cupo agotado — deuda ${fmt(tc.deuda||0)}`,_tcId:tc.id});
+    } else if(pct>=85){
+      items.push({tipo:'amber',texto:`${tc.nombre}: cupo casi agotado (${pct.toFixed(0)}% usado)`,_tcId:tc.id});
     }
   });
   // Spotify personas vencidas (solo si el módulo está activo)
@@ -5954,10 +5956,10 @@ function renderAttencion(){
 }
 
 function refresh(){
-  // Verificar si llegó el corte de alguna TC — genera aviso y avanza fechas
-  if(typeof tcVerificarCortes==='function'){
-    if(tcVerificarCortes())save();
-  }
+  // Auto-sanación de tarjetas de crédito: agrega campos nuevos, infiere el
+  // saldo inicial de tarjetas migradas y recalcula la deuda de cada una a
+  // partir de sus movimientos (regla de consistencia). Es idempotente.
+  if(typeof tcNormalizarTarjetas==='function') tcNormalizarTarjetas();
   const nu=nuTotal();
   const nequi=S.nequiSaldo||0;
   const ef=S.efectivoSaldo||0;
@@ -7475,27 +7477,24 @@ function addGastoVar(){
   const notaGasto=document.getElementById('gv_nota').value.trim();
   if(!S.gastosVar)S.gastosVar=[];
   const esTCFuente=fuente&&fuente.startsWith('tc:');
-  S.gastosVar.push({
-    id:compraId,
-    desc,
-    monto,
-    fecha:fechaGasto,
-    cat:catGasto,
-    fuente,
-    nota:notaGasto,
-    ...(esTCFuente?{_esCompraTC:true,_tcId:fuente.split(':')[1],_tcCompraId:compraId}:{})
-  });
-  // Si la fuente es TC, también registrar en tc.compras
+  const gastoObj={id:compraId,desc,monto,fecha:fechaGasto,cat:catGasto,fuente,nota:notaGasto};
+  // Si la fuente es TC, registrar la compra a través del mismo servicio que
+  // usa el módulo de tarjetas (tcCrearCompra) — misma lógica, un solo lugar.
   if(esTCFuente){
     const tcId=fuente.split(':')[1];
     const tc=(S.tarjetasCredito||[]).find(x=>x.id===tcId);
     if(tc){
-      if(!tc.compras)tc.compras=[];
-      tc.compras.push({id:compraId,desc,monto,fecha:fechaGasto,cat:catGasto,nota:notaGasto});
-      tc.deuda=(tc.deuda||0)+monto;
+      const compra=tcCrearCompra(tc,{desc,monto,fecha:fechaGasto,cat:catGasto,nota:notaGasto});
+      gastoObj._esCompraTC=true;
+      gastoObj._tcId=tcId;
+      gastoObj._tcCompraId=compra.id;
+      S.gastosVar.push(gastoObj);
       toast('Compra cargada a '+tc.nombre+' — deuda: '+fmt(tc.deuda),'info',3500);
+    } else {
+      S.gastosVar.push(gastoObj);
     }
   } else {
+    S.gastosVar.push(gastoObj);
     descontarFuente(fuente,monto);
     toast('Gasto registrado','ok');
   if(window.logCambio){const _gvd=document.getElementById('gv_desc');const _gvm=parseMoney(document.getElementById('gv_monto').value);logCambio('Registraste un gasto',_gvd?_gvd.value:'',_gvm,'gasto');}
@@ -7513,20 +7512,13 @@ async function deleteGastoVar(id){
   const g=(S.gastosVar||[]).find(x=>x.id===id);
   if(g){
     if(g._esCompraTC&&g._tcId){
-      // Revertir: quitar de tc.compras y reducir deuda
+      // Revertir: marcar la compra como eliminada (nunca se borra físicamente) y recalcular
       const tc=(S.tarjetasCredito||[]).find(x=>x.id===g._tcId);
-      if(tc){
-        tc.compras=(tc.compras||[]).filter(c=>c.id!==g._tcCompraId);
-        tc.deuda=Math.max(0,(tc.deuda||0)-g.monto);
-      }
+      if(tc&&g._tcCompraId) tcEliminarCompraInterna(tc,g._tcCompraId);
     } else if(g._esPagoTC&&g._tcId){
       // Revertir pago: restaurar la deuda en la TC y devolver plata a la cuenta
       const tc=(S.tarjetasCredito||[]).find(x=>x.id===g._tcId);
-      if(tc){
-        tc.deuda=(tc.deuda||0)+g.monto;
-        // Limpiar la entrada de tc.pagos vinculada (via _tcPagoId guardado al crear)
-        if(g._tcPagoId)tc.pagos=(tc.pagos||[]).filter(p=>p.id!==g._tcPagoId);
-      }
+      if(tc&&g._tcPagoId) tcEliminarPagoInterna(tc,g._tcPagoId);
       if(g.fuente)sumarFuente(g.fuente,g.monto);
     } else {
       // Gasto normal: devolver el dinero a la cuenta origen
@@ -9317,8 +9309,8 @@ function _prtcDifResumen() { diffResumen('prtc'); }
 
 function abrirSheetPrestamoTC() {
   if (!deudorActualId) return;
-  const tcs = S.tarjetasCredito || [];
-  if (!tcs.length) { toast('No tenés tarjetas de crédito configuradas', 'err', 3000); return; }
+  const tcs = (S.tarjetasCredito || []).filter(tc => (tc.estado||'activa')==='activa');
+  if (!tcs.length) { toast('No tenés tarjetas de crédito activas configuradas', 'err', 3000); return; }
   const sel = document.getElementById('prtc_tarjeta');
   if (sel) {
     sel.innerHTML = '<option value="">Seleccionar TC</option>' +
@@ -11642,7 +11634,21 @@ async function eliminarMovimiento(btn) {
     // Gasto variable (S.gastosVar)
     const g = (S.gastosVar || []).find(x => x.id === movId);
     if (g) {
-      if (g.fuente) sumarFuente(g.fuente, g.monto); // devolver el dinero
+      if (g._esCompraTC && g._tcId) {
+        // Compra de TC: marcar como eliminada en tc.compras (nunca se borra
+        // físicamente) y recalcular la deuda — NO usar sumarFuente aquí.
+        const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
+        if (tc && g._tcCompraId) tcEliminarCompraInterna(tc, g._tcCompraId);
+      } else if (g._esPagoTC && g._tcId) {
+        // Pago de TC: restaurar la deuda en la tarjeta Y devolver la plata a
+        // la cuenta origen (antes solo se hacía lo segundo — la deuda de la
+        // TC quedaba mal para siempre).
+        const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
+        if (tc && g._tcPagoId) tcEliminarPagoInterna(tc, g._tcPagoId);
+        if (g.fuente) sumarFuente(g.fuente, g.monto);
+      } else if (g.fuente) {
+        sumarFuente(g.fuente, g.monto); // devolver el dinero
+      }
       // Bug fix: si era pago de gasto fijo, desmarcar como pagado
       if(g.esPagoGastoFijo && g.gastoFijoId){
         const mes = mesKey(g.fecha);
@@ -15558,14 +15564,9 @@ document.addEventListener('focusin', function(e){
           console.warn('[Sync] Nube vacía (sin payload real) — manteniendo estado por defecto.');
         } else {
           Object.assign(window.S, cloudData);
-          // Migración: limpiar pagoMinimo que fue autorellenado con deudaIni incorrectamente.
-          // Si pagoMinimo === deuda y no hay compras registradas, lo borramos para
-          // que el render lo calcule automáticamente como (deuda - comprasNuevas).
-          (window.S.tarjetasCredito||[]).forEach(tc=>{
-            if(tc.pagoMinimo && tc.pagoMinimo === tc.deuda && !(tc.compras||[]).length){
-              tc.pagoMinimo = 0;
-            }
-          });
+          // La migración y auto-sanación de tarjetas de crédito ahora vive en
+          // tcNormalizarTarjetas(), que se ejecuta en cada refresh() — no hace
+          // falta un parche puntual aquí.
         }
       } catch(e) {
         console.error('[Sync] Error al parsear datos de la nube:', e);
@@ -17037,25 +17038,62 @@ if ('serviceWorker' in navigator) {
           crédito</div>
         <div class="ig"><label class="il" for="tc_nombre">Nombre de la tarjeta</label><input type="text" id="tc_nombre"
             placeholder="Ej: Visa Bancolombia, Mastercard Nu..."></div>
-        <div class="ig"><label class="il" for="tc_cupo">Cupo total (opcional)</label><input type="text" inputmode="decimal"
-            id="tc_cupo" placeholder="0,00" class="money-input"></div>
-        <div class="ig"><label class="il" for="tc_deuda_ini">Deuda actual (saldo que ya debes)</label><input type="text" inputmode="decimal"
-            id="tc_deuda_ini" placeholder="0,00" class="money-input"></div>
-        <div class="ig"><label class="il" for="tc_pago_minimo">Pago mínimo del extracto <span style="font-size:10px;color:var(--text3);font-weight:400;">(lo que debes de antes del último corte — opcional si no tienes extracto)</span></label><input type="text" inputmode="decimal"
-            id="tc_pago_minimo" placeholder="0,00" class="money-input"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
-          <div class="ig">
-            <label class="il" for="tc_proximo_corte">Fecha próximo corte</label>
-            <input type="date" id="tc_proximo_corte" onchange="tcActualizarFechasPreview()">
-          </div>
-          <div class="ig">
-            <label class="il" for="tc_fecha_limite_pago">Fecha límite de pago</label>
-            <input type="date" id="tc_fecha_limite_pago" onchange="tcActualizarFechasPreview()">
+          <div class="ig"><label class="il" for="tc_banco">Banco</label><input type="text" id="tc_banco"
+              placeholder="Ej: Bancolombia"></div>
+          <div class="ig"><label class="il" for="tc_franquicia">Franquicia</label>
+            <div class="select-wrap"><select id="tc_franquicia">
+                <option value="Visa">Visa</option>
+                <option value="Mastercard">Mastercard</option>
+                <option value="American Express">American Express</option>
+                <option value="Diners Club">Diners Club</option>
+                <option value="Otra">Otra</option>
+              </select></div>
           </div>
         </div>
-        <div
-          style="font-size:11px;color:var(--text3);margin:-4px 0 14px;font-family:'DM Mono',monospace;line-height:1.6;"
-          id="tc-fechas-preview"></div>
+        <div class="ig"><label class="il" for="tc_cupo">Cupo total</label><input type="text" inputmode="decimal"
+            id="tc_cupo" placeholder="0,00" class="money-input"></div>
+        <div class="ig" id="tc-deuda-ini-grupo"><label class="il" for="tc_deuda_ini">Deuda actual <span style="font-size:10px;color:var(--text3);font-weight:400;">(si ya debes algo antes de empezar a usar la app)</span></label><input type="text" inputmode="decimal"
+            id="tc_deuda_ini" placeholder="0,00" class="money-input"></div>
+        <div class="ig" id="tc-estado-grupo" style="display:none;">
+          <label class="il" for="tc_estado">Estado</label>
+          <div class="select-wrap"><select id="tc_estado">
+              <option value="activa">Activa</option>
+              <option value="bloqueada">Bloqueada</option>
+              <option value="cancelada">Cancelada</option>
+              <option value="vencida">Vencida</option>
+            </select></div>
+        </div>
+        <div class="ig">
+          <label class="il">Color <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;padding:2px 0;"
+            id="tc-color-picker">
+            <div class="tc-color-opt" data-color="#60b0f0"
+              style="width:28px;height:28px;border-radius:50%;background:#60b0f0;cursor:pointer;border:2px solid transparent;"
+              onclick="tcSelColor('#60b0f0')"></div>
+            <div class="tc-color-opt" data-color="#c8f060"
+              style="width:28px;height:28px;border-radius:50%;background:#c8f060;cursor:pointer;border:2px solid transparent;"
+              onclick="tcSelColor('#c8f060')"></div>
+            <div class="tc-color-opt" data-color="#f0b840"
+              style="width:28px;height:28px;border-radius:50%;background:#f0b840;cursor:pointer;border:2px solid transparent;"
+              onclick="tcSelColor('#f0b840')"></div>
+            <div class="tc-color-opt" data-color="#b090f0"
+              style="width:28px;height:28px;border-radius:50%;background:#b090f0;cursor:pointer;border:2px solid transparent;"
+              onclick="tcSelColor('#b090f0')"></div>
+            <div class="tc-color-opt" data-color="#f06868"
+              style="width:28px;height:28px;border-radius:50%;background:#f06868;cursor:pointer;border:2px solid transparent;"
+              onclick="tcSelColor('#f06868')"></div>
+            <div class="tc-color-opt" data-color="#60f0b0"
+              style="width:28px;height:28px;border-radius:50%;background:#60f0b0;cursor:pointer;border:2px solid transparent;"
+              onclick="tcSelColor('#60f0b0')"></div>
+            <div class="tc-color-opt" data-color="#f090c0"
+              style="width:28px;height:28px;border-radius:50%;background:#f090c0;cursor:pointer;border:2px solid transparent;"
+              onclick="tcSelColor('#f090c0')"></div>
+            <div class="tc-color-opt" data-color="#f0a060"
+              style="width:28px;height:28px;border-radius:50%;background:#f0a060;cursor:pointer;border:2px solid transparent;"
+              onclick="tcSelColor('#f0a060')"></div>
+          </div>
+        </div>
         <button type="button" class="btn btn-primary"
           id="btn-guardar-tc">Guardar tarjeta</button>
         <button type="button" class="btn btn-ghost"
@@ -17080,19 +17118,36 @@ if ('serviceWorker' in navigator) {
             style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;"
             id="compra-tc-nombre-header"></div>
         </div>
-        <div class="ig"><label class="il" for="ctc_desc">Descripción</label><input type="text" id="ctc_desc"
+        <div class="ig"><label class="il" for="tcc_desc">Descripción</label><input type="text" id="tcc_desc"
             placeholder="Ej: Mercado, Ropa, Amazon..."></div>
-        <div class="ig"><label class="il" for="ctc_monto">Monto</label><input
-            type="text" inputmode="decimal" id="ctc_monto" placeholder="0,00"
+        <div class="ig"><label class="il" for="tcc_monto">Monto</label><input
+            type="text" inputmode="decimal" id="tcc_monto" placeholder="0,00"
             class="money-input"></div>
-        <div class="ig"><label class="il" for="ctc_fecha">Fecha</label><input
-            type="date" id="ctc_fecha" onchange="tcActualizarCicloCompra()"></div>
-        <!-- Aviso de ciclo -->
-        <div id="ctc-ciclo-aviso" style="display:none;font-size:11px;border-radius:8px;padding:8px 11px;margin-top:-6px;margin-bottom:4px;font-family:'DM Mono',monospace;line-height:1.5;"></div>
-        <div class="ig"><label class="il" for="ctc_cat">Categoría</label>
-          <div class="select-wrap"><select id="ctc_cat"></select></div>
+        <div class="ig"><label class="il" for="tcc_fecha">Fecha</label><input
+            type="date" id="tcc_fecha"></div>
+
+        <div class="cfg-toggle" style="padding:0 0 12px;border-bottom:none;">
+          <div class="cfg-toggle-info">
+            <div class="cfg-toggle-label" style="font-size:13px;">¿Es una compra en cuotas?</div>
+            <div class="cfg-toggle-sub">Se divide en varios pagos</div>
+          </div>
+          <label class="toggle-sw">
+            <input type="checkbox" id="tcc_es_cuotas">
+            <span class="slider"></span>
+          </label>
         </div>
-        <div class="ig"><label class="il" for="ctc_nota">Nota (opcional)</label><input type="text" id="ctc_nota"
+        <div id="tcc-cuotas-grupo" style="display:none;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
+            <div class="ig"><label class="il" for="tcc_num_cuotas">Número de cuotas</label><input type="number" min="2" step="1" id="tcc_num_cuotas" placeholder="12"></div>
+            <div class="ig"><label class="il" for="tcc_valor_cuota">Valor por cuota</label><input type="text" inputmode="decimal" id="tcc_valor_cuota" placeholder="0,00" class="money-input"></div>
+          </div>
+          <div id="tcc-cuotas-preview" style="font-size:11px;color:var(--text3);margin:-4px 0 10px;font-family:'DM Mono',monospace;"></div>
+        </div>
+
+        <div class="ig"><label class="il" for="tcc_cat">Categoría</label>
+          <div class="select-wrap"><select id="tcc_cat"></select></div>
+        </div>
+        <div class="ig"><label class="il" for="tcc_nota">Nota (opcional)</label><input type="text" id="tcc_nota"
             placeholder="Detalle adicional"></div>
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-compra-tc-tarjetas"
@@ -17109,24 +17164,18 @@ if ('serviceWorker' in navigator) {
         <div class="sheet-handle"></div>
         <div class="sheet-title" id="pagar-tc-title">Pagar tarjeta</div>
 
-        <!-- Cabecera: deuda + fecha límite -->
         <div style="background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.25);border-radius:9px;padding:14px;margin-bottom:14px;">
-          <div style="font-size:10px;color:var(--text3);margin-bottom:2px;font-family:'DM Mono',monospace;">DEUDA TOTAL</div>
+          <div style="font-size:10px;color:var(--text3);margin-bottom:2px;font-family:'DM Mono',monospace;">DEUDA ACTUAL</div>
           <div style="font-size:24px;font-weight:500;font-family:'DM Mono',monospace;color:var(--red);" id="ptc-deuda-total">$0</div>
-          <div id="ptc-info-ciclo" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:5px;min-height:15px;"></div>
         </div>
 
-        <!-- Opciones de pago estilo Nu -->
         <div style="margin-bottom:14px;" id="ptc-opciones-bloque">
-          <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:8px;">¿Cuánto quieres pagar?</div>
           <div id="ptc-opciones-rapidas" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
 
-        <!-- Campo de monto libre (siempre visible) -->
         <div class="ig" id="ptc-monto-grupo">
-          <label class="il" for="ptc_monto" id="ptc-monto-label">Abona a tu deuda</label>
+          <label class="il" for="ptc_monto">Abona a tu deuda</label>
           <input type="text" inputmode="decimal" id="ptc_monto" placeholder="0,00" class="money-input">
-          <div id="ptc-monto-hint" style="font-size:11px;color:var(--text3);margin-top:3px;min-height:14px;"></div>
         </div>
 
         <div class="ig">
@@ -17135,14 +17184,14 @@ if ('serviceWorker' in navigator) {
           <div id="ptc-fuente-saldo" style="font-size:11px;font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
         </div>
         <div class="ig"><label class="il" for="ptc_fecha">Fecha de pago</label><input type="date" id="ptc_fecha"></div>
-        <div class="ig"><label class="il" for="ptc_nota">Nota (opcional)</label><input type="text" id="ptc_nota" placeholder="Ej: pago mínimo, pago total..."></div>
+        <div class="ig"><label class="il" for="ptc_nota">Nota (opcional)</label><input type="text" id="ptc_nota" placeholder="Ej: pago total, abono..."></div>
         <div id="ptc-preview" style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:10px;min-height:16px;"></div>
         <button type="button" class="btn btn-primary" id="btn-confirmar-pagar-tc">Confirmar pago</button>
         <button type="button" class="btn btn-ghost" data-close-sheet="pagar-tc">Cancelar</button>
       </div>
     </div>
 
-    <!-- DETALLE TC (compras del período) -->
+    <!-- DETALLE TC (historial: saldo inicial + compras + pagos) -->
     <div class="overlay" id="sheet-detalle-tc" data-sheet-id="detalle-tc">
       <div class="sheet">
         <div class="sheet-handle"></div>
@@ -17156,12 +17205,36 @@ if ('serviceWorker' in navigator) {
     <script>
 /* ================================================================
    MÓDULO TARJETAS DE CRÉDITO
+   ================================================================
+   Rediseñado para NO simular el funcionamiento de un banco: sin
+   fechas de corte, sin extracto, sin pago mínimo. La tarjeta solo
+   ayuda a saber cuánto se ha gastado, cuánto se debe y cuánto cupo
+   queda disponible.
+
+   Regla de consistencia (siempre se cumple por construcción):
+     cupoUtilizado = deudaActual         → mismo campo: tc.deuda
+     cupoDisponible = cupoTotal - cupoUtilizado   → nunca se guarda
+
+   tcRecalcular(tc) reconstruye tc.deuda a partir de los movimientos
+   registrados (saldo inicial + compras + cargos externos - pagos).
+   Se llama tras cada operación y de nuevo, como red de seguridad,
+   en tcNormalizarTarjetas() en cada refresh() — así, si algo llega a
+   desincronizarse, el propio sistema lo recalcula automáticamente.
    ================================================================ */
 
 let _tcActualId = null;
 let _tcCompraTcId = null;
+let _tcEditId = null;
+let _tcColorSel = null;
 
-// ── Helpers ────────────────────────────────────────────────────
+const TC_ESTADOS = {
+  activa:    {label:'Activa',    badge:null},
+  bloqueada: {label:'Bloqueada', badge:'bg-amber'},
+  cancelada: {label:'Cancelada', badge:'bg-red'},
+  vencida:   {label:'Vencida',   badge:'bg-red'}
+};
+
+// ── Helpers básicos ─────────────────────────────────────────────
 function getTCById(id){ return (S.tarjetasCredito||[]).find(x=>x.id===id); }
 
 function tcDeudaTotal(){
@@ -17169,404 +17242,188 @@ function tcDeudaTotal(){
 }
 
 function tcCupoUsadoPct(tc){
-  if(!tc.cupo||!tc.deuda)return 0;
-  return Math.min(100,(tc.deuda/tc.cupo)*100);
+  const cupo=tc.cupo||0;
+  if(!cupo) return 0;
+  return Math.min(100,((tc.deuda||0)/cupo)*100);
 }
 
-function tcDiasHastaPago(tc){
-  const hoyDate=new Date();
-  hoyDate.setHours(0,0,0,0);
-  // Preferir fecha exacta de límite de pago si existe
-  if(tc.fechaLimitePago){
-    const target=new Date(tc.fechaLimitePago+'T00:00:00');
-    return Math.round((target-hoyDate)/86400000);
-  }
-  // Fallback: campo numérico legado
-  if(!tc.fechaPago)return null;
-  const dia=hoyDate.getDate();
-  let targetMonth=hoyDate.getMonth(), targetYear=hoyDate.getFullYear();
-  if(tc.fechaPago<dia){targetMonth++;if(targetMonth>11){targetMonth=0;targetYear++;}}
-  const lastDay=new Date(targetYear,targetMonth+1,0).getDate();
-  const targetDay=Math.min(tc.fechaPago,lastDay);
-  const target=new Date(targetYear,targetMonth,targetDay);
-  return Math.round((target-hoyDate)/86400000);
+function tcCupoDisponible(tc){
+  return Math.max(0,(tc.cupo||0)-(tc.deuda||0));
 }
 
-function tcDiasHastaCorte(tc){
-  const hoyDate=new Date();
-  hoyDate.setHours(0,0,0,0);
-  // Preferir fecha exacta del próximo corte si existe
-  if(tc.proximoCorte){
-    const target=new Date(tc.proximoCorte+'T00:00:00');
-    return Math.round((target-hoyDate)/86400000);
-  }
-  // Fallback: campo numérico legado
-  if(!tc.fechaCorte)return null;
-  const dia=hoyDate.getDate();
-  let targetMonth=hoyDate.getMonth(), targetYear=hoyDate.getFullYear();
-  if(tc.fechaCorte<dia){targetMonth++;if(targetMonth>11){targetMonth=0;targetYear++;}}
-  const lastDay=new Date(targetYear,targetMonth+1,0).getDate();
-  const targetDay=Math.min(tc.fechaCorte,lastDay);
-  const target=new Date(targetYear,targetMonth,targetDay);
-  return Math.round((target-hoyDate)/86400000);
+function tcEstadoInfo(estado){
+  return TC_ESTADOS[estado]||TC_ESTADOS.activa;
 }
 
-// Fecha del corte ANTERIOR (el que ya pasó y generó el extracto vigente)
-// Si existe proximoCorte exacto, el corte anterior es el mes anterior a esa fecha.
-// Si no, usa el campo numérico legado.
-function tcFechaCorteAnterior(tc){
-  const hoyDate=new Date();
-  hoyDate.setHours(0,0,0,0);
-  if(tc.proximoCorte){
-    // El corte anterior es ~1 mes antes del próximo corte
-    const proximo=new Date(tc.proximoCorte+'T00:00:00');
-    const anterior=new Date(proximo);
-    anterior.setMonth(anterior.getMonth()-1);
-    return anterior;
-  }
-  // Fallback legado
-  if(!tc.fechaCorte)return null;
-  const dia=hoyDate.getDate();
-  let targetMonth=hoyDate.getMonth(), targetYear=hoyDate.getFullYear();
-  if(tc.fechaCorte>=dia){targetMonth--;if(targetMonth<0){targetMonth=11;targetYear--;}}
-  const lastDay=new Date(targetYear,targetMonth+1,0).getDate();
-  const targetDay=Math.min(tc.fechaCorte,lastDay);
-  return new Date(targetYear,targetMonth,targetDay);
+// ── Cuotas ───────────────────────────────────────────────────────
+// Valor de cuota por defecto: total ÷ número de cuotas, redondeado.
+function tcCalcularValorCuota(valorTotal,numCuotas){
+  if(!numCuotas||numCuotas<1) return valorTotal||0;
+  return Math.round((valorTotal||0)/numCuotas);
+}
+// La última cuota absorbe el residuo del redondeo, de forma que la
+// suma de todas las cuotas sea EXACTAMENTE igual al valor total.
+function tcValorUltimaCuota(valorTotal,valorCuota,numCuotas){
+  if(!numCuotas||numCuotas<1) return valorTotal||0;
+  if(numCuotas===1) return valorTotal||0;
+  return (valorTotal||0)-(valorCuota||0)*(numCuotas-1);
 }
 
-// Fecha hasta la que está facturado el extracto actual = día anterior al corte ANTERIOR
-// Las compras <= esta fecha están en el extracto vigente (pago mínimo)
-// Las compras > esta fecha son nuevas (próximo extracto)
-function tcFechaFacturadoHasta(tc){
-  // Si hay fecha exacta del próximo corte, el extracto vigente cubre
-  // hasta el día anterior al próximo corte (el corte cierra el ciclo anterior)
-  if(tc.proximoCorte){
-    const proximo=new Date(tc.proximoCorte+'T00:00:00');
-    const hasta=new Date(proximo);
-    hasta.setDate(hasta.getDate()-1);
-    return hasta;
-  }
-  // Fallback legado
-  if(!tc.fechaCorte)return null;
-  const corteAnt=tcFechaCorteAnterior(tc);
-  if(!corteAnt)return null;
-  const hasta=new Date(corteAnt);
-  hasta.setDate(hasta.getDate()-1);
-  return hasta;
-}
-
-// Retorna true si una compra (fecha string 'YYYY-MM-DD') está en el extracto vigente
-// Retorna false si es una compra nueva hecha después del último corte (próximo extracto)
-function tcCompraEnCicloActual(tc, fechaCompraStr){
-  const hasta=tcFechaFacturadoHasta(tc);
-  if(!hasta)return true;
-  const compra=new Date(fechaCompraStr+'T00:00:00');
-  return compra<=hasta;
-}
-
-// ── Avanza una fecha 'YYYY-MM-DD' un mes, conservando el día (clamp a fin de mes) ──
-function _tcSumarMes(fechaStr){
-  const d=new Date(fechaStr+'T00:00:00');
-  const dia=d.getDate();
-  let m=d.getMonth()+1, y=d.getFullYear();
-  if(m>11){m=0;y++;}
-  const lastDay=new Date(y,m+1,0).getDate();
-  const diaFinal=Math.min(dia,lastDay);
-  return `${y}-${String(m+1).padStart(2,'0')}-${String(diaFinal).padStart(2,'0')}`;
-}
-
-// ── Verifica si llegó el corte de alguna TC; si es así, genera un aviso
-//    en tcMovimientos con la deuda pendiente y avanza proximoCorte/fechaLimitePago
-//    un mes (para no repetir el aviso). Se ejecuta en cada refresh().
-function tcVerificarCortes(){
-  let cambio=false;
-  const hoyStr=hoy();
-  (S.tarjetasCredito||[]).forEach(tc=>{
-    if(!tc.proximoCorte)return;
-    // Puede haber pasado más de un corte (app cerrada varios meses) — procesar todos
-    let guard=0;
-    while(tc.proximoCorte&&tc.proximoCorte<=hoyStr&&guard<24){
-      guard++;
-      if(!S.tcMovimientos)S.tcMovimientos=[];
-      S.tcMovimientos.push({
-        id:uid(),
-        tcId:tc.id,
-        tipo:'corte_aviso',
-        desc:'Corte de '+tc.nombre,
-        monto:tc.deuda||0,
-        fecha:tc.proximoCorte,
-        nota:'Llegó el corte — debes pagar lo facturado hasta esta fecha'
-      });
-      // Avanzar fechas de corte y límite de pago un mes
-      const nuevoCorte=_tcSumarMes(tc.proximoCorte);
-      if(tc.fechaLimitePago)tc.fechaLimitePago=_tcSumarMes(tc.fechaLimitePago);
-      tc.proximoCorte=nuevoCorte;
-      cambio=true;
-    }
+// ── Regla de consistencia: recalcular la deuda desde los movimientos ──
+// tc.deuda hace de cupoUtilizado Y de deudaActual a la vez (por eso
+// esa igualdad nunca se puede romper). Esta función la reconstruye
+// sumando el saldo inicial, las compras no eliminadas y los cargos
+// externos (encargos/préstamos pagados con esta TC), y restando los
+// pagos no eliminados. Nunca deja valores negativos.
+function tcRecalcular(tc){
+  if(!tc) return 0;
+  let total=0;
+  if(tc.saldoInicial && !tc.saldoInicial.eliminado) total+=(tc.saldoInicial.monto||0);
+  (tc.compras||[]).forEach(c=>{ if(!c.eliminado) total+=(c.monto||0); });
+  (S.tcMovimientos||[]).forEach(m=>{
+    if(m.tcId===tc.id && (m.tipo==='cargo_encargo'||m.tipo==='cargo_prestamo') && !m.eliminado) total+=(m.monto||0);
   });
-  return cambio;
+  (tc.pagos||[]).forEach(p=>{ if(!p.eliminado) total-=(p.monto||0); });
+  tc.deuda=Math.max(0,total);
+  return tc.deuda;
 }
 
-// ── Render dashboard TC (en pantalla inicio) ─────────────────
-function renderTCDashboard(){
-  const el=document.getElementById('tc-deuda-card');
-  if(!el)return;
-  const tarjetas=S.tarjetasCredito||[];
-  if(!tarjetas.length){el.style.display='none';return;}
-  const deudaTotal=tcDeudaTotal();
-  el.style.display='';
-  const items=tarjetas.map(tc=>{
-    const pct=tcCupoUsadoPct(tc);
-    const dias=tcDiasHastaPago(tc);
-    const urgente=dias!==null&&dias<=5;
-    const proximo=dias!==null&&dias<=10;
-    const diasLabel=dias!==null?(dias===0?'Vence hoy':'Pago en '+dias+'d'):'';
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:inline-block;vertical-align:middle;margin-right:4px;flex-shrink:0;"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>${tc.nombre}
-          ${dias!==null?`<span style="font-size:9px;padding:2px 6px;border-radius:20px;background:${urgente?'rgba(240,104,104,.2)':proximo?'rgba(240,184,64,.15)':'rgba(255,255,255,.07)'};color:${urgente?'var(--red)':proximo?'var(--amber)':'var(--text3)'};">${diasLabel}</span>`:''}
-        </div>
-        ${tc.cupo?`<div style="margin-top:4px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;width:100%;max-width:180px;"><div style="height:100%;width:${pct.toFixed(0)}%;background:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--accent)'};border-radius:2px;"></div></div>`:''}
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(tc.deuda||0)}</div>
-        ${tc.cupo?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(tc.cupo)}</div>`:''}
-      </div>
-    </div>`;
-  }).join('');
-  el.innerHTML=`<div class="card" style="border-color:rgba(240,104,104,.3);background:rgba(240,104,104,.05);margin-bottom:9px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-      <div style="font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;font-weight:700;">Deudas en tarjeta</div>
-      <button type="button" onclick="navTo('tarjetas')" style="background:none;border:1px solid rgba(240,104,104,.35);border-radius:7px;color:var(--red);font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;">Ver todo</button>
-    </div>
-    ${items}
-    ${tarjetas.length>1?`<div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:2px;">
-      <span style="font-size:12px;color:var(--text2);">Total deuda</span>
-      <span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">${fmt(deudaTotal)}</span>
-    </div>`:''}
-    ${(()=>{
-      // Cajita "Tarjeta": buscar cajita cuyo nombre incluya "tarjeta" (igual que Spotify busca "spotify")
-      const cajitaTarjeta=(S.cajitas||[]).find(c=>c.nombre&&c.nombre.toLowerCase().includes('tarjeta'));
-      if(!cajitaTarjeta||!deudaTotal)return'';
-      const saldoCajita=calcC(cajitaTarjeta).val;
-      const diferencia=saldoCajita-deudaTotal;
-      const alcanza=diferencia>=0;
-      const color=alcanza?'var(--accent)':'var(--amber)';
-      const bg=alcanza?'rgba(200,240,96,.08)':'rgba(240,184,64,.08)';
-      const borderC=alcanza?'rgba(200,240,96,.25)':'rgba(240,184,64,.25)';
-      const pct=deudaTotal>0?Math.min(100,Math.round(saldoCajita/deudaTotal*100)):100;
-      return`<div style="margin-top:10px;background:${bg};border:1px solid ${borderC};border-radius:9px;padding:10px 12px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <div style="font-size:10px;color:${color};text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;font-weight:600;"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"12\" height=\"12\" style=\"vertical-align:middle;margin-right:3px;\"><rect x=\"1\" y=\"4\" width=\"22\" height=\"16\" rx=\"2\" ry=\"2\"/><line x1=\"1\" y1=\"10\" x2=\"23\" y2=\"10\"/></svg> Cajita ${cajitaTarjeta.nombre}</div>
-          <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${color};">${fmt(saldoCajita)}</div>
-        </div>
-        <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:6px;">
-          <div style="height:100%;width:${pct}%;background:${color};border-radius:2px;transition:width .4s;"></div>
-        </div>
-        <div style="font-size:11px;font-family:'DM Mono',monospace;color:${color};">
-          ${alcanza?'<i class="fa-solid fa-check" style="margin-right:4px;"></i>Tienes para cubrir la deuda · Te sobra '+fmt(diferencia):'Faltan '+fmt(-diferencia)+' para cubrir la deuda ('+pct+'% cubierto)'}
-        </div>
-      </div>`;
-    })()}
-  </div>`;
-
-  // update Más menu sub
-  const subEl=document.getElementById('mas-tc-sub');
-  if(subEl){
-    if(deudaTotal>0){
-      subEl.textContent='Deuda: '+fmt(deudaTotal);
-      subEl.style.color='var(--red)';
-    } else {
-      subEl.textContent='Gestiona tus deudas en TC';
-      subEl.style.color='';
-    }
+// ── Migración y auto-sanación ────────────────────────────────────
+// Se ejecuta en cada refresh(). Es idempotente (se puede llamar todas
+// las veces que haga falta sin generar duplicados ni efectos raros):
+//   · agrega los campos nuevos (banco, franquicia, color, estado,
+//     eliminado, cuotasPagadas...) con valores por defecto a las
+//     tarjetas creadas antes de este refactor;
+//   · infiere un movimiento de "Saldo inicial" para que el historial
+//     cuadre exactamente con la deuda que ya existía;
+//   · limpia avisos de corte, que ya no existen en este modelo;
+//   · recalcula la deuda de cada tarjeta desde sus movimientos.
+function tcNormalizarTarjetas(){
+  if(!Array.isArray(S.tarjetasCredito)) S.tarjetasCredito=[];
+  if(Array.isArray(S.tcMovimientos)){
+    S.tcMovimientos=S.tcMovimientos.filter(m=>m.tipo!=='corte_aviso');
   }
-}
-
-// ── Render pantalla principal TC ─────────────────────────────
-function renderTCScreen(){
-  const tarjetas=S.tarjetasCredito||[];
-  const hero=document.getElementById('tc-hero-deuda');
-  const heroCupo=document.getElementById('tc-hero-cupo');
-  const lista=document.getElementById('tc-lista');
-  if(!hero||!lista)return;
-  const deudaTotal=tcDeudaTotal();
-  const cupoTotal=tarjetas.reduce((a,tc)=>a+(tc.cupo||0),0);
-  if(hero)hero.textContent=fmt(deudaTotal);
-  if(heroCupo)heroCupo.textContent=cupoTotal?'Cupo total: '+fmt(cupoTotal):'';
-
-  // ── Aviso: actualizar pago mínimo si ya pasó el corte ──
-  const pmAlertEl=document.getElementById('tc-pm-alert');
-  if(pmAlertEl){
-    const tcConPMVencido=tarjetas.filter(tc=>{
-      if(!(tc.pagoMinimo>0))return false;
-      if(!tc.proximoCorte&&!tc.fechaCorte)return false;
-      // Días hasta el próximo corte; si son pocos (<=5) el extracto ya giró
-      const dias=tcDiasHastaCorte(tc);
-      return dias!==null&&dias<=5&&(tc.deuda||0)>0;
+  S.tarjetasCredito.forEach(tc=>{
+    if(typeof tc.banco!=='string') tc.banco='';
+    if(typeof tc.franquicia!=='string') tc.franquicia='';
+    if(tc.color===undefined) tc.color=null;
+    if(!tc.estado||!TC_ESTADOS[tc.estado]) tc.estado='activa';
+    if(!Array.isArray(tc.compras)) tc.compras=[];
+    if(!Array.isArray(tc.pagos)) tc.pagos=[];
+    tc.compras.forEach(c=>{
+      if(typeof c.eliminado!=='boolean') c.eliminado=false;
+      if(typeof c.cuotasPagadas!=='number') c.cuotasPagadas=0;
+      if(typeof c.esCuotas!=='boolean') c.esCuotas=!!c.numCuotas;
     });
-    if(tcConPMVencido.length){
-      const nombres=tcConPMVencido.map(tc=>tc.nombre).join(', ');
-      pmAlertEl.innerHTML=`<div style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.3);border-radius:10px;padding:10px 12px;display:flex;align-items:flex-start;gap:9px;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--amber);margin-bottom:3px;">Actualiza el pago mínimo</div>
-          <div style="font-size:10px;color:var(--text2);font-family:'DM Mono',monospace;line-height:1.5;">${nombres} — el corte está próximo o ya pasó. El pago mínimo puede haber cambiado en tu nuevo extracto.</div>
-        </div>
-      </div>`;
-    } else {
-      pmAlertEl.innerHTML='';
+    tc.pagos.forEach(p=>{ if(typeof p.eliminado!=='boolean') p.eliminado=false; });
+    // "undefined" = tarjeta de antes del refactor, nunca tocada → inferir.
+    // "null" = ya se decidió (en creación) que no había deuda previa.
+    if(tc.saldoInicial===undefined){
+      const sumCompras=tc.compras.filter(c=>!c.eliminado).reduce((a,c)=>a+(c.monto||0),0);
+      const sumPagos=tc.pagos.filter(p=>!p.eliminado).reduce((a,p)=>a+(p.monto||0),0);
+      const sumCargos=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&(m.tipo==='cargo_encargo'||m.tipo==='cargo_prestamo')&&!m.eliminado).reduce((a,m)=>a+(m.monto||0),0);
+      const inferido=Math.max(0,(tc.deuda||0)-sumCompras-sumCargos+sumPagos);
+      let fechaInferida=hoy();
+      const fechasConocidas=[...tc.compras.map(c=>c.fecha),...tc.pagos.map(p=>p.fecha)].filter(Boolean).sort();
+      if(fechasConocidas.length) fechaInferida=fechasConocidas[0];
+      tc.saldoInicial=inferido>0?{id:uid(),monto:inferido,fecha:fechaInferida,nota:'Saldo inicial',eliminado:false}:null;
     }
-  }
-
-  if(!tarjetas.length){
-    lista.innerHTML=`<div class="empty-state">
-      <div class="empty-state-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="var(--red)" stroke="none"/></svg></div>
-      <div class="empty-state-title">Sin tarjetas de crédito</div>
-      <div class="empty-state-sub">Agrega tu primera tarjeta para registrar compras y ver cuándo debes pagar.</div>
-      <button type="button" class="empty-state-btn" onclick="abrirNuevaTarjeta()">Agregar tarjeta</button>
-    </div>`;
-    return;
-  }
-
-  lista.innerHTML=tarjetas.map(tc=>{
-    const deuda=tc.deuda||0;
-    const cupo=tc.cupo||0;
-    const pct=cupo?Math.min(100,(deuda/cupo)*100):0;
-    const diasPago=tcDiasHastaPago(tc);
-    const diasCorte=tcDiasHastaCorte(tc);
-    const comprasActual=(tc.compras||[]).filter(c=>tcCompraEnCicloActual(tc,c.fecha));
-    const comprasSig=(tc.compras||[]).filter(c=>!tcCompraEnCicloActual(tc,c.fecha));
-    // Cargos de tcMovimientos (cargo_encargo/cargo_prestamo) que caen en el ciclo
-    // actual (ya facturados) — se excluyen avisos de corte, que no son cargos.
-    const _tcMovsActualRaw=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&m.tipo!=='corte_aviso'&&tcCompraEnCicloActual(tc,m.fecha));
-    const _tcMovsVistosActual=new Set();
-    const tcMovsActual=_tcMovsActualRaw.filter(m=>{const k=(m.encId||m.id)+'|'+m.monto+'|'+m.fecha;if(_tcMovsVistosActual.has(k))return false;_tcMovsVistosActual.add(k);return true;});
-    const itemsActual=comprasActual.length+tcMovsActual.length;
-    const totalActual=comprasActual.reduce((a,c)=>a+(c.monto||0),0)+tcMovsActual.reduce((a,m)=>a+(m.monto||0),0);
-    // Incluir cargo_encargo de tcMovimientos que cayeron despues del corte
-    // Deduplicar por encId+monto+fecha para evitar dobles registros del mismo cargo
-    const _tcMovsSigRaw=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&m.tipo!=='corte_aviso'&&!tcCompraEnCicloActual(tc,m.fecha));
-    const _tcMovsVistos=new Set();
-    const tcMovsSig=_tcMovsSigRaw.filter(m=>{const k=(m.encId||m.id)+'|'+m.monto+'|'+m.fecha;if(_tcMovsVistos.has(k))return false;_tcMovsVistos.add(k);return true;});
-    const totalSig=comprasSig.reduce((a,c)=>a+(c.monto||0),0)+tcMovsSig.reduce((a,m)=>a+(m.monto||0),0);
-    const facturadoHasta=tcFechaFacturadoHasta(tc);
-    const meses2=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-    const facturadoLabel=facturadoHasta?facturadoHasta.getDate()+' '+meses2[facturadoHasta.getMonth()]:null;
-    const urgente=diasPago!==null&&diasPago<=5;
-    const proximo=diasPago!==null&&diasPago<=10;
-
-    return `<div class="card" style="margin-bottom:10px;border-color:${deuda>0?'rgba(240,104,104,.3)':'var(--border)'};">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:inline-block;vertical-align:middle;margin-right:4px;flex-shrink:0;"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>${tc.nombre}
-          </div>
-          ${tc.proximoCorte||tc.fechaLimitePago||tc.fechaCorte||tc.fechaPago?`<div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">
-            ${tc.proximoCorte?'Corte '+tcFmtFecha(tc.proximoCorte):(tc.fechaCorte?'Corte día '+tc.fechaCorte:'')}${(tc.proximoCorte||tc.fechaCorte)&&(tc.fechaLimitePago||tc.fechaPago)?' · ':''}${tc.fechaLimitePago?'Límite pago '+tcFmtFecha(tc.fechaLimitePago):(tc.fechaPago?'Pago día '+tc.fechaPago:'')}
-            ${facturadoLabel?' · Facturado hasta el <b>'+facturadoLabel+'</b>':''}
-          </div>`:''}
-        </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button type="button" onclick="abrirEditarTC('${tc.id}')" style="background:none;border:1px solid var(--border2);border-radius:7px;color:var(--text2);font-size:11px;padding:4px 9px;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          <button type="button" onclick="eliminarTC('${tc.id}')" style="background:none;border:1px solid rgba(240,104,104,.3);border-radius:7px;color:var(--red);font-size:11px;padding:4px 9px;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-        <div style="background:rgba(240,104,104,.07);border-radius:9px;padding:10px 12px;">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Deuda total</div>
-          <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(deuda)}</div>
-          ${cupo?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(cupo)}</div>`:''}
-        </div>
-        <div style="background:var(--bg3);border-radius:9px;padding:10px 12px;">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Extracto (${itemsActual} compra${itemsActual!==1?'s':''})</div>
-          <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(totalActual)}</div>
-          ${facturadoLabel?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">hasta el ${facturadoLabel}</div>`:''}
-        </div>
-      </div>
-
-      <!-- Bloque ¿Cuánto pagar? -->
-      ${(()=>{
-        // Pago mínimo: lo que ingresó el usuario manualmente (campo "pago mínimo del extracto").
-        // Si no lo ingresó: deuda total menos las compras nuevas = lo que quedó del extracto anterior.
-        const pmManual=tc.pagoMinimo||0;
-        const pm=pmManual>0?pmManual:Math.max(0,deuda-totalSig);
-        // Compras nuevas = las que se hicieron después del último corte
-        const ptotal=pm+totalSig;
-        // Solo mostrar el bloque si hay deuda
-        if(deuda<=0)return '';
-        return `
-        <div style="background:rgba(240,104,104,.04);border:1px solid rgba(240,104,104,.2);border-radius:10px;padding:11px 13px;margin-bottom:12px;">
-          <div style="font-size:9px;color:var(--red);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;font-weight:700;margin-bottom:9px;">¿Cuánto pagar?</div>
-
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${totalSig>0?'6':'2'}px;">
-            <div style="font-size:12px;font-weight:600;color:var(--text);">Pago mínimo</div>
-            <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">${fmt(pm)}</div>
-          </div>
-
-          ${totalSig>0?`
-          <div style="border-top:1px solid rgba(240,104,104,.15);margin:7px 0;"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="font-size:12px;font-weight:600;color:var(--text);">+ Compras nuevas <span style="font-size:10px;font-weight:400;color:var(--text3);">(${comprasSig.length+tcMovsSig.length})</span></div>
-            <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(totalSig)}</div>
-          </div>
-          <div style="border-top:1px solid rgba(240,104,104,.25);margin:7px 0;"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div style="font-size:13px;font-weight:700;color:var(--text);">Pago total</div>
-            <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">${fmt(ptotal)}</div>
-          </div>
-          `:''}
-        </div>`;
-      })()}
-
-      ${cupo?`<div style="margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-size:10px;color:var(--text3);">Cupo usado</span>
-          <span style="font-size:10px;font-family:'DM Mono',monospace;color:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--text3)'};">${pct.toFixed(0)}%</span>
-        </div>
-        <div style="height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;">
-          <div style="height:100%;width:${pct.toFixed(0)}%;background:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--accent)'};border-radius:3px;transition:width .4s;"></div>
-        </div>
-      </div>`:''}\
-
-      ${diasPago!==null?`<div style="display:flex;align-items:center;gap:7px;margin-bottom:12px;">
-        <span style="font-size:12px;padding:5px 11px;border-radius:20px;background:${urgente?'rgba(240,104,104,.2)':proximo?'rgba(240,184,64,.15)':'rgba(255,255,255,.07)'};color:${urgente?'var(--red)':proximo?'var(--amber)':'var(--text3)'};font-family:'DM Mono',monospace;font-weight:600;">
-          ${diasPago===0?'Vence hoy !':'Pago en '+diasPago+' día'+(diasPago!==1?'s':'')}
-        </span>
-        ${diasCorte!==null&&diasCorte>0?`<span style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Corte en ${diasCorte}d</span>`:''}
-        ${diasCorte===0?`<span style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;"><i class="fa-solid fa-rotate" style="margin-right:5px;"></i>Hoy es el corte</span>`:''}
-      </div>`:''}\
-
-      <div style="display:flex;gap:8px;">
-        <button type="button" onclick="abrirCompraTC('${tc.id}')" style="flex:1;padding:10px;background:rgba(240,104,104,.12);border:1px solid rgba(240,104,104,.35);border-radius:9px;color:var(--red);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
-          + Compra
-        </button>
-        <button type="button" onclick="abrirPagarTC('${tc.id}')" style="flex:1;padding:10px;background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.35);border-radius:9px;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;" ${deuda<=0?'disabled style="flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:600;cursor:not-allowed;background:var(--bg3);border:1px solid var(--border);color:var(--text3);"':''}>
-          Pagar
-        </button>
-        <button type="button" onclick="abrirDetalleTCSheet('${tc.id}')" style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:9px;color:var(--text2);font-size:13px;cursor:pointer;">
-          Ver
-        </button>
-      </div>
-    </div>`;
-  }).join('');
+    tcRecalcular(tc);
+  });
 }
 
-// ── Nueva / editar tarjeta ───────────────────────────────────
-let _tcEditId=null;
+// ── Compras: capa de datos (sin tocar UI ni gastosVar) ───────────
+function tcCrearCompra(tc,datos){
+  if(!Array.isArray(tc.compras)) tc.compras=[];
+  const numCuotas=datos.esCuotas?Math.max(2,parseInt(datos.numCuotas,10)||2):null;
+  const valorCuota=datos.esCuotas?(datos.valorCuota||tcCalcularValorCuota(datos.monto,numCuotas)):null;
+  const compra={
+    id:uid(),
+    desc:datos.desc||'',
+    cat:datos.cat||'',
+    fecha:datos.fecha||hoy(),
+    monto:datos.monto||0,
+    nota:datos.nota||'',
+    eliminado:false,
+    esCuotas:!!datos.esCuotas,
+    numCuotas,
+    valorCuota,
+    cuotasPagadas:0
+  };
+  if(datos._esFavor) compra._esFavor=true;
+  if(datos._desdeCP) compra._desdeCP=true;
+  tc.compras.push(compra);
+  tcRecalcular(tc);
+  return compra;
+}
 
+// Marca una compra como eliminada (nunca se borra físicamente del
+// array), recalcula la deuda y devuelve la compra para que quien
+// llama limpie lo que corresponda (p.ej. el gasto variable espejo).
+function tcEliminarCompraInterna(tc,compraId){
+  const compra=(tc.compras||[]).find(c=>c.id===compraId&&!c.eliminado);
+  if(!compra) return null;
+  compra.eliminado=true;
+  tcRecalcular(tc);
+  return compra;
+}
+
+// Busca una compra por id; si no la encuentra (registros de antes de
+// este refactor no siempre tenían un id enlazado del lado del gasto),
+// cae de vuelta a un match por descripción+monto sin eliminar.
+function tcBuscarCompraPorIdOMatch(tc,compraId,desc,monto){
+  if(compraId){
+    const porId=(tc.compras||[]).find(c=>c.id===compraId&&!c.eliminado);
+    if(porId) return porId;
+  }
+  return (tc.compras||[]).find(c=>!c.eliminado&&c.desc===desc&&Math.abs((c.monto||0)-(monto||0))<1);
+}
+
+function tcIncrementarCuotaPagada(tcId,compraId,delta){
+  const tc=getTCById(tcId); if(!tc) return;
+  const compra=(tc.compras||[]).find(c=>c.id===compraId);
+  if(!compra||!compra.esCuotas) return;
+  compra.cuotasPagadas=Math.max(0,Math.min(compra.numCuotas||0,(compra.cuotasPagadas||0)+delta));
+  save();
+  abrirDetalleTCSheet(tcId);
+}
+
+// ── Pagos: capa de datos ──────────────────────────────────────────
+function tcCrearPago(tc,datos){
+  if(!Array.isArray(tc.pagos)) tc.pagos=[];
+  const pago={
+    id:uid(),
+    monto:datos.monto||0,
+    fecha:datos.fecha||hoy(),
+    fuente:datos.fuente||'',
+    nota:datos.nota||'',
+    eliminado:false
+  };
+  tc.pagos.push(pago);
+  tcRecalcular(tc);
+  return pago;
+}
+
+function tcEliminarPagoInterna(tc,pagoId){
+  const pago=(tc.pagos||[]).find(p=>p.id===pagoId&&!p.eliminado);
+  if(!pago) return null;
+  pago.eliminado=true;
+  tcRecalcular(tc);
+  return pago;
+}
+
+// ── Nueva / editar tarjeta ────────────────────────────────────────
 function abrirNuevaTarjeta(){
   _tcEditId=null;
   document.getElementById('tc-form-title').textContent='Nueva tarjeta de crédito';
   document.getElementById('tc_nombre').value='';
+  document.getElementById('tc_banco').value='';
+  document.getElementById('tc_franquicia').value='Visa';
   document.getElementById('tc_cupo').value='';
   document.getElementById('tc_deuda_ini').value='';
-  document.getElementById('tc_pago_minimo').value='';
-  document.getElementById('tc_proximo_corte').value='';
-  document.getElementById('tc_fecha_limite_pago').value='';
-  document.getElementById('tc-fechas-preview').textContent='';
+  document.getElementById('tc-deuda-ini-grupo').style.display='';
+  document.getElementById('tc-estado-grupo').style.display='none';
+  tcSelColor(null);
   document.getElementById('btn-guardar-tc').textContent='Guardar tarjeta';
   openSheet('nueva-tc');
   setTimeout(()=>document.getElementById('tc_nombre').focus(),200);
@@ -17578,111 +17435,55 @@ function abrirEditarTC(id){
   _tcEditId=id;
   document.getElementById('tc-form-title').textContent='Editar tarjeta';
   document.getElementById('tc_nombre').value=tc.nombre||'';
+  document.getElementById('tc_banco').value=tc.banco||'';
+  document.getElementById('tc_franquicia').value=tc.franquicia||'Visa';
   document.getElementById('tc_cupo').value=tc.cupo?fmtInput(tc.cupo):'';
-  document.getElementById('tc_deuda_ini').value=tc.deuda?fmtInput(tc.deuda):'';
-  document.getElementById('tc_pago_minimo').value=tc.pagoMinimo?fmtInput(tc.pagoMinimo):'';
-  // Usar fechas exactas si existen; si no, construir fecha aproximada desde campos numéricos legado
-  document.getElementById('tc_proximo_corte').value=tc.proximoCorte||tcInferirProximoCorte(tc);
-  document.getElementById('tc_fecha_limite_pago').value=tc.fechaLimitePago||tcInferirFechaLimite(tc);
-  tcActualizarFechasPreview();
+  document.getElementById('tc-deuda-ini-grupo').style.display='none';
+  document.getElementById('tc_estado').value=tc.estado||'activa';
+  document.getElementById('tc-estado-grupo').style.display='';
+  tcSelColor(tc.color||null);
   document.getElementById('btn-guardar-tc').textContent='Guardar cambios';
   openSheet('nueva-tc');
 }
 
-// Infiere el próximo corte (string YYYY-MM-DD) a partir del campo numérico legado
-function tcInferirProximoCorte(tc){
-  if(!tc||!tc.fechaCorte)return '';
-  const hoy=new Date();
-  hoy.setHours(0,0,0,0);
-  const dia=hoy.getDate();
-  let m=hoy.getMonth(), y=hoy.getFullYear();
-  // Si el día de corte ya pasó en este mes, el próximo es el mes que viene
-  if(tc.fechaCorte<dia){m++;if(m>11){m=0;y++;}}
-  const lastDay=new Date(y,m+1,0).getDate();
-  const d=Math.min(tc.fechaCorte,lastDay);
-  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-}
-
-// Infiere la fecha límite de pago (string YYYY-MM-DD) a partir del campo numérico legado
-function tcInferirFechaLimite(tc){
-  if(!tc||!tc.fechaPago)return '';
-  const hoy=new Date();
-  hoy.setHours(0,0,0,0);
-  const dia=hoy.getDate();
-  let m=hoy.getMonth(), y=hoy.getFullYear();
-  if(tc.fechaPago<dia){m++;if(m>11){m=0;y++;}}
-  const lastDay=new Date(y,m+1,0).getDate();
-  const d=Math.min(tc.fechaPago,lastDay);
-  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-}
-
-// Formatea una fecha 'YYYY-MM-DD' en texto legible
-function tcFmtFecha(str){
-  if(!str)return '';
-  const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  const d=new Date(str+'T00:00:00');
-  return d.getDate()+' '+meses[d.getMonth()]+' '+d.getFullYear();
-}
-
-// Actualiza el preview de fechas en el formulario de TC
-function tcActualizarFechasPreview(){
-  const corte=document.getElementById('tc_proximo_corte')?.value;
-  const pago=document.getElementById('tc_fecha_limite_pago')?.value;
-  const prev=document.getElementById('tc-fechas-preview');
-  if(!prev)return;
-  if(corte&&pago){
-    const hoy=new Date(); hoy.setHours(0,0,0,0);
-    const dCorte=new Date(corte+'T00:00:00');
-    const dPago=new Date(pago+'T00:00:00');
-    const diasCorte=Math.round((dCorte-hoy)/86400000);
-    const diasPago=Math.round((dPago-hoy)/86400000);
-    prev.innerHTML=`Próximo corte: <b>${tcFmtFecha(corte)}</b> (en ${diasCorte} día${diasCorte!==1?'s':''})`+
-      `<br>Fecha límite de pago: <b>${tcFmtFecha(pago)}</b> (en ${diasPago} día${diasPago!==1?'s':''})`;
-  } else if(corte){
-    const hoy=new Date(); hoy.setHours(0,0,0,0);
-    const dCorte=new Date(corte+'T00:00:00');
-    const diasCorte=Math.round((dCorte-hoy)/86400000);
-    prev.innerHTML=`Próximo corte: <b>${tcFmtFecha(corte)}</b> (en ${diasCorte} día${diasCorte!==1?'s':''})`;
-  } else {
-    prev.innerHTML='';
-  }
+function tcSelColor(color){
+  _tcColorSel=color;
+  document.querySelectorAll('.tc-color-opt').forEach(el=>{
+    el.style.border=(color&&el.dataset.color===color)?'2px solid var(--accent)':'2px solid transparent';
+  });
 }
 
 function guardarTC(){
   const nombre=document.getElementById('tc_nombre').value.trim();
   if(!nombre){toast('Ingresa el nombre de la tarjeta','err');return;}
+  const banco=document.getElementById('tc_banco').value.trim();
+  const franquicia=document.getElementById('tc_franquicia').value;
   const cupo=parseMoney(document.getElementById('tc_cupo').value)||0;
-  const deudaIni=parseMoney(document.getElementById('tc_deuda_ini').value)||0;
-  const pagoMinimoForm=parseMoney(document.getElementById('tc_pago_minimo').value)||0;
-  const proximoCorte=document.getElementById('tc_proximo_corte').value||null;
-  const fechaLimitePago=document.getElementById('tc_fecha_limite_pago').value||null;
   if(!S.tarjetasCredito)S.tarjetasCredito=[];
   if(_tcEditId){
     const tc=getTCById(_tcEditId);
     if(tc){
       tc.nombre=nombre;
-      if(cupo)tc.cupo=cupo;
-      tc.proximoCorte=proximoCorte;
-      tc.fechaLimitePago=fechaLimitePago;
-      // También actualizar campos numéricos legado para compatibilidad
-      if(proximoCorte){const d=new Date(proximoCorte+'T00:00:00');tc.fechaCorte=d.getDate();}
-      if(fechaLimitePago){const d=new Date(fechaLimitePago+'T00:00:00');tc.fechaPago=d.getDate();}
-      // Si cambió la deuda manualmente
-      if(deudaIni!==tc.deuda)tc.deuda=deudaIni;
-      // Actualizar pago mínimo si se ingresó
-      tc.pagoMinimo=pagoMinimoForm||tc.pagoMinimo||0;
+      tc.banco=banco;
+      tc.franquicia=franquicia;
+      tc.cupo=cupo;
+      tc.color=_tcColorSel;
+      const estadoSel=document.getElementById('tc_estado');
+      if(estadoSel&&TC_ESTADOS[estadoSel.value]) tc.estado=estadoSel.value;
+      tcRecalcular(tc);
     }
     toast('Tarjeta actualizada','ok');
   } else {
+    const deudaIni=parseMoney(document.getElementById('tc_deuda_ini').value)||0;
     const nuevo={
-      id:uid(),nombre,cupo:cupo||0,deuda:deudaIni,
-      pagoMinimo:pagoMinimoForm||0,
-      proximoCorte,fechaLimitePago,
-      compras:[],pagos:[]
+      id:uid(),nombre,banco,franquicia,color:_tcColorSel,
+      cupo,deuda:0,estado:'activa',
+      saldoInicial:deudaIni>0?{id:uid(),monto:deudaIni,fecha:hoy(),nota:'Saldo inicial',eliminado:false}:null,
+      compras:[],pagos:[],
+      creadoEn:hoy()
     };
-    if(proximoCorte){const d=new Date(proximoCorte+'T00:00:00');nuevo.fechaCorte=d.getDate();}
-    if(fechaLimitePago){const d=new Date(fechaLimitePago+'T00:00:00');nuevo.fechaPago=d.getDate();}
     S.tarjetasCredito.push(nuevo);
+    tcRecalcular(nuevo);
     toast('Tarjeta agregada','ok');
   }
   closeSheet('nueva-tc');
@@ -17693,86 +17494,208 @@ function guardarTC(){
 async function eliminarTC(id){
   const tc=getTCById(id);
   if(!tc)return;
-  const ok=await dialogo('Eliminar tarjeta','¿Eliminar "'+tc.nombre+'" y todo su historial? Esta acción no se puede deshacer.','Eliminar',true);
+  const tieneVinculos=(S.tcMovimientos||[]).some(m=>m.tcId===id);
+  const msg='¿Eliminar "'+tc.nombre+'" y todo su historial? Esta acción no se puede deshacer.'
+    +(tieneVinculos?' Hay encargos o préstamos que se pagaron con esta tarjeta y perderán esa referencia.':'');
+  const ok=await dialogo('Eliminar tarjeta',msg,'Eliminar',true);
   if(!ok)return;
   S.tarjetasCredito=(S.tarjetasCredito||[]).filter(x=>x.id!==id);
+  // Limpiar movimientos secundarios asociados — sin esto quedaban
+  // gastos y cargos huérfanos apuntando a una tarjeta que ya no existe.
+  if(S.gastosVar) S.gastosVar=S.gastosVar.filter(g=>g._tcId!==id);
+  if(S.tcMovimientos) S.tcMovimientos=S.tcMovimientos.filter(m=>m.tcId!==id);
   save();refresh();renderTCScreen();
   toast('Tarjeta eliminada','ok');
 }
 
-// ── Registrar compra en TC ───────────────────────────────────
-function tcActualizarCicloCompra(){
-  const tc=getTCById(_tcCompraTcId);
-  const el=document.getElementById('ctc-ciclo-aviso');
-  if(!el)return;
-  if(!tc||((!tc.proximoCorte)&&(!tc.fechaCorte))){el.style.display='none';return;}
-  const fechaVal=document.getElementById('ctc_fecha').value;
-  if(!fechaVal){el.style.display='none';return;}
-  const enCicloActual=tcCompraEnCicloActual(tc,fechaVal);
-  const diasPago=tcDiasHastaPago(tc);
-  const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  // Etiqueta de fecha límite de pago actual
-  let labelPago='';
-  if(tc.fechaLimitePago){
-    const d=new Date(tc.fechaLimitePago+'T00:00:00');
-    labelPago=d.getDate()+' '+meses[d.getMonth()];
-  } else if(diasPago!==null){
-    const hoy2=new Date(); hoy2.setHours(0,0,0,0);
-    const pagoDate=new Date(hoy2.getTime()+diasPago*86400000);
-    labelPago=pagoDate.getDate()+' '+meses[pagoDate.getMonth()];
+// ── Dashboard ─────────────────────────────────────────────────────
+function renderTCScreen(){
+  const tarjetas=S.tarjetasCredito||[];
+  const hero=document.getElementById('tc-hero-deuda');
+  const heroCupo=document.getElementById('tc-hero-cupo');
+  const lista=document.getElementById('tc-lista');
+  if(!hero||!lista)return;
+  const deudaTotal=tcDeudaTotal();
+  const cupoTotal=tarjetas.reduce((a,tc)=>a+(tc.cupo||0),0);
+  hero.textContent=fmt(deudaTotal);
+  if(heroCupo)heroCupo.textContent=cupoTotal?'Cupo total: '+fmt(cupoTotal):'';
+
+  if(!tarjetas.length){
+    lista.innerHTML=`<div class="empty-state">
+      <div class="empty-state-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="var(--red)" stroke="none"/></svg></div>
+      <div class="empty-state-title">Sin tarjetas de crédito</div>
+      <div class="empty-state-sub">Agrega tu primera tarjeta para registrar compras y controlar tu cupo.</div>
+      <button type="button" class="empty-state-btn" onclick="abrirNuevaTarjeta()">Agregar tarjeta</button>
+    </div>`;
+    return;
   }
-  if(enCicloActual){
-    el.style.display='';
-    el.style.background='rgba(240,104,104,.08)';
-    el.style.border='1px solid rgba(240,104,104,.25)';
-    el.style.color='var(--red)';
-    el.innerHTML=`<i class="fa-solid fa-file-invoice" style="margin-right:5px;"></i>Esta compra va al <b>extracto actual</b> — se paga${labelPago?' el <b>'+labelPago+'</b>':''}${diasPago!==null?' (en '+diasPago+'d)':''}`;
-  } else {
-    el.style.display='';
-    el.style.background='rgba(200,240,96,.06)';
-    el.style.border='1px solid rgba(200,240,96,.25)';
-    el.style.color='var(--accent)';
-    el.innerHTML=`<i class="fa-solid fa-check" style="margin-right:5px;"></i>Esta compra va al <b>próximo extracto</b> — tienes hasta el mes siguiente para pagar`;
-  }
+
+  lista.innerHTML=tarjetas.map(tc=>{
+    const deuda=tc.deuda||0;
+    const cupo=tc.cupo||0;
+    const disponible=tcCupoDisponible(tc);
+    const pct=tcCupoUsadoPct(tc);
+    const estadoInfo=tcEstadoInfo(tc.estado);
+    const activa=(tc.estado||'activa')==='activa';
+    const subtitulo=[tc.banco,tc.franquicia].filter(Boolean).join(' · ');
+    const colorIcono=tc.color||'currentColor';
+
+    return `<div class="card" style="margin-bottom:10px;border-color:${deuda>0?'rgba(240,104,104,.3)':'var(--border)'};">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${colorIcono}" stroke-width="2" stroke-linecap="round" style="display:inline-block;vertical-align:middle;margin-right:2px;flex-shrink:0;"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="${colorIcono}" stroke="none"/></svg>${tc.nombre}
+            ${estadoInfo.badge?`<span class="badge ${estadoInfo.badge}" style="font-size:9px;">${estadoInfo.label}</span>`:''}
+          </div>
+          ${subtitulo?`<div style="font-size:11px;color:var(--text3);margin-top:3px;">${subtitulo}</div>`:''}
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;">
+          <button type="button" onclick="abrirEditarTC('${tc.id}')" style="background:none;border:1px solid var(--border2);border-radius:7px;color:var(--text2);font-size:11px;padding:4px 9px;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button type="button" onclick="eliminarTC('${tc.id}')" style="background:none;border:1px solid rgba(240,104,104,.3);border-radius:7px;color:var(--red);font-size:11px;padding:4px 9px;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <div style="background:rgba(240,104,104,.07);border-radius:9px;padding:10px 12px;">
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Deuda actual</div>
+          <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(deuda)}</div>
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">= cupo utilizado</div>
+        </div>
+        <div style="background:rgba(200,240,96,.07);border-radius:9px;padding:10px 12px;">
+          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Cupo disponible</div>
+          <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(disponible)}</div>
+          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">de ${fmt(cupo)} en total</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+          <span style="font-size:10px;color:var(--text3);">Cupo usado</span>
+          <span style="font-size:10px;font-family:'DM Mono',monospace;color:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--text3)'};">${pct.toFixed(0)}%</span>
+        </div>
+        <div style="height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;">
+          <div style="height:100%;width:${pct.toFixed(0)}%;background:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--accent)'};border-radius:3px;transition:width .4s;"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        ${activa?`<button type="button" onclick="abrirCompraTC('${tc.id}')" style="flex:1;padding:10px;background:rgba(240,104,104,.12);border:1px solid rgba(240,104,104,.35);border-radius:9px;color:var(--red);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Compra</button>`
+          :`<button type="button" disabled style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;color:var(--text3);font-size:13px;font-weight:600;cursor:not-allowed;font-family:'DM Sans',sans-serif;">+ Compra</button>`}
+        <button type="button" onclick="abrirPagarTC('${tc.id}')" ${deuda<=0?'disabled':''} style="flex:1;padding:10px;background:${deuda<=0?'var(--bg3)':'rgba(200,240,96,.12)'};border:1px solid ${deuda<=0?'var(--border)':'rgba(200,240,96,.35)'};border-radius:9px;color:${deuda<=0?'var(--text3)':'var(--accent)'};font-size:13px;font-weight:600;cursor:${deuda<=0?'not-allowed':'pointer'};font-family:'DM Sans',sans-serif;">Pagar</button>
+        <button type="button" onclick="abrirDetalleTCSheet('${tc.id}')" style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:9px;color:var(--text2);font-size:13px;cursor:pointer;">Ver</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
+// ── Resumen de TC en la pantalla de Inicio ────────────────────────
+function renderTCDashboard(){
+  const el=document.getElementById('tc-deuda-card');
+  if(!el)return;
+  const tarjetas=S.tarjetasCredito||[];
+  if(!tarjetas.length){el.style.display='none';return;}
+  el.style.display='';
+  const items=tarjetas.map(tc=>{
+    const pct=tcCupoUsadoPct(tc);
+    const disponible=tcCupoDisponible(tc);
+    const estadoInfo=tcEstadoInfo(tc.estado);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:inline-block;vertical-align:middle;margin-right:4px;flex-shrink:0;"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>${tc.nombre}
+          ${tc.cupo?`<span style="font-size:9px;padding:2px 6px;border-radius:20px;background:${pct>80?'rgba(240,104,104,.2)':pct>50?'rgba(240,184,64,.15)':'rgba(255,255,255,.07)'};color:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--text3)'};">${pct.toFixed(0)}% usado</span>`:''}
+          ${estadoInfo.badge?`<span class="badge ${estadoInfo.badge}" style="font-size:8px;">${estadoInfo.label}</span>`:''}
+        </div>
+        ${tc.cupo?`<div style="margin-top:4px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;width:100%;max-width:180px;"><div style="height:100%;width:${pct.toFixed(0)}%;background:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--accent)'};border-radius:2px;"></div></div>`:''}
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:10px;">
+        <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(tc.deuda||0)}</div>
+        ${tc.cupo?`<div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">disp. ${fmt(disponible)}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div class="sec-title" style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
+    <span>Tarjetas de crédito</span>
+    <button type="button" onclick="navTo('tarjetas')" style="background:none;border:1px solid rgba(240,104,104,.35);border-radius:7px;color:var(--red);font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;">Ver todo</button>
+  </div>
+    <div class="card" style="padding:4px 15px 2px;">${items}</div>`;
+}
+
+// ── Registrar compra en TC ────────────────────────────────────────
 function abrirCompraTC(tcId){
   _tcCompraTcId=tcId;
   const tc=getTCById(tcId);
   if(!tc)return;
   document.getElementById('compra-tc-deuda').textContent=fmt(tc.deuda||0);
   document.getElementById('compra-tc-nombre-header').textContent=tc.nombre;
-  document.getElementById('ctc_desc').value='';
-  document.getElementById('ctc_monto').value='';
-  document.getElementById('ctc_fecha').value=hoy();
-  document.getElementById('ctc_nota').value='';
-  poblarCatSelect('ctc_cat',getCatsVar());
+  document.getElementById('tcc_desc').value='';
+  document.getElementById('tcc_monto').value='';
+  document.getElementById('tcc_fecha').value=hoy();
+  document.getElementById('tcc_nota').value='';
+  document.getElementById('tcc_es_cuotas').checked=false;
+  document.getElementById('tcc_num_cuotas').value='';
+  document.getElementById('tcc_valor_cuota').value='';
+  document.getElementById('tcc-cuotas-grupo').style.display='none';
+  document.getElementById('tcc-cuotas-preview').textContent='';
+  poblarCatSelect('tcc_cat',getCatsVar());
   openSheet('compra-tc');
-  setTimeout(()=>{
-    tcActualizarCicloCompra();
-    document.getElementById('ctc_desc').focus();
-  },200);
+  setTimeout(()=>document.getElementById('tcc_desc').focus(),200);
+}
+
+function tccToggleCuotas(){
+  const on=document.getElementById('tcc_es_cuotas').checked;
+  document.getElementById('tcc-cuotas-grupo').style.display=on?'':'none';
+  if(on) tccActualizarValorCuota();
+}
+
+// Recalcula el valor de cuota sugerido cuando cambian el monto o el
+// número de cuotas. El usuario puede sobreescribirlo a mano después
+// — solo se vuelve a autocompletar si cambia el monto o el número
+// de cuotas de nuevo (así se cumple "permitir editar manualmente").
+function tccActualizarValorCuota(){
+  const monto=parseMoney(document.getElementById('tcc_monto').value)||0;
+  const n=parseInt(document.getElementById('tcc_num_cuotas').value,10)||0;
+  const campoValor=document.getElementById('tcc_valor_cuota');
+  if(monto>0&&n>=2){
+    campoValor.value=fmtInput(tcCalcularValorCuota(monto,n));
+  }
+  tccActualizarPreviewCuotas();
+}
+
+function tccActualizarPreviewCuotas(){
+  const prev=document.getElementById('tcc-cuotas-preview');
+  if(!prev)return;
+  const monto=parseMoney(document.getElementById('tcc_monto').value)||0;
+  const n=parseInt(document.getElementById('tcc_num_cuotas').value,10)||0;
+  const valorCuota=parseMoney(document.getElementById('tcc_valor_cuota').value)||0;
+  if(monto>0&&n>=2&&valorCuota>0){
+    const ultima=tcValorUltimaCuota(monto,valorCuota,n);
+    if(Math.round(ultima)===Math.round(valorCuota)){
+      prev.textContent=n+' cuotas de '+fmt(valorCuota);
+    } else {
+      prev.textContent=(n-1)+' cuotas de '+fmt(valorCuota)+' + 1 cuota de '+fmt(ultima)+' (ajustada)';
+    }
+  } else {
+    prev.textContent='';
+  }
 }
 
 function confirmarCompraTC(){
   const tc=getTCById(_tcCompraTcId);
   if(!tc){toast('Tarjeta no encontrada','err');return;}
-  const desc=document.getElementById('ctc_desc').value.trim();
-  const monto=parseMoney(document.getElementById('ctc_monto').value)||0;
+  const desc=document.getElementById('tcc_desc').value.trim();
+  const monto=parseMoney(document.getElementById('tcc_monto').value)||0;
   if(!desc){toast('Ingresa una descripción','err');return;}
   if(!monto){toast('Ingresa un monto válido','err');return;}
-  const fecha=document.getElementById('ctc_fecha').value||hoy();
-  const cat=document.getElementById('ctc_cat').value;
-  const nota=document.getElementById('ctc_nota').value.trim();
+  const fecha=document.getElementById('tcc_fecha').value||hoy();
+  const cat=document.getElementById('tcc_cat').value;
+  const nota=document.getElementById('tcc_nota').value.trim();
+  const esCuotas=document.getElementById('tcc_es_cuotas').checked;
+  const numCuotas=esCuotas?(parseInt(document.getElementById('tcc_num_cuotas').value,10)||0):null;
+  if(esCuotas&&numCuotas<2){toast('Ingresa un número de cuotas válido (mínimo 2)','err');return;}
+  const valorCuota=esCuotas?(parseMoney(document.getElementById('tcc_valor_cuota').value)||tcCalcularValorCuota(monto,numCuotas)):null;
 
-  // Determinar si la compra cae en el ciclo actual o el siguiente
-  const enCicloActual=tcCompraEnCicloActual(tc,fecha);
-  const ciclo=enCicloActual?'actual':'siguiente';
-
-  if(!tc.compras)tc.compras=[];
-  const compraId=uid();
-  tc.compras.push({id:compraId,desc,monto,fecha,cat,nota,ciclo});
-  tc.deuda=(tc.deuda||0)+monto;
+  const compra=tcCrearCompra(tc,{desc,cat,fecha,monto,nota,esCuotas,numCuotas,valorCuota});
 
   if(!S.gastosVar)S.gastosVar=[];
   S.gastosVar.push({
@@ -17781,35 +17704,15 @@ function confirmarCompraTC(){
     nota:nota||'Compra en '+tc.nombre,
     _esCompraTC:true,
     _tcId:tc.id,
-    _tcCompraId:compraId
+    _tcCompraId:compra.id
   });
 
   closeSheet('compra-tc');
   save();refresh();renderTCScreen();
-  const cicloMsg=enCicloActual?' (extracto actual)':' (próximo extracto)';
-  toast('Compra registrada'+cicloMsg+' — deuda: '+fmt(tc.deuda),'info',3500);
+  toast('Compra registrada — deuda: '+fmt(tc.deuda),'info',3000);
 }
 
-// ── Pagar TC ─────────────────────────────────────────────────
-
-// Calcula cuánto se ha pagado en el ciclo actual (desde el último corte)
-function _ptcPagadoCicloActual(tc){
-  if(!(tc.pagos||[]).length) return 0;
-  const corteAnt = tcFechaCorteAnterior(tc);
-  if(!corteAnt) return 0;
-  // Solo contar pagos desde cuentas reales — ignorar fuentes internas
-  // como 'plata-comprometida' que son registros contables, no abonos reales al extracto
-  function esFuenteReal(f){
-    if(!f) return false;
-    return f==='nequi'||f==='efectivo'||f.startsWith('cajita:')||f.startsWith('custom:');
-  }
-  return (tc.pagos||[]).reduce((sum,p)=>{
-    if(!esFuenteReal(p.fuente)) return sum;
-    const fp = new Date(p.fecha+'T00:00:00');
-    return fp >= corteAnt ? sum + (p.monto||0) : sum;
-  }, 0);
-}
-
+// ── Pagar TC ───────────────────────────────────────────────────────
 function abrirPagarTC(tcId){
   _tcActualId=tcId;
   const tc=getTCById(tcId);
@@ -17819,107 +17722,21 @@ function abrirPagarTC(tcId){
   document.getElementById('ptc_nota').value='';
   document.getElementById('ptc_fecha').value=hoy();
   document.getElementById('ptc-preview').textContent='';
-  document.getElementById('ptc-monto-hint').textContent='';
 
   const deuda=tc.deuda||0;
   document.getElementById('ptc-deuda-total').textContent=fmt(deuda);
 
-  // Info de ciclo (fecha límite + periodo facturado)
-  const infoEl=document.getElementById('ptc-info-ciclo');
-  if(infoEl){
-    const partes=[];
-    if(tc.fechaLimitePago) partes.push('Límite: '+tcFmtFecha(tc.fechaLimitePago));
-    const hasta=tcFechaFacturadoHasta(tc);
-    const corteAnt=tcFechaCorteAnterior(tc);
-    if(corteAnt&&hasta){
-      const meses=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-      partes.push('Periodo: '+corteAnt.getDate()+' '+meses[corteAnt.getMonth()]+' – '+hasta.getDate()+' '+meses[hasta.getMonth()]);
-    }
-    infoEl.textContent=partes.join(' · ');
-  }
-
-  // Calcular pago mínimo real y cuánto ya se pagó en este ciclo
-  const pmManual=tc.pagoMinimo||0;
-  const pagoMinEstimado=Math.min(deuda,Math.max(deuda*0.05,50000));
-  const pagoMin=pmManual>0?pmManual:pagoMinEstimado;
-  const pagadoCiclo=_ptcPagadoCicloActual(tc);
-  const minimoRestante=Math.max(0,pagoMin-pagadoCiclo);
-  const minimoYaPagado=minimoRestante<=0;
-
-  // Construir opciones estilo Nu
   const optsEl=document.getElementById('ptc-opciones-rapidas');
   if(optsEl){
-    const opts=[];
-
-    // Opción: Pago mínimo
-    if(minimoYaPagado){
-      opts.push({
-        label:'Pago mínimo',
-        sublabel:'Ya cubierto este período <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 6 9 17 4 12"/></svg>',
-        val:0,
-        disabled:true,
-        color:'var(--accent)'
-      });
-    } else {
-      opts.push({
-        label:'Pago mínimo',
-        sublabel:fmt(minimoRestante)+(!pmManual?' (estimado — actualiza en editar)':''),
-        val:minimoRestante,
-        disabled:false,
-        color:'var(--red)'
-      });
-    }
-
-    // Opción: Pago total
-    if(deuda>0){
-      opts.push({
-        label:'Pago total',
-        sublabel:fmt(deuda)+' — libera todo el cupo',
-        val:deuda,
-        disabled:false,
-        color:'var(--text)'
-      });
-    }
-
-    optsEl.innerHTML=opts.map(o=>{
-      if(o.disabled){
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:10px;background:rgba(200,240,96,.06);border:1.5px solid rgba(200,240,96,.25);opacity:.7;">
-          <div>
-            <div style="font-size:13px;font-weight:600;color:${o.color};">${o.label}</div>
-            <div style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;">${o.sublabel}</div>
-          </div>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>`;
-      }
-      return `<button type="button" onclick="ptcSetMonto(${o.val})" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border2);cursor:pointer;width:100%;text-align:left;">
-        <div>
-          <div style="font-size:13px;font-weight:600;color:${o.color};">${o.label}</div>
-          <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">${o.sublabel}</div>
-        </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>`;
-    }).join('');
+    optsEl.innerHTML=deuda>0?`<button type="button" onclick="ptcSetMonto(${deuda})" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border2);cursor:pointer;width:100%;text-align:left;">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);">Pago total</div>
+        <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">${fmt(deuda)} — deja el cupo disponible al máximo</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>`:'';
   }
 
-  // Label del campo libre según estado del mínimo
-  const labelEl=document.getElementById('ptc-monto-label');
-  const hintEl=document.getElementById('ptc-monto-hint');
-  if(labelEl) labelEl.textContent='Abona a tu deuda';
-  if(hintEl){
-    if(minimoYaPagado){
-      hintEl.textContent='Mínimo cubierto — ingresa lo que quieras pagar';
-      hintEl.style.color='var(--accent)';
-    } else {
-      hintEl.textContent='Mínimo pendiente: '+fmt(minimoRestante)+' — no pagues menos';
-      hintEl.style.color='var(--amber)';
-    }
-  }
-
-  // Guardar datos de validación en el elemento para confirmarPagarTC
-  document.getElementById('ptc_monto').dataset.minimoRestante=minimoRestante;
-  document.getElementById('ptc_monto').dataset.minimoYaPagado=minimoYaPagado?'1':'0';
-
-  // Poblar fuentes (solo cuentas reales, no TC)
   const fuentesSel=document.getElementById('ptc_fuente');
   const fuentes=getFuentesSinTC();
   fuentesSel.innerHTML='<option value="">Seleccionar cuenta</option>'+fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
@@ -17944,7 +17761,6 @@ function ptcActualizarPreview(){
   const fuente=document.getElementById('ptc_fuente').value;
   const prevEl=document.getElementById('ptc-preview');
   const saldoEl=document.getElementById('ptc-fuente-saldo');
-  const hintEl=document.getElementById('ptc-monto-hint');
   const tc=getTCById(_tcActualId);
   if(!tc){prevEl.textContent='';return;}
   if(fuente){
@@ -17953,24 +17769,6 @@ function ptcActualizarPreview(){
     saldoEl.style.color=saldo>=monto?'var(--accent)':'var(--red)';
   } else {
     saldoEl.textContent='';
-  }
-  // Hint de mínimo dinámico
-  if(hintEl){
-    const minimoYaPagado=montoEl.dataset.minimoYaPagado==='1';
-    const minimoRestante=parseFloat(montoEl.dataset.minimoRestante)||0;
-    if(minimoYaPagado){
-      hintEl.textContent='Mínimo cubierto — ingresa lo que quieras pagar';
-      hintEl.style.color='var(--accent)';
-    } else if(monto>0 && monto<minimoRestante){
-      hintEl.textContent='<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Debes pagar al menos '+fmt(minimoRestante);
-      hintEl.style.color='var(--red)';
-    } else if(monto>=minimoRestante && minimoRestante>0){
-      hintEl.textContent='<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 6 9 17 4 12"/></svg> Supera el mínimo pendiente ('+fmt(minimoRestante)+')';
-      hintEl.style.color='var(--accent)';
-    } else {
-      hintEl.textContent='Mínimo pendiente: '+fmt(minimoRestante)+' — no pagues menos';
-      hintEl.style.color='var(--amber)';
-    }
   }
   if(monto>0){
     const nuevaDeuda=Math.max(0,(tc.deuda||0)-monto);
@@ -17992,26 +17790,12 @@ function confirmarPagarTC(){
   if(!monto){toast('Ingresa el monto a pagar','err');return;}
   if(!fuente){toast('Selecciona la cuenta de pago','err');return;}
 
-  // Validar pago mínimo (solo si aún no está cubierto)
-  const minimoYaPagado=montoEl.dataset.minimoYaPagado==='1';
-  const minimoRestante=parseFloat(montoEl.dataset.minimoRestante)||0;
-  if(!minimoYaPagado && minimoRestante>0 && monto<minimoRestante){
-    toast('El mínimo pendiente es '+fmt(minimoRestante)+' — no puedes pagar menos','err',4000);
-    return;
-  }
-
   const saldo=getSaldoFuente(fuente);
   if(saldo<monto){toast('Saldo insuficiente en '+fuenteLabel(fuente)+' — disponible: '+fmt(saldo),'err');return;}
 
-  // Descontar de la cuenta real
   descontarFuente(fuente,monto);
-  // Reducir la deuda de la TC
-  tc.deuda=Math.max(0,(tc.deuda||0)-monto);
-  // Guardar pago en historial
-  if(!tc.pagos)tc.pagos=[];
-  const _pagoTcId=uid();
-  tc.pagos.push({id:_pagoTcId,monto,fecha,fuente,nota});
-  // Registrar como gasto variable para que aparezca en el historial de gastos
+  const pago=tcCrearPago(tc,{monto,fecha,fuente,nota});
+
   if(!S.gastosVar)S.gastosVar=[];
   S.gastosVar.push({
     id:uid(),
@@ -18022,38 +17806,35 @@ function confirmarPagarTC(){
     nota:nota||'Pago de tarjeta de crédito',
     _esPagoTC:true,
     _tcId:tc.id,
-    _tcPagoId:_pagoTcId
+    _tcPagoId:pago.id
   });
 
   closeSheet('pagar-tc');
   save();refresh();renderTCScreen();
   if(window.logCambio)logCambio('Pagaste tarjeta '+tc.nombre,'',monto,'abono');
-  toast('Pago registrado — deuda restante: '+fmt(tc.deuda),'ok',3500);
+  toast('Pago registrado — deuda restante: '+fmt(tc.deuda),'ok',3000);
 }
 
-// ── Detalle de TC (historial compras + pagos) ────────────────
+// ── Detalle de TC (historial: saldo inicial + compras + pagos) ────
 function abrirDetalleTCSheet(tcId){
   const tc=getTCById(tcId);
   if(!tc)return;
   document.getElementById('detalle-tc-title').textContent=tc.nombre;
-  const compras=(tc.compras||[]);
-  const pagos=(tc.pagos||[]);
-  // tcMovimientos de esta TC (encargos y préstamos)
-  const tcMovs=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id);
+  const compras=(tc.compras||[]).filter(c=>!c.eliminado);
+  const pagos=(tc.pagos||[]).filter(p=>!p.eliminado);
+  const tcMovs=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&!m.eliminado);
   const mesClave=mesActual();
 
   let html='';
 
-  // Resumen — "Este mes" incluye compras + tcMovimientos del mes
   const deuda=tc.deuda||0;
-  const cupo=tc.cupo||0;
   const comprasMes=compras.filter(c=>mesKey(c.fecha)===mesClave);
   const tcMovsMes=tcMovs.filter(m=>mesKey(m.fecha)===mesClave);
   const totalMes=comprasMes.reduce((a,c)=>a+(c.monto||0),0)+tcMovsMes.reduce((a,m)=>a+(m.monto||0),0);
   const totalItems=comprasMes.length+tcMovsMes.length;
   html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
     <div style="background:rgba(240,104,104,.07);border-radius:9px;padding:11px 12px;">
-      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:3px;">Deuda total</div>
+      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:3px;">Deuda actual</div>
       <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(deuda)}</div>
     </div>
     <div style="background:var(--bg3);border-radius:9px;padding:11px 12px;">
@@ -18062,101 +17843,59 @@ function abrirDetalleTCSheet(tcId){
     </div>
   </div>`;
 
-  // ── Construir línea de tiempo unificada: compras + tcMovimientos + pagos + cortes ──
   const itemsLinea=[
+    ...(tc.saldoInicial&&!tc.saldoInicial.eliminado?[{_tipo:'saldo_inicial',...tc.saldoInicial}]:[]),
     ...compras.map(c=>({_tipo:'compra',...c})),
     ...tcMovs.map(m=>({_tipo:'tcmov',...m})),
     ...pagos.map(p=>({_tipo:'pago',...p}))
   ];
 
-  // Hitos de "Corte" — generados retrocediendo mes a mes desde tc.proximoCorte (o legado),
-  // cubriendo desde hoy hasta la fecha del movimiento más antiguo registrado.
-  const fechasCorte=[];
-  let corteBase=null;
-  if(tc.proximoCorte){
-    corteBase=new Date(tc.proximoCorte+'T00:00:00');
-  } else if(tc.fechaCorte){
-    const inferida=tcInferirProximoCorte(tc);
-    if(inferida)corteBase=new Date(inferida+'T00:00:00');
-  }
-  if(corteBase){
-    // Fecha más antigua presente en la línea de tiempo (para no generar cortes de sobra)
-    let fechaMin=null;
-    itemsLinea.forEach(it=>{
-      if(it.fecha&&(!fechaMin||it.fecha<fechaMin))fechaMin=it.fecha;
-    });
-    const limiteAntiguo=fechaMin?new Date(fechaMin+'T00:00:00'):null;
-    let cursor=new Date(corteBase);
-    for(let i=0;i<24;i++){
-      fechasCorte.push(cursor.getFullYear()+'-'+String(cursor.getMonth()+1).padStart(2,'0')+'-'+String(cursor.getDate()).padStart(2,'0'));
-      if(limiteAntiguo&&cursor<=limiteAntiguo)break;
-      if(!limiteAntiguo&&fechasCorte.length>=2)break; // sin movimientos: mostrar próximo + último corte
-      cursor.setMonth(cursor.getMonth()-1);
-    }
-  }
-  // No generar el hito sintético "Corte" para fechas que ya tienen un
-  // aviso de corte real (tcMovimiento tipo 'corte_aviso') — ese se muestra como tcmov.
-  const fechasConAvisoReal=new Set(tcMovs.filter(m=>m.tipo==='corte_aviso').map(m=>m.fecha));
-  fechasCorte.filter(f=>!fechasConAvisoReal.has(f)).forEach(f=>itemsLinea.push({_tipo:'corte',fecha:f}));
+  itemsLinea.sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||''));
 
-  // Ordenar todo por fecha descendente (más reciente primero); en caso de igualdad,
-  // el hito de "Corte" va primero para marcar el límite del ciclo. El sort es estable
-  // (ES2019+), así que para items del mismo día se conserva el orden de inserción
-  // (compras, luego tcMovimientos, luego pagos en el orden en que se registraron).
-  itemsLinea.sort((a,b)=>{
-    if(a.fecha!==b.fecha)return b.fecha.localeCompare(a.fecha);
-    if(a._tipo==='corte'&&b._tipo!=='corte')return -1;
-    if(b._tipo==='corte'&&a._tipo!=='corte')return 1;
-    return 0;
-  });
-
-  // Precalcular deuda histórica (antes/después) para cada item que afecta tc.deuda
-  // (compras y tcmov suman, pagos restan; cortes y corte_aviso no afectan)
-  const _tcDeudaPorId = new Map();
+  // Precalcular deuda histórica (antes/después) para cada item.
+  const _tcDeudaPorId=new Map();
   {
-    let _deudaCorriente = tc.deuda||0;
+    let _deudaCorriente=tc.deuda||0;
     itemsLinea.forEach(it=>{
-      if(it._tipo==='corte') return;
-      if(it._tipo==='tcmov' && it.tipo==='corte_aviso') return;
-      const efecto = it._tipo==='pago' ? -(it.monto||0) : +(it.monto||0);
-      const despues = _deudaCorriente;
-      const antes = _deudaCorriente - efecto;
-      if(it.id) _tcDeudaPorId.set(it.id, {antes, despues, efecto});
-      _deudaCorriente = antes;
+      const efecto=it._tipo==='pago'?-(it.monto||0):+(it.monto||0);
+      const despues=_deudaCorriente;
+      const antes=_deudaCorriente-efecto;
+      if(it.id)_tcDeudaPorId.set(it.id,{antes,despues,efecto});
+      _deudaCorriente=antes;
     });
   }
 
-  html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">Movimientos <span style="font-weight:400;font-size:9px;">(${compras.length+tcMovs.length+pagos.length})</span></div>`;
+  html+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">Movimientos <span style="font-weight:400;font-size:9px;">(${itemsLinea.length})</span></div>`;
 
-  if(!itemsLinea.some(it=>it._tipo!=='corte')){
+  if(!itemsLinea.length){
     html+=`<div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Sin movimientos registrados.</div>`;
   } else {
-    // Helper: construye atributos data-mov-* para abrir el sheet de detalle (saldo = deuda de la TC)
-    const _tcAttrs=(item, origenLbl, otrasCuentas, descOverride)=>{
+    const _tcAttrs=(item,origenLbl,otrasCuentas,descOverride)=>{
       const sd=_tcDeudaPorId.get(item.id);
       if(!sd) return '';
-      const otras = otrasCuentas ? `data-mov-otras="${escHtml(JSON.stringify(otrasCuentas))}"` : '';
+      const otras=otrasCuentas?`data-mov-otras="${escHtml(JSON.stringify(otrasCuentas))}"`:'';
       return `data-mov-id="${item.id}" data-mov-tipo="${item._tipo==='pago'?'abono':'compra'}" data-mov-monto="${Math.abs(item.monto)}" data-cuenta-key="tc" data-mov-origen="${escHtml(origenLbl)}" ${otras} data-mov-saldo-antes="${sd.antes}" data-mov-saldo-despues="${sd.despues}" data-mov-saldo-label="Deuda ${escHtml(tc.nombre)}" data-mov-desc="${escHtml(descOverride||item.desc||'')}" data-mov-fecha="${escHtml(item.fecha)}" style="cursor:pointer;" onclick="abrirDetalleMov(this)"`;
     };
-    html+=itemsLinea.slice(0,60).map(item=>{
-      if(item._tipo==='corte'){
-        const hoyStr=new Date().toISOString().substring(0,10);
-        const esPasado=item.fecha<hoyStr;
-        return `<div style="display:flex;align-items:center;gap:8px;margin:10px 0;">
-          <div style="flex:1;height:1px;background:${esPasado?'var(--border2)':'rgba(240,184,64,.4)'};"></div>
-          <span style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:${esPasado?'var(--text3)':'var(--amber)'};white-space:nowrap;">
-            <i class="fa-solid fa-rotate" style="margin-right:4px;"></i>Corte · ${tcFmtFecha(item.fecha)}
-          </span>
-          <div style="flex:1;height:1px;background:${esPasado?'var(--border2)':'rgba(240,184,64,.4)'};"></div>
-        </div>`;
+    html+=itemsLinea.slice(0,80).map(item=>{
+      if(item._tipo==='saldo_inicial'){
+        return `<div class="gasto-item" ${_tcAttrs(item,'Tarjeta de crédito',null,'Saldo inicial')} style="margin-bottom:7px;cursor:pointer;border-left:3px solid var(--text3);">
+        <div class="gasto-item-top">
+          <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">Saldo inicial</div><div class="row-sub">${item.fecha}</div></div>
+          <span class="row-amount" style="color:var(--text2);">${fmt(item.monto)}</span>
+        </div>
+        <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:var(--bg3);color:var(--text3);">Deuda antes de usar la app</span></div>
+      </div>`;
       }
       if(item._tipo==='compra'){
         const c=item;
-        const esFavor = c._esFavor || c._desdeCP;
-        const favorBadge = esFavor
+        const esFavor=c._esFavor||c._desdeCP;
+        const favorBadge=esFavor
           ? `<span style="font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;"><i class="fa-solid fa-handshake" style="margin-right:3px;font-size:7px;"></i>favor</span>`
           : '';
-        const _origenC = c._desdeCP ? 'Plata comprometida' : 'Tarjeta de crédito';
+        const _origenC=c._desdeCP?'Plata comprometida':'Tarjeta de crédito';
+        const cuotasInfo=c.esCuotas?`<span class="badge" style="font-size:9px;background:rgba(150,120,240,.12);color:rgba(180,140,255,1);">Cuota ${c.cuotasPagadas||0}/${c.numCuotas} · ${fmt(c.valorCuota||0)}</span>
+          <button type="button" onclick="event.stopPropagation();tcIncrementarCuotaPagada('${tc.id}','${c.id}',1)" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:10px;padding:1px 6px;cursor:pointer;">+1 cuota</button>
+          ${c.cuotasPagadas>0?`<button type="button" onclick="event.stopPropagation();tcIncrementarCuotaPagada('${tc.id}','${c.id}',-1)" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:10px;padding:1px 6px;cursor:pointer;">-1</button>`:''}`:'';
         return `<div class="gasto-item" ${_tcAttrs(c,_origenC,null)} style="margin-bottom:7px;cursor:pointer;${esFavor?'border-color:rgba(96,176,240,.25);':''}">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${c.desc}${favorBadge}</div><div class="row-sub">${c.fecha}</div></div>
@@ -18167,21 +17906,10 @@ function abrirDetalleTCSheet(tcId){
             </button>
           </div>
         </div>
-        <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)'};color:${esFavor?'var(--blue)':'var(--red)'};">${esFavor?'Favor cubierto':c.cat||'Sin cat.'}</span>${c.nota?`<span style="font-size:10px;color:var(--text3);">${c.nota}</span>`:''}</div>
+        <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)'};color:${esFavor?'var(--blue)':'var(--red)'};">${esFavor?'Favor cubierto':c.cat||'Sin cat.'}</span>${cuotasInfo}${c.nota?`<span style="font-size:10px;color:var(--text3);">${c.nota}</span>`:''}</div>
       </div>`;
       }
-      if(item._tipo==='tcmov'&&item.tipo==='corte_aviso'){
-        const m=item;
-        return `<div style="display:flex;align-items:center;gap:8px;margin:10px 0;">
-          <div style="flex:1;height:1px;background:rgba(240,104,104,.4);"></div>
-          <span style="font-size:10px;font-family:'DM Mono',monospace;font-weight:700;color:var(--red);white-space:nowrap;">
-            <i class="fa-solid fa-rotate" style="margin-right:4px;"></i>Corte ${tcFmtFecha(m.fecha)} · Debes ${fmt(m.monto)}
-          </span>
-          <div style="flex:1;height:1px;background:rgba(240,104,104,.4);"></div>
-        </div>`;
-      }
       if(item._tipo==='tcmov'){
-        // tcMovimiento — cargo de encargo o préstamo
         const m=item;
         const esEncargo=m.tipo==='cargo_encargo';
         const colorBorde=esEncargo?'rgba(240,184,64,.3)':'rgba(150,120,240,.3)';
@@ -18192,7 +17920,7 @@ function abrirDetalleTCSheet(tcId){
         const iconoBadge=esEncargo
           ? `<i class="fa-solid fa-box" style="margin-right:3px;font-size:7px;"></i>`
           : `<i class="fa-solid fa-hand-holding-dollar" style="margin-right:3px;font-size:7px;"></i>`;
-        const _origenM = esEncargo ? 'Encargos' : ('Préstamos · ' + (((S.deudores||[]).find(x=>x.id===m.deudorId)||{}).nombre||''));
+        const _origenM=esEncargo?'Encargos':('Préstamos · '+(((S.deudores||[]).find(x=>x.id===m.deudorId)||{}).nombre||''));
         return `<div class="gasto-item" ${_tcAttrs(m,_origenM,null)} style="margin-bottom:7px;cursor:pointer;border-color:${colorBorde};">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${m.desc}</div><div class="row-sub">${m.fecha}</div></div>
@@ -18204,16 +17932,18 @@ function abrirDetalleTCSheet(tcId){
         </div>
       </div>`;
       }
-      // pago — abono que reduce la deuda de la tarjeta (no es un gasto/cargo)
       const p=item;
-      const descPago = p.nota
-        ? p.nota
-        : 'Abono a la deuda de '+(tc.nombre||'tu tarjeta')+' — no corresponde a una compra específica';
-      const otrasPago = p.fuente ? [{fuente:p.fuente, monto:-p.monto}] : null;
+      const descPago=p.nota?p.nota:'Abono a la deuda de '+(tc.nombre||'tu tarjeta')+' — no corresponde a una compra específica';
+      const otrasPago=p.fuente?[{fuente:p.fuente,monto:-p.monto}]:null;
       return `<div class="gasto-item" ${_tcAttrs(p,'Tarjeta de crédito',otrasPago,'Abono a tu deuda')} style="border-color:rgba(200,240,96,.3);border-left:3px solid var(--accent);margin-bottom:7px;background:rgba(200,240,96,.04);cursor:pointer;">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">Abono a tu deuda</div><div class="row-sub">${p.fecha}</div></div>
-          <span class="row-amount c-green">−${fmt(p.monto)}</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="row-amount c-green">−${fmt(p.monto)}</span>
+            <button type="button" onclick="event.stopPropagation();eliminarPagoTC('${tc.id}','${p.id}')" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);opacity:.6;display:flex;align-items:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </button>
+          </div>
         </div>
         <div class="gasto-item-meta">
           <span class="badge bg-green" style="font-size:9px;"><i class="fa-solid fa-arrow-down" style="margin-right:3px;font-size:7px;"></i>Reduce deuda</span>
@@ -18228,64 +17958,76 @@ function abrirDetalleTCSheet(tcId){
   openSheet('detalle-tc');
 }
 
-async function eliminarCompraTC(tcId, compraId){
+async function eliminarCompraTC(tcId,compraId){
   const tc=getTCById(tcId);
   if(!tc)return;
-  const compra=(tc.compras||[]).find(c=>c.id===compraId);
+  const compra=(tc.compras||[]).find(c=>c.id===compraId&&!c.eliminado);
   if(!compra)return;
   const ok=await dialogo('Eliminar compra','¿Eliminar esta compra de '+fmt(compra.monto)+'? Se reducirá la deuda de la tarjeta.','Eliminar',true);
   if(!ok)return;
-  tc.compras=(tc.compras||[]).filter(c=>c.id!==compraId);
-  tc.deuda=Math.max(0,(tc.deuda||0)-compra.monto);
-  // También quitar el gasto variable asociado
+  tcEliminarCompraInterna(tc,compraId);
   if(S.gastosVar)S.gastosVar=S.gastosVar.filter(g=>!(g._esCompraTC&&g._tcCompraId===compraId));
   save();refresh();renderTCScreen();
-  closeSheet('detalle-tc');
+  abrirDetalleTCSheet(tcId);
   toast('Compra eliminada — deuda actualizada','ok');
 }
-// ── Navegar a pantalla TC ────────────────────────────────────
+
+async function eliminarPagoTC(tcId,pagoId){
+  const tc=getTCById(tcId);
+  if(!tc)return;
+  const pago=(tc.pagos||[]).find(p=>p.id===pagoId&&!p.eliminado);
+  if(!pago)return;
+  const ok=await dialogo('Eliminar pago','¿Eliminar este pago de '+fmt(pago.monto)+'? Se devolverá el dinero a '+fuenteLabel(pago.fuente)+' y aumentará la deuda de la tarjeta.','Eliminar',true);
+  if(!ok)return;
+  tcEliminarPagoInterna(tc,pagoId);
+  if(pago.fuente) sumarFuente(pago.fuente,pago.monto);
+  if(S.gastosVar)S.gastosVar=S.gastosVar.filter(g=>!(g._esPagoTC&&g._tcPagoId===pagoId));
+  save();refresh();renderTCScreen();
+  abrirDetalleTCSheet(tcId);
+  toast('Pago eliminado — deuda actualizada','ok');
+}
+
+// ── Navegar a pantalla TC ─────────────────────────────────────────
 function navTo(screen){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   const scr=document.getElementById('screen-'+screen);
   if(scr)scr.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
-  // Cerrar el menú "Más" si estaba abierto
   const masOverlay=document.getElementById('mas-menu-overlay');
   const masMenu=document.getElementById('mas-menu');
   if(masOverlay)masOverlay.classList.remove('open');
   if(masMenu)masMenu.style.display='none';
-  // Render la pantalla
   if(screen==='tarjetas')renderTCScreen();
-  // Scroll to top
   const scrollArea=document.getElementById('scrollArea');
   if(scrollArea)scrollArea.scrollTop=0;
 }
 
-// ── Conectar botones TC al formulario y selects ──────────────
+// ── Conectar botones TC al formulario y selects ───────────────────
 document.addEventListener('DOMContentLoaded',function(){
-  // Guardar TC
   const btnGuardarTC=document.getElementById('btn-guardar-tc');
   if(btnGuardarTC)btnGuardarTC.addEventListener('click',guardarTC);
 
-  // Compra TC (sheet de tarjetas, no de encargos — el sheet de encargos tiene su propio listener)
   const btnCompraTC=document.getElementById('btn-confirmar-compra-tc-tarjetas');
   if(btnCompraTC)btnCompraTC.addEventListener('click',confirmarCompraTC);
 
-  // Pagar TC
   const btnPagarTC=document.getElementById('btn-confirmar-pagar-tc');
   if(btnPagarTC)btnPagarTC.addEventListener('click',confirmarPagarTC);
 
-  // Actualizar preview al cambiar fuente/monto en pagar TC
   const ptcFuente=document.getElementById('ptc_fuente');
   if(ptcFuente)ptcFuente.addEventListener('change',ptcActualizarPreview);
   const ptcMonto=document.getElementById('ptc_monto');
   if(ptcMonto)ptcMonto.addEventListener('input',ptcActualizarPreview);
 
-  // Mas menu TC item
-  const masTarjetas=document.getElementById('mas-tarjetas');
-  if(masTarjetas)masTarjetas.addEventListener('click',function(){
-    navTo('tarjetas');
+  const tccEsCuotas=document.getElementById('tcc_es_cuotas');
+  if(tccEsCuotas)tccEsCuotas.addEventListener('change',tccToggleCuotas);
+  const tccMonto=document.getElementById('tcc_monto');
+  if(tccMonto)tccMonto.addEventListener('input',function(){
+    if(document.getElementById('tcc_es_cuotas').checked) tccActualizarValorCuota();
   });
+  const tccNumCuotas=document.getElementById('tcc_num_cuotas');
+  if(tccNumCuotas)tccNumCuotas.addEventListener('input',tccActualizarValorCuota);
+  const tccValorCuota=document.getElementById('tcc_valor_cuota');
+  if(tccValorCuota)tccValorCuota.addEventListener('input',tccActualizarPreviewCuotas);
 });
 
 // Mostrar el label TC en el gasto variable al seleccionarlo
@@ -19521,7 +19263,7 @@ function _cpdPoblarGastoSelectores(){
   }
   const selTc = document.getElementById('cpd-gasto-tc');
   if(selTc && selTc.options.length <= 1){
-    (S.tarjetasCredito||[]).forEach(t=>{
+    (S.tarjetasCredito||[]).filter(t=>(t.estado||'activa')==='activa').forEach(t=>{
       const o = document.createElement('option');
       o.value = t.id;
       o.textContent = t.nombre||t.id;
@@ -19996,13 +19738,12 @@ window._cpConfirmarRecibir = function(){
             // FIX double-entry: si el usuario ya marcó yaPague=true via _cpGuardarMarcados,
             // la deuda ya fue subida allí. No volver a subirla al confirmar el recibo.
             if(!d.yaPague){
-              tc.deuda = (tc.deuda||0) + d.monto;
-              if(!tc.compras) tc.compras = [];
-              tc.compras.push({
-                id: uid(), desc: d.desc, monto: d.monto, fecha,
-                cat: 'Plata comprometida', nota: 'Favor — cubierto por ingreso: '+item.desc,
-                _desdeCP: true, _esFavor: true
+              const _compraTc=tcCrearCompra(tc,{
+                desc:d.desc, monto:d.monto, fecha,
+                cat:'Plata comprometida', nota:'Favor — cubierto por ingreso: '+item.desc,
+                _desdeCP:true, _esFavor:true
               });
+              d._tcCompraId=_compraTc.id;
               if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado (favor)', fmt(d.monto)+' sumado a la deuda — cubierto por "'+item.desc+'"', d.monto, 'gasto');
             }
             // Llevar la plata a la cajita que el usuario eligió (gastoTcCajita)
@@ -20260,11 +20001,10 @@ window._cpGuardarMarcados = function(){
       try {
         const tc = (S.tarjetasCredito||[]).find(x=>x.id===dNuevo.gastoTcId);
         if(tc){
-          tc.deuda = (tc.deuda||0) + dNuevo.monto;
-          if(!tc.compras) tc.compras = [];
-          tc.compras.push({id:uid(), desc:dNuevo.desc, monto:dNuevo.monto, fecha:hoy(),
+          const _compraTc=tcCrearCompra(tc,{desc:dNuevo.desc, monto:dNuevo.monto, fecha:hoy(),
             cat:'Plata comprometida', nota:'Favor — cubierto por ingreso comprometido',
             _desdeCP:true, _esFavor:true});
+          dNuevo._tcCompraId=_compraTc.id;
           if(window.logCambio) logCambio('Gasto cargado a '+tc.nombre+' (plata comprometida — favor)', fmt(dNuevo.monto)+' sumado a la deuda', dNuevo.monto, 'gasto');
         }
       } catch(e){}
@@ -20274,9 +20014,11 @@ window._cpGuardarMarcados = function(){
       try {
         const tc = (S.tarjetasCredito||[]).find(x=>x.id===dNuevo.gastoTcId);
         if(tc){
-          tc.deuda = Math.max(0, (tc.deuda||0) - dNuevo.monto);
-          // Quitar la compra que se había agregado desde plata comprometida
-          if(tc.compras) tc.compras = tc.compras.filter(c=>!(c._desdeCP && c.desc===dNuevo.desc && c.monto===dNuevo.monto));
+          // Preferir el id exacto guardado al crear la compra; si no existe
+          // (registros de antes de este cambio) caer de vuelta a desc+monto.
+          const _compraVieja=tcBuscarCompraPorIdOMatch(tc, dViejo._tcCompraId, dNuevo.desc, dNuevo.monto);
+          if(_compraVieja) tcEliminarCompraInterna(tc, _compraVieja.id);
+          delete dNuevo._tcCompraId;
           if(window.logCambio) logCambio('Revertiste cargo a '+tc.nombre+' (plata comprometida)', fmt(dNuevo.monto)+' quitado de la deuda', dNuevo.monto, 'ingreso');
         }
       } catch(e){}
@@ -20364,8 +20106,8 @@ window._cpEliminar = async function(id){
             // Revertir deuda y compra de TC generada al recibir
             const tc=(S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
             if(tc){
-              tc.deuda = Math.max(0,(tc.deuda||0)-d.monto);
-              if(tc.compras) tc.compras=tc.compras.filter(c=>!(c._desdeCP && c.desc===d.desc && c.monto===d.monto));
+              const _compraVieja=tcBuscarCompraPorIdOMatch(tc, d._tcCompraId, d.desc, d.monto);
+              if(_compraVieja) tcEliminarCompraInterna(tc, _compraVieja.id);
               // También revertir la cajita a la que se movió la plata para pagar TC
               if(d.gastoTcCajita && typeof descontarFuente==='function'){
                 if(d.gastoTcCajita.startsWith('cajita:')){
@@ -20413,8 +20155,8 @@ window._cpEliminar = async function(id){
           } else if(d.tipo==='gasto' && d.gastoOrigen==='tc' && d.gastoTcId && d.yaPague){
             const tc=(S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
             if(tc){
-              tc.deuda = Math.max(0,(tc.deuda||0)-d.monto);
-              if(tc.compras) tc.compras=tc.compras.filter(c=>!(c._desdeCP && c.desc===d.desc && c.monto===d.monto));
+              const _compraVieja=tcBuscarCompraPorIdOMatch(tc, d._tcCompraId, d.desc, d.monto);
+              if(_compraVieja) tcEliminarCompraInterna(tc, _compraVieja.id);
             }
           }
         } catch(e){ console.warn('[CP] Error revirtiendo adelanto al eliminar:', e); }

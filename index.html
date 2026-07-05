@@ -1905,13 +1905,10 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             <div class="progress"><div class="progress-fill" id="spProg"
                 style="width:0%"></div></div>
             <div
-              style="display:flex;justify-content:space-between;margin-top:5px;">
+              style="margin-top:5px;">
               <span
                 style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;"
                 id="spProgLabel"></span>
-              <span
-                style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;"
-                id="spGanancia"></span>
             </div>
           </div>
           <!-- Botón pagar Spotify -->
@@ -9916,33 +9913,27 @@ function renderSpotify(){
     if(warnEl) warnEl.remove();
   }
 
-  // Ganancia = cajita - costo (si cajita tiene más que el costo)
+  // Estado de la cajita = ¿alcanza lo guardado ahí para cubrir el costo?
+  // (Esto es solo un chequeo de liquidez de la cajita puntual, no la ganancia real:
+  // la ganancia real ya se calcula en renderSpStats a partir de todo el historial,
+  // sin importar a qué cuenta llegó cada cobro.)
   const cajitaEl=document.getElementById('spCajitaSaldo');
   cajitaEl.textContent=fmt(cajitaSaldo);
   const statusEl=document.getElementById('spCajitaStatus');
-  const spGanEl=document.getElementById('spGanancia');
   if(costo>0){
     const diferencia=cajitaSaldo-costo;
     if(diferencia>0){
       statusEl.textContent='Te sobra '+fmt(diferencia);
       statusEl.style.color='var(--accent)';
-      spGanEl.textContent='Ganancia: +'+fmt(diferencia);
-      spGanEl.style.color='var(--accent)';
     } else if(cajitaSaldo>0){
       statusEl.textContent='Faltan '+fmt(-diferencia)+' para pagar';
       statusEl.style.color='var(--amber)';
-      spGanEl.textContent='Ganancia: −'+fmt(-diferencia);
-      spGanEl.style.color='var(--red)';
     } else {
-      // Sin saldo en cajita y hay costo configurado: la pérdida es el costo completo
       statusEl.textContent='Sin saldo en cajita';
       statusEl.style.color='var(--text3)';
-      spGanEl.textContent='Ganancia: −'+fmt(costo);
-      spGanEl.style.color='var(--red)';
     }
   } else {
     statusEl.textContent='';
-    spGanEl.textContent='';
   }
   
   if(!p.length){el.innerHTML=emptyState(

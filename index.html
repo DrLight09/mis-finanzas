@@ -10110,16 +10110,16 @@ function renderSpStats(){
       <div class="stat-label">Balance del ciclo</div>
       ${pendiente>0
         ?`<div class="stat-value" style="color:var(--amber);">\u2212${fmt(pendiente)}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:3px;">falta recaudar para cubrir el plan completo (tu parte incluida)</div>`
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;" title="Falta recaudar para cubrir el plan completo, tu parte incluida.">falta para cubrir el plan</div>`
         :`<div class="stat-value" style="color:var(--accent);">+${fmt(sobra)}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:3px;">esto es lo que ganas después de cubrir el plan completo, incluida tu propia parte</div>`
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;" title="Esto es lo que ganas después de cubrir el plan completo, incluida tu propia parte.">ya cubriste el plan</div>`
       }
     </div>`;
   } else if(hayCiclo){
     html+=`<div class="stat">
       <div class="stat-label">Ganancia acumulada</div>
       <div class="stat-value" style="color:${cV(gananciaReal)};">${gananciaReal>=0?'+':'\u2212'}${fmt(Math.abs(gananciaReal))}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:3px;">${gananciaReal<0?'pusiste de tu bolsillo · ':''}cobrado \u2212 pagado${ahorroCuotaAdmin>0?' + tu parte del plan (ya cubierta, no la pagaste de tu bolsillo)':''}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;" title="${ahorroCuotaAdmin>0?'Cobrado menos pagado, más tu parte del plan, que ya quedó cubierta y no la pagaste de tu bolsillo.':'Cobrado menos pagado.'}">${gananciaReal<0?'de tu bolsillo · ':''}cobrado \u2212 pagado${ahorroCuotaAdmin>0?' + tu parte':''}</div>
     </div>`;
   } else {
     html+=`<div class="stat">

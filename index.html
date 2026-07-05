@@ -3612,7 +3612,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       </div>
     </div>
 
-    <!-- SPOTIFY - Registrar cobro (con meses adelantados) -->
+    <!-- SPOTIFY - Registrar cobro (con períodos adelantados) -->
     <div class="overlay" id="sheet-sp-destino" data-sheet-id="sp-destino">
       <div class="sheet">
         <div class="sheet-handle"></div>
@@ -3621,15 +3621,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           id="spDestinoDesc">Selecciona dónde guardaste lo que te pagaron.</p>
         <!-- Meses adelantados -->
         <div class="ig">
-          <label class="il" for="spMesesSelect">¿Cuántos meses pagó?</label>
+          <label class="il" for="spMesesSelect">¿Cuántos períodos pagó?</label>
           <div class="select-wrap">
             <select id="spMesesSelect">
-              <option value="1" selected>1 mes</option>
-              <option value="2">2 meses</option>
-              <option value="3">3 meses</option>
-              <option value="4">4 meses</option>
-              <option value="5">5 meses</option>
-              <option value="6">6 meses</option>
+              <option value="1" selected>1 período</option>
+              <option value="2">2 períodos</option>
+              <option value="3">3 períodos</option>
+              <option value="4">4 períodos</option>
+              <option value="5">5 períodos</option>
+              <option value="6">6 períodos</option>
             </select>
           </div>
           <div
@@ -9970,7 +9970,7 @@ function renderSpotify(){
           <div class="avatar">${x.nombre.substring(0,2).toUpperCase()}</div>
           <div>
             <div class="row-name" style="font-size:13px;">${x.nombre}</div>
-            <div class="row-sub">${fmt(x.monto)}/mes${x.mesesAdelantados>1?' · <span class="sp-meses-badge">'+x.mesesAdelantados+'m adelantados</span>':''}</div>
+            <div class="row-sub">${fmt(x.monto)}/período${x.mesesAdelantados>1?' · <span class="sp-meses-badge">'+x.mesesAdelantados+'p adelantados</span>':''}</div>
             ${fechaInfo?'<div style="margin-top:3px;">'+fechaInfo+'</div>':''}
             ${destinoBadge?'<div style="margin-top:2px;">'+destinoBadge+'</div>':''}
           </div>
@@ -10189,12 +10189,12 @@ function marcarPagoSpotify(i){
     save();renderSpotify();
     return;
   }
-  // Cobrar → abrir sheet con meses adelantados + destino
+  // Cobrar → abrir sheet con períodos adelantados + destino
   spDestinoIdx=i;
   spDestinoPago=p.monto||0;
   spDestinoNombre=p.nombre;
   // Desc
-  document.getElementById('spDestinoDesc').textContent=`${p.nombre} — ${fmt(p.monto)}/mes`;
+  document.getElementById('spDestinoDesc').textContent=`${p.nombre} — ${fmt(p.monto)}/período`;
   // Meses: select con 1 mes predeterminado
   const mesesSel=document.getElementById('spMesesSelect');
   mesesSel.value='1';
@@ -10236,11 +10236,11 @@ function confirmarSpDestino(){
   // Registrar en historial (un registro por cada mes cobrado)
   if(!S.spotifyHistorial)S.spotifyHistorial=[];
   for(let m=0;m<meses;m++){
-    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:p.nombre,monto:p.monto||0,fuente:spDestinoSel||'',fecha:hoy(),nota:meses>1?`Mes ${m+1} de ${meses} (pago adelantado)`:'',proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'});
+    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:p.nombre,monto:p.monto||0,fuente:spDestinoSel||'',fecha:hoy(),nota:meses>1?`Período ${m+1} de ${meses} (pago adelantado)`:'',proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'});
   }
   spDestinoIdx=null;
   save();refresh();closeSheet('sp-destino');
-  toast(meses>1?`Cobrado ${meses} meses adelantados a ${p.nombre} · ${fmt(montoTotal)}`:`Cobro registrado · ${p.nombre}`,'ok');
+  toast(meses>1?`Cobrados ${meses} períodos adelantados a ${p.nombre} · ${fmt(montoTotal)}`:`Cobro registrado · ${p.nombre}`,'ok');
 }
 
 function openSheet_pagarSpotify(){
@@ -20998,7 +20998,7 @@ function abrirPerfilPersona(personaId) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px;">
         <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Cuota</div>
-          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(spEntry.monto || 0)}/mes</div>
+          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(spEntry.monto || 0)}/período</div>
         </div>
         <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Estado</div>
@@ -21011,7 +21011,7 @@ function abrirPerfilPersona(personaId) {
         </div>` : ''}
         ${diasEnPlan !== null ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">En el plan</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${mesesEstimados !== null ? mesesEstimados + ' mes' + (mesesEstimados !== 1 ? 'es' : '') : diasEnPlan + 'd'}</div>
+          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${mesesEstimados !== null ? mesesEstimados + ' período' + (mesesEstimados !== 1 ? 's' : '') : diasEnPlan + 'd'}</div>
           <div style="font-size:10px;color:var(--text3);margin-top:1px;">desde ${spEntry.fechaIngreso}</div>
         </div>` : ''}
         ${mayorCobroSp ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;grid-column:1/-1;">

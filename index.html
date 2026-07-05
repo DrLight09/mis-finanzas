@@ -10074,16 +10074,16 @@ function renderSpStats(){
       <div class="stat-label">Balance del ciclo</div>
       ${pendiente>0
         ?`<div class="stat-value" style="color:var(--amber);">\u2212${fmt(pendiente)}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:3px;">falta recaudar para cubrir Spotify</div>`
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;">falta recaudar para cubrir el plan completo (tu parte incluida)</div>`
         :`<div class="stat-value" style="color:var(--accent);">+${fmt(sobra)}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:3px;">ya cubriste Spotify — esto es ganancia</div>`
+          <div style="font-size:10px;color:var(--text3);margin-top:3px;">esto es lo que ganas después de cubrir el plan completo, incluida tu propia parte</div>`
       }
     </div>`;
   } else if(hayCiclo){
     html+=`<div class="stat">
       <div class="stat-label">Ganancia acumulada</div>
       <div class="stat-value" style="color:${cV(gananciaReal)};">${gananciaReal>=0?'+':'\u2212'}${fmt(Math.abs(gananciaReal))}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:3px;">${gananciaReal<0?'pusiste de tu bolsillo · ':''}cobrado \u2212 pagado${ahorroCuotaAdmin>0?' + tu cuota':''}</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">${gananciaReal<0?'pusiste de tu bolsillo · ':''}cobrado \u2212 pagado${ahorroCuotaAdmin>0?' + tu parte del plan (ya cubierta, no la pagaste de tu bolsillo)':''}</div>
     </div>`;
   } else {
     html+=`<div class="stat">

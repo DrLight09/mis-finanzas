@@ -3621,30 +3621,26 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           id="spDestinoDesc">Selecciona dónde guardaste lo que te pagaron.</p>
         <!-- Meses adelantados -->
         <div class="ig">
-          <label class="il">¿Cuántos meses pagó?</label>
-          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px;"
-            id="spMesesBtns">
-            <button type="button" class="sp-mes-btn" data-meses="1"
-              onclick="selSpMeses(1)">1 mes</button>
-            <button type="button" class="sp-mes-btn" data-meses="2"
-              onclick="selSpMeses(2)">2 meses</button>
-            <button type="button" class="sp-mes-btn" data-meses="3"
-              onclick="selSpMeses(3)">3 meses</button>
-            <button type="button" class="sp-mes-btn" data-meses="4"
-              onclick="selSpMeses(4)">4 meses</button>
-            <button type="button" class="sp-mes-btn" data-meses="5"
-              onclick="selSpMeses(5)">5 meses</button>
-            <button type="button" class="sp-mes-btn" data-meses="6"
-              onclick="selSpMeses(6)">6 meses</button>
+          <label class="il" for="spMesesSelect">¿Cuántos meses pagó?</label>
+          <div class="select-wrap">
+            <select id="spMesesSelect">
+              <option value="1" selected>1 mes</option>
+              <option value="2">2 meses</option>
+              <option value="3">3 meses</option>
+              <option value="4">4 meses</option>
+              <option value="5">5 meses</option>
+              <option value="6">6 meses</option>
+            </select>
           </div>
           <div
             style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:4px;"
             id="spMesesTotal"></div>
         </div>
         <div class="divider"></div>
-        <label class="il" style="margin-top:8px;display:block;">¿A dónde metiste esa plata?</label>
-        <div id="spDestinoOpts"></div>
-        <div style="margin-top:6px;"></div>
+        <div class="ig" style="margin-top:8px;">
+          <label class="il" for="spDestinoSelect">¿A dónde metiste esa plata?</label>
+          <div class="select-wrap"><select id="spDestinoSelect"></select></div>
+        </div>
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-sp-destino">Confirmar cobro</button>
         <button type="button" class="btn btn-ghost"
@@ -10157,53 +10153,37 @@ function marcarPagoSpotify(i){
   spDestinoIdx=i;
   spDestinoPago=p.monto||0;
   spDestinoNombre=p.nombre;
-  spMesesSel=1;
   // Desc
   document.getElementById('spDestinoDesc').textContent=`${p.nombre} — ${fmt(p.monto)}/mes`;
-  // Resetear botones de meses
-  document.querySelectorAll('.sp-mes-btn').forEach(b=>{
-    b.classList.toggle('sel',parseInt(b.dataset.meses)===1);
-  });
-  document.getElementById('spMesesTotal').textContent='Total: '+fmt(p.monto*1);
-  // Fuentes
+  // Meses: select con 1 mes predeterminado
+  const mesesSel=document.getElementById('spMesesSelect');
+  mesesSel.value='1';
+  document.getElementById('spMesesTotal').textContent='Total a cobrar: '+fmt(p.monto*1);
+  // Fuentes: select, forzando una elección explícita (incluida "Sin especificar")
   const fuentes=getFuentes();
-  document.getElementById('spDestinoOpts').innerHTML=fuentes.map(f=>`
-    <div class="pago-opt" id="spdopt_${f.val}" onclick="selSpDestino('${f.val}')">
-      <span style="font-size:13px;">${f.label}</span>
-      <div class="pago-radio" id="spdpr_${f.val}"></div>
-    </div>`).join('')+`<div class="pago-opt" id="spdopt_" onclick="selSpDestino('')">
-      <span style="font-size:13px;color:var(--text2);">Sin especificar (no mover)</span>
-      <div class="pago-radio" id="spdpr_"></div>
-    </div>`;
-  spDestinoSel='';
+  const destSel=document.getElementById('spDestinoSelect');
+  destSel.innerHTML='<option value="" disabled selected>Selecciona una opción...</option>'
+    +fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('')
+    +'<option value="__sin_especificar__">Sin especificar (no mover)</option>';
   openSheet('sp-destino');
 }
 
-let spMesesSel=1;
-function selSpMeses(n){
-  spMesesSel=n;
-  document.querySelectorAll('.sp-mes-btn').forEach(b=>{
-    b.classList.toggle('sel',parseInt(b.dataset.meses)===n);
-  });
+function selSpMeses(){
+  const n=parseInt(document.getElementById('spMesesSelect').value)||1;
   const monto=(S.spotifyPersonas[spDestinoIdx]?.monto||0)*n;
   document.getElementById('spMesesTotal').textContent='Total a cobrar: '+fmt(monto);
 }
 
-let spDestinoSel='';
-function selSpDestino(val){
-  spDestinoSel=val;
-  document.querySelectorAll('#spDestinoOpts .pago-opt').forEach(el=>el.classList.remove('selected'));
-  document.querySelectorAll('#spDestinoOpts .pago-radio').forEach(el=>{el.style.background='';el.style.borderColor='';});
-  const opt=document.getElementById('spdopt_'+val);
-  const radio=document.getElementById('spdpr_'+val);
-  if(opt)opt.classList.add('selected');
-  if(radio){radio.style.background='var(--accent)';radio.style.borderColor='var(--accent)';}
-}
-
 function confirmarSpDestino(){
   if(spDestinoIdx===null)return;
+  const destVal=document.getElementById('spDestinoSelect').value;
+  if(!destVal){
+    toast('Selecciona a dónde metiste la plata (o marca "Sin especificar")','err');
+    return;
+  }
+  const spDestinoSel=destVal==='__sin_especificar__'?'':destVal;
   const p=S.spotifyPersonas[spDestinoIdx];
-  const meses=spMesesSel||1;
+  const meses=parseInt(document.getElementById('spMesesSelect').value)||1;
   const montoTotal=(p.monto||0)*meses;
   const proximoPagoAntes=p.proximoPago||'';
   p.pagado=true;
@@ -10218,7 +10198,7 @@ function confirmarSpDestino(){
   for(let m=0;m<meses;m++){
     S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:p.nombre,monto:p.monto||0,fuente:spDestinoSel||'',fecha:hoy(),nota:meses>1?`Mes ${m+1} de ${meses} (pago adelantado)`:'',proximoPagoAntes});
   }
-  spDestinoIdx=null;spDestinoSel='';spMesesSel=1;
+  spDestinoIdx=null;
   save();refresh();closeSheet('sp-destino');
   toast(meses>1?`Cobrado ${meses} meses adelantados a ${p.nombre} · ${fmt(montoTotal)}`:`Cobro registrado · ${p.nombre}`,'ok');
 }
@@ -12627,6 +12607,8 @@ function _initEventListeners() {
   if (btnSpSave) btnSpSave.addEventListener('click', addSpotify);
   const btnSpDest = document.getElementById('btn-confirmar-sp-destino');
   if (btnSpDest) btnSpDest.addEventListener('click', confirmarSpDestino);
+  const spMesesSelect = document.getElementById('spMesesSelect');
+  if (spMesesSelect) spMesesSelect.addEventListener('change', selSpMeses);
   const btnPagarSpConf = document.getElementById('btn-confirmar-pagar-spotify');
   if (btnPagarSpConf) btnPagarSpConf.addEventListener('click', confirmarPagarSpotify);
   const btnMesadaConf = document.getElementById('btn-confirmar-mesada');

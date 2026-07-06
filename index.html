@@ -20710,10 +20710,14 @@ function _actualizarMasPersonasSub() {
   if (cfgSub) cfgSub.textContent = txt;
 }
 let _selPersonaCallback = null; // fn(personaId) llamada al seleccionar
+let _selPersonaTitulo = '¿De quién es la plata?'; // título del sheet, según quién lo abrió
 
-function abrirSelPersona(callback) {
+function abrirSelPersona(callback, titulo) {
   _selPersonaCallback = callback;
+  _selPersonaTitulo = titulo || '¿De quién es la plata?';
   _inyectarPersonaSheets();
+  const tituloEl = document.querySelector('#sheet-sel-persona .sheet-title');
+  if (tituloEl) tituloEl.textContent = _selPersonaTitulo;
   const buscarEl = document.getElementById('sel-persona-buscar');
   if (buscarEl) buscarEl.value = '';
   _selPersonaFiltrar();
@@ -20809,7 +20813,7 @@ function _volverASelPersona() {
   if (_cpgDesdeListaPersonas) {
     _abrirListaPersonas();
   } else {
-    abrirSelPersona(_selPersonaCallback);
+    abrirSelPersona(_selPersonaCallback, _selPersonaTitulo);
   }
   document.getElementById('sheet-crear-persona-global').classList.remove('open');
 }
@@ -21424,7 +21428,7 @@ function _initSpotifyPersonaSelector() {
 
   ig.innerHTML = `
     <label class="il">¿Quién es?</label>
-    <div id="sp-persona-btn" onclick="abrirSelPersona(_onSelPersonaSpotify)"
+    <div id="sp-persona-btn" onclick="abrirSelPersona(_onSelPersonaSpotify,'¿Quién es?')"
       style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
       border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
       cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
@@ -21486,7 +21490,7 @@ let _spEditPersonaPickerConfirmado = false; // se puso true solo si de verdad se
 // se abrió, para poder detectar si se cierra sin confirmar ninguna selección nueva.
 function _abrirSelPersonaSpotifyEdit() {
   _spEditPersonaPickerAbierto = true;
-  abrirSelPersona(_onSelPersonaSpotifyEdit);
+  abrirSelPersona(_onSelPersonaSpotifyEdit, '¿Quién es?');
 }
 
 function _onSelPersonaSpotifyEdit(personaId) {
@@ -21516,22 +21520,20 @@ openSheet = function(id) {
   if (id === 'spotify') {
     _inyectarPersonaSheets();
     _spPersonaId = null;
-    setTimeout(_initSpotifyPersonaSelector, 30);
+    _initSpotifyPersonaSelector();
     // Resetear UI del selector
-    setTimeout(() => {
-      const lbl = document.getElementById('sp-persona-label');
-      const av  = document.getElementById('sp-persona-avatar');
-      const btn = document.getElementById('sp-persona-btn');
-      if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
-      if (av)  av.style.display = 'none';
-      if (btn) btn.style.borderColor = 'var(--border2)';
-      const spN = document.getElementById('sp_n');
-      if (spN) spN.value = '';
-    }, 50);
+    const lbl = document.getElementById('sp-persona-label');
+    const av  = document.getElementById('sp-persona-avatar');
+    const btn = document.getElementById('sp-persona-btn');
+    if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
+    if (av)  av.style.display = 'none';
+    if (btn) btn.style.borderColor = 'var(--border2)';
+    const spN = document.getElementById('sp_n');
+    if (spN) spN.value = '';
   }
   if (id === 'editar-spotify') {
     _inyectarPersonaSheets();
-    setTimeout(_initSpotifyEditPersonaSelector, 30);
+    _initSpotifyEditPersonaSelector();
   }
   _origOpenSheetSpotifyPersonas.apply(this, arguments);
 };

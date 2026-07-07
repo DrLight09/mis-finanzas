@@ -21644,15 +21644,21 @@ guardarEditarSpotify = function() {
   // Capturar idx ANTES de llamar al original (que lo pone a null)
   const idxAntes = _spEditIdx;
   _origGuardarEditarSpotifyPersonas.apply(this, arguments);
-  // Asignar personaId al spotifyPersona editado
+  // Asignar personaId al spotifyPersona editado (si se confirmó una selección nueva)
   if (idxAntes !== null && S.spotifyPersonas && S.spotifyPersonas[idxAntes]) {
     const sp = S.spotifyPersonas[idxAntes];
     if (_spEditPersonaId) {
       sp.personaId = _spEditPersonaId;
-      const p = getPersona(_spEditPersonaId);
-      if (p) sp.nombre = p.nombre;
-      save();
     }
+    // Sincronización final: si el registro sigue vinculado a una persona (personaId,
+    // ya sea la que había antes o la recién elegida), el nombre SIEMPRE se resuelve
+    // desde ese vínculo — nunca se deja el texto crudo que haya quedado en el campo
+    // oculto. Así nombre y personaId no pueden quedar desincronizados, así falle
+    // silenciosamente la confirmación del buscador de personas.
+    if (sp.personaId) {
+      sp.nombre = spNombreDe(sp);
+    }
+    save();
   }
   _spEditPersonaId = null;
   _spEditPersonaPickerAbierto = false;

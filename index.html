@@ -21502,15 +21502,26 @@ function _initSpotifyEditPersonaSelector() {
 
   ig.innerHTML = `
     <label class="il">¿Quién es?</label>
-    <div id="sp-edit-persona-btn" onclick="_abrirSelPersonaSpotifyEdit()"
+    <div id="sp-edit-persona-btn" onclick="_onClickSpEditPersonaBtn()"
       style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
       border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
       cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
       <div id="sp-edit-persona-avatar" class="avatar" style="width:28px;height:28px;font-size:10px;margin:0;display:none;flex-shrink:0;"></div>
       <span id="sp-edit-persona-label">Seleccionar persona...</span>
-      <svg style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <svg id="sp-edit-persona-chevron" style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
+    <div id="sp-edit-persona-hint" style="font-size:11px;color:var(--text3);margin-top:5px;display:none;">Para asignarle este cobro a otra persona, eliminá este integrante y agregá uno nuevo — así el historial no se mezcla entre los dos.</div>
     <input type="hidden" id="sp_edit_n" value="">`;
+}
+
+// Si la persona editada ya está vinculada a alguien (personaId), el botón queda
+// bloqueado: cambiar de persona a mitad de camino es justo lo que causaba
+// desincronizaciones. Para eso ya existe un camino simple y confiable: eliminar
+// este integrante y agregar uno nuevo (ver hint debajo del botón).
+let _spEditPersonaLocked = false;
+function _onClickSpEditPersonaBtn() {
+  if (_spEditPersonaLocked) return;
+  _abrirSelPersonaSpotifyEdit();
 }
 
 let _spEditPersonaPickerAbierto = false;    // se puso true al abrir el buscador en "Editar"
@@ -21609,20 +21620,31 @@ editarSpotify = function(i) {
   const sp = (S.spotifyPersonas || [])[i];
   if (!sp) return;
   _spEditPersonaId = sp.personaId || null;
+  _spEditPersonaLocked = !!sp.personaId;
   // Pre-cargar UI del selector tras abrir el sheet
   setTimeout(() => {
     _initSpotifyEditPersonaSelector();
+    const btn = document.getElementById('sp-edit-persona-btn');
+    const chevron = document.getElementById('sp-edit-persona-chevron');
+    const hint = document.getElementById('sp-edit-persona-hint');
     if (sp.personaId) {
       const p = getPersona(sp.personaId);
       if (p) _onSelPersonaSpotifyEdit(sp.personaId);
+      // Bloqueado: ya hay una persona vinculada — se ve como texto, no como control
+      if (btn) { btn.style.cursor = 'default'; btn.style.background = 'var(--bg2)'; }
+      if (chevron) chevron.style.display = 'none';
+      if (hint) hint.style.display = 'block';
     } else {
       // Rellenar con el nombre directo si no tiene personaId
       const lbl = document.getElementById('sp-edit-persona-label');
-      const btn = document.getElementById('sp-edit-persona-btn');
       const spEditN = document.getElementById('sp_edit_n');
       if (lbl && sp.nombre) { lbl.textContent = sp.nombre; lbl.style.color = 'var(--text)'; }
       if (btn && sp.nombre) btn.style.borderColor = 'var(--accent)';
       if (spEditN) spEditN.value = sp.nombre || '';
+      // Sin vínculo todavía: queda disponible para elegir/crear la persona una vez
+      if (btn) { btn.style.cursor = 'pointer'; btn.style.background = 'var(--bg3)'; }
+      if (chevron) chevron.style.display = '';
+      if (hint) hint.style.display = 'none';
     }
     // Resetear banderas DESPUÉS de precargar: mostrar el estado actual no cuenta
     // como una selección nueva confirmada por el usuario.
@@ -21659,6 +21681,7 @@ guardarEditarSpotify = function() {
       sp.nombre = spNombreDe(sp);
     }
     save();
+    refresh();
   }
   _spEditPersonaId = null;
   _spEditPersonaPickerAbierto = false;

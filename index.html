@@ -9989,7 +9989,7 @@ function renderSpotify(){
           <div class="avatar">${spNombreDe(x).substring(0,2).toUpperCase()}</div>
           <div>
             <div class="row-name" style="font-size:13px;">${spNombreDe(x)}</div>
-            <div class="row-sub">${fmt(x.monto)}/período${x.mesesAdelantados>1?' · <span class="sp-meses-badge">'+x.mesesAdelantados+'p adelantados</span>':''}</div>
+            <div class="row-sub">${fmt(x.monto)}/período${(x.mesesAdelantados>1&&spPersonaPagadaVigente(x))?' · <span class="sp-meses-badge">'+x.mesesAdelantados+'p adelantados</span>':''}</div>
             ${fechaInfo?'<div style="margin-top:3px;">'+fechaInfo+'</div>':''}
             ${destinoBadge?'<div style="margin-top:2px;">'+destinoBadge+'</div>':''}
           </div>
@@ -10231,7 +10231,9 @@ function marcarPagoSpotify(i){
   mesesSel.value='1';
   document.getElementById('spMesesTotal').textContent='Total a cobrar: '+fmt(p.monto*1);
   // Fuentes: select, forzando una elección explícita (incluida "Sin especificar")
-  const fuentes=getFuentes();
+  // No se puede guardar plata ajena en una TC (mismo criterio que Encargos, "Yo debo",
+  // Mis deudas y Alcancía) — por eso getFuentesSinTC() y no getFuentes().
+  const fuentes=getFuentesSinTC();
   const destSel=document.getElementById('spDestinoSelect');
   destSel.innerHTML='<option value="" disabled selected>Selecciona una opción...</option>'
     +fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('')
@@ -20898,6 +20900,9 @@ function _guardarEditarPersonaGlobal() {
   (S.encargos || []).forEach(e => { if (e.personaId === p.id) e.nombre = nombre; });
   // Sincronizar nombre y color en misDeudas vinculadas
   (S.misDeudas || []).forEach(d => { if (d.personaId === p.id) { d.nombre = nombre; d.color = _epgColorSel; } });
+  // Sincronizar nombre en integrantes de Spotify vinculados (el campo crudo .nombre
+  // se usa directo en la validación de nombres duplicados de addSpotify)
+  (S.spotifyPersonas || []).forEach(sp => { if (sp.personaId === p.id) sp.nombre = nombre; });
   save(); refresh();
   document.getElementById('sheet-editar-persona-global').classList.remove('open');
   toast(nombre + ' actualizado', 'ok');
@@ -21665,6 +21670,15 @@ guardarEditarSpotify = function() {
   }
   // Capturar idx ANTES de llamar al original (que lo pone a null)
   const idxAntes = _spEditIdx;
+  // Si se vinculó (por primera vez) a una persona que ya está usada por OTRO integrante
+  // de Spotify, bloquear — mismo criterio que ya aplica en addSpotify.
+  if (_spEditPersonaId) {
+    const yaUsadaPorOtro = (S.spotifyPersonas || []).some((x, idx) => idx !== idxAntes && x.personaId === _spEditPersonaId);
+    if (yaUsadaPorOtro) {
+      toast('Esta persona ya está agregada en Spotify', 'err');
+      return;
+    }
+  }
   _origGuardarEditarSpotifyPersonas.apply(this, arguments);
   // Asignar personaId al spotifyPersona editado (si se confirmó una selección nueva)
   if (idxAntes !== null && S.spotifyPersonas && S.spotifyPersonas[idxAntes]) {

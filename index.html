@@ -5819,21 +5819,15 @@ function load(){
   if(!S.encargos)S.encargos=[];
   if(!S.movimientos)S.movimientos=[];
   if(!S.cuentasPersonalizadas)S.cuentasPersonalizadas=[];
-  // Migración: quitar flag 'incluirEnTotal' — ahora siempre se incluyen todas las cuentas
-  S.cuentasPersonalizadas.forEach(c=>{ if('incluirEnTotal' in c) delete c.incluirEnTotal; });
   if(!S.catsVar)S.catsVar=[];
   if(!S.catsFijo)S.catsFijo=[];
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
   if(!S.personas)S.personas=[];
   if(!S.ingresosFijos)S.ingresosFijos=[];
   if(!S.misDeudas)S.misDeudas=[];
-  // Migración: vincular misDeudas existentes a S.personas por nombre y sincronizar color
+  // Sincronizar color de misDeudas desde la persona vinculada (fuente de verdad)
   (S.misDeudas || []).forEach(d => {
-    if (!d.personaId && S.personas) {
-      const p = S.personas.find(x => x.nombre.trim().toLowerCase() === (d.nombre || '').trim().toLowerCase());
-      if (p) { d.personaId = p.id; d.color = p.color || d.color; }
-    } else if (d.personaId && S.personas) {
-      // Ya vinculado: sincronizar color desde la persona (fuente de verdad)
+    if (d.personaId && S.personas) {
       const p = S.personas.find(x => x.id === d.personaId);
       if (p && p.color) d.color = p.color;
     }
@@ -5857,36 +5851,15 @@ function load(){
       else { delete h.baseAjustada; } // limpiar flag de versión anterior del fix, si existe
     });
   }
-  // Migrar cajitas antiguas al modelo multi-CDT (c.cdts = array)
   if(S.cajitas){
     S.cajitas=S.cajitas.map(c=>{
-      if(c.esCDT&&!c.cdt&&!c.cdts&&c.saldo>0){
-        return{id:c.id,nombre:c.nombre,saldo:0,fecha:hoy(),tasa:c.tasa||9.25,cdts:[{
-          id:uid(),monto:c.saldo,tasa:c.tasa||9.25,inicio:c.fecha||hoy(),vence:c.vence||''
-        }]};
-      }
-      // Migrar c.cdt (objeto unico) a c.cdts (array)
-      if(c.cdt&&!c.cdts){
-        c.cdts=[Object.assign({id:uid()},c.cdt)];
-        delete c.cdt;
-      }
       if(!c.cdts)c.cdts=[];
       if(!c.tasa)c.tasa=S.nuRate||9.25;
       if(!c.fecha)c.fecha=hoy();
-      delete c.esCDT;delete c.vence;delete c.cdt;
       return c;
     });
   }
   if(S.gastosFijos){S.gastosFijos=S.gastosFijos.filter(x=>!(x.id==='gf1'&&x.nombre==='Spotify Premium'&&(x.monto||0)===0));}
-  // Migración: asegurar id estable en cada persona de Spotify (para vincular historial correctamente)
-  (S.spotifyPersonas||[]).forEach(p=>{ if(!p.id) p.id=uid(); });
-  // Migración: vincular registros de cobro antiguos del historial a la persona por nombre (best-effort)
-  (S.spotifyHistorial||[]).forEach(h=>{
-    if(h.tipo==='cobro'&&!h.spId){
-      const p=(S.spotifyPersonas||[]).find(x=>x.nombre===h.nombre);
-      if(p)h.spId=p.id;
-    }
-  });
   if(!S.pagosGastosFijos)S.pagosGastosFijos={};
   document.getElementById('nuRate').value=S.nuRate||9.25;
   const nuTasaEl=document.getElementById('nuTasaGlobal');
@@ -10018,8 +9991,6 @@ let mpMesNombre=''; // 'Abril 2025'
 let mppParent=''; // 'papa' | 'mama' — para el sheet de pago de lo pendiente
 let mppMesKey=''; // '2025-3'
 
-// ── Migración única desde mesadasV2 + mesadaMontoPapa/Mama legacy ──────────
-
 function _ensureMesadas(){
   if(!S.mesadas)S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}};
   ['papa','mama'].forEach(p=>{
@@ -12651,7 +12622,7 @@ async function eliminarMovimiento(btn) {
       }
     });
   } else if (movTipoEl === 'mesada') {
-    // Mesada (S.mesadasV2)
+    // Mesada
     let found = false;
     ['papa', 'mama'].forEach(parent => {
       const data = getMesadaData(parent);
@@ -16515,10 +16486,8 @@ document.addEventListener('focusin', function(e){
       (error) => {
         console.error('[Sync] Error en onSnapshot:', error);
         setSyncStatus('error', 'Error de conexión — reintentando…');
-        // Si es la primera carga y falla, intentar con localStorage como fallback
         if(_firstLoad) {
           _firstLoad = false;
-          try { const r=localStorage.getItem('mf_v5'); if(r) Object.assign(window.S,JSON.parse(r)); } catch(_){}
           _finishFirstLoad();
         }
       }
@@ -16531,16 +16500,8 @@ document.addEventListener('focusin', function(e){
       try {
         const cloudData = JSON.parse(snap.data().payload);
         console.log('[Sync] _applyCloudData: keys=' + Object.keys(cloudData).length + ' updatedAt=' + snap.data().updatedAt);
-        // Migración: nube vacía pero localStorage tiene datos → migrar
-        const local = (() => { try { const r=localStorage.getItem('mf_v5'); return r?JSON.parse(r):null; } catch(e){return null;} })();
-        if(local && Object.keys(cloudData).length === 0) {
-          Object.assign(window.S, local);
-          localStorage.removeItem('mf_v5');
-          window._fbSaveToCloud();
-          console.log('[Sync] Datos migrados desde localStorage a Firebase.');
-        } else if(Object.keys(cloudData).length === 0) {
-          // Nube vacía y sin localStorage — no pisar S con objeto vacío,
-          // dejar los valores por defecto de S intactos.
+        if(Object.keys(cloudData).length === 0) {
+          // Nube vacía — no pisar S con objeto vacío, dejar los valores por defecto de S intactos.
           console.warn('[Sync] Nube vacía (sin payload real) — manteniendo estado por defecto.');
         } else {
           Object.assign(window.S, cloudData);
@@ -16553,14 +16514,6 @@ document.addEventListener('focusin', function(e){
       }
     } else {
       console.warn('[Sync] _applyCloudData: snap.exists()=' + snap.exists() + ' — sin datos en nube.');
-      // Sin datos en nube — revisar localStorage para migrar
-      const local = (() => { try { const r=localStorage.getItem('mf_v5'); return r?JSON.parse(r):null; } catch(e){return null;} })();
-      if(local) {
-        Object.assign(window.S, local);
-        localStorage.removeItem('mf_v5');
-        window._fbSaveToCloud();
-        console.log('[Sync] Datos migrados desde localStorage a Firebase (primera vez).');
-      }
     }
   }
 
@@ -16570,7 +16523,6 @@ document.addEventListener('focusin', function(e){
     // PROTECCIÓN: marcar que los datos ya se cargaron correctamente.
     // _fbSaveToCloud no guardará nada hasta que esta bandera esté activa.
     window._dataLoaded = true;
-    // Migración única: mesadasV2 + legacy flat → nueva estructura S.mesadas
     _initAppUI();
     // Snapshot diario: guardar patrimonio del día aunque no haya otros cambios.
     // Esto llena la gráfica de patrimonio sin que el usuario tenga que hacer nada.

@@ -16305,12 +16305,8 @@ document.addEventListener('focusin', function(e){
         if (typeof abrirPerfilPersona === 'function') abrirPerfilPersona(r.navId);
       }, 80);
     } else if (r.navTipo === 'spotify') {
-      // Navegar al módulo de Spotify (Más → Spotify)
-      showScreen('mas');
-      setTimeout(() => {
-        const el = document.getElementById('mas-spotify');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 150);
+      // Ir directo a la pantalla real de Spotify
+      showScreen('spotify');
     } else if (r.navTipo === 'movimiento_general') {
       // Movimiento de cuenta personalizada o general → ir a cuentas
       if (r.navId) {

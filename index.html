@@ -203,6 +203,7 @@ textarea{resize:none;height:60px;}
 .mes-dot.on{background:rgba(200,240,96,.15);border-color:var(--accent);color:var(--accent);}
 .mes-dot.mes-dot-ini{background:rgba(96,176,240,.13);border-color:var(--blue);color:var(--blue);}
 .mes-dot.perdido{background:rgba(240,104,104,.10);border-color:rgba(240,104,104,.35);color:var(--red);}
+.mes-dot.mes-dot-pend{background:rgba(240,184,64,.15);border-color:var(--amber);color:var(--amber);}
 .sp-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);}
 .sp-row:last-child{border-bottom:none;}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--blue);font-family:'DM Mono',monospace;flex-shrink:0;margin-right:10px;}
@@ -1805,6 +1806,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               <div class="stat"><div class="stat-label">Meses pagados</div><div
                   class="stat-value c-blue" id="ms-count">0/0</div></div>
             </div>
+            <!-- Banner de mensualidades con pago parcial pendiente -->
+            <div id="ms-pendiente-banner" class="card card-sm attn-card"
+              style="display:none;margin-bottom:9px;font-size:12px;color:var(--amber);font-weight:600;"></div>
             <!-- Papa -->
             <div class="card" style="margin-bottom:9px;">
               <div
@@ -3714,6 +3718,22 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         </div>
         <div id="mpPreview"
           style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--accent);"></div>
+        <!-- Toggle: la diferencia quedó debiendo -->
+        <div id="mpDebeWrap"
+          onclick="document.getElementById('mpQuedaDebiendo').click()"
+          style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;display:none;">
+          <input type="checkbox" id="mpQuedaDebiendo"
+            style="width:17px;height:17px;accent-color:var(--amber);cursor:pointer;flex-shrink:0;"
+            onclick="event.stopPropagation()"
+            onchange="actualizarMpPreview()">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--amber);"
+              id="mpDebeLabel">Te está debiendo la diferencia</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Si
+              no marcás esto, el mes queda cerrado con lo que recibiste — sin
+              deuda</div>
+          </div>
+        </div>
         <!-- Toggle saldo inicial -->
         <div id="mpAperturaWrap"
           onclick="document.getElementById('mpEsApertura').click()"
@@ -3749,6 +3769,42 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div id="mdContent"></div>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="mesada-det">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- MESADA - Registrar pago de lo pendiente -->
+    <div class="overlay" id="sheet-mesada-pend" data-sheet-id="mesada-pend">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="mppTitle">Pago de lo pendiente</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:14px;"
+          id="mppDesc">¿Cuánto te dio de lo que te quedó debiendo?</p>
+        <div class="ig">
+          <label class="il" for="mppMonto">Monto recibido</label>
+          <input type="text" inputmode="decimal" id="mppMonto"
+            placeholder="20000" class="money-input">
+        </div>
+        <div class="ig">
+          <label class="il" for="mppFecha">Fecha en que te pagó</label>
+          <input type="date" id="mppFecha">
+        </div>
+        <div class="ig">
+          <label class="il" for="mppDestino">¿Dónde la metiste?</label>
+          <div class="select-wrap"><select id="mppDestino">
+              <option value>No especificar / lo gasté</option>
+            </select></div>
+        </div>
+        <div id="mppPreview"
+          style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--amber);"></div>
+        <div class="ig">
+          <label class="il" for="mppNota">Nota (opcional)</label>
+          <input type="text" id="mppNota"
+            placeholder="Ej: Me dio el resto en efectivo">
+        </div>
+        <button type="button" class="btn btn-primary"
+          id="btn-confirmar-mesada-pend">Guardar</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="mesada-pend">Cancelar</button>
       </div>
     </div>
 
@@ -5891,6 +5947,19 @@ function renderAttencion(){
     const s=getDeudorSaldo(d);
     if(s>0) items.push({tipo:'amber',texto:`${d.nombre} te debe ${fmt(s)}`});
   });
+  // Mesadas con pago parcial que quedó pendiente
+  if(S.modulos&&S.modulos.mesada){
+    ['papa','mama'].forEach(parent=>{
+      const data=getMesadaData(parent);
+      const pNombre=parent==='papa'?'Papá':'Mamá';
+      Object.keys(data).forEach(k=>{
+        const info=data[k];
+        if(info&&info.pendiente>0){
+          items.push({tipo:'amber',texto:`${pNombre} te debe ${fmt(info.pendiente)} de la mesada de ${_mesNombreDeKey(k)}`});
+        }
+      });
+    });
+  }
   // Tarjetas de crédito con el cupo casi agotado (sin fechas — este modelo no
   // simula ciclos de facturación, solo avisa cuando el cupo disponible es bajo)
   (S.tarjetasCredito||[]).forEach(tc=>{
@@ -9410,13 +9479,22 @@ function confirmarPrestamoTC() {
 
 /* ---- MESADA ---- */
 // S.mesadas = {
-//   papa: { cuotas: { "2025": 90000 }, pagos: { "2025-3": {monto,fecha,destino,nota,splits,esSaldoInicial} } },
+//   papa: { cuotas: { "2025": 90000 }, pagos: { "2025-3": {
+//     monto,fecha,destino,nota,splits,esSaldoInicial,
+//     // Campos opcionales de "pago parcial con deuda pendiente" (ej. te dieron
+//     // 60k de una cuota de 80k y te quedaron debiendo los 20k restantes):
+//     cuotaEsperada,       // snapshot de la cuota del año cuando se marcó como pendiente
+//     pendiente,           // cuánto falta por recibir de esa mensualidad (0/ausente = saldado)
+//     pendienteHistorial,  // [{monto,fecha,destino,nota}] abonos posteriores que fueron cerrando `pendiente`
+//   } } },
 //   mama: { cuotas: { "2025": 80000 }, pagos: { "2025-3": {...} } }
 // }
 
 let mpParent=''; // 'papa' | 'mama'
 let mpMesKey=''; // '2025-3'
 let mpMesNombre=''; // 'Abril 2025'
+let mppParent=''; // 'papa' | 'mama' — para el sheet de pago de lo pendiente
+let mppMesKey=''; // '2025-3'
 
 // ── Migración única desde mesadasV2 + mesadaMontoPapa/Mama legacy ──────────
 
@@ -9482,6 +9560,7 @@ function renderMesada(){
   const mesActualNum=hoyD.getMonth(); // 0-based
   const diaActual=hoyD.getDate();
 
+  const pendientesResumen={papa:0,mama:0}; // totales de deuda pendiente, para el banner
   ['papa','mama'].forEach(parent=>{
     const data=getMesadaData(parent);
     const gridId=parent==='papa'?'mesadaGridPapa':'mesadaGridMama';
@@ -9490,14 +9569,18 @@ function renderMesada(){
     let totalRecibido=0;
     let mesesPagados=0;
     let mesesPerdidos=0;
+    let totalPendienteParent=0;
+    let mesesPendientes=0;
 
     document.getElementById(gridId).innerHTML=MC.map((m,i)=>{
       const k=a+'-'+i;
       const info=data[k];
       const pagado=!!info;
       const esSaldoIni=pagado&&!!info.esSaldoInicial;
+      const tienePendiente=pagado&&(info.pendiente||0)>0;
 
       if(pagado){totalRecibido+=(info.monto||cuota);mesesPagados++;}
+      if(tienePendiente){totalPendienteParent+=info.pendiente;mesesPendientes++;}
 
       // Determinar si el mes ya pasó sin pago (puede marcarse rojo)
       // Un mes "pasado" es cualquier mes cuya fecha esperada ya venció:
@@ -9521,10 +9604,12 @@ function renderMesada(){
       if(esPerdido)mesesPerdidos++;
 
       const tooltip=esSaldoIni?'Saldo inicial ('+(info.fecha||'')+')'
+        :tienePendiente?fmt(info.monto)+' recibidos · debe '+fmt(info.pendiente)
         :pagado?(info.fecha||'pagado')
         :esPerdido?'Sin pagar'
         :'';
       const dotClass=esSaldoIni?'mes-dot on mes-dot-ini'
+        :tienePendiente?'mes-dot on mes-dot-pend'
         :pagado?'mes-dot on'
         :esPerdido?'mes-dot perdido'
         :'mes-dot';
@@ -9534,8 +9619,24 @@ function renderMesada(){
 
     let subTxt=fmt(totalRecibido)+' recibidos ('+mesesPagados+'/12)';
     if(mesesPerdidos>0) subTxt+=' · '+mesesPerdidos+' sin pagar';
+    if(mesesPendientes>0) subTxt+=' · '+fmt(totalPendienteParent)+' pendiente';
     document.getElementById(subId).textContent=subTxt;
+    pendientesResumen[parent]=totalPendienteParent;
   });
+
+  // Banner combinado (papá + mamá) — visibilidad clara de deuda pendiente
+  const bannerPend=document.getElementById('ms-pendiente-banner');
+  if(bannerPend){
+    const partesPend=[];
+    if(pendientesResumen.papa>0)partesPend.push('Papá te debe '+fmt(pendientesResumen.papa));
+    if(pendientesResumen.mama>0)partesPend.push('Mamá te debe '+fmt(pendientesResumen.mama));
+    if(partesPend.length){
+      bannerPend.style.display='';
+      bannerPend.textContent=partesPend.join(' · ');
+    } else {
+      bannerPend.style.display='none';
+    }
+  }
 
   // Resumen global año
   let totalAnio=0,pagadosAnio=0,esperadosAnio=0;
@@ -9705,6 +9806,11 @@ function abrirRegistrarMesada(parent,key,nombre){
   // Resetear toggle saldo inicial
   const chk=document.getElementById('mpEsApertura');
   if(chk){ chk.checked=false; }
+  // Resetear toggle "quedó debiendo la diferencia"
+  const chkDebe=document.getElementById('mpQuedaDebiendo');
+  if(chkDebe){ chkDebe.checked=false; }
+  const debeWrap=document.getElementById('mpDebeWrap');
+  if(debeWrap){ debeWrap.style.display='none'; }
   toggleMpApertura();
   openSheet('mesada-pago');
 }
@@ -9712,6 +9818,7 @@ function abrirRegistrarMesada(parent,key,nombre){
 function actualizarMpPreview(){
   const v=parseMoney(document.getElementById('mpMonto').value)||0;
   const prev=document.getElementById('mpPreview');
+  _syncMpDebeWrap(v);
   if(!v){prev.textContent='';return;}
   if(mpSplitMode){
     const splits=getMpSplitData();
@@ -9735,6 +9842,27 @@ function actualizarMpPreview(){
   }
 }
 
+// Muestra/oculta el toggle "me quedó debiendo la diferencia" según el monto
+// ingresado vs. la cuota esperada. Se llama desde actualizarMpPreview() (cada
+// vez que cambia el monto) y desde toggleMpApertura() (si se marca saldo
+// inicial, no tiene sentido dejar deuda pendiente, así que se oculta).
+function _syncMpDebeWrap(v){
+  const wrap=document.getElementById('mpDebeWrap');
+  const chk=document.getElementById('mpQuedaDebiendo');
+  const lbl=document.getElementById('mpDebeLabel');
+  if(!wrap||!chk)return;
+  const esAp=!!(document.getElementById('mpEsApertura')&&document.getElementById('mpEsApertura').checked);
+  const cuota=mpParent?getMontoPadre(mpParent):0;
+  const diff=cuota-v;
+  if(!esAp&&v>0&&diff>0){
+    wrap.style.display='flex';
+    if(lbl)lbl.textContent='Te está debiendo '+fmt(diff)+' — ¿marcar como pendiente?';
+  } else {
+    wrap.style.display='none';
+    chk.checked=false;
+  }
+}
+
 function toggleMpApertura(){
   const chk=document.getElementById('mpEsApertura');
   const esAp=chk&&chk.checked;
@@ -9743,11 +9871,13 @@ function toggleMpApertura(){
   const modoDividido=document.getElementById('mpModoDividido');
   const splitToggle=document.getElementById('mpSplitToggle');
   const preview=document.getElementById('mpPreview');
+  const debeWrap=document.getElementById('mpDebeWrap');
   if(modoSimple)modoSimple.style.display=esAp?'none':'';
   if(modoDividido&&mpSplitMode)modoDividido.style.display=esAp?'none':'';
   if(splitToggle)splitToggle.style.display=esAp?'none':'';
   if(preview&&esAp){preview.textContent='Se registrará sin afectar estadísticas del mes.';preview.style.color='var(--blue)';}
   else if(preview&&!esAp){preview.textContent='';actualizarMpPreview();}
+  if(esAp&&debeWrap){debeWrap.style.display='none';const chkDebe=document.getElementById('mpQuedaDebiendo');if(chkDebe)chkDebe.checked=false;}
 }
 
 function confirmarMesadaPago(){
@@ -9757,6 +9887,14 @@ function confirmarMesadaPago(){
   if(!monto||!mpParent||!mpMesKey)return;
   const data=getMesadaData(mpParent);
   const esApertura=!!(document.getElementById('mpEsApertura')&&document.getElementById('mpEsApertura').checked);
+  // "Quedó debiendo la diferencia": solo aplica si no es saldo inicial y el
+  // usuario marcó explícitamente el toggle. Si no lo marca, un monto menor a
+  // la cuota simplemente se registra tal cual, sin deuda (ej: "ese mes solo
+  // fueron 60mil, no me quedó debiendo nada").
+  const chkDebe=document.getElementById('mpQuedaDebiendo');
+  const quedaDebiendo=!esApertura&&!!(chkDebe&&chkDebe.checked);
+  const cuotaDelMes=getMontoPadre(mpParent);
+  const pendienteInicial=quedaDebiendo?Math.max(0,cuotaDelMes-monto):0;
 
   if(esApertura){
     // Saldo inicial: guardar sin mover cuentas ni contar en ingresos
@@ -9776,8 +9914,16 @@ function confirmarMesadaPago(){
     data[mpMesKey]={monto,fecha,destino,nota};
     if(destino)sumarFuente(destino,monto);
   }
+  if(pendienteInicial>0){
+    data[mpMesKey].cuotaEsperada=cuotaDelMes;
+    data[mpMesKey].pendiente=pendienteInicial;
+    data[mpMesKey].pendienteHistorial=[];
+  }
   save();refresh();
   closeSheet('mesada-pago');
+  if(pendienteInicial>0){
+    toast('Guardado — quedó pendiente '+fmt(pendienteInicial),'info',3500);
+  }
 }
 
 function abrirDetalleMesada(parent,key,nombre){
@@ -9795,6 +9941,31 @@ function abrirDetalleMesada(parent,key,nombre){
     destinoHtml=`<div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Lo metiste en</span><span class="badge ${fuenteBadgeClass(info.destino)}">${fuenteLabel(info.destino)}</span></div>`;
   }
   const esSaldoIniDet=!!(info&&info.esSaldoInicial);
+
+  // ── Pendiente: estado y acciones ──────────────────────────────────
+  const anioKey=parseInt(key.split('-')[0],10);
+  const cuotaDelMesDet=_getCuotaAnio(parent,anioKey);
+  const tienePendienteDet=!esSaldoIniDet&&(info.pendiente||0)>0;
+  const tieneHistorialDet=!esSaldoIniDet&&!!(info.pendienteHistorial&&info.pendienteHistorial.length);
+  const puedeMarcarPendiente=!esSaldoIniDet&&!info.cuotaEsperada&&!tienePendienteDet&&(info.monto||0)<cuotaDelMesDet;
+
+  let pendienteHtml='';
+  if(info.cuotaEsperada&&(tienePendienteDet||tieneHistorialDet)){
+    pendienteHtml=`
+    <div class="card card-sm" style="margin-bottom:10px;border-left:4px solid ${tienePendienteDet?'var(--amber)':'var(--accent)'};background:${tienePendienteDet?'rgba(240,184,64,.06)':'rgba(200,240,96,.06)'};">
+      <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Cuota esperada</span><span style="font-size:13px;font-family:'DM Mono',monospace;">${fmt(info.cuotaEsperada)}</span></div>
+      ${tienePendienteDet?`<div class="row" style="margin-bottom:2px;"><span style="font-size:12px;color:var(--amber);font-weight:600;">Pendiente</span><span class="row-amount c-amber">${fmt(info.pendiente)}</span></div>`:`<div style="font-size:12px;color:var(--accent);font-weight:600;">✓ Ya te dio todo lo que faltaba</div>`}
+      ${tieneHistorialDet?`<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px;">${info.pendienteHistorial.map((h,idx)=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);gap:8px;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.fecha||''}${h.destino?' · '+fuenteLabel(h.destino):''}${h.nota?' · '+escHtml(h.nota):''}</span><span style="display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(h.monto)}</span><span onclick="deshacerPendienteMesada('${parent}','${key}',${idx})" style="cursor:pointer;color:var(--red);font-size:13px;line-height:1;" title="Deshacer este abono">✕</span></span></div>`).join('')}</div>`:''}
+      ${tienePendienteDet?`<button type="button" class="btn" style="margin-top:10px;background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.3);color:var(--amber);" onclick="abrirResolverPendiente('${parent}','${key}')">Registrar pago de lo pendiente</button>`:''}
+    </div>`;
+  } else if(puedeMarcarPendiente){
+    pendienteHtml=`
+    <div class="card card-sm" style="margin-bottom:10px;border-left:4px solid var(--border2);">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Este mes recibiste menos que la cuota (${fmt(cuotaDelMesDet)}). ¿Te quedó debiendo la diferencia?</div>
+      <button type="button" class="btn" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.3);color:var(--amber);" onclick="marcarMesadaComoPendiente('${parent}','${key}')">Marcar diferencia como pendiente</button>
+    </div>`;
+  }
+
   let html=`
     <div class="card card-sm" style="margin-bottom:10px;">
       ${esSaldoIniDet?`<div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;"><span style="font-size:11px;font-weight:700;font-family:'DM Mono',monospace;background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:6px;padding:3px 9px;"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"11\" height=\"11\" style=\"vertical-align:middle;margin-right:3px;\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z\"/></svg> SALDO INICIAL</span><span style="font-size:11px;color:var(--text3);">No cuenta en estadísticas</span></div>`:''}
@@ -9803,6 +9974,7 @@ function abrirDetalleMesada(parent,key,nombre){
       ${destinoHtml}
       ${info.nota?`<div style="font-size:12px;color:var(--text2);margin-top:4px;">${info.nota}</div>`:''}
     </div>
+    ${pendienteHtml}
     <button type="button" class="btn" style="background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);" onclick="eliminarMesadaPago('${parent}','${key}')">Borrar este registro</button>
   `;
   document.getElementById('mdContent').innerHTML=html;
@@ -9813,16 +9985,125 @@ function eliminarMesadaPago(parent,key){
   const data=getMesadaData(parent);
   const info=data[key];
   if(info){
-    // Devolver el dinero a las cuentas correspondientes
+    // Si hubo abonos posteriores que fueron saldando un "pendiente", info.monto
+    // ya incluye esos abonos además del pago original. Hay que separarlos para
+    // devolver cada plata a la cuenta correcta (pueden ser cuentas distintas).
+    const historialTotal=(info.pendienteHistorial||[]).reduce((acc,h)=>acc+(h.monto||0),0);
+    // Devolver el dinero del pago original a las cuentas correspondientes
     if(info.splits&&info.splits.length){
       info.splits.forEach(s=>{if(s.fuente)descontarFuente(s.fuente,s.monto);});
     } else if(info.destino){
-      descontarFuente(info.destino,info.monto);
+      const montoOriginal=Math.max(0,(info.monto||0)-historialTotal);
+      descontarFuente(info.destino,montoOriginal);
     }
+    // Devolver también los abonos que fueron saldando lo pendiente
+    (info.pendienteHistorial||[]).forEach(h=>{if(h.destino)descontarFuente(h.destino,h.monto);});
   }
   delete data[key];
   save();refresh();
   closeSheet('mesada-det');
+}
+
+// ── Pago parcial con deuda pendiente ──────────────────────────────────────
+
+function _mesNombreDeKey(key){
+  const partes=String(key).split('-');
+  const anio=partes[0];
+  const mesIdx=parseInt(partes[1],10)||0;
+  return (MC[mesIdx]||'')+' '+anio;
+}
+
+// Convierte retroactivamente un mes ya cerrado (registrado con menos plata de
+// la cuota, sin haber marcado el toggle al momento de guardar) en un mes con
+// deuda pendiente. Útil para el caso típico: "ya anoté los 60mil, pero ahora
+// caigo en que me quedó debiendo los 20mil restantes".
+function marcarMesadaComoPendiente(parent,key){
+  const data=getMesadaData(parent);
+  const info=data[key];
+  if(!info||info.esSaldoInicial)return;
+  const anio=parseInt(String(key).split('-')[0],10);
+  const cuota=_getCuotaAnio(parent,anio);
+  const pend=Math.max(0,cuota-(info.monto||0));
+  if(pend<=0){toast('Ese mes ya está completo, no hay diferencia pendiente','info');return;}
+  info.cuotaEsperada=cuota;
+  info.pendiente=pend;
+  if(!info.pendienteHistorial)info.pendienteHistorial=[];
+  save();refresh();
+  toast('Marcado como pendiente — debe '+fmt(pend),'info',3000);
+  abrirDetalleMesada(parent,key,_mesNombreDeKey(key));
+}
+
+// Abre el sheet para registrar cuánto pagó de lo que había quedado pendiente.
+function abrirResolverPendiente(parent,key){
+  const data=getMesadaData(parent);
+  const info=data[key];
+  if(!info||!(info.pendiente>0))return;
+  mppParent=parent;mppMesKey=key;
+  const pNombre=parent==='papa'?'Papá':'Mamá';
+  document.getElementById('mppTitle').textContent=pNombre+' · '+_mesNombreDeKey(key);
+  document.getElementById('mppDesc').textContent='Te debía '+fmt(info.pendiente)+'. ¿Cuánto te dio ahora?';
+  document.getElementById('mppMonto').value=fmtInput(info.pendiente);
+  document.getElementById('mppFecha').value=hoy();
+  document.getElementById('mppNota').value='';
+  poblarFuente('mppDestino');
+  const sel=document.getElementById('mppDestino');
+  sel.innerHTML='<option value="">No especificar / lo gasté</option>'+sel.innerHTML.replace('<option value="">Sin especificar</option>','');
+  actualizarMppPreview();
+  openSheet('mesada-pend');
+}
+
+function actualizarMppPreview(){
+  const prev=document.getElementById('mppPreview');
+  const data=getMesadaData(mppParent);
+  const info=data[mppMesKey];
+  const v=parseMoney(document.getElementById('mppMonto').value)||0;
+  if(!info||!v){prev.textContent='';return;}
+  if(v>info.pendiente+1){
+    prev.textContent='Eso es más de lo que quedó pendiente ('+fmt(info.pendiente)+')';
+    prev.style.color='var(--red)';
+    return;
+  }
+  const restante=info.pendiente-v;
+  prev.textContent=restante>0?('Quedaría debiendo '+fmt(restante)+' más'):'Con esto queda saldado ✓';
+  prev.style.color=restante>0?'var(--amber)':'var(--accent)';
+}
+
+function confirmarPendienteMesada(){
+  const data=getMesadaData(mppParent);
+  const info=data[mppMesKey];
+  if(!info||!(info.pendiente>0))return;
+  let monto=parseMoney(document.getElementById('mppMonto').value)||0;
+  if(monto<=0)return;
+  if(monto>info.pendiente)monto=info.pendiente; // no se puede saldar más de lo que quedó pendiente
+  const fecha=document.getElementById('mppFecha').value||hoy();
+  const destino=document.getElementById('mppDestino').value;
+  const nota=document.getElementById('mppNota').value.trim();
+  if(!info.pendienteHistorial)info.pendienteHistorial=[];
+  info.pendienteHistorial.push({monto,fecha,destino,nota});
+  info.pendiente=Math.max(0,info.pendiente-monto);
+  info.monto=(info.monto||0)+monto;
+  if(destino)sumarFuente(destino,monto);
+  save();refresh();
+  closeSheet('mesada-pend');
+  toast(info.pendiente>0?('Abono registrado — todavía debe '+fmt(info.pendiente)):'¡Pendiente saldado! 🎉','ok',3000);
+  abrirDetalleMesada(mppParent,mppMesKey,_mesNombreDeKey(mppMesKey));
+}
+
+// Deshace un abono puntual de lo pendiente (por si se registró por error).
+async function deshacerPendienteMesada(parent,key,idx){
+  const data=getMesadaData(parent);
+  const info=data[key];
+  if(!info||!info.pendienteHistorial||!info.pendienteHistorial[idx])return;
+  const ok=await dialogo('Deshacer abono','¿Deshacer este abono de lo pendiente? La plata se restará de la cuenta donde la registraste y volverá a quedar como deuda.','Deshacer',true);
+  if(!ok)return;
+  const h=info.pendienteHistorial[idx];
+  if(h.destino)descontarFuente(h.destino,h.monto);
+  info.monto=Math.max(0,(info.monto||0)-h.monto);
+  info.pendiente=(info.pendiente||0)+h.monto;
+  info.pendienteHistorial.splice(idx,1);
+  save();refresh();
+  toast('Abono deshecho','ok',2000);
+  abrirDetalleMesada(parent,key,_mesNombreDeKey(key));
 }
 
 function cambiarAnio(d){const hoy=new Date().getFullYear();const nuevo=(S.mesadaAnio||hoy)+d;if(nuevo<hoy-2||nuevo>hoy+2)return;S.mesadaAnio=nuevo;save();renderMesada();}
@@ -12734,6 +13015,8 @@ function _initEventListeners() {
   if (btnPagarSpConf) btnPagarSpConf.addEventListener('click', confirmarPagarSpotify);
   const btnMesadaConf = document.getElementById('btn-confirmar-mesada');
   if (btnMesadaConf) btnMesadaConf.addEventListener('click', confirmarMesadaPago);
+  const btnMesadaPendConf = document.getElementById('btn-confirmar-mesada-pend');
+  if (btnMesadaPendConf) btnMesadaPendConf.addEventListener('click', confirmarPendienteMesada);
   const btnAdConf = document.getElementById('btn-confirmar-agregar-dinero');
   if (btnAdConf) btnAdConf.addEventListener('click', confirmarAgregarDinero);
   const btnAdMenuConf = document.getElementById('btn-confirmar-agregar-dinero-menu');
@@ -12826,6 +13109,10 @@ function _initEventListeners() {
   if (mpDestino) mpDestino.addEventListener('change', actualizarMpPreview);
   const mpMonto = document.getElementById('mpMonto');
   if (mpMonto) mpMonto.addEventListener('input', actualizarMpPreview);
+  const mppDestino = document.getElementById('mppDestino');
+  if (mppDestino) mppDestino.addEventListener('change', actualizarMppPreview);
+  const mppMonto = document.getElementById('mppMonto');
+  if (mppMonto) mppMonto.addEventListener('input', actualizarMppPreview);
   const adMenuDest = document.getElementById('adMenuDest');
   if (adMenuDest) adMenuDest.addEventListener('change', actualizarAdMenuSaldo);
   const adMenuMonto = document.getElementById('adMenuMonto');
@@ -16810,6 +17097,7 @@ if ('serviceWorker' in navigator) {
     'agregar-dinero': 'adDesc',
     'restar-dinero': 'rdDesc',
     'mesada-pago': 'mpMonto',
+    'mesada-pend': 'mppMonto',
     'transferir': 'tr_monto',
   };
 

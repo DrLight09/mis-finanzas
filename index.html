@@ -19846,13 +19846,6 @@ let _cpRecibirId = null;
 /* ── HELPERS ─────────────────────────────────────────────────────── */
 function _cpData(){
   if(!window.S) return [];
-  // Migración one-time: el array vivía como 'plataCometida' (typo sin r).
-  // Si Firebase devuelve datos con ese nombre los movemos al nombre correcto
-  // y borramos la key vieja para que en el próximo save() ya no se guarde.
-  if(S.plataCometida && !S.plataCometida){
-    S.plataCometida = S.plataCometida;
-    delete S.plataCometida;
-  }
   if(!S.plataCometida) S.plataCometida = [];
   return S.plataCometida;
 }

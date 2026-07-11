@@ -9579,7 +9579,7 @@ function renderMesada(){
       const esSaldoIni=pagado&&!!info.esSaldoInicial;
       const tienePendiente=pagado&&(info.pendiente||0)>0;
 
-      if(pagado){totalRecibido+=(info.monto||cuota);mesesPagados++;}
+      if(pagado&&!esSaldoIni){totalRecibido+=(info.monto||cuota);mesesPagados++;}
       if(tienePendiente){totalPendienteParent+=info.pendiente;mesesPendientes++;}
 
       // Determinar si el mes ya pasó sin pago (puede marcarse rojo)
@@ -9648,7 +9648,7 @@ function renderMesada(){
     for(let i=0;i<12;i++){
       const k=a+'-'+i;
       const info=data[k];
-      if(info){totalAnio+=(info.monto||cuota);pagadosAnio++;}
+      if(info&&!info.esSaldoInicial){totalAnio+=(info.monto||cuota);pagadosAnio++;}
     }
   });
   document.getElementById('ms-total').textContent=fmt(totalAnio);

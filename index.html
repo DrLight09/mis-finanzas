@@ -21730,6 +21730,9 @@ function _guardarEditarPersonaGlobal() {
   // se usa directo en la validación de nombres duplicados de addSpotify)
   (S.spotifyPersonas || []).forEach(sp => { if (sp.personaId === p.id) sp.nombre = nombre; });
   save(); refresh();
+  _renderListaPersonas();
+  if (typeof renderEncargosList === 'function') renderEncargosList();
+  if (typeof renderMisDeudasList === 'function') renderMisDeudasList();
   document.getElementById('sheet-editar-persona-global').classList.remove('open');
   toast(nombre + ' actualizado', 'ok');
   // Si había perfil abierto, refrescar

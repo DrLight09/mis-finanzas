@@ -8385,6 +8385,18 @@ function addDeudor() {
 function getDeudorSaldo(d) {
   return (d.movimientos || []).reduce((a, m) => m.tipo === 'prestamo' ? a + m.monto : a - m.monto, 0);
 }
+// Guardia de integridad: verifica que registrar/eliminar un movimiento cambió el saldo
+// exactamente en lo esperado. Si no coincide, casi siempre significa que hay un movimiento
+// duplicado o corrupto en d.movimientos que no se está viendo a simple vista.
+function _verificarIntegridadSaldoDeudor(d, saldoAntes, deltaEsperado) {
+  if (!d) return;
+  const saldoDespues = getDeudorSaldo(d);
+  const deltaReal = saldoDespues - saldoAntes;
+  if (Math.abs(deltaReal - deltaEsperado) > 1) {
+    console.warn(`[Integridad] Saldo de ${d.nombre} cambió ${deltaReal} en vez de ${deltaEsperado} (antes: ${saldoAntes}, después: ${saldoDespues}). Revisa d.movimientos por duplicados.`, d.movimientos);
+    toast(`⚠️ El saldo de ${d.nombre} no cambió como se esperaba (esperado: ${fmt(deltaEsperado)}, real: ${fmt(deltaReal)}). Revisa su historial antes de seguir.`, 'err', 6000);
+  }
+}
 // Saldo que impacta el patrimonio: todos los préstamos cuentan, sin excepción
 function getDeudorSaldoPatrimonio(d) {
   return (d.movimientos || []).reduce((a, m) =>
@@ -8587,9 +8599,14 @@ async function eliminarMovDeudor(deudorId, movId) {
         : ' El extra (cajitas, gastos, etc.) también se revertirá.')
     : '';
   const tcAviso = esPrestamo && m._viaTC ? ' La deuda en la TC también se revertirá automáticamente.' : '';
+  // Mostrar explícitamente cómo va a cambiar la deuda de la persona, para poder
+  // detectar a tiempo si el número resultante no cuadra con lo esperado.
+  const _saldoAntesDel = getDeudorSaldo(d);
+  const _deltaEsperadoDel = esPrestamo ? -m.monto : m.monto;
+  const _saldoTrasDel = _saldoAntesDel + _deltaEsperadoDel;
   const ok = await dialogo(
     'Eliminar ' + label,
-    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${esPrestamo ? (m._viaTC ? 'la TC' : 'la cuenta origen') : 'la cuenta destino'} se revertirá automáticamente.${extraAviso}${tcAviso}`,
+    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${esPrestamo ? (m._viaTC ? 'la TC' : 'la cuenta origen') : 'la cuenta destino'} se revertirá automáticamente. La deuda de ${d.nombre} pasará de ${fmt(_saldoAntesDel)} a ${fmt(_saldoTrasDel)}.${extraAviso}${tcAviso}`,
     'Eliminar', true
   );
   if (!ok) return;
@@ -8687,6 +8704,7 @@ async function eliminarMovDeudor(deudorId, movId) {
   }
 
   d.movimientos = (d.movimientos || []).filter(x => x.id !== movId);
+  _verificarIntegridadSaldoDeudor(d, _saldoAntesDel, _deltaEsperadoDel);
   save(); refresh();
   abrirDeudor(deudorId);
   toast(`${esPrestamo ? 'Préstamo' : 'Abono'} eliminado — saldo revertido`, 'ok');
@@ -8802,6 +8820,10 @@ function confirmarMovimiento() {
   if (!d) return;
   const fecha = document.getElementById('mov_fecha').value || hoy();
   const nota  = document.getElementById('mov_nota').value.trim();
+  // Saldo justo antes de tocar d.movimientos, para poder verificar al final
+  // que el cambio real coincidió con el esperado (ver _verificarIntegridadSaldoDeudor).
+  const _saldoAntesMov = getDeudorSaldo(d);
+  const _deltaEsperadoMov = movTipo === 'prestamo' ? monto : -monto;
 
   if (movTipo === 'prestamo') {
     if (_prestSplitMode) {
@@ -9026,6 +9048,7 @@ function confirmarMovimiento() {
       }
 
       if(window.logCambio) logCambio(`Abono de ${d.nombre} vía encargo de ${enc.nombre}`, d.nombre, monto, 'abono');
+      _verificarIntegridadSaldoDeudor(d, _saldoAntesMov, _deltaEsperadoMov);
       save(); refresh(); closeSheet('registrar-movimiento');
       abrirDeudor(deudorActualId);
       const msgExtra = extraMonto > 0 ? ` + ${fmt(extraMonto)} de extra` : '';
@@ -9165,6 +9188,7 @@ function confirmarMovimiento() {
     const tipolog = movTipo === 'prestamo' ? 'prestamo' : 'abono';
     logCambio(movTipo==='prestamo'?'Prestaste a '+d.nombre:'Registraste abono de '+d.nombre, d.nombre, monto, tipolog);
   }
+  _verificarIntegridadSaldoDeudor(d, _saldoAntesMov, _deltaEsperadoMov);
   save(); refresh(); closeSheet('registrar-movimiento');
   abrirDeudor(deudorActualId);
 }
@@ -13496,7 +13520,13 @@ function _initEventListeners() {
   const btnDeudorSave = document.getElementById('btn-crear-deudor');
   if (btnDeudorSave) btnDeudorSave.addEventListener('click', addDeudor);
   const btnMovSave = document.getElementById('movBtnConfirm');
-  if (btnMovSave) btnMovSave.addEventListener('click', confirmarMovimiento);
+  if (btnMovSave) btnMovSave.addEventListener('click', function() {
+    // Bloqueo anti doble-click/doble-tap: evita registrar el mismo préstamo/abono dos veces.
+    if (btnMovSave.disabled) return;
+    btnMovSave.disabled = true;
+    try { confirmarMovimiento(); }
+    finally { setTimeout(() => { btnMovSave.disabled = false; }, 500); }
+  });
   const btnSpSave = document.getElementById('btn-guardar-spotify');
   if (btnSpSave) btnSpSave.addEventListener('click', addSpotify);
   const btnSpDest = document.getElementById('btn-confirmar-sp-destino');

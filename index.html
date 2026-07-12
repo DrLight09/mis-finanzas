@@ -5994,6 +5994,12 @@ function snapshotPatrimonio(){
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
   const val=calcPatrimonioTotal();
   if(val==null||isNaN(val))return;
+  // Alcancía: se resta para el valor "visible" del historial/gráfica de Análisis Financiero.
+  // El total real (val) sí la incluye y es el que usan el health score y la proyección,
+  // pero mostrar la serie cruda en la gráfica revelaría los depósitos día a día —
+  // rompiendo el propósito de "ocultar" el saldo (igual que ya hace el hero de Inicio).
+  const _alcSnap=(S.alcancia&&S.alcancia.saldoRegistrado)?S.alcancia.saldoRegistrado:0;
+  const valVisible=val-_alcSnap;
   // ¿Hoy se registró algún saldo inicial (cajita nueva, Nequi, Efectivo, cuenta personalizada)
   // o se corrigió uno existente? La app ya sabe distinguir esto vía tipo:'apertura' (ver
   // crearMovimientoApertura) y vía _ajustes (ver confirmarEditarApertura). Guardamos el
@@ -6013,10 +6019,11 @@ function snapshotPatrimonio(){
   const ultimo=S.patrimonioHistorial[S.patrimonioHistorial.length-1];
   if(ultimo&&ultimo.fecha===hoyStr){
     ultimo.valor=val;
+    ultimo.valorVisible=valVisible;
     if(montoAperturaHoy!==0)ultimo.montoBase=montoAperturaHoy; else delete ultimo.montoBase;
   }
   else{
-    const punto={fecha:hoyStr,valor:val};
+    const punto={fecha:hoyStr,valor:val,valorVisible:valVisible};
     if(montoAperturaHoy!==0)punto.montoBase=montoAperturaHoy;
     S.patrimonioHistorial.push(punto);
   }
@@ -6942,10 +6949,15 @@ function renderAnalisis(){
       // snapshotPatrimonio) y lo descontamos del valor, dejando solo el patrimonio
       // ganado/perdido realmente. Así la gráfica no muestra picos verticales falsos al
       // configurar una cuenta nueva, ni caídas falsas al corregir o borrar un saldo inicial.
+      // Usamos valorVisible (patrimonio sin alcancía) en vez de valor (total real),
+      // igual que hace el hero de Inicio, para no revelar los depósitos/saldo de la
+      // alcancía a través de los saltos de esta gráfica. Puntos viejos (guardados antes
+      // de este cambio) no tienen valorVisible — se usa valor como fallback razonable.
       let aperturaAcumulada = 0;
       const valsReales = hist.map(h => {
         aperturaAcumulada += (h.montoBase || 0);
-        return h.valor - aperturaAcumulada;
+        const base = (h.valorVisible!=null) ? h.valorVisible : h.valor;
+        return base - aperturaAcumulada;
       });
       const maxV=Math.max(...valsReales);
       const minV=Math.min(...valsReales);

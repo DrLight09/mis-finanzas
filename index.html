@@ -6597,6 +6597,12 @@ function refresh(){
   renderAttencion();
   renderCustomCuentasList();
   renderTCDashboard();
+  // FIX: faltaba acá — la pantalla de Tarjetas (renderTCScreen) solo se
+  // actualizaba al crear/editar/eliminar una tarjeta. Si Firestore traía
+  // los datos DESPUÉS de haber entrado a la pantalla (o mientras estaba
+  // abierta), se quedaba pegada mostrando el estado vacío ("$0 · Agregar
+  // tarjeta de crédito") hasta que alguna acción la forzara a redibujar.
+  if(typeof renderTCScreen==='function') renderTCScreen();
 }
 
 
@@ -18711,7 +18717,12 @@ function renderTCDashboard(){
           </div>
           ${tcs.length>1?`<div style="font-size:10px;color:var(--text3);margin-top:4px;">${escHtml(tcs.map(x=>x.nombre).join(', '))}</div>`:''}
         </div>`;
-      }).join('');
+      }).join('') || (tarjetas.some(tc=>(tc.deuda||0)>0)
+        ? `<div style="margin-top:10px;background:var(--bg3);border-radius:9px;padding:9px 12px;font-size:11px;color:var(--text3);display:flex;align-items:center;justify-content:space-between;gap:8px;">
+            <span>Vincula una cajita a tus tarjetas para ver si te alcanza cubrirlas.</span>
+            <button type="button" onclick="navTo('tarjetas')" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:10px;padding:3px 8px;cursor:pointer;white-space:nowrap;">Vincular</button>
+          </div>`
+        : '');
     })()}`;
 }
 

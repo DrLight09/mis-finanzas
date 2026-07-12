@@ -7381,19 +7381,24 @@ function confirmarCrearCDT(){
   if(new Date(vence+'T00:00:00')<=new Date(inicio+'T00:00:00')){toast('La fecha de vencimiento debe ser posterior a la apertura','err');return;}
   // Calcular saldo real incluyendo intereses sub-día (lo mismo que muestra el modal)
   const saldoReal=calcC(c).val;
-  if(monto>saldoReal){toast(`Saldo insuficiente. Solo tienes ${fmt(saldoReal)} en la cajita.`,'err');return;}
+  // Tolerancia de 1 centavo: fmtInput() redondea el saldo mostrado (p.ej. al usar
+  // "Invertir todo"), mientras que el saldo interno puede tener precisión de
+  // sub-centavo. Sin esta tolerancia, "invertir todo" podía fallar por diferencias
+  // de fracción de centavo que no son un déficit real.
+  if(monto>saldoReal+0.01){toast(`Saldo insuficiente. Solo tienes ${fmt(saldoReal)} en la cajita.`,'err');return;}
+  const montoFinal=Math.min(monto,saldoReal);
   // Materializar los intereses acumulados y descontar el monto del CDT
   c.saldo=saldoReal;
   c.fecha=hoy();
-  c.saldo=c.saldo-monto;
+  c.saldo=c.saldo-montoFinal;
   // Agregar CDT al array de CDTs de la cajita
   if(!c.cdts)c.cdts=[];
-  c.cdts.push({id:uid(),monto,tasa,rte,inicio,vence});
+  c.cdts.push({id:uid(),monto:montoFinal,tasa,rte,inicio,vence});
   save();
   closeSheet('crear-cdt');
   refresh();
-  if(window.logCambio)logCambio('Invertiste en un CDT en "'+c.nombre+'"',fmt(monto)+' al '+String(tasa).replace('.',',')+' % EA · vence '+vence,monto,'ahorro',c.id);
-  toast(`CDT creado por ${fmt(monto)} al ${String(tasa).replace('.',',')}% EA — se libera el ${vence}`,'ok',4000);
+  if(window.logCambio)logCambio('Invertiste en un CDT en "'+c.nombre+'"',fmt(montoFinal)+' al '+String(tasa).replace('.',',')+' % EA · vence '+vence,montoFinal,'ahorro',c.id);
+  toast(`CDT creado por ${fmt(montoFinal)} al ${String(tasa).replace('.',',')}% EA — se libera el ${vence}`,'ok',4000);
 }
 
 async function liberarCDTManual(cajitaId,cdtId){

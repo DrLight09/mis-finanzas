@@ -14903,6 +14903,20 @@ function _getEncargoSaldoPorCuenta(enc) {
     .sort((a,b) => b.saldo - a.saldo);
 }
 
+function _getEncargoSaldoSinCuenta(enc) {
+  // Cuánto del encargo NO está ligado a ninguna cuenta específica ("Sin especificar")
+  const cuentaIni = enc.cuentaInicial || '';
+  let saldo = 0;
+  if (enc.saldoInicial > 0 && !cuentaIni) saldo += enc.saldoInicial;
+  (enc.movimientos||[]).forEach(m => {
+    if (!m.cuenta) {
+      if (m.tipo === 'entrada') saldo += m.monto;
+      else saldo -= m.monto;
+    }
+  });
+  return saldo;
+}
+
 function _getEncargoSaldoEnCuenta(enc, cuentaVal) {
   const map = {};
   const cuentaIni = enc.cuentaInicial || '';
@@ -15341,23 +15355,30 @@ function abrirMoverEntreCuentasEncargo() {
 
   const fuentes = getFuentes();
   const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc); // [{cuenta, saldo}]
+  const saldoSinCuenta = _getEncargoSaldoSinCuenta(enc);
 
-  // Select origen: solo cuentas donde el encargo tiene plata
+  // Select origen: solo cuentas donde el encargo tiene plata (incluye "Sin especificar")
   const selOrigen = document.getElementById('moverenc_origen');
   const fuentesConSaldo = fuentes.filter(f => {
     const encargoEnCuenta = cuentasConSaldo.find(c => c.cuenta === f.val);
     return encargoEnCuenta && encargoEnCuenta.saldo > 0;
   });
-  selOrigen.innerHTML = '<option value="">Seleccionar cuenta origen</option>' +
-    fuentesConSaldo.map(f => {
-      const encargoEnCuenta = cuentasConSaldo.find(c => c.cuenta === f.val);
-      const saldoEnc = encargoEnCuenta.saldo;
-      return '<option value="' + f.val + '">' + f.label + ' (' + fmt(saldoEnc) + ' del encargo)</option>';
-    }).join('');
+  let origenOptsHtml = fuentesConSaldo.map(f => {
+    const encargoEnCuenta = cuentasConSaldo.find(c => c.cuenta === f.val);
+    const saldoEnc = encargoEnCuenta.saldo;
+    return '<option value="' + f.val + '">' + f.label + ' (' + fmt(saldoEnc) + ' del encargo)</option>';
+  }).join('');
+  if (saldoSinCuenta > 0) {
+    origenOptsHtml += '<option value="__sinesp__">Sin especificar (' + fmt(saldoSinCuenta) + ' del encargo)</option>';
+  }
+  selOrigen.innerHTML = '<option value="">Seleccionar cuenta origen</option>' + origenOptsHtml;
 
-  // Pre-seleccionar la cuenta con más saldo del encargo
+  // Pre-seleccionar la cuenta con más saldo del encargo (o "Sin especificar" si es lo único que hay)
   if (cuentasConSaldo.length > 0) {
     selOrigen.value = cuentasConSaldo[0].cuenta;
+    _actualizarMoverEncOrigenHint(enc);
+  } else if (saldoSinCuenta > 0) {
+    selOrigen.value = '__sinesp__';
     _actualizarMoverEncOrigenHint(enc);
   }
 
@@ -15391,9 +15412,9 @@ function _actualizarMoverEncOrigenHint(enc) {
   if (!hint) return;
   const val = sel.value;
   if (!val) { hint.textContent = ''; return; }
-  const cuentas = _getEncargoSaldoPorCuenta(enc);
-  const encontrada = cuentas.find(c => c.cuenta === val);
-  const saldoEnc = encontrada ? encontrada.saldo : 0;
+  const saldoEnc = val === '__sinesp__'
+    ? _getEncargoSaldoSinCuenta(enc)
+    : (_getEncargoSaldoPorCuenta(enc).find(c => c.cuenta === val)?.saldo || 0);
   hint.textContent = saldoEnc > 0
     ? 'Del encargo en esta cuenta: ' + fmt(saldoEnc)
     : 'El encargo no tiene plata en esta cuenta';
@@ -15422,8 +15443,10 @@ function _actualizarMoverEncPreview(enc) {
     return;
   }
   const cuentas = _getEncargoSaldoPorCuenta(enc);
-  const encontrada = cuentas.find(c => c.cuenta === origen);
-  const saldoEnOrigen = encontrada ? encontrada.saldo : 0;
+  const labelOrigen = origen === '__sinesp__' ? 'Sin especificar' : fuenteLabel(origen);
+  const saldoEnOrigen = origen === '__sinesp__'
+    ? _getEncargoSaldoSinCuenta(enc)
+    : (cuentas.find(c => c.cuenta === origen)?.saldo || 0);
   const excede = monto > saldoEnOrigen;
   const colorOrigen = excede ? 'var(--red)' : 'var(--amber)';
   const nuevoOrigen = saldoEnOrigen - monto;
@@ -15431,7 +15454,7 @@ function _actualizarMoverEncPreview(enc) {
   const saldoEnDestino = cuentaDestEnc ? cuentaDestEnc.saldo : 0;
   const nuevoDestino = saldoEnDestino + monto;
   prev.innerHTML =
-    '<span style="color:' + colorOrigen + ';">' + fuenteLabel(origen) + ' (encargo): ' + fmt(saldoEnOrigen) + ' → ' + fmt(nuevoOrigen) + '</span><br>' +
+    '<span style="color:' + colorOrigen + ';">' + labelOrigen + ' (encargo): ' + fmt(saldoEnOrigen) + ' → ' + fmt(nuevoOrigen) + '</span><br>' +
     '<span style="color:var(--blue);">' + fuenteLabel(destino) + ' (encargo): ' + fmt(saldoEnDestino) + ' → ' + fmt(nuevoDestino) + '</span>' +
     (excede ? '<br><span style="color:var(--red);font-size:10px;">Excede lo que el encargo tiene en esa cuenta</span>' : '');
 }
@@ -15450,12 +15473,15 @@ function confirmarMoverEncCuentas() {
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
 
-  // Verificar saldo del encargo en la cuenta origen
-  const cuentas = _getEncargoSaldoPorCuenta(enc);
-  const encontrada = cuentas.find(c => c.cuenta === origen);
-  const saldoEnOrigen = encontrada ? encontrada.saldo : 0;
+  const esOrigenSinEspecificar = origen === '__sinesp__';
+  const labelOrigen = esOrigenSinEspecificar ? 'Sin especificar' : fuenteLabel(origen);
+
+  // Verificar saldo del encargo en la cuenta origen (o en "Sin especificar")
+  const saldoEnOrigen = esOrigenSinEspecificar
+    ? _getEncargoSaldoSinCuenta(enc)
+    : (_getEncargoSaldoPorCuenta(enc).find(c => c.cuenta === origen)?.saldo || 0);
   if (monto > saldoEnOrigen) {
-    toast('El encargo solo tiene ' + fmt(saldoEnOrigen) + ' en ' + fuenteLabel(origen), 'err');
+    toast('El encargo solo tiene ' + fmt(saldoEnOrigen) + ' en ' + labelOrigen, 'err');
     return;
   }
 
@@ -15467,7 +15493,8 @@ function confirmarMoverEncCuentas() {
     tipo: 'salida',
     desc: 'Reubicación → ' + fuenteLabel(destino),
     monto,
-    cuenta: origen,
+    // Si el origen es "Sin especificar" se guarda sin cuenta (así lo interpreta el resto del sistema)
+    cuenta: esOrigenSinEspecificar ? '' : origen,
     fecha,
     nota: 'Movimiento interno entre cuentas',
     ts: Date.now()
@@ -15476,7 +15503,7 @@ function confirmarMoverEncCuentas() {
   enc.movimientos.push({
     id: uid(),
     tipo: 'entrada',
-    desc: 'Reubicación ← ' + fuenteLabel(origen),
+    desc: 'Reubicación ← ' + labelOrigen,
     monto,
     cuenta: destino,
     fecha,
@@ -15487,7 +15514,7 @@ function confirmarMoverEncCuentas() {
   save();
   closeSheet('mover-enc-cuentas');
   abrirEncargoDetalle(encargoActualId);
-  toast(fmt(monto) + ' reubicados de ' + fuenteLabel(origen) + ' a ' + fuenteLabel(destino), 'ok', 3500);
+  toast(fmt(monto) + ' reubicados de ' + labelOrigen + ' a ' + fuenteLabel(destino), 'ok', 3500);
 }
 
 // Listener para el botón confirmar

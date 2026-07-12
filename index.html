@@ -5935,39 +5935,41 @@ function _saldoCPAjeno(){
   return total;
 }
 
-// Calcula la deuda TC que realmente es mía
-// Excluye: encargos (cargo_encargo), plata comprometida (_desdeCP) y préstamos TC (cargo_prestamo)
-function calcDeudaTcPropia() {
-  let deudaAjena = 0;
-  // 1. Cargos de encargos y préstamos TC registrados en tcMovimientos
-  (S.tcMovimientos||[]).forEach(m => {
-    if (m.eliminado) return;
-    if (m.tipo === 'cargo_encargo' || m.tipo === 'cargo_prestamo') deudaAjena += (m.monto||0);
-  });
-  // 2. Compras de plata comprometida (_desdeCP en tc.compras)
-  (S.tarjetasCredito||[]).forEach(tc => {
-    (tc.compras||[]).forEach(c => { if (!c.eliminado && c._desdeCP) deudaAjena += (c.monto||0); });
-  });
-  const deudaTotal = (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
-  return Math.max(0, deudaTotal - deudaAjena);
-}
-
-// Igual que calcDeudaTcPropia() pero para UNA tarjeta puntual — la usa el
-// widget de cobertura de cajita, que necesita saber cuánto de la deuda de
-// esa tarjeta específica es realmente tuya (no de un encargo/préstamo/favor).
+// Deuda ajena de UNA tarjeta puntual — cuánto de tc.deuda es en realidad de
+// un encargo/préstamo/favor (plata que no es tuya, solo la estás cuidando).
+//
+// OJO: esto es un SALDO, no un bruto histórico. Si sumáramos todo lo que
+// alguna vez se cargó como ajeno sin restar los pagos, la "ajena" nunca
+// bajaría aunque ya la hayas pagado — y con el tiempo terminaría inflada
+// por encima de tc.deuda actual, haciendo que la parte "propia" calculada
+// diera 0 aunque tengas gastos tuyos reales sin cubrir.
+//
+// Regla de negocio: un pago cancela PRIMERO lo ajeno (es plata que se
+// recupera del encargo/préstamo y se usa específicamente para saldar esa
+// parte) y lo que sobra del pago cancela lo propio. Con esto la "ajena"
+// nunca puede superar la deuda actual, y calcDeudaTcPropiaDeTarjeta ya no
+// necesita un floor artificial en 0 para "resolver" el desbalance.
 function calcDeudaAjenaDeTarjeta(tc){
   if(!tc) return 0;
-  let deudaAjena = 0;
+  let ajenaBruta = 0;
   (S.tcMovimientos||[]).forEach(m => {
     if (m.eliminado || m.tcId !== tc.id) return;
-    if (m.tipo === 'cargo_encargo' || m.tipo === 'cargo_prestamo') deudaAjena += (m.monto||0);
+    if (m.tipo === 'cargo_encargo' || m.tipo === 'cargo_prestamo') ajenaBruta += (m.monto||0);
   });
-  (tc.compras||[]).forEach(c => { if (!c.eliminado && c._desdeCP) deudaAjena += (c.monto||0); });
-  return deudaAjena;
+  (tc.compras||[]).forEach(c => { if (!c.eliminado && c._desdeCP) ajenaBruta += (c.monto||0); });
+  const totalPagos = (tc.pagos||[]).filter(p=>!p.eliminado).reduce((a,p)=>a+(p.monto||0),0);
+  return Math.max(0, ajenaBruta - totalPagos);
 }
 function calcDeudaTcPropiaDeTarjeta(tc){
   if(!tc) return 0;
   return Math.max(0, (tc.deuda||0) - calcDeudaAjenaDeTarjeta(tc));
+}
+
+// Calcula la deuda TC que realmente es mía, sumando la parte propia de
+// cada tarjeta — una sola fuente de verdad (antes tenía su propio cálculo
+// bruto separado que se podía desincronizar de calcDeudaTcPropiaDeTarjeta).
+function calcDeudaTcPropia() {
+  return (S.tarjetasCredito||[]).reduce((a,tc)=>a+calcDeudaTcPropiaDeTarjeta(tc),0);
 }
 
 function calcPatrimonioTotal(){
@@ -19018,11 +19020,14 @@ function abrirDetalleTCSheet(tcId){
   const cajitaVinc = tc.cajitaId ? (S.cajitas||[]).find(c=>c.id===tc.cajitaId) : null;
   if(cajitaVinc){
     // Otras tarjetas que comparten la misma cajita también cuentan para la cobertura.
+    // Deuda TOTAL (no solo la propia): el banco cobra el 100% del corte sin importar
+    // si una parte viene de un encargo/préstamo — la cajita necesita cubrir la plata
+    // física, no la titularidad (la separación propia/ajena solo aplica al patrimonio).
     const tarjetasEnCajita=(S.tarjetasCredito||[]).filter(x=>x.cajitaId===cajitaVinc.id);
-    const deudaPropiaTotal=tarjetasEnCajita.reduce((a,x)=>a+calcDeudaTcPropiaDeTarjeta(x),0);
+    const deudaGrupoTotal=tarjetasEnCajita.reduce((a,x)=>a+(x.deuda||0),0);
     const saldoCajita=calcC(cajitaVinc).val;
-    const pct=deudaPropiaTotal>0?Math.min(100,Math.round(saldoCajita/deudaPropiaTotal*100)):100;
-    const cubre=saldoCajita>=deudaPropiaTotal;
+    const pct=deudaGrupoTotal>0?Math.min(100,Math.round(saldoCajita/deudaGrupoTotal*100)):100;
+    const cubre=saldoCajita>=deudaGrupoTotal;
     const colorEstado=cubre?'var(--accent)':(pct>=50?'var(--amber)':'var(--red)');
     const compartidaMsg=tarjetasEnCajita.length>1
       ? `Compartida con: ${tarjetasEnCajita.filter(x=>x.id!==tc.id).map(x=>x.nombre).join(', ')}.`
@@ -19032,7 +19037,7 @@ function abrirDetalleTCSheet(tcId){
         <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;">Cobertura desde "${escHtml(cajitaVinc.nombre)}"</div>
         <span style="font-size:10px;font-weight:700;color:${colorEstado};font-family:'DM Mono',monospace;">${cubre?'Cubre todo':pct+'%'}</span>
       </div>
-      <div style="font-size:12px;color:var(--text2);">Saldo en la cajita: <b>${fmt(saldoCajita)}</b> · Deuda propia a cubrir: <b>${fmt(deudaPropiaTotal)}</b></div>
+      <div style="font-size:12px;color:var(--text2);">Saldo en la cajita: <b>${fmt(saldoCajita)}</b> · Deuda a cubrir: <b>${fmt(deudaGrupoTotal)}</b></div>
       ${compartidaMsg?`<div style="font-size:10px;color:var(--text3);margin-top:4px;">${compartidaMsg}</div>`:''}
     </div>`;
   } else if(tc.cajitaId){

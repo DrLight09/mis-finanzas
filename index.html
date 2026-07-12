@@ -5952,6 +5952,24 @@ function calcDeudaTcPropia() {
   return Math.max(0, deudaTotal - deudaAjena);
 }
 
+// Igual que calcDeudaTcPropia() pero para UNA tarjeta puntual — la usa el
+// widget de cobertura de cajita, que necesita saber cuánto de la deuda de
+// esa tarjeta específica es realmente tuya (no de un encargo/préstamo/favor).
+function calcDeudaAjenaDeTarjeta(tc){
+  if(!tc) return 0;
+  let deudaAjena = 0;
+  (S.tcMovimientos||[]).forEach(m => {
+    if (m.eliminado || m.tcId !== tc.id) return;
+    if (m.tipo === 'cargo_encargo' || m.tipo === 'cargo_prestamo') deudaAjena += (m.monto||0);
+  });
+  (tc.compras||[]).forEach(c => { if (!c.eliminado && c._desdeCP) deudaAjena += (c.monto||0); });
+  return deudaAjena;
+}
+function calcDeudaTcPropiaDeTarjeta(tc){
+  if(!tc) return 0;
+  return Math.max(0, (tc.deuda||0) - calcDeudaAjenaDeTarjeta(tc));
+}
+
 function calcPatrimonioTotal(){
   const nu=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
@@ -7303,10 +7321,17 @@ async function deleteCajita(id){
     await dialogo('No se puede eliminar','Para eliminar esta cajita primero debes retirar todo el dinero. Saldo actual: '+fmt(saldoActual)+'.','Entendido',false);
     return;
   }
-  const ok=await dialogo('Eliminar cajita','¿Seguro que quieres eliminar "'+c.nombre+'"? Esta acción no se puede deshacer.','Eliminar',true);
+  const tcVinculadas=(S.tarjetasCredito||[]).filter(x=>x.cajitaId===id);
+  const msgCajita='¿Seguro que quieres eliminar "'+c.nombre+'"? Esta acción no se puede deshacer.'
+    +(tcVinculadas.length?' '+(tcVinculadas.length===1?'La tarjeta "'+tcVinculadas[0].nombre+'" está':'Las tarjetas '+tcVinculadas.map(x=>'"'+x.nombre+'"').join(', ')+' están')+' vinculada'+(tcVinculadas.length===1?'':'s')+' a esta cajita para su pago y quedará'+(tcVinculadas.length===1?'':'n')+' sin cajita asignada.':'');
+  const ok=await dialogo('Eliminar cajita',msgCajita,'Eliminar',true);
   if(!ok)return;
   const nombreEl=c.nombre;
-  S.cajitas=(S.cajitas||[]).filter(x=>x.id!==id);save();refresh();
+  S.cajitas=(S.cajitas||[]).filter(x=>x.id!==id);
+  // Desvincular tarjetas que pagaban desde esta cajita — sin esto quedaban
+  // apuntando a una cajita fantasma (mismo espíritu que eliminarTC con tcMovimientos).
+  if(tcVinculadas.length) tcVinculadas.forEach(x=>{x.cajitaId=null;});
+  save();refresh();
   toast('Cajita eliminada','info');
   if(window.logCambio)logCambio('Eliminaste cajita "'+nombreEl+'"','',0,'eliminar');
 }
@@ -18028,6 +18053,15 @@ if ('serviceWorker' in navigator) {
         <div class="ig"><label class="il" for="tc_cupo">Cupo total</label><input
             type="text" inputmode="decimal"
             id="tc_cupo" placeholder="0,00" class="money-input"></div>
+        <div class="ig"><label class="il" for="tc_cajita_vinculada">Cajita para
+            pagarla <span
+              style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label>
+          <div class="select-wrap"><select id="tc_cajita_vinculada">
+              <option value="">Ninguna</option>
+            </select></div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px;">Varias
+            tarjetas pueden compartir la misma cajita.</div>
+        </div>
         <div class="ig" id="tc-deuda-ini-grupo"><label class="il"
             for="tc_deuda_ini">Deuda actual <span
               style="font-size:10px;color:var(--text3);font-weight:400;">(si ya
@@ -18418,6 +18452,18 @@ function tcEliminarPagoInterna(tc,pagoId){
 }
 
 // ── Nueva / editar tarjeta ────────────────────────────────────────
+// Repuebla el <select> de cajita vinculada cada vez que se abre el form,
+// por si el usuario creó/eliminó cajitas desde la última vez.
+function _tcPoblarSelectCajita(selectedId){
+  const sel=document.getElementById('tc_cajita_vinculada');
+  if(!sel)return;
+  const opciones=(S.cajitas||[]).map(c=>`<option value="${c.id}">${escHtml(c.nombre)}</option>`).join('');
+  sel.innerHTML=`<option value="">Ninguna</option>${opciones}`;
+  // Si la cajita guardada ya no existe (fue eliminada), selectedId no matchea
+  // ninguna <option> y el select cae solo en "Ninguna" — no rompe nada.
+  sel.value=selectedId||'';
+}
+
 function abrirNuevaTarjeta(){
   _tcEditId=null;
   document.getElementById('tc-form-title').textContent='Nueva tarjeta de crédito';
@@ -18428,6 +18474,7 @@ function abrirNuevaTarjeta(){
   document.getElementById('tc_deuda_ini').value='';
   document.getElementById('tc-deuda-ini-grupo').style.display='';
   document.getElementById('tc-estado-grupo').style.display='none';
+  _tcPoblarSelectCajita(null);
   tcSelColor(null);
   document.getElementById('btn-guardar-tc').textContent='Guardar tarjeta';
   openSheet('nueva-tc');
@@ -18446,6 +18493,7 @@ function abrirEditarTC(id){
   document.getElementById('tc-deuda-ini-grupo').style.display='none';
   document.getElementById('tc_estado').value=tc.estado||'activa';
   document.getElementById('tc-estado-grupo').style.display='';
+  _tcPoblarSelectCajita(tc.cajitaId||null);
   tcSelColor(tc.color||null);
   document.getElementById('btn-guardar-tc').textContent='Guardar cambios';
   openSheet('nueva-tc');
@@ -18464,6 +18512,8 @@ function guardarTC(){
   const banco=document.getElementById('tc_banco').value.trim();
   const franquicia=document.getElementById('tc_franquicia').value;
   const cupo=parseMoney(document.getElementById('tc_cupo').value)||0;
+  const cajitaSel=document.getElementById('tc_cajita_vinculada');
+  const cajitaId=cajitaSel&&cajitaSel.value?cajitaSel.value:null;
   if(!S.tarjetasCredito)S.tarjetasCredito=[];
   if(_tcEditId){
     const tc=getTCById(_tcEditId);
@@ -18473,6 +18523,7 @@ function guardarTC(){
       tc.franquicia=franquicia;
       tc.cupo=cupo;
       tc.color=_tcColorSel;
+      tc.cajitaId=cajitaId;
       const estadoSel=document.getElementById('tc_estado');
       if(estadoSel&&TC_ESTADOS[estadoSel.value]) tc.estado=estadoSel.value;
       tcRecalcular(tc);
@@ -18482,7 +18533,7 @@ function guardarTC(){
     const deudaIni=parseMoney(document.getElementById('tc_deuda_ini').value)||0;
     const nuevo={
       id:uid(),nombre,banco,franquicia,color:_tcColorSel,
-      cupo,deuda:0,estado:'activa',
+      cupo,deuda:0,estado:'activa',cajitaId,
       saldoInicial:deudaIni>0?{id:uid(),monto:deudaIni,fecha:hoy(),nota:'Saldo inicial',eliminado:false}:null,
       compras:[],pagos:[],
       creadoEn:hoy()
@@ -18847,6 +18898,36 @@ function abrirDetalleTCSheet(tcId){
       <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;">${fmt(totalMes)}</div>
     </div>
   </div>`;
+
+  // ── Widget de cobertura: ¿la cajita vinculada te alcanza para pagar? ──
+  // Si tc.cajitaId apunta a una cajita que ya no existe (la borraron), el
+  // find() no encuentra nada y simplemente no se muestra el widget — no rompe.
+  const cajitaVinc = tc.cajitaId ? (S.cajitas||[]).find(c=>c.id===tc.cajitaId) : null;
+  if(cajitaVinc){
+    // Otras tarjetas que comparten la misma cajita también cuentan para la cobertura.
+    const tarjetasEnCajita=(S.tarjetasCredito||[]).filter(x=>x.cajitaId===cajitaVinc.id);
+    const deudaPropiaTotal=tarjetasEnCajita.reduce((a,x)=>a+calcDeudaTcPropiaDeTarjeta(x),0);
+    const saldoCajita=calcC(cajitaVinc).val;
+    const pct=deudaPropiaTotal>0?Math.min(100,Math.round(saldoCajita/deudaPropiaTotal*100)):100;
+    const cubre=saldoCajita>=deudaPropiaTotal;
+    const colorEstado=cubre?'var(--accent)':(pct>=50?'var(--amber)':'var(--red)');
+    const compartidaMsg=tarjetasEnCajita.length>1
+      ? `Compartida con: ${tarjetasEnCajita.filter(x=>x.id!==tc.id).map(x=>x.nombre).join(', ')}.`
+      : '';
+    html+=`<div style="background:var(--bg3);border-radius:9px;padding:11px 12px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;">Cobertura desde "${escHtml(cajitaVinc.nombre)}"</div>
+        <span style="font-size:10px;font-weight:700;color:${colorEstado};font-family:'DM Mono',monospace;">${cubre?'Cubre todo':pct+'%'}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);">Saldo en la cajita: <b>${fmt(saldoCajita)}</b> · Deuda propia a cubrir: <b>${fmt(deudaPropiaTotal)}</b></div>
+      ${compartidaMsg?`<div style="font-size:10px;color:var(--text3);margin-top:4px;">${compartidaMsg}</div>`:''}
+    </div>`;
+  } else if(tc.cajitaId){
+    // Tenía una cajita vinculada pero ya no existe (fue eliminada).
+    html+=`<div style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--amber);">
+      La cajita que tenías vinculada para pagar esta tarjeta ya no existe. Podés vincular una nueva desde "Editar tarjeta".
+    </div>`;
+  }
 
   const itemsLinea=[
     ...(tc.saldoInicial&&!tc.saldoInicial.eliminado?[{_tipo:'saldo_inicial',...tc.saldoInicial}]:[]),

@@ -18674,7 +18674,45 @@ function renderTCDashboard(){
     <span>Tarjetas de crédito</span>
     <button type="button" onclick="navTo('tarjetas')" style="background:none;border:1px solid rgba(240,104,104,.35);border-radius:7px;color:var(--red);font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;">Ver todo</button>
   </div>
-    <div class="card" style="padding:4px 15px 2px;">${items}</div>`;
+    <div class="card" style="padding:4px 15px 2px;">${items}</div>
+    ${(()=>{
+      // Agrupa las tarjetas por cajita vinculada (tc.cajitaId) — puede haber
+      // varios grupos si distintas tarjetas pagan desde cajitas distintas.
+      const grupos=new Map();
+      tarjetas.forEach(tc=>{
+        if(!tc.cajitaId) return;
+        const cajita=(S.cajitas||[]).find(c=>c.id===tc.cajitaId);
+        if(!cajita) return; // cajita eliminada — se ignora acá, el aviso vive en el detalle de la TC
+        if(!grupos.has(cajita.id)) grupos.set(cajita.id,{cajita,tcs:[]});
+        grupos.get(cajita.id).tcs.push(tc);
+      });
+      return [...grupos.values()].map(({cajita,tcs})=>{
+        // Deuda PROPIA (no la de encargos/préstamos/favores que te va a pagar otro)
+        const deudaGrupo=tcs.reduce((a,x)=>a+calcDeudaTcPropiaDeTarjeta(x),0);
+        if(!deudaGrupo) return '';
+        const saldoCajita=calcC(cajita).val;
+        const diferencia=saldoCajita-deudaGrupo;
+        const alcanza=diferencia>=0;
+        const color=alcanza?'var(--accent)':'var(--amber)';
+        const bg=alcanza?'rgba(200,240,96,.08)':'rgba(240,184,64,.08)';
+        const borderC=alcanza?'rgba(200,240,96,.25)':'rgba(240,184,64,.25)';
+        const pct=deudaGrupo>0?Math.min(100,Math.round(saldoCajita/deudaGrupo*100)):100;
+        const etiqueta=tcs.length>1?'estas tarjetas':'la deuda';
+        return `<div style="margin-top:10px;background:${bg};border:1px solid ${borderC};border-radius:9px;padding:10px 12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="font-size:10px;color:${color};text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12" style="vertical-align:middle;margin-right:3px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Cajita ${escHtml(cajita.nombre)}</div>
+            <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${color};">${fmt(saldoCajita)}</div>
+          </div>
+          <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:6px;">
+            <div style="height:100%;width:${pct}%;background:${color};border-radius:2px;transition:width .4s;"></div>
+          </div>
+          <div style="font-size:11px;font-family:'DM Mono',monospace;color:${color};">
+            ${alcanza?'<i class="fa-solid fa-check" style="margin-right:4px;"></i>Tienes para cubrir '+etiqueta+' · Te sobra '+fmt(diferencia):'Faltan '+fmt(-diferencia)+' para cubrir '+etiqueta+' ('+pct+'% cubierto)'}
+          </div>
+          ${tcs.length>1?`<div style="font-size:10px;color:var(--text3);margin-top:4px;">${escHtml(tcs.map(x=>x.nombre).join(', '))}</div>`:''}
+        </div>`;
+      }).join('');
+    })()}`;
 }
 
 // ── Registrar compra en TC ────────────────────────────────────────

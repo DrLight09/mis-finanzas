@@ -3932,13 +3932,30 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                     encargo</option></select></div>
             </div>
             <div class="ig" id="mov_enc_cuenta_wrap" style="display:none;">
-              <label class="il" for="mov_enc_cuenta">¿De qué cuenta del encargo
-                sale?</label>
-              <div class="select-wrap"><select id="mov_enc_cuenta"
-                  onchange="onChangeMov_enc_cuenta()"><option value>Sin
-                    especificar</option></select></div>
-              <div id="mov_enc_cuenta_hint" class="field-hint field-hint-blue"
-                style="display:none;"></div>
+              <div class="field-header">
+                <label class="il" for="mov_enc_cuenta" style="margin-bottom:0;">¿De
+                  qué cuenta del encargo sale?</label>
+                <button type="button" id="mov_enc_cuenta_split_toggle"
+                  onclick="_abonoEncCuentaSplitToggle()"
+                  class="btn-split">Dividir ÷</button>
+              </div>
+              <!-- Modo simple -->
+              <div id="mov_enc_cuenta_simple">
+                <div class="select-wrap"><select id="mov_enc_cuenta"
+                    onchange="onChangeMov_enc_cuenta()"><option value>Sin
+                      especificar</option></select></div>
+                <div id="mov_enc_cuenta_hint" class="field-hint field-hint-blue"
+                  style="display:none;"></div>
+              </div>
+              <!-- Modo dividido: la plata sale de varias cuentas del encargo -->
+              <div id="mov_enc_cuenta_split" style="display:none;">
+                <div id="mov_enc_cuenta_split_rows"></div>
+                <button type="button" onclick="_abonoEncCuentaAgregarSplitRow()"
+                  class="btn-add-cuenta" style="margin-bottom:4px;">+ Agregar
+                  cuenta</button>
+                <div id="mov_enc_cuenta_split_resumen"
+                  style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:16px;"></div>
+              </div>
             </div>
             <div id="mov_enc_saldo_preview"
               style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:16px;"></div>
@@ -8627,10 +8644,13 @@ async function eliminarMovDeudor(deudorId, movId) {
   } else {
     // Era un abono: plata entró al destino → quitar
     if (m._viaEncargo && m._encId && m._encMovId) {
-      // Abono vía encargo: revertir la salida del encargo (abono principal y extra si hubo)
+      // Abono vía encargo: revertir la salida del encargo (abono principal y extra si hubo).
+      // Si el abono salió de varias cuentas del encargo (_encMovIds), hay que
+      // eliminar TODAS esas salidas, no solo la primera.
       const enc = (S.encargos || []).find(e => e.id === m._encId);
       if (enc) {
-        enc.movimientos = (enc.movimientos || []).filter(x => x.id !== m._encMovId);
+        const idsAEliminar = (m._encMovIds && m._encMovIds.length) ? m._encMovIds : [m._encMovId];
+        enc.movimientos = (enc.movimientos || []).filter(x => !idsAEliminar.includes(x.id));
         // Si el abono tenía extra, también eliminar su salida del encargo
         if (m._encExtraMovId) {
           enc.movimientos = (enc.movimientos || []).filter(x => x.id !== m._encExtraMovId);
@@ -8777,6 +8797,15 @@ function initMovSheet(tipo) {
   _abonoDesdeEncargo = false;
   _abonoEncId = '';
   _abonoEncCuenta = '';
+  _abonoEncCuentaSplitMode = false;
+  const encCuentaSimpleReset = document.getElementById('mov_enc_cuenta_simple');
+  const encCuentaSplitReset  = document.getElementById('mov_enc_cuenta_split');
+  const encCuentaSplitRowsReset = document.getElementById('mov_enc_cuenta_split_rows');
+  const encCuentaSplitToggleReset = document.getElementById('mov_enc_cuenta_split_toggle');
+  if (encCuentaSimpleReset) encCuentaSimpleReset.style.display = '';
+  if (encCuentaSplitReset)  encCuentaSplitReset.style.display = 'none';
+  if (encCuentaSplitRowsReset) encCuentaSplitRowsReset.innerHTML = '';
+  if (encCuentaSplitToggleReset) encCuentaSplitToggleReset.textContent = 'Dividir ÷';
   const encWrap = document.getElementById('mov_enc_wrap');
   const encChk  = document.getElementById('mov_desde_encargo');
   const encBody = document.getElementById('mov_enc_body');
@@ -8855,7 +8884,28 @@ function confirmarMovimiento() {
       if (monto > saldoTotal + 0.5) {
         toast(`El encargo solo tiene ${fmt(saldoTotal)} disponible`, 'err'); return;
       }
-      if (_abonoEncCuenta) {
+
+      // ── ¿La plata del encargo sale de VARIAS cuentas a la vez? ──────────
+      let _abonoEncCuentaSplits = null;
+      if (_abonoEncCuentaSplitMode) {
+        const splits = _getAbonoEncCuentaSplitData().filter(s => s.fuente && s.monto > 0);
+        if (!splits.length) { toast('Agrega al menos una cuenta del encargo con monto', 'err'); return; }
+        const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
+        if (Math.abs(totalSplit - monto) > 1) {
+          toast(`La suma de las cuentas del encargo (${fmt(totalSplit)}) no coincide con el pago (${fmt(monto)})`, 'err', 4000);
+          return;
+        }
+        // Sumar por cuenta (por si repitió la misma cuenta en dos filas) y validar saldo
+        const porCuenta = {};
+        splits.forEach(s => { porCuenta[s.fuente] = (porCuenta[s.fuente] || 0) + s.monto; });
+        for (const cuenta in porCuenta) {
+          const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuenta);
+          if (porCuenta[cuenta] > saldoEnCuenta + 0.5) {
+            toast(`En ${fuenteLabel(cuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+          }
+        }
+        _abonoEncCuentaSplits = Object.entries(porCuenta).map(([fuente, monto]) => ({ fuente, monto }));
+      } else if (_abonoEncCuenta) {
         const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
         if (monto > saldoEnCuenta + 0.5) {
           toast(`En ${fuenteLabel(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
@@ -8896,21 +8946,49 @@ function confirmarMovimiento() {
         }
       }
 
-      // 1. Registrar salida del abono en el encargo (descuenta su saldo)
-      const encMovId = uid();
+      // 1. Registrar salida del abono en el encargo (descuenta su saldo).
+      // Si sale de varias cuentas del encargo a la vez, se registra un
+      // movimiento de salida POR CADA cuenta (mismo _grupoAbonoId) — así el
+      // saldo por cuenta del encargo cuadra y el conjunto se puede revertir
+      // o eliminar como una sola unidad.
       if (!enc.movimientos) enc.movimientos = [];
-      enc.movimientos.push({
-        id: encMovId,
-        tipo: 'salida',
-        monto,
-        cuenta: _abonoEncCuenta || '',
-        desc: `Pago de deuda — ${d.nombre}`,
-        fecha,
-        nota,
-        ts: Date.now(),
-        _esAbonoDeudor: true,
-        _deudorId: deudorActualId
-      });
+      let encMovId, encMovIds;
+      if (_abonoEncCuentaSplits) {
+        const grupoAbonoId = uid();
+        encMovIds = _abonoEncCuentaSplits.map(s => {
+          const id = uid();
+          enc.movimientos.push({
+            id,
+            tipo: 'salida',
+            monto: s.monto,
+            cuenta: s.fuente,
+            desc: `Pago de deuda — ${d.nombre}`,
+            fecha,
+            nota,
+            ts: Date.now(),
+            _esAbonoDeudor: true,
+            _deudorId: deudorActualId,
+            _grupoAbonoId: grupoAbonoId
+          });
+          return id;
+        });
+        encMovId = encMovIds[0];
+      } else {
+        encMovId = uid();
+        encMovIds = [encMovId];
+        enc.movimientos.push({
+          id: encMovId,
+          tipo: 'salida',
+          monto,
+          cuenta: _abonoEncCuenta || '',
+          desc: `Pago de deuda — ${d.nombre}`,
+          fecha,
+          nota,
+          ts: Date.now(),
+          _esAbonoDeudor: true,
+          _deudorId: deudorActualId
+        });
+      }
 
       // 2. Leer destino (el dinero llega a una cuenta del usuario)
       let abonoDestino = '';
@@ -8932,6 +9010,7 @@ function confirmarMovimiento() {
           _encId: enc.id,
           _encNombre: enc.nombre,
           _encMovId: encMovId,
+          _encMovIds: encMovIds,
           ts: Date.now()
         });
       } else {
@@ -8975,6 +9054,7 @@ function confirmarMovimiento() {
           _encId: enc.id,
           _encNombre: enc.nombre,
           _encMovId: encMovId,
+          _encMovIds: encMovIds,
           _abonoDestinoMovId: abonoDestinoMovId,
           ts: Date.now()
         });
@@ -9209,6 +9289,11 @@ function toggleDesdeEncargo() {
   if (!_abonoDesdeEncargo) {
     _abonoEncId = '';
     _abonoEncCuenta = '';
+    _abonoEncCuentaSplitMode = false;
+    document.getElementById('mov_enc_cuenta_simple').style.display = '';
+    document.getElementById('mov_enc_cuenta_split').style.display = 'none';
+    document.getElementById('mov_enc_cuenta_split_rows').innerHTML = '';
+    document.getElementById('mov_enc_cuenta_split_toggle').textContent = 'Dividir ÷';
     document.getElementById('mov_enc_saldo_preview').textContent = '';
     document.getElementById('mov_enc_cuenta_wrap').style.display = 'none';
     return;
@@ -9258,6 +9343,16 @@ function onChangeMov_enc_sel() {
   const sel = document.getElementById('mov_enc_sel');
   _abonoEncId = sel.value;
   _abonoEncCuenta = '';
+  // Cambiar de encargo invalida cualquier división que hubiera armado antes
+  _abonoEncCuentaSplitMode = false;
+  const splitSimpleEl = document.getElementById('mov_enc_cuenta_simple');
+  const splitDivEl    = document.getElementById('mov_enc_cuenta_split');
+  const splitRowsEl   = document.getElementById('mov_enc_cuenta_split_rows');
+  const splitToggleEl = document.getElementById('mov_enc_cuenta_split_toggle');
+  if (splitSimpleEl) splitSimpleEl.style.display = '';
+  if (splitDivEl)    splitDivEl.style.display = 'none';
+  if (splitRowsEl)   splitRowsEl.innerHTML = '';
+  if (splitToggleEl) splitToggleEl.textContent = 'Dividir ÷';
   const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null;
   const cuentaWrap = document.getElementById('mov_enc_cuenta_wrap');
   const preview    = document.getElementById('mov_enc_saldo_preview');
@@ -9269,6 +9364,8 @@ function onChangeMov_enc_sel() {
   }
   // Poblar cuentas del encargo con saldo
   const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
+  // Solo tiene sentido "dividir" si la plata del encargo está repartida en 2+ cuentas
+  if (splitToggleEl) splitToggleEl.style.display = cuentasConSaldo.length >= 2 ? '' : 'none';
   if (cuentasConSaldo.length === 0) {
     if (cuentaWrap) cuentaWrap.style.display = 'none';
     if (preview) {
@@ -9327,6 +9424,7 @@ function _onMovMontoInput() {
     const enc = (S.encargos || []).find(e => e.id === _abonoEncId);
     if (enc) _actualizarEncPreview(enc);
   }
+  if (_abonoEncCuentaSplitMode) _abonoEncCuentaSplitPreview();
 }
 
 // ── ABONO: split destino + extra ───────────────────────────────────────────
@@ -10289,6 +10387,56 @@ function splitGetData(instId){
 function splitPreview(instId){
   const cfg = _splitInstancias[instId]; if(!cfg) return;
   cfg.onPreview && cfg.onPreview();
+}
+
+/* ── ABONO desde encargo: dividir entre VARIAS cuentas del encargo ──────────
+   (ej: el encargo tiene 400mil en Nequi y 100mil en efectivo, y el abono de
+   500mil sale de ambas a la vez). Reutiliza el motor genérico de splits. ── */
+let _abonoEncCuentaSplitMode = false;
+
+crearSplitWidget('abonoEncCuenta', {
+  simpleId: 'mov_enc_cuenta_simple', splitId: 'mov_enc_cuenta_split',
+  toggleId: 'mov_enc_cuenta_split_toggle', rowsId: 'mov_enc_cuenta_split_rows',
+  getModo: () => _abonoEncCuentaSplitMode, setModo: v => { _abonoEncCuentaSplitMode = v; },
+  getFuentesFn: _getAbonoEncCuentaFuentesOptions,
+  onPreview: _abonoEncCuentaSplitPreview
+});
+
+function _abonoEncCuentaSplitToggle() { splitToggle('abonoEncCuenta'); }
+function _abonoEncCuentaAgregarSplitRow() { splitAgregarRow('abonoEncCuenta'); }
+function _getAbonoEncCuentaSplitData() { return splitGetData('abonoEncCuenta'); }
+
+function _getAbonoEncCuentaFuentesOptions(selectedVal) {
+  const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null;
+  const cuentasConSaldo = enc ? _getEncargoSaldoPorCuenta(enc) : [];
+  return buildFuentesOptsHtml({ selectedVal, mostrarSaldo: true, fuentesCustom: cuentasConSaldo });
+}
+
+function _abonoEncCuentaSplitPreview() {
+  const el = document.getElementById('mov_enc_cuenta_split_resumen');
+  if (!el) return;
+  const monto = parseMoney(document.getElementById('mov_monto').value) || 0;
+  const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null;
+  const splits = _getAbonoEncCuentaSplitData();
+  if (!splits.length) { el.textContent = ''; return; }
+  const total = splits.reduce((a, s) => a + (s.monto || 0), 0);
+  const restante = monto - total;
+  const lines = splits.map(s => `${s.fuente ? fuenteLabel(s.fuente) : 'Sin esp.'}: ${fmt(s.monto)}`).join(' · ');
+
+  // Validar que ninguna cuenta del encargo se pase de lo que tiene guardado
+  let excedeCuenta = false;
+  if (enc) {
+    const porCuenta = {};
+    splits.forEach(s => { if (s.fuente) porCuenta[s.fuente] = (porCuenta[s.fuente] || 0) + s.monto; });
+    for (const cuenta in porCuenta) {
+      if (porCuenta[cuenta] > _getEncargoSaldoEnCuenta(enc, cuenta) + 0.5) { excedeCuenta = true; break; }
+    }
+  }
+
+  if (excedeCuenta) { el.innerHTML = lines + ' · <span style="color:var(--red);">excede el saldo de esa cuenta</span>'; el.style.color = 'var(--red)'; }
+  else if (Math.abs(restante) < 1) { el.innerHTML = lines + ' &#x2713;'; el.style.color = 'var(--accent)'; }
+  else if (restante > 0) { el.innerHTML = lines + ` · Sin asignar: ${fmt(restante)}`; el.style.color = 'var(--amber)'; }
+  else { el.innerHTML = lines + ` · Excede: ${fmt(-restante)}`; el.style.color = 'var(--red)'; }
 }
 
 let mpSplitMode=false;
@@ -15081,8 +15229,15 @@ async function deleteMovEncargo(encId, movId) {
   if (mov && mov._esAbonoDeudor && mov._deudorId) {
     const d = (S.deudores || []).find(x => x.id === mov._deudorId);
     if (d) {
-      // Eliminar el abono correspondiente del deudor (vinculado por _encMovId)
-      d.movimientos = (d.movimientos || []).filter(x => !(x._viaEncargo && x._encMovId === movId));
+      // Eliminar el abono correspondiente del deudor (vinculado por _encMovId,
+      // o por _encMovIds si el pago salió de varias cuentas del encargo)
+      d.movimientos = (d.movimientos || []).filter(x => !(x._viaEncargo && (x._encMovId === movId || (x._encMovIds && x._encMovIds.includes(movId)))));
+    }
+    // Si este pago salió de varias cuentas del encargo (mismo _grupoAbonoId),
+    // borrar TODAS esas salidas ahora — no solo la que el usuario clickeó —
+    // para no dejar un pago "a medias" repartido entre cuentas.
+    if (mov._grupoAbonoId) {
+      enc.movimientos = (enc.movimientos || []).filter(x => x._grupoAbonoId !== mov._grupoAbonoId);
     }
   }
 

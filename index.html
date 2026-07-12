@@ -18739,8 +18739,10 @@ function renderTCDashboard(){
       const bloquesFull=[];
       const lineasOk=[];
       grupos.forEach(({cajita,tcs})=>{
-        // Deuda PROPIA (no la de encargos/préstamos/favores que te va a pagar otro)
-        const deudaGrupo=tcs.reduce((a,x)=>a+calcDeudaTcPropiaDeTarjeta(x),0);
+        // Deuda TOTAL (no solo la propia): el banco cobra el 100% del corte sin
+        // importar si una parte viene de un encargo/préstamo que te van a pagar
+        // después — la cajita necesita cubrir la plata física, no la titularidad.
+        const deudaGrupo=tcs.reduce((a,x)=>a+(x.deuda||0),0);
         if(!deudaGrupo) return;
         const saldoCajita=calcC(cajita).val;
         const diferencia=saldoCajita-deudaGrupo;

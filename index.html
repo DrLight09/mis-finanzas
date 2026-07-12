@@ -6984,7 +6984,7 @@ function renderAnalisis(){
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
           <div>
             <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;">Últimos ${hist.length} días</div>
-            <div style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;margin-top:2px;">${fmt(ultimo2.valor)}</div>
+            <div style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;margin-top:2px;">${fmt(ultimo2.valorVisible!=null?ultimo2.valorVisible:ultimo2.valor)}</div>
           </div>
           <div style="text-align:right;">
             <div style="font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:${diffColor};">${diffTotal>=0?'+':''}${fmt(diffTotal)}</div>
@@ -7005,7 +7005,7 @@ function renderAnalisis(){
             <line id="_pat-line" x1="0" y1="0" x2="0" y2="${H}" stroke="${diffColor}" stroke-width="1" stroke-dasharray="3,3" opacity="0" style="pointer-events:none;"/>
           </svg>
           <div id="_pat-tt" style="display:none;position:absolute;top:0;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:8px 12px;font-family:'DM Mono',monospace;pointer-events:none;z-index:50;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.8);transform:translateX(-50%);"></div>
-          <div id="_pat-overlay" style="position:absolute;inset:0;cursor:crosshair;" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:valsReales[i],valorReal:hist[i].valor})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
+          <div id="_pat-overlay" style="position:absolute;inset:0;cursor:crosshair;" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:valsReales[i],valorReal:(hist[i].valorVisible!=null?hist[i].valorVisible:hist[i].valor)})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:4px;">
           <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${primero.fecha.slice(5)}</span>

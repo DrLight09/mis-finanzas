@@ -22764,15 +22764,8 @@ if (document.readyState !== 'loading') {
 function _onSelPersonaMeDeben(personaId) {
   const p = getPersona(personaId);
   if (!p) return;
-  // ¿Esa persona ya es un deudor registrado?
-  const existente = (S.deudores || []).find(d => d.personaId === personaId);
-  if (existente) {
-    toast(`${p.nombre} ya está registrado/a`, 'info');
-    showScreen('prestamos');
-    cambiarTabPrestamos('me-deben');
-    abrirDeudor(existente.id);
-    return;
-  }
+  // Nota: una misma persona puede tener varias deudas separadas (por distintos
+  // conceptos), así que NO se bloquea si ya existe un deudor con este personaId.
   if (!S.deudores) S.deudores = [];
   const d = { id: uid(), nombre: p.nombre, color: p.color || '#60b0f0', personaId: p.id, movimientos: [] };
   S.deudores.push(d);

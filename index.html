@@ -3621,45 +3621,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       </div>
     </div>
 
-    <div class="overlay" id="sheet-editar-deudor" data-sheet-id="editar-deudor">
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title">Editar persona</div>
-        <div class="ig"><label class="il"
-            for="np_edit_nombre">Nombre</label><input
-            type="text" id="np_edit_nombre"
-            placeholder="Ej: Papá, Carlos, Mamá..."></div>
-        <div class="ig">
-          <label class="il">Color del avatar</label>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;"
-            id="np_edit_colores">
-            <div class="avatar-color-opt" data-color="#60b0f0"
-              style="width:30px;height:30px;border-radius:50%;background:#60b0f0;cursor:pointer;border:2px solid transparent;"
-              data-pick-color="#60b0f0"></div>
-            <div class="avatar-color-opt" data-color="#c8f060"
-              style="width:30px;height:30px;border-radius:50%;background:#c8f060;cursor:pointer;border:2px solid transparent;"
-              data-pick-color="#c8f060"></div>
-            <div class="avatar-color-opt" data-color="#f0b840"
-              style="width:30px;height:30px;border-radius:50%;background:#f0b840;cursor:pointer;border:2px solid transparent;"
-              data-pick-color="#f0b840"></div>
-            <div class="avatar-color-opt" data-color="#b090f0"
-              style="width:30px;height:30px;border-radius:50%;background:#b090f0;cursor:pointer;border:2px solid transparent;"
-              data-pick-color="#b090f0"></div>
-            <div class="avatar-color-opt" data-color="#f06868"
-              style="width:30px;height:30px;border-radius:50%;background:#f06868;cursor:pointer;border:2px solid transparent;"
-              data-pick-color="#f06868"></div>
-            <div class="avatar-color-opt" data-color="#c060f0"
-              style="width:30px;height:30px;border-radius:50%;background:#c060f0;cursor:pointer;border:2px solid transparent;"
-              data-pick-color="#c060f0"></div>
-          </div>
-        </div>
-        <button type="button" class="btn btn-primary"
-          id="btn-guardar-editar-deudor">Guardar cambios</button>
-        <button type="button" class="btn btn-ghost"
-          data-close-sheet="editar-deudor">Cancelar</button>
-      </div>
-    </div>
-
     <!-- NUEVA PERSONA -->
     <div class="overlay" id="sheet-nueva-persona" data-sheet-id="nueva-persona">
       <div class="sheet">
@@ -11213,37 +11174,27 @@ function guardarEditarSpotify() {
   toast(n + ' actualizado', 'ok');
 }
 
-let _deudorEditColor = null;
 function editarDeudorActual() {
   if (!deudorActualId) return;
   const d = (S.deudores || []).find(x => x.id === deudorActualId);
   if (!d) return;
-  _deudorEditColor = d.color || '#60b0f0';
-  document.getElementById('np_edit_nombre').value = d.nombre || '';
-  // Inicializar color picker de edición
-  document.querySelectorAll('#np_edit_colores .avatar-color-opt').forEach(el => {
-    el.style.border = el.dataset.pickColor === _deudorEditColor ? '2px solid white' : '2px solid transparent';
-    el.onclick = function() {
-      _deudorEditColor = this.dataset.pickColor;
-      document.querySelectorAll('#np_edit_colores .avatar-color-opt').forEach(e => e.style.border = '2px solid transparent');
-      this.style.border = '2px solid white';
-    };
-  });
-  openSheet('editar-deudor');
-}
-function guardarEditarDeudor() {
-  if (!deudorActualId) return;
-  const d = (S.deudores || []).find(x => x.id === deudorActualId);
-  if (!d) return;
-  const nombre = document.getElementById('np_edit_nombre').value.trim();
-  if (!nombre) { toast('Ingresa el nombre', 'err'); return; }
-  d.nombre = nombre;
-  if (_deudorEditColor) d.color = _deudorEditColor;
-  save(); refresh();
-  // Refrescar detalle
-  abrirDeudor(deudorActualId);
-  closeSheet('editar-deudor');
-  toast(nombre + ' actualizado', 'ok');
+  // Todo deudor está vinculado a una persona en S.personas. Si por algún
+  // motivo un registro legado no tiene el vínculo todavía, se crea aquí
+  // para no perder su nombre/color al editar.
+  if (!d.personaId) {
+    let p = (S.personas || []).find(x => x.nombre.trim().toLowerCase() === (d.nombre || '').trim().toLowerCase());
+    if (!p) {
+      if (!S.personas) S.personas = [];
+      p = { id: uid(), nombre: d.nombre || '', color: d.color || '#60b0f0', creadoEn: hoy() };
+      S.personas.push(p);
+    }
+    d.personaId = p.id;
+    save();
+  }
+  // Usar el sheet unificado "Editar persona" (misma paleta completa y misma
+  // lógica de sincronización que en la sección Personas), en vez del sheet
+  // desactualizado propio de Préstamos.
+  abrirEditarPersonaGlobal(d.personaId);
 }
 
 function editarEncargoActual() {
@@ -13361,8 +13312,6 @@ function _initEventListeners() {
   if (btnElimDeudor) btnElimDeudor.addEventListener('click', eliminarDeudorActual);
   const btnEditDeudor = document.getElementById('btn-editar-deudor');
   if (btnEditDeudor) btnEditDeudor.addEventListener('click', editarDeudorActual);
-  const btnGuardarEditDeudor = document.getElementById('btn-guardar-editar-deudor');
-  if (btnGuardarEditDeudor) btnGuardarEditDeudor.addEventListener('click', guardarEditarDeudor);
   const btnNuevoPrest = document.getElementById('btn-nuevo-prestamo');
   if (btnNuevoPrest) btnNuevoPrest.addEventListener('click', () => { openSheet('registrar-movimiento'); initMovSheet('prestamo'); });
   const btnPrestamoTC = document.getElementById('btn-prestamo-tc');
@@ -22234,19 +22183,19 @@ addDeudor = function() {
   }
 };
 
-/* ── Hook en guardar-editar-deudor para sincronizar S.personas ── */
-const _origGuardarEditarDeudor = guardarEditarDeudor;
-if (typeof guardarEditarDeudor === 'function') {
-  guardarEditarDeudor = function() {
-    _origGuardarEditarDeudor.apply(this, arguments);
-    // Sincronizar en S.personas
-    const d = (S.deudores || []).find(x => x.id === deudorActualId);
-    if (d && d.personaId) {
-      const p = getPersona(d.personaId);
-      if (p) { p.nombre = d.nombre; p.color = d.color; save(); }
-    }
-  };
-}
+/* ── Hook: si el detalle de un deudor (Préstamos > me deben) está abierto */
+/* y se guarda desde el sheet unificado "Editar persona", refrescar su    */
+/* encabezado (nombre/avatar) para reflejar el cambio al instante. ────── */
+const _origGuardarEditarPersonaGlobalDeudor = _guardarEditarPersonaGlobal;
+_guardarEditarPersonaGlobal = function() {
+  const idEditado = _editPersonaGlobalId;
+  _origGuardarEditarPersonaGlobalDeudor.apply(this, arguments);
+  const d = (S.deudores || []).find(x => x.id === deudorActualId);
+  if (d && d.personaId === idEditado) {
+    const detalle = document.getElementById('deudorDetalle');
+    if (detalle && detalle.style.display !== 'none') abrirDeudor(deudorActualId);
+  }
+};
 
 /* ═══════════════════════════════════════════════════════════════
    BOTÓN DE PERFIL EN LISTA DE ENCARGOS Y DEUDORES

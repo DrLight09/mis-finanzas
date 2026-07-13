@@ -5788,25 +5788,6 @@ function load(){
   if(!S.personas)S.personas=[];
   if(!S.ingresosFijos)S.ingresosFijos=[];
   if(!S.misDeudas)S.misDeudas=[];
-  // Migración: el toggle "saldo inicial" del sheet de mesada se eliminó porque
-  // no tenía un uso legítimo en ese módulo (cada mes ya está aislado por año
-  // en su propia clave, así que no había necesidad de excluirlo de las
-  // estadísticas de su propio año). Los meses que quedaron marcados así pasan
-  // a ser registros normales — sí reciben, con destino sin especificar — para
-  // que vuelvan a contar en "Recibido este año" y "Meses pagados".
-  if(S.mesadas){
-    ['papa','mama'].forEach(p=>{
-      const pagos=S.mesadas[p]&&S.mesadas[p].pagos;
-      if(!pagos)return;
-      Object.keys(pagos).forEach(k=>{
-        const info=pagos[k];
-        if(info&&info.esSaldoInicial){
-          info.esSaldoInicial=false;
-          if(!info.destino)info.destino='';
-        }
-      });
-    });
-  }
   // Sincronizar color de misDeudas desde la persona vinculada (fuente de verdad)
   (S.misDeudas || []).forEach(d => {
     if (d.personaId && S.personas) {

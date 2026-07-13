@@ -5717,10 +5717,10 @@ function fuenteBadgeClass(val){
   return'bg-nu';
 }
 
-function poblarFuente(selectId, required=false){
+function poblarFuente(selectId, required=false, incluirTC=true){
   const sel=document.getElementById(selectId);
   if(!sel)return;
-  sel.innerHTML=buildFuentesOptsHtml({ placeholder: required ? 'Seleccionar cuenta' : 'Sin especificar' });
+  sel.innerHTML=buildFuentesOptsHtml({ placeholder: required ? 'Seleccionar cuenta' : 'Sin especificar', incluirTC });
 }
 
 function getSaldoFuente(fuente){
@@ -10452,7 +10452,7 @@ crearSplitWidget('mp', {
 function toggleMpSplit(){ splitToggle('mp'); }
 
 function getFuentesOptions(selectedVal){
-  return buildFuentesOptsHtml({ selectedVal, placeholder: 'No especificar' });
+  return buildFuentesOptsHtml({ selectedVal, placeholder: 'No especificar', incluirTC:false });
 }
 
 function agregarMpSplitRow(){ splitAgregarRow('mp'); }
@@ -10477,7 +10477,7 @@ function abrirRegistrarMesada(parent,key,nombre){
   document.getElementById('mpSplitToggle').style.background='rgba(200,240,96,.1)';
   document.getElementById('mpSplitToggle').style.borderColor='rgba(200,240,96,.3)';
   document.getElementById('mpSplitToggle').style.color='var(--accent)';
-  poblarFuente('mpDestino');
+  poblarFuente('mpDestino', false, false);
   const sel=document.getElementById('mpDestino');
   sel.innerHTML='<option value="">No especificar / lo gasté</option>'+sel.innerHTML.replace('<option value="">Sin especificar</option>','');
   // Resetear toggle saldo inicial
@@ -10722,7 +10722,7 @@ function abrirResolverPendiente(parent,key){
   document.getElementById('mppMonto').value=fmtInput(info.pendiente);
   document.getElementById('mppFecha').value=hoy();
   document.getElementById('mppNota').value='';
-  poblarFuente('mppDestino');
+  poblarFuente('mppDestino', false, false);
   const sel=document.getElementById('mppDestino');
   sel.innerHTML='<option value="">No especificar / lo gasté</option>'+sel.innerHTML.replace('<option value="">Sin especificar</option>','');
   actualizarMppPreview();

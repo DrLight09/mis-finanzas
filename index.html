@@ -10783,7 +10783,7 @@ async function deshacerPendienteMesada(parent,key,idx){
   abrirDetalleMesada(parent,key,_mesNombreDeKey(key));
 }
 
-function cambiarAnio(d){const hoy=new Date().getFullYear();const nuevo=(S.mesadaAnio||hoy)+d;if(nuevo<hoy-2||nuevo>hoy+2)return;S.mesadaAnio=nuevo;save();renderMesada();}
+function cambiarAnio(d){const hoy=new Date().getFullYear();const nuevo=(S.mesadaAnio||hoy)+d;if(nuevo<hoy-2||nuevo>hoy+2)return;save();S.mesadaAnio=nuevo;renderMesada();}
 
 /* ---- SPOTIFY ---- */
 let spDestinoIdx=null;

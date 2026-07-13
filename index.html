@@ -8550,9 +8550,8 @@ function abrirDeudor(id) {
     }).join('');
   }
 
-  // Mostrar detalle, ocultar lista y mesada
+  // Mostrar detalle, ocultar lista
   document.getElementById('deudoresView').style.display = 'none';
-  document.getElementById('mesadaSection').style.display = 'none';
   document.getElementById('deudorDetalle').style.display = 'block';
   document.getElementById('scrollArea').scrollTop = 0;
 
@@ -8586,7 +8585,6 @@ function _abrirPerfilDesdeDeudor(deudorId) {
 function volverDeudores() {
   deudorActualId = null;
   document.getElementById('deudoresView').style.display = '';
-  document.getElementById('mesadaSection').style.display = '';
   document.getElementById('deudorDetalle').style.display = 'none';
 }
 

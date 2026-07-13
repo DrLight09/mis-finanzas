@@ -10197,19 +10197,22 @@ function renderMesada(){
       // Determinar si el mes ya pasó sin pago (puede marcarse rojo)
       // Un mes "pasado" es cualquier mes cuya fecha esperada ya venció:
       // - Para papá: día 30 del mes i del año a
-      // - Para mamá: día 1 del mes i+1 del año a (o sea el 1 del mes siguiente)
-      // Simplificamos: el mes ya es pasado si (a < anioActual) o
-      //   (a === anioActual && i < mesActualNum) o
-      //   (a === anioActual && i === mesActualNum && diaActual > (parent==='papa'?30:1))
+      // - Para mamá: día 1 del mes i+1 del año a (o sea el 1 del mes siguiente,
+      //   así que dentro del propio mes i mamá nunca está vencida)
+      // El mes ya es pasado si (a < anioActual) o (a === anioActual && i < mesActualNum),
+      // más el caso especial de papá dentro del mes en curso (diaActual > 30).
       let esPasado=false;
       if(a<anioActual){
         esPasado=true;
       } else if(a===anioActual){
         if(i<mesActualNum) esPasado=true;
         else if(i===mesActualNum){
-          // Papa: vence el 30; Mama: vence el 1 (o sea el primer día ya venció)
-          const diaCorte=parent==='papa'?30:1;
-          esPasado=(diaActual>diaCorte);
+          // Papá: vence el 30 del mismo mes, así que dentro del mes puede
+          // marcarse vencido. Mamá: vence el 1 del mes SIGUIENTE (i+1), o sea
+          // que dentro del mes i todavía está en plazo — su vencimiento real
+          // ya está cubierto por la rama i<mesActualNum de arriba (que se activa
+          // apenas entramos al mes siguiente), así que aquí nunca es "pasado".
+          esPasado=(parent==='papa'&&diaActual>30);
         }
       }
       const esPerdido=esPasado&&!pagado;

@@ -4191,21 +4191,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               deuda</div>
           </div>
         </div>
-        <!-- Toggle saldo inicial -->
-        <div id="mpAperturaWrap"
-          onclick="document.getElementById('mpEsApertura').click()"
-          style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;display:flex;">
-          <input type="checkbox" id="mpEsApertura"
-            style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;"
-            onclick="event.stopPropagation()"
-            onchange="toggleMpApertura()">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:600;color:var(--blue);">Es
-              saldo inicial (configuración)</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px;">No
-              contará como ingreso del mes ni afectará estadísticas</div>
-          </div>
-        </div>
         <div class="ig">
           <label class="il" for="mpNota">Nota (opcional)</label>
           <input type="text" id="mpNota"
@@ -5803,6 +5788,25 @@ function load(){
   if(!S.personas)S.personas=[];
   if(!S.ingresosFijos)S.ingresosFijos=[];
   if(!S.misDeudas)S.misDeudas=[];
+  // Migración: el toggle "saldo inicial" del sheet de mesada se eliminó porque
+  // no tenía un uso legítimo en ese módulo (cada mes ya está aislado por año
+  // en su propia clave, así que no había necesidad de excluirlo de las
+  // estadísticas de su propio año). Los meses que quedaron marcados así pasan
+  // a ser registros normales — sí reciben, con destino sin especificar — para
+  // que vuelvan a contar en "Recibido este año" y "Meses pagados".
+  if(S.mesadas){
+    ['papa','mama'].forEach(p=>{
+      const pagos=S.mesadas[p]&&S.mesadas[p].pagos;
+      if(!pagos)return;
+      Object.keys(pagos).forEach(k=>{
+        const info=pagos[k];
+        if(info&&info.esSaldoInicial){
+          info.esSaldoInicial=false;
+          if(!info.destino)info.destino='';
+        }
+      });
+    });
+  }
   // Sincronizar color de misDeudas desde la persona vinculada (fuente de verdad)
   (S.misDeudas || []).forEach(d => {
     if (d.personaId && S.personas) {
@@ -10480,15 +10484,11 @@ function abrirRegistrarMesada(parent,key,nombre){
   poblarFuente('mpDestino', false, false);
   const sel=document.getElementById('mpDestino');
   sel.innerHTML='<option value="">No especificar / lo gasté</option>'+sel.innerHTML.replace('<option value="">Sin especificar</option>','');
-  // Resetear toggle saldo inicial
-  const chk=document.getElementById('mpEsApertura');
-  if(chk){ chk.checked=false; }
   // Resetear toggle "quedó debiendo la diferencia"
   const chkDebe=document.getElementById('mpQuedaDebiendo');
   if(chkDebe){ chkDebe.checked=false; }
   const debeWrap=document.getElementById('mpDebeWrap');
   if(debeWrap){ debeWrap.style.display='none'; }
-  toggleMpApertura();
   openSheet('mesada-pago');
 }
 
@@ -10520,18 +10520,16 @@ function actualizarMpPreview(){
 }
 
 // Muestra/oculta el toggle "me quedó debiendo la diferencia" según el monto
-// ingresado vs. la cuota esperada. Se llama desde actualizarMpPreview() (cada
-// vez que cambia el monto) y desde toggleMpApertura() (si se marca saldo
-// inicial, no tiene sentido dejar deuda pendiente, así que se oculta).
+// ingresado vs. la cuota esperada. Se llama desde actualizarMpPreview() cada
+// vez que cambia el monto.
 function _syncMpDebeWrap(v){
   const wrap=document.getElementById('mpDebeWrap');
   const chk=document.getElementById('mpQuedaDebiendo');
   const lbl=document.getElementById('mpDebeLabel');
   if(!wrap||!chk)return;
-  const esAp=!!(document.getElementById('mpEsApertura')&&document.getElementById('mpEsApertura').checked);
   const cuota=mpParent?getMontoPadre(mpParent):0;
   const diff=cuota-v;
-  if(!esAp&&v>0&&diff>0){
+  if(v>0&&diff>0){
     wrap.style.display='flex';
     if(lbl)lbl.textContent='Te está debiendo '+fmt(diff)+' — ¿marcar como pendiente?';
   } else {
@@ -10540,43 +10538,22 @@ function _syncMpDebeWrap(v){
   }
 }
 
-function toggleMpApertura(){
-  const chk=document.getElementById('mpEsApertura');
-  const esAp=chk&&chk.checked;
-  // Ocultar/mostrar las secciones de destino — no tiene sentido asignar plata si es saldo inicial
-  const modoSimple=document.getElementById('mpModoSimple');
-  const modoDividido=document.getElementById('mpModoDividido');
-  const splitToggle=document.getElementById('mpSplitToggle');
-  const preview=document.getElementById('mpPreview');
-  const debeWrap=document.getElementById('mpDebeWrap');
-  if(modoSimple)modoSimple.style.display=esAp?'none':'';
-  if(modoDividido&&mpSplitMode)modoDividido.style.display=esAp?'none':'';
-  if(splitToggle)splitToggle.style.display=esAp?'none':'';
-  if(preview&&esAp){preview.textContent='Se registrará sin afectar estadísticas del mes.';preview.style.color='var(--blue)';}
-  else if(preview&&!esAp){preview.textContent='';actualizarMpPreview();}
-  if(esAp&&debeWrap){debeWrap.style.display='none';const chkDebe=document.getElementById('mpQuedaDebiendo');if(chkDebe)chkDebe.checked=false;}
-}
-
 function confirmarMesadaPago(){
   const monto=parseMoney(document.getElementById('mpMonto').value)||0;
   const fecha=document.getElementById('mpFecha').value||hoy();
   const nota=document.getElementById('mpNota').value.trim();
   if(!monto||!mpParent||!mpMesKey)return;
   const data=getMesadaData(mpParent);
-  const esApertura=!!(document.getElementById('mpEsApertura')&&document.getElementById('mpEsApertura').checked);
-  // "Quedó debiendo la diferencia": solo aplica si no es saldo inicial y el
-  // usuario marcó explícitamente el toggle. Si no lo marca, un monto menor a
-  // la cuota simplemente se registra tal cual, sin deuda (ej: "ese mes solo
-  // fueron 60mil, no me quedó debiendo nada").
+  // "Quedó debiendo la diferencia": solo aplica si el usuario marcó
+  // explícitamente el toggle. Si no lo marca, un monto menor a la cuota
+  // simplemente se registra tal cual, sin deuda (ej: "ese mes solo fueron
+  // 60mil, no me quedó debiendo nada").
   const chkDebe=document.getElementById('mpQuedaDebiendo');
-  const quedaDebiendo=!esApertura&&!!(chkDebe&&chkDebe.checked);
+  const quedaDebiendo=!!(chkDebe&&chkDebe.checked);
   const cuotaDelMes=getMontoPadre(mpParent);
   const pendienteInicial=quedaDebiendo?Math.max(0,cuotaDelMes-monto):0;
 
-  if(esApertura){
-    // Saldo inicial: guardar sin mover cuentas ni contar en ingresos
-    data[mpMesKey]={monto,fecha,destino:'',nota,esSaldoInicial:true};
-  } else if(mpSplitMode){
+  if(mpSplitMode){
     const splits=getMpSplitData();
     const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
     if(totalSplit>monto+1){
@@ -10652,10 +10629,26 @@ function abrirDetalleMesada(parent,key,nombre){
       ${info.nota?`<div style="font-size:12px;color:var(--text2);margin-top:4px;">${info.nota}</div>`:''}
     </div>
     ${pendienteHtml}
+    ${esSaldoIniDet?`<button type="button" class="btn" style="margin-bottom:8px;background:rgba(200,240,96,.1);border-color:rgba(200,240,96,.3);color:var(--accent);" onclick="convertirSaldoInicialARecibido('${parent}','${key}')">Sí lo recibí este año — contarlo en estadísticas</button>`:''}
     <button type="button" class="btn" style="background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);" onclick="eliminarMesadaPago('${parent}','${key}')">Borrar este registro</button>
   `;
   document.getElementById('mdContent').innerHTML=html;
   openSheet('mesada-det');
+}
+
+// Convierte un mes marcado como "saldo inicial" en un registro normal de
+// mesada recibida (destino sin especificar). Útil para meses de este mismo
+// año que quedaron marcados como saldo inicial solo porque el usuario aún
+// no usaba la app, pero que sí deberían contar en "Recibido este año".
+function convertirSaldoInicialARecibido(parent,key){
+  const data=getMesadaData(parent);
+  const info=data[key];
+  if(!info||!info.esSaldoInicial)return;
+  info.esSaldoInicial=false;
+  if(!info.destino)info.destino='';
+  save();refresh();
+  toast('Convertido a recibido normal — ahora cuenta en las estadísticas','ok');
+  abrirDetalleMesada(parent,key,_mesNombreDeKey(key));
 }
 
 function eliminarMesadaPago(parent,key){
@@ -11577,9 +11570,6 @@ function applyModulos(){
   // Ocultar el toggle "Es saldo inicial" en el sheet de agregar dinero
   const adAperturaWrap=document.getElementById('adAperturaWrap');
   if(adAperturaWrap)adAperturaWrap.style.display=mostrarBanners?'flex':'none';
-  // Ocultar el toggle "Es saldo inicial" en el sheet de registrar mesada
-  const mpAperturaWrap=document.getElementById('mpAperturaWrap');
-  if(mpAperturaWrap)mpAperturaWrap.style.display=mostrarBanners?'flex':'none';
   // Ocultar el toggle "Es saldo inicial" en el sheet de Nu (entra plata)
   const nuMovAperturaWrap=document.getElementById('nuMovAperturaWrap');
   if(nuMovAperturaWrap&&!mostrarBanners)nuMovAperturaWrap.style.display='none';

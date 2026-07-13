@@ -8810,29 +8810,21 @@ function initMovSheet(tipo) {
   const encSel  = document.getElementById('mov_enc_sel');
   const encCuentaWrap = document.getElementById('mov_enc_cuenta_wrap');
   const encPreview    = document.getElementById('mov_enc_saldo_preview');
-  if (encWrap)      encWrap.style.display = esAbono ? '' : 'none';
+  // Solo tiene sentido ofrecer "¿Viene de un encargo?" si la persona vinculada
+  // a este deudor tiene al menos un encargo con saldo disponible.
+  let _tieneEncargoVinculado = false;
+  if (esAbono) {
+    const d = (S.deudores || []).find(x => x.id === deudorActualId);
+    if (d && d.personaId) {
+      _tieneEncargoVinculado = (S.encargos || []).some(e => e.personaId === d.personaId && encargoSaldo(e) > 0);
+    }
+  }
+  if (encWrap)      encWrap.style.display = (esAbono && _tieneEncargoVinculado) ? '' : 'none';
   if (encChk)       encChk.checked = false;
   if (encBody)      encBody.style.display = 'none';
   if (encCuentaWrap) encCuentaWrap.style.display = 'none';
   if (encPreview)   encPreview.textContent = '';
   if (encSel)       encSel.innerHTML = '<option value="">Seleccionar encargo</option>';
-  // Pre-detectar encargo vinculado a la misma persona
-  if (esAbono) {
-    const d = (S.deudores || []).find(x => x.id === deudorActualId);
-    if (d && d.personaId) {
-      const encsVinculados = (S.encargos || []).filter(e => e.personaId === d.personaId && encargoSaldo(e) > 0);
-      if (encsVinculados.length > 0 && encWrap) {
-        // Mostrar badge de sugerencia en el label
-        const lbl = encWrap.querySelector('.cfg-toggle-label');
-        if (lbl && !lbl.querySelector('.enc-sugerencia')) {
-          const badge = document.createElement('span');
-          badge.className = 'enc-sugerencia';
-          badge.textContent = 'Tienen encargo';
-          lbl.appendChild(badge);
-        }
-      }
-    }
-  }
   // Si es abono o pago completo, precargar el botón devolver al origen
   if (tipo === 'abono' || tipo === 'pago-completo') {
     const d = (S.deudores || []).find(x => x.id === deudorActualId);
@@ -8904,9 +8896,10 @@ function confirmarMovimiento() {
         }
         _abonoEncCuentaSplits = Object.entries(porCuenta).map(([fuente, monto]) => ({ fuente, monto }));
       } else if (_abonoEncCuenta) {
-        const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
+        const _esSinEspVal = _abonoEncCuenta === '__sinesp__';
+        const saldoEnCuenta = _esSinEspVal ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
         if (monto > saldoEnCuenta + 0.5) {
-          toast(`En ${fuenteLabel(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+          toast(`En ${_esSinEspVal ? 'la parte sin especificar' : fuenteLabel(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
         }
       }
 
@@ -8928,9 +8921,10 @@ function confirmarMovimiento() {
           return;
         }
         if (_abonoEncCuenta) {
-          const saldoEnCuenta2 = _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
+          const _esSinEspVal2 = _abonoEncCuenta === '__sinesp__';
+          const saldoEnCuenta2 = _esSinEspVal2 ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
           if (monto + extraMonto > saldoEnCuenta2 + 0.5) {
-            toast(`En ${fuenteLabel(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta2)} — no alcanza para abono + extra`, 'err', 4500);
+            toast(`En ${_esSinEspVal2 ? 'la parte sin especificar' : fuenteLabel(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta2)} — no alcanza para abono + extra`, 'err', 4500);
             return;
           }
         }
@@ -8978,7 +8972,7 @@ function confirmarMovimiento() {
           id: encMovId,
           tipo: 'salida',
           monto,
-          cuenta: _abonoEncCuenta || '',
+          cuenta: _abonoEncCuenta === '__sinesp__' ? '' : (_abonoEncCuenta || ''),
           desc: `Pago de deuda — ${d.nombre}`,
           fecha,
           nota,
@@ -9068,7 +9062,7 @@ function confirmarMovimiento() {
           id: encExtraMovId,
           tipo: 'salida',
           monto: extraMonto,
-          cuenta: _abonoEncCuenta || '',
+          cuenta: _abonoEncCuenta === '__sinesp__' ? '' : (_abonoEncCuenta || ''),
           desc: `Extra / propina — ${d.nombre} (parte del pago de deuda)`,
           fecha,
           ts: Date.now(),
@@ -9362,6 +9356,7 @@ function onChangeMov_enc_sel() {
   }
   // Poblar cuentas del encargo con saldo
   const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
+  const saldoSinCuenta = _getEncargoSaldoSinCuenta(enc);
   // Solo tiene sentido "dividir" si la plata del encargo está repartida en 2+ cuentas
   if (splitToggleEl) splitToggleEl.style.display = cuentasConSaldo.length >= 2 ? '' : 'none';
   if (cuentasConSaldo.length === 0) {
@@ -9374,8 +9369,14 @@ function onChangeMov_enc_sel() {
     return;
   }
   if (cuentaSel) {
-    cuentaSel.innerHTML = '<option value="">Sin especificar</option>' +
-      cuentasConSaldo.map(f => `<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+    // "Sin especificar" ahora es una opción explícita (__sinesp__) que representa
+    // SOLO la porción del encargo que no está ligada a ninguna cuenta — ya no se
+    // usa como valor "sin restricción" que dejaba tomar plata de cualquier cuenta.
+    let optsHtml = cuentasConSaldo.map(f => `<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+    if (saldoSinCuenta > 0) {
+      optsHtml += `<option value="__sinesp__">Sin especificar (${fmt(saldoSinCuenta)} del encargo)</option>`;
+    }
+    cuentaSel.innerHTML = optsHtml;
     // Pre-seleccionar la de mayor saldo
     cuentaSel.value = cuentasConSaldo[0].cuenta;
     _abonoEncCuenta = cuentasConSaldo[0].cuenta;
@@ -9398,16 +9399,18 @@ function _actualizarEncPreview(enc) {
   if (!enc || !preview) return;
   const saldoTotal = encargoSaldo(enc);
   if (_abonoEncCuenta) {
-    const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
+    const esSinEsp = _abonoEncCuenta === '__sinesp__';
+    const labelCuenta = esSinEsp ? 'Sin especificar' : fuenteLabel(_abonoEncCuenta);
+    const saldoEnCuenta = esSinEsp ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
     if (hint) {
-      hint.textContent = `Disponible en ${fuenteLabel(_abonoEncCuenta)}: ${fmt(saldoEnCuenta)}`;
+      hint.textContent = `Disponible en ${labelCuenta}: ${fmt(saldoEnCuenta)}`;
       hint.style.display = '';
       hint.style.color = monto > saldoEnCuenta ? 'var(--red)' : 'var(--blue)';
     }
     preview.style.color = monto > saldoEnCuenta ? 'var(--red)' : 'var(--accent)';
     preview.textContent = monto > saldoEnCuenta
-      ? `\u26a0 Solo hay ${fmt(saldoEnCuenta)} en esa cuenta del encargo`
-      : monto > 0 ? `\u2713 El encargo tiene ${fmt(saldoEnCuenta)} en ${fuenteLabel(_abonoEncCuenta)}` : '';
+      ? `\u26a0 Solo hay ${fmt(saldoEnCuenta)} en ${esSinEsp ? 'la parte sin especificar' : 'esa cuenta'} del encargo`
+      : monto > 0 ? `\u2713 El encargo tiene ${fmt(saldoEnCuenta)} en ${labelCuenta}` : '';
   } else {
     if (hint) hint.style.display = 'none';
     preview.style.color = monto > saldoTotal ? 'var(--red)' : 'var(--accent)';

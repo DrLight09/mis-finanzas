@@ -10613,26 +10613,10 @@ function abrirDetalleMesada(parent,key,nombre){
       ${info.nota?`<div style="font-size:12px;color:var(--text2);margin-top:4px;">${info.nota}</div>`:''}
     </div>
     ${pendienteHtml}
-    ${esSaldoIniDet?`<button type="button" class="btn" style="margin-bottom:8px;background:rgba(200,240,96,.1);border-color:rgba(200,240,96,.3);color:var(--accent);" onclick="convertirSaldoInicialARecibido('${parent}','${key}')">Sí lo recibí este año — contarlo en estadísticas</button>`:''}
     <button type="button" class="btn" style="background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);" onclick="eliminarMesadaPago('${parent}','${key}')">Borrar este registro</button>
   `;
   document.getElementById('mdContent').innerHTML=html;
   openSheet('mesada-det');
-}
-
-// Convierte un mes marcado como "saldo inicial" en un registro normal de
-// mesada recibida (destino sin especificar). Útil para meses de este mismo
-// año que quedaron marcados como saldo inicial solo porque el usuario aún
-// no usaba la app, pero que sí deberían contar en "Recibido este año".
-function convertirSaldoInicialARecibido(parent,key){
-  const data=getMesadaData(parent);
-  const info=data[key];
-  if(!info||!info.esSaldoInicial)return;
-  info.esSaldoInicial=false;
-  if(!info.destino)info.destino='';
-  save();refresh();
-  toast('Convertido a recibido normal — ahora cuenta en las estadísticas','ok');
-  abrirDetalleMesada(parent,key,_mesNombreDeKey(key));
 }
 
 function eliminarMesadaPago(parent,key){

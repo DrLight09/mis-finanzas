@@ -6841,7 +6841,6 @@ function renderAnalisis(){
     let totalMesada=0;
     for(let m=0;m<12;m++){
       const k=anio+'-'+m;
-      // Excluir meses marcados como saldo inicial del total de mesada
       if(dataPapa[k]) totalMesada+=(dataPapa[k].monto||_getCuotaAnio('papa',anio)||0);
       if(dataMama[k]) totalMesada+=(dataMama[k].monto||_getCuotaAnio('mama',anio)||0);
     }
@@ -10518,6 +10517,56 @@ function _syncMpDebeWrap(v){
   }
 }
 
+// Registra un movimiento "espejo" visible en la cuenta destino cuando entra
+// plata de mesada — mismo patrón que usan Prestado, Encargos y Spotify. Sin
+// esto, el saldo de la cuenta sube pero no queda ningún rastro en su propio
+// historial de que esa plata vino de mesada (candado + "Automático"). Devuelve
+// el id del movimiento creado, para poder revertirlo si se borra el pago de
+// mesada, o null si el destino no corresponde a una cuenta rastreable (ej.
+// destino vacío = "no especificar").
+function _registrarMovSecundarioMesada(destino,monto,fecha,desc){
+  if(!destino||!monto)return null;
+  const id=uid();
+  if(destino==='efectivo'||destino==='nequi'){
+    if(!S.movimientos)S.movimientos=[];
+    S.movimientos.push({id,tipo:'entrada',fuente:destino,monto,fecha,desc,_secundario:true,_origenSeccion:'Mesada'});
+  } else if(destino.startsWith('custom:')){
+    const cId=destino.split(':')[1];
+    const cObj=(S.cuentasPersonalizadas||[]).find(x=>x.id===cId);
+    if(cObj){
+      if(!cObj.movimientos)cObj.movimientos=[];
+      cObj.movimientos.push({id,tipo:'ingreso',monto,fecha,nota:desc,_secundario:true,_origenSeccion:'Mesada'});
+    }
+  } else if(destino.startsWith('cajita:')){
+    const cId=destino.split(':')[1];
+    const cObj=(S.cajitas||[]).find(x=>x.id===cId);
+    if(cObj){
+      if(!cObj.historial)cObj.historial=[];
+      cObj.historial.push({id,tipo:'entrada',monto,fecha,nota:desc,_secundario:true,_origenSeccion:'Mesada'});
+    }
+  } else {
+    return null;
+  }
+  return id;
+}
+
+// Elimina el movimiento espejo generado por _registrarMovSecundarioMesada,
+// dado el destino original donde se creó y el id guardado.
+function _borrarMovSecundarioMesada(destino,movSecId){
+  if(!destino||!movSecId)return;
+  if(destino==='efectivo'||destino==='nequi'){
+    S.movimientos=(S.movimientos||[]).filter(x=>x.id!==movSecId);
+  } else if(destino.startsWith('custom:')){
+    const cId=destino.split(':')[1];
+    const cObj=(S.cuentasPersonalizadas||[]).find(x=>x.id===cId);
+    if(cObj&&cObj.movimientos)cObj.movimientos=cObj.movimientos.filter(x=>x.id!==movSecId);
+  } else if(destino.startsWith('cajita:')){
+    const cId=destino.split(':')[1];
+    const cObj=(S.cajitas||[]).find(x=>x.id===cId);
+    if(cObj&&cObj.historial)cObj.historial=cObj.historial.filter(x=>x.id!==movSecId);
+  }
+}
+
 function confirmarMesadaPago(){
   const monto=parseMoney(document.getElementById('mpMonto').value)||0;
   const fecha=document.getElementById('mpFecha').value||hoy();
@@ -10532,6 +10581,8 @@ function confirmarMesadaPago(){
   const quedaDebiendo=!!(chkDebe&&chkDebe.checked);
   const cuotaDelMes=getMontoPadre(mpParent);
   const pendienteInicial=quedaDebiendo?Math.max(0,cuotaDelMes-monto):0;
+  const pNombre=mpParent==='papa'?'Papá':'Mamá';
+  const descMov='Mesada — '+pNombre+' · '+_mesNombreDeKey(mpMesKey);
 
   if(mpSplitMode){
     const splits=getMpSplitData();
@@ -10542,11 +10593,19 @@ function confirmarMesadaPago(){
       return;
     }
     data[mpMesKey]={monto,fecha,destino:'',splits,nota};
-    splits.forEach(s=>{if(s.fuente)sumarFuente(s.fuente,s.monto);});
+    splits.forEach(s=>{
+      if(s.fuente){
+        sumarFuente(s.fuente,s.monto);
+        s._movSecId=_registrarMovSecundarioMesada(s.fuente,s.monto,fecha,descMov);
+      }
+    });
   } else {
     const destino=document.getElementById('mpDestino').value;
     data[mpMesKey]={monto,fecha,destino,nota};
-    if(destino)sumarFuente(destino,monto);
+    if(destino){
+      sumarFuente(destino,monto);
+      data[mpMesKey]._movSecId=_registrarMovSecundarioMesada(destino,monto,fecha,descMov);
+    }
   }
   if(pendienteInicial>0){
     data[mpMesKey].cuotaEsperada=cuotaDelMes;
@@ -10622,13 +10681,24 @@ function eliminarMesadaPago(parent,key){
     const historialTotal=(info.pendienteHistorial||[]).reduce((acc,h)=>acc+(h.monto||0),0);
     // Devolver el dinero del pago original a las cuentas correspondientes
     if(info.splits&&info.splits.length){
-      info.splits.forEach(s=>{if(s.fuente)descontarFuente(s.fuente,s.monto);});
+      info.splits.forEach(s=>{
+        if(s.fuente){
+          descontarFuente(s.fuente,s.monto);
+          _borrarMovSecundarioMesada(s.fuente,s._movSecId);
+        }
+      });
     } else if(info.destino){
       const montoOriginal=Math.max(0,(info.monto||0)-historialTotal);
       descontarFuente(info.destino,montoOriginal);
+      _borrarMovSecundarioMesada(info.destino,info._movSecId);
     }
     // Devolver también los abonos que fueron saldando lo pendiente
-    (info.pendienteHistorial||[]).forEach(h=>{if(h.destino)descontarFuente(h.destino,h.monto);});
+    (info.pendienteHistorial||[]).forEach(h=>{
+      if(h.destino){
+        descontarFuente(h.destino,h.monto);
+        _borrarMovSecundarioMesada(h.destino,h._movSecId);
+      }
+    });
   }
   delete data[key];
   save();refresh();
@@ -10710,10 +10780,16 @@ function confirmarPendienteMesada(){
   const destino=document.getElementById('mppDestino').value;
   const nota=document.getElementById('mppNota').value.trim();
   if(!info.pendienteHistorial)info.pendienteHistorial=[];
-  info.pendienteHistorial.push({monto,fecha,destino,nota});
+  const pNombre=mppParent==='papa'?'Papá':'Mamá';
+  const descMov='Mesada (pendiente) — '+pNombre+' · '+_mesNombreDeKey(mppMesKey);
+  let movSecId=null;
+  if(destino){
+    sumarFuente(destino,monto);
+    movSecId=_registrarMovSecundarioMesada(destino,monto,fecha,descMov);
+  }
+  info.pendienteHistorial.push({monto,fecha,destino,nota,_movSecId:movSecId});
   info.pendiente=Math.max(0,info.pendiente-monto);
   info.monto=(info.monto||0)+monto;
-  if(destino)sumarFuente(destino,monto);
   save();refresh();
   closeSheet('mesada-pend');
   toast(info.pendiente>0?('Abono registrado — todavía debe '+fmt(info.pendiente)):'¡Pendiente saldado! 🎉','ok',3000);
@@ -10728,7 +10804,10 @@ async function deshacerPendienteMesada(parent,key,idx){
   const ok=await dialogo('Deshacer abono','¿Deshacer este abono de lo pendiente? La plata se restará de la cuenta donde la registraste y volverá a quedar como deuda.','Deshacer',true);
   if(!ok)return;
   const h=info.pendienteHistorial[idx];
-  if(h.destino)descontarFuente(h.destino,h.monto);
+  if(h.destino){
+    descontarFuente(h.destino,h.monto);
+    _borrarMovSecundarioMesada(h.destino,h._movSecId);
+  }
   info.monto=Math.max(0,(info.monto||0)-h.monto);
   info.pendiente=(info.pendiente||0)+h.monto;
   info.pendienteHistorial.splice(idx,1);

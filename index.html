@@ -5886,8 +5886,14 @@ function save(){
   });
   const _elPapa=document.getElementById('mesadaMontoPapa');
   const _elMama=document.getElementById('mesadaMonteMama');
-  if(_elPapa&&_elPapa.value.trim()){const v=parseMoney(_elPapa.value);if(v)S.mesadas.papa.cuotas[String(_anioActivo)]=v;}
-  if(_elMama&&_elMama.value.trim()){const v=parseMoney(_elMama.value);if(v)S.mesadas.mama.cuotas[String(_anioActivo)]=v;}
+  // Solo grabamos una cuota explícita para este año si el valor en pantalla
+  // realmente difiere del heredado (_getCuotaAnio). Si coincide, es porque el
+  // usuario nunca tocó el input — sigue siendo el fallback de un año anterior,
+  // no una decisión explícita — y grabarlo igual "congelaría" ese número en
+  // cuanto se disparara CUALQUIER save() de la app (agregar un gasto, marcar
+  // un pago de Nu, etc.), rompiendo la herencia hacia años futuros.
+  if(_elPapa&&_elPapa.value.trim()){const v=parseMoney(_elPapa.value);if(v&&v!==_getCuotaAnio('papa',_anioActivo))S.mesadas.papa.cuotas[String(_anioActivo)]=v;}
+  if(_elMama&&_elMama.value.trim()){const v=parseMoney(_elMama.value);if(v&&v!==_getCuotaAnio('mama',_anioActivo))S.mesadas.mama.cuotas[String(_anioActivo)]=v;}
   S.spotifyCosto=parseMoney(document.getElementById('spotifyCosto').value)||0;
   (S.cajitas||[]).forEach(c=>{
     const elN=document.getElementById('cn_'+c.id);

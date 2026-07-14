@@ -6262,6 +6262,8 @@ function getIngresosFijosMes(mesK){
 function _esEntradaEspejoNoIngreso(m){
   if(!m) return false;
   if(m._esReposicionCP) return true;
+  // Fallback por desc para movimientos viejos sin _esReposicionCP
+  if(/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'')) return true;
   if(m._esIntercambioEncargo||m._intercambioEntrada) return true;
   if(m._encMovId) return true;
   if((m.desc||'').startsWith('Margen')) return true;
@@ -17426,12 +17428,11 @@ document.addEventListener('focusin', function(e){
     });
     // Entradas manuales a Nequi, Efectivo y cajitas (igual que el análisis de tendencia)
     // Excluir: apertura, _encMovId (encargos), _esReposicionCP (plata comprometida devuelta),
-    // Mesada y Prestado (movimientos espejo — ver _esEntradaEspejoNoIngreso)
-    // Fallback por desc para movimientos viejos sin _esReposicionCP
+    // Mesada y Prestado (movimientos espejo — ver _esEntradaEspejoNoIngreso, que ya incluye
+    // el fallback por desc para movimientos viejos sin _esReposicionCP)
     if(window.mesKey){
       (S.movimientos||[]).filter(m=>
         m.tipo==='entrada' &&
-        !/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'') &&
         !(window._esEntradaEspejoNoIngreso&&window._esEntradaEspejoNoIngreso(m)) &&
         (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))||m._prestadoDirectamente) &&
         window.mesKey(m.fecha)===mes

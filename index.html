@@ -2262,17 +2262,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <!-- CONFIGURACIÓN -->
         <!-- ANÁLISIS FINANCIERO -->
         <div class="screen" id="screen-analisis">
-          <!-- INGRESOS FIJOS -->
-          <div
-            style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;margin-bottom:8px;">
-            <div class="sec-title" style="margin:0;">Ingresos fijos</div>
-            <button type="button" onclick="abrirSheetIngresoFijo()"
-              style="background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.25);color:var(--accent);font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;cursor:pointer;">+
-              Agregar</button>
-          </div>
-          <div id="an-ingresos-fijos-list" class="card"
-            style="padding:0 15px;margin-bottom:9px;"></div>
-
+          <!-- RESUMEN DEL MES -->
           <div class="sec-title" style="margin-top:4px;">Resumen del mes</div>
           <div id="analisis-balance-hero"
             style="border-radius:var(--radius);padding:20px;margin-bottom:10px;"></div>
@@ -2303,6 +2293,16 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 variables</span><span class="row-amount c-red"
                 id="an-variables">$0</span></div>
           </div>
+          <!-- INGRESOS FIJOS -->
+          <div
+            style="display:flex;align-items:center;justify-content:space-between;margin-top:4px;margin-bottom:8px;">
+            <div class="sec-title" style="margin:0;">Ingresos fijos</div>
+            <button type="button" onclick="abrirSheetIngresoFijo()"
+              style="background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.25);color:var(--accent);font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;cursor:pointer;">+
+              Agregar</button>
+          </div>
+          <div id="an-ingresos-fijos-list" class="card"
+            style="padding:0 15px;margin-bottom:9px;"></div>
           <!-- COMPARACIÓN MES ANTERIOR -->
           <div class="sec-title">Comparación con el mes anterior</div>
           <div id="an-comparacion" class="card"

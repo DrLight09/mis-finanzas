@@ -6653,6 +6653,10 @@ function renderAnalisis(){
   renderIngresosFijos();
 
   // ── Gastos del mes actual ──────────────────────────────────────────────
+  // Nota: no hace falta excluir "favores" pagados con plata comprometida aquí —
+  // esos gastos nunca se guardan en S.gastosVar. Viven en tc.compras (con
+  // _esFavor/_desdeCP cuando se pagan con TC) o son solo una reposición de
+  // cajita marcada con _esReposicionCP en S.movimientos. Ver _esEntradaEspejoNoIngreso.
   const gvMes=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia);
   const gvTotal=gvMes.reduce((a,g)=>a+(g.monto||0),0);
 
@@ -6760,7 +6764,11 @@ function renderAnalisis(){
     const dd=new Date(d.getFullYear(),d.getMonth()-i,1);
     const k=dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0');
     const label=MESES_NOMBRE[dd.getMonth()];
-    const gv=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===k&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia&&g.fuente!=='plata-comprometida').reduce((a,g)=>a+(g.monto||0),0);
+    // Nota: gastoOrigen "cajita"/"tc" desde Plata comprometida nunca escribe en
+    // S.gastosVar (ver comentario en "Gastos del mes actual"), así que no hace
+    // falta filtrar por eso aquí — el filtro viejo (g.fuente!=='plata-comprometida')
+    // era código muerto: gastosVar.fuente nunca toma ese valor.
+    const gv=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===k&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia).reduce((a,g)=>a+(g.monto||0),0);
     const gf=(S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+k]?a+(g.monto||0):a,0);
     hoy12.push({k,label,total:gv+gf});
   }
@@ -6812,8 +6820,10 @@ function renderAnalisis(){
   // ── Ranking meses ──────────────────────────────────────────────────────
   // Recopilar todos los meses con datos
   const mesesConDatos={};
+  // Nota: mismo caso que arriba — S.gastosVar nunca contiene gastos de
+  // plata comprometida, así que no se filtra por eso (ver "Gastos del mes actual").
   (S.gastosVar||[]).forEach(g=>{
-    if(!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia&&g.fuente!=='plata-comprometida'){
+    if(!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia){
       const k=mesKey(g.fecha);
       if(k) mesesConDatos[k]=(mesesConDatos[k]||0)+(g.monto||0);
     }

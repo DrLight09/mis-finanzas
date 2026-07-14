@@ -5982,10 +5982,15 @@ function calcDeudaTcPropia() {
 function calcPatrimonioTotal(){
   const nu=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
-  const nequi=S.nequiSaldo||0;
-  const ef=S.efectivoSaldo||0;
+  // Restar plata de encargos (dinero ajeno que solo estás cuidando) guardada en
+  // Nequi, Efectivo o cuentas personalizadas — mismo tratamiento que ya recibían
+  // las cajitas de Nu dentro de calcC()/_saldoEncargosEnCajita(). Sin esto, un
+  // encargo guardado en Nequi/Efectivo/cuenta personalizada se contaba como
+  // patrimonio propio en vez de plata ajena.
+  const nequi=(S.nequiSaldo||0)-_saldoEncargosEnCuenta('nequi');
+  const ef=(S.efectivoSaldo||0)-_saldoEncargosEnCuenta('efectivo');
   const prest=(S.deudores||[]).reduce((a,d)=>{ const s=getDeudorSaldoPatrimonio(d); return a+(s>0?s:0); },0);
-  const custom=(S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0);
+  const custom=(S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0)-_saldoEncargosEnCuenta('custom:'+c.id),0);
   const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
   // Lo que le debo a otras personas (S.misDeudas) — esa plata está físicamente en
   // mis cuentas pero no es mía, así que se resta igual que la deuda de TC.
@@ -6039,12 +6044,12 @@ function snapshotPatrimonio(){
   if(S.patrimonioHistorial.length>365)S.patrimonioHistorial=S.patrimonioHistorial.slice(-365);
   // (No localStorage — Firebase lo guarda _fbSaveToCloud)
 }
-// Calcula cuánta plata de encargos está físicamente en una cajita específica.
-// Nu genera interés sobre TODO el dinero de la cajita (propio + encargos),
-// y esos intereses son del dueño de la cajita.
-function _saldoEncargosEnCajita(cajitaId){
-  if(!S||!S.encargos||!cajitaId)return 0;
-  const claveCajita='cajita:'+cajitaId;
+// Calcula cuánta plata de encargos (dinero que estás cuidando de otra persona,
+// "No es tuyo") está guardada físicamente en una cuenta cualquiera — cajita de Nu,
+// Nequi, Efectivo o una cuenta personalizada. cuentaKey usa el mismo formato que
+// getFuentesSinTC(): 'cajita:ID', 'nequi', 'efectivo', 'custom:ID'.
+function _saldoEncargosEnCuenta(cuentaKey){
+  if(!S||!S.encargos||!cuentaKey)return 0;
   let total=0;
   (S.encargos||[]).forEach(enc=>{
     const map={};
@@ -6057,10 +6062,17 @@ function _saldoEncargosEnCajita(cajitaId){
       if(m.tipo==='entrada')map[k]=(map[k]||0)+(m.monto||0);
       else map[k]=(map[k]||0)-(m.monto||0);
     });
-    const v=map[claveCajita]||0;
+    const v=map[cuentaKey]||0;
     if(v>0)total+=v;
   });
   return total;
+}
+// Caso específico de cajitas de Nu — Nu genera interés sobre TODO el dinero de
+// la cajita (propio + encargos), y esos intereses son del dueño de la cajita.
+// Se mantiene esta función con nombre propio porque calcC() ya la usa así.
+function _saldoEncargosEnCajita(cajitaId){
+  if(!cajitaId)return 0;
+  return _saldoEncargosEnCuenta('cajita:'+cajitaId);
 }
 
 function calcC(c){
@@ -6544,14 +6556,16 @@ function refresh(){
   // partir de sus movimientos (regla de consistencia). Es idempotente.
   if(typeof tcNormalizarTarjetas==='function') tcNormalizarTarjetas();
   const nu=nuTotal();
-  const nequi=S.nequiSaldo||0;
-  const ef=S.efectivoSaldo||0;
+  // Restar plata de encargos (dinero ajeno que solo estás cuidando) guardada en
+  // Nequi, Efectivo o cuentas personalizadas — mismo criterio que calcPatrimonioTotal().
+  const nequi=(S.nequiSaldo||0)-_saldoEncargosEnCuenta('nequi');
+  const ef=(S.efectivoSaldo||0)-_saldoEncargosEnCuenta('efectivo');
   const prest=totalPrestadoPendiente();
   // CDTs value comes from calcCDT nested in cajitas
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
   const cajitasLibres=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
   // Cuentas personalizadas marcadas para incluir en total
-  const customTotal=(S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0);
+  const customTotal=(S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0)-_saldoEncargosEnCuenta('custom:'+c.id),0);
   const disp=cajitasLibres+nequi+ef+customTotal;
   const mes=mesActual();
   const _gfFijos=(S.gastosFijos||[]).reduce((a,g)=>{
@@ -17437,8 +17451,12 @@ document.addEventListener('focusin', function(e){
     const nu = (S.cajitas||[]).reduce((a,c)=>a+(window.calcC?window.calcC(c).val:c.saldo||0),0);
     const cdtVal = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+(window.calcCDT?window.calcCDT(cdt).val:cdt.monto||0),0),0);
     // CORRECCIÓN: liquido excluye CDTs (son ahorros bloqueados, no disponibles de inmediato)
-    const liquidoReal = nu + (S.nequiSaldo||0) + (S.efectivoSaldo||0)
-      + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0)
+    // También resta plata de encargos (ajena) guardada en Nequi/Efectivo/cuentas
+    // personalizadas — mismo criterio que calcPatrimonioTotal().
+    const _encNequi = window._saldoEncargosEnCuenta ? window._saldoEncargosEnCuenta('nequi') : 0;
+    const _encEfectivo = window._saldoEncargosEnCuenta ? window._saldoEncargosEnCuenta('efectivo') : 0;
+    const liquidoReal = nu + ((S.nequiSaldo||0)-_encNequi) + ((S.efectivoSaldo||0)-_encEfectivo)
+      + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0)-(window._saldoEncargosEnCuenta?window._saldoEncargosEnCuenta('custom:'+c.id):0),0)
       - deudaTC;
     // patrimonio total sí incluye CDTs para otros cálculos
     const liquidoConCDTs = liquidoReal + cdtVal;

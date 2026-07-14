@@ -6236,6 +6236,28 @@ function getIngresosFijosMes(mesK){
   },0);
 }
 
+// Determina si un movimiento tipo:'entrada' es un movimiento "espejo" generado
+// automáticamente por otro módulo (Mesada, Prestado, Encargos) y que por lo tanto
+// NO debe contarse como ingreso nuevo en Análisis financiero ni en Salud financiera:
+// - Mesada: la plata ya se cuenta directamente desde getMesadaData(); contarla de
+//   nuevo aquí sería doble conteo.
+// - Prestado · Me deben: es la devolución de plata que ya era tuya (un abono de
+//   deuda), no ingreso nuevo.
+// - Prestado · Yo debo: es plata que te prestaron (deuda tuya), no ingreso.
+// - Encargos (_esIntercambioEncargo/_intercambioEntrada/_encMovId, desc "Margen..."):
+//   es capital o margen de encargo que se maneja aparte.
+// - _esReposicionCP: devolución de plata comprometida que ya salió antes.
+function _esEntradaEspejoNoIngreso(m){
+  if(!m) return false;
+  if(m._esReposicionCP) return true;
+  if(m._esIntercambioEncargo||m._intercambioEntrada) return true;
+  if(m._encMovId) return true;
+  if((m.desc||'').startsWith('Margen')) return true;
+  if(m._origenSeccion==='Mesada') return true;
+  if((m._origenSeccion||'').indexOf('Prestado')===0) return true;
+  return false;
+}
+
 /* ---- TOAST ---- */
 function toast(msg, tipo='ok', dur=2800){
   const c=document.getElementById('toast-container');
@@ -6655,9 +6677,7 @@ function renderAnalisis(){
   // Excluir: apertura, transferencias, intercambios de encargo, reposiciones de plata comprometida, margenes de encargo
   (S.movimientos||[]).forEach(function(m){
     if(m.tipo==='entrada' && mesKey(m.fecha)===mes){
-      if(m._esReposicionCP) return;
-      if(m._esIntercambioEncargo||m._intercambioEntrada) return;
-      if((m.desc||'').startsWith('Margen')) return;
+      if(_esEntradaEspejoNoIngreso(m)) return;
       ingresosEstimados+=m.monto||0;
     }
   });
@@ -6897,9 +6917,7 @@ function renderAnalisis(){
     ingresosPrev+=getIngresosFijosMes(mesPrev);
     (S.movimientos||[]).forEach(function(m){
       if(m.tipo==='entrada' && mesKey(m.fecha)===mesPrev){
-        if(m._esReposicionCP) return;
-        if(m._esIntercambioEncargo||m._intercambioEntrada) return;
-        if((m.desc||'').startsWith('Margen')) return;
+        if(_esEntradaEspejoNoIngreso(m)) return;
         ingresosPrev+=m.monto||0;
       }
     });
@@ -17378,18 +17396,19 @@ document.addEventListener('focusin', function(e){
       if(_infoMama) ingresosMes += (_infoMama.monto||_getCuotaAnio('mama',anio)||0);
     }
     // Sumar ingresos de cuentas personalizadas del mes actual
+    // (excluye movimientos espejo de Mesada/Prestado/Encargos — ver _esEntradaEspejoNoIngreso)
     (S.cuentasPersonalizadas||[]).forEach(c => {
-      (c.movimientos||[]).filter(m=>(m.tipo==='ingreso')&&window.mesKey&&window.mesKey(m.fecha)===mes).forEach(m=>{ ingresosMes += (m.monto||0); });
+      (c.movimientos||[]).filter(m=>(m.tipo==='ingreso')&&window.mesKey&&window.mesKey(m.fecha)===mes&&!(window._esEntradaEspejoNoIngreso&&window._esEntradaEspejoNoIngreso(m))).forEach(m=>{ ingresosMes += (m.monto||0); });
     });
     // Entradas manuales a Nequi, Efectivo y cajitas (igual que el análisis de tendencia)
-    // Excluir: apertura, _encMovId (encargos), _esReposicionCP (plata comprometida devuelta)
+    // Excluir: apertura, _encMovId (encargos), _esReposicionCP (plata comprometida devuelta),
+    // Mesada y Prestado (movimientos espejo — ver _esEntradaEspejoNoIngreso)
     // Fallback por desc para movimientos viejos sin _esReposicionCP
     if(window.mesKey){
       (S.movimientos||[]).filter(m=>
         m.tipo==='entrada' &&
-        !m._esReposicionCP &&
         !/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'') &&
-        !m._encMovId &&
+        !(window._esEntradaEspejoNoIngreso&&window._esEntradaEspejoNoIngreso(m)) &&
         (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))||m._prestadoDirectamente) &&
         window.mesKey(m.fecha)===mes
       ).forEach(m=>{ ingresosMes += (m.monto||0); });

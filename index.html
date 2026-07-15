@@ -24,7 +24,7 @@
     -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com;
+      script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
       font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;
       img-src 'self' data: https:;
@@ -16946,9 +16946,18 @@ document.addEventListener('focusin', function(e){
       // onAuthStateChanged se encarga del resto
     } catch(e) {
       if(e.code !== 'auth/popup-closed-by-user') {
-        // Usar toast en lugar de alert() nativo para mantener consistencia con el resto de la app
-        if(typeof toast === 'function') toast('Error al iniciar sesión: ' + e.message, 'err');
-        else console.error('Error al iniciar sesión:', e.message);
+        console.error('Error al iniciar sesión:', e.code, e.message);
+        // Mensaje claro para el usuario según el tipo de error — el mensaje crudo de
+        // Firebase (ej. "Firebase: Error (auth/internal-error).") no dice nada útil.
+        const MENSAJES_AUTH = {
+          'auth/popup-blocked': 'El navegador bloqueó la ventana de inicio de sesión. Revisa que no esté bloqueando pop-ups para este sitio e intenta de nuevo.',
+          'auth/cancelled-popup-request': 'Se abrió más de una ventana de inicio de sesión a la vez. Intenta de nuevo.',
+          'auth/network-request-failed': 'No hay conexión a internet. Revisa tu red e intenta de nuevo.',
+          'auth/internal-error': 'No se pudo completar el inicio de sesión con Google. Intenta de nuevo en unos segundos.',
+          'auth/unauthorized-domain': 'Este dominio no está autorizado para iniciar sesión. Contacta al administrador.',
+        };
+        const msg = MENSAJES_AUTH[e.code] || 'No se pudo iniciar sesión. Intenta de nuevo en unos segundos.';
+        if(typeof toast === 'function') toast(msg, 'err', 5000);
       }
     }
   };

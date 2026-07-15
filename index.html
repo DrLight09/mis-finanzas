@@ -6673,7 +6673,9 @@ function renderAnalisis(){
   // esos gastos nunca se guardan en S.gastosVar. Viven en tc.compras (con
   // _esFavor/_desdeCP cuando se pagan con TC) o son solo una reposición de
   // cajita marcada con _esReposicionCP en S.movimientos. Ver _esEntradaEspejoNoIngreso.
-  const gvMes=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia);
+  // También excluir _esExtraPrestamo: es plata de un extra/propina que se gastó de inmediato
+  // (nunca se registró como ingreso, así que contarla como gasto real infla el balance negativamente)
+  const gvMes=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia&&!g._esExtraPrestamo);
   const gvTotal=gvMes.reduce((a,g)=>a+(g.monto||0),0);
 
   const pagosGF=S.pagosGastosFijos||{};
@@ -6784,7 +6786,7 @@ function renderAnalisis(){
     // S.gastosVar (ver comentario en "Gastos del mes actual"), así que no hace
     // falta filtrar por eso aquí — el filtro viejo (g.fuente!=='plata-comprometida')
     // era código muerto: gastosVar.fuente nunca toma ese valor.
-    const gv=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===k&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia).reduce((a,g)=>a+(g.monto||0),0);
+    const gv=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===k&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia&&!g._esExtraPrestamo).reduce((a,g)=>a+(g.monto||0),0);
     const gf=(S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+k]?a+(g.monto||0):a,0);
     hoy12.push({k,label,total:gv+gf});
   }
@@ -6839,7 +6841,7 @@ function renderAnalisis(){
   // Nota: mismo caso que arriba — S.gastosVar nunca contiene gastos de
   // plata comprometida, así que no se filtra por eso (ver "Gastos del mes actual").
   (S.gastosVar||[]).forEach(g=>{
-    if(!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia){
+    if(!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia&&!g._esExtraPrestamo){
       const k=mesKey(g.fecha);
       if(k) mesesConDatos[k]=(mesesConDatos[k]||0)+(g.monto||0);
     }
@@ -6924,7 +6926,7 @@ function renderAnalisis(){
     // Calcular mes anterior
     const dPrev=new Date(parseInt(mes.split('-')[0]),parseInt(mes.split('-')[1])-2,1);
     const mesPrev=dPrev.getFullYear()+'-'+String(dPrev.getMonth()+1).padStart(2,'0');
-    const gvPrev=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mesPrev&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia).reduce((a,g)=>a+(g.monto||0),0);
+    const gvPrev=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mesPrev&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia&&!g._esExtraPrestamo).reduce((a,g)=>a+(g.monto||0),0);
     const gfPrev=(S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mesPrev]?a+(g.monto||0):a,0);
     const totalPrev=gvPrev+gfPrev;
     const mesNomPrev=MESES_NOMBRE[dPrev.getMonth()]+' '+dPrev.getFullYear();

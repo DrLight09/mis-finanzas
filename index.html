@@ -6413,9 +6413,9 @@ function renderCatsConfig(){
 
   const renderCatChips=(cats,defaults,tipo)=>cats.map(c=>{
     const esDefault=defaults.includes(c);
-    return`<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px 4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;margin:0 4px 6px 0;color:var(--text2);">
-      ${c}
-      ${!esDefault?`<button type="button" onclick="eliminarCat('${tipo}','${c}')" title="Eliminar" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0 0 0 2px;line-height:1;display:flex;align-items:center;" onmouseenter="this.style.color='var(--red)'" onmouseleave="this.style.color='var(--text3)'">
+    return`<span class="cat-chip" data-cat-nombre="${escHtml(c)}" data-cat-tipo="${tipo}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px 4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;margin:0 4px 6px 0;color:var(--text2);">
+      ${escHtml(c)}
+      ${!esDefault?`<button type="button" class="cat-chip-del" title="Eliminar" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0 0 0 2px;line-height:1;display:flex;align-items:center;" onmouseenter="this.style.color='var(--red)'" onmouseleave="this.style.color='var(--text3)'">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>`:''}
     </span>`;
@@ -6437,7 +6437,7 @@ function agregarCat(tipo){
   else S.catsFijo=cats;
   document.getElementById(inputId).value='';
   save();renderCatsConfig();
-  toast(`Categoría "${val}" agregada`,'ok');
+  toast(`Categoría "${escHtml(val)}" agregada`,'ok');
 }
 
 function eliminarCat(tipo,cat){
@@ -6447,13 +6447,13 @@ function eliminarCat(tipo,cat){
   let enUso=false;
   if(tipo==='var') enUso=(S.gastosVar||[]).some(g=>g.cat===cat);
   else enUso=(S.gastosFijos||[]).some(g=>g.cat===cat);
-  if(enUso){toast(`"${cat}" está siendo usada en gastos existentes. Cámbiala primero.`,'err',4000);return;}
+  if(enUso){toast(`"${escHtml(cat)}" está siendo usada en gastos existentes. Cámbiala primero.`,'err',4000);return;}
   const cats=tipo==='var'?getCatsVar():getCatsFijo();
   const nuevas=cats.filter(c=>c!==cat);
   if(tipo==='var')S.catsVar=nuevas;
   else S.catsFijo=nuevas;
   save();renderCatsConfig();
-  toast(`Categoría "${cat}" eliminada`,'info');
+  toast(`Categoría "${escHtml(cat)}" eliminada`,'info');
 }
 
 /* ---- EXPORTAR / IMPORTAR JSON ---- */
@@ -13644,6 +13644,15 @@ document.addEventListener('paste', function(e){
    ================================================================ */
 
 function _initEventListeners() {
+  // --- Categorías: eliminar (delegado, porque la lista se re-renderiza en cada renderCatsConfig) ---
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cat-chip-del');
+    if (!btn) return;
+    const chip = btn.closest('.cat-chip');
+    if (!chip) return;
+    eliminarCat(chip.dataset.catTipo, chip.dataset.catNombre);
+  });
+
   // --- Navegación bottom nav ---
   document.querySelectorAll('.nav-item[data-screen]').forEach(btn => {
     btn.addEventListener('click', () => showScreen(btn.dataset.screen));

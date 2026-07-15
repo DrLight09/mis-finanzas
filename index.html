@@ -17404,8 +17404,9 @@ document.addEventListener('focusin', function(e){
     const mes = window.mesActual ? window.mesActual() : '';
     const pagosGF = S.pagosGastosFijos || {};
 
-    // Gastos del mes: variables + fijos pagados (excluye pagos de TC — son cancelación de deuda, no gasto nuevo)
-    const gvMes = (S.gastosVar||[]).filter(g=>window.mesKey?window.mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia:true).reduce((a,g)=>a+(g.monto||0),0);
+    // Gastos del mes: variables + fijos pagados (excluye pagos de TC — son cancelación de deuda, no gasto nuevo;
+    // y excluye _esExtraPrestamo — extra/propina de un préstamo gastado de inmediato, nunca fue ingreso real, ver renderAnalisis)
+    const gvMes = (S.gastosVar||[]).filter(g=>window.mesKey?window.mesKey(g.fecha)===mes&&!g.esPagoGastoFijo&&!g._esPagoTC&&!g._esAlcancia&&!g._esExtraPrestamo:true).reduce((a,g)=>a+(g.monto||0),0);
     const gfTotal = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mes]?a+(g.monto||0):a,0);
     const gastosMes = gvMes + gfTotal;
 

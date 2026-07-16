@@ -55,6 +55,20 @@
     <link rel="stylesheet" media="print" onload="this.media='all'"
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"></noscript>
+    <!-- Preconnect a los dominios de Firebase: adelanta el handshake DNS/TCP/TLS
+         en paralelo, en vez de esperar a que el bloque de módulo de más abajo
+         los descubra uno por uno (esta era la cadena de red detrás del LCP de
+         7.4s medido en Lighthouse — ver auditoria-tecnica.md #5). -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
+    <!-- Modulepreload: empieza a descargar el SDK de Firebase en paralelo con el
+         resto del <head>, sin adelantar cuándo se ejecuta (sigue siendo un
+         módulo, se ejecuta en orden después de parsear el HTML). -->
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js">
+    <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js">
     <!-- Firebase SDK -->
     <script type="module">
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";

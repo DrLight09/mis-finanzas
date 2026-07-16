@@ -51,6 +51,23 @@
     <link rel="stylesheet" media="print" onload="this.media='all'"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"></noscript>
+    <!-- Font Awesome define su @font-face con font-display:block, lo que retrasa
+         la primera pintura hasta ~760ms mientras baja el woff2 (hallazgo de
+         Lighthouse). Como no podemos tocar el CSS de cdnjs, lo sobreescribimos
+         redeclarando la misma family/weight con font-display:swap: el navegador
+         usa la última declaración que coincida, así que el texto/iconos se
+         muestran de inmediato con un fallback y se intercambian cuando la
+         fuente termina de cargar (los íconos solo aparecen un poco más tarde,
+         sin bloquear el render de la página). -->
+    <style>
+      @font-face {
+        font-family: 'Font Awesome 6 Free';
+        font-style: normal;
+        font-weight: 900;
+        font-display: swap;
+        src: url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/fa-solid-900.woff2') format('woff2');
+      }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" media="print" onload="this.media='all'"
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap">

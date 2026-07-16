@@ -11270,12 +11270,12 @@ function renderSpStats(){
     </div>`;
   } else {
     html+=`<div class="stat" style="grid-column:1/-1;">
-      <div class="stat-label">Flujo mensual proyectado</div>
+      <div class="stat-label">Margen proyectado</div>
       <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
         <div class="stat-value" style="color:${cV(margen)};">${margen>=0?'+':''}${fmt(Math.abs(margen))}</div>
-        <div style="font-size:11px;color:var(--text2);">cobras ${fmt(ingresoEstimado)} · pagas ${costo>0?fmt(costo):'—'}</div>
+        <div style="font-size:11px;color:var(--text2);">cobras ${fmt(ingresoEstimado)} en cuotas · el plan cuesta ${costo>0?fmt(costo):'—'}</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:3px;">estimado con tus personas actuales — registrá un pago a Spotify para empezar a ver el promedio real</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">proyección con tu configuración actual, no con tu frecuencia real de pago — registrá un pago a Spotify para ver el promedio real por ciclo</div>
     </div>`;
   }
 

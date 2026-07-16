@@ -5304,22 +5304,6 @@ function medirAnchoTexto(texto, font){
   _medirCtx.font = font;
   return _medirCtx.measureText(texto).width;
 }
-// Cachea el alto de tooltips de estructura fija (mismas líneas/tamaños de
-// fuente siempre, solo cambia el texto). Se mide una única vez con un
-// elemento invisible fuera de pantalla — ese primer forced reflow ocurre
-// una sola vez en toda la sesión, no en cada interacción.
-const _altoTooltipCache = {};
-function medirAltoTooltip(cacheKey, cssText, innerHTMLMuestra){
-  if(_altoTooltipCache[cacheKey] != null) return _altoTooltipCache[cacheKey];
-  const probe = document.createElement('div');
-  probe.style.cssText = cssText + ';position:fixed;visibility:hidden;left:-9999px;top:-9999px;';
-  probe.innerHTML = innerHTMLMuestra;
-  document.body.appendChild(probe);
-  const h = probe.offsetHeight;
-  probe.remove();
-  _altoTooltipCache[cacheKey] = h;
-  return h;
-}
 function hoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
 function crearMovimientoApertura(monto,fecha,nota){
@@ -6920,37 +6904,24 @@ function renderAnalisis(){
       const fmt2 = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
       const label = bar.dataset.barLabel || '';
       const val = parseFloat(bar.dataset.barVal) || 0;
-      // Leer la geometría del bar ANTES de tocar el DOM (remove/append más
-      // abajo invalidan el layout; leyendo primero evitamos el forced reflow).
-      const rect = bar.getBoundingClientRect();
       // Limpiar tooltip previo
       const old = document.getElementById('_bar-tt');
       if(old){ old.remove(); if(old._lastBar === bar){ return; } }
       if(!val) return;
-      const CSS_TT = 'background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:9px 13px;font-family:\'DM Mono\',monospace;text-align:center;min-width:90px;';
-      const labelTxt = label.toUpperCase();
-      const valorTxt = fmt2(val);
-      // Ancho vía canvas (no toca el DOM) — con margen extra para compensar
-      // el letter-spacing del label, que measureText no calcula.
-      const ttW = Math.max(
-        90,
-        medirAnchoTexto(labelTxt, '9px "DM Mono", monospace') + labelTxt.length*0.7,
-        medirAnchoTexto(valorTxt, '700 14px "DM Mono", monospace')
-      ) + 26;
-      // Alto cacheado — la estructura (2 líneas de tamaño fijo) nunca cambia.
-      const ttH = medirAltoTooltip('bar-tt', CSS_TT,
-        '<div style="font-size:9px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">X</div><div style="font-size:14px;font-weight:700;">X</div>');
-      let left = rect.left + rect.width/2 - ttW/2;
-      if(left < 8) left = 8;
-      if(left + ttW > window.innerWidth - 8) left = window.innerWidth - ttW - 8;
-      const top = rect.top - ttH - 8;
       const tt = document.createElement('div');
       tt.id = '_bar-tt';
       tt._lastBar = bar;
-      tt.style.cssText = 'position:fixed;z-index:99999;pointer-events:none;box-shadow:0 4px 24px rgba(0,0,0,.8);' + CSS_TT
-        + `left:${left}px;top:${top < 8 ? rect.bottom + 8 : top}px;`;
-      tt.innerHTML = `<div style="color:var(--text2);font-size:9px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">${label}</div><div style="color:${val>0?'#f06868':'var(--text2)'};font-size:14px;font-weight:700;">${valorTxt}</div>`;
+      tt.style.cssText = 'position:fixed;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:9px 13px;font-family:\'DM Mono\',monospace;z-index:99999;pointer-events:none;box-shadow:0 4px 24px rgba(0,0,0,.8);text-align:center;min-width:90px;';
+      tt.innerHTML = `<div style="color:var(--text2);font-size:9px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">${label}</div><div style="color:${val>0?'#f06868':'var(--text2)'};font-size:14px;font-weight:700;">${fmt2(val)}</div>`;
       document.body.appendChild(tt);
+      const rect = bar.getBoundingClientRect();
+      const ttW = tt.offsetWidth || 110;
+      let left = rect.left + rect.width/2 - ttW/2;
+      if(left < 8) left = 8;
+      if(left + ttW > window.innerWidth - 8) left = window.innerWidth - ttW - 8;
+      const top = rect.top - tt.offsetHeight - 8;
+      tt.style.left = left + 'px';
+      tt.style.top = (top < 8 ? rect.bottom + 8 : top) + 'px';
       clearTimeout(window._barTT_t);
       window._barTT_t = setTimeout(()=>{ const t=document.getElementById('_bar-tt'); if(t) t.remove(); }, 2500);
     };

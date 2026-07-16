@@ -5295,6 +5295,15 @@ function fmtNoCents(n){
   return sign+'$'+intPart.toLocaleString('es-CO');
 }
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+// Mide el ancho de un texto sin tocar el DOM (evita forced reflow en tooltips
+// que se reposicionan muy seguido, ej. arrastrar sobre gráficos). Un canvas
+// fuera del documento no depende del layout de la página, así que medir con
+// él no obliga al navegador a recalcular nada.
+const _medirCtx = document.createElement('canvas').getContext('2d');
+function medirAnchoTexto(texto, font){
+  _medirCtx.font = font;
+  return _medirCtx.measureText(texto).width;
+}
 function hoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
 function crearMovimientoApertura(monto,fecha,nota){
@@ -7161,8 +7170,7 @@ function renderAnalisis(){
         const diffCol = overlay.dataset.diffcolor;
         const fmt2 = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
         const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-        function getClosest(clientX){
-          const rect = overlay.getBoundingClientRect();
+        function getClosest(rect, clientX){
           const relX = (clientX - rect.left) / rect.width; // 0-1
           const svgX = relX * svgW;
           let best = 0, bestD = Infinity;
@@ -7170,32 +7178,38 @@ function renderAnalisis(){
           return ptsData[best];
         }
         function showTT(clientX){
-          const p = getClosest(clientX);
-          if(!p) return;
+          // Todas las LECTURAS de geometría primero (rect no se invalida
+          // hasta que empecemos a escribir el DOM más abajo).
           const rect = overlay.getBoundingClientRect();
+          const p = getClosest(rect, clientX);
+          if(!p) return;
           const relX = p.px / svgW;
           const leftPx = relX * rect.width;
-          // Fecha bonita
           let fechaFmt = p.fecha;
           if(p.fecha && p.fecha.length>=10){
             const [y,m,d] = p.fecha.slice(0,10).split('-');
             fechaFmt = `${parseInt(d)} ${MESES[parseInt(m)-1]}`;
           }
-          tt.innerHTML = `<div style="color:var(--text2);font-size:9px;margin-bottom:3px;">${fechaFmt}</div><div style="color:#f0ede8;font-size:13px;font-weight:700;">${fmt2(p.valorReal !== undefined ? p.valorReal : p.valor)}</div>`;
-          tt.style.display = 'block';
-          // Centrar horizontalmente pero sin salirse
-          const ttW = tt.offsetWidth || 100;
+          const valorTxt = fmt2(p.valorReal !== undefined ? p.valorReal : p.valor);
+          // Ancho del tooltip medido con canvas (no toca el DOM, no fuerza
+          // reflow) en vez de leer tt.offsetWidth después de escribir el
+          // innerHTML — eso era lo que causaba el forced reflow en cada
+          // touchmove al arrastrar sobre la gráfica.
+          const ttW = Math.max(
+            medirAnchoTexto(fechaFmt, '9px "DM Mono", monospace'),
+            medirAnchoTexto(valorTxt, '700 13px "DM Mono", monospace')
+          ) + 24; // padding:8px 12px del tooltip
           let ttLeft = leftPx;
           const wrapW = rect.width;
           if(ttLeft - ttW/2 < 0) ttLeft = ttW/2;
           if(ttLeft + ttW/2 > wrapW) ttLeft = wrapW - ttW/2;
+          // Ahora sí, todas las ESCRITURAS juntas al final.
+          tt.innerHTML = `<div style="color:var(--text2);font-size:9px;margin-bottom:3px;">${fechaFmt}</div><div style="color:#f0ede8;font-size:13px;font-weight:700;">${valorTxt}</div>`;
+          tt.style.display = 'block';
           tt.style.left = ttLeft + 'px';
           tt.style.top = '2px';
-          // Mover punto activo
-          dot.setAttribute('cx', p.px / svgW * svgW);
-          dot.setAttribute('cy', p.py);
           dot.setAttribute('cx', p.px);
-          // Línea vertical
+          dot.setAttribute('cy', p.py);
           vline.setAttribute('x1', p.px); vline.setAttribute('x2', p.px);
           vline.setAttribute('opacity','0.5');
         }

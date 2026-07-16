@@ -11430,12 +11430,14 @@ function confirmarSpDestino(){
   if(spDestinoSel)sumarFuente(spDestinoSel,montoTotal);
   // Avanzar fecha de cobro N meses pero respetando el día original fijo
   if(p.proximoPago)p.proximoPago=nextMonthFixed(p.proximoPago,meses);
-  // Registrar en historial (un registro por cada mes cobrado) — se guarda el nombre
-  // ACTUAL de la persona vinculada, no el crudo, para que no quede fijado desactualizado
+  // Registrar en historial UN solo registro por el total cobrado — aunque cubra
+  // varios períodos, es una sola plata que entró en un solo movimiento a la cuenta.
+  // El detalle de cuántos períodos y a cómo cada uno queda en la nota, para no perder
+  // esa información. Se guarda el nombre ACTUAL de la persona vinculada, no el crudo,
+  // para que no quede fijado desactualizado.
   if(!S.spotifyHistorial)S.spotifyHistorial=[];
-  for(let m=0;m<meses;m++){
-    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:p.monto||0,fuente:spDestinoSel||'',fecha:hoy(),nota:meses>1?`Período ${m+1} de ${meses} (pago adelantado)`:'',proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'});
-  }
+  const notaCobro=meses>1?`${meses} períodos × ${fmt(p.monto||0)} (pago adelantado)`:'';
+  S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:montoTotal,periodos:meses,fuente:spDestinoSel||'',fecha:hoy(),nota:notaCobro,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'});
   spDestinoIdx=null;
   save();refresh();closeSheet('sp-destino');
   toast(meses>1?`Cobrados ${meses} períodos adelantados a ${nombreActual} · ${fmt(montoTotal)}`:`Cobro registrado · ${nombreActual}`,'ok');

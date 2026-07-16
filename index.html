@@ -792,7 +792,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             <button type="button" id="pin-dialog-cancel"
               style="flex:1;padding:10px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid var(--border2);background:transparent;color:var(--text);">Cancelar</button>
             <button type="button" id="pin-dialog-confirm"
-              style="flex:1;padding:10px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid rgba(240,104,104,.4);background:rgba(240,104,104,.2);color:var(--red);">Confirmar</button>
+              style="flex:1;padding:10px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid rgba(240,104,104,.4);background:rgba(240,104,104,.1);color:var(--red);">Confirmar</button>
           </div>
         </div>
       </div>
@@ -19138,7 +19138,7 @@ function renderTCDashboard(){
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:inline-block;vertical-align:middle;margin-right:4px;flex-shrink:0;"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>${escHtml(tc.nombre)}
-          ${tc.cupo?`<span style="font-size:9px;padding:2px 6px;border-radius:20px;background:${pct>80?'rgba(240,104,104,.2)':pct>50?'rgba(240,184,64,.15)':'rgba(255,255,255,.07)'};color:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--text3)'};">${pct.toFixed(0)}% usado</span>`:''}
+          ${tc.cupo?`<span style="font-size:9px;padding:2px 6px;border-radius:20px;background:${pct>80?'rgba(240,104,104,.1)':pct>50?'rgba(240,184,64,.15)':'rgba(255,255,255,.07)'};color:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--text2)'};">${pct.toFixed(0)}% usado</span>`:''}
           ${estadoInfo.badge?`<span class="badge ${estadoInfo.badge}" style="font-size:8px;">${estadoInfo.label}</span>`:''}
         </div>
         ${tc.cupo?`<div style="margin-top:4px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;width:100%;max-width:180px;"><div style="height:100%;width:${pct.toFixed(0)}%;background:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--accent)'};border-radius:2px;"></div></div>`:''}

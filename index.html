@@ -11185,13 +11185,13 @@ function renderSpHistorial(){
   if(!hist.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0;">Sin pagos registrados aún.</div>';return;}
   el.innerHTML=hist.map(h=>`
     <div class="card card-sm" style="margin-bottom:7px;">
-      <div class="row">
-        <div>
+      <div class="row" style="align-items:flex-start;gap:10px;">
+        <div style="flex:1;min-width:0;">
           <div style="font-size:12px;font-weight:500;">${h.tipo==='pago'?'Pago a Spotify':'Cobro de '+escHtml(h.nombre)}</div>
           <div style="font-size:10px;color:var(--text2);margin-top:1px;">${h.fecha}${h.fuente?' · '+fuenteLabel(h.fuente):''}${h.nota?' · <span style="color:var(--blue);">'+escHtml(h.nota)+'</span>':''}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace;color:${h.tipo==='pago'?'var(--red)':'var(--accent)'};">${h.tipo==='pago'?'−':'+'} ${fmt(h.monto)}</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace;white-space:nowrap;color:${h.tipo==='pago'?'var(--red)':'var(--accent)'};">${h.tipo==='pago'?'−':'+'} ${fmt(h.monto)}</div>
           <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" onclick="deleteSpHistorial(${h._realIdx})"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
         </div>
       </div>

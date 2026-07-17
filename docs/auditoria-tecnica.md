@@ -34,7 +34,7 @@ Reporte basado en verificación directa del archivo.
 
 ### 3. Arquitectura monolítica
 
-**Avance real:** primer módulo extraído — Spotify pasó de vivir inline en `index.html` a `js/modules/spotify.js` (ver `CHANGELOG.md#infraestructura--seguridad`). `index.html` bajó de 24.635 a 23.729 líneas. Se mantuvo como `<script src>` clásico (no ES module) a propósito: el estado global (`S`) y los helpers (`save`, `escHtml`, `toast`, etc.) siguen sin extraer, y forzar `import/export` solo para este módulo hubiera exigido tocar ese núcleo compartido de paso — el cambio de mayor riesgo de este punto, que sigue pendiente como se describe abajo.
+**Avance real:** primer módulo extraído — Spotify pasó de vivir inline en `index.html` a `js/modules/spotify.js` + `js/modules/spotify-personas.js` (dos archivos, no uno — por una razón real de orden de carga, no estética; ver `CHANGELOG.md#infraestructura--seguridad`). `index.html` bajó de 24.635 a 23.757 líneas. Se mantuvo como `<script src>` clásicos (no ES modules) a propósito: el estado global (`S`) y los helpers (`save`, `escHtml`, `toast`, etc.) siguen sin extraer, y forzar `import/export` solo para este módulo hubiera exigido tocar ese núcleo compartido de paso — el cambio de mayor riesgo de este punto, que sigue pendiente como se describe abajo.
 
 Para el resto: sin cambios desde la revisión anterior. ~1.3 MB repartidos ahora en `index.html` + 2 archivos nuevos, cientos de funciones globales, 13 pantallas y ~46+ sheets sin separación real de responsabilidades.
 

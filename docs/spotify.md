@@ -235,7 +235,12 @@ El módulo no recibe tratamiento especial: un cobro sube el saldo real de la cue
 
 ## 11. Referencia de implementación
 
-**Ubicación:** el módulo vive en [`js/modules/spotify.js`](../js/modules/spotify.js) (antes estaba inline en `index.html`). Depende de `js/core/events.js` (debe cargarse antes) y de los helpers globales del núcleo de la app (`S`, `save`, `escHtml`, `toast`, `dialogo`, etc., que todavía viven en `index.html` — ver `auditoria-tecnica.md` punto 3).
+**Ubicación:** el módulo quedó en **dos archivos**, no uno — descubierto durante la migración, no una decisión de diseño de entrada (ver `CHANGELOG.md#infraestructura--seguridad` para el detalle del porqué):
+
+- [`js/modules/spotify.js`](../js/modules/spotify.js) — funciones base (personas del plan, cobros, pago, ganancia). Se carga *temprano* en `index.html`, porque un par de wirings de botones de otros módulos las referencian de forma inmediata más adelante en el documento.
+- [`js/modules/spotify-personas.js`](../js/modules/spotify-personas.js) — la integración con el sistema unificado de Personas (envuelve `openSheet`, `addSpotify`, `editarSpotify`, `guardarEditarSpotify` y `renderSpotify` del archivo anterior). Se carga *mucho más tarde* en `index.html`, porque necesita que `openSheet()` y el sistema de Personas ya estén definidos.
+
+Los dos dependen de `js/core/events.js` (debe cargarse antes que cualquiera de los dos) y de los helpers globales del núcleo de la app (`S`, `save`, `escHtml`, `toast`, `dialogo`, etc., que todavía viven en `index.html` — ver `auditoria-tecnica.md` punto 3). **Si alguna vez alguien mueve alguno de estos dos `<script src>` de lugar en `index.html`, revisar primero el comentario al principio de cada archivo** — el orden no es cosmético, es una dependencia real.
 
 ### Funciones clave
 
@@ -258,6 +263,8 @@ Los botones/badges de la pantalla ya no usan `onclick` inline — usan `data-act
 | `spotify:eliminarHistorial` | `deleteSpHistorial` |
 | `spotify:abrirSelectorPersona` | Abre el selector de personas unificado (`abrirSelPersona`) |
 | `spotify:onClickEditPersonaBtn` | `_onClickSpEditPersonaBtn` |
+
+Las primeras 5 filas se registran en `spotify.js`; las últimas 2 (selector de personas) en `spotify-personas.js`.
 
 ### Protección contra borrado directo
 

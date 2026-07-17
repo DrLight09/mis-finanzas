@@ -20,11 +20,11 @@ Primer paso del punto 1 de la auditoría técnica (migrar `onclick` inline → `
 
 `events.js` no conoce a ningún módulo en particular ni acumula lógica de negocio — solo escucha clicks y despacha al handler que cada módulo registró. Si en algún momento este archivo empieza a tener un `if`/`switch` con casos por módulo, es señal de que algo se coló ahí que no le pertenece.
 
-### 🔧 Nuevo — Extracción de Spotify a `js/modules/spotify.js`
+### 🔧 Nuevo — Extracción de Spotify a `js/modules/`
 
-*(2026-07-16)*
+*(2026-07-16, ajustado 2026-07-17 — ver el fix de orden de carga más abajo)*
 
-Primer módulo movido fuera de `index.html`, como punto de partida del punto 3 de la auditoría (arquitectura monolítica). Se movió tal cual, sin reescribir su lógica de negocio, cargado como `<script src="js/modules/spotify.js">` clásico — mismo scope global que ya tenía, todavía no ES modules (eso implicaría mover también `S`/`save()`/helpers a su propio archivo, cambio de mayor riesgo, pendiente aparte). `index.html` pasó de 24.635 a 23.729 líneas.
+Primer módulo movido fuera de `index.html`, como punto de partida del punto 3 de la auditoría (arquitectura monolítica). Se movió tal cual, sin reescribir su lógica de negocio, cargado con `<script src>` clásicos — mismo scope global que ya tenía, todavía no ES modules (eso implicaría mover también `S`/`save()`/helpers a su propio archivo, cambio de mayor riesgo, pendiente aparte). Terminó en **dos archivos** (`spotify.js` + `spotify-personas.js`, no uno solo) por una razón real de orden de carga, no estética — detalle en la entrada de abajo. `index.html` pasó de 24.635 a 23.757 líneas.
 
 ### ✅ Corregido — Nombre de integrante de Spotify sin escapar en 3 puntos
 
@@ -37,6 +37,23 @@ Al extraer el módulo aparecieron 3 interpolaciones del nombre de un integrante 
 3. Varias llamadas a `toast()` (en `addSpotify`, `deleteSpotify`, `guardarEditarSpotify`, `confirmarSpDestino`) que interpolaban el nombre sin escapar. `toast()` renderiza su mensaje con `innerHTML`, así que un nombre con HTML/JS embebido se hubiera ejecutado apenas se mostrara ese toast.
 
 Fix: las 3 se envolvieron en `escHtml()`. `toast()` en sí no se tocó — es infraestructura compartida por toda la app y al menos 3 llamadas de otros módulos le pasan HTML intencional para íconos, así que cambiar su comportamiento interno de paso hubiera roto esas pantallas. Queda anotado en `auditoria-tecnica.md` como hallazgo pendiente para cuando se toque el núcleo compartido (`toast()` debería separar el ícono, que sí es HTML de confianza, del mensaje, que no).
+
+### ✅ Corregido — `spotify.js` rompía en consola: orden de carga incorrecto
+
+*(2026-07-17, encontrado probando en el navegador después de la migración de arriba)*
+
+Al extraer Spotify a un archivo aparte, se juntó en un solo `spotify.js` tanto sus funciones base como su integración con Personas (antes eran dos bloques separados por miles de líneas dentro de `index.html`). Cargar ese archivo único en un solo punto del documento resultó imposible sin romper algo, porque cada mitad depende de cosas definidas en momentos distintos:
+
+- La integración con Personas (`openSheet = function(){...}`, etc.) se ejecuta *inmediatamente* al cargar el script — no espera a que se llame ninguna función — y necesita que `openSheet()` y el sistema de Personas ya existan. Poner el `<script>` temprano rompía esto: `Uncaught ReferenceError: openSheet is not defined`.
+- Al mismo tiempo, un wiring de un botón de Encargos (`initEncargosListeners`, un IIFE que corre inmediatamente, no diferido) referencia `guardarEditarSpotify` — una función *base* de Spotify — más arriba en el documento. Poner el `<script>` tarde (para resolver el punto anterior) rompía esto en cambio.
+
+Como consecuencia del primer error, el script se detenía ahí mismo y nunca llegaba a ejecutar el registro de acciones al final del archivo — de ahí los "No hay handler registrado" para *todos* los botones de Spotify, no relacionados entre sí a simple vista pero con la misma causa raíz.
+
+**Fix:** separar en dos archivos, cada uno cargado en el punto exacto donde vivía su bloque original — `spotify.js` (funciones base) temprano, `spotify-personas.js` (integración) mucho más tarde, ya con `openSheet()` y Personas definidos. Cada archivo documenta en su propio encabezado por qué debe cargarse donde carga.
+
+De paso, al simular la carga real (con jsdom) apareció un segundo bug, más sutil, en el propio sistema de eventos: `Events.on('spotify:editar', editarSpotify)` capturaba la función *en el momento del registro*, pero `spotify-personas.js` reemplaza `editarSpotify` después (para precargar la persona vinculada al editar). El botón "Editar" hubiera seguido andando, solo que sin esa precarga — mismo tipo de bug que el de arriba, pasando desapercibido en vez de tirar error. Se corrigió registrando ese caso puntual con una función flecha (`(...args) => editarSpotify(...args)`), que resuelve `editarSpotify` en cada click en vez de una sola vez al cargar — mismo comportamiento que tenía el `onclick="editarSpotify(...)"` original. Los demás `data-action` de Spotify no tenían este problema porque ninguna otra función que registran se vuelve a redefinir después.
+
+**Cómo se verificó esta vez (no solo "se ve bien"):** se simuló la carga completa de `index.html` con un DOM real (`jsdom`, en un entorno de prueba aparte) y se disparó un click de verdad a través del despachador de `Events` para confirmar que el handler que corre es el correcto — no solo que existe.
 
 ---
 

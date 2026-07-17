@@ -11004,8 +11004,12 @@ async function deshacerPendienteMesada(parent,key,idx){
 
 function cambiarAnio(d){const hoy=new Date().getFullYear();const nuevo=(S.mesadaAnio||hoy)+d;if(nuevo<hoy-2||nuevo>hoy+2)return;save();S.mesadaAnio=nuevo;renderMesada();}
 
-// Módulo Spotify migrado a js/modules/spotify.js — ver docs/spotify.md
-// y docs/CHANGELOG.md (2026-07-16, migración onclick -> Events + fixes de escapado).
+// Módulo Spotify migrado a js/modules/spotify.js — ver docs/spotify.md.
+// Carga temprana (acá mismo, no más abajo): un par de wirings de botones de
+// otros módulos referencian addSpotify/guardarEditarSpotify de forma
+// inmediata (no diferida) más adelante en este archivo, y necesitan que ya
+// existan. La integración con Personas vive aparte, en spotify-personas.js,
+// cargada mucho más abajo — ver el comentario de ese archivo.
 </script>
 <script src="js/core/events.js"></script>
 <script src="js/modules/spotify.js"></script>
@@ -22304,7 +22308,13 @@ abrirEncargoDetalle = function(id) {
     chip.onclick = () => abrirPerfilPersona(p.id);
   }
 };
-// Módulo Spotify (incluye integración con Personas) migrado a js/modules/spotify.js — ver docs/spotify.md
+// Integración de Spotify con Personas migrada a js/modules/spotify-personas.js
+// — ver el comentario al principio de ese archivo (depende de openSheet y del
+// sistema de Personas recién definidos, por eso carga acá y no junto al resto
+// de Spotify, que está arriba). Ver también docs/spotify.md.
+</script>
+<script src="js/modules/spotify-personas.js"></script>
+<script>
 
 /* ═══════════════════════════════════════════════════════════════
    INTEGRACIÓN: Yo debo ↔ S.personas (plena paridad con Me deben)

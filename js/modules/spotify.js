@@ -1,36 +1,27 @@
 /* ═══════════════════════════════════════════════════════════════
    js/modules/spotify.js
 
-   Módulo Spotify de mis-finanzas. Administra la suscripción
-   compartida: personas del plan, cobros, pago al servicio y cálculo
-   de ganancia. Documentación funcional completa (objetivo, reglas,
-   modelo de datos, flujo, decisiones de diseño) en docs/spotify.md
-   — este archivo es la implementación, no la explica de nuevo.
+   Módulo Spotify de mis-finanzas — funciones base (personas del plan,
+   cobros, pago al servicio, ganancia). Documentación funcional
+   completa en docs/spotify.md — este archivo es la implementación.
 
-   Depende de globals definidos en index.html (núcleo compartido,
-   todavía no modularizado — ver docs/auditoria-tecnica.md punto 3):
-   S, save, refresh, escHtml, fmt, fmtInput, parseMoney, toast,
-   dialogo, uid, hoy, openSheet, closeSheet, getFuentes,
-   getFuentesSinTC, fuenteLabel, fuenteBadgeClass, getSaldoActual,
-   sumarFuente, descontarFuente, calcC, emptyState, getPersona,
-   iniciales, abrirSelPersona, _inyectarPersonaSheets.
+   ⚠️ ORDEN DE CARGA: este archivo debe cargarse ANTES de que
+   openSheet() se defina más abajo en index.html, porque un par de
+   wirings de botones de OTROS módulos (Encargos, Mesada — ver
+   docs/CHANGELOG.md#infraestructura--seguridad) referencian
+   addSpotify/guardarEditarSpotify de forma inmediata, no diferida,
+   y necesitan que ya existan en ese punto del documento. Por eso el
+   <script src> de este archivo vive en el mismo lugar donde antes
+   estaba el bloque "SPOTIFY" inline (temprano en el documento).
 
-   Depende de js/core/events.js (Events), que debe cargarse ANTES
-   que este archivo.
+   La integración con el sistema de Personas vive aparte, en
+   js/modules/spotify-personas.js, cargado mucho más abajo — ver el
+   comentario al principio de ese archivo para el porqué.
 
-   Nota de migración (2026-07-16): este archivo reemplaza el bloque
-   "SPOTIFY" + "INTEGRACIÓN SPOTIFY ↔ PERSONAS" que antes vivía
-   inline en index.html. El único cambio de comportamiento es:
-   - Los onclick="..." inline pasaron a data-action + Events.on()
-     (ver events.js) para poder endurecer la CSP a futuro.
-   - 3 puntos que interpolaban el nombre de un integrante sin
-     escapar (dos en innerHTML, varios en toast(), que también
-     renderiza con innerHTML) ahora pasan por escHtml(). Sin este
-     fix, un nombre con HTML/JS embebido podía ejecutarse apenas se
-     mostraba esa fila o ese toast. Detalle en CHANGELOG.md.
-   El resto de la lógica de negocio es exactamente la misma — ver
-   CHANGELOG.md si en algún momento hace falta comparar contra la
-   versión anterior.
+   Depende de globals del núcleo compartido (S, save, refresh,
+   escHtml, fmt, toast, dialogo, uid, hoy, emptyState, getFuentes*,
+   sumarFuente, descontarFuente, calcC, getSaldoActual) y de
+   js/core/events.js (Events), que debe cargarse antes que este.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ---- SPOTIFY ---- */
@@ -648,319 +639,19 @@ function guardarEditarSpotify() {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   INTEGRACIÓN SPOTIFY ↔ PERSONAS
-   Conecta el módulo Spotify con el sistema de personas para que
-   los miembros del plan sean personas reales de S.personas.
+   REGISTRO DE EVENTOS (funciones base — la integración con Personas
+   registra las suyas en spotify-personas.js)
    ═══════════════════════════════════════════════════════════════ */
 
-let _spPersonaId = null;       // personaId seleccionado en "Agregar"
-let _spEditPersonaId = null;   // personaId en "Editar"
-
-/* ── Reemplazar campo de texto en sheet-spotify con selector de persona ── */
-function _initSpotifyPersonaSelector() {
-  const sheet = document.getElementById('sheet-spotify');
-  if (!sheet || sheet._personaHook) return;
-  sheet._personaHook = true;
-
-  const spNEl = document.getElementById('sp_n');
-  if (!spNEl) return;
-  const ig = spNEl.closest('.ig');
-  if (!ig) return;
-
-  ig.innerHTML = `
-    <label class="il">¿Quién es?</label>
-    <div id="sp-persona-btn" ${Events.attr('spotify:abrirSelectorPersona')}
-      style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
-      border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
-      cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
-      <div id="sp-persona-avatar" class="avatar" style="width:28px;height:28px;font-size:10px;margin:0;display:none;flex-shrink:0;"></div>
-      <span id="sp-persona-label">Seleccionar persona...</span>
-      <svg style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-    </div>
-    <input type="hidden" id="sp_n" value="">`;
-}
-
-function _onSelPersonaSpotify(personaId) {
-  const p = getPersona(personaId);
-  if (!p) return;
-  _spPersonaId = personaId;
-  document.getElementById('sp_n').value = p.nombre;
-
-  const btn = document.getElementById('sp-persona-btn');
-  const lbl = document.getElementById('sp-persona-label');
-  const av  = document.getElementById('sp-persona-avatar');
-  if (btn) btn.style.borderColor = 'var(--accent)';
-  if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
-  if (av) {
-    av.style.display = 'flex';
-    av.style.background = (p.color || '#60b0f0') + '22';
-    av.style.color = p.color || '#60b0f0';
-    av.style.borderColor = (p.color || '#60b0f0') + '44';
-    av.textContent = iniciales(p.nombre);
-  }
-}
-
-/* ── Reemplazar campo de texto en sheet-editar-spotify con selector ── */
-function _initSpotifyEditPersonaSelector() {
-  const sheet = document.getElementById('sheet-editar-spotify');
-  if (!sheet || sheet._personaEditHook) return;
-  sheet._personaEditHook = true;
-
-  const spEditNEl = document.getElementById('sp_edit_n');
-  if (!spEditNEl) return;
-  const ig = spEditNEl.closest('.ig');
-  if (!ig) return;
-
-  ig.innerHTML = `
-    <label class="il">¿Quién es?</label>
-    <div id="sp-edit-persona-btn" ${Events.attr('spotify:onClickEditPersonaBtn')}
-      style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
-      border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
-      cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
-      <div id="sp-edit-persona-avatar" class="avatar" style="width:28px;height:28px;font-size:10px;margin:0;display:none;flex-shrink:0;"></div>
-      <span id="sp-edit-persona-label">Seleccionar persona...</span>
-      <svg id="sp-edit-persona-chevron" style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-    </div>
-    <div id="sp-edit-persona-hint" style="font-size:11px;color:var(--text3);margin-top:5px;display:none;">Para asignarle este cobro a otra persona, eliminá este integrante y agregá uno nuevo — así el historial no se mezcla entre los dos.</div>
-    <input type="hidden" id="sp_edit_n" value="">`;
-}
-
-// Si la persona editada ya está vinculada a alguien (personaId), el botón queda
-// bloqueado: cambiar de persona a mitad de camino es justo lo que causaba
-// desincronizaciones. Para eso ya existe un camino simple y confiable: eliminar
-// este integrante y agregar uno nuevo (ver hint debajo del botón).
-let _spEditPersonaLocked = false;
-function _onClickSpEditPersonaBtn() {
-  if (_spEditPersonaLocked) return;
-  _abrirSelPersonaSpotifyEdit();
-}
-
-let _spEditPersonaPickerAbierto = false;    // se puso true al abrir el buscador en "Editar"
-let _spEditPersonaPickerConfirmado = false; // se puso true solo si de verdad se eligió/creó alguien
-
-// Wrapper del botón "¿Quién es?" en Editar: además de abrir el buscador, marca que
-// se abrió, para poder detectar si se cierra sin confirmar ninguna selección nueva.
-function _abrirSelPersonaSpotifyEdit() {
-  _spEditPersonaPickerAbierto = true;
-  abrirSelPersona(_onSelPersonaSpotifyEdit, '¿Quién es?');
-}
-
-function _onSelPersonaSpotifyEdit(personaId) {
-  const p = getPersona(personaId);
-  if (!p) return;
-  _spEditPersonaId = personaId;
-  _spEditPersonaPickerConfirmado = true;
-  document.getElementById('sp_edit_n').value = p.nombre;
-
-  const btn = document.getElementById('sp-edit-persona-btn');
-  const lbl = document.getElementById('sp-edit-persona-label');
-  const av  = document.getElementById('sp-edit-persona-avatar');
-  if (btn) btn.style.borderColor = 'var(--accent)';
-  if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
-  if (av) {
-    av.style.display = 'flex';
-    av.style.background = (p.color || '#60b0f0') + '22';
-    av.style.color = p.color || '#60b0f0';
-    av.style.borderColor = (p.color || '#60b0f0') + '44';
-    av.textContent = iniciales(p.nombre);
-  }
-}
-
-/* ── Hook en openSheet para inicializar los selectores ─────────── */
-const _origOpenSheetSpotifyPersonas = openSheet;
-openSheet = function(id) {
-  if (id === 'spotify') {
-    _inyectarPersonaSheets();
-    _spPersonaId = null;
-    _initSpotifyPersonaSelector();
-    // Resetear UI del selector
-    const lbl = document.getElementById('sp-persona-label');
-    const av  = document.getElementById('sp-persona-avatar');
-    const btn = document.getElementById('sp-persona-btn');
-    if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
-    if (av)  av.style.display = 'none';
-    if (btn) btn.style.borderColor = 'var(--border2)';
-    const spN = document.getElementById('sp_n');
-    if (spN) spN.value = '';
-  }
-  if (id === 'editar-spotify') {
-    _inyectarPersonaSheets();
-    _initSpotifyEditPersonaSelector();
-  }
-  _origOpenSheetSpotifyPersonas.apply(this, arguments);
-};
-
-/* ── Hook en addSpotify para guardar personaId ──────────────────── */
-const _origAddSpotifyPersonas = addSpotify;
-addSpotify = function() {
-  // Validar que se seleccionó una persona (ya que sp_n es ahora input oculto)
-  const spN = document.getElementById('sp_n');
-  if (spN && !spN.value.trim()) {
-    const btn = document.getElementById('sp-persona-btn');
-    if (btn) {
-      btn.style.borderColor = 'var(--red)';
-      setTimeout(() => { if (btn) btn.style.borderColor = 'var(--border2)'; }, 2000);
-    }
-    toast('Seleccioná una persona', 'err');
-    return;
-  }
-  const pId = _spPersonaId;
-  if (pId && (S.spotifyPersonas||[]).some(x=>x.personaId===pId)) {
-    toast('Esta persona ya está agregada en Spotify','err');
-    return;
-  }
-  _origAddSpotifyPersonas.apply(this, arguments);
-  // Asignar personaId al último spotifyPersona creado
-  if (pId && S.spotifyPersonas && S.spotifyPersonas.length) {
-    const last = S.spotifyPersonas[S.spotifyPersonas.length - 1];
-    if (last && !last.personaId) {
-      last.personaId = pId;
-      // Sincronizar nombre con la persona
-      const p = getPersona(pId);
-      if (p) last.nombre = p.nombre;
-      save();
-    }
-  }
-  _spPersonaId = null;
-};
-
-/* ── Hook en editarSpotify para pre-cargar la persona vinculada ─── */
-const _origEditarSpotifyPersonas = editarSpotify;
-editarSpotify = function(i) {
-  _origEditarSpotifyPersonas.apply(this, arguments);
-  const sp = (S.spotifyPersonas || [])[i];
-  if (!sp) return;
-  _spEditPersonaId = sp.personaId || null;
-  _spEditPersonaLocked = !!sp.personaId;
-  // Pre-cargar UI del selector tras abrir el sheet
-  setTimeout(() => {
-    _initSpotifyEditPersonaSelector();
-    const btn = document.getElementById('sp-edit-persona-btn');
-    const chevron = document.getElementById('sp-edit-persona-chevron');
-    const hint = document.getElementById('sp-edit-persona-hint');
-    if (sp.personaId) {
-      const p = getPersona(sp.personaId);
-      if (p) _onSelPersonaSpotifyEdit(sp.personaId);
-      // Bloqueado: ya hay una persona vinculada — se ve como texto, no como control
-      if (btn) { btn.style.cursor = 'default'; btn.style.background = 'var(--bg2)'; }
-      if (chevron) chevron.style.display = 'none';
-      if (hint) hint.style.display = 'block';
-    } else {
-      // Rellenar con el nombre directo si no tiene personaId
-      const lbl = document.getElementById('sp-edit-persona-label');
-      const spEditN = document.getElementById('sp_edit_n');
-      if (lbl && sp.nombre) { lbl.textContent = sp.nombre; lbl.style.color = 'var(--text)'; }
-      if (btn && sp.nombre) btn.style.borderColor = 'var(--accent)';
-      if (spEditN) spEditN.value = sp.nombre || '';
-      // Sin vínculo todavía: queda disponible para elegir/crear la persona una vez
-      if (btn) { btn.style.cursor = 'pointer'; btn.style.background = 'var(--bg3)'; }
-      if (chevron) chevron.style.display = '';
-      if (hint) hint.style.display = 'none';
-    }
-    // Resetear banderas DESPUÉS de precargar: mostrar el estado actual no cuenta
-    // como una selección nueva confirmada por el usuario.
-    _spEditPersonaPickerAbierto = false;
-    _spEditPersonaPickerConfirmado = false;
-  }, 80);
-};
-
-/* ── Hook en guardarEditarSpotify para guardar personaId ────────── */
-const _origGuardarEditarSpotifyPersonas = guardarEditarSpotify;
-guardarEditarSpotify = function() {
-  // Si se abrió el buscador de "¿Quién es?" pero se cerró sin confirmar ninguna
-  // selección (ni elegir a alguien de la lista, ni crear una persona nueva), el
-  // input oculto sigue con el nombre anterior — avisar en vez de guardarlo en silencio.
-  if (_spEditPersonaPickerAbierto && !_spEditPersonaPickerConfirmado) {
-    const spActual = (S.spotifyPersonas || [])[_spEditIdx];
-    toast(`No se seleccionó una persona nueva — se mantuvo a "${spActual ? escHtml(spActual.nombre) : 'la persona anterior'}"`, 'err', 4000);
-  }
-  // Capturar idx ANTES de llamar al original (que lo pone a null)
-  const idxAntes = _spEditIdx;
-  // Si se vinculó (por primera vez) a una persona que ya está usada por OTRO integrante
-  // de Spotify, bloquear — mismo criterio que ya aplica en addSpotify.
-  if (_spEditPersonaId) {
-    const yaUsadaPorOtro = (S.spotifyPersonas || []).some((x, idx) => idx !== idxAntes && x.personaId === _spEditPersonaId);
-    if (yaUsadaPorOtro) {
-      toast('Esta persona ya está agregada en Spotify', 'err');
-      return;
-    }
-  }
-  _origGuardarEditarSpotifyPersonas.apply(this, arguments);
-  // Asignar personaId al spotifyPersona editado (si se confirmó una selección nueva)
-  if (idxAntes !== null && S.spotifyPersonas && S.spotifyPersonas[idxAntes]) {
-    const sp = S.spotifyPersonas[idxAntes];
-    if (_spEditPersonaId) {
-      sp.personaId = _spEditPersonaId;
-    }
-    // Sincronización final: si el registro sigue vinculado a una persona (personaId,
-    // ya sea la que había antes o la recién elegida), el nombre SIEMPRE se resuelve
-    // desde ese vínculo — nunca se deja el texto crudo que haya quedado en el campo
-    // oculto. Así nombre y personaId no pueden quedar desincronizados, así falle
-    // silenciosamente la confirmación del buscador de personas.
-    if (sp.personaId) {
-      sp.nombre = spNombreDe(sp);
-    }
-    save();
-    refresh();
-  }
-  _spEditPersonaId = null;
-  _spEditPersonaPickerAbierto = false;
-  _spEditPersonaPickerConfirmado = false;
-};
-
-/* ── Hook en renderSpotify para aplicar color de persona ─────────── */
-const _origRenderSpotifyPersonas = renderSpotify;
-renderSpotify = function() {
-  _origRenderSpotifyPersonas.apply(this, arguments);
-  // Aplicar color y nombre correcto a cada avatar del listado Spotify
-  const lista = document.getElementById('spotifyList');
-  if (!lista) return;
-  const p = S.spotifyPersonas || [];
-  // Ordenar igual que en renderSpotify
-  const pOrdenado = [...p].map((x, i) => ({ ...x, _origIdx: i })).sort((a, b) => {
-    const far = 99999;
-    const dA = a.proximoPago ? Math.ceil((new Date(a.proximoPago + 'T00:00:00') - new Date()) / 86400000) : far;
-    const dB = b.proximoPago ? Math.ceil((new Date(b.proximoPago + 'T00:00:00') - new Date()) / 86400000) : far;
-    return dA - dB;
-  });
-  const rows = lista.querySelectorAll('.sp-row');
-  rows.forEach((row, idx) => {
-    const sp = pOrdenado[idx];
-    if (!sp || !sp.personaId) return;
-    const persona = getPersona(sp.personaId);
-    if (!persona) return;
-    const av = row.querySelector('.avatar');
-    if (av) {
-      const color = persona.color || '#60b0f0';
-      av.style.background = color + '22';
-      av.style.color = color;
-      av.style.border = '1.5px solid ' + color + '44';
-      av.textContent = iniciales(persona.nombre);
-    }
-    // Actualizar nombre si cambió
-    const nameEl = row.querySelector('.row-name');
-    if (nameEl) nameEl.textContent = persona.nombre;
-  });
-};
-
-/* ═══════════════════════════════════════════════════════════════
-   REGISTRO DE EVENTOS
-   Única sección donde este módulo le dice al despachador global
-   qué función corre para cada data-action usado en el HTML de
-   arriba. Si agregás un data-action nuevo en el módulo, se registra
-   acá — no crear otro addEventListener suelto.
-   ═══════════════════════════════════════════════════════════════ */
-
-// Handlers directos (misma firma que espera Events: args..., el, evt) — de un saque.
 Events.registerAll('spotify', {
   marcarPago: marcarPagoSpotify,
-  editar: editarSpotify,
+  // OJO: NO pasar editarSpotify directo acá. spotify-personas.js lo
+  // reemplaza (monkeypatch) para precargar la persona vinculada al abrir
+  // el sheet — si acá se captura la referencia original, el botón queda
+  // pegado a la versión sin esa parte. Con la flecha se resuelve el
+  // nombre en cada click, igual que hacía el onclick="..." de antes.
+  editar: (...args) => editarSpotify(...args),
   eliminar: deleteSpotify,
   eliminarHistorial: deleteSpHistorial,
-  onClickEditPersonaBtn: _onClickSpEditPersonaBtn,
 });
-
-// Estos dos necesitan argumentos fijos que no vienen del data-action (una función
-// callback y un texto de título) — quedan aparte, registrados uno por uno con on().
 Events.on('spotify:abrirSheetAgregar', () => openSheet('spotify'));
-Events.on('spotify:abrirSelectorPersona', () => abrirSelPersona(_onSelPersonaSpotify, '¿Quién es?'));

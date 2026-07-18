@@ -4240,12 +4240,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--accent);"></div>
         <!-- Toggle: la diferencia quedó debiendo -->
         <div id="mpDebeWrap"
-          onclick="document.getElementById('mpQuedaDebiendo').click()"
           style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;display:none;">
           <input type="checkbox" id="mpQuedaDebiendo"
-            style="width:17px;height:17px;accent-color:var(--amber);cursor:pointer;flex-shrink:0;"
-            onclick="event.stopPropagation()"
-            onchange="actualizarMpPreview()">
+            style="width:17px;height:17px;accent-color:var(--amber);cursor:pointer;flex-shrink:0;">
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:600;color:var(--amber);"
               id="mpDebeLabel">Te está debiendo la diferencia</div>
@@ -4748,6 +4745,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       </div>
     </div>
 
+    <!-- Sistema centralizado de eventos (Events.on/attr/registerAll) — cargado
+         acá, antes que cualquier otro script, porque no depende de nada (ni de
+         S ni de escHtml, los resuelve recién cuando se usan) y todos los
+         módulos futuros (mesada.js, spotify.js, ...) lo necesitan definido
+         desde el arranque. Ver js/core/events.js y auditoria-tecnica.md #1. -->
+    <script src="js/core/events.js"></script>
     <script>
 /* ═══════════════════════════════════════════════════════════════
    MOTOR DE DIFERENCIAL — Registro de margen entre "lo que dijiste/
@@ -10262,193 +10265,6 @@ function confirmarPrestamoTC() {
   toast(`Préstamo con TC registrado — ${escHtml(d.nombre)} te debe ${fmt(dijo)}`, 'ok', 3500);
 }
 
-/* ---- MESADA ---- */
-// S.mesadas = {
-//   papa: { cuotas: { "2025": 90000 }, pagos: { "2025-3": {
-//     monto,fecha,destino,nota,splits,
-//     // Campos opcionales de "pago parcial con deuda pendiente" (ej. te dieron
-//     // 60k de una cuota de 80k y te quedaron debiendo los 20k restantes):
-//     cuotaEsperada,       // snapshot de la cuota del año cuando se marcó como pendiente
-//     pendiente,           // cuánto falta por recibir de esa mensualidad (0/ausente = saldado)
-//     pendienteHistorial,  // [{monto,fecha,destino,nota}] abonos posteriores que fueron cerrando `pendiente`
-//   } } },
-//   mama: { cuotas: { "2025": 80000 }, pagos: { "2025-3": {...} } }
-// }
-
-let mpParent=''; // 'papa' | 'mama'
-let mpMesKey=''; // '2025-3'
-let mpMesNombre=''; // 'Abril 2025'
-let mppParent=''; // 'papa' | 'mama' — para el sheet de pago de lo pendiente
-let mppMesKey=''; // '2025-3'
-
-function _ensureMesadas(){
-  if(!S.mesadas)S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}};
-  ['papa','mama'].forEach(p=>{
-    if(!S.mesadas[p])S.mesadas[p]={cuotas:{},pagos:{}};
-    if(!S.mesadas[p].cuotas)S.mesadas[p].cuotas={};
-    if(!S.mesadas[p].pagos)S.mesadas[p].pagos={};
-  });
-}
-
-function getMesadaData(parent){
-  _ensureMesadas();
-  return S.mesadas[parent].pagos;
-}
-
-function _getCuotaAnio(parent,anio){
-  _ensureMesadas();
-  const cuotas=S.mesadas[parent].cuotas;
-  const key=String(anio);
-  if(cuotas[key])return cuotas[key];
-  // Buscar el año más cercano hacia atrás
-  const anios=Object.keys(cuotas).map(Number).sort((a,b)=>b-a);
-  for(const a of anios){ if(a<=anio)return cuotas[String(a)]; }
-  // Fallback al más antiguo disponible
-  if(anios.length)return cuotas[String(anios[anios.length-1])];
-  return 80000;
-}
-
-function getMontoPadre(parent){
-  return _getCuotaAnio(parent,S.mesadaAnio||new Date().getFullYear());
-}
-
-function renderMesada(){
-  _ensureMesadas();
-  const a=S.mesadaAnio||new Date().getFullYear();
-  const hoy=new Date().getFullYear();
-  document.getElementById('anioLabel').textContent=a;
-
-  // Deshabilitar botones en los límites ±2
-  const btnP=document.getElementById('btn-anio-prev');
-  const btnN=document.getElementById('btn-anio-next');
-  if(btnP)btnP.disabled=(a<=hoy-2);
-  if(btnN)btnN.disabled=(a>=hoy+2);
-
-  // Poner el año en los labels de cuota
-  const lblP=document.getElementById('ms-papa-anio-label');
-  const lblM=document.getElementById('ms-mama-anio-label');
-  if(lblP)lblP.textContent=a;
-  if(lblM)lblM.textContent=a;
-
-  // Sync inputs de cuota para el año visible
-  const cuotaPapa=_getCuotaAnio('papa',a);
-  const cuotaMama=_getCuotaAnio('mama',a);
-  const elPapa=document.getElementById('mesadaMontoPapa');
-  const elMama=document.getElementById('mesadaMonteMama');
-  if(elPapa&&document.activeElement!==elPapa)elPapa.value=fmtInput(cuotaPapa);
-  if(elMama&&document.activeElement!==elMama)elMama.value=fmtInput(cuotaMama);
-
-  const hoyD=new Date();
-  const anioActual=hoyD.getFullYear();
-  const mesActualNum=hoyD.getMonth(); // 0-based
-  const diaActual=hoyD.getDate();
-
-  const pendientesResumen={papa:0,mama:0}; // totales de deuda pendiente, para el banner
-  ['papa','mama'].forEach(parent=>{
-    const data=getMesadaData(parent);
-    const gridId=parent==='papa'?'mesadaGridPapa':'mesadaGridMama';
-    const subId=parent==='papa'?'ms-papa-sub':'ms-mama-sub';
-    const cuota=_getCuotaAnio(parent,a);
-    let totalRecibido=0;
-    let mesesPagados=0;
-    let mesesPerdidos=0;
-    let totalPendienteParent=0;
-    let mesesPendientes=0;
-
-    document.getElementById(gridId).innerHTML=MC.map((m,i)=>{
-      const k=a+'-'+i;
-      const info=data[k];
-      const pagado=!!info;
-      const tienePendiente=pagado&&(info.pendiente||0)>0;
-
-      if(pagado){totalRecibido+=(info.monto||cuota);mesesPagados++;}
-      if(tienePendiente){totalPendienteParent+=info.pendiente;mesesPendientes++;}
-
-      // Determinar si el mes ya pasó sin pago (puede marcarse rojo)
-      // Un mes "pasado" es cualquier mes cuya fecha esperada ya venció:
-      // - Para papá: día 30 del mes i del año a
-      // - Para mamá: día 1 del mes i+1 del año a (o sea el 1 del mes siguiente,
-      //   así que dentro del propio mes i mamá nunca está vencida)
-      // El mes ya es pasado si (a < anioActual) o (a === anioActual && i < mesActualNum),
-      // más el caso especial de papá dentro del mes en curso (diaActual > 30).
-      let esPasado=false;
-      if(a<anioActual){
-        esPasado=true;
-      } else if(a===anioActual){
-        if(i<mesActualNum) esPasado=true;
-        else if(i===mesActualNum){
-          // Papá: vence el 30 del mismo mes, así que dentro del mes puede
-          // marcarse vencido. Mamá: vence el 1 del mes SIGUIENTE (i+1), o sea
-          // que dentro del mes i todavía está en plazo — su vencimiento real
-          // ya está cubierto por la rama i<mesActualNum de arriba (que se activa
-          // apenas entramos al mes siguiente), así que aquí nunca es "pasado".
-          esPasado=(parent==='papa'&&diaActual>30);
-        }
-      }
-      const esPerdido=esPasado&&!pagado;
-      if(esPerdido)mesesPerdidos++;
-
-      const tooltip=tienePendiente?fmt(info.monto)+' recibidos · debe '+fmt(info.pendiente)
-        :pagado?(info.fecha||'pagado')
-        :esPerdido?'Sin pagar'
-        :'';
-      const dotClass=tienePendiente?'mes-dot on mes-dot-pend'
-        :pagado?'mes-dot on'
-        :esPerdido?'mes-dot perdido'
-        :'mes-dot';
-      return`<div class="${dotClass}" title="${tooltip}"
-        onclick="clickMesDot('${parent}','${k}','${m} ${a}')">${m}</div>`;
-    }).join('');
-
-    let subTxt=fmt(totalRecibido)+' recibidos ('+mesesPagados+'/12)';
-    if(mesesPerdidos>0) subTxt+=' · '+mesesPerdidos+' sin pagar';
-    if(mesesPendientes>0) subTxt+=' · '+fmt(totalPendienteParent)+' pendiente';
-    document.getElementById(subId).textContent=subTxt;
-    pendientesResumen[parent]=totalPendienteParent;
-  });
-
-  // Banner combinado (papá + mamá) — visibilidad clara de deuda pendiente
-  const bannerPend=document.getElementById('ms-pendiente-banner');
-  if(bannerPend){
-    const partesPend=[];
-    if(pendientesResumen.papa>0)partesPend.push('Papá te debe '+fmt(pendientesResumen.papa));
-    if(pendientesResumen.mama>0)partesPend.push('Mamá te debe '+fmt(pendientesResumen.mama));
-    if(partesPend.length){
-      bannerPend.style.display='';
-      bannerPend.textContent=partesPend.join(' · ');
-    } else {
-      bannerPend.style.display='none';
-    }
-  }
-
-  // Resumen global año
-  let totalAnio=0,pagadosAnio=0,esperadosAnio=0;
-  const mesesHastahoy=a<anioActual?12:(a===anioActual?mesActualNum+1:0);
-  esperadosAnio=mesesHastahoy*2; // papa + mama
-  ['papa','mama'].forEach(parent=>{
-    const data=getMesadaData(parent);
-    const cuota=_getCuotaAnio(parent,a);
-    for(let i=0;i<12;i++){
-      const k=a+'-'+i;
-      const info=data[k];
-      if(info){totalAnio+=(info.monto||cuota);pagadosAnio++;}
-    }
-  });
-  document.getElementById('ms-total').textContent=fmt(totalAnio);
-  document.getElementById('ms-count').textContent=pagadosAnio+'/'+(esperadosAnio||'—');
-}
-
-function clickMesDot(parent,key,nombre){
-  const data=getMesadaData(parent);
-  if(data[key]){
-    // Ya pagado → mostrar detalle
-    abrirDetalleMesada(parent,key,nombre);
-  } else {
-    // No pagado → registrar pago
-    abrirRegistrarMesada(parent,key,nombre);
-  }
-}
-
 /* ═══════════════════════════════════════════════════════════════
    MOTOR GENÉRICO "SPLIT DE FUENTES" (mismo patrón que diffRegistrarInstancia)
    ───────────────────────────────────────────────────────────────
@@ -10609,409 +10425,20 @@ function _abonoEncCuentaSplitPreview() {
   else { el.innerHTML = lines + ` · Excede: ${fmt(-restante)}`; el.style.color = 'var(--red)'; }
 }
 
-let mpSplitMode=false;
-
-crearSplitWidget('mp', {
-  simpleId:'mpModoSimple', splitId:'mpModoDividido', toggleId:'mpSplitToggle', rowsId:'mpSplitRows',
-  getModo:()=>mpSplitMode, setModo:v=>{mpSplitMode=v;},
-  getFuentesFn:getFuentesOptions,
-  onPreview:actualizarMpPreview
-});
-
-function toggleMpSplit(){ splitToggle('mp'); }
-
-function getFuentesOptions(selectedVal){
-  return buildFuentesOptsHtml({ selectedVal, placeholder: 'No especificar', incluirTC:false });
-}
-
-function agregarMpSplitRow(){ splitAgregarRow('mp'); }
-
-function getMpSplitData(){ return splitGetData('mp'); }
-
-function abrirRegistrarMesada(parent,key,nombre){
-  mpParent=parent;mpMesKey=key;mpMesNombre=nombre;
-  mpSplitMode=false;
-  const cuota=getMontoPadre(parent);
-  const pNombre=parent==='papa'?'Papá':'Mamá';
-  document.getElementById('mpTitle').textContent=pNombre+' · '+nombre;
-  document.getElementById('mpDesc').textContent='Registrá cuándo te pagó y qué hiciste con esa plata.';
-  document.getElementById('mpMonto').value=cuota||'';
-  document.getElementById('mpFecha').value=hoy();
-  document.getElementById('mpNota').value='';
-  document.getElementById('mpPreview').textContent='';
-  document.getElementById('mpModoSimple').style.display='';
-  document.getElementById('mpModoDividido').style.display='none';
-  document.getElementById('mpSplitRows').innerHTML='';
-  document.getElementById('mpSplitToggle').textContent='Dividir ÷';
-  document.getElementById('mpSplitToggle').style.background='rgba(200,240,96,.1)';
-  document.getElementById('mpSplitToggle').style.borderColor='rgba(200,240,96,.3)';
-  document.getElementById('mpSplitToggle').style.color='var(--accent)';
-  poblarFuente('mpDestino', false, false);
-  const sel=document.getElementById('mpDestino');
-  sel.innerHTML='<option value="">No especificar / lo gasté</option>'+sel.innerHTML.replace('<option value="">Sin especificar</option>','');
-  // Resetear toggle "quedó debiendo la diferencia"
-  const chkDebe=document.getElementById('mpQuedaDebiendo');
-  if(chkDebe){ chkDebe.checked=false; }
-  const debeWrap=document.getElementById('mpDebeWrap');
-  if(debeWrap){ debeWrap.style.display='none'; }
-  openSheet('mesada-pago');
-}
-
-function actualizarMpPreview(){
-  const v=parseMoney(document.getElementById('mpMonto').value)||0;
-  const prev=document.getElementById('mpPreview');
-  _syncMpDebeWrap(v);
-  if(!v){prev.textContent='';return;}
-  if(mpSplitMode){
-    const splits=getMpSplitData();
-    const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
-    const restante=v-totalSplit;
-    if(splits.length===0){prev.textContent=fmt(v)+' por distribuir';prev.style.color='var(--text2)';return;}
-    let lines=splits.map(s=>fuenteLabel(s.fuente||'')+': +'+fmt(s.monto)).join(' · ');
-    if(restante>0){prev.textContent=lines+' · Sin asignar: '+fmt(restante);prev.style.color='var(--amber)';}
-    else if(restante<0){prev.textContent=lines+' · Excede por: '+fmt(-restante);prev.style.color='var(--red)';}
-    else{prev.textContent=lines+' Todo distribuido';prev.style.color='var(--accent)';}
-  } else {
-    const dest=document.getElementById('mpDestino').value;
-    if(dest){
-      const actual=getSaldoActual(dest);
-      prev.textContent=fuenteLabel(dest)+': '+fmt(actual)+' + '+fmt(v)+' = '+fmt(actual+v);
-      prev.style.color='var(--accent)';
-    } else {
-      prev.textContent=fmt(v)+' registrados';
-      prev.style.color='var(--text2)';
-    }
-  }
-}
-
-// Muestra/oculta el toggle "me quedó debiendo la diferencia" según el monto
-// ingresado vs. la cuota esperada. Se llama desde actualizarMpPreview() cada
-// vez que cambia el monto.
-function _syncMpDebeWrap(v){
-  const wrap=document.getElementById('mpDebeWrap');
-  const chk=document.getElementById('mpQuedaDebiendo');
-  const lbl=document.getElementById('mpDebeLabel');
-  if(!wrap||!chk)return;
-  const cuota=mpParent?getMontoPadre(mpParent):0;
-  const diff=cuota-v;
-  if(v>0&&diff>0){
-    wrap.style.display='flex';
-    if(lbl)lbl.textContent='Te está debiendo '+fmt(diff)+' — ¿marcar como pendiente?';
-  } else {
-    wrap.style.display='none';
-    chk.checked=false;
-  }
-}
-
-// Registra un movimiento "espejo" visible en la cuenta destino cuando entra
-// plata de mesada — mismo patrón que usan Prestado, Encargos y Spotify. Sin
-// esto, el saldo de la cuenta sube pero no queda ningún rastro en su propio
-// historial de que esa plata vino de mesada (candado + "Automático"). Devuelve
-// el id del movimiento creado, para poder revertirlo si se borra el pago de
-// mesada, o null si el destino no corresponde a una cuenta rastreable (ej.
-// destino vacío = "no especificar").
-function _registrarMovSecundarioMesada(destino,monto,fecha,desc){
-  if(!destino||!monto)return null;
-  const id=uid();
-  if(destino==='efectivo'||destino==='nequi'){
-    if(!S.movimientos)S.movimientos=[];
-    S.movimientos.push({id,tipo:'entrada',fuente:destino,monto,fecha,desc,_secundario:true,_origenSeccion:'Mesada'});
-  } else if(destino.startsWith('custom:')){
-    const cId=destino.split(':')[1];
-    const cObj=(S.cuentasPersonalizadas||[]).find(x=>x.id===cId);
-    if(cObj){
-      if(!cObj.movimientos)cObj.movimientos=[];
-      cObj.movimientos.push({id,tipo:'ingreso',monto,fecha,nota:desc,_secundario:true,_origenSeccion:'Mesada'});
-    }
-  } else if(destino.startsWith('cajita:')){
-    const cId=destino.split(':')[1];
-    const cObj=(S.cajitas||[]).find(x=>x.id===cId);
-    if(cObj){
-      if(!cObj.historial)cObj.historial=[];
-      cObj.historial.push({id,tipo:'entrada',monto,fecha,nota:desc,_secundario:true,_origenSeccion:'Mesada'});
-    }
-  } else {
-    return null;
-  }
-  return id;
-}
-
-// Elimina el movimiento espejo generado por _registrarMovSecundarioMesada,
-// dado el destino original donde se creó y el id guardado.
-function _borrarMovSecundarioMesada(destino,movSecId){
-  if(!destino||!movSecId)return;
-  if(destino==='efectivo'||destino==='nequi'){
-    S.movimientos=(S.movimientos||[]).filter(x=>x.id!==movSecId);
-  } else if(destino.startsWith('custom:')){
-    const cId=destino.split(':')[1];
-    const cObj=(S.cuentasPersonalizadas||[]).find(x=>x.id===cId);
-    if(cObj&&cObj.movimientos)cObj.movimientos=cObj.movimientos.filter(x=>x.id!==movSecId);
-  } else if(destino.startsWith('cajita:')){
-    const cId=destino.split(':')[1];
-    const cObj=(S.cajitas||[]).find(x=>x.id===cId);
-    if(cObj&&cObj.historial)cObj.historial=cObj.historial.filter(x=>x.id!==movSecId);
-  }
-}
-
-function confirmarMesadaPago(){
-  const monto=parseMoney(document.getElementById('mpMonto').value)||0;
-  const fecha=document.getElementById('mpFecha').value||hoy();
-  const nota=document.getElementById('mpNota').value.trim();
-  if(!monto||!mpParent||!mpMesKey)return;
-  const data=getMesadaData(mpParent);
-  // "Quedó debiendo la diferencia": solo aplica si el usuario marcó
-  // explícitamente el toggle. Si no lo marca, un monto menor a la cuota
-  // simplemente se registra tal cual, sin deuda (ej: "ese mes solo fueron
-  // 60mil, no me quedó debiendo nada").
-  const chkDebe=document.getElementById('mpQuedaDebiendo');
-  const quedaDebiendo=!!(chkDebe&&chkDebe.checked);
-  const cuotaDelMes=getMontoPadre(mpParent);
-  const pendienteInicial=quedaDebiendo?Math.max(0,cuotaDelMes-monto):0;
-  const pNombre=mpParent==='papa'?'Papá':'Mamá';
-  const descMov='Mesada — '+pNombre+' · '+_mesNombreDeKey(mpMesKey);
-
-  if(mpSplitMode){
-    const splits=getMpSplitData();
-    const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
-    if(totalSplit>monto+1){
-      document.getElementById('mpPreview').textContent='El total dividido supera el monto recibido';
-      document.getElementById('mpPreview').style.color='var(--red)';
-      return;
-    }
-    data[mpMesKey]={monto,fecha,destino:'',splits,nota};
-    splits.forEach(s=>{
-      if(s.fuente){
-        sumarFuente(s.fuente,s.monto);
-        s._movSecId=_registrarMovSecundarioMesada(s.fuente,s.monto,fecha,descMov);
-      }
-    });
-  } else {
-    const destino=document.getElementById('mpDestino').value;
-    data[mpMesKey]={monto,fecha,destino,nota};
-    if(destino){
-      sumarFuente(destino,monto);
-      data[mpMesKey]._movSecId=_registrarMovSecundarioMesada(destino,monto,fecha,descMov);
-    }
-  }
-  if(pendienteInicial>0){
-    data[mpMesKey].cuotaEsperada=cuotaDelMes;
-    data[mpMesKey].pendiente=pendienteInicial;
-    data[mpMesKey].pendienteHistorial=[];
-  }
-  save();refresh();
-  closeSheet('mesada-pago');
-  if(pendienteInicial>0){
-    toast('Guardado — quedó pendiente '+fmt(pendienteInicial),'info',3500);
-  }
-}
-
-function abrirDetalleMesada(parent,key,nombre){
-  const data=getMesadaData(parent);
-  const info=data[key];
-  const pNombre=parent==='papa'?'Papá':'Mamá';
-  document.getElementById('mdTitle').textContent=pNombre+' · '+nombre;
-  let destinoHtml='';
-  if(info.splits&&info.splits.length){
-    destinoHtml=`<div style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Dividido en</span>
-      <div style="margin-top:5px;display:flex;flex-direction:column;gap:4px;">
-        ${info.splits.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;"><span class="badge ${fuenteBadgeClass(s.fuente||'')}" style="font-size:9px;">${fuenteLabel(s.fuente||'')}</span><span style="font-size:12px;font-family:\'DM Mono\',monospace;color:var(--accent);">+${fmt(s.monto)}</span></div>`).join('')}
-      </div></div>`;
-  } else if(info.destino){
-    destinoHtml=`<div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Lo metiste en</span><span class="badge ${fuenteBadgeClass(info.destino)}">${fuenteLabel(info.destino)}</span></div>`;
-  }
-  // ── Pendiente: estado y acciones ──────────────────────────────────
-  const anioKey=parseInt(key.split('-')[0],10);
-  const cuotaDelMesDet=_getCuotaAnio(parent,anioKey);
-  const tienePendienteDet=(info.pendiente||0)>0;
-  const tieneHistorialDet=!!(info.pendienteHistorial&&info.pendienteHistorial.length);
-  const puedeMarcarPendiente=!info.cuotaEsperada&&!tienePendienteDet&&(info.monto||0)<cuotaDelMesDet;
-
-  let pendienteHtml='';
-  if(info.cuotaEsperada&&(tienePendienteDet||tieneHistorialDet)){
-    pendienteHtml=`
-    <div class="card card-sm" style="margin-bottom:10px;border-left:4px solid ${tienePendienteDet?'var(--amber)':'var(--accent)'};background:${tienePendienteDet?'rgba(240,184,64,.06)':'rgba(200,240,96,.06)'};">
-      <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Cuota esperada</span><span style="font-size:13px;font-family:'DM Mono',monospace;">${fmt(info.cuotaEsperada)}</span></div>
-      ${tienePendienteDet?`<div class="row" style="margin-bottom:2px;"><span style="font-size:12px;color:var(--amber);font-weight:600;">Pendiente</span><span class="row-amount c-amber">${fmt(info.pendiente)}</span></div>`:`<div style="font-size:12px;color:var(--accent);font-weight:600;">✓ Ya te dio todo lo que faltaba</div>`}
-      ${tieneHistorialDet?`<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px;">${info.pendienteHistorial.map((h,idx)=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);gap:8px;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.fecha||''}${h.destino?' · '+fuenteLabel(h.destino):''}${h.nota?' · '+escHtml(h.nota):''}</span><span style="display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(h.monto)}</span><span onclick="deshacerPendienteMesada('${parent}','${key}',${idx})" style="cursor:pointer;color:var(--red);font-size:13px;line-height:1;" title="Deshacer este abono">✕</span></span></div>`).join('')}</div>`:''}
-      ${tienePendienteDet?`<button type="button" class="btn" style="margin-top:10px;background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.3);color:var(--amber);" onclick="abrirResolverPendiente('${parent}','${key}')">Registrar pago de lo pendiente</button>`:''}
-    </div>`;
-  } else if(puedeMarcarPendiente){
-    pendienteHtml=`
-    <div class="card card-sm" style="margin-bottom:10px;border-left:4px solid var(--border2);">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Este mes recibiste menos que la cuota (${fmt(cuotaDelMesDet)}). ¿Te quedó debiendo la diferencia?</div>
-      <button type="button" class="btn" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.3);color:var(--amber);" onclick="marcarMesadaComoPendiente('${parent}','${key}')">Marcar diferencia como pendiente</button>
-    </div>`;
-  }
-
-  let html=`
-    <div class="card card-sm" style="margin-bottom:10px;">
-      <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Monto</span><span class="row-amount c-green">${fmt(info.monto)}</span></div>
-      <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Fecha</span><span style="font-size:13px;font-family:'DM Mono',monospace;">${info.fecha||'—'}</span></div>
-      ${destinoHtml}
-      ${info.nota?`<div style="font-size:12px;color:var(--text2);margin-top:4px;">${escHtml(info.nota)}</div>`:''}
-    </div>
-    ${pendienteHtml}
-    <button type="button" class="btn" style="background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);" onclick="eliminarMesadaPago('${parent}','${key}')">Borrar este registro</button>
-  `;
-  document.getElementById('mdContent').innerHTML=html;
-  openSheet('mesada-det');
-}
-
-function eliminarMesadaPago(parent,key){
-  const data=getMesadaData(parent);
-  const info=data[key];
-  if(info){
-    // Si hubo abonos posteriores que fueron saldando un "pendiente", info.monto
-    // ya incluye esos abonos además del pago original. Hay que separarlos para
-    // devolver cada plata a la cuenta correcta (pueden ser cuentas distintas).
-    const historialTotal=(info.pendienteHistorial||[]).reduce((acc,h)=>acc+(h.monto||0),0);
-    // Devolver el dinero del pago original a las cuentas correspondientes
-    if(info.splits&&info.splits.length){
-      info.splits.forEach(s=>{
-        if(s.fuente){
-          descontarFuente(s.fuente,s.monto);
-          _borrarMovSecundarioMesada(s.fuente,s._movSecId);
-        }
-      });
-    } else if(info.destino){
-      const montoOriginal=Math.max(0,(info.monto||0)-historialTotal);
-      descontarFuente(info.destino,montoOriginal);
-      _borrarMovSecundarioMesada(info.destino,info._movSecId);
-    }
-    // Devolver también los abonos que fueron saldando lo pendiente
-    (info.pendienteHistorial||[]).forEach(h=>{
-      if(h.destino){
-        descontarFuente(h.destino,h.monto);
-        _borrarMovSecundarioMesada(h.destino,h._movSecId);
-      }
-    });
-  }
-  delete data[key];
-  save();refresh();
-  closeSheet('mesada-det');
-}
-
-// ── Pago parcial con deuda pendiente ──────────────────────────────────────
-
-function _mesNombreDeKey(key){
-  const partes=String(key).split('-');
-  const anio=partes[0];
-  const mesIdx=parseInt(partes[1],10)||0;
-  return (MC[mesIdx]||'')+' '+anio;
-}
-
-// Convierte retroactivamente un mes ya cerrado (registrado con menos plata de
-// la cuota, sin haber marcado el toggle al momento de guardar) en un mes con
-// deuda pendiente. Útil para el caso típico: "ya anoté los 60mil, pero ahora
-// caigo en que me quedó debiendo los 20mil restantes".
-function marcarMesadaComoPendiente(parent,key){
-  const data=getMesadaData(parent);
-  const info=data[key];
-  if(!info)return;
-  const anio=parseInt(String(key).split('-')[0],10);
-  const cuota=_getCuotaAnio(parent,anio);
-  const pend=Math.max(0,cuota-(info.monto||0));
-  if(pend<=0){toast('Ese mes ya está completo, no hay diferencia pendiente','info');return;}
-  info.cuotaEsperada=cuota;
-  info.pendiente=pend;
-  if(!info.pendienteHistorial)info.pendienteHistorial=[];
-  save();refresh();
-  toast('Marcado como pendiente — debe '+fmt(pend),'info',3000);
-  abrirDetalleMesada(parent,key,_mesNombreDeKey(key));
-}
-
-// Abre el sheet para registrar cuánto pagó de lo que había quedado pendiente.
-function abrirResolverPendiente(parent,key){
-  const data=getMesadaData(parent);
-  const info=data[key];
-  if(!info||!(info.pendiente>0))return;
-  mppParent=parent;mppMesKey=key;
-  const pNombre=parent==='papa'?'Papá':'Mamá';
-  document.getElementById('mppTitle').textContent=pNombre+' · '+_mesNombreDeKey(key);
-  document.getElementById('mppDesc').textContent='Te debía '+fmt(info.pendiente)+'. ¿Cuánto te dio ahora?';
-  document.getElementById('mppMonto').value=fmtInput(info.pendiente);
-  document.getElementById('mppFecha').value=hoy();
-  document.getElementById('mppNota').value='';
-  poblarFuente('mppDestino', false, false);
-  const sel=document.getElementById('mppDestino');
-  sel.innerHTML='<option value="">No especificar / lo gasté</option>'+sel.innerHTML.replace('<option value="">Sin especificar</option>','');
-  actualizarMppPreview();
-  openSheet('mesada-pend');
-}
-
-function actualizarMppPreview(){
-  const prev=document.getElementById('mppPreview');
-  const data=getMesadaData(mppParent);
-  const info=data[mppMesKey];
-  const v=parseMoney(document.getElementById('mppMonto').value)||0;
-  if(!info||!v){prev.textContent='';return;}
-  if(v>info.pendiente+1){
-    prev.textContent='Eso es más de lo que quedó pendiente ('+fmt(info.pendiente)+')';
-    prev.style.color='var(--red)';
-    return;
-  }
-  const restante=info.pendiente-v;
-  prev.textContent=restante>0?('Quedaría debiendo '+fmt(restante)+' más'):'Con esto queda saldado ✓';
-  prev.style.color=restante>0?'var(--amber)':'var(--accent)';
-}
-
-function confirmarPendienteMesada(){
-  const data=getMesadaData(mppParent);
-  const info=data[mppMesKey];
-  if(!info||!(info.pendiente>0))return;
-  let monto=parseMoney(document.getElementById('mppMonto').value)||0;
-  if(monto<=0)return;
-  if(monto>info.pendiente)monto=info.pendiente; // no se puede saldar más de lo que quedó pendiente
-  const fecha=document.getElementById('mppFecha').value||hoy();
-  const destino=document.getElementById('mppDestino').value;
-  const nota=document.getElementById('mppNota').value.trim();
-  if(!info.pendienteHistorial)info.pendienteHistorial=[];
-  const pNombre=mppParent==='papa'?'Papá':'Mamá';
-  const descMov='Mesada (pendiente) — '+pNombre+' · '+_mesNombreDeKey(mppMesKey);
-  let movSecId=null;
-  if(destino){
-    sumarFuente(destino,monto);
-    movSecId=_registrarMovSecundarioMesada(destino,monto,fecha,descMov);
-  }
-  info.pendienteHistorial.push({monto,fecha,destino,nota,_movSecId:movSecId});
-  info.pendiente=Math.max(0,info.pendiente-monto);
-  info.monto=(info.monto||0)+monto;
-  save();refresh();
-  closeSheet('mesada-pend');
-  toast(info.pendiente>0?('Abono registrado — todavía debe '+fmt(info.pendiente)):'¡Pendiente saldado! 🎉','ok',3000);
-  abrirDetalleMesada(mppParent,mppMesKey,_mesNombreDeKey(mppMesKey));
-}
-
-// Deshace un abono puntual de lo pendiente (por si se registró por error).
-async function deshacerPendienteMesada(parent,key,idx){
-  const data=getMesadaData(parent);
-  const info=data[key];
-  if(!info||!info.pendienteHistorial||!info.pendienteHistorial[idx])return;
-  const ok=await dialogo('Deshacer abono','¿Deshacer este abono de lo pendiente? La plata se restará de la cuenta donde la registraste y volverá a quedar como deuda.','Deshacer',true);
-  if(!ok)return;
-  const h=info.pendienteHistorial[idx];
-  if(h.destino){
-    descontarFuente(h.destino,h.monto);
-    _borrarMovSecundarioMesada(h.destino,h._movSecId);
-  }
-  info.monto=Math.max(0,(info.monto||0)-h.monto);
-  info.pendiente=(info.pendiente||0)+h.monto;
-  info.pendienteHistorial.splice(idx,1);
-  save();refresh();
-  toast('Abono deshecho','ok',2000);
-  abrirDetalleMesada(parent,key,_mesNombreDeKey(key));
-}
-
-function cambiarAnio(d){const hoy=new Date().getFullYear();const nuevo=(S.mesadaAnio||hoy)+d;if(nuevo<hoy-2||nuevo>hoy+2)return;save();S.mesadaAnio=nuevo;renderMesada();}
-
 // Módulo Spotify migrado a js/modules/spotify.js — ver docs/spotify.md.
 // Carga temprana (acá mismo, no más abajo): un par de wirings de botones de
 // otros módulos referencian addSpotify/guardarEditarSpotify de forma
 // inmediata (no diferida) más adelante en este archivo, y necesitan que ya
 // existan. La integración con Personas vive aparte, en spotify-personas.js,
 // cargada mucho más abajo — ver el comentario de ese archivo.
+
+// Módulo Mesada migrado a js/modules/mesada.js — ver docs/mesada.md.
+// Carga acá y no más arriba (donde vivía antes) porque depende de
+// crearSplitWidget(), definido justo arriba en este mismo bloque —
+// mismo criterio que Spotify: cargar donde la dependencia más
+// exigente ya esté satisfecha.
 </script>
-<script src="js/core/events.js"></script>
+<script src="js/modules/mesada.js"></script>
 <script src="js/modules/spotify.js"></script>
 <script>
 
@@ -13415,6 +12842,17 @@ function _initEventListeners() {
   if (mpDestino) mpDestino.addEventListener('change', actualizarMpPreview);
   const mpMonto = document.getElementById('mpMonto');
   if (mpMonto) mpMonto.addEventListener('input', actualizarMpPreview);
+
+  // --- mpDebeWrap / mpQuedaDebiendo: reemplaza los 3 onclick/onchange
+  // inline que tenía este bloque en el HTML (ver auditoria-tecnica.md #1) ---
+  const mpDebeWrap = document.getElementById('mpDebeWrap');
+  if (mpDebeWrap) mpDebeWrap.addEventListener('click', () => document.getElementById('mpQuedaDebiendo').click());
+  const mpQuedaDebiendo = document.getElementById('mpQuedaDebiendo');
+  if (mpQuedaDebiendo) {
+    mpQuedaDebiendo.addEventListener('click', (e) => e.stopPropagation());
+    mpQuedaDebiendo.addEventListener('change', actualizarMpPreview);
+  }
+
   const mppDestino = document.getElementById('mppDestino');
   if (mppDestino) mppDestino.addEventListener('change', actualizarMppPreview);
   const mppMonto = document.getElementById('mppMonto');

@@ -14407,49 +14407,27 @@ async function eliminarEncargoActual() {
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
   const saldo = encargoSaldo(enc);
-  const msg = saldo > 0
-    ? `¿Eliminar el encargo de ${escHtml(enc.nombre)}? Aún tiene ${fmt(saldo)} registrado. Esta acción no se puede deshacer.`
-    : `¿Eliminar el encargo de ${escHtml(enc.nombre)}? Esta acción no se puede deshacer.`;
-  const ok = await dialogo('Eliminar encargo', msg, 'Eliminar', true);
+  // Un encargo solo se puede eliminar en $0. Si todavía tiene saldo (a favor
+  // o en contra) hay plata pendiente de resolver — no tiene sentido borrar
+  // el registro que la está rastreando.
+  if (Math.abs(saldo) > 0.5) {
+    toast(`Este encargo todavía tiene ${fmt(saldo)} registrado — dejalo en $0 antes de eliminarlo`, 'err', 4500);
+    return;
+  }
+
+  const ok = await dialogo(
+    'Eliminar encargo',
+    `¿Eliminar el encargo de ${escHtml(enc.nombre)}? Esta acción no se puede deshacer. Los movimientos que ya pasaron (compras con TC, pagos de deudas, traspasos, etc.) quedan tal cual — eliminar el encargo no revierte nada, solo deja de llevarle el registro a esta persona.`,
+    'Eliminar', true
+  );
   if (!ok) return;
 
-  // Recoger todos los IDs de movimientos del encargo para limpiar efectos secundarios
-  const encMovIds = new Set((enc.movimientos||[]).map(m => m.id));
-
-  // Revertir sumarFuente de cualquier "Me lo regalaron" registrado en este encargo
-  (enc.movimientos||[]).forEach(m => {
-    if (m._traspasoEncargo && m._destino && m.monto) descontarFuente(m._destino, m.monto);
-  });
-
-  // Limpiar S.movimientos vinculados por _encMovId (diferenciales, intercambios, margen, traspasos)
-  if (S.movimientos && encMovIds.size > 0) {
-    S.movimientos = S.movimientos.filter(m => !encMovIds.has(m._encMovId));
-  }
-  // Limpiar movimientos secundarios en cuentas custom (traspasos "Me lo regalaron")
-  if (encMovIds.size > 0) {
-    (S.cuentasPersonalizadas || []).forEach(c => {
-      if (c.movimientos) {
-        c.movimientos = c.movimientos.filter(m => !encMovIds.has(m._encMovId));
-      }
-    });
-  }
-  // Limpiar también movimientos huérfanos viejos sin _encMovId: detectar por patrón de descripción
-  if (S.movimientos) {
-    const prefijosEncargo = [
-      `Diferencial encargo ${escHtml(enc.nombre)} —`,
-      `Margen de encargo —`,
-      `Margen encargo ${escHtml(enc.nombre)}`
-    ];
-    S.movimientos = S.movimientos.filter(m =>
-      !(m.tipo === 'entrada' && prefijosEncargo.some(p => (m.desc||'').startsWith(p)))
-    );
-  }
-
-  // Limpiar S.tcMovimientos vinculados por _encMovId
-  if (S.tcMovimientos && encMovIds.size > 0) {
-    S.tcMovimientos = S.tcMovimientos.filter(m => !encMovIds.has(m._encMovId));
-  }
-
+  // A propósito NO se revierte ni se borra ningún movimiento vinculado
+  // (S.movimientos, S.tcMovimientos, movimientos de deudores, cuentas
+  // custom, etc.). Si el encargo está en $0, todo lo que pasó mientras
+  // existió ya quedó correctamente reflejado en tus cuentas/tarjetas/deudas
+  // — eliminar el encargo es solo dejar de administrarle plata a esa
+  // persona, no deshacer los favores o pagos que ya ocurrieron.
   S.encargos = (S.encargos||[]).filter(e=>e.id!==encargoActualId);
   save();
   volverEncargosLista();

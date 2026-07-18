@@ -12729,7 +12729,11 @@ function _initEventListeners() {
   const btnIFSave = document.getElementById('btn-guardar-ingreso-fijo');
   if (btnIFSave) btnIFSave.addEventListener('click', guardarIngresoFijo);
   const btnDeudorSave = document.getElementById('btn-crear-deudor');
-  if (btnDeudorSave) btnDeudorSave.addEventListener('click', addDeudor);
+  // Nota: se llama como () => addDeudor() (no addDeudor directo) por el mismo motivo
+  // que crearEncargo arriba: hay overrides posteriores (línea ~13016 y ~21619) que
+  // agregan validación y vinculan/creán el registro en S.personas — pasar la
+  // referencia directa acá los dejaba como código muerto.
+  if (btnDeudorSave) btnDeudorSave.addEventListener('click', () => addDeudor());
   const btnMovSave = document.getElementById('movBtnConfirm');
   if (btnMovSave) btnMovSave.addEventListener('click', function() {
     // Bloqueo anti doble-click/doble-tap: evita registrar el mismo préstamo/abono dos veces.
@@ -14800,7 +14804,11 @@ document.addEventListener('DOMContentLoaded', function(){}, false);
   }
 
   const btn_crear = document.getElementById('btn-crear-encargo');
-  if (btn_crear) btn_crear.addEventListener('click', crearEncargo);
+  // Nota: se llama como () => crearEncargo() (no crearEncargo directo) para que cada clic
+  // lea el valor ACTUAL de la variable global. Más abajo en el archivo (línea ~21597)
+  // crearEncargo se reasigna para adjuntar personaId; pasar la referencia directa acá
+  // congelaba esa versión vieja y el override nunca corría.
+  if (btn_crear) btn_crear.addEventListener('click', () => crearEncargo());
 
   const btn_volver = document.getElementById('btn-volver-encargos');
   if (btn_volver) btn_volver.addEventListener('click', volverEncargosLista);
@@ -21592,11 +21600,12 @@ openSheet = function(id) {
   _origOpenSheetPersonas.apply(this, arguments);
 };
 
-/* ── Hook en crearEncargo para guardar personaId ──────────────── */
+/* ── Hook en crearEncargo para exigir y guardar personaId ───────── */
 const _origCrearEncargo = crearEncargo;
 crearEncargo = function() {
-  // Si hay personaId seleccionado, asegurarlo en enc.personaId después de crear
+  // personaId es obligatorio: no debe existir un encargo sin persona vinculada.
   const pId = _nuevoEncargoPersonaId;
+  if (!pId) { toast('Selecciona una persona', 'err'); return; }
   _origCrearEncargo.apply(this, arguments);
   // Asignar personaId al último encargo creado
   if (pId && S.encargos && S.encargos.length) {

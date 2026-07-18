@@ -14407,44 +14407,29 @@ async function eliminarEncargoActual() {
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
   const saldo = encargoSaldo(enc);
-  if (Math.abs(saldo) > 0.5) {
-    toast(`Este encargo todavía tiene ${fmt(saldo)} registrado. Déjalo en $0 antes de eliminarlo.`, 'err', 4500);
-    return;
-  }
-  const ok = await dialogo('Eliminar encargo', `¿Eliminar el encargo de ${escHtml(enc.nombre)}? Esta acción no se puede deshacer.`, 'Eliminar', true);
+  const msg = saldo > 0
+    ? `¿Eliminar el encargo de ${escHtml(enc.nombre)}? Aún tiene ${fmt(saldo)} registrado. Esta acción no se puede deshacer.`
+    : `¿Eliminar el encargo de ${escHtml(enc.nombre)}? Esta acción no se puede deshacer.`;
+  const ok = await dialogo('Eliminar encargo', msg, 'Eliminar', true);
   if (!ok) return;
 
   // Recoger todos los IDs de movimientos del encargo para limpiar efectos secundarios
   const encMovIds = new Set((enc.movimientos||[]).map(m => m.id));
 
-  // IDs de movimientos "reales e irreversibles": una compra pagada con TC ya le metió
-  // plata a una cuenta tuya y ya generó deuda real en la tarjeta — eso no se puede
-  // deshacer solo porque borres el encargo (la tarjeta ya cobró). Lo mismo un abono a
-  // un deudor: la deuda de esa persona ya bajó de verdad. Para estos, NO se revierte
-  // nada y se preservan sus registros (S.movimientos, S.tcMovimientos, historial del
-  // deudor) para que la plata y la deuda sigan siendo rastreables después de borrar
-  // el encargo — solo desaparece la "ficha" interna del encargo.
-  const idsIrreversibles = new Set((enc.movimientos||[])
-    .filter(m => m._esTcEncargo || m._esAbonoDeudor)
-    .map(m => m.id));
-
   // Revertir sumarFuente de cualquier "Me lo regalaron" registrado en este encargo
-  // (esto sí es una simple reclasificación interna, no un evento externo irreversible)
   (enc.movimientos||[]).forEach(m => {
     if (m._traspasoEncargo && m._destino && m.monto) descontarFuente(m._destino, m.monto);
   });
 
-  // Limpiar S.movimientos vinculados por _encMovId (diferenciales, intercambios, margen,
-  // traspasos) — pero preservando los ligados a compras TC / abonos a deudor
+  // Limpiar S.movimientos vinculados por _encMovId (diferenciales, intercambios, margen, traspasos)
   if (S.movimientos && encMovIds.size > 0) {
-    S.movimientos = S.movimientos.filter(m => !(encMovIds.has(m._encMovId) && !idsIrreversibles.has(m._encMovId)));
+    S.movimientos = S.movimientos.filter(m => !encMovIds.has(m._encMovId));
   }
-  // Limpiar movimientos secundarios en cuentas custom (traspasos "Me lo regalaron"),
-  // preservando igualmente los irreversibles
+  // Limpiar movimientos secundarios en cuentas custom (traspasos "Me lo regalaron")
   if (encMovIds.size > 0) {
     (S.cuentasPersonalizadas || []).forEach(c => {
       if (c.movimientos) {
-        c.movimientos = c.movimientos.filter(m => !(encMovIds.has(m._encMovId) && !idsIrreversibles.has(m._encMovId)));
+        c.movimientos = c.movimientos.filter(m => !encMovIds.has(m._encMovId));
       }
     });
   }
@@ -14460,14 +14445,13 @@ async function eliminarEncargoActual() {
     );
   }
 
-  // Limpiar S.tcMovimientos vinculados por _encMovId — preservando el cargo real de la TC
+  // Limpiar S.tcMovimientos vinculados por _encMovId
   if (S.tcMovimientos && encMovIds.size > 0) {
-    S.tcMovimientos = S.tcMovimientos.filter(m => !(encMovIds.has(m._encMovId) && !idsIrreversibles.has(m._encMovId)));
+    S.tcMovimientos = S.tcMovimientos.filter(m => !encMovIds.has(m._encMovId));
   }
 
   S.encargos = (S.encargos||[]).filter(e=>e.id!==encargoActualId);
   save();
-  refresh();
   volverEncargosLista();
   if(window.logCambio)logCambio('Eliminaste un encargo','','','eliminar');
   toast('Encargo eliminado', 'info');

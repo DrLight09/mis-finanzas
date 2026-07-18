@@ -55,6 +55,30 @@ De paso, al simular la carga real (con jsdom) apareció un segundo bug, más sut
 
 **Cómo se verificó esta vez (no solo "se ve bien"):** se simuló la carga completa de `index.html` con un DOM real (`jsdom`, en un entorno de prueba aparte) y se disparó un click de verdad a través del despachador de `Events` para confirmar que el handler que corre es el correcto — no solo que existe.
 
+### 🔧 Nuevo — Extracción de Mesada a `js/modules/mesada.js`
+
+*(2026-07-17)*
+
+Segundo módulo movido fuera de `index.html`, mismo patrón que Spotify: `<script src>` clásico, sin reescribir lógica de negocio, registrando sus acciones con `Events.registerAll('mesada', {...})` en vez de `onclick` inline (5 casos generados dinámicamente en `abrirDetalleMesada()` y la grilla de meses).
+
+A diferencia de Spotify, acá no hizo falta partir el módulo en dos archivos: la única dependencia real de Mesada es `crearSplitWidget` (el motor de "split de fuentes", compartido con Encargos y "Yo debo", que se queda en `index.html`) — cargar `mesada.js` en el punto exacto donde vivía la segunda mitad del código original (justo después de ese motor) alcanza. `index.html` bajó de 23.757 a 23.195 líneas.
+
+De paso se resolvió algo que afectaba a *todos* los módulos, no solo a Mesada: `events.js` cargaba junto con `spotify.js`, bastante entrado el documento — cualquier módulo que necesitara `Events` definido más temprano (como Mesada, que vive antes de ese punto en el archivo) iba a chocar con esto tarde o temprano. Se movió a cargar una sola vez, como el primer `<script>` del documento entero — no depende de nada, así que no hay downside.
+
+### ✅ Corregido — Nombre de cuenta/cajita sin escapar en el detalle de Mesada (mismo patrón que Spotify)
+
+*(2026-07-17)*
+
+Mismo hallazgo que ya había aparecido al migrar Spotify: `fuenteLabel()` devuelve el nombre de una cajita o cuenta personalizada (texto libre del usuario) sin pasar por `escHtml()`. El barrido general de `.innerHTML` no lo había agarrado porque el nombre llega envuelto en esa función, no como el campo `nombre` directo. Encontrados 3 casos en `abrirDetalleMesada()`: el badge de cada parte de un pago dividido, el badge del destino simple, y el destino de cada abono en el historial de pendiente.
+
+Fix: se envolvieron los 3 en `escHtml()`, en el punto de uso dentro de `mesada.js` — no dentro de la propia `fuenteLabel()`, que es núcleo compartido por todos los módulos (Encargos, Prestado, TC, Cajitas...) y tiene una rama que devuelve HTML de confianza a propósito (el ícono de "ganancia"), así que escaparla de raíz ahí rompería ese caso en otros módulos. Mesada nunca pasa `'ganancia'` ni tarjetas de crédito como destino (regla de negocio ya existente, ver `mesada.md §3`), así que el fix puntual es seguro. Mismo criterio que ya se documentó arriba para `toast()`: queda para cuando se toque el núcleo compartido.
+
+### ✅ Corregido — 2 controles estáticos de Mesada seguían con `onclick`/`onchange` inline
+
+*(2026-07-17)*
+
+El wrapper `mpDebeWrap` y el checkbox `mpQuedaDebiendo` del sheet de registrar pago no viven en las plantillas de `mesada.js` (son HTML fijo en `index.html`), así que quedaron fuera del barrido de migración a `Events`. Tres atributos inline (`onclick` del wrapper, `onclick` de stop-propagation del checkbox, `onchange` a `actualizarMpPreview`) se reemplazaron por `addEventListener` normal, junto al resto del wiring de controles estáticos del sheet que ya existía — no pasan por `Events.attr`/`data-action` porque no son elementos generados dinámicamente en un template string, no hace falta delegación para ellos.
+
 ---
 
 ## Mesada

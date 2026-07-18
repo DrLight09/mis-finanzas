@@ -1,6 +1,6 @@
 # Módulo Mesada
 
-Documentación de la sección **Mesada** de `mis-finanzas` (`index.html`). Pensada para volver a leerla en unos meses y entender el módulo sin releer el código: qué problema resuelve, qué reglas no se deben romper, qué datos guarda y por qué, cómo fluye la información, y qué decisiones de diseño se tomaron. Los detalles de implementación (funciones, ids de DOM) aparecen al final, como referencia rápida — no como el foco del documento.
+Documentación de la sección **Mesada** de `mis-finanzas`. El HTML (pantalla y sheets) vive en `index.html`; la lógica vive en [`js/modules/mesada.js`](./js/modules/mesada.js), separada en la migración del 2026-07-17 (ver `auditoria-tecnica.md` puntos 1 y 3, y `CHANGELOG.md#infraestructura--seguridad`). Pensada para volver a leerla en unos meses y entender el módulo sin releer el código: qué problema resuelve, qué reglas no se deben romper, qué datos guarda y por qué, cómo fluye la información, y qué decisiones de diseño se tomaron. Los detalles de implementación (funciones, ids de DOM) aparecen al final, como referencia rápida — no como el foco del documento.
 
 Los bugs ya corregidos y el detalle de cada fix viven en [`CHANGELOG.md`](./CHANGELOG.md#mesada), no acá.
 
@@ -152,6 +152,10 @@ El `id` de cada movimiento espejo se guarda junto al dato que lo originó (`_mov
 ---
 
 ## 9. Referencia de implementación
+
+**Ubicación:** el HTML de la pantalla y los sheets (abajo) sigue en `index.html`. Toda la lógica — las funciones de esta sección y sus wrappers de `js/core/events.js` — vive en `js/modules/mesada.js`, cargado después de que `crearSplitWidget` (compartido con Encargos y "Yo debo") ya está definido en `index.html`, y antes de `spotify.js`.
+
+**Clicks generados dinámicamente** (botones dentro de `abrirDetalleMesada()` y los puntos de la grilla) ya no usan `onclick="..."` inline — se conectan con `Events.attr('mesada:accion', ...)` y se registran una vez con `Events.registerAll('mesada', {...})` al final de `mesada.js`. Ver `js/core/events.js` para el mecanismo. Los controles estáticos del sheet (`mpSplitToggle`, `mpDestino`, `mpDebeWrap`, etc.) se cablean con `addEventListener` normal, en el bloque de wiring de `index.html`.
 
 ### Pantalla principal (`#screen-mesada`)
 

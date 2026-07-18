@@ -347,6 +347,14 @@ De los 4 `setDoc` reales del archivo, dos ya tenían manejo aceptable (autoguard
 
 ## Préstamos
 
+### ✅ Corregido — `addDeudor()` nunca creaba/vinculaba la persona en la práctica (mismo bug de listener congelado que Encargos)
+
+*(2026-07-18)*
+
+Mismo problema y misma causa que el de `crearEncargo()` (ver entrada en la sección Encargos): `btn-crear-deudor` se enganchaba con `addEventListener('click', addDeudor)`, capturando la versión original de la función. Dos overrides posteriores quedaban como código muerto — uno de validación, y el que realmente crea o vincula el registro correspondiente en `S.personas` y le asigna `personaId` al deudor nuevo. Como consecuencia, un deudor podía quedar guardado sin `personaId` aunque el usuario nunca lo notara (no hay feedback visual distinto entre ambos casos).
+
+**Fix:** mismo criterio que en Encargos — el listener pasó a `() => addDeudor()` para leer la variable actual en cada clic. Acá no hizo falta agregar una validación explícita de "persona obligatoria" (a diferencia de Encargos): el override ya crea o vincula la persona automáticamente por nombre en todos los casos, así que alcanza con que el override efectivamente corra.
+
 ### ✅ Corregido — Botón "Dividir ÷" nunca cambiaba de color (Me deben / Yo debo)
 
 `togglePrestSplit()` y `toggleAbonoSplit()` (los toggles de dividir el origen y el destino del dinero en un movimiento de préstamo) cambiaban el texto del botón (`"Dividir ÷"` ↔ `"Una sola fuente/cuenta"`) pero nunca el color — a diferencia del resto de la app, donde el botón se pone ámbar en modo dividir. El botón `.btn-split`/`.btn-split.active` ya tenía los estilos CSS para ambos estados; solo faltaba aplicarlos en JS. Se agregó el cambio de color inline en ambas funciones y en sus resets (incluyendo el caso de precargar modo dividido al editar un movimiento con múltiples fuentes ya guardado, que arrancaba con el texto de "dividido" pero el color de "no dividido").
@@ -354,6 +362,16 @@ De los 4 `setDoc` reales del archivo, dos ya tenían manejo aceptable (autoguard
 ---
 
 ## Encargos
+
+### ✅ Corregido — `crearEncargo()` nunca guardaba `personaId` en la práctica (listener con referencia congelada)
+
+*(2026-07-18)*
+
+Mismo tipo de bug que ya había aparecido al migrar Spotify (ver `Events.on('spotify:editar', ...)` en Infraestructura/seguridad más arriba): `btn-crear-encargo` se enganchaba con `addEventListener('click', crearEncargo)`, que captura el *valor* de la función en ese momento, no una referencia viva a la variable. Más abajo en el documento, `crearEncargo` se reasignaba (hook que adjunta `personaId` si se eligió persona en el selector) — pero como el listener ya había capturado la versión original, ese override nunca corría al hacer clic en el botón real. Era código muerto.
+
+Encargos se guardaban entonces con el nombre correcto (el selector de persona sí sincronizaba visualmente el campo `enc_nombre`) pero **sin `personaId`**, salvo que ya lo tuviera de una migración anterior — lo que hacía fallar silenciosamente cualquier lógica que dependiera de ese vínculo (ej. `_tieneEncargoVinculado`).
+
+**Fix:** el listener pasó a registrarse como `() => crearEncargo()` en vez de `crearEncargo` directo, para que cada clic lea el valor *actual* de la variable global. De paso se aprovechó para volver `personaId` explícitamente obligatorio: el hook ahora bloquea la creación con un toast de error si no hay persona seleccionada, en vez de depender implícitamente de que el campo oculto `enc_nombre` quedara vacío (ya no existe vía de "nombre libre" sin persona, ver `encargos.md §3`).
 
 ### ✅ Corregido — Botón "Dividir ÷" quedaba con color incorrecto tras resetear (abono a cuenta)
 

@@ -10714,7 +10714,7 @@ function volverSelector() {
 
 function renderDetalleCuenta(tipo) {
   if (tipo === 'nequi') {
-    const saldo = S.nequiSaldo || 0;
+    const saldo = (S.nequiSaldo || 0) - _saldoEncargosEnCuenta('nequi');
     document.getElementById('det-nequi-saldo').textContent = fmt(saldo);
     // Banner saldo inicial Nequi
     renderBannerApertura('nequi');
@@ -10732,7 +10732,7 @@ function renderDetalleCuenta(tipo) {
     const movs = getMovimientosCuenta('nu');
     renderMovsCuenta('det-nu-movs', movs, 'var(--nu-light)', 'nu');
   } else if (tipo === 'efectivo') {
-    const saldo = S.efectivoSaldo || 0;
+    const saldo = (S.efectivoSaldo || 0) - _saldoEncargosEnCuenta('efectivo');
     document.getElementById('det-ef-saldo').textContent = fmt(saldo);
     // Banner saldo inicial Efectivo
     renderBannerApertura('efectivo');
@@ -13060,8 +13060,8 @@ function _checkGastoAlto() {
   const gvMes = gastosMes(mes).reduce((a,g) => a + (g.monto||0), 0);
   const gfTotal = (S.gastosFijos||[]).reduce((a,g) => a + (g.monto||0), 0);
   const nu = nuTotal();
-  const nequi = S.nequiSaldo || 0;
-  const ef = S.efectivoSaldo || 0;
+  const nequi = (S.nequiSaldo || 0) - _saldoEncargosEnCuenta('nequi');
+  const ef = (S.efectivoSaldo || 0) - _saldoEncargosEnCuenta('efectivo');
   const disp = nu + nequi + ef;
   const indicator = document.getElementById('hero-change-indicator');
   if (!indicator) return;

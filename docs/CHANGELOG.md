@@ -264,6 +264,17 @@ Fix: se generalizó `_saldoEncargosEnCajita(cajitaId)` en `_saldoEncargosEnCuent
 
 **Pendiente, fuera de esta corrección:** `getSaldoFuente('nequi'/'efectivo')` (usada para validar si hay saldo suficiente al registrar un gasto) todavía no resta la plata de encargos. En teoría permitiría "gastar" sin aviso plata que en realidad es de un encargo. Revisar si vale la pena aplicar el mismo criterio ahí.
 
+### ✅ Corregido — El mismo bug de Encargos se repetía en el detalle de Cuentas y en la alerta de "gastos altos"
+
+*(2026-07-18)*
+
+La generalización de `_saldoEncargosEnCuenta()` (entrada anterior) se aplicó en `calcPatrimonioTotal()`, el hero de Inicio y `liquidoReal`, pero quedaron **2 puntos más** leyendo `S.nequiSaldo`/`S.efectivoSaldo` en crudo, sin restar encargos:
+
+1. `renderDetalleCuenta()` — el detalle que se ve al entrar a Nequi o Efectivo (`det-nequi-saldo`, `det-ef-saldo`) mostraba el saldo bruto. El selector de cuentas y el patrimonio sí descontaban el encargo; el detalle de esa misma cuenta no, así que un usuario podía ver dos números distintos para lo mismo según dónde mirara.
+2. `_checkGastoAlto()` — la alerta de "Gastos altos" del hero sumaba `nu + nequi + ef` (disponible) usando los saldos crudos de Nequi/Efectivo, así que contaba plata de encargos como propia al decidir si dispara la alerta.
+
+Fix: ambos puntos ahora restan `_saldoEncargosEnCuenta('nequi'/'efectivo')` igual que el resto de la app.
+
 ### ✅ Corregido — La alcancía se filtraba en el Historial de Patrimonio (Análisis financiero)
 
 La alcancía es una función de "ahorro oculto": el saldo no se muestra en ningún lado hasta que se decide destaparla. El hero de Inicio ya respetaba esto (calcula el patrimonio visible restando explícitamente la alcancía), pero `calcPatrimonioTotal()` — la función que alimenta `snapshotPatrimonio()`, que a su vez llena `S.patrimonioHistorial` (la data de la gráfica de Análisis Financiero) — sí la incluía.
@@ -347,4 +358,12 @@ De los 4 `setDoc` reales del archivo, dos ya tenían manejo aceptable (autoguard
 ### ✅ Corregido — Botón "Dividir ÷" quedaba con color incorrecto tras resetear (abono a cuenta)
 
 Tres puntos distintos reseteaban el toggle de dividir del abono a un encargo (al abrir el sheet, al desmarcar "¿viene de un encargo?", al cambiar de encargo seleccionado) — los tres reseteaban el texto a `"Dividir ÷"` pero no el color, así que si el usuario había estado en modo dividir (ámbar), el botón quedaba con el texto correcto pero el color viejo. Se unificaron los tres bajo un solo helper (`_resetEncCuentaSplitToggleStyle`) para que no puedan volver a desincronizarse en el futuro.
+
+### ✅ Corregido — Eliminar un encargo completo dejaba plata huérfana y la deuda de la tarjeta desactualizada
+
+Borrar un movimiento individual de un encargo (ej. una compra pagada con tarjeta de crédito) siempre revertía bien sus efectos: le restaba el dinero a la cuenta destino, le bajaba la deuda a la tarjeta y refrescaba la pantalla para que el número quedara correcto al instante. Pero borrar el **encargo completo** solo sabía revertir un caso ("traspaso de sobrante"): una compra pagada con TC dentro de un encargo eliminado dejaba la plata metida en la cuenta destino sin ningún movimiento que explicara de dónde salió, y la deuda de la tarjeta seguía mostrando el valor viejo hasta que *cualquier otra acción* sin relación disparara un refresco general — momento en el que el número cambiaba solo, sin que el usuario entendiera por qué. Lo mismo pasaba con un pago de deuda de Préstamos hecho con plata de un encargo: al borrar el encargo, la deuda de esa persona seguía marcada como pagada aunque el registro del lado del encargo ya no existiera.
+
+**Fix de diseño, no solo de reversión:** un encargo ya administrado y usado (con compras, pagos o traspasos adentro) no debería poder "deshacerse" completo sin más — esos movimientos ya son historia real. Se cambiaron las reglas del juego en vez de parchar la reversión:
+- Ahora solo se puede eliminar un encargo si su saldo está en $0 — si todavía tiene plata pendiente (a favor o en contra), se avisa y no se deja continuar.
+- Al eliminarlo ya no se revierte ni se borra nada vinculado (movimientos, cargos a tarjeta, pagos de deudas) — todo lo que pasó mientras el encargo existió queda intacto, exactamente como ocurrió. Eliminar el encargo pasó a significar únicamente "dejar de llevarle el registro a esta persona", no "deshacer los favores o pagos que ya pasaron".
 

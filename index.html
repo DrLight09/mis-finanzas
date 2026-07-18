@@ -14421,6 +14421,30 @@ async function eliminarEncargoActual() {
     if (m._traspasoEncargo && m._destino && m.monto) descontarFuente(m._destino, m.monto);
   });
 
+  // Revertir efectos secundarios de compras pagadas con TC dentro de este encargo
+  // (mismo tratamiento que ya existe en deleteMovEncargo): descontar de la cuenta
+  // destino el dinero que entró, y restar la deuda que se le sumó a la tarjeta.
+  (enc.movimientos||[]).forEach(m => {
+    if (!m._esTcEncargo) return;
+    if (m._destino) {
+      const montoARevertir = m._destinoMonto || m._tcMonto || m.monto;
+      if (montoARevertir) descontarFuente(m._destino, montoARevertir);
+    }
+    if (m._tcId && m._tcMonto) {
+      const tc = (S.tarjetasCredito||[]).find(t=>t.id===m._tcId);
+      if (tc) tc.deuda = Math.max(0, (tc.deuda||0) - m._tcMonto);
+    }
+  });
+
+  // Revertir abonos a deudores hechos vía este encargo
+  (enc.movimientos||[]).forEach(m => {
+    if (!m._esAbonoDeudor || !m._deudorId) return;
+    const d = (S.deudores || []).find(x => x.id === m._deudorId);
+    if (d) {
+      d.movimientos = (d.movimientos || []).filter(x => !(x._viaEncargo && (x._encMovId === m.id || (x._encMovIds && x._encMovIds.includes(m.id)))));
+    }
+  });
+
   // Limpiar S.movimientos vinculados por _encMovId (diferenciales, intercambios, margen, traspasos)
   if (S.movimientos && encMovIds.size > 0) {
     S.movimientos = S.movimientos.filter(m => !encMovIds.has(m._encMovId));
@@ -14452,6 +14476,7 @@ async function eliminarEncargoActual() {
 
   S.encargos = (S.encargos||[]).filter(e=>e.id!==encargoActualId);
   save();
+  refresh();
   volverEncargosLista();
   if(window.logCambio)logCambio('Eliminaste un encargo','','','eliminar');
   toast('Encargo eliminado', 'info');

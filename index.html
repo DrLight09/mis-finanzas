@@ -8452,10 +8452,9 @@ function confirmarPagarGastoFijo(){
 // Módulo Préstamos (Me deben / Yo debo / Préstamo con TC) migrado a
 // js/modules/prestado.js — ver docs/prestado.md. La integración con
 // Personas vive aparte, en prestado-personas.js, cargada más abajo — ver
-// el comentario de ese archivo.
-</script>
-<script src="js/modules/prestado.js"></script>
-<script>
+// el comentario de ese archivo. El <script src> real está más abajo,
+// junto a mesada.js/spotify.js — depende de crearSplitWidget() y
+// diffRegistrarInstancia(), definidos en este bloque de acá.
 
 /* ═══════════════════════════════════════════════════════════════
    MOTOR GENÉRICO "SPLIT DE FUENTES" (mismo patrón que diffRegistrarInstancia)
@@ -8575,6 +8574,14 @@ function splitPreview(instId){
 </script>
 <script src="js/modules/mesada.js"></script>
 <script src="js/modules/spotify.js"></script>
+<script>
+
+// Módulo Préstamos migrado a js/modules/prestado.js — ver docs/prestado.md.
+// Carga acá y no donde vivía antes (mucho más arriba) por el mismo motivo
+// que Mesada: depende de crearSplitWidget() y diffRegistrarInstancia(),
+// y de acá en más ya están definidos.
+</script>
+<script src="js/modules/prestado.js"></script>
 <script>
 
 // editarDeudorActual() migrada a js/modules/prestado.js — ver docs/prestado.md.

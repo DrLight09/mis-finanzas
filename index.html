@@ -7322,7 +7322,14 @@ function _calcPrestadoMeta(cajitaId){
         }
       }
       // restar abonos que pueden haber regresado a la cajita
-      if((m.tipo==='abono' || m.tipo==='pago-completo') && m.destino==='cajita:'+cajitaId) total -= m.monto;
+      if(m.tipo==='abono' || m.tipo==='pago-completo'){
+        // destino simple
+        if(m.destino==='cajita:'+cajitaId) total -= m.monto;
+        // destino dividido
+        if(m.destinos && Array.isArray(m.destinos)){
+          m.destinos.forEach(r=>{ if(r.fuente==='cajita:'+cajitaId) total -= (r.monto||0); });
+        }
+      }
     });
   });
   return Math.max(0, total);
@@ -8840,9 +8847,56 @@ async function eliminarMovDeudor(deudorId, movId) {
         m.destinos.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto); });
       }
     } else if (m.destinos && m.destinos.length) {
-      m.destinos.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto); });
+      m.destinos.forEach(r => {
+        if (!r.fuente) return;
+        let movDestinoExiste = true;
+        if (r._movId) {
+          movDestinoExiste = false;
+          if (r.fuente === 'efectivo' || r.fuente === 'nequi') {
+            movDestinoExiste = !!(S.movimientos || []).find(x => x.id === r._movId);
+            if (movDestinoExiste) S.movimientos = S.movimientos.filter(x => x.id !== r._movId);
+          } else if (r.fuente.startsWith('custom:')) {
+            const cId = r.fuente.split(':')[1];
+            const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+            if (cObj && cObj.movimientos) {
+              movDestinoExiste = !!(cObj.movimientos.find(x => x.id === r._movId));
+              if (movDestinoExiste) cObj.movimientos = cObj.movimientos.filter(x => x.id !== r._movId);
+            }
+          } else if (r.fuente.startsWith('cajita:')) {
+            const cId = r.fuente.split(':')[1];
+            const cObj = (S.cajitas || []).find(x => x.id === cId);
+            if (cObj && cObj.historial) {
+              movDestinoExiste = !!(cObj.historial.find(x => x.id === r._movId));
+              if (movDestinoExiste) cObj.historial = cObj.historial.filter(x => x.id !== r._movId);
+            }
+          }
+        }
+        if (movDestinoExiste) descontarFuente(r.fuente, r.monto);
+      });
     } else if (m.destino) {
-      descontarFuente(m.destino, m.monto);
+      let movDestinoExiste = true;
+      if (m._abonoDestinoMovId) {
+        movDestinoExiste = false;
+        if (m.destino === 'efectivo' || m.destino === 'nequi') {
+          movDestinoExiste = !!(S.movimientos || []).find(x => x.id === m._abonoDestinoMovId);
+          if (movDestinoExiste) S.movimientos = S.movimientos.filter(x => x.id !== m._abonoDestinoMovId);
+        } else if (m.destino.startsWith('custom:')) {
+          const cId = m.destino.split(':')[1];
+          const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+          if (cObj && cObj.movimientos) {
+            movDestinoExiste = !!(cObj.movimientos.find(x => x.id === m._abonoDestinoMovId));
+            if (movDestinoExiste) cObj.movimientos = cObj.movimientos.filter(x => x.id !== m._abonoDestinoMovId);
+          }
+        } else if (m.destino.startsWith('cajita:')) {
+          const cId = m.destino.split(':')[1];
+          const cObj = (S.cajitas || []).find(x => x.id === cId);
+          if (cObj && cObj.historial) {
+            movDestinoExiste = !!(cObj.historial.find(x => x.id === m._abonoDestinoMovId));
+            if (movDestinoExiste) cObj.historial = cObj.historial.filter(x => x.id !== m._abonoDestinoMovId);
+          }
+        }
+      }
+      if (movDestinoExiste) descontarFuente(m.destino, m.monto);
     }
 
     // Revertir el extra si lo tenía
@@ -9293,7 +9347,7 @@ function confirmarMovimiento() {
         toast(`La suma de cuentas (${fmt(totalSplit)}) no coincide con el abono (${fmt(monto)})`,'err',4000);
         return;
       }
-      const destinos = _abonoSplitRows.filter(r=>r.monto>0);
+      const destinos = _abonoSplitRows.filter(r=>r.monto>0).map(r=>({...r, _movId: uid()}));
       destinos.forEach(r=>{ if(r.fuente) sumarFuente(r.fuente, r.monto); });
       // Registrar movimiento visible en cada cuenta destino
       destinos.forEach(r=>{
@@ -9301,46 +9355,47 @@ function confirmarMovimiento() {
         const descSplit = descMovSecundario;
         if (r.fuente === 'efectivo' || r.fuente === 'nequi') {
           if (!S.movimientos) S.movimientos = [];
-          S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: r.fuente, monto: r.monto, fecha, desc: descSplit, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
+          S.movimientos.push({ id: r._movId, tipo: 'entrada', fuente: r.fuente, monto: r.monto, fecha, desc: descSplit, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
         } else if (r.fuente.startsWith('custom:')) {
           const cId = r.fuente.split(':')[1];
           const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
           if (cObj) {
             if (!cObj.movimientos) cObj.movimientos = [];
-            cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto: r.monto, fecha, nota: descSplit, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
+            cObj.movimientos.push({ id: r._movId, tipo: 'ingreso', monto: r.monto, fecha, nota: descSplit, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
           }
         } else if (r.fuente.startsWith('cajita:')) {
           const cId = r.fuente.split(':')[1];
           const cObj = (S.cajitas || []).find(x => x.id === cId);
           if (cObj) {
             if (!cObj.historial) cObj.historial = [];
-            cObj.historial.push({ id: uid(), tipo: 'entrada', monto: r.monto, fecha, nota: descSplit, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
+            cObj.historial.push({ id: r._movId, tipo: 'entrada', monto: r.monto, fecha, nota: descSplit, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
           }
         }
       });
-      d.movimientos.push({ id: uid(), tipo: tipoGuardar, monto, fecha, destinos: destinos.map(r=>({fuente:r.fuente,monto:r.monto})), nota, ts: Date.now() });
+      d.movimientos.push({ id: uid(), tipo: tipoGuardar, monto, fecha, destinos: destinos.map(r=>({fuente:r.fuente,monto:r.monto,_movId:r._movId})), nota, ts: Date.now() });
     } else {
       const destino = document.getElementById('mov_destino').value;
       const abonoMovId = uid();
-      d.movimientos.push({ id: abonoMovId, tipo: tipoGuardar, monto, fecha, destino, nota, ts: Date.now() });
+      const abonoDestinoMovId = destino ? uid() : null;
+      d.movimientos.push({ id: abonoMovId, tipo: tipoGuardar, monto, fecha, destino, nota, _abonoDestinoMovId: abonoDestinoMovId, ts: Date.now() });
       sumarFuente(destino, monto);
       // Registrar movimiento visible en la cuenta destino
       if (destino === 'efectivo' || destino === 'nequi') {
         if (!S.movimientos) S.movimientos = [];
-        S.movimientos.push({ id: uid(), tipo: 'entrada', fuente: destino, monto, fecha, desc: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
+        S.movimientos.push({ id: abonoDestinoMovId, tipo: 'entrada', fuente: destino, monto, fecha, desc: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
       } else if (destino.startsWith('custom:')) {
         const cId = destino.split(':')[1];
         const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
         if (cObj) {
           if (!cObj.movimientos) cObj.movimientos = [];
-          cObj.movimientos.push({ id: uid(), tipo: 'ingreso', monto, fecha, nota: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
+          cObj.movimientos.push({ id: abonoDestinoMovId, tipo: 'ingreso', monto, fecha, nota: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
         }
       } else if (destino.startsWith('cajita:')) {
         const cId = destino.split(':')[1];
         const cObj = (S.cajitas || []).find(x => x.id === cId);
         if (cObj) {
           if (!cObj.historial) cObj.historial = [];
-          cObj.historial.push({ id: uid(), tipo: 'entrada', monto, fecha, nota: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
+          cObj.historial.push({ id: abonoDestinoMovId, tipo: 'entrada', monto, fecha, nota: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
         }
       }
     }
@@ -19118,7 +19173,7 @@ function abrirPerfilPersona(personaId) {
         </div>` : ''}
       </div>
       ${ultimoMov ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
-        Último movimiento: <span style="color:var(--text2);font-weight:500;">${ultimoMov.tipo === 'prestamo' ? 'Préstamo' : 'Abono'} de ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? ' · <i>' + escHtml(ultimoMov.nota) + '</i>' : ''}
+        Último movimiento: <span style="color:var(--text2);font-weight:500;">${ultimoMov.tipo === 'prestamo' ? 'Préstamo' : (ultimoMov.tipo === 'pago-completo' ? 'Pago completo' : 'Abono')} de ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? ' · <i>' + escHtml(ultimoMov.nota) + '</i>' : ''}
       </div>` : ''}
     </div>`;
   }

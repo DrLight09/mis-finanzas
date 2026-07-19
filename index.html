@@ -10856,16 +10856,6 @@ function _getMovimientosCuentaCustom(fuente) {
             movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -f.monto, nota: m.nota, fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: fuente, _origen: _origenP, _otrasCuentas: null });
           }
         });
-      } else if ((m.tipo === 'abono' || m.tipo === 'pago-completo') && (m.destino === fuente || (m.destinos || []).some(dest => dest.fuente === fuente))) {
-        const descMov = m.tipo === 'pago-completo' ? 'Pago completo de ' + d.nombre : 'Abono de ' + d.nombre;
-        if (m.destino === fuente) {
-          movs.push({ tipo: m.tipo, fecha: m.fecha, desc: descMov, monto: +m.monto, nota: m.nota, fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: fuente, _origen: 'Préstamos · ' + d.nombre, _otrasCuentas: null });
-        }
-        (m.destinos || []).forEach(dest => {
-          if (dest.fuente === fuente && dest.monto) {
-            movs.push({ tipo: m.tipo, fecha: m.fecha, desc: descMov, monto: +dest.monto, nota: m.nota, fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: fuente, _origen: 'Préstamos · ' + d.nombre, _otrasCuentas: null });
-          }
-        });
       }
     });
   });
@@ -10968,9 +10958,6 @@ function getMovimientosCuenta(tipo) {
       const matchFuente = tipo === 'nu'
         ? (m.fuente && m.fuente.startsWith('cajita:'))
         : m.fuente === tipo;
-      const matchDestino = tipo === 'nu'
-        ? (m.destino && m.destino.startsWith('cajita:'))
-        : m.destino === tipo;
       if (m.tipo === 'prestamo' && (matchFuente || (m.fuentes && m.fuentes.length))) {
         const _origenP = 'Préstamos · ' + d.nombre;
         if (matchFuente) {
@@ -10988,19 +10975,6 @@ function getMovimientosCuenta(tipo) {
             }
           });
         }
-      } else if ((m.tipo === 'abono' || m.tipo === 'pago-completo') && matchDestino) {
-        const descMov = m.tipo === 'pago-completo' ? 'Pago completo de ' + d.nombre : 'Abono de ' + d.nombre;
-        movs.push({ tipo: m.tipo, fecha: m.fecha, desc: descMov, monto: +m.monto, nota: m.nota, fuente: m.destino, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.destino, _origen: 'Préstamos · ' + d.nombre, _otrasCuentas: null });
-      } else if ((m.tipo === 'abono' || m.tipo === 'pago-completo') && m.destinos) {
-        // Abono con destino dividido entre varias cuentas
-        const descMov = m.tipo === 'pago-completo' ? 'Pago completo de ' + d.nombre : 'Abono de ' + d.nombre;
-        m.destinos.forEach(dest => {
-          const matchDest2 = tipo === 'nu' ? (dest.fuente && dest.fuente.startsWith('cajita:')) : dest.fuente === tipo;
-          if (matchDest2 && dest.monto) {
-            const otras = (m.destinos||[]).filter(d2=>d2.fuente!==dest.fuente).map(d2=>({fuente:d2.fuente, monto:+d2.monto}));
-            movs.push({ tipo: m.tipo, fecha: m.fecha, desc: descMov, monto: +dest.monto, nota: m.nota, fuente: dest.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: dest.fuente, _origen: 'Préstamos · ' + d.nombre, _otrasCuentas: otras.length ? otras : null });
-          }
-        });
       }
     });
   });

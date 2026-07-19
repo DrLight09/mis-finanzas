@@ -347,13 +347,17 @@ De los 4 `setDoc` reales del archivo, dos ya tenían manejo aceptable (autoguard
 
 ## Préstamos
 
-### ✅ Corregido — `addDeudor()` nunca creaba/vinculaba la persona en la práctica (mismo bug de listener congelado que Encargos)
+### 🔧 Cambio — Blindaje del listener de `addDeudor()` (mismo diagnóstico retractado que `crearEncargo()`, ver sección Encargos)
 
-*(2026-07-18)*
+*(2026-07-18, corregido el mismo día)*
 
-Mismo problema y misma causa que el de `crearEncargo()` (ver entrada en la sección Encargos): `btn-crear-deudor` se enganchaba con `addEventListener('click', addDeudor)`, capturando la versión original de la función. Dos overrides posteriores quedaban como código muerto — uno de validación, y el que realmente crea o vincula el registro correspondiente en `S.personas` y le asigna `personaId` al deudor nuevo. Como consecuencia, un deudor podía quedar guardado sin `personaId` aunque el usuario nunca lo notara (no hay feedback visual distinto entre ambos casos).
+Se había diagnosticado el mismo bug de "listener congelado" que en `crearEncargo()`: `btn-crear-deudor` enganchado con `addEventListener('click', addDeudor)`, supuestamente capturando la versión original antes de que dos overrides posteriores (validación + vínculo con `S.personas`) se aplicaran.
 
-**Fix:** mismo criterio que en Encargos — el listener pasó a `() => addDeudor()` para leer la variable actual en cada clic. Acá no hizo falta agregar una validación explícita de "persona obligatoria" (a diferencia de Encargos): el override ya crea o vincula la persona automáticamente por nombre en todos los casos, así que alcanza con que el override efectivamente corra.
+**Retractado por el mismo motivo:** ese `addEventListener` se registra dentro de `_initEventListeners()`, llamada de forma asíncrona (vía `_finishFirstLoad`, después de que responde Firestore) — mucho después de que los overrides de nivel superior ya corrieron de forma síncrona al parsear el script. La variable `addDeudor` ya apuntaba a la versión final en el momento en que el listener la lee. El vínculo con `S.personas` y la asignación de `personaId` ya venían funcionando correctamente en cada clic, aun antes de este cambio.
+
+**Qué se mantiene:** el listener quedó como `() => addDeudor()` en vez de `addDeudor` directo — blindaje contra un reordenamiento futuro del código, no corrección de algo que estuviera fallando. No se agregó validación adicional de "persona obligatoria" acá (a diferencia de Encargos): el override ya crea o vincula la persona por nombre en todos los casos, y eso seguía corriendo con normalidad.
+
+**Si hay deudores reales sin `personaId`:** misma conclusión que en Encargos — no es esta la causa; buscar en registros anteriores a esta integración o en datos que entraron por otra vía.
 
 ### ✅ Corregido — Botón "Dividir ÷" nunca cambiaba de color (Me deben / Yo debo)
 
@@ -363,15 +367,19 @@ Mismo problema y misma causa que el de `crearEncargo()` (ver entrada en la secci
 
 ## Encargos
 
-### ✅ Corregido — `crearEncargo()` nunca guardaba `personaId` en la práctica (listener con referencia congelada)
+### 🔧 Cambio — `personaId` obligatorio explícito en `crearEncargo()` (el diagnóstico inicial de "listener congelado" resultó incorrecto)
 
-*(2026-07-18)*
+*(2026-07-18, corregido el mismo día tras revisar el orden real de ejecución)*
 
-Mismo tipo de bug que ya había aparecido al migrar Spotify (ver `Events.on('spotify:editar', ...)` en Infraestructura/seguridad más arriba): `btn-crear-encargo` se enganchaba con `addEventListener('click', crearEncargo)`, que captura el *valor* de la función en ese momento, no una referencia viva a la variable. Más abajo en el documento, `crearEncargo` se reasignaba (hook que adjunta `personaId` si se eligió persona en el selector) — pero como el listener ya había capturado la versión original, ese override nunca corría al hacer clic en el botón real. Era código muerto.
+**Diagnóstico inicial (retractado):** se pensó que `btn-crear-encargo` (enganchado con `addEventListener('click', crearEncargo)`, línea ~14803) capturaba la versión *original* de `crearEncargo` antes de que el hook que asigna `personaId` (línea ~21597) la reasignara — mismo patrón que un bug real encontrado antes al migrar Spotify (`Events.on('spotify:editar', ...)`).
 
-Encargos se guardaban entonces con el nombre correcto (el selector de persona sí sincronizaba visualmente el campo `enc_nombre`) pero **sin `personaId`**, salvo que ya lo tuviera de una migración anterior — lo que hacía fallar silenciosamente cualquier lógica que dependiera de ese vínculo (ej. `_tieneEncargoVinculado`).
+**Por qué no era así acá:** ese registro de listener no ocurre al parsear el script (momento en el que sí correría antes de la reasignación), sino mucho después, dentro de `_initEventListeners()` → `_initAppUI()` → `_finishFirstLoad()`, llamada de forma asíncrona recién cuando responde el `onSnapshot` de Firestore. Los overrides de nivel superior (`crearEncargo = function(){...}`, `addDeudor = function(){...}`) ya corrieron de forma síncrona mucho antes, durante el parseo inicial del `<script>` — JS no puede intercalar un callback async en medio de la ejecución síncrona de nivel superior. Para cuando `addEventListener` finalmente lee la variable, ya apunta a la versión final con el override aplicado. El bug nunca se disparó en producción, pese a que el patrón de código coincidía exactamente con uno que sí es real en otras partes de la app.
 
-**Fix:** el listener pasó a registrarse como `() => crearEncargo()` en vez de `crearEncargo` directo, para que cada clic lea el valor *actual* de la variable global. De paso se aprovechó para volver `personaId` explícitamente obligatorio: el hook ahora bloquea la creación con un toast de error si no hay persona seleccionada, en vez de depender implícitamente de que el campo oculto `enc_nombre` quedara vacío (ya no existe vía de "nombre libre" sin persona, ver `encargos.md §3`).
+**Qué se mantiene de este cambio (válido igual, aunque el diagnóstico de bug fuera incorrecto):**
+- El listener se dejó como `() => crearEncargo()` en vez de `crearEncargo` directo — no corrige nada activo, pero deja de depender de este orden de carga tan específico para seguir siendo correcto si algo cambia a futuro (blindaje, no fix).
+- `personaId` pasó a ser explícitamente obligatorio: el hook bloquea la creación con un toast de error si no hay persona seleccionada, en vez de depender implícitamente de que el campo oculto `enc_nombre` quedara vacío (ya no existe vía de "nombre libre" sin persona, ver `encargos.md §3`). Esta parte del cambio sí es funcional y se mantiene — es independiente del diagnóstico erróneo de arriba.
+
+**Si hay encargos reales sin `personaId`:** no vienen de esta causa. Lo más probable es que sean registros creados antes de que existiera esta integración con `S.personas`, o entradas que llegaron por otra vía (import/restore) sin pasar por `crearEncargo()`.
 
 ### ✅ Corregido — Botón "Dividir ÷" quedaba con color incorrecto tras resetear (abono a cuenta)
 
@@ -384,4 +392,15 @@ Borrar un movimiento individual de un encargo (ej. una compra pagada con tarjeta
 **Fix de diseño, no solo de reversión:** un encargo ya administrado y usado (con compras, pagos o traspasos adentro) no debería poder "deshacerse" completo sin más — esos movimientos ya son historia real. Se cambiaron las reglas del juego en vez de parchar la reversión:
 - Ahora solo se puede eliminar un encargo si su saldo está en $0 — si todavía tiene plata pendiente (a favor o en contra), se avisa y no se deja continuar.
 - Al eliminarlo ya no se revierte ni se borra nada vinculado (movimientos, cargos a tarjeta, pagos de deudas) — todo lo que pasó mientras el encargo existió queda intacto, exactamente como ocurrió. Eliminar el encargo pasó a significar únicamente "dejar de llevarle el registro a esta persona", no "deshacer los favores o pagos que ya pasaron".
+
+### 🔧 Cambio — Migración a `js/modules/encargos.js` + `encargos-personas.js` (arquitectura, seguridad)
+
+*(2026-07-18)*
+
+Tercer módulo migrado sobre la infraestructura ya construida para Spotify y Mesada (`js/core/events.js`, patrón `data-action`/`Events.registerAll`) — ver `auditoria-tecnica.md` puntos 1 y 3.
+
+- **`onclick` → `data-action`:** los ~20 `onclick` inline del módulo (pantalla, los 8 sheets, y los generados dinámicamente en `renderEncargosList`, `renderEncargosEnCuenta`, `abrirEncargoDetalle`, `renderEncargoParts`) pasaron a `data-action` + `Events.on()`/`Events.registerAll('encargos', ...)`. 0 restantes en el módulo.
+- **Split en dos archivos, mismo motivo que Spotify:** `encargos.js` (núcleo: pantalla, sheets, movimientos, partes, traspaso, mover-cuentas, compra con TC) carga temprano, junto a `mesada.js`/`spotify.js`. `encargos-personas.js` (selector de persona en "Nuevo encargo", hook de `personaId` obligatorio, botones de perfil en lista/detalle) carga más abajo, junto a `spotify-personas.js` — depende de `getPersona`/`abrirSelPersona`/`_inyectarPersonaSheets`, definidos más adelante en el archivo. El motor de diferencial (`diffRegistrarInstancia` y compañía) y el de split (`crearSplitWidget` y compañía) se quedaron en `index.html`: los usan también Préstamos, no son exclusivos de Encargos — solo las instancias que Encargos registra en esos motores se movieron. `_normEncargos()` tampoco se movió: vive anidada en una factory compartida con `_normDeudores`/`_normSpotify`/etc., sacarla sola exigía reestructurar esa factory entera.
+- **`.innerHTML`/`toast()` sin escapar — mismo patrón que Spotify (`spNombreDe`) y Mesada (`fuenteLabel`):** ~18 casos donde texto libre pasaba por una función auxiliar antes de llegar a `.innerHTML`/`toast()`, sin que el barrido original por nombre de campo los detectara. Acá las funciones eran `fuenteLabel()` (nombre de cajita/cuenta personalizada/tarjeta) e `iniciales()`: desglose por cuenta del detalle, historial de movimientos, preview de "yo puse la plata", preview y badges de "ya la usé", y los preview/toast de traspaso, mover entre cuentas y compra con TC. Se corrigieron envolviendo con `escHtml()` en el sitio de uso, mismo criterio que las rondas anteriores — no se tocó `fuenteLabel()` ni `iniciales()` en sí (siguen sin escapar internamente; queda para la segunda pasada exhaustiva de `.innerHTML` que menciona `auditoria-tecnica.md` punto 2).
+- **Efecto colateral necesario:** `renderEncargosList` buscaba la tarjeta de cada encargo vía `lista.querySelector('[onclick*="..."]')` (usado por el hook de perfil en `encargos-personas.js`) — al quitar el `onclick`, ese selector se rompía. Se agregó `data-encargo-id` a la tarjeta y se actualizó el selector para usarlo.
 

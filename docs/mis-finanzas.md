@@ -13,7 +13,7 @@ Es un proyecto de un solo desarrollador, para uso personal, pensado para mantene
 - **Desplegada en GitHub Pages.**
 - **Estado global (`S`)**: un objeto central que se sincroniza bidireccionalmente con Firestore y contiene todos los datos de la app — cuentas, movimientos, préstamos, encargos, tarjetas, mesadas, Spotify, personas, etc. Todo el HTML se re-renderiza a partir de `S`.
 - **Sin backend propio**: toda la lógica de negocio (cálculos, validaciones, reversión de movimientos) vive en el cliente.
-- **Migración en curso a módulos separados**: los módulos se van extrayendo uno por uno desde `index.html` hacia `js/modules/` (mismo scope global, cargados como `<script src>` clásicos — todavía no ES modules), con un despachador de eventos centralizado en `js/core/events.js` que reemplaza los `onclick` inline. Ver [`auditoria-tecnica.md`](./auditoria-tecnica.md) para el detalle y el orden. **Ya migrado:** Spotify. **Sigue inline en `index.html`:** el resto.
+- **Migración en curso a módulos separados**: los módulos se van extrayendo uno por uno desde `index.html` hacia `js/modules/` (mismo scope global, cargados como `<script src>` clásicos — todavía no ES modules), con un despachador de eventos centralizado en `js/core/events.js` que reemplaza los `onclick` inline. Ver [`auditoria-tecnica.md`](./auditoria-tecnica.md) para el detalle y el orden. **Ya migrados:** Spotify, Mesada, Encargos, Personas. **Sigue inline en `index.html`:** el resto.
 
 ## Principios que se repiten en toda la app
 
@@ -48,5 +48,5 @@ Aunque cada módulo se documenta por separado, hay reglas de diseño que atravie
 
 Cada módulo se documenta en su propio `.md`, siguiendo la estructura definida en [`plantilla-modulo.md`](./plantilla-modulo.md). El historial de bugs corregidos de todos los módulos vive en un solo [`CHANGELOG.md`](./CHANGELOG.md) compartido, para que el documento de cada módulo se mantenga enfocado en cómo funciona hoy y no crezca indefinidamente con historia ya resuelta.
 
-**Documentados:** Mesada, Spotify.
-**Pendientes:** Cuentas, Gastos, Préstamos, Tarjetas de crédito, Encargos, Alcancía, Plata Comprometida, Análisis financiero, Personas.
+**Documentados:** Mesada, Spotify, Personas.
+**Pendientes:** Cuentas, Gastos, Préstamos, Tarjetas de crédito, Encargos, Alcancía, Plata Comprometida, Análisis financiero.

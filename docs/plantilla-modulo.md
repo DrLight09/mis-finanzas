@@ -63,6 +63,7 @@ Todo bug ya arreglado, con su causa y su fix, va en el **`CHANGELOG.md` comparti
 
 - `mesada.md`
 - `spotify.md`
+- `personas.md`
 - `CHANGELOG.md` — historial de bugs y limpieza de código, compartido entre todos los módulos
 
-Módulos pendientes de documentar con esta misma plantilla: Cuentas, Gastos, Préstamos ("Me deben" / "Yo debo"), Encargos, Tarjetas de crédito, Plata Comprometida, Alcancía, Análisis financiero, Sistema de Personas.
+Módulos pendientes de documentar con esta misma plantilla: Cuentas, Gastos, Préstamos ("Me deben" / "Yo debo"), Encargos, Tarjetas de crédito, Plata Comprometida, Alcancía, Análisis financiero.

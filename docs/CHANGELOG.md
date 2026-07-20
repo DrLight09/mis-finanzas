@@ -191,6 +191,14 @@ Fix: se agregó la misma exclusión (`!g._esExtraPrestamo`) al filtro de `gvMes`
 
 ## Tarjetas de crédito
 
+### ✅ Corregido — Registrar una compra desde "+ Compra" no validaba el cupo disponible
+
+*(2026-07-19)*
+
+`confirmarCompraTC()` (botón "+ Compra" en la pantalla de la tarjeta) creaba la compra sin chequear `tcCupoDisponible(tc)` contra el monto — bastaba con registrar la compra desde esta pantalla en vez de desde "Agregar gasto" para saltarse el control de cupo. El flujo genérico de gasto variable con fuente `tc:` (`addGastoVar`) sí lo validaba, pese a que ambos terminan en el mismo `tcCrearCompra()`: dos caminos al mismo resultado con reglas distintas.
+
+Fix: se agregó la misma validación que ya usaba `addGastoVar` — mismo criterio (solo bloquea si la tarjeta tiene cupo configurado) y mismo mensaje de error, reutilizando `tcCupoDisponible(tc)` en vez de reimplementar el cálculo.
+
 ### ✅ Corregido — Widget de cobertura mostraba "vincula una cajita" con una cajita ya vinculada, y la deuda propia podía llegar a $0 escondiendo gastos reales
 
 *(2026-07-12)*
@@ -343,6 +351,12 @@ De los 4 `setDoc` reales del archivo, dos ya tenían manejo aceptable (autoguard
 
 `sw.js` registra correctamente en producción (confirmado en consola en múltiples pruebas reales). No era un bug, solo faltaba verificarlo.
 
+### 🔧 Cambio — Nueva clase `.btn-red`, mismo patrón que `.btn-primary`
+
+*(2026-07-19)*
+
+Al menos dos botones ("Restar del saldo" en Cuentas, "Registrar compra" en Tarjetas de crédito) usaban `class="btn btn-primary"` con un `style=""` inline casi idéntico para forzar fondo/sombra roja en vez de la lima que trae `.btn-primary` por defecto — mismo problema de fondo que ya llevó a centralizar los colores de tooltips de gráficos (ver más arriba: "Accesibilidad"). Se agregó `.btn-red` junto a `.btn-primary` en la hoja de estilos y se migraron ambos botones a usarla, sin estilos inline. Cualquier botón rojo nuevo debería usar esta clase en vez de repetir el override.
+
 ---
 
 ## Préstamos
@@ -362,6 +376,34 @@ Se había diagnosticado el mismo bug de "listener congelado" que en `crearEncarg
 ### ✅ Corregido — Botón "Dividir ÷" nunca cambiaba de color (Me deben / Yo debo)
 
 `togglePrestSplit()` y `toggleAbonoSplit()` (los toggles de dividir el origen y el destino del dinero en un movimiento de préstamo) cambiaban el texto del botón (`"Dividir ÷"` ↔ `"Una sola fuente/cuenta"`) pero nunca el color — a diferencia del resto de la app, donde el botón se pone ámbar en modo dividir. El botón `.btn-split`/`.btn-split.active` ya tenía los estilos CSS para ambos estados; solo faltaba aplicarlos en JS. Se agregó el cambio de color inline en ambas funciones y en sus resets (incluyendo el caso de precargar modo dividido al editar un movimiento con múltiples fuentes ya guardado, que arrancaba con el texto de "dividido" pero el color de "no dividido").
+
+### ✅ Corregido — `_calcPrestadoMeta()` no descontaba abonos con destino dividido
+
+*(2026-07-19)*
+
+Esta función calcula cuánto dinero de una cajita sigue "prestado" (para mostrar el aviso en la tarjeta de la cajita en la meta). Restaba los abonos/pagos-completos que regresaron a esa cajita, pero solo revisaba `m.destino` (destino simple) — cuando un abono se registra en modo dividido, el destino vive en el array `m.destinos`, no en `m.destino`. Otras partes del código ya revisaban ambos casos; esta función no. Efecto: si un préstamo se pagaba con un abono repartido entre varias cuentas (una de ellas la cajita de origen), esa plata seguía contando como "prestada" aunque ya había regresado, mostrando un monto inflado en la tarjeta de la cajita. Fix: la función ahora revisa `m.destino` y recorre `m.destinos` igual que el resto del código.
+
+### ✅ Corregido — Etiqueta "Abono" incorrecta para pagos completos en el perfil de persona
+
+*(2026-07-19)*
+
+En la sección "Préstamos" del perfil de persona, el "Último movimiento" solo distinguía entre `'prestamo'` y todo lo demás mostrado como `'Abono'`. Si el último movimiento era un `'pago-completo'`, se mostraba igual como "Abono" en vez de "Pago completo" — no afectaba ningún cálculo, solo el texto. Corregido para distinguir los tres tipos.
+
+### ✅ Corregido — Al eliminar un abono/pago-completo desde "Prestado" quedaba huérfano el movimiento secundario en la cuenta destino
+
+*(2026-07-19)*
+
+Al registrar un abono o pago completo hacia una cajita/cuenta propia (rama normal, sin encargo — tanto destino simple como dividido), se creaba un movimiento visible en la cuenta destino (`S.movimientos`/`cObj.movimientos`/`cObj.historial`, marcado `_secundario:true`) con un `id` nuevo que nunca quedaba referenciado de vuelta desde el movimiento del deudor. La rama "vía encargo" sí guardaba esa referencia (`_abonoDestinoMovId`); esta no. Efecto: al eliminar el movimiento desde "Prestado", `eliminarMovDeudor()` revertía el saldo con `descontarFuente()` pero no tenía forma de encontrar y borrar la entrada secundaria — quedaba para siempre en el historial de la cuenta destino, con el monto ya sumado dos veces (el saldo real bajaba, pero el historial seguía mostrando la plata como si hubiera entrado).
+
+**Fix:** se generan y guardan los ids en el momento de crear el movimiento (`_abonoDestinoMovId` para destino simple, `_movId` por fila para destino dividido) y `eliminarMovDeudor()` los usa para encontrar y borrar la entrada secundaria correspondiente antes de descontar el saldo — mismo patrón que ya usaba la rama "vía encargo".
+
+### ✅ Corregido — Duplicado sin candado del mismo abono en el historial de cuentas (bug preexistente, expuesto por el fix anterior)
+
+*(2026-07-19)*
+
+`getMovimientosCuenta()` (vista agregada "nu"/cajitas y efectivo/nequi) y `_getMovimientosCuentaCustom()` (cuentas personalizadas) tenían cada una una sección "Préstamos dados desde esta fuente" que, además de reconstruir los préstamos *entregados* (necesario, porque esos no dejan otro rastro en la cuenta), también reconstruía una **segunda copia** de cada abono/pago-completo *recibido*, leyendo directo del registro del deudor — duplicando la entrada que ya vivía, correctamente marcada `_secundario:true` y con candado, en `S.movimientos`/`cObj.movimientos`/`cObj.historial`. Esa copia duplicada no tenía la marca `_secundario`, y su id (el del movimiento del deudor) no es uno de los que `eliminarMovimiento()` busca al chequear si algo es un movimiento vinculado — así que aparecía sin candado, con botón de eliminar activo, por una ruta que no revertía nada correctamente si se llegaba a usar.
+
+Este duplicado ya existía antes de esta ronda de fixes; se volvió más visible al arreglar el punto anterior (una vez que el registro correcto se limpia bien al eliminar desde "Prestado", el duplicado roto que se queda atrás llama más la atención). Fix: se quitó la reconstrucción de abono/pago-completo en ambas funciones — se mantiene únicamente la de préstamos entregados, que sí es la única representación de esa plata saliendo de la cuenta.
 
 ---
 

@@ -1409,6 +1409,19 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                     style="font-size:12px;color:var(--nu-light);font-family:'DM Mono',monospace;">%</span>
                 </div>
               </div>
+              <div
+                style="margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <div
+                  style="font-size:10px;color:rgba(192,96,240,.7);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;">Vigente
+                  desde</div>
+                <input type="date" id="nuTasaVigenciaFecha"
+                  style="padding:5px 8px;background:rgba(0,0,0,.35);border:1px solid rgba(192,96,240,.4);border-radius:8px;color:var(--nu-light);font-size:12px;font-family:'DM Mono',monospace;outline:none;">
+              </div>
+              <div id="nuTasaHistorialTag"
+                style="font-size:10px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace;"></div>
+              <button type="button" onclick="openSheet('chequeo-nu')"
+                style="margin-top:8px;width:100%;background:rgba(192,96,240,.15);border:1px solid rgba(192,96,240,.4);color:var(--nu-light);font-size:11px;font-weight:600;padding:8px;border-radius:8px;cursor:pointer;">Chequeo
+                rápido de cajitas</button>
             </div>
             <!-- Botones entrada/salida Nu -->
             <div class="cuenta-actions" style="margin-bottom:14px;">
@@ -2959,6 +2972,23 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <button type="button" class="btn btn-ghost"
           data-close-sheet="nueva-cuenta"
           onclick="_resetSheetNuevaCuenta()">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- CHEQUEO RÁPIDO CAJITAS NU -->
+    <div class="overlay" id="sheet-chequeo-nu" data-sheet-id="chequeo-nu">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Chequeo rápido — cajitas Nu</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.5;">
+          Pon el saldo que ves AHORA MISMO en cada cajita de Nu. Si el crecimiento real ya
+          no cuadra con la tasa que tienes registrada, la app te va a avisar y te ofrece
+          corregirla con un clic.
+        </div>
+        <div id="chequeoNuLista"></div>
+        <button type="button" class="btn btn-primary" onclick="guardarChequeoNu()">Guardar
+          chequeo</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="chequeo-nu">Cancelar</button>
       </div>
     </div>
 
@@ -6147,29 +6177,76 @@ function _saldoEncargosEnCajita(cajitaId){
   return _saldoEncargosEnCuenta('cajita:'+cajitaId);
 }
 
+// Devuelve la tasa EA vigente en una fecha dada, según S.historialTasasNu.
+// Si la fecha es anterior a cualquier cambio registrado, usa la tasa base (S.nuTasaGlobal).
+function _tasaVigenteEnFecha(fechaStr){
+  const hist=(S.historialTasasNu||[]).slice().sort((a,b)=>a.fecha<b.fecha?-1:(a.fecha>b.fecha?1:0));
+  let tasa=(S.nuTasaGlobal!=null?S.nuTasaGlobal:(S.nuRate||9.25));
+  let encontrada=null;
+  for(const h of hist){
+    if(h.fecha<=fechaStr) encontrada=h.tasa; else break;
+  }
+  if(encontrada!=null) tasa=encontrada;
+  else if(hist.length) tasa=hist[0].tasa;
+  return tasa;
+}
+
+// Registra (o actualiza) un cambio de tasa Nu vigente desde una fecha específica.
+// Permite corregir retroactivamente: si Nu subió la tasa el 6 de julio pero te enteraste
+// el 12, registras {fecha:'2026-07-06', tasa:9.30} y calcC() recalcula automáticamente
+// todos los días desde el 6 con la tasa nueva.
+function registrarTasaNuHistorial(fechaStr, tasa){
+  if(!fechaStr||tasa==null||isNaN(tasa))return;
+  if(!S.historialTasasNu)S.historialTasasNu=[];
+  const idx=S.historialTasasNu.findIndex(h=>h.fecha===fechaStr);
+  if(idx>=0)S.historialTasasNu[idx].tasa=tasa;
+  else S.historialTasasNu.push({fecha:fechaStr,tasa});
+  S.historialTasasNu.sort((a,b)=>a.fecha<b.fecha?-1:(a.fecha>b.fecha?1:0));
+  if(S.historialTasasNu.length>60)S.historialTasasNu=S.historialTasasNu.slice(-60);
+}
+
+function _diasEntreFechas(a,b){
+  return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
+}
+function _segmentosTasaNu(desdeStr,hastaStr){
+  const cambios=(S.historialTasasNu||[])
+    .filter(h=>h.fecha>desdeStr&&h.fecha<hastaStr)
+    .sort((a,b)=>a.fecha<b.fecha?-1:1);
+  const puntos=[desdeStr,...cambios.map(h=>h.fecha),hastaStr];
+  const segmentos=[];
+  for(let i=0;i<puntos.length-1;i++){
+    const dias=_diasEntreFechas(puntos[i],puntos[i+1]);
+    if(dias<=0)continue;
+    segmentos.push({desde:puntos[i],hasta:puntos[i+1],dias,tasa:_tasaVigenteEnFecha(puntos[i])});
+  }
+  return segmentos;
+}
+
 function calcC(c){
   // Interés diario compuesto sobre el saldo total en la cajita.
   // El saldo guardado (c.saldo) ya incluye los intereses materializados anteriormente.
   // La base real para el interés = c.saldo (propio) + saldo de encargos en esta cajita.
-  // Nu genera interés sobre todo el dinero físico; los intereses son del dueño de la cajita.
-  // La tasa diaria = (1 + tasaEA/100)^(1/365) - 1
-  const tasa=getNuTasaGlobal?getNuTasaGlobal():(S.nuTasaGlobal||9.25);
-  const rate=tasa/100;
+  // IMPORTANTE: si la tasa EA cambió durante el periodo (ver S.historialTasasNu), el
+  // cálculo se hace POR TRAMOS — cada tramo compone con la tasa que estuvo vigente en
+  // ese tramo — en vez de aplicar la tasa de hoy a todo el periodo.
   const saldoPropio=c.saldo||0;
-  // Saldo de encargos que están físicamente en esta cajita (genera interés a mi favor)
   const saldoEncargos=_saldoEncargosEnCajita(c.id);
   const saldoBase=saldoPropio+saldoEncargos;
-  if(!c.fecha||!saldoBase)return{val:saldoPropio,ganado:0,dias:0,tasaDiaria:0,tasa,saldoEncargos};
-  const desde=new Date(c.fecha+'T00:00:00');
-  const ahora=new Date();
-  const dias=Math.max(0,Math.floor((ahora-desde)/86400000));
-  const tasaDiaria=Math.pow(1+rate,1/365)-1;
-  // El interés se calcula sobre la base completa (propio + encargos)
-  const valTotal=saldoBase*Math.pow(1+tasaDiaria,dias);
-  // Lo que le corresponde al saldo propio después de crecer
-  const val=valTotal-saldoEncargos;
+  const tasaHoy=_tasaVigenteEnFecha(hoy());
+  if(!c.fecha||!saldoBase)return{val:saldoPropio,ganado:0,dias:0,tasaDiaria:0,tasa:tasaHoy,saldoEncargos};
+  const hoyStr=hoy();
+  const segmentos=_segmentosTasaNu(c.fecha,hoyStr);
+  let valor=saldoBase;
+  segmentos.forEach(seg=>{
+    const tasaDiaria=Math.pow(1+seg.tasa/100,1/365)-1;
+    valor=valor*Math.pow(1+tasaDiaria,seg.dias);
+  });
+  const val=valor-saldoEncargos;
   const ganado=val-saldoPropio;
-  return{val,ganado,dias,tasaDiaria,tasa,saldoEncargos};
+  const dias=segmentos.reduce((a,s)=>a+s.dias,0);
+  const tasaActual=segmentos.length?segmentos[segmentos.length-1].tasa:tasaHoy;
+  const tasaDiaria=Math.pow(1+tasaActual/100,1/365)-1;
+  return{val,ganado,dias,tasaDiaria,tasa:tasaActual,saldoEncargos};
 }
 
 // Materializa los intereses acumulados en el saldo (llama esto antes de depósitos/retiros)
@@ -6179,6 +6256,102 @@ function materializarIntereses(c){
   if(k.dias>0&&k.ganado>0.005){
     c.saldo=k.val;
     c.fecha=hoy();
+  }
+}
+
+// Calcula, para cada fecha en que hiciste un chequeo, la tasa EA que mejor explica el
+// crecimiento real de las cajitas chequeadas ese día (ponderado por saldo). Misma lógica
+// validada en el laboratorio externo de cajitas Nu.
+function calcularSerieTasaImplicitaNu(){
+  const chequeos=S.chequeosNu||[];
+  if(!chequeos.length)return[];
+  const fechas=[...new Set(chequeos.map(ch=>ch.fecha))].sort();
+  const prevByCajita={};
+  (S.cajitas||[]).forEach(c=>{
+    prevByCajita[c.id]={balance:(c.saldo||0)+_saldoEncargosEnCajita(c.id),fecha:c.fecha||hoy()};
+  });
+  const serie=[];
+  fechas.forEach(fecha=>{
+    let sumaPond=0,sumaPesos=0;
+    chequeos.filter(ch=>ch.fecha===fecha).forEach(ch=>{
+      const prev=prevByCajita[ch.cajitaId];
+      if(!prev){prevByCajita[ch.cajitaId]={balance:ch.saldoReal,fecha};return;}
+      const dias=_diasEntreFechas(prev.fecha,fecha);
+      if(dias>0&&prev.balance>=1000){
+        const rDiaria=Math.pow(ch.saldoReal/prev.balance,1/dias)-1;
+        const ea=(Math.pow(1+rDiaria,365)-1)*100;
+        sumaPond+=ea*prev.balance;sumaPesos+=prev.balance;
+      }
+      prevByCajita[ch.cajitaId]={balance:ch.saldoReal,fecha};
+    });
+    if(sumaPesos>0)serie.push({fecha,ea:sumaPond/sumaPesos});
+  });
+  return serie;
+}
+
+// Revisa si los últimos chequeos se desviaron sostenidamente de la tasa registrada.
+// Devuelve {sugerida, desde} si detecta un posible cambio, o null si todo cuadra.
+function verificarTasaNu(){
+  const serie=calcularSerieTasaImplicitaNu();
+  if(!serie.length)return null;
+  const tasaActual=_tasaVigenteEnFecha(hoy());
+  const UMBRAL=0.05;
+  let racha=[];
+  for(let i=serie.length-1;i>=0;i--){
+    if(Math.abs(serie[i].ea-tasaActual)>UMBRAL)racha.unshift(serie[i]); else break;
+  }
+  if(racha.length>=2){
+    const prom=racha.reduce((a,p)=>a+p.ea,0)/racha.length;
+    return{sugerida:Math.round(prom*100)/100,desde:racha[0].fecha};
+  }
+  return null;
+}
+
+function poblarChequeoNu(){
+  const cont=document.getElementById('chequeoNuLista');
+  if(!cont)return;
+  cont.innerHTML=(S.cajitas||[]).map(c=>{
+    const calc=calcC(c);
+    return `<div class="ig" style="margin-bottom:10px;">
+      <label class="il">${escHtml(c.nombre)} <span style="font-size:10px;color:var(--text3);font-weight:400;">(calculado: ${fmt(calc.val)})</span></label>
+      <input type="text" inputmode="decimal" class="money-input" data-chq-cajita="${c.id}" placeholder="${fmt(calc.val)}">
+    </div>`;
+  }).join('');
+}
+
+function guardarChequeoNu(){
+  const inputs=document.querySelectorAll('[data-chq-cajita]');
+  const hoyStr=hoy();
+  if(!S.chequeosNu)S.chequeosNu=[];
+  let n=0;
+  inputs.forEach(inp=>{
+    const raw=(inp.value||'').replace(/\./g,'').replace(',','.');
+    const val=parseFloat(raw);
+    if(!raw||isNaN(val))return;
+    const cajitaId=inp.dataset.chqCajita;
+    const idx=S.chequeosNu.findIndex(ch=>ch.cajitaId===cajitaId&&ch.fecha===hoyStr);
+    if(idx>=0)S.chequeosNu[idx].saldoReal=val;
+    else S.chequeosNu.push({fecha:hoyStr,cajitaId,saldoReal:val});
+    n++;
+  });
+  if(S.chequeosNu.length>500)S.chequeosNu=S.chequeosNu.slice(-500);
+  if(n===0){if(window.toast)toast('No pusiste ningún saldo para chequear.','err',3000);return;}
+  save();
+  closeSheet('chequeo-nu');
+  const r=verificarTasaNu();
+  if(r){
+    const tasaActual=_tasaVigenteEnFecha(hoy());
+    if(confirm(`Los chequeos ya no cuadran con ${tasaActual}% desde el ${r.desde}. Con lo que anotaste, parece que ahora es ${r.sugerida}%.\n\n¿Aplicar este cambio de tasa desde el ${r.desde}?`)){
+      registrarTasaNuHistorial(r.desde,r.sugerida);
+      const el=document.getElementById('nuTasaGlobal');
+      if(el)el.value=String(r.sugerida).replace('.',',');
+      S.nuTasaGlobal=r.sugerida;
+      save();refresh();
+      _renderTasaHistorialTag();
+      if(window.toast)toast('Tasa actualizada a '+r.sugerida+'% desde '+r.desde,'ok',4000);
+    }
+  }else{
+    if(window.toast)toast('Chequeo guardado — todo cuadra con la tasa actual.','ok',3000);
   }
 }
 
@@ -7417,6 +7590,18 @@ function getNuTasaGlobal(){
   return v;
 }
 
+// Muestra un resumen corto ("9,25% hasta 05 jul · 9,30% desde 06 jul") de los últimos
+// cambios de tasa registrados.
+function _renderTasaHistorialTag(){
+  const tag=document.getElementById('nuTasaHistorialTag');
+  if(!tag)return;
+  const hist=(S.historialTasasNu||[]).slice().sort((a,b)=>a.fecha<b.fecha?-1:1);
+  if(!hist.length){tag.textContent='';return;}
+  const fmtFecha=f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-CO',{day:'2-digit',month:'short'}).replace('.','');};
+  const partes=hist.slice(-3).map(h=>String(h.tasa).replace('.',',')+'% desde '+fmtFecha(h.fecha));
+  tag.textContent=partes.join(' · ');
+}
+
 function addCajita(){
   if(!S.cajitas)S.cajitas=[];
   if(S.cajitas.length>=MAX)return;
@@ -8614,6 +8799,7 @@ function openSheet(id){
   if(id==='agregar-dinero-menu'){save();openSheet_adMenu();}
   if(id==='pagar-spotify'){save();openSheet_pagarSpotify();}
   if(id==='spotify'){const fd=document.getElementById('sp_fecha_ingreso');if(fd&&!fd.value)fd.value=hoy();}
+  if(id==='chequeo-nu'){poblarChequeoNu();}
   // Si ya estaba en la pila, sacarlo para reposicionarlo al tope
   const _ssExist = _sheetStack.indexOf(id);
   if(_ssExist !== -1) _sheetStack.splice(_ssExist, 1);
@@ -11439,16 +11625,41 @@ document.addEventListener('focusin', function(e){
     load();
     (function(){
       const el=document.getElementById('nuTasaGlobal');
+      const elFecha=document.getElementById('nuTasaVigenciaFecha');
       if(el&&window.S.nuTasaGlobal!=null)el.value=String(window.S.nuTasaGlobal).replace('.',',');
+      if(elFecha&&!elFecha.value)elFecha.value=hoy();
+      _renderTasaHistorialTag();
       if(el){
         el.addEventListener('input',function(){
           const raw=this.value.replace(',','.');
           const v=raw===''?null:(parseFloat(raw)||null);
           window.S.nuTasaGlobal=v;
+          if(v!=null){
+            const fecha=(elFecha&&elFecha.value)?elFecha.value:hoy();
+            registrarTasaNuHistorial(fecha,v);
+          }
           save();refresh();
+          _renderTasaHistorialTag();
         });
         el.addEventListener('blur',function(){
           if(this.value&&parseFloat(this.value)<=0)this.value='';
+          if(this.value&&window.toast){
+            const total=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
+            toast('Cajitas recalculadas: '+fmt(total)+' — compara con la app de Nu','ok',4000);
+          }
+        });
+      }
+      if(elFecha){
+        elFecha.addEventListener('change',function(){
+          if(el&&el.value){
+            const raw=el.value.replace(',','.');
+            const v=parseFloat(raw);
+            if(!isNaN(v)){
+              registrarTasaNuHistorial(this.value,v);
+              save();refresh();
+              _renderTasaHistorialTag();
+            }
+          }
         });
       }
     })();

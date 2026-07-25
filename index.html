@@ -2475,7 +2475,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 <div class="fb-user-email" id="fb-user-email"></div>
               </div>
               <button class="fb-signout-btn"
-                onclick="window._fbSignOut()">Salir</button>
+                data-action="config:signOut" data-args="[]">Salir</button>
             </div>
             <div class="fb-sync-status">
               <div class="fb-sync-dot" id="fb-sync-dot"></div>
@@ -2575,7 +2575,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               <input type="text" id="nueva-cat-var"
                 placeholder="Nueva categoría..."
                 style="flex:1;padding:9px 12px;font-size:13px;" maxlength="30">
-              <button type="button" onclick="agregarCat('var')"
+              <button type="button" data-action="config:agregarCat" data-args="[&quot;var&quot;]"
                 style="padding:9px 14px;background:rgba(200,240,96,.12);border:1.5px solid rgba(200,240,96,.35);color:var(--accent);border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">+
                 Agregar</button>
             </div>
@@ -2590,7 +2590,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               <input type="text" id="nueva-cat-fijo"
                 placeholder="Nueva categoría..."
                 style="flex:1;padding:9px 12px;font-size:13px;" maxlength="30">
-              <button type="button" onclick="agregarCat('fijo')"
+              <button type="button" data-action="config:agregarCat" data-args="[&quot;fijo&quot;]"
                 style="padding:9px 14px;background:rgba(200,240,96,.12);border:1.5px solid rgba(200,240,96,.35);color:var(--accent);border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;">+
                 Agregar</button>
             </div>
@@ -2691,14 +2691,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             </p>
             <button type="button" class="btn"
               style="width:100%;padding:10px;border-radius:var(--radius-sm);background:rgba(240,104,104,.12);border:1.5px solid rgba(240,104,104,.35);color:var(--red);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;"
-              onclick="_abrirEliminarCuenta()">Eliminar cuenta y todos los
+              data-action="config:abrirEliminarCuenta" data-args="[]">Eliminar cuenta y todos los
               datos</button>
           </div>
 
           <!-- ACCESOS DIRECTOS: secciones poco usadas -->
           <div class="sec-title" style="margin-top:18px;">Herramientas</div>
           <div class="card" style="padding:0 15px;">
-            <div class="cfg-toggle" onclick="showScreen('personas')"
+            <div class="cfg-toggle" data-action="config:irA" data-args="[&quot;personas&quot;]"
               style="cursor:pointer;">
               <div class="cfg-toggle-info">
                 <div class="cfg-toggle-label">Personas</div>
@@ -2712,7 +2712,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             </div>
             <div class="cfg-toggle" id="cfg-historial-row"
               style="cursor:pointer;"
-              onclick="if(typeof showScreen==='function')showScreen('historial')">
+              data-action="config:irA" data-args="[&quot;historial&quot;]">
               <div class="cfg-toggle-info">
                 <div class="cfg-toggle-label">Actividad reciente</div>
                 <div class="cfg-toggle-sub" id="cfg-historial-sub">Todos tus
@@ -5967,106 +5967,7 @@ window.addEventListener('beforeunload', function() {
   }
 });
 
-/* ---- CATEGORÍAS PERSONALIZADAS ---- */
-function renderCatsConfig(){
-  // Render lista de categorías variables
-  const elVar=document.getElementById('cats-var-list');
-  const elFijo=document.getElementById('cats-fijo-list');
-  if(!elVar||!elFijo)return;
-
-  const renderCatChips=(cats,defaults,tipo)=>cats.map(c=>{
-    const esDefault=defaults.includes(c);
-    return`<span class="cat-chip" data-cat-nombre="${escHtml(c)}" data-cat-tipo="${tipo}" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px 4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;margin:0 4px 6px 0;color:var(--text2);">
-      ${escHtml(c)}
-      ${!esDefault?`<button type="button" class="cat-chip-del" title="Eliminar" style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0 0 0 2px;line-height:1;display:flex;align-items:center;" onmouseenter="this.style.color='var(--red)'" onmouseleave="this.style.color='var(--text3)'">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>`:''}
-    </span>`;
-  }).join('');
-
-  elVar.innerHTML=`<div style="display:flex;flex-wrap:wrap;">${renderCatChips(getCatsVar(),CATS_VAR_DEFAULT,'var')}</div>`;
-  elFijo.innerHTML=`<div style="display:flex;flex-wrap:wrap;">${renderCatChips(getCatsFijo(),CATS_FIJO_DEFAULT,'fijo')}</div>`;
-}
-
-function agregarCat(tipo){
-  const inputId=tipo==='var'?'nueva-cat-var':'nueva-cat-fijo';
-  const val=document.getElementById(inputId).value.trim();
-  if(!val){toast('Escribe el nombre de la categoría','err');return;}
-  if(val.length>30){toast('Máximo 30 caracteres','err');return;}
-  const cats=tipo==='var'?getCatsVar():getCatsFijo();
-  if(cats.map(c=>c.toLowerCase()).includes(val.toLowerCase())){toast('Esa categoría ya existe','err');return;}
-  cats.push(val);
-  if(tipo==='var')S.catsVar=cats;
-  else S.catsFijo=cats;
-  document.getElementById(inputId).value='';
-  save();renderCatsConfig();
-  toast(`Categoría "${escHtml(val)}" agregada`,'ok');
-}
-
-function eliminarCat(tipo,cat){
-  const defaults=tipo==='var'?CATS_VAR_DEFAULT:CATS_FIJO_DEFAULT;
-  if(defaults.includes(cat)){toast('Las categorías predeterminadas no se pueden eliminar','err');return;}
-  // Verificar si está en uso
-  let enUso=false;
-  if(tipo==='var') enUso=(S.gastosVar||[]).some(g=>g.cat===cat);
-  else enUso=(S.gastosFijos||[]).some(g=>g.cat===cat);
-  if(enUso){toast(`"${escHtml(cat)}" está siendo usada en gastos existentes. Cámbiala primero.`,'err',4000);return;}
-  const cats=tipo==='var'?getCatsVar():getCatsFijo();
-  const nuevas=cats.filter(c=>c!==cat);
-  if(tipo==='var')S.catsVar=nuevas;
-  else S.catsFijo=nuevas;
-  save();renderCatsConfig();
-  toast(`Categoría "${escHtml(cat)}" eliminada`,'info');
-}
-
-/* ---- EXPORTAR / IMPORTAR JSON ---- */
-function exportarJSON(){
-  save();
-  const data=JSON.stringify(S,null,2);
-  const blob=new Blob([data],{type:'application/json'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  const _fd=new Date();const fecha=_fd.getFullYear()+'-'+String(_fd.getMonth()+1).padStart(2,'0')+'-'+String(_fd.getDate()).padStart(2,'0');
-  a.href=url;a.download=`mis-finanzas-backup-${fecha}.json`;
-  a.click();URL.revokeObjectURL(url);
-  toast('Copia de seguridad exportada','ok');
-}
-
-function importarJSON(){
-  document.getElementById('importFileInput').click();
-}
-
-function leerArchivoImport(e){
-  const file=e.target.files[0];
-  if(!file)return;
-  const reader=new FileReader();
-  reader.onload=async function(ev){
-    try{
-      const data=JSON.parse(ev.target.result);
-      const ok=await dialogo('Importar datos','¿Reemplazar todos los datos actuales con el archivo importado? Esta acción no se puede deshacer.','Importar',true);
-      if(!ok)return;
-      // Reemplazar CONTENIDO de S sin romper la referencia de window.S
-      Object.keys(S).forEach(k => delete S[k]);
-      Object.assign(S, data);
-      // Marcar timestamp ANTES del debounce de guardado
-      const _impTs = Date.now();
-      window._lastSavedAt = _impTs;
-      try { localStorage.setItem('mf_lastSavedAt', String(_impTs)); } catch(_){}
-      window._importing = true;
-      setTimeout(() => { window._importing = false; }, 5000);
-      // Usar _fbSaveToCloud() en lugar de save() para guardar window.S
-      // directamente sin leer del DOM (que aún muestra valores viejos).
-      if(window._fbSaveToCloud) window._fbSaveToCloud();
-      // Recargar cuando el debounce de 1.5s + escritura en Firestore hayan terminado.
-      setTimeout(() => { location.reload(); }, 4000);
-      toast('Datos importados correctamente — recargando…','ok');
-    }catch(err){
-      toast('Error al leer el archivo JSON','err');
-    }
-    e.target.value='';
-  };
-  reader.readAsText(file);
-}
+/* ---- CATEGORÍAS PERSONALIZADAS, BACKUP JSON: migrado a js/modules/configuracion.js ---- */
 
 /* ---- EMPTY STATES ACCIONABLES ---- */
 // btnFn acepta DOS formas (compatibilidad hacia atrás mientras se migran
@@ -7056,46 +6957,7 @@ function applyModulos(){
   if(typeof renderAttencion==='function') renderAttencion();
 }
 
-function toggleModulo(nombre){
-  if(!S.modulos)S.modulos={mesada:true,spotify:true,corregirSaldo:true};
-  const el=document.getElementById('cfg-'+nombre);
-  S.modulos[nombre]=el?el.checked:!S.modulos[nombre];
-  save();applyModulos();
-}
-
-async function borrarTodo(){
-  const ok=await dialogo('Borrar todos los datos','¿Seguro que quieres borrar TODO? Esta acción no se puede deshacer y perderás toda tu información financiera.','Borrar todo',true);
-  if(!ok)return;
-  // Registrar en historial antes de borrar todo (quedará como primer evento visible si el historial no se borra)
-  // Luego limpiar también el historial local para que no queden registros huérfanos
-  localStorage.removeItem('mf_historial_v1');
-  // Borrar en Firebase — guardar estructura vacía correcta (no {} vacío que rompe el payload)
-  let _borradoFirebaseOk = true;
-  if(window._fbUser && window._fb){
-    try{
-      const {db, doc, setDoc} = window._fb;
-      const resetTs = Date.now();
-      try { localStorage.setItem('mf_lastSavedAt', String(resetTs)); } catch(_){}
-      window._lastSavedAt = resetTs;
-      await setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),{
-        payload: JSON.stringify({}),
-        updatedAt: resetTs
-      });
-    }catch(e){
-      console.error('Error borrando en Firebase:',e);
-      _borradoFirebaseOk = false;
-    }
-  }
-  if(!_borradoFirebaseOk){
-    // No se pudo confirmar el borrado en la nube (ej. sin conexión). Avisar antes de
-    // recargar para que el usuario sepa que debe reintentar — si no, al reabrir con
-    // conexión, el snapshot viejo de Firestore podría volver a sincronizarse.
-    toast('Se borró localmente, pero no se pudo confirmar el borrado en la nube. Revisa tu conexión y vuelve a intentarlo si el problema persiste.', 'err', 6000);
-    await new Promise(r=>setTimeout(r, 2500));
-  }
-  location.reload();
-}
-
+// toggleModulo/borrarTodo: migrado a js/modules/configuracion.js.
 // Selector de cuentas (abrirCuenta/volverSelector/renderDetalleCuenta) migrado a js/modules/cuentas.js.
 
 // Movimientos por cuenta (_getMovimientosCuentaCustom/getMovimientosCuenta) migrados a js/modules/cuentas.js.
@@ -7726,14 +7588,7 @@ document.addEventListener('paste', function(e){
    ================================================================ */
 
 function _initEventListeners() {
-  // --- Categorías: eliminar (delegado, porque la lista se re-renderiza en cada renderCatsConfig) ---
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('.cat-chip-del');
-    if (!btn) return;
-    const chip = btn.closest('.cat-chip');
-    if (!chip) return;
-    eliminarCat(chip.dataset.catTipo, chip.dataset.catNombre);
-  });
+  // --- Categorías: eliminar — migrado a data-action="config:eliminarCat" (js/modules/configuracion.js), ya no necesita delegado propio ---
 
   // --- Navegación bottom nav ---
   document.querySelectorAll('.nav-item[data-screen]').forEach(btn => {
@@ -7774,20 +7629,7 @@ function _initEventListeners() {
   const btnPagarSp = document.getElementById('btn-pagar-spotify');
   if (btnPagarSp) btnPagarSp.addEventListener('click', () => openSheet('pagar-spotify'));
 
-  // --- Config toggles ---
-  document.querySelectorAll('[data-modulo]').forEach(el => {
-    el.addEventListener('change', () => toggleModulo(el.dataset.modulo));
-  });
-
-  // --- Backup ---
-  const btnExp = document.getElementById('btn-exportar-json');
-  if (btnExp) btnExp.addEventListener('click', exportarJSON);
-  const btnImp = document.getElementById('btn-importar-json');
-  if (btnImp) btnImp.addEventListener('click', importarJSON);
-  const btnBorrar = document.getElementById('btn-borrar-todo');
-  if (btnBorrar) btnBorrar.addEventListener('click', borrarTodo);
-  const importFile = document.getElementById('importFileInput');
-  if (importFile) importFile.addEventListener('change', leerArchivoImport);
+  // --- Config toggles / Backup: migrado a js/modules/configuracion.js (su propio wiring, ver final del archivo) ---
 
   // --- Menu action cards ---
   const menuGastoVar = document.getElementById('menu-gasto-var');
@@ -8228,11 +8070,7 @@ document.getElementById('hDate').textContent=new Date().toLocaleDateString('es-C
 // Solo inicializamos lo que no depende de datos de usuario:
 // Autosave silencioso cada 60s
 setInterval(() => { if(window._fbUser) save(); }, 60000);
-// Enter en inputs de nueva categoría
-['nueva-cat-var','nueva-cat-fijo'].forEach(id=>{
-  const el=document.getElementById(id);
-  if(el) el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();agregarCat(id.includes('var')?'var':'fijo');}});
-});
+// Enter en inputs de nueva categoría: migrado a js/modules/configuracion.js (evita doble-wiring/doble-agregado).
 // Preview del sheet "crear CDT" migrado a js/modules/cuentas.js (estaba compartiendo <script> con Tarjetas de Crédito, sin relación real con TC).
 </script>
 
@@ -9559,35 +9397,8 @@ document.addEventListener('focusin', function(e){
   }
 
   /* ====================================================
-     7. EXPORTAR CSV
+     7. EXPORTAR CSV: migrado a js/modules/configuracion.js
   ==================================================== */
-  function exportarCSV(){
-    const S = window.S || {};
-    const rows = [['Fecha','Descripción','Categoría','Monto','Tipo','Cuenta']];
-    (S.gastosVar||[]).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')).forEach(g=>{
-      rows.push([g.fecha||'',g.desc||'',g.cat||'',-(g.monto||0),'Variable',window.fuenteLabel?window.fuenteLabel(g.fuente):(g.fuente||'')]);
-    });
-    (S.gastosFijos||[]).forEach(g=>{
-      Object.keys(S.pagosGastosFijos||{}).forEach(key=>{
-        if(key.startsWith(g.id+'_')){
-          const mes=key.split('_').pop();
-          rows.push([mes+'-01',g.nombre,g.cat||'',-(g.monto||0),'Fijo','']);
-        }
-      });
-    });
-    const csv = rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
-    const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const fd = new Date();
-    a.href=url; a.download=`gastos-${fd.getFullYear()}-${String(fd.getMonth()+1).padStart(2,'0')}.csv`;
-    a.click(); URL.revokeObjectURL(url);
-    if(window.toast) window.toast('CSV exportado','ok');
-  }
-
-  document.addEventListener('click', e => {
-    if(e.target.closest('#btn-exportar-csv')) exportarCSV();
-  });
 
   /* ====================================================
      8. HOOK EN REFRESH para nuevas funciones
@@ -10528,6 +10339,15 @@ crearMiDeuda = function() {
          onclick inline a Events/data-action). Debe cargarse después
          de js/core/events.js (ya incluido más arriba). ===== -->
 <script src="js/modules/alcancia.js"></script>
+
+    <!-- ===== MÓDULO CONFIGURACIÓN =====
+         Migrado a js/modules/configuracion.js — ver auditoria-tecnica.md,
+         punto 3 (arquitectura monolítica) y punto 1 (migración de onclick
+         inline a Events/data-action). No depende de nada definido más abajo
+         en el documento, pero sí de ids que ya existen en screen-config
+         (cats-var-list, btn-exportar-json, etc.) y de getCatsVar()/
+         getCatsFijo() (compartidas con Gastos), ya definidos más arriba. ===== -->
+<script src="js/modules/configuracion.js"></script>
 
     <!-- ===== MÓDULO INICIO (Dashboard) =====
          Migrado a js/modules/inicio.js — ver auditoria-tecnica.md, punto 3

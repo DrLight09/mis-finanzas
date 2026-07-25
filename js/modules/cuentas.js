@@ -966,6 +966,21 @@ function guardarMetaCajita(){
   toast('Meta guardada','ok');
 }
 
+// Migrado desde un onclick inline en index.html (botón #btn-toggle-meta-min,
+// sheet meta cajita) — usaba `this` para el botón clickeado; acá se busca
+// por id en vez de depender de `this`, para que funcione igual vía
+// data-action (ver Events.registerAll más abajo).
+function toggleMetaMinWrap(){
+  const wrap=document.getElementById('meta_min_wrap');
+  const btn=document.getElementById('btn-toggle-meta-min');
+  if(!wrap||!btn)return;
+  const abierto=wrap.style.display==='none';
+  wrap.style.display=abierto?'':'none';
+  btn.innerHTML=abierto
+    ?'<i class="fa-solid fa-chevron-up" style="margin-right:4px;"></i>Ocultar saldo mínimo'
+    :'<i class="fa-solid fa-chevron-down" style="margin-right:4px;"></i>Configurar saldo mínimo';
+}
+
 function quitarMetaCajita(){
   const c = (S.cajitas||[]).find(x=>x.id===_metaCajitaId);
   if(!c) return;
@@ -2623,15 +2638,20 @@ document.addEventListener('input',function(e){
 Events.registerAll('cuentas', {
   // Cuentas personalizadas
   selIconoNC,
+  selColorNC,
+  resetSheetNuevaCuenta: _resetSheetNuevaCuenta,
+  confirmarMovCustom,
   // Cajitas / metas / CDTs
   abrirMetaCajita,
   metaAporteEliminar: _metaAporteEliminar,
+  toggleMetaMinWrap,
   abrirDetalleCajita,
   quitarMetaCajita,
   editarCDT,
   abrirCobrarCDT,
   liberarCDTManual,
   abrirCrearCDT,
+  cancelarCobrarCDT: _cancelarCobrarCDT,
   volverANu,
   volverADetalleCajita,
   cajitaDetDelete: _cajitaDetDelete,
@@ -2643,9 +2663,28 @@ Events.registerAll('cuentas', {
   // Saldo inicial / apertura
   abrirEditarApertura,
   abrirRegistrarApertura,
+  // Nu — chequeo de saldo real
+  guardarChequeoNu,
   // Transferir y abrir sheets estáticos (usado en el HTML de screen-cuentas)
   abrirTransferir,
   openSheet, // reutiliza el openSheet() del núcleo — solo se registra el nombre bajo 'cuentas' porque el onclick que lo usaba vivía en el HTML de esta sección (botón "Chequear saldo real")
+});
+
+/* ---- WIRING de controles que no son data-action simples ----
+   El wrapper de "toggle apertura" (adAperturaWrap/nuMovAperturaWrap) usa
+   el patrón label-click-delegado: clic en cualquier parte de la fila activa
+   el checkbox, y el checkbox detiene la propagación para no re-disparar el
+   clic del wrapper. Ninguno de los dos es una acción con argumentos — es
+   mecánica de UI — así que se conecta directo con addEventListener, mismo
+   criterio ya usado en configuracion.js para data-modulo/inputs de archivo,
+   en vez de pasar por el despachador de data-action. */
+[['adAperturaWrap','adEsApertura'],['nuMovAperturaWrap','nuMovEsApertura']].forEach(([wrapId,chkId])=>{
+  const wrap=document.getElementById(wrapId);
+  const chk=document.getElementById(chkId);
+  if(wrap&&chk){
+    wrap.addEventListener('click', () => chk.click());
+    chk.addEventListener('click', e => e.stopPropagation());
+  }
 });
 
 // abrirDetalleMov() y eliminarMovimiento() son núcleo compartido por TODA

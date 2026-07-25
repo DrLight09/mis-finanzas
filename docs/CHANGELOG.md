@@ -464,3 +464,25 @@ Décimo módulo migrado sobre la infraestructura ya construida (`js/core/events.
 - **Verificado, no modificado:** `leerArchivoImport()` tiene un override posterior en `index.html` ("MEJORA 5: Validación") que la reemplaza por una versión con validación de estructura del JSON antes de importar — mismo patrón que ya usa `addGastoVar` con Gastos. Sigue funcionando igual porque `configuracion.js` se carga antes que ese bloque de overrides.
 - `index.html` bajó de 10.934 a 10.758 líneas (-176).
 
+---
+
+## Actividad reciente
+
+### 🔧 Cambio — Migración a `js/modules/actividad_reciente.js` (arquitectura)
+
+*(2026-07-26)*
+
+Undécimo módulo migrado, sobre la infraestructura ya construida — ver `auditoria-tecnica.md` puntos 1 y 3. Se extrajo el "Feed de actividad financiera" (`screen-historial`), que compartía `<script>` con `navTo()` y con Tarjetas de Crédito desde el momento en que se migró TC (2026-07-20), sin relación real con ninguno de los dos — quedó anotado como pendiente en esa fecha y se cerró ahora.
+
+- **`onclick`: nada que migrar.** Es una pantalla de solo lectura (mismo caso que Inicio) — ni el módulo ni el HTML estático de `screen-historial` tenían ningún `onclick` inline. No aporta al conteo de `onclick` restantes de la auditoría.
+- **Hallazgo aparte, no de `onclick`:** el módulo registraba su propio `document.addEventListener('click', ...)` para refrescar el feed al entrar a la pantalla — un segundo listener delegado, justo lo que `events.js` dice evitar en su propio comentario de cabecera ("un solo despachador, cero duplicación"). No se convirtió a `Events.on()` porque no es una acción puntual con handler y argumentos, sino un observador de navegación sobre varios selectores a la vez — un caso que el patrón `data-action`/`Events` no cubre. Se dejó como listener aparte, pero se limpió: escuchaba tres selectores (`[data-screen="historial"]`, `#mas-historial`, `#cfg-historial-row`) y los dos primeros no existen en el HTML actual (ningún ítem del nav inferior usa ese `data-screen`, y el menú "Más" no tiene entrada "Actividad reciente") — nunca se disparaban. Se sacaron del selector, dejando solo `#cfg-historial-row`, que es el único acceso real.
+- **`.innerHTML`: sin hallazgos.** Tercera vez (de once módulos, junto con Alcancía y Configuración) que no aparece texto libre sin escapar. Las siete fuentes que arma el módulo (`_normMovimientos`, `_normGastos`, `_normDeudores`, `_normSpotify`, `_normEncargos`, `_normTC`, `_normCP`) construyen `titulo`/`subtitulo` con texto libre sin escapar en el objeto intermedio, pero confluyen en un único punto de render (`renderFeedActividad()`) que sí pasa ambos por `esc()` antes de tocar el DOM — a diferencia de los módulos con hallazgos reales, acá no hay más de un sitio de salida que pueda quedar sin cubrir.
+- **Sin dependencia real de orden de carga hacia abajo** (mismo caso que Mesada/Gastos/Alcancía/Configuración) — pero sí un punto sensible hacia arriba: el módulo envuelve `window.refresh()` al cargar (no dentro de una función, sino al parsear el archivo), así que necesita que `refresh()` ya exista en ese momento. El `<script src>` se dejó en la misma posición exacta del documento donde vivía el IIFE original para no romper esa garantía.
+- **Se quedó en `index.html`, a propósito:** `navTo()` — navegación compartida por las 13 pantallas, no exclusiva de este módulo (mismo criterio que en TC).
+- `index.html` bajó de 10.934 a 10.542 líneas (-392).
+
+### 🔎 Nota — Discrepancia encontrada con la migración de Configuración
+
+*(2026-07-26)*
+
+Al trabajar sobre `index.html` para extraer Actividad Reciente se notó que el archivo recibido esta sesión **no tiene `js/modules/configuracion.js` cargado**, y que los `onclick` que la entrada del 2026-07-25 (arriba) documenta como migrados —incluido el acceso "Actividad reciente" de Configuración, relevante para este mismo módulo— siguen inline sin tocar. No se investigó ni se corrigió acá, por no ser el alcance de esta sesión; queda anotado en `auditoria-tecnica.md` para la próxima vez que se toque esa pantalla.

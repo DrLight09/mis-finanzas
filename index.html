@@ -6240,6 +6240,7 @@ async function eliminarMovimiento(btn) {
     || (() => { for (const enc of (S.encargos||[])) { const m=(enc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (() => { for (const caj of (S.cajitas||[])) { const m=(caj.historial||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (() => { for (const cc of (S.cuentasPersonalizadas||[])) { const m=(cc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
+    || (() => { for (const d of (S.deudores||[])) { const m=(d.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (S.gastosVar || []).find(x => x.id === movId)
     || (S.spotifyHistorial || []).find(x => x.id === movId);
   if (movObj && movObj._secundario) {
@@ -6262,8 +6263,6 @@ async function eliminarMovimiento(btn) {
       descontarFuente(tr.destino, tr.monto); // quitar del destino
       S.transferencias = S.transferencias.filter(t => t.id !== movId);
     }
-  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada') {
-    // Fue una entrada manual (S.movimientos tipo 'entrada', 'apertura', o legacy 'ingreso')
   } else if (movTipoEl === 'salida_manual') {
     // Fue una salida manual (S.movimientos tipo 'salida_manual')
     const m = (S.movimientos || []).find(x => x.id === movId);

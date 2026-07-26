@@ -586,3 +586,15 @@ El chequeo de "¿es un movimiento secundario generado por otra sección?" (`movO
 **Fix:** se agregó `S.deudores` a la búsqueda de `movObj`, con el mismo patrón usado para encargos/cajitas/cuentas personalizadas.
 
 **Nota de arquitectura (sin resolver):** `abrirDetalleMov()` (~346 líneas) y `eliminarMovimiento()` (~165 líneas) siguen viviendo en `index.html` pese a que ya se migraron trece módulos — son las dos únicas funciones "núcleo" usadas por *todas* las pantallas para mostrar/borrar un movimiento del feed general, así que no encajan en ningún módulo de dominio individual. Extraerlas requeriría un archivo tipo `js/core/movimientos.js` (o similar), separado de los módulos de dominio — no se hizo en esta sesión por no ser el alcance, pero queda anotado en `auditoria-tecnica.md` junto al resto de la arquitectura monolítica.
+
+### 🔧 Cambio — Extracción de `js/core/movimientos.js` (arquitectura)
+
+*(2026-07-26)*
+
+`abrirDetalleMov()` (~346 líneas) y `eliminarMovimiento()` (~165 líneas) quedaron pendientes de extraer desde que se migró Cuentas (2026-07-22), donde ya se habían registrado bajo el namespace `core:` en vez de `cuentas:` por ser núcleo compartido por las 13 pantallas, no de un dominio en particular. Se extrajeron esta sesión a `js/core/movimientos.js` — junto a `events.js`, no en `js/modules/`, mismo criterio de ubicación.
+
+- **Sin dependencia real de orden de carga:** a diferencia de Spotify/Encargos (que sí necesitaron partirse en dos archivos), acá ninguna de las dos funciones se llama en el momento en que el script se parsea — ambas se disparan vía `data-action="core:..."` en tiempo de click, mucho después de que todos los `<script>` ya cargaron. Por eso no hizo falta tocar el orden de `<script src>` existente: el archivo se cargó en el mismo punto donde antes vivía el registro `Events.on`.
+- **El registro `Events.on('core:abrirDetalleMov', ...)` / `Events.on('core:eliminarMovimiento', ...)` se movió adentro del propio módulo** (mismo patrón que usa cada módulo de dominio para registrarse a sí mismo), en vez de quedarse en `index.html` como wiring aparte.
+- **Comentario de cabecera nuevo en el archivo** explicando por qué vive en `js/core/` y no en `js/modules/`, y listando las dependencias del núcleo (`S`, `save`, `refresh`, `escHtml`, `fmt`, `fuenteLabel`, `getSaldoFuente`, `getMovimientosCuenta`, etc.) y de otros módulos ya migrados (`tcEliminarCompraInterna`/`tcEliminarPagoInterna` de TC, `abrirCustomCuenta`/`renderDetalleCuenta` de Cuentas, `getEncargo` de Encargos) de las que depende.
+- `index.html`: 9.123 → 8.617 líneas (-506).
+- **Sin código muerto ni hallazgos de `.innerHTML` nuevos** en el archivo extraído — ya usaba `escHtml()` en todos los puntos de texto libre desde antes.

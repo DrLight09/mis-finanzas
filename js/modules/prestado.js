@@ -157,7 +157,7 @@ function addDeudor() {
   document.getElementById('np_nombre').value = '';
   initColorPicker();
   save(); refresh(); closeSheet('nueva-persona');
-  toast(`${nombre} agregado/a`,'ok');
+  toast(`${escHtml(nombre)} agregado/a`,'ok');
 }
 
 function getDeudorSaldo(d) {
@@ -1565,7 +1565,7 @@ function crearMiDeuda() {
   document.getElementById('nd_monto').value = '';
   document.getElementById('nd_nota').value = '';
   save(); refresh(); closeSheet('nueva-deuda');
-  toast(`Deuda con ${nombre} agregada`, 'ok');
+  toast(`Deuda con ${escHtml(nombre)} agregada`, 'ok');
 }
 
 function renderMisDeudasList() {

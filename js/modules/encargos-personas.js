@@ -14,8 +14,13 @@
 
    El bloque "Nueva persona de Préstamos también usa S.personas" que
    estaba intercalado entre estas dos secciones en el índice original
-   es de Deudores, no de Encargos — se quedó en index.html tal cual,
-   sin tocar (Deudores todavía no se migró; ver plan-migracion-personas.md).
+   es de Deudores, no de Encargos — vive en js/modules/prestado.js
+   (namespace data-action="prestado:...": abrirDeudor, abrirPerfilDeudor,
+   abrirPerfilDeudorActual, eliminarDeudorActual, editarDeudorActual,
+   addDeudor, abrirSheetNuevaPersona, eliminarMovDeudor, entre otros —
+   confirmado 2026-07-30, ver docs/auditoria-tecnica.md). Deudores SÍ
+   está migrado, junto con el resto de "Me deben"/"Yo debo" — la nota
+   anterior de este comentario decía lo contrario y estaba desactualizada.
    ═══════════════════════════════════════════════════════════════ */
 
 function _irAEncargo(encargoId) {

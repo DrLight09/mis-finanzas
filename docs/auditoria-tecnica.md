@@ -125,6 +125,7 @@ Reporte basado en verificación directa del archivo.
 > - Código movido tal cual, sin reescritura — no se repite la auditoría de `.innerHTML` porque no se tocó ninguna interpolación.
 > - **Se dejó a propósito inline en `index.html`:** el fallback `window.addEventListener('appDataLoaded', ...)` que llama a `_inyectarPersonaSheets()` al cargar la app. No es específico de Deudores — es bootstrap del sistema de Personas completo, compartido por Spotify/Encargos/Préstamos/Deudores por igual — mismo criterio ya usado con `refresh()`/`navTo()`: estar físicamente cerca del código que sí se migra no lo vuelve parte de ese módulo.
 > - `index.html` bajó de 9.252 a 9.123 líneas (-129).
+> - **Comentario de cabecera de `prestado.js` corregido de paso** — solo mencionaba `prestado-personas.js`; se agregó la referencia al nuevo `deudores-personas.js` para que no quede desactualizado desde el día uno, mismo tipo de hallazgo que este documento ya señaló con `encargos-personas.js` (nota del 2026-07-30) y con el comentario de la CSP (nota del 2026-07-27).
 > - Con esto, Préstamos queda dividido en tres archivos (`prestado.js`, `prestado-personas.js`, `deudores-personas.js`) en vez de dos — a diferencia de Spotify/Encargos, que solo necesitaron partirse en dos. `plan-migracion-personas.md` sigue sin aparecer — no se investiga más sin el archivo, mismo criterio que el 2026-07-30.
 >
 > Punto 3 de abajo actualizado con este avance.

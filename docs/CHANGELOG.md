@@ -442,6 +442,7 @@ Selector de persona compartido entre "Agregar persona" (Me deben) y "Nueva deuda
 - **Orden de carga:** el nuevo archivo debe cargar después de `prestado-personas.js` — envuelve `openSheet` y `crearMiDeuda`, y este último ya viene envuelto una vez por `prestado-personas.js`.
 - **Se dejó a propósito en `index.html`:** el fallback `appDataLoaded` → `_inyectarPersonaSheets()`, por no ser específico de Deudores (bootstrap del sistema de Personas completo).
 - `index.html`: 9.252 → 9.123 líneas (-129).
+- **Comentario de cabecera de `prestado.js` actualizado** para mencionar el nuevo archivo (antes solo listaba `prestado-personas.js`) — sin este ajuste hubiera quedado desactualizado apenas se creó el tercer archivo, el mismo tipo de hallazgo que esta auditoría ya señaló varias veces en otros módulos.
 - **Sin cambios de comportamiento** — es una extracción de código, no un fix funcional.
 
 ---

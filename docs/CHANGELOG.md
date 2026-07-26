@@ -258,6 +258,16 @@ El gráfico de "Gastos por mes" y el "Ranking de meses" intentaban excluir gasto
 
 "Resumen del mes" pasó a ser el primer bloque de la pantalla y "Ingresos fijos" se movió justo después (antes iba primero). Cambio puramente de HTML/orden visual, sin tocar ids ni lógica.
 
+### 🔧 Cambio — Migración a `js/modules/analisis.js` (arquitectura, seguridad)
+
+*(2026-07-27, confirmado contra código fuente el 2026-07-28)*
+
+Migrado sobre la infraestructura ya construida (`js/core/events.js`, patrón `data-action`/`Events.registerAll`) — ver `auditoria-tecnica.md` puntos 1 y 3. Cubre Ingresos Fijos y Presupuestos, antes repartidos en tres bloques sueltos de `index.html` (uno de ellos un IIFE numerado por secciones compartido con Configuración e Inicio).
+
+- **`onclick` → `data-action`:** 4 acciones (`abrirSheetIngresoFijo`/`abrirPresupuestos` estáticas en `index.html`, `editarIngresoFijo`/`eliminarIngresoFijo` dinámicas dentro del módulo).
+- **`.innerHTML` sin escapar, corregido:** `cat` (nombre de categoría, texto libre — el usuario las agrega desde Configuración) se interpolaba sin `escHtml()` en 5 sitios: la card de "Top categorías del mes", el `<label>` y el atributo `data-cat` del formulario de Presupuestos, la barra de progreso de Presupuestos, y el `toast()` de aviso al 80% del presupuesto. A diferencia de los hallazgos anteriores (que reincidían sobre `fuenteLabel()`/`nombre`/`nota`), acá el campo sin escapar nunca había aparecido en este tipo de hallazgo — confirma que hay que revisar cada campo de texto libre nuevo que se agregue al modelo de datos, no solo los ya conocidos. Corregido envolviendo las 5 interpolaciones en `escHtml()`.
+- **Sin código muerto** encontrado en el archivo.
+
 ---
 
 ## Patrimonio y cálculos globales
@@ -357,6 +367,12 @@ De los 4 `setDoc` reales del archivo, dos ya tenían manejo aceptable (autoguard
 
 Al menos dos botones ("Restar del saldo" en Cuentas, "Registrar compra" en Tarjetas de crédito) usaban `class="btn btn-primary"` con un `style=""` inline casi idéntico para forzar fondo/sombra roja en vez de la lima que trae `.btn-primary` por defecto — mismo problema de fondo que ya llevó a centralizar los colores de tooltips de gráficos (ver más arriba: "Accesibilidad"). Se agregó `.btn-red` junto a `.btn-primary` en la hoja de estilos y se migraron ambos botones a usarla, sin estilos inline. Cualquier botón rojo nuevo debería usar esta clase en vez de repetir el override.
 
+### ✅ Corregido — Comentario de la CSP con la cifra de `onclick` desactualizada
+
+*(2026-07-27)*
+
+El comentario junto a la CSP en `index.html` seguía citando la cifra original de ~247 `onclick` inline como justificación de `'unsafe-inline'`, sin actualizarse en ninguna de las migraciones de módulo hechas desde entonces. Con Análisis y Personas confirmados, el conteo real de `onclick` bajó a 24 — todos del gate de PIN/biometría/login, ninguno de un módulo de negocio. Corregido para reflejar la cifra real y aclarar de qué son los que quedan.
+
 ---
 
 ## Préstamos
@@ -404,6 +420,29 @@ Al registrar un abono o pago completo hacia una cajita/cuenta propia (rama norma
 `getMovimientosCuenta()` (vista agregada "nu"/cajitas y efectivo/nequi) y `_getMovimientosCuentaCustom()` (cuentas personalizadas) tenían cada una una sección "Préstamos dados desde esta fuente" que, además de reconstruir los préstamos *entregados* (necesario, porque esos no dejan otro rastro en la cuenta), también reconstruía una **segunda copia** de cada abono/pago-completo *recibido*, leyendo directo del registro del deudor — duplicando la entrada que ya vivía, correctamente marcada `_secundario:true` y con candado, en `S.movimientos`/`cObj.movimientos`/`cObj.historial`. Esa copia duplicada no tenía la marca `_secundario`, y su id (el del movimiento del deudor) no es uno de los que `eliminarMovimiento()` busca al chequear si algo es un movimiento vinculado — así que aparecía sin candado, con botón de eliminar activo, por una ruta que no revertía nada correctamente si se llegaba a usar.
 
 Este duplicado ya existía antes de esta ronda de fixes; se volvió más visible al arreglar el punto anterior (una vez que el registro correcto se limpia bien al eliminar desde "Prestado", el duplicado roto que se queda atrás llama más la atención). Fix: se quitó la reconstrucción de abono/pago-completo en ambas funciones — se mantiene únicamente la de préstamos entregados, que sí es la única representación de esa plata saliendo de la cuenta.
+
+### 🔧 Cambio — Migración a `js/modules/prestado.js` (arquitectura, seguridad)
+
+*(2026-07-20, detalle confirmado contra código fuente el 2026-07-30)*
+
+Migrado sobre la infraestructura ya construida (`js/core/events.js`, patrón `data-action`/`Events.registerAll`) — ver `auditoria-tecnica.md` puntos 1 y 3. Cubre "Me deben" (`S.deudores`), "Yo debo" (`S.misDeudas`) y "Préstamo con TC" en un solo archivo.
+
+- **`onclick` → `data-action`:** 24 en total (6 estáticos en `index.html`, 18 generados dinámicamente en los renders de listas/historial) migrados a `data-action` + `Events.registerAll('prestado', ...)`. Los `onclick="event.stopPropagation()"` sueltos en filas anidadas (para no burbujear el click) se resolvieron con `data-stop-click="true"` + un único `addEventListener` centralizado en vez de pasar por el registry — no son "acciones" de negocio con nombre.
+- **`.innerHTML`/`toast()`:** el módulo ya era cuidadoso en general (49 usos de `escHtml()`) — pero **dos `toast()` de "recién creado" se quedaron sin envolver**: `` `${nombre} agregado/a` `` en `addDeudor()` y `` `Deuda con ${nombre} agregada` `` en `crearMiDeuda()`, ambos con el nombre tal cual lo escribió el usuario en el sheet de alta. Los toasts de eliminar, de error, y el de advertencia de saldo (revierte con `escHtml(d.nombre)`) sí escapaban bien el mismo campo — el patrón se rompió justo en las dos confirmaciones de creación. Corregido envolviendo ambos en `escHtml()`.
+- **Pendiente, no corregido esta sesión:** 9 `onchange`/`oninput` inline sin migrar, todos en las filas dinámicas de "dividir entre cuentas" (2 en split de Préstamo, 2 en split de Abono, 5 en la sección "Extra" del abono) — pasan índice de array y `this.value` directo a funciones globales. Migrarlos requiere reestructurar el render de filas para enganchar `addEventListener` después de insertar cada una (como ya se hace con `data-stop-click`), no es un cambio de una línea — queda anotado en `auditoria-tecnica.md` punto 1.
+- **Sin código muerto** encontrado en el archivo.
+
+### 🔧 Cambio — Extracción de `js/modules/deudores-personas.js` (arquitectura)
+
+*(2026-08-01)*
+
+Selector de persona compartido entre "Agregar persona" (Me deben) y "Nueva deuda" (Yo debo) — hasta esta sesión seguía inline en `index.html`, en un `<script>` sin migrar justo después de cargar `prestado-personas.js`, pese a que el resto de Préstamos (CRUD de `S.deudores`/`S.misDeudas` en `prestado.js`, integración "Yo debo" en `prestado-personas.js`) ya estaba migrado. Ver `auditoria-tecnica.md`, nota del 2026-08-01, para el detalle de cómo se detectó.
+
+- **Funciones movidas tal cual, sin reescritura:** `_onSelPersonaMeDeben`, `_nuevaDeudaPersonaId`, `_initNuevaDeudaPersonaSelector`, `_onSelPersonaNuevaDeuda`, y los hooks que envuelven `openSheet` (casos `'nueva-persona'`/`'nueva-deuda'`) y `crearMiDeuda` (exige persona seleccionada, usa su `personaId` real).
+- **Orden de carga:** el nuevo archivo debe cargar después de `prestado-personas.js` — envuelve `openSheet` y `crearMiDeuda`, y este último ya viene envuelto una vez por `prestado-personas.js`.
+- **Se dejó a propósito en `index.html`:** el fallback `appDataLoaded` → `_inyectarPersonaSheets()`, por no ser específico de Deudores (bootstrap del sistema de Personas completo).
+- `index.html`: 9.252 → 9.123 líneas (-129).
+- **Sin cambios de comportamiento** — es una extracción de código, no un fix funcional.
 
 ---
 
@@ -486,3 +525,39 @@ Undécimo módulo migrado, sobre la infraestructura ya construida — ver `audit
 *(2026-07-26)*
 
 Al trabajar sobre `index.html` para extraer Actividad Reciente se notó que el archivo recibido esta sesión **no tiene `js/modules/configuracion.js` cargado**, y que los `onclick` que la entrada del 2026-07-25 (arriba) documenta como migrados —incluido el acceso "Actividad reciente" de Configuración, relevante para este mismo módulo— siguen inline sin tocar. No se investigó ni se corrigió acá, por no ser el alcance de esta sesión; queda anotado en `auditoria-tecnica.md` para la próxima vez que se toque esa pantalla.
+
+### 🔎 Nota — Discrepancia resuelta: la migración de Configuración sí estaba completa
+
+*(2026-07-31)*
+
+Al recibir `configuracion.js` y reconfirmarlo contra código fuente, se confirmó que el `index.html` de esta sesión sí tiene el módulo cargado y sus 7 `data-action="config:..."` (6 estáticos + 1 dinámico — el chip de eliminar categoría, que no se había contado como dinámico hasta ahora) exactamente donde se esperaba. La discrepancia del 2026-07-26 quedó como un artefacto puntual de esa sesión (probablemente un `index.html` de una rama o momento distinto) — la migración del 2026-07-25 sí estaba completa tal como se había registrado. No hay forma de confirmar qué causó el archivo de esa sesión sin tenerlo a mano, así que no se investiga más.
+
+---
+
+## Personas
+
+### 🔧 Cambio — Migración a `js/modules/personas.js` (arquitectura, seguridad)
+
+*(2026-07-27, confirmado contra código fuente el 2026-07-28)*
+
+Migrado sobre la infraestructura ya construida (`js/core/events.js`, patrón `data-action`/`Events.registerAll`) — ver `auditoria-tecnica.md` puntos 1 y 3. Es el sistema base de personas (`S.personas`) del que dependen las integraciones de Spotify, Encargos y Préstamos.
+
+- **`onclick` → `data-action`:** 10 acciones registradas (`abrirPerfil`, `abrirCrearGlobal`, `confirmarCrear`, `volverASel`, `editarDesdePerfil`, `guardarEdicion`, `selElegir`, `selCrearDirecto`, `irASpotify`, `seleccionarColor`) + 1 `data-action="personas:abrirCrearGlobal"` estático en `index.html` (acceso directo desde el menú "Más").
+- **`.innerHTML`: sin hallazgos.** Tercera vez (de trece módulos, junto con Alcancía y Configuración) que no aparece texto libre sin escapar — los ~15 sitios donde interpola `nombre`, `nota`, iniciales o el término de búsqueda ya pasan por `escHtml()`.
+- **Hallazgos nuevos, no contados en ninguna cifra de la auditoría hasta esta sesión:** un `onclick="_irAEncargo('${e.id}')"` inline en el botón "Ver →" de cada encargo del perfil de persona (generado dinámicamente, así que nunca apareció en el grep de `index.html`); un `oninput="_selPersonaFiltrar()"` inline en el buscador del sheet de selección de persona (primer caso de `oninput` encontrado en todo el código); y 3 pares `onmouseenter`/`onmouseleave` inline (fila de persona, de deudor, y de "le debo"), que confirman con casos concretos un hallazgo que la auditoría solo mencionaba en abstracto.
+- **Sin código muerto** encontrado en el archivo.
+
+### ✅ Corregido — Último `onclick` de negocio pendiente: `_irAEncargo` migrado a `data-action`
+
+*(2026-07-29, con `js/modules/encargos-personas.js`)*
+
+El `onclick="_irAEncargo('${e.id}')"` encontrado el 2026-07-28 (arriba) quedaba sin migrar porque `_irAEncargo()` vive en `encargos-personas.js`, cargado después de `personas.js` — migrarlo requería registrar el evento desde ese archivo, no desde `personas.js`. Con `encargos-personas.js` en mano:
+
+- `personas.js`: el botón pasó a usar `${Events.attr('encargos-personas:irAEncargo', e.id)}`.
+- `encargos-personas.js`: se agregó `Events.on('encargos-personas:irAEncargo', _irAEncargo);` junto a la función, siguiendo el mismo patrón que el resto del archivo. El orden de carga no es un problema: `Events.attr()` solo arma el atributo en el momento de renderizar el perfil (después de que todos los `<script>` ya cargaron).
+
+Con esto, el conteo de `onclick` de negocio pendiente de toda la app quedó en 0 — verificado contra los tres archivos involucrados (`personas.js`, `encargos-personas.js`, `index.html`), no una resta.
+
+**Hallazgo de estilo aparte, no de seguridad:** `encargos-personas.js` engancha sus dos botones de "Ver perfil" (avatar de la card de encargo, chip del detalle) con `.onclick = () => ...`/`addEventListener('click', ...)` en vez de `data-action`/`Events`. No es un problema de CSP (son asignaciones desde JS, no atributos inline en el HTML), pero es inconsistente con el mecanismo único de despacho del resto de la app. No se tocó, por bajo impacto.
+
+**Corrección de comentario:** el comentario de cabecera de `encargos-personas.js` decía que la integración de "Deudores" con Personas todavía no se había migrado — desactualizado. Deudores sí está migrado, en `js/modules/prestado.js` (ver esa sección más arriba). Corregido.

@@ -603,7 +603,7 @@ function abrirPerfilPersona(personaId) {
           <div style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(e.nota || e.nombre)}</div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(saldoE)}</div>
-            <button type="button" onclick="_irAEncargo('${e.id}')" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver →</button>
+            <button type="button" ${Events.attr('encargos-personas:irAEncargo', e.id)} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver →</button>
           </div>
         </div>`;
       }).join('')}
@@ -793,11 +793,11 @@ function _seleccionarColorPersona(containerId, varName, color) {
 // arriba, en encargos.js). Ver también docs/encargos.md.
 
 /* ── REGISTRO DE EVENTOS (data-action → handler) ───────────────── */
-// Reemplaza los onclick inline propios de este módulo. Pendiente fuera de
-// este archivo: el botón "Ver →" de cada encargo en el perfil de persona
-// (arriba) sigue con onclick="_irAEncargo(...)" en vez de data-action,
-// porque _irAEncargo() vive en encargos-personas.js — migrarlo requiere
-// registrar 'encargos-personas:irAEncargo' desde ese archivo, no desde acá.
+// Reemplaza los onclick inline propios de este módulo. El botón "Ver →" de
+// cada encargo en el perfil de persona (arriba) ya usa
+// data-action="encargos-personas:irAEncargo" en vez de onclick — se registra
+// desde encargos-personas.js, no desde acá, porque _irAEncargo() vive ahí
+// (ver docs/auditoria-tecnica.md, nota 2026-07-29).
 Events.registerAll('personas', {
   abrirPerfil: abrirPerfilPersona,
   abrirCrearGlobal: _abrirCrearPersonaGlobal,

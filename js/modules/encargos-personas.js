@@ -22,6 +22,7 @@ function _irAEncargo(encargoId) {
   document.getElementById('sheet-perfil-persona').classList.remove('open');
   setTimeout(() => { showScreen('encargos'); abrirEncargoDetalle(encargoId); }, 180);
 }
+Events.on('encargos-personas:irAEncargo', _irAEncargo);
 /* ═══════════════════════════════════════════════════════════════
    INTEGRACIÓN: Nuevo encargo usa selector de persona
    ═══════════════════════════════════════════════════════════════ */

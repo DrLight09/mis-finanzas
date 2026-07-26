@@ -11,7 +11,16 @@
    — mismo motivo que spotify-personas.js y encargos-personas.js:
    depende de funciones de Personas (getPersona, abrirPerfilPersona,
    _inyectarPersonaSheets, _guardarEditarPersonaGlobal) definidas más
-   abajo en el documento. Ver docs/prestado.md.
+   abajo en el documento.
+
+   El selector de persona compartido por "Agregar persona" (Me deben)
+   y "Nueva deuda" (Yo debo) vive en un tercer archivo,
+   js/modules/deudores-personas.js, cargado justo después de
+   prestado-personas.js — mismo motivo de orden de carga, más uno
+   propio: envuelve openSheet y crearMiDeuda, ambos ya envueltos una
+   vez por prestado-personas.js, así que necesita cargar después.
+
+   Ver docs/prestado.md (sección 6, integración con S.personas).
 
    Todos los onclick="..." inline de este módulo (24 en total: 6 en
    la plantilla de index.html, el resto generados dinámicamente en

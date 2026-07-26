@@ -562,3 +562,27 @@ Con esto, el conteo de `onclick` de negocio pendiente de toda la app quedó en 0
 **Hallazgo de estilo aparte, no de seguridad:** `encargos-personas.js` engancha sus dos botones de "Ver perfil" (avatar de la card de encargo, chip del detalle) con `.onclick = () => ...`/`addEventListener('click', ...)` en vez de `data-action`/`Events`. No es un problema de CSP (son asignaciones desde JS, no atributos inline en el HTML), pero es inconsistente con el mecanismo único de despacho del resto de la app. No se tocó, por bajo impacto.
 
 **Corrección de comentario:** el comentario de cabecera de `encargos-personas.js` decía que la integración de "Deudores" con Personas todavía no se había migrado — desactualizado. Deudores sí está migrado, en `js/modules/prestado.js` (ver esa sección más arriba). Corregido.
+
+---
+
+## Núcleo compartido — detalle y eliminación de movimientos
+
+### ✅ Corregido — `eliminarMovimiento()` no revertía ni borraba movimientos tipo `ingreso`/`apertura`/`entrada` (no-op silencioso)
+
+*(2026-07-26)*
+
+La cadena `if/else if` de `eliminarMovimiento()` tenía **dos ramas idénticas** para `movTipoEl === 'ingreso' || 'apertura' || 'entrada'`: la primera, vacía (solo un comentario, sin código), y más abajo una segunda con la lógica real (buscar el movimiento, revertir el saldo con `descontarFuente()`, registrar el ajuste en `_ajustesBaseLog` si era `'apertura'`, y borrarlo de `S.movimientos`/la cuenta custom). Por ser un `else if`, la primera rama capturaba la condición y la segunda quedaba **inalcanzable**.
+
+Efecto real: al borrar desde el feed general un movimiento de entrada manual o de apertura de cuenta, la función no hacía nada — ni revertía el saldo ni quitaba el registro — pero igual mostraba el toast "Movimiento eliminado y saldos revertidos" y llamaba a `save(); refresh();`. El movimiento reaparecía intacto tras el refresh, dando la falsa impresión de que el borrado había funcionado.
+
+**Fix:** se eliminó la rama vacía; la lógica real (ya escrita, solo inalcanzable) queda como único punto de entrada para ese tipo de movimiento.
+
+### ✅ Corregido — `eliminarMovimiento()` no buscaba en `S.deudores` al chequear movimientos vinculados
+
+*(2026-07-26)*
+
+El chequeo de "¿es un movimiento secundario generado por otra sección?" (`movObj`) recorría `S.movimientos`, `S.encargos`, `S.cajitas`, `S.cuentasPersonalizadas`, `S.gastosVar` y `S.spotifyHistorial`, pero no `S.deudores` — el propio bug de duplicados de Préstamos (ver sección "Préstamos" arriba, *"Duplicado sin candado del mismo abono..."*) ya había señalado este hueco al describir por qué la copia duplicada del abono no quedaba bloqueada. Aunque ese bug puntual ya se cerró (se dejó de reconstruir la copia duplicada en `getMovimientosCuenta()`), el hueco en sí — que `eliminarMovimiento()` no revisara `S.deudores` — seguía sin cerrarse y podía volver a morder si algún flujo futuro genera un movimiento `_secundario` cuyo `id` coincida con uno de `S.deudores`.
+
+**Fix:** se agregó `S.deudores` a la búsqueda de `movObj`, con el mismo patrón usado para encargos/cajitas/cuentas personalizadas.
+
+**Nota de arquitectura (sin resolver):** `abrirDetalleMov()` (~346 líneas) y `eliminarMovimiento()` (~165 líneas) siguen viviendo en `index.html` pese a que ya se migraron trece módulos — son las dos únicas funciones "núcleo" usadas por *todas* las pantallas para mostrar/borrar un movimiento del feed general, así que no encajan en ningún módulo de dominio individual. Extraerlas requeriría un archivo tipo `js/core/movimientos.js` (o similar), separado de los módulos de dominio — no se hizo en esta sesión por no ser el alcance, pero queda anotado en `auditoria-tecnica.md` junto al resto de la arquitectura monolítica.

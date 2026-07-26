@@ -565,6 +565,21 @@ Con esto, el conteo de `onclick` de negocio pendiente de toda la app quedó en 0
 
 ---
 
+## Núcleo compartido — búsqueda global
+
+### 🔧 Cambio — Extracción de `js/core/busqueda-global.js` (arquitectura)
+
+*(2026-07-26)*
+
+El bloque "2. BÚSQUEDA GLOBAL" (304 líneas) vivía inline en `index.html`, dentro del mismo IIFE compartido que "Ocultar/mostrar saldos" y, ya solo como comentarios de migración, las secciones de salud financiera/proyección/presupuestos/CSV que se habían extraído en sesiones anteriores (Inicio, Análisis, Configuración). Se extrajo a `js/core/busqueda-global.js` — en `js/core/`, no en `js/modules/`, mismo criterio que `movimientos.js`: busca sobre datos de casi todos los módulos de dominio (`S.gastosVar`, `S.deudores`, `S.cajitas`, `S.cuentasPersonalizadas`, `S.encargos`, `S.personas`, `S.misDeudas`, `S.spotifyPersonas`, `S.movimientos`, etc.), así que no encaja en ningún módulo de dominio individual.
+
+- **Sin dependencia real de orden de carga:** igual que `movimientos.js`, la navegación a un módulo específico (`abrirDeudor`, `abrirEncargoDetalle`, `abrirCuenta`, `abrirMiDeuda`, `abrirDetalleCajita`, `abrirPerfilPersona`, `spNombreDe`, `spPersonaPagadaVigente`) ya se resolvía en tiempo de click vía `typeof X === 'function'`, no al parsear el script. No hizo falta partir el archivo en dos ni reordenar ningún `<script src>` existente.
+- Se cargó como `<script src="js/core/busqueda-global.js"></script>` en el mismo punto exacto donde antes vivía el IIFE.
+- `index.html`: 8.617 → 8.320 líneas (-297).
+- **Sin cambios de lógica** — extracción quirúrgica, código movido tal cual. Se detectó (no se corrigió, ver `auditoria-tecnica.md` punto 2) que el mensaje de "Sin resultados para..." interpola el término buscado sin `escHtml()` — preexistente, no introducido por este movimiento.
+
+---
+
 ## Núcleo compartido — detalle y eliminación de movimientos
 
 ### ✅ Corregido — `eliminarMovimiento()` no revertía ni borraba movimientos tipo `ingreso`/`apertura`/`entrada` (no-op silencioso)

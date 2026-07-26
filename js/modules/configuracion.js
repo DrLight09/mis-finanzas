@@ -230,7 +230,10 @@ if (_btnExportarCSV) _btnExportarCSV.addEventListener('click', exportarCSV);
 const _btnBorrarTodo = document.getElementById('btn-borrar-todo');
 if (_btnBorrarTodo) _btnBorrarTodo.addEventListener('click', borrarTodo);
 const _importFileInput = document.getElementById('importFileInput');
-if (_importFileInput) _importFileInput.addEventListener('change', leerArchivoImport);
+// Wrapper en vez de pasar la referencia directa: así, si index.html sobreescribe
+// leerArchivoImport más abajo (override de MEJORA 5, validación de estructura),
+// el listener siempre invoca la versión vigente en vez de quedar "pegado" a esta.
+if (_importFileInput) _importFileInput.addEventListener('change', (e) => leerArchivoImport(e));
 
 // Enter en los inputs de nueva categoría
 ['nueva-cat-var','nueva-cat-fijo'].forEach(id=>{

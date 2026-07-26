@@ -3204,7 +3204,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             placeholder="Ej: pago servicios, depósito..."></div>
         <div class="ig"><label class="il" for="movenc_monto">Monto</label><input
             type="text" inputmode="decimal" id="movenc_monto" placeholder="0,00"
-            class="money-input" oninput="_movEncSplitPreview()"></div>
+            class="money-input"></div>
         <div class="ig" id="movenc_cuenta_wrap">
           <div class="field-header">
             <label class="il" id="movenc_cuenta_label">¿En qué cuenta está esa
@@ -3327,7 +3327,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                   style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">De
                   mi cuenta (sale)</div>
                 <div class="select-wrap"><select id="movenc_mia_cuenta_sale"
-                    onchange="_movEncMiaPreview()"
                     style="font-size:12px;padding:7px 10px;"><option
                       value>Seleccionar cuenta</option></select></div>
               </div>
@@ -3336,7 +3335,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                   style="font-size:10px;color:var(--accent);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Y
                   recupero en (entra)</div>
                 <div class="select-wrap"><select id="movenc_mia_cuenta_entra"
-                    onchange="_movEncMiaPreview()"
                     style="font-size:12px;padding:7px 10px;"><option value>Sin
                       especificar</option></select></div>
               </div>
@@ -3423,14 +3421,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div class="ig">
           <label class="il" for="ctc_monto">Monto del encargo</label>
           <input type="text" inputmode="decimal" id="ctc_monto"
-            placeholder="0,00" class="money-input"
-            oninput="_ctcActualizarPreview()">
+            placeholder="0,00" class="money-input">
         </div>
         <div class="ig">
           <label class="il" for="ctc_cuenta_enc">¿De qué cuenta salía esa plata
             del encargo?</label>
-          <div class="select-wrap"><select id="ctc_cuenta_enc"
-              onchange="_ctcActualizarPreview()"><option value>Sin
+          <div class="select-wrap"><select id="ctc_cuenta_enc"><option value>Sin
                 especificar</option></select></div>
           <div id="ctc_cuenta_enc_hint"
             style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
@@ -3438,15 +3434,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div class="ig">
           <label class="il" for="ctc_tarjeta">¿Con cuál tarjeta de crédito
             pagaste?</label>
-          <div class="select-wrap"><select id="ctc_tarjeta"
-              onchange="_ctcActualizarPreview()"><option value>Seleccionar
+          <div class="select-wrap"><select id="ctc_tarjeta"><option value>Seleccionar
                 TC</option></select></div>
         </div>
         <div class="ig">
           <label class="il" for="ctc_destino">¿A dónde va el dinero del encargo?
             (para pagar la TC)</label>
-          <div class="select-wrap"><select id="ctc_destino"
-              onchange="_ctcActualizarPreview()"><option value>Seleccionar
+          <div class="select-wrap"><select id="ctc_destino"><option value>Seleccionar
                 cuenta</option></select></div>
           <div id="ctc_destino_hint"
             style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
@@ -3928,7 +3922,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div class="sheet-title" id="movSheetTitle">Nuevo préstamo</div>
         <div class="ig"><label class="il" for="mov_monto">Monto</label><input
             type="text" inputmode="decimal" id="mov_monto" placeholder="0,00"
-            class="money-input" oninput="_onMovMontoInput()"></div>
+            class="money-input"></div>
         <div class="ig"><label class="il" for="mov_fecha">Fecha</label><input
             type="date" id="mov_fecha"></div>
         <div class="ig" id="mov_fuente_wrap">
@@ -4005,16 +3999,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 encargo</div>
             </div>
             <label class="toggle-sw">
-              <input type="checkbox" id="mov_desde_encargo"
-                onchange="toggleDesdeEncargo()">
+              <input type="checkbox" id="mov_desde_encargo">
               <span class="slider"></span>
             </label>
           </div>
           <div id="mov_enc_body" style="display:none;">
             <div class="ig" style="margin-bottom:8px;">
               <label class="il" for="mov_enc_sel">¿De qué encargo?</label>
-              <div class="select-wrap"><select id="mov_enc_sel"
-                  onchange="onChangeMov_enc_sel()"><option value>Seleccionar
+              <div class="select-wrap"><select id="mov_enc_sel"><option value>Seleccionar
                     encargo</option></select></div>
             </div>
             <div class="ig" id="mov_enc_cuenta_wrap" style="display:none;">
@@ -4026,8 +4018,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               </div>
               <!-- Modo simple -->
               <div id="mov_enc_cuenta_simple">
-                <div class="select-wrap"><select id="mov_enc_cuenta"
-                    onchange="onChangeMov_enc_cuenta()"><option value>Sin
+                <div class="select-wrap"><select id="mov_enc_cuenta"><option value>Sin
                       especificar</option></select></div>
                 <div id="mov_enc_cuenta_hint" class="field-hint field-hint-blue"
                   style="display:none;"></div>
@@ -4057,8 +4048,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               <div class="cfg-toggle-sub">Propina o diferencial a tu favor</div>
             </div>
             <label class="toggle-sw">
-              <input type="checkbox" id="mov_tiene_extra"
-                onchange="toggleExtraSection()">
+              <input type="checkbox" id="mov_tiene_extra">
               <span class="slider"></span>
             </label>
           </div>
@@ -4067,8 +4057,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             <div class="ig">
               <label class="il" for="mov_extra_monto">¿Cuánto de extra?</label>
               <input type="text" inputmode="decimal" id="mov_extra_monto"
-                placeholder="0,00" class="money-input"
-                oninput="extResumenPartes()">
+                placeholder="0,00" class="money-input">
             </div>
 
             <!-- Qué hizo con el extra — sistema de partes libres -->
@@ -4359,8 +4348,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div id="adAperturaWrap"
           style="background: rgba(96, 176, 240, 0.07);border: 1px solid rgba(96, 176, 240, 0.2);border-radius: 9px;padding: 11px 13px;margin-bottom: 14px;align-items: center;gap: 10px;cursor: pointer;display: flex;">
           <input type="checkbox" id="adEsApertura"
-            style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;"
-            onchange="toggleAdApertura()">
+            style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;">
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:600;color:var(--blue);">Es
               saldo inicial (ya lo tenía)</div>
@@ -4468,8 +4456,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         <div id="nuMovAperturaWrap"
           style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;display:flex;">
           <input type="checkbox" id="nuMovEsApertura"
-            style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;"
-            onchange="_nuMovToggleApertura()">
+            style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;">
           <div style="flex:1;min-width:0;">
             <div style="font-size:13px;font-weight:600;color:var(--blue);">Es
               saldo inicial (ya lo tenía)</div>
@@ -6602,6 +6589,30 @@ function _initEventListeners() {
   const pgfFuenteSel = document.getElementById('pgf-fuente');
   if (pgfFuenteSel) pgfFuenteSel.addEventListener('change', pgfActualizarSaldo);
   // btn-guardar-ingreso-fijo: migrado a js/modules/analisis.js (su propio wiring).
+
+  // Controles de Encargos / Tarjetas de Crédito / Préstamos que tenían
+  // oninput/onchange inline. Las funciones (_movEncSplitPreview,
+  // _movEncMiaPreview, _ctcActualizarPreview, _onMovMontoInput,
+  // toggleDesdeEncargo, onChangeMov_enc_sel, onChangeMov_enc_cuenta,
+  // toggleExtraSection, extResumenPartes) están definidas en
+  // encargos.js / prestado.js / tarjetas_credito.js, no acá.
+  [['movenc_monto','input','_movEncSplitPreview'],
+   ['movenc_mia_cuenta_sale','change','_movEncMiaPreview'],
+   ['movenc_mia_cuenta_entra','change','_movEncMiaPreview'],
+   ['ctc_monto','input','_ctcActualizarPreview'],
+   ['ctc_cuenta_enc','change','_ctcActualizarPreview'],
+   ['ctc_tarjeta','change','_ctcActualizarPreview'],
+   ['ctc_destino','change','_ctcActualizarPreview'],
+   ['mov_monto','input','_onMovMontoInput'],
+   ['mov_desde_encargo','change','toggleDesdeEncargo'],
+   ['mov_enc_sel','change','onChangeMov_enc_sel'],
+   ['mov_enc_cuenta','change','onChangeMov_enc_cuenta'],
+   ['mov_tiene_extra','change','toggleExtraSection'],
+   ['mov_extra_monto','input','extResumenPartes'],
+  ].forEach(([elId, evt, fnName]) => {
+    const el = document.getElementById(elId);
+    if (el && typeof window[fnName] === 'function') el.addEventListener(evt, window[fnName]);
+  });
 
   // Inputs "real" de los 4 sheets con motor Diferencial (js/core/diferencial.js).
   // Los wrappers (_difResumen, _ctcDifResumen, _usarParteDifResumen, _prtcDifResumen)
@@ -9097,7 +9108,7 @@ function _initNuevaDeudaPersonaSelector() {
   if (!ig) return;
   ig.innerHTML = `
     <label class="il">¿A quién le debes?</label>
-    <div id="nd-persona-btn" onclick="abrirSelPersona(_onSelPersonaNuevaDeuda)"
+    <div id="nd-persona-btn"
       style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
       border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
       cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
@@ -9106,6 +9117,11 @@ function _initNuevaDeudaPersonaSelector() {
       <svg style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <input type="hidden" id="nd_nombre" value="">`;
+  // Antes onclick="abrirSelPersona(_onSelPersonaNuevaDeuda)" inline — este bloque
+  // solo se renderiza una vez (guardado por sheet._personaHook), así que alcanza
+  // con adjuntar el listener una sola vez acá, igual que en splitAgregarRow.
+  const ndBtn = document.getElementById('nd-persona-btn');
+  if (ndBtn) ndBtn.addEventListener('click', () => abrirSelPersona(_onSelPersonaNuevaDeuda));
 }
 
 function _onSelPersonaNuevaDeuda(personaId) {

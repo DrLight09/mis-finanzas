@@ -10,7 +10,10 @@
       cabeceras HTTP propias, así que esta es la única forma viable de tener CSP
       tal como está hosteado hoy — ver docs/auditoria-tecnica.md #1).
       Nota importante: 'unsafe-inline' en script-src sigue siendo necesario mientras
-      existan los ~247 atributos onclick="..." inline en el HTML. Migrarlos a
+      existan los 24 atributos onclick="..." inline que quedan en el HTML (bajaron
+      de ~247 a medida que se migraron los módulos a data-action/Events — ver
+      docs/auditoria-tecnica.md #1). Los 24 restantes son todos del gate de PIN/
+      biometría/login (Firebase), no de ningún módulo de negocio. Migrarlos a
       addEventListener (docs/auditoria-tecnica.md #2) es lo que permitiría quitar
       'unsafe-inline' y endurecer esto de verdad. Mientras tanto, esta CSP igual
       aporta protección real: bloquea que un script inyectado cargue código o

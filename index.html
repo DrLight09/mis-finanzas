@@ -6052,40 +6052,19 @@ function _initEventListeners() {
   // gv_fuente: migrados a js/modules/gastos.js (su propio wiring).
   // btn-guardar-ingreso-fijo: migrado a js/modules/analisis.js (su propio wiring).
 
-  // Controles de Encargos / Tarjetas de Crédito / Préstamos que tenían
-  // oninput/onchange inline. Las funciones (_movEncSplitPreview,
-  // _movEncMiaPreview, _ctcActualizarPreview, _onMovMontoInput,
-  // toggleDesdeEncargo, onChangeMov_enc_sel, onChangeMov_enc_cuenta,
-  // toggleExtraSection, extResumenPartes) están definidas en
-  // encargos.js / prestado.js / tarjetas_credito.js, no acá.
-  [['movenc_monto','input','_movEncSplitPreview'],
-   ['movenc_mia_cuenta_sale','change','_movEncMiaPreview'],
-   ['movenc_mia_cuenta_entra','change','_movEncMiaPreview'],
-   ['ctc_monto','input','_ctcActualizarPreview'],
-   ['ctc_cuenta_enc','change','_ctcActualizarPreview'],
-   ['ctc_tarjeta','change','_ctcActualizarPreview'],
-   ['ctc_destino','change','_ctcActualizarPreview'],
-   ['mov_monto','input','_onMovMontoInput'],
-   ['mov_desde_encargo','change','toggleDesdeEncargo'],
-   ['mov_enc_sel','change','onChangeMov_enc_sel'],
-   ['mov_enc_cuenta','change','onChangeMov_enc_cuenta'],
-   ['mov_tiene_extra','change','toggleExtraSection'],
-   ['mov_extra_monto','input','extResumenPartes'],
-  ].forEach(([elId, evt, fnName]) => {
-    const el = document.getElementById(elId);
-    if (el && typeof window[fnName] === 'function') el.addEventListener(evt, window[fnName]);
-  });
+  // Controles de Encargos ("Nuevo movimiento" y "Compra con TC") y de
+  // Préstamos ("Registrar movimiento") que tenían oninput/onchange
+  // inline, migrados a js/modules/encargos.js y js/modules/prestado.js
+  // respectivamente — su propio wiring, igual que Mesada/Spotify/Gastos/
+  // Cuentas. Nota de corrección: "ctc_*" es un flujo de Encargos (comprar
+  // con plata de un encargo cargándola a una TC), no de Tarjetas de
+  // Crédito — tarjetas_credito.js no referencia ninguno de estos ids, así
+  // que el grupo "entrelazado" nunca fue en realidad Encargos/TC/Préstamos,
+  // sino solo Encargos/Préstamos.
 
-  // Inputs "real" de los 4 sheets con motor Diferencial (js/core/diferencial.js).
-  // Los wrappers (_difResumen, _ctcDifResumen, _usarParteDifResumen, _prtcDifResumen)
-  // llaman internamente a diffResumen(instId) con el instId específico de cada sheet —
-  // están definidos en encargos.js / prestado.js, no acá. Antes eran oninput inline.
-  [['movenc_dif_real','_difResumen'],['ctc_dif_real','_ctcDifResumen'],
-   ['usar_parte_dif_real','_usarParteDifResumen'],['prtc_dif_real','_prtcDifResumen']
-  ].forEach(([elId, fnName]) => {
-    const el = document.getElementById(elId);
-    if (el && typeof window[fnName] === 'function') el.addEventListener('input', window[fnName]);
-  });
+  // Inputs "real" de los 4 sheets con motor Diferencial (js/core/diferencial.js):
+  // migrados junto con lo anterior a encargos.js (movenc/ctc/usarParte)
+  // y prestado.js (prtc).
   // btn-guardar-spotify, btn-confirmar-sp-destino, spMesesSelect,
   // btn-confirmar-pagar-spotify: migrados a js/modules/spotify.js.
   // btn-confirmar-mesada, btn-confirmar-mesada-pend: migrados a
@@ -6110,14 +6089,13 @@ function _initEventListeners() {
   // --- Cuenta selector, Nequi/Efectivo, Nu (entró/salió plata) y
   // cajita (agregar): migrados a js/modules/cuentas.js. ---
 
-  // --- Avatar color picker (sheet "Nueva persona", no de Cuentas pese
-  // a lo genérico del nombre) --- selColor() no está definida ni en
-  // index.html ni en cuentas.js — posible referencia rota preexistente;
-  // no se investigó ni se tocó por no ser el alcance de esta sesión
-  // (dominio Cuentas). Queda para cuando se audite Personas.
-  document.querySelectorAll('[data-pick-color]').forEach(el => {
-    el.addEventListener('click', () => selColor(el.dataset.pickColor));
-  });
+  // --- Avatar color picker (sheet "Nueva persona"): wiring migrado a
+  // js/modules/prestado.js (junto a selColor(), que sí existe ahí).
+  // Con deudores-personas.js cargado, este sheet nunca se muestra:
+  // ese módulo sobrescribe openSheet() e intercepta 'nueva-persona'
+  // antes de llegar al sheet real, redirigiendo al selector genérico
+  // de Personas. Código muerto documentado, no borrado — ver detalle
+  // en prestado.js y en auditoria-tecnica.md/CHANGELOG.md (2026-07-27).
 
   // --- mpSplitToggle / btn-add-split-row: migrados a js/modules/mesada.js ---
 
@@ -6128,11 +6106,8 @@ function _initEventListeners() {
 
   // --- Named input callbacks ---
   // gv_fuente: migrado a js/modules/gastos.js (su propio wiring).
-  // mov_fuente: pese al nombre parecido a los otros _fuente de acá abajo,
-  // es del sheet "Registrar movimiento" (préstamo/abono) de Préstamos,
-  // no de Cuentas — queda pendiente para la sesión de Encargos/TC/Préstamos.
-  const movFuente = document.getElementById('mov_fuente');
-  if (movFuente) movFuente.addEventListener('change', () => mostrarAlertaFuente('mov'));
+  // mov_fuente: migrado a js/modules/prestado.js junto con el resto del
+  // sheet "Registrar movimiento" — ver nota más arriba.
   // spPagarFuente/spPagarMonto: migrados a js/modules/spotify.js.
   // mpDestino/mpMonto, mpDebeWrap/mpQuedaDebiendo, mppDestino/mppMonto:
   // migrados a js/modules/mesada.js.

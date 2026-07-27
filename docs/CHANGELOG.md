@@ -713,3 +713,45 @@ Con `deudores-personas.js` disponible se cierra el hallazgo anterior, pero con u
 
 `_initEventListeners()` en `index.html`: 141 → **~118 líneas**. Con esto se cierra del todo la redistribución activa. Lo que queda en la función, a propósito y sin plan de moverse: wiring núcleo genérico compartido por las 13 pantallas (nav, dialog, close-sheet delegado, `data-save-refresh`), las cards del FAB "+" de Gastos/Cuentas (comparten menú) y el tab-bar de Gastos (wiring genérico pero enganchado a `switchGastoTab()`, de `gastos.js`). El color picker de avatares de Personas ya no vive acá — ver corrección arriba. Ver `auditoria-tecnica.md`, punto 3, para el detalle completo.
 
+---
+
+## Préstamos, Personas, Configuración
+
+### 🔧 Cambio — Migración de los últimos `onchange`/`oninput`/hover inline
+
+*(2026-08-02)*
+
+Cierre del punto 1 de `auditoria-tecnica.md` en lo que quedaba fuera del conteo de `onclick`: 9 `onchange`/`oninput` en Préstamos, 1 `oninput` en Personas, y los 4 pares `onmouseenter`/`onmouseleave` con ubicación exacta confirmada (3 en Personas, 1 en Configuración), más 2 más encontrados de paso en `index.html` (Cuentas).
+
+**`prestado.js` — 9 `onchange`/`oninput` de filas dinámicas migrados** en los tres puntos donde vivían:
+- Split de origen del préstamo (`_renderPrestSplit`): `onchange`/`oninput` → clase `._prest-split-fuente`/`._prest-split-monto` con `data-i`, wireadas con `addEventListener` justo después del `innerHTML =`.
+- Split de destino del abono (`abonoRenderSplit`): mismo patrón, reutilizando las funciones globales ya existentes `abonoSplitFuente`/`abonoSplitMonto`.
+- Sección "Extra" del abono (`extRenderPartes`): los 5 campos (`extSetCuenta`, `extSetDesc`, `extSetQuien`, `extSetTipo`, `extSetMonto`) migrados igual, junto al wiring de `data-stop-click` que el archivo ya tenía — un solo bloque de `querySelectorAll(...).forEach(...)` al final de la función, sin infraestructura nueva.
+
+**`personas.js` — el `oninput` del buscador y los 3 pares de hover migrados:**
+- `#sel-persona-buscar` (sheet de selección de persona): `addEventListener('input', _selPersonaFiltrar)` wireado una sola vez dentro de `_inyectarPersonaSheets()`, que ya tiene guard contra doble inyección.
+- Las 3 filas con hover (persona con perfil, deudor sin perfil, "le debo" sin perfil, en `_renderListaPersonas`): el color varía por fila, así que no se pudo resolver con un `:hover` de CSS puro — se agregó `data-hover-color="${color}"` + `addEventListener('mouseenter'/'mouseleave', ...)` sobre `._persona-row-hover` tras cada render, mismo patrón que el archivo ya usaba en `_selPersonaFiltrar()` para el hover de la lista de selección de persona.
+
+**`configuracion.js` — el par restante sí se resolvió con CSS puro:** a diferencia de Personas, los colores del botón de eliminar categoría son fijos (`var(--red)`/`var(--text3)`), así que se quitó el `onmouseenter`/`onmouseleave` inline y se agregó `.cat-chip-del:hover{color:var(--red);}` al `<style>` de `index.html`.
+
+**De paso, en `index.html`:** se resolvieron también los 2 pares `onmouseenter`/`onmouseleave` de las tarjetas "Meta"/"CDTs" del detalle de cajita (Cuentas) — colores fijos, mismo tratamiento con `:hover` en CSS (`#cajita-det-meta-card:hover`, `#cajita-det-cdt-card:hover`).
+
+**Verificado:** `node --check` sin errores en `personas.js`, `prestado.js` y `configuracion.js`. No se tocó ningún `Events.attr`/`data-action` existente ni ninguna función de negocio.
+
+**Sin cerrar todavía:** ~9 pares `onmouseenter`/`onmouseleave` sin ubicación exacta confirmada (de los ~13 estimados originalmente) y los 24 `onclick` del gate de PIN/biometría/login — ver `auditoria-tecnica.md`, punto 1, para el detalle.
+
+---
+
+## Tarjetas de Crédito
+
+### 🐛 Bug — `ReferenceError: abrirDetalleMov is not defined` al cargar la app
+
+*(2026-08-03)*
+
+Reportado desde la consola del navegador. `tarjetas_credito.js` registra `verMov: abrirDetalleMov` (referencia directa) dentro de `Events.registerAll('tarjetas', {...})`, que se ejecuta en el momento en que el script carga — pero `abrirDetalleMov()` vive en `js/core/movimientos.js`, que en `index.html` carga **después** de `tarjetas_credito.js` (línea 6257 vs 6258). El comentario junto al `<script src="js/modules/tarjetas_credito.js">` decía explícitamente "no tiene una dependencia real de orden de carga" — cierto cuando se escribió, pero quedó desactualizado el 2026-07-26, cuando `abrirDetalleMov`/`eliminarMovimiento` se extrajeron de `index.html` a `js/core/movimientos.js` (ver nota de Cuentas de esa fecha) sin revisar qué otros módulos ya cargados antes las referenciaban directo.
+
+- **Corregido envolviendo la referencia en una función anónima** (`verMov: (...args) => abrirDetalleMov(...args)`), exactamente el mismo patrón que `prestado.js` ya usa para el mismo problema con la misma función (`abrirDetalleMov: (el, evt) => abrirDetalleMov(el, evt)`, ver el comentario de cabecera de su bloque `Events.registerAll`) — la búsqueda del nombre global se resuelve recién al hacer click, no al cargar el script.
+- **No se reordenaron los `<script>`** (mover `movimientos.js` antes de `tarjetas_credito.js` también lo hubiera resuelto) para no arriesgar otra dependencia oculta en sentido contrario — mismo criterio conservador que el proyecto ya viene aplicando con el arranque de Auth/Firestore (`auditoria-tecnica.md`, punto 4).
+- **Comentario desactualizado en `index.html` corregido** para dejar registrado que sí existe esta dependencia de orden de carga y por qué el wrapper la resuelve.
+- **No se investigó si hay más referencias directas del mismo tipo** a `abrirDetalleMov`/`eliminarMovimiento` en otros módulos que cargan antes de `movimientos.js` — se revisaron `personas.js`, `prestado.js` y `configuracion.js` (los tres disponibles esta sesión) sin encontrar otro caso; `spotify.js`, `mesada.js`, `encargos.js`, `gastos.js`, `cuentas.js`, `plata_comprometida.js`, `alcancia.js` y `analisis.js` no se revisaron.
+

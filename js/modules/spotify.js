@@ -652,7 +652,12 @@ const _spBtnPagar = document.getElementById('btn-pagar-spotify');
 if (_spBtnPagar) _spBtnPagar.addEventListener('click', () => openSheet('pagar-spotify'));
 
 const _spBtnSave = document.getElementById('btn-guardar-spotify');
-if (_spBtnSave) _spBtnSave.addEventListener('click', addSpotify);
+// OJO: igual que con Gastos — index.html sobrescribe el global addSpotify
+// más abajo (_injectErrorSpans(), le agrega validación inline) DESPUÉS de
+// que este módulo se carga. Llamar addSpotify() dentro de una flecha
+// resuelve la referencia en vivo al momento del click, no la capturada
+// acá. Corregido 2026-07-26, ver auditoria-tecnica.md punto 3.
+if (_spBtnSave) _spBtnSave.addEventListener('click', () => addSpotify());
 const _spBtnDest = document.getElementById('btn-confirmar-sp-destino');
 if (_spBtnDest) _spBtnDest.addEventListener('click', confirmarSpDestino);
 const _spMesesSelect = document.getElementById('spMesesSelect');

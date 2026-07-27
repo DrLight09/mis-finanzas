@@ -33,10 +33,15 @@
 
    Hallazgo nuevo (mismo problema de fondo, no es un onclick): el
    sheet "pagar-gasto-fijo" tenía un onclick y un onchange inline en
-   controles estáticos (no en plantillas de este módulo). Se movieron
-   al bloque de wiring centralizado de index.html — ver notas ahí,
-   no acá, porque esa es la convención ya establecida para controles
-   estáticos de sheets en toda la app.
+   controles estáticos (no en plantillas de este módulo). En su
+   momento se movieron al bloque de wiring centralizado de
+   index.html, siguiendo la convención que existía entonces para
+   controles estáticos de sheets. Esa convención cambió el
+   2026-07-26 (ver auditoria-tecnica.md, punto 3): ahora cada módulo
+   con su propio archivo también hace el wiring de sus propios
+   controles estáticos, para poder vaciar _initEventListeners() del
+   todo. Este archivo ya sigue el criterio nuevo — ver el bloque de
+   wiring al final, antes de Events.registerAll.
    ═══════════════════════════════════════════════════════════════ */
 
 let mesFilter = 'todos';
@@ -414,6 +419,45 @@ function confirmarPagarGastoFijo() {
   if (window.logCambio) { const _pgfg = (S.gastosFijos || []).find(x => x.id === pgfIdActual); if (_pgfg) logCambio('Pagaste ' + _pgfg.nombre, '', _pgfg.monto, 'gasto_fijo'); }
   toast('Pago registrado correctamente', 'ok');
 }
+
+/* ── Wiring de controles propios de la pantalla ──────────────────────────
+   Movido desde _initEventListeners() (index.html) el 2026-07-26 — ver
+   auditoria-tecnica.md, punto 3. No son onclick inline (no hay problema
+   de CSP acá), es solo mover el addEventListener directo a su módulo
+   dueño en vez de dejarlo mezclado con el de otros dominios en
+   index.html. Todos estos ids ya existen en el DOM estático antes de
+   este <script> (verificado contra index.html), así que no hace falta
+   esperar a DOMContentLoaded.
+
+   Los botones fantasma (.btn-open-gasto-var/fijo) reimplementaban a
+   mano poblarCatSelect+openSheet en vez de llamar a
+   abrirNuevoGastoVar()/abrirNuevoGastoFijo() (que ya existen acá arriba
+   y ya se usan para el botón del estado vacío) — se dedupe de paso. ── */
+const _gBtnGastoVar = document.querySelector('.btn-open-gasto-var');
+if (_gBtnGastoVar) _gBtnGastoVar.addEventListener('click', abrirNuevoGastoVar);
+const _gBtnGastoFijo = document.querySelector('.btn-open-gasto-fijo');
+if (_gBtnGastoFijo) _gBtnGastoFijo.addEventListener('click', abrirNuevoGastoFijo);
+
+const _gBtnGVSave = document.getElementById('btn-guardar-gasto-var');
+// OJO: llamar addGastoVar() dentro de una flecha, no pasar la referencia
+// directa. index.html sobrescribe el global addGastoVar más abajo
+// (_injectErrorSpans(), le agrega validación inline) DESPUÉS de que este
+// módulo se carga — si se captura la referencia acá, el botón queda
+// pegado a la versión sin validar. Mismo motivo que editarSpotify en
+// spotify.js. Ídem addGastoFijo.
+if (_gBtnGVSave) _gBtnGVSave.addEventListener('click', () => addGastoVar());
+const _gBtnGFSave = document.getElementById('btn-guardar-gasto-fijo');
+if (_gBtnGFSave) _gBtnGFSave.addEventListener('click', () => addGastoFijo());
+const _gBtnPGFConfirm = document.getElementById('btn-confirmar-pagar-gf');
+if (_gBtnPGFConfirm) _gBtnPGFConfirm.addEventListener('click', confirmarPagarGastoFijo);
+const _gPgfFuenteSel = document.getElementById('pgf-fuente');
+if (_gPgfFuenteSel) _gPgfFuenteSel.addEventListener('change', pgfActualizarSaldo);
+
+// gv_fuente: llama al helper compartido mostrarAlertaFuente() (núcleo,
+// también lo usa Cuentas con el prefijo 'mov') — el elemento es propio
+// de Gastos, así que el wiring vive acá aunque el helper sea de núcleo.
+const _gGvFuente = document.getElementById('gv_fuente');
+if (_gGvFuente) _gGvFuente.addEventListener('change', () => mostrarAlertaFuente('gv'));
 
 /* ---- Registro de acciones en el sistema centralizado de eventos ---- */
 Events.registerAll('gastos', {

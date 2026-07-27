@@ -616,6 +616,49 @@ async function deshacerPendienteMesada(parent,key,idx){
 
 function cambiarAnio(d){const hoy=new Date().getFullYear();const nuevo=(S.mesadaAnio||hoy)+d;if(nuevo<hoy-2||nuevo>hoy+2)return;save();S.mesadaAnio=nuevo;renderMesada();}
 
+/* ── Wiring de controles propios de la pantalla ──────────────────────────
+   Movido desde _initEventListeners() (index.html) el 2026-07-26 — ver
+   auditoria-tecnica.md, punto 3. No son onclick inline (no hay problema
+   de CSP acá), es solo mover el addEventListener directo a su módulo
+   dueño en vez de dejarlo mezclado con el de otros ~15 dominios en
+   index.html. Todos estos ids ya existen en el DOM estático antes de
+   este <script> (verificado contra index.html), así que no hace falta
+   esperar a DOMContentLoaded. ── */
+const _mBtnAnioP = document.getElementById('btn-anio-prev');
+if (_mBtnAnioP) _mBtnAnioP.addEventListener('click', () => cambiarAnio(-1));
+const _mBtnAnioN = document.getElementById('btn-anio-next');
+if (_mBtnAnioN) _mBtnAnioN.addEventListener('click', () => cambiarAnio(1));
+
+const _mBtnMesadaConf = document.getElementById('btn-confirmar-mesada');
+if (_mBtnMesadaConf) _mBtnMesadaConf.addEventListener('click', confirmarMesadaPago);
+const _mBtnMesadaPendConf = document.getElementById('btn-confirmar-mesada-pend');
+if (_mBtnMesadaPendConf) _mBtnMesadaPendConf.addEventListener('click', confirmarPendienteMesada);
+
+const _mMpDestino = document.getElementById('mpDestino');
+if (_mMpDestino) _mMpDestino.addEventListener('change', actualizarMpPreview);
+const _mMpMonto = document.getElementById('mpMonto');
+if (_mMpMonto) _mMpMonto.addEventListener('input', actualizarMpPreview);
+
+// mpDebeWrap / mpQuedaDebiendo: el wrap entero es clickeable (delega el click
+// al checkbox real), pero el checkbox no debe re-disparar el click del wrap.
+const _mMpDebeWrap = document.getElementById('mpDebeWrap');
+if (_mMpDebeWrap) _mMpDebeWrap.addEventListener('click', () => document.getElementById('mpQuedaDebiendo').click());
+const _mMpQuedaDebiendo = document.getElementById('mpQuedaDebiendo');
+if (_mMpQuedaDebiendo) {
+  _mMpQuedaDebiendo.addEventListener('click', (e) => e.stopPropagation());
+  _mMpQuedaDebiendo.addEventListener('change', actualizarMpPreview);
+}
+
+const _mMppDestino = document.getElementById('mppDestino');
+if (_mMppDestino) _mMppDestino.addEventListener('change', actualizarMppPreview);
+const _mMppMonto = document.getElementById('mppMonto');
+if (_mMppMonto) _mMppMonto.addEventListener('input', actualizarMppPreview);
+
+const _mSplitToggle = document.getElementById('mpSplitToggle');
+if (_mSplitToggle) _mSplitToggle.addEventListener('click', toggleMpSplit);
+const _mBtnSplitRow = document.getElementById('btn-add-split-row');
+if (_mBtnSplitRow) _mBtnSplitRow.addEventListener('click', agregarMpSplitRow);
+
 /* ── Registro de acciones para el despachador central de eventos ──
    Reemplaza los onclick inline que este módulo armaba en sus
    template strings. Ver js/core/events.js. ── */

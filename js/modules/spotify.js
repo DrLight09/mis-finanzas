@@ -638,6 +638,33 @@ function guardarEditarSpotify() {
   toast(escHtml(n) + ' actualizado', 'ok');
 }
 
+/* ── Wiring de controles propios de la pantalla ──────────────────────────
+   Movido desde _initEventListeners() (index.html) el 2026-07-26 — ver
+   auditoria-tecnica.md, punto 3. No son onclick inline (no hay problema
+   de CSP acá), es solo mover el addEventListener directo a su módulo
+   dueño en vez de dejarlo mezclado con el de otros ~15 dominios en
+   index.html. Todos estos ids ya existen en el DOM estático antes de
+   este <script> (verificado contra index.html), así que no hace falta
+   esperar a DOMContentLoaded. ── */
+const _spBtnAdd = document.getElementById('btn-add-spotify-persona');
+if (_spBtnAdd) _spBtnAdd.addEventListener('click', () => openSheet('spotify'));
+const _spBtnPagar = document.getElementById('btn-pagar-spotify');
+if (_spBtnPagar) _spBtnPagar.addEventListener('click', () => openSheet('pagar-spotify'));
+
+const _spBtnSave = document.getElementById('btn-guardar-spotify');
+if (_spBtnSave) _spBtnSave.addEventListener('click', addSpotify);
+const _spBtnDest = document.getElementById('btn-confirmar-sp-destino');
+if (_spBtnDest) _spBtnDest.addEventListener('click', confirmarSpDestino);
+const _spMesesSelect = document.getElementById('spMesesSelect');
+if (_spMesesSelect) _spMesesSelect.addEventListener('change', selSpMeses);
+const _spBtnPagarConf = document.getElementById('btn-confirmar-pagar-spotify');
+if (_spBtnPagarConf) _spBtnPagarConf.addEventListener('click', confirmarPagarSpotify);
+
+const _spPagarFuente = document.getElementById('spPagarFuente');
+if (_spPagarFuente) _spPagarFuente.addEventListener('change', actualizarSpPagarPreview);
+const _spPagarMonto = document.getElementById('spPagarMonto');
+if (_spPagarMonto) _spPagarMonto.addEventListener('input', actualizarSpPagarPreview);
+
 /* ═══════════════════════════════════════════════════════════════
    REGISTRO DE EVENTOS (funciones base — la integración con Personas
    registra las suyas en spotify-personas.js)

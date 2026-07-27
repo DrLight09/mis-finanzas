@@ -155,7 +155,7 @@ El `id` de cada movimiento espejo se guarda junto al dato que lo originó (`_mov
 
 **Ubicación:** el HTML de la pantalla y los sheets (abajo) sigue en `index.html`. Toda la lógica — las funciones de esta sección y sus wrappers de `js/core/events.js` — vive en `js/modules/mesada.js`, cargado después de que `crearSplitWidget` (compartido con Encargos y "Yo debo") ya está definido en `index.html`, y antes de `spotify.js`.
 
-**Clicks generados dinámicamente** (botones dentro de `abrirDetalleMesada()` y los puntos de la grilla) ya no usan `onclick="..."` inline — se conectan con `Events.attr('mesada:accion', ...)` y se registran una vez con `Events.registerAll('mesada', {...})` al final de `mesada.js`. Ver `js/core/events.js` para el mecanismo. Los controles estáticos del sheet (`mpSplitToggle`, `mpDestino`, `mpDebeWrap`, etc.) se cablean con `addEventListener` normal, en el bloque de wiring de `index.html`.
+**Clicks generados dinámicamente** (botones dentro de `abrirDetalleMesada()` y los puntos de la grilla) ya no usan `onclick="..."` inline — se conectan con `Events.attr('mesada:accion', ...)` y se registran una vez con `Events.registerAll('mesada', {...})` al final de `mesada.js`. Ver `js/core/events.js` para el mecanismo. Los controles estáticos del sheet (`btn-anio-prev/next`, `btn-confirmar-mesada`, `btn-confirmar-mesada-pend`, `mpDestino`/`mpMonto`, `mpDebeWrap`/`mpQuedaDebiendo`, `mppDestino`/`mppMonto`, `mpSplitToggle`, `btn-add-split-row`) se cablean con `addEventListener` normal, **en el propio `mesada.js`** (movido desde el bloque de wiring de `index.html` el 2026-07-26 — ver `auditoria-tecnica.md`, punto 3, y `CHANGELOG.md#mesada`).
 
 ### Pantalla principal (`#screen-mesada`)
 

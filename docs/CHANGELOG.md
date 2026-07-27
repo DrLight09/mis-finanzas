@@ -171,6 +171,20 @@ Los 12 `addEventListener` de los controles de esta pantalla (`btn-anio-prev/next
 
 Los 8 `addEventListener` de los controles de esta pantalla (`btn-add-spotify-persona`, `btn-pagar-spotify`, `btn-guardar-spotify`, `btn-confirmar-sp-destino`, `spMesesSelect`, `btn-confirmar-pagar-spotify`, `spPagarFuente/spPagarMonto`) vivían en `_initEventListeners()` (`index.html`), mezclados con los de otros ~15 dominios. No eran `onclick` inline (sin problema de CSP) — se movieron por organización, cada listener a su módulo dueño. Sin cambios de comportamiento; verificado con jsdom disparando cada evento contra el archivo real (incluida la validación de "Ingresa el nombre"/"Ingresa el monto a pagar" al confirmar con campos vacíos). Ver `auditoria-tecnica.md`, punto 3.
 
+**Corrección retroactiva (2026-07-26, sesión siguiente):** el wiring de `btn-guardar-spotify` capturaba la referencia original de `addSpotify`, sin la validación inline que `index.html` le agrega por encima más abajo en el documento (`_injectErrorSpans()`) — mismo bug que apareció con `addGastoVar`/`addGastoFijo` al mover Gastos, ver `CHANGELOG.md#gastos`. Se corrigió pasando una flecha `() => addSpotify()` en vez de la referencia directa.
+
+---
+
+## Gastos
+
+### 🔧 Cambio — Wiring propio movido de `index.html` a `gastos.js`, dedupe de las cards del menú, y corrección de un bug real (arquitectura)
+
+*(2026-07-26)*
+
+Los 7 `addEventListener` de los controles de esta pantalla (`.btn-open-gasto-var/fijo`, `btn-guardar-gasto-var/fijo`, `btn-confirmar-pagar-gf`, `pgf-fuente`, `gv_fuente`) vivían en `_initEventListeners()` (`index.html`), mezclados con los de otros dominios. No eran `onclick` inline (sin problema de CSP) — se movieron por organización, cada listener a su módulo dueño. De paso, las cards del menú "+" (`menu-gasto-var`/`menu-gasto-fijo`, que se quedan en `index.html` por ser parte del FAB compartido) dejaron de reimplementar a mano `poblarCatSelect+openSheet` y ahora delegan a `abrirNuevoGastoVar()`/`abrirNuevoGastoFijo()`, que ya existían para el botón del estado vacío.
+
+**Bug real encontrado al hacer este movimiento (no relacionado con la mudanza en sí, pero destapado por ella):** `addGastoVar` y `addGastoFijo` se sobrescriben más abajo en `index.html` (`_injectErrorSpans()`) para agregarles validación inline (mensajes de error junto a cada campo, foco automático). Esa sobrescritura corría antes de que el wiring original se enganchara, así que el botón siempre usó la versión validada — hasta que el wiring se movió a `gastos.js`, que carga (y engancha los listeners) *antes* de esa sobrescritura, capturando por error la versión sin validar. Fix: en vez de pasar la función directa a `addEventListener`, se pasa una flecha `() => addGastoVar()` que resuelve el global en vivo en cada click, no al cargar el módulo. **El mismo bug se coló en `spotify.js` en la sesión anterior** (`addSpotify` tiene el mismo tipo de override) y se corrigió acá también, retroactivamente. Verificado con un test de jsdom que reproduce el orden real de carga (módulo → sobrescritura → click) para los tres casos.
+
 ---
 
 ## Alcancía

@@ -6028,17 +6028,9 @@ function _initEventListeners() {
   if (btnGastoFijo) btnGastoFijo.addEventListener('click', () => { poblarCatSelect('gf_c',getCatsFijo()); openSheet('gasto-fijo'); });
 
 
-  // --- Año mesada ---
-  const btnAnioP = document.getElementById('btn-anio-prev');
-  if (btnAnioP) btnAnioP.addEventListener('click', () => cambiarAnio(-1));
-  const btnAnioN = document.getElementById('btn-anio-next');
-  if (btnAnioN) btnAnioN.addEventListener('click', () => cambiarAnio(1));
+  // --- Año mesada: migrado a js/modules/mesada.js (su propio wiring) ---
 
-  // --- Spotify ---
-  const btnAddSp = document.getElementById('btn-add-spotify-persona');
-  if (btnAddSp) btnAddSp.addEventListener('click', () => openSheet('spotify'));
-  const btnPagarSp = document.getElementById('btn-pagar-spotify');
-  if (btnPagarSp) btnPagarSp.addEventListener('click', () => openSheet('pagar-spotify'));
+  // --- Spotify: migrado a js/modules/spotify.js (su propio wiring) ---
 
   // --- Config toggles / Backup: migrado a js/modules/configuracion.js (su propio wiring, ver final del archivo) ---
 
@@ -6124,18 +6116,10 @@ function _initEventListeners() {
     const el = document.getElementById(elId);
     if (el && typeof window[fnName] === 'function') el.addEventListener('input', window[fnName]);
   });
-  const btnSpSave = document.getElementById('btn-guardar-spotify');
-  if (btnSpSave) btnSpSave.addEventListener('click', addSpotify);
-  const btnSpDest = document.getElementById('btn-confirmar-sp-destino');
-  if (btnSpDest) btnSpDest.addEventListener('click', confirmarSpDestino);
-  const spMesesSelect = document.getElementById('spMesesSelect');
-  if (spMesesSelect) spMesesSelect.addEventListener('change', selSpMeses);
-  const btnPagarSpConf = document.getElementById('btn-confirmar-pagar-spotify');
-  if (btnPagarSpConf) btnPagarSpConf.addEventListener('click', confirmarPagarSpotify);
-  const btnMesadaConf = document.getElementById('btn-confirmar-mesada');
-  if (btnMesadaConf) btnMesadaConf.addEventListener('click', confirmarMesadaPago);
-  const btnMesadaPendConf = document.getElementById('btn-confirmar-mesada-pend');
-  if (btnMesadaPendConf) btnMesadaPendConf.addEventListener('click', confirmarPendienteMesada);
+  // btn-guardar-spotify, btn-confirmar-sp-destino, spMesesSelect,
+  // btn-confirmar-pagar-spotify: migrados a js/modules/spotify.js.
+  // btn-confirmar-mesada, btn-confirmar-mesada-pend: migrados a
+  // js/modules/mesada.js.
   const btnAdConf = document.getElementById('btn-confirmar-agregar-dinero');
   if (btnAdConf) btnAdConf.addEventListener('click', confirmarAgregarDinero);
   const btnAdMenuConf = document.getElementById('btn-confirmar-agregar-dinero-menu');
@@ -6202,13 +6186,7 @@ function _initEventListeners() {
     el.addEventListener('click', () => selColor(el.dataset.pickColor));
   });
 
-  // --- mpSplitToggle ---
-  const mpSplitToggle = document.getElementById('mpSplitToggle');
-  if (mpSplitToggle) mpSplitToggle.addEventListener('click', toggleMpSplit);
-
-  // --- Add split row button ---
-  const btnSplitRow = document.getElementById('btn-add-split-row');
-  if (btnSplitRow) btnSplitRow.addEventListener('click', agregarMpSplitRow);
+  // --- mpSplitToggle / btn-add-split-row: migrados a js/modules/mesada.js ---
 
   // --- data-save-refresh inputs: use debounced save ---
   document.querySelectorAll('[data-save-refresh]').forEach(el => {
@@ -6220,29 +6198,9 @@ function _initEventListeners() {
   if (gvFuente) gvFuente.addEventListener('change', () => mostrarAlertaFuente('gv'));
   const movFuente = document.getElementById('mov_fuente');
   if (movFuente) movFuente.addEventListener('change', () => mostrarAlertaFuente('mov'));
-  const spPagarFuente = document.getElementById('spPagarFuente');
-  if (spPagarFuente) spPagarFuente.addEventListener('change', actualizarSpPagarPreview);
-  const spPagarMonto = document.getElementById('spPagarMonto');
-  if (spPagarMonto) spPagarMonto.addEventListener('input', actualizarSpPagarPreview);
-  const mpDestino = document.getElementById('mpDestino');
-  if (mpDestino) mpDestino.addEventListener('change', actualizarMpPreview);
-  const mpMonto = document.getElementById('mpMonto');
-  if (mpMonto) mpMonto.addEventListener('input', actualizarMpPreview);
-
-  // --- mpDebeWrap / mpQuedaDebiendo: reemplaza los 3 onclick/onchange
-  // inline que tenía este bloque en el HTML (ver auditoria-tecnica.md #1) ---
-  const mpDebeWrap = document.getElementById('mpDebeWrap');
-  if (mpDebeWrap) mpDebeWrap.addEventListener('click', () => document.getElementById('mpQuedaDebiendo').click());
-  const mpQuedaDebiendo = document.getElementById('mpQuedaDebiendo');
-  if (mpQuedaDebiendo) {
-    mpQuedaDebiendo.addEventListener('click', (e) => e.stopPropagation());
-    mpQuedaDebiendo.addEventListener('change', actualizarMpPreview);
-  }
-
-  const mppDestino = document.getElementById('mppDestino');
-  if (mppDestino) mppDestino.addEventListener('change', actualizarMppPreview);
-  const mppMonto = document.getElementById('mppMonto');
-  if (mppMonto) mppMonto.addEventListener('input', actualizarMppPreview);
+  // spPagarFuente/spPagarMonto: migrados a js/modules/spotify.js.
+  // mpDestino/mpMonto, mpDebeWrap/mpQuedaDebiendo, mppDestino/mppMonto:
+  // migrados a js/modules/mesada.js.
   const adMenuDest = document.getElementById('adMenuDest');
   if (adMenuDest) adMenuDest.addEventListener('change', actualizarAdMenuSaldo);
   const adMenuMonto = document.getElementById('adMenuMonto');

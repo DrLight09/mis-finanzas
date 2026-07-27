@@ -9,13 +9,17 @@
       Content-Security-Policy vía meta tag (GitHub Pages no permite configurar
       cabeceras HTTP propias, así que esta es la única forma viable de tener CSP
       tal como está hosteado hoy — ver docs/auditoria-tecnica.md #1).
-      Nota importante: 'unsafe-inline' en script-src sigue siendo necesario mientras
-      existan los 24 atributos onclick="..." inline que quedan en el HTML (bajaron
-      de ~247 a medida que se migraron los módulos a data-action/Events — ver
-      docs/auditoria-tecnica.md #1). Los 24 restantes son todos del gate de PIN/
-      biometría/login (Firebase), no de ningún módulo de negocio. Migrarlos a
-      addEventListener (docs/auditoria-tecnica.md #2) es lo que permitiría quitar
-      'unsafe-inline' y endurecer esto de verdad. Mientras tanto, esta CSP igual
+      Nota importante (actualizada, ver docs/auditoria-tecnica.md #1): los
+      atributos onclick="..." inline ya llegaron a 0 (bajaron de ~247 a medida
+      que se migraron los módulos a data-action/Events; los últimos 21 — todos
+      del gate de PIN/biometría/login de Firebase — se migraron esta sesión).
+      Aun así, 'unsafe-inline' en script-src sigue siendo necesario: hay
+      decenas de bloques <script> inline (sin nonce/hash) en este mismo
+      archivo, y 'unsafe-inline' en script-src también los cubre a ellos, no
+      solo a los atributos onclick — quitarlo hoy rompería toda la app.
+      Migrar esos bloques a nonce/hash o a archivos externos es un trabajo
+      distinto y mayor que el de los onclick, sin empezar todavía. Mientras
+      tanto, esta CSP igual
       aporta protección real: bloquea que un script inyectado cargue código o
       exfiltre datos hacia un dominio arbitrario, restringe qué puede insertarse
       como <object>/<embed>, y limita las conexiones de red solo a Firebase/Firestore.
@@ -701,6 +705,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 
 /* Select focus glow igual que inputs */
 .select-wrap:focus-within::after{opacity:.7;}
+
+/* Tarjetas Meta/CDTs del detalle de cajita: hover vía CSS en vez de onmouseenter/onmouseleave inline (docs/auditoria-tecnica.md #1) */
+#cajita-det-meta-card:hover{border-color:rgba(200,240,96,.5);}
+#cajita-det-cdt-card:hover{border-color:rgba(176,144,240,.5);}
+
+/* Botón eliminar categoría (config): hover vía CSS en vez de onmouseenter/onmouseleave inline (docs/auditoria-tecnica.md #1) */
+.cat-chip-del:hover{color:var(--red);}
 </style>
   </head>
   <body>
@@ -740,18 +751,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div class="pin-dot" id="pd3"></div>
         </div>
         <div class="pin-keypad">
-          <button class="pin-key" onclick="window._pinKey('1')">1</button>
-          <button class="pin-key" onclick="window._pinKey('2')">2</button>
-          <button class="pin-key" onclick="window._pinKey('3')">3</button>
-          <button class="pin-key" onclick="window._pinKey('4')">4</button>
-          <button class="pin-key" onclick="window._pinKey('5')">5</button>
-          <button class="pin-key" onclick="window._pinKey('6')">6</button>
-          <button class="pin-key" onclick="window._pinKey('7')">7</button>
-          <button class="pin-key" onclick="window._pinKey('8')">8</button>
-          <button class="pin-key" onclick="window._pinKey('9')">9</button>
+          <button class="pin-key" data-action="pin:key" data-args="[&quot;1&quot;]">1</button>
+          <button class="pin-key" data-action="pin:key" data-args="[&quot;2&quot;]">2</button>
+          <button class="pin-key" data-action="pin:key" data-args="[&quot;3&quot;]">3</button>
+          <button class="pin-key" data-action="pin:key" data-args="[&quot;4&quot;]">4</button>
+          <button class="pin-key" data-action="pin:key" data-args="[&quot;5&quot;]">5</button>
+          <button class="pin-key" data-action="pin:key" data-args="[&quot;6&quot;]">6</button>
+          <button class="pin-key" data-action="pin:key" data-args="[&quot;7&quot;]">7</button>
+          <button class="pin-key" data-action="pin:key" data-args="[&quot;8&quot;]">8</button>
+          <button class="pin-key" data-action="pin:key" data-args="[&quot;9&quot;]">9</button>
           <button class="pin-key pin-empty"></button>
-          <button class="pin-key" onclick="window._pinKey('0')">0</button>
-          <button class="pin-key pin-del" onclick="window._pinDel()">
+          <button class="pin-key" data-action="pin:key" data-args="[&quot;0&quot;]">0</button>
+          <button class="pin-key pin-del" data-action="pin:del">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2"
               stroke-linecap="round"><path
@@ -762,7 +773,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
         </div>
         <!-- Botón de huella / Face ID -->
         <div class="pin-bio-btn" id="pin-bio-btn"
-          onclick="window._pinBioTrigger()">
+          data-action="pin:bioTrigger">
           <div class="pin-bio-icon" id="pin-bio-icon">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none"
               stroke="#c8f060" stroke-width="1.6" stroke-linecap="round"
@@ -781,7 +792,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div class="pin-bio-label" id="pin-bio-label">Usar huella</div>
         </div>
         <div class="pin-forgot" id="pin-forgot-btn"
-          onclick="window._pinOlvide()" style="display:none;">¿Olvidaste el PIN?
+          data-action="pin:olvide" style="display:none;">¿Olvidaste el PIN?
           Cerrar sesión</div>
       </div>
       <!-- Mini-diálogo propio del PIN, dentro del pin-screen para no tener conflictos de z-index -->
@@ -816,7 +827,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       <div class="fb-title">Mis Finanzas</div>
       <div class="fb-sub">Tus finanzas personales, siempre sincronizadas entre
         el celular y el computador.</div>
-      <button class="fb-google-btn" onclick="window._fbSignIn()">
+      <button class="fb-google-btn" data-action="authgate:signIn">
         <svg width="20" height="20" viewBox="0 0 48 48">
           <path fill="#EA4335"
             d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
@@ -865,9 +876,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
             spellcheck="false" placeholder="ELIMINAR">
           <div id="del-account-actions">
             <button type="button" id="del-account-cancel"
-              onclick="_cerrarEliminarCuenta()">Cancelar</button>
+              data-action="authgate:cerrarEliminarCuenta">Cancelar</button>
             <button type="button" id="del-account-confirm"
-              onclick="window._fbDeleteAccount()" disabled>Eliminar
+              data-action="authgate:eliminarCuenta" disabled>Eliminar
               cuenta</button>
           </div>
         </div>
@@ -1557,9 +1568,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px;">
               <!-- Meta -->
               <div id="cajita-det-meta-card" data-action="cuentas:abrirSubMeta"
-                style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:border-color .2s;"
-                onmouseenter="this.style.borderColor='rgba(200,240,96,.5)'"
-                onmouseleave="this.style.borderColor='var(--border2)'">
+                style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:border-color .2s;">
                 <div
                   style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                   <div style="display:flex;align-items:center;gap:6px;">
@@ -1588,9 +1597,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               </div>
               <!-- CDTs -->
               <div id="cajita-det-cdt-card" data-action="cuentas:abrirSubCDTs"
-                style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:border-color .2s;"
-                onmouseenter="this.style.borderColor='rgba(176,144,240,.5)'"
-                onmouseleave="this.style.borderColor='var(--border2)'">
+                style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:border-color .2s;">
                 <div
                   style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
                   <div style="display:flex;align-items:center;gap:6px;">
@@ -6246,10 +6253,16 @@ function _injectErrorSpans() {
 <script>
 
 // Módulo Tarjetas de Crédito migrado a js/modules/tarjetas_credito.js —
-// ver docs/tarjetas_credito.md. A diferencia de Mesada/Encargos, no
-// tiene una dependencia real de orden de carga (no usa
-// crearSplitWidget ni diffRegistrarInstancia) — se carga acá para
-// mantener el orden cronológico de la migración, no por necesidad.
+// ver docs/tarjetas_credito.md. Cuando se migró (antes de que
+// abrirDetalleMov()/eliminarMovimiento() se extrajeran a
+// js/core/movimientos.js el 2026-07-26) no tenía dependencia real de
+// orden de carga. ESO YA NO ES CIERTO: tarjetas_credito.js referencia
+// abrirDetalleMov directo en su Events.registerAll('tarjetas', {...}),
+// pero carga antes que js/core/movimientos.js (línea de abajo) — sin el
+// wrapper agregado el 2026-08-03 en tarjetas_credito.js, esto tira
+// ReferenceError al cargar la app. No se reordenaron los <script> para
+// no arriesgar otra dependencia oculta; se resolvió con el mismo patrón
+// de wrapper ya usado con leerArchivoImport en configuracion.js.
 </script>
 <script src="js/modules/tarjetas_credito.js"></script>
 <script src="js/core/movimientos.js"></script>
@@ -7137,6 +7150,20 @@ document.addEventListener('focusin', function(e){
     try { await signOut(auth); } catch(_){}
     location.reload();
   };
+
+  // Registro bajo Events (docs/auditoria-tecnica.md #1): estas tres funciones
+  // son núcleo de sesión (compartidas más allá de una sola pantalla), pero los
+  // botones que las disparan sí son exclusivos de esta pantalla de login/
+  // eliminar-cuenta — mismo criterio ya usado con config:signOut, que también
+  // envuelve una función de auth compartida bajo el namespace del botón que
+  // la llama, no de dónde vive la función.
+  if(window.Events && typeof Events.registerAll === 'function') {
+    Events.registerAll('authgate', {
+      signIn: window._fbSignIn,
+      cerrarEliminarCuenta: window._cerrarEliminarCuenta,
+      eliminarCuenta: window._fbDeleteAccount,
+    });
+  }
 </script>
     <!-- ===== MEJORAS: JS adicional ===== -->
     <style>
@@ -7687,6 +7714,24 @@ if ('serviceWorker' in navigator) {
     if(ok){ _delCred(); if(window.toast) toast('Huella desactivada','info'); _renderBioBtn(); }
   };
 
+  // Registro bajo Events (docs/auditoria-tecnica.md #1). window._pinKey recibe
+  // el dígito como argumento (data-args="[...]"" en el teclado); el resto no
+  // recibe argumentos. _pinSetNew/_pinDisable/_bioSetup/_bioDisable se llaman
+  // también desde el HTML generado dinámicamente en _renderBtn()/_renderBioBtn()
+  // más abajo en este mismo archivo.
+  if(window.Events && typeof Events.registerAll === 'function') {
+    Events.registerAll('pin', {
+      key: window._pinKey,
+      del: window._pinDel,
+      bioTrigger: window._pinBioTrigger,
+      olvide: window._pinOlvide,
+      setNew: window._pinSetNew,
+      disable: window._pinDisable,
+      bioSetup: window._bioSetup,
+      bioDisable: window._bioDisable,
+    });
+  }
+
   window._pinRenderBtn = _renderBtn;
   function _renderBtn() {
     const c = document.getElementById('pin-config-container');
@@ -7694,10 +7739,10 @@ if ('serviceWorker' in navigator) {
     const has = !!_getPin();
     c.innerHTML = has
       ? `<div style="display:flex;gap:8px;">
-           <button class="btn btn-ghost btn-sm" onclick="window._pinSetNew()" style="flex:1;">Cambiar PIN</button>
-           <button class="btn btn-ghost btn-sm" onclick="window._pinDisable()" style="flex:1;color:var(--red);border-color:rgba(240,104,104,.4);">Quitar PIN</button>
+           <button class="btn btn-ghost btn-sm" data-action="pin:setNew" style="flex:1;">Cambiar PIN</button>
+           <button class="btn btn-ghost btn-sm" data-action="pin:disable" style="flex:1;color:var(--red);border-color:rgba(240,104,104,.4);">Quitar PIN</button>
          </div>`
-      : `<button class="btn btn-primary btn-sm" onclick="window._pinSetNew()" style="width:100%;">
+      : `<button class="btn btn-primary btn-sm" data-action="pin:setNew" style="width:100%;">
            Activar PIN de acceso
          </button>`;
     _renderBioBtn();
@@ -7716,8 +7761,8 @@ if ('serviceWorker' in navigator) {
     const isIOS   = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const label   = isIOS ? 'Face ID / Huella' : 'Huella dactilar';
     c.innerHTML = enabled
-      ? `<button class="btn btn-ghost btn-sm" onclick="window._bioDisable()" style="width:100%;color:var(--red);border-color:rgba(240,104,104,.4);">Desactivar ${label}</button>`
-      : `<button class="btn btn-primary btn-sm" onclick="window._bioSetup()" style="width:100%;">Activar ${label}</button>`;
+      ? `<button class="btn btn-ghost btn-sm" data-action="pin:bioDisable" style="width:100%;color:var(--red);border-color:rgba(240,104,104,.4);">Desactivar ${label}</button>`
+      : `<button class="btn btn-primary btn-sm" data-action="pin:bioSetup" style="width:100%;">Activar ${label}</button>`;
   }
 
   // Hook en refresh para re-renderizar botones cuando se abre Config

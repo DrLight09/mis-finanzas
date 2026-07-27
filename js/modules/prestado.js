@@ -149,6 +149,23 @@ function selColor(c) {
   });
 }
 
+// Wiring del color picker (sheet "Nueva persona") — migrado desde
+// index.html (_initEventListeners). Se restauró acá tras una corrección
+// (ver CHANGELOG.md/auditoria-tecnica.md, 2026-07-27) porque selColor()
+// sí existe en este archivo — pero con `deudores-personas.js` cargado
+// (más abajo en index.html), este código es en la práctica CÓDIGO
+// MUERTO: ese módulo sobrescribe `openSheet` e intercepta
+// id==='nueva-persona' con un `return` antes de mostrar este sheet,
+// redirigiendo a `abrirSelPersona(_onSelPersonaMeDeben)` — el selector
+// genérico de Personas. El sheet #sheet-nueva-persona, este picker,
+// addDeudor() e initColorPicker() nunca se ejecutan en la app tal como
+// está armada hoy. Se deja sin borrar, mismo criterio que el resto del
+// código muerto ya documentado en este proyecto (toggleCDT/toggleCajita
+// en Cuentas, etc.) — no se borra de paso, se anota.
+document.querySelectorAll('[data-pick-color]').forEach(el => {
+  el.addEventListener('click', () => selColor(el.dataset.pickColor));
+});
+
 function initColorPicker() {
   npColorSel = '#60b0f0';
   document.querySelectorAll('.avatar-color-opt').forEach((el, i) => {
@@ -2166,8 +2183,37 @@ Events.registerAll('prestado', {
 /* Único listener que no es de click (Events solo despacha clicks): igual
    que antes, sigue como addEventListener directo — nunca fue un atributo
    inline, así que no aportaba nada al conteo de onclick pendientes ni a
-   la CSP. Se preserva tal cual estaba en _initEventListeners. */
+   la CSP. Se preserva tal cual estaba en _initEventListeners.
+   Se le agregó _onMovMontoInput (antes un segundo listener aparte en
+   index.html, sobre el mismo mov_monto) para no dejar dos addEventListener
+   separados sobre el mismo campo. */
 {
   const movMonto = document.getElementById('mov_monto');
-  if (movMonto) movMonto.addEventListener('input', () => { if (_prestSplitMode) _updatePrestSplitResumen(); });
+  if (movMonto) movMonto.addEventListener('input', () => {
+    if (_prestSplitMode) _updatePrestSplitResumen();
+    _onMovMontoInput();
+  });
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   WIRING MIGRADO DESDE index.html (_initEventListeners) — resto de
+   inputs/selects con oninput/onchange del sheet "Registrar
+   movimiento" (préstamo/abono/pago completo, sección "Extra") y el
+   preview del motor Diferencial de "Préstamo con TC" (instancia
+   'prtc'). mov_fuente también es de este sheet, pese al nombre
+   parecido a otros selectores _fuente ya migrados a Cuentas/Gastos.
+   ═══════════════════════════════════════════════════════════════ */
+[
+  ['mov_desde_encargo', 'change', toggleDesdeEncargo],
+  ['mov_enc_sel', 'change', onChangeMov_enc_sel],
+  ['mov_enc_cuenta', 'change', onChangeMov_enc_cuenta],
+  ['mov_tiene_extra', 'change', toggleExtraSection],
+  ['mov_extra_monto', 'input', extResumenPartes],
+  ['prtc_dif_real', 'input', _prtcDifResumen],
+].forEach(([elId, evt, fn]) => {
+  const el = document.getElementById(elId);
+  if (el) el.addEventListener(evt, fn);
+});
+
+const movFuente = document.getElementById('mov_fuente');
+if (movFuente) movFuente.addEventListener('change', () => mostrarAlertaFuente('mov'));

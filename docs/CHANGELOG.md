@@ -119,6 +119,12 @@ Mesada tuvo en algún momento un toggle "Es saldo inicial", copiado del mismo pa
 
 Se descubrió además que el toggle nunca llegó a estar cableado en el sheet de registro (no existía ningún checkbox que lo activara) — todo el código que lo leía corría siempre por la rama `false`. Se quitó todo por completo (checkbox, función, rama de guardado, badge, exclusiones en estadísticas, CSS). También se corrió una migración una única vez (ya retirada del código) que convirtió los meses existentes marcados así a registros normales.
 
+### 🔧 Cambio — Wiring propio movido de `index.html` a `mesada.js` (arquitectura)
+
+*(2026-07-26)*
+
+Los 12 `addEventListener` de los controles de esta pantalla (`btn-anio-prev/next`, `btn-confirmar-mesada`, `btn-confirmar-mesada-pend`, `mpDestino/mpMonto`, `mpDebeWrap/mpQuedaDebiendo`, `mppDestino/mppMonto`, `mpSplitToggle`, `btn-add-split-row`) vivían en `_initEventListeners()` (`index.html`), mezclados con los de otros ~15 dominios. No eran `onclick` inline (sin problema de CSP) — se movieron por organización, cada listener a su módulo dueño. Sin cambios de comportamiento; verificado con jsdom disparando cada evento contra el archivo real. Ver `auditoria-tecnica.md`, punto 3.
+
 ---
 
 ## Spotify
@@ -158,6 +164,12 @@ Se descubrió además que el toggle nunca llegó a estar cableado en el sheet de
 - Corregido: el badge de "X períodos adelantados" seguía mostrándose aunque esos períodos ya hubieran vencido. Ahora depende de la misma vigencia que el estado "Pagó".
 - Corregido: renombrar una persona desde la pantalla "Personas" no sincronizaba el campo crudo de los integrantes de Spotify vinculados a ella (sí lo hacía para Deudores, Encargos y Mis deudas).
 - Agregada la misma validación de personas duplicadas al vincular por primera vez una persona desde "Editar" (antes solo existía al agregar un integrante nuevo).
+
+### 🔧 Cambio — Wiring propio movido de `index.html` a `spotify.js` (arquitectura)
+
+*(2026-07-26)*
+
+Los 8 `addEventListener` de los controles de esta pantalla (`btn-add-spotify-persona`, `btn-pagar-spotify`, `btn-guardar-spotify`, `btn-confirmar-sp-destino`, `spMesesSelect`, `btn-confirmar-pagar-spotify`, `spPagarFuente/spPagarMonto`) vivían en `_initEventListeners()` (`index.html`), mezclados con los de otros ~15 dominios. No eran `onclick` inline (sin problema de CSP) — se movieron por organización, cada listener a su módulo dueño. Sin cambios de comportamiento; verificado con jsdom disparando cada evento contra el archivo real (incluida la validación de "Ingresa el nombre"/"Ingresa el monto a pagar" al confirmar con campos vacíos). Ver `auditoria-tecnica.md`, punto 3.
 
 ---
 

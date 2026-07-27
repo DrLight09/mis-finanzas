@@ -80,12 +80,25 @@ function _renderPrestSplit(){
   const opts = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('') + '<option value="ganancia"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>';
   el.innerHTML = _prestSplitRows.map((r,i)=>`
     <div class="prest-split-row">
-      <div class="select-wrap" style="flex:1;"><select onchange="_prestSplitRows[${i}].fuente=this.value;_updatePrestSplitResumen()" style="font-size:13px;">${opts.replace(`value="${r.fuente}"`,`value="${r.fuente}" selected`)}</select></div>
-      <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="$0" class="money-input" oninput="_prestSplitRows[${i}].monto=parseMoney(this.value)||0;_updatePrestSplitResumen()" style="width:105px;">
+      <div class="select-wrap" style="flex:1;"><select class="_prest-split-fuente" data-i="${i}" style="font-size:13px;">${opts.replace(`value="${r.fuente}"`,`value="${r.fuente}" selected`)}</select></div>
+      <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="$0" class="money-input _prest-split-monto" data-i="${i}" style="width:105px;">
       <button class="prest-split-del" ${Events.attr('prestado:prestSplitDelRow', i)} ${_prestSplitRows.length<=1?'style="visibility:hidden;"':''}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>`).join('');
+  // onchange/oninput inline reemplazados por addEventListener delegado — docs/auditoria-tecnica.md #1
+  el.querySelectorAll('._prest-split-fuente').forEach(sel => {
+    sel.addEventListener('change', () => {
+      _prestSplitRows[+sel.dataset.i].fuente = sel.value;
+      _updatePrestSplitResumen();
+    });
+  });
+  el.querySelectorAll('._prest-split-monto').forEach(inp => {
+    inp.addEventListener('input', () => {
+      _prestSplitRows[+inp.dataset.i].monto = parseMoney(inp.value)||0;
+      _updatePrestSplitResumen();
+    });
+  });
   _updatePrestSplitResumen();
 }
 
@@ -1298,17 +1311,23 @@ function abonoRenderSplit() {
   cont.innerHTML = _abonoSplitRows.map((r, i) => `
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
       <div class="select-wrap" style="flex:1;">
-        <select onchange="abonoSplitFuente(${i},this.value)" style="padding:9px 30px 9px 10px;font-size:13px;">
+        <select class="_abono-split-fuente" data-i="${i}" style="padding:9px 30px 9px 10px;font-size:13px;">
           <option value="">Sin especificar</option>
           ${fuentes.map(f=>`<option value="${f.val}" ${r.fuente===f.val?'selected':''}>${f.label}</option>`).join('')}
         </select>
       </div>
       <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="0,00"
-        class="money-input" style="width:110px;padding:9px 10px;font-size:13px;"
-        oninput="abonoSplitMonto(${i},this.value)">
+        class="money-input _abono-split-monto" data-i="${i}" style="width:110px;padding:9px 10px;font-size:13px;">
       <button type="button" ${Events.attr('prestado:abonoSplitDel', i)}
         style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:28px;font-size:18px;line-height:1;">×</button>
     </div>`).join('');
+  // onchange/oninput inline reemplazados por addEventListener delegado — docs/auditoria-tecnica.md #1
+  cont.querySelectorAll('._abono-split-fuente').forEach(sel => {
+    sel.addEventListener('change', () => abonoSplitFuente(+sel.dataset.i, sel.value));
+  });
+  cont.querySelectorAll('._abono-split-monto').forEach(inp => {
+    inp.addEventListener('input', () => abonoSplitMonto(+inp.dataset.i, inp.value));
+  });
   abonoSplitResumen();
 }
 
@@ -1430,18 +1449,18 @@ function extRenderPartes() {
     const tipoInfo = _extTipos[p.tipo] || _extTipos.guardar;
     const extraDetails = p.tipo === 'guardar' ? `
       <div class="select-wrap" style="margin-top:7px;">
-        <select onchange="extSetCuenta(${i},this.value)" data-stop-click="true" style="font-size:12px;padding:7px 26px 7px 9px;">
+        <select class="_ext-set-cuenta" data-i="${i}" data-stop-click="true" style="font-size:12px;padding:7px 26px 7px 9px;">
           <option value="">¿A cuál cuenta?</option>
           ${fuentes.map(f=>`<option value="${f.val}" ${p.cuenta===f.val?'selected':''}>${f.label}</option>`).join('')}
         </select>
       </div>` :
     p.tipo === 'gastar' ? `
       <input type="text" value="${escHtml(p.desc||'')}" placeholder="¿En qué? (opcional)" data-stop-click="true"
-        oninput="extSetDesc(${i},this.value)"
+        class="_ext-set-desc" data-i="${i}"
         style="margin-top:7px;width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:inherit;">` :
     p.tipo === 'regalar' ? `
       <input type="text" value="${p.quien||''}" placeholder="¿A quién? (opcional)" data-stop-click="true"
-        oninput="extSetQuien(${i},this.value)"
+        class="_ext-set-quien" data-i="${i}"
         style="margin-top:7px;width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:inherit;">` : '';
 
     return `<div style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);padding:10px 11px;position:relative;">
@@ -1449,7 +1468,7 @@ function extRenderPartes() {
       <div style="display:flex;align-items:center;gap:7px;">
         <!-- Selector de tipo -->
         <div style="position:relative;flex:1;">
-          <select onchange="extSetTipo(${i},this.value)" data-stop-click="true"
+          <select class="_ext-set-tipo" data-i="${i}" data-stop-click="true"
             style="width:100%;appearance:none;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 28px 7px 32px;font-size:12px;font-weight:600;color:${tipoInfo.color};font-family:inherit;cursor:pointer;">
             ${Object.entries(_extTipos).map(([k,v])=>`<option value="${k}" ${p.tipo===k?'selected':''}>${v.label}</option>`).join('')}
           </select>
@@ -1458,8 +1477,7 @@ function extRenderPartes() {
         </div>
         <!-- Monto -->
         <input type="text" inputmode="decimal" value="${p.monto?fmtInput(p.monto):''}" placeholder="0,00"
-          class="money-input" data-stop-click="true"
-          oninput="extSetMonto(${i},this.value)"
+          class="money-input _ext-set-monto" data-i="${i}" data-stop-click="true"
           style="width:100px;padding:7px 9px;font-size:13px;flex-shrink:0;">
         <!-- Borrar -->
         <button type="button" ${Events.attr('prestado:extDelParte', i)} data-stop-propagation="true"
@@ -1475,6 +1493,12 @@ function extRenderPartes() {
   // el registry de Events; alcanza con un addEventListener directo acá mismo,
   // que ya cumple igual el objetivo de la CSP (no es un atributo inline).
   cont.querySelectorAll('[data-stop-click]').forEach(el => el.addEventListener('click', e => e.stopPropagation()));
+  // onchange/oninput inline reemplazados por addEventListener delegado — docs/auditoria-tecnica.md #1
+  cont.querySelectorAll('._ext-set-cuenta').forEach(el => el.addEventListener('change', () => extSetCuenta(+el.dataset.i, el.value)));
+  cont.querySelectorAll('._ext-set-desc').forEach(el => el.addEventListener('input', () => extSetDesc(+el.dataset.i, el.value)));
+  cont.querySelectorAll('._ext-set-quien').forEach(el => el.addEventListener('input', () => extSetQuien(+el.dataset.i, el.value)));
+  cont.querySelectorAll('._ext-set-tipo').forEach(el => el.addEventListener('change', () => extSetTipo(+el.dataset.i, el.value)));
+  cont.querySelectorAll('._ext-set-monto').forEach(el => el.addEventListener('input', () => extSetMonto(+el.dataset.i, el.value)));
 }
 
 function extResumenPartes() {

@@ -45,7 +45,7 @@ function renderCatsConfig(){
     const esDefault=defaults.includes(c);
     return`<span class="cat-chip" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px 4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;margin:0 4px 6px 0;color:var(--text2);">
       ${escHtml(c)}
-      ${!esDefault?`<button type="button" class="cat-chip-del" title="Eliminar" ${Events.attr('config:eliminarCat',tipo,c)} style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0 0 0 2px;line-height:1;display:flex;align-items:center;" onmouseenter="this.style.color='var(--red)'" onmouseleave="this.style.color='var(--text3)'">
+      ${!esDefault?`<button type="button" class="cat-chip-del" title="Eliminar" ${Events.attr('config:eliminarCat',tipo,c)} style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0 0 0 2px;line-height:1;display:flex;align-items:center;">
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>`:''}
     </span>`;

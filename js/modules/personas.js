@@ -91,7 +91,7 @@ function _inyectarPersonaSheets() {
       <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Elige una persona existente o crea una nueva.</p>
       <div id="sel-persona-buscar-wrap" class="ig" style="position:relative;">
         <input type="text" id="sel-persona-buscar" placeholder="Buscar persona..." autocomplete="off"
-          style="padding-left:36px;" oninput="_selPersonaFiltrar()">
+          style="padding-left:36px;">
         <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </div>
       <div id="sel-persona-lista" style="max-height:300px;overflow-y:auto;"></div>
@@ -102,6 +102,9 @@ function _inyectarPersonaSheets() {
       <button type="button" class="btn btn-ghost" data-close-sheet="sel-persona" style="margin-top:6px;">Cancelar</button>
     </div>`;
   document.body.appendChild(sheetSel);
+  // oninput inline reemplazado por addEventListener — docs/auditoria-tecnica.md #1
+  const _buscarEl = document.getElementById('sel-persona-buscar');
+  if (_buscarEl) _buscarEl.addEventListener('input', _selPersonaFiltrar);
 
   // Sheet: crear persona global (desde cualquier módulo)
   const sheetCreate = document.createElement('div');
@@ -223,7 +226,7 @@ function _renderListaPersonas() {
     }
     const subTexto = partes.length ? partes.join(' · ') : '<span style="color:var(--text3);">Sin actividad</span>';
 
-    html += `<div ${Events.attr('personas:abrirPerfil', p.id)} style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='${color}44'" onmouseleave="this.style.borderColor='var(--border)'">
+    html += `<div ${Events.attr('personas:abrirPerfil', p.id)} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
       <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${escHtml(iniciales(p.nombre))}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:14px;font-weight:600;">${escHtml(p.nombre)}</div>
@@ -242,7 +245,7 @@ function _renderListaPersonas() {
       : saldo < 0
         ? `<span style="color:var(--red);">Saldo a su favor</span>`
         : `<span style="color:var(--accent);">Al día</span>`;
-    html += `<div ${Events.attr('prestado:abrirPerfilDeudor', d.id)} style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='${color}44'" onmouseleave="this.style.borderColor='var(--border)'">
+    html += `<div ${Events.attr('prestado:abrirPerfilDeudor', d.id)} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
       <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${escHtml(d.nombre.substring(0,2).toUpperCase())}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:14px;font-weight:600;">${escHtml(d.nombre)}</div>
@@ -259,7 +262,7 @@ function _renderListaPersonas() {
     const sub = saldo > 0
       ? `<span style="color:var(--red);">Le debes ${fmt(saldo)}</span>`
       : `<span style="color:var(--accent);">Saldado</span>`;
-    html += `<div ${Events.attr('prestado-personas:abrirPerfilMiDeuda', d.id)} style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;" onmouseenter="this.style.borderColor='${color}44'" onmouseleave="this.style.borderColor='var(--border)'">
+    html += `<div ${Events.attr('prestado-personas:abrirPerfilMiDeuda', d.id)} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
       <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${escHtml(d.nombre.substring(0,2).toUpperCase())}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-size:14px;font-weight:600;">${escHtml(d.nombre)}</div>
@@ -270,6 +273,14 @@ function _renderListaPersonas() {
   });
 
   body.innerHTML = html;
+
+  // Hover effect (antes onmouseenter/onmouseleave inline — docs/auditoria-tecnica.md #1).
+  // No puede ser un :hover en CSS porque el color varía por persona/deudor.
+  body.querySelectorAll('._persona-row-hover').forEach(row => {
+    const c = row.dataset.hoverColor;
+    row.addEventListener('mouseenter', () => { row.style.borderColor = c + '44'; });
+    row.addEventListener('mouseleave', () => { row.style.borderColor = 'var(--border)'; });
+  });
 }
 
 // Actualizar el sub-texto del ítem Personas (ahora en Configuración)

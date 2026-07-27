@@ -648,7 +648,7 @@ El chequeo de "¿es un movimiento secundario generado por otra sección?" (`movO
 
 *(2026-07-26)*
 
-Los 31 `addEventListener` (más un `.onclick`) de los controles de esta pantalla — cuenta personalizada, CDT, meta de ahorro en cajita, agregar/restar dinero, editar apertura, transferir, selector de cuentas, Nequi/Efectivo, Nu (entró/salió plata), agregar cajita, menú combinado de agregar dinero y tasa EA de Nu — vivían en `_initEventListeners()` (`index.html`), mezclados con los de Encargos/TC/Préstamos (el único grupo que queda ahí). No eran `onclick` inline (sin problema de CSP) — se movieron por organización, cada listener a su módulo dueño, mismo patrón ya aplicado a Mesada, Spotify y Gastos. Todas las funciones destino ya vivían en `cuentas.js` desde su migración del 2026-07-22; esta sesión solo movió el wiring.
+Los 31 `addEventListener` (más un `.onclick`) de los controles de esta pantalla — cuenta personalizada, CDT, meta de ahorro en cajita, agregar/restar dinero, editar apertura, transferir, selector de cuentas, Nequi/Efectivo, Nu (entró/salió plata), agregar cajita, menú combinado de agregar dinero y tasa EA de Nu — vivían en `_initEventListeners()` (`index.html`), mezclados con los de Encargos/TC/Préstamos (el único grupo que aún queda por redistribuir; ver abajo los casos que se quedan en `index.html` a propósito, no por faltar turno). No eran `onclick` inline (sin problema de CSP) — se movieron por organización, cada listener a su módulo dueño, mismo patrón ya aplicado a Mesada, Spotify y Gastos. Todas las funciones destino ya vivían en `cuentas.js` desde su migración del 2026-07-22; esta sesión solo movió el wiring.
 
 **Dos casos que a primera vista parecían de Cuentas se dejaron en `index.html` a propósito:**
 - `mov_fuente` (sheet "Registrar movimiento") es de **Préstamos**, pese al nombre parecido a otros selectores de fuente ya migrados.
@@ -658,5 +658,58 @@ Las cards del FAB "+" que abren flujos de Cuentas (`menu-agregar-dinero`, `menu-
 
 **Verificado:** sintaxis de los 19 bloques `<script>` inline de `index.html` (concatenados) y de `cuentas.js`, con `node --check`, sin errores. Se confirmó que ninguna de las 31 variables movidas a nivel superior de `cuentas.js` colisionara con una declaración `const`/`let` ya existente en otro punto del documento — todas vivían antes exclusivamente dentro del scope de función de `_initEventListeners()`.
 
-`_initEventListeners()` en `index.html`: ~200 → 141 líneas. Con esto van 58 de ~80 listeners originales redistribuidos; solo queda Encargos/TC/Préstamos para cerrar la función del todo. Ver `auditoria-tecnica.md`, punto 3.
+`_initEventListeners()` en `index.html`: ~200 → 141 líneas. Con esto van 58 de ~80 listeners originales redistribuidos; queda por redistribuir Encargos/TC/Préstamos. Esa sesión no dejará la función vacía: seguirán ahí, a propósito, el wiring núcleo genérico (nav, dialog, close-sheet delegado, `data-save-refresh`), las cards del FAB "+" de Gastos/Cuentas, el tab-bar de Gastos y el color picker de avatares de Personas (con el bug de `selColor()` no definida). Ver `auditoria-tecnica.md`, punto 3.
+
+---
+
+## Personas
+
+### ⚠️ Corrección — El listener de `selColor()` no estaba roto: se había borrado por error
+
+*(2026-07-27, misma fecha, sesión posterior)*
+
+La nota anterior de esta misma fecha decía que `selColor()` "no está definida en ningún archivo de la app" y eliminaba el listener de `[data-pick-color]` en `index.html` dándolo por código muerto. Era una conclusión apurada: no se había revisado `prestado.js` todavía en ese momento (recién se subió después). `selColor()` sí existe — en `prestado.js`, junto a `npColorSel`/`initColorPicker()`/`.avatar-color-opt` — y `addDeudor()` la usa para guardar el color del nuevo deudor. El sheet "Nueva persona" es en realidad el alta de **Deudores** (Préstamos), no del sistema genérico de Personas; el nombre del sheet confunde.
+
+- Se restauró el listener y se movió a `prestado.js` (junto a `selColor`), en vez de dejarlo borrado o devuelto a `index.html`.
+- En el momento de esta nota se pensó que `btn-crear-deudor` sin wiring era "un hueco real" pendiente de `deudores-personas.js` — ver la nota siguiente, que lo cierra con el archivo en mano.
+
+---
+
+### 🔎 Nota — `deudores-personas.js` revela que todo el sheet es código muerto (no solo `btn-crear-deudor`)
+
+*(2026-07-27, misma fecha, tercera sesión)*
+
+Con `deudores-personas.js` disponible se cierra el hallazgo anterior, pero con un resultado distinto al esperado: no era solo que `btn-crear-deudor` le faltara wiring — **el sheet `#sheet-nueva-persona` completo nunca se muestra**. `deudores-personas.js` sobrescribe `openSheet()` e intercepta `id === 'nueva-persona'` con un `return` antes de invocar el original, redirigiendo en su lugar a `abrirSelPersona(_onSelPersonaMeDeben)` — el selector genérico de Personas (elegir persona existente o crear una nueva desde ahí). El botón que abre este flujo (`btn-nueva-persona`, `data-action="prestado:abrirSheetNuevaPersona"`) sigue disparando `openSheet('nueva-persona')`, pero el wrapper de `deudores-personas.js` la intercepta antes de que el sheet real se pinte.
+
+- **En consecuencia, son código muerto en la práctica** (nunca se ejecutan con la app armada tal como está hoy): el sheet `#sheet-nueva-persona` en sí, su color picker (`.avatar-color-opt`/`[data-pick-color]`), `selColor()`, `npColorSel`, `initColorPicker()` y `addDeudor()` — nada de esto tiene ya una vía de ejecución real, con o sin el wiring del listener restaurado en la nota anterior.
+- **No se borró nada.** Se dejó el wiring restaurado y las funciones tal cual, con un comentario nuevo en `prestado.js` explicando por qué es código muerto y por qué no se toca — mismo criterio ya aplicado en el proyecto con `toggleCDT()`/`toggleCajita()` (Cuentas) y el bloque deshabilitado con `if(false)` de Alcancía: se documenta, no se elimina de paso.
+- **Se descarta la lectura anterior** ("`btn-crear-deudor` es un hueco real que falta wiring"): no es que falte un wiring puntual, es que toda la ruta quedó reemplazada por la integración con Personas y nadie retiró el código viejo. Distinto tipo de hallazgo al que se había anotado.
+
+---
+
+## Núcleo compartido — cierre de `_initEventListeners()`
+
+### 🔧 Cambio — Redistribución final: Encargos y Préstamos (arquitectura)
+
+*(2026-07-27)*
+
+Último grupo pendiente de `_initEventListeners()` (`index.html`): los controles con `oninput`/`onchange` de los sheets "Nuevo movimiento"/"Compra con TC" (Encargos), "Registrar movimiento" (Préstamos) y los 4 previews del motor Diferencial.
+
+**Hallazgo antes de mover nada:** el grupo nunca fue "Encargos/TC/Préstamos" como decían las notas anteriores de este documento y de `auditoria-tecnica.md`. Se revisó `tarjetas_credito.js` completo y no referencia ni un solo `ctc_*`, `movenc_*` ni `mov_*` — los campos `ctc_monto`/`ctc_cuenta_enc`/`ctc_tarjeta`/`ctc_destino` son del sheet "Compra con TC" de **Encargos** (gastar plata de un encargo cargándola a una tarjeta), un flujo de Encargos, no de Tarjetas de Crédito. El grupo real era **Encargos + Préstamos**; Tarjetas de Crédito no tenía nada que redistribuir acá y no se tocó.
+
+**Movido a `js/modules/encargos.js`** (nuevo bloque antes de `Events.registerAll('encargos', ...)`):
+- `movenc_monto` (input) → `_movEncSplitPreview`
+- `movenc_mia_cuenta_sale`/`movenc_mia_cuenta_entra` (change) → `_movEncMiaPreview`
+- `ctc_monto` (input), `ctc_cuenta_enc`/`ctc_tarjeta`/`ctc_destino` (change) → `_ctcActualizarPreview`
+- Previews de Diferencial: `movenc_dif_real` → `_difResumen`, `ctc_dif_real` → `_ctcDifResumen`, `usar_parte_dif_real` → `_usarParteDifResumen`
+
+**Movido a `js/modules/prestado.js`** (extendiendo el bloque de listener directo ya existente, más un bloque nuevo justo después):
+- `mov_desde_encargo`, `mov_enc_sel`, `mov_enc_cuenta`, `mov_tiene_extra` (change), `mov_extra_monto` (input)
+- `prtc_dif_real` (input) → `_prtcDifResumen`
+- `mov_fuente` (change) → `mostrarAlertaFuente('mov')`
+- `_onMovMontoInput` se fusionó dentro del listener de `mov_monto` que `prestado.js` ya tenía (`_updatePrestSplitResumen`), en vez de registrar un segundo `addEventListener` separado sobre el mismo campo.
+
+**Verificado:** `node --check` sin errores en `encargos.js`, `prestado.js`, `tarjetas_credito.js` (sin cambios) y en los bloques `<script>` inline de `index.html` concatenados. Todas las funciones movidas son declaraciones `function` (hoisted) dentro del mismo archivo destino donde ya vivían — sin dependencia de orden de carga entre módulos, mismo criterio que Cuentas.
+
+`_initEventListeners()` en `index.html`: 141 → **~118 líneas**. Con esto se cierra del todo la redistribución activa. Lo que queda en la función, a propósito y sin plan de moverse: wiring núcleo genérico compartido por las 13 pantallas (nav, dialog, close-sheet delegado, `data-save-refresh`), las cards del FAB "+" de Gastos/Cuentas (comparten menú) y el tab-bar de Gastos (wiring genérico pero enganchado a `switchGastoTab()`, de `gastos.js`). El color picker de avatares de Personas ya no vive acá — ver corrección arriba. Ver `auditoria-tecnica.md`, punto 3, para el detalle completo.
 

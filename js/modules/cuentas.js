@@ -2670,6 +2670,108 @@ Events.registerAll('cuentas', {
   openSheet, // reutiliza el openSheet() del núcleo — solo se registra el nombre bajo 'cuentas' porque el onclick que lo usaba vivía en el HTML de esta sección (botón "Chequear saldo real")
 });
 
+/* ───────────────────────────────────────────────────────────────
+   WIRING redistribuido desde _initEventListeners() (index.html) —
+   grupo "Cuentas", el más grande de los ~80 listeners originales
+   (ver auditoria-tecnica.md, nota del 2026-07-26). Mismo criterio
+   que Mesada/Spotify/Gastos: código de nivel superior, sin envolver
+   en DOMContentLoaded, porque este script carga con <script src>
+   después de que todo el HTML estático de screen-cuentas y sus
+   sheets ya existe en el documento (sin dependencia real de orden
+   de carga — se verificó línea por línea, igual que en las
+   redistribuciones anteriores).
+   ─────────────────────────────────────────────────────────────── */
+
+// --- Cuentas personalizadas ---
+const btnAgregarCuentaCustom = document.getElementById('btn-agregar-cuenta-custom');
+if (btnAgregarCuentaCustom) btnAgregarCuentaCustom.addEventListener('click', abrirNuevaCuenta);
+const btnCrearCuentaCustom = document.getElementById('btn-crear-cuenta-custom');
+if (btnCrearCuentaCustom) btnCrearCuentaCustom.onclick = crearCuentaCustom;
+
+// --- CDT ---
+const btnCDTConf = document.getElementById('btn-confirmar-crear-cdt');
+if (btnCDTConf) btnCDTConf.addEventListener('click', confirmarCrearCDT);
+const btnCobrarConf = document.getElementById('btn-confirmar-cobrar-cdt');
+if (btnCobrarConf) btnCobrarConf.addEventListener('click', confirmarCobrarCDT);
+
+// --- Meta de ahorro en cajita ---
+const btnGuardarMeta = document.getElementById('btn-guardar-meta');
+if (btnGuardarMeta) btnGuardarMeta.addEventListener('click', guardarMetaCajita);
+const btnQuitarMeta = document.getElementById('btn-quitar-meta');
+if (btnQuitarMeta) btnQuitarMeta.addEventListener('click', quitarMetaCajita);
+const btnAddMetaAporte = document.getElementById('btn-add-meta-aporte');
+if (btnAddMetaAporte) btnAddMetaAporte.addEventListener('click', () => { _metaAportesTemp.push({desc:'',monto:0}); _renderMetaAportes(); });
+// Preview en vivo al cambiar monto objetivo / fechas en el sheet de meta
+['meta_objetivo','meta_inicio','meta_fin'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', _updateMetaCuotaPreview);
+});
+
+// --- Agregar / restar dinero, editar apertura, transferir (confirmación) ---
+const btnAdConf = document.getElementById('btn-confirmar-agregar-dinero');
+if (btnAdConf) btnAdConf.addEventListener('click', confirmarAgregarDinero);
+const btnAdMenuConf = document.getElementById('btn-confirmar-agregar-dinero-menu');
+if (btnAdMenuConf) btnAdMenuConf.addEventListener('click', confirmarAgregarDineroMenu);
+const btnRdConf = document.getElementById('btn-confirmar-restar');
+if (btnRdConf) btnRdConf.addEventListener('click', confirmarRestarDinero);
+const btnEaConf = document.getElementById('btn-confirmar-editar-apertura');
+if (btnEaConf) btnEaConf.addEventListener('click', confirmarEditarApertura);
+const btnTrConf = document.getElementById('btn-confirmar-transferir');
+if (btnTrConf) btnTrConf.addEventListener('click', confirmarTransferir);
+const btnSwitchTr = document.getElementById('btn-switch-to-transferir');
+if (btnSwitchTr) btnSwitchTr.addEventListener('click', () => { closeSheet('agregar-dinero-menu'); abrirTransferir(); });
+
+// --- Selector de cuentas (tarjetas de screen-cuentas + botón "volver") ---
+document.querySelectorAll('[data-cuenta]').forEach(card => {
+  card.addEventListener('click', () => abrirCuenta(card.dataset.cuenta));
+});
+document.querySelectorAll('.btn-volver-selector').forEach(btn => {
+  btn.addEventListener('click', volverSelector);
+});
+
+// --- Nequi / Efectivo: agregar y restar dinero ---
+const btnAgrNequiDet = document.getElementById('btn-agregar-nequi-det');
+if (btnAgrNequiDet) btnAgrNequiDet.addEventListener('click', () => abrirAgregarDinero('nequi'));
+const btnRestNequiDet = document.getElementById('btn-restar-nequi-det');
+if (btnRestNequiDet) btnRestNequiDet.addEventListener('click', () => abrirRestarDinero('nequi'));
+const btnAgrEfDet = document.getElementById('btn-agregar-efectivo-det');
+if (btnAgrEfDet) btnAgrEfDet.addEventListener('click', () => abrirAgregarDinero('efectivo'));
+const btnRestEfDet = document.getElementById('btn-restar-efectivo-det');
+if (btnRestEfDet) btnRestEfDet.addEventListener('click', () => abrirRestarDinero('efectivo'));
+
+// --- Nu: entró / salió plata ---
+const btnNuEntro = document.getElementById('btn-nu-entro');
+if (btnNuEntro) btnNuEntro.addEventListener('click', () => abrirNuMovimiento('entrada'));
+const btnNuSalio = document.getElementById('btn-nu-salio');
+if (btnNuSalio) btnNuSalio.addEventListener('click', () => abrirNuMovimiento('salida'));
+const btnNuMovConf = document.getElementById('btn-confirmar-nu-mov');
+if (btnNuMovConf) btnNuMovConf.addEventListener('click', confirmarNuMovimiento);
+document.addEventListener('input', function(e) {
+  if (e.target.id === 'nuMovMonto') _nuMovActualizarPreview();
+});
+
+// --- Cajita: agregar ---
+const btnAddCajita = document.getElementById('btnAddCajita');
+if (btnAddCajita) btnAddCajita.addEventListener('click', addCajita);
+
+// --- Agregar dinero (menú combinado, selector de cuenta destino) ---
+const adMenuDest = document.getElementById('adMenuDest');
+if (adMenuDest) adMenuDest.addEventListener('change', actualizarAdMenuSaldo);
+const adMenuMonto = document.getElementById('adMenuMonto');
+if (adMenuMonto) adMenuMonto.addEventListener('input', actualizarAdMenuPreview);
+
+// --- Nu: tasa EA ---
+const nuRateEl = document.getElementById('nuRate');
+if (nuRateEl) nuRateEl.addEventListener('input', () => debounceSave(1000));
+
+// --- Transferir: selects y monto (preview en vivo) ---
+const trOrigen = document.getElementById('tr_origen');
+if (trOrigen) trOrigen.addEventListener('change', actualizarTransfPreview);
+const trDestino = document.getElementById('tr_destino');
+if (trDestino) trDestino.addEventListener('change', actualizarTransfPreview);
+const trMonto = document.getElementById('tr_monto');
+if (trMonto) trMonto.addEventListener('input', actualizarTransfPreview);
+
 /* ---- WIRING de controles que no son data-action simples ----
    El wrapper de "toggle apertura" (adAperturaWrap/nuMovAperturaWrap) usa
    el patrón label-click-delegado: clic en cualquier parte de la fila activa
@@ -2677,13 +2779,16 @@ Events.registerAll('cuentas', {
    clic del wrapper. Ninguno de los dos es una acción con argumentos — es
    mecánica de UI — así que se conecta directo con addEventListener, mismo
    criterio ya usado en configuracion.js para data-modulo/inputs de archivo,
-   en vez de pasar por el despachador de data-action. */
-[['adAperturaWrap','adEsApertura'],['nuMovAperturaWrap','nuMovEsApertura']].forEach(([wrapId,chkId])=>{
+   en vez de pasar por el despachador de data-action.
+   El 'change' de cada checkbox (antes onchange="toggleAdApertura()" /
+   onchange="_nuMovToggleApertura()" inline en el HTML) se agrega acá mismo. */
+[['adAperturaWrap','adEsApertura',toggleAdApertura],['nuMovAperturaWrap','nuMovEsApertura',_nuMovToggleApertura]].forEach(([wrapId,chkId,onChangeFn])=>{
   const wrap=document.getElementById(wrapId);
   const chk=document.getElementById(chkId);
   if(wrap&&chk){
     wrap.addEventListener('click', () => chk.click());
     chk.addEventListener('click', e => e.stopPropagation());
+    chk.addEventListener('change', onChangeFn);
   }
 });
 

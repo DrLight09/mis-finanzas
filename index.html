@@ -6045,30 +6045,8 @@ function _initEventListeners() {
   const menuTransferir = document.getElementById('menu-transferir');
   if (menuTransferir) menuTransferir.addEventListener('click', () => { closeSheet('menu'); abrirTransferir(); });
 
-  // --- Cuentas personalizadas ---
-  const btnAgregarCuentaCustom = document.getElementById('btn-agregar-cuenta-custom');
-  if (btnAgregarCuentaCustom) btnAgregarCuentaCustom.addEventListener('click', abrirNuevaCuenta);
-  const btnCrearCuentaCustom = document.getElementById('btn-crear-cuenta-custom');
-  if (btnCrearCuentaCustom) btnCrearCuentaCustom.onclick = crearCuentaCustom;
-
-  // --- CDT confirm button ---
-  const btnCDTConf = document.getElementById('btn-confirmar-crear-cdt');
-  if (btnCDTConf) btnCDTConf.addEventListener('click', confirmarCrearCDT);
-  const btnCobrarConf = document.getElementById('btn-confirmar-cobrar-cdt');
-  if (btnCobrarConf) btnCobrarConf.addEventListener('click', confirmarCobrarCDT);
-
-  // --- Meta de ahorro en cajita ---
-  const btnGuardarMeta = document.getElementById('btn-guardar-meta');
-  if(btnGuardarMeta) btnGuardarMeta.addEventListener('click', guardarMetaCajita);
-  const btnQuitarMeta = document.getElementById('btn-quitar-meta');
-  if(btnQuitarMeta) btnQuitarMeta.addEventListener('click', quitarMetaCajita);
-  const btnAddMetaAporte = document.getElementById('btn-add-meta-aporte');
-  if(btnAddMetaAporte) btnAddMetaAporte.addEventListener('click', ()=>{ _metaAportesTemp.push({desc:'',monto:0}); _renderMetaAportes(); });
-  // Preview on date/amount change in meta sheet
-  ['meta_objetivo','meta_inicio','meta_fin'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el) el.addEventListener('input', _updateMetaCuotaPreview);
-  });
+  // --- Cuentas personalizadas, CDT y meta de ahorro en cajita:
+  // migrados a js/modules/cuentas.js (su propio wiring) ---
 
   // btn-guardar-gasto-var/fijo, btn-confirmar-pagar-gf, pgf-fuente,
   // gv_fuente: migrados a js/modules/gastos.js (su propio wiring).
@@ -6112,18 +6090,9 @@ function _initEventListeners() {
   // btn-confirmar-pagar-spotify: migrados a js/modules/spotify.js.
   // btn-confirmar-mesada, btn-confirmar-mesada-pend: migrados a
   // js/modules/mesada.js.
-  const btnAdConf = document.getElementById('btn-confirmar-agregar-dinero');
-  if (btnAdConf) btnAdConf.addEventListener('click', confirmarAgregarDinero);
-  const btnAdMenuConf = document.getElementById('btn-confirmar-agregar-dinero-menu');
-  if (btnAdMenuConf) btnAdMenuConf.addEventListener('click', confirmarAgregarDineroMenu);
-  const btnRdConf = document.getElementById('btn-confirmar-restar');
-  if (btnRdConf) btnRdConf.addEventListener('click', confirmarRestarDinero);
-  const btnEaConf = document.getElementById('btn-confirmar-editar-apertura');
-  if (btnEaConf) btnEaConf.addEventListener('click', confirmarEditarApertura);
-  const btnTrConf = document.getElementById('btn-confirmar-transferir');
-  if (btnTrConf) btnTrConf.addEventListener('click', confirmarTransferir);
-  const btnSwitchTr = document.getElementById('btn-switch-to-transferir');
-  if (btnSwitchTr) btnSwitchTr.addEventListener('click', () => { closeSheet('agregar-dinero-menu'); abrirTransferir(); });
+  // btn-confirmar-agregar-dinero(-menu), btn-confirmar-restar,
+  // btn-confirmar-editar-apertura, btn-confirmar-transferir,
+  // btn-switch-to-transferir: migrados a js/modules/cuentas.js.
 
   // --- Close sheets via data-close-sheet (delegated — cubre sheets inyectados dinámicamente) ---
   document.addEventListener('click', function(e) {
@@ -6138,42 +6107,14 @@ function _initEventListeners() {
     }
   });
 
-  // --- Cuenta selector ---
-  document.querySelectorAll('[data-cuenta]').forEach(card => {
-    card.addEventListener('click', () => abrirCuenta(card.dataset.cuenta));
-  });
-  document.querySelectorAll('.btn-volver-selector').forEach(btn => {
-    btn.addEventListener('click', volverSelector);
-  });
+  // --- Cuenta selector, Nequi/Efectivo, Nu (entró/salió plata) y
+  // cajita (agregar): migrados a js/modules/cuentas.js. ---
 
-  // --- Nequi / Efectivo add-subtract buttons ---
-  const btnAgrNequiDet = document.getElementById('btn-agregar-nequi-det');
-  if (btnAgrNequiDet) btnAgrNequiDet.addEventListener('click', () => abrirAgregarDinero('nequi'));
-  const btnRestNequiDet = document.getElementById('btn-restar-nequi-det');
-  if (btnRestNequiDet) btnRestNequiDet.addEventListener('click', () => abrirRestarDinero('nequi'));
-
-  const btnAgrEfDet = document.getElementById('btn-agregar-efectivo-det');
-  if (btnAgrEfDet) btnAgrEfDet.addEventListener('click', () => abrirAgregarDinero('efectivo'));
-  const btnRestEfDet = document.getElementById('btn-restar-efectivo-det');
-  if (btnRestEfDet) btnRestEfDet.addEventListener('click', () => abrirRestarDinero('efectivo'));
-
-  // --- Nu entró / salió plata ---
-  const btnNuEntro = document.getElementById('btn-nu-entro');
-  if (btnNuEntro) btnNuEntro.addEventListener('click', () => abrirNuMovimiento('entrada'));
-  const btnNuSalio = document.getElementById('btn-nu-salio');
-  if (btnNuSalio) btnNuSalio.addEventListener('click', () => abrirNuMovimiento('salida'));
-  const btnNuMovConf = document.getElementById('btn-confirmar-nu-mov');
-  if (btnNuMovConf) btnNuMovConf.addEventListener('click', confirmarNuMovimiento);
-  document.addEventListener('input', function(e) {
-    if (e.target.id === 'nuMovMonto') _nuMovActualizarPreview();
-  });
-
-
-  // --- Cajita add button ---
-  const btnAddCajita = document.getElementById('btnAddCajita');
-  if (btnAddCajita) btnAddCajita.addEventListener('click', addCajita);
-
-  // --- Avatar color picker ---
+  // --- Avatar color picker (sheet "Nueva persona", no de Cuentas pese
+  // a lo genérico del nombre) --- selColor() no está definida ni en
+  // index.html ni en cuentas.js — posible referencia rota preexistente;
+  // no se investigó ni se tocó por no ser el alcance de esta sesión
+  // (dominio Cuentas). Queda para cuando se audite Personas.
   document.querySelectorAll('[data-pick-color]').forEach(el => {
     el.addEventListener('click', () => selColor(el.dataset.pickColor));
   });
@@ -6187,27 +6128,16 @@ function _initEventListeners() {
 
   // --- Named input callbacks ---
   // gv_fuente: migrado a js/modules/gastos.js (su propio wiring).
+  // mov_fuente: pese al nombre parecido a los otros _fuente de acá abajo,
+  // es del sheet "Registrar movimiento" (préstamo/abono) de Préstamos,
+  // no de Cuentas — queda pendiente para la sesión de Encargos/TC/Préstamos.
   const movFuente = document.getElementById('mov_fuente');
   if (movFuente) movFuente.addEventListener('change', () => mostrarAlertaFuente('mov'));
   // spPagarFuente/spPagarMonto: migrados a js/modules/spotify.js.
   // mpDestino/mpMonto, mpDebeWrap/mpQuedaDebiendo, mppDestino/mppMonto:
   // migrados a js/modules/mesada.js.
-  const adMenuDest = document.getElementById('adMenuDest');
-  if (adMenuDest) adMenuDest.addEventListener('change', actualizarAdMenuSaldo);
-  const adMenuMonto = document.getElementById('adMenuMonto');
-  if (adMenuMonto) adMenuMonto.addEventListener('input', actualizarAdMenuPreview);
-
-  // --- nuRate input ---
-  const nuRateEl = document.getElementById('nuRate');
-  if (nuRateEl) nuRateEl.addEventListener('input', () => debounceSave(1000));
-
-  // --- Transferir selects and input ---
-  const trOrigen = document.getElementById('tr_origen');
-  if (trOrigen) trOrigen.addEventListener('change', actualizarTransfPreview);
-  const trDestino = document.getElementById('tr_destino');
-  if (trDestino) trDestino.addEventListener('change', actualizarTransfPreview);
-  const trMonto = document.getElementById('tr_monto');
-  if (trMonto) trMonto.addEventListener('input', actualizarTransfPreview);
+  // adMenuDest/adMenuMonto, nuRate, tr_origen/tr_destino/tr_monto:
+  // migrados a js/modules/cuentas.js (su propio wiring).
 }
 
 /* ================================================================

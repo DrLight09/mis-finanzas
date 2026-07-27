@@ -639,3 +639,24 @@ El chequeo de "¿es un movimiento secundario generado por otra sección?" (`movO
 - **Comentario de cabecera nuevo en el archivo** explicando por qué vive en `js/core/` y no en `js/modules/`, y listando las dependencias del núcleo (`S`, `save`, `refresh`, `escHtml`, `fmt`, `fuenteLabel`, `getSaldoFuente`, `getMovimientosCuenta`, etc.) y de otros módulos ya migrados (`tcEliminarCompraInterna`/`tcEliminarPagoInterna` de TC, `abrirCustomCuenta`/`renderDetalleCuenta` de Cuentas, `getEncargo` de Encargos) de las que depende.
 - `index.html`: 9.123 → 8.617 líneas (-506).
 - **Sin código muerto ni hallazgos de `.innerHTML` nuevos** en el archivo extraído — ya usaba `escHtml()` en todos los puntos de texto libre desde antes.
+
+---
+
+## Cuentas
+
+### 🔧 Cambio — Wiring propio movido de `index.html` a `cuentas.js` (arquitectura)
+
+*(2026-07-26)*
+
+Los 31 `addEventListener` (más un `.onclick`) de los controles de esta pantalla — cuenta personalizada, CDT, meta de ahorro en cajita, agregar/restar dinero, editar apertura, transferir, selector de cuentas, Nequi/Efectivo, Nu (entró/salió plata), agregar cajita, menú combinado de agregar dinero y tasa EA de Nu — vivían en `_initEventListeners()` (`index.html`), mezclados con los de Encargos/TC/Préstamos (el único grupo que queda ahí). No eran `onclick` inline (sin problema de CSP) — se movieron por organización, cada listener a su módulo dueño, mismo patrón ya aplicado a Mesada, Spotify y Gastos. Todas las funciones destino ya vivían en `cuentas.js` desde su migración del 2026-07-22; esta sesión solo movió el wiring.
+
+**Dos casos que a primera vista parecían de Cuentas se dejaron en `index.html` a propósito:**
+- `mov_fuente` (sheet "Registrar movimiento") es de **Préstamos**, pese al nombre parecido a otros selectores de fuente ya migrados.
+- El selector de color de avatar (`[data-pick-color]`) es de **Personas** (sheet "Nueva persona"), no de Cuentas. Se encontró de paso que `selColor()`, la función que ese listener invoca, **no está definida en ningún archivo revisado** — posible referencia rota preexistente, no introducida por este cambio; no se investigó por no ser el alcance de esta sesión.
+
+Las cards del FAB "+" que abren flujos de Cuentas (`menu-agregar-dinero`, `menu-transferir`) se quedaron en `index.html` por la misma razón ya documentada para Gastos: son parte del mismo menú compartido.
+
+**Verificado:** sintaxis de los 19 bloques `<script>` inline de `index.html` (concatenados) y de `cuentas.js`, con `node --check`, sin errores. Se confirmó que ninguna de las 31 variables movidas a nivel superior de `cuentas.js` colisionara con una declaración `const`/`let` ya existente en otro punto del documento — todas vivían antes exclusivamente dentro del scope de función de `_initEventListeners()`.
+
+`_initEventListeners()` en `index.html`: ~200 → 141 líneas. Con esto van 58 de ~80 listeners originales redistribuidos; solo queda Encargos/TC/Préstamos para cerrar la función del todo. Ver `auditoria-tecnica.md`, punto 3.
+

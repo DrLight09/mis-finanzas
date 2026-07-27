@@ -944,7 +944,7 @@ Events.registerAll('tarjetas', {
   eliminarCompra:   eliminarCompraTC,
   eliminarPago:     eliminarPagoTC,
   seleccionarColor: tcSelColor,          // usada por los 8 círculos de color estáticos en #sheet-nueva-tc
-  verMov:           abrirDetalleMov,       // función compartida (index.html); Events le pasa el elemento clickeado como argumento
+  verMov:           (...args) => abrirDetalleMov(...args), // función compartida (js/core/movimientos.js), envuelta por el mismo motivo que en prestado.js: se define más abajo (en movimientos.js, que carga DESPUÉS de este archivo), así que pasarla directo la capturaría como undefined al cargar. Envuelta así, la búsqueda del nombre global ocurre recién al hacer click.
   verTodo:          () => navTo('tarjetas') // navTo es global, definida en index.html
 });
 // ── Conectar botones TC al formulario y selects ───────────────────

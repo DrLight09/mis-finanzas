@@ -755,3 +755,27 @@ Reportado desde la consola del navegador. `tarjetas_credito.js` registra `verMov
 - **Comentario desactualizado en `index.html` corregido** para dejar registrado que sí existe esta dependencia de orden de carga y por qué el wrapper la resuelve.
 - **No se investigó si hay más referencias directas del mismo tipo** a `abrirDetalleMov`/`eliminarMovimiento` en otros módulos que cargan antes de `movimientos.js` — se revisaron `personas.js`, `prestado.js` y `configuracion.js` (los tres disponibles esta sesión) sin encontrar otro caso; `spotify.js`, `mesada.js`, `encargos.js`, `gastos.js`, `cuentas.js`, `plata_comprometida.js`, `alcancia.js` y `analisis.js` no se revisaron.
 
+---
+
+## Infraestructura / seguridad
+
+### ✅ Corregido — Migración final del gate de PIN/biometría/login a `data-action`/`Events`
+
+*(sesión posterior a 2026-08-03)*
+
+Cierre definitivo del punto 1 de `auditoria-tecnica.md` (migrar `onclick` inline → `Events`). El documento venía arrastrando dos estimaciones que nunca se habían verificado línea por línea contra el archivo real:
+
+- **Los ~9 pares `onmouseenter`/`onmouseleave` "sin ubicar" no existían.** `grep -n "onmouseenter" index.html` no devuelve ningún atributo inline — solo dos comentarios en el `<style>` que documentan que esos hovers ya se habían resuelto con CSS en la sesión del 2026-08-02. El estimado quedó desactualizado desde ese momento.
+- **Los "24 `onclick`" del gate de PIN/biometría/login eran 21.** Filtrando un comentario de texto (línea 13) y un template string que construye el atributo en vez de contenerlo literal (línea 5550), quedaban 21 ocurrencias reales.
+
+**Los 21 se migraron a `data-action`/`Events`, bajo dos namespaces nuevos:**
+- **`pin:`** — teclado numérico del PIN (`pin:key`, con el dígito como `data-args`), botón borrar (`pin:del`), botón huella/Face ID (`pin:bioTrigger`), "¿Olvidaste el PIN?" (`pin:olvide`), y los dos botones dinámicos de PIN/biometría en Configuración, generados por `_renderBtn()`/`_renderBioBtn()` (`pin:setNew`, `pin:disable`, `pin:bioSetup`, `pin:bioDisable`). Todas estas funciones ya vivían como `window._x = function(){...}` dentro del mismo `<script type="module">` (el bloque "PIN + BIOMETRÍA").
+- **`authgate:`** — botón "Entrar con Google" (`authgate:signIn`), cancelar/confirmar eliminar cuenta (`authgate:cerrarEliminarCuenta`, `authgate:eliminarCuenta`). Namespace separado de `pin:` porque estas funciones (`_fbSignIn`, `_cerrarEliminarCuenta`, `_fbDeleteAccount`) viven en otro `<script type="module">` distinto (el de autenticación de Firebase) — mismo criterio ya usado con `config:signOut`: el namespace lo decide el botón que llama, no dónde vive la función.
+
+`Events.registerAll('pin', {...})` y `Events.registerAll('authgate', {...})` se agregaron inline, cada uno al final del bloque `<script type="module">` correspondiente, después de la última asignación `window._x = function(){...}` que necesitaban — no hizo falta mover ninguna función a un archivo `.js` nuevo, mismo patrón ya usado para el namespace `core:`.
+
+**Verificado:** `node --check` sobre ambos bloques `<script>`, extraídos por rango de líneas exacto (no con un regex ingenuo sobre `<script>...</script>`, que da falsos positivos cuando un comentario HTML menciona la palabra "`<script`" como texto). Sin errores. Se confirmó además que las 11 funciones referenciadas (`_pinKey`, `_pinDel`, `_pinBioTrigger`, `_pinOlvide`, `_pinSetNew`, `_pinDisable`, `_bioSetup`, `_bioDisable`, `_fbSignIn`, `_cerrarEliminarCuenta`, `_fbDeleteAccount`) siguen existiendo con el mismo nombre.
+
+**Conteo real de `onclick`/`onchange`/`oninput`/hover inline en todo `index.html`, tras esta sesión: 0.**
+
+**Hallazgo nuevo que queda abierto (no se tocó):** con el `onclick` en cero, se revisó si esto ya permitía sacar `'unsafe-inline'` de `script-src` en la CSP, como asumía el comentario del propio archivo — no es así. `'unsafe-inline'` en `script-src` también habilita cualquier bloque `<script>` inline sin `nonce`/`hash`, y `index.html` sigue teniendo docenas de ellos (ahí vive casi toda la lógica de negocio hoy). Quitar la directiva tal como está el archivo rompería la app entera. Se corrigió el comentario de la CSP en `index.html` para que ya no afirme lo contrario; la directiva en sí no se tocó. Detalle y opciones (nonce por request, hashes por bloque, o terminar de externalizar todo) en `auditoria-tecnica.md`, punto 1 (reescrito).

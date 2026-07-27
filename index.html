@@ -6021,11 +6021,7 @@ function _initEventListeners() {
     tab.addEventListener('click', () => switchGastoTab(tab.dataset.tab));
   });
 
-  // --- Botones ghost de listas ---
-  const btnGastoVar = document.querySelector('.btn-open-gasto-var');
-  if (btnGastoVar) btnGastoVar.addEventListener('click', () => { poblarCatSelect('gv_cat',getCatsVar()); openSheet('gasto-var'); });
-  const btnGastoFijo = document.querySelector('.btn-open-gasto-fijo');
-  if (btnGastoFijo) btnGastoFijo.addEventListener('click', () => { poblarCatSelect('gf_c',getCatsFijo()); openSheet('gasto-fijo'); });
+  // --- Botones ghost de listas: migrados a js/modules/gastos.js (su propio wiring) ---
 
 
   // --- Año mesada: migrado a js/modules/mesada.js (su propio wiring) ---
@@ -6035,11 +6031,14 @@ function _initEventListeners() {
   // --- Config toggles / Backup: migrado a js/modules/configuracion.js (su propio wiring, ver final del archivo) ---
 
   // --- Menu action cards ---
+  // menu-gasto-var/fijo delegan a abrirNuevoGastoVar()/abrirNuevoGastoFijo()
+  // (js/modules/gastos.js) en vez de reimplementar poblarCatSelect+openSheet
+  // a mano — mismas funciones que ya usa el botón del estado vacío.
   const menuGastoVar = document.getElementById('menu-gasto-var');
-  if (menuGastoVar) menuGastoVar.addEventListener('click', () => { closeSheet('menu'); poblarCatSelect('gv_cat',getCatsVar()); openSheet('gasto-var'); });
+  if (menuGastoVar) menuGastoVar.addEventListener('click', () => { closeSheet('menu'); abrirNuevoGastoVar(); });
 
   const menuGastoFijo = document.getElementById('menu-gasto-fijo');
-  if (menuGastoFijo) menuGastoFijo.addEventListener('click', () => { closeSheet('menu'); poblarCatSelect('gf_c',getCatsFijo()); openSheet('gasto-fijo'); });
+  if (menuGastoFijo) menuGastoFijo.addEventListener('click', () => { closeSheet('menu'); abrirNuevoGastoFijo(); });
   const menuAD = document.getElementById('menu-agregar-dinero');
   if (menuAD) menuAD.addEventListener('click', () => { closeSheet('menu'); openSheet('agregar-dinero-menu'); });
 
@@ -6071,15 +6070,8 @@ function _initEventListeners() {
     if(el) el.addEventListener('input', _updateMetaCuotaPreview);
   });
 
-  // --- Sheet form confirm buttons ---
-  const btnGVSave = document.getElementById('btn-guardar-gasto-var');
-  if (btnGVSave) btnGVSave.addEventListener('click', addGastoVar);
-  const btnGFSave = document.getElementById('btn-guardar-gasto-fijo');
-  if (btnGFSave) btnGFSave.addEventListener('click', addGastoFijo);
-  const btnPGFConfirm = document.getElementById('btn-confirmar-pagar-gf');
-  if (btnPGFConfirm) btnPGFConfirm.addEventListener('click', confirmarPagarGastoFijo);
-  const pgfFuenteSel = document.getElementById('pgf-fuente');
-  if (pgfFuenteSel) pgfFuenteSel.addEventListener('change', pgfActualizarSaldo);
+  // btn-guardar-gasto-var/fijo, btn-confirmar-pagar-gf, pgf-fuente,
+  // gv_fuente: migrados a js/modules/gastos.js (su propio wiring).
   // btn-guardar-ingreso-fijo: migrado a js/modules/analisis.js (su propio wiring).
 
   // Controles de Encargos / Tarjetas de Crédito / Préstamos que tenían
@@ -6194,8 +6186,7 @@ function _initEventListeners() {
   });
 
   // --- Named input callbacks ---
-  const gvFuente = document.getElementById('gv_fuente');
-  if (gvFuente) gvFuente.addEventListener('change', () => mostrarAlertaFuente('gv'));
+  // gv_fuente: migrado a js/modules/gastos.js (su propio wiring).
   const movFuente = document.getElementById('mov_fuente');
   if (movFuente) movFuente.addEventListener('change', () => mostrarAlertaFuente('mov'));
   // spPagarFuente/spPagarMonto: migrados a js/modules/spotify.js.

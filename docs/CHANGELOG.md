@@ -785,3 +785,33 @@ Cierre definitivo del punto 1 de `auditoria-tecnica.md` (migrar `onclick` inline
 *(misma sesión)*
 
 Barrido programático sobre todos los `<button>` de `index.html` para encontrar botones que solo tienen un ícono SVG (sin texto visible) y no tenían `aria-label`. Aparecieron 22, repartidos en Cuentas (10: volver ×4, editar/eliminar cuenta personalizada, volver a Nu, eliminar cajita, volver a Meta de ahorro, volver a CDTs), Préstamos (6: volver deudores, editar/eliminar deudor, volver mis deudas, editar/eliminar mi deuda), Mesada (2: año anterior/siguiente), Encargos (3: volver, editar, eliminar) y el gate de PIN (1: borrar dígito). Se les agregó `aria-label` a los 22, reusando el texto del `title` ya existente donde lo había (ej. `title="Editar cuenta"` → se le sumó `aria-label="Editar cuenta"`) para no inventar redacciones distintas a las que el usuario ya ve en el tooltip. Verificado con un segundo barrido tras el cambio: 0 botones ícono-solo sin `aria-label` en todo el archivo (30 `aria-label` en total, contando los 8 que ya existían).
+
+### 🔧 Nuevo — Bloques `<script>` inline: de 18 a 3 (punto 2 de la auditoría, CSP)
+
+*(sesión posterior)*
+
+Primer avance real del punto 2 (sacar `'unsafe-inline'` de `script-src`). Se descartó nonce de entrada — GitHub Pages sirve archivos estáticos, sin servidor que genere un valor aleatorio por request y lo mande en una cabecera HTTP real, así que un nonce fijo en el HTML no protegería nada. También se descartó hash (`'sha256-...'`) como estrategia general: es viable para contenido que no cambia, pero cualquier edición futura a un bloque invalida su hash y el navegador lo bloquea en silencio — inaceptable para el núcleo (`S`, `save()`, `refresh()`), que se sigue tocando activamente sesión a sesión. La única opción sin ese riesgo es seguir el mismo patrón que ya se usa para los módulos: externalizar a `.js` con `<script src>`, cubierto automáticamente por `'self'`.
+
+Se inventariaron los 18 bloques `<script>` inline que quedaban (sin `src`) y se separaron en tres grupos:
+
+**A) 6 bloques sin código real, solo comentarios de migraciones anteriores** (`"Módulo X migrado a js/modules/x.js, ver..."`) — convertidos directo a comentarios HTML (`<!-- -->`), sin extraer nada porque no había nada que extraer. Cero riesgo funcional: no ejecutaban código.
+
+**B) 9 bloques autocontenidos, sin dependencia de orden de carga con el núcleo** — externalizados a `js/core/`, cada uno cargado en la misma posición exacta donde vivía el bloque original (preserva el orden de carga con respecto a todo lo demás):
+
+| Archivo nuevo | Contenido | Líneas |
+|---|---|---|
+| `js/core/firebase-init.js` | Init de Firebase (config, auth, `onAuthStateChanged`) — `type="module"` | 74 |
+| `js/core/firebase-sync.js` | Sync con Firestore: `setSyncStatus`, `_fbSaveToCloud`, `_fbLoadData`, `onSnapshot` — `type="module"` | 464 |
+| `js/core/pin-bio.js` | Sistema de PIN + biometría (WebAuthn) — `type="module"` | 352 |
+| `js/core/mejoras.js` | Ocultar saldos, hook de `refresh()` para salud/proyección/presupuestos, validación de montos, animación de carga inicial | 135 |
+| `js/core/mejoras-adicionales.js` | Registro de Service Worker, autofocus de formularios, aria-labels de pantallas | 87 |
+| `js/core/nav.js` | `navTo()` — navegación global entre las 13 pantallas | 32 |
+| `js/core/bootstrap.js` | `iniciales()`, fecha del header, autosave cada 60s | 20 |
+| `js/core/personas-init.js` | Inicialización de `_inyectarPersonaSheets()` al cargar datos | 19 |
+| `js/core/import-validado.js` | `_validarEstructuraJSON()` + override de `leerArchivoImport` — debe cargar después de `configuracion.js` | 82 |
+
+**C) 3 bloques deliberadamente NO tocados** — el núcleo compartido por toda la app: definición de `S`, `save()` (955 líneas), el sheet-stack (`openSheet`/`closeSheet`, 516 líneas) y `refresh()` + menú "Más" (389 líneas). Alto acoplamiento, cambian con frecuencia, y moverlos de verdad implica la reestructuración de los puntos 3/4 de la auditoría (Auth/Firestore → PIN → datos, y modularización por dominio), no un cambio quirúrgico aislado. Quedan como los únicos 3 bloques que siguen requiriendo `'unsafe-inline'`.
+
+**Verificación:** cada archivo nuevo pasó `node --check` (o `--input-type=module --check` para los tres `type="module"`) sin errores. Los 3 bloques que quedaron inline en `index.html` también se re-verificaron con `node --check` extrayéndolos por rango de línea exacto, no con un regex sobre `<script>...</script>` — ese regex da falsos positivos apenas un comentario menciona la palabra "`<script`" como texto (pasó en esta misma sesión al intentarlo). Conteo final de `<script>` en `index.html`, verificado con un parser HTML real (no regex): 35 tags — 32 con `src`, 3 inline. `index.html` bajó de 8.219 a 6.963 líneas (-1.256).
+
+Comentario de la CSP actualizado para reflejar el conteo real (3 bloques, no "decenas") y documentar por qué nonce no es viable en este hosting. La directiva `script-src` en sí **no se tocó** — sigue con `'unsafe-inline'`, porque los 3 bloques del núcleo todavía lo necesitan.

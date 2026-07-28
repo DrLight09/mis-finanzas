@@ -851,3 +851,17 @@ Como `window.Events` es `undefined` para siempre (no es un problema de timing �
 **Lección:** cuando un síntoma se parece a una carrera de timing, vale la pena confirmar con modo incógnito (descarta caché/SW) *antes* de aceptar esa hipótesis como definitiva — y comparar contra el archivo original sin tocar es la forma más rápida de saber si algo es nuevo o preexistente.
 
 **Confirmado por el usuario tras desplegar:** login funcionando — la traza de la consola mostró `dispatch @ events.js:124 → window._fbSignIn @ mis-finanzas/:6995 → signInWithPopup`, o sea el despacho llegó correctamente al handler. Apareció de paso un warning aparte y no relacionado (`Cross-Origin-Opener-Policy policy would block the window.closed call`) — ruido conocido del SDK de Firebase Auth al usar `signInWithPopup` en navegadores con COOP estricta por defecto; Firebase cae a `postMessage` como alternativa y el login se completa igual. No es un bug de la app, no requiere ninguna acción.
+
+### 🔧 Nuevo — Guard de "botón listo" para volver a externalizar firebase-init.js/firebase-sync.js (de 5 bloques inline a 3)
+
+*(sesión posterior)*
+
+Con el bug real (`window.Events`) ya resuelto, se retomó la idea original de externalizar `firebase-init.js`/`firebase-sync.js` — pero esta vez con el guard que le faltaba, para que la carrera de timing teórica (aunque no era la causa del bug reportado) no se vuelva un problema real ahora que el registro sí llega a ejecutarse.
+
+**Mecanismo agregado:**
+- El botón `.fb-google-btn` (`data-action="authgate:signIn"`) arranca con `disabled` en el HTML.
+- `firebase-init.js`, justo antes de mostrar la pantalla de login, arma un `setTimeout` de seguridad de 8s (`window._authgateReadyTimeout`) — si nadie confirma el registro en ese tiempo, habilita el botón igual con un `console.warn`, mismo patrón ya usado para `window._pinGateTimeout` en el gate de PIN.
+- `firebase-sync.js`, apenas confirma `Events.registerAll('authgate', ...)`, marca `window._authgateReady = true`, cancela el timeout y habilita todos los `[data-action^="authgate:"]` (no solo el botón de login — también cubre, por las dudas, los de confirmar/cancelar eliminar cuenta, aunque esos no tienen el mismo riesgo por no ser visibles al cargar la página).
+- Se agregó `.fb-google-btn:disabled{opacity:.55;cursor:wait;box-shadow:none;}` para que el estado se vea, no solo se comporte, distinto.
+
+Se re-externalizaron los dos archivos con este guard ya adentro. Bloques `<script>` inline resultantes: **3** (el núcleo: `S`/`save()`, sheet-stack, `refresh()`). Verificado con `node --input-type=module --check` en ambos archivos nuevos, sin errores, y reconteo final con el mismo parser HTML de sesiones anteriores: 35 tags, 32 con `src`, 3 inline.

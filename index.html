@@ -762,7 +762,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <button class="pin-key" data-action="pin:key" data-args="[&quot;9&quot;]">9</button>
           <button class="pin-key pin-empty"></button>
           <button class="pin-key" data-action="pin:key" data-args="[&quot;0&quot;]">0</button>
-          <button class="pin-key pin-del" data-action="pin:del">
+          <button class="pin-key pin-del" data-action="pin:del" aria-label="Borrar dígito">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2"
               stroke-linecap="round"><path
@@ -1233,7 +1233,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="cuentas-detalle-custom" style="display:none;">
             <div class="detail-header">
               <button type="button"
-                class="detail-header-back btn-volver-selector">
+                class="detail-header-back btn-volver-selector" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -1245,7 +1245,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 <button type="button" class="detail-header-action btn-icon"
                   id="btn-editar-cuenta-custom"
                   style="color:var(--accent);min-width:34px;min-height:34px;"
-                  title="Editar cuenta">
+                  title="Editar cuenta" aria-label="Editar cuenta">
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2"
                     stroke-linecap="round"><path
@@ -1255,7 +1255,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 <button type="button" class="detail-header-action btn-icon"
                   id="btn-eliminar-cuenta-custom"
                   style="color:var(--red);min-width:34px;min-height:34px;"
-                  title="Eliminar cuenta">
+                  title="Eliminar cuenta" aria-label="Eliminar cuenta">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2"
                     stroke-linecap="round"><polyline
@@ -1315,7 +1315,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="cuentas-detalle-nequi" style="display:none;">
             <div class="detail-header">
               <button type="button"
-                class="detail-header-back btn-volver-selector">
+                class="detail-header-back btn-volver-selector" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -1382,7 +1382,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="cuentas-detalle-nu" style="display:none;">
             <div class="detail-header">
               <button type="button"
-                class="detail-header-back btn-volver-selector">
+                class="detail-header-back btn-volver-selector" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -1492,7 +1492,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="cuentas-detalle-cajita" style="display:none;">
             <div class="detail-header">
               <button type="button" class="detail-header-back"
-                data-action="cuentas:volverANu">
+                data-action="cuentas:volverANu" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -1502,7 +1502,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 style="color:var(--nu-light);">Cajita</div>
               <button type="button" class="btn-icon detail-header-action"
                 id="cajita-det-delete-btn" data-action="cuentas:cajitaDetDelete"
-                style="color:var(--text3);">
+                style="color:var(--text3);" aria-label="Eliminar cajita">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2"
                   stroke-linecap="round"><polyline points="3 6 5 6 21 6" /><path
@@ -1624,7 +1624,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="cuentas-sub-meta" style="display:none;">
             <div class="detail-header">
               <button type="button" class="detail-header-back"
-                data-action="cuentas:volverADetalleCajita">
+                data-action="cuentas:volverADetalleCajita" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -1640,7 +1640,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="cuentas-sub-cdts" style="display:none;">
             <div class="detail-header">
               <button type="button" class="detail-header-back"
-                data-action="cuentas:volverADetalleCajita">
+                data-action="cuentas:volverADetalleCajita" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -1656,7 +1656,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="cuentas-detalle-efectivo" style="display:none;">
             <div class="detail-header">
               <button type="button"
-                class="detail-header-back btn-volver-selector">
+                class="detail-header-back btn-volver-selector" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -1804,7 +1804,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="deudorDetalle" style="display:none;">
             <div class="detail-header" style="margin-bottom:14px;">
               <button type="button" class="detail-header-back btn-icon"
-                id="btn-volver-deudores" data-action="prestado:volverDeudores" data-args="[]">
+                id="btn-volver-deudores" data-action="prestado:volverDeudores" data-args="[]" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -1832,7 +1832,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 <button type="button" class="detail-header-action btn-icon"
                   id="btn-editar-deudor" data-action="prestado:editarDeudorActual" data-args="[]"
                   style="color:var(--accent);min-width:34px;min-height:34px;"
-                  title="Editar persona">
+                  title="Editar persona" aria-label="Editar persona">
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2"
                     stroke-linecap="round"><path
@@ -1842,7 +1842,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 <button type="button" class="detail-header-action btn-icon"
                   id="btn-eliminar-deudor" data-action="prestado:eliminarDeudorActual" data-args="[]"
                   style="color:var(--red);min-width:34px;min-height:34px;"
-                  title="Eliminar persona">
+                  title="Eliminar persona" aria-label="Eliminar persona">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2"
                     stroke-linecap="round"><polyline
@@ -1931,7 +1931,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="miDeudaDetalle" style="display:none;">
             <div class="detail-header" style="margin-bottom:14px;">
               <button type="button" class="detail-header-back btn-icon"
-                id="btn-volver-mis-deudas" data-action="prestado:volverMisDeudas" data-args="[]">
+                id="btn-volver-mis-deudas" data-action="prestado:volverMisDeudas" data-args="[]" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -1958,7 +1958,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               <button type="button" class="detail-header-action btn-icon"
                 id="btn-editar-mi-deuda" data-action="prestado-personas:editarMiDeudaActual" data-args="[]"
                 style="color:var(--text2);min-width:34px;min-height:34px;"
-                title="Editar deuda">
+                title="Editar deuda" aria-label="Editar deuda">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2"
                   stroke-linecap="round"><path
@@ -1968,7 +1968,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               <button type="button" class="detail-header-action btn-icon"
                 id="btn-eliminar-mi-deuda" data-action="prestado:eliminarMiDeuda" data-args="[]"
                 style="color:var(--red);min-width:34px;min-height:34px;"
-                title="Eliminar deuda">
+                title="Eliminar deuda" aria-label="Eliminar deuda">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2"
                   stroke-linecap="round"><polyline points="3 6 5 6 21 6" /><path
@@ -2020,13 +2020,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
               de papás</div>
             <!-- Navegación año -->
             <div class="anio-nav" style="margin-bottom:10px;">
-              <button type="button" class="anio-btn" id="btn-anio-prev"><svg
+              <button type="button" class="anio-btn" id="btn-anio-prev" aria-label="Año anterior"><svg
                   width="13" height="13" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
                     points="15 18 9 12 15 6" /></svg></button>
               <span class="anio-label" id="anioLabel"></span>
-              <button type="button" class="anio-btn" id="btn-anio-next"><svg
+              <button type="button" class="anio-btn" id="btn-anio-next" aria-label="Año siguiente"><svg
                   width="13" height="13" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -2211,7 +2211,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           <div id="encargoDetalle" style="display:none;">
             <div class="detail-header" style="margin-bottom:14px;">
               <button type="button" class="detail-header-back btn-icon"
-                id="btn-volver-encargos">
+                id="btn-volver-encargos" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -2229,7 +2229,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 <button type="button" class="detail-header-action btn-icon"
                   id="btn-editar-encargo"
                   style="color:var(--accent);min-width:34px;min-height:34px;"
-                  title="Editar encargo">
+                  title="Editar encargo" aria-label="Editar encargo">
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2"
                     stroke-linecap="round"><path
@@ -2238,7 +2238,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
                 </button>
                 <button type="button" class="detail-header-action btn-icon"
                   id="btn-eliminar-encargo"
-                  style="color:var(--red);min-width:34px;min-height:34px;">
+                  style="color:var(--red);min-width:34px;min-height:34px;" aria-label="Eliminar encargo">
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2"
                     stroke-linecap="round"><polyline

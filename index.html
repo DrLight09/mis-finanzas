@@ -7154,7 +7154,7 @@ document.addEventListener('focusin', function(e){
   // eliminar-cuenta — mismo criterio ya usado con config:signOut, que también
   // envuelve una función de auth compartida bajo el namespace del botón que
   // la llama, no de dónde vive la función.
-  if(window.Events && typeof Events.registerAll === 'function') {
+  if(typeof Events !== 'undefined' && typeof Events.registerAll === 'function') {
     Events.registerAll('authgate', {
       signIn: window._fbSignIn,
       cerrarEliminarCuenta: window._cerrarEliminarCuenta,

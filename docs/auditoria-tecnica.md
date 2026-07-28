@@ -261,7 +261,7 @@ Para el resto: sin cambios desde la revisión anterior. ~1.3 MB repartidos ahora
 | Problema | Estado |
 |---|---|
 | Sin tests | Pendiente. Priorizar funciones de cálculo puras: `calcPatrimonioTotal()`, amortización, `calcHealthScore()`. |
-| Solo 11 `aria-label` en toda la app | Pendiente, sin cambios. |
+| ~~Solo 11 `aria-label` en toda la app~~ | ✅ **Resuelto esta sesión.** Se identificaron 22 botones ícono-solo (sin texto visible) sin `aria-label` en `index.html` — Cuentas (volver ×4, editar/eliminar cuenta personalizada, volver a Nu, eliminar cajita, volver a Meta/CDTs de cajita), Préstamos (volver deudores, editar/eliminar deudor, volver mis deudas, editar/eliminar mi deuda), Mesada (año anterior/siguiente), Encargos (volver, editar/eliminar) y el botón borrar del teclado del PIN. Se les agregó `aria-label` a los 22 (reusando el texto del `title` ya existente donde lo había). Verificado con un barrido programático sobre todos los `<button>` del archivo: 0 restantes sin `aria-label` que tengan solo ícono. Ver `CHANGELOG.md#infraestructura--seguridad`. |
 | CSS inline (44.7 KB) | Pendiente. Extraerlo a `styles.css` externo permitiría cachearlo aparte del HTML — pero es un cambio de arquitectura de despliegue (pasa de un archivo a dos), no se hizo sin discutirlo primero. |
 | Imágenes base64 embebidas (3, ~1.4 KB) | Impacto bajo, sigue sin ser prioridad. |
 | Service Worker (`sw.js`) | ✅ **Confirmado funcionando en producción** — se sacó de esta tabla, ver CHANGELOG. |
@@ -286,4 +286,5 @@ Para el resto: sin cambios desde la revisión anterior. ~1.3 MB repartidos ahora
 6. Extraer CSS a archivo externo (decisión de arquitectura de despliegue, discutir antes de hacerlo).
 7. Segunda pasada de auditoría de `.innerHTML` si se agregan campos de texto libre nuevos al modelo de datos.
 8. Tests unitarios de las funciones de cálculo financiero puras.
-9. Agregar `aria-label`s faltantes (accesibilidad, bajo impacto pero fácil de hacer de a poco).
+
+> **Nota de verificación (esta sesión), útil para cuando se ataque el punto 4:** `S` (línea ~4835), `save()` (~5183) y `refresh()` (~6474) siguen viviendo directo en `index.html`, sin mover a `js/core/` — confirma que el punto 4 no se ha empezado. Hallazgo puntual encontrado de paso: `window.refresh` no es una sola función, son **tres reasignaciones que se envuelven en cadena** (líneas 6474, 7282 y 7771 — cada módulo que se cargó después redefine `window.refresh` guardando una referencia a la versión anterior y llamándola antes de agregar su propio re-render). Es una forma válida de que módulos independientes se enganchen a un evento global sin tocarse entre sí, pero también es exactamente el tipo de acoplamiento disperso que el punto 4 busca resolver con un namespace único — vale la pena tenerlo mapeado antes de mover `refresh()` a `js/core/`, para no romper esa cadena de wraps.

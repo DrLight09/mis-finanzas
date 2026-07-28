@@ -779,3 +779,9 @@ Cierre definitivo del punto 1 de `auditoria-tecnica.md` (migrar `onclick` inline
 **Conteo real de `onclick`/`onchange`/`oninput`/hover inline en todo `index.html`, tras esta sesión: 0.**
 
 **Hallazgo nuevo que queda abierto (no se tocó):** con el `onclick` en cero, se revisó si esto ya permitía sacar `'unsafe-inline'` de `script-src` en la CSP, como asumía el comentario del propio archivo — no es así. `'unsafe-inline'` en `script-src` también habilita cualquier bloque `<script>` inline sin `nonce`/`hash`, y `index.html` sigue teniendo docenas de ellos (ahí vive casi toda la lógica de negocio hoy). Quitar la directiva tal como está el archivo rompería la app entera. Se corrigió el comentario de la CSP en `index.html` para que ya no afirme lo contrario; la directiva en sí no se tocó. Detalle y opciones (nonce por request, hashes por bloque, o terminar de externalizar todo) en `auditoria-tecnica.md`, punto 1 (reescrito).
+
+### ✅ Corregido — 22 `aria-label` faltantes en botones ícono-solo
+
+*(misma sesión)*
+
+Barrido programático sobre todos los `<button>` de `index.html` para encontrar botones que solo tienen un ícono SVG (sin texto visible) y no tenían `aria-label`. Aparecieron 22, repartidos en Cuentas (10: volver ×4, editar/eliminar cuenta personalizada, volver a Nu, eliminar cajita, volver a Meta de ahorro, volver a CDTs), Préstamos (6: volver deudores, editar/eliminar deudor, volver mis deudas, editar/eliminar mi deuda), Mesada (2: año anterior/siguiente), Encargos (3: volver, editar, eliminar) y el gate de PIN (1: borrar dígito). Se les agregó `aria-label` a los 22, reusando el texto del `title` ya existente donde lo había (ej. `title="Editar cuenta"` → se le sumó `aria-label="Editar cuenta"`) para no inventar redacciones distintas a las que el usuario ya ve en el tooltip. Verificado con un segundo barrido tras el cambio: 0 botones ícono-solo sin `aria-label` en todo el archivo (30 `aria-label` en total, contando los 8 que ya existían).

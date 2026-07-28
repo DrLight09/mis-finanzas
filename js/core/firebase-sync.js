@@ -1,6 +1,7 @@
 // Sync con Firestore: setSyncStatus, _fbSaveToCloud (guardado con debounce),
-// _fbLoadData, onSnapshot — extraído de index.html (era <script type="module">
-// inline). Ver docs/auditoria-tecnica.md #2 (CSP).
+// _fbLoadData, onSnapshot, registro de Events('authgate',...) + habilitación
+// del botón de login — extraído de index.html (era <script type="module">
+// inline). Ver auditoria-tecnica.md #2 y CHANGELOG.md#infraestructura--seguridad.
 
   // ── Helpers de estado de sync ──────────────────────────────────────────────
   function setSyncStatus(state, text) {
@@ -457,10 +458,15 @@
   // eliminar-cuenta — mismo criterio ya usado con config:signOut, que también
   // envuelve una función de auth compartida bajo el namespace del botón que
   // la llama, no de dónde vive la función.
-  if(window.Events && typeof Events.registerAll === 'function') {
+  if(typeof Events !== 'undefined' && typeof Events.registerAll === 'function') {
     Events.registerAll('authgate', {
       signIn: window._fbSignIn,
       cerrarEliminarCuenta: window._cerrarEliminarCuenta,
       eliminarCuenta: window._fbDeleteAccount,
     });
+    // Confirmado: ya se puede usar el botón de login (ver el timeout de
+    // seguridad en el bloque de arriba, junto a onAuthStateChanged).
+    window._authgateReady = true;
+    clearTimeout(window._authgateReadyTimeout);
+    document.querySelectorAll('[data-action^="authgate:"]').forEach(function(b){ b.disabled = false; });
   }

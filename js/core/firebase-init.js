@@ -1,5 +1,6 @@
-// Init de Firebase (config, auth, onAuthStateChanged) — extraído de index.html
-// (era <script type="module"> inline). Ver docs/auditoria-tecnica.md #2 (CSP).
+// Init de Firebase (config, auth, onAuthStateChanged) + guard/timeout de
+// seguridad para el botón de login — extraído de index.html (era
+// <script type="module"> inline). Ver auditoria-tecnica.md #2.
 
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
       import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, deleteUser, reauthenticateWithPopup }
@@ -71,5 +72,20 @@
           // No logueado — mostrar pantalla de login
           document.getElementById('fb-loading-screen').style.display = 'none';
           document.getElementById('fb-login-screen').style.display = 'flex';
+          // El botón "Entrar con Google" arranca disabled (ver el <button> en
+          // el HTML) hasta que firebase-sync.js confirme que Events.registerAll
+          // ('authgate', ...) ya corrió — evita la ventana en la que el botón
+          // es visible pero su handler todavía no se registró (ver
+          // CHANGELOG.md#infraestructura--seguridad para el bug real que esto
+          // reemplaza — no era una carrera de timing, pero la precaución
+          // sigue siendo válida para cuando firebase-sync.js vuelva a ser un
+          // archivo externo). Si en 8s no se confirma, se habilita igual con
+          // un aviso — mismo criterio que window._pinGateTimeout arriba.
+          window._authgateReadyTimeout = setTimeout(function() {
+            if (!window._authgateReady) {
+              console.warn('[Auth] authgate no se registró en 8s — habilitando el botón de todas formas.');
+              document.querySelectorAll('[data-action^="authgate:"]').forEach(function(b){ b.disabled = false; });
+            }
+          }, 8000);
         }
       });

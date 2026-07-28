@@ -287,7 +287,7 @@
   // recibe argumentos. _pinSetNew/_pinDisable/_bioSetup/_bioDisable se llaman
   // también desde el HTML generado dinámicamente en _renderBtn()/_renderBioBtn()
   // más abajo en este mismo archivo.
-  if(window.Events && typeof Events.registerAll === 'function') {
+  if(typeof Events !== 'undefined' && typeof Events.registerAll === 'function') {
     Events.registerAll('pin', {
       key: window._pinKey,
       del: window._pinDel,

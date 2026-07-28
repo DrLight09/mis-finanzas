@@ -828,4 +828,24 @@ Al probar el login después de la extracción de arriba, el botón "Entrar con G
 
 **Fix:** se revirtieron específicamente `firebase-init.js` y `firebase-sync.js` a bloques `<script type="module">` inline (tal como estaban antes de esta sesión) — son los dos únicos, de los 9 extraídos, que están en el camino crítico *antes* de que exista cualquier pantalla de carga que proteja al usuario de esta carrera. Los otros 7 (`pin-bio.js`, `mejoras.js`, `mejoras-adicionales.js`, `nav.js`, `bootstrap.js`, `personas-init.js`, `import-validado.js`) quedaron externalizados: no gatean nada visible antes de tiempo, y en el caso puntual de `pin-bio.js` ya existe el fallback de 5s mencionado arriba por si tarda en cargar. Bloques `<script>` inline resultantes: **5** (no 3 como se documentó primero) — los 3 del núcleo (`S`/`save()`, sheet-stack, `refresh()`) más estos 2. Verificado con `node --input-type=module --check` sobre ambos bloques reinsertados, sin errores.
 
-**Lección para la próxima vez que se externalice algo:** antes de sacar un bloque `<script>` inline a un archivo externo, hay que preguntarse si algo se vuelve visible/interactivo (un botón, una pantalla) **antes** de que ese bloque termine de ejecutarse — no solo si el código en sí es autocontenido. Si la respuesta es sí, ese bloque necesita quedarse inline (o el elemento visible necesita un guard de "todavía no está listo"), aunque el código no tenga ninguna dependencia de orden de carga con el resto del núcleo.
+### 🐛 Corregido de verdad — el diagnóstico de arriba (carrera de red) estaba equivocado; el bug real es `window.Events` vs `Events`
+
+*(sesión posterior, tras seguir recibiendo el mismo error incluso en modo incógnito)*
+
+El diagnóstico de la entrada anterior (carrera entre el botón de login visible y `firebase-sync.js` todavía descargándose) era plausible pero **incorrecto** — quedó descartado al confirmar que el bug aparecía igual en modo incógnito (sin caché ni Service Worker de por medio) y, sobre todo, al comparar el bloque reinsertado contra el `index.html` **original** que subió el usuario: es idéntico byte a byte. El bug ya estaba ahí antes de esta sesión — nunca se había probado el login de punta a punta después de agregarse el namespace `authgate`.
+
+**Causa raíz real:** `events.js` declara `const Events = (function(){...})();` a nivel superior de un `<script>` clásico. Un `const`/`let` de nivel superior en un script clásico crea una variable global **léxica** — accesible como `Events` a secas desde cualquier otro script de la página, incluidos los `type="module"` — pero **nunca** se cuelga como propiedad de `window`. El código de `authgate` (y, se encontró de paso, el de `pin`) chequeaba `window.Events` en vez del identificador léxico:
+
+```js
+if(window.Events && typeof Events.registerAll === 'function') {   // ❌ window.Events siempre undefined
+```
+
+Como `window.Events` es `undefined` para siempre (no es un problema de timing — el resto de los ~20 módulos ya usan `Events.registerAll(...)` a secas, sin `window.`, y les funciona perfecto), el `&&` corta ahí, el bloque nunca entra, nunca se registra nada, y no hay ningún error visible hasta el click — exactamente el síntoma reportado, y determinista (siempre falla, no depende de la velocidad de red).
+
+**Alcance real, más amplio de lo reportado:** el mismo guard roto estaba clonado en el registro del namespace `pin` (`Events.registerAll('pin', {...})`, dentro de `js/core/pin-bio.js`) — significa que, además del botón de login, **el teclado numérico de PIN y el flujo de biometría tampoco estaban registrando ningún handler**, silenciosamente, desde que se agregó ese guard.
+
+**Fix:** se reemplazó `window.Events` por `typeof Events !== 'undefined'` en los dos puntos (`index.html`, bloque de auth de Firebase; `js/core/pin-bio.js`). No se tocó `events.js` — su forma de exponer `Events` es correcta y es lo que ya usa el resto de los módulos; el error estaba solo en estos dos guards puntuales que asumían mal cómo acceder a él.
+
+**Nota honesta:** no se pudo verificar el fix con un navegador real en este entorno (sin acceso de red para instalar Chromium vía Playwright) — la corrección se apoya en el comportamiento documentado del spec de ECMAScript (los `let`/`const` de script clásico viven en el registro declarativo del entorno global, compartido por todos los scripts del mismo documento incluidos los módulos, pero no en el registro de objeto que respalda a `window`), no en una prueba end-to-end propia. Pendiente de confirmación del usuario tras desplegar.
+
+**Lección:** cuando un síntoma se parece a una carrera de timing, vale la pena confirmar con modo incógnito (descarta caché/SW) *antes* de aceptar esa hipótesis como definitiva — y comparar contra el archivo original sin tocar es la forma más rápida de saber si algo es nuevo o preexistente.

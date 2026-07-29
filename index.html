@@ -9,61 +9,59 @@
       Content-Security-Policy vía meta tag (GitHub Pages no permite configurar
       cabeceras HTTP propias, así que esta es la única forma viable de tener CSP
       tal como está hosteado hoy — ver docs/auditoria-tecnica.md #1).
-      Nota importante (actualizada, ver docs/auditoria-tecnica.md #1): los
-      atributos onclick="..." inline ya llegaron a 0 (bajaron de ~247 a medida
-      que se migraron los módulos a data-action/Events; los últimos 21 — todos
-      del gate de PIN/biometría/login de Firebase — se migraron esta sesión).
-      Nota de cierre (sesión anterior) — REVERTIDA (esta sesión), ver abajo:
-      con el último bloque núcleo (sheet-stack/nav —
-      openSheet/closeSheet/showScreen/applyModulos, el wiring legacy de
-      _initEventListeners() y los 3 overrides de validación de
-      addGastoVar/addGastoFijo/addSpotify) extraído a
-      js/core/sheet-stack.js, index.html quedó con 0 bloques <script>
-      inline (bajaron de 18 originalmente), y en ese momento se sacó
-      'unsafe-inline' de script-src dándolo por cerrado. Los otros 2
-      bloques núcleo ya se habían resuelto antes: S/save() (con la
-      definición base de refresh() adentro) se extrajo entero a
-      js/core/core-state.js, y el bloque que originalmente tenía
-      "refresh()+menú Más" se dividió en 4 archivos (mas-menu.js,
-      sheet-viewport.js, gastos-fijos-progress.js, sheet-swipe.js).
-      **Se revirtió al probar en navegador real** (no en este entorno, que
-      no tiene navegador — recién se detectó cuando el usuario lo probó):
-      "0 bloques <script> inline" y "0 onclick/onchange/oninput/hover
-      inline en index.html" nunca cubrieron dos categorías que también
-      caen bajo script-src: (1) el atributo onload="this.media='all'" en
-      los 2 <link> de carga async de CSS (Font Awesome, Google Fonts) —
-      ✅ arreglado esta sesión, ver js/core/async-css.js, no depende de
-      ningún otro archivo así que no hace falta revertir nada por esto;
-      (2) onmouseenter/onmouseleave generados en tiempo de ejecución
-      dentro de template strings de varios módulos (los botones "eliminar"
-      con efecto hover, insertados vía innerHTML) — ya estaba documentado
-      como pendiente ("hallazgo aparte, sin tocar, pendiente de una clase
-      :hover compartida") en al menos 6 módulos, gastos.js incluido. Esta
-      sesión se migraron los 2 pares de gastos.js a una clase CSS
-      compartida (.btn-delete-hover, ver más abajo en este archivo) — los
-      del resto de los módulos (según el propio comentario de gastos.js:
-      "igual que en los cinco módulos anteriores") no se tocaron por no
-      tener esos archivos disponibles en esta sesión. Hasta que se
-      confirme que NINGÚN módulo genera un atributo on* inline al
-      renderizar (no solo onclick — cualquiera: onmouseenter, onmouseleave,
-      onload, onerror, etc.), 'unsafe-inline' se queda en script-src.
-      Ver CHANGELOG.md#infraestructura--seguridad para el detalle completo
-      y la lista de módulos que faltan revisar. Nonce no es una opción acá:
-      GitHub Pages sirve archivos estáticos, sin servidor que genere un
-      valor aleatorio por request y lo mande en una cabecera HTTP real — un
-      nonce fijo en el HTML no protegería nada. Mientras tanto, esta CSP igual
-      aporta protección real: bloquea que un script inyectado cargue código o
-      exfiltre datos hacia un dominio arbitrario, restringe qué puede insertarse
-      como <object>/<embed>, y limita las conexiones de red solo a Firebase/Firestore.
+
+      Historia resumida de script-src (detalle completo en
+      CHANGELOG.md#infraestructura--seguridad, con fecha por sesión):
+      1) Los ~247 atributos onclick="..." inline en el HTML estático se
+         migraron a data-action/Events hasta llegar a 0.
+      2) Los 3 bloques núcleo <script> inline que quedaban (S/save(),
+         sheet-stack/nav, refresh()+menú Más) se externalizaron a
+         js/core/*.js hasta llegar a 0 bloques inline en todo el archivo.
+      3) Sacar 'unsafe-inline' de script-src en ese momento resultó
+         PREMATURO — probado recién en navegador real (jsdom/node no
+         aplican CSP, no lo detectan): dos categorías de handler inline
+         que "0 <script> inline" y "0 onclick estático" nunca cubrieron:
+         (a) onload="this.media='all'" en los <link> de carga async de CSS
+         — arreglado con js/core/async-css.js; (b) onmouseenter/
+         onmouseleave generados en tiempo de ejecución por varios módulos
+         (botones "eliminar" con hover), migrados a la clase compartida
+         .btn-delete-hover (ver más abajo en este archivo).
+      4) Barrido completo, módulo por módulo, de CUALQUIER atributo on*
+         generado dinámicamente vía innerHTML — no solo hover: cuentas.js
+         tenía además 2 oninput funcionales (metas de aportes) y 1 oninput
+         + 2 onchange funcionales (filtro de movimientos), migrados a
+         listeners delegados; encargos.js tenía 1 onclick en fila de
+         movimiento, migrado a data-action="core:abrirDetalleMov" (mismo
+         patrón que cuentas.js/prestado.js). Se revisaron los 29 archivos
+         que conforman la app (todos los módulos de pantalla + los 5 de
+         infraestructura: events.js, diferencial.js, split.js,
+         core-state.js, money-input.js) — el único hallazgo en el núcleo
+         fue una rama muerta en emptyState() (core-state.js) que aceptaba
+         un onclick como string por compatibilidad hacia atrás; ningún
+         caller real la usaba ya, se sacó la rama entera para que ningún
+         módulo futuro pueda reintroducirla sin querer.
+      Con eso, 'unsafe-inline' se sacó de script-src de nuevo — esta vez
+      confirmado contra los 29 archivos reales de la app, no solo contra
+      index.html. Nonce no es una opción acá: GitHub Pages sirve archivos
+      estáticos, sin servidor que genere un valor aleatorio por request y
+      lo mande en una cabecera HTTP real — un nonce fijo en el HTML no
+      protegería nada. Esta CSP aporta protección real: bloquea que un
+      script inyectado cargue código o exfiltre datos hacia un dominio
+      arbitrario, restringe qué puede insertarse como <object>/<embed>, y
+      limita las conexiones de red solo a Firebase/Firestore.
       Directivas no soportadas en <meta> (frame-ancestors, sandbox) quedan fuera
       a propósito — no tienen efecto ahí y GitHub Pages tampoco permite la
       cabecera X-Frame-Options real (mismo hallazgo que en la auditoría).
+      ⚠️ Recordatorio para la próxima vez que se toque un módulo con
+      template strings que generan HTML: node --check y las simulaciones
+      con jsdom NO aplican CSP — no van a agarrar un handler inline nuevo.
+      Solo probar en navegador real con la consola abierta lo confirma.
       Si al probar aparecen errores "Refused to..." en la consola del navegador,
       es una conexión/recurso legítimo que falta agregar acá, no un bug de la app.
     -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com;
+      script-src 'self' https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
       font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;
       img-src 'self' data: https:;
@@ -232,6 +230,11 @@ textarea{resize:none;height:60px;}
    pendiente en el resto de los módulos que usan el mismo patrón. */
 .btn-delete-hover{background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.6;transition:opacity .15s,color .15s;}
 .btn-delete-hover:hover{opacity:1;color:var(--red,#f44);}
+/* Reemplaza el onmouseenter/onmouseleave inline de la fila de cajita en
+   Cuentas (cambio de color de borde al pasar el mouse). Ver
+   auditoria-tecnica.md #1 y CHANGELOG.md#infraestructura--seguridad. */
+.cajita-row-hover{border:1px solid var(--border2);}
+.cajita-row-hover:hover{border-color:rgba(192,96,240,.4);}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);overflow:hidden;}
 .overlay.open{display:flex;}
 /* Sheet stack: el overlay activo sube a z-index 1001; el enterrado queda en 999

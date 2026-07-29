@@ -962,3 +962,61 @@ El usuario reportó que el badge "Necesita atención" (el `<span>` con el númer
 - **Por qué no alcanzaba con el patrón "hook una sola vez"** que ya usa el resto de la app (ej. `sheet._personaHook` en `deudores-personas.js`, `sheet._personaHook` en el selector de "Nueva deuda"): acá el handler cierra sobre `items`, una variable local de `renderAttencion()` que cambia en cada render — si el listener se enganchara una sola vez y nunca más, el badge mostraría para siempre el `items.length` del primer render, no el actual. Por eso hace falta sacar y volver a poner el listener en cada render, no solo engancharlo una vez.
 - **Verificado con jsdom:** se simularon 5 llamadas seguidas a `renderAttencion()` (equivalente a 5 `refresh()` del usuario navegando) seguidas de 4 clicks — cada click alternó `list.style.display` una sola vez (`none`→`''`→`none`→`''`), confirmando que ya no queda más de un listener activo.
 - **Nota honesta:** este bug es preexistente a esta sesión — no lo introdujo la extracción de `sheet-stack.js` (que no toca `inicio.js` para nada) ni ningún cambio de la CSP. Se encontró porque el usuario probó la app en navegador real después de esos cambios y notó el síntoma; el bug en sí probablemente llevaba un tiempo ahí, dependiendo de cuántos `refresh()` se acumularan en cada sesión de uso.
+
+### 🔧 Barrido de handlers `on*` inline en `cuentas.js`, `encargos.js`, `mesada.js`, `prestado.js`, `tarjetas_credito.js`
+
+*(sesión posterior)*
+
+Continuación directa del punto reabierto de infraestructura/seguridad: revisar los módulos con el mismo patrón de handler inline que `gastos.js` (y cualquier otro atributo `on*`, no solo hover) antes de volver a sacar `'unsafe-inline'` de `script-src`.
+
+**Resultado del barrido — 3 de 5 módulos tenían casos reales, más variados de lo esperado:**
+
+| Archivo | Casos encontrados |
+|---|---|
+| `cuentas.js` | 6: 2 `oninput` funcionales (`_renderMetaAportes`), 1 par hover (fila de cajita), 1 `oninput` + 2 `onchange` funcionales (`renderMovsFiltros`) |
+| `encargos.js` | 2: 1 `onclick` en fila de movimiento, 1 par hover (botón eliminar movimiento) |
+| `tarjetas_credito.js` | 2 pares hover (eliminar compra, eliminar pago) |
+| `mesada.js` | 0 — limpio |
+| `prestado.js` | 0 — limpio |
+
+**Los pares hover** (`cuentas.js`, `encargos.js`, `tarjetas_credito.js`) se migraron a la clase compartida `.btn-delete-hover` ya creada para `gastos.js` — mismo criterio, sin cambios de comportamiento salvo un detalle cosmético menor y deliberado: se estandarizó la opacidad base en `.6` para los tres módulos (`encargos.js` tenía `.55`), ya que el objetivo explícito de esta clase es ser compartida y consistente en toda la app, no una copia exacta por módulo.
+
+**El hover de la fila de cajita en `cuentas.js`** (cambio de color de borde, no de opacidad) es un caso distinto — se creó una clase nueva, `.cajita-row-hover`, porque no es el mismo patrón visual que los botones "eliminar".
+
+**El `onclick="abrirDetalleMov(this)"` de `encargos.js`** (fila de movimiento) se migró a `data-action="core:abrirDetalleMov"` — el mismo patrón que `cuentas.js` y `prestado.js` ya usaban para exactamente el mismo caso (quedó como el único módulo de los cuatro con filas de movimiento que todavía tenía la versión vieja).
+
+**Los 3 casos funcionales de `cuentas.js`** (no cosméticos, con lógica real) fueron los más delicados:
+- `_renderMetaAportes()`: los 2 `oninput` escribían directo en `_metaAportesTemp[i].desc`/`.monto` usando el índice `i` del loop de render. Se migraron a un único listener delegado en el contenedor (`#meta_aportes_list`), enganchado una sola vez (guard `_metaAportesHooked`, mismo patrón que `sheet._personaHook` en `deudores-personas.js`) — el índice se lee de un `data-idx` en el momento del evento, no de una variable cerrada, así que no repite el problema de "valor viejo" del bug de `renderAttencion()` de la entrada anterior.
+- `renderMovsFiltros()`: el `oninput` del buscador y los 2 `onchange` de fecha se migraron al mismo patrón — un listener delegado por `wrap` (uno por `cuentaKey`, ya que `filtrosElId` incluye el `cuentaKey`), guardado con `_movsFiltrosHooked`. Acá sí es seguro cerrar sobre `cuentaKey` en el closure (a diferencia de `items` en `renderAttencion()`) porque un `wrap` dado siempre tiene el mismo `cuentaKey` — nunca cambia entre renders para ese elemento en particular.
+- **Verificado con jsdom, no solo `node --check`:** se simularon 3-4 renders seguidos de cada función (equivalente a varios `refresh()` del usuario) seguidos de ediciones reales en los inputs — confirmando que `_metaAportesTemp`/los filtros se actualizan correctamente y que `_updateMetaCuotaPreview()`/`_movsRefresh()` se llaman **una sola vez** por evento, no una vez por cada render acumulado (que es exactamente el bug que tenía `renderAttencion()` antes del fix de la entrada anterior).
+
+**Archivos ya en la app, no subidos esta vez, también revisados por completitud** (los tenía de sesiones anteriores): `spotify.js`, `deudores-personas.js`, `inicio.js`, `js/core/sheet-stack.js`, `js/core/async-css.js` — los 5 salen limpios (las únicas coincidencias de `on\w+=` son texto dentro de comentarios, documentando el patrón viejo).
+
+**`'unsafe-inline'` se queda en `script-src` por ahora, a propósito:** con este barrido ya son 11 archivos confirmados (6 revisados y corregidos esta sesión + 5 que ya salían limpios), pero la app tiene más módulos que todavía no se revisaron y que no están disponibles en esta sesión: `js/core/movimientos.js` (el que centraliza `abrirDetalleMov`/`eliminarMovimiento`, compartido por los 4 módulos con filas de movimiento), `js/modules/spotify-personas.js`, `encargos-personas.js`, `prestado-personas.js`, `configuracion.js`, `personas.js`, `analisis.js`, `actividad_reciente.js`, `alcancia.js` (si existe con ese nombre), y los 4 archivos en que se dividió el bloque "refresh()+menú Más" (`mas-menu.js`, `sheet-viewport.js`, `gastos-fijos-progress.js`, `sheet-swipe.js`). Hasta confirmar esos también, sacar `'unsafe-inline'` sigue siendo prematuro.
+
+### 🔧 Barrido de los 13 módulos restantes — todos limpios (Actividad Reciente, Alcancía, Análisis, Movimientos, Personas, Spotify-Personas, Configuración, Encargos-Personas, Préstamo-Personas, y los 4 de "refresh()+menú Más")
+
+*(sesión posterior)*
+
+Segunda tanda de la lista de pendientes de la entrada anterior. Sintaxis OK en los 13. Barrido de `on\w+=`: solo 4 coincidencias en total, las 4 dentro de comentarios (nada de código activo).
+
+Una de esas 4 merecía chequeo aparte: el comentario de `actividad_reciente.js` afirmaba que `#cfg-historial-row` en `index.html` todavía tenía un `onclick="showScreen('historial')"` inline, estático, sin relación con ningún módulo JS. Se verificó directo en el `index.html` actual: **falso positivo, comentario desactualizado** — esa fila ya usa `data-action="config:irA" data-args="[...]"`, correctamente migrada en algún momento sin que ese comentario en particular se actualizara.
+
+Con esto, los 13 módulos de pantalla que faltaban de la lista de la entrada anterior quedan confirmados limpios.
+
+### ✅ Cierre — barrido de infraestructura (`events.js`, `diferencial.js`, `split.js`, `core-state.js`, `money-input.js`) y remoción definitiva de `'unsafe-inline'` en `script-src`
+
+*(sesión posterior)*
+
+Última tanda: los 5 archivos "motor" que quedaban sin revisar directamente. Sintaxis OK en los 5.
+
+**Hallazgo real, el más importante de toda esta serie de sesiones:** `emptyState()` en `core-state.js` — un helper compartido usado por varios módulos para renderizar el estado "vacío" de una lista — todavía aceptaba dos formas para su parámetro `btnFn`: el objeto `{action, args}` del despachador de Events (forma nueva), o un string con `onclick="..."` crudo insertado tal cual en el HTML (forma vieja, mantenida "por compatibilidad hacia atrás").
+
+Se revisaron todas las llamadas a `emptyState()` en los 29 archivos disponibles: exactamente 3 (2 en `gastos.js`, 1 en `spotify.js`), las 3 ya usaban la forma nueva. El comentario que decía "todavía usada por Gastos y Tarjetas de crédito" estaba desactualizado — `tarjetas_credito.js` ni siquiera llama a `emptyState()`.
+
+La rama `onclick="${btnFn}"` era código muerto, sin ningún caller activándola, pero seguía disponible para que un módulo futuro la disparara por error. Se sacó la rama entera: ahora `emptyState()` solo acepta `{action, args}` — si alguien pasa un string, el botón simplemente no se renderiza, sin generar ningún inline.
+
+- Verificado con los 3 casos reales (mismo HTML de salida que antes) más un caso adversarial confirmando que ya no genera `onclick`.
+- `events.js`, `diferencial.js`, `split.js`, `money-input.js`: limpios.
+
+**Con esto se completa el barrido de los 29 archivos de la app. `'unsafe-inline'` se sacó de `script-src` de nuevo**, esta vez confirmado contra el código real de los 29 archivos, no solo contra `node --check`/jsdom (que no aplican CSP).

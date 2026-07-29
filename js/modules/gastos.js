@@ -19,9 +19,14 @@
    onclick → data-action/Events: 6 casos migrados, 0 restantes en
    este módulo (filtro de mes, eliminar gasto variable, eliminar y
    pagar gasto fijo, y los dos botones de estado vacío). Los
-   onmouseenter/onmouseleave de los botones "eliminar" se dejaron
-   igual que en los cinco módulos anteriores — hallazgo aparte, sin
-   tocar, pendiente de una clase :hover compartida para toda la app.
+   onmouseenter/onmouseleave de los botones "eliminar" (2 pares) se
+   dejaron igual que en los cinco módulos anteriores en su momento —
+   se migraron recién en una sesión posterior a la clase CSS
+   compartida .btn-delete-hover (index.html), al detectarse que la CSP
+   también bloquea handlers inline generados dinámicamente, no solo
+   los que vienen del HTML estático — ver auditoria-tecnica.md #1 y
+   CHANGELOG.md#infraestructura--seguridad. El resto de los módulos
+   con el mismo patrón sigue pendiente.
 
    .innerHTML sin escapar: repetido un quinto módulo seguido — texto
    libre (fuenteLabel()/tc.nombre) sin escHtml(). 4 sitios
@@ -133,7 +138,7 @@ function renderGastosVar() {
           <span class="row-amount" style="color:${colorMonto};">${esPagoTC ? '-' : ''}${fmt(g.monto)}</span>
           ${esSecundario
             ? `<span title="Generado automáticamente — elimínalo desde ${escHtml(g._origenSeccion || 'la sección de origen')}" style="display:flex;align-items:center;justify-content:center;padding:4px;color:var(--text3);opacity:.4;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
-            : `<button type="button" ${Events.attr('gastos:deleteGastoVar', g.id)} title="Eliminar" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.6;" onmouseenter="this.style.opacity='1';this.style.color='var(--red,#f44)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
+            : `<button type="button" class="btn-delete-hover" ${Events.attr('gastos:deleteGastoVar', g.id)} title="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>`}
         </div>
@@ -318,7 +323,7 @@ function renderGastosFijos() {
         <div><div class="row-name" style="font-size:13px;">${escHtml(x.nombre)}</div></div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="row-amount c-red">${fmt(x.monto)}</span>
-          ${!x._virtual ? `<button type="button" ${Events.attr('gastos:deleteGastoFijo', x.id)} title="Eliminar" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.6;" onmouseenter="this.style.opacity='1';this.style.color='var(--red,#f44)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
+          ${!x._virtual ? `<button type="button" class="btn-delete-hover" ${Events.attr('gastos:deleteGastoFijo', x.id)} title="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>` : ''}
         </div>

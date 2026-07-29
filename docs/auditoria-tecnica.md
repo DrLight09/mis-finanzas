@@ -152,7 +152,7 @@ Reporte basado en verificación directa del archivo.
 
 ## 🔴 Críticos — pendientes
 
-### 1. CSP: los bloques `<script>` inline siguen exigiendo `'unsafe-inline'` (en progreso — de 18 bloques a 2, solo queda sheet-stack/nav)
+### 1. CSP: los bloques `<script>` inline exigían `'unsafe-inline'` (✅ resuelto — de 18 bloques a 0)
 
 **Estado:** con la migración de `onclick` ya cerrada del todo (ver `CHANGELOG.md#infraestructura--seguridad`, 0 atributos `onclick`/`onchange`/`oninput`/hover inline en `index.html`), se revisó si eso ya permitía sacar `'unsafe-inline'` de `script-src` en la CSP, como asumía el comentario del propio archivo — **no es así**. `'unsafe-inline'` en `script-src` no solo habilita los atributos `onclick="..."` inline: también habilita cualquier bloque `<script>` inline (sin `nonce`/`hash`).
 
@@ -183,6 +183,8 @@ Reporte basado en verificación directa del archivo.
 > **Extracción de `S`/`save()`, completa (sesión posterior):** a diferencia de sheet-stack/nav, no hizo falta partirlo — nada antes de su posición original podía depender de su contenido (no existía todavía en ese punto del archivo), así que se extrajo entero a `js/core/core-state.js`, en la misma posición, como script clásico (no módulo, para que sus globales sigan siendo variables léxicas normales). Incluye la definición base de `refresh()` (primer eslabón de la cadena de 3 wraps). **Queda un solo bloque núcleo:** sheet-stack/nav — el que más cuidado necesita, por el monkey-patch de `openSheet` en `deudores-personas.js` que exige preservar el orden de carga relativo, a diferencia de `S`/`save()` que se pudo extraer sin esa restricción. Detalle en `CHANGELOG.md#infraestructura--seguridad`.
 
 **Solución:** con los 3 restantes siendo exactamente el núcleo, sacar `'unsafe-inline'` de `script-src` es ahora, sin rodeos, una consecuencia directa de terminar el punto 4 (mover `S`/`save()`/`refresh()`/sheet-stack a `js/core/`). No queda ningún trabajo de CSP independiente de eso.
+
+> **Cierre (sesión posterior):** se extrajo el último bloque núcleo — sheet-stack/nav (`openSheet`/`closeSheet`/`showScreen`/`applyModulos`, el wiring legacy de `_initEventListeners()` y los overrides de `addGastoVar`/`addGastoFijo`/`addSpotify`) — a un solo archivo nuevo, `js/core/sheet-stack.js`, unificando las dos mitades (A/B) en que vivía repartido alrededor de `money-input.js`. Se preservó el orden de carga relativo exigido por el monkey-patch de `openSheet` en `deudores-personas.js`: el `<script src>` nuevo quedó después de `gastos.js`/`spotify.js` (los overrides de `addGastoVar`/`addGastoFijo` leen esos globales a nivel superior del script, al parsear) y antes de `deudores-personas.js`. Con esto, `index.html` queda en **0 bloques `<script>` inline** — se sacó `'unsafe-inline'` de `script-src` en la CSP. `style-src` sigue con `'unsafe-inline'` por el CSS inline (44.7 KB), sin relación con este punto — ver advertencias pendientes. Detalle completo en `CHANGELOG.md#infraestructura--seguridad`.
 
 ### 2. Auditoría exhaustiva de `.innerHTML` (barrido parcial hecho, no exhaustivo)
 
@@ -307,7 +309,7 @@ Para el resto: sin cambios desde la revisión anterior. ~1.3 MB repartidos ahora
 ## Priorización sugerida (actualizada)
 
 1. ~~Los ~9 pares `onmouseenter`/`onmouseleave` sin ubicación exacta y el gate de PIN/login~~ — **cerrado esta sesión**, ver `CHANGELOG.md#infraestructura--seguridad`: 0 `onclick`/hover inline en todo el archivo.
-2. **Externalizar los 3 bloques `<script>` inline que quedan (`S`/`save()`, sheet-stack, `refresh()`)** — es, en la práctica, el mismo trabajo que el punto 4 de abajo. Bajó de 18 bloques a 3 en total (ver punto 1 arriba y `CHANGELOG.md#infraestructura--seguridad`); `firebase-init.js`/`firebase-sync.js` ya se resolvieron con un guard de "botón listo" y quedaron externalizados sin pendientes.
+2. ~~Externalizar los 3 bloques `<script>` inline que quedaban (`S`/`save()`, sheet-stack, `refresh()`)~~ — **cerrado esta sesión**: de 18 bloques a 0 (ver punto 1 arriba y `CHANGELOG.md#infraestructura--seguridad`); `firebase-init.js`/`firebase-sync.js` ya se habían resuelto antes con un guard de "botón listo".
 3. **Reestructurar el arranque para no depender de toda la cadena de Auth/Firestore antes del primer contenido real** — el cambio de mayor impacto en rendimiento que queda, y el de mayor riesgo. Hacer con pruebas en vivo paso a paso, no de una sola vez.
 4. **Modularizar por dominio** (resuelve monolito, JS no usado, TBT y tamaño del DOM a la vez — mismo trabajo que el punto 3 en buena parte).
 5. Self-hostear un subconjunto de Font Awesome (requiere acceso al CDN para bajar los archivos reales).

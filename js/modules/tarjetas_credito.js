@@ -845,7 +845,7 @@ function abrirDetalleTCSheet(tcId){
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${escHtml(c.desc)}${favorBadge}</div><div class="row-sub">${c.fecha}</div></div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span class="row-amount" style="color:${esFavor?'var(--blue)':'var(--red)'};">${fmt(c.monto)}</span>
-            <button type="button" ${Events.attr('tarjetas:eliminarCompra',tc.id,c.id)} data-stop-propagation="true" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);opacity:.6;display:flex;align-items:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
+            <button type="button" class="btn-delete-hover" ${Events.attr('tarjetas:eliminarCompra',tc.id,c.id)} data-stop-propagation="true">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
             </button>
           </div>
@@ -884,7 +884,7 @@ function abrirDetalleTCSheet(tcId){
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">Abono a tu deuda</div><div class="row-sub">${p.fecha}</div></div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span class="row-amount c-green">−${fmt(p.monto)}</span>
-            <button type="button" ${Events.attr('tarjetas:eliminarPago',tc.id,p.id)} data-stop-propagation="true" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);opacity:.6;display:flex;align-items:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.6';this.style.color='var(--text3)'">
+            <button type="button" class="btn-delete-hover" ${Events.attr('tarjetas:eliminarPago',tc.id,p.id)} data-stop-propagation="true">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
             </button>
           </div>

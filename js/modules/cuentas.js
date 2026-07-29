@@ -916,12 +916,39 @@ function _renderMetaAportes(){
   if(!el) return;
   el.innerHTML = _metaAportesTemp.map((ap,i)=>`
     <div class="prest-split-row" style="gap:6px;margin-bottom:7px;">
-      <input type="text" value="${escHtml(ap.desc||'')}" placeholder="Ej: Papá, Mamá" oninput="_metaAportesTemp[${i}].desc=this.value" style="flex:1;font-size:13px;padding:8px 10px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;font-family:'DM Sans',sans-serif;">
-      <input type="text" inputmode="decimal" value="${ap.monto?fmtInput(ap.monto):''}" placeholder="$0" class="money-input" oninput="_metaAportesTemp[${i}].monto=parseMoney(this.value)||0;_updateMetaCuotaPreview()" style="width:100px;flex-shrink:0;">
+      <input type="text" value="${escHtml(ap.desc||'')}" placeholder="Ej: Papá, Mamá" class="meta-aporte-desc" data-idx="${i}" style="flex:1;font-size:13px;padding:8px 10px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;font-family:'DM Sans',sans-serif;">
+      <input type="text" inputmode="decimal" value="${ap.monto?fmtInput(ap.monto):''}" placeholder="$0" class="money-input meta-aporte-monto" data-idx="${i}" style="width:100px;flex-shrink:0;">
       <button class="prest-split-del" ${Events.attr('cuentas:metaAporteEliminar', i)}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>`).join('');
+  // Reemplaza los oninput="_metaAportesTemp[i]..." inline (CSP los bloquea).
+  // Un solo listener delegado en el contenedor, enganchado una sola vez —
+  // #meta_aportes_list no se recrea entre renders, solo su innerHTML, así
+  // que hace falta guard (mismo patrón que sheet._personaHook en
+  // deudores-personas.js) para no acumular. A diferencia del bug de
+  // renderAttencion() (Inicio), acá el listener no cierra sobre `i` ni
+  // sobre `ap` — lee el índice de data-idx en el momento del evento, así
+  // que no hay problema de "valor viejo" aunque se enganche una sola vez.
+  if(!el._metaAportesHooked){
+    el._metaAportesHooked = true;
+    el.addEventListener('input', (e)=>{
+      const descInput = e.target.closest('.meta-aporte-desc');
+      if(descInput){
+        const idx = Number(descInput.dataset.idx);
+        if(_metaAportesTemp[idx]) _metaAportesTemp[idx].desc = descInput.value;
+        return;
+      }
+      const montoInput = e.target.closest('.meta-aporte-monto');
+      if(montoInput){
+        const idx = Number(montoInput.dataset.idx);
+        if(_metaAportesTemp[idx]){
+          _metaAportesTemp[idx].monto = parseMoney(montoInput.value)||0;
+          _updateMetaCuotaPreview();
+        }
+      }
+    });
+  }
 }
 
 // Wrapper con nombre propio para el data-action (antes era un onclick con 3
@@ -1280,7 +1307,7 @@ function renderCajitas(){
     // Badges indicadores
     const cdtBadge=hasCDTs?`<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px 3px 6px;border-radius:20px;background:rgba(176,144,240,.15);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-size:10px;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${cdts.length===1?fmt(totalCDT):cdts.length+' CDTs'}</span>`:'';
     const metaBadge=hasMeta?`<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-size:10px;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0;">${metaPct.toFixed(0)}%</span>`:'';
-    return`<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px 13px;margin-bottom:7px;cursor:pointer;transition:border-color .15s,background .15s;display:flex;align-items:center;gap:10px;" id="cajita-row-${c.id}" ${Events.attr('cuentas:abrirDetalleCajita', c.id)} onmouseenter="this.style.borderColor='rgba(192,96,240,.4)'" onmouseleave="this.style.borderColor='var(--border2)'">
+    return`<div class="cajita-row-hover" style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px 13px;margin-bottom:7px;cursor:pointer;transition:border-color .15s,background .15s;display:flex;align-items:center;gap:10px;" id="cajita-row-${c.id}" ${Events.attr('cuentas:abrirDetalleCajita', c.id)}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
       <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(c.nombre)}</div>
@@ -1921,19 +1948,34 @@ function renderMovsFiltros(elId, cuentaKey, movs, accentColor) {
   wrap.innerHTML = `
     <div class="movs-search-wrap">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" class="movs-search-input" placeholder="Buscar movimiento..." value="${f.q}" oninput="_movsOnSearch(this,'${cuentaKey}')">
+      <input type="text" class="movs-search-input" placeholder="Buscar movimiento..." value="${f.q}">
     </div>
     <div class="movs-tipo-chips">
       ${tiposConfig.map(t => `<div class="movs-chip${f.tipo===t.val?' active':''}" ${Events.attr('cuentas:movsOnTipo', t.val, cuentaKey)}>${t.label}</div>`).join('')}
     </div>
     <div class="movs-fecha-row">
       <span class="movs-fecha-label">Desde</span>
-      <input type="date" value="${f.desde}" onchange="_movsOnFecha('desde',this.value,'${cuentaKey}')">
+      <input type="date" class="movs-fecha-desde" value="${f.desde}">
       <span class="movs-fecha-label">Hasta</span>
-      <input type="date" value="${f.hasta}" onchange="_movsOnFecha('hasta',this.value,'${cuentaKey}')">
+      <input type="date" class="movs-fecha-hasta" value="${f.hasta}">
       ${(f.desde||f.hasta)?`<button ${Events.attr('cuentas:movsLimpiarFechas', cuentaKey)} style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:'DM Mono',monospace;white-space:nowrap;padding:0 2px;">× fechas</button>`:''}
     </div>
   `;
+  // Reemplaza los oninput/onchange inline (CSP los bloquea). Delegado,
+  // enganchado una sola vez por wrap — cada cuentaKey tiene su propio wrap
+  // fijo (filtrosElId = 'movs-filtros-'+cuentaKey), así que cerrar sobre
+  // cuentaKey acá es seguro: nunca cambia para este wrap en particular,
+  // a diferencia de `items` en el bug de renderAttencion() (Inicio).
+  if(!wrap._movsFiltrosHooked){
+    wrap._movsFiltrosHooked = true;
+    wrap.addEventListener('input', (e)=>{
+      if(e.target.classList.contains('movs-search-input')) _movsOnSearch(e.target, cuentaKey);
+    });
+    wrap.addEventListener('change', (e)=>{
+      if(e.target.classList.contains('movs-fecha-desde')) _movsOnFecha('desde', e.target.value, cuentaKey);
+      else if(e.target.classList.contains('movs-fecha-hasta')) _movsOnFecha('hasta', e.target.value, cuentaKey);
+    });
+  }
 }
 
 function _movsOnSearch(input, cuentaKey) {

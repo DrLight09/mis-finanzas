@@ -408,7 +408,7 @@ function abrirEncargoDetalle(id) {
     const _encAttrs=(m, origenLbl)=>{
       const sd=_encSaldoPorId.get(m.id);
       if(!sd) return '';
-      return `data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="encargo" data-mov-origen="${escHtml(origenLbl)}" data-mov-saldo-antes="${sd.antes}" data-mov-saldo-despues="${sd.despues}" data-mov-saldo-label="Saldo de ${escHtml(enc.nombre)}" data-mov-desc="${escHtml(m.desc||'')}" data-mov-fecha="${escHtml(m.fecha)}" style="cursor:pointer;" onclick="abrirDetalleMov(this)"`;
+      return `data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="encargo" data-mov-origen="${escHtml(origenLbl)}" data-mov-saldo-antes="${sd.antes}" data-mov-saldo-despues="${sd.despues}" data-mov-saldo-label="Saldo de ${escHtml(enc.nombre)}" data-mov-desc="${escHtml(m.desc||'')}" data-mov-fecha="${escHtml(m.fecha)}" style="cursor:pointer;" data-action="core:abrirDetalleMov"`;
     };
     html += todosMovs.map((m,i) => {
       if (m._esSaldoInicial) {
@@ -438,7 +438,7 @@ function abrirEncargoDetalle(id) {
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span class="row-amount ${esEntrada?'c-blue':esAbonoPrestamo?'c-amber':'c-red'}">${esEntrada?'+':'−'}${fmt(m.monto)}</span>
-            <button type="button" data-stop-propagation="true" ${Events.attr('encargos:deleteMov', enc.id, m.id)} title="Eliminar (también elimina movimientos secundarios en tus cuentas)" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.55;display:flex;align-items:center;justify-content:center;" onmouseenter="this.style.opacity='1';this.style.color='var(--red)'" onmouseleave="this.style.opacity='.55';this.style.color='var(--text3)'">
+            <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${Events.attr('encargos:deleteMov', enc.id, m.id)} title="Eliminar (también elimina movimientos secundarios en tus cuentas)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             </button>
           </div>

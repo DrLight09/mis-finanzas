@@ -782,20 +782,20 @@ window.addEventListener('beforeunload', function() {
 /* ---- CATEGORÍAS PERSONALIZADAS, BACKUP JSON: migrado a js/modules/configuracion.js ---- */
 
 /* ---- EMPTY STATES ACCIONABLES ---- */
-// btnFn acepta DOS formas (compatibilidad hacia atrás mientras se migran
-// los demás módulos, ver docs/auditoria-tecnica.md):
-//  - string: código onclick crudo (forma vieja, todavía usada por Gastos y
-//    Tarjetas de crédito — no se tocó de paso, se migran en sus propias etapas).
-//  - {action, args}: usa el despachador central de eventos (js/core/events.js),
-//    forma nueva usada por Spotify en adelante.
+// btnFn siempre usa el despachador central de eventos (js/core/events.js):
+// {action, args}. La forma vieja que esta función aceptaba por compatibilidad
+// hacia atrás (string con onclick="..." crudo, para Gastos/Tarjetas de
+// crédito mientras migraban) se sacó esta sesión: se revisaron TODAS las
+// llamadas a emptyState() en toda la app (gastos.js ×2, spotify.js ×1 — las
+// únicas 3 que existen) y las 3 ya usaban la forma nueva. El comentario
+// viejo había quedado desactualizado — Gastos ya había migrado sin que
+// nadie lo actualizara. Se saca la rama entera (no solo el comentario) para
+// que ningún módulo futuro pueda reintroducir un onclick inline acá por
+// costumbre. Ver auditoria-tecnica.md #1 y CHANGELOG.md#infraestructura--seguridad.
 function emptyState(icon, title, sub, btnLabel, btnFn){
   let btnHtml = '';
-  if (btnLabel) {
-    const usaEvents = btnFn && typeof btnFn === 'object' && btnFn.action;
-    const attrs = usaEvents
-      ? Events.attr(btnFn.action, ...(btnFn.args || []))
-      : `onclick="${btnFn}"`;
-    btnHtml = `<button type="button" class="empty-state-btn" ${attrs}>${btnLabel}</button>`;
+  if (btnLabel && btnFn && btnFn.action) {
+    btnHtml = `<button type="button" class="empty-state-btn" ${Events.attr(btnFn.action, ...(btnFn.args || []))}>${btnLabel}</button>`;
   }
   return `<div class="empty-state">
     <div class="empty-state-icon">${icon}</div>

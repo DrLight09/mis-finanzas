@@ -2253,6 +2253,30 @@ function confirmarCompraConTC() {
 })();
 
 /* ═══════════════════════════════════════════════════════════════
+   WIRING MIGRADO DESDE index.html (_initEventListeners) — previews
+   en vivo de "Retirar plata" (movenc), "Compra con TC" (ctc) y los
+   tres inputs "valor real" del motor Diferencial (movenc/ctc/
+   usarParte). Documentado como hecho en CHANGELOG.md (2026-07-27),
+   pero nunca había llegado a este archivo — agregado ahora. Mismo
+   patrón que el bloque equivalente ya existente en prestado.js.
+   ═══════════════════════════════════════════════════════════════ */
+[
+  ['movenc_monto', 'input', _movEncSplitPreview],
+  ['movenc_mia_cuenta_sale', 'change', _movEncMiaPreview],
+  ['movenc_mia_cuenta_entra', 'change', _movEncMiaPreview],
+  ['ctc_monto', 'input', _ctcActualizarPreview],
+  ['ctc_cuenta_enc', 'change', _ctcActualizarPreview],
+  ['ctc_tarjeta', 'change', _ctcActualizarPreview],
+  ['ctc_destino', 'change', _ctcActualizarPreview],
+  ['movenc_dif_real', 'input', _difResumen],
+  ['ctc_dif_real', 'input', _ctcDifResumen],
+  ['usar_parte_dif_real', 'input', _usarParteDifResumen],
+].forEach(([elId, evt, fn]) => {
+  const el = document.getElementById(elId);
+  if (el) el.addEventListener(evt, fn);
+});
+
+/* ═══════════════════════════════════════════════════════════════
    REGISTRO DE EVENTOS (js/core/events.js)
    Reemplaza los onclick="..." inline que tenía este módulo — mismo
    patrón que spotify.js y mesada.js. Los handlers con argumentos

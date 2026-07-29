@@ -13,30 +13,45 @@
       atributos onclick="..." inline ya llegaron a 0 (bajaron de ~247 a medida
       que se migraron los módulos a data-action/Events; los últimos 21 — todos
       del gate de PIN/biometría/login de Firebase — se migraron esta sesión).
-      Nota de cierre (esta sesión): 'unsafe-inline' ya se quitó de
-      script-src. Con el último bloque núcleo (sheet-stack/nav —
+      Nota de cierre (sesión anterior) — REVERTIDA (esta sesión), ver abajo:
+      con el último bloque núcleo (sheet-stack/nav —
       openSheet/closeSheet/showScreen/applyModulos, el wiring legacy de
       _initEventListeners() y los 3 overrides de validación de
       addGastoVar/addGastoFijo/addSpotify) extraído a
-      js/core/sheet-stack.js, ya no queda ningún <script> inline (sin src)
-      en todo el archivo — bajaron de 18 bloques originalmente a 0.
-      Los otros 2 bloques núcleo ya se habían resuelto antes: S/save() (con
-      la definición base de refresh() adentro) se extrajo entero a
+      js/core/sheet-stack.js, index.html quedó con 0 bloques <script>
+      inline (bajaron de 18 originalmente), y en ese momento se sacó
+      'unsafe-inline' de script-src dándolo por cerrado. Los otros 2
+      bloques núcleo ya se habían resuelto antes: S/save() (con la
+      definición base de refresh() adentro) se extrajo entero a
       js/core/core-state.js, y el bloque que originalmente tenía
       "refresh()+menú Más" se dividió en 4 archivos (mas-menu.js,
       sheet-viewport.js, gastos-fijos-progress.js, sheet-swipe.js).
-      sheet-stack.js fue el que más cuidado necesitó: openSheet se
-      monkey-patchea después en deudores-personas.js, así que no se pudo
-      simplemente extraer y cargar primero como con S/save() — su <script
-      src> se dejó en la misma posición relativa que tenían los dos bloques
-      inline que reemplaza (después de gastos.js/spotify.js, antes de
-      deudores-personas.js). Detalle completo en
-      CHANGELOG.md#infraestructura--seguridad. Nonce no fue una opción acá:
+      **Se revirtió al probar en navegador real** (no en este entorno, que
+      no tiene navegador — recién se detectó cuando el usuario lo probó):
+      "0 bloques <script> inline" y "0 onclick/onchange/oninput/hover
+      inline en index.html" nunca cubrieron dos categorías que también
+      caen bajo script-src: (1) el atributo onload="this.media='all'" en
+      los 2 <link> de carga async de CSS (Font Awesome, Google Fonts) —
+      ✅ arreglado esta sesión, ver js/core/async-css.js, no depende de
+      ningún otro archivo así que no hace falta revertir nada por esto;
+      (2) onmouseenter/onmouseleave generados en tiempo de ejecución
+      dentro de template strings de varios módulos (los botones "eliminar"
+      con efecto hover, insertados vía innerHTML) — ya estaba documentado
+      como pendiente ("hallazgo aparte, sin tocar, pendiente de una clase
+      :hover compartida") en al menos 6 módulos, gastos.js incluido. Esta
+      sesión se migraron los 2 pares de gastos.js a una clase CSS
+      compartida (.btn-delete-hover, ver más abajo en este archivo) — los
+      del resto de los módulos (según el propio comentario de gastos.js:
+      "igual que en los cinco módulos anteriores") no se tocaron por no
+      tener esos archivos disponibles en esta sesión. Hasta que se
+      confirme que NINGÚN módulo genera un atributo on* inline al
+      renderizar (no solo onclick — cualquiera: onmouseenter, onmouseleave,
+      onload, onerror, etc.), 'unsafe-inline' se queda en script-src.
+      Ver CHANGELOG.md#infraestructura--seguridad para el detalle completo
+      y la lista de módulos que faltan revisar. Nonce no es una opción acá:
       GitHub Pages sirve archivos estáticos, sin servidor que genere un
       valor aleatorio por request y lo mande en una cabecera HTTP real — un
-      nonce fijo en el HTML no protegería nada; por eso la vía elegida fue
-      externalizar todo a <script src> (cubierto por 'self'), igual que el
-      resto de los módulos. Mientras tanto, esta CSP igual
+      nonce fijo en el HTML no protegería nada. Mientras tanto, esta CSP igual
       aporta protección real: bloquea que un script inyectado cargue código o
       exfiltre datos hacia un dominio arbitrario, restringe qué puede insertarse
       como <object>/<embed>, y limita las conexiones de red solo a Firebase/Firestore.
@@ -48,7 +63,7 @@
     -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com;
+      script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
       font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;
       img-src 'self' data: https:;
@@ -72,7 +87,7 @@
       href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAADuElEQVR42u3dy40bMRBFUWYwKTpch+MMbAzgrb9oslnvHQF3Od2DqgNKG7XWuvz18fHxXXe1vIAFHmABDrHgBllgg6x42BakGNiWohjUlqEI1BagGNiGrhjUhq0Y1IasGNSGqxjUhqoY1IapKNQGqRjQhqgY1IanGNSGpijUBqYY0IalKNQGpRjQhqQo1AakGNCGoyjUBiOgpRtBG8pzff325a8zr02oDQRooAU00EADvRm0YZzBC/kh1AbxLmDAgY5HDDfQ0ZDBBjoOMdxAx2OGGugoyGADHQkZ7J+gYYYaaJDBBhpmqIGGGWqgQe6FvWCGGmiYfwvkxN9BXQT6bQxvXAfqUNA3AHjzeu2ogd6w9BuuCzTMjy37puu3oV4wP7/gG+/TgnrB/Pxib71XA2qgNyz05vsBXYI54TEGUA8HfesCp9w7EXU96MQHzQANc9yTk1pR14JueBQY0E5noIejXjBnP6yxDfXyUSP/6aNAh4Jufpwu0E5noAeiXk7nDtAtp/RyOgOdhHo5nXtAN5zSQAMNtCXMBZ2OGmiggZ6ygAn/r5kCDTTQc0FPfHtMBn07aqCBBtpb43zQqR87gAYaaEMHGmiggQYaaLMFGmiggQYaaEMHGugTQ5/0P5sv0E5oJzTQQAMNNNBAGzrQQANttkADDTTQQAMNNNBA+8aKb6wADbS5+tY30D5uAA000D52eHIS0EADDfT4JXj6KNBAmyPQnuCfO8N40JNOF7+xAnTUCeNXsICOOmX8TiHQUSeNX5IF+thy/NY30FAPBd2GeSzo299GU0BPdFELeufCpv0PQEN9NehWzEBvWt6UewMN9dWg2zFHgH5ykU8t8+b7JWMGetNSb70X0FBfDRrmYNA7Fvy/S77p+k2Y40DvWva/LvyG6zZiBnrT8t+8HtBhoE8A+BOCN64DczDoUxh+BePE38FcBvoNIJNK3Xk0aKi7MFeABrsDch3odtQtO64C3Yq6ab91oJtgN+61FnQ66tadVoNOhN2+S6BDYNsf0DGo7Q3o8bjtB+gI2PYB9Hjc5g503bdkBHTV43SBFtBAC2iggRbQQAtooIEW0EADDfRboD9fBiGgJaAloCWgBbQEtAS0tBM01IrCDLSAloCWDoGGWlGYgRbQ0s2goVYUZqAVBxpqRWEGWnGgoVYUZqAVBxpqRWGGWnGYoVYcZqAVBxpqRWGGWnGYoVYcZqgVhxlqxWGGWnGYwVYcZKgViRlqxWEGW3GQwVYkZLAVCRluRSIGHOBTrx99JAP6M2MbjQAAAABJRU5ErkJggg==">
     <link rel="manifest"
       href="data:application/json,%7B%22name%22%3A%22Mis%20Finanzas%22%2C%22short_name%22%3A%22Finanzas%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f0f0f%22%2C%22theme_color%22%3A%22%230f0f0f%22%2C%22start_url%22%3A%22/mis-finanzas/%22%2C%22scope%22%3A%22/mis-finanzas/%22%7D">
-    <link rel="stylesheet" media="print" onload="this.media='all'"
+    <link rel="stylesheet" media="print" data-async-css
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"></noscript>
     <!-- Font Awesome define su @font-face con font-display:block, lo que retrasa
@@ -93,9 +108,17 @@
       }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="stylesheet" media="print" onload="this.media='all'"
+    <link rel="stylesheet" media="print" data-async-css
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"></noscript>
+    <!-- Reemplaza el onload="this.media='all'" inline que tenían estos 2 <link>
+         (Font Awesome arriba + Google Fonts acá) — la CSP bloquea atributos de
+         evento inline en script-src igual que <script> inline, y eso incluye
+         onload aunque no sea onclick. Se detectó recién al probar en navegador
+         real después de sacar 'unsafe-inline' de script-src (el barrido previo
+         de "0 onclick/onchange/oninput/hover inline" nunca cubrió onload — ver
+         CHANGELOG.md#infraestructura--seguridad). -->
+    <script src="js/core/async-css.js"></script>
     <!-- Preconnect a los dominios de Firebase: adelanta el handshake DNS/TCP/TLS
          en paralelo, en vez de esperar a que el bloque de módulo de más abajo
          los descubra uno por uno (esta era la cadena de red detrás del LCP de
@@ -202,6 +225,13 @@ textarea{resize:none;height:60px;}
 .btn-ghost:not(.btn-sm){margin-top:8px;}
 .btn-sm{width:auto;padding:6px 12px;font-size:12px;}
 .btn-icon{background:none;border:none;cursor:pointer;color:var(--text3);padding:0;display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;transition:color .15s;}
+/* Reemplaza el patrón onmouseenter/onmouseleave inline que generaban varios
+   módulos vía innerHTML (botones "eliminar" con hover a rojo) — la CSP los
+   bloquea igual que un onclick inline. Ver auditoria-tecnica.md #1 y
+   CHANGELOG.md#infraestructura--seguridad. Migrado en gastos.js esta sesión;
+   pendiente en el resto de los módulos que usan el mismo patrón. */
+.btn-delete-hover{background:none;border:none;cursor:pointer;padding:4px;color:var(--text3);line-height:1;opacity:.6;transition:opacity .15s,color .15s;}
+.btn-delete-hover:hover{opacity:1;color:var(--red,#f44);}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);overflow:hidden;}
 .overlay.open{display:flex;}
 /* Sheet stack: el overlay activo sube a z-index 1001; el enterrado queda en 999

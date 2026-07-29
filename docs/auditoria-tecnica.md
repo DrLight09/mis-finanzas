@@ -152,7 +152,7 @@ Reporte basado en verificación directa del archivo.
 
 ## 🔴 Críticos — pendientes
 
-### 1. CSP: los bloques `<script>` inline siguen exigiendo `'unsafe-inline'` (en progreso — de 18 bloques a 3, solo queda el núcleo)
+### 1. CSP: los bloques `<script>` inline siguen exigiendo `'unsafe-inline'` (en progreso — de 18 bloques a 2, solo queda sheet-stack/nav)
 
 **Estado:** con la migración de `onclick` ya cerrada del todo (ver `CHANGELOG.md#infraestructura--seguridad`, 0 atributos `onclick`/`onchange`/`oninput`/hover inline en `index.html`), se revisó si eso ya permitía sacar `'unsafe-inline'` de `script-src` en la CSP, como asumía el comentario del propio archivo — **no es así**. `'unsafe-inline'` en `script-src` no solo habilita los atributos `onclick="..."` inline: también habilita cualquier bloque `<script>` inline (sin `nonce`/`hash`).
 
@@ -179,6 +179,8 @@ Reporte basado en verificación directa del archivo.
 **Conclusión del mapeo, antes de extraer nada:** el bloque `S`/`save()` es el de mayor riesgo real de los tres — no por tamaño, sino porque contiene funciones que absolutamente todo el resto de la app da por sentado que existen como globales. La buena noticia es que su restricción de orden de carga es más simple de lo que parecía (cargar primero alcanza, no hace falta preservar posición geográfica). El tercer bloque (IIFEs) es candidato a dividirse primero, antes que `S`/`save()`, por ser más autocontenido.
 
 > **Extracción del bloque de IIFEs, completa (sesión posterior):** dividido en 4 archivos — `mas-menu.js`, `sheet-viewport.js`, `gastos-fijos-progress.js`, `sheet-swipe.js` — sin sorpresas de monkey-patch (se verificó que ninguna función que este bloque expone en `window` se reasigna en otro lugar del archivo, a diferencia de `openSheet` con `deudores-personas.js`). Quedan **2 bloques núcleo** por resolver: `S`/`save()` (con `refresh()` adentro) y sheet-stack/nav. Detalle completo, incluida la lección aplicada sobre cerrar/reabrir `<script>` en cada corte, en `CHANGELOG.md#infraestructura--seguridad`.
+>
+> **Extracción de `S`/`save()`, completa (sesión posterior):** a diferencia de sheet-stack/nav, no hizo falta partirlo — nada antes de su posición original podía depender de su contenido (no existía todavía en ese punto del archivo), así que se extrajo entero a `js/core/core-state.js`, en la misma posición, como script clásico (no módulo, para que sus globales sigan siendo variables léxicas normales). Incluye la definición base de `refresh()` (primer eslabón de la cadena de 3 wraps). **Queda un solo bloque núcleo:** sheet-stack/nav — el que más cuidado necesita, por el monkey-patch de `openSheet` en `deudores-personas.js` que exige preservar el orden de carga relativo, a diferencia de `S`/`save()` que se pudo extraer sin esa restricción. Detalle en `CHANGELOG.md#infraestructura--seguridad`.
 
 **Solución:** con los 3 restantes siendo exactamente el núcleo, sacar `'unsafe-inline'` de `script-src` es ahora, sin rodeos, una consecuencia directa de terminar el punto 4 (mover `S`/`save()`/`refresh()`/sheet-stack a `js/core/`). No queda ningún trabajo de CSP independiente de eso.
 

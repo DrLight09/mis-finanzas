@@ -902,3 +902,15 @@ Se verificó primero (grep) que ninguna de las funciones que este bloque expone 
 **Aplicada la lección de la extracción anterior:** cada corte cerró (`</script>`) el bloque original antes de insertar el `<script src>` nuevo, y volvió a abrir (`<script>`) para lo que seguía — nunca se insertó un tag nuevo dentro de uno todavía abierto. Quedaron varios `<script></script>` vacíos entre los 4 archivos (los tramos que antes eran solo comentarios separadores); se limpiaron aparte, sin código que perder.
 
 **Verificación:** validador consciente de comentarios HTML sobre todo `index.html` — 3 bloques inline reales, todos con sintaxis válida (los 3 restantes son íntegramente `S`/`save()` y las dos mitades de sheet-stack/nav alrededor de `money-input.js`). `node --check` sin errores en los 4 archivos nuevos y en los 10 preexistentes de `js/core/`.
+
+### 🔧 Nuevo — `js/core/core-state.js`: el bloque `S`/`save()` completo, extraído entero (de 3 bloques núcleo a 2)
+
+*(sesión posterior)*
+
+Con el bloque de IIFEs ya resuelto, se encaró `S`/`save()` — el de mayor riesgo de los tres por ser la base que asume todo el resto de la app. A diferencia del bloque sheet-stack/nav (que necesitó partirse en pedazos por el monkey-patch de `deudores-personas.js`), acá no hizo falta: nada antes de la línea 4721 del archivo original podía depender de nada de este bloque (ya que ni siquiera existía todavía en ese punto), así que se extrajo **completo**, de punta a punta, a `js/core/core-state.js` — mismo patrón de bajo riesgo que los primeros 9 archivos de la sesión, sin necesidad de cerrar/reabrir nada.
+
+El archivo incluye la definición **base** de `refresh()` (el primer eslabón de la cadena de tres wraps — el segundo vive en `gastos-fijos-progress.js`, el tercero en `mejoras.js`), todos los helpers universales (`fmt`, `uid`, `escHtml`, `toast`, `dialogo`, `parseMoney`, etc.), el motor de mover plata, y `calcPatrimonioTotal`/`snapshotPatrimonio`. Se cargó explícitamente como script clásico (sin `type="module"`), en la misma posición donde vivía el bloque original — justo antes de `mesada.js`/`spotify.js`/`gastos.js`/`prestado.js`, que dependen de que estas variables ya existan como globales.
+
+**Verificación:** `node --check` sin errores en el archivo nuevo. Validador consciente de comentarios sobre todo `index.html`: **2 bloques inline reales** (antes 3) — quedan únicamente las dos mitades del bloque sheet-stack/nav (A y B, alrededor de `money-input.js`). Se confirmó a mano que `window.S = S` y `function refresh(){` siguen presentes e intactos en el archivo extraído.
+
+**Pendiente para cerrar el punto 2/4 del todo:** el bloque sheet-stack/nav — `openSheet`/`closeSheet`/`showScreen`/`applyModulos`, el wiring legacy de `_initEventListeners()`, y los overrides de `addGastoVar`/`addGastoFijo`/`addSpotify` — es el único que queda, y el que más cuidado necesita por el monkey-patch de `openSheet` en `deudores-personas.js` (hay que preservar el orden de carga relativo, no se puede simplemente cargar primero como se hizo con `S`/`save()`).

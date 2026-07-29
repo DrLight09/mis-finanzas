@@ -100,18 +100,28 @@ function renderAttencion(){
     titleEl.style.justifyContent = 'space-between';
     titleEl.style.alignItems = 'center';
     titleEl.innerHTML = `Necesita atención <span style="font-size:11px;font-family:'DM Mono',monospace;color:${hasRed?'var(--red)':'var(--amber)'};background:${hasRed?'rgba(240,104,104,.12)':'rgba(240,184,64,.12)'};padding:2px 8px;border-radius:20px;">${items.length} <i class="fa-solid ${isOpen?'fa-chevron-up':'fa-chevron-down'}"></i></span>`;
-    // NOTA: usamos addEventListener en vez de titleEl.onclick = ... (como estaba
-    // antes) para no pisar otros listeners que pudieran engancharse acá más
-    // adelante. No es un requisito de CSP (una asignación a la propiedad .onclick
-    // vía JS no cuenta como atributo inline y no la bloquea 'unsafe-inline'), es
-    // solo buena práctica al tocar este código.
-    titleEl.addEventListener('click', () => {
+    // NOTA: renderAttencion() corre en cada refresh() y titleEl es el MISMO
+    // nodo del DOM entre renders (solo se le pisa el innerHTML, no se
+    // recrea) — por eso hay que sacar el listener anterior antes de agregar
+    // uno nuevo. Antes se hacía addEventListener sin guardar referencia
+    // para sacarlo: se iban acumulando uno por cada refresh(), y con un
+    // número par acumulado, un click disparaba todos y se cancelaban entre
+    // sí (abre-cierra-abre-cierra), sin efecto visible — bug real, detectado
+    // en producción, no relacionado con la extracción de sheet-stack.js.
+    // No alcanza con guardar el handler una sola vez (ej. patrón
+    // sheet._personaHook de otros módulos): `items` es una variable local
+    // de este renderAttencion(), y el handler la usa en el badge al hacer
+    // toggle — si el handler quedara fijo del primer render, mostraría
+    // el `items.length` de ESE momento para siempre, no el actual.
+    if(titleEl._attnClickHandler) titleEl.removeEventListener('click', titleEl._attnClickHandler);
+    titleEl._attnClickHandler = () => {
       const nowOpen = list.style.display === 'none';
       list.style.display = nowOpen ? '' : 'none';
       sessionStorage.setItem('attn-open', nowOpen ? '1' : '0');
       const badge = titleEl.querySelector('span');
       if(badge) badge.innerHTML = `${items.length} <i class="fa-solid ${nowOpen?'fa-chevron-up':'fa-chevron-down'}"></i>`;
-    });
+    };
+    titleEl.addEventListener('click', titleEl._attnClickHandler);
     list.style.display = isOpen ? '' : 'none';
     sessionStorage.setItem('attn-open', isOpen ? '1' : '0');
   }

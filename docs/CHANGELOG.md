@@ -881,3 +881,24 @@ Con el bug real (`window.Events`) ya resuelto, se retomó la idea original de ex
 - Se agregó `.fb-google-btn:disabled{opacity:.55;cursor:wait;box-shadow:none;}` para que el estado se vea, no solo se comporte, distinto.
 
 Se re-externalizaron los dos archivos con este guard ya adentro. Bloques `<script>` inline resultantes: **3** (el núcleo: `S`/`save()`, sheet-stack, `refresh()`). Verificado con `node --input-type=module --check` en ambos archivos nuevos, sin errores, y reconteo final con el mismo parser HTML de sesiones anteriores: 35 tags, 32 con `src`, 3 inline.
+
+### 🔧 Nuevo — Mapeo completo de los 3 bloques núcleo + primera extracción del bloque de IIFEs
+
+*(sesión posterior)*
+
+Antes de seguir extrayendo se completó el mapeo de dependencias de los 3 bloques núcleo (detalle completo en `auditoria-tecnica.md` #1). Hallazgo importante: la definición base de `refresh()` en realidad vive al final del bloque `S`/`save()`, no en el bloque que se venía llamando "refresh() + menú Más" — ese bloque resultó ser una serie de IIFEs independientes entre sí, con un wrap de `window.refresh` (segundo eslabón de la cadena, el tercero ya vive en `mejoras.js`). Al ser el más autocontenido de los tres, se decidió dividirlo primero.
+
+**Dividido en 4 archivos:**
+
+| Archivo nuevo | Contenido | Depende de |
+|---|---|---|
+| `js/core/mas-menu.js` | Abrir/cerrar el menú "Más", wrap de `applyModulos` para mostrar/ocultar Spotify/Mesada según el estado de esos módulos | `applyModulos` (bloque sheet-stack/nav, carga antes) |
+| `js/core/sheet-viewport.js` | Scroll-into-view al enfocar un input dentro de un sheet + reposicionamiento cuando el teclado abre en Android | Autocontenido |
+| `js/core/gastos-fijos-progress.js` | Barra de progreso de gastos fijos pagados — segundo eslabón de la cadena de wraps de `window.refresh` | `S`, `window.refresh` (bloque S/save, carga antes) |
+| `js/core/sheet-swipe.js` | Swipe-to-close de sheets y menú "Más", expone `window._makeSheetSwipeable` para otros módulos | `closeSheet` (bloque sheet-stack/nav, carga antes) |
+
+Se verificó primero (grep) que ninguna de las funciones que este bloque expone en `window` (`closeMas`, `applyModulos`, `refresh`, `_makeSheetSwipeable`) se vuelve a reasignar en ningún otro lugar del archivo — sin sorpresas de monkey-patch como las que sí tiene el bloque sheet-stack/nav con `deudores-personas.js`.
+
+**Aplicada la lección de la extracción anterior:** cada corte cerró (`</script>`) el bloque original antes de insertar el `<script src>` nuevo, y volvió a abrir (`<script>`) para lo que seguía — nunca se insertó un tag nuevo dentro de uno todavía abierto. Quedaron varios `<script></script>` vacíos entre los 4 archivos (los tramos que antes eran solo comentarios separadores); se limpiaron aparte, sin código que perder.
+
+**Verificación:** validador consciente de comentarios HTML sobre todo `index.html` — 3 bloques inline reales, todos con sintaxis válida (los 3 restantes son íntegramente `S`/`save()` y las dos mitades de sheet-stack/nav alrededor de `money-input.js`). `node --check` sin errores en los 4 archivos nuevos y en los 10 preexistentes de `js/core/`.

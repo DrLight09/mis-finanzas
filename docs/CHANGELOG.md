@@ -852,7 +852,23 @@ Como `window.Events` es `undefined` para siempre (no es un problema de timing �
 
 **Confirmado por el usuario tras desplegar:** login funcionando — la traza de la consola mostró `dispatch @ events.js:124 → window._fbSignIn @ mis-finanzas/:6995 → signInWithPopup`, o sea el despacho llegó correctamente al handler. Apareció de paso un warning aparte y no relacionado (`Cross-Origin-Opener-Policy policy would block the window.closed call`) — ruido conocido del SDK de Firebase Auth al usar `signInWithPopup` en navegadores con COOP estricta por defecto; Firebase cae a `postMessage` como alternativa y el login se completa igual. No es un bug de la app, no requiere ninguna acción.
 
-### 🔧 Nuevo — Guard de "botón listo" para volver a externalizar firebase-init.js/firebase-sync.js (de 5 bloques inline a 3)
+### 🔧 Nuevo — `js/core/money-input.js` extraído (primera pieza del bloque sheet-stack/nav)
+
+*(sesión posterior, arranque del mapeo de los 3 bloques núcleo)*
+
+Antes de tocar los 3 bloques núcleo (`S`/`save()`, sheet-stack/nav, `refresh()`) se hizo un mapeo de dependencias del bloque de sheet-stack/nav (515 líneas) — resultó ser mucho más que "sheet-stack": también tiene `showScreen`, `applyModulos`, el auto-formateo de inputs de plata, wiring legacy de eventos, y overrides de `addGastoVar`/`addGastoFijo`/`addSpotify`. Se decidió sacar primero la pieza de menor riesgo — el auto-formateo estilo calculadora de `.money-input` (listeners de `focusin`/`keydown`/`paste`, autocontenido salvo por `_moneyDigits`/`_moneyRender`, definidos antes en el bloque `S`/`save`) — a `js/core/money-input.js`.
+
+### 🐛 Corregido en el momento — extraer del *medio* de un bloque `<script>` sin cerrarlo primero rompe todo el bloque
+
+Al hacer esta extracción apareció un bug propio, encontrado antes de entregar nada: a diferencia de las extracciones anteriores (que siempre reemplazaban un bloque `<script>...</script>` **completo**, de su propia apertura a su propio cierre), esta vez se sacó una porción del **medio** de un bloque más grande que seguía abierto — y el `<script src="js/core/money-input.js"></script>` nuevo se insertó ahí sin cerrar antes el `<script>` original.
+
+HTML trata todo el contenido de un `<script>` como texto plano hasta encontrar el primer `</script>` literal, sin que importe qué tags aparezcan en el medio — no hay tags "anidados" en ese contexto. Insertar un `<script src="...">...</script>` adentro de otro `<script>` todavía abierto hace que el navegador tome el `</script>` de ese tag nuevo como el cierre del bloque **original**, cortándolo ahí — todo el JS que sigue (`showScreen`, `applyModulos`, etc.) queda fuera de cualquier `<script>`, tratado como texto plano, sin ejecutarse.
+
+**Por qué la validación de rutina no lo agarró:** el método de validación usado en toda la sesión (buscar la primera línea que contiene la subcadena `</script>` a partir de la apertura, con un scan línea por línea) tiene el mismo punto ciego que ya se había identificado para comentarios que *mencionan* la palabra `<script>` — pero acá jugó en contra en serio: el scan encontró el `</script>` del tag nuevo y ahí cortó el rango a validar, así que el `node --check` de esa sesión dio "OK" sobre un fragmento que no correspondía a lo que el navegador realmente iba a ejecutar. Fix: se armó un validador nuevo, más fiel al comportamiento real del tokenizer HTML — saca los comentarios `<!-- -->` primero (para no confundir menciones de texto con tags reales) y después busca, para cada `<script>` de apertura, el primer `</script` literal como cierre real, sin excepciones. Con ese validador se detectó el problema de inmediato.
+
+**Fix aplicado:** se cerró el `<script>` original justo antes del tag nuevo (`</script>`), se dejó `<script src="js/core/money-input.js"></script>`, y se reabrió un `<script>` nuevo para el resto del contenido que seguía — el bloque de sheet-stack/nav quedó partido en dos elementos `<script>` (A y B) alrededor del archivo externo, en vez de uno solo. Verificado con el validador nuevo: 4 bloques inline reales en todo `index.html` (antes 3, +1 por la partición en A/B), todos con sintaxis válida — y 33 `<script src>` reales, incluyendo `money-input.js`.
+
+**Lección para lo que sigue (los 3 bloques núcleo):** cualquier extracción de una porción intermedia de esos bloques grandes necesita el mismo tratamiento — cerrar/reabrir alrededor del fragmento sacado, nunca insertar un tag nuevo a mitad de uno que sigue abierto — y de acá en adelante, validar con el script consciente de comentarios y de este patrón, no con el scan ingenuo línea por línea que se venía usando.
 
 *(sesión posterior)*
 

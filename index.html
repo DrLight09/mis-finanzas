@@ -4752,18 +4752,39 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       </div>
     </div>
 
+    <!-- `defer` en TODO este bloque (docs/auditoria-tecnica.md #4, paso 3):
+         medido con Lighthouse en producción, el navegador no empezaba a
+         DESCARGAR cada uno de estos ~36 archivos hasta que el anterior
+         terminaba de ejecutar — no solo la ejecución estaba en serie, la
+         propia descarga también (ej. modules/inicio.js, el último del
+         bloque, no arrancaba su fetch hasta los 9.46s). Con `defer`, el
+         navegador descarga los 36 en paralelo apenas los descubre, sin
+         bloquear el parser, y los ejecuta en el mismo orden relativo que
+         hoy — recién al terminar de parsear el documento (misma garantía
+         de orden y de "DOM ya completo" que ya tenían al ser blocking,
+         porque físicamente están todos después de todo el markup real de
+         la app; no hay ningún elemento del HTML que dependa de que uno de
+         estos scripts corra a mitad de parseo). El orden entre ellos
+         importa (ver el comentario de sheet-stack.js sobre
+         addGastoVar/addGastoFijo y el de deudores-personas.js sobre
+         openSheet) — `defer` preserva el orden del documento, así que no
+         se tocó el orden de los <script>, solo se agregó el atributo.
+         Los tres módulos de Firebase (firebase-init/sync, pin-bio) NO
+         están acá — ya pasaron a `async` en los pasos 1 y 2, con sus
+         propios guards. Ver CHANGELOG.md#arranque para el detalle y las
+         cifras del Lighthouse que motivaron este paso. -->
     <!-- Sistema centralizado de eventos (Events.on/attr/registerAll) — cargado
          acá, antes que cualquier otro script, porque no depende de nada (ni de
          S ni de escHtml, los resuelve recién cuando se usan) y todos los
          módulos futuros (mesada.js, spotify.js, ...) lo necesitan definido
          desde el arranque. Ver js/core/events.js y auditoria-tecnica.md #1. -->
-    <script src="js/core/events.js"></script>
-    <script src="js/core/diferencial.js"></script>
-    <script src="js/core/split.js"></script>
-<script src="js/core/core-state.js"></script>
-<script src="js/modules/mesada.js"></script>
-<script src="js/modules/spotify.js"></script>
-<script src="js/modules/gastos.js"></script>
+    <script src="js/core/events.js" defer></script>
+    <script src="js/core/diferencial.js" defer></script>
+    <script src="js/core/split.js" defer></script>
+<script src="js/core/core-state.js" defer></script>
+<script src="js/modules/mesada.js" defer></script>
+<script src="js/modules/spotify.js" defer></script>
+<script src="js/modules/gastos.js" defer></script>
 <!--
 
 // Módulo Préstamos migrado a js/modules/prestado.js — ver docs/prestado.md.
@@ -4771,7 +4792,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 // que Mesada: depende de crearSplitWidget() y diffRegistrarInstancia(),
 // y de acá en más ya están definidos.
 -->
-<script src="js/modules/prestado.js"></script>
+<script src="js/modules/prestado.js" defer></script>
 <!--
 // js/core/sheet-stack.js — último bloque núcleo inline, extraído esta
 // sesión (ver auditoria-tecnica.md, punto 1 de "Críticos", y el header del
@@ -4781,9 +4802,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 // addGastoVar/addGastoFijo necesitan esos globales ya definidos) y antes
 // de deudores-personas.js (que monkey-patchea openSheet()).
 -->
-<script src="js/core/sheet-stack.js"></script>
-<script src="js/core/money-input.js"></script>
-<script src="js/modules/encargos.js"></script>
+<script src="js/core/sheet-stack.js" defer></script>
+<script src="js/core/money-input.js" defer></script>
+<script src="js/modules/encargos.js" defer></script>
 <!--
 
 // Módulo Tarjetas de Crédito migrado a js/modules/tarjetas_credito.js —
@@ -4798,8 +4819,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 // no arriesgar otra dependencia oculta; se resolvió con el mismo patrón
 // de wrapper ya usado con leerArchivoImport en configuracion.js.
 -->
-<script src="js/modules/tarjetas_credito.js"></script>
-<script src="js/core/movimientos.js"></script>
+<script src="js/modules/tarjetas_credito.js" defer></script>
+<script src="js/core/movimientos.js" defer></script>
 <!--
 // abrirDetalleMov()/eliminarMovimiento() y su registro Events.on('core:...')
 // se extrajeron a js/core/movimientos.js — ver cabecera de ese archivo para
@@ -4810,14 +4831,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 // (no usa crearSplitWidget ni nada definido más abajo); se carga acá para
 // mantener el orden cronológico de la migración.
 -->
-<script src="js/modules/cuentas.js"></script>
-<script src="js/core/bootstrap.js"></script>
+<script src="js/modules/cuentas.js" defer></script>
+<script src="js/core/bootstrap.js" defer></script>
 
     <!-- ===== MEJORAS UX MÓVIL JS ===== -->
-<script src="js/core/mas-menu.js"></script>
-<script src="js/core/sheet-viewport.js"></script>
-<script src="js/core/gastos-fijos-progress.js"></script>
-<script src="js/core/sheet-swipe.js"></script>
+<script src="js/core/mas-menu.js" defer></script>
+<script src="js/core/sheet-viewport.js" defer></script>
+<script src="js/core/gastos-fijos-progress.js" defer></script>
+<script src="js/core/sheet-swipe.js" defer></script>
 
     <!-- PRESUPUESTOS SHEET -->
     <div class="overlay" id="sheet-presupuestos" data-sheet-id="presupuestos">
@@ -4877,13 +4898,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 
 </style>
 
-    <script src="js/core/mejoras.js"></script>
-<script src="js/core/busqueda-global.js"></script>
+    <script src="js/core/mejoras.js" defer></script>
+<script src="js/core/busqueda-global.js" defer></script>
 
     <!-- ================================================================
      MEJORAS ADICIONALES: Service Worker, Gestos, Undo/Redo
      ================================================================ -->
-    <script src="js/core/mejoras-adicionales.js"></script>
+    <script src="js/core/mejoras-adicionales.js" defer></script>
 
     <!-- `async` (docs/auditoria-tecnica.md #4, paso 2, mismo criterio que
          firebase-init.js/firebase-sync.js): el chequeo de
@@ -5105,8 +5126,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
       </div>
     </div>
 
-<script src="js/core/nav.js"></script>
-<script src="js/modules/actividad_reciente.js"></script>
+<script src="js/core/nav.js" defer></script>
+<script src="js/modules/actividad_reciente.js" defer></script>
 
     <!-- ══════════════════════════════════════════════════════════════════
      MÓDULO: PLATA COMPROMETIDA — migrado a js/modules/plata_comprometida.js
@@ -5116,7 +5137,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
      Tarjetas de Crédito. Se carga acá, en el mismo lugar donde vivía el
      <script> inline, después de js/core/events.js (ya cargado arriba).
 ══════════════════════════════════════════════════════════════════ -->
-<script src="js/modules/plata_comprometida.js"></script>
+<script src="js/modules/plata_comprometida.js" defer></script>
 
     <!-- ═══════════════════════════════════════════════════════════════
      SISTEMA DE PERSONAS — Libreta central vinculada
@@ -5128,37 +5149,37 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
      porque depende de funciones (getPersona, abrirSelPersona,
      _inyectarPersonaSheets) recién definidas acá.
      ═══════════════════════════════════════════════════════════════ -->
-<script src="js/modules/personas.js"></script>
-<script src="js/modules/encargos-personas.js"></script>
+<script src="js/modules/personas.js" defer></script>
+<script src="js/modules/encargos-personas.js" defer></script>
 <!--
 // Integración de Spotify con Personas migrada a js/modules/spotify-personas.js
 // — ver el comentario al principio de ese archivo (depende de openSheet y del
 // sistema de Personas recién definidos, por eso carga acá y no junto al resto
 // de Spotify, que está arriba). Ver también docs/spotify.md.
 -->
-<script src="js/modules/spotify-personas.js"></script>
+<script src="js/modules/spotify-personas.js" defer></script>
 <!--
 
 // Integración "Yo debo ↔ S.personas", el sheet "Editar mi deuda" y su
 // conexión de botones (antes con el hack de appDataLoaded + setTimeout)
 // migrados a js/modules/prestado-personas.js — ver docs/prestado.md.
 -->
-<script src="js/modules/prestado-personas.js"></script>
-<script src="js/core/personas-init.js"></script>
+<script src="js/modules/prestado-personas.js" defer></script>
+<script src="js/core/personas-init.js" defer></script>
 <!--
 
 // Integración "Deudores + Personas": mismo selector de persona (existente
 // o nueva) en "Agregar persona" (Me deben) y en "Nueva deuda" (Yo debo)
 // migrada a js/modules/deudores-personas.js — ver docs/prestado.md.
 -->
-<script src="js/modules/deudores-personas.js"></script>
+<script src="js/modules/deudores-personas.js" defer></script>
 
     <!-- ===== MÓDULO ALCANCÍA OCULTA =====
          Migrado a js/modules/alcancia.js — ver auditoria-tecnica.md,
          punto 3 (arquitectura monolítica) y punto 1 (migración de
          onclick inline a Events/data-action). Debe cargarse después
          de js/core/events.js (ya incluido más arriba). ===== -->
-<script src="js/modules/alcancia.js"></script>
+<script src="js/modules/alcancia.js" defer></script>
 
     <!-- ===== MÓDULO CONFIGURACIÓN =====
          Migrado a js/modules/configuracion.js — ver auditoria-tecnica.md,
@@ -5167,7 +5188,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
          en el documento, pero sí de ids que ya existen en screen-config
          (cats-var-list, btn-exportar-json, etc.) y de getCatsVar()/
          getCatsFijo() (compartidas con Gastos), ya definidos más arriba. ===== -->
-<script src="js/modules/configuracion.js"></script>
+<script src="js/modules/configuracion.js" defer></script>
 
     <!-- ===== MEJORA 5: Validación robusta de importación JSON =====
          Se carga en un <script> propio DESPUÉS de configuracion.js porque
@@ -5175,14 +5196,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
          Antes vivía en el bloque inline de arriba (~línea 6797), que se
          ejecutaba antes de que configuracion.js siquiera se cargara —
          causaba "ReferenceError: leerArchivoImport is not defined". ===== -->
-<script src="js/core/import-validado.js"></script>
+<script src="js/core/import-validado.js" defer></script>
 
     <!-- ===== MÓDULO ANÁLISIS =====
          Migrado a js/modules/analisis.js — pantalla que nunca apareció en
          auditoria-tecnica.md, descubierta al revisar los onclick restantes
          tras cerrar Configuración. calcPatrimonioTotal()/snapshotPatrimonio()
          se quedan en index.html (núcleo, los llama save()). ===== -->
-<script src="js/modules/analisis.js"></script>
+<script src="js/modules/analisis.js" defer></script>
 
     <!-- ===== MÓDULO INICIO (Dashboard) =====
          Migrado a js/modules/inicio.js — ver auditoria-tecnica.md, punto 3
@@ -5193,5 +5214,5 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
          No define ningún data-action nuevo: screen-inicio no tiene onclick
          inline propios, solo elementos de solo lectura (ver nota en el
          propio archivo). ===== -->
-<script src="js/modules/inicio.js"></script>
+<script src="js/modules/inicio.js" defer></script>
   </body></html>

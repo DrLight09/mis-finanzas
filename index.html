@@ -4831,7 +4831,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
           data-close-sheet="presupuestos">Cerrar</button>
       </div>
     </div>
-    <script type="module" src="js/core/firebase-sync.js"></script>
+    <!-- `async` (docs/auditoria-tecnica.md #4, paso 2, mismo criterio que
+         firebase-init.js): deja correr _fbLoadData/onSnapshot en paralelo
+         con el JS clásico en vez de esperar a que termine de parsear todo
+         el documento. El wiring de nivel superior que tocaba el DOM sin
+         guard (overlay de eliminar cuenta, registro de Events('authgate'))
+         ya se blindó — ver CHANGELOG.md#arranque. -->
+    <script type="module" src="js/core/firebase-sync.js" async></script>
     <!-- ===== MEJORAS: JS adicional ===== -->
     <style>
 /* Animación fade-in del dashboard */
@@ -4879,7 +4885,12 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
      ================================================================ -->
     <script src="js/core/mejoras-adicionales.js"></script>
 
-    <script type="module" src="js/core/pin-bio.js"></script>
+    <!-- `async` (docs/auditoria-tecnica.md #4, paso 2, mismo criterio que
+         firebase-init.js/firebase-sync.js): el chequeo de
+         window._pendingPinGate y el registro de Events('pin') ya se
+         blindaron con guard de readyState y reintento — ver
+         CHANGELOG.md#arranque. -->
+    <script type="module" src="js/core/pin-bio.js" async></script>
     <!-- NUEVA TARJETA DE CRÉDITO -->
     <div class="overlay" id="sheet-nueva-tc" data-sheet-id="nueva-tc">
       <div class="sheet">

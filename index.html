@@ -126,13 +126,27 @@
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
     <!-- Modulepreload: empieza a descargar el SDK de Firebase en paralelo con el
-         resto del <head>, sin adelantar cuándo se ejecuta (sigue siendo un
-         módulo, se ejecuta en orden después de parsear el HTML). -->
+         resto del <head>. Con `async` en el <script> de más abajo, esto ya sí
+         adelanta cuándo se ejecuta: sin el modulepreload, el navegador recién
+         empezaría a bajar el SDK cuando el parser llega al <script>, perdiendo
+         parte de la ventaja de que sea async. -->
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js">
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js">
     <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js">
-    <!-- Firebase SDK -->
-    <script type="module" src="js/core/firebase-init.js"></script>
+    <!-- Firebase SDK. `async`: sin esto, al ser type="module" el navegador lo
+         trata como defer y NO lo ejecuta hasta terminar de parsear TODO el
+         <body> — incluyendo los ~30 <script> clásicos de core-state.js/
+         módulos, que sí bloquean el parser en su posición. Eso serializaba
+         algo que puede correr en paralelo: la resolución de auth de Firebase
+         (I/O de red/IndexedDB) esperaba a que terminara todo el JS de la app
+         (el TBT de ~9s de #4 en auditoria-tecnica.md) antes de siquiera
+         arrancar. Con `async` arranca apenas está listo el propio módulo
+         (que a su vez no puede ejecutar ni una línea hasta que sus `import`
+         del SDK bajen — casi seguro más lento que lo que tarda el parser en
+         llegar a #fb-loading-screen/#fb-login-screen, las dos primeras cosas
+         del <body>). Ver docs/auditoria-tecnica.md #4 y CHANGELOG.md#arranque
+         para el detalle completo y el resto de la cadena. -->
+    <script type="module" src="js/core/firebase-init.js" async></script>
     <style>
 :root{--bg:#0f0f0f;--bg2:#181818;--bg3:#222222;--bg4:#2a2a2a;--border:#252525;--border2:#303030;--text:#f0ede8;--text2:#a8a89e;--text3:#8e8e84;--accent:#c8f060;--amber:#f0b840;--blue:#60b0f0;--red:#f06868;--purple:#b090f0;--nu-light:#c060f0;--radius:14px;--radius-sm:9px;}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}

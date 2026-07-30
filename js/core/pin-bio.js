@@ -230,9 +230,24 @@
     }
   };
 
-  if(window._pendingPinGate) {
-    window._pendingPinGate = false;
-    window._pinGate();
+  // Chequeo de gate pendiente (docs/auditoria-tecnica.md #4, paso 2): si
+  // firebase-init.js (que ya carga con `async`) resolvió el auth ANTES de
+  // que este módulo cargara, dejó `window._pendingPinGate = true` y un
+  // timeout de seguridad de 5s. window._pinGate() toca el DOM (vía
+  // _showPin → document.getElementById('pin-screen'), etc.), así que si
+  // este archivo también pasa a `async` y llega a ejecutar antes de que el
+  // documento termine de parsearse, hace falta el mismo guard de
+  // document.readyState que ya usa firebase-init.js.
+  function _checkPendingPinGate() {
+    if(window._pendingPinGate) {
+      window._pendingPinGate = false;
+      window._pinGate();
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _checkPendingPinGate, { once: true });
+  } else {
+    _checkPendingPinGate();
   }
 
   function _launchApp() {
@@ -287,7 +302,13 @@
   // recibe argumentos. _pinSetNew/_pinDisable/_bioSetup/_bioDisable se llaman
   // también desde el HTML generado dinámicamente en _renderBtn()/_renderBioBtn()
   // más abajo en este mismo archivo.
-  if(typeof Events !== 'undefined' && typeof Events.registerAll === 'function') {
+  //
+  // Con reintento (docs/auditoria-tecnica.md #4, paso 2): mismo motivo que el
+  // reintento equivalente en firebase-sync.js — el guard `typeof Events`
+  // dejó de ser garantía suficiente al pasar este archivo a `async`, porque
+  // ya no está asegurado que js/core/events.js (clásico) haya cargado antes.
+  function _registrarEventosPin() {
+    if(typeof Events === 'undefined' || typeof Events.registerAll !== 'function') return false;
     Events.registerAll('pin', {
       key: window._pinKey,
       del: window._pinDel,
@@ -298,6 +319,12 @@
       bioSetup: window._bioSetup,
       bioDisable: window._bioDisable,
     });
+    return true;
+  }
+  if (!_registrarEventosPin()) {
+    const _tPin = setInterval(function() {
+      if (_registrarEventosPin()) clearInterval(_tPin);
+    }, 200);
   }
 
   window._pinRenderBtn = _renderBtn;

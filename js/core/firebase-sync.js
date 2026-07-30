@@ -372,15 +372,44 @@
   window._cerrarEliminarCuenta = function() {
     document.getElementById('del-account-overlay').classList.remove('open');
   };
-  document.getElementById('del-account-overlay').addEventListener('click', function(e){
-    if(e.target === this) window._cerrarEliminarCuenta();
-  });
-  document.getElementById('del-account-input').addEventListener('input', function(){
-    document.getElementById('del-account-confirm').disabled = (this.value.trim() !== 'ELIMINAR');
-  });
-  document.getElementById('del-account-input').addEventListener('keydown', function(e){
-    if(e.key === 'Enter' && this.value.trim() === 'ELIMINAR') window._fbDeleteAccount();
-  });
+
+  // Wiring del overlay "Eliminar cuenta" (docs/auditoria-tecnica.md #4,
+  // paso 2 de la reestructuración de arranque). Este bloque corría a nivel
+  // superior del módulo, tocando el DOM sin null-checks (`document.
+  // getElementById('del-account-overlay').addEventListener(...)` directo).
+  // Con este archivo cargando <script type="module"> sin `async`, eso era
+  // seguro porque el navegador no lo ejecuta hasta terminar de parsear todo
+  // el documento. Al pasar a `async` (mismo cambio ya hecho en
+  // firebase-init.js) esa garantía desaparece: si el módulo llega a
+  // ejecutar antes de que el parser llegue a estos elementos, cualquiera
+  // de esos `getElementById(...)` devuelve `null` y el `.addEventListener`
+  // encadenado tira un TypeError — que corta la ejecución del resto del
+  // archivo completo, incluyendo el registro de Events('authgate',...) de
+  // más abajo. Se envuelve con el mismo guard de document.readyState que
+  // ya usa firebase-init.js, más null-checks por las dudas.
+  function _wireDeleteAccountOverlay() {
+    const overlay = document.getElementById('del-account-overlay');
+    const input   = document.getElementById('del-account-input');
+    const confirm = document.getElementById('del-account-confirm');
+    if (overlay) {
+      overlay.addEventListener('click', function(e){
+        if(e.target === this) window._cerrarEliminarCuenta();
+      });
+    }
+    if (input) {
+      input.addEventListener('input', function(){
+        if (confirm) confirm.disabled = (this.value.trim() !== 'ELIMINAR');
+      });
+      input.addEventListener('keydown', function(e){
+        if(e.key === 'Enter' && this.value.trim() === 'ELIMINAR') window._fbDeleteAccount();
+      });
+    }
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _wireDeleteAccountOverlay, { once: true });
+  } else {
+    _wireDeleteAccountOverlay();
+  }
 
   // Limpia todo el almacenamiento local propio de la app (claves 'mf_*')
   function _limpiarStorageLocal() {
@@ -458,7 +487,22 @@
   // eliminar-cuenta — mismo criterio ya usado con config:signOut, que también
   // envuelve una función de auth compartida bajo el namespace del botón que
   // la llama, no de dónde vive la función.
-  if(typeof Events !== 'undefined' && typeof Events.registerAll === 'function') {
+  //
+  // Con reintento (docs/auditoria-tecnica.md #4, paso 2): `Events` lo define
+  // js/core/events.js, un <script> clásico. El guard `typeof Events !==
+  // 'undefined'` ya existía porque en algún momento este archivo podía
+  // ejecutar antes de que events.js cargara — pero antes, sin `async`, el
+  // navegador garantizaba que TODO el JS clásico (incluyendo events.js) ya
+  // había corrido antes de que este módulo arrancara, así que el guard
+  // nunca fallaba en la práctica. Con `async`, esa garantía ya no existe: si
+  // falla el guard, antes simplemente no se registraba nada y quedaba así
+  // para siempre (el botón de login se habilitaba solo por el timeout de
+  // 8s de firebase-init.js, pero sin listener real detrás — clickearlo no
+  // hacía nada). Mismo patrón de reintento que ya usa este mismo archivo
+  // para el overlay de eliminar cuenta, y que ya usa pin-bio.js para su
+  // propio hook de refresh().
+  function _registrarEventosAuthgate() {
+    if(typeof Events === 'undefined' || typeof Events.registerAll !== 'function') return false;
     Events.registerAll('authgate', {
       signIn: window._fbSignIn,
       cerrarEliminarCuenta: window._cerrarEliminarCuenta,
@@ -469,4 +513,10 @@
     window._authgateReady = true;
     clearTimeout(window._authgateReadyTimeout);
     document.querySelectorAll('[data-action^="authgate:"]').forEach(function(b){ b.disabled = false; });
+    return true;
+  }
+  if (!_registrarEventosAuthgate()) {
+    const _tAuthgate = setInterval(function() {
+      if (_registrarEventosAuthgate()) clearInterval(_tAuthgate);
+    }, 200);
   }

@@ -35,7 +35,35 @@
       window._fb = { auth, db, provider, signInWithPopup, signOut, doc, getDoc, setDoc, deleteDoc, deleteUser, reauthenticateWithPopup, onAuthStateChanged, onSnapshot };
 
       // Escuchar estado de auth y arrancar la app
+      //
+      // NOTA (arranque async, ver docs/auditoria-tecnica.md #4 y
+      // CHANGELOG.md#arranque): este archivo ahora carga con `async` en vez
+      // de dejarlo como <script type="module"> normal (que el navegador
+      // trata como defer). Esto deja correr la resolución de auth de
+      // Firebase en paralelo con el JS clásico de la app, en vez de esperar
+      // a que termine — pero significa que este módulo puede llegar a
+      // ejecutar antes de lo habitual. onAuthStateChanged() en sí solo
+      // registra el listener (no toca el DOM), así que eso es seguro
+      // siempre. El callback de abajo sí toca el DOM (#fb-loading-screen,
+      // #fb-login-screen, etc.) — como defensa barata, si el documento
+      // todavía se está parseando cuando el callback dispara, se espera a
+      // DOMContentLoaded antes de tocar nada. En la práctica no debería
+      // activarse nunca (Firebase tarda más en resolver el estado de auth
+      // que lo que tarda el parser en llegar a esas dos divs, que son de
+      // las primeras cosas del <body>), pero es la misma clase de guard
+      // defensivo que ya usa el resto de la cadena (window._pendingPinGate,
+      // window._authgateReadyTimeout) — sin él, esto sería exactamente el
+      // tipo de carrera que causó el bug real de `window.Events` vs
+      // `typeof Events` documentado en CHANGELOG.md#infraestructura--seguridad.
       onAuthStateChanged(auth, (user) => {
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', () => _onAuthState(user), { once: true });
+        } else {
+          _onAuthState(user);
+        }
+      });
+
+      function _onAuthState(user) {
         if (user) {
           // Usuario logueado
           document.getElementById('fb-login-screen').style.display = 'none';
@@ -88,4 +116,4 @@
             }
           }, 8000);
         }
-      });
+      }

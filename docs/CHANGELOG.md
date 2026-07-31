@@ -713,6 +713,18 @@ Con `deudores-personas.js` disponible se cierra el hallazgo anterior, pero con u
 
 `_initEventListeners()` en `index.html`: 141 → **~118 líneas**. Con esto se cierra del todo la redistribución activa. Lo que queda en la función, a propósito y sin plan de moverse: wiring núcleo genérico compartido por las 13 pantallas (nav, dialog, close-sheet delegado, `data-save-refresh`), las cards del FAB "+" de Gastos/Cuentas (comparten menú) y el tab-bar de Gastos (wiring genérico pero enganchado a `switchGastoTab()`, de `gastos.js`). El color picker de avatares de Personas ya no vive acá — ver corrección arriba. Ver `auditoria-tecnica.md`, punto 3, para el detalle completo.
 
+### 🐛 Corregido — El lado de `encargos.js` de la entrada anterior nunca había llegado al archivo
+
+*(sesión posterior, encontrado al re-auditar con el código fuente real en mano)*
+
+La entrada de arriba ("Redistribución final: Encargos y Préstamos", 2026-07-27) documentaba **seis listeners como movidos a `encargos.js`** (`movenc_monto`, `movenc_mia_cuenta_sale`/`_entra`, `ctc_monto`, `ctc_cuenta_enc`/`ctc_tarjeta`/`ctc_destino`, y los tres "valor real" del motor Diferencial — `movenc_dif_real`, `ctc_dif_real`, `usar_parte_dif_real`). El lado de `prestado.js` sí estaba — se verificó línea por línea, bloque `WIRING MIGRADO DESDE index.html` presente y correcto. **El de `encargos.js` no existía en el archivo real**, pese a estar documentado como hecho — ni el bloque, ni el comentario de cabecera que sí tiene su equivalente en `prestado.js`. No se investigó por qué (¿nunca se aplicó el cambio, se perdió en un merge, se revirtió por error? no hay forma de saberlo sin más contexto), se documenta el hallazgo y se corrige.
+
+**Escenario concreto que dispara el bug (confirmado con jsdom contra el archivo original, sin el fix):** en el sheet "Retirar plata" de un encargo, cambiar la cuenta de "sale"/"entra" de la sección "mía" no actualizaba el texto del preview (`↔ Sale X de... · Recupero X en...`) — se quedaba con lo calculado al abrir el sheet. Mismo problema en "Compra con TC" (monto/cuenta/tarjeta/destino no refrescaban el resumen en vivo) y en los tres "valor real" del motor Diferencial (`movenc_dif_real`/`ctc_dif_real`/`usar_parte_dif_real`, sin actualizar su resumen al escribir).
+
+**Fix:** se agregó a `encargos.js` el mismo bloque `forEach` que ya usa `prestado.js`, justo antes de `Events.registerAll('encargos', ...)`, cableando los seis campos documentados arriba a las funciones que ya existían (`_movEncSplitPreview`, `_movEncMiaPreview`, `_ctcActualizarPreview`, `_difResumen`, `_ctcDifResumen`, `_usarParteDifResumen`) — ninguna función nueva, solo el `addEventListener` que faltaba.
+
+**Verificado con jsdom:** reproducido el bug contra el archivo original (el preview de "mía" se queda vacío tras el `change`), y confirmado que con el fix sí se actualiza. `node --check` sin errores.
+
 ---
 
 ## Préstamos, Personas, Configuración
@@ -1020,3 +1032,121 @@ La rama `onclick="${btnFn}"` era código muerto, sin ningún caller activándola
 - `events.js`, `diferencial.js`, `split.js`, `money-input.js`: limpios.
 
 **Con esto se completa el barrido de los 29 archivos de la app. `'unsafe-inline'` se sacó de `script-src` de nuevo**, esta vez confirmado contra el código real de los 29 archivos, no solo contra `node --check`/jsdom (que no aplican CSP).
+
+---
+
+## Arranque
+
+### 🔧 Cambio — Paso 1 de la reestructuración: `firebase-init.js` pasa a `async`
+
+Mapeo completo de la cadena de arranque (`core-state.js`, `firebase-init.js`, `firebase-sync.js`, `pin-bio.js`, `sheet-stack.js`, `bootstrap.js`) hecho con los archivos reales en mano, no asumido. Hallazgo: `firebase-init.js` cargaba como `<script type="module">` sin `async`, lo que el navegador trata igual que `defer` — **no lo ejecuta hasta terminar de parsear todo `<body>`**, sin importar que el `<script>` esté arriba de todo en el `<head>`. Mientras tanto, los ~30 `<script>` clásicos de la app (`core-state.js` y cada módulo de pantalla) sí bloquean el parser en su posición exacta y se ejecutan de inmediato al encontrarlos.
+
+Efecto real: la app entera se parseaba y ejecutaba (el JS que Lighthouse mide como TBT de ~9s) **antes** de que Firebase siquiera arrancara a resolver el estado de auth — en serie, no en paralelo, aunque nada obliga a que sea así (`firebase-init.js` no depende de que el resto del JS clásico ya haya corrido).
+
+**Fix:** se agregó `async` al `<script>` de `firebase-init.js`. Con eso, el navegador lo ejecuta apenas está listo (sus propios `import` del SDK de Firebase resueltos), sin esperar a que termine de parsearse el documento — dejando que la resolución de auth de Firebase (I/O de red/IndexedDB) corra en paralelo con el JS clásico en vez de esperar en serie a que termine.
+
+**Red de seguridad agregada:** el callback de `onAuthStateChanged` sí toca el DOM (`#fb-loading-screen`, `#fb-login-screen`, `#fb-user-name`, etc.), así que se envolvió con un guard de `document.readyState`:
+
+```js
+onAuthStateChanged(auth, (user) => {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => _onAuthState(user), { once: true });
+  } else {
+    _onAuthState(user);
+  }
+});
+```
+
+En la práctica no debería activarse nunca — Firebase tarda más en resolver el estado de auth (depende de IndexedDB/red) que lo que tarda el parser en llegar a esas dos divs, que son de las primeras cosas del `<body>` — pero sin este guard sería exactamente el mismo tipo de carrera que ya causó el bug real de `window.Events` vs `typeof Events` (ver `#infraestructura--seguridad` más arriba). Mismo criterio defensivo que ya usan `window._pendingPinGate` (5s) y `window._authgateReadyTimeout` (8s) en el resto de la cadena.
+
+**Verificado:** `node --input-type=module --check` sin errores en `firebase-init.js`. La lógica del guard (no llamar sincrónicamente si el documento sigue en `loading`, llamar exactamente una vez tras `DOMContentLoaded`, llamar de inmediato si el documento ya está listo) se validó por separado con jsdom, ya que el archivo real importa el SDK de Firebase desde `gstatic.com` y no se puede ejecutar completo sin red ni sin un proyecto de Firebase real — **falta la prueba en un navegador real, con login/PIN/carga de datos de verdad, antes de dar este paso por cerrado del todo.**
+
+### 🔧 Cambio — Paso 2: `firebase-sync.js` y `pin-bio.js` pasan a `async`
+
+*(sesión posterior, probado en navegador real por el usuario tras el paso 1 — confirmado sin problemas de login/PIN/carga de datos)*
+
+Mismo criterio que el paso 1, pero acá el mapeo encontró **dos riesgos que `firebase-init.js` no tenía**, porque estos dos archivos sí ejecutan código a nivel superior del módulo (no solo definiciones de función) que toca el DOM o depende de que otro `<script>` clásico ya haya cargado — algo que antes era seguro porque, sin `async`, el navegador garantiza que un módulo no ejecuta hasta terminar de parsear *todo* el documento (con lo cual todo el JS clásico, y en particular `js/core/events.js`, ya corrió). Al sacarle esa garantía con `async`, esos dos puntos dejan de ser seguros:
+
+1. **`firebase-sync.js` — wiring del overlay "Eliminar cuenta" sin null-check.** El archivo original tenía `document.getElementById('del-account-overlay').addEventListener(...)` (y dos más análogos) corriendo directo a nivel superior, sin verificar que el elemento exista. **Confirmado con jsdom que revienta con `TypeError: Cannot read properties of null` si el DOM todavía no tiene esos elementos** — y como es una excepción sin capturar a nivel superior del módulo, corta la ejecución de *todo el resto del archivo*, incluyendo el registro de `Events('authgate', ...)` del final. Fix: se extrajo a `_wireDeleteAccountOverlay()`, con null-checks, envuelta en el mismo guard de `document.readyState`/`DOMContentLoaded` que ya usa `firebase-init.js`.
+
+2. **`pin-bio.js` y `firebase-sync.js` — registro de `Events` sin reintento.** Ambos ya tenían un guard `if(typeof Events !== 'undefined' && ...)` antes de `Events.registerAll(...)` — pero sin `async`, ese guard nunca fallaba en la práctica (el navegador ya garantizaba que `events.js`, clásico, había corrido). Con `async`, si el guard llega a fallar, **antes no había ningún reintento — el namespace `'pin'`/`'authgate'` quedaba sin registrar para siempre**, silenciosamente (el botón de login se terminaba habilitando solo por el timeout de 8s de `firebase-init.js`, pero sin listener real detrás: clickearlo no hacía nada). Fix: se envolvió cada registro en una función que se reintenta cada 200ms hasta que `Events` esté disponible — mismo patrón que ya usaba este mismo `pin-bio.js` para su hook de `refresh()`, solo replicado a los otros dos puntos que no lo tenían.
+
+También se envolvió el chequeo de `window._pendingPinGate` (que toca `#pin-screen`/`#fb-loading-screen` vía `_pinGate()`→`_showPin()`) con el mismo guard de `readyState`.
+
+**Verificado:**
+- `node --check` sin errores en ambos archivos.
+- jsdom, tres escenarios: (a) `firebase-sync.js` ejecutando con el DOM del overlay todavía sin existir — no revienta, y una vez agregado el DOM y disparado `DOMContentLoaded`, el wiring queda conectado de verdad (probado con un evento `input` real habilitando el botón); (b) `pin-bio.js` con `_pendingPinGate=true` y `#pin-screen` todavía sin existir — no revienta, se consume el flag y se abre el sheet recién tras `DOMContentLoaded`; (c) ambos módulos cargando sin que `Events` exista todavía — los dos namespaces (`pin`, `authgate`) terminan registrándose solos vía el reintento apenas `Events` aparece.
+- Reproducido el bug contra el `firebase-sync.js` **original** en el mismo escenario: efectivamente revienta con `TypeError: Cannot read properties of null (reading 'addEventListener')` — confirma que el riesgo era real, no hipotético.
+
+**Sigue pendiente, mismo alcance que antes:** prueba en navegador real (login, PIN, biometría si aplica, "Eliminar cuenta") — la simulación con jsdom valida la lógica de los guards, no reemplaza probarlo con Firebase de verdad.
+
+**Qué NO resuelven los pasos 1 y 2 juntos** (para no perder de vista el resto): el TBT de ~9s en sí no baja — el JS clásico de la app sigue pesando lo mismo y sigue bloqueando el parser en su posición. Lo que se gana, acumulado entre ambos pasos, es que **toda** la cadena de Firebase (auth + Firestore + PIN) corre en paralelo con el JS clásico en vez de esperar en serie a que termine. Próximos pasos según la hoja de ruta (`auditoria-tecnica.md` #4): pasar el JS clásico pesado a `defer`, y por último dividir el JS por pantalla (la solución de fondo).
+
+### 🔧 Cambio — Paso 3: `defer` en los ~36 `<script>` clásicos, motivado por un Lighthouse real en producción
+
+*(sesión posterior, con el reporte de Lighthouse de producción — Performance 43 — en mano)*
+
+El usuario compartió el reporte completo de Lighthouse contra `drlight09.github.io/mis-finanzas/`. Dos hallazgos ahí, que no se sabían hasta tener el dato real:
+
+1. **"Element render delay" del LCP: 11,710 ms** (de un LCP total mayor) — el elemento que cuenta como LCP existía pero tardaba casi 12 segundos en poder renderizarse.
+2. **El árbol de dependencias de red muestra que cada `<script>` clásico no empezaba a *descargarse* hasta que el anterior terminaba de *ejecutar*** — no solo la ejecución estaba serializada (como ya se sabía desde el paso 1), la propia descarga también. Ejemplo concreto del reporte: `js/modules/inicio.js`, el último del bloque de ~36, **no arrancaba su fetch hasta los 9,460 ms** de la carga de página. Esto es consecuencia directa de que sean `<script src>` clásicos sin `defer`/`async`: el parser no puede *descubrir* el siguiente `<script>` hasta que termina de ejecutar (bloqueante) el que tiene enfrente.
+
+**Por qué este paso es de menor riesgo que los pasos 1 y 2, aunque toque más archivos:** a diferencia de `async` (que rompe el orden relativo de ejecución entre scripts), `defer` **preserva exactamente el orden del documento** — mismo orden que tienen hoy siendo bloqueantes. Y como los ~36 `<script>` de este bloque están *todos* físicamente después de todo el HTML/markup real de la app (verificado: el primero, `events.js`, ya está después del cierre del body visual; no hay ningún elemento del DOM que dependa de que alguno de estos scripts corra a mitad de parseo), pasarlos a `defer` no cambia cuándo ejecutan respecto al DOM que necesitan — sigue siendo "con todo el HTML ya parseado", igual que hoy. Lo único que cambia es que las **descargas** de los 36 archivos arrancan todas en paralelo apenas el parser las descubre, en vez de una por una.
+
+Se verificaron las dos restricciones de orden documentadas explícitamente en el código (`sheet-stack.js`: debe cargar después de `gastos.js`/`spotify.js` y antes de `deudores-personas.js`) — como no se reordenó ningún `<script>`, solo se agregó el atributo `defer`, ambas restricciones siguen cumplidas exactamente igual que antes.
+
+**Qué NO se tocó:** `js/core/async-css.js` (sigue bloqueante, es minúsculo — 1.4 KiB, 0 ms de bloqueo real según el propio Lighthouse) y los tres módulos de Firebase (`firebase-init.js`/`firebase-sync.js`/`pin-bio.js`), que ya están en `async` desde los pasos 1 y 2, con sus propios guards — no tiene sentido mezclarlos con `defer` en el mismo bloque.
+
+**Verificado:** conteo de tags antes/después (37 `<script src>` + 3 `<script type="module">`, sin duplicados ni tags perdidos — un primer conteo dio una falsa alarma por menciones de la palabra `<script>` dentro de comentarios, no por tags reales). No se tocó ningún archivo `.js`, solo `index.html`.
+
+**Confirmado con Lighthouse real, sesión posterior** (recomendación: medir siempre en incógnito o perfil sin extensiones — una primera corrida contaminada por un gestor de contraseñas y un ad-blocker dio un score de 32, inservible para comparar; la corrida limpia fue la que importa):
+
+| Métrica | Antes (paso 2, sin `defer`) | Después (paso 3, con `defer`) |
+|---|---|---|
+| Element render delay (LCP) | 11,710 ms | **3,300 ms (-72%)** |
+| Minimize main-thread work | 26.6 s | **9.0 s (-66%)** |
+| Reduce JS execution time | 3.7 s | **2.4 s (-35%)** |
+| Long task más largo | 538 ms | **246 ms (-54%)** |
+| Performance score | 43 | **48** |
+
+Confirma la hipótesis: el cuello de botella real no era solo el orden de ejecución, era que el navegador no empezaba a *descargar* cada script hasta que el anterior terminaba de ejecutar. Con las 36 descargas en paralelo, el contenido real queda disponible bastante antes. ("Maximum critical path latency" osciló entre 9s y 36s entre corridas — ruido de cuánto duró abierta la conexión de long-polling de Firestore durante la medición, no una regresión real; ese insight está marcado "Unscored", no afecta el puntaje.)
+
+El TBT en sí (26.6s de "main-thread work" total, con "Other" en 18.4s dominando — probablemente los canales `Listen`/`Write` de larga duración de Firestore, que Lighthouse cuenta en el critical path aunque no bloqueen nada, al ser conexiones de long-polling) no debería bajar con este cambio — sigue siendo trabajo de ejecución, no de orden.
+
+---
+
+## Modularización por pantalla — mapeo y fase 0.5
+
+### 🔍 Mapeo (sesión posterior) — hallazgo central: `refresh()` bloquea cualquier carga bajo demanda
+
+Antes de diseñar el mecanismo de carga bajo demanda por pantalla (punto 3 de `auditoria-tecnica.md`), se mapeó con `grep` sistemático contra 24 de los ~36 archivos reales (faltan los core chicos: `events.js`, `diferencial.js`, `split.js`, `money-input.js`, `movimientos.js`, `mas-menu.js`, `sheet-viewport.js`, `sheet-swipe.js`, `gastos-fijos-progress.js`, `mejoras.js`, `mejoras-adicionales.js`, `busqueda-global.js`, `nav.js`, `actividad_reciente.js`, `personas-init.js`, `import-validado.js`, `async-css.js`). Tres hallazgos:
+
+1. **`refresh()` en `core-state.js` — llamada después de CADA `save()` en toda la app — invocaba sin ningún `typeof` guard a `renderDetalleCuenta`/`renderMovsCustom`/`renderCajitas`/`renderCustomCuentasList`/`renderEncargosEnCuenta` (cuentas.js/encargos.js), `renderGastosVar`/`renderGastosFijos`/`renderMesFiltros` (gastos.js), `renderDeudoresList` (prestado.js), `renderMesada` (mesada.js), `renderSpotify` (spotify.js), `renderAttencion` (inicio.js), `renderTCDashboard` (tarjetas_credito.js).** Confirmado con jsdom que revienta con `ReferenceError` si cualquiera de esos módulos no está cargado — y al ser una excepción sin capturar a mitad de la función, corta también las llamadas posteriores a módulos que sí estaban cargados. Esto bloquea de raíz cualquier intento de cargar un módulo de dominio bajo demanda: hoy, no cargar `spotify.js` de entrada rompe `refresh()` para *toda* la app, no solo para Spotify.
+2. **El patrón "parchar la función original" (`const _orig = X; X = function(){...}`) aparece en 8 de los 24 archivos ya vistos** (`spotify-personas.js`: 5, `encargos-personas.js`: 4, `encargos.js`/`prestado-personas.js`: 3 c/u, `alcancia.js`/`deudores-personas.js`/`sheet-stack.js`: 2 c/u, `inicio.js`: 1) — es la norma, no la excepción. Implica que ciertos grupos de archivos (`spotify.js`+`spotify-personas.js`, `prestado.js`+`prestado-personas.js`+`deudores-personas.js`, `encargos.js`+`encargos-personas.js`) tendrán que cargarse siempre juntos y en ese orden interno bajo cualquier mecanismo de carga bajo demanda — no se pueden separar.
+3. **Personas confirmado como librería transversal, no una pantalla más:** `spotify-personas.js`, `encargos-personas.js`, `prestado-personas.js`, `deudores-personas.js` dependen todos de `getPersona`/`abrirSelPersona`/`_inyectarPersonaSheets`/`PERSONA_COLORES` de `personas.js`.
+
+### 🔧 Cambio — Fase 0.5: blindar `refresh()` con `typeof` guards
+
+Se agregó `if(typeof X==='function')` a las 12 llamadas sin guard listadas arriba — mismo patrón defensivo que ya usaba `showScreen()` en varios puntos de `sheet-stack.js`. Sin funciones nuevas, sin cambiar el comportamiento actual (todos los módulos siguen cargando de entrada, como siempre) — el único efecto hoy es que `refresh()` deja de asumir que un módulo de dominio específico existe. Es un prerrequisito para cualquier carga bajo demanda futura, independiente de qué tan lejos se llegue con el resto del plan.
+
+**Verificado:**
+- `node --check` sin errores en `core-state.js`.
+- jsdom: `refresh()` extraída y ejecutada con un sandbox que a propósito no define ninguno de los 12 `render*`/`calc*` de dominio — no revienta. Con un solo módulo "cargado" (`renderSpotify` agregado al sandbox), se confirma que sí se invoca de verdad (no quedó guardeado por error).
+- Reproducido el bug contra el `core-state.js` **original** en el mismo escenario: revienta con `renderCajitas is not defined` — confirma que el riesgo era real, no hipotético.
+
+**Sigue pendiente:** terminar de mapear los ~17 archivos que faltan, y recién ahí diseñar el mecanismo de carga bajo demanda en sí (fase 1-4 de `auditoria-tecnica.md` #4).
+
+### 🔍 Mapeo completo (40/40 archivos) — cierre de la fase 0
+
+Con los 17 archivos restantes en mano (`events.js`, `diferencial.js`, `split.js`, `money-input.js`, `movimientos.js`, `mas-menu.js`, `sheet-viewport.js`, `sheet-swipe.js`, `gastos-fijos-progress.js`, `mejoras.js`, `mejoras-adicionales.js`, `busqueda-global.js`, `nav.js`, `actividad_reciente.js`, `personas-init.js`, `import-validado.js`, `async-css.js`), se cerró el mapeo de dependencias de los ~36 archivos de la app.
+
+**Segundo caso del mismo bug de `refresh()`, encontrado y corregido:** `navTo()` en `nav.js` llamaba `renderTCScreen()` (tarjetas_credito.js) sin `typeof` guard. Inofensivo hoy — el único caller real es el propio `tarjetas_credito.js` vía `Events.registerAll({ verTodo: () => navTo('tarjetas') })`, así que `renderTCScreen` ya existe en ese momento — pero misma suposición implícita fragil que `refresh()`. Corregido con el mismo patrón: `if(screen==='tarjetas' && typeof renderTCScreen==='function')renderTCScreen();`. Confirmado que ningún otro de los 17 archivos tiene el mismo problema — ya usan `typeof`/polling/`try-catch` de forma consistente.
+
+**Corrección a una hipótesis del mapeo anterior:** se pensó que `busqueda-global.js` sería otra razón para mantener los módulos de dominio en núcleo (buscar en Spotify/Encargos exigiría tenerlos cargados). Al revisar el archivo real, busca directo sobre `S.gastosVar`/`S.deudores`/`S.encargos`/`S.misDeudas`/`S.spotifyHistorial`/`S.spotifyPersonas`/`S.personas`/`S.cajitas`/`S.cuentasPersonalizadas`/`S.gastosFijos`/`S.movimientos` — los datos, no las funciones de render de cada módulo. Como `S` siempre está disponible (viene de Firestore, no del JS de cada módulo), la búsqueda global no obliga a que ningún módulo de dominio esté cargado.
+
+**Mapa final de tiers:**
+
+- **Núcleo (17 archivos):** `events.js`, `core-state.js`, `sheet-stack.js`, `diferencial.js`, `split.js`, `money-input.js`, `movimientos.js`, `personas.js`+`personas-init.js` (transversal a 4 pantallas), `mas-menu.js`, `sheet-viewport.js`, `sheet-swipe.js`, `mejoras.js`, `mejoras-adicionales.js`, `busqueda-global.js`, `nav.js`, `async-css.js`, `bootstrap.js` — más `firebase-init.js`/`firebase-sync.js`/`pin-bio.js`, que ya están en `async` desde los pasos 1-2 del arranque.
+- **Por pantalla, en los grupos que deben cargar juntos por el patrón de override (ver mapeo anterior):** `mesada.js` · `spotify.js`+`spotify-personas.js` · `gastos.js`(+`gastos-fijos-progress.js`, hoy en núcleo, candidato a mover) · `prestado.js`+`prestado-personas.js`+`deudores-personas.js` · `encargos.js`+`encargos-personas.js` · `tarjetas_credito.js` · `cuentas.js` · `plata_comprometida.js` · `actividad_reciente.js` · `alcancia.js` · `configuracion.js`+`import-validado.js` · `analisis.js` · `inicio.js` (a confirmar si conviene núcleo por ser la pantalla de arranque).
+
+Con esto queda cerrada la fase 0 (mapeo). Siguiente paso: diseñar el mecanismo de carga en sí (fase 1 de la hoja de ruta).

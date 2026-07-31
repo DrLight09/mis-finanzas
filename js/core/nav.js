@@ -21,7 +21,15 @@ function navTo(screen){
   const masMenu=document.getElementById('mas-menu');
   if(masOverlay)masOverlay.classList.remove('open');
   if(masMenu)masMenu.style.display='none';
-  if(screen==='tarjetas')renderTCScreen();
+  // Blindado con typeof (docs/auditoria-tecnica.md #4, fase 0.5 de la
+  // modularización, mismo criterio que refresh() en core-state.js): hoy
+  // el único caller real de navTo('tarjetas') es el propio
+  // tarjetas_credito.js (Events.registerAll → verTodo), así que
+  // renderTCScreen ya está definida cuando esto corre — pero es
+  // exactamente el tipo de suposición implícita entre archivos que se
+  // rompe con carga bajo demanda si en el futuro otro módulo también
+  // navega a "tarjetas" sin que ese archivo esté cargado todavía.
+  if(screen==='tarjetas' && typeof renderTCScreen==='function')renderTCScreen();
   const scrollArea=document.getElementById('scrollArea');
   if(scrollArea)scrollArea.scrollTop=0;
 }

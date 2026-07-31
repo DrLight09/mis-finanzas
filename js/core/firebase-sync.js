@@ -121,12 +121,29 @@
       } catch(_){}
     }
 
-    // _firstLoad: true mientras esperamos la primera respuesta del servidor.
-    // Firebase puede entregar primero datos del caché local (fromCache=true)
-    // antes de confirmar con el servidor; los ignoramos para el arranque inicial
-    // y solo inicializamos la app cuando tengamos datos confirmados del servidor
-    // (o cuando no haya datos en absoluto).
+    // (docs/auditoria-tecnica.md #4 — reestructuración del arranque, sesión
+    // posterior). Antes: si la primera entrega venía del caché local
+    // (fromCache=true), NO se pintaba nada — se esperaba hasta 8s la
+    // confirmación del servidor "para no mostrar datos obsoletos" (ver
+    // CHANGELOG.md#arranque). En la práctica esos 8s eran casi siempre
+    // puro spinner: el caché de persistentLocalCache() es el mismo
+    // dispositivo releyendo su propio último guardado (setDoc), así que
+    // casi nunca es "obsoleto" — y aunque lo fuera, un snapshot del
+    // servidor con datos más nuevos sigue llegando después y se reconcilia
+    // igual que ya reconciliábamos actualizaciones en tiempo real de otro
+    // dispositivo (misma rama `remoteTs > localTs + 5000` de abajo).
+    //
+    // _firstLoad: true hasta que cerramos la "primera carga" con datos
+    // confirmados del servidor (o con error/sin conexión).
+    // _firstPaintDone: true en cuanto mostramos la app por primera vez —
+    // separado de _firstLoad porque ahora pueden llegar DOS eventos
+    // "primera carga" (caché, después servidor): el primero pinta y llama
+    // _finishFirstLoad() (inicializa listeners, UNA sola vez); si llega un
+    // segundo con datos del servidor, solo debe reconciliar sin volver a
+    // inicializar nada — mismo tipo de bug que ya se vio antes con
+    // _initEventListeners() duplicando listeners si se llama dos veces.
     let _firstLoad = true;
+    let _firstPaintDone = false;
 
     _unsubscribeSnapshot = onSnapshot(docRef,
       { includeMetadataChanges: true },
@@ -146,35 +163,29 @@
         // para evitar que los datos viejos de la nube pisen los recién importados.
         if(window._importing && !_firstLoad) return;
 
-        // Primera entrega: si viene del caché y la app aún no inició,
-        // esperar a que llegue la versión del servidor para evitar mostrar
-        // datos obsoletos. Si en 8s no llega nada del servidor, usar el caché.
-        if(_firstLoad && fromCache) {
-          // Programar fallback: si el servidor no responde en 8s, usar caché
-          if(!window._fbCacheFallbackTimer) {
-            window._fbCacheFallbackTimer = setTimeout(() => {
-              if(_firstLoad) {
-                console.warn('[Sync] Servidor no respondió en 8s — usando caché local.');
-                _applyCloudData(snap);
-                _firstLoad = false;
-                _finishFirstLoad();
-              }
-            }, 8000);
-          }
-          return; // Esperar datos del servidor
-        }
-
-        // Cancelar el fallback timer si ya llegaron datos del servidor
-        if(window._fbCacheFallbackTimer) {
-          clearTimeout(window._fbCacheFallbackTimer);
-          window._fbCacheFallbackTimer = null;
-        }
-
         if(_firstLoad) {
-          // Primera carga real del servidor
           _applyCloudData(snap);
-          _firstLoad = false;
-          _finishFirstLoad();
+          if(!_firstPaintDone) {
+            // Primer pintado real — con lo que haya llegado primero (caché
+            // o servidor). Esto es lo que baja el LCP: ya no se espera.
+            _firstPaintDone = true;
+            _finishFirstLoad();
+          } else if(!fromCache) {
+            // Ya pintamos con caché; esto es la confirmación del servidor
+            // llegando después. Si trajo algo distinto ya se aplicó arriba
+            // (_applyCloudData) — solo falta reflejarlo sin re-inicializar
+            // listeners (_initAppUI ya corrió una vez, en el pintado de arriba).
+            (window.S&&window.S.cajitas||[]).forEach(c=>{ if(typeof materializarIntereses==='function') materializarIntereses(c); });
+            if(window._dataLoaded) {
+              load(); refresh();
+              if(window.applyModulos) applyModulos();
+              setSyncStatus('ok', 'Sincronizado con Firebase');
+            }
+          }
+          // Solo cerramos "primera carga" con datos confirmados del servidor
+          // (fromCache=false) — si lo que acabamos de pintar fue caché,
+          // seguimos esperando esa confirmación en la próxima entrega.
+          if(!fromCache) _firstLoad = false;
         } else {
           // Actualización en tiempo real desde otro dispositivo/pestaña.
           // Solo aplicar si los datos de la nube son más nuevos que los locales.
@@ -205,10 +216,10 @@
       (error) => {
         console.error('[Sync] Error en onSnapshot:', error);
         setSyncStatus('error', 'Error de conexión — reintentando…');
-        if(_firstLoad) {
-          _firstLoad = false;
-          _finishFirstLoad();
-        }
+        // Si ni el caché ni el servidor entregaron nada todavía, no dejar a
+        // la persona colgada en el spinner — arrancar igual con S por defecto.
+        if(!_firstPaintDone) { _firstPaintDone = true; _finishFirstLoad(); }
+        _firstLoad = false;
       }
     );
   };
@@ -350,6 +361,10 @@
       _unsubscribeSnapshot();
       _unsubscribeSnapshot = null;
     }
+    // window._fbCacheFallbackTimer ya no se crea en ningún lado (ver
+    // _fbLoadData, docs/auditoria-tecnica.md #4) — esta línea queda
+    // inofensiva a propósito (el `if` nunca entra) en vez de borrarla, para
+    // no tocar código de limpieza de sesión sin necesidad real.
     if(window._fbCacheFallbackTimer) { clearTimeout(window._fbCacheFallbackTimer); window._fbCacheFallbackTimer = null; }
     // Bloquear futuros guardados limpiando el usuario ANTES del signOut
     window._dataLoaded = false;
@@ -444,6 +459,8 @@
       _unsubscribeSnapshot();
       _unsubscribeSnapshot = null;
     }
+    // Ver nota equivalente en _fbSignOut — código de limpieza inofensivo,
+    // dejado a propósito.
     if(window._fbCacheFallbackTimer) { clearTimeout(window._fbCacheFallbackTimer); window._fbCacheFallbackTimer = null; }
     window._dataLoaded = false;
 

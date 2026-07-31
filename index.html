@@ -4803,6 +4803,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 // de deudores-personas.js (que monkey-patchea openSheet()).
 -->
 <script src="js/core/sheet-stack.js" defer></script>
+<!--
+// js/core/lazy-loader.js — motor de carga bajo demanda (docs/auditoria-
+// tecnica.md #4, fase 1 de la modularización). Se carga acá, justo después
+// de sheet-stack.js, porque showScreen() lo referencia (con guard typeof,
+// así que el orden exacto entre estos dos no es estrictamente obligatorio,
+// pero mantenerlos juntos documenta la relación). Ver CHANGELOG.md#modularización-por-pantalla.
+-->
+<script src="js/core/lazy-loader.js" defer></script>
 <script src="js/core/money-input.js" defer></script>
 <script src="js/modules/encargos.js" defer></script>
 <!--
@@ -5177,9 +5185,18 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
     <!-- ===== MÓDULO ALCANCÍA OCULTA =====
          Migrado a js/modules/alcancia.js — ver auditoria-tecnica.md,
          punto 3 (arquitectura monolítica) y punto 1 (migración de
-         onclick inline a Events/data-action). Debe cargarse después
-         de js/core/events.js (ya incluido más arriba). ===== -->
-<script src="js/modules/alcancia.js" defer></script>
+         onclick inline a Events/data-action).
+
+         PILOTO DE CARGA BAJO DEMANDA (sesión posterior, auditoria-tecnica.md
+         #4, fase 1 de la modularización): este <script> se sacó de la carga
+         de entrada. Ahora lo descarga js/core/lazy-loader.js (Loader.ensure)
+         la primera vez que el usuario entra a la pantalla Alcancía, en vez
+         de siempre, para todos, al arrancar la app. Elegido como piloto por
+         ser chico (~14 KiB) y ya estar completamente migrado, sin enredo
+         con Personas. Ver CHANGELOG.md#modularización-por-pantalla para el
+         detalle completo, incluido por qué Alcancía necesitó un tratamiento
+         distinto al resto (se auto-registra parchando showScreen() en vez
+         de depender de una rama if(name===X) en sheet-stack.js). ===== -->
 
     <!-- ===== MÓDULO CONFIGURACIÓN =====
          Migrado a js/modules/configuracion.js — ver auditoria-tecnica.md,

@@ -119,13 +119,42 @@ function showScreen(name){
       if(visMD)visMD.style.display='none';
     }
   }
-  if(name==='config') { renderCatsConfig(); if(typeof window._pinRenderBtn==='function') window._pinRenderBtn(); }
-  if(name==='analisis') renderAnalisis();
-  if(name==='personas') { _inyectarPersonaSheets(); _renderListaPersonas(); _actualizarMasPersonasSub(); }
+
+  // Carga bajo demanda (docs/auditoria-tecnica.md #4, fase 1 de la
+  // modularización — piloto: solo Alcancía por ahora, ver
+  // js/core/lazy-loader.js). Si "name" es una pantalla lazy y todavía
+  // no cargó, mostrar un estado de carga breve y volver a llamar a
+  // showScreen(name) una vez que el script termine de bajar — así
+  // cubre tanto a los módulos que se integran con una rama if(name===X)
+  // acá abajo (Mesada, Encargos, ...) como a los que se integran
+  // parchando showScreen() ellos mismos al cargar (Alcancía): en
+  // cualquiera de los dos casos, volver a invocar showScreen(name)
+  // desde cero dispara el camino correcto, sin que este archivo tenga
+  // que saber cuál de los dos patrones usa cada módulo.
+  if (typeof Loader !== 'undefined' && Loader.GROUPS[name] && !Loader.isLoaded(name)) {
+    _showScreenLoading(name);
+    Loader.ensure(name).then(() => {
+      _hideScreenLoading(name);
+      showScreen(name);
+    }).catch(err => {
+      _hideScreenLoading(name);
+      if (typeof toast === 'function') toast('No se pudo cargar esta sección. Revisa tu conexión.', 'err');
+      console.error('[Loader]', err);
+    });
+    return;
+  }
+
+  if(name==='config') { if(typeof renderCatsConfig==='function') renderCatsConfig(); if(typeof window._pinRenderBtn==='function') window._pinRenderBtn(); }
+  if(name==='analisis') { if(typeof renderAnalisis==='function') renderAnalisis(); }
+  if(name==='personas') {
+    if(typeof _inyectarPersonaSheets==='function') _inyectarPersonaSheets();
+    if(typeof _renderListaPersonas==='function') _renderListaPersonas();
+    if(typeof _actualizarMasPersonasSub==='function') _actualizarMasPersonasSub();
+  }
   // Re-renderizar la cuenta abierta al volver a cuentas, para reflejar cambios
   // hechos en otras pantallas (ej: eliminar un encargo desde Más → Encargos)
   if(name==='cuentas') {
-    if(cuentaActual) renderDetalleCuenta(cuentaActual);
+    if(cuentaActual && typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);
     if(typeof _customCuentaActualId!=='undefined' && _customCuentaActualId) {
       if(typeof renderDetalleCustomCuenta==='function') renderDetalleCustomCuenta(_customCuentaActualId);
     }
@@ -138,6 +167,27 @@ function showScreen(name){
   if(name==='mesada') {
     if(typeof renderMesada==='function') renderMesada();
   }
+}
+
+// Estado de carga mínimo mientras se descarga el script de una pantalla
+// lazy: un texto centrado, insertado/quitado del contenedor de la propia
+// pantalla. A propósito no es más elaborado (spinner, skeleton) — con un
+// solo grupo en el piloto (Alcancía, ~14 KiB) la descarga es rápida en la
+// enorme mayoría de las conexiones; si el piloto se extiende a módulos más
+// pesados (Cuentas, Encargos) vale la pena revisar si esto sigue alcanzando.
+function _showScreenLoading(name) {
+  const scr = document.getElementById('screen-' + name);
+  if (!scr || scr.querySelector('.screen-loading')) return;
+  const el = document.createElement('div');
+  el.className = 'screen-loading';
+  el.style.cssText = 'display:flex;align-items:center;justify-content:center;padding:60px 20px;color:var(--text3);font-family:"DM Mono",monospace;font-size:13px;';
+  el.textContent = 'Cargando…';
+  scr.appendChild(el);
+}
+function _hideScreenLoading(name) {
+  const scr = document.getElementById('screen-' + name);
+  const el = scr && scr.querySelector('.screen-loading');
+  if (el) el.remove();
 }
 
 function applyModulos(){

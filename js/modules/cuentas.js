@@ -112,8 +112,7 @@ function volverSelector() {
 
 function renderDetalleCuenta(tipo) {
   if (tipo === 'nequi') {
-    const saldo = (S.nequiSaldo || 0) - _saldoEncargosEnCuenta('nequi');
-    document.getElementById('det-nequi-saldo').textContent = fmt(saldo);
+    document.getElementById('det-nequi-saldo').textContent = fmt(S.nequiSaldo || 0);
     // Banner saldo inicial Nequi
     renderBannerApertura('nequi');
     // Encargos en Nequi
@@ -130,8 +129,7 @@ function renderDetalleCuenta(tipo) {
     const movs = getMovimientosCuenta('nu');
     renderMovsCuenta('det-nu-movs', movs, 'var(--nu-light)', 'nu');
   } else if (tipo === 'efectivo') {
-    const saldo = (S.efectivoSaldo || 0) - _saldoEncargosEnCuenta('efectivo');
-    document.getElementById('det-ef-saldo').textContent = fmt(saldo);
+    document.getElementById('det-ef-saldo').textContent = fmt(S.efectivoSaldo || 0);
     // Banner saldo inicial Efectivo
     renderBannerApertura('efectivo');
     // Encargos en Efectivo

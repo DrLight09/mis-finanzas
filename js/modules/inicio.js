@@ -194,13 +194,13 @@ function calcHealthScore(){
   // ── Liquidez real (solo cuentas disponibles, sin CDTs bloqueados) ─────
   const nu = (S.cajitas||[]).reduce((a,c)=>a+(window.calcC?window.calcC(c).val:c.saldo||0),0);
   const cdtVal = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+(window.calcCDT?window.calcCDT(cdt).val:cdt.monto||0),0),0);
-  // CORRECCIÓN: liquido excluye CDTs (son ahorros bloqueados, no disponibles de inmediato)
-  // También resta plata de encargos (ajena) guardada en Nequi/Efectivo/cuentas
-  // personalizadas — mismo criterio que calcPatrimonioTotal().
-  const _encNequi = window._saldoEncargosEnCuenta ? window._saldoEncargosEnCuenta('nequi') : 0;
-  const _encEfectivo = window._saldoEncargosEnCuenta ? window._saldoEncargosEnCuenta('efectivo') : 0;
-  const liquidoReal = nu + ((S.nequiSaldo||0)-_encNequi) + ((S.efectivoSaldo||0)-_encEfectivo)
-    + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0)-(window._saldoEncargosEnCuenta?window._saldoEncargosEnCuenta('custom:'+c.id):0),0)
+  // CORRECCIÓN: liquido excluye CDTs (son ahorros bloqueados, no disponibles de inmediato).
+  // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas personalizadas —
+  // registrar una entrada de encargo con esa cuenta nunca suma esa plata al saldo real (a
+  // diferencia de una cajita de Nu, donde sí forma parte de la base que gana interés), así que
+  // restarla acá producía una liquidez negativa falsa. Ver CHANGELOG.md#encargos.
+  const liquidoReal = nu + (S.nequiSaldo||0) + (S.efectivoSaldo||0)
+    + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0)
     - deudaTC;
   // patrimonio total sí incluye CDTs para otros cálculos
   const liquidoConCDTs = liquidoReal + cdtVal;
@@ -494,8 +494,8 @@ function _checkGastoAlto() {
   const gvMes = gastosMes(mes).reduce((a,g) => a + (g.monto||0), 0);
   const gfTotal = (S.gastosFijos||[]).reduce((a,g) => a + (g.monto||0), 0);
   const nu = nuTotal();
-  const nequi = (S.nequiSaldo || 0) - _saldoEncargosEnCuenta('nequi');
-  const ef = (S.efectivoSaldo || 0) - _saldoEncargosEnCuenta('efectivo');
+  const nequi = S.nequiSaldo || 0;
+  const ef = S.efectivoSaldo || 0;
   const disp = nu + nequi + ef;
   const indicator = document.getElementById('hero-change-indicator');
   if (!indicator) return;

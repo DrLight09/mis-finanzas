@@ -51,6 +51,21 @@ const Loader = (function () {
     // superior de SU propio archivo — haría lazy-loading imposible sin
     // tocar antes ese núcleo. Ver CHANGELOG.md#arranque.
     config: ['js/modules/configuracion.js', 'js/modules/import-validado.js'],
+    // Cuarto grupo lazy. Entrada única: el botón "Actividad reciente"
+    // dentro de Configuración (#cfg-historial-row, data-action=
+    // "config:irA" con args ["historial"]) — no hay ítem en el menú
+    // "Más" ni en el nav inferior, así que no hizo falta estatizar ni
+    // copiar HTML (a diferencia de Plata Comprometida): #screen-historial
+    // y el botón que dispara la carga ya son estáticos, y ese botón vive
+    // en configuracion.js, que solo es alcanzable si Configuración ya
+    // cargó — mismo prerequisito que ya existía antes de esto.
+    // Requirió UN cambio real en actividad_reciente.js (no solo sacar el
+    // <script>): el módulo se auto-renderizaba por DOMContentLoaded/
+    // appDataLoaded/clic, los 3 eventos que con carga lazy ya pasaron
+    // para cuando el archivo llega a existir — se agregó un cuarto
+    // trigger sin condición de evento al final del archivo. Ver ese
+    // archivo y CHANGELOG.md#arranque para el detalle.
+    historial: ['js/modules/actividad_reciente.js'],
   };
 
   const loaded = new Set();   // grupos ya cargados (no se vuelven a pedir)

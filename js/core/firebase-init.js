@@ -26,7 +26,7 @@
       const app = initializeApp(firebaseConfig);
       const auth = getAuth(app);
       const db = initializeFirestore(app, {
-        experimentalForceLongPolling: true,  // Evita ERR_QUIC_PROTOCOL_ERROR
+        experimentalAutoDetectLongPolling: true,  // Evita ERR_QUIC_PROTOCOL_ERROR sin forzar long-polling siempre (ver auditoria-tecnica.md, punto de rendimiento #1)
         localCache: persistentLocalCache()   // Guarda offline en IndexedDB
       });
       const provider = new GoogleAuthProvider();

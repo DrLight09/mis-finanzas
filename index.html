@@ -4612,7 +4612,21 @@
     </div>
 
 <script src="js/core/nav.js" defer></script>
-<script src="js/modules/actividad_reciente.js" defer></script>
+<!-- ===== FEED "ACTIVIDAD RECIENTE" =====
+     Migrado a js/modules/actividad_reciente.js. Único acceso: el botón
+     dentro de Configuración (#cfg-historial-row) — no hay entrada en el
+     menú "Más" ni en el nav inferior.
+
+     CARGA BAJO DEMANDA (sesión posterior, auditoria-tecnica.md #4):
+     cuarto grupo lazy. #screen-historial y el botón que dispara la
+     carga ya eran HTML estático — no hubo que copiar nada. Requirió
+     un cambio real dentro del propio archivo (no solo sacar el
+     <script>): sus 3 triggers de auto-render (DOMContentLoaded,
+     appDataLoaded, clic en #cfg-historial-row) ya pasaron para cuando
+     este archivo llega a cargar tarde — se agregó un cuarto trigger
+     sin condición de evento al final del archivo. Ver
+     CHANGELOG.md#arranque. ===== -->
+<!-- actividad_reciente.js: ver js/core/lazy-loader.js (Loader.GROUPS.historial) -->
 
     <!-- ══════════════════════════════════════════════════════════════════
      MÓDULO: PLATA COMPROMETIDA — migrado a js/modules/plata_comprometida.js

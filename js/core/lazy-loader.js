@@ -7,10 +7,11 @@
    en index.html) por una descarga la primera vez que el usuario entra
    a esa pantalla.
 
-   Piloto: solo "alcancia" está en GROUPS por ahora (ver CHANGELOG.md).
-   El resto de las pantallas sigue cargando de entrada como siempre —
-   Loader.GROUPS[name] === undefined para ellas, así que showScreen()
-   (sheet-stack.js) ni siquiera pasa por este archivo para esos casos.
+   Piloto: "alcancia" y "comprometida" en GROUPS por ahora (ver
+   CHANGELOG.md). El resto de las pantallas sigue cargando de entrada
+   como siempre — Loader.GROUPS[name] === undefined para ellas, así
+   que showScreen() (sheet-stack.js) ni siquiera pasa por este archivo
+   para esos casos.
 
    ── Por qué en orden y no en paralelo (Promise.all) ──────────────
    El patrón "parchar la función original" (const _orig = X; X =
@@ -28,6 +29,28 @@ const Loader = (function () {
   // de entrada (comportamiento actual, sin cambios).
   const GROUPS = {
     alcancia: ['js/modules/alcancia.js'],
+    // (docs/auditoria-tecnica.md #4) Segundo grupo lazy. A diferencia de
+    // Alcancía, plata_comprometida.js NO tenía su pantalla ni su ítem de
+    // menú "Más" como HTML estático — los auto-inyectaba en tiempo de
+    // ejecución (_injectScreen()/_injectMasItem(), ambas con guard por
+    // id, así que siguen ahí sin cambios y ahora son no-op). Se copió
+    // ese HTML tal cual a index.html (#screen-comprometida,
+    // #mas-comprometida) para que el ítem de menú exista desde el
+    // arranque — si no, no habría nada que el usuario pudiera tocar
+    // para disparar la carga lazy en primer lugar. Ver CHANGELOG.md#arranque.
+    comprometida: ['js/modules/plata_comprometida.js'],
+    // Tercer grupo lazy. Más simple que los dos anteriores: #screen-config
+    // y #mas-config YA eran HTML estático desde antes (no hubo que copiar
+    // nada), y el único caller externo de una función suya (renderCatsConfig,
+    // desde sheet-stack.js) ya tenía guard `typeof` desde la sesión del
+    // piloto de Alcancía. import-validado.js debe cargar DESPUÉS de
+    // configuracion.js (parchea leerArchivoImport a nivel superior del
+    // archivo — necesita que la versión base ya exista al parsear), por
+    // eso el orden dentro del array. gastos.js quedó afuera a propósito:
+    // sheet-stack.js (núcleo) parchea addGastoVar/addGastoFijo a nivel
+    // superior de SU propio archivo — haría lazy-loading imposible sin
+    // tocar antes ese núcleo. Ver CHANGELOG.md#arranque.
+    config: ['js/modules/configuracion.js', 'js/modules/import-validado.js'],
   };
 
   const loaded = new Set();   // grupos ya cargados (no se vuelven a pedir)

@@ -459,4 +459,22 @@
     setTimeout(renderFeedActividad, 300);
   });
 
+  // (docs/auditoria-tecnica.md #4 — carga bajo demanda) Si este archivo
+  // carga tarde — que es SIEMPRE el caso si se vuelve lazy, disparado
+  // por el clic en #cfg-historial-row — ninguno de los 3 triggers de
+  // arriba se activa nunca: DOMContentLoaded y appDataLoaded ya pasaron
+  // hace rato, y el listener de clic recién se registra en la línea
+  // 435 de este archivo, demasiado tarde para capturar el mismo clic
+  // que disparó la carga. Sin esto, la pantalla se queda pegada en
+  // "Cargando..." para siempre la primera vez. Se agrega un cuarto
+  // trigger sin condición de evento — mismo criterio que usa
+  // _cpInit() en plata_comprometida.js ("Render inicial si hay
+  // datos"). renderFeedActividad() ya lee `S` con fallback si no
+  // existe todavía (ver comentario del encabezado), así que llamarla
+  // acá es seguro incluso si por algún motivo se cargara antes de
+  // tiempo. Redundante pero sin costo real en el caso eager (los otros
+  // 3 triggers ya cubrían ese caso; esto solo suma una llamada más a
+  // una función idempotente).
+  renderFeedActividad();
+
 })();

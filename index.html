@@ -147,11 +147,11 @@
          del <body>). Ver docs/auditoria-tecnica.md #4 y CHANGELOG.md#arranque
          para el detalle completo y el resto de la cadena. -->
     <script type="module" src="js/core/firebase-init.js" async></script>
-    <!-- CSS principal extraído a styles.css (docs/auditoria-tecnica.md,
+    <!-- CSS principal extraído a css/styles.css (docs/auditoria-tecnica.md,
          ítem "CSS inline (44.7 KB)" — ahora cacheable aparte del HTML).
          Bloqueante a propósito (sin defer/async): es el layout base de
          toda la app, no hay nada coherente que mostrar sin él. -->
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="css/styles.css">
   </head>
   <body>
     <!-- FIREBASE: Pantalla de carga inicial -->
@@ -4379,7 +4379,7 @@
     <script type="module" src="js/core/firebase-sync.js" async></script>
     <!-- ===== MEJORAS: JS adicional =====
          El <style> que vivía acá (fade-in del dashboard, health ring,
-         presupuestos, búsqueda) se movió a styles.css — ver
+         presupuestos, búsqueda) se movió a css/styles.css — ver
          docs/auditoria-tecnica.md, ítem "CSS inline (44.7 KB)" y
          CHANGELOG.md#infraestructura--seguridad. -->
 

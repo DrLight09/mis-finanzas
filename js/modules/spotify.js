@@ -553,6 +553,11 @@ function openSheet_pagarSpotify(){
   actualizarSpPagarPreview();
   const notaEl=document.getElementById('spPagarNota');
   if(notaEl)notaEl.value='';
+  // Editable para poder registrar tarde un pago que en la realidad ya ocurrió antes
+  // (ver auditoria-tecnica.md — atribución de ciclo por fecha real, no por orden de
+  // entrada en el sistema).
+  const fechaPagoEl=document.getElementById('spPagarFecha');
+  if(fechaPagoEl)fechaPagoEl.value=hoy();
 }
 
 function actualizarSpPagarPreview(){
@@ -600,19 +605,63 @@ function confirmarPagarSpotify(){
   // elimina este pago del historial, hay que poder devolver a cada persona a como
   // estaba, no dejar a todos en "Pendiente" sin poder deshacerlo.
   const estadoAntesReset=(S.spotifyPersonas||[]).map(p=>({id:p.id,pagado:!!p.pagado}));
+
+  const fechaPagoEl=document.getElementById('spPagarFecha');
+  const fechaPago=(fechaPagoEl&&fechaPagoEl.value)?fechaPagoEl.value:hoy();
+
+  // Este pago puede registrarse DÍAS después de haber ocurrido en la realidad (ej: pagué
+  // el 1, pero recién hoy lo anoto). Si mientras tanto ya se registraron cobros que en la
+  // fecha real ya eran del ciclo NUEVO (posteriores a fechaPago), no hay que tratarlos
+  // como si hubieran cerrado el ciclo viejo — hay que "moverlos" después de este pago en
+  // el historial para que spCicloCobrosActual() los cuente donde de verdad corresponden.
+  // Ver auditoria-tecnica.md — atribución de ciclo por fecha real, no por orden de entrada.
+  let lastPagoIdx=-1;
+  for(let i=S.spotifyHistorial.length-1;i>=0;i--){ if(S.spotifyHistorial[i].tipo==='pago'){lastPagoIdx=i;break;} }
+  const antesDelSegmento=S.spotifyHistorial.slice(0,lastPagoIdx+1);
+  const segmentoAbierto=S.spotifyHistorial.slice(lastPagoIdx+1);
+
+  const quedanCerrando=[];   // de verdad pertenecen al ciclo que se está cerrando ahora
+  const pasanANuevo=[];      // ya eran, en la realidad, del ciclo que arranca con este pago
+  const cubiertoPorPersona={}; // acumulado ya confirmado como "cerrando", para el desempate del mismo día
+  segmentoAbierto.forEach(h=>{
+    // Los cobros que ya son cierre de un ciclo aún más viejo (_pagoIdCierre) no se tocan.
+    if(h.tipo!=='cobro'||h._pagoIdCierre){ quedanCerrando.push(h); return; }
+    if(h.fecha<fechaPago){
+      quedanCerrando.push(h);
+      if(h.spId)cubiertoPorPersona[h.spId]=(cubiertoPorPersona[h.spId]||0)+(h.monto||0);
+    } else if(h.fecha>fechaPago){
+      pasanANuevo.push(h);
+    } else {
+      // Mismo día que este pago: desempate por deuda, no por hora exacta. Si esa persona
+      // ya tenía cubierta su cuota del ciclo que se cierra ANTES de este cobro puntual,
+      // este cobro ya era, en la realidad, del ciclo nuevo — aunque comparta fecha.
+      const persona=h.spId?(S.spotifyPersonas||[]).find(x=>x.id===h.spId):null;
+      const cuota=persona?(persona.monto||0):0;
+      const yaCubierto=h.spId?(cubiertoPorPersona[h.spId]||0):0;
+      if(cuota>0&&yaCubierto>=cuota){
+        pasanANuevo.push(h);
+      } else {
+        quedanCerrando.push(h);
+        if(h.spId)cubiertoPorPersona[h.spId]=yaCubierto+(h.monto||0);
+      }
+    }
+  });
+
   // Foto de cuánto le quedó debiendo cada persona al ciclo que se está cerrando (mismo
-  // cálculo que "Pendiente por cobrar" en pantalla, pero congelado por persona). Sirve
-  // para que, si alguien paga atrasado DESPUÉS de este pago, ese cobro se le atribuya
-  // al ciclo que en realidad estaba saldando y no al ciclo nuevo que recién arranca —
-  // ver confirmarSpDestino() y auditoria-tecnica.md.
-  const cicloCobrosCerrando=spCicloCobrosActual();
+  // cálculo que "Pendiente por cobrar" en pantalla, pero congelado por persona y calculado
+  // solo sobre lo que de verdad quedó en este ciclo tras la separación de arriba). Sirve
+  // para que, si alguien paga atrasado DESPUÉS de este pago, ese cobro se le atribuya al
+  // ciclo que en realidad estaba saldando — ver confirmarSpDestino() y auditoria-tecnica.md.
   const pendienteAlCerrar={};
   (S.spotifyPersonas||[]).forEach(x=>{
     if(spPersonaPagadaVigente(x))return;
-    const pend=Math.max(0,(x.monto||0)-spCobradoDePersona(x,cicloCobrosCerrando));
+    const cobrado=quedanCerrando.filter(h=>h.tipo==='cobro'&&(x.id?h.spId===x.id:h.nombre===x.nombre)).reduce((a,h)=>a+(h.monto||0),0);
+    const pend=Math.max(0,(x.monto||0)-cobrado);
     if(pend>0)pendienteAlCerrar[x.id]=pend;
   });
-  S.spotifyHistorial.push({id:uid(),tipo:'pago',monto,fuente,fecha:hoy(),nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar});
+
+  const pagoObj={id:uid(),tipo:'pago',monto,fuente,fecha:fechaPago,nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar};
+  S.spotifyHistorial=[...antesDelSegmento,...quedanCerrando,pagoObj,...pasanANuevo];
   // Reset pagados del ciclo — pero respeta a quienes ya prepagaron períodos futuros:
   // si su próxima fecha de cobro sigue en el futuro, su "Pagó" sigue vigente y no debe
   // volver a Pendiente solo porque yo ya le pagué a Spotify.

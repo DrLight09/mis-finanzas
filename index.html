@@ -105,7 +105,14 @@
         src: url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/fa-solid-900.woff2') format('woff2');
       }
     </style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <!-- fonts.gstatic.com: agregado en sesión posterior (Lighthouse real,
+         ver docs/auditoria-tecnica.md #5-bis / CHANGELOG.md#arranque) — es
+         de donde bajan los archivos .woff2 reales, distinto del dominio de
+         arriba (que solo sirve el CSS de Google Fonts, ~1 KB). Lighthouse
+         lo marcó como "preconnect candidate" con ~500ms de ahorro estimado,
+         el de mayor impacto de los 4 sugeridos. -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" media="print" data-async-css
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"></noscript>
@@ -120,11 +127,17 @@
     <!-- Preconnect a los dominios de Firebase: adelanta el handshake DNS/TCP/TLS
          en paralelo, en vez de esperar a que el bloque de módulo de más abajo
          los descubra uno por uno (esta era la cadena de red detrás del LCP de
-         7.4s medido en Lighthouse — ver docs/auditoria-tecnica.md #5). -->
+         7.4s medido en Lighthouse — ver docs/auditoria-tecnica.md #5).
+
+         securetoken.googleapis.com SACADO (sesión posterior, Lighthouse real):
+         marcado "unused preconnect" — no se pide en esta carga (solo se usa
+         para refrescar el token de sesión más tarde, no en el arranque).
+         Lighthouse además advierte no pasar de 4 preconnects en total; sacar
+         este deja lugar para fonts.gstatic.com arriba, que sí mostró ahorro
+         estimado real. Ver CHANGELOG.md#arranque. -->
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
-    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin>
     <!-- Modulepreload: empieza a descargar el SDK de Firebase en paralelo con el
          resto del <head>. Con `async` en el <script> de más abajo, esto ya sí
          adelanta cuándo se ejecuta: sin el modulepreload, el navegador recién

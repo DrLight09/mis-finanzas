@@ -1033,6 +1033,16 @@ La rama `onclick="${btnFn}"` era código muerto, sin ningún caller activándola
 
 **Con esto se completa el barrido de los 29 archivos de la app. `'unsafe-inline'` se sacó de `script-src` de nuevo**, esta vez confirmado contra el código real de los 29 archivos, no solo contra `node --check`/jsdom (que no aplican CSP).
 
+### 🔧 Cambio — CSS inline (44.7 KB) extraído a `styles.css`
+
+Se sacaron los dos bloques `<style>` grandes de `index.html` a un archivo `styles.css` nuevo: el CSS principal de layout/componentes (~46 KB) y el bloque "MEJORAS UX" (fade-in del dashboard, health ring, presupuestos, búsqueda — ~1.8 KB) que vivía suelto más abajo del documento, junto al bloque de scripts "MEJORAS ADICIONALES". Se carga con `<link rel="stylesheet" href="styles.css">` normal — bloqueante a propósito, sin `defer`/`async`: es el CSS que define el layout base de toda la app, no hay nada coherente que mostrar sin él, así que dejarlo no-bloqueante causaría FOUC (flash de contenido sin estilo). El beneficio no es que deje de bloquear, es que ahora es cacheable aparte del HTML entre despliegues que solo tocan JS/markup, y se descarga en paralelo con el resto del `<head>` en vez de venir inline dentro del documento.
+
+Quedó **un tercer `<style>` chico inline, a propósito**: el override de `font-display:swap` para Font Awesome (~7 líneas, ya documentado arriba en esta misma sección). Depende de aparecer físicamente después del `<link>` de cdnjs para ganarle en cascada CSS — moverlo a `styles.css` habría exigido resolver ese orden contra un `<link>` externo, cambio innecesario para algo tan chico. Por esto, **`style-src 'unsafe-inline'` sigue en la CSP** — este cambio no lo cierra, solo baja el CSS inline de 44.7 KB a ~200 bytes.
+
+`index.html` bajó de 5.249 a 4.663 líneas (-586). Verificado: llaves `{`/`}` de `styles.css` balanceadas (450 pares), `<head>`/`</head>`/`<body>`/`</body>` balanceados en `index.html` (las coincidencias extra que da un `grep` simple son menciones de esos tags dentro de comentarios de texto, no tags reales). **Falta la prueba visual en navegador real** — confirmar que no hay FOUC ni clases sin estilo — antes de dar esto por cerrado.
+
+**Nota de despliegue:** de acá en adelante GitHub Pages sirve dos archivos en vez de uno — `index.html` y `styles.css` tienen que subirse juntos, o la app queda sin estilos.
+
 ---
 
 ## Arranque
@@ -1113,6 +1123,20 @@ Confirma la hipótesis: el cuello de botella real no era solo el orden de ejecuc
 
 El TBT en sí (26.6s de "main-thread work" total, con "Other" en 18.4s dominando — probablemente los canales `Listen`/`Write` de larga duración de Firestore, que Lighthouse cuenta en el critical path aunque no bloqueen nada, al ser conexiones de long-polling) no debería bajar con este cambio — sigue siendo trabajo de ejecución, no de orden.
 
+### 🔧 Cambio — Paso 4: pintar con el caché local de inmediato en vez de esperar hasta 8s al servidor
+
+Cambio quirúrgico en `_fbLoadData()` (`firebase-sync.js`), sin tocar `firebase-init.js` ni `pin-bio.js` — no afecta el auth ni el PIN gate, solo qué pasa después de que ambos ya resolvieron.
+
+**Lo que había:** `onSnapshot` puede entregar la primera respuesta desde el caché local (`fromCache=true`, vía `persistentLocalCache()`) antes de confirmar con el servidor. El código anterior, a propósito, ignoraba esa primera entrega de caché "para no mostrar datos obsoletos" y esperaba hasta 8s la confirmación del servidor antes de pintar nada — con un fallback a caché si el servidor no respondía a tiempo. En la práctica esos hasta-8s eran, la mayoría de las veces, puro spinner sin beneficio real: el caché de `persistentLocalCache()` es el mismo dispositivo releyendo su propio último `setDoc()`, casi nunca "obsoleto" de verdad.
+
+**Fix:** se pinta con lo que llegue primero (caché o servidor) y, si el servidor confirma después con datos distintos, se reconcilia por el mismo camino que ya usábamos para actualizaciones en tiempo real de otro dispositivo — sin re-inicializar listeners. Se introdujo `_firstPaintDone` (separado de `_firstLoad`) precisamente para eso: puede llegar una entrega de caché y luego una de servidor, pero `_finishFirstLoad()` (que llama a `_initEventListeners()`) solo debe correr una vez.
+
+Se eliminó también `window._fbCacheFallbackTimer` (el timer de 8s) — ya no hace falta esperar nada, así que no hay nada que hacer fallback. Quedaron dos líneas de limpieza inofensivas en `_fbSignOut`/`_fbDeleteAccount` que lo referenciaban (el `if` nunca entra ahora), anotadas en vez de borradas para no tocar código de cierre de sesión sin necesidad real.
+
+**Validado:** `node --check` sobre el archivo completo, más una simulación aislada en Node de la máquina de estados (4 escenarios: caché→servidor, solo servidor sin caché previo, error de conexión antes de cualquier snapshot, doble entrega de caché) — los 4 pasan. **Falta la prueba en navegador real** (con conexión real a Firestore, no se puede simular con Node solo) antes de dar esto por cerrado — mismo criterio que el resto de la reestructuración de arranque.
+
+**Lo que NO cambia:** el auth (`firebase-init.js`), el PIN gate (`pin-bio.js`), y el caso de un dispositivo sin caché local (nunca abrió la app antes) — ese sigue esperando al servidor igual que siempre, porque simplemente no hay caché que pintar primero.
+
 ---
 
 ## Modularización por pantalla — mapeo y fase 0.5
@@ -1150,3 +1174,93 @@ Con los 17 archivos restantes en mano (`events.js`, `diferencial.js`, `split.js`
 - **Por pantalla, en los grupos que deben cargar juntos por el patrón de override (ver mapeo anterior):** `mesada.js` · `spotify.js`+`spotify-personas.js` · `gastos.js`(+`gastos-fijos-progress.js`, hoy en núcleo, candidato a mover) · `prestado.js`+`prestado-personas.js`+`deudores-personas.js` · `encargos.js`+`encargos-personas.js` · `tarjetas_credito.js` · `cuentas.js` · `plata_comprometida.js` · `actividad_reciente.js` · `alcancia.js` · `configuracion.js`+`import-validado.js` · `analisis.js` · `inicio.js` (a confirmar si conviene núcleo por ser la pantalla de arranque).
 
 Con esto queda cerrada la fase 0 (mapeo). Siguiente paso: diseñar el mecanismo de carga en sí (fase 1 de la hoja de ruta).
+
+### 🔧 Cambio — Fase 1: piloto de carga bajo demanda con Alcancía
+
+Con el mapeo completo (fase 0) y `refresh()`/`navTo()` ya blindados (fase 0.5), se diseñó e implementó el mecanismo de carga bajo demanda, y se hizo el piloto con Alcancía (elegida por ser chica — ~14 KiB — y no tener enredo con Personas).
+
+**Hallazgo de diseño, revisando `showScreen()` completa para el enganche:** Alcancía no se integra con una rama `if(name==='alcancia')` como Mesada/Encargos/Cuentas — se auto-registra parchando `showScreen()` ella misma al cargar (`const _orig = showScreen; showScreen = function(name){ _orig(...); if(name==='alcancia') renderAlcancia(); }`). Un diseño de loader que simplemente "esperara a que cargue y siguiera con la lógica de siempre" habría dejado la *primera* visita sin renderizar nada — el parche recién queda activo para la llamada *siguiente*, no para la que disparó la carga.
+
+**Solución:** en vez de continuar la ejecución después de cargar, el loader **vuelve a invocar `showScreen(name)` desde cero**. Así cubre los dos patrones de integración que existen hoy en la app (rama `if(name===X)`, y auto-parche de `showScreen()`) sin que el mecanismo tenga que saber cuál usa cada módulo — y cubre automáticamente cualquier patrón nuevo que aparezca en el futuro.
+
+**De paso, un tercer caso del mismo bug de `refresh()`/`navTo()`:** al revisar `showScreen()` completa (antes solo se había visto en fragmentos) aparecieron 4 llamadas más sin `typeof` guard: `config`→`renderCatsConfig()`, `analisis`→`renderAnalisis()`, `personas`→`_inyectarPersonaSheets()`/`_renderListaPersonas()`/`_actualizarMasPersonasSub()`, `cuentas`→`renderDetalleCuenta()`. Se blindaron con el mismo patrón, ya que se estaba tocando esta función de todas formas.
+
+**Piezas nuevas:**
+- **`js/core/lazy-loader.js`** — `Loader.ensure(grupo)` (Promise, cachea por grupo, carga los archivos de un grupo en orden — no en paralelo, por el patrón de "parchar función original" que exige orden), `Loader.isLoaded(grupo)`, `Loader.GROUPS` (hoy solo `{ alcancia: ['js/modules/alcancia.js'] }` — el resto de las pantallas sigue cargando de entrada, sin cambios).
+- **`showScreen()` en `sheet-stack.js`** — antes de las ramas `if(name===X)`, chequea `Loader.GROUPS[name] && !Loader.isLoaded(name)`: si aplica, muestra un estado "Cargando…" (texto centrado, insertado en el propio contenedor de la pantalla — deliberadamente simple, no spinner/skeleton, dado que el piloto es un solo archivo chico), pide `Loader.ensure(name)`, y al resolver oculta el estado de carga y vuelve a llamar `showScreen(name)`.
+- **`index.html`** — se sacó `<script src="js/modules/alcancia.js" defer>` de la carga de entrada, se agregó `<script src="js/core/lazy-loader.js" defer>` (junto a `sheet-stack.js`).
+
+**Verificado con jsdom (10 checks):** extraída `showScreen()`/`Loader` reales y simulada la descarga del script (sin red real) reproduciendo exactamente el auto-parche que hace `alcancia.js`:
+- Primera visita: aparece "Cargando…", `renderAlcancia()` **sí se dispara en la primera visita** (el escenario que motivó el rediseño), el script se pide una sola vez.
+- Segunda visita: no vuelve a mostrar "Cargando…", sí vuelve a renderizar (vía el `showScreen` ya parchado), el script no se vuelve a pedir (caché del `Loader`).
+- Pantallas no registradas en `GROUPS` (ej. Inicio): comportamiento idéntico al de siempre, sin ningún estado de carga ni demora.
+- `node --check` sin errores en `lazy-loader.js`, `sheet-stack.js`.
+
+**Sigue pendiente:** prueba en navegador real — jsdom no puede simular la descarga de red real de `alcancia.js` vía GitHub Pages, solo la lógica del mecanismo. Verificar en vivo: entrar a Alcancía por primera vez en una sesión nueva (con la red del navegador visible en DevTools, para confirmar que `alcancia.js` no se descarga hasta ese momento), que el contenido real aparezca y no se quede pegado en "Cargando…", y que las acciones dentro de Alcancía (depositar, destapar) funcionen igual que antes.
+
+**Si el piloto funciona bien en navegador real, próximos candidatos a agregar a `Loader.GROUPS`** (en grupos, respetando el orden de carga interno documentado en el mapeo): `mesada` · `spotify`+`spotify-personas` · `gastos`(+`gastos-fijos-progress`) · `prestado`+`prestado-personas`+`deudores-personas` · `encargos`+`encargos-personas` · `tarjetas_credito` · `cuentas` · `plata_comprometida` · `actividad_reciente` · `configuracion`+`import-validado` · `analisis`. `inicio` queda deliberadamente fuera del piloto — es la pantalla de arranque, conviene decidir aparte si conviene hacerla lazy.
+
+### 🔎 Hallazgo — esta lista era optimista: casi ninguno de esos candidatos es lazy-cargable sin tocar `inicio.js` primero
+
+Sesión posterior, con 14 de los 18 archivos de `js/modules/` disponibles (faltaron `gastos-fijos-progress.js`, `import-validado.js`, y los de infraestructura). Antes de tocar `Loader.GROUPS`, se armó el grafo de dependencias real (con un script en Python: qué función define cada archivo, quién la llama desde otro archivo) en vez de asumir que "un solo archivo, sin partirse en dos" (criterio usado en el mapeo original) implica que también es seguro cargarlo bajo demanda — son preguntas distintas.
+
+**El resultado:** `inicio.js` (el dashboard, que por diseño carga siempre de entrada) llama **directo**, sin ningún `typeof` guard, a funciones de `mesada.js` (`_getCuotaAnio`, `_mesNombreDeKey`, `getMesadaData`), `spotify.js` (`spNombreDe`, `spPersonaPagadaVigente`), `prestado.js` (`getDeudorSaldo`, `totalPrestadoPendiente`), `tarjetas_credito.js` (`tcCupoUsadoPct`), `cuentas.js` (`calcC`, `calcCDT`, `calcRendimientoCDTsMes`, `nuTotal`) y `analisis.js` (`renderPresupuestos`) — para armar el resumen del dashboard, que se renderiza en cada boot. Si cualquiera de esos seis se vuelve lazy tal cual está, el dashboard revienta con `ReferenceError` en el primer login de cada sesión (no en un caso raro — en el camino más común de todos: abrir la app).
+
+Encima, `cuentas.js` (que por esto queda forzado a cargar de entrada) llama a su vez, sin guard, a `renderEncargosEnCuenta()`/`getCajitaNombre()` de `encargos.js`, dentro del render normal del detalle de una cuenta (Nequi/Nu/Efectivo) — no un caso raro tampoco. Eso descarta también a `encargos`(+`encargos-personas`) como candidato lazy sin tocar antes ese acoplamiento.
+
+Con eso, de los 11 candidatos de la lista original, quedan efectivamente **descartados sin refactor previo**: `mesada`, `spotify`+`spotify-personas`, `prestado`+`prestado-personas`+`deudores-personas`, `tarjetas_credito`, `cuentas`, `analisis`, `encargos`+`encargos-personas`. `gastos`(+`gastos-fijos-progress`) y `configuracion`(+`import-validado`) siguen sin poderse confirmar — faltaron esos dos archivos satélite en esta sesión, y el mapeo original ya los agrupó junto con su módulo principal precisamente por sospecha de un acoplamiento del mismo tipo.
+
+**El único candidato que quedó limpio: `plata_comprometida.js`.** Nadie lo llama desde ningún otro archivo de los 14 revisados, y lo que él sí necesita (`prestado.js`, `tarjetas_credito.js`, `cuentas.js`, `inicio.js`) ya está forzado a cargar de entrada por la razón de arriba — sus dependencias están cubiertas sin que se le tenga que pedir nada especial a nadie.
+
+### 🔧 Cambio — segundo grupo lazy: `comprometida` (`plata_comprometida.js`)
+
+A diferencia de Alcancía, `plata_comprometida.js` no tenía ni su pantalla ni su ítem del menú "Más" como HTML estático — los auto-inyectaba en tiempo de ejecución (`_injectScreen()`, `_injectMasItem()`, cada una con guard por id). Si se lo dejaba tal cual y se sacaba solo el `<script>`, el ítem de menú que dispara la carga lazy no existiría hasta que el módulo ya hubiera cargado por su cuenta — círculo vicioso, y además `showScreen()` no tendría dónde insertar el texto "Cargando…" (necesita el contenedor de la pantalla ya en el DOM, ver nota del piloto de Alcancía arriba).
+
+Se copió ese HTML (el que generaban esas dos funciones) tal cual a `index.html` — `#screen-comprometida` en el lugar de las pantallas, `#mas-comprometida` en el menú "Más", en la misma posición donde `_injectMasItem()` lo insertaba (antes de Alcancía). `plata_comprometida.js` no se tocó en su lógica: sus propios guards por id vuelven ambas funciones no-op automáticamente al encontrar el HTML ya puesto — mismo mecanismo, sin código nuevo, que ya usa `_injectMasItem()` cuando alguien se adelantó (busca `#mas-alcancia` como ancla). `_injectSheet()` (el otro contenido dinámico del archivo) se dejó sin tocar a propósito: nadie puede interactuar con ese sheet antes de que la pantalla esté activa, y la pantalla no se activa hasta que el módulo ya cargó — no hay carrera ahí, a diferencia del ítem de menú.
+
+**Validado con jsdom:** se cargó el `index.html` real, se confirmó que `#screen-comprometida` y `#mas-comprometida` existen exactamente una vez cada uno, se extrajeron `_injectScreen()`/`_injectMasItem()` tal cual del archivo real y se corrieron contra ese DOM — ninguna lanzó error, ninguna duplicó nada. `node --check` sin errores en `plata_comprometida.js` y `lazy-loader.js`. **Sigue pendiente la prueba en navegador real** — jsdom no simula la carga de red ni el `showScreen()`/`Loader` real de `sheet-stack.js` (no disponible esta sesión, solo se pudo validar el HTML estático y las dos funciones de auto-inyección). Verificar en vivo, con DevTools abierto: que `plata_comprometida.js` no se descargue hasta hacer clic en "Plata comprometida" del menú Más, que la pantalla muestre "Cargando…" brevemente y después el contenido real, y que crear/editar/recibir un ingreso comprometido funcione igual que antes.
+
+**Nota para retomar `gastos` y `configuracion`:** hace falta subir `gastos-fijos-progress.js` e `import-validado.js` para poder correr el mismo análisis de grafo de dependencias sobre esos dos y confirmar (o descartar) si son lazy-cargables.
+
+### 🔎 Cierre del análisis — `configuracion` sí, `gastos` no (con `sheet-stack.js`, `nav.js` y los dos satélites ya disponibles)
+
+Con los 4 archivos que faltaban, se pudo terminar el análisis de dependencias sobre los últimos dos candidatos de la lista original.
+
+**`gastos.js` queda descartado — y esta vez el bloqueo es más duro que los anteriores.** No es `inicio.js` esta vez: es `sheet-stack.js` (núcleo, carga siempre) el que parchea `addGastoVar`/`addGastoFijo` **a nivel superior de su propio archivo** (`const _origAddGastoVar = addGastoVar; addGastoVar = function(){...}`, fuera de cualquier función) — el propio header de `sheet-stack.js` ya lo documentaba como una restricción de orden de carga explícita ("Debe cargar DESPUÉS de js/modules/gastos.js"). Si `gastos.js` se vuelve lazy, esto no rompe solo Gastos ni solo el primer login — rompe el parseo de `sheet-stack.js` en **cada carga de la app**, con `gastos.js` cargado o no, porque el `ReferenceError` ocurre al evaluar el archivo, no al invocar una función. Arreglarlo de raíz significaría diferir ese parche (mismo patrón que ya usa el override de `addSpotify` ahí mismo, que vive dentro de `_injectErrorSpans()` en vez de a nivel superior — el propio archivo ya muestra la forma correcta al lado de la incorrecta) — es un cambio real y acotado, pero es editar un archivo núcleo con restricciones de orden ya documentadas como frágiles, así que se deja aparte en vez de tocarlo sin que se pida explícitamente.
+
+**`configuracion.js` (+ `import-validado.js`) sí se pudo confirmar limpio — el más simple de los tres grupos lazy hasta ahora.** `inicio.js` no lo llama. El único caller externo de una de sus funciones (`renderCatsConfig`, desde `sheet-stack.js`) ya tenía guard `typeof` desde la sesión del piloto de Alcancía (uno de los "4 ramas de showScreen()" corregidas en ese momento). Y a diferencia de Plata Comprometida, `#screen-config` y `#mas-config` **ya eran HTML estático** desde antes — no hubo que copiar ni una línea de HTML, solo sacar los dos `<script>` y agregar el grupo a `Loader.GROUPS`. Se verificaron uno por uno los 9 ids que `configuracion.js` cablea a nivel superior (`btn-exportar-json`, `btn-importar-json`, `btn-exportar-csv`, `btn-borrar-todo`, `importFileInput`, `nueva-cat-var`, `nueva-cat-fijo`, `cats-var-list`, `cats-fijo-list`) — los 9 existen en el HTML estático de `screen-config`, así que el wiring de `addEventListener` sigue funcionando igual sin importar cuándo cargue el archivo.
+
+### 🔧 Cambio — tercer grupo lazy: `config` (`configuracion.js` + `import-validado.js`)
+
+Se sacaron los `<script src="js/modules/configuracion.js" defer>` y `<script src="js/core/import-validado.js" defer>` de la carga de entrada. Se agregó `config: ['js/modules/configuracion.js', 'js/modules/import-validado.js']` a `Loader.GROUPS` — en ese orden, porque `import-validado.js` parchea `leerArchivoImport` a nivel superior de su propio archivo (necesita la versión base ya definida al parsear, mismo tipo de dependencia que bloqueó a `gastos.js`, pero acá sí queda satisfecha por el orden secuencial del propio `Loader.ensure`, que carga los archivos de un grupo uno por vez y en el orden declarado).
+
+**Validado con jsdom, esta vez contra el `lazy-loader.js` y el `sheet-stack.js` reales** (no una simulación aparte como con Plata Comprometida — ya se tenían ambos archivos): se cargó `index.html` en un DOM real, se interceptó `document.body.appendChild` para simular la descarga de red sin depender de acceso externo, y se corrió `Loader.ensure()` sobre los 3 grupos (`alcancia`, `comprometida`, `config`). Los 3 cargan sus archivos en el orden declarado, cachean (`isLoaded` queda `true`), y una segunda llamada a `ensure()` no vuelve a encolar nada. Se confirmó además que los 3 tienen su `#screen-X` y su ítem de menú/nav ya en el DOM desde el arranque (requisito que `showScreen()` da por sentado sin `null`-check: `document.getElementById('screen-'+name).classList.add('active')`). `node --check` sin errores en `lazy-loader.js`.
+
+**Sigue pendiente la prueba en navegador real** — jsdom valida la lógica de `Loader`/`showScreen()` pero no la descarga de red real contra GitHub Pages ni el resultado visual. Verificar en vivo: entrar a Configuración por primera vez en una sesión nueva con DevTools abierto (confirmar que `configuracion.js` no se descarga hasta ese momento), que las categorías, el export/import JSON y CSV, y el borrado de datos sigan funcionando igual.
+
+Con esto, de los 11 candidatos de la lista original quedan: **3 confirmados y dados** (`alcancia`, `comprometida`, `config`), **7 descartados sin refactor previo** (`mesada`, `spotify`+`spotify-personas`, `prestado`+`prestado-personas`+`deudores-personas`, `tarjetas_credito`, `cuentas`, `analisis`, `encargos`+`encargos-personas`, `gastos`+`gastos-fijos-progress`), y **1 inconcluso** (`actividad_reciente` — pantalla estática confirmada, pero no se encontró desde dónde se entra a ella; probablemente en `mas-menu.js`, no disponible).
+
+### 🔎 Cierre del análisis — `actividad_reciente` sí, con `mas-menu.js` ya disponible
+
+`mas-menu.js` confirma el mecanismo genérico que ya se había inferido para Plata Comprometida y Configuración: cualquier `.mas-item[data-screen]` dispara `showScreen(screen)` sin código particular por pantalla (solo Spotify y Mesada tienen un toggle de visibilidad aparte, para ocultarse/mostrarse según el módulo activo — no relacionado con lazy loading).
+
+Con `mas-menu.js` confirmado, se pudo cerrar la duda de `actividad_reciente`: su acceso real es un botón **dentro de la pantalla de Configuración** (`#cfg-historial-row`, `data-action="config:irA" data-args='["historial"]'`) — no hay entrada en el menú "Más" ni en el nav inferior, y el propio `actividad_reciente.js` ya lo documentaba en su encabezado (nota fechada, dejada por una sesión anterior: "ningún ítem del nav inferior usa data-screen='historial', y el menú 'Más' no tiene entrada 'Actividad reciente'"). Esto no era información nueva — solo confirma lo que el archivo ya decía, ahora contrastado contra `mas-menu.js` real.
+
+**Con eso, `actividad_reciente.js` parecía otro candidato limpio como Plata Comprometida y Configuración** — nadie llama sus funciones (confirmado con el mismo análisis de grafo), `#screen-historial` ya es estático, y su único punto de entrada (el botón en Configuración) también es estático y solo alcanzable si Configuración ya cargó, prerequisito que ya existía de antes.
+
+**Pero apareció un problema real, propio de este módulo, que no tuvieron los otros tres.** `actividad_reciente.js` no se auto-renderiza al cargar como sí hace `plata_comprometida.js` (con `_cpInit()`, incondicional) — se renderiza solo quando dispara alguno de 3 eventos: `DOMContentLoaded`, `appDataLoaded`, o un clic en `#cfg-historial-row` capturado por un listener que el propio archivo registra al cargar. **Con carga lazy, los 3 disparadores fallan siempre:** `DOMContentLoaded` y `appDataLoaded` ya pasaron mucho antes de que el usuario llegue a hacer clic en algo (el módulo carga recién ahí); y el listener de clic en `#cfg-historial-row` se registra DESPUÉS del propio clic que disparó la carga — llega tarde para capturar ese mismo clic. Sin arreglarlo, la pantalla Historial quedaría pegada en "Cargando…" para siempre en la primera visita de cada sesión.
+
+**Fix, dentro de `actividad_reciente.js`:** se agregó un cuarto trigger, sin condición de evento, al final del archivo — una llamada directa a `renderFeedActividad()` que corre apenas termina de parsear el módulo, sea cual sea el momento en que eso pase. Mismo criterio que ya usa `_cpInit()` en `plata_comprometida.js` ("Render inicial si hay datos"). `renderFeedActividad()` ya lee `S` con fallback si no existe todavía (documentado en el propio encabezado del archivo), así que la llamada es segura sin condiciones extra. En el caso eager (si algún día se revirtiera el lazy loading) es inofensiva: los otros 3 triggers siguen cubriendo ese caso, esto solo suma una llamada más a una función idempotente.
+
+### 🔧 Cambio — cuarto grupo lazy: `historial` (`actividad_reciente.js`)
+
+Se agregó `historial: ['js/modules/actividad_reciente.js']` a `Loader.GROUPS` y se sacó su `<script src="js/modules/actividad_reciente.js" defer>` de la carga de entrada. No hizo falta copiar HTML a `index.html` (a diferencia de Plata Comprometida) — tanto `#screen-historial` como el botón `#cfg-historial-row` que dispara la carga ya eran estáticos.
+
+**Validado con jsdom:** se evaluó `actividad_reciente.js` real contra un DOM stub (con `S`/`fmt`/`escHtml`/`hoy` simulados) simulando carga tardía — sin errores, y el contenido de `#feed-historial` cambió de "Cargando..." a un estado renderizado real (`"Aún no hay actividad registrada"` con los datos vacíos de prueba) apenas se evaluó el archivo, confirmando que el nuevo cuarto trigger no depende de que `DOMContentLoaded`/`appDataLoaded` disparen después. `node --check` sin errores. Balance de `<div>`/`</div>` en `index.html` verificado (1195/1195, sin cambios respecto a la ronda anterior).
+
+**Sigue pendiente la prueba en navegador real** — jsdom valida la lógica de render y el timing del nuevo trigger, pero no la carga de red real ni la interacción completa (clic en Configuración → "Actividad reciente" → feed poblado, con datos reales, en una sesión nueva).
+
+**Balance final de los 11 candidatos originales: 4 dados** (`alcancia`, `comprometida`, `config`, `historial`), **7 descartados sin refactor previo** (sin cambios respecto al balance anterior — `gastos` sigue siendo el único bloqueado por un núcleo, el resto por `inicio.js`). No queda ningún candidato inconcluso.
+
+
+

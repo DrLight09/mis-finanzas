@@ -73,10 +73,13 @@ function spPersonaPagadaVigente(p){
 function spCicloCobrosActual(){
   // Cobros registrados en el historial desde el último pago real a Spotify (ciclo actual).
   // Si nunca se ha pagado, todo el historial de cobros pertenece al ciclo actual.
+  // Se excluyen los cobros con _pagoIdCierre: aunque queden posicionados después del
+  // último pago (porque se registraron más tarde), son plata que en realidad saldó
+  // deuda de ESE ciclo que ya cerró — ver confirmarSpDestino().
   const hist=S.spotifyHistorial||[];
   let lastPagoIdx=-1;
   for(let i=hist.length-1;i>=0;i--){ if(hist[i].tipo==='pago'){lastPagoIdx=i;break;} }
-  return hist.map((h,idx)=>({...h,_idx:idx})).filter(h=>h.tipo==='cobro'&&h._idx>lastPagoIdx);
+  return hist.map((h,idx)=>({...h,_idx:idx})).filter(h=>h.tipo==='cobro'&&h._idx>lastPagoIdx&&!h._pagoIdCierre);
 }
 
 function spCobradoDePersona(p,cicloCobros){
@@ -269,11 +272,26 @@ function renderSpStats(){
   const ciclosCompletos=[];
   {
     let cobroAcum=0;
+    // Mapea el id de cada "pago" ya procesado al índice de su ciclo en ciclosCompletos,
+    // para poder sumarle ahí un cobro atrasado que llega después marcado con
+    // _pagoIdCierre — en vez de sumarlo al ciclo que esté acumulando en ese momento.
+    const cicloPorPagoId={};
     for(const h of hist){
-      if(h.tipo==='cobro'){ cobroAcum+=(h.monto||0); }
+      if(h.tipo==='cobro'){
+        if(h._pagoIdCierre&&cicloPorPagoId[h._pagoIdCierre]!==undefined){
+          const idxCiclo=cicloPorPagoId[h._pagoIdCierre];
+          ciclosCompletos[idxCiclo].cobrado+=(h.monto||0);
+          ciclosCompletos[idxCiclo].ganancia+=(h.monto||0);
+        } else {
+          // Cobro normal del ciclo en curso, o _pagoIdCierre que ya no existe (el pago
+          // que referenciaba fue eliminado) — cae al ciclo que se está acumulando.
+          cobroAcum+=(h.monto||0);
+        }
+      }
       else if(h.tipo==='pago'){
         const cuotaAdminDeEseCiclo=h._cuotaAdmin!=null?h._cuotaAdmin:cuotaAdmin;
         ciclosCompletos.push({fecha:h.fecha, cobrado:cobroAcum, pagado:h.monto||0, ganancia:cobroAcum-(h.monto||0)+cuotaAdminDeEseCiclo});
+        cicloPorPagoId[h.id]=ciclosCompletos.length-1;
         cobroAcum=0;
       }
     }
@@ -367,6 +385,16 @@ async function deleteSpHistorial(i){
   if(h.tipo==='cobro'){
     // Revertir el movimiento secundario: la plata que entró a la cuenta destino al cobrar
     if(h.fuente)descontarFuente(h.fuente,h.monto||0);
+    // Si este cobro estaba saldando deuda de un ciclo ya cerrado (_pagoIdCierre), devolver
+    // esa plata al pendiente congelado de ese pago — si el pago referenciado ya no existe
+    // (se borró aparte), no hay nada que restaurar, se queda como estaba.
+    if(h._pagoIdCierre&&h.spId){
+      const pagoRef=(S.spotifyHistorial||[]).find(x=>x.id===h._pagoIdCierre&&x.tipo==='pago');
+      if(pagoRef){
+        if(!pagoRef._pendienteAlCerrar)pagoRef._pendienteAlCerrar={};
+        pagoRef._pendienteAlCerrar[h.spId]=(pagoRef._pendienteAlCerrar[h.spId]||0)+(h.monto||0);
+      }
+    }
     // Si este era el cobro MÁS RECIENTE de la persona, su "Pagó" queda sin respaldo → vuelve a Pendiente.
     // Si no es el más reciente (la persona pagó 2+ veces este ciclo y se borra uno viejo), no se toca
     // el estado, porque el cobro más nuevo sigue respaldando el "Pagó".
@@ -435,6 +463,10 @@ function marcarPagoSpotify(i){
   destSel.innerHTML='<option value="" disabled selected>Selecciona una opción...</option>'
     +fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('')
     +'<option value="__sin_especificar__">Sin especificar (no mover)</option>';
+  // Editable para poder anotar un cobro días después sin que quede fechado hoy
+  // por error (ver auditoria-tecnica.md — atribución de ciclo por deuda, no por fecha).
+  const fechaEl=document.getElementById('spFecha');
+  if(fechaEl)fechaEl.value=hoy();
   openSheet('sp-destino');
 }
 
@@ -451,6 +483,8 @@ function confirmarSpDestino(){
     toast('Selecciona a dónde metiste la plata (o marca "Sin especificar")','err');
     return;
   }
+  const fechaEl=document.getElementById('spFecha');
+  const fechaCobro=(fechaEl&&fechaEl.value)?fechaEl.value:hoy();
   const spDestinoSel=destVal==='__sin_especificar__'?'':destVal;
   const p=S.spotifyPersonas[spDestinoIdx];
   const nombreActual=spNombreDe(p);
@@ -464,14 +498,36 @@ function confirmarSpDestino(){
   if(spDestinoSel)sumarFuente(spDestinoSel,montoTotal);
   // Avanzar fecha de cobro N meses pero respetando el día original fijo
   if(p.proximoPago)p.proximoPago=nextMonthFixed(p.proximoPago,meses);
-  // Registrar en historial UN solo registro por el total cobrado — aunque cubra
-  // varios períodos, es una sola plata que entró en un solo movimiento a la cuenta.
-  // El detalle de cuántos períodos y a cómo cada uno queda en la nota, para no perder
-  // esa información. Se guarda el nombre ACTUAL de la persona vinculada, no el crudo,
-  // para que no quede fijado desactualizado.
   if(!S.spotifyHistorial)S.spotifyHistorial=[];
-  const notaCobro=meses>1?`${meses} períodos × ${fmt(p.monto||0)} (pago adelantado)`:'';
-  S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:montoTotal,periodos:meses,fuente:spDestinoSel||'',fecha:hoy(),nota:notaCobro,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'});
+  const notaBase=meses>1?`${meses} períodos × ${fmt(p.monto||0)} (pago adelantado)`:'';
+
+  // Si el último pago a Spotify cerró un ciclo donde esta persona quedó debiendo algo
+  // (_pendienteAlCerrar, congelado en confirmarPagarSpotify), este cobro salda primero
+  // esa deuda vieja — se registra como un movimiento aparte atribuido a ESE ciclo
+  // cerrado, no al ciclo actual, sin importar que hoy ya vayamos en uno nuevo. Solo lo
+  // que sobre después de saldarla cuenta como plata del ciclo en curso. Así una persona
+  // puede pagar atrasado después de que yo ya le pagué a Spotify (porque confío en que
+  // me va a pagar) sin que esa plata infle "Recaudado" del ciclo nuevo ni le reste
+  // ganancia al ciclo que ya cerré. Ver auditoria-tecnica.md.
+  let lastPago=null;
+  for(let i=S.spotifyHistorial.length-1;i>=0;i--){ if(S.spotifyHistorial[i].tipo==='pago'){lastPago=S.spotifyHistorial[i];break;} }
+  let restante=montoTotal;
+  if(lastPago&&lastPago._pendienteAlCerrar&&lastPago._pendienteAlCerrar[p.id]>0){
+    const pendienteViejo=lastPago._pendienteAlCerrar[p.id];
+    const cierreMonto=Math.min(restante,pendienteViejo);
+    lastPago._pendienteAlCerrar[p.id]=pendienteViejo-cierreMonto;
+    if(lastPago._pendienteAlCerrar[p.id]<=0)delete lastPago._pendienteAlCerrar[p.id];
+    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:cierreMonto,periodos:meses,fuente:spDestinoSel||'',fecha:fechaCobro,nota:'Pago atrasado del ciclo anterior'+(notaBase?' · '+notaBase:''),proximoPagoAntes,_pagoIdCierre:lastPago.id,_secundario:true,_origenSeccion:'Spotify'});
+    restante-=cierreMonto;
+  }
+  // Registrar en historial el resto (o el total, si no había deuda vieja) como UN solo
+  // registro — aunque cubra varios períodos, es una sola plata que entró en un solo
+  // movimiento a la cuenta. El detalle de cuántos períodos y a cómo cada uno queda en
+  // la nota. Se guarda el nombre ACTUAL de la persona vinculada, no el crudo, para que
+  // no quede fijado desactualizado.
+  if(restante>0){
+    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:restante,periodos:meses,fuente:spDestinoSel||'',fecha:fechaCobro,nota:notaBase,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'});
+  }
   spDestinoIdx=null;
   save();refresh();closeSheet('sp-destino');
   toast(meses>1?`Cobrados ${meses} períodos adelantados a ${escHtml(nombreActual)} · ${fmt(montoTotal)}`:`Cobro registrado · ${escHtml(nombreActual)}`,'ok');
@@ -544,7 +600,19 @@ function confirmarPagarSpotify(){
   // elimina este pago del historial, hay que poder devolver a cada persona a como
   // estaba, no dejar a todos en "Pendiente" sin poder deshacerlo.
   const estadoAntesReset=(S.spotifyPersonas||[]).map(p=>({id:p.id,pagado:!!p.pagado}));
-  S.spotifyHistorial.push({id:uid(),tipo:'pago',monto,fuente,fecha:hoy(),nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset});
+  // Foto de cuánto le quedó debiendo cada persona al ciclo que se está cerrando (mismo
+  // cálculo que "Pendiente por cobrar" en pantalla, pero congelado por persona). Sirve
+  // para que, si alguien paga atrasado DESPUÉS de este pago, ese cobro se le atribuya
+  // al ciclo que en realidad estaba saldando y no al ciclo nuevo que recién arranca —
+  // ver confirmarSpDestino() y auditoria-tecnica.md.
+  const cicloCobrosCerrando=spCicloCobrosActual();
+  const pendienteAlCerrar={};
+  (S.spotifyPersonas||[]).forEach(x=>{
+    if(spPersonaPagadaVigente(x))return;
+    const pend=Math.max(0,(x.monto||0)-spCobradoDePersona(x,cicloCobrosCerrando));
+    if(pend>0)pendienteAlCerrar[x.id]=pend;
+  });
+  S.spotifyHistorial.push({id:uid(),tipo:'pago',monto,fuente,fecha:hoy(),nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar});
   // Reset pagados del ciclo — pero respeta a quienes ya prepagaron períodos futuros:
   // si su próxima fecha de cobro sigue en el futuro, su "Pagó" sigue vigente y no debe
   // volver a Pendiente solo porque yo ya le pagué a Spotify.

@@ -1137,6 +1137,37 @@ Se eliminó también `window._fbCacheFallbackTimer` (el timer de 8s) — ya no h
 
 **Lo que NO cambia:** el auth (`firebase-init.js`), el PIN gate (`pin-bio.js`), y el caso de un dispositivo sin caché local (nunca abrió la app antes) — ese sigue esperando al servidor igual que siempre, porque simplemente no hay caché que pintar primero.
 
+### 🔎 Diagnóstico — Lighthouse real (sitio ya desplegado): el cuello de botella real no es el JS
+
+El usuario reportó que el performance score no mejoraba (dio 40) pese a todo el trabajo de arranque/lazy-loading de esta sesión y las anteriores, y pidió un reporte Lighthouse completo del sitio real (`drlight09.github.io/mis-finanzas/`) para diagnosticar.
+
+**El hallazgo, con números del reporte:**
+- **Latencia máxima de la ruta crítica: 6.464 ms.** Dominada por los canales `Listen`/`Write` de Firestore (`experimentalForceLongPolling: true` en `firebase-init.js`) — entre 4.141 ms y 6.464 ms cada uno — y por `auth/iframe.js` (5.678 ms) y `getProjectConfig` (6.095 ms).
+- **Element render delay: 3.600 ms**, con el elemento LCP siendo el badge "NU Mastercard Gold: cupo casi agotado" del dashboard — confirma que el LCP depende de que los datos reales (Firestore) y el módulo de Tarjetas de Crédito ya estén listos, no de JS suelto.
+- En "Avoid long main-thread tasks": `inicio.js` no empieza a ejecutar hasta el ms **8.467**; `bootstrap.js` hasta el **7.479**. El JS está listo hace rato — lo que no está listo es la red.
+
+**Conclusión:** todo el trabajo de `defer`/lazy-loading/extracción de CSS de esta sesión y las anteriores optimiza la parte del tiempo de carga dominada por *ejecución y orden de JS* — que ya bajó de forma medible (Element render delay 11.710→3.300 ms en el paso 3 del arranque). Pero en este reporte, el tiempo dominante es *establecer la conexión de Firestore/Auth* (6.4s), un orden de magnitud más grande que cualquier ganancia posible tocando JS. Es la razón por la que el score no se mueve pese al trabajo hecho: se estuvo optimizando la porción más chica del problema.
+
+**Sospechoso principal, sin confirmar aún:** `experimentalForceLongPolling: true` en `firebase-init.js` (agregado en su momento para evitar `ERR_QUIC_PROTOCOL_ERROR`) fuerza a Firestore a negociar el canal en tiempo real por long-polling — varios round-trips HTTP — en vez de dejar que el SDK use WebChannel normal cuando puede. Alternativa recomendada por Firebase para este caso: `experimentalAutoDetectLongPolling: true`, que detecta automáticamente si hace falta caer a long-polling en vez de forzarlo siempre. **No se cambió esta sesión** — no se puede validar la negociación de protocolo real con Node/jsdom, hace falta navegador real, y existe el riesgo real de que reaparezca el bug original que motivó forzarlo. Queda pendiente de que el usuario decida si probarlo.
+
+### 🔧 Cambio — preconnects: 2 rotos, 1 nuevo (con el mismo Lighthouse real)
+
+El mismo reporte, en "Preconnected origins", marcó dos de los 4 `<link rel="preconnect">` existentes como desperdiciados:
+- `https://fonts.googleapis.com` — "Unused preconnect. Check that the crossorigin attribute is used properly": el `<link>` no tenía `crossorigin`, así que el navegador abría la conexión pero la descarga real del CSS de Google Fonts (que sí pide con modo `crossorigin`) no la reutilizaba. **Fix:** se agregó `crossorigin` al `<link>` existente.
+- `https://securetoken.googleapis.com` — "Only use preconnect for origins that the page is likely to request": no se pide nada de ahí en esta carga (solo se usa más tarde, al refrescar el token de sesión). **Fix:** se sacó — de paso, deja lugar dentro de la recomendación de Lighthouse de no pasar de 4 preconnects.
+
+Y en "Preconnect candidates" (dominios sin preconnect que Lighthouse detectó como usados de verdad en esta carga, con ahorro estimado): `fonts.gstatic.com` (500 ms, el de mayor ahorro de los 4 sugeridos — es de donde bajan los `.woff2` reales, distinto del dominio que solo sirve el CSS), `apis.google.com` (360 ms), `mis-finanzas-z.firebaseapp.com` (350 ms), `fonts.googleapis.com` (300 ms, ya cubierto arriba). Se agregó solo `fonts.gstatic.com` — el de mayor impacto — para no pasarse de los ~5 preconnects totales que quedaron.
+
+Cambio de solo `<link>` en el `<head>`, sin lógica — no necesita prueba en navegador para confirmar que no rompe nada (un preconnect de más o de menos no cambia el comportamiento, solo el timing), pero sí conviene remedir con Lighthouse real después de desplegar para confirmar el ahorro.
+
+### 📋 Otros hallazgos del mismo reporte, sin tocar todavía
+
+- **Minify JavaScript — 14.2 KiB de ahorro estimado**, concentrado en `core-state.js` (7.9 KiB), `spotify.js` (3.7 KiB), `mesada.js` (2.7 KiB). Ninguno de los ~36 archivos de `js/` está minificado. No se tocó — minificar a mano no es viable de forma segura para archivos de este tamaño; necesitaría un paso de build (ya lo menciona la auditoría vieja como "disponible como paso de build").
+- **Reduce unused CSS — 18.4 KiB, Font Awesome (`all.min.css` de cdnjs)**: ya documentado y bloqueado (sin acceso a cdnjs desde este entorno para self-hostear un subset).
+- **`js/core/async-css.js` aparece en "Render-blocking requests"** junto con `css/styles.css` (que bloquea a propósito). El trabajo de `async-css.js` es específicamente volver *no* bloqueante la carga de Font Awesome/Google Fonts (con el truco `media="print"`), pero el `<script>` en sí no tiene `defer` — bloquea el parseo mientras hace ese trabajo. Impacto probablemente chico (1.4 KiB) pero irónico. No se tocó — no se subió ese archivo esta sesión, hace falta confirmar que agregarle `defer` no rompe el truco de `media="print"→"all"` que hace.
+- **Cache TTL de 10 minutos** en todos los archivos servidos desde GitHub Pages (est. 344 KiB de ahorro en visitas repetidas). Limitación conocida de GitHub Pages — no permite configurar headers de caché personalizados sin poner un CDN (ej. Cloudflare) delante. Fuera de alcance de un cambio de código.
+
+
 ---
 
 ## Modularización por pantalla — mapeo y fase 0.5

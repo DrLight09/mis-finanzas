@@ -98,6 +98,19 @@
     verificarVencimientosCDT();
   }
 
+  // ── Diagnóstico: consultar el log de errores de conexión de Firestore ─────
+  // Uso desde la consola del navegador: _verSyncErrors()
+  // Devuelve los últimos errores de onSnapshot (ver handler de error arriba),
+  // con timestamp, código de error de Firestore y mensaje. Útil para
+  // confirmar si volvió el problema de conexión sin tener que reproducirlo
+  // en vivo con la consola abierta.
+  window._verSyncErrors = function() {
+    try {
+      const log = JSON.parse(localStorage.getItem('mf_syncErrors') || '[]');
+      return log.map(e => ({ cuando: new Date(e.t).toLocaleString('es-CO'), code: e.code, msg: e.msg }));
+    } catch(_) { return []; }
+  };
+
   // ── Cargar datos desde Firestore con escucha en tiempo real ───────────────
   // Usamos onSnapshot en lugar de getDoc para que cualquier cambio desde otro
   // dispositivo o pestaña se refleje automáticamente sin recargar la página.
@@ -216,6 +229,20 @@
       (error) => {
         console.error('[Sync] Error en onSnapshot:', error);
         setSyncStatus('error', 'Error de conexión — reintentando…');
+        // Registro persistente en localStorage (sobrevive a cerrar la consola
+        // y a recargar la página) — para poder confirmar más tarde si el
+        // problema de conexión de Firestore reapareció (ver
+        // auditoria-tecnica.md, cambio a experimentalAutoDetectLongPolling)
+        // sin depender de tener la consola abierta justo en el momento en
+        // que pasa. Clave con prefijo 'mf_' a propósito: así queda incluida
+        // en la limpieza de _limpiarStorageLocal() si el usuario borra su
+        // cuenta. Se guardan solo los últimos 20 para no crecer sin límite.
+        try {
+          const log = JSON.parse(localStorage.getItem('mf_syncErrors') || '[]');
+          log.push({ t: Date.now(), code: error.code || null, msg: error.message || String(error) });
+          while (log.length > 20) log.shift();
+          localStorage.setItem('mf_syncErrors', JSON.stringify(log));
+        } catch(_){}
         // Si ni el caché ni el servidor entregaron nada todavía, no dejar a
         // la persona colgada en el spinner — arrancar igual con S por defecto.
         if(!_firstPaintDone) { _firstPaintDone = true; _finishFirstLoad(); }

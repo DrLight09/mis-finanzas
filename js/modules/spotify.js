@@ -22,6 +22,13 @@
    escHtml, fmt, toast, dialogo, uid, hoy, emptyState, getFuentes*,
    sumarFuente, descontarFuente, calcC, getSaldoActual) y de
    js/core/events.js (Events), que debe cargarse antes que este.
+
+   Pagar Spotify con una tarjeta de crédito (fuente 'tc:<id>') es un CARGO a la
+   tarjeta, no un descuento de saldo — usa getTCById/tcCupoDisponible/tcRecalcular
+   de js/modules/tarjetas_credito.js, igual que Encargos/Préstamos (S.tcMovimientos
+   con tipo 'cargo_*'). Como estas funciones se llaman recién en tiempo de evento
+   (al confirmar/eliminar un pago), no importa que tarjetas_credito.js se cargue
+   más abajo en index.html — ya está disponible cuando el usuario interactúa.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ---- SPOTIFY ---- */
@@ -429,8 +436,18 @@ async function deleteSpHistorial(i){
       }
     }
   } else if(h.tipo==='pago'){
-    // Revertir el movimiento secundario: la plata que salió de la cuenta al pagar Spotify
-    if(h.fuente)sumarFuente(h.fuente,h.monto||0);
+    // Revertir el movimiento secundario: la plata que salió de la cuenta al pagar Spotify,
+    // o el cargo hecho a la tarjeta de crédito si se pagó con TC (ver confirmarPagarSpotify).
+    if(h._tcMovId){
+      const mov=(S.tcMovimientos||[]).find(m=>m.id===h._tcMovId&&!m.eliminado);
+      if(mov){
+        mov.eliminado=true;
+        const tc=getTCById(mov.tcId);
+        if(tc)tcRecalcular(tc);
+      }
+    } else if(h.fuente){
+      sumarFuente(h.fuente,h.monto||0);
+    }
     // Eliminar el gasto variable que se generó junto con este pago
     if(h._gastoVarId&&S.gastosVar){
       S.gastosVar=S.gastosVar.filter(g=>g.id!==h._gastoVarId);
@@ -581,7 +598,25 @@ function actualizarSpPagarPreview(){
   const fuente=document.getElementById('spPagarFuente').value;
   const prev=document.getElementById('spPagarPreview');
   const fuenteInfo=document.getElementById('spPagarFuenteSaldo');
-  if(fuente){
+  // Pagar con tarjeta de crédito es un CARGO (sube la deuda de la tarjeta), no un
+  // retiro de saldo de una cuenta/cajita — por eso se muestra aparte, igual que en
+  // ptcActualizarPreview() (tarjetas_credito.js) para el flujo inverso de "Pagar TC".
+  if(fuente&&fuente.startsWith('tc:')){
+    const tc=getTCById(fuente.slice(3));
+    if(tc){
+      const cupoDisp=tc.cupo?tcCupoDisponible(tc):null;
+      fuenteInfo.textContent=cupoDisp!==null?'Cupo disponible: '+fmt(cupoDisp):'';
+      if(monto>0){
+        const nuevaDeuda=(tc.deuda||0)+monto;
+        prev.innerHTML='Deuda: '+fmt(tc.deuda||0)+' <i class="fa-solid fa-arrow-right" style="margin:0 3px;font-size:10px;"></i> '+fmt(nuevaDeuda);
+        prev.style.color=(cupoDisp!==null&&monto>cupoDisp)?'var(--red)':'var(--accent)';
+      } else {
+        prev.textContent='';
+      }
+    } else {
+      fuenteInfo.textContent='';prev.textContent='';
+    }
+  } else if(fuente){
     const actual=getSaldoActual(fuente);
     fuenteInfo.textContent='Saldo disponible: '+fmt(actual);
     if(monto>0){
@@ -599,7 +634,25 @@ function confirmarPagarSpotify(){
   const fuente=document.getElementById('spPagarFuente').value;
   const nota=document.getElementById('spPagarNota')?document.getElementById('spPagarNota').value.trim():'';
   if(!monto){toast('Ingresa el monto a pagar','err');return;}
-  if(fuente){
+  const fechaPagoEl0=document.getElementById('spPagarFecha');
+  const fechaPago0=(fechaPagoEl0&&fechaPagoEl0.value)?fechaPagoEl0.value:hoy();
+  let tcMovId=null;
+  if(fuente&&fuente.startsWith('tc:')){
+    // Pagar con tarjeta de crédito es un CARGO: sube la deuda de la tarjeta, no
+    // descuenta el saldo de una cuenta/cajita. Mismo patrón que Encargos/Préstamos
+    // (ver tcRecalcular en tarjetas_credito.js, que suma S.tcMovimientos con
+    // tipo 'cargo_*'), en vez de descontarFuente().
+    const tc=getTCById(fuente.slice(3));
+    if(!tc){toast('Tarjeta no encontrada','err');return;}
+    if(tc.cupo&&tcCupoDisponible(tc)<monto){
+      toast('Cupo insuficiente en '+fuenteLabel(fuente)+'. Disponible: '+fmt(tcCupoDisponible(tc)),'err',3500);
+      return;
+    }
+    if(!S.tcMovimientos)S.tcMovimientos=[];
+    tcMovId=uid();
+    S.tcMovimientos.push({id:tcMovId,tcId:tc.id,tipo:'cargo_spotify',monto,fecha:fechaPago0,nota:nota||'Pago Spotify',eliminado:false});
+    tcRecalcular(tc);
+  } else if(fuente){
     const saldoDisp=getSaldoActual(fuente);
     if(saldoDisp<monto){
       toast('Saldo insuficiente en '+fuenteLabel(fuente)+'. Disponible: '+fmt(saldoDisp),'err',3500);
@@ -622,8 +675,7 @@ function confirmarPagarSpotify(){
   // estaba, no dejar a todos en "Pendiente" sin poder deshacerlo.
   const estadoAntesReset=(S.spotifyPersonas||[]).map(p=>({id:p.id,pagado:!!p.pagado}));
 
-  const fechaPagoEl=document.getElementById('spPagarFecha');
-  const fechaPago=(fechaPagoEl&&fechaPagoEl.value)?fechaPagoEl.value:hoy();
+  const fechaPago=fechaPago0;
 
   // Este pago puede registrarse DÍAS después de haber ocurrido en la realidad (ej: pagué
   // el 1, pero recién hoy lo anoto). Si mientras tanto ya se registraron cobros que en la
@@ -680,7 +732,7 @@ function confirmarPagarSpotify(){
     if(pend>0)pendienteAlCerrar[x.id]=pend;
   });
 
-  const pagoObj={id:uid(),tipo:'pago',monto,fuente,fecha:fechaPago,nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar};
+  const pagoObj={id:uid(),tipo:'pago',monto,fuente,fecha:fechaPago,nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar,_tcMovId:tcMovId};
   S.spotifyHistorial=[...antesDelSegmento,...quedanCerrando,pagoObj,...pasanANuevo];
   // Reset pagados del ciclo — pero respeta a quienes ya prepagaron períodos futuros:
   // si su próxima fecha de cobro sigue en el futuro, su "Pagó" sigue vigente y no debe

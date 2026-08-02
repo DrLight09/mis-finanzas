@@ -111,7 +111,7 @@ function tcRecalcular(tc){
   if(tc.saldoInicial && !tc.saldoInicial.eliminado) total+=(tc.saldoInicial.monto||0);
   (tc.compras||[]).forEach(c=>{ if(!c.eliminado) total+=(c.monto||0); });
   (S.tcMovimientos||[]).forEach(m=>{
-    if(m.tcId===tc.id && (m.tipo==='cargo_encargo'||m.tipo==='cargo_prestamo') && !m.eliminado) total+=(m.monto||0);
+    if(m.tcId===tc.id && (m.tipo==='cargo_encargo'||m.tipo==='cargo_prestamo'||m.tipo==='cargo_spotify') && !m.eliminado) total+=(m.monto||0);
   });
   (tc.pagos||[]).forEach(p=>{ if(!p.eliminado) total-=(p.monto||0); });
   tc.deuda=Math.max(0,total);
@@ -151,7 +151,7 @@ function tcNormalizarTarjetas(){
     if(tc.saldoInicial===undefined){
       const sumCompras=tc.compras.filter(c=>!c.eliminado).reduce((a,c)=>a+(c.monto||0),0);
       const sumPagos=tc.pagos.filter(p=>!p.eliminado).reduce((a,p)=>a+(p.monto||0),0);
-      const sumCargos=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&(m.tipo==='cargo_encargo'||m.tipo==='cargo_prestamo')&&!m.eliminado).reduce((a,m)=>a+(m.monto||0),0);
+      const sumCargos=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&(m.tipo==='cargo_encargo'||m.tipo==='cargo_prestamo'||m.tipo==='cargo_spotify')&&!m.eliminado).reduce((a,m)=>a+(m.monto||0),0);
       const inferido=Math.max(0,(tc.deuda||0)-sumCompras-sumCargos+sumPagos);
       let fechaInferida=hoy();
       const fechasConocidas=[...tc.compras.map(c=>c.fecha),...tc.pagos.map(p=>p.fecha)].filter(Boolean).sort();

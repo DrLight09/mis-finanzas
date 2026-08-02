@@ -2299,32 +2299,49 @@ function confirmarCompraConTC() {
    con Events.attr(...); los que no llevan argumento (botones fijos
    de los sheets) se registran acá con el mismo nombre de acción que
    ya tenía el atributo data-action escrito a mano en el markup.
+
+   IMPORTANTE — por qué cada entrada es `(...args) => fn(...args)` y
+   no la función directa: `Events.registerAll`/`on` guardan el VALOR
+   que reciben en el momento en que este bloque corre. Si más adelante
+   `encargos-personas.js` (o cualquier otro módulo que llegue después,
+   ej. un futuro `encargos-recordatorios.js`) reasigna una de estas
+   funciones (`abrirEncargoDetalle = function(id) {...}`, mismo patrón
+   que usan todos los *-personas.js para agregar su integración), esa
+   reasignación cambia la variable global pero NO lo que ya quedó
+   copiado acá adentro — los clicks con data-action seguirían llamando
+   a la versión vieja, sin el hook del módulo nuevo, en silencio
+   (sin error en consola). Encerrar cada una en una arrow function
+   hace que Events resuelva el nombre en cada click, no una sola vez
+   al cargar — mismo fix ya aplicado puntualmente a `spotify:editar`
+   (ver CHANGELOG.md), generalizado acá a todo el bloque para que
+   ninguna función de Encargos pueda quedar huérfana de esta forma,
+   la haya envuelto alguien o no todavía.
    ═══════════════════════════════════════════════════════════════ */
 
 Events.registerAll('encargos', {
-  abrirMov:               abrirMovEncargo,          // data-args: ["entrada"] | ["salida"]
-  abrirTraspaso:          abrirTraspasoEncargo,
-  abrirMoverCuentas:      abrirMoverEntreCuentasEncargo,
-  abrirCompraTC:          abrirCompraConTC,
-  abrirNuevaParte:        abrirNuevaParte,
-  movSplitToggle:         _movEncSplitToggle,
-  movAgregarSplitRow:     _movEncAgregarSplitRow,
-  difToggle:              _difToggle,
-  difAddBenef:            _difAddBenef,
-  miaToggle:              _movEncMiaToggle,
-  guardarParte:           guardarParte,
-  cerrarParteSheet:       cerrarPartSheet,
-  usarParteSplitToggle:   _usarParteSplitToggle,
-  usarParteAgregarSplitRow: _usarParteAgregarSplitRow,
-  usarParteDifToggle:     _usarParteDifToggle,
-  usarParteAddBenef:      _usarParteAddBenef,
-  confirmarUsarParte:     _confirmarUsarParte,
-  ctcDifToggle:           _ctcDifToggle,
+  abrirMov:               (...args) => abrirMovEncargo(...args),          // data-args: ["entrada"] | ["salida"]
+  abrirTraspaso:          (...args) => abrirTraspasoEncargo(...args),
+  abrirMoverCuentas:      (...args) => abrirMoverEntreCuentasEncargo(...args),
+  abrirCompraTC:          (...args) => abrirCompraConTC(...args),
+  abrirNuevaParte:        (...args) => abrirNuevaParte(...args),
+  movSplitToggle:         (...args) => _movEncSplitToggle(...args),
+  movAgregarSplitRow:     (...args) => _movEncAgregarSplitRow(...args),
+  difToggle:              (...args) => _difToggle(...args),
+  difAddBenef:            (...args) => _difAddBenef(...args),
+  miaToggle:              (...args) => _movEncMiaToggle(...args),
+  guardarParte:           (...args) => guardarParte(...args),
+  cerrarParteSheet:       (...args) => cerrarPartSheet(...args),
+  usarParteSplitToggle:   (...args) => _usarParteSplitToggle(...args),
+  usarParteAgregarSplitRow: (...args) => _usarParteAgregarSplitRow(...args),
+  usarParteDifToggle:     (...args) => _usarParteDifToggle(...args),
+  usarParteAddBenef:      (...args) => _usarParteAddBenef(...args),
+  confirmarUsarParte:     (...args) => _confirmarUsarParte(...args),
+  ctcDifToggle:           (...args) => _ctcDifToggle(...args),
   // Con argumentos dinámicos (id de encargo / movimiento / parte):
-  abrirDetalle:           abrirEncargoDetalle,       // (encId)
-  abrirDesdeCuenta:       abrirEncargoDesdeCuenta,   // (encId)
-  deleteMov:              deleteMovEncargo,          // (encId, movId)
-  usarParte:              usarParte,                 // (encId, parteId)
-  editarParte:            editarParte,               // (encId, parteId)
-  eliminarParte:          eliminarParte,              // (encId, parteId)
+  abrirDetalle:           (...args) => abrirEncargoDetalle(...args),       // (encId) — esta es la que hoy reasigna encargos-personas.js
+  abrirDesdeCuenta:       (...args) => abrirEncargoDesdeCuenta(...args),   // (encId)
+  deleteMov:              (...args) => deleteMovEncargo(...args),         // (encId, movId)
+  usarParte:              (...args) => usarParte(...args),                // (encId, parteId)
+  editarParte:            (...args) => editarParte(...args),              // (encId, parteId)
+  eliminarParte:          (...args) => eliminarParte(...args),             // (encId, parteId)
 });

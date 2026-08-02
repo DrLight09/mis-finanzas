@@ -4316,7 +4316,18 @@
     <script src="js/core/diferencial.js" defer></script>
     <script src="js/core/split.js" defer></script>
 <script src="js/core/core-state.js" defer></script>
-<script src="js/modules/mesada.js" defer></script>
+<!--
+// Módulo Mesada — migrado a js/modules/mesada.js (ver docs/mesada.md).
+// Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, quinto
+// grupo): no tiene dependencia real de orden de carga (no monkey-patchea
+// nada ajeno) y su único caller externo conocido (inicio.js) ya tiene
+// guard typeof desde la sesión anterior. #screen-mesada y #mas-mesada ya
+// eran HTML estático, no hubo que inyectar nada (mismo caso que
+// Configuración/Actividad Reciente). Se saca de acá el <script>; ahora lo
+// descarga js/core/lazy-loader.js (Loader.ensure('mesada')) la primera
+// vez que alguien entra a la pantalla.
+-->
+<!-- mesada.js: ver js/core/lazy-loader.js (Loader.GROUPS.mesada) -->
 <script src="js/modules/spotify.js" defer></script>
 <script src="js/modules/gastos.js" defer></script>
 <!--
@@ -4761,6 +4772,13 @@
          (getMesadaData, spNombreDe, spPersonaPagadaVigente, tcCupoUsadoPct).
          No define ningún data-action nuevo: screen-inicio no tiene onclick
          inline propios, solo elementos de solo lectura (ver nota en el
-         propio archivo). ===== -->
+         propio archivo).
+
+         Nota (2026-08-02): las 6 llamadas de arriba ahora tienen guard
+         typeof === 'function' dentro de inicio.js (ver cabecera de ese
+         archivo) — "se carga al final" documenta el orden actual, ya no es
+         un requisito estricto para que la app no reviente. mesada.js pasó
+         a lazy esta misma sesión (Loader.GROUPS.mesada) y este orden
+         siguió sin tocarse a propósito. ===== -->
 <script src="js/modules/inicio.js" defer></script>
   </body></html>

@@ -70,6 +70,22 @@ function spPersonaPagadaVigente(p){
   return prox>hoy0;
 }
 
+function spPeriodosVencidos(p,fechaCorte){
+  // Cuenta cuántos períodos de 30 días de este integrante ya se vencieron a la fecha
+  // de corte dada, partiendo de su `proximoPago` vigente — que ya refleja todos los
+  // cobros aplicados hasta ahora (cada cobro lo avanza N*30 días al confirmarse).
+  // Reemplaza al viejo cálculo "monto − total cobrado en el ciclo", que solo detectaba
+  // como mucho UN período de deuda por persona: si alguien pagó un período dentro de
+  // un ciclo largo y luego se le venció OTRO sin pagarlo, "total cobrado ≥ una cuota"
+  // ya daba pend=0 aunque en la realidad debía el período nuevo. Ver CHANGELOG.md.
+  if(!p||!p.proximoPago)return 0;
+  const corte=new Date(fechaCorte+'T00:00:00');
+  let cursor=new Date(p.proximoPago+'T00:00:00');
+  let n=0;
+  while(cursor<=corte){ n++; cursor.setDate(cursor.getDate()+30); }
+  return n;
+}
+
 function spCicloCobrosActual(){
   // Cobros registrados en el historial desde el último pago real a Spotify (ciclo actual).
   // Si nunca se ha pagado, todo el historial de cobros pertenece al ciclo actual.
@@ -111,7 +127,7 @@ function renderSpotify(){
   // proximoPago siga en el futuro, sigue cubierto y no debe contar como pendiente.
   const cobPend=p.reduce((a,x)=>{
     if(spPersonaPagadaVigente(x))return a;
-    return a+Math.max(0,(x.monto||0)-spCobradoDePersona(x,cicloCobros));
+    return a+spPeriodosVencidos(x,hoy())*(x.monto||0);
   },0);
   const cajitaSaldo=getSpCajitaSaldo();
   
@@ -655,8 +671,12 @@ function confirmarPagarSpotify(){
   const pendienteAlCerrar={};
   (S.spotifyPersonas||[]).forEach(x=>{
     if(spPersonaPagadaVigente(x))return;
-    const cobrado=quedanCerrando.filter(h=>h.tipo==='cobro'&&(x.id?h.spId===x.id:h.nombre===x.nombre)).reduce((a,h)=>a+(h.monto||0),0);
-    const pend=Math.max(0,(x.monto||0)-cobrado);
+    // Se cuenta por PERÍODOS vencidos (via proximoPago), no por dinero total cobrado
+    // contra una sola cuota — un ciclo puede durar más de un período de esta persona,
+    // y alguien puede pagar el primero y dejar vencer un segundo sin pagarlo dentro del
+    // mismo ciclo. Comparar solo "cobrado ≥ una cuota" no detectaba ese segundo período.
+    const periodosVencidos=spPeriodosVencidos(x,fechaPago);
+    const pend=periodosVencidos*(x.monto||0);
     if(pend>0)pendienteAlCerrar[x.id]=pend;
   });
 

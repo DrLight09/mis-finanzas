@@ -66,6 +66,20 @@ const Loader = (function () {
     // trigger sin condición de evento al final del archivo. Ver ese
     // archivo y CHANGELOG.md#arranque para el detalle.
     historial: ['js/modules/actividad_reciente.js'],
+    // Quinto grupo lazy (2026-08-02). #screen-mesada y #mas-mesada ya eran
+    // HTML estático desde antes, así que no hubo que copiar/inyectar nada
+    // (mismo caso que Configuración/Actividad Reciente, a diferencia de
+    // Plata Comprometida). No requirió ningún cambio dentro de mesada.js:
+    // su wiring de botones (btn-anio-prev, btn-confirmar-mesada, etc.) ya
+    // corría top-level contra ids del DOM estático sin esperar
+    // DOMContentLoaded (mismo patrón seguro que ya usaba alcancia.js), y no
+    // monkey-patchea ninguna función ajena. Su único caller externo
+    // conocido, inicio.js (getMesadaData/_getCuotaAnio en renderAttencion/
+    // calcHealthScore), ya tenía guard typeof desde la sesión anterior —
+    // ver auditoria-tecnica.md #4. Sin verificar: si analisis.js (no
+    // auditado a este nivel) también llama alguna función de mesada.js sin
+    // guard — queda anotado como hallazgo abierto, no investigado acá.
+    mesada: ['js/modules/mesada.js'],
   };
 
   const loaded = new Set();   // grupos ya cargados (no se vuelven a pedir)

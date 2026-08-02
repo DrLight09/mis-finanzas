@@ -382,9 +382,26 @@ function pgfActualizarSaldo() {
   const fuente = document.getElementById('pgf-fuente').value;
   const info = document.getElementById('pgf-saldo-info');
   if (!fuente) { info.textContent = ''; return; }
-  const saldo = getSaldoActual(fuente);
   const gf = (S.gastosFijos || []).find(x => x.id === pgfIdActual);
   const monto = gf ? gf.monto : 0;
+  // Pagar con tarjeta de crédito es un CARGO (sube la deuda de la tarjeta), no un
+  // retiro de saldo — mismo criterio que addGastoVar() (tcCrearCompra) y
+  // confirmarPagarSpotify() (spotify.js). Antes este preview trataba la TC como
+  // una cuenta con saldo, mostrando "Saldo disponible" de algo que en realidad es cupo.
+  if (fuente.startsWith('tc:')) {
+    const tcId = fuente.split(':')[1];
+    const tc = (S.tarjetasCredito || []).find(x => x.id === tcId);
+    if (tc) {
+      const nuevaDeuda = (tc.deuda || 0) + monto;
+      const cupoDisp = tc.cupo ? tcCupoDisponible(tc) : null;
+      info.innerHTML = 'Deuda: ' + fmt(tc.deuda || 0) + ' <i class="fa-solid fa-arrow-right" style="margin:0 3px;font-size:10px;"></i> ' + fmt(nuevaDeuda);
+      info.style.color = (cupoDisp !== null && monto > cupoDisp) ? 'var(--red)' : 'var(--accent)';
+    } else {
+      info.textContent = '';
+    }
+    return;
+  }
+  const saldo = getSaldoActual(fuente);
   const suficiente = saldo >= monto;
   info.textContent = 'Saldo disponible: ' + fmt(saldo);
   info.style.color = suficiente ? 'var(--accent)' : 'var(--red)';
@@ -404,18 +421,35 @@ function confirmarPagarGastoFijo() {
   if (S.pagosGastosFijos[gf.id + '_' + mesActual()]) {
     errEl.textContent = 'Este gasto ya fue pagado este mes.'; errEl.style.display = 'block'; return;
   }
-  const saldo = getSaldoActual(fuente);
-  if (saldo < gf.monto) {
-    errEl.textContent = 'Saldo insuficiente. Disponible: ' + fmt(saldo) + ' — Necesario: ' + fmt(gf.monto);
-    errEl.style.display = 'block';
-    return;
-  }
-  // Descontar saldo
-  descontarFuente(fuente, gf.monto);
   const nota = document.getElementById('pgf-nota') ? document.getElementById('pgf-nota').value.trim() : '';
-  // Crear gasto variable automático
   if (!S.gastosVar) S.gastosVar = [];
-  S.gastosVar.push({ id: uid(), desc: 'Pago de ' + gf.nombre, monto: gf.monto, fecha, cat: gf.cat, fuente, nota: nota || 'Pago de gasto fijo', esPagoGastoFijo: true, gastoFijoId: gf.id });
+  const gastoObj = { id: uid(), desc: 'Pago de ' + gf.nombre, monto: gf.monto, fecha, cat: gf.cat, fuente, nota: nota || 'Pago de gasto fijo', esPagoGastoFijo: true, gastoFijoId: gf.id };
+  if (fuente.startsWith('tc:')) {
+    // Cargar el pago a la tarjeta (sube tc.deuda) en vez de descontar saldo de una
+    // cuenta — misma ruta que addGastoVar() usa para un gasto variable con TC.
+    const tcId = fuente.split(':')[1];
+    const tc = (S.tarjetasCredito || []).find(x => x.id === tcId);
+    if (!tc) { errEl.textContent = 'Tarjeta no encontrada.'; errEl.style.display = 'block'; return; }
+    if (tc.cupo && tcCupoDisponible(tc) < gf.monto) {
+      errEl.textContent = 'Cupo insuficiente. Disponible: ' + fmt(tcCupoDisponible(tc)) + ' — Necesario: ' + fmt(gf.monto);
+      errEl.style.display = 'block';
+      return;
+    }
+    const compra = tcCrearCompra(tc, { desc: 'Pago de ' + gf.nombre, monto: gf.monto, fecha, cat: gf.cat, nota: nota || 'Pago de gasto fijo' });
+    gastoObj._esCompraTC = true;
+    gastoObj._tcId = tcId;
+    gastoObj._tcCompraId = compra.id;
+    S.gastosVar.push(gastoObj);
+  } else {
+    const saldo = getSaldoActual(fuente);
+    if (saldo < gf.monto) {
+      errEl.textContent = 'Saldo insuficiente. Disponible: ' + fmt(saldo) + ' — Necesario: ' + fmt(gf.monto);
+      errEl.style.display = 'block';
+      return;
+    }
+    descontarFuente(fuente, gf.monto);
+    S.gastosVar.push(gastoObj);
+  }
   // Registrar pago del mes
   if (!S.pagosGastosFijos) S.pagosGastosFijos = {};
   S.pagosGastosFijos[gf.id + '_' + mesActual()] = { fecha, fuente, monto: gf.monto };

@@ -92,7 +92,20 @@ let S={
   patrimonioHistorial:[],
   tarjetasCredito:[],
   ingresosFijos:[],
-  alcancia:null
+  alcancia:null,
+  config:{
+    proteccionAntiguedad:{
+      diasAviso:90,
+      diasBloqueo:365,
+      spotify:{opsAviso:2,opsBloqueo:5},
+      mesada:{opsAviso:2,opsBloqueo:5},
+      prestamos:{opsAviso:2,opsBloqueo:5},
+      encargos:{opsAviso:2,opsBloqueo:5},
+      tarjetas:{opsAviso:2,opsBloqueo:5},
+      cuentas:{opsAviso:2,opsBloqueo:5},
+      gastos:{opsAviso:2,opsBloqueo:5}
+    }
+  }
   // alcancia: {saldoRegistrado, depositos, fechaInicio, movimientos:[{id,monto,fecha,fuenteOrigen,ts}], historial:[...]}
   // alcanciaSaldoOfuscado: string (XOR+Base64 del JSON {saldo:N}) — guardado en S pero no visible en UI
   // ingresosFijos: [{id, nombre, monto, desde}]
@@ -355,6 +368,8 @@ function load(){
   if(!S.personas)S.personas=[];
   if(!S.ingresosFijos)S.ingresosFijos=[];
   if(!S.misDeudas)S.misDeudas=[];
+  if(!S.config)S.config={};
+  if(!S.config.proteccionAntiguedad)S.config.proteccionAntiguedad={diasAviso:90,diasBloqueo:365,spotify:{opsAviso:2,opsBloqueo:5},mesada:{opsAviso:2,opsBloqueo:5},prestamos:{opsAviso:2,opsBloqueo:5},encargos:{opsAviso:2,opsBloqueo:5},tarjetas:{opsAviso:2,opsBloqueo:5},cuentas:{opsAviso:2,opsBloqueo:5},gastos:{opsAviso:2,opsBloqueo:5}};
   // Sincronizar color de misDeudas desde la persona vinculada (fuente de verdad)
   (S.misDeudas || []).forEach(d => {
     if (d.personaId && S.personas) {
@@ -738,6 +753,69 @@ function dialogo(titulo, msg, btnOk='Confirmar', peligro=false){
 document.getElementById('dialog-overlay').addEventListener('click',function(e){
   if(e.target===this) _closeDialog(false);
 });
+
+/* ---- PROTECCIÓN POR ANTIGÜEDAD DE MOVIMIENTOS ---- */
+// Ver docs/proteccion-antiguedad-movimientos.md para el detalle completo.
+// Un movimiento viejo ya se mezcló lógicamente con todo lo que pasó en su
+// cuenta después: revertirlo hoy no "deshace el error", introduce un
+// descuadre nuevo. Estas funciones son el único lugar donde vive esa regla
+// — cada módulo (Spotify, Mesada, Préstamos, Encargos, Tarjetas) las llama
+// desde su(s) punto(s) de borrado en vez de reimplementar el cálculo.
+
+// Nivel de protección de un movimiento, según DOS criterios independientes
+// (basta con que se cumpla uno): tiempo transcurrido desde su fecha, y
+// cantidad de operaciones posteriores que ya tocaron la misma cuenta/ciclo.
+// Los umbrales de tiempo son globales; los de cantidad son por módulo.
+//
+// @param {string} fecha           Fecha del movimiento, 'YYYY-MM-DD'.
+// @param {number} opsPosteriores  Cantidad de operaciones posteriores ya
+//                                 registradas sobre la misma cuenta/ciclo
+//                                 (0 si el módulo aún no define este criterio).
+// @param {string} modulo          Clave dentro de S.config.proteccionAntiguedad
+//                                 con los umbrales opsAviso/opsBloqueo del
+//                                 módulo (ej: 'spotify'). Si el módulo todavía
+//                                 no tiene esos umbrales definidos, el nivel
+//                                 se decide solo por tiempo.
+// @returns {'reciente'|'viejo'|'bloqueado'}
+function nivelAntiguedadMovimiento(fecha, opsPosteriores, modulo){
+  const cfg=S.config.proteccionAntiguedad;
+  const modCfg=cfg[modulo]||{};
+  const dias=Math.floor((Date.now()-new Date(fecha+'T00:00:00').getTime())/86400000);
+  const ops=opsPosteriores||0;
+  if(dias>cfg.diasBloqueo || (modCfg.opsBloqueo!=null && ops>=modCfg.opsBloqueo)) return 'bloqueado';
+  if(dias>cfg.diasAviso || (modCfg.opsAviso!=null && ops>=modCfg.opsAviso)) return 'viejo';
+  return 'reciente';
+}
+
+// Aviso para nivel 'viejo': muestra qué cuenta se afecta y de cuánto sube o
+// baja su saldo si se confirma, y deja decidir al usuario con esa
+// información — nunca a ciegas. Devuelve true si confirma, false si cancela.
+// No usar para nivel 'bloqueado' (ver avisarMovimientoBloqueado).
+//
+// @param {string} nombreCuenta    Nombre a mostrar de la cuenta afectada.
+// @param {number} montoRevertido  Monto que se revertirá (siempre positivo).
+// @param {'sube'|'baja'} direccion  Si el campo de esa cuenta sube o baja al revertir.
+// @param {'saldo'|'deuda'} [campo='saldo']  Qué campo cambia (ej: 'deuda' para
+//                                            revertir un cargo hecho a una TC).
+function confirmarBorrarMovimientoViejo(nombreCuenta, montoRevertido, direccion, campo='saldo'){
+  const verbo=direccion==='sube'?'sube':'baja';
+  return dialogo(
+    'Movimiento antiguo',
+    `Este movimiento ya tiene tiempo y puede estar mezclado con operaciones más recientes de "${nombreCuenta}". Si lo eliminas, su ${campo} ${verbo} ${fmt(montoRevertido)} ahora mismo — no se recalcula el historial completo. ¿Eliminar de todas formas?`,
+    'Eliminar de todas formas', true
+  );
+}
+
+// Aviso para nivel 'bloqueado': solo informa, no ofrece la opción de
+// continuar (coherente con dialogo(), que ya soporta este patrón de un solo
+// botón — ver el uso existente para movimientos secundarios en movimientos.js).
+function avisarMovimientoBloqueado(){
+  return dialogo(
+    'No se puede eliminar',
+    'Este movimiento es demasiado antiguo o ya está muy mezclado con operaciones posteriores de esa cuenta. Eliminarlo ahora dejaría un descuadre imposible de corregir a mano. Si hay un error real, corrígelo editando el dato (nota o fecha) sin borrar el movimiento.',
+    'Entendido', false
+  );
+}
 
 /* ---- DEBOUNCE SAVE ---- */
 var _saveTimer=null;

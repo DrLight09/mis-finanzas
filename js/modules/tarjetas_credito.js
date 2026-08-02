@@ -50,6 +50,22 @@
    auditoría a `toast()`: cambiar una función compartida en medio de
    una migración de un solo módulo puede afectar pantallas fuera de
    este alcance. Queda como hallazgo pendiente para una sesión propia.
+
+   Nota (2026-08-02) — intento de volver este módulo LAZY (docs/
+   auditoria-tecnica.md #4): el wiring de botones que esperaba
+   'DOMContentLoaded' se corrigió a top-level (mismo bug/mismo fix que
+   ya se aplicó en actividad_reciente.js) — ver más abajo. PERO no se
+   agregó a Loader.GROUPS todavía: `tcNormalizarTarjetas()` (arriba en
+   este archivo) no tiene ningún caller dentro de este archivo, así que
+   por descarte se está llamando desde `refresh()`/`save()` en
+   core-state.js — que no se recibió esta sesión, así que no se pudo
+   confirmar si ya tiene guard `typeof` (el mapeo original de
+   auditoria-tecnica.md #4 solo listó 12 funciones `render*`;
+   `tcNormalizarTarjetas` no es una de ellas, y su propio comentario dice
+   "se ejecuta en cada refresh()" — si el guard no existe ahí, TC lazy
+   rompe `refresh()` en cada boot hasta que el usuario entre a la
+   pantalla). Queda como hallazgo abierto, no investigado más sin ese
+   archivo — no se fuerza el cambio sin poder confirmarlo.
    ═══════════════════════════════════════════════════════════════ */
 
 let _tcActualId = null;
@@ -980,32 +996,37 @@ Events.registerAll('tarjetas', {
   verTodo:          () => navTo('tarjetas') // navTo es global, definida en index.html
 });
 // ── Conectar botones TC al formulario y selects ───────────────────
-document.addEventListener('DOMContentLoaded',function(){
-  const btnGuardarTC=document.getElementById('btn-guardar-tc');
-  if(btnGuardarTC)btnGuardarTC.addEventListener('click',guardarTC);
+// Nota (2026-08-02): antes esto esperaba 'DOMContentLoaded'. Si este
+// módulo se vuelve lazy (carga bajo demanda, ver js/core/lazy-loader.js),
+// para cuando el archivo llega a existir ese evento ya disparó hace rato
+// y el listener nunca correría — mismo bug ya encontrado y corregido en
+// actividad_reciente.js (auditoria-tecnica.md #4, grupo "historial"). Se
+// wirea directo, top-level, contra ids que ya existen en el DOM estático
+// de index.html — mismo patrón ya probado en mesada.js.
+const btnGuardarTC=document.getElementById('btn-guardar-tc');
+if(btnGuardarTC)btnGuardarTC.addEventListener('click',guardarTC);
 
-  const btnCompraTC=document.getElementById('btn-confirmar-compra-tc-tarjetas');
-  if(btnCompraTC)btnCompraTC.addEventListener('click',confirmarCompraTC);
+const btnCompraTC=document.getElementById('btn-confirmar-compra-tc-tarjetas');
+if(btnCompraTC)btnCompraTC.addEventListener('click',confirmarCompraTC);
 
-  const btnPagarTC=document.getElementById('btn-confirmar-pagar-tc');
-  if(btnPagarTC)btnPagarTC.addEventListener('click',confirmarPagarTC);
+const btnPagarTC=document.getElementById('btn-confirmar-pagar-tc');
+if(btnPagarTC)btnPagarTC.addEventListener('click',confirmarPagarTC);
 
-  const ptcFuente=document.getElementById('ptc_fuente');
-  if(ptcFuente)ptcFuente.addEventListener('change',ptcActualizarPreview);
-  const ptcMonto=document.getElementById('ptc_monto');
-  if(ptcMonto)ptcMonto.addEventListener('input',ptcActualizarPreview);
+const ptcFuente=document.getElementById('ptc_fuente');
+if(ptcFuente)ptcFuente.addEventListener('change',ptcActualizarPreview);
+const ptcMonto=document.getElementById('ptc_monto');
+if(ptcMonto)ptcMonto.addEventListener('input',ptcActualizarPreview);
 
-  const tccEsCuotas=document.getElementById('tcc_es_cuotas');
-  if(tccEsCuotas)tccEsCuotas.addEventListener('change',tccToggleCuotas);
-  const tccMonto=document.getElementById('tcc_monto');
-  if(tccMonto)tccMonto.addEventListener('input',function(){
-    if(document.getElementById('tcc_es_cuotas').checked) tccActualizarValorCuota();
-  });
-  const tccNumCuotas=document.getElementById('tcc_num_cuotas');
-  if(tccNumCuotas)tccNumCuotas.addEventListener('input',tccActualizarValorCuota);
-  const tccValorCuota=document.getElementById('tcc_valor_cuota');
-  if(tccValorCuota)tccValorCuota.addEventListener('input',tccActualizarPreviewCuotas);
+const tccEsCuotas=document.getElementById('tcc_es_cuotas');
+if(tccEsCuotas)tccEsCuotas.addEventListener('change',tccToggleCuotas);
+const tccMonto=document.getElementById('tcc_monto');
+if(tccMonto)tccMonto.addEventListener('input',function(){
+  if(document.getElementById('tcc_es_cuotas').checked) tccActualizarValorCuota();
 });
+const tccNumCuotas=document.getElementById('tcc_num_cuotas');
+if(tccNumCuotas)tccNumCuotas.addEventListener('input',tccActualizarValorCuota);
+const tccValorCuota=document.getElementById('tcc_valor_cuota');
+if(tccValorCuota)tccValorCuota.addEventListener('input',tccActualizarPreviewCuotas);
 
 // Mostrar el label TC en el gasto variable al seleccionarlo
 // Patch via window para asegurar que la referencia a la función original es correcta.

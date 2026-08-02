@@ -24,6 +24,15 @@
    prestado.js, tarjetas_credito.js, cuentas.js (usa spNombreDe,
    getMesadaData, tcCupoUsadoPct, etc. definidos ahí) y después de
    js/core/events.js.
+
+   Nota (2026-08-02): las llamadas a getDeudorSaldo, getMesadaData,
+   _getCuotaAnio, tcCupoUsadoPct, spPersonaPagadaVigente y spNombreDe
+   ahora tienen guard typeof === 'function' — mismo patrón que ya usaba
+   calcPatrimonioTotal/totalPrestadoPendiente/calcC/calcCDT en este
+   mismo archivo. No cambia el comportamiento actual (todo sigue
+   cargando de entrada); habilita que mesada/spotify/prestado/
+   tarjetas_credito puedan volverse lazy sin romper el dashboard.
+   Ver auditoria-tecnica.md #4.
    ================================================================ */
 
 /* ---- DASHBOARD ATENCIÓN ---- */
@@ -31,12 +40,14 @@ function renderAttencion(){
   const items=[];
   const hoyStr=hoy();
   // Deudores con saldo pendiente
-  (S.deudores||[]).forEach(d=>{
-    const s=getDeudorSaldo(d);
-    if(s>0) items.push({tipo:'amber',texto:`${escHtml(d.nombre)} te debe ${fmt(s)}`});
-  });
+  if(typeof getDeudorSaldo==='function'){
+    (S.deudores||[]).forEach(d=>{
+      const s=getDeudorSaldo(d);
+      if(s>0) items.push({tipo:'amber',texto:`${escHtml(d.nombre)} te debe ${fmt(s)}`});
+    });
+  }
   // Mesadas con pago parcial que quedó pendiente
-  if(S.modulos&&S.modulos.mesada){
+  if(S.modulos&&S.modulos.mesada&&typeof getMesadaData==='function'){
     ['papa','mama'].forEach(parent=>{
       const data=getMesadaData(parent);
       const pNombre=parent==='papa'?'Papá':'Mamá';
@@ -54,6 +65,7 @@ function renderAttencion(){
     if((tc.estado||'activa')!=='activa')return;
     const cupo=tc.cupo||0;
     if(!cupo)return;
+    if(typeof tcCupoUsadoPct!=='function')return;
     const pct=tcCupoUsadoPct(tc);
     if(pct>=100){
       items.push({tipo:'red',texto:`${escHtml(tc.nombre)}: cupo agotado — deuda ${fmt(tc.deuda||0)}`,_tcId:tc.id});
@@ -62,7 +74,7 @@ function renderAttencion(){
     }
   });
   // Spotify personas vencidas (solo si el módulo está activo)
-  if(S.modulos&&S.modulos.spotify){
+  if(S.modulos&&S.modulos.spotify&&typeof spPersonaPagadaVigente==='function'&&typeof spNombreDe==='function'){
     (S.spotifyPersonas||[]).forEach(p=>{
       if(p.proximoPago&&p.proximoPago<hoyStr&&!spPersonaPagadaVigente(p)){
         // spNombreDe() devuelve texto libre (nombre de persona) — se escapa acá.
@@ -151,18 +163,19 @@ function calcHealthScore(){
   const gastosMes = gvMes + gfTotal;
 
   // Deuda TC que realmente es mía (excluye encargos, plata comprometida, préstamos TC)
-  const deudaTC = calcDeudaTcPropia();
+  const deudaTC = typeof calcDeudaTcPropia==='function' ? calcDeudaTcPropia() : 0;
 
   // Ingresos del mes: mesada + movimientos tipo ingreso de cuentas personalizadas
   const mesNum = mes ? parseInt(mes.split('-')[1])-1 : 0;
   const anio = mes ? parseInt(mes.split('-')[0]) : 0;
   let ingresosMes = 0;
-  if(S.modulos && S.modulos.mesada){
+  if(S.modulos && S.modulos.mesada && typeof getMesadaData==='function'){
     const _mk=anio+'-'+mesNum;
     const _infoPapa=getMesadaData('papa')[_mk];
     const _infoMama=getMesadaData('mama')[_mk];
-    if(_infoPapa) ingresosMes += (_infoPapa.monto||_getCuotaAnio('papa',anio)||0);
-    if(_infoMama) ingresosMes += (_infoMama.monto||_getCuotaAnio('mama',anio)||0);
+    const _cuota = typeof _getCuotaAnio==='function' ? _getCuotaAnio : ()=>0;
+    if(_infoPapa) ingresosMes += (_infoPapa.monto||_cuota('papa',anio)||0);
+    if(_infoMama) ingresosMes += (_infoMama.monto||_cuota('mama',anio)||0);
   }
   // Sumar ingresos de cuentas personalizadas del mes actual
   // (excluye movimientos espejo de Mesada/Prestado/Encargos — ver _esEntradaEspejoNoIngreso)
@@ -408,7 +421,7 @@ function renderProyeccion(){
   const col = tendenciaMensual >= 0 ? 'var(--accent)' : 'var(--red)';
 
   // Deuda TC propia para mostrar impacto (excluye encargos y PC)
-  const deudaTC = calcDeudaTcPropia();
+  const deudaTC = typeof calcDeudaTcPropia==='function' ? calcDeudaTcPropia() : 0;
   const deudaInfo = deudaTC > 0 ? `<div style="font-size:10px;color:var(--red);margin-top:5px;font-family:'DM Mono',monospace;">Deuda TC propia: ${fmt(deudaTC)} ya descontada del patrimonio</div>` : '';
 
   // Calcular diferencias absolutas para el tooltip de cada card

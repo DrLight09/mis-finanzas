@@ -411,8 +411,10 @@ function load(){
   if(nuTasaEl)nuTasaEl.value=(S.nuTasaGlobal!=null)?String(S.nuTasaGlobal).replace('.',','):'';
   document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
   document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
-  if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(_getCuotaAnio('papa',S.mesadaAnio||new Date().getFullYear()));
-  if(document.getElementById('mesadaMonteMama'))document.getElementById('mesadaMonteMama').value=fmtInput(_getCuotaAnio('mama',S.mesadaAnio||new Date().getFullYear()));
+  if(typeof _getCuotaAnio==='function'){
+    if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(_getCuotaAnio('papa',S.mesadaAnio||new Date().getFullYear()));
+    if(document.getElementById('mesadaMonteMama'))document.getElementById('mesadaMonteMama').value=fmtInput(_getCuotaAnio('mama',S.mesadaAnio||new Date().getFullYear()));
+  }
   document.getElementById('spotifyCosto').value=fmtInput(S.spotifyCosto);
   document.getElementById('gv_fecha').value=hoy();
   document.getElementById('mov_fecha').value=hoy();
@@ -475,8 +477,10 @@ function save(){
   // no una decisión explícita — y grabarlo igual "congelaría" ese número en
   // cuanto se disparara CUALQUIER save() de la app (agregar un gasto, marcar
   // un pago de Nu, etc.), rompiendo la herencia hacia años futuros.
-  if(_elPapa&&_elPapa.value.trim()){const v=parseMoney(_elPapa.value);if(v&&v!==_getCuotaAnio('papa',_anioActivo))S.mesadas.papa.cuotas[String(_anioActivo)]=v;}
-  if(_elMama&&_elMama.value.trim()){const v=parseMoney(_elMama.value);if(v&&v!==_getCuotaAnio('mama',_anioActivo))S.mesadas.mama.cuotas[String(_anioActivo)]=v;}
+  if(typeof _getCuotaAnio==='function'){
+    if(_elPapa&&_elPapa.value.trim()){const v=parseMoney(_elPapa.value);if(v&&v!==_getCuotaAnio('papa',_anioActivo))S.mesadas.papa.cuotas[String(_anioActivo)]=v;}
+    if(_elMama&&_elMama.value.trim()){const v=parseMoney(_elMama.value);if(v&&v!==_getCuotaAnio('mama',_anioActivo))S.mesadas.mama.cuotas[String(_anioActivo)]=v;}
+  }
   S.spotifyCosto=parseMoney(document.getElementById('spotifyCosto').value)||0;
   (S.cajitas||[]).forEach(c=>{
     const elN=document.getElementById('cn_'+c.id);
@@ -982,7 +986,7 @@ function refresh(){
   renderGastosVar();
   renderGastosFijos();
   renderDeudoresList();
-  renderMesada();
+  if(typeof renderMesada==='function') renderMesada();
   renderSpotify();
   renderMesFiltros();
   renderAttencion();

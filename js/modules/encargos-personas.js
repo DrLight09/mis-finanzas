@@ -160,11 +160,27 @@ const _origAbrirEncargoDetallePersonas = abrirEncargoDetalle;
 abrirEncargoDetalle = function(id) {
   _origAbrirEncargoDetallePersonas.apply(this, arguments);
   const enc = getEncargo(id);
-  if (!enc || !enc.personaId) return;
+  const av = document.getElementById('encargoAvatar');
+  const chipViejo = document.getElementById('enc-det-perfil-chip');
+  if (!enc || !enc.personaId) {
+    // Este encargo no está vinculado a una persona: limpiar cualquier
+    // onclick/estilo que haya quedado pegado del último encargo CON persona
+    // que se visitó, ya que el avatar y el chip son elementos reutilizados
+    // entre pantallas de detalle, no se recrean por encargo.
+    if (av) {
+      av.onclick = null;
+      av.title = '';
+      av.style.cursor = '';
+      av.style.background = '';
+      av.style.color = '';
+      av.style.borderColor = '';
+    }
+    if (chipViejo) chipViejo.remove();
+    return;
+  }
   const p = getPersona(enc.personaId);
   if (!p) return;
   // Aplicar color de la persona al avatar del detalle
-  const av = document.getElementById('encargoAvatar');
   if (av) {
     av.style.background = (p.color || '#60b0f0') + '22';
     av.style.color = p.color || '#60b0f0';
@@ -174,16 +190,18 @@ abrirEncargoDetalle = function(id) {
     av.title = 'Ver perfil de ' + p.nombre;
     av.style.cursor = 'pointer';
   }
-  // Agregar chip de "Ver perfil" bajo el nombre si no existe
+  // Agregar chip de "Ver perfil" bajo el nombre y el saldo (no entre los dos)
   const nombreEl = document.getElementById('encargoNombreDet');
-  if (nombreEl && !document.getElementById('enc-det-perfil-chip')) {
+  const saldoLabelEl = document.getElementById('encargoSaldoLabel');
+  const anclaEl = saldoLabelEl || nombreEl;
+  if (anclaEl && !document.getElementById('enc-det-perfil-chip')) {
     const chip = document.createElement('button');
     chip.id = 'enc-det-perfil-chip';
     chip.type = 'button';
     chip.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:12px;height:12px;fill:currentColor;vertical-align:middle;"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg> Ver perfil completo';
     chip.style.cssText = 'font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:"DM Mono",monospace;padding:0;margin-top:2px;display:block;';
     chip.addEventListener('click', () => abrirPerfilPersona(p.id));
-    nombreEl.after(chip);
+    anclaEl.after(chip);
   } else if (document.getElementById('enc-det-perfil-chip')) {
     const chip = document.getElementById('enc-det-perfil-chip');
     chip.onclick = () => abrirPerfilPersona(p.id);

@@ -202,6 +202,22 @@ function addDeudor() {
 function getDeudorSaldo(d) {
   return (d.movimientos || []).reduce((a, m) => m.tipo === 'prestamo' ? a + m.monto : a - m.monto, 0);
 }
+// Cuenta(s) realmente afectadas por un movimiento de deudor — la(s) fuente(s)
+// si fue un préstamo dado, el destino si fue un abono/pago-completo recibido.
+function _deudorCuentasDe(m) {
+  if (m.tipo === 'prestamo') return (m.fuentes && m.fuentes.length) ? m.fuentes.map(f => f.fuente).filter(Boolean) : (m.fuente ? [m.fuente] : []);
+  return m.destino ? [m.destino] : [];
+}
+// Cantidad de movimientos posteriores del mismo deudor que tocaron alguna de
+// las mismas cuentas — criterio de "operaciones posteriores" de la
+// protección por antigüedad (ver core-state.js#nivelAntiguedadMovimiento y
+// docs/proteccion-antiguedad-movimientos.md §4).
+function _deudorOpsPosteriores(d, m) {
+  if (!m.fecha) return 0;
+  const cuentas = _deudorCuentasDe(m);
+  if (!cuentas.length) return 0;
+  return (d.movimientos || []).filter(m2 => m2.id !== m.id && m2.fecha && m2.fecha > m.fecha && _deudorCuentasDe(m2).some(c => cuentas.includes(c))).length;
+}
 // Guardia de integridad: verifica que registrar/eliminar un movimiento cambió el saldo
 // exactamente en lo esperado. Si no coincide, casi siempre significa que hay un movimiento
 // duplicado o corrupto en d.movimientos que no se está viendo a simple vista.
@@ -404,6 +420,17 @@ async function eliminarMovDeudor(deudorId, movId) {
   if (!d) return;
   const m = (d.movimientos || []).find(x => x.id === movId);
   if (!m) return;
+
+  // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
+  // Este mismo movimiento también se puede borrar desde la vista de cuenta
+  // genérica (rama 'prestamo'/'abono' de eliminarMovimiento() en
+  // movimientos.js), que aplica la misma protección por su cuenta.
+  const opsPosteriores = _deudorOpsPosteriores(d, m);
+  const nivel = nivelAntiguedadMovimiento(m.fecha, opsPosteriores, 'prestamos');
+  if (nivel === 'bloqueado') {
+    await avisarMovimientoBloqueado();
+    return;
+  }
   const esPrestamo = m.tipo === 'prestamo';
   const label = esPrestamo ? 'préstamo' : 'pago';
   const tieneExtra = !esPrestamo && m._extPartes && m._extPartes.length > 0;
@@ -414,6 +441,7 @@ async function eliminarMovDeudor(deudorId, movId) {
         : ' El extra (cajitas, gastos, etc.) también se revertirá.')
     : '';
   const tcAviso = esPrestamo && m._viaTC ? ' La deuda en la TC también se revertirá automáticamente.' : '';
+  const antiguedadAviso = nivel === 'viejo' ? ' Este movimiento ya tiene tiempo y puede estar mezclado con operaciones más recientes de esa cuenta — revisa bien antes de confirmar.' : '';
   // Mostrar explícitamente cómo va a cambiar la deuda de la persona, para poder
   // detectar a tiempo si el número resultante no cuadra con lo esperado.
   const _saldoAntesDel = getDeudorSaldo(d);
@@ -421,7 +449,7 @@ async function eliminarMovDeudor(deudorId, movId) {
   const _saldoTrasDel = _saldoAntesDel + _deltaEsperadoDel;
   const ok = await dialogo(
     'Eliminar ' + label,
-    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${esPrestamo ? (m._viaTC ? 'la TC' : 'la cuenta origen') : 'la cuenta destino'} se revertirá automáticamente. La deuda de ${escHtml(d.nombre)} pasará de ${fmt(_saldoAntesDel)} a ${fmt(_saldoTrasDel)}.${extraAviso}${tcAviso}`,
+    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${esPrestamo ? (m._viaTC ? 'la TC' : 'la cuenta origen') : 'la cuenta destino'} se revertirá automáticamente. La deuda de ${escHtml(d.nombre)} pasará de ${fmt(_saldoAntesDel)} a ${fmt(_saldoTrasDel)}.${extraAviso}${tcAviso}${antiguedadAviso}`,
     'Eliminar', true
   );
   if (!ok) return;
@@ -1810,11 +1838,38 @@ function confirmarMovMiDeuda() {
   toast('Movimiento registrado', 'ok');
 }
 
-function eliminarMovMiDeuda(deudaId, movId) {
+// Cuenta afectada por un movimiento de "mis deudas" — destino si fue plata
+// recibida, fuente si fue un pago hecho.
+function _miDeudaCuentasDe(m) {
+  if (m.tipo === 'recibido') return m.destino ? [m.destino] : [];
+  return m.fuente ? [m.fuente] : [];
+}
+function _miDeudaOpsPosteriores(d, m) {
+  if (!m.fecha) return 0;
+  const cuentas = _miDeudaCuentasDe(m);
+  if (!cuentas.length) return 0;
+  return (d.movimientos || []).filter(m2 => m2.id !== m.id && m2.fecha && m2.fecha > m.fecha && _miDeudaCuentasDe(m2).some(c => cuentas.includes(c))).length;
+}
+
+async function eliminarMovMiDeuda(deudaId, movId) {
   const d = (S.misDeudas || []).find(x => x.id === deudaId);
   if (!d) return;
   const m = (d.movimientos || []).find(x => x.id === movId);
   if (!m) return;
+
+  // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
+  const opsPosteriores = _miDeudaOpsPosteriores(d, m);
+  const nivel = nivelAntiguedadMovimiento(m.fecha, opsPosteriores, 'prestamos');
+  if (nivel === 'bloqueado') {
+    await avisarMovimientoBloqueado();
+    return;
+  }
+  if (nivel === 'viejo') {
+    const cuentas = _miDeudaCuentasDe(m);
+    const nombreCuenta = cuentas.length > 1 ? `${cuentas.length} cuentas` : fuenteLabel(cuentas[0]);
+    const ok = await confirmarBorrarMovimientoViejo(nombreCuenta, m.monto || 0, m.tipo === 'recibido' ? 'baja' : 'sube');
+    if (!ok) return;
+  }
 
   // Revertir el efecto en la cuenta involucrada
   if (m.tipo === 'recibido' && m.destino) {

@@ -400,10 +400,39 @@ function renderSpStats(){
   el.innerHTML=html;
 }
 async function deleteSpHistorial(i){
-  const ok=await dialogo('Eliminar movimiento','¿Eliminar este registro del historial? Esta acción no se puede deshacer. Esto también revierte la plata movida por este registro.','Eliminar',true);
-  if(!ok)return;
   const h=S.spotifyHistorial[i];
   if(!h)return;
+
+  // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
+  // Aplica solo a 'pago' (el pago real a Spotify): un 'cobro' individual sigue
+  // borrándose igual que siempre, su alcance ya es pequeño y contenido (solo
+  // revierte el proximoPago de un integrante).
+  if(h.tipo==='pago'){
+    const opsPosteriores=S.spotifyHistorial.filter((h2,idx2)=>idx2>i&&h2.tipo==='pago').length;
+    const nivel=nivelAntiguedadMovimiento(h.fecha,opsPosteriores,'spotify');
+    if(nivel==='bloqueado'){
+      await avisarMovimientoBloqueado();
+      return;
+    }
+    if(nivel==='viejo'){
+      const viaTC=!!h._tcMovId;
+      const ok=await confirmarBorrarMovimientoViejo(fuenteLabel(h.fuente),h.monto||0,viaTC?'baja':'sube',viaTC?'deuda':'saldo');
+      if(!ok)return;
+      // Ya se confirmó con el aviso específico de arriba — no repetir con el genérico de abajo.
+      return _borrarSpHistorial(i,h);
+    }
+  }
+
+  const ok=await dialogo('Eliminar movimiento','¿Eliminar este registro del historial? Esta acción no se puede deshacer. Esto también revierte la plata movida por este registro.','Eliminar',true);
+  if(!ok)return;
+  return _borrarSpHistorial(i,h);
+}
+
+// Cuerpo real del borrado — separado de deleteSpHistorial() para que tanto el
+// camino normal (confirmación genérica) como el de aviso por antigüedad
+// (confirmación específica, ver arriba) terminen en el mismo lugar sin
+// duplicar la reversión de saldos.
+async function _borrarSpHistorial(i,h){
 
   if(h.tipo==='cobro'){
     // Revertir el movimiento secundario: la plata que entró a la cuenta destino al cobrar

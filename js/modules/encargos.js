@@ -1423,12 +1423,27 @@ function confirmarMovEncargo() {
 }
 
 async function deleteMovEncargo(encId, movId) {
-  const ok = await dialogo('Eliminar movimiento', '¿Eliminar este movimiento del encargo? Se revertirán todos los efectos en tus cuentas.', 'Eliminar', true);
-  if (!ok) return;
   const enc = getEncargo(encId);
   if (!enc) return;
-
   const mov = (enc.movimientos||[]).find(m=>m.id===movId);
+  if (!mov) return;
+
+  // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
+  // Nota: a diferencia de los demás módulos, acá no afirmamos si la cuenta
+  // "sube" o "baja" — el motor de diferencial/intercambios de Encargos hace
+  // que la dirección exacta dependa del tipo de movimiento (entrada, salida,
+  // "lo cubrí yo", "lo adelanté yo"), así que el aviso de nivel 'viejo' queda
+  // genérico en vez de arriesgar un dato incorrecto.
+  const opsPosteriores = (enc.movimientos||[]).filter(m => m.id!==movId && mov.cuenta && m.cuenta===mov.cuenta && m.fecha && m.fecha>mov.fecha).length;
+  const nivel = nivelAntiguedadMovimiento(mov.fecha, opsPosteriores, 'encargos');
+  if (nivel === 'bloqueado') {
+    await avisarMovimientoBloqueado();
+    return;
+  }
+  const ok = nivel === 'viejo'
+    ? await dialogo('Movimiento antiguo', `Este movimiento de ${fmt(mov.monto)} ya tiene tiempo y puede estar mezclado con operaciones más recientes de este encargo${mov.cuenta ? ' en '+fuenteLabel(mov.cuenta) : ''}. Si lo eliminas, se revertirán sus efectos en tus cuentas ahora mismo — no se recalcula el historial completo. ¿Eliminar de todas formas?`, 'Eliminar de todas formas', true)
+    : await dialogo('Eliminar movimiento', '¿Eliminar este movimiento del encargo? Se revertirán todos los efectos en tus cuentas.', 'Eliminar', true);
+  if (!ok) return;
 
   // Revertir efectos secundarios de un pago de préstamo vía encargo
   if (mov && mov._esAbonoDeudor && mov._deudorId) {

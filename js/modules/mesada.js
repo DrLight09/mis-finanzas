@@ -67,6 +67,34 @@ function getMesadaData(parent){
   return S.mesadas[parent].pagos;
 }
 
+// Cuentas realmente afectadas por un pago de mesada — el destino simple, o
+// cada fuente del split si se repartió entre varias cuentas.
+function _mesadaFuentesDe(info){
+  if(info.splits&&info.splits.length)return info.splits.map(s=>s.fuente).filter(Boolean);
+  return info.destino?[info.destino]:[];
+}
+
+// Cantidad de pagos de mesada (papa + mama) posteriores a este, que tocaron
+// alguna de las mismas cuentas — criterio de "operaciones posteriores" de la
+// protección por antigüedad (ver core-state.js#nivelAntiguedadMovimiento y
+// docs/proteccion-antiguedad-movimientos.md §4: sin ciclo natural como
+// Spotify, se cuenta contra la cuenta destino en su lugar).
+function _mesadaOpsPosteriores(parentActual,keyActual,info){
+  const fuentes=_mesadaFuentesDe(info);
+  if(!fuentes.length||!info.fecha)return 0;
+  let count=0;
+  ['papa','mama'].forEach(p=>{
+    const data=getMesadaData(p);
+    Object.keys(data).forEach(k=>{
+      if(p===parentActual&&k===keyActual)return;
+      const otro=data[k];
+      if(!otro||!otro.fecha||otro.fecha<=info.fecha)return;
+      if(_mesadaFuentesDe(otro).some(f=>fuentes.includes(f)))count++;
+    });
+  });
+  return count;
+}
+
 function _getCuotaAnio(parent,anio){
   _ensureMesadas();
   const cuotas=S.mesadas[parent].cuotas;
@@ -469,10 +497,32 @@ function abrirDetalleMesada(parent,key,nombre){
   openSheet('mesada-det');
 }
 
-function eliminarMesadaPago(parent,key){
+async function eliminarMesadaPago(parent,key){
   const data=getMesadaData(parent);
   const info=data[key];
-  if(info){
+  if(!info)return;
+
+  // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
+  // Nivel 1 (reciente) no cambia nada, sigue igual que siempre (sin aviso previo).
+  const opsPosteriores=_mesadaOpsPosteriores(parent,key,info);
+  const nivel=nivelAntiguedadMovimiento(info.fecha,opsPosteriores,'mesada');
+  if(nivel==='bloqueado'){
+    await avisarMovimientoBloqueado();
+    return;
+  }
+  if(nivel==='viejo'){
+    const fuentes=_mesadaFuentesDe(info);
+    const nombreCuenta=fuentes.length>1?`${fuentes.length} cuentas`:fuenteLabel(fuentes[0]);
+    const ok=await confirmarBorrarMovimientoViejo(nombreCuenta,info.monto||0,'baja');
+    if(!ok)return;
+  }
+  _borrarMesadaPago(parent,key,info);
+}
+
+// Cuerpo real del borrado, separado para que ambos caminos (confirmación
+// normal y aviso por antigüedad) terminen acá sin duplicar la reversión.
+function _borrarMesadaPago(parent,key,info){
+  const data=getMesadaData(parent);
     // Si hubo abonos posteriores que fueron saldando un "pendiente", info.monto
     // ya incluye esos abonos además del pago original. Hay que separarlos para
     // devolver cada plata a la cuenta correcta (pueden ser cuentas distintas).
@@ -497,7 +547,6 @@ function eliminarMesadaPago(parent,key){
         _borrarMovSecundarioMesada(h.destino,h._movSecId);
       }
     });
-  }
   delete data[key];
   save();refresh();
   closeSheet('mesada-det');

@@ -67,6 +67,18 @@ const TC_ESTADOS = {
 // ── Helpers básicos ─────────────────────────────────────────────
 function getTCById(id){ return (S.tarjetasCredito||[]).find(x=>x.id===id); }
 
+// Cantidad de compras/pagos posteriores (no eliminados) de la misma tarjeta
+// — criterio de "operaciones posteriores" de la protección por antigüedad
+// (ver core-state.js#nivelAntiguedadMovimiento y
+// docs/proteccion-antiguedad-movimientos.md §4: sin ciclo natural como
+// Spotify, se cuenta contra la cuenta/tarjeta afectada en su lugar).
+function _tcOpsPosteriores(tc, fecha, excludeId){
+  if(!fecha)return 0;
+  const compras=(tc.compras||[]).filter(c=>!c.eliminado&&c.id!==excludeId&&c.fecha>fecha).length;
+  const pagos=(tc.pagos||[]).filter(p=>!p.eliminado&&p.id!==excludeId&&p.fecha>fecha).length;
+  return compras+pagos;
+}
+
 function tcDeudaTotal(){
   return (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
 }
@@ -907,7 +919,17 @@ async function eliminarCompraTC(tcId,compraId){
   if(!tc)return;
   const compra=(tc.compras||[]).find(c=>c.id===compraId&&!c.eliminado);
   if(!compra)return;
-  const ok=await dialogo('Eliminar compra','¿Eliminar esta compra de '+fmt(compra.monto)+'? Se reducirá la deuda de la tarjeta.','Eliminar',true);
+
+  // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
+  const opsPosteriores=_tcOpsPosteriores(tc,compra.fecha,compraId);
+  const nivel=nivelAntiguedadMovimiento(compra.fecha,opsPosteriores,'tarjetas');
+  if(nivel==='bloqueado'){
+    await avisarMovimientoBloqueado();
+    return;
+  }
+  const ok=nivel==='viejo'
+    ? await confirmarBorrarMovimientoViejo(tc.nombre,compra.monto||0,'baja','deuda')
+    : await dialogo('Eliminar compra','¿Eliminar esta compra de '+fmt(compra.monto)+'? Se reducirá la deuda de la tarjeta.','Eliminar',true);
   if(!ok)return;
   tcEliminarCompraInterna(tc,compraId);
   if(S.gastosVar)S.gastosVar=S.gastosVar.filter(g=>!(g._esCompraTC&&g._tcCompraId===compraId));
@@ -921,7 +943,17 @@ async function eliminarPagoTC(tcId,pagoId){
   if(!tc)return;
   const pago=(tc.pagos||[]).find(p=>p.id===pagoId&&!p.eliminado);
   if(!pago)return;
-  const ok=await dialogo('Eliminar pago','¿Eliminar este pago de '+fmt(pago.monto)+'? Se devolverá el dinero a '+fuenteLabel(pago.fuente)+' y aumentará la deuda de la tarjeta.','Eliminar',true);
+
+  // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
+  const opsPosteriores=_tcOpsPosteriores(tc,pago.fecha,pagoId);
+  const nivel=nivelAntiguedadMovimiento(pago.fecha,opsPosteriores,'tarjetas');
+  if(nivel==='bloqueado'){
+    await avisarMovimientoBloqueado();
+    return;
+  }
+  const ok=nivel==='viejo'
+    ? await confirmarBorrarMovimientoViejo(tc.nombre,pago.monto||0,'sube','deuda')
+    : await dialogo('Eliminar pago','¿Eliminar este pago de '+fmt(pago.monto)+'? Se devolverá el dinero a '+fuenteLabel(pago.fuente)+' y aumentará la deuda de la tarjeta.','Eliminar',true);
   if(!ok)return;
   tcEliminarPagoInterna(tc,pagoId);
   if(pago.fuente) sumarFuente(pago.fuente,pago.monto);

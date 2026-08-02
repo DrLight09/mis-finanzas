@@ -1594,13 +1594,28 @@ function abrirTraspasoEncargo() {
   document.getElementById('traspaso_fecha').value = hoy();
   document.getElementById('traspaso_preview').textContent = '';
 
+  // Poblar select origen: de qué cuenta del encargo salió el regalo
+  const selOrigen = document.getElementById('traspaso_origen');
+  const cuentasEnc = _getEncargoSaldoPorCuenta(enc);
+  if (cuentasEnc.length === 0) {
+    // Si no hay distribución por cuenta, mostrar todas (sin TC) — mismo criterio que una salida normal
+    const fuentesTodas = getFuentesSinTC();
+    selOrigen.innerHTML = '<option value="">Sin especificar</option>' + fuentesTodas.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+  } else {
+    selOrigen.innerHTML = '<option value="">Sin especificar</option>' +
+      cuentasEnc.map(f=>`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+    // Pre-seleccionar la cuenta con más saldo del encargo
+    selOrigen.value = cuentasEnc[0].cuenta;
+  }
+  _actualizarTraspasoOrigenHint(enc);
+  selOrigen.onchange = function() { _actualizarTraspasoOrigenHint(enc); };
+
   // Poblar select destino con mis cuentas
   const fuentes = getFuentes();
   const sel = document.getElementById('traspaso_destino');
   sel.innerHTML = '<option value="">Seleccionar cuenta</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
 
-  // Pre-seleccionar la cuenta donde más saldo tiene el encargo
-  const cuentasEnc = _getEncargoSaldoPorCuenta(enc);
+  // Pre-seleccionar la misma cuenta donde más saldo tiene el encargo
   if (cuentasEnc.length > 0) {
     sel.value = cuentasEnc[0].cuenta;
   }
@@ -1612,6 +1627,15 @@ function abrirTraspasoEncargo() {
 
   openSheet('traspaso-encargo');
   setTimeout(()=>document.getElementById('traspaso_monto').focus(), 200);
+}
+
+function _actualizarTraspasoOrigenHint(enc) {
+  const sel = document.getElementById('traspaso_origen');
+  const hint = document.getElementById('traspaso_origen_hint');
+  if (!hint || !sel) return;
+  const val = sel.value;
+  if (!val) { hint.textContent = ''; return; }
+  hint.textContent = 'El encargo tiene ahí: ' + fmt(_getEncargoSaldoEnCuenta(enc, val));
 }
 
 function _actualizarTraspasoHint() {
@@ -1657,11 +1681,18 @@ function confirmarTraspasoEncargo() {
     toast(`El encargo solo tiene ${fmt(saldoActual)}`, 'err'); return;
   }
 
+  // De qué cuenta física salió — elegida por el usuario en el selector
+  const cuentaOrigen = document.getElementById('traspaso_origen').value || '';
+  if (cuentaOrigen) {
+    const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuentaOrigen);
+    if (monto > saldoEnCuenta) {
+      toast(`El encargo solo tiene ${fmt(saldoEnCuenta)} guardado en ${escHtml(fuenteLabel(cuentaOrigen))}`, 'err');
+      return;
+    }
+  }
+
   // 1. Registrar salida en el encargo
   if (!enc.movimientos) enc.movimientos = [];
-  // Determinar de qué cuenta física salió (la que más saldo tiene del encargo)
-  const cuentasEnc = _getEncargoSaldoPorCuenta(enc);
-  const cuentaOrigen = cuentasEnc.length > 0 ? cuentasEnc[0].cuenta : '';
   const encMovId = uid();
   enc.movimientos.push({
     id: encMovId,

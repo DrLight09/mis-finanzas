@@ -80,6 +80,33 @@ const Loader = (function () {
     // auditado a este nivel) también llama alguna función de mesada.js sin
     // guard — queda anotado como hallazgo abierto, no investigado acá.
     mesada: ['js/modules/mesada.js'],
+    // Sexto grupo lazy (2026-08-02, ronda de resolver de raíz el acoplamiento
+    // spotify↔tarjetas_credito). A diferencia de los 5 anteriores, este no
+    // partió de "¿cuál es la próxima pantalla candidata?" sino de un bug de
+    // acoplamiento ya encontrado: spotify.js llamaba funciones de
+    // tarjetas_credito.js (getTCById/tcCupoDisponible/tcRecalcular) asumiendo
+    // que ya estaba cargado porque siempre cargaba eager. En vez de solo
+    // documentar la decisión de producto, se resolvió de raíz: tarjetas_credito
+    // pasa a ser lazy de verdad, y los 3 puntos en spotify.js (más 2 en
+    // movimientos.js: tcEliminarCompraInterna/tcEliminarPagoInterna) ya esperan
+    // Loader.ensure('tarjetas') antes de usar esas funciones — ver
+    // js/modules/spotify.js (_spEnsureTC) y js/core/movimientos.js.
+    // #screen-tarjetas y #mas-tarjetas ya eran HTML estático (mismo caso que
+    // Mesada/Configuración). Sí requirió 2 cambios reales dentro del propio
+    // archivo (ver su header): el wiring de botones que esperaba
+    // 'DOMContentLoaded' se corrigió a top-level (mismo fix que
+    // actividad_reciente.js), y tcNormalizarTarjetas()/renderTCDashboard()
+    // (llamadas desde refresh()/save() en core-state.js, no desde acá) ya
+    // tienen guard typeof — confirmado con el archivo real, ver
+    // auditoria-tecnica.md. Su wrapper de abrirDetalleMov (Events.registerAll
+    // más abajo en el archivo) ya resolvía el nombre en tiempo de click, no
+    // de carga, así que es lazy-safe sin tocarlo. Efecto secundario aceptado,
+    // no corregido: el parche a window.mostrarAlertaFuente al final del
+    // archivo (hint "se carga a la TC" al elegir una tarjeta como fuente en
+    // Gastos/Encargos/Préstamos) no aplica hasta que el usuario visite
+    // Tarjetas por primera vez — el hint simplemente no aparece hasta
+    // entonces, no rompe nada.
+    tarjetas: ['js/modules/tarjetas_credito.js'],
   };
 
   const loaded = new Set();   // grupos ya cargados (no se vuelven a pedir)

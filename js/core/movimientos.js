@@ -134,8 +134,10 @@ function abrirDetalleMov(el){
         }
         // Fallback al encargo activo
         if (!_rawMov) {
-          const enc = getEncargo(encargoActualId);
-          if (enc) _rawMov = (enc.movimientos||[]).find(m=>m.id===movId) || null;
+          if (typeof getEncargo==='function') {
+            const enc = getEncargo(encargoActualId);
+            if (enc) _rawMov = (enc.movimientos||[]).find(m=>m.id===movId) || null;
+          }
         }
       } else if (cuentaKey === 'deudor') {
         for (const d of (S.deudores||[])) {
@@ -609,12 +611,24 @@ async function eliminarMovimiento(btn) {
       if (g._esCompraTC && g._tcId) {
         // Compra de TC: marcar como eliminada en tc.compras (nunca se borra
         // físicamente) y recalcular la deuda — NO usar sumarFuente aquí.
+        // FIX: tcEliminarCompraInterna es una mutación real (revierte deuda),
+        // no un render — si tarjetas_credito.js no está cargado, hay que
+        // esperarlo (Loader.ensure) y abortar todo el borrado si falla, en
+        // vez de borrar el gasto y dejar la tarjeta con la deuda vieja.
+        if (typeof tcEliminarCompraInterna!=='function') {
+          try { await Loader.ensure('tarjetas'); }
+          catch(err) { toast('No se pudo cargar Tarjetas de Crédito. Intenta de nuevo.', 'err', 4000); return; }
+        }
         const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
         if (tc && g._tcCompraId) tcEliminarCompraInterna(tc, g._tcCompraId);
       } else if (g._esPagoTC && g._tcId) {
         // Pago de TC: restaurar la deuda en la tarjeta Y devolver la plata a
         // la cuenta origen (antes solo se hacía lo segundo — la deuda de la
         // TC quedaba mal para siempre).
+        if (typeof tcEliminarPagoInterna!=='function') {
+          try { await Loader.ensure('tarjetas'); }
+          catch(err) { toast('No se pudo cargar Tarjetas de Crédito. Intenta de nuevo.', 'err', 4000); return; }
+        }
         const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
         if (tc && g._tcPagoId) tcEliminarPagoInterna(tc, g._tcPagoId);
         if (g.fuente) sumarFuente(g.fuente, g.monto);
@@ -652,6 +666,15 @@ async function eliminarMovimiento(btn) {
     });
   } else if (movTipoEl === 'mesada') {
     // Mesada
+    // FIX: getMesadaData es una mutación real (encuentra y borra el registro
+    // original + revierte la plata al destino) — mesada.js ya es un grupo
+    // lazy real, así que esto rompía HOY (no solo en un escenario futuro) si
+    // se eliminaba un movimiento de mesada desde el feed general sin haber
+    // visitado antes la pantalla Mesada.
+    if (typeof getMesadaData!=='function') {
+      try { await Loader.ensure('mesada'); }
+      catch(err) { toast('No se pudo cargar Mesada. Intenta de nuevo.', 'err', 4000); return; }
+    }
     let found = false;
     ['papa', 'mama'].forEach(parent => {
       const data = getMesadaData(parent);
@@ -676,9 +699,9 @@ async function eliminarMovimiento(btn) {
   if (cuentaActual) {
     if (cuentaActual === 'custom' && _customCuentaActualId) {
       // Re-abrir la cuenta custom activa para refrescar saldo + movimientos
-      abrirCustomCuenta(_customCuentaActualId);
+      if (typeof abrirCustomCuenta==='function') abrirCustomCuenta(_customCuentaActualId);
     } else {
-      renderDetalleCuenta(cuentaActual);
+      if (typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);
     }
   }
   toast('Movimiento eliminado y saldos revertidos', 'info');

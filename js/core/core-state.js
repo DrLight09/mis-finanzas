@@ -578,7 +578,12 @@ function calcPatrimonioTotal(){
   // CHANGELOG.md#encargos.
   const nequi=(S.nequiSaldo||0);
   const ef=(S.efectivoSaldo||0);
-  const prest=(S.deudores||[]).reduce((a,d)=>{ const s=getDeudorSaldoPatrimonio(d); return a+(s>0?s:0); },0);
+  // FIX (auditoria-tecnica.md #5): getDeudorSaldoPatrimonio (prestado.js) se
+  // llamaba sin guard typeof — calcPatrimonioTotal() corre en CADA save() de
+  // la app (vía snapshotPatrimonio), no solo en refresh(), así que esto
+  // bloqueaba volver lazy Préstamos igual que tcNormalizarTarjetas bloqueaba
+  // Tarjetas de Crédito.
+  const prest=(S.deudores||[]).reduce((a,d)=>{ const s=typeof getDeudorSaldoPatrimonio==='function'?getDeudorSaldoPatrimonio(d):0; return a+(s>0?s:0); },0);
   const custom=(S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0);
   const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
   // Lo que le debo a otras personas (S.misDeudas) — esa plata está físicamente en
@@ -971,27 +976,33 @@ function refresh(){
   if(selNu)selNu.textContent=fmt(nu);
   if(selEf)selEf.textContent=fmt(ef);
   // Si hay una cuenta abierta, actualizar su detalle
-  if(cuentaActual)renderDetalleCuenta(cuentaActual);
+  // FIX (auditoria-tecnica.md #5): las llamadas de este bloque no tenían
+  // guard typeof — bloqueaban de raíz volver lazy cuentas/encargos/gastos/
+  // prestado/spotify/inicio/tarjetas_credito (ReferenceError en el primer
+  // refresh() tras cargar el módulo bajo demanda). Mismo patrón defensivo
+  // ya usado para renderMesada/_refreshCajitaDet/renderTCScreen — no cambia
+  // el comportamiento actual (todo sigue cargando de entrada).
+  if(cuentaActual){ if(typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual); }
   else if(_customCuentaActualId){
     const _cc=(S.cuentasPersonalizadas||[]).find(x=>x.id===_customCuentaActualId);
     if(_cc){
       const saldoEl=document.getElementById('det-custom-saldo');
       if(saldoEl)saldoEl.textContent=fmt(_cc.saldo||0);
-      renderMovsCustom(_cc);
-      renderEncargosEnCuenta('det-custom-encargos', 'custom:'+_customCuentaActualId);
+      if(typeof renderMovsCustom==='function') renderMovsCustom(_cc);
+      if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-custom-encargos', 'custom:'+_customCuentaActualId);
     }
-  } else { renderCajitas(); }
+  } else { if(typeof renderCajitas==='function') renderCajitas(); }
   // Siempre actualizar el detalle/sub-pantallas de cajita si hay una abierta
   if(typeof _refreshCajitaDet==='function') _refreshCajitaDet();
-  renderGastosVar();
-  renderGastosFijos();
-  renderDeudoresList();
+  if(typeof renderGastosVar==='function') renderGastosVar();
+  if(typeof renderGastosFijos==='function') renderGastosFijos();
+  if(typeof renderDeudoresList==='function') renderDeudoresList();
   if(typeof renderMesada==='function') renderMesada();
-  renderSpotify();
-  renderMesFiltros();
-  renderAttencion();
-  renderCustomCuentasList();
-  renderTCDashboard();
+  if(typeof renderSpotify==='function') renderSpotify();
+  if(typeof renderMesFiltros==='function') renderMesFiltros();
+  if(typeof renderAttencion==='function') renderAttencion();
+  if(typeof renderCustomCuentasList==='function') renderCustomCuentasList();
+  if(typeof renderTCDashboard==='function') renderTCDashboard();
   // FIX: faltaba acá — la pantalla de Tarjetas (renderTCScreen) solo se
   // actualizaba al crear/editar/eliminar una tarjeta. Si Firestore traía
   // los datos DESPUÉS de haber entrado a la pantalla (o mientras estaba

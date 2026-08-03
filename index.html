@@ -4366,13 +4366,23 @@
 // js/core/movimientos.js el 2026-07-26) no tenía dependencia real de
 // orden de carga. ESO YA NO ES CIERTO: tarjetas_credito.js referencia
 // abrirDetalleMov directo en su Events.registerAll('tarjetas', {...}),
-// pero carga antes que js/core/movimientos.js (línea de abajo) — sin el
-// wrapper agregado el 2026-08-03 en tarjetas_credito.js, esto tira
-// ReferenceError al cargar la app. No se reordenaron los <script> para
-// no arriesgar otra dependencia oculta; se resolvió con el mismo patrón
-// de wrapper ya usado con leerArchivoImport en configuracion.js.
+// y ya no importa que cargue antes o después de js/core/movimientos.js
+// (línea de abajo) — el wrapper agregado el 2026-08-03 en
+// tarjetas_credito.js resuelve el nombre recién al hacer click (mismo
+// patrón que leerArchivoImport en configuracion.js), no al cargar.
+
+// (2026-08-02, ronda de resolver de raíz el acoplamiento spotify↔
+// tarjetas_credito) Sexto grupo lazy: ver js/core/lazy-loader.js
+// (Loader.GROUPS.tarjetas). #screen-tarjetas y #mas-tarjetas ya eran
+// HTML estático, así que no hubo que copiar/inyectar nada. spotify.js
+// (_spEnsureTC) y js/core/movimientos.js ya esperan Loader.ensure(
+// 'tarjetas') antes de usar getTCById/tcCupoDisponible/tcRecalcular/
+// tcEliminarCompraInterna/tcEliminarPagoInterna — ver auditoria-
+// tecnica.md. El <script> de acá abajo se saca; ahora lo descarga
+// js/core/lazy-loader.js la primera vez que alguien entra a Tarjetas
+// de Crédito.
 -->
-<script src="js/modules/tarjetas_credito.js" defer></script>
+<!-- tarjetas_credito.js: ver js/core/lazy-loader.js (Loader.GROUPS.tarjetas) -->
 <script src="js/core/movimientos.js" defer></script>
 <!--
 // abrirDetalleMov()/eliminarMovimiento() y su registro Events.on('core:...')

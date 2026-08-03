@@ -54,18 +54,20 @@
    Nota (2026-08-02) — intento de volver este módulo LAZY (docs/
    auditoria-tecnica.md #4): el wiring de botones que esperaba
    'DOMContentLoaded' se corrigió a top-level (mismo bug/mismo fix que
-   ya se aplicó en actividad_reciente.js) — ver más abajo. PERO no se
-   agregó a Loader.GROUPS todavía: `tcNormalizarTarjetas()` (arriba en
-   este archivo) no tiene ningún caller dentro de este archivo, así que
-   por descarte se está llamando desde `refresh()`/`save()` en
-   core-state.js — que no se recibió esta sesión, así que no se pudo
-   confirmar si ya tiene guard `typeof` (el mapeo original de
-   auditoria-tecnica.md #4 solo listó 12 funciones `render*`;
-   `tcNormalizarTarjetas` no es una de ellas, y su propio comentario dice
-   "se ejecuta en cada refresh()" — si el guard no existe ahí, TC lazy
-   rompe `refresh()` en cada boot hasta que el usuario entre a la
-   pantalla). Queda como hallazgo abierto, no investigado más sin ese
-   archivo — no se fuerza el cambio sin poder confirmarlo.
+   ya se aplicó en actividad_reciente.js) — ver más abajo.
+
+   RESUELTO (2026-08-02, ronda posterior): con core-state.js real en
+   mano se confirmó que tcNormalizarTarjetas() SÍ tiene guard typeof en
+   refresh() (aunque tcNormalizarTarjetas no es una de las 12 render*
+   originalmente mapeadas) y que renderTCDashboard() — que no lo tenía —
+   ya se corrigió ahí también. movimientos.js (que llama
+   tcEliminarCompraInterna/tcEliminarPagoInterna sin guard) y spotify.js
+   (getTCById/tcCupoDisponible/tcRecalcular sin guard) también se
+   corrigieron con Loader.ensure('tarjetas'). El wrapper de abrirDetalleMov
+   de este archivo (ver Events.registerAll más abajo) ya resuelve el
+   nombre en tiempo de click, no de carga — es lazy-safe sin cambios. Ya
+   se puede agregar `tarjetas` a Loader.GROUPS — ver js/core/lazy-loader.js
+   y el <script> correspondiente en index.html.
    ═══════════════════════════════════════════════════════════════ */
 
 let _tcActualId = null;
@@ -513,6 +515,7 @@ function renderTCDashboard(){
         // después — la cajita necesita cubrir la plata física, no la titularidad.
         const deudaGrupo=tcs.reduce((a,x)=>a+(x.deuda||0),0);
         if(!deudaGrupo) return;
+        if(typeof calcC!=='function') return;
         const saldoCajita=calcC(cajita).val;
         const diferencia=saldoCajita-deudaGrupo;
         const alcanza=diferencia>=0;
@@ -786,7 +789,7 @@ function abrirDetalleTCSheet(tcId){
   // Si tc.cajitaId apunta a una cajita que ya no existe (la borraron), el
   // find() no encuentra nada y simplemente no se muestra el widget — no rompe.
   const cajitaVinc = tc.cajitaId ? (S.cajitas||[]).find(c=>c.id===tc.cajitaId) : null;
-  if(cajitaVinc){
+  if(cajitaVinc && typeof calcC==='function'){
     // Otras tarjetas que comparten la misma cajita también cuentan para la cobertura.
     // Deuda TOTAL (no solo la propia): el banco cobra el 100% del corte sin importar
     // si una parte viene de un encargo/préstamo — la cajita necesita cubrir la plata
@@ -808,8 +811,11 @@ function abrirDetalleTCSheet(tcId){
       <div style="font-size:12px;color:var(--text2);">Saldo en la cajita: <b>${fmt(saldoCajita)}</b> · Deuda a cubrir: <b>${fmt(deudaGrupoTotal)}</b></div>
       ${compartidaMsg?`<div style="font-size:10px;color:var(--text3);margin-top:4px;">${compartidaMsg}</div>`:''}
     </div>`;
-  } else if(tc.cajitaId){
-    // Tenía una cajita vinculada pero ya no existe (fue eliminada).
+  } else if(tc.cajitaId && !cajitaVinc){
+    // Tenía una cajita vinculada pero ya no existe (fue eliminada). Si
+    // cajitaVinc sí existe pero calcC no cargó todavía (cuentas.js), el
+    // widget simplemente no se muestra esta vez — no es lo mismo que
+    // "se eliminó", así que no cae acá.
     html+=`<div style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--amber);">
       La cajita que tenías vinculada para pagar esta tarjeta ya no existe. Podés vincular una nueva desde "Editar tarjeta".
     </div>`;

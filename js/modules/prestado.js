@@ -128,7 +128,7 @@ function _updatePrestSplitResumen(){
     if(!r.fuente || !r.fuente.startsWith('cajita:') || !r.monto) return;
     const cajitaId = r.fuente.split(':')[1];
     const c = (S.cajitas||[]).find(x=>x.id===cajitaId);
-    if(!c || !c.meta) return;
+    if(!c || !c.meta || typeof calcC!=='function') return;
     const saldoActual = calcC(c).val;
     const saldoTras = saldoActual - r.monto;
     const minimo = c.meta.minimo || 0;

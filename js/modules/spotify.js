@@ -26,9 +26,13 @@
    Pagar Spotify con una tarjeta de crédito (fuente 'tc:<id>') es un CARGO a la
    tarjeta, no un descuento de saldo — usa getTCById/tcCupoDisponible/tcRecalcular
    de js/modules/tarjetas_credito.js, igual que Encargos/Préstamos (S.tcMovimientos
-   con tipo 'cargo_*'). Como estas funciones se llaman recién en tiempo de evento
-   (al confirmar/eliminar un pago), no importa que tarjetas_credito.js se cargue
-   más abajo en index.html — ya está disponible cuando el usuario interactúa.
+   con tipo 'cargo_*'). FIX 2026-08-02: antes se asumía que tarjetas_credito.js ya
+   estaba cargado porque cargaba eager — dejó de ser una asunción segura (ver
+   auditoria-tecnica.md, acoplamiento spotify↔tarjetas_credito). Los 3 puntos que
+   usan esas funciones ahora pasan primero por _spEnsureTC(), que llama a
+   Loader.ensure('tarjetas') si hace falta — ver ese helper, arriba de
+   openSheet_pagarSpotify(). Funciona igual si tarjetas_credito.js sigue cargando
+   eager (no-op inmediato) que si se vuelve lazy.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ---- SPOTIFY ---- */
@@ -470,9 +474,14 @@ async function _borrarSpHistorial(i,h){
     if(h._tcMovId){
       const mov=(S.tcMovimientos||[]).find(m=>m.id===h._tcMovId&&!m.eliminado);
       if(mov){
+        // mov.eliminado se marca siempre (es solo un dato) aunque la carga de
+        // tarjetas_credito.js falle o tarde — así el estado no queda a medias.
+        // Solo tcRecalcular() (una función real del módulo) espera la carga.
         mov.eliminado=true;
-        const tc=getTCById(mov.tcId);
-        if(tc)tcRecalcular(tc);
+        if(await _spEnsureTC()){
+          const tc=getTCById(mov.tcId);
+          if(tc)tcRecalcular(tc);
+        }
       }
     } else if(h.fuente){
       sumarFuente(h.fuente,h.monto||0);
@@ -595,6 +604,25 @@ function confirmarSpDestino(){
   toast(meses>1?`Cobrados ${meses} períodos adelantados a ${escHtml(nombreActual)} · ${fmt(montoTotal)}`:`Cobro registrado · ${escHtml(nombreActual)}`,'ok');
 }
 
+// FIX (auditoria-tecnica.md — acoplamiento spotify↔tarjetas_credito): las 3
+// llamadas a getTCById/tcCupoDisponible/tcRecalcular de este archivo asumían
+// que tarjetas_credito.js ya estaba cargado porque hasta ahora cargaba eager.
+// Este helper asegura la carga bajo demanda con Loader.ensure('tarjetas')
+// antes de usarlas — funciona igual si tarjetas_credito.js sigue cargando
+// eager (typeof ya es 'function', Loader.ensure ni se llama) que si en el
+// futuro se vuelve un grupo lazy real. Si la descarga falla (sin conexión),
+// avisa con un toast en vez de dejar la acción muda.
+async function _spEnsureTC(){
+  if(typeof getTCById==='function') return true;
+  try{
+    await Loader.ensure('tarjetas');
+    return true;
+  }catch(err){
+    toast('No se pudo cargar Tarjetas de Crédito. Revisa tu conexión e intenta de nuevo.','err',4000);
+    return false;
+  }
+}
+
 function openSheet_pagarSpotify(){
   const costo=S.spotifyCosto||0;
   const cajitaSaldo=getSpCajitaSaldo();
@@ -622,7 +650,7 @@ function openSheet_pagarSpotify(){
   if(fechaPagoEl)fechaPagoEl.value=hoy();
 }
 
-function actualizarSpPagarPreview(){
+async function actualizarSpPagarPreview(){
   const monto=parseMoney(document.getElementById('spPagarMonto').value)||0;
   const fuente=document.getElementById('spPagarFuente').value;
   const prev=document.getElementById('spPagarPreview');
@@ -631,6 +659,7 @@ function actualizarSpPagarPreview(){
   // retiro de saldo de una cuenta/cajita — por eso se muestra aparte, igual que en
   // ptcActualizarPreview() (tarjetas_credito.js) para el flujo inverso de "Pagar TC".
   if(fuente&&fuente.startsWith('tc:')){
+    if(!(await _spEnsureTC())){ fuenteInfo.textContent=''; prev.textContent=''; return; }
     const tc=getTCById(fuente.slice(3));
     if(tc){
       const cupoDisp=tc.cupo?tcCupoDisponible(tc):null;
@@ -658,7 +687,7 @@ function actualizarSpPagarPreview(){
   }
 }
 
-function confirmarPagarSpotify(){
+async function confirmarPagarSpotify(){
   const monto=parseMoney(document.getElementById('spPagarMonto').value)||0;
   const fuente=document.getElementById('spPagarFuente').value;
   const nota=document.getElementById('spPagarNota')?document.getElementById('spPagarNota').value.trim():'';
@@ -667,6 +696,7 @@ function confirmarPagarSpotify(){
   const fechaPago0=(fechaPagoEl0&&fechaPagoEl0.value)?fechaPagoEl0.value:hoy();
   let tcMovId=null;
   if(fuente&&fuente.startsWith('tc:')){
+    if(!(await _spEnsureTC())) return;
     // Pagar con tarjeta de crédito es un CARGO: sube la deuda de la tarjeta, no
     // descuenta el saldo de una cuenta/cajita. Mismo patrón que Encargos/Préstamos
     // (ver tcRecalcular en tarjetas_credito.js, que suma S.tcMovimientos con

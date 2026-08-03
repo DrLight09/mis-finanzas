@@ -123,7 +123,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
       let interesMioHoy = 0;
       let valorActualPorcion = saldoEncargo;
       let interesAcumulado = 0;
-      if (cajita && cajita.saldo > 0) {
+      if (cajita && cajita.saldo > 0 && typeof calcC==='function') {
         const k = calcC(cajita);
         const proporcion = saldoEncargo / cajita.saldo; // fracción del saldo base que es del encargo
         valorActualPorcion = k.val * proporcion;        // valor actual de esa fracción (crece con la cajita)
@@ -1544,7 +1544,7 @@ async function deleteMovEncargo(encId, movId) {
   enc.movimientos = (enc.movimientos||[]).filter(m=>m.id!==movId);
   save();
   refresh();
-  if (cuentaActual) renderDetalleCuenta(cuentaActual);
+  if (cuentaActual && typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);
   abrirEncargoDetalle(encId);
   toast('Movimiento eliminado y saldos revertidos', 'info');
 }

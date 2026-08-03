@@ -111,12 +111,16 @@ function volverSelector() {
 }
 
 function renderDetalleCuenta(tipo) {
+  // FIX (auditoria-tecnica.md #5, hallazgo "Cuentas→Encargos"): las 3 llamadas
+  // de este bloque no tenían guard typeof. Hoy encargos.js carga eager, así
+  // que no rompe nada — pero es el acoplamiento exacto que bloquearía volver
+  // lazy cuentas o encargos por separado.
   if (tipo === 'nequi') {
     document.getElementById('det-nequi-saldo').textContent = fmt(S.nequiSaldo || 0);
     // Banner saldo inicial Nequi
     renderBannerApertura('nequi');
     // Encargos en Nequi
-    renderEncargosEnCuenta('det-nequi-encargos', 'nequi');
+    if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-nequi-encargos', 'nequi');
     // Movimientos relacionados con Nequi
     const movs = getMovimientosCuenta('nequi');
     renderMovsCuenta('det-nequi-movs', movs, '#ff4da6', 'nequi');
@@ -124,7 +128,7 @@ function renderDetalleCuenta(tipo) {
     // Cajitas ya se renderizan en renderCajitas()
     renderCajitas();
     // Encargos en Nu (cualquier cajita)
-    renderEncargosEnCuenta('det-nu-encargos', 'nu');
+    if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-nu-encargos', 'nu');
     // Movimientos Nu (cajitas)
     const movs = getMovimientosCuenta('nu');
     renderMovsCuenta('det-nu-movs', movs, 'var(--nu-light)', 'nu');
@@ -133,7 +137,7 @@ function renderDetalleCuenta(tipo) {
     // Banner saldo inicial Efectivo
     renderBannerApertura('efectivo');
     // Encargos en Efectivo
-    renderEncargosEnCuenta('det-ef-encargos', 'efectivo');
+    if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-ef-encargos', 'efectivo');
     const movs = getMovimientosCuenta('efectivo');
     renderMovsCuenta('det-ef-movs', movs, 'var(--amber)', 'efectivo');
   }
@@ -309,7 +313,7 @@ function abrirCustomCuenta(id){
   const btnEd=document.getElementById('btn-editar-cuenta-custom');
   if(btnEd) btnEd.onclick=()=>editarCuentaCustom(id);
   renderMovsCustom(c);
-  renderEncargosEnCuenta('det-custom-encargos', 'custom:'+id);
+  if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-custom-encargos', 'custom:'+id);
   document.getElementById('cuentas-selector').style.display='none';
   document.getElementById('cuentas-detalle-nequi').style.display='none';
   document.getElementById('cuentas-detalle-nu').style.display='none';
@@ -1844,7 +1848,10 @@ function getMovimientosCuenta(tipo) {
     });
   });
   // Mesadas recibidas en esta cuenta
-  ['papa', 'mama'].forEach(parent => {
+  // FIX: getMesadaData (mesada.js) es lazy — sin este guard, abrir el
+  // detalle de Nequi/Nu/Efectivo sin haber visitado Mesada antes tiraba
+  // ReferenceError acá y cortaba renderDetalleCuenta() a la mitad.
+  if(typeof getMesadaData==='function') ['papa', 'mama'].forEach(parent => {
     const data = getMesadaData(parent);
     Object.entries(data).forEach(([k, info]) => {
       const [anio, mesIdx] = k.split('-');

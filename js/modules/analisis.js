@@ -60,8 +60,7 @@ function renderAnalisis(){
   const mesNum=parseInt(mes.split('-')[1])-1;
   const anio=parseInt(mes.split('-')[0]);
   let ingresosEstimados=0;
-  if(S.modulos&&S.modulos.mesada){
-    const mesKey2=anio+'-'+mesNum;
+  if(S.modulos&&S.modulos.mesada&&typeof getMesadaData==='function'){
     const infoPapa=getMesadaData('papa')[mesKey2];
     const infoMama=getMesadaData('mama')[mesKey2];
     if(infoPapa) ingresosEstimados+=(infoPapa.monto||_getCuotaAnio('papa',anio)||0);
@@ -262,7 +261,7 @@ function renderAnalisis(){
   // ── Mesada ─────────────────────────────────────────────────────────────
   const mesadaSection=document.getElementById('an-mesada-section');
   const mesadaTotal=document.getElementById('an-mesada-total');
-  if(S.modulos&&S.modulos.mesada&&mesadaSection&&mesadaTotal){
+  if(S.modulos&&S.modulos.mesada&&mesadaSection&&mesadaTotal&&typeof getMesadaData==='function'){
     mesadaSection.style.display='';
     const dataPapa=getMesadaData('papa');
     const dataMama=getMesadaData('mama');
@@ -309,8 +308,7 @@ function renderAnalisis(){
     const mesNumPrev=dPrev.getMonth();
     const anioPrev=dPrev.getFullYear();
     let ingresosPrev=0;
-    if(S.modulos&&S.modulos.mesada){
-      const mkPrev=anioPrev+'-'+mesNumPrev;
+    if(S.modulos&&S.modulos.mesada&&typeof getMesadaData==='function'){
       const iPapa=getMesadaData('papa')[mkPrev];
       const iMama=getMesadaData('mama')[mkPrev];
       if(iPapa) ingresosPrev+=(iPapa.monto||_getCuotaAnio('papa',anioPrev)||0);

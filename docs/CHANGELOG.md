@@ -83,6 +83,12 @@ El wrapper `mpDebeWrap` y el checkbox `mpQuedaDebiendo` del sheet de registrar p
 
 ## Mesada
 
+### 🔧 Nuevo — Protección por antigüedad al eliminar un pago de mesada
+
+*(2026-08-01)*
+
+Aplicada en los dos puntos donde se puede borrar un pago de mesada: `eliminarMesadaPago()` (vista propia del módulo) y la rama `'mesada'` de `eliminarMovimiento()` en `movimientos.js` (vista de cuenta genérica) — ambos usan el mismo helper centralizado (ver "Núcleo compartido — detalle y eliminación de movimientos") para no repetir el cálculo ni arriesgar que uno de los dos caminos quede sin protección. Operaciones posteriores = cantidad de otros pagos de mesada (papá + mamá) con fecha posterior que tocaron alguna de las mismas cuentas (`_mesadaOpsPosteriores`, nuevo helper en `mesada.js`). Nivel "reciente" no cambia nada — sigue sin diálogo previo, como siempre.
+
 ### ✅ Corregido — La cuota heredada se "congelaba" con cualquier `save()` de la app
 
 Los inputs de cuota siempre muestran el valor que calcula `_getCuotaAnio` — que puede ser un fallback heredado de un año anterior, no necesariamente una cuota explícita de este año. El problema: `save()` (que corre en *cualquier* acción de la app — agregar un gasto, marcar un pago de Nu, editar Spotify, lo que sea) leía ese input y lo grababa como valor explícito sin verificar si realmente era distinto del heredado.
@@ -143,6 +149,7 @@ Los 12 `addEventListener` de los controles de esta pantalla (`btn-anio-prev/next
 - Corregido: `_pendienteAlCerrar` (y "Pendiente por cobrar" en pantalla) solo detectaban **un** período de deuda por persona, porque comparaban el dinero total que esa persona pagó dentro de todo el ciclo abierto contra una sola cuota (`monto − cobrado`). Eso fallaba cuando el ciclo del administrador duraba más que el período de 30 días de la persona: alguien pagaba un período (cubriendo esa cuota) y, sin que el ciclo se cerrara todavía, se le vencía un **segundo** período sin pagarlo — el sistema veía "ya cobré una cuota completa" y daba deuda $0, cuando en la realidad debía el período nuevo. Caso real detectado: al cerrar un ciclo con `confirmarPagarSpotify`, tres integrantes que sí tenían un período vencido sin pagar quedaron fuera de `_pendienteAlCerrar` por este motivo — al registrarles después el cobro atrasado, el sistema no encontraba deuda congelada que saldar y lo contaba de una como ingreso del ciclo nuevo, inflándolo.
 
   Fix: nueva función `spPeriodosVencidos(persona, fechaCorte)` que cuenta cuántos períodos de 30 días ya vencieron según `proximoPago` (que ya refleja todo lo pagado, porque cada cobro lo avanza al confirmarse) y multiplica por la cuota — detecta 1, 2 o más períodos atrasados dentro del mismo ciclo, en vez de asumir que nunca puede deber más de una cuota. Reemplaza el cálculo anterior tanto en "Pendiente por cobrar" (`renderSpotify`) como en `_pendienteAlCerrar` (`confirmarPagarSpotify`). Ver `spotify.md §8, §10`.
+- Agregado: protección por antigüedad al eliminar un `pago` desde el historial de Spotify (`deleteSpHistorial`). Un pago con más de 90 días, o con 2 o más pagos reales registrados después de él, ahora muestra un aviso explícito (qué cuenta o tarjeta se afecta y de cuánto sube su saldo / baja su deuda si se confirma) antes de dejar borrarlo. Con más de 1 año, o 5 o más pagos posteriores, queda bloqueado sin opción de continuar. Los `cobro` individuales no cambian — su alcance sigue siendo pequeño y contenido. Ver `proteccion-antiguedad-movimientos.md` y la entrada correspondiente en "Núcleo compartido — detalle y eliminación de movimientos" (helper centralizado, reutilizable por los demás módulos cuando se implementen).
 
 ### 2026-07-16
 
@@ -192,6 +199,12 @@ Los 8 `addEventListener` de los controles de esta pantalla (`btn-add-spotify-per
 
 ## Gastos
 
+### 🔧 Nuevo — Protección por antigüedad al eliminar un gasto variable genérico
+
+*(2026-08-01)*
+
+Aplicada en la rama `'gasto'` de `eliminarMovimiento()` (`movimientos.js`) para el caso genérico (un gasto variable normal con `fuente`, sin `_esCompraTC`/`_esPagoTC`) — este es el único punto de entrada para este tipo, no tiene un módulo propio con su propio borrado como sí tienen Mesada o Préstamos. Operaciones posteriores = movimientos manuales/transferencias posteriores sobre la misma cuenta (`_cuentaOpsPosteriores`, nuevo helper en `movimientos.js`, ver sección "Cuentas"). El caso de compra/pago de TC (que sí vive dentro de esta misma rama `'gasto'`) ya tenía su protección desde antes — ver la entrada correspondiente en "Tarjetas de crédito".
+
 ### ✅ Corregido — Pagar un gasto fijo con tarjeta de crédito no subía la deuda
 
 *(2026-08-01)*
@@ -239,6 +252,12 @@ Fix: se agregó la misma exclusión (`!g._esExtraPrestamo`) al filtro de `gvMes`
 ---
 
 ## Tarjetas de crédito
+
+### 🔧 Nuevo — Protección por antigüedad al eliminar una compra o un pago de TC
+
+*(2026-08-01)*
+
+Aplicada en los dos puntos de borrado: `eliminarCompraTC()`/`eliminarPagoTC()` (vista propia de la tarjeta) y la rama `'gasto'`→`_esCompraTC`/`_esPagoTC` de `eliminarMovimiento()` en `movimientos.js` (vista de cuenta genérica), mismo helper centralizado. Operaciones posteriores = cantidad de compras + pagos posteriores (no eliminados) de la misma tarjeta (`_tcOpsPosteriores`, nuevo helper en `tarjetas_credito.js`) — se cuenta contra la tarjeta como conjunto, no por separado compra/pago, porque ambos afectan la misma deuda. Nivel "viejo": eliminar una compra vieja avisa que la deuda "baja"; eliminar un pago viejo avisa que la deuda "sube" (se pierde el descuento que había hecho ese pago).
 
 ### ✅ Corregido — Registrar una compra desde "+ Compra" no validaba el cupo disponible
 
@@ -436,6 +455,12 @@ El comentario junto a la CSP en `index.html` seguía citando la cifra original d
 
 ## Préstamos
 
+### 🔧 Nuevo — Protección por antigüedad al eliminar un movimiento de préstamo
+
+*(2026-08-01)*
+
+Aplicada en ambos lados del módulo. **"Me deben"**: `eliminarMovDeudor()` (que ya mostraba un diálogo detallado con el antes/después de la deuda de la persona) y la rama `'prestamo'`/`'abono'` de `eliminarMovimiento()` en `movimientos.js` (vista de cuenta genérica) — mismo helper centralizado. Como el diálogo de `eliminarMovDeudor()` ya era bastante completo, en nivel "viejo" se le agregó una frase de advertencia en vez de reemplazarlo por uno nuevo; nivel "bloqueado" sí impide el borrado por completo, sin mostrar ese diálogo. **"Mis deudas"**: `eliminarMovMiDeuda()`, que no tenía ningún diálogo de confirmación — se mantiene así para nivel "reciente", y se agregó el aviso/bloqueo específico solo para "viejo"/"bloqueado". Operaciones posteriores en ambos lados = cantidad de movimientos posteriores de la misma persona/deuda que tocaron alguna de las mismas cuentas (`_deudorOpsPosteriores` y `_miDeudaOpsPosteriores`, nuevos helpers en `prestado.js`).
+
 ### 🔧 Cambio — Blindaje del listener de `addDeudor()` (mismo diagnóstico retractado que `crearEncargo()`, ver sección Encargos)
 
 *(2026-07-18, corregido el mismo día)*
@@ -507,6 +532,24 @@ Selector de persona compartido entre "Agregar persona" (Me deben) y "Nueva deuda
 ---
 
 ## Encargos
+
+### ✅ Corregido — El hook de perfil de persona en el detalle de un encargo nunca corría (mismo patrón que el bug real de `spotify:editar`, esta vez sí confirmado)
+
+*(2026-08-02)*
+
+El avatar del detalle de un encargo nunca se pintaba con el color de la persona vinculada, ni aparecía el botón "Ver perfil completo" bajo el saldo — pese a que `encargos-personas.js` sí envuelve `abrirEncargoDetalle` para hacer exactamente eso. La entrada de arriba (`personaId` obligatorio) había investigado y descartado este mismo patrón de bug para `crearEncargo`; acá sí era real, por una razón distinta.
+
+**Causa:** `Events.registerAll('encargos', { ..., abrirDetalle: abrirEncargoDetalle, ... })` corre de forma síncrona al cargar `encargos.js` y copia ahí **el valor** que tenía `abrirEncargoDetalle` en ese momento (la versión con el hook de `renderEncargoParts`, ya envuelta una vez dentro del propio `encargos.js`). Más tarde, `encargos-personas.js` reasigna la variable global `abrirEncargoDetalle = function(id) {...}` para agregar el color de persona y el chip de perfil — pero eso solo cambia a qué apunta la variable, no lo que `Events` ya había copiado dentro de su registro interno. La card de la lista dispara la acción vía `data-action="encargos:abrirDetalle"`, así que cada click seguía llamando a la versión vieja, sin el hook de personas, sin ningún error en consola. Mismo tipo de bug encontrado antes al migrar Spotify (`Events.on('spotify:editar', editarSpotify)`, ver arriba en Infraestructura/seguridad) — ahí se corrigió puntualmente con una arrow function; acá nadie lo había replicado para Encargos.
+
+**Fix:** las ~24 entradas de `Events.registerAll('encargos', {...})` pasaron de referencia directa (`accion: funcion`) a resolución perezosa por nombre (`accion: (...args) => funcion(...args)`) — no solo `abrirDetalle`, que era la única rota hoy, sino el bloque completo. Con esto, si cualquier módulo futuro (un `encargos-recordatorios.js`, por ejemplo) envuelve cualquiera de estas funciones con el mismo patrón `const _orig = fn; fn = function(){...}` que ya usan todos los `*-personas.js`, `Events` la va a resolver correcta en cada click sin que haga falta acordarse de re-registrar nada — el bug queda cerrado de raíz para todo el módulo, no solo para el caso puntual encontrado hoy.
+
+**Nota para revisar aparte:** `spotify-personas.js` y `prestado-personas.js` siguen el mismo patrón de wrapping (mencionado en el propio encabezado de `encargos-personas.js`) — si en algún momento envuelven una función que su módulo base registró por referencia directa en `Events.registerAll`, tienen el mismo riesgo. Vale la pena aplicarles el mismo blindaje la próxima vez que se toquen.
+
+### 🔧 Nuevo — Protección por antigüedad al eliminar un movimiento de encargo
+
+*(2026-08-01)*
+
+Aplicada en `deleteMovEncargo()`, el único punto de borrado de movimientos de un encargo (a diferencia de Mesada/Préstamos/Tarjetas, acá no hay un segundo camino vía `movimientos.js`). Operaciones posteriores = cantidad de movimientos posteriores del mismo encargo con la misma `cuenta` (`campo interno de cada movimiento de encargo`). A diferencia de los demás módulos, el aviso de nivel "viejo" **no afirma si el saldo sube o baja** — el motor de diferencial/intercambios de Encargos (entrada, salida, "lo cubrí yo", "lo adelanté yo") hace que la dirección real dependa del tipo de movimiento, y prefiero un aviso genérico correcto a uno específico que podría estar mal. Nivel "bloqueado" sigue impidiendo el borrado igual que en los demás módulos.
 
 ### 🔧 Cambio — `personaId` obligatorio explícito en `crearEncargo()` (el diagnóstico inicial de "listener congelado" resultó incorrecto)
 
@@ -641,6 +684,21 @@ El bloque "2. BÚSQUEDA GLOBAL" (304 líneas) vivía inline en `index.html`, den
 
 ## Núcleo compartido — detalle y eliminación de movimientos
 
+### 🔧 Nuevo — Helper centralizado de protección por antigüedad de movimientos
+
+*(2026-08-01)*
+
+Nace de una pregunta puntual sobre Spotify (ver `proteccion-antiguedad-movimientos.md`), pero el riesgo es general a toda la app: al eliminar un movimiento, el sistema revierte el monto sobre el saldo *actual* de la cuenta afectada, no recalcula el historial completo desde cero. Si el movimiento es viejo, esa plata ya se mezcló lógicamente con todo lo que pasó después — revertirla hoy introduce un descuadre nuevo, tanto más difícil de corregir a mano cuanto más vieja la operación.
+
+Se agregó en `core-state.js`, para que cada módulo lo reutilice desde su(s) punto(s) de borrado en vez de reimplementar el cálculo:
+
+- `S.config.proteccionAntiguedad` — umbrales centralizados: `diasAviso`/`diasBloqueo` globales (90 días / 1 año), y un bloque por módulo con sus propios `opsAviso`/`opsBloqueo` (cantidad de operaciones posteriores sobre la misma cuenta/ciclo). Por ahora solo `spotify: {opsAviso:2, opsBloqueo:5}` está definido — los demás módulos (Encargos, Préstamos, Tarjetas) se agregan cuando se implementen ahí. `load()` inicializa este bloque si falta en datos guardados antes de este cambio, mismo patrón que el resto de campos de `S`.
+- `nivelAntiguedadMovimiento(fecha, opsPosteriores, modulo)` — devuelve `'reciente'`/`'viejo'`/`'bloqueado'` según **cualquiera** de los dos criterios (tiempo transcurrido u operaciones posteriores).
+- `confirmarBorrarMovimientoViejo(nombreCuenta, montoRevertido, direccion, campo='saldo')` — diálogo de aviso para nivel `'viejo'`: qué cuenta se afecta y de cuánto sube o baja (`campo` permite decir "deuda" en vez de "saldo" para el caso de una tarjeta de crédito). Devuelve `true`/`false` según la elección del usuario.
+- `avisarMovimientoBloqueado()` — diálogo informativo de un solo botón para nivel `'bloqueado'`, sin opción de continuar.
+
+Aplicado en los siete puntos con reglas propias: Spotify (`deleteSpHistorial`), Mesada (`eliminarMesadaPago` + rama `'mesada'` de `eliminarMovimiento()`), Préstamos — me deben y mis deudas (`eliminarMovDeudor`/`eliminarMovMiDeuda` + rama `'prestamo'`/`'abono'`), Tarjetas de Crédito (`eliminarCompraTC`/`eliminarPagoTC` + rama `'gasto'`→TC), Encargos (`deleteMovEncargo`), Gastos genéricos y Cuentas (movimientos manuales y transferencias) — estos dos últimos solo viven dentro de `eliminarMovimiento()`, no tienen módulo propio con su propio borrado. Con esto, `eliminarMovimiento()` queda con los ocho tipos que maneja (`transferencia`, `salida_manual`, `ingreso`/`apertura`/`entrada`, `gasto`, `prestamo`, `abono`, `mesada`) cubiertos. Fuera de alcance por ahora: Alcancía, CDT y Plata Comprometida, que llevan su propio historial en módulos no revisados todavía. Umbrales de operaciones posteriores: mismo valor que Spotify (`opsAviso:2, opsBloqueo:5`) para todos por ahora — no hay un criterio distinto documentado todavía, ajustar por módulo si hace falta más adelante. Detalle de cada aplicación en su propia sección más abajo.
+
 ### ✅ Corregido — `eliminarMovimiento()` no revertía ni borraba movimientos tipo `ingreso`/`apertura`/`entrada` (no-op silencioso)
 
 *(2026-07-26)*
@@ -676,6 +734,14 @@ El chequeo de "¿es un movimiento secundario generado por otra sección?" (`movO
 ---
 
 ## Cuentas
+
+### 🔧 Nuevo — Protección por antigüedad al eliminar movimientos manuales y transferencias
+
+*(2026-08-01)*
+
+Aplicada en `eliminarMovimiento()` (`movimientos.js`) para los tres tipos que representan movimientos directos de cuenta y que no tienen otro punto de entrada: `'transferencia'` (`S.transferencias`), `'salida_manual'` y `'ingreso'`/`'apertura'`/`'entrada'` (`S.movimientos`). Nuevo helper `_cuentaOpsPosteriores(cuenta, fecha, excludeId)`: cuenta movimientos manuales + transferencias posteriores sobre la misma cuenta — no incluye movimientos de módulos con su propio historial (Mesada, Spotify, Préstamos, etc.) ni de Alcancía/CDT/Plata Comprometida, que llevan su propio registro y quedan fuera del alcance de esta sesión.
+
+Caso particular: una transferencia mueve dos cuentas en direcciones opuestas (origen recupera, destino pierde), así que no encaja en el helper genérico `confirmarBorrarMovimientoViejo()` (pensado para una sola cuenta/dirección) — el aviso de nivel "viejo" para transferencias arma su propio diálogo mencionando el efecto en ambas cuentas.
 
 ### 🔧 Cambio — Wiring propio movido de `index.html` a `cuentas.js` (arquitectura)
 
@@ -1330,5 +1396,177 @@ Se agregó `historial: ['js/modules/actividad_reciente.js']` a `Loader.GROUPS` y
 
 **Balance final de los 11 candidatos originales: 4 dados** (`alcancia`, `comprometida`, `config`, `historial`), **7 descartados sin refactor previo** (sin cambios respecto al balance anterior — `gastos` sigue siendo el único bloqueado por un núcleo, el resto por `inicio.js`). No queda ningún candidato inconcluso.
 
+### 🔧 Cambio — se destraba `inicio.js`: guard `typeof` en las 6 llamadas que le faltaban
+
+De los 6 candidatos que el cierre anterior descartó solo por culpa de `inicio.js` (`mesada`, `spotify`, `prestado`, `tarjetas_credito`, `cuentas`, `analisis`), se auditaron línea por línea las llamadas cruzadas dentro de `inicio.js` y se encontraron 6 sin guard, mezcladas con otras que ya lo tenían desde antes (`calcPatrimonioTotal`, `totalPrestadoPendiente`, `calcC`, `calcCDT`, `calcRendimientoCDTsMes`, `mesActual`, `getIngresosFijosMes` — patrón inconsistente, no ausente):
+
+- `renderAttencion()`: `getDeudorSaldo(d)` (prestado.js) sin ningún check — a diferencia de Mesada/Spotify más abajo en la misma función, que sí tenían `if(S.modulos&&S.modulos.X)` (pero ese check cubre si el módulo está *activo en config*, no si el `.js` ya *cargó* — se agregó el guard `typeof` igual, sobre ese check existente).
+- `getMesadaData(parent)` y, dentro de `calcHealthScore()`, `getMesadaData('papa'/'mama')` + `_getCuotaAnio(parent,anio)` (mesada.js).
+- `tcCupoUsadoPct(tc)` (tarjetas_credito.js), dentro del `forEach` de tarjetas, sin check de ningún tipo.
+- `spPersonaPagadaVigente(p)` + `spNombreDe(p)` (spotify.js/spotify-personas.js), mismo caso que Mesada: el check de módulo activo existía, el guard de función no.
+- `calcDeudaTcPropia()` (tarjetas_credito.js) — dos apariciones, en `calcHealthScore()` y en `renderProyeccion()`, ninguna de las dos con guard.
+
+Se agregó `typeof X === 'function'` a las 6, todas con el mismo criterio: si la función no existe, se comporta como si esa fuente de datos estuviera vacía (0, o directamente no se agrega el item a la lista de "Necesita atención") — no cambia nada del resultado actual, porque hoy los 6 archivos siguen cargando de entrada. `node --check` sin errores.
+
+De paso, mismo criterio aplicado a `js/core/personas-init.js`: el `setTimeout` fijo (600ms tras `appDataLoaded`, 1000ms si el documento ya había cargado) que llamaba a `_inyectarPersonaSheets()` sin guard se reemplazó por un guard `typeof` + reintento cada 200ms (tope 25 intentos, ~5s) — mismo patrón ya usado para arreglar `Events('authgate'/'pin', ...)` en `firebase-sync.js`/`pin-bio.js` (ver `Infraestructura / seguridad` arriba). El timeout fijo era seguro *hoy* solo porque `personas.js` carga eager justo antes de este script — un dato de orden de carga, no una garantía; el guard lo vuelve robusto sin importar cuándo carguen sus dependencias.
+
+### 🔧 Cambio — quinto grupo lazy: `mesada` (`mesada.js`)
+
+Con `inicio.js` destrabado, se auditó `mesada.js` contra el mismo criterio que los cuatro grupos anteriores: no monkey-patchea ninguna función ajena, su wiring de botones (`btn-anio-prev`, `btn-confirmar-mesada`, los `<select>`/inputs de los tres sheets) ya corría top-level contra ids del DOM estático sin esperar `DOMContentLoaded` — mismo patrón seguro que `configuracion.js` — y **se asumió, sin volver a comprobarlo contra el archivo real, que `refresh()` ya tenía guard para `renderMesada` desde la fase 0.5** (esa asunción resultó falsa, ver corrección de esta misma fecha más abajo). `#screen-mesada` y `#mas-mesada` ya eran HTML estático, igual que Configuración/Actividad Reciente (a diferencia de Plata Comprometida). Se agregó `mesada: ['js/modules/mesada.js']` a `Loader.GROUPS` y se sacó su `<script src="js/modules/mesada.js" defer>` de la carga de entrada. `node --check` sin errores en `mesada.js` y `lazy-loader.js`.
+
+**No verificado esta sesión:** si `analisis.js` (pantalla que muestra "Total mesada" en `#an-mesada-section`) llama alguna función de `mesada.js` sin guard — ese archivo no se recibió, queda como hallazgo abierto, no investigado.
+
+**Sigue pendiente la prueba en navegador real** — sin `sheet-stack.js` disponible esta sesión no se pudo repetir la validación con jsdom contra el `Loader`/`showScreen()` reales que sí se hizo con los grupos anteriores. Verificar en vivo: entrar a Mesada por primera vez en una sesión nueva (confirmar que `mesada.js` no se descarga hasta ese momento), y que registrar/eliminar un pago, marcar/resolver pendiente y cambiar de año sigan funcionando igual.
+
+### 🔴 Corrección (2026-08-02) — la Fase 0.5 no cubría `renderMesada` en el archivo real, y `load()`/`save()` nunca fueron auditadas
+
+Al recibir `core-state.js` real por primera vez desde que se dio el grupo `mesada` como lazy, la consola mostró dos `ReferenceError` apenas arrancó la app: `_getCuotaAnio is not defined` (en `load()` y en `save()`) y `renderMesada is not defined` (en `refresh()`).
+
+Contra el archivo real:
+
+- **La afirmación de la entrada anterior era falsa.** Ninguna de las 12 llamadas que esta misma bitácora documenta como blindadas en "Fase 0.5" (`renderDetalleCuenta`, `renderMovsCustom`, `renderCajitas`, `renderCustomCuentasList`, `renderEncargosEnCuenta`, `renderGastosVar`, `renderGastosFijos`, `renderMesFiltros`, `renderDeudoresList`, `renderMesada`, `renderSpotify`, `renderAttencion`, `renderTCDashboard`) tiene guard `typeof` en `refresh()` — solo `_refreshCajitaDet` (agregado después, por otro motivo, en otra parte de la función) lo tiene. No se investigó si ese blindaje se revirtió en algún momento posterior o si nunca llegó a aplicarse pese a estar documentado como hecho y verificado con jsdom en su momento — queda como pregunta abierta, sin evidencia para afirmar ninguna de las dos.
+- **`load()` y `save()` nunca formaron parte de ninguna auditoría de `mesada.js`** — ni el mapeo original (fase 0), ni el destrabe de `inicio.js`, ni el cierre que dio `mesada` como quinto grupo lazy revisaron estas dos funciones. Ambas llaman a `_getCuotaAnio()` directo, dos veces cada una, sin guard — con `mesada.js` lazy eso revienta en el primer `load()`/`save()` de cada sesión (el camino más común de todos: abrir la app y guardar cualquier cosa), no en un caso raro.
+
+**Fix aplicado** (quirúrgico, mismo patrón defensivo que ya usa `_refreshCajitaDet` en la misma función): se envolvieron las 2 líneas de `load()`, las 2 de `save()` y la línea de `refresh()` en `if(typeof _getCuotaAnio==='function'){...}` / `if(typeof renderMesada==='function') renderMesada();`. Sin tocar `mesada.js` ni `Loader.GROUPS`. `node --check` sin errores en `core-state.js`.
+
+**No se tocaron las otras 11 llamadas sin guard** de la lista de arriba — hoy no revientan porque sus módulos (`cuentas.js`, `encargos.js`, `gastos.js`, `prestado.js`, `spotify.js`, `inicio.js`, `tarjetas_credito.js`) siguen cargando eager. Pero si alguno se vuelve lazy más adelante, hace falta re-blindar `refresh()` de verdad contra el archivo real primero — no alcanza con lo documentado en la Fase 0.5, que resultó no reflejar el estado real del archivo. Queda pendiente para la próxima ronda de módulos lazy, no resuelto esta sesión.
+
+### 🔎 Intento — `tarjetas_credito` NO se dio: hallazgo nuevo, bloqueado por `core-state.js`
+
+Se auditó `tarjetas_credito.js` con el mismo criterio. Apareció un bug real, independiente del guard de `inicio.js` ya resuelto arriba: su wiring de botones (`btn-guardar-tc`, `btn-confirmar-compra-tc-tarjetas`, `btn-confirmar-pagar-tc`, los inputs de `tcc_*`) estaba envuelto en `document.addEventListener('DOMContentLoaded', function(){...})` — con carga lazy, ese evento ya disparó mucho antes de que el archivo llegue a descargarse, así que el listener nunca correría y los botones de las tres pantallas de TC quedarían muertos en la primera visita de cada sesión. Mismo bug, mismo fix, que ya se encontró y corrigió en `actividad_reciente.js` (grupo `historial`): se movió el wiring a top-level, contra ids que ya existen en el DOM estático — mismo patrón que ya usaba `mesada.js`. `aplicarPatchMAF()` (el patch de `mostrarAlertaFuente` para mostrar la deuda de la TC al elegirla como fuente en un gasto) no necesitó cambios: ya tenía guard de `document.readyState` desde antes.
+
+Con ese bug corregido, apareció uno más duro que sí bloquea el cambio: `tcNormalizarTarjetas()` (definida en este archivo, ejecuta la migración/auto-sanación de tarjetas viejas) no tiene ningún caller dentro del propio `tarjetas_credito.js` — según su propio comentario ("Se ejecuta en cada `refresh()`"), quien la invoca es `refresh()` en `core-state.js`, no recibido esta sesión. El mapeo de la fase 0.5 solo blindó 12 funciones `render*` con guard `typeof`; `tcNormalizarTarjetas` no es una de ellas, así que no se puede confirmar si ya tiene guard o si `refresh()` la llama directo. Si no lo tiene, volver `tarjetas_credito` lazy rompería `refresh()` — el orquestador que corre después de cada `save()`, en las 13 pantallas — en cada boot hasta que el usuario entre a la pantalla de Tarjetas por primera vez. No se fuerza el cambio sin poder confirmarlo contra el archivo real. `tarjetas_credito.js` **sigue cargando eager**; el único cambio aplicado es el fix del wiring de botones (self-contained, sin riesgo, deja el archivo listo para cuando se pueda cerrar el hallazgo de `tcNormalizarTarjetas`). `node --check` sin errores.
+
+Balance actualizado de los 11 candidatos originales: **5 dados** (`alcancia`, `comprometida`, `config`, `historial`, `mesada`), **1 bloqueado por su propio núcleo, hallazgo nuevo esta sesión** (`tarjetas_credito` — antes agrupado con los descartados por `inicio.js`, ahora es un caso aparte que necesita `core-state.js`), **5 sin re-auditar contra sus propios archivos tras el destrabe de `inicio.js`** (`spotify`+`spotify-personas`, `prestado`+`prestado-personas`+`deudores-personas`, `cuentas`, `analisis`, `encargos`+`encargos-personas`), **1 descartado por un núcleo distinto, sin cambios** (`gastos`+`gastos-fijos-progress`, bloqueado por `sheet-stack.js`).
+
+### 🔧 Cambio (2026-08-02, continuación) — se recibió `core-state.js` real: se cierra la deuda de la Fase 0.5, se cierra `tarjetas_credito` del lado del núcleo, y aparece un bloqueo nuevo en `prestado`
+
+Con `core-state.js` real en mano (primera vez desde la Corrección del mismo día), se pudieron confirmar y cerrar varios de los hallazgos que venían marcados como "no se pudo confirmar sin el archivo":
+
+**1. `tcNormalizarTarjetas()` — la duda se resuelve a favor: ya tenía guard.** El `if(typeof tcNormalizarTarjetas==='function') tcNormalizarTarjetas();` en `refresh()` ya existía. El hallazgo del intento anterior ("hace falta `core-state.js` para cerrarlo") queda resuelto en ese punto específico — no era un bloqueo real.
+
+**2. Pero apareció el bloqueo que realmente faltaba: `renderTCDashboard()` sin guard.** Auditando el resto de `refresh()` contra el archivo real se confirmó lo que la Corrección ya había anticipado como pregunta abierta: de las 13 llamadas `render*` de la Fase 0.5, solo `renderMesada` tenía guard (agregado en el fix de `_getCuotaAnio`, no como parte de un blindaje general). Las otras 12 — `renderDetalleCuenta`, `renderMovsCustom`, `renderCajitas`, `renderCustomCuentasList`, `renderEncargosEnCuenta`, `renderGastosVar`, `renderGastosFijos`, `renderMesFiltros`, `renderDeudoresList`, `renderSpotify`, `renderAttencion` y `renderTCDashboard` — seguían exactamente como en la Corrección: sin ningún guard. `renderTCDashboard` es justamente lo que bloqueaba `tarjetas_credito` de fondo, aparte de `tcNormalizarTarjetas`.
+
+**Fix aplicado:** se envolvieron las 12 llamadas en `if(typeof X==='function') X();` (mismo patrón defensivo usado en toda la función). No cambia el comportamiento actual — los 7 módulos involucrados (`cuentas.js`, `encargos.js`, `gastos.js`, `prestado.js`, `spotify.js`, `inicio.js`, `tarjetas_credito.js`) siguen cargando eager, así que las condiciones siempre son verdaderas hoy. Lo que habilita es que cualquiera de esos módulos pueda volverse el sexto/séptimo grupo lazy sin romper `refresh()` — cierra formalmente la brecha que la Corrección del mismo día había dejado abierta ("queda pendiente para la próxima ronda de módulos lazy").
+
+**3. Hallazgo nuevo, fuera de la lista de 13 de la Fase 0.5:** `calcPatrimonioTotal()` — llamada desde `save()` vía `snapshotPatrimonio()`, es decir en **cada** `save()` de la app, no solo en cada `refresh()` — invocaba `getDeudorSaldoPatrimonio(d)` (`prestado.js`) sin guard, dentro del `.reduce()` que suma la plata prestada pendiente. Mismo tipo de bloqueo exacto que `tcNormalizarTarjetas`, pero para `prestado`, y en un lugar que ninguna auditoría anterior había cubierto (la Fase 0.5 solo mapeó `refresh()`). **Fix aplicado**, mismo patrón. `node --check` sin errores en `core-state.js`.
+
+Con estos tres fixes, `core-state.js` queda sin ninguna llamada sin guard hacia `prestado.js`, `spotify.js`, `cuentas.js`, `encargos.js`, `gastos.js`, `inicio.js` o `tarjetas_credito.js` — confirmado con `grep` sistemático de cada nombre de función usado.
+
+### 🔎 Auditoría — `spotify.js` + `spotify-personas.js` contra sus propios archivos (cierra parte del punto 2 pendiente)
+
+Revisados línea por línea contra el mismo criterio ya aplicado a los 13 módulos anteriores:
+
+- **Sin `.innerHTML` sin escapar:** todo el texto libre interpolado (`spNombreDe(x)`, `h.nombre`, `h.nota`) pasa por `escHtml()`. Limpio.
+- **Sin `onclick`/`onchange`/`oninput` inline:** ya migrados a `Events.attr(...)` — no queda ningún handler crudo en ninguno de los dos archivos.
+- **Acoplamiento oculto real encontrado — el mismo tipo de caso que Cuentas→Encargos que motivó esta ronda de auditoría:** el flujo "pagar Spotify con tarjeta de crédito" llama a `getTCById`/`tcCupoDisponible`/`tcRecalcular` (`tarjetas_credito.js`) sin ningún guard, 3 veces — 2 en `confirmarPagarSpotify()` (validar cupo y recalcular tras el cargo) y 1 en `actualizarSpPagarPreview()` (mostrar el preview "Deuda: X → Y"). El propio header de `spotify.js` ya documentaba esta dependencia y explicaba por qué era segura *cuando `tarjetas_credito.js` cargaba siempre eager*: "no importa que se cargue más abajo en `index.html`, ya está disponible cuando el usuario interactúa". Ese razonamiento deja de sostenerse si `spotify` y `tarjetas_credito` llegan a ser grupos lazy independientes — un usuario podría entrar a Spotify sin haber visitado nunca Tarjetas, y en ese caso el módulo no estaría cargado al hacer clic en "pagar con tarjeta".
+- **A diferencia de los casos de `refresh()` de arriba, acá NO se aplicó un guard silencioso.** Es una acción explícita del usuario (elegir pagar con una TC específica), no una llamada de render de fondo — envolverla en `if(typeof...)` dejaría el botón visible pero mudo, sin avisar nada. Queda como hallazgo abierto que necesita una decisión de producto (ej. `Loader.ensure('tarjetas_credito')` antes de permitir esa acción, o simplemente no separar `spotify` y `tarjetas_credito` en grupos lazy independientes).
+- `spotify-personas.js` depende, también sin guard, de `getPersona`/`abrirSelPersona`/`_inyectarPersonaSheets`/`iniciales` (`personas.js`). Confirmado seguro por ahora: Personas es transversal (carga siempre eager, no es candidato a lazy — ya establecido en la nota del 2026-07-27) y el orden de `<script defer>` ya garantiza que carga antes que `spotify-personas.js`. No requiere fix.
+
+`mesada.js` se re-auditó buscando acoplamiento saliente hacia spotify/prestado/tarjetas_credito/encargos/personas: ninguno encontrado, confirma la evaluación previa ("no monkey-patchea nada ajeno").
+
+**Punto 3 del pedido original (¿`analisis.js` llama algo de `mesada.js` sin guard, en la sección "Total mesada"?) sigue sin poder verificarse** — `analisis.js` no se recibió esta sesión. Del lado de `mesada.js` no hay nada que dependa de `analisis.js`, así que si hay un problema está enteramente del lado de `analisis.js`, no se puede descartar ni confirmar sin ese archivo.
+
+**Balance actualizado:** `tarjetas_credito` pasa de "bloqueado por su propio núcleo" a **bloqueado por su acoplamiento con `spotify.js`** (ya no por `core-state.js`, que queda limpio). `spotify` queda auditado y limpio salvo por ese mismo acoplamiento compartido. `prestado` gana un fix ya aplicado en `core-state.js` pero sigue sin auditar contra sus propios archivos (`prestado.js`, `prestado-personas.js`, `deudores-personas.js` no recibidos esta sesión). `cuentas`, `analisis` y `encargos` siguen sin auditar contra sus propios archivos — sin cambios en ese frente. `node --check` sin errores en `core-state.js`, `mesada.js`, `spotify.js`, `spotify-personas.js`.
 
 
+
+### 🔴 Corrección + 🔧 Cambio (2026-08-02, tercera ronda) — se recibieron `analisis.js`, `cuentas.js`, `encargos.js`, `prestado.js`: 2 bugs vivos (no hipotéticos) y 3 acoplamientos ocultos tipo Cuentas→Encargos, todos corregidos
+
+Con los 4 archivos que faltaban del punto 2 del pedido original en mano, se pudo auditar contra sus propios archivos y contra `mesada.js` (que ya es un grupo lazy real, no hipotético) — y aparecieron dos bugs que rompen **hoy**, no solo en un escenario futuro:
+
+**1. `analisis.js` — confirma el punto 3 exacto del pedido original.** Las 3 llamadas a `getMesadaData()`/`_getCuotaAnio()` (ingresos estimados del mes, la sección "Total mesada" en `#an-mesada-section`, e ingresos del mes anterior para la comparación) estaban guardadas solo por `if(S.modulos&&S.modulos.mesada)` — ese chequeo confirma que el *módulo está activo en configuración*, no que el *archivo `mesada.js` ya cargó*. Como `mesada` es lazy desde hace varias sesiones, cualquiera que entrara a Análisis sin haber visitado antes Mesada en esa sesión se encontraba con `ReferenceError: getMesadaData is not defined` a mitad de `renderAnalisis()`. **Fix:** se agregó `&&typeof getMesadaData==='function'` a las 3 condiciones — si no está cargado, la sección se oculta/omite en vez de romper toda la pantalla.
+
+**2. `cuentas.js` — el mismo bug, pero peor: sin ningún guard, ni siquiera el de config.** `getMovimientosCuenta()` (la función que arma el historial de movimientos al abrir el detalle de Nequi, Nu o Efectivo — una de las pantallas más visitadas de la app) llamaba a `getMesadaData(parent)` sin condición alguna. No dependía de si Mesada estaba activo o no: **cualquiera** que abriera el detalle de una de esas 3 cuentas sin haber visitado Mesada antes rompía. **Fix:** se envolvió el `['papa','mama'].forEach(...)` completo en `if(typeof getMesadaData==='function')`.
+
+**3-5. Acoplamiento oculto Cuentas↔Encargos↔Préstamos, confirmado en ambas direcciones** — el caso concreto detrás de la frase "el mismo tipo de acoplamiento oculto que apareció con Cuentas→Encargos" que motivó esta ronda de auditoría:
+- `cuentas.js → encargos.js`: `renderDetalleCuenta()` (nequi/nu/efectivo) y el detalle de cuenta personalizada llaman a `renderEncargosEnCuenta()` — 4 veces, ninguna con guard.
+- `encargos.js → cuentas.js`: al eliminar un movimiento de un encargo, se llama a `renderDetalleCuenta()` sin guard (aparte de la llamada ya guardada que dispara `refresh()`), y `calcC()` se usa sin guard en el cálculo de interés compuesto de la porción de un encargo dentro de una cajita.
+- `prestado.js → cuentas.js`: `calcC()` sin guard en el preview de impacto de un préstamo sobre una cajita con meta de ahorro.
+
+Ninguno de estos 3 rompe hoy (`cuentas.js` y `encargos.js` cargan eager), pero son exactamente el tipo de dependencia que impediría volver lazy cualquiera de los dos módulos por separado. **Fix aplicado a los 6 puntos**, mismo patrón `typeof` en todos.
+
+**Confirmado limpio:** ninguno de los 4 archivos nuevos toca funciones de `tarjetas_credito.js` (`prestado.js` y `encargos.js` sí leen/escriben `S.tarjetasCredito`, pero como datos — `tc.deuda = ...` — no como llamadas a función, el mismo patrón seguro que `descontarFuente`/`sumarFuente` en `core-state.js`). Ninguno toca `alcancia`, `comprometida`, `configuracion` ni `actividad_reciente`. `analisis.js` no depende de `cuentas.js`, `encargos.js` ni `prestado.js`. `node --check` sin errores en los 4 archivos.
+
+**Balance actualizado:** de los 5 candidatos que quedaban "sin auditar contra sus propios archivos" tras el destrabe de `inicio.js`, **4 quedan cerrados esta ronda** (`cuentas`, `analisis`, `encargos`, `prestado`). Solo queda pendiente confirmar los archivos hermanos no recibidos (`prestado-personas.js`, `deudores-personas.js`, `encargos-personas.js`) — mismo patrón que `spotify-personas.js` (probablemente solo dependen de `personas.js`, transversal y siempre eager, pero sin el archivo no se puede confirmar). El único bloqueo real que le queda a `tarjetas_credito` para ser lazy-ready sigue siendo el acoplamiento con `spotify.js` documentado en la ronda anterior — es una decisión de producto (ver conversación), no algo que la auditoría de código pueda resolver sola.
+
+### 🔎 Auditoría (2026-08-02, cuarta ronda) — `deudores-personas.js`, `encargos-personas.js`, `prestado-personas.js`: cierra el punto 2 por completo, sin fixes necesarios
+
+Últimos 3 archivos hermanos del pedido original, auditados con el mismo criterio que `spotify-personas.js`: `.innerHTML` (limpio — templates estáticos o texto fijo, sin campos libres interpolados sin escapar), handlers inline (ninguno, ya migrados), y acoplamiento oculto hacia mesada/cuentas/encargos/spotify/tarjetas_credito (**ninguno encontrado**). Los 3 solo dependen de `personas.js` — transversal, siempre eager — y de su propio dominio. Orden de carga confirmado contra `index.html`: `personas.js` → `encargos-personas.js` → `spotify-personas.js` → `prestado-personas.js` → `deudores-personas.js`, consistente con lo que cada header declara (`deudores-personas.js` necesita cargar después de `prestado-personas.js` porque envuelve un `crearMiDeuda` ya envuelto por ese archivo — así es en el HTML real).
+
+**No se aplicó ningún fix esta ronda.** Dos observaciones menores para dejar registradas, ninguna bloqueante:
+- **Vinculación de persona duplicada en `crearMiDeuda`:** tanto `prestado-personas.js` (vincula por coincidencia de nombre) como `deudores-personas.js` (sobreescribe con el `personaId` ya seleccionado en el selector) hacen el mismo trabajo. El resultado final es correcto porque el segundo gana, pero es redundante, y con dos personas de nombre idéntico podría vincular momentáneamente a la persona equivocada antes de la corrección.
+- **Posible código muerto en `addDeudor()`:** el wrap de `prestado-personas.js` está pensado para el viejo sheet con input `np_nombre`, pero `deudores-personas.js` intercepta `openSheet('nueva-persona')` y abre directo el selector de personas en su lugar — el sheet viejo podría no ser alcanzable ya desde la UI. Sin confirmar sin ver el botón que dispara `addDeudor()` en `index.html`.
+
+**Cierra por completo el punto 2 del pedido original** ("spotify, prestado, cuentas, analisis, encargos — auditarlos contra sus propios archivos"), incluidos los 4 archivos hermanos. De toda la ronda de auditoría de lazy-loading, lo único que queda abierto es la decisión de producto sobre el acoplamiento `spotify.js`↔`tarjetas_credito.js` (ver entrada anterior) — ya no hay más código por revisar de este pedido.
+
+### 🔧 Cambio (2026-08-02, quinta ronda) — resolver de raíz el acoplamiento spotify↔tarjetas_credito: `spotify.js` ya es lazy-safe; volver `tarjetas_credito` un grupo lazy queda bloqueado por un hallazgo nuevo
+
+Pedido explícito: en vez de dejar el acoplamiento `spotify.js`→`tarjetas_credito.js` como una decisión de producto pendiente, resolverlo de raíz aunque sea el camino más largo — para que el próximo módulo con el mismo problema no lo vuelva a tener. Se recibió `js/core/lazy-loader.js`.
+
+**`spotify.js` — hecho.** Se agregó `_spEnsureTC()`, un helper `async` que llama a `Loader.ensure('tarjetas')` solo si `getTCById` todavía no está definido — si `tarjetas_credito.js` sigue cargando eager (el caso de hoy), es un no-op inmediato; si algún día se vuelve lazy, espera la descarga antes de continuar. Si la descarga falla, un `toast` de error en vez de dejar el botón sin respuesta. Los 3 puntos de acoplamiento quedaron cubiertos:
+- `actualizarSpPagarPreview()` — convertida a `async`, espera antes de mostrar el preview de cupo/deuda.
+- `confirmarPagarSpotify()` — convertida a `async`, espera antes del branch de pago con tarjeta; si la carga falla, aborta con `return` antes de tocar cualquier estado.
+- Dentro de `_borrarSpHistorial()` (ya era `async`) — al revertir un pago hecho con TC, `mov.eliminado=true` se marca siempre primero (es solo un dato, no una llamada a función), y solo `tcRecalcular()` espera la carga — así una descarga lenta o fallida nunca deja el estado a medias.
+
+`node --check` sin errores.
+
+**Volver `tarjetas_credito` un grupo lazy real — bloqueado, hallazgo nuevo.** Al ir a `index.html` para agregar la entrada a `Loader.GROUPS` y sacar el `<script>` eager (los dos cambios que completarían el punto 1 de la Nota `2026-08-02, continuación` de arriba), apareció un comentario ya existente en el archivo (fechado 2026-08-03) que no se había leído en detalle hasta ahora: `tarjetas_credito.js` usa `abrirDetalleMov` directo en su `Events.registerAll('tarjetas', {...})`, pero carga *antes* que `js/core/movimientos.js` (donde vive esa función) en el orden actual de `<script>` — ya tuvo que resolverse con un wrapper, mismo patrón que `leerArchivoImport` en `configuracion.js`. No se tocó el orden/momento de carga de `tarjetas_credito.js` sin ver ese wrapper: cambiarlo de carga-de-entrada a carga-bajo-demanda-mucho-más-tarde podría interactuar con esa solución de formas impredecibles sin el archivo real en mano. Tampoco se agregó la entrada a `Loader.GROUPS` de forma aislada — si `showScreen('tarjetas')` chequea `Loader.GROUPS` igual que con los otros 5 grupos, y el `<script>` eager sigue ahí, `tarjetas_credito.js` se descargaría *dos veces* al visitar esa pantalla, lo que tira `SyntaxError` si el archivo declara algo con `const`/`let` a nivel de módulo (rompería la carga completa de la pantalla, no solo un warning). Las dos mitades del cambio (agregar a `GROUPS` + sacar el `<script>`) tienen que aplicarse juntas, igual que en los otros 5 grupos — **falta `js/modules/tarjetas_credito.js` para completarlas.**
+
+### 🔴 Corrección + 🔧 Cambio (2026-08-02, sexta ronda) — se recibió `js/core/movimientos.js`: confirma la dirección de acoplamiento que faltaba, y aparece un tercer bug vivo de mesada
+
+`movimientos.js` es núcleo (no un módulo de dominio), pero su propio header confirma que depende de 3 módulos: `tcEliminarCompraInterna`/`tcEliminarPagoInterna` (Tarjetas de Crédito), `abrirCustomCuenta`/`renderDetalleCuenta` (Cuentas), `getEncargo` (Encargos) — "todos ya cargados antes de este archivo en index.html". Ninguna de las 5 llamadas tenía guard.
+
+**Fixes de dos tipos, según si la llamada muta datos o solo renderiza:**
+
+- **Lookups/renders de apoyo — guard simple:** `getEncargo` (fallback de búsqueda dentro de `abrirDetalleMov`, solo para mostrar el sheet de detalle) y `abrirCustomCuenta`/`renderDetalleCuenta` (re-render al final de `eliminarMovimiento`) — ninguna muta nada, así que un `if(typeof X==='function')` que las salte en silencio es suficiente y seguro, mismo patrón que en rondas anteriores.
+
+- **Mutaciones financieras reales — patrón `_spEnsureTC()`:** `tcEliminarCompraInterna`/`tcEliminarPagoInterna` (rama `gasto` de `eliminarMovimiento`, al revertir una compra o pago hecho con tarjeta) y `getMesadaData` (rama `mesada`, al revertir un pago de mesada) SÍ mutan estado real — revierten deuda, revierten plata a una fuente, borran el registro original en su módulo de origen. Un guard silencioso acá dejaría el movimiento borrado del feed general pero SIN revertir su efecto — un problema de integridad de datos, no una UI a medias. Se aplicó el mismo patrón que ya se usó en `spotify.js`: `eliminarMovimiento()` (ya era `async`) espera `Loader.ensure('tarjetas')`/`Loader.ensure('mesada')` si la función todavía no existe, y si la carga falla, aborta todo con un `toast` de error y `return` — antes de tocar cualquier estado, nunca a medias.
+
+**La rama `mesada` era un bug vivo, no hipotético — la tercera vez que aparece este bug exacto esta ronda de auditoría** (después de `analisis.js` y `cuentas.js`): como `mesada` ya es un grupo lazy real, borrar un movimiento de mesada desde el feed general de actividad sin haber visitado antes la pantalla Mesada tiraba `ReferenceError` a mitad de `eliminarMovimiento()` — sin guardar nada, sin revertir nada, con el sheet probablemente colgado.
+
+Confirmado limpio el resto: sin `.innerHTML` sin escapar (todo pasa por `escHtml()`), sin acoplamiento hacia `spotify.js`/`prestado.js` más allá de datos planos en `S.tarjetasCredito`/`S.tcMovimientos` (mismo patrón seguro que `descontarFuente`/`sumarFuente` en `core-state.js`). `node --check` sin errores.
+
+**Balance:** con esto, `movimientos.js` queda listo para cuando `tarjetas_credito` se vuelva lazy. Sigue faltando `js/modules/tarjetas_credito.js` en sí para completar las dos mitades pendientes: (a) confirmar que su propio wrapper de `abrirDetalleMov` (mencionado en el comentario de `index.html` fechado 2026-08-03) sigue siendo válido si cambia su momento de carga, y (b) agregar `Loader.GROUPS.tarjetas` + sacar el `<script>` eager de `index.html`, ambos cambios juntos.
+
+### 🔧 Cambio (2026-08-02, séptima ronda) — se recibió `js/modules/tarjetas_credito.js`: sexto grupo lazy, cierra el acoplamiento spotify↔tarjetas_credito de raíz
+
+Pedido: en vez de dejar el acoplamiento como una decisión de producto documentada, resolverlo de fondo. Con el archivo real, las dos dudas que quedaban abiertas se resolvieron:
+
+- **El wrapper de `abrirDetalleMov`** (`Events.registerAll('tarjetas', {..., verMov: (...args) => abrirDetalleMov(...args)})`) resuelve el nombre global recién al hacer click, no al cargar — es lazy-safe sin ningún cambio, sin importar el orden de carga respecto a `js/core/movimientos.js`.
+- **`tcNormalizarTarjetas()`** — la duda que el propio header del archivo dejaba abierta ("no se pudo confirmar si `core-state.js` ya tenía guard") ya estaba resuelta desde la ronda "continuación": sí lo tiene.
+
+**Hallazgo nuevo en el archivo real:** 2 llamadas a `calcC()` (cuentas.js) sin guard, ambas en widgets de "cobertura" (¿la cajita vinculada alcanza para cubrir la deuda de la tarjeta?) — una en `renderTCDashboard()`, otra en `abrirDetalleTCSheet()`. Ninguna muta datos, así que el fix es un guard simple que oculta el widget. Cuidado especial en `abrirDetalleTCSheet()`: el `else if` original decía "la cajita fue eliminada" cuando no había cobertura — sin ajustar la condición, ese mensaje habría aparecido incorrectamente cuando la cajita sí existe pero `calcC` (cuentas.js) simplemente no cargó todavía. Se corrigió el `else if` para que solo dispare cuando la cajita de verdad no existe (`tc.cajitaId && !cajitaVinc`).
+
+**Cambios aplicados:**
+1. `js/core/lazy-loader.js` — `tarjetas: ['js/modules/tarjetas_credito.js']`, sexto grupo en `Loader.GROUPS`.
+2. `index.html` — sacado el `<script src="js/modules/tarjetas_credito.js" defer>` eager, mismo patrón de comentario placeholder que los otros 5 grupos. `#screen-tarjetas`/`#mas-tarjetas` ya eran estáticos, sin cambios ahí.
+3. `tarjetas_credito.js` — los 2 guards de `calcC()`, más el comentario de cabecera actualizado.
+
+**Efecto secundario aceptado, no corregido:** el parche a `window.mostrarAlertaFuente` (hint "se carga a la TC" al elegir tarjeta como fuente en Gastos/Encargos/Préstamos) no aplica hasta la primera visita a Tarjetas de Crédito en la sesión — antes de eso, el selector de fuente simplemente no muestra ese hint extra, sin romper nada. No se intentó arreglar: requeriría que 3 pantallas más disparen `Loader.ensure('tarjetas')` al abrir su selector de fuente, demasiado invasivo para una mejora cosmética.
+
+`node --check` sin errores en `tarjetas_credito.js` y `lazy-loader.js`. Sigue pendiente la prueba en navegador real (mismo pendiente que ya existía desde el grupo `mesada` — jsdom no disponible esta sesión).
+
+**Balance:** el acoplamiento spotify↔tarjetas_credito queda resuelto de raíz. De los 6 grupos lazy que existen ahora, este es el primero que nació de un bug de acoplamiento ya encontrado (no de "cuál pantalla conviene lazy-cargar próximo") — el patrón (`_xxxEnsureModulo()` + `Loader.ensure()` + abortar con `toast` si la llamada muta datos reales, guard simple si solo renderiza) queda como referencia para la próxima vez que aparezca un caso similar.
+
+### 🔧 Cambio (2026-08-02, octava ronda) — fusión de `spotify.js` + `spotify-personas.js` en un solo archivo
+
+Pedido explícito: unificar en un solo archivo como ya es `tarjetas_credito.js`, que nunca se dividió.
+
+**La causa por la que estaban partidos era real, verificada contra el archivo:** `encargos.js` (línea ~1999) tenía `btn_guardar_edit_sp.addEventListener('click', guardarEditarSpotify)` — una referencia directa (no diferida) a una función de `spotify.js`, que exige que ya exista en el momento exacto en que `encargos.js` se ejecuta. Por eso `spotify.js` tenía que cargar antes que `encargos.js`, mientras que `spotify-personas.js` necesitaba cargar después de `personas.js` — dos requisitos de orden incompatibles en un solo archivo. (El comentario original de `spotify.js` también mencionaba a `mesada.js` como otra fuente del mismo problema — no se confirmó: `mesada.js` no tiene ninguna referencia a `addSpotify`/`guardarEditarSpotify`. Podría ser una referencia desactualizada, o estar en `inicio.js`, no recibido esta sesión.)
+
+**Fix de raíz:** dos líneas arriba, en el mismo `encargos.js`, `crearEncargo` ya tenía este problema resuelto con una referencia diferida — `() => crearEncargo()` en vez de la función directa, con un comentario explicando que así "cada clic lee el valor ACTUAL de la variable global". Se aplicó exactamente el mismo patrón a la línea de Spotify: `() => guardarEditarSpotify()`. Con eso, la función ya no necesita existir al momento en que `encargos.js` se ejecuta, solo para cuando el usuario haga click — momento en el que todos los `<script defer>` de la app ya cargaron, sin importar el orden entre ellos.
+
+**Con la dependencia real resuelta, se fusionaron los archivos:** el contenido de `spotify-personas.js` se movió al final de `spotify.js`, bajo su propia sección. Los 2 `Events.registerAll('spotify', {...})` se dejaron como llamadas separadas (no se fusionaron en un solo objeto) para no arriesgar ningún cambio de comportamiento más allá de la fusión en sí — es exactamente el mismo comportamiento que hoy, solo que en un archivo en vez de dos. El `spotify.js` resultante se movió a la posición donde antes vivía `spotify-personas.js` (después de `personas.js` y `encargos-personas.js`), no a su posición vieja — es la mitad más exigente de las dos dependencias.
+
+**Archivos tocados:**
+1. `encargos.js` — referencia diferida para `guardarEditarSpotify`.
+2. `spotify.js` — fusión completa; header reescrito; comentarios de registro de eventos actualizados.
+3. `index.html` — sacado el `<script>` viejo de `spotify.js` (posición temprana); el de `spotify-personas.js` (posición tardía) ahora apunta al archivo fusionado; comentario del bloque de Personas actualizado.
+4. **`spotify-personas.js` queda obsoleto — hay que borrarlo del repo**, nada lo referencia más.
+
+`node --check` sin errores en `encargos.js` y `spotify.js`. No se tocó `mesada.js` ni ningún otro archivo. Pendiente: no se pudo descartar al 100% una referencia inmediata similar en `inicio.js` (no recibido) — si aparece un `ReferenceError` de `guardarEditarSpotify`/`addSpotify` al cargar, revisar ese archivo primero.
+
+### 🔎 Cierre (2026-08-02, novena ronda) — se recibió `inicio.js`: confirma que la fusión de `spotify.js` + `spotify-personas.js` no tenía ningún cabo suelto
+
+Única duda que quedaba abierta de la ronda anterior. `inicio.js` no tiene ninguna referencia — ni directa ni indirecta — a `addSpotify` ni a `guardarEditarSpotify`. Las 2 funciones de Spotify que sí usa (`spPersonaPagadaVigente`, `spNombreDe`, para el widget de alertas vencidas del dashboard) ya estaban guardadas con `typeof` desde la sesión anterior, mismo patrón que el resto de llamadas de este archivo hacia mesada/tarjetas_credito/prestado/cuentas — todas también confirmadas con guard contra el archivo real. Sin fixes necesarios. La fusión de `spotify.js` + `spotify-personas.js` queda 100% validada, sin ninguna duda pendiente.

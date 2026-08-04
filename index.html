@@ -3763,6 +3763,36 @@
           <label class="il" for="mpFecha">Fecha en que te pagó</label>
           <input type="date" id="mpFecha">
         </div>
+        <!-- ¿Pagó con plata que ya le tenía guardada en un encargo? -->
+        <div id="mpEncargoBox"
+          style="display:none;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;cursor:pointer;"
+            id="mpEncargoToggleWrap">
+            <input type="checkbox" id="mpUsarEncargo"
+              style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;color:var(--blue);"
+                id="mpEncargoLabel">Me pagó con plata que ya le tenía
+                guardada</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px;"
+                id="mpEncargoSub"></div>
+            </div>
+          </div>
+          <div id="mpEncargoDetalle" style="display:none;margin-top:10px;">
+            <div class="ig" id="mpEncargoSelWrap"
+              style="display:none;margin-bottom:8px;">
+              <label class="il" for="mpEncargoSel">¿Cuál encargo?</label>
+              <div class="select-wrap"><select id="mpEncargoSel"></select>
+              </div>
+            </div>
+            <div class="ig" style="margin-bottom:0;">
+              <label class="il" for="mpEncargoCuentaSel">¿De cuál cuenta
+                sale esa plata?</label>
+              <div class="select-wrap"><select
+                  id="mpEncargoCuentaSel"></select></div>
+            </div>
+          </div>
+        </div>
         <!-- Modo destino: simple o dividido -->
         <div class="field-header" style="margin-bottom:8px;">
           <label class="il" style="margin-bottom:0;">¿Qué hiciste con esa

@@ -4330,24 +4330,49 @@
 <!-- mesada.js: ver js/core/lazy-loader.js (Loader.GROUPS.mesada) -->
 <script src="js/modules/spotify.js" defer></script>
 <script src="js/modules/gastos.js" defer></script>
-<!--
-
-// Módulo Préstamos migrado a js/modules/prestado.js — ver docs/prestado.md.
-// Carga acá y no donde vivía antes (mucho más arriba) por el mismo motivo
-// que Mesada: depende de crearSplitWidget() y diffRegistrarInstancia(),
-// y de acá en más ya están definidos.
--->
-<script src="js/modules/prestado.js" defer></script>
+<!-- ═══════════════════════════════════════════════════════════════
+     js/modules/personas.js se movió acá (2026-08-03) — antes cargaba
+     mucho más abajo, cerca del final del documento. Motivo: el
+     archivo fusionado js/modules/prestado.js (ver más abajo, y
+     CHANGELOG.md#préstamos) tiene dependencia real de nivel superior
+     contra personas.js (PERSONA_COLORES, _guardarEditarPersonaGlobal),
+     a diferencia de lo que resultó ser Encargos/Spotify (esos dos NO
+     tenían dependencia real — se fusionaron sin mover nada, ver
+     CHANGELOG.md#encargos y #spotify). Se auditaron los 16 archivos
+     que hoy cargan entre esta posición y la posición vieja de
+     personas.js (sheet-stack.js, lazy-loader.js, money-input.js,
+     movimientos.js, cuentas.js, bootstrap.js, mas-menu.js,
+     sheet-viewport.js, gastos-fijos-progress.js, sheet-swipe.js,
+     firebase-sync.js, mejoras.js, busqueda-global.js,
+     mejoras-adicionales.js, pin-bio.js, nav.js) — ninguno tiene
+     código de nivel superior que dependa de personas.js, ni
+     personas.js depende de nada de ellos a nivel superior. Detalle
+     completo en CHANGELOG.md#préstamos.
+     ═══════════════════════════════════════════════════════════════ -->
+<script src="js/modules/personas.js" defer></script>
 <!--
 // js/core/sheet-stack.js — último bloque núcleo inline, extraído esta
 // sesión (ver auditoria-tecnica.md, punto 1 de "Críticos", y el header del
 // propio archivo para el detalle de la restricción de orden de carga).
 // Se carga acá, en la misma posición relativa que tenían los dos bloques
 // inline que reemplaza: después de gastos.js/spotify.js (los overrides de
-// addGastoVar/addGastoFijo necesitan esos globales ya definidos) y antes
-// de deudores-personas.js (que monkey-patchea openSheet()).
+// addGastoVar/addGastoFijo necesitan esos globales ya definidos).
 -->
 <script src="js/core/sheet-stack.js" defer></script>
+<!-- ═══════════════════════════════════════════════════════════════
+     Módulo Préstamos — js/modules/prestado.js (2026-08-03: fusionado
+     con lo que antes era prestado-personas.js + deudores-personas.js,
+     ver el comentario de cabecera del propio archivo y
+     CHANGELOG.md#préstamos). Antes cargaba mucho más arriba (justo
+     después de gastos.js) porque depende de crearSplitWidget() y
+     diffRegistrarInstancia() (ya definidos ahí); se movió a esta
+     posición, después de personas.js Y de sheet-stack.js, porque el
+     archivo fusionado necesita ambos: PERSONA_COLORES/
+     _guardarEditarPersonaGlobal de personas.js, y openSheet (para
+     poder envolverlo) de sheet-stack.js — las dos dependencias reales
+     de nivel superior confirmadas en esta sesión.
+     ═══════════════════════════════════════════════════════════════ -->
+<script src="js/modules/prestado.js" defer></script>
 <!--
 // js/core/lazy-loader.js — motor de carga bajo demanda (docs/auditoria-
 // tecnica.md #4, fase 1 de la modularización). Se carga acá, justo después
@@ -4700,37 +4725,18 @@
     <!-- ═══════════════════════════════════════════════════════════════
      SISTEMA DE PERSONAS — Libreta central vinculada
      Encargos y Préstamos comparten la misma identidad de persona.
-     Módulo migrado a js/modules/personas.js — ver docs/personas.md.
-     Igual que Spotify/Encargos, la integración específica de cada
-     módulo con Personas sigue cargando aparte, justo después de este
-     script (encargos-personas.js, spotify-personas.js, prestado-personas.js),
-     porque depende de funciones (getPersona, abrirSelPersona,
-     _inyectarPersonaSheets) recién definidas acá.
+     Módulo migrado a js/modules/personas.js — su <script src> se movió
+     de acá a mucho más arriba (2026-08-03, ver ese comentario, cerca de
+     gastos.js/sheet-stack.js) porque js/modules/prestado.js (fusionado
+     con prestado-personas.js/deudores-personas.js esta misma sesión)
+     sí tenía dependencia real de nivel superior contra este archivo.
+
+     La integración de Encargos y de Spotify con Personas se fusionó de
+     vuelta en encargos.js/spotify.js (2026-08-03, sin mover nada de
+     posición: nunca tuvieron esa dependencia real) — ver
+     CHANGELOG.md#encargos y CHANGELOG.md#spotify.
      ═══════════════════════════════════════════════════════════════ -->
-<script src="js/modules/personas.js" defer></script>
-<script src="js/modules/encargos-personas.js" defer></script>
-<!--
-// Integración de Spotify con Personas migrada a js/modules/spotify-personas.js
-// — ver el comentario al principio de ese archivo (depende de openSheet y del
-// sistema de Personas recién definidos, por eso carga acá y no junto al resto
-// de Spotify, que está arriba). Ver también docs/spotify.md.
--->
-<script src="js/modules/spotify-personas.js" defer></script>
-<!--
-
-// Integración "Yo debo ↔ S.personas", el sheet "Editar mi deuda" y su
-// conexión de botones (antes con el hack de appDataLoaded + setTimeout)
-// migrados a js/modules/prestado-personas.js — ver docs/prestado.md.
--->
-<script src="js/modules/prestado-personas.js" defer></script>
 <script src="js/core/personas-init.js" defer></script>
-<!--
-
-// Integración "Deudores + Personas": mismo selector de persona (existente
-// o nueva) en "Agregar persona" (Me deben) y en "Nueva deuda" (Yo debo)
-// migrada a js/modules/deudores-personas.js — ver docs/prestado.md.
--->
-<script src="js/modules/deudores-personas.js" defer></script>
 
     <!-- ===== MÓDULO ALCANCÍA OCULTA =====
          Migrado a js/modules/alcancia.js — ver auditoria-tecnica.md,

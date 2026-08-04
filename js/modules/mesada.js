@@ -53,6 +53,71 @@ let mpMesNombre=''; // 'Abril 2025'
 let mppParent=''; // 'papa' | 'mama' — para el sheet de pago de lo pendiente
 let mppMesKey=''; // '2025-3'
 
+// ── "Me pagó con plata de un encargo" ──────────────────────────────────
+// Si ya le tenías guardada plata a papá/mamá en un encargo (módulo
+// Encargos), al registrar el pago de mesada podés usar esa plata en vez de
+// que entre plata nueva: se descuenta del encargo y se cuenta como pago
+// recibido. Ver confirmarMesadaPago() y _borrarMesadaPago() para el
+// registro y la reversión.
+let mpUsarEncargoActivo=false;
+let mpEncargoActualId='';
+
+function _normTxt(s){
+  return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+}
+
+function _mesadaClavesParent(parent){
+  return parent==='papa' ? ['papa','padre','papi'] : ['mama','madre','mami'];
+}
+
+// Encargos con saldo disponible cuyo nombre coincide con "papá"/"mamá" (o
+// variantes) — candidatos a que la mesada de ese mes se haya pagado con
+// plata que ya les tenías guardada. Requiere que encargos.js ya esté
+// cargado (getEncargo/encargoSaldo son globales de ese módulo).
+function _mesadaEncargosDelParent(parent){
+  if(typeof encargoSaldo!=='function'||!S.encargos||!S.encargos.length)return [];
+  const claves=_mesadaClavesParent(parent);
+  return S.encargos
+    .filter(e=>claves.some(c=>_normTxt(e.nombre).includes(c)))
+    .map(e=>({enc:e,saldo:encargoSaldo(e)}))
+    .filter(x=>x.saldo>0.5)
+    .sort((a,b)=>b.saldo-a.saldo);
+}
+
+// Puebla el selector de cuentas del encargo elegido (dónde físicamente
+// está guardada esa plata) — reutiliza los helpers de encargos.js.
+function _poblarMpEncargoCuentas(){
+  const sel=document.getElementById('mpEncargoCuentaSel');
+  if(!sel)return;
+  const enc=typeof getEncargo==='function'?getEncargo(mpEncargoActualId):null;
+  if(!enc){sel.innerHTML='';return;}
+  const cuentas=typeof _getEncargoSaldoPorCuenta==='function'?_getEncargoSaldoPorCuenta(enc):[];
+  const sinCuenta=typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0;
+  let opts=cuentas.map(c=>`<option value="${c.cuenta}">${escHtml(c.label)} (${fmt(c.saldo)})</option>`).join('');
+  if(sinCuenta>0.5)opts+=`<option value="">Sin especificar (${fmt(sinCuenta)})</option>`;
+  sel.innerHTML=opts||'<option value="">Sin especificar</option>';
+  actualizarMpPreview();
+}
+
+// Muestra u oculta la sección normal "¿Qué hiciste con esa plata?"
+// (destino simple/dividido). Se oculta cuando el pago se cubre con plata
+// de un encargo ya guardada en una cuenta conocida (no hace falta volver
+// a elegir destino porque la plata ya está ahí); se muestra si hace falta
+// elegir dónde cae la plata (pago normal, o encargo "sin especificar").
+function _mostrarSeccionDestinoNormal(mostrar){
+  const header=document.querySelector('#sheet-mesada-pago .field-header');
+  if(header)header.style.display=mostrar?'':'none';
+  const simple=document.getElementById('mpModoSimple');
+  const split=document.getElementById('mpModoDividido');
+  if(!mostrar){
+    if(simple)simple.style.display='none';
+    if(split)split.style.display='none';
+  } else {
+    if(simple)simple.style.display=mpSplitMode?'none':'';
+    if(split)split.style.display=mpSplitMode?'':'none';
+  }
+}
+
 function _ensureMesadas(){
   if(!S.mesadas)S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}};
   ['papa','mama'].forEach(p=>{
@@ -294,6 +359,33 @@ function abrirRegistrarMesada(parent,key,nombre){
   if(chkDebe){ chkDebe.checked=false; }
   const debeWrap=document.getElementById('mpDebeWrap');
   if(debeWrap){ debeWrap.style.display='none'; }
+
+  // ── "Me pagó con plata de un encargo" — resetear y poblar si aplica ──
+  mpUsarEncargoActivo=false;
+  mpEncargoActualId='';
+  const boxEnc=document.getElementById('mpEncargoBox');
+  const chkEnc=document.getElementById('mpUsarEncargo');
+  const detEnc=document.getElementById('mpEncargoDetalle');
+  if(chkEnc)chkEnc.checked=false;
+  if(detEnc)detEnc.style.display='none';
+  if(boxEnc){
+    const encMatches=_mesadaEncargosDelParent(parent);
+    if(encMatches.length){
+      boxEnc.style.display='';
+      const totalDisp=encMatches.reduce((a,x)=>a+x.saldo,0);
+      const subEnc=document.getElementById('mpEncargoSub');
+      if(subEnc)subEnc.textContent='Tenés '+fmt(totalDisp)+' guardados de '+pNombre+' en encargos';
+      const selEnc=document.getElementById('mpEncargoSel');
+      if(selEnc)selEnc.innerHTML=encMatches.map(x=>`<option value="${x.enc.id}">${escHtml(x.enc.nombre)} (${fmt(x.saldo)})</option>`).join('');
+      const selWrapEnc=document.getElementById('mpEncargoSelWrap');
+      if(selWrapEnc)selWrapEnc.style.display=encMatches.length>1?'':'none';
+      mpEncargoActualId=encMatches[0].enc.id;
+      _poblarMpEncargoCuentas();
+    } else {
+      boxEnc.style.display='none';
+    }
+  }
+  _mostrarSeccionDestinoNormal(true);
   openSheet('mesada-pago');
 }
 
@@ -302,6 +394,22 @@ function actualizarMpPreview(){
   const prev=document.getElementById('mpPreview');
   _syncMpDebeWrap(v);
   if(!v){prev.textContent='';return;}
+  if(mpUsarEncargoActivo){
+    const enc=typeof getEncargo==='function'?getEncargo(mpEncargoActualId):null;
+    if(!enc){prev.textContent='';return;}
+    const cuentaSel=document.getElementById('mpEncargoCuentaSel')?document.getElementById('mpEncargoCuentaSel').value:'';
+    const disponible=cuentaSel
+      ?(typeof _getEncargoSaldoEnCuenta==='function'?_getEncargoSaldoEnCuenta(enc,cuentaSel):0)
+      :(typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0);
+    if(v>disponible+0.5){
+      prev.textContent='Ahí solo tenés '+fmt(disponible)+' de '+enc.nombre;
+      prev.style.color='var(--red)';
+    } else {
+      prev.textContent='Se descuenta de lo que le tenías guardado a '+enc.nombre+' · queda '+fmt(disponible-v);
+      prev.style.color='var(--blue)';
+    }
+    return;
+  }
   if(mpSplitMode){
     const splits=getMpSplitData();
     const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
@@ -410,7 +518,45 @@ function confirmarMesadaPago(){
   const pNombre=mpParent==='papa'?'Papá':'Mamá';
   const descMov='Mesada — '+pNombre+' · '+_mesNombreDeKey(mpMesKey);
 
-  if(mpSplitMode){
+  if(mpUsarEncargoActivo){
+    const enc=typeof getEncargo==='function'?getEncargo(mpEncargoActualId):null;
+    if(!enc){toast('Selecciona un encargo válido','err');return;}
+    const cuentaSel=document.getElementById('mpEncargoCuentaSel')?document.getElementById('mpEncargoCuentaSel').value:'';
+    const disponible=cuentaSel
+      ?(typeof _getEncargoSaldoEnCuenta==='function'?_getEncargoSaldoEnCuenta(enc,cuentaSel):0)
+      :(typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0);
+    if(monto>disponible+0.5){
+      toast('Ahí solo hay '+fmt(disponible)+' guardados de '+enc.nombre,'err');
+      return;
+    }
+    if(!enc.movimientos)enc.movimientos=[];
+    const movEnc={id:uid(),tipo:'salida',desc:descMov,monto,cuenta:cuentaSel||'',fecha,nota:'Usado para mesada',ts:Date.now()};
+    enc.movimientos.push(movEnc);
+    let destinoFinal=cuentaSel;
+    let sumado=false; // true si de verdad entró plata a una cuenta (caso "sin especificar")
+    let movSecId=null;
+    if(cuentaSel){
+      // Esa plata ya estaba contada dentro del saldo de esa cuenta (era del
+      // encargo); solo se re-etiqueta como tuya, no se vuelve a sumar.
+      movSecId=_registrarMovSecundarioMesada(cuentaSel,monto,fecha,descMov);
+    } else {
+      // Plata "sin especificar" del encargo: no estaba en ninguna cuenta
+      // rastreada, así que sí entra de verdad a donde elijas.
+      const destinoLibre=document.getElementById('mpDestino')?document.getElementById('mpDestino').value:'';
+      destinoFinal=destinoLibre;
+      if(destinoLibre){
+        sumarFuente(destinoLibre,monto);
+        sumado=true;
+        movSecId=_registrarMovSecundarioMesada(destinoLibre,monto,fecha,descMov);
+      }
+    }
+    data[mpMesKey]={
+      monto,fecha,nota,
+      destino:destinoFinal||'',
+      _movSecId:movSecId,
+      origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre,sumado}
+    };
+  } else if(mpSplitMode){
     const splits=getMpSplitData();
     const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
     if(totalSplit>monto+1){
@@ -442,6 +588,8 @@ function confirmarMesadaPago(){
   closeSheet('mesada-pago');
   if(pendienteInicial>0){
     toast('Guardado — quedó pendiente '+fmt(pendienteInicial),'info',3500);
+  } else if(mpUsarEncargoActivo){
+    toast('Guardado — se descontó de lo que le tenías guardado','ok',3000);
   }
 }
 
@@ -451,6 +599,9 @@ function abrirDetalleMesada(parent,key,nombre){
   const pNombre=parent==='papa'?'Papá':'Mamá';
   document.getElementById('mdTitle').textContent=pNombre+' · '+nombre;
   let destinoHtml='';
+  const origenEncargoHtml=info.origenEncargo
+    ?`<div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Pagó con</span><span class="badge" style="background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);">Plata guardada de ${escHtml(info.origenEncargo.nombre)}</span></div>`
+    :'';
   if(info.splits&&info.splits.length){
     destinoHtml=`<div style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Dividido en</span>
       <div style="margin-top:5px;display:flex;flex-direction:column;gap:4px;">
@@ -459,6 +610,7 @@ function abrirDetalleMesada(parent,key,nombre){
   } else if(info.destino){
     destinoHtml=`<div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Lo metiste en</span><span class="badge ${fuenteBadgeClass(info.destino)}">${escHtml(fuenteLabel(info.destino))}</span></div>`;
   }
+  destinoHtml=origenEncargoHtml+destinoHtml;
   // ── Pendiente: estado y acciones ──────────────────────────────────
   const anioKey=parseInt(key.split('-')[0],10);
   const cuotaDelMesDet=_getCuotaAnio(parent,anioKey);
@@ -528,7 +680,25 @@ function _borrarMesadaPago(parent,key,info){
     // devolver cada plata a la cuenta correcta (pueden ser cuentas distintas).
     const historialTotal=(info.pendienteHistorial||[]).reduce((acc,h)=>acc+(h.monto||0),0);
     // Devolver el dinero del pago original a las cuentas correspondientes
-    if(info.splits&&info.splits.length){
+    if(info.origenEncargo){
+      // Este pago se cubrió con plata que ya le tenías guardada en un
+      // encargo: hay que devolverle ese saldo al encargo (quitando el
+      // movimiento de salida que se creó) y, solo si de verdad había
+      // entrado plata nueva a una cuenta (caso "sin especificar"), revertir
+      // esa entrada también.
+      const oe=info.origenEncargo;
+      const enc=typeof getEncargo==='function'?getEncargo(oe.encargoId):null;
+      let montoOrig=0;
+      if(enc&&enc.movimientos){
+        const mv=enc.movimientos.find(m=>m.id===oe.movId);
+        if(mv)montoOrig=mv.monto||0;
+        enc.movimientos=enc.movimientos.filter(m=>m.id!==oe.movId);
+      }
+      if(oe.sumado&&info.destino&&montoOrig){
+        descontarFuente(info.destino,montoOrig);
+      }
+      _borrarMovSecundarioMesada(info.destino,info._movSecId);
+    } else if(info.splits&&info.splits.length){
       info.splits.forEach(s=>{
         if(s.fuente){
           descontarFuente(s.fuente,s.monto);
@@ -687,6 +857,37 @@ const _mMpDestino = document.getElementById('mpDestino');
 if (_mMpDestino) _mMpDestino.addEventListener('change', actualizarMpPreview);
 const _mMpMonto = document.getElementById('mpMonto');
 if (_mMpMonto) _mMpMonto.addEventListener('input', actualizarMpPreview);
+
+// "Me pagó con plata de un encargo" — toggle y selects
+const _mChkUsarEncargo = document.getElementById('mpUsarEncargo');
+if (_mChkUsarEncargo) _mChkUsarEncargo.addEventListener('change', () => {
+  mpUsarEncargoActivo = _mChkUsarEncargo.checked;
+  const det = document.getElementById('mpEncargoDetalle');
+  if (det) det.style.display = mpUsarEncargoActivo ? '' : 'none';
+  if (mpUsarEncargoActivo) {
+    const cuentaSel = document.getElementById('mpEncargoCuentaSel');
+    _mostrarSeccionDestinoNormal(!!(cuentaSel && cuentaSel.value === ''));
+  } else {
+    _mostrarSeccionDestinoNormal(true);
+  }
+  actualizarMpPreview();
+});
+const _mSelEncargo = document.getElementById('mpEncargoSel');
+if (_mSelEncargo) _mSelEncargo.addEventListener('change', () => {
+  mpEncargoActualId = _mSelEncargo.value;
+  _poblarMpEncargoCuentas();
+});
+const _mSelEncargoCuenta = document.getElementById('mpEncargoCuentaSel');
+if (_mSelEncargoCuenta) _mSelEncargoCuenta.addEventListener('change', () => {
+  if (mpUsarEncargoActivo) _mostrarSeccionDestinoNormal(_mSelEncargoCuenta.value === '');
+  actualizarMpPreview();
+});
+const _mEncargoToggleWrap = document.getElementById('mpEncargoToggleWrap');
+if (_mEncargoToggleWrap) _mEncargoToggleWrap.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'mpUsarEncargo') return; // evitar doble toggle
+  const chk = document.getElementById('mpUsarEncargo');
+  if (chk) chk.click();
+});
 
 // mpDebeWrap / mpQuedaDebiendo: el wrap entero es clickeable (delega el click
 // al checkbox real), pero el checkbox no debe re-disparar el click del wrap.

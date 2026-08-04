@@ -1078,6 +1078,15 @@ function _onSelPersonaSpotifyEdit(personaId) {
 }
 
 /* ── Hook en openSheet para inicializar los selectores ─────────── */
+// OJO: a diferencia de addSpotify (definido arriba en este mismo archivo y
+// por eso ya hoisted al parsear), openSheet vive en js/core/sheet-stack.js,
+// que carga DESPUÉS de este módulo (ver comentario de orden de carga en
+// sheet-stack.js). Capturar `openSheet` acá arriba, a nivel superior,
+// lanzaba "openSheet is not defined" porque el global todavía no existía
+// al parsear spotify.js. Se envuelve en DOMContentLoaded: los scripts con
+// defer (incluido sheet-stack.js) ya terminaron de ejecutarse para
+// entonces, así que openSheet ya es un global válido.
+document.addEventListener('DOMContentLoaded', function() {
 const _origOpenSheetSpotifyPersonas = openSheet;
 openSheet = function(id) {
   if (id === 'spotify') {
@@ -1100,6 +1109,7 @@ openSheet = function(id) {
   }
   _origOpenSheetSpotifyPersonas.apply(this, arguments);
 };
+});
 
 /* ── Hook en addSpotify para guardar personaId ──────────────────── */
 const _origAddSpotifyPersonas = addSpotify;

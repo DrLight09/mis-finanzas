@@ -144,6 +144,13 @@ function renderAttencion(){
       if(badge) badge.innerHTML = `${items.length} <i class="fa-solid ${nowOpen?'fa-chevron-up':'fa-chevron-down'}"></i>`;
     };
     titleEl.addEventListener('click', titleEl._attnClickHandler);
+    // El userSelect:none/touchAction:manipulation de arriba no alcanza en algunos
+    // navegadores Android (Brave/Chrome) para bloquear el "doble tap = seleccionar
+    // palabra". Mismo patrón que ya usa renderProyeccion() (header/cards 3m-6m-12m):
+    // preventDefault() en touchend evita que el navegador dispare la selección nativa.
+    if(titleEl._attnTouchHandler) titleEl.removeEventListener('touchend', titleEl._attnTouchHandler);
+    titleEl._attnTouchHandler = (e) => { e.preventDefault(); titleEl._attnClickHandler(); };
+    titleEl.addEventListener('touchend', titleEl._attnTouchHandler, {passive:false});
     list.style.display = isOpen ? '' : 'none';
     sessionStorage.setItem('attn-open', isOpen ? '1' : '0');
   }
@@ -537,6 +544,25 @@ window.refresh = function() {
   if (_origRefreshInicio) _origRefreshInicio.apply(this, arguments);
   _checkGastoAlto();
 };
+
+// Reintentar renderAttencion() si al momento del primer render los módulos
+// lazy (mesada, tarjetas_credito) todavía no habían cargado — sus funciones
+// (getMesadaData, tcCupoUsadoPct) no existían aún, así que sus ítems se
+// saltaron en silencio por el guard typeof==='function' (ver cabecera del
+// archivo) y nadie los volvía a pedir. Sondea hasta que estén listas o hasta
+// agotar el límite, y vuelve a renderizar una sola vez.
+(function reintentarAttencionSiFaltanModulosLazy(){
+  let intentos = 0;
+  const maxIntentos = 20; // ~10s a 500ms
+  const check = setInterval(() => {
+    intentos++;
+    const listo = typeof getMesadaData === 'function' && typeof tcCupoUsadoPct === 'function';
+    if (listo || intentos >= maxIntentos) {
+      clearInterval(check);
+      if (typeof renderAttencion === 'function') renderAttencion();
+    }
+  }, 500);
+})();
 
 // Mover la sección "Necesita atención" justo debajo del hero de Inicio.
 (function(){

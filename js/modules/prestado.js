@@ -2248,7 +2248,7 @@ Events.registerAll('prestado', {
 
   // Yo debo
   abrirSheetNuevaDeuda: _abrirSheetNuevaDeuda,
-  crearMiDeuda: crearMiDeuda,
+  crearMiDeuda: (...args) => crearMiDeuda(...args), // arrow-wrap: prestado-personas.js y deudores-personas.js lo reasignan más abajo (mismo patrón que encargos.js)
   volverMisDeudas: volverMisDeudas,
   eliminarMiDeuda: eliminarMiDeuda,
   abrirMiDeuda: abrirMiDeuda,
@@ -2296,3 +2296,339 @@ Events.registerAll('prestado', {
 
 const movFuente = document.getElementById('mov_fuente');
 if (movFuente) movFuente.addEventListener('change', () => mostrarAlertaFuente('mov'));
+
+/* ═══════════════════════════════════════════════════════════════
+   INTEGRACIÓN CON EL SISTEMA DE PERSONAS
+   (antes js/modules/prestado-personas.js — fusionado acá el 2026-08-03)
+
+   Crear/vincular persona al agregar un deudor o una deuda, refrescar
+   el detalle abierto cuando se edita desde el sheet global de
+   Personas, navegación cruzada entre perfil y deudor/deuda, y el
+   sheet "Editar mi deuda". Ver docs/prestado.md.
+
+   A diferencia de encargos-personas.js/spotify-personas.js, ESTE
+   archivo sí tenía una dependencia real de nivel superior contra
+   personas.js (PERSONA_COLORES, _guardarEditarPersonaGlobal, leídos
+   al parsear, no dentro de una función) — confirmado, no una premisa
+   falsa. Por eso el archivo fusionado completo (prestado.js +
+   prestado-personas.js + deudores-personas.js) se movió a cargar
+   después de personas.js Y después de sheet-stack.js (que define
+   openSheet, necesario por deudores-personas.js más abajo) — ver el
+   nuevo comentario de posición en index.html y CHANGELOG.md#préstamos.
+   ═══════════════════════════════════════════════════════════════ */
+
+function _irADeudor(deudorId) {
+  document.getElementById('sheet-perfil-persona').classList.remove('open');
+  setTimeout(() => { showScreen('prestamos'); abrirDeudor(deudorId); }, 180);
+}
+
+const _origAddDeudorPersonas = addDeudor;
+addDeudor = function() {
+  // Cuando se crea un deudor, también crear/vincular en S.personas
+  const nombre = document.getElementById('np_nombre').value.trim();
+  const color = typeof npColorSel !== 'undefined' ? npColorSel : '#60b0f0';
+  if (!nombre) { _origAddDeudorPersonas.apply(this, arguments); return; }
+
+  // Llamar al original primero (crea el deudor en S.deudores)
+  _origAddDeudorPersonas.apply(this, arguments);
+
+  // Vincular el deudor recién creado a S.personas
+  const deudor = (S.deudores || []).find(d => d.nombre === nombre && !d.personaId);
+  if (deudor) {
+    let p = (S.personas || []).find(x => x.nombre.trim().toLowerCase() === nombre.toLowerCase());
+    if (!p) {
+      if (!S.personas) S.personas = [];
+      p = { id: uid(), nombre, color: color, creadoEn: hoy() };
+      S.personas.push(p);
+    } else {
+      p.color = color;
+    }
+    deudor.personaId = p.id;
+    save();
+  }
+};
+
+/* ── Hook: si el detalle de un deudor (Préstamos > me deben) está abierto */
+/* y se guarda desde el sheet unificado "Editar persona", refrescar su    */
+/* encabezado (nombre/avatar) para reflejar el cambio al instante. ────── */
+const _origGuardarEditarPersonaGlobalDeudor = _guardarEditarPersonaGlobal;
+_guardarEditarPersonaGlobal = function() {
+  const idEditado = _editPersonaGlobalId;
+  _origGuardarEditarPersonaGlobalDeudor.apply(this, arguments);
+  const d = (S.deudores || []).find(x => x.id === deudorActualId);
+  if (d && d.personaId === idEditado) {
+    const detalle = document.getElementById('deudorDetalle');
+    if (detalle && detalle.style.display !== 'none') abrirDeudor(deudorActualId);
+  }
+};
+
+
+const _origCrearMiDeudaPersonas = crearMiDeuda;
+crearMiDeuda = function() {
+  const nombre = (document.getElementById('nd_nombre').value || '').trim();
+  if (!nombre) { _origCrearMiDeudaPersonas.apply(this, arguments); return; }
+  _origCrearMiDeudaPersonas.apply(this, arguments);
+  // Vincular la misDeuda recién creada a S.personas (crear si no existe)
+  const deuda = (S.misDeudas || []).find(d => d.nombre === nombre && !d.personaId);
+  if (deuda) {
+    if (!S.personas) S.personas = [];
+    let p = S.personas.find(x => x.nombre.trim().toLowerCase() === nombre.toLowerCase());
+    if (!p) {
+      p = { id: uid(), nombre, color: deuda.color || '#f06868', creadoEn: hoy() };
+      S.personas.push(p);
+    } else {
+      // Si ya existe persona con ese nombre, usar su color en la deuda
+      deuda.color = p.color || deuda.color;
+    }
+    deuda.personaId = p.id;
+    save();
+  }
+};
+
+/* ── Abrir perfil desde una misDeuda (crea persona si no tiene) ── */
+function _abrirPerfilDesdeMiDeuda(miDeudaId) {
+  if (!miDeudaId) return;
+  const d = (S.misDeudas || []).find(x => x.id === miDeudaId);
+  if (!d) return;
+  _inyectarPersonaSheets();
+  if (d.personaId) {
+    abrirPerfilPersona(d.personaId);
+    return;
+  }
+  // Crear persona vinculada on-the-fly
+  if (!S.personas) S.personas = [];
+  let p = S.personas.find(x => x.nombre.trim().toLowerCase() === (d.nombre || '').toLowerCase());
+  if (!p) {
+    p = { id: uid(), nombre: d.nombre, color: d.color || '#f06868', creadoEn: hoy() };
+    S.personas.push(p);
+  }
+  d.personaId = p.id;
+  save();
+  abrirPerfilPersona(p.id);
+}
+
+function _abrirPerfilDesdeMiDeudaActual() {
+  _abrirPerfilDesdeMiDeuda(miDeudaActualId);
+}
+
+function _irAMiDeuda(miDeudaId) {
+  const perfEl = document.getElementById('sheet-perfil-persona');
+  if (perfEl) perfEl.classList.remove('open');
+  setTimeout(() => {
+    showScreen('prestamos');
+    cambiarTabPrestamos('yo-debo');
+    if (typeof abrirMiDeuda === 'function') setTimeout(() => abrirMiDeuda(miDeudaId), 60);
+  }, 180);
+}
+
+/* ── Editar mi deuda ─────────────────────────────────────────────── */
+const PERSONA_COLORES_MD = PERSONA_COLORES; // misma paleta unificada
+window._miDeudaEditColor = null;
+
+function editarMiDeudaActual() {
+  if (!miDeudaActualId) return;
+  const d = (S.misDeudas || []).find(x => x.id === miDeudaActualId);
+  if (!d) return;
+  // Usar el color real de la persona si está vinculada
+  const _pEdit = d.personaId && typeof getPersona === 'function' ? getPersona(d.personaId) : null;
+  window._miDeudaEditColor = (_pEdit && _pEdit.color) ? _pEdit.color : (d.color || PERSONA_COLORES[4]);
+  const inp = document.getElementById('md_edit_nombre');
+  if (inp) inp.value = d.nombre || '';
+  _renderColorPicker('md_edit_colores', '_miDeudaEditColor');
+  if (typeof openSheet === 'function') openSheet('editar-mi-deuda');
+}
+
+function _mdPickColor(c) {
+  window._miDeudaEditColor = c;
+  _renderColorPicker('md_edit_colores', '_miDeudaEditColor');
+}
+
+function guardarEditarMiDeuda() {
+  if (!miDeudaActualId) return;
+  const d = (S.misDeudas || []).find(x => x.id === miDeudaActualId);
+  if (!d) return;
+  const nombre = (document.getElementById('md_edit_nombre').value || '').trim();
+  if (!nombre) { if (typeof toast === 'function') toast('Ingresa el nombre', 'err'); return; }
+  const nuevoColor = window._miDeudaEditColor || d.color;
+  d.nombre = nombre;
+  d.color = nuevoColor;
+  // Sincronizar en S.personas si está vinculada (persona es la fuente de verdad)
+  if (d.personaId && typeof getPersona === 'function') {
+    const p = getPersona(d.personaId);
+    if (p) { p.nombre = nombre; p.color = nuevoColor; }
+  }
+  if (typeof save === 'function') save();
+  if (typeof refresh === 'function') refresh();
+  abrirMiDeuda(miDeudaActualId);
+  if (typeof closeSheet === 'function') closeSheet('editar-mi-deuda');
+  if (typeof toast === 'function') toast(nombre + ' actualizado', 'ok');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   REGISTRO DE EVENTOS
+
+   Reemplaza dos cosas:
+   1. Los onclick="..." inline que llaman a estas funciones desde el
+      HTML de Personas (perfil de persona, lista de "yo debo" en el
+      perfil) — 2 sitios, convertidos a data-action en index.html.
+   2. El hook `window.addEventListener('appDataLoaded', () => setTimeout(...))`
+      que conectaba btn-editar-mi-deuda / btn-guardar-editar-mi-deuda
+      con addEventListener + un flag `_mdHook` para no duplicar el
+      listener. Ese patrón existía porque _initEventListeners() corre
+      una sola vez y estos botones podían no estar en el DOM todavía
+      en ese momento. Con Events (un único listener delegado en
+      `document`, siempre activo) ese problema desaparece por
+      completo: no importa cuándo aparezca el botón en el DOM, alcanza
+      con que tenga el data-action correcto. Se puede borrar el hook
+      entero, incluido el setTimeout de 300ms y el flag _mdHook.
+   ═══════════════════════════════════════════════════════════════ */
+Events.registerAll('prestado-personas', {
+  irADeudor: _irADeudor,
+  irAMiDeuda: _irAMiDeuda,
+  abrirPerfilMiDeuda: _abrirPerfilDesdeMiDeuda,
+  abrirPerfilMiDeudaActual: _abrirPerfilDesdeMiDeudaActual,
+  editarMiDeudaActual: editarMiDeudaActual,
+  guardarEditarMiDeuda: guardarEditarMiDeuda,
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   INTEGRACIÓN "DEUDORES + PERSONAS"
+   (antes js/modules/deudores-personas.js — fusionado acá el 2026-08-03)
+
+   Mismo selector de persona (existente o nueva) en "Agregar persona"
+   (Me deben) y "Nueva deuda" (Yo debo). Necesita openSheet y
+   crearMiDeuda ya definidos/envueltos una vez (por el bloque de
+   arriba) — satisfecho por estar en este mismo archivo, en este
+   orden. Ver docs/prestado.md.
+   ═══════════════════════════════════════════════════════════════ */
+
+
+/* ── Me deben: "Agregar persona" abre directamente el selector ─── */
+function _onSelPersonaMeDeben(personaId) {
+  const p = getPersona(personaId);
+  if (!p) return;
+  // Nota: una misma persona puede tener varias deudas separadas (por distintos
+  // conceptos), así que NO se bloquea si ya existe un deudor con este personaId.
+  if (!S.deudores) S.deudores = [];
+  const d = { id: uid(), nombre: p.nombre, color: p.color || '#60b0f0', personaId: p.id, movimientos: [] };
+  S.deudores.push(d);
+  save(); refresh();
+  toast(`${escHtml(p.nombre)} agregado/a`, 'ok');
+  showScreen('prestamos');
+  cambiarTabPrestamos('me-deben');
+  abrirDeudor(d.id);
+}
+
+/* ── Yo debo: selector de persona dentro de "Nueva deuda" ───────── */
+let _nuevaDeudaPersonaId = null;
+
+function _initNuevaDeudaPersonaSelector() {
+  const sheet = document.getElementById('sheet-nueva-deuda');
+  if (!sheet || sheet._personaHook) return;
+  sheet._personaHook = true;
+  const ndNombreEl = document.getElementById('nd_nombre');
+  if (!ndNombreEl) return;
+  const ig = ndNombreEl.closest('.ig');
+  if (!ig) return;
+  ig.innerHTML = `
+    <label class="il">¿A quién le debes?</label>
+    <div id="nd-persona-btn"
+      style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
+      border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
+      cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
+      <div id="nd-persona-avatar" class="avatar" style="width:28px;height:28px;font-size:10px;margin:0;display:none;flex-shrink:0;"></div>
+      <span id="nd-persona-label">Seleccionar persona...</span>
+      <svg style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <input type="hidden" id="nd_nombre" value="">`;
+  // Antes onclick="abrirSelPersona(_onSelPersonaNuevaDeuda)" inline — este bloque
+  // solo se renderiza una vez (guardado por sheet._personaHook), así que alcanza
+  // con adjuntar el listener una sola vez acá, igual que en splitAgregarRow.
+  const ndBtn = document.getElementById('nd-persona-btn');
+  if (ndBtn) ndBtn.addEventListener('click', () => abrirSelPersona(_onSelPersonaNuevaDeuda));
+}
+
+function _onSelPersonaNuevaDeuda(personaId) {
+  const p = getPersona(personaId);
+  if (!p) return;
+  // ¿Ya existe una deuda registrada con esa persona?
+  const existente = (S.misDeudas || []).find(d => d.personaId === personaId);
+  if (existente) {
+    closeSheet('nueva-deuda');
+    toast(`Ya tienes una deuda registrada con ${escHtml(p.nombre)}`, 'info');
+    showScreen('prestamos');
+    cambiarTabPrestamos('yo-debo');
+    setTimeout(() => abrirMiDeuda(existente.id), 200);
+    return;
+  }
+  _nuevaDeudaPersonaId = personaId;
+  document.getElementById('nd_nombre').value = p.nombre;
+  const btn = document.getElementById('nd-persona-btn');
+  const lbl = document.getElementById('nd-persona-label');
+  const av = document.getElementById('nd-persona-avatar');
+  if (btn) btn.style.borderColor = 'var(--accent)';
+  if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
+  if (av) {
+    av.style.display = 'flex';
+    av.style.background = (p.color || '#60b0f0') + '22';
+    av.style.color = p.color || '#60b0f0';
+    av.style.borderColor = (p.color || '#60b0f0') + '44';
+    av.textContent = iniciales(p.nombre);
+  }
+}
+
+/* ── Hook en openSheet: 'nueva-persona' abre el selector directo;
+     'nueva-deuda' inicializa su propio selector interno ────────── */
+const _origOpenSheetMeDebenYoDebo = openSheet;
+openSheet = function(id) {
+  if (id === 'nueva-persona') {
+    _inyectarPersonaSheets();
+    abrirSelPersona(_onSelPersonaMeDeben);
+    return;
+  }
+  if (id === 'nueva-deuda') {
+    _inyectarPersonaSheets();
+    _nuevaDeudaPersonaId = null;
+    setTimeout(_initNuevaDeudaPersonaSelector, 30);
+    setTimeout(() => {
+      const lbl = document.getElementById('nd-persona-label');
+      const av = document.getElementById('nd-persona-avatar');
+      const btn = document.getElementById('nd-persona-btn');
+      if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
+      if (av) av.style.display = 'none';
+      if (btn) btn.style.borderColor = 'var(--border2)';
+      const ndN = document.getElementById('nd_nombre');
+      if (ndN) ndN.value = '';
+    }, 50);
+  }
+  _origOpenSheetMeDebenYoDebo.apply(this, arguments);
+};
+
+/* ── Hook en crearMiDeuda: exigir persona seleccionada y usar su
+     personaId real en vez de adivinar por coincidencia de nombre ── */
+const _origCrearMiDeudaSelector = crearMiDeuda;
+crearMiDeuda = function() {
+  const ndN = document.getElementById('nd_nombre');
+  if (ndN && !ndN.value.trim()) {
+    const btn = document.getElementById('nd-persona-btn');
+    if (btn) {
+      btn.style.borderColor = 'var(--red)';
+      setTimeout(() => { if (btn) btn.style.borderColor = 'var(--border2)'; }, 2000);
+    }
+    toast('Selecciona una persona', 'err');
+    return;
+  }
+  const pId = _nuevaDeudaPersonaId;
+  _origCrearMiDeudaSelector.apply(this, arguments);
+  if (pId && S.misDeudas && S.misDeudas.length) {
+    const last = S.misDeudas[S.misDeudas.length - 1];
+    const p = getPersona(pId);
+    if (last && p) {
+      last.personaId = pId;
+      last.nombre = p.nombre;
+      last.color = p.color || last.color;
+      save();
+    }
+  }
+  _nuevaDeudaPersonaId = null;
+};

@@ -545,24 +545,21 @@ window.refresh = function() {
   _checkGastoAlto();
 };
 
-// Reintentar renderAttencion() si al momento del primer render los módulos
-// lazy (mesada, tarjetas_credito) todavía no habían cargado — sus funciones
-// (getMesadaData, tcCupoUsadoPct) no existían aún, así que sus ítems se
-// saltaron en silencio por el guard typeof==='function' (ver cabecera del
-// archivo) y nadie los volvía a pedir. Sondea hasta que estén listas o hasta
-// agotar el límite, y vuelve a renderizar una sola vez.
-(function reintentarAttencionSiFaltanModulosLazy(){
-  let intentos = 0;
-  const maxIntentos = 20; // ~10s a 500ms
-  const check = setInterval(() => {
-    intentos++;
-    const listo = typeof getMesadaData === 'function' && typeof tcCupoUsadoPct === 'function';
-    if (listo || intentos >= maxIntentos) {
-      clearInterval(check);
-      if (typeof renderAttencion === 'function') renderAttencion();
-    }
-  }, 500);
-})();
+// "Necesita atención" depende de mesada.js y tarjetas_credito.js, que ahora
+// son lazy (ver js/core/lazy-loader.js) y solo se cargan cuando el usuario
+// visita esas pantallas (Loader.ensure('mesada')/Loader.ensure('tarjetas')
+// desde showScreen() en sheet-stack.js). Inicio es la pantalla de entrada,
+// así que si el usuario nunca visitó Mesada o Tarjetas en esa sesión, esos
+// archivos no cargan solos y sus ítems quedan afuera para siempre (el guard
+// typeof==='function' los salta en silencio, y nada los volvía a pedir).
+// Forzamos acá la carga de ambos grupos con el mismo Loader, y al terminar
+// volvemos a renderizar para que los ítems ya aparezcan sin que el usuario
+// tenga que visitar esas pantallas primero.
+if (typeof Loader !== 'undefined' && Loader.ensure) {
+  Promise.all([Loader.ensure('mesada'), Loader.ensure('tarjetas')])
+    .then(() => { if (typeof renderAttencion === 'function') renderAttencion(); })
+    .catch(err => console.error('No se pudieron precargar mesada/tarjetas para Inicio:', err));
+}
 
 // Mover la sección "Necesita atención" justo debajo del hero de Inicio.
 (function(){

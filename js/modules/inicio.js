@@ -111,6 +111,16 @@ function renderAttencion(){
     titleEl.style.display = 'flex';
     titleEl.style.justifyContent = 'space-between';
     titleEl.style.alignItems = 'center';
+    // Evita que taps rápidos/repetidos seleccionen el texto del título o el
+    // número del badge (el navegador en móvil reinterpreta clicks sucesivos
+    // muy rápidos como un "doble tap = seleccionar palabra").
+    titleEl.style.userSelect = 'none';
+    titleEl.style.webkitUserSelect = 'none';
+    titleEl.style.webkitTouchCallout = 'none';
+    // touch-action:manipulation quita el pequeño delay que el navegador usa
+    // para esperar un posible doble-tap (zoom), que es justo la ventana en la
+    // que un tap rápido termina reinterpretándose como selección de texto.
+    titleEl.style.touchAction = 'manipulation';
     titleEl.innerHTML = `Necesita atención <span style="font-size:11px;font-family:'DM Mono',monospace;color:${hasRed?'var(--red)':'var(--amber)'};background:${hasRed?'rgba(240,104,104,.12)':'rgba(240,184,64,.12)'};padding:2px 8px;border-radius:20px;">${items.length} <i class="fa-solid ${isOpen?'fa-chevron-up':'fa-chevron-down'}"></i></span>`;
     // NOTA: renderAttencion() corre en cada refresh() y titleEl es el MISMO
     // nodo del DOM entre renders (solo se le pisa el innerHTML, no se

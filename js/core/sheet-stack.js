@@ -167,6 +167,19 @@ function showScreen(name){
   if(name==='mesada') {
     if(typeof renderMesada==='function') renderMesada();
   }
+  // Re-renderizar lista de tarjetas al entrar a esa pantalla. Faltaba esta
+  // rama (2026-08-04): 'tarjetas' es el sexto grupo lazy (ver
+  // js/core/lazy-loader.js) y, a diferencia de mesada/encargos/cuentas, nunca
+  // tuvo su propio "if(name==='tarjetas')" acá — así que la primera vez que
+  // Loader.ensure('tarjetas') terminaba de cargar y este archivo volvía a
+  // invocar showScreen('tarjetas'), la pantalla quedaba visible pero vacía:
+  // nada llamaba a renderTCScreen() para pintar #tc-lista. (renderTCDashboard()
+  // es otra función — pinta el resumen en Inicio, no esto; ya tiene guard en
+  // refresh() en core-state.js, por eso una visita posterior "se arreglaba
+  // sola" en cuanto algo disparaba un refresh() de fondo.)
+  if(name==='tarjetas') {
+    if(typeof renderTCScreen==='function') renderTCScreen();
+  }
 }
 
 // Estado de carga mínimo mientras se descarga el script de una pantalla

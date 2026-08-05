@@ -14,9 +14,9 @@
        poblarFuente, buildFuentesOptsHtml, fuenteLabel,
        fuenteBadgeClass, getSaldoActual, MC (nombres de mes).
      - js/core/calc-helpers.js (2026-08-04): _ensureMesadas(),
-       getMesadaData() y _getCuotaAnio() se movieron ahí (Inicio las
-       necesita y este módulo ahora es lazy) — este archivo las sigue
-       usando como globales, ya no las define.
+       getMesadaData(), _getCuotaAnio() y _mesNombreDeKey() se movieron
+       ahí (Inicio las necesita y este módulo ahora es lazy) — este
+       archivo las sigue usando como globales, ya no las define.
      - js/core/events.js (Events.on/attr/registerAll) — cargado una
        sola vez, bien al principio de index.html, antes que
        cualquier módulo (ver nota en auditoria-tecnica.md, punto 1).
@@ -707,12 +707,9 @@ function _borrarMesadaPago(parent,key,info){
 
 // ── Pago parcial con deuda pendiente ──────────────────────────────────────
 
-function _mesNombreDeKey(key){
-  const partes=String(key).split('-');
-  const anio=partes[0];
-  const mesIdx=parseInt(partes[1],10)||0;
-  return (MC[mesIdx]||'')+' '+anio;
-}
+// _mesNombreDeKey() se movió a js/core/calc-helpers.js (2026-08-04) junto
+// con _ensureMesadas/getMesadaData/_getCuotaAnio — mismo motivo: Inicio la
+// necesita y este módulo ahora es lazy. Se sigue usando igual, como global.
 
 // Convierte retroactivamente un mes ya cerrado (registrado con menos plata de
 // la cuota, sin haber marcado el toggle al momento de guardar) en un mes con

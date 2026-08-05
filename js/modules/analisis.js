@@ -61,6 +61,12 @@ function renderAnalisis(){
   const anio=parseInt(mes.split('-')[0]);
   let ingresosEstimados=0;
   if(S.modulos&&S.modulos.mesada&&typeof getMesadaData==='function'){
+    // mesKey2 nunca estaba definida acá (bug real, no relacionado a lazy
+    // loading — ver CHANGELOG.md 2026-08-04). Mismo cálculo que ya usa
+    // inicio.js (calcHealthScore, variable local `_mk`) para lo mismo: la
+    // clave con la que getMesadaData() indexa los pagos, "año-mesIdx"
+    // (mesIdx 0-indexado, no la misma convención que mesKey(fecha)).
+    const mesKey2=anio+'-'+mesNum;
     const infoPapa=getMesadaData('papa')[mesKey2];
     const infoMama=getMesadaData('mama')[mesKey2];
     if(infoPapa) ingresosEstimados+=(infoPapa.monto||_getCuotaAnio('papa',anio)||0);

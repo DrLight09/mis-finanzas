@@ -65,6 +65,13 @@ let mppMesKey=''; // '2025-3'
 // registro y la reversión.
 let mpUsarEncargoActivo=false;
 let mpEncargoActualId='';
+// Misma idea pero para el sheet de "pago de lo pendiente" (abrirResolverPendiente
+// / confirmarPendienteMesada) — al principio esta función solo existía en el
+// flujo normal (ver nota de alcance en CHANGELOG); se extendió acá el
+// 2026-08-05 porque un abono de lo pendiente también puede venir de plata
+// que ya estaba guardada en un encargo.
+let mppUsarEncargoActivo=false;
+let mppEncargoActualId='';
 
 function _normTxt(s){
   return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -101,6 +108,30 @@ function _poblarMpEncargoCuentas(){
   if(sinCuenta>0.5)opts+=`<option value="">Sin especificar (${fmt(sinCuenta)})</option>`;
   sel.innerHTML=opts||'<option value="">Sin especificar</option>';
   actualizarMpPreview();
+}
+
+// Misma lógica que _poblarMpEncargoCuentas() pero para el sheet de "pago de
+// lo pendiente" (ids mpp*).
+function _poblarMppEncargoCuentas(){
+  const sel=document.getElementById('mppEncargoCuentaSel');
+  if(!sel)return;
+  const enc=typeof getEncargo==='function'?getEncargo(mppEncargoActualId):null;
+  if(!enc){sel.innerHTML='';return;}
+  const cuentas=typeof _getEncargoSaldoPorCuenta==='function'?_getEncargoSaldoPorCuenta(enc):[];
+  const sinCuenta=typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0;
+  let opts=cuentas.map(c=>`<option value="${c.cuenta}">${escHtml(c.label)} (${fmt(c.saldo)})</option>`).join('');
+  if(sinCuenta>0.5)opts+=`<option value="">Sin especificar (${fmt(sinCuenta)})</option>`;
+  sel.innerHTML=opts||'<option value="">Sin especificar</option>';
+  actualizarMppPreview();
+}
+
+// Muestra u oculta el campo "¿Dónde la metiste?" del sheet de pendiente —
+// se oculta cuando el abono se cubre con plata de un encargo ya guardada en
+// una cuenta conocida (misma idea que _mostrarSeccionDestinoNormal para el
+// sheet normal, pero acá no hay modo simple/dividido, un solo campo).
+function _mostrarMppDestinoNormal(mostrar){
+  const wrap=document.getElementById('mppDestinoWrap');
+  if(wrap)wrap.style.display=mostrar?'':'none';
 }
 
 // Muestra u oculta la sección normal "¿Qué hiciste con esa plata?"
@@ -607,7 +638,7 @@ function abrirDetalleMesada(parent,key,nombre){
     <div class="card card-sm" style="margin-bottom:10px;border-left:4px solid ${tienePendienteDet?'var(--amber)':'var(--accent)'};background:${tienePendienteDet?'rgba(240,184,64,.06)':'rgba(200,240,96,.06)'};">
       <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Cuota esperada</span><span style="font-size:13px;font-family:'DM Mono',monospace;">${fmt(info.cuotaEsperada)}</span></div>
       ${tienePendienteDet?`<div class="row" style="margin-bottom:2px;"><span style="font-size:12px;color:var(--amber);font-weight:600;">Pendiente</span><span class="row-amount c-amber">${fmt(info.pendiente)}</span></div>`:`<div style="font-size:12px;color:var(--accent);font-weight:600;">✓ Ya te dio todo lo que faltaba</div>`}
-      ${tieneHistorialDet?`<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px;">${info.pendienteHistorial.map((h,idx)=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);gap:8px;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.fecha||''}${h.destino?' · '+escHtml(fuenteLabel(h.destino)):''}${h.nota?' · '+escHtml(h.nota):''}</span><span style="display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(h.monto)}</span><span ${Events.attr('mesada:deshacerPendiente', parent, key, idx)} style="cursor:pointer;color:var(--red);font-size:13px;line-height:1;" title="Deshacer este abono">✕</span></span></div>`).join('')}</div>`:''}
+      ${tieneHistorialDet?`<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px;">${info.pendienteHistorial.map((h,idx)=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);gap:8px;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.fecha||''}${h.origenEncargo?' · Plata guardada de '+escHtml(h.origenEncargo.nombre):(h.destino?' · '+escHtml(fuenteLabel(h.destino)):'')}${h.nota?' · '+escHtml(h.nota):''}</span><span style="display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(h.monto)}</span><span ${Events.attr('mesada:deshacerPendiente', parent, key, idx)} style="cursor:pointer;color:var(--red);font-size:13px;line-height:1;" title="Deshacer este abono">✕</span></span></div>`).join('')}</div>`:''}
       ${tienePendienteDet?`<button type="button" class="btn" style="margin-top:10px;background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.3);color:var(--amber);" ${Events.attr('mesada:resolverPendiente', parent, key)}>Registrar pago de lo pendiente</button>`:''}
     </div>`;
   } else if(puedeMarcarPendiente){
@@ -695,7 +726,20 @@ function _borrarMesadaPago(parent,key,info){
     }
     // Devolver también los abonos que fueron saldando lo pendiente
     (info.pendienteHistorial||[]).forEach(h=>{
-      if(h.destino){
+      if(h.origenEncargo){
+        const oe=h.origenEncargo;
+        const enc=typeof getEncargo==='function'?getEncargo(oe.encargoId):null;
+        let montoOrig=0;
+        if(enc&&enc.movimientos){
+          const mv=enc.movimientos.find(m=>m.id===oe.movId);
+          if(mv)montoOrig=mv.monto||0;
+          enc.movimientos=enc.movimientos.filter(m=>m.id!==oe.movId);
+        }
+        if(oe.sumado&&h.destino&&montoOrig){
+          descontarFuente(h.destino,montoOrig);
+        }
+        _borrarMovSecundarioMesada(h.destino,h._movSecId);
+      } else if(h.destino){
         descontarFuente(h.destino,h.monto);
         _borrarMovSecundarioMesada(h.destino,h._movSecId);
       }
@@ -746,6 +790,33 @@ function abrirResolverPendiente(parent,key){
   poblarFuente('mppDestino', false, false);
   const sel=document.getElementById('mppDestino');
   sel.innerHTML='<option value="">No especificar / lo gasté</option>'+sel.innerHTML.replace('<option value="">Sin especificar</option>','');
+
+  // ── "Me pagó con plata de un encargo" — resetear y poblar si aplica ──
+  mppUsarEncargoActivo=false;
+  mppEncargoActualId='';
+  const boxEnc=document.getElementById('mppEncargoBox');
+  const chkEnc=document.getElementById('mppUsarEncargo');
+  const detEnc=document.getElementById('mppEncargoDetalle');
+  if(chkEnc)chkEnc.checked=false;
+  if(detEnc)detEnc.style.display='none';
+  if(boxEnc){
+    const encMatches=_mesadaEncargosDelParent(parent);
+    if(encMatches.length){
+      boxEnc.style.display='';
+      const totalDisp=encMatches.reduce((a,x)=>a+x.saldo,0);
+      const subEnc=document.getElementById('mppEncargoSub');
+      if(subEnc)subEnc.textContent='Tenés '+fmt(totalDisp)+' guardados de '+pNombre+' en encargos';
+      const selEnc=document.getElementById('mppEncargoSel');
+      if(selEnc)selEnc.innerHTML=encMatches.map(x=>`<option value="${x.enc.id}">${escHtml(x.enc.nombre)} (${fmt(x.saldo)})</option>`).join('');
+      const selWrapEnc=document.getElementById('mppEncargoSelWrap');
+      if(selWrapEnc)selWrapEnc.style.display=encMatches.length>1?'':'none';
+      mppEncargoActualId=encMatches[0].enc.id;
+      _poblarMppEncargoCuentas();
+    } else {
+      boxEnc.style.display='none';
+    }
+  }
+  _mostrarMppDestinoNormal(true);
   actualizarMppPreview();
   openSheet('mesada-pend');
 }
@@ -761,6 +832,23 @@ function actualizarMppPreview(){
     prev.style.color='var(--red)';
     return;
   }
+  if(mppUsarEncargoActivo){
+    const enc=typeof getEncargo==='function'?getEncargo(mppEncargoActualId):null;
+    if(!enc){prev.textContent='';return;}
+    const cuentaSel=document.getElementById('mppEncargoCuentaSel')?document.getElementById('mppEncargoCuentaSel').value:'';
+    const disponible=cuentaSel
+      ?(typeof _getEncargoSaldoEnCuenta==='function'?_getEncargoSaldoEnCuenta(enc,cuentaSel):0)
+      :(typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0);
+    if(v>disponible+0.5){
+      prev.textContent='Ahí solo tenés '+fmt(disponible)+' de '+enc.nombre;
+      prev.style.color='var(--red)';
+      return;
+    }
+    const restanteEnc=info.pendiente-v;
+    prev.textContent=(restanteEnc>0?('Quedaría debiendo '+fmt(restanteEnc)+' más · '):'Con esto queda saldado ✓ · ')+'se descuenta de lo guardado de '+enc.nombre;
+    prev.style.color=restanteEnc>0?'var(--amber)':'var(--accent)';
+    return;
+  }
   const restante=info.pendiente-v;
   prev.textContent=restante>0?('Quedaría debiendo '+fmt(restante)+' más'):'Con esto queda saldado ✓';
   prev.style.color=restante>0?'var(--amber)':'var(--accent)';
@@ -774,17 +862,55 @@ function confirmarPendienteMesada(){
   if(monto<=0)return;
   if(monto>info.pendiente)monto=info.pendiente; // no se puede saldar más de lo que quedó pendiente
   const fecha=document.getElementById('mppFecha').value||hoy();
-  const destino=document.getElementById('mppDestino').value;
   const nota=document.getElementById('mppNota').value.trim();
   if(!info.pendienteHistorial)info.pendienteHistorial=[];
   const pNombre=mppParent==='papa'?'Papá':'Mamá';
   const descMov='Mesada (pendiente) — '+pNombre+' · '+_mesNombreDeKey(mppMesKey);
-  let movSecId=null;
-  if(destino){
-    sumarFuente(destino,monto);
-    movSecId=_registrarMovSecundarioMesada(destino,monto,fecha,descMov);
+
+  if(mppUsarEncargoActivo){
+    const enc=typeof getEncargo==='function'?getEncargo(mppEncargoActualId):null;
+    if(!enc){toast('Selecciona un encargo válido','err');return;}
+    const cuentaSel=document.getElementById('mppEncargoCuentaSel')?document.getElementById('mppEncargoCuentaSel').value:'';
+    const disponible=cuentaSel
+      ?(typeof _getEncargoSaldoEnCuenta==='function'?_getEncargoSaldoEnCuenta(enc,cuentaSel):0)
+      :(typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0);
+    if(monto>disponible+0.5){
+      toast('Ahí solo hay '+fmt(disponible)+' guardados de '+enc.nombre,'err');
+      return;
+    }
+    if(!enc.movimientos)enc.movimientos=[];
+    const movEnc={id:uid(),tipo:'salida',desc:descMov,monto,cuenta:cuentaSel||'',fecha,nota:'Usado para mesada (pendiente)',ts:Date.now()};
+    enc.movimientos.push(movEnc);
+    let destinoFinal=cuentaSel;
+    let sumado=false;
+    let movSecId=null;
+    if(cuentaSel){
+      // Esa plata ya estaba contada en el saldo de esa cuenta (era del
+      // encargo); solo se re-etiqueta, no se vuelve a sumar.
+      movSecId=_registrarMovSecundarioMesada(cuentaSel,monto,fecha,descMov);
+    } else {
+      const destinoLibre=document.getElementById('mppDestino')?document.getElementById('mppDestino').value:'';
+      destinoFinal=destinoLibre;
+      if(destinoLibre){
+        sumarFuente(destinoLibre,monto);
+        sumado=true;
+        movSecId=_registrarMovSecundarioMesada(destinoLibre,monto,fecha,descMov);
+      }
+    }
+    info.pendienteHistorial.push({
+      monto,fecha,destino:destinoFinal||'',nota,_movSecId:movSecId,
+      origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre,sumado}
+    });
+  } else {
+    const destino=document.getElementById('mppDestino').value;
+    let movSecId=null;
+    if(destino){
+      sumarFuente(destino,monto);
+      movSecId=_registrarMovSecundarioMesada(destino,monto,fecha,descMov);
+    }
+    info.pendienteHistorial.push({monto,fecha,destino,nota,_movSecId:movSecId});
   }
-  info.pendienteHistorial.push({monto,fecha,destino,nota,_movSecId:movSecId});
+
   info.pendiente=Math.max(0,info.pendiente-monto);
   info.monto=(info.monto||0)+monto;
   save();refresh();
@@ -801,7 +927,25 @@ async function deshacerPendienteMesada(parent,key,idx){
   const ok=await dialogo('Deshacer abono','¿Deshacer este abono de lo pendiente? La plata se restará de la cuenta donde la registraste y volverá a quedar como deuda.','Deshacer',true);
   if(!ok)return;
   const h=info.pendienteHistorial[idx];
-  if(h.destino){
+  if(h.origenEncargo){
+    // Este abono se cubrió con plata de un encargo: devolverle el saldo
+    // (quitar el movimiento de salida) y, solo si de verdad había entrado
+    // plata nueva a una cuenta (caso "sin especificar"), revertir esa
+    // entrada también. Mismo patrón que _borrarMesadaPago() para el pago
+    // principal.
+    const oe=h.origenEncargo;
+    const enc=typeof getEncargo==='function'?getEncargo(oe.encargoId):null;
+    let montoOrig=0;
+    if(enc&&enc.movimientos){
+      const mv=enc.movimientos.find(m=>m.id===oe.movId);
+      if(mv)montoOrig=mv.monto||0;
+      enc.movimientos=enc.movimientos.filter(m=>m.id!==oe.movId);
+    }
+    if(oe.sumado&&h.destino&&montoOrig){
+      descontarFuente(h.destino,montoOrig);
+    }
+    _borrarMovSecundarioMesada(h.destino,h._movSecId);
+  } else if(h.destino){
     descontarFuente(h.destino,h.monto);
     _borrarMovSecundarioMesada(h.destino,h._movSecId);
   }
@@ -883,6 +1027,37 @@ const _mMppDestino = document.getElementById('mppDestino');
 if (_mMppDestino) _mMppDestino.addEventListener('change', actualizarMppPreview);
 const _mMppMonto = document.getElementById('mppMonto');
 if (_mMppMonto) _mMppMonto.addEventListener('input', actualizarMppPreview);
+
+// "Me pagó con plata de un encargo" — toggle y selects (sheet de pendiente)
+const _mChkUsarEncargoPend = document.getElementById('mppUsarEncargo');
+if (_mChkUsarEncargoPend) _mChkUsarEncargoPend.addEventListener('change', () => {
+  mppUsarEncargoActivo = _mChkUsarEncargoPend.checked;
+  const det = document.getElementById('mppEncargoDetalle');
+  if (det) det.style.display = mppUsarEncargoActivo ? '' : 'none';
+  if (mppUsarEncargoActivo) {
+    const cuentaSel = document.getElementById('mppEncargoCuentaSel');
+    _mostrarMppDestinoNormal(!!(cuentaSel && cuentaSel.value === ''));
+  } else {
+    _mostrarMppDestinoNormal(true);
+  }
+  actualizarMppPreview();
+});
+const _mSelEncargoPend = document.getElementById('mppEncargoSel');
+if (_mSelEncargoPend) _mSelEncargoPend.addEventListener('change', () => {
+  mppEncargoActualId = _mSelEncargoPend.value;
+  _poblarMppEncargoCuentas();
+});
+const _mSelEncargoCuentaPend = document.getElementById('mppEncargoCuentaSel');
+if (_mSelEncargoCuentaPend) _mSelEncargoCuentaPend.addEventListener('change', () => {
+  if (mppUsarEncargoActivo) _mostrarMppDestinoNormal(_mSelEncargoCuentaPend.value === '');
+  actualizarMppPreview();
+});
+const _mEncargoToggleWrapPend = document.getElementById('mppEncargoToggleWrap');
+if (_mEncargoToggleWrapPend) _mEncargoToggleWrapPend.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'mppUsarEncargo') return; // evitar doble toggle
+  const chk = document.getElementById('mppUsarEncargo');
+  if (chk) chk.click();
+});
 
 const _mSplitToggle = document.getElementById('mpSplitToggle');
 if (_mSplitToggle) _mSplitToggle.addEventListener('click', toggleMpSplit);

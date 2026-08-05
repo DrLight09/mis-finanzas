@@ -315,8 +315,8 @@ function renderAnalisis(){
     const anioPrev=dPrev.getFullYear();
     let ingresosPrev=0;
     if(S.modulos&&S.modulos.mesada&&typeof getMesadaData==='function'){
-      const iPapa=getMesadaData('papa')[mkPrev];
-      const iMama=getMesadaData('mama')[mkPrev];
+      const iPapa=getMesadaData('papa')[mesPrev];
+      const iMama=getMesadaData('mama')[mesPrev];
       if(iPapa) ingresosPrev+=(iPapa.monto||_getCuotaAnio('papa',anioPrev)||0);
       if(iMama) ingresosPrev+=(iMama.monto||_getCuotaAnio('mama',anioPrev)||0);
     }

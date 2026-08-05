@@ -39,11 +39,28 @@
      renderer — mismo criterio ya aplicado a toast()/buildFuentesOptsHtml()
      en la sesión de TC (núcleo/otro módulo compartido, fuera de alcance).
 
-   Pendiente para dejar esto 100% integrado (no se tocó index.html
-   esta sesión, según lo pedido): quitar el <script> inline de
-   Plata Comprometida de index.html y agregar en su lugar
-   <script src="js/modules/plata_comprometida.js"></script>, después
-   de <script src="js/core/events.js"></script>.
+   Integración a index.html: originalmente eager (confirmado 2026-07-23,
+   ver auditoria-tecnica.md) — el <script src="js/modules/plata_comprometida.js">
+   estaba agregado justo después de <script src="js/core/events.js">, en
+   el mismo lugar donde vivía el <script> inline original.
+
+   Carga LAZY desde una sesión posterior (docs/auditoria-tecnica.md #4,
+   CHANGELOG.md#arranque): el <script> se sacó de index.html — ahora lo
+   descarga js/core/lazy-loader.js (Loader.GROUPS.comprometida) la
+   primera vez que alguien entra a la pantalla. El HTML que
+   _injectScreen() y _injectMasItem() (más abajo en este archivo)
+   generaban en tiempo de ejecución se copió tal cual a index.html
+   (#screen-comprometida y #mas-comprometida) — sin eso, el ítem de
+   menú que dispara la carga lazy no existiría hasta que el módulo ya
+   hubiera cargado (círculo vicioso). Ambas funciones se dejaron SIN
+   TOCAR: sus propios guards por id (`document.getElementById(...)`)
+   ya las vuelven no-op automáticamente al encontrar el HTML estático
+   — mismo mecanismo, sin cambios de código acá, que ya usa
+   _injectMasItem() cuando alguien más se adelantó (ver el `anchor`
+   que busca #mas-alcancia). _injectSheet() (el otro sheet dinámico
+   del archivo) NO se estaticó a propósito: nadie puede interactuar
+   con ese sheet antes de que la pantalla esté activa, y la pantalla
+   no se activa hasta que el módulo ya cargó — no hay carrera ahí.
    ═══════════════════════════════════════════════════════════════ */
 
 (function(){

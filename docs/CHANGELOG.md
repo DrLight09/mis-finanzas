@@ -83,6 +83,21 @@ El wrapper `mpDebeWrap` y el checkbox `mpQuedaDebiendo` del sheet de registrar p
 
 ## Mesada
 
+### 🔧 Nuevo — Registrar pago de mesada con plata que ya tenías guardada en un encargo
+
+*(2026-08-04)*
+
+Al registrar el pago de un mes, si hay algún encargo con saldo cuyo nombre coincide con "papá"/"padre"/"papi" o "mamá"/"madre"/"mami" (según el padre que corresponda), aparece un toggle nuevo: "Me pagó con plata que ya le tenía guardada". Al activarlo (y si hay más de un encargo que coincide, elegir cuál) se elige de qué cuenta del encargo sale la plata — mismo listado por cuenta que ya usa el módulo Encargos (`_getEncargoSaldoPorCuenta`/`_getEncargoSaldoEnCuenta`) — y al guardar:
+
+- Se registra un movimiento `tipo:'salida'` en `enc.movimientos` del encargo (mismo formato que una salida normal desde la pantalla de Encargos), descontando el saldo disponible ahí.
+- Si la plata del encargo estaba ligada a una cuenta real (caso normal), **no** se vuelve a sumar a esa cuenta con `sumarFuente` — esa plata ya estaba contada en el saldo de la cuenta, solo se re-etiqueta de "guardada para X" a "tuya, pago de mesada". Sí se agrega el movimiento espejo de siempre (`_registrarMovSecundarioMesada`) para que quede rastro en el historial de esa cuenta.
+- Si la plata del encargo estaba "sin especificar" (no ligada a ninguna cuenta), ahí sí entra de verdad a la cuenta que elijas (`sumarFuente` + movimiento espejo), porque esa plata no estaba reflejada en ningún saldo todavía.
+- El registro de mesada guarda `origenEncargo: {encargoId, movId, nombre, sumado}` para poder revertir todo correctamente si se borra el pago después: quita el movimiento de salida del encargo (le devuelve el saldo) y, solo si `sumado` es true, también revierte el `sumarFuente`.
+
+El emparejamiento papá/mamá ↔ encargo es por coincidencia de nombre (sin tildes, insensible a mayúsculas), no por un vínculo explícito nuevo — no hizo falta porque los encargos ya guardan el nombre de la persona (`enc.nombre`, sincronizado desde Personas). Si el nombre del encargo no incluye ninguna de esas palabras, el toggle simplemente no aparece para ese pago.
+
+Nota de alcance: esto solo aplica al registro principal del pago del mes (`abrirRegistrarMesada`/`confirmarMesadaPago`). El flujo de "pago de lo pendiente" (`abrirResolverPendiente`) sigue siendo siempre en efectivo/cuenta normal, no se extendió a encargos.
+
 ### 🔧 Nuevo — Protección por antigüedad al eliminar un pago de mesada
 
 *(2026-08-01)*
@@ -134,6 +149,14 @@ Los 12 `addEventListener` de los controles de esta pantalla (`btn-anio-prev/next
 ---
 
 ## Spotify
+
+### 🔧 Cambio — `spotify-personas.js` fusionado en `spotify.js` (misma investigación que Encargos, mismo resultado)
+
+*(2026-08-03)*
+
+Revisado `spotify-personas.js` línea por línea con el mismo criterio aplicado a Encargos (ver `CHANGELOG.md#encargos`): ninguna llamada a `getPersona`/`abrirSelPersona`/`_inyectarPersonaSheets` ocurre a nivel superior del archivo — todas viven dentro de funciones que solo corren en el click. La única dependencia real de nivel superior (`openSheet`, `addSpotify`, `editarSpotify`, `guardarEditarSpotify`, `renderSpotify`) es contra el propio `spotify.js`, no contra `personas.js`. Se concatenó `spotify-personas.js` al final de `spotify.js`, se quitó `<script src="js/modules/spotify-personas.js">` de `index.html`, sin mover `spotify.js` de posición. Validado con `node --check` y sin declaraciones de nivel superior duplicadas. **Pendiente: prueba en navegador real** — la validación de esta sesión fue solo sintáctica.
+
+**Nota aparte, sin relación con este cambio:** el `<script src="js/modules/spotify-personas.js">` había quedado apuntando a un archivo borrado manualmente en el deploy real (fuera de esta sesión) — un 404 en Network que dejó sin selector de persona ni botones de perfil en Spotify durante un tiempo, sin ningún otro síntoma visible (el resto de Spotify no depende de ese archivo). Con la fusión de esta entrada, ese problema queda resuelto de raíz: ya no hay un segundo `<script>` del que depender.
 
 ### 2026-08-01
 
@@ -455,6 +478,41 @@ El comentario junto a la CSP en `index.html` seguía citando la cifra original d
 
 ## Préstamos
 
+### 🔧 Cambio — `prestado-personas.js` + `deudores-personas.js` fusionados en `prestado.js`; `personas.js` movida a cargar antes
+
+*(2026-08-03)*
+
+**Contexto:** misma investigación que llevó a fusionar Encargos y Spotify (ver `CHANGELOG.md#encargos` y `CHANGELOG.md#spotify`) — pero acá el resultado fue distinto. `prestado-personas.js` **sí** tiene dependencia real de orden: dos líneas de nivel superior del archivo (no dentro de una función) leen valores de `personas.js` al parsear:
+
+```js
+const PERSONA_COLORES_MD = PERSONA_COLORES;
+const _origGuardarEditarPersonaGlobalDeudor = _guardarEditarPersonaGlobal;
+```
+
+Fusionar sin más habría roto la app con `ReferenceError` de entrada, porque `prestado.js` cargaba antes que `personas.js`.
+
+**Fix:** en vez de descartar la fusión (como se había decidido inicialmente para no dejar el proyecto a medias), se movió `<script src="js/modules/personas.js">` a cargar **antes** de `prestado.js` en `index.html` — un cambio más invasivo que el de Encargos/Spotify, porque cambia el orden relativo con todo lo que antes cargaba entre esas dos posiciones. Se auditaron uno por uno los 16 archivos afectados: `sheet-stack.js`, `lazy-loader.js`, `money-input.js`, `movimientos.js`, `cuentas.js`, `bootstrap.js`, `mas-menu.js`, `sheet-viewport.js`, `gastos-fijos-progress.js`, `sheet-swipe.js`, `firebase-sync.js`, `mejoras.js`, `busqueda-global.js` (no auditado directamente, pero su propio comentario en `mejoras.js` ya documentaba "sin dependencia real de orden de carga"), `mejoras-adicionales.js`, `pin-bio.js`, `nav.js`. Ninguno tiene código de nivel superior que dependa de `personas.js`, ni `personas.js` depende de nada de ellos a nivel superior (solo usa `S`, `Events`, `escHtml`, `iniciales` — siempre dentro de funciones, nunca al parsear).
+
+Con eso confirmado: se concatenaron `prestado.js` + `prestado-personas.js` + `deudores-personas.js` en ese orden (el orden importa: `deudores-personas.js` envuelve `openSheet`/`crearMiDeuda` ya envueltos una vez por `prestado-personas.js`), se quitaron los `<script src>` de los dos archivos viejos, y `js/core/personas-init.js` quedó en su misma posición física del documento (no auditado su contenido esta sesión — pero como todo lo que podría necesitar ahora carga *más temprano*, no más tarde, el cambio solo puede ayudarlo, nunca romperlo).
+
+Validado con `node --check` (sin errores) y sin declaraciones `function`/`let`/`const`/`var` de nivel superior duplicadas entre las tres partes. **Pendiente: prueba en navegador real** — agregar deudor/deuda con selector de persona, "Editar mi deuda", navegación cruzada perfil↔deudor/deuda, y que ninguna otra pantalla se haya afectado por el reordenamiento de `personas.js`. La validación de esta sesión fue solo sintáctica/estructural.
+
+### ⚠️ Encontrado durante la fusión — `crearMiDeuda` posiblemente nunca corre la validación de persona vía el botón real
+
+*(2026-08-03)*
+
+**No confundir con el "blindaje de `addDeudor()`" de abajo (2026-07-18), que fue retractado por ser un falso positivo** — este es un caso distinto, con un mecanismo distinto, y no está retractado.
+
+`prestado.js` registra `Events.registerAll('prestado', { ..., crearMiDeuda: crearMiDeuda, ... })` **a nivel superior del archivo** (no dentro de una función) — se ejecuta de forma síncrona al parsear el script, capturando el **valor** de `crearMiDeuda` en ese instante. `prestado-personas.js` y luego `deudores-personas.js` (cargados en `<script>` aparte, después) reasignan la variable global `crearMiDeuda` dos veces más — pero esa reasignación no toca lo que `Events` ya guardó como valor fijo en su registro interno. El botón real (`#btn-crear-mi-deuda`, `data-action="prestado:crearMiDeuda"` en `index.html`) despacha a través de `Events`, así que llamaría a la versión **original** de `prestado.js`, sin la validación de persona obligatoria ni el `personaId` que agregan los dos overrides posteriores.
+
+**Por qué esto sí es real, a diferencia del caso de `addDeudor()` (2026-07-18):** ahí el listener se registraba dentro de `_initEventListeners()`, invocada de forma asíncrona (después de que Firestore responde) — mucho después de que los overrides de nivel superior ya habían corrido, así que la variable ya apuntaba a la versión final cuando el listener finalmente la leía. Acá `Events.registerAll('prestado', ...)` corre de forma síncrona al cargar `prestado.js`, **antes** de que `prestado-personas.js`/`deudores-personas.js` (que cargan después) puedan reasignar nada. No hay ningún paso asíncrono de por medio que salve la situación esta vez.
+
+**No verificado en navegador** — es lo que indica el código estático; falta confirmarlo con el flujo real (crear una deuda en "Yo debo" sin seleccionar persona y ver si el botón la deja pasar igual).
+
+**Fix aplicado, incluido en la fusión de esta sesión:** se envolvió esa entrada en arrow function — `crearMiDeuda: (...args) => crearMiDeuda(...args)` — mismo patrón ya usado en `encargos.js` para `abrirEncargoDetalle`/`crearEncargo`/`renderEncargosList` (ver comentario en ese archivo). Ahora `Events` resuelve el nombre en cada click, no una sola vez al cargar, así que el override más reciente (el de `deudores-personas.js`, al final de la cadena) es el que realmente se ejecuta.
+
+**`addDeudor` tiene el mismo patrón sin arrow-wrap en el propio `Events.registerAll`** (línea `addDeudor: addDeudor`), pero no se encontró ningún `data-action="prestado:addDeudor"` en `index.html` — el botón "Agregar persona" parece haber quedado reemplazado por el flujo del selector de personas (`openSheet('nueva-persona')` interceptado en `deudores-personas.js`, que crea el deudor directo sin pasar por `addDeudor()`). Probablemente código muerto, no un bug activo — se dejó sin arrow-wrap a propósito, para no tocar más de lo necesario sin confirmar primero que de verdad no se usa.
+
 ### 🔧 Nuevo — Protección por antigüedad al eliminar un movimiento de préstamo
 
 *(2026-08-01)*
@@ -532,6 +590,20 @@ Selector de persona compartido entre "Agregar persona" (Me deben) y "Nueva deuda
 ---
 
 ## Encargos
+
+### 🔧 Cambio — `encargos-personas.js` fusionado en `encargos.js` (la razón original del split era falsa; confirmado y aplicado)
+
+*(2026-08-03)*
+
+**Disparador:** al borrar `spotify-personas.js` para "simplificar" (fuera de esta sesión), la app siguió funcionando salvo por un 404 en Network — porque `spotify.js` no depende de `spotify-personas.js`, es al revés. Eso llevó a preguntar si Encargos podía unificarse en un solo archivo sin perder la integración con Personas.
+
+**Investigación:** la nota del 2026-07-18 (ver `auditoria-tecnica.md`) decía que `encargos.js`/`encargos-personas.js` se habían partido en dos "por la misma razón de orden de carga" que Spotify — porque `encargos-personas.js` depende de `getPersona()`/`abrirSelPersona()`/`_inyectarPersonaSheets()`, definidas más abajo en `personas.js`. Revisado línea por línea contra el archivo real: esa dependencia **nunca existe a nivel superior** del archivo — las tres funciones solo se llaman dentro de otras funciones (`_onSelPersonaNuevoEncargo`, el hook de `openSheet`), que se ejecutan recién en el click, mucho después de que todos los `<script defer>` ya cargaron sin importar su orden entre sí. Se confirmó el mismo patrón en `spotify-personas.js` (ver entrada en `CHANGELOG.md#spotify`).
+
+**Primera decisión (misma sesión, antes de auditar Préstamos): no aplicar el cambio**, por no tener forma de probarlo en navegador real y no querer dejar solo Encargos fusionado mientras Spotify/Préstamos/Deudores seguían sin auditar — inconsistencia sin necesidad real. Se revirtió esa cautela al confirmar el mismo hallazgo en Spotify **y** al confirmar que Préstamos es un caso genuinamente distinto (ver abajo) — con eso, fusionar Encargos y Spotify deja de ser "a medias": son los dos módulos donde la dependencia real nunca existió, y Préstamos queda aparte por una razón concreta, no por falta de tiempo de auditar.
+
+**Fix:** se concatenó `encargos-personas.js` al final de `encargos.js` (mismo orden relativo, un solo archivo), se quitó `<script src="js/modules/encargos-personas.js">` de `index.html`, sin mover `encargos.js` de su posición (sigue antes de `personas.js`). Validado con `node --check` (sin errores) y sin declaraciones `function`/`let`/`const`/`var` de nivel superior duplicadas. **Pendiente: prueba en navegador real** (selector de persona en "Nuevo encargo", botones "Ver perfil" en lista y detalle, hook de `personaId` obligatorio) antes de subir a producción — la validación de esta sesión fue solo sintáctica/estructural.
+
+**Por qué Préstamos queda distinto, a propósito:** `prestado-personas.js` sí tiene dependencia real de orden — dos líneas de nivel superior (`const PERSONA_COLORES_MD = PERSONA_COLORES;` y `const _origGuardarEditarPersonaGlobalDeudor = _guardarEditarPersonaGlobal;`) leen valores de `personas.js` al parsear, no dentro de una función. Fusionarlo sin mover `personas.js` a cargar antes de `prestado.js` en `index.html` rompería con `ReferenceError` de entrada. Mover `personas.js` tan arriba es un cambio más grande — hay ~10 archivos entre esa posición y la actual (`gastos.js`, `sheet-stack.js`, `cuentas.js`, `bootstrap.js`, `nav.js`, entre otros) sin auditar todavía por si alguno depende del orden actual. Se deja Préstamos con sus tres archivos (`prestado.js` + `prestado-personas.js` + `deudores-personas.js`) sin tocar.
 
 ### ✅ Corregido — El hook de perfil de persona en el detalle de un encargo nunca corría (mismo patrón que el bug real de `spotify:editar`, esta vez sí confirmado)
 
@@ -1570,3 +1642,113 @@ Pedido explícito: unificar en un solo archivo como ya es `tarjetas_credito.js`,
 ### 🔎 Cierre (2026-08-02, novena ronda) — se recibió `inicio.js`: confirma que la fusión de `spotify.js` + `spotify-personas.js` no tenía ningún cabo suelto
 
 Única duda que quedaba abierta de la ronda anterior. `inicio.js` no tiene ninguna referencia — ni directa ni indirecta — a `addSpotify` ni a `guardarEditarSpotify`. Las 2 funciones de Spotify que sí usa (`spPersonaPagadaVigente`, `spNombreDe`, para el widget de alertas vencidas del dashboard) ya estaban guardadas con `typeof` desde la sesión anterior, mismo patrón que el resto de llamadas de este archivo hacia mesada/tarjetas_credito/prestado/cuentas — todas también confirmadas con guard contra el archivo real. Sin fixes necesarios. La fusión de `spotify.js` + `spotify-personas.js` queda 100% validada, sin ninguna duda pendiente.
+
+### ✅ Corregido — `spotify.js` rompía en consola tras la fusión con `spotify-personas.js`: `Uncaught ReferenceError: openSheet is not defined`
+
+*(2026-08-04)*
+
+**Causa:** en `index.html`, `spotify.js` carga en la línea 4331 y `sheet-stack.js` (donde vive `function openSheet(id){...}`) carga después, en la línea 4361. El bloque de la (ex) integración con Personas, en la línea 1081 de `spotify.js`, hacía `const _origOpenSheetSpotifyPersonas = openSheet;` a nivel superior del script — se resuelve al parsear, no al ejecutar, así que `openSheet` todavía no existía como global en ese momento.
+
+Es distinto de los otros monkeypatches del mismo archivo (`addSpotify`, `editarSpotify`, `guardarEditarSpotify`, `renderSpotify`), que sí están definidos más arriba en el propio `spotify.js` (function declarations, hoisted) y por eso no fallan.
+
+**Fix:** se envolvió ese bloque en `document.addEventListener('DOMContentLoaded', function(){...})`. Como todos los scripts usan `defer`, para cuando dispara `DOMContentLoaded` ya se ejecutó `sheet-stack.js` y `openSheet` existe como global. No se tocó el orden de los `<script>` en `index.html` — eso hubiera roto la otra restricción documentada: `sheet-stack.js` necesita cargar después de `spotify.js`/`gastos.js` por los overrides de `addGastoVar`/`addGastoFijo`.
+
+### ✅ Corregido — doble-tap seguía seleccionando texto en el título de "Necesita atención" (Brave/Chrome Android)
+
+*(2026-08-04)*
+
+Fix previo (mismo día, sesión anterior) agregó `userSelect:none`/`webkitUserSelect:none`/`webkitTouchCallout:none`/`touchAction:manipulation` inline al `.sec-title` de `#s-attn-section` en `renderAttencion()` (`inicio.js`). Insuficiente en Brave y Chrome Android: el CSS solo no bloquea la selección nativa de doble-tap en esos navegadores.
+
+**Fix:** mismo patrón que ya usa `renderProyeccion()` (header y cards 3m/6m/12m) para este problema exacto — `e.preventDefault()` en un listener de `touchend`, agregado junto al `click` existente del título. `inicio.js` es el único archivo tocado.
+
+### 🔧 Cambio (2026-08-04) — "Necesita atención" no mostraba los ítems de mesada/tarjetas de crédito en el primer render de Inicio
+
+**Síntoma:** con datos reales (deuda de mesada + tarjeta con cupo casi agotado), la sección aparecía o no según la sesión — a veces los 2 ítems, a veces ninguno, dependiendo de si el usuario había visitado Mesada/Tarjetas antes en esa sesión.
+
+**Causa raíz:** `mesada` y `tarjetas` son grupos lazy (`js/core/lazy-loader.js`, quinto y sexto grupo — ver entradas anteriores) que solo cargan cuando el usuario visita esas pantallas (`Loader.ensure(...)` desde `showScreen()` en `sheet-stack.js`). Inicio es la pantalla de entrada: si el usuario no había visitado Mesada/Tarjetas todavía, `getMesadaData`/`_getCuotaAnio`/`tcCupoUsadoPct` no existían como funciones globales en el primer `renderAttencion()`, así que el guard `typeof==='function'` (ya presente, ver rondas anteriores) saltaba esos ítems en silencio — y nada los volvía a pedir después.
+
+**Intento descartado:** forzar `Loader.ensure('mesada')`/`Loader.ensure('tarjetas')` desde `inicio.js` y re-renderizar al resolver. Funcionaba, pero anulaba el propósito de haberlos vuelto lazy: como Inicio es la primera pantalla que visita casi todo el mundo, el 100% de los usuarios terminaba bajando los 104KB (mesada.js 44KB + tarjetas_credito.js 60KB) en la carga inicial — el mismo problema que la migración a lazy quería evitar, solo que disparado desde otro lado.
+
+**Fix de raíz:** las 6 funciones puras que Inicio necesita (sin DOM, sin UI, solo dependen de `S`) se sacaron de los módulos lazy y se movieron a un archivo nuevo que carga de entrada:
+
+- De `mesada.js`: `_ensureMesadas()`, `getMesadaData()`, `_getCuotaAnio()`.
+- De `tarjetas_credito.js`: `getTCById()`, `tcCupoUsadoPct()`, `tcCupoDisponible()`.
+
+**Archivos tocados:**
+1. **`js/core/calc-helpers.js` (nuevo)** — las 6 funciones de arriba, tal cual, sin cambios de lógica.
+2. `index.html` — `<script src="js/core/calc-helpers.js" defer>` agregado justo después de `core-state.js`.
+3. `mesada.js` — las 3 funciones sacadas; comentario de cabecera actualizado con la nueva dependencia.
+4. `tarjetas_credito.js` — las 3 funciones sacadas; comentario de cabecera actualizado.
+5. `inicio.js` — sacado el `Loader.ensure` forzado (ya no hace falta); el guard `typeof` original se deja como red de seguridad.
+
+**Efecto colateral bueno, no buscado:** `getTCById`/`tcCupoDisponible` ahora están disponibles de entrada, así que las llamadas de `spotify.js`/`movimientos.js` a esas dos ya no dependen de `Loader.ensure('tarjetas')` — que sigue siendo necesario igual para `tcRecalcular`, que no se movió (no es pura: reconstruye la deuda desde los movimientos, pertenece al módulo completo).
+
+`node --check` sin errores en los 4 archivos `.js`. Con esto, `mesada`/`tarjetas` vuelven a ser lazy de verdad — el usuario que nunca visita esas pantallas no descarga los 104KB — sin que Inicio dependa de que las haya visitado antes.
+
+### ✅ Corregido (2026-08-04) — `ReferenceError: _mesNombreDeKey is not defined` en `renderAttencion()`
+
+Bug introducido por el cambio anterior (extracción a `calc-helpers.js`). Consola:
+
+```
+ReferenceError: _mesNombreDeKey is not defined
+    at inicio.js:57 (renderAttencion, bloque de mesada)
+```
+
+**Causa:** `_mesNombreDeKey()` — el helper que arma `"Mayo 2026"` a partir de la clave `"2026-4"` — quedó afuera de la extracción. Antes, quedaba protegida "de rebote": el bloque que la llama está guardado por `typeof getMesadaData==='function'`, y como `getMesadaData` también vivía en `mesada.js` (lazy), las dos faltaban o existían juntas — nunca se llamaba a una sin la otra. Al mover `getMesadaData` a `calc-helpers.js` (carga de entrada), ese guard pasa a ser siempre verdadero, y quedó expuesta la falta de `_mesNombreDeKey` cuando el usuario no había visitado Mesada.
+
+**Fix:** `_mesNombreDeKey()` es igual de pura que las otras 3 (solo usa `MC`, la lista de nombres de mes del núcleo — no toca `S` ni DOM), así que se movió también a `js/core/calc-helpers.js`. Se revisó el resto de funciones que quedaron en `mesada.js`/`tarjetas_credito.js` contra todo `inicio.js` (grep cruzado) para descartar otros casos iguales — no apareció ninguno más.
+
+**Archivos tocados:** `js/core/calc-helpers.js` (función agregada), `mesada.js` (función sacada, cabecera actualizada). `tarjetas_credito.js` e `inicio.js` sin cambios en esta entrada.
+
+### ✅ Corregido (2026-08-04) — pantalla Tarjetas de crédito vacía en la primera visita de la sesión
+
+**Síntoma:** al entrar a Tarjetas por primera vez en una sesión, la pantalla se veía vacía (sin tarjetas). Saliendo y volviendo a entrar, sí aparecían.
+
+**Causa:** `showScreen()` (`js/core/sheet-stack.js`) tiene una rama `if(name===X){...}` que vuelve a pintar cada pantalla re-entrable con los datos actuales — `config`, `analisis`, `personas`, `cuentas`, `encargos`, `mesada` la tienen. A `tarjetas` (sexto grupo lazy) le faltaba la suya: nunca se agregó cuando se volvió lazy. Como `tarjetas_credito.js` tampoco se auto-renderiza al cargar (a diferencia de otros módulos), la primera vez que `Loader.ensure('tarjetas')` terminaba y `showScreen('tarjetas')` se volvía a invocar, la pantalla quedaba visible pero sin nada que llamara a `renderTCScreen()` (la función que llena `#tc-lista` — no confundir con `renderTCDashboard()`, que pinta el resumen en Inicio y ya tenía guard en `refresh()`, por eso una visita posterior "se arreglaba sola" en cuanto algo disparaba un `refresh()` de fondo).
+
+**Fix:** se agregó la rama que faltaba en `showScreen()`, mismo patrón que las demás:
+```js
+if(name==='tarjetas') {
+  if(typeof renderTCScreen==='function') renderTCScreen();
+}
+```
+
+**Archivo tocado:** `js/core/sheet-stack.js`. `node --check` sin errores.
+
+### ✅ Corregido (2026-08-04) — `ReferenceError: mesKey2 is not defined` en `renderAnalisis()`, pantalla Análisis en blanco
+
+**Síntoma:** entrar a Análisis no mostraba nada. Consola:
+```
+Uncaught ReferenceError: mesKey2 is not defined
+    at renderAnalisis (analisis.js:64)
+```
+
+**Causa:** bug real preexistente en `analisis.js`, sin relación con el trabajo de lazy-loading — este módulo nunca había sido auditado (ver su propia cabecera: "nunca apareció en `auditoria-tecnica.md`"). El cálculo de ingresos estimados por mesada usaba `getMesadaData('papa')[mesKey2]`, pero `mesKey2` no es la función global `mesKey()` (que ya se usa arriba, línea 52, con otra firma — recibe una fecha) ni ninguna variable local: nunca se definió. `inicio.js` hace exactamente el mismo cálculo en `calcHealthScore()` con una variable local (`_mk = anio+'-'+mesNum`) — en `analisis.js` faltó armar el equivalente.
+
+**Fix:** se agregó la variable local que faltaba, mismo cálculo que `inicio.js`:
+```js
+const mesKey2=anio+'-'+mesNum;
+```
+justo antes de sus dos usos (`getMesadaData('papa')[mesKey2]` / `getMesadaData('mama')[mesKey2]`).
+
+**Verificación adicional:** se corrió `renderAnalisis()` completo contra un stub de `S`/`window` con jsdom para descartar otros `ReferenceError` latentes más adelante en la función (el error de `mesKey2` cortaba la ejecución antes de llegar a esas partes) — ejecutó limpio de punta a punta con el fix.
+
+**Archivo tocado:** `analisis.js` (1 línea agregada). `node --check` sin errores.
+
+### ✅ Corregido (2026-08-04) — `ReferenceError: mkPrev is not defined` en `renderAnalisis()`, mismo patrón que el fix de `mesKey2` de arriba
+
+**Síntoma:** consola, al entrar a Análisis:
+```
+Uncaught ReferenceError: mkPrev is not defined
+    at renderAnalisis (analisis.js:318:41)
+    at showScreen (sheet-stack.js:148:66)
+    at HTMLDivElement.<anonymous> (mas-menu.js:44:7)
+```
+
+**Causa:** en la sección "Comparación con el mes anterior" de `renderAnalisis()`, el cálculo de ingresos de mesada del mes anterior usaba `getMesadaData('papa')[mkPrev]` / `getMesadaData('mama')[mkPrev]`, pero `mkPrev` nunca se definió. La variable correcta ya existía dos líneas más arriba con otro nombre — `mesPrev` (el key `AAAA-MM` del mes anterior, calculado a partir de `dPrev`, el mismo que ya se usa un poco más arriba para `gvPrev`/`gfPrev`). Mismo tipo de typo que el de `mesKey2` (entrada anterior), en el mismo archivo — la corrida con jsdom que en esa entrada confirmó `renderAnalisis()` "limpio de punta a punta" no llegó a ejecutar este bloque, porque está adentro de `if(S.modulos&&S.modulos.mesada&&typeof getMesadaData==='function')` y el stub usado en esa prueba no tenía esa rama activa.
+
+**Fix:** se reemplazó `mkPrev` por `mesPrev` en las 2 líneas.
+
+**Archivo tocado:** `analisis.js` (2 líneas). `node --check` sin errores.
+
+

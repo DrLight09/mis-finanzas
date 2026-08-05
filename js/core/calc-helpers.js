@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════
    js/core/calc-helpers.js
 
-   Funciones de cálculo puras (solo dependen de `S`, sin DOM ni UI)
+   Funciones de cálculo puras (solo dependen de `S`/`MC`, sin DOM ni UI)
    que Inicio (inicio.js) necesita para "Necesita atención" y el
    health score, pero que conceptualmente "viven" en mesada.js y
    tarjetas_credito.js — módulos que ahora son lazy (ver
@@ -49,6 +49,15 @@ function _getCuotaAnio(parent,anio){
   // Fallback al más antiguo disponible
   if(anios.length)return cuotas[String(anios[anios.length-1])];
   return 80000;
+}
+
+// Formatea una clave "2026-4" → "Mayo 2026" (depende de MC, la lista de
+// nombres de mes definida en el núcleo de index.html — no de S).
+function _mesNombreDeKey(key){
+  const partes=String(key).split('-');
+  const anio=partes[0];
+  const mesIdx=parseInt(partes[1],10)||0;
+  return (MC[mesIdx]||'')+' '+anio;
 }
 
 /* ---- Tarjetas de crédito (antes en tarjetas_credito.js) ---- */

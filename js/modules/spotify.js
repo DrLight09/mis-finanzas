@@ -244,8 +244,12 @@ function renderSpHistorial(){
   const el=document.getElementById('spHistorial');
   if(!el)return;
   const total=S.spotifyHistorial||[];
-  // Mapear con índice real antes de invertir
-  const hist=total.map((h,i)=>({...h,_realIdx:i})).reverse().slice(0,12);
+  // Mapear con índice real, luego ordenar por fecha descendente. A igual fecha,
+  // gana el orden de registro descendente (el más reciente en agregarse va primero) —
+  // así un cobro atrasado con fecha vieja no se cuela por encima de uno más reciente.
+  const hist=total.map((h,i)=>({...h,_realIdx:i}))
+    .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b._realIdx-a._realIdx))
+    .slice(0,12);
   if(!hist.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0;">Sin pagos registrados aún.</div>';return;}
   el.innerHTML=hist.map(h=>`
     <div class="card card-sm" style="margin-bottom:7px;">

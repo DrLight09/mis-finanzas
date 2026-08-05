@@ -3995,7 +3995,37 @@
           <label class="il" for="mppFecha">Fecha en que te pagó</label>
           <input type="date" id="mppFecha">
         </div>
-        <div class="ig">
+        <!-- ¿Pagó con plata que ya le tenía guardada en un encargo? -->
+        <div id="mppEncargoBox"
+          style="display:none;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:10px;cursor:pointer;"
+            id="mppEncargoToggleWrap">
+            <input type="checkbox" id="mppUsarEncargo"
+              style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;color:var(--blue);"
+                id="mppEncargoLabel">Me pagó con plata que ya le tenía
+                guardada</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px;"
+                id="mppEncargoSub"></div>
+            </div>
+          </div>
+          <div id="mppEncargoDetalle" style="display:none;margin-top:10px;">
+            <div class="ig" id="mppEncargoSelWrap"
+              style="display:none;margin-bottom:8px;">
+              <label class="il" for="mppEncargoSel">¿Cuál encargo?</label>
+              <div class="select-wrap"><select id="mppEncargoSel"></select>
+              </div>
+            </div>
+            <div class="ig" style="margin-bottom:0;">
+              <label class="il" for="mppEncargoCuentaSel">¿De cuál cuenta
+                sale esa plata?</label>
+              <div class="select-wrap"><select
+                  id="mppEncargoCuentaSel"></select></div>
+            </div>
+          </div>
+        </div>
+        <div class="ig" id="mppDestinoWrap">
           <label class="il" for="mppDestino">¿Dónde la metiste?</label>
           <div class="select-wrap"><select id="mppDestino">
               <option value>No especificar / lo gasté</option>

@@ -545,21 +545,21 @@ window.refresh = function() {
   _checkGastoAlto();
 };
 
-// "Necesita atención" depende de mesada.js y tarjetas_credito.js, que ahora
-// son lazy (ver js/core/lazy-loader.js) y solo se cargan cuando el usuario
-// visita esas pantallas (Loader.ensure('mesada')/Loader.ensure('tarjetas')
-// desde showScreen() en sheet-stack.js). Inicio es la pantalla de entrada,
-// así que si el usuario nunca visitó Mesada o Tarjetas en esa sesión, esos
-// archivos no cargan solos y sus ítems quedan afuera para siempre (el guard
-// typeof==='function' los salta en silencio, y nada los volvía a pedir).
-// Forzamos acá la carga de ambos grupos con el mismo Loader, y al terminar
-// volvemos a renderizar para que los ítems ya aparezcan sin que el usuario
-// tenga que visitar esas pantallas primero.
-if (typeof Loader !== 'undefined' && Loader.ensure) {
-  Promise.all([Loader.ensure('mesada'), Loader.ensure('tarjetas')])
-    .then(() => { if (typeof renderAttencion === 'function') renderAttencion(); })
-    .catch(err => console.error('No se pudieron precargar mesada/tarjetas para Inicio:', err));
-}
+// Nota (2026-08-04): "Necesita atención" depende de getMesadaData/
+// _getCuotaAnio (mesada) y tcCupoUsadoPct (tarjetas de crédito), que
+// hasta acá vivían en mesada.js/tarjetas_credito.js — módulos lazy que
+// solo cargan cuando el usuario visita esas pantallas (ver
+// js/core/lazy-loader.js). Como Inicio es la pantalla de entrada,
+// esas funciones podían no existir todavía en el primer render y sus
+// ítems se salteaban en silencio (guard typeof==='function' de más
+// abajo) sin que nada los volviera a pedir.
+// Se resolvió de raíz: esas 3 funciones puras (solo dependen de `S`,
+// sin DOM/UI) se movieron a js/core/calc-helpers.js, que carga de
+// entrada — así están disponibles desde el arranque sin tener que
+// forzar la descarga de mesada.js/tarjetas_credito.js completos (44KB
+// + 60KB) solo para leer un par de números. El guard typeof de abajo
+// se deja igual, como red de seguridad, pero en la práctica ya
+// debería cumplirse siempre.
 
 // Mover la sección "Necesita atención" justo debajo del hero de Inicio.
 (function(){

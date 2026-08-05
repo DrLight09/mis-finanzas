@@ -13,6 +13,10 @@
        closeSheet, dialogo, sumarFuente, descontarFuente,
        poblarFuente, buildFuentesOptsHtml, fuenteLabel,
        fuenteBadgeClass, getSaldoActual, MC (nombres de mes).
+     - js/core/calc-helpers.js (2026-08-04): _ensureMesadas(),
+       getMesadaData() y _getCuotaAnio() se movieron ahí (Inicio las
+       necesita y este módulo ahora es lazy) — este archivo las sigue
+       usando como globales, ya no las define.
      - js/core/events.js (Events.on/attr/registerAll) — cargado una
        sola vez, bien al principio de index.html, antes que
        cualquier módulo (ver nota en auditoria-tecnica.md, punto 1).
@@ -118,19 +122,11 @@ function _mostrarSeccionDestinoNormal(mostrar){
   }
 }
 
-function _ensureMesadas(){
-  if(!S.mesadas)S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}};
-  ['papa','mama'].forEach(p=>{
-    if(!S.mesadas[p])S.mesadas[p]={cuotas:{},pagos:{}};
-    if(!S.mesadas[p].cuotas)S.mesadas[p].cuotas={};
-    if(!S.mesadas[p].pagos)S.mesadas[p].pagos={};
-  });
-}
-
-function getMesadaData(parent){
-  _ensureMesadas();
-  return S.mesadas[parent].pagos;
-}
+// _ensureMesadas(), getMesadaData() y _getCuotaAnio() se movieron a
+// js/core/calc-helpers.js (2026-08-04): Inicio las necesita para
+// "Necesita atención" pero mesada.js ahora es lazy, así que esas 3
+// funciones puras viven en un archivo que carga de entrada. Acá se
+// siguen usando igual, como globales — ver ese archivo para el detalle.
 
 // Cuentas realmente afectadas por un pago de mesada — el destino simple, o
 // cada fuente del split si se repartió entre varias cuentas.
@@ -158,19 +154,6 @@ function _mesadaOpsPosteriores(parentActual,keyActual,info){
     });
   });
   return count;
-}
-
-function _getCuotaAnio(parent,anio){
-  _ensureMesadas();
-  const cuotas=S.mesadas[parent].cuotas;
-  const key=String(anio);
-  if(cuotas[key])return cuotas[key];
-  // Buscar el año más cercano hacia atrás
-  const anios=Object.keys(cuotas).map(Number).sort((a,b)=>b-a);
-  for(const a of anios){ if(a<=anio)return cuotas[String(a)]; }
-  // Fallback al más antiguo disponible
-  if(anios.length)return cuotas[String(anios[anios.length-1])];
-  return 80000;
 }
 
 function getMontoPadre(parent){

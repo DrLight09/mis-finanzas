@@ -68,6 +68,16 @@
    nombre en tiempo de click, no de carga — es lazy-safe sin cambios. Ya
    se puede agregar `tarjetas` a Loader.GROUPS — ver js/core/lazy-loader.js
    y el <script> correspondiente en index.html.
+
+   RESUELTO (2026-08-04): getTCById(), tcCupoUsadoPct() y
+   tcCupoDisponible() se sacaron de este archivo y ahora viven en
+   js/core/calc-helpers.js, que carga de entrada. Motivo: Inicio
+   (inicio.js, "Necesita atención") necesitaba estas 3 funciones puras
+   pero forzar la carga de este módulo completo (60KB) solo para
+   leerlas anulaba el beneficio de haberlo vuelto lazy. Efecto
+   colateral bueno: spotify.js y movimientos.js ya no necesitan esperar
+   Loader.ensure('tarjetas') para llamar getTCById/tcCupoDisponible
+   (siguen necesitándolo para tcRecalcular, que sigue acá y sigue lazy).
    ═══════════════════════════════════════════════════════════════ */
 
 let _tcActualId = null;
@@ -83,7 +93,11 @@ const TC_ESTADOS = {
 };
 
 // ── Helpers básicos ─────────────────────────────────────────────
-function getTCById(id){ return (S.tarjetasCredito||[]).find(x=>x.id===id); }
+// getTCById(), tcCupoUsadoPct() y tcCupoDisponible() se movieron a
+// js/core/calc-helpers.js (2026-08-04): Inicio las necesita para
+// "Necesita atención" y este módulo ahora es lazy, así que esas 3
+// funciones puras viven en un archivo que carga de entrada. Acá se
+// siguen usando igual, como globales.
 
 // Cantidad de compras/pagos posteriores (no eliminados) de la misma tarjeta
 // — criterio de "operaciones posteriores" de la protección por antigüedad
@@ -99,16 +113,6 @@ function _tcOpsPosteriores(tc, fecha, excludeId){
 
 function tcDeudaTotal(){
   return (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
-}
-
-function tcCupoUsadoPct(tc){
-  const cupo=tc.cupo||0;
-  if(!cupo) return 0;
-  return Math.min(100,((tc.deuda||0)/cupo)*100);
-}
-
-function tcCupoDisponible(tc){
-  return Math.max(0,(tc.cupo||0)-(tc.deuda||0));
 }
 
 function tcEstadoInfo(estado){

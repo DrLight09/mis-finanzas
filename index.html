@@ -79,6 +79,116 @@
     <meta name="apple-mobile-web-app-title" content="Mis Finanzas">
     <meta name="theme-color" content="#0f0f0f">
     <title>Mis Finanzas</title>
+    <!-- CSS CRÍTICO INLINE (performance, ver docs/auditoria-tecnica.md y
+         CHANGELOG.md#arranque). css/styles.css completo (49 KB) pasó a
+         cargar de forma no bloqueante (mismo patrón media="print" +
+         data-async-css que ya usan Font Awesome/Google Fonts más abajo) —
+         Lighthouse lo marcaba como render-blocking (~1.16s en la ruta
+         crítica). Sin este bloque, ese cambio causaría FOUC real: el
+         navegador pintaría el HTML sin ningún estilo hasta que
+         css/styles.css terminara de bajar.
+
+         Este bloque NO reemplaza a css/styles.css ni se sacó de ahí — es
+         una copia deliberada de un subconjunto mínimo de reglas, duplicadas
+         a propósito (ambas declaran lo mismo, sin conflicto: cuando
+         css/styles.css termina de cargar simplemente reafirma los mismos
+         valores). Se mantiene así, y no como archivo aparte, para no crear
+         una segunda fuente de verdad que haya que sincronizar a mano en
+         cada cambio de diseño — el costo es unos pocos KB duplicados en el
+         HTML, aceptable frente a ese riesgo.
+
+         Qué quedó adentro y por qué: todo lo que la app puede pintar ANTES
+         de que termine de resolver el estado de auth de Firebase — que es
+         literalmente lo único que el usuario ve en el primer instante,
+         porque #fb-loading-screen ya arranca visible por HTML puro
+         (style="display:flex" inline, sin esperar JS ni CSS externo) y
+         cubre toda la pantalla (position:fixed, z-index 99999) tapando el
+         resto de la app (.app, .header, .card, sheets, etc., que por eso NO
+         están acá — quedan ocultos detrás del overlay hasta que
+         css/styles.css async termine de cargar, lo cual en la práctica pasa
+         muchísimo antes de que se resuelva el round-trip de auth/Firestore
+         que tarda en destapar esa pantalla):
+         - :root + reset base + fondo de <body> (evita flash blanco)
+         - #fb-loading-screen / #fb-login-screen y todo lo que contienen
+           (lo primero que el usuario ve, sin excepción)
+         - #pin-screen (el segundo gate, se muestra apenas resuelve auth,
+           antes de que el resto de la app esté visible)
+         - #toast-container (toast() es global — un error de login antes de
+           que el resto del CSS cargue debe poder mostrarse con estilo) -->
+    <style>
+      :root{--bg:#0f0f0f;--bg2:#181818;--bg3:#222222;--bg4:#2a2a2a;--border:#252525;--border2:#303030;--text:#f0ede8;--text2:#a8a89e;--text3:#8e8e84;--accent:#c8f060;--amber:#f0b840;--blue:#60b0f0;--red:#f06868;--purple:#b090f0;--nu-light:#c060f0;--radius:14px;--radius-sm:9px;}
+      *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+      html,body{height:100%;overflow:hidden;background:var(--bg);}
+      body{font-family:'DM Sans',sans-serif;color:var(--text);}
+      /* ===== FIREBASE AUTH SCREENS (primer paint real) ===== */
+      #fb-login-screen,#fb-loading-screen{
+        position:fixed;inset:0;z-index:99999;display:none;
+        flex-direction:column;align-items:center;justify-content:center;
+        background:var(--bg);padding:32px 24px;text-align:center;
+      }
+      #fb-login-screen{gap:0;}
+      .fb-logo{width:72px;height:72px;border-radius:20px;background:rgba(200,240,96,.12);
+        border:1.5px solid rgba(200,240,96,.3);display:flex;align-items:center;
+        justify-content:center;margin:0 auto 28px;}
+      .fb-title{font-size:26px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px;}
+      .fb-sub{font-size:13px;color:var(--text3);line-height:1.6;max-width:260px;
+        margin:0 auto 40px;}
+      .fb-google-btn{display:flex;align-items:center;gap:12px;padding:14px 24px;
+        background:#fff;border:none;border-radius:14px;font-size:15px;font-weight:600;
+        color:#1f1f1f;cursor:pointer;width:100%;max-width:300px;justify-content:center;
+        transition:all .2s;box-shadow:0 2px 16px rgba(0,0,0,.3);}
+      .fb-google-btn:active{transform:scale(.97);}
+      .fb-google-btn:disabled{opacity:.55;cursor:wait;box-shadow:none;}
+      .fb-google-btn svg{flex-shrink:0;}
+      .fb-privacy{font-size:10px;color:var(--text3);margin-top:20px;
+        font-family:'DM Mono',monospace;letter-spacing:.3px;}
+      .fb-loading-content{display:flex;flex-direction:column;align-items:center;animation:fbLoadIn .5s cubic-bezier(.22,1,.36,1) both;}
+      @keyframes fbLoadIn{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+      .fb-loading-logo-wrap{width:72px;height:72px;border-radius:20px;background:rgba(200,240,96,.10);border:1.5px solid rgba(200,240,96,.25);display:flex;align-items:center;justify-content:center;margin-bottom:28px;position:relative;}
+      .fb-loading-ring{position:absolute;inset:-5px;border-radius:25px;border:2.5px solid transparent;border-top-color:var(--accent);border-right-color:rgba(200,240,96,.25);animation:fbSpin .9s linear infinite;}
+      @keyframes fbSpin{to{transform:rotate(360deg);}}
+      .fb-loading-text{font-size:13px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.4px;}
+      .fb-loading-dots{display:inline-flex;gap:5px;margin-top:16px;}
+      .fb-loading-dots span{width:5px;height:5px;border-radius:50%;background:var(--accent);opacity:.25;animation:fbDot 1.2s ease-in-out infinite;}
+      .fb-loading-dots span:nth-child(2){animation-delay:.2s;}
+      .fb-loading-dots span:nth-child(3){animation-delay:.4s;}
+      @keyframes fbDot{0%,80%,100%{opacity:.2;transform:scale(.8);}40%{opacity:1;transform:scale(1);}}
+      /* ===== TOAST (global, puede dispararse durante el gate de auth) ===== */
+      #toast-container{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);left:50%;transform:translateX(-50%);z-index:2147483647;display:flex;flex-direction:column;align-items:center;gap:7px;pointer-events:none;width:calc(100% - 32px);max-width:400px;}
+      .toast{background:#1e1e1e;border:1px solid var(--border2);border-radius:14px;padding:13px 18px;font-size:14px;color:var(--text);box-shadow:0 12px 40px rgba(0,0,0,.85),0 3px 10px rgba(0,0,0,.6);animation:toastIn .28s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;gap:10px;width:100%;pointer-events:all;}
+      .toast.toast-ok{border-color:rgba(200,240,96,.5);background:#1d2614;}
+      .toast.toast-err{border-color:rgba(240,104,104,.5);background:#261414;}
+      .toast.toast-info{border-color:rgba(96,176,240,.5);background:#131e26;}
+      .toast.hiding{animation:toastOut .22s ease forwards;}
+      @keyframes toastIn{from{opacity:0;transform:translateY(-14px) scale(.95);}to{opacity:1;transform:translateY(0) scale(1);}}
+      @keyframes toastOut{to{opacity:0;transform:translateY(-10px) scale(.95);}}
+      /* ===== PIN SCREEN (segundo gate) ===== */
+      #pin-screen{position:fixed;inset:0;z-index:99998;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);padding:32px 24px;text-align:center;overflow:hidden;}
+      #pin-screen.open{display:flex;}
+      .pin-anim{animation:fbLoadIn .4s cubic-bezier(.22,1,.36,1) both;}
+      .pin-logo{width:64px;height:64px;border-radius:18px;background:rgba(200,240,96,.10);border:1.5px solid rgba(200,240,96,.25);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+      .pin-title{font-size:22px;font-weight:700;letter-spacing:-.3px;margin-bottom:6px;}
+      .pin-sub{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:32px;}
+      .pin-dots{display:flex;gap:14px;justify-content:center;margin-bottom:36px;}
+      .pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border2);background:transparent;transition:all .18s;}
+      .pin-dot.filled{background:var(--accent);border-color:var(--accent);transform:scale(1.1);}
+      .pin-dot.error{background:var(--red);border-color:var(--red);animation:pinShake .35s ease;}
+      @keyframes pinShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}}
+      .pin-keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:270px;}
+      .pin-key{height:66px;border-radius:16px;background:var(--bg2);border:1.5px solid var(--border);font-size:24px;font-weight:400;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;transition:all .12s;-webkit-tap-highlight-color:transparent;user-select:none;}
+      .pin-key:active{background:var(--bg3);transform:scale(.91);border-color:var(--accent);}
+      .pin-key.pin-del{font-size:15px;color:var(--text2);}
+      .pin-key.pin-empty{visibility:hidden;pointer-events:none;}
+      .pin-forgot{margin-top:24px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;cursor:pointer;padding:8px;text-decoration:underline;opacity:.65;}
+      .pin-bio-btn{display:none;flex-direction:column;align-items:center;gap:6px;margin-top:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;opacity:.9;transition:opacity .15s;}
+      .pin-bio-btn:active{opacity:.5;}
+      .pin-bio-icon{width:52px;height:52px;border-radius:16px;background:rgba(200,240,96,.10);border:1.5px solid rgba(200,240,96,.25);display:flex;align-items:center;justify-content:center;transition:all .2s;}
+      .pin-bio-icon.scanning{background:rgba(200,240,96,.18);border-color:rgba(200,240,96,.6);box-shadow:0 0 16px rgba(200,240,96,.25);}
+      .pin-bio-icon.success{background:rgba(200,240,96,.22);border-color:var(--accent);box-shadow:0 0 20px rgba(200,240,96,.35);}
+      .pin-bio-icon.error{background:rgba(240,104,104,.12);border-color:rgba(240,104,104,.5);}
+      .pin-bio-label{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:.3px;}
+      @keyframes bioScan{0%,100%{opacity:1;}50%{opacity:.4;}}
+    </style>
     <link rel="icon" type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230f0f0f'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%23c8f060' stroke-width='3'/%3E%3Ctext x='32' y='38' font-family='sans-serif' font-size='22' font-weight='700' fill='%23c8f060' text-anchor='middle'%3E%24%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon"
@@ -116,13 +226,35 @@
     <link rel="stylesheet" media="print" data-async-css
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap">
     <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap"></noscript>
-    <!-- Reemplaza el onload="this.media='all'" inline que tenían estos 2 <link>
-         (Font Awesome arriba + Google Fonts acá) — la CSP bloquea atributos de
-         evento inline en script-src igual que <script> inline, y eso incluye
-         onload aunque no sea onclick. Se detectó recién al probar en navegador
-         real después de sacar 'unsafe-inline' de script-src (el barrido previo
-         de "0 onclick/onchange/oninput/hover inline" nunca cubrió onload — ver
-         CHANGELOG.md#infraestructura--seguridad). -->
+    <!-- CSS principal de la app, extraído a css/styles.css (docs/auditoria-tecnica.md,
+         ítem "CSS inline (44.7 KB)" — cacheable aparte del HTML).
+
+         🔧 Cambiado (sesión posterior, performance): pasó de bloqueante a
+         no-bloqueante, mismo patrón que Font Awesome/Google Fonts arriba.
+         Lighthouse lo marcaba como render-blocking (11.7 KiB, ~1.16s en la
+         ruta crítica). Va DESPUÉS de esos dos <link> pero ANTES del
+         <script> de más abajo a propósito: async-css.js corre como script
+         clásico (sin defer/async) apenas el parser lo alcanza, y hace
+         querySelectorAll('link[data-async-css]') sobre lo que exista en el
+         DOM en ese instante exacto — si este <link> quedara más abajo en el
+         documento (como estaba antes, junto al resto del CSS bloqueante),
+         async-css.js no lo encontraría y el archivo se quedaría con
+         media="print" para siempre, sin aplicarse nunca. Ya no hace falta
+         que sea bloqueante porque el <style> inline de "CSS CRÍTICO",
+         agregado al principio del <head>, cubre todo lo que se ve ANTES de
+         que este archivo termine de cargar (las pantallas de auth/PIN, que
+         tapan el resto de la app con un overlay fijo) — sin ese bloque,
+         este cambio causaría FOUC real. Ver el comentario de ese <style>
+         para el detalle completo de qué quedó ahí y por qué. -->
+    <link rel="stylesheet" media="print" data-async-css href="css/styles.css">
+    <noscript><link rel="stylesheet" href="css/styles.css"></noscript>
+    <!-- Reemplaza el onload="this.media='all'" inline que tenían estos 3 <link>
+         (Font Awesome, Google Fonts, y ahora css/styles.css) — la CSP bloquea
+         atributos de evento inline en script-src igual que <script> inline, y
+         eso incluye onload aunque no sea onclick. Se detectó recién al probar
+         en navegador real después de sacar 'unsafe-inline' de script-src (el
+         barrido previo de "0 onclick/onchange/oninput/hover inline" nunca
+         cubrió onload — ver CHANGELOG.md#infraestructura--seguridad). -->
     <script src="js/core/async-css.js"></script>
     <!-- Preconnect a los dominios de Firebase: adelanta el handshake DNS/TCP/TLS
          en paralelo, en vez de esperar a que el bloque de módulo de más abajo
@@ -160,11 +292,6 @@
          del <body>). Ver docs/auditoria-tecnica.md #4 y CHANGELOG.md#arranque
          para el detalle completo y el resto de la cadena. -->
     <script type="module" src="js/core/firebase-init.js" async></script>
-    <!-- CSS principal extraído a css/styles.css (docs/auditoria-tecnica.md,
-         ítem "CSS inline (44.7 KB)" — ahora cacheable aparte del HTML).
-         Bloqueante a propósito (sin defer/async): es el layout base de
-         toda la app, no hay nada coherente que mostrar sin él. -->
-    <link rel="stylesheet" href="css/styles.css">
   </head>
   <body>
     <!-- FIREBASE: Pantalla de carga inicial -->

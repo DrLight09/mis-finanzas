@@ -16,6 +16,39 @@
      otra sección — encargos, cajitas, cuentas personalizadas, deudores,
      etc.) y redirige al usuario a la sección de origen.
 
+   ¿CUÁNDO UN MOVIMIENTO NUEVO NECESITA `_secundario: true` + `_origenSeccion`?
+   (regla fijada 2026-08-05, tras el bug de "Margen de encargo" borrable directo
+   — ver CHANGELOG.md § Encargos, misma fecha)
+
+   NO es "¿hay un objeto o dos?" — es "¿el borrado genérico de acá abajo sabe
+   deshacer TODO lo que este movimiento implica?". Dos formas de que falle:
+
+   (a) Estructural — el objeto vive en un array que ninguna rama del switch
+       de abajo (movTipoEl === ...) sabe limpiar. Ej.: un "espejo" guardado
+       en `cajita.historial` o en el historial propio de otro módulo — las
+       ramas genéricas solo saben tocar S.movimientos, S.gastosVar,
+       cuentasPersonalizadas[].movimientos y deudores[].movimientos.
+       Si el array de destino no está ahí, borrar revierte el saldo pero
+       deja el registro zombie parado para siempre.
+   (b) Relacional — el objeto SÍ se borra limpio de su propio array, pero
+       tiene un campo que lo liga a un "dueño" en otro módulo (_encMovId,
+       spId, _viaEncargo, _tcId...) que no se entera del borrado y sigue
+       mostrando el evento como vigente.
+
+   Checklist al agregar un movimiento nuevo generado automáticamente:
+     1. ¿En qué array vive realmente? (S.movimientos, cajita.historial,
+        historial propio del módulo, etc.)
+     2. ¿Hay una rama en el switch de abajo que busque y haga
+        splice()/filter() de ESE array exacto para este movTipoEl? Si no →
+        _secundario obligatorio (falla (a)).
+     3. ¿Tiene un campo que lo liga a un registro "dueño" en otro módulo? Si
+        sí, y ese dueño no se revierte solo cuando se borra este → _secundario
+        obligatorio (falla (b)).
+     4. Solo si las dos anteriores dan limpio (array propio bien barrido, sin
+        dueño externo que sincronizar) es seguro dejarlo borrable directo —
+        caso real: "Préstamo dado" (deudores[].movimientos), único registro
+        del evento, con su propia rama que lo revierte completo.
+
    Se registran bajo el namespace Events 'core:' (no bajo el de ningún
    módulo) para no dar a entender que un dominio específico es dueño de esta
    lógica — mismo criterio ya usado cuando se migró Cuentas.

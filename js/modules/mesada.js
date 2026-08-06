@@ -126,9 +126,9 @@ function _poblarMppEncargoCuentas(){
 }
 
 // Muestra u oculta el campo "¿Dónde la metiste?" del sheet de pendiente —
-// se oculta cuando el abono se cubre con plata de un encargo ya guardada en
-// una cuenta conocida (misma idea que _mostrarSeccionDestinoNormal para el
-// sheet normal, pero acá no hay modo simple/dividido, un solo campo).
+// se oculta cuando el abono se cubre con plata de un encargo ya ligada a
+// una cuenta conocida (esa cuenta ya es el destino, mismo criterio que
+// _mostrarSeccionDestinoNormal — ver ahí para el porqué).
 function _mostrarMppDestinoNormal(mostrar){
   const wrap=document.getElementById('mppDestinoWrap');
   if(wrap)wrap.style.display=mostrar?'':'none';
@@ -136,9 +136,11 @@ function _mostrarMppDestinoNormal(mostrar){
 
 // Muestra u oculta la sección normal "¿Qué hiciste con esa plata?"
 // (destino simple/dividido). Se oculta cuando el pago se cubre con plata
-// de un encargo ya guardada en una cuenta conocida (no hace falta volver
-// a elegir destino porque la plata ya está ahí); se muestra si hace falta
-// elegir dónde cae la plata (pago normal, o encargo "sin especificar").
+// de un encargo ya ligada a una cuenta conocida — no hace falta volver a
+// preguntar el destino porque la cuenta elegida arriba YA es el destino
+// (ver confirmarMesadaPago: esa plata se le suma a esa cuenta ahí mismo,
+// no antes). Se muestra si hace falta elegir dónde cae la plata (pago
+// normal, o encargo "sin especificar").
 function _mostrarSeccionDestinoNormal(mostrar){
   const header=document.querySelector('#sheet-mesada-pago .field-header');
   if(header)header.style.display=mostrar?'':'none';
@@ -546,29 +548,28 @@ function confirmarMesadaPago(){
     if(!enc.movimientos)enc.movimientos=[];
     const movEnc={id:uid(),tipo:'salida',desc:descMov,monto,cuenta:cuentaSel||'',fecha,nota:'Usado para mesada',ts:Date.now()};
     enc.movimientos.push(movEnc);
-    let destinoFinal=cuentaSel;
-    let sumado=false; // true si de verdad entró plata a una cuenta (caso "sin especificar")
+    // El saldo de un encargo por cuenta (_getEncargoSaldoPorCuenta) es un
+    // registro puramente interno del módulo Encargos: entradas/salidas de
+    // un encargo NUNCA llaman a sumarFuente/descontarFuente (confirmado
+    // 2026-08-05 revisando confirmarMovEncargo() en encargos.js) — la
+    // "cuenta" es solo una etiqueta de dónde está físicamente esa plata,
+    // no afecta el saldo real de esa cuenta en la app. Solo se le suma a
+    // una cuenta real en el momento exacto en que esa plata deja de ser
+    // del encargo y pasa a ser tuya (mismo patrón que usa Encargos al
+    // convertir una salida en pago de TC). Este es exactamente ese
+    // momento: hay que sumarFuente siempre que haya un destino, sin
+    // importar si la cuenta ya era "conocida" para el encargo o no.
+    const destinoFinal=cuentaSel||(document.getElementById('mpDestino')?document.getElementById('mpDestino').value:'');
     let movSecId=null;
-    if(cuentaSel){
-      // Esa plata ya estaba contada dentro del saldo de esa cuenta (era del
-      // encargo); solo se re-etiqueta como tuya, no se vuelve a sumar.
-      movSecId=_registrarMovSecundarioMesada(cuentaSel,monto,fecha,descMov);
-    } else {
-      // Plata "sin especificar" del encargo: no estaba en ninguna cuenta
-      // rastreada, así que sí entra de verdad a donde elijas.
-      const destinoLibre=document.getElementById('mpDestino')?document.getElementById('mpDestino').value:'';
-      destinoFinal=destinoLibre;
-      if(destinoLibre){
-        sumarFuente(destinoLibre,monto);
-        sumado=true;
-        movSecId=_registrarMovSecundarioMesada(destinoLibre,monto,fecha,descMov);
-      }
+    if(destinoFinal){
+      sumarFuente(destinoFinal,monto);
+      movSecId=_registrarMovSecundarioMesada(destinoFinal,monto,fecha,descMov);
     }
     data[mpMesKey]={
       monto,fecha,nota,
       destino:destinoFinal||'',
       _movSecId:movSecId,
-      origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre,sumado}
+      origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre,sumado:!!destinoFinal}
     };
   } else if(mpSplitMode){
     const splits=getMpSplitData();
@@ -881,25 +882,19 @@ function confirmarPendienteMesada(){
     if(!enc.movimientos)enc.movimientos=[];
     const movEnc={id:uid(),tipo:'salida',desc:descMov,monto,cuenta:cuentaSel||'',fecha,nota:'Usado para mesada (pendiente)',ts:Date.now()};
     enc.movimientos.push(movEnc);
-    let destinoFinal=cuentaSel;
-    let sumado=false;
+    // Mismo criterio que confirmarMesadaPago() (ver comentario ahí, corregido
+    // 2026-08-05): el saldo del encargo por cuenta nunca estuvo contado en
+    // el saldo real de esa cuenta, así que siempre hay que sumarFuente al
+    // convertirlo en tuyo, tenga o no cuenta conocida.
+    const destinoFinal=cuentaSel||(document.getElementById('mppDestino')?document.getElementById('mppDestino').value:'');
     let movSecId=null;
-    if(cuentaSel){
-      // Esa plata ya estaba contada en el saldo de esa cuenta (era del
-      // encargo); solo se re-etiqueta, no se vuelve a sumar.
-      movSecId=_registrarMovSecundarioMesada(cuentaSel,monto,fecha,descMov);
-    } else {
-      const destinoLibre=document.getElementById('mppDestino')?document.getElementById('mppDestino').value:'';
-      destinoFinal=destinoLibre;
-      if(destinoLibre){
-        sumarFuente(destinoLibre,monto);
-        sumado=true;
-        movSecId=_registrarMovSecundarioMesada(destinoLibre,monto,fecha,descMov);
-      }
+    if(destinoFinal){
+      sumarFuente(destinoFinal,monto);
+      movSecId=_registrarMovSecundarioMesada(destinoFinal,monto,fecha,descMov);
     }
     info.pendienteHistorial.push({
       monto,fecha,destino:destinoFinal||'',nota,_movSecId:movSecId,
-      origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre,sumado}
+      origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre,sumado:!!destinoFinal}
     });
   } else {
     const destino=document.getElementById('mppDestino').value;

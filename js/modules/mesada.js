@@ -453,10 +453,24 @@ function actualizarMpPreview(){
     if(v>disponible+0.5){
       prev.textContent='Ahí solo tenés '+fmt(disponible)+' de '+enc.nombre;
       prev.style.color='var(--red)';
-    } else {
-      prev.textContent='Se descuenta de lo que le tenías guardado a '+enc.nombre+' · queda '+fmt(disponible-v);
-      prev.style.color='var(--blue)';
+      return;
     }
+    if(mpSplitMode){
+      // Repartir la plata que sale del encargo entre varias cuentas —
+      // mismo widget de split que el flujo normal, la única diferencia es
+      // de dónde sale la plata (del encargo, no "de la nada").
+      const splits=getMpSplitData();
+      const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
+      const restante=v-totalSplit;
+      if(splits.length===0){prev.textContent=fmt(v)+' de '+enc.nombre+' por distribuir';prev.style.color='var(--text2)';return;}
+      let lines=splits.map(s=>fuenteLabel(s.fuente||'')+': +'+fmt(s.monto)).join(' · ');
+      if(restante>0){prev.textContent=lines+' · Sin asignar: '+fmt(restante);prev.style.color='var(--amber)';}
+      else if(restante<0){prev.textContent=lines+' · Excede por: '+fmt(-restante);prev.style.color='var(--red)';}
+      else{prev.textContent=lines+' · Todo distribuido (de '+enc.nombre+')';prev.style.color='var(--accent)';}
+      return;
+    }
+    prev.textContent='Se descuenta de lo que le tenías guardado a '+enc.nombre+' · queda '+fmt(disponible-v);
+    prev.style.color='var(--blue)';
     return;
   }
   if(mpSplitMode){
@@ -591,23 +605,40 @@ function confirmarMesadaPago(){
     // del encargo y pasa a ser tuya (mismo patrón que usa Encargos al
     // convertir una salida en pago de TC).
     // `cuentaSel` (arriba) solo dice de dónde SALE la plata del encargo —
-    // sirve para validar cuánto hay disponible ahí. `destinoFinal` es
-    // independiente: es lo que el usuario elija en "¿Dónde la metiste?",
-    // que por defecto se precarga igual a cuentaSel (ver
-    // _sincronizarMpDestinoConEncargo) pero es libremente editable — no
-    // tienen por qué ser la misma cuenta.
-    const destinoFinal=document.getElementById('mpDestino')?document.getElementById('mpDestino').value:'';
-    let movSecId=null;
-    if(destinoFinal){
-      sumarFuente(destinoFinal,monto);
-      movSecId=_registrarMovSecundarioMesada(destinoFinal,monto,fecha,descMov);
+    // sirve para validar cuánto hay disponible ahí. El destino real
+    // (simple o dividido en varias cuentas) es independiente.
+    if(mpSplitMode){
+      const splits=getMpSplitData();
+      const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
+      if(totalSplit>monto+1){
+        document.getElementById('mpPreview').textContent='El total dividido supera el monto recibido';
+        document.getElementById('mpPreview').style.color='var(--red)';
+        return;
+      }
+      splits.forEach(s=>{
+        if(s.fuente){
+          sumarFuente(s.fuente,s.monto);
+          s._movSecId=_registrarMovSecundarioMesada(s.fuente,s.monto,fecha,descMov);
+        }
+      });
+      data[mpMesKey]={
+        monto,fecha,nota,destino:'',splits,
+        origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre}
+      };
+    } else {
+      const destinoFinal=document.getElementById('mpDestino')?document.getElementById('mpDestino').value:'';
+      let movSecId=null;
+      if(destinoFinal){
+        sumarFuente(destinoFinal,monto);
+        movSecId=_registrarMovSecundarioMesada(destinoFinal,monto,fecha,descMov);
+      }
+      data[mpMesKey]={
+        monto,fecha,nota,
+        destino:destinoFinal||'',
+        _movSecId:movSecId,
+        origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre,sumado:!!destinoFinal}
+      };
     }
-    data[mpMesKey]={
-      monto,fecha,nota,
-      destino:destinoFinal||'',
-      _movSecId:movSecId,
-      origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre,sumado:!!destinoFinal}
-    };
   } else if(mpSplitMode){
     const splits=getMpSplitData();
     const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
@@ -734,10 +765,11 @@ function _borrarMesadaPago(parent,key,info){
     // Devolver el dinero del pago original a las cuentas correspondientes
     if(info.origenEncargo){
       // Este pago se cubrió con plata que ya le tenías guardada en un
-      // encargo: hay que devolverle ese saldo al encargo (quitando el
-      // movimiento de salida que se creó) y, solo si de verdad había
-      // entrado plata nueva a una cuenta (caso "sin especificar"), revertir
-      // esa entrada también.
+      // encargo: siempre hay que devolverle ese saldo al encargo (quitar
+      // el movimiento de salida que se creó). Además, hay que revertir a
+      // donde sea que haya ido esa plata — puede ser un solo destino o,
+      // desde 2026-08-05, repartida en varios (mismo patrón que el split
+      // normal, ver rama de abajo).
       const oe=info.origenEncargo;
       const enc=typeof getEncargo==='function'?getEncargo(oe.encargoId):null;
       let montoOrig=0;
@@ -746,10 +778,19 @@ function _borrarMesadaPago(parent,key,info){
         if(mv)montoOrig=mv.monto||0;
         enc.movimientos=enc.movimientos.filter(m=>m.id!==oe.movId);
       }
-      if(oe.sumado&&info.destino&&montoOrig){
-        descontarFuente(info.destino,montoOrig);
+      if(info.splits&&info.splits.length){
+        info.splits.forEach(s=>{
+          if(s.fuente){
+            descontarFuente(s.fuente,s.monto);
+            _borrarMovSecundarioMesada(s.fuente,s._movSecId);
+          }
+        });
+      } else {
+        if(oe.sumado&&info.destino&&montoOrig){
+          descontarFuente(info.destino,montoOrig);
+        }
+        _borrarMovSecundarioMesada(info.destino,info._movSecId);
       }
-      _borrarMovSecundarioMesada(info.destino,info._movSecId);
     } else if(info.splits&&info.splits.length){
       info.splits.forEach(s=>{
         if(s.fuente){
@@ -1025,21 +1066,11 @@ if (_mChkUsarEncargo) _mChkUsarEncargo.addEventListener('change', () => {
   // conocida — la cuenta del encargo solo dice de dónde SALE la plata
   // (para validar cuánta hay disponible ahí), no a dónde tiene que ENTRAR.
   // Se precarga con esa misma cuenta como sugerencia, pero es editable.
-  if (mpUsarEncargoActivo) {
-    // Al activar el encargo, forzar modo simple (el flujo de encargo no
-    // soporta split — un solo destino a la vez).
-    mpSplitMode = false;
-    document.getElementById('mpModoSimple').style.display = '';
-    document.getElementById('mpModoDividido').style.display = 'none';
-    const toggleBtn = document.getElementById('mpSplitToggle');
-    if (toggleBtn) toggleBtn.style.display = 'none';
-    _mostrarSeccionDestinoNormal(true);
-    _sincronizarMpDestinoConEncargo();
-  } else {
-    const toggleBtn = document.getElementById('mpSplitToggle');
-    if (toggleBtn) toggleBtn.style.display = '';
-    _mostrarSeccionDestinoNormal(true);
-  }
+  // El botón "Dividir ÷" sí funciona con encargo activo (2026-08-05):
+  // reparte la misma plata que sale del encargo entre varias cuentas,
+  // igual que el split normal — no hace falta forzar modo simple.
+  _mostrarSeccionDestinoNormal(true);
+  if (mpUsarEncargoActivo) _sincronizarMpDestinoConEncargo();
   actualizarMpPreview();
 });
 const _mSelEncargo = document.getElementById('mpEncargoSel');

@@ -110,6 +110,24 @@ function _poblarMpEncargoCuentas(){
   actualizarMpPreview();
 }
 
+// Precarga el selector de destino con la misma cuenta que tiene el
+// encargo seleccionado (como sugerencia razonable: si la plata ya estaba
+// en Nequi, lo más probable es que se quede en Nequi), pero deja el campo
+// visible y editable — el usuario puede elegir cualquier otra cuenta, ya
+// que la cuenta del encargo solo dice de dónde SALE la plata, no a dónde
+// tiene que entrar.
+function _sincronizarMpDestinoConEncargo(){
+  const cuentaSel=document.getElementById('mpEncargoCuentaSel');
+  const dest=document.getElementById('mpDestino');
+  if(!cuentaSel||!dest)return;
+  const val=cuentaSel.value;
+  if(val && [...dest.options].some(o=>o.value===val)){
+    dest.value=val;
+  } else {
+    dest.value='';
+  }
+}
+
 // Misma lógica que _poblarMpEncargoCuentas() pero para el sheet de "pago de
 // lo pendiente" (ids mpp*).
 function _poblarMppEncargoCuentas(){
@@ -123,6 +141,20 @@ function _poblarMppEncargoCuentas(){
   if(sinCuenta>0.5)opts+=`<option value="">Sin especificar (${fmt(sinCuenta)})</option>`;
   sel.innerHTML=opts||'<option value="">Sin especificar</option>';
   actualizarMppPreview();
+}
+
+// Igual que _sincronizarMpDestinoConEncargo() pero para el sheet de
+// pendiente (ids mpp*).
+function _sincronizarMppDestinoConEncargo(){
+  const cuentaSel=document.getElementById('mppEncargoCuentaSel');
+  const dest=document.getElementById('mppDestino');
+  if(!cuentaSel||!dest)return;
+  const val=cuentaSel.value;
+  if(val && [...dest.options].some(o=>o.value===val)){
+    dest.value=val;
+  } else {
+    dest.value='';
+  }
 }
 
 // Muestra u oculta el campo "¿Dónde la metiste?" del sheet de pendiente —
@@ -367,6 +399,7 @@ function abrirRegistrarMesada(parent,key,nombre){
   document.getElementById('mpSplitToggle').style.background='rgba(200,240,96,.1)';
   document.getElementById('mpSplitToggle').style.borderColor='rgba(200,240,96,.3)';
   document.getElementById('mpSplitToggle').style.color='var(--accent)';
+  document.getElementById('mpSplitToggle').style.display='';
   poblarFuente('mpDestino', false, false);
   const sel=document.getElementById('mpDestino');
   sel.innerHTML='<option value="">No especificar / lo gasté</option>'+sel.innerHTML.replace('<option value="">Sin especificar</option>','');
@@ -556,10 +589,14 @@ function confirmarMesadaPago(){
     // no afecta el saldo real de esa cuenta en la app. Solo se le suma a
     // una cuenta real en el momento exacto en que esa plata deja de ser
     // del encargo y pasa a ser tuya (mismo patrón que usa Encargos al
-    // convertir una salida en pago de TC). Este es exactamente ese
-    // momento: hay que sumarFuente siempre que haya un destino, sin
-    // importar si la cuenta ya era "conocida" para el encargo o no.
-    const destinoFinal=cuentaSel||(document.getElementById('mpDestino')?document.getElementById('mpDestino').value:'');
+    // convertir una salida en pago de TC).
+    // `cuentaSel` (arriba) solo dice de dónde SALE la plata del encargo —
+    // sirve para validar cuánto hay disponible ahí. `destinoFinal` es
+    // independiente: es lo que el usuario elija en "¿Dónde la metiste?",
+    // que por defecto se precarga igual a cuentaSel (ver
+    // _sincronizarMpDestinoConEncargo) pero es libremente editable — no
+    // tienen por qué ser la misma cuenta.
+    const destinoFinal=document.getElementById('mpDestino')?document.getElementById('mpDestino').value:'';
     let movSecId=null;
     if(destinoFinal){
       sumarFuente(destinoFinal,monto);
@@ -882,11 +919,12 @@ function confirmarPendienteMesada(){
     if(!enc.movimientos)enc.movimientos=[];
     const movEnc={id:uid(),tipo:'salida',desc:descMov,monto,cuenta:cuentaSel||'',fecha,nota:'Usado para mesada (pendiente)',ts:Date.now()};
     enc.movimientos.push(movEnc);
-    // Mismo criterio que confirmarMesadaPago() (ver comentario ahí, corregido
-    // 2026-08-05): el saldo del encargo por cuenta nunca estuvo contado en
-    // el saldo real de esa cuenta, así que siempre hay que sumarFuente al
-    // convertirlo en tuyo, tenga o no cuenta conocida.
-    const destinoFinal=cuentaSel||(document.getElementById('mppDestino')?document.getElementById('mppDestino').value:'');
+    // Mismo criterio que confirmarMesadaPago() (ver comentario ahí): el
+    // saldo del encargo por cuenta nunca estuvo contado en el saldo real
+    // de esa cuenta, así que siempre hay que sumarFuente al convertirlo en
+    // tuyo. `destinoFinal` sale del selector "¿Dónde la metiste?"
+    // (independiente de `cuentaSel`, que solo valida disponibilidad).
+    const destinoFinal=document.getElementById('mppDestino')?document.getElementById('mppDestino').value:'';
     let movSecId=null;
     if(destinoFinal){
       sumarFuente(destinoFinal,monto);
@@ -983,10 +1021,23 @@ if (_mChkUsarEncargo) _mChkUsarEncargo.addEventListener('change', () => {
   mpUsarEncargoActivo = _mChkUsarEncargo.checked;
   const det = document.getElementById('mpEncargoDetalle');
   if (det) det.style.display = mpUsarEncargoActivo ? '' : 'none';
+  // El destino sigue siendo elegible aunque la cuenta del encargo sea
+  // conocida — la cuenta del encargo solo dice de dónde SALE la plata
+  // (para validar cuánta hay disponible ahí), no a dónde tiene que ENTRAR.
+  // Se precarga con esa misma cuenta como sugerencia, pero es editable.
   if (mpUsarEncargoActivo) {
-    const cuentaSel = document.getElementById('mpEncargoCuentaSel');
-    _mostrarSeccionDestinoNormal(!!(cuentaSel && cuentaSel.value === ''));
+    // Al activar el encargo, forzar modo simple (el flujo de encargo no
+    // soporta split — un solo destino a la vez).
+    mpSplitMode = false;
+    document.getElementById('mpModoSimple').style.display = '';
+    document.getElementById('mpModoDividido').style.display = 'none';
+    const toggleBtn = document.getElementById('mpSplitToggle');
+    if (toggleBtn) toggleBtn.style.display = 'none';
+    _mostrarSeccionDestinoNormal(true);
+    _sincronizarMpDestinoConEncargo();
   } else {
+    const toggleBtn = document.getElementById('mpSplitToggle');
+    if (toggleBtn) toggleBtn.style.display = '';
     _mostrarSeccionDestinoNormal(true);
   }
   actualizarMpPreview();
@@ -998,7 +1049,7 @@ if (_mSelEncargo) _mSelEncargo.addEventListener('change', () => {
 });
 const _mSelEncargoCuenta = document.getElementById('mpEncargoCuentaSel');
 if (_mSelEncargoCuenta) _mSelEncargoCuenta.addEventListener('change', () => {
-  if (mpUsarEncargoActivo) _mostrarSeccionDestinoNormal(_mSelEncargoCuenta.value === '');
+  if (mpUsarEncargoActivo) _sincronizarMpDestinoConEncargo();
   actualizarMpPreview();
 });
 const _mEncargoToggleWrap = document.getElementById('mpEncargoToggleWrap');
@@ -1029,12 +1080,8 @@ if (_mChkUsarEncargoPend) _mChkUsarEncargoPend.addEventListener('change', () => 
   mppUsarEncargoActivo = _mChkUsarEncargoPend.checked;
   const det = document.getElementById('mppEncargoDetalle');
   if (det) det.style.display = mppUsarEncargoActivo ? '' : 'none';
-  if (mppUsarEncargoActivo) {
-    const cuentaSel = document.getElementById('mppEncargoCuentaSel');
-    _mostrarMppDestinoNormal(!!(cuentaSel && cuentaSel.value === ''));
-  } else {
-    _mostrarMppDestinoNormal(true);
-  }
+  _mostrarMppDestinoNormal(true);
+  if (mppUsarEncargoActivo) _sincronizarMppDestinoConEncargo();
   actualizarMppPreview();
 });
 const _mSelEncargoPend = document.getElementById('mppEncargoSel');
@@ -1044,7 +1091,7 @@ if (_mSelEncargoPend) _mSelEncargoPend.addEventListener('change', () => {
 });
 const _mSelEncargoCuentaPend = document.getElementById('mppEncargoCuentaSel');
 if (_mSelEncargoCuentaPend) _mSelEncargoCuentaPend.addEventListener('change', () => {
-  if (mppUsarEncargoActivo) _mostrarMppDestinoNormal(_mSelEncargoCuentaPend.value === '');
+  if (mppUsarEncargoActivo) _sincronizarMppDestinoConEncargo();
   actualizarMppPreview();
 });
 const _mEncargoToggleWrapPend = document.getElementById('mppEncargoToggleWrap');

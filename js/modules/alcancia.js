@@ -522,12 +522,16 @@ window.renderAlcancia = function(){
     if(statDep) statDep.textContent = a.depositos || 0;
     if(statTiempo) statTiempo.textContent = _fmtTiempo(_diasDesde(a.fechaInicio));
 
-    // ── Movimientos: ocultos mientras la alcancía está activa (se revelan al destapar)
+    // ── Movimientos: se ven dentro de Alcancía (detalle por depósito), pero
+    // el TOTAL acumulado sigue oculto (heroSaldo con blur) — eso es lo único
+    // que debe seguir siendo sorpresa. Sin esta lista no hay forma de
+    // corregir un depósito mal anotado, porque cuentas.js también los
+    // esconde mientras la alcancía sigue activa.
     const movsTitulo = document.getElementById('alcancia-movs-titulo');
     const movsEl = document.getElementById('alcancia-movimientos-lista');
-    if(movsTitulo) movsTitulo.style.display = 'none';
-    if(movsEl) movsEl.style.display = 'none';
-    if(false){ // bloque desactivado — movimientos solo visibles en las cuentas de origen
+    if(movsTitulo) movsTitulo.style.display = '';
+    if(movsEl){
+      movsEl.style.display = '';
       const movs = (a.movimientos || []);
       if(!movs.length){
         movsEl.innerHTML = '<div class="feed-empty">Aún no hay movimientos en esta alcancía.</div>';
@@ -556,7 +560,10 @@ window.renderAlcancia = function(){
               <div style="font-size:11px;color:var(--text3);">${m.fecha}${fmtFuente ? ' · de ' + fmtFuente : ''}</div>
               <div style="font-size:10px;color:${color};margin-top:2px;">${label}</div>
             </div>
-            <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);flex-shrink:0;">+${typeof fmt==='function'?fmt(m.monto):m.monto}</div>
+            <span class="alc-dep-monto" data-shown="0" data-mov-id="${m.id}" ${Events.attr('alcancia:toggleMontoDeposito', m.id)} title="Toca para ver el monto" style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text3);flex-shrink:0;cursor:pointer;letter-spacing:1px;">••••</span>
+            <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${Events.attr('alcancia:eliminarDeposito', m.id)} title="Eliminar este depósito" style="flex-shrink:0;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
+            </button>
           </div>`;
         }).join('');
       }
@@ -726,6 +733,7 @@ window.alcanciaConfirmarDeposito = function(){
       nota: 'Guardado en alcancía oculta' + (descVal ? ': ' + descVal : ''),
       _esAlcancia: true,
       _alcTipo: tipo,
+      _secundario: true, _origenSeccion: 'Alcancía',
       ts: Date.now()
     });
     // Restar el saldo físico de la cuenta de origen
@@ -744,6 +752,7 @@ window.alcanciaConfirmarDeposito = function(){
       desc: descFinal || 'Depósito en alcancía',
       nota: 'Ingreso registrado al guardar en alcancía (dinero directo)',
       _esAlcanciaIngreso: true,
+      _secundario: true, _origenSeccion: 'Alcancía',
       ts: Date.now()
     });
     // Suma a efectivo para que el saldo refleje ese dinero... y luego lo resta
@@ -767,6 +776,7 @@ window.alcanciaConfirmarDeposito = function(){
       desc: descFinal || 'Regalo de mamá',
       nota: 'Ingreso: regalo de mamá guardado en alcancía',
       _esAlcanciaIngreso: true,
+      _secundario: true, _origenSeccion: 'Alcancía',
       ts: Date.now()
     });
     // Igual que yo-directo: el ingreso se registra pero no queda disponible en efectivo
@@ -788,6 +798,7 @@ window.alcanciaConfirmarDeposito = function(){
       desc: descFinal || 'Mandado de mamá',
       nota: 'Ingreso: pago de mandado guardado en alcancía',
       _esAlcanciaIngreso: true,
+      _secundario: true, _origenSeccion: 'Alcancía',
       ts: Date.now()
     });
     if(typeof sumarFuente === 'function'){
@@ -798,12 +809,14 @@ window.alcanciaConfirmarDeposito = function(){
 
   // ── split: tu parte puede venir de cuenta (resta) o de efectivo directo (ingreso).
   //    La parte de mamá siempre es ingreso nuevo para ti.
+  let splitMamaMovId = null;
   if(tipo === 'split'){
     // Parte de mamá → ingreso real (ella te dio esa plata)
     if(splitMama > 0){
+      splitMamaMovId = (typeof uid==='function' ? uid() : Date.now().toString(36)+'_m');
       window.S.movimientos = window.S.movimientos || [];
       window.S.movimientos.push({
-        id: (typeof uid==='function' ? uid() : Date.now().toString(36)+'_m'),
+        id: splitMamaMovId,
         tipo: 'entrada',
         fuente: 'efectivo',
         monto: splitMama,
@@ -811,6 +824,7 @@ window.alcanciaConfirmarDeposito = function(){
         desc: (descVal || 'Depósito compartido') + ' (parte mamá)',
         nota: 'Ingreso: aporte de mamá al split de alcancía',
         _esAlcanciaIngreso: true,
+        _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
       });
       // El ingreso de mamá se registra pero no queda en efectivo (va a la alcancía)
@@ -833,6 +847,7 @@ window.alcanciaConfirmarDeposito = function(){
         nota: 'Guardado en alcancía (tu parte)' + (descVal ? ': ' + descVal : ''),
         _esAlcancia: true,
         _alcTipo: 'split',
+        _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
       });
       // Restar el saldo físico de la cuenta de origen
@@ -849,6 +864,7 @@ window.alcanciaConfirmarDeposito = function(){
         desc: (descVal || 'Depósito compartido') + ' (tu parte)',
         nota: 'Ingreso: tu aporte al split de alcancía (efectivo directo)',
         _esAlcanciaIngreso: true,
+        _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
       });
       if(typeof sumarFuente === 'function'){
@@ -877,6 +893,7 @@ window.alcanciaConfirmarDeposito = function(){
     movEntry._splitYo     = splitYo;
     movEntry._splitMama   = splitMama;
     if(splitFuente) movEntry._splitFuente = splitFuente;
+    if(splitMamaMovId) movEntry._splitMamaMovId = splitMamaMovId;
   }
   a.movimientos.push(movEntry);
   _setSaldoOfuscado(a.saldoRegistrado);
@@ -920,6 +937,7 @@ window.alcanciaConfirmarDestapar = function(){
       desc: 'Alcancía destapada — saldo registrado',
       nota: 'Transferencia interna desde alcancía',
       _esAlcancia: true,
+      _secundario: true, _origenSeccion: 'Alcancía',
       ts: Date.now()
     });
     // Actualizar saldo de la cuenta destino
@@ -938,6 +956,7 @@ window.alcanciaConfirmarDestapar = function(){
       desc: 'Dinero extra encontrado en alcancía',
       nota: 'Ajuste: dinero físico no registrado previamente',
       _esAlcancia: true,
+      _secundario: true, _origenSeccion: 'Alcancía',
       ts: Date.now()
     });
     _sumarASaldo(destino, dif);
@@ -956,6 +975,7 @@ window.alcanciaConfirmarDestapar = function(){
       fuente: destino,
       nota: 'Diferencia negativa al destapar alcancía',
       _esAlcanciaAjuste: true,
+      _secundario: true, _origenSeccion: 'Alcancía',
       ts: Date.now()
     });
     // Restar la diferencia del saldo de la cuenta destino
@@ -1112,6 +1132,88 @@ function _sumarASaldo(fuente, monto){
   }
 }
 
+/* ─── REVELAR EL MONTO DE UN DEPÓSITO (uno a la vez) ─────────────────────
+   Por defecto la lista muestra "••••" en vez del monto — mostrarlos todos
+   de una permitiría sumarlos a mano y reconstruir el total que heroSaldo
+   mantiene oculto ("$??"). El monto real nunca se guarda en el HTML antes
+   de que el usuario lo pida: se busca en window.S.alcancia recién al
+   tocar, y solo para esa fila. */
+window.alcanciaToggleMontoDeposito = function(movId, el){
+  if(!el || el.dataset.movId === undefined) return;
+  const montoEl = el;
+  const shown = montoEl.dataset.shown === '1';
+  if(shown){
+    montoEl.textContent = '••••';
+    montoEl.dataset.shown = '0';
+    montoEl.style.color = 'var(--text3)';
+  } else {
+    _initA();
+    const a = window.S.alcancia;
+    const entry = a && (a.movimientos || []).find(m => m.id === movId);
+    montoEl.textContent = entry ? '+' + (typeof fmt==='function'?fmt(entry.monto):entry.monto) : '?';
+    montoEl.dataset.shown = '1';
+    montoEl.style.color = 'var(--amber)';
+  }
+};
+
+/* ─── ELIMINAR UN DEPÓSITO ───────────────────────────────────────────────
+   Revierte según el tipo del depósito (ver depositAlcancia() arriba):
+   - 'yo-directo' / 'regalo' / 'mandado' / la parte de mamá en 'split':
+     fueron un ingreso neto-cero en S.movimientos (sumarFuente(+) seguido
+     de sumarFuente(-)) — no tocan saldo real, así que basta con quitar el
+     registro, sin revertir ningún saldo.
+   - 'yo-cuenta' / la parte propia de 'split' cuando vino de una cuenta:
+     fueron un gasto real en S.gastosVar que sí descontó saldo — hay que
+     devolver la plata con sumarFuente().
+   No usa eliminarMovimiento() de movimientos.js porque esos registros ya
+   quedan marcados _secundario (ver arriba), así que esa función los
+   bloquea a propósito — este es el único camino real para deshacerlos. */
+window.alcanciaEliminarDeposito = async function(movId){
+  _initA();
+  const a = window.S.alcancia;
+  if(!a || !a.movimientos) return;
+  const idx = a.movimientos.findIndex(m => m.id === movId);
+  if(idx === -1){ if(typeof toast==='function') toast('No se encontró ese depósito', 'err'); return; }
+  const entry = a.movimientos[idx];
+
+  const ok = await dialogo(
+    'Eliminar depósito',
+    `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? ${entry.fuenteOrigen || entry._splitFuente ? 'Se devolverá el dinero a la cuenta de origen.' : 'No afecta ningún saldo (fue un ingreso registrado sin mover plata real).'}`,
+    'Eliminar', true
+  );
+  if(!ok) return;
+
+  // Revertir el/los registro(s) reales según el tipo
+  if(entry.tipo === 'yo-cuenta'){
+    window.S.gastosVar = (window.S.gastosVar || []).filter(x => x.id !== entry.id);
+    if(entry.fuenteOrigen && typeof sumarFuente === 'function') sumarFuente(entry.fuenteOrigen, entry.monto);
+  } else if(entry.tipo === 'split'){
+    if(entry._splitFuente){
+      window.S.gastosVar = (window.S.gastosVar || []).filter(x => x.id !== entry.id);
+      if(typeof sumarFuente === 'function') sumarFuente(entry._splitFuente, entry._splitYo || 0);
+    } else if(entry._splitYo > 0){
+      window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== entry.id);
+    }
+    if(entry._splitMamaMovId){
+      window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== entry._splitMamaMovId);
+    }
+  } else {
+    // 'yo-directo' / 'regalo' / 'mandado' — ingreso neto-cero
+    window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== entry.id);
+  }
+
+  // Revertir el estado propio de la alcancía
+  a.movimientos.splice(idx, 1);
+  a.saldoRegistrado = Math.max(0, (a.saldoRegistrado || 0) - entry.monto);
+  a.depositos = Math.max(0, (a.depositos || 0) - 1);
+  _setSaldoOfuscado(a.saldoRegistrado);
+
+  if(typeof save==='function') save();
+  if(typeof refresh==='function') refresh();
+  window.renderAlcancia();
+  if(typeof toast==='function') toast('Depósito eliminado', 'info');
+};
+
 /* ─── REGISTRO EN EVENTS ─────────────────────────────────────────────────
    Los dos primeros (abrirDepositar/abrirDestapar) reemplazan los
    onclick="openSheet('alcancia-...')" que vivían como HTML estático en
@@ -1126,6 +1228,8 @@ Events.registerAll('alcancia', {
   iniciarNueva:       window.alcanciaIniciarNueva,
   confirmarDeposito:  window.alcanciaConfirmarDeposito,
   confirmarDestapar:  window.alcanciaConfirmarDestapar,
+  eliminarDeposito:   window.alcanciaEliminarDeposito,
+  toggleMontoDeposito: window.alcanciaToggleMontoDeposito,
   toggleDesglose:     _alcanciaToggleDesglose
 });
 

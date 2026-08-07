@@ -6,19 +6,14 @@
 
    La integración con S.personas (crear/vincular persona automática,
    refrescar detalle al editar desde el sheet global, "Editar mi
-   deuda", navegar desde el perfil de una persona) vive en
-   js/modules/prestado-personas.js, cargado más abajo en index.html
-   — mismo motivo que spotify-personas.js y encargos-personas.js:
-   depende de funciones de Personas (getPersona, abrirPerfilPersona,
-   _inyectarPersonaSheets, _guardarEditarPersonaGlobal) definidas más
-   abajo en el documento.
-
-   El selector de persona compartido por "Agregar persona" (Me deben)
-   y "Nueva deuda" (Yo debo) vive en un tercer archivo,
-   js/modules/deudores-personas.js, cargado justo después de
-   prestado-personas.js — mismo motivo de orden de carga, más uno
-   propio: envuelve openSheet y crearMiDeuda, ambos ya envueltos una
-   vez por prestado-personas.js, así que necesita cargar después.
+   deuda", navegar desde el perfil de una persona) y el selector de
+   persona compartido por "Agregar persona" (Me deben) y "Nueva
+   deuda" (Yo debo) vivían en dos archivos aparte —
+   js/modules/prestado-personas.js y js/modules/deudores-personas.js
+   — que se fusionaron acá el 2026-08-03 (ver los bloques marcados
+   "fusionado acá" más abajo) para no tener tres archivos separados
+   dependiendo del mismo orden de carga. Ya no existen como archivos
+   propios; todo su contenido vive en este mismo módulo.
 
    Ver docs/prestado.md (sección 6, integración con S.personas).
 
@@ -165,16 +160,16 @@ function selColor(c) {
 // Wiring del color picker (sheet "Nueva persona") — migrado desde
 // index.html (_initEventListeners). Se restauró acá tras una corrección
 // (ver CHANGELOG.md/auditoria-tecnica.md, 2026-07-27) porque selColor()
-// sí existe en este archivo — pero con `deudores-personas.js` cargado
-// (más abajo en index.html), este código es en la práctica CÓDIGO
-// MUERTO: ese módulo sobrescribe `openSheet` e intercepta
-// id==='nueva-persona' con un `return` antes de mostrar este sheet,
-// redirigiendo a `abrirSelPersona(_onSelPersonaMeDeben)` — el selector
-// genérico de Personas. El sheet #sheet-nueva-persona, este picker,
-// addDeudor() e initColorPicker() nunca se ejecutan en la app tal como
-// está armada hoy. Se deja sin borrar, mismo criterio que el resto del
-// código muerto ya documentado en este proyecto (toggleCDT/toggleCajita
-// en Cuentas, etc.) — no se borra de paso, se anota.
+// sí existe en este archivo — pero el override de `openSheet` más abajo en
+// este mismo archivo (antes vivía en `deudores-personas.js`, un módulo
+// aparte que ya no existe — se fusionó acá) intercepta id==='nueva-persona'
+// con un `return` antes de mostrar este sheet, redirigiendo a
+// `abrirSelPersona(_onSelPersonaMeDeben)` — el selector genérico de
+// Personas. El sheet #sheet-nueva-persona, este picker, addDeudor() e
+// initColorPicker() nunca se ejecutan en la app tal como está armada hoy.
+// Se deja sin borrar, mismo criterio que el resto del código muerto ya
+// documentado en este proyecto (toggleCDT/toggleCajita en Cuentas, etc.)
+// — no se borra de paso, se anota.
 document.querySelectorAll('[data-pick-color]').forEach(el => {
   el.addEventListener('click', () => selColor(el.dataset.pickColor));
 });
@@ -2464,7 +2459,7 @@ Events.registerAll('prestado', {
 
   // Yo debo
   abrirSheetNuevaDeuda: _abrirSheetNuevaDeuda,
-  crearMiDeuda: (...args) => crearMiDeuda(...args), // arrow-wrap: prestado-personas.js y deudores-personas.js lo reasignan más abajo (mismo patrón que encargos.js)
+  crearMiDeuda: (...args) => crearMiDeuda(...args), // arrow-wrap: se reasigna más abajo en este mismo archivo (antes lo hacían prestado-personas.js y deudores-personas.js, hoy fusionados acá — mismo patrón que encargos.js)
   volverMisDeudas: volverMisDeudas,
   eliminarMiDeuda: eliminarMiDeuda,
   abrirMiDeuda: abrirMiDeuda,
@@ -2723,8 +2718,21 @@ Events.registerAll('prestado-personas', {
 function _onSelPersonaMeDeben(personaId) {
   const p = getPersona(personaId);
   if (!p) return;
-  // Nota: una misma persona puede tener varias deudas separadas (por distintos
-  // conceptos), así que NO se bloquea si ya existe un deudor con este personaId.
+  // Antes se permitía a propósito que una misma persona tuviera varios
+  // deudores separados (uno por cada préstamo). Ahora que existen los
+  // grupos de préstamo (d.grupos[] — ver prestado.md §2.4), un préstamo
+  // nuevo con alguien que ya está en la lista se maneja como un grupo
+  // aparte DENTRO del mismo deudor, no como una persona duplicada en la
+  // lista. Mismo patrón que _onSelPersonaNuevaDeuda (lado "Yo debo").
+  const existente = (S.deudores || []).find(d => d.personaId === personaId);
+  if (existente) {
+    closeSheet('nueva-persona');
+    toast(`${escHtml(p.nombre)} ya está en tu lista de "Me deben"`, 'info');
+    showScreen('prestamos');
+    cambiarTabPrestamos('me-deben');
+    setTimeout(() => abrirDeudor(existente.id), 200);
+    return;
+  }
   if (!S.deudores) S.deudores = [];
   const d = { id: uid(), nombre: p.nombre, color: p.color || '#60b0f0', personaId: p.id, movimientos: [] };
   S.deudores.push(d);

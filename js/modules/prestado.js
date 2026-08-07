@@ -237,6 +237,55 @@ function getDeudorSaldoPatrimonio(d) {
   , 0);
 }
 
+// ── Grupos de préstamo dentro de un deudor ──────────────────────────────
+// Permiten separar "préstamo viejo" de "préstamo nuevo" con una misma
+// persona sin duplicarla en la lista de Prestado. Cada movimiento lleva
+// m.grupoId apuntando a d.grupos[]. El saldo TOTAL de la persona
+// (getDeudorSaldo) no cambia — grupoId es puramente organizativo.
+// Ver prestado.md §2.4 para el diseño completo.
+
+// Migra deudores viejos (sin d.grupos) creando un grupo "Histórico" que
+// absorbe todos los movimientos sueltos. Idempotente — se puede llamar en
+// cada abrirDeudor() sin costo si ya está migrado. No llama a save() —
+// eso lo decide quien la invoque, para no generar escrituras de más si el
+// deudor no tiene movimientos que migrar.
+function _migrarGruposDeudor(d) {
+  if (!d) return false;
+  if (!d.grupos) d.grupos = [];
+  const movs = d.movimientos || [];
+  const sinGrupo = movs.filter(m => !m.grupoId);
+  if (!sinGrupo.length) return false;
+  let historico = d.grupos.find(g => g.id === '_historico');
+  if (!historico) {
+    historico = { id: '_historico', nombre: 'Histórico', creadoEn: (sinGrupo[0] && sinGrupo[0].fecha) || hoy(), cerrado: false };
+    d.grupos.push(historico);
+  }
+  sinGrupo.forEach(m => { m.grupoId = historico.id; });
+  return true;
+}
+
+// Saldo de un grupo específico dentro de un deudor (mismo criterio que
+// getDeudorSaldo pero filtrado por grupoId).
+function getGrupoSaldo(d, grupoId) {
+  return (d.movimientos || []).filter(m => m.grupoId === grupoId).reduce((a, m) => m.tipo === 'prestamo' ? a + m.monto : a - m.monto, 0);
+}
+
+// Grupos abiertos (no cerrados manualmente) de un deudor, más recientes primero.
+function _gruposAbiertos(d) {
+  return (d.grupos || []).filter(g => !g.cerrado).sort((a, b) => (b.creadoEn || '').localeCompare(a.creadoEn || ''));
+}
+
+// Cierra automáticamente los grupos con saldo 0 que no estén ya cerrados.
+// Se llama tras registrar/eliminar un movimiento para mantener la lista de
+// "grupos abiertos" limpia sin pedirle al usuario que cierre nada a mano.
+function _autoCerrarGruposEnCero(d) {
+  if (!d || !d.grupos) return;
+  d.grupos.forEach(g => {
+    if (!g.cerrado && Math.abs(getGrupoSaldo(d, g.id)) < 1) g.cerrado = true;
+    else if (g.cerrado && Math.abs(getGrupoSaldo(d, g.id)) >= 1) g.cerrado = false; // se reabrió (ej. se borró un abono)
+  });
+}
+
 function renderDeudoresList() {
   const el = document.getElementById('deudoresList');
   const list = S.deudores || [];
@@ -275,6 +324,9 @@ function abrirDeudor(id) {
   deudorActualId = id;
   const d = (S.deudores || []).find(x => x.id === id);
   if (!d) return;
+  // Migración silenciosa de deudores creados antes de que existieran los
+  // grupos de préstamo — todo movimiento suelto cae en un grupo "Histórico".
+  if (_migrarGruposDeudor(d)) save();
   const saldo = getDeudorSaldo(d);
   const totalPrestado = (d.movimientos || []).filter(m => m.tipo === 'prestamo').reduce((a, m) => a + m.monto, 0);
   const totalAbonado = (d.movimientos || []).filter(m => m.tipo === 'abono' || m.tipo === 'pago-completo').reduce((a, m) => a + m.monto, 0);
@@ -300,7 +352,12 @@ function abrirDeudor(id) {
     histEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 8px;">Sin movimientos aún.</div>';
   } else {
     let saldoCorriente = saldo; // saldo de deuda ANTES de descontar la entry actual (al iterar desc, arranca en el saldo actual = saldo "después" del primer item)
-    histEl.innerHTML = movs.map(m => {
+    // Los movimientos se siguen recorriendo TODOS juntos y en orden cronológico
+    // para que saldoAntes/saldoDespues reflejen el saldo real de la persona a
+    // través del tiempo (igual que antes de los grupos). El agrupamiento por
+    // grupoId es solo de presentación: cada card cae en el balde de su grupo.
+    const _porGrupo = {}; // grupoId -> [cardHtml, ...]
+    movs.forEach(m => {
       const esPrestamo = m.tipo === 'prestamo';
       const esPagoCompleto = m.tipo === 'pago-completo';
       const efectoDeuda = esPrestamo ? +m.monto : -m.monto; // cuánto sumó/restó esta entry a la deuda
@@ -343,7 +400,7 @@ function abrirDeudor(id) {
         else if (m.destino) otrasCuentasDD = [{fuente:m.destino, monto:+m.monto}];
       }
       const dataOtrasDD = otrasCuentasDD.length ? `data-mov-otras="${escHtml(JSON.stringify(otrasCuentasDD))}"` : '';
-      return `<div class="card card-sm" style="margin-bottom:7px;cursor:pointer;" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-mov-origen="${escHtml(origenDD)}" ${dataOtrasDD} data-mov-saldo-antes="${saldoAntesDeuda}" data-mov-saldo-despues="${saldoDespuesDeuda}" data-mov-saldo-label="Deuda de ${escHtml(d.nombre)}" data-mov-desc="${escHtml(m.nota || (esPrestamo?'Préstamo': esPagoCompleto?'Pago completo':'Abono'))}" data-mov-fecha="${escHtml(m.fecha)}" ${Events.attr('prestado:abrirDetalleMov')}>
+      const _cardHtml = `<div class="card card-sm" style="margin-bottom:7px;cursor:pointer;" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-mov-origen="${escHtml(origenDD)}" ${dataOtrasDD} data-mov-saldo-antes="${saldoAntesDeuda}" data-mov-saldo-despues="${saldoDespuesDeuda}" data-mov-saldo-label="Deuda de ${escHtml(d.nombre)}" data-mov-desc="${escHtml(m.nota || (esPrestamo?'Préstamo': esPagoCompleto?'Pago completo':'Abono'))}" data-mov-fecha="${escHtml(m.fecha)}" ${Events.attr('prestado:abrirDetalleMov')}>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -363,6 +420,39 @@ function abrirDeudor(id) {
           </div>
         </div>
       </div>`;
+      const _gid = m.grupoId || '_historico';
+      (_porGrupo[_gid] = _porGrupo[_gid] || []).push(_cardHtml);
+    });
+
+    // Orden de secciones: grupos abiertos primero (más nuevo primero),
+    // luego cerrados. Si por alguna razón un grupoId no está en d.grupos
+    // (dato corrupto), se muestra igual como sección suelta al final.
+    const gruposOrdenados = [...(d.grupos || [])].sort((a, b) => {
+      if (!!a.cerrado !== !!b.cerrado) return a.cerrado ? 1 : -1;
+      return (b.creadoEn || '').localeCompare(a.creadoEn || '');
+    });
+    const idsConocidos = new Set(gruposOrdenados.map(g => g.id));
+    Object.keys(_porGrupo).forEach(gid => { if (!idsConocidos.has(gid)) gruposOrdenados.push({ id: gid, nombre: 'Otros', cerrado: false }); });
+
+    const soloUnGrupo = gruposOrdenados.filter(g => _porGrupo[g.id]).length <= 1;
+    histEl.innerHTML = gruposOrdenados.filter(g => _porGrupo[g.id]).map(g => {
+      const cards = _porGrupo[g.id].join('');
+      const saldoGrupo = getGrupoSaldo(d, g.id);
+      const saldoTxt = saldoGrupo > 0 ? fmt(saldoGrupo) + ' pendiente' : saldoGrupo < 0 ? 'a favor ' + fmt(-saldoGrupo) : 'al día';
+      if (soloUnGrupo) {
+        // Un solo grupo: no vale la pena el acordeón, se ve como el historial plano de siempre.
+        return cards;
+      }
+      return `<details class="card card-sm" style="margin-bottom:9px;padding:0;overflow:hidden;" ${g.cerrado ? '' : 'open'}>
+        <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none;">
+          <span style="display:flex;align-items:center;gap:6px;min-width:0;">
+            <span style="font-size:12px;font-weight:500;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(g.nombre)}</span>
+            ${g.cerrado ? `<span class="badge" style="font-size:9px;opacity:.6;">Cerrado</span>` : ''}
+          </span>
+          <span style="font-size:11px;font-family:'DM Mono',monospace;color:${saldoGrupo > 0 ? 'var(--amber)' : saldoGrupo < 0 ? 'var(--red)' : 'var(--text3)'};flex-shrink:0;">${saldoTxt}</span>
+        </summary>
+        <div style="padding:0 10px 10px;">${cards}</div>
+      </details>`;
     }).join('');
   }
 

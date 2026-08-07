@@ -119,20 +119,6 @@ function tcEstadoInfo(estado){
   return TC_ESTADOS[estado]||TC_ESTADOS.activa;
 }
 
-// ── Cuotas ───────────────────────────────────────────────────────
-// Valor de cuota por defecto: total ÷ número de cuotas, redondeado.
-function tcCalcularValorCuota(valorTotal,numCuotas){
-  if(!numCuotas||numCuotas<1) return valorTotal||0;
-  return Math.round((valorTotal||0)/numCuotas);
-}
-// La última cuota absorbe el residuo del redondeo, de forma que la
-// suma de todas las cuotas sea EXACTAMENTE igual al valor total.
-function tcValorUltimaCuota(valorTotal,valorCuota,numCuotas){
-  if(!numCuotas||numCuotas<1) return valorTotal||0;
-  if(numCuotas===1) return valorTotal||0;
-  return (valorTotal||0)-(valorCuota||0)*(numCuotas-1);
-}
-
 // ── Regla de consistencia: recalcular la deuda desde los movimientos ──
 // tc.deuda hace de cupoUtilizado Y de deudaActual a la vez (por eso
 // esa igualdad nunca se puede romper). Esta función la reconstruye
@@ -156,7 +142,7 @@ function tcRecalcular(tc){
 // Se ejecuta en cada refresh(). Es idempotente (se puede llamar todas
 // las veces que haga falta sin generar duplicados ni efectos raros):
 //   · agrega los campos nuevos (banco, franquicia, color, estado,
-//     eliminado, cuotasPagadas...) con valores por defecto a las
+//     eliminado...) con valores por defecto a las
 //     tarjetas creadas antes de este refactor;
 //   · infiere un movimiento de "Saldo inicial" para que el historial
 //     cuadre exactamente con la deuda que ya existía;
@@ -176,8 +162,6 @@ function tcNormalizarTarjetas(){
     if(!Array.isArray(tc.pagos)) tc.pagos=[];
     tc.compras.forEach(c=>{
       if(typeof c.eliminado!=='boolean') c.eliminado=false;
-      if(typeof c.cuotasPagadas!=='number') c.cuotasPagadas=0;
-      if(typeof c.esCuotas!=='boolean') c.esCuotas=!!c.numCuotas;
     });
     tc.pagos.forEach(p=>{ if(typeof p.eliminado!=='boolean') p.eliminado=false; });
     // "undefined" = tarjeta de antes del refactor, nunca tocada → inferir.
@@ -199,8 +183,6 @@ function tcNormalizarTarjetas(){
 // ── Compras: capa de datos (sin tocar UI ni gastosVar) ───────────
 function tcCrearCompra(tc,datos){
   if(!Array.isArray(tc.compras)) tc.compras=[];
-  const numCuotas=datos.esCuotas?Math.max(2,parseInt(datos.numCuotas,10)||2):null;
-  const valorCuota=datos.esCuotas?(datos.valorCuota||tcCalcularValorCuota(datos.monto,numCuotas)):null;
   const compra={
     id:uid(),
     desc:datos.desc||'',
@@ -208,11 +190,7 @@ function tcCrearCompra(tc,datos){
     fecha:datos.fecha||hoy(),
     monto:datos.monto||0,
     nota:datos.nota||'',
-    eliminado:false,
-    esCuotas:!!datos.esCuotas,
-    numCuotas,
-    valorCuota,
-    cuotasPagadas:0
+    eliminado:false
   };
   if(datos._esFavor) compra._esFavor=true;
   if(datos._desdeCP) compra._desdeCP=true;
@@ -241,15 +219,6 @@ function tcBuscarCompraPorIdOMatch(tc,compraId,desc,monto){
     if(porId) return porId;
   }
   return (tc.compras||[]).find(c=>!c.eliminado&&c.desc===desc&&Math.abs((c.monto||0)-(monto||0))<1);
-}
-
-function tcIncrementarCuotaPagada(tcId,compraId,delta){
-  const tc=getTCById(tcId); if(!tc) return;
-  const compra=(tc.compras||[]).find(c=>c.id===compraId);
-  if(!compra||!compra.esCuotas) return;
-  compra.cuotasPagadas=Math.max(0,Math.min(compra.numCuotas||0,(compra.cuotasPagadas||0)+delta));
-  save();
-  abrirDetalleTCSheet(tcId);
 }
 
 // ── Pagos: capa de datos ──────────────────────────────────────────
@@ -577,52 +546,9 @@ function abrirCompraTC(tcId){
   document.getElementById('tcc_monto').value='';
   document.getElementById('tcc_fecha').value=hoy();
   document.getElementById('tcc_nota').value='';
-  document.getElementById('tcc_es_cuotas').checked=false;
-  document.getElementById('tcc_num_cuotas').value='';
-  document.getElementById('tcc_valor_cuota').value='';
-  document.getElementById('tcc-cuotas-grupo').style.display='none';
-  document.getElementById('tcc-cuotas-preview').textContent='';
   poblarCatSelect('tcc_cat',getCatsVar());
   openSheet('compra-tc');
   setTimeout(()=>document.getElementById('tcc_desc').focus(),200);
-}
-
-function tccToggleCuotas(){
-  const on=document.getElementById('tcc_es_cuotas').checked;
-  document.getElementById('tcc-cuotas-grupo').style.display=on?'':'none';
-  if(on) tccActualizarValorCuota();
-}
-
-// Recalcula el valor de cuota sugerido cuando cambian el monto o el
-// número de cuotas. El usuario puede sobreescribirlo a mano después
-// — solo se vuelve a autocompletar si cambia el monto o el número
-// de cuotas de nuevo (así se cumple "permitir editar manualmente").
-function tccActualizarValorCuota(){
-  const monto=parseMoney(document.getElementById('tcc_monto').value)||0;
-  const n=parseInt(document.getElementById('tcc_num_cuotas').value,10)||0;
-  const campoValor=document.getElementById('tcc_valor_cuota');
-  if(monto>0&&n>=2){
-    campoValor.value=fmtInput(tcCalcularValorCuota(monto,n));
-  }
-  tccActualizarPreviewCuotas();
-}
-
-function tccActualizarPreviewCuotas(){
-  const prev=document.getElementById('tcc-cuotas-preview');
-  if(!prev)return;
-  const monto=parseMoney(document.getElementById('tcc_monto').value)||0;
-  const n=parseInt(document.getElementById('tcc_num_cuotas').value,10)||0;
-  const valorCuota=parseMoney(document.getElementById('tcc_valor_cuota').value)||0;
-  if(monto>0&&n>=2&&valorCuota>0){
-    const ultima=tcValorUltimaCuota(monto,valorCuota,n);
-    if(Math.round(ultima)===Math.round(valorCuota)){
-      prev.textContent=n+' cuotas de '+fmt(valorCuota);
-    } else {
-      prev.textContent=(n-1)+' cuotas de '+fmt(valorCuota)+' + 1 cuota de '+fmt(ultima)+' (ajustada)';
-    }
-  } else {
-    prev.textContent='';
-  }
 }
 
 function confirmarCompraTC(){
@@ -636,12 +562,8 @@ function confirmarCompraTC(){
   const fecha=document.getElementById('tcc_fecha').value||hoy();
   const cat=document.getElementById('tcc_cat').value;
   const nota=document.getElementById('tcc_nota').value.trim();
-  const esCuotas=document.getElementById('tcc_es_cuotas').checked;
-  const numCuotas=esCuotas?(parseInt(document.getElementById('tcc_num_cuotas').value,10)||0):null;
-  if(esCuotas&&numCuotas<2){toast('Ingresa un número de cuotas válido (mínimo 2)','err');return;}
-  const valorCuota=esCuotas?(parseMoney(document.getElementById('tcc_valor_cuota').value)||tcCalcularValorCuota(monto,numCuotas)):null;
 
-  const compra=tcCrearCompra(tc,{desc,cat,fecha,monto,nota,esCuotas,numCuotas,valorCuota});
+  const compra=tcCrearCompra(tc,{desc,cat,fecha,monto,nota});
 
   if(!S.gastosVar)S.gastosVar=[];
   S.gastosVar.push({
@@ -875,9 +797,6 @@ function abrirDetalleTCSheet(tcId){
           ? `<span style="font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;"><i class="fa-solid fa-handshake" style="margin-right:3px;font-size:7px;"></i>favor</span>`
           : '';
         const _origenC=c._desdeCP?'Plata comprometida':'Tarjeta de crédito';
-        const cuotasInfo=c.esCuotas?`<span class="badge" style="font-size:9px;background:rgba(150,120,240,.12);color:rgba(180,140,255,1);">Cuota ${c.cuotasPagadas||0}/${c.numCuotas} · ${fmt(c.valorCuota||0)}</span>
-          <button type="button" ${Events.attr('tarjetas:incrementarCuota',tc.id,c.id,1)} data-stop-propagation="true" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:10px;padding:1px 6px;cursor:pointer;">+1 cuota</button>
-          ${c.cuotasPagadas>0?`<button type="button" ${Events.attr('tarjetas:incrementarCuota',tc.id,c.id,-1)} data-stop-propagation="true" style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:10px;padding:1px 6px;cursor:pointer;">-1</button>`:''}`:'';
         return `<div class="gasto-item" ${_tcAttrs(c,_origenC,null)} style="margin-bottom:7px;cursor:pointer;${esFavor?'border-color:rgba(96,176,240,.25);':''}">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${escHtml(c.desc)}${favorBadge}</div><div class="row-sub">${c.fecha}</div></div>
@@ -888,7 +807,7 @@ function abrirDetalleTCSheet(tcId){
             </button>
           </div>
         </div>
-        <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)'};color:${esFavor?'var(--blue)':'var(--red)'};">${esFavor?'Favor cubierto':c.cat||'Sin cat.'}</span>${cuotasInfo}${c.nota?`<span style="font-size:10px;color:var(--text3);">${escHtml(c.nota)}</span>`:''}</div>
+        <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)'};color:${esFavor?'var(--blue)':'var(--red)'};">${esFavor?'Favor cubierto':c.cat||'Sin cat.'}</span>${c.nota?`<span style="font-size:10px;color:var(--text3);">${escHtml(c.nota)}</span>`:''}</div>
       </div>`;
       }
       if(item._tipo==='tcmov'){
@@ -998,7 +917,6 @@ Events.registerAll('tarjetas', {
   pagar:            abrirPagarTC,
   verDetalle:       abrirDetalleTCSheet,
   pagoTotal:        ptcSetMonto,
-  incrementarCuota: tcIncrementarCuotaPagada,
   eliminarCompra:   eliminarCompraTC,
   eliminarPago:     eliminarPagoTC,
   seleccionarColor: tcSelColor,          // usada por los 8 círculos de color estáticos en #sheet-nueva-tc
@@ -1026,17 +944,6 @@ const ptcFuente=document.getElementById('ptc_fuente');
 if(ptcFuente)ptcFuente.addEventListener('change',ptcActualizarPreview);
 const ptcMonto=document.getElementById('ptc_monto');
 if(ptcMonto)ptcMonto.addEventListener('input',ptcActualizarPreview);
-
-const tccEsCuotas=document.getElementById('tcc_es_cuotas');
-if(tccEsCuotas)tccEsCuotas.addEventListener('change',tccToggleCuotas);
-const tccMonto=document.getElementById('tcc_monto');
-if(tccMonto)tccMonto.addEventListener('input',function(){
-  if(document.getElementById('tcc_es_cuotas').checked) tccActualizarValorCuota();
-});
-const tccNumCuotas=document.getElementById('tcc_num_cuotas');
-if(tccNumCuotas)tccNumCuotas.addEventListener('input',tccActualizarValorCuota);
-const tccValorCuota=document.getElementById('tcc_valor_cuota');
-if(tccValorCuota)tccValorCuota.addEventListener('input',tccActualizarPreviewCuotas);
 
 // Mostrar el label TC en el gasto variable al seleccionarlo
 // Patch via window para asegurar que la referencia a la función original es correcta.

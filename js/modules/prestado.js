@@ -448,9 +448,9 @@ function abrirDeudor(id) {
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : esPagoCompleto ? 'Pago completo' : 'Abono'}</span>
-              ${m._gananciaVirtual ? `<span style="background:rgba(200,240,96,.15);color:var(--accent);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
-              ${m._viaTC ? `<span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
-              ${m.nota ? `<span style="font-size:11px;color:var(--text2);">${escHtml(m.nota)}</span>` : ''}
+              ${m._gananciaVirtual ? ` <span style="background:rgba(200,240,96,.15);color:var(--accent);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
+              ${m._viaTC ? ` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
+              ${m.nota ? ` <span style="font-size:11px;color:var(--text2);">${escHtml(m.nota)}</span>` : ''}
             </div>
             <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m._viaTC ? '' : (m.fuentes ? ' · ' + m.fuentes.map(f=>escHtml(fuenteLabel(f.fuente))+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + escHtml(fuenteLabel(m.fuente)) : ''))}${destinoInfo}</div>
             ${extraHtml}
@@ -490,7 +490,7 @@ function abrirDeudor(id) {
         <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none;">
           <span style="display:flex;align-items:center;gap:6px;min-width:0;">
             <span style="font-size:12px;font-weight:500;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(g.nombre)}</span>
-            ${g.cerrado ? `<span class="badge" style="font-size:9px;opacity:.6;">Cerrado</span>` : ''}
+            ${g.cerrado ? ` <span class="badge" style="font-size:9px;opacity:.6;">Cerrado</span>` : ''}
           </span>
           <span style="font-size:11px;font-family:'DM Mono',monospace;color:${saldoGrupo > 0 ? 'var(--amber)' : saldoGrupo < 0 ? 'var(--red)' : 'var(--text3)'};flex-shrink:0;">${saldoTxt}</span>
         </summary>
@@ -1931,7 +1931,7 @@ function abrirMiDeuda(id) {
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span class="badge ${esRecibido ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esRecibido ? 'Me prestó' : 'Pago'}</span>
-              ${m.nota ? `<span style="font-size:11px;color:var(--text2);">${escHtml(m.nota)}</span>` : ''}
+              ${m.nota ? ` <span style="font-size:11px;color:var(--text2);">${escHtml(m.nota)}</span>` : ''}
             </div>
             <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${cuentaRef ? ' · ' + escHtml(fuenteLabel(cuentaRef)) : ''}</div>
           </div>

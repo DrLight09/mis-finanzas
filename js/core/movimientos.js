@@ -69,6 +69,19 @@
    — todos ya cargados antes de este archivo en index.html.
    ========================================================================== */
 
+// fuenteLabel() devuelve HTML de confianza (el ícono SVG) cuando el código es
+// 'ganancia' — escHtml() sobre ese caso escapa el propio SVG y lo muestra como
+// texto literal en vez del ícono. Para cualquier otro código (nombre de cajita/
+// cuenta, texto libre del usuario) sigue escapando como siempre. Copia local
+// (no importada de prestado.js) porque este archivo es núcleo compartido por
+// los 4 módulos con historial de movimientos, y no se puede depender de que
+// prestado.js ya haya cargado — mismo criterio de las demás funciones de este
+// archivo que evitan acoplarse a un módulo de dominio específico.
+function _fuenteLabelHtml(code){
+  const raw = fuenteLabel(code);
+  return code === 'ganancia' ? raw : escHtml(raw);
+}
+
 /* ---- DETALLE DE MOVIMIENTO (sheet) ---- */
 // Abre un sheet con el detalle de un movimiento y el saldo de la cuenta
 // (de la fuente involucrada) antes y después de ese movimiento.
@@ -147,7 +160,7 @@ function abrirDetalleMov(el){
       ${otrasCuentas.map(oc=>{
         const ocPos = oc.monto>=0;
         return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;">
-          <span class="badge ${fuenteBadgeClass(oc.fuente)}" style="font-size:9px;">${escHtml(fuenteLabel(oc.fuente))}</span>
+          <span class="badge ${fuenteBadgeClass(oc.fuente)}" style="font-size:9px;">${_fuenteLabelHtml(oc.fuente)}</span>
           <span style="font-size:13px;font-family:'DM Mono',monospace;color:${ocPos?'var(--accent)':'var(--red)'};">${ocPos?'+':'−'} ${fmt(Math.abs(oc.monto))}</span>
         </div>`;
       }).join('')}
@@ -269,7 +282,7 @@ function abrirDetalleMov(el){
           </div>
           ${d.yoMeQuedo > 0 && d.miCuenta ? `
           <div style="font-size:12px;color:var(--text2);">
-            Guardaste <strong style="color:var(--accent);">${fmt(d.yoMeQuedo)}</strong> en <strong>${escHtml(fuenteLabel(d.miCuenta))}</strong>.
+            Guardaste <strong style="color:var(--accent);">${fmt(d.yoMeQuedo)}</strong> en <strong>${_fuenteLabelHtml(d.miCuenta)}</strong>.
           </div>` : ''}
           ${benefsNorm.length ? `
           <div style="font-size:12px;color:var(--text2);">
@@ -279,7 +292,7 @@ function abrirDetalleMov(el){
           ${benefsYoPague.length ? `
           <div style="font-size:12px;color:var(--text2);">
             Pagaste de tu bolsillo por:
-            ${benefsYoPague.map(b => `<span style="display:inline-block;margin-top:3px;padding:2px 8px;background:rgba(96,176,240,.1);border-radius:4px;font-size:11px;color:var(--blue);"><strong>${escHtml(b.nombre)}</strong> ${fmt(b.monto)}${b.miCuentaSalida ? ' desde ' + escHtml(fuenteLabel(b.miCuentaSalida)) : ''}${b.miCuentaEntrada ? ' → recuperas en ' + escHtml(fuenteLabel(b.miCuentaEntrada)) : ''}</span>`).join(' ')}
+            ${benefsYoPague.map(b => `<span style="display:inline-block;margin-top:3px;padding:2px 8px;background:rgba(96,176,240,.1);border-radius:4px;font-size:11px;color:var(--blue);"><strong>${escHtml(b.nombre)}</strong> ${fmt(b.monto)}${b.miCuentaSalida ? ' desde ' + _fuenteLabelHtml(b.miCuentaSalida) : ''}${b.miCuentaEntrada ? ' → recuperas en ' + _fuenteLabelHtml(b.miCuentaEntrada) : ''}</span>`).join(' ')}
             <div style="font-size:11px;color:var(--text3);margin-top:4px;">Pusiste esa plata de tu cuenta pero se te descuenta del encargo, así que es plata neutra.</div>
           </div>` : ''}
         </div>`);
@@ -292,7 +305,7 @@ function abrirDetalleMov(el){
         <div style="padding:12px 14px;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:6px;">
           <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;font-weight:600;">¿A dónde fue el extra del pago? (${fmt(extraTotal)})</div>
           ${rm._extPartes.map(p => {
-            if (p.tipo==='guardar')   return `<div style="font-size:12px;color:var(--text2);">→ Guardaste <strong style="color:var(--accent);">${fmt(p.monto)}</strong> en <strong>${escHtml(fuenteLabel(p.cuenta))}</strong></div>`;
+            if (p.tipo==='guardar')   return `<div style="font-size:12px;color:var(--text2);">→ Guardaste <strong style="color:var(--accent);">${fmt(p.monto)}</strong> en <strong>${_fuenteLabelHtml(p.cuenta)}</strong></div>`;
             if (p.tipo==='gastar')    return `<div style="font-size:12px;color:var(--text2);">→ Se usó como gasto <strong>${fmt(p.monto)}</strong></div>`;
             if (p.tipo==='regalar')   return `<div style="font-size:12px;color:var(--text2);">→ Lo regalaste: <strong>${fmt(p.monto)}</strong></div>`;
             if (p.tipo==='pendiente') return `<div style="font-size:12px;color:var(--text2);">→ Quedó sin asignar: <strong>${fmt(p.monto)}</strong></div>`;
@@ -317,7 +330,7 @@ function abrirDetalleMov(el){
       richParts.push(`
         <div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);">
           <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Salió de</div>
-          ${rm.fuentes.map(f=>`<div style="font-size:12px;color:var(--text2);padding:2px 0;"><strong>${escHtml(fuenteLabel(f.fuente))}</strong> → ${fmt(f.monto)}</div>`).join('')}
+          ${rm.fuentes.map(f=>`<div style="font-size:12px;color:var(--text2);padding:2px 0;"><strong>${_fuenteLabelHtml(f.fuente)}</strong> → ${fmt(f.monto)}</div>`).join('')}
         </div>`);
     }
 
@@ -327,7 +340,7 @@ function abrirDetalleMov(el){
       richParts.push(`
         <div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);">
           <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Entró a</div>
-          ${destinos.map(r=>`<div style="font-size:12px;color:var(--text2);padding:2px 0;"><strong>${escHtml(fuenteLabel(r.fuente))}</strong>${r.monto ? ' → ' + fmt(r.monto) : ''}</div>`).join('')}
+          ${destinos.map(r=>`<div style="font-size:12px;color:var(--text2);padding:2px 0;"><strong>${_fuenteLabelHtml(r.fuente)}</strong>${r.monto ? ' → ' + fmt(r.monto) : ''}</div>`).join('')}
         </div>`);
     }
 

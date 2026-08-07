@@ -3592,6 +3592,17 @@
           <label class="il" for="mov_grupo">¿A cuál préstamo?</label>
           <div class="select-wrap"><select id="mov_grupo"></select></div>
         </div>
+        <!-- Checkbox "préstamo aparte" — visible solo cuando hay exactamente
+             1 grupo abierto y se está registrando un préstamo nuevo. Sin
+             esto no había forma de llegar a tener 2 grupos abiertos, porque
+             con 1 solo abierto todo se fusiona ahí automáticamente. -->
+        <div class="ig" id="mov_grupo_check_wrap" style="display:none;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="mov_grupo_check">
+            <span style="font-size:12px;color:var(--text2);">🆕 Es un
+              préstamo aparte (no sumarlo al que ya tiene)</span>
+          </label>
+        </div>
         <div class="ig" id="mov_grupo_nombre_wrap" style="display:none;">
           <label class="il" for="mov_grupo_nombre">Nombre del préstamo nuevo
             (opcional)</label>

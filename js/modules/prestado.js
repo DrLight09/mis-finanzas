@@ -413,16 +413,16 @@ function abrirDeudor(id) {
       if (m._viaEncargo && m._encNombre) {
         destinoInfo = ` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">encargo de ${escHtml(m._encNombre)}</span>`;
       } else if (m.destinos && m.destinos.length) {
-        destinoInfo = ' ' + arrowSvg + ' ' + m.destinos.map(r => escHtml(fuenteLabel(r.fuente)) + ' ' + fmt(r.monto)).join(' + ');
+        destinoInfo = ' ' + arrowSvg + ' ' + m.destinos.map(r => _fuenteLabelHtml(r.fuente) + ' ' + fmt(r.monto)).join(' + ');
       } else if (m.destino) {
-        destinoInfo = ' ' + arrowSvg + ' ' + escHtml(fuenteLabel(m.destino));
+        destinoInfo = ' ' + arrowSvg + ' ' + _fuenteLabelHtml(m.destino);
       }
       // Extra parts breakdown
       let extraHtml = '';
       if (!esPrestamo && m._extPartes && m._extPartes.length) {
         const extraTotal = m._extPartes.reduce((a,p)=>a+(p.monto||0),0);
         const partesTexto = m._extPartes.map(p => {
-          if (p.tipo === 'guardar') return `${escHtml(fuenteLabel(p.cuenta))} ${fmt(p.monto)}`;
+          if (p.tipo === 'guardar') return `${_fuenteLabelHtml(p.cuenta)} ${fmt(p.monto)}`;
           if (p.tipo === 'gastar') return `Gasto ${fmt(p.monto)}`;
           if (p.tipo === 'regalar') return `Regalo ${fmt(p.monto)}`;
           if (p.tipo === 'pendiente') return `Sin asignar ${fmt(p.monto)}`;
@@ -452,7 +452,7 @@ function abrirDeudor(id) {
               ${m._viaTC ? ` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
               ${m.nota ? ` <span style="font-size:11px;color:var(--text2);">${escHtml(m.nota)}</span>` : ''}
             </div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m._viaTC ? '' : (m.fuentes ? ' · ' + m.fuentes.map(f=>escHtml(fuenteLabel(f.fuente))+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + escHtml(fuenteLabel(m.fuente)) : ''))}${destinoInfo}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m._viaTC ? '' : (m.fuentes ? ' · ' + m.fuentes.map(f=>_fuenteLabelHtml(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + _fuenteLabelHtml(m.fuente) : ''))}${destinoInfo}</div>
             ${extraHtml}
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
@@ -971,7 +971,7 @@ function confirmarMovimiento() {
         for (const cuenta in porCuenta) {
           const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuenta);
           if (porCuenta[cuenta] > saldoEnCuenta + 0.5) {
-            toast(`En ${escHtml(fuenteLabel(cuenta))} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+            toast(`En ${_fuenteLabelHtml(cuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
           }
         }
         _abonoEncCuentaSplits = Object.entries(porCuenta).map(([fuente, monto]) => ({ fuente, monto }));
@@ -979,7 +979,7 @@ function confirmarMovimiento() {
         const _esSinEspVal = _abonoEncCuenta === '__sinesp__';
         const saldoEnCuenta = _esSinEspVal ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
         if (monto > saldoEnCuenta + 0.5) {
-          toast(`En ${_esSinEspVal ? 'la parte sin especificar' : escHtml(fuenteLabel(_abonoEncCuenta))} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+          toast(`En ${_esSinEspVal ? 'la parte sin especificar' : _fuenteLabelHtml(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
         }
       }
 
@@ -1004,7 +1004,7 @@ function confirmarMovimiento() {
           const _esSinEspVal2 = _abonoEncCuenta === '__sinesp__';
           const saldoEnCuenta2 = _esSinEspVal2 ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
           if (monto + extraMonto > saldoEnCuenta2 + 0.5) {
-            toast(`En ${_esSinEspVal2 ? 'la parte sin especificar' : escHtml(fuenteLabel(_abonoEncCuenta))} solo hay ${fmt(saldoEnCuenta2)} — no alcanza para abono + extra`, 'err', 4500);
+            toast(`En ${_esSinEspVal2 ? 'la parte sin especificar' : _fuenteLabelHtml(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta2)} — no alcanza para abono + extra`, 'err', 4500);
             return;
           }
         }
@@ -1352,6 +1352,15 @@ function confirmarMovimiento() {
 
 function fuenteLabel2(f){ return f ? fuenteLabel(f) : '—'; }
 
+// fuenteLabel() devuelve HTML de confianza (el ícono SVG) cuando el código es
+// 'ganancia' — escHtml() sobre ese caso escapa el propio SVG y lo muestra como
+// texto literal en vez del ícono. Para cualquier otro código (nombre de cajita/
+// cuenta, texto libre del usuario) sigue escapando como siempre.
+function _fuenteLabelHtml(code){
+  const raw = fuenteLabel(code);
+  return code === 'ganancia' ? raw : escHtml(raw);
+}
+
 /* ── ABONO: desde un encargo ──────────────────────────────────────── */
 function toggleDesdeEncargo() {
   const chk  = document.getElementById('mov_desde_encargo');
@@ -1589,7 +1598,7 @@ function movSetOrigenBtn(d) {
   const tags = document.getElementById('mov_origen_tags');
   if(!fuentes.length||!fuentes[0].fuente){ document.getElementById('mov_btn_origen').style.display='none'; tags.innerHTML=''; return; }
   document.getElementById('mov_btn_origen').style.display='';
-  tags.innerHTML = fuentes.map(f=>`<span class="badge ${fuenteBadgeClass(f.fuente)}" style="font-size:9px;">${escHtml(fuenteLabel(f.fuente))}${fuentes.length>1?' '+fmt(f.monto):''}</span>`).join('');
+  tags.innerHTML = fuentes.map(f=>`<span class="badge ${fuenteBadgeClass(f.fuente)}" style="font-size:9px;">${_fuenteLabelHtml(f.fuente)}${fuentes.length>1?' '+fmt(f.monto):''}</span>`).join('');
   document.getElementById('mov_btn_origen').dataset.fuentes = JSON.stringify(fuentes);
 }
 
@@ -1933,7 +1942,7 @@ function abrirMiDeuda(id) {
               <span class="badge ${esRecibido ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esRecibido ? 'Me prestó' : 'Pago'}</span>
               ${m.nota ? ` <span style="font-size:11px;color:var(--text2);">${escHtml(m.nota)}</span>` : ''}
             </div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${cuentaRef ? ' · ' + escHtml(fuenteLabel(cuentaRef)) : ''}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${cuentaRef ? ' · ' + _fuenteLabelHtml(cuentaRef) : ''}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esRecibido ? 'var(--red)' : 'var(--accent)'};">${esRecibido ? '+' : '−'} ${fmt(m.monto)}</div>
@@ -2288,7 +2297,7 @@ function _abonoEncCuentaSplitPreview() {
   if (!splits.length) { el.textContent = ''; return; }
   const total = splits.reduce((a, s) => a + (s.monto || 0), 0);
   const restante = monto - total;
-  const lines = splits.map(s => `${s.fuente ? escHtml(fuenteLabel(s.fuente)) : 'Sin esp.'}: ${fmt(s.monto)}`).join(' · ');
+  const lines = splits.map(s => `${s.fuente ? _fuenteLabelHtml(s.fuente) : 'Sin esp.'}: ${fmt(s.monto)}`).join(' · ');
 
   // Validar que ninguna cuenta del encargo se pase de lo que tiene guardado
   let excedeCuenta = false;

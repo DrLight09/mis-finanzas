@@ -544,7 +544,12 @@ function volverDeudores() {
   document.getElementById('deudoresView').style.display = '';
   document.getElementById('deudorDetalle').style.display = 'none';
   const _pt2 = document.getElementById('prestamos-tabs');
-  if (_pt2) _pt2.style.display = '';
+  // Ojo: 'flex' explícito, no ''. #prestamos-tabs trae display:flex inline
+  // en el HTML (para poner los botones lado a lado); al ocultarlo con
+  // 'none' se sobreescribe ese inline style, y volver a '' no lo restaura
+  // — cae al display:block por defecto del div y los botones quedan
+  // apilados verticalmente en vez de en fila.
+  if (_pt2) _pt2.style.display = 'flex';
 }
 
 async function eliminarDeudorActual() {
@@ -1958,7 +1963,7 @@ function volverMisDeudas() {
   document.getElementById('misDeudasView').style.display = '';
   document.getElementById('miDeudaDetalle').style.display = 'none';
   const _pt4 = document.getElementById('prestamos-tabs');
-  if (_pt4) _pt4.style.display = '';
+  if (_pt4) _pt4.style.display = 'flex'; // ver nota en volverDeudores() — no usar ''
 }
 
 let _mdMovTipo = 'recibido';

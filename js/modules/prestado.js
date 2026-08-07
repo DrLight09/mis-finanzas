@@ -306,11 +306,14 @@ function _autoGrupoIdMov(d, fecha) {
 }
 
 // Resolución de grupoId para el sheet "Registrar movimiento" (initMovSheet /
-// confirmarMovimiento): si el selector #mov_grupo está visible (se mostró
-// porque había ≥2 grupos abiertos), respeta lo que el usuario eligió —
-// incluyendo crear uno nuevo si escogió "🆕 Es un préstamo nuevo". Si el
-// selector no se mostró (0 o 1 grupo abierto), no hay nada que preguntar:
-// se resuelve automático.
+// confirmarMovimiento). Dos caminos posibles según lo que _initMovGrupoSelector
+// haya mostrado:
+// 1. Selector visible (≥2 grupos abiertos): respeta lo elegido, incluyendo
+//    crear uno nuevo si escogió "🆕 Es un préstamo nuevo".
+// 2. Checkbox visible (exactamente 1 grupo abierto, tipo 'prestamo'): si el
+//    usuario lo marcó, crea un grupo aparte en vez de fusionar con el único
+//    abierto.
+// Si ninguno de los dos se mostró, no hay nada que preguntar: automático.
 function _resolverGrupoIdMov(d, fecha) {
   const wrap = document.getElementById('mov_grupo_wrap');
   if (wrap && wrap.style.display !== 'none') {
@@ -321,6 +324,12 @@ function _resolverGrupoIdMov(d, fecha) {
       return _crearGrupoDeudor(d, fecha, nombreInput ? nombreInput.value : '').id;
     }
     if (val) return val;
+  }
+  const checkWrap = document.getElementById('mov_grupo_check_wrap');
+  const check = document.getElementById('mov_grupo_check');
+  if (checkWrap && checkWrap.style.display !== 'none' && check && check.checked) {
+    const nombreInput = document.getElementById('mov_grupo_nombre');
+    return _crearGrupoDeudor(d, fecha, nombreInput ? nombreInput.value : '').id;
   }
   return _autoGrupoIdMov(d, fecha);
 }
@@ -501,7 +510,6 @@ function abrirDeudor(id) {
   document.getElementById('deudorDetalle').style.display = 'block';
   const _pt1 = document.getElementById('prestamos-tabs');
   if (_pt1) _pt1.style.display = 'none';
-  _forzarScreenPrestamosFlex();
   document.getElementById('scrollArea').scrollTop = 0;
 
   // Mostrar chip "Ver perfil" si tiene personaId
@@ -537,16 +545,6 @@ function volverDeudores() {
   document.getElementById('deudorDetalle').style.display = 'none';
   const _pt2 = document.getElementById('prestamos-tabs');
   if (_pt2) _pt2.style.display = '';
-  _forzarScreenPrestamosFlex();
-}
-
-// Reafirma display:flex en #screen-prestamos. Entrar/salir del detalle de
-// una persona no debería tocar el contenedor de la pantalla, pero se
-// observó que se pierde el flex al volver — esto lo blinda sin depender de
-// entender el mecanismo exacto de nav.js (no incluido en este módulo).
-function _forzarScreenPrestamosFlex() {
-  const scr = document.getElementById('screen-prestamos');
-  if (scr) scr.style.display = 'flex';
 }
 
 async function eliminarDeudorActual() {
@@ -865,24 +863,49 @@ function _initMovGrupoSelector() {
   const nombreWrap = document.getElementById('mov_grupo_nombre_wrap');
   const sel = document.getElementById('mov_grupo');
   const nombreInput = document.getElementById('mov_grupo_nombre');
+  const checkWrap = document.getElementById('mov_grupo_check_wrap');
+  const check = document.getElementById('mov_grupo_check');
   const d = (S.deudores || []).find(x => x.id === deudorActualId);
   const abiertos = d ? _gruposAbiertos(d) : [];
-  if (!d || abiertos.length < 2) {
-    wrap.style.display = 'none';
-    if (nombreWrap) nombreWrap.style.display = 'none';
+
+  if (check) check.checked = false;
+  if (nombreInput) nombreInput.value = '';
+  if (nombreWrap) nombreWrap.style.display = 'none';
+
+  if (d && abiertos.length >= 2) {
+    // Ambigüedad real: hay que elegir a cuál de los préstamos abiertos
+    // corresponde este movimiento (o arrancar uno nuevo).
+    wrap.style.display = '';
+    if (checkWrap) checkWrap.style.display = 'none';
+    if (sel) {
+      sel.innerHTML = abiertos.map(g => `<option value="${g.id}">${escHtml(g.nombre)} (${fmt(getGrupoSaldo(d, g.id))})</option>`).join('')
+        + `<option value="__nuevo__">🆕 Es un préstamo nuevo</option>`;
+      sel.value = abiertos[0].id; // por defecto, el grupo abierto más reciente
+      sel.onchange = () => {
+        if (nombreWrap) nombreWrap.style.display = sel.value === '__nuevo__' ? '' : 'none';
+      };
+    }
     return;
   }
-  wrap.style.display = '';
-  if (sel) {
-    sel.innerHTML = abiertos.map(g => `<option value="${g.id}">${escHtml(g.nombre)} (${fmt(getGrupoSaldo(d, g.id))})</option>`).join('')
-      + `<option value="__nuevo__">🆕 Es un préstamo nuevo</option>`;
-    sel.value = abiertos[0].id; // por defecto, el grupo abierto más reciente
-    sel.onchange = () => {
-      if (nombreWrap) nombreWrap.style.display = sel.value === '__nuevo__' ? '' : 'none';
-    };
+
+  wrap.style.display = 'none';
+  // Caso normal (0 o 1 grupo abierto): nada que preguntar en un abono —
+  // solo puede ir al único grupo abierto (o no hay a dónde ir todavía).
+  // Pero para un PRÉSTAMO nuevo sí puede ser el arranque de un préstamo
+  // aparte (ej. "papá ya me debía uno viejo, este es de la moto") — sin
+  // este checkbox nunca se podría llegar a tener 2 grupos abiertos, porque
+  // con 1 solo abierto todo se fusionaría ahí automáticamente. Solo tiene
+  // sentido ofrecerlo si ya existe al menos un grupo (si es el primer
+  // préstamo de la persona, no hay nada de qué separarlo).
+  const mostrarCheck = d && movTipo === 'prestamo' && abiertos.length === 1;
+  if (checkWrap) {
+    checkWrap.style.display = mostrarCheck ? '' : 'none';
+    if (mostrarCheck && check) {
+      check.onchange = () => {
+        if (nombreWrap) nombreWrap.style.display = check.checked ? '' : 'none';
+      };
+    }
   }
-  if (nombreWrap) nombreWrap.style.display = 'none';
-  if (nombreInput) nombreInput.value = '';
 }
 
 function confirmarMovimiento() {
@@ -1927,7 +1950,6 @@ function abrirMiDeuda(id) {
   document.getElementById('miDeudaDetalle').style.display = 'block';
   const _pt3 = document.getElementById('prestamos-tabs');
   if (_pt3) _pt3.style.display = 'none';
-  _forzarScreenPrestamosFlex();
   document.getElementById('scrollArea').scrollTop = 0;
 }
 
@@ -1937,7 +1959,6 @@ function volverMisDeudas() {
   document.getElementById('miDeudaDetalle').style.display = 'none';
   const _pt4 = document.getElementById('prestamos-tabs');
   if (_pt4) _pt4.style.display = '';
-  _forzarScreenPrestamosFlex();
 }
 
 let _mdMovTipo = 'recibido';

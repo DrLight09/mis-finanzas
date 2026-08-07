@@ -495,9 +495,12 @@ function abrirDeudor(id) {
     }).join('');
   }
 
-  // Mostrar detalle, ocultar lista
+  // Mostrar detalle, ocultar lista y las pestañas Me deben/Yo debo (no
+  // tiene sentido cambiar de pestaña estando adentro del detalle de alguien).
   document.getElementById('deudoresView').style.display = 'none';
   document.getElementById('deudorDetalle').style.display = 'block';
+  const _pt1 = document.getElementById('prestamos-tabs');
+  if (_pt1) _pt1.style.display = 'none';
   document.getElementById('scrollArea').scrollTop = 0;
 
   // Mostrar chip "Ver perfil" si tiene personaId
@@ -531,6 +534,8 @@ function volverDeudores() {
   deudorActualId = null;
   document.getElementById('deudoresView').style.display = '';
   document.getElementById('deudorDetalle').style.display = 'none';
+  const _pt2 = document.getElementById('prestamos-tabs');
+  if (_pt2) _pt2.style.display = '';
 }
 
 async function eliminarDeudorActual() {
@@ -1909,6 +1914,8 @@ function abrirMiDeuda(id) {
 
   document.getElementById('misDeudasView').style.display = 'none';
   document.getElementById('miDeudaDetalle').style.display = 'block';
+  const _pt3 = document.getElementById('prestamos-tabs');
+  if (_pt3) _pt3.style.display = 'none';
   document.getElementById('scrollArea').scrollTop = 0;
 }
 
@@ -1916,6 +1923,8 @@ function volverMisDeudas() {
   miDeudaActualId = null;
   document.getElementById('misDeudasView').style.display = '';
   document.getElementById('miDeudaDetalle').style.display = 'none';
+  const _pt4 = document.getElementById('prestamos-tabs');
+  if (_pt4) _pt4.style.display = '';
 }
 
 let _mdMovTipo = 'recibido';

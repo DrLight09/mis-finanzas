@@ -286,6 +286,45 @@ function _autoCerrarGruposEnCero(d) {
   });
 }
 
+// Crea un grupo nuevo en el deudor y lo devuelve. nombre opcional — si no se
+// da, se autogenera con la fecha para que nunca quede en blanco en la UI.
+function _crearGrupoDeudor(d, fecha, nombre) {
+  if (!d.grupos) d.grupos = [];
+  const g = { id: uid(), nombre: (nombre || '').trim() || ('Préstamo ' + (fecha || hoy())), creadoEn: fecha || hoy(), cerrado: false };
+  d.grupos.push(g);
+  return g;
+}
+
+// Resolución automática de grupoId para flujos que NO pasan por el selector
+// del sheet "Registrar movimiento" (ej. préstamo vía TC): si hay exactamente
+// un grupo abierto lo reutiliza, si hay 0 o ≥2 crea uno nuevo — nunca deja
+// un movimiento sin grupoId, y nunca le adivina a cuál de varios pertenece.
+function _autoGrupoIdMov(d, fecha) {
+  const abiertos = _gruposAbiertos(d);
+  if (abiertos.length === 1) return abiertos[0].id;
+  return _crearGrupoDeudor(d, fecha).id;
+}
+
+// Resolución de grupoId para el sheet "Registrar movimiento" (initMovSheet /
+// confirmarMovimiento): si el selector #mov_grupo está visible (se mostró
+// porque había ≥2 grupos abiertos), respeta lo que el usuario eligió —
+// incluyendo crear uno nuevo si escogió "🆕 Es un préstamo nuevo". Si el
+// selector no se mostró (0 o 1 grupo abierto), no hay nada que preguntar:
+// se resuelve automático.
+function _resolverGrupoIdMov(d, fecha) {
+  const wrap = document.getElementById('mov_grupo_wrap');
+  if (wrap && wrap.style.display !== 'none') {
+    const sel = document.getElementById('mov_grupo');
+    const val = sel ? sel.value : '';
+    if (val === '__nuevo__') {
+      const nombreInput = document.getElementById('mov_grupo_nombre');
+      return _crearGrupoDeudor(d, fecha, nombreInput ? nombreInput.value : '').id;
+    }
+    if (val) return val;
+  }
+  return _autoGrupoIdMov(d, fecha);
+}
+
 function renderDeudoresList() {
   const el = document.getElementById('deudoresList');
   const list = S.deudores || [];
@@ -687,6 +726,7 @@ async function eliminarMovDeudor(deudorId, movId) {
   }
 
   d.movimientos = (d.movimientos || []).filter(x => x.id !== movId);
+  _autoCerrarGruposEnCero(d); // el grupo pudo saldarse (o reabrirse) al borrar este movimiento
   _verificarIntegridadSaldoDeudor(d, _saldoAntesDel, _deltaEsperadoDel);
   save(); refresh();
   abrirDeudor(deudorId);
@@ -796,6 +836,37 @@ function initMovSheet(tipo) {
     const d = (S.deudores || []).find(x => x.id === deudorActualId);
     if (d) movSetOrigenBtn(d);
   }
+  // ── Selector de grupo de préstamo ──────────────────────────────────
+  // Solo se muestra cuando de verdad hay ambigüedad (≥2 grupos abiertos
+  // con esta persona). Con 0 o 1 grupo abierto no se pregunta nada — se
+  // resuelve solo en confirmarMovimiento() vía _resolverGrupoIdMov.
+  _initMovGrupoSelector();
+}
+
+function _initMovGrupoSelector() {
+  const wrap = document.getElementById('mov_grupo_wrap');
+  if (!wrap) return; // sheet aún no tiene el markup — no romper si falta
+  const nombreWrap = document.getElementById('mov_grupo_nombre_wrap');
+  const sel = document.getElementById('mov_grupo');
+  const nombreInput = document.getElementById('mov_grupo_nombre');
+  const d = (S.deudores || []).find(x => x.id === deudorActualId);
+  const abiertos = d ? _gruposAbiertos(d) : [];
+  if (!d || abiertos.length < 2) {
+    wrap.style.display = 'none';
+    if (nombreWrap) nombreWrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = '';
+  if (sel) {
+    sel.innerHTML = abiertos.map(g => `<option value="${g.id}">${escHtml(g.nombre)} (${fmt(getGrupoSaldo(d, g.id))})</option>`).join('')
+      + `<option value="__nuevo__">🆕 Es un préstamo nuevo</option>`;
+    sel.value = abiertos[0].id; // por defecto, el grupo abierto más reciente
+    sel.onchange = () => {
+      if (nombreWrap) nombreWrap.style.display = sel.value === '__nuevo__' ? '' : 'none';
+    };
+  }
+  if (nombreWrap) nombreWrap.style.display = 'none';
+  if (nombreInput) nombreInput.value = '';
 }
 
 function confirmarMovimiento() {
@@ -811,6 +882,8 @@ function confirmarMovimiento() {
   // que el cambio real coincidió con el esperado (ver _verificarIntegridadSaldoDeudor).
   const _saldoAntesMov = getDeudorSaldo(d);
   const _deltaEsperadoMov = movTipo === 'prestamo' ? monto : -monto;
+  // A qué grupo de préstamo pertenece este movimiento — ver _resolverGrupoIdMov.
+  const _grupoIdMov = _resolverGrupoIdMov(d, fecha);
 
   if (movTipo === 'prestamo') {
     if (_prestSplitMode) {
@@ -822,10 +895,10 @@ function confirmarMovimiento() {
       const fuentes = _prestSplitRows.filter(r=>r.monto>0);
       fuentes.forEach(r=>{ if(r.fuente) descontarFuente(r.fuente, r.monto); });
       const _gananciaVirtual = fuentes.filter(r=>r.fuente==='ganancia').reduce((a,r)=>a+r.monto,0);
-      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota, _gananciaVirtual: _gananciaVirtual||undefined, ts: Date.now() });
+      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota, _gananciaVirtual: _gananciaVirtual||undefined, grupoId: _grupoIdMov, ts: Date.now() });
     } else {
       const fuente = document.getElementById('mov_fuente').value;
-      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota, ts: Date.now() });
+      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota, grupoId: _grupoIdMov, ts: Date.now() });
       descontarFuente(fuente, monto);
     }
 
@@ -971,6 +1044,7 @@ function confirmarMovimiento() {
           _encNombre: enc.nombre,
           _encMovId: encMovId,
           _encMovIds: encMovIds,
+          grupoId: _grupoIdMov,
           ts: Date.now()
         });
       } else {
@@ -1016,6 +1090,7 @@ function confirmarMovimiento() {
           _encMovId: encMovId,
           _encMovIds: encMovIds,
           _abonoDestinoMovId: abonoDestinoMovId,
+          grupoId: _grupoIdMov,
           ts: Date.now()
         });
       }
@@ -1088,6 +1163,7 @@ function confirmarMovimiento() {
       }
 
       if(window.logCambio) logCambio(`Abono de ${escHtml(d.nombre)} vía encargo de ${escHtml(enc.nombre)}`, d.nombre, monto, 'abono');
+      _autoCerrarGruposEnCero(d);
       _verificarIntegridadSaldoDeudor(d, _saldoAntesMov, _deltaEsperadoMov);
       save(); refresh(); closeSheet('registrar-movimiento');
       abrirDeudor(deudorActualId);
@@ -1132,12 +1208,12 @@ function confirmarMovimiento() {
           }
         }
       });
-      d.movimientos.push({ id: uid(), tipo: tipoGuardar, monto, fecha, destinos: destinos.map(r=>({fuente:r.fuente,monto:r.monto,_movId:r._movId})), nota, ts: Date.now() });
+      d.movimientos.push({ id: uid(), tipo: tipoGuardar, monto, fecha, destinos: destinos.map(r=>({fuente:r.fuente,monto:r.monto,_movId:r._movId})), nota, grupoId: _grupoIdMov, ts: Date.now() });
     } else {
       const destino = document.getElementById('mov_destino').value;
       const abonoMovId = uid();
       const abonoDestinoMovId = destino ? uid() : null;
-      d.movimientos.push({ id: abonoMovId, tipo: tipoGuardar, monto, fecha, destino, nota, _abonoDestinoMovId: abonoDestinoMovId, ts: Date.now() });
+      d.movimientos.push({ id: abonoMovId, tipo: tipoGuardar, monto, fecha, destino, nota, _abonoDestinoMovId: abonoDestinoMovId, grupoId: _grupoIdMov, ts: Date.now() });
       sumarFuente(destino, monto);
       // Registrar movimiento visible en la cuenta destino
       if (destino === 'efectivo' || destino === 'nequi') {
@@ -1229,6 +1305,7 @@ function confirmarMovimiento() {
     const tipolog = movTipo === 'prestamo' ? 'prestamo' : 'abono';
     logCambio(movTipo==='prestamo'?'Prestaste a '+d.nombre:'Registraste abono de '+d.nombre, d.nombre, monto, tipolog);
   }
+  _autoCerrarGruposEnCero(d);
   _verificarIntegridadSaldoDeudor(d, _saldoAntesMov, _deltaEsperadoMov);
   save(); refresh(); closeSheet('registrar-movimiento');
   abrirDeudor(deudorActualId);
@@ -2088,6 +2165,7 @@ function confirmarPrestamoTC() {
     _tcId: tcId,
     _tcMonto: montoTC,
     _tcDesc: desc,
+    grupoId: _autoGrupoIdMov(d, fecha),
     ts: Date.now()
   };
   d.movimientos.push(movObj);

@@ -501,6 +501,7 @@ function abrirDeudor(id) {
   document.getElementById('deudorDetalle').style.display = 'block';
   const _pt1 = document.getElementById('prestamos-tabs');
   if (_pt1) _pt1.style.display = 'none';
+  _forzarScreenPrestamosFlex();
   document.getElementById('scrollArea').scrollTop = 0;
 
   // Mostrar chip "Ver perfil" si tiene personaId
@@ -536,6 +537,16 @@ function volverDeudores() {
   document.getElementById('deudorDetalle').style.display = 'none';
   const _pt2 = document.getElementById('prestamos-tabs');
   if (_pt2) _pt2.style.display = '';
+  _forzarScreenPrestamosFlex();
+}
+
+// Reafirma display:flex en #screen-prestamos. Entrar/salir del detalle de
+// una persona no debería tocar el contenedor de la pantalla, pero se
+// observó que se pierde el flex al volver — esto lo blinda sin depender de
+// entender el mecanismo exacto de nav.js (no incluido en este módulo).
+function _forzarScreenPrestamosFlex() {
+  const scr = document.getElementById('screen-prestamos');
+  if (scr) scr.style.display = 'flex';
 }
 
 async function eliminarDeudorActual() {
@@ -1916,6 +1927,7 @@ function abrirMiDeuda(id) {
   document.getElementById('miDeudaDetalle').style.display = 'block';
   const _pt3 = document.getElementById('prestamos-tabs');
   if (_pt3) _pt3.style.display = 'none';
+  _forzarScreenPrestamosFlex();
   document.getElementById('scrollArea').scrollTop = 0;
 }
 
@@ -1925,6 +1937,7 @@ function volverMisDeudas() {
   document.getElementById('miDeudaDetalle').style.display = 'none';
   const _pt4 = document.getElementById('prestamos-tabs');
   if (_pt4) _pt4.style.display = '';
+  _forzarScreenPrestamosFlex();
 }
 
 let _mdMovTipo = 'recibido';

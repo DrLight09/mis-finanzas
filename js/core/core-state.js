@@ -543,6 +543,35 @@ function _saldoCPAjeno(){
 // parte) y lo que sobra del pago cancela lo propio. Con esto la "ajena"
 // nunca puede superar la deuda actual, y calcDeudaTcPropiaDeTarjeta ya no
 // necesita un floor artificial en 0 para "resolver" el desbalance.
+// Saldo inicial PENDIENTE de UNA tarjeta — la parte del saldo con que se
+// creó la tarjeta que todavía no se ha pagado. Se trata como "neutral": no
+// sabemos si es propia o ajena (se ingresó en bloque al configurar la
+// tarjeta, sin desglosar), así que no cuenta ni para un lado ni para el
+// otro mientras exista. Los pagos la drenan PRIMERO, antes de tocar lo
+// ajeno conocido o lo propio (ver calcDeudaAjenaDeTarjeta). Conversación
+// 2026-08-07: evita que el health score penalice una suposición que podría
+// estar mal (ej. saldo inicial que en realidad era 100% un favor a otra
+// persona).
+function calcSaldoInicialPendiente(tc){
+  if(!tc || !tc.saldoInicial || tc.saldoInicial.eliminado) return 0;
+  const totalPagos=(tc.pagos||[]).filter(p=>!p.eliminado).reduce((a,p)=>a+(p.monto||0),0);
+  return Math.max(0, (tc.saldoInicial.monto||0) - totalPagos);
+}
+
+// Deuda ajena de UNA tarjeta puntual — cuánto de tc.deuda es en realidad de
+// un encargo/préstamo/favor (plata que no es tuya, solo la estás cuidando).
+//
+// OJO: esto es un SALDO, no un bruto histórico. Si sumáramos todo lo que
+// alguna vez se cargó como ajeno sin restar los pagos, la "ajena" nunca
+// bajaría aunque ya la hayas pagado — y con el tiempo terminaría inflada
+// por encima de tc.deuda actual, haciendo que la parte "propia" calculada
+// diera 0 aunque tengas gastos tuyos reales sin cubrir.
+//
+// Regla de negocio: un pago cancela PRIMERO el saldo inicial (neutral, ver
+// calcSaldoInicialPendiente), LUEGO lo ajeno conocido (encargo/préstamo/
+// favor), y lo que sobra cancela lo propio. Con esto la "ajena" nunca puede
+// superar la deuda actual, y calcDeudaTcPropiaDeTarjeta ya no necesita un
+// floor artificial en 0 para "resolver" el desbalance.
 function calcDeudaAjenaDeTarjeta(tc){
   if(!tc) return 0;
   let ajenaBruta = 0;
@@ -552,11 +581,15 @@ function calcDeudaAjenaDeTarjeta(tc){
   });
   (tc.compras||[]).forEach(c => { if (!c.eliminado && c._desdeCP) ajenaBruta += (c.monto||0); });
   const totalPagos = (tc.pagos||[]).filter(p=>!p.eliminado).reduce((a,p)=>a+(p.monto||0),0);
-  return Math.max(0, ajenaBruta - totalPagos);
+  const saldoInicialBruto = (tc.saldoInicial && !tc.saldoInicial.eliminado) ? (tc.saldoInicial.monto||0) : 0;
+  // Los pagos ya "gastados" en drenar el saldo inicial no cuentan acá —
+  // solo el excedente, si lo hay, sigue bajando lo ajeno.
+  const pagosParaAjena = Math.max(0, totalPagos - saldoInicialBruto);
+  return Math.max(0, ajenaBruta - pagosParaAjena);
 }
 function calcDeudaTcPropiaDeTarjeta(tc){
   if(!tc) return 0;
-  return Math.max(0, (tc.deuda||0) - calcDeudaAjenaDeTarjeta(tc));
+  return Math.max(0, (tc.deuda||0) - calcDeudaAjenaDeTarjeta(tc) - calcSaldoInicialPendiente(tc));
 }
 
 // Calcula la deuda TC que realmente es mía, sumando la parte propia de

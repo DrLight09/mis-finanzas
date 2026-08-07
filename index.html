@@ -3585,6 +3585,19 @@
             class="money-input"></div>
         <div class="ig"><label class="il" for="mov_fecha">Fecha</label><input
             type="date" id="mov_fecha"></div>
+        <!-- Selector de grupo de préstamo — solo visible cuando hay ≥2
+             préstamos abiertos con esta persona (ver _initMovGrupoSelector
+             en prestado.js). Con 0 o 1 grupo abierto no se muestra nada. -->
+        <div class="ig" id="mov_grupo_wrap" style="display:none;">
+          <label class="il" for="mov_grupo">¿A cuál préstamo?</label>
+          <div class="select-wrap"><select id="mov_grupo"></select></div>
+        </div>
+        <div class="ig" id="mov_grupo_nombre_wrap" style="display:none;">
+          <label class="il" for="mov_grupo_nombre">Nombre del préstamo nuevo
+            (opcional)</label>
+          <input type="text" id="mov_grupo_nombre"
+            placeholder="Ej. Préstamo moto 2025">
+        </div>
         <div class="ig" id="mov_fuente_wrap">
           <div class="field-header">
             <label class="il" style="margin-bottom:0;">¿De dónde sacó la

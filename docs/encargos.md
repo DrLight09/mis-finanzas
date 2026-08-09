@@ -10,7 +10,7 @@ Llevar el control de plata que el usuario administra en nombre de otra persona (
 - **Saldo del encargo**: cuánto de esa plata queda sin gastar. Nunca se guarda como número — se calcula siempre sumando el saldo inicial más entradas menos salidas.
 - **Saldo por cuenta**: el saldo del encargo puede estar repartido físicamente entre varias cuentas propias del usuario (ej. parte en Nu, parte en efectivo). El sistema lo rastrea por separado del saldo total para saber de dónde sacar plata al registrar una salida.
 - **"Sin especificar"**: plata del encargo cuya ubicación física no quedó registrada. Se trata como una cuenta más a efectos de reparto.
-- **Parte comprometida**: un monto del encargo que ya tiene un destino decidido pero aún no se ha usado (ej. "$200.000 para el arriendo, el día 30"). No mueve saldo por sí sola — es solo una reserva declarativa hasta que se marca "ya la usé".
+- **Parte comprometida**: un monto del encargo que ya tiene un destino decidido pero aún no se ha usado (ej. "$200.000 para el arriendo, el día 30"). No mueve saldo por sí sola — es solo una reserva declarativa hasta que se marca "ya la usé". Aunque no mueve saldo, **sí resta del disponible para sacar**: mientras esté comprometida, esa plata no aparece como sacable en "Registrar salida" (ver `encargoLibre()` en §8).
 - **Diferencial / margen**: cuando lo que le dijiste a la persona que costó algo no coincide con lo que realmente costó, la diferencia se puede repartir entre beneficiarios o quedarse el usuario con ella. Es un motor común (no exclusivo de Encargos) que aquí se usa en tres puntos: salida normal, compra con TC y "usar parte".
 - **"Yo puse la plata"**: caso en que el gasto del encargo no salió realmente de la cuenta donde estaba guardado el dinero del encargo, sino del bolsillo del usuario, y este quiere recuperar ese monto de una cuenta propia. Genera un intercambio simple (salida de una cuenta propia + entrada a otra), sin repartir margen entre beneficiarios.
 
@@ -20,10 +20,11 @@ Llevar el control de plata que el usuario administra en nombre de otra persona (
 - La plata de un encargo **nunca cuenta como patrimonio, ingreso o gasto propio** mientras siga siendo del encargo. Solo dos flujos la convierten en propia: "Traspaso de sobrante" (explícito) y el margen de un diferencial (explícito).
 - **Nunca se asume una tarjeta de crédito como lugar donde se guarda plata ajena** — los selects de "¿en qué cuenta guardaste esa plata?" excluyen tarjetas. La única relación válida entre un encargo y una TC es "compré algo del encargo y lo cargué a mi tarjeta" (flujo separado).
 - Todo movimiento de encargo que además toca una cuenta propia (traspaso, compra con TC, "yo puse la plata", margen de diferencial) debe guardar el/los ID de vínculo necesarios para poder revertir **exactamente** esos efectos secundarios si el movimiento se elimina. Nunca borrar solo el lado del encargo y dejar huérfano el lado de la cuenta propia.
-- Ninguna salida (total, por cuenta, o de un split) puede registrarse por más de lo que el encargo tiene disponible en ese momento — la validación ocurre **antes** de escribir cualquier dato, nunca después.
+- Ninguna salida (total, por cuenta, o de un split) puede registrarse por más de lo que el encargo tiene disponible en ese momento — la validación ocurre **antes** de escribir cualquier dato, nunca después. "Disponible" es el saldo **menos** lo que ya está en partes comprometidas sin usar (`encargoLibre()`), no el saldo total, y esto aplica en **todos** los flujos que sacan plata del encargo: "Registrar salida", "Traspaso de sobrante" y "Compra con TC". La plata comprometida no se puede volver a sacar por ninguna de esas vías; solo sale marcando la parte como "ya la usé" (`usarParte`), que sí valida contra el saldo físico real en la cuenta elegida, no contra lo libre — es la única vía diseñada para gastar justamente esa plata ya reservada. "Mover entre cuentas" es la excepción: no saca plata del encargo (solo la reubica), así que no se limita por lo comprometido.
 - Marcar una parte comprometida como usada, o eliminar un movimiento o un encargo entero, son siempre decisiones explícitas del usuario — nunca automáticas ni disparadas como efecto colateral de otra acción.
 - Si un pago salió de varias cuentas del encargo a la vez (mismo grupo), eliminarlo debe eliminar **todas** esas salidas juntas — nunca dejar un pago a medio revertir.
 - Un encargo nuevo **nunca se crea sin `personaId`** — no existe (ni debería agregarse) una vía de nombre libre; toda creación pasa por el selector de `S.personas`.
+- El campo `cuenta` de una entrada o salida simple (Nequi, Efectivo, cuenta personalizada) es **solo metadata de dónde está guardada físicamente** esa porción del encargo — nunca debe sumarse ni restarse del saldo real de esa cuenta, ni del patrimonio total. Registrar una entrada de encargo no mueve plata real (no hay `sumarFuente`, no genera movimiento espejo): a diferencia de un traspaso, una compra con TC o "yo puse la plata", una entrada/salida simple nunca toca una cuenta propia. **Única excepción:** una cajita de Nu, donde el saldo de encargos sí se suma a la base que gana interés dentro de `calcC()` — ahí restarlo al mostrar el saldo propio de la cajita es intencional y correcto (ver §6). Tratar Nequi/Efectivo/personalizadas igual que una cajita fue justamente la causa de un bug real (ver `CHANGELOG.md#patrimonio-y-cálculos-globales`).
 
 ## 4. Modelo de datos
 
@@ -67,22 +68,22 @@ Cada encargo vive en `S.encargos[]`:
 `btn-nuevo-encargo → elegir persona (obligatorio, sin opción de nombre libre) + saldo/cuenta inicial → crearEncargo() → (hook) exige personaId (bloquea con error si no se seleccionó persona) y lo asigna al encargo recién creado`
 
 **Registrar entrada / salida**
-`abrirMovEncargo(tipo) → elegir cuenta (simple o dividir ÷) → [si es salida: diferencial opcional, "yo puse la plata" opcional] → confirmarMovEncargo() valida saldo total y por cuenta → push movimiento(s)`
+`abrirMovEncargo(tipo) → elegir cuenta (simple o dividir ÷) → [si es salida: diferencial opcional, "yo puse la plata" opcional] → confirmarMovEncargo() valida disponible (encargoLibre — saldo menos comprometido) y por cuenta → push movimiento(s)`
 
 **Traspaso de sobrante a cuenta propia** (la plata deja de ser del encargo)
-`abrirTraspasoEncargo → elegir cuenta destino → confirmarTraspasoEncargo(): salida marcada _traspasoEncargo en el encargo + sumarFuente(destino) + entrada visible en el historial de esa cuenta`
+`abrirTraspasoEncargo → elegir cuenta destino → confirmarTraspasoEncargo(): valida contra encargoLibre() → salida marcada _traspasoEncargo en el encargo + sumarFuente(destino) + entrada visible en el historial de esa cuenta`
 
 **Mover entre cuentas** (reubicación física, sigue siendo del encargo)
 `abrirMoverEntreCuentasEncargo → elegir origen/destino (incluye "sin especificar") → confirmarMoverEncCuentas(): dos movimientos internos (salida+entrada) por el mismo monto — el saldo total no cambia, solo su distribución por cuenta`
 
 **Compra del encargo pagada con tarjeta de crédito propia**
-`abrirCompraConTC → elegir cuenta del encargo de origen, TC, cuenta destino → confirmarCompraConTC(): salida _esTcEncargo en el encargo → sumarFuente(destino, tcMonto) → sube la deuda de la TC → se registra en el historial de la TC como cargo_encargo (no cuenta como gasto propio) → si hay diferencial, el margen se separa como ganancia propia`
+`abrirCompraConTC → elegir cuenta del encargo de origen, TC, cuenta destino → confirmarCompraConTC(): valida contra encargoLibre() → salida _esTcEncargo en el encargo → sumarFuente(destino, tcMonto) → sube la deuda de la TC → se registra en el historial de la TC como cargo_encargo (no cuenta como gasto propio) → si hay diferencial, el margen se separa como ganancia propia`
 
 **Partes comprometidas**
 `abrirNuevaParte/editarParte → guardarParte() valida que lo comprometido no exceda el saldo → usarParte → abrirUsarParteSheet → _confirmarUsarParte(): elige de qué cuenta salió (simple o split), diferencial opcional → registra la(s) salida(s) vinculadas por _parteId, marca parte.usada = true`
 
-**Pago de una deuda de Préstamos con plata de un encargo** (cruce entre módulos)
-`Si el deudor tiene personaId con un encargo vinculado y saldo > 0, aparece "¿Viene de un encargo?" en el sheet de abono → confirmarMovimiento() registra la salida en el encargo (_esAbonoDeudor, posible _grupoAbonoId si salió de varias cuentas) y el abono correspondiente en el deudor`
+**Pago de una deuda de Préstamos con plata de un encargo** (cruce entre módulos, vive en `prestado.js`)
+`Si el deudor tiene personaId con un encargo vinculado y encargoLibre > 0, aparece "¿Viene de un encargo?" en el sheet de abono → confirmarMovimiento() valida contra encargoLibre() (no el saldo total) → registra la salida en el encargo (_esAbonoDeudor, posible _grupoAbonoId si salió de varias cuentas) y el abono correspondiente en el deudor`
 
 **Eliminar un movimiento**
 `deleteMovEncargo(encId, movId) revierte según qué marca tenga el movimiento (_esAbonoDeudor, _esTcEncargo, _traspasoEncargo, diferencial con pagadoPorMi, _miaCuentaSale) antes de quitarlo de enc.movimientos`
@@ -110,6 +111,7 @@ Cada encargo vive en `S.encargos[]`:
 | Función | Qué hace |
 |---|---|
 | `getEncargo(id)` / `encargoSaldo(enc)` | Búsqueda y cálculo de saldo (nunca cacheado) |
+| `encargoComprometido(enc)` / `encargoLibre(enc)` | Suma de partes comprometidas sin usar, y saldo menos eso (nunca negativo) — es el tope real para "Registrar salida" |
 | `crearEncargo()` | Crea el encargo; envuelta por un hook que exige `personaId` (bloquea con toast de error si no hay persona seleccionada) y se lo asigna al encargo recién creado |
 | `renderEncargosList()` / `abrirEncargoDetalle(id)` | Lista y vista de detalle; `abrirEncargoDetalle` está envuelta para además llamar `renderEncargoParts` |
 | `abrirMovEncargo(tipo)` / `confirmarMovEncargo()` | Sheet y confirmación de entrada/salida (con split ÷ opcional) |

@@ -872,7 +872,7 @@ function initMovSheet(tipo) {
   if (esAbono) {
     const d = (S.deudores || []).find(x => x.id === deudorActualId);
     if (d && d.personaId) {
-      _tieneEncargoVinculado = (S.encargos || []).some(e => e.personaId === d.personaId && encargoSaldo(e) > 0);
+      _tieneEncargoVinculado = (S.encargos || []).some(e => e.personaId === d.personaId && encargoLibre(e) > 0);
     }
   }
   if (encWrap)      encWrap.style.display = (esAbono && _tieneEncargoVinculado) ? '' : 'none';
@@ -986,9 +986,9 @@ function confirmarMovimiento() {
       const enc = (S.encargos || []).find(e => e.id === _abonoEncId);
       if (!enc) { toast('Encargo no encontrado', 'err'); return; }
 
-      const saldoTotal = encargoSaldo(enc);
+      const saldoTotal = encargoLibre(enc);
       if (monto > saldoTotal + 0.5) {
-        toast(`El encargo solo tiene ${fmt(saldoTotal)} disponible`, 'err'); return;
+        toast(`El encargo solo tiene ${fmt(saldoTotal)} disponible (el resto ya está comprometido)`, 'err'); return;
       }
 
       // ── ¿La plata del encargo sale de VARIAS cuentas a la vez? ──────────
@@ -1033,7 +1033,7 @@ function confirmarMovimiento() {
         }
         // Validar saldo del encargo para abono + extra (usando saldo antes de cualquier escritura)
         if (monto + extraMonto > saldoTotal + 0.5) {
-          toast(`El encargo solo tiene ${fmt(saldoTotal)} — no alcanza para el abono (${fmt(monto)}) más el extra (${fmt(extraMonto)})`, 'err', 4500);
+          toast(`El encargo solo tiene ${fmt(saldoTotal)} disponible — no alcanza para el abono (${fmt(monto)}) más el extra (${fmt(extraMonto)})`, 'err', 4500);
           return;
         }
         if (_abonoEncCuenta) {
@@ -1424,7 +1424,7 @@ function toggleDesdeEncargo() {
   // Poblar el select de encargos con saldo > 0
   const sel = document.getElementById('mov_enc_sel');
   const d = (S.deudores || []).find(x => x.id === deudorActualId);
-  const encargosDisponibles = (S.encargos || []).filter(e => encargoSaldo(e) > 0);
+  const encargosDisponibles = (S.encargos || []).filter(e => encargoLibre(e) > 0);
 
   // Ordenar: primero los vinculados a la misma persona
   const mismaPersona = d && d.personaId
@@ -1436,14 +1436,14 @@ function toggleDesdeEncargo() {
   if (mismaPersona.length > 0) {
     opts += `<optgroup label="De ${escHtml(d.nombre)}">`;
     mismaPersona.forEach(e => {
-      opts += `<option value="${e.id}">${escHtml(e.nombre)} (${fmt(encargoSaldo(e))})</option>`;
+      opts += `<option value="${e.id}">${escHtml(e.nombre)} (${fmt(encargoLibre(e))})</option>`;
     });
     opts += '</optgroup>';
   }
   if (otros.length > 0) {
     opts += mismaPersona.length > 0 ? '<optgroup label="Otros encargos">' : '';
     otros.forEach(e => {
-      opts += `<option value="${e.id}">${escHtml(e.nombre)} (${fmt(encargoSaldo(e))})</option>`;
+      opts += `<option value="${e.id}">${escHtml(e.nombre)} (${fmt(encargoLibre(e))})</option>`;
     });
     if (mismaPersona.length > 0) opts += '</optgroup>';
   }
@@ -1493,7 +1493,7 @@ function onChangeMov_enc_sel() {
     if (cuentaWrap) cuentaWrap.style.display = 'none';
     if (preview) {
       preview.style.color = 'var(--accent)';
-      preview.textContent = `Saldo disponible: ${fmt(encargoSaldo(enc))} (sin cuenta especificada)`;
+      preview.textContent = `Saldo disponible: ${fmt(encargoLibre(enc))} (sin cuenta especificada)`;
     }
     _abonoEncCuenta = '';
     return;
@@ -1527,7 +1527,7 @@ function _actualizarEncPreview(enc) {
   const monto   = parseMoney(document.getElementById('mov_monto').value) || 0;
   const hint    = document.getElementById('mov_enc_cuenta_hint');
   if (!enc || !preview) return;
-  const saldoTotal = encargoSaldo(enc);
+  const saldoTotal = encargoLibre(enc);
   if (_abonoEncCuenta) {
     const esSinEsp = _abonoEncCuenta === '__sinesp__';
     const labelCuenta = esSinEsp ? 'Sin especificar' : fuenteLabel(_abonoEncCuenta);
@@ -1545,8 +1545,8 @@ function _actualizarEncPreview(enc) {
     if (hint) hint.style.display = 'none';
     preview.style.color = monto > saldoTotal ? 'var(--red)' : 'var(--accent)';
     preview.textContent = monto > saldoTotal
-      ? `\u26a0 El encargo solo tiene ${fmt(saldoTotal)} disponible`
-      : monto > 0 ? `\u2713 Saldo total del encargo: ${fmt(saldoTotal)}` : '';
+      ? `\u26a0 El encargo solo tiene ${fmt(saldoTotal)} disponible (el resto ya está comprometido)`
+      : monto > 0 ? `\u2713 Disponible del encargo: ${fmt(saldoTotal)}` : '';
   }
 }
 

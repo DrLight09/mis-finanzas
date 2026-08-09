@@ -300,6 +300,8 @@ function renderEncargosList() {
   }
   el.innerHTML = encargos.map(enc => {
     const saldo = encargoSaldo(enc);
+    const comprometido = encargoComprometido(enc);
+    const libre = encargoLibre(enc);
     const ini = escHtml(iniciales(enc.nombre));
     return `<div class="card card-sm" style="cursor:pointer;margin-bottom:8px;" data-encargo-id="${enc.id}" ${Events.attr('encargos:abrirDetalle', enc.id)}>
       <div class="row">
@@ -311,7 +313,8 @@ function renderEncargosList() {
           </div>
         </div>
         <div style="text-align:right;">
-          <div class="row-amount c-blue">${fmt(saldo)}</div>
+          <div class="row-amount c-blue">${fmt(libre)}</div>
+          ${comprometido > 0 ? `<div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(saldo)}, ${fmt(comprometido)} comprometido</div>` : ''}
           <span class="badge bg-blue" style="font-size:9px;">No es tuyo</span>
         </div>
       </div>
@@ -324,6 +327,8 @@ function abrirEncargoDetalle(id) {
   const enc = getEncargo(id);
   if (!enc) return;
   const saldo = encargoSaldo(enc);
+  const comprometido = encargoComprometido(enc);
+  const libre = encargoLibre(enc);
   const entradas = (enc.movimientos||[]).filter(m=>m.tipo==='entrada').reduce((a,m)=>a+m.monto,0)+(enc.saldoInicial||0);
   const salidas = (enc.movimientos||[]).filter(m=>m.tipo==='salida').reduce((a,m)=>a+m.monto,0);
 
@@ -332,7 +337,13 @@ function abrirEncargoDetalle(id) {
   document.getElementById('encargoAvatar').textContent = iniciales(enc.nombre);
   document.getElementById('encargoNombreDet').textContent = enc.nombre;
   document.getElementById('encargoSaldoLabel').textContent = enc.nota||'';
-  document.getElementById('encargoSaldoHero').textContent = fmt(saldo);
+  document.getElementById('encargoSaldoHero').textContent = fmt(libre);
+  const compHint = document.getElementById('encargoComprometidoHint');
+  if (compHint) {
+    compHint.textContent = comprometido > 0
+      ? `de ${fmt(saldo)} total · ${fmt(comprometido)} ya comprometido en partes`
+      : '';
+  }
   document.getElementById('encargoTotalEntradas').textContent = fmt(entradas);
   document.getElementById('encargoTotalSalidas').textContent = fmt(salidas);
 
@@ -1604,10 +1615,14 @@ function abrirTraspasoEncargo() {
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
   const saldo = encargoSaldo(enc);
-  if (saldo <= 0) { toast('El encargo no tiene saldo disponible', 'err'); return; }
+  const comprometido = encargoComprometido(enc);
+  const libre = encargoLibre(enc);
+  if (libre <= 0) { toast(comprometido > 0 ? 'Toda la plata de este encargo ya está comprometida' : 'El encargo no tiene saldo disponible', 'err'); return; }
 
   document.getElementById('traspasoEncNombre').textContent = enc.nombre;
-  document.getElementById('traspasoEncSaldo').textContent = fmt(saldo);
+  document.getElementById('traspasoEncSaldo').textContent = comprometido > 0
+    ? fmt(libre) + ' disponible (de ' + fmt(saldo) + ', ' + fmt(comprometido) + ' comprometido)'
+    : fmt(libre);
   document.getElementById('traspaso_monto').value = '';
   document.getElementById('traspaso_desc').value = 'Sobrante de encargo — ' + enc.nombre;
   document.getElementById('traspaso_fecha').value = hoy();
@@ -1672,15 +1687,15 @@ function _actualizarTraspasoPreview(enc) {
   const prev = document.getElementById('traspaso_preview');
   if (!prev) return;
   if (!monto || !destino) { prev.textContent = ''; return; }
-  const saldoEnc = encargoSaldo(enc);
+  const saldoEnc = encargoLibre(enc);
   const saldoCuenta = getSaldoActual(destino);
   const nuevoEnc = saldoEnc - monto;
   const nuevoCuenta = saldoCuenta + monto;
   const colorEnc = nuevoEnc < 0 ? 'var(--red)' : 'var(--blue)';
   prev.innerHTML =
-    `<span style="color:${colorEnc};">Encargo: ${fmt(saldoEnc)} → ${fmt(nuevoEnc)}</span><br>` +
+    `<span style="color:${colorEnc};">Encargo (disponible): ${fmt(saldoEnc)} → ${fmt(nuevoEnc)}</span><br>` +
     `<span style="color:var(--accent);">${escHtml(fuenteLabel(destino))}: ${fmt(saldoCuenta)} → ${fmt(nuevoCuenta)}</span>` +
-    (nuevoEnc < 0 ? `<br><span style="color:var(--red);font-size:10px;">Más de lo que tiene el encargo</span>` : '');
+    (nuevoEnc < 0 ? `<br><span style="color:var(--red);font-size:10px;">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : '');
 }
 
 function confirmarTraspasoEncargo() {
@@ -1695,9 +1710,9 @@ function confirmarTraspasoEncargo() {
 
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
-  const saldoActual = encargoSaldo(enc);
-  if (monto > saldoActual) {
-    toast(`El encargo solo tiene ${fmt(saldoActual)}`, 'err'); return;
+  const libreActual = encargoLibre(enc);
+  if (monto > libreActual) {
+    toast(`El encargo solo tiene ${fmt(libreActual)} disponible (el resto ya está comprometido)`, 'err'); return;
   }
 
   // De qué cuenta física salió — elegida por el usuario en el selector
@@ -2070,10 +2085,14 @@ function abrirCompraConTC() {
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
   const saldo = encargoSaldo(enc);
-  if (saldo <= 0) { toast('El encargo no tiene saldo disponible', 'err'); return; }
+  const comprometido = encargoComprometido(enc);
+  const libre = encargoLibre(enc);
+  if (libre <= 0) { toast(comprometido > 0 ? 'Toda la plata de este encargo ya está comprometida' : 'El encargo no tiene saldo disponible', 'err'); return; }
 
   document.getElementById('compraTcEncNombre').textContent = enc.nombre;
-  document.getElementById('compraTcEncSaldo').textContent = fmt(saldo);
+  document.getElementById('compraTcEncSaldo').textContent = comprometido > 0
+    ? fmt(libre) + ' disponible (de ' + fmt(saldo) + ', ' + fmt(comprometido) + ' comprometido)'
+    : fmt(libre);
   document.getElementById('ctc_desc').value = '';
   document.getElementById('ctc_monto').value = '';
   document.getElementById('ctc_nota').value = '';
@@ -2204,9 +2223,9 @@ function confirmarCompraConTC() {
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
 
-  const saldoActual = encargoSaldo(enc);
+  const saldoActual = encargoLibre(enc);
   if (monto > saldoActual) {
-    toast(`El encargo solo tiene ${fmt(saldoActual)}`, 'err'); return;
+    toast(`El encargo solo tiene ${fmt(saldoActual)} disponible (el resto ya está comprometido)`, 'err'); return;
   }
   if (cuentaEnc) {
     const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuentaEnc);

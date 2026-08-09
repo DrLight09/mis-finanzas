@@ -275,6 +275,18 @@ function encargoSaldo(enc) {
   }, enc.saldoInicial||0);
 }
 
+// Cuánto del saldo ya tiene destino asignado vía partes comprometidas (sin usar todavía).
+function encargoComprometido(enc) {
+  return (enc.partes||[]).filter(p=>!p.usada).reduce((a,p)=>a+(p.monto||0), 0);
+}
+
+// Lo que realmente se puede sacar del encargo ahora mismo: saldo total menos lo ya
+// comprometido. Nunca negativo — si el comprometido superó el saldo (p.ej. porque
+// una salida por fuera de "usar parte" lo redujo), no hay nada libre para sacar.
+function encargoLibre(enc) {
+  return Math.max(0, encargoSaldo(enc) - encargoComprometido(enc));
+}
+
 function renderEncargosList() {
   const el = document.getElementById('encargosList');
   const encargos = S.encargos||[];
@@ -467,8 +479,8 @@ function renderEncargoParts(enc) {
   const partes = (enc.partes || []).filter(p => !p.usada);
   const usadas = (enc.partes || []).filter(p => p.usada);
   const saldo = encargoSaldo(enc);
-  const totalComp = partes.reduce((a, p) => a + (p.monto || 0), 0);
-  const libre = Math.max(0, saldo - totalComp);
+  const totalComp = encargoComprometido(enc);
+  const libre = encargoLibre(enc);
 
   if (!partes.length && !usadas.length) {
     el.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:4px 0 10px;line-height:1.6;">
@@ -581,8 +593,8 @@ function _actualizarPartePreview(enc) {
   const saldo = encargoSaldo(enc);
   const partes = (enc.partes || []).filter(p => !p.usada && p.id !== _parteEditId);
   const yaComp = partes.reduce((a, p) => a + (p.monto || 0), 0);
-  const libre = saldo - yaComp;
-  prevEl.textContent = 'Saldo del encargo: ' + fmt(saldo) + ' · Ya comprometido: ' + fmt(yaComp) + ' · Libre: ' + fmt(Math.max(0, libre));
+  const libre = Math.max(0, saldo - yaComp);
+  prevEl.textContent = 'Saldo del encargo: ' + fmt(saldo) + ' · Ya comprometido: ' + fmt(yaComp) + ' · Libre: ' + fmt(libre);
 }
 
 function cerrarPartSheet() {
@@ -1106,10 +1118,17 @@ function abrirMovEncargo(tipo) {
   if (!enc) return;
   movEncargoTipo = tipo;
   const saldo = encargoSaldo(enc);
-  if (tipo === 'salida' && saldo <= 0) { toast('El encargo no tiene saldo disponible', 'err'); return; }
+  const comprometido = encargoComprometido(enc);
+  const libre = encargoLibre(enc);
+  if (tipo === 'salida' && libre <= 0) {
+    toast(comprometido > 0 ? 'Toda la plata de este encargo ya está comprometida' : 'El encargo no tiene saldo disponible', 'err');
+    return;
+  }
   document.getElementById('movEncTitle').textContent = tipo==='entrada'?'Registrar entrada de plata':'Registrar salida de plata';
   document.getElementById('movEncNombre').textContent = enc.nombre;
-  document.getElementById('movEncSaldo').textContent = fmt(saldo);
+  document.getElementById('movEncSaldo').textContent = (tipo === 'salida' && comprometido > 0)
+    ? fmt(libre) + ' disponible (de ' + fmt(saldo) + ', ' + fmt(comprometido) + ' comprometido)'
+    : fmt(tipo === 'salida' ? libre : saldo);
   document.getElementById('movenc_desc').value = '';
   document.getElementById('movenc_monto').value = '';
   document.getElementById('movenc_nota').value = '';
@@ -1334,10 +1353,10 @@ function confirmarMovEncargo() {
     if (Math.abs(totalSplit - monto) > 0.5) {
       toast(`La suma del split (${fmt(totalSplit)}) debe ser igual al monto (${fmt(monto)})`, 'err'); return;
     }
-    // Validar saldo del encargo total
-    const saldoActual = encargoSaldo(enc);
-    if (monto > saldoActual) {
-      toast(`El saldo del encargo es solo ${fmt(saldoActual)}`, 'err'); return;
+    // Validar disponible del encargo total (saldo menos lo ya comprometido en partes)
+    const libreActual = encargoLibre(enc);
+    if (monto > libreActual) {
+      toast(`Disponible del encargo: solo ${fmt(libreActual)} (el resto ya está comprometido)`, 'err'); return;
     }
     // Validar saldo por cuenta individualmente
     for (const s of splits) {
@@ -1382,9 +1401,9 @@ function confirmarMovEncargo() {
     const cuenta = document.getElementById('movenc_cuenta').value;
     // Validar que no quede saldo negativo al salir
     if (movEncargoTipo === 'salida') {
-      const saldoActual = encargoSaldo(enc);
-      if (monto > saldoActual) {
-        toast(`El saldo del encargo es solo ${fmt(saldoActual)}`, 'err'); return;
+      const libreActual = encargoLibre(enc);
+      if (monto > libreActual) {
+        toast(`Disponible del encargo: solo ${fmt(libreActual)} (el resto ya está comprometido)`, 'err'); return;
       }
       if (cuenta) {
         const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuenta);

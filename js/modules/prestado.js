@@ -412,6 +412,8 @@ function abrirDeudor(id) {
       let destinoInfo = '';
       if (m._viaEncargo && m._encNombre) {
         destinoInfo = ` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">encargo de ${escHtml(m._encNombre)}</span>`;
+      } else if (m._viaAlcancia) {
+        destinoInfo = ` <span style="background:rgba(240,184,64,.15);color:var(--amber);border:1px solid rgba(240,184,64,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">→ Alcancía</span>`;
       } else if (m.destinos && m.destinos.length) {
         destinoInfo = ' ' + arrowSvg + ' ' + m.destinos.map(r => _fuenteLabelHtml(r.fuente) + ' ' + fmt(r.monto)).join(' + ');
       } else if (m.destino) {
@@ -558,6 +560,23 @@ async function eliminarDeudorActual() {
   toast(`${escHtml(d.nombre)} eliminado`, 'ok');
 }
 
+// Alcancía es un grupo de carga diferida (Loader.GROUPS.alcancia, ver
+// alcancia.md) — solo se descarga la primera vez que el usuario entra a esa
+// pantalla en la sesión. Un abono registrado con "Guardar en la alcancía →
+// cobro de deuda" puede borrarse desde Prestado sin haber visitado nunca
+// Alcancía, así que hay que asegurar la carga antes de poder revertir su
+// mitad del depósito (mismo patrón que _spEnsureTC() en spotify.js).
+async function _prEnsureAlcancia() {
+  if (typeof window._alcanciaQuitarPorCobroDeuda === 'function') return true;
+  if (typeof Loader === 'undefined' || typeof Loader.ensure !== 'function') return false;
+  try {
+    await Loader.ensure('alcancia');
+    return typeof window._alcanciaQuitarPorCobroDeuda === 'function';
+  } catch (e) {
+    return false;
+  }
+}
+
 async function eliminarMovDeudor(deudorId, movId) {
   const d = (S.deudores || []).find(x => x.id === deudorId);
   if (!d) return;
@@ -590,12 +609,29 @@ async function eliminarMovDeudor(deudorId, movId) {
   const _saldoAntesDel = getDeudorSaldo(d);
   const _deltaEsperadoDel = esPrestamo ? -m.monto : m.monto;
   const _saldoTrasDel = _saldoAntesDel + _deltaEsperadoDel;
+  const cuentaAviso = m._viaAlcancia
+    ? 'el depósito correspondiente en la Alcancía'
+    : (esPrestamo ? (m._viaTC ? 'la TC' : 'la cuenta origen') : 'la cuenta destino');
   const ok = await dialogo(
     'Eliminar ' + label,
-    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${esPrestamo ? (m._viaTC ? 'la TC' : 'la cuenta origen') : 'la cuenta destino'} se revertirá automáticamente. La deuda de ${escHtml(d.nombre)} pasará de ${fmt(_saldoAntesDel)} a ${fmt(_saldoTrasDel)}.${extraAviso}${tcAviso}${antiguedadAviso}`,
+    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${cuentaAviso} se revertirá automáticamente. La deuda de ${escHtml(d.nombre)} pasará de ${fmt(_saldoAntesDel)} a ${fmt(_saldoTrasDel)}.${extraAviso}${tcAviso}${antiguedadAviso}`,
     'Eliminar', true
   );
   if (!ok) return;
+
+  // Abono guardado directo en la Alcancía (ver alcancia.md): su único rastro
+  // fuera de este deudor vive en S.alcancia.movimientos[], no en ninguna
+  // cuenta real — hay que revertir ese lado antes de tocar d.movimientos.
+  // Se aborta si Alcancía no carga, para no dejar el borrado a medias
+  // (mismo criterio que tcEliminarCompraInterna/getMesadaData en movimientos.js).
+  if (m._viaAlcancia && m._alcanciaMovId) {
+    const alcOk = await _prEnsureAlcancia();
+    if (!alcOk) {
+      toast('No se pudo cargar Alcancía para revertir el depósito — intenta de nuevo', 'err', 4000);
+      return;
+    }
+    window._alcanciaQuitarPorCobroDeuda(m._alcanciaMovId);
+  }
 
   // Revertir efecto en las cuentas
   if (esPrestamo) {

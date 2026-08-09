@@ -145,6 +145,9 @@ function _alcanciaActualizarTipo(){
 
   if(fuenteWrap) fuenteWrap.style.display = (tipo === 'yo-cuenta') ? '' : 'none';
   if(splitWrap)  splitWrap.style.display  = (tipo === 'split')    ? '' : 'none';
+  const deudorWrap = document.getElementById('alc_dep_deudor_wrap');
+  if(deudorWrap) deudorWrap.style.display = (tipo === 'cobro-deuda') ? '' : 'none';
+  if(tipo === 'cobro-deuda') _alcDeudorSelActualizar();
 
   // Cuando es split el campo total se auto-llena
   const montoInput = document.getElementById('alc_dep_monto');
@@ -157,6 +160,58 @@ function _alcanciaActualizarTipo(){
       montoInput.readOnly = false;
       montoInput.style.opacity = '';
     }
+  }
+}
+
+/* ─── COBRO DE DEUDA: selector de deudor/grupo dentro de Depositar ───────
+   Espejo simplificado de _initMovGrupoSelector (prestado.js): si la
+   persona elegida tiene ≥2 préstamos abiertos hay que preguntar a cuál
+   corresponde el cobro (nunca se adivina); con 0 o 1 se resuelve solo.
+   No hay opción de "préstamo aparte" acá — un cobro nunca abre un grupo
+   nuevo, solo puede reducir uno existente. */
+function _alcDeudorSelActualizar(){
+  const sel = document.getElementById('alc_dep_deudor');
+  const grupoWrap = document.getElementById('alc_dep_deudor_grupo_wrap');
+  const grupoSel = document.getElementById('alc_dep_deudor_grupo');
+  const hint = document.getElementById('alc_dep_deudor_saldo_hint');
+  const deudorId = sel ? sel.value : '';
+  if(!deudorId){
+    if(grupoWrap) grupoWrap.style.display = 'none';
+    if(hint) hint.textContent = '';
+    return;
+  }
+  const d = (window.S && window.S.deudores || []).find(x => x.id === deudorId);
+  if(!d) return;
+  const abiertos = (typeof _gruposAbiertos === 'function') ? _gruposAbiertos(d) : [];
+  if(abiertos.length >= 2){
+    if(grupoWrap) grupoWrap.style.display = '';
+    if(grupoSel){
+      grupoSel.innerHTML = abiertos.map(g => `<option value="${g.id}">${escHtml(g.nombre)} (${fmt(getGrupoSaldo(d, g.id))})</option>`).join('');
+      grupoSel.onchange = _alcDeudorSaldoHintActualizar;
+    }
+  } else if(grupoWrap){
+    grupoWrap.style.display = 'none';
+  }
+  _alcDeudorSaldoHintActualizar();
+}
+
+function _alcDeudorSaldoHintActualizar(){
+  const sel = document.getElementById('alc_dep_deudor');
+  const grupoWrap = document.getElementById('alc_dep_deudor_grupo_wrap');
+  const grupoSel = document.getElementById('alc_dep_deudor_grupo');
+  const hint = document.getElementById('alc_dep_deudor_saldo_hint');
+  const deudorId = sel ? sel.value : '';
+  if(!deudorId) return;
+  const d = (window.S && window.S.deudores || []).find(x => x.id === deudorId);
+  if(!d) return;
+  const grupoVisible = grupoWrap && grupoWrap.style.display !== 'none';
+  const saldo = (grupoVisible && grupoSel && grupoSel.value) ? getGrupoSaldo(d, grupoSel.value) : getDeudorSaldo(d);
+  if(hint){ hint.textContent = 'Debe: ' + fmt(saldo); hint.style.color = 'var(--amber)'; }
+  // Precarga el monto con el saldo pendiente (editable — puede ser un abono parcial)
+  const montoInput = document.getElementById('alc_dep_monto');
+  if(montoInput && saldo > 0){
+    montoInput.value = saldo.toFixed(2).replace('.', ',');
+    montoInput.dispatchEvent(new Event('input'));
   }
 }
 
@@ -210,8 +265,20 @@ function _inyectarAlcanciaSheets(){
             <option value="regalo"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Me lo regaló mi mamá</option>
             <option value="mandado"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Me lo dio mi mamá por un mandado</option>
             <option value="split"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg> Pusimos entre los dos</option>
+            <option value="cobro-deuda"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg> Me pagaron una deuda que me tenían</option>
           </select>
         </div>
+      </div>
+      <div class="ig" id="alc_dep_deudor_wrap" style="display:none;">
+        <label class="il">¿Quién te pagó?</label>
+        <div class="select-wrap">
+          <select id="alc_dep_deudor"><option value="">Seleccionar persona</option></select>
+        </div>
+        <div class="ig" id="alc_dep_deudor_grupo_wrap" style="display:none;margin-top:8px;">
+          <label class="il">¿De cuál préstamo?</label>
+          <div class="select-wrap"><select id="alc_dep_deudor_grupo"></select></div>
+        </div>
+        <div id="alc_dep_deudor_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
       </div>
       <div class="ig" id="alc_dep_fuente_wrap">
         <label class="il">¿De qué cuenta sale?</label>
@@ -336,6 +403,12 @@ function _inyectarAlcanciaSheets(){
     tipoSel.addEventListener('change', _alcanciaActualizarTipo);
   }
 
+  /* ---------- Cobro de deuda: selector de deudor ---------- */
+  const deudorSel = document.getElementById('alc_dep_deudor');
+  if(deudorSel){
+    deudorSel.addEventListener('change', _alcDeudorSelActualizar);
+  }
+
   /* ---------- Fuente selector hint ---------- */
   const fuenteSel = document.getElementById('alc_dep_fuente');
   if(fuenteSel){
@@ -449,6 +522,18 @@ openSheet = function(id){
       }
       const splitSaldoHint = document.getElementById('alc_split_saldo_hint');
       if(splitSaldoHint) splitSaldoHint.textContent = '';
+      // Cobro de deuda: poblar personas con saldo pendiente y resetear el wrap
+      const deudorSelReset = document.getElementById('alc_dep_deudor');
+      if(deudorSelReset){
+        const deudoresConSaldo = (window.S && window.S.deudores || [])
+          .filter(d => typeof getDeudorSaldo === 'function' && getDeudorSaldo(d) > 0.5);
+        deudorSelReset.innerHTML = '<option value="">Seleccionar persona</option>'
+          + deudoresConSaldo.map(d => `<option value="${d.id}">${escHtml(d.nombre)} (${fmt(getDeudorSaldo(d))})</option>`).join('');
+      }
+      const deudorGrupoWrapReset = document.getElementById('alc_dep_deudor_grupo_wrap');
+      if(deudorGrupoWrapReset) deudorGrupoWrapReset.style.display = 'none';
+      const deudorHintReset = document.getElementById('alc_dep_deudor_saldo_hint');
+      if(deudorHintReset) deudorHintReset.textContent = '';
       const tipo = document.getElementById('alc_dep_tipo');
       if(tipo) { tipo.value = 'yo-directo'; _alcanciaActualizarTipo(); }
     }, 30);
@@ -536,8 +621,8 @@ window.renderAlcancia = function(){
       if(!movs.length){
         movsEl.innerHTML = '<div class="feed-empty">Aún no hay movimientos en esta alcancía.</div>';
       } else {
-        const tipoIcon = { yo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>', regalo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', mandado: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>', split: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg>' };
-        const tipoColor = { yo: 'var(--accent)', regalo: 'var(--amber)', mandado: 'var(--amber)', split: 'var(--amber)' };
+        const tipoIcon = { yo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>', regalo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', mandado: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>', split: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg>', 'cobro-deuda': '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>' };
+        const tipoColor = { yo: 'var(--accent)', regalo: 'var(--amber)', mandado: 'var(--amber)', split: 'var(--amber)', 'cobro-deuda': 'var(--accent)' };
         movsEl.innerHTML = [...movs].reverse().map(m => {
           const icon  = tipoIcon[m.tipo]  || '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>';
           const color = tipoColor[m.tipo] || 'var(--accent)';
@@ -551,7 +636,9 @@ window.renderAlcancia = function(){
                 if(f.startsWith('custom:')){ const id=f.split(':')[1]; const c=(window.S&&window.S.cuentasPersonalizadas||[]).find(x=>x.id===id); return c?c.nombre:'Cuenta'; }
                 return f;
               })()
-            : null;
+            : (m.tipo === 'cobro-deuda' && m._prestamoDeudorId
+                ? (() => { const dd=(window.S&&window.S.deudores||[]).find(x=>x.id===m._prestamoDeudorId); return dd?dd.nombre:null; })()
+                : null);
           return `
           <div class="card card-sm" style="margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
             <div style="font-size:18px;flex-shrink:0;margin-top:1px;">${icon}</div>
@@ -700,24 +787,46 @@ window.alcanciaConfirmarDeposito = function(){
     }
   }
 
+  // Cobro de deuda: validar persona + (si aplica) grupo, y que el monto no
+  // supere lo que esa persona (o ese préstamo puntual) todavía debe.
+  let cobroDeudorId = '', cobroGrupoId = '', cobroDeudorNombre = '';
+  if(tipo === 'cobro-deuda'){
+    cobroDeudorId = (document.getElementById('alc_dep_deudor')||{}).value || '';
+    if(!cobroDeudorId){ if(typeof toast==='function') toast('Seleccioná quién te pagó', 'err'); return; }
+    const dCheck = (window.S && window.S.deudores || []).find(x => x.id === cobroDeudorId);
+    if(!dCheck){ if(typeof toast==='function') toast('Esa persona ya no existe', 'err'); return; }
+    cobroDeudorNombre = dCheck.nombre;
+    const grupoWrapCheck = document.getElementById('alc_dep_deudor_grupo_wrap');
+    if(grupoWrapCheck && grupoWrapCheck.style.display !== 'none'){
+      cobroGrupoId = (document.getElementById('alc_dep_deudor_grupo')||{}).value || '';
+      if(!cobroGrupoId){ if(typeof toast==='function') toast('Seleccioná a cuál préstamo corresponde', 'err'); return; }
+    }
+    const saldoDisp = cobroGrupoId ? getGrupoSaldo(dCheck, cobroGrupoId) : getDeudorSaldo(dCheck);
+    if(monto > saldoDisp + 0.5){
+      if(typeof toast==='function') toast(`${dCheck.nombre} solo debe ${typeof fmt==='function'?fmt(saldoDisp):saldoDisp}`, 'err'); return;
+    }
+  }
+
   _initA();
   const a = window.S.alcancia;
 
   const movId = typeof uid==='function' ? uid() : Date.now().toString(36);
   const tipoLabel = {
-    'yo-directo': 'Propio (directo)',
-    'yo-cuenta':  'Propio (de cuenta)',
-    'regalo':     'Regalo mamá',
-    'mandado':    'Mandado mamá',
-    'split':      'Entre los dos'
+    'yo-directo':  'Propio (directo)',
+    'yo-cuenta':   'Propio (de cuenta)',
+    'regalo':      'Regalo mamá',
+    'mandado':     'Mandado mamá',
+    'split':       'Entre los dos',
+    'cobro-deuda': 'Cobro de deuda'
   }[tipo] || tipo;
 
   const descFinal = descVal || {
-    'yo-directo': 'Depósito en alcancía',
-    'yo-cuenta':  'Depósito en alcancía',
-    'regalo':     'Regalo de mamá',
-    'mandado':    'Mandado de mamá',
-    'split':      'Depósito compartido'
+    'yo-directo':  'Depósito en alcancía',
+    'yo-cuenta':   'Depósito en alcancía',
+    'regalo':      'Regalo de mamá',
+    'mandado':     'Mandado de mamá',
+    'split':       'Depósito compartido',
+    'cobro-deuda': 'Cobro de deuda — ' + cobroDeudorNombre
   }[tipo] || 'Depósito en alcancía';
 
   // ── yo-cuenta: descuenta de la cuenta elegida (gasto interno de alcancía)
@@ -874,6 +983,35 @@ window.alcanciaConfirmarDeposito = function(){
     }
   }
 
+  // ── cobro-deuda: registra el abono en la persona (descuenta la deuda).
+  //    No toca ninguna cuenta real ni cuenta como ingreso — es plata que ya
+  //    era tuya (estaba prestada) cambiando de "por cobrar" a "en la
+  //    alcancía", igual que un 'prestamo' de salida tampoco genera entrada
+  //    secundaria en ninguna cuenta (ver prestado.md §4.1).
+  let cobroAbonoMovId = null;
+  if(tipo === 'cobro-deuda'){
+    const d = (window.S.deudores || []).find(x => x.id === cobroDeudorId);
+    if(d){
+      if(!d.movimientos) d.movimientos = [];
+      const grupoIdFinal = cobroGrupoId || (typeof _autoGrupoIdMov === 'function' ? _autoGrupoIdMov(d, fecha) : undefined);
+      cobroAbonoMovId = typeof uid==='function' ? uid() : Date.now().toString(36) + '_ab';
+      d.movimientos.push({
+        id: cobroAbonoMovId,
+        tipo: 'abono',
+        monto,
+        fecha,
+        nota: 'Cobrado y guardado directo en la alcancía' + (descVal ? ': ' + descVal : ''),
+        destino: '',
+        grupoId: grupoIdFinal,
+        _viaAlcancia: true,
+        _alcanciaMovId: movId,
+        ts: Date.now()
+      });
+      if(typeof _autoCerrarGruposEnCero === 'function') _autoCerrarGruposEnCero(d);
+      if(typeof logCambio === 'function') logCambio('Abono de ' + escHtml(d.nombre) + ' guardado directo en la alcancía', d.nombre, monto, 'abono');
+    }
+  }
+
   // Actualizar estado alcancía
   a.saldoRegistrado = (a.saldoRegistrado || 0) + monto;
   a.depositos = (a.depositos || 0) + 1;
@@ -894,6 +1032,12 @@ window.alcanciaConfirmarDeposito = function(){
     movEntry._splitMama   = splitMama;
     if(splitFuente) movEntry._splitFuente = splitFuente;
     if(splitMamaMovId) movEntry._splitMamaMovId = splitMamaMovId;
+  }
+  // Guardar el enlace de vuelta hacia el abono del deudor (ver prestado.md §4.2:
+  // toda entrada secundaria necesita su id de vuelta para poder revertirse).
+  if(tipo === 'cobro-deuda'){
+    movEntry._prestamoDeudorId = cobroDeudorId;
+    movEntry._prestamoMovId = cobroAbonoMovId;
   }
   a.movimientos.push(movEntry);
   _setSaldoOfuscado(a.saldoRegistrado);
@@ -1176,11 +1320,10 @@ window.alcanciaEliminarDeposito = async function(movId){
   if(idx === -1){ if(typeof toast==='function') toast('No se encontró ese depósito', 'err'); return; }
   const entry = a.movimientos[idx];
 
-  const ok = await dialogo(
-    'Eliminar depósito',
-    `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? ${entry.fuenteOrigen || entry._splitFuente ? 'Se devolverá el dinero a la cuenta de origen.' : 'No afecta ningún saldo (fue un ingreso registrado sin mover plata real).'}`,
-    'Eliminar', true
-  );
+  const dialogoTexto = entry.tipo === 'cobro-deuda'
+    ? `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? Se le volverá a sumar esa plata a la deuda de la persona.`
+    : `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? ${entry.fuenteOrigen || entry._splitFuente ? 'Se devolverá el dinero a la cuenta de origen.' : 'No afecta ningún saldo (fue un ingreso registrado sin mover plata real).'}`;
+  const ok = await dialogo('Eliminar depósito', dialogoTexto, 'Eliminar', true);
   if(!ok) return;
 
   // Revertir el/los registro(s) reales según el tipo
@@ -1197,6 +1340,16 @@ window.alcanciaEliminarDeposito = async function(movId){
     if(entry._splitMamaMovId){
       window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== entry._splitMamaMovId);
     }
+  } else if(entry.tipo === 'cobro-deuda'){
+    // No hay cuenta real ni movimiento en S.movimientos que revertir — el
+    // rastro real es el abono en el deudor. Quitarlo de ahí reabre la deuda.
+    if(entry._prestamoDeudorId && entry._prestamoMovId){
+      const d = (window.S.deudores || []).find(x => x.id === entry._prestamoDeudorId);
+      if(d && d.movimientos){
+        d.movimientos = d.movimientos.filter(x => x.id !== entry._prestamoMovId);
+        if(typeof _autoCerrarGruposEnCero === 'function') _autoCerrarGruposEnCero(d);
+      }
+    }
   } else {
     // 'yo-directo' / 'regalo' / 'mandado' — ingreso neto-cero
     window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== entry.id);
@@ -1212,6 +1365,24 @@ window.alcanciaEliminarDeposito = async function(movId){
   if(typeof refresh==='function') refresh();
   window.renderAlcancia();
   if(typeof toast==='function') toast('Depósito eliminado', 'info');
+};
+
+/* Quita SOLO el lado de la alcancía de un depósito 'cobro-deuda', sin tocar
+   al deudor — para cuando el borrado se inició desde Préstamos
+   (eliminarMovDeudor ya revirtió/confirmó ese lado). Sin diálogo de
+   confirmación propio: quien llama ya confirmó una sola vez. */
+window._alcanciaQuitarPorCobroDeuda = function(alcMovId){
+  _initA();
+  const a = window.S.alcancia;
+  if(!a || !a.movimientos) return false;
+  const idx = a.movimientos.findIndex(m => m.id === alcMovId);
+  if(idx === -1) return false;
+  const entry = a.movimientos[idx];
+  a.movimientos.splice(idx, 1);
+  a.saldoRegistrado = Math.max(0, (a.saldoRegistrado || 0) - entry.monto);
+  a.depositos = Math.max(0, (a.depositos || 0) - 1);
+  _setSaldoOfuscado(a.saldoRegistrado);
+  return true;
 };
 
 /* ─── REGISTRO EN EVENTS ─────────────────────────────────────────────────

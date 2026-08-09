@@ -91,6 +91,7 @@ function _alcDesgloseHtml(movimientos, fmtFn){
   let yo      = 0; // yo-directo + yo-cuenta + tu parte del split
   let mandado = 0; // tipo === 'mandado'
   let mama    = 0; // regalo de mamá (tipo === 'regalo') + parte de mamá en splits
+  let cobros  = 0; // tipo === 'cobro-deuda' — plata que ya era tuya (estaba prestada), no es ahorro nuevo
 
   movimientos.forEach(m => {
     const tipo = m.tipo || '';
@@ -101,6 +102,8 @@ function _alcDesgloseHtml(movimientos, fmtFn){
       mandado += monto;
     } else if(tipo === 'regalo'){
       mama += monto;
+    } else if(tipo === 'cobro-deuda'){
+      cobros += monto;
     } else if(tipo === 'split'){
       const splitYo   = m._splitYo   || 0;
       const splitMama = m._splitMama || 0;
@@ -113,11 +116,13 @@ function _alcDesgloseHtml(movimientos, fmtFn){
   const iconYo      = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v2m0 8v2M9.5 9.5a2.5 2.5 0 0 1 5 0c0 1.5-2.5 2-2.5 3.5m0 1h.01"/></svg>';
   const iconMandado = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M10 18H6.5M14 18h3.5M4 10h12l2 5H2l2-5z"/><path d="M10 10V7l4-2"/></svg>';
   const iconMama    = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v10H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>';
+  const iconCobros  = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>';
 
   const filas = [];
   if(yo > 0)      filas.push({ icon: iconYo,      label: 'Ahorrado con mi propio dinero',      monto: yo      });
   if(mandado > 0) filas.push({ icon: iconMandado,  label: 'Mamá me pagó por hacer un mandado', monto: mandado });
   if(mama > 0)    filas.push({ icon: iconMama,     label: 'Me regaló mamá',                    monto: mama    });
+  if(cobros > 0)  filas.push({ icon: iconCobros,   label: 'Cobrado de deudas que me tenían',   monto: cobros  });
 
   if(!filas.length) return '';
 

@@ -182,6 +182,10 @@ function _alcDeudorSelActualizar(){
   }
   const d = (window.S && window.S.deudores || []).find(x => x.id === deudorId);
   if(!d) return;
+  // Migrar antes de leer d.grupos — un deudor viejo sin d.grupos parece tener
+  // "0 grupos abiertos" aunque tenga deuda real, y eso hace que el auto-resolver
+  // le cree un grupo nuevo en blanco en vez de reutilizar la deuda existente.
+  if(typeof _migrarGruposDeudor === 'function') _migrarGruposDeudor(d);
   const abiertos = (typeof _gruposAbiertos === 'function') ? _gruposAbiertos(d) : [];
   if(abiertos.length >= 2){
     if(grupoWrap) grupoWrap.style.display = '';
@@ -795,6 +799,7 @@ window.alcanciaConfirmarDeposito = function(){
     if(!cobroDeudorId){ if(typeof toast==='function') toast('Seleccioná quién te pagó', 'err'); return; }
     const dCheck = (window.S && window.S.deudores || []).find(x => x.id === cobroDeudorId);
     if(!dCheck){ if(typeof toast==='function') toast('Esa persona ya no existe', 'err'); return; }
+    if(typeof _migrarGruposDeudor === 'function') _migrarGruposDeudor(dCheck);
     cobroDeudorNombre = dCheck.nombre;
     const grupoWrapCheck = document.getElementById('alc_dep_deudor_grupo_wrap');
     if(grupoWrapCheck && grupoWrapCheck.style.display !== 'none'){
@@ -993,6 +998,11 @@ window.alcanciaConfirmarDeposito = function(){
     const d = (window.S.deudores || []).find(x => x.id === cobroDeudorId);
     if(d){
       if(!d.movimientos) d.movimientos = [];
+      // Deudores creados antes de que existieran los grupos (o nunca abiertos
+      // desde entonces) no tienen d.grupos — sin esto, _autoGrupoIdMov ve 0
+      // grupos abiertos y crea uno en blanco, dejando la deuda vieja huérfana
+      // sin grupo (ver prestado.md §2.4, migración silenciosa).
+      if(typeof _migrarGruposDeudor === 'function') _migrarGruposDeudor(d);
       const grupoIdFinal = cobroGrupoId || (typeof _autoGrupoIdMov === 'function' ? _autoGrupoIdMov(d, fecha) : undefined);
       cobroAbonoMovId = typeof uid==='function' ? uid() : Date.now().toString(36) + '_ab';
       d.movimientos.push({

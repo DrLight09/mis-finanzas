@@ -89,6 +89,20 @@ function renderAttencion(){
     if(diasRestantes>=0&&diasRestantes<=7) items.push({tipo:'amber',texto:`CDT "${escHtml(c.nombre)}" vence en ${diasRestantes}d`});
     if(diasRestantes<0) items.push({tipo:'red',texto:`CDT "${escHtml(c.nombre)}" venció — ¡libera tu plata!`});
   });});
+  // Partes comprometidas de un encargo (§ "¿Para qué es esta plata?") cuya
+  // fecha de uso ya está cerca. Desde 1 día antes avisa en ámbar; si ya
+  // pasó la fecha y sigue sin marcarse "ya la usé", avisa en rojo — esa
+  // plata sigue comprometida y sin usar.
+  (S.encargos||[]).forEach(enc=>{
+    (enc.partes||[]).filter(p=>!p.usada&&p.fecha).forEach(p=>{
+      const dias=Math.round((new Date(p.fecha+'T00:00:00')-new Date(hoyStr+'T00:00:00'))/86400000);
+      if(dias<0){
+        items.push({tipo:'red',texto:`${escHtml(enc.nombre)}: "${escHtml(p.desc)}" (${fmt(p.monto)}) venció hace ${Math.abs(dias)}d sin usarse — sigue comprometida`});
+      } else if(dias<=1){
+        items.push({tipo:'amber',texto:`${escHtml(enc.nombre)}: "${escHtml(p.desc)}" (${fmt(p.monto)}) es ${dias===0?'hoy':'mañana'} — esa plata ya está comprometida`});
+      }
+    });
+  });
   const sec=document.getElementById('s-attn-section');
   const list=document.getElementById('s-attn-list');
   if(!items.length){sec.style.display='none';return;}

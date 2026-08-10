@@ -1520,6 +1520,17 @@ async function deleteMovEncargo(encId, movId) {
     }
   }
 
+  // Revertir transferencia entre encargos: eliminar también el movimiento
+  // espejo en el OTRO encargo (vinculado por _transfId), sea cual sea el
+  // lado desde el que se eliminó — nunca dejar una transferencia a medias.
+  if (mov && mov._transfEncargo && mov._transfId) {
+    const otroEncId = mov._encargoDestino || mov._encargoOrigen;
+    const otroEnc = otroEncId ? getEncargo(otroEncId) : null;
+    if (otroEnc) {
+      otroEnc.movimientos = (otroEnc.movimientos||[]).filter(m => m._transfId !== mov._transfId);
+    }
+  }
+
   // Revertir "Me lo regalaron" (traspaso de encargo a cuenta propia)
   if (mov && mov._traspasoEncargo) {
     // Revertir el sumarFuente que se hizo en el paso 2
@@ -1973,6 +1984,162 @@ function confirmarMoverEncCuentas() {
   if (btn) btn.addEventListener('click', confirmarMoverEncCuentas);
 })();
 
+// ── TRANSFERENCIA DE PLATA ENTRE ENCARGOS ──────────────────────────────
+// Caso: A te pide que le pagues a B, y vos les guardas plata a los dos
+// (dos encargos distintos). Esa plata deja de ser de A y pasa a ser de
+// B — pero sigue siendo ajena todo el tiempo, nunca se vuelve tuya ni
+// toca tu patrimonio. Es como "Mover entre cuentas" pero cruzando dos
+// encargos en vez de reubicar dentro del mismo.
+function abrirTransferenciaEncargo() {
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+  const saldo = encargoSaldo(enc);
+  const comprometido = encargoComprometido(enc);
+  const libre = encargoLibre(enc);
+  if (libre <= 0) { toast(comprometido > 0 ? 'Toda la plata de este encargo ya está comprometida' : 'El encargo no tiene saldo disponible', 'err'); return; }
+
+  const otros = (S.encargos||[]).filter(e => e.id !== enc.id);
+  if (!otros.length) { toast('No hay otro encargo al cual transferirle plata', 'err'); return; }
+
+  document.getElementById('transfEncOrigenNombre').textContent = enc.nombre;
+  document.getElementById('transfEncOrigenSaldo').textContent = comprometido > 0
+    ? fmt(libre) + ' disponible (de ' + fmt(saldo) + ', ' + fmt(comprometido) + ' comprometido)'
+    : fmt(libre);
+  document.getElementById('transfenc_monto').value = '';
+  document.getElementById('transfenc_desc').value = 'Pago a nombre de ' + enc.nombre;
+  document.getElementById('transfenc_fecha').value = hoy();
+  document.getElementById('transfenc_preview').innerHTML = '';
+
+  // Select destino: los demás encargos
+  const selDestino = document.getElementById('transfenc_destino');
+  selDestino.innerHTML = '<option value="">Seleccionar encargo</option>' +
+    otros.map(o => `<option value="${o.id}">${escHtml(o.nombre)}</option>`).join('');
+
+  // Select origen: de qué cuenta del encargo actual salió (mismo criterio que Traspaso)
+  const selOrigen = document.getElementById('transfenc_origen');
+  const cuentasEnc = _getEncargoSaldoPorCuenta(enc);
+  const fuentesSinTC = getFuentesSinTC();
+  if (cuentasEnc.length === 0) {
+    selOrigen.innerHTML = '<option value="">Sin especificar</option>' + fuentesSinTC.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+  } else {
+    selOrigen.innerHTML = '<option value="">Sin especificar</option>' +
+      cuentasEnc.map(f=>`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+    selOrigen.value = cuentasEnc[0].cuenta;
+  }
+
+  // Select "dónde queda guardada esa plata ahora" para el encargo destino
+  // (ej. la tenés en Nequi mientras se la entregás físicamente a esa persona)
+  const selCuentaFisica = document.getElementById('transfenc_cuenta_fisica');
+  selCuentaFisica.innerHTML = '<option value="">Sin especificar</option>' + fuentesSinTC.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+  if (cuentasEnc.length > 0) selCuentaFisica.value = cuentasEnc[0].cuenta;
+
+  _actualizarTransfEncPreview(enc);
+  selDestino.onchange = function() { _actualizarTransfEncPreview(enc); };
+  document.getElementById('transfenc_monto').oninput = function() { _actualizarTransfEncPreview(enc); };
+
+  openSheet('transferencia-encargo');
+  setTimeout(()=>document.getElementById('transfenc_monto').focus(), 200);
+}
+
+function _actualizarTransfEncPreview(enc) {
+  const monto = parseMoney(document.getElementById('transfenc_monto').value) || 0;
+  const destinoId = document.getElementById('transfenc_destino').value;
+  const prev = document.getElementById('transfenc_preview');
+  if (!prev) return;
+  if (!monto || !destinoId) { prev.innerHTML = ''; return; }
+  const destino = getEncargo(destinoId);
+  if (!destino) { prev.innerHTML = ''; return; }
+  const libreOrigen = encargoLibre(enc);
+  const nuevoOrigen = libreOrigen - monto;
+  const saldoDestino = encargoSaldo(destino);
+  const colorOrigen = nuevoOrigen < 0 ? 'var(--red)' : 'var(--blue)';
+  prev.innerHTML =
+    `<span style="color:${colorOrigen};">${escHtml(enc.nombre)} (disponible): ${fmt(libreOrigen)} → ${fmt(nuevoOrigen)}</span><br>` +
+    `<span style="color:var(--blue);">${escHtml(destino.nombre)}: ${fmt(saldoDestino)} → ${fmt(saldoDestino + monto)}</span>` +
+    (nuevoOrigen < 0 ? `<br><span style="color:var(--red);font-size:10px;">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : '');
+}
+
+function confirmarTransferenciaEncargo() {
+  const monto = parseMoney(document.getElementById('transfenc_monto').value) || 0;
+  const destinoId = document.getElementById('transfenc_destino').value;
+  const desc = document.getElementById('transfenc_desc').value.trim();
+  const fecha = document.getElementById('transfenc_fecha').value || hoy();
+  const cuentaOrigen = document.getElementById('transfenc_origen').value || '';
+  const cuentaFisica = document.getElementById('transfenc_cuenta_fisica').value || '';
+
+  if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
+  if (!destinoId) { toast('Selecciona a qué encargo transferir', 'err'); return; }
+  if (!desc) { toast('Ingresa una descripción', 'err'); return; }
+
+  const encOrigen = getEncargo(encargoActualId);
+  const encDestino = getEncargo(destinoId);
+  if (!encOrigen || !encDestino) return;
+  if (encOrigen.id === encDestino.id) { toast('El origen y el destino no pueden ser el mismo encargo', 'err'); return; }
+
+  const libreActual = encargoLibre(encOrigen);
+  if (monto > libreActual) {
+    toast(`El encargo solo tiene ${fmt(libreActual)} disponible (el resto ya está comprometido)`, 'err'); return;
+  }
+  if (cuentaOrigen) {
+    const saldoEnCuenta = _getEncargoSaldoEnCuenta(encOrigen, cuentaOrigen);
+    if (monto > saldoEnCuenta) {
+      toast(`El encargo solo tiene ${fmt(saldoEnCuenta)} guardado en ${escHtml(fuenteLabel(cuentaOrigen))}`, 'err');
+      return;
+    }
+  }
+
+  // Vínculo compartido entre las dos puntas de la transferencia — necesario
+  // para poder revertir exactamente este par si se elimina cualquiera de
+  // los dos lados (ver §3 de encargos.md: nunca dejar huérfano un lado de
+  // un movimiento vinculado).
+  const transfId = uid();
+
+  if (!encOrigen.movimientos) encOrigen.movimientos = [];
+  encOrigen.movimientos.push({
+    id: uid(),
+    tipo: 'salida',
+    desc: desc + ' → ' + encDestino.nombre,
+    monto,
+    cuenta: cuentaOrigen,
+    fecha,
+    nota: 'Transferencia a otro encargo',
+    _transfEncargo: true,
+    _transfId: transfId,
+    _encargoDestino: encDestino.id,
+    ts: Date.now()
+  });
+
+  if (!encDestino.movimientos) encDestino.movimientos = [];
+  encDestino.movimientos.push({
+    id: uid(),
+    tipo: 'entrada',
+    desc: desc + ' ← ' + encOrigen.nombre,
+    monto,
+    cuenta: cuentaFisica,
+    fecha,
+    nota: 'Transferencia de otro encargo',
+    _transfEncargo: true,
+    _transfId: transfId,
+    _encargoOrigen: encOrigen.id,
+    ts: Date.now() + 1
+  });
+
+  // A propósito no hay sumarFuente/descontarFuente: la plata sigue siendo
+  // ajena todo el tiempo, solo cambia de dueño entre los dos encargos —
+  // nunca toca una cuenta propia ni el patrimonio (§3 de encargos.md).
+  save();
+  refresh();
+  closeSheet('transferencia-encargo');
+  abrirEncargoDetalle(encargoActualId);
+  toast(`${fmt(monto)} transferidos a ${escHtml(encDestino.nombre)}`, 'ok', 3500);
+}
+
+// Listener para el botón confirmar
+(function() {
+  const btn = document.getElementById('btn-confirmar-transferencia-encargo');
+  if (btn) btn.addEventListener('click', confirmarTransferenciaEncargo);
+})();
+
 // Hook into refresh
 const _origRefreshEncargos = refresh;
 refresh = function() {
@@ -2391,6 +2558,7 @@ Events.registerAll('encargos', {
   abrirMov:               (...args) => abrirMovEncargo(...args),          // data-args: ["entrada"] | ["salida"]
   abrirTraspaso:          (...args) => abrirTraspasoEncargo(...args),
   abrirMoverCuentas:      (...args) => abrirMoverEntreCuentasEncargo(...args),
+  abrirTransferencia:     (...args) => abrirTransferenciaEncargo(...args),
   abrirCompraTC:          (...args) => abrirCompraConTC(...args),
   abrirNuevaParte:        (...args) => abrirNuevaParte(...args),
   movSplitToggle:         (...args) => _movEncSplitToggle(...args),

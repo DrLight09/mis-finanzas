@@ -1917,6 +1917,15 @@
                   <span class="cuenta-action-btn-label">Mover de cuenta</span>
                 </button>
                 <button type="button" class="cuenta-action-btn"
+                  style="background:rgba(96,176,240,.08);border-color:rgba(96,176,240,.3);color:var(--blue);"
+                  data-action="encargos:abrirTransferencia">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round"><line x1="17" y1="7" x2="7"
+                      y2="17" /><polyline points="8 7 17 7 17 16" /></svg>
+                  <span class="cuenta-action-btn-label">Pagarle a otro encargo</span>
+                </button>
+                <button type="button" class="cuenta-action-btn"
                   style="background:rgba(240,104,104,.12);border-color:rgba(240,104,104,.45);color:var(--red);flex-basis:100%;"
                   data-action="encargos:abrirCompraTC">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -3054,6 +3063,64 @@
           traspaso</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="traspaso-encargo">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- TRANSFERENCIA DE PLATA A OTRO ENCARGO -->
+    <div class="overlay" id="sheet-transferencia-encargo"
+      data-sheet-id="transferencia-encargo">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Pagarle a otro encargo</div>
+        <p
+          style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;">Esta
+          plata deja de ser de este encargo y pasa a ser del otro. Sigue
+          siendo ajena todo el tiempo — no toca tus cuentas ni tu
+          patrimonio.</p>
+        <div class="info-box info-box-green"
+          style="font-family:'DM Mono',monospace;">
+          Encargo: <span id="transfEncOrigenNombre"
+            style="font-weight:600;color:var(--accent);"></span>
+          · Saldo: <span id="transfEncOrigenSaldo"></span>
+        </div>
+        <div class="ig"><label class="il" for="transfenc_destino">¿A cuál
+            encargo le pagaste?</label>
+          <div class="select-wrap"><select id="transfenc_destino"><option
+                value>Seleccionar encargo</option></select></div>
+        </div>
+        <div class="ig"><label class="il" for="transfenc_desc">Descripción
+            <span
+              style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
+            type="text"
+            id="transfenc_desc"
+            placeholder="Ej: pago a nombre de..."></div>
+        <div class="ig"><label class="il" for="transfenc_monto">¿Cuánto le
+            pagaste?</label><input type="text" inputmode="decimal"
+            id="transfenc_monto" placeholder="0,00" class="money-input"></div>
+        <div class="ig">
+          <label class="il" for="transfenc_origen">¿De la plata que le
+            tienes guardada en cuál cuenta salió?</label>
+          <div class="select-wrap"><select id="transfenc_origen"><option
+                value>Sin especificar</option></select></div>
+        </div>
+        <div class="ig">
+          <label class="il" for="transfenc_cuenta_fisica">¿En cuál de tus
+            cuentas quedó guardada esa plata para el otro encargo?</label>
+          <div class="select-wrap"><select
+              id="transfenc_cuenta_fisica"><option
+                value>Sin especificar</option></select></div>
+        </div>
+        <div class="ig"><label class="il"
+            for="transfenc_fecha">Fecha</label><input type="date"
+            id="transfenc_fecha"></div>
+        <div id="transfenc_preview"
+          style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:12px;min-height:16px;line-height:1.6;"></div>
+        <button type="button" class="btn"
+          id="btn-confirmar-transferencia-encargo"
+          style="background:rgba(96,176,240,.2);color:var(--blue);border:1px solid rgba(96,176,240,.5);box-shadow:none;font-weight:600;">Confirmar
+          transferencia</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="transferencia-encargo">Cancelar</button>
       </div>
     </div>
 

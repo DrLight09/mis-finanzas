@@ -1622,6 +1622,27 @@ async function eliminarEncargoActual() {
   toast('Encargo eliminado', 'info');
 }
 
+// ── MENÚ "¿A DÓNDE FUE ESA PLATA?" (salida de encargo) ─────────────────
+// Las 4 formas en que la plata deja de estar disponible en el encargo
+// (gasto normal, se la quedó el usuario, pasó a otro encargo, se pagó
+// con TC) comparten un solo botón de entrada para no saturar la vista
+// de detalle con un botón grande por cada variante.
+function abrirSalidaEncargoMenu() {
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+  const libre = encargoLibre(enc);
+  if (libre <= 0) { toast(encargoComprometido(enc) > 0 ? 'Toda la plata de este encargo ya está comprometida' : 'El encargo no tiene saldo disponible', 'err'); return; }
+  openSheet('salida-encargo-menu');
+}
+
+function _salidaEncMenuIr(destino) {
+  closeSheet('salida-encargo-menu');
+  if (destino === 'normal') abrirMovEncargo('salida');
+  else if (destino === 'mio') abrirTraspasoEncargo();
+  else if (destino === 'otroEncargo') abrirTransferenciaEncargo();
+  else if (destino === 'tc') abrirCompraConTC();
+}
+
 function abrirTraspasoEncargo() {
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
@@ -2556,6 +2577,8 @@ function confirmarCompraConTC() {
 
 Events.registerAll('encargos', {
   abrirMov:               (...args) => abrirMovEncargo(...args),          // data-args: ["entrada"] | ["salida"]
+  abrirSalidaMenu:        (...args) => abrirSalidaEncargoMenu(...args),
+  salidaMenuIr:           (...args) => _salidaEncMenuIr(...args),         // data-args: ["normal"|"mio"|"otroEncargo"|"tc"]
   abrirTraspaso:          (...args) => abrirTraspasoEncargo(...args),
   abrirMoverCuentas:      (...args) => abrirMoverEntreCuentasEncargo(...args),
   abrirTransferencia:     (...args) => abrirTransferenciaEncargo(...args),

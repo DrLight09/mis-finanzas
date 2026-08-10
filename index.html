@@ -1874,7 +1874,11 @@
                 style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin:0 0 10px;min-height:12px;"></div>
               <!-- Desglose por cuenta -->
               <div id="encargoDesgloseCuentas"
-                style="margin-bottom:10px;"></div>
+                style="margin-bottom:6px;"></div>
+              <button type="button" id="enc-reubicar-link"
+                data-action="encargos:abrirMoverCuentas"
+                style="font-size:10px;color:var(--amber);background:none;border:none;cursor:pointer;font-family:'DM Mono',monospace;padding:0;margin:0 0 10px;display:block;">↔
+                Reubicar entre cuentas</button>
               <div class="cuenta-actions">
                 <button type="button" class="cuenta-action-btn"
                   style="background:rgba(96,176,240,.1);border-color:rgba(96,176,240,.35);color:var(--blue);"
@@ -1887,58 +1891,70 @@
                 </button>
                 <button type="button" class="cuenta-action-btn"
                   style="background:rgba(240,104,104,.08);border-color:rgba(240,104,104,.3);color:var(--red);"
-                  data-action="encargos:abrirMov" data-args='["salida"]'>
+                  data-action="encargos:abrirSalidaMenu">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round"><line x1="5" y1="12" x2="19"
                       y2="12" /></svg>
                   <span class="cuenta-action-btn-label">Salió plata</span>
                 </button>
+              </div>
+              <div
+                style="margin-top:10px;font-size:10px;color:var(--blue);font-family:'DM Mono',monospace;">Esta
+                plata no es tuya · no suma a tu patrimonio</div>
+            </div>
+            <!-- MENÚ: ¿A dónde fue esa plata? -->
+            <div class="overlay" id="sheet-salida-encargo-menu"
+              data-sheet-id="salida-encargo-menu">
+              <div class="sheet">
+                <div class="sheet-handle"></div>
+                <div class="sheet-title">¿A dónde fue esa plata?</div>
                 <button type="button" class="cuenta-action-btn"
-                  style="background:rgba(200,240,96,.08);border-color:rgba(200,240,96,.3);color:var(--accent);"
-                  data-action="encargos:abrirTraspaso">
+                  style="width:100%;flex-direction:row;justify-content:flex-start;gap:10px;margin-bottom:8px;background:rgba(240,104,104,.08);border-color:rgba(240,104,104,.3);color:var(--red);"
+                  data-action="encargos:salidaMenuIr" data-args='["normal"]'>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round"><line x1="5" y1="12" x2="19"
+                      y2="12" /></svg>
+                  <span class="cuenta-action-btn-label">Gasto normal / se la
+                    entregué</span>
+                </button>
+                <button type="button" class="cuenta-action-btn"
+                  style="width:100%;flex-direction:row;justify-content:flex-start;gap:10px;margin-bottom:8px;background:rgba(200,240,96,.08);border-color:rgba(200,240,96,.3);color:var(--accent);"
+                  data-action="encargos:salidaMenuIr" data-args='["mio"]'>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round"><path d="M5 9l4-4-4-4" /><path
                       d="M19 15l-4 4 4 4" /><line x1="9" y1="5" x2="19"
                       y2="5" /><line x1="5" y1="19" x2="15" y2="19" /></svg>
-                  <span class="cuenta-action-btn-label">Me lo regalaron</span>
+                  <span class="cuenta-action-btn-label">Me la quedé yo (me lo
+                    regalaron)</span>
                 </button>
                 <button type="button" class="cuenta-action-btn"
-                  style="background:rgba(240,184,64,.08);border-color:rgba(240,184,64,.3);color:var(--amber);"
-                  data-action="encargos:abrirMoverCuentas">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2.5"
-                    stroke-linecap="round"><polyline
-                      points="17 1 21 5 17 9" /><path
-                      d="M3 11V9a4 4 0 0 1 4-4h14" /><polyline
-                      points="7 23 3 19 7 15" /><path
-                      d="M21 13v2a4 4 0 0 1-4 4H3" /></svg>
-                  <span class="cuenta-action-btn-label">Mover de cuenta</span>
-                </button>
-                <button type="button" class="cuenta-action-btn"
-                  style="background:rgba(96,176,240,.08);border-color:rgba(96,176,240,.3);color:var(--blue);"
-                  data-action="encargos:abrirTransferencia">
+                  style="width:100%;flex-direction:row;justify-content:flex-start;gap:10px;margin-bottom:8px;background:rgba(96,176,240,.08);border-color:rgba(96,176,240,.3);color:var(--blue);"
+                  data-action="encargos:salidaMenuIr"
+                  data-args='["otroEncargo"]'>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round"><line x1="17" y1="7" x2="7"
                       y2="17" /><polyline points="8 7 17 7 17 16" /></svg>
-                  <span class="cuenta-action-btn-label">Pagarle a otro encargo</span>
+                  <span class="cuenta-action-btn-label">Se la pasé a otro
+                    encargo</span>
                 </button>
                 <button type="button" class="cuenta-action-btn"
-                  style="background:rgba(240,104,104,.12);border-color:rgba(240,104,104,.45);color:var(--red);flex-basis:100%;"
-                  data-action="encargos:abrirCompraTC">
+                  style="width:100%;flex-direction:row;justify-content:flex-start;gap:10px;margin-bottom:8px;background:rgba(240,104,104,.12);border-color:rgba(240,104,104,.45);color:var(--red);"
+                  data-action="encargos:salidaMenuIr" data-args='["tc"]'>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round"><rect x="2" y="6" width="20"
                       height="13" rx="2" /><path d="M2 10h20" /><path
                       d="M7 15h.01" /><path d="M11 15h4" /></svg>
-                  <span class="cuenta-action-btn-label">Pagué con mi TC</span>
+                  <span class="cuenta-action-btn-label">La pagué con mi
+                    TC</span>
                 </button>
+                <button type="button" class="btn btn-ghost"
+                  data-close-sheet="salida-encargo-menu">Cancelar</button>
               </div>
-              <div
-                style="margin-top:10px;font-size:10px;color:var(--blue);font-family:'DM Mono',monospace;">Esta
-                plata no es tuya · no suma a tu patrimonio</div>
             </div>
             <!-- Resumen encargo -->
             <div class="grid2" style="margin-bottom:10px;">

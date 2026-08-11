@@ -37,9 +37,13 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
 .nav-item.active{color:var(--accent);background:rgba(200,240,96,.08);}
 .nav-item.active svg{transform:scale(1.05);}
 /* Más menu */
-.mas-menu-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:800;backdrop-filter:blur(4px);}
-.mas-menu-overlay.open{display:block;}
-.mas-menu{position:fixed;bottom:0;left:0;right:0;margin-left:auto;margin-right:auto;width:100%;max-width:430px;background:var(--bg2);border-radius:22px 22px 0 0;border-top:1px solid var(--border2);padding:14px 16px max(28px,env(safe-area-inset-bottom));z-index:801;}
+/* El backdrop del menú "Más" reusa la clase compartida .overlay (ver
+   index.html: class="overlay mas-menu-overlay") en vez de duplicar
+   background/blur/z-index a mano — ver reglas-visuales.md#backdrops-de-overlay.
+   .overlay ya aporta display/background/backdrop-filter; acá solo queda lo
+   propio del panel, con z-index por encima de los 1001 que .overlay.open
+   le da a su propio backdrop cuando está abierto. */
+.mas-menu{position:fixed;bottom:0;left:0;right:0;margin-left:auto;margin-right:auto;width:100%;max-width:430px;background:var(--bg2);border-radius:22px 22px 0 0;border-top:1px solid var(--border2);padding:14px 16px max(28px,env(safe-area-inset-bottom));z-index:1002;}
 .mas-menu-handle{width:44px;height:5px;background:var(--border2);border-radius:3px;margin:0 auto 18px;cursor:grab;}
 .mas-menu-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;font-family:'DM Mono',monospace;margin-bottom:14px;font-weight:600;}
 .mas-item{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--border);cursor:pointer;min-height:60px;transition:opacity .15s;}
@@ -495,12 +499,10 @@ input.movs-search-input:focus{border-color:var(--accent);}
 /* Divider entre secciones de formulario */
 .form-divider{height:1px;background:var(--border);margin:12px 0 14px;}
 /* Info box (patrón azul/amarillo informativo) */
-.info-box{border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;font-size:11px;line-height:1.55;}
 .info-box-blue{background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.22);color:var(--text2);}
 .info-box-amber{background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.22);color:var(--text2);}
 .info-box-green{background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.22);color:var(--text2);}
 /* Hints pequeños bajo inputs */
-.field-hint{font-size:10px;font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;color:var(--text3);}
 .field-hint-blue{color:var(--blue);}
 .field-hint-green{color:var(--accent);}
 /* Toggle-card (patrón checkbox tarjeta, apertura/inicio) */
@@ -553,15 +555,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 /* Sheet title con separación ligera del handle */
 .sheet-title{margin-bottom:18px;}
 
-/* info-box: padding y radius coherente en los tres colores */
+/* info-box: única definición — padding y radius coherente en los tres colores */
 .info-box{border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:10px;font-size:11px;line-height:1.6;}
 
 /* form-divider: margen estandarizado */
 .form-divider{height:1px;background:var(--border);margin:14px 0 16px;}
 .form-section-sep{height:1px;background:var(--border);margin:14px 0 14px;}
 
-/* field-hint con tamaño consistente */
-.field-hint{font-size:10.5px;font-family:'DM Mono',monospace;margin-top:4px;color:var(--text3);line-height:1.4;}
+/* field-hint: tamaño consistente, con min-height para que el layout no salte cuando el texto aparece */
+.field-hint{font-size:10.5px;font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;color:var(--text3);line-height:1.4;}
 
 /* Botón ghost secundario de cancelar en sheets: sin margen top extra cuando está al final y precedido de btn-primary */
 .btn-primary + .btn-ghost{margin-top:7px;}

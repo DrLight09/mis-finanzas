@@ -1532,11 +1532,10 @@ function _actualizarEncPreview(enc) {
     const esSinEsp = _abonoEncCuenta === '__sinesp__';
     const labelCuenta = esSinEsp ? 'Sin especificar' : fuenteLabel(_abonoEncCuenta);
     const saldoEnCuenta = esSinEsp ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
-    if (hint) {
-      hint.textContent = `Disponible en ${labelCuenta}: ${fmt(saldoEnCuenta)}`;
-      hint.style.display = '';
-      hint.style.color = monto > saldoEnCuenta ? 'var(--red)' : 'var(--blue)';
-    }
+    // El hint estático ("Disponible en X: $Y") es redundante: el <option> de
+    // mov_enc_cuenta ya muestra ese mismo monto en su texto (ver onChangeMov_enc_sel
+    // más arriba). Se deja oculto — ver reglas-visuales.md#selectores-con-saldo.
+    if (hint) hint.style.display = 'none';
     preview.style.color = monto > saldoEnCuenta ? 'var(--red)' : 'var(--accent)';
     preview.textContent = monto > saldoEnCuenta
       ? `\u26a0 Solo hay ${fmt(saldoEnCuenta)} en ${esSinEsp ? 'la parte sin especificar' : 'esa cuenta'} del encargo`

@@ -1158,6 +1158,10 @@ function abrirMovEncargo(tipo) {
 
   // Poblar select de cuentas (modo simple)
   const sel = document.getElementById('movenc_cuenta');
+  const _movEncHintEl = document.getElementById('movenc_cuenta_hint');
+  // true cuando el select ya pinta el saldo en cada <option> — en ese caso el
+  // hint de abajo sería redundante. Ver reglas-visuales.md#selectores-con-saldo.
+  let _movEncMuestraSaldoEnOpcion = false;
 
   // Cambiar label según tipo y mostrar/ocultar botón dividir
   const label = document.getElementById('movenc_cuenta_label');
@@ -1177,18 +1181,21 @@ function abrirMovEncargo(tipo) {
     } else {
       sel.innerHTML = '<option value="">Sin especificar</option>' +
         cuentasConSaldo.map(f=>`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+      _movEncMuestraSaldoEnOpcion = true;
     }
     label.textContent = '¿De qué cuenta sacaste esa plata?';
     if (splitToggleBtn) splitToggleBtn.style.display = '';
     // Pre-seleccionar la cuenta con más saldo del encargo
     if (cuentasConSaldo.length > 0) {
       sel.value = cuentasConSaldo[0].cuenta;
-      _actualizarMovEncCuentaHint(enc, cuentasConSaldo[0].cuenta);
     }
   }
 
-  // Listener para mostrar saldo de encargo en esa cuenta
-  sel.onchange = function() { _actualizarMovEncCuentaHint(enc, sel.value); };
+  if (_movEncHintEl) _movEncHintEl.style.display = _movEncMuestraSaldoEnOpcion ? 'none' : '';
+  if (!_movEncMuestraSaldoEnOpcion && sel.value) _actualizarMovEncCuentaHint(enc, sel.value);
+
+  // Listener para mostrar saldo de encargo en esa cuenta (solo si el select no lo muestra ya)
+  sel.onchange = function() { if(!_movEncMuestraSaldoEnOpcion) _actualizarMovEncCuentaHint(enc, sel.value); };
 
   // Mostrar/ocultar diferencial según tipo
   const difWrap = document.getElementById('movenc-dif-wrap');
@@ -1663,6 +1670,7 @@ function abrirTraspasoEncargo() {
   // Poblar select origen: de qué cuenta del encargo salió el regalo
   const selOrigen = document.getElementById('traspaso_origen');
   const cuentasEnc = _getEncargoSaldoPorCuenta(enc);
+  let _traspasoOrigenMuestraSaldoEnOpcion = false;
   if (cuentasEnc.length === 0) {
     // Si no hay distribución por cuenta, mostrar todas (sin TC) — mismo criterio que una salida normal
     const fuentesTodas = getFuentesSinTC();
@@ -1672,9 +1680,14 @@ function abrirTraspasoEncargo() {
       cuentasEnc.map(f=>`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
     // Pre-seleccionar la cuenta con más saldo del encargo
     selOrigen.value = cuentasEnc[0].cuenta;
+    _traspasoOrigenMuestraSaldoEnOpcion = true;
   }
-  _actualizarTraspasoOrigenHint(enc);
-  selOrigen.onchange = function() { _actualizarTraspasoOrigenHint(enc); };
+  // El hint de saldo solo aporta info nueva cuando el select no la muestra ya
+  // en cada opción. Ver reglas-visuales.md#selectores-con-saldo.
+  const _traspasoOrigenHintEl = document.getElementById('traspaso_origen_hint');
+  if (_traspasoOrigenHintEl) _traspasoOrigenHintEl.style.display = _traspasoOrigenMuestraSaldoEnOpcion ? 'none' : '';
+  if (!_traspasoOrigenMuestraSaldoEnOpcion) _actualizarTraspasoOrigenHint(enc);
+  selOrigen.onchange = function() { if(!_traspasoOrigenMuestraSaldoEnOpcion) _actualizarTraspasoOrigenHint(enc); };
 
   // Poblar select destino con mis cuentas
   const fuentes = getFuentes();
@@ -2290,6 +2303,7 @@ function abrirCompraConTC() {
   // Poblar select de cuentas del encargo
   const selEnc = document.getElementById('ctc_cuenta_enc');
   const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
+  let _ctcCuentaEncMuestraSaldoEnOpcion = false;
   if (cuentasConSaldo.length === 0) {
     const fuentes = getFuentes();
     selEnc.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
@@ -2297,8 +2311,13 @@ function abrirCompraConTC() {
     selEnc.innerHTML = '<option value="">Sin especificar</option>' +
       cuentasConSaldo.map(f => `<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
     selEnc.value = cuentasConSaldo[0].cuenta;
+    _ctcCuentaEncMuestraSaldoEnOpcion = true;
   }
-  _ctcActualizarCuentaEncHint();
+  // El hint solo aporta info nueva cuando el select no la muestra ya en cada
+  // opción. Ver reglas-visuales.md#selectores-con-saldo.
+  const _ctcCuentaEncHintEl = document.getElementById('ctc_cuenta_enc_hint');
+  if (_ctcCuentaEncHintEl) _ctcCuentaEncHintEl.style.display = _ctcCuentaEncMuestraSaldoEnOpcion ? 'none' : '';
+  if (!_ctcCuentaEncMuestraSaldoEnOpcion) _ctcActualizarCuentaEncHint();
 
   // Poblar tarjetas de credito
   const selTC = document.getElementById('ctc_tarjeta');
@@ -2312,10 +2331,11 @@ function abrirCompraConTC() {
     if (tarjetas.length === 1) selTC.value = tarjetas[0].id;
   }
 
-  // Poblar destino del dinero (mis cuentas)
+  // Poblar destino del dinero (mis cuentas) — el saldo va en el hint de abajo,
+  // no en la opción (mismo patrón que traspaso_destino/spPagarFuente).
   const selDest = document.getElementById('ctc_destino');
   const fuentes = getFuentes();
-  selDest.innerHTML = '<option value="">Seleccionar cuenta</option>' + fuentes.map(f => `<option value="${f.val}">${f.label} (${fmt(getSaldoActual(f.val))})</option>`).join('');
+  selDest.innerHTML = '<option value="">Seleccionar cuenta</option>' + fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
   // Buscar cajita que tenga "tarjeta" o "TC" o "pago" en el nombre para pre-seleccionar
   const cajitaTC = (S.cajitas || []).find(c => {
     const n = (c.nombre||'').toLowerCase();

@@ -312,6 +312,7 @@ function guardarTC(){
   if(_tcEditId){
     const tc=getTCById(_tcEditId);
     if(tc){
+      if(cupo>0&&cupo<tc.deuda){toast('El cupo no puede ser menor a la deuda actual ('+fmt(tc.deuda)+')','err');return;}
       tc.nombre=nombre;
       tc.banco=banco;
       tc.franquicia=franquicia;
@@ -325,6 +326,7 @@ function guardarTC(){
     toast('Tarjeta actualizada','ok');
   } else {
     const deudaIni=parseMoney(document.getElementById('tc_deuda_ini').value)||0;
+    if(cupo>0&&deudaIni>cupo){toast('La deuda inicial no puede ser mayor al cupo ('+fmt(cupo)+')','err');return;}
     const nuevo={
       id:uid(),nombre,banco,franquicia,color:_tcColorSel,
       cupo,deuda:0,estado:'activa',cajitaId,

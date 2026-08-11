@@ -131,7 +131,7 @@ function renderGastosVar() {
     return `<div class="gasto-item" style="${(esFijo || esPagoTC) ? 'opacity:.75;' : ''}">
       <div class="gasto-item-top">
         <div style="flex:1;min-width:0;">
-          <div class="row-name" style="font-size:13px;display:flex;align-items:center;gap:6px;">${escHtml(g.desc)}${esSecundario ? `<span title="Generado desde ${escHtml(g._origenSeccion || 'otra sección')} — elimínalo desde allá" style="display:inline-flex;align-items:center;gap:2px;font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:1px 5px;white-space:nowrap;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
+          <div class="row-name" style="font-size:13px;display:flex;align-items:center;gap:6px;">${escHtml(g.desc)}${esSecundario ? `<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:1px 5px;white-space:nowrap;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
           <div class="row-sub">${g.fecha}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">

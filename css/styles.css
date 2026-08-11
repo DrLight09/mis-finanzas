@@ -37,7 +37,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
 .nav-item.active{color:var(--accent);background:rgba(200,240,96,.08);}
 .nav-item.active svg{transform:scale(1.05);}
 /* Más menu */
-.mas-menu-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:800;backdrop-filter:blur(3px);}
+.mas-menu-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:800;backdrop-filter:blur(4px);}
 .mas-menu-overlay.open{display:block;}
 .mas-menu{position:fixed;bottom:0;left:0;right:0;margin-left:auto;margin-right:auto;width:100%;max-width:430px;background:var(--bg2);border-radius:22px 22px 0 0;border-top:1px solid var(--border2);padding:14px 16px max(28px,env(safe-area-inset-bottom));z-index:801;}
 .mas-menu-handle{width:44px;height:5px;background:var(--border2);border-radius:3px;margin:0 auto 18px;cursor:grab;}

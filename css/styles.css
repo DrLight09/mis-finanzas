@@ -565,6 +565,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 /* field-hint: tamaño consistente, con min-height para que el layout no salte cuando el texto aparece */
 .field-hint{font-size:10.5px;font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;color:var(--text3);line-height:1.4;}
 
+/* Hints/previews con min-height inline (field-hint y los ~40 divs de preview/resumen
+   sueltos en sheets — split, traspasos, diferenciales, etc.): el min-height evita que
+   el layout salte cuando aparece texto, pero deja un hueco vacío visible mientras no
+   hay contenido. Se colapsa a 0 en el estado :empty (sin hijos — lo que deja
+   `el.textContent=''`) y vuelve a su min-height normal en cuanto se le asigna texto.
+   Selector por atributo en vez de una clase porque estos divs no comparten una clase
+   común, solo el patrón de estilo inline — ver reglas-visuales.md#hints-vacíos. */
+[style*="min-height"]:empty{min-height:0 !important;}
+
 /* Botón ghost secundario de cancelar en sheets: sin margen top extra cuando está al final y precedido de btn-primary */
 .btn-primary + .btn-ghost{margin-top:7px;}
 

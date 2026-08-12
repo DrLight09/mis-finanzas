@@ -1902,18 +1902,11 @@ function abrirMoverEntreCuentasEncargo() {
 }
 
 function _actualizarMoverEncOrigenHint(enc) {
-  const sel = document.getElementById('moverenc_origen');
+  // El <option> de moverenc_origen ya trae el saldo en su texto siempre
+  // ("Nequi (150.000 del encargo)") — este hint sería puro eco. Se deja
+  // oculto. Ver reglas-visuales.md#selectores-con-saldo.
   const hint = document.getElementById('moverenc_origen_hint');
-  if (!hint) return;
-  const val = sel.value;
-  if (!val) { hint.textContent = ''; return; }
-  const saldoEnc = val === '__sinesp__'
-    ? _getEncargoSaldoSinCuenta(enc)
-    : (_getEncargoSaldoPorCuenta(enc).find(c => c.cuenta === val)?.saldo || 0);
-  hint.textContent = saldoEnc > 0
-    ? 'Del encargo en esta cuenta: ' + fmt(saldoEnc)
-    : 'El encargo no tiene plata en esta cuenta';
-  hint.style.color = saldoEnc > 0 ? 'var(--amber)' : 'var(--red)';
+  if (hint) hint.style.display = 'none';
 }
 
 function _actualizarMoverEncDestinoHint() {

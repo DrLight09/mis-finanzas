@@ -1241,6 +1241,11 @@ function abrirMovEncargo(tipo) {
     btn.style.border = 'none';
     btn.style.boxShadow = 'none';
   }
+  // El monto arranca vacío (reseteado arriba), así que nunca hay faltante al
+  // abrir — esto solo deja todo en su estado base (banner oculto, botón
+  // Guardar visible) por si el sheet quedó en el estado "faltante" de una
+  // apertura anterior.
+  _movEncActualizarFaltante();
   openSheet('mov-encargo');
 }
 
@@ -1302,6 +1307,7 @@ function _movEncSplitPreview() {
     }
   }
   _movEncMiaPreview();
+  _movEncActualizarFaltante();
 }
 
 function _getEncargoSaldoPorCuenta(enc) {
@@ -1457,6 +1463,164 @@ function confirmarMovEncargo() {
     abrirEncargoDetalle(encargoActualId);
     toast(movEncargoTipo === 'entrada' ? 'Entrada registrada' : 'Salida registrada', 'ok');
   }
+}
+
+// Muestra/oculta la opción "prestar lo que falta" cuando una salida simple
+// (no dividida) pide más de lo que el encargo tiene libre. Se llama en cada
+// input de monto y al abrir/cerrar el modo split (encadenada desde
+// _movEncSplitPreview) y al abrir el sheet (abrirMovEncargo).
+//
+// Alcance a propósito acotado a "salida" en modo simple: en modo split o en
+// entradas, el encargo simplemente no alcanza y se mantiene el error
+// genérico ya existente en confirmarMovEncargo — mezclar esta feature con
+// splits (¿de cuál cuenta del encargo sale cada parte del faltante? ¿de
+// cuál cuenta propia?) complica la UI sin un caso real que lo pida todavía.
+function _movEncActualizarFaltante() {
+  const wrap = document.getElementById('movenc-faltante-wrap');
+  if (!wrap) return;
+  const btnGuardar = document.getElementById('btn-confirmar-mov-encargo');
+  const difWrap = document.getElementById('movenc-dif-wrap');
+  const miaWrap = document.getElementById('movenc-mia-wrap');
+  const enc = encargoActualId ? getEncargo(encargoActualId) : null;
+  const montoEl = document.getElementById('movenc_monto');
+  const monto = montoEl ? (parseMoney(montoEl.value) || 0) : 0;
+
+  const ocultarFaltante = () => {
+    wrap.style.display = 'none';
+    if (btnGuardar) btnGuardar.style.display = '';
+    // Diferencial y "yo puse la plata" solo aplican a salidas — se restauran
+    // acá porque _movEncActualizarFaltante puede haberlos ocultado antes.
+    if (movEncargoTipo === 'salida') {
+      if (difWrap) difWrap.style.display = '';
+      if (miaWrap) miaWrap.style.display = '';
+    }
+  };
+
+  if (!enc || movEncargoTipo !== 'salida' || _movEncSplitMode || monto <= 0) {
+    ocultarFaltante();
+    return;
+  }
+  const libre = encargoLibre(enc);
+  if (monto <= libre + 0.5) {
+    ocultarFaltante();
+    return;
+  }
+
+  // Hay faltante real: mostrar el banner y esconder Guardar/diferencial/mia
+  // para no combinar esta feature con esas otras a medio llenar.
+  const faltante = monto - libre;
+  const detalle = document.getElementById('movenc-faltante-detalle');
+  if (detalle) {
+    detalle.textContent = libre > 0
+      ? `Se retiran ${fmt(libre)} del encargo (todo lo disponible) y los otros ${fmt(faltante)} quedan como un préstamo tuyo aparte a ${enc.nombre}, en "Me deben" — no forman parte de este encargo.`
+      : `Este encargo no tiene nada disponible ahora mismo. Los ${fmt(faltante)} completos quedarían como un préstamo tuyo a ${enc.nombre}, en "Me deben".`;
+  }
+  const selCuenta = document.getElementById('movenc_faltante_cuenta');
+  if (selCuenta) {
+    const valPrevio = selCuenta.value;
+    const fuentes = getFuentesSinTC();
+    selCuenta.innerHTML = '<option value="">Seleccionar cuenta</option>' +
+      fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
+    if (valPrevio && fuentes.some(f => f.val === valPrevio)) selCuenta.value = valPrevio;
+  }
+  wrap.style.display = '';
+  if (btnGuardar) btnGuardar.style.display = 'none';
+  if (difWrap) difWrap.style.display = 'none';
+  if (miaWrap) miaWrap.style.display = 'none';
+}
+
+// Confirma "prestar lo que falta": retira del encargo únicamente lo que
+// tiene libre (movimiento tipo:'salida' normal, igual que cualquier otra
+// salida simple) y registra el resto como un préstamo real, propio, en
+// "Me deben" (S.deudores) — con su propia cuenta de origen (la tuya, nunca
+// la del encargo) y respetando el sistema de grupos de préstamo (ver
+// prestado.md §2.4) vía _autoGrupoIdMov: si la persona ya tiene un grupo
+// abierto lo reutiliza, si no arranca uno nuevo.
+//
+// Las dos partes quedan como movimientos independientes a propósito — el
+// préstamo es una deuda real que sigue existiendo sin importar qué pase
+// después con el encargo, así que no están encadenados para borrado en
+// cascada: cada uno se revierte con su flujo normal (deleteMovEncargo /
+// eliminarMovDeudor). _encargoOrigenId/_encargoOrigenMovId en el movimiento
+// del deudor son solo trazabilidad, no afectan el borrado de ninguno de los
+// dos lados.
+function _movEncConfirmarPrestarFaltante() {
+  const enc = getEncargo(encargoActualId);
+  if (!enc) return;
+  const desc  = document.getElementById('movenc_desc').value.trim();
+  const monto = parseMoney(document.getElementById('movenc_monto').value) || 0;
+  if (!desc)  { toast('Ingresa una descripción', 'err'); return; }
+  if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
+
+  const libre = encargoLibre(enc);
+  if (monto <= libre + 0.5) { toast('El encargo ya alcanza para este monto — usa "Guardar"', 'err'); return; }
+  const faltante = monto - libre;
+
+  if (!enc.personaId) {
+    toast('Este encargo no tiene una persona vinculada — vinculala desde Editar antes de prestar el faltante', 'err', 4500);
+    return;
+  }
+  const persona = typeof getPersona === 'function' ? getPersona(enc.personaId) : null;
+  if (!persona) { toast('No se encontró la persona vinculada a este encargo', 'err'); return; }
+
+  const fuentePrestamo = document.getElementById('movenc_faltante_cuenta').value;
+  if (!fuentePrestamo) { toast('Selecciona de cuál cuenta tuya sale lo prestado', 'err'); return; }
+
+  const cuenta = document.getElementById('movenc_cuenta').value;
+  if (cuenta) {
+    const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuenta);
+    if (libre > saldoEnCuenta + 0.5) {
+      toast(`En ${escHtml(fuenteLabel(cuenta))} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+    }
+  }
+
+  const fecha = document.getElementById('movenc_fecha').value || hoy();
+  const nota  = document.getElementById('movenc_nota').value.trim();
+
+  // 1) Retirar del encargo únicamente lo que realmente tiene disponible —
+  //    un movimiento tipo:'salida' idéntico a cualquier otra salida simple.
+  if (!enc.movimientos) enc.movimientos = [];
+  const movEncId = uid();
+  enc.movimientos.push({
+    id: movEncId,
+    tipo: 'salida',
+    desc,
+    monto: libre,
+    cuenta: cuenta || '',
+    fecha,
+    nota: (nota ? nota + ' · ' : '') + `Resto (${fmt(faltante)}) prestado aparte, fuera del encargo`,
+    ts: Date.now()
+  });
+
+  // 2) El faltante, como préstamo real tuyo — mismo deudor que ya usa este
+  //    encargo si existe (nunca duplicar persona, ver prestado.md §6).
+  let deudor = (S.deudores || []).find(d => d.personaId === enc.personaId);
+  if (!deudor) {
+    if (!S.deudores) S.deudores = [];
+    deudor = { id: uid(), nombre: persona.nombre, color: persona.color || '#60b0f0', personaId: persona.id, movimientos: [] };
+    S.deudores.push(deudor);
+  }
+  if (!deudor.movimientos) deudor.movimientos = [];
+  const grupoId = _autoGrupoIdMov(deudor, fecha);
+  deudor.movimientos.push({
+    id: uid(),
+    tipo: 'prestamo',
+    monto: faltante,
+    fecha,
+    fuente: fuentePrestamo,
+    nota: `Encargo "${escHtml(enc.nombre)}": ${desc} (no alcanzaba ${fmt(libre)} del encargo)`,
+    grupoId,
+    _encargoOrigenId: enc.id,
+    _encargoOrigenMovId: movEncId,
+    ts: Date.now() + 1
+  });
+  descontarFuente(fuentePrestamo, faltante);
+
+  save();
+  refresh();
+  closeSheet('mov-encargo');
+  abrirEncargoDetalle(encargoActualId);
+  toast(`${fmt(libre)} retirados del encargo · ${fmt(faltante)} prestados a ${escHtml(persona.nombre)} (Me deben)`, 'ok', 4500);
 }
 
 async function deleteMovEncargo(encId, movId) {
@@ -2602,6 +2766,7 @@ Events.registerAll('encargos', {
   difToggle:              (...args) => _difToggle(...args),
   difAddBenef:            (...args) => _difAddBenef(...args),
   miaToggle:              (...args) => _movEncMiaToggle(...args),
+  confirmarPrestarFaltante: (...args) => _movEncConfirmarPrestarFaltante(...args),
   guardarParte:           (...args) => guardarParte(...args),
   cerrarParteSheet:       (...args) => cerrarPartSheet(...args),
   usarParteSplitToggle:   (...args) => _usarParteSplitToggle(...args),

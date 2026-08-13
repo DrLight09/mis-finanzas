@@ -1527,6 +1527,34 @@ function _movEncActualizarFaltante() {
   if (btnGuardar) btnGuardar.style.display = 'none';
   if (difWrap) difWrap.style.display = 'none';
   if (miaWrap) miaWrap.style.display = 'none';
+  _movEncFaltanteCuentaHint();
+}
+
+// Hint en vivo bajo el selector de cuenta propia del banner de faltante:
+// avisa ANTES de confirmar si esa cuenta no tiene lo suficiente para cubrir
+// el préstamo — mismo criterio (getSaldoFuente) que ya usa "Yo puse la
+// plata" (_validarMovEncMia). Este chequeo es solo UX; la validación real
+// que bloquea el guardado vive en _movEncConfirmarPrestarFaltante.
+function _movEncFaltanteCuentaHint() {
+  const hint = document.getElementById('movenc_faltante_cuenta_hint');
+  if (!hint) return;
+  const wrap = document.getElementById('movenc-faltante-wrap');
+  if (!wrap || wrap.style.display === 'none') { hint.textContent = ''; return; }
+  const enc = encargoActualId ? getEncargo(encargoActualId) : null;
+  const sel = document.getElementById('movenc_faltante_cuenta');
+  const fuenteVal = sel ? sel.value : '';
+  if (!enc || !fuenteVal) { hint.textContent = ''; hint.style.color = ''; return; }
+  const monto = parseMoney(document.getElementById('movenc_monto').value) || 0;
+  const faltante = monto - encargoLibre(enc);
+  if (faltante <= 0) { hint.textContent = ''; return; }
+  const saldo = getSaldoFuente(fuenteVal);
+  if (faltante > saldo + 0.5) {
+    hint.textContent = `No tenés ${fmt(faltante)} en ${fuenteLabel(fuenteVal)}. Disponible: ${fmt(saldo)}.`;
+    hint.style.color = 'var(--red)';
+  } else {
+    hint.textContent = `Disponible en ${fuenteLabel(fuenteVal)}: ${fmt(saldo)}`;
+    hint.style.color = 'var(--text3)';
+  }
 }
 
 // Confirma "prestar lo que falta": retira del encargo únicamente lo que
@@ -1565,6 +1593,18 @@ function _movEncConfirmarPrestarFaltante() {
 
   const fuentePrestamo = document.getElementById('movenc_faltante_cuenta').value;
   if (!fuentePrestamo) { toast('Selecciona de cuál cuenta tuya sale lo prestado', 'err'); return; }
+
+  // Fix (2026-08-13): antes se llamaba descontarFuente() sin chequear que la
+  // cuenta elegida realmente tuviera esa plata — descontarFuente no valida
+  // saldo, así que el préstamo se registraba igual aunque Nequi no tuviera
+  // los 20mil, dejando la cuenta en negativo en silencio. Mismo criterio que
+  // ya usa "Yo puse la plata" (_validarMovEncMia, más arriba en este mismo
+  // archivo): getSaldoFuente() antes de escribir cualquier dato.
+  const saldoFuente = getSaldoFuente(fuentePrestamo);
+  if (faltante > saldoFuente + 0.5) {
+    toast(`No tenés ${fmt(faltante)} en ${escHtml(fuenteLabel(fuentePrestamo))} para prestar. Disponible: ${fmt(saldoFuente)}.`, 'err', 4500);
+    return;
+  }
 
   const cuenta = document.getElementById('movenc_cuenta').value;
   if (cuenta) {
@@ -2713,6 +2753,7 @@ function confirmarCompraConTC() {
   ['movenc_monto', 'input', _movEncSplitPreview],
   ['movenc_mia_cuenta_sale', 'change', _movEncMiaPreview],
   ['movenc_mia_cuenta_entra', 'change', _movEncMiaPreview],
+  ['movenc_faltante_cuenta', 'change', _movEncFaltanteCuentaHint],
   ['ctc_monto', 'input', _ctcActualizarPreview],
   ['ctc_cuenta_enc', 'change', _ctcActualizarPreview],
   ['ctc_tarjeta', 'change', _ctcActualizarPreview],

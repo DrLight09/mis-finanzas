@@ -2866,6 +2866,35 @@
           <div id="movenc_split_preview"
             style="margin-top:7px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:18px;"></div>
         </div>
+        <!-- FALTANTE — el encargo no alcanza para todo el monto de la salida.
+             Solo aplica a salidas simples (no split); ver _movEncActualizarFaltante
+             en encargos.js y encargos.md §5/§6. -->
+        <div id="movenc-faltante-wrap" style="display:none;margin-top:4px;">
+          <div
+            style="padding:11px 13px;background:rgba(240,104,104,.07);border:1px solid rgba(240,104,104,.28);border-radius:var(--radius-sm);">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <span style="font-size:14px;color:var(--red);">⚠</span>
+              <div style="font-size:12px;font-weight:600;color:var(--red);">El
+                encargo no alcanza para este monto</div>
+            </div>
+            <div id="movenc-faltante-detalle"
+              style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px;">
+            </div>
+            <div class="ig" style="margin-bottom:10px;">
+              <label class="il" style="color:var(--red);">¿De cuál cuenta tuya
+                sale lo prestado?</label>
+              <div class="select-wrap"><select
+                  id="movenc_faltante_cuenta"><option value="">Seleccionar
+                    cuenta</option></select></div>
+            </div>
+            <button type="button" id="movenc-faltante-btn"
+              data-action="encargos:confirmarPrestarFaltante"
+              style="width:100%;padding:11px;border-radius:var(--radius-sm);border:none;background:rgba(240,104,104,.85);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+              Retirar lo disponible y prestar el resto
+            </button>
+          </div>
+        </div>
+
         <div class="ig"><label class="il" for="movenc_fecha">Fecha</label><input
             type="date" id="movenc_fecha"></div>
         <div class="ig"><label class="il" for="movenc_nota">Nota

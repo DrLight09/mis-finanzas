@@ -537,11 +537,7 @@ function _checkGastoAlto() {
   const mes = mesActual();
   const gvMes = gastosMes(mes).reduce((a,g) => a + (g.monto||0), 0);
   const gfTotal = (S.gastosFijos||[]).reduce((a,g) => a + (g.monto||0), 0);
-  // FIX 2026-08-13: nuTotal() (cuentas.js, grupo lazy) sin guard — mismo
-  // patrón de fallback ya usado más arriba en este archivo (línea ~239,
-  // window.calcC?...:c.saldo||0) para el mismo caso.
-  const nu = (typeof nuTotal==='function') ? nuTotal()
-    : (S.cajitas||[]).reduce((a,c)=>a+(typeof calcC==='function'?calcC(c).val:(c.saldo||0)),0);
+  const nu = nuTotal();
   const nequi = S.nequiSaldo || 0;
   const ef = S.efectivoSaldo || 0;
   const disp = nu + nequi + ef;

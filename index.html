@@ -4675,7 +4675,19 @@
 // vez que alguien entra a la pantalla.
 -->
 <!-- mesada.js: ver js/core/lazy-loader.js (Loader.GROUPS.mesada) -->
-<script src="js/modules/spotify.js" defer></script>
+<!--
+// Módulo Spotify — migrado a js/modules/spotify.js (ver docs/spotify.md).
+// Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, séptimo
+// grupo): auditado línea por línea, sin dependencia real de orden de
+// carga (solo monkey-patchea sus propias funciones y openSheet, del
+// núcleo). Apareció un bug real al auditar (openSheet envuelto en un
+// listener DOMContentLoaded que con carga lazy nunca dispara) — corregido
+// dentro del propio spotify.js. #screen-spotify y #nav-spotify ya eran
+// HTML estático, no hubo que inyectar nada. Se saca el <script> de acá;
+// ahora lo descarga js/core/lazy-loader.js (Loader.ensure('spotify')) la
+// primera vez que alguien entra a la pantalla.
+-->
+<!-- spotify.js: ver js/core/lazy-loader.js (Loader.GROUPS.spotify) -->
 <script src="js/modules/gastos.js" defer></script>
 <!-- ═══════════════════════════════════════════════════════════════
      js/modules/personas.js se movió acá (2026-08-03) — antes cargaba
@@ -4718,8 +4730,21 @@
      _guardarEditarPersonaGlobal de personas.js, y openSheet (para
      poder envolverlo) de sheet-stack.js — las dos dependencias reales
      de nivel superior confirmadas en esta sesión.
+
+     (Actualización, ronda de lazy-loading — docs/auditoria-tecnica.md #4,
+     octavo grupo lazy) Las dos dependencias de arriba (PERSONA_COLORES/
+     _guardarEditarPersonaGlobal de personas.js, openSheet de
+     sheet-stack.js) siguen satisfechas sin tener que preservar esta
+     posición geográfica: ambos son núcleo/transversal, siempre eager, así
+     que ya están cargados y ejecutados mucho antes de que
+     Loader.ensure('prestamos') pueda siquiera dispararse (requiere que el
+     usuario navegue a Préstamos, después de que toda la carga inicial
+     terminó). Auditado también el bloque de reset de showScreen() en
+     sheet-stack.js — corría en cada navegación, no solo al entrar a
+     Préstamos, y no tenía guard; corregido ahí, ver ese archivo.
+     #screen-prestamos y #nav-prestamos ya eran HTML estático.
      ═══════════════════════════════════════════════════════════════ -->
-<script src="js/modules/prestado.js" defer></script>
+<!-- prestado.js: ver js/core/lazy-loader.js (Loader.GROUPS.prestamos) -->
 <!--
 // js/core/lazy-loader.js — motor de carga bajo demanda (docs/auditoria-
 // tecnica.md #4, fase 1 de la modularización). Se carga acá, justo después
@@ -4729,7 +4754,18 @@
 -->
 <script src="js/core/lazy-loader.js" defer></script>
 <script src="js/core/money-input.js" defer></script>
-<script src="js/modules/encargos.js" defer></script>
+<!--
+// Módulo Encargos — migrado a js/modules/encargos.js (ver docs/encargos.md).
+// Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, noveno
+// grupo): auditado línea por línea, sin dependencia real de orden de
+// carga (monkey-patchea refresh() —núcleo, siempre eager— y sus propias
+// funciones, nada de otros dominios). Limpieza de paso: un listener vacío
+// en DOMContentLoaded que no hacía nada se sacó del archivo. #screen-
+// encargos y su entrada en "Más" ya eran HTML estático. Se saca el
+// <script> de acá; ahora lo descarga js/core/lazy-loader.js
+// (Loader.ensure('encargos')) la primera vez que alguien entra.
+-->
+<!-- encargos.js: ver js/core/lazy-loader.js (Loader.GROUPS.encargos) -->
 <!--
 
 // Módulo Tarjetas de Crédito migrado a js/modules/tarjetas_credito.js —
@@ -4763,10 +4799,18 @@
 
 // Módulo Cuentas migrado a js/modules/cuentas.js — ver docs/cuentas.md.
 // Igual que Tarjetas de Crédito, sin dependencia real de orden de carga
-// (no usa crearSplitWidget ni nada definido más abajo); se carga acá para
-// mantener el orden cronológico de la migración.
+// (no usa crearSplitWidget ni nada definido más abajo).
+//
+// Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, décimo
+// grupo): el más grande de los cinco de esta ronda (agrupa Nequi,
+// Efectivo, cuentas personalizadas y todo el subsistema de Nu). Auditado
+// línea por línea — su wiring redistribuido corre top-level, sin esperar
+// DOMContentLoaded (verificado explícitamente en el propio archivo), y
+// sus llamadas hacia Encargos/Mesada (renderEncargosEnCuenta,
+// getMesadaData) ya tenían guard typeof desde rondas anteriores.
+// #screen-cuentas y #nav-cuentas ya eran HTML estático.
 -->
-<script src="js/modules/cuentas.js" defer></script>
+<!-- cuentas.js: ver js/core/lazy-loader.js (Loader.GROUPS.cuentas) -->
 <script src="js/core/bootstrap.js" defer></script>
 
     <!-- ===== MEJORAS UX MÓVIL JS ===== -->
@@ -5099,8 +5143,16 @@
          Migrado a js/modules/analisis.js — pantalla que nunca apareció en
          auditoria-tecnica.md, descubierta al revisar los onclick restantes
          tras cerrar Configuración. calcPatrimonioTotal()/snapshotPatrimonio()
-         se quedan en index.html (núcleo, los llama save()). ===== -->
-<script src="js/modules/analisis.js" defer></script>
+         son núcleo (viven en js/core/core-state.js, los llama save()), no
+         parte de este módulo.
+
+         Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4,
+         undécimo y último grupo de esta ronda): auditado línea por línea,
+         sin dependencia real de orden de carga (solo Events.registerAll y
+         wiring propio a nivel superior); sus llamadas a getMesadaData()/
+         _getCuotaAnio() (mesada.js) ya tenían guard typeof desde la ronda
+         del 2026-08-02. Su entrada en "Más" ya era HTML estático. ===== -->
+<!-- analisis.js: ver js/core/lazy-loader.js (Loader.GROUPS.analisis) -->
 
     <!-- ===== MÓDULO INICIO (Dashboard) =====
          Migrado a js/modules/inicio.js — ver auditoria-tecnica.md, punto 3

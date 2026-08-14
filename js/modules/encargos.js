@@ -2385,7 +2385,9 @@ refresh = function() {
 };
 
 // Init event listeners for encargos
-document.addEventListener('DOMContentLoaded', function(){}, false);
+// (el listener vacío en DOMContentLoaded que vivía acá se sacó en la ronda
+// de lazy-loading: no hacía nada — el wiring real siempre corrió top-level
+// en el IIFE de abajo, ver auditoria-tecnica.md)
 (function initEncargosListeners(){
   const btn_nuevo = document.getElementById('btn-nuevo-encargo');
   if (btn_nuevo) btn_nuevo.addEventListener('click', () => {

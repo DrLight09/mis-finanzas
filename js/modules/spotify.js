@@ -1087,10 +1087,17 @@ function _onSelPersonaSpotifyEdit(personaId) {
 // que carga DESPUÉS de este módulo (ver comentario de orden de carga en
 // sheet-stack.js). Capturar `openSheet` acá arriba, a nivel superior,
 // lanzaba "openSheet is not defined" porque el global todavía no existía
-// al parsear spotify.js. Se envuelve en DOMContentLoaded: los scripts con
-// defer (incluido sheet-stack.js) ya terminaron de ejecutarse para
-// entonces, así que openSheet ya es un global válido.
-document.addEventListener('DOMContentLoaded', function() {
+// al parsear spotify.js. Antes se envolvía en DOMContentLoaded (los scripts
+// con defer, incluido sheet-stack.js, ya habían terminado de ejecutarse
+// para cuando ese evento disparaba). CORREGIDO (ronda de lazy-loading de
+// spotify/prestado/cuentas/analisis/encargos, ver auditoria-tecnica.md):
+// con spotify.js como grupo lazy, este archivo puede cargar mucho DESPUÉS
+// de que DOMContentLoaded ya disparó — ese listener nunca se habría
+// ejecutado, y openSheet('spotify') jamás habría inyectado los sheets de
+// Personas. openSheet sigue siendo seguro de capturar acá arriba sin
+// esperar ningún evento: vive en js/core/sheet-stack.js, que es núcleo y
+// siempre carga eager mucho antes de que cualquier módulo lazy (spotify
+// incluido) pueda siquiera empezar a descargarse.
 const _origOpenSheetSpotifyPersonas = openSheet;
 openSheet = function(id) {
   if (id === 'spotify') {
@@ -1113,7 +1120,6 @@ openSheet = function(id) {
   }
   _origOpenSheetSpotifyPersonas.apply(this, arguments);
 };
-});
 
 /* ── Hook en addSpotify para guardar personaId ──────────────────── */
 const _origAddSpotifyPersonas = addSpotify;

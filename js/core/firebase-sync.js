@@ -51,16 +51,7 @@
       const elFecha=document.getElementById('nuTasaVigenciaFecha');
       if(el&&window.S.nuTasaGlobal!=null)el.value=String(window.S.nuTasaGlobal).replace('.',',');
       if(elFecha&&!elFecha.value)elFecha.value=hoy();
-      // FIX 2026-08-13: _renderTasaHistorialTag (cuentas.js) corre acá sin
-      // guard, dentro de _initAppUI() — que se ejecuta en CADA arranque de
-      // la app, no solo al visitar Cuentas. Con cuentas.js como grupo lazy
-      // (ver auditoria-tecnica.md), esto tumbaba el arranque completo con
-      // ReferenceError antes de llegar a _initEventListeners()/refresh().
-      // El resto de las llamadas de este bloque (registrarTasaNuHistorial,
-      // calcC) solo se disparan al interactuar con #nuTasaGlobal, que vive
-      // en la pantalla de Cuentas — en teoría ya cargado para entonces vía
-      // Loader, pero se guardan igual por seguridad/consistencia.
-      if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
+      _renderTasaHistorialTag();
       if(el){
         el.addEventListener('input',function(){
           const raw=this.value.replace(',','.');
@@ -68,15 +59,15 @@
           window.S.nuTasaGlobal=v;
           if(v!=null){
             const fecha=(elFecha&&elFecha.value)?elFecha.value:hoy();
-            if(typeof registrarTasaNuHistorial==='function') registrarTasaNuHistorial(fecha,v);
+            registrarTasaNuHistorial(fecha,v);
           }
           save();refresh();
-          if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
+          _renderTasaHistorialTag();
         });
         el.addEventListener('blur',function(){
           if(this.value&&parseFloat(this.value)<=0)this.value='';
           if(this.value&&window.toast){
-            const total=(S.cajitas||[]).reduce((a,c)=>a+(typeof calcC==='function'?calcC(c).val:(c.saldo||0)),0);
+            const total=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
             toast('Cajitas recalculadas: '+fmt(total)+' — compara con la app de Nu','ok',4000);
           }
         });
@@ -87,9 +78,9 @@
             const raw=el.value.replace(',','.');
             const v=parseFloat(raw);
             if(!isNaN(v)){
-              if(typeof registrarTasaNuHistorial==='function') registrarTasaNuHistorial(this.value,v);
+              registrarTasaNuHistorial(this.value,v);
               save();refresh();
-              if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
+              _renderTasaHistorialTag();
             }
           }
         });
@@ -104,10 +95,7 @@
     poblarCatSelect('gf_c',getCatsFijo());
     _initEventListeners();
     _injectErrorSpans();
-    // FIX 2026-08-13: verificarVencimientosCDT (cuentas.js, grupo lazy) sin
-    // guard — mismo problema que _renderTasaHistorialTag arreglado antes:
-    // corre en cada arranque de la app, no solo al visitar Cuentas.
-    if(typeof verificarVencimientosCDT==='function') verificarVencimientosCDT();
+    verificarVencimientosCDT();
   }
 
   // ── Diagnóstico: consultar el log de errores de conexión de Firestore ─────

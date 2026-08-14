@@ -537,7 +537,11 @@ function _checkGastoAlto() {
   const mes = mesActual();
   const gvMes = gastosMes(mes).reduce((a,g) => a + (g.monto||0), 0);
   const gfTotal = (S.gastosFijos||[]).reduce((a,g) => a + (g.monto||0), 0);
-  const nu = nuTotal();
+  // GUARD defensivo: nuTotal() vive en cuentas.js. Si en algún momento
+  // cuentas.js no está cargado (lazy sin terminar de resolver, o revertido
+  // más adelante), esto no debe tirar la app entera — se salta el chequeo
+  // de gasto alto esta vez, refresh() sigue con todo lo demás.
+  const nu = typeof nuTotal === 'function' ? nuTotal() : 0;
   const nequi = S.nequiSaldo || 0;
   const ef = S.efectivoSaldo || 0;
   const disp = nu + nequi + ef;

@@ -104,7 +104,10 @@
     poblarCatSelect('gf_c',getCatsFijo());
     _initEventListeners();
     _injectErrorSpans();
-    verificarVencimientosCDT();
+    // FIX 2026-08-13: verificarVencimientosCDT (cuentas.js, grupo lazy) sin
+    // guard — mismo problema que _renderTasaHistorialTag arreglado antes:
+    // corre en cada arranque de la app, no solo al visitar Cuentas.
+    if(typeof verificarVencimientosCDT==='function') verificarVencimientosCDT();
   }
 
   // ── Diagnóstico: consultar el log de errores de conexión de Firestore ─────

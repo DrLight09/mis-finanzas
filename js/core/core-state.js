@@ -1056,8 +1056,14 @@ function refresh(){
   // refresh() tras cargar el módulo bajo demanda). Mismo patrón defensivo
   // ya usado para renderMesada/_refreshCajitaDet/renderTCScreen — no cambia
   // el comportamiento actual (todo sigue cargando de entrada).
-  if(cuentaActual){ if(typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual); }
-  else if(_customCuentaActualId){
+  // FIX 2026-08-13: cuentaActual y _customCuentaActualId son VARIABLES (no
+  // funciones) que viven en cuentas.js, grupo lazy — a diferencia de las
+  // llamadas de función de acá abajo (que sí tenían guard con
+  // typeof fn==='function'), estas se referenciaban bare (if(cuentaActual)),
+  // lo que también tira ReferenceError si cuentas.js no cargó. Mismo
+  // guard typeof!=='undefined' que ya usa este archivo para Events.
+  if(typeof cuentaActual!=='undefined' && cuentaActual){ if(typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual); }
+  else if(typeof _customCuentaActualId!=='undefined' && _customCuentaActualId){
     const _cc=(S.cuentasPersonalizadas||[]).find(x=>x.id===_customCuentaActualId);
     if(_cc){
       const saldoEl=document.getElementById('det-custom-saldo');

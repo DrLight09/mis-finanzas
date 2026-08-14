@@ -4797,18 +4797,17 @@
 // se extrajeron a js/core/movimientos.js — ver cabecera de ese archivo para
 // el porqué de vivir en js/core/ y no en js/modules/.
 
-// Módulo Cuentas migrado a js/modules/cuentas.js — ver docs/cuentas.md.
-// Igual que Tarjetas de Crédito, sin dependencia real de orden de carga
-// (no usa crearSplitWidget ni nada definido más abajo).
+// Módulo Cuentas — js/modules/cuentas.js, ver docs/cuentas.md.
 //
-// Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, décimo
-// grupo): el más grande de los cinco de esta ronda (agrupa Nequi,
-// Efectivo, cuentas personalizadas y todo el subsistema de Nu). Auditado
-// línea por línea — su wiring redistribuido corre top-level, sin esperar
-// DOMContentLoaded (verificado explícitamente en el propio archivo), y
-// sus llamadas hacia Encargos/Mesada (renderEncargosEnCuenta,
-// getMesadaData) ya tenían guard typeof desde rondas anteriores.
-// #screen-cuentas y #nav-cuentas ya eran HTML estático.
+// LAZY (2026-08-13, segundo intento — reactivado): el primer intento
+// (docs/auditoria-tecnica.md #4) se revirtió por 3 ReferenceError
+// encadenados en el arranque — core-state.js/firebase-sync.js llamaban al
+// subsistema de Nu (nuTotal/getNuTasaGlobal/_renderTasaHistorialTag,
+// definidas acá) sin guard. Se auditaron y corrigieron los 5 archivos
+// núcleo involucrados (core-state.js, firebase-sync.js, pin-bio.js,
+// gastos-fijos-progress.js, mejoras.js) — todo guardado con `typeof`
+// ahora, confirmado contra el código real. #screen-cuentas y #nav-cuentas
+// ya eran HTML estático.
 -->
 <!-- cuentas.js: ver js/core/lazy-loader.js (Loader.GROUPS.cuentas) -->
 <script src="js/core/bootstrap.js" defer></script>

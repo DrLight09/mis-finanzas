@@ -295,7 +295,7 @@ function getSaldoFuente(fuente){
   if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
-    return c?calcC(c).val:0;
+    return c?_calcCSafe(c).val:0;
   }
   if(fuente.startsWith('custom:')){
     const id=fuente.split(':')[1];
@@ -487,7 +487,7 @@ function save(){
     const elS=document.getElementById('cs_'+c.id);
     if(elN)c.nombre=elN.value||c.nombre;
     if(elS && !(c.cdts&&c.cdts.length))c.saldo=parseMoney(elS.value)||0;
-    const globalTasa=getNuTasaGlobal?getNuTasaGlobal():(S.nuTasaGlobal||9.25);
+    const globalTasa=_getNuTasaGlobalSafe();
     c.tasa=globalTasa;
     if(!c.fecha)c.fecha=hoy();
     (c.cdts||[]).forEach(function(cdt){
@@ -600,8 +600,8 @@ function calcDeudaTcPropia() {
 }
 
 function calcPatrimonioTotal(){
-  const nu=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
-  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
+  const nu=(S.cajitas||[]).reduce((a,c)=>a+_calcCSafe(c).val,0);
+  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+_calcCDTSafe(cdt).val,0),0);
   // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas
   // personalizadas. Registrar una entrada de encargo con esa cuenta es solo
   // metadata de dónde está físicamente esa plata — nunca suma nada al saldo
@@ -931,20 +931,48 @@ function emptyState(icon, title, sub, btnLabel, btnFn){
 // De paso se corrigió un caso más de .innerHTML sin escapar (spNombreDe()
 // interpolado directo, mismo patrón ya visto 5 veces en otros módulos).
 
+// ── Guards de carga bajo demanda para cuentas.js (FIX 2026-08-13) ──────────
+// cuentas.js se volvió grupo lazy (auditoria-tecnica.md, ronda de
+// modularización de spotify/prestado/cuentas/analisis/encargos), pero
+// calcC/calcCDT/nuTotal/getNuTasaGlobal se seguían llamando SIN guard desde
+// calcPatrimonioTotal() y refresh() — que corren en CADA save()/refresh()
+// de la app, no solo al visitar Cuentas. A diferencia de mesada/tarjetas
+// (features secundarias que se pueden saltar en silencio), esto tumbaba
+// TODA la app con un ReferenceError en el primer save() o refresh(), sin
+// que el usuario hubiera hecho nada relacionado con Cuentas. Mismo patrón
+// de fallback que ya usa inicio.js (window.calcC?...:c.saldo||0) — se
+// centraliza acá para no repetirlo suelto en cada punto de uso.
+function _calcCSafe(c){
+  if(typeof calcC==='function') return calcC(c);
+  return { val:(c&&c.saldo)||0, saldoEncargos:0 };
+}
+function _calcCDTSafe(cdt){
+  if(typeof calcCDT==='function') return calcCDT(cdt);
+  return { val:(cdt&&cdt.monto)||0 };
+}
+function _nuTotalSafe(){
+  if(typeof nuTotal==='function') return nuTotal();
+  return (S.cajitas||[]).reduce((a,c)=>a+_calcCSafe(c).val,0);
+}
+function _getNuTasaGlobalSafe(){
+  if(typeof getNuTasaGlobal==='function') return getNuTasaGlobal();
+  return S.nuTasaGlobal||9.25;
+}
+
 function refresh(){
   // Auto-sanación de tarjetas de crédito: agrega campos nuevos, infiere el
   // saldo inicial de tarjetas migradas y recalcula la deuda de cada una a
   // partir de sus movimientos (regla de consistencia). Es idempotente.
   if(typeof tcNormalizarTarjetas==='function') tcNormalizarTarjetas();
-  const nu=nuTotal();
+  const nu=_nuTotalSafe();
   // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas
   // personalizadas — mismo criterio y misma razón que en calcPatrimonioTotal().
   const nequi=(S.nequiSaldo||0);
   const ef=(S.efectivoSaldo||0);
   const prest=totalPrestadoPendiente();
   // CDTs value comes from calcCDT nested in cajitas
-  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
-  const cajitasLibres=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
+  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+_calcCDTSafe(cdt).val,0),0);
+  const cajitasLibres=(S.cajitas||[]).reduce((a,c)=>a+_calcCSafe(c).val,0);
   // Cuentas personalizadas marcadas para incluir en total
   const customTotal=(S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0);
   const disp=cajitasLibres+nequi+ef+customTotal;
@@ -963,7 +991,7 @@ function refresh(){
   // Total intereses generados hoy en cajitas libres (base = saldo propio + encargos en la cajita)
   const _globalTasa=S.nuTasaGlobal||9.25;
   const interesesTotalHoy=(S.cajitas||[]).reduce((a,c)=>{
-    const k=calcC(c);
+    const k=_calcCSafe(c);
     const tasaCajita=(!(c.cdts&&c.cdts.length)&&c.tasa!=null)?c.tasa:_globalTasa;
     // Incluir saldo de encargos en la base del interés (son intereses a mi favor)
     const baseInteres=k.val+(k.saldoEncargos||0);

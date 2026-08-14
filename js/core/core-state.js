@@ -1,578 +1,1135 @@
-// Sync con Firestore: setSyncStatus, _fbSaveToCloud (guardado con debounce),
-// _fbLoadData, onSnapshot, registro de Events('authgate',...) + habilitación
-// del botón de login — extraído de index.html (era <script type="module">
-// inline). Ver auditoria-tecnica.md #2 y CHANGELOG.md#infraestructura--seguridad.
+// Núcleo de la app: estado global S, load()/save(), motor de mover plata
+// (descontarFuente/sumarFuente/getFuentes/getSaldoFuente), helpers usados
+// por absolutamente todos los módulos (fmt, fmtNoCents, uid, hoy, escHtml,
+// mesKey, parseMoney, parsePct, toast, dialogo), calcPatrimonioTotal/
+// snapshotPatrimonio, los helpers centralizados _esGastoVarNoReal/
+// _esEntradaEspejoNoIngreso, y la definición BASE de refresh() (se wrappea
+// después, ver js/core/gastos-fijos-progress.js y js/core/mejoras.js) —
+// extraído de index.html. Debe cargar ANTES que cualquier módulo de
+// js/modules/ (todos asumen que S/fmt/uid/etc. ya existen como globales).
+// No exportar como type="module": el resto del archivo depende de que
+// estas sean variables globales léxicas normales de script clásico.
+// Ver auditoria-tecnica.md #1/#4 y CHANGELOG.md#infraestructura--seguridad.
 
-  // ── Helpers de estado de sync ──────────────────────────────────────────────
-  function setSyncStatus(state, text) {
-    const dot = document.getElementById('fb-sync-dot');
-    const txt = document.getElementById('fb-sync-text');
-    if(dot) { dot.className = 'fb-sync-dot' + (state !== 'ok' ? ' '+state : ''); }
-    if(txt) txt.textContent = text;
-  }
+/* ---- MOTOR DE DIFERENCIAL: migrado a js/core/diferencial.js (diffRegistrarInstancia,
+   diffInst, diffReset, diffToggle, diffEstaAbierto, diffAddParte, diffRemoveParte,
+   diffSetNombre, diffSetMonto, diffTogglePagoYo, diffSetCuentaSalida, diffSetCuentaEntrada).
+   Se carga justo después de js/core/events.js — ver ese archivo para el detalle completo,
+   incluida la nota de por qué se carga tan temprano. buildFuentesOptsHtml() se queda acá
+   abajo: es canónica y la usan muchos módulos más, no es exclusiva de este motor. ---- */
 
-  // ── Guardar en Firestore con debounce ─────────────────────────────────────
-  let _saveTimer = null;
-  window._fbSaveToCloud = function() {
-    // PROTECCIÓN CRÍTICA: nunca guardar si los datos no se han cargado
-    // desde Firestore. Evita sobreescribir la nube con datos vacíos
-    // si la app se reinicia abruptamente antes de terminar de cargar.
-    if(!window._dataLoaded) return;
-    clearTimeout(_saveTimer);
-    setSyncStatus('syncing', 'Guardando…');
-    _saveTimer = window._fbSaveTimer = setTimeout(async () => {
-      if(!window._fbUser || !window._fb) return;
-      try {
-        const {db, doc, setDoc} = window._fb;
-        // Firestore no acepta undefined — limpiamos el objeto
-        if(!window.S){setSyncStatus("error","Error: datos no inicializados");return;}
-        const data = JSON.parse(JSON.stringify(window.S));
-        const savedAt = Date.now();
-        await setDoc(
-          doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
-          { payload: JSON.stringify(data), updatedAt: savedAt }
-        );
-        window._lastSavedAt = savedAt; // Registrar cuándo guardamos por última vez
-        // Persistir en localStorage para sobrevivir recargas de página
-        try { localStorage.setItem('mf_lastSavedAt', String(savedAt)); } catch(_){}
-        setSyncStatus('ok', 'Guardado en la nube · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
-      } catch(e) {
-        console.error('Firebase save error:', e);
-        setSyncStatus('error', 'Error al guardar — revisa conexión');
-      }
-    }, 1500);
-  };
+/**
+ * buildFuentesOptsHtml — función canónica para generar <option>s de fuentes.
+ * Reemplaza: getFuentesOptions, _diffFuentesOptsHtml, poblarFuente,
+ *            _cpPoblarCuentas (y sirve de base para las variantes de encargos).
+ *
+ * @param {Object}  opts
+ * @param {string}  [opts.selectedVal='']         Valor a pre-seleccionar.
+ * @param {boolean} [opts.soloConSaldo=false]      Omitir fuentes con saldo <= 0.
+ * @param {boolean} [opts.incluirTC=true]          Incluir tarjetas de crédito.
+ * @param {boolean} [opts.mostrarSaldo=false]      Mostrar saldo entre paréntesis.
+ * @param {string}  [opts.placeholder='Sin especificar']  Texto del option vacío.
+ * @param {Array}   [opts.fuentesCustom=null]      Lista custom (ej: cuentas de encargo).
+ *                  Cada item debe tener { val, label } o { cuenta, label, saldo }.
+ */
+function buildFuentesOptsHtml({
+  selectedVal = '',
+  soloConSaldo = false,
+  incluirTC = true,
+  mostrarSaldo = false,
+  placeholder = 'Sin especificar',
+  fuentesCustom = null
+} = {}) {
+  const fuentes = fuentesCustom ?? (incluirTC ? getFuentes() : getFuentesSinTC());
+  const opts = fuentes
+    .map(f => {
+      const val   = f.val ?? f.cuenta;
+      const saldo = mostrarSaldo || soloConSaldo ? (f.saldo !== undefined ? f.saldo : getSaldoFuente(val)) : 0;
+      if (soloConSaldo && saldo <= 0) return null;
+      const label = mostrarSaldo ? `${f.label} (${fmt(saldo)})` : f.label;
+      return `<option value="${val}"${val === selectedVal ? ' selected' : ''}>${label}</option>`;
+    })
+    .filter(Boolean)
+    .join('');
+  return `<option value="">${placeholder}</option>${opts}`;
+}
 
-  // ── Inicializar la app una sola vez tras la primera carga ─────────────────
-  function _initAppUI() {
-    load();
-    (function(){
-      const el=document.getElementById('nuTasaGlobal');
-      const elFecha=document.getElementById('nuTasaVigenciaFecha');
-      if(el&&window.S.nuTasaGlobal!=null)el.value=String(window.S.nuTasaGlobal).replace('.',',');
-      if(elFecha&&!elFecha.value)elFecha.value=hoy();
-      // FIX 2026-08-13: _renderTasaHistorialTag (cuentas.js) corre acá sin
-      // guard, dentro de _initAppUI() — que se ejecuta en CADA arranque de
-      // la app, no solo al visitar Cuentas. Con cuentas.js como grupo lazy
-      // (ver auditoria-tecnica.md), esto tumbaba el arranque completo con
-      // ReferenceError antes de llegar a _initEventListeners()/refresh().
-      // El resto de las llamadas de este bloque (registrarTasaNuHistorial,
-      // calcC) solo se disparan al interactuar con #nuTasaGlobal, que vive
-      // en la pantalla de Cuentas — en teoría ya cargado para entonces vía
-      // Loader, pero se guardan igual por seguridad/consistencia.
-      if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
-      if(el){
-        el.addEventListener('input',function(){
-          const raw=this.value.replace(',','.');
-          const v=raw===''?null:(parseFloat(raw)||null);
-          window.S.nuTasaGlobal=v;
-          if(v!=null){
-            const fecha=(elFecha&&elFecha.value)?elFecha.value:hoy();
-            if(typeof registrarTasaNuHistorial==='function') registrarTasaNuHistorial(fecha,v);
-          }
-          save();refresh();
-          if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
-        });
-        el.addEventListener('blur',function(){
-          if(this.value&&parseFloat(this.value)<=0)this.value='';
-          if(this.value&&window.toast){
-            const total=(S.cajitas||[]).reduce((a,c)=>a+(typeof calcC==='function'?calcC(c).val:(c.saldo||0)),0);
-            toast('Cajitas recalculadas: '+fmt(total)+' — compara con la app de Nu','ok',4000);
-          }
-        });
-      }
-      if(elFecha){
-        elFecha.addEventListener('change',function(){
-          if(el&&el.value){
-            const raw=el.value.replace(',','.');
-            const v=parseFloat(raw);
-            if(!isNaN(v)){
-              if(typeof registrarTasaNuHistorial==='function') registrarTasaNuHistorial(this.value,v);
-              save();refresh();
-              if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
-            }
-          }
-        });
-      }
-    })();
-    // Materializar intereses de todas las cajitas al arrancar la app.
-    // Así la fecha base nunca queda muy atrás y los redondeos acumulados
-    // respecto a Nu son mínimos (máx. 1 día de diferencia).
-    (S.cajitas||[]).forEach(c=>{ if(typeof materializarIntereses==='function') materializarIntereses(c); });
-    refresh(); applyModulos();
-    poblarCatSelect('gv_cat',getCatsVar());
-    poblarCatSelect('gf_c',getCatsFijo());
-    _initEventListeners();
-    _injectErrorSpans();
-    // FIX 2026-08-13: verificarVencimientosCDT (cuentas.js, grupo lazy) sin
-    // guard — mismo problema que _renderTasaHistorialTag arreglado antes:
-    // corre en cada arranque de la app, no solo al visitar Cuentas.
-    if(typeof verificarVencimientosCDT==='function') verificarVencimientosCDT();
-  }
+/* ---- Resto del motor de Diferencial (diffRenderPartes, diffCalcular, diffResumen,
+   _diffActualizarMiCuenta, diffValidarIntercambios, diffAplicar, diffHtmlBloque,
+   diffRenderHistorial, _difRenderHistorial, _diffFuentesOptsHtml, _diffInstancias) ----
+   migrado a js/core/diferencial.js. Ver comentario ahí para el detalle de qué se
+   migró exactamente (incluida la limpieza de onclick/oninput/onchange en
+   diffRenderPartes/diffHtmlBloque). ---- */
+const MC=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const CATS_VAR_DEFAULT=['Alimentación','Transporte','Salud','Entretenimiento','Ropa','Hogar','Educación','Servicios','Cuidado personal','Otro'];
+const CATS_FIJO_DEFAULT=['Vivienda','Transporte','Alimentación','Entretenimiento','Salud','Educación','Servicios','Suscripciones','Otro'];
+const MAX=10;
 
-  // ── Diagnóstico: consultar el log de errores de conexión de Firestore ─────
-  // Uso desde la consola del navegador: _verSyncErrors()
-  // Devuelve los últimos errores de onSnapshot (ver handler de error arriba),
-  // con timestamp, código de error de Firestore y mensaje. Útil para
-  // confirmar si volvió el problema de conexión sin tener que reproducirlo
-  // en vivo con la consola abierta.
-  window._verSyncErrors = function() {
-    try {
-      const log = JSON.parse(localStorage.getItem('mf_syncErrors') || '[]');
-      return log.map(e => ({ cuando: new Date(e.t).toLocaleString('es-CO'), code: e.code, msg: e.msg }));
-    } catch(_) { return []; }
-  };
+// Retorna las categorías actuales (default + personalizadas guardadas en S)
+function getCatsVar(){return S.catsVar&&S.catsVar.length?S.catsVar:[...CATS_VAR_DEFAULT];}
+function getCatsFijo(){return S.catsFijo&&S.catsFijo.length?S.catsFijo:[...CATS_FIJO_DEFAULT];}
 
-  // ── Cargar datos desde Firestore con escucha en tiempo real ───────────────
-  // Usamos onSnapshot en lugar de getDoc para que cualquier cambio desde otro
-  // dispositivo o pestaña se refleje automáticamente sin recargar la página.
-  let _unsubscribeSnapshot = null; // Para poder cancelar el listener si hace falta
+function poblarCatSelect(selectId, cats, valorActual){
+  const sel=document.getElementById(selectId);
+  if(!sel)return;
+  sel.innerHTML=cats.map(c=>`<option value="${c}"${c===valorActual?' selected':''}>${c}</option>`).join('');
+}
 
-  window._fbLoadData = function() {
-    if(!window._fbUser || !window._fb) return;
-    const {db, doc, onSnapshot} = window._fb;
-    const docRef = doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas');
-
-    // Cancelar listener anterior si existía (ej: re-login)
-    if(_unsubscribeSnapshot) { _unsubscribeSnapshot(); _unsubscribeSnapshot = null; }
-
-    // Restaurar _lastSavedAt desde localStorage para sobrevivir recargas.
-    // Esto evita que al recargar la página, un snapshot del servidor con
-    // timestamp reciente sobreescriba datos que nosotros mismos acabamos de guardar.
-    if(!window._lastSavedAt) {
-      try {
-        const saved = localStorage.getItem('mf_lastSavedAt');
-        if(saved) window._lastSavedAt = parseInt(saved, 10);
-      } catch(_){}
-    }
-
-    // (docs/auditoria-tecnica.md #4 — reestructuración del arranque, sesión
-    // posterior). Antes: si la primera entrega venía del caché local
-    // (fromCache=true), NO se pintaba nada — se esperaba hasta 8s la
-    // confirmación del servidor "para no mostrar datos obsoletos" (ver
-    // CHANGELOG.md#arranque). En la práctica esos 8s eran casi siempre
-    // puro spinner: el caché de persistentLocalCache() es el mismo
-    // dispositivo releyendo su propio último guardado (setDoc), así que
-    // casi nunca es "obsoleto" — y aunque lo fuera, un snapshot del
-    // servidor con datos más nuevos sigue llegando después y se reconcilia
-    // igual que ya reconciliábamos actualizaciones en tiempo real de otro
-    // dispositivo (misma rama `remoteTs > localTs + 5000` de abajo).
-    //
-    // _firstLoad: true hasta que cerramos la "primera carga" con datos
-    // confirmados del servidor (o con error/sin conexión).
-    // _firstPaintDone: true en cuanto mostramos la app por primera vez —
-    // separado de _firstLoad porque ahora pueden llegar DOS eventos
-    // "primera carga" (caché, después servidor): el primero pinta y llama
-    // _finishFirstLoad() (inicializa listeners, UNA sola vez); si llega un
-    // segundo con datos del servidor, solo debe reconciliar sin volver a
-    // inicializar nada — mismo tipo de bug que ya se vio antes con
-    // _initEventListeners() duplicando listeners si se llama dos veces.
-    let _firstLoad = true;
-    let _firstPaintDone = false;
-
-    _unsubscribeSnapshot = onSnapshot(docRef,
-      { includeMetadataChanges: true },
-      (snap) => {
-        const fromCache = snap.metadata.fromCache;
-        const hasPendingWrites = snap.metadata.hasPendingWrites;
-
-        // Si tenemos escrituras locales pendientes Y la app ya está corriendo,
-        // es un eco de nuestro propio guardado → ignorar para no hacer refresh
-        // innecesario y no crear bucle.
-        // CRÍTICO: durante _firstLoad NO ignorar — el celular que nunca abrió la app
-        // no tiene caché local. Si el servidor manda el snapshot con hasPendingWrites
-        // (porque otro dispositivo acaba de guardar) y lo ignoramos, el celular se
-        // queda sin datos y muestra todo en cero.
-        if(hasPendingWrites && !_firstLoad) return;
-        // Si hay una importación en curso, ignorar snapshots de Firestore
-        // para evitar que los datos viejos de la nube pisen los recién importados.
-        if(window._importing && !_firstLoad) return;
-
-        if(_firstLoad) {
-          _applyCloudData(snap);
-          if(!_firstPaintDone) {
-            // Primer pintado real — con lo que haya llegado primero (caché
-            // o servidor). Esto es lo que baja el LCP: ya no se espera.
-            _firstPaintDone = true;
-            _finishFirstLoad();
-          } else if(!fromCache) {
-            // Ya pintamos con caché; esto es la confirmación del servidor
-            // llegando después. Si trajo algo distinto ya se aplicó arriba
-            // (_applyCloudData) — solo falta reflejarlo sin re-inicializar
-            // listeners (_initAppUI ya corrió una vez, en el pintado de arriba).
-            (window.S&&window.S.cajitas||[]).forEach(c=>{ if(typeof materializarIntereses==='function') materializarIntereses(c); });
-            if(window._dataLoaded) {
-              load(); refresh();
-              if(window.applyModulos) applyModulos();
-              setSyncStatus('ok', 'Sincronizado con Firebase');
-            }
-          }
-          // Solo cerramos "primera carga" con datos confirmados del servidor
-          // (fromCache=false) — si lo que acabamos de pintar fue caché,
-          // seguimos esperando esa confirmación en la próxima entrega.
-          if(!fromCache) _firstLoad = false;
-        } else {
-          // Actualización en tiempo real desde otro dispositivo/pestaña.
-          // Solo aplicar si los datos de la nube son más nuevos que los locales.
-          // Esto evita que un dispositivo lento pise cambios recientes de otro.
-          if(!snap.exists()) return;
-          const remoteData = snap.data();
-          const remoteTs = remoteData.updatedAt || 0;
-          const localTs = window._lastSavedAt || 0;
-
-          // Si los datos remotos son más nuevos que lo que guardamos por última
-          // vez (con margen de 5s para latencia de red y desfase de relojes), aplicar la actualización.
-          if(remoteTs > localTs + 5000) {
-            console.log('[Sync] Datos más nuevos del servidor — aplicando actualización en tiempo real.');
-            _applyCloudData(snap);
-            // Materializar intereses antes de renderizar para minimizar diferencia con Nu
-            (window.S&&window.S.cajitas||[]).forEach(c=>{ if(typeof materializarIntereses==='function') materializarIntereses(c); });
-            // Re-renderizar la UI sin reinicializar event listeners
-            if(window._dataLoaded) {
-              load();
-              refresh();
-              if(window.applyModulos) applyModulos();
-              setSyncStatus('ok', 'Sincronizado · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
-              if(window.toast) window.toast('Datos actualizados desde otro dispositivo', 'info', 3000);
-            }
-          }
-        }
-      },
-      (error) => {
-        console.error('[Sync] Error en onSnapshot:', error);
-        setSyncStatus('error', 'Error de conexión — reintentando…');
-        // Registro persistente en localStorage (sobrevive a cerrar la consola
-        // y a recargar la página) — para poder confirmar más tarde si el
-        // problema de conexión de Firestore reapareció (ver
-        // auditoria-tecnica.md, cambio a experimentalAutoDetectLongPolling)
-        // sin depender de tener la consola abierta justo en el momento en
-        // que pasa. Clave con prefijo 'mf_' a propósito: así queda incluida
-        // en la limpieza de _limpiarStorageLocal() si el usuario borra su
-        // cuenta. Se guardan solo los últimos 20 para no crecer sin límite.
-        try {
-          const log = JSON.parse(localStorage.getItem('mf_syncErrors') || '[]');
-          log.push({ t: Date.now(), code: error.code || null, msg: error.message || String(error) });
-          while (log.length > 20) log.shift();
-          localStorage.setItem('mf_syncErrors', JSON.stringify(log));
-        } catch(_){}
-        // Si ni el caché ni el servidor entregaron nada todavía, no dejar a
-        // la persona colgada en el spinner — arrancar igual con S por defecto.
-        if(!_firstPaintDone) { _firstPaintDone = true; _finishFirstLoad(); }
-        _firstLoad = false;
-      }
-    );
-  };
-
-  // Aplica datos de un snapshot de Firestore a window.S
-  function _applyCloudData(snap) {
-    if(snap.exists() && snap.data().payload) {
-      try {
-        const cloudData = JSON.parse(snap.data().payload);
-        console.log('[Sync] _applyCloudData: keys=' + Object.keys(cloudData).length + ' updatedAt=' + snap.data().updatedAt);
-        if(Object.keys(cloudData).length === 0) {
-          // Nube vacía — no pisar S con objeto vacío, dejar los valores por defecto de S intactos.
-          console.warn('[Sync] Nube vacía (sin payload real) — manteniendo estado por defecto.');
-        } else {
-          Object.assign(window.S, cloudData);
-          // La migración y auto-sanación de tarjetas de crédito ahora vive en
-          // tcNormalizarTarjetas(), que se ejecuta en cada refresh() — no hace
-          // falta un parche puntual aquí.
-        }
-      } catch(e) {
-        console.error('[Sync] Error al parsear datos de la nube:', e);
-      }
-    } else {
-      console.warn('[Sync] _applyCloudData: snap.exists()=' + snap.exists() + ' — sin datos en nube.');
+let S={
+  nuRate:9.25,cajitas:[],nequiSaldo:0,efectivoSaldo:0,
+  personas:[],
+  deudores:[],misDeudas:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
+  spotifyPersonas:[],spotifyCosto:0,spotifyCajitaId:'',spotifyHistorial:[],
+  gastosFijos:[],
+  pagosGastosFijos:{},
+  gastosVar:[],
+  encargos:[],
+  movimientos:[],
+  modulos:{mesada:true,spotify:true},
+  catsVar:[],
+  catsFijo:[],
+  cuentasPersonalizadas:[],
+  patrimonioHistorial:[],
+  tarjetasCredito:[],
+  ingresosFijos:[],
+  alcancia:null,
+  config:{
+    proteccionAntiguedad:{
+      diasAviso:90,
+      diasBloqueo:365,
+      spotify:{opsAviso:2,opsBloqueo:5},
+      mesada:{opsAviso:2,opsBloqueo:5},
+      prestamos:{opsAviso:2,opsBloqueo:5},
+      encargos:{opsAviso:2,opsBloqueo:5},
+      tarjetas:{opsAviso:2,opsBloqueo:5},
+      cuentas:{opsAviso:2,opsBloqueo:5},
+      gastos:{opsAviso:2,opsBloqueo:5}
     }
   }
+  // alcancia: {saldoRegistrado, depositos, fechaInicio, movimientos:[{id,monto,fecha,fuenteOrigen,ts}], historial:[...]}
+  // alcanciaSaldoOfuscado: string (XOR+Base64 del JSON {saldo:N}) — guardado en S pero no visible en UI
+  // ingresosFijos: [{id, nombre, monto, desde}]
+  // desde: 'YYYY-MM' — el mes desde el cual aplica este ingreso (para escalar en el futuro)
+  // tarjetasCredito: [{id, nombre, cupo, deuda, fechaCorte (1-28), fechaPago (1-28), color, icono, compras:[{id,desc,monto,fecha,cat,pagadoEnTC:false}], pagos:[{id,monto,fecha,fuente,nota}]}]
+  // personas: [{id, nombre, color, alias, notas, creadoEn}]
+  // deudores[].personaId → referencia a personas[]
+  // encargos[].personaId → referencia a personas[]
+};
+// Exponer S globalmente para que el módulo de Firebase pueda accederlo
+window.S = S;
+// patrimonioHistorial: [{fecha:'YYYY-MM-DD', valor:number}]
+// cuentasPersonalizadas: [{id, nombre, icono, color, saldo, movimientos:[{id,tipo,monto,fecha,nota}]}]
+// Cajita structure: {id, nombre, saldo (saldo actual total con intereses ya "materializados"), 
+//   fecha (cuando se creó / última vez que se materializó intereses),
+//   tasa (EA %), cdt: {monto, tasa, inicio, vence} | null}
+// El interés es diario compuesto: a las 12am cada día se "paga" el interés y queda en el saldo.
+// Nosotros simulamos esto: el saldo mostrado = saldo_guardado * (1 + tasaDiaria)^diasTranscurridos
+// Cuando el usuario agrega/retira plata, se materializa el interés acumulado primero.
 
-  // Finaliza la primera carga: muestra la app e inicializa la UI
-  function _finishFirstLoad() {
-    document.getElementById('fb-loading-screen').style.display = 'none';
-    // PROTECCIÓN: marcar que los datos ya se cargaron correctamente.
-    // _fbSaveToCloud no guardará nada hasta que esta bandera esté activa.
-    window._dataLoaded = true;
-    _initAppUI();
-    // Snapshot diario: guardar patrimonio del día aunque no haya otros cambios.
-    // Esto llena la gráfica de patrimonio sin que el usuario tenga que hacer nada.
-    if(typeof snapshotPatrimonio === 'function'){
-      snapshotPatrimonio();
-      if(typeof window._fbSaveToCloud === 'function') window._fbSaveToCloud();
-    }
-    // Resumen de cierre de mes: detectar si cambió el mes desde la última apertura
-    _checkCierreMes();
-    setSyncStatus('ok', 'Sincronizado con Firebase');
-    // Notificar a módulos inline que los datos están listos.
-    // Los scripts inline no pueden sobrescribir window._fbLoadData de forma confiable
-    // porque este módulo (type="module") se ejecuta DESPUÉS que ellos, sobreescribiendo
-    // cualquier wrapper que hayan puesto. El evento 'appDataLoaded' es el canal correcto.
-    window.dispatchEvent(new CustomEvent('appDataLoaded'));
+let pagoIdx=null;
+let pagoDestino='';
+// mesFilter/gastoTab: migrados a js/modules/gastos.js
+
+function fmt(n){
+  const num=n||0;
+  const cents=Math.round(num*100);
+  const intPart=Math.floor(Math.abs(cents)/100);
+  const decPart=Math.abs(cents)%100;
+  const sign=cents<0?'-':'';
+  if(decPart===0){return sign+'$'+intPart.toLocaleString('es-CO');}
+  return sign+'$'+intPart.toLocaleString('es-CO')+','+String(decPart).padStart(2,'0');
+}
+function fmtNoCents(n){
+  const num=n||0;
+  const sign=num<0?'-':'';
+  const intPart=Math.floor(Math.abs(num));
+  return sign+'$'+intPart.toLocaleString('es-CO');
+}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+// Mide el ancho de un texto sin tocar el DOM (evita forced reflow en tooltips
+// que se reposicionan muy seguido, ej. arrastrar sobre gráficos). Un canvas
+// fuera del documento no depende del layout de la página, así que medir con
+// él no obliga al navegador a recalcular nada.
+const _medirCtx = document.createElement('canvas').getContext('2d');
+function medirAnchoTexto(texto, font){
+  _medirCtx.font = font;
+  return _medirCtx.measureText(texto).width;
+}
+function hoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
+function crearMovimientoApertura(monto,fecha,nota){
+  // Objeto de movimiento "apertura" estándar. Cualquier sheet que necesite
+  // registrar un saldo inicial en un array de movimientos propio (ej: cuenta
+  // personalizada recién creada) debe usar esto en vez de armar el objeto a mano,
+  // así el tipo y la forma del movimiento quedan consistentes en toda la app.
+  return {id:uid(),tipo:'apertura',monto,fecha:fecha||hoy(),desc:nota||'Saldo inicial',nota:nota||'Saldo inicial'};
+}
+// Escapa caracteres HTML para prevenir XSS al insertar datos de usuario en innerHTML
+function escHtml(s){if(!s&&s!==0)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function mesKey(d){return d?d.substring(0,7):'';}
+
+/* ---- MOVER PLATA ENTRE CUENTAS ---- */
+function descontarFuente(fuente,monto){
+  if(!fuente||!monto)return;
+  if(fuente==='ganancia'){
+    // Plata virtual: no salió de ninguna cuenta real, es ganancia futura
+    return;
   }
-
-  // ── Resumen de cierre de mes ─────────────────────────────────────────────
-  function _checkCierreMes(){
-    if(!window.S || !window._dataLoaded) return;
-    const mesHoy = typeof mesActual === 'function' ? mesActual() : '';
-    if(!mesHoy) return;
-    const ultimoMesVisto = window.S._ultimoMesVisto || '';
-    // Guardar el mes actual para la próxima apertura
-    window.S._ultimoMesVisto = mesHoy;
-    // Solo mostrar resumen si había un mes anterior registrado y es diferente al actual
-    if(!ultimoMesVisto || ultimoMesVisto === mesHoy) return;
-    // Calcular datos del mes que acaba de cerrar
-    const fmt = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
-    const S = window.S;
-    const mesK = ultimoMesVisto;
-    const pagosGF = S.pagosGastosFijos || {};
-    const gvMes = (S.gastosVar||[]).filter(g=>(g.fecha||'').startsWith(mesK)&&!_esGastoVarNoReal(g)).reduce((a,g)=>a+(g.monto||0),0);
-    const gfMes = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mesK]?a+(g.monto||0):a,0);
-    const totalGastos = gvMes + gfMes;
-    // Patrimonio al cierre (último registro del mes anterior en el historial)
-    const hist = S.patrimonioHistorial || [];
-    const snapMes = [...hist].filter(h=>(h.fecha||'').startsWith(mesK)).pop();
-    const patrimonioMes = snapMes ? snapMes.valor : null;
-    const [anioM, mesM] = mesK.split('-').map(Number);
-    const nombreMes = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][mesM-1];
-    // Construir mensaje
-    let lineas = [`<b>Resumen de ${nombreMes} ${anioM}</b>`];
-    if(patrimonioMes != null) lineas.push(`Patrimonio al cierre: <b>${fmt(patrimonioMes)}</b>`);
-    if(totalGastos > 0) lineas.push(`Total gastado: <b>${fmt(totalGastos)}</b>`);
-    else lineas.push('Sin gastos registrados ese mes.');
-    if(typeof toast === 'function') toast(lineas.join('<br>'), 'info', 7000);
+  if(fuente==='nequi'){
+    S.nequiSaldo=Math.max(0,(S.nequiSaldo||0)-monto);
+    document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
+  } else if(fuente==='efectivo'){
+    S.efectivoSaldo=Math.max(0,(S.efectivoSaldo||0)-monto);
+    document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
+  } else if(fuente.startsWith('cajita:')){
+    const id=fuente.split(':')[1];
+    const c=(S.cajitas||[]).find(x=>x.id===id);
+    if(c){
+      // FIX 2026-08-13: materializarIntereses (cuentas.js, grupo lazy) sin
+      // guard acá — a diferencia del guard que ya existía en firebase-sync.js
+      // (arranque), este vive en descontarFuente(), el motor de mover plata
+      // usado desde CUALQUIER módulo (Gastos, Encargos, Préstamos) cuando la
+      // fuente es una cajita Nu, no solo desde Cuentas. Si cuentas.js no
+      // cargó, se salta la materialización del interés del día (mismo
+      // riesgo ya aceptado para mesada/tarjetas: el saldo puede quedar sin
+      // el interés de ese día hasta que se visite Cuentas) en vez de tumbar
+      // el gasto/movimiento completo con un ReferenceError.
+      if(typeof materializarIntereses==='function') materializarIntereses(c);
+      c.saldo=Math.max(0,(c.saldo||0)-monto);
+      const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
+    }
+  } else if(fuente.startsWith('custom:')){
+    const id=fuente.split(':')[1];
+    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+    if(c)c.saldo=Math.max(0,(c.saldo||0)-monto);
+  } else if(fuente.startsWith('tc:')){
+    // Para TC: descontar = hacer una compra = aumentar la deuda
+    const id=fuente.split(':')[1];
+    const tc=(S.tarjetasCredito||[]).find(x=>x.id===id);
+    if(tc)tc.deuda=(tc.deuda||0)+monto;
   }
-
-  // ── Login con Google ──────────────────────────────────────────────────────
-  window._fbSignIn = async function() {
-    if(!window._fb) return;
-    const {auth, provider, signInWithPopup} = window._fb;
-    try {
-      await signInWithPopup(auth, provider);
-      // onAuthStateChanged se encarga del resto
-    } catch(e) {
-      if(e.code !== 'auth/popup-closed-by-user') {
-        console.error('Error al iniciar sesión:', e.code, e.message);
-        // Mensaje claro para el usuario según el tipo de error — el mensaje crudo de
-        // Firebase (ej. "Firebase: Error (auth/internal-error).") no dice nada útil.
-        const MENSAJES_AUTH = {
-          'auth/popup-blocked': 'El navegador bloqueó la ventana de inicio de sesión. Revisa que no esté bloqueando pop-ups para este sitio e intenta de nuevo.',
-          'auth/cancelled-popup-request': 'Se abrió más de una ventana de inicio de sesión a la vez. Intenta de nuevo.',
-          'auth/network-request-failed': 'No hay conexión a internet. Revisa tu red e intenta de nuevo.',
-          'auth/internal-error': 'No se pudo completar el inicio de sesión con Google. Intenta de nuevo en unos segundos.',
-          'auth/unauthorized-domain': 'Este dominio no está autorizado para iniciar sesión. Contacta al administrador.',
-        };
-        const msg = MENSAJES_AUTH[e.code] || 'No se pudo iniciar sesión. Intenta de nuevo en unos segundos.';
-        if(typeof toast === 'function') toast(msg, 'err', 5000);
-      }
+}
+function sumarFuente(fuente,monto){
+  if(!fuente||!monto)return;
+  if(fuente==='nequi'){
+    S.nequiSaldo=(S.nequiSaldo||0)+monto;
+    document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
+  } else if(fuente==='efectivo'){
+    S.efectivoSaldo=(S.efectivoSaldo||0)+monto;
+    document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
+  } else if(fuente.startsWith('cajita:')){
+    const id=fuente.split(':')[1];
+    const c=(S.cajitas||[]).find(x=>x.id===id);
+    if(c){
+      // Ver nota equivalente en descontarFuente() más arriba.
+      if(typeof materializarIntereses==='function') materializarIntereses(c);
+      c.saldo=(c.saldo||0)+monto;
+      const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
     }
-  };
-
-  // ── Cerrar sesión ─────────────────────────────────────────────────────────
-  window._fbSignOut = async function() {
-    const ok = await dialogo('Cerrar sesión', '¿Seguro que quieres salir? Tus datos quedan guardados en la nube.', 'Cerrar sesión', true);
-    if(!ok) return;
-    if(!window._fb) return;
-    // Cancelar cualquier guardado pendiente antes de salir para evitar
-    // que un timer de debounce guarde datos vacíos o corruptos post-signout.
-    // Ambos timers se exponen en window para que este módulo pueda cancelarlos.
-    clearTimeout(window._debounceTimer);     // timer de debounceSave (script global)
-    clearTimeout(window._fbSaveTimer);       // timer de _fbSaveToCloud (módulo Firebase)
-    // Guardar una última vez de forma inmediata si hay datos válidos
-    if(window._fbUser && window.S) {
-      try {
-        const {db, doc, setDoc} = window._fb;
-        const data = JSON.parse(JSON.stringify(window.S));
-        const signOutTs = Date.now();
-        try { localStorage.setItem('mf_lastSavedAt', String(signOutTs)); } catch(_){}
-        await setDoc(
-          doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
-          { payload: JSON.stringify(data), updatedAt: signOutTs }
-        );
-      } catch(e) {
-        console.warn('Error en guardado final antes de cerrar sesión:', e);
-        // No seguir con el cierre de sesión: si este guardado no llegó a Firestore,
-        // cerrar sesión igual arriesga perder en silencio el último cambio financiero.
-        if(typeof toast === 'function') toast('No se pudo guardar el último cambio en la nube. Revisa tu conexión e intenta cerrar sesión de nuevo.', 'err', 6000);
-        return;
-      }
-    }
-    // Cancelar el listener de tiempo real para evitar actualizaciones fantasma tras logout
-    if(typeof _unsubscribeSnapshot === 'function') {
-      _unsubscribeSnapshot();
-      _unsubscribeSnapshot = null;
-    }
-    // window._fbCacheFallbackTimer ya no se crea en ningún lado (ver
-    // _fbLoadData, docs/auditoria-tecnica.md #4) — esta línea queda
-    // inofensiva a propósito (el `if` nunca entra) en vez de borrarla, para
-    // no tocar código de limpieza de sesión sin necesidad real.
-    if(window._fbCacheFallbackTimer) { clearTimeout(window._fbCacheFallbackTimer); window._fbCacheFallbackTimer = null; }
-    // Bloquear futuros guardados limpiando el usuario ANTES del signOut
-    window._dataLoaded = false;
-    window._lastSavedAt = 0;
-    window._fbUser = null;
-    const {auth, signOut} = window._fb;
-    await signOut(auth);
-    location.reload();
-  };
-
-  // ── Eliminar cuenta (borra todos los datos y cierra sesión) ────────────────
-  window._abrirEliminarCuenta = function() {
-    const input = document.getElementById('del-account-input');
-    const btn = document.getElementById('del-account-confirm');
-    input.value = '';
-    btn.disabled = true;
-    document.getElementById('del-account-overlay').classList.add('open');
-    setTimeout(() => input.focus(), 50);
-  };
-  window._cerrarEliminarCuenta = function() {
-    document.getElementById('del-account-overlay').classList.remove('open');
-  };
-
-  // Wiring del overlay "Eliminar cuenta" (docs/auditoria-tecnica.md #4,
-  // paso 2 de la reestructuración de arranque). Este bloque corría a nivel
-  // superior del módulo, tocando el DOM sin null-checks (`document.
-  // getElementById('del-account-overlay').addEventListener(...)` directo).
-  // Con este archivo cargando <script type="module"> sin `async`, eso era
-  // seguro porque el navegador no lo ejecuta hasta terminar de parsear todo
-  // el documento. Al pasar a `async` (mismo cambio ya hecho en
-  // firebase-init.js) esa garantía desaparece: si el módulo llega a
-  // ejecutar antes de que el parser llegue a estos elementos, cualquiera
-  // de esos `getElementById(...)` devuelve `null` y el `.addEventListener`
-  // encadenado tira un TypeError — que corta la ejecución del resto del
-  // archivo completo, incluyendo el registro de Events('authgate',...) de
-  // más abajo. Se envuelve con el mismo guard de document.readyState que
-  // ya usa firebase-init.js, más null-checks por las dudas.
-  function _wireDeleteAccountOverlay() {
-    const overlay = document.getElementById('del-account-overlay');
-    const input   = document.getElementById('del-account-input');
-    const confirm = document.getElementById('del-account-confirm');
-    if (overlay) {
-      overlay.addEventListener('click', function(e){
-        if(e.target === this) window._cerrarEliminarCuenta();
-      });
-    }
-    if (input) {
-      input.addEventListener('input', function(){
-        if (confirm) confirm.disabled = (this.value.trim() !== 'ELIMINAR');
-      });
-      input.addEventListener('keydown', function(e){
-        if(e.key === 'Enter' && this.value.trim() === 'ELIMINAR') window._fbDeleteAccount();
-      });
-    }
+  } else if(fuente.startsWith('custom:')){
+    const id=fuente.split(':')[1];
+    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+    if(c)c.saldo=(c.saldo||0)+monto;
+  } else if(fuente.startsWith('tc:')){
+    // Para TC: sumar = revertir compra = disminuir la deuda
+    const id=fuente.split(':')[1];
+    const tc=(S.tarjetasCredito||[]).find(x=>x.id===id);
+    if(tc)tc.deuda=Math.max(0,(tc.deuda||0)-monto);
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', _wireDeleteAccountOverlay, { once: true });
-  } else {
-    _wireDeleteAccountOverlay();
+}
+
+// Cuentas personalizadas migradas a js/modules/cuentas.js (ver docs/cuentas.md).
+function getFuentes(){
+  const arr=[];
+  (S.cajitas||[]).forEach(c=>{if(!c.esCDT)arr.push({val:'cajita:'+c.id,label:c.nombre+' (Nu)'});});
+  arr.push({val:'nequi',label:'Nequi'});
+  arr.push({val:'efectivo',label:'Efectivo'});
+  (S.cuentasPersonalizadas||[]).forEach(c=>arr.push({val:'custom:'+c.id,label:c.nombre}));
+  (S.tarjetasCredito||[]).filter(tc=>(tc.estado||'activa')==='activa').forEach(tc=>arr.push({val:'tc:'+tc.id,label:tc.nombre+' (TC)'}));
+  return arr;
+}
+
+function getFuentesSinTC(){
+  const arr=[];
+  (S.cajitas||[]).forEach(c=>{if(!c.esCDT)arr.push({val:'cajita:'+c.id,label:c.nombre+' (Nu)'});});
+  arr.push({val:'nequi',label:'Nequi'});
+  arr.push({val:'efectivo',label:'Efectivo'});
+  (S.cuentasPersonalizadas||[]).forEach(c=>arr.push({val:'custom:'+c.id,label:c.nombre}));
+  return arr;
+}
+
+function fuenteLabel(val){
+  if(!val)return'Sin especificar';
+  if(val==='ganancia')return'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no desembolsada)';
+  if(val==='nequi')return'Nequi';
+  if(val==='efectivo')return'Efectivo';
+  if(val.startsWith('cajita:')){
+    const id=val.split(':')[1];
+    const c=(S.cajitas||[]).find(x=>x.id===id);
+    return c?c.nombre+' (Nu)':'Cajita Nu';
   }
-
-  // Limpia todo el almacenamiento local propio de la app (claves 'mf_*')
-  function _limpiarStorageLocal() {
-    try {
-      const keys = [];
-      for(let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if(k && k.startsWith('mf_')) keys.push(k);
-      }
-      keys.forEach(k => localStorage.removeItem(k));
-    } catch(_){}
-    try { sessionStorage.clear(); } catch(_){}
+  if(val.startsWith('custom:')){
+    const id=val.split(':')[1];
+    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+    return c?c.nombre:val;
   }
+  if(val.startsWith('tc:')){
+    const id=val.split(':')[1];
+    const tc=(S.tarjetasCredito||[]).find(x=>x.id===id);
+    return tc?tc.nombre:'Tarjeta de crédito';
+  }
+  return val;
+}
 
-  window._fbDeleteAccount = async function() {
-    const input = document.getElementById('del-account-input');
-    if(input.value.trim() !== 'ELIMINAR') return;
-    if(!window._fb || !window._fbUser) return;
+function fuenteBadgeClass(val){
+  if(!val)return'bg-blue';
+  if(val==='ganancia')return'bg-green';
+  if(val==='nequi')return'bg-nequi';
+  if(val==='efectivo')return'bg-amber';
+  if(val.startsWith('cajita:'))return'bg-nu';
+  if(val.startsWith('custom:'))return'bg-blue';
+  if(val.startsWith('tc:'))return'bg-red';
+  return'bg-nu';
+}
 
-    const btn = document.getElementById('del-account-confirm');
-    const textoOriginal = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Eliminando…';
+function poblarFuente(selectId, required=false, incluirTC=true){
+  const sel=document.getElementById(selectId);
+  if(!sel)return;
+  sel.innerHTML=buildFuentesOptsHtml({ placeholder: required ? 'Seleccionar cuenta' : 'Sin especificar', incluirTC });
+}
 
-    const {auth, db, doc, deleteDoc, deleteUser, reauthenticateWithPopup, provider, signOut} = window._fb;
-    const uid = window._fbUser.uid;
+function getSaldoFuente(fuente){
+  if(!fuente)return 0;
+  if(fuente==='nequi')return S.nequiSaldo||0;
+  if(fuente==='efectivo')return S.efectivoSaldo||0;
+  if(fuente.startsWith('cajita:')){
+    const id=fuente.split(':')[1];
+    const c=(S.cajitas||[]).find(x=>x.id===id);
+    return c?_calcCSafe(c).val:0;
+  }
+  if(fuente.startsWith('custom:')){
+    const id=fuente.split(':')[1];
+    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+    return c?c.saldo||0:0;
+  }
+  if(fuente.startsWith('tc:')){
+    // TC: retornar el cupo disponible real (cupo - deuda).
+    // Si la TC no tiene cupo configurado, retornar Infinity para no bloquear
+    // (el gasto en TC no descuenta plata real, solo aumenta la deuda).
+    const tcId=fuente.split(':')[1];
+    const tc=(S.tarjetasCredito||[]).find(x=>x.id===tcId);
+    if(!tc)return 0;
+    if(!tc.cupo)return 999999999; // sin cupo configurado: sin restricción
+    return Math.max(0,(tc.cupo||0)-(tc.deuda||0));
+  }
+  return 0;
+}
+// Alias canónico: getSaldoFuente es la función completa (maneja tc:, guard null).
+// getSaldoActual se mantiene como alias para compatibilidad con todos los call sites existentes.
+const getSaldoActual = getSaldoFuente;
 
-    // Cancelar guardados/listeners pendientes para que nada reescriba datos a mitad de la eliminación
-    clearTimeout(window._debounceTimer);
-    clearTimeout(window._fbSaveTimer);
-    if(typeof _unsubscribeSnapshot === 'function') {
-      _unsubscribeSnapshot();
-      _unsubscribeSnapshot = null;
+/* ---- LOAD / SAVE ---- */
+function fmtInput(n){
+  // Format a raw number for display in a money-input field (calculator style: always show 2 decimals)
+  if(!n&&n!==0)return'';
+  const num=parseFloat(n);
+  if(isNaN(num)||num===0)return'';
+  // Always show with 2 decimals, using es-CO separators
+  const cents=Math.round(num*100);
+  const intPart=Math.floor(cents/100);
+  const decPart=String(cents%100).padStart(2,'0');
+  return intPart.toLocaleString('es-CO')+','+decPart;
+}
+
+// Calculator-style money input: digits push right-to-left from centavos
+// Stores raw digit string per input element
+const _moneyDigits=new WeakMap();
+
+function _moneyRender(digits){
+  // digits: string of up to N digit chars, e.g. "300" → "3,00"
+  if(!digits||digits==='0'||digits==='')return'0,00';
+  // Pad to at least 3 digits so we always have 2 decimal places
+  const padded=digits.padStart(3,'0');
+  const intRaw=padded.slice(0,-2);
+  const dec=padded.slice(-2);
+  // Remove leading zeros from integer part
+  const intNum=parseInt(intRaw,10)||0;
+  const intFmt=intNum.toLocaleString('es-CO');
+  return intFmt+','+dec;
+}
+
+function _moneyValue(digits){
+  if(!digits||digits==='0')return 0;
+  const padded=digits.padStart(3,'0');
+  const intRaw=padded.slice(0,-2);
+  const dec=padded.slice(-2);
+  return parseInt(intRaw||'0',10)+(parseInt(dec,10)/100);
+}
+
+function load(){
+  // Firebase version: datos ya cargados en S por _fbLoadData()
+  // Solo inicializamos campos faltantes y sincronizamos el DOM
+  if(!S.encargos)S.encargos=[];
+  if(!S.movimientos)S.movimientos=[];
+  if(!S.cuentasPersonalizadas)S.cuentasPersonalizadas=[];
+  if(!S.catsVar)S.catsVar=[];
+  if(!S.catsFijo)S.catsFijo=[];
+  if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
+  if(!S.personas)S.personas=[];
+  if(!S.ingresosFijos)S.ingresosFijos=[];
+  if(!S.misDeudas)S.misDeudas=[];
+  if(!S.config)S.config={};
+  if(!S.config.proteccionAntiguedad)S.config.proteccionAntiguedad={diasAviso:90,diasBloqueo:365,spotify:{opsAviso:2,opsBloqueo:5},mesada:{opsAviso:2,opsBloqueo:5},prestamos:{opsAviso:2,opsBloqueo:5},encargos:{opsAviso:2,opsBloqueo:5},tarjetas:{opsAviso:2,opsBloqueo:5},cuentas:{opsAviso:2,opsBloqueo:5},gastos:{opsAviso:2,opsBloqueo:5}};
+  // Sincronizar color de misDeudas desde la persona vinculada (fuente de verdad)
+  (S.misDeudas || []).forEach(d => {
+    if (d.personaId && S.personas) {
+      const p = S.personas.find(x => x.id === d.personaId);
+      if (p && p.color) d.color = p.color;
     }
-    // Ver nota equivalente en _fbSignOut — código de limpieza inofensivo,
-    // dejado a propósito.
-    if(window._fbCacheFallbackTimer) { clearTimeout(window._fbCacheFallbackTimer); window._fbCacheFallbackTimer = null; }
-    window._dataLoaded = false;
-
-    try {
-      // 1) Borrar el documento de datos en Firestore
-      await deleteDoc(doc(db, 'usuarios', uid, 'data', 'finanzas'));
-      // 2) Borrar el usuario de Firebase Auth
-      await deleteUser(auth.currentUser);
-    } catch(e) {
-      // Si Firebase exige un login reciente para borrar la cuenta, se re-autentica y se reintenta
-      if(e && e.code === 'auth/requires-recent-login') {
-        try {
-          await reauthenticateWithPopup(auth.currentUser, provider);
-          await deleteDoc(doc(db, 'usuarios', uid, 'data', 'finanzas'));
-          await deleteUser(auth.currentUser);
-        } catch(e2) {
-          btn.disabled = false;
-          btn.textContent = textoOriginal;
-          if(typeof toast === 'function') toast('No se pudo eliminar la cuenta: ' + (e2.message || e2), 'err');
-          return;
-        }
-      } else {
-        btn.disabled = false;
-        btn.textContent = textoOriginal;
-        if(typeof toast === 'function') toast('No se pudo eliminar la cuenta: ' + (e.message || e), 'err');
-        return;
-      }
-    }
-
-    // 3) Limpiar todo rastro local y cerrar sesión
-    window._lastSavedAt = 0;
-    window._fbUser = null;
-    _limpiarStorageLocal();
-    try { await signOut(auth); } catch(_){}
-    location.reload();
-  };
-
-  // Registro bajo Events (docs/auditoria-tecnica.md #1): estas tres funciones
-  // son núcleo de sesión (compartidas más allá de una sola pantalla), pero los
-  // botones que las disparan sí son exclusivos de esta pantalla de login/
-  // eliminar-cuenta — mismo criterio ya usado con config:signOut, que también
-  // envuelve una función de auth compartida bajo el namespace del botón que
-  // la llama, no de dónde vive la función.
-  //
-  // Con reintento (docs/auditoria-tecnica.md #4, paso 2): `Events` lo define
-  // js/core/events.js, un <script> clásico. El guard `typeof Events !==
-  // 'undefined'` ya existía porque en algún momento este archivo podía
-  // ejecutar antes de que events.js cargara — pero antes, sin `async`, el
-  // navegador garantizaba que TODO el JS clásico (incluyendo events.js) ya
-  // había corrido antes de que este módulo arrancara, así que el guard
-  // nunca fallaba en la práctica. Con `async`, esa garantía ya no existe: si
-  // falla el guard, antes simplemente no se registraba nada y quedaba así
-  // para siempre (el botón de login se habilitaba solo por el timeout de
-  // 8s de firebase-init.js, pero sin listener real detrás — clickearlo no
-  // hacía nada). Mismo patrón de reintento que ya usa este mismo archivo
-  // para el overlay de eliminar cuenta, y que ya usa pin-bio.js para su
-  // propio hook de refresh().
-  function _registrarEventosAuthgate() {
-    if(typeof Events === 'undefined' || typeof Events.registerAll !== 'function') return false;
-    Events.registerAll('authgate', {
-      signIn: window._fbSignIn,
-      cerrarEliminarCuenta: window._cerrarEliminarCuenta,
-      eliminarCuenta: window._fbDeleteAccount,
+  });
+  // Migración retroactiva: calcular el monto exacto de aperturas y ajustes de saldo inicial
+  // (incluyendo borrados de apertura, que generan un ajuste negativo en _ajustesBaseLog)
+  // por fecha en el historial de patrimonio que ya existía antes de este fix. Así la
+  // tendencia mensual descuenta solo esa parte del cambio del día y conserva cualquier
+  // ingreso real que haya ocurrido la misma fecha, sin tener que esperar a un nuevo snapshot.
+  if(S.patrimonioHistorial.length){
+    const montoAperturaPorFecha = {};
+    const sumarApertura=(m)=>{
+      if(m.tipo==='apertura'){ montoAperturaPorFecha[m.fecha]=(montoAperturaPorFecha[m.fecha]||0)+(m.monto||0); }
+      if(m._ajustes){ m._ajustes.forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); }); }
+    };
+    (S.movimientos||[]).forEach(sumarApertura);
+    (S.cuentasPersonalizadas||[]).forEach(c=>(c.movimientos||[]).forEach(sumarApertura));
+    (S._ajustesBaseLog||[]).forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); });
+    S.patrimonioHistorial.forEach(h=>{
+      if(montoAperturaPorFecha[h.fecha]&&montoAperturaPorFecha[h.fecha]!==0){ h.montoBase=montoAperturaPorFecha[h.fecha]; }
+      else { delete h.baseAjustada; } // limpiar flag de versión anterior del fix, si existe
     });
-    // Confirmado: ya se puede usar el botón de login (ver el timeout de
-    // seguridad en el bloque de arriba, junto a onAuthStateChanged).
-    window._authgateReady = true;
-    clearTimeout(window._authgateReadyTimeout);
-    document.querySelectorAll('[data-action^="authgate:"]').forEach(function(b){ b.disabled = false; });
-    return true;
   }
-  if (!_registrarEventosAuthgate()) {
-    const _tAuthgate = setInterval(function() {
-      if (_registrarEventosAuthgate()) clearInterval(_tAuthgate);
-    }, 200);
+  if(S.cajitas){
+    S.cajitas=S.cajitas.map(c=>{
+      if(!c.cdts)c.cdts=[];
+      if(!c.tasa)c.tasa=S.nuRate||9.25;
+      if(!c.fecha)c.fecha=hoy();
+      return c;
+    });
   }
+  if(S.gastosFijos){S.gastosFijos=S.gastosFijos.filter(x=>!(x.id==='gf1'&&x.nombre==='Spotify Premium'&&(x.monto||0)===0));}
+  if(!S.pagosGastosFijos)S.pagosGastosFijos={};
+  document.getElementById('nuRate').value=S.nuRate||9.25;
+  const nuTasaEl=document.getElementById('nuTasaGlobal');
+  if(nuTasaEl)nuTasaEl.value=(S.nuTasaGlobal!=null)?String(S.nuTasaGlobal).replace('.',','):'';
+  document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
+  document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
+  if(typeof _getCuotaAnio==='function'){
+    if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(_getCuotaAnio('papa',S.mesadaAnio||new Date().getFullYear()));
+    if(document.getElementById('mesadaMonteMama'))document.getElementById('mesadaMonteMama').value=fmtInput(_getCuotaAnio('mama',S.mesadaAnio||new Date().getFullYear()));
+  }
+  document.getElementById('spotifyCosto').value=fmtInput(S.spotifyCosto);
+  document.getElementById('gv_fecha').value=hoy();
+  document.getElementById('mov_fecha').value=hoy();
+}
+
+function parseMoney(v){
+  if(!v&&v!==0)return 0;
+  if(typeof v==='number')return v;
+  const s=String(v).trim();
+  if(!s)return 0;
+  // Format: "1.234,56" → remove dots (thousands), replace comma with dot
+  return parseFloat(s.replace(/\./g,'').replace(',','.'))||0;
+}
+
+function parsePct(v){
+  if(!v&&v!==0)return 0;
+  if(typeof v==='number')return v;
+  const s=String(v).trim();
+  if(!s)return 0;
+  if(s.includes(','))return parseFloat(s.replace(',','.'))||0;
+  return parseFloat(s)||0;
+}
+
+// (window._fbSaveTimer lo gestiona el módulo Firebase — no declarar aquí)
+
+function save(){
+  // PROTECCIÓN: no guardar si los datos aún no se han cargado desde Firebase.
+  // Esto evita sobreescribir datos válidos con el estado inicial vacío.
+  if(window._fbLoadData && !window._dataLoaded) {
+    console.warn('[save] Bloqueado: datos de Firebase aún no cargados.');
+    return;
+  }
+  // Leer del DOM solo si el input existe y tiene un valor real (no vacío/placeholder).
+  // Esto evita sobreescribir S con 0 cuando el input está oculto o sin foco.
+  function _readMoney(id, fallback){
+    const el=document.getElementById(id);
+    if(!el)return fallback;
+    const v=parseMoney(el.value);
+    // Si el input está vacío o su valor parseado es 0 pero el saldo guardado es positivo,
+    // conservamos el valor de S para no sobrescribir con 0 accidentalmente.
+    if(!el.value.trim()&&fallback>0)return fallback;
+    return v||fallback||0;
+  }
+  S.nuRate=parseMoney(document.getElementById('nuRate').value)||9.25;
+  S.nequiSaldo=_readMoney('nequiSaldo', S.nequiSaldo);
+  S.efectivoSaldo=_readMoney('efectivoSaldo', S.efectivoSaldo);
+  // Cuota mensual por año — guardada en S.mesadas[parent].cuotas[anio]
+  const _anioActivo=S.mesadaAnio||new Date().getFullYear();
+  if(!S.mesadas)S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}};
+  ['papa','mama'].forEach(p=>{
+    if(!S.mesadas[p])S.mesadas[p]={cuotas:{},pagos:{}};
+    if(!S.mesadas[p].cuotas)S.mesadas[p].cuotas={};
+    if(!S.mesadas[p].pagos)S.mesadas[p].pagos={};
+  });
+  const _elPapa=document.getElementById('mesadaMontoPapa');
+  const _elMama=document.getElementById('mesadaMonteMama');
+  // Solo grabamos una cuota explícita para este año si el valor en pantalla
+  // realmente difiere del heredado (_getCuotaAnio). Si coincide, es porque el
+  // usuario nunca tocó el input — sigue siendo el fallback de un año anterior,
+  // no una decisión explícita — y grabarlo igual "congelaría" ese número en
+  // cuanto se disparara CUALQUIER save() de la app (agregar un gasto, marcar
+  // un pago de Nu, etc.), rompiendo la herencia hacia años futuros.
+  if(typeof _getCuotaAnio==='function'){
+    if(_elPapa&&_elPapa.value.trim()){const v=parseMoney(_elPapa.value);if(v&&v!==_getCuotaAnio('papa',_anioActivo))S.mesadas.papa.cuotas[String(_anioActivo)]=v;}
+    if(_elMama&&_elMama.value.trim()){const v=parseMoney(_elMama.value);if(v&&v!==_getCuotaAnio('mama',_anioActivo))S.mesadas.mama.cuotas[String(_anioActivo)]=v;}
+  }
+  S.spotifyCosto=parseMoney(document.getElementById('spotifyCosto').value)||0;
+  (S.cajitas||[]).forEach(c=>{
+    const elN=document.getElementById('cn_'+c.id);
+    const elS=document.getElementById('cs_'+c.id);
+    if(elN)c.nombre=elN.value||c.nombre;
+    if(elS && !(c.cdts&&c.cdts.length))c.saldo=parseMoney(elS.value)||0;
+    const globalTasa=_getNuTasaGlobalSafe();
+    c.tasa=globalTasa;
+    if(!c.fecha)c.fecha=hoy();
+    (c.cdts||[]).forEach(function(cdt){
+      const elCT=document.getElementById('cdt_tasa_'+c.id+'_'+cdt.id);
+      const elCV=document.getElementById('cdt_vence_'+c.id+'_'+cdt.id);
+      const elCR=document.getElementById('cdt_rte_'+c.id+'_'+cdt.id);
+      if(elCT)cdt.tasa=parsePct(elCT.value)||cdt.tasa;
+      if(elCV)cdt.vence=elCV.value||cdt.vence;
+      if(elCR&&elCR.value.trim()!==''){const rv=parsePct(elCR.value);if(rv!=null)cdt.rte=rv;}
+    });
+  });
+  snapshotPatrimonio();
+  // Guardar en Firebase con debounce de 1.5s
+  if(typeof window._fbSaveToCloud === 'function') {
+    window._fbSaveToCloud();
+  }
+}
+
+/* ---- SNAPSHOT PATRIMONIO ---- */
+function _saldoCPAjeno(){
+  // Calcula cuánta plata comprometida ajena está físicamente en cuentas propias.
+  // Son destinos de ingresos ya recibidos donde el dinero es de otra persona
+  // (gastos de cajita/nequi/efectivo pendientes de pagar, y plata para TC aún en cajita).
+  // Una vez que se paga (yaPague=true) la plata ya salió → no restar.
+  let total = 0;
+  (S.plataCometida||[]).forEach(item => {
+    if(!item.recibido) return; // aún no llegó → no está en ninguna cuenta
+    (item.destinos||[]).forEach(d => {
+      if(d.yaPague) return; // ya se pagó → salió de la cuenta
+      if(d.tipo === 'gasto' && d.gastoOrigen === 'cajita' && d.gastoCajita){
+        // Plata de otra persona guardada en cajita esperando el pago
+        total += (d.monto||0);
+      } else if(d.tipo === 'gasto' && d.gastoOrigen === 'tc' && d.gastoTcCajita){
+        // Plata para pagar TC guardada en cajita intermediaria
+        total += (d.monto||0);
+      }
+    });
+  });
+  return total;
+}
+
+// Deuda ajena de UNA tarjeta puntual — cuánto de tc.deuda es en realidad de
+// un encargo/préstamo/favor (plata que no es tuya, solo la estás cuidando).
+//
+// OJO: esto es un SALDO, no un bruto histórico. Si sumáramos todo lo que
+// alguna vez se cargó como ajeno sin restar los pagos, la "ajena" nunca
+// bajaría aunque ya la hayas pagado — y con el tiempo terminaría inflada
+// por encima de tc.deuda actual, haciendo que la parte "propia" calculada
+// diera 0 aunque tengas gastos tuyos reales sin cubrir.
+//
+// Regla de negocio: un pago cancela PRIMERO lo ajeno (es plata que se
+// recupera del encargo/préstamo y se usa específicamente para saldar esa
+// parte) y lo que sobra del pago cancela lo propio. Con esto la "ajena"
+// nunca puede superar la deuda actual, y calcDeudaTcPropiaDeTarjeta ya no
+// necesita un floor artificial en 0 para "resolver" el desbalance.
+// Saldo inicial PENDIENTE de UNA tarjeta — la parte del saldo con que se
+// creó la tarjeta que todavía no se ha pagado. Se trata como "neutral": no
+// sabemos si es propia o ajena (se ingresó en bloque al configurar la
+// tarjeta, sin desglosar), así que no cuenta ni para un lado ni para el
+// otro mientras exista. Los pagos la drenan PRIMERO, antes de tocar lo
+// ajeno conocido o lo propio (ver calcDeudaAjenaDeTarjeta). Conversación
+// 2026-08-07: evita que el health score penalice una suposición que podría
+// estar mal (ej. saldo inicial que en realidad era 100% un favor a otra
+// persona).
+function calcSaldoInicialPendiente(tc){
+  if(!tc || !tc.saldoInicial || tc.saldoInicial.eliminado) return 0;
+  const totalPagos=(tc.pagos||[]).filter(p=>!p.eliminado).reduce((a,p)=>a+(p.monto||0),0);
+  return Math.max(0, (tc.saldoInicial.monto||0) - totalPagos);
+}
+
+// Deuda ajena de UNA tarjeta puntual — cuánto de tc.deuda es en realidad de
+// un encargo/préstamo/favor (plata que no es tuya, solo la estás cuidando).
+//
+// OJO: esto es un SALDO, no un bruto histórico. Si sumáramos todo lo que
+// alguna vez se cargó como ajeno sin restar los pagos, la "ajena" nunca
+// bajaría aunque ya la hayas pagado — y con el tiempo terminaría inflada
+// por encima de tc.deuda actual, haciendo que la parte "propia" calculada
+// diera 0 aunque tengas gastos tuyos reales sin cubrir.
+//
+// Regla de negocio: un pago cancela PRIMERO el saldo inicial (neutral, ver
+// calcSaldoInicialPendiente), LUEGO lo ajeno conocido (encargo/préstamo/
+// favor), y lo que sobra cancela lo propio. Con esto la "ajena" nunca puede
+// superar la deuda actual, y calcDeudaTcPropiaDeTarjeta ya no necesita un
+// floor artificial en 0 para "resolver" el desbalance.
+function calcDeudaAjenaDeTarjeta(tc){
+  if(!tc) return 0;
+  let ajenaBruta = 0;
+  (S.tcMovimientos||[]).forEach(m => {
+    if (m.eliminado || m.tcId !== tc.id) return;
+    if (m.tipo === 'cargo_encargo' || m.tipo === 'cargo_prestamo') ajenaBruta += (m.monto||0);
+  });
+  (tc.compras||[]).forEach(c => { if (!c.eliminado && c._desdeCP) ajenaBruta += (c.monto||0); });
+  const totalPagos = (tc.pagos||[]).filter(p=>!p.eliminado).reduce((a,p)=>a+(p.monto||0),0);
+  const saldoInicialBruto = (tc.saldoInicial && !tc.saldoInicial.eliminado) ? (tc.saldoInicial.monto||0) : 0;
+  // Los pagos ya "gastados" en drenar el saldo inicial no cuentan acá —
+  // solo el excedente, si lo hay, sigue bajando lo ajeno.
+  const pagosParaAjena = Math.max(0, totalPagos - saldoInicialBruto);
+  return Math.max(0, ajenaBruta - pagosParaAjena);
+}
+function calcDeudaTcPropiaDeTarjeta(tc){
+  if(!tc) return 0;
+  return Math.max(0, (tc.deuda||0) - calcDeudaAjenaDeTarjeta(tc) - calcSaldoInicialPendiente(tc));
+}
+
+// Calcula la deuda TC que realmente es mía, sumando la parte propia de
+// cada tarjeta — una sola fuente de verdad (antes tenía su propio cálculo
+// bruto separado que se podía desincronizar de calcDeudaTcPropiaDeTarjeta).
+function calcDeudaTcPropia() {
+  return (S.tarjetasCredito||[]).reduce((a,tc)=>a+calcDeudaTcPropiaDeTarjeta(tc),0);
+}
+
+function calcPatrimonioTotal(){
+  const nu=(S.cajitas||[]).reduce((a,c)=>a+_calcCSafe(c).val,0);
+  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+_calcCDTSafe(cdt).val,0),0);
+  // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas
+  // personalizadas. Registrar una entrada de encargo con esa cuenta es solo
+  // metadata de dónde está físicamente esa plata — nunca suma nada al saldo
+  // real de la cuenta (a diferencia de una cajita de Nu, donde sí forma parte
+  // de la base que gana interés en calcC()/_saldoEncargosEnCajita()). Restarla
+  // acá contaba de menos un patrimonio que en realidad nunca se sumó. Ver
+  // CHANGELOG.md#encargos.
+  const nequi=(S.nequiSaldo||0);
+  const ef=(S.efectivoSaldo||0);
+  // FIX (auditoria-tecnica.md #5): getDeudorSaldoPatrimonio (prestado.js) se
+  // llamaba sin guard typeof — calcPatrimonioTotal() corre en CADA save() de
+  // la app (vía snapshotPatrimonio), no solo en refresh(), así que esto
+  // bloqueaba volver lazy Préstamos igual que tcNormalizarTarjetas bloqueaba
+  // Tarjetas de Crédito.
+  const prest=(S.deudores||[]).reduce((a,d)=>{ const s=typeof getDeudorSaldoPatrimonio==='function'?getDeudorSaldoPatrimonio(d):0; return a+(s>0?s:0); },0);
+  const custom=(S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0);
+  const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
+  // Lo que le debo a otras personas (S.misDeudas) — esa plata está físicamente en
+  // mis cuentas pero no es mía, así que se resta igual que la deuda de TC.
+  const misDeudas=typeof totalMisDeudasPendiente==="function"?totalMisDeudasPendiente():0;
+  // Restar plata comprometida ajena que está físicamente en cuentas propias
+  // (igual que se restan encargos) — es plata de otras personas que administrás
+  const cpAjeno = _saldoCPAjeno();
+  // Alcancía: el saldo registrado es plata real tuya aunque esté "oculta"
+  const alcancia = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
+  return nu+cdts+nequi+ef+prest+custom+alcancia-deudaTC-misDeudas-cpAjeno;
+}
+
+function snapshotPatrimonio(){
+  const hoyStr=hoy();
+  if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
+  const val=calcPatrimonioTotal();
+  if(val==null||isNaN(val))return;
+  // Alcancía: se resta para el valor "visible" del historial/gráfica de Análisis Financiero.
+  // El total real (val) sí la incluye y es el que usan el health score y la proyección,
+  // pero mostrar la serie cruda en la gráfica revelaría los depósitos día a día —
+  // rompiendo el propósito de "ocultar" el saldo (igual que ya hace el hero de Inicio).
+  const _alcSnap=(S.alcancia&&S.alcancia.saldoRegistrado)?S.alcancia.saldoRegistrado:0;
+  const valVisible=val-_alcSnap;
+  // ¿Hoy se registró algún saldo inicial (cajita nueva, Nequi, Efectivo, cuenta personalizada)
+  // o se corrigió uno existente? La app ya sabe distinguir esto vía tipo:'apertura' (ver
+  // crearMovimientoApertura) y vía _ajustes (ver confirmarEditarApertura). Guardamos el
+  // MONTO exacto (no solo un flag) para que el cálculo de tendencia pueda restar únicamente
+  // esa parte del cambio del día y conservar cualquier ingreso real que haya ocurrido el
+  // mismo día (ej. apertura + mesada el mismo día).
+  const sumarAperturasYAjustesDeHoy = (movs)=> (movs||[]).reduce((a,m)=>{
+    let t = 0;
+    if(m.tipo==='apertura'&&m.fecha===hoyStr) t += (m.monto||0);
+    if(m._ajustes) t += m._ajustes.filter(aj=>aj.fecha===hoyStr).reduce((b,aj)=>b+(aj.monto||0),0);
+    return a+t;
+  },0);
+  const montoAperturaHoy =
+    sumarAperturasYAjustesDeHoy(S.movimientos)
+    + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+sumarAperturasYAjustesDeHoy(c.movimientos),0)
+    + (S._ajustesBaseLog||[]).filter(aj=>aj.fecha===hoyStr).reduce((a,aj)=>a+(aj.monto||0),0);
+  const ultimo=S.patrimonioHistorial[S.patrimonioHistorial.length-1];
+  if(ultimo&&ultimo.fecha===hoyStr){
+    ultimo.valor=val;
+    ultimo.valorVisible=valVisible;
+    if(montoAperturaHoy!==0)ultimo.montoBase=montoAperturaHoy; else delete ultimo.montoBase;
+  }
+  else{
+    const punto={fecha:hoyStr,valor:val,valorVisible:valVisible};
+    if(montoAperturaHoy!==0)punto.montoBase=montoAperturaHoy;
+    S.patrimonioHistorial.push(punto);
+  }
+  if(S.patrimonioHistorial.length>365)S.patrimonioHistorial=S.patrimonioHistorial.slice(-365);
+  // (No localStorage — Firebase lo guarda _fbSaveToCloud)
+}
+// Calcula cuánta plata de encargos (dinero que estás cuidando de otra persona,
+// "No es tuyo") está guardada físicamente en una cuenta cualquiera — cajita de Nu,
+// Nequi, Efectivo o una cuenta personalizada. cuentaKey usa el mismo formato que
+// getFuentesSinTC(): 'cajita:ID', 'nequi', 'efectivo', 'custom:ID'.
+function _saldoEncargosEnCuenta(cuentaKey){
+  if(!S||!S.encargos||!cuentaKey)return 0;
+  let total=0;
+  (S.encargos||[]).forEach(enc=>{
+    const map={};
+    if((enc.saldoInicial||0)>0){
+      const k=enc.cuentaInicial||'__sin__';
+      map[k]=(map[k]||0)+(enc.saldoInicial||0);
+    }
+    (enc.movimientos||[]).forEach(m=>{
+      const k=m.cuenta||'__sin__';
+      if(m.tipo==='entrada')map[k]=(map[k]||0)+(m.monto||0);
+      else map[k]=(map[k]||0)-(m.monto||0);
+    });
+    const v=map[cuentaKey]||0;
+    if(v>0)total+=v;
+  });
+  return total;
+}
+// Caso específico de cajitas de Nu — Nu genera interés sobre TODO el dinero de
+// la cajita (propio + encargos), y esos intereses son del dueño de la cajita.
+// Se mantiene esta función con nombre propio porque calcC() ya la usa así.
+// Nu: tasa EA (historial por tramos) y cálculo de CDTs migrados a js/modules/cuentas.js.
+
+function mesActual(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+
+function gastosMes(mesK){
+  return(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mesK);
+}
+
+// Suma los ingresos fijos configurados que aplican para un mes dado (YYYY-MM)
+function getIngresosFijosMes(mesK){
+  return(S.ingresosFijos||[]).reduce((acc,ing)=>{
+    // Solo contar si el ingreso ya estaba activo ese mes (desde <= mesK, o sin desde)
+    if(!ing.desde||ing.desde<=mesK) acc+=(ing.monto||0);
+    return acc;
+  },0);
+}
+
+// Determina si un movimiento tipo:'entrada' es un movimiento "espejo" generado
+// automáticamente por otro módulo (Mesada, Prestado, Encargos) y que por lo tanto
+// NO debe contarse como ingreso nuevo en Análisis financiero ni en Salud financiera:
+// - Mesada: la plata ya se cuenta directamente desde getMesadaData(); contarla de
+//   nuevo aquí sería doble conteo.
+// - Prestado · Me deben: es la devolución de plata que ya era tuya (un abono de
+//   deuda), no ingreso nuevo.
+// - Prestado · Yo debo: es plata que te prestaron (deuda tuya), no ingreso.
+// - Encargos (_esIntercambioEncargo/_intercambioEntrada/_encMovId, desc "Margen..."):
+//   es capital o margen de encargo que se maneja aparte.
+// - _esReposicionCP: devolución de plata comprometida que ya salió antes.
+function _esEntradaEspejoNoIngreso(m){
+  if(!m) return false;
+  if(m._esReposicionCP) return true;
+  // Fallback por desc para movimientos viejos sin _esReposicionCP
+  if(/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'')) return true;
+  if(m._esIntercambioEncargo||m._intercambioEntrada) return true;
+  if(m._encMovId) return true;
+  if((m.desc||'').startsWith('Margen')) return true;
+  if(m._origenSeccion==='Mesada') return true;
+  if((m._origenSeccion||'').indexOf('Prestado')===0) return true;
+  return false;
+}
+
+// Determina si un gasto de S.gastosVar debe excluirse de los cálculos de "gasto real"
+// del mes (balance/tasa de ahorro, salud financiera, ranking, presupuestos, resumen de
+// cierre de mes, etc.) porque su efecto ya está contabilizado o neutralizado en otro lado:
+// - esPagoGastoFijo: ya se cuenta aparte en gfTotal (gastos fijos pagados)
+// - _esPagoTC: cancelación de deuda ya contada cuando se hizo la compra, no gasto nuevo
+// - _esAlcancia: sigue siendo plata tuya, solo cambió de lugar
+// - _esExtraPrestamo: extra/propina de un préstamo gastado de inmediato — nunca se contó
+//   como ingreso, así que tampoco debe contar como gasto real (ver CHANGELOG)
+// Centralizado acá para que un flag nuevo de exclusión no tenga que agregarse a mano en
+// cada pantalla — ya pasó dos veces que un filtro se corrigiera en un lugar y no en otro.
+function _esGastoVarNoReal(g){
+  if(!g) return false;
+  if(g.esPagoGastoFijo) return true;
+  if(g._esPagoTC) return true;
+  if(g._esAlcancia) return true;
+  if(g._esExtraPrestamo) return true;
+  return false;
+}
+
+/* ---- TOAST ---- */
+function toast(msg, tipo='ok', dur=2800){
+  const c=document.getElementById('toast-container');
+  const el=document.createElement('div');
+  const col={ok:'var(--accent)',err:'var(--red)',info:'var(--blue)'}[tipo]||'var(--text2)';
+  const ico={ok:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>',err:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',info:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'}[tipo]||'•';
+  el.className='toast toast-'+tipo;
+  el.innerHTML=`<span style="font-size:15px;color:${col};">${ico}</span><span>${msg}</span>`;
+  c.appendChild(el);
+  setTimeout(()=>{el.classList.add('hiding');setTimeout(()=>el.remove(),220);},dur);
+}
+
+/* ---- DIALOG (reemplaza confirm) ---- */
+window._dialogResolve=null;
+function _closeDialog(val){
+  if(window._dialogResolve){
+    const fn=window._dialogResolve;
+    window._dialogResolve=null;
+    document.getElementById('dialog-overlay').classList.remove('open');
+    fn(val);
+  }
+}
+function dialogo(titulo, msg, btnOk='Confirmar', peligro=false){
+  return new Promise(res=>{
+    window._dialogResolve=res;
+    document.getElementById('dialog-title').textContent=titulo;
+    document.getElementById('dialog-msg').textContent=msg;
+    const btn=document.getElementById('dialog-confirm');
+    btn.textContent=btnOk;
+    btn.style.background=peligro?'rgba(240,104,104,.2)':'rgba(200,240,96,.15)';
+    btn.style.borderColor=peligro?'rgba(240,104,104,.4)':'rgba(200,240,96,.4)';
+    btn.style.color=peligro?'var(--red)':'var(--accent)';
+    document.getElementById('dialog-overlay').classList.add('open');
+  });
+}
+document.getElementById('dialog-overlay').addEventListener('click',function(e){
+  if(e.target===this) _closeDialog(false);
+});
+
+/* ---- PROTECCIÓN POR ANTIGÜEDAD DE MOVIMIENTOS ---- */
+// Ver docs/proteccion-antiguedad-movimientos.md para el detalle completo.
+// Un movimiento viejo ya se mezcló lógicamente con todo lo que pasó en su
+// cuenta después: revertirlo hoy no "deshace el error", introduce un
+// descuadre nuevo. Estas funciones son el único lugar donde vive esa regla
+// — cada módulo (Spotify, Mesada, Préstamos, Encargos, Tarjetas) las llama
+// desde su(s) punto(s) de borrado en vez de reimplementar el cálculo.
+
+// Nivel de protección de un movimiento, según DOS criterios independientes
+// (basta con que se cumpla uno): tiempo transcurrido desde su fecha, y
+// cantidad de operaciones posteriores que ya tocaron la misma cuenta/ciclo.
+// Los umbrales de tiempo son globales; los de cantidad son por módulo.
+//
+// @param {string} fecha           Fecha del movimiento, 'YYYY-MM-DD'.
+// @param {number} opsPosteriores  Cantidad de operaciones posteriores ya
+//                                 registradas sobre la misma cuenta/ciclo
+//                                 (0 si el módulo aún no define este criterio).
+// @param {string} modulo          Clave dentro de S.config.proteccionAntiguedad
+//                                 con los umbrales opsAviso/opsBloqueo del
+//                                 módulo (ej: 'spotify'). Si el módulo todavía
+//                                 no tiene esos umbrales definidos, el nivel
+//                                 se decide solo por tiempo.
+// @returns {'reciente'|'viejo'|'bloqueado'}
+function nivelAntiguedadMovimiento(fecha, opsPosteriores, modulo){
+  const cfg=S.config.proteccionAntiguedad;
+  const modCfg=cfg[modulo]||{};
+  const dias=Math.floor((Date.now()-new Date(fecha+'T00:00:00').getTime())/86400000);
+  const ops=opsPosteriores||0;
+  if(dias>cfg.diasBloqueo || (modCfg.opsBloqueo!=null && ops>=modCfg.opsBloqueo)) return 'bloqueado';
+  if(dias>cfg.diasAviso || (modCfg.opsAviso!=null && ops>=modCfg.opsAviso)) return 'viejo';
+  return 'reciente';
+}
+
+// Aviso para nivel 'viejo': muestra qué cuenta se afecta y de cuánto sube o
+// baja su saldo si se confirma, y deja decidir al usuario con esa
+// información — nunca a ciegas. Devuelve true si confirma, false si cancela.
+// No usar para nivel 'bloqueado' (ver avisarMovimientoBloqueado).
+//
+// @param {string} nombreCuenta    Nombre a mostrar de la cuenta afectada.
+// @param {number} montoRevertido  Monto que se revertirá (siempre positivo).
+// @param {'sube'|'baja'} direccion  Si el campo de esa cuenta sube o baja al revertir.
+// @param {'saldo'|'deuda'} [campo='saldo']  Qué campo cambia (ej: 'deuda' para
+//                                            revertir un cargo hecho a una TC).
+function confirmarBorrarMovimientoViejo(nombreCuenta, montoRevertido, direccion, campo='saldo'){
+  const verbo=direccion==='sube'?'sube':'baja';
+  return dialogo(
+    'Movimiento antiguo',
+    `Este movimiento ya tiene tiempo y puede estar mezclado con operaciones más recientes de "${nombreCuenta}". Si lo eliminas, su ${campo} ${verbo} ${fmt(montoRevertido)} ahora mismo — no se recalcula el historial completo. ¿Eliminar de todas formas?`,
+    'Eliminar de todas formas', true
+  );
+}
+
+// Aviso para nivel 'bloqueado': solo informa, no ofrece la opción de
+// continuar (coherente con dialogo(), que ya soporta este patrón de un solo
+// botón — ver el uso existente para movimientos secundarios en movimientos.js).
+function avisarMovimientoBloqueado(){
+  return dialogo(
+    'No se puede eliminar',
+    'Este movimiento es demasiado antiguo o ya está muy mezclado con operaciones posteriores de esa cuenta. Eliminarlo ahora dejaría un descuadre imposible de corregir a mano. Si hay un error real, corrígelo editando el dato (nota o fecha) sin borrar el movimiento.',
+    'Entendido', false
+  );
+}
+
+/* ---- DEBOUNCE SAVE ---- */
+var _saveTimer=null;
+// Flag: true solo si este dispositivo hizo cambios reales en esta sesión.
+// Evita que un dispositivo que solo abrió y leyó datos pise Firestore al cerrar.
+window._locallyModified = false;
+function debounceSave(delay=800){
+  window._locallyModified = true; // El usuario tocó algo en este dispositivo
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(()=>saveAndRefresh(),delay);
+  // Exponer en window para que el módulo Firebase (scope de módulo) pueda cancelarlo en signOut
+  window._debounceTimer=_saveTimer;
+}
+
+/* ---- GUARDADO DE EMERGENCIA al cerrar pestaña ---- */
+// Evita pérdida de datos si el usuario cierra antes de que el debounce dispare.
+window.addEventListener('beforeunload', function() {
+  if (!window._dataLoaded) return; // Nunca guardar si los datos no se cargaron
+  // CRÍTICO: Solo guardar si este dispositivo realmente modificó algo en esta sesión.
+  // Si el dispositivo solo abrió y leyó datos (sin editar), NO sobreescribir Firestore.
+  // Esto evita que abrir la app en PC/otra pestaña con datos desactualizados pise
+  // los cambios recientes hechos desde otro dispositivo (ej: celular todo el día).
+  if (!window._locallyModified) return;
+  // Siempre intentar guardar al cerrar si hay datos cargados, haya o no timer pendiente
+  if (window._fbUser && window._fb && window.S) {
+    try {
+      clearTimeout(_saveTimer); _saveTimer = null;
+      clearTimeout(window._fbSaveTimer); window._fbSaveTimer = null;
+      const {db, doc, setDoc} = window._fb;
+      const data = JSON.parse(JSON.stringify(window.S));
+      const closingTs = Date.now();
+      // Persistir el timestamp ANTES de cerrar para que al reabrir
+      // la página sepa que "yo fui el último en guardar" y no deje
+      // que un snapshot antiguo de otro dispositivo pise estos datos.
+      try { localStorage.setItem('mf_lastSavedAt', String(closingTs)); } catch(_){}
+      window._lastSavedAt = closingTs;
+      setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),
+        {payload: JSON.stringify(data), updatedAt: closingTs}
+      ).catch(()=>{});
+    } catch(e) {}
+  }
+});
+
+/* ---- CATEGORÍAS PERSONALIZADAS, BACKUP JSON: migrado a js/modules/configuracion.js ---- */
+
+/* ---- EMPTY STATES ACCIONABLES ---- */
+// btnFn siempre usa el despachador central de eventos (js/core/events.js):
+// {action, args}. La forma vieja que esta función aceptaba por compatibilidad
+// hacia atrás (string con onclick="..." crudo, para Gastos/Tarjetas de
+// crédito mientras migraban) se sacó esta sesión: se revisaron TODAS las
+// llamadas a emptyState() en toda la app (gastos.js ×2, spotify.js ×1 — las
+// únicas 3 que existen) y las 3 ya usaban la forma nueva. El comentario
+// viejo había quedado desactualizado — Gastos ya había migrado sin que
+// nadie lo actualizara. Se saca la rama entera (no solo el comentario) para
+// que ningún módulo futuro pueda reintroducir un onclick inline acá por
+// costumbre. Ver auditoria-tecnica.md #1 y CHANGELOG.md#infraestructura--seguridad.
+function emptyState(icon, title, sub, btnLabel, btnFn){
+  let btnHtml = '';
+  if (btnLabel && btnFn && btnFn.action) {
+    btnHtml = `<button type="button" class="empty-state-btn" ${Events.attr(btnFn.action, ...(btnFn.args || []))}>${btnLabel}</button>`;
+  }
+  return `<div class="empty-state">
+    <div class="empty-state-icon">${icon}</div>
+    <div class="empty-state-title">${title}</div>
+    <div class="empty-state-sub">${sub}</div>
+    ${btnHtml}
+  </div>`;
+}
+
+// renderAttencion() migrada a js/modules/inicio.js — ver auditoria-tecnica.md.
+// De paso se corrigió un caso más de .innerHTML sin escapar (spNombreDe()
+// interpolado directo, mismo patrón ya visto 5 veces en otros módulos).
+
+// ── Guards de carga bajo demanda para cuentas.js (FIX 2026-08-13) ──────────
+// cuentas.js se volvió grupo lazy (auditoria-tecnica.md, ronda de
+// modularización de spotify/prestado/cuentas/analisis/encargos), pero
+// calcC/calcCDT/nuTotal/getNuTasaGlobal se seguían llamando SIN guard desde
+// calcPatrimonioTotal() y refresh() — que corren en CADA save()/refresh()
+// de la app, no solo al visitar Cuentas. A diferencia de mesada/tarjetas
+// (features secundarias que se pueden saltar en silencio), esto tumbaba
+// TODA la app con un ReferenceError en el primer save() o refresh(), sin
+// que el usuario hubiera hecho nada relacionado con Cuentas. Mismo patrón
+// de fallback que ya usa inicio.js (window.calcC?...:c.saldo||0) — se
+// centraliza acá para no repetirlo suelto en cada punto de uso.
+function _calcCSafe(c){
+  if(typeof calcC==='function') return calcC(c);
+  return { val:(c&&c.saldo)||0, saldoEncargos:0 };
+}
+function _calcCDTSafe(cdt){
+  if(typeof calcCDT==='function') return calcCDT(cdt);
+  return { val:(cdt&&cdt.monto)||0 };
+}
+function _nuTotalSafe(){
+  if(typeof nuTotal==='function') return nuTotal();
+  return (S.cajitas||[]).reduce((a,c)=>a+_calcCSafe(c).val,0);
+}
+function _getNuTasaGlobalSafe(){
+  if(typeof getNuTasaGlobal==='function') return getNuTasaGlobal();
+  return S.nuTasaGlobal||9.25;
+}
+
+function refresh(){
+  // Auto-sanación de tarjetas de crédito: agrega campos nuevos, infiere el
+  // saldo inicial de tarjetas migradas y recalcula la deuda de cada una a
+  // partir de sus movimientos (regla de consistencia). Es idempotente.
+  if(typeof tcNormalizarTarjetas==='function') tcNormalizarTarjetas();
+  const nu=_nuTotalSafe();
+  // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas
+  // personalizadas — mismo criterio y misma razón que en calcPatrimonioTotal().
+  const nequi=(S.nequiSaldo||0);
+  const ef=(S.efectivoSaldo||0);
+  // FIX 2026-08-13: totalPrestadoPendiente (prestado.js, grupo lazy) sin
+  // guard — mismo patrón de fallback (0) que ya usa inicio.js línea ~253
+  // (window.totalPrestadoPendiente?...:0) para el mismo caso.
+  const prest=typeof totalPrestadoPendiente==='function'?totalPrestadoPendiente():0;
+  // CDTs value comes from calcCDT nested in cajitas
+  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+_calcCDTSafe(cdt).val,0),0);
+  const cajitasLibres=(S.cajitas||[]).reduce((a,c)=>a+_calcCSafe(c).val,0);
+  // Cuentas personalizadas marcadas para incluir en total
+  const customTotal=(S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0);
+  const disp=cajitasLibres+nequi+ef+customTotal;
+  const mes=mesActual();
+  const _gfFijos=(S.gastosFijos||[]).reduce((a,g)=>{
+    // Solo sumar si fue pagado este mes
+    const pagos=S.pagosGastosFijos||{};
+    return pagos[g.id+'_'+mes]?a+(g.monto||0):a;
+  },0);
+  // _spFijo eliminado: el costo mensual de Spotify es solo un valor de referencia para el módulo.
+  // Se cuenta como gasto real únicamente cuando se registra el pago (queda en gastosVar).
+  const gfTotal=_gfFijos;
+  // Excluir de variables los que son pagos de gastos fijos (ya se cuentan en gfTotal) y los pagos de TC (no son gasto real)
+  const gvMes=gastosMes(mes).filter(g=>!_esGastoVarNoReal(g)).reduce((a,g)=>a+(g.monto||0),0);
+
+  // Total intereses generados hoy en cajitas libres (base = saldo propio + encargos en la cajita)
+  const _globalTasa=S.nuTasaGlobal||9.25;
+  const interesesTotalHoy=(S.cajitas||[]).reduce((a,c)=>{
+    const k=_calcCSafe(c);
+    const tasaCajita=(!(c.cdts&&c.cdts.length)&&c.tasa!=null)?c.tasa:_globalTasa;
+    // Incluir saldo de encargos en la base del interés (son intereses a mi favor)
+    const baseInteres=k.val+(k.saldoEncargos||0);
+    return a+(baseInteres>0?baseInteres*(Math.pow(1+tasaCajita/100,1/365)-1):0);
+  },0);
+
+  const deudaTCTotal=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
+  const _cpAjenoHero=typeof _saldoCPAjeno==='function'?_saldoCPAjeno():0;
+  // Alcancía: el patrimonio real la incluye, pero el hero la oculta para mantener la sorpresa
+  const _alcSaldo = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
+  const _patrimonioVisible = disp+prest+cdts-deudaTCTotal-_cpAjenoHero; // sin alcancía
+  document.getElementById('heroTotal').textContent=fmt(_patrimonioVisible);
+  // Indicador de alcancía en el hero
+  const _heroAlcInd = document.getElementById('hero-alcancia-indicator');
+  const _heroLabel  = document.getElementById('hero-patrimonio-label');
+  if(_heroAlcInd){
+    if(_alcSaldo > 0){
+      _heroAlcInd.style.display = '';
+      if(_heroLabel) _heroLabel.textContent = 'Patrimonio visible';
+    } else {
+      _heroAlcInd.style.display = 'none';
+      if(_heroLabel) _heroLabel.textContent = 'Patrimonio total';
+    }
+  }
+  document.getElementById('s-disp').textContent=fmtNoCents(disp);
+  document.getElementById('s-nu').textContent=fmtNoCents(cajitasLibres);
+  document.getElementById('s-ef').textContent=fmtNoCents(ef);
+  const sNequiEl=document.getElementById('s-nequi');if(sNequiEl)sNequiEl.textContent=fmtNoCents(nequi);
+  document.getElementById('s-prest').textContent=fmtNoCents(prest);
+  document.getElementById('s-cdt').textContent=fmtNoCents(cdts);
+  document.getElementById('s-gf').textContent=fmtNoCents(gfTotal);
+  document.getElementById('s-gv').textContent=fmtNoCents(gvMes);
+  document.getElementById('s-gtotal').textContent=fmtNoCents(gfTotal+gvMes);
+  document.getElementById('nuTotalDisp').textContent=fmt(nu);
+  const nuInterEl=document.getElementById('nuTotalIntereses');
+  if(nuInterEl)nuInterEl.textContent=interesesTotalHoy>0.5?'+'+fmt(interesesTotalHoy)+' intereses estimados hoy':'';
+
+  // Actualizar saldos en el selector de cuentas
+  const selNequi=document.getElementById('sel-nequi-saldo');
+  const selNu=document.getElementById('sel-nu-saldo');
+  const selEf=document.getElementById('sel-ef-saldo');
+  if(selNequi)selNequi.textContent=fmt(nequi);
+  if(selNu)selNu.textContent=fmt(nu);
+  if(selEf)selEf.textContent=fmt(ef);
+  // Si hay una cuenta abierta, actualizar su detalle
+  // FIX (auditoria-tecnica.md #5): las llamadas de este bloque no tenían
+  // guard typeof — bloqueaban de raíz volver lazy cuentas/encargos/gastos/
+  // prestado/spotify/inicio/tarjetas_credito (ReferenceError en el primer
+  // refresh() tras cargar el módulo bajo demanda). Mismo patrón defensivo
+  // ya usado para renderMesada/_refreshCajitaDet/renderTCScreen — no cambia
+  // el comportamiento actual (todo sigue cargando de entrada).
+  if(cuentaActual){ if(typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual); }
+  else if(_customCuentaActualId){
+    const _cc=(S.cuentasPersonalizadas||[]).find(x=>x.id===_customCuentaActualId);
+    if(_cc){
+      const saldoEl=document.getElementById('det-custom-saldo');
+      if(saldoEl)saldoEl.textContent=fmt(_cc.saldo||0);
+      if(typeof renderMovsCustom==='function') renderMovsCustom(_cc);
+      if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-custom-encargos', 'custom:'+_customCuentaActualId);
+    }
+  } else { if(typeof renderCajitas==='function') renderCajitas(); }
+  // Siempre actualizar el detalle/sub-pantallas de cajita si hay una abierta
+  if(typeof _refreshCajitaDet==='function') _refreshCajitaDet();
+  if(typeof renderGastosVar==='function') renderGastosVar();
+  if(typeof renderGastosFijos==='function') renderGastosFijos();
+  if(typeof renderDeudoresList==='function') renderDeudoresList();
+  if(typeof renderMesada==='function') renderMesada();
+  if(typeof renderSpotify==='function') renderSpotify();
+  if(typeof renderMesFiltros==='function') renderMesFiltros();
+  if(typeof renderAttencion==='function') renderAttencion();
+  if(typeof renderCustomCuentasList==='function') renderCustomCuentasList();
+  if(typeof renderTCDashboard==='function') renderTCDashboard();
+  // FIX: faltaba acá — la pantalla de Tarjetas (renderTCScreen) solo se
+  // actualizaba al crear/editar/eliminar una tarjeta. Si Firestore traía
+  // los datos DESPUÉS de haber entrado a la pantalla (o mientras estaba
+  // abierta), se quedaba pegada mostrando el estado vacío ("$0 · Agregar
+  // tarjeta de crédito") hasta que alguna acción la forzara a redibujar.
+  if(typeof renderTCScreen==='function') renderTCScreen();
+}
+
+
+/* ---- ANÁLISIS FINANCIERO: migrado a js/modules/analisis.js (renderAnalisis, Ingresos Fijos, Presupuestos).
+   calcPatrimonioTotal()/snapshotPatrimonio() se quedan acá — son núcleo, los llama save() en cada guardado. ---- */
+
+// Nu: cajitas, metas de ahorro y CDTs (UI) migrados a js/modules/cuentas.js.
+
+/* ---- GASTOS VARIABLES ---- */
+// (bloque completo: switchGastoTab, renderMesFiltros, setMesFiltro,
+// renderGastosVar, addGastoVar, deleteGastoVar, más abrirNuevoGastoVar/
+// abrirNuevoGastoFijo) migrado a js/modules/gastos.js — ver docs/gastos.md.
+
+/* ---- INGRESOS FIJOS: migrado a js/modules/analisis.js ---- */
+/* ---- GASTOS FIJOS ---- */
+// (bloque completo: renderGastosFijos, addGastoFijo, deleteGastoFijo,
+// abrirPagarGastoFijo, pgfActualizarSaldo, confirmarPagarGastoFijo)
+// migrado a js/modules/gastos.js — ver docs/gastos.md.
+
+// Módulo Préstamos (Me deben / Yo debo / Préstamo con TC) migrado a
+// js/modules/prestado.js — ver docs/prestado.md. La integración con
+// Personas vive aparte, en prestado-personas.js, cargada más abajo — ver
+// el comentario de ese archivo. El <script src> real está más abajo,
+// junto a mesada.js/spotify.js — depende de crearSplitWidget() y
+// diffRegistrarInstancia(), definidos en este bloque de acá.
+
+/* ---- MOTOR GENÉRICO "SPLIT DE FUENTES": migrado a js/core/split.js (crearSplitWidget,
+   splitToggle, splitAgregarRow, splitGetData, splitPreview). Se carga junto con
+   js/core/diferencial.js, antes de todos los módulos que dependen de él
+   (mesada.js, encargos.js, prestado.js). Ver ese archivo para el detalle de
+   qué se migró exactamente. ---- */
+
+// Instancia 'abonoEncCuenta' del motor de split (dividir el abono entre
+// varias cuentas de un mismo encargo) migrada a js/modules/prestado.js —
+// ver docs/prestado.md. El motor genérico (crearSplitWidget/splitToggle/
+// splitAgregarRow/splitGetData/splitPreview) sigue acá, compartido con
+// Mesada y Encargos.
+
+// Módulo Spotify migrado a js/modules/spotify.js — ver docs/spotify.md.
+// Carga temprana (acá mismo, no más abajo): un par de wirings de botones de
+// otros módulos referencian addSpotify/guardarEditarSpotify de forma
+// inmediata (no diferida) más adelante en este archivo, y necesitan que ya
+// existan. La integración con Personas vive aparte, en spotify-personas.js,
+// cargada mucho más abajo — ver el comentario de ese archivo.
+
+// Módulo Mesada migrado a js/modules/mesada.js — ver docs/mesada.md.
+// Carga acá y no más arriba (donde vivía antes) porque depende de
+// crearSplitWidget(), definido justo arriba en este mismo bloque —
+// mismo criterio que Spotify: cargar donde la dependencia más
+// exigente ya esté satisfecha.

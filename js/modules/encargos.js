@@ -2429,8 +2429,16 @@ refresh = function() {
   const btn_guardar_edit_enc = document.getElementById('btn-guardar-editar-encargo');
   if (btn_guardar_edit_enc) btn_guardar_edit_enc.addEventListener('click', guardarEditarEncargo);
 
+  // GUARD (2026-08-13, encontrado en prueba real de navegador post-lazy):
+  // guardarEditarSpotify vive en spotify.js, no en este archivo. Sin guard,
+  // si el usuario entra a Encargos antes de haber visitado Spotify (ambos
+  // lazy), esto tira ReferenceError acá mismo — y como estaba antes del
+  // cierre del IIFE, los dos listeners de abajo (btn_mov/btn_traspaso)
+  // tampoco se llegaban a conectar. Mismo tipo de degradación aceptada que
+  // ya existe para otros cruces entre módulos lazy: si spotify.js todavía
+  // no cargó, este botón puntual queda sin conectar hasta que sí lo haga.
   const btn_guardar_edit_sp = document.getElementById('btn-guardar-editar-spotify');
-  if (btn_guardar_edit_sp) btn_guardar_edit_sp.addEventListener('click', guardarEditarSpotify);
+  if (btn_guardar_edit_sp && typeof guardarEditarSpotify === 'function') btn_guardar_edit_sp.addEventListener('click', guardarEditarSpotify);
 
   const btn_mov = document.getElementById('btn-confirmar-mov-encargo');
   if (btn_mov) btn_mov.addEventListener('click', confirmarMovEncargo);

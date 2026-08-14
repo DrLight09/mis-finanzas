@@ -107,6 +107,37 @@ const Loader = (function () {
     // Tarjetas por primera vez — el hint simplemente no aparece hasta
     // entonces, no rompe nada.
     tarjetas: ['js/modules/tarjetas_credito.js'],
+    // Séptimo a undécimo grupo lazy (ronda de modularización de spotify/
+    // prestado/cuentas/analisis/encargos — ver auditoria-tecnica.md). Los 5
+    // se auditaron línea por línea contra el mismo criterio de siempre
+    // (código de nivel superior sin dependencia real de orden de carga,
+    // llamadas cruzadas a otros módulos de dominio con guard typeof) y
+    // aparecieron confirmados seguros en todos los casos SALVO dos bugs
+    // reales, ya corregidos como parte de esta misma ronda:
+    // 1. openSheet() en spotify.js estaba envuelto en un listener
+    //    DOMContentLoaded que, con carga lazy, nunca dispara (el evento ya
+    //    pasó) — se corrigió a top-level, ver cabecera de ese bloque en
+    //    spotify.js.
+    // 2. sheet-stack.js (núcleo, siempre eager) tenía dos referencias sin
+    //    guard a globales de estos módulos que corrían en CADA llamada a
+    //    showScreen(), no solo al entrar a esas pantallas: el bloque de
+    //    reset de Préstamos (deudorActualId/miDeudaActualId/
+    //    prestamosTabActiva) y la captura de addSpotify dentro de
+    //    _injectErrorSpans(). Ambos ya tienen guard typeof — ver
+    //    sheet-stack.js.
+    // #screen-spotify/#screen-prestamos/#screen-cuentas/#screen-encargos ya
+    // eran HTML estático desde antes (mismo caso que Mesada/Tarjetas), y
+    // #screen-analisis vive dentro de "Más", también estático — ninguno
+    // necesitó copiar/inyectar HTML. Se agregaron ramas de re-render en
+    // showScreen() (sheet-stack.js) para spotify y prestamos, replicando el
+    // fix que ya se había hecho para tarjetas — cuentas/encargos/analisis ya
+    // las tenían desde antes (antes de volverse lazy, esas ramas ya
+    // corrían, solo que sobre un módulo cargado de entrada).
+    spotify: ['js/modules/spotify.js'],
+    prestamos: ['js/modules/prestado.js'],
+    cuentas: ['js/modules/cuentas.js'],
+    analisis: ['js/modules/analisis.js'],
+    encargos: ['js/modules/encargos.js'],
   };
 
   const loaded = new Set();   // grupos ya cargados (no se vuelven a pedir)

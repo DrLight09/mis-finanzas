@@ -99,7 +99,16 @@ function showScreen(name){
   if(navEl)navEl.classList.add('active');
   document.getElementById('scrollArea').scrollTop=0;
   // Reset deudor detalle when leaving prestamos
-  if(name!=='prestamos'){
+  // GUARD (ronda de lazy-loading, ver auditoria-tecnica.md): deudorActualId,
+  // miDeudaActualId y prestamosTabActiva son globales de js/modules/prestado.js.
+  // Este bloque corría en CADA llamada a showScreen() para CUALQUIER pantalla
+  // (no solo al entrar/salir de Préstamos) — con prestado.js eager esto era
+  // seguro porque esos globales siempre existían desde el arranque. Al volver
+  // prestado.js lazy, navegar a Inicio (o a cualquier pantalla) antes de haber
+  // visitado nunca Préstamos habría lanzado ReferenceError acá, rompiendo TODA
+  // la navegación de la app, no solo Préstamos. Si prestado.js no ha cargado
+  // todavía no hay nada que resetear, así que el guard simplemente lo saltea.
+  if(name!=='prestamos' && typeof prestamosTabActiva!=='undefined'){
     deudorActualId=null;
     miDeudaActualId=null;
     const det=document.getElementById('deudorDetalle');
@@ -179,6 +188,23 @@ function showScreen(name){
   // sola" en cuanto algo disparaba un refresh() de fondo.)
   if(name==='tarjetas') {
     if(typeof renderTCScreen==='function') renderTCScreen();
+  }
+  // Re-renderizar Spotify y Préstamos al entrar — mismo motivo que Cuentas/
+  // Encargos/Tarjetas: sin esta rama, la primera vez que Loader.ensure(name)
+  // termina de cargar el módulo y este archivo vuelve a invocar
+  // showScreen(name), la pantalla queda visible pero vacía hasta que algún
+  // refresh() de fondo la pinte. Séptimo y octavo grupo lazy (ver
+  // js/core/lazy-loader.js) — auditoria-tecnica.md, ronda de modularización
+  // de spotify/prestado/cuentas/analisis/encargos.
+  if(name==='spotify') {
+    if(typeof renderSpotify==='function') renderSpotify();
+  }
+  if(name==='prestamos') {
+    if(prestamosTabActiva==='yo-debo') {
+      if(typeof renderMisDeudasList==='function') renderMisDeudasList();
+    } else {
+      if(typeof renderDeudoresList==='function') renderDeudoresList();
+    }
   }
 }
 
@@ -474,22 +500,37 @@ function _injectErrorSpans() {
   });
 
   // Also add validation to addSpotify
-  const _origAddSpotify = addSpotify;
-  addSpotify = function() {
-    const n = document.getElementById('sp_n').value.trim();
-    const m = parseMoney(document.getElementById('sp_m').value) || 0;
-    let valid = true;
-    if (!n) {
-      _markError('sp_n', 'sp_n_err', 'El nombre es obligatorio');
-      valid = false;
-    }
-    if (!m) {
-      _markError('sp_m', 'sp_m_err', 'Ingresa una cuota mayor a 0');
-      if (valid) valid = false;
-    }
-    if (!valid) return;
-    _origAddSpotify();
-  };
+  // GUARD (ronda de lazy-loading, ver auditoria-tecnica.md): con spotify.js
+  // como grupo lazy, addSpotify puede no existir todavía cuando
+  // _injectErrorSpans() corre en el arranque (bootstrap.js la llama una
+  // sola vez, temprano) — antes siempre existía porque spotify.js cargaba
+  // eager. Sin este guard, `addSpotify` (identificador no declarado) tira
+  // ReferenceError acá y aborta el resto del bootstrap. Si spotify.js
+  // todavía no cargó, no hay nada que envolver: el propio spotify.js ya
+  // resuelve addSpotify en vivo en su listener (`() => addSpotify()`, ver
+  // spotify.js) así que cuando el usuario entre a Spotify por primera vez
+  // seguirá llamando a la versión sin esta validación extra — se pierde la
+  // validación inline de "El nombre es obligatorio"/"Ingresa una cuota
+  // mayor a 0" para ese caso, mismo tipo de degradación aceptada que ya
+  // existe para el hint de mostrarAlertaFuente en tarjetas_credito.js.
+  if (typeof addSpotify === 'function') {
+    const _origAddSpotify = addSpotify;
+    addSpotify = function() {
+      const n = document.getElementById('sp_n').value.trim();
+      const m = parseMoney(document.getElementById('sp_m').value) || 0;
+      let valid = true;
+      if (!n) {
+        _markError('sp_n', 'sp_n_err', 'El nombre es obligatorio');
+        valid = false;
+      }
+      if (!m) {
+        _markError('sp_m', 'sp_m_err', 'Ingresa una cuota mayor a 0');
+        if (valid) valid = false;
+      }
+      if (!valid) return;
+      _origAddSpotify();
+    };
+  }
 }
 
 // Módulo Encargos migrado a js/modules/encargos.js — ver docs/encargos.md.

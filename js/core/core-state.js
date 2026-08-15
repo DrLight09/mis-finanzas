@@ -173,6 +173,38 @@ function crearMovimientoApertura(monto,fecha,nota){
 function escHtml(s){if(!s&&s!==0)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function mesKey(d){return d?d.substring(0,7):'';}
 
+// Pinta un elemento .avatar con el color de una persona del sistema unificado
+// (S.personas). Antes vivía copiado byte a byte en encargos.js, prestado.js y
+// spotify.js (los 3 módulos con integración de Personas) — spotify.js y
+// encargos.js lo tenían repetido dos veces cada uno, con leves variantes de
+// opacidad según el contexto (selector activo vs. avatar ya pintado en una
+// lista/detalle). Centralizado acá porque olvidarse de aplicarlo en un lugar
+// nuevo ya causó un bug real (renderEncargosList() sin esta lógica, ver
+// CHANGELOG.md#encargos) — con una sola función, ese olvido deja de ser posible.
+//
+// opts.mostrar     — si el avatar arranca oculto (display:none) y hay que
+//                     mostrarlo (ej. justo después de elegir persona en un
+//                     selector). Default: no lo toca.
+// opts.conIniciales — si hay que escribir las iniciales en el avatar (ej. un
+//                     selector recién confirmado). Default: true. Ponelo en
+//                     false si el avatar ya tiene sus iniciales de un render
+//                     previo y solo hace falta actualizar el color.
+// opts.alphaFondo / opts.alphaBorde — sufijo hex de opacidad para el color de
+//                     fondo/borde ('22'/'44' es el par usado en selectores;
+//                     '1a'/'33' el usado en algunos listados). Default: '22'/'44'.
+function pintarAvatarPersona(av, persona, opts){
+  if(!av||!persona)return;
+  opts=opts||{};
+  const color=persona.color||'#60b0f0';
+  const alphaFondo=opts.alphaFondo||'22';
+  const alphaBorde=opts.alphaBorde||'44';
+  if(opts.mostrar)av.style.display='flex';
+  av.style.background=color+alphaFondo;
+  av.style.color=color;
+  av.style.borderColor=color+alphaBorde;
+  if(opts.conIniciales!==false)av.textContent=iniciales(persona.nombre);
+}
+
 /* ---- MOVER PLATA ENTRE CUENTAS ---- */
 function descontarFuente(fuente,monto){
   if(!fuente||!monto)return;
@@ -478,12 +510,10 @@ function save(){
   S.efectivoSaldo=_readMoney('efectivoSaldo', S.efectivoSaldo);
   // Cuota mensual por año — guardada en S.mesadas[parent].cuotas[anio]
   const _anioActivo=S.mesadaAnio||new Date().getFullYear();
-  if(!S.mesadas)S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}};
-  ['papa','mama'].forEach(p=>{
-    if(!S.mesadas[p])S.mesadas[p]={cuotas:{},pagos:{}};
-    if(!S.mesadas[p].cuotas)S.mesadas[p].cuotas={};
-    if(!S.mesadas[p].pagos)S.mesadas[p].pagos={};
-  });
+  // El guard de inicialización de S.mesadas vive en _ensureMesadas()
+  // (js/core/calc-helpers.js, carga eager justo después de este archivo) —
+  // se reimplementaba acá a mano, duplicando la misma lógica.
+  if(typeof _ensureMesadas==='function')_ensureMesadas();
   const _elPapa=document.getElementById('mesadaMontoPapa');
   const _elMama=document.getElementById('mesadaMonteMama');
   // Solo grabamos una cuota explícita para este año si el valor en pantalla

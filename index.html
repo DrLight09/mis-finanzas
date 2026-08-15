@@ -196,7 +196,8 @@
     <link rel="manifest"
       href="data:application/json,%7B%22name%22%3A%22Mis%20Finanzas%22%2C%22short_name%22%3A%22Finanzas%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f0f0f%22%2C%22theme_color%22%3A%22%230f0f0f%22%2C%22start_url%22%3A%22/mis-finanzas/%22%2C%22scope%22%3A%22/mis-finanzas/%22%7D">
     <!-- Font Awesome self-hosteado (docs/auditoria-tecnica.md, punto 6 de
-         priorización, resuelto 2026-08-14): antes cargaba el paquete
+         priorización, resuelto 2026-08-15, confirmado en navegador real
+         con Lighthouse la misma sesión): antes cargaba el paquete
          completo desde cdnjs (all.min.css + fa-solid-900.woff2, 156 KB),
          de los cuales Lighthouse medía 18.4 KiB de CSS sin usar — la app
          solo usa 29 íconos en total. css/fa-subset.css es un subconjunto
@@ -206,8 +207,11 @@
          El font-display:swap ya viene declarado en el @font-face del
          propio archivo (antes hacía falta un <style> separado para
          sobreescribir el font-display:block de cdnjs — ya no aplica).
-         Si se agrega un ícono nuevo a la app, hay que regenerar el subset:
-         ver el proceso documentado en auditoria-tecnica.md. -->
+         Nota: el font-display:swap causa un CLS chico (0.003, bajo el
+         umbral de 0.1) cuando el subset termina de cargar y los íconos
+         cambian de ancho — esperado, no amerita acción. Si se agrega un
+         ícono nuevo a la app, hay que regenerar el subset: ver el
+         proceso documentado en auditoria-tecnica.md. -->
     <link rel="stylesheet" media="print" data-async-css
       href="css/fa-subset.css">
     <noscript><link rel="stylesheet" href="css/fa-subset.css"></noscript>

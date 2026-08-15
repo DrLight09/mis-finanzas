@@ -132,7 +132,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
         interesMioHoy = valorActualPorcion * k.tasaDiaria;
       } else {
         // Cajita sin fecha o sin saldo: usar tasa global simple
-        const tasa = getNuTasaGlobal ? getNuTasaGlobal() : (S.nuTasaGlobal || 9.25);
+        const tasa = (typeof getNuTasaGlobal==='function' ? getNuTasaGlobal() : (S.nuTasaGlobal || 9.25));
         const tasaDiaria = Math.pow(1 + tasa / 100, 1 / 365) - 1;
         interesMioHoy = saldoEncargo * tasaDiaria;
       }
@@ -364,7 +364,7 @@ function abrirEncargoDetalle(id) {
     });
     const hayMultiple = Object.keys(mapRaw).filter(k => (mapRaw[k]||0) > 0).length > 0;
     if (hayMultiple && saldo > 0) {
-      const tasaNU = getNuTasaGlobal ? getNuTasaGlobal() : (S.nuTasaGlobal || 9.25);
+      const tasaNU = (typeof getNuTasaGlobal==='function' ? getNuTasaGlobal() : (S.nuTasaGlobal || 9.25));
       const tasaDiaria = Math.pow(1 + tasaNU / 100, 1 / 365) - 1;
       const filas = Object.entries(mapRaw)
         .filter(([k,v]) => v > 0)

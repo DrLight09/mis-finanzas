@@ -2961,6 +2961,11 @@ crearEncargo = function() {
       const p = getPersona(pId);
       if (p) last.nombre = p.nombre;
       save();
+      // El render dentro de _origCrearEncargo ocurrió ANTES de asignar
+      // personaId, así que el avatar quedó pintado con el color genérico.
+      // Volvemos a renderizar ya con personaId puesto para que tome el
+      // color de la persona de una vez, sin esperar a otra acción.
+      renderEncargosList();
     }
   }
   _nuevoEncargoPersonaId = null;

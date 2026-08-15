@@ -233,19 +233,22 @@
          no-bloqueante, mismo patrón que Font Awesome/Google Fonts arriba.
          Lighthouse lo marcaba como render-blocking (11.7 KiB, ~1.16s en la
          ruta crítica). Va DESPUÉS de esos dos <link> pero ANTES del
-         <script> de más abajo a propósito: async-css.js corre como script
-         clásico (sin defer/async) apenas el parser lo alcanza, y hace
+         <script> de más abajo a propósito: async-css.js hace
          querySelectorAll('link[data-async-css]') sobre lo que exista en el
-         DOM en ese instante exacto — si este <link> quedara más abajo en el
-         documento (como estaba antes, junto al resto del CSS bloqueante),
-         async-css.js no lo encontraría y el archivo se quedaría con
-         media="print" para siempre, sin aplicarse nunca. Ya no hace falta
-         que sea bloqueante porque el <style> inline de "CSS CRÍTICO",
-         agregado al principio del <head>, cubre todo lo que se ve ANTES de
-         que este archivo termine de cargar (las pantallas de auth/PIN, que
-         tapan el resto de la app con un overlay fijo) — sin ese bloque,
-         este cambio causaría FOUC real. Ver el comentario de ese <style>
-         para el detalle completo de qué quedó ahí y por qué. -->
+         DOM al momento de ejecutarse — si este <link> quedara más abajo en
+         el documento (como estaba antes, junto al resto del CSS
+         bloqueante), async-css.js no lo encontraría y el archivo se
+         quedaría con media="print" para siempre, sin aplicarse nunca. Esta
+         dependencia es de ORDEN EN EL DOCUMENTO, no de timing de ejecución
+         — por eso agregar `defer` al script (ver comentario de esa línea)
+         no la rompe: los <link> siguen estando arriba en el DOM sin
+         importar cuándo corra el script. Ya no hace falta que sea
+         bloqueante porque el <style> inline de "CSS CRÍTICO", agregado al
+         principio del <head>, cubre todo lo que se ve ANTES de que este
+         archivo termine de cargar (las pantallas de auth/PIN, que tapan el
+         resto de la app con un overlay fijo) — sin ese bloque, este cambio
+         causaría FOUC real. Ver el comentario de ese <style> para el
+         detalle completo de qué quedó ahí y por qué. -->
     <link rel="stylesheet" media="print" data-async-css href="css/styles.css">
     <noscript><link rel="stylesheet" href="css/styles.css"></noscript>
     <!-- Reemplaza el onload="this.media='all'" inline que tenían estos 3 <link>
@@ -254,8 +257,24 @@
          eso incluye onload aunque no sea onclick. Se detectó recién al probar
          en navegador real después de sacar 'unsafe-inline' de script-src (el
          barrido previo de "0 onclick/onchange/oninput/hover inline" nunca
-         cubrió onload — ver CHANGELOG.md#infraestructura--seguridad). -->
-    <script src="js/core/async-css.js"></script>
+         cubrió onload — ver CHANGELOG.md#infraestructura--seguridad).
+
+         🔧 `defer` agregado (2026-08-14, hallazgo de auditoria-tecnica.md
+         "async-css.js bloquea el render"): antes corría como script clásico
+         (sin defer/async), bloqueando el parser un instante en cada carga.
+         Es seguro con defer porque los <link data-async-css> que busca ya
+         están arriba en el documento (ver comentario de esa sección) — la
+         posición en el DOM no depende del momento de ejecución del script.
+         Los dos casos posibles ya están cubiertos por el propio
+         async-css.js: si corre ANTES de que el CSS termine de bajar, el
+         listener 'load' se engancha a tiempo igual que antes; si corre
+         DESPUÉS (más probable ahora, al ejecutarse más tarde), el fallback
+         `if (link.sheet) link.media='all'` ya detecta que terminó y lo
+         activa sin esperar el evento. `.sheet` no requiere CORS para
+         confirmar que el recurso cargó (a diferencia de `.cssRules`, que
+         este archivo no usa) — funciona igual siendo cdnjs/fonts.googleapis
+         de origen cruzado. -->
+    <script src="js/core/async-css.js" defer></script>
     <!-- Preconnect a los dominios de Firebase: adelanta el handshake DNS/TCP/TLS
          en paralelo, en vez de esperar a que el bloque de módulo de más abajo
          los descubra uno por uno (esta era la cadena de red detrás del LCP de

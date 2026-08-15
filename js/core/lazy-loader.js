@@ -188,5 +188,45 @@ const Loader = (function () {
     return loaded.has(group);
   }
 
-  return { ensure, isLoaded, GROUPS };
+  // ── Precarga total en segundo plano ───────────────────────────────────────
+  // Por qué existe: "Necesita atención" en Inicio (inicio.js) depende de
+  // funciones de Préstamos/Tarjetas/Mesada/Spotify — todas lazy. Sin esto,
+  // esa sección solo se completa a medida que el usuario visita cada
+  // pantalla a mano, y un ítem pendiente real (ej. "Hermanito te debe
+  // $630.000") puede quedar invisible por sesiones enteras si nunca se
+  // entra a Préstamos. Se decidió explícitamente NO forzar la carga desde
+  // dentro de inicio.js/renderAttencion() (eso reintroduciría el problema
+  // que la modularización por pantalla buscaba resolver: bloquear Inicio
+  // con el peso de TODOS los módulos). En cambio, se precarga todo en
+  // PARALELO (no uno por uno) recién después de que la app ya pintó y
+  // cargó datos reales — así el primer pintado de Inicio sigue tan rápido
+  // como con los 11 grupos lazy, y el costo de red se paga una sola vez,
+  // en segundo plano, sin bloquear nada visible.
+  //
+  // Dentro de cada grupo los archivos siguen cargando en orden (ver
+  // ensure() arriba, sigue aplicando el motivo del header de este
+  // archivo); ENTRE grupos no hay dependencia de orden — cada pantalla es
+  // independiente — así que sí se piden todas a la vez.
+  function ensureAll() {
+    return Promise.all(Object.keys(GROUPS).map(g => ensure(g).catch(() => {})));
+  }
+
+  // Disparo automático, una sola vez por carga de página: apenas termina
+  // la primera carga real de datos (evento 'appDataLoaded', ver
+  // firebase-sync.js#_finishFirstLoad — se dispara tanto con datos de la
+  // nube como en el camino de error/sin conexión, así que cubre ambos
+  // casos). Sin demora artificial: se pide todo de inmediato, en paralelo,
+  // para que el tiempo extra sea el de la descarga más lenta de las 11, no
+  // la suma de las 11. Al terminar, un solo refresh()/applyModulos() para
+  // que "Necesita atención" (y cualquier otra cosa que dependía de un
+  // módulo lazy) se actualice sola, sin que el usuario tenga que tocar
+  // nada ni volver a entrar a Inicio.
+  window.addEventListener('appDataLoaded', function () {
+    ensureAll().then(() => {
+      if (typeof refresh === 'function') refresh();
+      if (typeof applyModulos === 'function') applyModulos();
+    });
+  }, { once: true });
+
+  return { ensure, ensureAll, isLoaded, GROUPS };
 })();

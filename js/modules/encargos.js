@@ -303,19 +303,10 @@ function renderEncargosList() {
     const comprometido = encargoComprometido(enc);
     const libre = encargoLibre(enc);
     const ini = escHtml(iniciales(enc.nombre));
-    // FIX (2026-08-15): antes el avatar de la lista estaba hardcodeado en azul,
-    // sin mirar enc.personaId — por eso todos los encargos se veían iguales acá
-    // aunque la vista de detalle sí aplicaba el color real de la persona
-    // (getPersona()/S.personas en varios puntos más abajo en este archivo). Se
-    // busca la persona a mano, igual que ya hace este archivo más arriba
-    // (línea ~67), en vez de llamar getPersona() — esa función vive en
-    // personas.js y no hace falta agregar una dependencia nueva acá.
-    const _persona = enc.personaId ? (S.personas || []).find(x => x.id === enc.personaId) : null;
-    const avColor = (_persona && _persona.color) || '#60b0f0';
     return `<div class="card card-sm" style="cursor:pointer;margin-bottom:8px;" data-encargo-id="${enc.id}" ${Events.attr('encargos:abrirDetalle', enc.id)}>
       <div class="row">
         <div style="display:flex;align-items:center;gap:10px;">
-          <div class="avatar" style="background:${avColor}22;color:${avColor};border-color:${avColor}44;flex-shrink:0;">${ini}</div>
+          <div class="avatar" style="background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;">${ini}</div>
           <div>
             <div class="row-name">${escHtml(enc.nombre)}</div>
             <div class="row-sub">${(enc.movimientos||[]).length} movimiento${(enc.movimientos||[]).length!==1?'s':''} · ${escHtml(enc.nota||'Encargo')}</div>
@@ -1177,7 +1168,11 @@ function abrirMovEncargo(tipo) {
   if (tipo === 'entrada') {
     // Entrada: mostrar fuentes reales (sin TC — no se puede guardar plata ajena en una TC)
     const fuentes = getFuentesSinTC();
-    sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+    // FIX (2026-08-15): f.val/f.label sin escapar — mismo patrón que ya se
+    // corrigió en buildFuentesOptsHtml() (core-state.js), pero esta es una
+    // segunda implementación separada que nunca pasaba por escHtml(). Nombres
+    // de cuenta personalizada son texto libre del usuario. Ver CHANGELOG.md.
+    sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${escHtml(f.val)}">${escHtml(f.label)}</option>`).join('');
     label.textContent = '¿En qué cuenta guardaste esa plata?';
     if (splitToggleBtn) splitToggleBtn.style.display = 'none';
   } else {
@@ -1186,10 +1181,10 @@ function abrirMovEncargo(tipo) {
     if (cuentasConSaldo.length === 0) {
       // Si no hay distribución por cuenta, mostrar todas (sin TC)
       const fuentes = getFuentesSinTC();
-      sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+      sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${escHtml(f.val)}">${escHtml(f.label)}</option>`).join('');
     } else {
       sel.innerHTML = '<option value="">Sin especificar</option>' +
-        cuentasConSaldo.map(f=>`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+        cuentasConSaldo.map(f=>`<option value="${escHtml(f.cuenta)}">${escHtml(f.label)} (${fmt(f.saldo)})</option>`).join('');
       _movEncMuestraSaldoEnOpcion = true;
     }
     label.textContent = '¿De qué cuenta sacaste esa plata?';
@@ -2404,7 +2399,15 @@ refresh = function() {
     const sel = document.getElementById('enc_cuenta_ini');
     if (sel) {
       const fuentes = getFuentesSinTC();
-      sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+      // FIX (2026-08-15, reportado por el usuario vía warning de consola
+      // "select tag was parsed within another select tag"): f.val/f.label sin
+      // escapar acá — mismo patrón que las otras 3 ocurrencias de este bug en
+      // este archivo (líneas ~1175/1184/1186) y que buildFuentesOptsHtml() en
+      // core-state.js. Nombres de cuenta personalizada son texto libre del
+      // usuario — con caracteres como <, >, & sin escapar dentro del
+      // innerHTML de un <select>, el parser del navegador puede comportarse
+      // de forma impredecible. Ver CHANGELOG.md.
+      sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${escHtml(f.val)}">${escHtml(f.label)}</option>`).join('');
     }
     openSheet('nuevo-encargo');
   });
@@ -2958,17 +2961,6 @@ crearEncargo = function() {
       const p = getPersona(pId);
       if (p) last.nombre = p.nombre;
       save();
-      // FIX (2026-08-15, causa real de "el avatar se crea sin persona"): antes
-      // no se volvía a pintar la lista después de asignar personaId acá —
-      // _origCrearEncargo() ya había refrescado la lista ANTES de esta línea,
-      // en un momento en que el encargo todavía no tenía personaId, así que
-      // ni esta función (fallback de color) ni el wrapper de más abajo (que
-      // aplica el color real de la persona pero solo si personaId ya existe)
-      // llegaban a correr con el dato completo. Sin este re-render, el color
-      // correcto recién aparecía la próxima vez que algo más disparara un
-      // renderEncargosList() (ej. salir y volver a la pantalla) — nunca de
-      // entrada. Ver CHANGELOG.md#encargos.
-      renderEncargosList();
     }
   }
   _nuevoEncargoPersonaId = null;

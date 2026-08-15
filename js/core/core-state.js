@@ -47,7 +47,12 @@ function buildFuentesOptsHtml({
       const saldo = mostrarSaldo || soloConSaldo ? (f.saldo !== undefined ? f.saldo : getSaldoFuente(val)) : 0;
       if (soloConSaldo && saldo <= 0) return null;
       const label = mostrarSaldo ? `${f.label} (${fmt(saldo)})` : f.label;
-      return `<option value="${val}"${val === selectedVal ? ' selected' : ''}>${label}</option>`;
+      // FIX (auditoria-tecnica.md, hallazgo repetido en 8 módulos): f.label
+      // puede ser texto libre editado por el usuario (nombre de cuenta
+      // personalizada, cajita, etc.) — se escapa acá, en la función núcleo
+      // compartida, en vez de en cada caller. `val` también se escapa por
+      // las dudas (va dentro de un atributo con comillas dobles).
+      return `<option value="${escHtml(val)}"${val === selectedVal ? ' selected' : ''}>${escHtml(label)}</option>`;
     })
     .filter(Boolean)
     .join('');

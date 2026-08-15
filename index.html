@@ -61,9 +61,9 @@
     -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self';
-      script-src 'self' https://www.gstatic.com https://cdnjs.cloudflare.com https://apis.google.com;
-      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
-      font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:;
+      script-src 'self' https://www.gstatic.com https://apis.google.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+      font-src 'self' https://fonts.gstatic.com data:;
       img-src 'self' data: https:;
       manifest-src 'self' data:;
       connect-src 'self' https://www.gstatic.com https://*.googleapis.com https://firestore.googleapis.com wss://*.firebaseio.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com;
@@ -195,26 +195,22 @@
       href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAYAAAA9zQYyAAADuElEQVR42u3dy40bMRBFUWYwKTpch+MMbAzgrb9oslnvHQF3Od2DqgNKG7XWuvz18fHxXXe1vIAFHmABDrHgBllgg6x42BakGNiWohjUlqEI1BagGNiGrhjUhq0Y1IasGNSGqxjUhqoY1IapKNQGqRjQhqgY1IanGNSGpijUBqYY0IalKNQGpRjQhqQo1AakGNCGoyjUBiOgpRtBG8pzff325a8zr02oDQRooAU00EADvRm0YZzBC/kh1AbxLmDAgY5HDDfQ0ZDBBjoOMdxAx2OGGugoyGADHQkZ7J+gYYYaaJDBBhpmqIGGGWqgQe6FvWCGGmiYfwvkxN9BXQT6bQxvXAfqUNA3AHjzeu2ogd6w9BuuCzTMjy37puu3oV4wP7/gG+/TgnrB/Pxib71XA2qgNyz05vsBXYI54TEGUA8HfesCp9w7EXU96MQHzQANc9yTk1pR14JueBQY0E5noIejXjBnP6yxDfXyUSP/6aNAh4Jufpwu0E5noAeiXk7nDtAtp/RyOgOdhHo5nXtAN5zSQAMNtCXMBZ2OGmiggZ6ygAn/r5kCDTTQc0FPfHtMBn07aqCBBtpb43zQqR87gAYaaEMHGmiggQYaaLMFGmiggQYaaEMHGugTQ5/0P5sv0E5oJzTQQAMNNNBAGzrQQANttkADDTTQQAMNNNBA+8aKb6wADbS5+tY30D5uAA000D52eHIS0EADDfT4JXj6KNBAmyPQnuCfO8N40JNOF7+xAnTUCeNXsICOOmX8TiHQUSeNX5IF+thy/NY30FAPBd2GeSzo299GU0BPdFELeufCpv0PQEN9NehWzEBvWt6UewMN9dWg2zFHgH5ykU8t8+b7JWMGetNSb70X0FBfDRrmYNA7Fvy/S77p+k2Y40DvWva/LvyG6zZiBnrT8t+8HtBhoE8A+BOCN64DczDoUxh+BePE38FcBvoNIJNK3Xk0aKi7MFeABrsDch3odtQtO64C3Yq6ab91oJtgN+61FnQ66tadVoNOhN2+S6BDYNsf0DGo7Q3o8bjtB+gI2PYB9Hjc5g503bdkBHTV43SBFtBAC2iggRbQQAtooIEW0EADDfRboD9fBiGgJaAloCWgBbQEtAS0tBM01IrCDLSAloCWDoGGWlGYgRbQ0s2goVYUZqAVBxpqRWEGWnGgoVYUZqAVBxpqRWGGWnGYoVYcZqAVBxpqRWGGWnGYoVYcZqgVhxlqxWGGWnGYwVYcZKgViRlqxWEGW3GQwVYkZLAVCRluRSIGHOBTrx99JAP6M2MbjQAAAABJRU5ErkJggg==">
     <link rel="manifest"
       href="data:application/json,%7B%22name%22%3A%22Mis%20Finanzas%22%2C%22short_name%22%3A%22Finanzas%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230f0f0f%22%2C%22theme_color%22%3A%22%230f0f0f%22%2C%22start_url%22%3A%22/mis-finanzas/%22%2C%22scope%22%3A%22/mis-finanzas/%22%7D">
+    <!-- Font Awesome self-hosteado (docs/auditoria-tecnica.md, punto 6 de
+         priorización, resuelto 2026-08-14): antes cargaba el paquete
+         completo desde cdnjs (all.min.css + fa-solid-900.woff2, 156 KB),
+         de los cuales Lighthouse medía 18.4 KiB de CSS sin usar — la app
+         solo usa 29 íconos en total. css/fa-subset.css es un subconjunto
+         generado con pyftsubset (fonttools) a partir del paquete oficial
+         @fortawesome/fontawesome-free@6.5.2, conteniendo SOLO esos 29
+         glyphs: css/fa-solid-subset.woff2 pesa 4 KB en vez de 156 KB.
+         El font-display:swap ya viene declarado en el @font-face del
+         propio archivo (antes hacía falta un <style> separado para
+         sobreescribir el font-display:block de cdnjs — ya no aplica).
+         Si se agrega un ícono nuevo a la app, hay que regenerar el subset:
+         ver el proceso documentado en auditoria-tecnica.md. -->
     <link rel="stylesheet" media="print" data-async-css
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"></noscript>
-    <!-- Font Awesome define su @font-face con font-display:block, lo que retrasa
-         la primera pintura hasta ~760ms mientras baja el woff2 (hallazgo de
-         Lighthouse). Como no podemos tocar el CSS de cdnjs, lo sobreescribimos
-         redeclarando la misma family/weight con font-display:swap: el navegador
-         usa la última declaración que coincida, así que el texto/iconos se
-         muestran de inmediato con un fallback y se intercambian cuando la
-         fuente termina de cargar (los íconos solo aparecen un poco más tarde,
-         sin bloquear el render de la página). -->
-    <style>
-      @font-face {
-        font-family: 'Font Awesome 6 Free';
-        font-style: normal;
-        font-weight: 900;
-        font-display: swap;
-        src: url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/webfonts/fa-solid-900.woff2') format('woff2');
-      }
-    </style>
+      href="css/fa-subset.css">
+    <noscript><link rel="stylesheet" href="css/fa-subset.css"></noscript>
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <!-- fonts.gstatic.com: agregado en sesión posterior (Lighthouse real,
          ver docs/auditoria-tecnica.md #5-bis / CHANGELOG.md#arranque) — es
@@ -272,8 +268,9 @@
          `if (link.sheet) link.media='all'` ya detecta que terminó y lo
          activa sin esperar el evento. `.sheet` no requiere CORS para
          confirmar que el recurso cargó (a diferencia de `.cssRules`, que
-         este archivo no usa) — funciona igual siendo cdnjs/fonts.googleapis
-         de origen cruzado. -->
+         este archivo no usa) — funciona igual siendo fonts.googleapis de
+         origen cruzado (Font Awesome ya es mismo origen desde que se
+         self-hosteó, ver comentario más arriba). -->
     <script src="js/core/async-css.js" defer></script>
     <!-- Preconnect a los dominios de Firebase: adelanta el handshake DNS/TCP/TLS
          en paralelo, en vez de esperar a que el bloque de módulo de más abajo

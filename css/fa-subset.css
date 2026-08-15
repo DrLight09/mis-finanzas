@@ -3,7 +3,7 @@
   font-style: normal;
   font-weight: 900;
   font-display: swap;
-  src: url("fa-solid-subset-full.woff2") format("woff2");
+  src: url("fa-solid-subset.woff2") format("woff2");
 }
 .fa-solid, .fas {
   font-family: "Font Awesome 6 Free";

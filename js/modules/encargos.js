@@ -2958,6 +2958,17 @@ crearEncargo = function() {
       const p = getPersona(pId);
       if (p) last.nombre = p.nombre;
       save();
+      // FIX (2026-08-15, causa real de "el avatar se crea sin persona"): antes
+      // no se volvía a pintar la lista después de asignar personaId acá —
+      // _origCrearEncargo() ya había refrescado la lista ANTES de esta línea,
+      // en un momento en que el encargo todavía no tenía personaId, así que
+      // ni esta función (fallback de color) ni el wrapper de más abajo (que
+      // aplica el color real de la persona pero solo si personaId ya existe)
+      // llegaban a correr con el dato completo. Sin este re-render, el color
+      // correcto recién aparecía la próxima vez que algo más disparara un
+      // renderEncargosList() (ej. salir y volver a la pantalla) — nunca de
+      // entrada. Ver CHANGELOG.md#encargos.
+      renderEncargosList();
     }
   }
   _nuevoEncargoPersonaId = null;

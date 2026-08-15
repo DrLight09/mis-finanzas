@@ -270,6 +270,28 @@
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+    <!-- Agregados esta sesión (Lighthouse real post-modularización,
+         2026-08-14, ver auditoria-tecnica.md #5): con el JS propio ya no
+         siendo el cuello de botella principal (TBT bajó de 8,980ms a
+         1,840-3,240ms tras hacer lazy los 11 módulos), el nuevo #1 del
+         camino crítico hacia el LCP pasó a ser el iframe de Firebase Auth
+         — 6.5-7 segundos, la mayor parte del "Element render delay" de
+         2.7-3.5s medido. mis-finanzas-z.firebaseapp.com (el iframe en sí,
+         ~360ms de ahorro estimado) y apis.google.com (el SDK de Google
+         Sign-In que ese iframe carga, ~340ms) son los dos orígenes nuevos
+         con mayor ahorro sugerido por Lighthouse que todavía no estaban acá.
+
+         Esto deja 7 preconnects en total — Lighthouse recomienda no pasar
+         de 4 ("usar con moderación"), pero es una guía sobre gastar el
+         presupuesto de conexiones tempranas en orígenes que después no se
+         usan, no un límite duro: los 7 aparecen realmente solicitados en
+         el árbol de dependencias de red de esta misma corrida (a
+         diferencia de securetoken.googleapis.com, sacado antes por no
+         pedirse nunca en el arranque — ver nota de arriba). Si una futura
+         corrida de Lighthouse marca alguno de los 7 como "unused
+         preconnect", ese es el que hay que sacar primero. -->
+    <link rel="preconnect" href="https://mis-finanzas-z.firebaseapp.com" crossorigin>
+    <link rel="preconnect" href="https://apis.google.com" crossorigin>
     <!-- Modulepreload: empieza a descargar el SDK de Firebase en paralelo con el
          resto del <head>. Con `async` en el <script> de más abajo, esto ya sí
          adelanta cuándo se ejecuta: sin el modulepreload, el navegador recién

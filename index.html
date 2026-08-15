@@ -617,13 +617,28 @@
                 id="s-gtotal">$0</span></div></div>
           <!-- SALUD FINANCIERA -->
           <div class="sec-title">Salud financiera</div>
+          <!-- min-height + skeleton: health-score-card arranca vacío y se llena
+               recién cuando Loader.ensureAll() termina de precargar los módulos
+               lazy que alimentan el cálculo (Préstamos/Tarjetas/Mesada/Spotify) —
+               sin esto, el salto de 0 a su alto real es la causa confirmada del
+               CLS 1.001 medido en main#scrollArea (ver auditoria-tecnica.md).
+               renderHealthScore() sobreescribe todo el innerHTML de acá adentro,
+               así que el skeleton desaparece solo apenas hay datos reales. -->
           <div id="health-score-card" class="card"
-            style="padding:16px;margin-bottom:9px;"></div>
+            style="padding:16px;margin-bottom:9px;min-height:132px;">
+            <div style="height:11px;width:38%;border-radius:4px;background:var(--bg3);margin-bottom:12px;"></div>
+            <div style="height:26px;width:58%;border-radius:4px;background:var(--bg3);margin-bottom:14px;"></div>
+            <div style="height:7px;width:100%;border-radius:4px;background:var(--bg3);"></div>
+          </div>
 
           <!-- PROYECCIÓN -->
           <div class="sec-title">Proyección financiera</div>
+          <!-- Mismo criterio que health-score-card (ver comentario arriba). -->
           <div id="proyeccion-card" class="card card-sm"
-            style="margin-bottom:9px;"></div>
+            style="margin-bottom:9px;min-height:96px;">
+            <div style="height:11px;width:44%;border-radius:4px;background:var(--bg3);margin-bottom:12px;"></div>
+            <div style="height:20px;width:50%;border-radius:4px;background:var(--bg3);"></div>
+          </div>
 
           <!-- ATENCIÓN HOY -->
           <div id="s-attn-section" style="display:none;">

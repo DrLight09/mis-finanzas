@@ -1,0 +1,40 @@
+@font-face {
+  font-family: "Font Awesome 6 Free";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("fa-solid-subset-full.woff2") format("woff2");
+}
+.fa-solid, .fas {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+}
+.fa-arrow-down::before { content: "\f063"; }
+.fa-arrow-right::before { content: "\f061"; }
+.fa-arrow-rotate-left::before { content: "\f0e2"; }
+.fa-arrow-up::before { content: "\f062"; }
+.fa-bell::before { content: "\f0f3"; }
+.fa-box::before { content: "\f466"; }
+.fa-calendar::before { content: "\f133"; }
+.fa-check::before { content: "\f00c"; }
+.fa-check-double::before { content: "\f560"; }
+.fa-chevron-down::before { content: "\f078"; }
+.fa-chevron-up::before { content: "\f077"; }
+.fa-circle::before { content: "\f111"; }
+.fa-circle-check::before { content: "\f058"; }
+.fa-circle-info::before { content: "\f05a"; }
+.fa-clock::before { content: "\f017"; }
+.fa-credit-card::before { content: "\f09d"; }
+.fa-hand-holding-dollar::before { content: "\f4c0"; }
+.fa-handshake::before { content: "\f2b5"; }
+.fa-infinity::before { content: "\f534"; }
+.fa-pen::before { content: "\f304"; }
+.fa-receipt::before { content: "\f543"; }
+.fa-rotate-left::before { content: "\f2ea"; }
+.fa-sack-dollar::before { content: "\f81d"; }
+.fa-star::before { content: "\f005"; }
+.fa-tag::before { content: "\f02b"; }
+.fa-trash::before { content: "\f1f8"; }
+.fa-triangle-exclamation::before { content: "\f071"; }
+.fa-user::before { content: "\f007"; }
+.fa-vault::before { content: "\e2c5"; }

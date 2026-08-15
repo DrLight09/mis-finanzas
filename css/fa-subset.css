@@ -9,6 +9,15 @@
   font-family: "Font Awesome 6 Free";
   font-weight: 900;
 }
+.fa-solid, .fas {
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  display: inline-block;
+  font-style: normal;
+  font-variant: normal;
+  line-height: 1;
+  text-rendering: auto;
+}
 .fa-arrow-down::before { content: "\f063"; }
 .fa-arrow-right::before { content: "\f061"; }
 .fa-arrow-rotate-left::before { content: "\f0e2"; }

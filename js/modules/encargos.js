@@ -2913,13 +2913,7 @@ function _onSelPersonaNuevoEncargo(personaId) {
   const av = document.getElementById('enc-persona-avatar');
   if (btn) btn.style.borderColor = 'var(--accent)';
   if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
-  if (av) {
-    av.style.display = 'flex';
-    av.style.background = (p.color || '#60b0f0') + '22';
-    av.style.color = p.color || '#60b0f0';
-    av.style.borderColor = (p.color || '#60b0f0') + '44';
-    av.textContent = iniciales(p.nombre);
-  }
+  if (av) pintarAvatarPersona(av, p, { mostrar: true });
 }
 
 /* ── Hook en openSheet para inicializar el selector ───────────── */
@@ -2996,11 +2990,7 @@ renderEncargosList = function() {
       });
       // Aplicar color de persona
       const p = getPersona(enc.personaId);
-      if (p) {
-        av.style.background = (p.color || '#60b0f0') + '1a';
-        av.style.color = p.color || '#60b0f0';
-        av.style.borderColor = (p.color || '#60b0f0') + '33';
-      }
+      if (p) pintarAvatarPersona(av, p, { alphaFondo: '1a', alphaBorde: '33', conIniciales: false });
     }
   });
 };
@@ -3032,9 +3022,7 @@ abrirEncargoDetalle = function(id) {
   if (!p) return;
   // Aplicar color de la persona al avatar del detalle
   if (av) {
-    av.style.background = (p.color || '#60b0f0') + '22';
-    av.style.color = p.color || '#60b0f0';
-    av.style.borderColor = (p.color || '#60b0f0') + '44';
+    pintarAvatarPersona(av, p, { conIniciales: false });
     // Hacer clickeable para abrir perfil
     av.onclick = () => abrirPerfilPersona(p.id);
     av.title = 'Ver perfil de ' + p.nombre;

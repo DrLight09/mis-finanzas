@@ -1388,14 +1388,8 @@ function confirmarMovimiento() {
 
 function fuenteLabel2(f){ return f ? fuenteLabel(f) : '—'; }
 
-// fuenteLabel() devuelve HTML de confianza (el ícono SVG) cuando el código es
-// 'ganancia' — escHtml() sobre ese caso escapa el propio SVG y lo muestra como
-// texto literal en vez del ícono. Para cualquier otro código (nombre de cajita/
-// cuenta, texto libre del usuario) sigue escapando como siempre.
-function _fuenteLabelHtml(code){
-  const raw = fuenteLabel(code);
-  return code === 'ganancia' ? raw : escHtml(raw);
-}
+// _fuenteLabelHtml() vive en js/core/movimientos.js (núcleo, eager, carga
+// antes que este módulo) — estaba redefinida acá idéntica, byte a byte.
 
 /* ── ABONO: desde un encargo ──────────────────────────────────────── */
 function toggleDesdeEncargo() {
@@ -2836,13 +2830,7 @@ function _onSelPersonaNuevaDeuda(personaId) {
   const av = document.getElementById('nd-persona-avatar');
   if (btn) btn.style.borderColor = 'var(--accent)';
   if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
-  if (av) {
-    av.style.display = 'flex';
-    av.style.background = (p.color || '#60b0f0') + '22';
-    av.style.color = p.color || '#60b0f0';
-    av.style.borderColor = (p.color || '#60b0f0') + '44';
-    av.textContent = iniciales(p.nombre);
-  }
+  if (av) pintarAvatarPersona(av, p, { mostrar: true });
 }
 
 /* ── Hook en openSheet: 'nueva-persona' abre el selector directo;

@@ -1011,13 +1011,7 @@ function _onSelPersonaSpotify(personaId) {
   const av  = document.getElementById('sp-persona-avatar');
   if (btn) btn.style.borderColor = 'var(--accent)';
   if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
-  if (av) {
-    av.style.display = 'flex';
-    av.style.background = (p.color || '#60b0f0') + '22';
-    av.style.color = p.color || '#60b0f0';
-    av.style.borderColor = (p.color || '#60b0f0') + '44';
-    av.textContent = iniciales(p.nombre);
-  }
+  if (av) pintarAvatarPersona(av, p, { mostrar: true });
 }
 
 /* ── Reemplazar campo de texto en sheet-editar-spotify con selector ── */
@@ -1077,13 +1071,7 @@ function _onSelPersonaSpotifyEdit(personaId) {
   const av  = document.getElementById('sp-edit-persona-avatar');
   if (btn) btn.style.borderColor = 'var(--accent)';
   if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
-  if (av) {
-    av.style.display = 'flex';
-    av.style.background = (p.color || '#60b0f0') + '22';
-    av.style.color = p.color || '#60b0f0';
-    av.style.borderColor = (p.color || '#60b0f0') + '44';
-    av.textContent = iniciales(p.nombre);
-  }
+  if (av) pintarAvatarPersona(av, p, { mostrar: true });
 }
 
 /* ── Hook en openSheet para inicializar los selectores ─────────── */
@@ -1266,13 +1254,7 @@ renderSpotify = function() {
     const persona = getPersona(sp.personaId);
     if (!persona) return;
     const av = row.querySelector('.avatar');
-    if (av) {
-      const color = persona.color || '#60b0f0';
-      av.style.background = color + '22';
-      av.style.color = color;
-      av.style.border = '1.5px solid ' + color + '44';
-      av.textContent = iniciales(persona.nombre);
-    }
+    if (av) pintarAvatarPersona(av, persona);
     // Actualizar nombre si cambió
     const nameEl = row.querySelector('.row-name');
     if (nameEl) nameEl.textContent = persona.nombre;

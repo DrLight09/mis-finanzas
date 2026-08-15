@@ -303,10 +303,19 @@ function renderEncargosList() {
     const comprometido = encargoComprometido(enc);
     const libre = encargoLibre(enc);
     const ini = escHtml(iniciales(enc.nombre));
+    // FIX (2026-08-15): antes el avatar de la lista estaba hardcodeado en azul,
+    // sin mirar enc.personaId — por eso todos los encargos se veían iguales acá
+    // aunque la vista de detalle sí aplicaba el color real de la persona
+    // (getPersona()/S.personas en varios puntos más abajo en este archivo). Se
+    // busca la persona a mano, igual que ya hace este archivo más arriba
+    // (línea ~67), en vez de llamar getPersona() — esa función vive en
+    // personas.js y no hace falta agregar una dependencia nueva acá.
+    const _persona = enc.personaId ? (S.personas || []).find(x => x.id === enc.personaId) : null;
+    const avColor = (_persona && _persona.color) || '#60b0f0';
     return `<div class="card card-sm" style="cursor:pointer;margin-bottom:8px;" data-encargo-id="${enc.id}" ${Events.attr('encargos:abrirDetalle', enc.id)}>
       <div class="row">
         <div style="display:flex;align-items:center;gap:10px;">
-          <div class="avatar" style="background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;">${ini}</div>
+          <div class="avatar" style="background:${avColor}22;color:${avColor};border-color:${avColor}44;flex-shrink:0;">${ini}</div>
           <div>
             <div class="row-name">${escHtml(enc.nombre)}</div>
             <div class="row-sub">${(enc.movimientos||[]).length} movimiento${(enc.movimientos||[]).length!==1?'s':''} · ${escHtml(enc.nota||'Encargo')}</div>
@@ -2429,22 +2438,16 @@ refresh = function() {
   const btn_guardar_edit_enc = document.getElementById('btn-guardar-editar-encargo');
   if (btn_guardar_edit_enc) btn_guardar_edit_enc.addEventListener('click', guardarEditarEncargo);
 
-  // FIX (reemplaza el guard del 2026-08-13): guardarEditarSpotify vive en
-  // spotify.js, no en este archivo. El guard typeof anterior evitaba el
-  // ReferenceError pero tenía una falla real: si en el momento en que este
-  // wiring corre spotify.js TODAVÍA no cargó, el listener nunca se conectaba
-  // — ni siquiera después, cuando spotify.js sí terminaba de cargar. El botón
-  // quedaba muerto en silencio para el resto de esa carga de página. Se usa
-  // la misma referencia diferida que ya tenía crearEncargo más arriba
-  // (línea ~2414): el listener SIEMPRE se conecta, y recién al hacer click
-  // se resuelve guardarEditarSpotify — que para ese momento, casi siempre,
-  // ya existe (y si no, no rompe nada, solo no hace nada).
+  // GUARD (2026-08-13, encontrado en prueba real de navegador post-lazy):
+  // guardarEditarSpotify vive en spotify.js, no en este archivo. Sin guard,
+  // si el usuario entra a Encargos antes de haber visitado Spotify (ambos
+  // lazy), esto tira ReferenceError acá mismo — y como estaba antes del
+  // cierre del IIFE, los dos listeners de abajo (btn_mov/btn_traspaso)
+  // tampoco se llegaban a conectar. Mismo tipo de degradación aceptada que
+  // ya existe para otros cruces entre módulos lazy: si spotify.js todavía
+  // no cargó, este botón puntual queda sin conectar hasta que sí lo haga.
   const btn_guardar_edit_sp = document.getElementById('btn-guardar-editar-spotify');
-  if (btn_guardar_edit_sp) {
-    btn_guardar_edit_sp.addEventListener('click', () => {
-      if (typeof guardarEditarSpotify === 'function') guardarEditarSpotify();
-    });
-  }
+  if (btn_guardar_edit_sp && typeof guardarEditarSpotify === 'function') btn_guardar_edit_sp.addEventListener('click', guardarEditarSpotify);
 
   const btn_mov = document.getElementById('btn-confirmar-mov-encargo');
   if (btn_mov) btn_mov.addEventListener('click', confirmarMovEncargo);

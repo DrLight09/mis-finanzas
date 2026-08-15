@@ -143,7 +143,7 @@ function renderAnalisis(){
         const col=colors[i]||'var(--text2)';
         return`<div style="margin-bottom:${i<catsOrdenadas.length-1?'11':'0'}px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-            <span style="font-size:12px;font-weight:600;">${cat}</span>
+            <span style="font-size:12px;font-weight:600;">${escHtml(cat)}</span>
             <span style="font-size:12px;font-family:'DM Mono',monospace;color:${col};">${fmt(monto)}</span>
           </div>
           <div style="height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;">
@@ -517,7 +517,7 @@ function renderIngresosFijos(){
     return;
   }
   el.innerHTML=lista.map(ing=>{
-    const desdeLabel=ing.desde?`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">desde ${ing.desde}</span>`:'';
+    const desdeLabel=ing.desde?`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">desde ${escHtml(ing.desde)}</span>`:'';
     return`<div class="row" style="padding:12px 0;">
       <div style="display:flex;flex-direction:column;gap:2px;flex:1;">
         <span style="font-size:13px;font-weight:600;">${escHtml(ing.nombre||'Sin nombre')}</span>
@@ -603,9 +603,9 @@ function abrirPresupuestos(){
   lista.innerHTML = cats.map(cat => {
     const val = S.presupuestos[cat] || '';
     return `<div class="ig">
-      <label class="il">${cat}</label>
+      <label class="il">${escHtml(cat)}</label>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input type="text" inputmode="decimal" class="presup-input" data-cat="${cat}" placeholder="Sin límite" value="${val}" style="flex:1;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;">
+        <input type="text" inputmode="decimal" class="presup-input" data-cat="${escHtml(cat)}" placeholder="Sin límite" value="${val}" style="flex:1;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;">
         <span style="font-size:12px;color:var(--text3);flex-shrink:0;">/mes</span>
       </div>
     </div>`;
@@ -649,10 +649,10 @@ function renderPresupuestos(){
     const gasto = gastoCat[cat]||0;
     const pct = Math.min(100, Math.round(gasto/limite*100));
     const col = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--accent)';
-    if(pct >= 80 && pct < 100 && !window._presupWarned) { window._presupWarned=true; if(window.toast) window.toast(`¡Atención! Llevas ${pct}% del presupuesto de ${cat}`,'info',4000); }
+    if(pct >= 80 && pct < 100 && !window._presupWarned) { window._presupWarned=true; if(window.toast) window.toast(`¡Atención! Llevas ${pct}% del presupuesto de ${escHtml(cat)}`,'info',4000); }
     return `<div class="presup-row">
       <div class="presup-label-row">
-        <span style="font-size:12px;font-weight:600;">${cat}</span>
+        <span style="font-size:12px;font-weight:600;">${escHtml(cat)}</span>
         <span style="font-size:11px;font-family:'DM Mono',monospace;color:${col};">${fmt(gasto)} / ${fmt(limite)}</span>
       </div>
       <div class="presup-bar">

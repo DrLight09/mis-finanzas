@@ -14,14 +14,17 @@
 // onchange/oninput/hover inline" nunca cubrió onload porque no es uno de
 // esos cuatro — punto ciego real, no un falso positivo.
 //
-// Se carga como <script src> clásico, sin defer/async, justo después de los
-// <link data-async-css> en el <head>: al no bloquear en sí (es un archivo
-// chico) pero sí ejecutarse en orden de documento, corre antes de que
-// cualquiera de los dos CSS (mucho más pesados) termine de descargar, así
-// que alcanza a enganchar el listener 'load' a tiempo en la enorme mayoría
-// de los casos. El fallback de abajo cubre el caso raro en que ya haya
-// terminado de cargar (ej. viene de caché HTTP) antes de que este script
-// llegue a ejecutarse.
+// Se carga con <script defer> (ver index.html, agregado 2026-08-14 — antes
+// corría como script clásico sin defer/async, bloqueando el parser un
+// instante en cada carga, hallazgo de auditoria-tecnica.md), justo después
+// de los <link data-async-css> en el <head>: aunque con defer ya no
+// necesita ejecutarse "apenas el parser lo alcanza", su dependencia real
+// con esos <link> es de ORDEN EN EL DOCUMENTO (tienen que estar arriba en
+// el DOM para que el querySelectorAll de abajo los encuentre), no de
+// timing — así que sigue siendo seguro sin importar cuándo el navegador
+// decida correr este script en concreto. El fallback de abajo cubre el
+// caso (ahora más frecuente, al ejecutarse más tarde) en que el CSS ya
+// haya terminado de cargar antes de que este script llegue a correr.
 (function () {
   document.querySelectorAll('link[data-async-css]').forEach(function (link) {
     if (link.media === 'all') return; // ya se activó (poco probable en este punto)

@@ -1111,9 +1111,27 @@ function refresh(){
   if(typeof _refreshCajitaDet==='function') _refreshCajitaDet();
   if(typeof renderGastosVar==='function') renderGastosVar();
   if(typeof renderGastosFijos==='function') renderGastosFijos();
-  if(typeof renderDeudoresList==='function') renderDeudoresList();
-  if(typeof renderMesada==='function') renderMesada();
-  if(typeof renderSpotify==='function') renderSpotify();
+  // OPTIMIZACIÓN TBT (2026-08-15, ver auditoria-tecnica.md #12): estas 4
+  // llamadas re-renderizaban su pantalla completa en CADA refresh() —
+  // muchas veces por sesión (cascada de carga inicial, cada save(), cada
+  // 60s de autosave) — sin importar si el usuario la estaba viendo. Las 4
+  // ya se re-renderizan al ENTRAR a su pantalla (showScreen(), ver
+  // sheet-stack.js), así que ejecutarlas de nuevo mientras están ocultas
+  // es trabajo tirado: construyen HTML completo (loops sobre S, formateo
+  // de moneda) para un <div class="screen"> con display:none, que nadie
+  // va a ver hasta la próxima vez que se entre — y ahí showScreen() ya se
+  // encarga de refrescarlo. El guard usa "está activa AHORA", no "se
+  // acaba de entrar", a propósito: preserva el caso ya documentado abajo
+  // en renderTCScreen (datos de Firestore llegando mientras el usuario ya
+  // está parado en esa pantalla) sin necesitar tocar ese fix.
+  // Las otras 5 llamadas sin guard (renderCajitas/renderCustomCuentasList/
+  // renderGastosVar/renderGastosFijos/renderMesFiltros) NO tienen un hook
+  // equivalente en showScreen() — condicionarlas a ciegas podría dejar
+  // datos viejos si se navega directo a esa pantalla sin que nada más
+  // dispare un refresh(). Sin auditar (falta ver cuentas.js/gastos.js).
+  if(typeof renderDeudoresList==='function' && document.getElementById('screen-prestamos') && document.getElementById('screen-prestamos').classList.contains('active')) renderDeudoresList();
+  if(typeof renderMesada==='function' && document.getElementById('screen-mesada') && document.getElementById('screen-mesada').classList.contains('active')) renderMesada();
+  if(typeof renderSpotify==='function' && document.getElementById('screen-spotify') && document.getElementById('screen-spotify').classList.contains('active')) renderSpotify();
   if(typeof renderMesFiltros==='function') renderMesFiltros();
   if(typeof renderAttencion==='function') renderAttencion();
   if(typeof renderCustomCuentasList==='function') renderCustomCuentasList();
@@ -1123,7 +1141,7 @@ function refresh(){
   // los datos DESPUÉS de haber entrado a la pantalla (o mientras estaba
   // abierta), se quedaba pegada mostrando el estado vacío ("$0 · Agregar
   // tarjeta de crédito") hasta que alguna acción la forzara a redibujar.
-  if(typeof renderTCScreen==='function') renderTCScreen();
+  if(typeof renderTCScreen==='function' && document.getElementById('screen-tarjetas') && document.getElementById('screen-tarjetas').classList.contains('active')) renderTCScreen();
 }
 
 

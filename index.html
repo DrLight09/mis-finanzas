@@ -626,16 +626,21 @@
                todo el innerHTML de acá adentro, en las dos ramas (con y sin
                datos) — confirmado leyendo el archivo real — así que el
                skeleton desaparece solo apenas corre, sin excepción.
-               140px ≈ 32px de padding (16+16) + fila ring/texto: el anillo
-               real mide 76px de diámetro y suele dominar el alto de esa fila
-               por encima del texto salvo con muchos tips a la vez — puede
-               quedar corto si `tips` trae 3-4 líneas simultáneas. -->
+               148px ≈ padding 16+16 (.card, confirmado en styles.css) + fila
+               ring/texto (gap:16px, confirmado en .health-ring-wrap): el
+               anillo mide 76px fijo, pero .health-score-num tiene
+               font-size:32px (¡no 11px como se había asumido antes de ver
+               styles.css!) — con 0-1 tips el anillo domina (~76px), pero con
+               3-4 tips (font-size:11px/line-height:1.4 cada uno, inline en
+               renderHealthScore, no la clase .health-tip que quedó sin uso)
+               el texto puede llegar a ~116px y superar al anillo. 148px cubre
+               el caso de 4 tips simultáneos con margen. -->
           <div id="health-score-card" class="card"
-            style="padding:16px;margin-bottom:9px;min-height:140px;">
-            <div style="display:flex;align-items:flex-start;gap:14px;">
+            style="padding:16px;margin-bottom:9px;min-height:148px;">
+            <div style="display:flex;align-items:flex-start;gap:16px;">
               <div style="width:76px;height:76px;border-radius:50%;background:var(--bg3);flex-shrink:0;"></div>
-              <div style="flex:1;padding-top:4px;">
-                <div style="height:14px;width:55%;border-radius:4px;background:var(--bg3);margin-bottom:10px;"></div>
+              <div style="flex:1;">
+                <div style="height:23px;width:60%;border-radius:4px;background:var(--bg3);margin-bottom:8px;"></div>
                 <div style="height:10px;width:90%;border-radius:4px;background:var(--bg3);margin-bottom:6px;"></div>
                 <div style="height:10px;width:70%;border-radius:4px;background:var(--bg3);"></div>
               </div>
@@ -646,16 +651,19 @@
           <div class="sec-title">Proyección financiera</div>
           <!-- Mismo criterio que health-score-card (ver comentario arriba);
                renderProyeccion() también sobreescribe todo el innerHTML en
-               sus dos ramas. 112px ≈ fila de header (24px) + grid de 3 cards
-               (~46px) + footer "Basado en N días..." (~18px) + padding de
-               .card-sm (no confirmado el valor exacto de la clase). -->
+               sus dos ramas. 126px ≈ padding real de .card-sm (13px arriba +
+               13px abajo, confirmado en styles.css — no 16px como .card) +
+               fila de header (~30px) + grid de 3 cards (padding interno
+               10px arriba/abajo de cada card, ~50px) + footer "Basado en N
+               días..." (~20px). No incluye el aviso opcional de deuda TC
+               propia (~20px extra) que solo aparece si hay deuda de TC. -->
           <div id="proyeccion-card" class="card card-sm"
-            style="margin-bottom:9px;min-height:112px;">
-            <div style="height:12px;width:40%;border-radius:4px;background:var(--bg3);margin-bottom:12px;"></div>
+            style="margin-bottom:9px;min-height:126px;">
+            <div style="height:12px;width:40%;border-radius:4px;background:var(--bg3);margin-bottom:14px;"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;">
-              <div style="height:46px;border-radius:8px;background:var(--bg3);"></div>
-              <div style="height:46px;border-radius:8px;background:var(--bg3);"></div>
-              <div style="height:46px;border-radius:8px;background:var(--bg3);"></div>
+              <div style="height:50px;border-radius:8px;background:var(--bg3);"></div>
+              <div style="height:50px;border-radius:8px;background:var(--bg3);"></div>
+              <div style="height:50px;border-radius:8px;background:var(--bg3);"></div>
             </div>
           </div>
 

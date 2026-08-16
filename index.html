@@ -120,6 +120,27 @@
       *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
       html,body{height:100%;overflow:hidden;background:var(--bg);}
       body{font-family:'DM Sans',sans-serif;color:var(--text);}
+      /* .app{display:none} — TEST (2026-08-15, ver auditoria-tecnica.md #11,
+         CLS 1.001 en main#scrollArea, tercer intento). .app/.header/
+         main#scrollArea NO están en este bloque crítico (ver comentario más
+         arriba: "quedan ocultos detrás del overlay... css/styles.css async
+         termine de cargar") — esa nota asume que estar tapado por el overlay
+         (z-index 99999) alcanza para que no cuente como shift. No alcanza:
+         la API de Layout Instability de Chrome no excluye elementos tapados
+         por otro con z-index más alto, solo elementos que no se renderizan
+         (display:none). Sin este display:none, .app/main#scrollArea
+         renderizan sin NINGÚN estilo (bloque, alto natural con todo su
+         contenido volcado) hasta que styles.css async aplica su layout real
+         (flex, overflow:auto, alto fijo) — ese salto de "sin estilo" a
+         "layout final" es indistinguible, para Lighthouse, de un salto
+         visible, así esté tapado. Coincide con que el número (1.001) salió
+         IDÉNTICO en 4 corridas con timing de red muy distinto — algo
+         determinístico ligado a cuándo aplica el CSS, no a cuándo llegan
+         los datos de Firebase. Con display:none acá, .app no existe en el
+         árbol de render hasta que styles.css define .app{display:flex}
+         (misma especificidad, gana por venir después en cascada) — no hay
+         estado "sin estilo" que mostrar ni que saltar desde ahí. */
+      .app{display:none;}
       /* ===== FIREBASE AUTH SCREENS (primer paint real) ===== */
       #fb-login-screen,#fb-loading-screen{
         position:fixed;inset:0;z-index:99999;display:none;

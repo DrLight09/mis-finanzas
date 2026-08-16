@@ -287,56 +287,26 @@
   }
 
   // Finaliza la primera carga: muestra la app e inicializa la UI
-  //
-  // ⚠️ TEST DIAGNÓSTICO TEMPORAL (2026-08-15, ver auditoria-tecnica.md #11 —
-  // CLS 1.001 en main#scrollArea). Hipótesis: main#scrollArea se re-renderiza
-  // completo 2-3 veces después de volverse visible (caché → 11 módulos lazy
-  // terminando → confirmación del servidor), y ESO es lo que mide Lighthouse
-  // como CLS, no ninguna card puntual. Este cambio ataca el paso más grande
-  // de los tres (los 11 módulos lazy) esperando a que Loader.ensureAll()
-  // termine ANTES de ocultar #fb-loading-screen — así main#scrollArea se
-  // revela ya con todo el contenido real, en vez de en dos tandas visibles.
-  // El paso 3 (confirmación del servidor tras el caché) queda SIN tocar a
-  // propósito — taparlo también revertiría por completo la optimización de
-  // LCP que el código ya tenía a propósito ("esto es lo que baja el LCP: ya
-  // no se espera", más abajo en este archivo).
-  // Esto es un TEST, no la decisión final: reintroduce a propósito parte de
-  // la espera que la optimización de LCP quería evitar — si el CLS baja
-  // fuerte, confirma la hipótesis y ahí se decide con qué versión quedarse
-  // (esta, un skeleton más grande, o aceptar el número). Si no baja, se
-  // revierte y se seguía investigando otra causa.
   function _finishFirstLoad() {
-    function _revelarApp() {
-      document.getElementById('fb-loading-screen').style.display = 'none';
-      // PROTECCIÓN: marcar que los datos ya se cargaron correctamente.
-      // _fbSaveToCloud no guardará nada hasta que esta bandera esté activa.
-      window._dataLoaded = true;
-      _initAppUI();
-      // Snapshot diario: guardar patrimonio del día aunque no haya otros cambios.
-      // Esto llena la gráfica de patrimonio sin que el usuario tenga que hacer nada.
-      if(typeof snapshotPatrimonio === 'function'){
-        snapshotPatrimonio();
-        if(typeof window._fbSaveToCloud === 'function') window._fbSaveToCloud();
-      }
-      // Resumen de cierre de mes: detectar si cambió el mes desde la última apertura
-      _checkCierreMes();
-      setSyncStatus('ok', 'Sincronizado con Firebase');
-      // Notificar a módulos inline que los datos están listos.
-      // Los scripts inline no pueden sobrescribir window._fbLoadData de forma confiable
-      // porque este módulo (type="module") se ejecuta DESPUÉS que ellos, sobreescribiendo
-      // cualquier wrapper que hayan puesto. El evento 'appDataLoaded' es el canal correcto.
-      // Nota: con este test, Loader.ensureAll() ya terminó ANTES de llegar acá
-      // (ver abajo), así que el listener de lazy-loader.js sobre este evento
-      // va a resolver todo instantáneo y disparar un refresh() extra —
-      // redundante pero inofensivo, no se tocó ese archivo para este test.
-      window.dispatchEvent(new CustomEvent('appDataLoaded'));
+    document.getElementById('fb-loading-screen').style.display = 'none';
+    // PROTECCIÓN: marcar que los datos ya se cargaron correctamente.
+    // _fbSaveToCloud no guardará nada hasta que esta bandera esté activa.
+    window._dataLoaded = true;
+    _initAppUI();
+    // Snapshot diario: guardar patrimonio del día aunque no haya otros cambios.
+    // Esto llena la gráfica de patrimonio sin que el usuario tenga que hacer nada.
+    if(typeof snapshotPatrimonio === 'function'){
+      snapshotPatrimonio();
+      if(typeof window._fbSaveToCloud === 'function') window._fbSaveToCloud();
     }
-    if (typeof Loader !== 'undefined' && typeof Loader.ensureAll === 'function') {
-      Loader.ensureAll().then(_revelarApp);
-    } else {
-      // Sin Loader (no debería pasar) — revelar igual, mismo comportamiento de siempre.
-      _revelarApp();
-    }
+    // Resumen de cierre de mes: detectar si cambió el mes desde la última apertura
+    _checkCierreMes();
+    setSyncStatus('ok', 'Sincronizado con Firebase');
+    // Notificar a módulos inline que los datos están listos.
+    // Los scripts inline no pueden sobrescribir window._fbLoadData de forma confiable
+    // porque este módulo (type="module") se ejecuta DESPUÉS que ellos, sobreescribiendo
+    // cualquier wrapper que hayan puesto. El evento 'appDataLoaded' es el canal correcto.
+    window.dispatchEvent(new CustomEvent('appDataLoaded'));
   }
 
   // ── Resumen de cierre de mes ─────────────────────────────────────────────

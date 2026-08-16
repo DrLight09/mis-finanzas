@@ -23,7 +23,7 @@
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;overflow:hidden;background:var(--bg);}
 body{font-family:'DM Sans',sans-serif;color:var(--text);}
-.app{display:flex;flex-direction:column;height:100dvh;max-width:430px;margin:0 auto;}
+.app{display:flex;flex-direction:column;height:100svh;max-width:430px;margin:0 auto;}
 .header{padding:12px 18px 11px;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .header h1{font-size:18px;font-weight:700;letter-spacing:-.3px;}
 .header p{font-size:11px;color:var(--text3);margin-top:2px;font-family:'DM Mono',monospace;}
@@ -132,7 +132,7 @@ textarea{resize:none;height:60px;}
 .overlay.sheet-background{display:flex;z-index:999;background:rgba(0,0,0,.0) !important;backdrop-filter:none !important;pointer-events:none;}
 .overlay.sheet-background .sheet{transform:scale(0.93) translateY(-10px);opacity:0.3;pointer-events:none;will-change:transform,opacity;}
 .overlay.open:not(.sheet-background) .sheet{transform:scale(1) translateY(0);opacity:1;will-change:transform,opacity;}
-.sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:0 18px 38px;width:100%;max-width:430px;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:0 18px 38px;width:100%;max-width:430px;max-height:92svh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 /* Handle unificado — una sola definición */
 .sheet-handle{width:40px;height:5px;background:var(--border2);border-radius:3px;margin:14px auto 20px;cursor:grab;opacity:.7;}
 .sheet-title{font-size:18px;font-weight:700;margin-bottom:20px;letter-spacing:-.2px;}

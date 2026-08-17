@@ -1143,6 +1143,13 @@ addSpotify = function() {
       const p = getPersona(pId);
       if (p) last.nombre = p.nombre;
       save();
+      // FIX: faltaba esto. _origAddSpotifyPersonas() (arriba) ya renderizó
+      // la fila ANTES de que este hook asignara personaId — sin este
+      // segundo render, la fila se quedaba con el estado de "sin persona"
+      // (avatar sin color, iniciales crudas de 2 letras) hasta que alguna
+      // otra acción disparara un refresh() en cualquier parte de la app.
+      // El dato en S siempre quedó bien guardado — era solo la pantalla.
+      renderSpotify();
     }
   }
   _spPersonaId = null;

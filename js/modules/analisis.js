@@ -600,16 +600,23 @@ function abrirPresupuestos(){
   const cats = window.getCatsVar ? window.getCatsVar() : ['Alimentación','Transporte','Salud','Entretenimiento','Otro'];
   const lista = document.getElementById('presupuestos-lista');
   if(!lista) return;
-  lista.innerHTML = cats.map(cat => {
+  // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md "Auditoría
+  // exhaustiva de .innerHTML"): escapa cat y val por defecto, sin depender de
+  // acordarse de envolver cada interpolación en escHtml() a mano. De paso cierra
+  // un caso que este mismo archivo tenía sin escapar: `val` (línea original)
+  // nunca pasaba por escHtml() — bajo riesgo real hoy porque siempre es un monto
+  // numérico (S.presupuestos[cat]), pero con html`` deja de depender de que siga
+  // siendo siempre así.
+  lista.innerHTML = html`${cats.map(cat => {
     const val = S.presupuestos[cat] || '';
-    return `<div class="ig">
-      <label class="il">${escHtml(cat)}</label>
+    return html`<div class="ig">
+      <label class="il">${cat}</label>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input type="text" inputmode="decimal" class="presup-input" data-cat="${escHtml(cat)}" placeholder="Sin límite" value="${val}" style="flex:1;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;">
+        <input type="text" inputmode="decimal" class="presup-input" data-cat="${cat}" placeholder="Sin límite" value="${val}" style="flex:1;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;">
         <span style="font-size:12px;color:var(--text3);flex-shrink:0;">/mes</span>
       </div>
     </div>`;
-  }).join('');
+  })}`;
 
   lista.querySelectorAll('.presup-input').forEach(inp => {
     inp.addEventListener('change', function(){
@@ -644,22 +651,26 @@ function renderPresupuestos(){
   });
   (S.gastosFijos||[]).forEach(g=>{ if(pagosGF[g.id+'_'+mes]){ const c=g.cat||'Otro'; gastoCat[c]=(gastoCat[c]||0)+(g.monto||0); } });
 
-  el.innerHTML = cats.map(cat => {
+  // Migrado a html`` — ver nota en abrirPresupuestos() más arriba. El toast()
+  // de aviso al 80% se queda con escHtml() a mano (no es un innerHTML, toast()
+  // no pasa por html``) — mismo criterio ya documentado en
+  // auditoria-tecnica.md sobre por qué no se tocó la firma de toast() en general.
+  el.innerHTML = html`${cats.map(cat => {
     const limite = presup[cat];
     const gasto = gastoCat[cat]||0;
     const pct = Math.min(100, Math.round(gasto/limite*100));
     const col = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--accent)';
     if(pct >= 80 && pct < 100 && !window._presupWarned) { window._presupWarned=true; if(window.toast) window.toast(`¡Atención! Llevas ${pct}% del presupuesto de ${escHtml(cat)}`,'info',4000); }
-    return `<div class="presup-row">
+    return html`<div class="presup-row">
       <div class="presup-label-row">
-        <span style="font-size:12px;font-weight:600;">${escHtml(cat)}</span>
-        <span style="font-size:11px;font-family:'DM Mono',monospace;color:${col};">${fmt(gasto)} / ${fmt(limite)}</span>
+        <span style="font-size:12px;font-weight:600;">${cat}</span>
+        <span style="font-size:11px;font-family:'DM Mono',monospace;color:${raw(col)};">${fmt(gasto)} / ${fmt(limite)}</span>
       </div>
       <div class="presup-bar">
-        <div class="presup-bar-fill" style="width:${pct}%;background:${col};"></div>
+        <div class="presup-bar-fill" style="width:${pct}%;background:${raw(col)};"></div>
       </div>
     </div>`;
-  }).join('');
+  })}`;
 }
 
 /* ---- EVENTOS: acciones con data-action="analisis:..." ---- */

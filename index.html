@@ -4767,6 +4767,17 @@
     <script src="js/core/diferencial.js" defer></script>
     <script src="js/core/split.js" defer></script>
 <script src="js/core/core-state.js" defer></script>
+<!--
+// js/core/html-tag.js — primitivo html`` que escapa por defecto (ver
+// auditoria-tecnica.md, "Auditoría exhaustiva de .innerHTML" — solución de
+// fondo dada esta sesión, tras 14 rondas de fixes manuales módulo por
+// módulo). Depende de escHtml(), definida en core-state.js — debe cargar
+// justo después. Núcleo, siempre eager: cualquier módulo lazy (incluido
+// analisis.js, primer piloto de migración) lo necesita ya disponible antes
+// de que el usuario dispare la primera llamada a html()/raw(), sin importar
+// cuándo termine de cargar ese módulo lazy en sí.
+-->
+<script src="js/core/html-tag.js" defer></script>
 <script src="js/core/calc-helpers.js" defer></script>
 <!--
 // Módulo Mesada — migrado a js/modules/mesada.js (ver docs/mesada.md).

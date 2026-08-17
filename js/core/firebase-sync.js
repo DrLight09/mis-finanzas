@@ -12,6 +12,18 @@
   }
 
   // ── Guardar en Firestore con debounce ─────────────────────────────────────
+  // FIX (2026-08-17): el autosave de bootstrap.js (cada 60s) y el snapshot
+  // diario de patrimonio en _finishFirstLoad() llamaban a esto sin chequear
+  // si algo había cambiado de verdad. Resultado real reportado por el
+  // usuario: una pestaña olvidada abierta (en otro dispositivo, o una
+  // segunda pestaña del mismo) seguía "guardando" cada 60s para siempre,
+  // pisando `updatedAt` con la hora actual aunque el payload fuera idéntico
+  // — y eso disparaba el toast "Datos actualizados desde otro dispositivo"
+  // en la pestaña activa (más abajo, ver `remoteTs > localTs + 5000`) sin
+  // que hubiera cambiado un solo dato. `window._lastSavedPayload` guarda el
+  // JSON del último guardado real; si el nuevo payload es idéntico, se
+  // aborta antes del `setDoc` — no se gasta escritura de Firestore ni se
+  // dispara el toast en otras pestañas/dispositivos.
   let _saveTimer = null;
   window._fbSaveToCloud = function() {
     // PROTECCIÓN CRÍTICA: nunca guardar si los datos no se han cargado
@@ -27,14 +39,43 @@
         // Firestore no acepta undefined — limpiamos el objeto
         if(!window.S){setSyncStatus("error","Error: datos no inicializados");return;}
         const data = JSON.parse(JSON.stringify(window.S));
+        const payloadStr = JSON.stringify(data);
+        // Nada cambió desde el último guardado real (ni local ni el que
+        // acabamos de recibir de la nube) — no hay razón para escribir.
+        if(payloadStr === window._lastSavedPayload) {
+          setSyncStatus('ok', window._lastSavedAt
+            ? 'Guardado en la nube · ' + new Date(window._lastSavedAt).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})
+            : 'Sin cambios');
+          return;
+        }
         const savedAt = Date.now();
+        // FIX (2026-08-17, hallazgo #2 — el toast falso pasaba INCLUSO sin
+        // ninguna otra pestaña/dispositivo real): `window._lastSavedAt` se
+        // actualizaba acá abajo, DESPUÉS de que `await setDoc()` resolviera.
+        // Pero `onSnapshot` (más abajo, con `includeMetadataChanges:true`)
+        // dispara DOS VECES por cada escritura propia: una optimista
+        // (`hasPendingWrites:true`, sí filtrada por el guard de esa función)
+        // y otra cuando el servidor confirma (`hasPendingWrites:false` —
+        // esa NO la filtra nada, cae directo a la rama `remoteTs > localTs +
+        // 5000`). Esa segunda notificación y la resolución de este mismo
+        // `await` los dispara el mismo viaje de red, pero no hay garantía
+        // de en qué orden llegan a la cola de eventos de JS — carrera real.
+        // Si la notificación de `onSnapshot` procesa primero, `localTs`
+        // todavía tiene el valor del guardado ANTERIOR, y la confirmación
+        // del guardado que la propia pestaña acaba de hacer se lee como
+        // "actualización de otro dispositivo". Se soluciona fijando
+        // `_lastSavedAt` ANTES de la escritura, no después: para cuando
+        // llegue la confirmación de `onSnapshot` (venga en el orden que
+        // venga), `remoteTs` va a ser exactamente igual a `localTs` — nunca
+        // "más nuevo" — así que esta rama nunca dispara para el guardado
+        // propio, sea cual sea el orden de las dos resoluciones async.
+        window._lastSavedAt = savedAt;
+        try { localStorage.setItem('mf_lastSavedAt', String(savedAt)); } catch(_){}
         await setDoc(
           doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
-          { payload: JSON.stringify(data), updatedAt: savedAt }
+          { payload: payloadStr, updatedAt: savedAt }
         );
-        window._lastSavedAt = savedAt; // Registrar cuándo guardamos por última vez
-        // Persistir en localStorage para sobrevivir recargas de página
-        try { localStorage.setItem('mf_lastSavedAt', String(savedAt)); } catch(_){}
+        window._lastSavedPayload = payloadStr;
         setSyncStatus('ok', 'Guardado en la nube · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
       } catch(e) {
         console.error('Firebase save error:', e);
@@ -278,6 +319,13 @@
           // tcNormalizarTarjetas(), que se ejecuta en cada refresh() — no hace
           // falta un parche puntual aquí.
         }
+        // FIX (2026-08-17, ver window._fbSaveToCloud más arriba): fijar acá
+        // la base de comparación del chequeo "¿cambió algo de verdad?" — se
+        // recalcula con JSON.stringify(window.S) (no con el payload crudo
+        // de la nube) para que compare exactamente igual que el próximo
+        // save(), sin falsos positivos por orden de claves distinto entre
+        // el objeto por defecto de S y el JSON que vino de la nube.
+        window._lastSavedPayload = JSON.stringify(window.S);
       } catch(e) {
         console.error('[Sync] Error al parsear datos de la nube:', e);
       }

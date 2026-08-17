@@ -5,7 +5,7 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
       import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, deleteUser, reauthenticateWithPopup }
         from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-      import { initializeFirestore, persistentLocalCache, doc, getDoc, setDoc, deleteDoc, onSnapshot }
+      import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, deleteDoc, onSnapshot }
         from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
       // NOTA DE SEGURIDAD: Esta API Key de Firebase es de dominio público por diseño
@@ -27,7 +27,17 @@
       const auth = getAuth(app);
       const db = initializeFirestore(app, {
         experimentalAutoDetectLongPolling: true,  // Evita ERR_QUIC_PROTOCOL_ERROR sin forzar long-polling siempre (ver auditoria-tecnica.md, punto de rendimiento #1)
-        localCache: persistentLocalCache()   // Guarda offline en IndexedDB
+        // FIX (2026-08-17): persistentLocalCache() por defecto solo permite
+        // UNA pestaña a la vez tener acceso exclusivo al cache de IndexedDB
+        // — una segunda pestaña (olvidada en otro dispositivo, o accidental
+        // en el mismo) rompe con "Failed to obtain exclusive access to the
+        // persistence layer" y esa pestaña cae a memoria (pierde el cache
+        // offline). persistentMultipleTabManager() hace que Firestore
+        // coordine el cache entre pestañas en vez de pelear por él. Ver
+        // CHANGELOG.md#infraestructura--seguridad para el hallazgo completo
+        // (Lighthouse ya avisaba de esto: "There may be stored data
+        // affecting loading performance in this location: IndexedDB").
+        localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
       });
       const provider = new GoogleAuthProvider();
 

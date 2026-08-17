@@ -174,11 +174,35 @@ function showScreen(name){
   }
   // Re-renderizar la cuenta abierta al volver a cuentas, para reflejar cambios
   // hechos en otras pantallas (ej: eliminar un encargo desde Más → Encargos)
+  //
+  // FIX (2026-08-17, auditoria-tecnica.md #12): renderCajitas()/
+  // renderCustomCuentasList() (las vistas de LISTA, lo que se ve al entrar
+  // sin ninguna cuenta abierta) no tenían hook acá — solo el detalle de una
+  // cuenta ya abierta lo tenía. Sin esto, gatear esas dos llamadas en
+  // refresh() a "solo si Cuentas está activa" (ver core-state.js) habría
+  // dejado el listado con datos viejos la primera vez que se entra después
+  // de un cambio hecho en otra pantalla. Se llaman siempre al entrar, mismo
+  // criterio incondicional que ya usan renderMesada()/renderEncargosList()
+  // más abajo — son funciones puras de render (confirmado contra
+  // cuentas.js), no tienen costo relevante de llamarlas de más.
   if(name==='cuentas') {
     if(cuentaActual && typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);
     if(typeof _customCuentaActualId!=='undefined' && _customCuentaActualId) {
       if(typeof renderDetalleCustomCuenta==='function') renderDetalleCustomCuenta(_customCuentaActualId);
     }
+    if(typeof renderCajitas==='function') renderCajitas();
+    if(typeof renderCustomCuentasList==='function') renderCustomCuentasList();
+  }
+  // Re-renderizar Gastos al entrar a esa pantalla — FIX (2026-08-17,
+  // auditoria-tecnica.md #12): no existía ninguna rama para 'gastos' acá,
+  // a diferencia de Cuentas/Encargos/Mesada/Spotify/Préstamos/Tarjetas.
+  // renderMesFiltros() ya dispara renderGastosVar() por su cuenta (ver
+  // gastos.js y la nota de deduplicación en core-state.js/refresh()), así
+  // que alcanza con estas dos. Confirmado contra gastos.js: ambas son
+  // funciones puras de render, sin efecto secundario sobre datos.
+  if(name==='gastos') {
+    if(typeof renderMesFiltros==='function') renderMesFiltros();
+    if(typeof renderGastosFijos==='function') renderGastosFijos();
   }
   // Re-renderizar lista de encargos al entrar a esa pantalla
   if(name==='encargos') {

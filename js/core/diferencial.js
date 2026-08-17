@@ -326,7 +326,7 @@ function diffValidarIntercambios(instId) {
     const saldo = getSaldoFuente(b.miCuentaSalida);
     if (b.monto > saldo + 0.5) {
       const nombre = b.nombre ? `"${escHtml(b.nombre)}"` : 'una persona';
-      return `No tenés ${fmt(b.monto)} en ${fuenteLabel(b.miCuentaSalida)} para pagarle a ${nombre}. Disponible: ${fmt(saldo)}.`;
+      return `No tenés ${fmt(b.monto)} en ${escHtml(fuenteLabel(b.miCuentaSalida))} para pagarle a ${nombre}. Disponible: ${fmt(saldo)}.`;
     }
   }
   return null;

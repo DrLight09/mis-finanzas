@@ -803,6 +803,24 @@ function _esGastoVarNoReal(g){
 }
 
 /* ---- TOAST ---- */
+// REVERTIDO (2026-08-17): la versión anterior de este fix agregaba un 4º
+// parámetro `msgEsHtml` y escapaba `msg` completo por defecto, asumiendo que
+// el problema eran unas pocas llamadas con HTML intencional (íconos). Al
+// revisar los ~63 call sites reales (alcancia/analisis/encargos/mesada/
+// prestado/spotify/tarjetas_credito/cuentas/gastos.js) resultó que NINGUNO
+// pasa HTML de ícono — pero la gran mayoría (~60) ya sigue el patrón
+// establecido en todo el proyecto: escapar el texto libre en el punto de
+// interpolación (`toast('Cuenta "'+escHtml(nombre)+'" creada')`, etc.), no
+// en `toast()`. Escapar `msg` completo ahí adentro las hubiera
+// DOBLE-escapado — cualquier mensaje con comillas o "&" literales
+// (`Cuenta "${escHtml(nombre)}" creada`, con comillas fuera del escHtml)
+// habría mostrado `&quot;`/`&amp;` en vez del carácter real. Se revierte a
+// la firma y comportamiento original; los 3 bugs reales encontrados
+// (texto libre interpolado SIN escHtml) se corrigieron en su lugar real:
+// `encargos.js`/`guardarEditarEncargo()`, `prestado.js`/
+// `guardarEditarMiDeuda()` (ambos: `nombre` del input sin escapar) y
+// `diferencial.js`/`diffValidarIntercambios()` (`fuenteLabel(...)` sin
+// escapar). Ver CHANGELOG.md para el detalle de esos tres.
 function toast(msg, tipo='ok', dur=2800){
   const c=document.getElementById('toast-container');
   const el=document.createElement('div');
@@ -1106,35 +1124,39 @@ function refresh(){
       if(typeof renderMovsCustom==='function') renderMovsCustom(_cc);
       if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-custom-encargos', 'custom:'+_customCuentaActualId);
     }
-  } else { if(typeof renderCajitas==='function') renderCajitas(); }
+  }
   // Siempre actualizar el detalle/sub-pantallas de cajita si hay una abierta
   if(typeof _refreshCajitaDet==='function') _refreshCajitaDet();
-  if(typeof renderGastosVar==='function') renderGastosVar();
-  if(typeof renderGastosFijos==='function') renderGastosFijos();
-  // OPTIMIZACIÓN TBT (2026-08-15, ver auditoria-tecnica.md #12): estas 4
-  // llamadas re-renderizaban su pantalla completa en CADA refresh() —
-  // muchas veces por sesión (cascada de carga inicial, cada save(), cada
-  // 60s de autosave) — sin importar si el usuario la estaba viendo. Las 4
-  // ya se re-renderizan al ENTRAR a su pantalla (showScreen(), ver
-  // sheet-stack.js), así que ejecutarlas de nuevo mientras están ocultas
-  // es trabajo tirado: construyen HTML completo (loops sobre S, formateo
-  // de moneda) para un <div class="screen"> con display:none, que nadie
-  // va a ver hasta la próxima vez que se entre — y ahí showScreen() ya se
-  // encarga de refrescarlo. El guard usa "está activa AHORA", no "se
-  // acaba de entrar", a propósito: preserva el caso ya documentado abajo
-  // en renderTCScreen (datos de Firestore llegando mientras el usuario ya
-  // está parado en esa pantalla) sin necesitar tocar ese fix.
-  // Las otras 5 llamadas sin guard (renderCajitas/renderCustomCuentasList/
-  // renderGastosVar/renderGastosFijos/renderMesFiltros) NO tienen un hook
-  // equivalente en showScreen() — condicionarlas a ciegas podría dejar
-  // datos viejos si se navega directo a esa pantalla sin que nada más
-  // dispare un refresh(). Sin auditar (falta ver cuentas.js/gastos.js).
+  // FIX (2026-08-17, hallazgo nuevo al confirmar contra gastos.md):
+  // renderGastosVar() se llamaba acá Y OTRA VEZ más abajo, indirecto, vía
+  // renderMesFiltros() — gastos.md documenta que "renderMesFiltros() arma
+  // los chips de filtro por mes y dispara renderGastosVar()". Resultado:
+  // el historial de gasto variable se reconstruía dos veces por cada
+  // refresh() (loop completo sobre gastosVar + formateo de moneda, dos
+  // veces seguidas), sin ningún efecto visible distinto — trabajo tirado,
+  // no un bug de datos. Se saca la llamada directa; sigue ejecutándose,
+  // una sola vez, vía renderMesFiltros() más abajo.
+  // OPTIMIZACIÓN TBT (2026-08-15/17, ver auditoria-tecnica.md #12): estas
+  // llamadas re-renderizaban su pantalla completa en CADA refresh() — sin
+  // importar si el usuario la estaba viendo. Ya se re-renderizan al ENTRAR
+  // a su pantalla (showScreen(), ver sheet-stack.js) — Cuentas y Gastos
+  // recibieron sus hooks recién el 2026-08-17 (renderCajitas/
+  // renderCustomCuentasList/renderMesFiltros/renderGastosFijos, confirmado
+  // contra cuentas.js/gastos.js reales que son funciones puras de render),
+  // así que ya es seguro sumarlas al mismo guard "está activa AHORA" que
+  // ya usan renderDeudoresList/renderMesada/renderSpotify más abajo.
+  const _screenCuentasActiva=document.getElementById('screen-cuentas')&&document.getElementById('screen-cuentas').classList.contains('active');
+  const _screenGastosActiva=document.getElementById('screen-gastos')&&document.getElementById('screen-gastos').classList.contains('active');
+  if(_screenCuentasActiva && !(typeof cuentaActual!=='undefined' && cuentaActual) && !(typeof _customCuentaActualId!=='undefined' && _customCuentaActualId)){
+    if(typeof renderCajitas==='function') renderCajitas();
+  }
+  if(_screenCuentasActiva && typeof renderCustomCuentasList==='function') renderCustomCuentasList();
+  if(_screenGastosActiva && typeof renderGastosFijos==='function') renderGastosFijos();
+  if(_screenGastosActiva && typeof renderMesFiltros==='function') renderMesFiltros();
   if(typeof renderDeudoresList==='function' && document.getElementById('screen-prestamos') && document.getElementById('screen-prestamos').classList.contains('active')) renderDeudoresList();
   if(typeof renderMesada==='function' && document.getElementById('screen-mesada') && document.getElementById('screen-mesada').classList.contains('active')) renderMesada();
   if(typeof renderSpotify==='function' && document.getElementById('screen-spotify') && document.getElementById('screen-spotify').classList.contains('active')) renderSpotify();
-  if(typeof renderMesFiltros==='function') renderMesFiltros();
   if(typeof renderAttencion==='function') renderAttencion();
-  if(typeof renderCustomCuentasList==='function') renderCustomCuentasList();
   if(typeof renderTCDashboard==='function') renderTCDashboard();
   // FIX: faltaba acá — la pantalla de Tarjetas (renderTCScreen) solo se
   // actualizaba al crear/editar/eliminar una tarjeta. Si Firestore traía

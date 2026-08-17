@@ -115,6 +115,18 @@ function showScreen(name){
     const detMD=document.getElementById('miDeudaDetalle');
     const vis=document.getElementById('deudoresView');
     const visMD=document.getElementById('misDeudasView');
+    // abrirDeudor() (prestado.js) oculta #prestamos-tabs con display:none al
+    // entrar al detalle de una persona (no tiene sentido cambiar de pestaña
+    // estando adentro). Antes solo volverDeudores() lo restauraba a 'flex' —
+    // pero esa función solo se dispara con el botón "volver" DENTRO del
+    // detalle. Si en cambio sales de Préstamos por la nav inferior mientras
+    // estás dentro del detalle, este bloque sí resetea deudorDetalle/
+    // deudoresView pero nunca tocaba las tabs, así que quedaban ocultas para
+    // siempre al volver a Préstamos. Mismo 'flex' explícito que usa
+    // volverDeudores() (ver comentario ahí: #prestamos-tabs trae display:flex
+    // inline en el HTML, y '' cae al display:block por defecto del div).
+    const pt=document.getElementById('prestamos-tabs');
+    if(pt)pt.style.display='flex';
     if(det)det.style.display='none';
     if(detMD)detMD.style.display='none';
     // Restaurar solo la lista de la pestaña que estaba activa (Me deben / Yo debo).

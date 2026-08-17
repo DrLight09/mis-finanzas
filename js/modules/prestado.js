@@ -2710,7 +2710,7 @@ function guardarEditarMiDeuda() {
   if (typeof refresh === 'function') refresh();
   abrirMiDeuda(miDeudaActualId);
   if (typeof closeSheet === 'function') closeSheet('editar-mi-deuda');
-  if (typeof toast === 'function') toast(nombre + ' actualizado', 'ok');
+  if (typeof toast === 'function') toast(escHtml(nombre) + ' actualizado', 'ok');
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -71,7 +71,7 @@ function guardarEditarEncargo() {
   save();
   abrirEncargoDetalle(encargoActualId);
   closeSheet('editar-encargo');
-  toast(nombre + ' actualizado', 'ok');
+  toast(escHtml(nombre) + ' actualizado', 'ok');
 }
 function renderEncargosEnCuenta(elId, tipoCuenta) {
   const el = document.getElementById(elId);

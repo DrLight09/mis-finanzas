@@ -211,21 +211,57 @@ const Loader = (function () {
     return Promise.all(Object.keys(GROUPS).map(g => ensure(g).catch(() => {})));
   }
 
-  // Disparo automático, una sola vez por carga de página: apenas termina
-  // la primera carga real de datos (evento 'appDataLoaded', ver
-  // firebase-sync.js#_finishFirstLoad — se dispara tanto con datos de la
-  // nube como en el camino de error/sin conexión, así que cubre ambos
-  // casos). Sin demora artificial: se pide todo de inmediato, en paralelo,
-  // para que el tiempo extra sea el de la descarga más lenta de las 11, no
-  // la suma de las 11. Al terminar, un solo refresh()/applyModulos() para
-  // que "Necesita atención" (y cualquier otra cosa que dependía de un
-  // módulo lazy) se actualice sola, sin que el usuario tenga que tocar
-  // nada ni volver a entrar a Inicio.
-  window.addEventListener('appDataLoaded', function () {
+  // FIX (2026-08-17, confirmado con dos corridas reales de Lighthouse — ver
+  // CHANGELOG.md#infraestructura--seguridad): el disparo inmediato de acá
+  // abajo SÍ contaba dentro de la ventana que Lighthouse mide como Total
+  // Blocking Time. Prueba encontrada en los propios reportes: "Avoid long
+  // main-thread tasks" mostraba tareas de cuentas.js/plata_comprometida.js/
+  // alcancia.js/import-validado.js corriendo varios segundos después del
+  // primer pintado (una de 106ms a los 8.6s de carga), y "Reduce unused
+  // JavaScript" marcaba cuentas.js con 76% de su peso sin usar — confirma
+  // que ensureAll() se estaba disparando y ejecutando adentro de la ventana
+  // auditada, no "de verdad en segundo plano" como asumía el diseño
+  // original (comentario de abajo, sin tocar por valor histórico).
+  //
+  // Se reemplaza el disparo inmediato por requestIdleCallback: es la
+  // semántica correcta para "trabajo de fondo que no debe competir con
+  // nada" — el navegador lo corre solo cuando el hilo principal está
+  // realmente libre, cediendo el paso a cualquier interacción real del
+  // usuario que llegue primero (un tap en un nav-item, por ejemplo).
+  // timeout:5000 garantiza que igual corra si el hilo nunca queda idle por
+  // su cuenta — mismo patrón de "timeout de seguridad" que ya usa el resto
+  // de la app (window._pinGateTimeout, window._authgateReadyTimeout en
+  // firebase-init.js). Fallback a setTimeout para Safari (sin soporte de
+  // requestIdleCallback al momento de escribir esto).
+  //
+  // Nota honesta, no prometer de más: en la corrida de Lighthouse en sí
+  // (una pestaña sola, sin otra interacción real compitiendo) es posible
+  // que requestIdleCallback dispare casi enseguida igual, porque ahí no
+  // hay ningún otro trabajo esperando el hilo principal — así que el
+  // número de TBT podría no bajar mucho en ese entorno sintético
+  // específico. El beneficio real es para un usuario de verdad, que sí
+  // puede estar tocando algo justo en ese momento.
+  function _iniciarEnsureAll() {
     ensureAll().then(() => {
       if (typeof refresh === 'function') refresh();
       if (typeof applyModulos === 'function') applyModulos();
     });
+  }
+
+  // Disparo automático, una sola vez por carga de página: apenas termina
+  // la primera carga real de datos (evento 'appDataLoaded', ver
+  // firebase-sync.js#_finishFirstLoad — se dispara tanto con datos de la
+  // nube como en el camino de error/sin conexión, así que cubre ambos
+  // casos). Al terminar, un solo refresh()/applyModulos() para que
+  // "Necesita atención" (y cualquier otra cosa que dependía de un módulo
+  // lazy) se actualice sola, sin que el usuario tenga que tocar nada ni
+  // volver a entrar a Inicio.
+  window.addEventListener('appDataLoaded', function () {
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(_iniciarEnsureAll, { timeout: 5000 });
+    } else {
+      setTimeout(_iniciarEnsureAll, 2000);
+    }
   }, { once: true });
 
   return { ensure, ensureAll, isLoaded, GROUPS };

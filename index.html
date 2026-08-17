@@ -1245,7 +1245,7 @@
                 <div
                   style="font-size:10px;color:var(--nu-light);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:6px;">Nombre
                   de la cajita</div>
-                <input type="text" id="cajita-det-name-input"
+                <input type="text" id="cajita-det-name-input" maxlength="30"
                   style="width:100%;padding:9px 12px;background:rgba(0,0,0,.3);border:1px solid rgba(192,96,240,.35);border-radius:8px;color:var(--nu-light);font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;outline:none;">
               </div>
             </div>
@@ -2662,7 +2662,7 @@
         <div class="sheet-handle"></div>
         <div class="sheet-title">Nueva cuenta</div>
         <div class="ig"><label class="il" for="nc_nombre">Nombre de la
-            cuenta</label><input type="text" id="nc_nombre"
+            cuenta</label><input type="text" id="nc_nombre" maxlength="30"
             placeholder="Ej: Nequi trabajo, Bancolombia..."></div>
         <div class="ig"><label class="il" for="nc_saldo">Saldo
             inicial</label><input type="text" inputmode="decimal" id="nc_saldo"
@@ -2738,7 +2738,7 @@
         <div class="sheet-title" id="mcc-title">Agregar dinero</div>
         <div class="ig"><label class="il" for="mcc-nota">Descripción <span
               style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
-            type="text" id="mcc-nota"
+            type="text" id="mcc-nota" maxlength="60"
             placeholder="Ej: encargo de Juan, pago recibido..."></div>
         <div class="ig"><label class="il" for="mcc-monto">Monto</label><input
             type="text" inputmode="decimal" id="mcc-monto" placeholder="0,00"
@@ -2758,7 +2758,7 @@
         <div class="sheet-handle"></div>
         <div class="sheet-title">Registrar gasto</div>
         <div class="ig"><label class="il"
-            for="gv_desc">Descripción</label><input type="text" id="gv_desc"
+            for="gv_desc">Descripción</label><input type="text" id="gv_desc" maxlength="80"
             placeholder="Ej: Mercado, Uber, Farmacia..."></div>
         <div class="ig"><label class="il" for="gv_monto">Monto</label><input
             type="text" inputmode="decimal" id="gv_monto" placeholder="0,00"
@@ -2782,7 +2782,7 @@
             style="font-size:10px;font-family:'DM Mono',monospace;margin-top:5px;min-height:14px;"></div>
         </div>
         <div class="ig"><label class="il" for="gv_nota">Nota
-            (opcional)</label><input type="text" id="gv_nota"
+            (opcional)</label><input type="text" id="gv_nota" maxlength="60"
             placeholder="Detalle adicional"></div>
         <button type="button" class="btn btn-primary"
           id="btn-guardar-gasto-var">Guardar gasto</button>
@@ -2797,7 +2797,7 @@
         <div class="sheet-handle"></div>
         <div class="sheet-title">Gasto fijo mensual</div>
         <div class="ig"><label class="il" for="gf_n">Nombre</label><input
-            type="text" id="gf_n" placeholder="Ej: Arriendo"></div>
+            type="text" id="gf_n" maxlength="30" placeholder="Ej: Arriendo"></div>
         <div class="ig"><label class="il" for="gf_m">Monto mensual</label><input
             type="text" inputmode="decimal" id="gf_m" placeholder="0,00"
             class="money-input"></div>
@@ -2819,7 +2819,7 @@
         <div class="sheet-title" id="ingreso-fijo-sheet-title">Ingreso fijo
           mensual</div>
         <div class="ig"><label class="il" for="if_n">Nombre</label><input
-            type="text" id="if_n" placeholder="Ej: Sueldo, Freelance…"></div>
+            type="text" id="if_n" maxlength="30" placeholder="Ej: Sueldo, Freelance…"></div>
         <div class="ig"><label class="il" for="if_m">Monto mensual</label><input
             type="text" inputmode="decimal" id="if_m" placeholder="0,00"
             class="money-input"></div>
@@ -2866,7 +2866,7 @@
           <input type="date" id="pgf-fecha">
         </div>
         <div class="ig"><label class="il" for="pgf-nota">Nota
-            (opcional)</label><input type="text" id="pgf-nota"
+            (opcional)</label><input type="text" id="pgf-nota" maxlength="60"
             placeholder="Ej: pago mes de mayo, número de referencia..."></div>
         <div id="pgf-error"
           style="font-size:12px;color:var(--red);margin-bottom:12px;display:none;padding:10px;background:rgba(240,104,104,.1);border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);"></div>
@@ -2885,7 +2885,7 @@
         <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Plata
           de otra persona que vas a administrar. No afecta tu patrimonio.</p>
         <div class="ig"><label class="il" for="enc_nombre">¿De quién es la
-            plata?</label><input type="text" id="enc_nombre"
+            plata?</label><input type="text" id="enc_nombre" maxlength="30"
             placeholder="Ej: Papá, Carlos, Mamá..."></div>
         <div class="ig"><label class="il" for="enc_saldo">Saldo inicial
             (opcional)</label><input type="text" inputmode="decimal"
@@ -2897,7 +2897,7 @@
                 especificar</option></select></div>
         </div>
         <div class="ig"><label class="il" for="enc_nota">Nota
-            (opcional)</label><input type="text" id="enc_nota"
+            (opcional)</label><input type="text" id="enc_nota" maxlength="60"
             placeholder="Ej: plata del arriendo, ahorros..."></div>
         <button type="button" class="btn btn-primary"
           id="btn-crear-encargo">Crear encargo</button>
@@ -2913,10 +2913,10 @@
         <div class="sheet-handle"></div>
         <div class="sheet-title">Editar encargo</div>
         <div class="ig"><label class="il" for="enc_edit_nombre">¿De quién es la
-            plata?</label><input type="text" id="enc_edit_nombre"
+            plata?</label><input type="text" id="enc_edit_nombre" maxlength="30"
             placeholder="Ej: Papá, Carlos, Mamá..."></div>
         <div class="ig"><label class="il" for="enc_edit_nota">Nota
-            (opcional)</label><input type="text" id="enc_edit_nota"
+            (opcional)</label><input type="text" id="enc_edit_nota" maxlength="60"
             placeholder="Ej: plata del arriendo, ahorros..."></div>
         <button type="button" class="btn btn-primary"
           id="btn-guardar-editar-encargo">Guardar cambios</button>
@@ -2938,7 +2938,7 @@
         </div>
         <div class="ig"><label class="il"
             for="movenc_desc">Descripción</label><input type="text"
-            id="movenc_desc"
+            id="movenc_desc" maxlength="80"
             placeholder="Ej: pago servicios, depósito..."></div>
         <div class="ig"><label class="il" for="movenc_monto">Monto</label><input
             type="text" inputmode="decimal" id="movenc_monto" placeholder="0,00"
@@ -3004,7 +3004,7 @@
         <div class="ig"><label class="il" for="movenc_fecha">Fecha</label><input
             type="date" id="movenc_fecha"></div>
         <div class="ig"><label class="il" for="movenc_nota">Nota
-            (opcional)</label><input type="text" id="movenc_nota"
+            (opcional)</label><input type="text" id="movenc_nota" maxlength="60"
             placeholder="Detalle adicional"></div>
 
         <!-- DIFERENCIAL DE SALIDA -->
@@ -3205,7 +3205,7 @@
         <div class="ig"><label class="il" for="traspaso_desc">Descripción <span
               style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
             type="text"
-            id="traspaso_desc"
+            id="traspaso_desc" maxlength="80"
             placeholder="Ej: sobrante del encargo, me lo regaló..."></div>
         <div class="ig"><label class="il" for="traspaso_monto">¿Cuánto te
             regalaron?</label><input type="text" inputmode="decimal"
@@ -3263,7 +3263,7 @@
             <span
               style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
             type="text"
-            id="transfenc_desc"
+            id="transfenc_desc" maxlength="80"
             placeholder="Ej: pago a nombre de..."></div>
         <div class="ig"><label class="il" for="transfenc_monto">¿Cuánto le
             pagaste?</label><input type="text" inputmode="decimal"
@@ -3315,7 +3315,7 @@
         </div>
         <div class="ig">
           <label class="il" for="ctc_desc">¿Qué compraste?</label>
-          <input type="text" id="ctc_desc"
+          <input type="text" id="ctc_desc" maxlength="80"
             placeholder="Ej: mercado, farmacia, ropa...">
         </div>
         <div class="ig">
@@ -3393,7 +3393,7 @@
         </div>
         <div class="ig">
           <label class="il" for="ctc_nota">Nota (opcional)</label>
-          <input type="text" id="ctc_nota" placeholder="Detalle adicional">
+          <input type="text" id="ctc_nota" maxlength="60" placeholder="Detalle adicional">
         </div>
         <div id="ctc_preview"
           style="font-size:11px;font-family:'DM Mono',monospace;margin-bottom:12px;min-height:24px;line-height:1.7;padding:8px 10px;background:rgba(0,0,0,.2);border-radius:var(--radius-sm);display:none;"></div>
@@ -3612,7 +3612,7 @@
         <div class="sheet-handle"></div>
         <div class="sheet-title">Nueva persona</div>
         <div class="ig"><label class="il" for="np_nombre">Nombre</label><input
-            type="text" id="np_nombre"
+            type="text" id="np_nombre" maxlength="30"
             placeholder="Ej: Papá, Carlos, Mamá..."></div>
         <div class="ig">
           <label class="il">Color del avatar</label>
@@ -3652,7 +3652,7 @@
         <div class="sheet-title">Nueva deuda</div>
         <div class="ig"><label class="il" for="nd_nombre">¿A quién le
             debes?</label>
-          <input type="text" id="nd_nombre"
+          <input type="text" id="nd_nombre" maxlength="30"
             placeholder="Ej: Papá, Carlos, Mamá...">
         </div>
         <div class="ig"><label class="il" for="nd_monto">¿Cuánto te
@@ -3671,7 +3671,7 @@
             saldo de esa cuenta</div>
         </div>
         <div class="ig"><label class="il" for="nd_nota">Nota (opcional)</label>
-          <input type="text" id="nd_nota" placeholder="Ej: Para el arriendo">
+          <input type="text" id="nd_nota" maxlength="60" placeholder="Ej: Para el arriendo">
         </div>
         <button type="button" class="btn btn-primary"
           id="btn-crear-mi-deuda" data-action="prestado:crearMiDeuda" data-args="[]">Crear deuda</button>
@@ -3687,7 +3687,7 @@
         <div class="sheet-handle"></div>
         <div class="sheet-title">Editar deuda</div>
         <div class="ig"><label class="il" for="md_edit_nombre">Nombre</label>
-          <input type="text" id="md_edit_nombre"
+          <input type="text" id="md_edit_nombre" maxlength="30"
             placeholder="Ej: Papá, Carlos, Mamá...">
         </div>
         <div class="ig">
@@ -3723,7 +3723,7 @@
             automáticamente al saldo de esa cuenta</div>
         </div>
         <div class="ig"><label class="il" for="md_nota">Nota (opcional)</label>
-          <input type="text" id="md_nota" placeholder="Ej: Abono parcial">
+          <input type="text" id="md_nota" maxlength="60" placeholder="Ej: Abono parcial">
         </div>
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-mov-mi-deuda" data-action="prestado:confirmarMovMiDeuda" data-args="[]">Guardar</button>
@@ -3749,7 +3749,7 @@
         </div>
         <div class="ig">
           <label class="il" for="prtc_desc">Descripción</label>
-          <input type="text" id="prtc_desc"
+          <input type="text" id="prtc_desc" maxlength="80"
             placeholder="Ej: Tenis Nike, Medicamentos...">
         </div>
         <div class="ig">
@@ -3768,7 +3768,7 @@
         </div>
         <div class="ig">
           <label class="il" for="prtc_nota">Nota (opcional)</label>
-          <input type="text" id="prtc_nota"
+          <input type="text" id="prtc_nota" maxlength="60"
             placeholder="Ej: La pedí a nombre mío, la paga él">
         </div>
 
@@ -3846,7 +3846,7 @@
         <div class="ig" id="mov_grupo_nombre_wrap" style="display:none;">
           <label class="il" for="mov_grupo_nombre">Nombre del préstamo nuevo
             (opcional)</label>
-          <input type="text" id="mov_grupo_nombre"
+          <input type="text" id="mov_grupo_nombre" maxlength="30"
             placeholder="Ej. Préstamo moto 2025">
         </div>
         <div class="ig" id="mov_fuente_wrap">
@@ -4006,7 +4006,7 @@
         </div>
 
         <div class="ig"><label class="il" for="mov_nota">Nota
-            (opcional)</label><input type="text" id="mov_nota"
+            (opcional)</label><input type="text" id="mov_nota" maxlength="60"
             placeholder="Ej: para el arriendo"></div>
         <button type="button" class="btn btn-primary"
           id="movBtnConfirm" data-action="prestado:confirmarMovimientoGuard" data-args="[]">Guardar</button>
@@ -4021,7 +4021,7 @@
         <div class="sheet-handle"></div>
         <div class="sheet-title">Agregar persona a Spotify</div>
         <div class="ig"><label class="il" for="sp_n">Nombre</label><input
-            type="text" id="sp_n" placeholder="Ej: Carlos"></div>
+            type="text" id="sp_n" maxlength="30" placeholder="Ej: Carlos"></div>
         <div class="ig"><label class="il" for="sp_m">Cuota mensual</label><input
             type="text" inputmode="decimal" id="sp_m" placeholder="0,00"
             class="money-input"></div>
@@ -4047,7 +4047,7 @@
         <div class="sheet-handle"></div>
         <div class="sheet-title">Editar persona en Spotify</div>
         <div class="ig"><label class="il" for="sp_edit_n">Nombre</label><input
-            type="text" id="sp_edit_n" placeholder="Ej: Carlos"></div>
+            type="text" id="sp_edit_n" maxlength="30" placeholder="Ej: Carlos"></div>
         <div class="ig"><label class="il" for="sp_edit_m">Cuota
             mensual</label><input
             type="text" inputmode="decimal" id="sp_edit_m" placeholder="0,00"
@@ -4128,7 +4128,7 @@
         <div class="ig"><label class="il" for="spPagarFecha">Fecha en que
             pagaste</label><input type="date" id="spPagarFecha"></div>
         <div class="ig"><label class="il" for="spPagarNota">Nota
-            (opcional)</label><input type="text" id="spPagarNota"
+            (opcional)</label><input type="text" id="spPagarNota" maxlength="60"
             placeholder="Ej: mes de mayo, pago con intereses..."></div>
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-pagar-spotify"
@@ -4222,7 +4222,7 @@
         </div>
         <div class="ig">
           <label class="il" for="mpNota">Nota (opcional)</label>
-          <input type="text" id="mpNota"
+          <input type="text" id="mpNota" maxlength="60"
             placeholder="Ej: 42k Mesada Nu, el resto en Nequi">
         </div>
         <button type="button" class="btn btn-primary"
@@ -4299,7 +4299,7 @@
           style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--amber);"></div>
         <div class="ig">
           <label class="il" for="mppNota">Nota (opcional)</label>
-          <input type="text" id="mppNota"
+          <input type="text" id="mppNota" maxlength="60"
             placeholder="Ej: Me dio el resto en efectivo">
         </div>
         <button type="button" class="btn btn-primary"
@@ -4357,7 +4357,7 @@
             type="date" id="adFecha"></div>
         <div class="ig"><label class="il" for="adNota">Nota <span
               style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
-            type="text" id="adNota"
+            type="text" id="adNota" maxlength="60"
             placeholder="Detalle adicional"></div>
         <div id="adPreview"
           style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
@@ -4410,7 +4410,7 @@
             type="date" id="adMenuFecha"></div>
         <div class="ig"><label class="il" for="adMenuNota">Nota <span
               style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
-            type="text" id="adMenuNota"
+            type="text" id="adMenuNota" maxlength="60"
             placeholder="Detalle adicional"></div>
         <div id="adMenuPreview"
           style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
@@ -4470,7 +4470,7 @@
         </div>
         <div class="ig"><label class="il" for="nuMovNota">Nota <span
               style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
-            type="text" id="nuMovNota"
+            type="text" id="nuMovNota" maxlength="60"
             placeholder="Detalle adicional"></div>
         <div id="nuMovPreview"
           style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
@@ -4569,7 +4569,7 @@
         <div id="tr_preview"
           style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:8px;line-height:1.7;"></div>
         <div class="ig"><label class="il" for="tr_nota">Nota
-            (opcional)</label><input type="text" id="tr_nota"
+            (opcional)</label><input type="text" id="tr_nota" maxlength="60"
             placeholder="Ej: pasé del efectivo a Nequi"></div>
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-transferir">Transferir <svg
@@ -4969,11 +4969,11 @@
         <div class="sheet-title" id="tc-form-title">Nueva tarjeta de
           crédito</div>
         <div class="ig"><label class="il" for="tc_nombre">Nombre de la
-            tarjeta</label><input type="text" id="tc_nombre"
+            tarjeta</label><input type="text" id="tc_nombre" maxlength="30"
             placeholder="Ej: Visa Bancolombia, Mastercard Nu..."></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px;">
           <div class="ig"><label class="il" for="tc_banco">Banco</label><input
-              type="text" id="tc_banco"
+              type="text" id="tc_banco" maxlength="30"
               placeholder="Ej: Bancolombia"></div>
           <div class="ig"><label class="il"
               for="tc_franquicia">Franquicia</label>
@@ -5069,7 +5069,7 @@
             id="compra-tc-nombre-header"></div>
         </div>
         <div class="ig"><label class="il"
-            for="tcc_desc">Descripción</label><input type="text" id="tcc_desc"
+            for="tcc_desc">Descripción</label><input type="text" id="tcc_desc" maxlength="80"
             placeholder="Ej: Mercado, Ropa, Amazon..."></div>
         <div class="ig"><label class="il" for="tcc_monto">Monto</label><input
             type="text" inputmode="decimal" id="tcc_monto" placeholder="0,00"
@@ -5081,7 +5081,7 @@
           <div class="select-wrap"><select id="tcc_cat"></select></div>
         </div>
         <div class="ig"><label class="il" for="tcc_nota">Nota
-            (opcional)</label><input type="text" id="tcc_nota"
+            (opcional)</label><input type="text" id="tcc_nota" maxlength="60"
             placeholder="Detalle adicional"></div>
         <button type="button" class="btn btn-red"
           id="btn-confirmar-compra-tc-tarjetas">Registrar
@@ -5129,7 +5129,7 @@
         <div class="ig"><label class="il" for="ptc_fecha">Fecha de
             pago</label><input type="date" id="ptc_fecha"></div>
         <div class="ig"><label class="il" for="ptc_nota">Nota
-            (opcional)</label><input type="text" id="ptc_nota"
+            (opcional)</label><input type="text" id="ptc_nota" maxlength="60"
             placeholder="Ej: pago total, abono..."></div>
         <div id="ptc-preview"
           style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:10px;min-height:16px;"></div>

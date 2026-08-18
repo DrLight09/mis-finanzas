@@ -256,13 +256,41 @@ const Loader = (function () {
   // "Necesita atención" (y cualquier otra cosa que dependía de un módulo
   // lazy) se actualice sola, sin que el usuario tenga que tocar nada ni
   // volver a entrar a Inicio.
-  window.addEventListener('appDataLoaded', function () {
+  // FIX (auditoria-tecnica.md #12 — TBT 1.900-2.750ms confirmado con el PIN
+  // activo, Lighthouse real): requestIdleCallback por sí solo no alcanza acá.
+  // El hilo principal SÍ está "idle" para el navegador mientras el usuario
+  // mira la pantalla de PIN entre tecla y tecla, así que _iniciarEnsureAll
+  // disparaba igual, compitiendo por el hilo con la UI del PIN (ver "Avoid
+  // long main-thread tasks" de esa corrida: inicio.js/bootstrap.js/
+  // async-css.js ejecutando varios segundos después del primer pintado).
+  // No hay ningún evento propio de "PIN desbloqueado" expuesto acá, pero no
+  // hace falta uno nuevo: #pin-screen.open (index.html línea 188) YA es el
+  // mecanismo real que decide si el gate sigue activo — se reusa esa misma
+  // clase con un MutationObserver en vez de agregar estado paralelo.
+  function _dispararIdle() {
     if (typeof requestIdleCallback === 'function') {
       requestIdleCallback(_iniciarEnsureAll, { timeout: 5000 });
     } else {
       setTimeout(_iniciarEnsureAll, 2000);
     }
-  }, { once: true });
+  }
+
+  function _esperarPinYDisparar() {
+    const pinScreen = document.getElementById('pin-screen');
+    if (!pinScreen || !pinScreen.classList.contains('open')) {
+      _dispararIdle();
+      return;
+    }
+    const mo = new MutationObserver(() => {
+      if (!pinScreen.classList.contains('open')) {
+        mo.disconnect();
+        _dispararIdle();
+      }
+    });
+    mo.observe(pinScreen, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  window.addEventListener('appDataLoaded', _esperarPinYDisparar, { once: true });
 
   return { ensure, ensureAll, isLoaded, GROUPS };
 })();

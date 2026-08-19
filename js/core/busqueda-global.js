@@ -286,7 +286,7 @@
     let html = '';
     Object.keys(grupos).forEach(g => {
       const items = grupos[g];
-      html += `<div class="busqueda-section-title">${g} (${items.length})</div>`;
+      html += `<div class="busqueda-section-title">${escHtml(g)} (${items.length})</div>`;
       html += items.slice(0,8).map(r => {
         const tieneNav = !!r.navTipo;
         const iconoSvg = _busquedaIcono(r.navTipo, r.color);
@@ -300,11 +300,11 @@
           <div style="display:flex;align-items:center;gap:10px;">
             <div style="width:36px;height:36px;border-radius:10px;background:${r.color.replace('var(--red)','rgba(240,104,104,.12)').replace('var(--amber)','rgba(240,184,64,.12)').replace('var(--blue)','rgba(96,176,240,.12)').replace('var(--nu-light)','rgba(192,96,240,.12)').replace('var(--accent)','rgba(200,240,96,.12)').replace('#ff4da6','rgba(255,77,166,.12)').replace('#1db954','rgba(29,185,84,.12)')};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${iconoSvg}</div>
             <div style="flex:1;min-width:0;">
-              <div class="busqueda-tipo" style="color:${r.color};">${r.tipo}</div>
+              <div class="busqueda-tipo" style="color:${r.color};">${escHtml(r.tipo)}</div>
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                 <div class="busqueda-desc" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(r.desc)}</div>
               </div>
-              <div class="busqueda-meta">${r.meta}</div>
+              <div class="busqueda-meta">${escHtml(r.meta)}</div>
               ${navHint}
             </div>
             ${tieneNav ? `<div style="color:var(--text3);flex-shrink:0;">${_arrowRight}</div>` : ''}

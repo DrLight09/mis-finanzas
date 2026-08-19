@@ -636,7 +636,12 @@ function abrirPresupuestos(){
 function renderPresupuestos(){
   const el = document.getElementById('an-presupuestos');
   if(!el) return;
-  window._presupWarned = false; // Bug fix: resetear para que el aviso funcione en cada render
+  // Registro persistente de avisos ya mostrados (cat+mes), NO se resetea en
+  // cada render — renderPresupuestos() corre en cada refresh() de la app
+  // (cambiar de pantalla, guardar, etc.), así que resetear acá hacía que el
+  // toast de "80%+" reapareciera en cada refresh mientras la categoría
+  // siguiera entre 80% y 100%. Ver CHANGELOG.md / auditoria-tecnica.md.
+  if(!window._presupWarnedKeys) window._presupWarnedKeys = new Set();
   const presup = S.presupuestos || {};
   const cats = Object.keys(presup);
   if(!cats.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px 0;">Sin presupuestos configurados. Toca "Editar" para definirlos.</div>'; return; }
@@ -660,7 +665,11 @@ function renderPresupuestos(){
     const gasto = gastoCat[cat]||0;
     const pct = Math.min(100, Math.round(gasto/limite*100));
     const col = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--accent)';
-    if(pct >= 80 && pct < 100 && !window._presupWarned) { window._presupWarned=true; if(window.toast) window.toast(`¡Atención! Llevas ${pct}% del presupuesto de ${escHtml(cat)}`,'info',4000); }
+    const warnKey = cat+'_'+mes;
+    if(pct >= 80 && pct < 100 && !window._presupWarnedKeys.has(warnKey)) {
+      window._presupWarnedKeys.add(warnKey);
+      if(window.toast) window.toast(`¡Atención! Llevas ${pct}% del presupuesto de ${escHtml(cat)}`,'info',4000);
+    }
     return html`<div class="presup-row">
       <div class="presup-label-row">
         <span style="font-size:12px;font-weight:600;">${cat}</span>

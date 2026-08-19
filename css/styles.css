@@ -534,7 +534,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
 .pin-key:active{background:var(--bg3);transform:scale(.91);border-color:var(--accent);}
 .pin-key.pin-del{font-size:15px;color:var(--text2);}
 .pin-key.pin-empty{visibility:hidden;pointer-events:none;}
-.pin-forgot{margin-top:24px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;cursor:pointer;padding:8px;text-decoration:underline;opacity:.65;}
+.pin-forgot{margin-top:24px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;cursor:pointer;padding:8px;text-decoration:underline;}
 .pin-bio-btn{display:none;flex-direction:column;align-items:center;gap:6px;margin-top:8px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;opacity:.9;transition:opacity .15s;}
 .pin-bio-btn:active{opacity:.5;}
 .pin-bio-icon{width:52px;height:52px;border-radius:16px;background:rgba(200,240,96,.10);border:1.5px solid rgba(200,240,96,.25);display:flex;align-items:center;justify-content:center;transition:all .2s;}

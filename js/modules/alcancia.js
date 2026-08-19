@@ -1420,6 +1420,17 @@ Events.registerAll('alcancia', {
 });
 
 /* ─── INYECTAR MAS MENU ITEM ─────────────────────────────────────────────── */
+// CÓDIGO MUERTO EN LA PRÁCTICA (confirmado, no borrado — ver auditoria-tecnica.md
+// "Alcancía: regresión del ítem de menú", cierre 2026-08-18): este era el fix del
+// piloto de carga lazy de Alcancía — el ítem "Alcancía" del menú "Más" se generaba
+// acá porque el módulo (y su ítem de menú) recién existían tras la primera carga
+// lazy. En algún momento posterior #mas-alcancia pasó a vivir como HTML estático
+// en index.html (junto a #mas-config, con su mismo data-screen="alcancia") y ya
+// lo wirea el handler genérico de js/core/mas-menu.js (querySelectorAll
+// ('.mas-item[data-screen]')) — el guard de la línea de abajo (elemento ya
+// existe) hace que esta función retorne siempre antes de crear nada. El hook de
+// showScreen() más abajo sigue siendo necesario (dispara renderAlcancia() sin
+// importar cómo se llegó a la pantalla) — eso no es código muerto.
 function _inyectarMasMenuItem(){
   const masMenu = document.getElementById('mas-menu');
   if(!masMenu || document.getElementById('mas-alcancia')) return;

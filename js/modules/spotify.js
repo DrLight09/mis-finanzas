@@ -215,7 +215,7 @@ function renderSpotify(){
         const hoy0=diasRestantes===0;
         fechaInfo=`<span class="badge ${vencido?'bg-red':hoy0?'bg-amber':'bg-purple'}" style="font-size:9px;">${vencido?'Vencido hace '+Math.abs(diasRestantes)+'d':hoy0?'Vence hoy':'Paga en '+diasRestantes+'d · '+x.proximoPago}</span>`;
       }
-      const destinoBadge=x.ultimoDestino?`<span class="badge ${fuenteBadgeClass(x.ultimoDestino)}" style="font-size:8px;display:inline-flex;align-items:center;gap:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fuenteLabel(x.ultimoDestino)}</span>`:'';
+      const destinoBadge=x.ultimoDestino?`<span class="badge ${fuenteBadgeClass(x.ultimoDestino)}" style="font-size:8px;display:inline-flex;align-items:center;gap:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${escHtml(fuenteLabel(x.ultimoDestino))}</span>`:'';
       return`<div class="sp-row">
         <div style="display:flex;align-items:center;">
           <div class="avatar">${escHtml(spNombreDe(x).substring(0,2).toUpperCase())}</div>

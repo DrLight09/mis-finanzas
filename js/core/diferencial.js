@@ -489,7 +489,7 @@ function diffRenderHistorial(diferencial) {
   if (!diferencial) return '';
   const d = diferencial;
   const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b => `${escHtml(b.nombre)} ${fmt(b.monto)}`).join(' · ');
-  const miParte = d.miCuenta && d.yoMeQuedo > 0 ? `Yo → ${fuenteLabel(d.miCuenta)} ${fmt(d.yoMeQuedo)}` : (d.yoMeQuedo > 0 ? `Yo ${fmt(d.yoMeQuedo)}` : '');
+  const miParte = d.miCuenta && d.yoMeQuedo > 0 ? `Yo → ${escHtml(fuenteLabel(d.miCuenta))} ${fmt(d.yoMeQuedo)}` : (d.yoMeQuedo > 0 ? `Yo ${fmt(d.yoMeQuedo)}` : '');
   const todas = [benefs, miParte].filter(Boolean).join(' · ');
   return `<div style="margin-top:4px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${todas ? ' · ' + todas : ''}

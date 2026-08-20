@@ -40,6 +40,55 @@ let spDestinoIdx=null;
 let spDestinoPago=0;
 let spDestinoNombre='';
 
+/* ── Split de fuentes (motor genérico, ver js/core/split.js) ─────
+   Dos instancias: 'spc' (cobro — plata que ENTRA, mismo patrón que
+   Mesada) y 'spp' (pago a Spotify — plata que SALE, mismo patrón que
+   "Ya la usé" en Encargos). Sin TC en ninguna de las dos: cobrar plata
+   ajena a una tarjeta no aplica (mismo criterio que ya usaba el select
+   simple de cobro, getFuentesSinTC), y el motor de split trata cada
+   fila por igual (sumar/descontar saldo) — no distingue un cargo a TC
+   de un movimiento de cuenta, así que combinarlas en un split no lo
+   soporta el motor genérico. El modo simple de "Pagar Spotify" sigue
+   permitiendo TC exactamente igual que antes. */
+let spcSplitMode=false;
+let sppSplitMode=false;
+
+// Cuando un solo cobro dividido termina repartido en DOS registros de historial
+// (parte cierra deuda de un ciclo viejo, el resto es del ciclo nuevo — ver
+// confirmarSpDestino), cada registro necesita su propia porción del split para
+// que borrar uno solo revierta solo esa porción de cada cuenta, no el total.
+function _spProporcionarSplits(splits,montoParcial,montoTotal){
+  if(!splits||!splits.length||montoTotal<=0||montoParcial<=0)return null;
+  const factor=montoParcial/montoTotal;
+  return splits.map(s=>({fuente:s.fuente,monto:Math.round(s.monto*factor)}));
+}
+
+function _spSplitFuentesOpts(selectedVal){
+  const fuentes=getFuentesSinTC();
+  return '<option value="" disabled'+(selectedVal?'':' selected')+'>Selecciona una cuenta...</option>'
+    +fuentes.map(f=>`<option value="${f.val}"${f.val===selectedVal?' selected':''}>${f.label}</option>`).join('');
+}
+
+crearSplitWidget('spc', {
+  simpleId:'spCobModoSimple', splitId:'spCobModoDividido', toggleId:'spCobSplitToggle', rowsId:'spCobSplitRows',
+  getModo:()=>spcSplitMode, setModo:v=>{spcSplitMode=v;},
+  getFuentesFn:_spSplitFuentesOpts,
+  onPreview:actualizarSpDestinoPreview
+});
+function toggleSpCobSplit(){ splitToggle('spc'); }
+function agregarSpCobSplitRow(){ splitAgregarRow('spc'); }
+function getSpCobSplitData(){ return splitGetData('spc'); }
+
+crearSplitWidget('spp', {
+  simpleId:'spPagarModoSimple', splitId:'spPagarModoDividido', toggleId:'spPagarSplitToggle', rowsId:'spPagarSplitRows',
+  getModo:()=>sppSplitMode, setModo:v=>{sppSplitMode=v;},
+  getFuentesFn:_spSplitFuentesOpts,
+  onPreview:actualizarSpPagarPreview
+});
+function toggleSpPagarSplit(){ splitToggle('spp'); }
+function agregarSpPagarSplitRow(){ splitAgregarRow('spp'); }
+function getSpPagarSplitData(){ return splitGetData('spp'); }
+
 function getSpCajita(){
   // Finds or returns null for the Spotify cajita
   if(S.spotifyCajitaId){
@@ -215,7 +264,9 @@ function renderSpotify(){
         const hoy0=diasRestantes===0;
         fechaInfo=`<span class="badge ${vencido?'bg-red':hoy0?'bg-amber':'bg-purple'}" style="font-size:9px;">${vencido?'Vencido hace '+Math.abs(diasRestantes)+'d':hoy0?'Vence hoy':'Paga en '+diasRestantes+'d · '+x.proximoPago}</span>`;
       }
-      const destinoBadge=x.ultimoDestino?`<span class="badge ${fuenteBadgeClass(x.ultimoDestino)}" style="font-size:8px;display:inline-flex;align-items:center;gap:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${escHtml(fuenteLabel(x.ultimoDestino))}</span>`:'';
+      const destinoBadge=x.ultimoDestinoSplit
+        ?`<span class="badge bg-purple" style="font-size:8px;display:inline-flex;align-items:center;gap:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Dividido</span>`
+        :(x.ultimoDestino?`<span class="badge ${fuenteBadgeClass(x.ultimoDestino)}" style="font-size:8px;display:inline-flex;align-items:center;gap:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${escHtml(fuenteLabel(x.ultimoDestino))}</span>`:'');
       return`<div class="sp-row">
         <div style="display:flex;align-items:center;">
           <div class="avatar">${escHtml(spNombreDe(x).substring(0,2).toUpperCase())}</div>
@@ -261,7 +312,7 @@ function renderSpHistorial(){
       <div class="row" style="align-items:flex-start;gap:10px;">
         <div style="flex:1;min-width:0;">
           <div style="font-size:12px;font-weight:500;">${h.tipo==='pago'?'Pago a Spotify':'Cobro de '+escHtml(h.nombre)}</div>
-          <div style="font-size:10px;color:var(--text2);margin-top:1px;">${h.fecha}${h.fuente?' · '+fuenteLabel(h.fuente):''}${h.nota?' · <span style="color:var(--blue);">'+escHtml(h.nota)+'</span>':''}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:1px;">${h.fecha}${h.splits&&h.splits.length?' · '+h.splits.map(s=>fuenteLabel(s.fuente||'')).join(' + '):(h.fuente?' · '+fuenteLabel(h.fuente):'')}${h.nota?' · <span style="color:var(--blue);">'+escHtml(h.nota)+'</span>':''}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
           <div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace;white-space:nowrap;color:${h.tipo==='pago'?'var(--red)':'var(--accent)'};">${h.tipo==='pago'?'−':'+'} ${fmt(h.monto)}</div>
@@ -448,8 +499,12 @@ async function deleteSpHistorial(i){
 async function _borrarSpHistorial(i,h){
 
   if(h.tipo==='cobro'){
-    // Revertir el movimiento secundario: la plata que entró a la cuenta destino al cobrar
-    if(h.fuente)descontarFuente(h.fuente,h.monto||0);
+    // Revertir el movimiento secundario: la plata que entró a la(s) cuenta(s) destino al cobrar
+    if(h.splits&&h.splits.length){
+      h.splits.forEach(s=>{ if(s.fuente)descontarFuente(s.fuente,s.monto||0); });
+    } else if(h.fuente){
+      descontarFuente(h.fuente,h.monto||0);
+    }
     // Si este cobro estaba saldando deuda de un ciclo ya cerrado (_pagoIdCierre), devolver
     // esa plata al pendiente congelado de ese pago — si el pago referenciado ya no existe
     // (se borró aparte), no hay nada que restaurar, se queda como estaba.
@@ -492,6 +547,8 @@ async function _borrarSpHistorial(i,h){
           if(tc)tcRecalcular(tc);
         }
       }
+    } else if(h.splits&&h.splits.length){
+      h.splits.forEach(s=>{ if(s.fuente)sumarFuente(s.fuente,s.monto||0); });
     } else if(h.fuente){
       sumarFuente(h.fuente,h.monto||0);
     }
@@ -535,6 +592,19 @@ function marcarPagoSpotify(i){
   const mesesSel=document.getElementById('spMesesSelect');
   mesesSel.value='1';
   document.getElementById('spMesesTotal').textContent='Total a cobrar: '+fmt(p.monto*1);
+  // Resetear split (mismo patrón que abrirRegistrarMesada en mesada.js)
+  spcSplitMode=false;
+  document.getElementById('spCobModoSimple').style.display='';
+  document.getElementById('spCobModoDividido').style.display='none';
+  document.getElementById('spCobSplitRows').innerHTML='';
+  const spCobToggleBtn=document.getElementById('spCobSplitToggle');
+  if(spCobToggleBtn){
+    spCobToggleBtn.textContent='Dividir ÷';
+    spCobToggleBtn.style.background='rgba(200,240,96,.1)';
+    spCobToggleBtn.style.borderColor='rgba(200,240,96,.3)';
+    spCobToggleBtn.style.color='var(--accent)';
+  }
+  document.getElementById('spCobPreview').textContent='';
   // Fuentes: select, forzando una elección explícita (incluida "Sin especificar")
   // No se puede guardar plata ajena en una TC (mismo criterio que Encargos, "Yo debo",
   // Mis deudas y Alcancía) — por eso getFuentesSinTC() y no getFuentes().
@@ -554,28 +624,73 @@ function selSpMeses(){
   const n=parseInt(document.getElementById('spMesesSelect').value)||1;
   const monto=(S.spotifyPersonas[spDestinoIdx]?.monto||0)*n;
   document.getElementById('spMesesTotal').textContent='Total a cobrar: '+fmt(monto);
+  actualizarSpDestinoPreview();
+}
+
+// Preview del split de cobro — mismo estilo que actualizarMpPreview() en
+// mesada.js. En modo simple no hay nada que mostrar acá (spMesesTotal ya
+// cubre el total); solo pinta cuando spcSplitMode está activo.
+function actualizarSpDestinoPreview(){
+  const prev=document.getElementById('spCobPreview');
+  if(!prev)return;
+  if(!spcSplitMode){prev.textContent='';return;}
+  const n=parseInt(document.getElementById('spMesesSelect').value)||1;
+  const monto=(S.spotifyPersonas[spDestinoIdx]?.monto||0)*n;
+  const splits=getSpCobSplitData();
+  const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
+  const restante=monto-totalSplit;
+  if(splits.length===0){prev.textContent=fmt(monto)+' por distribuir';prev.style.color='var(--text2)';return;}
+  const lines=splits.map(s=>fuenteLabel(s.fuente||'')+': +'+fmt(s.monto)).join(' · ');
+  if(restante>0){prev.textContent=lines+' · Sin asignar: '+fmt(restante);prev.style.color='var(--amber)';}
+  else if(restante<0){prev.textContent=lines+' · Excede por: '+fmt(-restante);prev.style.color='var(--red)';}
+  else{prev.textContent=lines+' · Todo distribuido';prev.style.color='var(--accent)';}
 }
 
 function confirmarSpDestino(){
   if(spDestinoIdx===null)return;
-  const destVal=document.getElementById('spDestinoSelect').value;
-  if(!destVal){
-    toast('Selecciona a dónde metiste la plata (o marca "Sin especificar")','err');
-    return;
-  }
-  const fechaEl=document.getElementById('spFecha');
-  const fechaCobro=(fechaEl&&fechaEl.value)?fechaEl.value:hoy();
-  const spDestinoSel=destVal==='__sin_especificar__'?'':destVal;
   const p=S.spotifyPersonas[spDestinoIdx];
-  const nombreActual=spNombreDe(p);
   const meses=parseInt(document.getElementById('spMesesSelect').value)||1;
   const montoTotal=(p.monto||0)*meses;
+
+  // ── Modo dividido: validar y aplicar el split ANTES de tocar nada más ──
+  let splits=null;
+  let spDestinoSel='';
+  if(spcSplitMode){
+    splits=getSpCobSplitData();
+    const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
+    if(splits.length===0||totalSplit<=0){
+      document.getElementById('spCobPreview').textContent='Asigná el cobro a al menos una cuenta';
+      document.getElementById('spCobPreview').style.color='var(--red)';
+      return;
+    }
+    if(totalSplit>montoTotal+1){
+      document.getElementById('spCobPreview').textContent='El total dividido supera lo cobrado';
+      document.getElementById('spCobPreview').style.color='var(--red)';
+      return;
+    }
+  } else {
+    const destVal=document.getElementById('spDestinoSelect').value;
+    if(!destVal){
+      toast('Selecciona a dónde metiste la plata (o marca "Sin especificar")','err');
+      return;
+    }
+    spDestinoSel=destVal==='__sin_especificar__'?'':destVal;
+  }
+
+  const fechaEl=document.getElementById('spFecha');
+  const fechaCobro=(fechaEl&&fechaEl.value)?fechaEl.value:hoy();
+  const nombreActual=spNombreDe(p);
   const proximoPagoAntes=p.proximoPago||'';
   p.pagado=true;
   p.mesesAdelantados=meses;
   p.ultimoDestino=spDestinoSel||'';
-  // Sumar dinero a la fuente si se especificó
-  if(spDestinoSel)sumarFuente(spDestinoSel,montoTotal);
+  p.ultimoDestinoSplit=!!splits;
+  // Sumar dinero a la(s) fuente(s)
+  if(splits){
+    splits.forEach(s=>{ if(s.fuente)sumarFuente(s.fuente,s.monto); });
+  } else if(spDestinoSel){
+    sumarFuente(spDestinoSel,montoTotal);
+  }
   // Avanzar fecha de cobro N meses pero respetando el día original fijo
   if(p.proximoPago)p.proximoPago=nextMonthFixed(p.proximoPago,meses);
   if(!S.spotifyHistorial)S.spotifyHistorial=[];
@@ -597,7 +712,7 @@ function confirmarSpDestino(){
     const cierreMonto=Math.min(restante,pendienteViejo);
     lastPago._pendienteAlCerrar[p.id]=pendienteViejo-cierreMonto;
     if(lastPago._pendienteAlCerrar[p.id]<=0)delete lastPago._pendienteAlCerrar[p.id];
-    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:cierreMonto,periodos:meses,fuente:spDestinoSel||'',fecha:fechaCobro,nota:'Pago atrasado del ciclo anterior'+(notaBase?' · '+notaBase:''),proximoPagoAntes,_pagoIdCierre:lastPago.id,_secundario:true,_origenSeccion:'Spotify'});
+    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:cierreMonto,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,cierreMonto,montoTotal)||undefined,fecha:fechaCobro,nota:'Pago atrasado del ciclo anterior'+(notaBase?' · '+notaBase:''),proximoPagoAntes,_pagoIdCierre:lastPago.id,_secundario:true,_origenSeccion:'Spotify'});
     restante-=cierreMonto;
   }
   // Registrar en historial el resto (o el total, si no había deuda vieja) como UN solo
@@ -606,9 +721,10 @@ function confirmarSpDestino(){
   // la nota. Se guarda el nombre ACTUAL de la persona vinculada, no el crudo, para que
   // no quede fijado desactualizado.
   if(restante>0){
-    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:restante,periodos:meses,fuente:spDestinoSel||'',fecha:fechaCobro,nota:notaBase,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'});
+    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:restante,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,restante,montoTotal)||undefined,fecha:fechaCobro,nota:notaBase,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'});
   }
   spDestinoIdx=null;
+  spcSplitMode=false;
   save();refresh();closeSheet('sp-destino');
   toast(meses>1?`Cobrados ${meses} períodos adelantados a ${escHtml(nombreActual)} · ${fmt(montoTotal)}`:`Cobro registrado · ${escHtml(nombreActual)}`,'ok');
 }
@@ -635,6 +751,18 @@ async function _spEnsureTC(){
 function openSheet_pagarSpotify(){
   const costo=S.spotifyCosto||0;
   const cajitaSaldo=getSpCajitaSaldo();
+  // Resetear split (mismo patrón que abrirRegistrarMesada en mesada.js)
+  sppSplitMode=false;
+  document.getElementById('spPagarModoSimple').style.display='';
+  document.getElementById('spPagarModoDividido').style.display='none';
+  document.getElementById('spPagarSplitRows').innerHTML='';
+  const sppToggleBtn=document.getElementById('spPagarSplitToggle');
+  if(sppToggleBtn){
+    sppToggleBtn.textContent='Dividir ÷';
+    sppToggleBtn.style.background='rgba(200,240,96,.1)';
+    sppToggleBtn.style.borderColor='rgba(200,240,96,.3)';
+    sppToggleBtn.style.color='var(--accent)';
+  }
   // Pre-llenar con el costo
   document.getElementById('spPagarMonto').value=costo?fmtInput(costo):'';
   // Info cajita
@@ -660,10 +788,26 @@ function openSheet_pagarSpotify(){
 }
 
 async function actualizarSpPagarPreview(){
-  const monto=parseMoney(document.getElementById('spPagarMonto').value)||0;
-  const fuente=document.getElementById('spPagarFuente').value;
   const prev=document.getElementById('spPagarPreview');
   const fuenteInfo=document.getElementById('spPagarFuenteSaldo');
+  // Modo dividido: el desglose de saldo por TC no aplica (no hay TC en split,
+  // ver comentario junto a spcSplitMode/sppSplitMode más arriba).
+  if(sppSplitMode){
+    fuenteInfo.textContent='';
+    const monto=parseMoney(document.getElementById('spPagarMonto').value)||0;
+    const splits=getSpPagarSplitData();
+    if(!monto){prev.textContent='';return;}
+    const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
+    const restante=monto-totalSplit;
+    if(splits.length===0){prev.textContent=fmt(monto)+' por repartir entre cuentas';prev.style.color='var(--text2)';return;}
+    const lines=splits.map(s=>fuenteLabel(s.fuente||'')+': \u2212'+fmt(s.monto)).join(' · ');
+    if(restante>0){prev.textContent=lines+' · Sin asignar: '+fmt(restante);prev.style.color='var(--amber)';}
+    else if(restante<0){prev.textContent=lines+' · Excede por: '+fmt(-restante);prev.style.color='var(--red)';}
+    else{prev.textContent=lines+' · Todo repartido';prev.style.color='var(--accent)';}
+    return;
+  }
+  const monto=parseMoney(document.getElementById('spPagarMonto').value)||0;
+  const fuente=document.getElementById('spPagarFuente').value;
   // Pagar con tarjeta de crédito es un CARGO (sube la deuda de la tarjeta), no un
   // retiro de saldo de una cuenta/cajita — por eso se muestra aparte, igual que en
   // ptcActualizarPreview() (tarjetas_credito.js) para el flujo inverso de "Pagar TC".
@@ -698,41 +842,68 @@ async function actualizarSpPagarPreview(){
 
 async function confirmarPagarSpotify(){
   const monto=parseMoney(document.getElementById('spPagarMonto').value)||0;
-  const fuente=document.getElementById('spPagarFuente').value;
   const nota=document.getElementById('spPagarNota')?document.getElementById('spPagarNota').value.trim():'';
   if(!monto){toast('Ingresa el monto a pagar','err');return;}
   const fechaPagoEl0=document.getElementById('spPagarFecha');
   const fechaPago0=(fechaPagoEl0&&fechaPagoEl0.value)?fechaPagoEl0.value:hoy();
   let tcMovId=null;
-  if(fuente&&fuente.startsWith('tc:')){
-    if(!(await _spEnsureTC())) return;
-    // Pagar con tarjeta de crédito es un CARGO: sube la deuda de la tarjeta, no
-    // descuenta el saldo de una cuenta/cajita. Mismo patrón que Encargos/Préstamos
-    // (ver tcRecalcular en tarjetas_credito.js, que suma S.tcMovimientos con
-    // tipo 'cargo_*'), en vez de descontarFuente().
-    const tc=getTCById(fuente.slice(3));
-    if(!tc){toast('Tarjeta no encontrada','err');return;}
-    if(tc.cupo&&tcCupoDisponible(tc)<monto){
-      toast('Cupo insuficiente en '+fuenteLabel(fuente)+'. Disponible: '+fmt(tcCupoDisponible(tc)),'err',3500);
+  let fuente='';
+  let splits=null;
+  let notaGasto=nota||'Pago mensual Spotify';
+
+  if(sppSplitMode){
+    // Modo dividido: sin TC (ver comentario junto a spcSplitMode/sppSplitMode
+    // más arriba) — todo o nada, valida saldo en CADA cuenta antes de
+    // descontar de cualquiera, para no dejar el pago a medias si una falla.
+    splits=getSpPagarSplitData();
+    const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
+    if(splits.length===0||Math.abs(totalSplit-monto)>1){
+      const prev=document.getElementById('spPagarPreview');
+      prev.textContent=totalSplit<monto?'Falta asignar '+fmt(monto-totalSplit)+' a alguna cuenta':'El total dividido supera el monto a pagar';
+      prev.style.color='var(--red)';
       return;
     }
-    if(!S.tcMovimientos)S.tcMovimientos=[];
-    tcMovId=uid();
-    S.tcMovimientos.push({id:tcMovId,tcId:tc.id,tipo:'cargo_spotify',monto,fecha:fechaPago0,nota:nota||'Pago Spotify',eliminado:false});
-    tcRecalcular(tc);
-  } else if(fuente){
-    const saldoDisp=getSaldoActual(fuente);
-    if(saldoDisp<monto){
-      toast('Saldo insuficiente en '+fuenteLabel(fuente)+'. Disponible: '+fmt(saldoDisp),'err',3500);
-      return;
+    for(const s of splits){
+      const saldoDisp=getSaldoActual(s.fuente);
+      if(saldoDisp<s.monto){
+        toast('Saldo insuficiente en '+fuenteLabel(s.fuente)+'. Disponible: '+fmt(saldoDisp),'err',3500);
+        return;
+      }
     }
-    descontarFuente(fuente,monto);
+    splits.forEach(s=>descontarFuente(s.fuente,s.monto));
+    notaGasto+=' · dividido entre '+splits.map(s=>fuenteLabel(s.fuente)).join(', ');
+  } else {
+    fuente=document.getElementById('spPagarFuente').value;
+    if(fuente&&fuente.startsWith('tc:')){
+      if(!(await _spEnsureTC())) return;
+      // Pagar con tarjeta de crédito es un CARGO: sube la deuda de la tarjeta, no
+      // descuenta el saldo de una cuenta/cajita. Mismo patrón que Encargos/Préstamos
+      // (ver tcRecalcular en tarjetas_credito.js, que suma S.tcMovimientos con
+      // tipo 'cargo_*'), en vez de descontarFuente().
+      const tc=getTCById(fuente.slice(3));
+      if(!tc){toast('Tarjeta no encontrada','err');return;}
+      if(tc.cupo&&tcCupoDisponible(tc)<monto){
+        toast('Cupo insuficiente en '+fuenteLabel(fuente)+'. Disponible: '+fmt(tcCupoDisponible(tc)),'err',3500);
+        return;
+      }
+      if(!S.tcMovimientos)S.tcMovimientos=[];
+      tcMovId=uid();
+      S.tcMovimientos.push({id:tcMovId,tcId:tc.id,tipo:'cargo_spotify',monto,fecha:fechaPago0,nota:nota||'Pago Spotify',eliminado:false});
+      tcRecalcular(tc);
+    } else if(fuente){
+      const saldoDisp=getSaldoActual(fuente);
+      if(saldoDisp<monto){
+        toast('Saldo insuficiente en '+fuenteLabel(fuente)+'. Disponible: '+fmt(saldoDisp),'err',3500);
+        return;
+      }
+      descontarFuente(fuente,monto);
+    }
   }
   if(!S.spotifyHistorial)S.spotifyHistorial=[];
   // Registrar también como gasto variable para que aparezca en la sección Gastos
   if(!S.gastosVar)S.gastosVar=[];
   const gastoId=uid();
-  S.gastosVar.push({id:gastoId,desc:'Spotify Premium',monto,fecha:hoy(),cat:'Suscripciones',fuente,nota:nota||'Pago mensual Spotify',_secundario:true,_origenSeccion:'Spotify'});
+  S.gastosVar.push({id:gastoId,desc:'Spotify Premium',monto,fecha:hoy(),cat:'Suscripciones',fuente,nota:notaGasto,_secundario:true,_origenSeccion:'Spotify'});
   // Se guarda la cuota del administrador vigente EN ESTE MOMENTO (según cuántas personas
   // hay ahora), para que si la cantidad de integrantes cambia en el futuro, la ganancia
   // de este ciclo ya pagado no se recalcule con datos de otra época.
@@ -800,7 +971,7 @@ async function confirmarPagarSpotify(){
     if(pend>0)pendienteAlCerrar[x.id]=pend;
   });
 
-  const pagoObj={id:uid(),tipo:'pago',monto,fuente,fecha:fechaPago,nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar,_tcMovId:tcMovId};
+  const pagoObj={id:uid(),tipo:'pago',monto,fuente,splits:splits||undefined,fecha:fechaPago,nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar,_tcMovId:tcMovId};
   S.spotifyHistorial=[...antesDelSegmento,...quedanCerrando,pagoObj,...pasanANuevo];
   // Reset pagados del ciclo — pero respeta a quienes ya prepagaron períodos futuros:
   // si su próxima fecha de cobro sigue en el futuro, su "Pagó" sigue vigente y no debe
@@ -810,6 +981,7 @@ async function confirmarPagarSpotify(){
     const sigueVigente=p.proximoPago&&new Date(p.proximoPago+'T00:00:00')>hoy0;
     if(!sigueVigente)p.pagado=false;
   });
+  sppSplitMode=false;
   save();refresh();closeSheet('pagar-spotify');
 }
 
@@ -828,7 +1000,7 @@ function addSpotify(){
   const dIng=new Date(fechaIngresoRaw+'T00:00:00');
   dIng.setDate(dIng.getDate()+30);
   const proximoPago=dIng.toISOString().split('T')[0];
-  S.spotifyPersonas.push({id:uid(),nombre:n,monto:m,pagado:false,proximoPago,fechaIngreso:fechaIngresoRaw,ultimoDestino:'',mesesAdelantados:1});
+  S.spotifyPersonas.push({id:uid(),nombre:n,monto:m,pagado:false,proximoPago,fechaIngreso:fechaIngresoRaw,ultimoDestino:'',ultimoDestinoSplit:false,mesesAdelantados:1});
   document.getElementById('sp_n').value='';
   document.getElementById('sp_m').value='';
   document.getElementById('sp_fecha_ingreso').value='';
@@ -926,6 +1098,17 @@ const _spPagarFuente = document.getElementById('spPagarFuente');
 if (_spPagarFuente) _spPagarFuente.addEventListener('change', actualizarSpPagarPreview);
 const _spPagarMonto = document.getElementById('spPagarMonto');
 if (_spPagarMonto) _spPagarMonto.addEventListener('input', actualizarSpPagarPreview);
+
+// ── Split de fuentes — cobro (spc) y pago (spp), ver crearSplitWidget arriba ──
+const _spCobSplitToggle = document.getElementById('spCobSplitToggle');
+if (_spCobSplitToggle) _spCobSplitToggle.addEventListener('click', toggleSpCobSplit);
+const _spCobBtnAddRow = document.getElementById('btn-add-spcob-split-row');
+if (_spCobBtnAddRow) _spCobBtnAddRow.addEventListener('click', agregarSpCobSplitRow);
+
+const _spPagarSplitToggle = document.getElementById('spPagarSplitToggle');
+if (_spPagarSplitToggle) _spPagarSplitToggle.addEventListener('click', toggleSpPagarSplit);
+const _spPagarBtnAddRow = document.getElementById('btn-add-spp-split-row');
+if (_spPagarBtnAddRow) _spPagarBtnAddRow.addEventListener('click', agregarSpPagarSplitRow);
 
 /* ═══════════════════════════════════════════════════════════════
    REGISTRO DE EVENTOS (funciones base — la integración con Personas

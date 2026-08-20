@@ -1,0 +1,25 @@
+name: Tests
+
+# Corre en cada push a cualquier rama y en cada pull request — no es un
+# cronjob, es un gatillo por evento. No toca el deploy de GitHub Pages
+# (eso lo sigue manejando la configuración de Pages por separado).
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repo
+        uses: actions/checkout@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20 # LTS. El test runner nativo (node --test) solo pide Node 18+.
+
+      # Sin "npm install": el harness no tiene dependencias (ver
+      # package.json), así que no hace falta node_modules ni cache de npm.
+      - name: Correr los tests
+        run: npm test

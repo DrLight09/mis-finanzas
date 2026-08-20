@@ -4083,11 +4083,23 @@
             id="spMesesTotal"></div>
         </div>
         <div class="divider"></div>
-        <div class="ig" style="margin-top:8px;">
-          <label class="il" for="spDestinoSelect">¿A dónde metiste esa
+        <div class="field-header" style="margin-top:8px;margin-bottom:8px;">
+          <label class="il" style="margin-bottom:0;">¿A dónde metiste esa
             plata?</label>
+          <button type="button" id="spCobSplitToggle" class="btn-split">Dividir
+            ÷</button>
+        </div>
+        <div id="spCobModoSimple" class="ig">
           <div class="select-wrap"><select id="spDestinoSelect"></select></div>
         </div>
+        <div id="spCobModoDividido" style="display:none;">
+          <div id="spCobSplitRows"></div>
+          <button type="button" id="btn-add-spcob-split-row"
+            class="btn-add-cuenta" style="margin-bottom:8px;">+
+            Agregar cuenta</button>
+        </div>
+        <div id="spCobPreview"
+          style="font-size:12px;font-family:'DM Mono',monospace;min-height:16px;margin-bottom:4px;"></div>
         <div class="ig"><label class="il" for="spFecha">Fecha en que te
             pagó</label><input type="date" id="spFecha"></div>
         <button type="button" class="btn btn-primary"
@@ -4111,9 +4123,20 @@
             id="spPagarMonto" placeholder="0,00" class="money-input"></div>
         <div id="spPagarPreview"
           style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:4px;"></div>
-        <div class="ig" style="margin-top:8px;"><label class="il"
-            for="spPagarFuente">¿De dónde sacas la plata?</label>
+        <div class="field-header" style="margin-top:8px;margin-bottom:8px;">
+          <label class="il" style="margin-bottom:0;">¿De dónde sacas la
+            plata?</label>
+          <button type="button" id="spPagarSplitToggle" class="btn-split">Dividir
+            ÷</button>
+        </div>
+        <div id="spPagarModoSimple" class="ig">
           <div class="select-wrap"><select id="spPagarFuente"></select></div>
+        </div>
+        <div id="spPagarModoDividido" style="display:none;">
+          <div id="spPagarSplitRows"></div>
+          <button type="button" id="btn-add-spp-split-row"
+            class="btn-add-cuenta" style="margin-bottom:8px;">+
+            Agregar cuenta</button>
         </div>
         <div id="spPagarFuenteSaldo"
           style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:14px;"></div>

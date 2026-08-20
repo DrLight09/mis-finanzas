@@ -837,8 +837,6 @@ function initMovSheet(tipo) {
     if (b) { b.textContent = 'Dividir ÷'; b.style.background = 'rgba(200,240,96,.1)'; b.style.borderColor = 'rgba(200,240,96,.3)'; b.style.color = 'var(--accent)'; } }
   document.getElementById('mov_dest_split_rows').innerHTML = '';
   document.getElementById('mov_dest_split_resumen').textContent = '';
-  document.getElementById('mov_btn_origen').style.display = 'none';
-  document.getElementById('mov_origen_tags').innerHTML = '';
   // Reset extra (sistema de partes libres)
   _extPartes = [];
   document.getElementById('mov_tiene_extra').checked = false;
@@ -881,11 +879,6 @@ function initMovSheet(tipo) {
   if (encCuentaWrap) encCuentaWrap.style.display = 'none';
   if (encPreview)   encPreview.textContent = '';
   if (encSel)       encSel.innerHTML = '<option value="">Seleccionar encargo</option>';
-  // Si es abono o pago completo, precargar el botón devolver al origen
-  if (tipo === 'abono' || tipo === 'pago-completo') {
-    const d = (S.deudores || []).find(x => x.id === deudorActualId);
-    if (d) movSetOrigenBtn(d);
-  }
   // ── Selector de grupo de préstamo ──────────────────────────────────
   // Solo se muestra cuando de verdad hay ambigüedad (≥2 grupos abiertos
   // con esta persona). Con 0 o 1 grupo abierto no se pregunta nada — se
@@ -1616,40 +1609,6 @@ function abonoSplitResumen() {
   if(Math.abs(diff)<1)  el.innerHTML=`<span style="color:var(--accent);"><i class="fa-solid fa-check" style="margin-right:4px;"></i>Suma exacta ${fmt(total)}</span>`;
   else if(diff>0)       el.innerHTML=`<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`;
   else                  el.innerHTML=`<span style="color:var(--red);">Excede el abono en ${fmt(-diff)}</span>`;
-}
-
-/* ↩ Devolver al origen */
-function movSetOrigenBtn(d) {
-  const prests = (d.movimientos||[]).filter(m=>m.tipo==='prestamo');
-  if(!prests.length){ document.getElementById('mov_btn_origen').style.display='none'; document.getElementById('mov_origen_tags').innerHTML=''; return; }
-  const ultimo = prests[prests.length-1];
-  const fuentes = ultimo.fuentes ? ultimo.fuentes : (ultimo.fuente?[{fuente:ultimo.fuente,monto:ultimo.monto}]:[]);
-  const tags = document.getElementById('mov_origen_tags');
-  if(!fuentes.length||!fuentes[0].fuente){ document.getElementById('mov_btn_origen').style.display='none'; tags.innerHTML=''; return; }
-  document.getElementById('mov_btn_origen').style.display='';
-  tags.innerHTML = fuentes.map(f=>`<span class="badge ${fuenteBadgeClass(f.fuente)}" style="font-size:9px;">${_fuenteLabelHtml(f.fuente)}${fuentes.length>1?' '+fmt(f.monto):''}</span>`).join('');
-  document.getElementById('mov_btn_origen').dataset.fuentes = JSON.stringify(fuentes);
-}
-
-function abonoAplicarOrigen() {
-  const btn = document.getElementById('mov_btn_origen');
-  const fuentes = JSON.parse(btn.dataset.fuentes||'[]');
-  if(!fuentes.length) return;
-  if(fuentes.length===1){
-    _abonoSplitMode=false;
-    document.getElementById('mov_destino_simple').style.display='';
-    document.getElementById('mov_destino_split').style.display='none';
-    document.getElementById('mov_destino').value=fuentes[0].fuente;
-  } else {
-    _abonoSplitMode=true;
-    _abonoSplitRows=fuentes.map(f=>({fuente:f.fuente,monto:f.monto}));
-    document.getElementById('mov_destino_simple').style.display='none';
-    document.getElementById('mov_destino_split').style.display='';
-    { const b = document.getElementById('mov_dest_split_toggle');
-      if (b) { b.textContent='Una sola cuenta'; b.style.background='rgba(240,184,64,.1)'; b.style.borderColor='rgba(240,184,64,.3)'; b.style.color='var(--amber)'; } }
-    abonoRenderSplit();
-  }
-  toast('Destinos del origen aplicados','ok');
 }
 
 /* ─── "¿Te dio extra de más?" — usa el motor común para el cálculo
@@ -2483,7 +2442,6 @@ Events.registerAll('prestado', {
   toggleAbonoSplit: toggleAbonoSplit,
   abonoAddSplitRow: abonoAddSplitRow,
   abonoSplitDel: abonoSplitDel,
-  abonoAplicarOrigen: abonoAplicarOrigen,
   toggleExtraSection: toggleExtraSection,
   extAddParte: extAddParte,
   extDelParte: extDelParte,

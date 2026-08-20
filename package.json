@@ -1,0 +1,11 @@
+{
+  "name": "mis-finanzas-tests",
+  "private": true,
+  "description": "Tests unitarios de las funciones de cálculo puras de mis-finanzas. No es parte del deploy (GitHub Pages solo sirve index.html/js/css) — es tooling de desarrollo, sin bundler ni transpilado, en línea con la arquitectura sin build tool de la app.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

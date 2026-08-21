@@ -2770,9 +2770,13 @@
           <div class="select-wrap"><select
               id="gv_cat"><option>Alimentación</option><option>Transporte</option><option>Salud</option><option>Entretenimiento</option><option>Ropa</option><option>Hogar</option><option>Educación</option><option>Servicios</option><option>Otro</option></select></div>
         </div>
-        <div class="ig">
-          <label class="il" for="gv_fuente">¿De dónde salió la plata? <span
-              style="color:var(--red);">*</span></label>
+        <div class="field-header" style="margin-bottom:8px;">
+          <label class="il" style="margin-bottom:0;">¿De dónde salió la
+            plata? <span style="color:var(--red);">*</span></label>
+          <button type="button" id="gvSplitToggle" class="btn-split">Dividir
+            ÷</button>
+        </div>
+        <div id="gvModoSimple" class="ig">
           <div class="select-wrap"><select id="gv_fuente"><option
                 value>Seleccionar cuenta</option></select></div>
           <div id="gv_fuente_hint"
@@ -2780,6 +2784,14 @@
             descontará automáticamente del saldo</div>
           <div id="gv_fuente_saldo"
             style="font-size:10px;font-family:'DM Mono',monospace;margin-top:5px;min-height:14px;"></div>
+        </div>
+        <div id="gvModoDividido" style="display:none;">
+          <div id="gvSplitRows"></div>
+          <button type="button" id="btn-add-gv-split-row"
+            class="btn-add-cuenta" style="margin-bottom:8px;">+
+            Agregar cuenta</button>
+          <div id="gvSplitPreview"
+            style="font-size:12px;font-family:'DM Mono',monospace;min-height:16px;margin-bottom:8px;"></div>
         </div>
         <div class="ig"><label class="il" for="gv_nota">Nota
             (opcional)</label><input type="text" id="gv_nota" maxlength="60"

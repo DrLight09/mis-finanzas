@@ -53,6 +53,46 @@ let mesFilter = 'todos';
 let gastoTab = 'var';
 let pgfIdActual = null;
 
+/* ── Split de fuentes — gasto variable (motor genérico, ver
+   js/core/split.js). Sin TC en modo dividido: una compra en TC es un
+   CARGO a la tarjeta, no un retiro de saldo de cuenta, y el motor de
+   split trata cada fila igual (sumar/descontar saldo) — no distingue
+   un cargo de un movimiento real de cuenta. Mismo criterio que el
+   pago de Spotify dividido, ver spotify.js. El select simple de
+   gv_fuente sigue permitiendo TC exactamente igual que antes. ── */
+let gvSplitMode = false;
+
+function getGvSplitFuentesOptions(selectedVal) {
+  return buildFuentesOptsHtml({ selectedVal, placeholder: 'Selecciona una cuenta...', incluirTC: false });
+}
+
+crearSplitWidget('gv', {
+  simpleId: 'gvModoSimple', splitId: 'gvModoDividido', toggleId: 'gvSplitToggle', rowsId: 'gvSplitRows',
+  getModo: () => gvSplitMode, setModo: v => { gvSplitMode = v; },
+  getFuentesFn: getGvSplitFuentesOptions,
+  onPreview: actualizarGvSplitPreview
+});
+function toggleGvSplit() { splitToggle('gv'); }
+function agregarGvSplitRow() { splitAgregarRow('gv'); }
+function getGvSplitData() { return splitGetData('gv'); }
+
+// Preview del split de gasto — mismo estilo que actualizarSpPagarPreview
+// en spotify.js (modo dividido: todo o nada, sin margen de "sin asignar").
+function actualizarGvSplitPreview() {
+  const prev = document.getElementById('gvSplitPreview');
+  if (!prev) return;
+  const monto = parseMoney(document.getElementById('gv_monto').value) || 0;
+  const splits = getGvSplitData();
+  if (!monto) { prev.textContent = ''; return; }
+  const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
+  const restante = monto - totalSplit;
+  if (splits.length === 0) { prev.textContent = fmt(monto) + ' por repartir entre cuentas'; prev.style.color = 'var(--text2)'; return; }
+  const lines = splits.map(s => fuenteLabel(s.fuente || '') + ': \u2212' + fmt(s.monto)).join(' · ');
+  if (restante > 0) { prev.textContent = lines + ' · Sin asignar: ' + fmt(restante); prev.style.color = 'var(--amber)'; }
+  else if (restante < 0) { prev.textContent = lines + ' · Excede por: ' + fmt(-restante); prev.style.color = 'var(--red)'; }
+  else { prev.textContent = lines + ' · Todo repartido'; prev.style.color = 'var(--accent)'; }
+}
+
 /* ---- TABS ---- */
 
 function switchGastoTab(t) {
@@ -67,6 +107,21 @@ function switchGastoTab(t) {
 
 function abrirNuevoGastoVar() {
   poblarCatSelect('gv_cat', getCatsVar());
+  // Resetear split (mismo patrón que abrirRegistrarMesada en mesada.js /
+  // openSheet_pagarSpotify en spotify.js)
+  gvSplitMode = false;
+  document.getElementById('gvModoSimple').style.display = '';
+  document.getElementById('gvModoDividido').style.display = 'none';
+  document.getElementById('gvSplitRows').innerHTML = '';
+  const gvToggleBtn = document.getElementById('gvSplitToggle');
+  if (gvToggleBtn) {
+    gvToggleBtn.textContent = 'Dividir ÷';
+    gvToggleBtn.style.background = 'rgba(200,240,96,.1)';
+    gvToggleBtn.style.borderColor = 'rgba(200,240,96,.3)';
+    gvToggleBtn.style.color = 'var(--accent)';
+  }
+  const gvSplitPrev = document.getElementById('gvSplitPreview');
+  if (gvSplitPrev) gvSplitPrev.textContent = '';
   openSheet('gasto-var');
 }
 
@@ -148,7 +203,7 @@ function renderGastosVar() {
           esTC ? `<span class="badge bg-red" style="font-size:9px;">TC — deuda</span><span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>` :
           esPagoTC ? `<span class="badge bg-green" style="font-size:9px;">Pago TC</span>` :
           `<span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>`}
-        ${g.fuente ? `<span class="badge ${fuenteBadgeClass(g.fuente)}" style="font-size:9px;">${escHtml(fuenteLabel(g.fuente))}</span>` : ''}
+        ${g.splits && g.splits.length ? `<span class="badge" style="font-size:9px;">Dividido: ${escHtml(g.splits.map(s => fuenteLabel(s.fuente || '')).join(', '))}</span>` : (g.fuente ? `<span class="badge ${fuenteBadgeClass(g.fuente)}" style="font-size:9px;">${escHtml(fuenteLabel(g.fuente))}</span>` : '')}
         ${(!(esFijo || esTC) && g.nota) ? `<span style="font-size:10px;color:var(--text3);">${escHtml(g.nota)}</span>` : ''}
       </div>
     </div>`;
@@ -191,26 +246,47 @@ function renderGastosVar() {
 function addGastoVar() {
   const desc = document.getElementById('gv_desc').value.trim();
   const monto = parseMoney(document.getElementById('gv_monto').value) || 0;
-  const fuente = document.getElementById('gv_fuente').value;
   if (!desc) { toast('Ingresa una descripción del gasto', 'err'); return; }
   if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
-  if (!fuente) { toast('Selecciona de dónde salió la plata', 'err'); return; }
-  const saldoDisp = getSaldoFuente(fuente);
-  if (fuente.startsWith('tc:')) {
-    // Validar cupo solo si la TC tiene cupo configurado
-    const tcId = fuente.split(':')[1];
-    const tc = (S.tarjetasCredito || []).find(x => x.id === tcId);
-    if (tc && tc.cupo && saldoDisp < monto) { toast('Cupo insuficiente en ' + escHtml(fuenteLabel(fuente)) + ' — cupo disponible: ' + fmt(saldoDisp), 'err'); return; }
+
+  let fuente = '';
+  let splits = null;
+  if (gvSplitMode) {
+    splits = getGvSplitData();
+    const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
+    if (splits.length === 0 || Math.abs(totalSplit - monto) > 1) {
+      const prev = document.getElementById('gvSplitPreview');
+      if (prev) {
+        prev.textContent = totalSplit < monto ? 'Falta asignar ' + fmt(monto - totalSplit) + ' a alguna cuenta' : 'El total dividido supera el monto del gasto';
+        prev.style.color = 'var(--red)';
+      }
+      return;
+    }
+    for (const s of splits) {
+      const saldoDisp = getSaldoFuente(s.fuente);
+      if (saldoDisp < s.monto) { toast('Saldo insuficiente en ' + escHtml(fuenteLabel(s.fuente)) + ' — disponible: ' + fmt(saldoDisp), 'err'); return; }
+    }
   } else {
-    if (saldoDisp < monto) { toast('Saldo insuficiente en ' + escHtml(fuenteLabel(fuente)) + ' — disponible: ' + fmt(saldoDisp), 'err'); return; }
+    fuente = document.getElementById('gv_fuente').value;
+    if (!fuente) { toast('Selecciona de dónde salió la plata', 'err'); return; }
+    const saldoDisp = getSaldoFuente(fuente);
+    if (fuente.startsWith('tc:')) {
+      // Validar cupo solo si la TC tiene cupo configurado
+      const tcId = fuente.split(':')[1];
+      const tc = (S.tarjetasCredito || []).find(x => x.id === tcId);
+      if (tc && tc.cupo && saldoDisp < monto) { toast('Cupo insuficiente en ' + escHtml(fuenteLabel(fuente)) + ' — cupo disponible: ' + fmt(saldoDisp), 'err'); return; }
+    } else {
+      if (saldoDisp < monto) { toast('Saldo insuficiente en ' + escHtml(fuenteLabel(fuente)) + ' — disponible: ' + fmt(saldoDisp), 'err'); return; }
+    }
   }
+
   const compraId = uid();
   const fechaGasto = document.getElementById('gv_fecha').value || hoy();
   const catGasto = document.getElementById('gv_cat').value;
   const notaGasto = document.getElementById('gv_nota').value.trim();
   if (!S.gastosVar) S.gastosVar = [];
   const esTCFuente = fuente && fuente.startsWith('tc:');
-  const gastoObj = { id: compraId, desc, monto, fecha: fechaGasto, cat: catGasto, fuente, nota: notaGasto };
+  const gastoObj = { id: compraId, desc, monto, fecha: fechaGasto, cat: catGasto, fuente, splits: splits || undefined, nota: notaGasto };
   // Si la fuente es TC, registrar la compra a través del mismo servicio que
   // usa el módulo de tarjetas (tcCrearCompra) — misma lógica, un solo lugar.
   if (esTCFuente) {
@@ -226,6 +302,11 @@ function addGastoVar() {
     } else {
       S.gastosVar.push(gastoObj);
     }
+  } else if (splits) {
+    S.gastosVar.push(gastoObj);
+    splits.forEach(s => descontarFuente(s.fuente, s.monto));
+    toast('Gasto registrado — dividido entre ' + splits.length + ' cuentas', 'ok');
+    if (window.logCambio) { const _gvd = document.getElementById('gv_desc'); logCambio('Registraste un gasto', _gvd ? _gvd.value : '', monto, 'gasto'); }
   } else {
     S.gastosVar.push(gastoObj);
     descontarFuente(fuente, monto);
@@ -236,6 +317,7 @@ function addGastoVar() {
   document.getElementById('gv_monto').value = '';
   document.getElementById('gv_nota').value = '';
   document.getElementById('gv_fecha').value = hoy();
+  gvSplitMode = false;
   save(); refresh(); closeSheet('gasto-var');
 }
 
@@ -259,8 +341,14 @@ async function deleteGastoVar(id) {
       if (tc && g._tcPagoId) tcEliminarPagoInterna(tc, g._tcPagoId);
       if (g.fuente) sumarFuente(g.fuente, g.monto);
     } else {
-      // Gasto normal: devolver el dinero a la cuenta origen
-      if (g.fuente) sumarFuente(g.fuente, g.monto);
+      // Gasto normal: devolver el dinero a la cuenta origen (una sola cuenta,
+      // o cada una de las cuentas del split si el gasto se dividió — ver
+      // addGastoVar)
+      if (g.splits && g.splits.length) {
+        g.splits.forEach(s => { if (s.fuente) sumarFuente(s.fuente, s.monto || 0); });
+      } else if (g.fuente) {
+        sumarFuente(g.fuente, g.monto);
+      }
     }
     // Bug fix: si era pago de gasto fijo, desmarcar como pagado
     if (g.esPagoGastoFijo && g.gastoFijoId) {
@@ -497,6 +585,14 @@ if (_gPgfFuenteSel) _gPgfFuenteSel.addEventListener('change', pgfActualizarSaldo
 // de Gastos, así que el wiring vive acá aunque el helper sea de núcleo.
 const _gGvFuente = document.getElementById('gv_fuente');
 if (_gGvFuente) _gGvFuente.addEventListener('change', () => mostrarAlertaFuente('gv'));
+
+// ── Split de fuentes — gasto variable (gv), ver crearSplitWidget arriba ──
+const _gGvSplitToggle = document.getElementById('gvSplitToggle');
+if (_gGvSplitToggle) _gGvSplitToggle.addEventListener('click', toggleGvSplit);
+const _gGvBtnAddRow = document.getElementById('btn-add-gv-split-row');
+if (_gGvBtnAddRow) _gGvBtnAddRow.addEventListener('click', agregarGvSplitRow);
+const _gGvMonto = document.getElementById('gv_monto');
+if (_gGvMonto) _gGvMonto.addEventListener('input', actualizarGvSplitPreview);
 
 /* ---- Registro de acciones en el sistema centralizado de eventos ---- */
 Events.registerAll('gastos', {

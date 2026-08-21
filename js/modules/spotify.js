@@ -821,12 +821,19 @@ async function actualizarSpPagarPreview(){
     }
   } else if(fuente){
     const actual=getSaldoActual(fuente);
-    fuenteInfo.textContent='Saldo disponible: '+fmt(actual);
     if(monto>0){
+      // El cálculo de abajo ya incluye el saldo actual como primer término
+      // ($actual − $monto = $resultado) — mostrar además "Saldo disponible: $actual"
+      // aquí arriba repite el mismo número sin agregar nada. Se muestra esta
+      // línea solo cuando todavía no hay cálculo que mostrar (monto vacío).
+      fuenteInfo.textContent='';
       const resultado=actual-monto;
       prev.textContent=fmt(actual)+' − '+fmt(monto)+' = '+fmt(resultado);
       prev.style.color=resultado<0?'var(--red)':'var(--accent)';
-    } else{prev.textContent='';}
+    } else{
+      fuenteInfo.textContent='Saldo disponible: '+fmt(actual);
+      prev.textContent='';
+    }
   } else {
     fuenteInfo.textContent='';prev.textContent='';
   }

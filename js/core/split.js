@@ -45,7 +45,20 @@
    reconstruye la lista entera cada vez, a diferencia de
    diffRenderPartes), alcanza con adjuntar los listeners una sola vez
    por fila, justo antes de insertarla — no hace falta re-adjuntar nada
-   en renders posteriores. ═══════════════════════════════════════════════════════════════ */
+   en renders posteriores.
+
+   ── VALIDACIÓN: NO REPETIR CUENTA ENTRE FILAS ─────────────────────
+   Se agregó splitOpcionesUsadas()/splitActualizarOpciones(): cada vez
+   que una fila cambia de cuenta, se agrega una fila nueva o se borra
+   una, se recalculan los <select> de TODAS las filas de esa instancia
+   para sacar de cada uno las cuentas ya elegidas en las demás filas
+   (dejando siempre disponible, en cada select, su propio valor actual
+   más la opción vacía "elige cuenta"). Así no se puede repartir un
+   mismo split dos veces sobre la misma cuenta (ej. 20 en Nequi y otros
+   10 en Nequi otra vez) sin tener que tocar getFuentesFn ni el HTML de
+   cada módulo — la exclusión se hace en runtime sobre las <option>
+   que ya devuelve cfg.getFuentesFn.
+   ═══════════════════════════════════════════════════════════════ */
 const _splitInstancias = {};
 
 function crearSplitWidget(instId, cfg){
@@ -97,11 +110,52 @@ function splitAgregarRow(instId){
   const sel = div.querySelector('select');
   const inp = div.querySelector('input');
   const btn = div.querySelector('button');
-  if (sel) sel.addEventListener('change', () => splitPreview(instId));
+  if (sel) sel.addEventListener('change', () => { splitActualizarOpciones(instId); splitPreview(instId); });
   if (inp) inp.addEventListener('input', () => splitPreview(instId));
-  if (btn) btn.addEventListener('click', () => { div.remove(); splitPreview(instId); });
+  if (btn) btn.addEventListener('click', () => { div.remove(); splitActualizarOpciones(instId); splitPreview(instId); });
 
   container.appendChild(div);
+  // la fila nueva entra con la cuenta en blanco, pero de todos modos se
+  // resincroniza acá para que respete cualquier cuenta ya usada en las
+  // filas existentes (por si getFuentesFn cambia entre llamadas).
+  splitActualizarOpciones(instId);
+}
+
+// Devuelve las cuentas (values) ya elegidas en las filas de la instancia,
+// excluyendo la fila que se pasa en rowExcluir (para no autobloquearse).
+function splitOpcionesUsadas(instId, rowExcluir){
+  const cfg = _splitInstancias[instId]; if(!cfg) return [];
+  const rows = document.getElementById(cfg.rowsId);
+  if(!rows) return [];
+  const usadas = [];
+  for(const row of rows.children){
+    if(row === rowExcluir) continue;
+    const sel = row.querySelector('select');
+    if(sel && sel.value) usadas.push(sel.value);
+  }
+  return usadas;
+}
+
+// Reconstruye el <select> de cada fila quitando las cuentas que ya estén
+// elegidas en OTRA fila de la misma instancia, conservando siempre la
+// opción vacía ("elige cuenta") y el valor propio de cada fila.
+function splitActualizarOpciones(instId){
+  const cfg = _splitInstancias[instId]; if(!cfg) return;
+  const rows = document.getElementById(cfg.rowsId);
+  if(!rows) return;
+  for(const row of rows.children){
+    const sel = row.querySelector('select');
+    if(!sel) continue;
+    const valorActual = sel.value;
+    const usadasEnOtras = splitOpcionesUsadas(instId, row);
+    sel.innerHTML = cfg.getFuentesFn(valorActual);
+    for(const opt of Array.from(sel.options)){
+      if(opt.value && usadasEnOtras.includes(opt.value) && opt.value !== valorActual){
+        opt.remove();
+      }
+    }
+    sel.value = valorActual;
+  }
 }
 
 function splitGetData(instId){

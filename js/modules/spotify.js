@@ -769,11 +769,6 @@ function openSheet_pagarSpotify(){
   const sel=document.getElementById('spPagarFuente');
   const fuentes=getFuentes();
   sel.innerHTML='<option value="">Sin especificar</option>'+fuentes.map(f=>`<option value="${f.val}"${cajita&&f.val==='cajita:'+cajita.id?' selected':''}>${f.label}</option>`).join('');
-  // El aviso de "Cajita Spotify: ... faltan ..." se calcula dentro de
-  // actualizarSpPagarPreview() -> _spPagarActualizarInfoCajita(), para que sea
-  // reactivo a la fuente elegida (ver comentario ahí: evita repetir el mismo
-  // saldo que ya muestran spPagarFuenteSaldo/spPagarPreview cuando la fuente
-  // elegida es la propia cajita).
   actualizarSpPagarPreview();
   const notaEl=document.getElementById('spPagarNota');
   if(notaEl)notaEl.value='';
@@ -784,35 +779,9 @@ function openSheet_pagarSpotify(){
   if(fechaPagoEl)fechaPagoEl.value=hoy();
 }
 
-// FIX (repetición de saldo en "Pagar Spotify"): cuando la fuente elegida para
-// pagar ES la Cajita Spotify, su saldo y el faltante ya quedan mostrados en
-// "Saldo disponible" (spPagarFuenteSaldo) y en el cálculo de abajo
-// (spPagarPreview) — mostrar además "Cajita Spotify: $X — faltan $Y" aquí
-// arriba repite el mismo número tres veces. Este aviso solo aporta algo
-// cuando pagas desde OTRA cuenta (contexto: "así vas de la cajita, aunque
-// estés pagando con otra plata"), así que se oculta cuando fuente===cajita.
-function _spPagarActualizarInfoCajita(fuenteActual){
-  const infoEl=document.getElementById('spPagarSaldoInfo');
-  if(!infoEl) return;
-  const cajita=getSpCajita();
-  if(!cajita){
-    infoEl.textContent='No tienes cajita de Spotify configurada en Nu.';
-    return;
-  }
-  if(fuenteActual==='cajita:'+cajita.id){
-    infoEl.textContent='';
-    return;
-  }
-  const costo=S.spotifyCosto||0;
-  const cajitaSaldo=getSpCajitaSaldo();
-  infoEl.textContent='Cajita Spotify: '+fmt(cajitaSaldo)+(cajitaSaldo>=costo?' Suficiente':' — faltan '+fmt(costo-cajitaSaldo));
-}
-
 async function actualizarSpPagarPreview(){
   const prev=document.getElementById('spPagarPreview');
   const fuenteInfo=document.getElementById('spPagarFuenteSaldo');
-  const fuenteSel=document.getElementById('spPagarFuente');
-  _spPagarActualizarInfoCajita(sppSplitMode?'':(fuenteSel?fuenteSel.value:''));
   // Modo dividido: el desglose de saldo por TC no aplica (no hay TC en split,
   // ver comentario junto a spcSplitMode/sppSplitMode más arriba).
   if(sppSplitMode){

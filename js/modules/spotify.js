@@ -667,6 +667,8 @@ function marcarPagoSpotify(i){
   // por error (ver auditoria-tecnica.md — atribución de ciclo por deuda, no por fecha).
   const fechaEl=document.getElementById('spFecha');
   if(fechaEl)fechaEl.value=hoy();
+  const spNotaEl=document.getElementById('spNota');
+  if(spNotaEl)spNotaEl.value='';
   openSheet('sp-destino');
 }
 
@@ -782,6 +784,7 @@ function confirmarSpDestino(){
 
   const fechaEl=document.getElementById('spFecha');
   const fechaCobro=(fechaEl&&fechaEl.value)?fechaEl.value:hoy();
+  const notaUsuario=document.getElementById('spNota')?.value.trim()||'';
   const nombreActual=spNombreDe(p);
   const proximoPagoAntes=p.proximoPago||'';
   p.pagado=true;
@@ -797,7 +800,8 @@ function confirmarSpDestino(){
   // Avanzar fecha de cobro N meses pero respetando el día original fijo
   if(p.proximoPago)p.proximoPago=nextMonthFixed(p.proximoPago,meses);
   if(!S.spotifyHistorial)S.spotifyHistorial=[];
-  const notaBase=meses>1?`${meses} períodos × ${fmt(p.monto||0)} (pago adelantado)`:'';
+  const notaPeriodos=meses>1?`${meses} períodos × ${fmt(p.monto||0)} (pago adelantado)`:'';
+  const notaBase=[notaUsuario,notaPeriodos].filter(Boolean).join(' · ');
 
   // Si el último pago a Spotify cerró un ciclo donde esta persona quedó debiendo algo
   // (_pendienteAlCerrar, congelado en confirmarPagarSpotify), este cobro salda primero

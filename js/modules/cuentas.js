@@ -2103,6 +2103,8 @@ function abrirAgregarDinero(fuente,nombre){
   document.getElementById('adMonto').value='';
   document.getElementById('adDesc').value='';
   document.getElementById('adFecha').value=hoy();
+  const adNotaEl=document.getElementById('adNota');
+  if(adNotaEl)adNotaEl.value='';
   document.getElementById('adPreview').textContent='';
   // Reset apertura toggle
   const chk=document.getElementById('adEsApertura');
@@ -2141,9 +2143,12 @@ function _aperturaToggleUI(ids){
   }
 }
 
-function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura){
+function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota){
   // Aplica el monto a la fuente y registra el movimiento con el tipo correcto.
   // Devuelve la descripción final (por si el caller la necesita para toasts/log).
+  // `nota` es opcional — ver auditoria-tecnica.md / guia-estilo-sheets.md
+  // (2026-08-22): el campo Nota de estos sheets existía en el HTML desde antes
+  // pero nunca se leía ni se guardaba en el movimiento.
   sumarFuente(fuente,monto);
   if(!S.movimientos)S.movimientos=[];
   let mov;
@@ -2153,18 +2158,21 @@ function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura){
   } else {
     mov={id:uid(),tipo:'entrada',fuente,monto,fecha,desc:desc||''};
   }
+  if(nota)mov.nota=nota;
   S.movimientos.push(mov);
   return mov.desc;
 }
 
-function registrarSalida(fuente,monto,fecha,desc){
+function registrarSalida(fuente,monto,fecha,desc,nota){
   // Simétrico a registrarEntradaConApertura: descuenta de la fuente y registra
   // el movimiento de salida manual. Cualquier sheet que reste dinero de una
   // fuente (cuenta, cajita, etc.) debe usar esto en vez de reimplementar
   // descontarFuente + push manual a S.movimientos.
+  // `nota` es opcional — ver nota en registrarEntradaConApertura de arriba.
   descontarFuente(fuente,monto);
   if(!S.movimientos)S.movimientos=[];
   const mov={id:uid(),tipo:'salida_manual',fuente,monto,fecha,desc:desc||''};
+  if(nota)mov.nota=nota;
   S.movimientos.push(mov);
   return mov.desc;
 }
@@ -2187,6 +2195,7 @@ function confirmarAgregarDinero(){
   const v=parseMoney(document.getElementById('adMonto').value)||0;
   const desc=document.getElementById('adDesc').value.trim();
   const fecha=document.getElementById('adFecha').value||hoy();
+  const nota=document.getElementById('adNota')?.value.trim()||'';
   const esApertura=document.getElementById('adEsApertura')?.checked||false;
   if(!esApertura&&!desc){toast('Describe de dónde viene esta plata','err');return;}
   if(!v||!adFuente)return;
@@ -2196,7 +2205,7 @@ function confirmarAgregarDinero(){
     const c=(S.cajitas||[]).find(x=>x.id===id);
     if(c)materializarIntereses(c);
   }
-  const descFinal=registrarEntradaConApertura(adFuente,v,fecha,desc,esApertura);
+  const descFinal=registrarEntradaConApertura(adFuente,v,fecha,desc,esApertura,nota);
   save();
   closeSheet('agregar-dinero');
   refresh();
@@ -2215,6 +2224,8 @@ function openSheet_adMenu(){
   document.getElementById('adMenuMonto').value='';
   document.getElementById('adMenuDesc').value='';
   document.getElementById('adMenuFecha').value=hoy();
+  const adMenuNotaEl=document.getElementById('adMenuNota');
+  if(adMenuNotaEl)adMenuNotaEl.value='';
   document.getElementById('adMenuPreview').textContent='';
 }
 
@@ -2239,12 +2250,15 @@ function confirmarAgregarDineroMenu(){
   const v=parseMoney(document.getElementById('adMenuMonto').value)||0;
   const desc=document.getElementById('adMenuDesc').value.trim();
   const fecha=document.getElementById('adMenuFecha').value||hoy();
+  const nota=document.getElementById('adMenuNota')?.value.trim()||'';
   if(!desc){toast('Describe de dónde viene esta plata','err');return;}
   if(!v||!fuente)return;
   sumarFuente(fuente,v);
   // Registrar movimiento de entrada
   if(!S.movimientos)S.movimientos=[];
-  S.movimientos.push({id:uid(),tipo:'entrada',fuente,monto:v,fecha,desc});
+  const _movAdMenu={id:uid(),tipo:'entrada',fuente,monto:v,fecha,desc};
+  if(nota)_movAdMenu.nota=nota;
+  S.movimientos.push(_movAdMenu);
   save();
   closeSheet('agregar-dinero-menu');
   refresh();
@@ -2400,6 +2414,8 @@ function abrirNuMovimiento(tipo) {
   document.getElementById('nuMovDesc').value = '';
   document.getElementById('nuMovMonto').value = '';
   document.getElementById('nuMovFecha').value = hoy();
+  const nuMovNotaEl = document.getElementById('nuMovNota');
+  if (nuMovNotaEl) nuMovNotaEl.value = '';
   document.getElementById('nuMovPreview').textContent = '';
 
   // Renderizar selector de cajitas
@@ -2483,6 +2499,7 @@ function confirmarNuMovimiento() {
   const v = parseMoney(document.getElementById('nuMovMonto').value) || 0;
   const desc = document.getElementById('nuMovDesc').value.trim();
   const fecha = document.getElementById('nuMovFecha').value || hoy();
+  const nota = document.getElementById('nuMovNota')?.value.trim() || '';
   const esApertura = _nuMovTipo === 'entrada' && (document.getElementById('nuMovEsApertura')?.checked || false);
 
   if (!_nuMovCajitaSel) { toast('Seleccioná una cajita', 'err'); return; }
@@ -2500,11 +2517,11 @@ function confirmarNuMovimiento() {
   if (typeof materializarIntereses === 'function') materializarIntereses(caj);
 
   if (_nuMovTipo === 'entrada') {
-    const descFinal = registrarEntradaConApertura(_nuMovCajitaSel, v, fecha, desc, esApertura);
+    const descFinal = registrarEntradaConApertura(_nuMovCajitaSel, v, fecha, desc, esApertura, nota);
     if (window.logCambio) logCambio('Entró plata a ' + (caj.nombre || 'cajita'), descFinal, v, 'ingreso', cid);
     toast(fmt(v) + (esApertura ? ' registrado como saldo inicial en ' : ' sumado a ') + escHtml(caj.nombre || 'cajita'), 'ok');
   } else {
-    registrarSalida(_nuMovCajitaSel, v, fecha, desc);
+    registrarSalida(_nuMovCajitaSel, v, fecha, desc, nota);
     if (window.logCambio) logCambio('Salió plata de ' + (caj.nombre || 'cajita'), desc, v, 'gasto', cid);
     toast('− ' + fmt(v) + ' de ' + escHtml(caj.nombre || 'cajita') + ' — ' + escHtml(desc), 'info');
   }
@@ -2525,6 +2542,8 @@ function abrirRestarDinero(fuente,nombre){
   document.getElementById('rdMonto').value='';
   document.getElementById('rdDesc').value='';
   document.getElementById('rdFecha').value=hoy();
+  const rdNotaEl=document.getElementById('rdNota');
+  if(rdNotaEl)rdNotaEl.value='';
   document.getElementById('rdPreview').textContent='';
   openSheet('restar-dinero');
   setTimeout(()=>document.getElementById('rdDesc').focus(),200);
@@ -2547,9 +2566,10 @@ function confirmarRestarDinero(){
   const v=parseMoney(document.getElementById('rdMonto').value)||0;
   const desc=document.getElementById('rdDesc').value.trim();
   const fecha=document.getElementById('rdFecha').value||hoy();
+  const nota=document.getElementById('rdNota')?.value.trim()||'';
   if(!desc){toast('Describe en qué se gastó o a dónde fue','err');return;}
   if(!v||!rdFuente)return;
-  registrarSalida(rdFuente,v,fecha,desc);
+  registrarSalida(rdFuente,v,fecha,desc,nota);
   save();refresh();
   closeSheet('restar-dinero');
   if(window.logCambio){const _fLabel=fuenteLabel(rdFuente);const _cjId3=rdFuente&&rdFuente.startsWith('cajita:')?rdFuente.split(':')[1]:null;logCambio('Retiraste dinero de '+_fLabel,desc,v,'gasto',_cjId3);}
@@ -2573,6 +2593,8 @@ function abrirTransferir(origenSugerido) {
   if (primerDestino) document.getElementById('tr_destino').value = primerDestino.val;
   document.getElementById('tr_monto').value = '';
   document.getElementById('tr_nota').value = '';
+  const trFechaEl = document.getElementById('tr_fecha');
+  if (trFechaEl) trFechaEl.value = hoy();
   document.getElementById('tr_preview').textContent = '';
   actualizarTransfPreview();
   openSheet('transferir');
@@ -2615,6 +2637,7 @@ function confirmarTransferir() {
   const destino = document.getElementById('tr_destino').value;
   const monto = parseMoney(document.getElementById('tr_monto').value) || 0;
   const nota = document.getElementById('tr_nota').value.trim();
+  const fecha = document.getElementById('tr_fecha')?.value || hoy();
 
   if (!origen || !destino) { toast('Elige origen y destino', 'err'); return; }
   if (origen === destino) { toast('El origen y destino deben ser diferentes', 'err'); return; }
@@ -2633,7 +2656,7 @@ function confirmarTransferir() {
   if (!S.transferencias) S.transferencias = [];
   S.transferencias.push({
     id: uid(),
-    fecha: hoy(),
+    fecha,
     origen,
     destino,
     monto,

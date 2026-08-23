@@ -2669,13 +2669,13 @@
             placeholder="0,00" class="money-input"></div>
         <!-- Selector de ícono/banco -->
         <div class="ig">
-          <label class="il">Ícono</label>
+          <div class="il">Ícono</div>
           <div id="nc-icon-grid"
             style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;"></div>
         </div>
         <!-- Color (se actualiza automáticamente con el ícono, pero se puede cambiar) -->
         <div class="ig">
-          <label class="il">Color</label>
+          <div class="il">Color</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;padding:2px 0;"
             id="nc-color-picker">
             <div class="nc-color-opt" data-color="#60b0f0"
@@ -2769,7 +2769,7 @@
               id="gv_cat"><option>Alimentación</option><option>Transporte</option><option>Salud</option><option>Entretenimiento</option><option>Ropa</option><option>Hogar</option><option>Educación</option><option>Servicios</option><option>Otro</option></select></div>
         </div>
         <div class="field-header" style="margin-bottom:8px;">
-          <label class="il" style="margin-bottom:0;">¿De dónde salió la
+          <label for="gv_fuente" class="il" style="margin-bottom:0;">¿De dónde salió la
             plata? <span style="color:var(--red);">*</span></label>
           <button type="button" id="gvSplitToggle" class="btn-split">Dividir
             ÷</button>
@@ -2957,7 +2957,7 @@
             class="money-input"></div>
         <div class="ig" id="movenc_cuenta_wrap">
           <div class="field-header">
-            <label class="il" id="movenc_cuenta_label">¿En qué cuenta está esa
+            <label for="movenc_cuenta" class="il" id="movenc_cuenta_label">¿En qué cuenta está esa
               plata?</label>
             <button type="button" id="movenc_split_toggle"
               data-action="encargos:movSplitToggle"
@@ -2998,7 +2998,7 @@
               style="font-size:11px;color:var(--text2);line-height:1.5;margin-bottom:10px;">
             </div>
             <div class="ig" style="margin-bottom:10px;">
-              <label class="il" style="color:var(--red);">¿De cuál cuenta tuya
+              <label for="movenc_faltante_cuenta" class="il" style="color:var(--red);">¿De cuál cuenta tuya
                 sale lo prestado?</label>
               <div class="select-wrap"><select
                   id="movenc_faltante_cuenta"><option value="">Seleccionar
@@ -3045,7 +3045,7 @@
           <div id="movenc-dif-body"
             style="display:none;background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;">
             <div class="ig" style="margin-bottom:10px;">
-              <label class="il" style="color:var(--amber);">¿Cuánto era en
+              <label for="movenc_dif_real" class="il" style="color:var(--amber);">¿Cuánto era en
                 realidad?</label>
               <input type="text" inputmode="decimal" id="movenc_dif_real"
                 placeholder="0,00" class="money-input">
@@ -3063,7 +3063,7 @@
             <!-- Select de cuenta propia para el sobrante sin asignar -->
             <div id="movenc-dif-mi-cuenta-wrap"
               style="display:none;margin-top:10px;">
-              <label class="il"
+              <label for="movenc_dif_mi_cuenta" class="il"
                 style="color:var(--accent);margin-bottom:6px;">¿A cuál cuenta
                 entra el sobrante?</label>
               <div class="select-wrap"><select id="movenc_dif_mi_cuenta"><option
@@ -3382,7 +3382,7 @@
           <div id="ctc-dif-body"
             style="display:none;background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;">
             <div class="ig" style="margin-bottom:10px;">
-              <label class="il" style="color:var(--amber);">Valor real cobrado
+              <label for="ctc_dif_real" class="il" style="color:var(--amber);">Valor real cobrado
                 por la TC</label>
               <input type="text" inputmode="decimal" id="ctc_dif_real"
                 placeholder="0,00" class="money-input">
@@ -3390,7 +3390,7 @@
             <div id="ctc-dif-resumen"
               style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
             <div id="ctc-dif-margen-wrap" style="display:none;margin-top:10px;">
-              <label class="il"
+              <label for="ctc_dif_margen_cuenta" class="il"
                 style="color:var(--accent);margin-bottom:6px;">¿A cuál cuenta
                 entra el diferencial?</label>
               <div class="select-wrap"><select
@@ -3475,7 +3475,7 @@
         <!-- ¿De dónde sacaste la plata? -->
         <div style="margin-bottom:14px;">
           <div class="field-header" style="margin-bottom:8px;">
-            <label class="il" style="margin-bottom:0;">¿De dónde sacaste la
+            <label for="usar_parte_fuente" class="il" style="margin-bottom:0;">¿De dónde sacaste la
               plata?</label>
             <button type="button" id="usarParteSplitToggle"
               data-action="encargos:usarParteSplitToggle"
@@ -3530,7 +3530,7 @@
         <div id="usar-parte-dif-body"
           style="display:none;background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;margin-bottom:10px;">
           <div class="ig" style="margin-bottom:10px;">
-            <label class="il" style="color:var(--amber);">¿Cuánto era en
+            <label for="usar_parte_dif_real" class="il" style="color:var(--amber);">¿Cuánto era en
               realidad?</label>
             <input type="text" inputmode="decimal" id="usar_parte_dif_real"
               placeholder="0,00" class="money-input">
@@ -3548,7 +3548,7 @@
           <!-- ¿Dónde te cayó el margen que te quedaste? -->
           <div id="usar-parte-dif-mi-cuenta-wrap"
             style="display:none;margin-top:10px;">
-            <label class="il" style="color:var(--amber);margin-bottom:6px;">¿En
+            <label for="usar_parte_dif_mi_cuenta" class="il" style="color:var(--amber);margin-bottom:6px;">¿En
               qué cuenta te cayó ese margen?</label>
             <div class="select-wrap">
               <select id="usar_parte_dif_mi_cuenta"
@@ -3627,7 +3627,7 @@
             type="text" id="np_nombre" maxlength="30"
             placeholder="Ej: Papá, Carlos, Mamá..."></div>
         <div class="ig">
-          <label class="il">Color del avatar</label>
+          <div class="il">Color del avatar</div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;"
             id="np_colores">
             <div class="avatar-color-opt" data-color="#60b0f0"
@@ -3673,7 +3673,7 @@
             placeholder="0,00" class="money-input">
         </div>
         <div class="ig">
-          <label class="il">¿A qué cuenta entró la plata?</label>
+          <label for="nd_destino" class="il">¿A qué cuenta entró la plata?</label>
           <div class="select-wrap"><select id="nd_destino"><option value>Sin
                 especificar</option></select></div>
           <div class="field-hint field-hint-green">Se sumará automáticamente al
@@ -3703,7 +3703,7 @@
             placeholder="Ej: Papá, Carlos, Mamá...">
         </div>
         <div class="ig">
-          <label class="il">Color del avatar</label>
+          <div class="il">Color del avatar</div>
           <div id="md_edit_colores"
             style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;"></div>
         </div>
@@ -3724,7 +3724,7 @@
             placeholder="0,00" class="money-input">
         </div>
         <div class="ig" id="md_cuenta_wrap">
-          <label class="il" id="md_cuenta_label">¿A qué cuenta entró la
+          <label for="md_cuenta" class="il" id="md_cuenta_label">¿A qué cuenta entró la
             plata?</label>
           <div class="select-wrap"><select id="md_cuenta"><option value>Sin
                 especificar</option></select></div>
@@ -3808,7 +3808,7 @@
         <div id="prtc-dif-body"
           style="display:none;background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;margin-bottom:10px;">
           <div class="ig" style="margin-bottom:10px;">
-            <label class="il" style="color:var(--amber);">¿Cuánto era en
+            <label for="prtc_dif_real" class="il" style="color:var(--amber);">¿Cuánto era en
               realidad?</label>
             <input type="text" inputmode="decimal" id="prtc_dif_real"
               placeholder="0,00" class="money-input">
@@ -3861,7 +3861,7 @@
         </div>
         <div class="ig" id="mov_fuente_wrap">
           <div class="field-header">
-            <label class="il" style="margin-bottom:0;">¿De dónde sacó la
+            <label for="mov_fuente" class="il" style="margin-bottom:0;">¿De dónde sacó la
               plata?</label>
             <button type="button" id="mov_split_toggle" data-action="prestado:togglePrestSplit" data-args="[]"
               class="btn-split">Dividir ÷</button>
@@ -3889,7 +3889,7 @@
         <div class="ig" id="mov_destino_wrap" style="display:none;">
           <!-- Header + toggle dividir -->
           <div class="field-header">
-            <label class="il" style="margin-bottom:0;">¿A dónde entra el
+            <label for="mov_destino" class="il" style="margin-bottom:0;">¿A dónde entra el
               pago?</label>
             <button type="button" id="mov_dest_split_toggle" data-action="prestado:toggleAbonoSplit" data-args="[]"
               class="btn-split">Dividir ÷</button>
@@ -3987,8 +3987,8 @@
             </div>
 
             <!-- Qué hizo con el extra — sistema de partes libres -->
-            <label class="il" style="font-size:10px;margin-bottom:8px;">¿Qué
-              hiciste con ese extra? Puedes dividirlo como quieras.</label>
+            <div class="il" style="font-size:10px;margin-bottom:8px;">¿Qué
+              hiciste con ese extra? Puedes dividirlo como quieras.</div>
             <!-- Lista de partes -->
             <div id="ext_partes_list"
               style="display:flex;flex-direction:column;gap:7px;margin-bottom:6px;"></div>
@@ -4115,7 +4115,7 @@
         </div>
         <div class="divider"></div>
         <div class="field-header" style="margin-top:8px;margin-bottom:8px;">
-          <label class="il" style="margin-bottom:0;">¿A dónde metiste esa
+          <label for="spDestinoSelect" class="il" style="margin-bottom:0;">¿A dónde metiste esa
             plata?</label>
           <button type="button" id="spCobSplitToggle" class="btn-split">Dividir
             ÷</button>
@@ -4190,7 +4190,7 @@
         <div id="spPagarPreview"
           style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:4px;"></div>
         <div class="field-header" style="margin-top:8px;margin-bottom:8px;">
-          <label class="il" style="margin-bottom:0;">¿De dónde sacas la
+          <label for="spPagarFuente" class="il" style="margin-bottom:0;">¿De dónde sacas la
             plata?</label>
           <button type="button" id="spPagarSplitToggle" class="btn-split">Dividir
             ÷</button>
@@ -4263,7 +4263,7 @@
         </div>
         <!-- Modo destino: simple o dividido -->
         <div class="field-header" style="margin-bottom:8px;">
-          <label class="il" style="margin-bottom:0;">¿Qué hiciste con esa
+          <label for="mpDestino" class="il" style="margin-bottom:0;">¿Qué hiciste con esa
             plata?</label>
           <button type="button" id="mpSplitToggle"
             class="btn-split">Dividir
@@ -4410,7 +4410,7 @@
         <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">El
           valor que ingreses se <b style="color:var(--accent);">sumará</b> al
           saldo actual. No reemplaza, solo suma.</p>
-        <div class="ig"><label class="il">Saldo actual</label><div
+        <div class="ig"><div class="il">Saldo actual</div><div
             id="adSaldoActual"
             style="font-size:18px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);padding:6px 0 2px;">$0</div></div>
         <!-- Toggle apertura -->
@@ -4515,8 +4515,8 @@
 
         <!-- Selector de cajita -->
         <div class="ig">
-          <label class="il">¿A qué cajita? <span
-              style="color:var(--red);">*</span></label>
+          <div class="il">¿A qué cajita? <span
+              style="color:var(--red);">*</span></div>
           <div id="nuMovCajitasWrap"
             style="display:flex;flex-direction:column;gap:7px;margin-top:4px;"></div>
         </div>
@@ -4535,13 +4535,13 @@
         </div>
 
         <div class="ig">
-          <label class="il" id="nuMovDescLabel">¿De dónde viene esta plata?
+          <label for="nuMovDesc" class="il" id="nuMovDescLabel">¿De dónde viene esta plata?
             <span style="color:var(--red);">*</span></label>
           <input type="text" id="nuMovDesc"
             placeholder="Ej: Salario, mesada, bono..." maxlength="80">
         </div>
         <div class="ig">
-          <label class="il" id="nuMovMontoLabel">¿Cuánto recibiste?</label>
+          <label for="nuMovMonto" class="il" id="nuMovMontoLabel">¿Cuánto recibiste?</label>
           <input type="text" inputmode="decimal" id="nuMovMonto"
             placeholder="0,00" class="money-input">
         </div>
@@ -4569,7 +4569,7 @@
         <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">El
           valor se <b style="color:var(--red);">restará</b> del saldo
           actual.</p>
-        <div class="ig"><label class="il">Saldo actual</label><div
+        <div class="ig"><div class="il">Saldo actual</div><div
             id="rdSaldoActual"
             style="font-size:18px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);padding:6px 0 2px;">$0</div></div>
         <div class="ig"><label class="il" for="rdDesc">¿En qué se gastó o a
@@ -5112,8 +5112,8 @@
             </select></div>
         </div>
         <div class="ig">
-          <label class="il">Color <span
-              style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label>
+          <div class="il">Color <span
+              style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;padding:2px 0;"
             id="tc-color-picker">
             <div class="tc-color-opt" data-color="#60b0f0"

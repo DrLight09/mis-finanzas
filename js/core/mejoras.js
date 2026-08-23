@@ -11,7 +11,7 @@
     '#heroTotal','#s-disp','#s-nu','#s-ef','#s-nequi','#s-prest','#s-cdt',
     '#s-gf','#s-gv','#s-gtotal','.hero-amount','.stat-value','.row-amount',
     '#det-nequi-saldo','#det-ef-saldo','#nuTotalDisp','#sel-nequi-saldo',
-    '#sel-nu-saldo','#sel-ef-saldo','.cajita-val'
+    '#sel-nu-saldo','#sel-ef-saldo','.cajita-val','#det-custom-saldo'
   ];
 
   function toggleSaldos(){
@@ -32,8 +32,9 @@
       });
     });
     // Proyección, "Necesita atención" (deudas de personas y cobros
-    // vencidos) y tarjetas de crédito: los montos ya están envueltos en
-    // spans .saldo-inline (ver 1b más abajo), acá solo se prende/apaga.
+    // vencidos), tarjetas de crédito y cuentas personalizadas: los montos
+    // ya están envueltos en spans .saldo-inline (ver 1b más abajo), acá
+    // solo se prende/apaga.
     _aplicarOcultoEnAreas();
   }
 
@@ -42,17 +43,18 @@
   /* ====================================================
      1b. OCULTAR MONTOS EN ÁREAS DINÁMICAS
          (Tendencia mensual/proyección, "Necesita atención" —
-         deudas de personas y cobros vencidos—, y tarjetas de
-         crédito). Estos tres contenedores se re-renderizan
+         deudas de personas y cobros vencidos—, tarjetas de
+         crédito, y la lista de cuentas personalizadas en
+         "Cuentas"). Estos contenedores se re-renderizan
          completos con innerHTML desde otros módulos (inicio.js
-         y el módulo de tarjetas), así que en vez de apuntar a
-         selectores fijos como en MONEY_SELECTORS, se busca
-         cualquier texto con formato "$..." dentro de ellos, se
-         envuelve en un <span class="saldo-inline"> y se observa
-         el contenedor para repetir el envoltorio cada vez que
-         su contenido se vuelve a pintar.
+         y los módulos de tarjetas/cuentas), así que en vez de
+         apuntar a selectores fijos como en MONEY_SELECTORS, se
+         busca cualquier texto con formato "$..." dentro de
+         ellos, se envuelve en un <span class="saldo-inline"> y
+         se observa el contenedor para repetir el envoltorio
+         cada vez que su contenido se vuelve a pintar.
   ==================================================== */
-  const SALDO_DINAMICO_IDS = ['proyeccion-card','s-attn-list','tc-deuda-card'];
+  const SALDO_DINAMICO_IDS = ['proyeccion-card','s-attn-list','tc-deuda-card','custom-cuentas-list'];
   const REGEX_MONTO = /[-+]?\$\s?\d[\d.,]*/g;
 
   function _envolverMontos(root){
@@ -113,7 +115,7 @@
     _obsAreasSaldo[id] = obs;
   }
 
-  // Los tres contenedores ya existen en el HTML inicial (aunque arranquen
+  // Los contenedores ya existen en el HTML inicial (aunque arranquen
   // vacíos o en display:none), así que se observan de una vez. appDataLoaded
   // vuelve a intentarlo por si alguno se creó después.
   SALDO_DINAMICO_IDS.forEach(_observarAreaSaldo);

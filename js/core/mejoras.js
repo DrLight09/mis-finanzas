@@ -31,9 +31,95 @@
         else el.classList.remove('saldo-hidden');
       });
     });
+    // Proyección, "Necesita atención" (deudas de personas y cobros
+    // vencidos) y tarjetas de crédito: los montos ya están envueltos en
+    // spans .saldo-inline (ver 1b más abajo), acá solo se prende/apaga.
+    _aplicarOcultoEnAreas();
   }
 
   document.getElementById('btn-toggle-saldos').addEventListener('click', toggleSaldos);
+
+  /* ====================================================
+     1b. OCULTAR MONTOS EN ÁREAS DINÁMICAS
+         (Tendencia mensual/proyección, "Necesita atención" —
+         deudas de personas y cobros vencidos—, y tarjetas de
+         crédito). Estos tres contenedores se re-renderizan
+         completos con innerHTML desde otros módulos (inicio.js
+         y el módulo de tarjetas), así que en vez de apuntar a
+         selectores fijos como en MONEY_SELECTORS, se busca
+         cualquier texto con formato "$..." dentro de ellos, se
+         envuelve en un <span class="saldo-inline"> y se observa
+         el contenedor para repetir el envoltorio cada vez que
+         su contenido se vuelve a pintar.
+  ==================================================== */
+  const SALDO_DINAMICO_IDS = ['proyeccion-card','s-attn-list','tc-deuda-card'];
+  const REGEX_MONTO = /[-+]?\$\s?\d[\d.,]*/g;
+
+  function _envolverMontos(root){
+    if(!root) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode(node){
+        if(node.parentElement && node.parentElement.classList.contains('saldo-inline')) return NodeFilter.FILTER_REJECT;
+        REGEX_MONTO.lastIndex = 0;
+        return REGEX_MONTO.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+    const nodos = [];
+    let n;
+    while((n = walker.nextNode())) nodos.push(n);
+    nodos.forEach(textNode => {
+      REGEX_MONTO.lastIndex = 0;
+      const montos = textNode.nodeValue.match(REGEX_MONTO);
+      if(!montos) return;
+      const partes = textNode.nodeValue.split(REGEX_MONTO);
+      const frag = document.createDocumentFragment();
+      partes.forEach((parte, i) => {
+        if(parte) frag.appendChild(document.createTextNode(parte));
+        if(montos[i]){
+          const span = document.createElement('span');
+          span.className = 'saldo-inline' + (_saldosOcultos ? ' saldo-hidden' : '');
+          span.textContent = montos[i];
+          frag.appendChild(span);
+        }
+      });
+      textNode.parentNode.replaceChild(frag, textNode);
+    });
+  }
+
+  function _aplicarOcultoEnAreas(){
+    SALDO_DINAMICO_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.querySelectorAll('.saldo-inline').forEach(span => {
+        span.classList.toggle('saldo-hidden', _saldosOcultos);
+      });
+    });
+  }
+
+  const _obsAreasSaldo = {};
+  function _observarAreaSaldo(id){
+    const el = document.getElementById(id);
+    if(!el || _obsAreasSaldo[id]) return;
+    _envolverMontos(el);
+    const obs = new MutationObserver(() => {
+      // Desconectar mientras tocamos el DOM nosotros mismos, para no
+      // reaccionar a nuestro propio envoltorio (evita loop/recursión).
+      obs.disconnect();
+      _envolverMontos(el);
+      _aplicarOcultoEnAreas();
+      obs.observe(el, {childList:true, subtree:true});
+    });
+    obs.observe(el, {childList:true, subtree:true});
+    _obsAreasSaldo[id] = obs;
+  }
+
+  // Los tres contenedores ya existen en el HTML inicial (aunque arranquen
+  // vacíos o en display:none), así que se observan de una vez. appDataLoaded
+  // vuelve a intentarlo por si alguno se creó después.
+  SALDO_DINAMICO_IDS.forEach(_observarAreaSaldo);
+  window.addEventListener('appDataLoaded', function(){
+    SALDO_DINAMICO_IDS.forEach(_observarAreaSaldo);
+  });
 
   /* ====================================================
      2. BÚSQUEDA GLOBAL — migrado a js/core/busqueda-global.js

@@ -266,7 +266,7 @@ function _inyectarAlcanciaSheets(){
       <div class="sheet-handle"></div>
       <div class="sheet-title">Guardar en la alcancía</div>
       <div class="ig">
-        <label class="il">¿De dónde viene este dinero?</label>
+        <label class="il" for="alc_dep_tipo">¿De dónde viene este dinero?</label>
         <div class="select-wrap">
           <select id="alc_dep_tipo">
             <option value="yo-directo"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Lo tenía yo (no sale de ninguna cuenta)</option>
@@ -279,25 +279,25 @@ function _inyectarAlcanciaSheets(){
         </div>
       </div>
       <div class="ig" id="alc_dep_deudor_wrap" style="display:none;">
-        <label class="il">¿Quién te pagó?</label>
+        <label class="il" for="alc_dep_deudor">¿Quién te pagó?</label>
         <div class="select-wrap">
           <select id="alc_dep_deudor"><option value="">Seleccionar persona</option></select>
         </div>
         <div class="ig" id="alc_dep_deudor_grupo_wrap" style="display:none;margin-top:8px;">
-          <label class="il">¿De cuál préstamo?</label>
+          <label class="il" for="alc_dep_deudor_grupo">¿De cuál préstamo?</label>
           <div class="select-wrap"><select id="alc_dep_deudor_grupo"></select></div>
         </div>
         <div id="alc_dep_deudor_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
       </div>
       <div class="ig" id="alc_dep_fuente_wrap">
-        <label class="il">¿De qué cuenta sale?</label>
+        <label class="il" for="alc_dep_fuente">¿De qué cuenta sale?</label>
         <div class="select-wrap">
           <select id="alc_dep_fuente"></select>
         </div>
         <div id="alc_dep_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
       </div>
       <div class="ig" id="alc_dep_split_wrap" style="display:none;">
-        <label class="il">¿Cuánto puso cada uno?</label>
+        <div class="il">¿Cuánto puso cada uno?</div>
         <div style="display:flex;gap:10px;align-items:flex-start;">
           <div style="flex:1;">
             <div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:500;">Vos</div>
@@ -318,15 +318,15 @@ function _inyectarAlcanciaSheets(){
         </div>
       </div>
       <div class="ig">
-        <label class="il">Monto total</label>
+        <label class="il" for="alc_dep_monto">Monto total</label>
         <input type="text" inputmode="decimal" class="money-input" id="alc_dep_monto" placeholder="0,00" autocomplete="off">
       </div>
       <div class="ig">
-        <label class="il">Fecha</label>
+        <label class="il" for="alc_dep_fecha">Fecha</label>
         <input type="date" id="alc_dep_fecha" class="input-fecha">
       </div>
       <div class="ig">
-        <label class="il">Descripción <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label>
+        <label class="il" for="alc_dep_desc">Descripción <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label>
         <input type="text" id="alc_dep_desc" placeholder="Ej: ahorro semanal, regalo, vuelto...">
       </div>
       <button type="button" class="btn btn-primary" ${Events.attr('alcancia:confirmarDeposito')} style="background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.25);">Guardar</button>
@@ -345,12 +345,12 @@ function _inyectarAlcanciaSheets(){
       <div class="sheet-title">Destapar alcancía</div>
       <div id="alc-destapar-resumen" style="margin-bottom:18px;"></div>
       <div class="ig">
-        <label class="il">¿Cuánto dinero encontraste realmente?</label>
+        <label class="il" for="alc_real_monto">¿Cuánto dinero encontraste realmente?</label>
         <input type="text" inputmode="decimal" class="money-input" id="alc_real_monto" placeholder="0,00" autocomplete="off">
         <div id="alc_diferencia_hint" style="font-size:12px;margin-top:6px;font-family:'DM Mono',monospace;"></div>
       </div>
       <div class="ig">
-        <label class="il">¿Dónde vas a guardar este dinero?</label>
+        <label class="il" for="alc_destino">¿Dónde vas a guardar este dinero?</label>
         <div class="select-wrap">
           <select id="alc_destino"></select>
         </div>

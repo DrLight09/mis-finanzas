@@ -117,7 +117,7 @@ function _inyectarPersonaSheets() {
       <div class="sheet-title">Nueva persona</div>
       <div class="ig"><label class="il" for="cpg_nombre">Nombre</label>
         <input type="text" id="cpg_nombre" placeholder="Ej: Papá, Carlos, Mamá..."></div>
-      <div class="ig"><label class="il">Color del avatar</label>
+      <div class="ig"><div class="il">Color del avatar</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;" id="cpg_colores"></div>
       </div>
       <button type="button" class="btn btn-primary" ${Events.attr('personas:confirmarCrear')}>Crear persona</button>
@@ -159,7 +159,7 @@ function _inyectarPersonaSheets() {
       <div class="sheet-title">Editar persona</div>
       <div class="ig"><label class="il" for="epg_nombre">Nombre</label>
         <input type="text" id="epg_nombre" placeholder="Ej: Papá, Carlos, Mamá..."></div>
-      <div class="ig"><label class="il">Color del avatar</label>
+      <div class="ig"><div class="il">Color del avatar</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;" id="epg_colores"></div>
       </div>
       <button type="button" class="btn btn-primary" ${Events.attr('personas:guardarEdicion')}>Guardar cambios</button>

@@ -1357,7 +1357,7 @@ function _initSpotifyPersonaSelector() {
   if (!ig) return;
 
   ig.innerHTML = `
-    <label class="il">¿Quién es?</label>
+    <div class="il">¿Quién es?</div>
     <div id="sp-persona-btn" ${Events.attr('spotify:abrirSelectorPersona')}
       style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
       border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
@@ -1395,7 +1395,7 @@ function _initSpotifyEditPersonaSelector() {
   if (!ig) return;
 
   ig.innerHTML = `
-    <label class="il">¿Quién es?</label>
+    <div class="il">¿Quién es?</div>
     <div id="sp-edit-persona-btn" ${Events.attr('spotify:onClickEditPersonaBtn')}
       style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
       border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;

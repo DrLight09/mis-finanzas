@@ -607,12 +607,12 @@ function abrirPresupuestos(){
   // nunca pasaba por escHtml() — bajo riesgo real hoy porque siempre es un monto
   // numérico (S.presupuestos[cat]), pero con html`` deja de depender de que siga
   // siendo siempre así.
-  lista.innerHTML = html`${cats.map(cat => {
+  lista.innerHTML = html`${cats.map((cat, i) => {
     const val = S.presupuestos[cat] || '';
     return html`<div class="ig">
-      <label class="il">${cat}</label>
+      <label class="il" for="presup-input-${i}">${cat}</label>
       <div style="display:flex;gap:8px;align-items:center;">
-        <input type="text" inputmode="decimal" class="presup-input" data-cat="${cat}" placeholder="Sin límite" value="${val}" style="flex:1;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;">
+        <input type="text" inputmode="decimal" id="presup-input-${i}" class="presup-input" data-cat="${cat}" placeholder="Sin límite" value="${val}" style="flex:1;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;">
         <span style="font-size:12px;color:var(--text3);flex-shrink:0;">/mes</span>
       </div>
     </div>`;

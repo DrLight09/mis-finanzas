@@ -176,7 +176,7 @@ function _injectSheet(){
       <!-- Destinos / compromisos -->
       <div style="margin-top:6px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <label class="il" style="margin:0;">¿A dónde va esta plata?</label>
+          <div class="il" style="margin:0;">¿A dónde va esta plata?</div>
           <button type="button" ${Events.attr('cp:agregarDestino')} style="font-size:10px;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">+ Agregar destino</button>
         </div>
         <div id="cp-destinos-list"></div>
@@ -197,7 +197,7 @@ function _injectSheet(){
 
       <!-- Tipo: tarjetas visuales -->
       <div style="margin-bottom:14px;">
-        <label class="il" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;font-weight:700;">Tipo de destino</label>
+        <div class="il" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;font-weight:700;">Tipo de destino</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;" id="cpd-tipo-cards">
           <button type="button" class="cpd-tipo-card" data-tipo="reposicion" ${Events.attr('cp:dSetTipo','reposicion')}
             style="padding:11px 10px;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;border:1.5px solid rgba(176,144,240,.35);background:rgba(176,144,240,.1);color:var(--purple);transition:all .15s;">
@@ -245,7 +245,7 @@ function _injectSheet(){
       </div>
       <!-- ¿De dónde salió el gasto? (para gasto) -->
       <div class="ig" id="cpd-gasto-origen-wrap" style="display:none;">
-        <label class="il" style="margin-bottom:8px;">¿De dónde salió o va a salir esta plata?</label>
+        <div class="il" style="margin-bottom:8px;">¿De dónde salió o va a salir esta plata?</div>
         <div style="display:flex;gap:7px;margin-bottom:8px;">
           <button type="button" id="cpd-origen-cajita-btn"
             ${Events.attr('cp:dSetGastoOrigen','cajita')}
@@ -284,7 +284,7 @@ function _injectSheet(){
       </div>
       <!-- ¿Ya saqué esta plata? (solo para reposicion) -->
       <div class="ig" id="cpd-ya-saque-wrap" style="display:none;">
-        <label class="il" style="margin-bottom:8px;">¿Ya adelantaste esta plata?</label>
+        <div class="il" style="margin-bottom:8px;">¿Ya adelantaste esta plata?</div>
         <div style="display:flex;gap:8px;">
           <button type="button" id="cpd-ya-saque-si"
             ${Events.attr('cp:dSetYaSaque',true)}
@@ -307,7 +307,7 @@ function _injectSheet(){
       </div>
       <!-- ¿Ya lo pagué? (para servicios, tc, otro) -->
       <div class="ig" id="cpd-ya-pague-wrap" style="display:none;">
-        <label class="il" style="margin-bottom:8px;">¿Ya lo pagaste?</label>
+        <div class="il" style="margin-bottom:8px;">¿Ya lo pagaste?</div>
         <div style="display:flex;gap:8px;">
           <button type="button" id="cpd-ya-pague-si"
             ${Events.attr('cp:dSetYaPague',true)}
@@ -348,7 +348,7 @@ function _injectSheet(){
           <div style="font-size:10px;color:rgba(200,240,96,.7);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;font-weight:700;">Ingreso libre</div>
         </div>
         <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);margin-bottom:8px;" id="cp-recibir-sobrante">$0</div>
-        <label class="il" style="font-size:10px;margin-bottom:6px;">¿A dónde va este ingreso?</label>
+        <label class="il" for="cp-recibir-sobrante-cuenta" style="font-size:10px;margin-bottom:6px;">¿A dónde va este ingreso?</label>
         <div class="select-wrap"><select id="cp-recibir-sobrante-cuenta" style="font-size:13px;padding:9px 12px;"><option value="">Sin especificar</option></select></div>
         <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.4;">Esta plata es tuya — entra como ingreso a la cuenta que elijas.</div>
       </div>

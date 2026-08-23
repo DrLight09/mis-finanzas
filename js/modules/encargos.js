@@ -2890,7 +2890,7 @@ function _initNuevoEncargoPersonaSelector() {
   if (!ig) return;
 
   ig.innerHTML = `
-    <label class="il">¿De quién es la plata?</label>
+    <div class="il">¿De quién es la plata?</div>
     <div id="enc-persona-btn" data-action="encargos:seleccionarPersonaNueva"
       style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
       border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;

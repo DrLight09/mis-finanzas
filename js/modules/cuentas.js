@@ -637,8 +637,8 @@ function poblarChequeoNu(){
   cont.innerHTML=(S.cajitas||[]).map(c=>{
     const calc=calcC(c);
     return `<div class="ig" style="margin-bottom:10px;">
-      <label class="il">${escHtml(c.nombre)} <span style="font-size:10px;color:var(--text3);font-weight:400;">(calculado: ${fmt(calc.val)})</span></label>
-      <input type="text" inputmode="decimal" class="money-input" data-chq-cajita="${c.id}" placeholder="${fmt(calc.val)}">
+      <label class="il" for="chq-${c.id}">${escHtml(c.nombre)} <span style="font-size:10px;color:var(--text3);font-weight:400;">(calculado: ${fmt(calc.val)})</span></label>
+      <input type="text" inputmode="decimal" class="money-input" id="chq-${c.id}" data-chq-cajita="${c.id}" placeholder="${fmt(calc.val)}">
     </div>`;
   }).join('');
 }

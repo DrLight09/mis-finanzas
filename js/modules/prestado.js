@@ -2751,7 +2751,7 @@ function _initNuevaDeudaPersonaSelector() {
   const ig = ndNombreEl.closest('.ig');
   if (!ig) return;
   ig.innerHTML = `
-    <label class="il">¿A quién le debes?</label>
+    <div class="il">¿A quién le debes?</div>
     <div id="nd-persona-btn"
       style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
       border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;

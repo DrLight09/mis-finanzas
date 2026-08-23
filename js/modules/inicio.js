@@ -338,8 +338,8 @@ function calcHealthScore(){
   score = Math.max(0, Math.min(100, score));
   if(!tips.length){
     if(score >= 80) tips.push('¡Excelente! Tus finanzas están muy bien.');
-    else if(score >= 60) tips.push('Vas bien, sigue así.');
-    else if(tieneAlgo) tips.push('Hay espacio para mejorar.');
+    else if(score >= 60) tips.push('Vas bien — diversifica tus ahorros o reduce gastos variables para subir tu puntaje.');
+    else if(tieneAlgo) tips.push('Hay espacio para mejorar: revisa tus gastos y ahorros para subir tu puntaje.');
     else tips.push('Registra más movimientos para un análisis más preciso.');
   }
   return { score, tips, ingresosMes, rendimientoCDTMes };
@@ -349,12 +349,25 @@ function renderHealthScore(){
   const el = document.getElementById('health-score-card');
   if(!el) return;
   const res = calcHealthScore();
+  // El min-height:148px inline (ver comentario en index.html) solo existe para
+  // que el skeleton no cause CLS mientras carga. Una vez que hay contenido real
+  // (con o sin datos) el alto lo debe definir el contenido, no el skeleton —
+  // si no, queda espacio vacío de sobra cuando el contenido es corto.
+  el.style.minHeight = '';
   if(!res){ el.innerHTML = '<div style="font-size:12px;color:var(--text3);">Registra más datos para calcular tu salud financiera.</div>'; return; }
   const { score, tips } = res;
   const col = score >= 75 ? 'var(--accent)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
   const label = score >= 75 ? 'Excelente' : score >= 50 ? 'Regular' : 'Necesita atención';
   const r = 28, circ = 2 * Math.PI * r;
+  // A score=100 el patrón dash/gap (dash=circ, gap=circ) con linecap round deja
+  // una costura visible donde el trazo se "cierra" sobre sí mismo — el cap
+  // redondeado del inicio y del final no terminan de fundirse en un círculo
+  // limpio. Con la barra llena no hace falta cap redondeado ni gap: se dibuja
+  // el círculo completo con linecap "butt" y sin dasharray.
+  const lleno = score >= 100;
   const dash = (score / 100) * circ;
+  const dasharrayAttr = lleno ? '' : `stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}"`;
+  const linecap = lleno ? 'butt' : 'round';
   const icoWarn = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
   const icoOk = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
   const positivosPrefijos = ['¡Excelente','Vas bien','Registra más','Considera poner'];
@@ -368,9 +381,9 @@ function renderHealthScore(){
     <svg class="health-ring" width="76" height="76" viewBox="0 0 76 76" style="flex-shrink:0;">
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="7"/>
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="${col}" stroke-width="7"
-        stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}"
+        ${dasharrayAttr}
         stroke-dashoffset="${(circ/4).toFixed(1)}"
-        stroke-linecap="round" style="transition:stroke-dasharray .8s cubic-bezier(.4,0,.2,1);"/>
+        stroke-linecap="${linecap}" style="transition:stroke-dasharray .8s cubic-bezier(.4,0,.2,1);"/>
       <text x="38" y="43" text-anchor="middle" font-size="16" font-weight="600" fill="${col}" font-family="DM Mono,monospace">${score}</text>
     </svg>
     <div class="health-details">

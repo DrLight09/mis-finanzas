@@ -140,7 +140,7 @@
     // Así la fecha base nunca queda muy atrás y los redondeos acumulados
     // respecto a Nu son mínimos (máx. 1 día de diferencia).
     (S.cajitas||[]).forEach(c=>{ if(typeof materializarIntereses==='function') materializarIntereses(c); });
-    refresh(); applyModulos();
+    refresh(); if(window.applyModulos) applyModulos();
     poblarCatSelect('gv_cat',getCatsVar());
     poblarCatSelect('gf_c',getCatsFijo());
     _initEventListeners();

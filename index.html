@@ -4094,6 +4094,25 @@
             style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:4px;"
             id="spMesesTotal"></div>
         </div>
+        <!-- Monto realmente recibido — editable, por si pagó de menos -->
+        <div class="ig">
+          <label class="il" for="spMontoRecibido">¿Cuánto te dio?</label>
+          <input type="text" inputmode="decimal" id="spMontoRecibido"
+            placeholder="8000" class="money-input">
+        </div>
+        <!-- Toggle: la diferencia quedó debiendo -->
+        <div id="spDebeWrap"
+          style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;display:none;">
+          <input type="checkbox" id="spQuedaDebiendo"
+            style="width:17px;height:17px;accent-color:var(--amber);cursor:pointer;flex-shrink:0;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;font-weight:600;color:var(--amber);"
+              id="spDebeLabel">Te está debiendo la diferencia</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Si
+              no marcás esto, el período queda cubierto con lo que te dio —
+              sin deuda</div>
+          </div>
+        </div>
         <div class="divider"></div>
         <div class="field-header" style="margin-top:8px;margin-bottom:8px;">
           <label class="il" style="margin-bottom:0;">¿A dónde metiste esa
@@ -4118,6 +4137,41 @@
           id="btn-confirmar-sp-destino">Confirmar cobro</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="sp-destino">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- SPOTIFY - Registrar pago de lo pendiente de un cobro -->
+    <div class="overlay" id="sheet-sp-hist-pend" data-sheet-id="sp-hist-pend">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="spResTitle">Pendiente</div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:14px;"
+          id="spResDesc">¿Cuánto te dio de lo que te quedó debiendo?</p>
+        <div class="ig">
+          <label class="il" for="spResMonto">Monto recibido</label>
+          <input type="text" inputmode="decimal" id="spResMonto"
+            placeholder="5000" class="money-input">
+        </div>
+        <div class="ig">
+          <label class="il" for="spResFecha">Fecha en que te pagó</label>
+          <input type="date" id="spResFecha">
+        </div>
+        <div class="ig">
+          <label class="il" for="spResDestino">¿A dónde metiste esa
+            plata?</label>
+          <div class="select-wrap"><select id="spResDestino"></select></div>
+        </div>
+        <div id="spResPreview"
+          style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--amber);"></div>
+        <div class="ig">
+          <label class="il" for="spResNota">Nota (opcional)</label>
+          <input type="text" id="spResNota" maxlength="60"
+            placeholder="Ej: Me dio el resto en efectivo">
+        </div>
+        <button type="button" class="btn btn-primary"
+          id="btn-confirmar-sp-res-pend">Guardar</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="sp-hist-pend">Cancelar</button>
       </div>
     </div>
 

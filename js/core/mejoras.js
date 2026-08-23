@@ -44,8 +44,11 @@
      1b. OCULTAR MONTOS EN ÁREAS DINÁMICAS
          (Tendencia mensual/proyección, "Necesita atención" —
          deudas de personas y cobros vencidos—, tarjetas de
-         crédito, cuentas personalizadas en "Cuentas", y las
-         listas de gastos variables/fijos en "Gastos"). Estos
+         crédito, cuentas personalizadas en "Cuentas", las
+         listas de gastos variables/fijos en "Gastos", los
+         listados y el historial de Préstamos (me deben / yo
+         debo), la lista y estadísticas de Spotify, y la lista
+         de tarjetas en la pantalla Tarjetas de crédito). Estos
          contenedores se re-renderizan completos con innerHTML
          desde otros módulos (inicio.js y los módulos de
          tarjetas/cuentas/gastos), así que en vez de apuntar a
@@ -59,7 +62,13 @@
          cada gasto (ej. "Uber", "Farmacia") sigue visible — no
          se toca ese texto.
   ==================================================== */
-  const SALDO_DINAMICO_IDS = ['proyeccion-card','s-attn-list','tc-deuda-card','custom-cuentas-list','gastosVarList','gastosFijosList'];
+  const SALDO_DINAMICO_IDS = ['proyeccion-card','s-attn-list','tc-deuda-card','custom-cuentas-list','gastosVarList','gastosFijosList',
+    // Préstamos (lo que me deben / lo que debo): listas y detalle
+    'deudoresList','misDeudasList','ddHistorial','mdHistorial',
+    // Spotify: lista de personas, estadísticas (ganancias) e historial de cobros
+    'spotifyList','spStats','spHistorial',
+    // Tarjetas de crédito: lista de tarjetas (screen-tarjetas)
+    'tc-lista'];
   const REGEX_MONTO = /[-+]?\$\s?\d[\d.,]*/g;
 
   function _envolverMontos(root){

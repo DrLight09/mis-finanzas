@@ -655,7 +655,13 @@
                3-4 tips (font-size:11px/line-height:1.4 cada uno, inline en
                renderHealthScore, no la clase .health-tip que quedó sin uso)
                el texto puede llegar a ~116px y superar al anillo. 148px cubre
-               el caso de 4 tips simultáneos con margen. -->
+               el caso de 4 tips simultáneos con margen.
+               renderHealthScore() ahora limpia este min-height (el.style.minHeight='')
+               apenas corre, en las dos ramas — el valor de 148px solo protege
+               contra CLS durante la carga (skeleton→contenido); una vez que
+               hay contenido real, el alto lo define el contenido mismo, para
+               no dejar espacio vacío de sobra cuando el resultado es corto
+               (ej. el mensaje de "sin datos"). -->
           <div id="health-score-card" class="card"
             style="padding:16px;margin-bottom:9px;min-height:148px;">
             <div style="display:flex;align-items:flex-start;gap:16px;">

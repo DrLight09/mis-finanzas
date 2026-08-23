@@ -4,6 +4,8 @@ Define el orden estándar de campos en todos los sheets (bottom sheets) de `mis-
 
 Los cambios puntuales de una sesión de limpieza (renombres, tildes, reordenamientos aplicados) no viven acá — ver [`CHANGELOG.md`](./CHANGELOG.md).
 
+> **Auditoría 2026-08-22:** se revisaron los ~45 sheets del `index.html` actual contra esta guía. Se encontraron y corrigieron: 2 huecos de simetría (Nota faltante en `restar-dinero` y `sp-destino`, Fecha faltante en `transferir`) y 9 sheets con Fecha ubicada antes de tiempo (`gasto-var`, `compra-tc`, `nueva-deuda`, `mov-mi-deuda`, `prestamo-tc`, `registrar-movimiento`, `sp-hist-pend`, `mesada-pago`, `mesada-pend`). El HTML ya quedó corregido; **falta actualizar el JS de guardado** en los módulos correspondientes para que lea los campos nuevos (`rdNota`, `spNota`, `tr_fecha`) — ver detalle en el CHANGELOG.
+
 ---
 
 ## 1. Regla general de orden
@@ -15,13 +17,27 @@ Para cualquier sheet que registre un movimiento de plata, el orden es siempre:
 2. [Toggle especial]       — si aplica: "Es saldo inicial", checkbox de apertura
 3. Descripción             — qué es / de dónde viene / para qué es
 4. Monto
-5. [Cuenta de origen/destino] — si aplica: ¿De dónde sale?, ¿A dónde entra?
+5. [Cuenta de origen/destino] — si aplica: ¿De dónde sale?, ¿A dónde entra?, Categoría,
+                                 ¿A cuál encargo?, tarjeta usada, etc. — cualquier campo
+                                 de contexto adicional que no sea Descripción/Monto/Fecha/Nota
 6. Fecha
 7. Nota (opcional)         — siempre al final, siempre con el texto "(opcional)"
 ```
 
+- **Fecha va justo antes de Nota**, después de todos los campos de contexto/cuenta —
+  nunca pegada al Monto. Si el sheet tiene secciones expandibles opcionales (ej. "El
+  valor real era diferente"), esas van después de Nota; solo los campos que son parte
+  del flujo principal van antes.
 - **El campo Nota va siempre al final**, nunca en el medio.
 - **El campo Descripción va siempre antes que Monto**, nunca después.
+- **Todo sheet que registra un movimiento de plata debe tener Fecha.** Si hoy no la
+  tiene, es un hueco a corregir, no una excepción válida (ver `sheet-transferir`,
+  corregido 2026-08-22).
+- **Si un sheet tiene un par simétrico** (agregar/restar del mismo saldo, cobro
+  regular/cobro de lo pendiente, etc.), ambos deben tener el mismo set de campos.
+  Una asimetría entre pares es un bug de diseño, no una decisión intencional — si
+  se necesita una asimetría real, debe quedar anotada explícitamente en el
+  inventario (§3) con el motivo.
 - Los campos opcionales llevan el texto `(opcional)` en el label, en tamaño pequeño y color `text3`.
 
 ---
@@ -40,6 +56,8 @@ Para cualquier sheet que registre un movimiento de plata, el orden es siempre:
 - **Nota (opcional)** — campo de detalle extra al final, siempre libre y corto.
 - **Descripción** — campo principal de identificación del movimiento, va antes del monto. Si es opcional se escribe "Descripción (opcional)".
 - **Nunca usar** "Descripción / Nota (opcional)" — escoger uno solo.
+- El campo principal de identificación **no siempre se llama literalmente "Descripción"** — muchas veces es una pregunta más específica y humana: "¿De dónde viene esta plata?", "¿En qué se gastó o a dónde fue?", "¿Qué compraste?". Todas cuentan como el campo #3 de la regla de orden (antes del Monto); "Descripción" es solo el nombre genérico cuando no aplica una pregunta más natural.
+- **Regla práctica para decidir si un sheet necesita Nota además del campo principal:** si el campo principal ya es obligatorio (lleva `*`) y responde "qué es este movimiento", agregar Nota para detalle extra opcional. Si el campo principal YA es opcional y libre (ej. "Descripción (opcional)" en `sheet-mov-cuenta-custom`), no hace falta una Nota separada — sería un campo duplicado.
 
 ### Estilo visual de los labels (`class="il"`)
 
@@ -74,11 +92,11 @@ Los grupos de campo usan `class="ig"` con `margin-bottom: 13px`.
 
 **`sheet-agregar-dinero-menu`** — ¿A dónde entra la plata? *(desde el botón `+` del header sin cuenta seleccionada)*: Cuenta destino → ¿De dónde viene esta plata? `*` → ¿Cuánto recibiste? → Fecha → Nota (opcional)
 
-**`sheet-restar-dinero`** — Restar dinero: Saldo actual (informativo) → ¿En qué se gastó o a dónde fue? `*` → ¿Cuánto vas a restar? → Fecha
+**`sheet-restar-dinero`** — Restar dinero: Saldo actual (informativo) → ¿En qué se gastó o a dónde fue? `*` → ¿Cuánto vas a restar? → Fecha → Nota (opcional)
 
 **`sheet-editar-apertura`** — Corregir saldo inicial: Nuevo saldo inicial
 
-**`sheet-transferir`** — Transferir entre cuentas: ¿De dónde sale? → ¿A dónde entra? → ¿Cuánto vas a mover? → Nota (opcional)
+**`sheet-transferir`** — Transferir entre cuentas: ¿De dónde sale? → ¿A dónde entra? → ¿Cuánto vas a mover? → Fecha → Nota (opcional)
 
 ### Nu / Cajitas
 
@@ -92,7 +110,7 @@ Los grupos de campo usan `class="ig"` con `margin-bottom: 13px`.
 
 ### Gastos
 
-**`sheet-gasto-var`** — Registrar gasto: Descripción → Monto → Fecha → Categoría → ¿De dónde salió la plata? `*` → Nota (opcional)
+**`sheet-gasto-var`** — Registrar gasto: Descripción → Monto → Categoría → ¿De dónde salió la plata? `*` → Fecha → Nota (opcional)
 
 **`sheet-gasto-fijo`** — Gasto fijo mensual: Nombre → Monto mensual → Categoría
 
@@ -114,15 +132,19 @@ Los grupos de campo usan `class="ig"` con `margin-bottom: 13px`.
 
 ### Mesada / Spotify
 
-**`sheet-mesada-pago`** — Mesada recibida: Monto recibido → Fecha en que te pagó → ¿Qué hiciste con esa plata? → Nota (opcional)
+**`sheet-mesada-pago`** — Mesada recibida: Monto recibido → [Condicional] ¿Pagó desde un encargo? → ¿Cuál encargo? + ¿De cuál cuenta sale esa plata? → ¿Qué hiciste con esa plata? → Fecha en que te pagó → Nota (opcional)
+
+**`sheet-mesada-pend`** — Pago de lo pendiente (Mesada): Monto recibido → [Condicional] ¿Pagó desde un encargo? → ¿Cuál encargo? + ¿De cuál cuenta sale esa plata? → ¿Dónde la metiste? → Fecha en que te pagó → Nota (opcional)
 
 **`sheet-spotify`** — Agregar persona a Spotify: Nombre → Cuota mensual → Fecha de ingreso
 
 **`sheet-editar-spotify`** — Editar persona en Spotify: Nombre → Cuota mensual → Fecha de ingreso
 
-**`sheet-sp-destino`** — Registrar cobro: ¿Cuántos meses pagó? → ¿A dónde metiste esa plata?
+**`sheet-sp-destino`** — Registrar cobro: ¿Cuántos períodos pagó? → ¿Cuánto te dio? → ¿A dónde metiste esa plata? → Fecha en que te pagó → Nota (opcional)
 
-**`sheet-pagar-spotify`** — Pagar Spotify: Monto a pagar → ¿De dónde sacas la plata? → Nota (opcional)
+**`sheet-sp-hist-pend`** — Pago de lo pendiente (Spotify): Monto recibido → ¿A dónde metiste esa plata? → Fecha en que te pagó → Nota (opcional)
+
+**`sheet-pagar-spotify`** — Pagar Spotify: Monto a pagar → ¿De dónde sacas la plata? → Fecha en que pagaste → Nota (opcional)
 
 ### Encargos
 
@@ -130,9 +152,13 @@ Los grupos de campo usan `class="ig"` con `margin-bottom: 13px`.
 
 **`sheet-editar-encargo`** — Editar encargo: ¿De quién es la plata? → Nota (opcional)
 
-**`sheet-mov-encargo`** — Registrar movimiento: Descripción → Monto → ¿En qué cuenta está esa plata? → Fecha → Nota (opcional) → [Expandible] El valor real era diferente → ¿Cuánto era en realidad? + ¿A cuál de tus cuentas entra ese sobrante? → [Expandible] Yo puse la plata → De mi cuenta (sale) + Y recupero en (entra)
+**`sheet-mov-encargo`** — Registrar movimiento: Descripción → Monto → ¿En qué cuenta está esa plata? → [Expandible] Yo puse la plata → ¿De cuál cuenta tuya sale lo prestado? → Fecha → Nota (opcional) → [Expandible] El valor real era diferente → ¿Cuánto era en realidad? + ¿A cuál de tus cuentas entra ese sobrante?
 
-**`sheet-traspaso-encargo`** — Me lo regalaron: Descripción (opcional) → ¿Cuánto te regalaron? → ¿A cuál de tus cuentas entra? → Fecha
+> Nota: los dos expandibles quedan en posiciones distintas (uno antes de Fecha, el otro después de Nota) porque así está en el código actual — no es el ideal, pero tocarlo implica reordenar lógica condicional en `encargos.js`, fuera del alcance de esta limpieza de sheets estáticos.
+
+**`sheet-traspaso-encargo`** — Me lo regalaron: Descripción (opcional) → ¿Cuánto te regalaron? → ¿De qué cuenta del encargo salió? → ¿A cuál de tus cuentas entra? → Fecha
+
+**`sheet-transferencia-encargo`** — Pagarle a otro encargo desde este: ¿A cuál encargo le pagaste? → Descripción (opcional) → ¿Cuánto le pagaste? → ¿De qué cuenta del encargo salió? → ¿En qué cuenta quedó, para el otro encargo? → Fecha
 
 **`sheet-compra-tc-encargo`** — Pagué con mi TC: ¿Qué compraste? → Monto del encargo → ¿De qué cuenta salía esa plata del encargo? → ¿Con cuál tarjeta de crédito pagaste? → ¿A dónde va el dinero del encargo? (para pagar la TC) → [Expandible] El valor real era diferente → Valor real cobrado por la TC + ¿A cuál de tus cuentas entra el diferencial? → Fecha → Nota (opcional)
 
@@ -150,21 +176,21 @@ Los grupos de campo usan `class="ig"` con `margin-bottom: 13px`.
 
 ### Préstamos (yo le debo a alguien)
 
-**`sheet-nueva-deuda`** — Nueva deuda: ¿A quién le debes? → ¿Cuánto te prestó? → Fecha → ¿A qué cuenta entró la plata? → Nota (opcional)
+**`sheet-nueva-deuda`** — Nueva deuda: ¿A quién le debes? → ¿Cuánto te prestó? → ¿A qué cuenta entró la plata? → Fecha → Nota (opcional)
 
-**`sheet-mov-mi-deuda`** — Me prestó más / Le pagué: Monto → Fecha → ¿A qué cuenta entró la plata? (condicional, solo en "me prestó más") → Nota (opcional)
+**`sheet-mov-mi-deuda`** — Me prestó más / Le pagué: Monto → ¿A qué cuenta entró la plata? (condicional, solo en "me prestó más") → Fecha → Nota (opcional)
 
 ### Préstamos (yo le presté a alguien)
 
-**`sheet-registrar-movimiento`** — Nuevo préstamo / Abono / Pago completo *(sheet polivalente con campos condicionales según el tipo de movimiento)*: Monto → Fecha → ¿De dónde sacó la plata? (condicional) → ¿A dónde entra el pago? (condicional en abonos) → ¿De qué encargo? (condicional) → ¿De qué cuenta del encargo sale? (condicional) → ¿Cuánto de extra? + distribución (condicional en abonos con extra) → Nota (opcional)
+**`sheet-registrar-movimiento`** — Nuevo préstamo / Abono / Pago completo *(sheet polivalente con campos condicionales según el tipo de movimiento)*: Monto → ¿A cuál préstamo? (condicional, ≥2 grupos abiertos) → Nombre del préstamo nuevo (opcional, condicional) → ¿De dónde sacó la plata? (condicional) → ¿A dónde entra el pago? (condicional en abonos) → ¿De qué encargo? (condicional) → ¿De qué cuenta del encargo sale? (condicional) → ¿Cuánto de extra? + distribución (condicional en abonos con extra) → Fecha → Nota (opcional)
 
-**`sheet-prestamo-tc`** — Préstamo con TC: Descripción → Monto → Fecha → Tarjeta de crédito usada → Nota (opcional) → [Expandible] El valor real era diferente → ¿Cuánto era en realidad?
+**`sheet-prestamo-tc`** — Préstamo con TC: Descripción → Monto → Tarjeta de crédito usada → Fecha → Nota (opcional) → [Expandible] El valor real era diferente → ¿Cuánto era en realidad?
 
 ### Tarjetas de crédito
 
-**`sheet-nueva-tc`** — Nueva tarjeta de crédito: Nombre de la tarjeta → Cupo total (opcional) → Deuda actual (saldo que ya debes) → Pago mínimo del extracto (opcional si no tienes extracto) → Fecha próximo corte → Fecha límite de pago
+**`sheet-nueva-tc`** — Nueva tarjeta de crédito *(formulario de creación, no sigue la regla de orden de movimientos)*: Nombre de la tarjeta → Banco → Franquicia → Cupo total → Cajita para pagarla (opcional) → Deuda actual (si ya debes algo antes de empezar a usar la app) → Estado → Color (opcional)
 
-**`sheet-compra-tc`** — Registrar compra en TC: Descripción → Monto → Fecha → Categoría → Nota (opcional)
+**`sheet-compra-tc`** — Registrar compra en TC: Descripción → Monto → Categoría → Fecha → Nota (opcional)
 
 **`sheet-pagar-tc`** — Pagar tarjeta: [Opciones rápidas: mínimo / total / personalizado] → Abona a tu deuda (campo libre) → ¿Con qué cuenta pagas? `*` → Fecha de pago → Nota (opcional)
 

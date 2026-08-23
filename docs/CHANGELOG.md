@@ -4,6 +4,33 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Sheets / UI
+
+### 🐛 Corregido (2026-08-22) — Auditoría de `guia-estilo-sheets.md`: orden de Fecha y huecos de simetría en 12 sheets
+
+Auditoría completa de los ~45 bottom sheets de `index.html` contra la regla de orden de `guia-estilo-sheets.md` §1 (Fecha va justo antes de Nota, no pegada al Monto). Se encontraron dos tipos de problema, ambos solo en el HTML — **el JS de guardado de cada módulo todavía no lee los campos nuevos, queda pendiente**:
+
+**Huecos de simetría (campo faltante en un sheet cuyo par sí lo tenía):**
+- `sheet-restar-dinero` no tenía Nota (su par `sheet-agregar-dinero` sí) → se agregó `#rdNota`.
+- `sheet-sp-destino` no tenía Nota (sus pares `sheet-sp-hist-pend`/`sheet-pagar-spotify` sí) → se agregó `#spNota`.
+- `sheet-transferir` no tenía Fecha, único sheet de movimiento sin ella → se agregó `#tr_fecha`.
+
+**Fecha reordenada** (antes aparecía pegada al Monto, ahora va justo antes de Nota, después de los campos de cuenta/contexto): `sheet-gasto-var`, `sheet-compra-tc`, `sheet-nueva-deuda`, `sheet-mov-mi-deuda`, `sheet-prestamo-tc`, `sheet-registrar-movimiento`, `sheet-sp-hist-pend`, `sheet-mesada-pago`, `sheet-mesada-pend`. Solo cambió la posición del `<div class="ig">` en el DOM — los `id` de los inputs no cambiaron, así que cualquier JS que use `getElementById`/`querySelector` sigue funcionando igual.
+
+**Seguimiento (2026-08-22, mismo día) — conectado en `cuentas.js`/`spotify.js`:**
+
+Al conectar `#rdNota` se encontró que el problema era más viejo y más grande: **`#adNota` (agregar-dinero), `#adMenuNota` (agregar-dinero-menu) y `#nuMovNota` (nu-movimiento) ya existían en el HTML desde antes y tampoco se leían nunca** — el usuario podía escribir una nota, confirmar, y esa nota se perdía en silencio sin ningún error. Se corrigieron los 6 sheets juntos porque todos comparten la misma raíz:
+
+- `registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota)` y `registrarSalida(fuente,monto,fecha,desc,nota)` (`cuentas.js`) ahora aceptan un 6º/5º parámetro opcional `nota` y lo guardan como `mov.nota` cuando viene no vacío. No se rompe ningún caller viejo — el parámetro es opcional y los que no lo pasan simplemente no agregan el campo, igual que antes.
+- `confirmarAgregarDinero`, `confirmarAgregarDineroMenu`, `confirmarNuMovimiento` (ambos sentidos) y `confirmarRestarDinero` ahora leen su input de Nota (`#adNota`/`#adMenuNota`/`#nuMovNota`/`#rdNota`) y lo pasan. Los `abrir*` correspondientes limpian ese campo al abrir el sheet (antes quedaba con el valor de la vez anterior, invisible porque nunca se leía igual).
+- `confirmarTransferir` (`cuentas.js`) ahora lee `#tr_fecha` y lo usa al guardar en `S.transferencias`, en vez del `fecha: hoy()` fijo que tenía. `abrirTransferir` inicializa `#tr_fecha` a hoy como valor por defecto editable.
+- `confirmarSpDestino` (`spotify.js`) lee `#spNota` y la combina con la nota automática de períodos (`"X períodos × $Y (pago adelantado)"`) uniendo ambas con `' · '` — mismo patrón que ya usaba el propio archivo para la nota de "Pago atrasado del ciclo anterior". `abrirSpDestino` limpia `#spNota` al abrir.
+- No hizo falta tocar `movimientos.js`: el sheet de detalle de movimiento ya prioriza `nota` sobre `desc` cuando existe (`abrirDetalleMov`), así que las notas nuevas se muestran automáticamente sin cambios ahí.
+
+De paso, `guia-estilo-sheets.md` §3 quedó actualizada con 4 sheets que existían en el código pero no en el inventario (`sheet-transferencia-encargo` completo, campos nuevos en `sheet-traspaso-encargo`/`sheet-mesada-pago`/`sheet-mesada-pend`/`sheet-registrar-movimiento`/`sheet-nueva-tc`), y con una aclaración de que el campo #3 de la regla de orden ("Descripción") casi nunca se llama literalmente así — suele ser una pregunta específica ("¿De dónde viene esta plata?", etc.) y eso es el patrón correcto, no una desviación.
+
+---
+
 ## Infraestructura / seguridad
 
 ### 🐛 Corregido (2026-08-20) — `split.js`: el motor de split de fuentes dejaba elegir la misma cuenta dos veces

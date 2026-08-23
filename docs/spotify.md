@@ -45,6 +45,7 @@ El módulo maneja dos escalas de tiempo que no deben confundirse:
 - **Editar el nombre o la cuota de un integrante nunca modifica su próxima fecha de cobro**; solo un cambio real en la fecha de ingreso puede hacerlo, y ese cambio desplaza `proximoPago` la misma cantidad de días — nunca lo recalcula desde cero, para no perder períodos ya pagados por adelantado.
 - **La cuota del administrador usada para la ganancia de un ciclo ya pagado se guarda en el momento de ese pago**, y no se recalcula con la cantidad de integrantes de hoy.
 - **Una vez vinculado a una persona, ese vínculo no se puede cambiar desde Editar**; para reasignar el cupo hay que eliminar y agregar de nuevo. El nombre mostrado y guardado siempre se resuelve desde ese vínculo (`spNombreDe`), nunca desde una copia cruda que pueda desactualizarse.
+- **Pagar de menos por un período no bloquea que ese período se cuente como cubierto.** El monto recibido puede editarse por debajo de lo esperado (períodos × cuota); si se marca explícitamente "quedó debiendo la diferencia", el registro de `spotifyHistorial` guarda esa deuda puntual (`pendiente`), pero `proximoPago` avanza igual — lo que queda pendiente es la plata, no el período. Si no se marca el toggle, el monto menor se registra tal cual, sin deuda.
 
 ---
 
@@ -75,12 +76,18 @@ S.spotifyHistorial = [
   {
     id: "uid", spId: "id del integrante", tipo: "cobro",
     nombre: "Juan",           // nombre ya resuelto al momento de registrar el cobro
-    monto: 24000,             // total cobrado (3 períodos × 8000, en este ejemplo)
+    monto: 24000,             // total REALMENTE recibido hasta ahora (incluye abonos de pendienteHistorial, ver abajo)
     periodos: 3,              // cuántos períodos cubre este cobro (1 si fue un pago normal)
     fuente: "nequi", fecha: "2026-07-05",
     nota: "3 períodos × 8.000 (pago adelantado)",  // detalle legible; vacío si periodos=1
     proximoPagoAntes: "...",  // snapshot para poder revertir la fecha de cobro al borrar
-    _secundario: true, _origenSeccion: "Spotify"
+    _secundario: true, _origenSeccion: "Spotify",
+    // Campos opcionales de "pago parcial con deuda pendiente" (ej. el período
+    // costaba 30.000 y solo te dio 20.000 — mismo concepto que Mesada, ver
+    // mesada.js#pago-parcial-con-deuda-pendiente):
+    cuotaEsperada: 30000,     // snapshot de períodos × cuota cuando se marcó "quedó debiendo"
+    pendiente: 10000,         // cuánto falta por recibir de ESTE cobro puntual (0/ausente = saldado)
+    pendienteHistorial: []    // [{monto,fecha,destino,nota}] abonos posteriores que fueron cerrando `pendiente`
   },
   // Un pago del administrador a Spotify
   {
@@ -144,6 +151,40 @@ Se resetea a Pendiente solo quien ya no tiene período futuro cubierto
 Se crea el gasto "Spotify Premium" vinculado (_gastoVarId)
   ↓
 Comienza un ciclo nuevo
+```
+
+### Registrar un cobro con pago parcial (quedó debiendo)
+
+```
+Elegir cuántos períodos pagó → se calcula "lo esperado" (períodos × cuota)
+  ↓
+Editar "¿Cuánto te dio?" a un monto menor a lo esperado
+  ↓
+Aparece el toggle "Te está debiendo la diferencia" → marcarlo
+  ↓
+Elegir destino, confirmar
+  ↓
+UN registro tipo:'cobro' con el monto REALMENTE recibido,
+guarda cuotaEsperada + pendiente (la diferencia) + pendienteHistorial: []
+  ↓
+proximoPago avanza igual que un cobro normal — el período queda cubierto,
+lo pendiente es solo la plata
+```
+
+### Resolver un pendiente de un cobro
+
+```
+Desde el historial, "Registrar pago de lo pendiente" en el cobro con deuda
+  ↓
+Ingresar cuánto dio ahora (máximo: lo que quedó pendiente) + destino
+  ↓
+Confirmar
+  ↓
+Se suma esa plata a la cuenta elegida y se agrega a pendienteHistorial
+  ↓
+pendiente baja esa cantidad; monto del cobro sube esa misma cantidad
+  ↓
+Si pendiente llega a 0, el cobro queda saldado
 ```
 
 ### Eliminar un pago o cobro
@@ -249,6 +290,8 @@ Los dos dependen de `js/core/events.js` (debe cargarse antes que cualquiera de l
 | `renderSpotify()` | Pinta toda la pantalla: lista de integrantes, estadísticas, banner de vencidos |
 | `spNombreDe(integrante)` | Resuelve el nombre mostrado: usa la persona vinculada si existe, si no cae al campo crudo |
 | `deleteSpHistorial(id)` | Único punto válido para borrar un cobro o un pago; revierte plata, movimiento secundario y estado |
+| `resolverPendienteSpHistorial(i)` | Abre el sheet para registrar un abono contra la deuda puntual (`pendiente`) de un cobro específico |
+| `confirmarSpResolverPendiente()` | Aplica el abono: suma la plata al destino elegido, lo agrega a `pendienteHistorial` y reduce `pendiente` |
 
 ### Eventos (`data-action`)
 
@@ -261,10 +304,11 @@ Los botones/badges de la pantalla ya no usan `onclick` inline — usan `data-act
 | `spotify:editar` | `editarSpotify` |
 | `spotify:eliminar` | `deleteSpotify` |
 | `spotify:eliminarHistorial` | `deleteSpHistorial` |
+| `spotify:resolverPendiente` | `resolverPendienteSpHistorial` |
 | `spotify:abrirSelectorPersona` | Abre el selector de personas unificado (`abrirSelPersona`) |
 | `spotify:onClickEditPersonaBtn` | `_onClickSpEditPersonaBtn` |
 
-Las primeras 5 filas se registran en `spotify.js`; las últimas 2 (selector de personas) en `spotify-personas.js`.
+Las primeras 6 filas se registran en `spotify.js`; las últimas 2 (selector de personas) en `spotify-personas.js`.
 
 ### Protección contra borrado directo
 

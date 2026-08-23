@@ -2763,8 +2763,6 @@
         <div class="ig"><label class="il" for="gv_monto">Monto</label><input
             type="text" inputmode="decimal" id="gv_monto" placeholder="0,00"
             class="money-input"></div>
-        <div class="ig"><label class="il" for="gv_fecha">Fecha</label><input
-            type="date" id="gv_fecha"></div>
         <div class="ig">
           <label class="il" for="gv_cat">Categoría</label>
           <div class="select-wrap"><select
@@ -2793,6 +2791,8 @@
           <div id="gvSplitPreview"
             style="font-size:12px;font-family:'DM Mono',monospace;min-height:16px;margin-bottom:8px;"></div>
         </div>
+        <div class="ig"><label class="il" for="gv_fecha">Fecha</label><input
+            type="date" id="gv_fecha"></div>
         <div class="ig"><label class="il" for="gv_nota">Nota
             (opcional)</label><input type="text" id="gv_nota" maxlength="60"
             placeholder="Detalle adicional"></div>
@@ -3672,15 +3672,15 @@
           <input type="text" inputmode="decimal" id="nd_monto"
             placeholder="0,00" class="money-input">
         </div>
-        <div class="ig"><label class="il" for="nd_fecha">Fecha</label>
-          <input type="date" id="nd_fecha">
-        </div>
         <div class="ig">
           <label class="il">¿A qué cuenta entró la plata?</label>
           <div class="select-wrap"><select id="nd_destino"><option value>Sin
                 especificar</option></select></div>
           <div class="field-hint field-hint-green">Se sumará automáticamente al
             saldo de esa cuenta</div>
+        </div>
+        <div class="ig"><label class="il" for="nd_fecha">Fecha</label>
+          <input type="date" id="nd_fecha">
         </div>
         <div class="ig"><label class="il" for="nd_nota">Nota (opcional)</label>
           <input type="text" id="nd_nota" maxlength="60" placeholder="Ej: Para el arriendo">
@@ -3723,9 +3723,6 @@
           <input type="text" inputmode="decimal" id="md_monto"
             placeholder="0,00" class="money-input">
         </div>
-        <div class="ig"><label class="il" for="md_fecha">Fecha</label>
-          <input type="date" id="md_fecha">
-        </div>
         <div class="ig" id="md_cuenta_wrap">
           <label class="il" id="md_cuenta_label">¿A qué cuenta entró la
             plata?</label>
@@ -3733,6 +3730,9 @@
                 especificar</option></select></div>
           <div class="field-hint field-hint-green" id="md_cuenta_hint">Se sumará
             automáticamente al saldo de esa cuenta</div>
+        </div>
+        <div class="ig"><label class="il" for="md_fecha">Fecha</label>
+          <input type="date" id="md_fecha">
         </div>
         <div class="ig"><label class="il" for="md_nota">Nota (opcional)</label>
           <input type="text" id="md_nota" maxlength="60" placeholder="Ej: Abono parcial">
@@ -3770,13 +3770,13 @@
             placeholder="0,00" class="money-input">
         </div>
         <div class="ig">
-          <label class="il" for="prtc_fecha">Fecha</label>
-          <input type="date" id="prtc_fecha">
-        </div>
-        <div class="ig">
           <label class="il" for="prtc_tarjeta">Tarjeta de crédito usada</label>
           <div class="select-wrap"><select id="prtc_tarjeta"><option
                 value>Seleccionar TC</option></select></div>
+        </div>
+        <div class="ig">
+          <label class="il" for="prtc_fecha">Fecha</label>
+          <input type="date" id="prtc_fecha">
         </div>
         <div class="ig">
           <label class="il" for="prtc_nota">Nota (opcional)</label>
@@ -3835,8 +3835,6 @@
         <div class="ig"><label class="il" for="mov_monto">Monto</label><input
             type="text" inputmode="decimal" id="mov_monto" placeholder="0,00"
             class="money-input"></div>
-        <div class="ig"><label class="il" for="mov_fecha">Fecha</label><input
-            type="date" id="mov_fecha"></div>
         <!-- Selector de grupo de préstamo — solo visible cuando hay ≥2
              préstamos abiertos con esta persona (ver _initMovGrupoSelector
              en prestado.js). Con 0 o 1 grupo abierto no se muestra nada. -->
@@ -4009,6 +4007,8 @@
           </div>
         </div>
 
+        <div class="ig"><label class="il" for="mov_fecha">Fecha</label><input
+            type="date" id="mov_fecha"></div>
         <div class="ig"><label class="il" for="mov_nota">Nota
             (opcional)</label><input type="text" id="mov_nota" maxlength="60"
             placeholder="Ej: para el arriendo"></div>
@@ -4133,6 +4133,10 @@
           style="font-size:12px;font-family:'DM Mono',monospace;min-height:16px;margin-bottom:4px;"></div>
         <div class="ig"><label class="il" for="spFecha">Fecha en que te
             pagó</label><input type="date" id="spFecha"></div>
+        <div class="ig"><label class="il" for="spNota">Nota <span
+              style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
+            type="text" id="spNota" maxlength="60"
+            placeholder="Detalle adicional"></div>
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-sp-destino">Confirmar cobro</button>
         <button type="button" class="btn btn-ghost"
@@ -4153,16 +4157,16 @@
             placeholder="5000" class="money-input">
         </div>
         <div class="ig">
-          <label class="il" for="spResFecha">Fecha en que te pagó</label>
-          <input type="date" id="spResFecha">
-        </div>
-        <div class="ig">
           <label class="il" for="spResDestino">¿A dónde metiste esa
             plata?</label>
           <div class="select-wrap"><select id="spResDestino"></select></div>
         </div>
         <div id="spResPreview"
           style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--amber);"></div>
+        <div class="ig">
+          <label class="il" for="spResFecha">Fecha en que te pagó</label>
+          <input type="date" id="spResFecha">
+        </div>
         <div class="ig">
           <label class="il" for="spResNota">Nota (opcional)</label>
           <input type="text" id="spResNota" maxlength="60"
@@ -4226,10 +4230,6 @@
           <label class="il" for="mpMonto">Monto recibido</label>
           <input type="text" inputmode="decimal" id="mpMonto"
             placeholder="80000" class="money-input">
-        </div>
-        <div class="ig">
-          <label class="il" for="mpFecha">Fecha en que te pagó</label>
-          <input type="date" id="mpFecha">
         </div>
         <!-- ¿Pagó con plata que ya le tenía guardada en un encargo? -->
         <div id="mpEncargoBox"
@@ -4298,6 +4298,10 @@
           </div>
         </div>
         <div class="ig">
+          <label class="il" for="mpFecha">Fecha en que te pagó</label>
+          <input type="date" id="mpFecha">
+        </div>
+        <div class="ig">
           <label class="il" for="mpNota">Nota (opcional)</label>
           <input type="text" id="mpNota" maxlength="60"
             placeholder="Ej: 42k Mesada Nu, el resto en Nequi">
@@ -4331,10 +4335,6 @@
           <label class="il" for="mppMonto">Monto recibido</label>
           <input type="text" inputmode="decimal" id="mppMonto"
             placeholder="20000" class="money-input">
-        </div>
-        <div class="ig">
-          <label class="il" for="mppFecha">Fecha en que te pagó</label>
-          <input type="date" id="mppFecha">
         </div>
         <!-- ¿Pagó con plata que ya le tenía guardada en un encargo? -->
         <div id="mppEncargoBox"
@@ -4374,6 +4374,10 @@
         </div>
         <div id="mppPreview"
           style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--amber);"></div>
+        <div class="ig">
+          <label class="il" for="mppFecha">Fecha en que te pagó</label>
+          <input type="date" id="mppFecha">
+        </div>
         <div class="ig">
           <label class="il" for="mppNota">Nota (opcional)</label>
           <input type="text" id="mppNota" maxlength="60"
@@ -4578,6 +4582,10 @@
             placeholder="0,00" class="money-input"></div>
         <div class="ig"><label class="il" for="rdFecha">Fecha</label><input
             type="date" id="rdFecha"></div>
+        <div class="ig"><label class="il" for="rdNota">Nota <span
+              style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
+            type="text" id="rdNota" maxlength="60"
+            placeholder="Detalle adicional"></div>
         <div id="rdPreview"
           style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:14px;"></div>
         <button type="button" class="btn btn-red" id="btn-confirmar-restar">Restar
@@ -4643,6 +4651,8 @@
           <input type="text" inputmode="decimal" id="tr_monto"
             placeholder="0,00" class="money-input">
         </div>
+        <div class="ig"><label class="il" for="tr_fecha">Fecha</label><input
+            type="date" id="tr_fecha"></div>
         <div id="tr_preview"
           style="font-size:12px;font-family:'DM Mono',monospace;margin-bottom:8px;line-height:1.7;"></div>
         <div class="ig"><label class="il" for="tr_nota">Nota
@@ -5162,12 +5172,11 @@
         <div class="ig"><label class="il" for="tcc_monto">Monto</label><input
             type="text" inputmode="decimal" id="tcc_monto" placeholder="0,00"
             class="money-input"></div>
-        <div class="ig"><label class="il" for="tcc_fecha">Fecha</label><input
-            type="date" id="tcc_fecha"></div>
-
         <div class="ig"><label class="il" for="tcc_cat">Categoría</label>
           <div class="select-wrap"><select id="tcc_cat"></select></div>
         </div>
+        <div class="ig"><label class="il" for="tcc_fecha">Fecha</label><input
+            type="date" id="tcc_fecha"></div>
         <div class="ig"><label class="il" for="tcc_nota">Nota
             (opcional)</label><input type="text" id="tcc_nota" maxlength="60"
             placeholder="Detalle adicional"></div>

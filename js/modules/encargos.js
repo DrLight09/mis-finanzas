@@ -1524,7 +1524,7 @@ function _movEncActualizarFaltante() {
     const valPrevio = selCuenta.value;
     const fuentes = getFuentesSinTC();
     selCuenta.innerHTML = '<option value="">Seleccionar cuenta</option>' +
-      fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
+      fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
     if (valPrevio && fuentes.some(f => f.val === valPrevio)) selCuenta.value = valPrevio;
   }
   wrap.style.display = '';
@@ -1882,10 +1882,10 @@ function abrirTraspasoEncargo() {
   if (cuentasEnc.length === 0) {
     // Si no hay distribución por cuenta, mostrar todas (sin TC) — mismo criterio que una salida normal
     const fuentesTodas = getFuentesSinTC();
-    selOrigen.innerHTML = '<option value="">Sin especificar</option>' + fuentesTodas.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+    selOrigen.innerHTML = '<option value="">Sin especificar</option>' + fuentesTodas.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
   } else {
     selOrigen.innerHTML = '<option value="">Sin especificar</option>' +
-      cuentasEnc.map(f=>`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+      cuentasEnc.map(f=>`<option value="${f.cuenta}">${escHtml(f.label)} (${fmt(f.saldo)})</option>`).join('');
     // Pre-seleccionar la cuenta con más saldo del encargo
     selOrigen.value = cuentasEnc[0].cuenta;
     _traspasoOrigenMuestraSaldoEnOpcion = true;
@@ -1900,7 +1900,7 @@ function abrirTraspasoEncargo() {
   // Poblar select destino con mis cuentas
   const fuentes = getFuentes();
   const sel = document.getElementById('traspaso_destino');
-  sel.innerHTML = '<option value="">Seleccionar cuenta</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+  sel.innerHTML = '<option value="">Seleccionar cuenta</option>' + fuentes.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
 
   // Pre-seleccionar la misma cuenta donde más saldo tiene el encargo
   if (cuentasEnc.length > 0) {
@@ -2255,17 +2255,17 @@ function abrirTransferenciaEncargo() {
   const cuentasEnc = _getEncargoSaldoPorCuenta(enc);
   const fuentesSinTC = getFuentesSinTC();
   if (cuentasEnc.length === 0) {
-    selOrigen.innerHTML = '<option value="">Sin especificar</option>' + fuentesSinTC.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+    selOrigen.innerHTML = '<option value="">Sin especificar</option>' + fuentesSinTC.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
   } else {
     selOrigen.innerHTML = '<option value="">Sin especificar</option>' +
-      cuentasEnc.map(f=>`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+      cuentasEnc.map(f=>`<option value="${f.cuenta}">${escHtml(f.label)} (${fmt(f.saldo)})</option>`).join('');
     selOrigen.value = cuentasEnc[0].cuenta;
   }
 
   // Select "dónde queda guardada esa plata ahora" para el encargo destino
   // (ej. la tenés en Nequi mientras se la entregás físicamente a esa persona)
   const selCuentaFisica = document.getElementById('transfenc_cuenta_fisica');
-  selCuentaFisica.innerHTML = '<option value="">Sin especificar</option>' + fuentesSinTC.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+  selCuentaFisica.innerHTML = '<option value="">Sin especificar</option>' + fuentesSinTC.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
   if (cuentasEnc.length > 0) selCuentaFisica.value = cuentasEnc[0].cuenta;
 
   _actualizarTransfEncPreview(enc);
@@ -2525,10 +2525,10 @@ function abrirCompraConTC() {
   let _ctcCuentaEncMuestraSaldoEnOpcion = false;
   if (cuentasConSaldo.length === 0) {
     const fuentes = getFuentes();
-    selEnc.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
+    selEnc.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
   } else {
     selEnc.innerHTML = '<option value="">Sin especificar</option>' +
-      cuentasConSaldo.map(f => `<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+      cuentasConSaldo.map(f => `<option value="${f.cuenta}">${escHtml(f.label)} (${fmt(f.saldo)})</option>`).join('');
     selEnc.value = cuentasConSaldo[0].cuenta;
     _ctcCuentaEncMuestraSaldoEnOpcion = true;
   }
@@ -2554,7 +2554,7 @@ function abrirCompraConTC() {
   // no en la opción (mismo patrón que traspaso_destino/spPagarFuente).
   const selDest = document.getElementById('ctc_destino');
   const fuentes = getFuentes();
-  selDest.innerHTML = '<option value="">Seleccionar cuenta</option>' + fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
+  selDest.innerHTML = '<option value="">Seleccionar cuenta</option>' + fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
   // Buscar cajita que tenga "tarjeta" o "TC" o "pago" en el nombre para pre-seleccionar
   const cajitaTC = (S.cajitas || []).find(c => {
     const n = (c.nombre||'').toLowerCase();

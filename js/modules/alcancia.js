@@ -813,7 +813,7 @@ window.alcanciaConfirmarDeposito = function(){
     }
     const saldoDisp = cobroGrupoId ? getGrupoSaldo(dCheck, cobroGrupoId) : getDeudorSaldo(dCheck);
     if(monto > saldoDisp + 0.5){
-      if(typeof toast==='function') toast(`${dCheck.nombre} solo debe ${typeof fmt==='function'?fmt(saldoDisp):saldoDisp}`, 'err'); return;
+      if(typeof toast==='function') toast(`${escHtml(dCheck.nombre)} solo debe ${typeof fmt==='function'?fmt(saldoDisp):saldoDisp}`, 'err'); return;
     }
   }
 

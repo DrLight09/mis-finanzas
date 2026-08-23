@@ -2219,7 +2219,7 @@ function openSheet_adMenu(){
   // Replace options with all accounts including all cajitas
   const sel=document.getElementById('adMenuDest');
   const fuentes=getFuentes();
-  sel.innerHTML=fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+  sel.innerHTML=fuentes.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
   actualizarAdMenuSaldo();
   document.getElementById('adMenuMonto').value='';
   document.getElementById('adMenuDesc').value='';
@@ -2581,7 +2581,7 @@ function confirmarRestarDinero(){
 function abrirTransferir(origenSugerido) {
   // Populate both selects
   const fuentes = getFuentes();
-  const optsHtml = fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
+  const optsHtml = fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
   document.getElementById('tr_origen').innerHTML = optsHtml;
   document.getElementById('tr_destino').innerHTML = optsHtml;
   // Pre-select suggested origin if provided

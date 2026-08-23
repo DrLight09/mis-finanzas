@@ -200,9 +200,9 @@ function renderGastosVar() {
       </div>
       <div class="gasto-item-meta">
         ${esFijo ? `<span class="badge" style="font-size:9px;background:rgba(200,240,96,.1);color:var(--accent);border:1px solid rgba(200,240,96,.2);">Fijo — ya sumado en Fijos mensuales</span>` :
-          esTC ? `<span class="badge bg-red" style="font-size:9px;">TC — deuda</span><span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>` :
+          esTC ? `<span class="badge bg-red" style="font-size:9px;">TC — deuda</span><span class="badge bg-blue" style="font-size:9px;">${escHtml(g.cat)}</span>` :
           esPagoTC ? `<span class="badge bg-green" style="font-size:9px;">Pago TC</span>` :
-          `<span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>`}
+          `<span class="badge bg-blue" style="font-size:9px;">${escHtml(g.cat)}</span>`}
         ${g.splits && g.splits.length ? `<span class="badge" style="font-size:9px;">Dividido: ${escHtml(g.splits.map(s => fuenteLabel(s.fuente || '')).join(', '))}</span>` : (g.fuente ? `<span class="badge ${fuenteBadgeClass(g.fuente)}" style="font-size:9px;">${escHtml(fuenteLabel(g.fuente))}</span>` : '')}
         ${(!(esFijo || esTC) && g.nota) ? `<span style="font-size:10px;color:var(--text3);">${escHtml(g.nota)}</span>` : ''}
       </div>
@@ -417,7 +417,7 @@ function renderGastosFijos() {
         </div>
       </div>
       <div class="gasto-item-meta" style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
-        <span class="badge bg-blue" style="font-size:9px;">${x.cat}</span>
+        <span class="badge bg-blue" style="font-size:9px;">${escHtml(x.cat)}</span>
         ${accionHtml}
       </div>
     </div>`;

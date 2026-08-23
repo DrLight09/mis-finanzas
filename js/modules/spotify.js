@@ -83,7 +83,7 @@ function _spProporcionarSplits(splits,montoParcial,montoTotal){
 function _spSplitFuentesOpts(selectedVal){
   const fuentes=getFuentesSinTC();
   return '<option value="" disabled'+(selectedVal?'':' selected')+'>Selecciona una cuenta...</option>'
-    +fuentes.map(f=>`<option value="${f.val}"${f.val===selectedVal?' selected':''}>${f.label}</option>`).join('');
+    +fuentes.map(f=>`<option value="${f.val}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`).join('');
 }
 
 crearSplitWidget('spc', {
@@ -661,7 +661,7 @@ function marcarPagoSpotify(i){
   const fuentes=getFuentesSinTC();
   const destSel=document.getElementById('spDestinoSelect');
   destSel.innerHTML='<option value="" disabled selected>Selecciona una opción...</option>'
-    +fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('')
+    +fuentes.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('')
     +'<option value="__sin_especificar__">Sin especificar (no mover)</option>';
   // Editable para poder anotar un cobro días después sin que quede fechado hoy
   // por error (ver auditoria-tecnica.md — atribución de ciclo por deuda, no por fecha).
@@ -862,7 +862,7 @@ function resolverPendienteSpHistorial(i){
   const fuentes=getFuentesSinTC();
   const destSel=document.getElementById('spResDestino');
   destSel.innerHTML='<option value="">No especificar / lo gasté</option>'
-    +fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+    +fuentes.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
   actualizarSpResolverPreview();
   openSheet('sp-hist-pend');
 }
@@ -943,7 +943,7 @@ function openSheet_pagarSpotify(){
   const cajita=getSpCajita();
   const sel=document.getElementById('spPagarFuente');
   const fuentes=getFuentes();
-  sel.innerHTML='<option value="">Sin especificar</option>'+fuentes.map(f=>`<option value="${f.val}"${cajita&&f.val==='cajita:'+cajita.id?' selected':''}>${f.label}</option>`).join('');
+  sel.innerHTML='<option value="">Sin especificar</option>'+fuentes.map(f=>`<option value="${f.val}"${cajita&&f.val==='cajita:'+cajita.id?' selected':''}>${escHtml(f.label)}</option>`).join('');
   actualizarSpPagarPreview();
   const notaEl=document.getElementById('spPagarNota');
   if(notaEl)notaEl.value='';

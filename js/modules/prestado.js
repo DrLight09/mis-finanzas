@@ -72,7 +72,7 @@ function _renderPrestSplit(){
   const el = document.getElementById('mov_split_rows');
   if(!el) return;
   const fuentes = getFuentes();
-  const opts = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('') + '<option value="ganancia"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>';
+  const opts = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('') + '<option value="ganancia"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>';
   el.innerHTML = _prestSplitRows.map((r,i)=>`
     <div class="prest-split-row">
       <div class="select-wrap" style="flex:1;"><select class="_prest-split-fuente" data-i="${i}" style="font-size:13px;">${opts.replace(`value="${r.fuente}"`,`value="${r.fuente}" selected`)}</select></div>
@@ -1489,7 +1489,7 @@ function onChangeMov_enc_sel() {
     // "Sin especificar" ahora es una opción explícita (__sinesp__) que representa
     // SOLO la porción del encargo que no está ligada a ninguna cuenta — ya no se
     // usa como valor "sin restricción" que dejaba tomar plata de cualquier cuenta.
-    let optsHtml = cuentasConSaldo.map(f => `<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`).join('');
+    let optsHtml = cuentasConSaldo.map(f => `<option value="${f.cuenta}">${escHtml(f.label)} (${fmt(f.saldo)})</option>`).join('');
     if (saldoSinCuenta > 0) {
       optsHtml += `<option value="__sinesp__">Sin especificar (${fmt(saldoSinCuenta)} del encargo)</option>`;
     }
@@ -1578,7 +1578,7 @@ function abonoRenderSplit() {
       <div class="select-wrap" style="flex:1;">
         <select class="_abono-split-fuente" data-i="${i}" style="padding:9px 30px 9px 10px;font-size:13px;">
           <option value="">Sin especificar</option>
-          ${fuentes.map(f=>`<option value="${f.val}" ${r.fuente===f.val?'selected':''}>${f.label}</option>`).join('')}
+          ${fuentes.map(f=>`<option value="${f.val}" ${r.fuente===f.val?'selected':''}>${escHtml(f.label)}</option>`).join('')}
         </select>
       </div>
       <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="0,00"
@@ -1682,7 +1682,7 @@ function extRenderPartes() {
       <div class="select-wrap" style="margin-top:7px;">
         <select class="_ext-set-cuenta" data-i="${i}" data-stop-click="true" style="font-size:12px;padding:7px 26px 7px 9px;">
           <option value="">¿A cuál cuenta?</option>
-          ${fuentes.map(f=>`<option value="${f.val}" ${p.cuenta===f.val?'selected':''}>${f.label}</option>`).join('')}
+          ${fuentes.map(f=>`<option value="${f.val}" ${p.cuenta===f.val?'selected':''}>${escHtml(f.label)}</option>`).join('')}
         </select>
       </div>` :
     p.tipo === 'gastar' ? `
@@ -1816,7 +1816,7 @@ function _ndPoblarSelectDestino() {
   const sel = document.getElementById('nd_destino');
   if (!sel) return;
   const fuentes = getFuentesSinTC();
-  sel.innerHTML = '<option value>Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
+  sel.innerHTML = '<option value>Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
 }
 
 function crearMiDeuda() {
@@ -1966,7 +1966,7 @@ function abrirMovMiDeuda(tipo) {
   document.getElementById('md_cuenta_hint').textContent = tipo === 'recibido' ? 'Se sumará automáticamente al saldo de esa cuenta' : 'Se descontará automáticamente del saldo de esa cuenta';
   const sel = document.getElementById('md_cuenta');
   const fuentes = getFuentesSinTC();
-  sel.innerHTML = '<option value>Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${f.label}</option>`).join('');
+  sel.innerHTML = '<option value>Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
   document.getElementById('md_monto').value = '';
   document.getElementById('md_fecha').value = hoy();
   document.getElementById('md_nota').value = '';

@@ -40,6 +40,23 @@ let spDestinoIdx=null;
 let spDestinoPago=0;
 let spDestinoNombre='';
 
+// ── Pago parcial con deuda pendiente (cobro a un integrante) ───────────────
+// Mismo concepto que "pago parcial con deuda pendiente" de Mesada (ver
+// mesada.js y docs/mesada.md#pago-parcial-con-deuda-pendiente): si alguien
+// paga menos de lo esperado para los períodos elegidos y se marca
+// explícitamente el toggle, el registro de tipo 'cobro' en spotifyHistorial
+// guarda además:
+//   cuotaEsperada        // periodos × cuota, snapshot del momento del cobro
+//   pendiente            // cuánto falta por recibir de ESE cobro puntual
+//   pendienteHistorial   // [{monto,fecha,destino,nota}] abonos posteriores
+// El período de todas formas se cuenta como cubierto (proximoPago avanza
+// igual) — lo pendiente es solo la plata, no el período. Si no se marca el
+// toggle, un monto menor al esperado se registra tal cual, sin deuda (mismo
+// criterio que Mesada: "ese mes solo fueron 60mil, no me quedó debiendo
+// nada"). Índice del registro de spotifyHistorial que se está resolviendo
+// desde el sheet "sp-hist-pend":
+let spResolverIdx=null;
+
 /* ── Split de fuentes (motor genérico, ver js/core/split.js) ─────
    Dos instancias: 'spc' (cobro — plata que ENTRA, mismo patrón que
    Mesada) y 'spp' (pago a Spotify — plata que SALE, mismo patrón que
@@ -307,19 +324,30 @@ function renderSpHistorial(){
     .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b._realIdx-a._realIdx))
     .slice(0,12);
   if(!hist.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0;">Sin pagos registrados aún.</div>';return;}
-  el.innerHTML=hist.map(h=>`
+  el.innerHTML=hist.map(h=>{
+    const tienePendiente=h.tipo==='cobro'&&(h.pendiente||0)>0;
+    const yaSaldado=h.tipo==='cobro'&&h.cuotaEsperada&&!tienePendiente;
+    const pendienteHtml=tienePendiente
+      ?`<div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
+          <span class="badge bg-amber" style="font-size:9px;">Debe ${fmt(h.pendiente)}</span>
+          <span style="font-size:10px;color:var(--amber);text-decoration:underline;cursor:pointer;" ${Events.attr('spotify:resolverPendiente', h._realIdx)}>Registrar pago de lo pendiente</span>
+        </div>`
+      :yaSaldado?`<div style="font-size:10px;color:var(--accent);margin-top:3px;">✓ Saldó lo pendiente</div>`:'';
+    return`
     <div class="card card-sm" style="margin-bottom:7px;">
       <div class="row" style="align-items:flex-start;gap:10px;">
         <div style="flex:1;min-width:0;">
           <div style="font-size:12px;font-weight:500;">${h.tipo==='pago'?'Pago a Spotify':'Cobro de '+escHtml(h.nombre)}</div>
           <div style="font-size:10px;color:var(--text2);margin-top:1px;">${h.fecha}${h.splits&&h.splits.length?' · '+h.splits.map(s=>fuenteLabel(s.fuente||'')).join(' + '):(h.fuente?' · '+fuenteLabel(h.fuente):'')}${h.nota?' · <span style="color:var(--blue);">'+escHtml(h.nota)+'</span>':''}</div>
+          ${pendienteHtml}
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
           <div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace;white-space:nowrap;color:${h.tipo==='pago'?'var(--red)':'var(--accent)'};">${h.tipo==='pago'?'−':'+'} ${fmt(h.monto)}</div>
           <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" ${Events.attr('spotify:eliminarHistorial', h._realIdx)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderSpStats(){
@@ -487,7 +515,11 @@ async function deleteSpHistorial(i){
     }
   }
 
-  const ok=await dialogo('Eliminar movimiento','¿Eliminar este registro del historial? Esta acción no se puede deshacer. Esto también revierte la plata movida por este registro.','Eliminar',true);
+  const tienePendienteAlBorrar=h.tipo==='cobro'&&(h.pendiente||0)>0;
+  const msgBorrar=tienePendienteAlBorrar
+    ?'¿Eliminar este registro del historial? Esta acción no se puede deshacer. Esto revierte la plata movida por este registro (incluyendo abonos de lo pendiente ya recibidos) y cancela la deuda de '+fmt(h.pendiente)+' que quedaba abierta.'
+    :'¿Eliminar este registro del historial? Esta acción no se puede deshacer. Esto también revierte la plata movida por este registro.';
+  const ok=await dialogo('Eliminar movimiento',msgBorrar,'Eliminar',true);
   if(!ok)return;
   return _borrarSpHistorial(i,h);
 }
@@ -499,12 +531,22 @@ async function deleteSpHistorial(i){
 async function _borrarSpHistorial(i,h){
 
   if(h.tipo==='cobro'){
+    // Si este cobro tuvo pago parcial con deuda pendiente (ver §3 de docs/spotify.md),
+    // h.monto incluye tanto el monto original como los abonos de pendienteHistorial ya
+    // recibidos — hay que separarlos porque cada abono pudo entrar a una cuenta distinta
+    // (mismo criterio que _borrarMesadaPago() en mesada.js).
+    const historialPendTotal=(h.pendienteHistorial||[]).reduce((acc,ab)=>acc+(ab.monto||0),0);
+    const montoOriginalCobro=Math.max(0,(h.monto||0)-historialPendTotal);
     // Revertir el movimiento secundario: la plata que entró a la(s) cuenta(s) destino al cobrar
     if(h.splits&&h.splits.length){
       h.splits.forEach(s=>{ if(s.fuente)descontarFuente(s.fuente,s.monto||0); });
     } else if(h.fuente){
-      descontarFuente(h.fuente,h.monto||0);
+      descontarFuente(h.fuente,montoOriginalCobro);
     }
+    // Revertir cada abono de lo pendiente por separado (cada uno pudo ir a otra cuenta)
+    (h.pendienteHistorial||[]).forEach(ab=>{
+      if(ab.destino)descontarFuente(ab.destino,ab.monto||0);
+    });
     // Si este cobro estaba saldando deuda de un ciclo ya cerrado (_pagoIdCierre), devolver
     // esa plata al pendiente congelado de ese pago — si el pago referenciado ya no existe
     // (se borró aparte), no hay nada que restaurar, se queda como estaba.
@@ -592,6 +634,14 @@ function marcarPagoSpotify(i){
   const mesesSel=document.getElementById('spMesesSelect');
   mesesSel.value='1';
   document.getElementById('spMesesTotal').textContent='Total a cobrar: '+fmt(p.monto*1);
+  // Monto realmente recibido — editable, prellenado con el total esperado.
+  // Si se reduce por debajo de lo esperado, aparece el toggle "quedó debiendo".
+  const montoRecInp=document.getElementById('spMontoRecibido');
+  if(montoRecInp)montoRecInp.value=fmtInput(p.monto*1);
+  const chkDebeSp=document.getElementById('spQuedaDebiendo');
+  if(chkDebeSp)chkDebeSp.checked=false;
+  const debeWrapSp=document.getElementById('spDebeWrap');
+  if(debeWrapSp)debeWrapSp.style.display='none';
   // Resetear split (mismo patrón que abrirRegistrarMesada en mesada.js)
   spcSplitMode=false;
   document.getElementById('spCobModoSimple').style.display='';
@@ -624,18 +674,50 @@ function selSpMeses(){
   const n=parseInt(document.getElementById('spMesesSelect').value)||1;
   const monto=(S.spotifyPersonas[spDestinoIdx]?.monto||0)*n;
   document.getElementById('spMesesTotal').textContent='Total a cobrar: '+fmt(monto);
+  // Cambiar la cantidad de períodos redefine "lo esperado" — resetea el monto
+  // recibido a ese nuevo total (el usuario puede volver a editarlo si pagó de menos).
+  const montoRecInp=document.getElementById('spMontoRecibido');
+  if(montoRecInp)montoRecInp.value=fmtInput(monto);
   actualizarSpDestinoPreview();
+}
+
+// Muestra/oculta el toggle "quedó debiendo la diferencia" según el monto
+// recibido ingresado vs. lo esperado para los períodos elegidos — mismo
+// patrón que _syncMpDebeWrap() en mesada.js.
+function _syncSpDebeWrap(){
+  const wrap=document.getElementById('spDebeWrap');
+  const chk=document.getElementById('spQuedaDebiendo');
+  const lbl=document.getElementById('spDebeLabel');
+  if(!wrap||!chk||spDestinoIdx===null)return;
+  const p=S.spotifyPersonas[spDestinoIdx];
+  const n=parseInt(document.getElementById('spMesesSelect').value)||1;
+  const montoEsperado=(p?.monto||0)*n;
+  const v=parseMoney(document.getElementById('spMontoRecibido').value)||0;
+  const diff=montoEsperado-v;
+  if(v>0&&diff>0){
+    wrap.style.display='flex';
+    if(lbl)lbl.textContent='Te está debiendo '+fmt(diff)+' — ¿marcar como pendiente?';
+  } else {
+    wrap.style.display='none';
+    chk.checked=false;
+  }
 }
 
 // Preview del split de cobro — mismo estilo que actualizarMpPreview() en
 // mesada.js. En modo simple no hay nada que mostrar acá (spMesesTotal ya
-// cubre el total); solo pinta cuando spcSplitMode está activo.
+// cubre el total); solo pinta cuando spcSplitMode está activo. Siempre
+// sincroniza el toggle de "quedó debiendo", independientemente del modo.
 function actualizarSpDestinoPreview(){
+  _syncSpDebeWrap();
   const prev=document.getElementById('spCobPreview');
   if(!prev)return;
   if(!spcSplitMode){prev.textContent='';return;}
+  // El split reparte lo REALMENTE recibido, no lo esperado — si la persona pagó
+  // de menos, es esa plata (ya menor) la que hay que repartir entre cuentas.
   const n=parseInt(document.getElementById('spMesesSelect').value)||1;
-  const monto=(S.spotifyPersonas[spDestinoIdx]?.monto||0)*n;
+  const montoEsperadoSplit=(S.spotifyPersonas[spDestinoIdx]?.monto||0)*n;
+  const montoRecInp=parseMoney(document.getElementById('spMontoRecibido').value);
+  const monto=(montoRecInp||montoRecInp===0)?montoRecInp:montoEsperadoSplit;
   const splits=getSpCobSplitData();
   const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
   const restante=monto-totalSplit;
@@ -650,7 +732,28 @@ function confirmarSpDestino(){
   if(spDestinoIdx===null)return;
   const p=S.spotifyPersonas[spDestinoIdx];
   const meses=parseInt(document.getElementById('spMesesSelect').value)||1;
-  const montoTotal=(p.monto||0)*meses;
+  const montoEsperado=(p.monto||0)*meses;
+
+  // Monto REALMENTE recibido — editable (campo spMontoRecibido), prellenado
+  // con montoEsperado. Si quedó vacío o inválido, se asume el total esperado
+  // (mismo comportamiento de siempre, para no romper el flujo si el campo
+  // no se tocó).
+  const montoRecInp=parseMoney(document.getElementById('spMontoRecibido').value);
+  const montoTotal=(montoRecInp||montoRecInp===0)?montoRecInp:montoEsperado;
+  if(montoTotal<=0){
+    toast('Ingresá cuánto te pagó','err');
+    return;
+  }
+  if(montoTotal>montoEsperado+1){
+    toast('Eso es más de lo esperado para '+meses+' período'+(meses>1?'s':'')+' — aumentá los períodos si pagó de más','err');
+    return;
+  }
+  // "Quedó debiendo la diferencia": solo aplica si el usuario marcó el toggle
+  // explícitamente. Si no lo marca, un monto menor al esperado se registra
+  // tal cual, sin deuda — el período de todas formas se cuenta como cubierto.
+  const chkDebeSp=document.getElementById('spQuedaDebiendo');
+  const quedaDebiendoSp=!!(chkDebeSp&&chkDebeSp.checked);
+  const diferenciaSp=quedaDebiendoSp?Math.max(0,montoEsperado-montoTotal):0;
 
   // ── Modo dividido: validar y aplicar el split ANTES de tocar nada más ──
   let splits=null;
@@ -720,13 +823,81 @@ function confirmarSpDestino(){
   // movimiento a la cuenta. El detalle de cuántos períodos y a cómo cada uno queda en
   // la nota. Se guarda el nombre ACTUAL de la persona vinculada, no el crudo, para que
   // no quede fijado desactualizado.
-  if(restante>0){
-    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:restante,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,restante,montoTotal)||undefined,fecha:fechaCobro,nota:notaBase,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'});
+  if(restante>0||diferenciaSp>0){
+    const nuevoCobro={id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:restante,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,restante,montoTotal)||undefined,fecha:fechaCobro,nota:notaBase,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'};
+    if(diferenciaSp>0){
+      nuevoCobro.cuotaEsperada=montoEsperado;
+      nuevoCobro.pendiente=diferenciaSp;
+      nuevoCobro.pendienteHistorial=[];
+    }
+    S.spotifyHistorial.push(nuevoCobro);
   }
   spDestinoIdx=null;
   spcSplitMode=false;
   save();refresh();closeSheet('sp-destino');
-  toast(meses>1?`Cobrados ${meses} períodos adelantados a ${escHtml(nombreActual)} · ${fmt(montoTotal)}`:`Cobro registrado · ${escHtml(nombreActual)}`,'ok');
+  if(diferenciaSp>0){
+    toast(`Cobro registrado · ${escHtml(nombreActual)} quedó debiendo ${fmt(diferenciaSp)}`,'info',3500);
+  } else {
+    toast(meses>1?`Cobrados ${meses} períodos adelantados a ${escHtml(nombreActual)} · ${fmt(montoTotal)}`:`Cobro registrado · ${escHtml(nombreActual)}`,'ok');
+  }
+}
+
+// ── Registrar pago de lo pendiente de un cobro puntual ──────────────────────
+// Mismo patrón que abrirResolverPendiente()/confirmarPendienteMesada() en
+// mesada.js, pero aplicado a un registro de spotifyHistorial en vez de a un
+// mes calendario. `i` es el índice REAL en S.spotifyHistorial (h._realIdx).
+function resolverPendienteSpHistorial(i){
+  const h=S.spotifyHistorial[i];
+  if(!h||!(h.pendiente>0))return;
+  spResolverIdx=i;
+  document.getElementById('spResTitle').textContent='Pendiente de '+escHtml(h.nombre);
+  document.getElementById('spResDesc').textContent='Te debía '+fmt(h.pendiente)+'. ¿Cuánto te dio ahora?';
+  document.getElementById('spResMonto').value=fmtInput(h.pendiente);
+  document.getElementById('spResFecha').value=hoy();
+  document.getElementById('spResNota').value='';
+  const fuentes=getFuentesSinTC();
+  const destSel=document.getElementById('spResDestino');
+  destSel.innerHTML='<option value="">No especificar / lo gasté</option>'
+    +fuentes.map(f=>`<option value="${f.val}">${f.label}</option>`).join('');
+  actualizarSpResolverPreview();
+  openSheet('sp-hist-pend');
+}
+
+function actualizarSpResolverPreview(){
+  const prev=document.getElementById('spResPreview');
+  if(!prev||spResolverIdx===null)return;
+  const h=S.spotifyHistorial[spResolverIdx];
+  const v=parseMoney(document.getElementById('spResMonto').value)||0;
+  if(!h||!v){prev.textContent='';return;}
+  if(v>h.pendiente+1){
+    prev.textContent='Eso es más de lo que quedó pendiente ('+fmt(h.pendiente)+')';
+    prev.style.color='var(--red)';
+    return;
+  }
+  const restante=h.pendiente-v;
+  prev.textContent=restante>0?('Quedaría debiendo '+fmt(restante)+' más'):'Con esto queda saldado ✓';
+  prev.style.color=restante>0?'var(--amber)':'var(--accent)';
+}
+
+function confirmarSpResolverPendiente(){
+  if(spResolverIdx===null)return;
+  const h=S.spotifyHistorial[spResolverIdx];
+  if(!h||!(h.pendiente>0))return;
+  let monto=parseMoney(document.getElementById('spResMonto').value)||0;
+  if(monto<=0)return;
+  if(monto>h.pendiente)monto=h.pendiente; // no se puede saldar más de lo que quedó pendiente
+  const fecha=document.getElementById('spResFecha').value||hoy();
+  const nota=document.getElementById('spResNota').value.trim();
+  const destino=document.getElementById('spResDestino').value;
+  if(destino)sumarFuente(destino,monto);
+  if(!h.pendienteHistorial)h.pendienteHistorial=[];
+  h.pendienteHistorial.push({monto,fecha,destino,nota});
+  h.pendiente=Math.max(0,h.pendiente-monto);
+  h.monto=(h.monto||0)+monto;
+  spResolverIdx=null;
+  save();refresh();
+  closeSheet('sp-hist-pend');
+  toast(h.pendiente>0?('Abono registrado — todavía debe '+fmt(h.pendiente)):'¡Pendiente saldado! 🎉','ok',3000);
 }
 
 // FIX (auditoria-tecnica.md — acoplamiento spotify↔tarjetas_credito): las 3
@@ -1090,6 +1261,17 @@ const _spBtnDest = document.getElementById('btn-confirmar-sp-destino');
 if (_spBtnDest) _spBtnDest.addEventListener('click', confirmarSpDestino);
 const _spMesesSelect = document.getElementById('spMesesSelect');
 if (_spMesesSelect) _spMesesSelect.addEventListener('change', selSpMeses);
+const _spMontoRecibido = document.getElementById('spMontoRecibido');
+if (_spMontoRecibido) _spMontoRecibido.addEventListener('input', actualizarSpDestinoPreview);
+const _mSpDebeWrap = document.getElementById('spDebeWrap');
+if (_mSpDebeWrap) _mSpDebeWrap.addEventListener('click', () => document.getElementById('spQuedaDebiendo').click());
+const _mSpQuedaDebiendo = document.getElementById('spQuedaDebiendo');
+if (_mSpQuedaDebiendo) _mSpQuedaDebiendo.addEventListener('click', (e) => e.stopPropagation());
+// ── Sheet "Registrar pago de lo pendiente" (sp-hist-pend) ──
+const _spBtnResConf = document.getElementById('btn-confirmar-sp-res-pend');
+if (_spBtnResConf) _spBtnResConf.addEventListener('click', confirmarSpResolverPendiente);
+const _spResMonto = document.getElementById('spResMonto');
+if (_spResMonto) _spResMonto.addEventListener('input', actualizarSpResolverPreview);
 const _spBtnPagarConf = document.getElementById('btn-confirmar-pagar-spotify');
 if (_spBtnPagarConf) _spBtnPagarConf.addEventListener('click', confirmarPagarSpotify);
 
@@ -1124,6 +1306,7 @@ Events.registerAll('spotify', {
   editar: (...args) => editarSpotify(...args),
   eliminar: deleteSpotify,
   eliminarHistorial: deleteSpHistorial,
+  resolverPendiente: resolverPendienteSpHistorial,
 });
 Events.on('spotify:abrirSheetAgregar', () => openSheet('spotify'));
 

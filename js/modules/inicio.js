@@ -114,13 +114,16 @@ function renderAttencion(){
   if(titleEl) {
     // Fingerprint = string con los textos de todos los items actuales
     const fingerprint = items.map(i=>i.texto).sort().join('|');
-    const lastFingerprint = sessionStorage.getItem('attn-fingerprint');
-    const storedOpen = sessionStorage.getItem('attn-open');
-    // Abrir automáticamente solo si los items cambiaron desde la última vez que se vieron
+    const lastFingerprint = localStorage.getItem('attn-fingerprint');
+    const storedOpen = localStorage.getItem('attn-open');
+    // Abrir automáticamente solo si los items cambiaron desde la última vez que se vieron.
+    // Se usa localStorage (no sessionStorage) para que esta comparación sobreviva a cerrar
+    // el navegador del todo: si no, al no haber lastFingerprint en una sesión nueva,
+    // hayNuevos daba siempre true y abría la sección aunque no hubiera nada nuevo.
     const hayNuevos = fingerprint !== lastFingerprint;
     const isOpen = hayNuevos ? true : (storedOpen === '1');
     // Si había items nuevos y ahora abrimos, guardar el fingerprint como "visto"
-    if(hayNuevos) sessionStorage.setItem('attn-fingerprint', fingerprint);
+    if(hayNuevos) localStorage.setItem('attn-fingerprint', fingerprint);
     titleEl.style.cursor = 'pointer';
     titleEl.style.display = 'flex';
     titleEl.style.justifyContent = 'space-between';
@@ -153,7 +156,7 @@ function renderAttencion(){
     titleEl._attnClickHandler = () => {
       const nowOpen = list.style.display === 'none';
       list.style.display = nowOpen ? '' : 'none';
-      sessionStorage.setItem('attn-open', nowOpen ? '1' : '0');
+      localStorage.setItem('attn-open', nowOpen ? '1' : '0');
       const badge = titleEl.querySelector('span');
       if(badge) badge.innerHTML = `${items.length} <i class="fa-solid ${nowOpen?'fa-chevron-up':'fa-chevron-down'}"></i>`;
     };
@@ -166,7 +169,7 @@ function renderAttencion(){
     titleEl._attnTouchHandler = (e) => { e.preventDefault(); titleEl._attnClickHandler(); };
     titleEl.addEventListener('touchend', titleEl._attnTouchHandler, {passive:false});
     list.style.display = isOpen ? '' : 'none';
-    sessionStorage.setItem('attn-open', isOpen ? '1' : '0');
+    localStorage.setItem('attn-open', isOpen ? '1' : '0');
   }
 
   list.innerHTML=items.map(it=>`<div class="card card-sm ${it.tipo==='red'?'attn-card-red':'attn-card'}" style="margin-bottom:7px;">
@@ -500,9 +503,9 @@ function renderProyeccion(){
           data-proy-diff="${diff}"
           data-proy-pct="${pct}"
           data-proy-meses="${meses}"
-          style="text-align:center;background:var(--bg3);border-radius:8px;padding:10px 6px;cursor:pointer;-webkit-tap-highlight-color:rgba(200,240,96,.12);transition:background .12s;">
+          style="text-align:center;background:var(--bg3);border-radius:8px;padding:10px 6px;min-width:0;cursor:pointer;-webkit-tap-highlight-color:rgba(200,240,96,.12);transition:background .12s;">
           <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:4px;">${key}</div>
-          <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${val>=patrimonio?'var(--accent)':'var(--red)'};">${fmt(Math.max(0,val))}</div>
+          <div style="font-size:clamp(10px,3vw,13px);font-weight:600;font-family:'DM Mono',monospace;color:${val>=patrimonio?'var(--accent)':'var(--red)'};overflow-wrap:break-word;word-break:break-word;">${fmt(Math.max(0,val))}</div>
         </div>`;
       }).join('')}
       <div id="_proy-tt" style="display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#1a1a1a;border:1px solid #383838;border-radius:10px;padding:10px 13px;font-family:'DM Mono',monospace;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,.7);"></div>

@@ -116,14 +116,27 @@ function renderAttencion(){
     const fingerprint = items.map(i=>i.texto).sort().join('|');
     const lastFingerprint = localStorage.getItem('attn-fingerprint');
     const storedOpen = localStorage.getItem('attn-open');
+    // `items` depende de Préstamos/Spotify/Tarjetas/Mesada (getDeudorSaldo,
+    // getMesadaData, etc. más abajo, todos con guard typeof), que son módulos
+    // lazy (lazy-loader.js). renderAttencion() corre en cada refresh(), y hay
+    // refresh() tempranos (antes de que esos módulos terminen de cargar) donde
+    // `items` viene incompleto. Si se comparara ese fingerprint parcial contra
+    // el completo de la sesión anterior, `hayNuevos` daría true por la carga
+    // en sí (no porque haya algo realmente nuevo) y reabriría la sección
+    // aunque la hubieras dejado cerrada. Por eso solo se compara/guarda una
+    // vez que `window._appFullyLoaded` es true (lazy-loader.js la pone en
+    // true recién cuando ensureAll() termina y dispara su refresh() final,
+    // con todos los módulos ya cargados). Si Loader no existe (entorno sin
+    // lazy-loading), se trata como ya cargado.
+    const appLoaded = typeof window._appFullyLoaded === 'undefined' ? true : window._appFullyLoaded;
     // Abrir automáticamente solo si los items cambiaron desde la última vez que se vieron.
     // Se usa localStorage (no sessionStorage) para que esta comparación sobreviva a cerrar
     // el navegador del todo: si no, al no haber lastFingerprint en una sesión nueva,
     // hayNuevos daba siempre true y abría la sección aunque no hubiera nada nuevo.
-    const hayNuevos = fingerprint !== lastFingerprint;
+    const hayNuevos = appLoaded && fingerprint !== lastFingerprint;
     const isOpen = hayNuevos ? true : (storedOpen === '1');
     // Si había items nuevos y ahora abrimos, guardar el fingerprint como "visto"
-    if(hayNuevos) localStorage.setItem('attn-fingerprint', fingerprint);
+    if(appLoaded && hayNuevos) localStorage.setItem('attn-fingerprint', fingerprint);
     titleEl.style.cursor = 'pointer';
     titleEl.style.display = 'flex';
     titleEl.style.justifyContent = 'space-between';

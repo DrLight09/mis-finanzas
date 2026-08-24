@@ -24,6 +24,11 @@
    ═══════════════════════════════════════════════════════════════ */
 
 const Loader = (function () {
+  // false hasta que ensureAll() (precarga en segundo plano de todos los
+  // grupos lazy) termine — ver _iniciarEnsureAll() más abajo. La lee
+  // inicio.js (renderAttencion) para no comparar un fingerprint parcial.
+  window._appFullyLoaded = false;
+
   // pantalla → archivos que hay que cargar, EN ESTE ORDEN, la primera
   // vez que se visita. Pantallas que no aparecen acá siguen cargando
   // de entrada (comportamiento actual, sin cambios).
@@ -243,6 +248,12 @@ const Loader = (function () {
   // puede estar tocando algo justo en ese momento.
   function _iniciarEnsureAll() {
     ensureAll().then(() => {
+      // Bandera global: recién acá `items` de renderAttencion() (inicio.js)
+      // queda completo — antes de esto, algunos de sus datos (Préstamos/
+      // Spotify/Tarjetas/Mesada) pueden faltar por no haber cargado todavía,
+      // ver CHANGELOG.md#sheets--ui. inicio.js la lee para no comparar/guardar
+      // un fingerprint parcial contra el completo de la sesión anterior.
+      window._appFullyLoaded = true;
       if (typeof refresh === 'function') refresh();
       if (typeof applyModulos === 'function') applyModulos();
     });
@@ -256,41 +267,26 @@ const Loader = (function () {
   // "Necesita atención" (y cualquier otra cosa que dependía de un módulo
   // lazy) se actualice sola, sin que el usuario tenga que tocar nada ni
   // volver a entrar a Inicio.
-  // FIX (auditoria-tecnica.md #12 — TBT 1.900-2.750ms confirmado con el PIN
-  // activo, Lighthouse real): requestIdleCallback por sí solo no alcanza acá.
-  // El hilo principal SÍ está "idle" para el navegador mientras el usuario
-  // mira la pantalla de PIN entre tecla y tecla, así que _iniciarEnsureAll
-  // disparaba igual, compitiendo por el hilo con la UI del PIN (ver "Avoid
-  // long main-thread tasks" de esa corrida: inicio.js/bootstrap.js/
-  // async-css.js ejecutando varios segundos después del primer pintado).
-  // No hay ningún evento propio de "PIN desbloqueado" expuesto acá, pero no
-  // hace falta uno nuevo: #pin-screen.open (index.html línea 188) YA es el
-  // mecanismo real que decide si el gate sigue activo — se reusa esa misma
-  // clase con un MutationObserver en vez de agregar estado paralelo.
-  function _dispararIdle() {
+  // Descartado (2026-08-17, sesión de investigación del punto 12 de
+  // auditoria-tecnica.md): se probó acá un guard con MutationObserver sobre
+  // #pin-screen.open, bajo la hipótesis de que _iniciarEnsureAll podía
+  // disparar mientras el PIN seguía sin desbloquear. Se revirtió al
+  // confirmar, con pin-bio.js + firebase-init.js + firebase-sync.js en
+  // mano, que la hipótesis es imposible en la arquitectura actual:
+  // appDataLoaded solo lo dispara _finishFirstLoad() (firebase-sync.js),
+  // que solo corre dentro del onSnapshot de _fbLoadData(), que solo se
+  // llama desde _launchApp() (pin-bio.js) — y ahí SIEMPRE después de
+  // _hidePin() (que ya sacó la clase 'open'). No hay ningún camino de
+  // código en el que este evento pueda disparar con el PIN todavía en
+  // pantalla. Ver CHANGELOG.md#infraestructura--seguridad para el detalle
+  // completo de la investigación y qué explica el TBT real medido.
+  window.addEventListener('appDataLoaded', function () {
     if (typeof requestIdleCallback === 'function') {
       requestIdleCallback(_iniciarEnsureAll, { timeout: 5000 });
     } else {
       setTimeout(_iniciarEnsureAll, 2000);
     }
-  }
-
-  function _esperarPinYDisparar() {
-    const pinScreen = document.getElementById('pin-screen');
-    if (!pinScreen || !pinScreen.classList.contains('open')) {
-      _dispararIdle();
-      return;
-    }
-    const mo = new MutationObserver(() => {
-      if (!pinScreen.classList.contains('open')) {
-        mo.disconnect();
-        _dispararIdle();
-      }
-    });
-    mo.observe(pinScreen, { attributes: true, attributeFilter: ['class'] });
-  }
-
-  window.addEventListener('appDataLoaded', _esperarPinYDisparar, { once: true });
+  }, { once: true });
 
   return { ensure, ensureAll, isLoaded, GROUPS };
 })();

@@ -6,7 +6,8 @@
   /* ====================================================
      1. OCULTAR/MOSTRAR SALDOS
   ==================================================== */
-  let _saldosOcultos = false;
+  const SALDOS_OCULTOS_KEY = 'mf-saldos-ocultos';
+  let _saldosOcultos = localStorage.getItem(SALDOS_OCULTOS_KEY) === '1';
   const MONEY_SELECTORS = [
     '#heroTotal','#s-disp','#s-nu','#s-ef','#s-nequi','#s-prest','#s-cdt',
     '#s-gf','#s-gv','#s-gtotal','.hero-amount','.stat-value','.row-amount',
@@ -15,8 +16,11 @@
     '#tc-hero-cupo'
   ];
 
-  function toggleSaldos(){
-    _saldosOcultos = !_saldosOcultos;
+  // Aplica el estado actual de _saldosOcultos al ícono del botón y a los
+  // elementos de dinero, sin cambiar el valor de _saldosOcultos. Se usa
+  // tanto al hacer click (toggleSaldos) como al restaurar el estado
+  // guardado en localStorage al cargar la página.
+  function _aplicarEstadoSaldos(){
     const btn = document.getElementById('btn-toggle-saldos');
     if(_saldosOcultos){
       btn.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
@@ -39,7 +43,18 @@
     _aplicarOcultoEnAreas();
   }
 
+  function toggleSaldos(){
+    _saldosOcultos = !_saldosOcultos;
+    localStorage.setItem(SALDOS_OCULTOS_KEY, _saldosOcultos ? '1' : '0');
+    _aplicarEstadoSaldos();
+  }
+
   document.getElementById('btn-toggle-saldos').addEventListener('click', toggleSaldos);
+  // Restaurar de una vez el estado guardado (botón + montos ya presentes en
+  // el HTML inicial). Los montos que se pintan dinámicamente (1b, más abajo)
+  // ya nacen ocultos porque _saldosOcultos se lee de localStorage arriba,
+  // antes de que se armen los observers.
+  _aplicarEstadoSaldos();
 
   /* ====================================================
      1b. OCULTAR MONTOS EN ÁREAS DINÁMICAS

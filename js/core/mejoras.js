@@ -50,11 +50,6 @@
   }
 
   document.getElementById('btn-toggle-saldos').addEventListener('click', toggleSaldos);
-  // Restaurar de una vez el estado guardado (botón + montos ya presentes en
-  // el HTML inicial). Los montos que se pintan dinámicamente (1b, más abajo)
-  // ya nacen ocultos porque _saldosOcultos se lee de localStorage arriba,
-  // antes de que se armen los observers.
-  _aplicarEstadoSaldos();
 
   /* ====================================================
      1b. OCULTAR MONTOS EN ÁREAS DINÁMICAS
@@ -162,6 +157,14 @@
   window.addEventListener('appDataLoaded', function(){
     SALDO_DINAMICO_IDS.forEach(_observarAreaSaldo);
   });
+
+  // Restaurar de una vez el estado guardado (botón + montos ya presentes en
+  // el HTML inicial). Se hace acá, después de definir SALDO_DINAMICO_IDS y
+  // _aplicarOcultoEnAreas (más arriba), porque _aplicarEstadoSaldos() llama
+  // a _aplicarOcultoEnAreas() y esta última depende de SALDO_DINAMICO_IDS —
+  // llamarla antes de que ese const se inicialice tira
+  // "Cannot access 'SALDO_DINAMICO_IDS' before initialization" (TDZ).
+  _aplicarEstadoSaldos();
 
   /* ====================================================
      2. BÚSQUEDA GLOBAL — migrado a js/core/busqueda-global.js

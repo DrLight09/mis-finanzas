@@ -11,7 +11,8 @@
     '#heroTotal','#s-disp','#s-nu','#s-ef','#s-nequi','#s-prest','#s-cdt',
     '#s-gf','#s-gv','#s-gtotal','.hero-amount','.stat-value','.row-amount',
     '#det-nequi-saldo','#det-ef-saldo','#nuTotalDisp','#sel-nequi-saldo',
-    '#sel-nu-saldo','#sel-ef-saldo','.cajita-val','#det-custom-saldo'
+    '#sel-nu-saldo','#sel-ef-saldo','.cajita-val','#det-custom-saldo',
+    '#tc-hero-cupo'
   ];
 
   function toggleSaldos(){
@@ -47,8 +48,12 @@
          crédito, cuentas personalizadas en "Cuentas", las
          listas de gastos variables/fijos en "Gastos", los
          listados y el historial de Préstamos (me deben / yo
-         debo), la lista y estadísticas de Spotify, y la lista
-         de tarjetas en la pantalla Tarjetas de crédito). Estos
+         debo), la lista y estadísticas de Spotify, la lista
+         de tarjetas en la pantalla Tarjetas de crédito, y todo
+         el contenido de Análisis financiero: balance del mes,
+         comparación con el mes anterior, historial de
+         patrimonio, categorías, gráfico de gastos por mes,
+         ranking de meses y presupuestos). Estos
          contenedores se re-renderizan completos con innerHTML
          desde otros módulos (inicio.js y los módulos de
          tarjetas/cuentas/gastos), así que en vez de apuntar a
@@ -68,7 +73,13 @@
     // Spotify: lista de personas, estadísticas (ganancias) e historial de cobros
     'spotifyList','spStats','spHistorial',
     // Tarjetas de crédito: lista de tarjetas (screen-tarjetas)
-    'tc-lista'];
+    'tc-lista',
+    // Análisis financiero: balance del mes, comparación con mes
+    // anterior, historial de patrimonio, categorías, gráfico de
+    // gastos por mes, ranking de meses, presupuestos e ingresos fijos
+    'analisis-balance-hero','an-comparacion','an-patrimonio-chart',
+    'an-cats-mes','an-grafico-barras','an-grafico-labels',
+    'an-ranking-meses','an-presupuestos','an-ingresos-fijos-list'];
   const REGEX_MONTO = /[-+]?\$\s?\d[\d.,]*/g;
 
   function _envolverMontos(root){

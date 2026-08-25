@@ -420,7 +420,7 @@ function renderProyeccion(){
   // a 3/6/12 meses no aportan nada (es una estimación, no un saldo exacto) y solo
   // generan ruido visual. No se usa window.fmt aquí para no depender de si ese
   // formateador global decide mostrar decimales.
-  const fmt = x=>Math.round(x).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).replace(/\u00a0/g,' ');
+  const fmt = x=>Math.round(x).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).replace(/\u00a0/g,'');
   const patrimonio = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
   if(!patrimonio){ el.innerHTML = '<div class="row"><span style="font-size:12px;color:var(--text3);">Sin datos suficientes</span></div>'; return; }
 
@@ -540,7 +540,7 @@ function renderProyeccion(){
 
   // Bind listeners DESPUÉS de setear innerHTML
   (function(){
-    const fmt2 = x=>Math.round(x).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).replace(/\u00a0/g,' ');
+    const fmt2 = x=>Math.round(x).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).replace(/\u00a0/g,'');
     const tt = el.querySelector('#_proy-tt');
     if(!tt) return;
     function showTT(html){ tt.innerHTML=html; tt.style.display='block'; clearTimeout(window._proyTT_t); window._proyTT_t=setTimeout(()=>{ tt.style.display='none'; },3000); }

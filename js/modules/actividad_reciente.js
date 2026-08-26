@@ -46,16 +46,24 @@
    inline en index.html — pertenece a la migración de Configuración,
    no a este módulo, así que no se toca acá.
 
-   ── .innerHTML: sin hallazgos ────────────────────────────────────
+   ── .innerHTML: migrado a html`` ──────────────────────────────────
    Los dos únicos usos de `.innerHTML` (mensaje de "vacío" y el
-   render principal de `renderFeedActividad()`) ya pasan todo el
-   texto libre (`item.titulo`, `item.subtitulo`) por `esc()` en el
-   único punto de salida — todas las fuentes (`_normMovimientos`,
-   `_normGastos`, `_normDeudores`, `_normSpotify`, `_normEncargos`,
-   `_normTC`, `_normCP`) confluyen ahí antes de tocar el DOM, así que
-   no hay forma de que texto libre llegue sin escapar. Tercera vez
-   (de once módulos) que este hallazgo sale limpio, junto con
-   Alcancía y Configuración.
+   render principal de `renderFeedActividad()`) ya pasaban todo el
+   texto libre (`item.titulo`, `item.subtitulo`) por `esc()` a mano
+   en el único punto de salida — sin bug real, esta migración es solo
+   consistencia con el resto de módulos (ver "Lo que queda" en
+   auditoria-tecnica.md, punto 2). Convertido a fragmentos html``
+   anidados (por fecha → por ítem), sin `.join()` explícito, mismo
+   patrón que inicio.js/analisis.js: el html`` exterior concatena los
+   fragmentos internos sin volver a escapar lo que cada uno ya
+   escapó. `ik.bg`/`ik.svg` (del diccionario fijo `ICONOS`) y
+   `colorReal` (siempre `var(--accent)`/`var(--red)`/`#1ed760`, nunca
+   texto libre) se envuelven en `raw()` a propósito — no son datos
+   del usuario. Se renombró la variable local `html` a `contenido`
+   (implícito al reescribir la función: ya no existe una variable
+   `html` de string, sino el uso directo de la función global) para
+   no repetir el hallazgo de sombra de variable ya corregido en
+   mesada.js. Sin verificar en navegador real.
    ═══════════════════════════════════════════════════════════════ */
 
 (function(){
@@ -346,7 +354,6 @@
 
     var Sx = window.S || {};
     var f  = window.fmt || function(v){ return '$' + Math.round(v).toLocaleString('es-CO'); };
-    var esc = window.escHtml || function(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
 
     // Recopilar y mezclar todas las fuentes
     var todos = [].concat(
@@ -382,7 +389,7 @@
     var visibles = todos.slice(0, MAX_ITEMS);
 
     if (!visibles.length) {
-      el.innerHTML = '<div class="feed-empty">Aún no hay actividad registrada.</div>';
+      el.innerHTML = html`<div class="feed-empty">Aún no hay actividad registrada.</div>`;
       return;
     }
 
@@ -397,28 +404,29 @@
       grupos[item.fecha].push(item);
     });
 
-    // Construir HTML
-    var html = '';
-    orden.forEach(function(fecha) {
+    // Construir HTML — fragmentos html`` anidados (sin .join() explícito:
+    // el html`` exterior sabe concatenarlos sin volver a escapar lo que
+    // cada uno ya escapó, mismo patrón que inicio.js/analisis.js).
+    var grupoFrags = orden.map(function(fecha) {
       var label = _labelFecha(fecha);
-      html += '<div class="feed-group-header">' + label + '</div>';
-      grupos[fecha].forEach(function(item) {
+      var itemFrags = grupos[fecha].map(function(item) {
         var ik  = ICONOS[item.tipo] || ICONOS.gasto;
         var colorMonto = item.signo === '+' ? 'var(--accent)' : 'var(--red)';
         var colorReal  = item.tipo === 'spotify' ? '#1ed760' : colorMonto;
-        var badge = item._esPagoFijo ? '<span class="feed-badge-fijo">Gasto fijo</span>' : '';
-        html += '<div class="feed-item">'
-          + '<div class="feed-icon" style="background:' + ik.bg + ';">' + ik.svg + '</div>'
-          + '<div class="feed-body">'
-          + '<div class="feed-titulo">' + esc(item.titulo) + badge + '</div>'
-          + (item.subtitulo ? '<div class="feed-sub">' + esc(item.subtitulo) + '</div>' : '')
-          + '</div>'
-          + '<div class="feed-monto" style="color:' + colorReal + ';">' + item.signo + f(item.monto) + '</div>'
-          + '</div>';
+        var badge = item._esPagoFijo ? html`<span class="feed-badge-fijo">Gasto fijo</span>` : '';
+        return html`<div class="feed-item">
+          <div class="feed-icon" style="background:${raw(ik.bg)};">${raw(ik.svg)}</div>
+          <div class="feed-body">
+            <div class="feed-titulo">${item.titulo}${badge}</div>
+            ${item.subtitulo ? html`<div class="feed-sub">${item.subtitulo}</div>` : ''}
+          </div>
+          <div class="feed-monto" style="color:${raw(colorReal)};">${item.signo}${raw(f(item.monto))}</div>
+        </div>`;
       });
+      return html`<div class="feed-group-header">${label}</div>${itemFrags}`;
     });
 
-    el.innerHTML = html;
+    el.innerHTML = html`${grupoFrags}`;
   }
 
   // Exponer globalmente

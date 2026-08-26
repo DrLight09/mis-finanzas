@@ -104,7 +104,7 @@ function _poblarMpEncargoCuentas(){
   if(!enc){sel.innerHTML='';return;}
   const cuentas=typeof _getEncargoSaldoPorCuenta==='function'?_getEncargoSaldoPorCuenta(enc):[];
   const sinCuenta=typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0;
-  let opts=cuentas.map(c=>`<option value="${c.cuenta}">${escHtml(c.label)} (${fmt(c.saldo)})</option>`).join('');
+  let opts=cuentas.map(c=>html`<option value="${c.cuenta}">${c.label} (${fmt(c.saldo)})</option>`).join('');
   if(sinCuenta>0.5)opts+=`<option value="">Sin especificar (${fmt(sinCuenta)})</option>`;
   sel.innerHTML=opts||'<option value="">Sin especificar</option>';
   actualizarMpPreview();
@@ -137,7 +137,7 @@ function _poblarMppEncargoCuentas(){
   if(!enc){sel.innerHTML='';return;}
   const cuentas=typeof _getEncargoSaldoPorCuenta==='function'?_getEncargoSaldoPorCuenta(enc):[];
   const sinCuenta=typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0;
-  let opts=cuentas.map(c=>`<option value="${c.cuenta}">${escHtml(c.label)} (${fmt(c.saldo)})</option>`).join('');
+  let opts=cuentas.map(c=>html`<option value="${c.cuenta}">${c.label} (${fmt(c.saldo)})</option>`).join('');
   if(sinCuenta>0.5)opts+=`<option value="">Sin especificar (${fmt(sinCuenta)})</option>`;
   sel.innerHTML=opts||'<option value="">Sin especificar</option>';
   actualizarMppPreview();
@@ -425,7 +425,7 @@ function abrirRegistrarMesada(parent,key,nombre){
       const subEnc=document.getElementById('mpEncargoSub');
       if(subEnc)subEnc.textContent='Tenés '+fmt(totalDisp)+' guardados de '+pNombre+' en encargos';
       const selEnc=document.getElementById('mpEncargoSel');
-      if(selEnc)selEnc.innerHTML=encMatches.map(x=>`<option value="${x.enc.id}">${escHtml(x.enc.nombre)} (${fmt(x.saldo)})</option>`).join('');
+      if(selEnc)selEnc.innerHTML=encMatches.map(x=>html`<option value="${x.enc.id}">${x.enc.nombre} (${fmt(x.saldo)})</option>`).join('');
       const selWrapEnc=document.getElementById('mpEncargoSelWrap');
       if(selWrapEnc)selWrapEnc.style.display=encMatches.length>1?'':'none';
       mpEncargoActualId=encMatches[0].enc.id;
@@ -683,15 +683,15 @@ function abrirDetalleMesada(parent,key,nombre){
   document.getElementById('mdTitle').textContent=pNombre+' · '+nombre;
   let destinoHtml='';
   const origenEncargoHtml=info.origenEncargo
-    ?`<div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Pagó con</span><span class="badge" style="background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);">Plata guardada de ${escHtml(info.origenEncargo.nombre)}</span></div>`
+    ?html`<div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Pagó con</span><span class="badge" style="background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);">Plata guardada de ${info.origenEncargo.nombre}</span></div>`
     :'';
   if(info.splits&&info.splits.length){
-    destinoHtml=`<div style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Dividido en</span>
+    destinoHtml=html`<div style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Dividido en</span>
       <div style="margin-top:5px;display:flex;flex-direction:column;gap:4px;">
-        ${info.splits.map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;"><span class="badge ${fuenteBadgeClass(s.fuente||'')}" style="font-size:9px;">${escHtml(fuenteLabel(s.fuente||''))}</span><span style="font-size:12px;font-family:\'DM Mono\',monospace;color:var(--accent);">+${fmt(s.monto)}</span></div>`).join('')}
+        ${raw(info.splits.map(s=>html`<div style="display:flex;justify-content:space-between;align-items:center;"><span class="badge ${raw(fuenteBadgeClass(s.fuente||''))}" style="font-size:9px;">${fuenteLabel(s.fuente||'')}</span><span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(s.monto)}</span></div>`).join(''))}
       </div></div>`;
   } else if(info.destino){
-    destinoHtml=`<div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Lo metiste en</span><span class="badge ${fuenteBadgeClass(info.destino)}">${escHtml(fuenteLabel(info.destino))}</span></div>`;
+    destinoHtml=html`<div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Lo metiste en</span><span class="badge ${raw(fuenteBadgeClass(info.destino))}">${fuenteLabel(info.destino)}</span></div>`;
   }
   destinoHtml=origenEncargoHtml+destinoHtml;
   // ── Pendiente: estado y acciones ──────────────────────────────────
@@ -703,32 +703,32 @@ function abrirDetalleMesada(parent,key,nombre){
 
   let pendienteHtml='';
   if(info.cuotaEsperada&&(tienePendienteDet||tieneHistorialDet)){
-    pendienteHtml=`
-    <div class="card card-sm" style="margin-bottom:10px;border-left:4px solid ${tienePendienteDet?'var(--amber)':'var(--accent)'};background:${tienePendienteDet?'rgba(240,184,64,.06)':'rgba(200,240,96,.06)'};">
+    pendienteHtml=html`
+    <div class="card card-sm" style="margin-bottom:10px;border-left:4px solid ${raw(tienePendienteDet?'var(--amber)':'var(--accent)')};background:${raw(tienePendienteDet?'rgba(240,184,64,.06)':'rgba(200,240,96,.06)')};">
       <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Cuota esperada</span><span style="font-size:13px;font-family:'DM Mono',monospace;">${fmt(info.cuotaEsperada)}</span></div>
-      ${tienePendienteDet?`<div class="row" style="margin-bottom:2px;"><span style="font-size:12px;color:var(--amber);font-weight:600;">Pendiente</span><span class="row-amount c-amber">${fmt(info.pendiente)}</span></div>`:`<div style="font-size:12px;color:var(--accent);font-weight:600;">✓ Ya te dio todo lo que faltaba</div>`}
-      ${tieneHistorialDet?`<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px;">${info.pendienteHistorial.map((h,idx)=>`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);gap:8px;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.fecha||''}${h.origenEncargo?' · Plata guardada de '+escHtml(h.origenEncargo.nombre):(h.destino?' · '+escHtml(fuenteLabel(h.destino)):'')}${h.nota?' · '+escHtml(h.nota):''}</span><span style="display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(h.monto)}</span><span ${Events.attr('mesada:deshacerPendiente', parent, key, idx)} style="cursor:pointer;color:var(--red);font-size:13px;line-height:1;" title="Deshacer este abono">✕</span></span></div>`).join('')}</div>`:''}
-      ${tienePendienteDet?`<button type="button" class="btn" style="margin-top:10px;background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.3);color:var(--amber);" ${Events.attr('mesada:resolverPendiente', parent, key)}>Registrar pago de lo pendiente</button>`:''}
+      ${tienePendienteDet?html`<div class="row" style="margin-bottom:2px;"><span style="font-size:12px;color:var(--amber);font-weight:600;">Pendiente</span><span class="row-amount c-amber">${fmt(info.pendiente)}</span></div>`:html`<div style="font-size:12px;color:var(--accent);font-weight:600;">✓ Ya te dio todo lo que faltaba</div>`}
+      ${tieneHistorialDet?html`<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px;">${raw(info.pendienteHistorial.map((h,idx)=>html`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);gap:8px;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.fecha||''}${h.origenEncargo?' · Plata guardada de '+h.origenEncargo.nombre:(h.destino?' · '+fuenteLabel(h.destino):'')}${h.nota?' · '+h.nota:''}</span><span style="display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(h.monto)}</span><span ${raw(Events.attr('mesada:deshacerPendiente', parent, key, idx))} style="cursor:pointer;color:var(--red);font-size:13px;line-height:1;" title="Deshacer este abono">✕</span></span></div>`).join(''))}</div>`:''}
+      ${tienePendienteDet?html`<button type="button" class="btn" style="margin-top:10px;background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.3);color:var(--amber);" ${raw(Events.attr('mesada:resolverPendiente', parent, key))}>Registrar pago de lo pendiente</button>`:''}
     </div>`;
   } else if(puedeMarcarPendiente){
-    pendienteHtml=`
+    pendienteHtml=html`
     <div class="card card-sm" style="margin-bottom:10px;border-left:4px solid var(--border2);">
       <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Este mes recibiste menos que la cuota (${fmt(cuotaDelMesDet)}). ¿Te quedó debiendo la diferencia?</div>
-      <button type="button" class="btn" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.3);color:var(--amber);" ${Events.attr('mesada:marcarPendiente', parent, key)}>Marcar diferencia como pendiente</button>
+      <button type="button" class="btn" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.3);color:var(--amber);" ${raw(Events.attr('mesada:marcarPendiente', parent, key))}>Marcar diferencia como pendiente</button>
     </div>`;
   }
 
-  let html=`
+  const contenido=html`
     <div class="card card-sm" style="margin-bottom:10px;">
       <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Monto</span><span class="row-amount c-green">${fmt(info.monto)}</span></div>
       <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Fecha</span><span style="font-size:13px;font-family:'DM Mono',monospace;">${info.fecha||'—'}</span></div>
-      ${destinoHtml}
-      ${info.nota?`<div style="font-size:12px;color:var(--text2);margin-top:4px;">${escHtml(info.nota)}</div>`:''}
+      ${raw(destinoHtml)}
+      ${info.nota?html`<div style="font-size:12px;color:var(--text2);margin-top:4px;">${info.nota}</div>`:''}
     </div>
-    ${pendienteHtml}
-    <button type="button" class="btn" style="background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);" ${Events.attr('mesada:eliminarPago', parent, key)}>Borrar este registro</button>
+    ${raw(pendienteHtml)}
+    <button type="button" class="btn" style="background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);" ${raw(Events.attr('mesada:eliminarPago', parent, key))}>Borrar este registro</button>
   `;
-  document.getElementById('mdContent').innerHTML=html;
+  document.getElementById('mdContent').innerHTML=contenido;
   openSheet('mesada-det');
 }
 
@@ -886,7 +886,7 @@ function abrirResolverPendiente(parent,key){
       const subEnc=document.getElementById('mppEncargoSub');
       if(subEnc)subEnc.textContent='Tenés '+fmt(totalDisp)+' guardados de '+pNombre+' en encargos';
       const selEnc=document.getElementById('mppEncargoSel');
-      if(selEnc)selEnc.innerHTML=encMatches.map(x=>`<option value="${x.enc.id}">${escHtml(x.enc.nombre)} (${fmt(x.saldo)})</option>`).join('');
+      if(selEnc)selEnc.innerHTML=encMatches.map(x=>html`<option value="${x.enc.id}">${x.enc.nombre} (${fmt(x.saldo)})</option>`).join('');
       const selWrapEnc=document.getElementById('mppEncargoSelWrap');
       if(selWrapEnc)selWrapEnc.style.display=encMatches.length>1?'':'none';
       mppEncargoActualId=encMatches[0].enc.id;

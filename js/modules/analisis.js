@@ -137,20 +137,25 @@ function renderAnalisis(){
     if(!catsOrdenadas.length){
       catsEl.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0;">Sin gastos registrados este mes.</div>';
     } else {
-      catsEl.innerHTML=catsOrdenadas.map(([cat,monto],i)=>{
+      // Migrado a html`` (ver auditoria-tecnica.md, cierre de la discrepancia
+      // 2026-08-25 — este era el último sitio de renderAnalisis() sin migrar).
+      // `col` es un valor fijo tomado de un array de variables CSS del propio
+      // código, nunca texto de usuario — se envuelve en raw() a propósito,
+      // igual que ya hace renderPresupuestos() con su variable `col` análoga.
+      catsEl.innerHTML=html`${catsOrdenadas.map(([cat,monto],i)=>{
         const pct=Math.round((monto/maxCat)*100);
         const colors=['var(--red)','var(--amber)','var(--accent)','var(--blue)','var(--purple)'];
         const col=colors[i]||'var(--text2)';
-        return`<div style="margin-bottom:${i<catsOrdenadas.length-1?'11':'0'}px;">
+        return html`<div style="margin-bottom:${i<catsOrdenadas.length-1?'11':'0'}px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-            <span style="font-size:12px;font-weight:600;">${escHtml(cat)}</span>
-            <span style="font-size:12px;font-family:'DM Mono',monospace;color:${col};">${fmt(monto)}</span>
+            <span style="font-size:12px;font-weight:600;">${cat}</span>
+            <span style="font-size:12px;font-family:'DM Mono',monospace;color:${raw(col)};">${fmt(monto)}</span>
           </div>
           <div style="height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;">
-            <div style="height:100%;width:${pct}%;background:${col};border-radius:2px;transition:width .5s;"></div>
+            <div style="height:100%;width:${pct}%;background:${raw(col)};border-radius:2px;transition:width .5s;"></div>
           </div>
         </div>`;
-      }).join('');
+      })}`;
     }
   }
 
@@ -516,19 +521,34 @@ function renderIngresosFijos(){
     el.innerHTML='<div style="padding:13px 0;font-size:12px;color:var(--text3);">Sin ingresos fijos. Agregá tu sueldo, freelance u otro ingreso recurrente.</div>';
     return;
   }
+  // Migrado a html`` (ver auditoria-tecnica.md, cierre de la discrepancia
+  // 2026-08-25). `ing.nombre` e `ing.desde` son los dos campos de texto libre
+  // reales acá (nombre del ingreso, fecha "desde" — texto libre según lo ya
+  // anotado el 2026-08-15, sin confirmar si el input es type="month" o
+  // texto suelto; con html`` deja de importar). `Events.attr(...)` se
+  // envuelve en raw(): arma su propio HTML de atributos y solo recibe
+  // `ing.id` (uid interno generado por el propio código, no texto de
+  // usuario) — sin relación con el hallazgo abierto sobre Events.attr() en
+  // configuracion.js (ese es con texto libre real). El array se sigue
+  // uniendo con `.join(divider)` en vez de dejar que el html`` externo lo
+  // autoconcatene: acá hace falta el separador visual entre ingresos, algo
+  // que el patrón "arrays sin .join()" no cubre (ese concatena sin nada en
+  // el medio). Cada `html\`...\`` interno ya devuelve un fragmento seguro;
+  // `.join()` lo coacciona a string vía su propio `toString()`, sin volver
+  // a escapar nada — misma coerción implícita ya validada para innerHTML.
   el.innerHTML=lista.map(ing=>{
-    const desdeLabel=ing.desde?`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">desde ${escHtml(ing.desde)}</span>`:'';
-    return`<div class="row" style="padding:12px 0;">
+    const desdeLabel=ing.desde?html`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">desde ${ing.desde}</span>`:'';
+    return html`<div class="row" style="padding:12px 0;">
       <div style="display:flex;flex-direction:column;gap:2px;flex:1;">
-        <span style="font-size:13px;font-weight:600;">${escHtml(ing.nombre||'Sin nombre')}</span>
+        <span style="font-size:13px;font-weight:600;">${ing.nombre||'Sin nombre'}</span>
         ${desdeLabel}
       </div>
       <div style="display:flex;align-items:center;gap:10px;">
         <span style="font-size:14px;font-family:'DM Mono',monospace;color:var(--accent);font-weight:600;">${fmt(ing.monto||0)}</span>
-        <button type="button" ${Events.attr('analisis:editarIngresoFijo', ing.id)} style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;font-size:13px;">
+        <button type="button" ${raw(Events.attr('analisis:editarIngresoFijo', ing.id))} style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;font-size:13px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        <button type="button" ${Events.attr('analisis:eliminarIngresoFijo', ing.id)} style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:13px;">
+        <button type="button" ${raw(Events.attr('analisis:eliminarIngresoFijo', ing.id))} style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:13px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         </button>
       </div>

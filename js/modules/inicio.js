@@ -36,6 +36,20 @@
    ================================================================ */
 
 /* ---- DASHBOARD ATENCIÓN ---- */
+// Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md "Auditoría
+// exhaustiva de .innerHTML" — nota 2026-08-25, cierre de la discrepancia
+// abierta desde el 2026-07-22, cuando este módulo había quedado listado como
+// "migrado" sin serlo realmente). `texto` ahora se arma con html`` en cada
+// `items.push(...)`: el resultado es un fragmento ya-seguro (misma propiedad
+// de "anidamiento sin doble escapado" validada con el piloto de
+// abrirPresupuestos()/renderPresupuestos() en analisis.js), así que el
+// render final (más abajo) puede interpolar `it.texto` sin volver a escapar
+// ni perder el escapado ya aplicado acá. d.nombre, tc.nombre, spNombreDe(p),
+// c.nombre, enc.nombre y p.desc son los seis campos de texto libre reales de
+// esta función — pNombre y _mesNombreDeKey(k) son vocabulario fijo/fechas
+// calculadas, sin riesgo, pero quedan igual bajo el escapado por defecto de
+// html`` sin que eso cambie cómo se ven (dígitos y texto fijo no tienen
+// caracteres especiales de HTML).
 function renderAttencion(){
   const items=[];
   const hoyStr=hoy();
@@ -43,7 +57,7 @@ function renderAttencion(){
   if(typeof getDeudorSaldo==='function'){
     (S.deudores||[]).forEach(d=>{
       const s=getDeudorSaldo(d);
-      if(s>0) items.push({tipo:'amber',texto:`${escHtml(d.nombre)} te debe ${fmt(s)}`});
+      if(s>0) items.push({tipo:'amber',texto:html`${d.nombre} te debe ${fmt(s)}`});
     });
   }
   // Mesadas con pago parcial que quedó pendiente
@@ -54,7 +68,7 @@ function renderAttencion(){
       Object.keys(data).forEach(k=>{
         const info=data[k];
         if(info&&info.pendiente>0){
-          items.push({tipo:'amber',texto:`${pNombre} te debe ${fmt(info.pendiente)} de la mesada de ${_mesNombreDeKey(k)}`});
+          items.push({tipo:'amber',texto:html`${pNombre} te debe ${fmt(info.pendiente)} de la mesada de ${_mesNombreDeKey(k)}`});
         }
       });
     });
@@ -68,26 +82,27 @@ function renderAttencion(){
     if(typeof tcCupoUsadoPct!=='function')return;
     const pct=tcCupoUsadoPct(tc);
     if(pct>=100){
-      items.push({tipo:'red',texto:`${escHtml(tc.nombre)}: cupo agotado — deuda ${fmt(tc.deuda||0)}`,_tcId:tc.id});
+      items.push({tipo:'red',texto:html`${tc.nombre}: cupo agotado — deuda ${fmt(tc.deuda||0)}`,_tcId:tc.id});
     } else if(pct>=85){
-      items.push({tipo:'amber',texto:`${escHtml(tc.nombre)}: cupo casi agotado (${pct.toFixed(0)}% usado)`,_tcId:tc.id});
+      items.push({tipo:'amber',texto:html`${tc.nombre}: cupo casi agotado (${pct.toFixed(0)}% usado)`,_tcId:tc.id});
     }
   });
   // Spotify personas vencidas (solo si el módulo está activo)
   if(S.modulos&&S.modulos.spotify&&typeof spPersonaPagadaVigente==='function'&&typeof spNombreDe==='function'){
     (S.spotifyPersonas||[]).forEach(p=>{
       if(p.proximoPago&&p.proximoPago<hoyStr&&!spPersonaPagadaVigente(p)){
-        // spNombreDe() devuelve texto libre (nombre de persona) — se escapa acá.
-        // Mismo hallazgo repetido una sexta vez, ver auditoria-tecnica.md #2.
-        items.push({tipo:'red',texto:`Cobro Spotify de ${escHtml(spNombreDe(p))} vencido`});
+        // spNombreDe() devuelve texto libre (nombre de persona) — html`` lo
+        // escapa por defecto. Mismo hallazgo que motivó el fix original con
+        // escHtml() a mano (2026-07-22), ahora bajo la protección automática.
+        items.push({tipo:'red',texto:html`Cobro Spotify de ${spNombreDe(p)} vencido`});
       }
     });
   }
   // Cajitas con CDT próximas a vencer (7 días)
   (S.cajitas||[]).forEach(c=>{(c.cdts||[]).filter(cdt=>cdt.vence).forEach(cdt=>{
     const diasRestantes=Math.ceil((new Date(cdt.vence+'T00:00:00')-new Date())/86400000);
-    if(diasRestantes>=0&&diasRestantes<=7) items.push({tipo:'amber',texto:`CDT "${escHtml(c.nombre)}" vence en ${diasRestantes}d`});
-    if(diasRestantes<0) items.push({tipo:'red',texto:`CDT "${escHtml(c.nombre)}" venció — ¡libera tu plata!`});
+    if(diasRestantes>=0&&diasRestantes<=7) items.push({tipo:'amber',texto:html`CDT "${c.nombre}" vence en ${diasRestantes}d`});
+    if(diasRestantes<0) items.push({tipo:'red',texto:html`CDT "${c.nombre}" venció — ¡libera tu plata!`});
   });});
   // Partes comprometidas de un encargo (§ "¿Para qué es esta plata?") cuya
   // fecha de uso ya está cerca. Desde 1 día antes avisa en ámbar; si ya
@@ -97,9 +112,9 @@ function renderAttencion(){
     (enc.partes||[]).filter(p=>!p.usada&&p.fecha).forEach(p=>{
       const dias=Math.round((new Date(p.fecha+'T00:00:00')-new Date(hoyStr+'T00:00:00'))/86400000);
       if(dias<0){
-        items.push({tipo:'red',texto:`${escHtml(enc.nombre)}: "${escHtml(p.desc)}" (${fmt(p.monto)}) venció hace ${Math.abs(dias)}d sin usarse — sigue comprometida`});
+        items.push({tipo:'red',texto:html`${enc.nombre}: "${p.desc}" (${fmt(p.monto)}) venció hace ${Math.abs(dias)}d sin usarse — sigue comprometida`});
       } else if(dias<=1){
-        items.push({tipo:'amber',texto:`${escHtml(enc.nombre)}: "${escHtml(p.desc)}" (${fmt(p.monto)}) es ${dias===0?'hoy':'mañana'} — esa plata ya está comprometida`});
+        items.push({tipo:'amber',texto:html`${enc.nombre}: "${p.desc}" (${fmt(p.monto)}) es ${dias===0?'hoy':'mañana'} — esa plata ya está comprometida`});
       }
     });
   });
@@ -185,9 +200,14 @@ function renderAttencion(){
     localStorage.setItem('attn-open', isOpen ? '1' : '0');
   }
 
-  list.innerHTML=items.map(it=>`<div class="card card-sm ${it.tipo==='red'?'attn-card-red':'attn-card'}" style="margin-bottom:7px;">
-    <div style="font-size:12px;color:${it.tipo==='red'?'var(--red)':'var(--amber)'};">${it.texto}</div>
-  </div>`).join('');
+  // it.texto ya es un fragmento html`` seguro (armado más arriba, en cada
+  // items.push) — se interpola tal cual, sin volver a pasar por escapado
+  // (misma propiedad de anidamiento que abrirPresupuestos()/renderPresupuestos()
+  // en analisis.js). raw(it.tipo) porque tipo es vocabulario fijo del propio
+  // código ('red'/'amber'), nunca texto del usuario.
+  list.innerHTML=html`${items.map(it=>html`<div class="card card-sm ${raw(it.tipo==='red'?'attn-card-red':'attn-card')}" style="margin-bottom:7px;">
+    <div style="font-size:12px;color:${raw(it.tipo==='red'?'var(--red)':'var(--amber)')};">${it.texto}</div>
+  </div>`)}`;
 }
 
 /* ====================================================

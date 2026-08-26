@@ -36,6 +36,34 @@
    propio selector a mano en vez de usar poblarFuente(), mismo
    hallazgo puntual que ya tenía Tarjetas de Crédito).
 
+   Migración a html`` (auditoria-tecnica.md #2, sesión posterior):
+   renderMesFiltros(), renderGastosVar() (itemHtml incluida) y
+   renderGastosFijos() migrados, más el <option> de
+   abrirPagarGastoFijo(). Los toast() de arriba se dejan con
+   escHtml() a mano — mismo criterio ya aplicado en el resto de
+   módulos migrados (Mesada, Spotify, Inicio, Análisis). Dos
+   hallazgos reales de paso:
+   1. Sombra de variable: `let html=''` en renderGastosVar() tapaba
+      la función global html`` — mismo bug ya corregido antes en
+      mesada.js. Renombrada a `contenido` (ahora un array, no un
+      string — los fragmentos html``/arrays anidados se concatenan
+      solos sin re-escapar, sin necesitar `.join('')` ni `raw()`).
+   2. `f.val` (value del <option> de cuentas) NO se envolvió en
+      raw() pese a parecerse al caso de `ing.id` en analisis.js:
+      sin `core-state.js`/`getFuentes()` a la vista no hay forma de
+      confirmar que `val` sea siempre un id fijo y no texto de una
+      cuenta personalizada — se escapa por defecto hasta confirmar
+      lo contrario. Una simulación jsdom con un `val` malicioso
+      confirmó que envolverlo en raw() sí sería explotable si el
+      supuesto fuera falso.
+   Validado con node --check y jsdom (payloads maliciosos en desc,
+   cat, nota, fuenteLabel de splits, _origenSeccion, nombre de gasto
+   fijo, y label/val de fuentes) verificando por DOM real (no por
+   substring del HTML serializado, que puede mostrar `<`/`>`
+   literales dentro de un atributo sin ser un problema real) que
+   ningún payload crea nodos/atributos nuevos. Sin verificar en
+   navegador real.
+
    Hallazgo nuevo (mismo problema de fondo, no es un onclick): el
    sheet "pagar-gasto-fijo" tenía un onclick y un onchange inline en
    controles estáticos (no en plantillas de este módulo). En su
@@ -137,10 +165,10 @@ function renderMesFiltros() {
   meses.add('todos');
   (S.gastosVar || []).forEach(g => { if (g.fecha) meses.add(mesKey(g.fecha)); });
   const sorted = ['todos', ...[...meses].filter(m => m !== 'todos').sort().reverse()];
-  document.getElementById('mesFilter').innerHTML = sorted.map(m => `
-    <div class="mf-chip ${mesFilter === m ? 'active' : ''}" ${Events.attr('gastos:setMesFiltro', m)}>
+  document.getElementById('mesFilter').innerHTML = html`${sorted.map(m => html`
+    <div class="${raw('mf-chip ' + (mesFilter === m ? 'active' : ''))}" ${raw(Events.attr('gastos:setMesFiltro', m))}>
       ${m === 'todos' ? 'Todos' : MC[parseInt(m.split('-')[1]) - 1] + ' ' + m.split('-')[0]}
-    </div>`).join('');
+    </div>`)}`;
   renderGastosVar();
 }
 
@@ -183,64 +211,67 @@ function renderGastosVar() {
     const esPagoTC = !!g._esPagoTC;
     const esSecundario = !!g._secundario;
     const colorMonto = esFijo ? 'var(--text2)' : esTC ? 'var(--red)' : esPagoTC ? 'var(--accent)' : 'var(--red)';
-    return `<div class="gasto-item" style="${(esFijo || esPagoTC) ? 'opacity:.75;' : ''}">
+    return html`<div class="gasto-item" style="${raw((esFijo || esPagoTC) ? 'opacity:.75;' : '')}">
       <div class="gasto-item-top">
         <div style="flex:1;min-width:0;">
-          <div class="row-name" style="font-size:13px;display:flex;align-items:center;gap:6px;">${escHtml(g.desc)}${esSecundario ? `<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:1px 5px;white-space:nowrap;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
+          <div class="row-name" style="font-size:13px;display:flex;align-items:center;gap:6px;">${g.desc}${esSecundario ? html`<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:1px 5px;white-space:nowrap;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
           <div class="row-sub">${g.fecha}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span class="row-amount" style="color:${colorMonto};">${esPagoTC ? '-' : ''}${fmt(g.monto)}</span>
+          <span class="row-amount" style="color:${raw(colorMonto)};">${esPagoTC ? '-' : ''}${fmt(g.monto)}</span>
           ${esSecundario
-            ? `<span title="Generado automáticamente — elimínalo desde ${escHtml(g._origenSeccion || 'la sección de origen')}" style="display:flex;align-items:center;justify-content:center;padding:4px;color:var(--text3);opacity:.4;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
-            : `<button type="button" class="btn-delete-hover" ${Events.attr('gastos:deleteGastoVar', g.id)} title="Eliminar">
+            ? html`<span title="Generado automáticamente — elimínalo desde ${g._origenSeccion || 'la sección de origen'}" style="display:flex;align-items:center;justify-content:center;padding:4px;color:var(--text3);opacity:.4;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
+            : html`<button type="button" class="btn-delete-hover" ${raw(Events.attr('gastos:deleteGastoVar', g.id))} title="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>`}
         </div>
       </div>
       <div class="gasto-item-meta">
-        ${esFijo ? `<span class="badge" style="font-size:9px;background:rgba(200,240,96,.1);color:var(--accent);border:1px solid rgba(200,240,96,.2);">Fijo — ya sumado en Fijos mensuales</span>` :
-          esTC ? `<span class="badge bg-red" style="font-size:9px;">TC — deuda</span><span class="badge bg-blue" style="font-size:9px;">${escHtml(g.cat)}</span>` :
-          esPagoTC ? `<span class="badge bg-green" style="font-size:9px;">Pago TC</span>` :
-          `<span class="badge bg-blue" style="font-size:9px;">${escHtml(g.cat)}</span>`}
-        ${g.splits && g.splits.length ? `<span class="badge" style="font-size:9px;">Dividido: ${escHtml(g.splits.map(s => fuenteLabel(s.fuente || '')).join(', '))}</span>` : (g.fuente ? `<span class="badge ${fuenteBadgeClass(g.fuente)}" style="font-size:9px;">${escHtml(fuenteLabel(g.fuente))}</span>` : '')}
-        ${(!(esFijo || esTC) && g.nota) ? `<span style="font-size:10px;color:var(--text3);">${escHtml(g.nota)}</span>` : ''}
+        ${esFijo ? html`<span class="badge" style="font-size:9px;background:rgba(200,240,96,.1);color:var(--accent);border:1px solid rgba(200,240,96,.2);">Fijo — ya sumado en Fijos mensuales</span>` :
+          esTC ? html`<span class="badge bg-red" style="font-size:9px;">TC — deuda</span><span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>` :
+          esPagoTC ? html`<span class="badge bg-green" style="font-size:9px;">Pago TC</span>` :
+          html`<span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>`}
+        ${g.splits && g.splits.length ? html`<span class="badge" style="font-size:9px;">Dividido: ${g.splits.map(s => fuenteLabel(s.fuente || '')).join(', ')}</span>` : (g.fuente ? html`<span class="badge ${raw(fuenteBadgeClass(g.fuente))}" style="font-size:9px;">${fuenteLabel(g.fuente)}</span>` : '')}
+        ${(!(esFijo || esTC) && g.nota) ? html`<span style="font-size:10px;color:var(--text3);">${g.nota}</span>` : ''}
       </div>
     </div>`;
   }
 
-  let html = '';
+  // Nota: la variable local se llama `contenido`, no `html` — nombrarla
+  // `html` taparía la función global html`` dentro de esta misma función
+  // (mismo hallazgo real ya corregido en mesada.js, ver auditoria-tecnica.md #2).
+  const contenido = [];
   // Primero los gastos variables puros (excluir TC y pagos TC de este bloque)
   const gastosPurosNoTC = gastosVarPuros.filter(g => !g._esCompraTC);
-  html += gastosPurosNoTC.map(itemHtml).join('');
+  contenido.push(gastosPurosNoTC.map(itemHtml));
   // Compras en TC
   if (gastosTC.length) {
-    html += `<div style="margin:14px 0 8px;display:flex;align-items:center;gap:8px;">
+    contenido.push(html`<div style="margin:14px 0 8px;display:flex;align-items:center;gap:8px;">
       <div style="flex:1;height:1px;background:var(--border);"></div>
       <span style="font-size:10px;color:var(--red);font-family:'DM Mono',monospace;white-space:nowrap;">Compras en TC (${fmt(totalTC)})</span>
       <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>`;
-    html += gastosTC.map(itemHtml).join('');
+    </div>`);
+    contenido.push(gastosTC.map(itemHtml));
   }
   // Pagos de TC
   if (gastosPagoTC.length) {
-    html += `<div style="margin:14px 0 8px;display:flex;align-items:center;gap:8px;">
+    contenido.push(html`<div style="margin:14px 0 8px;display:flex;align-items:center;gap:8px;">
       <div style="flex:1;height:1px;background:var(--border);"></div>
       <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;white-space:nowrap;">Pagos de TC</span>
       <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>`;
-    html += gastosPagoTC.map(itemHtml).join('');
+    </div>`);
+    contenido.push(gastosPagoTC.map(itemHtml));
   }
   // Pagos de fijos
   if (gastosFijosEnHistorial.length) {
-    html += `<div style="margin:14px 0 8px;display:flex;align-items:center;gap:8px;">
+    contenido.push(html`<div style="margin:14px 0 8px;display:flex;align-items:center;gap:8px;">
       <div style="flex:1;height:1px;background:var(--border);"></div>
       <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;">Pagos de fijos (no se suman aquí)</span>
       <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>`;
-    html += gastosFijosEnHistorial.map(itemHtml).join('');
+    </div>`);
+    contenido.push(gastosFijosEnHistorial.map(itemHtml));
   }
-  el.innerHTML = html;
+  el.innerHTML = html`${contenido}`;
 }
 
 function addGastoVar() {
@@ -391,37 +422,37 @@ function renderGastosFijos() {
     return;
   }
   const mesClave = mesActual();
-  el.innerHTML = todos.map((x, i) => {
+  el.innerHTML = html`${todos.map((x, i) => {
     const pagos = S.pagosGastosFijos || {};
     const infoPago = (!x._virtual && x.id) ? pagos[x.id + '_' + mesClave] : null;
     const pagado = !!infoPago;
-    let accionHtml = '';
+    let accionHtml;
     if (pagado) {
-      accionHtml = `<div style="text-align:right;">
+      accionHtml = html`<div style="text-align:right;">
         <span class="badge" style="background:rgba(100,220,100,.15);color:#4caf50;border:1px solid rgba(100,220,100,.3);font-size:9px;padding:3px 7px;">Pagado</span>
         <div style="font-size:10px;color:var(--text3);margin-top:3px;">${infoPago.fecha || ''}</div>
       </div>`;
     } else if (!x._virtual) {
-      accionHtml = `<button type="button" ${Events.attr('gastos:abrirPagarGastoFijo', x.id)} style="font-size:11px;padding:5px 10px;background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;font-weight:600;">Pagar</button>`;
+      accionHtml = html`<button type="button" ${raw(Events.attr('gastos:abrirPagarGastoFijo', x.id))} style="font-size:11px;padding:5px 10px;background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;font-weight:600;">Pagar</button>`;
     } else {
-      accionHtml = `<span style="font-size:10px;color:var(--text3);">Spotify</span>`;
+      accionHtml = html`<span style="font-size:10px;color:var(--text3);">Spotify</span>`;
     }
-    return `<div class="gasto-item">
+    return html`<div class="gasto-item">
       <div class="gasto-item-top">
-        <div><div class="row-name" style="font-size:13px;">${escHtml(x.nombre)}</div></div>
+        <div><div class="row-name" style="font-size:13px;">${x.nombre}</div></div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="row-amount c-red">${fmt(x.monto)}</span>
-          ${!x._virtual ? `<button type="button" class="btn-delete-hover" ${Events.attr('gastos:deleteGastoFijo', x.id)} title="Eliminar">
+          ${!x._virtual ? html`<button type="button" class="btn-delete-hover" ${raw(Events.attr('gastos:deleteGastoFijo', x.id))} title="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>` : ''}
         </div>
       </div>
       <div class="gasto-item-meta" style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
-        <span class="badge bg-blue" style="font-size:9px;">${escHtml(x.cat)}</span>
+        <span class="badge bg-blue" style="font-size:9px;">${x.cat}</span>
         ${accionHtml}
       </div>
     </div>`;
-  }).join('');
+  })}`;
 }
 
 function addGastoFijo() {
@@ -461,7 +492,12 @@ function abrirPagarGastoFijo(id) {
   // Poblar fuentes
   const sel = document.getElementById('pgf-fuente');
   const fuentes = getFuentes();
-  sel.innerHTML = '<option value="">Seleccionar cuenta</option>' + fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+  // f.val no se envuelve en raw(): a diferencia de un uid() interno
+  // confirmado (ver ing.id en analisis.js, auditoria-tecnica.md #2), acá no
+  // hay confirmación de que getFuentes() (core-state.js, no disponible esta
+  // sesión) garantice que `val` nunca incluya texto de una cuenta
+  // personalizada — se escapa por defecto hasta confirmar lo contrario.
+  sel.innerHTML = html`<option value="">Seleccionar cuenta</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   document.getElementById('pgf-saldo-info').textContent = '';
   openSheet('pagar-gasto-fijo');
 }

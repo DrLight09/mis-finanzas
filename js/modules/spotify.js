@@ -272,37 +272,42 @@ function renderSpotify(){
       const dB=b.proximoPago?Math.ceil((new Date(b.proximoPago+'T00:00:00')-new Date())/86400000):far;
       return dA-dB;
     });
-    el.innerHTML=`<div class="card">${pOrdenado.map((x)=>{
+    // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2):
+    // escapa por defecto en vez de depender de acordarse de escHtml() en cada
+    // interpolación de texto libre (spNombreDe/fuenteLabel). Arrays de fragmentos
+    // (pOrdenado.map(...)) se dejan sin .join('') — html`` externo los concatena
+    // sin volver a escapar cada fragmento interno ya seguro.
+    el.innerHTML=html`<div class="card">${pOrdenado.map((x)=>{
     const i=x._origIdx;
       let fechaInfo='';
       if(x.proximoPago){
         const diasRestantes=Math.ceil((new Date(x.proximoPago+'T00:00:00')-new Date())/86400000);
         const vencido=diasRestantes<0;
         const hoy0=diasRestantes===0;
-        fechaInfo=`<span class="badge ${vencido?'bg-red':hoy0?'bg-amber':'bg-purple'}" style="font-size:9px;">${vencido?'Vencido hace '+Math.abs(diasRestantes)+'d':hoy0?'Vence hoy':'Paga en '+diasRestantes+'d · '+x.proximoPago}</span>`;
+        fechaInfo=html`<span class="badge ${raw(vencido?'bg-red':hoy0?'bg-amber':'bg-purple')}" style="font-size:9px;">${vencido?'Vencido hace '+Math.abs(diasRestantes)+'d':hoy0?'Vence hoy':'Paga en '+diasRestantes+'d · '+x.proximoPago}</span>`;
       }
       const destinoBadge=x.ultimoDestinoSplit
-        ?`<span class="badge bg-purple" style="font-size:8px;display:inline-flex;align-items:center;gap:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Dividido</span>`
-        :(x.ultimoDestino?`<span class="badge ${fuenteBadgeClass(x.ultimoDestino)}" style="font-size:8px;display:inline-flex;align-items:center;gap:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${escHtml(fuenteLabel(x.ultimoDestino))}</span>`:'');
-      return`<div class="sp-row">
+        ?html`<span class="badge bg-purple" style="font-size:8px;display:inline-flex;align-items:center;gap:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Dividido</span>`
+        :(x.ultimoDestino?html`<span class="badge ${raw(fuenteBadgeClass(x.ultimoDestino))}" style="font-size:8px;display:inline-flex;align-items:center;gap:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fuenteLabel(x.ultimoDestino)}</span>`:'');
+      return html`<div class="sp-row">
         <div style="display:flex;align-items:center;">
-          <div class="avatar">${escHtml(spNombreDe(x).substring(0,2).toUpperCase())}</div>
+          <div class="avatar">${spNombreDe(x).substring(0,2).toUpperCase()}</div>
           <div>
-            <div class="row-name" style="font-size:13px;">${escHtml(spNombreDe(x))}</div>
-            <div class="row-sub">${fmt(x.monto)}/período${(x.mesesAdelantados>1&&spPersonaPagadaVigente(x))?' · <span class="sp-meses-badge">'+x.mesesAdelantados+'p adelantados</span>':''}</div>
-            ${fechaInfo?'<div style="margin-top:3px;">'+fechaInfo+'</div>':''}
-            ${destinoBadge?'<div style="margin-top:2px;">'+destinoBadge+'</div>':''}
+            <div class="row-name" style="font-size:13px;">${spNombreDe(x)}</div>
+            <div class="row-sub">${fmt(x.monto)}/período${(x.mesesAdelantados>1&&spPersonaPagadaVigente(x))?raw(' · <span class="sp-meses-badge">'+x.mesesAdelantados+'p adelantados</span>'):''}</div>
+            ${fechaInfo?html`<div style="margin-top:3px;">${fechaInfo}</div>`:''}
+            ${destinoBadge?html`<div style="margin-top:2px;">${destinoBadge}</div>`:''}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:7px;">
-          <span class="badge ${spPersonaPagadaVigente(x)?'bg-green':'bg-red'}" ${Events.attr('spotify:marcarPago', i)} style="cursor:pointer;" title="${spPersonaPagadaVigente(x)?'Ya pagó · clic para revertir':'Cobrar a '+escHtml(spNombreDe(x))}">${spPersonaPagadaVigente(x)?'Pagó':'Cobrar'}</span>
+          <span class="badge ${raw(spPersonaPagadaVigente(x)?'bg-green':'bg-red')}" ${raw(Events.attr('spotify:marcarPago', i))} style="cursor:pointer;" title="${spPersonaPagadaVigente(x)?'Ya pagó · clic para revertir':'Cobrar a '+spNombreDe(x)}">${spPersonaPagadaVigente(x)?'Pagó':'Cobrar'}</span>
           <div style="display:flex;align-items:center;gap:2px;">
-            <button type="button" class="btn-icon" style="color:var(--accent);min-width:34px;min-height:34px;" ${Events.attr('spotify:editar', i)} title="Editar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button type="button" class="btn-icon" style="min-width:34px;min-height:34px;" ${Events.attr('spotify:eliminar', i)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+            <button type="button" class="btn-icon" style="color:var(--accent);min-width:34px;min-height:34px;" ${raw(Events.attr('spotify:editar', i))} title="Editar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button type="button" class="btn-icon" style="min-width:34px;min-height:34px;" ${raw(Events.attr('spotify:eliminar', i))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
           </div>
         </div>
       </div>`;
-    }).join('')}</div>`;
+    })}</div>`;
   }
   
   // Badge en home: avisar si hay pagos próximos o vencidos (<= 3 días)
@@ -324,30 +329,39 @@ function renderSpHistorial(){
     .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b._realIdx-a._realIdx))
     .slice(0,12);
   if(!hist.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0;">Sin pagos registrados aún.</div>';return;}
-  el.innerHTML=hist.map(h=>{
+  // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
+  // Hallazgo real de paso: fuenteLabel() en `fuentesInfo` (nombre de cajita/cuenta,
+  // texto libre) nunca pasaba por escHtml() acá — a diferencia del badge de
+  // "último destino" en renderSpotify(), que sí se había corregido antes. Al
+  // interpolarse como UN solo ${...}, html`` lo escapa igual que cualquier otro
+  // campo, sin tocar los separadores fijos (' · ', ' + ').
+  el.innerHTML=html`${hist.map(h=>{
     const tienePendiente=h.tipo==='cobro'&&(h.pendiente||0)>0;
     const yaSaldado=h.tipo==='cobro'&&h.cuotaEsperada&&!tienePendiente;
     const pendienteHtml=tienePendiente
-      ?`<div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
+      ?html`<div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
           <span class="badge bg-amber" style="font-size:9px;">Debe ${fmt(h.pendiente)}</span>
-          <span style="font-size:10px;color:var(--amber);text-decoration:underline;cursor:pointer;" ${Events.attr('spotify:resolverPendiente', h._realIdx)}>Registrar pago de lo pendiente</span>
+          <span style="font-size:10px;color:var(--amber);text-decoration:underline;cursor:pointer;" ${raw(Events.attr('spotify:resolverPendiente', h._realIdx))}>Registrar pago de lo pendiente</span>
         </div>`
-      :yaSaldado?`<div style="font-size:10px;color:var(--accent);margin-top:3px;">✓ Saldó lo pendiente</div>`:'';
-    return`
+      :yaSaldado?html`<div style="font-size:10px;color:var(--accent);margin-top:3px;">✓ Saldó lo pendiente</div>`:'';
+    const fuentesInfo=h.splits&&h.splits.length
+      ?' · '+h.splits.map(s=>fuenteLabel(s.fuente||'')).join(' + ')
+      :(h.fuente?' · '+fuenteLabel(h.fuente):'');
+    return html`
     <div class="card card-sm" style="margin-bottom:7px;">
       <div class="row" style="align-items:flex-start;gap:10px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:500;">${h.tipo==='pago'?'Pago a Spotify':'Cobro de '+escHtml(h.nombre)}</div>
-          <div style="font-size:10px;color:var(--text2);margin-top:1px;">${h.fecha}${h.splits&&h.splits.length?' · '+h.splits.map(s=>fuenteLabel(s.fuente||'')).join(' + '):(h.fuente?' · '+fuenteLabel(h.fuente):'')}${h.nota?' · <span style="color:var(--blue);">'+escHtml(h.nota)+'</span>':''}</div>
+          <div style="font-size:12px;font-weight:500;">${h.tipo==='pago'?'Pago a Spotify':'Cobro de '+h.nombre}</div>
+          <div style="font-size:10px;color:var(--text2);margin-top:1px;">${h.fecha}${fuentesInfo}${h.nota?html` · <span style="color:var(--blue);">${h.nota}</span>`:''}</div>
           ${pendienteHtml}
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-          <div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace;white-space:nowrap;color:${h.tipo==='pago'?'var(--red)':'var(--accent)'};">${h.tipo==='pago'?'−':'+'} ${fmt(h.monto)}</div>
-          <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" ${Events.attr('spotify:eliminarHistorial', h._realIdx)}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+          <div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace;white-space:nowrap;color:${raw(h.tipo==='pago'?'var(--red)':'var(--accent)')};">${h.tipo==='pago'?'−':'+'} ${fmt(h.monto)}</div>
+          <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" ${raw(Events.attr('spotify:eliminarHistorial', h._realIdx))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
         </div>
       </div>
     </div>`;
-  }).join('');
+  })}`;
 }
 
 function renderSpStats(){
@@ -660,9 +674,8 @@ function marcarPagoSpotify(i){
   // Mis deudas y Alcancía) — por eso getFuentesSinTC() y no getFuentes().
   const fuentes=getFuentesSinTC();
   const destSel=document.getElementById('spDestinoSelect');
-  destSel.innerHTML='<option value="" disabled selected>Selecciona una opción...</option>'
-    +fuentes.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('')
-    +'<option value="__sin_especificar__">Sin especificar (no mover)</option>';
+  // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
+  destSel.innerHTML=html`<option value="" disabled selected>Selecciona una opción...</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}<option value="__sin_especificar__">Sin especificar (no mover)</option>`;
   // Editable para poder anotar un cobro días después sin que quede fechado hoy
   // por error (ver auditoria-tecnica.md — atribución de ciclo por deuda, no por fecha).
   const fechaEl=document.getElementById('spFecha');
@@ -861,8 +874,8 @@ function resolverPendienteSpHistorial(i){
   document.getElementById('spResNota').value='';
   const fuentes=getFuentesSinTC();
   const destSel=document.getElementById('spResDestino');
-  destSel.innerHTML='<option value="">No especificar / lo gasté</option>'
-    +fuentes.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+  // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
+  destSel.innerHTML=html`<option value="">No especificar / lo gasté</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
   actualizarSpResolverPreview();
   openSheet('sp-hist-pend');
 }
@@ -943,7 +956,8 @@ function openSheet_pagarSpotify(){
   const cajita=getSpCajita();
   const sel=document.getElementById('spPagarFuente');
   const fuentes=getFuentes();
-  sel.innerHTML='<option value="">Sin especificar</option>'+fuentes.map(f=>`<option value="${f.val}"${cajita&&f.val==='cajita:'+cajita.id?' selected':''}>${escHtml(f.label)}</option>`).join('');
+  // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
+  sel.innerHTML=html`<option value="">Sin especificar</option>${fuentes.map(f=>html`<option value="${f.val}"${cajita&&f.val==='cajita:'+cajita.id?' selected':''}>${f.label}</option>`)}`;
   actualizarSpPagarPreview();
   const notaEl=document.getElementById('spPagarNota');
   if(notaEl)notaEl.value='';

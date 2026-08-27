@@ -117,7 +117,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
     const filasHtml = filas.map(({enc, cajitaId, saldoEncargo}) => {
       totalEncargosNu += saldoEncargo;
       const cajita = (S.cajitas||[]).find(x => x.id === cajitaId);
-      const cajitaNombre = escHtml(cajita ? (cajita.nombre || 'Cajita Nu') : 'Cajita Nu');
+      const cajitaNombre = cajita ? (cajita.nombre || 'Cajita Nu') : 'Cajita Nu';
 
       // Calcular valor actual proporcional de la porción del encargo
       let interesMioHoy = 0;
@@ -144,13 +144,13 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
         ? `<span style="font-size:9px;color:var(--accent);font-family:'DM Mono',monospace;opacity:.8;">+${fmt(interesAcumulado)} acumulado tuyo</span>`
         : '';
 
-      return `
-        <div style="background:rgba(96,176,240,.04);border:1px solid rgba(96,176,240,.12);border-radius:9px;padding:10px 12px;margin-bottom:6px;cursor:pointer;" data-encargo-id="${enc.id}" ${Events.attr('encargos:abrirDesdeCuenta', enc.id)}>
+      return html`
+        <div style="background:rgba(96,176,240,.04);border:1px solid rgba(96,176,240,.12);border-radius:9px;padding:10px 12px;margin-bottom:6px;cursor:pointer;" data-encargo-id="${enc.id}" ${raw(Events.attr('encargos:abrirDesdeCuenta', enc.id))}>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <div class="avatar" style="width:26px;height:26px;font-size:9px;background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;margin-right:0;">${escHtml(iniciales(enc.nombre))}</div>
+            <div class="avatar" style="width:26px;height:26px;font-size:9px;background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;margin-right:0;">${iniciales(enc.nombre)}</div>
             <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(enc.nombre)}</div>
-              ${enc.nota?`<div style="font-size:10px;color:var(--text3);">${escHtml(enc.nota)}</div>`:''}
+              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${enc.nombre}</div>
+              ${enc.nota?html`<div style="font-size:10px;color:var(--text3);">${enc.nota}</div>`:''}
             </div>
             <div style="text-align:right;flex-shrink:0;">
               <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(saldoEncargo)}</div>
@@ -163,15 +163,15 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
               ${cajitaNombre}
             </span>
             <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
-              ${interesMioHoy >= 0.01 ? `<span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;">+${fmt(interesMioHoy)}/día <span style="font-size:9px;opacity:.7;">(tuyo)</span></span>` : ''}
-              ${acumuladoTag}
+              ${interesMioHoy >= 0.01 ? html`<span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;">+${fmt(interesMioHoy)}/día <span style="font-size:9px;opacity:.7;">(tuyo)</span></span>` : ''}
+              ${raw(acumuladoTag)}
             </div>
           </div>
         </div>`;
-    }).join('');
+    });
 
     const totalAcumulado = totalValorActual - totalEncargosNu; // ganancia acumulada total tuya
-    el.innerHTML = `
+    el.innerHTML = html`
       <div class="sec-title">Encargos en Nu</div>
       <div style="background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;">
         <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:10px;">Plata que administrás de otras personas, guardada en tus cajitas — los intereses que genera son tuyos</div>
@@ -179,8 +179,8 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
         <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;margin-top:2px;border-top:1px solid rgba(96,176,240,.12);">
           <div>
             <div style="font-size:10px;color:var(--text3);">Total encargos en Nu</div>
-            ${totalInteresesMios >= 0.01 ? `<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;">+${fmt(totalInteresesMios)}/día que ganás vos</div>` : ''}
-            ${totalAcumulado > 0.5 ? `<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;opacity:.75;">+${fmt(totalAcumulado)} ganados hasta hoy</div>` : ''}
+            ${totalInteresesMios >= 0.01 ? html`<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;">+${fmt(totalInteresesMios)}/día que ganás vos</div>` : ''}
+            ${totalAcumulado > 0.5 ? html`<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;opacity:.75;">+${fmt(totalAcumulado)} ganados hasta hoy</div>` : ''}
           </div>
           <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(totalEncargosNu)}</span>
         </div>
@@ -220,17 +220,17 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
     const cc = (S.cuentasPersonalizadas||[]).find(x=>x.id===cId);
     if (cc && cc.color) color = cc.color;
   }
-  el.innerHTML = `
+  el.innerHTML = html`
     <div class="sec-title">Encargos en esta cuenta</div>
     <div style="background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;">
       <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">Plata que administrás de otras personas guardada aquí</div>
-      ${filas.map(({enc, saldo}) => `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(96,176,240,.1);cursor:pointer;" data-encargo-id="${enc.id}" ${Events.attr('encargos:abrirDesdeCuenta', enc.id)}>
-          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;" ${Events.attr('encargos:abrirDesdeCuenta', enc.id)}>
-            <div class="avatar" style="width:28px;height:28px;font-size:10px;background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;margin-right:0;">${escHtml(iniciales(enc.nombre))}</div>
+      ${filas.map(({enc, saldo}) => html`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(96,176,240,.1);cursor:pointer;" data-encargo-id="${enc.id}" ${raw(Events.attr('encargos:abrirDesdeCuenta', enc.id))}>
+          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;" ${raw(Events.attr('encargos:abrirDesdeCuenta', enc.id))}>
+            <div class="avatar" style="width:28px;height:28px;font-size:10px;background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;margin-right:0;">${iniciales(enc.nombre)}</div>
             <div style="min-width:0;">
-              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(enc.nombre)}</div>
-              ${enc.nota?`<div style="font-size:10px;color:var(--text3);">${escHtml(enc.nota)}</div>`:''}
+              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${enc.nombre}</div>
+              ${enc.nota?html`<div style="font-size:10px;color:var(--text3);">${enc.nota}</div>`:''}
             </div>
           </div>
           <div style="text-align:right;flex-shrink:0;margin-left:8px;">
@@ -238,7 +238,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
             <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(encargoSaldo(enc))} total</div>
           </div>
         </div>
-      `).join('')}
+      `)}
       <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;margin-top:4px;">
         <span style="font-size:10px;color:var(--text3);">Total encargos aquí</span>
         <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(filas.reduce((a,f)=>a+f.saldo,0))}</span>
@@ -298,28 +298,28 @@ function renderEncargosList() {
     </div>`;
     return;
   }
-  el.innerHTML = encargos.map(enc => {
+  el.innerHTML = html`${encargos.map(enc => {
     const saldo = encargoSaldo(enc);
     const comprometido = encargoComprometido(enc);
     const libre = encargoLibre(enc);
-    const ini = escHtml(iniciales(enc.nombre));
-    return `<div class="card card-sm" style="cursor:pointer;margin-bottom:8px;" data-encargo-id="${enc.id}" ${Events.attr('encargos:abrirDetalle', enc.id)}>
+    const ini = iniciales(enc.nombre);
+    return html`<div class="card card-sm" style="cursor:pointer;margin-bottom:8px;" data-encargo-id="${enc.id}" ${raw(Events.attr('encargos:abrirDetalle', enc.id))}>
       <div class="row">
         <div style="display:flex;align-items:center;gap:10px;">
           <div class="avatar" style="background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;">${ini}</div>
           <div>
-            <div class="row-name">${escHtml(enc.nombre)}</div>
-            <div class="row-sub">${(enc.movimientos||[]).length} movimiento${(enc.movimientos||[]).length!==1?'s':''} · ${escHtml(enc.nota||'Encargo')}</div>
+            <div class="row-name">${enc.nombre}</div>
+            <div class="row-sub">${(enc.movimientos||[]).length} movimiento${(enc.movimientos||[]).length!==1?'s':''} · ${enc.nota||'Encargo'}</div>
           </div>
         </div>
         <div style="text-align:right;">
           <div class="row-amount c-blue">${fmt(libre)}</div>
-          ${comprometido > 0 ? `<div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(saldo)}, ${fmt(comprometido)} comprometido</div>` : ''}
+          ${comprometido > 0 ? html`<div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(saldo)}, ${fmt(comprometido)} comprometido</div>` : ''}
           <span class="badge bg-blue" style="font-size:9px;">No es tuyo</span>
         </div>
       </div>
     </div>`;
-  }).join('');
+  })}`;
 }
 
 function abrirEncargoDetalle(id) {
@@ -370,20 +370,20 @@ function abrirEncargoDetalle(id) {
         .filter(([k,v]) => v > 0)
         .sort((a,b) => b[1]-a[1])
         .map(([k,v]) => {
-          const lbl = escHtml(k === '__sin__' ? 'Sin especificar' : fuenteLabel(k));
+          const lbl = k === '__sin__' ? 'Sin especificar' : fuenteLabel(k);
           const pct = saldo > 0 ? Math.round(v/saldo*100) : 0;
           // Si está en una cajita de Nu, calcular interés diario que genera (es mío)
           const esCajita = k && k.startsWith('cajita:');
           const interesMio = esCajita ? v * tasaDiaria : 0;
-          return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          return html`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
             <div>
               <span style="font-size:10px;color:rgba(96,176,240,.8);font-family:'DM Mono',monospace;">${lbl}</span>
-              ${interesMio >= 0.01 ? `<div style="font-size:9px;color:var(--accent);font-family:'DM Mono',monospace;">+${fmt(interesMio)}/día tuyo</div>` : ''}
+              ${interesMio >= 0.01 ? html`<div style="font-size:9px;color:var(--accent);font-family:'DM Mono',monospace;">+${fmt(interesMio)}/día tuyo</div>` : ''}
             </div>
             <span style="font-size:11px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(v)} <span style="font-size:9px;opacity:.6;">${pct}%</span></span>
           </div>`;
-        }).join('');
-      desgEl.innerHTML = `<div style="border-top:1px solid rgba(96,176,240,.15);padding-top:8px;margin-bottom:6px;">${filas}</div>`;
+        });
+      desgEl.innerHTML = html`<div style="border-top:1px solid rgba(96,176,240,.15);padding-top:8px;margin-bottom:6px;">${filas}</div>`;
     } else {
       desgEl.innerHTML = '';
     }
@@ -426,26 +426,27 @@ function abrirEncargoDetalle(id) {
   if (!todosMovs.length) {
     histEl.innerHTML = `<div class="empty-state" style="padding:16px 0;"><div class="empty-state-sub">Sin movimientos aún. Registrá entradas y salidas.</div></div>`;
   } else {
-    let html = '';
     // Helper: construye atributos data-mov-* para abrir el sheet de detalle (saldo = saldo del encargo)
+    // Ya escapa a mano (escHtml) porque arma una lista de atributos, no un solo valor —
+    // se interpola siempre envuelto en raw() en los sitios de abajo.
     const _encAttrs=(m, origenLbl)=>{
       const sd=_encSaldoPorId.get(m.id);
       if(!sd) return '';
       return `data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="encargo" data-mov-origen="${escHtml(origenLbl)}" data-mov-saldo-antes="${sd.antes}" data-mov-saldo-despues="${sd.despues}" data-mov-saldo-label="Saldo de ${escHtml(enc.nombre)}" data-mov-desc="${escHtml(m.desc||'')}" data-mov-fecha="${escHtml(m.fecha)}" style="cursor:pointer;" data-action="core:abrirDetalleMov"`;
     };
-    html += todosMovs.map((m,i) => {
+    const contenido = todosMovs.map((m,i) => {
       if (m._esSaldoInicial) {
-        const lblCuentaIni = m.cuenta ? escHtml(fuenteLabel(m.cuenta)) : '';
-        return `<div class="gasto-item" ${_encAttrs(m,'Encargos · '+enc.nombre)} style="cursor:pointer;border-color:rgba(96,176,240,.2);">
+        const lblCuentaIni = m.cuenta ? fuenteLabel(m.cuenta) : '';
+        return html`<div class="gasto-item" ${raw(_encAttrs(m,'Encargos · '+enc.nombre))} style="cursor:pointer;border-color:rgba(96,176,240,.2);">
           <div class="gasto-item-top">
             <div style="flex:1;"><div class="row-name" style="font-size:13px;">Saldo inicial</div><div class="row-sub">${m.fecha!=='0000-00-00'?m.fecha:''}${lblCuentaIni?' · '+lblCuentaIni:''}</div></div>
             <span class="row-amount c-blue">${fmt(m.monto)}</span>
           </div>
-          <div class="gasto-item-meta"><span class="badge bg-blue" style="font-size:9px;">Inicio</span>${lblCuentaIni?`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuentaIni}</span>`:''}</div>
+          <div class="gasto-item-meta"><span class="badge bg-blue" style="font-size:9px;">Inicio</span>${lblCuentaIni?html`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuentaIni}</span>`:''}</div>
         </div>`;
       }
       const esEntrada = m.tipo === 'entrada';
-      const lblCuenta = m.cuenta ? escHtml(fuenteLabel(m.cuenta)) : '';
+      const lblCuenta = m.cuenta ? fuenteLabel(m.cuenta) : '';
       const esAbonoPrestamo = !esEntrada && m._esAbonoDeudor;
       const esTcEncargo = !esEntrada && m._esTcEncargo;
       const esMia = !esEntrada && !!m._miaCuentaSale;
@@ -453,31 +454,31 @@ function abrirEncargoDetalle(id) {
       const miaSaleLbl  = esMia ? fuenteLabel(m._miaCuentaSale) : '';
       const miaEntraLbl = esMia && m._miaCuentaEntra ? fuenteLabel(m._miaCuentaEntra) : '';
       const origenEnc = esAbonoPrestamo ? ('Préstamos · ' + (((S.deudores||[]).find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+enc.nombre);
-      return `<div class="gasto-item" ${_encAttrs(m,origenEnc)} style="cursor:pointer;border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':esTcEncargo?'rgba(96,176,240,.25)':'rgba(240,104,104,.15)'};">
+      return html`<div class="gasto-item" ${raw(_encAttrs(m,origenEnc))} style="cursor:pointer;border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':esTcEncargo?'rgba(96,176,240,.25)':'rgba(240,104,104,.15)'};">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;">
-            <div class="row-name" style="font-size:13px;">${escHtml(m.desc)}</div>
+            <div class="row-name" style="font-size:13px;">${m.desc}</div>
             <div class="row-sub">${m.fecha}${lblCuenta?' · '+lblCuenta:''}${tcNombreLbl?' · '+tcNombreLbl:''}${esMia?' · Yo puse la plata':''}</div>
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span class="row-amount ${esEntrada?'c-blue':esAbonoPrestamo?'c-amber':'c-red'}">${esEntrada?'+':'−'}${fmt(m.monto)}</span>
-            <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${Events.attr('encargos:deleteMov', enc.id, m.id)} title="Eliminar (también elimina movimientos secundarios en tus cuentas)">
+            <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${raw(Events.attr('encargos:deleteMov', enc.id, m.id))} title="Eliminar (también elimina movimientos secundarios en tus cuentas)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             </button>
           </div>
         </div>
-        ${m.nota&&!esTcEncargo&&!esMia?`<div class="gasto-item-meta"><span style="font-size:10px;color:var(--text3);">${escHtml(m.nota)}</span></div>`:''}
-        ${esMia?`<div class="gasto-item-meta" style="margin-top:3px;"><span style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:10px;height:10px;fill:currentColor;flex-shrink:0;color:var(--amber);"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg>Salió de <strong style="color:var(--text2);">${escHtml(miaSaleLbl)}</strong>${miaEntraLbl?' · Entró a <strong style="color:var(--text2);">'+escHtml(miaEntraLbl)+'</strong>':''}</span></div>`:''}
+        ${m.nota&&!esTcEncargo&&!esMia?html`<div class="gasto-item-meta"><span style="font-size:10px;color:var(--text3);">${m.nota}</span></div>`:''}
+        ${esMia?html`<div class="gasto-item-meta" style="margin-top:3px;"><span style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:10px;height:10px;fill:currentColor;flex-shrink:0;color:var(--amber);"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg>Salió de <strong style="color:var(--text2);">${miaSaleLbl}</strong>${miaEntraLbl?html` · Entró a <strong style="color:var(--text2);">${miaEntraLbl}</strong>`:''}</span></div>`:''}
         <div class="gasto-item-meta">
           <span class="badge ${esEntrada?'bg-blue':esAbonoPrestamo?'bg-amber':esTcEncargo?'bg-blue':'bg-red'}" style="font-size:9px;">${esEntrada?'Entrada':esAbonoPrestamo?'Pago préstamo':esTcEncargo?'Pagado con TC':'Salida'}</span>
-          ${esMia?`<span class="badge" style="font-size:9px;background:rgba(240,184,64,.15);color:var(--amber);border:none;">Yo puse la plata</span>`:''}
-          ${lblCuenta?`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuenta}</span>`:''}
-          ${tcNombreLbl?`<span class="badge bg-blue" style="font-size:9px;">${escHtml(tcNombreLbl)}</span>`:''}
+          ${esMia?html`<span class="badge" style="font-size:9px;background:rgba(240,184,64,.15);color:var(--amber);border:none;">Yo puse la plata</span>`:''}
+          ${lblCuenta?html`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuenta}</span>`:''}
+          ${tcNombreLbl?html`<span class="badge bg-blue" style="font-size:9px;">${tcNombreLbl}</span>`:''}
         </div>
-        ${typeof _difRenderHistorial === 'function' ? _difRenderHistorial(m) : ''}
+        ${raw(typeof _difRenderHistorial === 'function' ? _difRenderHistorial(m) : '')}
       </div>`;
-    }).join('');
-    histEl.innerHTML = html;
+    });
+    histEl.innerHTML = html`${contenido}`;
   }
 }
 
@@ -502,9 +503,9 @@ function renderEncargoParts(enc) {
   }
 
   // Resumen rápido
-  let html = '';
+  const contenido = [];
   if (partes.length) {
-    html += `<div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+    contenido.push(html`<div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
       <div>
         <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:2px;">Comprometido</div>
         <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">-${fmt(totalComp)}</div>
@@ -513,11 +514,11 @@ function renderEncargoParts(enc) {
         <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:2px;">Libre (de él)</div>
         <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(libre)}</div>
       </div>
-    </div>`;
+    </div>`);
   }
 
   // Lista activas
-  html += partes.map(p => {
+  contenido.push(partes.map(p => {
     const hoyStr = hoy();
     let fechaInfo = '';
     if (p.fecha) {
@@ -528,45 +529,45 @@ function renderEncargoParts(enc) {
       else if (dias <= 5) fechaInfo = `<span style="font-size:9px;color:var(--amber);">en ${dias}d (${p.fecha})</span>`;
       else fechaInfo = `<span style="font-size:9px;color:var(--text3);">uso: ${p.fecha}</span>`;
     }
-    return `<div class="card card-sm" style="margin-bottom:7px;border-color:rgba(96,176,240,.25);">
+    return html`<div class="card card-sm" style="margin-bottom:7px;border-color:rgba(96,176,240,.25);">
       <div style="display:flex;align-items:center;gap:8px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:600;">${escHtml(p.desc)}</div>
-          ${fechaInfo ? `<div style="margin-top:2px;">${fechaInfo}</div>` : ''}
+          <div style="font-size:13px;font-weight:600;">${p.desc}</div>
+          ${fechaInfo ? raw(`<div style="margin-top:2px;">${fechaInfo}</div>`) : ''}
         </div>
         <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue);white-space:nowrap;">${fmt(p.monto)}</div>
       </div>
       <div style="display:flex;gap:6px;margin-top:8px;">
-        <button type="button" ${Events.attr('encargos:usarParte', enc.id, p.id)} style="flex:1;padding:7px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(200,240,96,.4);background:rgba(200,240,96,.08);color:var(--accent);">
+        <button type="button" ${raw(Events.attr('encargos:usarParte', enc.id, p.id))} style="flex:1;padding:7px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(200,240,96,.4);background:rgba(200,240,96,.08);color:var(--accent);">
           <i class="fa-solid fa-check" style="margin-right:4px;"></i>Ya la usé
         </button>
-        <button type="button" ${Events.attr('encargos:editarParte', enc.id, p.id)} style="padding:7px 11px;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;border:1.5px solid var(--border2);background:transparent;color:var(--text2);">
+        <button type="button" ${raw(Events.attr('encargos:editarParte', enc.id, p.id))} style="padding:7px 11px;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;border:1.5px solid var(--border2);background:transparent;color:var(--text2);">
           <i class="fa-solid fa-pen"></i>
         </button>
-        <button type="button" ${Events.attr('encargos:eliminarParte', enc.id, p.id)} style="padding:7px 11px;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;border:1.5px solid rgba(240,104,104,.3);background:rgba(240,104,104,.06);color:var(--red);">
+        <button type="button" ${raw(Events.attr('encargos:eliminarParte', enc.id, p.id))} style="padding:7px 11px;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;border:1.5px solid rgba(240,104,104,.3);background:rgba(240,104,104,.06);color:var(--red);">
           <i class="fa-solid fa-trash"></i>
         </button>
       </div>
     </div>`;
-  }).join('');
+  }));
 
   // Usadas recientes
   if (usadas.length) {
-    html += `<div style="margin-top:6px;">`;
-    html += usadas.slice(-3).reverse().map(p => `<div class="card card-sm" style="margin-bottom:5px;opacity:.5;">
+    contenido.push(html`<div style="margin-top:6px;">
+      ${usadas.slice(-3).reverse().map(p => html`<div class="card card-sm" style="margin-bottom:5px;opacity:.5;">
       <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-size:11px;color:var(--text2);">${escHtml(p.desc)}</div>
+        <div style="font-size:11px;color:var(--text2);">${p.desc}</div>
         <div style="display:flex;align-items:center;gap:6px;">
           <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);"><s>${fmt(p.monto)}</s></span>
-          ${typeof _difRenderHistorialParte === 'function' ? _difRenderHistorialParte(p) : ''}
-          <button type="button" ${Events.attr('encargos:eliminarParte', enc.id, p.id)} style="font-size:9px;padding:2px 6px;border-radius:5px;border:1px solid rgba(240,104,104,.2);background:rgba(240,104,104,.05);color:var(--red);cursor:pointer;">&#x2715;</button>
+          ${raw(typeof _difRenderHistorialParte === 'function' ? _difRenderHistorialParte(p) : '')}
+          <button type="button" ${raw(Events.attr('encargos:eliminarParte', enc.id, p.id))} style="font-size:9px;padding:2px 6px;border-radius:5px;border:1px solid rgba(240,104,104,.2);background:rgba(240,104,104,.05);color:var(--red);cursor:pointer;">&#x2715;</button>
         </div>
       </div>
-    </div>`).join('');
-    html += `</div>`;
+    </div>`)}
+    </div>`);
   }
 
-  el.innerHTML = html;
+  el.innerHTML = html`${contenido}`;
 }
 
 function abrirNuevaParte() {
@@ -774,9 +775,9 @@ function _movEncMiaPreview() {
   if (!monto) { el.textContent = ''; return; }
   const sale  = document.getElementById('movenc_mia_cuenta_sale').value;
   const entra = document.getElementById('movenc_mia_cuenta_entra').value;
-  const saleTxt  = sale  ? escHtml(fuenteLabel(sale))  : '?';
-  const entraTxt = entra ? escHtml(fuenteLabel(entra)) : '?';
-  el.innerHTML = `↔ Sale ${fmt(monto)} de ${saleTxt} · Recupero ${fmt(monto)} en ${entraTxt}`;
+  const saleTxt  = sale  ? fuenteLabel(sale)  : '?';
+  const entraTxt = entra ? fuenteLabel(entra) : '?';
+  el.innerHTML = html`↔ Sale ${fmt(monto)} de ${saleTxt} · Recupero ${fmt(monto)} en ${entraTxt}`;
 }
 
 function _validarMovEncMia() {
@@ -932,7 +933,7 @@ function _usarParteFuentePreview() {
     if (val) {
       const enc2 = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
       const saldoEnc = enc2 ? _getEncargoSaldoEnCuenta(enc2, val) : 0;
-      el.innerHTML = `Del encargo guardado en ${escHtml(fuenteLabel(val))}: <span style="color:var(--text)">${fmt(saldoEnc)}</span>`;
+      el.innerHTML = html`Del encargo guardado en ${fuenteLabel(val)}: <span style="color:var(--text)">${fmt(saldoEnc)}</span>`;
       el.style.color = 'var(--text2)';
 
     } else {
@@ -1103,25 +1104,25 @@ function abrirUsarParteSheet(encId, parteId) {
 }
 
 function _difRenderHistorialParte(parte) {
-  let out = '';
+  const out = [];
   // Mostrar origen de la plata si se registró
   if (parte.fuentes && parte.fuentes.length > 0) {
-    const labels = parte.fuentes.map(f => `${escHtml(fuenteLabel(f.fuente))} ${fmt(f.monto)}`).join(' + ');
-    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${labels}</span>`;
+    const labels = parte.fuentes.map(f => `${fuenteLabel(f.fuente)} ${fmt(f.monto)}`).join(' + ');
+    out.push(html`<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${labels}</span>`);
   } else if (parte.fuente) {
-    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${escHtml(fuenteLabel(parte.fuente))}</span>`;
+    out.push(html`<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${fuenteLabel(parte.fuente)}</span>`);
   }
   // Mostrar diferencial si existe
   if (parte.diferencial) {
     const d = parte.diferencial;
     const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b =>
-      `${escHtml(b.nombre)} ${fmt(b.monto)}`
+      `${b.nombre} ${fmt(b.monto)}`
     ).join(' · ');
-    const miParte = d.miCuenta && d.yoMeQuedo > 0 ? `Yo (${escHtml(fuenteLabel(d.miCuenta))}) ${fmt(d.yoMeQuedo)}` : '';
+    const miParte = d.miCuenta && d.yoMeQuedo > 0 ? `Yo (${fuenteLabel(d.miCuenta)}) ${fmt(d.yoMeQuedo)}` : '';
     const todas = [benefs, miParte].filter(Boolean).join(' · ');
-    out += `<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`;
+    out.push(html`<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`);
   }
-  return out;
+  return html`${out}`;
 }
 
 function abrirMovEncargo(tipo) {
@@ -1172,7 +1173,7 @@ function abrirMovEncargo(tipo) {
     // corrigió en buildFuentesOptsHtml() (core-state.js), pero esta es una
     // segunda implementación separada que nunca pasaba por escHtml(). Nombres
     // de cuenta personalizada son texto libre del usuario. Ver CHANGELOG.md.
-    sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${escHtml(f.val)}">${escHtml(f.label)}</option>`).join('');
+    sel.innerHTML = html`<option value="">Sin especificar</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
     label.textContent = '¿En qué cuenta guardaste esa plata?';
     if (splitToggleBtn) splitToggleBtn.style.display = 'none';
   } else {
@@ -1181,10 +1182,9 @@ function abrirMovEncargo(tipo) {
     if (cuentasConSaldo.length === 0) {
       // Si no hay distribución por cuenta, mostrar todas (sin TC)
       const fuentes = getFuentesSinTC();
-      sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${escHtml(f.val)}">${escHtml(f.label)}</option>`).join('');
+      sel.innerHTML = html`<option value="">Sin especificar</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
     } else {
-      sel.innerHTML = '<option value="">Sin especificar</option>' +
-        cuentasConSaldo.map(f=>`<option value="${escHtml(f.cuenta)}">${escHtml(f.label)} (${fmt(f.saldo)})</option>`).join('');
+      sel.innerHTML = html`<option value="">Sin especificar</option>${cuentasConSaldo.map(f=>html`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`)}`;
       _movEncMuestraSaldoEnOpcion = true;
     }
     label.textContent = '¿De qué cuenta sacaste esa plata?';
@@ -1523,8 +1523,7 @@ function _movEncActualizarFaltante() {
   if (selCuenta) {
     const valPrevio = selCuenta.value;
     const fuentes = getFuentesSinTC();
-    selCuenta.innerHTML = '<option value="">Seleccionar cuenta</option>' +
-      fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+    selCuenta.innerHTML = html`<option value="">Seleccionar cuenta</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
     if (valPrevio && fuentes.some(f => f.val === valPrevio)) selCuenta.value = valPrevio;
   }
   wrap.style.display = '';
@@ -1882,10 +1881,9 @@ function abrirTraspasoEncargo() {
   if (cuentasEnc.length === 0) {
     // Si no hay distribución por cuenta, mostrar todas (sin TC) — mismo criterio que una salida normal
     const fuentesTodas = getFuentesSinTC();
-    selOrigen.innerHTML = '<option value="">Sin especificar</option>' + fuentesTodas.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+    selOrigen.innerHTML = html`<option value="">Sin especificar</option>${fuentesTodas.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
   } else {
-    selOrigen.innerHTML = '<option value="">Sin especificar</option>' +
-      cuentasEnc.map(f=>`<option value="${f.cuenta}">${escHtml(f.label)} (${fmt(f.saldo)})</option>`).join('');
+    selOrigen.innerHTML = html`<option value="">Sin especificar</option>${cuentasEnc.map(f=>html`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`)}`;
     // Pre-seleccionar la cuenta con más saldo del encargo
     selOrigen.value = cuentasEnc[0].cuenta;
     _traspasoOrigenMuestraSaldoEnOpcion = true;
@@ -1900,7 +1898,7 @@ function abrirTraspasoEncargo() {
   // Poblar select destino con mis cuentas
   const fuentes = getFuentes();
   const sel = document.getElementById('traspaso_destino');
-  sel.innerHTML = '<option value="">Seleccionar cuenta</option>' + fuentes.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+  sel.innerHTML = html`<option value="">Seleccionar cuenta</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
 
   // Pre-seleccionar la misma cuenta donde más saldo tiene el encargo
   if (cuentasEnc.length > 0) {
@@ -1945,10 +1943,9 @@ function _actualizarTraspasoPreview(enc) {
   const nuevoEnc = saldoEnc - monto;
   const nuevoCuenta = saldoCuenta + monto;
   const colorEnc = nuevoEnc < 0 ? 'var(--red)' : 'var(--blue)';
-  prev.innerHTML =
-    `<span style="color:${colorEnc};">Encargo (disponible): ${fmt(saldoEnc)} → ${fmt(nuevoEnc)}</span><br>` +
-    `<span style="color:var(--accent);">${escHtml(fuenteLabel(destino))}: ${fmt(saldoCuenta)} → ${fmt(nuevoCuenta)}</span>` +
-    (nuevoEnc < 0 ? `<br><span style="color:var(--red);font-size:10px;">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : '');
+  prev.innerHTML = html`<span style="color:${colorEnc};">Encargo (disponible): ${fmt(saldoEnc)} → ${fmt(nuevoEnc)}</span><br>
+    <span style="color:var(--accent);">${fuenteLabel(destino)}: ${fmt(saldoCuenta)} → ${fmt(nuevoCuenta)}</span>
+    ${nuevoEnc < 0 ? html`<br><span style="color:var(--red);font-size:10px;">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : ''}`;
 }
 
 function confirmarTraspasoEncargo() {
@@ -2066,15 +2063,15 @@ function abrirMoverEntreCuentasEncargo() {
     const encargoEnCuenta = cuentasConSaldo.find(c => c.cuenta === f.val);
     return encargoEnCuenta && encargoEnCuenta.saldo > 0;
   });
-  let origenOptsHtml = fuentesConSaldo.map(f => {
+  const origenOpts = fuentesConSaldo.map(f => {
     const encargoEnCuenta = cuentasConSaldo.find(c => c.cuenta === f.val);
     const saldoEnc = encargoEnCuenta.saldo;
-    return '<option value="' + f.val + '">' + f.label + ' (' + fmt(saldoEnc) + ' del encargo)</option>';
-  }).join('');
+    return html`<option value="${f.val}">${f.label} (${fmt(saldoEnc)} del encargo)</option>`;
+  });
   if (saldoSinCuenta > 0) {
-    origenOptsHtml += '<option value="__sinesp__">Sin especificar (' + fmt(saldoSinCuenta) + ' del encargo)</option>';
+    origenOpts.push(html`<option value="__sinesp__">Sin especificar (${fmt(saldoSinCuenta)} del encargo)</option>`);
   }
-  selOrigen.innerHTML = '<option value="">Seleccionar cuenta origen</option>' + origenOptsHtml;
+  selOrigen.innerHTML = html`<option value="">Seleccionar cuenta origen</option>${origenOpts}`;
 
   // Pre-seleccionar la cuenta con más saldo del encargo (o "Sin especificar" si es lo único que hay)
   if (cuentasConSaldo.length > 0) {
@@ -2087,8 +2084,7 @@ function abrirMoverEntreCuentasEncargo() {
 
   // Select destino: todas las cuentas
   const selDestino = document.getElementById('moverenc_destino');
-  selDestino.innerHTML = '<option value="">Seleccionar cuenta destino</option>' +
-    fuentes.map(f => '<option value="' + f.val + '">' + f.label + '</option>').join('');
+  selDestino.innerHTML = html`<option value="">Seleccionar cuenta destino</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
 
   // Listeners
   selOrigen.onchange = function() {
@@ -2139,7 +2135,7 @@ function _actualizarMoverEncPreview(enc) {
     return;
   }
   const cuentas = _getEncargoSaldoPorCuenta(enc);
-  const labelOrigen = origen === '__sinesp__' ? 'Sin especificar' : escHtml(fuenteLabel(origen));
+  const labelOrigen = origen === '__sinesp__' ? 'Sin especificar' : fuenteLabel(origen);
   const saldoEnOrigen = origen === '__sinesp__'
     ? _getEncargoSaldoSinCuenta(enc)
     : (cuentas.find(c => c.cuenta === origen)?.saldo || 0);
@@ -2149,10 +2145,9 @@ function _actualizarMoverEncPreview(enc) {
   const cuentaDestEnc = cuentas.find(c => c.cuenta === destino);
   const saldoEnDestino = cuentaDestEnc ? cuentaDestEnc.saldo : 0;
   const nuevoDestino = saldoEnDestino + monto;
-  prev.innerHTML =
-    '<span style="color:' + colorOrigen + ';">' + labelOrigen + ' (encargo): ' + fmt(saldoEnOrigen) + ' → ' + fmt(nuevoOrigen) + '</span><br>' +
-    '<span style="color:var(--blue);">' + escHtml(fuenteLabel(destino)) + ' (encargo): ' + fmt(saldoEnDestino) + ' → ' + fmt(nuevoDestino) + '</span>' +
-    (excede ? '<br><span style="color:var(--red);font-size:10px;">Excede lo que el encargo tiene en esa cuenta</span>' : '');
+  prev.innerHTML = html`<span style="color:${colorOrigen};">${labelOrigen} (encargo): ${fmt(saldoEnOrigen)} → ${fmt(nuevoOrigen)}</span><br>
+    <span style="color:var(--blue);">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} → ${fmt(nuevoDestino)}</span>
+    ${excede ? html`<br><span style="color:var(--red);font-size:10px;">Excede lo que el encargo tiene en esa cuenta</span>` : ''}`;
 }
 
 function confirmarMoverEncCuentas() {
@@ -2247,25 +2242,23 @@ function abrirTransferenciaEncargo() {
 
   // Select destino: los demás encargos
   const selDestino = document.getElementById('transfenc_destino');
-  selDestino.innerHTML = '<option value="">Seleccionar encargo</option>' +
-    otros.map(o => `<option value="${o.id}">${escHtml(o.nombre)}</option>`).join('');
+  selDestino.innerHTML = html`<option value="">Seleccionar encargo</option>${otros.map(o => html`<option value="${o.id}">${o.nombre}</option>`)}`;
 
   // Select origen: de qué cuenta del encargo actual salió (mismo criterio que Traspaso)
   const selOrigen = document.getElementById('transfenc_origen');
   const cuentasEnc = _getEncargoSaldoPorCuenta(enc);
   const fuentesSinTC = getFuentesSinTC();
   if (cuentasEnc.length === 0) {
-    selOrigen.innerHTML = '<option value="">Sin especificar</option>' + fuentesSinTC.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+    selOrigen.innerHTML = html`<option value="">Sin especificar</option>${fuentesSinTC.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
   } else {
-    selOrigen.innerHTML = '<option value="">Sin especificar</option>' +
-      cuentasEnc.map(f=>`<option value="${f.cuenta}">${escHtml(f.label)} (${fmt(f.saldo)})</option>`).join('');
+    selOrigen.innerHTML = html`<option value="">Sin especificar</option>${cuentasEnc.map(f=>html`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`)}`;
     selOrigen.value = cuentasEnc[0].cuenta;
   }
 
   // Select "dónde queda guardada esa plata ahora" para el encargo destino
   // (ej. la tenés en Nequi mientras se la entregás físicamente a esa persona)
   const selCuentaFisica = document.getElementById('transfenc_cuenta_fisica');
-  selCuentaFisica.innerHTML = '<option value="">Sin especificar</option>' + fuentesSinTC.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+  selCuentaFisica.innerHTML = html`<option value="">Sin especificar</option>${fuentesSinTC.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
   if (cuentasEnc.length > 0) selCuentaFisica.value = cuentasEnc[0].cuenta;
 
   _actualizarTransfEncPreview(enc);
@@ -2288,10 +2281,9 @@ function _actualizarTransfEncPreview(enc) {
   const nuevoOrigen = libreOrigen - monto;
   const saldoDestino = encargoSaldo(destino);
   const colorOrigen = nuevoOrigen < 0 ? 'var(--red)' : 'var(--blue)';
-  prev.innerHTML =
-    `<span style="color:${colorOrigen};">${escHtml(enc.nombre)} (disponible): ${fmt(libreOrigen)} → ${fmt(nuevoOrigen)}</span><br>` +
-    `<span style="color:var(--blue);">${escHtml(destino.nombre)}: ${fmt(saldoDestino)} → ${fmt(saldoDestino + monto)}</span>` +
-    (nuevoOrigen < 0 ? `<br><span style="color:var(--red);font-size:10px;">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : '');
+  prev.innerHTML = html`<span style="color:${colorOrigen};">${enc.nombre} (disponible): ${fmt(libreOrigen)} → ${fmt(nuevoOrigen)}</span><br>
+    <span style="color:var(--blue);">${destino.nombre}: ${fmt(saldoDestino)} → ${fmt(saldoDestino + monto)}</span>
+    ${nuevoOrigen < 0 ? html`<br><span style="color:var(--red);font-size:10px;">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : ''}`;
 }
 
 function confirmarTransferenciaEncargo() {
@@ -2407,7 +2399,7 @@ refresh = function() {
       // usuario — con caracteres como <, >, & sin escapar dentro del
       // innerHTML de un <select>, el parser del navegador puede comportarse
       // de forma impredecible. Ver CHANGELOG.md.
-      sel.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${escHtml(f.val)}">${escHtml(f.label)}</option>`).join('');
+      sel.innerHTML = html`<option value="">Sin especificar</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
     }
     openSheet('nuevo-encargo');
   });
@@ -2525,10 +2517,9 @@ function abrirCompraConTC() {
   let _ctcCuentaEncMuestraSaldoEnOpcion = false;
   if (cuentasConSaldo.length === 0) {
     const fuentes = getFuentes();
-    selEnc.innerHTML = '<option value="">Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+    selEnc.innerHTML = html`<option value="">Sin especificar</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   } else {
-    selEnc.innerHTML = '<option value="">Sin especificar</option>' +
-      cuentasConSaldo.map(f => `<option value="${f.cuenta}">${escHtml(f.label)} (${fmt(f.saldo)})</option>`).join('');
+    selEnc.innerHTML = html`<option value="">Sin especificar</option>${cuentasConSaldo.map(f => html`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`)}`;
     selEnc.value = cuentasConSaldo[0].cuenta;
     _ctcCuentaEncMuestraSaldoEnOpcion = true;
   }
@@ -2544,8 +2535,7 @@ function abrirCompraConTC() {
   if (tarjetas.length === 0) {
     selTC.innerHTML = '<option value="">No hay TC registradas</option>';
   } else {
-    selTC.innerHTML = '<option value="">Seleccionar TC</option>' +
-      tarjetas.map(t => `<option value="${t.id}">${escHtml(t.nombre)} (deuda: ${fmt(t.deuda||0)})</option>`).join('');
+    selTC.innerHTML = html`<option value="">Seleccionar TC</option>${tarjetas.map(t => html`<option value="${t.id}">${t.nombre} (deuda: ${fmt(t.deuda||0)})</option>`)}`;
     // Pre-seleccionar si solo hay una
     if (tarjetas.length === 1) selTC.value = tarjetas[0].id;
   }
@@ -2554,7 +2544,7 @@ function abrirCompraConTC() {
   // no en la opción (mismo patrón que traspaso_destino/spPagarFuente).
   const selDest = document.getElementById('ctc_destino');
   const fuentes = getFuentes();
-  selDest.innerHTML = '<option value="">Seleccionar cuenta</option>' + fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+  selDest.innerHTML = html`<option value="">Seleccionar cuenta</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   // Buscar cajita que tenga "tarjeta" o "TC" o "pago" en el nombre para pre-seleccionar
   const cajitaTC = (S.cajitas || []).find(c => {
     const n = (c.nombre||'').toLowerCase();
@@ -2617,19 +2607,19 @@ function _ctcActualizarPreview() {
   // TC info
   const tc = tcId ? (S.tarjetasCredito||[]).find(t=>t.id===tcId) : null;
   const deudaTC = tc ? (tc.deuda||0) : 0;
-  const nombreTC = escHtml(tc ? tc.nombre : (tcId ? tcId : 'TC'));
+  const nombreTC = tc ? tc.nombre : (tcId ? tcId : 'TC');
 
   // Destino
   const saldoDest = destino ? getSaldoActual(destino) : 0;
-  const lblDest = destino ? escHtml(fuenteLabel(destino)) : '';
+  const lblDest = destino ? fuenteLabel(destino) : '';
 
-  let lines = [];
-  lines.push(`<span style="color:var(--red);">Encargo ${enc?escHtml(enc.nombre):''}: ${fmt(saldoEncCuenta)} → ${fmt(saldoEncCuenta - monto)}</span>`);
-  if (destino) lines.push(`<span style="color:var(--accent);">${lblDest}: ${fmt(saldoDest)} → ${fmt(saldoDest + monto)}</span>`);
-  if (tc) lines.push(`<span style="color:var(--red);">Deuda ${nombreTC}: ${fmt(deudaTC)} → ${fmt(deudaTC + tcMonto)}</span>`);
-  if (margen > 0) lines.push(`<span style="color:var(--accent);">Diferencial tuyo: +${fmt(margen)}</span>`);
+  const lines = [];
+  lines.push(html`<span style="color:var(--red);">Encargo ${enc?enc.nombre:''}: ${fmt(saldoEncCuenta)} → ${fmt(saldoEncCuenta - monto)}</span>`);
+  if (destino) lines.push(html`<span style="color:var(--accent);">${lblDest}: ${fmt(saldoDest)} → ${fmt(saldoDest + monto)}</span>`);
+  if (tc) lines.push(html`<span style="color:var(--red);">Deuda ${nombreTC}: ${fmt(deudaTC)} → ${fmt(deudaTC + tcMonto)}</span>`);
+  if (margen > 0) lines.push(html`<span style="color:var(--accent);">Diferencial tuyo: +${fmt(margen)}</span>`);
 
-  prev.innerHTML = lines.join('<br>');
+  prev.innerHTML = html`${lines.map((l,i)=> i===0 ? l : html`<br>${l}`)}`;
   prev.style.display = '';
 }
 

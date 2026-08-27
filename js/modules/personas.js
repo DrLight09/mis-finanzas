@@ -206,34 +206,47 @@ function _renderListaPersonas() {
   }
   if (empty) empty.style.display = 'none';
 
-  let html = '';
+  // contenido: array de fragmentos html`` — no `let html=''` para no tapar
+  // la función global html`` (mismo hallazgo de sombra de variable ya
+  // corregido en mesada.js/gastos.js, ver auditoria-tecnica.md).
+  const contenido = [];
 
   // Personas con perfil
   personas.forEach(p => {
     const color = p.color || '#60b0f0';
     const datos = getPersonaDatos(p.id);
-    const partes = [];
+    const partesFrag = [];
     if (datos.deudor) {
       const saldo = datos.saldoPrestamo;
-      if (saldo !== 0) partes.push('<span style="color:var(--amber);">' + fmt(saldo) + ' pendiente</span>');
-      else partes.push('<span style="color:var(--accent);">Al día</span>');
+      partesFrag.push(saldo !== 0
+        ? html`<span style="color:var(--amber);">${fmt(saldo)} pendiente</span>`
+        : html`<span style="color:var(--accent);">Al día</span>`);
     }
-    if (datos.encargos.length) partes.push(datos.encargos.length + ' encargo' + (datos.encargos.length !== 1 ? 's' : ''));
+    if (datos.encargos.length) partesFrag.push(html`${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}`);
     if (datos.misDeudas && datos.misDeudas.length) {
       const saldoMD = datos.saldoMisDeudas;
-      if (saldoMD > 0) partes.push('<span style="color:var(--red);">Le debes ' + fmt(saldoMD) + '</span>');
-      else partes.push('<span style="color:var(--accent);">Deuda saldada</span>');
+      partesFrag.push(saldoMD > 0
+        ? html`<span style="color:var(--red);">Le debes ${fmt(saldoMD)}</span>`
+        : html`<span style="color:var(--accent);">Deuda saldada</span>`);
     }
-    const subTexto = partes.length ? partes.join(' · ') : '<span style="color:var(--text3);">Sin actividad</span>';
+    // partesConSeparador: array plano de fragmentos html`` intercalados con
+    // el string ' · ' — interpolar el array directo (sin .join()) deja que
+    // el html`` exterior concatene cada elemento sin volver a escapar los
+    // fragmentos ya seguros ni el separador (texto fijo, sin caracteres
+    // especiales) — mismo patrón sin .join() ya validado en inicio.js/analisis.js.
+    const partesConSeparador = partesFrag.flatMap((f, i) => i === 0 ? [f] : [' · ', f]);
+    const subTexto = partesFrag.length
+      ? partesConSeparador
+      : html`<span style="color:var(--text3);">Sin actividad</span>`;
 
-    html += `<div ${Events.attr('personas:abrirPerfil', p.id)} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
-      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${escHtml(iniciales(p.nombre))}</div>
+    contenido.push(html`<div ${raw(Events.attr('personas:abrirPerfil', p.id))} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
+      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${iniciales(p.nombre)}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:600;">${escHtml(p.nombre)}</div>
+        <div style="font-size:14px;font-weight:600;">${p.nombre}</div>
         <div style="font-size:11px;margin-top:2px;font-family:'DM Mono',monospace;">${subTexto}</div>
       </div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>`;
+    </div>`);
   });
 
   // Deudores sin perfil vinculado
@@ -241,18 +254,18 @@ function _renderListaPersonas() {
     const color = d.color || '#60b0f0';
     const saldo = getDeudorSaldo(d);
     const sub = saldo > 0
-      ? `<span style="color:var(--amber);">${fmt(saldo)} pendiente</span>`
+      ? html`<span style="color:var(--amber);">${fmt(saldo)} pendiente</span>`
       : saldo < 0
-        ? `<span style="color:var(--red);">Saldo a su favor</span>`
-        : `<span style="color:var(--accent);">Al día</span>`;
-    html += `<div ${Events.attr('prestado:abrirPerfilDeudor', d.id)} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
-      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${escHtml(d.nombre.substring(0,2).toUpperCase())}</div>
+        ? html`<span style="color:var(--red);">Saldo a su favor</span>`
+        : html`<span style="color:var(--accent);">Al día</span>`;
+    contenido.push(html`<div ${raw(Events.attr('prestado:abrirPerfilDeudor', d.id))} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
+      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:600;">${escHtml(d.nombre)}</div>
+        <div style="font-size:14px;font-weight:600;">${d.nombre}</div>
         <div style="font-size:11px;margin-top:2px;font-family:'DM Mono',monospace;">${sub}</div>
       </div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>`;
+    </div>`);
   });
 
   // misDeudas sin perfil vinculado (le debo a alguien sin persona)
@@ -260,19 +273,19 @@ function _renderListaPersonas() {
     const color = d.color || '#f06868';
     const saldo = getMiDeudaSaldo(d);
     const sub = saldo > 0
-      ? `<span style="color:var(--red);">Le debes ${fmt(saldo)}</span>`
-      : `<span style="color:var(--accent);">Saldado</span>`;
-    html += `<div ${Events.attr('prestado-personas:abrirPerfilMiDeuda', d.id)} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
-      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${escHtml(d.nombre.substring(0,2).toUpperCase())}</div>
+      ? html`<span style="color:var(--red);">Le debes ${fmt(saldo)}</span>`
+      : html`<span style="color:var(--accent);">Saldado</span>`;
+    contenido.push(html`<div ${raw(Events.attr('prestado-personas:abrirPerfilMiDeuda', d.id))} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
+      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:600;">${escHtml(d.nombre)}</div>
+        <div style="font-size:14px;font-weight:600;">${d.nombre}</div>
         <div style="font-size:11px;margin-top:2px;font-family:'DM Mono',monospace;">${sub}</div>
       </div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
-    </div>`;
+    </div>`);
   });
 
-  body.innerHTML = html;
+  body.innerHTML = html`${contenido}`;
 
   // Hover effect (antes onmouseenter/onmouseleave inline — docs/auditoria-tecnica.md #1).
   // No puede ser un :hover en CSS porque el color varía por persona/deudor.
@@ -313,40 +326,45 @@ function _selPersonaFiltrar() {
   if (!lista) return;
   const personas = (S.personas || []).filter(p => !q || p.nombre.toLowerCase().includes(q));
   if (!personas.length) {
-    lista.innerHTML = q
-      ? `<div style="padding:10px 0;">
-          <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">No se encontró "${escHtml(q)}".</div>
-          <button type="button" ${Events.attr('personas:selCrearDirecto')} style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border-radius:var(--radius-sm);background:rgba(200,240,96,.12);border:1.5px solid var(--accent);color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+    lista.innerHTML = html`${q
+      ? html`<div style="padding:10px 0;">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">No se encontró "${q}".</div>
+          <button type="button" ${raw(Events.attr('personas:selCrearDirecto'))} style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border-radius:var(--radius-sm);background:rgba(200,240,96,.12);border:1.5px solid var(--accent);color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Crear a "${escHtml(q)}"
+            Crear a "${q}"
           </button>
         </div>`
-      : `<div style="font-size:12px;color:var(--text3);padding:10px 0;">No hay personas todavía. Creá una nueva.</div>`;
+      : html`<div style="font-size:12px;color:var(--text3);padding:10px 0;">No hay personas todavía. Creá una nueva.</div>`}`;
     return;
   }
-  lista.innerHTML = personas.map(p => {
+  // items: array de fragmentos html`` por persona — se interpolan directo
+  // (sin .join('')) en el html`` final, igual criterio que arriba.
+  const items = personas.map(p => {
     const datos = getPersonaDatos(p.id);
     const badges = [];
     if (datos.deudor) {
       const saldo = datos.saldoPrestamo;
-      if (saldo > 0) badges.push(`<span class="badge bg-amber" style="font-size:9px;">Préstamo ${fmt(saldo)}</span>`);
-      else badges.push(`<span class="badge bg-blue" style="font-size:9px;">Préstamos</span>`);
+      badges.push(saldo > 0
+        ? html`<span class="badge bg-amber" style="font-size:9px;">Préstamo ${fmt(saldo)}</span>`
+        : html`<span class="badge bg-blue" style="font-size:9px;">Préstamos</span>`);
     }
-    if (datos.encargos.length) badges.push(`<span class="badge bg-blue" style="font-size:9px;">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>`);
+    if (datos.encargos.length) badges.push(html`<span class="badge bg-blue" style="font-size:9px;">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>`);
     if (datos.misDeudas && datos.misDeudas.length) {
       const saldoMD = datos.saldoMisDeudas;
-      if (saldoMD > 0) badges.push(`<span class="badge" style="font-size:9px;background:rgba(240,104,104,.18);color:var(--red);">Le debes ${fmt(saldoMD)}</span>`);
-      else badges.push(`<span class="badge bg-green" style="font-size:9px;">Deuda saldada</span>`);
+      badges.push(saldoMD > 0
+        ? html`<span class="badge" style="font-size:9px;background:rgba(240,104,104,.18);color:var(--red);">Le debes ${fmt(saldoMD)}</span>`
+        : html`<span class="badge bg-green" style="font-size:9px;">Deuda saldada</span>`);
     }
-    return `<div ${Events.attr('personas:selElegir', p.id)} style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border);cursor:pointer;" class="_sel-persona-row">
-      <div class="avatar" style="width:36px;height:36px;font-size:12px;margin-right:0;flex-shrink:0;background:${p.color}18;color:${p.color};border-color:${p.color}33;">${escHtml(iniciales(p.nombre))}</div>
+    return html`<div ${raw(Events.attr('personas:selElegir', p.id))} style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border);cursor:pointer;" class="_sel-persona-row">
+      <div class="avatar" style="width:36px;height:36px;font-size:12px;margin-right:0;flex-shrink:0;background:${p.color}18;color:${p.color};border-color:${p.color}33;">${iniciales(p.nombre)}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:600;">${escHtml(p.nombre)}</div>
-        ${badges.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">${badges.join('')}</div>` : ''}
+        <div style="font-size:14px;font-weight:600;">${p.nombre}</div>
+        ${badges.length ? html`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">${badges}</div>` : ''}
       </div>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`;
-  }).join('');
+  });
+  lista.innerHTML = html`${items}`;
   // Hover effect
   lista.querySelectorAll('._sel-persona-row').forEach(row => {
     row.addEventListener('mouseenter', () => { row.style.background = 'var(--bg3)'; row.style.borderRadius = '8px'; });
@@ -498,7 +516,15 @@ function abrirPerfilPersona(personaId) {
   const body = document.getElementById('pperf-body');
   if (!body) return;
 
-  let html = '';
+  // contenido: array de fragmentos html`` — no `let html=''` para no tapar
+  // la función global html`` (mismo hallazgo de sombra de variable ya
+  // corregido en mesada.js/gastos.js). Cada bloque condicional que antes
+  // era un template string suelto (`${cond ? \`<div>...\` : ''}`) ahora
+  // usa el tag html`` también en la rama anidada — así el fragmento
+  // interno llega ya marcado __raw y el html`` exterior lo interpola sin
+  // volver a escaparlo (verificado contra la implementación real de
+  // js/core/html-tag.js, ver auditoria-tecnica.md nota 2026-08-26).
+  const contenido = [];
 
   // ── Sección Préstamos ──
   if (datos.deudor) {
@@ -521,10 +547,10 @@ function abrirPerfilPersona(personaId) {
     const diasDesde     = movs.length ? Math.floor((new Date() - new Date(movs[0].fecha + 'T00:00:00')) / 86400000) : null;
     const ultimoMov     = movs.length ? movs[movs.length - 1] : null;
 
-    html += `<div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
+    contenido.push(html`<div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Préstamos</div>
-        <button type="button" ${Events.attr('prestado-personas:irADeudor', d.id)} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver detalle →</button>
+        <button type="button" ${raw(Events.attr('prestado-personas:irADeudor', d.id))} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver detalle →</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
         <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
@@ -540,7 +566,7 @@ function abrirPerfilPersona(personaId) {
           <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(totalAbonado)}</div>
         </div>
       </div>
-      ${totalPrestado > 0 ? `<div style="margin-bottom:10px;">
+      ${totalPrestado > 0 ? html`<div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;">
           <span>Progreso de pago</span><span>${pct}%</span>
         </div>
@@ -549,29 +575,29 @@ function abrirPerfilPersona(personaId) {
         </div>
       </div>` : ''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-        ${mayorPrestamo ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+        ${mayorPrestamo ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor préstamo</div>
           <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(mayorPrestamo.monto)}</div>
-          ${mayorPrestamo.fecha ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorPrestamo.fecha}</div>` : ''}
+          ${mayorPrestamo.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorPrestamo.fecha}</div>` : ''}
         </div>` : ''}
-        ${mayorAbono ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+        ${mayorAbono ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor abono</div>
           <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(mayorAbono.monto)}</div>
-          ${mayorAbono.fecha ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorAbono.fecha}</div>` : ''}
+          ${mayorAbono.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorAbono.fecha}</div>` : ''}
         </div>` : ''}
         <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Veces prestado</div>
           <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${cuantasveces}x</div>
         </div>
-        ${diasDesde !== null ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+        ${diasDesde !== null ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Relación activa</div>
           <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${diasDesde}d</div>
         </div>` : ''}
       </div>
-      ${ultimoMov ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
-        Último movimiento: <span style="color:var(--text2);font-weight:500;">${ultimoMov.tipo === 'prestamo' ? 'Préstamo' : (ultimoMov.tipo === 'pago-completo' ? 'Pago completo' : 'Abono')} de ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? ' · <i>' + escHtml(ultimoMov.nota) + '</i>' : ''}
+      ${ultimoMov ? html`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
+        Último movimiento: <span style="color:var(--text2);font-weight:500;">${ultimoMov.tipo === 'prestamo' ? 'Préstamo' : (ultimoMov.tipo === 'pago-completo' ? 'Pago completo' : 'Abono')} de ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? html` · <i>${ultimoMov.nota}</i>` : ''}
       </div>` : ''}
-    </div>`;
+    </div>`);
   }
 
   // ── Sección Encargos ──
@@ -583,7 +609,7 @@ function abrirPerfilPersona(personaId) {
     const mayorEntrada = entradasEnc.length ? entradasEnc.reduce((mx, m) => (m.monto||0) > (mx.monto||0) ? m : mx, entradasEnc[0]) : null;
     const encargoMayor = datos.encargos.length ? [...datos.encargos].sort((a,b) => encargoSaldo(b) - encargoSaldo(a))[0] : null;
 
-    html += `<div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
+    contenido.push(html`<div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Encargos</div>
         <span style="font-size:12px;color:var(--text2);">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>
@@ -597,28 +623,28 @@ function abrirPerfilPersona(personaId) {
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Cantidad</div>
           <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${datos.encargos.length}</div>
         </div>
-        ${encargoMayor ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+        ${encargoMayor ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Encargo mayor</div>
           <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(encargoSaldo(encargoMayor))}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(encargoMayor.nota||encargoMayor.nombre)}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${encargoMayor.nota||encargoMayor.nombre}</div>
         </div>` : ''}
-        ${mayorEntrada ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+        ${mayorEntrada ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor entrada</div>
           <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(mayorEntrada.monto)}</div>
-          ${mayorEntrada.fecha ? `<div style="font-size:10px;color:var(--text3);margin-top:1px;">${mayorEntrada.fecha}</div>` : ''}
+          ${mayorEntrada.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:1px;">${mayorEntrada.fecha}</div>` : ''}
         </div>` : ''}
       </div>
       ${datos.encargos.map(e => {
         const saldoE = encargoSaldo(e);
-        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);">
-          <div style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(e.nota || e.nombre)}</div>
+        return html`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.nota || e.nombre}</div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(saldoE)}</div>
-            <button type="button" ${Events.attr('encargos-personas:irAEncargo', e.id)} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver →</button>
+            <button type="button" ${raw(Events.attr('encargos-personas:irAEncargo', e.id))} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver →</button>
           </div>
         </div>`;
-      }).join('')}
-    </div>`;
+      })}
+    </div>`);
   }
 
   // ── Sección Spotify ──
@@ -634,8 +660,8 @@ function abrirPerfilPersona(personaId) {
       hoy0    ? 'Vence hoy' :
                 'Paga en ' + diasRestantes + 'd · ' + spEntry.proximoPago;
     const estadoBadge = spEntry.pagado
-      ? '<span class="badge bg-green" style="font-size:9px;">Pagó este ciclo</span>'
-      : '<span class="badge bg-red" style="font-size:9px;">Pendiente</span>';
+      ? html`<span class="badge bg-green" style="font-size:9px;">Pagó este ciclo</span>`
+      : html`<span class="badge bg-red" style="font-size:9px;">Pendiente</span>`;
 
     // Stats Spotify de esta persona
     const histSp = (S.spotifyHistorial || []).filter(h => h.tipo === 'cobro' && h.nombre === spEntry.nombre);
@@ -646,13 +672,13 @@ function abrirPerfilPersona(personaId) {
       : null;
     const mesesEstimados = diasEnPlan !== null ? Math.floor(diasEnPlan / 30) : null;
 
-    html += `<div style="background:rgba(30,215,96,.06);border:1px solid rgba(30,215,96,.25);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
+    contenido.push(html`<div style="background:rgba(30,215,96,.06);border:1px solid rgba(30,215,96,.25);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="font-size:10px;color:#1ed760;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 64 64" style="vertical-align:middle;margin-right:3px;"><path d="M32 0C14.3 0 0 14.337 0 32c0 17.7 14.337 32 32 32 17.7 0 32-14.337 32-32S49.663 0 32 0zm14.68 46.184c-.573.956-1.797 1.223-2.753.65-7.532-4.588-16.975-5.62-28.14-3.097-1.07.23-2.14-.42-2.37-1.49s.42-2.14 1.49-2.37c12.196-2.79 22.67-1.606 31.082 3.556a2 2 0 0 1 .688 2.753zm3.9-8.717c-.726 1.185-2.256 1.53-3.44.84-8.602-5.276-21.716-6.805-31.885-3.747-1.338.382-2.714-.344-3.097-1.644-.382-1.338.344-2.714 1.682-3.097 11.622-3.517 26.074-1.835 35.976 4.244 1.147.688 1.49 2.217.765 3.403zm.344-9.1c-10.323-6.117-27.336-6.69-37.2-3.708-1.568.497-3.25-.42-3.747-1.988s.42-3.25 1.988-3.747c11.317-3.44 30.127-2.753 41.98 4.282 1.415.84 1.873 2.676 1.032 4.09-.765 1.453-2.638 1.912-4.053 1.07z" fill="#1ed760"/></svg>
           Spotify
         </div>
-        <button type="button" ${Events.attr('personas:irASpotify')} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver módulo →</button>
+        <button type="button" ${raw(Events.attr('personas:irASpotify'))} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver módulo →</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px;">
         <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
@@ -663,24 +689,24 @@ function abrirPerfilPersona(personaId) {
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Estado</div>
           <div style="margin-top:4px;">${estadoBadge}</div>
         </div>
-        ${totalCobradoSp > 0 ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+        ${totalCobradoSp > 0 ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Total cobrado</div>
           <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:#1ed760;">${fmt(totalCobradoSp)}</div>
           <div style="font-size:10px;color:var(--text3);margin-top:1px;">${histSp.length} cobro${histSp.length !== 1 ? 's' : ''}</div>
         </div>` : ''}
-        ${diasEnPlan !== null ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+        ${diasEnPlan !== null ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">En el plan</div>
           <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${mesesEstimados !== null ? mesesEstimados + ' período' + (mesesEstimados !== 1 ? 's' : '') : diasEnPlan + 'd'}</div>
           <div style="font-size:10px;color:var(--text3);margin-top:1px;">desde ${spEntry.fechaIngreso}</div>
         </div>` : ''}
-        ${mayorCobroSp ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;grid-column:1/-1;">
+        ${mayorCobroSp ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;grid-column:1/-1;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor cobro registrado</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:#1ed760;">${fmt(mayorCobroSp.monto)}${mayorCobroSp.nota ? ' <span style="font-size:10px;color:var(--text3);font-weight:400;">· ' + escHtml(mayorCobroSp.nota) + '</span>' : ''}</div>
-          ${mayorCobroSp.fecha ? `<div style="font-size:10px;color:var(--text3);margin-top:1px;">${mayorCobroSp.fecha}</div>` : ''}
+          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:#1ed760;">${fmt(mayorCobroSp.monto)}${mayorCobroSp.nota ? html` <span style="font-size:10px;color:var(--text3);font-weight:400;">· ${mayorCobroSp.nota}</span>` : ''}</div>
+          ${mayorCobroSp.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:1px;">${mayorCobroSp.fecha}</div>` : ''}
         </div>` : ''}
       </div>
-      ${badgeText ? `<div>${spEntry.pagado ? '' : `<span class="badge ${badgeClass}" style="font-size:9px;">${badgeText}</span>`}</div>` : ''}
-    </div>`;
+      ${badgeText ? html`<div>${spEntry.pagado ? '' : html`<span class="badge ${badgeClass}" style="font-size:9px;">${badgeText}</span>`}</div>` : ''}
+    </div>`);
   }
 
   // ── Sección Le debo (misDeudas) ──
@@ -699,12 +725,12 @@ function abrirPerfilPersona(personaId) {
     const colorDeuda = totalMisDeudas > 0 ? 'var(--red)' : 'var(--accent)';
     const primerMiDeuda = datos.misDeudas[0];
 
-    html += `<div style="background:rgba(240,104,104,.07);border:1px solid rgba(240,104,104,.22);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
+    contenido.push(html`<div style="background:rgba(240,104,104,.07);border:1px solid rgba(240,104,104,.22);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;display:flex;align-items:center;gap:5px;">
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Le debo
         </div>
-        <button type="button" ${Events.attr('prestado-personas:irAMiDeuda', primerMiDeuda.id)} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver detalle →</button>
+        <button type="button" ${raw(Events.attr('prestado-personas:irAMiDeuda', primerMiDeuda.id))} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver detalle →</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
         <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
@@ -720,7 +746,7 @@ function abrirPerfilPersona(personaId) {
           <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(totalPagado)}</div>
         </div>
       </div>
-      ${totalRecibido > 0 ? `<div style="margin-bottom:10px;">
+      ${totalRecibido > 0 ? html`<div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;">
           <span>Progreso de pago</span><span>${pct}%</span>
         </div>
@@ -729,28 +755,28 @@ function abrirPerfilPersona(personaId) {
         </div>
       </div>` : ''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-        ${mayorRecibido ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+        ${mayorRecibido ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor préstamo</div>
           <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(mayorRecibido.monto)}</div>
-          ${mayorRecibido.fecha ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorRecibido.fecha}</div>` : ''}
+          ${mayorRecibido.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorRecibido.fecha}</div>` : ''}
         </div>` : ''}
-        ${mayorPago ? `<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
+        ${mayorPago ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
           <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor pago</div>
           <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(mayorPago.monto)}</div>
-          ${mayorPago.fecha ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorPago.fecha}</div>` : ''}
+          ${mayorPago.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorPago.fecha}</div>` : ''}
         </div>` : ''}
       </div>
-      ${ultimoMov ? `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
-        Último mov: <span style="color:var(--text2);font-weight:500;">${ultimoMov.tipo === 'recibido' ? 'Recibí' : 'Pagué'} ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? ' · <i>' + escHtml(ultimoMov.nota) + '</i>' : ''}
+      ${ultimoMov ? html`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
+        Último mov: <span style="color:var(--text2);font-weight:500;">${ultimoMov.tipo === 'recibido' ? 'Recibí' : 'Pagué'} ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? html` · <i>${ultimoMov.nota}</i>` : ''}
       </div>` : ''}
-    </div>`;
+    </div>`);
   }
 
   if (!datos.deudor && !datos.encargos.length && !spEntry && !(datos.misDeudas && datos.misDeudas.length)) {
-    html += `<div style="font-size:12px;color:var(--text3);padding:8px 0 14px;line-height:1.6;">Esta persona no tiene préstamos, encargos ni está en Spotify todavía.</div>`;
+    contenido.push(html`<div style="font-size:12px;color:var(--text3);padding:8px 0 14px;line-height:1.6;">Esta persona no tiene préstamos, encargos ni está en Spotify todavía.</div>`);
   }
 
-  body.innerHTML = html;
+  body.innerHTML = html`${contenido}`;
   document.getElementById('sheet-perfil-persona').classList.add('open');
 }
 

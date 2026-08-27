@@ -479,15 +479,18 @@ function renderProyeccion(){
       historialInsuficiente = true;
       nivelConfianza = 'insuficiente';
     } else {
-      // Trimmed mean: con 5+ puntos descartamos el día más alto y el más bajo en valor
-      // absoluto (outliers como un ingreso puntual grande o un gasto extraordinario).
-      // Con menos de 5 puntos usamos todos — no hay suficiente para recortar.
-      let tasasParaPromedio = tasasDiarias.slice().sort((a,b)=>a-b);
-      if(tasasParaPromedio.length >= 5){
-        tasasParaPromedio = tasasParaPromedio.slice(1, -1); // descarta min y max
-      }
-      const tasaPromedioDia = tasasParaPromedio.reduce((s,v)=>s+v,0) / tasasParaPromedio.length;
-      tendenciaMensual = tasaPromedioDia * 30;
+      // Mediana en vez de (trimmed) promedio: un promedio —incluso recortando el
+      // máximo y el mínimo— se deja arrastrar por un solo día extremo si hay más
+      // de un outlier en la ventana (dos ingresos grandes, dos gastos grandes, o
+      // un snapshot corrupto puntual): con 4 outliers entre 90 días, "recortar 1
+      // y 1" deja 2 sin filtrar y la tendencia puede terminar mostrando el signo
+      // contrario al comportamiento real. La mediana no se mueve mientras los
+      // outliers sean menos de la mitad de los días — así un solo mes con un
+      // ingreso o gasto puntual grande no voltea el indicador de bueno a malo.
+      const sorted = tasasDiarias.slice().sort((a,b)=>a-b);
+      const mid = Math.floor(sorted.length/2);
+      const medianaDia = sorted.length%2 ? sorted[mid] : (sorted[mid-1]+sorted[mid])/2;
+      tendenciaMensual = medianaDia * 30;
 
       // Nivel de confianza escalonado según días de historial disponible
       if(diasReales >= 60)       nivelConfianza = 'estable';

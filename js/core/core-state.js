@@ -675,7 +675,21 @@ function calcPatrimonioTotal(){
   return nu+cdts+nequi+ef+prest+custom+alcancia-deudaTC-misDeudas-cpAjeno;
 }
 
+// Evita grabar un snapshot cuando calcPatrimonioTotal() todavía depende de un
+// módulo lazy sin cargar (cuentas.js, prestado.js). Sin este guard, sus
+// fallbacks silenciosos (typeof...?fn():0) producen un patrimonio
+// artificialmente bajo que queda grabado permanentemente en
+// S.patrimonioHistorial hasta el próximo save() con todo cargado — ver
+// CHANGELOG.md#patrimonio-y-cálculos-globales (bug de caídas de un día).
+function _patrimonioDependenciasListas(){
+  return typeof calcC==='function'
+      && typeof calcCDT==='function'
+      && typeof getDeudorSaldoPatrimonio==='function'
+      && typeof totalMisDeudasPendiente==='function';
+}
+
 function snapshotPatrimonio(){
+  if(!_patrimonioDependenciasListas()) return;
   const hoyStr=hoy();
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
   const val=calcPatrimonioTotal();
@@ -716,6 +730,7 @@ function snapshotPatrimonio(){
   if(S.patrimonioHistorial.length>365)S.patrimonioHistorial=S.patrimonioHistorial.slice(-365);
   // (No localStorage — Firebase lo guarda _fbSaveToCloud)
 }
+
 // Calcula cuánta plata de encargos (dinero que estás cuidando de otra persona,
 // "No es tuyo") está guardada físicamente en una cuenta cualquiera — cajita de Nu,
 // Nequi, Efectivo o una cuenta personalizada. cuentaKey usa el mismo formato que

@@ -483,34 +483,22 @@ function _cpRenderLista(){
     return;
   }
 
-  let html = '';
+  let contenido = '';
 
   // Pendientes
   if(pendientes.length){
-    html += `<div class="sec-title" style="margin-top:4px;">Por llegar</div>`;
+    contenido += '<div class="sec-title" style="margin-top:4px;">Por llegar</div>';
     pendientes.sort((a,b)=>(a.fechaLlegada||'').localeCompare(b.fechaLlegada||''));
     pendientes.forEach(item => {
       const comp = (item.destinos||[]).filter(d=>d.tipo!=='libre').reduce((s,d)=>s+(d.monto||0),0);
       const libre = Math.max(0,(item.montoTotal||0)-comp);
       const pctComp = item.montoTotal > 0 ? Math.min(100,(comp/item.montoTotal)*100) : 0;
-      const hoy = hoy();
       const diasStr = _cpDiasHastaStr(item.fechaLlegada);
 
-      html += `<div class="card" style="margin-bottom:9px;padding:15px 15px 12px;">
-        <!-- Header -->
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(item.desc)}</div>
-            <div style="font-size:11px;color:${diasStr.urgente?'var(--amber)':'var(--text3)'};font-family:'DM Mono',monospace;margin-top:2px;">${diasStr.texto}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0;margin-left:10px;">
-            <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(item.montoTotal)}</div>
-            ${item.cuentaDestino ? `<div style="font-size:9px;color:var(--text3);margin-top:1px;">${escHtml(_cpFuenteLabel(item.cuentaDestino))}</div>` : ''}
-          </div>
-        </div>
-
-        <!-- Barra de compromisos -->
-        ${pctComp > 0 ? `
+      // Bloque de barra de compromisos: solo números/labels fijos, sin texto
+      // libre del usuario — se arma aparte y se interpola con raw() (mismo
+      // criterio que un fragmento de HTML de confianza ya armado).
+      const barraCompromiso = pctComp > 0 ? `
         <div style="margin-bottom:10px;">
           <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-bottom:4px;">
             <div style="height:100%;width:${pctComp.toFixed(1)}%;background:var(--red);border-radius:2px;transition:width .4s;"></div>
@@ -520,12 +508,15 @@ function _cpRenderLista(){
             <span style="color:var(--accent);">Le sobra: ${fmt(libre)}</span>
           </div>
         </div>` : `
-        <div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:10px;">Le sobra: ${fmt(item.montoTotal)} (nada comprometido)</div>`}
+        <div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:10px;">Le sobra: ${fmt(item.montoTotal)} (nada comprometido)</div>`;
 
-        <!-- Destinos chips con estado -->
-        ${(item.destinos||[]).length ? `
+      // Chips de destinos: cada uno arma su propio estadoBadge (markup fijo,
+      // sin texto libre) y pasa por html`` para escapar d.desc; el join('')
+      // final se interpola con raw() en el card exterior, mismo criterio ya
+      // documentado (mesada.js/gastos.js) para fragmentos ya escapados.
+      const chipsDestinos = (item.destinos||[]).length ? html`
         <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
-          ${(item.destinos||[]).map(d=>{
+          ${raw((item.destinos||[]).map(d=>{
             const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
             let estadoBadge = '';
             if(d.tipo === 'reposicion'){
@@ -545,27 +536,46 @@ function _cpRenderLista(){
                 ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(200,240,96,.15);color:var(--accent);vertical-align:middle;"><i class="fa-solid fa-check" style="margin-right:2px;"></i>pagado</span>`
                 : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(240,184,64,.12);color:var(--amber);vertical-align:middle;"><i class="fa-regular fa-clock" style="margin-right:3px;"></i>por pagar</span>`;
             }
-            return `<span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:${ti.bg};border:1px solid ${ti.border};color:${ti.color};font-family:'DM Mono',monospace;">${escHtml(d.desc)}: ${fmt(d.monto)}${estadoBadge}</span>`;
-          }).join('')}
-        </div>` : ''}
+            return html`<span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:${ti.bg};border:1px solid ${ti.border};color:${ti.color};font-family:'DM Mono',monospace;">${d.desc}: ${fmt(d.monto)}${raw(estadoBadge)}</span>`;
+          }).join(''))}
+        </div>` : '';
+
+      contenido += html`<div class="card" style="margin-bottom:9px;padding:15px 15px 12px;">
+        <!-- Header -->
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.desc}</div>
+            <div style="font-size:11px;color:${diasStr.urgente?'var(--amber)':'var(--text3)'};font-family:'DM Mono',monospace;margin-top:2px;">${diasStr.texto}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;margin-left:10px;">
+            <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(item.montoTotal)}</div>
+            ${item.cuentaDestino ? html`<div style="font-size:9px;color:var(--text3);margin-top:1px;">${_cpFuenteLabel(item.cuentaDestino)}</div>` : ''}
+          </div>
+        </div>
+
+        <!-- Barra de compromisos -->
+        ${raw(barraCompromiso)}
+
+        <!-- Destinos chips con estado -->
+        ${chipsDestinos}
 
         <!-- Acciones -->
         <div style="display:flex;gap:7px;flex-wrap:wrap;">
-          <button type="button" ${Events.attr('cp:abrirRecibir', item.id)}
+          <button type="button" ${raw(Events.attr('cp:abrirRecibir', item.id))}
             style="flex:1;min-width:80px;padding:8px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.12);border:1.5px solid rgba(200,240,96,.35);color:var(--accent);display:flex;align-items:center;justify-content:center;gap:5px;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
             ¡Llegó!
           </button>
-          <button type="button" ${Events.attr('cp:marcarPagos', item.id)}
+          <button type="button" ${raw(Events.attr('cp:marcarPagos', item.id))}
             style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(240,184,64,.08);border:1.5px solid rgba(240,184,64,.3);color:var(--amber);"
             title="Marcar qué ya pagaste">
             <i class="fa-solid fa-check-double" style="margin-right:5px;"></i>Pagos
           </button>
-          <button type="button" ${Events.attr('cp:abrirEditar', item.id)}
+          <button type="button" ${raw(Events.attr('cp:abrirEditar', item.id))}
             style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(136,136,128,.08);border:1.5px solid var(--border2);color:var(--text2);">
             Editar
           </button>
-          <button type="button" ${Events.attr('cp:eliminar', item.id)}
+          <button type="button" ${raw(Events.attr('cp:eliminar', item.id))}
             style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;background:rgba(240,104,104,.08);border:1.5px solid rgba(240,104,104,.2);color:var(--red);">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
           </button>
@@ -580,7 +590,7 @@ function _cpRenderLista(){
   );
   if(recibidosConPendientes.length){
     const hoyMs = new Date(hoy()+'T00:00:00').getTime();
-    html += `<div class="sec-title" style="margin-top:14px;">Plata guardada para pagar</div>`;
+    contenido += '<div class="sec-title" style="margin-top:14px;">Plata guardada para pagar</div>';
     recibidosConPendientes.sort((a,b)=>(b.fechaRecibido||'').localeCompare(a.fechaRecibido||'')).slice(0,5).forEach(item=>{
       // Gastos pendientes de cajita con plata guardada
       const gastosGuardados = (item.destinos||[]).filter(d =>
@@ -588,12 +598,12 @@ function _cpRenderLista(){
       );
       let guardadaHtml = '';
       if(gastosGuardados.length){
-        guardadaHtml = `<div style="margin-top:9px;padding:9px 11px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.18);border-radius:var(--radius-sm);">
+        guardadaHtml = html`<div style="margin-top:9px;padding:9px 11px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.18);border-radius:var(--radius-sm);">
           <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">
             <i class="fa-solid fa-vault" style="color:var(--accent);font-size:10px;"></i>
             <span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;">Plata guardada para pagar</span>
           </div>
-          ${gastosGuardados.map(d => {
+          ${raw(gastosGuardados.map(d => {
             const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
             let fechaInfo = '';
             if(d.fechaPago){
@@ -607,14 +617,14 @@ function _cpRenderLista(){
               else if(diasFecha <= 4){ colorFecha='var(--amber)'; iconoFecha='fa-clock'; textoFecha='Pagar en '+diasFecha+' días ('+d.fechaPago+')'; }
               fechaInfo = ` · <i class="fa-solid ${iconoFecha}" style="color:${colorFecha};font-size:9px;margin-right:2px;"></i><span style="color:${colorFecha};">${textoFecha}</span>`;
             }
-            return `<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(200,240,96,.1);">
+            return html`<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(200,240,96,.1);">
               <div style="min-width:0;flex:1;">
-                <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(d.desc)}</div>
-                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;"><i class="fa-solid fa-box" style="font-size:9px;margin-right:3px;color:var(--purple);"></i>${escHtml(cajLabel)}${fechaInfo}</div>
+                <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.desc}</div>
+                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;"><i class="fa-solid fa-box" style="font-size:9px;margin-right:3px;color:var(--purple);"></i>${cajLabel}${raw(fechaInfo)}</div>
               </div>
               <span style="font-size:11px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);margin-left:8px;flex-shrink:0;">${fmt(d.monto)}</span>
             </div>`;
-          }).join('')}
+          }).join(''))}
         </div>`;
       }
 
@@ -624,16 +634,16 @@ function _cpRenderLista(){
         return dias <= 3;
       });
 
-      html += `<div class="card card-sm" style="margin-bottom:7px;${tieneUrgente?'border-color:rgba(240,184,64,.4);':''}">
+      contenido += html`<div class="card card-sm" style="margin-bottom:7px;${tieneUrgente?'border-color:rgba(240,184,64,.4);':''}">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <div style="min-width:0;flex:1;">
-            <div style="font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(item.desc)}</div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">Recibido el ${item.fechaRecibido||'—'}${tieneUrgente?' <span style="color:var(--amber);font-weight:700;">· Pago próximo</span>':''}</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.desc}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">Recibido el ${item.fechaRecibido||'—'}${raw(tieneUrgente?' <span style="color:var(--amber);font-weight:700;">· Pago próximo</span>':'')}</div>
           </div>
           <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text2);margin-left:8px;flex-shrink:0;">${fmt(item.montoTotal)}</span>
         </div>
         ${guardadaHtml}
-        <button type="button" ${Events.attr('cp:marcarPagos', item.id)}
+        <button type="button" ${raw(Events.attr('cp:marcarPagos', item.id))}
           style="width:100%;margin-top:10px;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.1);border:1.5px solid rgba(200,240,96,.3);color:var(--accent);">
           <i class="fa-solid fa-check" style="margin-right:5px;"></i>Marcar como pagado
         </button>
@@ -641,8 +651,9 @@ function _cpRenderLista(){
     });
   }
 
-  el.innerHTML = html;
+  el.innerHTML = contenido;
 }
+
 
 function _cpDiasHastaStr(fecha){
   if(!fecha) return { texto:'Sin fecha definida', urgente:false };
@@ -1040,7 +1051,7 @@ function _cpRenderDestinosTmp(){
           : `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-regular fa-clock" style="font-size:8px;"></i>Pendiente</span>`;
         if(d.cuentaId){
           const label = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.cuentaId) : d.cuentaId;
-          badges += ` <span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.1);color:var(--purple);font-family:'DM Mono',monospace;">${escHtml(label)}</span>`;
+          badges += html` <span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.1);color:var(--purple);font-family:'DM Mono',monospace;">${label}</span>`;
         }
       } else if(d.tipo === 'gasto'){
         const origenBadge = d.gastoOrigen === 'tc'
@@ -1052,21 +1063,21 @@ function _cpRenderDestinosTmp(){
         badges = origenBadge + ' ' + pagoBadge;
       } else if(d.tipo === 'abono_deuda' && d.personaId){
         const deu = (window.S && S.deudores) ? (S.deudores||[]).find(x=>x.id===d.personaId) : null;
-        if(deu) badges = `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.25);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-solid fa-user" style="font-size:8px;margin-right:2px;"></i>${escHtml(deu.nombre)}</span>`;
+        if(deu) badges = html`<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.25);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-solid fa-user" style="font-size:8px;margin-right:2px;"></i>${deu.nombre}</span>`;
       } else {
         badges = d.yaPague
           ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.15);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-solid fa-check"></i> Pagado</span>`
           : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);color:var(--amber);font-family:'DM Mono',monospace;"><i class="fa-regular fa-clock"></i> Pendiente</span>`;
       }
-      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:7px;">
-        <div style="width:28px;height:28px;border-radius:8px;background:${ti.bg};border:1px solid ${ti.border};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${ti.color};">${icon}</div>
+      return html`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:7px;">
+        <div style="width:28px;height:28px;border-radius:8px;background:${ti.bg};border:1px solid ${ti.border};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${ti.color};">${raw(icon)}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:600;color:${ti.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(d.desc)}</div>
-          <div style="display:flex;align-items:center;gap:5px;margin-top:4px;flex-wrap:wrap;">${badges}</div>
+          <div style="font-size:12px;font-weight:600;color:${ti.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.desc}</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:4px;flex-wrap:wrap;">${raw(badges)}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
           <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:${ti.color};">${fmt(d.monto)}</div>
-          <button type="button" ${Events.attr('cp:quitarDestino', i)} style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;line-height:1;margin-top:2px;" title="Quitar">
+          <button type="button" ${raw(Events.attr('cp:quitarDestino', i))} style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;line-height:1;margin-top:2px;" title="Quitar">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -1133,11 +1144,11 @@ function _cpAbrirRecibir(id){
 
         if(d.tipo==='abono_deuda'||d.tipo==='prestamo'){
           const deu = (S.deudores||[]).find(x=>x.id===d.personaId);
-          if(deu) detalle = ` · ${escHtml(deu.nombre)}`;
+          if(deu) detalle = html` · ${deu.nombre}`;
         }
         if(d.tipo==='tc'){
           const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.tcId);
-          if(tc) detalle = ` · ${escHtml(tc.nombre)}`;
+          if(tc) detalle = html` · ${tc.nombre}`;
         }
 
         // Reposición: mostrar qué cajita/cuenta recibe la plata
@@ -1146,9 +1157,9 @@ function _cpAbrirRecibir(id){
           if(cuentaId){
             const label = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(cuentaId) : cuentaId;
             subLabel = 'Repone cajita/cuenta';
-            extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(176,144,240,.12);border-radius:6px;">
+            extraInfo = html`<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(176,144,240,.12);border-radius:6px;">
               <i class="fa-solid fa-box" style="font-size:9px;color:var(--purple);"></i>
-              <span style="font-size:10px;font-weight:600;color:var(--purple);font-family:'DM Mono',monospace;">${escHtml(label)} recibe ${fmt(d.monto)}</span>
+              <span style="font-size:10px;font-weight:600;color:var(--purple);font-family:'DM Mono',monospace;">${label} recibe ${fmt(d.monto)}</span>
             </div>`;
           }
         }
@@ -1160,31 +1171,31 @@ function _cpAbrirRecibir(id){
             const tcNombre = tc ? tc.nombre : 'Tarjeta de crédito';
             const cajDestLabel = d.gastoTcCajita && typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoTcCajita) : null;
             if(d.yaPague){
-              subLabel = `Pagado con ${escHtml(tcNombre)}`;
-              extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(200,240,96,.1);border-radius:6px;">
+              subLabel = html`Pagado con ${tcNombre}`;
+              extraInfo = html`<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(200,240,96,.1);border-radius:6px;">
                 <i class="fa-solid fa-check" style="font-size:9px;color:var(--accent);"></i>
-                <span style="font-size:10px;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace;">Ya pagado${cajDestLabel ? ` · La plata va a "${escHtml(cajDestLabel)}"` : ''}</span>
+                <span style="font-size:10px;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace;">Ya pagado${cajDestLabel ? html` · La plata va a "${cajDestLabel}"` : ''}</span>
               </div>`;
             } else {
-              subLabel = `Pendiente · Se cargará a ${escHtml(tcNombre)}`;
-              extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(240,104,104,.1);border-radius:6px;">
+              subLabel = html`Pendiente · Se cargará a ${tcNombre}`;
+              extraInfo = html`<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(240,104,104,.1);border-radius:6px;">
                 <i class="fa-solid fa-credit-card" style="font-size:9px;color:var(--red);"></i>
-                <span style="font-size:10px;font-weight:600;color:var(--red);font-family:'DM Mono',monospace;">Se cargará a ${escHtml(tcNombre)}${cajDestLabel ? ` · plata → "${escHtml(cajDestLabel)}"` : ''}</span>
+                <span style="font-size:10px;font-weight:600;color:var(--red);font-family:'DM Mono',monospace;">Se cargará a ${tcNombre}${cajDestLabel ? html` · plata → "${cajDestLabel}"` : ''}</span>
               </div>`;
             }
           } else if(d.gastoOrigen==='cajita' && d.gastoCajita){
             const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
             if(d.yaPague){
               subLabel = 'Ya pagado';
-              extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(200,240,96,.1);border-radius:6px;">
+              extraInfo = html`<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(200,240,96,.1);border-radius:6px;">
                 <i class="fa-solid fa-check" style="font-size:9px;color:var(--accent);"></i>
-                <span style="font-size:10px;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace;">Repone "${escHtml(cajLabel)}"</span>
+                <span style="font-size:10px;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace;">Repone "${cajLabel}"</span>
               </div>`;
             } else {
               subLabel = 'Gasto pendiente';
-              extraInfo = `<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;">
+              extraInfo = html`<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;">
                 <i class="fa-regular fa-clock" style="font-size:9px;color:var(--amber);"></i>
-                <span style="font-size:10px;font-weight:600;color:var(--amber);font-family:'DM Mono',monospace;">Guardada en "${escHtml(cajLabel)}" hasta vencimiento</span>
+                <span style="font-size:10px;font-weight:600;color:var(--amber);font-family:'DM Mono',monospace;">Guardada en "${cajLabel}" hasta vencimiento</span>
               </div>`;
             }
           } else {
@@ -1192,13 +1203,13 @@ function _cpAbrirRecibir(id){
           }
         }
 
-        return `<div style="padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:6px;">
+        return html`<div style="padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:6px;">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
             <div style="flex:1;min-width:0;">
-              <div style="font-size:12px;font-weight:600;color:${ti.color};display:flex;align-items:center;gap:5px;">${escHtml(d.desc)}${detalle}${d.tipo==='abono_deuda'?'<span style="font-size:8px;padding:1px 5px;border-radius:6px;background:rgba(200,240,96,.15);color:var(--accent);font-family:\'DM Mono\',monospace;">te devuelven</span>':''}</div>
+              <div style="font-size:12px;font-weight:600;color:${ti.color};display:flex;align-items:center;gap:5px;">${d.desc}${detalle}${raw(d.tipo==='abono_deuda'?'<span style="font-size:8px;padding:1px 5px;border-radius:6px;background:rgba(200,240,96,.15);color:var(--accent);font-family:\'DM Mono\',monospace;">te devuelven</span>':'')}</div>
               <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">${subLabel}</div>
               ${extraInfo}
-              ${(d.tipo==='gasto' && d.gastoOrigen==='tc') ? `<div style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:9px;padding:3px 7px;background:rgba(96,176,240,.1);border:1px solid rgba(96,176,240,.2);border-radius:6px;color:var(--blue);font-family:'DM Mono',monospace;"><i class="fa-solid fa-handshake" style="font-size:8px;"></i>La app sabe que es un favor</div>` : ''}
+              ${raw((d.tipo==='gasto' && d.gastoOrigen==='tc') ? `<div style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:9px;padding:3px 7px;background:rgba(96,176,240,.1);border:1px solid rgba(96,176,240,.2);border-radius:6px;color:var(--blue);font-family:'DM Mono',monospace;"><i class="fa-solid fa-handshake" style="font-size:8px;"></i>La app sabe que es un favor</div>` : '')}
             </div>
             <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:${ti.color};flex-shrink:0;">${fmt(d.monto)}</div>
           </div>
@@ -1233,22 +1244,22 @@ function _cpAbrirRecibir(id){
     );
     if(pendientesConFecha.length){
       recWrap.style.display = '';
-      recWrap.innerHTML = `
+      recWrap.innerHTML = html`
         <div style="margin-top:10px;padding:10px 12px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.22);border-radius:var(--radius-sm);">
           <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;">
             <i class="fa-solid fa-bell" style="color:var(--amber);font-size:11px;"></i>
             <span style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;">Recordatorio de pagos pendientes</span>
           </div>
-          ${pendientesConFecha.map(d=>{
+          ${raw(pendientesConFecha.map(d=>{
             const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
-            return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(240,184,64,.12);">
+            return html`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(240,184,64,.12);">
               <div>
-                <div style="font-size:11px;font-weight:600;">${escHtml(d.desc)}</div>
-                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">La plata queda en "${escHtml(cajLabel)}"</div>
+                <div style="font-size:11px;font-weight:600;">${d.desc}</div>
+                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">La plata queda en "${cajLabel}"</div>
               </div>
               <span style="font-size:11px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(d.monto)}</span>
             </div>`;
-          }).join('')}
+          }).join(''))}
           <div style="font-size:10px;color:var(--text3);margin-top:7px;line-height:1.4;"><i class="fa-solid fa-circle-info" style="margin-right:4px;color:var(--text3);"></i>Cuando llegue la fecha de pago, usá la plata de esas cajitas.</div>
         </div>`;
     } else {
@@ -1493,23 +1504,23 @@ function _cpRenderMarcarList(){
     const colorOn  = esReposicion ? 'var(--purple)' : 'var(--accent)';
     const bgOn     = esReposicion ? 'rgba(176,144,240,.15)' : 'rgba(200,240,96,.12)';
     const borderOn = esReposicion ? 'rgba(176,144,240,.4)' : 'rgba(200,240,96,.4)';
-    return `<div style="padding:12px 0;border-bottom:1px solid var(--border);">
+    return html`<div style="padding:12px 0;border-bottom:1px solid var(--border);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
         <div>
-          <div style="font-size:13px;font-weight:600;">${escHtml(d.desc)}</div>
+          <div style="font-size:13px;font-weight:600;">${d.desc}</div>
           <div style="font-size:10px;color:${ti.color};font-family:'DM Mono',monospace;">${fmt(d.monto)} · ${ti.label}</div>
         </div>
       </div>
       <div style="display:flex;gap:7px;">
-        <button type="button" ${Events.attr('cp:toggleMarcar', i, false)}
+        <button type="button" ${raw(Events.attr('cp:toggleMarcar', i, false))}
           style="flex:1;padding:8px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;
           background:${!estado?'rgba(136,136,128,.15)':'transparent'};border:1.5px solid ${!estado?'var(--border2)':'var(--border)'};color:${!estado?'var(--text2)':'var(--text3)'};">
-          ${labelOff}
+          ${raw(labelOff)}
         </button>
-        <button type="button" ${Events.attr('cp:toggleMarcar', i, true)}
+        <button type="button" ${raw(Events.attr('cp:toggleMarcar', i, true))}
           style="flex:1;padding:8px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;
           background:${estado?bgOn:'transparent'};border:1.5px solid ${estado?borderOn:'var(--border)'};color:${estado?colorOn:'var(--text3)'};">
-          ${labelOn}
+          ${raw(labelOn)}
         </button>
       </div>
     </div>`;
@@ -1773,17 +1784,17 @@ async function _cpEliminar(id){
         : null;
       if(dias === null) return;
       let txt = '', tipo = '';
-      if(dias < 0){ txt = `"${escHtml(item.desc)}" ya debía haber llegado — ¿recibiste?`; tipo='amber'; }
-      else if(dias === 0){ txt = `Hoy llega "${escHtml(item.desc)}" (${fmt(item.montoTotal)})`; tipo='amber'; }
-      else if(dias === 1){ txt = `Mañana llega "${escHtml(item.desc)}" (${fmt(item.montoTotal)})`; tipo='amber'; }
-      else if(dias <= 3){ txt = `En ${dias} días llega "${escHtml(item.desc)}" (${fmt(item.montoTotal)})`; tipo='amber'; }
+      if(dias < 0){ txt = html`"${item.desc}" ya debía haber llegado — ¿recibiste?`; tipo='amber'; }
+      else if(dias === 0){ txt = html`Hoy llega "${item.desc}" (${fmt(item.montoTotal)})`; tipo='amber'; }
+      else if(dias === 1){ txt = html`Mañana llega "${item.desc}" (${fmt(item.montoTotal)})`; tipo='amber'; }
+      else if(dias <= 3){ txt = html`En ${dias} días llega "${item.desc}" (${fmt(item.montoTotal)})`; tipo='amber'; }
       if(txt){
         sec.style.display = '';
         const chip = document.createElement('div');
         chip.className = 'card card-sm attn-card';
         chip.style.marginBottom='7px';
         chip.style.cursor='pointer';
-        chip.innerHTML = `<div style="font-size:12px;color:var(--amber);">${txt}</div>`;
+        chip.innerHTML = html`<div style="font-size:12px;color:var(--amber);">${txt}</div>`;
         chip.onclick = ()=>{ if(typeof showScreen==='function') showScreen('comprometida'); setTimeout(_cpRenderLista,100); };
         list.appendChild(chip);
       }
@@ -1796,10 +1807,11 @@ async function _cpEliminar(id){
       ).forEach(d => {
         const diasG = Math.round((new Date(d.fechaPago+'T00:00:00') - new Date(hoyStr+'T00:00:00'))/86400000);
         let txtG = '', tipoG = '';
-        if(diasG < 0){ txtG = `Vencido: "${escHtml(d.desc)}" de "${escHtml(item.desc)}" debía pagarse el ${d.fechaPago} — tenés ${fmt(d.monto)} en ${escHtml(typeof _cpFuenteLabel==='function'?_cpFuenteLabel(d.gastoCajita):d.gastoCajita)}`; tipoG='red'; }
-        else if(diasG === 0){ txtG = `¡Hoy hay que pagar "${escHtml(d.desc)}"! Tenés ${fmt(d.monto)} guardado`; tipoG='amber'; }
-        else if(diasG === 1){ txtG = `Mañana vence "${escHtml(d.desc)}" — tenés ${fmt(d.monto)} en ${escHtml(typeof _cpFuenteLabel==='function'?_cpFuenteLabel(d.gastoCajita):d.gastoCajita)}`; tipoG='amber'; }
-        else if(diasG <= 3){ txtG = `En ${diasG} días vence "${escHtml(d.desc)}" (${d.fechaPago}) — tenés ${fmt(d.monto)} guardado`; tipoG='amber'; }
+        const cajLabelG = typeof _cpFuenteLabel==='function'?_cpFuenteLabel(d.gastoCajita):d.gastoCajita;
+        if(diasG < 0){ txtG = html`Vencido: "${d.desc}" de "${item.desc}" debía pagarse el ${d.fechaPago} — tenés ${fmt(d.monto)} en ${cajLabelG}`; tipoG='red'; }
+        else if(diasG === 0){ txtG = html`¡Hoy hay que pagar "${d.desc}"! Tenés ${fmt(d.monto)} guardado`; tipoG='amber'; }
+        else if(diasG === 1){ txtG = html`Mañana vence "${d.desc}" — tenés ${fmt(d.monto)} en ${cajLabelG}`; tipoG='amber'; }
+        else if(diasG <= 3){ txtG = html`En ${diasG} días vence "${d.desc}" (${d.fechaPago}) — tenés ${fmt(d.monto)} guardado`; tipoG='amber'; }
         if(txtG){
           sec.style.display = '';
           const chipG = document.createElement('div');
@@ -1807,7 +1819,7 @@ async function _cpEliminar(id){
           chipG.style.marginBottom='7px';
           chipG.style.cursor='pointer';
           chipG.style.borderColor = tipoG==='red' ? 'rgba(240,104,104,.4)' : '';
-          chipG.innerHTML = `<div style="font-size:12px;color:var(--${tipoG});">${txtG}</div>`;
+          chipG.innerHTML = html`<div style="font-size:12px;color:var(--${raw(tipoG)});">${txtG}</div>`;
           chipG.onclick = ()=>{ if(typeof showScreen==='function') showScreen('comprometida'); setTimeout(_cpRenderLista,100); };
           list.appendChild(chipG);
         }

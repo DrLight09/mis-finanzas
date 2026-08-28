@@ -592,8 +592,20 @@
               <div id="hero-change-indicator"
                 style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
             </div>
+            <!-- visibility:hidden en vez de display:none (docs/auditoria-tecnica.md,
+                 punto 5 de "Reservar espacio para #hero-alcancia-indicator (CLS)"):
+                 el contenido de acá adentro NUNCA se reescribe por JS (confirmado en
+                 core-state.js/refresh() — solo alterna visibility, los <span> son
+                 fijos), así que a diferencia de health-score-card/proyeccion-card no
+                 hace falta ningún skeleton: alcanza con reservar el espacio siempre
+                 en el layout (visibility:hidden SÍ ocupa espacio, a diferencia de
+                 display:none) y solo alternar si se ve o no. Decisión de producto
+                 tomada: reservar ~28-30px siempre en el hero de Inicio, para toda
+                 sesión, tenga o no plata guardada en Alcancía — costo aceptado a
+                 cambio de eliminar el shift (CLS 0.208 medido en una corrida real,
+                 ver auditoria-tecnica.md). -->
             <div id="hero-alcancia-indicator"
-              style="display:none;margin-top:8px;padding:6px 10px;background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.2);border-radius:8px;">
+              style="visibility:hidden;margin-top:8px;padding:6px 10px;background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.2);border-radius:8px;">
               <span
                 style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;display:inline-flex;align-items:center;gap:4px;"><svg
                   xmlns="http://www.w3.org/2000/svg" width="11" height="11"

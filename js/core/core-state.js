@@ -1089,11 +1089,15 @@ function refresh(){
   const _heroAlcInd = document.getElementById('hero-alcancia-indicator');
   const _heroLabel  = document.getElementById('hero-patrimonio-label');
   if(_heroAlcInd){
+    // visibility en vez de display (docs/auditoria-tecnica.md, "Reservar espacio
+    // para #hero-alcancia-indicator (CLS)"): visibility:hidden SÍ reserva el
+    // espacio en el layout, a diferencia de display:none — así el bloque nunca
+    // aparece de golpe empujando el resto del hero hacia abajo.
     if(_alcSaldo > 0){
-      _heroAlcInd.style.display = '';
+      _heroAlcInd.style.visibility = 'visible';
       if(_heroLabel) _heroLabel.textContent = 'Patrimonio visible';
     } else {
-      _heroAlcInd.style.display = 'none';
+      _heroAlcInd.style.visibility = 'hidden';
       if(_heroLabel) _heroLabel.textContent = 'Patrimonio total';
     }
   }

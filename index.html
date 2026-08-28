@@ -583,40 +583,39 @@
         <!-- INICIO -->
         <div class="screen active" id="screen-inicio">
           <div class="hero">
-            <div class="hero-label" id="hero-patrimonio-label">Patrimonio
-              total</div>
+            <!-- Rediseño (docs/auditoria-tecnica.md, "Reservar espacio para
+                 #hero-alcancia-indicator (CLS)"): el bloque con padding/borde
+                 de abajo reservaba ~28-30px SIEMPRE, incluso sin saldo en
+                 Alcancía — visualmente era un hueco vacío molesto. Se
+                 reemplazó por un ícono chico (14px) inline junto al label
+                 "Patrimonio total"/"Patrimonio visible", que YA existe y ya
+                 cambia de texto según este mismo estado (ver core-state.js).
+                 Al no agregar una fila nueva ni cambiar el alto de esta fila
+                 (el ícono entra en la misma línea, mismo alto que el texto),
+                 alternar su visibility no mueve nada de lo que hay debajo —
+                 cero espacio reservado y cero CLS, sin el trade-off de antes.
+                 El texto "se revela al destapar" quedó como `title` (tooltip)
+                 en vez de texto siempre visible. -->
+            <div style="display:flex;align-items:center;gap:6px;">
+              <div class="hero-label" id="hero-patrimonio-label">Patrimonio
+                total</div>
+              <span id="hero-alcancia-badge"
+                title="Hay plata guardada en Alcancía oculta — se revela al destapar"
+                style="visibility:hidden;display:inline-flex;align-items:center;justify-content:center;color:var(--amber);flex-shrink:0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                  viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2.5" stroke-linecap="round"
+                  stroke-linejoin="round"><rect x="3" y="11" width="18"
+                    height="11" rx="2" ry="2" /><path
+                    d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+              </span>
+            </div>
             <div class="hero-amount c-green" id="heroTotal">$0</div>
             <div class="row" style="margin-top:8px;">
               <div style="font-size:11px;color:var(--text3);">Nu + Nequi +
                 Efectivo + Prestado + CDTs − Deuda TC</div>
               <div id="hero-change-indicator"
                 style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);"></div>
-            </div>
-            <!-- visibility:hidden en vez de display:none (docs/auditoria-tecnica.md,
-                 punto 5 de "Reservar espacio para #hero-alcancia-indicator (CLS)"):
-                 el contenido de acá adentro NUNCA se reescribe por JS (confirmado en
-                 core-state.js/refresh() — solo alterna visibility, los <span> son
-                 fijos), así que a diferencia de health-score-card/proyeccion-card no
-                 hace falta ningún skeleton: alcanza con reservar el espacio siempre
-                 en el layout (visibility:hidden SÍ ocupa espacio, a diferencia de
-                 display:none) y solo alternar si se ve o no. Decisión de producto
-                 tomada: reservar ~28-30px siempre en el hero de Inicio, para toda
-                 sesión, tenga o no plata guardada en Alcancía — costo aceptado a
-                 cambio de eliminar el shift (CLS 0.208 medido en una corrida real,
-                 ver auditoria-tecnica.md). -->
-            <div id="hero-alcancia-indicator"
-              style="visibility:hidden;margin-top:8px;padding:6px 10px;background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.2);border-radius:8px;">
-              <span
-                style="font-size:11px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;display:inline-flex;align-items:center;gap:4px;"><svg
-                  xmlns="http://www.w3.org/2000/svg" width="11" height="11"
-                  viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                  stroke-width="2.5" stroke-linecap="round"
-                  stroke-linejoin="round"><rect x="3" y="11" width="18"
-                    height="11" rx="2" ry="2" /><path
-                    d="M7 11V7a5 5 0 0 1 10 0v4" /></svg> +$?? en alcancía
-                oculta</span>
-              <span style="font-size:10px;color:var(--text3);margin-left:6px;">—
-                se revela al destapar</span>
             </div>
           </div>
           <div class="grid3">

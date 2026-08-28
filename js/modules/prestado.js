@@ -73,14 +73,14 @@ function _renderPrestSplit(){
   if(!el) return;
   const fuentes = getFuentes();
   const opts = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('') + '<option value="ganancia"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>';
-  el.innerHTML = _prestSplitRows.map((r,i)=>`
+  el.innerHTML = html`${_prestSplitRows.map((r,i)=>html`
     <div class="prest-split-row">
-      <div class="select-wrap" style="flex:1;"><select class="_prest-split-fuente" data-i="${i}" style="font-size:13px;">${opts.replace(`value="${r.fuente}"`,`value="${r.fuente}" selected`)}</select></div>
+      <div class="select-wrap" style="flex:1;"><select class="_prest-split-fuente" data-i="${i}" style="font-size:13px;">${raw(opts.replace(`value="${r.fuente}"`,`value="${r.fuente}" selected`))}</select></div>
       <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="$0" class="money-input _prest-split-monto" data-i="${i}" style="width:105px;">
-      <button class="prest-split-del" ${Events.attr('prestado:prestSplitDelRow', i)} ${_prestSplitRows.length<=1?'style="visibility:hidden;"':''}>
+      <button class="prest-split-del" ${raw(Events.attr('prestado:prestSplitDelRow', i))} ${raw(_prestSplitRows.length<=1?'style="visibility:hidden;"':'')}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
-    </div>`).join('');
+    </div>`)}`;
   // onchange/oninput inline reemplazados por addEventListener delegado — docs/auditoria-tecnica.md #1
   el.querySelectorAll('._prest-split-fuente').forEach(sel => {
     sel.addEventListener('change', () => {
@@ -104,9 +104,9 @@ function _updatePrestSplitResumen(){
   if(resEl){
     const diff = montoTotal - totalSplit;
     if(montoTotal && Math.abs(diff)>1){
-      resEl.innerHTML = `<span style="color:var(--amber);">Total dividido: ${fmt(totalSplit)} de ${fmt(montoTotal)} · ${diff>0?'Faltan':'Sobran'} ${fmt(Math.abs(diff))}</span>`;
+      resEl.innerHTML = html`<span style="color:var(--amber);">Total dividido: ${fmt(totalSplit)} de ${fmt(montoTotal)} · ${diff>0?'Faltan':'Sobran'} ${fmt(Math.abs(diff))}</span>`;
     } else if(montoTotal){
-      resEl.innerHTML = `<span style="color:var(--accent);">Total: ${fmt(totalSplit)}</span>`;
+      resEl.innerHTML = html`<span style="color:var(--accent);">Total: ${fmt(totalSplit)}</span>`;
     } else { resEl.textContent = ''; }
   }
   // Mostrar aviso de la(s) fila(s) de "ganancia" (plata virtual)
@@ -115,7 +115,7 @@ function _updatePrestSplitResumen(){
   const impactos = [];
   const gananciaTotal = _prestSplitRows.filter(r=>r.fuente==='ganancia').reduce((a,r)=>a+(r.monto||0),0);
   if(gananciaTotal>0){
-    impactos.push(`<div style="padding:7px 9px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.25);border-radius:7px;margin-top:5px;">
+    impactos.push(html`<div style="padding:7px 9px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.25);border-radius:7px;margin-top:5px;">
       <div style="font-size:11px;color:var(--accent);"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> ${fmt(gananciaTotal)} de este préstamo es <b>ganancia tuya</b> que aún no recibiste — no se descuenta de ninguna cuenta. Cuando te paguen el préstamo completo, esa parte se sumará como ganancia.</div>
     </div>`);
   }
@@ -128,14 +128,14 @@ function _updatePrestSplitResumen(){
     const saldoTras = saldoActual - r.monto;
     const minimo = c.meta.minimo || 0;
     const obj = c.meta.objetivo || 0;
-    impactos.push(`<div style="padding:7px 9px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:7px;margin-top:5px;">
-      <div style="font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;margin-bottom:4px;">${escHtml(c.nombre)}</div>
+    impactos.push(html`<div style="padding:7px 9px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:7px;margin-top:5px;">
+      <div style="font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;margin-bottom:4px;">${c.nombre}</div>
       <div style="font-size:11px;color:var(--text2);">Disponible ahora: <b style="color:var(--text);">${fmt(saldoActual)}</b> <i class="fa-solid fa-arrow-right" style="margin:0 3px;font-size:10px;"></i>tras préstamo: <b style="color:${saldoTras<0?'var(--red)':'var(--text)'};">${fmt(saldoTras)}</b></div>
-      ${obj ? `<div style="font-size:10px;color:var(--text3);margin-top:2px;">Meta: ${fmt(obj)} · ${fmt(Math.max(0,obj-saldoTras))} aún por ahorrar (tras préstamo)</div>` : ''}
-      ${minimo && saldoTras < minimo ? `<div style="font-size:10px;color:var(--red);margin-top:2px;">Quedarás ${fmt(minimo-saldoTras)} por debajo del mínimo (${fmt(minimo)})</div>` : ''}
+      ${obj ? html`<div style="font-size:10px;color:var(--text3);margin-top:2px;">Meta: ${fmt(obj)} · ${fmt(Math.max(0,obj-saldoTras))} aún por ahorrar (tras préstamo)</div>` : ''}
+      ${minimo && saldoTras < minimo ? html`<div style="font-size:10px;color:var(--red);margin-top:2px;">Quedarás ${fmt(minimo-saldoTras)} por debajo del mínimo (${fmt(minimo)})</div>` : ''}
     </div>`);
   });
-  metaEl.innerHTML = impactos.join('');
+  metaEl.innerHTML = html`${impactos}`;
 }
 
 function prestSplitDelRow(i) {
@@ -337,30 +337,30 @@ function renderDeudoresList() {
     el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 10px;">Aún no has agregado personas. Puedes crear a tu papá, mamá, amigos...</div>';
     return;
   }
-  el.innerHTML = list.map(d => {
+  el.innerHTML = html`${list.map(d => {
     const saldo = getDeudorSaldo(d);
     const initials = d.nombre.substring(0, 2).toUpperCase();
     const ultimoMov = (d.movimientos || []).slice(-1)[0];
     const tienePerfil = !!d.personaId;
-    return `<div class="card card-sm" style="margin-bottom:8px;">
+    return html`<div class="card card-sm" style="margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <button type="button" class="avatar" ${Events.attr(tienePerfil ? 'prestado:abrirPerfilDeudor' : 'prestado:abrirDeudor', d.id)}
-          style="color:${d.color};border-color:${d.color}33;background:${d.color}18;width:38px;height:38px;font-size:13px;margin-right:0;flex-shrink:0;border:1px solid;cursor:pointer;${tienePerfil ? 'box-shadow:0 0 0 2px '+d.color+'33;' : ''}"
-          title="${tienePerfil ? 'Ver perfil de '+escHtml(d.nombre) : escHtml(d.nombre)}">${escHtml(initials)}</button>
-        <div style="flex:1;min-width:0;cursor:pointer;" ${Events.attr('prestado:abrirDeudor', d.id)}>
+        <button type="button" class="avatar" ${raw(Events.attr(tienePerfil ? 'prestado:abrirPerfilDeudor' : 'prestado:abrirDeudor', d.id))}
+          style="color:${raw(d.color)};border-color:${raw(d.color)}33;background:${raw(d.color)}18;width:38px;height:38px;font-size:13px;margin-right:0;flex-shrink:0;border:1px solid;cursor:pointer;${raw(tienePerfil ? 'box-shadow:0 0 0 2px '+d.color+'33;' : '')}"
+          title="${tienePerfil ? 'Ver perfil de '+d.nombre : d.nombre}">${initials}</button>
+        <div style="flex:1;min-width:0;cursor:pointer;" ${raw(Events.attr('prestado:abrirDeudor', d.id))}>
           <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div class="row-name">${escHtml(d.nombre)}</div>
-            <div class="row-amount ${saldo > 0 ? 'c-amber' : saldo < 0 ? 'c-red' : 'c-green'}">${fmt(saldo)}</div>
+            <div class="row-name">${d.nombre}</div>
+            <div class="row-amount ${raw(saldo > 0 ? 'c-amber' : saldo < 0 ? 'c-red' : 'c-green')}">${fmt(saldo)}</div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:3px;">
             <div class="row-sub">${saldo > 0 ? 'Pendiente por cobrar' : saldo < 0 ? 'Saldo a favor de él/ella' : 'Al día'}</div>
-            ${ultimoMov ? `<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimoMov.fecha}</span>` : ''}
+            ${ultimoMov ? html`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimoMov.fecha}</span>` : ''}
           </div>
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;cursor:pointer;" ${Events.attr('prestado:abrirDeudor', d.id)}><polyline points="9 18 15 12 9 6"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;cursor:pointer;" ${raw(Events.attr('prestado:abrirDeudor', d.id))}><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>`;
-  }).join('');
+  })}`;
 }
 
 function abrirDeudor(id) {
@@ -399,7 +399,7 @@ function abrirDeudor(id) {
     // para que saldoAntes/saldoDespues reflejen el saldo real de la persona a
     // través del tiempo (igual que antes de los grupos). El agrupamiento por
     // grupoId es solo de presentación: cada card cae en el balde de su grupo.
-    const _porGrupo = {}; // grupoId -> [cardHtml, ...]
+    const _porGrupo = {}; // grupoId -> [cardHtml (fragmento html``), ...]
     movs.forEach(m => {
       const esPrestamo = m.tipo === 'prestamo';
       const esPagoCompleto = m.tipo === 'pago-completo';
@@ -408,16 +408,16 @@ function abrirDeudor(id) {
       const saldoAntesDeuda = saldoCorriente - efectoDeuda;
       saldoCorriente = saldoAntesDeuda;
       // Destino info line
-      const arrowSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
+      const arrowSvg = raw(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`);
       let destinoInfo = '';
       if (m._viaEncargo && m._encNombre) {
-        destinoInfo = ` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">encargo de ${escHtml(m._encNombre)}</span>`;
+        destinoInfo = html` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">encargo de ${m._encNombre}</span>`;
       } else if (m._viaAlcancia) {
-        destinoInfo = ` <span style="background:rgba(240,184,64,.15);color:var(--amber);border:1px solid rgba(240,184,64,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">→ Alcancía</span>`;
+        destinoInfo = html` <span style="background:rgba(240,184,64,.15);color:var(--amber);border:1px solid rgba(240,184,64,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">→ Alcancía</span>`;
       } else if (m.destinos && m.destinos.length) {
-        destinoInfo = ' ' + arrowSvg + ' ' + m.destinos.map(r => _fuenteLabelHtml(r.fuente) + ' ' + fmt(r.monto)).join(' + ');
+        destinoInfo = html` ${arrowSvg} ${raw(m.destinos.map(r => _fuenteLabelHtml(r.fuente) + ' ' + fmt(r.monto)).join(' + '))}`;
       } else if (m.destino) {
-        destinoInfo = ' ' + arrowSvg + ' ' + _fuenteLabelHtml(m.destino);
+        destinoInfo = html` ${arrowSvg} ${raw(_fuenteLabelHtml(m.destino))}`;
       }
       // Extra parts breakdown
       let extraHtml = '';
@@ -430,8 +430,8 @@ function abrirDeudor(id) {
           if (p.tipo === 'pendiente') return `Sin asignar ${fmt(p.monto)}`;
           return '';
         }).filter(Boolean).join(' · ');
-        extraHtml = `<div style="margin-top:5px;padding:5px 7px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--blue);">
-          Extra ${fmt(extraTotal)}: ${partesTexto}
+        extraHtml = html`<div style="margin-top:5px;padding:5px 7px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--blue);">
+          Extra ${fmt(extraTotal)}: ${raw(partesTexto)}
         </div>`;
       }
       // Origen y otras cuentas implicadas (para sheet de detalle)
@@ -444,22 +444,22 @@ function abrirDeudor(id) {
         if (m.destinos && m.destinos.length) otrasCuentasDD = m.destinos.map(r=>({fuente:r.fuente, monto:+r.monto}));
         else if (m.destino) otrasCuentasDD = [{fuente:m.destino, monto:+m.monto}];
       }
-      const dataOtrasDD = otrasCuentasDD.length ? `data-mov-otras="${escHtml(JSON.stringify(otrasCuentasDD))}"` : '';
-      const _cardHtml = `<div class="card card-sm" style="margin-bottom:7px;cursor:pointer;" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-mov-origen="${escHtml(origenDD)}" ${dataOtrasDD} data-mov-saldo-antes="${saldoAntesDeuda}" data-mov-saldo-despues="${saldoDespuesDeuda}" data-mov-saldo-label="Deuda de ${escHtml(d.nombre)}" data-mov-desc="${escHtml(m.nota || (esPrestamo?'Préstamo': esPagoCompleto?'Pago completo':'Abono'))}" data-mov-fecha="${escHtml(m.fecha)}" ${Events.attr('prestado:abrirDetalleMov')}>
+      const dataOtrasDD = otrasCuentasDD.length ? html`data-mov-otras="${JSON.stringify(otrasCuentasDD)}"` : '';
+      const _cardHtml = html`<div class="card card-sm" style="margin-bottom:7px;cursor:pointer;" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-mov-origen="${origenDD}" ${dataOtrasDD} data-mov-saldo-antes="${saldoAntesDeuda}" data-mov-saldo-despues="${saldoDespuesDeuda}" data-mov-saldo-label="Deuda de ${d.nombre}" data-mov-desc="${m.nota || (esPrestamo?'Préstamo': esPagoCompleto?'Pago completo':'Abono')}" data-mov-fecha="${m.fecha}" ${raw(Events.attr('prestado:abrirDetalleMov'))}>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : esPagoCompleto ? 'Pago completo' : 'Abono'}</span>
-              ${m._gananciaVirtual ? ` <span style="background:rgba(200,240,96,.15);color:var(--accent);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
-              ${m._viaTC ? ` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
-              ${m.nota ? ` <span style="font-size:11px;color:var(--text2);">${escHtml(m.nota)}</span>` : ''}
+              ${m._gananciaVirtual ? html` <span style="background:rgba(200,240,96,.15);color:var(--accent);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
+              ${m._viaTC ? html` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
+              ${m.nota ? html` <span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
             </div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m._viaTC ? '' : (m.fuentes ? ' · ' + m.fuentes.map(f=>_fuenteLabelHtml(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + _fuenteLabelHtml(m.fuente) : ''))}${destinoInfo}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m._viaTC ? '' : raw(m.fuentes ? ' · ' + m.fuentes.map(f=>_fuenteLabelHtml(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + _fuenteLabelHtml(m.fuente) : ''))}${destinoInfo}</div>
             ${extraHtml}
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esPrestamo ? 'var(--amber)' : 'var(--accent)'};">${esPrestamo ? '+' : '−'} ${fmt(m.monto)}</div>
-            <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" ${Events.attr('prestado:eliminarMovDeudor', id, m.id)} data-stop-propagation="true">
+            <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" ${raw(Events.attr('prestado:eliminarMovDeudor', id, m.id))} data-stop-propagation="true">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </button>
           </div>
@@ -480,25 +480,25 @@ function abrirDeudor(id) {
     Object.keys(_porGrupo).forEach(gid => { if (!idsConocidos.has(gid)) gruposOrdenados.push({ id: gid, nombre: 'Otros', cerrado: false }); });
 
     const soloUnGrupo = gruposOrdenados.filter(g => _porGrupo[g.id]).length <= 1;
-    histEl.innerHTML = gruposOrdenados.filter(g => _porGrupo[g.id]).map(g => {
-      const cards = _porGrupo[g.id].join('');
+    histEl.innerHTML = html`${gruposOrdenados.filter(g => _porGrupo[g.id]).map(g => {
+      const cards = _porGrupo[g.id]; // array de fragmentos html`` ya escapados — html`` externo los concatena sin re-escapar
       const saldoGrupo = getGrupoSaldo(d, g.id);
       const saldoTxt = saldoGrupo > 0 ? fmt(saldoGrupo) + ' pendiente' : saldoGrupo < 0 ? 'a favor ' + fmt(-saldoGrupo) : 'al día';
       if (soloUnGrupo) {
         // Un solo grupo: no vale la pena el acordeón, se ve como el historial plano de siempre.
         return cards;
       }
-      return `<details class="card card-sm" style="margin-bottom:9px;padding:0;overflow:hidden;" ${g.cerrado ? '' : 'open'}>
+      return html`<details class="card card-sm" style="margin-bottom:9px;padding:0;overflow:hidden;" ${raw(g.cerrado ? '' : 'open')}>
         <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none;">
           <span style="display:flex;align-items:center;gap:6px;min-width:0;">
-            <span style="font-size:12px;font-weight:500;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(g.nombre)}</span>
-            ${g.cerrado ? ` <span class="badge" style="font-size:9px;opacity:.6;">Cerrado</span>` : ''}
+            <span style="font-size:12px;font-weight:500;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${g.nombre}</span>
+            ${g.cerrado ? html` <span class="badge" style="font-size:9px;opacity:.6;">Cerrado</span>` : ''}
           </span>
-          <span style="font-size:11px;font-family:'DM Mono',monospace;color:${saldoGrupo > 0 ? 'var(--amber)' : saldoGrupo < 0 ? 'var(--red)' : 'var(--text3)'};flex-shrink:0;">${saldoTxt}</span>
+          <span style="font-size:11px;font-family:'DM Mono',monospace;color:${raw(saldoGrupo > 0 ? 'var(--amber)' : saldoGrupo < 0 ? 'var(--red)' : 'var(--text3)')};flex-shrink:0;">${saldoTxt}</span>
         </summary>
         <div style="padding:0 10px 10px;">${cards}</div>
       </details>`;
-    }).join('');
+    })}`;
   }
 
   // Mostrar detalle, ocultar lista y las pestañas Me deben/Yo debo (no
@@ -907,8 +907,7 @@ function _initMovGrupoSelector() {
     wrap.style.display = '';
     if (checkWrap) checkWrap.style.display = 'none';
     if (sel) {
-      sel.innerHTML = abiertos.map(g => `<option value="${g.id}">${escHtml(g.nombre)} (${fmt(getGrupoSaldo(d, g.id))})</option>`).join('')
-        + `<option value="__nuevo__">🆕 Es un préstamo nuevo</option>`;
+      sel.innerHTML = html`${abiertos.map(g => html`<option value="${g.id}">${g.nombre} (${fmt(getGrupoSaldo(d, g.id))})</option>`)}<option value="__nuevo__">🆕 Es un préstamo nuevo</option>`;
       sel.value = abiertos[0].id; // por defecto, el grupo abierto más reciente
       sel.onchange = () => {
         if (nombreWrap) nombreWrap.style.display = sel.value === '__nuevo__' ? '' : 'none';
@@ -1419,22 +1418,22 @@ function toggleDesdeEncargo() {
     : [];
   const otros = encargosDisponibles.filter(e => !mismaPersona.includes(e));
 
-  let opts = '<option value="">Seleccionar encargo</option>';
+  let opts = [html`<option value="">Seleccionar encargo</option>`];
   if (mismaPersona.length > 0) {
-    opts += `<optgroup label="De ${escHtml(d.nombre)}">`;
+    opts.push(html`<optgroup label="De ${d.nombre}">`);
     mismaPersona.forEach(e => {
-      opts += `<option value="${e.id}">${escHtml(e.nombre)} (${fmt(encargoLibre(e))})</option>`;
+      opts.push(html`<option value="${e.id}">${e.nombre} (${fmt(encargoLibre(e))})</option>`);
     });
-    opts += '</optgroup>';
+    opts.push(raw('</optgroup>'));
   }
   if (otros.length > 0) {
-    opts += mismaPersona.length > 0 ? '<optgroup label="Otros encargos">' : '';
+    if (mismaPersona.length > 0) opts.push(raw('<optgroup label="Otros encargos">'));
     otros.forEach(e => {
-      opts += `<option value="${e.id}">${escHtml(e.nombre)} (${fmt(encargoLibre(e))})</option>`;
+      opts.push(html`<option value="${e.id}">${e.nombre} (${fmt(encargoLibre(e))})</option>`);
     });
-    if (mismaPersona.length > 0) opts += '</optgroup>';
+    if (mismaPersona.length > 0) opts.push(raw('</optgroup>'));
   }
-  sel.innerHTML = opts;
+  sel.innerHTML = html`${opts}`;
 
   // Auto-seleccionar si solo hay uno vinculado a la misma persona
   if (mismaPersona.length === 1) {
@@ -1489,11 +1488,11 @@ function onChangeMov_enc_sel() {
     // "Sin especificar" ahora es una opción explícita (__sinesp__) que representa
     // SOLO la porción del encargo que no está ligada a ninguna cuenta — ya no se
     // usa como valor "sin restricción" que dejaba tomar plata de cualquier cuenta.
-    let optsHtml = cuentasConSaldo.map(f => `<option value="${f.cuenta}">${escHtml(f.label)} (${fmt(f.saldo)})</option>`).join('');
+    let optsHtml = cuentasConSaldo.map(f => html`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`);
     if (saldoSinCuenta > 0) {
-      optsHtml += `<option value="__sinesp__">Sin especificar (${fmt(saldoSinCuenta)} del encargo)</option>`;
+      optsHtml.push(html`<option value="__sinesp__">Sin especificar (${fmt(saldoSinCuenta)} del encargo)</option>`);
     }
-    cuentaSel.innerHTML = optsHtml;
+    cuentaSel.innerHTML = html`${optsHtml}`;
     // Pre-seleccionar la de mayor saldo
     cuentaSel.value = cuentasConSaldo[0].cuenta;
     _abonoEncCuenta = cuentasConSaldo[0].cuenta;
@@ -1573,19 +1572,19 @@ function abonoAddSplitRow() {
 function abonoRenderSplit() {
   const cont = document.getElementById('mov_dest_split_rows');
   const fuentes = getFuentesSinTC();
-  cont.innerHTML = _abonoSplitRows.map((r, i) => `
+  cont.innerHTML = html`${_abonoSplitRows.map((r, i) => html`
     <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
       <div class="select-wrap" style="flex:1;">
         <select class="_abono-split-fuente" data-i="${i}" style="padding:9px 30px 9px 10px;font-size:13px;">
           <option value="">Sin especificar</option>
-          ${fuentes.map(f=>`<option value="${f.val}" ${r.fuente===f.val?'selected':''}>${escHtml(f.label)}</option>`).join('')}
+          ${fuentes.map(f=>html`<option value="${f.val}" ${raw(r.fuente===f.val?'selected':'')}>${f.label}</option>`)}
         </select>
       </div>
       <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="0,00"
         class="money-input _abono-split-monto" data-i="${i}" style="width:110px;padding:9px 10px;font-size:13px;">
-      <button type="button" ${Events.attr('prestado:abonoSplitDel', i)}
+      <button type="button" ${raw(Events.attr('prestado:abonoSplitDel', i))}
         style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:28px;font-size:18px;line-height:1;">×</button>
-    </div>`).join('');
+    </div>`)}`;
   // onchange/oninput inline reemplazados por addEventListener delegado — docs/auditoria-tecnica.md #1
   cont.querySelectorAll('._abono-split-fuente').forEach(sel => {
     sel.addEventListener('change', () => abonoSplitFuente(+sel.dataset.i, sel.value));
@@ -1606,9 +1605,9 @@ function abonoSplitResumen() {
   const diff  = monto - total;
   const el    = document.getElementById('mov_dest_split_resumen');
   if(!el) return;
-  if(Math.abs(diff)<1)  el.innerHTML=`<span style="color:var(--accent);"><i class="fa-solid fa-check" style="margin-right:4px;"></i>Suma exacta ${fmt(total)}</span>`;
-  else if(diff>0)       el.innerHTML=`<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`;
-  else                  el.innerHTML=`<span style="color:var(--red);">Excede el abono en ${fmt(-diff)}</span>`;
+  if(Math.abs(diff)<1)  el.innerHTML=html`<span style="color:var(--accent);"><i class="fa-solid fa-check" style="margin-right:4px;"></i>Suma exacta ${fmt(total)}</span>`;
+  else if(diff>0)       el.innerHTML=html`<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`;
+  else                  el.innerHTML=html`<span style="color:var(--red);">Excede el abono en ${fmt(-diff)}</span>`;
 }
 
 /* ─── "¿Te dio extra de más?" — usa el motor común para el cálculo
@@ -1676,34 +1675,34 @@ function extRenderPartes() {
   const cont = document.getElementById('ext_partes_list');
   if (!cont) return;
   const fuentes = getFuentesSinTC();
-  cont.innerHTML = _extPartes.map((p, i) => {
+  cont.innerHTML = html`${_extPartes.map((p, i) => {
     const tipoInfo = _extTipos[p.tipo] || _extTipos.guardar;
-    const extraDetails = p.tipo === 'guardar' ? `
+    const extraDetails = p.tipo === 'guardar' ? html`
       <div class="select-wrap" style="margin-top:7px;">
         <select class="_ext-set-cuenta" data-i="${i}" data-stop-click="true" style="font-size:12px;padding:7px 26px 7px 9px;">
           <option value="">¿A cuál cuenta?</option>
-          ${fuentes.map(f=>`<option value="${f.val}" ${p.cuenta===f.val?'selected':''}>${escHtml(f.label)}</option>`).join('')}
+          ${fuentes.map(f=>html`<option value="${f.val}" ${raw(p.cuenta===f.val?'selected':'')}>${f.label}</option>`)}
         </select>
       </div>` :
-    p.tipo === 'gastar' ? `
-      <input type="text" value="${escHtml(p.desc||'')}" placeholder="¿En qué? (opcional)" data-stop-click="true"
+    p.tipo === 'gastar' ? html`
+      <input type="text" value="${p.desc||''}" placeholder="¿En qué? (opcional)" data-stop-click="true"
         class="_ext-set-desc" data-i="${i}"
         style="margin-top:7px;width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:inherit;">` :
-    p.tipo === 'regalar' ? `
+    p.tipo === 'regalar' ? html`
       <input type="text" value="${p.quien||''}" placeholder="¿A quién? (opcional)" data-stop-click="true"
         class="_ext-set-quien" data-i="${i}"
         style="margin-top:7px;width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:inherit;">` : '';
 
-    return `<div style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);padding:10px 11px;position:relative;">
+    return html`<div style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);padding:10px 11px;position:relative;">
       <!-- Fila principal: tipo + monto + borrar -->
       <div style="display:flex;align-items:center;gap:7px;">
         <!-- Selector de tipo -->
         <div style="position:relative;flex:1;">
           <select class="_ext-set-tipo" data-i="${i}" data-stop-click="true"
-            style="width:100%;appearance:none;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 28px 7px 32px;font-size:12px;font-weight:600;color:${tipoInfo.color};font-family:inherit;cursor:pointer;">
-            ${Object.entries(_extTipos).map(([k,v])=>`<option value="${k}" ${p.tipo===k?'selected':''}>${v.label}</option>`).join('')}
+            style="width:100%;appearance:none;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 28px 7px 32px;font-size:12px;font-weight:600;color:${raw(tipoInfo.color)};font-family:inherit;cursor:pointer;">
+            ${Object.entries(_extTipos).map(([k,v])=>html`<option value="${k}" ${raw(p.tipo===k?'selected':'')}>${v.label}</option>`)}
           </select>
-          <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:${tipoInfo.color};">${tipoInfo.icon}</span>
+          <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:${raw(tipoInfo.color)};">${raw(tipoInfo.icon)}</span>
           <svg style="position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <!-- Monto -->
@@ -1711,14 +1710,14 @@ function extRenderPartes() {
           class="money-input _ext-set-monto" data-i="${i}" data-stop-click="true"
           style="width:100px;padding:7px 9px;font-size:13px;flex-shrink:0;">
         <!-- Borrar -->
-        <button type="button" ${Events.attr('prestado:extDelParte', i)} data-stop-propagation="true"
-          style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:24px;min-height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" ${_extPartes.length<=1?'style="visibility:hidden;"':''}>
+        <button type="button" ${raw(Events.attr('prestado:extDelParte', i))} data-stop-propagation="true"
+          style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:24px;min-height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" ${raw(_extPartes.length<=1?'style="visibility:hidden;"':'')}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
       ${extraDetails}
     </div>`;
-  }).join('');
+  })}`;
   // Estos campos solo necesitan no burbujear el click hacia un contenedor
   // ancestro (defensivo) — no son "acciones" de negocio, así que no pasan por
   // el registry de Events; alcanza con un addEventListener directo acá mismo,
@@ -1741,9 +1740,9 @@ function extResumenPartes() {
   const el    = document.getElementById('ext_partes_resumen');
   if (!el) return;
   if (!extra) { el.innerHTML=''; return; }
-  if (Math.abs(diff)<1) el.innerHTML=`<span style="color:var(--accent);">Suma exacta — listo</span>`;
-  else if (diff>0)      el.innerHTML=`<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`;
-  else                  el.innerHTML=`<span style="color:var(--red);">Excede el extra en ${fmt(-diff)}</span>`;
+  if (Math.abs(diff)<1) el.innerHTML=html`<span style="color:var(--accent);">Suma exacta — listo</span>`;
+  else if (diff>0)      el.innerHTML=html`<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`;
+  else                  el.innerHTML=html`<span style="color:var(--red);">Excede el extra en ${fmt(-diff)}</span>`;
 }
 
 // Calcular total prestado para el resumen
@@ -1816,7 +1815,7 @@ function _ndPoblarSelectDestino() {
   const sel = document.getElementById('nd_destino');
   if (!sel) return;
   const fuentes = getFuentesSinTC();
-  sel.innerHTML = '<option value>Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+  sel.innerHTML = html`<option value>Sin especificar</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
 }
 
 function crearMiDeuda() {
@@ -1857,7 +1856,7 @@ function renderMisDeudasList() {
     el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 10px;">Aún no registras deudas. Si alguien te presta plata, agrégala aquí.</div>';
     return;
   }
-  el.innerHTML = list.map(d => {
+  el.innerHTML = html`${list.map(d => {
     const saldo = getMiDeudaSaldo(d);
     const initials = d.nombre.substring(0, 2).toUpperCase();
     const ultimoMov = (d.movimientos || []).slice(-1)[0];
@@ -1865,25 +1864,25 @@ function renderMisDeudasList() {
     // Color: la persona es fuente de verdad
     const _rPersona = tienePerfil && typeof getPersona === 'function' ? getPersona(d.personaId) : null;
     const color = (_rPersona && _rPersona.color) ? _rPersona.color : (d.color || '#60b0f0');
-    return `<div class="card card-sm" style="margin-bottom:8px;">
+    return html`<div class="card card-sm" style="margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <button type="button" class="avatar" ${Events.attr(tienePerfil ? 'prestado:abrirPerfilPersonaDeDeuda' : 'prestado:abrirMiDeuda', tienePerfil ? d.personaId : d.id)}
-          style="color:${color};border-color:${color}33;background:${color}18;width:38px;height:38px;font-size:13px;margin-right:0;flex-shrink:0;border:1px solid;cursor:pointer;${tienePerfil ? 'box-shadow:0 0 0 2px ' + color + '33;' : ''}"
-          title="${tienePerfil ? 'Ver perfil de ' + escHtml(d.nombre) : escHtml(d.nombre)}">${escHtml(initials)}</button>
-        <div style="flex:1;min-width:0;cursor:pointer;" ${Events.attr('prestado:abrirMiDeuda', d.id)}>
+        <button type="button" class="avatar" ${raw(Events.attr(tienePerfil ? 'prestado:abrirPerfilPersonaDeDeuda' : 'prestado:abrirMiDeuda', tienePerfil ? d.personaId : d.id))}
+          style="color:${raw(color)};border-color:${raw(color)}33;background:${raw(color)}18;width:38px;height:38px;font-size:13px;margin-right:0;flex-shrink:0;border:1px solid;cursor:pointer;${raw(tienePerfil ? 'box-shadow:0 0 0 2px ' + color + '33;' : '')}"
+          title="${tienePerfil ? 'Ver perfil de ' + d.nombre : d.nombre}">${initials}</button>
+        <div style="flex:1;min-width:0;cursor:pointer;" ${raw(Events.attr('prestado:abrirMiDeuda', d.id))}>
           <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div class="row-name">${escHtml(d.nombre)}</div>
-            <div class="row-amount ${saldo > 0 ? 'c-red' : 'c-green'}">${fmt(Math.abs(saldo))}</div>
+            <div class="row-name">${d.nombre}</div>
+            <div class="row-amount ${raw(saldo > 0 ? 'c-red' : 'c-green')}">${fmt(Math.abs(saldo))}</div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:3px;">
             <div class="row-sub">${saldo > 0 ? 'Le debes' : saldo < 0 ? 'Saldo a tu favor' : 'Al día'}</div>
-            ${ultimoMov ? `<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimoMov.fecha}</span>` : ''}
+            ${ultimoMov ? html`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimoMov.fecha}</span>` : ''}
           </div>
         </div>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>`;
-  }).join('');
+  })}`;
 }
 
 function abrirMiDeuda(id) {
@@ -1920,27 +1919,27 @@ function abrirMiDeuda(id) {
   if (!movs.length) {
     histEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 8px;">Sin movimientos aún.</div>';
   } else {
-    histEl.innerHTML = movs.map(m => {
+    histEl.innerHTML = html`${movs.map(m => {
       const esRecibido = m.tipo === 'recibido';
       const cuentaRef = esRecibido ? m.destino : m.fuente;
-      return `<div class="card card-sm" style="margin-bottom:7px;">
+      return html`<div class="card card-sm" style="margin-bottom:7px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
               <span class="badge ${esRecibido ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esRecibido ? 'Me prestó' : 'Pago'}</span>
-              ${m.nota ? ` <span style="font-size:11px;color:var(--text2);">${escHtml(m.nota)}</span>` : ''}
+              ${m.nota ? html` <span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
             </div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${cuentaRef ? ' · ' + _fuenteLabelHtml(cuentaRef) : ''}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${cuentaRef ? raw(' · ' + _fuenteLabelHtml(cuentaRef)) : ''}</div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esRecibido ? 'var(--red)' : 'var(--accent)'};">${esRecibido ? '+' : '−'} ${fmt(m.monto)}</div>
-            <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" ${Events.attr('prestado:eliminarMovMiDeuda', d.id, m.id)}>
+            <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" ${raw(Events.attr('prestado:eliminarMovMiDeuda', d.id, m.id))}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </button>
           </div>
         </div>
       </div>`;
-    }).join('');
+    })}`;
   }
 
   document.getElementById('misDeudasView').style.display = 'none';
@@ -1966,7 +1965,7 @@ function abrirMovMiDeuda(tipo) {
   document.getElementById('md_cuenta_hint').textContent = tipo === 'recibido' ? 'Se sumará automáticamente al saldo de esa cuenta' : 'Se descontará automáticamente del saldo de esa cuenta';
   const sel = document.getElementById('md_cuenta');
   const fuentes = getFuentesSinTC();
-  sel.innerHTML = '<option value>Sin especificar</option>' + fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+  sel.innerHTML = html`<option value>Sin especificar</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   document.getElementById('md_monto').value = '';
   document.getElementById('md_fecha').value = hoy();
   document.getElementById('md_nota').value = '';
@@ -2155,8 +2154,7 @@ function abrirSheetPrestamoTC() {
   if (!tcs.length) { toast('No tenés tarjetas de crédito activas configuradas', 'err', 3000); return; }
   const sel = document.getElementById('prtc_tarjeta');
   if (sel) {
-    sel.innerHTML = '<option value="">Seleccionar TC</option>' +
-      tcs.map(tc => `<option value="${tc.id}">${escHtml(tc.nombre)}${tc.deuda ? ' — deuda: ' + fmt(tc.deuda) : ''}</option>`).join('');
+    sel.innerHTML = html`<option value="">Seleccionar TC</option>${tcs.map(tc => html`<option value="${tc.id}">${tc.nombre}${tc.deuda ? ' — deuda: ' + fmt(tc.deuda) : ''}</option>`)}`;
   }
   const fecEl = document.getElementById('prtc_fecha');
   if (fecEl) fecEl.value = hoy();
@@ -2285,7 +2283,7 @@ function _abonoEncCuentaSplitPreview() {
   if (!splits.length) { el.textContent = ''; return; }
   const total = splits.reduce((a, s) => a + (s.monto || 0), 0);
   const restante = monto - total;
-  const lines = splits.map(s => `${s.fuente ? _fuenteLabelHtml(s.fuente) : 'Sin esp.'}: ${fmt(s.monto)}`).join(' · ');
+  const lines = raw(splits.map(s => `${s.fuente ? _fuenteLabelHtml(s.fuente) : 'Sin esp.'}: ${fmt(s.monto)}`).join(' · '));
 
   // Validar que ninguna cuenta del encargo se pase de lo que tiene guardado
   let excedeCuenta = false;
@@ -2297,10 +2295,10 @@ function _abonoEncCuentaSplitPreview() {
     }
   }
 
-  if (excedeCuenta) { el.innerHTML = lines + ' · <span style="color:var(--red);">excede el saldo de esa cuenta</span>'; el.style.color = 'var(--red)'; }
-  else if (Math.abs(restante) < 1) { el.innerHTML = lines + ' &#x2713;'; el.style.color = 'var(--accent)'; }
-  else if (restante > 0) { el.innerHTML = lines + ` · Sin asignar: ${fmt(restante)}`; el.style.color = 'var(--amber)'; }
-  else { el.innerHTML = lines + ` · Excede: ${fmt(-restante)}`; el.style.color = 'var(--red)'; }
+  if (excedeCuenta) { el.innerHTML = html`${lines} · <span style="color:var(--red);">excede el saldo de esa cuenta</span>`; el.style.color = 'var(--red)'; }
+  else if (Math.abs(restante) < 1) { el.innerHTML = html`${lines} &#x2713;`; el.style.color = 'var(--accent)'; }
+  else if (restante > 0) { el.innerHTML = html`${lines} · Sin asignar: ${fmt(restante)}`; el.style.color = 'var(--amber)'; }
+  else { el.innerHTML = html`${lines} · Excede: ${fmt(-restante)}`; el.style.color = 'var(--red)'; }
 }
 function editarDeudorActual() {
   if (!deudorActualId) return;

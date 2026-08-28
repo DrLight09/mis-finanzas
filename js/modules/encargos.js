@@ -291,7 +291,7 @@ function renderEncargosList() {
   const el = document.getElementById('encargosList');
   const encargos = S.encargos||[];
   if (!encargos.length) {
-    el.innerHTML = `<div class="empty-state">
+    el.innerHTML = html`<div class="empty-state">
       <div class="empty-state-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg></div>
       <div class="empty-state-title">Sin encargos</div>
       <div class="empty-state-sub">Cuando administres plata de alguien, créa un encargo para llevar el registro.</div>
@@ -495,7 +495,7 @@ function renderEncargoParts(enc) {
   const libre = encargoLibre(enc);
 
   if (!partes.length && !usadas.length) {
-    el.innerHTML = `<div style="font-size:11px;color:var(--text3);padding:4px 0 10px;line-height:1.6;">
+    el.innerHTML = html`<div style="font-size:11px;color:var(--text3);padding:4px 0 10px;line-height:1.6;">
       Toda la plata está sin asignar — <b style="color:var(--text2);">tuyo para usar: ${fmt(saldo)}</b>.
       <br>Agrega partes para saber cuánto de este encargo ya tiene destino.
     </div>`;
@@ -2879,7 +2879,7 @@ function _initNuevoEncargoPersonaSelector() {
   const ig = encNombreEl.closest('.ig');
   if (!ig) return;
 
-  ig.innerHTML = `
+  ig.innerHTML = html`
     <div class="il">¿De quién es la plata?</div>
     <div id="enc-persona-btn" data-action="encargos:seleccionarPersonaNueva"
       style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
@@ -3026,7 +3026,7 @@ abrirEncargoDetalle = function(id) {
     const chip = document.createElement('button');
     chip.id = 'enc-det-perfil-chip';
     chip.type = 'button';
-    chip.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:12px;height:12px;fill:currentColor;vertical-align:middle;"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg> Ver perfil completo';
+    chip.innerHTML = html`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:12px;height:12px;fill:currentColor;vertical-align:middle;"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg> Ver perfil completo`;
     chip.style.cssText = 'font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:"DM Mono",monospace;padding:0;margin-top:2px;display:block;';
     chip.addEventListener('click', () => abrirPerfilPersona(p.id));
     anclaEl.after(chip);

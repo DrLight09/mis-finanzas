@@ -818,7 +818,7 @@ function _procesarMovEncMia(movimiento) {
     _origenSeccion: 'Encargos',
     monto,
     fecha,
-    desc: `Yo puse la plata: ${escHtml(movimiento.desc || '')}`,
+    desc: `Yo puse la plata: ${movimiento.desc || ''}`,
     nota: `Salida de ${fuenteLabel(sale)} — generado automáticamente al registrar "Yo puse la plata" en encargo.`,
     ts: Date.now() + 1
   });
@@ -838,7 +838,7 @@ function _procesarMovEncMia(movimiento) {
       _origenSeccion: 'Encargos',
       monto,
       fecha,
-      desc: `Recupero de encargo: ${escHtml(movimiento.desc || '')}`,
+      desc: `Recupero de encargo: ${movimiento.desc || ''}`,
       nota: `Entrada a ${fuenteLabel(entra)} — generado automáticamente al registrar "Yo puse la plata" en encargo.`,
       ts: Date.now() + 2
     });
@@ -1014,7 +1014,7 @@ async function _confirmarUsarParte() {
         tipo: 'salida',
         monto: parte.monto,
         cuenta: fuentesOrigen[0].fuente,
-        desc: `Parte usada: ${escHtml(parte.desc)}`,
+        desc: `Parte usada: ${parte.desc}`,
         fecha: hoy(),
         _parteId: parte.id
       });
@@ -1026,7 +1026,7 @@ async function _confirmarUsarParte() {
             tipo: 'salida',
             monto: f.monto,
             cuenta: f.fuente,
-            desc: `Parte usada: ${escHtml(parte.desc)}`,
+            desc: `Parte usada: ${parte.desc}`,
             fecha: hoy(),
             _parteId: parte.id
           });
@@ -1048,7 +1048,7 @@ async function _confirmarUsarParte() {
       fuente,
       monto,
       fecha: hoy(),
-      desc: `Margen encargo ${escHtml(enc.nombre)} — ${escHtml(parte.desc)}`
+      desc: `Margen encargo ${enc.nombre} — ${parte.desc}`
     });
     _usarParteMargenPendiente = null;
   }
@@ -1651,7 +1651,7 @@ function _movEncConfirmarPrestarFaltante() {
     monto: faltante,
     fecha,
     fuente: fuentePrestamo,
-    nota: `Encargo "${escHtml(enc.nombre)}": ${desc} (no alcanzaba ${fmt(libre)} del encargo)`,
+    nota: `Encargo "${enc.nombre}": ${desc} (no alcanzaba ${fmt(libre)} del encargo)`,
     grupoId,
     _encargoOrigenId: enc.id,
     _encargoOrigenMovId: movEncId,
@@ -2693,7 +2693,7 @@ function confirmarCompraConTC() {
     _esTcEncargo: true,
     monto: tcMonto,
     fecha,
-    desc: `TC encargo ${escHtml(enc.nombre)}: ${desc}`,
+    desc: `TC encargo ${enc.nombre}: ${desc}`,
     nota: 'Dinero del encargo recibido para pagar la tarjeta de crédito.',
     ts: Date.now()
   });
@@ -2710,7 +2710,7 @@ function confirmarCompraConTC() {
     id: uid(),
     tcId,
     tipo: 'cargo_encargo',
-    desc: `Compra encargo ${escHtml(enc.nombre)}: ${desc}`,
+    desc: `Compra encargo ${enc.nombre}: ${desc}`,
     monto: tcMonto,
     fecha,
     nota: nota || 'Cargo de encargo — no es gasto propio',

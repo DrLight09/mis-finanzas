@@ -1062,7 +1062,7 @@ function confirmarMovimiento() {
             tipo: 'salida',
             monto: s.monto,
             cuenta: s.fuente,
-            desc: `Pago de deuda — ${escHtml(d.nombre)}`,
+            desc: `Pago de deuda — ${d.nombre}`,
             fecha,
             nota,
             ts: Date.now(),
@@ -1081,7 +1081,7 @@ function confirmarMovimiento() {
           tipo: 'salida',
           monto,
           cuenta: _abonoEncCuenta === '__sinesp__' ? '' : (_abonoEncCuenta || ''),
-          desc: `Pago de deuda — ${escHtml(d.nombre)}`,
+          desc: `Pago de deuda — ${d.nombre}`,
           fecha,
           nota,
           ts: Date.now(),
@@ -1122,8 +1122,8 @@ function confirmarMovimiento() {
         if (abonoDestino) {
           abonoDestinoMovId = uid();
           const descAbonoDest = esPagoCompletoEncargo
-            ? `Pago de deuda completo — ${escHtml(d.nombre)} (vía encargo ${escHtml(enc.nombre)})`
-            : `Abono de deuda — ${escHtml(d.nombre)} (vía encargo ${escHtml(enc.nombre)})`;
+            ? `Pago de deuda completo — ${d.nombre} (vía encargo ${enc.nombre})`
+            : `Abono de deuda — ${d.nombre} (vía encargo ${enc.nombre})`;
           if (abonoDestino === 'efectivo' || abonoDestino === 'nequi') {
             if (!S.movimientos) S.movimientos = [];
             S.movimientos.push({ id: abonoDestinoMovId, tipo: 'entrada', fuente: abonoDestino, monto, fecha, desc: descAbonoDest, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
@@ -1173,7 +1173,7 @@ function confirmarMovimiento() {
           tipo: 'salida',
           monto: extraMonto,
           cuenta: _abonoEncCuenta === '__sinesp__' ? '' : (_abonoEncCuenta || ''),
-          desc: `Extra / propina — ${escHtml(d.nombre)} (parte del pago de deuda)`,
+          desc: `Extra / propina — ${d.nombre} (parte del pago de deuda)`,
           fecha,
           ts: Date.now(),
           _esExtraAbonoDeudor: true,
@@ -1193,7 +1193,7 @@ function confirmarMovimiento() {
           if (p.tipo === 'guardar') {
             if (!p.cuenta) continue;
             sumarFuente(p.cuenta, p.monto);
-            const descMovExtra = `Extra del pago de ${escHtml(d.nombre)} — vía encargo ${escHtml(enc.nombre)}`;
+            const descMovExtra = `Extra del pago de ${d.nombre} — vía encargo ${enc.nombre}`;
             let movExtraId = uid();
             if (p.cuenta === 'efectivo' || p.cuenta === 'nequi') {
               if (!S.movimientos) S.movimientos = [];
@@ -1216,14 +1216,14 @@ function confirmarMovimiento() {
           } else if (p.tipo === 'gastar') {
             if (!S.gastosVar) S.gastosVar = [];
             const gastoId = uid();
-            S.gastosVar.push({ id: gastoId, monto: p.monto, fecha, cat: 'Varios', desc: p.desc || `Extra del pago de ${escHtml(d.nombre)} — vía encargo ${escHtml(enc.nombre)}`, fuente: '', ts: Date.now(), _esExtraPrestamo: true });
+            S.gastosVar.push({ id: gastoId, monto: p.monto, fecha, cat: 'Varios', desc: p.desc || `Extra del pago de ${d.nombre} — vía encargo ${enc.nombre}`, fuente: '', ts: Date.now(), _esExtraPrestamo: true });
             if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'gastar', gastoId, monto: p.monto });
           } else if (p.tipo === 'regalar') {
             if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'regalar', monto: p.monto });
           } else if (p.tipo === 'pendiente') {
             if (!S.ingresosExtra) S.ingresosExtra = [];
             const ingrId = uid();
-            S.ingresosExtra.push({ id: ingrId, monto: p.monto, fecha, nota: `Extra sin asignar — ${escHtml(d.nombre)} vía encargo ${escHtml(enc.nombre)}`, ts: Date.now() });
+            S.ingresosExtra.push({ id: ingrId, monto: p.monto, fecha, nota: `Extra sin asignar — ${d.nombre} vía encargo ${enc.nombre}`, ts: Date.now() });
             if (ultimoMov) ultimoMov._extPartes.push({ tipo: 'pendiente', ingrId, monto: p.monto });
           }
         }
@@ -1243,7 +1243,7 @@ function confirmarMovimiento() {
     // 1. Registrar el abono (con o sin split de destino)
     const esPagoCompletoActual = movTipo === 'pago-completo';
     const tipoGuardar = esPagoCompletoActual ? 'pago-completo' : 'abono';
-    const descMovSecundario = esPagoCompletoActual ? `Pago de deuda completo — ${escHtml(d.nombre)}` : `Abono de deuda — ${escHtml(d.nombre)}`;
+    const descMovSecundario = esPagoCompletoActual ? `Pago de deuda completo — ${d.nombre}` : `Abono de deuda — ${d.nombre}`;
     if (_abonoSplitMode) {
       const totalSplit = _abonoSplitRows.reduce((a,r)=>a+(r.monto||0),0);
       if(Math.abs(totalSplit - monto) > 1){
@@ -1986,7 +1986,7 @@ function confirmarMovMiDeuda() {
     if (cuenta) {
       sumarFuente(cuenta, monto);
       movSecId = uid();
-      const descSec = `Me prestó — ${escHtml(d.nombre)}`;
+      const descSec = `Me prestó — ${d.nombre}`;
       if (cuenta === 'efectivo' || cuenta === 'nequi') {
         if (!S.movimientos) S.movimientos = [];
         S.movimientos.push({ id: movSecId, tipo: 'entrada', fuente: cuenta, monto, fecha, desc: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
@@ -2017,7 +2017,7 @@ function confirmarMovMiDeuda() {
     if (cuenta) {
       descontarFuente(cuenta, monto);
       movSecId = uid();
-      const descSec = `Pago de deuda — ${escHtml(d.nombre)}`;
+      const descSec = `Pago de deuda — ${d.nombre}`;
       if (cuenta === 'efectivo' || cuenta === 'nequi') {
         if (!S.movimientos) S.movimientos = [];
         S.movimientos.push({ id: movSecId, tipo: 'salida', fuente: cuenta, monto, fecha, desc: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
@@ -2198,7 +2198,7 @@ function confirmarPrestamoTC() {
     tipo: 'prestamo',
     monto: dijo,
     fecha,
-    nota: nota || `Compra con ${escHtml(tc.nombre)}: ${desc}`,
+    nota: nota || `Compra con ${tc.nombre}: ${desc}`,
     _viaTC: true,
     _tcId: tcId,
     _tcMonto: montoTC,
@@ -2217,7 +2217,7 @@ function confirmarPrestamoTC() {
     id: uid(),
     tcId,
     tipo: 'cargo_prestamo',
-    desc: `Préstamo ${escHtml(d.nombre)}: ${desc}`,
+    desc: `Préstamo ${d.nombre}: ${desc}`,
     monto: montoTC,
     fecha,
     nota: nota || 'Compra a nombre propio para prestarle a alguien — no es gasto tuyo',

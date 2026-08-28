@@ -169,11 +169,13 @@ function renderIconoCustom(c, size=30){
   const hex=c.color||icono.color||'#60b0f0';
   const hexRgb=hexToRgb(hex);
   if(icono && icono.id!=='otro'){
-    return`<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(${hexRgb},.18);display:flex;align-items:center;justify-content:center;color:${hex};">${icono.svg}</div>`;
+    return html`<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(${hexRgb},.18);display:flex;align-items:center;justify-content:center;color:${hex};">${raw(icono.svg)}</div>`;
   }
-  // Fallback: iniciales
+  // Fallback: iniciales (derivadas de c.nombre, texto libre — antes se interpolaban sin
+  // escapar; con solo 2 caracteres el vector real era mínimo, pero html`` lo cierra igual
+  // que el resto de free text de este archivo, sin depender de que siga siendo así)
   const iniciales=(c.nombre||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  return`<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(${hexRgb},.18);display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*.38)}px;font-weight:700;color:${hex};font-family:'DM Mono',monospace;">${iniciales}</div>`;
+  return html`<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(${hexRgb},.18);display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*.38)}px;font-weight:700;color:${hex};font-family:'DM Mono',monospace;">${iniciales}</div>`;
 }
 
 let _ncColorSel='#60b0f0';
@@ -203,15 +205,15 @@ function selIconoNC(iconoId){
 function renderIconGrid(){
   const grid=document.getElementById('nc-icon-grid');
   if(!grid)return;
-  grid.innerHTML=ICONOS_CUENTA.map(ic=>{
+  grid.innerHTML=html`${ICONOS_CUENTA.map(ic=>{
     const sel=ic.id===_ncIconoSel;
     const hexRgb=hexToRgb(ic.color);
-    return`<div class="nc-icon-opt" data-icono="${ic.id}" ${Events.attr('cuentas:selIconoNC', ic.id)}
+    return html`<div class="nc-icon-opt" data-icono="${ic.id}" ${raw(Events.attr('cuentas:selIconoNC', ic.id))}
       style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px;border-radius:10px;cursor:pointer;border:2px solid ${sel?'var(--accent)':'var(--border2)'};background:${sel?`rgba(${hexRgb},.18)`:'var(--bg3)'};transition:all .15s;">
-      <div style="color:${ic.color};display:flex;align-items:center;justify-content:center;width:24px;height:24px;">${ic.svg}</div>
+      <div style="color:${ic.color};display:flex;align-items:center;justify-content:center;width:24px;height:24px;">${raw(ic.svg)}</div>
       <div style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);text-align:center;line-height:1.2;">${ic.label}</div>
     </div>`;
-  }).join('');
+  })}`;
 }
 
 function abrirNuevaCuenta(){
@@ -247,21 +249,21 @@ function renderCustomCuentasList(){
   if(!el)return;
   const cuentas=S.cuentasPersonalizadas||[];
   if(!cuentas.length){el.innerHTML='';return;}
-  el.innerHTML=cuentas.map(c=>{
+  el.innerHTML=html`${cuentas.map(c=>{
     const hex=c.color||(getIconoData(c.icono).color)||'#60b0f0';
     const hexRgb=hexToRgb(hex);
     const iconoHtml=renderIconoCustom(c,30);
-    return`<div data-cuenta-custom="${c.id}" style="margin-top:8px;background:linear-gradient(135deg,rgba(${hexRgb},.12) 0%,rgba(${hexRgb},.04) 100%);border:1px solid rgba(${hexRgb},.35);border-radius:var(--radius-sm);padding:13px 15px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+    return html`<div data-cuenta-custom="${c.id}" style="margin-top:8px;background:linear-gradient(135deg,rgba(${hexRgb},.12) 0%,rgba(${hexRgb},.04) 100%);border:1px solid rgba(${hexRgb},.35);border-radius:var(--radius-sm);padding:13px 15px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
       <div style="display:flex;align-items:center;gap:10px;">
         ${iconoHtml}
         <div>
-          <div style="font-size:13px;font-weight:600;color:${hex};">${escHtml(c.nombre)}</div>
+          <div style="font-size:13px;font-weight:600;color:${hex};">${c.nombre}</div>
           <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${fmt(c.saldo||0)}</div>
         </div>
       </div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${hex}" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`;
-  }).join('');
+  })}`;
   el.querySelectorAll('[data-cuenta-custom]').forEach(div=>{
     div.addEventListener('click',()=>abrirCustomCuenta(div.dataset.cuentaCustom));
   });
@@ -290,7 +292,7 @@ function abrirCustomCuenta(id){
   // Mostrar ícono + nombre en el header
   if(nombreEl){
     const iconoHtml=renderIconoCustom(c,28);
-    nombreEl.innerHTML=`<div style="display:flex;align-items:center;gap:8px;">${iconoHtml}<span style="color:${hex};">${escHtml(c.nombre)}</span></div>`;
+    nombreEl.innerHTML=html`<div style="display:flex;align-items:center;gap:8px;">${iconoHtml}<span style="color:${hex};">${c.nombre}</span></div>`;
     nombreEl.style.color=hex;
   }
   const saldoEl=document.getElementById('det-custom-saldo');
@@ -634,13 +636,13 @@ function verificarTasaNu(){
 function poblarChequeoNu(){
   const cont=document.getElementById('chequeoNuLista');
   if(!cont)return;
-  cont.innerHTML=(S.cajitas||[]).map(c=>{
+  cont.innerHTML=html`${(S.cajitas||[]).map(c=>{
     const calc=calcC(c);
-    return `<div class="ig" style="margin-bottom:10px;">
-      <label class="il" for="chq-${c.id}">${escHtml(c.nombre)} <span style="font-size:10px;color:var(--text3);font-weight:400;">(calculado: ${fmt(calc.val)})</span></label>
+    return html`<div class="ig" style="margin-bottom:10px;">
+      <label class="il" for="chq-${c.id}">${c.nombre} <span style="font-size:10px;color:var(--text3);font-weight:400;">(calculado: ${fmt(calc.val)})</span></label>
       <input type="text" inputmode="decimal" class="money-input" id="chq-${c.id}" data-chq-cajita="${c.id}" placeholder="${fmt(calc.val)}">
     </div>`;
-  }).join('');
+  })}`;
 }
 
 function guardarChequeoNu(){
@@ -916,14 +918,14 @@ function abrirMetaCajita(cajitaId){
 function _renderMetaAportes(){
   const el = document.getElementById('meta_aportes_list');
   if(!el) return;
-  el.innerHTML = _metaAportesTemp.map((ap,i)=>`
+  el.innerHTML = html`${_metaAportesTemp.map((ap,i)=>html`
     <div class="prest-split-row" style="gap:6px;margin-bottom:7px;">
-      <input type="text" value="${escHtml(ap.desc||'')}" placeholder="Ej: Papá, Mamá" class="meta-aporte-desc" data-idx="${i}" style="flex:1;font-size:13px;padding:8px 10px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;font-family:'DM Sans',sans-serif;">
+      <input type="text" value="${ap.desc||''}" placeholder="Ej: Papá, Mamá" class="meta-aporte-desc" data-idx="${i}" style="flex:1;font-size:13px;padding:8px 10px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;font-family:'DM Sans',sans-serif;">
       <input type="text" inputmode="decimal" value="${ap.monto?fmtInput(ap.monto):''}" placeholder="$0" class="money-input meta-aporte-monto" data-idx="${i}" style="width:100px;flex-shrink:0;">
-      <button class="prest-split-del" ${Events.attr('cuentas:metaAporteEliminar', i)}>
+      <button class="prest-split-del" ${raw(Events.attr('cuentas:metaAporteEliminar', i))}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
-    </div>`).join('');
+    </div>`)}`;
   // Reemplaza los oninput="_metaAportesTemp[i]..." inline (CSP los bloquea).
   // Un solo listener delegado en el contenedor, enganchado una sola vez —
   // #meta_aportes_list no se recrea entre renders, solo su innerHTML, así
@@ -1295,7 +1297,7 @@ function renderCajitas(){
     el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:6px 0 8px;">Sin cajitas. Agrega tu primera cajita de Nu — empieza en $0 y crece sola.</div>';
     msg.textContent='';btn.style.display='';return;
   }
-  el.innerHTML=cajitas.map(c=>{
+  el.innerHTML=html`${cajitas.map(c=>{
     const k=calcC(c);
     const cdts=c.cdts||[];
     const hasCDTs=cdts.length>0;
@@ -1307,13 +1309,13 @@ function renderCajitas(){
     const hasMeta=!!(c.meta&&c.meta.objetivo);
     const metaPct=hasMeta?Math.min(100,(k.val/c.meta.objetivo)*100):0;
     // Badges indicadores
-    const cdtBadge=hasCDTs?`<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px 3px 6px;border-radius:20px;background:rgba(176,144,240,.15);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-size:10px;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${cdts.length===1?fmt(totalCDT):cdts.length+' CDTs'}</span>`:'';
-    const metaBadge=hasMeta?`<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-size:10px;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0;">${metaPct.toFixed(0)}%</span>`:'';
-    return`<div class="cajita-row-hover" style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px 13px;margin-bottom:7px;cursor:pointer;transition:border-color .15s,background .15s;display:flex;align-items:center;gap:10px;" id="cajita-row-${c.id}" ${Events.attr('cuentas:abrirDetalleCajita', c.id)}>
+    const cdtBadge=hasCDTs?html`<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px 3px 6px;border-radius:20px;background:rgba(176,144,240,.15);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-size:10px;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${cdts.length===1?fmt(totalCDT):cdts.length+' CDTs'}</span>`:'';
+    const metaBadge=hasMeta?html`<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-size:10px;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0;">${metaPct.toFixed(0)}%</span>`:'';
+    return html`<div class="cajita-row-hover" style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px 13px;margin-bottom:7px;cursor:pointer;transition:border-color .15s,background .15s;display:flex;align-items:center;gap:10px;" id="cajita-row-${c.id}" ${raw(Events.attr('cuentas:abrirDetalleCajita', c.id))}>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
       <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(c.nombre)}</div>
-        ${interesHoy>0.1?`<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;">+${fmt(interesHoy)}/día</div>`:''}
+        <div style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.nombre}</div>
+        ${interesHoy>0.1?html`<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;">+${fmt(interesHoy)}/día</div>`:''}
       </div>
       <div style="display:flex;align-items:center;gap:5px;flex-wrap:nowrap;flex-shrink:0;">${cdtBadge}${metaBadge}</div>
       <div style="text-align:right;flex-shrink:0;">
@@ -1321,9 +1323,9 @@ function renderCajitas(){
       </div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`;
-  }).join('');
-  if(cajitas.length>=MAX){msg.innerHTML=`<div class="cajita-limit-msg">Límite alcanzado (${MAX}/${MAX})</div>`;btn.style.display='none';}
-  else{msg.innerHTML=`<div class="cajita-limit-msg">${cajitas.length}/${MAX} cajitas</div>`;btn.style.display='';}
+  })}`;
+  if(cajitas.length>=MAX){msg.innerHTML=html`<div class="cajita-limit-msg">Límite alcanzado (${MAX}/${MAX})</div>`;btn.style.display='none';}
+  else{msg.innerHTML=html`<div class="cajita-limit-msg">${cajitas.length}/${MAX} cajitas</div>`;btn.style.display='';}
 }
 
 /* ══ NAVEGACIÓN CAJITA DETAIL ══ */
@@ -1443,25 +1445,25 @@ function abrirSubMeta(){
   const p=calcMetaProgreso(c);
   if(!p){
     // Sin meta — mostrar formulario rápido
-    el.innerHTML=`<div class="card" style="text-align:center;padding:24px 20px;">
+    el.innerHTML=html`<div class="card" style="text-align:center;padding:24px 20px;">
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" style="margin-bottom:12px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Sin meta configurada</div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:18px;">Define un objetivo de ahorro para esta cajita y lleva el seguimiento mes a mes.</div>
-      <button type="button" class="btn btn-primary" ${Events.attr('cuentas:abrirMetaCajita', c.id)}>Configurar meta</button>
+      <button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirMetaCajita', c.id))}>Configurar meta</button>
     </div>`;
   } else {
     const estadoColors={ok:'var(--accent)',warn:'var(--amber)',late:'var(--red)'};
     const estadoLabels={ok:'Al día',warn:'Un poco atrás',late:'Atrasado/a'};
     const estado=p.diferencia>=0?'ok':(p.diferencia>-(p.cuotaMensual*0.5)?'warn':'late');
-    const aportesHtml=c.meta.aportes&&c.meta.aportes.length?c.meta.aportes.map(ap=>`<span class="cajita-meta-aporte-chip">${escHtml(ap.desc)}: ${fmt(ap.monto)}/mes</span>`).join(''):'';
-    const minimoHtml=c.meta.minimo?`<div style="margin-top:10px;padding:10px 12px;background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.2);border-radius:9px;">
+    const aportesHtml=c.meta.aportes&&c.meta.aportes.length?html`${c.meta.aportes.map(ap=>html`<span class="cajita-meta-aporte-chip">${ap.desc}: ${fmt(ap.monto)}/mes</span>`)}`:'';
+    const minimoHtml=c.meta.minimo?html`<div style="margin-top:10px;padding:10px 12px;background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.2);border-radius:9px;">
       <div style="font-size:10px;color:var(--red);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Saldo mínimo</div>
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <span style="font-size:12px;color:var(--text2);">Mínimo: <b style="color:var(--text);">${fmt(c.meta.minimo)}</b></span>
-        ${p.saldo<c.meta.minimo?`<span style="font-size:11px;color:var(--red);font-family:'DM Mono',monospace;">¡Bajo! −${fmt(c.meta.minimo-p.saldo)}</span>`:`<span style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;">OK +${fmt(p.saldo-c.meta.minimo)}</span>`}
+        ${p.saldo<c.meta.minimo?html`<span style="font-size:11px;color:var(--red);font-family:'DM Mono',monospace;">¡Bajo! −${fmt(c.meta.minimo-p.saldo)}</span>`:html`<span style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;">OK +${fmt(p.saldo-c.meta.minimo)}</span>`}
       </div>
     </div>`:'';
-    el.innerHTML=`
+    el.innerHTML=html`
       <div class="card" style="margin-bottom:9px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
           <div>
@@ -1482,11 +1484,11 @@ function abrirSubMeta(){
           <div class="cajita-meta-stat"><div class="cajita-meta-stat-label">Esperado hoy</div><div class="cajita-meta-stat-val">${fmt(p.esperadoHoy)}</div></div>
           <div class="cajita-meta-stat"><div class="cajita-meta-stat-label">Meses rest.</div><div class="cajita-meta-stat-val">${p.mesesRestantes}</div></div>
         </div>
-        ${aportesHtml?`<div class="cajita-meta-aporte-row" style="margin-bottom:10px;">${aportesHtml}</div>`:''}
+        ${aportesHtml?html`<div class="cajita-meta-aporte-row" style="margin-bottom:10px;">${aportesHtml}</div>`:''}
         ${minimoHtml}
       </div>
-      <button type="button" class="btn btn-ghost" style="margin-bottom:8px;" ${Events.attr('cuentas:abrirMetaCajita', c.id)}>Editar meta</button>
-      <button type="button" class="btn btn-ghost" style="color:var(--red);border-color:rgba(240,104,104,.3);" ${Events.attr('cuentas:quitarMetaCajita')}>Eliminar meta</button>`;
+      <button type="button" class="btn btn-ghost" style="margin-bottom:8px;" ${raw(Events.attr('cuentas:abrirMetaCajita', c.id))}>Editar meta</button>
+      <button type="button" class="btn btn-ghost" style="color:var(--red);border-color:rgba(240,104,104,.3);" ${raw(Events.attr('cuentas:quitarMetaCajita'))}>Eliminar meta</button>`;
   }
   _showCuentasPanel('cuentas-sub-meta');
 }
@@ -1498,26 +1500,26 @@ function abrirSubCDTs(){
   const el=document.getElementById('sub-cdts-content');
   const cdts=c.cdts||[];
   const saldoDisp=calcC(c).val;
-  let html='';
+  let contenido='';
   if(!cdts.length){
-    html=`<div class="card" style="text-align:center;padding:24px 20px;margin-bottom:9px;">
+    contenido=html`<div class="card" style="text-align:center;padding:24px 20px;margin-bottom:9px;">
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round" style="margin-bottom:12px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Sin CDTs activos</div>
       <div style="font-size:12px;color:var(--text2);margin-bottom:18px;">Bloquea parte del saldo de esta cajita como CDT y gana intereses mientras esperas el vencimiento.</div>
     </div>`;
   } else {
-    html=cdts.map(cdt=>{
+    contenido=html`${cdts.map(cdt=>{
       const cdtK=calcCDT(cdt);
       const dr=cdt.vence?Math.ceil((new Date(cdt.vence+'T00:00:00')-new Date())/86400000):null;
       const vencido=dr!==null&&dr<=0;
-      return`<div class="card" style="margin-bottom:9px;background:rgba(176,144,240,.06);border-color:rgba(176,144,240,.25);">
+      return html`<div class="card" style="margin-bottom:9px;background:rgba(176,144,240,.06);border-color:rgba(176,144,240,.25);">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
           <div>
             <div style="font-size:18px;font-weight:500;font-family:'DM Mono',monospace;color:var(--purple);">${fmt(cdtK.val)}</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px;">Capital: ${fmt(cdt.monto)} · +${fmt(cdtK.ganado)} netos · ${String(cdt.tasa).replace('.',',')}% EA</div>
-            ${cdtK.retencion>0.01?`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">RTE ${cdt.rte!=null?cdt.rte:4}%: −${fmt(cdtK.retencion)}</div>`:''}
+            ${cdtK.retencion>0.01?html`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">RTE ${cdt.rte!=null?cdt.rte:4}%: −${fmt(cdtK.retencion)}</div>`:''}
           </div>
-          ${dr!==null?`<span class="badge ${vencido?'bg-red':'bg-purple'}">${vencido?'¡Venció!':dr+'d'}</span>`:''}
+          ${dr!==null?html`<span class="badge ${vencido?'bg-red':'bg-purple'}">${vencido?'¡Venció!':dr+'d'}</span>`:''}
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
           <div style="background:var(--bg4);border-radius:7px;padding:8px 10px;">
@@ -1530,28 +1532,28 @@ function abrirSubCDTs(){
           </div>
         </div>
         <div style="display:flex;gap:7px;">
-          <button type="button" class="btn btn-ghost btn-sm" style="flex:1;" ${Events.attr('cuentas:editarCDT', c.id, cdt.id)}>Editar</button>
+          <button type="button" class="btn btn-ghost btn-sm" style="flex:1;" ${raw(Events.attr('cuentas:editarCDT', c.id, cdt.id))}>Editar</button>
           ${vencido
-            ? `<button type="button" class="btn btn-sm" style="flex:1;background:rgba(200,240,96,.18);border-color:rgba(200,240,96,.6);color:var(--accent);font-weight:700;" ${Events.attr('cuentas:abrirCobrarCDT', c.id, cdt.id)}>
+            ? html`<button type="button" class="btn btn-sm" style="flex:1;background:rgba(200,240,96,.18);border-color:rgba(200,240,96,.6);color:var(--accent);font-weight:700;" ${raw(Events.attr('cuentas:abrirCobrarCDT', c.id, cdt.id))}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:4px;vertical-align:middle;"><polyline points="20 6 9 17 4 12"/></svg>
             Cobrar CDT
           </button>`
-            : `<button type="button" class="btn btn-sm" style="flex:1;background:rgba(200,240,96,.12);border-color:rgba(200,240,96,.35);color:var(--accent);" ${Events.attr('cuentas:liberarCDTManual', c.id, cdt.id)}>
+            : html`<button type="button" class="btn btn-sm" style="flex:1;background:rgba(200,240,96,.12);border-color:rgba(200,240,96,.35);color:var(--accent);" ${raw(Events.attr('cuentas:liberarCDTManual', c.id, cdt.id))}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:4px;vertical-align:middle;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
             Cerrar CDT
           </button>`}
         </div>
       </div>`;
-    }).join('');
+    })}`;
   }
-  html+=`<button type="button" class="btn btn-ghost" style="margin-top:${cdts.length?'4':'0'}px;" ${Events.attr('cuentas:abrirCrearCDT', c.id)}>
+  contenido=html`${contenido}<button type="button" class="btn btn-ghost" style="margin-top:${cdts.length?'4':'0'}px;" ${raw(Events.attr('cuentas:abrirCrearCDT', c.id))}>
     <span style="display:flex;align-items:center;justify-content:center;gap:5px;">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       ${cdts.length?'Agregar otro CDT':'Crear CDT'}
     </span>
   </button>
   <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-align:center;">Disponible en cajita: ${fmt(saldoDisp)}</div>`;
-  el.innerHTML=html;
+  el.innerHTML=contenido;
   _showCuentasPanel('cuentas-sub-cdts');
 }
 
@@ -1950,20 +1952,20 @@ function renderMovsFiltros(elId, cuentaKey, movs, accentColor) {
     { val: 'abono', label: 'Abono' },
   ].filter(t => t.val === 'todos' || tiposPresentes.has(t.val));
 
-  wrap.innerHTML = `
+  wrap.innerHTML = html`
     <div class="movs-search-wrap">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" class="movs-search-input" placeholder="Buscar movimiento..." value="${f.q}">
     </div>
     <div class="movs-tipo-chips">
-      ${tiposConfig.map(t => `<div class="movs-chip${f.tipo===t.val?' active':''}" ${Events.attr('cuentas:movsOnTipo', t.val, cuentaKey)}>${t.label}</div>`).join('')}
+      ${tiposConfig.map(t => html`<div class="movs-chip${f.tipo===t.val?' active':''}" ${raw(Events.attr('cuentas:movsOnTipo', t.val, cuentaKey))}>${t.label}</div>`)}
     </div>
     <div class="movs-fecha-row">
       <span class="movs-fecha-label">Desde</span>
       <input type="date" class="movs-fecha-desde" value="${f.desde}">
       <span class="movs-fecha-label">Hasta</span>
       <input type="date" class="movs-fecha-hasta" value="${f.hasta}">
-      ${(f.desde||f.hasta)?`<button ${Events.attr('cuentas:movsLimpiarFechas', cuentaKey)} style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:'DM Mono',monospace;white-space:nowrap;padding:0 2px;">× fechas</button>`:''}
+      ${(f.desde||f.hasta)?html`<button ${raw(Events.attr('cuentas:movsLimpiarFechas', cuentaKey))} style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:'DM Mono',monospace;white-space:nowrap;padding:0 2px;">× fechas</button>`:''}
     </div>
   `;
   // Reemplaza los oninput/onchange inline (CSP los bloquea). Delegado,
@@ -2043,7 +2045,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
     return;
   }
 
-  el.innerHTML = filtrados.map(m => {
+  el.innerHTML = html`${filtrados.map(m => {
     const esSalida = m.tipo === 'salida_manual' || m.tipo === 'gasto' || m.tipo === 'egreso';
     const esApertura = m.tipo === 'apertura';
     const esPositivo = esApertura ? true : esSalida ? false : m.monto > 0;
@@ -2051,39 +2053,39 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
     const signo = esApertura ? '' : esPositivo ? '+' : '−';
     const tipoLabel = { gasto: 'Gasto', ingreso: 'Ingreso', egreso: 'Retiro', apertura: 'Apertura', prestamo: 'Préstamo', abono: 'Abono', mesada: 'Mesada', transferencia: 'Transferencia', salida_manual: 'Salida' }[m.tipo] || m.tipo;
     const bgLabel = esApertura ? 'bg-blue' : esPositivo ? 'bg-green' : m.tipo === 'gasto' || m.tipo === 'salida_manual' || m.tipo === 'egreso' ? 'bg-red' : m.tipo === 'transferencia' ? 'bg-blue' : 'bg-amber';
-    const dataId = m._movId ? `data-mov-id="${m._movId}"` : '';
-    const dataTipo = `data-mov-tipo="${m.tipo}"`;
-    const dataFuente = m._fuenteOrigen ? `data-mov-fuente="${m._fuenteOrigen}"` : '';
-    const dataDestino = m._fuenteDestino ? `data-mov-destino="${m._fuenteDestino}"` : '';
-    const dataMonto = `data-mov-monto="${Math.abs(m.monto)}"`;
-    const dataFuenteReal = m.fuente ? `data-mov-fuente-real="${escHtml(m.fuente)}"` : '';
-    const dataFecha = `data-mov-fecha="${escHtml(m.fecha)}"`;
-    const dataOrigen = m._origen ? `data-mov-origen="${escHtml(m._origen)}"` : '';
-    const dataOtras = m._otrasCuentas ? `data-mov-otras="${escHtml(JSON.stringify(m._otrasCuentas))}"` : '';
+    const dataId = m._movId ? html`data-mov-id="${m._movId}"` : '';
+    const dataTipo = html`data-mov-tipo="${m.tipo}"`;
+    const dataFuente = m._fuenteOrigen ? html`data-mov-fuente="${m._fuenteOrigen}"` : '';
+    const dataDestino = m._fuenteDestino ? html`data-mov-destino="${m._fuenteDestino}"` : '';
+    const dataMonto = html`data-mov-monto="${Math.abs(m.monto)}"`;
+    const dataFuenteReal = m.fuente ? html`data-mov-fuente-real="${m.fuente}"` : '';
+    const dataFecha = html`data-mov-fecha="${m.fecha}"`;
+    const dataOrigen = m._origen ? html`data-mov-origen="${m._origen}"` : '';
+    const dataOtras = m._otrasCuentas ? html`data-mov-otras="${JSON.stringify(m._otrasCuentas)}"` : '';
     const esSecundarioHist = !!m._secundario;
     const puedeEliminar = !!m._movId && !esSecundarioHist;
     const puedeVerDetalle = !!m.fuente;
-    return `<div class="gasto-item" ${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto} ${dataFuenteReal} ${dataFecha} ${dataOrigen} ${dataOtras} ${puedeVerDetalle ? 'data-cuenta-key="'+cuentaKey+'" style="cursor:pointer;" data-action="core:abrirDetalleMov"' : ''}>
+    return html`<div class="gasto-item" ${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto} ${dataFuenteReal} ${dataFecha} ${dataOrigen} ${dataOtras} ${puedeVerDetalle ? raw('data-cuenta-key="'+escHtml(cuentaKey)+'" style="cursor:pointer;" data-action="core:abrirDetalleMov"') : ''}>
       <div class="gasto-item-top">
         <div style="flex:1;min-width:0;">
-          <div class="row-name" style="font-size:13px;display:flex;align-items:center;gap:6px;">${escHtml(m.desc)}${esSecundarioHist ? `<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:1px 5px;white-space:nowrap;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
-          <div class="row-sub" style="font-family:'DM Mono',monospace;">${escHtml(m.fecha) || '—'}</div>
+          <div class="row-name" style="font-size:13px;display:flex;align-items:center;gap:6px;">${m.desc}${esSecundarioHist ? html`<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:1px 5px;white-space:nowrap;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
+          <div class="row-sub" style="font-family:'DM Mono',monospace;">${m.fecha || '—'}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${colorMonto};">${signo} ${fmt(Math.abs(m.monto))}</div>
-          ${puedeEliminar ? `<button type="button" class="btn-icon" data-action="core:eliminarMovimiento" data-stop-propagation="true" title="Eliminar movimiento" style="color:var(--text3);min-width:32px;min-height:32px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : esSecundarioHist && m._movId ? `<span title="Generado automáticamente — elimínalo desde ${escHtml(m._origenSeccion||'la sección de origen')}" style="display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;color:var(--text3);opacity:.4;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : ''}
+          ${puedeEliminar ? html`<button type="button" class="btn-icon" data-action="core:eliminarMovimiento" data-stop-propagation="true" title="Eliminar movimiento" style="color:var(--text3);min-width:32px;min-height:32px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : esSecundarioHist && m._movId ? html`<span title="Generado automáticamente — elimínalo desde ${m._origenSeccion||'la sección de origen'}" style="display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;color:var(--text3);opacity:.4;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : ''}
         </div>
       </div>
       <div class="gasto-item-meta">
-        <span class="badge ${bgLabel}" style="font-size:9px;">${escHtml(tipoLabel)}</span>
-        ${m._origen === 'Alcancía oculta' ? `<span class="badge" style="font-size:9px;background:rgba(240,184,64,.18);color:var(--amber);border:none;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
-        ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?`<span class="badge bg-nu" style="font-size:9px;">${escHtml(cn)}</span>`:''; })()}
-        ${m.cat ? `<span class="badge bg-blue" style="font-size:9px;">${escHtml(m.cat)}</span>` : ''}
-        ${m.nota ? `<span style="font-size:10px;color:var(--text3);">${escHtml(m.nota)}</span>` : ''}
-        ${m.tipo === 'transferencia' && m._fuenteDestino ? `<span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg> ${escHtml(fuenteLabel(m._fuenteDestino||m._fuenteOrigen))}</span>` : ''}
+        <span class="badge ${bgLabel}" style="font-size:9px;">${tipoLabel}</span>
+        ${m._origen === 'Alcancía oculta' ? html`<span class="badge" style="font-size:9px;background:rgba(240,184,64,.18);color:var(--amber);border:none;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
+        ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?html`<span class="badge bg-nu" style="font-size:9px;">${cn}</span>`:''; })()}
+        ${m.cat ? html`<span class="badge bg-blue" style="font-size:9px;">${m.cat}</span>` : ''}
+        ${m.nota ? html`<span style="font-size:10px;color:var(--text3);">${m.nota}</span>` : ''}
+        ${m.tipo === 'transferencia' && m._fuenteDestino ? html`<span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg> ${fuenteLabel(m._fuenteDestino||m._fuenteOrigen)}</span>` : ''}
       </div>
     </div>`;
-  }).join('');
+  })}`;
 }
 
 /* ───────────────────────────────────────────────────────────────
@@ -2219,7 +2221,7 @@ function openSheet_adMenu(){
   // Replace options with all accounts including all cajitas
   const sel=document.getElementById('adMenuDest');
   const fuentes=getFuentes();
-  sel.innerHTML=fuentes.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+  sel.innerHTML=html`${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
   actualizarAdMenuSaldo();
   document.getElementById('adMenuMonto').value='';
   document.getElementById('adMenuDesc').value='';
@@ -2284,17 +2286,17 @@ function renderBannerApertura(fuente){
   const color=colorMap[fuente]||'var(--blue)';
   if(mov){
     // Ya tiene saldo inicial — mostrar chip con valor y botón editar discreto
-    el.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:9px;padding:9px 13px;margin-bottom:12px;">
+    el.innerHTML=html`<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:9px;padding:9px 13px;margin-bottom:12px;">
       <div>
         <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:2px;">Saldo inicial registrado</div>
         <div style="font-size:15px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(mov.monto)}</div>
       </div>
-      <button type="button" ${Events.attr('cuentas:abrirEditarApertura', fuente)} style="background:none;border:1px solid rgba(96,176,240,.3);border-radius:7px;color:var(--blue);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Corregir</button>
+      <button type="button" ${raw(Events.attr('cuentas:abrirEditarApertura', fuente))} style="background:none;border:1px solid rgba(96,176,240,.3);border-radius:7px;color:var(--blue);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Corregir</button>
     </div>`;
   } else {
     // No tiene saldo inicial — mostrar botón para registrarlo
-    el.innerHTML=`<div style="margin-bottom:12px;">
-      <button type="button" ${Events.attr('cuentas:abrirRegistrarApertura', fuente)} style="width:100%;padding:11px;background:rgba(96,176,240,.07);border:1.5px dashed rgba(96,176,240,.35);border-radius:9px;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;">
+    el.innerHTML=html`<div style="margin-bottom:12px;">
+      <button type="button" ${raw(Events.attr('cuentas:abrirRegistrarApertura', fuente))} style="width:100%;padding:11px;background:rgba(96,176,240,.07);border:1.5px dashed rgba(96,176,240,.35);border-radius:9px;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Registrar saldo inicial
       </button>
@@ -2433,17 +2435,17 @@ function _nuMovRenderCajitas() {
     wrap.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">No tenés cajitas. Creá una primero desde la pantalla de Nu.</div>';
     return;
   }
-  wrap.innerHTML = cajitas.map(c => {
+  wrap.innerHTML = html`${cajitas.map(c => {
     const saldo = typeof calcC === 'function' ? calcC(c).val : (c.saldo || 0);
-    return `<div data-nu-cajita="cajita:${c.id}"
+    return html`<div data-nu-cajita="cajita:${c.id}"
       style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;transition:all .15s;">
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);">${escHtml(c.nombre||'Cajita')}</div>
+        <div style="font-size:13px;font-weight:600;color:var(--text);">${c.nombre||'Cajita'}</div>
         <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--nu-light);margin-top:2px;">${fmt(saldo)}</div>
       </div>
       <div id="_nuMovCheck_${c.id}" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;"></div>
     </div>`;
-  }).join('');
+  })}`;
 
   wrap.querySelectorAll('[data-nu-cajita]').forEach(el => {
     el.addEventListener('click', function() {
@@ -2581,7 +2583,7 @@ function confirmarRestarDinero(){
 function abrirTransferir(origenSugerido) {
   // Populate both selects
   const fuentes = getFuentes();
-  const optsHtml = fuentes.map(f => `<option value="${f.val}">${escHtml(f.label)}</option>`).join('');
+  const optsHtml = html`${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   document.getElementById('tr_origen').innerHTML = optsHtml;
   document.getElementById('tr_destino').innerHTML = optsHtml;
   // Pre-select suggested origin if provided
@@ -2624,11 +2626,10 @@ function actualizarTransfPreview() {
   const nuevoOrigen = saldoOrigen - monto;
   const nuevoDestino = saldoDestino + monto;
   const colorOrigen = nuevoOrigen < 0 ? 'var(--red)' : 'var(--accent)';
-  prev.innerHTML =
-    `<span style="color:var(--red);">${escHtml(fuenteLabel(origen))}: ${fmt(saldoOrigen)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoOrigen)}</span><br>` +
-    `<span style="color:var(--accent);">${escHtml(fuenteLabel(destino))}: ${fmt(saldoDestino)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoDestino)}</span>`;
+  prev.innerHTML = html`<span style="color:var(--red);">${fuenteLabel(origen)}: ${fmt(saldoOrigen)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoOrigen)}</span><br>
+    <span style="color:var(--accent);">${fuenteLabel(destino)}: ${fmt(saldoDestino)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoDestino)}</span>`;
   if (nuevoOrigen < 0) {
-    prev.innerHTML += `<br><span style="color:var(--red);font-size:10px;">Saldo insuficiente en ${escHtml(fuenteLabel(origen))}</span>`;
+    prev.innerHTML = html`${raw(prev.innerHTML)}<br><span style="color:var(--red);font-size:10px;">Saldo insuficiente en ${fuenteLabel(origen)}</span>`;
   }
 }
 

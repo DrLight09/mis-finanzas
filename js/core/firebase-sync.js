@@ -143,12 +143,43 @@
     refresh(); if(window.applyModulos) applyModulos();
     poblarCatSelect('gv_cat',getCatsVar());
     poblarCatSelect('gf_c',getCatsFijo());
-    _initEventListeners();
-    _injectErrorSpans();
-    // FIX 2026-08-13: verificarVencimientosCDT (cuentas.js, grupo lazy) sin
-    // guard — mismo problema que _renderTasaHistorialTag arreglado antes:
-    // corre en cada arranque de la app, no solo al visitar Cuentas.
-    if(typeof verificarVencimientosCDT==='function') verificarVencimientosCDT();
+    // FIX (2026-08-28): _initEventListeners vive en otro <script defer>
+    // (fuera de este archivo). firebase-sync.js carga como `type="module"
+    // async` a propósito (ver index.html, comentario junto al <script> —
+    // deja correr _fbLoadData/onSnapshot en paralelo con el parseo del
+    // documento en vez de esperar a que termine). `async` no da NINGUNA
+    // garantía de orden frente a los <script defer>. Normalmente igual
+    // funciona porque Firestore tarda más en responder que en terminar
+    // de ejecutarse los defer — pero onSnapshot(...,{includeMetadataChanges:
+    // true}) dispara primero desde el caché local de IndexedDB
+    // (persistentLocalCache), que con sesión ya "caliente" puede resolver
+    // en milisegundos — bastante rápido para ganarle la carrera a la cola
+    // de defer, incluido el script donde vive _initEventListeners. Cuando
+    // eso pasa: ReferenceError acá, que interrumpe _initAppUI a la mitad
+    // (nunca llega a _injectErrorSpans/verificarVencimientosCDT) → pantalla
+    // en negro. Reportado por el usuario: PC suspendido con la pestaña
+    // abierta, al reanudar la sesión/caché de Firestore ya estaban
+    // calientes y ganaron la carrera.
+    // Ya nos habíamos protegido contra llamar esto DOS VECES (ver
+    // comentario en _finishFirstLoad más arriba) pero no contra llamarlo
+    // ANTES DE TIEMPO. En vez de apostarle a un orden de <script> que no
+    // está garantizado por el navegador, se espera activamente a que la
+    // función exista — mismo patrón (poll con setInterval) que ya usa
+    // mejoras-adicionales.js para envolver openSheet.
+    _runWhenEventListenersReady();
+  }
+
+  function _runWhenEventListenersReady() {
+    if (typeof _initEventListeners === 'function') {
+      _initEventListeners();
+      _injectErrorSpans();
+      // FIX 2026-08-13: verificarVencimientosCDT (cuentas.js, grupo lazy) sin
+      // guard — mismo problema que _renderTasaHistorialTag arreglado antes:
+      // corre en cada arranque de la app, no solo al visitar Cuentas.
+      if(typeof verificarVencimientosCDT==='function') verificarVencimientosCDT();
+      return;
+    }
+    setTimeout(_runWhenEventListenersReady, 20);
   }
 
   // ── Diagnóstico: consultar el log de errores de conexión de Firestore ─────

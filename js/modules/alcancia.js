@@ -1141,6 +1141,18 @@ window.alcanciaConfirmarDestapar = function(){
     _sumarASaldo(destino, -absDif);
   }
 
+  // ── Resetear saldoRegistrado: ya se transfirió arriba a la cuenta destino
+  // vía _sumarASaldo(). Si se deja el valor viejo, calcPatrimonioTotal()
+  // (core-state.js) lo sigue sumando SIEMPRE (tapada o destapada, por
+  // diseño — es plata real), y como la alcancía queda en estado
+  // `_destapada` sin reiniciar hasta que el usuario elija "Iniciar nueva
+  // alcancía", ese monto queda contado DOS veces (una en la cuenta destino,
+  // otra acá) — duplicando patrimonio, tendencia mensual y la proyección
+  // 3m/6m/12m. El valor para historial ya quedó capturado arriba en
+  // `saldoReg`, así que resetear acá no afecta el registro histórico.
+  a.saldoRegistrado = 0;
+  _setSaldoOfuscado(0);
+
   // ── Guardar en historial
   const diasDuracion = _diasDesde(a.fechaInicio);
   if(!a.historial) a.historial = [];

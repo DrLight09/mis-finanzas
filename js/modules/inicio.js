@@ -220,7 +220,17 @@ function calcHealthScore(){
   const tips = [];
 
   // ── Cálculos base ────────────────────────────────────────────────────
-  const patrimonio = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
+  // Patrimonio VISIBLE (sin alcancía) — mismo criterio que renderProyeccion().
+  // El riesgo real acá es bajo: `patrimonio` solo se usa como gate booleano
+  // (tieneAlgo) y en el ratio deudaTC/patrimonio cuando no hay ingresos del
+  // mes registrados (líneas más abajo) — nunca se muestra el monto en pesos,
+  // a diferencia de la Proyección financiera. Aun así, restarla acá evita
+  // cualquier filtración indirecta (ej. un depósito grande a la alcancía
+  // haciendo que "tieneAlgo" pase de false a true, o cambiando qué tip
+  // aparece) y mantiene el mismo principio en toda la app: mientras esté
+  // tapada, es como si esa plata no existiera para nada visible al usuario.
+  const _alcSaldoOcultoHS = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
+  const patrimonio = (window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0) - _alcSaldoOcultoHS;
   const mes = window.mesActual ? window.mesActual() : '';
   const pagosGF = S.pagosGastosFijos || {};
 

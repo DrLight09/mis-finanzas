@@ -290,10 +290,11 @@ function _crearGrupoDeudor(d, fecha, nombre) {
   return g;
 }
 
-// Resolución automática de grupoId para flujos que NO pasan por el selector
-// del sheet "Registrar movimiento" (ej. préstamo vía TC): si hay exactamente
-// un grupo abierto lo reutiliza, si hay 0 o ≥2 crea uno nuevo — nunca deja
-// un movimiento sin grupoId, y nunca le adivina a cuál de varios pertenece.
+// Resolución automática de grupoId: último recurso cuando el selector no
+// decidió nada (0 grupos abiertos, o el checkbox/select no aplicaba). Si hay
+// exactamente un grupo abierto lo reutiliza, si hay 0 o ≥2 crea uno nuevo —
+// nunca deja un movimiento sin grupoId, y nunca le adivina a cuál de varios
+// pertenece.
 function _autoGrupoIdMov(d, fecha) {
   const abiertos = _gruposAbiertos(d);
   if (abiertos.length === 1) return abiertos[0].id;
@@ -310,20 +311,28 @@ function _autoGrupoIdMov(d, fecha) {
 //    abierto.
 // Si ninguno de los dos se mostró, no hay nada que preguntar: automático.
 function _resolverGrupoIdMov(d, fecha) {
-  const wrap = document.getElementById('mov_grupo_wrap');
+  return _resolverGrupoIdSel('mov', d, fecha);
+}
+
+// Versión genérica de _resolverGrupoIdMov, parametrizada por el prefijo de
+// los ids en el DOM (ej. 'mov' para "Registrar movimiento", 'prtc' para
+// "Préstamo con TC"). Así ambos sheets comparten la misma lógica de elegir
+// a cuál préstamo abierto va el movimiento, o si arranca uno aparte.
+function _resolverGrupoIdSel(prefix, d, fecha) {
+  const wrap = document.getElementById(prefix + '_grupo_wrap');
   if (wrap && wrap.style.display !== 'none') {
-    const sel = document.getElementById('mov_grupo');
+    const sel = document.getElementById(prefix + '_grupo');
     const val = sel ? sel.value : '';
     if (val === '__nuevo__') {
-      const nombreInput = document.getElementById('mov_grupo_nombre');
+      const nombreInput = document.getElementById(prefix + '_grupo_nombre');
       return _crearGrupoDeudor(d, fecha, nombreInput ? nombreInput.value : '').id;
     }
     if (val) return val;
   }
-  const checkWrap = document.getElementById('mov_grupo_check_wrap');
-  const check = document.getElementById('mov_grupo_check');
+  const checkWrap = document.getElementById(prefix + '_grupo_check_wrap');
+  const check = document.getElementById(prefix + '_grupo_check');
   if (checkWrap && checkWrap.style.display !== 'none' && check && check.checked) {
-    const nombreInput = document.getElementById('mov_grupo_nombre');
+    const nombreInput = document.getElementById(prefix + '_grupo_nombre');
     return _crearGrupoDeudor(d, fecha, nombreInput ? nombreInput.value : '').id;
   }
   return _autoGrupoIdMov(d, fecha);
@@ -331,7 +340,10 @@ function _resolverGrupoIdMov(d, fecha) {
 
 function renderDeudoresList() {
   const el = document.getElementById('deudoresList');
-  const list = S.deudores || [];
+  // Ordenado de mayor a menor por lo que te deben: quien más te debe (saldo
+  // positivo más alto) aparece primero. Saldo a favor de él/ella (negativo)
+  // y al día (0) quedan después, en ese mismo orden descendente.
+  const list = [...(S.deudores || [])].sort((a, b) => getDeudorSaldo(b) - getDeudorSaldo(a));
   if (typeof _actualizarMasPersonasSub === 'function') _actualizarMasPersonasSub();
   if (!list.length) {
     el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 10px;">Aún no has agregado personas. Puedes crear a tu papá, mamá, amigos...</div>';
@@ -887,13 +899,21 @@ function initMovSheet(tipo) {
 }
 
 function _initMovGrupoSelector() {
-  const wrap = document.getElementById('mov_grupo_wrap');
+  _initGrupoSelector('mov', movTipo === 'prestamo');
+}
+
+// Versión genérica de _initMovGrupoSelector, parametrizada por el prefijo de
+// los ids en el DOM. `esPrestamoNuevo` indica si el movimiento que se está
+// creando en este sheet es siempre/puede-ser un préstamo (y por tanto tiene
+// sentido ofrecer el checkbox "préstamo aparte" cuando hay 1 solo abierto).
+function _initGrupoSelector(prefix, esPrestamoNuevo) {
+  const wrap = document.getElementById(prefix + '_grupo_wrap');
   if (!wrap) return; // sheet aún no tiene el markup — no romper si falta
-  const nombreWrap = document.getElementById('mov_grupo_nombre_wrap');
-  const sel = document.getElementById('mov_grupo');
-  const nombreInput = document.getElementById('mov_grupo_nombre');
-  const checkWrap = document.getElementById('mov_grupo_check_wrap');
-  const check = document.getElementById('mov_grupo_check');
+  const nombreWrap = document.getElementById(prefix + '_grupo_nombre_wrap');
+  const sel = document.getElementById(prefix + '_grupo');
+  const nombreInput = document.getElementById(prefix + '_grupo_nombre');
+  const checkWrap = document.getElementById(prefix + '_grupo_check_wrap');
+  const check = document.getElementById(prefix + '_grupo_check');
   const d = (S.deudores || []).find(x => x.id === deudorActualId);
   const abiertos = d ? _gruposAbiertos(d) : [];
 
@@ -925,7 +945,7 @@ function _initMovGrupoSelector() {
   // con 1 solo abierto todo se fusionaría ahí automáticamente. Solo tiene
   // sentido ofrecerlo si ya existe al menos un grupo (si es el primer
   // préstamo de la persona, no hay nada de qué separarlo).
-  const mostrarCheck = d && movTipo === 'prestamo' && abiertos.length === 1;
+  const mostrarCheck = d && esPrestamoNuevo && abiertos.length === 1;
   if (checkWrap) {
     checkWrap.style.display = mostrarCheck ? '' : 'none';
     if (mostrarCheck && check) {
@@ -2163,6 +2183,10 @@ function abrirSheetPrestamoTC() {
   const notaEl = document.getElementById('prtc_nota'); if (notaEl) notaEl.value = '';
   const prev = document.getElementById('prtc_preview'); if (prev) prev.textContent = '';
   diffReset('prtc');
+  // Selector de a cuál préstamo va (o si es uno aparte) — mismo mecanismo
+  // que "Registrar movimiento". El préstamo con TC siempre es tipo
+  // 'prestamo', así que el checkbox "es un préstamo aparte" aplica igual.
+  _initGrupoSelector('prtc', true);
   openSheet('prestamo-tc');
 }
 
@@ -2203,7 +2227,7 @@ function confirmarPrestamoTC() {
     _tcId: tcId,
     _tcMonto: montoTC,
     _tcDesc: desc,
-    grupoId: _autoGrupoIdMov(d, fecha),
+    grupoId: _resolverGrupoIdSel('prtc', d, fecha),
     ts: Date.now()
   };
   d.movimientos.push(movObj);

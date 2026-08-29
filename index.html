@@ -3801,6 +3801,28 @@
             placeholder="Ej: La pedí a nombre mío, la paga él">
         </div>
 
+        <!-- Selector de a cuál préstamo va — mismo patrón que en "Registrar
+             movimiento" (ver _initGrupoSelector en prestado.js). Solo se
+             muestra cuando hay ambigüedad real (≥2 préstamos abiertos) o
+             cuando ya hay exactamente 1 y podría ser uno aparte. -->
+        <div class="ig" id="prtc_grupo_wrap" style="display:none;">
+          <label class="il" for="prtc_grupo">¿A cuál préstamo?</label>
+          <div class="select-wrap"><select id="prtc_grupo"></select></div>
+        </div>
+        <div class="ig" id="prtc_grupo_check_wrap" style="display:none;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="prtc_grupo_check">
+            <span style="font-size:12px;color:var(--text2);"><i class="fa-solid fa-circle-info" style="margin-right:4px;"></i>Es un
+              préstamo aparte (no sumarlo al que ya tiene)</span>
+          </label>
+        </div>
+        <div class="ig" id="prtc_grupo_nombre_wrap" style="display:none;">
+          <label class="il" for="prtc_grupo_nombre">Nombre del préstamo nuevo
+            (opcional)</label>
+          <input type="text" id="prtc_grupo_nombre" maxlength="30"
+            placeholder="Ej. Préstamo moto 2025">
+        </div>
+
         <!-- Diferencial opcional -->
         <div
           style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:0;"

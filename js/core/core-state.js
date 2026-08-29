@@ -1085,19 +1085,20 @@ function refresh(){
   const _alcSaldo = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
   const _patrimonioVisible = disp+prest+cdts-deudaTCTotal-_cpAjenoHero; // sin alcancía
   document.getElementById('heroTotal').textContent=fmt(_patrimonioVisible);
-  // Indicador de alcancía en el hero
-  const _heroAlcInd = document.getElementById('hero-alcancia-indicator');
-  const _heroLabel  = document.getElementById('hero-patrimonio-label');
-  if(_heroAlcInd){
-    // visibility en vez de display (docs/auditoria-tecnica.md, "Reservar espacio
-    // para #hero-alcancia-indicator (CLS)"): visibility:hidden SÍ reserva el
-    // espacio en el layout, a diferencia de display:none — así el bloque nunca
-    // aparece de golpe empujando el resto del hero hacia abajo.
+  // Indicador de alcancía en el hero — ícono chico junto al label, no un
+  // bloque aparte (docs/auditoria-tecnica.md, "Reservar espacio para
+  // #hero-alcancia-indicator (CLS)"): al vivir en la misma línea/alto que el
+  // label, alternar su visibility no reserva ni desplaza nada — cero CLS sin
+  // el hueco vacío permanente que tenía la versión anterior (bloque con
+  // padding/borde debajo, ver historial de este archivo).
+  const _heroAlcBadge = document.getElementById('hero-alcancia-badge');
+  const _heroLabel    = document.getElementById('hero-patrimonio-label');
+  if(_heroAlcBadge){
     if(_alcSaldo > 0){
-      _heroAlcInd.style.visibility = 'visible';
+      _heroAlcBadge.style.visibility = 'visible';
       if(_heroLabel) _heroLabel.textContent = 'Patrimonio visible';
     } else {
-      _heroAlcInd.style.visibility = 'hidden';
+      _heroAlcBadge.style.visibility = 'hidden';
       if(_heroLabel) _heroLabel.textContent = 'Patrimonio total';
     }
   }

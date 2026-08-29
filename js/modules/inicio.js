@@ -441,7 +441,20 @@ function renderProyeccion(){
   // generan ruido visual. No se usa window.fmt aquí para no depender de si ese
   // formateador global decide mostrar decimales.
   const fmt = x=>Math.round(x).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).replace(/\u00a0/g,'');
-  const patrimonio = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
+  // ── Patrimonio VISIBLE (sin alcancía) ─────────────────────────────────
+  // calcPatrimonioTotal() incluye la alcancía siempre, tapada o no (es plata
+  // real, y así la sigue viendo Salud financiera). Pero esta card sí muestra
+  // un número puntual al usuario en cada render — si se usa el total crudo,
+  // depositar en la alcancía hace que "Tendencia mensual"/3m/6m/12m salten
+  // al instante por el monto exacto del depósito, delatando "acabás de
+  // guardar $X" tan claro como si el gráfico de Análisis mostrara la curva
+  // cruda (mismo problema que ya se corrigió ahí con valorVisible — ver
+  // CHANGELOG.md#alcancía). Se resta acá también para que la sorpresa se
+  // mantenga; cuando se destape, esa plata entra a una cuenta real y el
+  // patrimonio visible sube solo, de forma natural.
+  const _alcSaldoOculto = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
+  const patrimonioReal = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
+  const patrimonio = patrimonioReal - _alcSaldoOculto;
   if(!patrimonio){ el.innerHTML = '<div class="row"><span style="font-size:12px;color:var(--text3);">Sin datos suficientes</span></div>'; return; }
 
   // ── Tendencia mensual: única fuente de verdad = crecimiento real del patrimonio ──
@@ -464,14 +477,19 @@ function renderProyeccion(){
 
   let diasReales = 0; // declarado en scope externo para usarlo en el template del footer
   if(hist.length >= 2){
-    // Construir array de tasas de cambio diarias normalizadas (COP/día)
-    // para poder aplicar trimmed mean y eliminar outliers extremos.
-    const tasasDiarias = [];
+    // Cambio neto total (sin aperturas/ajustes) y días totales transcurridos —
+    // ver más abajo por qué se promedia así en vez de por-intervalo.
+    let cambioNetoTotal = 0;
     for(let i=1;i<hist.length;i++){
       const diasEntre = Math.max(1, Math.round((new Date(hist[i].fecha) - new Date(hist[i-1].fecha))/86400000));
-      const cambioDelDia = (hist[i].valor - hist[i-1].valor) - (hist[i].montoBase||0);
-      // Normalizar a COP/día para que días con gaps largos no distorsionen el promedio
-      tasasDiarias.push(cambioDelDia / diasEntre);
+      // valorVisible (sin alcancía) en vez de valor crudo — mismo motivo que
+      // el patrimonio de arriba: un depósito/destape de alcancía no debe
+      // aparecer como un salto de tendencia. Fallback a .valor para puntos
+      // del historial guardados antes de que existiera valorVisible.
+      const vHoy  = (hist[i].valorVisible!=null)   ? hist[i].valorVisible   : hist[i].valor;
+      const vAyer = (hist[i-1].valorVisible!=null) ? hist[i-1].valorVisible : hist[i-1].valor;
+      const cambioDelDia = (vHoy - vAyer) - (hist[i].montoBase||0);
+      cambioNetoTotal += cambioDelDia;
       diasReales += diasEntre;
     }
 
@@ -479,18 +497,16 @@ function renderProyeccion(){
       historialInsuficiente = true;
       nivelConfianza = 'insuficiente';
     } else {
-      // Mediana en vez de (trimmed) promedio: un promedio —incluso recortando el
-      // máximo y el mínimo— se deja arrastrar por un solo día extremo si hay más
-      // de un outlier en la ventana (dos ingresos grandes, dos gastos grandes, o
-      // un snapshot corrupto puntual): con 4 outliers entre 90 días, "recortar 1
-      // y 1" deja 2 sin filtrar y la tendencia puede terminar mostrando el signo
-      // contrario al comportamiento real. La mediana no se mueve mientras los
-      // outliers sean menos de la mitad de los días — así un solo mes con un
-      // ingreso o gasto puntual grande no voltea el indicador de bueno a malo.
-      const sorted = tasasDiarias.slice().sort((a,b)=>a-b);
-      const mid = Math.floor(sorted.length/2);
-      const medianaDia = sorted.length%2 ? sorted[mid] : (sorted[mid-1]+sorted[mid])/2;
-      tendenciaMensual = medianaDia * 30;
+      // Promedio ponderado por días (cambio neto total ÷ días totales), no
+      // promedio de tasas por-intervalo: el ingreso real llega en pocos días
+      // grandes (mesada, pagos), no repartido parejo día a día. Una mediana o
+      // un trimmed-mean de tasas por-intervalo termina mirando casi siempre un
+      // día "de solo interés" e ignorando esos días de ingreso real —
+      // subestimando la tendencia real. Sumar el cambio neto y dividir por los
+      // días totales sí refleja el ingreso real proporcionalmente, y de paso
+      // autocorrige una caída de un día que se revierte al siguiente (el par
+      // se cancela casi solo en la suma), sin necesitar filtrar outliers a mano.
+      tendenciaMensual = (cambioNetoTotal / diasReales) * 30;
 
       // Nivel de confianza escalonado según días de historial disponible
       if(diasReales >= 60)       nivelConfianza = 'estable';

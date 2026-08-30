@@ -1742,9 +1742,12 @@ function _getMovimientosCuentaCustom(fuente) {
   });
 
   // 6. Cobros Spotify
-  (S.spotifyHistorial || []).forEach(h => {
+  (S.spotifyHistorial || []).forEach((h, _spIdx) => {
     if (h.tipo === 'pago' || h.fuente !== fuente) return;
-    movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente, _idx: _idx++, _movId: h.id || null, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
+    // Fallback estable si el registro no tiene id (p.ej. historial antiguo, previo
+    // a que se empezara a asignar id a cada cobro de Spotify): usa el índice fijo
+    // dentro de S.spotifyHistorial en vez de dejar _movId en null.
+    movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente, _idx: _idx++, _movId: h.id || ('sp_legacy_' + _spIdx), _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
   });
 
   // Sort: fecha desc, luego _movId desc (timestamp base-36)
@@ -1881,7 +1884,7 @@ function getMovimientosCuenta(tipo) {
     });
   });
   // Spotify cobros a personas (no pagos, que ya están en gastosVar como gasto variable)
-  (S.spotifyHistorial || []).forEach(h => {
+  (S.spotifyHistorial || []).forEach((h, _spIdx) => {
     if (h.tipo === 'pago') return;
     const matchFuente = tipo === 'nu'
       ? (h.fuente && h.fuente.startsWith('cajita:'))
@@ -1889,7 +1892,7 @@ function getMovimientosCuenta(tipo) {
     if (matchFuente) {
       // Usar h.id si existe, o fabricar un _movId estable a partir del índice para que el sort
       // funcione igual que los demás movimientos (por timestamp de registro, no por orden de iteración)
-      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente: h.fuente, _idx: _idx++, _movId: h.id || null, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
+      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente: h.fuente, _idx: _idx++, _movId: h.id || ('sp_legacy_' + _spIdx), _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
     }
   });
   // Transferencias entre cuentas

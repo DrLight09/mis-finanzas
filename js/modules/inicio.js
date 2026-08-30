@@ -428,7 +428,7 @@ function renderHealthScore(){
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="7"/>
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="${col}" stroke-width="7"
         ${dasharrayAttr}
-        stroke-dashoffset="${(circ/4).toFixed(1)}"
+        transform="rotate(-90 38 38)"
         stroke-linecap="${linecap}" style="transition:stroke-dasharray .8s cubic-bezier(.4,0,.2,1);"/>
       <text x="38" y="43" text-anchor="middle" font-size="16" font-weight="600" fill="${col}" font-family="DM Mono,monospace">${score}</text>
     </svg>
@@ -465,7 +465,16 @@ function renderProyeccion(){
   const _alcSaldoOculto = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
   const patrimonioReal = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
   const patrimonio = patrimonioReal - _alcSaldoOculto;
-  if(!patrimonio){ el.innerHTML = '<div class="row"><span style="font-size:12px;color:var(--text3);">Sin datos suficientes</span></div>'; return; }
+  if(!patrimonio){
+    el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;min-height:100px;padding:4px 8px;">
+      <div style="width:34px;height:34px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      </div>
+      <div style="font-size:12px;font-weight:600;color:var(--text2);">Sin datos suficientes</div>
+      <div style="font-size:11px;color:var(--text3);line-height:1.5;max-width:210px;">Registra movimientos para ver tu proyección a 3, 6 y 12 meses.</div>
+    </div>`;
+    return;
+  }
 
   // ── Tendencia mensual: única fuente de verdad = crecimiento real del patrimonio ──
   // crecimiento real = cambio de patrimonio día a día, restando exactamente el monto

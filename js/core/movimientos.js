@@ -644,7 +644,19 @@ async function eliminarMovimiento(btn) {
       }
       S.movimientos = S.movimientos.filter(x => x.id !== movId);
     } else if (fuenteOrigen && monto > 0) {
+      // El registro no vive en S.movimientos — caso típico de la "Saldo inicial"
+      // de una cuenta personalizada: crearMovimientoApertura() (core-state.js)
+      // solo devuelve el objeto, y cuentas.js lo empuja directo a c.movimientos
+      // (línea ~239) sin pasar nunca por S.movimientos. Antes este fallback
+      // revertía el saldo pero no limpiaba nada más, dejando el registro
+      // huérfano en c.movimientos para siempre — visible en pantalla aunque la
+      // plata ya se hubiera devuelto. Ver CHANGELOG.md#cuentas (2026-08-31).
       descontarFuente(fuenteOrigen, monto);
+      if (fuenteOrigen.startsWith('custom:')) {
+        const cid = fuenteOrigen.split(':')[1];
+        const cc = (S.cuentasPersonalizadas || []).find(x => x.id === cid);
+        if (cc) cc.movimientos = (cc.movimientos || []).filter(x => x.id !== movId);
+      }
       if (movTipoEl === 'apertura') {
         if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
         S._ajustesBaseLog.push({ fecha: hoy(), monto: -monto });

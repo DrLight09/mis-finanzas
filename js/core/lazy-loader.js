@@ -48,14 +48,19 @@ const Loader = (function () {
     // y #mas-config YA eran HTML estático desde antes (no hubo que copiar
     // nada), y el único caller externo de una función suya (renderCatsConfig,
     // desde sheet-stack.js) ya tenía guard `typeof` desde la sesión del
-    // piloto de Alcancía. import-validado.js debe cargar DESPUÉS de
-    // configuracion.js (parchea leerArchivoImport a nivel superior del
-    // archivo — necesita que la versión base ya exista al parsear), por
-    // eso el orden dentro del array. gastos.js quedó afuera a propósito:
-    // sheet-stack.js (núcleo) parchea addGastoVar/addGastoFijo a nivel
-    // superior de SU propio archivo — haría lazy-loading imposible sin
-    // tocar antes ese núcleo. Ver CHANGELOG.md#arranque.
-    config: ['js/modules/configuracion.js', 'js/modules/import-validado.js'],
+    // piloto de Alcancía. gastos.js quedó afuera a propósito: sheet-stack.js
+    // (núcleo) parchea addGastoVar/addGastoFijo a nivel superior de SU
+    // propio archivo — haría lazy-loading imposible sin tocar antes ese
+    // núcleo. Ver CHANGELOG.md#arranque.
+    //
+    // 2026-08-30: era ['js/modules/configuracion.js', 'js/modules/import-validado.js']
+    // — import-validado.js (validación de estructura del JSON, MEJORA 5)
+    // parcheaba leerArchivoImport a nivel superior de su propio archivo,
+    // por eso necesitaba cargar DESPUÉS y el orden del array importaba. Se
+    // fusionó dentro de configuracion.js (una sola función real, sin
+    // depender del orden de carga entre dos archivos) — ver
+    // CHANGELOG.md#configuración. import-validado.js ya no existe.
+    config: ['js/modules/configuracion.js'],
     // Cuarto grupo lazy. Entrada única: el botón "Actividad reciente"
     // dentro de Configuración (#cfg-historial-row, data-action=
     // "config:irA" con args ["historial"]) — no hay ítem en el menú

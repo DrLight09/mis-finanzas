@@ -26,12 +26,16 @@
      - getCatsVar()/getCatsFijo()/CATS_VAR_DEFAULT/CATS_FIJO_DEFAULT:
        compartidas con el módulo de Gastos (selectores de categoría).
 
-   Nota sobre leerArchivoImport(): la versión de acá es la base. Más
-   abajo en index.html sigue existiendo un override ("MEJORA 5:
-   Validación") que la reemplaza por una versión con validación de
-   estructura del JSON — mismo patrón que ya usa addGastoVar con
-   Gastos. No se tocó: sigue funcionando igual mientras este archivo
-   se cargue antes que ese bloque de overrides.
+   Nota sobre leerArchivoImport(): incluye validación de estructura del JSON
+   (_validarEstructuraJSON) directo en el cuerpo — hasta 2026-08-30 vivía como
+   un override en un archivo aparte (import-validado.js, cargado después en el
+   mismo grupo lazy) que reemplazaba esta función por una versión con
+   validación, dejando el cuerpo de acá como código muerto (nunca se
+   ejecutaba, pero tenía que existir para que el override pudiera capturar su
+   referencia antes de reemplazarla). Se fusionó en una sola función real: sin
+   depender del orden de carga entre dos archivos, sin una implementación
+   fantasma que alguien podría editar por error pensando que hace algo. Ver
+   CHANGELOG.md#configuración.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ---- CATEGORÍAS PERSONALIZADAS ---- */
@@ -113,6 +117,36 @@ function importarJSON(){
   document.getElementById('importFileInput').click();
 }
 
+// Validación de estructura al importar un backup JSON (fusionada acá desde
+// import-validado.js el 2026-08-30 — ver nota de cabecera del archivo).
+function _validarEstructuraJSON(data){
+  const errores=[];
+  if(typeof data!=='object'||Array.isArray(data)){
+    return ['El archivo no tiene el formato esperado (debe ser un objeto JSON).'];
+  }
+  // Verificar campos clave
+  const camposOpcionales=['nuRate','cajitas','nequiSaldo','efectivoSaldo',
+    'deudores','gastosFijos','gastosVar','modulos'];
+  const tieneAlgunCampo=camposOpcionales.some(c=>c in data);
+  if(!tieneAlgunCampo){
+    errores.push('El archivo no parece ser un backup de Mis Finanzas (no se encontraron campos conocidos).');
+  }
+  // Verificar tipos básicos
+  if('cajitas' in data&&!Array.isArray(data.cajitas)){
+    errores.push('El campo "cajitas" debe ser un array.');
+  }
+  if('gastosVar' in data&&!Array.isArray(data.gastosVar)){
+    errores.push('El campo "gastosVar" debe ser un array.');
+  }
+  if('deudores' in data&&!Array.isArray(data.deudores)){
+    errores.push('El campo "deudores" debe ser un array.');
+  }
+  if('nuRate' in data&&typeof data.nuRate!=='number'){
+    errores.push('El campo "nuRate" debe ser un número.');
+  }
+  return errores;
+}
+
 function leerArchivoImport(e){
   const file=e.target.files[0];
   if(!file)return;
@@ -120,11 +154,25 @@ function leerArchivoImport(e){
   reader.onload=async function(ev){
     try{
       const data=JSON.parse(ev.target.result);
+      // MEJORA 5: validar estructura antes de reemplazar nada.
+      const errores=_validarEstructuraJSON(data);
+      if(errores.length>0){
+        toast('Archivo inválido: '+errores[0],'err');
+        setTimeout(()=>{
+          if(errores.length>1)toast(errores.slice(1).join(' · '),'err');
+        },1200);
+        e.target.value='';
+        return;
+      }
       const ok=await dialogo('Importar datos','¿Reemplazar todos los datos actuales con el archivo importado? Esta acción no se puede deshacer.','Importar',true);
       if(!ok)return;
       // Reemplazar CONTENIDO de S sin romper la referencia de window.S
       Object.keys(S).forEach(k => delete S[k]);
       Object.assign(S, data);
+      // Repintar YA la pantalla activa con los datos recién importados — sin esto,
+      // S ya tiene los datos nuevos pero la UI sigue mostrando lo que había antes
+      // de importar hasta que el location.reload() de más abajo dispara a los 4s.
+      if (typeof refresh === 'function') refresh();
       // Marcar timestamp ANTES del debounce de guardado
       const _impTs = Date.now();
       window._lastSavedAt = _impTs;
@@ -138,7 +186,11 @@ function leerArchivoImport(e){
       setTimeout(() => { location.reload(); }, 4000);
       toast('Datos importados correctamente — recargando…','ok');
     }catch(err){
-      toast('Error al leer el archivo JSON','err');
+      if(err instanceof SyntaxError){
+        toast('El archivo no es un JSON válido','err');
+      }else{
+        toast('Error al procesar el archivo: '+err.message,'err');
+      }
     }
     e.target.value='';
   };
@@ -240,10 +292,7 @@ if (_btnExportarCSV) _btnExportarCSV.addEventListener('click', exportarCSV);
 const _btnBorrarTodo = document.getElementById('btn-borrar-todo');
 if (_btnBorrarTodo) _btnBorrarTodo.addEventListener('click', borrarTodo);
 const _importFileInput = document.getElementById('importFileInput');
-// Wrapper en vez de pasar la referencia directa: así, si index.html sobreescribe
-// leerArchivoImport más abajo (override de MEJORA 5, validación de estructura),
-// el listener siempre invoca la versión vigente en vez de quedar "pegado" a esta.
-if (_importFileInput) _importFileInput.addEventListener('change', (e) => leerArchivoImport(e));
+if (_importFileInput) _importFileInput.addEventListener('change', leerArchivoImport);
 
 // Enter en los inputs de nueva categoría
 ['nueva-cat-var','nueva-cat-fijo'].forEach(id=>{

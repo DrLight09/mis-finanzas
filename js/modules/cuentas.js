@@ -1852,37 +1852,13 @@ function getMovimientosCuenta(tipo) {
       }
     });
   });
-  // Mesadas recibidas en esta cuenta
-  // FIX: getMesadaData (mesada.js) es lazy — sin este guard, abrir el
-  // detalle de Nequi/Nu/Efectivo sin haber visitado Mesada antes tiraba
-  // ReferenceError acá y cortaba renderDetalleCuenta() a la mitad.
-  if(typeof getMesadaData==='function') ['papa', 'mama'].forEach(parent => {
-    const data = getMesadaData(parent);
-    Object.entries(data).forEach(([k, info]) => {
-      const [anio, mesIdx] = k.split('-');
-      const fechaBase = info.fecha || anio + '-' + String(parseInt(mesIdx) + 1).padStart(2, '0') + '-01';
-      const descBase = 'Mesada de ' + (parent === 'papa' ? 'Pap\u00e1' : 'Mam\u00e1');
-      if (info.splits && info.splits.length) {
-        // Mesada dividida: registrar cada split en su cuenta correspondiente
-        info.splits.forEach(s => {
-          const matchSplit = tipo === 'nu'
-            ? (s.fuente && s.fuente.startsWith('cajita:'))
-            : s.fuente === tipo;
-          if (matchSplit && s.monto) {
-            const otras = (info.splits||[]).filter(s2=>s2.fuente!==s.fuente).map(s2=>({fuente:s2.fuente, monto:+s2.monto}));
-            movs.push({ tipo: 'mesada', fecha: fechaBase, desc: descBase, monto: +s.monto, nota: info.nota, fuente: s.fuente, _idx: _idx++, _origen: 'Mesadas', _otrasCuentas: otras.length ? otras : null });
-          }
-        });
-      } else {
-        const matchDest = tipo === 'nu'
-          ? (info.destino && info.destino.startsWith('cajita:'))
-          : info.destino === tipo;
-        if (matchDest && info.monto) {
-          movs.push({ tipo: 'mesada', fecha: fechaBase, desc: descBase, monto: +info.monto, nota: info.nota, fuente: info.destino, _idx: _idx++, _origen: 'Mesadas', _otrasCuentas: null });
-        }
-      }
-    });
-  });
+  // NOTA (2026-08-30): el bloque "Mesadas recibidas en esta cuenta" que vivía acá
+  // se eliminó — duplicaba cada pago de mesada con destino real. mesada.js ya
+  // genera el movimiento espejo real vía _registrarMovSecundarioMesada() (guardado
+  // en S.movimientos con _secundario:true), que el loop principal de esta función
+  // ya recorre más arriba. Este bloque volvía a sintetizar el mismo pago leyendo
+  // directamente S.mesadas, generando un segundo movimiento fantasma sin candado
+  // (sin _movId) por cada pago con destino/split real. Ver CHANGELOG.md#mesada.
   // Spotify cobros a personas (no pagos, que ya están en gastosVar como gasto variable)
   (S.spotifyHistorial || []).forEach((h, _spIdx) => {
     if (h.tipo === 'pago') return;

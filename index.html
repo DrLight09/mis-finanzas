@@ -5018,8 +5018,11 @@
 // abrirDetalleMov directo en su Events.registerAll('tarjetas', {...}),
 // y ya no importa que cargue antes o después de js/core/movimientos.js
 // (línea de abajo) — el wrapper agregado el 2026-08-03 en
-// tarjetas_credito.js resuelve el nombre recién al hacer click (mismo
-// patrón que leerArchivoImport en configuracion.js), no al cargar.
+// tarjetas_credito.js resuelve el nombre recién al hacer click, no al
+// cargar (mismo tipo de wrapper que tuvo leerArchivoImport en
+// configuracion.js hasta 2026-08-30, cuando se sacó al fusionar
+// import-validado.js — ver CHANGELOG.md#configuración; ya no sirve como
+// ejemplo vigente de ese patrón, solo como precedente histórico).
 
 // (2026-08-02, ronda de resolver de raíz el acoplamiento spotify↔
 // tarjetas_credito) Sexto grupo lazy: ver js/core/lazy-loader.js
@@ -5374,10 +5377,14 @@
          eran HTML estático desde antes (a diferencia de Plata
          Comprometida, no hubo que copiar nada), y su único caller externo
          (renderCatsConfig, desde sheet-stack.js) ya tenía guard `typeof`
-         desde el piloto de Alcancía. import-validado.js viaja en el mismo
-         grupo y después en el orden — necesita leerArchivoImport() (la
-         base, de este archivo) ya cargada. Ver CHANGELOG.md#arranque. ===== -->
-<!-- configuracion.js + import-validado.js: ver js/core/lazy-loader.js (Loader.GROUPS.config) -->
+         desde el piloto de Alcancía.
+
+         2026-08-30: import-validado.js (validación de estructura del JSON,
+         "MEJORA 5") se fusionó dentro de configuracion.js — ya no es un
+         archivo aparte ni un segundo `<script>` en este grupo. Ver
+         CHANGELOG.md#configuración. ===== -->
+<!-- configuracion.js: ver js/core/lazy-loader.js (Loader.GROUPS.config) -->
+
 
     <!-- ===== MÓDULO ANÁLISIS =====
          Migrado a js/modules/analisis.js — pantalla que nunca apareció en

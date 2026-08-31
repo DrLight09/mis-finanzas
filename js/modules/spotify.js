@@ -207,10 +207,16 @@ function renderSpotify(){
   // Si alguien prepagó varios períodos, su cobertura puede caer en un ciclo anterior
   // (antes del último pago real) y "desaparecer" de cicloCobros — pero mientras su
   // proximoPago siga en el futuro, sigue cubierto y no debe contar como pendiente.
+  // Dos fuentes de "pendiente" distintas, y ninguna sustituye a la otra:
+  // 1) Personas no vigentes: su período actual todavía no está cubierto en absoluto.
+  // 2) Personas vigentes con un cobro parcial ("quedó debiendo la diferencia", ver
+  //    §3 spotify.md): el período SÍ quedó cubierto (proximoPago avanzó), pero falta
+  //    plata puntual de ese cobro (`pendiente` en el registro). No se solapan: un
+  //    período que aparece en (1) nunca tiene registro de cobro que sumar en (2).
   const cobPend=p.reduce((a,x)=>{
     if(spPersonaPagadaVigente(x))return a;
     return a+spPeriodosVencidos(x,hoy())*(x.monto||0);
-  },0);
+  },0)+cicloCobros.reduce((a,h)=>a+(h.pendiente>0?h.pendiente:0),0);
   const cajitaSaldo=getSpCajitaSaldo();
   
   document.getElementById('spCob').textContent=fmt(cob);

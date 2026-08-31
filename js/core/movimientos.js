@@ -564,7 +564,7 @@ async function eliminarMovimiento(btn) {
         if (!confirmado) return;
       }
     }
-  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada') {
+  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada' || movTipoEl === 'egreso') {
     const m = (S.movimientos || []).find(x => x.id === movId);
     const fuente = (m && m.fuente) || fuenteOrigen;
     const fecha = (m && m.fecha) || fechaItem;
@@ -573,7 +573,7 @@ async function eliminarMovimiento(btn) {
       const nivel = nivelAntiguedadMovimiento(fecha, opsPosteriores, 'cuentas');
       if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
       if (nivel === 'viejo') {
-        confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(fuente), (m ? m.monto : monto) || 0, 'baja');
+        confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(fuente), (m ? m.monto : monto) || 0, movTipoEl === 'egreso' ? 'sube' : 'baja');
         if (!confirmado) return;
       }
     }
@@ -649,6 +649,24 @@ async function eliminarMovimiento(btn) {
         if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
         S._ajustesBaseLog.push({ fecha: hoy(), monto: -monto });
       }
+    }
+  } else if (movTipoEl === 'egreso') {
+    // Retiro manual de una cuenta personalizada. _getMovimientosCuentaCustom()
+    // (cuentas.js) muestra así CUALQUIER salida de una cuenta custom — tanto si
+    // el registro original vive en S.movimientos (tipo 'salida_manual') como si
+    // solo vive en c.movimientos (tipo 'egreso'/'salida_manual', doble-escritura
+    // de confirmarMovCustom()). Hasta ahora ninguna rama de este switch coincidía
+    // con 'egreso': el borrado no revertía el saldo (c.saldo) ni quitaba el
+    // registro de ninguno de los dos arrays, y aun así caía en el
+    // save()+refresh()+toast de éxito de más abajo — ver CHANGELOG.md#cuentas
+    // (2026-08-30).
+    const fuente = fuenteOrigen; // siempre 'custom:ID' para este tipoDisplay (ver dataFuente en cuentas.js)
+    if (fuente && monto > 0) sumarFuente(fuente, monto);
+    S.movimientos = (S.movimientos || []).filter(x => x.id !== movId);
+    if (fuente && fuente.startsWith('custom:')) {
+      const cid = fuente.split(':')[1];
+      const cc = (S.cuentasPersonalizadas || []).find(x => x.id === cid);
+      if (cc) cc.movimientos = (cc.movimientos || []).filter(x => x.id !== movId);
     }
   } else if (movTipoEl === 'gasto') {
     // Gasto variable (S.gastosVar)

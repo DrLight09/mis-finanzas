@@ -440,7 +440,12 @@ function abrirEncargoDetalle(id) {
         return html`<div class="gasto-item" ${raw(_encAttrs(m,'Encargos · '+enc.nombre))} style="cursor:pointer;border-color:rgba(96,176,240,.2);">
           <div class="gasto-item-top">
             <div style="flex:1;"><div class="row-name" style="font-size:13px;">Saldo inicial</div><div class="row-sub">${m.fecha!=='0000-00-00'?m.fecha:''}${lblCuentaIni?' · '+lblCuentaIni:''}</div></div>
-            <span class="row-amount c-blue">${fmt(m.monto)}</span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="row-amount c-blue">${fmt(m.monto)}</span>
+              <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${raw(Events.attr('encargos:deleteMov', enc.id, m.id))} title="Eliminar saldo inicial${lblCuentaIni?' (también se descuenta de '+lblCuentaIni+')':''}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </div>
           </div>
           <div class="gasto-item-meta"><span class="badge bg-blue" style="font-size:9px;">Inicio</span>${lblCuentaIni?html`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuentaIni}</span>`:''}</div>
         </div>`;
@@ -1669,6 +1674,26 @@ function _movEncConfirmarPrestarFaltante() {
 async function deleteMovEncargo(encId, movId) {
   const enc = getEncargo(encId);
   if (!enc) return;
+
+  // Caso especial: "Saldo inicial" no es un registro real en enc.movimientos —
+  // son dos campos sueltos del encargo (saldoInicial/cuentaInicial), mostrados
+  // con un id fijo ('__saldo_ini__', igual en todo encargo) solo para pintarlo
+  // en el historial (ver renderEncargoDetalle()). Antes no tenía botón de
+  // eliminar porque el flujo de abajo (que busca en enc.movimientos) nunca
+  // lo hubiera encontrado — ver CHANGELOG.md#encargos (2026-08-30).
+  if (movId === '__saldo_ini__') {
+    if (!(enc.saldoInicial > 0)) return;
+    const ok = await dialogo('Eliminar saldo inicial', `¿Eliminar el saldo inicial de ${fmt(enc.saldoInicial)}?${enc.cuentaInicial ? ' Se descontará de ' + fuenteLabel(enc.cuentaInicial) + '.' : ''}`, 'Eliminar', true);
+    if (!ok) return;
+    if (enc.cuentaInicial) descontarFuente(enc.cuentaInicial, enc.saldoInicial);
+    enc.saldoInicial = 0;
+    enc.cuentaInicial = '';
+    save(); refresh();
+    abrirEncargoDetalle(encId);
+    toast('Saldo inicial eliminado', 'info');
+    return;
+  }
+
   const mov = (enc.movimientos||[]).find(m=>m.id===movId);
   if (!mov) return;
 

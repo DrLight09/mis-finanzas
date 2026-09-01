@@ -44,9 +44,12 @@
    diffResumen/diffReset/diffEstaAbierto/diffCalcular/diffAplicar) y
    de split (crearSplitWidget/splitToggle/splitAgregarRow/splitGetData/
    splitPreview), ambos compartidos con Mesada y Encargos y por eso
-   siguen viviendo en index.html. Este módulo solo registra sus PROPIAS
-   instancias de esos motores ('prtc' y 'abonoEncCuenta'), igual que ya
-   hacía Encargos con las suyas.
+   siguen viviendo en index.html. Este módulo registra sus PROPIAS
+   instancias de esos motores ('prtc', 'abonoEncCuenta' y, desde esta
+   migración, 'abonoDestino' — el split del destino del abono, que antes
+   tenía su propia implementación casera con un botón "×" de texto en vez
+   del ícono SVG del resto de la app), igual que ya hacía Encargos con
+   las suyas.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ---- PRÉSTAMO CON ORIGEN DIVIDIDO ---- */
@@ -842,7 +845,6 @@ function initMovSheet(tipo) {
   if(document.getElementById('mov_split_metas')) document.getElementById('mov_split_metas').innerHTML = '';
   // Reset split abono destino
   _abonoSplitMode = false;
-  _abonoSplitRows = [];
   document.getElementById('mov_destino_simple').style.display = '';
   document.getElementById('mov_destino_split').style.display = 'none';
   { const b = document.getElementById('mov_dest_split_toggle');
@@ -1059,7 +1061,7 @@ function confirmarMovimiento() {
       }
       // Validar split destino antes de escribir datos
       if (_abonoSplitMode) {
-        const totalSplitPre = _abonoSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+        const totalSplitPre = _getAbonoDestinoSplitData().reduce((a,r)=>a+(r.monto||0),0);
         if(Math.abs(totalSplitPre - monto) > 1){
           toast(`La suma de cuentas (${fmt(totalSplitPre)}) no coincide con el abono (${fmt(monto)})`,'err',4000);
           return;
@@ -1116,7 +1118,7 @@ function confirmarMovimiento() {
       const esPagoCompletoEncargo = movTipo === 'pago-completo';
       const tipoGuardarEncargo = esPagoCompletoEncargo ? 'pago-completo' : 'abono';
       if (_abonoSplitMode) {
-        const destinos = _abonoSplitRows.filter(r=>r.monto>0);
+        const destinos = _getAbonoDestinoSplitData();
         destinos.forEach(r=>{ if(r.fuente) sumarFuente(r.fuente, r.monto); });
         // Registrar abono con destinos múltiples
         d.movimientos.push({
@@ -1265,12 +1267,12 @@ function confirmarMovimiento() {
     const tipoGuardar = esPagoCompletoActual ? 'pago-completo' : 'abono';
     const descMovSecundario = esPagoCompletoActual ? `Pago de deuda completo — ${d.nombre}` : `Abono de deuda — ${d.nombre}`;
     if (_abonoSplitMode) {
-      const totalSplit = _abonoSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+      const totalSplit = _getAbonoDestinoSplitData().reduce((a,r)=>a+(r.monto||0),0);
       if(Math.abs(totalSplit - monto) > 1){
         toast(`La suma de cuentas (${fmt(totalSplit)}) no coincide con el abono (${fmt(monto)})`,'err',4000);
         return;
       }
-      const destinos = _abonoSplitRows.filter(r=>r.monto>0).map(r=>({...r, _movId: uid()}));
+      const destinos = _getAbonoDestinoSplitData().map(r=>({...r, _movId: uid()}));
       destinos.forEach(r=>{ if(r.fuente) sumarFuente(r.fuente, r.monto); });
       // Registrar movimiento visible en cada cuenta destino
       destinos.forEach(r=>{
@@ -1564,64 +1566,50 @@ function _onMovMontoInput() {
 }
 
 // ── ABONO: split destino + extra ───────────────────────────────────────────
+// Split del destino del abono MIGRADO al motor genérico de split.js
+// (crearSplitWidget/splitToggle/splitAgregarRow/splitGetData) — antes tenía
+// su propia implementación casera (array _abonoSplitRows + render manual con
+// botón "×" de texto), duplicando el mismo patrón que ya vivía en split.js
+// para movenc/usarParte (Encargos) y abonoEncCuenta (más abajo en este mismo
+// archivo). Con esto las tres pantallas de "dividir" quedan con el mismo
+// diseño (fila con ícono SVG) y el mismo mínimo de 2 filas no borrables.
+//
+// _abonoSplitMode se deja con el mismo nombre porque el resto de este
+// archivo (más abajo, en el flujo de guardado) lo sigue leyendo directo
+// como flag booleano — getModo/setModo son un closure sobre este `let`,
+// igual que documenta split.js, así que no hace falta tocar esas lecturas.
 let _abonoSplitMode    = false;
-let _abonoSplitRows    = [];
 let _abonoDesdeEncargo = false;
 let _abonoEncId        = '';
 let _abonoEncCuenta    = '';
 let _extPartes         = []; // sistema de partes libres del extra
 
-/* Split del destino del abono */
-function toggleAbonoSplit() {
-  _abonoSplitMode = !_abonoSplitMode;
-  document.getElementById('mov_destino_simple').style.display = _abonoSplitMode ? 'none' : '';
-  document.getElementById('mov_destino_split').style.display  = _abonoSplitMode ? '' : 'none';
-  const btnDest = document.getElementById('mov_dest_split_toggle');
-  btnDest.textContent = _abonoSplitMode ? 'Una sola cuenta' : 'Dividir ÷';
-  btnDest.style.background = _abonoSplitMode ? 'rgba(240,184,64,.1)' : 'rgba(200,240,96,.1)';
-  btnDest.style.borderColor = _abonoSplitMode ? 'rgba(240,184,64,.3)' : 'rgba(200,240,96,.3)';
-  btnDest.style.color = _abonoSplitMode ? 'var(--amber)' : 'var(--accent)';
-  if (_abonoSplitMode && !_abonoSplitRows.length) abonoAddSplitRow();
-}
+crearSplitWidget('abonoDestino', {
+  simpleId:'mov_destino_simple', splitId:'mov_destino_split', toggleId:'mov_dest_split_toggle', rowsId:'mov_dest_split_rows',
+  getModo:()=>_abonoSplitMode, setModo:v=>{_abonoSplitMode=v;},
+  getFuentesFn:_getAbonoDestinoFuentesOptions,
+  onPreview:abonoSplitResumen
+});
 
-function abonoAddSplitRow() {
-  _abonoSplitRows.push({ fuente: '', monto: 0 });
-  abonoRenderSplit();
-}
+function toggleAbonoSplit(){ splitToggle('abonoDestino'); }
+function abonoAddSplitRow(){ splitAgregarRow('abonoDestino'); }
+function _getAbonoDestinoSplitData(){ return splitGetData('abonoDestino'); }
 
-function abonoRenderSplit() {
-  const cont = document.getElementById('mov_dest_split_rows');
+// El destino de un abono nunca es una tarjeta de crédito (una TC jamás es
+// destino de plata entrante) — mismo filtro que ya aplicaba getFuentesSinTC()
+// en el render casero que reemplaza este bloque.
+function _getAbonoDestinoFuentesOptions(selectedVal) {
   const fuentes = getFuentesSinTC();
-  cont.innerHTML = html`${_abonoSplitRows.map((r, i) => html`
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:7px;">
-      <div class="select-wrap" style="flex:1;">
-        <select class="_abono-split-fuente" data-i="${i}" style="padding:9px 30px 9px 10px;font-size:13px;">
-          <option value="">Sin especificar</option>
-          ${fuentes.map(f=>html`<option value="${f.val}" ${raw(r.fuente===f.val?'selected':'')}>${f.label}</option>`)}
-        </select>
-      </div>
-      <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="0,00"
-        class="money-input _abono-split-monto" data-i="${i}" style="width:110px;padding:9px 10px;font-size:13px;">
-      <button type="button" ${raw(Events.attr('prestado:abonoSplitDel', i))}
-        style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:28px;font-size:18px;line-height:1;">×</button>
-    </div>`)}`;
-  // onchange/oninput inline reemplazados por addEventListener delegado — docs/auditoria-tecnica.md #1
-  cont.querySelectorAll('._abono-split-fuente').forEach(sel => {
-    sel.addEventListener('change', () => abonoSplitFuente(+sel.dataset.i, sel.value));
-  });
-  cont.querySelectorAll('._abono-split-monto').forEach(inp => {
-    inp.addEventListener('input', () => abonoSplitMonto(+inp.dataset.i, inp.value));
-  });
-  abonoSplitResumen();
+  let out = '<option value="">Sin especificar</option>';
+  for (const f of fuentes) {
+    out += `<option value="${f.val}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`;
+  }
+  return out;
 }
-
-function abonoSplitFuente(i,v){ _abonoSplitRows[i].fuente=v; abonoSplitResumen(); }
-function abonoSplitMonto(i,v) { _abonoSplitRows[i].monto=parseMoney(v)||0; abonoSplitResumen(); }
-function abonoSplitDel(i)     { _abonoSplitRows.splice(i,1); abonoRenderSplit(); }
 
 function abonoSplitResumen() {
   const monto = parseMoney(document.getElementById('mov_monto').value)||0;
-  const total = _abonoSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+  const total = _getAbonoDestinoSplitData().reduce((a,r)=>a+(r.monto||0),0);
   const diff  = monto - total;
   const el    = document.getElementById('mov_dest_split_resumen');
   if(!el) return;
@@ -2463,7 +2451,6 @@ Events.registerAll('prestado', {
   prestSplitDelRow: prestSplitDelRow,
   toggleAbonoSplit: toggleAbonoSplit,
   abonoAddSplitRow: abonoAddSplitRow,
-  abonoSplitDel: abonoSplitDel,
   toggleExtraSection: toggleExtraSection,
   extAddParte: extAddParte,
   extDelParte: extDelParte,

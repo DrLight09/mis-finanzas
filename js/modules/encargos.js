@@ -1703,7 +1703,13 @@ async function deleteMovEncargo(encId, movId) {
   // que la dirección exacta dependa del tipo de movimiento (entrada, salida,
   // "lo cubrí yo", "lo adelanté yo"), así que el aviso de nivel 'viejo' queda
   // genérico en vez de arriesgar un dato incorrecto.
-  const opsPosteriores = (enc.movimientos||[]).filter(m => m.id!==movId && mov.cuenta && m.cuenta===mov.cuenta && m.fecha && m.fecha>mov.fecha).length;
+  // Ops posteriores: se cuenta contra el ENCARGO completo, no solo contra
+  // mov.cuenta (2026-09-01, revisión de diseño — ver CHANGELOG.md#encargos).
+  // Un encargo con plata repartida en varias cuentas (o sin cuenta asignada)
+  // sigue siendo una sola bolsa de plata que se mezcla con cada movimiento
+  // nuevo, toque o no la misma cuenta externa — filtrar por cuenta subestimaba
+  // esa mezcla en encargos con movimientos en cuentas distintas.
+  const opsPosteriores = (enc.movimientos||[]).filter(m => m.id!==movId && m.fecha && m.fecha>mov.fecha).length;
   const nivel = nivelAntiguedadMovimiento(mov.fecha, opsPosteriores, 'encargos');
   if (nivel === 'bloqueado') {
     await avisarMovimientoBloqueado();

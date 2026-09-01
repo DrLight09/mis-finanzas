@@ -47,6 +47,16 @@
    por fila, justo antes de insertarla — no hace falta re-adjuntar nada
    en renders posteriores.
 
+   ── MÍNIMO 2 FILAS ─────────────────────────────────────────────
+   Al activar el modo dividido siempre arrancan 2 filas (como ya
+   pasaba). Ahora además esas filas (y cualquier otra mientras el
+   total sea 2) no se pueden borrar: el botón de borrar se oculta y
+   se deshabilita con splitActualizarBotones(). En cuanto hay una
+   3ª fila, TODAS quedan borrables de nuevo — y si borrando se
+   vuelve a caer a 2, el botón de las 2 restantes se vuelve a
+   ocultar. No importa cuáles 2 sean "las originales", la regla es
+   sobre el conteo total de filas, no sobre filas marcadas.
+
    ── VALIDACIÓN: NO REPETIR CUENTA ENTRE FILAS ─────────────────────
    Se agregó splitOpcionesUsadas()/splitActualizarOpciones(): cada vez
    que una fila cambia de cuenta, se agrega una fila nueva o se borra
@@ -86,6 +96,7 @@ function splitToggle(instId){
     splitAgregarRow(instId);
     splitAgregarRow(instId);
   }
+  splitActualizarBotones(instId);
   cfg.onPreview && cfg.onPreview();
 }
 
@@ -112,13 +123,39 @@ function splitAgregarRow(instId){
   const btn = div.querySelector('button');
   if (sel) sel.addEventListener('change', () => { splitActualizarOpciones(instId); splitPreview(instId); });
   if (inp) inp.addEventListener('input', () => splitPreview(instId));
-  if (btn) btn.addEventListener('click', () => { div.remove(); splitActualizarOpciones(instId); splitPreview(instId); });
+  if (btn) btn.addEventListener('click', () => {
+    // Guarda de más: aunque el botón queda deshabilitado/oculto en <=2
+    // filas (ver splitActualizarBotones), no confiamos solo en el CSS.
+    if (container.children.length <= 2) return;
+    div.remove();
+    splitActualizarOpciones(instId);
+    splitActualizarBotones(instId);
+    splitPreview(instId);
+  });
 
   container.appendChild(div);
   // la fila nueva entra con la cuenta en blanco, pero de todos modos se
   // resincroniza acá para que respete cualquier cuenta ya usada en las
   // filas existentes (por si getFuentesFn cambia entre llamadas).
   splitActualizarOpciones(instId);
+  splitActualizarBotones(instId);
+}
+
+// Oculta/deshabilita el botón de borrar de CADA fila mientras el total de
+// filas de la instancia sea 2 (el mínimo). En cuanto hay 3 o más, todas
+// quedan borrables. Se llama tras cualquier alta o baja de fila.
+function splitActualizarBotones(instId){
+  const cfg = _splitInstancias[instId]; if(!cfg) return;
+  const rows = document.getElementById(cfg.rowsId);
+  if(!rows) return;
+  const puedeBorrar = rows.children.length > 2;
+  for(const row of rows.children){
+    const btn = row.querySelector('button');
+    if(!btn) continue;
+    btn.disabled = !puedeBorrar;
+    btn.style.visibility = puedeBorrar ? 'visible' : 'hidden';
+    btn.style.pointerEvents = puedeBorrar ? '' : 'none';
+  }
 }
 
 // Devuelve las cuentas (values) ya elegidas en las filas de la instancia,

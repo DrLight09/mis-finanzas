@@ -496,7 +496,7 @@ async function eliminarMovimiento(btn) {
       const data = getMesadaData(parent);
       Object.keys(data).forEach(k => { if (data[k] && data[k]._id === movId) target = { parent, key: k, info: data[k] }; });
     });
-    if (target) {
+    if (target && _mesadaTieneCuentaAfectada(target.info)) {
       const opsPosteriores = _mesadaOpsPosteriores(target.parent, target.key, target.info);
       const nivel = nivelAntiguedadMovimiento(target.info.fecha, opsPosteriores, 'mesada');
       if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
@@ -583,7 +583,7 @@ async function eliminarMovimiento(btn) {
       const m = (d.movimientos || []).find(x => x.id === movId);
       if (m) target = { d, m };
     });
-    if (target) {
+    if (target && _deudorTieneCuentaAfectada(target.m)) {
       const opsPosteriores = _deudorOpsPosteriores(target.d, target.m);
       const nivel = nivelAntiguedadMovimiento(target.m.fecha, opsPosteriores, 'prestamos');
       if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }

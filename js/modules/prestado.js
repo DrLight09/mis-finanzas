@@ -216,6 +216,25 @@ function _deudorOpsPosteriores(d, m) {
   if (!cuentas.length) return 0;
   return (d.movimientos || []).filter(m2 => m2.id !== m.id && m2.fecha && m2.fecha > m.fecha && _deudorCuentasDe(m2).some(c => cuentas.includes(c))).length;
 }
+// True si borrar este movimiento de deudor realmente revierte el saldo de
+// alguna cuenta real, un depósito de Alcancía, la deuda de una TC, o un
+// movimiento de un encargo (ver docs/proteccion-antiguedad-movimientos.md).
+// Un préstamo/abono íntegramente "Sin especificar" (o "Ganancia", que
+// explícitamente no mueve plata) no toca nada de eso, así que no hay ningún
+// saldo que la protección por antigüedad deba proteger.
+function _deudorTieneCuentaAfectada(m) {
+  if (m._viaAlcancia && m._alcanciaMovId) return true;
+  if (m.tipo === 'prestamo') {
+    if (m._viaTC) return true;
+    if (m.fuentes && m.fuentes.length) return m.fuentes.some(f => f.fuente && f.fuente !== 'ganancia');
+    return !!(m.fuente && m.fuente !== 'ganancia');
+  }
+  // Abono / pago-completo
+  if (m._viaEncargo && m._encId && m._encMovId) return true;
+  if (m.destinos && m.destinos.length) return m.destinos.some(r => r.fuente);
+  if (m.destino) return true;
+  return !!(m._extPartes && m._extPartes.some(p => p.tipo === 'guardar' && p.cuenta));
+}
 // Guardia de integridad: verifica que registrar/eliminar un movimiento cambió el saldo
 // exactamente en lo esperado. Si no coincide, casi siempre significa que hay un movimiento
 // duplicado o corrupto en d.movimientos que no se está viendo a simple vista.
@@ -602,11 +621,17 @@ async function eliminarMovDeudor(deudorId, movId) {
   // Este mismo movimiento también se puede borrar desde la vista de cuenta
   // genérica (rama 'prestamo'/'abono' de eliminarMovimiento() en
   // movimientos.js), que aplica la misma protección por su cuenta.
-  const opsPosteriores = _deudorOpsPosteriores(d, m);
-  const nivel = nivelAntiguedadMovimiento(m.fecha, opsPosteriores, 'prestamos');
-  if (nivel === 'bloqueado') {
-    await avisarMovimientoBloqueado();
-    return;
+  // Solo aplica si _deudorTieneCuentaAfectada(m) — un préstamo/abono 100%
+  // "Sin especificar"/"Ganancia" no revierte ningún saldo real, así que no
+  // hay nada que proteger.
+  let nivel = 'reciente';
+  if (_deudorTieneCuentaAfectada(m)) {
+    const opsPosteriores = _deudorOpsPosteriores(d, m);
+    nivel = nivelAntiguedadMovimiento(m.fecha, opsPosteriores, 'prestamos');
+    if (nivel === 'bloqueado') {
+      await avisarMovimientoBloqueado();
+      return;
+    }
   }
   const esPrestamo = m.tipo === 'prestamo';
   const label = esPrestamo ? 'préstamo' : 'pago';
@@ -2064,6 +2089,12 @@ function _miDeudaOpsPosteriores(d, m) {
   if (!cuentas.length) return 0;
   return (d.movimientos || []).filter(m2 => m2.id !== m.id && m2.fecha && m2.fecha > m.fecha && _miDeudaCuentasDe(m2).some(c => cuentas.includes(c))).length;
 }
+// True si borrar este movimiento de "mis deudas" realmente revierte el
+// saldo de una cuenta real. Un "recibido" sin destino o un "pago" sin
+// fuente (ambos "Sin especificar") no mueven nada.
+function _miDeudaTieneCuentaAfectada(m) {
+  return m.tipo === 'recibido' ? !!m.destino : !!m.fuente;
+}
 
 async function eliminarMovMiDeuda(deudaId, movId) {
   const d = (S.misDeudas || []).find(x => x.id === deudaId);
@@ -2072,17 +2103,21 @@ async function eliminarMovMiDeuda(deudaId, movId) {
   if (!m) return;
 
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
-  const opsPosteriores = _miDeudaOpsPosteriores(d, m);
-  const nivel = nivelAntiguedadMovimiento(m.fecha, opsPosteriores, 'prestamos');
-  if (nivel === 'bloqueado') {
-    await avisarMovimientoBloqueado();
-    return;
-  }
-  if (nivel === 'viejo') {
-    const cuentas = _miDeudaCuentasDe(m);
-    const nombreCuenta = cuentas.length > 1 ? `${cuentas.length} cuentas` : fuenteLabel(cuentas[0]);
-    const ok = await confirmarBorrarMovimientoViejo(nombreCuenta, m.monto || 0, m.tipo === 'recibido' ? 'baja' : 'sube');
-    if (!ok) return;
+  // Solo aplica si _miDeudaTieneCuentaAfectada(m) — un movimiento "Sin
+  // especificar" no revierte ningún saldo real.
+  if (_miDeudaTieneCuentaAfectada(m)) {
+    const opsPosteriores = _miDeudaOpsPosteriores(d, m);
+    const nivel = nivelAntiguedadMovimiento(m.fecha, opsPosteriores, 'prestamos');
+    if (nivel === 'bloqueado') {
+      await avisarMovimientoBloqueado();
+      return;
+    }
+    if (nivel === 'viejo') {
+      const cuentas = _miDeudaCuentasDe(m);
+      const nombreCuenta = cuentas.length > 1 ? `${cuentas.length} cuentas` : fuenteLabel(cuentas[0]);
+      const ok = await confirmarBorrarMovimientoViejo(nombreCuenta, m.monto || 0, m.tipo === 'recibido' ? 'baja' : 'sube');
+      if (!ok) return;
+    }
   }
 
   // Revertir el efecto en la cuenta involucrada

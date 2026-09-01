@@ -205,6 +205,19 @@ function _mesadaFuentesDe(info){
 // protección por antigüedad (ver core-state.js#nivelAntiguedadMovimiento y
 // docs/proteccion-antiguedad-movimientos.md §4: sin ciclo natural como
 // Spotify, se cuenta contra la cuenta destino en su lugar).
+// True si borrar este pago realmente movería el saldo de alguna cuenta o
+// encargo — es decir, si _borrarMesadaPago() va a llamar a descontarFuente()
+// o a tocar los movimientos de algún encargo. Si el pago (y todos sus
+// abonos de "pendiente") fueron "Sin especificar"/"me lo gasté", no hay
+// ninguna cuenta real afectada y la protección por antigüedad no tiene
+// nada que proteger.
+function _mesadaTieneCuentaAfectada(info){
+  if(info.origenEncargo)return true;
+  if(info.splits&&info.splits.length)return true;
+  if(info.destino)return true;
+  return (info.pendienteHistorial||[]).some(h=>h.destino||h.origenEncargo);
+}
+
 function _mesadaOpsPosteriores(parentActual,keyActual,info){
   const fuentes=_mesadaFuentesDe(info);
   if(!fuentes.length||!info.fecha)return 0;
@@ -739,17 +752,23 @@ async function eliminarMesadaPago(parent,key){
 
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
   // Nivel 1 (reciente) no cambia nada, sigue igual que siempre (sin aviso previo).
-  const opsPosteriores=_mesadaOpsPosteriores(parent,key,info);
-  const nivel=nivelAntiguedadMovimiento(info.fecha,opsPosteriores,'mesada');
-  if(nivel==='bloqueado'){
-    await avisarMovimientoBloqueado();
-    return;
-  }
-  if(nivel==='viejo'){
-    const fuentes=_mesadaFuentesDe(info);
-    const nombreCuenta=fuentes.length>1?`${fuentes.length} cuentas`:fuenteLabel(fuentes[0]);
-    const ok=await confirmarBorrarMovimientoViejo(nombreCuenta,info.monto||0,'baja');
-    if(!ok)return;
+  // Solo aplica si borrar esto realmente movería el saldo de alguna cuenta o
+  // encargo (ver _mesadaTieneCuentaAfectada) — un pago 100% "Sin especificar"/
+  // "me lo gasté" (y sin abonos de pendiente con destino propio) no revierte
+  // nada, así que no hay ningún saldo que la protección deba proteger.
+  if(_mesadaTieneCuentaAfectada(info)){
+    const opsPosteriores=_mesadaOpsPosteriores(parent,key,info);
+    const nivel=nivelAntiguedadMovimiento(info.fecha,opsPosteriores,'mesada');
+    if(nivel==='bloqueado'){
+      await avisarMovimientoBloqueado();
+      return;
+    }
+    if(nivel==='viejo'){
+      const fuentes=_mesadaFuentesDe(info);
+      const nombreCuenta=fuentes.length>1?`${fuentes.length} cuentas`:fuenteLabel(fuentes[0]);
+      const ok=await confirmarBorrarMovimientoViejo(nombreCuenta,info.monto||0,'baja');
+      if(!ok)return;
+    }
   }
   _borrarMesadaPago(parent,key,info);
 }

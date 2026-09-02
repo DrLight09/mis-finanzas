@@ -2267,7 +2267,7 @@ function abrirTransferenciaEncargo() {
     ? fmt(libre) + ' disponible (de ' + fmt(saldo) + ', ' + fmt(comprometido) + ' comprometido)'
     : fmt(libre);
   document.getElementById('transfenc_monto').value = '';
-  document.getElementById('transfenc_desc').value = 'Pago a nombre de ' + enc.nombre;
+  document.getElementById('transfenc_desc').value = 'Plata para ' + enc.nombre;
   document.getElementById('transfenc_fecha').value = hoy();
   document.getElementById('transfenc_preview').innerHTML = '';
 

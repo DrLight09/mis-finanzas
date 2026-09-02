@@ -1655,6 +1655,65 @@ async function _cpEliminar(id){
   }
   advertencia += '\n\nEsta acción no se puede deshacer.';
 
+  // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
+  // Solo aplica si hay algo real que revertir (yaRecibido / hayAdelantos /
+  // hayTcMarcada); si el ingreso "no ha generado movimientos" (rama de
+  // arriba), no hay ningún saldo que proteger.
+  // Limitación conocida: acá no hay una fecha exacta por cada adelanto/marca
+  // individual (solo un booleano yaSaque/yaPague, sin su propia fecha) — se
+  // usa item.fechaRecibido si ya se recibió (que es cuando de verdad se
+  // generaron los movimientos reales), o item.fechaLlegada como mejor
+  // aproximación disponible si aún no se ha recibido pero ya hay adelantos/
+  // marcas de TC. Si en el futuro se guarda una fecha propia por destino,
+  // hay que actualizar esto para usarla en vez de esta aproximación.
+  if(yaRecibido || hayAdelantos || hayTcMarcada){
+    const fechaRef = yaRecibido ? item.fechaRecibido : item.fechaLlegada;
+    const cuentasAfectadas = new Set();
+    (item.destinos||[]).forEach(d=>{
+      if(yaRecibido){
+        if(d.tipo==='reposicion'){
+          const cuenta=d.cuentaId||item.cuentaDestino;
+          if(cuenta)cuentasAfectadas.add(cuenta);
+        } else if(d.tipo==='gasto'&&d.gastoOrigen==='tc'&&d.gastoTcId){
+          cuentasAfectadas.add('tc:'+d.gastoTcId);
+          if(d.gastoTcCajita)cuentasAfectadas.add(d.gastoTcCajita);
+        } else if(d.tipo==='gasto'&&d.gastoOrigen==='cajita'&&d.gastoCajita){
+          cuentasAfectadas.add(d.gastoCajita);
+        }
+      } else {
+        if(d.tipo==='reposicion'&&d.yaSaque){
+          const cuenta=d.cuentaId||item.cuentaDestino;
+          if(cuenta)cuentasAfectadas.add(cuenta);
+        } else if(d.tipo==='gasto'&&d.gastoOrigen==='tc'&&d.gastoTcId&&d.yaPague){
+          cuentasAfectadas.add('tc:'+d.gastoTcId);
+        }
+      }
+    });
+    let opsPosteriores=0;
+    if(fechaRef){
+      cuentasAfectadas.forEach(c=>{
+        let ops=0;
+        if(c.startsWith('tc:')){
+          const tc=(S.tarjetasCredito||[]).find(x=>x.id===c.slice(3));
+          if(tc && typeof _tcOpsPosteriores==='function') ops=_tcOpsPosteriores(tc,fechaRef,null);
+        } else if(typeof _cuentaOpsPosteriores==='function'){
+          ops=_cuentaOpsPosteriores(c,fechaRef,null);
+        }
+        if(ops>opsPosteriores)opsPosteriores=ops;
+      });
+    }
+    if(fechaRef && typeof nivelAntiguedadMovimiento==='function'){
+      const nivel=nivelAntiguedadMovimiento(fechaRef,opsPosteriores,'plata_comprometida');
+      if(nivel==='bloqueado'){
+        if(typeof avisarMovimientoBloqueado==='function') await avisarMovimientoBloqueado();
+        return;
+      }
+      if(nivel==='viejo'){
+        advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M12 8v4"/><path d="M12 16h.01"/><circle cx="12" cy="12" r="10"/></svg> Esto ya tiene tiempo y puede estar mezclado con operaciones más recientes de las cuentas involucradas — revertirlo hoy ajusta esos saldos actuales, no recalcula el historial completo.';
+      }
+    }
+  }
+
   const ok = typeof dialogo === 'function'
     ? await dialogo('Eliminar ingreso comprometido', advertencia, 'Sí, eliminar y revertir', true)
     : confirm(advertencia);

@@ -1347,12 +1347,50 @@ window.alcanciaEliminarDeposito = async function(movId){
   if(idx === -1){ if(typeof toast==='function') toast('No se encontró ese depósito', 'err'); return; }
   const entry = a.movimientos[idx];
 
+  // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
+  // A diferencia de un ingreso neto-cero suelto, acá SIEMPRE hay algo que
+  // proteger: a.saldoRegistrado es un total corrido que se ajusta
+  // incrementalmente al borrar (igual que enc.movimientos en Encargos o
+  // tc.deuda en Tarjetas), así que se mezcla con depósitos/retiros
+  // posteriores muevan o no, además, una cuenta externa. "Operaciones
+  // posteriores" se cuenta contra la alcancía completa (mismo criterio que
+  // se usa en Encargos desde 2026-09-01 — ver CHANGELOG.md#encargos).
+  let deudorParaAviso = null;
+  if(entry.tipo === 'cobro-deuda' && entry._prestamoDeudorId){
+    deudorParaAviso = (window.S.deudores || []).find(x => x.id === entry._prestamoDeudorId) || null;
+  }
+  if(typeof nivelAntiguedadMovimiento === 'function'){
+    const opsPosteriores = entry.fecha ? (a.movimientos||[]).filter(m => m.id!==entry.id && m.fecha && m.fecha>entry.fecha).length : 0;
+    const nivel = nivelAntiguedadMovimiento(entry.fecha, opsPosteriores, 'alcancia');
+    if(nivel === 'bloqueado'){
+      if(typeof avisarMovimientoBloqueado === 'function') await avisarMovimientoBloqueado();
+      return;
+    }
+    if(nivel === 'viejo' && typeof confirmarBorrarMovimientoViejo === 'function'){
+      let nombreCuenta, direccion;
+      if(entry.tipo === 'yo-cuenta' && entry.fuenteOrigen){ nombreCuenta = fuenteLabel(entry.fuenteOrigen); direccion = 'sube'; }
+      else if(entry.tipo === 'split' && entry._splitFuente){ nombreCuenta = fuenteLabel(entry._splitFuente); direccion = 'sube'; }
+      else if(entry.tipo === 'cobro-deuda' && deudorParaAviso){ nombreCuenta = 'la deuda de ' + deudorParaAviso.nombre; direccion = 'sube'; }
+      else { nombreCuenta = 'tu alcancía'; direccion = 'baja'; }
+      const ok = await confirmarBorrarMovimientoViejo(nombreCuenta, entry.monto || 0, direccion);
+      if(!ok) return;
+
+      // Ya se confirmó con el aviso específico de arriba — no repetir con el
+      // genérico de abajo, igual que en Spotify (_borrarSpHistorial).
+      return _alcanciaEjecutarEliminarDeposito(a, idx, entry);
+    }
+  }
+
   const dialogoTexto = entry.tipo === 'cobro-deuda'
     ? `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? Se le volverá a sumar esa plata a la deuda de la persona.`
     : `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? ${entry.fuenteOrigen || entry._splitFuente ? 'Se devolverá el dinero a la cuenta de origen.' : 'No afecta ningún saldo (fue un ingreso registrado sin mover plata real).'}`;
   const ok = await dialogo('Eliminar depósito', dialogoTexto, 'Eliminar', true);
   if(!ok) return;
 
+  return _alcanciaEjecutarEliminarDeposito(a, idx, entry);
+};
+
+async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
   // Revertir el/los registro(s) reales según el tipo
   if(entry.tipo === 'yo-cuenta'){
     window.S.gastosVar = (window.S.gastosVar || []).filter(x => x.id !== entry.id);
@@ -1392,7 +1430,7 @@ window.alcanciaEliminarDeposito = async function(movId){
   if(typeof refresh==='function') refresh();
   window.renderAlcancia();
   if(typeof toast==='function') toast('Depósito eliminado', 'info');
-};
+}
 
 /* Quita SOLO el lado de la alcancía de un depósito 'cobro-deuda', sin tocar
    al deudor — para cuando el borrado se inició desde Préstamos

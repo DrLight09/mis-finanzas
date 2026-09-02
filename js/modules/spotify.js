@@ -349,7 +349,7 @@ function renderSpHistorial(){
           <span class="badge bg-amber" style="font-size:9px;">Debe ${fmt(h.pendiente)}</span>
           <span style="font-size:10px;color:var(--amber);text-decoration:underline;cursor:pointer;" ${raw(Events.attr('spotify:resolverPendiente', h._realIdx))}>Registrar pago de lo pendiente</span>
         </div>`
-      :yaSaldado?html`<div style="font-size:10px;color:var(--accent);margin-top:3px;">✓ Saldó lo pendiente</div>`:'';
+      :yaSaldado?html`<div style="font-size:10px;color:var(--accent);margin-top:3px;"><i class="fa-solid fa-check" style="margin-right:3px;"></i>Saldó lo pendiente</div>`:'';
     const fuentesInfo=h.splits&&h.splits.length
       ?' · '+h.splits.map(s=>fuenteLabel(s.fuente||'')).join(' + ')
       :(h.fuente?' · '+fuenteLabel(h.fuente):'');
@@ -898,7 +898,7 @@ function actualizarSpResolverPreview(){
     return;
   }
   const restante=h.pendiente-v;
-  prev.textContent=restante>0?('Quedaría debiendo '+fmt(restante)+' más'):'Con esto queda saldado ✓';
+  prev.textContent=restante>0?('Quedaría debiendo '+fmt(restante)+' más'):'Con esto queda saldado';
   prev.style.color=restante>0?'var(--amber)':'var(--accent)';
 }
 
@@ -920,7 +920,7 @@ function confirmarSpResolverPendiente(){
   spResolverIdx=null;
   save();refresh();
   closeSheet('sp-hist-pend');
-  toast(h.pendiente>0?('Abono registrado — todavía debe '+fmt(h.pendiente)):'¡Pendiente saldado! 🎉','ok',3000);
+  toast(h.pendiente>0?('Abono registrado — todavía debe '+fmt(h.pendiente)):'¡Pendiente saldado!','ok',3000);
 }
 
 // FIX (auditoria-tecnica.md — acoplamiento spotify↔tarjetas_credito): las 3

@@ -244,7 +244,7 @@ function _verificarIntegridadSaldoDeudor(d, saldoAntes, deltaEsperado) {
   const deltaReal = saldoDespues - saldoAntes;
   if (Math.abs(deltaReal - deltaEsperado) > 1) {
     console.warn(`[Integridad] Saldo de ${escHtml(d.nombre)} cambió ${deltaReal} en vez de ${deltaEsperado} (antes: ${saldoAntes}, después: ${saldoDespues}). Revisa d.movimientos por duplicados.`, d.movimientos);
-    toast(`⚠️ El saldo de ${escHtml(d.nombre)} no cambió como se esperaba (esperado: ${fmt(deltaEsperado)}, real: ${fmt(deltaReal)}). Revisa su historial antes de seguir.`, 'err', 6000);
+    toast(`El saldo de ${escHtml(d.nombre)} no cambió como se esperaba (esperado: ${fmt(deltaEsperado)}, real: ${fmt(deltaReal)}). Revisa su historial antes de seguir.`, 'err', 6000);
   }
 }
 // Saldo que impacta el patrimonio: todos los préstamos cuentan, sin excepción
@@ -327,7 +327,7 @@ function _autoGrupoIdMov(d, fecha) {
 // confirmarMovimiento). Dos caminos posibles según lo que _initMovGrupoSelector
 // haya mostrado:
 // 1. Selector visible (≥2 grupos abiertos): respeta lo elegido, incluyendo
-//    crear uno nuevo si escogió "🆕 Es un préstamo nuevo".
+//    crear uno nuevo si escogió "Es un préstamo nuevo".
 // 2. Checkbox visible (exactamente 1 grupo abierto, tipo 'prestamo'): si el
 //    usuario lo marcó, crea un grupo aparte en vez de fusionar con el único
 //    abierto.
@@ -954,7 +954,7 @@ function _initGrupoSelector(prefix, esPrestamoNuevo) {
     wrap.style.display = '';
     if (checkWrap) checkWrap.style.display = 'none';
     if (sel) {
-      sel.innerHTML = html`${abiertos.map(g => html`<option value="${g.id}">${g.nombre} (${fmt(getGrupoSaldo(d, g.id))})</option>`)}<option value="__nuevo__">🆕 Es un préstamo nuevo</option>`;
+      sel.innerHTML = html`${abiertos.map(g => html`<option value="${g.id}">${g.nombre} (${fmt(getGrupoSaldo(d, g.id))})</option>`)}<option value="__nuevo__">Es un préstamo nuevo</option>`;
       sel.value = abiertos[0].id; // por defecto, el grupo abierto más reciente
       sel.onchange = () => {
         if (nombreWrap) nombreWrap.style.display = sel.value === '__nuevo__' ? '' : 'none';

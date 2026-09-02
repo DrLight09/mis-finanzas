@@ -719,8 +719,8 @@ function abrirDetalleMesada(parent,key,nombre){
     pendienteHtml=html`
     <div class="card card-sm" style="margin-bottom:10px;border-left:4px solid ${raw(tienePendienteDet?'var(--amber)':'var(--accent)')};background:${raw(tienePendienteDet?'rgba(240,184,64,.06)':'rgba(200,240,96,.06)')};">
       <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Cuota esperada</span><span style="font-size:13px;font-family:'DM Mono',monospace;">${fmt(info.cuotaEsperada)}</span></div>
-      ${tienePendienteDet?html`<div class="row" style="margin-bottom:2px;"><span style="font-size:12px;color:var(--amber);font-weight:600;">Pendiente</span><span class="row-amount c-amber">${fmt(info.pendiente)}</span></div>`:html`<div style="font-size:12px;color:var(--accent);font-weight:600;">✓ Ya te dio todo lo que faltaba</div>`}
-      ${tieneHistorialDet?html`<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px;">${raw(info.pendienteHistorial.map((h,idx)=>html`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);gap:8px;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.fecha||''}${h.origenEncargo?' · Plata guardada de '+h.origenEncargo.nombre:(h.destino?' · '+fuenteLabel(h.destino):'')}${h.nota?' · '+h.nota:''}</span><span style="display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(h.monto)}</span><span ${raw(Events.attr('mesada:deshacerPendiente', parent, key, idx))} style="cursor:pointer;color:var(--red);font-size:13px;line-height:1;" title="Deshacer este abono">✕</span></span></div>`).join(''))}</div>`:''}
+      ${tienePendienteDet?html`<div class="row" style="margin-bottom:2px;"><span style="font-size:12px;color:var(--amber);font-weight:600;">Pendiente</span><span class="row-amount c-amber">${fmt(info.pendiente)}</span></div>`:html`<div style="font-size:12px;color:var(--accent);font-weight:600;"><i class="fa-solid fa-check" style="margin-right:4px;"></i>Ya te dio todo lo que faltaba</div>`}
+      ${tieneHistorialDet?html`<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px;">${raw(info.pendienteHistorial.map((h,idx)=>html`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);gap:8px;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.fecha||''}${h.origenEncargo?' · Plata guardada de '+h.origenEncargo.nombre:(h.destino?' · '+fuenteLabel(h.destino):'')}${h.nota?' · '+h.nota:''}</span><span style="display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(h.monto)}</span><span ${raw(Events.attr('mesada:deshacerPendiente', parent, key, idx))} style="cursor:pointer;color:var(--red);display:inline-flex;align-items:center;" title="Deshacer este abono"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></span></div>`).join(''))}</div>`:''}
       ${tienePendienteDet?html`<button type="button" class="btn" style="margin-top:10px;background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.3);color:var(--amber);" ${raw(Events.attr('mesada:resolverPendiente', parent, key))}>Registrar pago de lo pendiente</button>`:''}
     </div>`;
   } else if(puedeMarcarPendiente){
@@ -943,12 +943,12 @@ function actualizarMppPreview(){
       return;
     }
     const restanteEnc=info.pendiente-v;
-    prev.textContent=(restanteEnc>0?('Quedaría debiendo '+fmt(restanteEnc)+' más · '):'Con esto queda saldado ✓ · ')+'se descuenta de lo guardado de '+enc.nombre;
+    prev.textContent=(restanteEnc>0?('Quedaría debiendo '+fmt(restanteEnc)+' más · '):'Con esto queda saldado · ')+'se descuenta de lo guardado de '+enc.nombre;
     prev.style.color=restanteEnc>0?'var(--amber)':'var(--accent)';
     return;
   }
   const restante=info.pendiente-v;
-  prev.textContent=restante>0?('Quedaría debiendo '+fmt(restante)+' más'):'Con esto queda saldado ✓';
+  prev.textContent=restante>0?('Quedaría debiendo '+fmt(restante)+' más'):'Con esto queda saldado';
   prev.style.color=restante>0?'var(--amber)':'var(--accent)';
 }
 
@@ -1008,7 +1008,7 @@ function confirmarPendienteMesada(){
   info.monto=(info.monto||0)+monto;
   save();refresh();
   closeSheet('mesada-pend');
-  toast(info.pendiente>0?('Abono registrado — todavía debe '+fmt(info.pendiente)):'¡Pendiente saldado! 🎉','ok',3000);
+  toast(info.pendiente>0?('Abono registrado — todavía debe '+fmt(info.pendiente)):'¡Pendiente saldado!','ok',3000);
   abrirDetalleMesada(mppParent,mppMesKey,_mesNombreDeKey(mppMesKey));
 }
 

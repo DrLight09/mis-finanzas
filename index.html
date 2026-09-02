@@ -3271,12 +3271,14 @@
       data-sheet-id="transferencia-encargo">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title">Pagarle a otro encargo</div>
+        <div class="sheet-title">Pasarle plata a otro encargo</div>
         <p
-          style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;">Esta
-          plata deja de ser de este encargo y pasa a ser del otro. Sigue
-          siendo ajena todo el tiempo — no toca tus cuentas ni tu
-          patrimonio.</p>
+          style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5;">Puede
+          ser porque uno le debía al otro, porque quiso regalarle esta plata,
+          o porque le hizo un favor y esto es la devuelta — vos solo sos el
+          intermediario. Esta plata deja de ser de este encargo y pasa a ser
+          del otro. Sigue siendo ajena todo el tiempo — no toca tus cuentas
+          ni tu patrimonio.</p>
         <div class="info-box info-box-green"
           style="font-family:'DM Mono',monospace;">
           Encargo: <span id="transfEncOrigenNombre"
@@ -3284,7 +3286,7 @@
           · Saldo: <span id="transfEncOrigenSaldo"></span>
         </div>
         <div class="ig"><label class="il" for="transfenc_destino">¿A cuál
-            encargo le pagaste?</label>
+            encargo se la diste?</label>
           <div class="select-wrap"><select id="transfenc_destino"><option
                 value>Seleccionar encargo</option></select></div>
         </div>
@@ -3293,9 +3295,9 @@
               style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
             type="text"
             id="transfenc_desc" maxlength="80"
-            placeholder="Ej: pago a nombre de..."></div>
+            placeholder="Ej: le debía, fue un regalo, fue por un favor..."></div>
         <div class="ig"><label class="il" for="transfenc_monto">¿Cuánto le
-            pagaste?</label><input type="text" inputmode="decimal"
+            diste?</label><input type="text" inputmode="decimal"
             id="transfenc_monto" placeholder="0,00" class="money-input"></div>
         <div class="ig">
           <label class="il" for="transfenc_origen">¿De qué cuenta del encargo

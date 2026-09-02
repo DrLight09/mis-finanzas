@@ -532,6 +532,22 @@ async function eliminarMovimiento(btn) {
         confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(g.fuente), g.monto || 0, 'sube');
         if (!confirmado) return;
       }
+    } else if (g && g.splits && g.splits.length) {
+      // Gasto dividido entre varias cuentas — antes no tenía NINGUNA
+      // protección (g.fuente queda vacío en este caso, ver addGastoVar en
+      // gastos.js), a diferencia del gasto de una sola cuenta de arriba.
+      // Ver CHANGELOG.md#gastos (2026-09-01).
+      const conFuente = g.splits.filter(s => s.fuente);
+      if (conFuente.length) {
+        const opsPosteriores = Math.max(...conFuente.map(s => _cuentaOpsPosteriores(s.fuente, g.fecha, g.id)));
+        const nivel = nivelAntiguedadMovimiento(g.fecha, opsPosteriores, 'gastos');
+        if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
+        if (nivel === 'viejo') {
+          const nombreCuenta = conFuente.length > 1 ? `${conFuente.length} cuentas` : fuenteLabel(conFuente[0].fuente);
+          confirmado = await confirmarBorrarMovimientoViejo(nombreCuenta, g.monto || 0, 'sube');
+          if (!confirmado) return;
+        }
+      }
     }
   } else if (movTipoEl === 'transferencia') {
     const tr = (S.transferencias || []).find(t => t.id === movId);

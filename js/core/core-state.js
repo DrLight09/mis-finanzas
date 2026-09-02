@@ -108,7 +108,9 @@ let S={
       encargos:{opsAviso:2,opsBloqueo:5},
       tarjetas:{opsAviso:2,opsBloqueo:5},
       cuentas:{opsAviso:2,opsBloqueo:5},
-      gastos:{opsAviso:2,opsBloqueo:5}
+      gastos:{opsAviso:2,opsBloqueo:5},
+      alcancia:{opsAviso:2,opsBloqueo:5},
+      plata_comprometida:{opsAviso:2,opsBloqueo:5}
     }
   }
   // alcancia: {saldoRegistrado, depositos, fechaInicio, movimientos:[{id,monto,fecha,fuenteOrigen,ts}], historial:[...]}
@@ -416,7 +418,16 @@ function load(){
   if(!S.ingresosFijos)S.ingresosFijos=[];
   if(!S.misDeudas)S.misDeudas=[];
   if(!S.config)S.config={};
-  if(!S.config.proteccionAntiguedad)S.config.proteccionAntiguedad={diasAviso:90,diasBloqueo:365,spotify:{opsAviso:2,opsBloqueo:5},mesada:{opsAviso:2,opsBloqueo:5},prestamos:{opsAviso:2,opsBloqueo:5},encargos:{opsAviso:2,opsBloqueo:5},tarjetas:{opsAviso:2,opsBloqueo:5},cuentas:{opsAviso:2,opsBloqueo:5},gastos:{opsAviso:2,opsBloqueo:5}};
+  if(!S.config.proteccionAntiguedad)S.config.proteccionAntiguedad={diasAviso:90,diasBloqueo:365};
+  // Backfill por módulo: agrega los umbrales de cualquier módulo que todavía
+  // no exista en la config YA GUARDADA (cuentas con datos de antes de que ese
+  // módulo tuviera su propia entrada) sin pisar valores que el usuario haya
+  // ajustado a mano en los que ya existen. Antes esto solo corría si
+  // proteccionAntiguedad faltaba por completo, así que agregar un módulo
+  // nuevo (ver alcancia/plata_comprometida, 2026-09-01) nunca llegaba a una
+  // cuenta con datos ya guardados — ver CHANGELOG.md#alcancía.
+  const _paDefaults={spotify:{opsAviso:2,opsBloqueo:5},mesada:{opsAviso:2,opsBloqueo:5},prestamos:{opsAviso:2,opsBloqueo:5},encargos:{opsAviso:2,opsBloqueo:5},tarjetas:{opsAviso:2,opsBloqueo:5},cuentas:{opsAviso:2,opsBloqueo:5},gastos:{opsAviso:2,opsBloqueo:5},alcancia:{opsAviso:2,opsBloqueo:5},plata_comprometida:{opsAviso:2,opsBloqueo:5}};
+  Object.keys(_paDefaults).forEach(k=>{ if(!S.config.proteccionAntiguedad[k])S.config.proteccionAntiguedad[k]=_paDefaults[k]; });
   // Sincronizar color de misDeudas desde la persona vinculada (fuente de verdad)
   (S.misDeudas || []).forEach(d => {
     if (d.personaId && S.personas) {

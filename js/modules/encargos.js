@@ -2084,6 +2084,15 @@ function abrirMoverEntreCuentasEncargo() {
   document.getElementById('moverenc_origen_hint').textContent = '';
   document.getElementById('moverenc_destino_hint').textContent = '';
 
+  // Resetear modo split del origen (arranca siempre en modo simple)
+  _moverEncSplitMode = false;
+  const moverEncToggleBtn = document.getElementById('moverenc_split_toggle');
+  const moverEncSimpleModo = document.getElementById('moverenc_origen_simple');
+  const moverEncSplitModo  = document.getElementById('moverenc_origen_split');
+  if (moverEncToggleBtn) { moverEncToggleBtn.textContent = 'Dividir ÷'; moverEncToggleBtn.style.background = 'rgba(200,240,96,.1)'; moverEncToggleBtn.style.borderColor = 'rgba(200,240,96,.3)'; moverEncToggleBtn.style.color = 'var(--accent)'; }
+  if (moverEncSimpleModo) moverEncSimpleModo.style.display = '';
+  if (moverEncSplitModo)  { moverEncSplitModo.style.display = 'none'; document.getElementById('moverencSplitRows').innerHTML = ''; }
+
   const fuentes = getFuentes();
   const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc); // [{cuenta, saldo}]
   const saldoSinCuenta = _getEncargoSaldoSinCuenta(enc);
@@ -2103,6 +2112,12 @@ function abrirMoverEntreCuentasEncargo() {
     origenOpts.push(html`<option value="__sinesp__">Sin especificar (${fmt(saldoSinCuenta)} del encargo)</option>`);
   }
   selOrigen.innerHTML = html`<option value="">Seleccionar cuenta origen</option>${origenOpts}`;
+
+  // El botón "Dividir ÷" solo tiene sentido si hay al menos 2 cuentas de origen
+  // posibles (reales con saldo del encargo, o "Sin especificar") — con una sola
+  // no hay nada que repartir.
+  const origenesDisponibles = fuentesConSaldo.length + (saldoSinCuenta > 0 ? 1 : 0);
+  if (moverEncToggleBtn) moverEncToggleBtn.style.display = origenesDisponibles > 1 ? '' : 'none';
 
   // Pre-seleccionar la cuenta con más saldo del encargo (o "Sin especificar" si es lo único que hay)
   if (cuentasConSaldo.length > 0) {
@@ -2154,12 +2169,92 @@ function _actualizarMoverEncDestinoHint() {
   hint.style.color = 'var(--text3)';
 }
 
+/* ─── Split de ORIGEN en "Mover entre cuentas" ─────────────────────
+   Permite tomar la plata a reubicar de varias cuentas del encargo a
+   la vez (ej. 100mil de Nequi + 20mil de Efectivo → una sola cajita),
+   en vez de tener que hacer dos reubicaciones manuales. El destino
+   sigue siendo siempre una sola cuenta — es solo el origen el que se
+   puede repartir. Mismo motor genérico que usan Mesada/Encargos-salida/
+   UsarParte (js/core/split.js), instancia propia 'moverenc'. */
+let _moverEncSplitMode = false;
+
+crearSplitWidget('moverenc', {
+  simpleId:'moverenc_origen_simple', splitId:'moverenc_origen_split', toggleId:'moverenc_split_toggle', rowsId:'moverencSplitRows',
+  getModo:()=>_moverEncSplitMode, setModo:v=>{_moverEncSplitMode=v;},
+  getFuentesFn:_moverEncGetFuentesOptions,
+  onPreview:_moverEncSplitPreview
+});
+
+function _moverEncSplitToggle(){ splitToggle('moverenc'); }
+function _moverEncAgregarSplitRow(){ splitAgregarRow('moverenc'); }
+function _moverEncGetSplitData(){ return splitGetData('moverenc'); }
+
+function _moverEncGetFuentesOptions(selectedVal) {
+  const enc = encargoActualId ? getEncargo(encargoActualId) : null;
+  if (!enc) return buildFuentesOptsHtml({ selectedVal });
+  const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
+  const saldoSinCuenta = _getEncargoSaldoSinCuenta(enc);
+  // Mismo orden que en el modo simple: cuentas reales del encargo primero
+  // (ya vienen ordenadas de mayor a menor saldo), "Sin especificar" al final.
+  const fuentesCustom = cuentasConSaldo.slice();
+  if (saldoSinCuenta > 0) fuentesCustom.push({ cuenta: '__sinesp__', label: 'Sin especificar', saldo: saldoSinCuenta });
+  return buildFuentesOptsHtml({ selectedVal, mostrarSaldo: true, fuentesCustom });
+}
+
+function _moverEncSplitPreview() {
+  const enc = getEncargo(encargoActualId);
+  if (enc) _actualizarMoverEncPreview(enc);
+}
+
 function _actualizarMoverEncPreview(enc) {
-  const monto = parseMoney(document.getElementById('moverenc_monto').value) || 0;
-  const origen = document.getElementById('moverenc_origen').value;
   const destino = document.getElementById('moverenc_destino').value;
   const prev = document.getElementById('moverenc_preview');
   if (!prev) return;
+
+  if (_moverEncSplitMode) {
+    const montoTotal = parseMoney(document.getElementById('moverenc_monto').value) || 0;
+    const splits = _moverEncGetSplitData(); // [{fuente, monto}]
+    if (splits.length === 0 || !destino) { prev.innerHTML = ''; return; }
+    if (splits.some(s => s.fuente && s.fuente === destino)) {
+      prev.innerHTML = '<span style="color:var(--red);">La cuenta destino no puede repetirse como origen</span>';
+      return;
+    }
+    const cuentas = _getEncargoSaldoPorCuenta(enc);
+    const saldoSinCuenta = _getEncargoSaldoSinCuenta(enc);
+    const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
+    let excedeAlguna = false;
+
+    const lineasOrigen = splits.map((s, i) => {
+      const esSinEsp = s.fuente === '__sinesp__';
+      const label = esSinEsp ? 'Sin especificar' : fuenteLabel(s.fuente);
+      const saldoEnOrigen = esSinEsp ? saldoSinCuenta : (cuentas.find(c => c.cuenta === s.fuente)?.saldo || 0);
+      const excede = s.monto > saldoEnOrigen;
+      if (excede) excedeAlguna = true;
+      const color = excede ? 'var(--red)' : 'var(--amber)';
+      return html`${i > 0 ? raw('<br>') : ''}<span style="color:${color};">${label} (encargo): ${fmt(saldoEnOrigen)} → ${fmt(saldoEnOrigen - s.monto)}</span>`;
+    });
+
+    const cuentaDestEnc = cuentas.find(c => c.cuenta === destino);
+    const saldoEnDestino = cuentaDestEnc ? cuentaDestEnc.saldo : 0;
+    const nuevoDestino = saldoEnDestino + totalSplit;
+
+    const restante = montoTotal - totalSplit;
+    let avisoMonto = '';
+    if (montoTotal > 0) {
+      if (restante > 0.5)      avisoMonto = html`<br><span style="color:var(--amber);font-size:10px;">Sin asignar: ${fmt(restante)}</span>`;
+      else if (restante < -0.5) avisoMonto = html`<br><span style="color:var(--red);font-size:10px;">Excede el monto ingresado: ${fmt(-restante)}</span>`;
+    }
+
+    prev.innerHTML = html`${lineasOrigen}<br>
+      <span style="color:var(--blue);">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} → ${fmt(nuevoDestino)}</span>
+      ${excedeAlguna ? html`<br><span style="color:var(--red);font-size:10px;">Excede lo que el encargo tiene en esa cuenta</span>` : ''}
+      ${avisoMonto}`;
+    return;
+  }
+
+  // ── Modo simple (una sola cuenta origen) ──────────────────────────
+  const monto = parseMoney(document.getElementById('moverenc_monto').value) || 0;
+  const origen = document.getElementById('moverenc_origen').value;
   if (!monto || !origen || !destino) { prev.innerHTML = ''; return; }
   if (origen === destino) {
     prev.innerHTML = '<span style="color:var(--red);">Origen y destino no pueden ser la misma cuenta</span>';
@@ -2181,19 +2276,95 @@ function _actualizarMoverEncPreview(enc) {
     ${excede ? html`<br><span style="color:var(--red);font-size:10px;">Excede lo que el encargo tiene en esa cuenta</span>` : ''}`;
 }
 
+// Rama split de confirmarMoverEncCuentas: la plata a reubicar sale de varias
+// cuentas del encargo a la vez, todo hacia el mismo destino. Se registra una
+// 'salida' interna por cada fila del split (mismo criterio de _splitTotal/
+// _splitParte/_splitDe que usa la salida dividida de "Retirar plata", ver
+// confirmarMovEncargo más arriba) + una única 'entrada' en el destino por el
+// total. No se agrupan para borrado — igual que esa salida dividida, cada
+// parte queda como un registro independiente en el historial del encargo.
+function _confirmarMoverEncCuentasSplit(enc, montoIngresado, destino, fecha) {
+  const splits = _moverEncGetSplitData(); // [{fuente, monto}]
+  if (splits.length === 0) { toast('Agrega al menos una cuenta de origen', 'err'); return; }
+  if (splits.some(s => !s.fuente)) { toast('Selecciona la cuenta de origen en cada fila', 'err'); return; }
+
+  const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
+  if (!totalSplit) { toast('Ingresa cuánto sale de cada cuenta', 'err'); return; }
+  if (Math.abs(totalSplit - montoIngresado) > 0.5) {
+    toast(`La suma del split (${fmt(totalSplit)}) debe ser igual al monto (${fmt(montoIngresado)})`, 'err'); return;
+  }
+  if (splits.some(s => s.fuente === destino)) {
+    toast('Origen y destino no pueden ser la misma cuenta', 'err'); return;
+  }
+  const fuentesUsadas = splits.map(s => s.fuente);
+  if (new Set(fuentesUsadas).size !== fuentesUsadas.length) {
+    // Guarda de más: el select de cada fila ya excluye las cuentas usadas en
+    // las otras (ver splitActualizarOpciones en split.js), no debería pasar.
+    toast('No puedes repetir la misma cuenta de origen en dos filas', 'err'); return;
+  }
+  // Validar saldo del encargo en cada cuenta de origen, una por una
+  for (const s of splits) {
+    const esSinEsp = s.fuente === '__sinesp__';
+    const labelOrigen = esSinEsp ? 'Sin especificar' : fuenteLabel(s.fuente);
+    const saldoEnOrigen = esSinEsp ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, s.fuente);
+    if (s.monto > saldoEnOrigen + 0.5) {
+      toast('El encargo solo tiene ' + fmt(saldoEnOrigen) + ' en ' + escHtml(labelOrigen), 'err');
+      return;
+    }
+  }
+
+  if (!enc.movimientos) enc.movimientos = [];
+  const partes = splits.length;
+  splits.forEach((s, i) => {
+    const esSinEsp = s.fuente === '__sinesp__';
+    enc.movimientos.push({
+      id: uid(),
+      tipo: 'salida',
+      desc: 'Reubicación → ' + fuenteLabel(destino),
+      monto: s.monto,
+      // Si el origen es "Sin especificar" se guarda sin cuenta (mismo criterio que el modo simple)
+      cuenta: esSinEsp ? '' : s.fuente,
+      fecha,
+      nota: 'Movimiento interno entre cuentas',
+      ts: Date.now() + i,
+      ...(partes > 1 ? { _splitTotal: totalSplit, _splitParte: i + 1, _splitDe: partes } : {})
+    });
+  });
+
+  const labelsOrigen = splits.map(s => s.fuente === '__sinesp__' ? 'Sin especificar' : fuenteLabel(s.fuente));
+  enc.movimientos.push({
+    id: uid(),
+    tipo: 'entrada',
+    desc: 'Reubicación ← ' + labelsOrigen.join(' + '),
+    monto: totalSplit,
+    cuenta: destino,
+    fecha,
+    nota: 'Movimiento interno entre cuentas',
+    ts: Date.now() + partes
+  });
+
+  save();
+  closeSheet('mover-enc-cuentas');
+  abrirEncargoDetalle(encargoActualId);
+  toast(fmt(totalSplit) + ' reubicados a ' + escHtml(fuenteLabel(destino)), 'ok', 3500);
+}
+
 function confirmarMoverEncCuentas() {
   const monto = parseMoney(document.getElementById('moverenc_monto').value) || 0;
-  const origen = document.getElementById('moverenc_origen').value;
   const destino = document.getElementById('moverenc_destino').value;
   const fecha = document.getElementById('moverenc_fecha').value || hoy();
 
   if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
-  if (!origen) { toast('Selecciona la cuenta de origen', 'err'); return; }
   if (!destino) { toast('Selecciona la cuenta de destino', 'err'); return; }
-  if (origen === destino) { toast('Origen y destino no pueden ser la misma cuenta', 'err'); return; }
 
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
+
+  if (_moverEncSplitMode) { _confirmarMoverEncCuentasSplit(enc, monto, destino, fecha); return; }
+
+  const origen = document.getElementById('moverenc_origen').value;
+  if (!origen) { toast('Selecciona la cuenta de origen', 'err'); return; }
+  if (origen === destino) { toast('Origen y destino no pueden ser la misma cuenta', 'err'); return; }
 
   const esOrigenSinEspecificar = origen === '__sinesp__';
   const labelOrigen = esOrigenSinEspecificar ? 'Sin especificar' : escHtml(fuenteLabel(origen));
@@ -2842,6 +3013,8 @@ Events.registerAll('encargos', {
   salidaMenuIr:           (...args) => _salidaEncMenuIr(...args),         // data-args: ["normal"|"mio"|"otroEncargo"|"tc"]
   abrirTraspaso:          (...args) => abrirTraspasoEncargo(...args),
   abrirMoverCuentas:      (...args) => abrirMoverEntreCuentasEncargo(...args),
+  moverEncSplitToggle:      (...args) => _moverEncSplitToggle(...args),
+  moverEncAgregarSplitRow:  (...args) => _moverEncAgregarSplitRow(...args),
   abrirTransferencia:     (...args) => abrirTransferenciaEncargo(...args),
   abrirCompraTC:          (...args) => abrirCompraConTC(...args),
   abrirNuevaParte:        (...args) => abrirNuevaParte(...args),

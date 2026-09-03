@@ -680,10 +680,19 @@ async function eliminarMovimiento(btn) {
     }
   } else if (movTipoEl === 'egreso') {
     // Retiro manual de una cuenta personalizada. _getMovimientosCuentaCustom()
-    // (cuentas.js) muestra así CUALQUIER salida de una cuenta custom — tanto si
-    // el registro original vive en S.movimientos (tipo 'salida_manual') como si
-    // solo vive en c.movimientos (tipo 'egreso'/'salida_manual', doble-escritura
-    // de confirmarMovCustom()). Hasta ahora ninguna rama de este switch coincidía
+    // (cuentas.js) muestra así CUALQUIER salida de una cuenta custom cuyo
+    // registro vive en S.movimientos (tipo 'salida_manual', escrito hoy por
+    // registrarSalida() vía el sheet genérico "Restar dinero" — el mismo que
+    // usan Nequi/Efectivo) — a diferencia de las cuentas estándar, donde ese
+    // mismo tipo 'salida_manual' se muestra tal cual, sin traducir a 'egreso'
+    // (ver tipoDisplay en getMovimientosCuenta() vs _getMovimientosCuentaCustom()
+    // en cuentas.js — inconsistencia de nombres entre ambos, no de datos).
+    // También cubre datos históricos de una función ya retirada del código
+    // (confirmarMovCustom(), sheet "mov-cuenta-custom") que además duplicaba el
+    // registro en c.movimientos con tipo 'egreso' — de ahí el filter() sobre
+    // c.movimientos más abajo, que hoy es un no-op para movimientos nuevos
+    // (solo viven en S.movimientos) y sigue siendo necesario para limpiar los
+    // viejos. Hasta el fix original ninguna rama de este switch coincidía
     // con 'egreso': el borrado no revertía el saldo (c.saldo) ni quitaba el
     // registro de ninguno de los dos arrays, y aun así caía en el
     // save()+refresh()+toast de éxito de más abajo — ver CHANGELOG.md#cuentas

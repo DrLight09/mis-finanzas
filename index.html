@@ -1039,8 +1039,6 @@
                 </button>
               </div>
             </div>
-            <!-- Banner saldo inicial cuenta personalizada -->
-            <div id="banner-apertura-custom"></div>
             <div id="det-custom-encargos"></div>
             <div class="sec-title">Movimientos registrados</div>
             <div id="movs-filtros-custom" class="movs-filtros-wrap"></div>
@@ -2276,7 +2274,7 @@
               <div class="cfg-toggle-info">
                 <div class="cfg-toggle-label">Saldo inicial</div>
                 <div class="cfg-toggle-sub">Muestra el banner de saldo inicial
-                  en Nequi, Efectivo y tus cuentas personalizadas</div>
+                  en Nequi y Efectivo</div>
               </div>
               <label class="toggle-sw">
                 <input type="checkbox" id="cfg-corregirSaldo"
@@ -2746,6 +2744,28 @@
         <button type="button" class="btn btn-primary" data-action="cuentas:guardarChequeoNu" data-args="[]">Guardar
           chequeo</button>
         <button type="button" class="btn btn-ghost" data-close-sheet="chequeo-nu">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- MOVIMIENTO CUENTA PERSONALIZADA -->
+    <div class="overlay" id="sheet-mov-cuenta-custom"
+      data-sheet-id="mov-cuenta-custom">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="mcc-title">Agregar dinero</div>
+        <div class="ig"><label class="il" for="mcc-nota">Descripción <span
+              style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
+            type="text" id="mcc-nota" maxlength="60"
+            placeholder="Ej: encargo de Juan, pago recibido..."></div>
+        <div class="ig"><label class="il" for="mcc-monto">Monto</label><input
+            type="text" inputmode="decimal" id="mcc-monto" placeholder="0,00"
+            class="money-input"></div>
+        <div class="ig"><label class="il" for="mcc-fecha">Fecha</label><input
+            type="date" id="mcc-fecha"></div>
+        <button type="button" class="btn btn-primary" id="mcc-btn"
+          data-action="cuentas:confirmarMovCustom" data-args="[]">Agregar</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="mov-cuenta-custom">Cancelar</button>
       </div>
     </div>
 
@@ -3583,12 +3603,30 @@
           Encargo: <span id="moverEncNombre" style="font-weight:600;color:var(--amber);"></span>
           · Saldo: <span id="moverEncSaldo"></span>
         </div>
-        <div class="ig">
-          <label class="il" for="moverenc_origen">¿De qué cuenta sale?</label>
-          <div class="select-wrap"><select id="moverenc_origen"><option
-                value>Seleccionar cuenta origen</option></select></div>
-          <div id="moverenc_origen_hint"
-            style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+        <div class="ig" id="moverenc_origen_wrap">
+          <div class="field-header">
+            <label class="il" for="moverenc_origen">¿De qué cuenta sale?</label>
+            <button type="button" id="moverenc_split_toggle"
+              data-action="encargos:moverEncSplitToggle"
+              class="btn-split">
+              Dividir ÷
+            </button>
+          </div>
+          <!-- Modo simple: una sola cuenta origen -->
+          <div id="moverenc_origen_simple">
+            <div class="select-wrap"><select id="moverenc_origen"><option
+                  value>Seleccionar cuenta origen</option></select></div>
+            <div id="moverenc_origen_hint"
+              style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
+          </div>
+          <!-- Modo dividido: la plata sale de varias cuentas del encargo a la vez -->
+          <div id="moverenc_origen_split" style="display:none;">
+            <div id="moverencSplitRows"></div>
+            <button type="button" data-action="encargos:moverEncAgregarSplitRow"
+              class="btn-add-cuenta" style="margin-top:4px;">
+              + Agregar cuenta
+            </button>
+          </div>
         </div>
         <div class="ig">
           <label class="il" for="moverenc_destino">¿A qué cuenta va?</label>

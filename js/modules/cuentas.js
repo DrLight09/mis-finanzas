@@ -304,16 +304,27 @@ function abrirCustomCuenta(id){
     btnAg.style.background=`rgba(${hexRgb},.12)`;
     btnAg.style.borderColor=`rgba(${hexRgb},.35)`;
     btnAg.style.color=hex;
-    btnAg.onclick=()=>abrirMovCustom('ingreso');
+    // Antes abría el sheet simple "mov-cuenta-custom" (solo monto/nota/fecha).
+    // Ahora reutiliza el mismo sheet "agregar-dinero" que usan Nequi/Efectivo,
+    // así las cuentas personalizadas también tienen el toggle "Es saldo
+    // inicial (ya lo tenía)" — antes solo se podía fijar el saldo inicial
+    // una vez, al crear la cuenta.
+    btnAg.onclick=()=>abrirAgregarDinero('custom:'+id,c.nombre);
   }
   const btnRe=document.getElementById('btn-restar-custom-det');
-  if(btnRe) btnRe.onclick=()=>abrirMovCustom('egreso');
+  if(btnRe) btnRe.onclick=()=>abrirRestarDinero('custom:'+id,c.nombre);
   const btnTr=document.getElementById('btn-transferir-custom-det');
   if(btnTr) btnTr.onclick=()=>abrirTransferir('custom:'+id);
   const btnEl=document.getElementById('btn-eliminar-cuenta-custom');
   if(btnEl) btnEl.onclick=()=>eliminarCuentaCustom(id);
   const btnEd=document.getElementById('btn-editar-cuenta-custom');
   if(btnEd) btnEd.onclick=()=>editarCuentaCustom(id);
+  // Banner saldo inicial (mismo patrón que Nequi/Efectivo). El div es fijo
+  // (banner-apertura-custom) porque esta pantalla se reutiliza para cualquier
+  // cuenta personalizada — no hay un div por cada id — por eso el elId se pasa
+  // explícito en vez del elId por-defecto que arma renderBannerApertura con el
+  // fuente completo (que traería el ':' del id y no matchearía nada).
+  renderBannerApertura('custom:'+id,{elId:'banner-apertura-custom'});
   renderMovsCustom(c);
   if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-custom-encargos', 'custom:'+id);
   document.getElementById('cuentas-selector').style.display='none';
@@ -333,58 +344,13 @@ function renderMovsCustom(c){
   renderMovsCuenta('det-custom-movs', movs, hex, 'custom');
 }
 
-let _movCustomTipo='ingreso';
-function abrirMovCustom(tipo){
-  _movCustomTipo=tipo;
-  const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===_customCuentaActualId);
-  if(!c)return;
-  openSheet('mov-cuenta-custom');
-  document.getElementById('mcc-title').textContent=tipo==='ingreso'?'Agregar a '+c.nombre:'Retirar de '+c.nombre;
-  document.getElementById('mcc-btn').textContent=tipo==='ingreso'?'Agregar':'Retirar';
-  document.getElementById('mcc-btn').style.background=tipo==='ingreso'?'var(--accent)':'rgba(240,104,104,.2)';
-  document.getElementById('mcc-btn').style.color=tipo==='ingreso'?'#0a0a0a':'var(--red)';
-  document.getElementById('mcc-btn').style.borderColor=tipo==='ingreso'?'transparent':'rgba(240,104,104,.4)';
-  const mi=document.getElementById('mcc-monto');
-  if(mi){mi.value='';_moneyDigits.delete(mi);}
-  const ni=document.getElementById('mcc-nota');
-  if(ni)ni.value='';
-  document.getElementById('mcc-fecha').value=hoy();
-}
-
-function confirmarMovCustom(){
-  const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===_customCuentaActualId);
-  if(!c)return;
-  const monto=parseMoney(document.getElementById('mcc-monto').value)||0;
-  if(!monto){toast('Ingresa el monto','err');return;}
-  const nota=document.getElementById('mcc-nota').value.trim();
-  if(!nota){toast('Agrega una descripción','err');return;}
-  const fecha=document.getElementById('mcc-fecha').value||hoy();
-  if(_movCustomTipo==='egreso'&&monto>(c.saldo||0)){
-    toast('Saldo insuficiente. Disponible: '+fmt(c.saldo||0),'err');return;
-  }
-  const fuente='custom:'+c.id;
-  const movId=uid();
-  // Actualizar saldo
-  if(_movCustomTipo==='ingreso') c.saldo=(c.saldo||0)+monto;
-  else c.saldo=Math.max(0,(c.saldo||0)-monto);
-  // Escribir en S.movimientos (para que eliminarMovimiento genérico y getMovimientosCuenta lo lean)
-  if(!S.movimientos)S.movimientos=[];
-  S.movimientos.push({
-    id: movId,
-    tipo: _movCustomTipo==='ingreso'?'entrada':'salida_manual',
-    fuente,
-    monto,
-    fecha,
-    desc: nota,
-  });
-  // También escribir en c.movimientos para compatibilidad con datos existentes
-  if(!c.movimientos)c.movimientos=[];
-  c.movimientos.push({id:movId,tipo:_movCustomTipo,monto,fecha,nota});
-  save();refresh();
-  closeSheet('mov-cuenta-custom');
-  abrirCustomCuenta(_customCuentaActualId);
-  toast(_movCustomTipo==='ingreso'?'Dinero agregado':'Dinero retirado','ok');
-}
+// abrirMovCustom()/confirmarMovCustom() (sheet "mov-cuenta-custom": solo
+// monto/nota/fecha, sin toggle de saldo inicial) se retiraron — Agregar/Retirar
+// en cuentas personalizadas ahora usan los mismos sheets genéricos
+// "agregar-dinero"/"restar-dinero" que Nequi y Efectivo (ver abrirCustomCuenta).
+// Se elimina la función completa en vez de dejarla como código muerto sin
+// llamador (mismo criterio que en configuracion.js, ver su nota de cabecera
+// sobre leerArchivoImport/import-validado.js).
 
 async function eliminarCuentaCustom(id){
   const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
@@ -2252,14 +2218,38 @@ function confirmarAgregarDineroMenu(){
 let _eaFuente=''; // 'nequi' | 'efectivo'
 
 function getAperturaMov(fuente){
-  // Busca el movimiento de apertura de S.movimientos para nequi/efectivo
-  return (S.movimientos||[]).find(m=>m.fuente===fuente&&m.tipo==='apertura');
+  // Busca el movimiento de apertura de S.movimientos para nequi/efectivo/custom
+  // (registrado desde el banner "Registrar saldo inicial" o desde el toggle
+  // del sheet "Agregar dinero").
+  const mov=(S.movimientos||[]).find(m=>m.fuente===fuente&&m.tipo==='apertura');
+  if(mov)return mov;
+  // Cuentas personalizadas: si el saldo inicial se fijó al CREAR la cuenta
+  // (crearCuentaCustom), ese movimiento vive en c.movimientos[] — no en
+  // S.movimientos, porque no lleva campo `fuente` (no hace falta, ya está
+  // adentro de la cuenta). Sin este fallback, el banner de saldo inicial
+  // mostraría "Registrar" en vez de "Corregir" para esas cuentas y dejaría
+  // crear un segundo registro de apertura duplicado.
+  if(fuente&&fuente.startsWith('custom:')){
+    const id=fuente.split(':')[1];
+    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+    if(c)return (c.movimientos||[]).find(m=>m.tipo==='apertura');
+  }
+  return undefined;
 }
 
-function renderBannerApertura(fuente){
-  const elId='banner-apertura-'+fuente;
+function renderBannerApertura(fuente,opts){
+  // opts.elId: id explícito del contenedor. Necesario para 'custom:ID' — el
+  // default 'banner-apertura-'+fuente le metería el ':' del id de la cuenta
+  // al id del elemento, y de todas formas la pantalla de cuenta personalizada
+  // es una sola plantilla reusada (no un div por cuenta).
+  const elId=(opts&&opts.elId)||('banner-apertura-'+fuente);
   const el=document.getElementById(elId);
   if(!el)return;
+  // Config "Saldo inicial" (cfg-corregirSaldo, ver index.html/configuracion.js):
+  // el toggle decía en su descripción "Muestra el banner de saldo inicial en
+  // Nequi y Efectivo" pero renderBannerApertura() no lo estaba chequeando —
+  // se agrega acá, aplicando parejo a Nequi/Efectivo/cuentas personalizadas.
+  if(S.modulos?.corregirSaldo===false){el.innerHTML='';return;}
   const mov=getAperturaMov(fuente);
   const colorMap={nequi:'#ff4da6',efectivo:'var(--amber)'};
   const color=colorMap[fuente]||'var(--blue)';
@@ -2285,9 +2275,12 @@ function renderBannerApertura(fuente){
 }
 
 function abrirRegistrarApertura(fuente){
-  // Abre el sheet normal de agregar dinero con el toggle de apertura ya marcado
+  // Abre el sheet normal de agregar dinero con el toggle de apertura ya marcado.
+  // nombreMap cubre nequi/efectivo; para 'custom:ID' (y cualquier fuente futura)
+  // cae a fuenteLabel(), que ya sabe resolver el nombre de una cuenta personalizada.
   const nombreMap={nequi:'Nequi',efectivo:'Efectivo'};
-  abrirAgregarDinero(fuente, nombreMap[fuente]);
+  const nombre=nombreMap[fuente]||(typeof fuenteLabel==='function'?fuenteLabel(fuente):fuente);
+  abrirAgregarDinero(fuente, nombre);
   // Forzar toggle activo después de que abra
   setTimeout(()=>{
     const chk=document.getElementById('adEsApertura');
@@ -2302,8 +2295,11 @@ function abrirEditarApertura(fuente){
   _eaFuente=fuente;
   const mov=getAperturaMov(fuente);
   const actual=mov?mov.monto:0;
+  // Mismo fallback a fuenteLabel() que abrirRegistrarApertura, para que el
+  // título salga bien también en cuentas personalizadas ('custom:ID').
   const nombreMap={nequi:'Nequi',efectivo:'Efectivo'};
-  document.getElementById('eaTitle').textContent='Corregir saldo inicial · '+nombreMap[fuente];
+  const nombre=nombreMap[fuente]||(typeof fuenteLabel==='function'?fuenteLabel(fuente):fuente);
+  document.getElementById('eaTitle').textContent='Corregir saldo inicial · '+nombre;
   document.getElementById('eaSaldoActual').textContent=fmt(actual);
   document.getElementById('eaMonto').value='';
   document.getElementById('eaPreview').textContent='';
@@ -2690,7 +2686,6 @@ Events.registerAll('cuentas', {
   selIconoNC,
   selColorNC,
   resetSheetNuevaCuenta: _resetSheetNuevaCuenta,
-  confirmarMovCustom,
   // Cajitas / metas / CDTs
   abrirMetaCajita,
   metaAporteEliminar: _metaAporteEliminar,

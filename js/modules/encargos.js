@@ -2092,6 +2092,8 @@ function abrirMoverEntreCuentasEncargo() {
   if (moverEncToggleBtn) { moverEncToggleBtn.textContent = 'Dividir ÷'; moverEncToggleBtn.style.background = 'rgba(200,240,96,.1)'; moverEncToggleBtn.style.borderColor = 'rgba(200,240,96,.3)'; moverEncToggleBtn.style.color = 'var(--accent)'; }
   if (moverEncSimpleModo) moverEncSimpleModo.style.display = '';
   if (moverEncSplitModo)  { moverEncSplitModo.style.display = 'none'; document.getElementById('moverencSplitRows').innerHTML = ''; }
+  const moverEncMontoWrap = document.getElementById('moverenc_monto_wrap');
+  if (moverEncMontoWrap) moverEncMontoWrap.style.display = ''; // visible por defecto (modo simple)
 
   const fuentes = getFuentes();
   const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc); // [{cuenta, saldo}]
@@ -2185,20 +2187,33 @@ crearSplitWidget('moverenc', {
   onPreview:_moverEncSplitPreview
 });
 
-function _moverEncSplitToggle(){ splitToggle('moverenc'); }
 function _moverEncAgregarSplitRow(){ splitAgregarRow('moverenc'); }
 function _moverEncGetSplitData(){ return splitGetData('moverenc'); }
 
 function _moverEncGetFuentesOptions(selectedVal) {
   const enc = encargoActualId ? getEncargo(encargoActualId) : null;
-  if (!enc) return buildFuentesOptsHtml({ selectedVal });
+  if (!enc) return html`<option value="">Elige cuenta</option>`;
   const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
   const saldoSinCuenta = _getEncargoSaldoSinCuenta(enc);
-  // Mismo orden que en el modo simple: cuentas reales del encargo primero
-  // (ya vienen ordenadas de mayor a menor saldo), "Sin especificar" al final.
-  const fuentesCustom = cuentasConSaldo.slice();
-  if (saldoSinCuenta > 0) fuentesCustom.push({ cuenta: '__sinesp__', label: 'Sin especificar', saldo: saldoSinCuenta });
-  return buildFuentesOptsHtml({ selectedVal, mostrarSaldo: true, fuentesCustom });
+  // Construido a mano (no vía buildFuentesOptsHtml) a propósito: ese helper
+  // usa "Sin especificar" como texto neutro de "nada elegido todavía" (value=""),
+  // que acá chocaba con nuestra opción real "Sin especificar (bucket con plata
+  // del encargo)" — dos opciones con el mismo nombre pero significados
+  // distintos. Con un placeholder neutro ("Elige cuenta") no hay ambigüedad:
+  // una fila vacía nunca se puede confundir con elegir el bucket sin cuenta.
+  const opts = cuentasConSaldo.map(c => html`<option value="${c.cuenta}">${fuenteLabel(c.cuenta)} (${fmt(c.saldo)} del encargo)</option>`);
+  if (saldoSinCuenta > 0) {
+    opts.push(html`<option value="__sinesp__">Sin especificar (${fmt(saldoSinCuenta)} del encargo)</option>`);
+  }
+  return html`<option value="">Elige cuenta</option>${opts}`;
+}
+
+function _moverEncSplitToggle() {
+  splitToggle('moverenc');
+  // El monto total ya no se pide aparte en modo dividido: se deduce sumando
+  // las filas del split, así que el campo "¿Cuánto vas a mover?" se oculta.
+  const montoWrap = document.getElementById('moverenc_monto_wrap');
+  if (montoWrap) montoWrap.style.display = _moverEncSplitMode ? 'none' : '';
 }
 
 function _moverEncSplitPreview() {
@@ -2212,19 +2227,28 @@ function _actualizarMoverEncPreview(enc) {
   if (!prev) return;
 
   if (_moverEncSplitMode) {
-    const montoTotal = parseMoney(document.getElementById('moverenc_monto').value) || 0;
     const splits = _moverEncGetSplitData(); // [{fuente, monto}]
     if (splits.length === 0 || !destino) { prev.innerHTML = ''; return; }
-    if (splits.some(s => s.fuente && s.fuente === destino)) {
+    // Filas con monto pero sin cuenta elegida todavía: no cuentan para el
+    // cálculo, solo se avisan aparte (evita mostrar matemática sin sentido
+    // tipo "Sin especificar: $0 → -$3.000" para una fila que en realidad
+    // solo está incompleta).
+    const filasIncompletas = splits.some(s => !s.fuente);
+    const splitsCompletos = splits.filter(s => s.fuente);
+    if (splitsCompletos.some(s => s.fuente === destino)) {
       prev.innerHTML = '<span style="color:var(--red);">La cuenta destino no puede repetirse como origen</span>';
+      return;
+    }
+    if (splitsCompletos.length === 0) {
+      prev.innerHTML = filasIncompletas ? '<span style="color:var(--amber);font-size:10px;">Falta elegir la cuenta en una o más filas</span>' : '';
       return;
     }
     const cuentas = _getEncargoSaldoPorCuenta(enc);
     const saldoSinCuenta = _getEncargoSaldoSinCuenta(enc);
-    const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
+    const totalSplit = splitsCompletos.reduce((a, s) => a + s.monto, 0);
     let excedeAlguna = false;
 
-    const lineasOrigen = splits.map((s, i) => {
+    const lineasOrigen = splitsCompletos.map((s, i) => {
       const esSinEsp = s.fuente === '__sinesp__';
       const label = esSinEsp ? 'Sin especificar' : fuenteLabel(s.fuente);
       const saldoEnOrigen = esSinEsp ? saldoSinCuenta : (cuentas.find(c => c.cuenta === s.fuente)?.saldo || 0);
@@ -2238,17 +2262,10 @@ function _actualizarMoverEncPreview(enc) {
     const saldoEnDestino = cuentaDestEnc ? cuentaDestEnc.saldo : 0;
     const nuevoDestino = saldoEnDestino + totalSplit;
 
-    const restante = montoTotal - totalSplit;
-    let avisoMonto = '';
-    if (montoTotal > 0) {
-      if (restante > 0.5)      avisoMonto = html`<br><span style="color:var(--amber);font-size:10px;">Sin asignar: ${fmt(restante)}</span>`;
-      else if (restante < -0.5) avisoMonto = html`<br><span style="color:var(--red);font-size:10px;">Excede el monto ingresado: ${fmt(-restante)}</span>`;
-    }
-
     prev.innerHTML = html`${lineasOrigen}<br>
       <span style="color:var(--blue);">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} → ${fmt(nuevoDestino)}</span>
       ${excedeAlguna ? html`<br><span style="color:var(--red);font-size:10px;">Excede lo que el encargo tiene en esa cuenta</span>` : ''}
-      ${avisoMonto}`;
+      ${filasIncompletas ? html`<br><span style="color:var(--amber);font-size:10px;">Falta elegir la cuenta en una o más filas</span>` : ''}`;
     return;
   }
 
@@ -2283,16 +2300,13 @@ function _actualizarMoverEncPreview(enc) {
 // confirmarMovEncargo más arriba) + una única 'entrada' en el destino por el
 // total. No se agrupan para borrado — igual que esa salida dividida, cada
 // parte queda como un registro independiente en el historial del encargo.
-function _confirmarMoverEncCuentasSplit(enc, montoIngresado, destino, fecha) {
+function _confirmarMoverEncCuentasSplit(enc, destino, fecha) {
   const splits = _moverEncGetSplitData(); // [{fuente, monto}]
   if (splits.length === 0) { toast('Agrega al menos una cuenta de origen', 'err'); return; }
   if (splits.some(s => !s.fuente)) { toast('Selecciona la cuenta de origen en cada fila', 'err'); return; }
 
   const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
   if (!totalSplit) { toast('Ingresa cuánto sale de cada cuenta', 'err'); return; }
-  if (Math.abs(totalSplit - montoIngresado) > 0.5) {
-    toast(`La suma del split (${fmt(totalSplit)}) debe ser igual al monto (${fmt(montoIngresado)})`, 'err'); return;
-  }
   if (splits.some(s => s.fuente === destino)) {
     toast('Origen y destino no pueden ser la misma cuenta', 'err'); return;
   }
@@ -2350,18 +2364,18 @@ function _confirmarMoverEncCuentasSplit(enc, montoIngresado, destino, fecha) {
 }
 
 function confirmarMoverEncCuentas() {
-  const monto = parseMoney(document.getElementById('moverenc_monto').value) || 0;
   const destino = document.getElementById('moverenc_destino').value;
   const fecha = document.getElementById('moverenc_fecha').value || hoy();
 
-  if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
   if (!destino) { toast('Selecciona la cuenta de destino', 'err'); return; }
 
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
 
-  if (_moverEncSplitMode) { _confirmarMoverEncCuentasSplit(enc, monto, destino, fecha); return; }
+  if (_moverEncSplitMode) { _confirmarMoverEncCuentasSplit(enc, destino, fecha); return; }
 
+  const monto = parseMoney(document.getElementById('moverenc_monto').value) || 0;
+  if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
   const origen = document.getElementById('moverenc_origen').value;
   if (!origen) { toast('Selecciona la cuenta de origen', 'err'); return; }
   if (origen === destino) { toast('Origen y destino no pueden ser la misma cuenta', 'err'); return; }

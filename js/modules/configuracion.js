@@ -171,7 +171,7 @@ function leerArchivoImport(e){
       Object.assign(S, data);
       // Repintar YA la pantalla activa con los datos recién importados — sin esto,
       // S ya tiene los datos nuevos pero la UI sigue mostrando lo que había antes
-      // de importar hasta que el location.reload() de más abajo dispara a los 4s.
+      // de importar hasta que el location.reload() de más abajo confirme el guardado.
       if (typeof refresh === 'function') refresh();
       // Marcar timestamp ANTES del debounce de guardado
       const _impTs = Date.now();
@@ -179,12 +179,32 @@ function leerArchivoImport(e){
       try { localStorage.setItem('mf_lastSavedAt', String(_impTs)); } catch(_){}
       window._importing = true;
       setTimeout(() => { window._importing = false; }, 5000);
-      // Usar _fbSaveToCloud() en lugar de save() para guardar window.S
-      // directamente sin leer del DOM (que aún muestra valores viejos).
-      if(window._fbSaveToCloud) window._fbSaveToCloud();
-      // Recargar cuando el debounce de 1.5s + escritura en Firestore hayan terminado.
-      setTimeout(() => { location.reload(); }, 4000);
-      toast('Datos importados correctamente — recargando…','ok');
+      // FIX (2026-09-05): antes se llamaba a _fbSaveToCloud() sin revisar el
+      // resultado y se mostraba "Datos importados correctamente" + reload a
+      // los 4s pase lo que pase. Si _fbSaveToCloud() no llegaba a escribir
+      // (p.ej. window._dataLoaded todavía en false justo después de un
+      // reinicio de la app), el toast mentía: no se había guardado nada, y
+      // el reload de los 4s volvía a traer el dato viejo de Firestore. Ver
+      // auditoria-tecnica.md — caso real: cajita Spotify import que "quedó
+      // bien" en pantalla pero no sobrevivió al recargar.
+      // Ahora _fbSaveToCloud() devuelve una promesa con el resultado real, y
+      // el toast + el reload dependen de que esa promesa diga ok:true.
+      if(!window._fbSaveToCloud){
+        toast('Los datos se cargaron en la app pero no se pudo confirmar el guardado en la nube (función de guardado no disponible). No recargues la página todavía — avisa antes de seguir.','err',7000);
+        return;
+      }
+      toast('Importando y guardando en la nube…','info',3000);
+      const _saveResult = await window._fbSaveToCloud();
+      if(_saveResult && _saveResult.ok){
+        toast('Datos importados correctamente — recargando…','ok');
+        // Recargar solo una vez confirmado el guardado (ya no hace falta
+        // esperar un tiempo fijo — el await de arriba ya cubrió el debounce
+        // de 1.5s y el setDoc()).
+        setTimeout(() => { location.reload(); }, 800);
+      } else {
+        const _motivo = (_saveResult && _saveResult.reason) || 'desconocido';
+        toast('No se pudo guardar en la nube (motivo: '+_motivo+'). Los datos quedaron cargados localmente, pero NO recargues la página — se perderían. Reintenta importar en unos segundos.','err',8000);
+      }
     }catch(err){
       if(err instanceof SyntaxError){
         toast('El archivo no es un JSON válido','err');

@@ -25,19 +25,40 @@
   // aborta antes del `setDoc` — no se gasta escritura de Firestore ni se
   // dispara el toast en otras pestañas/dispositivos.
   let _saveTimer = null;
+  // _savePromise/_saveResolve: FIX (2026-09-05) — _fbSaveToCloud() era
+  // "fire and forget": no había forma de saber, desde afuera, si el
+  // guardado con debounce realmente terminó en un setDoc() exitoso, en
+  // un "no hacía falta escribir nada" (payload idéntico), o si nunca
+  // llegó a intentarlo (guards de _dataLoaded/_fbUser/_fb). Eso permitía
+  // que llamadores como leerArchivoImport() (configuracion.js) mostraran
+  // "Datos importados correctamente" y recargaran la página sin haber
+  // guardado nada de verdad si _fbSaveToCloud() se llamaba antes de que
+  // _dataLoaded fuera true (ver auditoria-tecnica.md).
+  // Ahora _fbSaveToCloud() siempre devuelve una Promise que resuelve con
+  // {ok:boolean, reason:string}. Como varias llamadas seguidas comparten
+  // el mismo debounce (clearTimeout de la anterior), todas comparten
+  // también la misma promesa pendiente — así ninguna llamada se queda
+  // esperando una promesa que el clearTimeout canceló.
+  let _savePromise = null;
+  let _saveResolve = null;
   window._fbSaveToCloud = function() {
     // PROTECCIÓN CRÍTICA: nunca guardar si los datos no se han cargado
     // desde Firestore. Evita sobreescribir la nube con datos vacíos
     // si la app se reinicia abruptamente antes de terminar de cargar.
-    if(!window._dataLoaded) return;
+    if(!window._dataLoaded) return Promise.resolve({ok:false, reason:'not-loaded'});
     clearTimeout(_saveTimer);
     setSyncStatus('syncing', 'Guardando…');
+    if(!_savePromise){
+      _savePromise = new Promise((resolve) => { _saveResolve = resolve; });
+    }
     _saveTimer = window._fbSaveTimer = setTimeout(async () => {
-      if(!window._fbUser || !window._fb) return;
+      const resolve = _saveResolve;
+      _savePromise = null; _saveResolve = null;
+      if(!window._fbUser || !window._fb){ resolve({ok:false, reason:'no-auth'}); return; }
       try {
         const {db, doc, setDoc} = window._fb;
         // Firestore no acepta undefined — limpiamos el objeto
-        if(!window.S){setSyncStatus("error","Error: datos no inicializados");return;}
+        if(!window.S){setSyncStatus("error","Error: datos no inicializados");resolve({ok:false, reason:'no-data'});return;}
         const data = JSON.parse(JSON.stringify(window.S));
         const payloadStr = JSON.stringify(data);
         // Nada cambió desde el último guardado real (ni local ni el que
@@ -46,6 +67,7 @@
           setSyncStatus('ok', window._lastSavedAt
             ? 'Guardado en la nube · ' + new Date(window._lastSavedAt).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})
             : 'Sin cambios');
+          resolve({ok:true, reason:'no-changes'});
           return;
         }
         const savedAt = Date.now();
@@ -77,11 +99,14 @@
         );
         window._lastSavedPayload = payloadStr;
         setSyncStatus('ok', 'Guardado en la nube · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
+        resolve({ok:true});
       } catch(e) {
         console.error('Firebase save error:', e);
         setSyncStatus('error', 'Error al guardar — revisa conexión');
+        resolve({ok:false, reason:'error', error:e});
       }
     }, 1500);
+    return _savePromise;
   };
 
   // ── Inicializar la app una sola vez tras la primera carga ─────────────────

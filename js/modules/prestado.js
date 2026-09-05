@@ -2237,6 +2237,17 @@ function confirmarPrestamoTC() {
   const montoTC = (real > 0) ? real : dijo;
   const margen  = dijo - montoTC; // >0 cuando dijiste más de lo que costó
 
+  // Validación de cupo — mismo patrón que tarjetas_credito.js:confirmarCompraTC.
+  // A diferencia de un cargo bancario (interés/comisión), esto SÍ es una
+  // compra que decidiste hacer con tu TC, así que sí debe respetar el cupo.
+  // Se valida contra montoTC (lo que realmente carga la tarjeta), no contra
+  // `dijo` (lo que le dijiste al deudor) — con diferencial activo esos dos
+  // valores pueden ser distintos, y lo que importa acá es cuánto va a la TC.
+  if (tc.cupo && tcCupoDisponible(tc) < montoTC) {
+    toast('Cupo insuficiente en '+escHtml(tc.nombre)+' — cupo disponible: '+fmt(tcCupoDisponible(tc)), 'err', 4000);
+    return;
+  }
+
   // 1. Registrar el préstamo en el deudor con el monto que le dijiste
   if (!d.movimientos) d.movimientos = [];
   const movId = uid();

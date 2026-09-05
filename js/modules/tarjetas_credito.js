@@ -84,12 +84,25 @@ let _tcActualId = null;
 let _tcCompraTcId = null;
 let _tcEditId = null;
 let _tcColorSel = null;
+let _tcCargoEspecialId = null;
 
 const TC_ESTADOS = {
   activa:    {label:'Activa',    badge:null},
   bloqueada: {label:'Bloqueada', badge:'bg-amber'},
   cancelada: {label:'Cancelada', badge:'bg-red'},
   vencida:   {label:'Vencida',   badge:'bg-red'}
+};
+
+// Cargos especiales (ver §7 tarjetas-credito.md): a diferencia de una
+// compra, este es un caso donde el BANCO impone el cargo (intereses,
+// comisiones, correcciones de cierre) — no una decisión de gasto propia.
+// Por eso el flujo de "+ Cargo especial" NO valida cupo disponible, a
+// propósito, mientras que una compra normal (tcCrearCompra vía
+// confirmarCompraTC) sí lo hace siempre.
+const TC_MOTIVOS_CARGO = {
+  interes: 'Interés',
+  comision: 'Comisión',
+  otro: 'Otro cargo del banco'
 };
 
 // ── Helpers básicos ─────────────────────────────────────────────
@@ -194,6 +207,7 @@ function tcCrearCompra(tc,datos){
   };
   if(datos._esFavor) compra._esFavor=true;
   if(datos._desdeCP) compra._desdeCP=true;
+  if(datos._esCargoEspecial){ compra._esCargoEspecial=true; compra._motivoCargo=datos._motivoCargo||'otro'; }
   tc.compras.push(compra);
   tcRecalcular(tc);
   return compra;
@@ -585,6 +599,69 @@ function confirmarCompraTC(){
   toast('Compra registrada — deuda: '+fmt(tc.deuda),'info',3000);
 }
 
+// ── Cargo especial (intereses, comisiones, correcciones) ──────────
+// Caso especial documentado en tarjetas-credito.md §7: el banco puede
+// cobrar intereses/comisiones cuando el cupo ya estaba al tope, y ese
+// cargo por definición supera el cupo configurado. No es una compra
+// (no fue una decisión de gasto tuya), así que este flujo comparte la
+// capa de datos de compras (tcCrearCompra/tcRecalcular/tcEliminarCompraInterna
+// — se borra igual que cualquier compra desde el detalle) pero se salta
+// a propósito la validación de cupo que sí aplica siempre en
+// confirmarCompraTC.
+function abrirCargoEspecialTC(tcId){
+  const tc=getTCById(tcId);
+  if(!tc)return;
+  _tcCargoEspecialId=tcId;
+  document.getElementById('tcx-nombre-header').textContent=tc.nombre;
+  document.getElementById('tcx-deuda-actual').textContent=fmt(tc.deuda||0);
+  document.getElementById('tcx_desc').value='';
+  document.getElementById('tcx_monto').value='';
+  document.getElementById('tcx_motivo').value='interes';
+  document.getElementById('tcx_fecha').value=hoy();
+  document.getElementById('tcx_nota').value='';
+  openSheet('cargo-especial-tc');
+  setTimeout(()=>document.getElementById('tcx_desc').focus(),200);
+}
+
+async function confirmarCargoEspecialTC(){
+  const tc=getTCById(_tcCargoEspecialId);
+  if(!tc){toast('Tarjeta no encontrada','err');return;}
+  const desc=document.getElementById('tcx_desc').value.trim();
+  const monto=parseMoney(document.getElementById('tcx_monto').value)||0;
+  const motivo=document.getElementById('tcx_motivo').value||'otro';
+  const fecha=document.getElementById('tcx_fecha').value||hoy();
+  const nota=document.getElementById('tcx_nota').value.trim();
+  if(!desc){toast('Ingresa una descripción','err');return;}
+  if(!monto){toast('Ingresa un monto válido','err');return;}
+
+  // A propósito SIN validar cupo — ver comentario arriba de la función.
+  const disponible=tc.cupo?tcCupoDisponible(tc):null;
+  const superaCupo=tc.cupo>0 && monto>disponible;
+  const motivoLbl=TC_MOTIVOS_CARGO[motivo]||'Cargo especial';
+  const msgConfirm=superaCupo
+    ? `${fmt(monto)} de ${motivoLbl.toLowerCase()} supera el cupo disponible de ${escHtml(tc.nombre)} (${fmt(disponible)}). Se registra igual porque es un cargo del banco, no una compra tuya — la deuda va a quedar por encima del cupo configurado. ¿Continuar?`
+    : `¿Registrar ${fmt(monto)} de ${motivoLbl.toLowerCase()} en ${escHtml(tc.nombre)}? Sube la deuda directamente, sin validar cupo disponible.`;
+  const ok=await dialogo('Registrar cargo especial',msgConfirm,'Registrar',true);
+  if(!ok)return;
+
+  const compra=tcCrearCompra(tc,{desc,cat:'Cargo especial',fecha,monto,nota,_esCargoEspecial:true,_motivoCargo:motivo});
+
+  if(!S.gastosVar)S.gastosVar=[];
+  S.gastosVar.push({
+    id:uid(),desc,monto,fecha,cat:'Cargo especial',
+    fuente:'tc:'+tc.id,
+    nota:nota||(motivoLbl+' cobrado por el banco en '+tc.nombre),
+    _esCompraTC:true,
+    _tcId:tc.id,
+    _tcCompraId:compra.id
+  });
+
+  closeSheet('cargo-especial-tc');
+  save();refresh();renderTCScreen();
+  abrirDetalleTCSheet(tc.id);
+  toast('Cargo registrado — deuda: '+fmt(tc.deuda),superaCupo?'err':'info',3500);
+}
+
 // ── Pagar TC ───────────────────────────────────────────────────────
 function abrirPagarTC(tcId){
   _tcActualId=tcId;
@@ -772,6 +849,8 @@ function abrirDetalleTCSheet(tcId){
     });
   }
 
+  contenido+=html`<button type="button" ${raw(Events.attr('tarjetas:cargoEspecial',tc.id))} style="width:100%;margin-bottom:12px;padding:9px 12px;background:rgba(240,184,64,.08);border:1px dashed rgba(240,184,64,.35);border-radius:9px;color:var(--amber);font-size:11px;font-weight:600;cursor:pointer;text-align:left;">+ Cargo especial (interés, comisión...) — no valida cupo</button>`;
+
   contenido+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">Movimientos <span style="font-weight:400;font-size:9px;">(${itemsLinea.length})</span></div>`;
 
   if(!itemsLinea.length){
@@ -799,21 +878,25 @@ function abrirDetalleTCSheet(tcId){
       if(item._tipo==='compra'){
         const c=item;
         const esFavor=c._esFavor||c._desdeCP;
+        const esCargoEspecial=!!c._esCargoEspecial;
         const favorBadge=esFavor
           ? `<span style="font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;"><i class="fa-solid fa-handshake" style="margin-right:3px;font-size:7px;"></i>favor</span>`
           : '';
-        const _origenC=c._desdeCP?'Plata comprometida':'Tarjeta de crédito';
-        return html`<div class="gasto-item" ${raw(_tcAttrs(c,_origenC,null))} style="margin-bottom:7px;cursor:pointer;${esFavor?'border-color:rgba(96,176,240,.25);':''}">
+        const _origenC=esCargoEspecial?'Cargo especial del banco':(c._desdeCP?'Plata comprometida':'Tarjeta de crédito');
+        const badgeLabel=esCargoEspecial?('Cargo especial · '+(TC_MOTIVOS_CARGO[c._motivoCargo]||'Otro')):(esFavor?'Favor cubierto':(c.cat||'Sin cat.'));
+        const badgeBg=esCargoEspecial?'rgba(240,184,64,.12)':(esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)');
+        const badgeColor=esCargoEspecial?'var(--amber)':(esFavor?'var(--blue)':'var(--red)');
+        return html`<div class="gasto-item" ${raw(_tcAttrs(c,_origenC,null))} style="margin-bottom:7px;cursor:pointer;${esCargoEspecial?'border-color:rgba(240,184,64,.3);':(esFavor?'border-color:rgba(96,176,240,.25);':'')}">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${c.desc}${raw(favorBadge)}</div><div class="row-sub">${c.fecha}</div></div>
           <div style="display:flex;align-items:center;gap:6px;">
-            <span class="row-amount" style="color:${esFavor?'var(--blue)':'var(--red)'};">${fmt(c.monto)}</span>
+            <span class="row-amount" style="color:${esCargoEspecial?'var(--amber)':(esFavor?'var(--blue)':'var(--red)')};">${fmt(c.monto)}</span>
             <button type="button" class="btn-delete-hover" ${raw(Events.attr('tarjetas:eliminarCompra',tc.id,c.id))} data-stop-propagation="true">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
             </button>
           </div>
         </div>
-        <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)'};color:${esFavor?'var(--blue)':'var(--red)'};">${esFavor?'Favor cubierto':(c.cat||'Sin cat.')}</span>${c.nota?html`<span style="font-size:10px;color:var(--text3);">${c.nota}</span>`:''}</div>
+        <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${badgeBg};color:${badgeColor};">${badgeLabel}</span>${c.nota?html`<span style="font-size:10px;color:var(--text3);">${c.nota}</span>`:''}</div>
       </div>`;
       }
       if(item._tipo==='tcmov'){
@@ -920,6 +1003,7 @@ Events.registerAll('tarjetas', {
   editar:           abrirEditarTC,
   eliminar:         eliminarTC,
   compra:           abrirCompraTC,
+  cargoEspecial:    abrirCargoEspecialTC,
   pagar:            abrirPagarTC,
   verDetalle:       abrirDetalleTCSheet,
   pagoTotal:        ptcSetMonto,
@@ -942,6 +1026,9 @@ if(btnGuardarTC)btnGuardarTC.addEventListener('click',guardarTC);
 
 const btnCompraTC=document.getElementById('btn-confirmar-compra-tc-tarjetas');
 if(btnCompraTC)btnCompraTC.addEventListener('click',confirmarCompraTC);
+
+const btnCargoEspecialTC=document.getElementById('btn-confirmar-cargo-especial-tc');
+if(btnCargoEspecialTC)btnCargoEspecialTC.addEventListener('click',confirmarCargoEspecialTC);
 
 const btnPagarTC=document.getElementById('btn-confirmar-pagar-tc');
 if(btnPagarTC)btnPagarTC.addEventListener('click',confirmarPagarTC);

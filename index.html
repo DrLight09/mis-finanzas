@@ -3635,7 +3635,7 @@
           <div id="moverenc_destino_hint"
             style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;min-height:14px;"></div>
         </div>
-        <div class="ig">
+        <div class="ig" id="moverenc_monto_wrap">
           <label class="il" for="moverenc_monto">¿Cuánto vas a mover?</label>
           <input type="text" inputmode="decimal" id="moverenc_monto"
             placeholder="0,00" class="money-input">
@@ -5296,6 +5296,54 @@
           id="btn-confirmar-pagar-tc">Confirmar pago</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="pagar-tc">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- CARGO ESPECIAL A LA TC (intereses, comisiones, correcciones del banco) -->
+    <div class="overlay" id="sheet-cargo-especial-tc" data-sheet-id="cargo-especial-tc">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Cargo especial a la tarjeta</div>
+        <div
+          style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:10px 13px;margin-bottom:14px;">
+          <div
+            style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:2px;">Deuda
+            actual</div>
+          <div
+            style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--amber);"
+            id="tcx-deuda-actual">$0</div>
+          <div
+            style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;"
+            id="tcx-nombre-header"></div>
+          <div style="font-size:11px;color:var(--text2);margin-top:6px;">
+            Para cargos que el banco te impuso (intereses, comisiones,
+            correcciones) — no valida cupo disponible, a diferencia de una
+            compra normal, porque no es una decisión de gasto tuya.
+          </div>
+        </div>
+        <div class="ig"><label class="il"
+            for="tcx_desc">Descripción</label><input type="text" id="tcx_desc" maxlength="80"
+            placeholder="Ej: Interés por cupo al tope"></div>
+        <div class="ig"><label class="il" for="tcx_monto">Monto</label><input
+            type="text" inputmode="decimal" id="tcx_monto" placeholder="0,00"
+            class="money-input"></div>
+        <div class="ig"><label class="il" for="tcx_motivo">Motivo</label>
+          <div class="select-wrap"><select id="tcx_motivo">
+              <option value="interes">Interés</option>
+              <option value="comision">Comisión</option>
+              <option value="otro">Otro cargo del banco</option>
+            </select></div>
+        </div>
+        <div class="ig"><label class="il" for="tcx_fecha">Fecha</label><input
+            type="date" id="tcx_fecha"></div>
+        <div class="ig"><label class="il" for="tcx_nota">Nota
+            (opcional)</label><input type="text" id="tcx_nota" maxlength="60"
+            placeholder="Detalle adicional"></div>
+        <button type="button" class="btn" style="background:var(--amber);color:#1a1200;"
+          id="btn-confirmar-cargo-especial-tc">Registrar
+          cargo</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="cargo-especial-tc">Cancelar</button>
       </div>
     </div>
 

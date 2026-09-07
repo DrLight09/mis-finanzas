@@ -1707,13 +1707,27 @@ function _getMovimientosCuentaCustom(fuente) {
     }
   });
 
-  // 6. Cobros Spotify
+  // 6. Cobros Spotify (+ abonos posteriores de lo pendiente, cada uno como su propia
+  // tarjeta — antes quedaban invisibles, fundidos dentro de h.monto del cobro original,
+  // ver CHANGELOG.md#spotify). Cada abono puede haber ido a una cuenta distinta a la del
+  // cobro original, así que se filtran por su propio `destino`, no por `h.fuente`.
   (S.spotifyHistorial || []).forEach((h, _spIdx) => {
-    if (h.tipo === 'pago' || h.fuente !== fuente) return;
+    if (h.tipo === 'pago') return;
+    // h.monto acumula el cobro original + todos los abonos ya recibidos (ver
+    // confirmarSpResolverPendiente en spotify.js) — hay que restar los abonos para
+    // no contar esa misma plata dos veces (una acá, otra en su propia tarjeta de abajo).
+    const historialPendTotal = (h.pendienteHistorial || []).reduce((a, ab) => a + (ab.monto || 0), 0);
+    const montoOriginalCobro = Math.max(0, (h.monto || 0) - historialPendTotal);
     // Fallback estable si el registro no tiene id (p.ej. historial antiguo, previo
     // a que se empezara a asignar id a cada cobro de Spotify): usa el índice fijo
     // dentro de S.spotifyHistorial en vez de dejar _movId en null.
-    movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente, _idx: _idx++, _movId: h.id || ('sp_legacy_' + _spIdx), _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
+    if (h.fuente === fuente) {
+      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +montoOriginalCobro, fuente, _idx: _idx++, _movId: h.id || ('sp_legacy_' + _spIdx), _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
+    }
+    (h.pendienteHistorial || []).forEach(ab => {
+      if (ab.destino !== fuente) return;
+      movs.push({ tipo: 'ingreso', fecha: ab.fecha, desc: 'Abono pendiente Spotify (' + h.nombre + ')', monto: +ab.monto, fuente, _idx: _idx++, _movId: ab.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
+    });
   });
 
   // Sort: fecha desc, luego _movId desc (timestamp base-36)
@@ -1826,16 +1840,30 @@ function getMovimientosCuenta(tipo) {
   // directamente S.mesadas, generando un segundo movimiento fantasma sin candado
   // (sin _movId) por cada pago con destino/split real. Ver CHANGELOG.md#mesada.
   // Spotify cobros a personas (no pagos, que ya están en gastosVar como gasto variable)
+  // + abonos posteriores de lo pendiente, cada uno como su propia tarjeta — antes quedaban
+  // invisibles, fundidos dentro de h.monto del cobro original (ver CHANGELOG.md#spotify).
+  // Cada abono puede haber ido a una cuenta distinta a la del cobro original, así que se
+  // filtran por su propio `destino`, no por `h.fuente`.
   (S.spotifyHistorial || []).forEach((h, _spIdx) => {
     if (h.tipo === 'pago') return;
     const matchFuente = tipo === 'nu'
       ? (h.fuente && h.fuente.startsWith('cajita:'))
       : h.fuente === tipo;
+    // h.monto acumula el cobro original + todos los abonos ya recibidos (ver
+    // confirmarSpResolverPendiente en spotify.js) — hay que restar los abonos para
+    // no contar esa misma plata dos veces (una acá, otra en su propia tarjeta de abajo).
+    const historialPendTotal = (h.pendienteHistorial || []).reduce((a, ab) => a + (ab.monto || 0), 0);
+    const montoOriginalCobro = Math.max(0, (h.monto || 0) - historialPendTotal);
     if (matchFuente) {
       // Usar h.id si existe, o fabricar un _movId estable a partir del índice para que el sort
       // funcione igual que los demás movimientos (por timestamp de registro, no por orden de iteración)
-      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +h.monto, fuente: h.fuente, _idx: _idx++, _movId: h.id || ('sp_legacy_' + _spIdx), _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
+      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +montoOriginalCobro, fuente: h.fuente, _idx: _idx++, _movId: h.id || ('sp_legacy_' + _spIdx), _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
     }
+    (h.pendienteHistorial || []).forEach(ab => {
+      const abMatch = tipo === 'nu' ? (ab.destino && ab.destino.startsWith('cajita:')) : ab.destino === tipo;
+      if (!abMatch) return;
+      movs.push({ tipo: 'ingreso', fecha: ab.fecha, desc: 'Abono pendiente Spotify (' + h.nombre + ')', monto: +ab.monto, fuente: ab.destino, _idx: _idx++, _movId: ab.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
+    });
   });
   // Transferencias entre cuentas
   (S.transferencias || []).forEach(t => {

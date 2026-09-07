@@ -350,6 +350,11 @@ function renderSpHistorial(){
           <span style="font-size:10px;color:var(--amber);text-decoration:underline;cursor:pointer;" ${raw(Events.attr('spotify:resolverPendiente', h._realIdx))}>Registrar pago de lo pendiente</span>
         </div>`
       :yaSaldado?html`<div style="font-size:10px;color:var(--accent);margin-top:3px;"><i class="fa-solid fa-check" style="margin-right:3px;"></i>Saldó lo pendiente</div>`:'';
+    // Cada abono de lo pendiente, como su propia línea — antes quedaban invisibles,
+    // fundidos dentro de h.monto (ver CHANGELOG.md#spotify, fix de visibilidad de abonos).
+    const abonosHtml=(h.pendienteHistorial&&h.pendienteHistorial.length)
+      ?html`<div style="margin-top:6px;padding-left:8px;border-left:2px solid var(--border);">${h.pendienteHistorial.map(ab=>html`<div style="font-size:10px;color:var(--text2);margin-top:3px;"><span style="color:var(--accent);">+ ${fmt(ab.monto)}</span> · ${ab.fecha}${ab.destino?' · '+fuenteLabel(ab.destino):''}${ab.nota?html` · <span style="color:var(--blue);">${ab.nota}</span>`:''}</div>`)}</div>`
+      :'';
     const fuentesInfo=h.splits&&h.splits.length
       ?' · '+h.splits.map(s=>fuenteLabel(s.fuente||'')).join(' + ')
       :(h.fuente?' · '+fuenteLabel(h.fuente):'');
@@ -360,6 +365,7 @@ function renderSpHistorial(){
           <div style="font-size:12px;font-weight:500;">${h.tipo==='pago'?'Pago a Spotify':'Cobro de '+h.nombre}</div>
           <div style="font-size:10px;color:var(--text2);margin-top:1px;">${h.fecha}${fuentesInfo}${h.nota?html` · <span style="color:var(--blue);">${h.nota}</span>`:''}</div>
           ${pendienteHtml}
+          ${abonosHtml}
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
           <div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace;white-space:nowrap;color:${raw(h.tipo==='pago'?'var(--red)':'var(--accent)')};">${h.tipo==='pago'?'−':'+'} ${fmt(h.monto)}</div>
@@ -914,7 +920,12 @@ function confirmarSpResolverPendiente(){
   const destino=document.getElementById('spResDestino').value;
   if(destino)sumarFuente(destino,monto);
   if(!h.pendienteHistorial)h.pendienteHistorial=[];
-  h.pendienteHistorial.push({monto,fecha,destino,nota});
+  // id + _secundario/_origenSeccion: mismo criterio que cualquier otro registro
+  // de spotifyHistorial (ver §3 de docs/spotify.md) — permite que cuentas.js
+  // sintetice una tarjeta propia por abono (ver getMovimientosCuenta) y que
+  // eliminarMovimiento() (movimientos.js) lo bloquee contra borrado directo
+  // igual que el cobro original, redirigiendo a Spotify.
+  h.pendienteHistorial.push({id:uid(),monto,fecha,destino,nota,_secundario:true,_origenSeccion:'Spotify'});
   h.pendiente=Math.max(0,h.pendiente-monto);
   h.monto=(h.monto||0)+monto;
   spResolverIdx=null;

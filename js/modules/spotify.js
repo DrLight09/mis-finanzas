@@ -353,7 +353,7 @@ function renderSpHistorial(){
     // Cada abono de lo pendiente, como su propia línea — antes quedaban invisibles,
     // fundidos dentro de h.monto (ver CHANGELOG.md#spotify, fix de visibilidad de abonos).
     const abonosHtml=(h.pendienteHistorial&&h.pendienteHistorial.length)
-      ?html`<div style="margin-top:6px;padding-left:8px;border-left:2px solid var(--border);">${h.pendienteHistorial.map(ab=>html`<div style="font-size:10px;color:var(--text2);margin-top:3px;"><span style="color:var(--accent);">+ ${fmt(ab.monto)}</span> · ${ab.fecha}${ab.destino?' · '+fuenteLabel(ab.destino):''}${ab.nota?html` · <span style="color:var(--blue);">${ab.nota}</span>`:''}</div>`)}</div>`
+      ?html`<div style="margin-top:6px;padding-left:8px;border-left:2px solid var(--border);">${h.pendienteHistorial.map((ab,abIdx)=>html`<div style="font-size:10px;color:var(--text2);margin-top:3px;display:flex;align-items:center;gap:6px;"><span style="flex:1;min-width:0;"><span style="color:var(--accent);">+ ${fmt(ab.monto)}</span> · ${ab.fecha}${ab.destino?' · '+fuenteLabel(ab.destino):''}${ab.nota?html` · <span style="color:var(--blue);">${ab.nota}</span>`:''}</span><span style="cursor:pointer;text-decoration:underline;flex-shrink:0;" ${raw(Events.attr('spotify:deshacerAbonoPendiente', h._realIdx, abIdx))}>deshacer</span></div>`)}</div>`
       :'';
     const fuentesInfo=h.splits&&h.splits.length
       ?' · '+h.splits.map(s=>fuenteLabel(s.fuente||'')).join(' + ')
@@ -638,6 +638,26 @@ async function _borrarSpHistorial(i,h){
   S.spotifyHistorial.splice(i,1);
   save();refresh();
   toast('Movimiento eliminado y plata revertida','ok');
+}
+
+// Deshace un abono puntual de lo pendiente (equivalente a deshacerPendienteMesada
+// en mesada.js) sin tocar el resto del cobro: revierte solo la plata de ESE abono,
+// se lo quita a pendienteHistorial, y devuelve ese monto de h.monto a h.pendiente.
+// Distinto de deleteSpHistorial/_borrarSpHistorial, que borran el cobro completo
+// (con todos sus abonos) de una sola vez.
+async function deshacerAbonoPendienteSp(i,abIdx){
+  const h=S.spotifyHistorial[i];
+  if(!h||!h.pendienteHistorial)return;
+  const ab=h.pendienteHistorial[abIdx];
+  if(!ab)return;
+  const ok=await dialogo('Deshacer abono',`¿Deshacer este abono de ${fmt(ab.monto)}? Esta acción no se puede deshacer. Esto revierte esa plata de ${ab.destino?fuenteLabel(ab.destino):'la cuenta elegida'} y vuelve a marcar esa parte como pendiente.`,'Deshacer',true);
+  if(!ok)return;
+  if(ab.destino)descontarFuente(ab.destino,ab.monto||0);
+  h.monto=Math.max(0,(h.monto||0)-(ab.monto||0));
+  h.pendiente=(h.pendiente||0)+(ab.monto||0);
+  h.pendienteHistorial.splice(abIdx,1);
+  save();refresh();
+  toast('Abono deshecho — vuelve a quedar pendiente '+fmt(h.pendiente),'ok',3000);
 }
 
 function marcarPagoSpotify(i){
@@ -1342,6 +1362,7 @@ Events.registerAll('spotify', {
   eliminar: deleteSpotify,
   eliminarHistorial: deleteSpHistorial,
   resolverPendiente: resolverPendienteSpHistorial,
+  deshacerAbonoPendiente: deshacerAbonoPendienteSp,
 });
 Events.on('spotify:abrirSheetAgregar', () => openSheet('spotify'));
 

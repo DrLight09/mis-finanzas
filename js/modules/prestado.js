@@ -261,22 +261,34 @@ function getDeudorSaldoPatrimonio(d) {
 // (getDeudorSaldo) no cambia — grupoId es puramente organizativo.
 // Ver prestado.md §2.4 para el diseño completo.
 
-// Migra deudores viejos (sin d.grupos) creando un grupo "Histórico" que
-// absorbe todos los movimientos sueltos. Idempotente — se puede llamar en
-// cada abrirDeudor() sin costo si ya está migrado. No llama a save() —
-// eso lo decide quien la invoque, para no generar escrituras de más si el
-// deudor no tiene movimientos que migrar.
+// Obtiene el grupo "Histórico" del deudor, creándolo si todavía no existe.
+// Es el balde por defecto: mientras el usuario no abra un grupo aparte a
+// propósito (checkbox/selector), todo movimiento cae acá. Nunca se cierra
+// solo por saldo — ver _autoCerrarGruposEnCero — así que una vez creado
+// sigue contando como "1 grupo abierto" para siempre, y _autoGrupoIdMov no
+// vuelve a crear otro por defecto.
+function _getOrCrearHistorico(d, fecha) {
+  if (!d.grupos) d.grupos = [];
+  let historico = d.grupos.find(g => g.id === '_historico');
+  if (!historico) {
+    historico = { id: '_historico', nombre: 'Histórico', creadoEn: fecha || hoy(), cerrado: false };
+    d.grupos.push(historico);
+  }
+  return historico;
+}
+
+// Migra deudores viejos (sin d.grupos) metiendo todos sus movimientos sueltos
+// al grupo "Histórico" (ver _getOrCrearHistorico). Idempotente — se puede
+// llamar en cada abrirDeudor() sin costo si ya está migrado. No llama a
+// save() — eso lo decide quien la invoque, para no generar escrituras de más
+// si el deudor no tiene movimientos que migrar.
 function _migrarGruposDeudor(d) {
   if (!d) return false;
   if (!d.grupos) d.grupos = [];
   const movs = d.movimientos || [];
   const sinGrupo = movs.filter(m => !m.grupoId);
   if (!sinGrupo.length) return false;
-  let historico = d.grupos.find(g => g.id === '_historico');
-  if (!historico) {
-    historico = { id: '_historico', nombre: 'Histórico', creadoEn: (sinGrupo[0] && sinGrupo[0].fecha) || hoy(), cerrado: false };
-    d.grupos.push(historico);
-  }
+  const historico = _getOrCrearHistorico(d, sinGrupo[0] && sinGrupo[0].fecha);
   sinGrupo.forEach(m => { m.grupoId = historico.id; });
   return true;
 }
@@ -295,9 +307,13 @@ function _gruposAbiertos(d) {
 // Cierra automáticamente los grupos con saldo 0 que no estén ya cerrados.
 // Se llama tras registrar/eliminar un movimiento para mantener la lista de
 // "grupos abiertos" limpia sin pedirle al usuario que cierre nada a mano.
+// Excepción: "_historico" nunca se cierra solo, así llegue a $0 — es el
+// balde por defecto y debe seguir contando como grupo abierto para que
+// _autoGrupoIdMov nunca tenga que crear uno nuevo sin que el usuario lo pida.
 function _autoCerrarGruposEnCero(d) {
   if (!d || !d.grupos) return;
   d.grupos.forEach(g => {
+    if (g.id === '_historico') return;
     if (!g.cerrado && Math.abs(getGrupoSaldo(d, g.id)) < 1) g.cerrado = true;
     else if (g.cerrado && Math.abs(getGrupoSaldo(d, g.id)) >= 1) g.cerrado = false; // se reabrió (ej. se borró un abono)
   });
@@ -313,13 +329,18 @@ function _crearGrupoDeudor(d, fecha, nombre) {
 }
 
 // Resolución automática de grupoId: último recurso cuando el selector no
-// decidió nada (0 grupos abiertos, o el checkbox/select no aplicaba). Si hay
-// exactamente un grupo abierto lo reutiliza, si hay 0 o ≥2 crea uno nuevo —
-// nunca deja un movimiento sin grupoId, y nunca le adivina a cuál de varios
-// pertenece.
+// decidió nada (0 grupos abiertos, o el checkbox/select no aplicaba).
+// - 1 grupo abierto → lo reutiliza (caso normal: cae en Histórico).
+// - 0 grupos abiertos → usa/crea el Histórico (nunca un grupo nuevo con
+//   nombre de fecha "por sorpresa" — solo el usuario abre grupos aparte,
+//   a propósito, con el checkbox/selector).
+// - ≥2 grupos abiertos → esto solo pasa si igual no hubo selector visible
+//   (ambigüedad real sin cómo resolverla sola); crea uno nuevo para no
+//   adivinar a cuál de varios pertenece.
 function _autoGrupoIdMov(d, fecha) {
   const abiertos = _gruposAbiertos(d);
   if (abiertos.length === 1) return abiertos[0].id;
+  if (abiertos.length === 0) return _getOrCrearHistorico(d, fecha).id;
   return _crearGrupoDeudor(d, fecha).id;
 }
 

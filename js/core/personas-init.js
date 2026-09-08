@@ -16,20 +16,20 @@
 // un timeout fijo sin reintento puede disparar antes de que la función exista
 // y fallar en silencio, para siempre, sin ningún error visible.
 //
-// Se reemplaza por un guard typeof + reintento cada 200ms (mismo patrón que
-// ya usaba pin-bio.js para su hook de refresh()) — dispara apenas
+// Se reemplaza por waitFor() (js/core/wait-for.js) — dispara apenas
 // _inyectarPersonaSheets() está disponible en vez de esperar un número mágico,
 // y no se rompe si algún día personas.js (o algo que dependa de él) deja de
 // cargar eager. Tope de 25 intentos (~5s) para no reintentar para siempre si
-// algo salió mal de verdad.
-function _intentarInyectarPersonaSheets(intentos) {
-  intentos = intentos || 0;
-  if (typeof _inyectarPersonaSheets === 'function') {
-    _inyectarPersonaSheets();
-    return;
-  }
-  if (intentos >= 25) return;
-  setTimeout(() => _intentarInyectarPersonaSheets(intentos + 1), 200);
+// algo salió mal de verdad. Antes esto era un loop propio (setTimeout +
+// contador a mano); ver CHANGELOG.md#infraestructura--seguridad, entrada de
+// consolidación de este patrón (estaba triplicado con mejoras.js/
+// mejoras-adicionales.js).
+function _intentarInyectarPersonaSheets() {
+  waitFor(
+    () => typeof _inyectarPersonaSheets === 'function',
+    _inyectarPersonaSheets,
+    { maxAttempts: 25 }
+  );
 }
 
 window.addEventListener('appDataLoaded', function() {

@@ -215,13 +215,12 @@
   if (typeof window.refresh === 'function') {
     _hookRefreshMejoras(window.refresh);
   } else {
-    // refresh aún no definida — esperar con polling
-    const _tRefresh = setInterval(() => {
-      if (typeof window.refresh === 'function') {
-        clearInterval(_tRefresh);
-        _hookRefreshMejoras(window.refresh);
-      }
-    }, 100);
+    // refresh aún no definida — esperar con waitFor() (js/core/wait-for.js).
+    // Antes esto era un setInterval propio (ver CHANGELOG.md#infraestructura--
+    // seguridad, entrada de consolidación de este patrón: estaba triplicado
+    // con personas-init.js/mejoras-adicionales.js). Sin tope de intentos,
+    // igual que el polling original — refresh() siempre termina existiendo.
+    waitFor(() => typeof window.refresh === 'function', () => _hookRefreshMejoras(window.refresh), { intervalMs: 100 });
   }
 
   // Llamar directamente cuando Firebase termina de cargar los datos.

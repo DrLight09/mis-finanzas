@@ -2,6 +2,17 @@
 // _fbLoadData, onSnapshot, registro de Events('authgate',...) + habilitación
 // del botón de login — extraído de index.html (era <script type="module">
 // inline). Ver auditoria-tecnica.md #2 y CHANGELOG.md#infraestructura--seguridad.
+//
+// import de waitFor (js/core/wait-for.js): reemplaza los dos reintentos
+// manuales con setInterval/setTimeout que tenía este archivo
+// (_runWhenEventListenersReady y el registro de Events('authgate',...), más
+// abajo). Se usa `import` en vez de asumir el `window.waitFor` global
+// porque este archivo carga como `type="module" async`, sin garantía de
+// orden frente al <script defer> que carga wait-for.js — el import se
+// resuelve garantizado antes de que corra el resto de este módulo, sin
+// depender de ningún orden de <script>. Ver CHANGELOG.md#infraestructura--
+// seguridad y el propio js/core/wait-for.js.
+import { waitFor } from './wait-for.js';
 
   // ── Helpers de estado de sync ──────────────────────────────────────────────
   function setSyncStatus(state, text) {
@@ -194,17 +205,20 @@
     _runWhenEventListenersReady();
   }
 
+  // Antes era un setTimeout recursivo propio, cada 20ms, sin tope de
+  // intentos (ver CHANGELOG.md#infraestructura--seguridad, entrada de
+  // consolidación de este patrón). Mismo intervalo de 20ms preservado —
+  // se eligió corto a propósito para minimizar el retraso antes de pintar
+  // tras resolver auth.
   function _runWhenEventListenersReady() {
-    if (typeof _initEventListeners === 'function') {
+    waitFor(() => typeof _initEventListeners === 'function', () => {
       _initEventListeners();
       _injectErrorSpans();
       // FIX 2026-08-13: verificarVencimientosCDT (cuentas.js, grupo lazy) sin
       // guard — mismo problema que _renderTasaHistorialTag arreglado antes:
       // corre en cada arranque de la app, no solo al visitar Cuentas.
       if(typeof verificarVencimientosCDT==='function') verificarVencimientosCDT();
-      return;
-    }
-    setTimeout(_runWhenEventListenersReady, 20);
+    }, { intervalMs: 20 });
   }
 
   // ── Diagnóstico: consultar el log de errores de conexión de Firestore ─────
@@ -675,8 +689,10 @@
     document.querySelectorAll('[data-action^="authgate:"]').forEach(function(b){ b.disabled = false; });
     return true;
   }
+  // Antes era un setInterval propio (ver CHANGELOG.md#infraestructura--
+  // seguridad, entrada de consolidación de este patrón). _registrarEventosAuthgate
+  // ya hace el registro Y devuelve si tuvo éxito, así que sirve directo como
+  // checkFn — waitFor solo lo vuelve a llamar hasta que dé true.
   if (!_registrarEventosAuthgate()) {
-    const _tAuthgate = setInterval(function() {
-      if (_registrarEventosAuthgate()) clearInterval(_tAuthgate);
-    }, 200);
+    waitFor(_registrarEventosAuthgate, () => {});
   }

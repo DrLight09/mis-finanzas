@@ -37,18 +37,24 @@ if ('serviceWorker' in navigator) {
   const _origOpenSheet = window.openSheet;
   if (typeof _origOpenSheet !== 'function') {
     console.warn('[Autofocus] openSheet no estaba definida al momento del parcheo. Reintentando...');
-    // Reintentar una vez que esté disponible
-    const _t = setInterval(() => {
-      if (typeof window.openSheet === 'function' && window.openSheet !== arguments.callee) {
-        clearInterval(_t);
-        const _r = window.openSheet;
-        window.openSheet = function(id) {
-          _r.apply(this, arguments);
-          const focusId = focusMap[id];
-          if (focusId) setTimeout(() => { const el = document.getElementById(focusId); if (el && typeof el.focus === 'function') el.focus(); }, 250);
-        };
-      }
-    }, 100);
+    // Reintentar una vez que esté disponible, con waitFor() (js/core/wait-for.js).
+    // Antes esto era un setInterval propio (ver CHANGELOG.md#infraestructura--
+    // seguridad, entrada de consolidación de este patrón: estaba triplicado
+    // con personas-init.js/mejoras.js) que además comparaba
+    // `window.openSheet !== arguments.callee` dentro de un arrow function —
+    // arguments.callee ahí apunta al IIFE que envuelve todo este archivo, no
+    // a la función interna, así que esa comparación nunca hacía lo que
+    // parecía (bug latente sin efecto real, encontrado al consolidar; se
+    // saca de paso, waitFor() ya cubre el caso con su propio checkFn).
+    const _wrapOpenSheet = () => {
+      const _r = window.openSheet;
+      window.openSheet = function(id) {
+        _r.apply(this, arguments);
+        const focusId = focusMap[id];
+        if (focusId) setTimeout(() => { const el = document.getElementById(focusId); if (el && typeof el.focus === 'function') el.focus(); }, 250);
+      };
+    };
+    waitFor(() => typeof window.openSheet === 'function', _wrapOpenSheet, { intervalMs: 100 });
     return;
   }
   window.openSheet = function(id) {

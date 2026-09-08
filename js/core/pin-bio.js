@@ -1,5 +1,15 @@
 // Sistema de PIN + biometría (WebAuthn) — extraído de index.html (era
 // <script type="module"> inline). Ver auditoria-tecnica.md #2.
+//
+// import de waitFor (js/core/wait-for.js): reemplaza los dos reintentos
+// manuales con setInterval que tenía este archivo (registro de
+// Events('pin',...) y el hook de refresh(), más abajo). Se usa `import` en
+// vez de asumir el `window.waitFor` global porque este archivo carga como
+// `type="module" async`, sin garantía de orden frente al <script defer> que
+// carga wait-for.js — el import se resuelve garantizado antes de que corra
+// el resto de este módulo, sin depender de ningún orden de <script>. Ver
+// CHANGELOG.md#infraestructura--seguridad y el propio js/core/wait-for.js.
+import { waitFor } from './wait-for.js';
 
 /* ================================================================
    PIN + BIOMETRÍA — Sistema de bloqueo con PIN de 4 dígitos y
@@ -321,10 +331,12 @@
     });
     return true;
   }
+  // Antes era un setInterval propio (ver CHANGELOG.md#infraestructura--
+  // seguridad, entrada de consolidación de este patrón). _registrarEventosPin
+  // ya hace el registro Y devuelve si tuvo éxito, así que sirve directo como
+  // checkFn — waitFor solo lo vuelve a llamar hasta que dé true.
   if (!_registrarEventosPin()) {
-    const _tPin = setInterval(function() {
-      if (_registrarEventosPin()) clearInterval(_tPin);
-    }, 200);
+    waitFor(_registrarEventosPin, () => {});
   }
 
   window._pinRenderBtn = _renderBtn;
@@ -368,13 +380,12 @@
       _renderBtn();
     };
   } else {
-    const _t = setInterval(()=>{
-      if(typeof window.refresh === 'function'){
-        clearInterval(_t);
-        const _r2 = window.refresh;
-        window.refresh = function(){ _r2.apply(this,arguments); _renderBtn(); };
-        _renderBtn();
-      }
-    }, 200);
+    // Antes era un setInterval propio (ver CHANGELOG.md#infraestructura--
+    // seguridad, entrada de consolidación de este patrón).
+    waitFor(() => typeof window.refresh === 'function', () => {
+      const _r2 = window.refresh;
+      window.refresh = function(){ _r2.apply(this,arguments); _renderBtn(); };
+      _renderBtn();
+    });
   }
 })();

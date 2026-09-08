@@ -3,16 +3,15 @@
 // del botón de login — extraído de index.html (era <script type="module">
 // inline). Ver auditoria-tecnica.md #2 y CHANGELOG.md#infraestructura--seguridad.
 //
-// import de waitFor (js/core/wait-for.js): reemplaza los dos reintentos
-// manuales con setInterval/setTimeout que tenía este archivo
-// (_runWhenEventListenersReady y el registro de Events('authgate',...), más
-// abajo). Se usa `import` en vez de asumir el `window.waitFor` global
-// porque este archivo carga como `type="module" async`, sin garantía de
-// orden frente al <script defer> que carga wait-for.js — el import se
-// resuelve garantizado antes de que corra el resto de este módulo, sin
-// depender de ningún orden de <script>. Ver CHANGELOG.md#infraestructura--
-// seguridad y el propio js/core/wait-for.js.
-import { waitFor } from './wait-for.js';
+// import de waitFor (js/core/wait-for-module.js — versión ES module
+// independiente de js/core/wait-for.js, ver ese archivo para el porqué):
+// reemplaza los dos reintentos manuales con setInterval/setTimeout que
+// tenía este archivo (_runWhenEventListenersReady y el registro de
+// Events('authgate',...), más abajo). Se usa `import` en vez de asumir un
+// global porque este archivo carga como `type="module" async`, sin
+// garantía de orden frente a ningún <script defer>. Ver
+// CHANGELOG.md#infraestructura--seguridad.
+import { waitFor } from './wait-for-module.js';
 
   // ── Helpers de estado de sync ──────────────────────────────────────────────
   function setSyncStatus(state, text) {

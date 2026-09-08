@@ -1,54 +1,30 @@
 // js/core/wait-for.js
 //
-// Centraliza el patrón "reintentar hasta que una función/condición exista",
-// que estaba reimplementado a mano con setInterval/setTimeout + su propio
-// criterio de reintento en 7 sitios distintos: personas-init.js, mejoras.js,
-// mejoras-adicionales.js (los 3 primeros en consolidarse, ver
-// CHANGELOG.md#infraestructura--seguridad) y, desde esta sesión, también
-// pin-bio.js (registro de Events('pin',...), hook de refresh()) y
-// firebase-sync.js (_runWhenEventListenersReady, registro de
-// Events('authgate',...)). Mismo motivo que ya llevó a centralizar Events
-// (clicks) y _esGastoVarNoReal()/_esEntradaEspejoNoIngreso() (qué es gasto/
-// ingreso real): una sola fuente de verdad en vez de N copias que pueden
-// divergir sin querer.
+// Centraliza el patrón "reintentar hasta que una función/condición exista"
+// para los <script> CLÁSICOS (defer): personas-init.js, mejoras.js,
+// mejoras-adicionales.js. Antes cada uno reimplementaba a mano su propio
+// setInterval/setTimeout + contador de reintentos (ver
+// CHANGELOG.md#infraestructura--seguridad).
 //
-// ── Por qué este archivo es un ES module (no un <script> clásico) ────────
-// La primera consolidación (solo personas-init.js/mejoras.js/mejoras-
-// adicionales.js, los 3 que cargan `defer` clásico) dejó afuera a propósito
-// los reintentos de pin-bio.js/firebase-sync.js: esos dos cargan
-// `type="module" async`, sin garantía de orden frente a un `<script defer>`
-// — depender de un `waitFor` global habría cambiado un polling duplicado
-// por un `ReferenceError` intermitente si este archivo no había terminado
-// de cargar todavía.
+// NOTA — por qué NO es un ES module (corrección tras un intento fallido):
+// La primera versión de este archivo intentó ser un solo archivo híbrido
+// (`export function waitFor` + `window.waitFor = waitFor`) para servir
+// también a pin-bio.js/firebase-sync.js vía `import`. Eso rompió en
+// producción con `ReferenceError: waitFor is not defined` en
+// personas-init.js — el global no estaba listo cuando el script clásico
+// corrió, pese a aparecer antes en el documento. En vez de perseguir la
+// causa exacta (pudo ser orden real módulo-vs-defer, un 404 de despliegue,
+// o ambos), se separó en dos archivos independientes que no comparten
+// ninguna suposición de orden entre sí:
+//   - este archivo (js/core/wait-for.js): <script defer> clásico, para
+//     los 3 consumidores que también son <script defer> clásicos.
+//   - js/core/wait-for-module.js: ES module aparte, para pin-bio.js/
+//     firebase-sync.js (que cargan type="module" async), consumido con
+//     `import` — nunca con un <script> propio, solo como dependencia.
+// Es la misma función escrita dos veces (15 líneas), a propósito: preferible
+// a una unificación "inteligente" que ya demostró romperse.
 //
-// La solución no es "confiar en el orden", es no necesitar orden: un
-// `import` de ES module SIEMPRE se resuelve (se descarga y ejecuta el
-// módulo importado) antes de que corra el código de nivel superior del
-// módulo que importa — es una garantía del propio sistema de módulos,
-// independiente del atributo `async` del `<script>` que lo cargó. Por eso
-// este archivo exporta `waitFor` de verdad (`export function`), y
-// pin-bio.js/firebase-sync.js lo consumen con `import { waitFor } from
-// './wait-for.js'` en vez de asumir un global ya cargado.
-//
-// Al mismo tiempo, personas-init.js/mejoras.js/mejoras-adicionales.js siguen
-// siendo `<script>` clásicos (no conviene convertirlos a módulo solo por
-// esto) y llaman a `waitFor(...)` como identificador global sin `import` —
-// por eso este archivo TAMBIÉN cuelga la función de `window.waitFor` al
-// final. El navegador deduplica por URL resuelta: aunque el módulo se
-// referencie una vez por `<script type="module" src="...">` (para que
-// corra y setee el global) y otra vez por `import` desde otros dos
-// archivos, se descarga y ejecuta una sola vez — nunca dos.
-//
-// Carga como `<script type="module">` (sin `defer`: los módulos ya se
-// comportan como deferred por defecto) en la misma posición que antes
-// tenía como `<script defer>` — después de calc-helpers.js, antes de
-// cualquier otro `defer`/módulo que lo necesite.
-//
-// Uso desde un <script> clásico (defer):
-//   waitFor(() => typeof miFuncion === 'function', () => miFuncion());
-//
-// Uso desde un ES module:
-//   import { waitFor } from './wait-for.js';
+// Uso:
 //   waitFor(() => typeof miFuncion === 'function', () => miFuncion());
 //
 //   waitFor(checkFn, callback, {
@@ -63,7 +39,7 @@
 //          resultado), waitFor solo lo LLAMA repetidamente — no lo envuelve
 //          ni lo modifica.
 // callback: se llama UNA sola vez, apenas checkFn() da true. No recibe argumentos.
-export function waitFor(checkFn, callback, opts) {
+function waitFor(checkFn, callback, opts) {
   opts = opts || {};
   const intervalMs = opts.intervalMs != null ? opts.intervalMs : 200;
   const maxAttempts = opts.maxAttempts != null ? opts.maxAttempts : Infinity;
@@ -84,8 +60,3 @@ export function waitFor(checkFn, callback, opts) {
 
   _tick();
 }
-
-// Exponer también como global para los <script> clásicos (defer) que lo
-// consumen como identificador bare, sin import: personas-init.js,
-// mejoras.js, mejoras-adicionales.js.
-window.waitFor = waitFor;

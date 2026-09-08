@@ -167,6 +167,7 @@ function showScreen(name){
 
   if(name==='config') { if(typeof renderCatsConfig==='function') renderCatsConfig(); if(typeof window._pinRenderBtn==='function') window._pinRenderBtn(); }
   if(name==='analisis') { if(typeof renderAnalisis==='function') renderAnalisis(); }
+  if(name==='wrapped') { if(typeof renderWrapped==='function') renderWrapped(); }
   if(name==='personas') {
     if(typeof _inyectarPersonaSheets==='function') _inyectarPersonaSheets();
     if(typeof _renderListaPersonas==='function') _renderListaPersonas();

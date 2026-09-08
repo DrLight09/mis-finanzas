@@ -161,6 +161,19 @@ const Loader = (function () {
     cuentas: ['js/modules/cuentas.js'],
     analisis: ['js/modules/analisis.js'],
     encargos: ['js/modules/encargos.js'],
+    // Duodécimo grupo lazy (2026-09-07). "Wrapped" — resumen narrativo de
+    // mes/año (patrimonio, gasto, ahorro), pantalla nueva accesible desde
+    // "Más". Caso más simple que los anteriores: no monkey-patchea ninguna
+    // función ajena, no lo llama nadie más (a diferencia de Mesada/Tarjetas,
+    // que sí tenían callers externos con guard typeof que auditar), y sus
+    // únicas dependencias de datos (calcPatrimonioTotal, _esGastoVarNoReal,
+    // _esEntradaEspejoNoIngreso) viven en archivos núcleo eager
+    // (calc-helpers.js/core-state.js), no en otro módulo lazy — así que no
+    // hace falta Loader.ensure() encadenado como sí necesita spotify.js con
+    // tarjetas_credito.js. La única lectura cross-módulo (racha/mejor ciclo
+    // de Alcancía) es opcional y con guard typeof — si Alcancía no cargó
+    // todavía, esa cifra puntual simplemente no se muestra (ver wrapped.js).
+    wrapped: ['js/modules/wrapped.js'],
   };
 
   const loaded = new Set();   // grupos ya cargados (no se vuelven a pedir)

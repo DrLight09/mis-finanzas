@@ -533,7 +533,14 @@ function save(){
   // no una decisión explícita — y grabarlo igual "congelaría" ese número en
   // cuanto se disparara CUALQUIER save() de la app (agregar un gasto, marcar
   // un pago de Nu, etc.), rompiendo la herencia hacia años futuros.
-  if(typeof _getCuotaAnio==='function'){
+  // GUARD (restaurado — ver CHANGELOG.md#mesada, 2026-09-04): mesadaMontoPapa/
+  // mesadaMonteMama son inputs ESTÁTICOS, presentes en el DOM aunque la pantalla
+  // Mesada no esté abierta. Sin este guard, cualquier save() disparado desde
+  // OTRA pantalla (ej. Spotify) confirma como cuota permanente lo que sea que
+  // tengan esos inputs en ese momento — el origen exacto del valor sigue sin
+  // confirmarse, pero este guard es el que impide que se vuelva permanente.
+  const _screenMesadaActiva=document.getElementById('screen-mesada')&&document.getElementById('screen-mesada').classList.contains('active');
+  if(_screenMesadaActiva&&typeof _getCuotaAnio==='function'){
     if(_elPapa&&_elPapa.value.trim()){const v=parseMoney(_elPapa.value);if(v&&v!==_getCuotaAnio('papa',_anioActivo))S.mesadas.papa.cuotas[String(_anioActivo)]=v;}
     if(_elMama&&_elMama.value.trim()){const v=parseMoney(_elMama.value);if(v&&v!==_getCuotaAnio('mama',_anioActivo))S.mesadas.mama.cuotas[String(_anioActivo)]=v;}
   }

@@ -4926,6 +4926,16 @@
 <script src="js/core/html-tag.js" defer></script>
 <script src="js/core/calc-helpers.js" defer></script>
 <!--
+// js/core/wait-for.js — helper waitFor() para los <script defer> clásicos
+// (personas-init.js/mejoras.js/mejoras-adicionales.js). Antes cada uno
+// reimplementaba a mano su propio setInterval + contador de reintentos.
+// pin-bio.js/firebase-sync.js usan su propia copia vía `import` de
+// js/core/wait-for-module.js (no de este archivo) — ver el comentario en
+// ambos archivos y CHANGELOG.md#infraestructura--seguridad para el porqué
+// de la separación.
+-->
+<script src="js/core/wait-for.js" defer></script>
+<!--
 // Módulo Mesada — migrado a js/modules/mesada.js (ver docs/mesada.md).
 // Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, quinto
 // grupo): no tiene dependencia real de orden de carga (no monkey-patchea

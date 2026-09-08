@@ -480,6 +480,109 @@ function _getMoneyVal(id){
   return parseFloat((el.value||'').replace(/\./g,'').replace(',','.')) || 0;
 }
 
+/* ─── FILTRAR SELECTOR DE FUENTE POR SALDO ─────────────────────────────────
+   Solo aplica a selectores de ORIGEN de plata (de dónde sale el dinero que
+   entra a la alcancía) — nunca al selector de destino del destape, donde la
+   plata entra a la cuenta y no hace falta saldo previo. Umbral fijo: se
+   considera "sin plata utilizable" una cuenta con saldo <= 50 pesos.        */
+const _ALC_SALDO_MIN_FUENTE = 50;
+function _alcFiltrarFuentesPorSaldo(selectEl){
+  if(!selectEl || typeof getSaldoFuente !== 'function') return;
+  let quedanCuentas = false;
+  Array.from(selectEl.querySelectorAll('option')).forEach(opt => {
+    if(!opt.value) return; // placeholder ("Seleccionar cuenta"), nunca se filtra
+    const saldo = getSaldoFuente(opt.value) || 0;
+    if(saldo <= _ALC_SALDO_MIN_FUENTE){
+      opt.remove();
+    } else {
+      quedanCuentas = true;
+    }
+  });
+  if(!quedanCuentas){
+    const ph = selectEl.querySelector('option[value=""]');
+    if(ph) ph.textContent = 'No tenés cuentas con saldo disponible';
+  }
+}
+
+/* ─── "WRAPPED" DE ALCANCÍA: progreso de ahorro entre ciclos ──────────────
+   Todo se calcula en vivo desde S.alcancia.historial — no se guarda ningún
+   número nuevo aparte (mismo principio que el resto de la app: los
+   movimientos/registros ya guardados son la única fuente de verdad, nunca
+   un valor cacheado que pueda desincronizarse). Estas funciones son la
+   ÚNICA fuente de esta cifra: tanto la tarjeta persistente en la pantalla
+   principal como la sheet de resultado al destapar llaman a las mismas. */
+
+/* Racha: cuántos ciclos consecututivos, contando desde el más reciente hacia
+   atrás, ahorraron más que el ciclo inmediatamente anterior. 0 si el último
+   ciclo ahorró igual o menos que el anterior. */
+function _alcRachaAhorro(hist){
+  if(!hist || hist.length < 2) return 0;
+  let racha = 0;
+  for(let i = hist.length - 1; i > 0; i--){
+    if((hist[i].saldoRegistrado||0) > (hist[i-1].saldoRegistrado||0)) racha++;
+    else break;
+  }
+  return racha;
+}
+
+/* Mejor ciclo histórico por saldoRegistrado (nunca por saldoReal, para no
+   premiar diferencias que en realidad fueron un error de conteo). */
+function _alcMejorCiclo(hist){
+  if(!hist || !hist.length) return null;
+  return hist.reduce((mejor, h) => (h.saldoRegistrado||0) > (mejor.saldoRegistrado||0) ? h : mejor, hist[0]);
+}
+
+// Expuestas en window (2026-09-07): el módulo Wrapped general (js/modules/
+// wrapped.js) las reutiliza para no duplicar el cálculo de racha/mejor
+// ciclo — misma fuente de verdad que la tarjeta de Alcancía. Con guard
+// typeof en quien las llama, por si Alcancía todavía no cargó (es un grupo
+// lazy independiente).
+window._alcRachaAhorro = _alcRachaAhorro;
+window._alcMejorCiclo = _alcMejorCiclo;
+
+/* Mini gráfico de barras (SVG inline, sin dependencias) de los últimos hasta
+   6 ciclos por saldoRegistrado. Devuelve '' si hay menos de 2 ciclos —no
+   tiene sentido "comparar" con un solo punto. */
+function _alcWrappedBarrasSvg(hist){
+  if(!hist || hist.length < 2) return '';
+  const datos = hist.slice(-6);
+  const max = Math.max(...datos.map(h => h.saldoRegistrado||0), 1);
+  const w = 280, h = 70, gap = 8;
+  const barW = (w - gap*(datos.length-1)) / datos.length;
+  const bars = datos.map((d,i) => {
+    const val = d.saldoRegistrado || 0;
+    const barH = Math.max(4, (val/max) * (h-10));
+    const x = i * (barW + gap);
+    const y = h - barH;
+    const esUltimo = i === datos.length - 1;
+    return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="3" fill="${esUltimo?'var(--amber)':'var(--accent)'}" opacity="${esUltimo?'1':'0.5'}"/>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block;overflow:visible;">${bars}</svg>`;
+}
+
+/* Arma el HTML de la tarjeta persistente de progreso (pantalla principal de
+   Alcancía). '' si no hay al menos 2 ciclos destapados para comparar. */
+function _alcWrappedProgresoHtml(hist, fmtFn){
+  if(!hist || hist.length < 2) return '';
+  const fmt2 = fmtFn || (typeof fmt==='function' ? fmt : v=>'$'+Math.round(v).toLocaleString('es-CO'));
+  const racha = _alcRachaAhorro(hist);
+  const mejor = _alcMejorCiclo(hist);
+  const ultimo = hist[hist.length-1];
+  const esMejorHastaAhora = mejor === ultimo;
+  const rachaMsg = racha >= 2
+    ? `🔥 Llevas ${racha} alcancías seguidas ahorrando más que la anterior`
+    : (racha === 1 ? '📈 Ahorraste más que en tu alcancía anterior' : null);
+  return `
+    <div class="card" style="padding:14px 16px;background:rgba(240,184,64,.05);border-color:rgba(240,184,64,.2);">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Tu progreso ahorrando</div>
+      ${_alcWrappedBarrasSvg(hist)}
+      <div style="margin-top:10px;">
+        ${rachaMsg ? `<div style="font-size:12px;color:var(--amber);margin-bottom:6px;">${rachaMsg}</div>` : ''}
+        <div style="font-size:12px;color:var(--text3);">Mejor alcancía hasta ahora: <span style="color:var(--text2);font-family:'DM Mono',monospace;">${fmt2(mejor.saldoRegistrado||0)}</span>${esMejorHastaAhora ? ' <span style="color:var(--amber);">← tu última</span>' : ''}</div>
+      </div>
+    </div>`;
+}
+
 function _actualizarDiferenciaHint(){
   const hint = document.getElementById('alc_diferencia_hint');
   if(!hint) return;
@@ -508,6 +611,7 @@ openSheet = function(id){
       const fsel = document.getElementById('alc_dep_fuente');
       if(fsel && typeof buildFuentesOptsHtml==='function'){
         fsel.innerHTML = buildFuentesOptsHtml({incluirTC:false,placeholder:'Seleccionar cuenta'});
+        _alcFiltrarFuentesPorSaldo(fsel);
       }
       const fd = document.getElementById('alc_dep_fecha');
       if(fd) fd.value = (typeof hoy==='function'?hoy():new Date().toISOString().slice(0,10));
@@ -528,6 +632,7 @@ openSheet = function(id){
       const splitFsel = document.getElementById('alc_split_fuente');
       if(splitFsel && typeof buildFuentesOptsHtml==='function'){
         splitFsel.innerHTML = buildFuentesOptsHtml({incluirTC:false,placeholder:'Lo tenía yo (efectivo)'});
+        _alcFiltrarFuentesPorSaldo(splitFsel);
       }
       const splitSaldoHint = document.getElementById('alc_split_saldo_hint');
       if(splitSaldoHint) splitSaldoHint.textContent = '';
@@ -670,6 +775,17 @@ window.renderAlcancia = function(){
   if(a){
     const listaEl  = document.getElementById('alcancia-historial-lista');
     const tituloEl = document.getElementById('alcancia-historial-titulo');
+
+    // "Wrapped" de progreso: se recalcula en cada render desde a.historial,
+    // así que se actualiza solo apenas se destapa una alcancía nueva —
+    // ninguna cifra propia que persistir ni sincronizar aparte.
+    const wrapEl = document.getElementById('alcancia-wrapped-progreso');
+    if(wrapEl){
+      const html = _alcWrappedProgresoHtml(a.historial || []);
+      wrapEl.style.display = html ? '' : 'none';
+      wrapEl.innerHTML = html;
+    }
+
     if(listaEl){
       const hist = a.historial || [];
       if(tituloEl) tituloEl.style.display = hist.length ? '' : 'none';
@@ -1180,6 +1296,8 @@ window.alcanciaConfirmarDestapar = function(){
     } else {
       const difMonto  = saldoReg - (prev.saldoRegistrado||0);
       const difDias   = diasDuracion - (prev.diasDuracion||0);
+      const racha = _alcRachaAhorro(hist);
+      const rachaMsg = racha >= 2 ? `🔥 Racha de ${racha} alcancías seguidas ahorrando más` : '';
       comparHtml = `
         <div class="card" style="margin-top:10px;padding:12px 14px;background:rgba(255,255,255,.04);">
           <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">vs. alcancía anterior</div>
@@ -1187,10 +1305,11 @@ window.alcanciaConfirmarDestapar = function(){
             <span style="font-size:12px;color:var(--text3);">Monto</span>
             <span style="font-size:12px;font-family:'DM Mono',monospace;color:${difMonto>=0?'var(--accent)':'var(--red)'};">${difMonto>=0?'+':''} ${fmt2(difMonto)}</span>
           </div>
-          <div class="row">
+          <div class="row"${rachaMsg ? ' style="margin-bottom:8px;"' : ''}>
             <span style="font-size:12px;color:var(--text3);">Duración</span>
             <span style="font-size:12px;color:${difDias>=0?'var(--accent)':'var(--red)'};">${difDias>=0?'+':''} ${difDias} días</span>
           </div>
+          ${rachaMsg ? `<div style="font-size:12px;color:var(--amber);">${rachaMsg}</div>` : ''}
         </div>`;
     }
     const difMsgColor = Math.abs(dif)<1 ? 'var(--text3)' : dif>0 ? 'var(--accent)' : 'var(--red)';
@@ -1553,14 +1672,16 @@ window.addEventListener('appDataLoaded', function(){
 if(window._dataLoaded){
   setTimeout(_alcanciaInit, 500);
 } else if(document.readyState !== 'loading'){
-  let _alcTries = 0;
-  const _alcPoll = setInterval(()=>{
-    _alcTries++;
-    if(window.S && window._dataLoaded){
-      clearInterval(_alcPoll);
-      _alcanciaInit();
-    } else if(_alcTries > 40) clearInterval(_alcPoll);
-  }, 300);
+  // Antes era un setInterval propio con contador a mano (ver
+  // CHANGELOG.md#infraestructura--seguridad, entrada de consolidación de
+  // este patrón — se había cerrado como "cero copias en todo el proyecto"
+  // sin haber revisado todavía js/modules/, donde vivía esta 8ª copia).
+  // alcancia.js carga vía lazy-loader.js (script clásico inyectado
+  // dinámicamente con document.createElement, mucho después de que
+  // wait-for.js — <script defer> del HTML inicial — ya terminó de correr),
+  // así que puede usar waitFor() como global sin ningún riesgo de carrera
+  // (a diferencia de pin-bio.js/firebase-sync.js).
+  waitFor(() => window.S && window._dataLoaded, _alcanciaInit, { intervalMs: 300, maxAttempts: 40 });
 }
 
 })(); // end IIFE

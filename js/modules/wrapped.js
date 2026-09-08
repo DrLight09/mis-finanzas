@@ -57,7 +57,12 @@ function _wrappedHoy(){
 function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
   S = S || {};
   const gastosVar  = S.gastosVar || [];
-  const pagosFijos = S.pagosGastosFijos || [];
+  // S.pagosGastosFijos puede llegar como array O como objeto/mapa (visto en
+  // datos reales de producción, no solo hipotético) — normalizamos acá para
+  // no asumir un solo shape y romper toda la pantalla si algún día no es
+  // un array plano.
+  const pagosFijosRaw = S.pagosGastosFijos;
+  const pagosFijos = Array.isArray(pagosFijosRaw) ? pagosFijosRaw : Object.values(pagosFijosRaw || {});
   const movs       = S.movimientos || [];
 
   const esGastoNoReal    = typeof _esGastoVarNoReal === 'function' ? _esGastoVarNoReal : (()=>false);

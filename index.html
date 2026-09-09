@@ -2163,22 +2163,17 @@
             style="padding:12px 15px;margin-bottom:20px;"></div>
         </div>
 
-        <!-- WRAPPED: resumen narrativo de mes/año (patrimonio, gasto, ahorro).
-             Contenedor estático simple — todo el contenido lo arma
-             renderWrapped() (js/modules/wrapped.js, grupo lazy 'wrapped'),
-             mismo patrón que Alcancía. Solo cubre datos que son
-             inequívocamente propios (patrimonio, gastos, ingresos reales,
-             alcancía) — a propósito no incluye Mesada/Spotify/Encargos/
-             Plata Comprometida, que son plata de terceros o compartida
-             (ver wrapped.md §7). -->
+        <!-- WRAPPED: revelación anual tipo Spotify Wrapped (patrimonio,
+             categoría del año, mejor/peor mes, ahorro). Contenedor estático
+             simple — todo el contenido lo arma renderWrapped() (js/modules/
+             wrapped.js, grupo lazy 'wrapped'), mismo patrón que Alcancía.
+             A propósito solo anual, no mensual: la especialidad de un
+             "wrapped" depende de que no se vea seguido — una versión
+             mensual competiría de lleno con "Top categorías" de Análisis
+             financiero, que ya cubre ese chequeo periódico (ver wrapped.md
+             §7). Solo cubre datos inequívocamente propios — a propósito no
+             incluye Mesada/Spotify/Encargos/Plata Comprometida. -->
         <div class="screen" id="screen-wrapped">
-          <div class="sec-title" style="margin-top:4px;">Tu resumen</div>
-          <div class="row" style="margin-bottom:14px;gap:8px;">
-            <button type="button" id="wrapped-tab-mes" class="btn btn-ghost"
-              data-action="wrapped:verMes" data-args="[]" style="flex:1;">Este mes</button>
-            <button type="button" id="wrapped-tab-anio" class="btn btn-ghost"
-              data-action="wrapped:verAnio" data-args="[]" style="flex:1;">Este año</button>
-          </div>
           <div id="wrapped-body"></div>
         </div>
 
@@ -2588,7 +2583,7 @@
         </div>
         <div>
           <div class="mas-item-label">Tu resumen</div>
-          <div class="mas-item-sub">Mes y año, bien melo</div>
+          <div class="mas-item-sub">Tu año, bien melo</div>
         </div>
       </div>
       <div class="mas-item" id="mas-tarjetas" data-screen="tarjetas">

@@ -183,6 +183,11 @@
       .toast.hiding{animation:toastOut .22s ease forwards;}
       @keyframes toastIn{from{opacity:0;transform:translateY(-14px) scale(.95);}to{opacity:1;transform:translateY(0) scale(1);}}
       @keyframes toastOut{to{opacity:0;transform:translateY(-10px) scale(.95);}}
+      /* ===== WRAPPED (reveal animado de mes/año) ===== */
+      @keyframes wrappedDotIn{from{opacity:0;transform:scale(0);}to{opacity:1;transform:scale(1);}}
+      @keyframes wrappedFadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+      .wrapped-dot{opacity:0;transform-origin:center;animation:wrappedDotIn .35s ease-out forwards;}
+      .wrapped-reveal{opacity:0;animation:wrappedFadeUp .5s ease-out forwards;}
       /* ===== PIN SCREEN (segundo gate) ===== */
       #pin-screen{position:fixed;inset:0;z-index:99998;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);padding:32px 24px;text-align:center;overflow:hidden;}
       #pin-screen.open{display:flex;}
@@ -4961,16 +4966,6 @@
 -->
 <script src="js/core/html-tag.js" defer></script>
 <script src="js/core/calc-helpers.js" defer></script>
-<!--
-// js/core/wait-for.js — helper waitFor() para los <script defer> clásicos
-// (personas-init.js/mejoras.js/mejoras-adicionales.js). Antes cada uno
-// reimplementaba a mano su propio setInterval + contador de reintentos.
-// pin-bio.js/firebase-sync.js usan su propia copia vía `import` de
-// js/core/wait-for-module.js (no de este archivo) — ver el comentario en
-// ambos archivos y CHANGELOG.md#infraestructura--seguridad para el porqué
-// de la separación.
--->
-<script src="js/core/wait-for.js" defer></script>
 <!--
 // Módulo Mesada — migrado a js/modules/mesada.js (ver docs/mesada.md).
 // Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, quinto

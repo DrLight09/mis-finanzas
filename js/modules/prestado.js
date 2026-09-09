@@ -151,51 +151,6 @@ function prestSplitDelRow(i) {
 /* ---- DEUDORES (Personas a quienes presto) ---- */
 let deudorActualId = null;
 let movTipo = 'prestamo'; // 'prestamo' | 'abono'
-let npColorSel = '#60b0f0';
-
-function selColor(c) {
-  npColorSel = c;
-  document.querySelectorAll('.avatar-color-opt').forEach(el => {
-    el.style.border = el.dataset.color === c ? '2px solid var(--accent)' : '2px solid transparent';
-  });
-}
-
-// Wiring del color picker (sheet "Nueva persona") — migrado desde
-// index.html (_initEventListeners). Se restauró acá tras una corrección
-// (ver CHANGELOG.md/auditoria-tecnica.md, 2026-07-27) porque selColor()
-// sí existe en este archivo — pero el override de `openSheet` más abajo en
-// este mismo archivo (antes vivía en `deudores-personas.js`, un módulo
-// aparte que ya no existe — se fusionó acá) intercepta id==='nueva-persona'
-// con un `return` antes de mostrar este sheet, redirigiendo a
-// `abrirSelPersona(_onSelPersonaMeDeben)` — el selector genérico de
-// Personas. El sheet #sheet-nueva-persona, este picker, addDeudor() e
-// initColorPicker() nunca se ejecutan en la app tal como está armada hoy.
-// Se deja sin borrar, mismo criterio que el resto del código muerto ya
-// documentado en este proyecto (toggleCDT/toggleCajita en Cuentas, etc.)
-// — no se borra de paso, se anota.
-document.querySelectorAll('[data-pick-color]').forEach(el => {
-  el.addEventListener('click', () => selColor(el.dataset.pickColor));
-});
-
-function initColorPicker() {
-  npColorSel = '#60b0f0';
-  document.querySelectorAll('.avatar-color-opt').forEach((el, i) => {
-    el.style.border = i === 0 ? '2px solid var(--accent)' : '2px solid transparent';
-  });
-}
-
-function addDeudor() {
-  const nombre = document.getElementById('np_nombre').value.trim();
-  // Validación con foco+mensaje inline (antes vivía en un override aparte en
-  // index.html — se integra directo acá ahora que el módulo es autocontenido).
-  if (!nombre) { _markError('np_nombre', 'np_nombre_err', 'El nombre es obligatorio'); return; }
-  if (!S.deudores) S.deudores = [];
-  S.deudores.push({ id: uid(), nombre, color: npColorSel, movimientos: [] });
-  document.getElementById('np_nombre').value = '';
-  initColorPicker();
-  save(); refresh(); closeSheet('nueva-persona');
-  toast(`${escHtml(nombre)} agregado/a`,'ok');
-}
 
 function getDeudorSaldo(d) {
   return (d.movimientos || []).reduce((a, m) => m.tipo === 'prestamo' ? a + m.monto : a - m.monto, 0);
@@ -2505,7 +2460,6 @@ Events.registerAll('prestado', {
   editarDeudorActual: editarDeudorActual,
   eliminarMovDeudor: eliminarMovDeudor,
   abrirDetalleMov: (el, evt) => abrirDetalleMov(el, evt),
-  addDeudor: addDeudor,
   abrirSheetNuevaPersona: _abrirSheetNuevaPersona,
 
   // Sheet "nuevo movimiento" (préstamo / abono / pago completo)
@@ -2604,32 +2558,6 @@ function _irADeudor(deudorId) {
   document.getElementById('sheet-perfil-persona').classList.remove('open');
   setTimeout(() => { showScreen('prestamos'); abrirDeudor(deudorId); }, 180);
 }
-
-const _origAddDeudorPersonas = addDeudor;
-addDeudor = function() {
-  // Cuando se crea un deudor, también crear/vincular en S.personas
-  const nombre = document.getElementById('np_nombre').value.trim();
-  const color = typeof npColorSel !== 'undefined' ? npColorSel : '#60b0f0';
-  if (!nombre) { _origAddDeudorPersonas.apply(this, arguments); return; }
-
-  // Llamar al original primero (crea el deudor en S.deudores)
-  _origAddDeudorPersonas.apply(this, arguments);
-
-  // Vincular el deudor recién creado a S.personas
-  const deudor = (S.deudores || []).find(d => d.nombre === nombre && !d.personaId);
-  if (deudor) {
-    let p = (S.personas || []).find(x => x.nombre.trim().toLowerCase() === nombre.toLowerCase());
-    if (!p) {
-      if (!S.personas) S.personas = [];
-      p = { id: uid(), nombre, color: color, creadoEn: hoy() };
-      S.personas.push(p);
-    } else {
-      p.color = color;
-    }
-    deudor.personaId = p.id;
-    save();
-  }
-};
 
 /* ── Hook: si el detalle de un deudor (Préstamos > me deben) está abierto */
 /* y se guarda desde el sheet unificado "Editar persona", refrescar su    */

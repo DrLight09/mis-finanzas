@@ -309,9 +309,7 @@ function abrirEditarTC(id){
 
 function tcSelColor(color){
   _tcColorSel=color;
-  document.querySelectorAll('.tc-color-opt').forEach(el=>{
-    el.style.border=(color&&el.dataset.color===color)?'2px solid var(--accent)':'2px solid transparent';
-  });
+  marcarColorSeleccionado('.tc-color-opt', color); // js/core/color-picker.js
 }
 
 function guardarTC(){

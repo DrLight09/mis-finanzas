@@ -184,9 +184,7 @@ let _customCuentaActualId=null;
 
 function selColorNC(color){
   _ncColorSel=color;
-  document.querySelectorAll('.nc-color-opt').forEach(el=>{
-    el.style.border=el.dataset.color===color?'2px solid var(--accent)':'2px solid transparent';
-  });
+  marcarColorSeleccionado('.nc-color-opt', color); // js/core/color-picker.js
 }
 
 function selIconoNC(iconoId){

@@ -46,6 +46,7 @@ El módulo maneja dos escalas de tiempo que no deben confundirse:
 - **La cuota del administrador usada para la ganancia de un ciclo ya pagado se guarda en el momento de ese pago**, y no se recalcula con la cantidad de integrantes de hoy.
 - **Una vez vinculado a una persona, ese vínculo no se puede cambiar desde Editar**; para reasignar el cupo hay que eliminar y agregar de nuevo. El nombre mostrado y guardado siempre se resuelve desde ese vínculo (`spNombreDe`), nunca desde una copia cruda que pueda desactualizarse.
 - **Pagar de menos por un período no bloquea que ese período se cuente como cubierto.** El monto recibido puede editarse por debajo de lo esperado (períodos × cuota); si se marca explícitamente "quedó debiendo la diferencia", el registro de `spotifyHistorial` guarda esa deuda puntual (`pendiente`), pero `proximoPago` avanza igual — lo que queda pendiente es la plata, no el período. Si no se marca el toggle, el monto menor se registra tal cual, sin deuda.
+- **Cada abono de `pendienteHistorial` es un movimiento visible por derecho propio, nunca un dato fundido en silencio dentro del cobro que lo originó.** Tiene su propia fecha, su propia cuenta destino (que puede ser distinta a la del cobro original) y su propio `id` — aparece como su propia línea en el historial de Spotify y como su propia tarjeta en el historial de la cuenta que le corresponde, protegida contra borrado directo igual que cualquier otro movimiento de Spotify (ver §6).
 
 ---
 
@@ -87,7 +88,13 @@ S.spotifyHistorial = [
     // mesada.js#pago-parcial-con-deuda-pendiente):
     cuotaEsperada: 30000,     // snapshot de períodos × cuota cuando se marcó "quedó debiendo"
     pendiente: 10000,         // cuánto falta por recibir de ESTE cobro puntual (0/ausente = saldado)
-    pendienteHistorial: []    // [{monto,fecha,destino,nota}] abonos posteriores que fueron cerrando `pendiente`
+    pendienteHistorial: [     // abonos posteriores que fueron cerrando `pendiente`. Cada uno es un
+                              // movimiento propio (id + _secundario/_origenSeccion propios, igual que
+                              // cualquier otro registro de spotifyHistorial) — no un dato suelto colgado
+                              // del cobro, ver §5 y §6 para el porqué.
+      { id: "uid", monto: 5000, fecha: "2026-07-20", destino: "efectivo", nota: "",
+        _secundario: true, _origenSeccion: "Spotify" }
+    ]
   },
   // Un pago del administrador a Spotify
   {
@@ -180,11 +187,32 @@ Ingresar cuánto dio ahora (máximo: lo que quedó pendiente) + destino
   ↓
 Confirmar
   ↓
-Se suma esa plata a la cuenta elegida y se agrega a pendienteHistorial
+Se suma esa plata a la cuenta elegida y se agrega a pendienteHistorial,
+  con su propio id y _secundario/_origenSeccion (es un movimiento propio,
+  no solo un dato colgado del cobro — ver §7)
   ↓
 pendiente baja esa cantidad; monto del cobro sube esa misma cantidad
   ↓
+Aparece como su propia línea en la tarjeta del cobro (Spotify) y como su
+  propia tarjeta en el historial de la cuenta elegida (con su fecha real,
+  no la del cobro original)
+  ↓
 Si pendiente llega a 0, el cobro queda saldado
+```
+
+### Deshacer un abono puntual (sin borrar el cobro completo)
+
+```
+Desde la línea del abono en el historial de Spotify, "deshacer"
+  ↓
+Confirmar
+  ↓
+Revertir la plata de la cuenta a la que fue ESE abono
+  ↓
+h.monto baja esa cantidad; h.pendiente sube esa misma cantidad (vuelve a deberse)
+  ↓
+Se quita esa entrada de pendienteHistorial — el resto de la historia del cobro
+  (el monto original, otros abonos) queda intacta
 ```
 
 ### Eliminar un pago o cobro
@@ -211,6 +239,7 @@ Si era un cobro → restaurar proximoPago al valor guardado en proximoPagoAntes
 - **Integrante sin persona vinculada todavía** (registros creados antes de existir el sistema de personas): el campo "¿Quién es?" sigue siendo interactivo y permite vincularlo una única vez.
 - **Cerrar el selector de personas sin confirmar:** el sistema avisa explícitamente que no se aplicó ningún cambio, en vez de guardar en silencio el valor anterior.
 - **Renombrar una persona** desde la pantalla "Personas" también sincroniza el campo crudo (`nombre`) de los integrantes de Spotify vinculados a ella — igual que ya pasa en Deudores, Encargos y Mis deudas.
+- **Un abono de `pendienteHistorial` puede ir a una cuenta distinta a la del cobro original.** Spotify no genera un movimiento espejo real en `S.movimientos` (a diferencia de Mesada) — el historial de cada cuenta se arma leyendo `S.spotifyHistorial` directamente (`getMovimientosCuenta()` / `_getMovimientosCuentaCustom()` en `cuentas.js`). Por eso cada abono necesita su propio `id`/`_secundario`/`_origenSeccion`: sin eso, quedaría invisible en la cuenta a la que realmente fue, o — peor — sería borrable directo desde ahí sin revertir `h.pendiente`/`h.monto`, desincronizando el saldo real del historial de Spotify. El monto que se muestra en la tarjeta del cobro original siempre resta lo que ya se movió a `pendienteHistorial`, para no contar la misma plata dos veces entre la tarjeta del cobro y la tarjeta de cada abono.
 
 ---
 
@@ -276,12 +305,13 @@ El módulo no recibe tratamiento especial: un cobro sube el saldo real de la cue
 
 ## 11. Referencia de implementación
 
-**Ubicación:** el módulo quedó en **dos archivos**, no uno — descubierto durante la migración, no una decisión de diseño de entrada (ver `CHANGELOG.md#infraestructura--seguridad` para el detalle del porqué):
+**Ubicación:** el módulo vive en un único archivo, [`js/modules/spotify.js`](../js/modules/spotify.js) — funciones base (personas del plan, cobros, pago, ganancia) junto con la integración con el sistema unificado de Personas (`openSheet`, `addSpotify`, `editarSpotify`, `guardarEditarSpotify`, `renderSpotify`, selector de personas).
 
-- [`js/modules/spotify.js`](../js/modules/spotify.js) — funciones base (personas del plan, cobros, pago, ganancia). Se carga *temprano* en `index.html`, porque un par de wirings de botones de otros módulos las referencian de forma inmediata más adelante en el documento.
-- [`js/modules/spotify-personas.js`](../js/modules/spotify-personas.js) — la integración con el sistema unificado de Personas (envuelve `openSheet`, `addSpotify`, `editarSpotify`, `guardarEditarSpotify` y `renderSpotify` del archivo anterior). Se carga *mucho más tarde* en `index.html`, porque necesita que `openSheet()` y el sistema de Personas ya estén definidos.
+Originalmente el módulo estaba dividido en dos archivos (`spotify.js` + `spotify-personas.js`), separación descubierta durante la migración y no una decisión de diseño de entrada. La causa real era una referencia inmediata (no diferida) desde `encargos.js` a `guardarEditarSpotify`; se resolvió aplicando el mismo patrón de referencia diferida ya usado ahí mismo para `crearEncargo`, lo que permitió fusionar ambos archivos en uno solo. `spotify-personas.js` ya no existe (ver `CHANGELOG.md#spotify` para el detalle del porqué y de la fusión).
 
-Los dos dependen de `js/core/events.js` (debe cargarse antes que cualquiera de los dos) y de los helpers globales del núcleo de la app (`S`, `save`, `escHtml`, `toast`, `dialogo`, etc., que todavía viven en `index.html` — ver `auditoria-tecnica.md` punto 3). **Si alguna vez alguien mueve alguno de estos dos `<script src>` de lugar en `index.html`, revisar primero el comentario al principio de cada archivo** — el orden no es cosmético, es una dependencia real.
+`spotify.js` es uno de los grupos lazy reales de `js/core/lazy-loader.js` (`Loader.GROUPS.spotify`) y depende de `js/core/events.js` (debe cargarse antes) y de los helpers globales del núcleo de la app (`S`, `save`, `escHtml`, `toast`, `dialogo`, etc., que todavía viven en `index.html` — ver `auditoria-tecnica.md` punto 3).
+
+**Spotify no genera movimiento espejo propio en `S.movimientos`** (a diferencia de Mesada, que sí tiene `_registrarMovSecundarioMesada`). El historial de cada cuenta se arma directamente desde `S.spotifyHistorial` en dos funciones de `cuentas.js`: `getMovimientosCuenta()` (Nequi/Efectivo/cajitas) y `_getMovimientosCuentaCustom()` (cuentas personalizadas). Esto es relevante para cualquier cambio futuro al modelo de datos de `spotifyHistorial` — cualquier campo nuevo que deba verse en el historial de una cuenta tiene que sintetizarse ahí, no alcanza con guardarlo en `spotifyHistorial`.
 
 ### Funciones clave
 
@@ -291,7 +321,8 @@ Los dos dependen de `js/core/events.js` (debe cargarse antes que cualquiera de l
 | `spNombreDe(integrante)` | Resuelve el nombre mostrado: usa la persona vinculada si existe, si no cae al campo crudo |
 | `deleteSpHistorial(id)` | Único punto válido para borrar un cobro o un pago; revierte plata, movimiento secundario y estado |
 | `resolverPendienteSpHistorial(i)` | Abre el sheet para registrar un abono contra la deuda puntual (`pendiente`) de un cobro específico |
-| `confirmarSpResolverPendiente()` | Aplica el abono: suma la plata al destino elegido, lo agrega a `pendienteHistorial` y reduce `pendiente` |
+| `confirmarSpResolverPendiente()` | Aplica el abono: suma la plata al destino elegido y lo agrega a `pendienteHistorial` como movimiento propio (`id`, `_secundario`, `_origenSeccion`), reduce `pendiente` |
+| `deshacerAbonoPendienteSp(i, abIdx)` | Revierte un abono puntual (plata + `pendiente` + `pendienteHistorial`) sin borrar el resto del cobro |
 
 ### Eventos (`data-action`)
 
@@ -305,11 +336,14 @@ Los botones/badges de la pantalla ya no usan `onclick` inline — usan `data-act
 | `spotify:eliminar` | `deleteSpotify` |
 | `spotify:eliminarHistorial` | `deleteSpHistorial` |
 | `spotify:resolverPendiente` | `resolverPendienteSpHistorial` |
+| `spotify:deshacerAbonoPendiente` | `deshacerAbonoPendienteSp` |
 | `spotify:abrirSelectorPersona` | Abre el selector de personas unificado (`abrirSelPersona`) |
 | `spotify:onClickEditPersonaBtn` | `_onClickSpEditPersonaBtn` |
 
-Las primeras 6 filas se registran en `spotify.js`; las últimas 2 (selector de personas) en `spotify-personas.js`.
+Todas se registran en `spotify.js` (antes las últimas 2, de selector de personas, vivían en el ya desaparecido `spotify-personas.js`).
 
 ### Protección contra borrado directo
 
 El gasto "Spotify Premium" y cada "Cobro Spotify (persona)" quedan marcados `_secundario: true, _origenSeccion: 'Spotify'`. En la vista de movimientos de cuentas y en Gastos aparecen con la etiqueta "Automático" y el ícono de eliminar bloqueado; si se intenta borrar igual, se avisa que debe hacerse desde Spotify.
+
+Cada abono de `pendienteHistorial` tiene la misma protección de forma independiente: `eliminarMovimiento()` (`js/core/movimientos.js`) busca su `_secundario` no solo en `S.spotifyHistorial` sino también dentro de `pendienteHistorial` de cada registro. Intentar borrar la tarjeta sintética de un abono desde el historial de una cuenta redirige a Spotify igual que el cobro original — desde ahí, `deshacerAbonoPendienteSp()` revierte ese abono puntual sin tocar el resto del cobro (equivalente al `deshacerPendienteMesada` de Mesada).

@@ -183,6 +183,8 @@ Resetear saldoRegistrado, depositos, movimientos[] y fechaInicio
 - **¿Por qué el flujo llama a `_migrarGruposDeudor(d)` antes de resolver el grupo?** Porque el único otro lugar que dispara esa migración silenciosa es `abrirDeudor()` (Prestado) — un deudor viejo que nunca se abrió desde que existen los grupos no tiene `d.grupos`. Sin este paso, `_gruposAbiertos(d)` ve "0 grupos abiertos" aunque la persona sí tenga una deuda real sin agrupar, y `_autoGrupoIdMov` crea un grupo nuevo en blanco en vez de reutilizar la deuda existente — el abono queda huérfano en un grupo aparte con saldo "a favor" en vez de cancelar la deuda real. Se llama en los tres puntos donde se lee o resuelve el grupo (`_alcDeudorSelActualizar`, la validación de saldo y la creación del abono en `alcanciaConfirmarDeposito`) — es barata e idempotente si ya migró.
 - **¿Por qué no usar `eliminarMovimiento()` genérico para borrar un depósito?** Esa función no conoce `S.alcancia` — no sabe restar de `saldoRegistrado`/`depositos`, ni actualizar el saldo ofuscado, ni sacar la entrada de `S.alcancia.movimientos[]`. Usarla dejaría el estado de Alcancía desincronizado del resto de la app. De ahí que los movimientos espejo se marquen `_secundario` y exista `alcanciaEliminarDeposito()` como único camino de borrado real.
 - **¿Por qué el reinicio del ciclo no es automático al destapar?** Para que la pantalla de resultado (con la comparación contra el ciclo anterior) siga teniendo datos que mostrar incluso si el usuario cierra el sheet sin decidir nada todavía — el ciclo recién destapado queda disponible hasta que explícitamente se elige empezar uno nuevo.
+- **¿Por qué el "Wrapped" de progreso (racha, mejor ciclo, gráfico de barras) vive como una tarjeta persistente en la pantalla principal y no solo en la sheet de resultado del destape?** Porque la sheet de resultado es efímera: una vez cerrada, no había forma de volver a ver "cómo voy comparado con mis alcancías anteriores" sin abrir cada entrada del historial y sumar a mano. Ponerlo como tarjeta siempre visible (con al menos 2 ciclos) resuelve eso sin agregar una pantalla nueva ni un modelo de datos nuevo — se recalcula en cada render desde `S.alcancia.historial`, que ya existía.
+- **¿Por qué la racha y el mejor ciclo se calculan siempre sobre `saldoRegistrado` y nunca sobre `saldoReal`?** Para no premiar (o castigar) una racha con base en errores de conteo al destapar — la diferencia entre lo registrado y lo real es un ajuste puntual (ver §7 arriba, "diferencia"), no una medida de cuánto se ahorró.
 
 ## 8. Referencia de implementación
 
@@ -203,6 +205,9 @@ Resetear saldoRegistrado, depositos, movimientos[] y fechaInicio
 | `_diasDesde()` / `_fmtTiempo()` | Helpers de tiempo activo ("3 semanas", "2 meses") |
 | `_alcDeudorSelActualizar()` / `_alcDeudorSaldoHintActualizar()` | Pueblan el selector de persona/grupo y el hint de saldo cuando el tipo elegido es `cobro-deuda` (agregado 2026-08-09) |
 | `window._alcanciaQuitarPorCobroDeuda(alcMovId)` | Quita solo el lado de Alcancía de un depósito `cobro-deuda`, sin tocar al deudor — usado por `eliminarMovDeudor()` (prestado.js) cuando el borrado se inicia desde Prestado (agregado 2026-08-09) |
+| `_alcFiltrarFuentesPorSaldo(selectEl)` | Quita del selector de origen (`alc_dep_fuente` / `alc_split_fuente`) las cuentas con saldo ≤ $50, tras poblarlo con `buildFuentesOptsHtml()` (agregado 2026-09-07) |
+| `_alcRachaAhorro(hist)` / `_alcMejorCiclo(hist)` | Única fuente de verdad de la racha de ahorro y el mejor ciclo histórico — usadas tanto por la tarjeta persistente como por la sheet de resultado del destape (agregado 2026-09-07) |
+| `_alcWrappedBarrasSvg(hist)` / `_alcWrappedProgresoHtml(hist)` | Arman el gráfico de barras SVG y el HTML completo de la tarjeta "Tu progreso ahorrando" (agregado 2026-09-07) |
 
 ### Ids de sheets / elementos del DOM relevantes
 
@@ -213,6 +218,7 @@ Resetear saldoRegistrado, depositos, movimientos[] y fechaInicio
 | `sheet-alcancia-resultado` | Pantalla de resultado tras destapar (acá se revela el total) |
 | `alcancia-hero-saldo` | El `"$??"` / total revelado |
 | `alcancia-movimientos-lista` | Lista de depósitos individuales (reactivada 2026-08-06) |
+| `alcancia-wrapped-progreso` | Tarjeta persistente de progreso de ahorro (racha, mejor ciclo, gráfico de barras) — oculta con menos de 2 ciclos (agregado 2026-09-07) |
 | `alcancia-historial-lista` | Historial de ciclos ya destapados |
 | `alc_dep_tipo` | Select del tipo de depósito — dispara `_alcanciaActualizarTipo()` |
 

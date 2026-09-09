@@ -57,7 +57,7 @@ Para cualquier sheet que registre un movimiento de plata, el orden es siempre:
 - **Descripción** — campo principal de identificación del movimiento, va antes del monto. Si es opcional se escribe "Descripción (opcional)".
 - **Nunca usar** "Descripción / Nota (opcional)" — escoger uno solo.
 - El campo principal de identificación **no siempre se llama literalmente "Descripción"** — muchas veces es una pregunta más específica y humana: "¿De dónde viene esta plata?", "¿En qué se gastó o a dónde fue?", "¿Qué compraste?". Todas cuentan como el campo #3 de la regla de orden (antes del Monto); "Descripción" es solo el nombre genérico cuando no aplica una pregunta más natural.
-- **Regla práctica para decidir si un sheet necesita Nota además del campo principal:** si el campo principal ya es obligatorio (lleva `*`) y responde "qué es este movimiento", agregar Nota para detalle extra opcional. Si el campo principal YA es opcional y libre (ej. "Descripción (opcional)" en `sheet-mov-cuenta-custom`), no hace falta una Nota separada — sería un campo duplicado.
+- **Regla práctica para decidir si un sheet necesita Nota además del campo principal:** si el campo principal ya es obligatorio (lleva `*`) y responde "qué es este movimiento", agregar Nota para detalle extra opcional. Si el campo principal YA es opcional y libre (ej. "Descripción (opcional)"), no hace falta una Nota separada — sería un campo duplicado. *(El ejemplo histórico de esta regla era `sheet-mov-cuenta-custom`; ese sheet se retiró el 2026-09-03 — ver más abajo — pero la regla sigue aplicando a cualquier sheet nuevo con un campo principal opcional.)*
 
 ### Estilo visual de los labels (`class="il"`)
 
@@ -84,17 +84,17 @@ Los grupos de campo usan `class="ig"` con `margin-bottom: 13px`.
 
 **`sheet-nueva-cuenta`** — Nueva cuenta: Nombre → Saldo inicial → Ícono → Color
 
-**`sheet-mov-cuenta-custom`** — Agregar / Retirar dinero *(cualquier cuenta personalizada que no sea Nequi ni Nu)*: Descripción (opcional) → Monto → Fecha
+Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — desde el 2026-09-03 reutiliza `sheet-agregar-dinero`/`sheet-restar-dinero`/`sheet-editar-apertura` de la sección de abajo, exactamente con el mismo orden de campos que Nequi/Efectivo (incluido el toggle "Es saldo inicial"). El sheet viejo, `sheet-mov-cuenta-custom` (Descripción opcional → Monto → Fecha, sin ese toggle), se retiró — ver `CHANGELOG.md#cuentas`.
 
-### Nequi y Efectivo
+### Nequi, Efectivo y cuentas personalizadas
 
-**`sheet-agregar-dinero`** — Agregar dinero *(desde la tarjeta de Nequi o Efectivo)*: Saldo actual (informativo) → [Toggle] Es saldo inicial → ¿De dónde viene esta plata? `*` → ¿Cuánto recibiste? → Fecha → Nota (opcional)
+**`sheet-agregar-dinero`** — Agregar dinero *(desde la tarjeta de Nequi, Efectivo o una cuenta personalizada)*: Saldo actual (informativo) → [Toggle] Es saldo inicial → ¿De dónde viene esta plata? `*` → ¿Cuánto recibiste? → Fecha → Nota (opcional)
 
 **`sheet-agregar-dinero-menu`** — ¿A dónde entra la plata? *(desde el botón `+` del header sin cuenta seleccionada)*: Cuenta destino → ¿De dónde viene esta plata? `*` → ¿Cuánto recibiste? → Fecha → Nota (opcional)
 
-**`sheet-restar-dinero`** — Restar dinero: Saldo actual (informativo) → ¿En qué se gastó o a dónde fue? `*` → ¿Cuánto vas a restar? → Fecha → Nota (opcional)
+**`sheet-restar-dinero`** — Restar dinero *(Nequi, Efectivo o una cuenta personalizada)*: Saldo actual (informativo) → ¿En qué se gastó o a dónde fue? `*` → ¿Cuánto vas a restar? → Fecha → Nota (opcional)
 
-**`sheet-editar-apertura`** — Corregir saldo inicial: Nuevo saldo inicial
+**`sheet-editar-apertura`** — Corregir saldo inicial *(Nequi, Efectivo o una cuenta personalizada)*: Nuevo saldo inicial
 
 **`sheet-transferir`** — Transferir entre cuentas: ¿De dónde sale? → ¿A dónde entra? → ¿Cuánto vas a mover? → Fecha → Nota (opcional)
 

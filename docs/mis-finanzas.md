@@ -13,7 +13,7 @@ Es un proyecto de un solo desarrollador, para uso personal, pensado para mantene
 - **Desplegada en GitHub Pages.**
 - **Estado global (`S`)**: un objeto central que se sincroniza bidireccionalmente con Firestore y contiene todos los datos de la app — cuentas, movimientos, préstamos, encargos, tarjetas, mesadas, Spotify, personas, etc. Todo el HTML se re-renderiza a partir de `S`.
 - **Sin backend propio**: toda la lógica de negocio (cálculos, validaciones, reversión de movimientos) vive en el cliente.
-- **Migración en curso a módulos separados**: los módulos se van extrayendo uno por uno desde `index.html` hacia `js/modules/` (mismo scope global, cargados como `<script src>` clásicos — todavía no ES modules), con un despachador de eventos centralizado en `js/core/events.js` que reemplaza los `onclick` inline. Ver [`auditoria-tecnica.md`](./auditoria-tecnica.md) para el detalle y el orden. **Ya migrados:** Spotify, Mesada, Encargos, Personas. **Sigue inline en `index.html`:** el resto.
+- **Migración en curso a módulos separados**: los módulos se van extrayendo uno por uno desde `index.html` hacia `js/modules/` (mismo scope global, cargados como `<script src>` clásicos — todavía no ES modules), con un despachador de eventos centralizado en `js/core/events.js` que reemplaza los `onclick` inline. Ver [`auditoria-tecnica.md`](./auditoria-tecnica.md) para el detalle y el orden. **Ya migrados:** Spotify, Mesada, Encargos, Personas, Alcancía, Wrapped (este último nació directamente como módulo separado). **Sigue inline en `index.html`:** el resto.
 
 ## Principios que se repiten en toda la app
 
@@ -42,11 +42,12 @@ Aunque cada módulo se documenta por separado, hay reglas de diseño que atravie
 | **Alcancía** | Ahorro tipo "piggy bank" con distintos tipos de depósito y desglose por origen |
 | **Plata Comprometida** | Dinero ya destinado a un gasto futuro (fijo o con fecha de pago), para no contarlo como libre en el patrimonio |
 | **Análisis financiero** | Vista consolidada: ingresos, patrimonio real, proyección a 3/6/12 meses, salud financiera |
+| **Wrapped** | Resumen narrativo de mes/año ("Tu resumen"): ahorro, gasto, patrimonio — solo datos inequívocamente propios |
 | **Personas** | Sistema unificado de identidad, compartido por Spotify, Encargos, Deudores y "Me deben" |
 
 ## Estado de la documentación
 
 Cada módulo se documenta en su propio `.md`, siguiendo la estructura definida en [`plantilla-modulo.md`](./plantilla-modulo.md). El historial de bugs corregidos de todos los módulos vive en un solo [`CHANGELOG.md`](./CHANGELOG.md) compartido, para que el documento de cada módulo se mantenga enfocado en cómo funciona hoy y no crezca indefinidamente con historia ya resuelta.
 
-**Documentados:** Mesada, Spotify, Personas.
-**Pendientes:** Cuentas, Gastos, Préstamos, Tarjetas de crédito, Encargos, Alcancía, Plata Comprometida, Análisis financiero.
+**Documentados:** Mesada, Spotify, Personas, Alcancía, Análisis financiero, Wrapped.
+**Pendientes:** Cuentas, Gastos, Préstamos, Tarjetas de crédito, Encargos, Plata Comprometida.

@@ -36,7 +36,7 @@ A diferencia de Spotify, Mesada o Encargos — que registran la actividad propia
 
 - **Las tarjetas de crédito nunca son un destino válido para dinero que entra** — ni "Agregar dinero", ni el menú `+` del header, ni "Transferir" permiten una TC como destino. Sí se puede pagar *con* una TC en otros módulos (genera deuda), pero nunca "guardar" plata ahí.
 - **Todo movimiento que otro módulo genera dentro de una cuenta (mesada, cobro de Spotify, abono de un préstamo, encargo) se ve en el historial de esa cuenta marcado como "Automático" y protegido contra borrado directo** — solo se puede deshacer desde el módulo que lo originó, nunca desde el historial de la cuenta. Cuentas es quien *muestra* la protección (candado 🔒, ícono de eliminar bloqueado), no quien la implementa por cuenta propia — cada módulo marca sus propios movimientos.
-- **Eliminar un movimiento revierte exactamente la plata de ese movimiento, ni más ni menos** — incluyendo una transferencia, donde hay que revertir **ambos lados** (restar de donde entró, devolver a donde salió), y una cuenta personalizada, donde la reversión tiene que hablar en su propia convención de saldo (`ingreso`/`egreso`, ver §4) en vez de la de `S.movimientos`.
+- **Eliminar un movimiento revierte exactamente la plata de ese movimiento, ni más ni menos** — incluyendo una transferencia, donde hay que revertir **ambos lados** (restar de donde entró, devolver a donde salió), y una cuenta personalizada, donde `eliminarMovimiento()` tiene que saber leer **ambas** convenciones según la antigüedad del dato: los movimientos nuevos viven en `S.movimientos` igual que Nequi/Efectivo; el saldo inicial fijado al crear la cuenta y los movimientos viejos (anteriores a 2026-09) viven en `c.movimientos` con su propia convención (`ingreso`/`egreso`, ver §4/§7).
 - **El saldo inicial (apertura) es un movimiento especial, no un ingreso normal** — nunca debe sumarse como "ingreso del mes" en Análisis financiero, y corregirlo (`abrirEditarApertura`) nunca debe borrar y recrear el movimiento como si fuera nuevo, porque eso perdería su fecha original y afectaría el historial de patrimonio.
 - **Una persona puede pagar/mover plata en la misma cuenta varias veces**; ningún cálculo de saldo o de intereses debe asumir "un solo movimiento por día/mes".
 - **El cálculo de intereses de Nu respeta los tramos de tasa histórica** — nunca aplica la tasa de hoy retroactivamente a todo el saldo. Si se corrige una tasa vieja, solo afecta el período donde esa tasa estuvo vigente.
@@ -85,15 +85,19 @@ S.cuentasPersonalizadas = [
     id: "uid", nombre: "Bancolombia", saldo: 300000,
     icono: "bank", color: "#60b0f0",
     movimientos: [
-      // Convención PROPIA, distinta a S.movimientos — ver §7
+      // Convención PROPIA (histórica) — ver §7. Desde 2026-09 solo quedan acá
+      // el saldo inicial fijado al CREAR la cuenta (crearCuentaCustom, siempre
+      // tipo:'apertura') y los movimientos viejos, de antes de esa fecha. Los
+      // ingresos/retiros/aperturas NUEVOS ya no se escriben acá — van a
+      // S.movimientos, con la misma convención que Nequi/Efectivo (ver abajo).
       { id: "uid", tipo: "ingreso", monto: 50000, fecha: "2026-07-01", desc: "" }
-      // tipo: 'ingreso' | 'egreso' (nunca 'entrada'/'salida'/'apertura'/'transferencia')
+      // tipo (legacy, solo datos viejos): 'ingreso' | 'egreso' | 'apertura'
     ]
   }
 ]
 ```
 
-**Movimientos de Nequi/Efectivo/cajitas:** viven en `S.movimientos`, con `tipo: 'entrada'|'salida'|'apertura'|'transferencia'` y `fuente`/`destino` apuntando a la cuenta. Cualquier otro valor de `tipo` (ej. un antiguo `'ingreso'` heredado de otra convención) cae por descarte en la rama de "salida" al renderizar — ver la nota de este mismo gotcha documentada en `guia-estilo-sheets.md` para Alcancía, que usa el mismo motor de cuentas.
+**Movimientos de Nequi/Efectivo/cajitas y (desde 2026-09) cuentas personalizadas:** viven en `S.movimientos`, con `tipo: 'entrada'|'salida_manual'|'apertura'|'transferencia'` y `fuente`/`destino` apuntando a la cuenta (`'custom:ID'` para una personalizada). Cualquier otro valor de `tipo` (ej. un antiguo `'ingreso'` heredado de otra convención) cae por descarte en la rama de "salida" al renderizar — ver la nota de este mismo gotcha documentada en `guia-estilo-sheets.md` para Alcancía, que usa el mismo motor de cuentas. Para una cuenta personalizada, `getMovimientosCuenta`/`_getMovimientosCuentaCustom` combinan esto con lo que todavía viva en `c.movimientos` (ver arriba) sin duplicar — ver `CHANGELOG.md#cuentas` (2026-09-03).
 
 **`_movsFilters`:** estado de los filtros de búsqueda/tipo/fecha por cuenta (`{ [cuentaKey]: {q, tipo, desde, hasta} }`) — vive solo en memoria del navegador mientras la pantalla está abierta, no se persiste a Firestore. Es intencional: son filtros de exploración, no una preferencia que valga la pena sincronizar entre dispositivos.
 
@@ -101,12 +105,13 @@ S.cuentasPersonalizadas = [
 
 ## 5. Flujo
 
-### Agregar dinero a Nequi/Efectivo/cajita
+### Agregar dinero a Nequi/Efectivo/cajita/cuenta personalizada
 
 ```
 Elegir cuenta (o ya viene fija si se entró desde el detalle de esa cuenta)
   ↓
-¿Es saldo inicial? → toggle explícito (ver §3)
+¿Es saldo inicial? → toggle explícito (ver §3) — mismo sheet y mismo toggle
+                      para las cuatro, desde 2026-09 (ver CHANGELOG.md#cuentas)
   ↓
 Elegir origen ("¿de dónde viene esta plata?") — obligatorio, TC excluida
   ↓
@@ -150,7 +155,9 @@ eliminarMovimiento (punto de entrada único, compartido con toda la app)
   ↓
 Si es propio de Cuentas: revertir la plata de la cuenta (o de AMBAS cuentas si era una transferencia)
   ↓
-Si la cuenta es personalizada: revertir en su propia convención (ingreso/egreso), no en la de S.movimientos
+Si la cuenta es personalizada: el registro puede vivir en S.movimientos (movimientos
+nuevos, desde 2026-09) o en c.movimientos (saldo inicial de creación + datos viejos)
+— eliminarMovimiento() revisa ambos y revierte según dónde esté (ver §7)
 ```
 
 ### Chequeo de saldo real de Nu
@@ -173,13 +180,14 @@ Confirmar → se registra la diferencia como ajuste, sin tocar la tasa ni el his
 - **Cuenta personalizada eliminada con movimientos:** al eliminar la cuenta se pide confirmación explícita; el historial de movimientos de esa cuenta se pierde junto con la cuenta (a diferencia de, por ejemplo, un integrante de Spotify, donde el historial de cobros sobrevive porque vive en `spotifyHistorial`, no dentro del integrante).
 - **Filtro de movimientos sin resultados:** muestra un estado vacío explicando qué filtro está activo, no una lista en blanco sin contexto.
 - **Movimiento sin destino especificado en otro módulo** (ej. mesada con "No especificar / lo gasté"): no aparece en el historial de ninguna cuenta porque nunca tocó ninguna — comportamiento esperado, no un bug de Cuentas.
+- **Cobro de Spotify sin `id` en `S.spotifyHistorial`** (historial legado, de antes de que la app le asignara `id` a cada cobro): `getMovimientosCuenta()`/`_getMovimientosCuentaCustom()` usan un `_movId` de respaldo (`'sp_legacy_' + índice del registro en spotifyHistorial`) para que el ítem conserve un orden estable y siga marcado como "Automático" — no puede eliminarse directo desde Cuentas de todas formas, igual que cualquier otro movimiento secundario (ver `CHANGELOG.md#cuentas`, 2026-08-30).
 
 ---
 
 ## 7. Decisiones de diseño
 
 - **El historial de una cuenta se reconstruye en vivo, no se guarda como su propio ledger.** La alternativa — que cada módulo, al mover plata, además escribiera una copia del movimiento dentro de un array propio de Cuentas — hubiera significado dos fuentes de verdad para la misma plata (la de Cuentas y la del módulo original), con el riesgo de que se desincronizaran. Reconstruir on-demand desde las fuentes originales es más lento de calcular pero estructuralmente imposible de desincronizar.
-- **Cuentas personalizadas usan su propia convención de movimiento (`ingreso`/`egreso`) en vez de la de `S.movimientos` (`entrada`/`salida`/`apertura`/`transferencia`).** Documentado ya como una fuente de bugs (ver la nota en `guia-estilo-sheets.md` sobre Alcancía) — nace de que las cuentas personalizadas se agregaron después, sin retrofit del modelo original. No se unificó en esta migración por ser un cambio de modelo de datos, no de arquitectura de eventos — fuera del alcance de esta sesión.
+- **Cuentas personalizadas usaban su propia convención de movimiento (`ingreso`/`egreso` en `c.movimientos`) en vez de la de `S.movimientos` (`entrada`/`salida`/`apertura`/`transferencia`).** Nacía de que las cuentas personalizadas se agregaron después, sin retrofit del modelo original — documentado como fuente de bugs (ver la nota en `guia-estilo-sheets.md` sobre Alcancía). **Cerrado a medias el 2026-09-03** (ver `CHANGELOG.md#cuentas`): "Agregar"/"Retirar" en una cuenta personalizada ahora usan los mismos sheets y la misma convención (`S.movimientos`) que Nequi/Efectivo, así que todo movimiento **nuevo** ya no tiene esta distinción. Lo que sigue sin unificar, a propósito, por ser cambio de modelo de datos y no de arquitectura de eventos: el saldo inicial fijado al **crear** la cuenta (`crearCuentaCustom()` sigue empujando directo a `c.movimientos`) y todo el historial **anterior** a esa fecha. `getMovimientosCuenta`/`_getMovimientosCuentaCustom` (lectura), `eliminarMovimiento` (borrado) y `calcHealthScore` (ingresos del mes, en `inicio.js`) ya saben combinar ambas fuentes sin duplicar — cualquier función nueva que necesite el historial completo de una cuenta personalizada tiene que hacer lo mismo, no asumir que todo vive en `S.movimientos`.
 - **Nu es una cuenta más para el usuario, pero un subsistema aparte en el código** (tasa, tramos, cajitas, CDTs, metas): la complejidad real de Nu (tasa variable con historial, CDTs con RTE) no existe en ninguna otra cuenta, así que forzarla a compartir estructura con Nequi/Efectivo hubiera complicado ambas sin necesidad.
 - **El valor real de un CDT al cobrarlo manda sobre el cálculo teórico** — ver §3. Alternativa descartada: confiar ciegamente en `calcCDT()` y acreditar ese valor automáticamente. Se prefirió pedir el valor real porque el cálculo teórico es una proyección (asume tasa constante, sin contar redondeos de Nu), y una inversión real merece registrar la plata que de verdad llegó, no la que se esperaba.
 - **El chequeo de saldo real es manual, no una sincronización automática con Nu.** La app no tiene integración con la API de Nu (ni la tiene ningún otro módulo del proyecto) — es una corrección de bolsillo para cuando el usuario nota una diferencia, no un proceso recurrente automatizado.
@@ -193,11 +201,10 @@ Confirmar → se registra la diferencia como ajuste, sin tocar la tasa ni el his
 | Sheet | Qué hace |
 |---|---|
 | `sheet-nueva-cuenta` | Crear cuenta personalizada (nombre, saldo inicial, ícono, color) |
-| `sheet-mov-cuenta-custom` | Agregar/retirar dinero de una cuenta personalizada |
-| `sheet-agregar-dinero` | Agregar dinero a Nequi/Efectivo (con toggle de saldo inicial) |
+| `sheet-agregar-dinero` | Agregar dinero a Nequi/Efectivo/cuenta personalizada (con toggle de saldo inicial) |
 | `sheet-agregar-dinero-menu` | Igual, pero desde el botón `+` del header sin cuenta preseleccionada |
-| `sheet-restar-dinero` | Restar dinero de Nequi/Efectivo |
-| `sheet-editar-apertura` | Corregir el saldo inicial ya registrado |
+| `sheet-restar-dinero` | Restar dinero de Nequi/Efectivo/cuenta personalizada |
+| `sheet-editar-apertura` | Corregir el saldo inicial ya registrado (Nequi/Efectivo/cuenta personalizada) |
 | `sheet-transferir` | Transferir entre dos cuentas cualquiera (TC excluida) |
 | `sheet-nu-movimiento` | Entrada/salida de plata en una cajita de Nu |
 | `sheet-crear-cdt` | Abrir un CDT dentro de una cajita |
@@ -214,9 +221,10 @@ Confirmar → se registra la diferencia como ajuste, sin tocar la tasa ni el his
 | `getMovimientosCuenta(fuente)` / `_getMovimientosCuentaCustom(fuente)` | Reconstruyen el historial de una cuenta desde todas las fuentes que la tocan (ver §7) |
 | `renderMovsCuenta(cuentaKey)` | Aplica filtros y pinta la lista de movimientos, con protección de borrado para los "Automático" |
 | `abrirTransferir(origen?)` / `confirmarTransferir()` | Sheet y confirmación de transferencia entre cuentas |
-| `abrirAgregarDinero(fuente)` / `confirmarAgregarDinero()` | Agregar dinero (con o sin toggle de apertura) |
-| `abrirRestarDinero(fuente)` / `confirmarRestarDinero()` | Restar dinero |
+| `abrirAgregarDinero(fuente,nombre)` / `confirmarAgregarDinero()` | Agregar dinero (con o sin toggle de apertura) — Nequi/Efectivo/cuenta personalizada, ver `CHANGELOG.md#cuentas` (2026-09-03) |
+| `abrirRestarDinero(fuente,nombre)` / `confirmarRestarDinero()` | Restar dinero — mismo alcance que arriba |
 | `abrirEditarApertura(fuente)` / `confirmarEditarApertura()` | Corregir el saldo inicial ya registrado |
+| `getAperturaMov(fuente)` | Busca el movimiento de apertura vigente — revisa `S.movimientos` y, para `'custom:ID'`, hace fallback a `c.movimientos` (ver §7) |
 | `addCajita()` / `deleteCajita(id)` | Crear/eliminar una cajita de Nu |
 | `registrarTasaNuHistorial(tasa, desde)` | Agrega un tramo nuevo al historial de tasa EA |
 | `calcCDT(cdt)` / `calcRendimientoCDTMes(...)` | Proyección teórica de un CDT activo |
@@ -226,7 +234,7 @@ Confirmar → se registra la diferencia como ajuste, sin tocar la tasa ni el his
 | `abrirMetaCajita(cajitaId)` / `guardarMetaCajita()` / `quitarMetaCajita()` | Configurar/quitar la meta de ahorro de una cajita |
 | `calcMetaProgreso(cajita)` | % de avance y cuota sugerida de la meta |
 | `poblarChequeoNu()` / `guardarChequeoNu()` | Sheet de corrección manual del saldo real de Nu |
-| `abrirNuevaCuenta()` / `crearCuentaCustom()` / `editarCuentaCustom()` / `eliminarCuentaCustom()` | CRUD de cuentas personalizadas |
+| `abrirNuevaCuenta()` / `crearCuentaCustom()` / `editarCuentaCustom()` / `eliminarCuentaCustom()` | CRUD de cuentas personalizadas — `crearCuentaCustom()` sigue siendo el único punto que escribe el saldo inicial directo en `c.movimientos` en vez de `S.movimientos` (ver §7) |
 
 ### Código sin uso
 

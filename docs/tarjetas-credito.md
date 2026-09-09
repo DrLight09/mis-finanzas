@@ -12,6 +12,7 @@ Llevar el registro de las tarjetas de crédito propias: cuánto cupo tiene cada 
 - **Compra vs. pago vs. "cargo" (`tcMovimiento`)** — una *compra* se registra desde este módulo (o desde el gasto genérico, ver §5). Un *pago* reduce la deuda y sale de una cuenta real. Un *cargo* (`tipo: 'cargo_encargo'` o `'cargo_prestamo'`) es un tercer tipo de movimiento que **no crea este módulo** — lo generan Encargos o Préstamos cuando usan la tarjeta como método de pago, y vive en `S.tcMovimientos`, no en `tc.compras`. Tarjetas de crédito solo los *lee* (para sumarlos a la deuda y al historial), nunca los crea ni los borra.
 - **Cuotas** — una compra puede marcarse como diferida a cuotas (`esCuotas`, `numCuotas`, `valorCuota`). El conteo de `cuotasPagadas` es puramente informativo (para saber cuántas cuotas del plan ya "sientes" pagadas) — no descuenta nada de la deuda ni se vincula a ningún pago real; la deuda solo baja con pagos de verdad.
 - **Cobertura** — si una tarjeta tiene una cajita vinculada (`tc.cajitaId`), se muestra si el saldo de esa cajita alcanza para cubrir la deuda total de todas las tarjetas vinculadas a ella (puede haber más de una tarjeta por cajita).
+- **Cargo especial (`_esCargoEspecial`)** — un tercer tipo de "compra" pensado para cuando el banco impone un cargo (interés por cupo al tope, comisión, corrección de cierre) que **no fue una decisión de gasto del usuario**. Vive dentro de `tc.compras` con el flag `_esCargoEspecial:true` y un `_motivoCargo` (`'interes' | 'comision' | 'otro'`), y se crea/borra por el mismo camino que una compra normal (`tcCrearCompra`/`tcEliminarCompraInterna`) — la única diferencia real es que su sheet de registro (`confirmarCargoEspecialTC`) **no valida cupo disponible**, a propósito (ver §3 y §7).
 
 ## 3. Reglas que nunca deben romperse
 
@@ -23,6 +24,8 @@ Llevar el registro de las tarjetas de crédito propias: cuánto cupo tiene cada 
 - **Eliminar una compra o un pago de TC, sea desde el detalle de la tarjeta o desde el feed general de movimientos, siempre pasa por `tcEliminarCompraInterna`/`tcEliminarPagoInterna`.** Nunca se reimplementa la reversión a mano en el punto de entrada — ambos casos existen (ver `abrirDetalleTCSheet` y el feed general en `eliminarMovimiento`) y deben terminar en la misma función interna para no desincronizar la deuda.
 - **Un pago de TC (`_esPagoTC`) nunca cuenta como gasto real del mes; una compra de TC (`_esCompraTC`) sí.** El gasto real ya se contó cuando se hizo la compra — el pago solo mueve plata de una cuenta a saldar la deuda, no es un gasto nuevo. Esta exclusión vive centralizada en `_esGastoVarNoReal()`; un flag de exclusión nuevo se agrega ahí, no repetido pantalla por pantalla.
 - **La tarjeta no simula un banco real.** No se agregan fechas de corte, extractos ni pago mínimo — es una decisión de diseño explícita (ver §7), no un hueco por completar.
+- **Una compra siempre valida cupo disponible; un cargo especial nunca lo valida, a propósito.** Toda compra real (`confirmarCompraTC`, o el "Préstamo con TC" de Préstamos — ver más abajo) debe rechazarse si supera el cupo disponible de la tarjeta. El único camino que se salta esa validación deliberadamente es "Cargo especial" (`confirmarCargoEspecialTC`), porque ahí el monto no lo elige el usuario — lo impone el banco (interés, comisión) y por definición puede superar el cupo configurado. Si se agrega un cuarto camino para crear una "compra" en el futuro, hay que decidir explícitamente a cuál de los dos grupos pertenece — no asumir ninguno de los dos por defecto.
+- **"Préstamo con TC" (módulo Préstamos, `prestado.js`) es una compra real a efectos de cupo, no un cargo especial.** Aunque técnicamente se registra como un `tcMovimientos` tipo `'cargo_prestamo'` (igual que "Compra con TC" de Encargos, que tampoco valida cupo — ver `encargos.md`), acá sí importa la decisión de gasto del usuario: eligió comprar algo con su propia tarjeta para prestárselo a alguien. `confirmarPrestamoTC` valida `tc.cupo && tcCupoDisponible(tc) < montoTC` antes de guardar — usando `montoTC` (el valor real que carga la tarjeta si hay diferencial activo), no el monto que se le dijo al deudor. Corregido 2026-09-04 tras un bug real reportado por el usuario: la función nunca validaba cupo, ni con el monto normal ni con el "valor real" del diferencial (ver `CHANGELOG.md#prestado`).
 
 ## 4. Modelo de datos
 
@@ -39,7 +42,8 @@ Cada tarjeta vive en `S.tarjetasCredito[]`:
   compras: [{
     id, desc, cat, fecha, monto, nota, eliminado,
     esCuotas, numCuotas, valorCuota, cuotasPagadas,  // informativo, ver §2
-    _esFavor, _desdeCP    // opcionales: marca que esta compra es deuda ajena
+    _esFavor, _desdeCP,      // opcionales: marca que esta compra es deuda ajena
+    _esCargoEspecial, _motivoCargo   // opcionales: cargo del banco (interés/comisión), no validó cupo — ver §2/§3
   }],
   pagos: [{id, monto, fecha, fuente, nota, eliminado}],
   creadoEn
@@ -75,6 +79,9 @@ Mismo destino final — `addGastoVar()` detecta `fuente.startsWith('tc:')`, vali
 **Cerrar el ciclo de cuotas de una compra:**
 `tcIncrementarCuotaPagada(tcId, compraId, ±1)` — solo mueve el contador informativo `cuotasPagadas`, no toca la deuda ni genera ningún pago.
 
+**Registrar un cargo especial (interés, comisión, corrección del banco):**
+Botón "+ Cargo especial" dentro del detalle de la tarjeta (`abrirDetalleTCSheet`) → `abrirCargoEspecialTC(tcId)` → completar descripción/monto/motivo → `confirmarCargoEspecialTC()`: si el monto supera el cupo disponible, se avisa explícitamente en el diálogo de confirmación (no se bloquea — ver §3) → `tcCrearCompra(tc, {..., _esCargoEspecial:true, _motivoCargo})` (misma capa de datos que una compra, `tcRecalcular` incluido) → gasto espejo en `S.gastosVar` marcado `_esCompraTC` (sí cuenta como gasto real del mes, igual que una compra — el interés/comisión ya fue un costo real) → `refresh()` → vuelve a abrir el detalle de la tarjeta. Se elimina exactamente igual que cualquier compra (`eliminarCompraTC` → `tcEliminarCompraInterna`), sin código de borrado propio.
+
 ## 6. Casos especiales
 
 - **Cajita vinculada eliminada:** si `tc.cajitaId` apunta a una cajita que ya no existe, el widget de cobertura no se muestra en el dashboard general (se ignora en silencio); en el detalle de la tarjeta sí se avisa explícitamente, invitando a vincular una nueva desde "Editar tarjeta".
@@ -88,6 +95,7 @@ Mismo destino final — `addGastoVar()` detecta `fuente.startsWith('tc:')`, vali
 - **No simular un banco real (sin corte, sin extracto, sin pago mínimo):** el objetivo del módulo es saber cuánto se debe y si alcanza para pagarlo, no replicar el ciclo de facturación de un banco — eso agregaría complejidad (fechas de corte, intereses, pago mínimo) sin aportar a las preguntas que este módulo existe para responder.
 - **Widgets de cobertura usan deuda total, no deuda propia:** decisión corregida explícitamente (ver `CHANGELOG.md`) tras confundir "¿me alcanza para pagar?" (pregunta que el banco hace sobre el 100% de la deuda) con "¿cuánta plata es realmente mía?" (pregunta de patrimonio, donde sí importa separar lo propio de lo ajeno).
 - **`tcMovimientos` (cargos de Encargos/Préstamos) vive fuera de `tc.compras`:** en vez de forzar a Encargos/Préstamos a empujar registros directo al array de compras de la tarjeta (acoplando su formato interno a otro módulo), se creó un tipo de registro aparte que Tarjetas de crédito solo consume para calcular deuda ajena e historial. Mantiene la frontera clara: quien genera el cargo es dueño de esa entrada.
+- **"Cargo especial" reutiliza `tc.compras` en vez de un array propio (`tc.ajustes` o similar):** se consideró un array separado, pero el 90% de la infraestructura necesaria (historial unificado en `abrirDetalleTCSheet`, borrado con protección por antigüedad, gasto espejo, `tcRecalcular`) ya existe para compras — duplicarla para una variante que solo cambia "¿valida cupo?" y "¿qué badge muestra?" hubiera sido código repetido sin necesidad. Se prefirió un flag (`_esCargoEspecial`) sobre el mismo modelo, mismo criterio que ya usa `_esFavor`/`_desdeCP` para "esta compra es deuda ajena".
 - **`cuotasPagadas` es puramente informativo:** se consideró que cada cuota generara automáticamente un pago real, pero eso obligaría a decidir de qué cuenta sale cada cuota sin que el usuario lo confirme explícitamente — se prefirió dejarlo como un contador de referencia y que el pago real siga siendo un paso separado y explícito.
 
 ## 8. Referencia de implementación
@@ -102,7 +110,9 @@ Mismo destino final — `addGastoVar()` detecta `fuente.startsWith('tc:')`, vali
 | `tcCalcularValorCuota` / `tcValorUltimaCuota` | Matemática de cuotas |
 | `tcRecalcular(tc)` | Única función que escribe `tc.deuda`, desde saldo inicial + compras + cargos − pagos |
 | `tcNormalizarTarjetas()` | Migración/auto-sanación, se llama en cada `refresh()`; recalcula deuda de todas las tarjetas |
-| `tcCrearCompra(tc, datos)` / `tcEliminarCompraInterna(tc, id)` | Capa de datos de compras |
+| `tcCrearCompra(tc, datos)` / `tcEliminarCompraInterna(tc, id)` | Capa de datos de compras (incluye cargos especiales, ver abajo) |
+| `abrirCargoEspecialTC(tcId)` / `confirmarCargoEspecialTC()` | Sheet "Cargo especial a la tarjeta" (interés/comisión/otro) — no valida cupo, ver §3/§7 |
+| `TC_MOTIVOS_CARGO` | Labels de motivo para cargos especiales (`interes`/`comision`/`otro`) |
 | `tcBuscarCompraPorIdOMatch` | Fallback de búsqueda para datos legado sin id vinculado |
 | `tcIncrementarCuotaPagada(tcId, compraId, delta)` | Contador informativo de cuotas |
 | `tcCrearPago(tc, datos)` / `tcEliminarPagoInterna(tc, id)` | Capa de datos de pagos |

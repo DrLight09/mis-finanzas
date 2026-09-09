@@ -141,6 +141,8 @@ Cuando entra plata de mesada y se elige una cuenta destino, además de sumarle e
 
 El `id` de cada movimiento espejo se guarda junto al dato que lo originó (`_movSecId` en el pago simple, en cada `split`, o en cada entrada de `pendienteHistorial`) para poder encontrarlo y borrarlo después sin ambigüedad.
 
+> Cuentas (`getMovimientosCuenta()`) debe leer estos movimientos **únicamente** desde `S.movimientos` — nunca reconstruirlos de nuevo a partir de `S.mesadas`. Hubo un bloque que hacía justo eso, generando un segundo movimiento duplicado (sin candado) por cada pago con destino real; se eliminó — ver `CHANGELOG.md#mesada` (2026-08-30).
+
 ---
 
 ## 8. Decisiones de diseño

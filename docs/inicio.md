@@ -22,7 +22,7 @@ Inicio es la pantalla que se ve al abrir la app: un resumen agregado de patrimon
 | `#s-gf`, `#s-gv`, `#s-gtotal` | Gastos del mes: fijos, variables, total |
 | `#tc-deuda-card` | Card de deuda TC (oculto si no hay tarjetas) |
 | `#health-score-card` | Anillo + tips de salud financiera |
-| `#proyeccion-card` | Tendencia mensual + proyección a 3/6/12 meses |
+| `#proyeccion-card` | Tendencia mensual + proyección a 3/6/12 meses. Sin patrimonio registrado, muestra un empty-state propio ("Sin datos suficientes") en vez del contenido normal |
 | `#s-attn-section` / `#s-attn-list` | Sección colapsable "Necesita atención" |
 
 Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo el toggle de la sección "Necesita atención" (ver punto 4) y los tooltips de Proyección (ya usaban `addEventListener`, no requirieron migración).
@@ -33,7 +33,7 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 
 **`calcHealthScore()`** — calcula el puntaje de salud financiera (0-100) a partir de: fondo de emergencia (liquidez vs gastos mensuales), ratio de deuda TC vs ingresos, plata prestada a otros vs liquidez, ratio gastos/ingresos, CDTs activos, gastos fijos configurados, y diversidad de categorías de gasto. Devuelve `{ score, tips, ingresosMes, rendimientoCDTMes }`.
 
-**`renderHealthScore()`** — pinta el anillo SVG y los tips de `calcHealthScore()` en `#health-score-card`.
+**`renderHealthScore()`** — pinta el anillo SVG y los tips de `calcHealthScore()` en `#health-score-card`. El círculo de progreso usa `transform="rotate(-90 38 38)"` para que el relleno empiece arriba (a las 12) y avance en sentido horario, en vez de arrancar en el punto por defecto de un `<circle>` SVG (a las 3) — ver `CHANGELOG.md#inicio` (2026-08-30) por qué no se usa `stroke-dashoffset` para esto.
 
 **`renderProyeccion()`** — calcula la tendencia mensual de patrimonio (trimmed mean sobre los últimos 90 días de `S.patrimonioHistorial`, con mínimo de 7 días reales para no extrapolar de un solo movimiento grande) y proyecta a 3/6/12 meses en `#proyeccion-card`. Incluye tooltips táctiles con el detalle de cada proyección.
 

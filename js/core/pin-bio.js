@@ -259,8 +259,23 @@ import { waitFor } from './wait-for-module.js';
     _checkPendingPinGate();
   }
 
-  function _launchApp() {
-    window._fbLoadData();
+  // `firebase-init.js` (que define window._fbLoadData) y este archivo cargan
+  // ambos como `type="module" async` (ver comentarios en index.html), así que
+  // no hay garantía de orden de ejecución entre los dos: si pin-bio.js
+  // termina de cargar/ejecutar primero, _launchApp() puede correr antes de
+  // que firebase-init.js haya llegado a definir window._fbLoadData, tronando
+  // con "window._fbLoadData is not a function". Mismo criterio que el guard
+  // de window._pendingPinGate de más arriba: reintentar acotado en vez de
+  // asumir que ya existe.
+  function _launchApp(_intentos) {
+    if (typeof window._fbLoadData === 'function') {
+      window._fbLoadData();
+    } else if ((_intentos || 0) < 100) { // hasta ~5s (100 x 50ms)
+      setTimeout(() => _launchApp((_intentos || 0) + 1), 50);
+    } else {
+      console.error('[pin-bio] window._fbLoadData nunca apareció tras 5s; firebase-init.js no cargó o falló.');
+      if (window.toast) toast('No se pudo cargar tus datos. Recarga la página.', 'error');
+    }
   }
 
   // ── Config desde pantalla de configuración ───────────────────────

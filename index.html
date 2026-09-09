@@ -183,11 +183,6 @@
       .toast.hiding{animation:toastOut .22s ease forwards;}
       @keyframes toastIn{from{opacity:0;transform:translateY(-14px) scale(.95);}to{opacity:1;transform:translateY(0) scale(1);}}
       @keyframes toastOut{to{opacity:0;transform:translateY(-10px) scale(.95);}}
-      /* ===== WRAPPED (reveal animado de mes/año) ===== */
-      @keyframes wrappedDotIn{from{opacity:0;transform:scale(0);}to{opacity:1;transform:scale(1);}}
-      @keyframes wrappedFadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-      .wrapped-dot{opacity:0;transform-origin:center;animation:wrappedDotIn .35s ease-out forwards;}
-      .wrapped-reveal{opacity:0;animation:wrappedFadeUp .5s ease-out forwards;}
       /* ===== PIN SCREEN (segundo gate) ===== */
       #pin-screen{position:fixed;inset:0;z-index:99998;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);padding:32px 24px;text-align:center;overflow:hidden;}
       #pin-screen.open{display:flex;}
@@ -829,11 +824,6 @@
                 alcancía.</div>
             </div>
           </div>
-          <!-- "Wrapped" de Alcancía: progreso de ahorro entre ciclos, visible
-               en cualquier momento (no solo en el instante de destapar) —
-               poblado por renderAlcancia(), oculto si hay menos de 2 ciclos
-               en el historial (no hay nada que comparar todavía). -->
-          <div id="alcancia-wrapped-progreso" style="display:none;margin-bottom:14px;"></div>
           <div class="sec-title" id="alcancia-historial-titulo"
             style="margin-top:4px;">Historial de alcancías</div>
           <div id="alcancia-historial-lista">
@@ -2163,20 +2153,6 @@
             style="padding:12px 15px;margin-bottom:20px;"></div>
         </div>
 
-        <!-- WRAPPED: revelación anual tipo Spotify Wrapped (patrimonio,
-             categoría del año, mejor/peor mes, ahorro). Contenedor estático
-             simple — todo el contenido lo arma renderWrapped() (js/modules/
-             wrapped.js, grupo lazy 'wrapped'), mismo patrón que Alcancía.
-             A propósito solo anual, no mensual: la especialidad de un
-             "wrapped" depende de que no se vea seguido — una versión
-             mensual competiría de lleno con "Top categorías" de Análisis
-             financiero, que ya cubre ese chequeo periódico (ver wrapped.md
-             §7). Solo cubre datos inequívocamente propios — a propósito no
-             incluye Mesada/Spotify/Encargos/Plata Comprometida. -->
-        <div class="screen" id="screen-wrapped">
-          <div id="wrapped-body"></div>
-        </div>
-
         <!-- PERSONAS -->
         <div class="screen" id="screen-personas">
           <div
@@ -2572,18 +2548,6 @@
         <div>
           <div class="mas-item-label">Análisis financiero</div>
           <div class="mas-item-sub">¿Ganás o perdés plata cada mes?</div>
-        </div>
-      </div>
-      <div class="mas-item" id="mas-wrapped" data-screen="wrapped">
-        <div class="mas-item-icon"
-          style="background:rgba(200,240,96,.1);border-color:rgba(200,240,96,.25);">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round"
-            stroke-linejoin="round"><path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" /></svg>
-        </div>
-        <div>
-          <div class="mas-item-label">Tu resumen</div>
-          <div class="mas-item-sub">Tu año, bien melo</div>
         </div>
       </div>
       <div class="mas-item" id="mas-tarjetas" data-screen="tarjetas">
@@ -3688,6 +3652,45 @@
         </button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="mover-enc-cuentas">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- NUEVA PERSONA -->
+    <div class="overlay" id="sheet-nueva-persona" data-sheet-id="nueva-persona">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Nueva persona</div>
+        <div class="ig"><label class="il" for="np_nombre">Nombre</label><input
+            type="text" id="np_nombre" maxlength="30"
+            placeholder="Ej: Papá, Carlos, Mamá..."></div>
+        <div class="ig">
+          <div class="il">Color del avatar</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;"
+            id="np_colores">
+            <div class="avatar-color-opt" data-color="#60b0f0"
+              style="width:30px;height:30px;border-radius:50%;background:#60b0f0;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#60b0f0"></div>
+            <div class="avatar-color-opt" data-color="#c8f060"
+              style="width:30px;height:30px;border-radius:50%;background:#c8f060;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#c8f060"></div>
+            <div class="avatar-color-opt" data-color="#f0b840"
+              style="width:30px;height:30px;border-radius:50%;background:#f0b840;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#f0b840"></div>
+            <div class="avatar-color-opt" data-color="#b090f0"
+              style="width:30px;height:30px;border-radius:50%;background:#b090f0;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#b090f0"></div>
+            <div class="avatar-color-opt" data-color="#f06868"
+              style="width:30px;height:30px;border-radius:50%;background:#f06868;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#f06868"></div>
+            <div class="avatar-color-opt" data-color="#c060f0"
+              style="width:30px;height:30px;border-radius:50%;background:#c060f0;cursor:pointer;border:2px solid transparent;"
+              data-pick-color="#c060f0"></div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-primary"
+          id="btn-crear-deudor">Crear persona</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="nueva-persona">Cancelar</button>
       </div>
     </div>
 
@@ -4922,7 +4925,16 @@
 -->
 <script src="js/core/html-tag.js" defer></script>
 <script src="js/core/calc-helpers.js" defer></script>
-<script src="js/core/color-picker.js" defer></script>
+<!--
+// js/core/wait-for.js — helper waitFor() para los <script defer> clásicos
+// (personas-init.js/mejoras.js/mejoras-adicionales.js). Antes cada uno
+// reimplementaba a mano su propio setInterval + contador de reintentos.
+// pin-bio.js/firebase-sync.js usan su propia copia vía `import` de
+// js/core/wait-for-module.js (no de este archivo) — ver el comentario en
+// ambos archivos y CHANGELOG.md#infraestructura--seguridad para el porqué
+// de la separación.
+-->
+<script src="js/core/wait-for.js" defer></script>
 <!--
 // Módulo Mesada — migrado a js/modules/mesada.js (ver docs/mesada.md).
 // Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, quinto
@@ -4961,7 +4973,8 @@
      que hoy cargan entre esta posición y la posición vieja de
      personas.js (sheet-stack.js, lazy-loader.js, money-input.js,
      movimientos.js, cuentas.js, bootstrap.js, mas-menu.js,
-     sheet-viewport.js, gastos-fijos-progress.js, sheet-swipe.js,
+     sheet-behavior.js [fusión 2026-09-08 de sheet-viewport.js +
+     sheet-swipe.js — ver ese archivo], gastos-fijos-progress.js,
      firebase-sync.js, mejoras.js, busqueda-global.js,
      mejoras-adicionales.js, pin-bio.js, nav.js) — ninguno tiene
      código de nivel superior que dependa de personas.js, ni
@@ -5077,9 +5090,14 @@
 
     <!-- ===== MEJORAS UX MÓVIL JS ===== -->
 <script src="js/core/mas-menu.js" defer></script>
-<script src="js/core/sheet-viewport.js" defer></script>
+<!--
+// sheet-swipe.js + sheet-viewport.js fusionados en sheet-behavior.js
+// (2026-09-08): eran mitades de la misma lista numerada de comentarios
+// original, no una separación real de responsabilidad. Ver el comentario
+// de encabezado de js/core/sheet-behavior.js para el detalle completo.
+-->
+<script src="js/core/sheet-behavior.js" defer></script>
 <script src="js/core/gastos-fijos-progress.js" defer></script>
-<script src="js/core/sheet-swipe.js" defer></script>
 
     <!-- PRESUPUESTOS SHEET -->
     <div class="overlay" id="sheet-presupuestos" data-sheet-id="presupuestos">

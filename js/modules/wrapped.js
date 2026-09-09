@@ -1,43 +1,44 @@
 /* ═══════════════════════════════════════════════════════════════
    js/modules/wrapped.js
 
-   Módulo "Wrapped" — resumen narrativo tipo Spotify Wrapped de mes/año,
-   pantalla nueva accesible desde "Más" → Tu resumen. Duodécimo grupo lazy
-   (ver js/core/lazy-loader.js).
+   Módulo "Wrapped" — experiencia de revelación anual tipo Spotify
+   Wrapped, pantalla nueva accesible desde "Más" → Tu resumen. Duodécimo
+   grupo lazy (ver js/core/lazy-loader.js).
+
+   IMPORTANTE — esto NO es un dashboard de control (para eso ya existe
+   Análisis financiero, que se puede consultar en cualquier momento).
+   Wrapped es a propósito lo opuesto: una revelación con sorpresa y
+   animación. Por eso: (1) NUNCA muestra ingresos/gastos/tasa de ahorro
+   en crudo — solo "datos curiosos" (categoría del año, mejor/peor mes,
+   gasto más grande, Alcancía, la curva de patrimonio animándose), y
+   (2) es a propósito **solo anual, no mensual** — la especialidad de un
+   wrapped depende de que no se vea seguido; una versión mensual
+   competiría de lleno con "Top categorías" de Análisis financiero, que
+   ya cubre ese chequeo periódico. Ver wrapped.md §7.
 
    No es un módulo de datos: no guarda absolutamente nada nuevo en S.
-   Todo se calcula en vivo, cada vez que se abre la pantalla o se cambia
-   de pestaña (mes/año), a partir de estructuras que YA existen y que
-   otras pantallas ya usan como fuente de verdad — mismo principio que el
-   resto de la app ("los movimientos son la fuente de verdad, nunca un
-   valor cacheado que pueda desincronizarse").
+   Todo se calcula en vivo cada vez que se abre la pantalla — mismo
+   principio que el resto de la app ("los movimientos son la fuente de
+   verdad, nunca un valor cacheado que pueda desincronizarse").
 
    A propósito NO cubre Mesada, Spotify, Encargos ni Plata Comprometida:
    son plata de terceros o compartida, no el desempeño financiero propio
-   del usuario — ver wrapped.md §7 "Decisiones de diseño" para el detalle
-   de esta decisión.
+   del usuario — ver wrapped.md §7.
 
    Depende de (todas con guard typeof, ninguna es obligatoria):
-   - `_esGastoVarNoReal` / `_esEntradaEspejoNoIngreso` — helpers centralizados
-     de Análisis financiero (viven en un archivo núcleo eager, no en
-     analisis.js, ya que Inicio también los usa sin ser lazy — ver
-     analisis-financiero.md §9bis).
-   - `calcPatrimonioTotal` — núcleo, eager.
-   - `window._alcRachaAhorro` / `window._alcMejorCiclo` — expuestas por
-     alcancia.js (grupo lazy aparte); si Alcancía no cargó todavía, esa
-     cifra puntual simplemente no se muestra.
-   - `fmt` — formateador de moneda, núcleo.
+   - `_esGastoVarNoReal` / `_esEntradaEspejoNoIngreso` — helpers de
+     Análisis financiero (núcleo eager, ver analisis-financiero.md §9bis).
+   - `window._alcRachaAhorro` — expuesta por alcancia.js (grupo lazy
+     aparte); si Alcancía no cargó todavía, esa cifra puntual no se
+     muestra.
+   - `fmt`, `escHtml`, `hoy` — núcleo eager.
    ═══════════════════════════════════════════════════════════════ */
 (function(){
 'use strict';
 
-/* ─── ESTADO LOCAL DE LA PANTALLA (qué pestaña se está viendo) ───────────── */
-let _wrappedTab = 'mes'; // 'mes' | 'anio'
-
 /* ─── HELPERS DE RANGO DE FECHA ────────────────────────────────────────────
-   Todas las fechas en S son strings "YYYY-MM-DD" (mismo formato en
-   Mesada/Spotify/Alcancía, ver sus .md) — comparación por slice, sin
-   depender de ningún formato de "mesK" propio de otra pantalla. */
+   Todas las fechas en S son strings "YYYY-MM-DD" — comparación por slice,
+   sin depender de ningún formato de "mesK" propio de otra pantalla. */
 function _wrappedEnRango(fecha, tipo, mesK, anioK){
   if(!fecha) return false;
   return tipo === 'mes' ? fecha.slice(0,7) === mesK : fecha.slice(0,4) === anioK;
@@ -47,20 +48,19 @@ function _wrappedHoy(){
   return typeof hoy === 'function' ? hoy() : new Date().toISOString().slice(0,10);
 }
 
-/* ─── CÁLCULO PURO: gasto/ingreso real + top categoría + alcancía de un
-   período (mes o año) ──────────────────────────────────────────────────
-   Reutiliza los mismos criterios de "gasto/ingreso real" que Análisis
-   financiero, Inicio, Salud financiera y Presupuestos — nunca un filtro
-   propio (ver analisis-financiero.md §9bis). Sin `S`, o sin esos helpers
-   disponibles, degrada a no filtrar nada (mejor mostrar de más que
-   romper la pantalla). */
+/* ─── CÁLCULO PURO de un período (mes o año) ──────────────────────────────
+   Sigue calculando ingresos/gastos/balance internamente (hace falta para
+   rankear "mejor/peor mes"), pero el render NUNCA pinta esos números
+   crudos — solo los usa como insumo de datos curiosos (top categoría,
+   gasto más grande, ranking de meses). Reutiliza los mismos criterios de
+   "gasto/ingreso real" que Análisis financiero (analisis-financiero.md
+   §9bis). */
 function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
   S = S || {};
   const gastosVar  = S.gastosVar || [];
-  // S.pagosGastosFijos puede llegar como array O como objeto/mapa (visto en
-  // datos reales de producción, no solo hipotético) — normalizamos acá para
-  // no asumir un solo shape y romper toda la pantalla si algún día no es
-  // un array plano.
+  // S.pagosGastosFijos puede llegar como array O como objeto/mapa (visto
+  // en datos reales de producción) — normalizamos para no romper la
+  // pantalla si algún día no es un array plano.
   const pagosFijosRaw = S.pagosGastosFijos;
   const pagosFijos = Array.isArray(pagosFijosRaw) ? pagosFijosRaw : Object.values(pagosFijosRaw || {});
   const movs       = S.movimientos || [];
@@ -74,11 +74,9 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
 
   const totalGastos   = gastosVarPeriodo.reduce((s,g)=>s+(g.monto||0),0) + pagosFijosPeriodo.reduce((s,p)=>s+(p.monto||0),0);
   const totalIngresos = ingresosPeriodo.reduce((s,m)=>s+(m.monto||0),0);
-  const balance    = totalIngresos - totalGastos;
-  const tasaAhorro = totalIngresos > 0 ? (balance/totalIngresos)*100 : null;
+  const balance = totalIngresos - totalGastos;
 
-  // Top categoría (gastos variables reales + gastos fijos pagados, mismo
-  // universo que "Top categorías" de Análisis financiero §6).
+  // Top categoría (gastos variables reales + gastos fijos pagados).
   const catMap = {};
   [...gastosVarPeriodo, ...pagosFijosPeriodo].forEach(g => {
     const cat = g.cat || 'Sin categoría';
@@ -89,11 +87,15 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
     if(!topCategoria || catMap[cat] > topCategoria.monto) topCategoria = { cat, monto: catMap[cat] };
   });
 
+  // Gasto más grande del período — "dato curioso" tipo Wrapped, nunca
+  // mostrado así de puntual en Análisis financiero.
+  let gastoMasGrande = null;
+  gastosVarPeriodo.forEach(g => {
+    if(!gastoMasGrande || (g.monto||0) > gastoMasGrande.monto) gastoMasGrande = { desc: g.desc || g.cat || 'Gasto', monto: g.monto||0 };
+  });
+
   // Alcancía del período: depósitos del ciclo activo dentro del rango +
   // ciclos ya destapados cuyo cierre (fechaFin) cae dentro del rango.
-  // Deliberadamente no reparte un ciclo entre dos períodos si empezó
-  // antes — se cuenta completo en el período donde se DESTAPÓ, igual
-  // criterio simple que ya usa Alcancía para "duración" de un ciclo.
   let alcanciaPeriodo = 0;
   const a = S.alcancia;
   if(a){
@@ -101,16 +103,13 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
     (a.historial||[]).forEach(h => { if(_wrappedEnRango(h.fechaFin, tipo, mesK, anioK)) alcanciaPeriodo += (h.saldoRegistrado||0); });
   }
 
-  return { totalGastos, totalIngresos, balance, tasaAhorro, topCategoria, alcanciaPeriodo };
+  return { totalGastos, totalIngresos, balance, topCategoria, gastoMasGrande, alcanciaPeriodo };
 }
 
-/* ─── Mejor y peor mes del año (para la vista anual) ──────────────────────
-   Solo cuenta meses con al menos un ingreso o gasto real registrado — un
-   mes en blanco (antes de empezar a usar la app, o un año futuro) no
-   compite como "peor mes" solo por no tener datos. */
+/* ─── Mejor y peor mes del año ─────────────────────────────────────────── */
 function _wrappedMejorPeorMesAnio(S, anioK){
   const anioActual = String(new Date().getFullYear());
-  const mesMax = (anioK === anioActual) ? new Date().getMonth() : 11; // 0-indexado
+  const mesMax = (anioK === anioActual) ? new Date().getMonth() : 11;
   const meses = [];
   for(let m=0; m<=mesMax; m++){
     const mesK = anioK + '-' + String(m+1).padStart(2,'0');
@@ -125,12 +124,10 @@ function _wrappedMejorPeorMesAnio(S, anioK){
   return { mejor, peor };
 }
 
-/* ─── Crecimiento de patrimonio en el año ─────────────────────────────────
-   Mismo criterio documentado en analisis-financiero.md §5: usa
-   `valorVisible` (sin alcancía, nunca revelarla vía una gráfica — mismo
-   motivo que el Historial de patrimonio de Análisis) y resta el
-   `montoBase` acumulado del período para no contar aperturas/ajustes de
-   saldo inicial como si fueran crecimiento real. */
+/* ─── Resumen de crecimiento de patrimonio en el año (número final) ──────
+   Mismo criterio que analisis-financiero.md §5: `valorVisible` (sin
+   alcancía) y se resta el `montoBase` acumulado para no contar
+   aperturas/ajustes como crecimiento real. */
 function _wrappedPatrimonioAnio(S, anioK){
   const hist = (S.patrimonioHistorial || [])
     .filter(p => (p.fecha||'').slice(0,4) === anioK)
@@ -146,114 +143,176 @@ function _wrappedPatrimonioAnio(S, anioK){
   return { diff, pct };
 }
 
+/* ─── Serie mensual de patrimonio (Enero → mes actual) para el gráfico
+   animado ─────────────────────────────────────────────────────────────
+   Un punto por mes: el último `valorVisible` conocido de ese mes
+   (forward-fill desde el mes anterior si ese mes no tuvo snapshot propio).
+   Los meses sin ningún dato todavía (ni propio ni heredado) se recortan
+   del principio de la serie — no se puede graficar antes del primer dato
+   real. */
+function _wrappedSerieMensualAnio(S, anioK){
+  const anioActual = String(new Date().getFullYear());
+  const mesMax = (anioK === anioActual) ? new Date().getMonth() : 11;
+  const hist = (S.patrimonioHistorial || [])
+    .filter(p => p.fecha)
+    .slice()
+    .sort((a,b) => a.fecha.localeCompare(b.fecha));
+  const val = p => (typeof p.valorVisible === 'number') ? p.valorVisible : (p.valor||0);
+
+  let ultimoConocido = null;
+  hist.forEach(p => { if(p.fecha.slice(0,4) < anioK) ultimoConocido = val(p); });
+
+  const serie = [];
+  for(let m=0; m<=mesMax; m++){
+    const mesK = anioK + '-' + String(m+1).padStart(2,'0');
+    const puntosDelMes = hist.filter(p => p.fecha.slice(0,7) === mesK);
+    if(puntosDelMes.length) ultimoConocido = val(puntosDelMes[puntosDelMes.length-1]);
+    serie.push({ mesK, valor: ultimoConocido });
+  }
+  const primerIdxConDato = serie.findIndex(p => p.valor !== null);
+  return primerIdxConDato === -1 ? [] : serie.slice(primerIdxConDato);
+}
+
 const _MES_NOMBRE = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 function _wrappedMesKaNombre(mesK){
   const partes = (mesK||'').split('-');
   const idx = parseInt(partes[1],10) - 1;
   return (_MES_NOMBRE[idx]||'') + ' ' + (partes[0]||'');
 }
+function _wrappedMesKaAbrev(mesK){
+  const partes = (mesK||'').split('-');
+  return _MES_NOMBRE[parseInt(partes[1],10)-1] || '';
+}
 
-/* ─── RENDER: tarjeta de una fila simple (label/valor) ────────────────────
-   Pequeño helper para no repetir el mismo bloque de estilos 8 veces. */
-function _wrappedFila(label, valorHtml, color){
-  return `<div class="row" style="margin-bottom:8px;">
-    <span style="font-size:12px;color:var(--text3);">${label}</span>
-    <span style="font-size:13px;font-family:'DM Mono',monospace;${color?('color:'+color+';'):''}">${valorHtml}</span>
+/* ─── RENDER: gráfico de línea animado (SVG) ──────────────────────────────
+   Puntos conectados por líneas, uno por mes, coloreado según si el
+   patrimonio terminó arriba o abajo de donde empezó. El *dibujo* de la
+   línea se anima con stroke-dasharray/-dashoffset (ver
+   `_wrappedAnimarLinea`, se dispara después de insertar el HTML) — no es
+   una gráfica estática como la de Análisis financiero, es una
+   revelación. Devuelve '' si hay menos de 2 meses con dato. */
+function _wrappedGraficoAnimadoSvg(serie){
+  if(!serie || serie.length < 2) return '';
+  const w = 300, h = 150, padX = 14, padY = 20;
+  const valores = serie.map(p => p.valor);
+  const min = Math.min(...valores), max = Math.max(...valores);
+  const rango = (max - min) || 1;
+  const stepX = (w - padX*2) / (serie.length - 1);
+  const coords = serie.map((p,i) => ({
+    x: padX + i*stepX,
+    y: padY + (1 - (p.valor - min)/rango) * (h - padY*2)
+  }));
+  const subeOBaja = serie[serie.length-1].valor >= serie[0].valor;
+  const color = subeOBaja ? 'var(--accent)' : 'var(--red)';
+  const pathD = coords.map((c,i) => (i===0?'M':'L') + c.x.toFixed(1) + ',' + c.y.toFixed(1)).join(' ');
+  const dots = coords.map((c,i) => `<circle class="wrapped-dot" style="animation-delay:${(1.1 + i*0.09).toFixed(2)}s" cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="${color}"/>`).join('');
+  const labelIni = `<text x="${coords[0].x.toFixed(1)}" y="${h-2}" font-size="9" fill="var(--text3)" text-anchor="start" font-family="'DM Mono',monospace">${_wrappedMesKaAbrev(serie[0].mesK)}</text>`;
+  const labelFin = `<text x="${coords[coords.length-1].x.toFixed(1)}" y="${h-2}" font-size="9" fill="var(--text3)" text-anchor="end" font-family="'DM Mono',monospace">${_wrappedMesKaAbrev(serie[serie.length-1].mesK)}</text>`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block;overflow:visible;">
+    <path id="wrappedLinePath" d="${pathD}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}
+    ${labelIni}${labelFin}
+  </svg>`;
+}
+
+/* Dispara la animación de "dibujado" de la línea (stroke-dasharray →
+   stroke-dashoffset → 0). Si el navegador no soporta getTotalLength() en
+   SVG (no debería pasar en un webview moderno, pero por si acaso — y
+   jsdom tampoco lo soporta en tests), degrada mostrando la línea ya
+   completa sin animar en vez de romper. */
+function _wrappedAnimarLinea(){
+  const path = document.getElementById('wrappedLinePath');
+  if(!path || typeof path.getTotalLength !== 'function') return;
+  let len;
+  try { len = path.getTotalLength(); } catch(e){ return; }
+  if(!len) return;
+  path.style.strokeDasharray = String(len);
+  path.style.strokeDashoffset = String(len);
+  // Forzar reflow antes de animar, si no el navegador puede saltarse
+  // directo al estado final sin transición visible.
+  path.getBoundingClientRect();
+  path.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1)';
+  requestAnimationFrame(() => { path.style.strokeDashoffset = '0'; });
+}
+
+/* ─── RENDER: tarjeta de "dato curioso" (reveal), no de dashboard ─────────
+   Estilo consistente para cada revelación — nunca una fila plana de
+   ingresos/gastos, siempre enmarcado como hallazgo. `delay` escalona la
+   aparición (fade-up) de cada tarjeta para que se sientan una revelación
+   en cadena, no toda la info de una sola vez. */
+function _wrappedTarjeta(emoji, titulo, valorHtml, delay, borderColor){
+  return `<div class="card card-sm wrapped-reveal" style="margin-bottom:12px;animation-delay:${delay}s;${borderColor?('border-color:'+borderColor+';'):''}">
+    <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">${emoji} ${titulo}</div>
+    <div style="font-size:15px;color:var(--text);">${valorHtml}</div>
   </div>`;
 }
 
-/* ─── RENDER: vista "Este mes" ─────────────────────────────────────────── */
-function _wrappedRenderMes(S, fmt2){
-  const hoyStr = _wrappedHoy();
-  const mesK = hoyStr.slice(0,7);
-  const anioK = hoyStr.slice(0,4);
-  const s = _wrappedCalcularPeriodo(S, 'mes', mesK, anioK);
-
-  const balanceColor = s.balance > 0 ? 'var(--accent)' : s.balance < 0 ? 'var(--red)' : 'var(--text3)';
-  const balanceMsg = s.totalIngresos === 0
-    ? 'Todavía no registraste ingresos este mes.'
-    : s.balance >= 0
-      ? `Vas ${fmt2(s.balance)} arriba este mes 🎉`
-      : `Vas ${fmt2(Math.abs(s.balance))} abajo este mes`;
-
-  let html = `
-    <div class="card" style="padding:16px;margin-bottom:12px;background:rgba(200,240,96,.05);border-color:rgba(200,240,96,.2);text-align:center;">
-      <div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:${balanceColor};margin-bottom:4px;">${s.totalIngresos===0?'—':(s.balance>=0?'+':'−')+fmt2(Math.abs(s.balance))}</div>
-      <div style="font-size:12px;color:var(--text3);">${balanceMsg}</div>
-    </div>
-    <div class="card card-sm" style="margin-bottom:12px;">
-      ${_wrappedFila('Ingresos reales', fmt2(s.totalIngresos), 'var(--accent)')}
-      ${_wrappedFila('Gastos reales', fmt2(s.totalGastos), 'var(--red)')}
-      ${_wrappedFila('Tasa de ahorro', s.tasaAhorro===null ? '—' : Math.round(s.tasaAhorro)+'%', 'var(--text2)')}
-    </div>`;
-
-  if(s.topCategoria){
-    html += `<div class="card card-sm" style="margin-bottom:12px;">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Categoría en la que más gastaste</div>
-      <div class="row"><span style="font-size:13px;color:var(--text);">${escHtml(s.topCategoria.cat)}</span><span style="font-size:13px;font-family:'DM Mono',monospace;color:var(--red);">${fmt2(s.topCategoria.monto)}</span></div>
-    </div>`;
-  }
-
-  if(s.alcanciaPeriodo > 0){
-    html += `<div class="card card-sm" style="margin-bottom:12px;border-color:rgba(240,184,64,.25);">
-      <div class="row"><span style="font-size:13px;color:var(--text2);">🐷 Guardaste en la Alcancía</span><span style="font-size:13px;font-family:'DM Mono',monospace;color:var(--amber);">${fmt2(s.alcanciaPeriodo)}</span></div>
-    </div>`;
-  }
-
-  // Racha de Alcancía — opcional, solo si el módulo Alcancía ya cargó.
-  if(typeof window._alcRachaAhorro === 'function' && S.alcancia && S.alcancia.historial){
-    const racha = window._alcRachaAhorro(S.alcancia.historial);
-    if(racha >= 2){
-      html += `<div style="font-size:12px;color:var(--amber);padding:8px 12px;background:rgba(240,184,64,.06);border-radius:var(--radius-sm);margin-bottom:12px;">🔥 Llevas ${racha} alcancías seguidas ahorrando más que la anterior.</div>`;
-    }
-  }
-
-  return html;
-}
-
-/* ─── RENDER: vista "Este año" ─────────────────────────────────────────── */
+/* ─── RENDER: vista anual (única vista) ───────────────────────────────── */
 function _wrappedRenderAnio(S, fmt2){
   const anioK = _wrappedHoy().slice(0,4);
   const s = _wrappedCalcularPeriodo(S, 'anio', null, anioK);
   const patrimonio = _wrappedPatrimonioAnio(S, anioK);
+  const serie = _wrappedSerieMensualAnio(S, anioK);
   const { mejor, peor } = _wrappedMejorPeorMesAnio(S, anioK);
+  const graficoSvg = _wrappedGraficoAnimadoSvg(serie);
 
-  let html = `<div class="sec-title" style="margin-top:0;">${anioK}</div>`;
+  let html = `<div class="sec-title" style="margin-top:0;text-align:center;">${anioK}</div>`;
 
-  if(patrimonio){
-    const color = patrimonio.diff >= 0 ? 'var(--accent)' : 'var(--red)';
-    html += `<div class="card" style="padding:16px;margin-bottom:12px;background:rgba(200,240,96,.05);border-color:rgba(200,240,96,.2);text-align:center;">
-      <div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:${color};margin-bottom:4px;">${patrimonio.diff>=0?'+':'−'}${fmt2(Math.abs(patrimonio.diff))}</div>
-      <div style="font-size:12px;color:var(--text3);">tu patrimonio ${patrimonio.diff>=0?'creció':'bajó'} este año${patrimonio.pct!==null?' ('+(patrimonio.pct>=0?'+':'')+Math.round(patrimonio.pct)+'%)':''}</div>
-    </div>`;
+  if(graficoSvg){
+    html += `<div class="card" style="padding:14px 10px 8px;margin-bottom:6px;">${graficoSvg}</div>`;
+    if(patrimonio){
+      const color = patrimonio.diff >= 0 ? 'var(--accent)' : 'var(--red)';
+      // La revelación del número final se retrasa hasta que la línea
+      // termina de dibujarse (ver _wrappedAnimarLinea, ~1.1s).
+      html += `<div class="wrapped-reveal" style="text-align:center;margin-bottom:16px;animation-delay:1.2s;">
+        <span style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:${color};">${patrimonio.diff>=0?'+':'−'}${fmt2(Math.abs(patrimonio.diff))}</span>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;">tu patrimonio ${patrimonio.diff>=0?'creció':'bajó'} este año${patrimonio.pct!==null?' ('+(patrimonio.pct>=0?'+':'')+Math.round(patrimonio.pct)+'%)':''}</div>
+      </div>`;
+    }
   } else {
-    html += `<div class="feed-empty" style="margin-bottom:12px;">Todavía no hay suficiente historial de patrimonio este año para mostrar una tendencia.</div>`;
+    html += `<div class="feed-empty" style="margin-bottom:16px;">Todavía no hay suficiente historial de patrimonio este año para dibujar la curva.</div>`;
   }
 
-  html += `<div class="card card-sm" style="margin-bottom:12px;">
-    ${_wrappedFila('Ingresos reales del año', fmt2(s.totalIngresos), 'var(--accent)')}
-    ${_wrappedFila('Gastos reales del año', fmt2(s.totalGastos), 'var(--red)')}
-    ${_wrappedFila('Tasa de ahorro promedio', s.tasaAhorro===null ? '—' : Math.round(s.tasaAhorro)+'%', 'var(--text2)')}
-  </div>`;
-
-  if(mejor || peor){
-    html += `<div class="card card-sm" style="margin-bottom:12px;">
-      ${mejor ? _wrappedFila('Tu mejor mes', _wrappedMesKaNombre(mejor.mesK)+' · '+fmt2(mejor.balance), 'var(--accent)') : ''}
-      ${peor && peor.mesK !== (mejor&&mejor.mesK) ? _wrappedFila('Tu mes más difícil', _wrappedMesKaNombre(peor.mesK)+' · '+fmt2(peor.balance), peor.balance<0?'var(--red)':'var(--text2)') : ''}
-    </div>`;
-  }
+  let delay = 1.5;
 
   if(s.topCategoria){
-    html += `<div class="card card-sm" style="margin-bottom:12px;">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Categoría campeona del año</div>
-      <div class="row"><span style="font-size:13px;color:var(--text);">${escHtml(s.topCategoria.cat)}</span><span style="font-size:13px;font-family:'DM Mono',monospace;color:var(--red);">${fmt2(s.topCategoria.monto)}</span></div>
-    </div>`;
+    html += _wrappedTarjeta('🏆', 'Tu categoría del año fue', `<b>${escHtml(s.topCategoria.cat)}</b> · ${fmt2(s.topCategoria.monto)}`, delay);
+    delay += 0.15;
+  }
+
+  if(mejor){
+    html += _wrappedTarjeta('📈', 'Tu mejor mes fue', `<b>${_wrappedMesKaNombre(mejor.mesK)}</b> · ${fmt2(mejor.balance)}`, delay);
+    delay += 0.15;
+  }
+  if(peor && (!mejor || peor.mesK !== mejor.mesK)){
+    html += _wrappedTarjeta('📉', 'Tu mes más difícil fue', `<b>${_wrappedMesKaNombre(peor.mesK)}</b> · ${fmt2(peor.balance)}`, delay);
+    delay += 0.15;
+  }
+
+  if(s.gastoMasGrande){
+    html += _wrappedTarjeta('💸', 'Tu gasto más grande del año', `<b>${escHtml(s.gastoMasGrande.desc)}</b> · ${fmt2(s.gastoMasGrande.monto)}`, delay);
+    delay += 0.15;
   }
 
   if(s.alcanciaPeriodo > 0){
-    html += `<div class="card card-sm" style="margin-bottom:12px;border-color:rgba(240,184,64,.25);">
-      <div class="row"><span style="font-size:13px;color:var(--text2);">🐷 Total guardado en la Alcancía</span><span style="font-size:13px;font-family:'DM Mono',monospace;color:var(--amber);">${fmt2(s.alcanciaPeriodo)}</span></div>
-    </div>`;
+    html += _wrappedTarjeta('🐷', 'Total guardado en la Alcancía', fmt2(s.alcanciaPeriodo), delay, 'rgba(240,184,64,.25)');
+    delay += 0.15;
+  }
+
+  let racha = 0;
+  if(typeof window._alcRachaAhorro === 'function' && S.alcancia && S.alcancia.historial){
+    racha = window._alcRachaAhorro(S.alcancia.historial);
+    if(racha >= 2){
+      html += `<div class="wrapped-reveal" style="font-size:12px;color:var(--amber);padding:10px 12px;background:rgba(240,184,64,.06);border-radius:var(--radius-sm);margin-bottom:12px;animation-delay:${delay}s;">🔥 Llevas ${racha} alcancías seguidas ahorrando más que la anterior.</div>`;
+      delay += 0.15;
+    }
+  }
+
+  // Si no hubo ni gráfico ni un solo dato curioso (usuario nuevo, día 1),
+  // no dejar la pantalla en blanco.
+  const huboAlgo = !!(graficoSvg || s.topCategoria || mejor || peor || s.gastoMasGrande || s.alcanciaPeriodo > 0 || racha >= 2);
+  if(!huboAlgo){
+    html += `<div class="feed-empty wrapped-reveal" style="animation-delay:.15s;">Todavía no hay suficiente historial este año para contarte algo. Volvé más adelante.</div>`;
   }
 
   return html;
@@ -266,32 +325,25 @@ window.renderWrapped = function(){
   const body = document.getElementById('wrapped-body');
   if(!body) return;
 
-  const tabMes = document.getElementById('wrapped-tab-mes');
-  const tabAnio = document.getElementById('wrapped-tab-anio');
-  if(tabMes && tabAnio){
-    tabMes.className  = _wrappedTab === 'mes'  ? 'btn btn-primary' : 'btn btn-ghost';
-    tabAnio.className = _wrappedTab === 'anio' ? 'btn btn-primary' : 'btn btn-ghost';
-    tabMes.style.flex = tabAnio.style.flex = '1';
-  }
+  body.innerHTML = _wrappedRenderAnio(S, fmt2);
 
-  body.innerHTML = _wrappedTab === 'anio' ? _wrappedRenderAnio(S, fmt2) : _wrappedRenderMes(S, fmt2);
+  // La animación de la línea necesita medir el <path> ya insertado en el
+  // DOM (getTotalLength), así que se dispara en el siguiente frame, no
+  // durante la construcción del HTML.
+  requestAnimationFrame(() => requestAnimationFrame(_wrappedAnimarLinea));
 };
 
-window.wrappedVerMes = function(){ _wrappedTab = 'mes'; window.renderWrapped(); };
-window.wrappedVerAnio = function(){ _wrappedTab = 'anio'; window.renderWrapped(); };
-
-/* ─── EVENTOS (data-action="wrapped:...") ─────────────────────────────── */
-Events.registerAll('wrapped', {
-  verMes:  window.wrappedVerMes,
-  verAnio: window.wrappedVerAnio
-});
+/* Sin Events.registerAll: ya no hay pestañas ni ninguna interacción del
+   usuario en esta pantalla — es una revelación de solo lectura. */
 
 /* Exportadas solo para poder testear los cálculos puros de forma aislada
-   (ver test de este módulo) — no se usan desde ningún otro archivo. */
+   — no se usan desde ningún otro archivo. */
 window._wrappedInternals = {
   _wrappedCalcularPeriodo,
   _wrappedMejorPeorMesAnio,
   _wrappedPatrimonioAnio,
+  _wrappedSerieMensualAnio,
+  _wrappedGraficoAnimadoSvg,
   _wrappedMesKaNombre
 };
 

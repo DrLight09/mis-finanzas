@@ -183,6 +183,11 @@
       .toast.hiding{animation:toastOut .22s ease forwards;}
       @keyframes toastIn{from{opacity:0;transform:translateY(-14px) scale(.95);}to{opacity:1;transform:translateY(0) scale(1);}}
       @keyframes toastOut{to{opacity:0;transform:translateY(-10px) scale(.95);}}
+      /* ===== WRAPPED (reveal animado de mes/año) ===== */
+      @keyframes wrappedDotIn{from{opacity:0;transform:scale(0);}to{opacity:1;transform:scale(1);}}
+      @keyframes wrappedFadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+      .wrapped-dot{opacity:0;transform-origin:center;animation:wrappedDotIn .35s ease-out forwards;}
+      .wrapped-reveal{opacity:0;animation:wrappedFadeUp .5s ease-out forwards;}
       /* ===== PIN SCREEN (segundo gate) ===== */
       #pin-screen{position:fixed;inset:0;z-index:99998;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);padding:32px 24px;text-align:center;overflow:hidden;}
       #pin-screen.open{display:flex;}
@@ -824,6 +829,11 @@
                 alcancía.</div>
             </div>
           </div>
+          <!-- "Wrapped" de Alcancía: progreso de ahorro entre ciclos, visible
+               en cualquier momento (no solo en el instante de destapar) —
+               poblado por renderAlcancia(), oculto si hay menos de 2 ciclos
+               en el historial (no hay nada que comparar todavía). -->
+          <div id="alcancia-wrapped-progreso" style="display:none;margin-bottom:14px;"></div>
           <div class="sec-title" id="alcancia-historial-titulo"
             style="margin-top:4px;">Historial de alcancías</div>
           <div id="alcancia-historial-lista">
@@ -2145,6 +2155,20 @@
             style="padding:12px 15px;margin-bottom:20px;"></div>
         </div>
 
+        <!-- WRAPPED: revelación anual tipo Spotify Wrapped (patrimonio,
+             categoría del año, mejor/peor mes, ahorro). Contenedor estático
+             simple — todo el contenido lo arma renderWrapped() (js/modules/
+             wrapped.js, grupo lazy 'wrapped'), mismo patrón que Alcancía.
+             A propósito solo anual, no mensual: la especialidad de un
+             "wrapped" depende de que no se vea seguido — una versión
+             mensual competiría de lleno con "Top categorías" de Análisis
+             financiero, que ya cubre ese chequeo periódico (ver wrapped.md
+             §7). Solo cubre datos inequívocamente propios — a propósito no
+             incluye Mesada/Spotify/Encargos/Plata Comprometida. -->
+        <div class="screen" id="screen-wrapped">
+          <div id="wrapped-body"></div>
+        </div>
+
         <!-- PERSONAS -->
         <div class="screen" id="screen-personas">
           <div
@@ -2540,6 +2564,18 @@
         <div>
           <div class="mas-item-label">Análisis financiero</div>
           <div class="mas-item-sub">¿Ganás o perdés plata cada mes?</div>
+        </div>
+      </div>
+      <div class="mas-item" id="mas-wrapped" data-screen="wrapped">
+        <div class="mas-item-icon"
+          style="background:rgba(200,240,96,.1);border-color:rgba(200,240,96,.25);">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round"
+            stroke-linejoin="round"><path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" /></svg>
+        </div>
+        <div>
+          <div class="mas-item-label">Tu resumen</div>
+          <div class="mas-item-sub">Tu año, bien melo</div>
         </div>
       </div>
       <div class="mas-item" id="mas-tarjetas" data-screen="tarjetas">

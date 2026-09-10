@@ -24,11 +24,21 @@
 // contador a mano); ver CHANGELOG.md#infraestructura--seguridad, entrada de
 // consolidación de este patrón (estaba triplicado con mejoras.js/
 // mejoras-adicionales.js).
+//
+// onGiveUp (agregado 2026-09-08): antes, si los 25 intentos se agotaban sin
+// que _inyectarPersonaSheets() apareciera, la falla era 100% silenciosa —
+// nada en consola, solo los sheets de personas nunca se inyectaban. Este
+// console.warn no cambia el comportamiento del camino exitoso (que sigue
+// siendo el mismo de siempre); solo le da un rastro diagnosticable al único
+// camino que hoy fallaba sin dejar ninguna pista.
 function _intentarInyectarPersonaSheets() {
   waitFor(
     () => typeof _inyectarPersonaSheets === 'function',
     _inyectarPersonaSheets,
-    { maxAttempts: 25 }
+    {
+      maxAttempts: 25,
+      onGiveUp: () => console.warn('[personas-init] _inyectarPersonaSheets() no apareció tras 25 intentos (~5s) — los sheets de personas no se inyectaron.')
+    }
   );
 }
 

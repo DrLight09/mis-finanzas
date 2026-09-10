@@ -1681,7 +1681,17 @@ if(window._dataLoaded){
   // wait-for.js — <script defer> del HTML inicial — ya terminó de correr),
   // así que puede usar waitFor() como global sin ningún riesgo de carrera
   // (a diferencia de pin-bio.js/firebase-sync.js).
-  waitFor(() => window.S && window._dataLoaded, _alcanciaInit, { intervalMs: 300, maxAttempts: 40 });
+  //
+  // onGiveUp (agregado 2026-09-08): antes, si los 40 intentos (~12s) se
+  // agotaban sin que window.S/window._dataLoaded aparecieran, la falla era
+  // 100% silenciosa — Alcancía simplemente nunca se inicializaba, sin nada
+  // en consola. No cambia el camino exitoso, solo le da un rastro
+  // diagnosticable al que hoy fallaba sin ninguna pista.
+  waitFor(() => window.S && window._dataLoaded, _alcanciaInit, {
+    intervalMs: 300,
+    maxAttempts: 40,
+    onGiveUp: () => console.warn('[alcancia] window.S/_dataLoaded no aparecieron tras 40 intentos (~12s) — Alcancía no se inicializó.')
+  });
 }
 
 })(); // end IIFE

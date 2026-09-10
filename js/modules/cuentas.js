@@ -2216,9 +2216,9 @@ toast(fmt(v) + (esApertura?' registrado como saldo inicial':' sumado — ' + esc
 
 function openSheet_adMenu(){
   poblarFuente('adMenuDest');
-  // Replace options with all accounts including all cajitas
+  // Replace options with all accounts including all cajitas (sin tarjetas de crédito — no son destino válido)
   const sel=document.getElementById('adMenuDest');
-  const fuentes=getFuentes();
+  const fuentes=getFuentesSinTC();
   sel.innerHTML=html`${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
   actualizarAdMenuSaldo();
   document.getElementById('adMenuMonto').value='';
@@ -2609,8 +2609,8 @@ function confirmarRestarDinero(){
 
 /* ---- TRANSFERIR ENTRE CUENTAS ---- */
 function abrirTransferir(origenSugerido) {
-  // Populate both selects
-  const fuentes = getFuentes();
+  // Populate both selects (sin tarjetas de crédito — no son cuentas líquidas)
+  const fuentes = getFuentesSinTC();
   const optsHtml = html`${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   document.getElementById('tr_origen').innerHTML = optsHtml;
   document.getElementById('tr_destino').innerHTML = optsHtml;

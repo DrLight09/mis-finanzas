@@ -622,11 +622,38 @@ function guardarChequeoNu(){
     const idx=S.chequeosNu.findIndex(ch=>ch.cajitaId===cajitaId&&ch.fecha===hoyStr);
     if(idx>=0)S.chequeosNu[idx].saldoReal=val;
     else S.chequeosNu.push({fecha:hoyStr,cajitaId,saldoReal:val});
+    // Corrige el saldo calculado de la cajita al valor real que reportó el usuario.
+    // Sin movimiento asociado — mismo criterio silencioso que materializarIntereses():
+    // es un ajuste de saldo, no plata que entra o sale de ningún lado.
+    //
+    // Ambigüedad cuando la cajita tiene plata de un encargo adentro: el usuario puede
+    // haber escrito el TOTAL físico que ve en la app de Nu (propio + encargo, que es
+    // lo que Nu realmente muestra, sin distinguir), o puede haber escrito directamente
+    // SU parte ya neta (si ya sabía cuánto era del encargo y lo descontó él mismo antes
+    // de escribir). Para no restar el encargo dos veces en ese segundo caso, se compara
+    // el valor ingresado contra las dos referencias calculadas (propio vs. propio+encargo)
+    // y se asume la que quede más cerca — la diferencia entre ambas referencias es
+    // normalmente el monto completo del encargo (mucho más grande que la corrección
+    // de unos pocos pesos que se está haciendo), así que no debería haber casos reales
+    // donde la cercanía sea ambigua.
+    const c=(S.cajitas||[]).find(cc=>cc.id===cajitaId);
+    if(c){
+      const saldoEncargos=_saldoEncargosEnCajita(cajitaId);
+      if(saldoEncargos>0){
+        const propioCalculado=calcC(c).val;
+        const totalCalculado=propioCalculado+saldoEncargos;
+        const esTotal=Math.abs(val-totalCalculado)<Math.abs(val-propioCalculado);
+        c.saldo=esTotal?(val-saldoEncargos):val;
+      }else{
+        c.saldo=val;
+      }
+      c.fecha=hoyStr;
+    }
     n++;
   });
   if(S.chequeosNu.length>500)S.chequeosNu=S.chequeosNu.slice(-500);
   if(n===0){if(window.toast)toast('No pusiste ningún saldo para chequear.','err',3000);return;}
-  save();
+  save();refresh();
   closeSheet('chequeo-nu');
   const r=verificarTasaNu();
   if(r){
@@ -638,10 +665,10 @@ function guardarChequeoNu(){
       S.nuTasaGlobal=r.sugerida;
       save();refresh();
       _renderTasaHistorialTag();
-      if(window.toast)toast('Tasa actualizada a '+r.sugerida+'% desde '+r.desde,'ok',4000);
+      if(window.toast)toast('Saldo corregido y tasa actualizada a '+r.sugerida+'% desde '+r.desde,'ok',4000);
     }
   }else{
-    if(window.toast)toast('Chequeo guardado — todo cuadra con la tasa actual.','ok',3000);
+    if(window.toast)toast('Chequeo guardado — saldo corregido con lo que anotaste.','ok',3000);
   }
 }
 

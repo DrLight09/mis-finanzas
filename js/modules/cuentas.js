@@ -2611,11 +2611,16 @@ function confirmarRestarDinero(){
 function abrirTransferir(origenSugerido) {
   // Populate both selects (sin tarjetas de crédito — no son cuentas líquidas)
   const fuentes = getFuentesSinTC();
-  const optsHtml = html`${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
-  document.getElementById('tr_origen').innerHTML = optsHtml;
-  document.getElementById('tr_destino').innerHTML = optsHtml;
-  // Pre-select suggested origin if provided
-  if (origenSugerido) {
+  // El origen solo debe listar cuentas con saldo > 0: de una cuenta en $0 no puede salir plata
+  const fuentesOrigen = fuentes.filter(f => getSaldoActual(f.val) > 0);
+  const optsHtmlDestino = html`${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
+  const optsHtmlOrigen = fuentesOrigen.length
+    ? html`${fuentesOrigen.map(f => html`<option value="${f.val}">${f.label}</option>`)}`
+    : html`<option value="">No tenés cuentas con saldo disponible</option>`;
+  document.getElementById('tr_origen').innerHTML = optsHtmlOrigen;
+  document.getElementById('tr_destino').innerHTML = optsHtmlDestino;
+  // Pre-select suggested origin if provided y tiene saldo
+  if (origenSugerido && fuentesOrigen.some(f => f.val === origenSugerido)) {
     document.getElementById('tr_origen').value = origenSugerido;
   }
   // Select a different default destino

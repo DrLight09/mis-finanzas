@@ -205,23 +205,14 @@
     try { renderPresupuestos(); } catch(e){}
   }
 
-  // Guard: si refresh no existe aún, esperar a que esté disponible
-  function _hookRefreshMejoras(originalFn) {
-    window.refresh = function(){
-      if(originalFn) { try { originalFn.apply(this, arguments); } catch(e){ console.error('[refresh] Error en refresh original:', e); } }
-      _renderMejoras();
-    };
-  }
-  if (typeof window.refresh === 'function') {
-    _hookRefreshMejoras(window.refresh);
-  } else {
-    // refresh aún no definida — esperar con waitFor() (js/core/wait-for.js).
-    // Antes esto era un setInterval propio (ver CHANGELOG.md#infraestructura--
-    // seguridad, entrada de consolidación de este patrón: estaba triplicado
-    // con personas-init.js/mejoras-adicionales.js). Sin tope de intentos,
-    // igual que el polling original — refresh() siempre termina existiendo.
-    waitFor(() => typeof window.refresh === 'function', () => _hookRefreshMejoras(window.refresh), { intervalMs: 100 });
-  }
+  // Guard: si refresh no existe aún, esperar a que esté disponible —
+  // hookGlobal (js/core/hook-global.js) ya encapsula el capturar+envolver+
+  // esperar con waitFor(). Antes esto era el mismo bloque de ~10 líneas
+  // que también tenían, casi calcado, gastos-fijos-progress.js y
+  // pin-bio.js — ver js/core/hook-global.js para el porqué de sacarlo a
+  // un solo lugar. Sin tope de intentos, igual que antes: refresh()
+  // siempre termina existiendo.
+  hookGlobal('refresh', _renderMejoras, { intervalMs: 100 });
 
   // Llamar directamente cuando Firebase termina de cargar los datos.
   // Necesario porque los módulos type="module" se ejecutan DESPUÉS que los scripts

@@ -34,31 +34,15 @@ if ('serviceWorker' in navigator) {
     'transferir': 'tr_monto',
   };
 
-  const _origOpenSheet = window.openSheet;
-  if (typeof _origOpenSheet !== 'function') {
-    console.warn('[Autofocus] openSheet no estaba definida al momento del parcheo. Reintentando...');
-    // Reintentar una vez que esté disponible, con waitFor() (js/core/wait-for.js).
-    // Antes esto era un setInterval propio (ver CHANGELOG.md#infraestructura--
-    // seguridad, entrada de consolidación de este patrón: estaba triplicado
-    // con personas-init.js/mejoras.js) que además comparaba
-    // `window.openSheet !== arguments.callee` dentro de un arrow function —
-    // arguments.callee ahí apunta al IIFE que envuelve todo este archivo, no
-    // a la función interna, así que esa comparación nunca hacía lo que
-    // parecía (bug latente sin efecto real, encontrado al consolidar; se
-    // saca de paso, waitFor() ya cubre el caso con su propio checkFn).
-    const _wrapOpenSheet = () => {
-      const _r = window.openSheet;
-      window.openSheet = function(id) {
-        _r.apply(this, arguments);
-        const focusId = focusMap[id];
-        if (focusId) setTimeout(() => { const el = document.getElementById(focusId); if (el && typeof el.focus === 'function') el.focus(); }, 250);
-      };
-    };
-    waitFor(() => typeof window.openSheet === 'function', _wrapOpenSheet, { intervalMs: 100 });
-    return;
-  }
-  window.openSheet = function(id) {
-    _origOpenSheet.apply(this, arguments);
+  // Hook a openSheet — ver js/core/hook-global.js. Reemplaza el wrap manual
+  // + fallback con waitFor() que tenía este archivo (y de paso se saca un
+  // bug latente sin efecto real que tenía esa rama: comparaba
+  // `window.openSheet !== arguments.callee` dentro de un arrow function,
+  // donde arguments.callee apuntaba al IIFE completo, no a la función
+  // interna — la comparación nunca hacía lo que parecía. hookGlobal() no
+  // necesita esa comparación: waitFor() ya resuelve "esperar hasta que
+  // exista" con su propio checkFn).
+  hookGlobal('openSheet', function(id) {
     const focusId = focusMap[id];
     if (focusId) {
       setTimeout(() => {
@@ -66,7 +50,7 @@ if ('serviceWorker' in navigator) {
         if (el && typeof el.focus === 'function') el.focus();
       }, 250);
     }
-  };
+  }, { intervalMs: 100 });
 })();
 
 /* ================================================================

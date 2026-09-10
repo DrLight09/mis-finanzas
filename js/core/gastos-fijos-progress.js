@@ -1,11 +1,13 @@
 // Barra de progreso de "gastos fijos pagados este mes" en panel-fijo —
-// extraído de index.html. Segundo eslabón de la cadena de wraps de
-// window.refresh (el primero es la definición base en el bloque S/save;
-// el tercero ya vive en js/core/mejoras.js). Depende de S (bloque S/save,
-// carga antes) y de que window.refresh ya exista en este punto — si algún
-// día esto se recarga en otro orden, hay que agregarle el mismo guard
-// defensivo que ya usa mejoras.js (typeof + polling). Ver
-// auditoria-tecnica.md #2/#4.
+// extraído de index.html. Depende de S (bloque S/save, carga antes).
+//
+// El hook a window.refresh() pasa por hookGlobal() (js/core/hook-global.js):
+// antes esto era un wrap manual que asumía sin guard que window.refresh ya
+// existía en este punto (cierto solo por el orden de <script> en
+// index.html, no por ninguna garantía real — el mismo tipo de suposición
+// implícita que ya causó bugs en otros archivos). hookGlobal() resuelve
+// eso solo: si refresh ya existe lo envuelve de inmediato, si no, espera.
+// Ver auditoria-tecnica.md #2/#4.
 
 // ── 4. GASTOS FIJOS PROGRESS BAR ─────────────────────────────────────────────
 (function(){
@@ -43,11 +45,7 @@
       pagados === total ? 'Sin pagos pendientes' : `${total-pagados} pendiente${total-pagados!==1?'s':''}`;
   }
 
-  // Hook into refresh
-  const _origRefreshFijos = window.refresh;
-  window.refresh = function(){
-    if(_origRefreshFijos) _origRefreshFijos.apply(this, arguments);
-    updateFijosProgress();
-  };
+  // Hook into refresh — ver js/core/hook-global.js
+  hookGlobal('refresh', updateFijosProgress);
   setTimeout(updateFijosProgress, 200);
 })();

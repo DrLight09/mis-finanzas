@@ -9,6 +9,13 @@
 // carga como `type="module" async`, sin garantía de orden frente a ningún
 // <script defer>. Ver CHANGELOG.md#infraestructura--seguridad.
 import { waitFor } from './wait-for-module.js';
+// import de hookGlobal (js/core/hook-global-module.js — versión ES module
+// de js/core/hook-global.js, mismo motivo/mismo patrón que waitFor arriba):
+// reemplaza el wrap manual de window.refresh() de más abajo, que tenía dos
+// ramas casi idénticas (refresh ya existía vs. había que esperarlo con
+// waitFor) — la misma duplicación que hookGlobal() ya resuelve para
+// gastos-fijos-progress.js/mejoras.js.
+import { hookGlobal } from './hook-global-module.js';
 
 /* ================================================================
    PIN + BIOMETRÍA — Sistema de bloqueo con PIN de 4 dígitos y
@@ -386,20 +393,16 @@ import { waitFor } from './wait-for-module.js';
       : `<button class="btn btn-primary btn-sm" data-action="pin:bioSetup" style="width:100%;">Activar ${label}</button>`;
   }
 
-  // Hook en refresh para re-renderizar botones cuando se abre Config
-  const _origRefresh = window.refresh;
-  if(typeof _origRefresh === 'function') {
-    window.refresh = function() {
-      _origRefresh.apply(this, arguments);
-      _renderBtn();
-    };
-  } else {
-    // Antes era un setInterval propio (ver CHANGELOG.md#infraestructura--
-    // seguridad, entrada de consolidación de este patrón).
-    waitFor(() => typeof window.refresh === 'function', () => {
-      const _r2 = window.refresh;
-      window.refresh = function(){ _r2.apply(this,arguments); _renderBtn(); };
-      _renderBtn();
-    });
-  }
+  // Hook en refresh para re-renderizar botones cuando se abre Config —
+  // ver js/core/hook-global-module.js. Antes esto tenía dos ramas casi
+  // idénticas según si window.refresh ya existía o había que esperarlo
+  // con waitFor(); solo la rama de espera hacía un _renderBtn() inicial
+  // apenas se enganchaba, sin esperar al próximo refresh() real. Acá se
+  // llama siempre, en las dos rutas — _renderBtn()/_renderBioBtn() son
+  // idempotentes (solo pintan según el estado actual de PIN/biometría),
+  // así que una llamada de más no cambia nada visible, y así el botón
+  // queda pintado de una desde el arranque sin importar si refresh() ya
+  // existía o no en este punto.
+  hookGlobal('refresh', _renderBtn);
+  _renderBtn();
 })();

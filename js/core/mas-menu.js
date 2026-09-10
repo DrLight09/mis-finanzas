@@ -46,10 +46,12 @@
     });
   });
 
-  // Expose applyModulos override for Spotify and Mesada in Más menu
-  const _origApplyMod = window.applyModulos;
-  window.applyModulos = function(){
-    if(_origApplyMod) _origApplyMod();
+  // Expose applyModulos override for Spotify and Mesada in Más menu —
+  // ver js/core/hook-global.js. Antes esto asumía sin guard que
+  // window.applyModulos ya existía en este punto (cierto solo porque
+  // sheet-stack.js carga antes en index.html, no una garantía real —
+  // hookGlobal cubre igual el caso si ese orden cambia algún día).
+  hookGlobal('applyModulos', function(){
     // Show/hide spotify in Más menu based on module state
     const masSpotify = document.getElementById('mas-spotify');
     const cfgSpotify = document.getElementById('cfg-spotify');
@@ -62,7 +64,7 @@
     if(masMesada && cfgMesada) {
       masMesada.style.display = cfgMesada.checked ? 'flex' : 'none';
     }
-  };
+  });
   // Initial update
   setTimeout(window.applyModulos, 100);
 })();

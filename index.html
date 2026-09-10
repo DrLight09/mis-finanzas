@@ -4964,6 +4964,18 @@
 -->
 <script src="js/core/wait-for.js" defer></script>
 <!--
+// js/core/hook-global.js — helper hookGlobal() para envolver una función
+// global existente (window.refresh, window.openSheet, window.applyModulos)
+// sin repetir a mano "capturar original + envolver + esperar con waitFor si
+// todavía no existe". Reemplaza esa misma receta que tenían por separado
+// gastos-fijos-progress.js/mejoras.js (refresh), mejoras-adicionales.js
+// (openSheet) y mas-menu.js (applyModulos). Depende de waitFor(), carga
+// justo después. pin-bio.js usa su propia copia vía `import` de
+// js/core/hook-global-module.js (no de este archivo) — mismo motivo de
+// separación classic/module que ya explica wait-for.js arriba.
+-->
+<script src="js/core/hook-global.js" defer></script>
+<!--
 // Módulo Mesada — migrado a js/modules/mesada.js (ver docs/mesada.md).
 // Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, quinto
 // grupo): no tiene dependencia real de orden de carga (no monkey-patchea

@@ -4954,9 +4954,12 @@
 <script src="js/core/html-tag.js" defer></script>
 <script src="js/core/calc-helpers.js" defer></script>
 <!--
-// js/core/wait-for.js — helper waitFor() para los <script defer> clásicos
-// (personas-init.js/mejoras.js/mejoras-adicionales.js). Antes cada uno
-// reimplementaba a mano su propio setInterval + contador de reintentos.
+// js/core/wait-for.js — helper waitFor() para los <script defer> clásicos.
+// Consumidores directos: personas-init.js y js/core/hook-global.js (que
+// mejoras-adicionales.js/gastos-fijos-progress.js/mas-menu.js usan por
+// debajo, vía hookGlobal() — ver ese archivo más abajo). Antes de existir
+// hookGlobal(), cada uno de esos reimplementaba a mano su propio
+// setInterval + contador de reintentos.
 // pin-bio.js/firebase-sync.js usan su propia copia vía `import` de
 // js/core/wait-for-module.js (no de este archivo) — ver el comentario en
 // ambos archivos y CHANGELOG.md#infraestructura--seguridad para el porqué
@@ -4968,8 +4971,9 @@
 // global existente (window.refresh, window.openSheet, window.applyModulos)
 // sin repetir a mano "capturar original + envolver + esperar con waitFor si
 // todavía no existe". Reemplaza esa misma receta que tenían por separado
-// gastos-fijos-progress.js/mejoras.js (refresh), mejoras-adicionales.js
-// (openSheet) y mas-menu.js (applyModulos). Depende de waitFor(), carga
+// gastos-fijos-progress.js (refresh), mejoras-adicionales.js (refresh y
+// openSheet — antes repartida entre ese archivo y mejoras.js, fusionados
+// el 2026-09-10) y mas-menu.js (applyModulos). Depende de waitFor(), carga
 // justo después. pin-bio.js usa su propia copia vía `import` de
 // js/core/hook-global-module.js (no de este archivo) — mismo motivo de
 // separación classic/module que ya explica wait-for.js arriba.
@@ -5010,13 +5014,15 @@
      a diferencia de lo que resultó ser Encargos/Spotify (esos dos NO
      tenían dependencia real — se fusionaron sin mover nada, ver
      CHANGELOG.md#encargos y #spotify). Se auditaron los 16 archivos
-     que hoy cargan entre esta posición y la posición vieja de
-     personas.js (sheet-stack.js, lazy-loader.js, money-input.js,
-     movimientos.js, cuentas.js, bootstrap.js, mas-menu.js,
-     sheet-behavior.js [fusión 2026-09-08 de sheet-viewport.js +
-     sheet-swipe.js — ver ese archivo], gastos-fijos-progress.js,
-     firebase-sync.js, mejoras.js, busqueda-global.js,
-     mejoras-adicionales.js, pin-bio.js, nav.js) — ninguno tiene
+     (hoy 15, ver nota) que hoy cargan entre esta posición y la
+     posición vieja de personas.js (sheet-stack.js, lazy-loader.js,
+     money-input.js, movimientos.js, cuentas.js, bootstrap.js,
+     mas-menu.js, sheet-behavior.js [fusión 2026-09-08 de
+     sheet-viewport.js + sheet-swipe.js — ver ese archivo],
+     gastos-fijos-progress.js, firebase-sync.js,
+     mejoras-adicionales.js [fusión 2026-09-10 de mejoras.js +
+     mejoras-adicionales.js — ver CHANGELOG.md#infraestructura--seguridad],
+     busqueda-global.js, pin-bio.js, nav.js) — ninguno tiene
      código de nivel superior que dependa de personas.js, ni
      personas.js depende de nada de ellos a nivel superior. Detalle
      completo en CHANGELOG.md#préstamos.
@@ -5121,7 +5127,8 @@
 // subsistema de Nu (nuTotal/getNuTasaGlobal/_renderTasaHistorialTag,
 // definidas acá) sin guard. Se auditaron y corrigieron los 5 archivos
 // núcleo involucrados (core-state.js, firebase-sync.js, pin-bio.js,
-// gastos-fijos-progress.js, mejoras.js) — todo guardado con `typeof`
+// gastos-fijos-progress.js, mejoras.js — este último fusionado con
+// mejoras-adicionales.js el 2026-09-10) — todo guardado con `typeof`
 // ahora, confirmado contra el código real. #screen-cuentas y #nav-cuentas
 // ya eran HTML estático.
 -->
@@ -5158,19 +5165,22 @@
          guard (overlay de eliminar cuenta, registro de Events('authgate'))
          ya se blindó — ver CHANGELOG.md#arranque. -->
     <script type="module" src="js/core/firebase-sync.js" async></script>
-    <!-- ===== MEJORAS: JS adicional =====
+    <!-- ===== MEJORAS ADICIONALES: ocultar saldos, hook de refresh
+         (salud financiera/proyección/presupuestos), validación de montos,
+         animación de carga inicial, Service Worker, autofocus de sheets,
+         aria-labels =====
+         Fusión (2026-09-10) de lo que antes eran dos archivos, mejoras.js
+         y mejoras-adicionales.js — literalmente la parte 1 y la parte 2 de
+         este mismo bloque "MEJORAS ADICIONALES", separadas solo por el
+         corte arbitrario de la sesión de extracción original (mismo caso
+         que sheet-behavior.js). Ver CHANGELOG.md#infraestructura--seguridad.
          El <style> que vivía acá (fade-in del dashboard, health ring,
          presupuestos, búsqueda) se movió a css/styles.css — ver
          docs/auditoria-tecnica.md, ítem "CSS inline (44.7 KB)" y
          CHANGELOG.md#infraestructura--seguridad. -->
 
-    <script src="js/core/mejoras.js" defer></script>
-<script src="js/core/busqueda-global.js" defer></script>
-
-    <!-- ================================================================
-     MEJORAS ADICIONALES: Service Worker, Gestos, Undo/Redo
-     ================================================================ -->
     <script src="js/core/mejoras-adicionales.js" defer></script>
+    <script src="js/core/busqueda-global.js" defer></script>
 
     <!-- `async` (docs/auditoria-tecnica.md #4, paso 2, mismo criterio que
          firebase-init.js/firebase-sync.js): el chequeo de

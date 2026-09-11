@@ -2661,7 +2661,7 @@ function actualizarTransfPreview() {
   const colorOrigen = nuevoOrigen < 0 ? 'var(--red)' : 'var(--accent)';
   prev.innerHTML = html`<span style="color:var(--red);">${fuenteLabel(origen)}: ${fmt(saldoOrigen)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoOrigen)}</span><br>
     <span style="color:var(--accent);">${fuenteLabel(destino)}: ${fmt(saldoDestino)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoDestino)}</span>`;
-  if (nuevoOrigen < -0.01) {
+  if (Math.round(nuevoOrigen * 100) < 0) {
     prev.innerHTML = html`${raw(prev.innerHTML)}<br><span style="color:var(--red);font-size:10px;">Saldo insuficiente en ${fuenteLabel(origen)}</span>`;
   }
 }
@@ -2677,7 +2677,7 @@ function confirmarTransferir() {
   if (origen === destino) { toast('El origen y destino deben ser diferentes', 'err'); return; }
   if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
   const saldoOrigen = getSaldoActual(origen);
-  if (monto > saldoOrigen + 0.01) {
+  if (Math.round(monto * 100) > Math.round(saldoOrigen * 100)) {
     toast(`Saldo insuficiente en ${escHtml(fuenteLabel(origen))} (${fmt(saldoOrigen)})`, 'err');
     return;
   }

@@ -718,7 +718,7 @@ function ptcActualizarPreview(){
   if(fuente){
     const saldo=getSaldoFuente(fuente);
     saldoEl.textContent='Disponible: '+fmt(saldo);
-    saldoEl.style.color=saldo>=monto?'var(--accent)':'var(--red)';
+    saldoEl.style.color=Math.round(saldo*100)>=Math.round(monto*100)?'var(--accent)':'var(--red)';
   } else {
     saldoEl.textContent='';
   }
@@ -743,7 +743,7 @@ function confirmarPagarTC(){
   if(!fuente){toast('Selecciona la cuenta de pago','err');return;}
 
   const saldo=getSaldoFuente(fuente);
-  if(saldo<monto){toast('Saldo insuficiente en '+escHtml(fuenteLabel(fuente))+' — disponible: '+fmt(saldo),'err');return;}
+  if(Math.round(saldo*100)<Math.round(monto*100)){toast('Saldo insuficiente en '+escHtml(fuenteLabel(fuente))+' — disponible: '+fmt(saldo),'err');return;}
 
   descontarFuente(fuente,monto);
   const pago=tcCrearPago(tc,{monto,fecha,fuente,nota});

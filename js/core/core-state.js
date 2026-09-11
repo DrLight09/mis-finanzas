@@ -3,9 +3,9 @@
 // por absolutamente todos los módulos (fmt, fmtNoCents, uid, hoy, escHtml,
 // mesKey, parseMoney, parsePct, toast, dialogo), calcPatrimonioTotal/
 // snapshotPatrimonio, los helpers centralizados _esGastoVarNoReal/
-// _esEntradaEspejoNoIngreso, y la definición BASE de refresh() (se wrappea
-// después, ver js/core/gastos-fijos-progress.js y js/core/mejoras.js) —
-// extraído de index.html. Debe cargar ANTES que cualquier módulo de
+// _esEntradaEspejoNoIngreso, y la definición BASE de refresh() (se envuelve
+// después vía hookGlobal(), ver js/core/gastos-fijos-progress.js y
+// js/core/mejoras-adicionales.js) — extraído de index.html. Debe cargar ANTES que cualquier módulo de
 // js/modules/ (todos asumen que S/fmt/uid/etc. ya existen como globales).
 // No exportar como type="module": el resto del archivo depende de que
 // estas sean variables globales léxicas normales de script clásico.

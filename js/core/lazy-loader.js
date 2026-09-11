@@ -150,14 +150,15 @@ const Loader = (function () {
     // (nuTotal/getNuTasaGlobal/_renderTasaHistorialTag llamados sin guard
     // desde core-state.js y firebase-sync.js). Se recibieron y auditaron
     // los 5 archivos núcleo que faltaban (core-state.js, firebase-sync.js,
-    // pin-bio.js, gastos-fijos-progress.js, mejoras.js): los tres puntos
-    // del error, más calcC/calcCDT/materializarIntereses/
+    // pin-bio.js, gastos-fijos-progress.js, mejoras.js — este último
+    // fusionado con mejoras-adicionales.js el 2026-09-10, ver CHANGELOG.md):
+    // los tres puntos del error, más calcC/calcCDT/materializarIntereses/
     // registrarTasaNuHistorial/verificarVencimientosCDT (todo lo demás que
     // cuentas.js expone y que estos archivos llegan a tocar), ya tienen
     // guard `typeof` — confirmado contra el código real, no por inferencia.
-    // pin-bio.js/mejoras.js/gastos-fijos-progress.js no llaman ninguna
-    // función de cuentas.js. Ver auditoria-tecnica.md, corrección del
-    // 2026-08-13.
+    // pin-bio.js/mejoras-adicionales.js/gastos-fijos-progress.js no llaman
+    // ninguna función de cuentas.js. Ver auditoria-tecnica.md, corrección
+    // del 2026-08-13.
     cuentas: ['js/modules/cuentas.js'],
     analisis: ['js/modules/analisis.js'],
     encargos: ['js/modules/encargos.js'],

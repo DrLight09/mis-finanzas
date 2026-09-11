@@ -23,7 +23,8 @@
 // algo salió mal de verdad. Antes esto era un loop propio (setTimeout +
 // contador a mano); ver CHANGELOG.md#infraestructura--seguridad, entrada de
 // consolidación de este patrón (estaba triplicado con mejoras.js/
-// mejoras-adicionales.js).
+// mejoras-adicionales.js — esos dos, a su vez, ya son un solo archivo,
+// js/core/mejoras-adicionales.js, desde el 2026-09-10).
 //
 // onGiveUp (agregado 2026-09-08): antes, si los 25 intentos se agotaban sin
 // que _inyectarPersonaSheets() apareciera, la falla era 100% silenciosa —

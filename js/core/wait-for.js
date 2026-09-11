@@ -1,9 +1,14 @@
 // js/core/wait-for.js
 //
 // Centraliza el patrón "reintentar hasta que una función/condición exista"
-// para los <script> CLÁSICOS (defer): personas-init.js, mejoras.js,
-// mejoras-adicionales.js. Antes cada uno reimplementaba a mano su propio
-// setInterval/setTimeout + contador de reintentos (ver
+// para los <script> CLÁSICOS (defer). Consumidores directos hoy:
+// personas-init.js y js/core/hook-global.js (que a su vez lo usa por
+// debajo de hookGlobal() para gastos-fijos-progress.js/mas-menu.js/
+// mejoras-adicionales.js — ver ese archivo). Antes de existir hookGlobal(),
+// mejoras.js y mejoras-adicionales.js (hoy fusionados en un solo archivo,
+// mejoras-adicionales.js) también llamaban a waitFor() directamente; cada
+// uno reimplementaba a mano su propio setInterval/setTimeout + contador de
+// reintentos antes de que este archivo existiera (ver
 // CHANGELOG.md#infraestructura--seguridad).
 //
 // NOTA — por qué NO es un ES module (corrección tras un intento fallido):

@@ -5014,7 +5014,7 @@
      a diferencia de lo que resultó ser Encargos/Spotify (esos dos NO
      tenían dependencia real — se fusionaron sin mover nada, ver
      CHANGELOG.md#encargos y #spotify). Se auditaron los 16 archivos
-     (hoy 15, ver nota) que hoy cargan entre esta posición y la
+     (hoy 14, ver notas) que hoy cargan entre esta posición y la
      posición vieja de personas.js (sheet-stack.js, lazy-loader.js,
      money-input.js, movimientos.js, cuentas.js, bootstrap.js,
      mas-menu.js, sheet-behavior.js [fusión 2026-09-08 de
@@ -5022,7 +5022,8 @@
      gastos-fijos-progress.js, firebase-sync.js,
      mejoras-adicionales.js [fusión 2026-09-10 de mejoras.js +
      mejoras-adicionales.js — ver CHANGELOG.md#infraestructura--seguridad],
-     busqueda-global.js, pin-bio.js, nav.js) — ninguno tiene
+     busqueda-global.js, pin-bio.js — nav.js retirado, 2026-09-10, ver
+     nota más abajo) — ninguno tiene
      código de nivel superior que dependa de personas.js, ni
      personas.js depende de nada de ellos a nivel superior. Detalle
      completo en CHANGELOG.md#préstamos.
@@ -5424,7 +5425,14 @@
       </div>
     </div>
 
-<script src="js/core/nav.js" defer></script>
+<!-- js/core/nav.js retirado (2026-09-10): su única función, navTo(),
+     tenía un solo caller real (tarjetas_credito.js, botón "Ver todo"),
+     que además duplicaba a mano parte de la lógica de showScreen()
+     (sheet-stack.js) sin la integración con lazy-loader.js/préstamos que
+     showScreen() sí tiene. Se cambió ese caller a
+     `closeMas(); showScreen('tarjetas');` — mismo patrón que ya usa
+     mas-menu.js — y con eso navTo()/nav.js quedaron sin ningún caller
+     conocido. Ver CHANGELOG.md#infraestructura--seguridad. -->
 <!-- ===== FEED "ACTIVIDAD RECIENTE" =====
      Migrado a js/modules/actividad_reciente.js. Único acceso: el botón
      dentro de Configuración (#cfg-historial-row) — no hay entrada en el

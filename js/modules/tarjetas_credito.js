@@ -20,10 +20,14 @@
      módulo), así que no genera una dependencia de orden de carga.
 
    Qué NO se movió acá aunque compartía el mismo <script> original:
-   - `navTo(screen)` — función de navegación global de toda la app
-     (usada por las 13 pantallas, no solo por Tarjetas). Se quedó en
-     index.html. Este módulo la sigue llamando vía
-     `Events.on('tarjetas:verTodo', () => navTo('tarjetas'))`.
+   - `navTo(screen)` — función de navegación global que vivía en
+     js/core/nav.js. Este módulo era su único caller real (el botón
+     "Ver todo" → `Events.on('tarjetas:verTodo', ...)`); al confirmarlo
+     (2026-09-10) se cambió ese handler para llamar
+     `closeMas(); showScreen('tarjetas');` — mismo patrón que ya usa
+     mas-menu.js para sus propios ítems — y con eso `navTo()` se quedó
+     sin ningún caller conocido y se retiró junto con js/core/nav.js.
+     Ver CHANGELOG.md#infraestructura--seguridad.
    - El "Feed de actividad financiera" — un módulo distinto que
      compartía el mismo tag <script> por casualidad de cómo estaba
      armado el archivo, no por relación real con Tarjetas de Crédito.
@@ -1009,7 +1013,7 @@ Events.registerAll('tarjetas', {
   eliminarPago:     eliminarPagoTC,
   seleccionarColor: tcSelColor,          // usada por los 8 círculos de color estáticos en #sheet-nueva-tc
   verMov:           (...args) => abrirDetalleMov(...args), // función compartida (js/core/movimientos.js), envuelta por el mismo motivo que en prestado.js: se define más abajo (en movimientos.js, que carga DESPUÉS de este archivo), así que pasarla directo la capturaría como undefined al cargar. Envuelta así, la búsqueda del nombre global ocurre recién al hacer click.
-  verTodo:          () => navTo('tarjetas') // navTo es global, definida en index.html
+  verTodo:          () => { closeMas(); showScreen('tarjetas'); } // antes navTo('tarjetas') — ver CHANGELOG.md#infraestructura--seguridad (2026-09-10, retiro de nav.js)
 });
 // ── Conectar botones TC al formulario y selects ───────────────────
 // Nota (2026-08-02): antes esto esperaba 'DOMContentLoaded'. Si este

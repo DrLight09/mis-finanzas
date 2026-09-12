@@ -51,12 +51,69 @@
    Todas las fechas en S son strings "YYYY-MM-DD" — comparación por slice,
    sin depender de ningún formato de "mesK" propio de otra pantalla. */
 function _wrappedEnRango(fecha, tipo, mesK, anioK){
-  if(!fecha) return false;
+  // Guard estricto de tipo, no solo de "truthy": un dato corrupto donde
+  // `fecha` llegara como número, `Date`, u otro tipo no-string rompería
+  // `.slice()` más abajo en vez de simplemente excluir ese registro.
+  if(typeof fecha !== 'string' || !fecha) return false;
   return tipo === 'mes' ? fecha.slice(0,7) === mesK : fecha.slice(0,4) === anioK;
 }
 
 function _wrappedHoy(){
   return typeof hoy === 'function' ? hoy() : new Date().toISOString().slice(0,10);
+}
+
+/* Único punto que decide "año actual" y "mes actual (0-indexado)" para todo
+   el módulo — antes `_wrappedMejorPeorMesAnio` y `_wrappedSerieMensualAnio`
+   llamaban a `new Date()` directamente en vez de pasar por `_wrappedHoy()`,
+   dos fuentes de "hoy" que en producción siempre coinciden (`_wrappedHoy`
+   ya cae a `new Date()` si no existe `hoy()`) pero que en tests hacían que
+   mockear `hoy()` no alcanzara para controlar de verdad qué mes se toma
+   como "el actual". */
+function _wrappedAnioYMesActual(){
+  const hoyStr = _wrappedHoy();
+  return { anioActual: hoyStr.slice(0,4), mesActualIdx: parseInt(hoyStr.slice(5,7),10) - 1 };
+}
+
+/* Agrupa una lista ya filtrada de gastos (variables + fijos pagados) por
+   categoría y devuelve la líder por MONTO — pero también, si es distinta,
+   la líder por FRECUENCIA (cantidad de movimientos). Una compra de
+   $300.000 y veinte compras de $20.000 pueden "ganar" la misma categoría
+   por monto sin que cuenten la misma historia — separar las dos
+   dimensiones permite que el copy lo note (ver `_wrappedCopyCategoria`)
+   sin inventar categorías nuevas ni depender de más de un año de
+   historial (a diferencia de "categoría que más creció" o "categoría más
+   inesperada", que si se hacen mal con poco historial dirían algo que no
+   es realmente así — quedan fuera de esta pasada, ver wrapped.md §7).
+   Función compartida entre el período completo (`_wrappedCalcularPeriodo`)
+   y la comparación de mitades de año (`_wrappedCambioDeHabitos`), para no
+   repetir la lógica de agrupar por categoría en dos lugares. */
+function _wrappedTopCategoriaDe(items, totalGastos){
+  const catMap = {}; // cat -> { monto, count }
+  items.forEach(g => {
+    const cat = g.cat || 'Sin categoría';
+    if(!catMap[cat]) catMap[cat] = { monto: 0, count: 0 };
+    catMap[cat].monto += (g.monto||0);
+    catMap[cat].count += 1;
+  });
+  let topPorMonto = null, topPorFrecuencia = null;
+  Object.keys(catMap).forEach(cat => {
+    const { monto, count } = catMap[cat];
+    if(!topPorMonto || monto > topPorMonto.monto) topPorMonto = { cat, monto };
+    if(!topPorFrecuencia || count > topPorFrecuencia.count) topPorFrecuencia = { cat, count };
+  });
+  if(topPorMonto){
+    // `catShare` es de uso puramente interno: sirve para elegir el tono
+    // del texto ("le diste con todo a X" vs "tu categoría más frecuente
+    // fue X"), nunca se pinta como número — mismo principio que ya se
+    // aplicaba con `balance` para rankear el mejor/peor mes sin mostrarlo
+    // en crudo.
+    topPorMonto.catShare = totalGastos > 0 ? topPorMonto.monto / totalGastos : 0;
+    // Si la categoría que más plata consumió NO es la misma que más se
+    // repitió, guardamos la otra para que el copy pueda mencionar el
+    // contraste ("gastaste más en X, pero Y fue la que más se repitió").
+    topPorMonto.topPorFrecuencia = (topPorFrecuencia && topPorFrecuencia.cat !== topPorMonto.cat) ? topPorFrecuencia : null;
+  }
+  return topPorMonto;
 }
 
 /* ─── CÁLCULO PURO de un período (mes o año) ──────────────────────────────
@@ -87,57 +144,56 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
   const totalIngresos = ingresosPeriodo.reduce((s,m)=>s+(m.monto||0),0);
   const balance = totalIngresos - totalGastos;
 
-  // Top categoría (gastos variables reales + gastos fijos pagados).
-  const catMap = {};
-  [...gastosVarPeriodo, ...pagosFijosPeriodo].forEach(g => {
-    const cat = g.cat || 'Sin categoría';
-    catMap[cat] = (catMap[cat]||0) + (g.monto||0);
-  });
-  let topCategoria = null;
-  Object.keys(catMap).forEach(cat => {
-    if(!topCategoria || catMap[cat] > topCategoria.monto) topCategoria = { cat, monto: catMap[cat] };
-  });
-  // `catShare` (0–1, qué proporción del gasto total del período fue esa
-  // categoría) es de uso puramente interno: sirve para elegir el tono del
-  // texto ("le diste con todo a X" vs "tu categoría más frecuente fue X"),
-  // nunca se pinta como número — mismo principio que ya se aplicaba con
-  // `balance` para rankear el mejor/peor mes sin mostrarlo en crudo.
-  if(topCategoria) topCategoria.catShare = totalGastos > 0 ? topCategoria.monto / totalGastos : 0;
+  // Top categoría (gastos variables reales + gastos fijos pagados) —
+  // devuelve tanto la líder por monto como, si difiere, la líder por
+  // frecuencia (ver `_wrappedTopCategoriaDe`, comentario ahí para el
+  // razonamiento de por qué importan las dos dimensiones).
+  const topCategoria = _wrappedTopCategoriaDe([...gastosVarPeriodo, ...pagosFijosPeriodo], totalGastos);
 
   // Gasto más grande del período — "dato curioso" tipo Wrapped, nunca
-  // mostrado así de puntual en Análisis financiero.
+  // mostrado así de puntual en Análisis financiero. Guarda también su
+  // fecha y categoría (para contextualizarlo en el copy, ver
+  // `_wrappedCopyGasto`) y el gasto promedio del período (uso interno,
+  // solo para decidir qué tan grande fue *en relación al propio usuario*
+  // — nunca en pesos fijos, que no tendría sentido entre personas con
+  // gastos de escalas muy distintas).
   let gastoMasGrande = null;
   gastosVarPeriodo.forEach(g => {
-    if(!gastoMasGrande || (g.monto||0) > gastoMasGrande.monto) gastoMasGrande = { desc: g.desc || g.cat || 'Gasto', monto: g.monto||0, cat: g.cat || null };
+    if(!gastoMasGrande || (g.monto||0) > gastoMasGrande.monto) gastoMasGrande = { desc: g.desc || g.cat || 'Gasto', monto: g.monto||0, cat: g.cat || null, fecha: g.fecha || null };
   });
+  const avgGasto = gastosVarPeriodo.length ? gastosVarPeriodo.reduce((s,g)=>s+(g.monto||0),0) / gastosVarPeriodo.length : 0;
 
   // Alcancía del período: depósitos del ciclo activo dentro del rango +
   // ciclos ya destapados cuyo cierre (fechaFin) cae dentro del rango.
   //
-  // ⚠️ RIESGO CONOCIDO, SIN VERIFICAR (pendiente de revisar alcancia.js /
-  // alcancia.md junto con Sebas — este archivo por sí solo no alcanza
-  // para confirmarlo): si `historial[].saldoRegistrado` incluye depósitos
-  // que ya vienen sumados en `movimientos` (ej. porque el saldo
-  // registrado al destapar un ciclo se calcula a partir de esos mismos
-  // movimientos, y ambos quedan dentro del mismo rango de fechas), esta
-  // suma cuenta la misma plata dos veces. No se "arregló a ciegas" acá
-  // porque cualquier fix requiere saber si `movimientos` y `historial`
-  // comparten identificador de ciclo — sin eso, cualquier deduplicación
-  // que se intente podría ser tan incorrecta como el posible bug.
+  // Verificado contra alcancia.js/alcancia.md (2026-09-12): al destapar,
+  // `a.saldoRegistrado` se resetea a 0 de inmediato y el ciclo cerrado
+  // queda copiado en `a.historial[]` — pero `a.movimientos[]` NO se limpia
+  // en ese momento. Solo se limpia cuando el usuario elige explícitamente
+  // "Iniciar nueva alcancía" (`alcanciaIniciarNueva()`); mientras tanto la
+  // alcancía queda en estado "fantasma" (`a._destapada === true`, ver
+  // alcancia.md §2/§6) con los depósitos del ciclo ya cerrado todavía
+  // presentes en `a.movimientos[]`. Sumar ambas fuentes sin excluir ese
+  // solape contaría la misma plata dos veces durante esa ventana — por
+  // eso `a.movimientos` solo se suma cuando hay un ciclo genuinamente
+  // activo (`!a._destapada`); una vez destapado, esa plata ya vive
+  // únicamente en el `historial` que se suma abajo.
   let alcanciaPeriodo = 0;
   const a = S.alcancia;
   if(a){
-    (a.movimientos||[]).forEach(m => { if(_wrappedEnRango(m.fecha, tipo, mesK, anioK)) alcanciaPeriodo += (m.monto||0); });
+    if(!a._destapada){
+      (a.movimientos||[]).forEach(m => { if(_wrappedEnRango(m.fecha, tipo, mesK, anioK)) alcanciaPeriodo += (m.monto||0); });
+    }
     (a.historial||[]).forEach(h => { if(_wrappedEnRango(h.fechaFin, tipo, mesK, anioK)) alcanciaPeriodo += (h.saldoRegistrado||0); });
   }
 
-  return { totalGastos, totalIngresos, balance, topCategoria, gastoMasGrande, alcanciaPeriodo };
+  return { totalGastos, totalIngresos, balance, topCategoria, gastoMasGrande, alcanciaPeriodo, avgGasto };
 }
 
 /* ─── Mejor y peor mes del año ─────────────────────────────────────────── */
 function _wrappedMejorPeorMesAnio(S, anioK){
-  const anioActual = String(new Date().getFullYear());
-  const mesMax = (anioK === anioActual) ? new Date().getMonth() : 11;
+  const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
+  const mesMax = (anioK === anioActual) ? mesActualIdx : 11;
   const meses = [];
   for(let m=0; m<=mesMax; m++){
     const mesK = anioK + '-' + String(m+1).padStart(2,'0');
@@ -155,7 +211,13 @@ function _wrappedMejorPeorMesAnio(S, anioK){
   // depender de umbrales fijos en pesos que no tendrían sentido para
   // ingresos muy distintos entre personas.
   const promedio = meses.reduce((s,m)=>s+m.balance,0) / meses.length;
-  return { mejor, peor, promedio };
+  // Empates: si más de un mes comparte exactamente el balance extremo, el
+  // `reduce` de arriba se queda arbitrariamente con el primero — acá se
+  // detecta el empate para que el copy pueda nombrarlo en vez de fingir
+  // que hubo un único ganador (ver `_wrappedCopyMejorMes`/`_wrappedCopyPeorMes`).
+  const empateMejor = meses.filter(m => m.balance === mejor.balance).length > 1;
+  const empatePeor  = meses.filter(m => m.balance === peor.balance).length > 1;
+  return { mejor, peor, promedio, empateMejor, empatePeor };
 }
 
 /* ─── Resumen de crecimiento de patrimonio en el año (número final) ──────
@@ -185,8 +247,8 @@ function _wrappedPatrimonioAnio(S, anioK){
    del principio de la serie — no se puede graficar antes del primer dato
    real. */
 function _wrappedSerieMensualAnio(S, anioK){
-  const anioActual = String(new Date().getFullYear());
-  const mesMax = (anioK === anioActual) ? new Date().getMonth() : 11;
+  const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
+  const mesMax = (anioK === anioActual) ? mesActualIdx : 11;
   const hist = (S.patrimonioHistorial || [])
     .filter(p => p.fecha)
     .slice()
@@ -257,12 +319,22 @@ function _wrappedCopyPatrimonio(patrimonio){
 
 function _wrappedCopyCategoria(topCategoria){
   const share = topCategoria.catShare || 0;
-  if(share >= 0.4) return `Le diste con todo a esta categoría — fue, por lejos, tu categoría del año.`;
-  if(share >= 0.2) return `Fue tu categoría del año.`;
-  return `Fue tu categoría más frecuente del año.`;
+  let base;
+  if(share >= 0.4) base = `Le diste con todo a esta categoría — fue, por lejos, la que más plata se llevó.`;
+  else if(share >= 0.2) base = `Fue la que más plata se llevó este año.`;
+  else base = `Fue la categoría donde más gastaste este año.`;
+  // Si la categoría que más se REPITIÓ es otra distinta a la que más
+  // plata consumió (ver `_wrappedTopCategoriaDe`), vale la pena
+  // mencionarlo — "gastaste más en viajes, pero mercado fue con la que
+  // más veces pagaste" cuenta una historia distinta a solo el monto.
+  if(topCategoria.topPorFrecuencia){
+    base += ` Aunque la que más se repitió fue ${escHtml(topCategoria.topPorFrecuencia.cat)}.`;
+  }
+  return base;
 }
 
-function _wrappedCopyMejorMes(mejor, promedio){
+function _wrappedCopyMejorMes(mejor, promedio, empate){
+  if(empate) return 'empatado con otro mes — los dos fueron tu mejor resultado del año.';
   if(promedio !== null && promedio > 0 && mejor.balance > promedio * 1.5){
     return 'muy por encima de tu ritmo normal.';
   }
@@ -270,12 +342,30 @@ function _wrappedCopyMejorMes(mejor, promedio){
   return 'el menos difícil de todos — que también cuenta.';
 }
 
-function _wrappedCopyPeorMes(peor, promedio){
+function _wrappedCopyPeorMes(peor, promedio, empate){
+  if(empate) return 'empatado con otro mes — ninguno de los dos fue fácil.';
   if(peor.balance >= 0) return 'y ni en tu peor mes te fue mal.';
   if(promedio !== null && promedio > 0 && peor.balance < promedio * -0.5){
     return 'se salió bastante de tu ritmo normal.';
   }
   return 'tu mes más ajustado del año.';
+}
+
+/* Contextualiza el gasto más grande: en qué mes fue y qué tan grande fue
+   *en relación al propio gasto típico del usuario* (nunca contra un
+   umbral fijo en pesos, que no tendría sentido entre personas con gastos
+   de escalas muy distintas). */
+function _wrappedCopyGasto(gastoMasGrande, avgGasto){
+  const mesTxt = gastoMasGrande.fecha ? _wrappedMesKaNombre(gastoMasGrande.fecha.slice(0,7)) : null;
+  let intensidad;
+  if(avgGasto > 0 && gastoMasGrande.monto >= avgGasto * 5){
+    intensidad = 'muchísimo más grande que cualquiera de tus otros gastos del año.';
+  } else if(avgGasto > 0 && gastoMasGrande.monto >= avgGasto * 2){
+    intensidad = 'bastante más grande que tu gasto típico.';
+  } else {
+    intensidad = 'el que más te costó este año.';
+  }
+  return mesTxt ? `Pasó en ${mesTxt} — ${intensidad}` : intensidad.charAt(0).toUpperCase() + intensidad.slice(1);
 }
 
 function _wrappedCopyAlcancia(alcanciaPeriodo, gastoMasGrande){
@@ -483,6 +573,51 @@ function _wrappedSlideBignum(eyebrow, headline, value, color, opts){
   </div>`;
 }
 
+/* Compara la categoría líder (por monto) de la primera mitad del año
+   contra la segunda — es la única comparación tipo "empezaste haciendo X,
+   terminaste haciendo Y" que se agregó en esta pasada. Se calcula con
+   seguridad a partir de un solo año de historia porque no depende de
+   ningún umbral estadístico de anomalía (a diferencia de detectar "el día
+   que rompió tu patrón" o una tendencia mes a mes — eso se dejó afuera a
+   propósito, ver wrapped.md §7: con poco historial, ese tipo de detección
+   corre mucho riesgo de señalar como "raro" algo que en realidad es
+   normal para este usuario, y una falsa alarma en un resumen anual es
+   peor que no tener esa historia). Reutiliza `_wrappedTopCategoriaDe`
+   (misma agrupación por categoría que el período completo) para no
+   duplicar esa lógica. Requiere al menos 6 meses transcurridos del año. */
+function _wrappedCambioDeHabitos(S, anioK, mesMax){
+  if(mesMax < 5) return null; // menos de 6 meses: no hay dos mitades que valga la pena comparar
+
+  const gastosVar = S.gastosVar || [];
+  const pagosFijosRaw = S.pagosGastosFijos;
+  const pagosFijos = Array.isArray(pagosFijosRaw) ? pagosFijosRaw : Object.values(pagosFijosRaw || {});
+  const esGastoNoReal = typeof _esGastoVarNoReal === 'function' ? _esGastoVarNoReal : (()=>false);
+
+  const mitad = Math.floor((mesMax+1) / 2);
+  const mesKDeCorte = anioK + '-' + String(mitad+1).padStart(2,'0'); // primer mesK de la segunda mitad
+
+  const enPrimera = fecha => typeof fecha === 'string' && fecha.slice(0,4) === anioK && fecha.slice(0,7) < mesKDeCorte;
+  const enSegunda = fecha => typeof fecha === 'string' && fecha.slice(0,4) === anioK && fecha.slice(0,7) >= mesKDeCorte;
+
+  const itemsPrimera = [...gastosVar.filter(g => enPrimera(g.fecha) && !esGastoNoReal(g)), ...pagosFijos.filter(p => enPrimera(p.fecha))];
+  const itemsSegunda = [...gastosVar.filter(g => enSegunda(g.fecha) && !esGastoNoReal(g)), ...pagosFijos.filter(p => enSegunda(p.fecha))];
+
+  const totalPrimera = itemsPrimera.reduce((s,g)=>s+(g.monto||0),0);
+  const totalSegunda = itemsSegunda.reduce((s,g)=>s+(g.monto||0),0);
+
+  const topPrimera = _wrappedTopCategoriaDe(itemsPrimera, totalPrimera);
+  const topSegunda = _wrappedTopCategoriaDe(itemsSegunda, totalSegunda);
+
+  if(!topPrimera || !topSegunda || topPrimera.cat === topSegunda.cat) return null;
+  // Solo cuenta como "cambio de hábitos" si la categoría fue realmente
+  // dominante en cada mitad — si ambas mitades estaban parejas entre
+  // varias categorías sin que ninguna destaque, no es un cambio real, es
+  // ruido, y mostrarlo como si fuera una historia sería engañoso.
+  if((topPrimera.catShare||0) < 0.15 || (topSegunda.catShare||0) < 0.15) return null;
+
+  return { catPrimera: topPrimera.cat, catSegunda: topSegunda.cat };
+}
+
 /* ─── ARMADO DE LA LISTA DE SLIDES DEL AÑO ────────────────────────────────
    Solo incluye un slide por cada dato curioso que realmente exista —
    mismas condiciones que ya usaba la versión de una sola pantalla, ahora
@@ -490,10 +625,13 @@ function _wrappedSlideBignum(eyebrow, headline, value, color, opts){
    lista. */
 function _wrappedBuildSlides(S, fmt2){
   const anioK = _wrappedHoy().slice(0,4);
+  const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
+  const mesMax = (anioK === anioActual) ? mesActualIdx : 11;
   const s = _wrappedCalcularPeriodo(S, 'anio', null, anioK);
   const patrimonio = _wrappedPatrimonioAnio(S, anioK);
   const serie = _wrappedSerieMensualAnio(S, anioK);
-  const { mejor, peor, promedio } = _wrappedMejorPeorMesAnio(S, anioK);
+  const { mejor, peor, promedio, empateMejor, empatePeor } = _wrappedMejorPeorMesAnio(S, anioK);
+  const cambioHabitos = _wrappedCambioDeHabitos(S, anioK, mesMax);
   const graficoSvg = _wrappedGraficoAnimadoSvg(serie);
 
   let racha = 0;
@@ -506,10 +644,9 @@ function _wrappedBuildSlides(S, fmt2){
   slides.push({
     id: 'intro',
     html: `<div class="wrapped-slide-inner">
-      <div class="wrapped-eyebrow">Tu resumen</div>
-      <div class="wrapped-headline" style="font-size:15px;font-weight:500;color:var(--text2);">${anioK}</div>
-      <div class="wrapped-bignum" style="color:var(--accent);">${anioK}</div>
-      <div class="wrapped-sub">Un repaso rápido a tu año — nada que ya no supieras, solo para verlo junto.</div>
+      <div class="wrapped-eyebrow">Tu resumen ${anioK}</div>
+      <div class="wrapped-headline">A ver qué te tiene guardado tu propia plata.</div>
+      <div class="wrapped-sub">Lo repasamos un dato a la vez.</div>
     </div>`
   });
 
@@ -536,19 +673,32 @@ function _wrappedBuildSlides(S, fmt2){
     }) });
   }
 
+  if(cambioHabitos){
+    slides.push({
+      id: 'cambio-habitos',
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Cambiaste de hábitos a mitad de año</div>
+        <div class="wrapped-headline">De <b>${escHtml(cambioHabitos.catPrimera)}</b> a <b>${escHtml(cambioHabitos.catSegunda)}</b></div>
+        <div class="wrapped-sub">tu categoría más fuerte pasó de una a otra entre la primera y la segunda mitad del año.</div>
+      </div>`
+    });
+  }
+
   if(mejor){
     slides.push({ id:'mejor', html: _wrappedSlideBignum('Tu mejor mes', _wrappedMesKaNombre(mejor.mesK), mejor.balance, 'var(--accent)', {
-      sub: _wrappedCopyMejorMes(mejor, promedio)
+      sub: _wrappedCopyMejorMes(mejor, promedio, empateMejor)
     }) });
   }
   if(peor && (!mejor || peor.mesK !== mejor.mesK)){
     slides.push({ id:'peor', html: _wrappedSlideBignum('Tu mes más difícil', _wrappedMesKaNombre(peor.mesK), peor.balance, 'var(--red)', {
-      sub: _wrappedCopyPeorMes(peor, promedio)
+      sub: _wrappedCopyPeorMes(peor, promedio, empatePeor)
     }) });
   }
 
   if(s.gastoMasGrande){
-    slides.push({ id:'gasto', html: _wrappedSlideBignum('Tu gasto más grande', escHtml(s.gastoMasGrande.desc), s.gastoMasGrande.monto, 'var(--blue)') });
+    slides.push({ id:'gasto', html: _wrappedSlideBignum('Tu gasto más grande', escHtml(s.gastoMasGrande.desc), s.gastoMasGrande.monto, 'var(--blue)', {
+      sub: _wrappedCopyGasto(s.gastoMasGrande, s.avgGasto)
+    }) });
   }
 
   if(s.alcanciaPeriodo > 0){
@@ -773,7 +923,12 @@ window._wrappedInternals = {
   _wrappedCopyPeorMes,
   _wrappedCopyAlcancia,
   _wrappedCopyRacha,
-  _wrappedCopyCierre
+  _wrappedCopyCierre,
+  _wrappedCopyGasto,
+  _wrappedTopCategoriaDe,
+  _wrappedCambioDeHabitos,
+  _wrappedAnioYMesActual,
+  _wrappedEnRango
 };
 
 })();

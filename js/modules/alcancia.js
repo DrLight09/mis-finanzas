@@ -395,10 +395,10 @@ function _inyectarAlcanciaSheets(){
   });
 
   /* ---------- Money inputs ---------- */
-  _initMoneyInput('alc_dep_monto');
-  _initMoneyInput('alc_real_monto');
-  _initMoneyInput('alc_split_yo');
-  _initMoneyInput('alc_split_mama');
+  _alcInitMoneyInput('alc_dep_monto');
+  _alcInitMoneyInput('alc_real_monto');
+  _alcInitMoneyInput('alc_split_yo');
+  _alcInitMoneyInput('alc_split_mama');
 
   /* ---------- Split: recalcular total al cambiar cada campo ---------- */
   ['alc_split_yo','alc_split_mama'].forEach(id => {
@@ -457,7 +457,28 @@ function closeSwipeSheet(sid, el){
   if(typeof closeSheet==='function') closeSheet(sid);
 }
 
-function _initMoneyInput(id){
+// RENOMBRADA (2026-09-10, ver CHANGELOG.md#infraestructura--seguridad):
+// se llamaba `_initMoneyInput`, mismo nombre EXACTO que la función global
+// de js/core/money-input.js — pero con firma incompatible (esta toma un
+// `id` de string, la de money-input.js toma el elemento DOM directo).
+// Al ser ambos <script> clásicos en el mismo scope global, cuando este
+// archivo cargaba (lazy, al entrar a Alcancía) su `function
+// _initMoneyInput` PISABA la definición real de money-input.js — y el
+// focusin global de money-input.js (usado por TODOS los inputs de plata
+// de la app, no solo los de Alcancía) empezaba a llamar a ESTA función en
+// su lugar, con un elemento DOM donde se esperaba un id de string. El
+// resultado: `document.getElementById(elementoDOM)` no encuentra nada,
+// esta función no hace nada, y el buffer de dígitos de money-input.js
+// nunca se inicializa — cualquier input de plata con un valor ya cargado
+// (ej. editar un gasto existente) mostraba "0,00" al primer click en vez
+// de conservar el valor. Bug real, no cosmético, y silencioso: no tira
+// ningún error, solo deja de funcionar. Ver también moneyInputAttach()
+// más abajo — nunca estuvo definida en ningún archivo del proyecto, así
+// que esta función SIEMPRE tomó la rama de fallback (que no usa el
+// mismo buffer/formateo de money-input.js) — hallazgo aparte, no
+// corregido acá porque cambiaría el comportamiento visible de los
+// inputs de Alcancía y no es lo mismo que la colisión de nombres.
+function _alcInitMoneyInput(id){
   const el = document.getElementById(id);
   if(!el || el._alcInited) return;
   el._alcInited = true;
@@ -602,9 +623,8 @@ function _actualizarDiferenciaHint(){
   }
 }
 
-/* ─── OPEN SHEET HOOK ───────────────────────────────────────────────────── */
-const _origOpenSheetAlcancia = openSheet;
-openSheet = function(id){
+/* ─── OPEN SHEET HOOK ─── ver js/core/hook-global.js ───────────────────── */
+hookGlobal('openSheet', function(id){
   if(id === 'alcancia-depositar'){
     _inyectarAlcanciaSheets();
     setTimeout(()=>{
@@ -686,8 +706,7 @@ openSheet = function(id){
       }
     }, 30);
   }
-  _origOpenSheetAlcancia.apply(this, arguments);
-};
+});
 
 /* ─── RENDER PANTALLA ───────────────────────────────────────────────────── */
 window.renderAlcancia = function(){
@@ -1637,12 +1656,10 @@ function _inyectarMasMenuItem(){
   });
 }
 
-/* ─── showScreen HOOK ────────────────────────────────────────────────────── */
-const _origShowScreenAlcancia = showScreen;
-showScreen = function(name){
-  _origShowScreenAlcancia.apply(this, arguments);
+/* ─── showScreen HOOK — ver js/core/hook-global.js ──────────────────────── */
+hookGlobal('showScreen', function(name){
   if(name === 'alcancia') window.renderAlcancia();
-};
+});
 
 /* ─── INTEGRACIÓN CON data-screen en el mas-menu ────────────────────────── */
 // El sistema nativo usa data-screen en .mas-item → querySelectorAll detecta el click.

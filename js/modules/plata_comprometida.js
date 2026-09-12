@@ -1826,11 +1826,16 @@ async function _cpEliminar(id){
   toast('Ingreso eliminado y efectos revertidos <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 6 9 17 4 12"/></svg>','ok');
 };
 
-/* ── INTEGRACIÓN CON renderAttencion ────────────────────────────── */
+/* ── INTEGRACIÓN CON renderAttencion — ver js/core/hook-global.js ── */
+// Único archivo que envuelve renderAttencion (no había otra reimplementación
+// duplicada del patrón acá), pero se migra igual: el wrap manual anterior
+// tenía el mismo problema de encimada que tenía el de refresh() más arriba
+// en este archivo — si window.renderAttencion no existía todavía en este
+// punto, el guard `typeof` simplemente no enganchaba nada, en silencio,
+// para siempre. hookGlobal() cierra ese caso límite esperando con
+// waitFor() en vez de rendirse. Ver CHANGELOG.md#infraestructura--seguridad.
 (function(){
-  const _origRA = window.renderAttencion;
-  window.renderAttencion = function(){
-    if(typeof _origRA === 'function') _origRA();
+  hookGlobal('renderAttencion', function(){
     // Agregar alertas de plata que llega pronto o ya llegó
     const items = _cpData ? _cpData() : [];
     const list = document.getElementById('s-attn-list');
@@ -1884,7 +1889,7 @@ async function _cpEliminar(id){
         }
       });
     });
-  };
+  });
 })();
 
 /* ── INTEGRACIÓN: swipe/sheet handle para los nuevos sheets ─────── */
@@ -1936,16 +1941,19 @@ function _cpInit(){
     if(target) setTimeout(_cpRenderLista, 100);
   });
 
-  // Integrar con refresh global para mantener stats actualizados
-  const _origRefreshCP = window.refresh;
-  if(typeof _origRefreshCP === 'function'){
-    window.refresh = function(){
-      _origRefreshCP.apply(this, arguments);
-      // Actualizar stats si la pantalla está activa
-      const screen = document.getElementById('screen-comprometida');
-      if(screen && screen.classList.contains('active')) _cpRenderLista();
-    };
-  }
+  // Integrar con refresh global para mantener stats actualizados — ver
+  // js/core/hook-global.js. Antes, si window.refresh todavía no existía en
+  // este punto, el guard `typeof` de abajo simplemente no enganchaba nada
+  // — en silencio, para siempre (no había reintento). En la práctica nunca
+  // pasaba (_cpInit corre con setTimeout sobre DOMContentLoaded/
+  // appDataLoaded, mucho después de que refresh() ya exista), pero
+  // hookGlobal() de paso cierra ese caso límite: si no existiera, esperaría
+  // en vez de rendirse.
+  hookGlobal('refresh', function(){
+    // Actualizar stats si la pantalla está activa
+    const screen = document.getElementById('screen-comprometida');
+    if(screen && screen.classList.contains('active')) _cpRenderLista();
+  });
 
   // Render inicial si hay datos
   if(window.S && (window.S.plataCometida||[]).length) _cpRenderLista();

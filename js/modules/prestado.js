@@ -52,56 +52,48 @@
    las suyas.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ---- PRÉSTAMO CON ORIGEN DIVIDIDO ---- */
+/* ---- PRÉSTAMO CON ORIGEN DIVIDIDO ----
+   Migrado al motor genérico de split.js (crearSplitWidget/splitToggle/
+   splitAgregarRow/splitGetData), igual que ya hacía 'abonoDestino' más
+   abajo en este mismo archivo y Encargos en el suyo. Antes esta instancia
+   tenía su propia implementación casera (_prestSplitRows + _renderPrestSplit)
+   que había quedado desalineada del motor común: arrancaba con 1 sola fila
+   en vez de 2, dejaba elegir tarjetas de crédito como fuente (getFuentes()
+   en vez de getFuentesSinTC()) y no evitaba repetir la misma cuenta en dos
+   filas (splitActualizarOpciones, que sí tienen el resto de instancias).
+   Al pasar por el motor genérico las tres quedan resueltas de una: mínimo
+   2 filas, exclusión de TC vía getFuentesSinTC(), y no-repetir-cuenta
+   entre filas. */
 let _prestSplitMode = false;
-let _prestSplitRows = []; // [{fuente, monto}]
 
-function togglePrestSplit(){
-  _prestSplitMode = !_prestSplitMode;
-  document.getElementById('mov_fuente_simple').style.display = _prestSplitMode ? 'none' : '';
-  document.getElementById('mov_fuente_split').style.display = _prestSplitMode ? '' : 'none';
-  const btn = document.getElementById('mov_split_toggle');
-  btn.textContent = _prestSplitMode ? 'Una sola fuente' : 'Dividir ÷';
-  btn.style.background = _prestSplitMode ? 'rgba(240,184,64,.1)' : 'rgba(200,240,96,.1)';
-  btn.style.borderColor = _prestSplitMode ? 'rgba(240,184,64,.3)' : 'rgba(200,240,96,.3)';
-  btn.style.color = _prestSplitMode ? 'var(--amber)' : 'var(--accent)';
-  if(_prestSplitMode && !_prestSplitRows.length){
-    _prestSplitRows = [{fuente:'', monto:0}];
-    _renderPrestSplit();
+crearSplitWidget('prest', {
+  simpleId:'mov_fuente_simple', splitId:'mov_fuente_split', toggleId:'mov_split_toggle', rowsId:'mov_split_rows',
+  getModo:()=>_prestSplitMode, setModo:v=>{_prestSplitMode=v;},
+  getFuentesFn:_getPrestSplitFuentesOptions,
+  onPreview:_updatePrestSplitResumen
+});
+
+function togglePrestSplit(){ splitToggle('prest'); }
+function _prestAddSplitRow(){ splitAgregarRow('prest'); }
+
+// Un préstamo dado nunca sale de una tarjeta de crédito propia (eso es
+// "Préstamo con TC", un flujo aparte) — mismo filtro que ya usa
+// _getAbonoDestinoFuentesOptions más abajo. Se agrega además la opción
+// "ganancia" (plata virtual que nunca salió de ninguna cuenta), propia
+// de esta instancia.
+function _getPrestSplitFuentesOptions(selectedVal) {
+  const fuentes = getFuentesSinTC();
+  let out = '<option value="">Sin especificar</option>';
+  for (const f of fuentes) {
+    out += `<option value="${f.val}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`;
   }
-}
-
-function _renderPrestSplit(){
-  const el = document.getElementById('mov_split_rows');
-  if(!el) return;
-  const fuentes = getFuentes();
-  const opts = '<option value="">Sin especificar</option>' + fuentes.map(f=>`<option value="${f.val}">${escHtml(f.label)}</option>`).join('') + '<option value="ganancia"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>';
-  el.innerHTML = html`${_prestSplitRows.map((r,i)=>html`
-    <div class="prest-split-row">
-      <div class="select-wrap" style="flex:1;"><select class="_prest-split-fuente" data-i="${i}" style="font-size:13px;">${raw(opts.replace(`value="${r.fuente}"`,`value="${r.fuente}" selected`))}</select></div>
-      <input type="text" inputmode="decimal" value="${r.monto?fmtInput(r.monto):''}" placeholder="$0" class="money-input _prest-split-monto" data-i="${i}" style="width:105px;">
-      <button class="prest-split-del" ${raw(Events.attr('prestado:prestSplitDelRow', i))} ${raw(_prestSplitRows.length<=1?'style="visibility:hidden;"':'')}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>`)}`;
-  // onchange/oninput inline reemplazados por addEventListener delegado — docs/auditoria-tecnica.md #1
-  el.querySelectorAll('._prest-split-fuente').forEach(sel => {
-    sel.addEventListener('change', () => {
-      _prestSplitRows[+sel.dataset.i].fuente = sel.value;
-      _updatePrestSplitResumen();
-    });
-  });
-  el.querySelectorAll('._prest-split-monto').forEach(inp => {
-    inp.addEventListener('input', () => {
-      _prestSplitRows[+inp.dataset.i].monto = parseMoney(inp.value)||0;
-      _updatePrestSplitResumen();
-    });
-  });
-  _updatePrestSplitResumen();
+  out += `<option value="ganancia"${selectedVal==='ganancia'?' selected':''}><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>`;
+  return out;
 }
 
 function _updatePrestSplitResumen(){
-  const totalSplit = _prestSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+  const splitData = splitGetData('prest');
+  const totalSplit = splitData.reduce((a,r)=>a+(r.monto||0),0);
   const montoTotal = parseMoney(document.getElementById('mov_monto').value)||0;
   const resEl = document.getElementById('mov_split_resumen');
   if(resEl){
@@ -116,13 +108,13 @@ function _updatePrestSplitResumen(){
   const metaEl = document.getElementById('mov_split_metas');
   if(!metaEl) return;
   const impactos = [];
-  const gananciaTotal = _prestSplitRows.filter(r=>r.fuente==='ganancia').reduce((a,r)=>a+(r.monto||0),0);
+  const gananciaTotal = splitData.filter(r=>r.fuente==='ganancia').reduce((a,r)=>a+(r.monto||0),0);
   if(gananciaTotal>0){
     impactos.push(html`<div style="padding:7px 9px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.25);border-radius:7px;margin-top:5px;">
       <div style="font-size:11px;color:var(--accent);"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> ${fmt(gananciaTotal)} de este préstamo es <b>ganancia tuya</b> que aún no recibiste — no se descuenta de ninguna cuenta. Cuando te paguen el préstamo completo, esa parte se sumará como ganancia.</div>
     </div>`);
   }
-  _prestSplitRows.forEach(r=>{
+  splitData.forEach(r=>{
     if(!r.fuente || !r.fuente.startsWith('cajita:') || !r.monto) return;
     const cajitaId = r.fuente.split(':')[1];
     const c = (S.cajitas||[]).find(x=>x.id===cajitaId);
@@ -139,12 +131,6 @@ function _updatePrestSplitResumen(){
     </div>`);
   });
   metaEl.innerHTML = html`${impactos}`;
-}
-
-function prestSplitDelRow(i) {
-  _prestSplitRows.splice(i, 1);
-  _renderPrestSplit();
-  _updatePrestSplitResumen();
 }
 
 /* ---- FIN METAS / SPLIT ---- */
@@ -836,7 +822,6 @@ function initMovSheet(tipo) {
   if (dhint) dhint.style.display = 'none';
   // Reset split préstamo fuente
   _prestSplitMode = false;
-  _prestSplitRows = [];
   document.getElementById('mov_fuente_simple').style.display = '';
   document.getElementById('mov_fuente_split').style.display = 'none';
   { const btn = document.getElementById('mov_split_toggle');
@@ -977,12 +962,12 @@ function confirmarMovimiento() {
 
   if (movTipo === 'prestamo') {
     if (_prestSplitMode) {
-      const totalSplit = _prestSplitRows.reduce((a,r)=>a+(r.monto||0),0);
+      const fuentes = splitGetData('prest');
+      const totalSplit = fuentes.reduce((a,r)=>a+(r.monto||0),0);
       if(Math.abs(totalSplit - monto) > 1){
         toast(`La suma de las fuentes (${fmt(totalSplit)}) no coincide con el monto (${fmt(monto)})`,'err',4000);
         return;
       }
-      const fuentes = _prestSplitRows.filter(r=>r.monto>0);
       fuentes.forEach(r=>{ if(r.fuente) descontarFuente(r.fuente, r.monto); });
       const _gananciaVirtual = fuentes.filter(r=>r.fuente==='ganancia').reduce((a,r)=>a+r.monto,0);
       d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota, _gananciaVirtual: _gananciaVirtual||undefined, grupoId: _grupoIdMov, ts: Date.now() });
@@ -2418,11 +2403,6 @@ function _abrirMovMiDeudaPago() {
   abrirMovMiDeuda('pago');
 }
 
-function _prestAddSplitRow() {
-  _prestSplitRows.push({ fuente: '', monto: 0 });
-  _renderPrestSplit();
-}
-
 // Antes vivía como función anónima inline sobre movBtnConfirm en
 // _initEventListeners. El bloqueo anti doble-click/doble-tap se preserva
 // igual — Events le pasa el propio <button> como último argumento, así
@@ -2469,7 +2449,6 @@ Events.registerAll('prestado', {
   confirmarMovimientoGuard: _confirmarMovimientoConGuard,
   togglePrestSplit: togglePrestSplit,
   prestAddSplitRow: _prestAddSplitRow,
-  prestSplitDelRow: prestSplitDelRow,
   toggleAbonoSplit: toggleAbonoSplit,
   abonoAddSplitRow: abonoAddSplitRow,
   toggleExtraSection: toggleExtraSection,

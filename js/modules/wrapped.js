@@ -787,16 +787,13 @@ function _wrappedGoTo(i){
 
 function _wrappedCerrar(){
   _wrappedLimpiarNav();
-  // 'mas' NUNCA fue una pantalla real: el menú "Más" es un overlay
-  // (#mas-menu/#mas-menu-overlay en index.html), no existe #screen-mas.
-  // showScreen('mas') buscaba document.getElementById('screen-mas'),
-  // que da null, y explotaba en sheet-stack.js con "Cannot read
-  // properties of null (reading 'classList')". Como showScreen está
-  // envuelto por hookGlobal (hook-global.js), ese error quedaba
-  // atrapado en el try/catch y solo se logueaba — Wrapped "se cerraba"
-  // a medias sin avisar visiblemente. Se vuelve a 'inicio' (Home), que
-  // sí existe y es la pantalla por defecto de la app.
-  if(typeof showScreen === 'function') showScreen('inicio');
+  // El overlay se monta en document.body (no dentro de #screen-wrapped,
+  // ver wrapped.md §7bis), así que hay que sacarlo del DOM a mano al
+  // cerrar — showScreen('mas') solo oculta pantallas .screen, no toca
+  // nada fuera de ese árbol.
+  const overlay = document.getElementById('wrapped-overlay');
+  if(overlay) overlay.remove();
+  if(typeof showScreen === 'function') showScreen('mas');
 }
 
 /* El overlay es `position:fixed`, y por spec un elemento fixed siempre
@@ -885,8 +882,6 @@ function _wrappedSetupNav(overlay, fmt2){
 window.renderWrapped = function(){
   const S = window.S || {};
   const fmt2 = typeof fmt === 'function' ? fmt : v => '$' + Math.round(v).toLocaleString('es-CO');
-  const body = document.getElementById('wrapped-body');
-  if(!body) return;
 
   _wrappedInyectarEstilos();
 
@@ -895,16 +890,25 @@ window.renderWrapped = function(){
   const progresoHtml = slides.map(() => `<div class="wrapped-seg"><i></i></div>`).join('');
   const slidesHtml = slides.map(sl => `<div class="wrapped-slide"${sl.confetti ? ' data-confetti="1"' : ''}>${sl.html}</div>`).join('');
 
-  body.innerHTML = `<div id="wrapped-overlay">
-    <div id="wrapped-progress">${progresoHtml}</div>
+  // Se monta directo en document.body (no dentro de #wrapped-body /
+  // #screen-wrapped) — ver wrapped.md §7bis: .screen.active tiene un
+  // transform:translateY(0) permanente (animation-fill-mode:both en
+  // styles.css), y cualquier transform en un ancestro convierte a este
+  // overlay position:fixed en algo posicionado contra ESE ancestro en
+  // vez del viewport. Mismo patrón que #toast-container.
+  const overlayPrevio = document.getElementById('wrapped-overlay');
+  if(overlayPrevio) overlayPrevio.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'wrapped-overlay';
+  overlay.innerHTML = `<div id="wrapped-progress">${progresoHtml}</div>
     <div id="wrapped-topbar">
       <span class="wrapped-brand">Tu resumen</span>
       <button type="button" id="wrapped-close" aria-label="Cerrar">✕</button>
     </div>
-    <div id="wrapped-slides">${slidesHtml}</div>
-  </div>`;
+    <div id="wrapped-slides">${slidesHtml}</div>`;
+  document.body.appendChild(overlay);
 
-  const overlay = body.querySelector('#wrapped-overlay');
   _wrappedSetupNav(overlay, fmt2);
   _wrappedGoTo(0);
 };

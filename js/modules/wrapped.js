@@ -787,7 +787,16 @@ function _wrappedGoTo(i){
 
 function _wrappedCerrar(){
   _wrappedLimpiarNav();
-  if(typeof showScreen === 'function') showScreen('mas');
+  // 'mas' NUNCA fue una pantalla real: el menú "Más" es un overlay
+  // (#mas-menu/#mas-menu-overlay en index.html), no existe #screen-mas.
+  // showScreen('mas') buscaba document.getElementById('screen-mas'),
+  // que da null, y explotaba en sheet-stack.js con "Cannot read
+  // properties of null (reading 'classList')". Como showScreen está
+  // envuelto por hookGlobal (hook-global.js), ese error quedaba
+  // atrapado en el try/catch y solo se logueaba — Wrapped "se cerraba"
+  // a medias sin avisar visiblemente. Se vuelve a 'inicio' (Home), que
+  // sí existe y es la pantalla por defecto de la app.
+  if(typeof showScreen === 'function') showScreen('inicio');
 }
 
 /* El overlay es `position:fixed`, y por spec un elemento fixed siempre

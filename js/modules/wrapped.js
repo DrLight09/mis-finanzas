@@ -258,6 +258,46 @@ function _wrappedTopCategoriaDe(items, totalGastos){
    gasto más grande, ranking de meses). Reutiliza los mismos criterios de
    "gasto/ingreso real" que Análisis financiero (analisis-financiero.md
    §9bis). */
+/* Mesada + Ingresos fijos como ingreso del período — mismo criterio EXACTO
+   que analisis.js (§2 de analisis-financiero.md, líneas 59-84 del código
+   real): "Ingresos estimados" ahí es mesada + ingresos fijos + entradas
+   manuales, nunca solo esto último. Antes de este fix, `totalIngresos` de
+   acá abajo solo sumaba entradas manuales — eso hacía que "Tu mejor/peor
+   mes" pudiera dar un balance más bajo (incluso negativo) que el que
+   Análisis financiero ya muestra para ese mismo mes, con la misma plata
+   real. Se lee `S.mesadas`/`S.ingresosFijos` directo, sin pasar por
+   `getMesadaData()`/`_getCuotaAnio()`/`getIngresosFijosMes()` (funciones
+   de otros módulos lazy que pueden no estar cargados) — no hace falta ni
+   el guard `typeof` porque acá solo se lee la FORMA de `S`, ya
+   documentada (mesada.md §4, analisis-financiero.md §3), igual que el
+   resto de este archivo lee `S.alcancia`/`S.gastosVar` directo. */
+function _wrappedCuotaAnioFallback(cuotas, anio){
+  if(!cuotas || typeof cuotas !== 'object') return 0;
+  let mejorAnio = null;
+  Object.keys(cuotas).forEach(k => {
+    const kn = parseInt(k,10);
+    if(Number.isFinite(kn) && kn <= anio && (mejorAnio===null || kn>mejorAnio)) mejorAnio = kn;
+  });
+  return mejorAnio!==null ? (cuotas[mejorAnio]||0) : 0;
+}
+function _wrappedMesadaMes(S, anio, mesIdx){
+  const mesadas = S.mesadas;
+  if(!mesadas || typeof mesadas !== 'object' || !(S.modulos && S.modulos.mesada)) return 0;
+  const key = anio + '-' + mesIdx;
+  let total = 0;
+  ['papa','mama'].forEach(parent => {
+    const p = mesadas[parent];
+    const info = p && p.pagos && p.pagos[key];
+    if(info) total += (info.monto || _wrappedCuotaAnioFallback(p.cuotas, anio) || 0);
+  });
+  return total;
+}
+function _wrappedIngresosFijosMes(S, mesK){
+  const fijos = S.ingresosFijos;
+  if(!Array.isArray(fijos)) return 0;
+  return fijos.reduce((s,ing) => (!ing.desde || ing.desde<=mesK) ? s+(ing.monto||0) : s, 0);
+}
+
 function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
   S = S || {};
   const gastosVar  = S.gastosVar || [];
@@ -275,8 +315,28 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
   const pagosFijosPeriodo = pagosFijos.filter(p => _wrappedEnRango(p.fecha, tipo, mesK, anioK));
   const ingresosPeriodo   = movs.filter(m => m.tipo==='entrada' && _wrappedEnRango(m.fecha, tipo, mesK, anioK) && !esEntradaNoReal(m));
 
+  // Mesada + ingresos fijos del período, sumados mes a mes (ver comentario
+  // arriba de `_wrappedMesadaMes`/`_wrappedIngresosFijosMes`) — para "mes"
+  // es un solo mes; para "anio" se recorren los meses transcurridos, nunca
+  // meses futuros del año en curso (un ingreso fijo recurrente no debe
+  // contarse antes de que ese mes exista).
+  let ingresoMesadaFijos = 0;
+  if(tipo === 'mes' && mesK){
+    const anio = parseInt(mesK.split('-')[0], 10);
+    const mesIdx = parseInt(mesK.split('-')[1], 10) - 1;
+    ingresoMesadaFijos = _wrappedMesadaMes(S, anio, mesIdx) + _wrappedIngresosFijosMes(S, mesK);
+  } else if(tipo === 'anio' && anioK){
+    const anio = parseInt(anioK, 10);
+    const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
+    const mesMax = (anioK === anioActual) ? mesActualIdx : 11;
+    for(let m=0; m<=mesMax; m++){
+      const mesKLoop = anioK + '-' + String(m+1).padStart(2,'0');
+      ingresoMesadaFijos += _wrappedMesadaMes(S, anio, m) + _wrappedIngresosFijosMes(S, mesKLoop);
+    }
+  }
+
   const totalGastos   = gastosVarPeriodo.reduce((s,g)=>s+(g.monto||0),0) + pagosFijosPeriodo.reduce((s,p)=>s+(p.monto||0),0);
-  const totalIngresos = ingresosPeriodo.reduce((s,m)=>s+(m.monto||0),0);
+  const totalIngresos = ingresosPeriodo.reduce((s,m)=>s+(m.monto||0),0) + ingresoMesadaFijos;
   const balance = totalIngresos - totalGastos;
 
   // Top categoría (gastos variables reales + gastos fijos pagados) —
@@ -911,7 +971,16 @@ function _wrappedCalcularMisDeudas(S, tipo, mesK, anioK){
    ese monto al año del abono, no al del mes que representa — mismo tipo
    de aproximación que ya reconoce `_wrappedCalcularPeriodo` para el
    resto de la app, no una fuente de verdad nueva. No usa `getMontoPadre`
-   (esa es la cuota vigente hoy, no lo históricamente recibido). */
+   (esa es la cuota vigente hoy, no lo históricamente recibido).
+
+   OJO — esto es DELIBERADAMENTE distinto de `_wrappedMesadaMes` (arriba,
+   usada dentro de `_wrappedCalcularPeriodo` para el balance interno de
+   "mejor/peor mes"): esa otra función busca el pago por su CLAVE de mes
+   ("a qué mes representa este pago", igual que `analisis.js`), esta
+   busca por su `fecha` real ("cuándo entró la plata"). Son dos
+   preguntas distintas — "cuánto mesada te tocó este año" vs. "cuánto
+   entró de mesada en este mes calendario para el balance" — no una
+   duplicación evitable. */
 function _wrappedCalcularMesada(S, tipo, mesK, anioK){
   const mesadas = S.mesadas;
   if(!mesadas || typeof mesadas !== 'object') return null;
@@ -1372,7 +1441,10 @@ window._wrappedInternals = {
   _wrappedCalcularMesada,
   _wrappedCalcularSpotify,
   _wrappedCalcularComprometida,
-  _wrappedNombrePersona
+  _wrappedNombrePersona,
+  _wrappedMesadaMes,
+  _wrappedIngresosFijosMes,
+  _wrappedCuotaAnioFallback
 };
 
 })();

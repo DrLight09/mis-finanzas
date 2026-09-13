@@ -806,6 +806,18 @@ function _wrappedSlideBignum(eyebrow, headline, value, color, opts){
   </div>`;
 }
 
+/* Corte "primera mitad / segunda mitad" del año transcurrido — extraído
+   de `_wrappedCambioDeHabitos` para que `_wrappedFasesAnio` (abajo) use
+   exactamente el mismo corte de fechas, en vez de reimplementarlo. */
+function _wrappedCorteMitadAnio(anioK, mesMax){
+  const mitad = Math.floor((mesMax+1) / 2);
+  const mesKDeCorte = anioK + '-' + String(mitad+1).padStart(2,'0'); // primer mesK de la segunda mitad
+  return {
+    enPrimera: fecha => typeof fecha === 'string' && fecha.slice(0,4) === anioK && fecha.slice(0,7) < mesKDeCorte,
+    enSegunda: fecha => typeof fecha === 'string' && fecha.slice(0,4) === anioK && fecha.slice(0,7) >= mesKDeCorte
+  };
+}
+
 /* Compara la categoría líder (por monto) de la primera mitad del año
    contra la segunda — es la única comparación tipo "empezaste haciendo X,
    terminaste haciendo Y" que se agregó en esta pasada. Se calcula con
@@ -826,11 +838,7 @@ function _wrappedCambioDeHabitos(S, anioK, mesMax){
   const pagosFijos = Array.isArray(pagosFijosRaw) ? pagosFijosRaw : Object.values(pagosFijosRaw || {});
   const esGastoNoReal = typeof _esGastoVarNoReal === 'function' ? _esGastoVarNoReal : (()=>false);
 
-  const mitad = Math.floor((mesMax+1) / 2);
-  const mesKDeCorte = anioK + '-' + String(mitad+1).padStart(2,'0'); // primer mesK de la segunda mitad
-
-  const enPrimera = fecha => typeof fecha === 'string' && fecha.slice(0,4) === anioK && fecha.slice(0,7) < mesKDeCorte;
-  const enSegunda = fecha => typeof fecha === 'string' && fecha.slice(0,4) === anioK && fecha.slice(0,7) >= mesKDeCorte;
+  const { enPrimera, enSegunda } = _wrappedCorteMitadAnio(anioK, mesMax);
 
   const itemsPrimera = [...gastosVar.filter(g => enPrimera(g.fecha) && !esGastoNoReal(g)), ...pagosFijos.filter(p => enPrimera(p.fecha))];
   const itemsSegunda = [...gastosVar.filter(g => enSegunda(g.fecha) && !esGastoNoReal(g)), ...pagosFijos.filter(p => enSegunda(p.fecha))];
@@ -849,6 +857,73 @@ function _wrappedCambioDeHabitos(S, anioK, mesMax){
   if((topPrimera.catShare||0) < 0.15 || (topSegunda.catShare||0) < 0.15) return null;
 
   return { catPrimera: topPrimera.cat, catSegunda: topSegunda.cat };
+}
+
+/* ─── FASES DEL AÑO (2026-09-13) ───────────────────────────────────────
+   Detecta si el AHORRO (Alcancía) o el PRÉSTAMO A OTROS (Prestado · Me
+   deben) se concentró de forma marcada en una mitad del año — la misma
+   idea de "dos etapas" que `_wrappedCambioDeHabitos` ya aplica a
+   categorías de gasto, extendida a estas dos señales.
+
+   Umbral DELIBERADAMENTE relativo (70/30 de concentración entre
+   mitades), nunca un monto fijo en pesos — mismo criterio que el
+   `catShare >= 0.15` de `_wrappedCambioDeHabitos` y que el z-score de
+   `_wrappedGastoMasRandom`: un umbral en pesos no tiene el mismo
+   significado para dos usuarios distintos, uno relativo al propio año sí.
+   Prioriza ahorro sobre préstamo si ambos califican (es la señal más
+   "sobre el usuario mismo", préstamo depende también de que otras
+   personas pidieran). Devuelve `null` si ninguna señal es lo bastante
+   clara — no fuerza una narrativa de "fases" en un año parejo (§33 del
+   pedido original). */
+function _wrappedCambioFuerte(primera, segunda){
+  // Ambas mitades necesitan actividad real (>0) para que esto sea un
+  // CAMBIO de comportamiento y no una cuenta que simplemente no existía
+  // en la primera mitad (ej. Alcancía activada a mitad de año) — eso no
+  // es una fase, es que el dato todavía no existía. Verificado con un
+  // backup real de una cuenta creada en septiembre: sin esta guarda,
+  // "el único depósito del año cayó en la segunda mitad" se leía como
+  // "aumentaste tu ahorro", un falso positivo (ver wrapped.md §7sexies).
+  if(primera <= 0 || segunda <= 0) return null;
+  const total = primera + segunda;
+  const shareSegunda = segunda / total;
+  if(shareSegunda >= 0.70) return { direccion: 'crecio', shareSegunda };
+  if(shareSegunda <= 0.30) return { direccion: 'cayo', shareSegunda };
+  return null;
+}
+function _wrappedFasesAnio(S, anioK, mesMax){
+  if(mesMax < 5) return null; // mismo mínimo que _wrappedCambioDeHabitos
+
+  const { enPrimera, enSegunda } = _wrappedCorteMitadAnio(anioK, mesMax);
+
+  const alcMovs = (S.alcancia && Array.isArray(S.alcancia.movimientos)) ? S.alcancia.movimientos : [];
+  const ahorroPrimera = alcMovs.filter(m => m && enPrimera(m.fecha)).reduce((s,m)=>s+(m.monto||0),0);
+  const ahorroSegunda = alcMovs.filter(m => m && enSegunda(m.fecha)).reduce((s,m)=>s+(m.monto||0),0);
+  const cambioAhorro = _wrappedCambioFuerte(ahorroPrimera, ahorroSegunda);
+  if(cambioAhorro){
+    return { tipo:'ahorro', direccion: cambioAhorro.direccion };
+  }
+
+  const deudores = S.deudores || [];
+  const sumaPrestamos = (filtro) => deudores.reduce((s,d) =>
+    s + (d.movimientos||[]).filter(m => m && m.tipo==='prestamo' && filtro(m.fecha)).reduce((a,m)=>a+(m.monto||0),0), 0);
+  const prestPrimera = sumaPrestamos(enPrimera);
+  const prestSegunda = sumaPrestamos(enSegunda);
+  const cambioPrestamo = _wrappedCambioFuerte(prestPrimera, prestSegunda);
+  if(cambioPrestamo){
+    return { tipo:'prestamo', direccion: cambioPrestamo.direccion };
+  }
+
+  return null;
+}
+function _wrappedCopyFases(f){
+  if(f.tipo === 'ahorro'){
+    return f.direccion === 'crecio'
+      ? 'Tu año tuvo dos etapas: empezaste ahorrando poco y en la segunda mitad le metiste mucho más a la alcancía.'
+      : 'Tu año tuvo dos etapas: arrancaste ahorrando fuerte y en la segunda mitad bajaste el ritmo.';
+  }
+  return f.direccion === 'crecio'
+    ? 'Tu año tuvo dos etapas: empezaste tranquilo y en la segunda mitad te volviste banco de varias personas.'
+    : 'Tu año tuvo dos etapas: prestaste bastante al principio y en la segunda mitad frenaste.';
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1250,6 +1325,7 @@ function _wrappedBuildSlides(S, fmt2){
   const serie = _wrappedSerieMensualAnio(S, anioK);
   const { mejor, peor, promedio, empateMejor, empatePeor } = _wrappedMejorPeorMesAnio(S, anioK);
   const cambioHabitos = _wrappedCambioDeHabitos(S, anioK, mesMax);
+  const fasesAnio = _wrappedFasesAnio(S, anioK, mesMax);
   const graficoSvg = _wrappedGraficoAnimadoSvg(serie);
 
   let racha = 0;
@@ -1315,6 +1391,16 @@ function _wrappedBuildSlides(S, fmt2){
         <div class="wrapped-eyebrow">Cambiaste de hábitos a mitad de año</div>
         <div class="wrapped-headline">De <b>${escHtml(cambioHabitos.catPrimera)}</b> a <b>${escHtml(cambioHabitos.catSegunda)}</b></div>
         <div class="wrapped-sub">tu categoría más fuerte pasó de una a otra entre la primera y la segunda mitad del año.</div>
+      </div>`
+    });
+  }
+
+  if(fasesAnio){
+    slides.push({
+      id: 'fases',
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Tu año tuvo dos etapas</div>
+        <div class="wrapped-sub">${_wrappedCopyFases(fasesAnio)}</div>
       </div>`
     });
   }
@@ -1685,7 +1771,11 @@ window._wrappedInternals = {
   _wrappedGastoMasRandom,
   _wrappedProtagonistas,
   _wrappedMetaCajita,
-  _wrappedCopyMeta
+  _wrappedCopyMeta,
+  _wrappedCorteMitadAnio,
+  _wrappedCambioFuerte,
+  _wrappedFasesAnio,
+  _wrappedCopyFases
 };
 
 })();

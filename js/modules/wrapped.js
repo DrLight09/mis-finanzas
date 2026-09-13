@@ -29,9 +29,40 @@
    principio que el resto de la app ("los movimientos son la fuente de
    verdad, nunca un valor cacheado que pueda desincronizarse").
 
-   A propósito NO cubre Mesada, Spotify, Encargos ni Plata Comprometida:
-   son plata de terceros o compartida, no el desempeño financiero propio
-   del usuario — ver wrapped.md §7.
+   NOTA HONESTA SOBRE EL FORMATO ("revelación", "dato curioso"): la
+   mayoría de los slides son, a propósito, "etiqueta + número grande +
+   una línea de contexto" (ver `_wrappedSlideBignum`) — no hay
+   personajes, "personalidad financiera" ni animaciones por slide más
+   allá del conteo ascendente, el dibujo de la línea y el confeti final.
+   Es una decisión, no una carencia: cada frase de `_wrappedCopy*` ya
+   varía según los datos reales de ESTE usuario (qué tan dominante fue
+   su categoría, cuánto se alejó su mejor/peor mes de su propio
+   promedio) en vez de ser un texto genérico — eso es lo que hace que se
+   sienta "revelado" y no solo "mostrado". Si en algún momento se quiere
+   ir más lejos (más variantes de copy, algo tipo "tu perfil financiero
+   del año"), es una extensión de diseño nueva a discutir — no algo que
+   este comentario ya prometía y el código no cumplía.
+
+   A propósito SÍ cubre Mesada, Spotify, Encargos, Préstamos (Me deben /
+   Yo debo) y Plata Comprometida — decisión de diseño nueva (2026-09-13,
+   ver wrapped.md §7ter): es plata que no es "tuya" en el sentido de
+   patrimonio propio, pero sigue siendo parte de la historia financiera
+   del usuario en ese año ("cuidaste la plata de 3 personas", "le
+   prestaste a Juan", "recibiste tu mesada todo el año sin fallar"), y
+   ese es exactamente el tipo de "dato curioso" que ya cubre este módulo
+   para las categorías propias. Cada dominio nuevo tiene su propia
+   función `_wrappedCalcular*` que lee directamente la estructura de
+   datos de su módulo dueño (`S.encargos`, `S.deudores`/`S.misDeudas`,
+   `S.mesadas`, `S.spotifyHistorial`, `S.plataCometida` — sí, ese último
+   con el nombre real del campo, sin la "m" de "comprometida", ver
+   plata-comprometida.md §4) — nunca se copia un cálculo que ya vive
+   centralizado en el módulo dueño (`getDeudorSaldo`, `encargoSaldo`,
+   etc., ver prestado.md/encargos.md); donde no existe una función
+   central reusable para un total anual (caso de la ganancia de Spotify,
+   que solo se calcula inline dentro de `spotify.js`), este módulo hace
+   su propia suma simplificada y lo dice explícito en el comentario de
+   esa función, mismo criterio que ya usaba `_wrappedCalcularPeriodo`
+   para ingresos/gastos propios.
 
    Depende de (todas con guard typeof, ninguna es obligatoria):
    - `_esGastoVarNoReal` / `_esEntradaEspejoNoIngreso` — helpers de
@@ -39,6 +70,10 @@
    - `window._alcRachaAhorro` — expuesta por alcancia.js (grupo lazy
      aparte); si Alcancía no cargó todavía, esa cifra puntual no se
      muestra.
+   - `getPersonaNombre` — expuesta por personas.js (núcleo eager, ver
+     personas.md §8); si no existe todavía, cada dominio nuevo cae al
+     nombre crudo que ya guarda su propio registro (`d.nombre`,
+     `enc.nombre`), escapado igual con `escHtml`.
    - `showScreen` — núcleo eager (sheet-stack.js); usada solo para volver
      a "Más" al cerrar la historia. Con guard typeof: si no existe, el
      botón cerrar simplemente no navega (no rompe nada).
@@ -72,6 +107,106 @@ function _wrappedHoy(){
 function _wrappedAnioYMesActual(){
   const hoyStr = _wrappedHoy();
   return { anioActual: hoyStr.slice(0,4), mesActualIdx: parseInt(hoyStr.slice(5,7),10) - 1 };
+}
+
+/* ─── VALIDACIÓN DE DATOS (solo debug, nunca se muestra al usuario) ───────
+   Wrapped no es dueño de ningún dato — lee estructuras que ya arma el
+   resto de la app (S.movimientos, S.gastosVar, S.patrimonioHistorial,
+   S.alcancia) y que van evolucionando con el tiempo, con datos JSON reales
+   que a veces llegan en una forma inesperada (ver el propio comentario de
+   `_wrappedCalcularPeriodo` sobre `pagosGastosFijos` llegando como objeto
+   en vez de array). Esta función no cambia ningún cálculo ni bloquea el
+   render: solo junta advertencias sobre la FORMA de esos datos (¿es
+   array?, ¿los montos son números?, ¿las fechas tienen pinta de
+   "YYYY-MM-DD"?) para que un problema de normalización aguas arriba se
+   note en consola en vez de manifestarse en silencio como un slide con un
+   número raro. Los cálculos de más abajo (`_wrappedCalcularPeriodo`, etc.)
+   ya degradan solos ante datos faltantes o corruptos (`||[]`,
+   `Number.isFinite`, el guard de tipo en `_wrappedEnRango`) — esto no
+   reemplaza esa defensividad, es una capa aparte para DIAGNOSTICAR, no
+   para corregir nada. */
+function _wrappedFechaLuceValida(f){
+  return typeof f === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(f);
+}
+
+function _wrappedValidarDatos(S){
+  if(!S || typeof S !== 'object'){
+    return ['S no existe o no es un objeto — Wrapped no tiene nada que leer.'];
+  }
+  const warnings = [];
+  if(S.movimientos !== undefined && !Array.isArray(S.movimientos)){
+    warnings.push('S.movimientos existe pero no es un array.');
+  }
+  if(S.gastosVar !== undefined && !Array.isArray(S.gastosVar)){
+    warnings.push('S.gastosVar existe pero no es un array.');
+  }
+  if(S.patrimonioHistorial !== undefined && !Array.isArray(S.patrimonioHistorial)){
+    warnings.push('S.patrimonioHistorial existe pero no es un array.');
+  }
+  // S.pagosGastosFijos SÍ puede llegar como array u objeto/mapa en datos
+  // reales de producción (ver _wrappedCalcularPeriodo, ya normaliza esto
+  // con Object.values) — no es un error de forma, así que no se advierte.
+  if(S.alcancia !== undefined && S.alcancia !== null && typeof S.alcancia !== 'object'){
+    warnings.push('S.alcancia existe pero no es un objeto.');
+  }
+  if(S.encargos !== undefined && !Array.isArray(S.encargos)){
+    warnings.push('S.encargos existe pero no es un array.');
+  }
+  if(S.deudores !== undefined && !Array.isArray(S.deudores)){
+    warnings.push('S.deudores existe pero no es un array.');
+  }
+  if(S.misDeudas !== undefined && !Array.isArray(S.misDeudas)){
+    warnings.push('S.misDeudas existe pero no es un array.');
+  }
+  if(S.mesadas !== undefined && S.mesadas !== null && typeof S.mesadas !== 'object'){
+    warnings.push('S.mesadas existe pero no es un objeto.');
+  }
+  if(S.spotifyHistorial !== undefined && !Array.isArray(S.spotifyHistorial)){
+    warnings.push('S.spotifyHistorial existe pero no es un array.');
+  }
+  if(S.plataCometida !== undefined && !Array.isArray(S.plataCometida)){
+    warnings.push('S.plataCometida existe pero no es un array.');
+  }
+
+  const revisarMontos = (arr, nombre) => {
+    if(!Array.isArray(arr)) return;
+    const malos = arr.filter(x => x && x.monto !== undefined && !Number.isFinite(Number(x.monto))).length;
+    if(malos > 0) warnings.push(nombre + ': ' + malos + ' registro(s) con "monto" que no es un número.');
+  };
+  revisarMontos(S.movimientos, 'S.movimientos');
+  revisarMontos(S.gastosVar, 'S.gastosVar');
+
+  const revisarFechas = (arr, nombre) => {
+    if(!Array.isArray(arr)) return;
+    const malas = arr.filter(x => x && x.fecha !== undefined && !_wrappedFechaLuceValida(x.fecha)).length;
+    if(malas > 0) warnings.push(nombre + ': ' + malas + ' registro(s) con "fecha" que no luce "YYYY-MM-DD".');
+  };
+  revisarFechas(S.movimientos, 'S.movimientos');
+  revisarFechas(S.gastosVar, 'S.gastosVar');
+  revisarFechas(S.patrimonioHistorial, 'S.patrimonioHistorial');
+
+  return warnings;
+}
+
+/* Imprime las advertencias en consola solo si Wrapped se abrió en modo
+   debug (?debug=1 o #debug en la URL) — nunca se le muestra nada de esto
+   al usuario final, ver el comentario de `_wrappedValidarDatos`. Envuelto
+   en try/catch porque `URLSearchParams`/`window.location` no deberían
+   fallar nunca en un navegador real, pero esta función corre en cada
+   apertura de la pantalla y no vale la pena arriesgar la historia entera
+   por un diagnóstico que es puramente informativo. */
+function _wrappedLogDebug(S){
+  let debugOn = false;
+  try{
+    debugOn = typeof window !== 'undefined' && !!window.location &&
+      (new URLSearchParams(window.location.search).get('debug') === '1' ||
+       (window.location.hash || '').indexOf('debug') !== -1);
+  } catch(e){ debugOn = false; }
+  if(!debugOn) return;
+  const warnings = _wrappedValidarDatos(S);
+  if(warnings.length && typeof console !== 'undefined' && console.warn){
+    console.warn('[wrapped] advertencias de datos:', warnings);
+  }
 }
 
 /* Agrupa una lista ya filtrada de gastos (variables + fijos pagados) por
@@ -407,6 +542,40 @@ function _wrappedCopyCierre(ctx){
   return `Eso fue ${anioK}. Nos vemos el año que viene.`;
 }
 
+/* Copy de los dominios "de terceros" — mismo criterio que el resto del
+   sistema de copy: solo eligen el tono, nunca recalculan nada. */
+function _wrappedCopyEncargos(e){
+  if(e.nPersonas > 1) return `Repartida entre ${e.nPersonas} personas que confiaron en vos para guardarla.`;
+  if(e.topEncargo && e.topEncargo.nombre) return `La mayor parte te la encargó ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}.`;
+  return 'Plata ajena que pasó por tus manos este año.';
+}
+function _wrappedCopyPrestado(p){
+  if(p.topDeudor && p.topDeudor.nombre){
+    return `A ${_wrappedNombrePersona(p.topDeudor.personaId, p.topDeudor.nombre)} fue a quien más le prestaste.`;
+  }
+  if(p.totalDevuelto >= p.totalPrestado && p.totalDevuelto > 0) return 'Y este año te pagaron más de lo que prestaste.';
+  return 'Plata que le diste una mano a alguien más.';
+}
+function _wrappedCopyMisDeudas(m){
+  if(m.totalPagado >= m.totalRecibido && m.totalPagado > 0) return 'Y este año pagaste más de lo que te prestaron.';
+  return 'Plata que alguien más te prestó a vos.';
+}
+function _wrappedCopyMesada(m){
+  const partes = [];
+  if(m.porPadre.papa) partes.push('papá');
+  if(m.porPadre.mama) partes.push('mamá');
+  return partes.length === 2 ? 'Entre papá y mamá, sin faltar un mes.' : `De parte de ${partes[0]}.`;
+}
+function _wrappedCopySpotify(s){
+  if(s.balance > 0) return 'Administrar la cuenta te dejó plata a favor este año.';
+  if(s.balance < 0) return 'Este año pusiste algo de tu bolsillo para cubrir la cuenta.';
+  return 'Cobraste y pagaste el plan, sin ganar ni perder.';
+}
+function _wrappedCopyComprometida(c){
+  if(c.topItem && c.topItem.desc) return `La más grande fue "${escHtml(c.topItem.desc)}".`;
+  return 'Plata que estabas esperando y por fin llegó.';
+}
+
 /* ─── RENDER: gráfico de línea animado (SVG) ──────────────────────────────
    Puntos conectados por líneas, uno por mes, coloreado según si el
    patrimonio terminó arriba o abajo de donde empezó. El *dibujo* de la
@@ -618,6 +787,198 @@ function _wrappedCambioDeHabitos(S, anioK, mesMax){
   return { catPrimera: topPrimera.cat, catSegunda: topSegunda.cat };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   DOMINIOS "DE TERCEROS" (Encargos, Prestado, Mesada, Spotify, Plata
+   Comprometida) — decisión de diseño 2026-09-13, ver el comentario de
+   cabecera del archivo y wrapped.md §7ter. Cada función de acá abajo lee
+   directo la estructura real de su módulo dueño y nunca guarda nada
+   nuevo — mismo principio que el resto del archivo. Todas devuelven
+   `null` (o un objeto con totales en 0) si el módulo no tiene datos ese
+   año, para que `_wrappedBuildSlides` pueda saltarse el slide entero sin
+   casos especiales.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Nombre de una persona: preferimos el sistema unificado de Personas
+   (`getPersonaNombre`, ver personas.md §2 — "el nombre mostrado siempre
+   se resuelve preferentemente desde la persona vinculada") y caemos al
+   nombre crudo que cada módulo ya guarda si Personas no cargó o el
+   registro no tiene `personaId` ("sin perfil", ver personas.md §2/§6).
+   Escapa siempre — un nombre de persona es dato del usuario. */
+function _wrappedNombrePersona(personaId, nombreCrudo){
+  let nombre = nombreCrudo || 'Alguien';
+  if(personaId && typeof getPersonaNombre === 'function'){
+    const resuelto = getPersonaNombre(personaId);
+    if(resuelto) nombre = resuelto;
+  }
+  return escHtml(nombre);
+}
+
+/* ─── ENCARGOS ─────────────────────────────────────────────────────────
+   "Cuánta plata ajena te encargaron cuidar este año" — suma de
+   movimientos tipo 'entrada' (ver encargos.md §4: es lo único que
+   determina el signo) con fecha en el período, sobre todos los
+   encargos, sin importar si siguen activos hoy. No usamos `encargoSaldo`
+   (saldo ACTUAL de un encargo) porque acá la pregunta es "cuánto entró
+   este año", no "cuánto queda hoy" — son cálculos distintos a propósito. */
+function _wrappedCalcularEncargos(S, tipo, mesK, anioK){
+  const encargos = S.encargos || [];
+  if(!Array.isArray(encargos) || !encargos.length) return null;
+
+  let totalEncargado = 0;
+  let topEncargo = null; // el que más recibió este período
+  const personasSet = new Set();
+
+  encargos.forEach(enc => {
+    const movs = Array.isArray(enc.movimientos) ? enc.movimientos : [];
+    let totalEsteEncargo = 0;
+    movs.forEach(m => {
+      if(m && m.tipo === 'entrada' && _wrappedEnRango(m.fecha, tipo, mesK, anioK)){
+        totalEsteEncargo += (m.monto||0);
+      }
+    });
+    if(totalEsteEncargo > 0){
+      totalEncargado += totalEsteEncargo;
+      personasSet.add(enc.personaId || enc.nombre || enc.id);
+      if(!topEncargo || totalEsteEncargo > topEncargo.monto){
+        topEncargo = { nombre: enc.nombre, personaId: enc.personaId || null, monto: totalEsteEncargo };
+      }
+    }
+  });
+
+  if(totalEncargado <= 0) return null;
+  return { totalEncargado, nPersonas: personasSet.size, topEncargo };
+}
+
+/* ─── PRESTADO — Me deben (S.deudores) ────────────────────────────────
+   Cuánto prestaste este período (movimientos 'prestamo', dinero que
+   sale de una cuenta tuya, ver prestado.md §2.2) y cuánto te devolvieron
+   ('abono'/'pago-completo'). El deudor "del año" se elige por cuánto le
+   prestaste en el período — no por su deuda pendiente total, que puede
+   venir de años anteriores y no sería un dato de "este año". */
+function _wrappedCalcularPrestado(S, tipo, mesK, anioK){
+  const deudores = S.deudores || [];
+  if(!Array.isArray(deudores) || !deudores.length) return null;
+
+  let totalPrestado = 0, totalDevuelto = 0;
+  let topDeudor = null;
+
+  deudores.forEach(d => {
+    const movs = Array.isArray(d.movimientos) ? d.movimientos : [];
+    let prestadoAEsta = 0;
+    movs.forEach(m => {
+      if(!m || !_wrappedEnRango(m.fecha, tipo, mesK, anioK)) return;
+      if(m.tipo === 'prestamo'){ totalPrestado += (m.monto||0); prestadoAEsta += (m.monto||0); }
+      else if(m.tipo === 'abono' || m.tipo === 'pago-completo'){ totalDevuelto += (m.monto||0); }
+    });
+    if(prestadoAEsta > 0 && (!topDeudor || prestadoAEsta > topDeudor.monto)){
+      topDeudor = { nombre: d.nombre, personaId: d.personaId || null, monto: prestadoAEsta };
+    }
+  });
+
+  if(totalPrestado <= 0 && totalDevuelto <= 0) return null;
+  return { totalPrestado, totalDevuelto, topDeudor };
+}
+
+/* ─── PRESTADO — Yo debo (S.misDeudas) ────────────────────────────────
+   Espejo del anterior: cuánto te prestaron a vos este período
+   ('recibido') y cuánto pagaste de vuelta ('pago') — ver prestado.md
+   §3.2. */
+function _wrappedCalcularMisDeudas(S, tipo, mesK, anioK){
+  const misDeudas = S.misDeudas || [];
+  if(!Array.isArray(misDeudas) || !misDeudas.length) return null;
+
+  let totalRecibido = 0, totalPagado = 0;
+
+  misDeudas.forEach(d => {
+    const movs = Array.isArray(d.movimientos) ? d.movimientos : [];
+    movs.forEach(m => {
+      if(!m || !_wrappedEnRango(m.fecha, tipo, mesK, anioK)) return;
+      if(m.tipo === 'recibido') totalRecibido += (m.monto||0);
+      else if(m.tipo === 'pago') totalPagado += (m.monto||0);
+    });
+  });
+
+  if(totalRecibido <= 0 && totalPagado <= 0) return null;
+  return { totalRecibido, totalPagado };
+}
+
+/* ─── MESADA ───────────────────────────────────────────────────────────
+   Total recibido de papá + mamá este año. Simplificación reconocida: el
+   campo `monto` de cada pago es el TOTAL recibido a la fecha para ese
+   mes (ver mesada.md §4 — incluye abonos posteriores del pendiente), y
+   se filtra por la `fecha` de ese registro (la del último abono si lo
+   hubo). Un mes cuya deuda se saldó ya entrado el año siguiente movería
+   ese monto al año del abono, no al del mes que representa — mismo tipo
+   de aproximación que ya reconoce `_wrappedCalcularPeriodo` para el
+   resto de la app, no una fuente de verdad nueva. No usa `getMontoPadre`
+   (esa es la cuota vigente hoy, no lo históricamente recibido). */
+function _wrappedCalcularMesada(S, tipo, mesK, anioK){
+  const mesadas = S.mesadas;
+  if(!mesadas || typeof mesadas !== 'object') return null;
+
+  let total = 0;
+  const porPadre = {};
+  ['papa','mama'].forEach(parent => {
+    const pagos = (mesadas[parent] && mesadas[parent].pagos) || {};
+    let totalParent = 0;
+    Object.values(pagos).forEach(v => {
+      if(v && _wrappedEnRango(v.fecha, tipo, mesK, anioK)) totalParent += (v.monto||0);
+    });
+    if(totalParent > 0){ total += totalParent; porPadre[parent] = totalParent; }
+  });
+
+  if(total <= 0) return null;
+  return { total, porPadre };
+}
+
+/* ─── SPOTIFY ──────────────────────────────────────────────────────────
+   Cobrado − pagado del período, sobre `S.spotifyHistorial` (ver
+   spotify.md §4). Simplificación reconocida y anotada a propósito: la
+   "Ganancia acumulada" real del módulo (spotify.md §7) suma además
+   `cuotaAdmin × ciclos pagados`, calculada inline dentro de
+   `spotify.js` sin una función central reexportada para reusar acá —
+   por eso este número puede no coincidir exactamente con el de la
+   pantalla de Spotify. Es un "cobrado menos pagado del año" honesto, no
+   la ganancia oficial del módulo. */
+function _wrappedCalcularSpotify(S, tipo, mesK, anioK){
+  const hist = S.spotifyHistorial;
+  if(!Array.isArray(hist) || !hist.length) return null;
+
+  let cobrado = 0, pagado = 0;
+  hist.forEach(h => {
+    if(!h || !_wrappedEnRango(h.fecha, tipo, mesK, anioK)) return;
+    if(h.tipo === 'cobro') cobrado += (h.monto||0);
+    else if(h.tipo === 'pago') pagado += (h.monto||0);
+  });
+
+  if(cobrado <= 0 && pagado <= 0) return null;
+  return { cobrado, pagado, balance: cobrado - pagado };
+}
+
+/* ─── PLATA COMPROMETIDA ──────────────────────────────────────────────
+   Plata que estabas esperando y de verdad llegó este período —
+   `S.plataCometida[]` (sí, ese es el nombre real del campo en `S`, sin
+   la "m" de "comprometida", ver plata-comprometida.md §4) filtrado por
+   `recibido:true` y `fechaRecibido` en el período — nunca por
+   `fechaLlegada`, que es solo la fecha ESTIMADA. */
+function _wrappedCalcularComprometida(S, tipo, mesK, anioK){
+  const items = S.plataCometida;
+  if(!Array.isArray(items) || !items.length) return null;
+
+  let total = 0, topItem = null;
+  items.forEach(it => {
+    if(it && it.recibido === true && _wrappedEnRango(it.fechaRecibido, tipo, mesK, anioK)){
+      total += (it.montoTotal||0);
+      if(!topItem || (it.montoTotal||0) > topItem.monto){
+        topItem = { desc: it.desc || 'Plata comprometida', monto: it.montoTotal||0 };
+      }
+    }
+  });
+
+  if(total <= 0) return null;
+  return { total, topItem };
+}
+
 /* ─── ARMADO DE LA LISTA DE SLIDES DEL AÑO ────────────────────────────────
    Solo incluye un slide por cada dato curioso que realmente exista —
    mismas condiciones que ya usaba la versión de una sola pantalla, ahora
@@ -638,6 +999,17 @@ function _wrappedBuildSlides(S, fmt2){
   if(typeof window !== 'undefined' && typeof window._alcRachaAhorro === 'function' && S.alcancia && S.alcancia.historial){
     racha = window._alcRachaAhorro(S.alcancia.historial);
   }
+
+  // Dominios "de terceros" — ver comentario de cabecera del archivo y
+  // wrapped.md §7ter. Cada uno es independiente; si un módulo no cargó
+  // datos ese año, su función devuelve null y el slide simplemente no
+  // se arma (mismo patrón que topCategoria/gastoMasGrande arriba).
+  const encargosAnio    = _wrappedCalcularEncargos(S, 'anio', null, anioK);
+  const prestadoAnio    = _wrappedCalcularPrestado(S, 'anio', null, anioK);
+  const misDeudasAnio   = _wrappedCalcularMisDeudas(S, 'anio', null, anioK);
+  const mesadaAnio      = _wrappedCalcularMesada(S, 'anio', null, anioK);
+  const spotifyAnio     = _wrappedCalcularSpotify(S, 'anio', null, anioK);
+  const comprometidaAnio = _wrappedCalcularComprometida(S, 'anio', null, anioK);
 
   const slides = [];
 
@@ -716,6 +1088,43 @@ function _wrappedBuildSlides(S, fmt2){
         <div class="wrapped-sub">alcancías seguidas — ${_wrappedCopyRacha(racha)}</div>
       </div>`
     });
+  }
+
+  if(encargosAnio){
+    slides.push({ id:'encargos', html: _wrappedSlideBignum('Plata que te encargaron cuidar', '', encargosAnio.totalEncargado, 'var(--purple)', {
+      sub: _wrappedCopyEncargos(encargosAnio)
+    }) });
+  }
+
+  if(prestadoAnio && prestadoAnio.totalPrestado > 0){
+    slides.push({ id:'prestado', html: _wrappedSlideBignum('Le prestaste a otros', '', prestadoAnio.totalPrestado, 'var(--blue)', {
+      sub: _wrappedCopyPrestado(prestadoAnio)
+    }) });
+  }
+
+  if(misDeudasAnio && misDeudasAnio.totalRecibido > 0){
+    slides.push({ id:'me-prestaron', html: _wrappedSlideBignum('Te prestaron a vos', '', misDeudasAnio.totalRecibido, 'var(--blue)', {
+      sub: _wrappedCopyMisDeudas(misDeudasAnio)
+    }) });
+  }
+
+  if(mesadaAnio){
+    slides.push({ id:'mesada', html: _wrappedSlideBignum('Tu mesada del año', '', mesadaAnio.total, 'var(--accent)', {
+      sub: _wrappedCopyMesada(mesadaAnio)
+    }) });
+  }
+
+  if(spotifyAnio){
+    const color = spotifyAnio.balance >= 0 ? 'var(--accent)' : 'var(--red)';
+    slides.push({ id:'spotify', html: _wrappedSlideBignum('Administrar Spotify te dejó', '', spotifyAnio.balance, color, {
+      signed: true, sub: _wrappedCopySpotify(spotifyAnio)
+    }) });
+  }
+
+  if(comprometidaAnio){
+    slides.push({ id:'comprometida', html: _wrappedSlideBignum('Plata comprometida que llegó', '', comprometidaAnio.total, 'var(--amber)', {
+      sub: _wrappedCopyComprometida(comprometidaAnio)
+    }) });
   }
 
   const huboAlgo = slides.length > 1; // más que solo el intro
@@ -896,6 +1305,7 @@ window.renderWrapped = function(){
   const S = window.S || {};
   const fmt2 = typeof fmt === 'function' ? fmt : v => '$' + Math.round(v).toLocaleString('es-CO');
 
+  _wrappedLogDebug(S);
   _wrappedInyectarEstilos();
 
   const slides = _wrappedBuildSlides(S, fmt2);
@@ -954,7 +1364,15 @@ window._wrappedInternals = {
   _wrappedTopCategoriaDe,
   _wrappedCambioDeHabitos,
   _wrappedAnioYMesActual,
-  _wrappedEnRango
+  _wrappedEnRango,
+  _wrappedValidarDatos,
+  _wrappedCalcularEncargos,
+  _wrappedCalcularPrestado,
+  _wrappedCalcularMisDeudas,
+  _wrappedCalcularMesada,
+  _wrappedCalcularSpotify,
+  _wrappedCalcularComprometida,
+  _wrappedNombrePersona
 };
 
 })();

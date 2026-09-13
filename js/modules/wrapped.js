@@ -706,7 +706,11 @@ function _wrappedAnimarNumeros(container, fmt2){
   nodos.forEach(el => {
     const target = parseFloat(el.getAttribute('data-value')) || 0;
     const signed = el.getAttribute('data-signed') === '1';
-    const formatear = v => signed ? _wrappedFmtSigned(fmt2, v) : fmt2(v);
+    const sufijo = el.getAttribute('data-sufijo') || '';
+    // `data-sufijo` (ej. "%") es la ÚNICA excepción al formato moneda de
+    // `fmt2` — se usa para valores que no son plata (progreso de una
+    // meta, %). Con sufijo, el número se redondea plano, sin `$`.
+    const formatear = v => sufijo ? (Math.round(v) + sufijo) : (signed ? _wrappedFmtSigned(fmt2, v) : fmt2(v));
     if(reduce || typeof requestAnimationFrame !== 'function'){
       el.textContent = formatear(target);
       return;
@@ -797,7 +801,7 @@ function _wrappedSlideBignum(eyebrow, headline, value, color, opts){
   return `<div class="wrapped-slide-inner">
     <div class="wrapped-eyebrow">${eyebrow}</div>
     ${headline ? `<div class="wrapped-headline">${headline}</div>` : ''}
-    <div class="wrapped-bignum" data-value="${valorSeguro}"${opts.signed?' data-signed="1"':''} style="color:${color};">0</div>
+    <div class="wrapped-bignum" data-value="${valorSeguro}"${opts.signed?' data-signed="1"':''}${opts.sufijo?` data-sufijo="${opts.sufijo}"`:''} style="color:${color};">0</div>
     ${opts.sub ? `<div class="wrapped-sub">${opts.sub}</div>` : ''}
   </div>`;
 }
@@ -1048,9 +1052,193 @@ function _wrappedCalcularComprometida(S, tipo, mesK, anioK){
   return { total, topItem };
 }
 
+/* ─── META DE AHORRO DE CAJITA ─────────────────────────────────────────
+   Reutiliza `calcMetaProgreso(c)`, YA centralizada en `cuentas.js` (nunca
+   se recalcula `pct`/`esperadoHoy`/`diferencia` acá — regla de §3). Como
+   esa función depende de toda la cadena de cálculo de Cuentas (`calcC`,
+   `_saldoEncargosEnCajita`, tasas por tramos), se llama envuelta en
+   try/catch: si algo de esa cadena no cargó todavía o cambia de forma,
+   Wrapped simplemente no muestra este slide en vez de romper toda la
+   historia por un módulo ajeno. Elige la meta con MAYOR progreso (`pct`),
+   no la de mayor objetivo en pesos — es "la más cerca de tu logro este
+   año", no "la más ambiciosa". */
+function _wrappedMetaCajita(S){
+  if(typeof calcMetaProgreso !== 'function') return null;
+  const cajitas = _wrappedListaCajitas(S);
+  let mejor = null;
+  cajitas.forEach(c => {
+    if(!c || !c.meta) return;
+    let prog = null;
+    try { prog = calcMetaProgreso(c); } catch(e){ prog = null; }
+    if(!prog || !Number.isFinite(prog.pct)) return;
+    if(!mejor || prog.pct > mejor.prog.pct){
+      mejor = { nombre: c.nombre || 'Tu meta', prog };
+    }
+  });
+  return mejor;
+}
+function _wrappedCopyMeta(m){
+  const p = m.prog;
+  if(p.pct >= 100) return '¡La cumpliste! Y con saldo suficiente para mostrarlo.';
+  if(p.diferencia > 0) return 'Vas adelantado a tu propio plan.';
+  if(p.diferencia < 0) return 'Un poco atrasado del ritmo esperado, pero sigue en pie.';
+  return 'Justo en el ritmo que te propusiste.';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SEGUNDA TANDA (2026-09-13) — Personalidad financiera, Gasto más random,
+   Tus protagonistas. Reabre 2 de las 3 decisiones descartadas en
+   wrapped.md §7 (personalidad financiera y, en un slide futuro, share
+   cards) — decisión de producto explícita del usuario, documentada en
+   wrapped.md §7cuater. La vista mensual sigue sin implementarse (backlog
+   aparte, no en esta pasada).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Lista de cajitas: en el modelo documentado (cuentas.md §4) viven en
+   `S.nu.cajitas[]`, pero en datos reales de producción (verificado contra
+   mis-finanzas-poblado-2026.json) viven directo en `S.cajitas[]`, sin el
+   contenedor `S.nu`. Se prueban ambas rutas, la real primero — mismo
+   espíritu que ya tiene `_wrappedValidarDatos` con `pagosGastosFijos`. */
+function _wrappedListaCajitas(S){
+  if(Array.isArray(S.cajitas)) return S.cajitas;
+  if(S.nu && Array.isArray(S.nu.cajitas)) return S.nu.cajitas;
+  return [];
+}
+
+/* ─── PERSONALIDAD FINANCIERA ──────────────────────────────────────────
+   Clasificación LÚDICA (nunca un puntaje financiero serio, ver el propio
+   pedido del usuario §10) elegida por reglas deterministas sobre datos
+   que YA se calculan en otro lado de este archivo — nunca un cálculo
+   nuevo por su cuenta, mismo principio de §3. Se prueba en orden de más
+   específico/raro a más genérico y se queda con el primer match: un CDT
+   es un dato inequívoco (`_wrappedCalcularPeriodo` ignora esto porque no
+   es gasto/ingreso), mientras que "equilibrista" es el fallback más
+   débil (cualquier año sin nada más raro cae ahí). Si NINGUNA regla
+   aplica con datos suficientes, devuelve `null` — nunca fuerza una
+   personalidad de relleno (regla del propio pedido, §33 "no forzar
+   insights"). */
+function _wrappedPersonalidad(S, anioK){
+  const cajitas = _wrappedListaCajitas(S);
+  const cuentasPersonalizadas = S.cuentasPersonalizadas || [];
+  const deudores = S.deudores || [];
+  const prestado = _wrappedCalcularPrestado(S, 'anio', null, anioK);
+  const periodo = _wrappedCalcularPeriodo(S, 'anio', null, anioK);
+  let racha = 0;
+  if(typeof window !== 'undefined' && typeof window._alcRachaAhorro === 'function' && S.alcancia && S.alcancia.historial){
+    racha = window._alcRachaAhorro(S.alcancia.historial);
+  }
+  const catsDistintas = new Set((S.gastosVar||[]).map(g => g.cat).filter(Boolean)).size;
+  const tieneCdt = cajitas.some(c => Array.isArray(c.cdts) && c.cdts.length > 0);
+
+  if(tieneCdt){
+    return { tipo:'El Inversionista', frase:'No solo guardaste plata — la pusiste a producir.' };
+  }
+  if(prestado && prestado.totalPrestado > 0 && deudores.length >= 3){
+    return { tipo:'El Banquero', frase:`Este año también fuiste banco de ${deudores.length} personas.` };
+  }
+  if(racha >= 4){
+    return { tipo:'El Acumulador', frase:`${racha} alcancías seguidas sin fallar — eso no es suerte.` };
+  }
+  if((cajitas.length + cuentasPersonalizadas.length) >= 6){
+    return { tipo:'El Multicuenta', frase:'Tu plata vive repartida en muchos lugares distintos.' };
+  }
+  if(catsDistintas >= 6){
+    return { tipo:'El Organizador', frase:`Repartiste tus gastos entre ${catsDistintas} categorías distintas.` };
+  }
+  if(Number.isFinite(periodo.balance) && periodo.totalIngresos > 0 && Math.abs(periodo.balance)/periodo.totalIngresos < 0.15){
+    return { tipo:'El Equilibrista', frase:'Lo que entró y lo que salió estuvieron muy parejos.' };
+  }
+  return null; // no forzar una personalidad si ninguna señal es clara
+}
+
+/* ─── GASTO MÁS RANDOM ─────────────────────────────────────────────────
+   Distinto de "Tu gasto más grande" (que ya existe y usa `_wrappedCalcularPeriodo`):
+   ese es el mayor en pesos; este es el más INESPERADO — una descripción
+   que no se repitió ni una vez más en el período (`frecuencia === 1`) y
+   que además se aleja bastante del gasto típico del usuario (z-score de
+   su propio promedio y desviación, nunca un umbral fijo en pesos —
+   mismo criterio "en relación al propio usuario" que ya usa
+   `_wrappedCopyGasto`). Reutiliza el MISMO filtro de gasto real que
+   `_wrappedCalcularPeriodo` (nunca un filtro propio, ver §3) recorriendo
+   `S.gastosVar` con `_esGastoVarNoReal()`. Nunca elige el mismo gasto que
+   ya ganó "el más grande" — sería repetir el mismo dato con otro marco. */
+function _wrappedGastoMasRandom(S, tipo, mesK, anioK, gastoMasGrande){
+  const gastosVar = S.gastosVar || [];
+  const esGastoNoReal = typeof _esGastoVarNoReal === 'function' ? _esGastoVarNoReal : (()=>false);
+  const periodo = gastosVar.filter(g => _wrappedEnRango(g.fecha, tipo, mesK, anioK) && !esGastoNoReal(g));
+  if(periodo.length < 5) return null; // muy poca base para que un "z-score" signifique algo
+
+  const montos = periodo.map(g => g.monto||0);
+  const mean = montos.reduce((a,b)=>a+b,0) / montos.length;
+  const variance = montos.reduce((a,b)=>a+(b-mean)*(b-mean),0) / montos.length;
+  const std = Math.sqrt(variance);
+  if(std <= 0) return null;
+
+  const frecuencia = {};
+  periodo.forEach(g => {
+    const k = (g.desc||'').trim().toLowerCase();
+    frecuencia[k] = (frecuencia[k]||0) + 1;
+  });
+
+  let candidato = null, mejorZ = 0;
+  periodo.forEach(g => {
+    if(gastoMasGrande && g.desc === gastoMasGrande.desc && g.monto === gastoMasGrande.monto) return; // no repetir el mismo slide
+    const k = (g.desc||'').trim().toLowerCase();
+    if(frecuencia[k] !== 1) return; // solo pasó una vez
+    const z = Math.abs(((g.monto||0) - mean) / std);
+    if(z > mejorZ){ mejorZ = z; candidato = g; }
+  });
+
+  if(!candidato || mejorZ < 0.8) return null; // nada realmente fuera de patrón
+  return { desc: candidato.desc || 'Ese gasto', monto: candidato.monto||0, cat: candidato.cat||null, z: mejorZ };
+}
+
+/* ─── TUS PROTAGONISTAS ────────────────────────────────────────────────
+   Con quién tuviste más actividad financiera en el período, sumando
+   movimientos de TODOS los módulos que involucran personas (Encargos,
+   Prestado, Spotify) — nunca solo uno. Cuenta MOVIMIENTOS (interacción),
+   no plata — es una pregunta distinta de "quién te encargó más" o "a
+   quién le prestaste más" (esas ya las responden sus propios slides de
+   §7ter). Agrupa por `personaId` cuando existe; si no, por nombre crudo
+   — mismo criterio de "sin perfil" de personas.md §2/§6. */
+function _wrappedProtagonistas(S, tipo, mesK, anioK){
+  const conteo = {}; // key -> {nombre, personaId, n}
+  const sumar = (key, nombre, personaId, n) => {
+    if(!key) return;
+    if(!conteo[key]) conteo[key] = { nombre, personaId, n: 0 };
+    conteo[key].n += n;
+  };
+
+  (S.encargos||[]).forEach(enc => {
+    const n = (enc.movimientos||[]).filter(m => m && _wrappedEnRango(m.fecha, tipo, mesK, anioK)).length;
+    if(n>0) sumar(enc.personaId||enc.nombre, enc.nombre, enc.personaId||null, n);
+  });
+  (S.deudores||[]).forEach(d => {
+    const n = (d.movimientos||[]).filter(m => m && _wrappedEnRango(m.fecha, tipo, mesK, anioK)).length;
+    if(n>0) sumar(d.personaId||d.nombre, d.nombre, d.personaId||null, n);
+  });
+  (S.misDeudas||[]).forEach(d => {
+    const n = (d.movimientos||[]).filter(m => m && _wrappedEnRango(m.fecha, tipo, mesK, anioK)).length;
+    if(n>0) sumar(d.personaId||d.nombre, d.nombre, d.personaId||null, n);
+  });
+  (S.spotifyHistorial||[]).forEach(h => {
+    if(h && h.tipo==='cobro' && h.spId && _wrappedEnRango(h.fecha, tipo, mesK, anioK)){
+      const sp = (S.spotifyPersonas||[]).find(p => p.id === h.spId);
+      const nombre = sp ? sp.nombre : h.nombre;
+      const personaId = sp ? sp.personaId : null;
+      sumar(personaId||nombre, nombre, personaId||null, 1);
+    }
+  });
+
+  const lista = Object.values(conteo).sort((a,b) => b.n - a.n);
+  if(!lista.length) return null;
+  return { top: lista[0], total: lista.length };
+}
+
 /* ─── ARMADO DE LA LISTA DE SLIDES DEL AÑO ────────────────────────────────
    Solo incluye un slide por cada dato curioso que realmente exista —
    mismas condiciones que ya usaba la versión de una sola pantalla, ahora
+
    cada una es su propia revelación en vez de una tarjeta más en la
    lista. */
 function _wrappedBuildSlides(S, fmt2){
@@ -1079,6 +1267,12 @@ function _wrappedBuildSlides(S, fmt2){
   const mesadaAnio      = _wrappedCalcularMesada(S, 'anio', null, anioK);
   const spotifyAnio     = _wrappedCalcularSpotify(S, 'anio', null, anioK);
   const comprometidaAnio = _wrappedCalcularComprometida(S, 'anio', null, anioK);
+
+  // Segunda tanda (2026-09-13): personalidad, gasto random, protagonistas.
+  const personalidad   = _wrappedPersonalidad(S, anioK);
+  const gastoRandom    = _wrappedGastoMasRandom(S, 'anio', null, anioK, s.gastoMasGrande);
+  const protagonistas  = _wrappedProtagonistas(S, 'anio', null, anioK);
+  const metaCajita     = _wrappedMetaCajita(S);
 
   const slides = [];
 
@@ -1194,6 +1388,47 @@ function _wrappedBuildSlides(S, fmt2){
     slides.push({ id:'comprometida', html: _wrappedSlideBignum('Plata comprometida que llegó', '', comprometidaAnio.total, 'var(--amber)', {
       sub: _wrappedCopyComprometida(comprometidaAnio)
     }) });
+  }
+
+  if(metaCajita){
+    slides.push({ id:'meta', html: _wrappedSlideBignum(`Tu meta "${escHtml(metaCajita.nombre)}"`, '', metaCajita.prog.pct, 'var(--accent)', {
+      sufijo: '%', sub: _wrappedCopyMeta(metaCajita)
+    }) });
+  }
+
+  if(gastoRandom){
+    slides.push({
+      id: 'gasto-random',
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Premio al gasto más inesperado</div>
+        <div class="wrapped-headline">🏆 ${escHtml(gastoRandom.desc)}</div>
+        <div class="wrapped-bignum" data-value="${gastoRandom.monto}" style="color:var(--purple);">0</div>
+        <div class="wrapped-sub">No esperábamos verte por acá este año.</div>
+      </div>`
+    });
+  }
+
+  if(protagonistas && protagonistas.top && protagonistas.top.n >= 3){
+    const nombre = _wrappedNombrePersona(protagonistas.top.personaId, protagonistas.top.nombre);
+    slides.push({
+      id: 'protagonistas',
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Tu protagonista del año</div>
+        <div class="wrapped-headline">${nombre}</div>
+        <div class="wrapped-sub">${protagonistas.top.n} movimientos juntos entre préstamos, encargos o Spotify${protagonistas.total>1?` — de ${protagonistas.total} personas con las que tuviste actividad`:''}.</div>
+      </div>`
+    });
+  }
+
+  if(personalidad){
+    slides.push({
+      id: 'personalidad',
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Tu personalidad financiera</div>
+        <div class="wrapped-headline">${escHtml(personalidad.tipo.toUpperCase())}</div>
+        <div class="wrapped-sub">${escHtml(personalidad.frase)}</div>
+      </div>`
+    });
   }
 
   const huboAlgo = slides.length > 1; // más que solo el intro
@@ -1444,7 +1679,13 @@ window._wrappedInternals = {
   _wrappedNombrePersona,
   _wrappedMesadaMes,
   _wrappedIngresosFijosMes,
-  _wrappedCuotaAnioFallback
+  _wrappedCuotaAnioFallback,
+  _wrappedListaCajitas,
+  _wrappedPersonalidad,
+  _wrappedGastoMasRandom,
+  _wrappedProtagonistas,
+  _wrappedMetaCajita,
+  _wrappedCopyMeta
 };
 
 })();

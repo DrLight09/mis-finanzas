@@ -2463,6 +2463,24 @@
                 stroke-linejoin="round"><polyline
                   points="9 18 15 12 9 6" /></svg>
             </div>
+            <!-- WRAPPED: único acceso, movido acá desde el menú "Más"
+                 (antes #mas-wrapped) — mismo motivo/patrón que Actividad
+                 reciente arriba: reusa el handler genérico config:irA
+                 (configuracion.js), que solo llama a showScreen('wrapped'),
+                 así que la carga lazy del grupo 'wrapped' y el
+                 renderWrapped() en sheet-stack.js siguen funcionando sin
+                 tocarlos. Ver wrapped.md §7 y CHANGELOG.md#wrapped. -->
+            <div class="cfg-toggle" data-action="config:irA" data-args="[&quot;wrapped&quot;]"
+              style="cursor:pointer;">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Tu resumen</div>
+                <div class="cfg-toggle-sub">Tu año, bien melo</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="var(--text3)" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round"><polyline
+                  points="9 18 15 12 9 6" /></svg>
+            </div>
           </div>
         </div>
 
@@ -2564,18 +2582,6 @@
         <div>
           <div class="mas-item-label">Análisis financiero</div>
           <div class="mas-item-sub">¿Ganás o perdés plata cada mes?</div>
-        </div>
-      </div>
-      <div class="mas-item" id="mas-wrapped" data-screen="wrapped">
-        <div class="mas-item-icon"
-          style="background:rgba(200,240,96,.1);border-color:rgba(200,240,96,.25);">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round"
-            stroke-linejoin="round"><path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" /></svg>
-        </div>
-        <div>
-          <div class="mas-item-label">Tu resumen</div>
-          <div class="mas-item-sub">Tu año, bien melo</div>
         </div>
       </div>
       <div class="mas-item" id="mas-tarjetas" data-screen="tarjetas">

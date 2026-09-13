@@ -789,11 +789,24 @@ function _wrappedCerrar(){
   _wrappedLimpiarNav();
   // El overlay se monta en document.body (no dentro de #screen-wrapped,
   // ver wrapped.md §7bis), así que hay que sacarlo del DOM a mano al
-  // cerrar — showScreen('mas') solo oculta pantallas .screen, no toca
+  // cerrar — showScreen('config') solo oculta pantallas .screen, no toca
   // nada fuera de ese árbol.
+  //
+  // 'config' ya no es una suposición: Wrapped se abre ahora desde
+  // Configuración → Herramientas → "Tu resumen" (antes vivía en el menú
+  // "Más", ver CHANGELOG.md#wrapped), así que volver a 'config' es
+  // exactamente la pantalla de la que se entró — mismo patrón que ya usa
+  // Actividad reciente para volver a Configuración.
+  //
+  // Esto reemplaza el intento anterior, showScreen('mas'): 'mas' nunca
+  // fue un id de .screen real (el menú "Más" es el overlay #mas-menu, no
+  // una pantalla), así que getElementById('screen-mas') devolvía null y
+  // showScreen() reventaba justo después de sacarle 'active' a todas las
+  // .screen, dejando la app sin ninguna pantalla visible — la "página
+  // negra" que se veía al cerrar.
   const overlay = document.getElementById('wrapped-overlay');
   if(overlay) overlay.remove();
-  if(typeof showScreen === 'function') showScreen('mas');
+  if(typeof showScreen === 'function') showScreen('config');
 }
 
 /* El overlay es `position:fixed`, y por spec un elemento fixed siempre

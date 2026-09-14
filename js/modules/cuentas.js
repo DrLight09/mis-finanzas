@@ -899,7 +899,7 @@ function abrirMetaCajita(cajitaId){
   _metaAportesTemp = (meta.aportes || []).map(a=>({...a}));
   const wrap = document.getElementById('meta_min_wrap');
   wrap.style.display = meta.minimo ? '' : 'none';
-  document.getElementById('btn-toggle-meta-min').textContent = meta.minimo ? '<i class="fa-solid fa-chevron-up" style="margin-right:4px;"></i>Ocultar saldo mínimo' : '<i class="fa-solid fa-chevron-down" style="margin-right:4px;"></i>Configurar saldo mínimo';
+  document.getElementById('btn-toggle-meta-min').innerHTML = meta.minimo ? '<i class="fa-solid fa-chevron-up" style="margin-right:4px;"></i>Ocultar saldo mínimo' : '<i class="fa-solid fa-chevron-down" style="margin-right:4px;"></i>Configurar saldo mínimo';
   document.getElementById('btn-quitar-meta').style.display = meta.objetivo ? '' : 'none';
   _renderMetaAportes();
   _updateMetaCuotaPreview();

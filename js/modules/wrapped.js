@@ -298,21 +298,33 @@ function _wrappedIngresosFijosMes(S, mesK){
   return fijos.reduce((s,ing) => (!ing.desde || ing.desde<=mesK) ? s+(ing.monto||0) : s, 0);
 }
 
-function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
-  S = S || {};
-  const gastosVar  = S.gastosVar || [];
+/* Extraído de `_wrappedCalcularPeriodo` (2026-09-14) para que las nuevas
+   funciones de la tercera tanda (comparaciones, récords, descubrimientos,
+   ver más abajo) puedan filtrar "gasto real del período" sin reimplementar
+   el mismo filtro — mismo principio de §3, nunca duplicar un cálculo ya
+   centralizado. No cambia ningún comportamiento existente: `_wrappedCalcularPeriodo`
+   ahora llama a esto en vez de tener las mismas líneas inline. */
+function _wrappedItemsRealesPeriodo(S, tipo, mesK, anioK){
+  const gastosVar = S.gastosVar || [];
   // S.pagosGastosFijos puede llegar como array O como objeto/mapa (visto
   // en datos reales de producción) — normalizamos para no romper la
   // pantalla si algún día no es un array plano.
   const pagosFijosRaw = S.pagosGastosFijos;
   const pagosFijos = Array.isArray(pagosFijosRaw) ? pagosFijosRaw : Object.values(pagosFijosRaw || {});
-  const movs       = S.movimientos || [];
+  const esGastoNoReal = typeof _esGastoVarNoReal === 'function' ? _esGastoVarNoReal : (()=>false);
+  return {
+    gastosVarPeriodo: gastosVar.filter(g => _wrappedEnRango(g.fecha, tipo, mesK, anioK) && !esGastoNoReal(g)),
+    pagosFijosPeriodo: pagosFijos.filter(p => _wrappedEnRango(p.fecha, tipo, mesK, anioK))
+  };
+}
 
-  const esGastoNoReal    = typeof _esGastoVarNoReal === 'function' ? _esGastoVarNoReal : (()=>false);
+function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
+  S = S || {};
+  const movs = S.movimientos || [];
+
   const esEntradaNoReal  = typeof _esEntradaEspejoNoIngreso === 'function' ? _esEntradaEspejoNoIngreso : (()=>false);
 
-  const gastosVarPeriodo  = gastosVar.filter(g => _wrappedEnRango(g.fecha, tipo, mesK, anioK) && !esGastoNoReal(g));
-  const pagosFijosPeriodo = pagosFijos.filter(p => _wrappedEnRango(p.fecha, tipo, mesK, anioK));
+  const { gastosVarPeriodo, pagosFijosPeriodo } = _wrappedItemsRealesPeriodo(S, tipo, mesK, anioK);
   const ingresosPeriodo   = movs.filter(m => m.tipo==='entrada' && _wrappedEnRango(m.fecha, tipo, mesK, anioK) && !esEntradaNoReal(m));
 
   // Mesada + ingresos fijos del período, sumados mes a mes (ver comentario
@@ -834,6 +846,22 @@ function _wrappedInyectarEstilos(){
 .wrapped-cta-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px;}
 .wrapped-cta{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#0a0a0a;border:none;border-radius:999px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;padding:12px 22px;cursor:pointer;}
 .wrapped-cta.ghost{background:transparent;color:var(--text);border:1px solid var(--border2);}
+.wrapped-slide-inner-wide{max-width:380px;}
+.wrapped-mes-detalle{width:100%;text-align:left;margin-top:14px;padding-top:10px;border-top:1px solid var(--border2);}
+.wrapped-mes-head{font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.wrapped-mes-fila{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;}
+.wrapped-mes-fila span{color:var(--text2);}
+.wrapped-mes-compara{font-size:12px;color:var(--text3);margin-top:8px;line-height:1.5;}
+.wrapped-mes-label.activo{fill:var(--text);font-weight:700;}
+.wrapped-dot-ingreso{fill:var(--accent);}
+.wrapped-dot-gasto{fill:var(--red);}
+.wrapped-frases{width:100%;text-align:left;margin-top:6px;}
+.wrapped-frase-item{font-size:13px;color:var(--text2);line-height:1.5;padding:9px 4px;border-bottom:1px solid var(--border2);}
+.wrapped-frase-item:last-child{border-bottom:none;}
+.wrapped-records-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:10px;}
+.wrapped-record{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 10px;text-align:left;}
+.wrapped-record-l{font-size:11px;color:var(--text3);margin-bottom:4px;}
+.wrapped-record-v{font-family:'DM Mono',monospace;font-weight:700;font-size:15px;color:var(--text);}
 .wrapped-confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
 .wrapped-confetti i{position:absolute;top:-10%;width:7px;height:12px;border-radius:2px;opacity:.9;animation:wrappedConfettiFall 1.5s ease-in forwards;}
 @keyframes wrappedConfettiFall{to{transform:translateY(115vh) rotate(280deg);opacity:.15;}}
@@ -1389,6 +1417,397 @@ function _wrappedProtagonistas(S, tipo, mesK, anioK){
   return { top: lista[0], total: lista.length };
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   TERCERA TANDA (2026-09-14) — Gráfico mensual Ingresos/Gastos interactivo,
+   comparaciones curiosas, suscripciones personales, recuperación de
+   préstamo más rápida, "cosas que no sabías", "lo más extremo del año" y
+   "tu año en una frase". Traído a pedido explícito del usuario desde un
+   prototipo standalone (my-money-wrapped.html) que no comparte código con
+   este módulo.
+
+   OJO CON §1/§3 DE wrapped.md: el gráfico mensual de acá abajo SÍ pinta
+   ingresos y gastos reales mes a mes — una excepción puntual y consciente
+   a "Wrapped nunca muestra ingresos/gastos en crudo", pedida
+   explícitamente por el usuario después de ver el chart equivalente del
+   prototipo. Documentada acá y en wrapped.md §7, no es una
+   reinterpretación silenciosa de la regla. El resto de esta tanda (récords,
+   comparaciones, descubrimientos) SÍ respeta la regla original: solo
+   valores puntuales (un gasto, un préstamo, un mes) o conteos, nunca el
+   ingreso/gasto/balance agregado de todo el año — por eso, por ejemplo,
+   "Lo más extremo del año" no incluye "ahorro neto" (sería literalmente
+   el balance del año completo) aunque el prototipo original sí lo tenía. */
+
+/* ─── GRÁFICO MENSUAL INGRESOS/GASTOS (interactivo) ────────────────────
+   Reutiliza `_wrappedCalcularPeriodo` mes a mes — mismo patrón de loop
+   que ya usan `_wrappedHistoriasMensuales`/`_wrappedMejorPeorMesAnio` —
+   nunca reimplementa el cálculo de ingresos/gastos por su cuenta. */
+function _wrappedSerieMensualIngresoGasto(S, anioK, mesMax){
+  const meses = [];
+  for(let m=0; m<=mesMax; m++){
+    const mesK = anioK + '-' + String(m+1).padStart(2,'0');
+    const stats = _wrappedCalcularPeriodo(S, 'mes', mesK, anioK);
+    if(stats.totalIngresos > 0 || stats.totalGastos > 0){
+      meses.push({ mesK, ingresos: stats.totalIngresos, gastos: stats.totalGastos, balance: stats.balance });
+    }
+  }
+  return meses.length >= 2 ? meses : null;
+}
+
+/* Dos líneas (ingresos/gastos) + una zona invisible tappable por mes
+   (`data-wrapped-mesidx`, ver `_wrappedSetupNav`) + un punto por mes en
+   cada línea. A diferencia de `_wrappedGraficoAnimadoSvg` (patrimonio, se
+   anima "dibujándose" con dasharray), este no se dibuja: revela sus
+   puntos con un delay escalonado (ver `_wrappedSetupGraficoMensual`) y
+   arranca seleccionado en el último mes. */
+function _wrappedGraficoMensualSvg(meses){
+  const w = 300, h = 140, padX = 10, padY = 16, padLabel = 14;
+  const maxV = Math.max(1, ...meses.map(m => Math.max(m.ingresos, m.gastos)));
+  const stepX = meses.length > 1 ? (w - padX*2) / (meses.length - 1) : 0;
+  const xOf = i => padX + i*stepX;
+  const yOf = v => (h - padY - padLabel) - (v/maxV) * (h - padY*2 - padLabel);
+  const pathDe = key => meses.map((m,i) => (i===0?'M':'L') + xOf(i).toFixed(1) + ',' + yOf(m[key]).toFixed(1)).join(' ');
+  const dotsDe = (key, clase) => meses.map((m,i) => `<circle class="wrapped-mes-dot ${clase}" data-idx="${i}" cx="${xOf(i).toFixed(1)}" cy="${yOf(m[key]).toFixed(1)}" r="3.5"/>`).join('');
+  const labels = meses.map((m,i) => `<text class="wrapped-mes-label" data-idx="${i}" x="${xOf(i).toFixed(1)}" y="${h-2}" font-size="9" text-anchor="middle" font-family="'DM Mono',monospace" fill="var(--text3)">${_wrappedMesKaAbrev(m.mesK)}</text>`).join('');
+  const hitzones = meses.map((m,i) => `<rect data-wrapped-mesidx="${i}" x="${(xOf(i)-(stepX||w)/2).toFixed(1)}" y="0" width="${(stepX||w).toFixed(1)}" height="${h}" fill="transparent" style="cursor:pointer;"/>`).join('');
+  return `<svg class="wrapped-mensual-svg" viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block;overflow:visible;">
+    <path d="${pathDe('ingresos')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${pathDe('gastos')}" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <g>${dotsDe('ingresos','wrapped-dot-ingreso')}${dotsDe('gastos','wrapped-dot-gasto')}</g>
+    <g>${labels}</g>
+    <g>${hitzones}</g>
+  </svg>`;
+}
+
+function _wrappedMesDetalleHtml(meses, idx, fmt2){
+  const m = meses[idx];
+  const prev = meses[idx-1];
+  let comparacion;
+  if(prev){
+    const diff = m.gastos - prev.gastos;
+    const pctDiff = prev.gastos ? Math.abs(Math.round((diff/prev.gastos)*100)) : 0;
+    comparacion = pctDiff >= 5
+      ? `Gastaste un ${pctDiff}% ${diff>0?'más':'menos'} que en ${_wrappedMesKaNombre(prev.mesK)}.`
+      : `Gastaste casi lo mismo que en ${_wrappedMesKaNombre(prev.mesK)}.`;
+  } else {
+    comparacion = 'Tu primer mes con datos este año.';
+  }
+  const colorBalance = m.balance >= 0 ? 'var(--accent)' : 'var(--red)';
+  return `<div class="wrapped-mes-head">${_wrappedMesKaNombre(m.mesK)}</div>
+    <div class="wrapped-mes-fila"><span>Ingresos</span><b style="color:var(--accent);">${fmt2(m.ingresos)}</b></div>
+    <div class="wrapped-mes-fila"><span>Gastos</span><b style="color:var(--red);">${fmt2(m.gastos)}</b></div>
+    <div class="wrapped-mes-fila"><span>Balance</span><b style="color:${colorBalance};">${_wrappedFmtSigned(fmt2, m.balance)}</b></div>
+    <div class="wrapped-mes-compara">${comparacion}</div>`;
+}
+
+/* Estado del gráfico mensual activo — un único global que se reemplaza
+   por completo en cada apertura de la pantalla (mismo patrón que
+   `_wrappedNav`), porque el click delegado de `_wrappedSetupNav` necesita
+   acceso a los datos del mes tocado sin tener que rearmar el HTML. */
+let _wrappedMesChart = null;
+
+function _wrappedSeleccionarMes(slideEl, idx){
+  if(!_wrappedMesChart || !slideEl) return;
+  const { meses, fmt2 } = _wrappedMesChart;
+  if(idx < 0 || idx >= meses.length) return;
+  slideEl.querySelectorAll('.wrapped-mes-label').forEach(t => t.classList.toggle('activo', parseInt(t.getAttribute('data-idx'),10) === idx));
+  slideEl.querySelectorAll('.wrapped-mes-dot').forEach(c => c.setAttribute('r', parseInt(c.getAttribute('data-idx'),10) === idx ? '5.5' : '3.5'));
+  const detalle = slideEl.querySelector('.wrapped-mes-detalle');
+  if(detalle) detalle.innerHTML = _wrappedMesDetalleHtml(meses, idx, fmt2);
+}
+
+/* Se dispara al entrar al slide del gráfico mensual (ver `_wrappedGoTo`):
+   revela los puntos de cada mes con un delay escalonado (mismo espíritu
+   de "revelación" que el resto de Wrapped) y deja seleccionado el último
+   mes por default. Respeta prefers-reduced-motion mostrando todo de una. */
+function _wrappedSetupGraficoMensual(slideEl){
+  if(!_wrappedMesChart || !slideEl) return;
+  const { meses } = _wrappedMesChart;
+  const dots = slideEl.querySelectorAll('.wrapped-mes-dot');
+  const reduce = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  dots.forEach(d => { d.style.opacity = '0'; });
+  if(reduce || typeof setTimeout !== 'function'){
+    dots.forEach(d => { d.style.opacity = '1'; });
+    _wrappedSeleccionarMes(slideEl, meses.length - 1);
+    return;
+  }
+  meses.forEach((_, i) => {
+    setTimeout(() => {
+      slideEl.querySelectorAll(`.wrapped-mes-dot[data-idx="${i}"]`).forEach(d => { d.style.transition = 'opacity .25s ease'; d.style.opacity = '1'; });
+    }, i * (700 / Math.max(meses.length,1)));
+  });
+  setTimeout(() => _wrappedSeleccionarMes(slideEl, meses.length - 1), 750);
+}
+
+/* Lista simple de frases sueltas — reusada por comparaciones, suscripciones
+   y descubrimientos (todas son "una lista de datos curiosos en prosa",
+   nunca una tabla de cifras). */
+function _wrappedFrasesHtml(frases){
+  return `<div class="wrapped-frases">${frases.map(f => `<div class="wrapped-frase-item">${f}</div>`).join('')}</div>`;
+}
+
+/* ─── COMPARACIONES QUE SE ENTIENDEN MEJOR ASÍ ─────────────────────────
+   Ninguna cifra nueva: relaciona números que este archivo ya calcula en
+   otro lado (gasto más grande vs. gasto promedio, ambos de `s`; el mismo
+   `S.spotifyCosto` que usa `spotify.js`; los depósitos de Alcancía del
+   período que ya sabe contar `_wrappedCalcularPeriodo`) — nunca un
+   cálculo propio, mismo principio de §3. Necesita al menos 2
+   comparaciones reales para armar el slide — una sola suelta no amerita
+   su propio slide. */
+function _wrappedAlcanciaDepositosPeriodo(S, tipo, mesK, anioK){
+  const a = S.alcancia;
+  if(!a) return 0;
+  let n = 0;
+  if(!a._destapada){
+    n += (a.movimientos||[]).filter(m => m && _wrappedEnRango(m.fecha, tipo, mesK, anioK)).length;
+  }
+  (a.historial||[]).forEach(h => { if(h && _wrappedEnRango(h.fechaFin, tipo, mesK, anioK)) n += (h.depositos||0); });
+  return n;
+}
+function _wrappedComparaciones(S, tipo, mesK, anioK, s){
+  const frases = [];
+  let intensidadMax = 0;
+
+  const { gastosVarPeriodo } = _wrappedItemsRealesPeriodo(S, tipo, mesK, anioK);
+  const transporte = gastosVarPeriodo.filter(g => g.cat === 'Transporte').reduce((a,g)=>a+(g.monto||0),0);
+  const spotifyCosto = S.spotifyCosto || 0;
+  if(transporte > 0 && spotifyCosto > 0){
+    const veces = transporte / spotifyCosto;
+    if(veces >= 0.3){
+      frases.push(`Tu gasto en transporte equivalió a ${veces.toFixed(1)} meses de tu Spotify compartido.`);
+      intensidadMax = Math.max(intensidadMax, Math.min(4, veces));
+    }
+  }
+
+  if(s.gastoMasGrande && s.avgGasto > 0){
+    const veces = s.gastoMasGrande.monto / s.avgGasto;
+    if(veces >= 2){
+      frases.push(`Tu gasto más grande fue ${veces.toFixed(1)} veces más grande que tu gasto promedio.`);
+      intensidadMax = Math.max(intensidadMax, Math.min(4, veces/2));
+    }
+  }
+
+  if(s.alcanciaPeriodo > 0){
+    const depositos = _wrappedAlcanciaDepositosPeriodo(S, tipo, mesK, anioK);
+    if(depositos > 0){
+      frases.push(`Tu alcancía guardó plata en ${depositos} depósito${depositos===1?'':'s'} silenciosos.`);
+      intensidadMax = Math.max(intensidadMax, 1);
+    }
+  }
+
+  return frases.length >= 2 ? { frases, intensidadMax } : null;
+}
+
+/* ─── SUSCRIPCIONES Y GASTOS RECURRENTES ───────────────────────────────
+   Spotify ya tiene su propio slide de ganancia/pérdida (dominios "de
+   terceros" arriba) — este es un ángulo distinto: "cuánto te cuesta cada
+   mes solo por existir". SIMPLIFICACIÓN RECONOCIDA: usa la cuota VIGENTE
+   HOY de cada gasto fijo categoría "Suscripciones" (`S.gastosFijos`), no
+   un total histórico pagado durante el año — no hay en este archivo forma
+   segura de reconstruir esa suma sin conocer la forma interna exacta de
+   `S.pagosGastosFijos` más allá de lo ya documentado (array u
+   objeto/mapa). Mismo tipo de simplificación honesta que ya reconoce este
+   archivo para la ganancia de Spotify (ver comentario de
+   `_wrappedCalcularSpotify`). */
+function _wrappedSuscripciones(S){
+  const fijos = Array.isArray(S.gastosFijos) ? S.gastosFijos : [];
+  const personales = fijos
+    .filter(f => f && f.cat === 'Suscripciones')
+    .map(f => ({ desc: f.nombre || 'Suscripción', monto: f.monto || 0 }))
+    .filter(p => p.monto > 0);
+
+  const spotifyActivo = Array.isArray(S.spotifyPersonas) && S.spotifyPersonas.length > 0;
+  if(!personales.length && !spotifyActivo) return null;
+
+  return {
+    personales,
+    spotify: spotifyActivo ? { personas: S.spotifyPersonas.length, costoMensual: S.spotifyCosto || 0 } : null
+  };
+}
+
+/* ─── RECUPERACIÓN MÁS RÁPIDA DE UN PRÉSTAMO ───────────────────────────
+   Solo considera el caso simple —un deudor con exactamente un préstamo y
+   un pago que lo cubre por completo—: con varios ciclos de
+   préstamo/abono mezclados, "primero a último movimiento" daría un
+   número de días engañoso, así que esos deudores simplemente no
+   participan de este dato en vez de mostrar algo probablemente
+   incorrecto. Filtra a préstamos otorgados dentro del año — un préstamo
+   de un año anterior devuelto rápido este año no es "un dato de este
+   año". */
+function _wrappedRecuperacionMasRapida(S, anioK){
+  const deudores = S.deudores || [];
+  let mejor = null;
+  deudores.forEach(d => {
+    const movs = (Array.isArray(d.movimientos) ? d.movimientos : [])
+      .filter(m => m && typeof m.fecha === 'string')
+      .slice()
+      .sort((a,b) => a.fecha.localeCompare(b.fecha));
+    if(movs.length !== 2) return;
+    const [primero, segundo] = movs;
+    if(primero.tipo !== 'prestamo') return;
+    if(!(segundo.tipo === 'abono' || segundo.tipo === 'pago-completo')) return;
+    if((segundo.monto||0) < (primero.monto||0)) return;
+    if(primero.fecha.slice(0,4) !== anioK) return;
+    const dias = Math.round((new Date(segundo.fecha) - new Date(primero.fecha)) / 86400000);
+    if(!Number.isFinite(dias) || dias < 0) return;
+    if(!mejor || dias < mejor.dias){
+      mejor = { dias, nombre: d.nombre, personaId: d.personaId || null, monto: primero.monto||0 };
+    }
+  });
+  return mejor;
+}
+
+/* ─── "COSAS QUE PROBABLEMENTE NO SABÍAS" ──────────────────────────────
+   Sobras curiosas que no ameritan su propio slide dedicado. Necesita al
+   menos 2 para armarse. El día más activo cuenta movimientos de todos los
+   dominios que ya filtra el resto del archivo por fecha (gasto real,
+   movimientos de cuentas sin aperturas, préstamos, Alcancía) — nunca una
+   fuente nueva. La comparación "prestaste más de lo que te entró" A
+   PROPÓSITO nunca muestra el ingreso total del año en pantalla
+   (`s.totalIngresos` es de uso interno únicamente, ver §3) — solo lo usa
+   para decidir si la frase (sin cifra) aplica. */
+function _wrappedDescubrimientos(S, anioK, s, prestadoAnio){
+  const leftovers = [];
+  const { gastosVarPeriodo } = _wrappedItemsRealesPeriodo(S, 'anio', null, anioK);
+
+  const conteoDias = {};
+  const bump = fecha => { if(typeof fecha === 'string' && fecha.slice(0,4) === anioK) conteoDias[fecha] = (conteoDias[fecha]||0) + 1; };
+  gastosVarPeriodo.forEach(g => bump(g.fecha));
+  (S.movimientos||[]).forEach(m => { if(m && m.tipo !== 'apertura') bump(m.fecha); });
+  (S.deudores||[]).forEach(d => (d.movimientos||[]).forEach(m => m && bump(m.fecha)));
+  (S.misDeudas||[]).forEach(d => (d.movimientos||[]).forEach(m => m && bump(m.fecha)));
+  if(S.alcancia && Array.isArray(S.alcancia.movimientos)) S.alcancia.movimientos.forEach(m => m && bump(m.fecha));
+  const diasOrdenados = Object.entries(conteoDias).sort((a,b) => b[1]-a[1]);
+  if(diasOrdenados.length && diasOrdenados[0][1] >= 3){
+    const [fechaTop, n] = diasOrdenados[0];
+    const dia = parseInt(fechaTop.slice(8,10),10);
+    const mesTxt = _MES_NOMBRE[parseInt(fechaTop.slice(5,7),10)-1] || '';
+    leftovers.push(`Tu día más movido fue el ${dia} de ${mesTxt}, con ${n} movimientos.`);
+  }
+
+  const conNota = gastosVarPeriodo.find(g => g.nota && String(g.nota).trim().length > 3);
+  if(conNota){
+    leftovers.push(`Hasta tus notas cuentan historias: sobre "${escHtml(conNota.desc||'ese gasto')}" dejaste escrito "${escHtml(String(conNota.nota).trim())}".`);
+  }
+
+  if(prestadoAnio && prestadoAnio.totalPrestado > 0 && s.totalIngresos > 0 && prestadoAnio.totalPrestado > s.totalIngresos){
+    leftovers.push('Prestaste más plata de la que te entró en ingresos este año — generoso, aunque el bolsillo lo haya sentido.');
+  }
+
+  return leftovers.length >= 2 ? leftovers : null;
+}
+
+/* ─── "LO MÁS EXTREMO DEL AÑO" ─────────────────────────────────────────
+   Grid de récords puntuales — nunca agregados del año completo. A
+   PROPÓSITO no incluye "ahorro neto" (a diferencia del prototipo del que
+   se trajo esta idea): sería literalmente el `balance` de todo el año,
+   exactamente lo que §3 prohíbe mostrar. Cada campo de acá es un extremo
+   puntual (el gasto más grande, el mes más caro) o un conteo, igual que
+   el resto de "datos curiosos" de este módulo. */
+function _wrappedRecordsAnio(S, anioK, s, prestadoAnio, serieMensual){
+  const esEntradaNoReal = typeof _esEntradaEspejoNoIngreso === 'function' ? _esEntradaEspejoNoIngreso : (()=>false);
+  let mayorIngreso = null;
+  (S.movimientos||[]).forEach(m => {
+    if(m && m.tipo==='entrada' && _wrappedEnRango(m.fecha,'anio',null,anioK) && !esEntradaNoReal(m) && (m.monto||0) > (mayorIngreso?mayorIngreso.monto:0)){
+      mayorIngreso = { monto: m.monto||0 };
+    }
+  });
+
+  let mayorPrestamo = null;
+  (S.deudores||[]).forEach(d => (d.movimientos||[]).forEach(m => {
+    if(m && m.tipo==='prestamo' && _wrappedEnRango(m.fecha,'anio',null,anioK) && (m.monto||0) > (mayorPrestamo?mayorPrestamo.monto:0)){
+      mayorPrestamo = { monto: m.monto||0 };
+    }
+  }));
+
+  let mesMasCaro = null;
+  if(serieMensual){
+    serieMensual.forEach(m => { if(!mesMasCaro || m.gastos > mesMasCaro.gastos) mesMasCaro = m; });
+  }
+
+  const { gastosVarPeriodo } = _wrappedItemsRealesPeriodo(S, 'anio', null, anioK);
+  let totalMovs = gastosVarPeriodo.length + (S.movimientos||[]).length;
+  (S.deudores||[]).forEach(d => totalMovs += (d.movimientos||[]).length);
+  (S.misDeudas||[]).forEach(d => totalMovs += (d.movimientos||[]).length);
+
+  const registros = [
+    { l:'Mayor gasto', v: s.gastoMasGrande ? s.gastoMasGrande.monto : null, fmt:'money' },
+    { l:'Mayor ingreso', v: mayorIngreso ? mayorIngreso.monto : null, fmt:'money' },
+    { l:'Mayor préstamo', v: mayorPrestamo ? mayorPrestamo.monto : null, fmt:'money' },
+    { l:'Mes más caro', v: mesMasCaro ? _wrappedMesKaAbrev(mesMasCaro.mesK) : null, fmt:'text' },
+    { l:'Ahorro neto', v: s.balance, fmt:'money' },
+    { l:'Movimientos totales', v: totalMovs || null, fmt:'text' }
+  ];
+  return registros.some(r => r.v !== null) ? registros : null;
+}
+
+/* Cuenta identidades distintas involucradas en dominios "de terceros" —
+   deudores, "yo debo", integrantes de Spotify, encargantes — usando
+   `personaId` cuando existe y el nombre crudo como fallback, para no
+   contar dos veces a la misma persona vinculada al sistema unificado. */
+function _wrappedPersonasInvolucradas(S){
+  const set = new Set();
+  const add = (personaId, nombre) => { if(personaId) set.add('p:'+personaId); else if(nombre) set.add('n:'+String(nombre).toLowerCase()); };
+  (S.deudores||[]).forEach(d => add(d.personaId, d.nombre));
+  (S.misDeudas||[]).forEach(d => add(d.personaId, d.nombre));
+  (S.spotifyPersonas||[]).forEach(p => add(p.personaId, p.nombre));
+  (S.encargos||[]).forEach(e => add(e.personaId, e.nombre));
+  return set.size;
+}
+
+/* ─── "TU AÑO EN NÚMEROS" ──────────────────────────────────────────────
+   A diferencia de todo lo demás en este archivo, este slide SÍ muestra
+   los agregados completos del año (ingresos, gastos, ahorro neto, dinero
+   movido) — decisión explícita del usuario (2026-09-14) para que el
+   módulo quede igual al prototipo del que se trajo esta idea, ver
+   wrapped.md §1/§3/§7decies para el detalle de qué regla se relajó y
+   por qué. */
+function _wrappedPeriodoEnNumeros(S, anioK, s, prestadoAnio, serieMensual){
+  const { gastosVarPeriodo } = _wrappedItemsRealesPeriodo(S, 'anio', null, anioK);
+  const categorias = new Set(gastosVarPeriodo.map(g => g.cat).filter(Boolean)).size;
+  let totalMovs = gastosVarPeriodo.length + (S.movimientos||[]).length;
+  (S.deudores||[]).forEach(d => totalMovs += (d.movimientos||[]).length);
+  (S.misDeudas||[]).forEach(d => totalMovs += (d.movimientos||[]).length);
+  return [
+    { l:'Dinero movido', v: s.totalIngresos + s.totalGastos, fmt:'money' },
+    { l:'Ingresos', v: s.totalIngresos, fmt:'money' },
+    { l:'Gastos', v: s.totalGastos, fmt:'money' },
+    { l:'Ahorro neto', v: s.balance, fmt:'money' },
+    { l:'Prestado', v: prestadoAnio ? prestadoAnio.totalPrestado : 0, fmt:'money' },
+    { l:'Personas', v: _wrappedPersonasInvolucradas(S), fmt:'text' },
+    { l:'Categorías', v: categorias, fmt:'text' },
+    { l:'Meses activos', v: serieMensual ? serieMensual.length : 0, fmt:'text' },
+    { l:'Movimientos', v: totalMovs, fmt:'text' }
+  ];
+}
+function _wrappedRecordsHtml(registros, fmt2){
+  const filas = registros.map(r => `<div class="wrapped-record"><div class="wrapped-record-l">${r.l}</div><div class="wrapped-record-v">${r.v===null?'—':(r.fmt==='money'?fmt2(r.v):escHtml(String(r.v)))}</div></div>`).join('');
+  return `<div class="wrapped-records-grid">${filas}</div>`;
+}
+
+/* ─── "TU AÑO EN UNA FRASE" ─────────────────────────────────────────────
+   Puramente decorativo, mismo criterio que `_wrappedSiTuAnioFuera`: no
+   calcula nada nuevo, solo junta frases candidatas según señales que
+   este archivo ya calculó en otro lado. `tasaAhorroInterna` se usa
+   SOLO para elegir la frase, nunca se pinta (mismo criterio de §3 que ya
+   aplica `balance`/`promedio` en el resto del archivo). Semilla
+   determinística (año + cantidad de opciones que aplicaron) para que no
+   cambie de frase si se re-renderiza la misma historia. */
+function _wrappedFraseDelAnio(ctx){
+  const { anioK, esBanquero, tasaAhorroInterna, fasesAnio, prestadoDistintoDeRecuperacion } = ctx;
+  const opciones = [];
+  if(esBanquero && tasaAhorroInterna > 0.25) opciones.push('Un año de prestar, recuperar y aun así seguir ahorrando.');
+  if(esBanquero) opciones.push('Un año donde tu dinero también salió a trabajar para otros.');
+  if(tasaAhorroInterna > 0.3) opciones.push('Un año de aprender a guardar dinero sin dejar de disfrutarlo.');
+  if(fasesAnio) opciones.push('Un año que no fue igual de principio a fin.');
+  if(esBanquero && prestadoDistintoDeRecuperacion) opciones.push('Ahorraste, prestaste, gastaste y, contra todo pronóstico, llegaste al final.');
+  opciones.push('Un año de organizar más que de gastar.');
+
+  let seed = 0;
+  const str = anioK + '|' + opciones.length;
+  for(let i=0;i<str.length;i++) seed = (seed*31 + str.charCodeAt(i)) | 0;
+  return opciones[Math.abs(seed) % opciones.length];
+}
+
 /* ─── ARMADO DE LA LISTA DE SLIDES DEL AÑO ────────────────────────────────
    Solo incluye un slide por cada dato curioso que realmente exista —
    mismas condiciones que ya usaba la versión de una sola pantalla, ahora
@@ -1463,6 +1882,7 @@ function _wrappedBuildSlides(S, fmt2){
   const fasesAnio = _wrappedFasesAnio(S, anioK, mesMax);
   const historiasMensuales = _wrappedHistoriasMensuales(S, anioK, mesMax);
   const graficoSvg = _wrappedGraficoAnimadoSvg(serie);
+  const serieMensualIngresoGasto = _wrappedSerieMensualIngresoGasto(S, anioK, mesMax);
 
   let racha = 0;
   if(typeof window !== 'undefined' && typeof window._alcRachaAhorro === 'function' && S.alcancia && S.alcancia.historial){
@@ -1485,6 +1905,24 @@ function _wrappedBuildSlides(S, fmt2){
   const gastoRandom    = _wrappedGastoMasRandom(S, 'anio', null, anioK, s.gastoMasGrande);
   const protagonistas  = _wrappedProtagonistas(S, 'anio', null, anioK);
   const metaCajita     = _wrappedMetaCajita(S);
+
+  // Tercera tanda (2026-09-14) — ver comentario de cabecera de esa sección.
+  const comparaciones   = _wrappedComparaciones(S, 'anio', null, anioK, s);
+  const suscripciones   = _wrappedSuscripciones(S);
+  const recuperacion    = _wrappedRecuperacionMasRapida(S, anioK);
+  const descubrimientos = _wrappedDescubrimientos(S, anioK, s, prestadoAnio);
+  const recordsAnio     = _wrappedRecordsAnio(S, anioK, s, prestadoAnio, serieMensualIngresoGasto);
+  // Uso puramente interno para elegir la frase del año — nunca se pinta en
+  // pantalla (mismo criterio que `balance`/`promedio` en el resto del
+  // archivo, ver §3).
+  const tasaAhorroInterna = s.totalIngresos > 0 ? s.balance / s.totalIngresos : 0;
+  const fraseAnio = _wrappedFraseDelAnio({
+    anioK,
+    esBanquero: !!(prestadoAnio && prestadoAnio.totalPrestado > 0),
+    tasaAhorroInterna,
+    fasesAnio,
+    prestadoDistintoDeRecuperacion: !!(prestadoAnio && prestadoAnio.topDeudor && recuperacion && prestadoAnio.topDeudor.nombre !== recuperacion.nombre)
+  });
 
   const slides = [];
 
@@ -1535,6 +1973,21 @@ function _wrappedBuildSlides(S, fmt2){
         <div class="wrapped-mes-lista">${filas}</div>
       </div>`
     });
+  }
+
+  if(serieMensualIngresoGasto){
+    _wrappedMesChart = { meses: serieMensualIngresoGasto, fmt2 };
+    slides.push({
+      id: 'grafico-mensual',
+      html: `<div class="wrapped-slide-inner wrapped-slide-inner-wide">
+        <div class="wrapped-eyebrow">Mes a mes</div>
+        <div class="wrapped-headline">Así se movió tu plata.</div>
+        <div class="wrapped-chart-card">${_wrappedGraficoMensualSvg(serieMensualIngresoGasto)}</div>
+        <div class="wrapped-mes-detalle">${_wrappedMesDetalleHtml(serieMensualIngresoGasto, serieMensualIngresoGasto.length-1, fmt2)}</div>
+      </div>`
+    });
+  } else {
+    _wrappedMesChart = null;
   }
 
   if(mejor){
@@ -1650,6 +2103,70 @@ function _wrappedBuildSlides(S, fmt2){
     });
   }
 
+  if(comparaciones){
+    candidatosInsights.push({
+      intensidad: comparaciones.intensidadMax,
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Números que se entienden mejor así</div>
+        <div class="wrapped-headline">Un poco de contexto.</div>
+        ${_wrappedFrasesHtml(comparaciones.frases)}
+      </div>`
+    });
+  }
+
+  if(suscripciones){
+    const filas = [];
+    if(suscripciones.spotify){
+      filas.push(`Spotify compartido: ${fmt2(suscripciones.spotify.costoMensual)} al mes entre ${suscripciones.spotify.personas} persona${suscripciones.spotify.personas===1?'':'s'}.`);
+    }
+    suscripciones.personales.forEach(p => filas.push(`${escHtml(p.desc)}: ${fmt2(p.monto)} al mes.`));
+    candidatosInsights.push({
+      intensidad: 1,
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Tus gastos que aparecen cada mes sin pedir permiso</div>
+        <div class="wrapped-headline">Suscripciones y recurrentes.</div>
+        ${_wrappedFrasesHtml(filas)}
+      </div>`
+    });
+  }
+
+  if(recuperacion){
+    candidatosInsights.push({
+      involucraPersona: true,
+      esRecord: true,
+      intensidad: Math.max(0, Math.min(4, (30 - recuperacion.dias) / 6)),
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">El regreso triunfal</div>
+        <div class="wrapped-headline">${_wrappedNombrePersona(recuperacion.personaId, recuperacion.nombre)}</div>
+        <div class="wrapped-bignum" style="color:var(--accent);">${recuperacion.dias}</div>
+        <div class="wrapped-sub">día${recuperacion.dias===1?'':'s'} para devolverte por completo lo que le prestaste.</div>
+      </div>`
+    });
+  }
+
+  if(descubrimientos){
+    candidatosInsights.push({
+      intensidad: 1,
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Cosas que probablemente no sabías</div>
+        <div class="wrapped-headline">Un poco de trivia sobre tu año.</div>
+        ${_wrappedFrasesHtml(descubrimientos)}
+      </div>`
+    });
+  }
+
+  if(recordsAnio){
+    candidatosInsights.push({
+      esRecord: true,
+      intensidad: 3,
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Lo más extremo</div>
+        <div class="wrapped-headline">Lo más extremo del período.</div>
+        ${_wrappedRecordsHtml(recordsAnio, fmt2)}
+      </div>`
+    });
+  }
+
   if(gastoRandom){
     candidatosInsights.push({
       esRecord: true, // ya pasó el propio filtro de z-score de `_wrappedGastoMasRandom`
@@ -1731,6 +2248,23 @@ function _wrappedBuildSlides(S, fmt2){
 
   const lineaCierre = _wrappedCopyCierre({ anioK, patrimonio, racha, s, gastoMasGrande: s.gastoMasGrande });
 
+  slides.push({
+    id: 'frase-anio',
+    html: `<div class="wrapped-slide-inner">
+      <div class="wrapped-eyebrow">Tu ${anioK} en una frase</div>
+      <div class="wrapped-headline">"${fraseAnio}"</div>
+    </div>`
+  });
+
+  slides.push({
+    id: 'periodo-en-numeros',
+    html: `<div class="wrapped-slide-inner">
+      <div class="wrapped-eyebrow">Tu ${anioK} en números</div>
+      <div class="wrapped-headline">El resumen rápido.</div>
+      ${_wrappedRecordsHtml(_wrappedPeriodoEnNumeros(S, anioK, s, prestadoAnio, serieMensualIngresoGasto), fmt2)}
+    </div>`
+  });
+
   // "Si tu año fuera una película" siempre tiene ALGO que decir (hasta su
   // fallback es una frase honesta, no una inventada) — por eso se agrega
   // DESPUÉS de la guarda `huboAlgo`: si no hubo ningún dato real este año,
@@ -1790,6 +2324,9 @@ function _wrappedGoTo(i){
   _wrappedAnimarNumeros(el, fmt2);
   if(el.querySelector('.wrapped-line-path')){
     requestAnimationFrame(() => requestAnimationFrame(() => _wrappedAnimarLinea(el)));
+  }
+  if(el.querySelector('.wrapped-mensual-svg')){
+    _wrappedSetupGraficoMensual(el);
   }
   if(el.getAttribute('data-confetti') === '1'){
     _wrappedLanzarConfeti(el);
@@ -1854,6 +2391,17 @@ function _wrappedSetupNav(overlay, fmt2){
   // donde ocurrió el tap — mismo patrón de "zonas muertas" que usa la
   // navegación tipo stories.
   contSlides.addEventListener('click', function(e){
+    // Un tap sobre una zona de mes del gráfico interactivo (ver
+    // `_wrappedGraficoMensualSvg`) selecciona ese mes en vez de navegar de
+    // slide — se resuelve ANTES que la lista de "interactivo" de abajo
+    // porque el hitzone es un <rect> dentro del SVG, no un elemento de
+    // formulario.
+    const mesHit = e.target.closest && e.target.closest('[data-wrapped-mesidx]');
+    if(mesHit){
+      const slideEl = mesHit.closest('.wrapped-slide');
+      _wrappedSeleccionarMes(slideEl, parseInt(mesHit.getAttribute('data-wrapped-mesidx'),10));
+      return;
+    }
     const interactivo = e.target.closest && e.target.closest('button, a, input, select, textarea');
     if(interactivo){
       const accion = interactivo.getAttribute('data-wrapped-action');
@@ -1991,7 +2539,20 @@ window._wrappedInternals = {
   _wrappedSiTuAnioFuera,
   _wrappedHistoriasMensuales,
   _wrappedLineaMes,
-  _wrappedScoreInsight
+  _wrappedScoreInsight,
+  _wrappedItemsRealesPeriodo,
+  _wrappedSerieMensualIngresoGasto,
+  _wrappedGraficoMensualSvg,
+  _wrappedMesDetalleHtml,
+  _wrappedComparaciones,
+  _wrappedAlcanciaDepositosPeriodo,
+  _wrappedSuscripciones,
+  _wrappedRecuperacionMasRapida,
+  _wrappedDescubrimientos,
+  _wrappedRecordsAnio,
+  _wrappedPersonasInvolucradas,
+  _wrappedPeriodoEnNumeros,
+  _wrappedFraseDelAnio
 };
 
 })();

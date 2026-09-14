@@ -613,6 +613,42 @@ function _wrappedBankPick(key, opciones, disambiguador){
   return elegido;
 }
 
+/* Antes era un texto fijo — ahora, mismo criterio que el resto del banco
+   de frases (§_wrappedBankPick): varía entre aperturas sin depender de
+   ningún dato nuevo, solo para que la pantalla de entrada no se sienta
+   idéntica cada vez que se abre Wrapped. */
+function _wrappedCopyIntro(){
+  return _wrappedBankPick('intro-headline', [
+    'A ver qué te tiene guardado tu propia plata.',
+    'Repasemos qué hiciste con tu plata este año.',
+    'Tenemos que hablar de lo que pasó con tu dinero.',
+    'Esto es lo que hiciste con tu plata, con pruebas.',
+    'Cada movimiento que registraste cuenta una historia. Esta es la tuya.',
+    'Ni tú te acuerdas de todo esto. Por suerte, quedó registrado.',
+  ]);
+}
+
+/* Frases-puente sin dato: separan "capítulos" del wrapped (ancla → pool de
+   insights → personalidad) sin calcular ni mostrar nada nuevo — mismo
+   principio de §3 (nunca duplicar/inventar una cifra). `key` distingue el
+   punto de la historia para que las dos pausas de una misma apertura no
+   salgan siempre con la misma frase. */
+function _wrappedCopyPuente(key){
+  if(key === 'personalidad'){
+    return _wrappedBankPick('puente-personalidad', [
+      'Y con todo eso ya visto, una última pregunta.',
+      'Antes de cerrar, juntemos todo esto en una sola idea.',
+      'Ahora, la conclusión de todo lo anterior.',
+    ]);
+  }
+  return _wrappedBankPick('puente-insights', [
+    'Pero eso no es lo único interesante.',
+    'Y aquí viene lo curioso.',
+    'Hasta acá, todo esperable. Sigamos.',
+    'Ahora, algunos datos que probablemente se te pasaron por alto.',
+  ]);
+}
+
 function _wrappedCopyPatrimonio(patrimonio){
   const { diff, pct } = patrimonio;
   if(pct === null){
@@ -1050,23 +1086,41 @@ function _wrappedLanzarConfeti(slideEl){
    (--bg, --bg2, --bg3, --border2, --text, --text2, --text3, --accent,
    --amber, --blue, --red, --purple, --radius, --radius-sm) y las mismas
    fuentes ('DM Sans' / 'DM Mono') — nada de paleta o tipografía nueva. */
+/* Pase de diseño (2026-09-14): blobs de fondo, hint de navegación,
+   botón de reinicio rápido, pill decorativa y tarjetas "moment" para las
+   listas de frases sueltas (comparaciones, descubrimientos, suscrip-
+   ciones) — inspirado en un mockup de referencia (`my-money-wrapped.html`,
+   no versionado en el repo). Ninguno de estos cambios toca `_wrappedBuildSlides`
+   más allá de dos slides-puente puramente decorativos (ver
+   `_wrappedCopyPuente`) — sigue sin haber ninguna cifra nueva ni ningún
+   desglose tipo "Top categorías" (eso sigue siendo terreno exclusivo de
+   Análisis financiero, ver wrapped.md §1). Deliberadamente fuera de este
+   pase: la función de "compartir como imagen" del mockup (canvas +
+   descarga) — no pedida, y es una pieza de producto aparte (permisos de
+   descarga, generación de imagen) que amerita su propia discusión. */
 function _wrappedInyectarEstilos(){
   if(document.getElementById('wrapped-story-styles')) return;
   const style = document.createElement('style');
   style.id = 'wrapped-story-styles';
   style.textContent = `
-#wrapped-overlay{position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;flex-direction:column;font-family:'DM Sans',sans-serif;color:var(--text);}
-#wrapped-progress{display:flex;gap:5px;padding:calc(env(safe-area-inset-top,0px) + 14px) 14px 0;flex-shrink:0;}
+#wrapped-overlay{position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;flex-direction:column;font-family:'DM Sans',sans-serif;color:var(--text);overflow:hidden;}
+.wrapped-bg-blob{position:absolute;border-radius:50%;filter:blur(64px);pointer-events:none;z-index:0;transition:background .8s ease;}
+.wrapped-bg-blob.b1{width:70vmax;height:70vmax;top:-28vmax;right:-24vmax;background:var(--accent);opacity:.16;}
+.wrapped-bg-blob.b2{width:60vmax;height:60vmax;bottom:-30vmax;left:-20vmax;background:var(--purple);opacity:.13;}
+#wrapped-progress{position:relative;z-index:1;display:flex;gap:5px;padding:calc(env(safe-area-inset-top,0px) + 14px) 14px 0;flex-shrink:0;}
 .wrapped-seg{flex:1;height:3px;background:var(--border2);border-radius:3px;overflow:hidden;}
 .wrapped-seg>i{display:block;height:100%;width:0%;background:var(--accent);border-radius:3px;}
 .wrapped-seg.done>i{width:100%;}
-#wrapped-topbar{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 2px;flex-shrink:0;}
+#wrapped-topbar{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;padding:10px 14px 2px;flex-shrink:0;}
 .wrapped-brand{font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--text3);}
-#wrapped-close{width:32px;height:32px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;line-height:1;}
-#wrapped-slides{position:relative;flex:1;overflow:hidden;}
+.wrapped-topbar-right{display:flex;align-items:center;gap:8px;}
+#wrapped-close,#wrapped-restart{width:32px;height:32px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px;line-height:1;}
+#wrapped-restart{font-size:16px;}
+#wrapped-slides{position:relative;z-index:1;flex:1;overflow:hidden;}
 .wrapped-slide{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:20px 26px 46px;opacity:0;visibility:hidden;transform:translateY(10px);transition:opacity .35s ease,transform .4s ease;}
 .wrapped-slide.active{opacity:1;visibility:visible;transform:translateY(0);z-index:1;}
 .wrapped-slide-inner{max-width:340px;width:100%;text-align:center;}
+.wrapped-tag{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:11px;padding:5px 12px;border-radius:999px;background:var(--bg2);border:1px solid var(--border2);color:var(--text2);margin-bottom:14px;}
 .wrapped-eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
 .wrapped-headline{font-size:21px;font-weight:700;line-height:1.3;margin:0 0 6px;color:var(--text);}
 .wrapped-headline b{color:var(--accent);}
@@ -1091,8 +1145,12 @@ function _wrappedInyectarEstilos(){
 .wrapped-dot-ingreso{fill:var(--accent);}
 .wrapped-dot-gasto{fill:var(--red);}
 .wrapped-frases{width:100%;text-align:left;margin-top:6px;}
-.wrapped-frase-item{font-size:13px;color:var(--text2);line-height:1.5;padding:9px 4px;border-bottom:1px solid var(--border2);}
-.wrapped-frase-item:last-child{border-bottom:none;}
+.wrapped-moment{display:flex;align-items:flex-start;gap:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:8px;}
+.wrapped-moment:last-child{margin-bottom:0;}
+.wrapped-moment-dot{display:block;width:6px;height:6px;margin-top:6px;border-radius:50%;background:var(--accent);flex-shrink:0;}
+.wrapped-moment span{font-size:13px;color:var(--text2);line-height:1.5;}
+#wrapped-hint{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:1;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);opacity:.7;pointer-events:none;transition:opacity .5s ease;}
+#wrapped-hint.wrapped-oculto{opacity:0;}
 .wrapped-records-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:10px;}
 .wrapped-record{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 10px;text-align:left;}
 .wrapped-record-l{font-size:11px;color:var(--text3);margin-bottom:4px;}
@@ -1834,7 +1892,7 @@ function _wrappedSetupGraficoMensual(slideEl){
    y descubrimientos (todas son "una lista de datos curiosos en prosa",
    nunca una tabla de cifras). */
 function _wrappedFrasesHtml(frases){
-  return `<div class="wrapped-frases">${frases.map(f => `<div class="wrapped-frase-item">${f}</div>`).join('')}</div>`;
+  return `<div class="wrapped-frases">${frases.map(f => `<div class="wrapped-moment"><i class="wrapped-moment-dot"></i><span>${f}</span></div>`).join('')}</div>`;
 }
 
 /* ─── COMPARACIONES QUE SE ENTIENDEN MEJOR ASÍ ─────────────────────────
@@ -2229,8 +2287,9 @@ function _wrappedBuildSlides(S, fmt2){
   slides.push({
     id: 'intro',
     html: `<div class="wrapped-slide-inner">
+      <div class="wrapped-tag">◆ Wrapped ${anioK}</div>
       <div class="wrapped-eyebrow">Tu resumen ${anioK}</div>
-      <div class="wrapped-headline">A ver qué te tiene guardado tu propia plata.</div>
+      <div class="wrapped-headline">${_wrappedCopyIntro()}</div>
       <div class="wrapped-sub">Lo repasamos un dato a la vez.</div>
     </div>`
   });
@@ -2516,13 +2575,35 @@ function _wrappedBuildSlides(S, fmt2){
     });
   }
 
-  candidatosInsights
+  const insightsElegidos = candidatosInsights
     .map(c => ({ ...c, score: _wrappedScoreInsight(c) }))
     .sort((a,b) => b.score - a.score) // sort estable: empates conservan el orden en que se agregaron arriba
-    .slice(0, WRAPPED_MAX_INSIGHTS_POOL)
-    .forEach((c, i) => slides.push({ id: 'insight-' + i, html: c.html }));
+    .slice(0, WRAPPED_MAX_INSIGHTS_POOL);
+
+  // Puente narrativo (2026-09-14): una micro-pausa de texto, sin ningún
+  // dato nuevo, entre el bloque de "datos ancla" (patrimonio, categoría,
+  // mejor/peor mes, gasto más grande) y el pool de insights variables —
+  // le da ritmo de "capítulo" a la historia en vez de saltar de golpe.
+  // Puramente decorativo: no cambia qué se calcula, solo cómo se siente
+  // la transición (mismo espíritu que `_wrappedSiTuAnioFuera`).
+  if(insightsElegidos.length){
+    slides.push({
+      id: 'puente-insights',
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-headline">${_wrappedCopyPuente('insights')}</div>
+      </div>`
+    });
+  }
+
+  insightsElegidos.forEach((c, i) => slides.push({ id: 'insight-' + i, html: c.html }));
 
   if(personalidad){
+    slides.push({
+      id: 'puente-personalidad',
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-headline">${_wrappedCopyPuente('personalidad')}</div>
+      </div>`
+    });
     slides.push({
       id: 'personalidad',
       html: `<div class="wrapped-slide-inner">
@@ -2582,6 +2663,7 @@ function _wrappedBuildSlides(S, fmt2){
     id: 'cierre',
     confetti: true,
     html: `<div class="wrapped-slide-inner">
+      <div class="wrapped-tag">◆ Wrapped ${anioK}</div>
       <div class="wrapped-eyebrow">Eso fue ${anioK}</div>
       <div class="wrapped-headline">${lineaCierre}</div>
       <div class="wrapped-cta-row">
@@ -2679,11 +2761,19 @@ function _wrappedSetupNav(overlay, fmt2){
   const segEls    = Array.prototype.slice.call(overlay.querySelectorAll('.wrapped-seg'));
   const contSlides = overlay.querySelector('#wrapped-slides');
   const closeBtn   = overlay.querySelector('#wrapped-close');
+  const restartBtn = overlay.querySelector('#wrapped-restart');
+  const hintEl     = overlay.querySelector('#wrapped-hint');
 
   _wrappedNav = { slidesEls, segEls, fmt2, current: 0, onKeydown: null };
 
-  function siguiente(){ _wrappedGoTo(_wrappedNav.current + 1); }
-  function anterior(){ _wrappedGoTo(_wrappedNav.current - 1); }
+  // El hint de navegación solo tiene sentido antes de que el usuario
+  // entienda cómo se mueve la historia — se apaga con la primera
+  // interacción real (tap para avanzar/retroceder, swipe o flecha) y no
+  // vuelve a aparecer en esta misma apertura.
+  function ocultarHint(){ if(hintEl) hintEl.classList.add('wrapped-oculto'); }
+
+  function siguiente(){ ocultarHint(); _wrappedGoTo(_wrappedNav.current + 1); }
+  function anterior(){ ocultarHint(); _wrappedGoTo(_wrappedNav.current - 1); }
 
   // Un solo listener de click decide: si el tap fue sobre algo
   // interactivo (los botones de "Ver de nuevo" / "Cerrar" del slide de
@@ -2733,6 +2823,10 @@ function _wrappedSetupNav(overlay, fmt2){
   }, { passive: true });
 
   if(closeBtn) closeBtn.addEventListener('click', _wrappedCerrar);
+  // Reinicio rápido desde cualquier punto de la historia — antes solo
+  // existía el botón "Ver de nuevo" del slide de cierre, que obligaba a
+  // llegar hasta el final para volver a ver algo desde el principio.
+  if(restartBtn) restartBtn.addEventListener('click', function(){ ocultarHint(); _wrappedGoTo(0); });
 
   // Flechas de teclado — solo reaccionan si la pantalla de Wrapped sigue
   // realmente visible (evita que un listener "colgado", si el usuario
@@ -2743,8 +2837,8 @@ function _wrappedSetupNav(overlay, fmt2){
     if(!_wrappedVisible(overlay)) return;
     const activo = document.activeElement;
     if(activo && /^(INPUT|TEXTAREA|SELECT)$/.test(activo.tagName)) return;
-    if(e.key === 'ArrowRight') siguiente();
-    else if(e.key === 'ArrowLeft') anterior();
+    if(e.key === 'ArrowRight'){ siguiente(); }
+    else if(e.key === 'ArrowLeft'){ anterior(); }
   };
   document.addEventListener('keydown', onKeydown);
   _wrappedNav.onKeydown = onKeydown;
@@ -2774,12 +2868,18 @@ window.renderWrapped = function(){
 
   const overlay = document.createElement('div');
   overlay.id = 'wrapped-overlay';
-  overlay.innerHTML = `<div id="wrapped-progress">${progresoHtml}</div>
+  overlay.innerHTML = `<div class="wrapped-bg-blob b1"></div>
+    <div class="wrapped-bg-blob b2"></div>
+    <div id="wrapped-progress">${progresoHtml}</div>
     <div id="wrapped-topbar">
       <span class="wrapped-brand">Tu resumen</span>
-      <button type="button" id="wrapped-close" aria-label="Cerrar">✕</button>
+      <div class="wrapped-topbar-right">
+        <button type="button" id="wrapped-restart" aria-label="Volver al inicio" title="Volver al inicio">↻</button>
+        <button type="button" id="wrapped-close" aria-label="Cerrar">✕</button>
+      </div>
     </div>
-    <div id="wrapped-slides">${slidesHtml}</div>`;
+    <div id="wrapped-slides">${slidesHtml}</div>
+    <div id="wrapped-hint">Tocá, deslizá o usá las flechas para avanzar</div>`;
   document.body.appendChild(overlay);
 
   _wrappedSetupNav(overlay, fmt2);
@@ -2807,6 +2907,8 @@ window._wrappedInternals = {
   _wrappedMesKaNombre,
   _wrappedBuildSlides,
   _wrappedFmtSigned,
+  _wrappedCopyIntro,
+  _wrappedCopyPuente,
   _wrappedCopyPatrimonio,
   _wrappedCopyCategoria,
   _wrappedCopyMejorMes,

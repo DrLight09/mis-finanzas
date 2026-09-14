@@ -1127,11 +1127,12 @@ function _wrappedInyectarEstilos(){
 .wrapped-sub{font-size:13px;color:var(--text2);line-height:1.55;margin:6px 0 0;}
 .wrapped-bignum{font-family:'DM Mono',monospace;font-weight:700;font-size:clamp(30px,10vw,42px);letter-spacing:-.5px;margin:8px 0 2px;}
 .wrapped-chart-card{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:16px 12px 10px;margin-bottom:16px;}
-.wrapped-mes-lista{width:100%;max-height:280px;overflow-y:auto;text-align:left;margin-top:6px;}
-.wrapped-mes-row{display:flex;justify-content:space-between;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border2);font-size:13px;}
-.wrapped-mes-row:last-child{border-bottom:none;}
-.wrapped-mes-nombre{font-family:'DM Mono',monospace;color:var(--text3);flex-shrink:0;}
-.wrapped-mes-linea{text-align:right;line-height:1.4;}
+.wrapped-mes-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;margin-top:12px;text-align:left;}
+.wrapped-mes-cell{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 11px;}
+.wrapped-mes-cell-top{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
+.wrapped-mes-dot-color{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.wrapped-mes-nombre{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;}
+.wrapped-mes-linea{font-size:12px;color:var(--text2);line-height:1.4;}
 .wrapped-cta-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px;}
 .wrapped-cta{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#0a0a0a;border:none;border-radius:999px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;padding:12px 22px;cursor:pointer;}
 .wrapped-cta.ghost{background:transparent;color:var(--text);border:1px solid var(--border2);}
@@ -2287,7 +2288,7 @@ function _wrappedBuildSlides(S, fmt2){
   slides.push({
     id: 'intro',
     html: `<div class="wrapped-slide-inner">
-      <div class="wrapped-tag">◆ Wrapped ${anioK}</div>
+      <div class="wrapped-tag"><i class="fa-solid fa-tag"></i> Wrapped ${anioK}</div>
       <div class="wrapped-eyebrow">Tu resumen ${anioK}</div>
       <div class="wrapped-headline">${_wrappedCopyIntro()}</div>
       <div class="wrapped-sub">Lo repasamos un dato a la vez.</div>
@@ -2318,18 +2319,23 @@ function _wrappedBuildSlides(S, fmt2){
   }
 
   if(historiasMensuales){
-    const filas = historiasMensuales.map(m => {
-      const color = m.balance > 0 ? 'var(--accent)' : (m.balance < 0 ? 'var(--red)' : 'var(--text2)');
-      return `<div class="wrapped-mes-row">
-        <span class="wrapped-mes-nombre">${_wrappedMesKaNombre(m.mesK)}</span>
-        <span class="wrapped-mes-linea" style="color:${color};">${m.linea}</span>
+    // Antes era una lista de una columna con scroll interno (fea dentro
+    // de una historia tipo "reveal" — obligaba a scrollear DENTRO de un
+    // slide, algo que ningún otro slide de este archivo hace). Ahora es
+    // una cuadrícula de 2 columnas sin scroll: nombre corto de mes +
+    // punto de color según el balance + la misma frase de siempre.
+    const celdas = historiasMensuales.map(m => {
+      const color = m.balance > 0 ? 'var(--accent)' : (m.balance < 0 ? 'var(--red)' : 'var(--text3)');
+      return `<div class="wrapped-mes-cell">
+        <div class="wrapped-mes-cell-top"><span class="wrapped-mes-dot-color" style="background:${color};"></span><span class="wrapped-mes-nombre">${_wrappedMesKaAbrev(m.mesK)}</span></div>
+        <div class="wrapped-mes-linea">${m.linea}</div>
       </div>`;
     }).join('');
     slides.push({
       id: 'vista-mensual',
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">Este año, mes a mes</div>
-        <div class="wrapped-mes-lista">${filas}</div>
+        <div class="wrapped-mes-grid">${celdas}</div>
       </div>`
     });
   }
@@ -2532,7 +2538,7 @@ function _wrappedBuildSlides(S, fmt2){
       intensidad: gastoRandom.z, // reutiliza el mismo z ya calculado, nunca uno nuevo
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">Premio al gasto más inesperado</div>
-        <div class="wrapped-headline">🏆 ${escHtml(gastoRandom.desc)}</div>
+        <div class="wrapped-headline"><i class="fa-solid fa-star" style="margin-right:8px;color:var(--purple);"></i>${escHtml(gastoRandom.desc)}</div>
         <div class="wrapped-bignum" data-value="${gastoRandom.monto}" style="color:var(--purple);">0</div>
         <div class="wrapped-sub">No esperábamos verte por acá este año.</div>
       </div>`
@@ -2663,7 +2669,7 @@ function _wrappedBuildSlides(S, fmt2){
     id: 'cierre',
     confetti: true,
     html: `<div class="wrapped-slide-inner">
-      <div class="wrapped-tag">◆ Wrapped ${anioK}</div>
+      <div class="wrapped-tag"><i class="fa-solid fa-tag"></i> Wrapped ${anioK}</div>
       <div class="wrapped-eyebrow">Eso fue ${anioK}</div>
       <div class="wrapped-headline">${lineaCierre}</div>
       <div class="wrapped-cta-row">
@@ -2874,8 +2880,10 @@ window.renderWrapped = function(){
     <div id="wrapped-topbar">
       <span class="wrapped-brand">Tu resumen</span>
       <div class="wrapped-topbar-right">
-        <button type="button" id="wrapped-restart" aria-label="Volver al inicio" title="Volver al inicio">↻</button>
-        <button type="button" id="wrapped-close" aria-label="Cerrar">✕</button>
+        <button type="button" id="wrapped-restart" aria-label="Volver al inicio" title="Volver al inicio"><i class="fa-solid fa-arrow-rotate-left"></i></button>
+        <button type="button" id="wrapped-close" aria-label="Cerrar" title="Cerrar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+        </button>
       </div>
     </div>
     <div id="wrapped-slides">${slidesHtml}</div>

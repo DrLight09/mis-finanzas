@@ -415,6 +415,50 @@ function _wrappedMejorPeorMesAnio(S, anioK){
   return { mejor, peor, promedio, empateMejor, empatePeor };
 }
 
+/* ─── VISTA MENSUAL — "Este mes pasó algo" (2026-09-13) ────────────────
+   Reabre la decisión descartada en la versión original de wrapped.md §7
+   ("vista mensual... competiría con Top categorías de Análisis, le
+   quitaría a Wrapped la sensación de sorpresa") — decisión de producto
+   explícita del usuario, no una reconsideración técnica.
+
+   Para evitar justamente el riesgo que motivó el descarte original, esto
+   NO es un slide por mes (serían hasta 12 pantallas casi idénticas en
+   forma, deslucido comparado con el resto de la historia) — es UNA sola
+   pantalla con una lista compacta de una frase por mes, exactamente lo
+   que pedía el brief original ("no mostrar doce tablas... mostrar
+   solamente pequeñas historias"). Reutiliza `_wrappedCalcularPeriodo`
+   mes a mes — el mismo patrón de loop que ya usa `_wrappedMejorPeorMesAnio`
+   — nunca reimplementa el cálculo de balance/categoría por su cuenta.
+   Omite meses sin ningún ingreso/gasto real (no forzar una frase sobre un
+   mes vacío) y no se muestra si quedan menos de 3 meses con actividad. */
+function _wrappedLineaMes(mes, avgBalance){
+  if(avgBalance !== 0 && mes.balance > avgBalance * 1.4 && mes.balance > 0) return 'Uno de tus mejores meses.';
+  if(mes.balance < 0 || (avgBalance > 0 && mes.balance < avgBalance * 0.5)) return 'Uno de tus meses más ajustados.';
+  // "Sin categoría" es el bucket de gastos SIN `cat` (típicamente pagos de
+  // gasto fijo) — como casi siempre son el gasto más grande del mes, sin
+  // esta excepción "dominaba" casi todos los meses del año con una frase
+  // que no dice nada real (encontrado probando contra un JSON real).
+  if(mes.topCategoria && mes.topCategoria.cat !== 'Sin categoría' && (mes.topCategoria.catShare||0) >= 0.4){
+    return `Dominado por ${escHtml(mes.topCategoria.cat)}.`;
+  }
+  return 'Un mes tranquilo, sin grandes sobresaltos.';
+}
+function _wrappedHistoriasMensuales(S, anioK, mesMax){
+  if(mesMax < 2) return null; // menos de 3 meses posibles: no amerita un repaso mes a mes
+  const meses = [];
+  for(let m=0; m<=mesMax; m++){
+    const mesK = anioK + '-' + String(m+1).padStart(2,'0');
+    const stats = _wrappedCalcularPeriodo(S, 'mes', mesK, anioK);
+    if(stats.totalIngresos > 0 || stats.totalGastos > 0){
+      meses.push({ mesK, balance: stats.balance, topCategoria: stats.topCategoria });
+    }
+  }
+  if(meses.length < 3) return null;
+
+  const avgBalance = meses.reduce((s,m)=>s+m.balance,0) / meses.length;
+  return meses.map(mes => ({ mesK: mes.mesK, balance: mes.balance, linea: _wrappedLineaMes(mes, avgBalance) }));
+}
+
 /* ─── Resumen de crecimiento de patrimonio en el año (número final) ──────
    Mismo criterio que analisis-financiero.md §5: `valorVisible` (sin
    alcancía) y se resta el `montoBase` acumulado para no contar
@@ -782,6 +826,11 @@ function _wrappedInyectarEstilos(){
 .wrapped-sub{font-size:13px;color:var(--text2);line-height:1.55;margin:6px 0 0;}
 .wrapped-bignum{font-family:'DM Mono',monospace;font-weight:700;font-size:clamp(30px,10vw,42px);letter-spacing:-.5px;margin:8px 0 2px;}
 .wrapped-chart-card{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:16px 12px 10px;margin-bottom:16px;}
+.wrapped-mes-lista{width:100%;max-height:280px;overflow-y:auto;text-align:left;margin-top:6px;}
+.wrapped-mes-row{display:flex;justify-content:space-between;gap:10px;padding:9px 4px;border-bottom:1px solid var(--border2);font-size:13px;}
+.wrapped-mes-row:last-child{border-bottom:none;}
+.wrapped-mes-nombre{font-family:'DM Mono',monospace;color:var(--text3);flex-shrink:0;}
+.wrapped-mes-linea{text-align:right;line-height:1.4;}
 .wrapped-cta-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px;}
 .wrapped-cta{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#0a0a0a;border:none;border-radius:999px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;padding:12px 22px;cursor:pointer;}
 .wrapped-cta.ghost{background:transparent;color:var(--text);border:1px solid var(--border2);}
@@ -1346,6 +1395,62 @@ function _wrappedProtagonistas(S, tipo, mesK, anioK){
 
    cada una es su propia revelación en vez de una tarjeta más en la
    lista. */
+/* ─── MOTOR DE SCORING DE INSIGHTS (2026-09-13) ────────────────────────
+   Reabre §6/§32 del brief original: "no mostrar 50 insights aleatorios...
+   crear un sistema de scoring... así el Wrapped se siente curado." Antes
+   de esto, CADA dominio de terceros + CADA "descubrimiento" (gasto
+   random, protagonistas, meta, cambio de hábitos, fases) se mostraba
+   incondicionalmente si existía — un usuario con los 6 módulos de
+   terceros activos + los 5 descubrimientos podía terminar con 11 slides
+   extra, exactamente el "aluvión sin curar" que el brief pedía evitar.
+
+   Solo entran al pool de scoring los datos que PUEDEN acumularse sin
+   límite según cuántos módulos tenga activos el usuario (dominios de
+   terceros + descubrimientos). El "esqueleto" narrativo — intro,
+   patrimonio, categoría del año, vista mensual, mejor/peor mes, gasto
+   más grande, alcancía, racha, personalidad, "si tu año fuera", cierre —
+   NO entra al pool: son como máximo 1 de cada uno, nunca se acumulan, y
+   recortarlos por puntaje debilitaría la promesa central de Wrapped en
+   vez de curarla.
+
+   El puntaje es la SUMA de señales que el propio candidato ya sabe sobre
+   sí mismo (nunca un cálculo nuevo — cada bandera sale de datos que su
+   propia función `_wrappedCalcular*`/`_wrappedFases*` ya devolvió):
+   - `esRecord` (+3): es un extremo real, no un promedio (récord, o ya
+     pasó su propio filtro estadístico — ej. `_wrappedGastoMasRandom` ya
+     exige z-score, así que CUALQUIER resultado suyo es por definición un
+     record local).
+   - `esCambioComportamiento` (+3): es una fase/cambio de hábito, no un
+     dato estático — más "historia", no solo una cifra.
+   - `involucraMeta` (+2): tiene una meta de por medio (más personal que
+     un movimiento suelto).
+   - `involucraPersona` (+1): nombra a alguien — mismo criterio suave de
+     `wrapped.md §7ter` sobre por qué el protagonista se elige por
+     actividad, no al azar.
+   - `intensidad` (0 a 4, capado): qué tan lejos de "lo normal" está este
+     dato para ESTE usuario — reutiliza valores relativos que cada
+     función ya calculó (el `z` de `_wrappedGastoMasRandom`, el `pct` de
+     una meta, la cantidad de personas involucradas), NUNCA un monto fijo
+     en pesos, mismo criterio de todo el archivo. */
+function _wrappedScoreInsight(c){
+  let score = 0;
+  if(c.esRecord) score += 3;
+  if(c.esCambioComportamiento) score += 3;
+  if(c.involucraMeta) score += 2;
+  if(c.involucraPersona) score += 1;
+  if(Number.isFinite(c.intensidad)) score += Math.max(0, Math.min(4, c.intensidad));
+  return score;
+}
+/* Cuántos slides del pool de insights se muestran como máximo — el resto
+   simplemente no se cuenta esta vez (nunca se pierden datos reales de
+   `S`, solo no todos caben en UNA historia de un año sin sentirse
+   inflada). Un número, no una fracción de todos los candidatos posibles,
+   porque el objetivo es un tamaño de historia consistente entre un
+   usuario con 2 módulos activos y uno con los 11 — mismo espíritu que
+   Spotify Wrapped, que no crece sin límite aunque hayas escuchado más
+   artistas. */
+const WRAPPED_MAX_INSIGHTS_POOL = 8;
+
 function _wrappedBuildSlides(S, fmt2){
   const anioK = _wrappedHoy().slice(0,4);
   const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
@@ -1356,6 +1461,7 @@ function _wrappedBuildSlides(S, fmt2){
   const { mejor, peor, promedio, empateMejor, empatePeor } = _wrappedMejorPeorMesAnio(S, anioK);
   const cambioHabitos = _wrappedCambioDeHabitos(S, anioK, mesMax);
   const fasesAnio = _wrappedFasesAnio(S, anioK, mesMax);
+  const historiasMensuales = _wrappedHistoriasMensuales(S, anioK, mesMax);
   const graficoSvg = _wrappedGraficoAnimadoSvg(serie);
 
   let racha = 0;
@@ -1414,23 +1520,19 @@ function _wrappedBuildSlides(S, fmt2){
     }) });
   }
 
-  if(cambioHabitos){
+  if(historiasMensuales){
+    const filas = historiasMensuales.map(m => {
+      const color = m.balance > 0 ? 'var(--accent)' : (m.balance < 0 ? 'var(--red)' : 'var(--text2)');
+      return `<div class="wrapped-mes-row">
+        <span class="wrapped-mes-nombre">${_wrappedMesKaNombre(m.mesK)}</span>
+        <span class="wrapped-mes-linea" style="color:${color};">${m.linea}</span>
+      </div>`;
+    }).join('');
     slides.push({
-      id: 'cambio-habitos',
+      id: 'vista-mensual',
       html: `<div class="wrapped-slide-inner">
-        <div class="wrapped-eyebrow">Cambiaste de hábitos a mitad de año</div>
-        <div class="wrapped-headline">De <b>${escHtml(cambioHabitos.catPrimera)}</b> a <b>${escHtml(cambioHabitos.catSegunda)}</b></div>
-        <div class="wrapped-sub">tu categoría más fuerte pasó de una a otra entre la primera y la segunda mitad del año.</div>
-      </div>`
-    });
-  }
-
-  if(fasesAnio){
-    slides.push({
-      id: 'fases',
-      html: `<div class="wrapped-slide-inner">
-        <div class="wrapped-eyebrow">Tu año tuvo dos etapas</div>
-        <div class="wrapped-sub">${_wrappedCopyFases(fasesAnio)}</div>
+        <div class="wrapped-eyebrow">Este año, mes a mes</div>
+        <div class="wrapped-mes-lista">${filas}</div>
       </div>`
     });
   }
@@ -1469,52 +1571,89 @@ function _wrappedBuildSlides(S, fmt2){
     });
   }
 
+  // ─── Pool de insights con scoring (ver comentario arriba de
+  // `_wrappedScoreInsight`) — cada candidato trae su HTML ya armado más
+  // las banderas para puntuarlo. Se arma la lista completa, se puntúa, se
+  // ordena de mayor a menor, y solo entran los primeros
+  // `WRAPPED_MAX_INSIGHTS_POOL` a la historia final.
+  const candidatosInsights = [];
+
   if(encargosAnio){
-    slides.push({ id:'encargos', html: _wrappedSlideBignum('Plata que te encargaron cuidar', '', encargosAnio.totalEncargado, 'var(--purple)', {
-      sub: _wrappedCopyEncargos(encargosAnio)
-    }) });
+    candidatosInsights.push({
+      involucraPersona: true,
+      intensidad: Math.min(4, encargosAnio.nPersonas),
+      html: _wrappedSlideBignum('Plata que te encargaron cuidar', '', encargosAnio.totalEncargado, 'var(--purple)', {
+        sub: _wrappedCopyEncargos(encargosAnio)
+      })
+    });
   }
 
   if(prestadoAnio && prestadoAnio.totalPrestado > 0){
-    slides.push({ id:'prestado', html: _wrappedSlideBignum('Le prestaste a otros', '', prestadoAnio.totalPrestado, 'var(--blue)', {
-      sub: _wrappedCopyPrestado(prestadoAnio)
-    }) });
+    candidatosInsights.push({
+      involucraPersona: true,
+      esRecord: !!prestadoAnio.topDeudor,
+      intensidad: prestadoAnio.totalDevuelto > 0 ? 2 : 1,
+      html: _wrappedSlideBignum('Le prestaste a otros', '', prestadoAnio.totalPrestado, 'var(--blue)', {
+        sub: _wrappedCopyPrestado(prestadoAnio)
+      })
+    });
   }
 
   if(misDeudasAnio && misDeudasAnio.totalRecibido > 0){
-    slides.push({ id:'me-prestaron', html: _wrappedSlideBignum('Te prestaron a vos', '', misDeudasAnio.totalRecibido, 'var(--blue)', {
-      sub: _wrappedCopyMisDeudas(misDeudasAnio)
-    }) });
+    candidatosInsights.push({
+      intensidad: 1,
+      html: _wrappedSlideBignum('Te prestaron a vos', '', misDeudasAnio.totalRecibido, 'var(--blue)', {
+        sub: _wrappedCopyMisDeudas(misDeudasAnio)
+      })
+    });
   }
 
   if(mesadaAnio){
-    slides.push({ id:'mesada', html: _wrappedSlideBignum('Tu mesada del año', '', mesadaAnio.total, 'var(--accent)', {
-      sub: _wrappedCopyMesada(mesadaAnio)
-    }) });
+    candidatosInsights.push({
+      intensidad: 1, // es un ingreso esperado y recurrente, no una sorpresa
+      html: _wrappedSlideBignum('Tu mesada del año', '', mesadaAnio.total, 'var(--accent)', {
+        sub: _wrappedCopyMesada(mesadaAnio)
+      })
+    });
   }
 
   if(spotifyAnio){
     const color = spotifyAnio.balance >= 0 ? 'var(--accent)' : 'var(--red)';
-    slides.push({ id:'spotify', html: _wrappedSlideBignum('Administrar Spotify te dejó', '', spotifyAnio.balance, color, {
-      signed: true, sub: _wrappedCopySpotify(spotifyAnio)
-    }) });
+    candidatosInsights.push({
+      involucraPersona: true,
+      esRecord: spotifyAnio.balance !== 0,
+      intensidad: 2,
+      html: _wrappedSlideBignum('Administrar Spotify te dejó', '', spotifyAnio.balance, color, {
+        signed: true, sub: _wrappedCopySpotify(spotifyAnio)
+      })
+    });
   }
 
   if(comprometidaAnio){
-    slides.push({ id:'comprometida', html: _wrappedSlideBignum('Plata comprometida que llegó', '', comprometidaAnio.total, 'var(--amber)', {
-      sub: _wrappedCopyComprometida(comprometidaAnio)
-    }) });
+    candidatosInsights.push({
+      esRecord: true, // ya pasó el filtro de `recibido:true` — es un evento real, no un promedio
+      intensidad: 2,
+      html: _wrappedSlideBignum('Plata comprometida que llegó', '', comprometidaAnio.total, 'var(--amber)', {
+        sub: _wrappedCopyComprometida(comprometidaAnio)
+      })
+    });
   }
 
   if(metaCajita){
-    slides.push({ id:'meta', html: _wrappedSlideBignum(`Tu meta "${escHtml(metaCajita.nombre)}"`, '', metaCajita.prog.pct, 'var(--accent)', {
-      sufijo: '%', sub: _wrappedCopyMeta(metaCajita)
-    }) });
+    candidatosInsights.push({
+      involucraMeta: true,
+      esRecord: metaCajita.prog.pct >= 100,
+      intensidad: metaCajita.prog.pct >= 100 ? 4 : 2,
+      html: _wrappedSlideBignum(`Tu meta "${escHtml(metaCajita.nombre)}"`, '', metaCajita.prog.pct, 'var(--accent)', {
+        sufijo: '%', sub: _wrappedCopyMeta(metaCajita)
+      })
+    });
   }
 
   if(gastoRandom){
-    slides.push({
-      id: 'gasto-random',
+    candidatosInsights.push({
+      esRecord: true, // ya pasó el propio filtro de z-score de `_wrappedGastoMasRandom`
+      intensidad: gastoRandom.z, // reutiliza el mismo z ya calculado, nunca uno nuevo
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">Premio al gasto más inesperado</div>
         <div class="wrapped-headline">🏆 ${escHtml(gastoRandom.desc)}</div>
@@ -1526,8 +1665,9 @@ function _wrappedBuildSlides(S, fmt2){
 
   if(protagonistas && protagonistas.top && protagonistas.top.n >= 3){
     const nombre = _wrappedNombrePersona(protagonistas.top.personaId, protagonistas.top.nombre);
-    slides.push({
-      id: 'protagonistas',
+    candidatosInsights.push({
+      involucraPersona: true,
+      intensidad: Math.min(4, protagonistas.top.n / 5),
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">Tu protagonista del año</div>
         <div class="wrapped-headline">${nombre}</div>
@@ -1535,6 +1675,35 @@ function _wrappedBuildSlides(S, fmt2){
       </div>`
     });
   }
+
+  if(cambioHabitos){
+    candidatosInsights.push({
+      esCambioComportamiento: true,
+      intensidad: 3,
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Cambiaste de hábitos a mitad de año</div>
+        <div class="wrapped-headline">De <b>${escHtml(cambioHabitos.catPrimera)}</b> a <b>${escHtml(cambioHabitos.catSegunda)}</b></div>
+        <div class="wrapped-sub">tu categoría más fuerte pasó de una a otra entre la primera y la segunda mitad del año.</div>
+      </div>`
+    });
+  }
+
+  if(fasesAnio){
+    candidatosInsights.push({
+      esCambioComportamiento: true,
+      intensidad: 3,
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Tu año tuvo dos etapas</div>
+        <div class="wrapped-sub">${_wrappedCopyFases(fasesAnio)}</div>
+      </div>`
+    });
+  }
+
+  candidatosInsights
+    .map(c => ({ ...c, score: _wrappedScoreInsight(c) }))
+    .sort((a,b) => b.score - a.score) // sort estable: empates conservan el orden en que se agregaron arriba
+    .slice(0, WRAPPED_MAX_INSIGHTS_POOL)
+    .forEach((c, i) => slides.push({ id: 'insight-' + i, html: c.html }));
 
   if(personalidad){
     slides.push({
@@ -1819,7 +1988,10 @@ window._wrappedInternals = {
   _wrappedCambioFuerte,
   _wrappedFasesAnio,
   _wrappedCopyFases,
-  _wrappedSiTuAnioFuera
+  _wrappedSiTuAnioFuera,
+  _wrappedHistoriasMensuales,
+  _wrappedLineaMes,
+  _wrappedScoreInsight
 };
 
 })();

@@ -554,9 +554,11 @@ function _wrappedCopyGasto(gastoMasGrande, avgGasto){
   const mesTxt = gastoMasGrande.fecha ? _wrappedMesKaNombre(gastoMasGrande.fecha.slice(0,7)) : null;
   let intensidad;
   if(avgGasto > 0 && gastoMasGrande.monto >= avgGasto * 5){
-    intensidad = 'muchísimo más grande que cualquiera de tus otros gastos del año.';
+    const veces = Math.round(gastoMasGrande.monto / avgGasto);
+    intensidad = `${veces} veces más grande que tu gasto promedio — muchísimo más que cualquiera de tus otros gastos del año.`;
   } else if(avgGasto > 0 && gastoMasGrande.monto >= avgGasto * 2){
-    intensidad = 'bastante más grande que tu gasto típico.';
+    const veces = (gastoMasGrande.monto / avgGasto).toFixed(1).replace(/\.0$/,'');
+    intensidad = `${veces} veces tu gasto típico.`;
   } else {
     intensidad = 'el que más te costó este año.';
   }
@@ -924,6 +926,34 @@ function _wrappedCopyFases(f){
   return f.direccion === 'crecio'
     ? 'Tu año tuvo dos etapas: empezaste tranquilo y en la segunda mitad te volviste banco de varias personas.'
     : 'Tu año tuvo dos etapas: prestaste bastante al principio y en la segunda mitad frenaste.';
+}
+
+/* ─── "SI TU AÑO FUERA UNA PELÍCULA" (2026-09-13) ──────────────────────
+   Puramente decorativo — no calcula NADA nuevo, solo le pone una frase a
+   señales que este archivo ya calculó para otros slides (fases, cambio
+   de hábitos, racha, patrimonio). Reglas deterministas en orden de más
+   específico a más genérico, mismo criterio que `_wrappedPersonalidad`.
+   Nunca inventa un evento que no esté respaldado por esas señales —
+   el fallback genérico es deliberadamente aburrido en vez de forzar un
+   dato que no existe (§33 del pedido original). */
+function _wrappedSiTuAnioFuera(ctx){
+  const { fasesAnio, cambioHabitos, racha, patrimonio } = ctx;
+  if(fasesAnio && fasesAnio.tipo === 'ahorro' && fasesAnio.direccion === 'crecio'){
+    return 'Sería una de crecimiento, con un giro a mitad de año: el momento en que le agarraste el gusto a ahorrar.';
+  }
+  if(fasesAnio && fasesAnio.tipo === 'prestamo' && fasesAnio.direccion === 'crecio'){
+    return 'Sería una donde el protagonista termina manejando más plata ajena de la que esperaba al principio.';
+  }
+  if(cambioHabitos){
+    return `Tendría un giro de guion a mitad de año: empezó siendo de ${escHtml(cambioHabitos.catPrimera)} y terminó siendo de ${escHtml(cambioHabitos.catSegunda)}.`;
+  }
+  if(racha >= 4){
+    return 'Sería sobre disciplina silenciosa — el personaje que no falla ni un capítulo.';
+  }
+  if(patrimonio && Number.isFinite(patrimonio.diff) && patrimonio.diff > 0){
+    return 'De las que terminan mejor de lo que empezaron, sin necesitar un clímax dramático para lograrlo.';
+  }
+  return 'De las que no tienen gran clímax, pero tampoco fueron aburridas.';
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1532,6 +1562,19 @@ function _wrappedBuildSlides(S, fmt2){
 
   const lineaCierre = _wrappedCopyCierre({ anioK, patrimonio, racha, s, gastoMasGrande: s.gastoMasGrande });
 
+  // "Si tu año fuera una película" siempre tiene ALGO que decir (hasta su
+  // fallback es una frase honesta, no una inventada) — por eso se agrega
+  // DESPUÉS de la guarda `huboAlgo`: si no hubo ningún dato real este año,
+  // no debe ser esta frase decorativa la que rompa el estado vacío de
+  // "Todavía no hay mucho que contar".
+  slides.push({
+    id: 'si-tu-anio-fuera',
+    html: `<div class="wrapped-slide-inner">
+      <div class="wrapped-eyebrow">Si tu año financiero fuera una película...</div>
+      <div class="wrapped-sub">${_wrappedSiTuAnioFuera({ fasesAnio, cambioHabitos, racha, patrimonio })}</div>
+    </div>`
+  });
+
   slides.push({
     id: 'cierre',
     confetti: true,
@@ -1775,7 +1818,8 @@ window._wrappedInternals = {
   _wrappedCorteMitadAnio,
   _wrappedCambioFuerte,
   _wrappedFasesAnio,
-  _wrappedCopyFases
+  _wrappedCopyFases,
+  _wrappedSiTuAnioFuera
 };
 
 })();

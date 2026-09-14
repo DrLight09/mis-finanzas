@@ -553,53 +553,188 @@ function _wrappedMesKaAbrev(mesK){
    duplicados de Análisis financiero). Solo deciden *cómo contarlo*.
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* ─── BANCO DE FRASES ("banco de ideas", 2026-09-14) ────────────────────
+   Extiende el sistema de copy contextual de §7 sin contradecirlo: la
+   rama que aplica (leve/fuerte/extremo, etc.) sigue eligiéndose por una
+   señal real de los datos, exactamente igual que antes — eso es lo que
+   carga información de verdad y wrapped.md §7 explícitamente decidió NO
+   reemplazar por un sorteo. Lo único que agrega esta capa es variedad de
+   REDACCIÓN dentro de cada rama: antes, caer en "patrimonio subió
+   fuerte" siempre mostraba la misma oración exacta, año tras año. Ahora
+   cada rama tiene 2-4 formas de decir lo mismo y se elige una.
+
+   La elección es determinista, no un `Math.random()` suelto (rompería
+   la regla de "sin estado nuevo" de §3 si alguna vez hiciera falta
+   reproducir el mismo resumen, ej. al generar una tarjeta para
+   compartir): la semilla sale de `s.totalIngresos`/`s.totalGastos` y el
+   patrimonio del año — los mismos totales que `_wrappedCalcularPeriodo`
+   ya calcula solo para uso interno (§3), nunca mostrados en pantalla.
+   Mismos datos → mismas frases (no se siente "con bug" al tocar "Ver de
+   nuevo"); otro año o otro usuario → frases distintas. Dentro de una
+   misma apertura se evita repetir la frase exacta en dos slides
+   distintos (`_wrappedFrasesUsadas`). Ver `_wrappedIniciarBanco`,
+   llamada una vez al principio de `_wrappedBuildSlides`. */
+let _wrappedBankSeed = '';
+let _wrappedFrasesUsadas = null;
+
+function _wrappedHashStr(str){
+  let h = 0;
+  for(let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+/* Generador determinista simple (Park-Miller) — alcanza para elegir
+   entre un puñado de frases, no hace falta nada más sofisticado. */
+function _wrappedSeededRandom(seed){
+  let s = seed % 2147483647;
+  if(s <= 0) s += 2147483646;
+  return function(){
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+function _wrappedIniciarBanco(seedBase){
+  _wrappedBankSeed = String(seedBase);
+  _wrappedFrasesUsadas = new Set();
+}
+/* `disambiguador` es opcional — agrega entropía propia del dato en
+   cuestión (ej. el mes, el nombre de la categoría o de la persona) para
+   que dos claves distintas con el mismo `_wrappedBankSeed` no terminen
+   sincronizadas en la misma posición del arreglo por casualidad. */
+function _wrappedBankPick(key, opciones, disambiguador){
+  if(!opciones || opciones.length === 0) return '';
+  if(opciones.length === 1) return opciones[0];
+  const rand = _wrappedSeededRandom(_wrappedHashStr(_wrappedBankSeed + '|' + key + '|' + (disambiguador||'')) || 1);
+  let elegido, intentos = 0;
+  do {
+    elegido = opciones[Math.floor(rand() * opciones.length)];
+    intentos++;
+  } while(_wrappedFrasesUsadas && _wrappedFrasesUsadas.has(elegido) && intentos < 8);
+  if(_wrappedFrasesUsadas) _wrappedFrasesUsadas.add(elegido);
+  return elegido;
+}
+
 function _wrappedCopyPatrimonio(patrimonio){
   const { diff, pct } = patrimonio;
   if(pct === null){
-    return `tu patrimonio ${diff>=0?'creció':'bajó'} este año.`;
+    return diff >= 0
+      ? _wrappedBankPick('patrimonio-sinBase-sube', [
+          'tu patrimonio creció este año.',
+          'tu patrimonio terminó más arriba de donde empezó.',
+          'este año tu patrimonio fue para arriba.',
+        ])
+      : _wrappedBankPick('patrimonio-sinBase-baja', [
+          'tu patrimonio bajó este año.',
+          'tu patrimonio terminó más abajo de donde empezó.',
+          'este año tu patrimonio fue para abajo.',
+        ]);
   }
   const pctTxt = Math.abs(Math.round(pct));
   if(diff >= 0){
-    if(pct >= 50)  return `fue un año grande: tu patrimonio subió +${pctTxt}%.`;
-    if(pct >= 15)  return `tu patrimonio creció con fuerza este año (+${pctTxt}%).`;
-    return `tu patrimonio subió un poco este año (+${pctTxt}%).`;
+    if(pct >= 50) return _wrappedBankPick('patrimonio-fuerte', [
+      `fue un año grande: tu patrimonio subió +${pctTxt}%.`,
+      `+${pctTxt}%. Este año tu patrimonio jugó en otra liga.`,
+      `tu patrimonio casi se ${pct>=90?'duplicó':'redondeó'} este año (+${pctTxt}%).`,
+      `pocas veces un año rinde +${pctTxt}% — este fue de esos.`,
+    ]);
+    if(pct >= 15) return _wrappedBankPick('patrimonio-medio', [
+      `tu patrimonio creció con fuerza este año (+${pctTxt}%).`,
+      `+${pctTxt}% de crecimiento — nada de qué quejarse.`,
+      `este año tu plata trabajó de verdad (+${pctTxt}%).`,
+    ]);
+    return _wrappedBankPick('patrimonio-leve', [
+      `tu patrimonio subió un poco este año (+${pctTxt}%).`,
+      `+${pctTxt}%, sin hacer ruido pero yendo para arriba.`,
+      `no fue un año explosivo, pero tu patrimonio sí subió (+${pctTxt}%).`,
+    ]);
   }
-  if(pct <= -25) return `este año le exigiste bastante al bolsillo (-${pctTxt}%).`;
-  return `tu patrimonio bajó un poco este año (-${pctTxt}%).`;
+  if(pct <= -25) return _wrappedBankPick('patrimonio-cayoFuerte', [
+    `este año le exigiste bastante al bolsillo (-${pctTxt}%).`,
+    `-${pctTxt}%. Este año pesó, y se nota.`,
+    `no fue un año fácil para tu patrimonio (-${pctTxt}%).`,
+  ]);
+  return _wrappedBankPick('patrimonio-cayoLeve', [
+    `tu patrimonio bajó un poco este año (-${pctTxt}%).`,
+    `-${pctTxt}%, sin ser dramático.`,
+    `bajó un poco, nada que no se recupere (-${pctTxt}%).`,
+  ]);
 }
 
 function _wrappedCopyCategoria(topCategoria){
   const share = topCategoria.catShare || 0;
   let base;
-  if(share >= 0.4) base = `Le diste con todo a esta categoría — fue, por lejos, la que más plata se llevó.`;
-  else if(share >= 0.2) base = `Fue la que más plata se llevó este año.`;
-  else base = `Fue la categoría donde más gastaste este año.`;
+  if(share >= 0.4) base = _wrappedBankPick('categoria-dominante', [
+    'Le diste con todo a esta categoría — fue, por lejos, la que más plata se llevó.',
+    'Esta categoría no tuvo competencia real este año.',
+    'Ganó por goleada: ninguna otra categoría se le acercó.',
+  ], topCategoria.cat);
+  else if(share >= 0.2) base = _wrappedBankPick('categoria-fuerte', [
+    'Fue la que más plata se llevó este año.',
+    'Se llevó la mayor tajada de tu gasto.',
+    'Ninguna otra categoría gastó tanto como esta.',
+  ], topCategoria.cat);
+  else base = _wrappedBankPick('categoria-normal', [
+    'Fue la categoría donde más gastaste este año.',
+    'De todas, esta fue la que más te costó.',
+    'La que más veces vio salir tu plata.',
+  ], topCategoria.cat);
   // Si la categoría que más se REPITIÓ es otra distinta a la que más
   // plata consumió (ver `_wrappedTopCategoriaDe`), vale la pena
   // mencionarlo — "gastaste más en viajes, pero mercado fue con la que
   // más veces pagaste" cuenta una historia distinta a solo el monto.
   if(topCategoria.topPorFrecuencia){
-    base += ` Aunque la que más se repitió fue ${escHtml(topCategoria.topPorFrecuencia.cat)}.`;
+    base += ' ' + _wrappedBankPick('categoria-frecuencia', [
+      `Aunque la que más se repitió fue ${escHtml(topCategoria.topPorFrecuencia.cat)}.`,
+      `Eso sí — la que más veces pagaste fue ${escHtml(topCategoria.topPorFrecuencia.cat)}.`,
+      `Frecuencia y monto no coincidieron: la más repetida fue ${escHtml(topCategoria.topPorFrecuencia.cat)}.`,
+    ], topCategoria.topPorFrecuencia.cat);
   }
   return base;
 }
 
 function _wrappedCopyMejorMes(mejor, promedio, empate){
-  if(empate) return 'empatado con otro mes — los dos fueron tu mejor resultado del año.';
+  if(empate) return _wrappedBankPick('mejorMes-empate', [
+    'empatado con otro mes — los dos fueron tu mejor resultado del año.',
+    'no hubo un solo ganador: este mes empató el primer lugar.',
+  ], mejor.mesK);
   if(promedio !== null && promedio > 0 && mejor.balance > promedio * 1.5){
-    return 'muy por encima de tu ritmo normal.';
+    return _wrappedBankPick('mejorMes-lejos', [
+      'muy por encima de tu ritmo normal.',
+      'se salió por completo de tu promedio — para bien.',
+      'nada que ver con un mes cualquiera.',
+    ], mejor.mesK);
   }
-  if(mejor.balance > 0) return 'tu mes con mejor resultado del año.';
-  return 'el menos difícil de todos — que también cuenta.';
+  if(mejor.balance > 0) return _wrappedBankPick('mejorMes-positivo', [
+    'tu mes con mejor resultado del año.',
+    'el mes que más plata te dejó.',
+    'el que se lleva la corona este año.',
+  ], mejor.mesK);
+  return _wrappedBankPick('mejorMes-menosMalo', [
+    'el menos difícil de todos — que también cuenta.',
+    'no fue positivo, pero fue el que menos dolió.',
+  ], mejor.mesK);
 }
 
 function _wrappedCopyPeorMes(peor, promedio, empate){
-  if(empate) return 'empatado con otro mes — ninguno de los dos fue fácil.';
-  if(peor.balance >= 0) return 'y ni en tu peor mes te fue mal.';
+  if(empate) return _wrappedBankPick('peorMes-empate', [
+    'empatado con otro mes — ninguno de los dos fue fácil.',
+    'dos meses se pelearon el último lugar.',
+  ], peor.mesK);
+  if(peor.balance >= 0) return _wrappedBankPick('peorMes-noTanMal', [
+    'y ni en tu peor mes te fue mal.',
+    'el "peor" mes del año y aun así cerró positivo.',
+    'hasta tu mes más flojo se mantuvo en verde.',
+  ], peor.mesK);
   if(promedio !== null && promedio > 0 && peor.balance < promedio * -0.5){
-    return 'se salió bastante de tu ritmo normal.';
+    return _wrappedBankPick('peorMes-lejos', [
+      'se salió bastante de tu ritmo normal.',
+      'nada que ver con cómo te fue el resto del año.',
+    ], peor.mesK);
   }
-  return 'tu mes más ajustado del año.';
+  return _wrappedBankPick('peorMes-normal', [
+    'tu mes más ajustado del año.',
+    'el que más apretó el bolsillo.',
+    'el mes que costó un poco más sostener.',
+  ], peor.mesK);
 }
 
 /* Contextualiza el gasto más grande: en qué mes fue y qué tan grande fue
@@ -611,87 +746,187 @@ function _wrappedCopyGasto(gastoMasGrande, avgGasto){
   let intensidad;
   if(avgGasto > 0 && gastoMasGrande.monto >= avgGasto * 5){
     const veces = Math.round(gastoMasGrande.monto / avgGasto);
-    intensidad = `${veces} veces más grande que tu gasto promedio — muchísimo más que cualquiera de tus otros gastos del año.`;
+    intensidad = _wrappedBankPick('gasto-extremo', [
+      `${veces} veces más grande que tu gasto promedio — muchísimo más que cualquiera de tus otros gastos del año.`,
+      `${veces} veces tu gasto típico. En otra categoría, literalmente.`,
+      `nada se le acerca: ${veces} veces por encima de lo que gastás normalmente.`,
+    ], gastoMasGrande.desc);
   } else if(avgGasto > 0 && gastoMasGrande.monto >= avgGasto * 2){
     const veces = (gastoMasGrande.monto / avgGasto).toFixed(1).replace(/\.0$/,'');
-    intensidad = `${veces} veces tu gasto típico.`;
+    intensidad = _wrappedBankPick('gasto-alto', [
+      `${veces} veces tu gasto típico.`,
+      `${veces} veces más de lo que gastás normalmente.`,
+    ], gastoMasGrande.desc);
   } else {
-    intensidad = 'el que más te costó este año.';
+    intensidad = _wrappedBankPick('gasto-normal', [
+      'el que más te costó este año.',
+      'tu gasto más grande del año, sin más vueltas.',
+    ], gastoMasGrande.desc);
   }
-  return mesTxt ? `Pasó en ${mesTxt} — ${intensidad}` : intensidad.charAt(0).toUpperCase() + intensidad.slice(1);
+  if(!mesTxt) return intensidad.charAt(0).toUpperCase() + intensidad.slice(1);
+  return _wrappedBankPick('gasto-conector', [
+    `Pasó en ${mesTxt} — ${intensidad}`,
+    `Fue en ${mesTxt}: ${intensidad}`,
+    `${mesTxt} se llevó el título — ${intensidad}`,
+  ], mesTxt);
 }
 
 function _wrappedCopyAlcancia(alcanciaPeriodo, gastoMasGrande){
   if(gastoMasGrande && alcanciaPeriodo >= gastoMasGrande.monto){
     const descSeguro = gastoMasGrande.desc ? escHtml(gastoMasGrande.desc) : null;
-    return `Eso es más de lo que gastaste en ${descSeguro ? '"'+descSeguro+'"' : 'tu gasto más grande'}, tu compra más grande del año.`;
+    const gastoTxt = descSeguro ? '"'+descSeguro+'"' : 'tu gasto más grande';
+    return _wrappedBankPick('alcancia-superaGasto', [
+      `Eso es más de lo que gastaste en ${gastoTxt}, tu compra más grande del año.`,
+      `Ahorraste más de lo que costó ${gastoTxt} — tu gasto más grande del año.`,
+      `Sí: guardaste más plata de la que se fue en ${gastoTxt}.`,
+    ], gastoMasGrande.desc);
   }
-  return 'una plata que, sin la Alcancía, seguramente ni hubieras notado que tenías.';
+  return _wrappedBankPick('alcancia-generica', [
+    'una plata que, sin la Alcancía, seguramente ni hubieras notado que tenías.',
+    'plata que se fue guardando sin que la extrañaras.',
+    'ahorro que pasó casi desapercibido, pero ahí está.',
+  ]);
 }
 
 function _wrappedCopyRacha(racha){
-  if(racha >= 6) return `Eso ya no es suerte, es una costumbre.`;
-  if(racha >= 4) return 'vas agarrando el ritmo.';
-  return 'cada una ahorrando más que la anterior.';
+  if(racha >= 6) return _wrappedBankPick('racha-larga', [
+    'Eso ya no es suerte, es una costumbre.',
+    'A esta altura, ya es un hábito instalado.',
+    'Ya no es racha, es tu forma de ahorrar.',
+  ], racha);
+  if(racha >= 4) return _wrappedBankPick('racha-media', [
+    'vas agarrando el ritmo.',
+    'ya le encontraste la vuelta.',
+  ], racha);
+  return _wrappedBankPick('racha-corta', [
+    'cada una ahorrando más que la anterior.',
+    'un buen comienzo de racha.',
+  ], racha);
 }
 
 /* Línea de cierre: se arma en base a "señales" (candidatas, con
    prioridad) derivadas de lo que ya se calculó para el resto de la
    historia — se elige la primera que aplique, nunca al azar, para que el
-   cierre siempre hable de lo más notable que realmente pasó ese año. */
+   cierre siempre hable de lo más notable que realmente pasó ese año.
+   Dentro de la señal elegida sí hay banco de variantes (ver cabecera de
+   sección), igual que el resto del sistema de copy. */
 function _wrappedCopyCierre(ctx){
   const { anioK, patrimonio, racha, s, gastoMasGrande } = ctx;
 
   if(patrimonio && patrimonio.pct !== null && patrimonio.pct >= 50){
-    return `¿${anioK}? El año en que tu patrimonio casi se duplicó.`;
+    return _wrappedBankPick('cierre-patrimonioFuerte', [
+      `¿${anioK}? El año en que tu patrimonio casi se duplicó.`,
+      `${anioK} en una línea: tu patrimonio se disparó.`,
+      `El año en que tu plata dio un salto grande. Eso fue ${anioK}.`,
+    ], anioK);
   }
   if(racha >= 4){
-    return `${anioK} fue el año de la racha: ${racha} alcancías seguidas mejorando.`;
+    return _wrappedBankPick('cierre-racha', [
+      `${anioK} fue el año de la racha: ${racha} alcancías seguidas mejorando.`,
+      `${racha} alcancías seguidas — así se resume tu ${anioK}.`,
+    ], anioK);
   }
   if(patrimonio && patrimonio.pct !== null && patrimonio.pct <= -25){
-    return `${anioK} no fue el año de acumular. Fue el año de sostener — y eso también cuenta.`;
+    return _wrappedBankPick('cierre-patrimonioCayo', [
+      `${anioK} no fue el año de acumular. Fue el año de sostener — y eso también cuenta.`,
+      `${anioK} pesó, pero seguiste de pie.`,
+    ], anioK);
   }
   if(s.alcanciaPeriodo > 0 && gastoMasGrande && s.alcanciaPeriodo >= gastoMasGrande.monto){
-    return `${anioK}: el año en que ahorraste más de lo que gastaste en tu compra más grande.`;
+    return _wrappedBankPick('cierre-ahorroSuperaGasto', [
+      `${anioK}: el año en que ahorraste más de lo que gastaste en tu compra más grande.`,
+      `${anioK}, resumido: guardaste más de lo que gastaste en grande.`,
+    ], anioK);
   }
   if(s.topCategoria && (s.topCategoria.catShare||0) >= 0.4){
-    return `${anioK}, resumido en una palabra: ${escHtml(s.topCategoria.cat)}.`;
+    return _wrappedBankPick('cierre-categoria', [
+      `${anioK}, resumido en una palabra: ${escHtml(s.topCategoria.cat)}.`,
+      `Si ${anioK} fuera una palabra, sería ${escHtml(s.topCategoria.cat)}.`,
+    ], anioK + s.topCategoria.cat);
   }
-  return `Eso fue ${anioK}. Nos vemos el año que viene.`;
+  return _wrappedBankPick('cierre-generico', [
+    `Eso fue ${anioK}. Nos vemos el año que viene.`,
+    `${anioK}, en el archivo. Hasta el próximo resumen.`,
+    `Ese fue tu ${anioK}. Gracias por seguir registrando.`,
+  ], anioK);
 }
 
 /* Copy de los dominios "de terceros" — mismo criterio que el resto del
    sistema de copy: solo eligen el tono, nunca recalculan nada. */
 function _wrappedCopyEncargos(e){
-  if(e.nPersonas > 1) return `Repartida entre ${e.nPersonas} personas que confiaron en vos para guardarla.`;
-  if(e.topEncargo && e.topEncargo.nombre) return `La mayor parte te la encargó ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}.`;
-  return 'Plata ajena que pasó por tus manos este año.';
+  if(e.nPersonas > 1) return _wrappedBankPick('encargos-varias', [
+    `Repartida entre ${e.nPersonas} personas que confiaron en vos para guardarla.`,
+    `${e.nPersonas} personas te encargaron su plata este año.`,
+  ], e.nPersonas);
+  if(e.topEncargo && e.topEncargo.nombre) return _wrappedBankPick('encargos-una', [
+    `La mayor parte te la encargó ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}.`,
+    `Fue ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)} quien más confió en vos para guardarle plata.`,
+  ], e.topEncargo.nombre);
+  return _wrappedBankPick('encargos-generica', [
+    'Plata ajena que pasó por tus manos este año.',
+    'Este año también cuidaste plata que no era tuya.',
+  ]);
 }
 function _wrappedCopyPrestado(p){
-  if(p.topDeudor && p.topDeudor.nombre){
-    return `A ${_wrappedNombrePersona(p.topDeudor.personaId, p.topDeudor.nombre)} fue a quien más le prestaste.`;
-  }
-  if(p.totalDevuelto >= p.totalPrestado && p.totalDevuelto > 0) return 'Y este año te pagaron más de lo que prestaste.';
-  return 'Plata que le diste una mano a alguien más.';
+  if(p.topDeudor && p.topDeudor.nombre) return _wrappedBankPick('prestado-topDeudor', [
+    `A ${_wrappedNombrePersona(p.topDeudor.personaId, p.topDeudor.nombre)} fue a quien más le prestaste.`,
+    `${_wrappedNombrePersona(p.topDeudor.personaId, p.topDeudor.nombre)} fue tu cliente más grande del año.`,
+  ], p.topDeudor.nombre);
+  if(p.totalDevuelto >= p.totalPrestado && p.totalDevuelto > 0) return _wrappedBankPick('prestado-cobradoTodo', [
+    'Y este año te pagaron más de lo que prestaste.',
+    'Y salieron las cuentas: te devolvieron más de lo que prestaste.',
+  ]);
+  return _wrappedBankPick('prestado-generica', [
+    'Plata que le diste una mano a alguien más.',
+    'Este año le tendiste la mano a alguien con plata.',
+  ]);
 }
 function _wrappedCopyMisDeudas(m){
-  if(m.totalPagado >= m.totalRecibido && m.totalPagado > 0) return 'Y este año pagaste más de lo que te prestaron.';
-  return 'Plata que alguien más te prestó a vos.';
+  if(m.totalPagado >= m.totalRecibido && m.totalPagado > 0) return _wrappedBankPick('misDeudas-pagoTodo', [
+    'Y este año pagaste más de lo que te prestaron.',
+    'Cuentas saldadas: pagaste más de lo que te prestaron.',
+  ]);
+  return _wrappedBankPick('misDeudas-generica', [
+    'Plata que alguien más te prestó a vos.',
+    'Este año también recibiste una mano de alguien.',
+  ]);
 }
 function _wrappedCopyMesada(m){
   const partes = [];
   if(m.porPadre.papa) partes.push('papá');
   if(m.porPadre.mama) partes.push('mamá');
-  return partes.length === 2 ? 'Entre papá y mamá, sin faltar un mes.' : `De parte de ${partes[0]}.`;
+  if(partes.length === 2) return _wrappedBankPick('mesada-ambos', [
+    'Entre papá y mamá, sin faltar un mes.',
+    'Papá y mamá, mes tras mes, sin fallar.',
+  ]);
+  return _wrappedBankPick('mesada-uno', [
+    `De parte de ${partes[0]}.`,
+    `${partes[0].charAt(0).toUpperCase()+partes[0].slice(1)} no falló ni un mes.`,
+  ], partes[0]);
 }
 function _wrappedCopySpotify(s){
-  if(s.balance > 0) return 'Administrar la cuenta te dejó plata a favor este año.';
-  if(s.balance < 0) return 'Este año pusiste algo de tu bolsillo para cubrir la cuenta.';
-  return 'Cobraste y pagaste el plan, sin ganar ni perder.';
+  if(s.balance > 0) return _wrappedBankPick('spotify-favor', [
+    'Administrar la cuenta te dejó plata a favor este año.',
+    'Cobraste más de lo que pagaste por la cuenta compartida.',
+  ]);
+  if(s.balance < 0) return _wrappedBankPick('spotify-contra', [
+    'Este año pusiste algo de tu bolsillo para cubrir la cuenta.',
+    'Este año la cuenta te costó un poco de tu propio bolsillo.',
+  ]);
+  return _wrappedBankPick('spotify-parejo', [
+    'Cobraste y pagaste el plan, sin ganar ni perder.',
+    'La cuenta quedó exactamente pareja este año.',
+  ]);
 }
 function _wrappedCopyComprometida(c){
-  if(c.topItem && c.topItem.desc) return `La más grande fue "${escHtml(c.topItem.desc)}".`;
-  return 'Plata que estabas esperando y por fin llegó.';
+  if(c.topItem && c.topItem.desc) return _wrappedBankPick('comprometida-item', [
+    `La más grande fue "${escHtml(c.topItem.desc)}".`,
+    `Nada le ganó a "${escHtml(c.topItem.desc)}" este año.`,
+  ], c.topItem.desc);
+  return _wrappedBankPick('comprometida-generica', [
+    'Plata que estabas esperando y por fin llegó.',
+    'Plata comprometida que finalmente cayó este año.',
+  ]);
 }
 
 /* ─── RENDER: gráfico de línea animado (SVG) ──────────────────────────────
@@ -996,13 +1231,21 @@ function _wrappedFasesAnio(S, anioK, mesMax){
 }
 function _wrappedCopyFases(f){
   if(f.tipo === 'ahorro'){
-    return f.direccion === 'crecio'
-      ? 'Tu año tuvo dos etapas: empezaste ahorrando poco y en la segunda mitad le metiste mucho más a la alcancía.'
-      : 'Tu año tuvo dos etapas: arrancaste ahorrando fuerte y en la segunda mitad bajaste el ritmo.';
+    return f.direccion === 'crecio' ? _wrappedBankPick('fases-ahorroSubio', [
+      'Tu año tuvo dos etapas: empezaste ahorrando poco y en la segunda mitad le metiste mucho más a la alcancía.',
+      'Tu año tuvo un antes y un después: el ahorro se disparó en la segunda mitad.',
+    ]) : _wrappedBankPick('fases-ahorroBajo', [
+      'Tu año tuvo dos etapas: arrancaste ahorrando fuerte y en la segunda mitad bajaste el ritmo.',
+      'Tu año tuvo un antes y un después: el ahorro se frenó en la segunda mitad.',
+    ]);
   }
-  return f.direccion === 'crecio'
-    ? 'Tu año tuvo dos etapas: empezaste tranquilo y en la segunda mitad te volviste banco de varias personas.'
-    : 'Tu año tuvo dos etapas: prestaste bastante al principio y en la segunda mitad frenaste.';
+  return f.direccion === 'crecio' ? _wrappedBankPick('fases-prestamoSubio', [
+    'Tu año tuvo dos etapas: empezaste tranquilo y en la segunda mitad te volviste banco de varias personas.',
+    'Tu año tuvo un antes y un después: prestar más se volvió costumbre en la segunda mitad.',
+  ]) : _wrappedBankPick('fases-prestamoBajo', [
+    'Tu año tuvo dos etapas: prestaste bastante al principio y en la segunda mitad frenaste.',
+    'Tu año tuvo un antes y un después: prestaste menos en la segunda mitad.',
+  ]);
 }
 
 /* ─── "SI TU AÑO FUERA UNA PELÍCULA" (2026-09-13) ──────────────────────
@@ -1016,21 +1259,39 @@ function _wrappedCopyFases(f){
 function _wrappedSiTuAnioFuera(ctx){
   const { fasesAnio, cambioHabitos, racha, patrimonio } = ctx;
   if(fasesAnio && fasesAnio.tipo === 'ahorro' && fasesAnio.direccion === 'crecio'){
-    return 'Sería una de crecimiento, con un giro a mitad de año: el momento en que le agarraste el gusto a ahorrar.';
+    return _wrappedBankPick('pelicula-ahorroSubio', [
+      'Sería una de crecimiento, con un giro a mitad de año: el momento en que le agarraste el gusto a ahorrar.',
+      'Sería de esas donde el personaje cambia a mitad de historia — acá, el momento en que empezaste a ahorrar en serio.',
+    ]);
   }
   if(fasesAnio && fasesAnio.tipo === 'prestamo' && fasesAnio.direccion === 'crecio'){
-    return 'Sería una donde el protagonista termina manejando más plata ajena de la que esperaba al principio.';
+    return _wrappedBankPick('pelicula-prestamoSubio', [
+      'Sería una donde el protagonista termina manejando más plata ajena de la que esperaba al principio.',
+      'Sería de las que arrancan con un favor pequeño y terminan con el protagonista manejando la plata de medio barrio.',
+    ]);
   }
   if(cambioHabitos){
-    return `Tendría un giro de guion a mitad de año: empezó siendo de ${escHtml(cambioHabitos.catPrimera)} y terminó siendo de ${escHtml(cambioHabitos.catSegunda)}.`;
+    return _wrappedBankPick('pelicula-cambioHabitos', [
+      `Tendría un giro de guion a mitad de año: empezó siendo de ${escHtml(cambioHabitos.catPrimera)} y terminó siendo de ${escHtml(cambioHabitos.catSegunda)}.`,
+      `El giro de la trama: arrancó siendo de ${escHtml(cambioHabitos.catPrimera)} y terminó siendo de ${escHtml(cambioHabitos.catSegunda)}.`,
+    ], cambioHabitos.catPrimera + cambioHabitos.catSegunda);
   }
   if(racha >= 4){
-    return 'Sería sobre disciplina silenciosa — el personaje que no falla ni un capítulo.';
+    return _wrappedBankPick('pelicula-racha', [
+      'Sería sobre disciplina silenciosa — el personaje que no falla ni un capítulo.',
+      'Sería de ritmo constante, sin sobresaltos — el tipo de historia que gana por perseverancia.',
+    ]);
   }
   if(patrimonio && Number.isFinite(patrimonio.diff) && patrimonio.diff > 0){
-    return 'De las que terminan mejor de lo que empezaron, sin necesitar un clímax dramático para lograrlo.';
+    return _wrappedBankPick('pelicula-patrimonioSubio', [
+      'De las que terminan mejor de lo que empezaron, sin necesitar un clímax dramático para lograrlo.',
+      'Sin gran clímax, pero con un final mejor que el comienzo — esas también son buenas historias.',
+    ]);
   }
-  return 'De las que no tienen gran clímax, pero tampoco fueron aburridas.';
+  return _wrappedBankPick('pelicula-generica', [
+    'De las que no tienen gran clímax, pero tampoco fueron aburridas.',
+    'Sin giros grandes, pero con suficiente para no aburrir.',
+  ]);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1261,10 +1522,23 @@ function _wrappedMetaCajita(S){
 }
 function _wrappedCopyMeta(m){
   const p = m.prog;
-  if(p.pct >= 100) return '¡La cumpliste! Y con saldo suficiente para mostrarlo.';
-  if(p.diferencia > 0) return 'Vas adelantado a tu propio plan.';
-  if(p.diferencia < 0) return 'Un poco atrasado del ritmo esperado, pero sigue en pie.';
-  return 'Justo en el ritmo que te propusiste.';
+  if(p.pct >= 100) return _wrappedBankPick('meta-cumplida', [
+    '¡La cumpliste! Y con saldo suficiente para mostrarlo.',
+    'Meta cumplida. Sin peros.',
+    'Lo lograste — y no por poco.',
+  ]);
+  if(p.diferencia > 0) return _wrappedBankPick('meta-adelantado', [
+    'Vas adelantado a tu propio plan.',
+    'Vas más rápido de lo que te propusiste.',
+  ]);
+  if(p.diferencia < 0) return _wrappedBankPick('meta-atrasado', [
+    'Un poco atrasado del ritmo esperado, pero sigue en pie.',
+    'Vas un poco más lento de lo planeado, pero la meta sigue viva.',
+  ]);
+  return _wrappedBankPick('meta-alRitmo', [
+    'Justo en el ritmo que te propusiste.',
+    'Vas exactamente como lo planeaste.',
+  ]);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -1313,22 +1587,40 @@ function _wrappedPersonalidad(S, anioK){
   const tieneCdt = cajitas.some(c => Array.isArray(c.cdts) && c.cdts.length > 0);
 
   if(tieneCdt){
-    return { tipo:'El Inversionista', frase:'No solo guardaste plata — la pusiste a producir.' };
+    return { tipo:'El Inversionista', frase: _wrappedBankPick('personalidad-inversionista', [
+      'No solo guardaste plata — la pusiste a producir.',
+      'Tu plata no se quedó quieta: la pusiste a rendir.',
+    ]) };
   }
   if(prestado && prestado.totalPrestado > 0 && deudores.length >= 3){
-    return { tipo:'El Banquero', frase:`Este año también fuiste banco de ${deudores.length} personas.` };
+    return { tipo:'El Banquero', frase: _wrappedBankPick('personalidad-banquero', [
+      `Este año también fuiste banco de ${deudores.length} personas.`,
+      `${deudores.length} personas contaron con vos como su banco personal este año.`,
+    ], deudores.length) };
   }
   if(racha >= 4){
-    return { tipo:'El Acumulador', frase:`${racha} alcancías seguidas sin fallar — eso no es suerte.` };
+    return { tipo:'El Acumulador', frase: _wrappedBankPick('personalidad-acumulador', [
+      `${racha} alcancías seguidas sin fallar — eso no es suerte.`,
+      `${racha} veces seguidas mejorando tu ahorro. Eso ya es un patrón.`,
+    ], racha) };
   }
   if((cajitas.length + cuentasPersonalizadas.length) >= 6){
-    return { tipo:'El Multicuenta', frase:'Tu plata vive repartida en muchos lugares distintos.' };
+    return { tipo:'El Multicuenta', frase: _wrappedBankPick('personalidad-multicuenta', [
+      'Tu plata vive repartida en muchos lugares distintos.',
+      'Tenés más cuentas que la mayoría — y a todas les llevás la cuenta.',
+    ]) };
   }
   if(catsDistintas >= 6){
-    return { tipo:'El Organizador', frase:`Repartiste tus gastos entre ${catsDistintas} categorías distintas.` };
+    return { tipo:'El Organizador', frase: _wrappedBankPick('personalidad-organizador', [
+      `Repartiste tus gastos entre ${catsDistintas} categorías distintas.`,
+      `${catsDistintas} categorías distintas — a tu plata no le falta orden.`,
+    ], catsDistintas) };
   }
   if(Number.isFinite(periodo.balance) && periodo.totalIngresos > 0 && Math.abs(periodo.balance)/periodo.totalIngresos < 0.15){
-    return { tipo:'El Equilibrista', frase:'Lo que entró y lo que salió estuvieron muy parejos.' };
+    return { tipo:'El Equilibrista', frase: _wrappedBankPick('personalidad-equilibrista', [
+      'Lo que entró y lo que salió estuvieron muy parejos.',
+      'Ingresos y gastos casi calcados este año — un balance envidiable.',
+    ]) };
   }
   return null; // no forzar una personalidad si ninguna señal es clara
 }
@@ -1802,10 +2094,12 @@ function _wrappedFraseDelAnio(ctx){
   if(esBanquero && prestadoDistintoDeRecuperacion) opciones.push('Ahorraste, prestaste, gastaste y, contra todo pronóstico, llegaste al final.');
   opciones.push('Un año de organizar más que de gastar.');
 
-  let seed = 0;
-  const str = anioK + '|' + opciones.length;
-  for(let i=0;i<str.length;i++) seed = (seed*31 + str.charCodeAt(i)) | 0;
-  return opciones[Math.abs(seed) % opciones.length];
+  // Reutiliza el mismo banco de frases del resto del módulo (ver
+  // cabecera de sección de `_wrappedBankPick`) en vez de su propio hash
+  // local — misma semilla determinista basada en datos reales, en vez
+  // de solo `anioK + opciones.length` (que antes podía coincidir entre
+  // años distintos con la misma cantidad de opciones aplicables).
+  return _wrappedBankPick('fraseDelAnio', opciones, opciones.length);
 }
 
 /* ─── ARMADO DE LA LISTA DE SLIDES DEL AÑO ────────────────────────────────
@@ -1883,6 +2177,12 @@ function _wrappedBuildSlides(S, fmt2){
   const historiasMensuales = _wrappedHistoriasMensuales(S, anioK, mesMax);
   const graficoSvg = _wrappedGraficoAnimadoSvg(serie);
   const serieMensualIngresoGasto = _wrappedSerieMensualIngresoGasto(S, anioK, mesMax);
+
+  // Arranca el banco de frases con una semilla determinista para esta
+  // apertura (ver cabecera de sección de `_wrappedBankPick`) — reutiliza
+  // `s.totalIngresos`/`s.totalGastos` (ya calculados solo para uso
+  // interno, §3) y el patrimonio del año, nunca un cálculo nuevo.
+  _wrappedIniciarBanco(anioK + '|' + s.totalIngresos + '|' + s.totalGastos + '|' + (patrimonio && Number.isFinite(patrimonio.diff) ? patrimonio.diff : 0));
 
   let racha = 0;
   if(typeof window !== 'undefined' && typeof window._alcRachaAhorro === 'function' && S.alcancia && S.alcancia.historial){
@@ -2495,6 +2795,10 @@ window.renderWrapped = function(){
 /* Exportadas solo para poder testear los cálculos y el armado de slides
    de forma aislada — no se usan desde ningún otro archivo. */
 window._wrappedInternals = {
+  _wrappedBankPick,
+  _wrappedIniciarBanco,
+  _wrappedHashStr,
+  _wrappedSeededRandom,
   _wrappedCalcularPeriodo,
   _wrappedMejorPeorMesAnio,
   _wrappedPatrimonioAnio,

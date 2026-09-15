@@ -531,6 +531,45 @@ function _wrappedMesKaAbrev(mesK){
   return _MES_NOMBRE[parseInt(partes[1],10)-1] || '';
 }
 
+const _MES_NOMBRE_LARGO = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+/* "7 de septiembre de 2026" — solo para el slide de intro (ver
+   `_wrappedRangoFechasAnio`). Nunca se reusa el `_MES_NOMBRE` abreviado
+   de arriba porque una fecha completa en una portada lee mejor en
+   formato largo; son dos usos distintos, no una duplicación del mismo
+   dato. */
+function _wrappedFmtFechaLarga(fecha){
+  if(!_wrappedFechaLuceValida(fecha)) return '';
+  const partes = fecha.split('-');
+  const dia = parseInt(partes[2],10);
+  const mes = _MES_NOMBRE_LARGO[parseInt(partes[1],10)-1] || '';
+  if(!mes || !Number.isFinite(dia)) return '';
+  return `${dia} de ${mes} de ${partes[0]}`;
+}
+
+/* ─── RANGO EXACTO DE FECHAS CON DATOS (2026-09-14, pase de diseño) ─────
+   Puramente para el slide de intro ("del 12 de enero al 6 de septiembre")
+   — no es un cálculo financiero nuevo, solo un min/max de fechas ya
+   presentes en estructuras que este archivo ya lee en otro lado
+   (mismo criterio de "no duplicar" de wrapped.md §3, que habla de
+   cifras de plata, no de fechas de portada). Reutiliza exactamente los
+   mismos filtros de "gasto/ingreso real" que `_wrappedCalcularPeriodo`
+   (vía `_wrappedItemsRealesPeriodo`) para no contar como "inicio de tus
+   datos" un movimiento espejo o no-real que el resto del módulo ya
+   ignora. Si no hay ni un solo dato válido en el año, devuelve `null` —
+   el slide de intro simplemente no pinta la fecha (degradar, nunca
+   romper, ver wrapped.md §3 último punto). */
+function _wrappedRangoFechasAnio(S, anioK){
+  const { gastosVarPeriodo, pagosFijosPeriodo } = _wrappedItemsRealesPeriodo(S, 'anio', null, anioK);
+  const esEntradaNoReal = typeof _esEntradaEspejoNoIngreso === 'function' ? _esEntradaEspejoNoIngreso : (()=>false);
+  const ingresosPeriodo = (S.movimientos||[]).filter(m => m && m.tipo==='entrada' && _wrappedEnRango(m.fecha, 'anio', null, anioK) && !esEntradaNoReal(m));
+  const fechas = [...gastosVarPeriodo, ...pagosFijosPeriodo, ...ingresosPeriodo]
+    .map(x => x && x.fecha)
+    .filter(_wrappedFechaLuceValida)
+    .sort();
+  if(!fechas.length) return null;
+  return { inicio: fechas[0], fin: fechas[fechas.length-1] };
+}
+
 /* ═══════════════════════════════════════════════════════════════════════
    SISTEMA DE COPY CONTEXTUAL
    ═══════════════════════════════════════════════════════════════════════
@@ -1103,10 +1142,10 @@ function _wrappedInyectarEstilos(){
   const style = document.createElement('style');
   style.id = 'wrapped-story-styles';
   style.textContent = `
-#wrapped-overlay{position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;flex-direction:column;font-family:'DM Sans',sans-serif;color:var(--text);overflow:hidden;}
-.wrapped-bg-blob{position:absolute;border-radius:50%;filter:blur(64px);pointer-events:none;z-index:0;transition:background .8s ease;}
-.wrapped-bg-blob.b1{width:70vmax;height:70vmax;top:-28vmax;right:-24vmax;background:var(--accent);opacity:.16;}
-.wrapped-bg-blob.b2{width:60vmax;height:60vmax;bottom:-30vmax;left:-20vmax;background:var(--purple);opacity:.13;}
+#wrapped-overlay{position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;flex-direction:column;font-family:'DM Sans',sans-serif;color:var(--text);overflow:hidden;--wrapped-mood:var(--accent);}
+.wrapped-bg-blob{position:absolute;border-radius:50%;filter:blur(64px);pointer-events:none;z-index:0;transition:background .9s ease;}
+.wrapped-bg-blob.b1{width:70vmax;height:70vmax;top:-28vmax;right:-24vmax;background:var(--wrapped-mood);opacity:.16;}
+.wrapped-bg-blob.b2{width:60vmax;height:60vmax;bottom:-30vmax;left:-20vmax;background:var(--wrapped-mood);opacity:.09;}
 #wrapped-progress{position:relative;z-index:1;display:flex;gap:5px;padding:calc(env(safe-area-inset-top,0px) + 14px) 14px 0;flex-shrink:0;}
 .wrapped-seg{flex:1;height:3px;background:var(--border2);border-radius:3px;overflow:hidden;}
 .wrapped-seg>i{display:block;height:100%;width:0%;background:var(--accent);border-radius:3px;}
@@ -1123,7 +1162,8 @@ function _wrappedInyectarEstilos(){
 .wrapped-tag{display:inline-flex;align-items:center;gap:6px;font-family:'DM Mono',monospace;font-size:11px;padding:5px 12px;border-radius:999px;background:var(--bg2);border:1px solid var(--border2);color:var(--text2);margin-bottom:14px;}
 .wrapped-eyebrow{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
 .wrapped-headline{font-size:21px;font-weight:700;line-height:1.3;margin:0 0 6px;color:var(--text);}
-.wrapped-headline b{color:var(--accent);}
+.wrapped-headline b{color:var(--wrapped-mood);transition:color .6s ease;}
+.wrapped-cierre-poema{font-size:13.5px;color:var(--text2);line-height:1.75;margin:14px 0 0;}
 .wrapped-sub{font-size:13px;color:var(--text2);line-height:1.55;margin:6px 0 0;}
 .wrapped-bignum{font-family:'DM Mono',monospace;font-weight:700;font-size:clamp(30px,10vw,42px);letter-spacing:-.5px;margin:8px 0 2px;}
 .wrapped-chart-card{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:16px 12px 10px;margin-bottom:16px;}
@@ -1134,7 +1174,7 @@ function _wrappedInyectarEstilos(){
 .wrapped-mes-nombre{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;}
 .wrapped-mes-linea{font-size:12px;color:var(--text2);line-height:1.4;}
 .wrapped-cta-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px;}
-.wrapped-cta{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#0a0a0a;border:none;border-radius:999px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;padding:12px 22px;cursor:pointer;}
+.wrapped-cta{display:inline-flex;align-items:center;gap:6px;background:var(--wrapped-mood);color:#0a0a0a;border:none;border-radius:999px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;padding:12px 22px;cursor:pointer;transition:background .6s ease;}
 .wrapped-cta.ghost{background:transparent;color:var(--text);border:1px solid var(--border2);}
 .wrapped-slide-inner-wide{max-width:380px;}
 .wrapped-mes-detalle{width:100%;text-align:left;margin-top:14px;padding-top:10px;border-top:1px solid var(--border2);}
@@ -1152,6 +1192,9 @@ function _wrappedInyectarEstilos(){
 .wrapped-moment span{font-size:13px;color:var(--text2);line-height:1.5;}
 #wrapped-hint{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);z-index:1;text-align:center;font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);opacity:.7;pointer-events:none;transition:opacity .5s ease;}
 #wrapped-hint.wrapped-oculto{opacity:0;}
+.wrapped-pill-list{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:14px;}
+.wrapped-pill{font-size:11.5px;padding:6px 12px;border-radius:999px;background:var(--bg2);border:1px solid var(--border2);color:var(--text2);}
+.wrapped-pill.secundario{color:var(--text3);}
 .wrapped-records-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin-top:10px;}
 .wrapped-record{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 10px;text-align:left;}
 .wrapped-record-l{font-size:11px;color:var(--text3);margin-bottom:4px;}
@@ -1620,6 +1663,58 @@ function _wrappedListaCajitas(S){
   return [];
 }
 
+/* ─── PÁRRAFO DE CIERRE ("poema"), 2026-09-14 ──────────────────────────
+   Acompaña a `_wrappedCopyCierre` (el titular grande) con un segundo
+   párrafo más largo y emocional, inspirado en el cierre del mockup de
+   referencia ("No fue perfecto. Hubo meses buenos..."). Mismo criterio
+   que el resto del sistema de copy: elige entre señales YA calculadas
+   (patrimonio, racha, fasesAnio, personalidad) — nunca inventa ni
+   calcula una cifra nueva, y nunca menciona ingresos/gastos/tasa de
+   ahorro en crudo (wrapped.md §3). Se prueba en el mismo orden de
+   prioridad que `_wrappedCopyCierre` para que ambos párrafos cuenten una
+   historia coherente en vez de contradecirse (ej.: que el titular hable
+   de una racha fuerte y el párrafo de abajo hable de una caída de
+   patrimonio sería un cierre que se pisa a sí mismo). */
+function _wrappedCopyCierrePoema(ctx){
+  const { anioK, patrimonio, racha, fasesAnio, personalidad } = ctx;
+
+  if(patrimonio && patrimonio.pct !== null && patrimonio.pct >= 50){
+    return _wrappedBankPick('poema-patrimonioFuerte', [
+      'No fue un año cualquiera. Hubo meses de sembrar y meses de cosechar, decisiones chicas que se sumaron sin que las notaras — y al final, un salto que sí se nota. Eso no pasa solo, pasa porque lo sostuviste.',
+      'Hubo constancia detrás de este número, aunque no siempre se sintiera así en el día a día. Cada decisión pequeña fue construyendo algo más grande de lo que parecía en el momento.',
+    ], anioK);
+  }
+  if(racha >= 4){
+    return _wrappedBankPick('poema-racha', [
+      'No fue perfecto, pero fue constante — y la constancia, con el tiempo, pesa más que la perfección. Cada vez que decidiste guardar en lugar de gastar, sin darte cuenta, armaste un hábito.',
+      'Hubo meses fáciles y meses en los que seguramente costó más. Aun así, seguiste apareciendo — y eso, repetido tantas veces, ya no es casualidad.',
+    ], anioK + racha);
+  }
+  if(patrimonio && patrimonio.pct !== null && patrimonio.pct <= -25){
+    return _wrappedBankPick('poema-patrimonioCayo', [
+      'No fue un año fácil, y no hace falta disimularlo. Hubo gastos que no esperabas y decisiones que tocó tomar rápido. Pero seguiste registrando, seguiste mirando de frente lo que pasaba con tu plata — y eso también cuenta como avanzar.',
+      'Hubo meses pesados, de esos que uno preferiría no repetir. Aun así, llegaste hasta acá con los ojos abiertos sobre tus propios números, que ya es más de lo que hace la mayoría.',
+    ], anioK);
+  }
+  if(fasesAnio){
+    return _wrappedBankPick('poema-fases', [
+      'Este año no fue igual de principio a fin, y está bien que no lo fuera. Hubo una primera mitad y una segunda mitad distintas, como si en el medio hubieras aprendido algo sobre cómo manejar tu plata. Los años así, los que cambian de forma, suelen ser los que más enseñan.',
+      'Empezaste el año de una manera y lo terminaste pensando distinto tu plata. Ese giro, aunque no se note en un solo número, es de las cosas que más vale la pena repasar.',
+    ], anioK);
+  }
+  if(personalidad){
+    return _wrappedBankPick('poema-personalidad', [
+      `Un año con su propio estilo: el de ${personalidad.tipo}. No hubo una sola decisión grande que lo definiera, sino muchas chicas, repetidas, que terminaron formando un patrón reconocible.`,
+      `Si tu plata tuviera una forma de ser este año, sería la de ${personalidad.tipo}. Ni perfecta ni dramática — simplemente vos, movimiento a movimiento.`,
+    ], anioK + personalidad.tipo);
+  }
+  return _wrappedBankPick('poema-generico', [
+    'No fue perfecto. Hubo meses buenos y meses tranquilos, algún gasto inesperado y alguna decisión de la que te sentiste orgulloso. Sobre todo, hubo continuidad: seguiste registrando, seguiste mirando. Eso, más que cualquier número, es lo que queda.',
+    'Fue un año de movimientos chicos que, vistos juntos, cuentan algo más grande. No hace falta que haya sido espectacular para que haya valido la pena repasarlo.',
+  ], anioK);
+}
+
+
 /* ─── PERSONALIDAD FINANCIERA ──────────────────────────────────────────
    Clasificación LÚDICA (nunca un puntaje financiero serio, ver el propio
    pedido del usuario §10) elegida por reglas deterministas sobre datos
@@ -1632,6 +1727,16 @@ function _wrappedListaCajitas(S){
    aplica con datos suficientes, devuelve `null` — nunca fuerza una
    personalidad de relleno (regla del propio pedido, §33 "no forzar
    insights"). */
+/* Cada candidato conserva EXACTAMENTE la misma condición y el mismo
+   banco de frases que la versión anterior (de un solo resultado) — lo
+   único nuevo es que ahora se evalúan TODOS en vez de cortar en el
+   primer match, para poder ofrecer un "rasgo secundario" real (pase de
+   diseño 2026-09-14, inspirado en el mockup de referencia). `evidencia`
+   es una frase corta y puramente factual (no narrativa como `frase`) que
+   se muestra como chip debajo — mismos datos ya calculados arriba,
+   nunca un número nuevo. El orden de la lista sigue siendo la prioridad
+   de "más específico/raro" a "más genérico" de siempre: si dos
+   candidatos aplican, el primero de la lista es el rasgo principal. */
 function _wrappedPersonalidad(S, anioK){
   const cajitas = _wrappedListaCajitas(S);
   const cuentasPersonalizadas = S.cuentasPersonalizadas || [];
@@ -1645,43 +1750,53 @@ function _wrappedPersonalidad(S, anioK){
   const catsDistintas = new Set((S.gastosVar||[]).map(g => g.cat).filter(Boolean)).size;
   const tieneCdt = cajitas.some(c => Array.isArray(c.cdts) && c.cdts.length > 0);
 
+  const candidatos = [];
+
   if(tieneCdt){
-    return { tipo:'El Inversionista', frase: _wrappedBankPick('personalidad-inversionista', [
+    candidatos.push({ tipo:'El Inversionista', evidencia:'tenés al menos un CDT activo', frase: _wrappedBankPick('personalidad-inversionista', [
       'No solo guardaste plata — la pusiste a producir.',
       'Tu plata no se quedó quieta: la pusiste a rendir.',
-    ]) };
+    ]) });
   }
   if(prestado && prestado.totalPrestado > 0 && deudores.length >= 3){
-    return { tipo:'El Banquero', frase: _wrappedBankPick('personalidad-banquero', [
+    candidatos.push({ tipo:'El Banquero', evidencia:`fuiste banco de ${deudores.length} personas`, frase: _wrappedBankPick('personalidad-banquero', [
       `Este año también fuiste banco de ${deudores.length} personas.`,
       `${deudores.length} personas contaron con vos como su banco personal este año.`,
-    ], deudores.length) };
+    ], deudores.length) });
   }
   if(racha >= 4){
-    return { tipo:'El Acumulador', frase: _wrappedBankPick('personalidad-acumulador', [
+    candidatos.push({ tipo:'El Acumulador', evidencia:`${racha} alcancías seguidas sin fallar`, frase: _wrappedBankPick('personalidad-acumulador', [
       `${racha} alcancías seguidas sin fallar — eso no es suerte.`,
       `${racha} veces seguidas mejorando tu ahorro. Eso ya es un patrón.`,
-    ], racha) };
+    ], racha) });
   }
   if((cajitas.length + cuentasPersonalizadas.length) >= 6){
-    return { tipo:'El Multicuenta', frase: _wrappedBankPick('personalidad-multicuenta', [
+    candidatos.push({ tipo:'El Multicuenta', evidencia:`${cajitas.length + cuentasPersonalizadas.length} cuentas y cajitas activas`, frase: _wrappedBankPick('personalidad-multicuenta', [
       'Tu plata vive repartida en muchos lugares distintos.',
       'Tenés más cuentas que la mayoría — y a todas les llevás la cuenta.',
-    ]) };
+    ]) });
   }
   if(catsDistintas >= 6){
-    return { tipo:'El Organizador', frase: _wrappedBankPick('personalidad-organizador', [
+    candidatos.push({ tipo:'El Organizador', evidencia:`${catsDistintas} categorías de gasto distintas`, frase: _wrappedBankPick('personalidad-organizador', [
       `Repartiste tus gastos entre ${catsDistintas} categorías distintas.`,
       `${catsDistintas} categorías distintas — a tu plata no le falta orden.`,
-    ], catsDistintas) };
+    ], catsDistintas) });
   }
   if(Number.isFinite(periodo.balance) && periodo.totalIngresos > 0 && Math.abs(periodo.balance)/periodo.totalIngresos < 0.15){
-    return { tipo:'El Equilibrista', frase: _wrappedBankPick('personalidad-equilibrista', [
+    candidatos.push({ tipo:'El Equilibrista', evidencia:'ingresos y gastos casi empatados', frase: _wrappedBankPick('personalidad-equilibrista', [
       'Lo que entró y lo que salió estuvieron muy parejos.',
       'Ingresos y gastos casi calcados este año — un balance envidiable.',
-    ]) };
+    ]) });
   }
-  return null; // no forzar una personalidad si ninguna señal es clara
+
+  if(!candidatos.length) return null; // no forzar una personalidad si ninguna señal es clara
+
+  const top = candidatos[0];
+  // El rasgo secundario también es un match real, con su propia evidencia
+  // real — nunca un segundo puesto inventado para rellenar el slide
+  // (misma regla de "no forzar" que ya aplicaba al resultado único).
+  const secundario = candidatos.length > 1 ? candidatos[1] : null;
+  return { tipo: top.tipo, frase: top.frase, evidencia: top.evidencia, secundario };
 }
 
 /* ─── GASTO MÁS RANDOM ─────────────────────────────────────────────────
@@ -2285,13 +2400,22 @@ function _wrappedBuildSlides(S, fmt2){
 
   const slides = [];
 
+  // Fecha exacta de inicio/fin de datos del año (pase de diseño
+  // 2026-09-14, ver `_wrappedRangoFechasAnio`) — degrada a la línea
+  // genérica de siempre si el año todavía no tiene ni un solo dato real.
+  const rangoFechas = _wrappedRangoFechasAnio(S, anioK);
+  const introSub = rangoFechas
+    ? `Movimiento por movimiento, desde el ${_wrappedFmtFechaLarga(rangoFechas.inicio)} hasta el ${_wrappedFmtFechaLarga(rangoFechas.fin)}.`
+    : 'Lo repasamos un dato a la vez.';
+
   slides.push({
     id: 'intro',
+    mood: 'purple',
     html: `<div class="wrapped-slide-inner">
       <div class="wrapped-tag"><i class="fa-solid fa-tag"></i> Wrapped ${anioK}</div>
       <div class="wrapped-eyebrow">Tu resumen ${anioK}</div>
       <div class="wrapped-headline">${_wrappedCopyIntro()}</div>
-      <div class="wrapped-sub">Lo repasamos un dato a la vez.</div>
+      <div class="wrapped-sub">${introSub}</div>
     </div>`
   });
 
@@ -2333,6 +2457,7 @@ function _wrappedBuildSlides(S, fmt2){
     }).join('');
     slides.push({
       id: 'vista-mensual',
+      mood: 'accent',
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">Este año, mes a mes</div>
         <div class="wrapped-mes-grid">${celdas}</div>
@@ -2344,6 +2469,7 @@ function _wrappedBuildSlides(S, fmt2){
     _wrappedMesChart = { meses: serieMensualIngresoGasto, fmt2 };
     slides.push({
       id: 'grafico-mensual',
+      mood: 'accent',
       html: `<div class="wrapped-slide-inner wrapped-slide-inner-wide">
         <div class="wrapped-eyebrow">Mes a mes</div>
         <div class="wrapped-headline">Así se movió tu plata.</div>
@@ -2606,16 +2732,23 @@ function _wrappedBuildSlides(S, fmt2){
   if(personalidad){
     slides.push({
       id: 'puente-personalidad',
+      mood: 'amber',
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-headline">${_wrappedCopyPuente('personalidad')}</div>
       </div>`
     });
+    const chipsPersonalidad = [
+      personalidad.evidencia ? `<span class="wrapped-pill">${escHtml(personalidad.evidencia)}</span>` : '',
+      personalidad.secundario ? `<span class="wrapped-pill secundario">Rasgo secundario: ${escHtml(personalidad.secundario.tipo)}</span>` : ''
+    ].join('');
     slides.push({
       id: 'personalidad',
+      mood: 'amber',
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">Tu personalidad financiera</div>
         <div class="wrapped-headline">${escHtml(personalidad.tipo.toUpperCase())}</div>
         <div class="wrapped-sub">${escHtml(personalidad.frase)}</div>
+        ${chipsPersonalidad ? `<div class="wrapped-pill-list">${chipsPersonalidad}</div>` : ''}
       </div>`
     });
   }
@@ -2637,6 +2770,7 @@ function _wrappedBuildSlides(S, fmt2){
 
   slides.push({
     id: 'frase-anio',
+    mood: 'purple',
     html: `<div class="wrapped-slide-inner">
       <div class="wrapped-eyebrow">Tu ${anioK} en una frase</div>
       <div class="wrapped-headline">"${fraseAnio}"</div>
@@ -2645,6 +2779,7 @@ function _wrappedBuildSlides(S, fmt2){
 
   slides.push({
     id: 'periodo-en-numeros',
+    mood: 'accent',
     html: `<div class="wrapped-slide-inner">
       <div class="wrapped-eyebrow">Tu ${anioK} en números</div>
       <div class="wrapped-headline">El resumen rápido.</div>
@@ -2659,24 +2794,53 @@ function _wrappedBuildSlides(S, fmt2){
   // "Todavía no hay mucho que contar".
   slides.push({
     id: 'si-tu-anio-fuera',
+    mood: 'purple',
     html: `<div class="wrapped-slide-inner">
       <div class="wrapped-eyebrow">Si tu año financiero fuera una película...</div>
       <div class="wrapped-sub">${_wrappedSiTuAnioFuera({ fasesAnio, cambioHabitos, racha, patrimonio })}</div>
     </div>`
   });
 
+  // Párrafo de cierre más largo y emocional (pase de diseño 2026-09-14,
+  // inspirado en el mockup de referencia) — se arma con `_wrappedCopyCierrePoema`,
+  // que solo elige texto entre señales YA calculadas arriba (racha,
+  // fasesAnio, patrimonio, personalidad) exactamente igual que
+  // `_wrappedCopyCierre`; no reemplaza a `lineaCierre` (que sigue siendo
+  // el titular grande), lo acompaña como segundo párrafo más largo.
+  const poemaCierre = _wrappedCopyCierrePoema({ anioK, patrimonio, racha, fasesAnio, personalidad });
+
   slides.push({
     id: 'cierre',
+    mood: 'purple',
     confetti: true,
     html: `<div class="wrapped-slide-inner">
       <div class="wrapped-tag"><i class="fa-solid fa-tag"></i> Wrapped ${anioK}</div>
       <div class="wrapped-eyebrow">Eso fue ${anioK}</div>
       <div class="wrapped-headline">${lineaCierre}</div>
+      <div class="wrapped-cierre-poema">${poemaCierre}</div>
       <div class="wrapped-cta-row">
         <button type="button" class="wrapped-cta" data-wrapped-action="replay">Ver de nuevo</button>
         <button type="button" class="wrapped-cta ghost" data-wrapped-action="cerrar">Cerrar</button>
       </div>
     </div>`
+  });
+
+  // Mood/acento por slide para los que todavía no tienen uno explícito
+  // (mejor/peor mes, gasto más grande, alcancía, categoría, patrimonio,
+  // racha, y todos los "insights" de terceros armados con
+  // `_wrappedSlideBignum`): en vez de tocar cada `slides.push(...)` de
+  // arriba a mano, se reutiliza el MISMO color que esa función ya eligió
+  // para pintar el número grande (`style="color:var(--purple)"`, etc.) —
+  // así el acento de fondo siempre combina con el número del propio
+  // slide, sin definir una segunda vez qué color le corresponde a cada
+  // dato. Si un slide no trae ningún color inline (los puramente de
+  // texto, que ya recibieron su `mood` explícito arriba), cae a
+  // `--accent`, el mismo default neutro de siempre.
+  const _moodRegex = /color:\s*var\(--(purple|blue|amber|red|accent)\)/;
+  slides.forEach(sl => {
+    if(sl.mood) return;
+    const m = _moodRegex.exec(sl.html);
+    sl.mood = m ? m[1] : 'accent';
   });
 
   return slides;
@@ -2697,13 +2861,22 @@ function _wrappedLimpiarNav(){
 
 function _wrappedGoTo(i){
   if(!_wrappedNav) return;
-  const { slidesEls, segEls, fmt2 } = _wrappedNav;
+  const { slidesEls, segEls, fmt2, overlay } = _wrappedNav;
   if(i < 0 || i >= slidesEls.length) return;
   const anterior = slidesEls[_wrappedNav.current];
   if(anterior) anterior.classList.remove('active');
   _wrappedNav.current = i;
   const el = slidesEls[i];
   el.classList.add('active');
+  // Mood/acento por slide (pase de diseño 2026-09-14, inspirado en el
+  // mockup de referencia): reutiliza las mismas variables de color que
+  // ya existen en toda la app (--accent/--purple/--blue/--amber/--red,
+  // ver styles.css) — nunca una paleta nueva. `data-mood` se arma en
+  // `_wrappedBuildSlides`; si un slide no trae mood, cae a `--accent`.
+  if(overlay){
+    const mood = el.getAttribute('data-mood') || 'accent';
+    overlay.style.setProperty('--wrapped-mood', 'var(--' + mood + ')');
+  }
   segEls.forEach((seg, idx) => {
     seg.classList.toggle('done', idx < i);
     const barra = seg.querySelector('i');
@@ -2770,7 +2943,7 @@ function _wrappedSetupNav(overlay, fmt2){
   const restartBtn = overlay.querySelector('#wrapped-restart');
   const hintEl     = overlay.querySelector('#wrapped-hint');
 
-  _wrappedNav = { slidesEls, segEls, fmt2, current: 0, onKeydown: null };
+  _wrappedNav = { slidesEls, segEls, fmt2, overlay, current: 0, onKeydown: null };
 
   // El hint de navegación solo tiene sentido antes de que el usuario
   // entienda cómo se mueve la historia — se apaga con la primera
@@ -2861,7 +3034,7 @@ window.renderWrapped = function(){
   const slides = _wrappedBuildSlides(S, fmt2);
 
   const progresoHtml = slides.map(() => `<div class="wrapped-seg"><i></i></div>`).join('');
-  const slidesHtml = slides.map(sl => `<div class="wrapped-slide"${sl.confetti ? ' data-confetti="1"' : ''}>${sl.html}</div>`).join('');
+  const slidesHtml = slides.map(sl => `<div class="wrapped-slide" data-mood="${sl.mood || 'accent'}"${sl.confetti ? ' data-confetti="1"' : ''}>${sl.html}</div>`).join('');
 
   // Se monta directo en document.body (no dentro de #wrapped-body /
   // #screen-wrapped) — ver wrapped.md §7bis: .screen.active tiene un
@@ -2924,6 +3097,7 @@ window._wrappedInternals = {
   _wrappedCopyAlcancia,
   _wrappedCopyRacha,
   _wrappedCopyCierre,
+  _wrappedCopyCierrePoema,
   _wrappedCopyGasto,
   _wrappedTopCategoriaDe,
   _wrappedCambioDeHabitos,

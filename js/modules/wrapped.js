@@ -222,7 +222,12 @@ function _wrappedLogDebug(S){
    Función compartida entre el período completo (`_wrappedCalcularPeriodo`)
    y la comparación de mitades de año (`_wrappedCambioDeHabitos`), para no
    repetir la lógica de agrupar por categoría en dos lugares. */
-function _wrappedTopCategoriaDe(items, totalGastos){
+/* Agrupa una lista de gastos por categoría en {monto, count} — extraído
+   de `_wrappedTopCategoriaDe` (2026-09-15) para que el nuevo ranking
+   completo de categorías (`_wrappedRankingCategorias`, ver abajo) pueda
+   reusar el mismo agrupado en vez de reimplementarlo — mismo principio
+   de §3 de no duplicar un cálculo ya centralizado. */
+function _wrappedAgruparPorCategoria(items){
   const catMap = {}; // cat -> { monto, count }
   items.forEach(g => {
     const cat = g.cat || 'Sin categoría';
@@ -230,6 +235,11 @@ function _wrappedTopCategoriaDe(items, totalGastos){
     catMap[cat].monto += (g.monto||0);
     catMap[cat].count += 1;
   });
+  return catMap;
+}
+
+function _wrappedTopCategoriaDe(items, totalGastos){
+  const catMap = _wrappedAgruparPorCategoria(items);
   let topPorMonto = null, topPorFrecuencia = null;
   Object.keys(catMap).forEach(cat => {
     const { monto, count } = catMap[cat];
@@ -249,6 +259,48 @@ function _wrappedTopCategoriaDe(items, totalGastos){
     topPorMonto.topPorFrecuencia = (topPorFrecuencia && topPorFrecuencia.cat !== topPorMonto.cat) ? topPorFrecuencia : null;
   }
   return topPorMonto;
+}
+
+/* Ranking completo de categorías por monto, con el % que cada una
+   representó del total de gastos del período — a diferencia de
+   `_wrappedTopCategoriaDe` (que solo devuelve la ganadora, para elegir
+   el tono del copy), esto es para el slide nuevo de barras por
+   categoría (ver `_wrappedBuildSlides`), que sí necesita mostrar varias
+   a la vez. Reutiliza `_wrappedAgruparPorCategoria` — no repite el
+   agrupado. Igual que `catShare`, nunca se pinta `totalGastos` en
+   crudo, solo el porcentaje que cada categoría representa de él. */
+function _wrappedRankingCategorias(items, totalGastos, maxCats){
+  const catMap = _wrappedAgruparPorCategoria(items);
+  const ranking = Object.keys(catMap)
+    .map(cat => ({
+      cat,
+      monto: catMap[cat].monto,
+      pct: totalGastos > 0 ? (catMap[cat].monto / totalGastos * 100) : 0
+    }))
+    .sort((a,b) => b.monto - a.monto);
+  return maxCats ? ranking.slice(0, maxCats) : ranking;
+}
+
+/* Categoría con mayor monto PROMEDIO por movimiento (2026-09-15) — eje
+   distinto al de `_wrappedTopCategoriaDe` (que rankea por monto total) y
+   al de "frecuencia" (que rankea por cantidad de movimientos): esta
+   busca la categoría que más "pesa" cada vez que aparece, aunque no sea
+   ni la más frecuente ni la de mayor monto total. Requiere al menos 2
+   movimientos en la categoría — con uno solo, "promedio por movimiento"
+   es literalmente ese único movimiento y no dice nada nuevo (ya lo
+   cubriría, si acaso, el slide de "gasto más grande"). Reutiliza
+   `_wrappedAgruparPorCategoria`, mismo criterio de no duplicar el
+   agrupado. */
+function _wrappedCategoriaMasConcentrada(items){
+  const catMap = _wrappedAgruparPorCategoria(items);
+  let top = null;
+  Object.keys(catMap).forEach(cat => {
+    const { monto, count } = catMap[cat];
+    if(count < 2) return;
+    const avgPerOcc = monto / count;
+    if(!top || avgPerOcc > top.avgPerOcc) top = { cat, avgPerOcc, count };
+  });
+  return top;
 }
 
 /* ─── CÁLCULO PURO de un período (mes o año) ──────────────────────────────
@@ -394,7 +446,16 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
     (a.historial||[]).forEach(h => { if(_wrappedEnRango(h.fechaFin, tipo, mesK, anioK)) alcanciaPeriodo += (h.saldoRegistrado||0); });
   }
 
-  return { totalGastos, totalIngresos, balance, topCategoria, gastoMasGrande, alcanciaPeriodo, avgGasto };
+  // Conteo de registros discretos (uso nuevo: slide "actividad", ver
+  // `_wrappedBuildSlides`) — no incluye mesada/ingresos fijos porque esos
+  // no son registros individuales en `S.movimientos`, son un total
+  // recurrente calculado aparte (ver `_wrappedMesadaMes`/`_wrappedIngresosFijosMes`
+  // arriba); contarlos como "un movimiento" sería inventar un número que
+  // no corresponde a nada que el usuario efectivamente haya registrado.
+  const nGastos = gastosVarPeriodo.length + pagosFijosPeriodo.length;
+  const nIngresos = ingresosPeriodo.length;
+
+  return { totalGastos, totalIngresos, balance, topCategoria, gastoMasGrande, alcanciaPeriodo, avgGasto, nGastos, nIngresos };
 }
 
 /* ─── Mejor y peor mes del año ─────────────────────────────────────────── */
@@ -406,7 +467,11 @@ function _wrappedMejorPeorMesAnio(S, anioK){
     const mesK = anioK + '-' + String(m+1).padStart(2,'0');
     const stats = _wrappedCalcularPeriodo(S, 'mes', mesK, anioK);
     if(stats.totalIngresos > 0 || stats.totalGastos > 0){
-      meses.push({ mesK, balance: stats.balance });
+      // ingresos/gastos van acá desde 2026-09-15 para que el copy del
+      // mejor/peor mes pueda contar el desglose puntual de ESE mes (no el
+      // agregado del año — sigue siendo un highlight puntual, permitido
+      // por §3, igual que ya lo era el balance).
+      meses.push({ mesK, balance: stats.balance, ingresos: stats.totalIngresos, gastos: stats.totalGastos });
     }
   }
   if(!meses.length) return { mejor: null, peor: null, promedio: null };
@@ -766,58 +831,88 @@ function _wrappedCopyCategoria(topCategoria){
   return base;
 }
 
-function _wrappedCopyMejorMes(mejor, promedio, empate){
-  if(empate) return _wrappedBankPick('mejorMes-empate', [
+// `fmt2` (2026-09-15, ver §3 nota junto al slide "actividad"): se agrega
+// SOLO para poder narrar el desglose puntual de ESTE mes (ingresos y
+// gastos de un mes concreto ya era un highlight permitido vía `balance`;
+// esto simplemente lo hace explícito en vez de dejarlo implícito en la
+// cifra grande) — no cambia qué se calcula, solo cómo se cuenta. Ninguna
+// otra función `_wrappedCopy*` necesitaba `fmt2` porque ninguna otra
+// agrega un desglose de plata dentro del texto, solo la cifra grande ya
+// formateada por `_wrappedSlideBignum`.
+function _wrappedCopyMejorMes(mejor, promedio, empate, fmt2){
+  let base;
+  if(empate) base = _wrappedBankPick('mejorMes-empate', [
     'empatado con otro mes — los dos fueron tu mejor resultado del año.',
     'no hubo un solo ganador: este mes empató el primer lugar.',
   ], mejor.mesK);
-  if(promedio !== null && promedio > 0 && mejor.balance > promedio * 1.5){
-    return _wrappedBankPick('mejorMes-lejos', [
+  else if(promedio !== null && promedio > 0 && mejor.balance > promedio * 1.5){
+    base = _wrappedBankPick('mejorMes-lejos', [
       'muy por encima de tu ritmo normal.',
       'se salió por completo de tu promedio — para bien.',
       'nada que ver con un mes cualquiera.',
     ], mejor.mesK);
   }
-  if(mejor.balance > 0) return _wrappedBankPick('mejorMes-positivo', [
+  else if(mejor.balance > 0) base = _wrappedBankPick('mejorMes-positivo', [
     'tu mes con mejor resultado del año.',
     'el mes que más plata te dejó.',
     'el que se lleva la corona este año.',
   ], mejor.mesK);
-  return _wrappedBankPick('mejorMes-menosMalo', [
+  else base = _wrappedBankPick('mejorMes-menosMalo', [
     'el menos difícil de todos — que también cuenta.',
     'no fue positivo, pero fue el que menos dolió.',
   ], mejor.mesK);
+  return base + _wrappedCopyDesgloseMes(mejor, fmt2);
 }
 
-function _wrappedCopyPeorMes(peor, promedio, empate){
-  if(empate) return _wrappedBankPick('peorMes-empate', [
+function _wrappedCopyPeorMes(peor, promedio, empate, fmt2){
+  let base;
+  if(empate) base = _wrappedBankPick('peorMes-empate', [
     'empatado con otro mes — ninguno de los dos fue fácil.',
     'dos meses se pelearon el último lugar.',
   ], peor.mesK);
-  if(peor.balance >= 0) return _wrappedBankPick('peorMes-noTanMal', [
+  else if(peor.balance >= 0) base = _wrappedBankPick('peorMes-noTanMal', [
     'y ni en tu peor mes te fue mal.',
     'el "peor" mes del año y aun así cerró positivo.',
     'hasta tu mes más flojo se mantuvo en verde.',
   ], peor.mesK);
-  if(promedio !== null && promedio > 0 && peor.balance < promedio * -0.5){
-    return _wrappedBankPick('peorMes-lejos', [
+  else if(promedio !== null && promedio > 0 && peor.balance < promedio * -0.5){
+    base = _wrappedBankPick('peorMes-lejos', [
       'se salió bastante de tu ritmo normal.',
       'nada que ver con cómo te fue el resto del año.',
     ], peor.mesK);
   }
-  return _wrappedBankPick('peorMes-normal', [
+  else base = _wrappedBankPick('peorMes-normal', [
     'tu mes más ajustado del año.',
     'el que más apretó el bolsillo.',
     'el mes que costó un poco más sostener.',
   ], peor.mesK);
+  return base + _wrappedCopyDesgloseMes(peor, fmt2);
+}
+
+/* Frase compartida entre mejor/peor mes: "con $X de ingresos y $Y en
+   gastos" — es lo que hoy le falta al slide para no sentirse "solo un
+   número con una etiqueta": conecta el balance grande con de dónde salió.
+   Degrada a cadena vacía si `fmt2` no llegó o los datos no están (meses
+   viejos donde `_wrappedMejorPeorMesAnio` no los haya calculado). */
+function _wrappedCopyDesgloseMes(mesObj, fmt2){
+  if(typeof fmt2 !== 'function' || !Number.isFinite(mesObj.ingresos) || !Number.isFinite(mesObj.gastos)) return '';
+  return ' Cerró con ' + fmt2(mesObj.ingresos) + ' de ingresos y ' + fmt2(mesObj.gastos) + ' en gastos.';
 }
 
 /* Contextualiza el gasto más grande: en qué mes fue y qué tan grande fue
    *en relación al propio gasto típico del usuario* (nunca contra un
    umbral fijo en pesos, que no tendría sentido entre personas con gastos
    de escalas muy distintas). */
-function _wrappedCopyGasto(gastoMasGrande, avgGasto){
+// `totalGastosAnio` (2026-09-15) se usa EXACTAMENTE como `catShare` en
+// `_wrappedCopyCategoria`: solo para derivar una proporción a mostrar
+// ("representó el X% de tus gastos"), nunca se pinta el total en crudo —
+// mismo criterio ya aceptado por §3, no una excepción nueva.
+function _wrappedCopyGasto(gastoMasGrande, avgGasto, totalGastosAnio){
   const mesTxt = gastoMasGrande.fecha ? _wrappedMesKaNombre(gastoMasGrande.fecha.slice(0,7)) : null;
+  const pctTotal = (totalGastosAnio > 0) ? Math.round(gastoMasGrande.monto / totalGastosAnio * 100) : null;
+  const clausulaPct = (pctTotal !== null && pctTotal >= 1)
+    ? ` Representó el ${pctTotal}% de todo lo que gastaste este año.`
+    : '';
   let intensidad;
   if(avgGasto > 0 && gastoMasGrande.monto >= avgGasto * 5){
     const veces = Math.round(gastoMasGrande.monto / avgGasto);
@@ -838,12 +933,12 @@ function _wrappedCopyGasto(gastoMasGrande, avgGasto){
       'tu gasto más grande del año, sin más vueltas.',
     ], gastoMasGrande.desc);
   }
-  if(!mesTxt) return intensidad.charAt(0).toUpperCase() + intensidad.slice(1);
+  if(!mesTxt) return (intensidad.charAt(0).toUpperCase() + intensidad.slice(1)) + clausulaPct;
   return _wrappedBankPick('gasto-conector', [
     `Pasó en ${mesTxt} — ${intensidad}`,
     `Fue en ${mesTxt}: ${intensidad}`,
     `${mesTxt} se llevó el título — ${intensidad}`,
-  ], mesTxt);
+  ], mesTxt) + clausulaPct;
 }
 
 function _wrappedCopyAlcancia(alcanciaPeriodo, gastoMasGrande){
@@ -942,11 +1037,18 @@ function _wrappedCopyEncargos(e){
     'Este año también cuidaste plata que no era tuya.',
   ]);
 }
-function _wrappedCopyPrestado(p){
-  if(p.topDeudor && p.topDeudor.nombre) return _wrappedBankPick('prestado-topDeudor', [
-    `A ${_wrappedNombrePersona(p.topDeudor.personaId, p.topDeudor.nombre)} fue a quien más le prestaste.`,
-    `${_wrappedNombrePersona(p.topDeudor.personaId, p.topDeudor.nombre)} fue tu cliente más grande del año.`,
-  ], p.topDeudor.nombre);
+function _wrappedCopyPrestado(p, fmt2){
+  if(p.topDeudor && p.topDeudor.nombre){
+    const nombre = _wrappedNombrePersona(p.topDeudor.personaId, p.topDeudor.nombre);
+    const detalle = (typeof fmt2 === 'function' && Number.isFinite(p.topDeudor.n))
+      ? `, con ${fmt2(p.topDeudor.monto)} prestados en ${p.topDeudor.n} movimiento${p.topDeudor.n===1?'':'s'}`
+      : '';
+    return _wrappedBankPick('prestado-topDeudor', [
+      `Tu cliente más frecuente fue ${nombre}${detalle}.`,
+      `${nombre} fue quien más confió en tu "banco" este año${detalle}.`,
+      `A ${nombre} fue a quien más le prestaste${detalle}.`,
+    ], p.topDeudor.nombre);
+  }
   if(p.totalDevuelto >= p.totalPrestado && p.totalDevuelto > 0) return _wrappedBankPick('prestado-cobradoTodo', [
     'Y este año te pagaron más de lo que prestaste.',
     'Y salieron las cuentas: te devolvieron más de lo que prestaste.',
@@ -1056,6 +1158,19 @@ function _wrappedAnimarLinea(slideEl){
   path.getBoundingClientRect();
   path.style.transition = 'stroke-dashoffset 1.1s cubic-bezier(.4,0,.2,1)';
   requestAnimationFrame(() => { path.style.strokeDashoffset = '0'; });
+}
+
+/* Anima las barras del slide de ranking de categorías (2026-09-15):
+   arrancan en 0% (así vienen desde el HTML) y acá se les pone el ancho
+   real leído de `data-pct` — mismo patrón que `_wrappedAnimarLinea`
+   (arrancar en el estado "vacío" y animar al entrar al slide, respetando
+   la transición CSS ya declarada en `.wrapped-bar-fill`). */
+function _wrappedAnimarBarras(slideEl){
+  if(!slideEl) return;
+  slideEl.querySelectorAll('.wrapped-bar-fill').forEach(el => {
+    const pct = parseFloat(el.getAttribute('data-pct'));
+    if(Number.isFinite(pct)) el.style.width = Math.max(0, Math.min(100, pct)) + '%';
+  });
 }
 
 /* ─── FORMATO DE NÚMEROS CON SIGNO ─────────────────────────────────────── */
@@ -1173,6 +1288,16 @@ function _wrappedInyectarEstilos(){
 .wrapped-mes-dot-color{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
 .wrapped-mes-nombre{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;}
 .wrapped-mes-linea{font-size:12px;color:var(--text2);line-height:1.4;}
+.wrapped-bars{width:100%;margin-top:14px;display:flex;flex-direction:column;gap:10px;text-align:left;}
+.wrapped-bar-row{display:flex;align-items:center;gap:8px;}
+.wrapped-bar-label{width:88px;flex-shrink:0;font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wrapped-bar-track{flex:1;height:8px;border-radius:999px;background:var(--bg2);border:1px solid var(--border2);overflow:hidden;}
+.wrapped-bar-fill{height:100%;border-radius:999px;background:var(--wrapped-mood);width:0%;transition:width 1s cubic-bezier(.16,1,.3,1);}
+.wrapped-bar-pct{width:42px;flex-shrink:0;text-align:right;font-family:'DM Mono',monospace;font-size:12px;color:var(--text3);}
+.wrapped-stat-row{display:flex;gap:8px;width:100%;margin-top:14px;}
+.wrapped-stat{flex:1;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 6px;text-align:center;}
+.wrapped-stat-v{font-family:'DM Mono',monospace;font-weight:700;font-size:15px;color:var(--text);}
+.wrapped-stat-l{font-size:10px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.4px;}
 .wrapped-cta-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px;}
 .wrapped-cta{display:inline-flex;align-items:center;gap:6px;background:var(--wrapped-mood);color:#0a0a0a;border:none;border-radius:999px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;padding:12px 22px;cursor:pointer;transition:background .6s ease;}
 .wrapped-cta.ghost{background:transparent;color:var(--text);border:1px solid var(--border2);}
@@ -1473,19 +1598,27 @@ function _wrappedCalcularPrestado(S, tipo, mesK, anioK){
 
   deudores.forEach(d => {
     const movs = Array.isArray(d.movimientos) ? d.movimientos : [];
-    let prestadoAEsta = 0;
+    let prestadoAEsta = 0, nPrestamosAEsta = 0;
     movs.forEach(m => {
       if(!m || !_wrappedEnRango(m.fecha, tipo, mesK, anioK)) return;
-      if(m.tipo === 'prestamo'){ totalPrestado += (m.monto||0); prestadoAEsta += (m.monto||0); }
+      if(m.tipo === 'prestamo'){ totalPrestado += (m.monto||0); prestadoAEsta += (m.monto||0); nPrestamosAEsta++; }
       else if(m.tipo === 'abono' || m.tipo === 'pago-completo'){ totalDevuelto += (m.monto||0); }
     });
     if(prestadoAEsta > 0 && (!topDeudor || prestadoAEsta > topDeudor.monto)){
-      topDeudor = { nombre: d.nombre, personaId: d.personaId || null, monto: prestadoAEsta };
+      topDeudor = { nombre: d.nombre, personaId: d.personaId || null, monto: prestadoAEsta, n: nPrestamosAEsta };
     }
   });
 
   if(totalPrestado <= 0 && totalDevuelto <= 0) return null;
-  return { totalPrestado, totalDevuelto, topDeudor };
+  // `totalPendiente` (2026-09-15): derivado de los dos totales que esta
+  // misma función ya calculaba — no es una fuente nueva, es la resta
+  // directa. Es una simplificación reconocida (igual que la ganancia de
+  // Spotify en otra función de este archivo): no descuenta condonaciones
+  // ni ajustes manuales del saldo de cada deudor, solo prestado-devuelto
+  // del año. Para un "dato curioso" de Wrapped alcanza; el saldo exacto
+  // y auditado sigue viviendo en el módulo de Préstamos (prestado.js).
+  const totalPendiente = Math.max(0, totalPrestado - totalDevuelto);
+  return { totalPrestado, totalDevuelto, totalPendiente, topDeudor };
 }
 
 /* ─── PRESTADO — Yo debo (S.misDeudas) ────────────────────────────────
@@ -2419,6 +2552,34 @@ function _wrappedBuildSlides(S, fmt2){
     </div>`
   });
 
+  // Slide "actividad" (2026-09-15): cuánta plata se movió en total y en
+  // cuántos registros — es la apertura tipo "escuchaste 40.000 minutos"
+  // de Spotify Wrapped: una cifra de volumen/actividad, no de resultado.
+  // OJO CON LA REGLA DE §3: esto suma ingresos + gastos reales del año en
+  // un solo número. No es lo mismo que mostrar `totalIngresos`/`totalGastos`
+  // por separado (eso sí queda prohibido, porque de ahí se puede derivar
+  // el balance y la tasa de ahorro) — un total combinado de "plata movida"
+  // no permite reconstruir ninguno de los dos por separado. Aun así es una
+  // decisión de producto nueva, no una consecuencia obvia de una regla ya
+  // escrita — vale la pena confirmarla explícitamente si se documenta en
+  // wrapped.md.
+  if(s.totalIngresos > 0 || s.totalGastos > 0){
+    const totalMovido = s.totalIngresos + s.totalGastos;
+    const totalRegistros = (s.nGastos||0) + (s.nIngresos||0);
+    slides.push({
+      id: 'actividad',
+      html: _wrappedSlideBignum('Para empezar', _wrappedBankPick('actividad-headline', [
+        'Tu plata tuvo una vida bastante ocupada.',
+        'Esto es todo lo que se movió este año.',
+        'Así de activa estuvo tu plata este año.',
+      ]), totalMovido, 'var(--text)', {
+        sub: totalRegistros > 0
+          ? `movidos en total entre ingresos y gastos, repartidos en ${totalRegistros} movimiento${totalRegistros===1?'':'s'} registrado${totalRegistros===1?'':'s'}.`
+          : 'movidos en total entre ingresos y gastos este año.'
+      })
+    });
+  }
+
   if(graficoSvg){
     let bignum = '', sub = '';
     if(patrimonio && Number.isFinite(patrimonio.diff)){
@@ -2440,6 +2601,40 @@ function _wrappedBuildSlides(S, fmt2){
     slides.push({ id:'categoria', html: _wrappedSlideBignum('Tu categoría del año', escHtml(s.topCategoria.cat), s.topCategoria.monto, 'var(--purple)', {
       sub: _wrappedCopyCategoria(s.topCategoria)
     }) });
+
+    // Slide nuevo (2026-09-15): ranking de TODAS las categorías, no solo
+    // la ganadora — reusa `_wrappedItemsRealesPeriodo` (ya centralizado,
+    // ver comentario ahí) para no recalcular el filtro de "gasto real",
+    // y `_wrappedRankingCategorias` para no reimplementar el agrupado
+    // que ya hace `_wrappedTopCategoriaDe`. Se salta si hay menos de 2
+    // categorías (con una sola, ya lo dijo todo el slide de arriba).
+    const itemsAnio = _wrappedItemsRealesPeriodo(S, 'anio', null, anioK);
+    const rankingCats = _wrappedRankingCategorias(
+      [...itemsAnio.gastosVarPeriodo, ...itemsAnio.pagosFijosPeriodo],
+      s.totalGastos,
+      7
+    );
+    if(rankingCats.length >= 2){
+      const filas = rankingCats.map(c => `
+        <div class="wrapped-bar-row">
+          <div class="wrapped-bar-label">${escHtml(c.cat)}</div>
+          <div class="wrapped-bar-track"><div class="wrapped-bar-fill" data-pct="${c.pct.toFixed(1)}"></div></div>
+          <div class="wrapped-bar-pct">${c.pct.toFixed(1)}%</div>
+        </div>`).join('');
+      slides.push({
+        id: 'categorias-ranking',
+        mood: 'purple',
+        html: `<div class="wrapped-slide-inner wrapped-slide-inner-wide">
+          <div class="wrapped-eyebrow">${_wrappedBankPick('categoriasRanking-eyebrow', [
+            'Así se repartió tu año',
+            'Categoría por categoría',
+            'Todo lo que se llevó tu plata',
+          ])}</div>
+          <div class="wrapped-headline"><b>${escHtml(rankingCats[0].cat)}</b> se llevó la mayor parte.</div>
+          <div class="wrapped-bars">${filas}</div>
+        </div>`
+      });
+    }
   }
 
   if(historiasMensuales){
@@ -2483,18 +2678,18 @@ function _wrappedBuildSlides(S, fmt2){
 
   if(mejor){
     slides.push({ id:'mejor', html: _wrappedSlideBignum('Tu mejor mes', _wrappedMesKaNombre(mejor.mesK), mejor.balance, 'var(--accent)', {
-      sub: _wrappedCopyMejorMes(mejor, promedio, empateMejor)
+      sub: _wrappedCopyMejorMes(mejor, promedio, empateMejor, fmt2)
     }) });
   }
   if(peor && (!mejor || peor.mesK !== mejor.mesK)){
     slides.push({ id:'peor', html: _wrappedSlideBignum('Tu mes más difícil', _wrappedMesKaNombre(peor.mesK), peor.balance, 'var(--red)', {
-      sub: _wrappedCopyPeorMes(peor, promedio, empatePeor)
+      sub: _wrappedCopyPeorMes(peor, promedio, empatePeor, fmt2)
     }) });
   }
 
   if(s.gastoMasGrande){
     slides.push({ id:'gasto', html: _wrappedSlideBignum('Tu gasto más grande', escHtml(s.gastoMasGrande.desc), s.gastoMasGrande.monto, 'var(--blue)', {
-      sub: _wrappedCopyGasto(s.gastoMasGrande, s.avgGasto)
+      sub: _wrappedCopyGasto(s.gastoMasGrande, s.avgGasto, s.totalGastos)
     }) });
   }
 
@@ -2537,9 +2732,24 @@ function _wrappedBuildSlides(S, fmt2){
       involucraPersona: true,
       esRecord: !!prestadoAnio.topDeudor,
       intensidad: prestadoAnio.totalDevuelto > 0 ? 2 : 1,
-      html: _wrappedSlideBignum('Le prestaste a otros', '', prestadoAnio.totalPrestado, 'var(--blue)', {
-        sub: _wrappedCopyPrestado(prestadoAnio)
-      })
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">${_wrappedBankPick('banco-eyebrow', [
+          '🏦 Felicitaciones: este periodo también fuiste banco',
+          '🏦 Resulta que también prestas plata',
+          'Tu otro trabajo: entidad financiera informal',
+        ])}</div>
+        <div class="wrapped-headline">${_wrappedBankPick('banco-headline', [
+          'Tuviste una sucursal bancaria funcionando sin que nadie te pagara por eso.',
+          'Fuiste banco, cobrador y a veces también el que esperaba pacientemente.',
+          'Prestaste plata como quien no quiere la cosa — sin intereses, como buen banco informal.',
+        ])}</div>
+        <div class="wrapped-stat-row">
+          <div class="wrapped-stat"><div class="wrapped-stat-v">${fmt2(prestadoAnio.totalPrestado)}</div><div class="wrapped-stat-l">Prestado</div></div>
+          <div class="wrapped-stat"><div class="wrapped-stat-v">${fmt2(prestadoAnio.totalDevuelto)}</div><div class="wrapped-stat-l">Recuperado</div></div>
+          <div class="wrapped-stat"><div class="wrapped-stat-v">${fmt2(prestadoAnio.totalPendiente)}</div><div class="wrapped-stat-l">Pendiente</div></div>
+        </div>
+        <div class="wrapped-sub" style="margin-top:14px;">${_wrappedCopyPrestado(prestadoAnio, fmt2)}</div>
+      </div>`
     });
   }
 
@@ -2594,6 +2804,41 @@ function _wrappedBuildSlides(S, fmt2){
     });
   }
 
+  // Frecuencia vs. peso por movimiento (2026-09-15) — mismo espíritu que
+  // la cláusula que ya existía dentro de `_wrappedCopyCategoria`
+  // (`topPorFrecuencia`), pero como slide propio porque el contraste con
+  // "la categoría más concentrada" es un dato curioso completo por sí
+  // solo, no una nota al pie de la categoría del año. Solo entra si las
+  // dos categorías realmente difieren — si coincidieran no habría
+  // contraste que contar (misma regla de "no forzar" del resto del
+  // archivo).
+  if(s.topCategoria && s.topCategoria.topPorFrecuencia){
+    const frecuente = s.topCategoria.topPorFrecuencia; // {cat, count}
+    const itemsCat = _wrappedItemsRealesPeriodo(S, 'anio', null, anioK);
+    const concentrada = _wrappedCategoriaMasConcentrada([...itemsCat.gastosVarPeriodo, ...itemsCat.pagosFijosPeriodo]);
+    if(concentrada && concentrada.cat !== frecuente.cat){
+      candidatosInsights.push({
+        intensidad: 2,
+        html: `<div class="wrapped-slide-inner">
+          <div class="wrapped-eyebrow">${_wrappedBankPick('relCategoria-eyebrow', [
+            'Un detalle curioso sobre tus categorías',
+            'Frecuencia y peso no siempre van juntos',
+            'Algo que probablemente no habías notado',
+          ])}</div>
+          <div class="wrapped-headline">${_wrappedBankPick('relCategoria-headline', [
+            'Lo que más se repite no siempre es lo que más pesa.',
+            'Una cosa es lo que más usás, otra lo que más cuesta cada vez.',
+            'La categoría más presente no fue la más pesada por movimiento.',
+          ])}</div>
+          ${_wrappedFrasesHtml([
+            `<b>${escHtml(frecuente.cat)}</b> fue tu categoría más frecuente, con ${frecuente.count} movimiento${frecuente.count===1?'':'s'}.`,
+            `<b>${escHtml(concentrada.cat)}</b> fue la que más pesó por movimiento, en promedio ${fmt2(concentrada.avgPerOcc)} cada vez.`,
+          ])}
+        </div>`
+      });
+    }
+  }
+
   if(comparaciones){
     candidatosInsights.push({
       intensidad: comparaciones.intensidadMax,
@@ -2615,7 +2860,11 @@ function _wrappedBuildSlides(S, fmt2){
       intensidad: 1,
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">Tus gastos que aparecen cada mes sin pedir permiso</div>
-        <div class="wrapped-headline">Suscripciones y recurrentes.</div>
+        <div class="wrapped-headline">${_wrappedBankPick('suscripciones-headline', [
+          'Estos gastos aparecen solos, mes tras mes.',
+          'Suscripciones y recurrentes: la plata que sale en piloto automático.',
+          'Nadie te pregunta si querés pagar esto — simplemente pasa cada mes.',
+        ])}</div>
         ${_wrappedFrasesHtml(filas)}
       </div>`
     });
@@ -2888,6 +3137,9 @@ function _wrappedGoTo(i){
   }
   if(el.querySelector('.wrapped-mensual-svg')){
     _wrappedSetupGraficoMensual(el);
+  }
+  if(el.querySelector('.wrapped-bar-fill')){
+    requestAnimationFrame(() => requestAnimationFrame(() => _wrappedAnimarBarras(el)));
   }
   if(el.getAttribute('data-confetti') === '1'){
     _wrappedLanzarConfeti(el);

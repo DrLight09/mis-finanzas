@@ -188,25 +188,102 @@ function _wrappedValidarDatos(S){
   return warnings;
 }
 
-/* Imprime las advertencias en consola solo si Wrapped se abrió en modo
-   debug (?debug=1 o #debug en la URL) — nunca se le muestra nada de esto
-   al usuario final, ver el comentario de `_wrappedValidarDatos`. Envuelto
+/* Único punto que decide si Wrapped se abrió en modo debug (?debug=1 o
+   #debug en la URL) — antes vivía duplicado dentro de `_wrappedLogDebug`
+   (consola) y del panel de debug visual (ver `_wrappedDebugPanelHtml` /
+   `renderWrapped`, 2026-09-15) — dos copias del mismo try/catch que
+   podían desincronizarse si alguna vez se tocaba una sin la otra. Envuelto
    en try/catch porque `URLSearchParams`/`window.location` no deberían
    fallar nunca en un navegador real, pero esta función corre en cada
    apertura de la pantalla y no vale la pena arriesgar la historia entera
    por un diagnóstico que es puramente informativo. */
-function _wrappedLogDebug(S){
-  let debugOn = false;
+function _wrappedDebugOn(){
   try{
-    debugOn = typeof window !== 'undefined' && !!window.location &&
+    return typeof window !== 'undefined' && !!window.location &&
       (new URLSearchParams(window.location.search).get('debug') === '1' ||
        (window.location.hash || '').indexOf('debug') !== -1);
-  } catch(e){ debugOn = false; }
-  if(!debugOn) return;
+  } catch(e){ return false; }
+}
+
+/* Imprime las advertencias en consola solo si Wrapped se abrió en modo
+   debug — nunca se le muestra nada de esto al usuario final, ver el
+   comentario de `_wrappedValidarDatos`. */
+function _wrappedLogDebug(S){
+  if(!_wrappedDebugOn()) return;
   const warnings = _wrappedValidarDatos(S);
   if(warnings.length && typeof console !== 'undefined' && console.warn){
     console.warn('[wrapped] advertencias de datos:', warnings);
   }
+}
+
+/* ─── PANEL DE DEBUG VISUAL (2026-09-15) ───────────────────────────────────
+   Hasta ahora `?debug=1`/`#debug` solo imprimía advertencias en la consola
+   (`_wrappedLogDebug`) — útil, pero obliga a tener las devtools abiertas y
+   no muestra NADA sobre por qué el motor de insights/personalidad eligió
+   lo que eligió. Este panel es puramente de inspección para quien ajusta
+   el motor (mismo criterio que ya regía la consola): se arma a partir del
+   snapshot que `_wrappedBuildSlides` ya deja en `slides._wrappedDebugInfo`
+   (ver ese comentario) — no dispara ningún cálculo nuevo, no guarda nada
+   en `S`, y jamás se inyecta al DOM si `_wrappedDebugOn()` es falso (ver
+   `renderWrapped`).
+
+   A propósito NO incluye ingresos/gastos/tasaAhorro en crudo aunque sean
+   datos que este módulo sí calcula internamente (`_wrappedCalcularPeriodo`,
+   ver wrapped.md §3) — ese aislamiento existe para separar "qué pasó
+   financieramente" (terreno de Análisis financiero) de "qué decidió
+   mostrar Wrapped y por qué" (terreno de este panel), y no hay necesidad
+   real de cruzar esa línea solo para depurar el motor de selección: el
+   puntaje y las banderas ya alcanzan para explicar cada elección. */
+function _wrappedDebugPanelHtml(S, debugInfo){
+  const warnings = _wrappedValidarDatos(S);
+  const warnHtml = warnings.length
+    ? warnings.map(w => `<div class="wrapped-debug-warn">⚠ ${escHtml2(w)}</div>`).join('')
+    : `<div class="wrapped-debug-ok">✓ Sin advertencias — la forma de los datos pasó las validaciones básicas.</div>`;
+
+  const info = debugInfo || {};
+  const insights = info.candidatosInsights || [];
+  const insightsRows = insights.map(c => `<tr>
+      <td class="${c.elegido ? 'wrapped-debug-sel' : 'wrapped-debug-unsel'}">${c.elegido ? '✓' : '—'}</td>
+      <td>${escHtml2(c.label)}</td>
+      <td>${Math.round(c.score)}</td>
+      <td>${[c.esRecord && 'récord', c.esCambioComportamiento && 'cambio', c.involucraMeta && 'meta', c.involucraPersona && 'persona'].filter(Boolean).join(', ') || '—'}</td>
+    </tr>`).join('');
+
+  const pers = info.personalidad;
+  const persRows = pers
+    ? pers.candidatos.map(c => {
+        const esTop = c.tipo === pers.elegido, esSec = c.tipo === pers.secundario;
+        return `<tr>
+          <td class="${esTop ? 'wrapped-debug-top' : (esSec ? 'wrapped-debug-sel' : 'wrapped-debug-unsel')}">${esTop ? '👑 principal' : (esSec ? 'secundario' : '—')}</td>
+          <td>${escHtml2(c.tipo)}</td>
+          <td>${escHtml2(c.evidencia)}</td>
+        </tr>`;
+      }).join('')
+    : '';
+
+  return `
+    <h4>Validación de datos</h4>
+    ${warnHtml}
+    <h4>Resumen</h4>
+    <table>
+      <tr><td>Slides totales</td><td>${info.totalSlides != null ? info.totalSlides : '—'}</td></tr>
+      <tr><td>Candidatos de insights</td><td>${insights.length} (entraron ${insights.filter(c=>c.elegido).length} de ${WRAPPED_MAX_INSIGHTS_POOL} posibles)</td></tr>
+      <tr><td>Personalidad</td><td>${pers ? escHtml2(pers.elegido) + (pers.secundario ? ' + ' + escHtml2(pers.secundario) : '') : 'sin señal clara este año'}</td></tr>
+    </table>
+    <h4>Candidatos de insights (✓ = entró a la historia final)</h4>
+    ${insights.length ? `<table><tr><th></th><th>label</th><th>puntaje</th><th>señales</th></tr>${insightsRows}</table>` : '<div class="wrapped-debug-ok">Sin candidatos este año.</div>'}
+    <h4>Personalidad — candidatos que aplicaron</h4>
+    ${pers ? `<table><tr><th></th><th>tipo</th><th>evidencia</th></tr>${persRows}</table>` : '<div class="wrapped-debug-ok">Ninguno aplicó este año.</div>'}
+  `;
+}
+/* `escHtml2`: mismo criterio de §3 (todo texto derivado de un dato del
+   usuario pasa por escape antes de interpolarse) aplicado también al
+   panel de debug — usa `escHtml` real si el núcleo ya cargó, y una
+   versión mínima propia si no, para que el panel nunca dependa de un
+   guard `typeof` distinto al resto del archivo. */
+function escHtml2(s){
+  if(typeof escHtml === 'function') return escHtml(s);
+  return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
 /* Agrupa una lista ya filtrada de gastos (variables + fijos pagados) por
@@ -1144,6 +1221,17 @@ function _wrappedCopyComprometida(c){
   ]);
 }
 
+function _wrappedCopyInteresesTC(it){
+  const detalleTarjeta = (it.topTarjeta && it.topTarjeta.nombre)
+    ? ` La mayor parte se la llevó ${escHtml(it.topTarjeta.nombre)}.`
+    : '';
+  return _wrappedBankPick('interesesTC-base', [
+    'Eso es plata que se fue sin comprar absolutamente nada.',
+    'Ni una compra, ni un antojo — puro costo de tener deuda.',
+    'Plata que el banco se llevó solo por esperar a que pagaras.',
+  ]) + detalleTarjeta;
+}
+
 /* ─── RENDER: gráfico de línea animado (SVG) ──────────────────────────────
    Puntos conectados por líneas, uno por mes, coloreado según si el
    patrimonio terminó arriba o abajo de donde empezó. El *dibujo* de la
@@ -1430,6 +1518,28 @@ function _wrappedInyectarEstilos(){
   .wrapped-mes-nombre{font-size:12px;}
   .wrapped-mes-linea{font-size:13px;}
 }
+/* ─── PANEL DE DEBUG VISUAL (2026-09-15) ──────────────────────────────────
+   Solo se inyecta al DOM cuando ?debug=1/#debug está presente (ver
+   renderWrapped) — nunca le llega a un usuario normal, mismo criterio
+   que ya regía el console.warn de _wrappedLogDebug. Reutiliza
+   únicamente variables CSS ya definidas por la app (--bg2, --border2,
+   --text2, --accent, --amber, --red) — sin paleta nueva, mismo criterio
+   que el resto del módulo (ver wrapped.md §7undecies). */
+#wrapped-debug-toggle{position:absolute;bottom:14px;right:14px;z-index:2100;width:34px;height:34px;border-radius:50%;background:var(--bg2);border:1px solid var(--border2);color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:15px;}
+#wrapped-debug-panel{position:absolute;inset:0;z-index:2200;background:var(--bg);display:none;flex-direction:column;font-family:'DM Sans',sans-serif;color:var(--text);}
+#wrapped-debug-panel.wrapped-abierto{display:flex;}
+#wrapped-debug-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border2);flex-shrink:0;}
+#wrapped-debug-head span{font-weight:700;font-size:14px;}
+#wrapped-debug-head button{background:transparent;border:none;color:var(--text2);font-size:16px;cursor:pointer;}
+#wrapped-debug-body{overflow-y:auto;padding:12px 16px 28px;}
+#wrapped-debug-body h4{margin:16px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);}
+#wrapped-debug-body table{width:100%;border-collapse:collapse;font-size:12.5px;}
+#wrapped-debug-body td,#wrapped-debug-body th{padding:4px 6px;text-align:left;border-bottom:1px solid var(--border);}
+#wrapped-debug-body .wrapped-debug-warn{color:var(--amber);font-size:12.5px;margin-bottom:4px;}
+#wrapped-debug-body .wrapped-debug-ok{color:var(--accent);font-size:12.5px;}
+#wrapped-debug-body .wrapped-debug-sel{color:var(--accent);font-weight:700;}
+#wrapped-debug-body .wrapped-debug-unsel{color:var(--text3);}
+#wrapped-debug-body .wrapped-debug-top{color:var(--amber);}
 `;
   document.head.appendChild(style);
 }
@@ -1832,6 +1942,44 @@ function _wrappedCalcularComprometida(S, tipo, mesK, anioK){
   return { total, topItem };
 }
 
+/* ─── TARJETAS DE CRÉDITO — Intereses cobrados ────────────────────────
+   `S.tarjetasCredito[].compras[]` con `_esCargoEspecial:true` y
+   `_motivoCargo:'interes'` son cargos que el BANCO impone (ver
+   `tarjetas_credito.js`, sección "Cargo especial"), no una compra tuya —
+   se filtran por `fecha` en el período, igual que cualquier otro dominio
+   de §7ter. Deliberadamente NO se toca `tc.deuda` (saldo actual — puede
+   venir de años anteriores) ni `.pagos[]`/compras normales (eso ya vive,
+   con otro lente, en gastos/categorías si esas compras tienen su gasto
+   variable espejo — sumarlo acá otra vez sería contar la misma plata dos
+   veces bajo otra etiqueta). Los intereses sí son plata nueva que no
+   aparece en ningún otro slide: el banco te la cobró aparte, encima del
+   consumo real. */
+function _wrappedCalcularInteresesTC(S, tipo, mesK, anioK){
+  const tarjetas = S.tarjetasCredito;
+  if(!Array.isArray(tarjetas) || !tarjetas.length) return null;
+
+  let totalInteres = 0, nCargos = 0;
+  let topTarjeta = null; // la que más intereses generó en el período
+
+  tarjetas.forEach(tc => {
+    let interesEstaTarjeta = 0;
+    (tc.compras||[]).forEach(c => {
+      if(!c || c.eliminado) return;
+      if(!(c._esCargoEspecial && c._motivoCargo === 'interes')) return;
+      if(!_wrappedEnRango(c.fecha, tipo, mesK, anioK)) return;
+      totalInteres += (c.monto||0);
+      interesEstaTarjeta += (c.monto||0);
+      nCargos++;
+    });
+    if(interesEstaTarjeta > 0 && (!topTarjeta || interesEstaTarjeta > topTarjeta.monto)){
+      topTarjeta = { nombre: tc.nombre || tc.banco || null, monto: interesEstaTarjeta };
+    }
+  });
+
+  if(totalInteres <= 0) return null;
+  return { totalInteres, nCargos, topTarjeta };
+}
+
 /* ─── META DE AHORRO DE CAJITA ─────────────────────────────────────────
    Reutiliza `calcMetaProgreso(c)`, YA centralizada en `cuentas.js` (nunca
    se recalcula `pct`/`esperadoHoy`/`diferencia` acá — regla de §3). Como
@@ -2031,7 +2179,14 @@ function _wrappedPersonalidad(S, anioK){
   // real — nunca un segundo puesto inventado para rellenar el slide
   // (misma regla de "no forzar" que ya aplicaba al resultado único).
   const secundario = candidatos.length > 1 ? candidatos[1] : null;
-  return { tipo: top.tipo, frase: top.frase, evidencia: top.evidencia, secundario };
+  // `_candidatos` (2026-09-15): la lista completa, en el mismo orden de
+  // prioridad de siempre — agregada solo para que el panel de debug
+  // visual (`_wrappedDebugPanelHtml`) pueda mostrar qué otros arquetipos
+  // también aplicaron y no se usaron, sin recalcular nada. Prefijo `_`
+  // porque ningún llamador productivo (el slide de personalidad) debe
+  // depender de este campo — solo lee `tipo`/`frase`/`evidencia`/`secundario`,
+  // igual que antes de este cambio.
+  return { tipo: top.tipo, frase: top.frase, evidencia: top.evidencia, secundario, _candidatos: candidatos };
 }
 
 /* ─── GASTO MÁS RANDOM ─────────────────────────────────────────────────
@@ -2625,6 +2780,17 @@ function _wrappedBuildSlides(S, fmt2){
   const mesadaAnio      = _wrappedCalcularMesada(S, 'anio', null, anioK);
   const spotifyAnio     = _wrappedCalcularSpotify(S, 'anio', null, anioK);
   const comprometidaAnio = _wrappedCalcularComprometida(S, 'anio', null, anioK);
+  // Tarjetas de Crédito (2026-09-15) — nuevo dominio, agregado después de
+  // revisar `tarjetas_credito.js` a pedido del usuario. Deliberadamente
+  // acotado a los INTERESES cobrados en el período (`_esCargoEspecial &&
+  // _motivoCargo==='interes'`), no a la deuda actual (`tc.deuda`, que
+  // puede venir de antes — mismo motivo por el que Préstamos tampoco
+  // muestra "pendiente") ni a `calcDeudaAjenaDeTarjeta`/`calcDeudaTcPropia`
+  // (viven en otro módulo no incluido acá; recalcularlas de memoria acá
+  // violaría la regla de §3 de no reimplementar un cálculo centralizado
+  // que no se puede ver/reexportar). Los intereses sí son un dato
+  // 100% puntual del período, igual que el resto de §7ter.
+  const interesesTC = _wrappedCalcularInteresesTC(S, 'anio', null, anioK);
 
   // Segunda tanda (2026-09-13): personalidad, gasto random, protagonistas.
   const personalidad   = _wrappedPersonalidad(S, anioK);
@@ -2912,6 +3078,16 @@ function _wrappedBuildSlides(S, fmt2){
     });
   }
 
+  if(interesesTC){
+    candidatosInsights.push({
+      esRecord: true, // es un cargo real del banco, no un promedio
+      intensidad: 3, // costo puro, sin nada a cambio — pesa más que un gasto normal
+      html: _wrappedSlideBignum('El banco te cobró en intereses', '', interesesTC.totalInteres, 'var(--red)', {
+        sub: _wrappedCopyInteresesTC(interesesTC)
+      })
+    });
+  }
+
   if(metaCajita){
     candidatosInsights.push({
       involucraMeta: true,
@@ -3075,10 +3251,17 @@ function _wrappedBuildSlides(S, fmt2){
     });
   }
 
-  const insightsElegidos = candidatosInsights
+  // `candidatosPuntuados` (2026-09-15): antes este cálculo vivía inline y
+  // se cortaba directo con `.slice`, descartando para siempre los
+  // candidatos que no entraron. Separarlo en dos pasos no cambia qué
+  // insights se eligen (`insightsElegidos` sigue siendo exactamente el
+  // mismo corte de siempre) — solo permite que el panel de debug visual
+  // (`_wrappedDebugPanelHtml`) pueda mostrar también los descartados y
+  // por qué puntaje se quedaron afuera.
+  const candidatosPuntuados = candidatosInsights
     .map(c => ({ ...c, score: _wrappedScoreInsight(c) }))
-    .sort((a,b) => b.score - a.score) // sort estable: empates conservan el orden en que se agregaron arriba
-    .slice(0, WRAPPED_MAX_INSIGHTS_POOL);
+    .sort((a,b) => b.score - a.score); // sort estable: empates conservan el orden en que se agregaron arriba
+  const insightsElegidos = candidatosPuntuados.slice(0, WRAPPED_MAX_INSIGHTS_POOL);
 
   // Puente narrativo (2026-09-14): una micro-pausa de texto, sin ningún
   // dato nuevo, entre el bloque de "datos ancla" (patrimonio, categoría,
@@ -3210,6 +3393,37 @@ function _wrappedBuildSlides(S, fmt2){
     const m = _moodRegex.exec(sl.html);
     sl.mood = m ? m[1] : 'accent';
   });
+
+  // Snapshot para el panel de debug visual (2026-09-15, ver
+  // `_wrappedDebugPanelHtml`) — nunca se lee si `?debug=1`/`#debug` no
+  // está presente (`renderWrapped` ni siquiera llama a
+  // `_wrappedDebugPanelHtml` en ese caso). Propiedad extra sobre el
+  // array, no un campo nuevo en `S`: sigue sin haber ningún estado
+  // persistido (§3) — vive y muere con esta única llamada a
+  // `_wrappedBuildSlides`. Solo guarda metadatos de SELECCIÓN (puntaje,
+  // qué tema, si entró o no) y evidencia ya factual que ya existía —
+  // nunca ingresos/gastos/tasaAhorro en crudo (§3).
+  slides._wrappedDebugInfo = {
+    candidatosInsights: candidatosPuntuados.map((c, i) => ({
+      // Label solo para lectura humana en el panel — se extrae del mismo
+      // `wrapped-eyebrow` que ya se pinta en el slide (nunca un texto
+      // nuevo); si por lo que sea no matchea, cae a un id genérico.
+      label: (/<div class="wrapped-eyebrow">(.*?)<\/div>/.exec(c.html || '') || [null, 'insight-' + i])[1],
+      score: c.score,
+      elegido: i < WRAPPED_MAX_INSIGHTS_POOL,
+      esRecord: !!c.esRecord,
+      esCambioComportamiento: !!c.esCambioComportamiento,
+      involucraMeta: !!c.involucraMeta,
+      involucraPersona: !!c.involucraPersona,
+      intensidad: c.intensidad || 0
+    })),
+    personalidad: personalidad ? {
+      elegido: personalidad.tipo,
+      secundario: personalidad.secundario ? personalidad.secundario.tipo : null,
+      candidatos: (personalidad._candidatos || []).map(c => ({ tipo: c.tipo, evidencia: c.evidencia }))
+    } : null,
+    totalSlides: slides.length
+  };
 
   return slides;
 }
@@ -3407,6 +3621,19 @@ window.renderWrapped = function(){
   const progresoHtml = slides.map(() => `<div class="wrapped-seg"><i></i></div>`).join('');
   const slidesHtml = slides.map(sl => `<div class="wrapped-slide" data-mood="${sl.mood || 'accent'}"${sl.confetti ? ' data-confetti="1"' : ''}>${sl.html}</div>`).join('');
 
+  // Panel de debug visual (2026-09-15) — solo se arma y se inyecta cuando
+  // la URL trae `?debug=1`/`#debug` (ver `_wrappedDebugPanelHtml`); en
+  // cualquier otro caso `debugHtml` queda vacío y no se agrega nada al
+  // DOM ni se paga el costo de armar las tablas.
+  const debugOn = _wrappedDebugOn();
+  const debugHtml = debugOn
+    ? `<button type="button" id="wrapped-debug-toggle" aria-label="Panel de debug" title="Panel de debug">🛠</button>
+       <div id="wrapped-debug-panel">
+         <div id="wrapped-debug-head"><span>Debug — Wrapped</span><button type="button" id="wrapped-debug-close">✕</button></div>
+         <div id="wrapped-debug-body">${_wrappedDebugPanelHtml(S, slides._wrappedDebugInfo)}</div>
+       </div>`
+    : '';
+
   // Se monta directo en document.body (no dentro de #wrapped-body /
   // #screen-wrapped) — ver wrapped.md §7bis: .screen.active tiene un
   // transform:translateY(0) permanente (animation-fill-mode:both en
@@ -3431,8 +3658,21 @@ window.renderWrapped = function(){
       </div>
     </div>
     <div id="wrapped-slides">${slidesHtml}</div>
-    <div id="wrapped-hint">Tocá, deslizá o usá las flechas para avanzar</div>`;
+    <div id="wrapped-hint">Tocá, deslizá o usá las flechas para avanzar</div>
+    ${debugHtml}`;
   document.body.appendChild(overlay);
+
+  if(debugOn){
+    const toggle = overlay.querySelector('#wrapped-debug-toggle');
+    const panel = overlay.querySelector('#wrapped-debug-panel');
+    const closeBtn = overlay.querySelector('#wrapped-debug-close');
+    // stopPropagation: el overlay entero tiene un click delegado para
+    // avanzar/retroceder de historia (ver `_wrappedSetupNav`) — sin esto,
+    // tocar el botón 🛠 o cerrar el panel también dispararía "siguiente".
+    if(toggle) toggle.addEventListener('click', function(e){ e.stopPropagation(); panel.classList.toggle('wrapped-abierto'); });
+    if(closeBtn) closeBtn.addEventListener('click', function(e){ e.stopPropagation(); panel.classList.remove('wrapped-abierto'); });
+    if(panel) panel.addEventListener('click', function(e){ e.stopPropagation(); });
+  }
 
   _wrappedSetupNav(overlay, fmt2);
   _wrappedGoTo(0);
@@ -3475,6 +3715,8 @@ window._wrappedInternals = {
   _wrappedAnioYMesActual,
   _wrappedEnRango,
   _wrappedValidarDatos,
+  _wrappedDebugOn,
+  _wrappedDebugPanelHtml,
   _wrappedCalcularEncargos,
   _wrappedCalcularPrestado,
   _wrappedCalcularMisDeudas,

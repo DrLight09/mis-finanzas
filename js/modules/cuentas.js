@@ -657,19 +657,50 @@ function guardarChequeoNu(){
   closeSheet('chequeo-nu');
   const r=verificarTasaNu();
   if(r){
-    const tasaActual=_tasaVigenteEnFecha(hoy());
-    if(confirm(`Los chequeos ya no cuadran con ${tasaActual}% desde el ${r.desde}. Con lo que anotaste, parece que ahora es ${r.sugerida}%.\n\n¿Aplicar este cambio de tasa desde el ${r.desde}?`)){
-      registrarTasaNuHistorial(r.desde,r.sugerida);
-      const el=document.getElementById('nuTasaGlobal');
-      if(el)el.value=String(r.sugerida).replace('.',',');
-      S.nuTasaGlobal=r.sugerida;
-      save();refresh();
-      _renderTasaHistorialTag();
-      if(window.toast)toast('Saldo corregido y tasa actualizada a '+r.sugerida+'% desde '+r.desde,'ok',4000);
-    }
+    _abrirConfirmarTasaNu(r);
   }else{
     if(window.toast)toast('Chequeo guardado — saldo corregido con lo que anotaste.','ok',3000);
   }
+}
+
+// Guarda temporalmente la sugerencia de cambio de tasa detectada en guardarChequeoNu()
+// mientras el usuario decide si aplicarla — reemplaza el antiguo confirm() nativo del
+// navegador (que solo daba Aceptar/Cancelar) por un sheet propio de la app donde la
+// tasa sugerida y la fecha "desde" quedan editables antes de confirmar, por si el
+// usuario se equivocó al anotar el saldo y quiere corregir el valor antes de guardar.
+let _tasaNuPendiente=null;
+
+function _abrirConfirmarTasaNu(r){
+  _tasaNuPendiente=r;
+  const tasaActual=_tasaVigenteEnFecha(hoy());
+  const msgEl=document.getElementById('ctn-msg');
+  if(msgEl)msgEl.textContent=`Los chequeos ya no cuadran con ${tasaActual}% desde el ${r.desde}. Con lo que anotaste, parece que ahora es ${r.sugerida}%. Revisa o corrige el valor y la fecha antes de aplicar el cambio.`;
+  const tasaInput=document.getElementById('ctn-tasa');
+  if(tasaInput)tasaInput.value=String(r.sugerida).replace('.',',');
+  const fechaInput=document.getElementById('ctn-fecha');
+  if(fechaInput)fechaInput.value=r.desde;
+  openSheet('confirmar-tasa-nu');
+}
+
+function confirmarCambioTasaNu(){
+  if(!_tasaNuPendiente)return;
+  const tasaInput=document.getElementById('ctn-tasa');
+  const fechaInput=document.getElementById('ctn-fecha');
+  const tasaEditada=parsePct(tasaInput?tasaInput.value:'');
+  const fechaEditada=(fechaInput&&fechaInput.value)?fechaInput.value:_tasaNuPendiente.desde;
+  if(tasaEditada==null||isNaN(tasaEditada)){
+    if(window.toast)toast('Pon una tasa válida.','err',3000);
+    return;
+  }
+  registrarTasaNuHistorial(fechaEditada,tasaEditada);
+  const el=document.getElementById('nuTasaGlobal');
+  if(el)el.value=String(tasaEditada).replace('.',',');
+  S.nuTasaGlobal=tasaEditada;
+  save();refresh();
+  _renderTasaHistorialTag();
+  closeSheet('confirmar-tasa-nu');
+  if(window.toast)toast('Tasa actualizada a '+tasaEditada+'% desde '+fechaEditada,'ok',4000);
+  _tasaNuPendiente=null;
 }
 
 // Calcula intereses del CDT de una cajita
@@ -2768,6 +2799,7 @@ Events.registerAll('cuentas', {
   abrirRegistrarApertura,
   // Nu — chequeo de saldo real
   guardarChequeoNu,
+  confirmarCambioTasaNu,
   // Transferir y abrir sheets estáticos (usado en el HTML de screen-cuentas)
   abrirTransferir,
   openSheet, // reutiliza el openSheet() del núcleo — solo se registra el nombre bajo 'cuentas' porque el onclick que lo usaba vivía en el HTML de esta sección (botón "Chequear saldo real")

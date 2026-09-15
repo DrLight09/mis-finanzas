@@ -1257,7 +1257,7 @@ function _wrappedInyectarEstilos(){
   const style = document.createElement('style');
   style.id = 'wrapped-story-styles';
   style.textContent = `
-#wrapped-overlay{position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;flex-direction:column;font-family:'DM Sans',sans-serif;color:var(--text);overflow:hidden;--wrapped-mood:var(--accent);}
+#wrapped-overlay{position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;flex-direction:column;font-family:'DM Sans',sans-serif;color:var(--text);overflow:hidden;--wrapped-mood:var(--accent);-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;}
 .wrapped-bg-blob{position:absolute;border-radius:50%;filter:blur(64px);pointer-events:none;z-index:0;transition:background .9s ease;}
 .wrapped-bg-blob.b1{width:70vmax;height:70vmax;top:-28vmax;right:-24vmax;background:var(--wrapped-mood);opacity:.16;}
 .wrapped-bg-blob.b2{width:60vmax;height:60vmax;bottom:-30vmax;left:-20vmax;background:var(--wrapped-mood);opacity:.09;}
@@ -1328,6 +1328,27 @@ function _wrappedInyectarEstilos(){
 .wrapped-confetti i{position:absolute;top:-10%;width:7px;height:12px;border-radius:2px;opacity:.9;animation:wrappedConfettiFall 1.5s ease-in forwards;}
 @keyframes wrappedConfettiFall{to{transform:translateY(115vh) rotate(280deg);opacity:.15;}}
 @media (prefers-reduced-motion: reduce){.wrapped-slide{transition:none;}.wrapped-confetti{display:none;}}
+/* Pantallas de escritorio (2026-09-15): sube tipografía y ancho SOLO
+   cuando hay pantalla ancha Y mouse real (hover:hover + pointer:fine)
+   — así un celular/tablet en horizontal, que también puede tener
+   min-width alto, no cae acá y sigue viendo el layout mobile de
+   siempre, que es la prioridad. */
+@media (min-width:700px) and (hover:hover) and (pointer:fine){
+  .wrapped-slide-inner{max-width:460px;}
+  .wrapped-slide-inner-wide{max-width:560px;}
+  .wrapped-eyebrow{font-size:13px;}
+  .wrapped-headline{font-size:27px;}
+  .wrapped-sub{font-size:15.5px;}
+  .wrapped-cierre-poema{font-size:16px;}
+  .wrapped-bignum{font-size:clamp(42px,6vw,64px);}
+  .wrapped-bar-label{font-size:13px;}
+  .wrapped-bar-pct{font-size:13px;}
+  .wrapped-stat-v{font-size:18px;}
+  .wrapped-stat-l{font-size:11px;}
+  .wrapped-moment span{font-size:14.5px;}
+  .wrapped-mes-nombre{font-size:12px;}
+  .wrapped-mes-linea{font-size:13px;}
+}
 `;
   document.head.appendChild(style);
 }
@@ -1610,15 +1631,7 @@ function _wrappedCalcularPrestado(S, tipo, mesK, anioK){
   });
 
   if(totalPrestado <= 0 && totalDevuelto <= 0) return null;
-  // `totalPendiente` (2026-09-15): derivado de los dos totales que esta
-  // misma función ya calculaba — no es una fuente nueva, es la resta
-  // directa. Es una simplificación reconocida (igual que la ganancia de
-  // Spotify en otra función de este archivo): no descuenta condonaciones
-  // ni ajustes manuales del saldo de cada deudor, solo prestado-devuelto
-  // del año. Para un "dato curioso" de Wrapped alcanza; el saldo exacto
-  // y auditado sigue viviendo en el módulo de Préstamos (prestado.js).
-  const totalPendiente = Math.max(0, totalPrestado - totalDevuelto);
-  return { totalPrestado, totalDevuelto, totalPendiente, topDeudor };
+  return { totalPrestado, totalDevuelto, topDeudor };
 }
 
 /* ─── PRESTADO — Yo debo (S.misDeudas) ────────────────────────────────
@@ -2746,7 +2759,6 @@ function _wrappedBuildSlides(S, fmt2){
         <div class="wrapped-stat-row">
           <div class="wrapped-stat"><div class="wrapped-stat-v">${fmt2(prestadoAnio.totalPrestado)}</div><div class="wrapped-stat-l">Prestado</div></div>
           <div class="wrapped-stat"><div class="wrapped-stat-v">${fmt2(prestadoAnio.totalDevuelto)}</div><div class="wrapped-stat-l">Recuperado</div></div>
-          <div class="wrapped-stat"><div class="wrapped-stat-v">${fmt2(prestadoAnio.totalPendiente)}</div><div class="wrapped-stat-l">Pendiente</div></div>
         </div>
         <div class="wrapped-sub" style="margin-top:14px;">${_wrappedCopyPrestado(prestadoAnio, fmt2)}</div>
       </div>`

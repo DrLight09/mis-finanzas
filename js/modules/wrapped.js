@@ -237,13 +237,13 @@ function _wrappedLogDebug(S){
 function _wrappedDebugPanelHtml(S, debugInfo){
   const warnings = _wrappedValidarDatos(S);
   const warnHtml = warnings.length
-    ? warnings.map(w => `<div class="wrapped-debug-warn">⚠ ${escHtml2(w)}</div>`).join('')
-    : `<div class="wrapped-debug-ok">✓ Sin advertencias — la forma de los datos pasó las validaciones básicas.</div>`;
+    ? warnings.map(w => `<div class="wrapped-debug-warn"><i class="fa-solid fa-triangle-exclamation"></i> ${escHtml2(w)}</div>`).join('')
+    : `<div class="wrapped-debug-ok"><i class="fa-solid fa-circle-check"></i> Sin advertencias — la forma de los datos pasó las validaciones básicas.</div>`;
 
   const info = debugInfo || {};
   const insights = info.candidatosInsights || [];
   const insightsRows = insights.map(c => `<tr>
-      <td class="${c.elegido ? 'wrapped-debug-sel' : 'wrapped-debug-unsel'}">${c.elegido ? '✓' : '—'}</td>
+      <td class="${c.elegido ? 'wrapped-debug-sel' : 'wrapped-debug-unsel'}">${c.elegido ? '<i class="fa-solid fa-check"></i>' : '—'}</td>
       <td>${escHtml2(c.label)}</td>
       <td>${Math.round(c.score)}</td>
       <td>${[c.esRecord && 'récord', c.esCambioComportamiento && 'cambio', c.involucraMeta && 'meta', c.involucraPersona && 'persona'].filter(Boolean).join(', ') || '—'}</td>
@@ -254,7 +254,7 @@ function _wrappedDebugPanelHtml(S, debugInfo){
     ? pers.candidatos.map(c => {
         const esTop = c.tipo === pers.elegido, esSec = c.tipo === pers.secundario;
         return `<tr>
-          <td class="${esTop ? 'wrapped-debug-top' : (esSec ? 'wrapped-debug-sel' : 'wrapped-debug-unsel')}">${esTop ? '👑 principal' : (esSec ? 'secundario' : '—')}</td>
+          <td class="${esTop ? 'wrapped-debug-top' : (esSec ? 'wrapped-debug-sel' : 'wrapped-debug-unsel')}">${esTop ? '<i class="fa-solid fa-star"></i> principal' : (esSec ? 'secundario' : '—')}</td>
           <td>${escHtml2(c.tipo)}</td>
           <td>${escHtml2(c.evidencia)}</td>
         </tr>`;
@@ -270,7 +270,7 @@ function _wrappedDebugPanelHtml(S, debugInfo){
       <tr><td>Candidatos de insights</td><td>${insights.length} (entraron ${insights.filter(c=>c.elegido).length} de ${WRAPPED_MAX_INSIGHTS_POOL} posibles)</td></tr>
       <tr><td>Personalidad</td><td>${pers ? escHtml2(pers.elegido) + (pers.secundario ? ' + ' + escHtml2(pers.secundario) : '') : 'sin señal clara este año'}</td></tr>
     </table>
-    <h4>Candidatos de insights (✓ = entró a la historia final)</h4>
+    <h4>Candidatos de insights (<i class="fa-solid fa-check"></i> = entró a la historia final)</h4>
     ${insights.length ? `<table><tr><th></th><th>label</th><th>puntaje</th><th>señales</th></tr>${insightsRows}</table>` : '<div class="wrapped-debug-ok">Sin candidatos este año.</div>'}
     <h4>Personalidad — candidatos que aplicaron</h4>
     ${pers ? `<table><tr><th></th><th>tipo</th><th>evidencia</th></tr>${persRows}</table>` : '<div class="wrapped-debug-ok">Ninguno aplicó este año.</div>'}
@@ -812,6 +812,7 @@ function _wrappedCopyIntro(){
     'Esto es lo que hiciste con tu plata, con pruebas.',
     'Cada movimiento que registraste cuenta una historia. Esta es la tuya.',
     'Ni tú te acuerdas de todo esto. Por suerte, quedó registrado.',
+    'Todo lo que anotaste este año, junto por primera vez.',
   ]);
 }
 
@@ -833,6 +834,7 @@ function _wrappedCopyPuente(key){
     'Y aquí viene lo curioso.',
     'Hasta acá, todo esperable. Sigamos.',
     'Ahora, algunos datos que probablemente se te pasaron por alto.',
+    'Hay más — y de acá en más se pone interesante.',
   ]);
 }
 
@@ -927,6 +929,7 @@ function _wrappedCopyMejorMes(mejor, promedio, empate, fmt2){
   if(empate) base = _wrappedBankPick('mejorMes-empate', [
     'empatado con otro mes — los dos fueron tu mejor resultado del año.',
     'no hubo un solo ganador: este mes empató el primer lugar.',
+    'compartió la corona con otro mes — un empate en la cima.',
   ], mejor.mesK);
   else if(promedio !== null && promedio > 0 && mejor.balance > promedio * 1.5){
     base = _wrappedBankPick('mejorMes-lejos', [
@@ -952,6 +955,7 @@ function _wrappedCopyPeorMes(peor, promedio, empate, fmt2){
   if(empate) base = _wrappedBankPick('peorMes-empate', [
     'empatado con otro mes — ninguno de los dos fue fácil.',
     'dos meses se pelearon el último lugar.',
+    'compartió el podio menos deseado con otro mes.',
   ], peor.mesK);
   else if(peor.balance >= 0) base = _wrappedBankPick('peorMes-noTanMal', [
     'y ni en tu peor mes te fue mal.',
@@ -1009,6 +1013,7 @@ function _wrappedCopyGasto(gastoMasGrande, avgGasto, totalGastosAnio){
     intensidad = _wrappedBankPick('gasto-alto', [
       `${veces} veces tu gasto típico.`,
       `${veces} veces más de lo que gastás normalmente.`,
+      `${veces} veces por encima de lo habitual — se notó.`,
     ], gastoMasGrande.desc);
   } else {
     intensidad = _wrappedBankPick('gasto-normal', [
@@ -1034,6 +1039,7 @@ function _wrappedCopyAlcancia(alcanciaPeriodo, gastoMasGrande, ciclos){
     ? ' ' + _wrappedBankPick('alcancia-variosCiclos', [
         `Repartido en ${ciclos} alcancías distintas este año.`,
         `Fue la suma de ${ciclos} ciclos de Alcancía distintos.`,
+        `No fue de una sola vez — sumó entre ${ciclos} ciclos distintos.`,
       ])
     : '';
   if(gastoMasGrande && alcanciaPeriodo >= gastoMasGrande.monto){
@@ -1061,10 +1067,12 @@ function _wrappedCopyRacha(racha){
   if(racha >= 4) return _wrappedBankPick('racha-media', [
     'vas agarrando el ritmo.',
     'ya le encontraste la vuelta.',
+    'se está empezando a notar la constancia.',
   ], racha);
   return _wrappedBankPick('racha-corta', [
     'cada una ahorrando más que la anterior.',
     'un buen comienzo de racha.',
+    'apenas arrancando, pero arrancando bien.',
   ], racha);
 }
 
@@ -1088,6 +1096,7 @@ function _wrappedCopyCierre(ctx){
     return _wrappedBankPick('cierre-racha', [
       `${anioK} fue el año de la racha: ${racha} alcancías seguidas mejorando.`,
       `${racha} alcancías seguidas — así se resume tu ${anioK}.`,
+      `Si ${anioK} fue algo, fue constancia: ${racha} alcancías seguidas.`,
     ], anioK);
   }
   if(patrimonio && patrimonio.pct !== null && patrimonio.pct <= -25){
@@ -1100,12 +1109,14 @@ function _wrappedCopyCierre(ctx){
     return _wrappedBankPick('cierre-ahorroSuperaGasto', [
       `${anioK}: el año en que ahorraste más de lo que gastaste en tu compra más grande.`,
       `${anioK}, resumido: guardaste más de lo que gastaste en grande.`,
+      `${anioK} en números: tu ahorro le ganó a tu gasto más grande.`,
     ], anioK);
   }
   if(s.topCategoria && (s.topCategoria.catShare||0) >= 0.4){
     return _wrappedBankPick('cierre-categoria', [
       `${anioK}, resumido en una palabra: ${escHtml(s.topCategoria.cat)}.`,
       `Si ${anioK} fuera una palabra, sería ${escHtml(s.topCategoria.cat)}.`,
+      `${escHtml(s.topCategoria.cat)} — así se llamó ${anioK}, si tuviera que ponerle un nombre.`,
     ], anioK + s.topCategoria.cat);
   }
   return _wrappedBankPick('cierre-generico', [
@@ -1128,6 +1139,7 @@ function _wrappedCopyEncargos(e, fmt2){
       ? ' ' + _wrappedBankPick('encargos-top', [
           `La mayor parte te la encargó ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}${(typeof fmt2 === 'function' && Number.isFinite(e.topEncargo.monto)) ? `, con ${fmt2(e.topEncargo.monto)}` : ''}.`,
           `Quien más confió en vos para guardarle plata fue ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}.`,
+          `${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)} fue quien más plata te encargó cuidar.`,
         ], e.topEncargo.nombre)
       : '';
     return _wrappedBankPick('encargos-varias', [
@@ -1138,6 +1150,7 @@ function _wrappedCopyEncargos(e, fmt2){
   if(e.topEncargo && e.topEncargo.nombre) return _wrappedBankPick('encargos-una', [
     `La mayor parte te la encargó ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}.`,
     `Fue ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)} quien más confió en vos para guardarle plata.`,
+    `${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)} te encargó su plata todo el año.`,
   ], e.topEncargo.nombre);
   return _wrappedBankPick('encargos-generica', [
     'Plata ajena que pasó por tus manos este año.',
@@ -1159,6 +1172,7 @@ function _wrappedCopyPrestado(p, fmt2){
   if(p.totalDevuelto >= p.totalPrestado && p.totalDevuelto > 0) return _wrappedBankPick('prestado-cobradoTodo', [
     'Y este año te pagaron más de lo que prestaste.',
     'Y salieron las cuentas: te devolvieron más de lo que prestaste.',
+    'Este año la balanza quedó a tu favor: cobraste más de lo que prestaste.',
   ]);
   return _wrappedBankPick('prestado-generica', [
     'Plata que le diste una mano a alguien más.',
@@ -1169,10 +1183,12 @@ function _wrappedCopyMisDeudas(m){
   if(m.totalPagado >= m.totalRecibido && m.totalPagado > 0) return _wrappedBankPick('misDeudas-pagoTodo', [
     'Y este año pagaste más de lo que te prestaron.',
     'Cuentas saldadas: pagaste más de lo que te prestaron.',
+    'Le metiste parejo: pagaste incluso más de lo que recibiste.',
   ]);
   return _wrappedBankPick('misDeudas-generica', [
     'Plata que alguien más te prestó a vos.',
     'Este año también recibiste una mano de alguien.',
+    'Este año también hubo quien te tendió la mano con plata.',
   ]);
 }
 function _wrappedCopyMesada(m){
@@ -1182,10 +1198,12 @@ function _wrappedCopyMesada(m){
   if(partes.length === 2) return _wrappedBankPick('mesada-ambos', [
     'Entre papá y mamá, sin faltar un mes.',
     'Papá y mamá, mes tras mes, sin fallar.',
+    'Los dos, papá y mamá, cumplieron todo el año.',
   ]);
   return _wrappedBankPick('mesada-uno', [
     `De parte de ${partes[0]}.`,
     `${partes[0].charAt(0).toUpperCase()+partes[0].slice(1)} no falló ni un mes.`,
+    `Todo vino de ${partes[0]}, sin excepción.`,
   ], partes[0]);
 }
 function _wrappedCopySpotify(s, fmt2){
@@ -1200,24 +1218,29 @@ function _wrappedCopySpotify(s, fmt2){
   if(s.balance > 0) return _wrappedBankPick('spotify-favor', [
     'Administrar la cuenta te dejó plata a favor este año.',
     'Cobraste más de lo que pagaste por la cuenta compartida.',
+    'Ser el administrador de la cuenta te salió rentable este año.',
   ]) + detalle;
   if(s.balance < 0) return _wrappedBankPick('spotify-contra', [
     'Este año pusiste algo de tu bolsillo para cubrir la cuenta.',
     'Este año la cuenta te costó un poco de tu propio bolsillo.',
+    'Administrar la cuenta este año te salió del propio bolsillo.',
   ]) + detalle;
   return _wrappedBankPick('spotify-parejo', [
     'Cobraste y pagaste el plan, sin ganar ni perder.',
     'La cuenta quedó exactamente pareja este año.',
+    'Ni ganaste ni perdiste con la cuenta compartida — quedó justa.',
   ]) + detalle;
 }
 function _wrappedCopyComprometida(c){
   if(c.topItem && c.topItem.desc) return _wrappedBankPick('comprometida-item', [
     `La más grande fue "${escHtml(c.topItem.desc)}".`,
     `Nada le ganó a "${escHtml(c.topItem.desc)}" este año.`,
+    `La que más pesó fue "${escHtml(c.topItem.desc)}".`,
   ], c.topItem.desc);
   return _wrappedBankPick('comprometida-generica', [
     'Plata que estabas esperando y por fin llegó.',
     'Plata comprometida que finalmente cayó este año.',
+    'Esperaste, pero al final llegó.',
   ]);
 }
 
@@ -1229,6 +1252,20 @@ function _wrappedCopyInteresesTC(it){
     'Eso es plata que se fue sin comprar absolutamente nada.',
     'Ni una compra, ni un antojo — puro costo de tener deuda.',
     'Plata que el banco se llevó solo por esperar a que pagaras.',
+  ]) + detalleTarjeta;
+}
+
+/* Mismo criterio de `_wrappedCopyInteresesTC` — nunca dice "por esperar a
+   que pagaras" (eso es específico de intereses de deuda, no de una
+   comisión), texto propio para no describir algo que no pasó. */
+function _wrappedCopyComisionesTC(it){
+  const detalleTarjeta = (it.topTarjeta && it.topTarjeta.nombre)
+    ? ` La mayor parte se la cobró ${escHtml(it.topTarjeta.nombre)}.`
+    : '';
+  return _wrappedBankPick('comisionesTC-base', [
+    'Cargos del banco, no compras tuyas.',
+    'Plata que se fue en comisiones, no en nada que hayas elegido.',
+    'El costo de tener la tarjeta, aparte de lo que compraste con ella.',
   ]) + detalleTarjeta;
 }
 
@@ -1530,7 +1567,8 @@ function _wrappedInyectarEstilos(){
 #wrapped-debug-panel.wrapped-abierto{display:flex;}
 #wrapped-debug-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border2);flex-shrink:0;}
 #wrapped-debug-head span{font-weight:700;font-size:14px;}
-#wrapped-debug-head button{background:transparent;border:none;color:var(--text2);font-size:16px;cursor:pointer;}
+#wrapped-debug-head button{background:transparent;border:none;color:var(--text2);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+#wrapped-debug-body .wrapped-debug-warn i,#wrapped-debug-body .wrapped-debug-ok i,#wrapped-debug-body .wrapped-debug-sel i,#wrapped-debug-body .wrapped-debug-top i,#wrapped-debug-body .wrapped-debug-unsel i{margin-right:4px;}
 #wrapped-debug-body{overflow-y:auto;padding:12px 16px 28px;}
 #wrapped-debug-body h4{margin:16px 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text3);}
 #wrapped-debug-body table{width:100%;border-collapse:collapse;font-size:12.5px;}
@@ -1681,17 +1719,21 @@ function _wrappedCopyFases(f){
     return f.direccion === 'crecio' ? _wrappedBankPick('fases-ahorroSubio', [
       'Tu año tuvo dos etapas: empezaste ahorrando poco y en la segunda mitad le metiste mucho más a la alcancía.',
       'Tu año tuvo un antes y un después: el ahorro se disparó en la segunda mitad.',
+      'Algo cambió a mitad de año: empezaste a guardar mucho más que antes.',
     ]) : _wrappedBankPick('fases-ahorroBajo', [
       'Tu año tuvo dos etapas: arrancaste ahorrando fuerte y en la segunda mitad bajaste el ritmo.',
       'Tu año tuvo un antes y un después: el ahorro se frenó en la segunda mitad.',
+      'Algo cambió a mitad de año: el ritmo de ahorro bajó bastante después.',
     ]);
   }
   return f.direccion === 'crecio' ? _wrappedBankPick('fases-prestamoSubio', [
     'Tu año tuvo dos etapas: empezaste tranquilo y en la segunda mitad te volviste banco de varias personas.',
     'Tu año tuvo un antes y un después: prestar más se volvió costumbre en la segunda mitad.',
+    'La segunda mitad del año te tuvo prestando plata bastante más seguido.',
   ]) : _wrappedBankPick('fases-prestamoBajo', [
     'Tu año tuvo dos etapas: prestaste bastante al principio y en la segunda mitad frenaste.',
     'Tu año tuvo un antes y un después: prestaste menos en la segunda mitad.',
+    'Prestaste fuerte al principio del año y después bajaste el ritmo.',
   ]);
 }
 
@@ -1980,6 +2022,48 @@ function _wrappedCalcularInteresesTC(S, tipo, mesK, anioK){
   return { totalInteres, nCargos, topTarjeta };
 }
 
+/* ─── TARJETAS DE CRÉDITO — Comisiones cobradas (2026-09-15) ──────────────
+   Mismo patrón EXACTO que `_wrappedCalcularInteresesTC` de arriba, pero
+   filtrando `_motivoCargo === 'comision'` en vez de `'interes'` —
+   `tarjetas_credito.js` (`TC_MOTIVOS_CARGO`) distingue tres motivos de
+   cargo especial (interés, comisión, "otro"); hasta esta sesión Wrapped
+   solo leía el primero. Se agrega comisión como candidato APARTE (no
+   sumado al mismo total de intereses) porque el copy de intereses
+   ("plata que el banco se llevó por esperar a que pagaras") describe algo
+   específico de la deuda que no aplica a una comisión — mezclar los dos
+   conceptos bajo una sola cifra sería honesto en el número pero deshonesto
+   en el texto. Deliberadamente NO se agrega el tercer motivo, `'otro'`:
+   es un cajón de sastre a propósito genérico en el propio
+   `tarjetas_credito.js` ("Otro cargo del banco") — sin saber qué fue
+   realmente, cualquier frase que este módulo le pusiera encima sería
+   inventada, y §3 prohíbe justamente eso (nunca forzar un insight sin una
+   señal real y concreta detrás). */
+function _wrappedCalcularComisionesTC(S, tipo, mesK, anioK){
+  const tarjetas = S.tarjetasCredito;
+  if(!Array.isArray(tarjetas) || !tarjetas.length) return null;
+
+  let totalComision = 0, nCargos = 0;
+  let topTarjeta = null; // la que más comisiones generó en el período
+
+  tarjetas.forEach(tc => {
+    let comisionEstaTarjeta = 0;
+    (tc.compras||[]).forEach(c => {
+      if(!c || c.eliminado) return;
+      if(!(c._esCargoEspecial && c._motivoCargo === 'comision')) return;
+      if(!_wrappedEnRango(c.fecha, tipo, mesK, anioK)) return;
+      totalComision += (c.monto||0);
+      comisionEstaTarjeta += (c.monto||0);
+      nCargos++;
+    });
+    if(comisionEstaTarjeta > 0 && (!topTarjeta || comisionEstaTarjeta > topTarjeta.monto)){
+      topTarjeta = { nombre: tc.nombre || tc.banco || null, monto: comisionEstaTarjeta };
+    }
+  });
+
+  if(totalComision <= 0) return null;
+  return { totalComision, nCargos, topTarjeta };
+}
+
 /* ─── META DE AHORRO DE CAJITA ─────────────────────────────────────────
    Reutiliza `calcMetaProgreso(c)`, YA centralizada en `cuentas.js` (nunca
    se recalcula `pct`/`esperadoHoy`/`diferencia` acá — regla de §3). Como
@@ -2015,14 +2099,17 @@ function _wrappedCopyMeta(m){
   if(p.diferencia > 0) return _wrappedBankPick('meta-adelantado', [
     'Vas adelantado a tu propio plan.',
     'Vas más rápido de lo que te propusiste.',
+    'Ibas para adelante y le sacaste ventaja a tu propio calendario.',
   ]);
   if(p.diferencia < 0) return _wrappedBankPick('meta-atrasado', [
     'Un poco atrasado del ritmo esperado, pero sigue en pie.',
     'Vas un poco más lento de lo planeado, pero la meta sigue viva.',
+    'Se retrasó un poco el plan, pero la meta no se abandonó.',
   ]);
   return _wrappedBankPick('meta-alRitmo', [
     'Justo en el ritmo que te propusiste.',
     'Vas exactamente como lo planeaste.',
+    'El plan y la realidad van de la mano, sin desvíos.',
   ]);
 }
 
@@ -2791,6 +2878,11 @@ function _wrappedBuildSlides(S, fmt2){
   // que no se puede ver/reexportar). Los intereses sí son un dato
   // 100% puntual del período, igual que el resto de §7ter.
   const interesesTC = _wrappedCalcularInteresesTC(S, 'anio', null, anioK);
+  // Comisiones (2026-09-15, misma sesión): mismo dato de origen
+  // (S.tarjetasCredito), motivo distinto — ver `_wrappedCalcularComisionesTC`
+  // para el razonamiento completo de por qué es un candidato aparte y por
+  // qué el tercer motivo ("otro cargo del banco") se dejó afuera.
+  const comisionesTC = _wrappedCalcularComisionesTC(S, 'anio', null, anioK);
 
   // Segunda tanda (2026-09-13): personalidad, gasto random, protagonistas.
   const personalidad   = _wrappedPersonalidad(S, anioK);
@@ -3020,8 +3112,8 @@ function _wrappedBuildSlides(S, fmt2){
       intensidad: prestadoAnio.totalDevuelto > 0 ? 2 : 1,
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">${_wrappedBankPick('banco-eyebrow', [
-          '🏦 Felicitaciones: este periodo también fuiste banco',
-          '🏦 Resulta que también prestas plata',
+          'Felicitaciones: este periodo también fuiste banco',
+          'Resulta que también prestas plata',
           'Tu otro trabajo: entidad financiera informal',
         ])}</div>
         <div class="wrapped-headline">${_wrappedBankPick('banco-headline', [
@@ -3084,6 +3176,21 @@ function _wrappedBuildSlides(S, fmt2){
       intensidad: 3, // costo puro, sin nada a cambio — pesa más que un gasto normal
       html: _wrappedSlideBignum('El banco te cobró en intereses', '', interesesTC.totalInteres, 'var(--red)', {
         sub: _wrappedCopyInteresesTC(interesesTC)
+      })
+    });
+  }
+
+  if(comisionesTC){
+    candidatosInsights.push({
+      esRecord: true, // mismo criterio que intereses: cargo real, no un promedio
+      // Intensidad más baja que intereses (2 vs 3) a propósito: una
+      // comisión (cuota de manejo, cargo puntual) suele ser más chica y
+      // más "esperable" que pagar intereses por deuda — no compiten con
+      // el mismo peso narrativo aunque ambas sean plata que se fue sin
+      // que el usuario "eligiera" nada.
+      intensidad: 2,
+      html: _wrappedSlideBignum('El banco te cobró en comisiones', '', comisionesTC.totalComision, 'var(--red)', {
+        sub: _wrappedCopyComisionesTC(comisionesTC)
       })
     });
   }
@@ -3627,9 +3734,13 @@ window.renderWrapped = function(){
   // DOM ni se paga el costo de armar las tablas.
   const debugOn = _wrappedDebugOn();
   const debugHtml = debugOn
-    ? `<button type="button" id="wrapped-debug-toggle" aria-label="Panel de debug" title="Panel de debug">🛠</button>
+    ? `<button type="button" id="wrapped-debug-toggle" aria-label="Panel de debug" title="Panel de debug">
+         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+       </button>
        <div id="wrapped-debug-panel">
-         <div id="wrapped-debug-head"><span>Debug — Wrapped</span><button type="button" id="wrapped-debug-close">✕</button></div>
+         <div id="wrapped-debug-head"><span>Debug — Wrapped</span><button type="button" id="wrapped-debug-close">
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+         </button></div>
          <div id="wrapped-debug-body">${_wrappedDebugPanelHtml(S, slides._wrappedDebugInfo)}</div>
        </div>`
     : '';
@@ -3668,7 +3779,7 @@ window.renderWrapped = function(){
     const closeBtn = overlay.querySelector('#wrapped-debug-close');
     // stopPropagation: el overlay entero tiene un click delegado para
     // avanzar/retroceder de historia (ver `_wrappedSetupNav`) — sin esto,
-    // tocar el botón 🛠 o cerrar el panel también dispararía "siguiente".
+    // tocar el botón de debug o cerrar el panel también dispararía "siguiente".
     if(toggle) toggle.addEventListener('click', function(e){ e.stopPropagation(); panel.classList.toggle('wrapped-abierto'); });
     if(closeBtn) closeBtn.addEventListener('click', function(e){ e.stopPropagation(); panel.classList.remove('wrapped-abierto'); });
     if(panel) panel.addEventListener('click', function(e){ e.stopPropagation(); });
@@ -3723,6 +3834,10 @@ window._wrappedInternals = {
   _wrappedCalcularMesada,
   _wrappedCalcularSpotify,
   _wrappedCalcularComprometida,
+  _wrappedCalcularInteresesTC,
+  _wrappedCopyInteresesTC,
+  _wrappedCalcularComisionesTC,
+  _wrappedCopyComisionesTC,
   _wrappedNombrePersona,
   _wrappedMesadaMes,
   _wrappedIngresosFijosMes,

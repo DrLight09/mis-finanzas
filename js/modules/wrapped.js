@@ -437,13 +437,19 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
   // eso `a.movimientos` solo se suma cuando hay un ciclo genuinamente
   // activo (`!a._destapada`); una vez destapado, esa plata ya vive
   // únicamente en el `historial` que se suma abajo.
-  let alcanciaPeriodo = 0;
+  let alcanciaPeriodo = 0, alcanciaCiclos = 0;
   const a = S.alcancia;
   if(a){
+    let huboDepositoCicloActivo = false;
     if(!a._destapada){
-      (a.movimientos||[]).forEach(m => { if(_wrappedEnRango(m.fecha, tipo, mesK, anioK)) alcanciaPeriodo += (m.monto||0); });
+      (a.movimientos||[]).forEach(m => {
+        if(_wrappedEnRango(m.fecha, tipo, mesK, anioK)){ alcanciaPeriodo += (m.monto||0); huboDepositoCicloActivo = true; }
+      });
     }
-    (a.historial||[]).forEach(h => { if(_wrappedEnRango(h.fechaFin, tipo, mesK, anioK)) alcanciaPeriodo += (h.saldoRegistrado||0); });
+    if(huboDepositoCicloActivo) alcanciaCiclos++;
+    (a.historial||[]).forEach(h => {
+      if(_wrappedEnRango(h.fechaFin, tipo, mesK, anioK)){ alcanciaPeriodo += (h.saldoRegistrado||0); alcanciaCiclos++; }
+    });
   }
 
   // Conteo de registros discretos (uso nuevo: slide "actividad", ver
@@ -455,7 +461,7 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
   const nGastos = gastosVarPeriodo.length + pagosFijosPeriodo.length;
   const nIngresos = ingresosPeriodo.length;
 
-  return { totalGastos, totalIngresos, balance, topCategoria, gastoMasGrande, alcanciaPeriodo, avgGasto, nGastos, nIngresos };
+  return { totalGastos, totalIngresos, balance, topCategoria, gastoMasGrande, alcanciaPeriodo, alcanciaCiclos, avgGasto, nGastos, nIngresos };
 }
 
 /* ─── Mejor y peor mes del año ─────────────────────────────────────────── */
@@ -941,7 +947,18 @@ function _wrappedCopyGasto(gastoMasGrande, avgGasto, totalGastosAnio){
   ], mesTxt) + clausulaPct;
 }
 
-function _wrappedCopyAlcancia(alcanciaPeriodo, gastoMasGrande){
+function _wrappedCopyAlcancia(alcanciaPeriodo, gastoMasGrande, ciclos){
+  // `ciclos` (2026-09-15): cuántas "alcancías" distintas aportaron a esta
+  // cifra (ciclo activo con depósitos + ciclos ya destapados este año,
+  // ver el conteo en `_wrappedCalcularPeriodo`). Con 2+ se aclara antes
+  // que nada — si no, el número se lee como si viniera de una sola
+  // alcancía continua, y no siempre es así.
+  const notaCiclos = (Number.isFinite(ciclos) && ciclos >= 2)
+    ? ' ' + _wrappedBankPick('alcancia-variosCiclos', [
+        `Repartido en ${ciclos} alcancías distintas este año.`,
+        `Fue la suma de ${ciclos} ciclos de Alcancía distintos.`,
+      ])
+    : '';
   if(gastoMasGrande && alcanciaPeriodo >= gastoMasGrande.monto){
     const descSeguro = gastoMasGrande.desc ? escHtml(gastoMasGrande.desc) : null;
     const gastoTxt = descSeguro ? '"'+descSeguro+'"' : 'tu gasto más grande';
@@ -949,13 +966,13 @@ function _wrappedCopyAlcancia(alcanciaPeriodo, gastoMasGrande){
       `Eso es más de lo que gastaste en ${gastoTxt}, tu compra más grande del año.`,
       `Ahorraste más de lo que costó ${gastoTxt} — tu gasto más grande del año.`,
       `Sí: guardaste más plata de la que se fue en ${gastoTxt}.`,
-    ], gastoMasGrande.desc);
+    ], gastoMasGrande.desc) + notaCiclos;
   }
   return _wrappedBankPick('alcancia-generica', [
     'una plata que, sin la Alcancía, seguramente ni hubieras notado que tenías.',
     'plata que se fue guardando sin que la extrañaras.',
     'ahorro que pasó casi desapercibido, pero ahí está.',
-  ]);
+  ]) + notaCiclos;
 }
 
 function _wrappedCopyRacha(racha){
@@ -1023,11 +1040,24 @@ function _wrappedCopyCierre(ctx){
 
 /* Copy de los dominios "de terceros" — mismo criterio que el resto del
    sistema de copy: solo eligen el tono, nunca recalculan nada. */
-function _wrappedCopyEncargos(e){
-  if(e.nPersonas > 1) return _wrappedBankPick('encargos-varias', [
-    `Repartida entre ${e.nPersonas} personas que confiaron en vos para guardarla.`,
-    `${e.nPersonas} personas te encargaron su plata este año.`,
-  ], e.nPersonas);
+function _wrappedCopyEncargos(e, fmt2){
+  if(e.nPersonas > 1){
+    // Antes, con 2+ personas, `topEncargo` (quién te encargó más) se
+    // calculaba pero nunca se mencionaba — solo se usaba cuando había
+    // una sola persona. Ahora se agrega como frase extra, igual que ya
+    // hace `_wrappedCopyPrestado` con su `topDeudor` sin importar cuántas
+    // personas hubo en total.
+    const detalleTop = (e.topEncargo && e.topEncargo.nombre)
+      ? ' ' + _wrappedBankPick('encargos-top', [
+          `La mayor parte te la encargó ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}${(typeof fmt2 === 'function' && Number.isFinite(e.topEncargo.monto)) ? `, con ${fmt2(e.topEncargo.monto)}` : ''}.`,
+          `Quien más confió en vos para guardarle plata fue ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}.`,
+        ], e.topEncargo.nombre)
+      : '';
+    return _wrappedBankPick('encargos-varias', [
+      `Repartida entre ${e.nPersonas} personas que confiaron en vos para guardarla.`,
+      `${e.nPersonas} personas te encargaron su plata este año.`,
+    ], e.nPersonas) + detalleTop;
+  }
   if(e.topEncargo && e.topEncargo.nombre) return _wrappedBankPick('encargos-una', [
     `La mayor parte te la encargó ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}.`,
     `Fue ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)} quien más confió en vos para guardarle plata.`,
@@ -1081,19 +1111,27 @@ function _wrappedCopyMesada(m){
     `${partes[0].charAt(0).toUpperCase()+partes[0].slice(1)} no falló ni un mes.`,
   ], partes[0]);
 }
-function _wrappedCopySpotify(s){
+function _wrappedCopySpotify(s, fmt2){
+  // `fmt2` (2026-09-15, mismo criterio que `_wrappedCopyDesgloseMes`):
+  // solo para narrar el desglose cobrado/pagado del período — ambos ya
+  // eran cifras permitidas por wrapped.md §7ter (el balance ya se
+  // mostraba), esto solo las hace explícitas en vez de dejarlas
+  // implícitas en el neto.
+  const detalle = (typeof fmt2 === 'function' && Number.isFinite(s.cobrado) && Number.isFinite(s.pagado))
+    ? ` Cobraste ${fmt2(s.cobrado)} y pagaste ${fmt2(s.pagado)} por la cuenta compartida.`
+    : '';
   if(s.balance > 0) return _wrappedBankPick('spotify-favor', [
     'Administrar la cuenta te dejó plata a favor este año.',
     'Cobraste más de lo que pagaste por la cuenta compartida.',
-  ]);
+  ]) + detalle;
   if(s.balance < 0) return _wrappedBankPick('spotify-contra', [
     'Este año pusiste algo de tu bolsillo para cubrir la cuenta.',
     'Este año la cuenta te costó un poco de tu propio bolsillo.',
-  ]);
+  ]) + detalle;
   return _wrappedBankPick('spotify-parejo', [
     'Cobraste y pagaste el plan, sin ganar ni perder.',
     'La cuenta quedó exactamente pareja este año.',
-  ]);
+  ]) + detalle;
 }
 function _wrappedCopyComprometida(c){
   if(c.topItem && c.topItem.desc) return _wrappedBankPick('comprometida-item', [
@@ -1112,7 +1150,16 @@ function _wrappedCopyComprometida(c){
    línea se anima con stroke-dasharray/-dashoffset (ver
    `_wrappedAnimarLinea`, se dispara al entrar al slide) — no es una
    gráfica estática como la de Análisis financiero, es una revelación.
-   Devuelve '' si hay menos de 2 meses con dato. */
+   Devuelve '' si hay menos de 2 meses con dato.
+
+   Pase de pulido (2026-09-15): se agregó un área de relleno degradada
+   bajo la línea (puramente decorativa — mismos puntos, ningún dato
+   nuevo) y un anillo que "respira" alrededor del punto final, para que
+   la revelación se sienta más premium. De paso se encontró que el
+   `animation-delay` de cada `.wrapped-dot` no tenía ningún
+   `@keyframes`/`animation` asociado en el CSS — los puntos no estaban
+   animando nada, solo aparecían de golpe. Corregido junto con esto (ver
+   `_wrappedInyectarEstilos`). */
 function _wrappedGraficoAnimadoSvg(serie){
   if(!serie || serie.length < 2) return '';
   const w = 300, h = 150, padX = 14, padY = 20;
@@ -1127,11 +1174,25 @@ function _wrappedGraficoAnimadoSvg(serie){
   const subeOBaja = serie[serie.length-1].valor >= serie[0].valor;
   const color = subeOBaja ? 'var(--accent)' : 'var(--red)';
   const pathD = coords.map((c,i) => (i===0?'M':'L') + c.x.toFixed(1) + ',' + c.y.toFixed(1)).join(' ');
-  const dots = coords.map((c,i) => `<circle class="wrapped-dot" style="animation-delay:${(0.5 + i*0.09).toFixed(2)}s" cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="${color}"/>`).join('');
+  const baseY = h - padY;
+  const ultimo = coords[coords.length-1];
+  const areaD = pathD + ` L${ultimo.x.toFixed(1)},${baseY} L${coords[0].x.toFixed(1)},${baseY} Z`;
+  const dots = coords.map((c,i) => {
+    const esFinal = i === coords.length-1;
+    return `<circle class="wrapped-dot${esFinal?' wrapped-dot-final':''}" style="animation-delay:${(0.5 + i*0.09).toFixed(2)}s" cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="${color}"/>`;
+  }).join('');
   const labelIni = `<text x="${coords[0].x.toFixed(1)}" y="${h-2}" font-size="9" fill="var(--text3)" text-anchor="start" font-family="'DM Mono',monospace">${_wrappedMesKaAbrev(serie[0].mesK)}</text>`;
-  const labelFin = `<text x="${coords[coords.length-1].x.toFixed(1)}" y="${h-2}" font-size="9" fill="var(--text3)" text-anchor="end" font-family="'DM Mono',monospace">${_wrappedMesKaAbrev(serie[serie.length-1].mesK)}</text>`;
+  const labelFin = `<text x="${ultimo.x.toFixed(1)}" y="${h-2}" font-size="9" fill="var(--text3)" text-anchor="end" font-family="'DM Mono',monospace">${_wrappedMesKaAbrev(serie[serie.length-1].mesK)}</text>`;
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block;overflow:visible;">
+    <defs>
+      <linearGradient id="wrappedAreaGradient" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.35"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path class="wrapped-area-path" d="${areaD}" fill="url(#wrappedAreaGradient)" stroke="none"/>
     <path class="wrapped-line-path" d="${pathD}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle class="wrapped-dot-pulso" cx="${ultimo.x.toFixed(1)}" cy="${ultimo.y.toFixed(1)}" r="3.5" fill="none" stroke="${color}" stroke-width="1.5"/>
     ${dots}
     ${labelIni}${labelFin}
   </svg>`;
@@ -1151,6 +1212,16 @@ function _wrappedAnimarLinea(slideEl){
   let len;
   try { len = path.getTotalLength(); } catch(e){ return; }
   if(!len) return;
+  // (2026-09-15) Esta función no respetaba `prefers-reduced-motion` —
+  // a diferencia de `_wrappedAnimarNumeros` y `_wrappedLanzarConfeti`,
+  // que sí lo chequean. Con movimiento reducido, la línea se muestra
+  // completa de una vez, sin la transición de 1.1s.
+  const reduce = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce){
+    path.style.strokeDasharray = 'none';
+    path.style.strokeDashoffset = '0';
+    return;
+  }
   path.style.strokeDasharray = String(len);
   path.style.strokeDashoffset = String(len);
   // Forzar reflow antes de animar, si no el navegador puede saltarse
@@ -1310,6 +1381,16 @@ function _wrappedInyectarEstilos(){
 .wrapped-mes-label.activo{fill:var(--text);font-weight:700;}
 .wrapped-dot-ingreso{fill:var(--accent);}
 .wrapped-dot-gasto{fill:var(--red);}
+/* (2026-09-15) Antes faltaba esta regla por completo: cada circle
+   con clase wrapped-dot traía un animation-delay inline pero ningún
+   animation/@keyframes que lo usara — los puntos no animaban nada,
+   aparecían todos de una. Ahora sí hacen un "pop" escalonado al entrar. */
+.wrapped-dot{opacity:0;transform-box:fill-box;transform-origin:center;animation:wrappedDotPop .5s cubic-bezier(.34,1.56,.64,1) forwards;}
+.wrapped-area-path{opacity:0;animation:wrappedAreaIn 1.2s ease .15s forwards;}
+.wrapped-dot-pulso{transform-box:fill-box;transform-origin:center;opacity:0;animation:wrappedPulso 1.8s ease-out 1.5s infinite;}
+@keyframes wrappedDotPop{0%{opacity:0;transform:scale(0);}60%{opacity:1;transform:scale(1.35);}100%{opacity:1;transform:scale(1);}}
+@keyframes wrappedAreaIn{to{opacity:1;}}
+@keyframes wrappedPulso{0%{transform:scale(1);opacity:.6;}100%{transform:scale(2.6);opacity:0;}}
 .wrapped-frases{width:100%;text-align:left;margin-top:6px;}
 .wrapped-moment{display:flex;align-items:flex-start;gap:10px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:11px 13px;margin-bottom:8px;}
 .wrapped-moment:last-child{margin-bottom:0;}
@@ -1327,7 +1408,7 @@ function _wrappedInyectarEstilos(){
 .wrapped-confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
 .wrapped-confetti i{position:absolute;top:-10%;width:7px;height:12px;border-radius:2px;opacity:.9;animation:wrappedConfettiFall 1.5s ease-in forwards;}
 @keyframes wrappedConfettiFall{to{transform:translateY(115vh) rotate(280deg);opacity:.15;}}
-@media (prefers-reduced-motion: reduce){.wrapped-slide{transition:none;}.wrapped-confetti{display:none;}}
+@media (prefers-reduced-motion: reduce){.wrapped-slide{transition:none;}.wrapped-confetti{display:none;}.wrapped-dot{opacity:1;animation:none;}.wrapped-area-path{opacity:1;animation:none;}.wrapped-dot-pulso{display:none;}}
 /* Pantallas de escritorio (2026-09-15): sube tipografía y ancho SOLO
    cuando hay pantalla ancha Y mouse real (hover:hover + pointer:fine)
    — así un celular/tablet en horizontal, que también puede tener
@@ -1360,10 +1441,18 @@ function _wrappedSlideBignum(eyebrow, headline, value, color, opts){
   // faltante en un registro viejo) el slide igual debe poder pintarse —
   // nunca con `NaN` visible en el atributo ni en el conteo animado.
   const valorSeguro = Number.isFinite(value) ? value : 0;
+  // `opts.ocultarValor` (2026-09-15): reusa la MISMA clase `.saldo-hidden`
+  // que ya existe en `styles.css` para "Ocultar saldos" (blur + bloquea
+  // selección/click) — no se inventa un mecanismo de ocultamiento nuevo.
+  // Solo tapa visualmente el número; el valor real sigue en el DOM
+  // (`data-value`) porque así funciona ya el resto de la app con esa
+  // misma clase — no es una fuga nueva, es el mismo comportamiento ya
+  // aceptado en Inicio/Análisis/Tarjetas.
+  const claseOculto = opts.ocultarValor ? ' saldo-hidden' : '';
   return `<div class="wrapped-slide-inner">
     <div class="wrapped-eyebrow">${eyebrow}</div>
     ${headline ? `<div class="wrapped-headline">${headline}</div>` : ''}
-    <div class="wrapped-bignum" data-value="${valorSeguro}"${opts.signed?' data-signed="1"':''}${opts.sufijo?` data-sufijo="${opts.sufijo}"`:''} style="color:${color};">0</div>
+    <div class="wrapped-bignum${claseOculto}" data-value="${valorSeguro}"${opts.signed?' data-signed="1"':''}${opts.sufijo?` data-sufijo="${opts.sufijo}"`:''} style="color:${color};">0</div>
     ${opts.sub ? `<div class="wrapped-sub">${opts.sub}</div>` : ''}
   </div>`;
 }
@@ -2484,6 +2573,23 @@ function _wrappedScoreInsight(c){
    artistas. */
 const WRAPPED_MAX_INSIGHTS_POOL = 8;
 
+/* Lee el estado de "Ocultar saldos" (mejoras-adicionales.js) directo de
+   su localStorage ya documentado (`mf-saldos-ocultos`) — Wrapped no
+   tiene forma de leer la variable interna de ese módulo (no está
+   expuesta como `window._algo`, a diferencia de `_alcRachaAhorro`), así
+   que usa la misma llave pública que ya persiste el toggle.
+   Confirmado 2026-09-15 contra `mejoras-adicionales.js`:
+   `toggleSaldos()` guarda literalmente `'1'`/`'0'` (no `'true'`/`'false'`,
+   que era mi supuesto sin verificar de la pasada anterior — corregido
+   acá). El fallback ante cualquier error sigue siendo "no ocultar"
+   (mejor mostrar de más que reventar el slide). */
+function _wrappedSaldosOcultos(){
+  try {
+    if(typeof localStorage === 'undefined') return false;
+    return localStorage.getItem('mf-saldos-ocultos') === '1';
+  } catch(e){ return false; }
+}
+
 function _wrappedBuildSlides(S, fmt2){
   const anioK = _wrappedHoy().slice(0,4);
   const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
@@ -2708,7 +2814,8 @@ function _wrappedBuildSlides(S, fmt2){
 
   if(s.alcanciaPeriodo > 0){
     slides.push({ id:'alcancia', html: _wrappedSlideBignum('Guardaste en la Alcancía', '', s.alcanciaPeriodo, 'var(--amber)', {
-      sub: _wrappedCopyAlcancia(s.alcanciaPeriodo, s.gastoMasGrande)
+      ocultarValor: _wrappedSaldosOcultos(),
+      sub: _wrappedCopyAlcancia(s.alcanciaPeriodo, s.gastoMasGrande, s.alcanciaCiclos)
     }) });
   }
 
@@ -2735,7 +2842,7 @@ function _wrappedBuildSlides(S, fmt2){
       involucraPersona: true,
       intensidad: Math.min(4, encargosAnio.nPersonas),
       html: _wrappedSlideBignum('Plata que te encargaron cuidar', '', encargosAnio.totalEncargado, 'var(--purple)', {
-        sub: _wrappedCopyEncargos(encargosAnio)
+        sub: _wrappedCopyEncargos(encargosAnio, fmt2)
       })
     });
   }
@@ -2790,7 +2897,7 @@ function _wrappedBuildSlides(S, fmt2){
       esRecord: spotifyAnio.balance !== 0,
       intensidad: 2,
       html: _wrappedSlideBignum('Administrar Spotify te dejó', '', spotifyAnio.balance, color, {
-        signed: true, sub: _wrappedCopySpotify(spotifyAnio)
+        signed: true, sub: _wrappedCopySpotify(spotifyAnio, fmt2)
       })
     });
   }

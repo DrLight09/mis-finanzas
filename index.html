@@ -191,8 +191,17 @@
       /* ===== WRAPPED: fila destacada en "Más" mientras la ventana de enero
          está abierta (js/core/wrapped-gate.js decide si se ve/destaca —
          ver ese archivo, resuelve wrapped.md §7decies). ===== */
-      @keyframes wrappedGlow{0%,100%{box-shadow:0 0 0 0 rgba(200,240,96,.22);}50%{box-shadow:0 0 0 7px rgba(200,240,96,0);}}
-      .cfg-toggle-destacado{background:linear-gradient(120deg,rgba(200,240,96,.10),rgba(176,144,240,.10));border-radius:10px;animation:wrappedGlow 2.8s ease-in-out infinite;}
+      @keyframes wrappedGlow{0%,100%{box-shadow:0 0 0 0 rgba(200,240,96,.22);}50%{box-shadow:0 0 0 5px rgba(200,240,96,0);}}
+      /* Ojo con el espaciado: .cfg-toggle en styles.css es `padding:15px 0`
+         (cero padding horizontal) y esta fila es :last-child dentro de una
+         .card con `padding:16px`. Sin corregirlo, el fondo tintado queda
+         pegado al texto a los lados y pegado al borde inferior de la card,
+         y el glow (box-shadow con spread) se mete encima de ese borde.
+         Por eso acá va padding propio + margen horizontal negativo (sangra
+         dentro del padding de la card, dejando 6px de aire hasta su borde)
+         + margen vertical propio. El glow se bajó a 5px para que quepa
+         holgado en esos 6px restantes. */
+      .cfg-toggle-destacado{background:linear-gradient(120deg,rgba(200,240,96,.10),rgba(176,144,240,.10));border:1px solid rgba(200,240,96,.18);border-radius:12px;padding:14px 12px;margin:10px -10px 4px;animation:wrappedGlow 2.8s ease-in-out infinite;}
       .cfg-toggle-destacado .cfg-toggle-label{display:flex;align-items:center;gap:6px;}
       .cfg-badge-nuevo{display:none;font-size:9px;font-weight:700;letter-spacing:.3px;color:#10310a;background:linear-gradient(120deg,var(--accent),var(--purple));padding:2px 7px 3px;border-radius:20px;font-family:'DM Mono',monospace;}
       .cfg-toggle-destacado .cfg-badge-nuevo{display:inline-block;}

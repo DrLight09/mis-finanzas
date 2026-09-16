@@ -2833,7 +2833,18 @@ function _wrappedSaldosOcultos(){
 }
 
 function _wrappedBuildSlides(S, fmt2){
-  const anioK = _wrappedHoy().slice(0,4);
+  // Año que toca mostrar: decidido por js/core/wrapped-gate.js (núcleo
+  // eager, siempre cargado antes que este módulo lazy) — resuelve la
+  // decisión que había quedado abierta en wrapped.md §7decies. Antes
+  // (opción 3 de esa sección) siempre era el año en curso, en vivo; ahora
+  // (opción 2) es el año recién cerrado, y solo se llega hasta acá durante
+  // la ventana de enero (ver el guard en window.renderWrapped más abajo).
+  // Fallback al año en curso SOLO si wrapped-gate.js no llegó a cargar —
+  // no debería pasar nunca en producción (carga antes que lazy-loader.js
+  // en index.html), pero un dato faltante acá no debe romper el render.
+  const anioK = typeof window._wrappedAnioObjetivo === 'function'
+    ? window._wrappedAnioObjetivo()
+    : _wrappedHoy().slice(0,4);
   const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
   const mesMax = (anioK === anioActual) ? mesActualIdx : 11;
   const s = _wrappedCalcularPeriodo(S, 'anio', null, anioK);
@@ -3717,6 +3728,26 @@ function _wrappedSetupNav(overlay, fmt2){
 
 /* ─── ENTRADA PRINCIPAL ────────────────────────────────────────────────── */
 window.renderWrapped = function(){
+  // Cinturón de seguridad, no la gate real (esa vive en
+  // js/core/wrapped-gate.js): en el uso normal de la app nunca se llega
+  // hasta acá fuera de la ventana de enero, porque la fila de "Más" que
+  // dispara esto está oculta (_wrappedGateAplicarFila). Esto solo cubre a
+  // alguien entrando por otro camino (deep link viejo, showScreen('wrapped')
+  // a mano desde la consola) — ver wrapped.md §7decies.
+  if(typeof window._wrappedDisponible === 'function' && !window._wrappedDisponible()){
+    if(typeof toast === 'function') toast('Tu resumen del año vuelve en enero.', 'info', 4000);
+    if(typeof showScreen === 'function') showScreen('config');
+    return;
+  }
+
+  // Marca "ya lo vio" para este año objetivo — así el banner de aviso
+  // (wrapped-gate.js) no insiste si el usuario ya entró por su cuenta
+  // desde el menú. Flag de UI en localStorage, no un dato financiero
+  // nuevo en S (mismo criterio de siempre, ver cabecera del archivo §3).
+  if(typeof window._wrappedAnioObjetivo === 'function'){
+    try{ localStorage.setItem('mf_wrapped_visto_' + window._wrappedAnioObjetivo(), '1'); }catch(_){}
+  }
+
   const S = window.S || {};
   const fmt2 = typeof fmt === 'function' ? fmt : v => '$' + Math.round(v).toLocaleString('es-CO');
 

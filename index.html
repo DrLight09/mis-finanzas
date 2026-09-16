@@ -188,23 +188,29 @@
       @keyframes wrappedFadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
       .wrapped-dot{opacity:0;transform-origin:center;animation:wrappedDotIn .35s ease-out forwards;}
       .wrapped-reveal{opacity:0;animation:wrappedFadeUp .5s ease-out forwards;}
-      /* ===== WRAPPED: fila destacada en "Más" mientras la ventana de enero
-         está abierta (js/core/wrapped-gate.js decide si se ve/destaca —
-         ver ese archivo, resuelve wrapped.md §7decies). ===== */
-      @keyframes wrappedGlow{0%,100%{box-shadow:0 0 0 0 rgba(200,240,96,.22);}50%{box-shadow:0 0 0 5px rgba(200,240,96,0);}}
-      /* Ojo con el espaciado: .cfg-toggle en styles.css es `padding:15px 0`
-         (cero padding horizontal) y esta fila es :last-child dentro de una
-         .card con `padding:16px`. Sin corregirlo, el fondo tintado queda
-         pegado al texto a los lados y pegado al borde inferior de la card,
-         y el glow (box-shadow con spread) se mete encima de ese borde.
-         Por eso acá va padding propio + margen horizontal negativo (sangra
-         dentro del padding de la card, dejando 6px de aire hasta su borde)
-         + margen vertical propio. El glow se bajó a 5px para que quepa
-         holgado en esos 6px restantes. */
-      .cfg-toggle-destacado{background:linear-gradient(120deg,rgba(200,240,96,.10),rgba(176,144,240,.10));border:1px solid rgba(200,240,96,.18);border-radius:12px;padding:14px 12px;margin:10px -10px 4px;animation:wrappedGlow 2.8s ease-in-out infinite;}
-      .cfg-toggle-destacado .cfg-toggle-label{display:flex;align-items:center;gap:6px;}
-      .cfg-badge-nuevo{display:none;font-size:9px;font-weight:700;letter-spacing:.3px;color:#10310a;background:linear-gradient(120deg,var(--accent),var(--purple));padding:2px 7px 3px;border-radius:20px;font-family:'DM Mono',monospace;}
-      .cfg-toggle-destacado .cfg-badge-nuevo{display:inline-block;}
+      /* ===== WRAPPED: tarjeta destacada arriba de Configuración, visible
+         solo durante la ventana de enero (js/core/wrapped-gate.js decide —
+         ver ese archivo, resuelve wrapped.md §7decies).
+         Se monta sobre .hero (styles.css): el gradiente accent, el borde y
+         los círculos decorativos ::before/::after ya vienen de ahí, así que
+         acá solo van los ajustes propios de esta tarjeta. Antes esto era
+         una fila dentro de la lista de "Herramientas" con fondo tintado
+         (.cfg-toggle-destacado, eliminada el 2026-09-16): se veía como un
+         parche y peleaba con el espaciado de .cfg-toggle (padding:15px 0,
+         sin padding horizontal). ===== */
+      #wrapped-promo{margin-bottom:16px;}
+      #wrapped-promo .hero-amount{font-size:44px;line-height:1;margin:8px 0 6px;
+        background:linear-gradient(120deg,var(--accent),var(--purple));
+        -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+      #wrapped-promo .hero-sub{line-height:1.5;max-width:82%;}
+      #wrapped-promo-cta{display:flex;align-items:center;justify-content:space-between;
+        gap:10px;margin-top:15px;position:relative;z-index:1;}
+      #wrapped-promo-btn{display:inline-flex;align-items:center;gap:5px;
+        background:var(--accent);color:#10310a;border-radius:20px;
+        padding:9px 15px;font-size:12.5px;font-weight:700;white-space:nowrap;}
+      #wrapped-promo:active #wrapped-promo-btn{opacity:.75;}
+      #wrapped-promo-dias{font-size:10.5px;color:rgba(200,240,96,.75);
+        font-family:'DM Mono',monospace;text-align:right;line-height:1.35;}
       /* ===== WRAPPED: aviso flotante ("banner") de que ya está disponible —
          armado con JS por wrapped-gate.js, mismo patrón que #toast-container
          (no existe en el HTML hasta que hace falta). ===== */
@@ -2232,6 +2238,39 @@
         </div>
 
         <div class="screen" id="screen-config">
+          <!-- WRAPPED: acceso destacado, primera cosa de la pantalla —
+               arriba incluso de "Cuenta". Movido acá el 2026-09-16 desde la
+               lista de "Herramientas" (abajo), donde se veía como un parche:
+               una fila de lista pintada de colores nunca iba a leerse como
+               algo especial, y esto solo está disponible un mes al año.
+
+               Se construye sobre .hero (styles.css), el mismo lenguaje
+               visual que ya usa el saldo principal del dashboard — gradiente
+               accent, borde verde y los dos círculos decorativos de
+               .hero::before/::after salen gratis. Nada de CSS nuevo
+               reinventando ese look.
+
+               Arranca con display:none acá mismo, en el HTML: fail-closed.
+               js/core/wrapped-gate.js (núcleo eager) lo muestra solo durante
+               la ventana de enero y rellena #wrapped-promo-anio /
+               #wrapped-promo-dias. Si ese script no cargara, esto se queda
+               oculto en vez de mostrarse todo el año. Ver wrapped.md
+               §7decies. El click reusa el handler genérico config:irA
+               (configuracion.js), igual que las filas de Herramientas. -->
+          <div class="hero" id="wrapped-promo" data-action="config:irA" data-args="[&quot;wrapped&quot;]"
+            style="display:none;cursor:pointer;">
+            <div class="hero-label">Tu resumen del año</div>
+            <div class="hero-amount" id="wrapped-promo-anio">2025</div>
+            <div class="hero-sub" id="wrapped-promo-sub">Un año entero de tus finanzas, en 60 segundos</div>
+            <div id="wrapped-promo-cta">
+              <span id="wrapped-promo-btn">Ver mi resumen
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                  style="vertical-align:-2px;"><polyline points="9 18 15 12 9 6" /></svg></span>
+              <span id="wrapped-promo-dias"></span>
+            </div>
+          </div>
+
           <!-- FIREBASE: Usuario conectado -->
           <div class="sec-title" style="margin-top:4px;">Cuenta</div>
           <div class="card" style="padding:0 15px;">
@@ -2490,31 +2529,13 @@
                 stroke-linejoin="round"><polyline
                   points="9 18 15 12 9 6" /></svg>
             </div>
-            <!-- WRAPPED: único acceso, movido acá desde el menú "Más"
-                 (antes #mas-wrapped) — mismo motivo/patrón que Actividad
-                 reciente arriba: reusa el handler genérico config:irA
-                 (configuracion.js), que solo llama a showScreen('wrapped'),
-                 así que la carga lazy del grupo 'wrapped' y el
-                 renderWrapped() en sheet-stack.js siguen funcionando sin
-                 tocarlos. Ver wrapped.md §7 y CHANGELOG.md#wrapped.
-
-                 2026-09-15: deja de ser "un módulo más" de esta lista —
-                 js/core/wrapped-gate.js (núcleo eager) la oculta/destaca
-                 según la ventana de enero (wrapped.md §7decies). Arranca
-                 con display:none acá mismo, en el HTML: fail-closed, para
-                 que si ese script no llegara a cargar por algún motivo la
-                 fila se quede oculta en vez de mostrarse siempre. -->
-            <div class="cfg-toggle" id="cfg-wrapped-row" data-action="config:irA" data-args="[&quot;wrapped&quot;]"
-              style="cursor:pointer;display:none;">
-              <div class="cfg-toggle-info">
-                <div class="cfg-toggle-label">Tu resumen<span id="cfg-wrapped-badge" class="cfg-badge-nuevo">Disponible</span></div>
-                <div class="cfg-toggle-sub" id="cfg-wrapped-sub">Tu año, bien melo</div>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="var(--text3)" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round"><polyline
-                  points="9 18 15 12 9 6" /></svg>
-            </div>
+            <!-- WRAPPED: ya no vive acá. Estuvo en esta lista entre
+                 2026-09-07 y 2026-09-16 (antes de eso, en el menú "Más"
+                 como #mas-wrapped). Se movió arriba del todo, sobre
+                 "Cuenta", como tarjeta propia #wrapped-promo — una fila de
+                 lista pintada de colores se veía como un parche, y el
+                 acceso solo existe un mes al año. Ver wrapped.md §7 y
+                 CHANGELOG.md#wrapped. -->
           </div>
         </div>
 
@@ -5039,7 +5060,7 @@
 // js/core/wrapped-gate.js — ventana de disponibilidad de Wrapped
 // (2026-09-15, resuelve wrapped.md §7decies). Núcleo eager, chico, a
 // propósito aparte de wrapped.js: decide si el grupo lazy 'wrapped' existe
-// para el usuario ESTE momento (oculta/destaca #cfg-wrapped-row, más abajo
+// para el usuario ESTE momento (muestra/oculta la tarjeta #wrapped-promo, arriba
 // en esta pantalla, y le avisa a Loader.ensureAll() en lazy-loader.js que
 // no lo precargue fuera de la ventana) sin tener que descargar las ~4000
 // líneas del módulo real solo para saber si mostrarlo. Depende de hoy()

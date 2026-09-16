@@ -38,11 +38,11 @@
       precarga el grupo 'wrapped' en segundo plano — evita bajar ~4000
       líneas de un módulo que el usuario ni siquiera puede abrir los 11
       meses del año que no toca.
-   2. Ocultar por completo la fila "Más → Tu resumen" fuera de la ventana
-      (`#cfg-wrapped-row` en index.html arranca con `display:none` en el
-      propio HTML — fail-closed: si este script fallara en cargar, la fila
-      se queda oculta en vez de mostrarse siempre) y destacarla/decorarla
-      cuando sí toca, en vez de que se vea "un módulo más del montón".
+   2. Ocultar por completo la tarjeta destacada de Configuración fuera de la ventana
+      (`#wrapped-promo` en index.html arranca con `display:none` en el
+      propio HTML — fail-closed: si este script fallara en cargar, la tarjeta
+      se queda oculta en vez de mostrarse siempre) y rellenar su año y días
+      restantes cuando sí toca, en vez de que se vea "un módulo más".
    3. Mostrar el aviso (banner con botón "Ver mi resumen") apenas la
       ventana abre, una sola vez por año — no cada recarga.
 
@@ -101,29 +101,31 @@ window._wrappedDisponible = function(){ return _wrappedVentana().disponible; };
 window._wrappedAnioObjetivo = function(){ return _wrappedVentana().anioObjetivo; };
 window._wrappedVentanaInfo = _wrappedVentana; // uso interno/debug, no público
 
-/* ─── FILA DEL MENÚ "Más" ──────────────────────────────────────────────
-   #cfg-wrapped-row ya existe en index.html como HTML estático (igual que
-   Personas/Actividad reciente) — este archivo solo decide si se ve y si
-   se ve destacada, nunca su contenido base. No depende de que
-   configuracion.js (lazy, grupo 'config') haya cargado: la fila y su
-   texto ya están en el HTML de entrada, así que esto corre bien incluso
-   si el usuario nunca abrió "Más" todavía. */
+/* ─── TARJETA DESTACADA EN CONFIGURACIÓN ───────────────────────────────
+   #wrapped-promo ya existe en index.html como HTML estático, arriba del
+   todo en la pantalla de Configuración (sobre "Cuenta") — este archivo
+   solo decide si se ve y rellena el año y los días restantes, nunca su
+   estructura. Hasta el 2026-09-16 esto era una fila dentro de la lista de
+   "Herramientas" (#cfg-wrapped-row, .cfg-toggle-destacado): se veía como
+   un parche, así que pasó a ser una tarjeta propia sobre .hero.
+   No depende de que configuracion.js (lazy, grupo 'config') haya cargado:
+   la tarjeta ya está en el HTML de entrada, así que esto corre bien
+   incluso si el usuario nunca abrió Configuración todavía. */
 function _wrappedGateAplicarFila(){
-  const fila = document.getElementById('cfg-wrapped-row');
-  if(!fila) return;
+  const promo = document.getElementById('wrapped-promo');
+  if(!promo) return;
   const info = _wrappedVentana();
-  if(!info.disponible){
-    fila.style.display = 'none';
-    fila.classList.remove('cfg-toggle-destacado');
-    return;
-  }
-  fila.style.display = '';
-  fila.classList.add('cfg-toggle-destacado');
-  const sub = document.getElementById('cfg-wrapped-sub');
-  if(sub){
-    sub.textContent = info.diasRestantes > 0
-      ? `Tu ${info.anioObjetivo}, disponible ${info.diasRestantes} día${info.diasRestantes===1?'':'s'} más`
-      : `Tu ${info.anioObjetivo} — hoy es el último día`;
+  if(!info.disponible){ promo.style.display = 'none'; return; }
+  promo.style.display = '';
+
+  const anio = document.getElementById('wrapped-promo-anio');
+  if(anio) anio.textContent = info.anioObjetivo;
+
+  const dias = document.getElementById('wrapped-promo-dias');
+  if(dias){
+    dias.innerHTML = info.diasRestantes > 0
+      ? `Disponible<br>${info.diasRestantes} día${info.diasRestantes===1?'':'s'} más`
+      : 'Último día';
   }
 }
 

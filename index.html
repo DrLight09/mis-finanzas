@@ -191,36 +191,72 @@
       /* ===== WRAPPED: tarjeta destacada arriba de Configuración, visible
          solo durante la ventana de enero (js/core/wrapped-gate.js decide —
          ver ese archivo, resuelve wrapped.md §7decies).
-         Se monta sobre .hero (styles.css): el gradiente accent, el borde y
-         los círculos decorativos ::before/::after ya vienen de ahí, así que
-         acá solo van los ajustes propios de esta tarjeta. Antes esto era
-         una fila dentro de la lista de "Herramientas" con fondo tintado
-         (.cfg-toggle-destacado, eliminada el 2026-09-16): se veía como un
-         parche y peleaba con el espaciado de .cfg-toggle (padding:15px 0,
-         sin padding horizontal). ===== */
-      #wrapped-promo{margin-bottom:16px;}
-      #wrapped-promo .hero-amount{font-size:44px;line-height:1;margin:8px 0 6px;
-        background:linear-gradient(120deg,var(--accent),var(--purple));
+
+         Historia de esta pieza: primero fue una fila tintada dentro de la
+         lista de "Herramientas" (.cfg-toggle-destacado — se veía como un
+         parche), después una tarjeta sobre .hero (mejor, pero quedaba
+         idéntica al hero del patrimonio: mismo verde, mismo todo).
+         Ahora toma su identidad del PROPIO Wrapped: fondo oscuro con blobs
+         de color desenfocados (.wrapped-bg-blob en wrapped.js) y la tira
+         de segmentos de progreso (.wrapped-seg, las "stories" de arriba).
+         Los colores no son una paleta nueva — son las mismas variables que
+         Wrapped rota como --wrapped-mood (accent/amber/blue/red/purple,
+         ver wrapped.js:3567). Así se lee como "una ventanita al Wrapped",
+         no como una copia del hero. ===== */
+      #wrapped-promo{position:relative;overflow:hidden;cursor:pointer;
+        background:var(--bg2);border:1px solid var(--border2);
+        border-radius:var(--radius);padding:17px 18px 18px;margin-bottom:16px;}
+      /* Blobs: versión en miniatura de .wrapped-bg-blob (blur 64px allá,
+         acá 34px porque la tarjeta es mucho más chica). */
+      .wp-blob{position:absolute;border-radius:50%;filter:blur(34px);pointer-events:none;z-index:0;}
+      .wp-blob.b1{width:150px;height:150px;top:-64px;right:-38px;background:var(--purple);opacity:.30;}
+      .wp-blob.b2{width:120px;height:120px;bottom:-56px;left:-30px;background:var(--blue);opacity:.22;}
+      .wp-blob.b3{width:80px;height:80px;top:32px;right:56px;background:var(--amber);opacity:.14;}
+      #wrapped-promo > *:not(.wp-blob){position:relative;z-index:1;}
+      /* Tira de segmentos — mismo motivo que #wrapped-progress en wrapped.js.
+         Es lo que hace que se lea como "stories" de una sola ojeada. */
+      .wp-segs{display:flex;gap:4px;margin-bottom:13px;}
+      .wp-segs i{flex:1;height:3px;border-radius:3px;background:var(--border2);}
+      .wp-segs i.on{background:var(--accent);}
+      .wp-segs i.on.p{background:var(--purple);}
+      .wp-segs i.on.b{background:var(--blue);}
+      .wp-segs i.on.a{background:var(--amber);}
+      #wrapped-promo .wp-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+        font-family:'DM Mono',monospace;font-weight:600;color:var(--text3);}
+      /* display:inline-block es obligatorio, no cosmetico: con background-clip:text
+         el degradado se reparte sobre la CAJA del elemento, no sobre las letras.
+         Siendo un bloque de ancho completo, el tramo morado caia en el espacio
+         vacio a la derecha del ano y solo se veia verde->naranja. */
+      #wrapped-promo .wp-anio{display:inline-block;font-size:46px;font-weight:300;line-height:1;letter-spacing:-2px;
+        font-family:'DM Mono',monospace;margin:7px 0 7px;
+        background:linear-gradient(100deg,var(--accent) 0%,var(--amber) 34%,var(--nu-light) 68%,var(--purple) 96%);
         -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-      #wrapped-promo .hero-sub{line-height:1.5;max-width:82%;}
+      #wrapped-promo .wp-sub{font-size:12px;color:var(--text2);line-height:1.5;max-width:80%;}
       #wrapped-promo-cta{display:flex;align-items:center;justify-content:space-between;
-        gap:10px;margin-top:15px;position:relative;z-index:1;}
+        gap:10px;margin-top:16px;}
       #wrapped-promo-btn{display:inline-flex;align-items:center;gap:5px;
-        background:var(--accent);color:#10310a;border-radius:20px;
-        padding:9px 15px;font-size:12.5px;font-weight:700;white-space:nowrap;}
+        background:var(--text);color:var(--bg);border-radius:999px;
+        padding:9px 16px;font-size:12.5px;font-weight:700;white-space:nowrap;}
       #wrapped-promo:active #wrapped-promo-btn{opacity:.75;}
-      #wrapped-promo-dias{font-size:10.5px;color:rgba(200,240,96,.75);
+      #wrapped-promo-dias{font-size:10.5px;color:var(--text3);
         font-family:'DM Mono',monospace;text-align:right;line-height:1.35;}
       /* ===== WRAPPED: aviso flotante ("banner") de que ya está disponible —
          armado con JS por wrapped-gate.js, mismo patrón que #toast-container
          (no existe en el HTML hasta que hace falta). ===== */
-      #wrapped-banner{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);transform:translateX(-50%) translateY(130%);width:calc(100% - 32px);max-width:400px;z-index:9997;background:linear-gradient(135deg,#1d2614,#1a1622);border:1px solid rgba(200,240,96,.35);border-radius:16px;padding:16px 16px 14px;box-shadow:0 16px 46px rgba(0,0,0,.55),0 3px 10px rgba(0,0,0,.4);transition:transform .38s cubic-bezier(.22,1,.36,1);}
+      #wrapped-banner{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 84px);transform:translateX(-50%) translateY(130%);width:calc(100% - 32px);max-width:400px;z-index:9997;overflow:hidden;background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:15px 16px 15px;box-shadow:0 16px 46px rgba(0,0,0,.6),0 3px 10px rgba(0,0,0,.45);transition:transform .38s cubic-bezier(.22,1,.36,1);}
       #wrapped-banner.wrapped-banner-in{transform:translateX(-50%) translateY(0);}
-      #wrapped-banner-close{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--text3);cursor:pointer;padding:5px;line-height:1;}
-      .wrapped-banner-title{font-size:14.5px;font-weight:700;margin:0 22px 3px 0;}
-      .wrapped-banner-sub{font-size:11.5px;color:var(--text2);margin-bottom:12px;font-family:'DM Mono',monospace;}
-      .wrapped-banner-btn{width:100%;background:linear-gradient(120deg,var(--accent),#9fe066);color:#10310a;border:none;border-radius:11px;padding:11px;font-weight:700;font-size:13.5px;cursor:pointer;font-family:inherit;}
-      .wrapped-banner-btn:active{transform:scale(.98);}
+      /* Ojo: el :not() tiene que excluir tambien #wrapped-banner-close, que
+         es position:absolute — sin eso esta regla se lo pisa con relative y
+         la X se va al flujo normal (arriba a la izquierda, encima de .wp-segs). */
+      #wrapped-banner > *:not(.wp-blob):not(#wrapped-banner-close){position:relative;z-index:1;}
+      #wrapped-banner-close{position:absolute;z-index:2;top:9px;right:10px;background:none;border:none;color:var(--text3);cursor:pointer;padding:5px;line-height:1;}
+      #wrapped-banner .wp-segs{margin-right:26px;margin-bottom:11px;}
+      .wrapped-banner-title{font-size:14.5px;font-weight:700;margin:0 24px 3px 0;line-height:1.35;}
+      .wrapped-banner-sub{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;}
+      .wrapped-banner-row{display:flex;align-items:center;gap:10px;margin-top:13px;}
+      .wrapped-banner-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:5px;background:var(--text);color:var(--bg);border:none;border-radius:999px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit;}
+      .wrapped-banner-btn:active{opacity:.75;}
+      .wrapped-banner-later{background:none;border:none;color:var(--text3);font-size:12px;font-family:inherit;cursor:pointer;padding:8px 4px;white-space:nowrap;}
       /* ===== PIN SCREEN (segundo gate) ===== */
       #pin-screen{position:fixed;inset:0;z-index:99998;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);padding:32px 24px;text-align:center;overflow:hidden;}
       #pin-screen.open{display:flex;}
@@ -2257,11 +2293,15 @@
                oculto en vez de mostrarse todo el año. Ver wrapped.md
                §7decies. El click reusa el handler genérico config:irA
                (configuracion.js), igual que las filas de Herramientas. -->
-          <div class="hero" id="wrapped-promo" data-action="config:irA" data-args="[&quot;wrapped&quot;]"
-            style="display:none;cursor:pointer;">
-            <div class="hero-label">Tu resumen del año</div>
-            <div class="hero-amount" id="wrapped-promo-anio">2025</div>
-            <div class="hero-sub" id="wrapped-promo-sub">Un año entero de tus finanzas, en 60 segundos</div>
+          <div id="wrapped-promo" data-action="config:irA" data-args="[&quot;wrapped&quot;]"
+            style="display:none;">
+            <div class="wp-blob b1"></div>
+            <div class="wp-blob b2"></div>
+            <div class="wp-blob b3"></div>
+            <div class="wp-segs"><i class="on"></i><i class="on a"></i><i class="on p"></i><i class="on b"></i><i></i><i></i></div>
+            <div class="wp-label">Tu resumen del año</div>
+            <div class="wp-anio" id="wrapped-promo-anio">2025</div>
+            <div class="wp-sub" id="wrapped-promo-sub">Un año entero de tus finanzas, en 60 segundos</div>
             <div id="wrapped-promo-cta">
               <span id="wrapped-promo-btn">Ver mi resumen
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"

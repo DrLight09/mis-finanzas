@@ -542,11 +542,60 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
 }
 
 /* ─── Mejor y peor mes del año ─────────────────────────────────────────── */
+/* ─── "Racha real" de meses con seguimiento (2026-09-16) ────────────────
+   Caso real reportado: alguien empieza a usar la app en septiembre, pero
+   además cargó UN registro suelto de meses atrás porque se acordaba (la
+   mesada de enero, "me acuerdo que me la dieron el 30"). Sin esto, ese
+   enero pasaba el filtro `totalIngresos > 0 || totalGastos > 0` de
+   `_wrappedMejorPeorMesAnio`/`_wrappedHistoriasMensuales` como si fuera un
+   mes real y comparable — con cero gastos (porque no se registró nada más
+   ese mes, no porque no se haya gastado nada), enero le ganaba a los
+   meses reales en balance por default y encima le tocaba una frase de
+   "mes tranquilo" que en realidad describe un vacío de datos.
+
+   La app no tiene ningún campo de "cuándo empezaste a usarme de verdad"
+   (a diferencia de, por ejemplo, `creadoEn` por persona en
+   core-state.js) — no hay forma de preguntarle directamente. Lo que sí
+   se puede inferir de los propios datos: el principio real del historial
+   es la RACHA de meses activos que termina en `mesMax` (el mes más
+   reciente). Se camina hacia atrás desde ahí y se corta apenas aparecen
+   DOS meses seguidos sin ningún ingreso/gasto — dos, no uno, a propósito:
+   un solo mes flojo (viaje, poco movimiento) es normal en un historial
+   real y no debería borrar meses reales anteriores; un hueco de dos
+   meses o más, seguido de un registro aislado más atrás, es la señal de
+   "ahí no había seguimiento todavía". Mismo espíritu que el resto del
+   archivo (umbrales relativos al propio usuario, no un número mágico en
+   pesos — ver `catShare>=0.15` en `_wrappedCambioDeHabitos`, el 70/30 de
+   `_wrappedCambioFuerte`).
+
+   Importante — esto NO toca ningún total anual: `_wrappedCalcularPeriodo`
+   sobre el año completo sigue contando el ingreso de enero (la plata sí
+   entró, es real). Solo se excluye de las comparaciones POR MES, que es
+   justo donde un mes con "ingreso sin ningún gasto registrado" se ve
+   artificialmente perfecto frente a meses con seguimiento real. */
+function _wrappedInicioRachaReal(S, anioK, mesMax){
+  let inicio = mesMax;
+  let vaciosSeguidos = 0;
+  for(let m = mesMax; m >= 0; m--){
+    const mesK = anioK + '-' + String(m+1).padStart(2,'0');
+    const stats = _wrappedCalcularPeriodo(S, 'mes', mesK, anioK);
+    if(stats.totalIngresos > 0 || stats.totalGastos > 0){
+      vaciosSeguidos = 0;
+      inicio = m;
+    } else {
+      vaciosSeguidos++;
+      if(vaciosSeguidos >= 2) break; // hueco real: acá termina la racha
+    }
+  }
+  return inicio;
+}
+
 function _wrappedMejorPeorMesAnio(S, anioK){
   const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
   const mesMax = (anioK === anioActual) ? mesActualIdx : 11;
+  const mesInicio = _wrappedInicioRachaReal(S, anioK, mesMax);
   const meses = [];
-  for(let m=0; m<=mesMax; m++){
+  for(let m=mesInicio; m<=mesMax; m++){
     const mesK = anioK + '-' + String(m+1).padStart(2,'0');
     const stats = _wrappedCalcularPeriodo(S, 'mes', mesK, anioK);
     if(stats.totalIngresos > 0 || stats.totalGastos > 0){
@@ -605,8 +654,9 @@ function _wrappedLineaMes(mes, avgBalance){
 }
 function _wrappedHistoriasMensuales(S, anioK, mesMax){
   if(mesMax < 2) return null; // menos de 3 meses posibles: no amerita un repaso mes a mes
+  const mesInicio = _wrappedInicioRachaReal(S, anioK, mesMax); // ver cabecera de esa función
   const meses = [];
-  for(let m=0; m<=mesMax; m++){
+  for(let m=mesInicio; m<=mesMax; m++){
     const mesK = anioK + '-' + String(m+1).padStart(2,'0');
     const stats = _wrappedCalcularPeriodo(S, 'mes', mesK, anioK);
     if(stats.totalIngresos > 0 || stats.totalGastos > 0){
@@ -3834,6 +3884,7 @@ window._wrappedInternals = {
   _wrappedHashStr,
   _wrappedSeededRandom,
   _wrappedCalcularPeriodo,
+  _wrappedInicioRachaReal,
   _wrappedMejorPeorMesAnio,
   _wrappedPatrimonioAnio,
   _wrappedSerieMensualAnio,

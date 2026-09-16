@@ -176,6 +176,10 @@ const Loader = (function () {
     // cross-módulo (racha de Alcancía) es opcional y con guard typeof —
     // si Alcancía no cargó todavía, esa cifra puntual simplemente no se
     // muestra (ver wrapped.js).
+    //
+    // 2026-09-15: pasa a tener ventana de disponibilidad (solo enero, año
+    // recién cerrado — ver js/core/wrapped-gate.js y wrapped.md §7decies).
+    // ensureAll() más abajo ya no lo precarga fuera de esa ventana.
     wrapped: ['js/modules/wrapped.js'],
   };
 
@@ -234,7 +238,21 @@ const Loader = (function () {
   // archivo); ENTRE grupos no hay dependencia de orden — cada pantalla es
   // independiente — así que sí se piden todas a la vez.
   function ensureAll() {
-    return Promise.all(Object.keys(GROUPS).map(g => ensure(g).catch(() => {})));
+    // 'wrapped' es un caso especial desde 2026-09-15 (ver
+    // js/core/wrapped-gate.js, resuelve wrapped.md §7decies): fuera de su
+    // ventana de enero, la fila de menú que lo abre está oculta y el
+    // usuario no tiene ningún camino para llegar a esa pantalla — precargar
+    // igual sería bajar ~4000 líneas que nadie puede usar hasta el próximo
+    // enero. Se excluye de la precarga en segundo plano salvo que
+    // wrapped-gate.js confirme que la ventana está abierta. Guard typeof:
+    // si por lo que sea ese script no cargó, se asume "no disponible"
+    // (mismo criterio de "fallar cerrado" que ya usa la fila del menú) en
+    // vez de gastar la descarga de más.
+    const grupos = Object.keys(GROUPS).filter(g => {
+      if (g !== 'wrapped') return true;
+      return typeof window._wrappedDisponible === 'function' && window._wrappedDisponible();
+    });
+    return Promise.all(grupos.map(g => ensure(g).catch(() => {})));
   }
 
   // FIX (2026-08-17, confirmado con dos corridas reales de Lighthouse — ver

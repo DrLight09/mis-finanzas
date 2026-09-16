@@ -158,12 +158,23 @@ function _wrappedGateMostrarBanner(){
 
   const el = document.createElement('div');
   el.id = 'wrapped-banner';
-  el.innerHTML = `<button type="button" id="wrapped-banner-close" aria-label="Cerrar">
+  // Sin ícono decorativo: la tira de segmentos (.wp-segs, el mismo motivo
+  // de "stories" que usa #wrapped-progress en wrapped.js) dice qué es esto
+  // mucho mejor que una estrellita, y no deja el bloque vacío. Los blobs
+  // son los mismos de #wrapped-promo, así banner y tarjeta se leen como la
+  // misma pieza. Ver el CSS en index.html.
+  el.innerHTML = `<div class="wp-blob b1"></div><div class="wp-blob b2"></div>
+    <button type="button" id="wrapped-banner-close" aria-label="Cerrar">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
     </button>
-    <div class="wrapped-banner-title"><i class="fa-solid fa-star" style="color:var(--accent);margin-right:6px;"></i>Tu resumen de ${info.anioObjetivo} ya está listo</div>
+    <div class="wp-segs"><i class="on"></i><i class="on a"></i><i class="on p"></i><i class="on b"></i><i></i><i></i></div>
+    <div class="wrapped-banner-title">Tu resumen de ${info.anioObjetivo} ya está listo</div>
     <div class="wrapped-banner-sub">${info.diasRestantes > 0 ? `Disponible ${info.diasRestantes} día${info.diasRestantes===1?'':'s'} más — después vuelve el próximo enero` : 'Hoy es el último día para verlo'}</div>
-    <button type="button" class="wrapped-banner-btn">Ver mi resumen →</button>`;
+    <div class="wrapped-banner-row">
+      <button type="button" class="wrapped-banner-btn">Ver mi resumen
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="9 18 15 12 9 6"/></svg></button>
+      <button type="button" class="wrapped-banner-later">Después</button>
+    </div>`;
   document.body.appendChild(el);
   requestAnimationFrame(() => el.classList.add('wrapped-banner-in'));
 
@@ -175,6 +186,9 @@ function _wrappedGateMostrarBanner(){
     _wrappedGateMarcarVisto(info.anioObjetivo);
     _cerrar();
   });
+  // "Después" cierra sin marcar visto: vuelve a aparecer en la próxima
+  // carga, a diferencia de la X (que sí lo da por visto para el año).
+  el.querySelector('.wrapped-banner-later').addEventListener('click', _cerrar);
   el.querySelector('.wrapped-banner-btn').addEventListener('click', () => {
     _wrappedGateMarcarVisto(info.anioObjetivo);
     _cerrar();

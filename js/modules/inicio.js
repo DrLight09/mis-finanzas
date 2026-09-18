@@ -692,14 +692,36 @@ function _renderDispNetoTC() {
   el.style.color = neto < 0 ? 'var(--red)' : 'var(--text3)';
 }
 
+// calcDeudaTcPropia() vive en tarjetas_credito.js, módulo lazy — puede no
+// estar cargado todavía la primera vez que corre refresh() (ej. recién
+// abierta la app, antes de que Loader.ensureAll() termine en segundo
+// plano). Sin este reintento, el guard typeof de arriba cae a 0 en ese
+// primer render y el bloque se queda vacío para el resto de la sesión,
+// aunque sí haya deuda propia de TC — nada más vuelve a llamar a
+// _renderDispNetoTC() hasta el próximo refresh() real (una acción del
+// usuario). Reintenta cada 500ms, hasta 10s, solo mientras la función
+// siga sin existir; en cuanto aparece, pinta una vez y para.
+let _dispNetoTcIntentos = 0;
+function _renderDispNetoTCConReintento(){
+  _renderDispNetoTC();
+  if (typeof calcDeudaTcPropia !== 'function' && _dispNetoTcIntentos < 20) {
+    _dispNetoTcIntentos++;
+    setTimeout(_renderDispNetoTCConReintento, 500);
+  }
+}
+
 // Hook _checkGastoAlto/_renderDispNetoTC en refresh — refresh() ya existe
 // para este punto (se define en index.html, cargado antes que este módulo).
 const _origRefreshInicio = window.refresh;
 window.refresh = function() {
   if (_origRefreshInicio) _origRefreshInicio.apply(this, arguments);
   _checkGastoAlto();
-  _renderDispNetoTC();
+  _renderDispNetoTCConReintento();
 };
+
+// Primer intento inmediato al cargar el módulo, sin esperar al próximo
+// refresh() real — mismo motivo que el reintento de arriba.
+_renderDispNetoTCConReintento();
 
 // Nota (2026-08-04): "Necesita atención" depende de getMesadaData/
 // _getCuotaAnio (mesada) y tcCupoUsadoPct (tarjetas de crédito), que

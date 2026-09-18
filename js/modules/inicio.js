@@ -658,12 +658,47 @@ function _checkGastoAlto() {
   }
 }
 
-// Hook _checkGastoAlto en refresh — refresh() ya existe para este punto
-// (se define en index.html, cargado antes que este módulo).
+/* ================================================================
+   DISPONIBLE NETO DE DEUDA PROPIA DE TC
+   ================================================================
+   No toca tarjetas_credito.js ni le agrega fechas de corte/pago —
+   esa es una decisión de diseño explícita de ese módulo (ver
+   tarjetas-credito.md §7: "no simula un banco real"). Este bloque
+   solo AGREGA una segunda lectura junto a "Disponible", reusando
+   calcDeudaTcPropia() (ya existe, ya la usa Salud financiera para
+   "cuánto debo realmente"). La deuda AJENA (favores/encargos/
+   préstamos con TC) queda fuera a propósito: esa plata la cubre el
+   ingreso comprometido o el deudor correspondiente, nunca salió
+   realmente de tu bolsillo.
+
+   El disponible bruto (#s-disp) no se toca ni se reemplaza — sigue
+   mostrando lo mismo que hoy. Esto es información adicional, no un
+   reemplazo: los días en que sabes que va a entrar plata antes de
+   pagar la tarjeta (ej. "me pagan en 3 días"), el bruto sigue siendo
+   la cifra correcta a mirar; el resto de los días, el neto es el que
+   avisa que parte de ese disponible ya tiene dueño.
+   ================================================================ */
+function _renderDispNetoTC() {
+  const el = document.getElementById('s-disp-neto-tc');
+  if (!el) return;
+  const deudaPropia = typeof calcDeudaTcPropia === 'function' ? calcDeudaTcPropia() : 0;
+  if (!deudaPropia || deudaPropia <= 0) { el.textContent = ''; return; }
+  const nu = typeof nuTotal === 'function' ? nuTotal() : 0;
+  const nequi = S.nequiSaldo || 0;
+  const ef = S.efectivoSaldo || 0;
+  const disp = nu + nequi + ef;
+  const neto = disp - deudaPropia;
+  el.textContent = `Neto de TC: ${fmt(neto)}`;
+  el.style.color = neto < 0 ? 'var(--red)' : 'var(--text3)';
+}
+
+// Hook _checkGastoAlto/_renderDispNetoTC en refresh — refresh() ya existe
+// para este punto (se define en index.html, cargado antes que este módulo).
 const _origRefreshInicio = window.refresh;
 window.refresh = function() {
   if (_origRefreshInicio) _origRefreshInicio.apply(this, arguments);
   _checkGastoAlto();
+  _renderDispNetoTC();
 };
 
 // Nota (2026-08-04): "Necesita atención" depende de getMesadaData/

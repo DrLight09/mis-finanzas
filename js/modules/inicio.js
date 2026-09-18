@@ -659,17 +659,17 @@ function _checkGastoAlto() {
 }
 
 /* ================================================================
-   DISPONIBLE NETO DE DEUDA PROPIA DE TC
+   DISPONIBLE NETO DE DEUDA DE TC NO CONFIRMADA COMO AJENA
    ================================================================
    No toca tarjetas_credito.js ni le agrega fechas de corte/pago —
    esa es una decisión de diseño explícita de ese módulo (ver
    tarjetas-credito.md §7: "no simula un banco real"). Este bloque
    solo AGREGA una segunda lectura junto a "Disponible", reusando
-   calcDeudaTcPropia() (ya existe, ya la usa Salud financiera para
-   "cuánto debo realmente"). La deuda AJENA (favores/encargos/
-   préstamos con TC) queda fuera a propósito: esa plata la cubre el
-   ingreso comprometido o el deudor correspondiente, nunca salió
-   realmente de tu bolsillo.
+   calcDeudaAjenaDeTarjeta() (ya existe en core-state.js, ya la usa
+   la deuda propia de Salud financiera). Se resta la deuda total de
+   cada tarjeta MENOS lo confirmado como ajeno — el saldo inicial sin
+   clasificar se cuenta como propio a propósito (ver el comentario
+   dentro de _renderDispNetoTC).
 
    El disponible bruto (#s-disp) no se toca ni se reemplaza — sigue
    mostrando lo mismo que hoy. Esto es información adicional, no un
@@ -681,30 +681,43 @@ function _checkGastoAlto() {
 function _renderDispNetoTC() {
   const el = document.getElementById('s-disp-neto-tc');
   if (!el) return;
-  const deudaPropia = typeof calcDeudaTcPropia === 'function' ? calcDeudaTcPropia() : 0;
-  if (!deudaPropia || deudaPropia <= 0) { el.textContent = ''; return; }
+  // Se usa "deuda total menos lo AJENO CONFIRMADO" (calcDeudaAjenaDeTarjeta),
+  // no calcDeudaTcPropia(). calcDeudaTcPropia() también descuenta el saldo
+  // inicial pendiente porque core-state.js lo trata como "neutral, sin
+  // clasificar" (a propósito — ver calcSaldoInicialPendiente en
+  // core-state.js). Para este bloque ese criterio no sirve: plata sin
+  // clasificar sigue siendo plata que probablemente tengas que pagar vos,
+  // no un tercero — mismo motivo por el que el widget de "cobertura" de
+  // Tarjetas de crédito usa deuda total y no la propia (tarjetas-credito.md
+  // §2: "el banco cobra el 100% de la deuda total sin importar esta
+  // distinción"). Acá se aplica el mismo criterio, pero por tarjeta y solo
+  // excluyendo lo que SÍ está confirmado como ajeno (encargos, préstamos,
+  // favores) — el saldo inicial sin clasificar se cuenta como si fuera tuyo
+  // hasta que algo diga lo contrario.
+  const deudaNoAjena = (S.tarjetasCredito||[]).reduce((a,tc)=>{
+    const ajena = typeof calcDeudaAjenaDeTarjeta === 'function' ? calcDeudaAjenaDeTarjeta(tc) : 0;
+    return a + Math.max(0, (tc.deuda||0) - ajena);
+  }, 0);
+  if (!deudaNoAjena || deudaNoAjena <= 0) { el.textContent = ''; return; }
   const nu = typeof nuTotal === 'function' ? nuTotal() : 0;
   const nequi = S.nequiSaldo || 0;
   const ef = S.efectivoSaldo || 0;
   const disp = nu + nequi + ef;
-  const neto = disp - deudaPropia;
+  const neto = disp - deudaNoAjena;
   el.textContent = `Neto de TC: ${fmt(neto)}`;
   el.style.color = neto < 0 ? 'var(--red)' : 'var(--text3)';
 }
 
-// calcDeudaTcPropia() vive en tarjetas_credito.js, módulo lazy — puede no
-// estar cargado todavía la primera vez que corre refresh() (ej. recién
-// abierta la app, antes de que Loader.ensureAll() termine en segundo
-// plano). Sin este reintento, el guard typeof de arriba cae a 0 en ese
-// primer render y el bloque se queda vacío para el resto de la sesión,
-// aunque sí haya deuda propia de TC — nada más vuelve a llamar a
-// _renderDispNetoTC() hasta el próximo refresh() real (una acción del
-// usuario). Reintenta cada 500ms, hasta 10s, solo mientras la función
-// siga sin existir; en cuanto aparece, pinta una vez y para.
+// calcDeudaAjenaDeTarjeta() vive en core-state.js (eager, no lazy) — a
+// diferencia de lo que se pensó en la sesión anterior, no hace falta
+// reintento por carga lazy: la función ya existe para cuando inicio.js
+// corre. El reintento se deja igual como red de seguridad barata (por si
+// algún día ese archivo se vuelve lazy), pero en la práctica debería
+// resolverse siempre en el primer intento.
 let _dispNetoTcIntentos = 0;
 function _renderDispNetoTCConReintento(){
   _renderDispNetoTC();
-  if (typeof calcDeudaTcPropia !== 'function' && _dispNetoTcIntentos < 20) {
+  if (typeof calcDeudaAjenaDeTarjeta !== 'function' && _dispNetoTcIntentos < 20) {
     _dispNetoTcIntentos++;
     setTimeout(_renderDispNetoTCConReintento, 500);
   }

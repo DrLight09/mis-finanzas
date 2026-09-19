@@ -47,7 +47,9 @@
      4. Solo si las dos anteriores dan limpio (array propio bien barrido, sin
         dueño externo que sincronizar) es seguro dejarlo borrable directo —
         caso real: "Préstamo dado" (deudores[].movimientos), único registro
-        del evento, con su propia rama que lo revierte completo.
+        del evento — pero NO lo revierte una rama de acá: eliminarMovimiento()
+        delega en eliminarMovDeudor() (prestado.js), la única implementación
+        completa (fuentes divididas, vía TC/encargo/Alcancía, grupos).
 
    Se registran bajo el namespace Events 'core:' (no bajo el de ningún
    módulo) para no dar a entender que un dominio específico es dueño de esta
@@ -480,6 +482,29 @@ async function eliminarMovimiento(btn) {
     return;
   }
 
+  // Préstamo dado / abono recibido (S.deudores[].movimientos): no se revierte acá.
+  // Antes este archivo tenía su propia copia de la reversión (solo `fuente` simple
+  // y `destino` simple) que no sabía deshacer préstamos con fuentes divididas
+  // (`fuentes`), vía TC (`_viaTC`), abonos con `destinos`/encargo/Alcancía, ni
+  // reevaluar los grupos de préstamo — y la protección por antigüedad de esa copia
+  // llamaba funciones de prestado.js (grupo lazy) sin guard. Se delega en
+  // eliminarMovDeudor(), que trae todo eso; { desdeFeed: true } evita que navegue
+  // al detalle del deudor (el usuario se queda en la cuenta desde donde borró).
+  if (movTipoEl === 'prestamo' || movTipoEl === 'abono') {
+    const deudorDueno = (S.deudores || []).find(d => (d.movimientos || []).some(x => x.id === movId));
+    if (!deudorDueno) {
+      toast('No se encontró este movimiento en Préstamos — puede que ya se haya eliminado', 'err', 4000);
+      return;
+    }
+    if (typeof eliminarMovDeudor !== 'function') {
+      try { await Loader.ensure('prestamos'); }
+      catch (err) { toast('No se pudo cargar Préstamos. Intenta de nuevo.', 'err', 4000); return; }
+    }
+    await eliminarMovDeudor(deudorDueno.id, movId, { desdeFeed: true });
+    _rerenderCuentaActiva();
+    return;
+  }
+
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
   // Resuelto ANTES de la confirmación genérica de abajo porque el nivel
   // 'viejo'/'bloqueado' usa su propio diálogo en vez del genérico. Cubre
@@ -591,23 +616,6 @@ async function eliminarMovimiento(btn) {
       if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
       if (nivel === 'viejo') {
         confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(fuente), (m ? m.monto : monto) || 0, movTipoEl === 'egreso' ? 'sube' : 'baja');
-        if (!confirmado) return;
-      }
-    }
-  } else if (movTipoEl === 'prestamo' || movTipoEl === 'abono') {
-    let target = null;
-    (S.deudores || []).forEach(d => {
-      const m = (d.movimientos || []).find(x => x.id === movId);
-      if (m) target = { d, m };
-    });
-    if (target && _deudorTieneCuentaAfectada(target.m)) {
-      const opsPosteriores = _deudorOpsPosteriores(target.d, target.m);
-      const nivel = nivelAntiguedadMovimiento(target.m.fecha, opsPosteriores, 'prestamos');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        const cuentas = _deudorCuentasDe(target.m);
-        const nombreCuenta = cuentas.length > 1 ? `${cuentas.length} cuentas` : fuenteLabel(cuentas[0]);
-        confirmado = await confirmarBorrarMovimientoViejo(nombreCuenta, target.m.monto || 0, movTipoEl === 'prestamo' ? 'sube' : 'baja');
         if (!confirmado) return;
       }
     }
@@ -744,28 +752,6 @@ async function eliminarMovimiento(btn) {
       }
       S.gastosVar = S.gastosVar.filter(x => x.id !== movId);
     }
-  } else if (movTipoEl === 'prestamo') {
-    // Préstamo dado (S.deudores[].movimientos)
-    let found = false;
-    (S.deudores || []).forEach(d => {
-      const idx = (d.movimientos || []).findIndex(m => m.id === movId);
-      if (idx !== -1) {
-        const mov = d.movimientos[idx];
-        if (mov.fuente) sumarFuente(mov.fuente, mov.monto); // devolver plata a la fuente
-        d.movimientos.splice(idx, 1);
-        found = true;
-      }
-    });
-  } else if (movTipoEl === 'abono') {
-    // Abono recibido (S.deudores[].movimientos)
-    (S.deudores || []).forEach(d => {
-      const idx = (d.movimientos || []).findIndex(m => m.id === movId);
-      if (idx !== -1) {
-        const mov = d.movimientos[idx];
-        if (mov.destino) descontarFuente(mov.destino, mov.monto); // retirar el abono
-        d.movimientos.splice(idx, 1);
-      }
-    });
   } else if (movTipoEl === 'mesada') {
     // Mesada
     // FIX: getMesadaData es una mutación real (encuentra y borra el registro
@@ -797,16 +783,21 @@ async function eliminarMovimiento(btn) {
   }
 
   save(); refresh();
-  // Re-render la cuenta activa
-  if (cuentaActual) {
-    if (cuentaActual === 'custom' && _customCuentaActualId) {
-      // Re-abrir la cuenta custom activa para refrescar saldo + movimientos
-      if (typeof abrirCustomCuenta==='function') abrirCustomCuenta(_customCuentaActualId);
-    } else {
-      if (typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);
-    }
-  }
+  _rerenderCuentaActiva();
   toast('Movimiento eliminado y saldos revertidos', 'info');
+}
+
+// Vuelve a pintar la cuenta que está abierta (saldo + movimientos) después de
+// borrar un movimiento. Compartido por el final de eliminarMovimiento() y por la
+// delegación en eliminarMovDeudor() (préstamo/abono).
+function _rerenderCuentaActiva() {
+  if (!cuentaActual) return;
+  if (cuentaActual === 'custom' && _customCuentaActualId) {
+    // Re-abrir la cuenta custom activa para refrescar saldo + movimientos
+    if (typeof abrirCustomCuenta==='function') abrirCustomCuenta(_customCuentaActualId);
+  } else {
+    if (typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);
+  }
 }
 
 // Registro bajo el namespace 'core' — ver nota de cabecera de este archivo.

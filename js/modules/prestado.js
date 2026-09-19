@@ -573,7 +573,13 @@ async function _prEnsureAlcancia() {
   }
 }
 
-async function eliminarMovDeudor(deudorId, movId) {
+// opts.desdeFeed: true cuando lo invoca eliminarMovimiento() (movimientos.js) al
+// borrar un préstamo/abono desde el feed o el detalle de una cuenta. Todo el
+// flujo (protección por antigüedad, confirmación, reversión) es el mismo, pero
+// al terminar NO navega al detalle del deudor — el usuario sigue en la cuenta
+// desde donde borró, y movimientos.js la vuelve a pintar.
+async function eliminarMovDeudor(deudorId, movId, opts) {
+  const desdeFeed = !!(opts && opts.desdeFeed === true);
   const d = (S.deudores || []).find(x => x.id === deudorId);
   if (!d) return;
   const m = (d.movimientos || []).find(x => x.id === movId);
@@ -581,8 +587,9 @@ async function eliminarMovDeudor(deudorId, movId) {
 
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
   // Este mismo movimiento también se puede borrar desde la vista de cuenta
-  // genérica (rama 'prestamo'/'abono' de eliminarMovimiento() en
-  // movimientos.js), que aplica la misma protección por su cuenta.
+  // genérica: eliminarMovimiento() (movimientos.js) NO tiene lógica propia para
+  // 'prestamo'/'abono', delega acá con { desdeFeed: true } — una sola
+  // implementación de la reversión (antes había una copia incompleta allá).
   // Solo aplica si _deudorTieneCuentaAfectada(m) — un préstamo/abono 100%
   // "Sin especificar"/"Ganancia" no revierte ningún saldo real, así que no
   // hay nada que proteger.
@@ -781,15 +788,25 @@ async function eliminarMovDeudor(deudorId, movId) {
   _autoCerrarGruposEnCero(d); // el grupo pudo saldarse (o reabrirse) al borrar este movimiento
   _verificarIntegridadSaldoDeudor(d, _saldoAntesDel, _deltaEsperadoDel);
   save(); refresh();
-  abrirDeudor(deudorId);
+  if (!desdeFeed) abrirDeudor(deudorId);
   toast(`${esPrestamo ? 'Préstamo' : 'Abono'} eliminado — saldo revertido`, 'ok');
 }
 
 function initMovSheet(tipo) {
   // Preservar 'pago-completo' para distinguirlo de un abono normal
   movTipo = tipo; // 'prestamo' | 'abono' | 'pago-completo'
-  poblarFuente('mov_fuente');
-  _poblarAbonoDestinoSimple(); // no poblarFuente('mov_destino'): esa incluye TC, y una TC nunca es destino de plata entrante
+  // incluirTC=false (3er parámetro de poblarFuente): en ninguno de los dos selects
+  // (modo simple) puede aparecer una tarjeta de crédito.
+  //  - mov_destino: una TC nunca recibe plata entrante (pagarle a una TC es otro flujo).
+  //  - mov_fuente: un préstamo pagado con TC se registra SOLO por "Préstamo con TC"
+  //    (confirmarPrestamoTC): valida cupo, pide la descripción de la compra, crea el
+  //    cargo enlazado en S.tcMovimientos (tipo 'cargo_prestamo') y marca _viaTC. Por
+  //    este camino simple tc.deuda subía (descontarFuente) pero sin ese cargo
+  //    enlazado, y calcDeudaAjenaDeTarjeta() (core-state.js) no lo veía como deuda
+  //    ajena → contaba como deuda PROPIA. Decisión 2026-09-19: no unir los sheets.
+  // Los modos divididos de ambos campos ya excluían las TC (getFuentesSinTC).
+  poblarFuente('mov_fuente', false, false);
+  poblarFuente('mov_destino', false, false);
   // ext selects se pueblan dinámicamente en extRenderPartes()
   const esPrestamo = tipo === 'prestamo';
   const esPagoCompleto = tipo === 'pago-completo';
@@ -1591,18 +1608,6 @@ function _getAbonoDestinoFuentesOptions(selectedVal) {
     out += `<option value="${f.val}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`;
   }
   return out;
-}
-
-// Modo simple del destino del abono (select #mov_destino). Antes se poblaba con
-// poblarFuente(), que lista TODAS las fuentes incluidas las tarjetas de crédito
-// (tc:...), así que en "Registrar abono" / "Pagar préstamo completo" aparecía
-// "Nu Mastercard Gold (TC)" como si pudieras recibir la plata ahí. El modo
-// dividido ya usaba _getAbonoDestinoFuentesOptions (sin TC); ahora el simple
-// usa exactamente el mismo helper para que los dos modos ofrezcan lo mismo.
-function _poblarAbonoDestinoSimple() {
-  const sel = document.getElementById('mov_destino');
-  if (!sel) return;
-  sel.innerHTML = _getAbonoDestinoFuentesOptions('');
 }
 
 function abonoSplitResumen() {

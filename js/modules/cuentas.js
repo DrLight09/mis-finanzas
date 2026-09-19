@@ -549,6 +549,20 @@ function materializarIntereses(c){
   }
 }
 
+// Umbrales del chequeo rápido de Nu (ver cuentas.md §5 y §7). Un solo lugar para ajustarlos.
+const _CFG_CHEQUEO_NU={
+  // — Detección de cambio de tasa —
+  umbralEA:0.05,      // desvío mínimo (puntos de EA) para que un punto cuente como "tasa distinta"
+  minDias:5,          // días mínimos entre dos chequeos para poder compararlos (con menos, el ruido de
+                      // redondeo/digitación domina: 1 peso sobre 1 día de rendimiento son ~2 puntos de EA)
+  tolPesos:1,         // diferencia mínima en $ contra lo que daría la tasa actual (menos = redondeo)
+  maxDesvioEA:5,      // más lejos que esto de la tasa vigente no es un cambio de tasa: es plata que entró/salió
+                      // sin registrar o un valor mal digitado — ese par se descarta de la serie
+  // — Aviso al guardar si el saldo anotado se aleja mucho de lo calculado —
+  avisoPct:0.02,      // diferencia relativa a partir de la cual se pide confirmar...
+  avisoMinPesos:1000  // ...y nunca por menos de esta cantidad de pesos
+};
+
 // Calcula, para cada fecha en que hiciste un chequeo, la tasa EA que mejor explica el
 // crecimiento real de las cajitas chequeadas ese día (ponderado por saldo). Misma lógica
 // validada en el laboratorio externo de cajitas Nu.
@@ -562,33 +576,52 @@ function calcularSerieTasaImplicitaNu(){
   });
   const serie=[];
   fechas.forEach(fecha=>{
-    let sumaPond=0,sumaPesos=0;
+    let sumaPond=0,sumaPesos=0,difPesos=0;
     chequeos.filter(ch=>ch.fecha===fecha).forEach(ch=>{
       const prev=prevByCajita[ch.cajitaId];
       if(!prev){prevByCajita[ch.cajitaId]={balance:ch.saldoReal,fecha};return;}
       const dias=_diasEntreFechas(prev.fecha,fecha);
+      // Chequeo demasiado cerca del anterior: no se compara y el punto de partida NO avanza,
+      // así el próximo chequeo se mide contra uno más lejano (donde el ruido pesa menos).
+      if(dias>0&&dias<_CFG_CHEQUEO_NU.minDias)return;
       if(dias>0&&prev.balance>=1000){
         const rDiaria=Math.pow(ch.saldoReal/prev.balance,1/dias)-1;
         const ea=(Math.pow(1+rDiaria,365)-1)*100;
-        sumaPond+=ea*prev.balance;sumaPesos+=prev.balance;
+        // Un salto imposible (Infinity/NaN, o a más de maxDesvioEA puntos de la tasa vigente) es un
+        // saldo mal anotado o plata sin registrar en esa cajita, no una tasa: se descarta SOLO ese
+        // par para que no contamine el promedio ponderado de las demás cajitas del mismo día.
+        if(isFinite(ea)&&Math.abs(ea-_tasaVigenteEnFecha(fecha))<=_CFG_CHEQUEO_NU.maxDesvioEA){
+          // Lo que habría dado la tasa vigente en cada tramo, para medir la diferencia en pesos.
+          let esperado=prev.balance;
+          _segmentosTasaNu(prev.fecha,fecha).forEach(seg=>{esperado*=Math.pow(1+seg.tasa/100,seg.dias/365);});
+          sumaPond+=ea*prev.balance;sumaPesos+=prev.balance;
+          difPesos+=ch.saldoReal-esperado;
+        }
       }
       prevByCajita[ch.cajitaId]={balance:ch.saldoReal,fecha};
     });
-    if(sumaPesos>0)serie.push({fecha,ea:sumaPond/sumaPesos});
+    if(sumaPesos>0)serie.push({fecha,ea:sumaPond/sumaPesos,difPesos});
   });
   return serie;
 }
 
-// Revisa si los últimos chequeos se desviaron sostenidamente de la tasa registrada.
+// Revisa si los últimos chequeos se desviaron SOSTENIDAMENTE de la tasa registrada.
 // Devuelve {sugerida, desde} si detecta un posible cambio, o null si todo cuadra.
+// Un punto cuenta como desvío solo si: (1) se aleja más de umbralEA de la tasa actual, (2) la
+// diferencia equivale a más de tolPesos pesos (no es redondeo). Los saltos imposibles ya se
+// descartan al armar la serie (maxDesvioEA). La racha exige 2+ puntos consecutivos del MISMO lado: uno por encima y otro
+// por debajo es ruido que se compensa, no una tasa nueva.
 function verificarTasaNu(){
   const serie=calcularSerieTasaImplicitaNu();
   if(!serie.length)return null;
   const tasaActual=_tasaVigenteEnFecha(hoy());
-  const UMBRAL=0.05;
+  const C=_CFG_CHEQUEO_NU;
+  const desvio=p=>p.ea-tasaActual;
+  const esDesvio=p=>Math.abs(desvio(p))>C.umbralEA&&Math.abs(p.difPesos)>C.tolPesos;
   let racha=[];
   for(let i=serie.length-1;i>=0;i--){
-    if(Math.abs(serie[i].ea-tasaActual)>UMBRAL)racha.unshift(serie[i]); else break;
+    const p=serie[i];
+    if(esDesvio(p)&&(!racha.length||Math.sign(desvio(p))===Math.sign(desvio(racha[0]))))racha.unshift(p); else break;
   }
   if(racha.length>=2){
     const prom=racha.reduce((a,p)=>a+p.ea,0)/racha.length;
@@ -609,58 +642,122 @@ function poblarChequeoNu(){
   })}`;
 }
 
-function guardarChequeoNu(){
+// Qué saldo propio quedaría en la cajita si se acepta lo que el usuario anotó, y contra qué
+// valor calculado se está comparando. Cuando la cajita tiene plata de un encargo adentro, el
+// usuario puede haber escrito el TOTAL físico que ve en Nu (propio + encargo, sin distinguir) o
+// ya SU parte neta. Para no restar el encargo dos veces en el segundo caso, se compara el valor
+// contra las dos referencias (propio vs. propio+encargo) y se asume la más cercana — la
+// diferencia entre ambas es normalmente el monto completo del encargo, mucho mayor que
+// cualquier corrección real de unos pocos pesos, así que no hay casos realmente ambiguos.
+// Única fuente de esta lógica: la usan tanto el aviso previo como la corrección del saldo.
+function _interpretarLecturaChequeoNu(c,val){
+  const saldoEncargos=_saldoEncargosEnCajita(c.id);
+  const propioCalculado=calcC(c).val;
+  if(saldoEncargos>0){
+    const totalCalculado=propioCalculado+saldoEncargos;
+    const esTotal=Math.abs(val-totalCalculado)<Math.abs(val-propioCalculado);
+    return{saldoPropio:esTotal?(val-saldoEncargos):val,referencia:esTotal?totalCalculado:propioCalculado};
+  }
+  return{saldoPropio:val,referencia:propioCalculado};
+}
+
+// Foto del estado justo antes de aplicar un chequeo, para poder deshacerlo si el usuario, al ver
+// el aviso de cambio de tasa, se da cuenta de que se equivocó al anotar. Solo vive en memoria:
+// no se guarda en S (si se cierra la app, el chequeo queda aplicado como siempre).
+let _chequeoNuUndo=null;
+
+async function guardarChequeoNu(){
   const inputs=document.querySelectorAll('[data-chq-cajita]');
   const hoyStr=hoy();
-  if(!S.chequeosNu)S.chequeosNu=[];
-  let n=0;
+  // 1) Leer lo anotado SIN tocar nada todavía.
+  const lecturas=[];
   inputs.forEach(inp=>{
     const raw=(inp.value||'').replace(/\./g,'').replace(',','.');
     const val=parseFloat(raw);
     if(!raw||isNaN(val))return;
-    const cajitaId=inp.dataset.chqCajita;
+    lecturas.push({cajitaId:inp.dataset.chqCajita,val,texto:inp.value});
+  });
+  if(lecturas.length===0){if(window.toast)toast('No pusiste ningún saldo para chequear.','err',3000);return;}
+
+  // 2) Aviso previo: si algún saldo se aleja mucho de lo calculado, pedir confirmación ANTES de
+  //    guardar. Un cambio de tasa mueve el saldo unos pesos por mes; una diferencia grande casi
+  //    siempre es un valor mal digitado o plata que entró/salió sin registrarse. Al cancelar el
+  //    sheet sigue abierto con lo que se anotó, para corregirlo.
+  const anomalias=[];
+  lecturas.forEach(l=>{
+    const c=(S.cajitas||[]).find(cc=>cc.id===l.cajitaId);
+    if(!c)return;
+    const {referencia}=_interpretarLecturaChequeoNu(c,l.val);
+    const dif=l.val-referencia;
+    if(Math.abs(dif)>Math.max(_CFG_CHEQUEO_NU.avisoMinPesos,Math.abs(referencia)*_CFG_CHEQUEO_NU.avisoPct)){
+      anomalias.push('• '+(c.nombre||'Cajita')+': anotaste '+fmt(l.val)+' y la app calculaba '+fmt(referencia)+' ('+(dif>0?'+':'−')+fmt(Math.abs(dif))+')');
+    }
+  });
+  if(anomalias.length){
+    const okAviso=await dialogo(
+      'Revisa lo que anotaste',
+      'Estos saldos se alejan mucho de lo calculado:\n\n'+anomalias.join('\n')+
+      '\n\nUn cambio de tasa mueve el saldo apenas unos pesos por mes. Una diferencia así suele ser un valor mal digitado, o plata que entró o salió y no está registrada (si es eso, regístrala como movimiento antes de hacer el chequeo).\n\n¿Guardar de todos modos?',
+      'Guardar de todos modos',
+      false
+    );
+    if(!okAviso)return;
+  }
+
+  // 3) Guardar. Antes, foto del estado actual para poder deshacer desde el aviso de tasa.
+  if(!S.chequeosNu)S.chequeosNu=[];
+  _chequeoNuUndo={
+    chequeos:JSON.parse(JSON.stringify(S.chequeosNu)),
+    cajitas:lecturas.map(l=>{const c=(S.cajitas||[]).find(cc=>cc.id===l.cajitaId);return c?{id:c.id,saldo:c.saldo,fecha:c.fecha}:null;}).filter(Boolean),
+    lecturas:lecturas.map(l=>({cajitaId:l.cajitaId,texto:l.texto}))
+  };
+  lecturas.forEach(l=>{
+    const cajitaId=l.cajitaId,val=l.val;
     const idx=S.chequeosNu.findIndex(ch=>ch.cajitaId===cajitaId&&ch.fecha===hoyStr);
     if(idx>=0)S.chequeosNu[idx].saldoReal=val;
     else S.chequeosNu.push({fecha:hoyStr,cajitaId,saldoReal:val});
     // Corrige el saldo calculado de la cajita al valor real que reportó el usuario.
     // Sin movimiento asociado — mismo criterio silencioso que materializarIntereses():
     // es un ajuste de saldo, no plata que entra o sale de ningún lado.
-    //
-    // Ambigüedad cuando la cajita tiene plata de un encargo adentro: el usuario puede
-    // haber escrito el TOTAL físico que ve en la app de Nu (propio + encargo, que es
-    // lo que Nu realmente muestra, sin distinguir), o puede haber escrito directamente
-    // SU parte ya neta (si ya sabía cuánto era del encargo y lo descontó él mismo antes
-    // de escribir). Para no restar el encargo dos veces en ese segundo caso, se compara
-    // el valor ingresado contra las dos referencias calculadas (propio vs. propio+encargo)
-    // y se asume la que quede más cerca — la diferencia entre ambas referencias es
-    // normalmente el monto completo del encargo (mucho más grande que la corrección
-    // de unos pocos pesos que se está haciendo), así que no debería haber casos reales
-    // donde la cercanía sea ambigua.
     const c=(S.cajitas||[]).find(cc=>cc.id===cajitaId);
     if(c){
-      const saldoEncargos=_saldoEncargosEnCajita(cajitaId);
-      if(saldoEncargos>0){
-        const propioCalculado=calcC(c).val;
-        const totalCalculado=propioCalculado+saldoEncargos;
-        const esTotal=Math.abs(val-totalCalculado)<Math.abs(val-propioCalculado);
-        c.saldo=esTotal?(val-saldoEncargos):val;
-      }else{
-        c.saldo=val;
-      }
+      c.saldo=_interpretarLecturaChequeoNu(c,val).saldoPropio;
       c.fecha=hoyStr;
     }
-    n++;
   });
   if(S.chequeosNu.length>500)S.chequeosNu=S.chequeosNu.slice(-500);
-  if(n===0){if(window.toast)toast('No pusiste ningún saldo para chequear.','err',3000);return;}
   save();refresh();
   closeSheet('chequeo-nu');
   const r=verificarTasaNu();
   if(r){
     _abrirConfirmarTasaNu(r);
   }else{
+    _chequeoNuUndo=null;
     if(window.toast)toast('Chequeo guardado — saldo corregido con lo que anotaste.','ok',3000);
   }
+}
+
+// "Me equivoqué al anotar": deshace el chequeo recién guardado (saldos, fechas y puntos de
+// S.chequeosNu vuelven a como estaban) y reabre el chequeo con los mismos valores para editarlos.
+function corregirChequeoNu(){
+  const u=_chequeoNuUndo;
+  _tasaNuPendiente=null;
+  closeSheet('confirmar-tasa-nu');
+  if(!u)return;
+  S.chequeosNu=u.chequeos;
+  u.cajitas.forEach(s=>{
+    const c=(S.cajitas||[]).find(x=>x.id===s.id);
+    if(c){c.saldo=s.saldo;c.fecha=s.fecha;}
+  });
+  _chequeoNuUndo=null;
+  save();refresh();
+  openSheet('chequeo-nu');
+  poblarChequeoNu();
+  u.lecturas.forEach(l=>{
+    const inp=document.getElementById('chq-'+l.cajitaId);
+    if(inp)inp.value=l.texto;
+  });
+  if(window.toast)toast('Chequeo deshecho — corrige los saldos y vuelve a guardar.','ok',3500);
 }
 
 // Guarda temporalmente la sugerencia de cambio de tasa detectada en guardarChequeoNu()
@@ -674,7 +771,7 @@ function _abrirConfirmarTasaNu(r){
   _tasaNuPendiente=r;
   const tasaActual=_tasaVigenteEnFecha(hoy());
   const msgEl=document.getElementById('ctn-msg');
-  if(msgEl)msgEl.textContent=`Los chequeos ya no cuadran con ${tasaActual}% desde el ${r.desde}. Con lo que anotaste, parece que ahora es ${r.sugerida}%. Revisa o corrige el valor y la fecha antes de aplicar el cambio.`;
+  if(msgEl)msgEl.textContent=`Los chequeos ya no cuadran con ${tasaActual}% desde el ${r.desde}. Con lo que anotaste, parece que ahora es ${r.sugerida}%. Revisa o corrige el valor y la fecha antes de aplicar el cambio. Tus saldos ya quedaron guardados; si te equivocaste al anotarlos, usa «Me equivoqué» y se deshace el chequeo.`;
   const tasaInput=document.getElementById('ctn-tasa');
   if(tasaInput)tasaInput.value=String(r.sugerida).replace('.',',');
   const fechaInput=document.getElementById('ctn-fecha');
@@ -701,6 +798,7 @@ function confirmarCambioTasaNu(){
   closeSheet('confirmar-tasa-nu');
   if(window.toast)toast('Tasa actualizada a '+tasaEditada+'% desde '+fechaEditada,'ok',4000);
   _tasaNuPendiente=null;
+  _chequeoNuUndo=null;
 }
 
 // Calcula intereses del CDT de una cajita
@@ -2799,6 +2897,7 @@ Events.registerAll('cuentas', {
   abrirRegistrarApertura,
   // Nu — chequeo de saldo real
   guardarChequeoNu,
+  corregirChequeoNu,
   confirmarCambioTasaNu,
   // Transferir y abrir sheets estáticos (usado en el HTML de screen-cuentas)
   abrirTransferir,

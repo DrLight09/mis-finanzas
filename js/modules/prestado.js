@@ -789,7 +789,7 @@ function initMovSheet(tipo) {
   // Preservar 'pago-completo' para distinguirlo de un abono normal
   movTipo = tipo; // 'prestamo' | 'abono' | 'pago-completo'
   poblarFuente('mov_fuente');
-  poblarFuente('mov_destino');
+  _poblarAbonoDestinoSimple(); // no poblarFuente('mov_destino'): esa incluye TC, y una TC nunca es destino de plata entrante
   // ext selects se pueblan dinámicamente en extRenderPartes()
   const esPrestamo = tipo === 'prestamo';
   const esPagoCompleto = tipo === 'pago-completo';
@@ -1591,6 +1591,18 @@ function _getAbonoDestinoFuentesOptions(selectedVal) {
     out += `<option value="${f.val}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`;
   }
   return out;
+}
+
+// Modo simple del destino del abono (select #mov_destino). Antes se poblaba con
+// poblarFuente(), que lista TODAS las fuentes incluidas las tarjetas de crédito
+// (tc:...), así que en "Registrar abono" / "Pagar préstamo completo" aparecía
+// "Nu Mastercard Gold (TC)" como si pudieras recibir la plata ahí. El modo
+// dividido ya usaba _getAbonoDestinoFuentesOptions (sin TC); ahora el simple
+// usa exactamente el mismo helper para que los dos modos ofrezcan lo mismo.
+function _poblarAbonoDestinoSimple() {
+  const sel = document.getElementById('mov_destino');
+  if (!sel) return;
+  sel.innerHTML = _getAbonoDestinoFuentesOptions('');
 }
 
 function abonoSplitResumen() {

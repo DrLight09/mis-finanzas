@@ -2871,7 +2871,8 @@
         <div style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.5;">
           Pon el saldo que ves AHORA MISMO en cada cajita de Nu. Si el crecimiento real ya
           no cuadra con la tasa que tienes registrada, la app te va a avisar y te ofrece
-          corregirla con un clic.
+          corregirla con un clic. Si algún saldo se aleja mucho de lo calculado, también te
+          pide confirmar antes de guardarlo.
         </div>
         <div id="chequeoNuLista"></div>
         <button type="button" class="btn btn-primary" data-action="cuentas:guardarChequeoNu" data-args="[]">Guardar
@@ -2891,8 +2892,10 @@
         <div class="ig"><label class="il" for="ctn-fecha">Aplicar desde</label><input
             type="date" id="ctn-fecha"></div>
         <button type="button" class="btn btn-primary" data-action="cuentas:confirmarCambioTasaNu" data-args="[]">Aplicar
-          cambio</button>
-        <button type="button" class="btn btn-ghost" data-close-sheet="confirmar-tasa-nu">Cancelar</button>
+          cambio de tasa</button>
+        <button type="button" class="btn btn-ghost" data-action="cuentas:corregirChequeoNu" data-args="[]">Me equivoqué —
+          corregir los saldos</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="confirmar-tasa-nu">Dejar la tasa como está</button>
       </div>
     </div>
 

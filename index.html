@@ -1170,6 +1170,7 @@
                 </button>
                 <button type="button" class="cuenta-action-btn"
                   style="background:rgba(96,176,240,.08);border-color:rgba(96,176,240,.3);color:var(--blue);"
+                  id="btn-transferir-nequi-det"
                   data-action="cuentas:abrirTransferir" data-args="[&quot;nequi&quot;]">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2.5"
@@ -1265,7 +1266,8 @@
               </button>
               <button type="button" class="cuenta-action-btn"
                 style="background:rgba(96,176,240,.08);border-color:rgba(96,176,240,.3);color:var(--blue);"
-                data-action="cuentas:abrirTransferir">
+                id="btn-transferir-nu-det"
+                  data-action="cuentas:abrirTransferir">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><path d="M5 9l4-4-4-4" /><path
@@ -1503,6 +1505,7 @@
                 </button>
                 <button type="button" class="cuenta-action-btn"
                   style="background:rgba(96,176,240,.08);border-color:rgba(96,176,240,.3);color:var(--blue);"
+                  id="btn-transferir-efectivo-det"
                   data-action="cuentas:abrirTransferir" data-args="[&quot;efectivo&quot;]">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2.5"
@@ -5092,6 +5095,14 @@
 <script src="js/core/html-tag.js" defer></script>
 <script src="js/core/calc-helpers.js" defer></script>
 <!--
+// js/core/fuentes-filtro.js — filtros de "de dónde sale la plata" (saldo
+// mínimo por flujo, TC solo con cupo). Usa getSaldoFuente/buildFuentesOptsHtml
+// (core-state.js) y tcCupoDisponible/getTCById (calc-helpers.js) solo al ser
+// llamado, no al cargar. Debe cargar antes de gastos.js (eager) y de los
+// módulos lazy (cuentas, spotify, prestado, tarjetas). Ver CHANGELOG.md.
+-->
+<script src="js/core/fuentes-filtro.js" defer></script>
+<!--
 // js/core/wait-for.js — helper waitFor() para los <script defer> clásicos.
 // Consumidores directos: personas-init.js y js/core/hook-global.js (que
 // mejoras-adicionales.js/gastos-fijos-progress.js/mas-menu.js usan por
@@ -5364,7 +5375,8 @@
               </select></div>
           </div>
         </div>
-        <div class="ig"><label class="il" for="tc_cupo">Cupo total</label><input
+        <div class="ig"><label class="il" for="tc_cupo">Cupo total <span
+              style="color:var(--red);">*</span></label><input
             type="text" inputmode="decimal"
             id="tc_cupo" placeholder="0,00" class="money-input"></div>
         <div class="ig"><label class="il" for="tc_cajita_vinculada">Cajita para

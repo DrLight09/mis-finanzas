@@ -51,17 +51,9 @@ import { waitFor } from './wait-for-module.js';
   // esperando una promesa que el clearTimeout canceló.
   let _savePromise = null;
   let _saveResolve = null;
-  window._fbSaveToCloud = function() {
-    // PROTECCIÓN CRÍTICA: nunca guardar si los datos no se han cargado
-    // desde Firestore. Evita sobreescribir la nube con datos vacíos
-    // si la app se reinicia abruptamente antes de terminar de cargar.
-    if(!window._dataLoaded) return Promise.resolve({ok:false, reason:'not-loaded'});
-    clearTimeout(_saveTimer);
-    setSyncStatus('syncing', 'Guardando…');
-    if(!_savePromise){
-      _savePromise = new Promise((resolve) => { _saveResolve = resolve; });
-    }
-    _saveTimer = window._fbSaveTimer = setTimeout(async () => {
+  // Cuerpo del guardado con debounce, extraído tal cual del setTimeout para
+  // poder ejecutarlo también de inmediato (ver _fbFlushSave más abajo).
+  async function _ejecutarGuardado() {
       const resolve = _saveResolve;
       _savePromise = null; _saveResolve = null;
       if(!window._fbUser || !window._fb){ resolve({ok:false, reason:'no-auth'}); return; }
@@ -115,9 +107,53 @@ import { waitFor } from './wait-for-module.js';
         setSyncStatus('error', 'Error al guardar — revisa conexión');
         resolve({ok:false, reason:'error', error:e});
       }
-    }, 1500);
+  }
+
+  window._fbSaveToCloud = function() {
+    // PROTECCIÓN CRÍTICA: nunca guardar si los datos no se han cargado
+    // desde Firestore. Evita sobreescribir la nube con datos vacíos
+    // si la app se reinicia abruptamente antes de terminar de cargar.
+    if(!window._dataLoaded) return Promise.resolve({ok:false, reason:'not-loaded'});
+    clearTimeout(_saveTimer);
+    setSyncStatus('syncing', 'Guardando…');
+    if(!_savePromise){
+      _savePromise = new Promise((resolve) => { _saveResolve = resolve; });
+    }
+    _saveTimer = window._fbSaveTimer = setTimeout(_ejecutarGuardado, 1500);
     return _savePromise;
   };
+
+  // FIX (2026-09-19): guardado inmediato al salir de la app. Un cambio esperaba
+  // hasta ~0,8 s (debounceSave, core-state.js) + 1,5 s (el debounce de acá)
+  // antes de empezar a escribir; el único guardado de emergencia era
+  // `beforeunload` (core-state.js), que en celulares casi nunca se dispara al
+  // cambiar de app o cerrarla. `visibilitychange` (pasa a 'hidden') y
+  // `pagehide` sí son confiables. Solo acelera un guardado que YA iba a
+  // ocurrir: no escribe nada si este dispositivo no modificó nada, y respeta
+  // _dataLoaded (modo lectura) igual que el resto.
+  window._fbFlushSave = function() {
+    if(!window._dataLoaded || !_savePromise) return Promise.resolve({ok:true, reason:'nothing-pending'});
+    clearTimeout(_saveTimer);
+    const pendiente = _savePromise;
+    _ejecutarGuardado(); // toma _saveResolve y resuelve la misma promesa compartida
+    return pendiente;
+  };
+
+  let _ultimoFlushOculto = 0;
+  function _guardarAlOcultar() {
+    if(!window._dataLoaded || !window._fbUser) return;
+    const ahora = Date.now();
+    if(ahora - _ultimoFlushOculto < 1000) return; // visibilitychange + pagehide suelen llegar juntos
+    _ultimoFlushOculto = ahora;
+    // Si el usuario tocó algo en este dispositivo, asegurar que save() ya corrió
+    // (puede que el debounce de 0,8 s todavía no haya disparado). Igual que el
+    // guardado de beforeunload, no se fuerza nada si solo se abrió a leer.
+    if(window._locallyModified && typeof save === 'function') { try { save(); } catch(_){} }
+    if(_savePromise) console.log('[Sync] Página oculta — guardando de inmediato.');
+    window._fbFlushSave();
+  }
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') _guardarAlOcultar(); });
+  window.addEventListener('pagehide', _guardarAlOcultar);
 
   // ── Inicializar la app una sola vez tras la primera carga ─────────────────
   function _initAppUI() {

@@ -700,16 +700,15 @@ function _renderDispNetoTC() {
   // inflar el "peor caso" de Neto por encima de Disponible.
   const deudaTCTotal = (S.tarjetasCredito||[]).reduce((a,tc)=>a+Math.max(0,tc.deuda||0), 0);
   if (!deudaTCTotal || deudaTCTotal <= 0) { el.textContent = ''; return; }
-  // Misma fórmula EXACTA que refresh() usa para #s-disp (antes faltaba
-  // cuentasPersonalizadas y se llamaba a nuTotal() sin el fallback seguro
-  // que ya existe en core-state.js — eso podía hacer que Neto apareciera
-  // más alto que Disponible si alguna cuenta personalizada tenía saldo
-  // negativo, ver CHANGELOG.md#inicio 2026-09-20).
-  const nu = _nuTotalSafe();
-  const nequi = S.nequiSaldo || 0;
-  const ef = S.efectivoSaldo || 0;
-  const customTotal = (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0), 0);
-  const disp = nu + nequi + ef + customTotal;
+  // Ya NO se recalcula "disponible" acá (nu+nequi+ef+customTotal por
+  // separado) — eso ya causó dos veces que Neto quedara desalineado de
+  // Disponible por pequeñas diferencias entre este cálculo y el real. Se
+  // usa directamente window._dispActualHoy, el MISMO número que refresh()
+  // (core-state.js) acaba de usar para pintar #s-disp — por definición no
+  // se pueden desalinear. refresh() llama a _origRefreshInicio() (que
+  // setea window._dispActualHoy) ANTES de llamar a esta función, así que
+  // siempre llega actualizado.
+  const disp = window._dispActualHoy || 0;
   const neto = disp - deudaTCTotal;
   el.textContent = `Neto de TC: ${fmt(neto)}`;
   el.style.color = neto < 0 ? 'var(--red)' : 'var(--text3)';

@@ -165,6 +165,9 @@ function _deudorOpsPosteriores(d, m) {
 // saldo que la protección por antigüedad deba proteger.
 function _deudorTieneCuentaAfectada(m) {
   if (m._viaAlcancia && m._alcanciaMovId) return true;
+  // Perdón de deuda: no toca ninguna cuenta, pero borrarlo quita un gasto real
+  // del mes en que se registró — mismo criterio de protección por antigüedad.
+  if (m._perdon && m._gastoPerdonId) return true;
   if (m.tipo === 'prestamo') {
     if (m._viaTC) return true;
     if (m.fuentes && m.fuentes.length) return m.fuentes.some(f => f.fuente && f.fuente !== 'ganancia');
@@ -368,7 +371,8 @@ function abrirDeudor(id) {
   if (_migrarGruposDeudor(d)) save();
   const saldo = getDeudorSaldo(d);
   const totalPrestado = (d.movimientos || []).filter(m => m.tipo === 'prestamo').reduce((a, m) => a + m.monto, 0);
-  const totalAbonado = (d.movimientos || []).filter(m => m.tipo === 'abono' || m.tipo === 'pago-completo').reduce((a, m) => a + m.monto, 0);
+  // Lo perdonado (_perdon) NO es plata que pagó: no entra en "Pagado" (queda en el historial como "Perdonado").
+  const totalAbonado = (d.movimientos || []).filter(m => (m.tipo === 'abono' || m.tipo === 'pago-completo') && !m._perdon).reduce((a, m) => a + m.monto, 0);
 
   document.getElementById('ddAvatar').textContent = d.nombre.substring(0, 2).toUpperCase();
   document.getElementById('ddAvatar').style.color = d.color;
@@ -406,7 +410,9 @@ function abrirDeudor(id) {
       // Destino info line
       const arrowSvg = raw(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`);
       let destinoInfo = '';
-      if (m._viaEncargo && m._encNombre) {
+      if (m._perdon) {
+        destinoInfo = html` <span style="background:rgba(240,96,96,.12);color:var(--red);border:1px solid rgba(240,96,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">se lo regalé · cuenta como gasto</span>`;
+      } else if (m._viaEncargo && m._encNombre) {
         destinoInfo = html` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">encargo de ${m._encNombre}</span>`;
       } else if (m._viaAlcancia) {
         destinoInfo = html` <span style="background:rgba(240,184,64,.15);color:var(--amber);border:1px solid rgba(240,184,64,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">→ Alcancía</span>`;
@@ -441,11 +447,11 @@ function abrirDeudor(id) {
         else if (m.destino) otrasCuentasDD = [{fuente:m.destino, monto:+m.monto}];
       }
       const dataOtrasDD = otrasCuentasDD.length ? html`data-mov-otras="${JSON.stringify(otrasCuentasDD)}"` : '';
-      const _cardHtml = html`<div class="card card-sm" style="margin-bottom:7px;cursor:pointer;" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-mov-origen="${origenDD}" ${dataOtrasDD} data-mov-saldo-antes="${saldoAntesDeuda}" data-mov-saldo-despues="${saldoDespuesDeuda}" data-mov-saldo-label="Deuda de ${d.nombre}" data-mov-desc="${m.nota || (esPrestamo?'Préstamo': esPagoCompleto?'Pago completo':'Abono')}" data-mov-fecha="${m.fecha}" ${raw(Events.attr('prestado:abrirDetalleMov'))}>
+      const _cardHtml = html`<div class="card card-sm" style="margin-bottom:7px;cursor:pointer;" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-mov-origen="${origenDD}" ${dataOtrasDD} data-mov-saldo-antes="${saldoAntesDeuda}" data-mov-saldo-despues="${saldoDespuesDeuda}" data-mov-saldo-label="Deuda de ${d.nombre}" data-mov-desc="${m.nota || (esPrestamo?'Préstamo': m._perdon?'Deuda perdonada': esPagoCompleto?'Pago completo':'Abono')}" data-mov-fecha="${m.fecha}" ${raw(Events.attr('prestado:abrirDetalleMov'))}>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <span class="badge ${esPrestamo ? 'bg-amber' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : esPagoCompleto ? 'Pago completo' : 'Abono'}</span>
+              <span class="badge ${esPrestamo ? 'bg-amber' : m._perdon ? 'bg-red' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : m._perdon ? 'Perdonado' : esPagoCompleto ? 'Pago completo' : 'Abono'}</span>
               ${m._gananciaVirtual ? html` <span style="background:rgba(200,240,96,.15);color:var(--accent);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
               ${m._viaTC ? html` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
               ${m.nota ? html` <span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
@@ -603,7 +609,8 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
     }
   }
   const esPrestamo = m.tipo === 'prestamo';
-  const label = esPrestamo ? 'préstamo' : 'pago';
+  const esPerdon = !esPrestamo && !!m._perdon;
+  const label = esPrestamo ? 'préstamo' : esPerdon ? 'perdón' : 'pago';
   const tieneExtra = !esPrestamo && m._extPartes && m._extPartes.length > 0;
   const tieneExtraEncargo = !esPrestamo && m._viaEncargo && m._encExtraMovId;
   const extraAviso = tieneExtra
@@ -621,9 +628,12 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
   const cuentaAviso = m._viaAlcancia
     ? 'el depósito correspondiente en la Alcancía'
     : (esPrestamo ? (m._viaTC ? 'la TC' : 'la cuenta origen') : 'la cuenta destino');
+  const efectoAviso = esPerdon
+    ? 'El gasto que se registró al perdonarla también se borrará.'
+    : `El saldo de ${cuentaAviso} se revertirá automáticamente.`;
   const ok = await dialogo(
     'Eliminar ' + label,
-    `¿Eliminar este ${label} de ${fmt(m.monto)}? El saldo de ${cuentaAviso} se revertirá automáticamente. La deuda de ${escHtml(d.nombre)} pasará de ${fmt(_saldoAntesDel)} a ${fmt(_saldoTrasDel)}.${extraAviso}${tcAviso}${antiguedadAviso}`,
+    `¿Eliminar este ${label} de ${fmt(m.monto)}? ${efectoAviso} La deuda de ${escHtml(d.nombre)} pasará de ${fmt(_saldoAntesDel)} a ${fmt(_saldoTrasDel)}.${extraAviso}${tcAviso}${antiguedadAviso}`,
     'Eliminar', true
   );
   if (!ok) return;
@@ -782,6 +792,11 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
         }
       }
     }
+
+    // Perdón de deuda ("se lo regalé"): revertir el gasto que se registró con él.
+    if (m._perdon && m._gastoPerdonId && S.gastosVar) {
+      S.gastosVar = S.gastosVar.filter(x => x.id !== m._gastoPerdonId);
+    }
   }
 
   d.movimientos = (d.movimientos || []).filter(x => x.id !== movId);
@@ -789,7 +804,7 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
   _verificarIntegridadSaldoDeudor(d, _saldoAntesDel, _deltaEsperadoDel);
   save(); refresh();
   if (!desdeFeed) abrirDeudor(deudorId);
-  toast(`${esPrestamo ? 'Préstamo' : 'Abono'} eliminado — saldo revertido`, 'ok');
+  toast(`${esPrestamo ? 'Préstamo' : esPerdon ? 'Perdón' : 'Abono'} eliminado — ${esPerdon ? 'la deuda y el gasto se revirtieron' : 'saldo revertido'}`, 'ok');
 }
 
 function initMovSheet(tipo) {
@@ -820,6 +835,11 @@ function initMovSheet(tipo) {
   document.getElementById('mov_fuente_wrap').style.display = esPrestamo ? '' : 'none';
   document.getElementById('mov_destino_wrap').style.display = esAbono ? '' : 'none';
   document.getElementById('mov_extra_wrap').style.display = esAbono ? '' : 'none';
+  // "¿Se lo regalas?" (perdonar lo que falta) solo existe en "Pagar préstamo completo".
+  const perdonWrap = document.getElementById('mov_perdon_wrap');
+  const perdonChk = document.getElementById('mov_perdon');
+  if (perdonChk) perdonChk.checked = false;
+  if (perdonWrap) perdonWrap.style.display = esPagoCompleto ? '' : 'none';
   document.getElementById('mov_monto').value = '';
   const montoInput = document.getElementById('mov_monto');
   if (esPagoCompleto) {
@@ -883,13 +903,7 @@ function initMovSheet(tipo) {
   const encPreview    = document.getElementById('mov_enc_saldo_preview');
   // Solo tiene sentido ofrecer "¿Viene de un encargo?" si la persona vinculada
   // a este deudor tiene al menos un encargo con saldo disponible.
-  let _tieneEncargoVinculado = false;
-  if (esAbono) {
-    const d = (S.deudores || []).find(x => x.id === deudorActualId);
-    if (d && d.personaId) {
-      _tieneEncargoVinculado = (S.encargos || []).some(e => e.personaId === d.personaId && encargoLibre(e) > 0);
-    }
-  }
+  const _tieneEncargoVinculado = esAbono && _movTieneEncargoVinculado();
   if (encWrap)      encWrap.style.display = (esAbono && _tieneEncargoVinculado) ? '' : 'none';
   if (encChk)       encChk.checked = false;
   if (encBody)      encBody.style.display = 'none';
@@ -901,6 +915,37 @@ function initMovSheet(tipo) {
   // con esta persona). Con 0 o 1 grupo abierto no se pregunta nada — se
   // resuelve solo en confirmarMovimiento() vía _resolverGrupoIdMov.
   _initMovGrupoSelector();
+}
+
+function _movTieneEncargoVinculado() {
+  const d = (S.deudores || []).find(x => x.id === deudorActualId);
+  return !!(d && d.personaId && (S.encargos || []).some(e => e.personaId === d.personaId && encargoLibre(e) > 0));
+}
+
+// ── Perdonar lo que falta ("se lo regalé") — solo en "Pagar préstamo completo" ──
+// Queda como un 'pago-completo' con _perdon:true (así saldo, grupos y reversión
+// funcionan igual que siempre), pero NO entra plata a ninguna cuenta y, además,
+// registra un gasto real en S.gastosVar (fuente '', _secundario, _esPerdonDeuda)
+// enlazado por _gastoPerdonId / _deudorMovId. Ver CHANGELOG 2026-09-19.
+function _movEsPerdon() {
+  const chk = document.getElementById('mov_perdon');
+  return movTipo === 'pago-completo' && !!(chk && chk.checked);
+}
+function toggleMovPerdon() {
+  const perdon = _movEsPerdon();
+  if (perdon) {
+    // Lo que deja de aplicar se apaga, para que no quede un estado oculto.
+    const encChk = document.getElementById('mov_desde_encargo');
+    if (encChk && encChk.checked) { encChk.checked = false; toggleDesdeEncargo(); }
+    const extChk = document.getElementById('mov_tiene_extra');
+    if (extChk && extChk.checked) { extChk.checked = false; toggleExtraSection(); }
+  }
+  document.getElementById('mov_destino_wrap').style.display = perdon ? 'none' : '';
+  document.getElementById('mov_extra_wrap').style.display = perdon ? 'none' : '';
+  const encWrap = document.getElementById('mov_enc_wrap');
+  if (encWrap) encWrap.style.display = (!perdon && _movTieneEncargoVinculado()) ? '' : 'none';
+  document.getElementById('movSheetTitle').textContent = perdon ? 'Perdonar deuda' : 'Pagar préstamo completo';
+  document.getElementById('movBtnConfirm').textContent = perdon ? 'Perdonar deuda' : 'Confirmar pago total';
 }
 
 function _initMovGrupoSelector() {
@@ -976,8 +1021,30 @@ function confirmarMovimiento() {
   const _deltaEsperadoMov = movTipo === 'prestamo' ? monto : -monto;
   // A qué grupo de préstamo pertenece este movimiento — ver _resolverGrupoIdMov.
   const _grupoIdMov = _resolverGrupoIdMov(d, fecha);
+  const _esPerdonMov = _movEsPerdon();
 
-  if (movTipo === 'prestamo') {
+  if (_esPerdonMov) {
+    // ── PERDÓN: le regalas lo que falta ─────────────────────────────────
+    // No entra plata a ninguna cuenta (por eso destino '' y nada de sumarFuente),
+    // pero SÍ cuenta como gasto real del mes: la plata ya había salido de tus
+    // cuentas cuando prestaste y ahora la das por perdida. El gasto no descuenta
+    // ningún saldo (fuente ''), es _secundario (solo se borra desde acá) y
+    // _esGastoVarNoReal() no lo excluye, así que entra a Gastos/Análisis/salud.
+    if (!S.gastosVar) S.gastosVar = [];
+    const _perdonMovId = uid();
+    const _gastoPerdonId = uid();
+    S.gastosVar.push({
+      id: _gastoPerdonId, monto, fecha, cat: 'Otro',
+      desc: `Perdoné deuda — ${d.nombre}`, nota, fuente: '', ts: Date.now(),
+      _secundario: true, _origenSeccion: 'Prestado · Me deben',
+      _esPerdonDeuda: true, _deudorId: d.id, _deudorMovId: _perdonMovId
+    });
+    d.movimientos.push({
+      id: _perdonMovId, tipo: 'pago-completo', monto, fecha, destino: '', nota,
+      grupoId: _grupoIdMov, ts: Date.now(), _perdon: true, _gastoPerdonId
+    });
+
+  } else if (movTipo === 'prestamo') {
     if (_prestSplitMode) {
       const fuentes = splitGetData('prest');
       const totalSplit = fuentes.reduce((a,r)=>a+(r.monto||0),0);
@@ -1395,12 +1462,13 @@ function confirmarMovimiento() {
   // Log cambio
   if(window.logCambio && d){
     const tipolog = movTipo === 'prestamo' ? 'prestamo' : 'abono';
-    logCambio(movTipo==='prestamo'?'Prestaste a '+d.nombre:'Registraste abono de '+d.nombre, d.nombre, monto, tipolog);
+    logCambio(movTipo==='prestamo'?'Prestaste a '+d.nombre:(_esPerdonMov?'Perdonaste la deuda de '+d.nombre:'Registraste abono de '+d.nombre), d.nombre, monto, tipolog);
   }
   _autoCerrarGruposEnCero(d);
   _verificarIntegridadSaldoDeudor(d, _saldoAntesMov, _deltaEsperadoMov);
   save(); refresh(); closeSheet('registrar-movimiento');
   abrirDeudor(deudorActualId);
+  if (_esPerdonMov) toast(`Deuda de ${escHtml(d.nombre)} perdonada — quedó como gasto de ${fmt(monto)}`, 'ok', 4000);
 }
 
 function fuenteLabel2(f){ return f ? fuenteLabel(f) : '—'; }
@@ -2520,6 +2588,7 @@ Events.registerAll('prestado', {
   ['mov_enc_sel', 'change', onChangeMov_enc_sel],
   ['mov_enc_cuenta', 'change', onChangeMov_enc_cuenta],
   ['mov_tiene_extra', 'change', toggleExtraSection],
+  ['mov_perdon', 'change', toggleMovPerdon],
   ['mov_extra_monto', 'input', extResumenPartes],
   ['prtc_dif_real', 'input', _prtcDifResumen],
 ].forEach(([elId, evt, fn]) => {

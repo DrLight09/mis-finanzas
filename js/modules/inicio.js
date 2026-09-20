@@ -692,7 +692,13 @@ function _renderDispNetoTC() {
   // que ya usa el widget de "cobertura" de Tarjetas de crédito —
   // tarjetas-credito.md §2: "el banco cobra el 100% sin importar esta
   // distinción").
-  const deudaTCTotal = (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0), 0);
+  // Math.max(0, ...) por tarjeta, NO sobre la suma total: si una tarjeta
+  // tiene tc.deuda negativo (saldo a favor — pagaste de más), esa tarjeta
+  // no debe restar del total de deuda de las demás. Un saldo a favor no es
+  // plata que tengas disponible ahora mismo (hay que pedir reembolso o
+  // esperar a que se aplique a compras futuras), así que tampoco debe
+  // inflar el "peor caso" de Neto por encima de Disponible.
+  const deudaTCTotal = (S.tarjetasCredito||[]).reduce((a,tc)=>a+Math.max(0,tc.deuda||0), 0);
   if (!deudaTCTotal || deudaTCTotal <= 0) { el.textContent = ''; return; }
   // Misma fórmula EXACTA que refresh() usa para #s-disp (antes faltaba
   // cuentasPersonalizadas y se llamaba a nuTotal() sin el fallback seguro

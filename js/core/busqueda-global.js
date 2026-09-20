@@ -149,9 +149,12 @@
     const resultados = [];
 
     // Gastos variables
+    // Depósitos a la alcancía (`_esAlcancia`): el resultado aparece pero con el monto oculto — sin esto,
+    // buscar "alcancía" o "Ahorro" listaba cada depósito con su monto exacto (ver alcancia.md §3).
     (S.gastosVar||[]).forEach(g => {
       if((g.desc||'').toLowerCase().includes(q) || (g.cat||'').toLowerCase().includes(q) || (g.nota||'').toLowerCase().includes(q)){
-        resultados.push({ tipo:'Gasto variable', desc:g.desc||'Sin descripción', meta: (window.fmt?window.fmt(g.monto):'') + ' · ' + (g.cat||'') + ' · ' + (g.fecha||''), color:'var(--red)', navTipo:'gastos', navId:null });
+        const montoTxt = g._esAlcancia ? '••••' : (window.fmt?window.fmt(g.monto):'');
+        resultados.push({ tipo:'Gasto variable', desc:g.desc||'Sin descripción', meta: montoTxt + ' · ' + (g.cat||'') + ' · ' + (g.fecha||''), color:'var(--red)', navTipo:'gastos', navId:null });
       }
     });
 
@@ -260,10 +263,13 @@
     });
 
     // Movimientos generales de cuentas (S.movimientos)
+    // Ingresos neto-cero de Alcancía (`_esAlcanciaIngreso`): monto oculto, igual que arriba. Los movimientos
+    // del destape (`_esAlcancia` en S.movimientos) NO se ocultan: el total ya se reveló al destapar.
     (S.movimientos||[]).forEach(m => {
       if((m.desc||m.nota||'').toLowerCase().includes(q)){
         const fuente = m.fuente ? ' · '+m.fuente : '';
-        resultados.push({ tipo:'Movimiento', desc:m.desc||m.nota||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:'')+fuente, color:'var(--accent)', navTipo:m.fuente==='nequi'?'nequi':m.fuente==='efectivo'?'efectivo':'movimiento_general', navId:m.fuente||null });
+        const montoTxt = m._esAlcanciaIngreso ? '••••' : (window.fmt?window.fmt(m.monto):'');
+        resultados.push({ tipo:'Movimiento', desc:m.desc||m.nota||'Movimiento', meta:montoTxt+(m.fecha?' · '+m.fecha:'')+fuente, color:'var(--accent)', navTipo:m.fuente==='nequi'?'nequi':m.fuente==='efectivo'?'efectivo':'movimiento_general', navId:m.fuente||null });
       }
     });
 

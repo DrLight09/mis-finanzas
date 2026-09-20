@@ -12,9 +12,18 @@ const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR
 // prestado.js también referencia funciones de UI de otros archivos core
 // (openSheet/toast/dialogo) a nivel de módulo — mismo caso que cuentas.js,
 // ver tests/support/load-app.js.
+//
+// calc-helpers.js (2026-09-20): getDeudorSaldo() se movió de prestado.js a
+// js/core/calc-helpers.js (carga de entrada) para que "Necesita atención"
+// la tenga en el primer render. prestado.js la sigue usando como global
+// (totalPrestadoPendiente() la llama), así que hay que cargar calc-helpers.js
+// ANTES, igual que en index.html (core-state.js → calc-helpers.js → ... →
+// prestado.js lazy). Sin él, en modo permissive la función cae al no-op
+// fantasma y totalPrestadoPendiente() da 0 en silencio.
 function freshApp(sOverrides = {}) {
   const ctx = loadApp([
     path.join(CORE_DIR, 'core-state.js'),
+    path.join(CORE_DIR, 'calc-helpers.js'),
     path.join(MODULES_DIR, 'prestado.js'),
   ], { permissive: true });
   Object.assign(ctx.S, sOverrides);

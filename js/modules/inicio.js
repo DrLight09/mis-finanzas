@@ -659,17 +659,15 @@ function _checkGastoAlto() {
 }
 
 /* ================================================================
-   DISPONIBLE NETO DE DEUDA DE TC NO CONFIRMADA COMO AJENA
+   DISPONIBLE NETO DE DEUDA DE TC (2026-09-20: rehecho — ver
+   CHANGELOG.md#inicio)
    ================================================================
    No toca tarjetas_credito.js ni le agrega fechas de corte/pago —
    esa es una decisión de diseño explícita de ese módulo (ver
    tarjetas-credito.md §7: "no simula un banco real"). Este bloque
-   solo AGREGA una segunda lectura junto a "Disponible", reusando
-   calcDeudaAjenaDeTarjeta() (ya existe en core-state.js, ya la usa
-   la deuda propia de Salud financiera). Se resta la deuda total de
-   cada tarjeta MENOS lo confirmado como ajeno — el saldo inicial sin
-   clasificar se cuenta como propio a propósito (ver el comentario
-   dentro de _renderDispNetoTC).
+   solo AGREGA una segunda lectura junto a "Disponible". Se resta la
+   deuda TOTAL de cada tarjeta, sin descontar lo confirmado como
+   ajeno (ver el comentario dentro de _renderDispNetoTC por qué).
 
    El disponible bruto (#s-disp) no se toca ni se reemplaza — sigue
    mostrando lo mismo que hoy. Esto es información adicional, no un
@@ -681,60 +679,51 @@ function _checkGastoAlto() {
 function _renderDispNetoTC() {
   const el = document.getElementById('s-disp-neto-tc');
   if (!el) return;
-  // Se usa "deuda total menos lo AJENO CONFIRMADO" (calcDeudaAjenaDeTarjeta),
-  // no calcDeudaTcPropia(). calcDeudaTcPropia() también descuenta el saldo
-  // inicial pendiente porque core-state.js lo trata como "neutral, sin
-  // clasificar" (a propósito — ver calcSaldoInicialPendiente en
-  // core-state.js). Para este bloque ese criterio no sirve: plata sin
-  // clasificar sigue siendo plata que probablemente tengas que pagar vos,
-  // no un tercero — mismo motivo por el que el widget de "cobertura" de
-  // Tarjetas de crédito usa deuda total y no la propia (tarjetas-credito.md
-  // §2: "el banco cobra el 100% de la deuda total sin importar esta
-  // distinción"). Acá se aplica el mismo criterio, pero por tarjeta y solo
-  // excluyendo lo que SÍ está confirmado como ajeno (encargos, préstamos,
-  // favores) — el saldo inicial sin clasificar se cuenta como si fuera tuyo
-  // hasta que algo diga lo contrario.
-  const deudaNoAjena = (S.tarjetasCredito||[]).reduce((a,tc)=>{
-    const ajena = typeof calcDeudaAjenaDeTarjeta === 'function' ? calcDeudaAjenaDeTarjeta(tc) : 0;
-    return a + Math.max(0, (tc.deuda||0) - ajena);
-  }, 0);
-  if (!deudaNoAjena || deudaNoAjena <= 0) { el.textContent = ''; return; }
-  const nu = typeof nuTotal === 'function' ? nuTotal() : 0;
+  // Se resta la deuda TOTAL de la tarjeta, IGNORANDO qué parte es "ajena".
+  // La app sabe distinguir deuda propia de ajena (calcDeudaAjenaDeTarjeta),
+  // pero no sabe si esa parte ajena ya te la devolvieron aparte (efectivo/
+  // Nequi/Nu) o sigue pendiente — calcDeudaAjenaDeTarjeta solo baja cuando
+  // hay un PAGO real a la tarjeta, no cuando recibís el reembolso por otro
+  // lado. Restar solo lo propio asumía sin poder verificarlo que seguía
+  // pendiente; si ya te pagaron, esa plata ya está contada en tu disponible
+  // Y la deuda de la tarjeta por esa parte sigue siendo 100% tuya de pagar
+  // hasta que hagas el pago real. Sin forma de distinguir los dos casos,
+  // se asume el peor caso: toda la deuda es tuya de pagar (mismo criterio
+  // que ya usa el widget de "cobertura" de Tarjetas de crédito —
+  // tarjetas-credito.md §2: "el banco cobra el 100% sin importar esta
+  // distinción").
+  const deudaTCTotal = (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0), 0);
+  if (!deudaTCTotal || deudaTCTotal <= 0) { el.textContent = ''; return; }
+  // Misma fórmula EXACTA que refresh() usa para #s-disp (antes faltaba
+  // cuentasPersonalizadas y se llamaba a nuTotal() sin el fallback seguro
+  // que ya existe en core-state.js — eso podía hacer que Neto apareciera
+  // más alto que Disponible si alguna cuenta personalizada tenía saldo
+  // negativo, ver CHANGELOG.md#inicio 2026-09-20).
+  const nu = _nuTotalSafe();
   const nequi = S.nequiSaldo || 0;
   const ef = S.efectivoSaldo || 0;
-  const disp = nu + nequi + ef;
-  const neto = disp - deudaNoAjena;
+  const customTotal = (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0), 0);
+  const disp = nu + nequi + ef + customTotal;
+  const neto = disp - deudaTCTotal;
   el.textContent = `Neto de TC: ${fmt(neto)}`;
   el.style.color = neto < 0 ? 'var(--red)' : 'var(--text3)';
 }
 
-// calcDeudaAjenaDeTarjeta() vive en core-state.js (eager, no lazy) — a
-// diferencia de lo que se pensó en la sesión anterior, no hace falta
-// reintento por carga lazy: la función ya existe para cuando inicio.js
-// corre. El reintento se deja igual como red de seguridad barata (por si
-// algún día ese archivo se vuelve lazy), pero en la práctica debería
-// resolverse siempre en el primer intento.
-let _dispNetoTcIntentos = 0;
-function _renderDispNetoTCConReintento(){
-  _renderDispNetoTC();
-  if (typeof calcDeudaAjenaDeTarjeta !== 'function' && _dispNetoTcIntentos < 20) {
-    _dispNetoTcIntentos++;
-    setTimeout(_renderDispNetoTCConReintento, 500);
-  }
-}
-
 // Hook _checkGastoAlto/_renderDispNetoTC en refresh — refresh() ya existe
 // para este punto (se define en index.html, cargado antes que este módulo).
+// Ya no hace falta reintento por carga lazy (versión anterior lo tenía por
+// una función que ya no se usa acá): _nuTotalSafe() trae su propio fallback
+// seguro, no revienta aunque cuentas.js (lazy) no haya cargado.
 const _origRefreshInicio = window.refresh;
 window.refresh = function() {
   if (_origRefreshInicio) _origRefreshInicio.apply(this, arguments);
   _checkGastoAlto();
-  _renderDispNetoTCConReintento();
+  _renderDispNetoTC();
 };
 
 // Primer intento inmediato al cargar el módulo, sin esperar al próximo
-// refresh() real — mismo motivo que el reintento de arriba.
-_renderDispNetoTCConReintento();
+// refresh() real.
+_renderDispNetoTC();
 
 // Nota (2026-08-04): "Necesita atención" depende de getMesadaData/
 // _getCuotaAnio (mesada) y tcCupoUsadoPct (tarjetas de crédito), que

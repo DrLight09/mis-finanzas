@@ -1075,6 +1075,10 @@ function refresh(){
   // Cuentas personalizadas marcadas para incluir en total
   const customTotal=(S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0);
   const disp=cajitasLibres+nequi+ef+customTotal;
+  // Expuesto para que inicio.js (Neto de TC) reste la deuda de TC de este
+  // MISMO número en vez de recalcular "disponible" por su cuenta — evita
+  // que ambos cálculos se desalineen (ver CHANGELOG.md#inicio, 2026-09-20).
+  window._dispActualHoy = disp;
   const mes=mesActual();
   const _gfFijos=(S.gastosFijos||[]).reduce((a,g)=>{
     // Solo sumar si fue pagado este mes

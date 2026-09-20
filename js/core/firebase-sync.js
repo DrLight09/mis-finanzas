@@ -608,9 +608,11 @@ import { waitFor } from './wait-for-module.js';
   // ── Login con Google ──────────────────────────────────────────────────────
   window._fbSignIn = async function() {
     if(!window._fb) return;
-    const {auth, provider, signInWithPopup} = window._fb;
+    const {auth, provider, signInWithPopup, popupResolver} = window._fb;
     try {
-      await signInWithPopup(auth, provider);
+      // popupResolver explícito: si esta carga arrancó sin resolver (ver
+      // firebase-init.js, mf_auth_hint), es lo que carga el iframe recién acá.
+      await signInWithPopup(auth, provider, popupResolver);
       // onAuthStateChanged se encarga del resto
     } catch(e) {
       if(e.code !== 'auth/popup-closed-by-user') {
@@ -752,7 +754,7 @@ import { waitFor } from './wait-for-module.js';
     btn.disabled = true;
     btn.textContent = 'Eliminando…';
 
-    const {auth, db, doc, deleteDoc, deleteUser, reauthenticateWithPopup, provider, signOut} = window._fb;
+    const {auth, db, doc, deleteDoc, deleteUser, reauthenticateWithPopup, provider, popupResolver, signOut} = window._fb;
     const uid = window._fbUser.uid;
 
     // Cancelar guardados/listeners pendientes para que nada reescriba datos a mitad de la eliminación
@@ -776,7 +778,7 @@ import { waitFor } from './wait-for-module.js';
       // Si Firebase exige un login reciente para borrar la cuenta, se re-autentica y se reintenta
       if(e && e.code === 'auth/requires-recent-login') {
         try {
-          await reauthenticateWithPopup(auth.currentUser, provider);
+          await reauthenticateWithPopup(auth.currentUser, provider, popupResolver);
           await deleteDoc(doc(db, 'usuarios', uid, 'data', 'finanzas'));
           await deleteUser(auth.currentUser);
         } catch(e2) {

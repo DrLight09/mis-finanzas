@@ -3,7 +3,7 @@
 // <script type="module"> inline). Ver auditoria-tecnica.md #2.
 
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-      import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, deleteUser, reauthenticateWithPopup }
+      import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence, browserPopupRedirectResolver, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, deleteUser, reauthenticateWithPopup }
         from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
       import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, deleteDoc, onSnapshot, runTransaction }
         from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
@@ -24,7 +24,31 @@
       };
 
       const app = initializeApp(firebaseConfig);
-      const auth = getAuth(app);
+
+      // PERF (2026-09-20, Lighthouse: auth/iframe.js 93 KiB + gapi 144 KiB en
+      // la cadena crítica): getAuth() arranca con popupRedirectResolver, y eso
+      // hace que el SDK cargue el iframe de Auth + gapi + getProjectConfig en
+      // CADA carga, aunque el usuario ya tenga sesión y nunca vaya a abrir un
+      // popup. initializeAuth() SIN resolver los difiere: solo se cargan al
+      // llamar signInWithPopup/reauthenticateWithPopup, que reciben el
+      // resolver explícito (ver window._fb.popupResolver, usado en
+      // firebase-sync.js). El resto de la config es idéntica a la que trae
+      // getAuth() por defecto (mismo orden de persistencia).
+      //
+      // Por qué NO se quita el resolver siempre: en Safari/iOS un popup abierto
+      // después de un `await` (esperar a que cargue el iframe) puede ser
+      // bloqueado. Para el login, el resolver tiene que estar precargado como
+      // hoy. Por eso: si en esta carga NO había sesión la última vez
+      // (primera visita, cerró sesión, borró la cuenta) → resolver completo,
+      // comportamiento idéntico al anterior. Solo cuando hay una marca de
+      // sesión previa (mf_auth_hint, la maneja _onAuthState más abajo) se
+      // arranca sin resolver. Si localStorage falla, cae al camino completo.
+      let _hayMarcaSesion = false;
+      try { _hayMarcaSesion = localStorage.getItem('mf_auth_hint') === '1'; } catch (_) {}
+      const auth = initializeAuth(app, {
+        persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence],
+        ...(_hayMarcaSesion ? {} : { popupRedirectResolver: browserPopupRedirectResolver })
+      });
       const db = initializeFirestore(app, {
         experimentalAutoDetectLongPolling: true,  // Evita ERR_QUIC_PROTOCOL_ERROR sin forzar long-polling siempre (ver auditoria-tecnica.md, punto de rendimiento #1)
         // FIX (2026-08-17): persistentLocalCache() por defecto solo permite
@@ -45,7 +69,7 @@
       // runTransaction (2026-09-19): lo usa firebase-sync.js para leer el
       // documento DIRECTO del servidor, sin pasar por la caché local ni por
       // el listener (ver _leerDocEnServidor).
-      window._fb = { auth, db, provider, signInWithPopup, signOut, doc, getDoc, setDoc, deleteDoc, deleteUser, reauthenticateWithPopup, onAuthStateChanged, onSnapshot, runTransaction };
+      window._fb = { auth, db, provider, popupResolver: browserPopupRedirectResolver, signInWithPopup, signOut, doc, getDoc, setDoc, deleteDoc, deleteUser, reauthenticateWithPopup, onAuthStateChanged, onSnapshot, runTransaction };
 
       // Escuchar estado de auth y arrancar la app
       //
@@ -77,6 +101,14 @@
       });
 
       function _onAuthState(user) {
+        // Marca de sesión para el próximo arranque (ver comentario de
+        // initializeAuth arriba). En la rama "sin usuario" se borra ANTES de
+        // que _fbSignOut/_fbDeleteAccount hagan su location.reload(), así
+        // que la carga siguiente ya vuelve al camino con resolver precargado.
+        try {
+          if (user) localStorage.setItem('mf_auth_hint', '1');
+          else localStorage.removeItem('mf_auth_hint');
+        } catch (_) {}
         if (user) {
           // Usuario logueado
           document.getElementById('fb-login-screen').style.display = 'none';

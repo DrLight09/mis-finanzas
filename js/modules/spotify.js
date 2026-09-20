@@ -138,29 +138,11 @@ function getSpCajitaSaldo(){
   return c?_calcCSafe(c).val:0;
 }
 
-// Nombre a mostrar/guardar para un integrante de Spotify: si está vinculado a una
-// persona del sistema unificado, usa siempre su nombre ACTUAL (por si lo editaron
-// desde "Personas"); si no hay vínculo, o la persona ya no existe, usa el nombre
-// crudo guardado en el propio registro de Spotify.
-function spNombreDe(p){
-  if(!p)return '';
-  if(p.personaId){
-    const per=(typeof getPersona==='function')?getPersona(p.personaId):null;
-    if(per&&per.nombre)return per.nombre;
-  }
-  return p.nombre||'';
-}
-
-function spPersonaPagadaVigente(p){
-  // Determina si el "Pagó" de esta persona sigue vigente para el ciclo actual.
-  // Si ya llegó (o pasó) su fecha de próximo pago, el ciclo vencido ya terminó
-  // y debe volver a mostrarse como "Pendiente" aunque el flag pagado siga en true.
-  if(!p||!p.pagado)return false;
-  if(!p.proximoPago)return true;
-  const hoy0=new Date();hoy0.setHours(0,0,0,0);
-  const prox=new Date(p.proximoPago+'T00:00:00');
-  return prox>hoy0;
-}
+// spNombreDe() y spPersonaPagadaVigente() se movieron a js/core/calc-helpers.js
+// (2026-09-20): son cálculo puro sobre `p`/`getPersona`, y "Necesita atención"
+// (inicio.js) las necesita en el PRIMER render. Con este archivo lazy, esas
+// tarjetas aparecían recién al cargarlo y empujaban todo Inicio hacia abajo
+// (CLS). Siguen siendo globales: este archivo las usa igual que antes.
 
 function spPeriodosVencidos(p,fechaCorte){
   // Cuenta cuántos períodos de 30 días de este integrante ya se vencieron a la fecha

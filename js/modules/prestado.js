@@ -140,9 +140,11 @@ function _updatePrestSplitResumen(){
 let deudorActualId = null;
 let movTipo = 'prestamo'; // 'prestamo' | 'abono'
 
-function getDeudorSaldo(d) {
-  return (d.movimientos || []).reduce((a, m) => m.tipo === 'prestamo' ? a + m.monto : a - m.monto, 0);
-}
+// getDeudorSaldo() se movió a js/core/calc-helpers.js (2026-09-20): es un
+// reduce puro sobre d.movimientos y "Necesita atención" (inicio.js) lo necesita
+// en el PRIMER render — con este archivo lazy, las tarjetas "X te debe $…"
+// aparecían recién al cargarlo y empujaban todo Inicio hacia abajo (CLS).
+// Sigue siendo global: el resto de este archivo lo usa igual que antes.
 // Cuenta(s) realmente afectadas por un movimiento de deudor — la(s) fuente(s)
 // si fue un préstamo dado, el destino si fue un abono/pago-completo recibido.
 function _deudorCuentasDe(m) {

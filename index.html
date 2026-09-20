@@ -310,7 +310,13 @@
     <link rel="stylesheet" media="print" data-async-css
       href="css/fa-subset.css">
     <noscript><link rel="stylesheet" href="css/fa-subset.css"></noscript>
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <!-- Sin `crossorigin` a propósito (2026-09-20): fonts.googleapis.com solo
+         sirve el CSS, que se pide con <link rel="stylesheet"> (modo no-CORS,
+         conexión con credenciales). Con `crossorigin` el preconnect abre una
+         conexión anónima que ese pedido no reutiliza y Lighthouse la marca
+         "unused". fonts.gstatic.com (abajo) SÍ lleva crossorigin: las fuentes
+         .woff2 se piden en modo CORS. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
     <!-- fonts.gstatic.com: agregado en sesión posterior (Lighthouse real,
          ver docs/auditoria-tecnica.md #5-bis / CHANGELOG.md#arranque) — es
          de donde bajan los archivos .woff2 reales, distinto del dominio de
@@ -385,28 +391,17 @@
     <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
-    <!-- Agregados esta sesión (Lighthouse real post-modularización,
-         2026-08-14, ver auditoria-tecnica.md #5): con el JS propio ya no
-         siendo el cuello de botella principal (TBT bajó de 8,980ms a
-         1,840-3,240ms tras hacer lazy los 11 módulos), el nuevo #1 del
-         camino crítico hacia el LCP pasó a ser el iframe de Firebase Auth
-         — 6.5-7 segundos, la mayor parte del "Element render delay" de
-         2.7-3.5s medido. mis-finanzas-z.firebaseapp.com (el iframe en sí,
-         ~360ms de ahorro estimado) y apis.google.com (el SDK de Google
-         Sign-In que ese iframe carga, ~340ms) son los dos orígenes nuevos
-         con mayor ahorro sugerido por Lighthouse que todavía no estaban acá.
-
-         Esto deja 7 preconnects en total — Lighthouse recomienda no pasar
-         de 4 ("usar con moderación"), pero es una guía sobre gastar el
-         presupuesto de conexiones tempranas en orígenes que después no se
-         usan, no un límite duro: los 7 aparecen realmente solicitados en
-         el árbol de dependencias de red de esta misma corrida (a
-         diferencia de securetoken.googleapis.com, sacado antes por no
-         pedirse nunca en el arranque — ver nota de arriba). Si una futura
-         corrida de Lighthouse marca alguno de los 7 como "unused
-         preconnect", ese es el que hay que sacar primero. -->
-    <link rel="preconnect" href="https://mis-finanzas-z.firebaseapp.com" crossorigin>
-    <link rel="preconnect" href="https://apis.google.com" crossorigin>
+    <!-- Preconnect a mis-finanzas-z.firebaseapp.com y apis.google.com SACADOS
+         (2026-09-20). Se habían agregado (2026-08-14) para acelerar el iframe
+         de Firebase Auth y gapi, pero Lighthouse los marcó "unused" (van con
+         `crossorigin` y el iframe / <script> clásico usan otra conexión) y,
+         sobre todo, ahora ese iframe ya no se carga en el arranque normal:
+         js/core/firebase-init.js usa initializeAuth() sin popupRedirectResolver
+         cuando hay una sesión previa (marca mf_auth_hint) y solo lo carga al
+         iniciar sesión. Si algún día se vuelve a getAuth() / resolver siempre
+         cargado, volver a agregarlos SIN `crossorigin`. Quedan 5 preconnect:
+         fonts.googleapis.com, fonts.gstatic.com, www.gstatic.com,
+         firestore.googleapis.com e identitytoolkit.googleapis.com. -->
     <!-- Modulepreload: empieza a descargar el SDK de Firebase en paralelo con el
          resto del <head>. Con `async` en el <script> de más abajo, esto ya sí
          adelanta cuándo se ejecuta: sin el modulepreload, el navegador recién

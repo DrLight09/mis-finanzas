@@ -90,9 +90,18 @@ let pgfIdActual = null;
    gv_fuente sigue permitiendo TC exactamente igual que antes. ── */
 let gvSplitMode = false;
 
+// Solo cuentas con saldo >= $1,00 (FuentesFiltro, js/core/fuentes-filtro.js): de una cuenta
+// vacía no puede salir plata. Sin TC en modo dividido (ver comentario de arriba).
 function getGvSplitFuentesOptions(selectedVal) {
-  return buildFuentesOptsHtml({ selectedVal, placeholder: 'Selecciona una cuenta...', incluirTC: false });
+  return FuentesFiltro.optsHtml(getFuentesSinTC(), {
+    ...FuentesFiltro.PRESET.SALIDA, selectedVal,
+    placeholder: 'Selecciona una cuenta...', sinOpcionesTexto: FuentesFiltro.MSG_SIN_SALDO
+  });
 }
+
+/* gv_fuente (modo simple, "¿De dónde salió la plata?"): lo puebla openSheet('gasto-var') en
+   js/core/sheet-stack.js (poblarFuente + FuentesFiltro.podar: solo cuentas con saldo >= $1,00
+   y TC con cupo disponible). No se puebla acá. */
 
 crearSplitWidget('gv', {
   simpleId: 'gvModoSimple', splitId: 'gvModoDividido', toggleId: 'gvSplitToggle', rowsId: 'gvSplitRows',
@@ -577,13 +586,14 @@ function abrirPagarGastoFijo(id) {
   if (document.getElementById('pgf-nota')) document.getElementById('pgf-nota').value = '';
   // Poblar fuentes
   const sel = document.getElementById('pgf-fuente');
-  const fuentes = getFuentes();
+  // Solo cuentas con saldo >= $1,00 y TC con cupo (FuentesFiltro, js/core/fuentes-filtro.js).
+  const fuentes = FuentesFiltro.filtrar(getFuentes(), FuentesFiltro.PRESET.SALIDA);
   // f.val no se envuelve en raw(): a diferencia de un uid() interno
   // confirmado (ver ing.id en analisis.js, auditoria-tecnica.md #2), acá no
   // hay confirmación de que getFuentes() (core-state.js, no disponible esta
   // sesión) garantice que `val` nunca incluya texto de una cuenta
   // personalizada — se escapa por defecto hasta confirmar lo contrario.
-  sel.innerHTML = html`<option value="">Seleccionar cuenta</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
+  sel.innerHTML = html`<option value="">${fuentes.length ? 'Seleccionar cuenta' : FuentesFiltro.MSG_SIN_SALDO}</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   document.getElementById('pgf-saldo-info').textContent = '';
   openSheet('pagar-gasto-fijo');
 }

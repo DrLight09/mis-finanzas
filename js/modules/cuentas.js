@@ -141,6 +141,7 @@ function renderDetalleCuenta(tipo) {
     const movs = getMovimientosCuenta('efectivo');
     renderMovsCuenta('det-ef-movs', movs, 'var(--amber)', 'efectivo');
   }
+  actualizarBotonesTransferir(); // "Mover a otra cuenta" solo activo con saldo >= $1,00
 }
 
 // renderEncargosEnCuenta() y abrirEncargoDesdeCuenta() migradas a js/modules/encargos.js (ver docs/encargos.md).
@@ -313,6 +314,7 @@ function abrirCustomCuenta(id){
   if(btnRe) btnRe.onclick=()=>abrirRestarDinero('custom:'+id,c.nombre);
   const btnTr=document.getElementById('btn-transferir-custom-det');
   if(btnTr) btnTr.onclick=()=>abrirTransferir('custom:'+id);
+  actualizarBotonesTransferir();
   const btnEl=document.getElementById('btn-eliminar-cuenta-custom');
   if(btnEl) btnEl.onclick=()=>eliminarCuentaCustom(id);
   const btnEd=document.getElementById('btn-editar-cuenta-custom');
@@ -1521,6 +1523,7 @@ function _renderDetalleCajita(c){
   document.getElementById('cajita-det-agregar').onclick=()=>abrirAgregarDinero('cajita:'+c.id, c.nombre);
   document.getElementById('cajita-det-retirar').onclick=()=>abrirRestarDinero('cajita:'+c.id, c.nombre);
   document.getElementById('cajita-det-mover').onclick=()=>abrirTransferir('cajita:'+c.id);
+  actualizarBotonesTransferir();
 
   // Card Meta preview
   const metaPreview=document.getElementById('cajita-det-meta-preview');
@@ -2754,16 +2757,47 @@ function confirmarRestarDinero(){
   toast('− '+fmt(v)+' restado — '+escHtml(desc),'info');
 }
 
+/* ---- Botones "Mover a otra cuenta": solo activos si la cuenta tiene >= $1,00 ----
+   Una cuenta sin saldo (o con centavos sueltos) no puede ser origen de una
+   transferencia, así que el botón queda deshabilitado en vez de abrir un sheet
+   que no se puede completar. Se re-evalúa cada vez que se pinta el detalle de
+   la cuenta (renderDetalleCuenta / detalle de cuenta personalizada / de
+   cajita), que es también lo que corre tras cada save()+refresh(). */
+function _setBtnTransferir(btn, ok) {
+  if (!btn) return;
+  btn.disabled = !ok;
+  btn.setAttribute('aria-disabled', ok ? 'false' : 'true');
+  btn.style.opacity = ok ? '' : '.4';
+  btn.style.cursor = ok ? '' : 'not-allowed';
+  btn.title = ok ? '' : 'Necesitas al menos ' + fmt(FuentesFiltro.MIN.GENERAL) + ' en esta cuenta para moverla';
+}
+
+function actualizarBotonesTransferir() {
+  _setBtnTransferir(document.getElementById('btn-transferir-nequi-det'), FuentesFiltro.puedeMover('nequi'));
+  _setBtnTransferir(document.getElementById('btn-transferir-efectivo-det'), FuentesFiltro.puedeMover('efectivo'));
+  // Pantalla Nu: activo si alguna cajita (no CDT) tiene saldo movible
+  const hayNu = (S.cajitas || []).some(c => !c.esCDT && FuentesFiltro.puedeMover('cajita:' + c.id));
+  _setBtnTransferir(document.getElementById('btn-transferir-nu-det'), hayNu);
+  if (_customCuentaActualId) _setBtnTransferir(document.getElementById('btn-transferir-custom-det'), FuentesFiltro.puedeMover('custom:' + _customCuentaActualId));
+  if (_cajitaActualId) _setBtnTransferir(document.getElementById('cajita-det-mover'), FuentesFiltro.puedeMover('cajita:' + _cajitaActualId));
+}
+
 /* ---- TRANSFERIR ENTRE CUENTAS ---- */
 function abrirTransferir(origenSugerido) {
   // Populate both selects (sin tarjetas de crédito — no son cuentas líquidas)
   const fuentes = getFuentesSinTC();
-  // El origen solo debe listar cuentas con saldo > 0: de una cuenta en $0 no puede salir plata
-  const fuentesOrigen = fuentes.filter(f => getSaldoActual(f.val) > 0);
+  // El origen solo lista cuentas con saldo >= $1,00 (FuentesFiltro, js/core/fuentes-filtro.js):
+  // de una cuenta en $0 — o con centavos sueltos — no puede salir plata. El destino NO se
+  // filtra por saldo: la plata entra, y una cuenta vacía es un destino perfectamente válido.
+  const fuentesOrigen = FuentesFiltro.filtrar(fuentes, FuentesFiltro.PRESET.SALIDA);
+  // Sin ninguna cuenta con saldo no hay nada que transferir: se avisa en vez de abrir un sheet
+  // inutilizable (cubre también el botón del menú "+" y el "Transferir" de "Sumar dinero").
+  if (!fuentesOrigen.length) {
+    toast('No tienes ninguna cuenta con al menos ' + fmt(FuentesFiltro.MIN.GENERAL) + ' para transferir', 'err', 3500);
+    return;
+  }
   const optsHtmlDestino = html`${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
-  const optsHtmlOrigen = fuentesOrigen.length
-    ? html`${fuentesOrigen.map(f => html`<option value="${f.val}">${f.label}</option>`)}`
-    : html`<option value="">No tenés cuentas con saldo disponible</option>`;
+  const optsHtmlOrigen = html`${fuentesOrigen.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   document.getElementById('tr_origen').innerHTML = optsHtmlOrigen;
   document.getElementById('tr_destino').innerHTML = optsHtmlDestino;
   // Pre-select suggested origin if provided y tiene saldo

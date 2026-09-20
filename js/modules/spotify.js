@@ -86,6 +86,16 @@ function _spSplitFuentesOpts(selectedVal){
     +fuentes.map(f=>`<option value="${f.val}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`).join('');
 }
 
+// Opciones del split de PAGO a Spotify (plata que SALE): solo cuentas con saldo >= $50
+// (FuentesFiltro.PRESET.SPOTIFY, js/core/fuentes-filtro.js). Aparte de _spSplitFuentesOpts a
+// propósito: esa la comparte el split de COBRO ('spc'), donde la plata ENTRA y una cuenta
+// vacía es un destino válido — no debe filtrarse por saldo.
+function _spPagarSplitFuentesOpts(selectedVal){
+  const fuentes=FuentesFiltro.filtrar(getFuentesSinTC(),FuentesFiltro.PRESET.SPOTIFY);
+  return '<option value="" disabled'+(selectedVal?'':' selected')+'>'+(fuentes.length?'Selecciona una cuenta...':FuentesFiltro.MSG_SIN_SALDO)+'</option>'
+    +fuentes.map(f=>`<option value="${escHtml(f.val)}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`).join('');
+}
+
 crearSplitWidget('spc', {
   simpleId:'spCobModoSimple', splitId:'spCobModoDividido', toggleId:'spCobSplitToggle', rowsId:'spCobSplitRows',
   getModo:()=>spcSplitMode, setModo:v=>{spcSplitMode=v;},
@@ -99,7 +109,7 @@ function getSpCobSplitData(){ return splitGetData('spc'); }
 crearSplitWidget('spp', {
   simpleId:'spPagarModoSimple', splitId:'spPagarModoDividido', toggleId:'spPagarSplitToggle', rowsId:'spPagarSplitRows',
   getModo:()=>sppSplitMode, setModo:v=>{sppSplitMode=v;},
-  getFuentesFn:_spSplitFuentesOpts,
+  getFuentesFn:_spPagarSplitFuentesOpts,
   onPreview:actualizarSpPagarPreview
 });
 function toggleSpPagarSplit(){ splitToggle('spp'); }
@@ -992,7 +1002,9 @@ function openSheet_pagarSpotify(){
   // Poblar fuentes
   const cajita=getSpCajita();
   const sel=document.getElementById('spPagarFuente');
-  const fuentes=getFuentes();
+  // Solo cuentas con saldo >= $50 y TC con cupo disponible (FuentesFiltro.PRESET.SPOTIFY,
+  // js/core/fuentes-filtro.js). Si la cajita de Spotify no llega al mínimo, no se preselecciona.
+  const fuentes=FuentesFiltro.filtrar(getFuentes(),FuentesFiltro.PRESET.SPOTIFY);
   // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
   sel.innerHTML=html`<option value="">Sin especificar</option>${fuentes.map(f=>html`<option value="${f.val}"${cajita&&f.val==='cajita:'+cajita.id?' selected':''}>${f.label}</option>`)}`;
   actualizarSpPagarPreview();

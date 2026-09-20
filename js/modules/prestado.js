@@ -82,7 +82,9 @@ function _prestAddSplitRow(){ splitAgregarRow('prest'); }
 // "ganancia" (plata virtual que nunca salió de ninguna cuenta), propia
 // de esta instancia.
 function _getPrestSplitFuentesOptions(selectedVal) {
-  const fuentes = getFuentesSinTC();
+  // Solo cuentas con saldo >= $1,00: de una cuenta vacía no puede salir el préstamo
+  // (FuentesFiltro, js/core/fuentes-filtro.js). "Sin especificar" y "Ganancia" no se filtran.
+  const fuentes = FuentesFiltro.filtrar(getFuentesSinTC(), FuentesFiltro.PRESET.SALIDA);
   let out = '<option value="">Sin especificar</option>';
   for (const f of fuentes) {
     out += `<option value="${f.val}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`;
@@ -366,6 +368,7 @@ function abrirDeudor(id) {
   deudorActualId = id;
   const d = (S.deudores || []).find(x => x.id === id);
   if (!d) return;
+  _actualizarBtnPrestamoTC();
   // Migración silenciosa de deudores creados antes de que existieran los
   // grupos de préstamo — todo movimiento suelto cae en un grupo "Histórico".
   if (_migrarGruposDeudor(d)) save();
@@ -822,6 +825,10 @@ function initMovSheet(tipo) {
   // Los modos divididos de ambos campos ya excluían las TC (getFuentesSinTC).
   poblarFuente('mov_fuente', false, false);
   poblarFuente('mov_destino', false, false);
+  // "¿De dónde sacó la plata?" (nuevo préstamo, modo simple): solo cuentas con saldo >= $1,00.
+  // (openSheet('registrar-movimiento') ya lo pobló sin filtrar; este es el último en escribirlo.)
+  // mov_destino NO se filtra: es plata que entra (un abono puede ir a una cuenta vacía).
+  FuentesFiltro.podar('mov_fuente', FuentesFiltro.PRESET.SALIDA);
   // ext selects se pueblan dinámicamente en extRenderPartes()
   const esPrestamo = tipo === 'prestamo';
   const esPagoCompleto = tipo === 'pago-completo';
@@ -2043,7 +2050,8 @@ function abrirMovMiDeuda(tipo) {
   document.getElementById('md_cuenta_label').textContent = tipo === 'recibido' ? '¿A qué cuenta entró la plata?' : '¿De qué cuenta sale el pago?';
   document.getElementById('md_cuenta_hint').textContent = tipo === 'recibido' ? 'Se sumará automáticamente al saldo de esa cuenta' : 'Se descontará automáticamente del saldo de esa cuenta';
   const sel = document.getElementById('md_cuenta');
-  const fuentes = getFuentesSinTC();
+  // 'recibido' = plata que entra (sin filtrar); 'pagado' = plata que sale: solo cuentas con saldo >= $1,00.
+  const fuentes = tipo === 'recibido' ? getFuentesSinTC() : FuentesFiltro.filtrar(getFuentesSinTC(), FuentesFiltro.PRESET.SALIDA);
   sel.innerHTML = html`<option value>Sin especificar</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   document.getElementById('md_monto').value = '';
   document.getElementById('md_fecha').value = hoy();
@@ -2237,13 +2245,28 @@ diffRegistrarInstancia('prtc', {
 function _prtcDifToggle() { diffToggle('prtc'); }
 function _prtcDifResumen() { diffResumen('prtc'); }
 
+// El botón "Préstamo con TC" se ve atenuado (y al tocarlo explica por qué no se puede, ver
+// abrirSheetPrestamoTC) cuando ninguna TC activa tiene cupo disponible. No usa `disabled`
+// a propósito: en móvil un botón deshabilitado no explica nada, y el toast sí.
+function _actualizarBtnPrestamoTC() {
+  const btn = document.getElementById('btn-prestamo-tc');
+  if (!btn) return;
+  const ok = FuentesFiltro.hayTCConCupo();
+  btn.setAttribute('aria-disabled', ok ? 'false' : 'true');
+  btn.style.opacity = ok ? '' : '.45';
+}
+
 function abrirSheetPrestamoTC() {
   if (!deudorActualId) return;
   const tcs = (S.tarjetasCredito || []).filter(tc => (tc.estado||'activa')==='activa');
   if (!tcs.length) { toast('No tenés tarjetas de crédito activas configuradas', 'err', 3000); return; }
+  // Un préstamo con TC es un cargo a la tarjeta: solo tiene sentido con las que tienen cupo
+  // disponible (FuentesFiltro.tcConCupo, js/core/fuentes-filtro.js). Sin ninguna, no se abre el sheet.
+  const tcsConCupo = tcs.filter(tc => FuentesFiltro.tcConCupo(tc));
+  if (!tcsConCupo.length) { toast('No se puede: ninguna de tus tarjetas tiene cupo disponible', 'err', 3500); return; }
   const sel = document.getElementById('prtc_tarjeta');
   if (sel) {
-    sel.innerHTML = html`<option value="">Seleccionar TC</option>${tcs.map(tc => html`<option value="${tc.id}">${tc.nombre}${tc.deuda ? ' — deuda: ' + fmt(tc.deuda) : ''}</option>`)}`;
+    sel.innerHTML = html`<option value="">Seleccionar TC</option>${tcsConCupo.map(tc => html`<option value="${tc.id}">${tc.nombre} — cupo: ${fmt(tcCupoDisponible(tc))}</option>`)}`;
   }
   const fecEl = document.getElementById('prtc_fecha');
   if (fecEl) fecEl.value = hoy();

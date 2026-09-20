@@ -322,6 +322,15 @@ function guardarTC(){
   const banco=document.getElementById('tc_banco').value.trim();
   const franquicia=document.getElementById('tc_franquicia').value;
   const cupo=parseMoney(document.getElementById('tc_cupo').value)||0;
+  // El cupo es obligatorio (al crear y al editar): los selectores de "de dónde sale la plata"
+  // solo ofrecen una TC si tiene cupo disponible (FuentesFiltro, js/core/fuentes-filtro.js),
+  // y sin cupo configurado no hay forma de saber cuánto se le puede cargar.
+  if(cupo<=0){
+    toast('Ingresa el cupo total de la tarjeta','err');
+    const cupoEl=document.getElementById('tc_cupo');
+    if(cupoEl)cupoEl.focus();
+    return;
+  }
   const cajitaSel=document.getElementById('tc_cajita_vinculada');
   const cajitaId=cajitaSel&&cajitaSel.value?cajitaSel.value:null;
   if(!S.tarjetasCredito)S.tarjetasCredito=[];
@@ -690,8 +699,10 @@ function abrirPagarTC(tcId){
   }
 
   const fuentesSel=document.getElementById('ptc_fuente');
-  const fuentes=getFuentesSinTC();
-  fuentesSel.innerHTML=html`<option value="">Seleccionar cuenta</option>${raw(fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`.toString()).join(''))}`;
+  // Pagar una TC se puede con cualquier saldo positivo (se abona lo que sea), salvo efectivo:
+  // ahí el mínimo es $1.000 (FuentesFiltro.PRESET.PAGO_TC, js/core/fuentes-filtro.js).
+  const fuentes=FuentesFiltro.filtrar(getFuentesSinTC(),FuentesFiltro.PRESET.PAGO_TC);
+  fuentesSel.innerHTML=html`<option value="">${fuentes.length?'Seleccionar cuenta':FuentesFiltro.MSG_SIN_SALDO}</option>${raw(fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`.toString()).join(''))}`;
   document.getElementById('ptc-fuente-saldo').textContent='';
 
   openSheet('pagar-tc');

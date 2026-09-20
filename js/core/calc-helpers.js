@@ -72,3 +72,40 @@ function tcCupoUsadoPct(tc){
 function tcCupoDisponible(tc){
   return Math.max(0,(tc.cupo||0)-(tc.deuda||0));
 }
+
+/* ---- Préstamos (antes en prestado.js) — 2026-09-20 ----
+   "Necesita atención" muestra una tarjeta "X te debe $…" por cada deudor con
+   saldo. Con getDeudorSaldo dentro de prestado.js (lazy), esas tarjetas
+   aparecían recién cuando el módulo terminaba de cargar y empujaban hacia
+   abajo todo lo que hay debajo en Inicio (CLS ~0.14-0.19 en Lighthouse). */
+function getDeudorSaldo(d) {
+  return (d.movimientos || []).reduce((a, m) => m.tipo === 'prestamo' ? a + m.monto : a - m.monto, 0);
+}
+
+/* ---- Spotify (antes en spotify.js) — 2026-09-20 ----
+   Mismo motivo: los avisos "Cobro Spotify de X vencido" de "Necesita
+   atención". spNombreDe usa getPersona() (personas.js, carga de entrada) con
+   guard typeof, así que no depende del orden de carga. */
+// Nombre a mostrar/guardar para un integrante de Spotify: si está vinculado a una
+// persona del sistema unificado, usa siempre su nombre ACTUAL (por si lo editaron
+// desde "Personas"); si no hay vínculo, o la persona ya no existe, usa el nombre
+// crudo guardado en el propio registro de Spotify.
+function spNombreDe(p){
+  if(!p)return '';
+  if(p.personaId){
+    const per=(typeof getPersona==='function')?getPersona(p.personaId):null;
+    if(per&&per.nombre)return per.nombre;
+  }
+  return p.nombre||'';
+}
+
+function spPersonaPagadaVigente(p){
+  // Determina si el "Pagó" de esta persona sigue vigente para el ciclo actual.
+  // Si ya llegó (o pasó) su fecha de próximo pago, el ciclo vencido ya terminó
+  // y debe volver a mostrarse como "Pendiente" aunque el flag pagado siga en true.
+  if(!p||!p.pagado)return false;
+  if(!p.proximoPago)return true;
+  const hoy0=new Date();hoy0.setHours(0,0,0,0);
+  const prox=new Date(p.proximoPago+'T00:00:00');
+  return prox>hoy0;
+}

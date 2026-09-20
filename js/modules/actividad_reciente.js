@@ -228,6 +228,10 @@
     var items = [];
     (S.deudores || []).forEach(function(d){
       (d.movimientos || []).forEach(function(m){
+        // Perdón de deuda ("¿Se lo regalas?"): no entró plata, así que NO es un
+        // "Abono" (+). Ya aparece una sola vez como gasto ("Perdoné deuda — …", -)
+        // vía _normGastos, porque el perdón crea un gasto real en S.gastosVar.
+        if (m._perdon) return;
         var esPrestamo = m.tipo === 'prestamo';
         items.push({
           id:        'deu_' + d.id + '_' + m.id,

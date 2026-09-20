@@ -534,7 +534,9 @@ function abrirPerfilPersona(personaId) {
     const movs = (datos.deudores || [datos.deudor]).flatMap(dd => dd.movimientos || [])
       .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
     const prestamos = movs.filter(m => m.tipo === 'prestamo');
-    const abonos   = movs.filter(m => m.tipo === 'abono' || m.tipo === 'pago-completo');
+    // Lo perdonado (m._perdon, "¿Se lo regalas?" en Préstamos) NO es plata que
+    // te devolvió: no cuenta en "Abonado", ni en el progreso de pago, ni en "Mayor abono".
+    const abonos   = movs.filter(m => (m.tipo === 'abono' || m.tipo === 'pago-completo') && !m._perdon);
     const totalPrestado = prestamos.reduce((a, m) => a + (m.monto || 0), 0);
     const totalAbonado  = abonos.reduce((a, m) => a + (m.monto || 0), 0);
     const color2 = saldo > 0 ? 'var(--amber)' : saldo < 0 ? 'var(--red)' : 'var(--accent)';
@@ -595,7 +597,7 @@ function abrirPerfilPersona(personaId) {
         </div>` : ''}
       </div>
       ${ultimoMov ? html`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
-        Último movimiento: <span style="color:var(--text2);font-weight:500;">${ultimoMov.tipo === 'prestamo' ? 'Préstamo' : (ultimoMov.tipo === 'pago-completo' ? 'Pago completo' : 'Abono')} de ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? html` · <i>${ultimoMov.nota}</i>` : ''}
+        Último movimiento: <span style="color:var(--text2);font-weight:500;">${ultimoMov.tipo === 'prestamo' ? 'Préstamo' : (ultimoMov._perdon ? 'Deuda perdonada' : (ultimoMov.tipo === 'pago-completo' ? 'Pago completo' : 'Abono'))} de ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? html` · <i>${ultimoMov.nota}</i>` : ''}
       </div>` : ''}
     </div>`);
   }

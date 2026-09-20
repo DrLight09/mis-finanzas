@@ -1810,6 +1810,7 @@ function _getMovimientosCuentaCustom(fuente) {
     const montoDisplay = esApertura ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto;
     let _origen, _otrasCuentas = null;
     if (esApertura) { _origen = 'Saldo inicial'; }
+    else if (m._esAlcanciaIngreso) { _origen = 'Alcancía'; }
     else if (m._esIntercambioEncargo) {
       _origen = 'Encargos · Intercambio';
       const hermano = (S.movimientos || []).find(x => x._esIntercambioEncargo && x._encMovId === m._encMovId && x.id !== m.id);
@@ -1823,15 +1824,18 @@ function _getMovimientosCuentaCustom(fuente) {
       tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Ingreso' : esTransferencia ? 'Intercambio' : 'Retiro'),
       monto: montoDisplay, fuente, _idx: _idx++, _movId: m.id,
       _fuenteOrigen: fuente, _fuenteDestino: m._fuenteDestino || '', _origen, _otrasCuentas,
-      _secundario: !!m._secundario, _origenSeccion: m._origenSeccion || ''
+      _secundario: !!m._secundario || !!m._esAlcanciaIngreso, _origenSeccion: m._origenSeccion || (m._esAlcanciaIngreso ? 'Alcancía' : ''),
+      _alcOculto: !!m._esAlcanciaIngreso
     });
   });
 
   // 3. Gastos variables pagados desde esta cuenta
   (S.gastosVar || []).forEach(g => {
     if (g.fuente !== fuente) return;
-    const _origen = g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : 'Gastos';
-    movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, fuente, _idx: _idx++, _movId: g.id, _fuenteOrigen: fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario, _origenSeccion: g._origenSeccion || '' });
+    // A diferencia de getMovimientosCuenta() (que se los saltaba), acá los depósitos a la alcancía
+    // siempre se mostraron — con el monto a la vista. Ahora igual que arriba: fila visible, monto oculto.
+    const _origen = g._esAlcancia ? 'Alcancía' : g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : 'Gastos';
+    movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, fuente, _idx: _idx++, _movId: g.id, _fuenteOrigen: fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario || !!g._esAlcancia, _origenSeccion: g._origenSeccion || (g._esAlcancia ? 'Alcancía' : ''), _alcOculto: !!g._esAlcancia });
   });
 
   // 4. Préstamos dados desde esta cuenta
@@ -1923,6 +1927,7 @@ function getMovimientosCuenta(tipo) {
       const montoDisplay = (esApertura) ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto;
       let _origen, _otrasCuentas = null;
       if (esApertura) { _origen = 'Saldo inicial'; }
+      else if (m._esAlcanciaIngreso) { _origen = 'Alcancía'; } // depósito a la alcancía sin cuenta de origen (yo-directo/regalo/mandado/split): fila visible, monto oculto
       else if (m._esIntercambioEncargo) {
         _origen = 'Encargos · Intercambio';
         const hermano = (S.movimientos || []).find(x => x._esIntercambioEncargo && x._encMovId === m._encMovId && x.id !== m.id);
@@ -1933,7 +1938,7 @@ function getMovimientosCuenta(tipo) {
       else if (m._encMovId || /encargo/i.test(m.desc||'')) { _origen = 'Encargos'; }
       else if (m._secundario && m._origenSeccion) { _origen = m._origenSeccion; }
       else { _origen = 'Cuentas · Movimiento manual'; }
-      movs.push({ tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : esTransferencia ? 'Intercambio' : 'Salida manual'), monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '', _origen, _otrasCuentas, _secundario: m._secundario || false, _origenSeccion: m._origenSeccion || '' });
+      movs.push({ tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : esTransferencia ? 'Intercambio' : 'Salida manual'), monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '', _origen, _otrasCuentas, _secundario: m._secundario || !!m._esAlcanciaIngreso, _origenSeccion: m._origenSeccion || (m._esAlcanciaIngreso ? 'Alcancía' : ''), _alcOculto: !!m._esAlcanciaIngreso });
     }
   });
   // Movimientos secundarios guardados en cajita.historial (tipo 'nu' o cajita específica)
@@ -1951,13 +1956,15 @@ function getMovimientosCuenta(tipo) {
   }
   // Gastos variables que usaron esta fuente
   (S.gastosVar || []).forEach(g => {
-    if (g._esAlcancia) return; // oculto mientras la alcancía está activa
+    // Depósito a la alcancía desde una cuenta (yo-cuenta / parte propia de un split): antes se
+    // saltaba acá y la fila desaparecía del historial. Ahora se muestra, pero con `_alcOculto`
+    // para que renderMovsCuenta() pinte el monto oculto (ver CHANGELOG.md#cuentas, 2026-09-19).
     const match = tipo === 'nu'
       ? (g.fuente && g.fuente.startsWith('cajita:'))
       : g.fuente === tipo;
     if (match) {
-      const _origen = g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota||'') ? 'Encargos' : 'Gastos';
-      movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario, _origenSeccion: g._origenSeccion || '' });
+      const _origen = g._esAlcancia ? 'Alcancía' : g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota||'') ? 'Encargos' : 'Gastos';
+      movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario || !!g._esAlcancia, _origenSeccion: g._origenSeccion || (g._esAlcancia ? 'Alcancía' : ''), _alcOculto: !!g._esAlcancia });
     }
   });
   // Préstamos dados desde esta fuente
@@ -2191,7 +2198,11 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
     const dataOtras = m._otrasCuentas ? html`data-mov-otras="${JSON.stringify(m._otrasCuentas)}"` : '';
     const esSecundarioHist = !!m._secundario;
     const puedeEliminar = !!m._movId && !esSecundarioHist;
-    const puedeVerDetalle = !!m.fuente;
+    // Depósito a la alcancía: la fila se ve (para saber que salió/entró plata) pero el monto va
+    // oculto y no abre el detalle (que mostraría monto y saldos antes/después). Los data-mov-*
+    // se dejan igual que en cualquier otra fila: son atributos del DOM, no se ven en pantalla.
+    const alcOculto = !!m._alcOculto;
+    const puedeVerDetalle = !!m.fuente && !alcOculto;
     return html`<div class="gasto-item" ${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto} ${dataFuenteReal} ${dataFecha} ${dataOrigen} ${dataOtras} ${puedeVerDetalle ? raw('data-cuenta-key="'+escHtml(cuentaKey)+'" style="cursor:pointer;" data-action="core:abrirDetalleMov"') : ''}>
       <div class="gasto-item-top">
         <div style="flex:1;min-width:0;">
@@ -2199,13 +2210,15 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
           <div class="row-sub" style="font-family:'DM Mono',monospace;">${m.fecha || '—'}</div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${colorMonto};">${signo} ${fmt(Math.abs(m.monto))}</div>
+          ${alcOculto
+            ? html`<div title="Monto oculto — se ve dentro de Alcancía" style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:1px;">••••</div>`
+            : html`<div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${colorMonto};">${signo} ${fmt(Math.abs(m.monto))}</div>`}
           ${puedeEliminar ? html`<button type="button" class="btn-icon" data-action="core:eliminarMovimiento" data-stop-propagation="true" title="Eliminar movimiento" style="color:var(--text3);min-width:32px;min-height:32px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : esSecundarioHist && m._movId ? html`<span title="Generado automáticamente — elimínalo desde ${m._origenSeccion||'la sección de origen'}" style="display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;color:var(--text3);opacity:.4;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : ''}
         </div>
       </div>
       <div class="gasto-item-meta">
         <span class="badge ${bgLabel}" style="font-size:9px;">${tipoLabel}</span>
-        ${m._origen === 'Alcancía oculta' ? html`<span class="badge" style="font-size:9px;background:rgba(240,184,64,.18);color:var(--amber);border:none;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
+        ${(m._alcOculto || m._origen === 'Alcancía oculta') ? html`<span class="badge" style="font-size:9px;background:rgba(240,184,64,.18);color:var(--amber);border:none;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
         ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?html`<span class="badge bg-nu" style="font-size:9px;">${cn}</span>`:''; })()}
         ${m.cat ? html`<span class="badge bg-blue" style="font-size:9px;">${m.cat}</span>` : ''}
         ${m.nota ? html`<span style="font-size:10px;color:var(--text3);">${m.nota}</span>` : ''}

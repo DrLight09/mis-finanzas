@@ -285,6 +285,11 @@ import { waitFor } from './wait-for-module.js';
       (snap) => {
         const fromCache = snap.metadata.fromCache;
         const hasPendingWrites = snap.metadata.hasPendingWrites;
+        // Diagnóstico: qué tipo de evento llegó (caché o servidor) y en qué
+        // estado está la carga. Permite ver en consola si la confirmación del
+        // servidor llegó o no (fromCache=false) — clave para entender por qué
+        // la app queda en modo lectura.
+        console.log('[Sync] snapshot: fromCache=' + fromCache + ' exists=' + snap.exists() + ' pendingWrites=' + hasPendingWrites + ' firstLoad=' + _firstLoad + ' dataLoaded=' + !!window._dataLoaded);
 
         // Si tenemos escrituras locales pendientes Y la app ya está corriendo,
         // es un eco de nuestro propio guardado → ignorar para no hacer refresh
@@ -301,6 +306,7 @@ import { waitFor } from './wait-for-module.js';
         if(_firstLoad) {
           const estadoCarga = _applyCloudData(snap);
           const confiable = _cargaConfiable(estadoCarga, fromCache);
+          console.log('[Sync] carga: estado=' + estadoCarga + ' confiable=' + confiable);
           if(!_firstPaintDone) {
             // Primer pintado real — con lo que haya llegado primero (caché
             // o servidor). Esto es lo que baja el LCP: ya no se espera.

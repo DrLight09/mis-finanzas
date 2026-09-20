@@ -174,17 +174,42 @@ function renderMesFiltros() {
 
 function setMesFiltro(m) { mesFilter = m; renderMesFiltros(); }
 
+/* Etiqueta del encabezado de día en el historial: "Hoy", "Ayer" o
+   "sáb 19 sep" (con año si no es el actual). La fecha se arma con
+   new Date(y, m-1, d) y NO con new Date('YYYY-MM-DD'): esta última la
+   interpreta en UTC y en Colombia (UTC-5) mostraría el día anterior. */
+function _gvDiaLabel(fecha) {
+  const p = /^(\d{4})-(\d{2})-(\d{2})$/.exec(fecha || '');
+  if (!p) return 'Sin fecha';
+  const y = +p[1], mo = +p[2] - 1, d = +p[3];
+  const hoyStr = hoy();
+  if (fecha === hoyStr) return 'Hoy';
+  const h = /^(\d{4})-(\d{2})-(\d{2})$/.exec(hoyStr);
+  const hoyD = h ? new Date(+h[1], +h[2] - 1, +h[3]) : new Date();
+  const ayerD = new Date(hoyD.getFullYear(), hoyD.getMonth(), hoyD.getDate() - 1);
+  const pad = n => String(n).padStart(2, '0');
+  if (fecha === ayerD.getFullYear() + '-' + pad(ayerD.getMonth() + 1) + '-' + pad(ayerD.getDate())) return 'Ayer';
+  const dias = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  return dias[new Date(y, mo, d).getDay()] + ' ' + d + ' ' + meses[mo] + (y !== hoyD.getFullYear() ? ' ' + y : '');
+}
+
 function renderGastosVar() {
   const el = document.getElementById('gastosVarList');
-  let gastos = S.gastosVar || [];
-  if (mesFilter !== 'todos') gastos = gastos.filter(g => mesKey(g.fecha) === mesFilter);
-  gastos = [...gastos].sort((a, b) => b.fecha.localeCompare(a.fecha));
-  // Separar: pagos de fijos van al total de fijos, no al de variables
+  // Orden: fecha del gasto (más reciente primero) y, dentro del mismo día,
+  // el último que registraste arriba. S.gastosVar solo se agrega al final
+  // (push), así que la posición en el array ES el orden de creación: se
+  // guarda el índice ANTES de filtrar y se usa de desempate. Antes se
+  // ordenaba solo por fecha y, como el sort es estable, los gastos de un
+  // mismo día quedaban en orden de creación (el más viejo arriba).
+  let conIdx = (S.gastosVar || []).map((g, i) => ({ g, i }));
+  if (mesFilter !== 'todos') conIdx = conIdx.filter(x => mesKey(x.g.fecha) === mesFilter);
+  conIdx.sort((a, b) => (b.g.fecha || '').localeCompare(a.g.fecha || '') || b.i - a.i);
+  const gastos = conIdx.map(x => x.g);
+  // Totales (misma regla de siempre, ver regla 3.3): solo cuenta como gasto
+  // real lo que salió de una cuenta y no está contado en otro lado.
   const gastosVarPuros = gastos.filter(g => !_esGastoVarNoReal(g));
-  const gastosFijosEnHistorial = gastos.filter(g => g.esPagoGastoFijo);
   const gastosTC = gastos.filter(g => g._esCompraTC);
-  const gastosPagoTC = gastos.filter(g => g._esPagoTC);
-  // Solo sumar al total los gastos que salieron de cuentas reales (no TC, no pagos de fijos)
   const total = gastosVarPuros.filter(g => !g._esCompraTC).reduce((a, g) => a + (g.monto || 0), 0);
   const totalTC = gastosTC.reduce((a, g) => a + (g.monto || 0), 0);
   document.getElementById('totalGVFilt').textContent = fmt(total);
@@ -194,7 +219,12 @@ function renderGastosVar() {
     if (totalTC > 0) { tcTotalEl.textContent = '+ ' + fmt(totalTC) + ' en TC'; tcTotalEl.style.display = ''; }
     else { tcTotalEl.style.display = 'none'; }
   }
-  if (!gastos.length) {
+  // Qué se muestra en el historial: todo lo de antes (gastos puros, compras
+  // TC, pagos TC y pagos de fijos) en UNA sola lista cronológica. Lo que
+  // sigue oculto es lo mismo que ya lo estaba: movimientos de alcancía y
+  // extras de préstamo (_esGastoVarNoReal sin ninguna de las otras banderas).
+  const visibles = gastos.filter(g => !_esGastoVarNoReal(g) || g._esCompraTC || g._esPagoTC || g.esPagoGastoFijo);
+  if (!visibles.length) {
     el.innerHTML = emptyState(
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 3 14 9 20 9"/><line x1="8" y1="13" x2="16" y2="13"/></svg>',
       'Sin gastos registrados',
@@ -211,6 +241,17 @@ function renderGastosVar() {
     const esPagoTC = !!g._esPagoTC;
     const esSecundario = !!g._secundario;
     const colorMonto = esFijo ? 'var(--text2)' : esTC ? 'var(--red)' : esPagoTC ? 'var(--accent)' : 'var(--red)';
+    // Etiquetas de tipo. Un fijo pagado con TC tiene las dos banderas: antes
+    // aparecía dos veces (en "Compras en TC" y en "Pagos de fijos") y la
+    // etiqueta de fijo tapaba la de TC. Ahora es una sola fila con ambas.
+    const tipoBadges = esFijo
+      ? [html`<span class="badge" style="font-size:9px;background:rgba(200,240,96,.1);color:var(--accent);border:1px solid rgba(200,240,96,.2);">Fijo — ya sumado en Fijos mensuales</span>`,
+         esTC ? html`<span class="badge bg-red" style="font-size:9px;">TC — deuda</span>` : '']
+      : esTC
+        ? [html`<span class="badge bg-red" style="font-size:9px;">TC — deuda</span>`, html`<span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>`]
+        : esPagoTC
+          ? [html`<span class="badge bg-green" style="font-size:9px;">Pago TC</span>`]
+          : [html`<span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>`];
     return html`<div class="gasto-item" style="${raw((esFijo || esPagoTC) ? 'opacity:.75;' : '')}">
       <div class="gasto-item-top">
         <div style="flex:1;min-width:0;">
@@ -227,50 +268,37 @@ function renderGastosVar() {
         </div>
       </div>
       <div class="gasto-item-meta">
-        ${esFijo ? html`<span class="badge" style="font-size:9px;background:rgba(200,240,96,.1);color:var(--accent);border:1px solid rgba(200,240,96,.2);">Fijo — ya sumado en Fijos mensuales</span>` :
-          esTC ? html`<span class="badge bg-red" style="font-size:9px;">TC — deuda</span><span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>` :
-          esPagoTC ? html`<span class="badge bg-green" style="font-size:9px;">Pago TC</span>` :
-          html`<span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>`}
+        ${tipoBadges}
         ${g.splits && g.splits.length ? html`<span class="badge" style="font-size:9px;">Dividido: ${g.splits.map(s => fuenteLabel(s.fuente || '')).join(', ')}</span>` : (g.fuente ? html`<span class="badge ${raw(fuenteBadgeClass(g.fuente))}" style="font-size:9px;">${fuenteLabel(g.fuente)}</span>` : '')}
         ${(!(esFijo || esTC) && g.nota) ? html`<span style="font-size:10px;color:var(--text3);">${g.nota}</span>` : ''}
       </div>
     </div>`;
   }
 
+  // Agrupar por día (visibles ya viene ordenado, así que los días quedan
+  // contiguos). Cada día lleva su subtotal con la misma regla del total de
+  // arriba: gasto real + "en TC" aparte; pagos de fijos y pagos de TC no suman.
+  const dias = [];
+  visibles.forEach(g => {
+    const f = g.fecha || '';
+    const ult = dias[dias.length - 1];
+    if (ult && ult.fecha === f) ult.items.push(g); else dias.push({ fecha: f, items: [g] });
+  });
+
   // Nota: la variable local se llama `contenido`, no `html` — nombrarla
   // `html` taparía la función global html`` dentro de esta misma función
   // (mismo hallazgo real ya corregido en mesada.js, ver auditoria-tecnica.md #2).
-  const contenido = [];
-  // Primero los gastos variables puros (excluir TC y pagos TC de este bloque)
-  const gastosPurosNoTC = gastosVarPuros.filter(g => !g._esCompraTC);
-  contenido.push(gastosPurosNoTC.map(itemHtml));
-  // Compras en TC
-  if (gastosTC.length) {
-    contenido.push(html`<div style="margin:14px 0 8px;display:flex;align-items:center;gap:8px;">
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-      <span style="font-size:10px;color:var(--red);font-family:'DM Mono',monospace;white-space:nowrap;">Compras en TC (${fmt(totalTC)})</span>
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>`);
-    contenido.push(gastosTC.map(itemHtml));
-  }
-  // Pagos de TC
-  if (gastosPagoTC.length) {
-    contenido.push(html`<div style="margin:14px 0 8px;display:flex;align-items:center;gap:8px;">
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-      <span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;white-space:nowrap;">Pagos de TC</span>
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>`);
-    contenido.push(gastosPagoTC.map(itemHtml));
-  }
-  // Pagos de fijos
-  if (gastosFijosEnHistorial.length) {
-    contenido.push(html`<div style="margin:14px 0 8px;display:flex;align-items:center;gap:8px;">
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;">Pagos de fijos (no se suman aquí)</span>
-      <div style="flex:1;height:1px;background:var(--border);"></div>
-    </div>`);
-    contenido.push(gastosFijosEnHistorial.map(itemHtml));
-  }
+  const contenido = dias.map((dia, idx) => {
+    const realDia = dia.items.filter(g => !_esGastoVarNoReal(g) && !g._esCompraTC).reduce((a, g) => a + (g.monto || 0), 0);
+    const tcDia = dia.items.filter(g => g._esCompraTC).reduce((a, g) => a + (g.monto || 0), 0);
+    const partes = [];
+    if (realDia > 0) partes.push(fmt(realDia));
+    if (tcDia > 0) partes.push((realDia > 0 ? '+ ' : '') + fmt(tcDia) + ' en TC');
+    return html`<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px;margin:${raw(idx === 0 ? '2px' : '16px')} 0 6px;">
+      <span style="font-size:11px;font-weight:600;color:var(--text2);">${_gvDiaLabel(dia.fecha)}</span>
+      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;">${partes.join(' ')}</span>
+    </div>${dia.items.map(itemHtml)}`;
+  });
   el.innerHTML = html`${contenido}`;
 }
 

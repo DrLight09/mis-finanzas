@@ -299,13 +299,18 @@ import { waitFor } from './wait-for-module.js';
         if(window._importing && !_firstLoad) return;
 
         if(_firstLoad) {
-          _applyCloudData(snap);
+          const estadoCarga = _applyCloudData(snap);
+          const confiable = _cargaConfiable(estadoCarga, fromCache);
           if(!_firstPaintDone) {
             // Primer pintado real — con lo que haya llegado primero (caché
             // o servidor). Esto es lo que baja el LCP: ya no se espera.
             _firstPaintDone = true;
-            _finishFirstLoad();
+            _finishFirstLoad(confiable);
           } else if(!fromCache) {
+            // Si el primer pintado fue en modo lectura (caché vacío sin
+            // servidor, ver _cargaConfiable), recién ahora que el servidor
+            // confirmó se habilita el guardado.
+            if(confiable) window._dataLoaded = true;
             // Ya pintamos con caché; esto es la confirmación del servidor
             // llegando después. Si trajo algo distinto ya se aplicó arriba
             // (_applyCloudData) — solo falta reflejarlo sin re-inicializar
@@ -367,21 +372,28 @@ import { waitFor } from './wait-for-module.js';
         } catch(_){}
         // Si ni el caché ni el servidor entregaron nada todavía, no dejar a
         // la persona colgada en el spinner — arrancar igual con S por defecto.
-        if(!_firstPaintDone) { _firstPaintDone = true; _finishFirstLoad(); }
+        if(!_firstPaintDone) { _firstPaintDone = true; _finishFirstLoad(false); }
         _firstLoad = false;
       }
     );
   };
 
   // Aplica datos de un snapshot de Firestore a window.S
+  // Devuelve qué pasó, para que el llamador decida si S es confiable:
+  //   'applied'     — había payload con datos y se aplicó a S
+  //   'empty'       — había payload pero sin ninguna clave (S queda por defecto)
+  //   'nodoc'       — el documento no existe o no trae payload
+  //   'parse-error' — había payload pero no se pudo leer
   function _applyCloudData(snap) {
     if(snap.exists() && snap.data().payload) {
       try {
+        let estado = 'applied';
         const cloudData = JSON.parse(snap.data().payload);
         console.log('[Sync] _applyCloudData: keys=' + Object.keys(cloudData).length + ' updatedAt=' + snap.data().updatedAt);
         if(Object.keys(cloudData).length === 0) {
           // Nube vacía — no pisar S con objeto vacío, dejar los valores por defecto de S intactos.
           console.warn('[Sync] Nube vacía (sin payload real) — manteniendo estado por defecto.');
+          estado = 'empty';
         } else {
           Object.assign(window.S, cloudData);
           // La migración y auto-sanación de tarjetas de crédito ahora vive en
@@ -395,30 +407,59 @@ import { waitFor } from './wait-for-module.js';
         // save(), sin falsos positivos por orden de claves distinto entre
         // el objeto por defecto de S y el JSON que vino de la nube.
         window._lastSavedPayload = JSON.stringify(window.S);
+        return estado;
       } catch(e) {
         console.error('[Sync] Error al parsear datos de la nube:', e);
+        return 'parse-error';
       }
     } else {
       console.warn('[Sync] _applyCloudData: snap.exists()=' + snap.exists() + ' — sin datos en nube.');
+      return 'nodoc';
     }
   }
 
+  // FIX (2026-09-19) — la nube se pisaba con el estado por defecto tras
+  // borrar el storage del navegador (DevTools > Application). Causa: con la
+  // caché de Firestore vacía, el primer evento de onSnapshot puede ser un
+  // snapshot de caché con exists()=false (si el SDK cree que está offline) o
+  // un error de listener. En ambos casos _finishFirstLoad() marcaba
+  // _dataLoaded=true con S todavía en sus valores por defecto y guardaba de
+  // inmediato — un setDoc sin merge que reemplaza el documento completo y
+  // que, una vez encolado en el SDK, no se cancela aunque después llegue el
+  // snapshot real del servidor. Ahora _dataLoaded solo pasa a true cuando S
+  // es de fiar: hubo un payload leído bien (caché o servidor), o el servidor
+  // confirmó que no hay documento (usuario nuevo). Un payload ilegible
+  // nunca cuenta como confiable, ni siquiera del servidor.
+  function _cargaConfiable(estado, fromCache) {
+    if(estado === 'applied') return true;
+    if(estado === 'parse-error') return false;
+    return !fromCache; // 'nodoc' / 'empty': solo creíble si lo confirmó el servidor
+  }
+
   // Finaliza la primera carga: muestra la app e inicializa la UI
-  function _finishFirstLoad() {
+  // `confiable=false` pinta la app en modo lectura: S puede seguir en sus
+  // valores por defecto, así que nada se guarda hasta que el servidor confirme
+  // (ver _cargaConfiable). Si el listener murió por error, hay que recargar.
+  function _finishFirstLoad(confiable) {
     document.getElementById('fb-loading-screen').style.display = 'none';
     // PROTECCIÓN: marcar que los datos ya se cargaron correctamente.
     // _fbSaveToCloud no guardará nada hasta que esta bandera esté activa.
-    window._dataLoaded = true;
+    window._dataLoaded = !!confiable;
     _initAppUI();
     // Snapshot diario: guardar patrimonio del día aunque no haya otros cambios.
     // Esto llena la gráfica de patrimonio sin que el usuario tenga que hacer nada.
-    if(typeof snapshotPatrimonio === 'function'){
+    if(confiable && typeof snapshotPatrimonio === 'function'){
       snapshotPatrimonio();
       if(typeof window._fbSaveToCloud === 'function') window._fbSaveToCloud();
     }
     // Resumen de cierre de mes: detectar si cambió el mes desde la última apertura
     _checkCierreMes();
-    setSyncStatus('ok', 'Sincronizado con Firebase');
+    if(confiable) {
+      setSyncStatus('ok', 'Sincronizado con Firebase');
+    } else {
+      setSyncStatus('error', 'Sin confirmar con la nube — no se guarda nada por ahora');
+      if(typeof toast === 'function') toast('No se pudo confirmar tus datos con la nube. Los cambios no se guardarán hasta reconectar (si sigue así, recarga la página).', 'err', 8000);
+    }
     // Notificar a módulos inline que los datos están listos.
     // Los scripts inline no pueden sobrescribir window._fbLoadData de forma confiable
     // porque este módulo (type="module") se ejecuta DESPUÉS que ellos, sobreescribiendo
@@ -494,7 +535,7 @@ import { waitFor } from './wait-for-module.js';
     clearTimeout(window._debounceTimer);     // timer de debounceSave (script global)
     clearTimeout(window._fbSaveTimer);       // timer de _fbSaveToCloud (módulo Firebase)
     // Guardar una última vez de forma inmediata si hay datos válidos
-    if(window._fbUser && window.S) {
+    if(window._fbUser && window.S && window._dataLoaded) {
       try {
         const {db, doc, setDoc} = window._fb;
         const data = JSON.parse(JSON.stringify(window.S));

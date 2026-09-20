@@ -1806,7 +1806,7 @@ function _getMovimientosCuentaCustom(fuente) {
       m._intercambioEntrada ? false :
       !!(m._fuenteDestino && m._fuenteDestino !== m.fuente)
     );
-    const tipoDisplay = esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'egreso';
+    const tipoDisplay = m._esAlcanciaIngreso ? 'alcancia' : esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'egreso';
     const montoDisplay = m._esAlcanciaIngreso ? 0 : esApertura ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto; // neto-cero de Alcancía: efecto 0 sobre el saldo (ver getMovimientosCuenta)
     let _origen, _otrasCuentas = null;
     if (esApertura) { _origen = 'Saldo inicial'; }
@@ -1835,7 +1835,7 @@ function _getMovimientosCuentaCustom(fuente) {
     // A diferencia de getMovimientosCuenta() (que se los saltaba), acá los depósitos a la alcancía
     // siempre se mostraron — con el monto a la vista. Ahora igual que arriba: fila visible, monto oculto.
     const _origen = g._esAlcancia ? 'Alcancía' : g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : 'Gastos';
-    movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, fuente, _idx: _idx++, _movId: g.id, _fuenteOrigen: fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario || !!g._esAlcancia, _origenSeccion: g._origenSeccion || (g._esAlcancia ? 'Alcancía' : ''), _alcOculto: !!g._esAlcancia });
+    movs.push({ tipo: g._esAlcancia ? 'alcancia' : 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, fuente, _idx: _idx++, _movId: g.id, _fuenteOrigen: fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario || !!g._esAlcancia, _origenSeccion: g._origenSeccion || (g._esAlcancia ? 'Alcancía' : ''), _alcOculto: !!g._esAlcancia });
   });
 
   // 4. Préstamos dados desde esta cuenta
@@ -1923,7 +1923,7 @@ function getMovimientosCuenta(tipo) {
         m._intercambioEntrada ? false :
         !!(m._fuenteDestino && m._fuenteDestino !== m.fuente)
       );
-      const tipoDisplay = esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'salida_manual';
+      const tipoDisplay = m._esAlcanciaIngreso ? 'alcancia' : esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'salida_manual';
       // Ingreso neto-cero de Alcancía (yo-directo/regalo/mandado/split): alcancia.js suma y resta el mismo
       // monto, así que el saldo de la cuenta NO cambia. `monto` acá es el efecto sobre el saldo (lo usa
       // abrirDetalleMov() en movimientos.js para reconstruir Antes/Después) → 0, no +monto.
@@ -1967,7 +1967,7 @@ function getMovimientosCuenta(tipo) {
       : g.fuente === tipo;
     if (match) {
       const _origen = g._esAlcancia ? 'Alcancía' : g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota||'') ? 'Encargos' : 'Gastos';
-      movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario || !!g._esAlcancia, _origenSeccion: g._origenSeccion || (g._esAlcancia ? 'Alcancía' : ''), _alcOculto: !!g._esAlcancia });
+      movs.push({ tipo: g._esAlcancia ? 'alcancia' : 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario || !!g._esAlcancia, _origenSeccion: g._origenSeccion || (g._esAlcancia ? 'Alcancía' : ''), _alcOculto: !!g._esAlcancia });
     }
   });
   // Préstamos dados desde esta fuente
@@ -2087,6 +2087,7 @@ function renderMovsFiltros(elId, cuentaKey, movs, accentColor) {
     { val: 'mesada', label: 'Mesada' },
     { val: 'prestamo', label: 'Préstamo' },
     { val: 'abono', label: 'Abono' },
+    { val: 'alcancia', label: 'Alcancía' },
   ].filter(t => t.val === 'todos' || tiposPresentes.has(t.val));
 
   wrap.innerHTML = html`
@@ -2188,7 +2189,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
     const esPositivo = esApertura ? true : esSalida ? false : m.monto > 0;
     const colorMonto = esApertura ? 'var(--blue)' : esPositivo ? 'var(--accent)' : 'var(--red)';
     const signo = esApertura ? '' : esPositivo ? '+' : '−';
-    const tipoLabel = { gasto: 'Gasto', ingreso: 'Ingreso', egreso: 'Retiro', apertura: 'Apertura', prestamo: 'Préstamo', abono: 'Abono', mesada: 'Mesada', transferencia: 'Transferencia', salida_manual: 'Salida' }[m.tipo] || m.tipo;
+    const tipoLabel = { gasto: 'Gasto', ingreso: 'Ingreso', egreso: 'Retiro', apertura: 'Apertura', prestamo: 'Préstamo', abono: 'Abono', alcancia: 'Alcancía', mesada: 'Mesada', transferencia: 'Transferencia', salida_manual: 'Salida' }[m.tipo] || m.tipo;
     const bgLabel = esApertura ? 'bg-blue' : esPositivo ? 'bg-green' : m.tipo === 'gasto' || m.tipo === 'salida_manual' || m.tipo === 'egreso' ? 'bg-red' : m.tipo === 'transferencia' ? 'bg-blue' : 'bg-amber';
     const dataId = m._movId ? html`data-mov-id="${m._movId}"` : '';
     const dataTipo = html`data-mov-tipo="${m.tipo}"`;
@@ -2221,7 +2222,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
         </div>
       </div>
       <div class="gasto-item-meta">
-        <span class="badge ${bgLabel}" style="font-size:9px;">${tipoLabel}</span>
+        ${alcOculto ? '' : html`<span class="badge ${bgLabel}" style="font-size:9px;">${tipoLabel}</span>`}
         ${(m._alcOculto || m._origen === 'Alcancía oculta') ? html`<span class="badge" style="font-size:9px;background:rgba(240,184,64,.18);color:var(--amber);border:none;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
         ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?html`<span class="badge bg-nu" style="font-size:9px;">${cn}</span>`:''; })()}
         ${m.cat ? html`<span class="badge bg-blue" style="font-size:9px;">${m.cat}</span>` : ''}

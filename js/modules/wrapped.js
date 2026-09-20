@@ -1914,7 +1914,9 @@ function _wrappedCalcularPrestado(S, tipo, mesK, anioK){
     movs.forEach(m => {
       if(!m || !_wrappedEnRango(m.fecha, tipo, mesK, anioK)) return;
       if(m.tipo === 'prestamo'){ totalPrestado += (m.monto||0); prestadoAEsta += (m.monto||0); nPrestamosAEsta++; }
-      else if(m.tipo === 'abono' || m.tipo === 'pago-completo'){ totalDevuelto += (m.monto||0); }
+      // Un perdón de deuda ("¿Se lo regalas?", m._perdon) es un 'pago-completo' que NO
+      // devolvió plata: no cuenta como devuelto (ya cuenta como gasto real, ver gastos.md).
+      else if((m.tipo === 'abono' || m.tipo === 'pago-completo') && !m._perdon){ totalDevuelto += (m.monto||0); }
     });
     if(prestadoAEsta > 0 && (!topDeudor || prestadoAEsta > topDeudor.monto)){
       topDeudor = { nombre: d.nombre, personaId: d.personaId || null, monto: prestadoAEsta, n: nPrestamosAEsta };
@@ -2638,6 +2640,7 @@ function _wrappedRecuperacionMasRapida(S, anioK){
     const [primero, segundo] = movs;
     if(primero.tipo !== 'prestamo') return;
     if(!(segundo.tipo === 'abono' || segundo.tipo === 'pago-completo')) return;
+    if(segundo._perdon) return; // perdonada ≠ recuperada: no es una devolución rápida
     if((segundo.monto||0) < (primero.monto||0)) return;
     if(primero.fecha.slice(0,4) !== anioK) return;
     const dias = Math.round((new Date(segundo.fecha) - new Date(primero.fecha)) / 86400000);

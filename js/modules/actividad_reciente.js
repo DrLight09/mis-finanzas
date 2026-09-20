@@ -164,7 +164,11 @@
         if (m.tipo === 'apertura') return false;
         if (m.tipo === 'transferencia') return false; // intercambios contables, no son ingresos ni gastos
         if (m._encMovId) return false; // generado como efecto secundario de un encargo
-        if (m._esAlcancia) return false; // movimientos internos de alcancía oculta
+        if (m._esAlcancia) return false; // movimientos internos de alcancía oculta (destape)
+        // Ingresos neto-cero de depósitos sin cuenta de origen (yo-directo/regalo/mandado/split): antes se
+        // colaban acá como "+ $X Ingreso" con el monto a la vista — mismo criterio que los gastos
+        // `_esAlcancia` de _normGastos(), que ya se excluían.
+        if (m._esAlcanciaIngreso) return false;
         var desc = (m.desc || '').toLowerCase();
         if (desc.indexOf('margen de encargo') === 0) return false;
         if (desc.indexOf('margen encargo') === 0) return false;

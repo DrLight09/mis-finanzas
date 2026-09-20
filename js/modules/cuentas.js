@@ -1807,7 +1807,7 @@ function _getMovimientosCuentaCustom(fuente) {
       !!(m._fuenteDestino && m._fuenteDestino !== m.fuente)
     );
     const tipoDisplay = esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'egreso';
-    const montoDisplay = esApertura ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto;
+    const montoDisplay = m._esAlcanciaIngreso ? 0 : esApertura ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto; // neto-cero de Alcancía: efecto 0 sobre el saldo (ver getMovimientosCuenta)
     let _origen, _otrasCuentas = null;
     if (esApertura) { _origen = 'Saldo inicial'; }
     else if (m._esAlcanciaIngreso) { _origen = 'Alcancía'; }
@@ -1924,7 +1924,10 @@ function getMovimientosCuenta(tipo) {
         !!(m._fuenteDestino && m._fuenteDestino !== m.fuente)
       );
       const tipoDisplay = esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'salida_manual';
-      const montoDisplay = (esApertura) ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto;
+      // Ingreso neto-cero de Alcancía (yo-directo/regalo/mandado/split): alcancia.js suma y resta el mismo
+      // monto, así que el saldo de la cuenta NO cambia. `monto` acá es el efecto sobre el saldo (lo usa
+      // abrirDetalleMov() en movimientos.js para reconstruir Antes/Después) → 0, no +monto.
+      const montoDisplay = m._esAlcanciaIngreso ? 0 : (esApertura) ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto;
       let _origen, _otrasCuentas = null;
       if (esApertura) { _origen = 'Saldo inicial'; }
       else if (m._esAlcanciaIngreso) { _origen = 'Alcancía'; } // depósito a la alcancía sin cuenta de origen (yo-directo/regalo/mandado/split): fila visible, monto oculto
@@ -2191,7 +2194,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
     const dataTipo = html`data-mov-tipo="${m.tipo}"`;
     const dataFuente = m._fuenteOrigen ? html`data-mov-fuente="${m._fuenteOrigen}"` : '';
     const dataDestino = m._fuenteDestino ? html`data-mov-destino="${m._fuenteDestino}"` : '';
-    const dataMonto = html`data-mov-monto="${Math.abs(m.monto)}"`;
+    const dataMonto = m._alcOculto ? '' : html`data-mov-monto="${Math.abs(m.monto)}"`; // fila de Alcancía: el monto no va ni al DOM
     const dataFuenteReal = m.fuente ? html`data-mov-fuente-real="${m.fuente}"` : '';
     const dataFecha = html`data-mov-fecha="${m.fecha}"`;
     const dataOrigen = m._origen ? html`data-mov-origen="${m._origen}"` : '';
@@ -2199,8 +2202,9 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
     const esSecundarioHist = !!m._secundario;
     const puedeEliminar = !!m._movId && !esSecundarioHist;
     // Depósito a la alcancía: la fila se ve (para saber que salió/entró plata) pero el monto va
-    // oculto y no abre el detalle (que mostraría monto y saldos antes/después). Los data-mov-*
-    // se dejan igual que en cualquier otra fila: son atributos del DOM, no se ven en pantalla.
+    // oculto (tampoco se escribe data-mov-monto) y no abre el detalle, que mostraría monto y
+    // saldos antes/después. Sin botón eliminar (siempre _secundario). El Antes/Después de las
+    // OTRAS filas no depende del DOM sino de getMovimientosCuenta(), que sí incluye estas filas.
     const alcOculto = !!m._alcOculto;
     const puedeVerDetalle = !!m.fuente && !alcOculto;
     return html`<div class="gasto-item" ${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto} ${dataFuenteReal} ${dataFecha} ${dataOrigen} ${dataOtras} ${puedeVerDetalle ? raw('data-cuenta-key="'+escHtml(cuentaKey)+'" style="cursor:pointer;" data-action="core:abrirDetalleMov"') : ''}>

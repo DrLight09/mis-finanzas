@@ -310,7 +310,7 @@ import { waitFor } from './wait-for-module.js';
             // Si el primer pintado fue en modo lectura (caché vacío sin
             // servidor, ver _cargaConfiable), recién ahora que el servidor
             // confirmó se habilita el guardado.
-            if(confiable) window._dataLoaded = true;
+            if(confiable) { window._dataLoaded = true; clearTimeout(window._syncConfirmTimer); }
             // Ya pintamos con caché; esto es la confirmación del servidor
             // llegando después. Si trajo algo distinto ya se aplicó arriba
             // (_applyCloudData) — solo falta reflejarlo sin re-inicializar
@@ -373,6 +373,8 @@ import { waitFor } from './wait-for-module.js';
         // Si ni el caché ni el servidor entregaron nada todavía, no dejar a
         // la persona colgada en el spinner — arrancar igual con S por defecto.
         if(!_firstPaintDone) { _firstPaintDone = true; _finishFirstLoad(false); }
+        clearTimeout(window._syncConfirmTimer);
+        _avisarSinConfirmar();
         _firstLoad = false;
       }
     );
@@ -436,6 +438,13 @@ import { waitFor } from './wait-for-module.js';
     return !fromCache; // 'nodoc' / 'empty': solo creíble si lo confirmó el servidor
   }
 
+  // Aviso de "modo lectura": solo si de verdad no llegó la confirmación.
+  function _avisarSinConfirmar() {
+    if(window._dataLoaded) return; // ya se confirmó: nada que avisar
+    setSyncStatus('error', 'Sin confirmar con la nube — no se guarda nada por ahora');
+    if(typeof toast === 'function') toast('No se pudo confirmar tus datos con la nube. Los cambios no se guardarán hasta reconectar (si sigue así, recarga la página).', 'err', 8000);
+  }
+
   // Finaliza la primera carga: muestra la app e inicializa la UI
   // `confiable=false` pinta la app en modo lectura: S puede seguir en sus
   // valores por defecto, así que nada se guarda hasta que el servidor confirme
@@ -457,8 +466,12 @@ import { waitFor } from './wait-for-module.js';
     if(confiable) {
       setSyncStatus('ok', 'Sincronizado con Firebase');
     } else {
-      setSyncStatus('error', 'Sin confirmar con la nube — no se guarda nada por ahora');
-      if(typeof toast === 'function') toast('No se pudo confirmar tus datos con la nube. Los cambios no se guardarán hasta reconectar (si sigue así, recarga la página).', 'err', 8000);
+      // Con la caché vacía el PRIMER evento siempre es de caché y sin datos;
+      // lo normal es que el servidor confirme en menos de un segundo. Solo si
+      // pasa mucho tiempo sin confirmación se avisa (ver _avisarSinConfirmar).
+      setSyncStatus('syncing', 'Conectando con la nube…');
+      clearTimeout(window._syncConfirmTimer);
+      window._syncConfirmTimer = setTimeout(_avisarSinConfirmar, 8000);
     }
     // Notificar a módulos inline que los datos están listos.
     // Los scripts inline no pueden sobrescribir window._fbLoadData de forma confiable

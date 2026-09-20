@@ -1,5 +1,5 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v5';
+const VERSION = 'mis-finanzas-v6';
 
 const APP_SHELL = [
   '/mis-finanzas/',
@@ -41,12 +41,24 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // FIX (2026-09-19): Firestore y Auth NO pasan por el SW. El canal de
+  // escucha de Firestore (onSnapshot) es una respuesta larga que no termina
+  // hasta que el SDK la corta; clonarla para cache.put() dejaba la escritura
+  // de caché colgada y, al cortarse el stream, fallaba con "Cache.put()
+  // encountered a network error". Además el fallback de networkFirst
+  // respondía a una request de Firestore con una página HTML con status 200
+  // en vez de un error de red, que el SDK no sabe interpretar. Sin
+  // respondWith, el navegador las maneja normal y el SDK ve errores reales.
   if (
     url.includes('firestore.googleapis.com') ||
     url.includes('identitytoolkit.googleapis.com') ||
-    url.includes('securetoken.googleapis.com') ||
-    url.includes('www.gstatic.com/firebasejs')
+    url.includes('securetoken.googleapis.com')
   ) {
+    return;
+  }
+
+  // El SDK de Firebase (scripts completos, no streams) sí se cachea.
+  if (url.includes('www.gstatic.com/firebasejs')) {
     e.respondWith(networkFirst(e.request));
     return;
   }
@@ -59,14 +71,21 @@ self.addEventListener('fetch', e => {
   e.respondWith(staleWhileRevalidate(e.request));
 });
 
+// Escribir en caché es "mejor esfuerzo": si falla (respuesta cortada por una
+// recarga, sin conexión, cuota), no debe convertirse en un error sin manejar.
+function guardarEnCache(request, response) {
+  return caches.open(VERSION)
+    .then(cache => cache.put(request, response))
+    .catch(() => {});
+}
+
 async function cacheFirst(request) {
   const cached = await caches.match(request);
   if (cached) return cached;
   try {
     const response = await fetch(request);
     if (response.ok && request.url.startsWith('http')) {
-      const cache = await caches.open(VERSION);
-      cache.put(request, response.clone());
+      guardarEnCache(request, response.clone());
     }
     return response;
   } catch {
@@ -78,8 +97,7 @@ async function networkFirst(request) {
   try {
     const response = await fetch(request);
     if (response.ok && request.url.startsWith('http')) {
-      const cache = await caches.open(VERSION);
-      cache.put(request, response.clone());
+      guardarEnCache(request, response.clone());
     }
     return response;
   } catch {
@@ -99,8 +117,7 @@ async function staleWhileRevalidate(request) {
   const cached = await caches.match(request);
   const fetchPromise = fetch(request).then(response => {
     if (response.ok && request.url.startsWith('http')) {
-      const toCache = response.clone();
-      caches.open(VERSION).then(cache => cache.put(request, toCache));
+      guardarEnCache(request, response.clone());
     }
     return response;
   }).catch(() => cached);

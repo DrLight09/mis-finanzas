@@ -5,7 +5,7 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
       import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, deleteUser, reauthenticateWithPopup }
         from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-      import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, deleteDoc, onSnapshot }
+      import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, deleteDoc, onSnapshot, runTransaction }
         from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
       // NOTA DE SEGURIDAD: Esta API Key de Firebase es de dominio público por diseño
@@ -41,8 +41,11 @@
       });
       const provider = new GoogleAuthProvider();
 
-      // Exponer globalmente para que el código existente pueda usar
-      window._fb = { auth, db, provider, signInWithPopup, signOut, doc, getDoc, setDoc, deleteDoc, deleteUser, reauthenticateWithPopup, onAuthStateChanged, onSnapshot };
+      // Exponer globalmente para que el código existente pueda usar.
+      // runTransaction (2026-09-19): lo usa firebase-sync.js para leer el
+      // documento DIRECTO del servidor, sin pasar por la caché local ni por
+      // el listener (ver _leerDocEnServidor).
+      window._fb = { auth, db, provider, signInWithPopup, signOut, doc, getDoc, setDoc, deleteDoc, deleteUser, reauthenticateWithPopup, onAuthStateChanged, onSnapshot, runTransaction };
 
       // Escuchar estado de auth y arrancar la app
       //

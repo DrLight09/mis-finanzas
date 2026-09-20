@@ -305,17 +305,22 @@ import { waitFor } from './wait-for-module.js';
 
         if(_firstLoad) {
           const estadoCarga = _applyCloudData(snap);
-          const confiable = _cargaConfiable(estadoCarga, fromCache);
+          const confiable = _cargaConfiable(estadoCarga);
           console.log('[Sync] carga: estado=' + estadoCarga + ' confiable=' + confiable);
+          // "Sin documento" / "payload vacío" no se cree tal cual (ver
+          // _cargaConfiable): se verifica contra el servidor.
+          if(!window._dataLoaded && !_verificandoSinDoc && (estadoCarga === 'nodoc' || estadoCarga === 'empty')) {
+            _verificandoSinDoc = true;
+            _verificarSinDocumento().finally(() => { _verificandoSinDoc = false; });
+          }
           if(!_firstPaintDone) {
             // Primer pintado real — con lo que haya llegado primero (caché
             // o servidor). Esto es lo que baja el LCP: ya no se espera.
             _firstPaintDone = true;
             _finishFirstLoad(confiable);
           } else if(!fromCache) {
-            // Si el primer pintado fue en modo lectura (caché vacío sin
-            // servidor, ver _cargaConfiable), recién ahora que el servidor
-            // confirmó se habilita el guardado.
+            // Si el primer pintado fue en modo lectura, recién ahora que
+            // llegó un payload leído bien se habilita el guardado.
             if(confiable) { window._dataLoaded = true; clearTimeout(window._syncConfirmTimer); }
             // Ya pintamos con caché; esto es la confirmación del servidor
             // llegando después. Si trajo algo distinto ya se aplicó arriba
@@ -428,20 +433,66 @@ import { waitFor } from './wait-for-module.js';
 
   // FIX (2026-09-19) — la nube se pisaba con el estado por defecto tras
   // borrar el storage del navegador (DevTools > Application). Causa: con la
-  // caché de Firestore vacía, el primer evento de onSnapshot puede ser un
-  // snapshot de caché con exists()=false (si el SDK cree que está offline) o
-  // un error de listener. En ambos casos _finishFirstLoad() marcaba
-  // _dataLoaded=true con S todavía en sus valores por defecto y guardaba de
-  // inmediato — un setDoc sin merge que reemplaza el documento completo y
-  // que, una vez encolado en el SDK, no se cancela aunque después llegue el
-  // snapshot real del servidor. Ahora _dataLoaded solo pasa a true cuando S
-  // es de fiar: hubo un payload leído bien (caché o servidor), o el servidor
-  // confirmó que no hay documento (usuario nuevo). Un payload ilegible
-  // nunca cuenta como confiable, ni siquiera del servidor.
-  function _cargaConfiable(estado, fromCache) {
-    if(estado === 'applied') return true;
-    if(estado === 'parse-error') return false;
-    return !fromCache; // 'nodoc' / 'empty': solo creíble si lo confirmó el servidor
+  // caché de Firestore vacía o inconsistente, el listener puede decir "no hay
+  // documento" — y _finishFirstLoad() lo tomaba como una carga válida:
+  // marcaba _dataLoaded=true con S todavía por defecto y guardaba encima. Ese
+  // setDoc no usa merge, así que reemplaza el documento completo, y una vez
+  // encolado en el SDK no se cancela.
+  // Ojo: NO alcanza con exigir que el evento venga del servidor
+  // (fromCache=false). Se vio en consola un evento fromCache=false con
+  // exists()=false para un documento que SÍ existía en Firestore (caché local
+  // inconsistente tras "Clear site data"). Por eso "sin documento" nunca se
+  // cree tal cual: se verifica con una lectura directa al servidor
+  // (_verificarSinDocumento) antes de permitir guardar.
+  // Único veredicto confiable por sí solo: un payload leído bien.
+  function _cargaConfiable(estado) {
+    return estado === 'applied';
+  }
+
+  // Lectura autoritativa del documento: una transacción de solo lectura hace
+  // un BatchGetDocuments directo al servidor — no pasa por la caché local ni
+  // por el "target" del listener (que es lo que puede estar inconsistente).
+  async function _leerDocEnServidor() {
+    const {db, doc, runTransaction} = window._fb || {};
+    if(typeof runTransaction !== 'function') {
+      return {ok:false, error:'runTransaction no está expuesto (actualizar firebase-init.js)'};
+    }
+    if(!window._fbUser) return {ok:false, error:'sin usuario'};
+    try {
+      const ref = doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas');
+      const snap = await runTransaction(db, tx => tx.get(ref));
+      return {ok:true, snap};
+    } catch(e) {
+      return {ok:false, error:e};
+    }
+  }
+
+  // Se llama cuando el listener dice "sin documento" / "payload vacío".
+  // Solo se habilita el guardado con lo que diga el servidor de verdad:
+  //  · existe  → se aplica lo que trae (aunque el listener dijera lo contrario)
+  //  · no existe → usuario realmente nuevo: se puede guardar
+  //  · no se pudo verificar (offline, error) → sigue en modo lectura
+  let _verificandoSinDoc = false;
+  async function _verificarSinDocumento() {
+    const res = await _leerDocEnServidor();
+    if(window._dataLoaded) return; // mientras tanto llegó una carga confiable
+    if(!res.ok) {
+      console.warn('[Sync] No se pudo verificar el documento en el servidor — sigue en modo lectura:', res.error);
+      return;
+    }
+    if(res.snap.exists()) {
+      console.log('[Sync] Verificación: el documento SÍ existe en el servidor — aplicando sus datos.');
+      const estado = _applyCloudData(res.snap);
+      if(estado === 'parse-error') return; // payload ilegible: nunca guardar encima
+    } else {
+      console.log('[Sync] Verificación: el servidor confirma que no hay documento (usuario nuevo).');
+    }
+    window._dataLoaded = true;
+    clearTimeout(window._syncConfirmTimer);
+    (window.S&&window.S.cajitas||[]).forEach(c=>{ if(typeof materializarIntereses==='function') materializarIntereses(c); });
+    load(); refresh();
+    if(window.applyModulos) applyModulos();
+    setSyncStatus('ok', 'Sincronizado con Firebase');
   }
 
   // Aviso de "modo lectura": solo si de verdad no llegó la confirmación.

@@ -81,6 +81,248 @@ De paso, `guia-estilo-sheets.md` §3 quedó actualizada con 4 sheets que existí
 
 ## Infraestructura / seguridad
 
+### 🐛 Corregido (2026-09-20) — CI: `totalPrestadoPendiente.test.js` fallaba (2 tests, `Expected 300000, Actual 0`) tras mover `getDeudorSaldo()` a `calc-helpers.js`
+
+`totalPrestadoPendiente()` (`prestado.js`) llama a `getDeudorSaldo()` como global. Al moverla a `calc-helpers.js` (ver `CHANGELOG.md#inicio`), ese test —que cargaba solo `core-state.js` y `prestado.js` en modo `permissive`— dejó de tenerla: el `Proxy` fabrica un no-op que devuelve `undefined`, `saldo > 0` da falso y la suma queda en 0 **sin ningún error** (la trampa ya documentada del modo `permissive`). Fallaban los tests de las líneas 54 y 64; los demás pasaban porque no llaman a esa función. El aviso de GitHub "Node.js 20 is deprecated" no era la causa.
+
+Fix: `tests/totalPrestadoPendiente.test.js` carga ahora `core-state.js → calc-helpers.js → prestado.js`, el mismo orden que `index.html`. Reproducido con el `load-app.js` real (con un `core-state` mínimo de stand-in): `prestado.js` original 300.000; nuevo sin `calc-helpers.js` 0; nuevo con `calc-helpers.js` 300.000. Pasan los 6 tests que no necesitan el `core-state.js` real; los 2 de `calcPatrimonioTotal` de ese archivo quedan para confirmar en CI.
+
+`calcC-calcCDT.test.js` también carga `prestado.js`, pero no llama a `getDeudorSaldo()` (ese test no falló), así que no se tocó. `calcHealthScore.test.js` ya cargaba `calc-helpers.js`.
+
+**Regla para el futuro:** si una función se mueve a `calc-helpers.js`, todo test que cargue el archivo de origen y la use tiene que cargar también `calc-helpers.js`. En modo `permissive` la omisión no falla: da resultados en silencio.
+
+### ✨ Agregado (2026-09-20) — `js/core/fuentes-filtro.js`: un solo lugar para decidir qué cuentas se ofrecen cuando la plata SALE
+
+Los selectores "¿De dónde sale la plata?" listaban todas las cuentas sin importar si tenían saldo — invitando a elegir una cuenta vacía (o una TC sin cupo) y enterarse recién al confirmar. Cada módulo lo habría resuelto por su cuenta (ya existía `_alcFiltrarFuentesPorSaldo()` en Alcancía con umbral $50), así que se creó un archivo núcleo con la regla y los umbrales, en vez de repetirla en cinco módulos.
+
+`FuentesFiltro` (constante global, mismo estilo que `Events`) expone: `filtrar(fuentes, opts)`, `optsHtml(fuentes, opts)` (pasa la lista filtrada a `buildFuentesOptsHtml` vía `fuentesCustom`, sin modificarlo), `podar(select, opts)` (quita las opciones no utilizables de un `<select>` ya poblado por `poblarFuente`; patrón: `poblarFuente(id)` seguido de `FuentesFiltro.podar(id, ...)`), `utilizable(valor, opts)`, `tcConCupo(tc)`, `hayTCConCupo()` y `puedeMover(valor)`. Umbrales en `FuentesFiltro.MIN` / presets en `FuentesFiltro.PRESET`:
+
+| Flujo | Preset | Regla |
+|---|---|---|
+| Gastos, préstamos dados, transferencias, gasto fijo, "Yo debo → pagar" | `SALIDA` | cuenta con saldo ≥ $1,00; TC con cupo disponible ≥ $1,00 |
+| Pagar Spotify | `SPOTIFY` | cuenta con saldo ≥ $50,00; TC con cupo disponible ≥ $50,00 |
+| Pagar una TC | `PAGO_TC` | cuenta con saldo > $0 (se abona lo que sea), **efectivo ≥ $1.000**; nunca TC |
+
+Los valores que no son una cuenta (`''` = "Sin especificar", `'ganancia'`, `'__sin_especificar__'`) nunca se filtran. Se compara en centavos (`Math.round(x*100)`), no con floats. **No se usa en selects donde la plata ENTRA** (destinos de mesada, cobros de Spotify, abonos, "Sumar dinero", destino de Transferir): ahí filtrar por saldo impediría depositar en una cuenta vacía.
+
+`sheet-stack.js`: `openSheet('gasto-var')` — el único que puebla `gv_fuente` — ahora llama a `FuentesFiltro.podar('gv_fuente', ...)` justo después de `poblarFuente('gv_fuente', true)`.
+
+`index.html`: `<script src="js/core/fuentes-filtro.js" defer>` justo después de `calc-helpers.js` (usa `getSaldoFuente`/`buildFuentesOptsHtml` de `core-state.js` y `tcCupoDisponible`/`getTCById` de `calc-helpers.js`, pero solo al ser llamado). `sw.js` no necesitó cambios: su `APP_SHELL` solo lista `index.html` y el resto de archivos entra por `staleWhileRevalidate`.
+
+Validado con `node --check` y jsdom cargando el `core-state.js`/`calc-helpers.js` reales y el `openSheet` real de `sheet-stack.js` (bordes 0,99/1,00, 49,99/50,00, 999,99/1.000, TC sin cupo, escape de `label`, reabrir con saldo nuevo). **No probado en navegador real.**
+
+
+### ✅ Corregido — Un cambio hecho justo antes de salir de la app podía no llegar a la nube
+
+*(2026-09-19)*
+
+Un cambio no se sube "de una": `debounceSave` espera ~0,8 s y `_fbSaveToCloud` otros 1,5 s antes de empezar a escribir, más el tiempo de red. El único guardado de emergencia era `beforeunload` (`core-state.js`), que en celulares casi nunca se dispara al cambiar de app o cerrarla. Escenario concreto: hacer un cambio en el celular, salir enseguida y abrir la app en el PC — el cambio podía no haber salido todavía.
+
+Fix (`firebase-sync.js`): el cuerpo del guardado se extrajo a `_ejecutarGuardado()` para poder correrlo de inmediato; `_fbFlushSave()` lo ejecuta sin esperar el debounce, solo si hay un guardado pendiente. Se llama al pasar la página a segundo plano (`visibilitychange` → `hidden`) y en `pagehide`, con un guard de 1 s porque suelen llegar juntos. Si este dispositivo modificó algo (`_locallyModified`) se corre `save()` antes, por si el debounce corto no había disparado. Respeta `_dataLoaded`: en modo lectura no escribe.
+
+**Limitación conocida:** reduce la ventana de ~2,3 s a prácticamente cero, pero no lo garantiza — si el sistema congela la página antes de que termine el envío, la escritura queda en la cola local de Firestore y sale la próxima vez que se abra la app en ese dispositivo.
+
+### 🔧 Cambio — Firestore y Auth ya no pasan por el Service Worker (`sw.js` v6)
+
+*(2026-09-19)*
+
+El error `Cache.put() encountered a network error` venía de que `networkFirst` clonaba para caché las respuestas de Firestore, incluido el canal de escucha (`onSnapshot`), un stream largo que no termina hasta que el SDK lo corta. Además, el fallback de `networkFirst` respondía a una request de Firestore con una página HTML de "Sin conexión" con status 200, en vez de un error de red.
+
+Fix: Firestore, Identity Toolkit y SecureToken ya no pasan por el SW (sin `respondWith`); el SDK de `gstatic.com/firebasejs` se sigue cacheando con `networkFirst`. Todas las escrituras en caché usan `guardarEnCache()`, con `.catch`, para que un fallo de caché no salga como error sin manejar. `VERSION` sube a `mis-finanzas-v6`, lo que borra el caché v5 al activarse.
+
+### 🐛 Corregido (2026-09-10) — Colisión de nombres real: `alcancia.js` pisaba la función global `_initMoneyInput` de `money-input.js`
+
+Al auditar `js/modules/*` completo se buscaron nombres de función duplicados entre archivos (`grep` de `^function nombre` en los ~30 archivos del proyecto). Aparecieron dos: `_validarEstructuraJSON` (ya conocido — `import-validado.js` está fusionado dentro de `configuracion.js` desde el 2026-08-30, el archivo viejo es peso muerto ya documentado) y **`_initMoneyInput`, que sí era un bug real y activo**:
+
+- `js/core/money-input.js` define `function _initMoneyInput(el)` — toma el **elemento DOM** y siembra el buffer de dígitos (`_moneyDigits`) a partir de su valor actual. La llama internamente en cada `focusin` de cualquier `.money-input` de toda la app, y también la llama `tarjetas_credito.js`.
+- `js/modules/alcancia.js` definía **su propia** `function _initMoneyInput(id)` — firma incompatible, toma un **id de string**, busca el elemento y le engancha un listener completamente distinto (o el fallback de abajo).
+
+Al ser ambos `<script>` clásicos compartiendo el mismo scope global, cuando `alcancia.js` cargaba (lazy, al entrar a la pantalla Alcancía) su declaración de función **pisaba** la de `money-input.js` — sin ningún error, `function` duplicada en el mismo scope simplemente gana la que se ejecuta/parsea después. A partir de ahí, el `focusin` global de `money-input.js` (usado por *todos* los inputs de plata de la app, no solo los de Alcancía) empezaba a llamar a la función de Alcancía en su lugar, pasándole un elemento DOM donde esa función espera un string. `document.getElementById(elementoDOM)` no encuentra nada → la función no hace nada → el buffer de dígitos nunca se inicializa.
+
+**Efecto real, no cosmético:** cualquier input de plata que ya tuviera un valor cargado (el caso típico: abrir "editar" sobre un gasto/préstamo/tarjeta ya existente) mostraba `0,00` al primer click en vez de conservar el valor — silenciosamente, sin ningún error en consola. Bug latente desde que existe `alcancia.js`, activo para el resto de la sesión desde el momento en que el usuario visita Alcancía una sola vez.
+
+**Fix:** se renombró la función de `alcancia.js` a `_alcInitMoneyInput` (y sus 4 llamadas internas) — nombre namespaced, cero relación real con la de `money-input.js` más allá de la coincidencia de nombre. Sin cambios de comportamiento en Alcancía misma.
+
+**Hallazgo aparte, no corregido:** `alcancia.js` llama a `moneyInputAttach(el)` en 5 lugares, pero esa función **no está definida en ningún archivo del proyecto** — `typeof moneyInputAttach === 'function'` siempre da `false`, así que Alcancía siempre tomó la rama de *fallback* (un parser simplificado con `replace`/`parseFloat`, sin el formateo estilo calculadora del resto de la app). Es una inconsistencia de UX preexistente, no una colisión de scope — se documentó en el propio archivo pero no se tocó, porque arreglarla cambiaría el comportamiento visible de esos 4 inputs y conviene decidirlo aparte, no de paso.
+
+**Resto del barrido de `js/modules/*` + `styles.css` + `sw.js`:**
+- `analisis.js`, `configuracion.js`, `cuentas.js`, `gastos.js`, `mesada.js`, `personas.js`, `wrapped.js`: sin wraps manuales de `refresh`/`openSheet`/`showScreen`/`applyModulos` (no había nada que migrar a `hookGlobal()` en estos 7), sin más nombres de función duplicados, sin `navTo()` real (solo menciones en comentarios), sin selectores de color propios sin migrar a `marcarColorSeleccionado()` (`cuentas.js` ya lo usa), sin interpolación de texto libre sin escapar en `toast()`/`.innerHTML` detectada por heurística (`err.message`, `_motivo`, `fmt(...)`, valores numéricos — nada de texto libre de usuario).
+- `styles.css`: nota menor, no corregida — `.overlay` define `backdrop-filter` dos veces (línea ~132: `blur(4px)`; línea ~450, comentario "Overlay de sheet con mejor blur": `blur(6px)`). La segunda gana en cascada por igual especificidad — la primera queda muerta. Cosmético, cero riesgo, se deja anotado como candidato de limpieza opcional.
+- `sw.js`: revisado completo, sin hallazgos — versión de caché, estrategias razonables por tipo de recurso (`cacheFirst` para fuentes, `networkFirst` para Firestore/auth/HTML, `staleWhileRevalidate` para el resto).
+
+**También aprovechado de paso:** `plata_comprometida.js` ya tenía otro wrap manual sin migrar, de `window.renderAttencion` (no era duplicación real — único archivo que lo hacía — pero sí tenía el mismo problema de encimada silenciosa que el de `refresh()` migrado en la entrada anterior: si `window.renderAttencion` no existía todavía, el guard `typeof` no reintentaba nada). Se migró a `hookGlobal('renderAttencion', fn)` por la misma razón de robustez, aunque no hubiera triplicación que justificarlo por sí sola.
+
+Validado con `node --check` en `alcancia.js` y `plata_comprometida.js`.
+
+---
+
+### ✅ Corregido (2026-09-10) — El mismo patrón de `hookGlobal()` estaba repetido 9 veces más, ahora en `js/modules/`
+
+Al recibir el resto de los módulos (`js/modules/*`, `css/styles.css`, `sw.js`) se auditó si el patrón que motivó `hookGlobal()` (ver entrada de más arriba) aparecía también fuera de `js/core/`. Aparecía — 9 veces, en 6 archivos, para 3 funciones globales distintas:
+
+| Archivo | Función envuelta |
+|---|---|
+| `actividad_reciente.js` | `refresh` |
+| `encargos.js` | `refresh` y `openSheet` |
+| `inicio.js` | `refresh` |
+| `plata_comprometida.js` | `refresh` |
+| `alcancia.js` | `openSheet` y `showScreen` |
+| `spotify.js` | `openSheet` |
+
+**Falsa alarma descartada en el camino, documentada por transparencia:** al buscar callers de `_cpInit()` (plata_comprometida.js) con `grep "_cpInit("` no apareció ninguno, lo que por un momento pareció código muerto. Era un error de método: se llama vía `setTimeout(_cpInit, 400)`, pasando la función como referencia sin paréntesis — un grep que exige el paréntesis literal no lo encuentra. Sí tiene caller (dos, por `DOMContentLoaded` y `appDataLoaded`, mismo patrón defensivo de doble disparo que ya usa `personas-init.js`). Se corrigió el método de búsqueda antes de reportar nada al respecto.
+
+**8 de los 9 se migraron a `hookGlobal()`** — mismo cambio mecánico que en la entrada anterior, sin alterar la lógica de cada uno. Caso especial en `plata_comprometida.js`: su wrap de `refresh` tenía un guard `typeof` que, si `window.refresh` no existía todavía en ese momento, simplemente no enganchaba nada — en silencio, para siempre, sin reintento. En la práctica nunca fallaba (el wrap corre dentro de `_cpInit()`, disparado con `setTimeout` sobre `DOMContentLoaded`/`appDataLoaded`, mucho después de que `refresh()` ya exista), pero `hookGlobal()` cierra ese caso límite de encimada: si alguna vez no existiera, esperaría con `waitFor()` en vez de rendirse.
+
+**1 de los 9 se dejó sin migrar a propósito — `prestado.js` (`openSheet`):** su wrap tiene un `return` temprano para `id === 'nueva-persona'` que evita a propósito que corra el `openSheet` real (que abriría el sheet genérico `#sheet-nueva-persona`), porque este módulo quiere mostrar un selector de personas existentes (`abrirSelPersona`) en su lugar. `hookGlobal()` siempre llama a la función original y DESPUÉS a la nueva — no tiene forma de saltarse la original — así que forzar este caso a `hookGlobal()` habría abierto los dos overlays a la vez. Se dejó el wrap manual, documentado en el propio archivo como decisión, no como deuda pendiente.
+
+**Nota aparte, no migrada:** `plata_comprometida.js` también envuelve `window.renderAttencion` (línea ~1831) con el mismo patrón manual + guard `typeof` sin reintento. No se tocó porque es un caso aislado — a diferencia de `refresh`/`openSheet`/`showScreen`, ningún otro archivo envuelve `renderAttencion`, así que no hay duplicación real que `hookGlobal()` esté resolviendo ahí, solo se ganaría la red de seguridad del reintento. Queda como candidato opcional, no como hallazgo urgente.
+
+Cambio en `index.html`: el comentario de `hook-global.js` se generalizó (antes nombraba archivo por archivo; ahora dice "y varios módulos lazy" con puntero a esta entrada) para no quedar desactualizado cada vez que un módulo nuevo lo adopte.
+
+Validado con `node --check` en los 6 archivos convertidos y en `prestado.js` (sin cambios de lógica, solo comentario).
+
+---
+
+### ✅ Corregido (2026-09-10) — `navTo()`/`nav.js` retirados: un solo caller real, duplicaba `showScreen()`
+
+Al confirmar quién llamaba a `navTo()` (nav.js) se encontró que su único caller real era `tarjetas_credito.js` (botón "Ver todo", `Events.on('tarjetas:verTodo', () => navTo('tarjetas'))`) — el propio comentario de `nav.js` ya lo documentaba ("hoy el único caller real de navTo('tarjetas') es el propio tarjetas_credito.js"). No código muerto, pero sí una duplicación real: `navTo()` y `showScreen()` (`sheet-stack.js`) hacen básicamente lo mismo (togglear `.screen`/`.nav-item`, resetear scroll), pero evolucionaron por separado — `showScreen()` acumuló integración con `lazy-loader.js`, reset de estado de Préstamos y hooks post-navegación (config/análisis/wrapped/personas) que `navTo()` nunca tuvo; a cambio, `navTo()` cerraba el menú "Más" inline, algo que `showScreen()` delega a cada caller (ej. `mas-menu.js` llama `closeMas()` antes de `showScreen()`).
+
+Sin código nuevo en `showScreen()`, el único caller real de `navTo()` no rompía nada hoy (`tarjetas_credito.js` ya estaba cargado cuando se disparaba), pero quedaba expuesto a que cualquier lógica nueva agregada a `showScreen()` en el futuro nunca llegara a esa pantalla vía ese caller.
+
+**Fix:** `tarjetas_credito.js` cambió su handler `verTodo` de `() => navTo('tarjetas')` a `() => { closeMas(); showScreen('tarjetas'); }` — mismo patrón que ya usa `mas-menu.js` para sus propios ítems. Con eso, `navTo()` quedó sin ningún caller conocido y se retiró junto con `js/core/nav.js` (el `<script>` en `index.html` y el archivo en sí).
+
+**Advertencia de alcance:** la confirmación de "único caller real" en el comentario original de `nav.js` estaba acotada a `navTo('tarjetas')` específicamente, no a `navTo()` en general — no se auditaron los ~28 archivos de `js/core`/`js/modules` buscando otros usos con otro nombre de pantalla. Se recomienda un `grep -rn "navTo("` sobre el repo completo antes de dar este retiro por definitivo en producción.
+
+Cambios: `tarjetas_credito.js` (handler + comentario de cabecera), `index.html` (se retira `<script src="js/core/nav.js" defer>`, se actualiza el conteo de "16→14 archivos" en la nota de `personas.js`), `mis-finanzas.md` (fila de `nav.js` marcada como retirada en la tabla de estructura).
+
+Validado con `node --check` en `tarjetas_credito.js`.
+
+---
+
+### ✅ Corregido (2026-09-10) — `mejoras.js` + `mejoras-adicionales.js` eran la parte 1 y la parte 2 del mismo bloque, fusionados en un solo archivo
+
+Mismo caso que la fusión de `sheet-swipe.js` + `sheet-viewport.js` en `sheet-behavior.js` (ver entrada de abajo, 2026-09-08): los propios encabezados de cada archivo lo decían explícitamente —
+
+```
+mejoras.js:            // "MEJORAS ADICIONALES" (parte 1): ocultar saldos, hook de refresh...
+mejoras-adicionales.js: // "MEJORAS ADICIONALES" (parte 2): registro de Service Worker...
+```
+
+— dos mitades de un mismo bloque original, separadas solo por el corte arbitrario de la sesión de extracción, no por ninguna diferencia real de responsabilidad. Además el nombre confundía: `mejoras.js` y `mejoras-adicionales.js` sonaban como si fueran conceptos distintos, cuando el primero también se autodenominaba "MEJORAS ADICIONALES" en su propio comentario.
+
+No había ninguna dependencia de orden de carga real entre las dos mitades (cada sección depende de cosas ya definidas por otros archivos — `hookGlobal`, DOM, `S` — nunca de una sección de la otra mitad), así que fusionarlas fue seguro.
+
+**Se conserva el nombre `mejoras-adicionales.js`** (coincide con el título real de la sección en `index.html`, "MEJORAS ADICIONALES: Service Worker, Gestos, Undo/Redo") y se retira `mejoras.js`. Contenido: igual que antes, concatenado — las secciones conservan su numeración original de cada mitad (1, 1b, 2, 3, 4, 6, 7, 8, 9, 10 de `mejoras.js`, seguidas de Service Worker/Autofocus/Aria-labels de `mejoras-adicionales.js`), sin renumerar a una secuencia continua — mismo criterio que se usó con `sheet-behavior.js`. De paso se aclaró un comentario ambiguo: "NAVEGACIÓN POR GESTOS — manejado por makeSwipeable() (sección 7)" hacía referencia a la sección 7 de `sheet-behavior.js`, no a la sección 7 de este archivo (que es "EXPORTAR CSV: migrado...") — confusión preexistente entre dos numeraciones independientes, ahora con una nota explícita.
+
+**Cambios en `index.html`:** se retira el `<script src="js/core/mejoras.js" defer>`; solo queda `<script src="js/core/mejoras-adicionales.js" defer>`, en la posición donde antes cargaba `mejoras.js` (justo antes de `busqueda-global.js`). Se actualizaron los 3 comentarios que mencionaban ambos nombres por separado (bloque de `wait-for.js`/`hook-global.js`, la lista de "16 archivos auditados" cerca de `personas.js` — ahora 15 — y la nota de auditoría de `cuentas` lazy).
+
+**Otros archivos con referencias actualizadas** (comentarios, no lógica): `core-state.js` (dónde se envuelve `refresh()`), `lazy-loader.js` y `personas-init.js` (notas de auditorías/consolidaciones pasadas, aclarando que los dos nombres mencionados ahí ya son un solo archivo), `wait-for.js` (la lista de consumidores directos de `waitFor()` ya no incluía a `mejoras.js`/`mejoras-adicionales.js` desde la consolidación en `hookGlobal()` de la entrada anterior — se corrigió para reflejar que hoy los únicos consumidores directos del `waitFor()` clásico son `personas-init.js` y `js/core/hook-global.js`).
+
+Las entradas de este mismo `CHANGELOG.md` anteriores a esta fecha que mencionan `mejoras.js`/`mejoras-adicionales.js` como dos archivos separados **no se reescribieron** — describen hechos ciertos en el momento en que ocurrieron (mismo criterio ya aplicado con `sheet-swipe.js`/`sheet-viewport.js` tras esa fusión).
+
+Validado con `node --check` en los 5 archivos clásicos tocados.
+
+---
+
+### ✅ Corregido (2026-09-10) — Patrón "capturar función global + envolver + esperar si no existe" estaba repetido en 5 sitios, consolidado en `hookGlobal()`
+
+Mismo tipo de triplicación que ya se cerró con `waitFor()` (ver entradas de abajo, 2026-09-07) y con `crearSplitWidget()` en `split.js`, pero para el paso siguiente: no solo "esperar hasta que una función exista", sino "envolverla sin pisar lo que ya hacía, preservando `this`/`arguments`, y sin perder de vista que puede que aún no exista". Encontrado al auditar los wraps manuales de `window.refresh`, `window.openSheet` y `window.applyModulos`:
+
+- `gastos-fijos-progress.js` envolvía `window.refresh` a mano, asumiendo sin guard que ya existía en ese punto (cierto solo por el orden de `<script>` en `index.html`, no una garantía real).
+- `mejoras.js` tenía la misma receta pero con guard `typeof` + `waitFor()` explícito (~10 líneas) para el mismo `window.refresh`.
+- `pin-bio.js` (`type="module" async`) reimplementaba la misma receta una tercera vez, con dos ramas casi idénticas según si `window.refresh` ya existía o había que esperarlo — y solo una de las dos ramas hacía un render inicial del botón, inconsistencia menor sin ningún motivo real detrás.
+- `mejoras-adicionales.js` repetía el patrón completo para `window.openSheet` (con guard + `waitFor()` + `console.warn`), y de paso tenía un bug latente sin efecto real: comparaba `window.openSheet !== arguments.callee` dentro de una arrow function, donde `arguments.callee` apuntaba al IIFE completo del archivo, no a la función interna — la comparación nunca hacía lo que parecía.
+- `mas-menu.js` repetía el mismo patrón una quinta vez para `window.applyModulos`, sin guard alguno (asumía carga síncrona ya resuelta).
+
+**Se evaluó reusar `Events` (`js/core/events.js`) para esto y se descartó a propósito**: `Events.on(accion, handler)` guarda un único handler por nombre de acción y **avisa + pisa** si se registra dos veces la misma acción — correcto para su propósito (un click, un handler), pero exactamente lo contrario de lo que hace falta acá (varios módulos independientes suscritos al mismo `refresh()` sin pisarse). Forzar `Events` a servir ambos casos habría mezclado responsabilidades que el propio archivo dice explícitamente que no quiere mezclar.
+
+**Solución:** `js/core/hook-global.js` (nuevo, `<script defer>` clásico) expone `hookGlobal(name, fn, opts)`: si `window[name]` ya es función la envuelve de inmediato, si no espera con `waitFor()` (mismas `opts`) y envuelve apenas aparezca — en los dos casos `fn` recibe los mismos argumentos que recibió `window[name]`. Mismo split classic/module que ya existe entre `wait-for.js`/`wait-for-module.js` y por el mismo motivo (un `async` module no tiene garantía de orden frente a un `<script defer>`): se agregó `js/core/hook-global-module.js` (ES module, `export function hookGlobal`) para `pin-bio.js`, que lo importa junto con `waitFor` de `wait-for-module.js`.
+
+Los 5 archivos consumidores pasaron de reimplementar la receta a una sola llamada:
+- `gastos-fijos-progress.js`: `hookGlobal('refresh', updateFijosProgress)`
+- `mejoras.js`: `hookGlobal('refresh', _renderMejoras, { intervalMs: 100 })`
+- `mejoras-adicionales.js`: `hookGlobal('openSheet', fn, { intervalMs: 100 })` — de paso se eliminó el bug latente de `arguments.callee` (waitFor ya cubre "esperar hasta que exista" con su propio `checkFn`).
+- `mas-menu.js`: `hookGlobal('applyModulos', fn)`
+- `pin-bio.js`: `hookGlobal('refresh', _renderBtn)` + una llamada a `_renderBtn()` fuera del hook. Cambio de comportamiento menor e intencional: antes solo la rama "había que esperar" hacía un render inicial; ahora las dos rutas lo hacen siempre (idempotente, no cambia nada visible).
+
+Cambio en `index.html`: un `<script src="js/core/hook-global.js" defer>` nuevo, justo después de `wait-for.js`. `hook-global-module.js` no tiene `<script>` propio — igual que `wait-for-module.js`, solo existe como dependencia vía `import`.
+
+Impacto medido en tamaño: las líneas de código real (sin contar comentarios/blancos) de los 5 archivos consumidores bajaron de 674 a 633 líneas combinadas (−41); los dos archivos nuevos suman 35 líneas de código real. Neto: prácticamente plano en código real, con dos archivos más en el árbol — el costo no es de peso, es un archivo más que conocer al leer el orden de carga (mismo trade-off ya aceptado con el split `wait-for.js`/`wait-for-module.js`).
+
+Validado con `node --check` en los 5 archivos clásicos y con `node --check --input-type=module` en los 2 archivos ES module.
+
+---
+
+### ✅ Mejorado (2026-09-08) — `onGiveUp` con `console.warn` en los 2 de 8 llamados a `waitFor()` que sí pueden agotar intentos
+
+De los 8 sitios consolidados en `waitFor()` (ver entradas de abajo), solo 2 tienen `maxAttempts` finito — `personas-init.js` (25 intentos, ~5s) y `alcancia.js` (40 intentos, ~12s). Los otros 6 reintentan para siempre (`mejoras.js`, `mejoras-adicionales.js`, `pin-bio.js` ×2, `firebase-sync.js` ×2), así que un `onGiveUp` ahí nunca llegaría a dispararse — no se les agregó, a propósito: forzarles un tope solo para que `onGiveUp` "sirviera" habría sido cambiar su comportamiento real (de reintento infinito a reintento con límite), un cambio de política distinto y con su propio riesgo, no una mejora de logging gratis.
+
+Antes, si `personas-init.js` o `alcancia.js` agotaban sus intentos sin que la condición esperada se cumpliera, la falla era 100% silenciosa — ningún rastro en consola, solo el efecto (sheets de personas nunca inyectados / Alcancía nunca inicializada) sin ninguna pista de por qué. Se agregó `onGiveUp: () => console.warn(...)` a esos dos llamados únicamente. No cambia el camino exitoso en absoluto — solo agrega una rama que antes no existía, para el único escenario que hoy fallaba sin dejar ninguna huella.
+
+Validado con `node --check` en ambos archivos.
+
+### ✅ Corregido (2026-09-08) — `sheet-swipe.js` + `sheet-viewport.js` fusionados en `sheet-behavior.js`
+
+Recomendado en la discusión de esa sesión sobre qué archivos de `js/core/` convenía unir, y aplicado después. Los dos eran mitades de la misma lista numerada de comentarios original ("2. SHEET SWIPE-TO-CLOSE", "3. SCROLL INTO VIEW...", "3b. VISUAL VIEWPORT...", "5. CAJITAS COLAPSABLES", "6. ATENCIÓN section", "7. SWIPE TO CLOSE") — no una separación real de responsabilidad, sino el corte arbitrario de la sesión de extracción original. Ambos tratan el mismo objeto conceptual (comportamiento de un `.sheet`/`.overlay` una vez abierto: gesto de cierre por swipe, reposicionamiento con teclado en Android, scroll-into-view al enfocar un input), y ninguno tenía restricción de orden de carga real más allá de necesitar `closeSheet` (`sheet-stack.js`) ya definida.
+
+`sheet-stack.js` NO se tocó — tiene restricción de orden de carga documentada y frágil, fusionar algo ahí habría sumado riesgo sin necesidad real.
+
+Cambios en el repo: se borraron `js/core/sheet-swipe.js` y `js/core/sheet-viewport.js`, se agregó `js/core/sheet-behavior.js` (nuevo). En `index.html`, los dos `<script src="js/core/sheet-swipe.js" defer>` / `<script src="js/core/sheet-viewport.js" defer>` se reemplazaron por un solo `<script src="js/core/sheet-behavior.js" defer>`, en la misma posición relativa (antes de `gastos-fijos-progress.js`, después de `mas-menu.js`). También se actualizó el comentario que listaba los 16 archivos auditados para el orden de carga de `personas.js` (mencionaba los dos nombres viejos por nombre).
+
+Validado con `node --check` sobre el archivo fusionado.
+
+### 🐛 Corregido (2026-09-08) — 8ª copia del mismo patrón sin detectar, en `alcancia.js` (`js/modules/`)
+
+Las entradas de abajo sobre la consolidación de `waitFor()` declararon el barrido "completo" y "cero copias en todo el proyecto" sin haber revisado `js/modules/` todavía (solo se tenían subidos los archivos de `js/core/` en ese momento). Al revisar los 14 archivos de `js/modules/` apareció una 8ª copia manual del mismo patrón, en el fallback de arranque de `alcancia.js`:
+
+```js
+let _alcTries = 0;
+const _alcPoll = setInterval(()=>{
+  _alcTries++;
+  if(window.S && window._dataLoaded){ clearInterval(_alcPoll); _alcanciaInit(); }
+  else if(_alcTries > 40) clearInterval(_alcPoll);
+}, 300);
+```
+
+Migrada a `waitFor(() => window.S && window._dataLoaded, _alcanciaInit, { intervalMs: 300, maxAttempts: 40 })`, mismo intervalo y tope que tenía. `alcancia.js` carga vía `lazy-loader.js` (script clásico inyectado dinámicamente con `document.createElement`, mucho después de que `wait-for.js` — `<script defer>` del HTML inicial — ya terminó de correr), así que usa `waitFor()` como global sin ningún riesgo de la carrera que sí aplica a `pin-bio.js`/`firebase-sync.js` (ver entradas de abajo).
+
+Barrido real y completo esta vez, `js/core/` + los 14 archivos de `js/modules/`: cero ocurrencias de `setInterval`/`setTimeout` recursivo del patrón "reintentar hasta que exista" en todo el código (no en comentarios). La única ocurrencia real de `setInterval` que queda en el proyecto es el autosave legítimo de `bootstrap.js` (cada 60s, no es del mismo patrón). Validado con `node --check`.
+
+### 🐛 Corregido (2026-09-07/08, misma sesión) — `ReferenceError`/`SyntaxError` en producción por el diseño de la consolidación de `waitFor()`, corregidos en dos pasadas
+
+**Primer bug:** la primera consolidación de los 4 reintentos async (`pin-bio.js`/`firebase-sync.js`, ver entrada de abajo) unificó `js/core/wait-for.js` en un solo archivo híbrido: `export function waitFor(...)` (para que esos dos lo importaran con `import`) más `window.waitFor = waitFor` al final (para que `personas-init.js`/`mejoras.js`/`mejoras-adicionales.js` lo siguieran llamando como global, vía `<script type="module">` sin `defer`). En producción, `personas-init.js` reventó con `ReferenceError: waitFor is not defined` — el global no estaba listo cuando ese `<script defer>` clásico corrió, pese a que `wait-for.js` aparece antes en el documento.
+
+No se persiguió la causa exacta (candidatos: los módulos y los `defer` clásicos no comparten realmente la misma cola de ejecución ordenada pese a lo que sugiere la especificación, un 404 puntual de despliegue, o ambos) porque no hacía falta — la solución correcta no es entender ni depender de esa garantía cruzada, es no necesitarla. Se separó en dos archivos que no comparten ninguna suposición de orden entre sí:
+
+- `js/core/wait-for.js` — vuelve a ser un `<script defer>` clásico simple (`function waitFor(...)`, sin `export`). Usado por `personas-init.js`/`mejoras.js`/`mejoras-adicionales.js`.
+- `js/core/wait-for-module.js` (nuevo) — la misma función, pero como ES module de verdad (`export function waitFor`), consumida con `import { waitFor } from './wait-for-module.js'` solo desde `pin-bio.js`/`firebase-sync.js`. No tiene `<script>` propio en `index.html` — solo existe como dependencia de esos dos módulos.
+
+**Segundo bug (despliegue parcial del primer fix):** tras aplicar la corrección de arriba, el usuario reportó `Uncaught SyntaxError: The requested module './wait-for.js' does not provide an export named 'waitFor'` en `pin-bio.js`/`firebase-sync.js`. Causa: se había actualizado `wait-for.js` (correcto, ya sin `export`) pero los `import` de `pin-bio.js`/`firebase-sync.js` seguían apuntando al nombre de archivo viejo (`'./wait-for.js'`) en vez de al nuevo (`'./wait-for-module.js'`) — archivos actualizados a medias, no un bug de diseño nuevo. Se corrigieron ambos `import` para apuntar a `./wait-for-module.js`.
+
+Es la misma función de 15 líneas escrita dos veces, a propósito: preferible a una unificación "inteligente" que ya demostró romperse en producción. Validado con una simulación en `vm` de Node que reproduce fielmente dos `<script>` clásicos compartiendo el mismo contexto global (a diferencia de `require()`, que aísla cada archivo y no es representativa de cómo el navegador comparte `window` entre scripts) — confirmó que `wait-for.js` funciona como global sin `import`; y con una prueba de `import` real para `wait-for-module.js`.
+
+### ✅ Corregido (2026-09-07, misma sesión) — Cierre completo: los 4 reintentos restantes de `pin-bio.js`/`firebase-sync.js` también consolidados, vía `import` de ES module
+
+La entrada de abajo dejó **a propósito** sin migrar 4 reintentos más del mismo patrón — 2 en `pin-bio.js` (registro de `Events('pin', ...)`, hook de `refresh()`) y 2 en `firebase-sync.js` (`_runWhenEventListenersReady`, registro de `Events('authgate', ...)`) — porque ambos archivos cargan `type="module" async`, sin garantía de orden frente al `<script defer>` que carga `wait-for.js`. Depender de un `waitFor` global en ese contexto podía cambiar el polling duplicado por un `ReferenceError` intermitente si `wait-for.js` no había terminado de cargar todavía.
+
+Se migraron los 4 a `waitFor()` importado con `import` de ES module — ver la entrada de arriba para el diseño final (dos archivos independientes, `wait-for.js` + `wait-for-module.js`); el primer intento de hacerlo con un solo archivo híbrido rompió en producción y se corrigió en la misma sesión.
+
+Validado: `node --check` en los 3 archivos `defer`, chequeo de sintaxis ESM en `wait-for-module.js`/`pin-bio.js`/`firebase-sync.js`, y simulaciones reales en Node de ambos caminos (global vía `vm` compartiendo contexto, e `import` real).
+
+### ✅ Corregido (2026-09-07) — Patrón "reintentar hasta que la función exista" estaba triplicado a mano, consolidado en `waitFor()`
+
+El mismo patrón (`setInterval`/`setTimeout` recursivo + criterio propio de cuándo rendirse) estaba reimplementado por separado en tres archivos:
+
+- `personas-init.js` (`_intentarInyectarPersonaSheets` — recursión con contador, tope 25 intentos / 200ms)
+- `mejoras.js` (polling de `window.refresh` — `setInterval` cada 100ms, sin tope)
+- `mejoras-adicionales.js` (retry de `window.openSheet` — `setInterval` cada 100ms, sin tope)
+
+No era un bug activo (cada copia funcionaba bien por separado), pero es la misma categoría de riesgo que ya se documentó acá mismo con `window.Events`: la misma idea escrita a mano N veces, cada una con su propio intervalo/tope, sin una sola fuente de verdad — fácil de arreglar en una copia y olvidarse de las otras el día que haga falta.
+
+Fix: nuevo `js/core/wait-for.js` con `waitFor(checkFn, callback, { intervalMs, maxAttempts, onGiveUp })`, cargado `defer` justo después de `calc-helpers.js` (sin dependencias, disponible para cualquier `defer` posterior). Los tres archivos de arriba ahora llaman a `waitFor()` en vez de reimplementar el loop. De paso se encontró y se sacó un bug latente sin efecto real en `mejoras-adicionales.js`: la condición vieja comparaba `window.openSheet !== arguments.callee` dentro de un arrow function — ahí `arguments.callee` apunta al IIFE que envuelve todo el archivo, no a la función interna, así que esa comparación nunca hacía lo que parecía.
+
+Validado con `node --check` en los 4 archivos tocados.
+
 ### ✅ Corregido (2026-09-01) — `core-state.js`: módulos nuevos de protección por antigüedad nunca llegaban a cuentas con datos ya guardados
 
 Al agregar protección por antigüedad a Alcancía y Plata Comprometida (ver `CHANGELOG.md#alcancía` y `CHANGELOG.md#plata-comprometida`), esas dos claves de módulo nuevas (`alcancia`, `plata_comprometida`) se agregaron primero solo al objeto `S` inicial — pero el `load()` real que corre en cada carga de datos guardados tenía esta guarda:
@@ -602,6 +844,15 @@ Fix: agregado el mismo guard de pantalla activa que ya usa `refresh()`, como con
 
 ## Spotify
 
+### 🔧 Cambio (2026-09-20) — `spNombreDe()` y `spPersonaPagadaVigente()` se movieron a `js/core/calc-helpers.js`
+
+Mismo motivo que `getDeudorSaldo()` (avisos "Cobro Spotify de X vencido" de "Necesita atención" en el primer render). Siguen siendo globales; `spotify.js` ya no las define. Detalle en `CHANGELOG.md#inicio`.
+
+### ✨ Agregado (2026-09-20) — "Pagar Spotify" solo ofrece cuentas con saldo ≥ $50 y TC con cupo
+
+`openSheet_pagarSpotify()` filtra `spPagarFuente` con `FuentesFiltro.PRESET.SPOTIFY` (cuenta con saldo ≥ $50,00; TC con cupo ≥ $50,00). "Sin especificar" se mantiene. Si la cajita de Spotify no llega al mínimo, ya no se preselecciona. El split de **pago** (`spp`) pasó a usar `_spPagarSplitFuentesOpts()`, aparte de `_spSplitFuentesOpts()` **a propósito**: esa la comparte el split de **cobro** (`spc`), donde la plata entra y una cuenta vacía es un destino válido — filtrarla por saldo habría roto el cobro.
+
+
 ### ✅ Corregido — Los abonos de "lo pendiente" quedaban invisibles en toda la app
 
 Reportado por el usuario con un caso real: un integrante dio $3.500 de su cuota, quedó debiendo $1.500, y tres días después dio esos $1.500 — pero a una cuenta distinta a la del cobro original. Esa plata sí subía el saldo real (`sumarFuente`), pero no había forma de verla en ningún lado: ni en el historial de Spotify, ni en el historial de ninguna cuenta.
@@ -731,6 +982,13 @@ Cuando `calcHealthScore()` no dispara ningún tip específico (score en el rango
 ---
 
 ## Tarjetas de crédito
+
+### ✨ Agregado (2026-09-20) — El cupo de una TC es obligatorio; "Pagar TC" solo ofrece cuentas con saldo (> $0, efectivo ≥ $1.000)
+
+- **Cupo obligatorio:** `guardarTC()` rechaza crear o editar una tarjeta sin cupo (o con cupo ≤ 0) y enfoca el campo; el label del formulario lleva el asterisco rojo. Motivo: los selectores de "de dónde sale la plata" (Gastos, Pagar gasto fijo, Pagar Spotify, Préstamo con TC) solo ofrecen una TC si tiene cupo disponible (`FuentesFiltro.tcConCupo`), y sin cupo configurado no hay forma de saber cuánto se le puede cargar. Hasta hoy una TC sin cupo se trataba como "sin límite" (`getSaldoFuente` devuelve 999999999 — **no se tocó**, es núcleo, y otros módulos que no usan `FuentesFiltro` siguen leyéndolo así).
+- **Tarjetas sin cupo (hoy no existe ninguna):** si alguna apareciera, dejaría de mostrarse en esos selectores (cupo disponible = 0) hasta que se edite y se le ponga cupo; el formulario de edición lo exige aunque solo se quiera, por ejemplo, cambiar el estado.
+- **"Pagar TC" (`ptc_fuente`):** solo ofrece cuentas con saldo > $0 — se puede abonar cualquier monto —, salvo **efectivo, que exige ≥ $1.000** (`FuentesFiltro.PRESET.PAGO_TC`). Sin cuentas utilizables muestra "No tenés cuentas con saldo disponible".
+
 
 ### ✅ Corregido — `calcDeudaAjenaDeTarjeta` no contaba las compras marcadas `_esFavor`
 
@@ -917,6 +1175,74 @@ A diferencia de Proyección financiera, `calcHealthScore()` nunca muestra el mon
 
 Validado con `node --check`. **Sin verificar en navegador real.**
 
+---
+
+## Arranque
+
+### ✅ Cambiado (2026-09-20) — Firebase Auth ya no carga el iframe ni gapi en el arranque normal (`initializeAuth` sin `popupRedirectResolver` + marca `mf_auth_hint`)
+
+Con `getAuth()` el SDK arranca con `popupRedirectResolver` y, en CADA carga —aunque el usuario ya tenga sesión y nunca vaya a abrir un popup—, baja `auth/iframe.js` (~93 KiB, caché de 30 min, no controlable desde acá), `apis.google.com` (gapi, ~144 KiB y ~250 ms de CPU) y pide `getProjectConfig`. Esa es la cadena `iframe.js → getProjectConfig` del camino crítico ya documentada en `auditoria-tecnica.md` (punto 4, "el iframe de Firebase Auth domina el camino crítico") y casi la mitad de los 251 KiB de "cache lifetimes" de la corrida previa.
+
+Cambio:
+- `firebase-init.js`: `getAuth(app)` → `initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence], … })` (misma persistencia y mismo orden que trae `getAuth()`). El `popupRedirectResolver` se pasa SOLO si no hay marca de sesión previa.
+- Marca `mf_auth_hint` en `localStorage`: `_onAuthState()` la pone en `'1'` cuando hay usuario y la borra cuando no. Lleva prefijo `mf_`, así que `_limpiarStorageLocal()` (eliminar cuenta) también la borra. Si `localStorage` falla, se cae al camino completo (con resolver = comportamiento anterior).
+- `window._fb.popupResolver` (nuevo) = `browserPopupRedirectResolver`. En `firebase-sync.js`, `_fbSignIn()` y `_fbDeleteAccount()` (rama `reauthenticateWithPopup`) lo pasan como tercer argumento. Sin resolver por defecto, un `signInWithPopup`/`reauthenticateWithPopup` sin ese argumento lanza `auth/argument-error`.
+
+**Por qué NO se quitó el resolver para todos:** en Safari/iOS un popup que se abre después de un `await` (esperar la carga del iframe) puede ser bloqueado. Sin marca (primera visita, sesión cerrada, cuenta eliminada) el resolver se precarga igual que antes, así que el login conserva su comportamiento. Los tres caminos de salida (`_fbSignOut`, `_fbDeleteAccount` y `_pinOlvide` de `pin-bio.js`) terminan en `location.reload()` con la marca ya borrada por `_onAuthState(null)`, y la carga siguiente vuelve al camino con resolver. `pin-bio.js` no usa popups (solo `signOut`): revisado, sin cambios.
+
+**Relación con el bug de datos pisados (2026-09-19, más abajo):** este cambio no toca `_dataLoaded`, `_fbUser`, `_finishFirstLoad` ni ningún guardado. Los logs `[Sync] snapshot/carga` de la prueba en navegador real muestran el camino sano: `fromCache=true → applied confiable=true` y luego `fromCache=false → applied confiable=true`, mismo `updatedAt`, 38 claves.
+
+**Confirmado en navegador real (usuario, 2026-09-20):** login con popup OK, carga de datos OK, y en Lighthouse ya no aparecen `auth/iframe`, `apis.google.com` ni `getProjectConfig` (ni en el árbol de red ni en terceros). `node --check` sin errores en ambos archivos.
+
+**Pendiente:** probar el login en Safari/iPhone. Y el caso raro de marca vieja (sesión revocada con la marca puesta): el primer clic en "Entrar con Google" carga el iframe y en Safari podría salir el aviso de popup bloqueado; el segundo clic funciona.
+
+Avisos de consola que NO vienen de este cambio: `Cross-Origin-Opener-Policy policy would block the window.closed call` (`popup.ts`) es un aviso conocido del SDK con los popups de Google y no bloquea el login; los errores de `content.js`/`content-scripts.js` (`Extension context invalidated`, `sendMessage`) son de una extensión del navegador.
+
+### ✅ Cambiado (2026-09-20) — `preconnect`: quitados `firebaseapp.com` y `apis.google.com`; `fonts.googleapis.com` sin `crossorigin`
+
+- `crossorigin` en un `preconnect` abre una conexión "anónima" (modo CORS: fuentes, módulos, `fetch`). Un `<link rel="stylesheet">`, un iframe o un `<script>` clásico usan la conexión con credenciales, así que la anónima queda sin usar. Eso explica los "Unused preconnect" de `fonts.googleapis.com` (solo sirve el CSS), `mis-finanzas-z.firebaseapp.com` (iframe) y `apis.google.com` (gapi). `fonts.gstatic.com`, `www.gstatic.com`, `firestore.googleapis.com` e `identitytoolkit.googleapis.com` sí se piden en modo CORS y conservan `crossorigin`.
+- Los dos de Auth se sacaron (ya no se usan en el arranque normal, ver entrada anterior): quedan **5** preconnect (eran 7). Si algún día se vuelve a `getAuth()` o a un resolver siempre cargado, volver a agregarlos SIN `crossorigin`.
+- Resultado: en las 6 corridas posteriores, 3 sin ninguna marca y 3 con una distinta cada vez (`fonts.googleapis.com`; `firestore.googleapis.com` en la corrida detenida en el PIN, donde Firestore todavía no se usa; `identitytoolkit.googleapis.com`). Sigue siendo una señal ruidosa, como ya se anotó el 2026-08-19: no vale la pena perseguirla por un solo reporte. Comentarios HTML de `index.html` balanceados (255/255); CSP sin cambios.
+
+### 🔍 Medido (2026-09-20) — Lighthouse antes y después del cambio de Auth y del arreglo de "Necesita atención"
+
+| Etapa | Perf | LCP | TBT | CLS | Notas |
+|---|---|---|---|---|---|
+| Antes (misma mañana) | 46 | 6,1 s | 1.120 ms | 0,144 (`div.grid3`) | iframe 93 KiB + gapi 144 KiB en terceros; camino crítico 3.356 ms; caché 251 KiB |
+| Tras el cambio de Auth (3 corridas) | 71 (PIN activo) / 70 / 70 | 4,6 / 2,9 / 4,7 s | 420 / 660 / 430 ms | 0,001 / 0,145 (`div.grid3`) / 0,001 | sin iframe ni gapi; camino crítico 1.293–2.233 ms (una corrida con un canal `Listen` de 33 s por long-polling, artefacto de esa corrida) |
+| Tras el arreglo de "Necesita atención" (3 corridas) | 50 / 62 / 65 | 4,6 / 4,7 / 4,7 s | 780 / 710 / 610 ms | 0,248 (`health-score-card` 0,236 + `grid2` 0,012) / 0,012 / 0,012 | `div.grid3` ya no aparece en ninguna |
+
+Lectura:
+- **Sin PIN (app completa cargada): de 46–51 (4 corridas, mediana 48,5) a 50–70 (5 corridas, mediana 65).** La corrida detenida en la pantalla del PIN solo mide esa pantalla y no es comparable: 71 ahora, 64 y 77 el 2026-08-19, o sea sin cambio. Lo único que cambió entre la corrida de 46 y las siguientes es lo de Auth y `preconnect`, así que es lo más probable detrás del salto (acortó el camino crítico y sacó ~240 KiB de terceros), aunque no se pueden aislar los dos efectos.
+- **TBT 430–780 ms en las 6 corridas**, sin ningún cambio de código que lo explique; los archivos que aparecen en las tareas largas son los mismos antes y después (el propio HTML, `inicio.js`, `encargos.js`, `cuentas.js`, `mejoras-adicionales.js`). Las tres corridas del segundo lote traen además el aviso "the page loaded too slowly". Se trata como ruido: para comparar conviene la mediana de 5 corridas.
+- **"Agentic Browsing"** (sin nota 0–100, es una fracción de checks) dio 1/2 solo en las corridas con CLS > 0,1 y 2/2 en el resto, en las 6.
+- **LCP ~4,6 s y TBT** son lo que queda (≈ 17 y 15 puntos). El LCP depende de la cadena Auth → Firestore ya diagnosticada (ver `auditoria-tecnica.md`).
+
+### ✅ Corregido — La nube se pisaba con el estado por defecto tras borrar el storage del navegador
+
+*(2026-09-19)*
+
+Con la caché local de Firestore vacía o inconsistente (por ejemplo tras "Clear site data" con la app abierta), el listener de `onSnapshot` puede decir "sin documento" — incluso con `fromCache=false`, o sea, aparentemente confirmado por el servidor — para un documento que SÍ existe. `_finishFirstLoad()` lo tomaba como carga válida: marcaba `_dataLoaded = true` con `S` todavía por defecto y el siguiente guardado (`setDoc` sin `merge`, que reemplaza el documento completo y, una vez encolado en el SDK, no se cancela) pisaba la nube.
+
+Escenario concreto: borrar el storage con la app abierta, volver a iniciar sesión (los datos se ven porque `S` seguía en memoria), recargar y encontrar la nube vacía. Reproducido con logs: `fromCache=false exists=false` mientras Firebase Console mostraba el documento con datos.
+
+Fix (`firebase-sync.js` y `firebase-init.js`):
+- `_applyCloudData()` devuelve qué pasó (`applied` / `empty` / `nodoc` / `parse-error`). `_cargaConfiable()` solo da por bueno un payload leído bien.
+- "Sin documento" y "payload vacío" nunca se creen tal cual: se verifican con una lectura directa al servidor (`runTransaction` de solo lectura, sin pasar por la caché ni el listener). Si el documento existe, se aplican sus datos; si no existe, es un usuario nuevo y se habilita el guardado; si no se pudo verificar, la app queda en modo lectura.
+- `_finishFirstLoad(confiable)`: en modo lectura `_dataLoaded` queda en `false`, así `_fbSaveToCloud()` responde `not-loaded`. Aviso al usuario tras 8 s sin confirmación, o de inmediato si el listener falla.
+- `_fbSignOut` ya no hace su `setDoc` final si `_dataLoaded` es `false`.
+- `firebase-init.js` expone `runTransaction` en `window._fb`.
+- Logs de diagnóstico `[Sync] snapshot: ...` y `[Sync] carga: ...` (tipo de evento, `fromCache`, estado y confianza) para poder ver en consola qué llegó en cada arranque.
+
+**Pendiente, fuera de esta corrección:**
+- Con la caché sin el documento, la app pinta un instante sin datos hasta que termina la verificación (~1 s).
+- Si el listener muere por error, la app queda en modo lectura hasta recargar; no hay reintento automático.
+- Lo que se cargue en pantalla durante el modo lectura no se guarda.
+- `_onAuthState(null)` no limpia `window._fbUser` ni `_dataLoaded`.
+- Si un dispositivo abre con una caché más vieja que la nube y el servidor tarda más de 1,5 s en responder, el guardado automático del snapshot diario de patrimonio (`_finishFirstLoad`) puede escribir datos viejos encima. No es nuevo; no se probó.
+
+---
+
 ## Encargos
 
 ### ✅ Corregido — "Registrar salida" dejaba sacar plata ya comprometida en una parte
@@ -959,6 +1285,56 @@ Cambios de texto en `index.html` (sin tocar lógica): título → "Pasarle plata
 No se tocó la lógica de `confirmarTransferenciaEncargo()` ni los campos guardados (`desc`, `nota: 'Transferencia a otro encargo'`/`'Transferencia de otro encargo'`), que ya eran genéricos. Validado con `node --check`. **Sin verificar en navegador real.**
 
 ## Wrapped (módulo nuevo)
+
+### 🐛 Corregido (2026-09-16) — Un registro suelto de meses atrás podía ganar "mejor mes del año"
+
+Reportado con un caso real: cuenta que empezó a usarse en septiembre, con un solo registro cargado de memoria de meses antes (mesada de enero, sin ningún otro movimiento ese mes). Ese enero pasaba como mes "real" en `_wrappedMejorPeorMesAnio`/`_wrappedHistoriasMensuales` (único filtro: `totalIngresos > 0 || totalGastos > 0`) — con ingreso y cero gastos registrados, salía con el mejor balance del año por default, y con una frase de "mes tranquilo" que en realidad describía un vacío de datos.
+
+Nueva función `_wrappedInicioRachaReal(S, anioK, mesMax)`: encuentra el principio de la racha real de meses activos caminando hacia atrás desde el mes más reciente, cortando en el primer hueco de 2+ meses sin ningún ingreso/gasto (2, no 1, para no borrar un mes real flojo que caiga en medio de un historial real). `_wrappedMejorPeorMesAnio` y `_wrappedHistoriasMensuales` ahora arrancan su loop ahí en vez de en enero. No toca ningún total anual — el ingreso de enero sigue contando en los agregados del año completo, solo se saca de las comparaciones por mes. Verificado con dos casos simulados (el reportado + un control de "un solo mes flojo real" para confirmar que no se pierde historial legítimo) antes de tocar el archivo real. `_wrappedFasesAnio` y `_wrappedCambioDeHabitos` se revisaron y ya estaban a salvo de este mismo problema por otros motivos (ver `wrapped.md` §7terdecies para el detalle completo).
+
+### ✨ Agregado (2026-09-15) — Ventana de disponibilidad (solo enero, año recién cerrado) + destacado en "Más" + banner de aviso
+
+Resuelve la decisión que había quedado abierta en `wrapped.md` §7decies ("año en curso vs. año recién cerrado"): hasta ahora Wrapped estaba disponible los 12 meses del año mostrando el año EN CURSO en vivo (opción 3, "por ahora"). Pasa a la opción 2 que ya estaba documentada ahí mismo: revelación de verdad, del año recién cerrado, solo durante una ventana corta en enero — el resto del año, la pantalla no existe.
+
+**Nuevo:** `js/core/wrapped-gate.js` — núcleo eager y chico, aparte de `wrapped.js` a propósito (así no hace falta bajar ~4000 líneas del módulo real solo para saber si mostrarlo). Un solo punto de verdad (`_wrappedVentana()`) decide, a partir de `hoy()`:
+- si la ventana está abierta (1-31 de enero, `WRAPPED_VENTANA_DIAS`, un solo número para ajustar);
+- el año objetivo (siempre `anioActual - 1`, nunca el año en curso en vivo);
+- días restantes y fecha de cierre, para los textos de urgencia.
+
+Expone `window._wrappedDisponible()`/`window._wrappedAnioObjetivo()`, consumidos por `lazy-loader.js` y `wrapped.js` (ver abajo). `?wrappedForzar=1` en la URL fuerza la ventana abierta para poder probar/hacer una demo sin esperar a enero — mismo espíritu que `?debug=1` en `wrapped.js`, decisión aparte (acá se decide si el módulo existe, allá qué tan detallado se ve).
+
+**No gastar recursos fuera de la ventana:**
+- `js/core/lazy-loader.js`: `ensureAll()` (precarga en segundo plano de todos los grupos lazy) ya no incluye `'wrapped'` salvo que `_wrappedDisponible()` confirme que la ventana está abierta. Guard `typeof` con fallback a "no disponible" si el gate no cargó (fallar cerrado).
+- `index.html`: `#cfg-wrapped-row` (fila "Más → Tu resumen") arranca con `display:none` en el propio HTML — fail-closed — y `wrapped-gate.js` la muestra/oculta según la ventana. Sin esa fila visible, no hay ningún camino para que el usuario dispare `Loader.ensure('wrapped')` fuera de enero.
+- `wrapped.js`: `window.renderWrapped()` agrega un cinturón de seguridad (no la gate real) que redirige a Configuración con un toast si se llega hasta ahí fuera de la ventana — cubre deep links viejos o `showScreen('wrapped')` a mano desde la consola, no el flujo normal.
+
+**Ya no es "un módulo más del montón":** ver la corrección de ubicación más abajo — terminó siendo una tarjeta propia (`#wrapped-promo`) arriba de todo en Configuración, no una fila destacada dentro de la lista.
+
+**Aviso proactivo:** `wrapped-gate.js` arma un banner flotante (`#wrapped-banner`, JS puro, mismo patrón que `#toast-container`/`#wrapped-overlay` — no vive en el HTML hasta que hace falta) con el título, los días restantes y un botón "Ver mi resumen →" que llama a `showScreen('wrapped')`. Se dispara una sola vez por año objetivo (flag en `localStorage`, `mf_wrapped_banner_visto_<año>` — UI, no un dato financiero nuevo en `S`), 1.5s después de `appDataLoaded` para no competir con el toast de bienvenida. Si el usuario ya abrió Wrapped por su cuenta desde el menú (`renderWrapped()` marca `mf_wrapped_visto_<año>`), el banner tampoco insiste.
+
+**Corrección sobre la marcha (2026-09-16), ubicación y identidad visual.** Hicieron falta tres intentos:
+
+1. Fila destacada dentro de la lista de "Herramientas" (`.cfg-toggle-destacado`: fondo tintado, badge, glow). Se veía como un parche.
+2. Ajustar el espaciado de esa fila (`padding` + margen horizontal negativo, porque `.cfg-toggle` en `styles.css` es `padding:15px 0`, sin padding horizontal). Tapaba el síntoma: una fila de lista pintada de colores no se lee como algo especial por bien espaciada que esté.
+3. Tarjeta propia `#wrapped-promo` **arriba del todo en Configuración, incluso sobre "Cuenta"** — lo primero que se ve al entrar, durante el único mes del año en que existe.
+
+La primera versión de esa tarjeta se montó sobre `.hero`, pero quedaba idéntica al hero del patrimonio (mismo verde, misma forma). La versión final toma la identidad del **propio Wrapped**: fondo oscuro (`--bg2`) con blobs de color desenfocados (`.wp-blob`, versión en miniatura de `.wrapped-bg-blob` de `wrapped.js` — blur 34px acá vs. 64px allá) y la tira de segmentos de progreso (`.wp-segs`, el motivo de "stories" de `#wrapped-progress`). Los colores no son paleta nueva: son las mismas variables que Wrapped rota como `--wrapped-mood` (`--accent`/`--amber`/`--blue`/`--purple`, ver `wrapped.js:3567`). El año va en `--nu-light`→`--purple` degradado sobre el texto; el botón en `--text` sobre oscuro, no verde, para no volver a chocar con el hero.
+
+El banner recibió el mismo tratamiento, así banner y tarjeta se leen como la misma pieza: blobs, la misma tira de segmentos en lugar del ícono decorativo (una estrellita se veía infantil, y sin nada el bloque quedaba vacío — los segmentos dicen "esto es un carrusel de historias" sin decorar), botón en `--text` y un botón "Después" que cierra **sin** marcar visto (la X sí lo marca para todo el año).
+
+Eliminado en el proceso: `.cfg-toggle-destacado`, `.cfg-badge-nuevo`, el keyframe `wrappedGlow`, la fila `#cfg-wrapped-row` con sus ids, y el `<i class="fa-solid fa-star">` del banner. `_wrappedGateAplicarFila()` apunta ahora a `#wrapped-promo` y rellena `#wrapped-promo-anio`/`#wrapped-promo-dias`. Se mantienen el `display:none` en el HTML (fail-closed) y el handler genérico `config:irA`.
+
+**Dos bugs reales encontrados al renderizar con Chromium** (no con `wkhtmltoimage`, que no soporta `filter:blur()` y daba blobs cuadrados — conviene usar Chromium para verificar esto a futuro):
+- `#wrapped-banner > *:not(.wp-blob){position:relative}` le pisaba el `position:absolute` a `#wrapped-banner-close`, mandando la X al flujo normal (arriba a la izquierda, encima de los segmentos). Corregido excluyéndolo del `:not()` y dándole `z-index:2`; además `.wp-segs` dentro del banner lleva `margin-right:26px` para no correr por debajo de la X.
+- `.wp-anio` era un bloque de ancho completo, y con `background-clip:text` el degradado se reparte sobre la **caja**, no sobre las letras: el tramo morado caía en el espacio vacío a la derecha del año y solo se veía verde→naranja. Corregido con `display:inline-block`.
+
+**Nota aparte, emojis:** el título del banner y el toast del cinturón de seguridad en `renderWrapped()` habían quedado con emojis Unicode (`🎉`/`🎁`) — mismo problema ya barrido en `index.html`/`encargos.js` el 2026-08-19 (ver esa entrada más abajo). Corregidos antes de llegar a producción: el toast quedó en texto plano (los `toast()` de esta app nunca llevan íconos) y el título del banner pasó primero a `fa-star` y finalmente a la tira de segmentos descrita arriba, sin ícono.
+
+**Resuelto de paso, el mismo punto de `_wrappedBuildSlides`:** `anioK` ya no sale de `_wrappedHoy().slice(0,4)` (siempre el año en curso) sino de `window._wrappedAnioObjetivo()`. No hizo falta tocar nada más del cálculo — `mesMax` (`_wrappedAnioYMesActual`) ya distinguía correctamente `anioK === anioActual` vs. un año pasado desde antes; con el nuevo `anioK` siempre siendo el año pasado, esa rama simplemente pasa a usarse siempre (12 meses completos), sin cambios de código.
+
+Validado con `node --check` en los tres archivos tocados/nuevos (`wrapped-gate.js`, `lazy-loader.js`, `wrapped.js`). **No probado en navegador real** — no se pudo confirmar en vivo el ciclo `appDataLoaded` → banner → click → `showScreen('wrapped')`, ni el aspecto visual del destacado/banner, porque reproducirlo fielmente requeriría el resto de `core-state.js`/`bootstrap.js`/`sheet-stack.js`, que no forman parte de esta sesión. Pendiente confirmar en un dispositivo real cuando llegue enero (o con `?wrappedForzar=1` antes).
+
+Fuera de alcance a propósito, quedó afuera de esta sesión: exportar/descargar el resumen como imagen o texto (el usuario lo mencionó como idea suelta, "no sé pero...") — agregarlo bien (captura del carrusel a imagen, o un resumen textual compartible) es una pieza de diseño e implementación aparte, no una extensión de una línea sobre lo de acá. Queda anotado como pendiente, no como decisión tomada.
 
 ### 🔧 Cambio (2026-09-08) — Se saca la vista mensual, Wrapped pasa a ser solo anual
 
@@ -1080,6 +1456,78 @@ Validado con `node --check`. **Sin verificar en navegador real** (mismo entorno 
 
 ## Prestado
 
+### 🔧 Cambio (2026-09-20) — `getDeudorSaldo()` se movió a `js/core/calc-helpers.js`
+
+Es un `reduce` puro sobre `d.movimientos` y "Necesita atención" (`inicio.js`) la necesita en el primer render. Sigue siendo global: el resto de `prestado.js` la usa igual, pero `prestado.js` ya no la define. `getDeudorSaldoPatrimonio()` se dejó donde estaba. Detalle en `CHANGELOG.md#inicio`; el efecto en los tests, en `CHANGELOG.md#infraestructura--seguridad`.
+
+### ✨ Agregado (2026-09-20) — Préstamos: la plata que sale solo se ofrece de cuentas con saldo ≥ $1,00; "Préstamo con TC" exige cupo
+
+- **`mov_fuente`** ("¿De dónde sacó la plata?", nuevo préstamo, modo simple): `initMovSheet()` lo poda tras `poblarFuente()` (`openSheet('registrar-movimiento')` ya lo había poblado sin filtrar; `initMovSheet()` lo repuebla y poda después, y es el último en escribirlo). `mov_destino` (abonos) **no** se filtra: es plata que entra.
+- **Split de préstamo (`_getPrestSplitFuentesOptions`)** y **"Yo debo → Registrar pago"** (`md_cuenta`, solo cuando `tipo !== 'recibido'`): mismo filtro. "Sin especificar" y "Ganancia (no salió plata)" nunca se filtran.
+- **Préstamo con TC:** `abrirSheetPrestamoTC()` no abre el sheet y avisa "No se puede: ninguna de tus tarjetas tiene cupo disponible" si ninguna TC activa tiene cupo; el select `prtc_tarjeta` lista solo las TC con cupo y muestra el cupo disponible (antes mostraba la deuda). El botón `btn-prestamo-tc` se ve atenuado (`_actualizarBtnPrestamoTC()`, llamada desde `abrirDeudor()`), pero **no** usa `disabled` a propósito: en móvil un botón deshabilitado no explica nada, y el toast sí.
+- La validación de cupo contra el monto real de la compra (`confirmarPrestamoTC`) queda igual.
+
+
+### ✨ Agregado (2026-09-19) — "¿Se lo regalas?": perdonar lo que falta en "Pagar préstamo completo" (cuenta como gasto)
+
+Hasta ahora no había forma de decir "ya no me debes nada, te lo regalo": lo más cercano era pagar el préstamo completo con destino "Sin especificar", que dejaba el saldo en 0 pero quedaba en el historial como un pago normal y **no contaba como gasto** (el patrimonio bajaba, pero Gastos/Análisis/salud no se enteraban, y la tasa de ahorro del mes salía mejor de lo que fue). El regalo de un *extra* (`p.tipo === 'regalar'`) tampoco servía: solo aplica al extra de un abono, no a la deuda en sí.
+
+- **UI (`index.html`, sheet `registrar-movimiento`):** nuevo toggle `#mov_perdon` ("¿Se lo regalas?") dentro de `#mov_perdon_wrap`, visible solo en "Pagar préstamo completo". Al activarlo se ocultan el destino (`#mov_destino_wrap`), el extra y "¿Viene de un encargo?" (y se apagan si estaban prendidos, para no dejar estado oculto), el título pasa a "Perdonar deuda" y el botón a "Perdonar deuda". Wiring en el arreglo `[id, evento, fn]` del final de `prestado.js`.
+- **Modelo:** el movimiento del deudor sigue siendo `tipo:'pago-completo'` (así `getDeudorSaldo`, grupos, `_autoCerrarGruposEnCero` y la integridad de saldo funcionan sin tocar nada) con `destino:''`, `_perdon:true` y `_gastoPerdonId`. Al mismo tiempo se crea un gasto en `S.gastosVar`: `{ monto, fecha, cat:'Otro', desc:'Perdoné deuda — <nombre>', fuente:'', _secundario:true, _origenSeccion:'Prestado · Me deben', _esPerdonDeuda:true, _deudorId, _deudorMovId }`.
+- **Por qué cuenta como gasto:** la plata ya había salido de tus cuentas cuando prestaste (eso nunca fue gasto: pasó de cuenta a "por cobrar"); al perdonarla se da por perdida. `fuente:''` hace que no descuente ningún saldo (no hay doble descuento) y `_esGastoVarNoReal()` **no** lo excluye (a diferencia de `_esExtraPrestamo`, `_esPagoTC`, etc.), así que entra al total de Gastos, salud, presupuestos y cierre de mes. Categoría `'Otro'` porque existe en las categorías por defecto (`'Varios'`, la del extra, no).
+- **`_secundario`:** el gasto se ve en Gastos con candado y solo se borra desde Préstamos (regla 3.6 de `gastos.md`); `deleteGastoVar()` y `eliminarMovimiento()` ya lo bloquean con ese flag.
+- **Reversión (`eliminarMovDeudor`):** si `m._perdon`, además de quitar el movimiento borra el gasto por `m._gastoPerdonId`; el diálogo dice que el gasto también se borrará (en vez de "el saldo de la cuenta destino se revertirá") y el toast final lo aclara. `_deudorTieneCuentaAfectada()` devuelve `true` para un perdón: no toca cuentas, pero borrarlo cambia un gasto de un mes ya cerrado, así que pasa por la protección por antigüedad.
+- **Historial del deudor:** badge "Perdonado" (rojo) en vez de "Pago completo", con la etiqueta "se lo regalé · cuenta como gasto". "Pagado" en la cabecera **no** suma lo perdonado (no es plata que te pagó).
+- **Sin efecto en cuentas:** no llama `sumarFuente`, no crea movimiento secundario, no toca `S.movimientos`. Verificado con un arnés que carga las funciones reales (`confirmarMovimiento`, `eliminarMovDeudor`, `_deudorTieneCuentaAfectada`, `_esGastoVarNoReal`): saldo 600 → 0, un gasto de 600 que `_esGastoVarNoReal` no excluye, ninguna cuenta tocada, y al borrar el perdón el saldo vuelve a 600 y `gastosVar` queda en 0.
+
+**Verificado después contra `inicio.js`, `analisis.js`, `actividad_reciente.js` y `personas.js`:**
+- **`inicio.js` / `analisis.js`:** todos los cálculos de gasto (gastos del mes de Inicio; total del mes, tendencia, ranking de meses, comparativa con el mes anterior, gasto por categoría y presupuestos en Análisis) filtran con `_esGastoVarNoReal()`, así que el perdón suma sin cambios. Categoría `'Otro'` (con fallback a `'Otro'` también en presupuestos). "Necesita atención" lista deudores con saldo > 0: tras perdonar, la persona sale de la lista.
+- **`actividad_reciente.js`:** `_normDeudores()` mostraba todo movimiento que no fuera `'prestamo'` como "Abono de X" (+), así que el perdón aparecía como plata recibida **y** además el gasto ("Perdoné deuda — X", −) — doble. Fix: `_normDeudores()` salta los movimientos con `_perdon`; queda solo el gasto. El feed es de solo lectura (sin borrar/click), así que no hay más que tocar.
+- **`personas.js` (perfil de la persona; lo que antes vivía también en `prestado-personas.js`, ya fusionado en `prestado.js`):** `abonos` incluía todo `'abono'`/`'pago-completo'`, así que un perdón inflaba "Abonado", el "Progreso de pago" y "Mayor abono". Fix: se excluye `_perdon` de `abonos`; "Último movimiento" muestra "Deuda perdonada" en vez de "Pago completo".
+- **`wrapped.js`:** el gasto del perdón ya entra bien (todos sus cálculos de gasto filtran con `_esGastoVarNoReal`), pero dos funciones trataban el `'pago-completo'` de un perdón como devolución: `_wrappedCalcularPrestado()` lo sumaba a `totalDevuelto` ("te devolvieron $600") y `_wrappedRecuperacionMasRapida()` lo contaba como préstamo recuperado en N días. Fix: ambas ignoran `m._perdon` (verificado con las funciones reales: un préstamo pagado da devuelto 600 y recuperación en 49 días; el mismo perdonado da devuelto 0 y sin recuperación). Se dejaron como están los contadores de "día más activo" y "movimientos registrados", que ya sumaban a la vez el movimiento del deudor y su reflejo en otras listas (un perdón cuenta 2 en vez de 1, mismo criterio de aproximación que el resto del archivo).
+
+**Sin prueba en navegador real.**
+
+---
+
+### ✅ Corregido (2026-09-19) — Reversión de préstamos/abonos borrados desde el feed o el detalle de una cuenta (`movimientos.js` → `eliminarMovDeudor`)
+
+`eliminarMovimiento()` (`js/core/movimientos.js`) tenía su propia copia de la reversión para `'prestamo'`/`'abono'` (movimientos de `S.deudores[]`), mucho más pobre que `eliminarMovDeudor()` (`prestado.js`), que es la implementación completa. Diferencias verificadas leyendo ambos archivos:
+
+- **Préstamo con fuentes divididas (`m.fuentes`):** la copia solo hacía `if (mov.fuente) sumarFuente(...)`. Un préstamo dividido borrado desde una cuenta desaparecía **sin devolver la plata a ninguna de las cuentas** (el saldo quedaba bajo para siempre). Además el propio encabezado de `movimientos.js` afirmaba que esa rama "lo revierte completo".
+- **Préstamo vía TC (`_viaTC`):** no revertía `tc.deuda` ni limpiaba `S.tcMovimientos`.
+- **Abono con `destinos` dividido, vía encargo o vía Alcancía:** solo revertía `mov.destino` simple; nada de encargo/Alcancía/extra.
+- **Grupos de préstamo:** no llamaba `_autoCerrarGruposEnCero(d)` ni la guardia `_verificarIntegridadSaldoDeudor`.
+- **Grupo lazy sin guard:** la protección por antigüedad de esa rama llamaba `_deudorTieneCuentaAfectada`, `_deudorOpsPosteriores` y `_deudorCuentasDe` (todas de `prestado.js`) sin `typeof`; borrar un préstamo desde el detalle de una cuenta sin haber visitado antes Préstamos en la sesión tiraba `ReferenceError` (mismo patrón que ya se había encontrado con `getMesadaData` y `tcEliminar*`).
+
+Fix: `eliminarMovimiento()` ya no tiene lógica propia para estos dos tipos. Si `movTipoEl` es `'prestamo'`/`'abono'`, busca el deudor dueño, asegura `Loader.ensure('prestamos')` si `eliminarMovDeudor` todavía no existe (aborta con toast si falla la carga, sin dejar nada a medias) y delega con `eliminarMovDeudor(deudorId, movId, { desdeFeed: true })`. Si el id no está en ningún deudor muestra un toast de error en vez del falso "Movimiento eliminado y saldos revertidos" de antes. Se borraron el bloque de protección por antigüedad y las dos ramas de reversión duplicadas de `movimientos.js` (la protección, el diálogo y la reversión viven ahora solo en `eliminarMovDeudor`). Para no perder el re-render de la cuenta abierta, esa cola se extrajo a `_rerenderCuentaActiva()` (usada por la delegación y por el final de `eliminarMovimiento()`).
+
+`eliminarMovDeudor(deudorId, movId, opts)`: nuevo 3er parámetro opcional `opts.desdeFeed === true` → hace todo igual pero **no** llama `abrirDeudor()` al terminar (el usuario se queda en la cuenta desde donde borró). Sin el parámetro (botón del detalle del deudor) el comportamiento es idéntico al de antes.
+
+Validado con `node --check` y con un arnés de `vm` con stubs (módulo no cargado → `ensure('prestamos')` + delegación con `{desdeFeed:true}` + re-render; módulo ya cargado → sin `ensure`; id inexistente → toast de error; falla de carga → toast y sin efectos). **Sin prueba en navegador real.**
+
+**Verificado después contra `cuentas.js` y `tarjetas_credito.js`:** (1) `getMovimientosCuenta()` y `_getMovimientosCuentaCustom()` arman cada fila de un préstamo — simple o por cada fuente de un préstamo dividido — con `_movId: m.id`, el id del movimiento del deudor, así que la delegación lo encuentra. (2) En el detalle de una TC, las filas `cargo_encargo`/`cargo_prestamo` no tienen botón de borrar (solo compras y pagos) y el sheet de detalle tampoco, así que un `cargo_prestamo` solo se puede eliminar borrando el préstamo en Préstamos (`eliminarMovDeudor`, rama `_viaTC`: revierte `tc.deuda` y quita la fila de `S.tcMovimientos` por `_deudorMovId`) — no queda ningún camino que borre un lado y deje el otro.
+
+---
+
+### ✅ Corregido (2026-09-19) — Las tarjetas de crédito aparecían en "¿A dónde entra el pago?" (abono / pago completo) y en "¿De dónde sacó la plata?" (préstamo nuevo)
+
+En el sheet `sheet-registrar-movimiento`, con el modo simple (sin "Dividir ÷"), `initMovSheet()` poblaba `#mov_destino` y `#mov_fuente` con `poblarFuente(id)`, cuyo 3er parámetro `incluirTC` vale `true` por defecto, así que aparecía p. ej. "Nu Mastercard Gold (TC)" en los dos. Los modos divididos ya estaban bien (`_getAbonoDestinoFuentesOptions()` y `_getPrestSplitFuentesOptions()` usan `getFuentesSinTC()`). Fix: `poblarFuente('mov_fuente', false, false)` y `poblarFuente('mov_destino', false, false)` — sin helper propio, con el parámetro que el núcleo ya trae.
+
+- **Destino de un abono / pago completo:** una TC nunca recibe plata entrante (pagarle a una TC es otro flujo, con su propio sheet en Tarjetas de crédito).
+- **Fuente de un préstamo nuevo:** un préstamo pagado con TC tiene su flujo dedicado, el botón "Préstamo con TC" (`abrirSheetPrestamoTC()` / `confirmarPrestamoTC()`): valida el cupo (`tcCupoDisponible`), pide la descripción de la compra, suma `tc.deuda`, crea el cargo enlazado en `S.tcMovimientos` (`tipo:'cargo_prestamo'`, `_deudorMovId`), marca el movimiento con `_viaTC`/`_tcId`/`_tcMonto` y soporta el diferencial (margen) vía la instancia `'prtc'`. El camino simple solo hacía `descontarFuente('tc:...')` (que sí sube `tc.deuda`, verificado en `core-state.js`) y guardaba `fuente:'tc:...'`: sin validación de cupo, sin descripción y **sin el cargo `cargo_prestamo`**, así que `calcDeudaAjenaDeTarjeta()` no lo contaba como deuda ajena y `calcDeudaTcPropiaDeTarjeta()` lo trataba como deuda **propia** (simulado con las funciones reales del núcleo: un préstamo de $200.000 por el camino simple da deuda propia $200.000; por "Préstamo con TC", $0). Y peor: `refresh()` llama `tcNormalizarTarjetas()` (si Tarjetas ya cargó), que ejecuta `tcRecalcular(tc)` — reconstruye `tc.deuda` **desde** saldo inicial + compras + cargos (`cargo_encargo`/`cargo_prestamo`/`cargo_spotify`) − pagos. Un préstamo hecho por el camino simple nunca creó ninguna de esas filas, así que en el siguiente `refresh()` su deuda **desaparece de `tc.deuda`** (simulado con las funciones reales: tarjeta con $50.000 de compras propias + préstamo simple de $200.000 → deuda $250.000, y tras `tcRecalcular` vuelve a $50.000). Efecto para el usuario: la app muestra menos deuda de TC de la que el banco tiene, y el patrimonio queda inflado en ese monto (el saldo del deudor sigue sumando como activo).
+- **Reversión de estos préstamos viejos:** `eliminarMovDeudor()` los revierte bien — `sumarFuente('tc:...')` devuelve la deuda (`Math.max(0, deuda - monto)`). Lo que faltaba era el cargo enlazado, no la reversión (y como `refresh()` recalcula `tc.deuda` desde los movimientos, borrar uno de estos préstamos tampoco deja la deuda desalineada). *(Una versión anterior de esta entrada decía que la deuda no se revertía: era incorrecto, corregido tras revisar `core-state.js`.)*
+
+**Decisión de diseño — NO unir "Nuevo préstamo" y "Préstamo con TC" en un solo sheet.** Se evaluó y se descartó por ahora: (1) una TC no es una "fuente de plata" como Nequi o una cajita, es otro modelo de datos (descripción obligatoria, cupo, cargo enlazado, diferencial); (2) unirlos implicaba meter descripción, selector de TC y el motor `'prtc'` (ids `prtc-dif-*`) dentro del sheet más cargado de Préstamos (grupos, dividir, ganancia, encargo), con reglas de exclusión (TC no combina con Dividir ni con Ganancia); (3) el botón "Préstamo con TC" ya está al lado de "Nuevo préstamo" en el detalle de la persona; (4) sin prueba en navegador real, el riesgo de regresión en el sheet más usado no compensa. Si más adelante se quiere una sola entrada, la variante barata es que elegir la TC en `#mov_fuente` abra `abrirSheetPrestamoTC()` con monto/fecha/nota/grupo pre-llenados, reutilizando la lógica existente en vez de duplicarla.
+
+**Confirmado por el usuario (2026-09-19): no existe ningún préstamo registrado por este camino (nunca supo que se podía), así que no hay datos que migrar. Se deja la nota por si aparece algún dato viejo importado.** Contexto del riesgo: préstamos viejos ya registrados por el camino simple con una TC de fuente (y, antes de la migración a `crearSplitWidget`, también por el modo dividido). Quedaron sin `_viaTC` ni `cargo_prestamo` y, por lo de `tcRecalcular()`, su deuda ya no está en `tc.deuda`. Si aparece alguno hay que migrarlo: quitar `fuente`/`fuentes` de TC, poner `_viaTC:true`, `_tcId`, `_tcMonto`, `_tcDesc` y crear el `cargo_prestamo` con `_deudorMovId`, y luego `tcRecalcular(tc)`. Se pueden listar desde la consola: `console.table(S.deudores.flatMap(d => (d.movimientos||[]).filter(m => m.tipo==='prestamo' && ((m.fuente||'').startsWith('tc:') || (m.fuentes||[]).some(f => (f.fuente||'').startsWith('tc:')))).map(m => ({persona:d.nombre, monto:m.monto, fecha:m.fecha, fuente:m.fuente}))))`.
+
+Se revisaron los demás selects de plata entrante de este módulo: `nd_destino` (nuevo deudor), `md_cuenta` (Yo debo — "me prestó más") y las filas de "guardar en cuenta" del extra ya usaban `getFuentesSinTC()`; `mov_enc_cuenta` se llena con las cuentas del propio encargo, no con la lista general. Sin más casos en `prestado.js`/`index.html`.
+
+Validado con `node --check` (sin errores). **Sin prueba en navegador real.**
+
+---
+
 ### 🗑️ Eliminado (2026-09-09) — Código muerto del sheet "Nueva persona" viejo (`addDeudor()`, color picker, sheet completo)
 
 *(el hallazgo ya estaba documentado desde el 2026-07-27 en `auditoria-tecnica.md`, pero nunca se había borrado — solo anotado)*
@@ -1154,6 +1602,14 @@ Fix: se agregó `if (tc.cupo && tcCupoDisponible(tc) < montoTC) { toast(...); re
 
 ## Cuentas
 
+### ✨ Agregado (2026-09-20) — "Mover a otra cuenta" solo se activa con saldo ≥ $1,00; el origen de Transferir exige ≥ $1,00
+
+- **Botones "Mover a otra cuenta"** (Nequi, Efectivo, Nu, cuenta personalizada, cajita): quedan `disabled` (atenuados, con `title`) si la cuenta tiene menos de $1,00. Nu se habilita si alguna cajita (no CDT) tiene saldo movible. Los botones estáticos de Nequi/Efectivo/Nu no tenían `id`: se agregaron `btn-transferir-nequi-det`, `btn-transferir-efectivo-det` y `btn-transferir-nu-det`. El estado se recalcula en `actualizarBotonesTransferir()`, llamada desde `renderDetalleCuenta()`, el detalle de cuenta personalizada y el de cajita (o sea, tras cada `save()`+`refresh()`).
+- **Sheet "Transferir entre cuentas":** el origen pasó de `saldo > 0` a `saldo ≥ $1,00` (vía `FuentesFiltro`), así no aparecen cuentas con centavos sueltos. **El destino sigue sin filtrarse** (ya estaba así a propósito, ver `cuentas.md`): la plata entra, y una cuenta vacía es un destino válido.
+- **`abrirTransferir()` avisa y no abre** si ninguna cuenta tiene saldo ≥ $1,00. Cubre los caminos que no pasan por los botones: la tarjeta "Transferir" del menú `+` y el botón "Transferir" dentro de "Sumar dinero". Reemplaza a la opción "No tenés cuentas con saldo disponible" del select de origen, que ya no puede quedar vacío porque el sheet no se abre.
+- **No se tocó "Sumar dinero" (¿A dónde entra la plata?):** su campo "¿De dónde viene esta plata?" es una descripción en texto libre (no un select) y "Cuenta destino" recibe plata, así que no aplica filtrar por saldo.
+
+
 ### ✅ Corregido — 12 sitios de `.innerHTML`/`toast()` sin escapar
 
 *(2026-07-22, durante la migración a `data-action`, antes de `html\`\``)*
@@ -1214,9 +1670,126 @@ Bugs de esta unificación parcial encontrados y corregidos de una vez, antes de 
 
 Validado con `node --check` en los cuatro archivos tocados (`cuentas.js`, `index.html`, `movimientos.js`, `inicio.js`) y trazado a mano contra `core-state.js` real (confirmando que `sumarFuente`/`descontarFuente`/`getSaldoFuente`/`fuenteLabel` ya soportan `'custom:ID'` de fábrica, y que `_esEntradaEspejoNoIngreso()` es agnóstica a la fuente) y contra `analisis.js`/`inicio.js` reales para el conteo de ingresos. **Sin verificar en navegador real.**
 
+### ✅ Corregido — "Chequeo rápido — cajitas Nu" guardaba el dato pero nunca corregía el saldo
+
+`guardarChequeoNu()` guardaba cada saldo real reportado en `S.chequeosNu`, pero ese arreglo solo se usaba como insumo para `verificarTasaNu()` (detectar si la tasa EA configurada se desvió). En ningún punto del flujo se escribía `c.saldo` con el valor real que el usuario acababa de anotar — el sheet decía "Chequeo rápido" y mostraba "calculado" vs. un campo para el "real", pero confirmar no cambiaba el saldo calculado que se seguía mostrando en toda la app, aunque hubiera diferencia y sin importar si `verificarTasaNu()` detectaba o no una desviación de tasa (que además exige 2 chequeos seguidos desviados más de 0,05 puntos — una diferencia de un solo centavo, como la reportada, nunca iba a disparar ese `confirm()`).
+
+Fix: `guardarChequeoNu()` ahora corrige `c.saldo` de cada cajita chequeada al valor real ingresado (restando primero lo que haya de encargos guardado en esa misma cajita vía `_saldoEncargosEnCajita`, ya que el valor real que se anota es el total físico en Nu, y `c.saldo` representa solo la porción propia — mismo criterio que ya usaba `calcularSerieTasaImplicitaNu`) y actualiza `c.fecha` a hoy, igual que hace `materializarIntereses()` al acreditar intereses: sin generar ningún movimiento, porque es un ajuste de saldo, no plata que entra o sale de ninguna cuenta. La detección de desviación de tasa sigue funcionando igual que antes, en paralelo.
+
+Validado con `node --check` y una simulación jsdom llamando a la función real con inputs de prueba: confirma que `c.saldo`/`c.fecha` quedan en el valor y fecha esperados, que una cajita con encargos guardados solo corrige la porción propia, y que una diferencia mínima (1 centavo) no dispara el `confirm()` de cambio de tasa. **Sin verificar en navegador real.**
+
+### 🔧 Mejorado — Ambigüedad al chequear el saldo de una cajita con encargo adentro: ¿el usuario anotó el total o ya su parte neta?
+
+El fix anterior siempre restaba `_saldoEncargosEnCajita()` del valor ingresado, asumiendo que el usuario siempre anota el total físico que ve en la app de Nu (propio + encargo, sin distinguir, porque así lo muestra Nu). Pero si el usuario ya sabe cuánto es la parte del encargo y anota directamente su saldo propio ya neto, esa resta lo hubiera descontado **dos veces**, dejando `c.saldo` corrupto.
+
+Fix: cuando la cajita tiene algo de encargo (`saldoEncargos>0`), se calculan las dos referencias posibles — el saldo propio calculado hoy (`calcC(c).val`, lo mismo que muestra el placeholder "calculado" del sheet) y ese mismo valor sumado al encargo (el total físico) — y se compara cuál de las dos queda **más cerca** del valor ingresado. Si está más cerca del total, se resta el encargo antes de guardar; si está más cerca del propio, se guarda tal cual. La diferencia entre ambas referencias es normalmente el monto completo del encargo (mucho mayor que la corrección de unos pocos pesos que se está haciendo), así que no debería haber casos reales de ambigüedad real entre las dos.
+
+Validado con jsdom, tres escenarios sobre la función real: sin encargo (corrige directo), con encargo anotando el total (resta el encargo), con encargo anotando ya la parte neta (no resta nada) — los tres quedan con el `c.saldo` esperado. **Sin verificar en navegador real.**
+
+### 🗑️ Eliminado por diseño — Input "Vigente desde" (`nuTasaVigenciaFecha`) junto a la tasa EA de Nu
+
+Existía un campo de fecha "Vigente desde" al lado del input de tasa EA, con la intención aparente de registrar manualmente desde qué día aplicaba un cambio de tasa que Nu hizo sin avisar. Nunca estuvo conectado a ninguna función — no tenía `data-action`, `data-save`, `onchange`, ni ningún `document.getElementById('nuTasaVigenciaFecha')` en ningún archivo del proyecto. Cualquier fecha escrita ahí no se guardaba ni se leía en ningún lado.
+
+Se evaluó conectarlo (llamando a `registrarTasaNuHistorial(fecha, tasa)` al confirmar), pero se descartó: el sistema de tramos de tasa solo puede recalcular correctamente el intervalo entre el último movimiento de cada cajita (`c.fecha`) y hoy, porque cada depósito/retiro ya "sella" los intereses ganados hasta ese momento con la tasa que estaba configurada en ese instante (`materializarIntereses()`). Si el cambio de tasa real ocurrió antes de un movimiento ya materializado, ese tramo queda con la tasa vieja para siempre — no hay forma de reabrirlo retroactivamente sin reconstruir el historial completo de movimientos, algo mucho más invasivo que lo que este campo prometía resolver. Mantenerlo hubiera dado una falsa sensación de corrección exacta en casos donde en realidad no corrige nada.
+
+Se eliminó el input en vez de conectarlo: el **Chequeo rápido de cajitas** (ver el fix anterior) ya resuelve el mismo problema de fondo — un saldo desviado por un cambio de tasa no detectado — sin esa limitación, porque pisa el resultado final en vez de intentar reconstruir el cálculo. Una sola vía para corregir esto es más simple y más confiable que mantener dos, una de ellas con un techo de corrección más bajo.
+
+### 🐛 Corregido (2026-09-10) — Tarjetas de crédito seleccionables como origen/destino en "Transferir entre cuentas" y como destino en el menú "+" (Agregar dinero)
+
+Reportado por el usuario: en el sheet "Transferir entre cuentas", tanto "¿de dónde sale?" como "¿a dónde entra?" listaban las tarjetas de crédito — algo sin sentido, ya que transferir es mover plata líquida entre cuentas, no un pago con tarjeta. Viola la regla ya documentada en `cuentas.md §3` ("las tarjetas de crédito nunca son un destino válido para dinero que entra").
+
+Causa: `abrirTransferir()` poblaba ambos selects con `getFuentes()`, que sí incluye tarjetas de crédito, en vez de `getFuentesSinTC()` — función que ya existe en el núcleo (`core-state.js`) para exactamente este caso y que ya aparecía listada en el comentario de imports al inicio de `cuentas.js`, pero nunca se llamaba desde ningún lado del archivo. Se encontró el mismo patrón, de paso, en `openSheet_adMenu()` (destino del menú "+" del header para Agregar dinero), que también usaba `getFuentes()` en vez de `getFuentesSinTC()`.
+
+Fix: los dos sitios ahora usan `getFuentesSinTC()`. Cambio de una línea en cada función, sin tocar la firma de ninguna de las dos. Validado con `node --check`. **Sin verificar en navegador real.**
+
+### ✨ Mejorado (2026-09-10, misma sesión) — "¿De dónde sale?" en Transferir ya no lista cuentas con saldo $0
+
+Pedido por el usuario: no tiene sentido ofrecer como origen de una transferencia una cuenta que no tiene nada — es imposible que salga plata de ahí. `abrirTransferir()` ahora filtra el select de origen a `getSaldoActual(f.val) > 0`; el destino queda sin filtrar (sí tiene sentido transferir hacia una cuenta en $0). Si no queda ninguna cuenta con saldo, el placeholder cambia a "No tenés cuentas con saldo disponible" en vez de dejar el select vacío — mismo criterio que ya usa Alcancía en `_alcFiltrarFuentesPorSaldo()` (ver más arriba en esta sección), aunque acá sin el umbral de $50 por redondeo: se filtra en `> 0` exacto, tal como se pidió.
+
+Si el sheet se abre con un origen sugerido (botón "transferir" desde una cuenta o cajita puntual) y esa cuenta tiene $0, ya no se preselecciona — el select cae en la primera cuenta con saldo disponible. `confirmarTransferir()` ya tenía el guard `if (!origen || !destino)`, así que un select vacío no rompe nada. Validado con `node --check`. **Sin verificar en navegador real.**
+
+### 🐛 Corregido (2026-09-14) — Botón "Configurar saldo mínimo" (sheet meta de cajita) mostraba el HTML del ícono como texto plano al abrir
+
+Reportado por el usuario: al abrir el sheet de meta de una cajita, el botón de saldo mínimo mostraba literalmente `<i class="fa-solid...">Configurar saldo mínimo` en vez del ícono renderizado — pero un clic (que sí togglea el estado) lo arreglaba, y otro clic más lo volvía a arreglar.
+
+Causa: `abrirMetaCajita()` pinta el texto inicial del botón (`#btn-toggle-meta-min`) con `.textContent`, mientras que `toggleMetaMinWrap()` — la función que corre al hacer clic — usa `.innerHTML` para el mismo string con markup del ícono. `.textContent` escapa el `<i>...</i>` en vez de renderizarlo; el primer clic lo pisaba con el `.innerHTML` correcto del toggle, ocultando el bug hasta que se abría el sheet de nuevo.
+
+Fix: cambiada esa línea de `.textContent` a `.innerHTML` en `abrirMetaCajita()`. Es un string estático sin texto libre de usuario, así que no es un hallazgo de escapado ni afecta el trabajo de migración a `html\`\``. Cambio de una línea.
+
+### ✨ Mejorado (2026-09-15) — Aviso de cambio de tasa Nu (chequeo rápido) usaba `confirm()` nativo del navegador, sin poder editar el valor sugerido
+
+Reportado por el usuario: al guardar el "Chequeo rápido — cajitas Nu" con un saldo alto, cuando `verificarTasaNu()` detecta un desvío sostenido y sugiere un cambio de tasa, el aviso era el `confirm()` nativo del navegador — solo Aceptar/Cancelar, sin ningún campo editable. Si el usuario se equivocaba al anotar un saldo y se daba cuenta tarde, no tenía forma de corregir la tasa o la fecha sugeridas antes de aplicarlas; su única opción era cancelar del todo y repetir el chequeo desde cero.
+
+Fix: se reemplazó el `confirm()` de `guardarChequeoNu()` por un sheet propio de la app (`sheet-confirmar-tasa-nu`, `index.html`), con el mismo mensaje explicativo y dos campos editables — **tasa EA %** y **fecha desde la cual aplica** — prellenados con lo que calculó `verificarTasaNu()` pero ajustables antes de confirmar. `_abrirConfirmarTasaNu(r)` guarda la sugerencia pendiente y llena el sheet; el nuevo `confirmarCambioTasaNu()` (registrado en el dispatcher de `cuentas`, `data-action="cuentas:confirmarCambioTasaNu"`) lee los valores del sheet (editados o no) y aplica el cambio con `registrarTasaNuHistorial()`, igual que antes. Cancelar el sheet no aplica nada, mismo comportamiento que cancelar el `confirm()` viejo. Validado con `node --check`. **Sin verificar en navegador real.**
+
+### ✅ Corregido (2026-09-18) — Chequeo rápido de Nu: sin aviso ante saldos absurdos, falsos "cambios de tasa" por diferencias mínimas, y sin forma de deshacer un chequeo mal anotado
+
+Reportado por el usuario en tres partes:
+
+1. **Anotar 3.333.333,33 en una cajita con 20.950,09 calculados no mostraba ninguna advertencia.** Causa raíz: el chequeo no tenía ninguna validación del valor anotado — `guardarChequeoNu()` sobrescribía `c.saldo` directamente — y la única alarma existente (`verificarTasaNu()`) exige una racha de 2+ chequeos consecutivos desviados, así que un solo salto (o el primer chequeo de la cajita, que solo fija el punto de partida) nunca la disparaba. Con un salto así la tasa implícita era ~10⁸² % (o `Infinity` según los días), y ese valor absurdo, si hubiera coincidido con otro punto desviado, habría terminado como "tasa sugerida".
+2. **Diferencias mínimas sí disparaban "cambio de tasa".** Causa raíz: la tasa implícita entre dos chequeos se calcula con los saldos anotados y los días entre ellos, y el ruido de un peso (Nu muestra centavos; el usuario a veces anota enteros) equivale a casi 2 puntos de EA sobre un día de rendimiento de una cajita de ~$20.000. Con el umbral de 0,05 puntos, dos chequeos seguidos (cada uno con su propio redondeo) alcanzaban para sugerir un cambio. Reproducido con las funciones reales: chequeos con pesos enteros y la tasa exacta (9,25 %) sugerían 9,10 % con chequeos diarios o cada 2 días, y 9,22 % con chequeos semanales — este último con puntos de 9,37 % y 9,08 %, uno por encima y otro por debajo, es decir ruido que se compensa, no una tasa nueva.
+3. **El aviso de cambio de tasa no permitía corregir el chequeo.** Aunque desde 2026-09-15 ese aviso deja editar tasa y fecha, el chequeo ya estaba aplicado cuando aparecía: los saldos anotados ya habían sobrescrito los de las cajitas, y "Cancelar" solo descartaba la tasa sugerida. Quien se daba cuenta ahí de que se había equivocado en un saldo no tenía cómo revertirlo.
+
+Fix (`cuentas.js`, `index.html`):
+- **Aviso previo al guardar:** si algún saldo anotado difiere de lo calculado en más del 2 % **y** más de $1.000, `guardarChequeoNu()` (ahora `async`) muestra un `dialogo()` con el detalle por cajita (anotado, calculado, diferencia) y recuerda que una diferencia así suele ser un error de digitación o plata sin registrar. Cancelar deja el sheet abierto con lo anotado; no se guarda nada. La comparación usa el mismo criterio de encargos de siempre, ahora extraído a `_interpretarLecturaChequeoNu()` (única fuente, antes vivía dentro del bucle de guardado).
+- **Detección de tasa más estricta** (`calcularSerieTasaImplicitaNu()` / `verificarTasaNu()`, umbrales centralizados en `_CFG_CHEQUEO_NU`): solo se comparan chequeos separados por ≥ 5 días (uno más cercano no cuenta y el siguiente se mide contra el último válido); un punto solo es desvío si además de > 0,05 puntos EA equivale a > $1 contra lo que habría dado la tasa vigente; los pares a más de 5 puntos EA de la tasa vigente se descartan de la serie (son saltos imposibles, no tasas); la racha debe ser de 2+ puntos consecutivos **del mismo lado**.
+- **"Me equivoqué — corregir los saldos"** en el sheet de cambio de tasa (`corregirChequeoNu()`): restaura saldos, fechas y `S.chequeosNu` a como estaban antes del chequeo (foto en memoria `_chequeoNuUndo`, tomada justo antes de aplicar; no se guarda en `S`) y reabre el sheet de chequeo con los mismos valores para editarlos. Los otros dos botones se renombraron para que se entienda qué hace cada uno: "Aplicar cambio de tasa" y "Dejar la tasa como está" (antes "Cancelar", que en realidad dejaba el chequeo guardado).
+
+Validado con `node --check` y un harness en Node que carga las funciones reales de `cuentas.js`: el escenario reportado (aviso, cancelar sin efectos ni `save()`, aceptar guarda), diferencias de pocos pesos sin aviso, caso con encargo adentro anotando el total físico, los cuatro casos de ruido que antes daban falso positivo ahora devuelven `null`, un cambio real de tasa (9,25 → 10,5 % con chequeos semanales) sigue detectándose con la tasa correcta, y el ciclo sugerencia → "Me equivoqué" → volver a guardar → aplicar tasa restaura el estado exacto. **Sin verificar en navegador real**, en particular que `openSheet('chequeo-nu')` + `poblarChequeoNu()` no pise los valores recuperados al reabrir (el hook que puebla ese sheet vive en un archivo núcleo que no estaba a la vista). Limitaciones conocidas: el primer chequeo de una cajita solo fija su punto de partida; una cajita pequeña tarda más en revelar un cambio de tasa chico.
+
+---
+
+### ✨ Mejorado (2026-09-19) — Los depósitos a la Alcancía ahora aparecen en el historial de cada cuenta, con el monto oculto (`cuentas.js`)
+
+*(pedido del usuario: "antes se ocultaban los movimientos de la alcancía, pero en la sección de Alcancía sí se ven con el monto oculto — que en Cuentas también se muestre el movimiento, pero con el monto oculto, en cualquier tipo de cuenta")*
+
+Estado anterior, distinto según el tipo de cuenta (inconsistente, y en un caso filtraba el monto):
+
+- **Nequi / Efectivo / cajitas de Nu** (`getMovimientosCuenta()`): los gastos con `_esAlcancia` (depósito `yo-cuenta` y la parte propia de un `split` con cuenta) se saltaban con un `return` — la fila no existía en el historial de la cuenta, aunque el saldo sí hubiera bajado.
+- **Cuentas personalizadas** (`_getMovimientosCuentaCustom()`): ese mismo gasto **no** se saltaba nunca — aparecía en el historial con el monto a la vista, contradiciendo la regla de Alcancía (alcancia.md §3).
+- **Efectivo, depósitos sin cuenta de origen** (`yo-directo` / `regalo` / `mandado` / parte de mamá): el ingreso neto-cero (`_esAlcanciaIngreso`) aparecía como "+ $X Ingreso" con el monto a la vista.
+
+Fix: las dos funciones ahora incluyen **siempre** estas filas y les ponen `_alcOculto: true` (gastos con `_esAlcancia` y entradas con `_esAlcanciaIngreso`); `renderMovsCuenta()` pinta esas filas con `••••` (mismo texto que la lista de depósitos dentro de Alcancía, sin signo ni color) en lugar del monto. Detalles:
+
+- **Siguen bloqueadas contra borrado.** Se fuerza `_secundario: true` / `_origenSeccion: 'Alcancía'` en estas filas aunque el registro original no las traiga — los depósitos anteriores al 2026-08-06 no tienen `_secundario` (ver alcancia.md §3/§6) y, al dejar de saltarse, habrían aparecido con botón de eliminar que no revierte `S.alcancia`. Ahora muestran el candado "elimínalo desde Alcancía", igual que el resto de movimientos automáticos.
+- **No abren el detalle del movimiento** (`core:abrirDetalleMov`): esa hoja muestra monto y saldos antes/después. Tampoco llevan `data-mov-monto` en el DOM (verificado con `movimientos.js`: `abrirDetalleMov()` solo lo lee de la fila clickeada y `eliminarMovimiento()` del botón de borrar, y estas filas no tienen ni lo uno ni lo otro).
+- **Badge ámbar "🔒 Alcancía"** en lugar del badge de tipo: la plantilla ya tenía ese badge para `_origen === 'Alcancía oculta'` (resto de un diseño anterior que ninguna función producía); ahora se dispara con `_alcOculto` y **reemplaza** al badge rojo "Gasto" / verde "Ingreso" (una primera versión los mostraba juntos y el depósito parecía un gasto, que no es: es plata que se aparta). Para eso las filas de Alcancía ya no se disfrazan de `'gasto'`/`'ingreso'`: llevan `tipo: 'alcancia'` (los cuatro puntos donde se arman en `getMovimientosCuenta()` y `_getMovimientosCuentaCustom()`).
+- **No se ocultan los movimientos del destape** (`Alcancía destapada — saldo registrado`, `Dinero extra encontrado…`, `Ajuste alcancía — faltante`): el total ya se reveló en la pantalla de resultado, y esos movimientos no llevan `_esAlcanciaIngreso` ni son gastos `_esAlcancia`.
+- Filtros del historial: búsqueda y fechas siguen igual; el filtro por tipo tiene un chip nuevo "Alcancía" (`tiposConfig` en `renderMovsFiltros()`, solo aparece si la cuenta tiene alguna de estas filas) y, como consecuencia, estas filas **ya no salen bajo los chips "Gasto" / "Ingreso"**. El tipo nuevo no afecta a `abrirDetalleMov()` ni a `eliminarMovimiento()` (estas filas no abren detalle ni tienen botón de borrar) ni al cálculo de Antes/Después (solo usa `monto`).
+
+Validado con `node --check` y un harness en Node que carga las funciones reales de `cuentas.js` (`getMovimientosCuenta`, `_getMovimientosCuentaCustom`, `renderMovsCuenta`, con `html`/`S`/`document` simulados): depósito `yo-cuenta` en Nequi, en cajita de Nu y en cuenta personalizada, ingreso neto-cero en Efectivo, depósito viejo sin `_secundario` y los tres movimientos del destape — el monto no aparece en el HTML de las filas ocultas, el gasto normal de al lado sí lo muestra y abre su detalle, y el harness falla contra el `cuentas.js` anterior. **Sin verificar en navegador real.**
+
+**Revisión posterior (mismo día, con `movimientos.js`, `busqueda-global.js` y `actividad_reciente.js` en mano)** — se revisaron las otras tres pantallas que listan estos movimientos. Tres hallazgos, los tres corregidos:
+
+1. **Búsqueda global (`busqueda-global.js`) mostraba el monto exacto de cada depósito.** Buscar "alcancía" o "Ahorro" listaba cada gasto `_esAlcancia` como `$monto · Ahorro · fecha` (la búsqueda ya miraba `g.nota`, que dice "Guardado en alcancía oculta"), y lo mismo con los ingresos neto-cero (`_esAlcanciaIngreso`) en el bloque de `S.movimientos`. Ahora esos resultados salen, pero con `••••` en lugar del monto. Los movimientos del destape no se ocultan (el total ya se reveló). No se tocó la navegación de los resultados.
+2. **Actividad reciente (`actividad_reciente.js`) se saltaba los gastos `_esAlcancia` pero no los ingresos neto-cero**: un depósito `yo-directo`/`regalo`/`mandado`/parte de mamá aparecía como "+ $X Ingreso" con el monto a la vista. `_normMovimientos()` ahora también los excluye (`_esAlcanciaIngreso`), consistente con lo que ya hacía con los gastos. **Decisión de criterio:** en el feed se optó por excluir, no por mostrar con `••••` como en Cuentas, porque ya era el comportamiento de los gastos de alcancía en ese mismo feed; si se prefiere que el feed también muestre las filas ocultas, es cambiar ambos filtros.
+3. **"Antes/Después" del detalle de un movimiento (`abrirDetalleMov()` en `movimientos.js`)** reconstruye el saldo histórico como `saldo actual − Σ montos de los movimientos más recientes`, usando `getMovimientosCuenta()` (no el DOM). Dos consecuencias: (a) **efecto positivo del cambio de arriba** — en Nequi/Efectivo/Nu los depósitos `_esAlcancia` no estaban en esa lista aunque sí habían bajado el saldo, así que el Antes/Después de todo movimiento anterior a un depósito salía descuadrado por el monto del depósito (en cuentas personalizadas ya estaba bien); ahora cuadra. (b) **bug previo, corregido**: los ingresos neto-cero de Alcancía figuraban en esa lista como `+monto` aunque `alcancia.js` suma y resta lo mismo (el saldo no cambia), descuadrando el Antes/Después de todo movimiento de Efectivo anterior a un depósito `yo-directo`/`regalo`/`mandado`. `getMovimientosCuenta()` y `_getMovimientosCuentaCustom()` ahora les dan `monto: 0` (efecto sobre el saldo), lo cual no afecta lo que se ve porque la fila va oculta.
+
+Validado con `node --check` y el mismo harness ampliado (`cuentas.js` + `busqueda-global.js` + `actividad_reciente.js` cargados con `S`/`document` simulados): Antes/Después reconstruido con la misma fórmula que `abrirDetalleMov` para Nequi, Efectivo y cuenta personalizada; búsqueda de "alcancía" (depósito y neto-cero sin monto, gasto normal y destape con monto); feed (neto-cero fuera, ingreso normal y ajuste de destape dentro). Los tests nuevos fallan contra el código anterior. **Sin verificar en navegador real.**
+
+**Sin tocar, a propósito:** `movimientos.js` (no hizo falta; el candado de `eliminarMovimiento()` ya cubre `_secundario`, y las filas de Alcancía en Cuentas no tienen botón de borrar); el abono de un `cobro-deuda` sigue viéndose con su monto en el historial del deudor y en Actividad reciente ("Abono de …"), porque es un pago de deuda visible en Prestado por diseño. Sin revisar (no venían en la sesión): `inicio.js`, `gastos.js`. Los depósitos de ciclos **ya destapados** también quedan ocultos en Cuentas y en la búsqueda (la marca vive en el registro, no depende del ciclo actual); si se prefiere revelarlos una vez destapada la alcancía, es una decisión aparte.
+
 ---
 
 ## Gastos
+
+### ✨ Agregado (2026-09-20) — Registrar gasto y Pagar gasto fijo solo ofrecen cuentas con saldo ≥ $1,00 y TC con cupo
+
+- **`gv_fuente`** ("¿De dónde salió la plata?", modo simple): lo puebla `openSheet('gasto-var')` en `js/core/sheet-stack.js` (`poblarFuente('gv_fuente', true)`, sin filtro), así que el filtro (`FuentesFiltro.podar` con `PRESET.SALIDA`) se agregó ahí, en la línea siguiente — no en `gastos.js`. Sin ninguna cuenta utilizable, el placeholder pasa a "No tenés cuentas con saldo disponible".
+- **Modo dividido (`getGvSplitFuentesOptions`)** y **`pgf-fuente`** ("Pagar gasto fijo"): mismo filtro.
+- Una TC solo aparece si tiene cupo disponible ≥ $1,00. Como el cupo ahora es obligatorio al crear/editar una TC (ver Tarjetas de crédito), una TC sin cupo configurado se considera sin cupo.
+- **No se tocaron** las validaciones de `addGastoVar()`/`confirmarPagarGastoFijo()` (saldo/cupo contra el monto): el filtro evita elegir una cuenta vacía, pero que el saldo alcance para *este* monto sigue validándose al confirmar.
+
+
+### ✅ Corregido (2026-09-20) — Gastos del mismo día quedaban en orden inverso al registrado + historial partido en secciones
+
+*(reportado por el usuario: registró "Carro" el 19/09 y después "Moto" también con fecha 19/09; "Moto" aparecía debajo de "Carro")*
+
+1. **Orden.** `renderGastosVar()` ordenaba solo por `fecha` (`b.fecha.localeCompare(a.fecha)`). `Array.prototype.sort` es estable, así que los gastos con la misma fecha conservaban su orden original en `S.gastosVar` — que es el orden de creación (más viejo primero). Resultado: dentro de un día, el último gasto registrado quedaba abajo. Fix: se guarda el índice de cada gasto *antes* de filtrar por mes y se usa de desempate (`fecha` desc., luego índice desc.). No hace falta migrar datos ni agregar un campo de timestamp: `S.gastosVar` solo se agrega con `push` (verificado en `gastos.js`/`cuentas.js`/`index.html`: ningún `unshift`/`splice`/`sort` sobre el array). **Pendiente de confirmar** contra `core-state.js`, `tarjetas_credito.js`, `encargos.js` y `prestado.js` (no recibidos esta sesión) que ninguno lo reordene.
+2. **Una sola lista.** Compras en TC, pagos de TC y pagos de fijos ya no tienen sección propia (antes: cuatro bloques con separador). Van mezclados en orden cronológico, cada fila con su etiqueta de tipo, y agrupados por día con encabezado ("Hoy", "Ayer", "sáb 19 sep") y subtotal del día (gasto real + "en TC" aparte, misma regla que el total de arriba). Helper nuevo `_gvDiaLabel()`.
+3. **Bug de paso — fijo pagado con TC aparecía dos veces.** Un gasto con `esPagoGastoFijo` y `_esCompraTC` a la vez caía en dos filtros (`gastosTC` y `gastosFijosEnHistorial`), así que se pintaba en "Compras en TC" *y* en "Pagos de fijos". Con la lista única sale una sola vez, con las dos etiquetas (`Fijo` + `TC — deuda`); antes la de fijo tapaba la de TC.
+
+Sin cambios: los totales de arriba (`totalGVFilt`, `totalGVFiltTC`) usan exactamente los mismos filtros; los movimientos de alcancía y extras de préstamo siguen fuera de este historial (como antes). Documentado en `gastos.md` §4, §6, §7 y §8. Validado con `node --check` y un arnés en Node con un stub de `html\`\`` (no se tuvo `html-tag.js` real): orden Moto > Carro el mismo día, fijo pagado con TC una sola vez, totales iguales a los de antes, etiquetas de día. **Sin verificar en navegador real.**
 
 ### ✅ Agregado (2026-09-01) — Protección por antigüedad en `deleteGastoVar` (no tenía ninguna) + gastos divididos sin proteger en ningún lado
 
@@ -1250,6 +1823,21 @@ Los 4 `toast()` con `fuenteLabel()`/`tc.nombre` se dejaron con `escHtml()` a man
 
 ## Plata comprometida
 
+### 🐛 Corregido (2026-09-10) — Marcar "ya pagué" en un Gasto al crearlo no movía ninguna plata
+
+Encontrado al revisar con el usuario un caso de uso real del módulo (adelantar plata a un tercero contra un ingreso ya comprometido, cubriendo varios gastos antes de que llegue). Comparando el flujo de creación (`_cpdConfirmar()`) contra el de "Marcar pagos" (`_cpGuardarMarcados()`) apareció una asimetría real:
+
+- **Reposición con "ya saqué" (`yaSaque`), al crear el destino:** sí descuenta la cuenta en el acto (`sumarFuente(cuentaId, -monto)` + movimiento `'salida'`) — esto ya funcionaba bien.
+- **Gasto con "ya pagué" (`yaPague`), al crear el destino:** el flag se guardaba (`yaPague:true`) pero **no pasaba nada más** — ni se descontaba la cajita (`gastoOrigen:'cajita'`) ni se cargaba la compra a la tarjeta (`gastoOrigen:'tc'`). La única rama que sí movía la plata para este caso era `_cpGuardarMarcados()` (el sheet "Marcar pagos" sobre un ingreso ya guardado), y esa función **solo actúa sobre transiciones** pendiente→pagado (`!dViejo.yaPague && dNuevo.yaPague`). Un destino que nacía *ya* marcado como pagado nunca pasa por una transición — así que esa plata quedaba "pagada" solo en apariencia, sin ningún movimiento real detrás, sin ningún error visible ni en consola ni en la UI.
+
+**Efecto real:** si al crear un ingreso comprometido se agregaba un destino tipo Gasto y se marcaba "ya lo pagué" en el mismo paso (en vez de guardar primero y marcarlo después desde "Marcar pagos"), la cajita elegida nunca perdía ese saldo (o la TC nunca ganaba esa deuda) — pero el destino quedaba mostrado como pagado igual. El patrimonio no reflejaba la salida real de plata que sí ocurrió fuera de la app.
+
+**Fix:** se agregó a `_cpdConfirmar()` la misma lógica que ya tenía `_cpGuardarMarcados()` para la transición false→true de un Gasto (cajita: `descontarFuente()` + movimiento `'salida'`; TC: `tcCrearCompra()` con `_esFavor:true`/`_desdeCP:true`), sin comparar contra un estado viejo porque acá no lo hay — el destino recién nace, así que "si `yaPague` es true, mover la plata" alcanza. De paso se guarda `_tcCompraId` en el destino nuevo cuando corresponde (antes se perdía esa referencia si el cargo a TC hubiera pasado en este punto).
+
+**Decisión de diseño tomada en la misma sesión, documentada en `plata-comprometida.md` §7 en vez de acá porque no es un bug:** se evaluó si un adelanto (Reposición o Gasto ya pagado) debería compensarse con un activo tipo "me deben", para que el patrimonio no baje mientras se espera el ingreso — igual que un préstamo registrado en `S.deudores` no baja el patrimonio neto. Se decidió que no: `calcPatrimonioTotal()` es compartida por Salud financiera/Proyección/Análisis/Wrapped, y un adelanto de este módulo nace atado a un ingreso concreto con fecha y monto ya conocidos — no es un préstamo abierto e independiente. El bache de patrimonio mientras se espera el ingreso es real, pero es información correcta (la plata de verdad no está disponible), no un error. Ver `plata-comprometida.md` para el razonamiento completo y la alternativa que quedó anotada por si hace falta en el futuro.
+
+Validado con `node --check`.
+
 ### ✅ Agregado (2026-09-01) — Protección por antigüedad en `_cpEliminar` (no tenía ninguna — el hallazgo más delicado de la revisión)
 
 Detectado en la misma revisión general que Alcancía y Gastos (ver `CHANGELOG.md#mesada`). `_cpEliminar()` no tenía ningún chequeo de fecha ni de operaciones posteriores, a pesar de ser el módulo con más superficie de reversión: si el ingreso ya fue `recibido`, borrar revierte reposiciones en cuentas, entradas en cajitas y compras de TC asociadas — todo de golpe, sin importar cuánto tiempo pasó ni cuántas operaciones nuevas tocaron esas mismas cuentas desde entonces. El diálogo ya avisaba *qué* se iba a revertir; no protegía *cuándo* era seguro hacerlo.
@@ -1282,6 +1870,24 @@ Validado con `node --check` y una simulación jsdom (con la implementación real
 
 ## Inicio
 
+### ✅ Corregido (2026-09-20) — CLS de ~0,14–0,19 en Inicio: "Necesita atención" crecía ~150 px al cargar Préstamos/Spotify (lazy)
+
+**Diagnóstico**, con un `PerformanceObserver('layout-shift')` en la consola del navegador real: un corrimiento de 0,194 con `s-attn-section` 243→229, los dos `grid3` 371→510 y 465→604 (≈ +139 px), y `grid2`/`health-score-card` empujados por debajo del viewport (rect actual `0,0`). Es el mismo culpable (`div.grid3`, 0,144) que Lighthouse venía marcando desde el 2026-08-15 como "candidato a rediseño", y que la nota del 2026-08-19 daba por varianza sin culpable fijo.
+
+Hipótesis descartadas antes de dar con la causa: (1) columnas `1fr` que se reacomodan de forma horizontal con montos grandes — no, `.stat{min-width:0}` y `clamp()` en `.stat-value` ya lo impiden (entrada del 2026-08-23); (2) reservar un `min-height` para la sección — descartado por el usuario: deja un hueco vacío feo, que además cambia según haya 2 o 3 avisos.
+
+**Causa:** `renderAttencion()` (`inicio.js`) arma una tarjeta por aviso y llama con guard `typeof` a `getDeudorSaldo` (`prestado.js`, lazy) y a `spPersonaPagadaVigente`/`spNombreDe` (`spotify.js`, lazy). En el primer render esos avisos no existían porque los módulos todavía no habían cargado; al terminar `Loader.ensureAll()` aparecían 3–4 tarjetas de ~50 px y empujaban todo Inicio hacia abajo. Mesada y Tarjetas ya no tenían el problema desde el 2026-08-04 (sus funciones puras viven en `calc-helpers.js`).
+
+**Fix, mismo patrón del 2026-08-04:** las 3 funciones son cálculo puro sobre `S`/`p`, así que se movieron (copia literal, verificada idéntica) a `js/core/calc-helpers.js`, que carga de entrada. `prestado.js` y `spotify.js` ya no las definen (queda un comentario que apunta al nuevo lugar) y siguen siendo globales: el resto de esos archivos las usa igual. `spNombreDe` usa `getPersona` (`personas.js`) con guard `typeof`, así que no depende del orden de carga. El guard `typeof getDeudorSaldo` de `inicio.js` se deja como red de seguridad. La primera pintada ya trae las mismas tarjetas que la final: sin hueco y sin cambio de diseño.
+
+**Verificación:** `node --check` en los 3 archivos. Simulación con el `inicio.js` real en `vm`, con `prestado.js`/`spotify.js` SIN cargar: antes 0 tarjetas y sección oculta; después 3 tarjetas (deudores con saldo + cobro de Spotify vencido; el deudor con saldo 0 queda fuera). **Confirmado en navegador real (usuario):** el snippet de layout-shift ya no muestra el corrimiento de ~140 px (solo entradas 0.000) y `div.grid3` no aparece como culpable en las 3 corridas siguientes de Lighthouse.
+
+**Sigue abierto, sin diagnosticar:**
+- `div.grid2` 0,012 en las 3 corridas (irrelevante).
+- `div#health-score-card` 0,236 en 1 de 3 corridas (la de 50 puntos). `renderHealthScore()` quita el `min-height:148px` apenas corre; un cambio de 1–2 tips (~20 px) no alcanza para explicar 0,236, así que falta ver qué se mueve. Pendiente capturar con CPU 4× / Slow 4G (ver `auditoria-tecnica.md`).
+
+**Se mantiene por diseño:** el auto-abrir de la lista cuando los avisos cambian de verdad desde la última vez (`hayNuevos`, solo tras `_appFullyLoaded`). `plata_comprometida.js` (lazy) envuelve `renderAttencion()` y puede aportar tarjetas propias; no se verificó si hoy suma alguna tarde.
+
 ### ✅ Corregido — 1 sitio de `spNombreDe(p)` sin escapar en "Necesita atención"
 
 *(2026-07-22, durante la migración a `data-action`, sexto módulo migrado)*
@@ -1305,6 +1911,46 @@ Validado con `node --check` y una simulación jsdom con payloads maliciosos en l
 ### ✨ Mejorado (2026-08-30) — Empty-state de `#proyeccion-card` ("Sin datos suficientes")
 
 El estado sin datos era una sola línea de texto gris pegada arriba a la izquierda de una card con `min-height:126px`, dejando el resto vacío sin ningún criterio visual. Reemplazado por un empty-state compacto centrado (ícono redondo + título + subtítulo), mismo patrón visual que ya usan los estados vacíos de Encargos/Tarjetas de crédito/Spotify (`empty-state-icon`/`empty-state-title`/`empty-state-sub`), pero armado a mano a escala reducida (ícono de 34px en vez de 52px) para caber en una card pequeña sin agrandarla. No se tocó la condición que decide cuándo se muestra (`!patrimonio`).
+
+### ✨ Agregado (2026-09-17) — "Neto de TC" junto a Disponible
+
+Disparador: el usuario prestó plata confiando en el "Disponible" bruto (`#s-disp` = Nu + Nequi + Efectivo), sin ver que parte de eso ya tenía como destino pagar la tarjeta de crédito. Se evaluó y descartó agregar fecha de corte/pago a Tarjetas de crédito para resolverlo (contradice la decisión de diseño explícita de ese módulo, `tarjetas-credito.md` §7: "no simula un banco real") y también usar Plata Comprometida (ese módulo es para ingresos futuros con destino ya planeado, no para deuda propia saliente — caso de uso distinto, ver `plata-comprometida.md` §1).
+
+Se agregó `#s-disp-neto-tc`, una segunda línea chica debajo de `#s-disp` (no la reemplaza) con `_renderDispNetoTC()` en `inicio.js`, hookeada al mismo monkey-patch de `refresh()` que ya usaba `_checkGastoAlto()`. Solo se muestra si hay algo que restar; vacía en caso contrario, sin "$0" de relleno.
+
+**Hallazgo real durante la implementación:** el primer intento usó `calcDeudaTcPropia()` (la función que ya usa Salud financiera), pero esa función también descuenta el saldo inicial pendiente de la deuda — `calcSaldoInicialPendiente()` en `core-state.js` lo trata a propósito como "neutral, sin clasificar" (ni propio ni ajeno). Con una tarjeta cuya deuda es 100% saldo inicial + un cargo ajeno confirmado, `calcDeudaTcPropia()` daba 0 y el bloque se quedaba vacío aunque sí había plata sin clasificar que muy probablemente había que pagar. Se cambió el cálculo a `tc.deuda − calcDeudaAjenaDeTarjeta(tc)` sumado por tarjeta — mismo criterio que ya usa el widget de "cobertura" de Tarjetas de crédito (deuda total, no la propia, porque "el banco cobra el 100% sin importar esta distinción" — `tarjetas-credito.md` §2): se resta todo lo que NO esté confirmado como ajeno, tratando el saldo inicial sin clasificar como si fuera propio hasta que algo diga lo contrario.
+
+Se agregó también un reintento corto (`setTimeout` cada 500ms, hasta 10s) por una sospecha inicial de que `calcDeudaAjenaDeTarjeta`/`calcDeudaTcPropia` cargaban lazy vía `tarjetas_credito.js` — descartado al revisar `core-state.js`/`calc-helpers.js`: ambas viven en `core-state.js`, que carga eager antes que `inicio.js`. El reintento se dejó como red de seguridad barata (por si ese archivo se vuelve lazy en el futuro), sin efecto práctico hoy.
+
+Validado con `node --check`. **Sin verificar en navegador real.**
+
+### ✅ Corregido (2026-09-20) — "Neto de TC" podía mostrar un valor MAYOR que "Disponible", y restaba solo la deuda propia en vez de la total
+
+**Bug de cálculo:** `_renderDispNetoTC()` recalculaba "disponible" a mano (`nuTotal()+nequiSaldo+efectivoSaldo`) en vez de reusar la fórmula real de `refresh()` (`cajitasLibres+nequi+ef+customTotal`) — le faltaba sumar `cuentasPersonalizadas`. Si alguna cuenta personalizada tenía saldo negativo, el `disp` local quedaba más alto que el `#s-disp` real, y el "Neto" resultante podía superar al "Disponible" bruto — matemáticamente imposible si la resta fuera correcta (`Math.max(0,...)` garantizaba una deuda no-negativa). Corregido: se cambió a `_nuTotalSafe()` (mismo fallback seguro que ya usa `refresh()`) y se agregó `customTotal` a la suma.
+
+**Decisión de criterio (cambio de diseño, no solo bug):** el cálculo original restaba `tc.deuda − calcDeudaAjenaDeTarjeta(tc)` (solo la parte "propia"), asumiendo que lo ajeno seguía pendiente de cobro. Pero `calcDeudaAjenaDeTarjeta()` solo baja con un pago real a la tarjeta — si el tercero ya devolvió esa plata por otro medio (efectivo/Nequi/Nu), la app no tiene forma de saberlo, y seguía tratando esa parte de la deuda como "no tuya" aunque el dinero recibido ya estuviera contado como disponible libre. Se cambió a restar `tc.deuda` completa, sin descontar lo ajeno — mismo criterio que ya usa el widget de "cobertura" de Tarjetas de crédito (`tarjetas-credito.md` §2: el banco cobra el 100% sin importar esta distinción). Efecto: "Neto de TC" ahora asume el peor caso (toda la deuda es tuya de pagar) en vez de un supuesto que la app no puede verificar.
+
+Se eliminó también el sistema de reintento (`_dispNetoTcIntentos`/`_renderDispNetoTCConReintento`), que dependía de que `calcDeudaAjenaDeTarjeta` existiera — ya no se usa esa función acá, y `_nuTotalSafe()` no necesita reintento.
+
+Validado con `node --check`. **Sin verificar en navegador real.**
+
+### ✅ Corregido (2026-09-20, mismo día) — "Neto de TC" volvió a poder mostrar un valor MAYOR que "Disponible" — esta vez por un saldo a favor en una tarjeta
+
+Al cambiar la resta de "solo deuda propia" a "deuda total" (ver fix de arriba), se perdió el `Math.max(0, ...)` que tenía el cálculo original. Si una tarjeta tiene `tc.deuda` negativo (saldo a favor — se pagó de más), `(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0), 0)` podía dar un total de deuda negativo, y `neto = disp - deudaTCTotal` con `deudaTCTotal` negativo es `disp + algo` — Neto apareciendo por encima de Disponible otra vez, esta vez sin relación con `cuentasPersonalizadas`.
+
+Corregido aplicando el piso en 0 **por tarjeta antes de sumar** (`a+Math.max(0,tc.deuda||0)`), no sobre el total: un saldo a favor en una tarjeta no debe restarle deuda a las demás tarjetas, ni inflar el "peor caso" de Neto por encima de Disponible — esa plata a favor no está disponible en la mano hasta que se pida reembolso o se aplique a compras futuras.
+
+Validado con `node --check`. **Sin verificar en navegador real.**
+
+### ✅ Corregido (2026-09-20, mismo día) — Rediseño: "Neto de TC" deja de recalcular "disponible" y lee el valor real de `refresh()`
+
+Las dos correcciones anteriores de este mismo día (`cuentasPersonalizadas` faltante, y el saldo a favor sin piso en 0) arreglaban síntomas puntuales del mismo problema de fondo: `_renderDispNetoTC()` recalculaba "disponible" de forma independiente a `refresh()`, así que cualquier diferencia entre ambos cálculos — por pequeña que fuera — podía volver a producir un "Neto" mayor que "Disponible", sin garantía de que no apareciera un tercer caso.
+
+Se eliminó la causa raíz en vez de seguir parchando síntomas: `core-state.js` ahora expone `window._dispActualHoy = disp` justo después de calcular `disp` dentro de `refresh()` (una sola línea añadida, no cambia nada existente de esa función). `_renderDispNetoTC()` en `inicio.js` ya no recalcula `nu+nequi+ef+customTotal` — lee directamente `window._dispActualHoy`, el mismo número que se acaba de pintar en `#s-disp`. Por construcción, "Neto de TC" no puede volver a desalinearse de "Disponible": es literalmente ese mismo número menos la deuda de TC. El orden ya estaba garantizado (el monkey-patch de `refresh()` en `inicio.js` llama primero a `_origRefreshInicio()`, que setea la variable, y recién después a `_renderDispNetoTC()`).
+
+Validado con `node --check` en ambos archivos (`core-state.js`, `inicio.js`). **Sin verificar en navegador real.**
+
+`#s-disp-neto-tc` vivía dentro de la misma celda `.stat` que "Disponible", dentro del `grid3` compartido con "Nu libre" y "Efectivo". La línea extra hacía crecer esa celda, y como las tres celdas de una fila de grid comparten altura, "Nu libre"/"Efectivo" se estiraban con espacio muerto de sobra aunque no tuvieran nada que mostrar ahí. Se sacó `#s-disp-neto-tc` de adentro de la celda `.stat` y se dejó como una línea propia, de ancho completo, justo debajo del `grid3` (antes del siguiente `grid3` de Nequi/Prestado/CDTs) — sigue leyéndose pegado a "Disponible" por posición y porque el texto ya dice "Neto de TC: $X", pero ya no participa en el alto de esa fila. Cambio solo de `index.html`; `_renderDispNetoTC()` no cambió (sigue usando `getElementById`, indiferente a dónde vive el elemento en el DOM).
 
 ---
 

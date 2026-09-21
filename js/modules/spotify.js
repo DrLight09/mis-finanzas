@@ -144,7 +144,7 @@ function getSpCajitaSaldo(){
 // tarjetas aparecían recién al cargarlo y empujaban todo Inicio hacia abajo
 // (CLS). Siguen siendo globales: este archivo las usa igual que antes.
 
-function spPeriodosVencidos(p,fechaCorte){
+function spPeriodosVencidos(p,fechaCorte,estricto){
   // Cuenta cuántos períodos de 30 días de este integrante ya se vencieron a la fecha
   // de corte dada, partiendo de su `proximoPago` vigente — que ya refleja todos los
   // cobros aplicados hasta ahora (cada cobro lo avanza N*30 días al confirmarse).
@@ -156,7 +156,9 @@ function spPeriodosVencidos(p,fechaCorte){
   const corte=new Date(fechaCorte+'T00:00:00');
   let cursor=new Date(p.proximoPago+'T00:00:00');
   let n=0;
-  while(cursor<=corte){ n++; cursor.setDate(cursor.getDate()+30); }
+  // `estricto`: no cuenta el período que empieza EXACTAMENTE el día de corte (ver
+  // SP_EMPATE_PERIODOS más abajo — ese período ya pertenece al ciclo nuevo).
+  while(estricto?cursor<corte:cursor<=corte){ n++; cursor.setDate(cursor.getDate()+30); }
   return n;
 }
 
@@ -188,6 +190,120 @@ function nextMonthFixed(dateStr, mesesAdelantar){
   return d.toISOString().split('T')[0];
 }
 
+// ── Períodos flotantes y atribución de cobros a ciclos ─────────────────────
+// Un cobro de N períodos es UN solo registro (una sola entrada de plata), pero cada
+// período tiene su propia fecha de inicio: proximoPagoAntes + 30·k. Ciclo (entre dos
+// pagos reales a Spotify) y período (30 días de cada integrante) son calendarios
+// distintos, así que la plata de un cobro multi-período no siempre cae toda en el
+// mismo ciclo. Reglas (ver spotify.md §7bis):
+//  · El primer período (k=0) cuenta en el ciclo donde se registró el cobro — igual que
+//    siempre (por posición en el historial).
+//  · Los períodos siguientes (k≥1) se atribuyen por FECHA DE INICIO: al ciclo que estaba
+//    abierto ese día. Mientras esa fecha no llegue y no se haya pagado Spotify, están
+//    "flotantes": son plata cobrada pero todavía no cuentan en "Recaudado".
+//  · Empate (el período empieza el mismo día que se paga Spotify): va al ciclo que se
+//    cierra, salvo que esa persona ya tenga SP_EMPATE_PERIODOS o más períodos en él
+//    (entonces va al nuevo).
+// Todo se DERIVA del historial: no se guarda ningún estado nuevo, así que borrar un
+// cobro o un pago a Spotify reacomoda los períodos solo.
+const SP_PERIODO_DIAS=30;
+const SP_EMPATE_PERIODOS=2;
+
+function spSumarDias(fechaStr,dias){
+  const d=new Date(fechaStr+'T00:00:00');
+  d.setDate(d.getDate()+dias);
+  return d.toISOString().split('T')[0];
+}
+
+function spTramosDeCobro(h){
+  // Divide un registro de cobro en sus períodos. Registros viejos (sin `periodos` o sin
+  // `proximoPagoAntes`) → un solo tramo sin fecha de inicio: nunca flotan.
+  // `_periodoOffset`: períodos del mismo pago que ya cubrió el registro hermano de
+  // "Pago atrasado del ciclo anterior" (ver confirmarSpDestino).
+  const total=Math.max(1,Math.round(h.periodos||1));
+  const offset=Math.min(total-1,Math.max(0,Math.round(h._periodoOffset||0)));
+  const n=total-offset;
+  const monto=h.monto||0;
+  const porTramo=Math.round(monto/n);
+  const out=[];
+  for(let j=0;j<n;j++){
+    const kAbs=offset+j;
+    const tieneFecha=!!h.proximoPagoAntes;
+    const fechaInicio=tieneFecha?spSumarDias(h.proximoPagoAntes,kAbs*SP_PERIODO_DIAS):null;
+    out.push({kAbs,inicioRef:fechaInicio||h.fecha||'',inicio:(kAbs>=1&&tieneFecha)?fechaInicio:null,monto:j===n-1?monto-porTramo*(n-1):porTramo});
+  }
+  return out;
+}
+
+function spMontoAntesDe(h,fechaCorte){
+  // Plata de este cobro que ya cubría períodos ANTERIORES a `fechaCorte` (el primer
+  // período siempre cuenta; los siguientes solo si empezaron antes del corte).
+  return spTramosDeCobro(h).filter(t=>!t.inicio||t.inicio<fechaCorte).reduce((a,t)=>a+t.monto,0);
+}
+
+function spAsignarPeriodos(hist){
+  // Devuelve un tramo por período de cada cobro, con el ciclo al que pertenece
+  // (0 = antes del primer pago a Spotify; M = pagos.length = ciclo abierto).
+  hist=hist||S.spotifyHistorial||[];
+  const pagos=[];
+  hist.forEach((h,idx)=>{ if(h.tipo==='pago')pagos.push({idx,id:h.id,fecha:h.fecha||''}); });
+  const M=pagos.length;
+  const hoyStr=hoy();
+  const tramos=[];
+  hist.forEach((h,idx)=>{
+    if(h.tipo!=='cobro')return;
+    let cPos=0;
+    pagos.forEach(pg=>{ if(pg.idx<idx)cPos++; });
+    const clave=h.spId||h.nombre||'';
+    if(h._pagoIdCierre){
+      // Plata que saldó deuda de un ciclo ya cerrado: pertenece a ESE ciclo, entera.
+      const j=pagos.findIndex(pg=>pg.id===h._pagoIdCierre&&pg.idx<idx);
+      tramos.push({h,idx,clave,cPos,kAbs:0,inicio:null,inicioRef:h.fecha||'',monto:h.monto||0,ciclo:j>=0?j:cPos,flotante:false});
+      return;
+    }
+    spTramosDeCobro(h).forEach(t=>{
+      let ciclo=cPos;
+      if(t.inicio){
+        const porFecha=pagos.filter(pg=>pg.fecha<t.inicio).length;
+        ciclo=Math.max(cPos,porFecha);
+      }
+      tramos.push({h,idx,clave,cPos,kAbs:t.kAbs,inicio:t.inicio,inicioRef:t.inicioRef,monto:t.monto,ciclo,flotante:false});
+    });
+  });
+  // Empate: período que empieza el mismo día que un pago a Spotify. Por defecto queda en
+  // el ciclo que cierra; si esa persona ya tiene SP_EMPATE_PERIODOS o más períodos en él,
+  // pasa al nuevo.
+  const porPersona={};
+  tramos.forEach(t=>{ (porPersona[t.clave]=porPersona[t.clave]||[]).push(t); });
+  Object.values(porPersona).forEach(lista=>{
+    lista.slice().sort((a,b)=>(a.inicioRef||'').localeCompare(b.inicioRef||'')||a.kAbs-b.kAbs).forEach(t=>{
+      if(!t.inicio)return;
+      if(!pagos.some(pg=>pg.fecha===t.inicio))return;
+      const previos=lista.filter(o=>o!==t&&o.ciclo===t.ciclo&&(o.inicioRef||'')<(t.inicioRef||'')).length;
+      if(previos>=SP_EMPATE_PERIODOS&&t.ciclo<M)t.ciclo+=1;
+    });
+  });
+  // Flotante = todavía sin resolver: sigue en el mismo ciclo abierto donde se registró el
+  // cobro (no se ha pagado Spotify desde entonces) y su período aún no empieza. Si ya hubo
+  // un pago a Spotify antes de esa fecha, el período quedó asignado al ciclo nuevo y
+  // cuenta ahí de inmediato.
+  tramos.forEach(t=>{ t.flotante=(t.ciclo===M&&t.cPos===M&&!!t.inicio&&t.inicio>hoyStr); });
+  return tramos;
+}
+
+function spResumenCicloActual(hist){
+  // "Recaudado este ciclo" = tramos del ciclo abierto que ya empezaron. Los períodos
+  // prepagados que todavía no empiezan quedan aparte, como `flotante`.
+  const tramos=spAsignarPeriodos(hist);
+  const M=(hist||S.spotifyHistorial||[]).filter(h=>h.tipo==='pago').length;
+  let recaudado=0,flotante=0;
+  tramos.forEach(t=>{
+    if(t.h._pagoIdCierre||t.ciclo!==M)return;
+    if(t.flotante)flotante+=t.monto; else recaudado+=t.monto;
+  });
+  return {recaudado,flotante,tramos};
+}
+
 function renderSpotify(){
   const el=document.getElementById('spotifyList');
   const p=S.spotifyPersonas||[];
@@ -195,7 +311,10 @@ function renderSpotify(){
   // "Recaudado"/"Pendiente" se calculan desde el historial del ciclo actual (movimientos reales),
   // no desde el flag "pagado" — así no se descuadran si solo tocas el badge para corregir un error.
   const cicloCobros=spCicloCobrosActual();
-  const cob=cicloCobros.reduce((a,h)=>a+(h.monto||0),0);
+  // "Recaudado" cuenta por PERÍODOS, no por registro: un cobro de varios períodos solo
+  // aporta los que ya empezaron; el resto queda flotante (ver spAsignarPeriodos).
+  const resCiclo=spResumenCicloActual();
+  const cob=resCiclo.recaudado;
   // Si alguien prepagó varios períodos, su cobertura puede caer en un ciclo anterior
   // (antes del último pago real) y "desaparecer" de cicloCobros — pero mientras su
   // proximoPago siga en el futuro, sigue cubierto y no debe contar como pendiente.
@@ -214,7 +333,7 @@ function renderSpotify(){
   document.getElementById('spCob').textContent=fmt(cob);
   document.getElementById('spPend').textContent=fmt(cobPend);
   document.getElementById('spProg').style.width=(costo>0?Math.min(100,cob/costo*100):0).toFixed(0)+'%';
-  document.getElementById('spProgLabel').textContent=(costo>0?Math.round(cob/costo*100)+'% recaudado':'');
+  document.getElementById('spProgLabel').textContent=(costo>0?Math.round(cob/costo*100)+'% recaudado':'')+(resCiclo.flotante>0?(costo>0?' · ':'')+'+ '+fmt(resCiclo.flotante)+' adelantado (aún no cuenta)':'');
 
   // Aviso cuando no está configurado el costo del plan
   let warnEl=document.getElementById('sp-costo-warn');
@@ -403,39 +522,26 @@ function renderSpStats(){
   // cada vez que aparece un pago real a Spotify. Así el flujo mensual deja de
   // ser un número teórico fijo y refleja lo que de verdad ganaste cada mes.
   const ciclosCompletos=[];
-  {
-    let cobroAcum=0;
-    // Mapea el id de cada "pago" ya procesado al índice de su ciclo en ciclosCompletos,
-    // para poder sumarle ahí un cobro atrasado que llega después marcado con
-    // _pagoIdCierre — en vez de sumarlo al ciclo que esté acumulando en ese momento.
-    const cicloPorPagoId={};
-    for(const h of hist){
-      if(h.tipo==='cobro'){
-        if(h._pagoIdCierre&&cicloPorPagoId[h._pagoIdCierre]!==undefined){
-          const idxCiclo=cicloPorPagoId[h._pagoIdCierre];
-          ciclosCompletos[idxCiclo].cobrado+=(h.monto||0);
-          ciclosCompletos[idxCiclo].ganancia+=(h.monto||0);
-        } else {
-          // Cobro normal del ciclo en curso, o _pagoIdCierre que ya no existe (el pago
-          // que referenciaba fue eliminado) — cae al ciclo que se está acumulando.
-          cobroAcum+=(h.monto||0);
-        }
-      }
-      else if(h.tipo==='pago'){
-        const cuotaAdminDeEseCiclo=h._cuotaAdmin!=null?h._cuotaAdmin:cuotaAdmin;
-        ciclosCompletos.push({fecha:h.fecha, cobrado:cobroAcum, pagado:h.monto||0, ganancia:cobroAcum-(h.monto||0)+cuotaAdminDeEseCiclo});
-        cicloPorPagoId[h.id]=ciclosCompletos.length-1;
-        cobroAcum=0;
-      }
-    }
-  }
+  // El cobrado de cada ciclo se arma con la atribución por PERÍODOS (spAsignarPeriodos):
+  // un período prepagado cuyo inicio cae después de un pago a Spotify cuenta en el ciclo
+  // siguiente, no en el que estaba abierto cuando entró la plata. Los cobros con
+  // _pagoIdCierre siguen sumándose al ciclo que saldaron (o al que estaba acumulando si
+  // el pago que referenciaban ya no existe).
+  const tramosStats=spAsignarPeriodos(hist);
+  hist.filter(h=>h.tipo==='pago').forEach((h,j)=>{
+    const cobradoCiclo=tramosStats.filter(t=>t.ciclo===j).reduce((a,t)=>a+t.monto,0);
+    const cuotaAdminDeEseCiclo=h._cuotaAdmin!=null?h._cuotaAdmin:cuotaAdmin;
+    ciclosCompletos.push({fecha:h.fecha, cobrado:cobradoCiclo, pagado:h.monto||0, ganancia:cobradoCiclo-(h.monto||0)+cuotaAdminDeEseCiclo});
+  });
+  // Plata cobrada por períodos que todavía no empiezan: no es ganancia de ningún ciclo aún.
+  const flotanteTotal=tramosStats.filter(t=>t.flotante).reduce((a,t)=>a+t.monto,0);
   const promedioCiclo=ciclosCompletos.length?ciclosCompletos.reduce((a,c)=>a+c.ganancia,0)/ciclosCompletos.length:null;
   const ultimoCiclo=ciclosCompletos.length?ciclosCompletos[ciclosCompletos.length-1].ganancia:null;
   const mejorCiclo=ciclosCompletos.length?Math.max(...ciclosCompletos.map(c=>c.ganancia)):null;
   const peorCiclo=ciclosCompletos.length?Math.min(...ciclosCompletos.map(c=>c.ganancia)):null;
 
   // ── Ganancia real: solo calculable cuando hay pagos registrados
-  const gananciaReal=totalCobradoHist-totalPagadoHist+ahorroCuotaAdmin;
+  const gananciaReal=(totalCobradoHist-flotanteTotal)-totalPagadoHist+ahorroCuotaAdmin;
   const hayCiclo=ciclosPagados>0;
 
   const cV=(v)=>v>0?'var(--accent)':v<0?'var(--red)':'var(--text2)';
@@ -468,14 +574,14 @@ function renderSpStats(){
   html+=`<div class="stat">
     <div class="stat-label">Total cobrado</div>
     <div class="stat-value c-green">${fmt(totalCobradoHist)}</div>
-    <div style="font-size:10px;color:var(--text3);margin-top:3px;">${cobros.length} cobro${cobros.length!==1?'s':''}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px;">${cobros.length} cobro${cobros.length!==1?'s':''}${flotanteTotal>0?` · ${fmt(flotanteTotal)} adelantado`:''}</div>
   </div>`;
 
   // Segunda stat: ganancia real si hay ciclo, balance del ciclo si no
   if(!hayCiclo&&totalCobradoHist>0&&costo>0){
     // Sin pagos a Spotify aún: mostrar cuánto falta/sobra para cubrir el costo
-    const pendiente=costo-totalCobradoHist;
-    const sobra=totalCobradoHist-costo;
+    const pendiente=costo-(totalCobradoHist-flotanteTotal);
+    const sobra=(totalCobradoHist-flotanteTotal)-costo;
     html+=`<div class="stat">
       <div class="stat-label">Balance del ciclo</div>
       ${pendiente>0
@@ -851,6 +957,7 @@ function confirmarSpDestino(){
   let lastPago=null;
   for(let i=S.spotifyHistorial.length-1;i>=0;i--){ if(S.spotifyHistorial[i].tipo==='pago'){lastPago=S.spotifyHistorial[i];break;} }
   let restante=montoTotal;
+  let periodosCierre=0;
   if(lastPago&&lastPago._pendienteAlCerrar&&lastPago._pendienteAlCerrar[p.id]>0){
     const pendienteViejo=lastPago._pendienteAlCerrar[p.id];
     const cierreMonto=Math.min(restante,pendienteViejo);
@@ -858,6 +965,9 @@ function confirmarSpDestino(){
     if(lastPago._pendienteAlCerrar[p.id]<=0)delete lastPago._pendienteAlCerrar[p.id];
     S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:cierreMonto,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,cierreMonto,montoTotal)||undefined,fecha:fechaCobro,nota:'Pago atrasado del ciclo anterior'+(notaBase?' · '+notaBase:''),proximoPagoAntes,_pagoIdCierre:lastPago.id,_secundario:true,_origenSeccion:'Spotify'});
     restante-=cierreMonto;
+    // Períodos del pago que ya cubrió el registro de cierre: el registro "resto" arranca
+    // después de ellos (ver spTramosDeCobro / _periodoOffset).
+    periodosCierre=Math.min(meses,Math.max(1,Math.round(cierreMonto/(p.monto||cierreMonto))));
   }
   // Registrar en historial el resto (o el total, si no había deuda vieja) como UN solo
   // registro — aunque cubra varios períodos, es una sola plata que entró en un solo
@@ -866,6 +976,7 @@ function confirmarSpDestino(){
   // no quede fijado desactualizado.
   if(restante>0||diferenciaSp>0){
     const nuevoCobro={id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:restante,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,restante,montoTotal)||undefined,fecha:fechaCobro,nota:notaBase,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'};
+    if(periodosCierre>0)nuevoCobro._periodoOffset=periodosCierre;
     if(diferenciaSp>0){
       nuevoCobro.cuotaEsperada=montoEsperado;
       nuevoCobro.pendiente=diferenciaSp;
@@ -1154,7 +1265,7 @@ async function confirmarPagarSpotify(){
     if(h.tipo!=='cobro'||h._pagoIdCierre){ quedanCerrando.push(h); return; }
     if(h.fecha<fechaPago){
       quedanCerrando.push(h);
-      if(h.spId)cubiertoPorPersona[h.spId]=(cubiertoPorPersona[h.spId]||0)+(h.monto||0);
+      if(h.spId)cubiertoPorPersona[h.spId]=(cubiertoPorPersona[h.spId]||0)+spMontoAntesDe(h,fechaPago);
     } else if(h.fecha>fechaPago){
       pasanANuevo.push(h);
     } else {
@@ -1164,11 +1275,13 @@ async function confirmarPagarSpotify(){
       const persona=h.spId?(S.spotifyPersonas||[]).find(x=>x.id===h.spId):null;
       const cuota=persona?(persona.monto||0):0;
       const yaCubierto=h.spId?(cubiertoPorPersona[h.spId]||0):0;
-      if(cuota>0&&yaCubierto>=cuota){
+      // Empate: pasa al ciclo nuevo solo si ya tenía SP_EMPATE_PERIODOS o más períodos
+      // cubiertos en el que se cierra (antes bastaba con uno).
+      if(cuota>0&&yaCubierto>=cuota*SP_EMPATE_PERIODOS){
         pasanANuevo.push(h);
       } else {
         quedanCerrando.push(h);
-        if(h.spId)cubiertoPorPersona[h.spId]=yaCubierto+(h.monto||0);
+        if(h.spId)cubiertoPorPersona[h.spId]=yaCubierto+spMontoAntesDe(h,fechaPago);
       }
     }
   });
@@ -1185,7 +1298,12 @@ async function confirmarPagarSpotify(){
     // contra una sola cuota — un ciclo puede durar más de un período de esta persona,
     // y alguien puede pagar el primero y dejar vencer un segundo sin pagarlo dentro del
     // mismo ciclo. Comparar solo "cobrado ≥ una cuota" no detectaba ese segundo período.
-    const periodosVencidos=spPeriodosVencidos(x,fechaPago);
+    // Si ya tenía SP_EMPATE_PERIODOS o más períodos cubiertos en este ciclo, el período
+    // que empieza justo hoy (día del pago) es del ciclo nuevo: no se le cuenta como deuda
+    // de este. Con menos, sigue siendo deuda del ciclo que cierra (como siempre).
+    const cubiertosCiclo=cubiertoPorPersona[x.id]||0;
+    const empateAlNuevo=(x.monto||0)>0&&cubiertosCiclo>=x.monto*SP_EMPATE_PERIODOS;
+    const periodosVencidos=spPeriodosVencidos(x,fechaPago,empateAlNuevo);
     const pend=periodosVencidos*(x.monto||0);
     if(pend>0)pendienteAlCerrar[x.id]=pend;
   });

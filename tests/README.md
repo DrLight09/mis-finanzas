@@ -58,6 +58,20 @@ MIS_FINANZAS_CORE_DIR=./ruta/a/core MIS_FINANZAS_MODULES_DIR=./ruta/a/modules np
   `NaN`/`undefined` en silencio — cargá el módulo real en vez de confiar
   en el guard cuando estés en este modo.
 
+## Cargar `calc-helpers.js` cuando el archivo bajo test lo use (2026-09-20)
+
+`getDeudorSaldo()` (Préstamos) y `spNombreDe()`/`spPersonaPagadaVigente()`
+(Spotify) viven ahora en `js/core/calc-helpers.js`, no en `prestado.js`/
+`spotify.js`, igual que las funciones puras de Mesada y Tarjetas. Si un test
+carga `prestado.js` o `spotify.js` y ejercita algo que las llama (por ejemplo
+`totalPrestadoPendiente()`), tiene que cargar también `calc-helpers.js`, en el
+mismo orden que `index.html`: `core-state.js` → `calc-helpers.js` → módulo.
+
+Ojo en modo `permissive`: no falla con un error, **da resultados en silencio**
+(la función faltante cae a un no-op que devuelve `undefined`, y
+`totalPrestadoPendiente()` da 0). Así fue como falló en CI
+`totalPrestadoPendiente.test.js` — ver `CHANGELOG.md#infraestructura--seguridad`.
+
 ## GitHub Action (corre solo en cada push)
 
 `.github/workflows/test.yml` corre `npm test` automáticamente en cada

@@ -5,30 +5,24 @@
    el diseño completo (modelo de datos, reglas, flujos) y
    docs/CHANGELOG.md#mesada para el historial de bugs corregidos.
 
-   ── Dependencias y orden de carga ─────────────────────────────
-   Este archivo asume que ya existen en `window`, definidos ANTES
-   de que se cargue este <script>:
-     - El núcleo compartido de index.html: S, save, refresh, escHtml,
-       fmt, fmtInput, parseMoney, hoy, uid, toast, openSheet,
-       closeSheet, dialogo, sumarFuente, descontarFuente,
-       poblarFuente, buildFuentesOptsHtml, fuenteLabel,
-       fuenteBadgeClass, getSaldoActual, MC (nombres de mes).
-     - js/core/calc-helpers.js (2026-08-04): _ensureMesadas(),
-       getMesadaData(), _getCuotaAnio() y _mesNombreDeKey() se movieron
-       ahí (Inicio las necesita y este módulo ahora es lazy) — este
-       archivo las sigue usando como globales, ya no las define.
-     - js/core/events.js (Events.on/attr/registerAll) — cargado una
-       sola vez, bien al principio de index.html, antes que
-       cualquier módulo (ver nota en auditoria-tecnica.md, punto 1).
+   ── Dependencias ─────────────────────────────────────────────
+   Este archivo es un grupo lazy (Loader.GROUPS.mesada en
+   js/core/lazy-loader.js) y asume que ya existen en `window`:
+     - El núcleo compartido: S, save, refresh, escHtml, fmt,
+       fmtInput, parseMoney, hoy, uid, toast, openSheet, closeSheet,
+       dialogo, sumarFuente, descontarFuente, poblarFuente,
+       buildFuentesOptsHtml, fuenteLabel, fuenteBadgeClass,
+       getSaldoActual, MC (nombres de mes).
+     - js/core/calc-helpers.js: _ensureMesadas(), getMesadaData(),
+       _getCuotaAnio() y _mesNombreDeKey() (Inicio también las usa;
+       este archivo las consume como globales y no las define).
+     - js/core/events.js (Events.on/attr/registerAll).
      - El motor genérico de "split de fuentes" (crearSplitWidget,
        splitToggle, splitAgregarRow, splitGetData, splitPreview),
-       que sigue viviendo en index.html porque también lo usan
-       Encargos y "Yo debo" — NO se movió acá para no romper esos
-       dos módulos. Por esto, este <script src="js/modules/mesada.js">
-       tiene que ir DESPUÉS de que ese motor esté definido en
-       index.html (mismo criterio que ya se usó al cargar
-       js/modules/spotify.js: cargar donde la dependencia más
-       exigente ya esté satisfecha).
+       compartido con Encargos y "Yo debo" — no vive acá.
+     - Encargos (getEncargo, encargoSaldo, ...) solo de forma
+       opcional, con guards typeof: si encargos.js no está cargado,
+       simplemente no se ofrece "pagar con plata de un encargo".
 
    ── Eventos (CSP) ──────────────────────────────────────────────
    Los onclick inline que armaba este módulo en sus template strings
@@ -66,10 +60,8 @@ let mppMesKey=''; // '2025-3'
 let mpUsarEncargoActivo=false;
 let mpEncargoActualId='';
 // Misma idea pero para el sheet de "pago de lo pendiente" (abrirResolverPendiente
-// / confirmarPendienteMesada) — al principio esta función solo existía en el
-// flujo normal (ver nota de alcance en CHANGELOG); se extendió acá el
-// 2026-08-05 porque un abono de lo pendiente también puede venir de plata
-// que ya estaba guardada en un encargo.
+// / confirmarPendienteMesada): un abono de lo pendiente también puede venir de
+// plata que ya estaba guardada en un encargo.
 let mppUsarEncargoActivo=false;
 let mppEncargoActualId='';
 
@@ -611,7 +603,7 @@ function confirmarMesadaPago(){
     // El saldo de un encargo por cuenta (_getEncargoSaldoPorCuenta) es un
     // registro puramente interno del módulo Encargos: entradas/salidas de
     // un encargo NUNCA llaman a sumarFuente/descontarFuente (confirmado
-    // 2026-08-05 revisando confirmarMovEncargo() en encargos.js) — la
+    // revisando confirmarMovEncargo() en encargos.js) — la
     // "cuenta" es solo una etiqueta de dónde está físicamente esa plata,
     // no afecta el saldo real de esa cuenta en la app. Solo se le suma a
     // una cuenta real en el momento exacto en que esa plata deja de ser
@@ -786,9 +778,8 @@ function _borrarMesadaPago(parent,key,info){
       // Este pago se cubrió con plata que ya le tenías guardada en un
       // encargo: siempre hay que devolverle ese saldo al encargo (quitar
       // el movimiento de salida que se creó). Además, hay que revertir a
-      // donde sea que haya ido esa plata — puede ser un solo destino o,
-      // desde 2026-08-05, repartida en varios (mismo patrón que el split
-      // normal, ver rama de abajo).
+      // donde sea que haya ido esa plata — puede ser un solo destino o
+      // repartida en varios (mismo patrón que el split normal, ver rama de abajo).
       const oe=info.origenEncargo;
       const enc=typeof getEncargo==='function'?getEncargo(oe.encargoId):null;
       let montoOrig=0;

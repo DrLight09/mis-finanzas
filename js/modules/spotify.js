@@ -5,18 +5,8 @@
    cobros, pago al servicio, ganancia). Documentación funcional
    completa en docs/spotify.md — este archivo es la implementación.
 
-   ⚠️ ORDEN DE CARGA: este archivo debe cargarse ANTES de que
-   openSheet() se defina más abajo en index.html, porque un par de
-   wirings de botones de OTROS módulos (Encargos, Mesada — ver
-   docs/CHANGELOG.md#infraestructura--seguridad) referencian
-   addSpotify/guardarEditarSpotify de forma inmediata, no diferida,
-   y necesitan que ya existan en ese punto del documento. Por eso el
-   <script src> de este archivo vive en el mismo lugar donde antes
-   estaba el bloque "SPOTIFY" inline (temprano en el documento).
-
-   La integración con el sistema de Personas vive aparte, en
-   js/modules/spotify-personas.js, cargado mucho más abajo — ver el
-   comentario al principio de ese archivo para el porqué.
+   La integración con el sistema de Personas (selector "¿Quién es?" al agregar o
+   editar un integrante) vive más abajo, en este mismo archivo.
 
    Depende de globals del núcleo compartido (S, save, refresh,
    escHtml, fmt, toast, dialogo, uid, hoy, emptyState, getFuentes*,
@@ -26,13 +16,11 @@
    Pagar Spotify con una tarjeta de crédito (fuente 'tc:<id>') es un CARGO a la
    tarjeta, no un descuento de saldo — usa getTCById/tcCupoDisponible/tcRecalcular
    de js/modules/tarjetas_credito.js, igual que Encargos/Préstamos (S.tcMovimientos
-   con tipo 'cargo_*'). FIX 2026-08-02: antes se asumía que tarjetas_credito.js ya
-   estaba cargado porque cargaba eager — dejó de ser una asunción segura (ver
-   auditoria-tecnica.md, acoplamiento spotify↔tarjetas_credito). Los 3 puntos que
-   usan esas funciones ahora pasan primero por _spEnsureTC(), que llama a
+   con tipo 'cargo_*'). No se asume que tarjetas_credito.js ya esté cargado (ver
+   auditoria-tecnica.md, acoplamiento spotify↔tarjetas_credito): los 3 puntos que
+   usan esas funciones pasan primero por _spEnsureTC(), que llama a
    Loader.ensure('tarjetas') si hace falta — ver ese helper, arriba de
-   openSheet_pagarSpotify(). Funciona igual si tarjetas_credito.js sigue cargando
-   eager (no-op inmediato) que si se vuelve lazy.
+   openSheet_pagarSpotify().
    ═══════════════════════════════════════════════════════════════ */
 
 /* ---- SPOTIFY ---- */
@@ -807,7 +795,7 @@ function marcarPagoSpotify(i){
   // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
   destSel.innerHTML=html`<option value="" disabled selected>Selecciona una opción...</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}<option value="__sin_especificar__">Sin especificar (no mover)</option>`;
   // Editable para poder anotar un cobro días después sin que quede fechado hoy
-  // por error (ver auditoria-tecnica.md — atribución de ciclo por deuda, no por fecha).
+  // por error (ver docs/spotify.md §7ter — el ciclo se decide por la fecha real).
   const fechaEl=document.getElementById('spFecha');
   if(fechaEl)fechaEl.value=hoy();
   const spNotaEl=document.getElementById('spNota');
@@ -953,7 +941,7 @@ function confirmarSpDestino(){
   // que sobre después de saldarla cuenta como plata del ciclo en curso. Así una persona
   // puede pagar atrasado después de que yo ya le pagué a Spotify (porque confío en que
   // me va a pagar) sin que esa plata infle "Recaudado" del ciclo nuevo ni le reste
-  // ganancia al ciclo que ya cerré. Ver auditoria-tecnica.md.
+  // ganancia al ciclo que ya cerré. Ver docs/spotify.md §7ter.
   let lastPago=null;
   for(let i=S.spotifyHistorial.length-1;i>=0;i--){ if(S.spotifyHistorial[i].tipo==='pago'){lastPago=S.spotifyHistorial[i];break;} }
   let restante=montoTotal;
@@ -1104,8 +1092,8 @@ function openSheet_pagarSpotify(){
   const notaEl=document.getElementById('spPagarNota');
   if(notaEl)notaEl.value='';
   // Editable para poder registrar tarde un pago que en la realidad ya ocurrió antes
-  // (ver auditoria-tecnica.md — atribución de ciclo por fecha real, no por orden de
-  // entrada en el sistema).
+  // (ver docs/spotify.md §7ter — el ciclo se decide por la fecha real, no por el orden
+  // en que se anotó).
   const fechaPagoEl=document.getElementById('spPagarFecha');
   if(fechaPagoEl)fechaPagoEl.value=hoy();
 }
@@ -1251,7 +1239,7 @@ async function confirmarPagarSpotify(){
   // fecha real ya eran del ciclo NUEVO (posteriores a fechaPago), no hay que tratarlos
   // como si hubieran cerrado el ciclo viejo — hay que "moverlos" después de este pago en
   // el historial para que spCicloCobrosActual() los cuente donde de verdad corresponden.
-  // Ver auditoria-tecnica.md — atribución de ciclo por fecha real, no por orden de entrada.
+  // Ver docs/spotify.md §7ter.
   let lastPagoIdx=-1;
   for(let i=S.spotifyHistorial.length-1;i>=0;i--){ if(S.spotifyHistorial[i].tipo==='pago'){lastPagoIdx=i;break;} }
   const antesDelSegmento=S.spotifyHistorial.slice(0,lastPagoIdx+1);
@@ -1290,7 +1278,7 @@ async function confirmarPagarSpotify(){
   // cálculo que "Pendiente por cobrar" en pantalla, pero congelado por persona y calculado
   // solo sobre lo que de verdad quedó en este ciclo tras la separación de arriba). Sirve
   // para que, si alguien paga atrasado DESPUÉS de este pago, ese cobro se le atribuya al
-  // ciclo que en realidad estaba saldando — ver confirmarSpDestino() y auditoria-tecnica.md.
+  // ciclo que en realidad estaba saldando — ver confirmarSpDestino() y docs/spotify.md §7ter.
   const pendienteAlCerrar={};
   (S.spotifyPersonas||[]).forEach(x=>{
     if(spPersonaPagadaVigente(x))return;
@@ -1460,13 +1448,13 @@ if (_spPagarBtnAddRow) _spPagarBtnAddRow.addEventListener('click', agregarSpPaga
 
 /* ═══════════════════════════════════════════════════════════════
    REGISTRO DE EVENTOS (funciones base — la integración con Personas
-   registra las suyas en spotify-personas.js)
+   registra las suyas más abajo, en su propio bloque)
    ═══════════════════════════════════════════════════════════════ */
 
 Events.registerAll('spotify', {
   marcarPago: marcarPagoSpotify,
-  // OJO: NO pasar editarSpotify directo acá. spotify-personas.js lo
-  // reemplaza (monkeypatch) para precargar la persona vinculada al abrir
+  // OJO: NO pasar editarSpotify directo acá. El bloque INTEGRACIÓN SPOTIFY ↔
+  // PERSONAS (más abajo) lo reemplaza (monkeypatch) para precargar la persona vinculada al abrir
   // el sheet — si acá se captura la referencia original, el botón queda
   // pegado a la versión sin esa parte. Con la flecha se resuelve el
   // nombre en cada click, igual que hacía el onclick="..." de antes.
@@ -1480,23 +1468,14 @@ Events.on('spotify:abrirSheetAgregar', () => openSheet('spotify'));
 
 /* ═══════════════════════════════════════════════════════════════
    INTEGRACIÓN CON EL SISTEMA DE PERSONAS
-   (antes js/modules/spotify-personas.js — fusionado acá el 2026-08-03)
 
    Selector de persona al agregar/editar un integrante, para que sean
    personas reales de S.personas en vez de nombres sueltos. Ver
    docs/spotify.md.
 
-   Antes vivía en un archivo aparte, cargado más abajo en index.html,
-   por la premisa de que dependía de getPersona()/abrirSelPersona()/
-   _inyectarPersonaSheets() (definidos en personas.js, que cargaba
-   después). Esa premisa no se sostenía contra el código real: todas
-   esas llamadas viven DENTRO de funciones (nunca a nivel superior del
-   archivo), así que solo se ejecutan en el click — mucho después de
-   que personas.js ya terminó de cargar, sin importar el orden entre
-   <script defer>. Lo único que este bloque necesita a nivel superior
-   (openSheet, addSpotify, editarSpotify, guardarEditarSpotify,
-   renderSpotify) ya está definido arriba, en este mismo archivo.
-   Fusión verificada con node --check; ver CHANGELOG.md#spotify.
+   Todas las llamadas a getPersona()/abrirSelPersona()/_inyectarPersonaSheets()
+   (personas.js) viven dentro de funciones, nunca a nivel superior, así que solo
+   corren en el click — sin depender del orden de carga entre scripts.
    ═══════════════════════════════════════════════════════════════ */
 
 

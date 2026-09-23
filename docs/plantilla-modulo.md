@@ -61,12 +61,20 @@ Todo bug ya arreglado, con su causa y su fix, va en el **`CHANGELOG.md` comparti
 
 ## Índice de referencia (documentos ya escritos con esta estructura)
 
+- `inicio.md`
+- `cuentas.md`
+- `gastos.md`
+- `tarjetas-credito.md`
+- `prestado.md` (cubre los dos flujos, "Me deben" y "Yo debo")
+- `encargos.md`
 - `mesada.md`
 - `spotify.md`
 - `personas.md`
 - `alcancia.md`
+- `plata-comprometida.md`
 - `analisis-financiero.md`
 - `wrapped.md`
+- `salud-financiera.md` y `proyeccion-financiera.md` — sub-documentos de Inicio, misma estructura, no son un "módulo" de la tabla de pantallas pero comparten cálculos con Análisis financiero
 - `CHANGELOG.md` — historial de bugs y limpieza de código, compartido entre todos los módulos
 
-Módulos pendientes de documentar con esta misma plantilla: Cuentas, Gastos, Préstamos ("Me deben" / "Yo debo"), Encargos, Tarjetas de crédito, Plata Comprometida.
+Sin `.md` propio todavía: ninguno de los 14 módulos de dominio — este índice quedó completo el 2026-09-10.

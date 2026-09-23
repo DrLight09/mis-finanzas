@@ -9,8 +9,7 @@ Llevar el registro de las tarjetas de crédito propias: cuánto cupo tiene cada 
 - **Deuda (`tc.deuda`)** — lo que se debe hoy en total, sin importar de quién sea "moralmente" esa plata. Es un saldo neto, no un acumulado histórico: sube con compras y cargos, baja con pagos.
 - **Deuda propia vs. deuda ajena** — una tarjeta puede tener cargos que en realidad son de un encargo, un préstamo o "plata comprometida" (alguien más te va a devolver esa plata, o ya la tenías apartada para otra cosa). La **deuda ajena** es la suma de esos cargos menos los pagos ya hechos sobre ellos; la **deuda propia** es lo que queda de la deuda total al restarle la ajena. Esta separación solo importa para calcular patrimonio y salud financiera — **el banco cobra el 100% de la deuda total sin importar esta distinción**, así que cualquier widget que responda "¿me alcanza para pagar?" debe usar la deuda total, nunca la propia.
 - **Cupo disponible** — no se guarda como campo; siempre se calcula como `cupo total − deuda actual`. Si la tarjeta no tiene cupo configurado (`tc.cupo` en 0 o vacío), se trata como sin restricción.
-- **Compra vs. pago vs. "cargo" (`tcMovimiento`)** — una *compra* se registra desde este módulo (o desde el gasto genérico, ver §5). Un *pago* reduce la deuda y sale de una cuenta real. Un *cargo* (`tipo: 'cargo_encargo'` o `'cargo_prestamo'`) es un tercer tipo de movimiento que **no crea este módulo** — lo generan Encargos o Préstamos cuando usan la tarjeta como método de pago, y vive en `S.tcMovimientos`, no en `tc.compras`. Tarjetas de crédito solo los *lee* (para sumarlos a la deuda y al historial), nunca los crea ni los borra.
-- **Cuotas** — una compra puede marcarse como diferida a cuotas (`esCuotas`, `numCuotas`, `valorCuota`). El conteo de `cuotasPagadas` es puramente informativo (para saber cuántas cuotas del plan ya "sientes" pagadas) — no descuenta nada de la deuda ni se vincula a ningún pago real; la deuda solo baja con pagos de verdad.
+- **Compra vs. pago vs. "cargo"** — una *compra* se registra desde este módulo (o desde el gasto genérico, ver §5). Un *pago* reduce la deuda y sale de una cuenta real. Un *cargo* (`tipo: 'cargo_encargo'` o `'cargo_prestamo'`) es un tercer tipo de movimiento que **no crea este módulo** — lo generan Encargos o Préstamos cuando usan la tarjeta como método de pago, y vive en `S.tcMovimientos`, no en `tc.compras`. Tarjetas de crédito solo los *lee* (para sumarlos a la deuda y al historial), nunca los crea ni los borra.
 - **Cobertura** — si una tarjeta tiene una cajita vinculada (`tc.cajitaId`), se muestra si el saldo de esa cajita alcanza para cubrir la deuda total de todas las tarjetas vinculadas a ella (puede haber más de una tarjeta por cajita).
 - **Cargo especial (`_esCargoEspecial`)** — un tercer tipo de "compra" pensado para cuando el banco impone un cargo (interés por cupo al tope, comisión, corrección de cierre) que **no fue una decisión de gasto del usuario**. Vive dentro de `tc.compras` con el flag `_esCargoEspecial:true` y un `_motivoCargo` (`'interes' | 'comision' | 'otro'`), y se crea/borra por el mismo camino que una compra normal (`tcCrearCompra`/`tcEliminarCompraInterna`) — la única diferencia real es que su sheet de registro (`confirmarCargoEspecialTC`) **no valida cupo disponible**, a propósito (ver §3 y §7).
 
@@ -20,7 +19,7 @@ Llevar el registro de las tarjetas de crédito propias: cuánto cupo tiene cada 
 - **Ningún registro se borra físicamente.** Compras y pagos se marcan `eliminado:true` y se excluyen de los cálculos — nunca se hace `.splice()` ni se filtra el array. Esto preserva el historial completo y permite que `tcBuscarCompraPorIdOMatch` siga encontrando compras viejas por descripción+monto cuando no hay un id vinculado (datos de antes de este refactor).
 - **Un mismo camino para crear una compra, sin importar la pantalla de origen.** Tanto el botón "+ Compra" de este módulo como el flujo genérico de "Gasto variable" pasan por `tcCrearCompra()` — la misma validación de cupo debe aplicar en ambos lugares. Si se agrega una tercera forma de crear una compra en TC en el futuro, también debe pasar por `tcCrearCompra()` y repetir la validación de cupo, no reinventar el flujo.
 - **La tarjeta nunca es un destino de dinero que entra.** Los selectores de "fuente" que representan de dónde *sale* la plata sí incluyen tarjetas (`incluirTC=true` en `poblarFuente`); los que representan a dónde *entra* la plata (`getFuentesSinTC`) las excluyen siempre. Registrar dinero "hacia" una tarjeta no tiene sentido en este modelo — lo que existe es pagar (reducir deuda) o comprar (aumentarla).
-- **Un pago cancela primero la deuda ajena, lo que sobra cancela la propia** (`calcDeudaAjenaDeTarjeta`). Esto evita que la deuda ajena calculada supere alguna vez a la deuda total.
+- **Un pago cancela en este orden: primero el saldo inicial pendiente, luego la deuda ajena, y lo que sobra cancela la propia** (`calcSaldoInicialPendiente` → `calcDeudaAjenaDeTarjeta` → `calcDeudaTcPropiaDeTarjeta`). Esto evita que la deuda ajena o el saldo inicial calculados superen alguna vez a la deuda total.
 - **Eliminar una compra o un pago de TC, sea desde el detalle de la tarjeta o desde el feed general de movimientos, siempre pasa por `tcEliminarCompraInterna`/`tcEliminarPagoInterna`.** Nunca se reimplementa la reversión a mano en el punto de entrada — ambos casos existen (ver `abrirDetalleTCSheet` y el feed general en `eliminarMovimiento`) y deben terminar en la misma función interna para no desincronizar la deuda.
 - **Un pago de TC (`_esPagoTC`) nunca cuenta como gasto real del mes; una compra de TC (`_esCompraTC`) sí.** El gasto real ya se contó cuando se hizo la compra — el pago solo mueve plata de una cuenta a saldar la deuda, no es un gasto nuevo. Esta exclusión vive centralizada en `_esGastoVarNoReal()`; un flag de exclusión nuevo se agrega ahí, no repetido pantalla por pantalla.
 - **La tarjeta no simula un banco real.** No se agregan fechas de corte, extractos ni pago mínimo — es una decisión de diseño explícita (ver §7), no un hueco por completar.
@@ -41,7 +40,6 @@ Cada tarjeta vive en `S.tarjetasCredito[]`:
   saldoInicial: {id, monto, fecha, nota, eliminado} | null,  // deuda que ya existía antes de usar la app
   compras: [{
     id, desc, cat, fecha, monto, nota, eliminado,
-    esCuotas, numCuotas, valorCuota, cuotasPagadas,  // informativo, ver §2
     _esFavor, _desdeCP,      // opcionales: marca que esta compra es deuda ajena
     _esCargoEspecial, _motivoCargo   // opcionales: cargo del banco (interés/comisión), no validó cupo — ver §2/§3
   }],
@@ -76,9 +74,6 @@ Mismo destino final — `addGastoVar()` detecta `fuente.startsWith('tc:')`, vali
 **Eliminar un pago:**
 `eliminarPagoTC(tcId, pagoId)` → confirmación → `tcEliminarPagoInterna` (marca `eliminado`, recalcula — la deuda sube de vuelta) → `sumarFuente(fuente, monto)` (la plata vuelve a la cuenta de origen) → se filtra el gasto espejo → `refresh()`.
 
-**Cerrar el ciclo de cuotas de una compra:**
-`tcIncrementarCuotaPagada(tcId, compraId, ±1)` — solo mueve el contador informativo `cuotasPagadas`, no toca la deuda ni genera ningún pago.
-
 **Registrar un cargo especial (interés, comisión, corrección del banco):**
 Botón "+ Cargo especial" dentro del detalle de la tarjeta (`abrirDetalleTCSheet`) → `abrirCargoEspecialTC(tcId)` → completar descripción/monto/motivo → `confirmarCargoEspecialTC()`: si el monto supera el cupo disponible, se avisa explícitamente en el diálogo de confirmación (no se bloquea — ver §3) → `tcCrearCompra(tc, {..., _esCargoEspecial:true, _motivoCargo})` (misma capa de datos que una compra, `tcRecalcular` incluido) → gasto espejo en `S.gastosVar` marcado `_esCompraTC` (sí cuenta como gasto real del mes, igual que una compra — el interés/comisión ya fue un costo real) → `refresh()` → vuelve a abrir el detalle de la tarjeta. Se elimina exactamente igual que cualquier compra (`eliminarCompraTC` → `tcEliminarCompraInterna`), sin código de borrado propio.
 
@@ -96,25 +91,23 @@ Botón "+ Cargo especial" dentro del detalle de la tarjeta (`abrirDetalleTCSheet
 - **Widgets de cobertura usan deuda total, no deuda propia:** decisión corregida explícitamente (ver `CHANGELOG.md`) tras confundir "¿me alcanza para pagar?" (pregunta que el banco hace sobre el 100% de la deuda) con "¿cuánta plata es realmente mía?" (pregunta de patrimonio, donde sí importa separar lo propio de lo ajeno).
 - **`tcMovimientos` (cargos de Encargos/Préstamos) vive fuera de `tc.compras`:** en vez de forzar a Encargos/Préstamos a empujar registros directo al array de compras de la tarjeta (acoplando su formato interno a otro módulo), se creó un tipo de registro aparte que Tarjetas de crédito solo consume para calcular deuda ajena e historial. Mantiene la frontera clara: quien genera el cargo es dueño de esa entrada.
 - **"Cargo especial" reutiliza `tc.compras` en vez de un array propio (`tc.ajustes` o similar):** se consideró un array separado, pero el 90% de la infraestructura necesaria (historial unificado en `abrirDetalleTCSheet`, borrado con protección por antigüedad, gasto espejo, `tcRecalcular`) ya existe para compras — duplicarla para una variante que solo cambia "¿valida cupo?" y "¿qué badge muestra?" hubiera sido código repetido sin necesidad. Se prefirió un flag (`_esCargoEspecial`) sobre el mismo modelo, mismo criterio que ya usa `_esFavor`/`_desdeCP` para "esta compra es deuda ajena".
-- **`cuotasPagadas` es puramente informativo:** se consideró que cada cuota generara automáticamente un pago real, pero eso obligaría a decidir de qué cuenta sale cada cuota sin que el usuario lo confirme explícitamente — se prefirió dejarlo como un contador de referencia y que el pago real siga siendo un paso separado y explícito.
-
 ## 8. Referencia de implementación
+
+**Nota:** `getTCById`, `tcCupoUsadoPct` y `tcCupoDisponible` se sacaron de este archivo a `js/core/calc-helpers.js` (Inicio las necesita sin cargar el módulo completo); `calcDeudaAjenaDeTarjeta` y `calcDeudaTcPropia` viven en `js/core/core-state.js`. Ambos siguen siendo globales que este módulo consume, no define.
 
 | Función | Qué hace |
 |---|---|
-| `getTCById(id)` | Busca una tarjeta por id |
+| `getTCById(id)` / `tcCupoUsadoPct(tc)` / `tcCupoDisponible(tc)` (en `js/core/calc-helpers.js`, no acá — ver nota abajo) | Buscar una tarjeta por id / % de cupo usado / cupo restante |
 | `tcDeudaTotal()` | Suma la deuda de todas las tarjetas |
-| `tcCupoUsadoPct(tc)` / `tcCupoDisponible(tc)` | % de cupo usado / cupo restante |
-| `calcDeudaAjenaDeTarjeta(tc)` / `calcDeudaTcPropiaDeTarjeta(tc)` / `calcDeudaTcPropia()` | Separan deuda ajena (encargos/préstamos/plata comprometida) de la propia, por tarjeta y agregada |
+| `calcDeudaAjenaDeTarjeta(tc)` / `calcDeudaTcPropiaDeTarjeta(tc)` / `calcDeudaTcPropia()` (los tres en `js/core/core-state.js`, no acá) | Deuda ajena y propia de una tarjeta puntual, y propia agregada de todas — la agregada la usan Inicio, Préstamos y Wrapped |
+| `calcSaldoInicialPendiente(tc)` (en `js/core/core-state.js`) | Cuánto queda del saldo inicial sin pagar todavía — un pago cancela primero esto, luego lo ajeno, luego lo propio (ver §3) |
 | `tcEstadoInfo(estado)` | Info de badge/label para `TC_ESTADOS` |
-| `tcCalcularValorCuota` / `tcValorUltimaCuota` | Matemática de cuotas |
 | `tcRecalcular(tc)` | Única función que escribe `tc.deuda`, desde saldo inicial + compras + cargos − pagos |
 | `tcNormalizarTarjetas()` | Migración/auto-sanación, se llama en cada `refresh()`; recalcula deuda de todas las tarjetas |
 | `tcCrearCompra(tc, datos)` / `tcEliminarCompraInterna(tc, id)` | Capa de datos de compras (incluye cargos especiales, ver abajo) |
 | `abrirCargoEspecialTC(tcId)` / `confirmarCargoEspecialTC()` | Sheet "Cargo especial a la tarjeta" (interés/comisión/otro) — no valida cupo, ver §3/§7 |
 | `TC_MOTIVOS_CARGO` | Labels de motivo para cargos especiales (`interes`/`comision`/`otro`) |
 | `tcBuscarCompraPorIdOMatch` | Fallback de búsqueda para datos legado sin id vinculado |
-| `tcIncrementarCuotaPagada(tcId, compraId, delta)` | Contador informativo de cuotas |
 | `tcCrearPago(tc, datos)` / `tcEliminarPagoInterna(tc, id)` | Capa de datos de pagos |
 | `abrirNuevaTarjeta` / `abrirEditarTC` / `guardarTC` / `eliminarTC` | CRUD de la tarjeta en sí |
 | `renderTCScreen` / `renderTCDashboard` | Pantalla completa de Tarjetas / resumen en Inicio |

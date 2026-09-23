@@ -19,6 +19,7 @@ Inicio es la pantalla que se ve al abrir la app: un resumen agregado de patrimon
 | `#hero-alcancia-indicator` | Pill ámbar "+$?? en alcancía oculta" — visible solo si `S.alcancia.saldoRegistrado > 0` |
 | `#hero-change-indicator` | Aviso "Gastos altos" cuando el gasto del mes supera el 80% de lo disponible |
 | `#s-disp`, `#s-nu`, `#s-ef`, `#s-nequi`, `#s-prest`, `#s-cdt` | Grid de saldos por cuenta |
+| `#s-disp-neto-tc` | Línea completa, chica, debajo del `grid3` de Disponible/Nu libre/Efectivo (fuera de las celdas `.stat`, para no afectar su altura — 2026-09-20) — "Neto de TC" (disponible menos la deuda TOTAL de TC, sin descontar lo ajeno). Vacía si no hay nada que restar; no reemplaza a `#s-disp` |
 | `#s-gf`, `#s-gv`, `#s-gtotal` | Gastos del mes: fijos, variables, total |
 | `#tc-deuda-card` | Card de deuda TC (oculto si no hay tarjetas) |
 | `#health-score-card` | Anillo + tips de salud financiera |
@@ -39,6 +40,8 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 
 **`_checkGastoAlto()`** — revisa si el gasto del mes supera el 80% de lo disponible (Nu + Nequi + Efectivo) y muestra/oculta el aviso en `#hero-change-indicator`. Se engancha a `refresh()` mediante monkey-patch al cargar el módulo.
 
+**`_renderDispNetoTC()`** — pinta `#s-disp-neto-tc` con `window._dispActualHoy` (el mismo `disp` que `refresh()`, en `core-state.js`, acaba de usar para pintar `#s-disp` — no se recalcula acá, ver `CHANGELOG.md#inicio` 2026-09-20) menos la deuda TOTAL de las tarjetas de crédito (con piso en 0 por tarjeta, para que un saldo a favor no reste del total), sin descontar lo confirmado como ajeno — la app no puede saber si esa parte ajena ya te la devolvieron por fuera de un pago a la tarjeta, así que asume el peor caso. Vacía el texto si no hay nada que restar. Se engancha a `refresh()` en el mismo monkey-patch que `_checkGastoAlto()`, DESPUÉS de que `refresh()` original corra (para que `window._dispActualHoy` ya esté actualizado).
+
 **IIFE de reposicionamiento** — mueve `#s-attn-section` justo debajo del `.hero` de Inicio al cargar el módulo (antes vivía más abajo en el DOM estático).
 
 ## 4. Qué NO vive en `inicio.js` (a propósito)
@@ -48,6 +51,7 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 | `refresh()` | Orquestador central compartido por las 13 pantallas — no es lógica de Inicio, aunque escribe varios de sus elementos (`#heroTotal`, `#s-disp`, etc.) |
 | `_renderMejoras()` / `_hookRefreshMejoras()` | Además de llamar a `renderHealthScore()`/`renderProyeccion()`, dispara `renderPresupuestos()` (módulo de Análisis) — infraestructura compartida entre dos módulos |
 | Selectores de cuenta (`#nuTotalDisp`, `#sel-nequi-saldo`, etc.) | Se actualizan dentro de `refresh()` junto con los de Inicio porque comparten las mismas variables calculadas (`nu`, `nequi`, `ef`), pero pertenecen a la pantalla Cuentas, no a Inicio |
+| `window._dispActualHoy` | Variable global que `refresh()` (`core-state.js`) expone con el mismo `disp` que pinta en `#s-disp`, para que `_renderDispNetoTC()` la reste en vez de recalcular "disponible" por su cuenta (ver `CHANGELOG.md#inicio`, 2026-09-20) |
 
 ## 5. Seguridad — hallazgos de esta migración
 

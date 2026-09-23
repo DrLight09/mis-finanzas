@@ -57,6 +57,7 @@ Registrar en qué se va la plata mes a mes, separando lo que es puntual (gasto v
 }
 ```
 
+- **Orden del array = orden de creación.** `S.gastosVar` solo crece con `push` (nadie hace `unshift`/`sort` sobre él), así que la posición de un gasto en el array dice cuál se registró primero. El historial de Gastos lo usa para desempatar gastos del mismo día (el último registrado arriba); no hay campo de timestamp aparte. Si algún día algo reordena el array, el desempate se rompe en silencio.
 - `fuente` — de dónde salió (o a qué tarjeta se cargó) la plata. Determina si el gasto descuenta una cuenta real o solo aumenta deuda de TC.
 - `esPagoGastoFijo` / `gastoFijoId` — presentes solo en el gasto espejo que crea `confirmarPagarGastoFijo()`. `gastoFijoId` es lo que permite, al eliminarlo, desmarcar el pago del mes correspondiente.
 - `_esCompraTC` / `_tcId` / `_tcCompraId` — presentes solo si la fuente era `tc:...`. `_tcCompraId` es el vínculo con el registro real de la compra dentro de la tarjeta (necesario para poder revertirla ahí sin duplicar lógica).
@@ -101,6 +102,10 @@ Elegir "Pagar" en la plantilla → elegir cuenta de pago → validar que no est�
 
 ## 6. Casos especiales
 
+- **Historial en una sola lista, agrupada por día:** compras en TC, pagos de TC y pagos de fijos ya no tienen sección propia — van mezclados en orden cronológico, cada uno con su etiqueta (`TC — deuda`, `Pago TC`, `Fijo — ya sumado en Fijos mensuales`). Cada día tiene un encabezado ("Hoy", "Ayer", "sáb 19 sep") con su subtotal: gasto real del día + "en TC" aparte; los pagos de fijos y de TC no suman al subtotal (misma regla que el total de arriba, ver regla 3.3).
+- **Orden dentro del historial:** fecha del gasto de más reciente a más antigua y, dentro del mismo día, el último registrado arriba (ver el invariante de orden en §4).
+- **Fijo pagado con TC:** tiene a la vez `esPagoGastoFijo` y `_esCompraTC`. Sale una sola fila con las dos etiquetas; suma al total "en TC" pero no al gasto real.
+- **Sigue oculto en el historial** (igual que antes del cambio): los movimientos de alcancía y los extras de préstamo (`_esGastoVarNoReal` sin ninguna de las otras banderas). Se ven en el feed general de movimientos, no acá.
 - **Filtro de mes en "todos":** el total mostrado es sobre todo el historial, no solo el mes actual; el botón de estado vacío cambia de texto según haya o no un mes específico elegido.
 - **Gasto fijo sin pagar vs. pagado este mes:** la plantilla siempre aparece en la lista de Fijos; lo que cambia es si se ve el botón "Pagar" o la etiqueta "Pagado" con su fecha — nunca desaparece de la lista por estar pagada.
 - **Spotify como fijo virtual:** solo se muestra si (a) hay un costo de Spotify configurado, (b) no existe ya un gasto fijo real con "spotify" en el nombre, (c) no se pagó ya este mes vía un gasto variable con "spotify" en la descripción, y (d) el módulo Spotify no está activo gestionando su propio costo. Si se cumplen las cuatro, se inyecta en la lista sin persistirse en `S.gastosFijos`.
@@ -109,6 +114,7 @@ Elegir "Pagar" en la plantilla → elegir cuenta de pago → validar que no est�
 ## 7. Decisiones de diseño
 
 - **¿Por qué pagar un gasto fijo crea un gasto variable en vez de solo marcarlo "pagado"?** Para que el historial de la cuenta y los totales de caja del mes salgan de un único lugar (`gastosVar`) sin tener que sumar dos fuentes distintas en cada pantalla que reporta gastos. El costo es que hay que excluirlo explícitamente al calcular "gasto variable puro" (ver regla 3.3) — se aceptó ese costo a cambio de no duplicar la lógica de reportes.
+- **¿Por qué una sola lista en vez de secciones (variables / TC / pagos de TC / fijos)?** Porque el usuario piensa el historial como un timeline por día y por orden de registro: con secciones, un gasto de hoy pagado con TC quedaba lejos del resto de lo de hoy, y un fijo pagado con TC salía repetido (en "Compras en TC" y en "Pagos de fijos"). Las etiquetas por fila y el subtotal por día conservan la distinción real/TC sin partir la lista.
 - **¿Por qué las compras y pagos de TC aparecen en el historial de Gastos si no son "gasto real" del mes?** Porque el usuario quiere ver todo lo que gastó en un solo timeline, sin importar con qué plata lo pagó. Separar totales (real vs. TC) permite mostrar ambos sin que se mezclen ni se dupliquen.
 - **¿Por qué eliminar un gasto revierte en vez de simplemente borrar el registro?** Para que el saldo de cuentas y tarjetas nunca quede desincronizado del historial visible — la alternativa (borrar y dejar que el usuario ajuste el saldo a mano) es la fuente más común de descuadres en una app de finanzas personales.
 - **¿Por qué el gasto fijo virtual de Spotify no se guarda como un gasto fijo real?** Porque su costo y su estado ya se gestionan enteramente en el módulo Spotify cuando está activo; mostrarlo también acá es solo una ayuda visual para quien no activó ese módulo, no una segunda fuente de verdad.
@@ -123,7 +129,8 @@ Archivo: `js/modules/gastos.js`.
 | `switchGastoTab(t)` | Cambia entre la pestaña "Gastos" (variable) y "Fijos mensuales". |
 | `renderMesFiltros()` | Arma los chips de filtro por mes y dispara `renderGastosVar()`. |
 | `setMesFiltro(m)` | Cambia el mes filtrado y vuelve a renderizar. |
-| `renderGastosVar()` | Pinta el historial de gasto variable, separado en secciones (variables puros, compras TC, pagos TC, pagos de fijos) con sus totales. |
+| `renderGastosVar()` | Pinta el historial de gasto variable en una sola lista ordenada (fecha desc., y dentro del día el último registrado arriba), agrupada por día con subtotal, más los totales de arriba. |
+| `_gvDiaLabel(fecha)` | Etiqueta del encabezado de día: "Hoy", "Ayer" o "sáb 19 sep" (con año si no es el actual). Arma la fecha con `new Date(y, m-1, d)`, no con `new Date('YYYY-MM-DD')` (UTC). |
 | `addGastoVar()` | Valida y crea un gasto variable; si la fuente es TC, delega en `tcCrearCompra()`. |
 | `deleteGastoVar(id)` | Elimina un gasto revirtiendo su efecto según el tipo (ver §5). |
 | `abrirNuevoGastoVar()` | Pobla categorías y abre el sheet de gasto variable — usada por el estado vacío. |

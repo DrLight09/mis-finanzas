@@ -81,6 +81,20 @@ De paso, `guia-estilo-sheets.md` §3 quedó actualizada con 4 sheets que existí
 
 ## Infraestructura / seguridad
 
+### 🔧 Consolidado (2026-09-22) — Cierre de `auditoria-tecnica.md`: CSP, escapado, modularización y rendimiento
+
+`auditoria-tecnica.md` nació para trackear hallazgos de seguridad/arquitectura/rendimiento *pendientes* (por eso vivía aparte de este archivo), pero llegó a 886 líneas casi enteramente de hallazgos ya resueltos, narrados sesión por sesión. Se leyó completo, se separaron los pocos puntos genuinamente pendientes (quedaron en una versión mucho más corta del archivo) y se condensa acá, de una vez, todo lo que ya estaba cerrado:
+
+**CSP — `'unsafe-inline'` eliminado de `script-src`.** Los 3 bloques `<script>` inline que quedaban en `index.html` (`S`/`save()`, sheet-stack/nav, `refresh()`+IIFEs) se extrajeron a archivos propios; los 29 archivos de la app quedaron auditados. `'unsafe-inline'` salió del todo de la política. De paso: 0 atributos `onclick`/`onchange`/`oninput`/hover inline en toda la app (proceso módulo por módulo, en paralelo con la modularización de abajo).
+
+**Escapado — migración completa a `js/core/html-tag.js`.** Se corrigió un bug de fondo en `escHtml()` (no escapaba comillas dobles) y se creó una plantilla etiquetada `html\`\`` que escapa por defecto todo valor interpolado, con `raw()` como opt-out explícito para HTML de confianza (clases CSS fijas, SVGs). Los 14 módulos de dominio se migraron uno por uno; en el proceso aparecieron y se corrigieron ~20 sitios puntuales de texto libre sin escapar (nombres de persona/cuenta/categoría interpolados directo, la mayoría en `toast()` o en `<option value="...">`), el más serio en el buscador de movimientos de Cuentas (`f.q`, término de búsqueda del usuario, sin ningún escapado). Migración terminada — no queda ningún módulo de dominio con `.innerHTML` sin pasar por `html\`\``/`escHtml()`.
+
+**Arquitectura — de un `index.html` monolítico a 14 módulos + carga lazy.** Los 14 módulos de dominio (Spotify, Mesada, Encargos, Préstamos, Tarjetas de Crédito, Cuentas, Gastos, Plata Comprometida, Alcancía, Configuración, Actividad Reciente, Análisis, Personas, Inicio) se extrajeron a `js/modules/`, y el núcleo compartido a `js/core/` (`core-state.js`, `calc-helpers.js`, `events.js`, `lazy-loader.js`, entre otros). Encima de eso, los 11 módulos de pantalla se volvieron grupos lazy reales (`Loader.GROUPS`, cargados bajo demanda al entrar a cada pantalla, con `Loader.ensureAll()` precargando los 11 en paralelo en segundo plano tras el primer dato real) — el candidato más difícil (`cuentas`) tuvo una reversión y reactivación real por dependencias del núcleo que solo aparecieron al probarlo en navegador. `calc-helpers.js` nació específicamente para que Inicio pudiera leer 6 funciones puras de Mesada/TC/Préstamos/Spotify (`getMesadaData`, `getTCById`, `getDeudorSaldo`, `spNombreDe`, etc.) sin forzar la carga de esos módulos completos solo para "Necesita atención". En el camino se encontraron y corrigieron varios acoplamientos ocultos entre módulos lazy sin guard `typeof` (`spotify.js`↔`tarjetas_credito.js`, `cuentas.js`↔`encargos.js`, `movimientos.js`→3 módulos), y 3 casos reales de código duplicado (el bloque de pintar avatar de persona, repetido 5 veces entre 3 módulos; `_fuenteLabelHtml()` definida dos veces; el guard de `_ensureMesadas()` reimplementado a mano en `core-state.js`), todos consolidados en una sola función/lugar.
+
+**Rendimiento — Lighthouse de 40 a 65-70 (mediana, sin PIN).** El diagnóstico real: el cuello de botella no era el JS propio sino la cadena Auth→Firestore bloqueando el primer contenido visible. Resuelto en capas: `async`/`defer` en los scripts de Firebase, pintar con el caché local de Firestore antes de esperar la confirmación del servidor, evitar cargar el iframe de Auth y `gapi` en el arranque normal (`initializeAuth` sin `popupRedirectResolver` cuando hay sesión previa), y la modularización lazy de arriba (TBT: 8.980ms → 1.840-3.240ms). Un CLS de 1.001 (roto) resultó tener cuatro causas reales superpuestas, diagnosticadas con 6+ corridas de Lighthouse: `.app{height:100dvh}` en vez de `100svh`; falta de `.app{display:none}` mientras el overlay de PIN lo tapaba (la API de Layout Instability de Chrome no excluye elementos tapados por z-index); "Necesita atención" y las cards de salud financiera/proyección arrancando vacías sin `min-height` (resuelto con skeletons); y `#hero-alcancia-indicator`/`div.grid3` revelándose de golpe cuando cargaban los módulos lazy. CLS final: 0.011-0.216 según la corrida (antes 1.001). Se resolvieron además: contraste insuficiente en `.pin-forgot`, CSP bloqueando `apis.google.com/js/gen_204`, CSS inline (46 KB) extraído a `styles.css`, Font Awesome self-hosteado como subset (156 KB → 4 KB), 22 botones ícono-solo sin `aria-label`, y un harness de tests unitarios con el test runner nativo de Node.
+
+Detalle completo, número por número y sesión por sesión, en el historial de git de `auditoria-tecnica.md` (no se borra el archivo, se lo redujo a lo que sigue realmente pendiente — ver ese archivo).
+
 ### 🐛 Corregido (2026-09-20) — CI: `totalPrestadoPendiente.test.js` fallaba (2 tests, `Expected 300000, Actual 0`) tras mover `getDeudorSaldo()` a `calc-helpers.js`
 
 `totalPrestadoPendiente()` (`prestado.js`) llama a `getDeudorSaldo()` como global. Al moverla a `calc-helpers.js` (ver `CHANGELOG.md#inicio`), ese test —que cargaba solo `core-state.js` y `prestado.js` en modo `permissive`— dejó de tenerla: el `Proxy` fabrica un no-op que devuelve `undefined`, `saldo > 0` da falso y la suma queda en 0 **sin ningún error** (la trampa ya documentada del modo `permissive`). Fallaban los tests de las líneas 54 y 64; los demás pasaban porque no llaman a esa función. El aviso de GitHub "Node.js 20 is deprecated" no era la causa.
@@ -748,6 +762,10 @@ Al migrar Encargos como tercer módulo completo (junto con `encargos-personas.js
 
 ## Mesada
 
+### 🔧 Cambio (2026-09-21) — Documentación de "pagar con plata de un encargo" y limpieza de comentarios
+
+`mesada.md` no documentaba el flujo "Me pagó con plata de un encargo" (sheets `mpUsarEncargo`/`mppUsarEncargo`, campo `origenEncargo`), presente en `mesada.js` desde antes: se agregó a §2, §3, §4 (modelo de datos), §5 (flujos) y §6 (casos especiales). También se documentó la protección por antigüedad al borrar un pago (ya implementada, sin mencionar). Se quitaron fechas y referencias a la migración a módulos separados que ya no aportan (el archivo en sí ya dice dónde vive el código). `mesada.js`: limpieza de comentarios (sin cambios de código) que fechaban decisiones ya asentadas.
+
 ### ✅ Corregido — La cuota heredada se "congelaba" con cualquier `save()` de la app
 
 Los inputs de cuota siempre muestran el valor que calcula `_getCuotaAnio` — que puede ser un fallback heredado de un año anterior, no necesariamente una cuota explícita de este año. El problema: `save()` (que corre en *cualquier* acción de la app — agregar un gasto, marcar un pago de Nu, editar Spotify, lo que sea) leía ese input y lo grababa como valor explícito sin verificar si realmente era distinto del heredado.
@@ -843,6 +861,29 @@ Fix: agregado el mismo guard de pantalla activa que ya usa `refresh()`, como con
 ---
 
 ## Spotify
+
+### 🔧 Cambio (2026-09-20) — Limpieza de documentación y comentarios obsoletos de Spotify
+
+- **`spotify.js` (solo comentarios, sin cambios de código):** se quitaron las referencias a `spotify-personas.js` (archivo que ya no existe) y el bloque "ORDEN DE CARGA" del encabezado (el módulo carga lazy, ya no tiene `<script>` propio). Las 5 referencias a una sección de `auditoria-tecnica.md` sobre atribución de ciclo que nunca existió ahora apuntan a `spotify.md` §7ter.
+- **`spotify.md`:** el modelo de datos ahora incluye todos los campos reales (`splits`, `_pagoIdCierre`, `_periodoOffset`, `_pendienteAlCerrar`, `_tcMovId`); los flujos de cobro y de pago a Spotify reflejan fecha editable, split y tarjeta de crédito; nueva §7ter (fecha real, deuda al cerrar y pago atrasado, que antes solo estaba explicado en comentarios del código); se corrigió la fórmula de "Pendiente por cobrar" y las rutas de `spNombreDe`/`spPersonaPagadaVigente` (viven en `js/core/calc-helpers.js`). Se quitó la historia que ya vive en este CHANGELOG (división original en dos archivos, versión original con un registro por período).
+- **`mis-finanzas.md`:** se quitaron las filas de archivos ya retirados (`nav.js`, `import-validado.js`) y las notas de fusión; se agregó `wrapped-gate.js` y `css/fa-subset.css`, que estaban en `index.html` y no en el documento; se restauró el encabezado "Principios que se repiten en toda la app", que se había perdido; se reemplazó la duda sobre lógica inline suelta por lo verificado (`index.html` no tiene ningún bloque `<script>` inline).
+
+### ✅ Corregido (2026-09-20) — Un cobro de varios períodos inflaba "Recaudado este ciclo" con períodos que todavía no pertenecen a ese ciclo
+
+Reportado con un caso real: Esteban debía su período el 21-sep y el 20-sep pagó 2 períodos ($10.200). "Recaudado este ciclo" subió a $15.300 (50 %) cuando debió ser $10.200: los $5.100 de AM: Esteban ya recaudados más $5.100 del período que Esteban paga hoy. El segundo período de Esteban (empieza el 21-oct) no es de este ciclo.
+
+**Causa raíz:** un cobro de N períodos es un solo registro (`periodos: N`) y `spCicloCobrosActual()` sumaba su monto completo si estaba después del último pago a Spotify. Ciclo (entre dos pagos a Spotify) y período (30 días de cada integrante) son calendarios distintos y el registro no distinguía a cuál pertenecía cada período. El efecto era peor con el tiempo: si Spotify se pagaba antes del 21-oct, esos $5.100 quedaban contados en el ciclo que se cerró, y "Promedio real por ciclo" y "Ganancia acumulada" arrastraban la distorsión.
+
+**Fix (`spotify.js`):** los períodos se atribuyen a ciclos por fecha de inicio (`proximoPagoAntes + 30·k`), sin guardar nada nuevo en `S`. El primero cuenta en el ciclo donde entró el cobro; los siguientes, en el ciclo abierto el día que empiezan. Mientras no llegue esa fecha y no se pague Spotify quedan flotantes: no suman a "Recaudado", "Balance del ciclo" ni "Ganancia acumulada", y la pantalla los muestra aparte como adelantado. Ver `spotify.md` §7bis.
+- Nuevas: `spTramosDeCobro`, `spAsignarPeriodos`, `spResumenCicloActual`, `spMontoAntesDe`; `spPeriodosVencidos` recibe un parámetro `estricto`.
+- `renderSpotify()` usa `spResumenCicloActual()`; `renderSpStats()` arma el cobrado de cada ciclo con `spAsignarPeriodos()` (mismo resultado que antes cuando no hay períodos prepagados).
+- `confirmarSpDestino()`: el registro "resto" que sigue a un "Pago atrasado del ciclo anterior" guarda `_periodoOffset` (períodos que ya cubrió el registro de cierre), para no repartir su monto entre períodos que no le corresponden.
+
+**Cambio de comportamiento — desempate del mismo día:** cuando un cobro registrado el mismo día que se paga Spotify pertenecía a alguien que ya tenía cubierta 1 cuota en el ciclo que se cierra, `confirmarPagarSpotify()` lo mandaba al ciclo nuevo. Ahora manda al nuevo solo si ya tenía 2 o más (`SP_EMPATE_PERIODOS`), igual que para períodos prepagados. Para volver al comportamiento anterior basta poner la constante en 1. Con 2 o más períodos ya cubiertos, el período que empieza justo el día del pago tampoco se registra como deuda del ciclo que cierra (`_pendienteAlCerrar`).
+
+**Validación:** `node --check`; arnés Node que carga el `spotify.js` real con los datos del backup del 2026-09-20 y llama a `confirmarSpDestino()` y `confirmarPagarSpotify()` de verdad (no jsdom ni navegador). Reproduce el bug con el código anterior ($15.300 / 50 %) y con el nuevo da $10.200 / 33 % + $5.100 adelantado. También cubre: llega el 21-oct sin pagar Spotify ($15.300), se paga Spotify antes (el período pasa al ciclo nuevo y borrar ese pago lo devuelve), empate con 1 período (ciclo que cierra) y con 2 (ciclo nuevo), deuda del ciclo viejo + prepago, y regresión: con el backup tal cual, pantalla y estadísticas son idénticas a las del código anterior.
+
+**Sin verificar:** otros archivos que puedan leer `S.spotifyHistorial` para calcular ciclos por su cuenta (p. ej. el "Wrapped" de ahorro entre ciclos, `cuentas.js`) no estaban entre los archivos subidos.
 
 ### 🔧 Cambio (2026-09-20) — `spNombreDe()` y `spPersonaPagadaVigente()` se movieron a `js/core/calc-helpers.js`
 
@@ -981,7 +1022,31 @@ Cuando `calcHealthScore()` no dispara ningún tip específico (score en el rango
 
 ---
 
+## Proyección financiera
+
+### ✅ Corregido (2026-09-22) — La tendencia mensual no usa trimmed mean; el algoritmo real es otro
+
+`proyeccion-financiera.md` §2 y `analisis-financiero.md` (sección "Relación con otras secciones") describían el cálculo de tendencia como un promedio de tasas diarias de cambio con **trimmed mean** (descartar la más alta y la más baja de 5+ tasas). Revisado `renderProyeccion()` en `inicio.js`: el algoritmo real es la suma del cambio neto total de patrimonio dividida entre los días reales totales — un promedio ponderado por días, sin ningún recorte de outliers. El propio comentario del código explica por qué: el ingreso real llega en pocos días grandes (mesada, pagos), y un trimmed-mean de tasas por-intervalo terminaría descartando esos días como "outliers", subestimando la tendencia. Se reescribió el mecanismo en ambos documentos. De paso se confirmó y restauró la cifra exacta que había suavizado por precaución en el pase anterior: `MIN_DIAS_PARA_TENDENCIA = 7`.
+
+También en `proyeccion-financiera.md`: la fila "Cuentas personalizadas marcadas como 'incluir en total'" no es real — `calcPatrimonioTotal()` (`core-state.js`) suma TODAS las cuentas personalizadas sin ningún filtro (`incluirEnTotal` no existe en el código). Se corrigió. Se agregó una nota sobre `_calcCSafe`/`_calcCDTSafe` (envoltorios defensivos de `calcC()`/`calcCDT()`, que viven en el módulo lazy `cuentas.js`) y sobre `_patrimonioDependenciasListas()`, el guard que evita grabar un snapshot de patrimonio artificialmente bajo si `cuentas.js` o `prestado.js` todavía no cargaron.
+
 ## Tarjetas de crédito
+
+## Préstamos
+
+### 🔧 Cambio (2026-09-22) — Atribución de `getDeudorSaldo()`
+
+Con `calc-helpers.js` a la vista se confirmó lo que ya decía el propio comentario de `prestado.js`: `getDeudorSaldo()` se movió ahí el 2026-09-20 (mismo motivo que `getMesadaData`/`spNombreDe`: Inicio la necesita para "Necesita atención" sin cargar el módulo lazy completo). `prestado.md` la mencionaba sin decir dónde vive. Se agregó la atribución.
+
+## Protección por antigüedad de movimientos
+
+### 🔧 Cambio (2026-09-22) — De propuesta a estado implementado
+
+`proteccion-antiguedad-movimientos.md` seguía redactado en tono de propuesta ("Propuesta nueva", "Recomendación de implementación") aunque `nivelAntiguedadMovimiento(fecha, opsPosteriores, modulo)` ya está implementado y en uso en los ocho módulos que la tabla de cobertura (§5) lista como protegidos (confirmado con grep en `alcancia.js`, `encargos.js`, `gastos.js`, `mesada.js`, `plata_comprometida.js`, `prestado.js`, `spotify.js`, `tarjetas_credito.js`). Se reescribió la introducción y §6 en tiempo presente, describiendo la estructura de configuración real en vez de proponerla.
+
+### 🔧 Cambio (2026-09-22) — Corrección de una nota de código muerto que ya no aplica
+
+`prestado.md` §6.1 describía `addDeudor()`, `selColor` e `initColorPicker` como código muerto que seguía en el archivo sin ejecutarse nunca. Ninguna de las tres existe ya en `prestado.js` (cero coincidencias) — no es que no corran, es que ya no están. Se corrigió la nota: el sheet `sheet-nueva-persona` sigue interceptado por el override de `openSheet`, pero ya no hay ninguna función propia que describir como muerta.
 
 ### ✨ Agregado (2026-09-20) — El cupo de una TC es obligatorio; "Pagar TC" solo ofrece cuentas con saldo (> $0, efectivo ≥ $1.000)
 
@@ -1056,6 +1121,10 @@ Validado con `node --check`. **Sin verificar en navegador real.**
 ---
 
 ## Análisis financiero
+
+### 🔧 Cambio (2026-09-21) — Ubicación del módulo y ajuste menor
+
+`analisis-financiero.md` no decía en qué archivo vive el código (`js/modules/analisis.js`) ni que `calcPatrimonioTotal()`/`snapshotPatrimonio()` se quedaron a propósito en `index.html` (los llama `save()` en cada guardado). Se agregó al final de §10. Se agregaron los ids `an-mesada-section`/`an-mesada-total` en §8. Se suavizó una mención a `MIN_DIAS_PARA_TENDENCIA` que no pude verificar contra código (esa función vive en `inicio.js`, no incluido).
 
 ### 🐛 Corregido (2026-08-19) — Toast de "80% del presupuesto" reaparecía en cada refresh, no una sola vez
 
@@ -1600,7 +1669,27 @@ Fix: se agregó `if (tc.cupo && tcCupoDisponible(tc) < montoTC) { toast(...); re
 
 ---
 
+## Wrapped
+
+### 🔧 Cambio (2026-09-21) — Reordenamiento y limpieza de fechas en wrapped.md
+
+Las secciones de "Decisiones de diseño" numeradas con ordinales latinos (§7bis a §7terdecies) no estaban en orden: §7bis (por qué el overlay vive en `document.body`) aparecía después de §7decies. Se reordenaron numéricamente. Se quitaron las fechas sueltas de los títulos de esas secciones (el contenido y el razonamiento de cada una se mantienen intactos; las fechas no aportaban a entender el diseño actual). Verificado contra `wrapped.js`: las ~50 funciones citadas en la Referencia de implementación existen todas (o, en el caso de `_wrappedRenderAnio`, se confirma que ya no existe — la tabla lo documenta correctamente como reemplazada).
+
+## Tarjetas de crédito
+
+### 🔧 Cambio (2026-09-22) — Eliminado un sistema de "cuotas" documentado que no existe en el código
+
+`tarjetas-credito.md` describía un sistema completo de compras a cuotas (`esCuotas`, `numCuotas`, `valorCuota`, `cuotasPagadas`, y las funciones `tcCalcularValorCuota`, `tcValorUltimaCuota`, `tcIncrementarCuotaPagada`) en §2, §4, §5, §7 y §8. Ninguno de esos nombres aparece en `tarjetas_credito.js` — `tcCrearCompra()` no tiene esos campos. Se quitó por completo de las cinco secciones.
+
+También se corrigió la atribución de tres funciones que la Referencia de implementación listaba como propias del módulo sin decir dónde viven de verdad: `getTCById`, `tcCupoUsadoPct` y `tcCupoDisponible` se movieron a `js/core/calc-helpers.js` (comentario propio del archivo, "RESUELTO 2026-08-04"); `calcDeudaAjenaDeTarjeta` y `calcDeudaTcPropia` viven en `js/core/core-state.js`. Se quitó `calcDeudaTcPropiaDeTarjeta`, que no existe en ningún archivo.
+
+(Corrección sobre esta misma entrada: con `core-state.js` a la vista se confirmó que `calcDeudaTcPropiaDeTarjeta` sí existe ahí — se había quitado por error al no tener ese archivo disponible en el momento del primer pase; se restauró con la atribución correcta, junto con `calcSaldoInicialPendiente`. También se corrigió el orden real de cancelación de un pago en §3: primero el saldo inicial pendiente, luego lo ajeno, luego lo propio — antes decía solo "ajena primero, luego propia", sin mencionar el saldo inicial.)
+
 ## Cuentas
+
+### 🔧 Cambio (2026-09-21) — Corrección de un dato desactualizado en cuentas.md
+
+`cuentas.md` §2 decía que el saldo inicial se marca con un campo `_esApertura`; el código real usa `tipo:'apertura'` en el movimiento — no existe tal campo. Se corrigió. También se limpiaron comentarios que narraban una corrección de documentación ya resuelta (dentro del bloque de código del modelo de datos) y fechas de CHANGELOG incrustadas en la referencia de implementación, que ya viven en `CHANGELOG.md#cuentas`.
 
 ### ✨ Agregado (2026-09-20) — "Mover a otra cuenta" solo se activa con saldo ≥ $1,00; el origen de Transferir exige ≥ $1,00
 

@@ -8,16 +8,16 @@ Es un proyecto de un solo desarrollador, para uso personal, pensado para mantene
 
 ## Cómo está construida
 
-- **Un solo archivo HTML** (`index.html`) con JavaScript vanilla, sin frameworks ni build step.
+- **JavaScript vanilla, sin frameworks ni build step.** `index.html` es la carcasa (HTML, CSP y carga de scripts) y no contiene ningún bloque `<script>` inline; el código vive en `js/core/` y `js/modules/`, y los estilos en `css/`.
 - **Firebase / Firestore** para sincronización en la nube entre dispositivos, con **IndexedDB** como caché local.
 - **Desplegada en GitHub Pages.**
 - **Estado global (`S`)**: un objeto central que se sincroniza bidireccionalmente con Firestore y contiene todos los datos de la app — cuentas, movimientos, préstamos, encargos, tarjetas, mesadas, Spotify, personas, etc. Todo el HTML se re-renderiza a partir de `S`.
 - **Sin backend propio**: toda la lógica de negocio (cálculos, validaciones, reversión de movimientos) vive en el cliente.
-- **Migración a módulos separados — completa para los 14 módulos de dominio**: cada pantalla/dominio ya tiene su propio archivo en `js/modules/` (mismo scope global, `<script src>` clásicos — todavía no ES modules), con un despachador de eventos centralizado en `js/core/events.js` que reemplaza los `onclick` inline. Ver [`auditoria-tecnica.md`](./auditoria-tecnica.md) para el detalle histórico de la migración, y la sección "Estructura de archivos — `js/modules/`" más abajo para el archivo de cada uno. No se verificó si queda algo de lógica de dominio suelta todavía inline en `index.html` fuera de estos 15 archivos — lo que se confirma acá es que cada módulo de la tabla de abajo tiene su propio archivo dedicado.
+- **Un archivo por dominio, con carga lazy:** cada pantalla tiene su propio archivo en `js/modules/` (mismo scope global, `<script>` clásicos — todavía no ES modules), con un despachador de eventos centralizado en `js/core/events.js` que reemplaza los `onclick` inline. Los 11 módulos de pantalla son grupos lazy (`js/core/lazy-loader.js`, `Loader.GROUPS`) que cargan bajo demanda al entrar a cada pantalla, con `Loader.ensureAll()` precargando los 11 en paralelo en segundo plano tras el primer dato real. `js/core/calc-helpers.js` expone un puñado de funciones puras de Mesada/TC/Préstamos/Spotify para que Inicio ("Necesita atención") no tenga que cargar esos módulos completos. Ver "Estructura de archivos" más abajo para el archivo de cada uno, y [`CHANGELOG.md#infraestructura--seguridad`](./CHANGELOG.md#infraestructura--seguridad) para el detalle de esa modularización; [`auditoria-tecnica.md`](./auditoria-tecnica.md) solo lista lo que sigue pendiente.
 
 ## Estructura de archivos — `js/core/`
 
-Documentado hasta donde se ha revisado archivo por archivo (ver `CHANGELOG.md`, sección "Infraestructura / seguridad", para el detalle de cada extracción/consolidación/corrección). Ver también "Estructura de archivos — `js/modules/`" y "Otros archivos" más abajo.
+Ver también "Estructura de archivos — `js/modules/`" y "Otros archivos" más abajo.
 
 Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<script defer>` (variables globales compartidas por scope léxico); "módulo" = `<script type="module" async>` (usa `import`, sin garantía de orden frente a los clásicos).
 
@@ -41,7 +41,7 @@ Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<scri
 | `calc-helpers.js` | clásico | Funciones de cálculo puras de Mesada, Tarjetas de Crédito, Préstamos (`getDeudorSaldo`) y Spotify (`spNombreDe`, `spPersonaPagadaVigente`) que Inicio necesita (para "Necesita atención"/salud financiera) en el primer render, sin tener que cargar esos módulos lazy completos. Los módulos de origen ya no las definen y las usan como globales: **todo test que cargue uno de ellos y las use tiene que cargar también `calc-helpers.js`** (ver `tests/README.md`). |
 | `fuentes-filtro.js` | clásico | `FuentesFiltro`: decide qué cuentas se ofrecen cuando la plata SALE (saldo mínimo por flujo: $1 general, $50 Spotify, > $0 pagar TC con efectivo ≥ $1.000; TC solo con cupo disponible). Carga después de `calc-helpers.js`. |
 | `color-picker.js` | clásico | Un solo helper (`marcarColorSeleccionado`) para los selectores de color circulares, compartido por Cuentas, TC y Prestado. |
-| `split.js` | clásico | Motor genérico de "split de fuentes": Mesada, MovEnc y Usar Parte comparten la misma lógica para dividir un monto entre varias cuentas (antes triplicada). |
+| `split.js` | clásico | Motor genérico de "split de fuentes": Mesada, MovEnc y Usar Parte comparten la misma lógica para dividir un monto entre varias cuentas. |
 | `diferencial.js` | clásico | Motor genérico de "margen dijo vs. real" (diferencia entre lo que correspondía y lo que realmente costó/se recibió), usado por 5 sheets distintos de varios módulos. |
 | `wait-for.js` / `wait-for-module.js` | clásico / módulo | `waitFor(checkFn, callback, opts)`: reintenta hasta que una condición se cumpla, en vez de que cada consumidor reimplemente su propio `setInterval` + contador. Duplicado a propósito en dos archivos (uno por tipo de script) — un intento de unificarlos rompió en producción. |
 | `hook-global.js` / `hook-global-module.js` | clásico / módulo | `hookGlobal(name, fn, opts)`: envuelve una función global existente (`refresh`, `openSheet`, `applyModulos`) sin pisar lo que ya hacía, esperando con `waitFor()` si todavía no existe. Mismo split clásico/módulo que `wait-for.js` y por el mismo motivo. |
@@ -55,10 +55,10 @@ Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<scri
 |---|---|---|
 | `sheet-stack.js` | clásico | Sistema de apertura/cierre de sheets (`openSheet`/`closeSheet`), `showScreen()`, `applyModulos()` y el wiring legacy de `_initEventListeners()` — un solo sistema lógico, con restricciones de orden de carga documentadas. |
 | `sheet-behavior.js` | clásico | Comportamiento de un sheet ya abierto: swipe-to-close, reposicionamiento con el teclado en Android (Visual Viewport), scroll-into-view al enfocar un input. |
-| ~~`nav.js`~~ | — | **Retirado (2026-09-10).** `navTo()` tenía un solo caller real (`tarjetas_credito.js`, botón "Ver todo") y duplicaba parte de `showScreen()` (`sheet-stack.js`) sin su integración con lazy-loading/préstamos. Se cambió ese caller a `showScreen()` y se borró el archivo. Ver `CHANGELOG.md`. |
+| `wrapped-gate.js` | clásico | Decide si Wrapped está disponible en este momento (solo durante la ventana de enero, ver `wrapped.md`): muestra/oculta la tarjeta `#wrapped-promo` y le avisa a `Loader.ensureAll()` que no precargue el grupo lazy `wrapped` fuera de esa ventana, sin descargar el módulo real solo para saber si mostrarlo. |
 | `mas-menu.js` | clásico | Abrir/cerrar el menú "Más", navegación desde sus ítems, y mostrar/ocultar Spotify/Mesada en ese menú según los módulos activos. |
 | `gastos-fijos-progress.js` | clásico | Barra de progreso de "gastos fijos pagados este mes" en el panel de Gastos. |
-| `mejoras-adicionales.js` | clásico | Fusión (2026-09-10) de lo que eran dos archivos (`mejoras.js` + `mejoras-adicionales.js`, parte 1 y parte 2 del mismo bloque original — ver `CHANGELOG.md`): ocultar/mostrar saldos (blur), render de salud financiera/proyección/presupuestos tras cada `refresh()`, validación de montos grandes, animación de carga inicial, registro del Service Worker (PWA offline), autofocus del primer campo al abrir un sheet, aria-labels de las pantallas. |
+| `mejoras-adicionales.js` | clásico | Ocultar/mostrar saldos (blur), render de salud financiera/proyección/presupuestos tras cada `refresh()`, validación de montos grandes, animación de carga inicial, registro del Service Worker (PWA offline), autofocus del primer campo al abrir un sheet, aria-labels de las pantallas. |
 | `personas-init.js` | clásico | Inicializa `_inyectarPersonaSheets()` una vez que los datos cargan. |
 
 **Inputs y validación**
@@ -66,7 +66,6 @@ Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<scri
 | Archivo | Tipo | Qué hace |
 |---|---|---|
 | `money-input.js` | clásico | Auto-formateo estilo calculadora para los inputs de plata (`.money-input`): los dígitos se empujan de derecha a izquierda desde los centavos. |
-| ~~`import-validado.js`~~ | — | **Ya no existe como archivo aparte** — se fusionó dentro de `js/modules/configuracion.js` el 2026-08-30 (ver `CHANGELOG.md`). Se documenta acá solo porque se revisó en una sesión anterior; no forma parte del árbol actual. |
 
 ## Estructura de archivos — `js/modules/`
 
@@ -82,29 +81,29 @@ A diferencia de `js/core/`, acá **"clásico"** siempre significa `<script defer
 | `personas.js` | eager | Sistema unificado de identidad (`S.personas`): colores, avatares, edición global compartida por Spotify/Encargos/Deudores/"Me deben". |
 | `cuentas.js` | lazy (`cuentas`) | Nequi, efectivo, cajitas, cuentas personalizadas; también Nu (tasa/interés) y CDT. |
 | `tarjetas_credito.js` | lazy (`tarjetas`) | Deuda de TC, pagos, fechas de corte, detalle de cada movimiento cargado. |
-| `prestado.js` | lazy (`prestamos`) | Préstamos "Me deben"/"Yo debo" — fusión de lo que antes eran `prestado-personas.js` + `deudores-personas.js`. |
+| `prestado.js` | lazy (`prestamos`) | Préstamos "Me deben"/"Yo debo", incluida su integración con Personas. |
 | `encargos.js` | lazy (`encargos`) | Dinero que un tercero encarga guardar, separado de cualquier interés propio que genere. |
 | `mesada.js` | lazy (`mesada`) | Mensualidad de papá y mamá, pagos parciales y deuda pendiente. |
 | `spotify.js` | lazy (`spotify`) | Suscripción compartida: cobro a integrantes, pago al servicio, ganancia/pérdida del administrador. |
 | `alcancia.js` | lazy (`alcancia`) | Ahorro tipo piggy-bank con desglose por origen del depósito. |
 | `plata_comprometida.js` | lazy (`comprometida`) | Dinero ya destinado a un gasto futuro, para no contarlo como libre en el patrimonio. |
 | `analisis.js` | lazy (`analisis`) | Vista consolidada: balance del mes, patrimonio, proyección, categorías, presupuestos. |
-| `wrapped.js` | lazy (`wrapped`) | Resumen narrativo de mes/año — nació ya como módulo separado, nunca vivió inline. |
-| `configuracion.js` | lazy (`config`) | Ajustes, exportar CSV, import/export de backup JSON (incluye `_validarEstructuraJSON`, fusionada acá desde `import-validado.js` el 2026-08-30). |
+| `wrapped.js` | lazy (`wrapped`) | Resumen narrativo de mes/año. |
+| `configuracion.js` | lazy (`config`) | Ajustes, exportar CSV, import/export de backup JSON (incluye la validación de estructura del backup, `_validarEstructuraJSON`). |
 | `actividad_reciente.js` | lazy (`historial`) | Feed "Actividad reciente" — de solo lectura, como Inicio. |
 
-**Pendiente:** el `.md` de cada módulo (ver "Estado de la documentación" más abajo) — esta tabla documenta *qué archivo hace qué*, no el detalle de funcionamiento interno de cada uno.
 
 ## Otros archivos (raíz del proyecto)
 
 | Archivo | Qué hace |
 |---|---|
-| `css/styles.css` | Toda la hoja de estilos — extraída del `<style>` inline que tenía `index.html`. |
-| `sw.js` | Service Worker (PWA offline): `cacheFirst` para fuentes, `networkFirst` para el HTML y el SDK de Firebase (`gstatic.com/firebasejs`), `staleWhileRevalidate` para el resto. **Firestore, Identity Toolkit y SecureToken no pasan por el SW** (el canal de escucha es un stream largo: cachearlo fallaba con `Cache.put() ... network error`, y el fallback respondía HTML con status 200 a requests de Firestore). Toda escritura en caché va por `guardarEnCache()`, con `.catch`. Versión de caché en `VERSION` (bump manual al desplegar; hoy `v6`). |
+| `css/styles.css` | Hoja de estilos de toda la app. |
+| `css/fa-subset.css` | Subconjunto de Font Awesome autoalojado (solo los íconos usados). |
+| `sw.js` | Service Worker (PWA offline): `cacheFirst` para fuentes, `networkFirst` para el HTML y el SDK de Firebase (`gstatic.com/firebasejs`), `staleWhileRevalidate` para el resto. **Firestore, Identity Toolkit y SecureToken no pasan por el SW** (el canal de escucha es un stream largo: cachearlo fallaba con `Cache.put() ... network error`, y el fallback respondía HTML con status 200 a requests de Firestore). Toda escritura en caché va por `guardarEnCache()`, con `.catch`. Versión de caché en `VERSION` (bump manual al desplegar). |
 
 ---
 
-
+## Principios que se repiten en toda la app
 
 Aunque cada módulo se documenta por separado, hay reglas de diseño que atraviesan todos ellos:
 
@@ -139,7 +138,7 @@ Aunque cada módulo se documenta por separado, hay reglas de diseño que atravie
 
 Cada módulo se documenta en su propio `.md`, siguiendo la estructura definida en [`plantilla-modulo.md`](./plantilla-modulo.md). El historial de bugs corregidos de todos los módulos vive en un solo [`CHANGELOG.md`](./CHANGELOG.md) compartido, para que el documento de cada módulo se mantenga enfocado en cómo funciona hoy y no crezca indefinidamente con historia ya resuelta.
 
-**Documentados (14 de 14 módulos — completo desde el 2026-09-10):** Inicio (`inicio.md`), Cuentas (`cuentas.md`), Gastos (`gastos.md`), Tarjetas de crédito (`tarjetas-credito.md`), Préstamos — Me deben / Yo debo, un solo doc para los dos flujos (`prestado.md`), Encargos (`encargos.md`), Mesada (`mesada.md`), Spotify (`spotify.md`), Alcancía (`alcancia.md`), Plata Comprometida (`plata-comprometida.md`), Análisis financiero (`analisis-financiero.md`), Wrapped (`wrapped.md`), Personas (`personas.md`).
+**Documentados (14 de 14 módulos):** Inicio (`inicio.md`), Cuentas (`cuentas.md`), Gastos (`gastos.md`), Tarjetas de crédito (`tarjetas-credito.md`), Préstamos — Me deben / Yo debo, un solo doc para los dos flujos (`prestado.md`), Encargos (`encargos.md`), Mesada (`mesada.md`), Spotify (`spotify.md`), Alcancía (`alcancia.md`), Plata Comprometida (`plata-comprometida.md`), Análisis financiero (`analisis-financiero.md`), Wrapped (`wrapped.md`), Personas (`personas.md`).
 
 **Sub-documentos de Inicio** (no son módulos de la tabla de arriba, pero tampoco caben dentro de `inicio.md` porque cada uno tiene su propia lógica de cálculo extensa, compartida con Análisis financiero): [`salud-financiera.md`](./salud-financiera.md) (`health-score-card`) y [`proyeccion-financiera.md`](./proyeccion-financiera.md) (`proyeccion-card`).
 
@@ -149,7 +148,7 @@ Cada módulo se documenta en su propio `.md`, siguiendo la estructura definida e
 |---|---|
 | `plantilla-modulo.md` | La guía de estructura que siguen todos los `.md` de módulo — ver más arriba. |
 | `guia-estilo-sheets.md` | Orden estándar de campos e inventario de sheets de toda la app. |
-| `auditoria-tecnica.md` | Historial de la migración/auditoría técnica (CSP, escapado, modularización). |
+| `auditoria-tecnica.md` | Hallazgos técnicos **pendientes** de seguridad, arquitectura o rendimiento — lo ya resuelto vive en `CHANGELOG.md#infraestructura--seguridad`. |
 | `CHANGELOG.md` | Historial de bugs corregidos y limpieza de código de todos los módulos, en un solo archivo compartido. |
 
 No se verificó si `configuracion.js` y `actividad_reciente.js` (`js/modules/`, ver tabla de arriba) tienen o deberían tener su propio `.md` — no aparecen como filas en "Módulos de la aplicación" porque son pantallas de utilidad/infraestructura, no un dominio financiero propio, pero es una asimetría que vale la pena decidir a propósito y no dejar así por omisión.

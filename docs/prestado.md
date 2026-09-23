@@ -32,6 +32,8 @@ Ambos lados afectan el saldo de una cuenta real (cajita, Nequi, efectivo o cuent
 
 **`sheet-registrar-movimiento`** — Nuevo préstamo / Abono / Pago completo *(sheet polivalente con campos condicionales según el tipo de movimiento)*: Monto → Fecha → ¿De dónde sacó la plata? (condicional, solo en préstamo) → ¿A dónde entra el pago? (condicional, solo en abono/pago-completo) → ¿De qué encargo? (condicional) → ¿De qué cuenta del encargo sale? (condicional) → ¿Cuánto de extra? + distribución (condicional en abonos con extra) → Nota (opcional)
 
+**Selects de cuenta en estos sheets:** ninguna tarjeta de crédito aparece en los selects de `sheet-registrar-movimiento`. `#mov_fuente` y `#mov_destino` (modo simple) se pueblan con `poblarFuente(id, false, false)` (3er parámetro `incluirTC=false`), igual que los modos divididos, `nd_destino`, `md_cuenta` y la cuenta del extra (`getFuentesSinTC()`). Una TC nunca recibe plata entrante, y un préstamo pagado con TC se registra únicamente por el botón "Préstamo con TC" (`sheet-prestamo-tc`: valida cupo, pide descripción, deja `_viaTC` + cargo `cargo_prestamo` enlazado en `S.tcMovimientos`; sin ese cargo `calcDeudaAjenaDeTarjeta()` no lo cuenta como deuda ajena y `tcRecalcular()`, que corre en cada `refresh()`, lo borra de `tc.deuda`). Se decidió no unir ambos sheets — razones en CHANGELOG 2026-09-19.
+
 ### 2.2 Tipos de movimiento (`d.movimientos[]`)
 
 **`'prestamo'`** — Dinero que sale de una cuenta tuya hacia la persona.
@@ -60,6 +62,8 @@ Un depósito vía Alcancía también puede borrarse desde el otro lado (`alcanci
 
 Tras revertir, `_autoCerrarGruposEnCero(d)` reevalúa el grupo del movimiento borrado — ver 2.4.
 
+**Desde el feed / detalle de una cuenta:** `eliminarMovimiento()` (`js/core/movimientos.js`) no revierte préstamos ni abonos por su cuenta — delega en `eliminarMovDeudor(deudorId, movId, { desdeFeed: true })` (cargando el grupo lazy `prestamos` con `Loader.ensure` si hace falta). `desdeFeed` hace que, al terminar, no navegue al detalle del deudor (el usuario sigue en la cuenta). Hay una sola implementación de la reversión; ver CHANGELOG 2026-09-19.
+
 ### 2.4 Grupos de préstamo (`d.grupos[]`)
 
 Una misma persona puede tener varios préstamos separados en el tiempo (ej. "el préstamo viejo" y "el de la moto"), y confundirlos hace que responder "¿cuánto me debes de lo nuevo?" sea impreciso. Los grupos resuelven esto **sin duplicar a la persona en la lista**: cada deudor tiene un solo registro, pero sus movimientos se reparten en sub-préstamos aislados.
@@ -75,7 +79,7 @@ m.grupoId = 'g_xxx'
 
 **Migración silenciosa (`_migrarGruposDeudor`)** — deudores creados antes de que existieran los grupos no tienen `d.grupos`. La primera vez que se abre su detalle (`abrirDeudor`), todos sus movimientos sueltos se agrupan automáticamente bajo un grupo `"Histórico"`. Idempotente, no requiere migración manual ni toca el saldo.
 
-**Saldo:** `getDeudorSaldo(d)` (el total de la persona) no cambia — sigue sumando todos los movimientos sin filtrar por grupo. `getGrupoSaldo(d, grupoId)` es el mismo cálculo pero acotado a un grupo.
+**Saldo:** `getDeudorSaldo(d)` (movida a `js/core/calc-helpers.js` el 2026-09-20 — Inicio la necesita para "Necesita atención" sin cargar `prestado.js` completo; el total de la persona) no cambia — sigue sumando todos los movimientos sin filtrar por grupo. `getGrupoSaldo(d, grupoId)` es el mismo cálculo pero acotado a un grupo.
 
 **Resolución de a qué grupo pertenece un movimiento nuevo (`_resolverGrupoIdMov` / `_autoGrupoIdMov`):**
 - **0 grupos abiertos** → se usa/crea el grupo **"Histórico"** (`_getOrCrearHistorico`, id fijo `'_historico'`), sin preguntar. Nunca se crea un grupo con nombre de fecha por sorpresa — ese nombre solo se usa cuando el usuario abre un grupo aparte a propósito (ver abajo). Este caso en la práctica solo ocurre en el primer movimiento de un deudor nuevo: una vez creado, "Histórico" nunca se vuelve a cerrar (ver Auto-cierre), así que 0 grupos abiertos no vuelve a pasar después.
@@ -148,7 +152,7 @@ Cualquier movimiento de préstamo que cree una entrada secundaria en otra cuenta
 
 Estas funciones arman el historial visible de una cuenta combinando varias fuentes. Para préstamos, **solo reconstruyen los `'prestamo'` entregados** (leyendo `d.movimientos` de `S.deudores` directamente, con `fuente`/`fuentes`) — porque, como en 4.1, esos no tienen otra representación en la cuenta.
 
-Los `'abono'`/`'pago-completo'` (dinero que *entra*) **no se reconstruyen acá** — ya están representados por su movimiento secundario (sección 4). Reconstruirlos de nuevo generaría un duplicado sin `_secundario`, que se vería sin candado y sería borrable por una ruta que no revierte nada correctamente (`eliminarMovimiento` no busca en `S.deudores`).
+Los `'abono'`/`'pago-completo'` (dinero que *entra*) **no se reconstruyen acá** — ya están representados por su movimiento secundario (sección 4). Reconstruirlos de nuevo generaría un duplicado sin `_secundario`, que se vería sin candado y sería borrable desde la vista de cuenta sin el candado de un movimiento secundario (histórico: cuando se documentó esto, `eliminarMovimiento` no revertía correctamente ese duplicado; hoy delega en `eliminarMovDeudor`, ver 2.3).
 
 ---
 
@@ -175,5 +179,5 @@ El módulo cubre:
 
 ### 6.1 Código muerto relacionado
 
-`addDeudor()` (crea un deudor desde `sheet-nueva-persona` con nombre libre + color picker) y su color picker (`selColor`/`initColorPicker`) nunca se ejecutan: el override de `openSheet` en este mismo archivo intercepta `id==='nueva-persona'` y redirige siempre a `abrirSelPersona(_onSelPersonaMeDeben)` antes de que ese sheet se muestre. Se deja sin borrar (mismo criterio que el resto del código muerto documentado del proyecto), pero no vale la pena editarlo esperando ver el cambio reflejado en la app — no corre.
+El sheet `sheet-nueva-persona` (nombre libre + color picker, sin pasar por el sistema de Personas) ya no tiene ninguna función propia en `prestado.js` — el override de `openSheet` en este mismo archivo intercepta `id==='nueva-persona'` y redirige siempre a `abrirSelPersona(_onSelPersonaMeDeben)` antes de que ese sheet llegue a mostrarse. Si el HTML de ese sheet sigue en `index.html`, es marcado inerte, no código muerto: no hay ninguna función que lo lea.
 

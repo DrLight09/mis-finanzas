@@ -74,7 +74,7 @@ Recorren `S.gastosVar` (mismo criterio de gasto real que en §2, vía `_esGastoV
 
 ## 8. Mesada recibida este año
 
-Solo visible si `S.modulos.mesada` está activo. Suma lo recibido de papá y mamá mes a mes del año actual (`getMesadaData()`).
+**IDs:** `an-mesada-section` (se oculta si el módulo no está activo), `an-mesada-total`. Suma lo recibido de papá y mamá mes a mes del año actual (`getMesadaData()`).
 
 ## 9. Presupuestos por categoría
 
@@ -84,7 +84,7 @@ Solo visible si `S.modulos.mesada` está activo. Suma lo recibido de papá y mam
 
 ## 9bis. Qué cuenta como ingreso o gasto real (`_esEntradaEspejoNoIngreso()` / `_esGastoVarNoReal()`)
 
-Todos los bloques de esta pantalla que suman ingresos o gastos (§2, §4, §7, §9) usan dos helpers centralizados, no un filtro propio cada uno:
+Ambos viven en `js/core/core-state.js`, no en `analisis.js` — por eso los puede usar cualquier pantalla sin cargar el módulo de Análisis. Todos los bloques de esta pantalla que suman ingresos o gastos (§2, §4, §7, §9) usan dos helpers centralizados, no un filtro propio cada uno:
 
 - **`_esEntradaEspejoNoIngreso(m)`** — decide si un movimiento `tipo:'entrada'` de `S.movimientos` es ingreso real o solo un movimiento espejo que ya se contó en otro lado (reposición de plata comprometida, intercambio/traspaso de Encargos, Mesada, Prestado — con fallback por descripción para movimientos viejos sin la bandera `_esReposicionCP`).
 - **`_esGastoVarNoReal(g)`** — decide si un gasto de `S.gastosVar` cuenta como gasto real del mes: excluye pagos de gasto fijo, pagos de TC (cancelación de deuda, no gasto nuevo), alcancía (sigue siendo plata propia) y extras de préstamo gastados de inmediato (`_esExtraPrestamo`, plata que nunca se contó como ingreso).
@@ -99,12 +99,14 @@ Estos dos bloques **no viven en `screen-analisis`**, sino en Inicio, pero se cal
 
 - **Salud financiera** (`health-score-card`, Inicio) — usa `calcPatrimonioTotal()`, `ingresosMes`, `liquidoReal`, deuda TC propia, gastos del mes, etc. para dar un puntaje. Comparte con esta pantalla los mismos helpers de "qué es ingreso/gasto real" (§9bis) — al estar centralizados, ya no hace falta sincronizarlos a mano entre pantallas. Documentación propia en [`salud-financiera.md`](./salud-financiera.md).
 - **Proyección financiera** (`proyeccion-card`, Inicio) — calcula una **tendencia mensual** a partir de `S.patrimonioHistorial` (los mismos snapshots del historial de patrimonio) y proyecta patrimonio a 3/6/12 meses:
-  - Convierte cada par de puntos consecutivos en una tasa diaria de cambio (COP/día), restando `montoBase` para no contar aperturas/ajustes como "crecimiento".
-  - Aplica **trimmed mean**: con 5+ tasas descarta la más alta y la más baja (outliers como un ingreso o gasto puntual grande) antes de promediar.
-  - Exige al menos 7 días reales de separación entre el primer y último punto (`MIN_DIAS_PARA_TENDENCIA`) antes de mostrar cualquier proyección; si no hay suficiente historial, muestra un mensaje de "vuelve en unos días" en vez de un número poco confiable.
-  - Nivel de confianza escalonado: `preliminar` (<30 días), `normal` (30–59 días), `estable` (60+ días).
+  - Suma el cambio neto de patrimonio (restando `montoBase` de cada día, para no contar aperturas/ajustes como "crecimiento") sobre todos los pares de puntos consecutivos, y lo divide entre los días reales totales — un promedio ponderado por días, no un promedio de tasas diarias. **No aplica ningún recorte de outliers (trimmed mean):** el ingreso real llega en pocos días grandes, y descartar el día más alto lo trataría como ruido en vez de como ingreso — ver `proyeccion-financiera.md` §2 para el detalle.
+  - Exige al menos 7 días reales de separación entre el primer y último punto (`MIN_DIAS_PARA_TENDENCIA`, en `js/modules/inicio.js`) antes de mostrar cualquier proyección; si no hay suficiente historial, muestra un mensaje de "vuelve en unos días" en vez de un número poco confiable.
+  - Nivel de confianza escalonado: sin proyección con menos de 7 días de historial, `preliminar` (7–29 días), `normal` (30–59 días), `estable` (60+ días).
 
 ## 10. Patrimonio total: `calcPatrimonioTotal()`
+
+**Ubicación:** el módulo de esta pantalla es [`js/modules/analisis.js`](../js/modules/analisis.js) (`renderAnalisis()`, ingresos fijos, presupuestos). `calcPatrimonioTotal()` y `snapshotPatrimonio()` se quedaron a propósito en `index.html`: `save()` las llama en cada guardado, no solo al entrar a esta pantalla, así que moverlas habría hecho que Análisis "fuera dueño" de algo del ciclo de guardado central. `renderHealthScore()`/`renderProyeccion()` viven en `js/modules/inicio.js`.
+
 
 Es la base de todo lo anterior (historial, tendencia, proyección, salud financiera, hero de Inicio). Suma:
 

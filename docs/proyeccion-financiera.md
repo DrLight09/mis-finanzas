@@ -34,15 +34,18 @@ renderProyeccion()            ← lee los últimos 90 días y calcula tendencia
 
 ### Cómo se calcula la tendencia mensual
 
-`renderProyeccion()` toma los últimos 90 snapshots y construye un array de **tasas de cambio diarias** (COP/día), donde cada tasa es:
+`renderProyeccion()` (en `js/modules/inicio.js`) toma los últimos 90 snapshots y recorre pares consecutivos sumando dos totales: el cambio neto de patrimonio y los días reales transcurridos entre el primer y el último punto.
 
 ```
-tasa_día_i = (valor[i] - valor[i-1] - montoBase[i]) / días_entre_i_y_(i-1)
+cambioDelDía = (valorVisible[i] - valorVisible[i-1]) - montoBase[i]
+cambioNetoTotal = Σ cambioDelDía          (sobre todos los pares consecutivos)
+díasReales      = Σ días_entre_i_y_(i-1)
+tendenciaMensual = (cambioNetoTotal / díasReales) * 30
 ```
 
-El `montoBase` se resta para descontar **saldos iniciales y ajustes de apertura** — plata que no es ingreso real sino corrección de datos. El resto (ingresos, gastos, intereses, rendimientos) queda capturado automáticamente en el cambio de patrimonio.
+`valorVisible` (patrimonio sin la alcancía) se usa en vez de `valor` crudo, con `.valor` como fallback para puntos guardados antes de que existiera ese campo — mismo criterio que la gráfica de Análisis financiero (§5). El `montoBase` se resta para descontar **saldos iniciales y ajustes de apertura** — plata que no es ingreso real sino corrección de datos.
 
-Con 5+ puntos aplica **trimmed mean** (descarta el día más alto y el más bajo en valor absoluto) para atenuar outliers. Luego multiplica por 30 para obtener la tendencia mensual, y por 3/6/12 para las proyecciones.
+**No es un promedio de tasas por intervalo, ni aplica ningún recorte de outliers (trimmed mean).** Es la suma del cambio neto total dividida entre los días totales — un promedio ponderado por días, no un promedio de promedios. La razón, según el propio comentario del código: el ingreso real (mesada, pagos) llega en pocos días grandes, no repartido parejo día a día; una mediana o un trimmed-mean de tasas por-intervalo terminaría descartando casi siempre un día de ingreso real por "outlier" y subestimando la tendencia. Sumar el cambio neto y dividir por los días totales sí refleja el ingreso real proporcionalmente, y de paso una caída de un día que se revierte al siguiente se autocancela casi sola en la suma, sin necesitar filtrar nada a mano.
 
 ### Niveles de confianza
 
@@ -63,12 +66,12 @@ Esta función es el corazón del módulo. La proyección hereda todo lo que ella
 
 | Componente | Fuente en `S` |
 |---|---|
-| Cajitas Nu (capital + intereses acumulados) | `S.cajitas` → `calcC(c).val` |
-| CDTs en cajitas (capital + rendimiento proyectado) | `S.cajitas[].cdts` → `calcCDT(cdt).val` |
+| Cajitas Nu (capital + intereses acumulados) | `S.cajitas` → `_calcCSafe(c).val` (envoltorio defensivo de `calcC()`, ver nota abajo) |
+| CDTs en cajitas (capital + rendimiento proyectado) | `S.cajitas[].cdts` → `_calcCDTSafe(cdt).val` (envoltorio defensivo de `calcCDT()`, ver nota abajo) |
 | Saldo Nequi | `S.nequiSaldo` |
 | Saldo Efectivo | `S.efectivoSaldo` |
 | Saldo deudores (lo que me deben, positivo únicamente) | `S.deudores` → `getDeudorSaldoPatrimonio(d)` |
-| Cuentas personalizadas marcadas como "incluir en total" | `S.cuentasPersonalizadas` filtrada por `incluirEnTotal` |
+| Cuentas personalizadas (todas, sin filtro) | `S.cuentasPersonalizadas` → suma de `saldo` |
 | Alcancía oculta (saldo registrado mientras está activa) | `S.alcancia.saldoRegistrado` |
 
 ### Resta (pasivos)
@@ -78,6 +81,8 @@ Esta función es el corazón del módulo. La proyección hereda todo lo que ella
 | Deuda total de tarjetas de crédito | `S.tarjetasCredito[].deuda` | Es plata que debo |
 | Lo que yo le debo a otras personas | `S.misDeudas` → `totalMisDeudasPendiente()` | Físicamente en mis cuentas pero no es mía |
 | Plata comprometida ajena en cuentas propias | `_saldoCPAjeno()` | Plata de otra persona que administro y aún no pagué |
+
+> **`_calcCSafe`/`_calcCDTSafe`:** `calcC()`/`calcCDT()` viven en `cuentas.js` (módulo lazy); `calcPatrimonioTotal()` corre en cada `save()`, no solo al entrar a Cuentas, así que usa estos dos envoltorios en `core-state.js` en vez de llamarlas directo. Además, `snapshotPatrimonio()` no guarda ningún punto si `cuentas.js` o `prestado.js` todavía no cargaron (`_patrimonioDependenciasListas()`) — sin ese guard, un snapshot tomado antes de que carguen esos módulos grabaría un patrimonio artificialmente bajo de forma permanente en el historial.
 
 > **Nota sobre `_saldoCPAjeno()`:** solo resta los destinos de plata comprometida que ya llegaron (`item.recibido = true`), son de tipo `gasto` con `gastoOrigen` cajita o TC, y todavía no se pagaron (`yaPague !== true`). Cuando se marca `yaPague`, la plata ya salió de la cuenta y deja de restarse.
 

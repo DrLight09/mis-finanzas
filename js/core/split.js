@@ -50,12 +50,14 @@
    ── MÍNIMO 2 FILAS ─────────────────────────────────────────────
    Al activar el modo dividido siempre arrancan 2 filas (como ya
    pasaba). Ahora además esas filas (y cualquier otra mientras el
-   total sea 2) no se pueden borrar: el botón de borrar se oculta y
-   se deshabilita con splitActualizarBotones(). En cuanto hay una
-   3ª fila, TODAS quedan borrables de nuevo — y si borrando se
-   vuelve a caer a 2, el botón de las 2 restantes se vuelve a
-   ocultar. No importa cuáles 2 sean "las originales", la regla es
-   sobre el conteo total de filas, no sobre filas marcadas.
+   total sea 2) no se pueden borrar: el botón de borrar se quita del
+   layout (display:none, sin dejar hueco) y se deshabilita, y la
+   grilla de la fila pasa de 3 a 2 columnas, todo desde
+   splitActualizarBotones(). En cuanto hay una 3ª fila, TODAS quedan
+   borrables de nuevo (botón visible, grilla de 3 columnas) — y si
+   borrando se vuelve a caer a 2, el botón de las 2 restantes se
+   vuelve a quitar. No importa cuáles 2 sean "las originales", la
+   regla es sobre el conteo total de filas, no sobre filas marcadas.
 
    ── VALIDACIÓN: NO REPETIR CUENTA ENTRE FILAS ─────────────────────
    Se agregó splitOpcionesUsadas()/splitActualizarOpciones(): cada vez
@@ -141,20 +143,22 @@ function splitAgregarRow(instId){
   splitActualizarBotones(instId);
 }
 
-// Oculta/deshabilita el botón de borrar de CADA fila mientras el total de
-// filas de la instancia sea 2 (el mínimo). En cuanto hay 3 o más, todas
-// quedan borrables. Se llama tras cualquier alta o baja de fila.
+// Con el total de filas de la instancia en 2 (el mínimo), el botón de borrar
+// de CADA fila desaparece del layout por completo (display:none) y la grilla
+// pasa a 2 columnas (cuenta + monto) — así no queda un hueco vacío de 28px
+// (+ gap) a la derecha del input. En cuanto hay 3 o más filas, el botón vuelve
+// y la grilla a 3 columnas. Se llama tras cualquier alta o baja de fila.
 function splitActualizarBotones(instId){
   const cfg = _splitInstancias[instId]; if(!cfg) return;
   const rows = document.getElementById(cfg.rowsId);
   if(!rows) return;
   const puedeBorrar = rows.children.length > 2;
   for(const row of rows.children){
+    row.style.gridTemplateColumns = puedeBorrar ? '1fr auto auto' : '1fr auto';
     const btn = row.querySelector('button');
     if(!btn) continue;
     btn.disabled = !puedeBorrar;
-    btn.style.visibility = puedeBorrar ? 'visible' : 'hidden';
-    btn.style.pointerEvents = puedeBorrar ? '' : 'none';
+    btn.style.display = puedeBorrar ? 'flex' : 'none';
   }
 }
 

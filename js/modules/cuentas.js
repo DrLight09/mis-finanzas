@@ -2796,17 +2796,16 @@ function abrirTransferir(origenSugerido) {
     toast('No tienes ninguna cuenta con al menos ' + fmt(FuentesFiltro.MIN.GENERAL) + ' para transferir', 'err', 3500);
     return;
   }
-  const optsHtmlDestino = html`${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
-  const optsHtmlOrigen = html`${fuentesOrigen.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
-  document.getElementById('tr_origen').innerHTML = optsHtmlOrigen;
-  document.getElementById('tr_destino').innerHTML = optsHtmlDestino;
+  document.getElementById('tr_origen').innerHTML = html`${fuentesOrigen.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   // Pre-select suggested origin if provided y tiene saldo
   if (origenSugerido && fuentesOrigen.some(f => f.val === origenSugerido)) {
     document.getElementById('tr_origen').value = origenSugerido;
   }
-  // Select a different default destino
-  const primerDestino = fuentes.find(f => f.val !== document.getElementById('tr_origen').value);
-  if (primerDestino) document.getElementById('tr_destino').value = primerDestino.val;
+  // El destino nunca puede ofrecer la cuenta ya elegida como origen — misma
+  // mecánica de exclusión mutua que usan las filas de Dividir (ver
+  // splitActualizarOpciones en js/core/split.js), acá para los dos selects
+  // fijos de Transferir en vez de un número variable de filas.
+  _trPodarSelect('tr_destino', fuentes, document.getElementById('tr_origen').value);
   document.getElementById('tr_monto').value = '';
   document.getElementById('tr_nota').value = '';
   const trFechaEl = document.getElementById('tr_fecha');
@@ -2815,6 +2814,36 @@ function abrirTransferir(origenSugerido) {
   actualizarTransfPreview();
   openSheet('transferir');
   setTimeout(() => document.getElementById('tr_monto').focus(), 200);
+}
+
+// Reconstruye el <select> #selId a partir de `fuentes` (ya filtrada por
+// saldo si corresponde a ese select), quitando la opción cuyo value sea
+// `valExcluir` — la cuenta ya elegida en el OTRO select. Si la selección
+// vigente sigue disponible, se conserva; si era justo la que se acaba de
+// excluir, cae a la primera opción que quede. Mismo patrón que
+// splitActualizarOpciones() (js/core/split.js) para las filas de Dividir,
+// aplicado acá a los dos selects fijos de Transferir en vez de N filas.
+function _trPodarSelect(selId, fuentes, valExcluir) {
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  const valorActual = sel.value;
+  const opts = fuentes.filter(f => f.val !== valExcluir);
+  sel.innerHTML = html`${opts.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
+  if (opts.some(f => f.val === valorActual)) sel.value = valorActual;
+  else if (opts.length) sel.selectedIndex = 0;
+}
+
+// Al cambiar el origen, el destino no puede seguir ofreciendo esa cuenta.
+function _trOrigenCambio() {
+  _trPodarSelect('tr_destino', getFuentesSinTC(), document.getElementById('tr_origen').value);
+  actualizarTransfPreview();
+}
+// Al cambiar el destino, el origen (ya limitado a cuentas con saldo, ver
+// FuentesFiltro.PRESET.SALIDA) tampoco puede seguir ofreciendo esa cuenta.
+function _trDestinoCambio() {
+  const fuentesOrigen = FuentesFiltro.filtrar(getFuentesSinTC(), FuentesFiltro.PRESET.SALIDA);
+  _trPodarSelect('tr_origen', fuentesOrigen, document.getElementById('tr_destino').value);
+  actualizarTransfPreview();
 }
 
 function actualizarTransfPreview() {
@@ -3050,11 +3079,11 @@ if (adMenuMonto) adMenuMonto.addEventListener('input', actualizarAdMenuPreview);
 const nuRateEl = document.getElementById('nuRate');
 if (nuRateEl) nuRateEl.addEventListener('input', () => debounceSave(1000));
 
-// --- Transferir: selects y monto (preview en vivo) ---
+// --- Transferir: selects y monto (preview en vivo + exclusión mutua origen/destino) ---
 const trOrigen = document.getElementById('tr_origen');
-if (trOrigen) trOrigen.addEventListener('change', actualizarTransfPreview);
+if (trOrigen) trOrigen.addEventListener('change', _trOrigenCambio);
 const trDestino = document.getElementById('tr_destino');
-if (trDestino) trDestino.addEventListener('change', actualizarTransfPreview);
+if (trDestino) trDestino.addEventListener('change', _trDestinoCambio);
 const trMonto = document.getElementById('tr_monto');
 if (trMonto) trMonto.addEventListener('input', actualizarTransfPreview);
 

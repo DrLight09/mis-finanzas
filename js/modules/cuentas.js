@@ -1798,6 +1798,9 @@ function _getMovimientosCuentaCustom(fuente) {
   // 2. Movimientos en S.movimientos con fuente o destino = custom:ID
   (S.movimientos || []).forEach(m => {
     if (m.fuente !== fuente) return;
+    // Ingreso de Alcancía sin cuenta de origen (propio/regalo/mandado): no movió esta cuenta, así que no
+    // es un movimiento de la cuenta y no se lista en su historial (ver alcancia.md §3).
+    if (m._esAlcanciaIngreso) return;
     // Evitar duplicados: los que están en c.movimientos ya se incluyen arriba
     const yaIncluido = c && (c.movimientos || []).some(x => x.id === m.id);
     if (yaIncluido) return;
@@ -1910,6 +1913,9 @@ function getMovimientosCuenta(tipo) {
   let _idx = 0;
   // Movimientos manuales de entrada/salida (agregar/restar dinero)
   (S.movimientos || []).forEach(m => {
+    // Ingreso de Alcancía sin cuenta de origen (propio/regalo/mandado): no movió esta cuenta, así que no
+    // es un movimiento de la cuenta y no se lista en su historial (ver alcancia.md §3).
+    if (m._esAlcanciaIngreso) return;
     const matchFuente = tipo === 'nu'
       ? (m.fuente && m.fuente.startsWith('cajita:'))
       : m.fuente === tipo;
@@ -2219,7 +2225,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           ${alcOculto
-            ? html`<div title="Monto oculto — se ve dentro de Alcancía" style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:1px;">••••</div>`
+            ? html`<div title="Monto oculto — se ve dentro de Alcancía" style="display:flex;align-items:center;color:var(--text3);"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Monto oculto" style="display:block"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>`
             : html`<div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${colorMonto};">${signo} ${fmt(Math.abs(m.monto))}</div>`}
           ${puedeEliminar ? html`<button type="button" class="btn-icon" data-action="core:eliminarMovimiento" data-stop-propagation="true" title="Eliminar movimiento" style="color:var(--text3);min-width:32px;min-height:32px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : esSecundarioHist && m._movId ? html`<span title="Generado automáticamente — elimínalo desde ${m._origenSeccion||'la sección de origen'}" style="display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;color:var(--text3);opacity:.4;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : ''}
         </div>

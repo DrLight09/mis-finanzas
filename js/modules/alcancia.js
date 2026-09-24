@@ -22,6 +22,8 @@
 /* ─── OFUSCACIÓN XOR+BASE64 ────────────────────────────────────────────────
    Clave fija. No es cifrado fuerte — solo esconde el número del JSON plano.  */
 const _ALC_KEY = 0x4D;
+// Ícono (SVG inline) que reemplaza al texto "••••" cuando el monto de un depósito está oculto.
+const _ALC_ICONO_OCULTO = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Monto oculto" style="display:block"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 function _alcEncode(saldo){
   const raw = JSON.stringify({s: saldo});
   const bytes = new TextEncoder().encode(raw);
@@ -106,6 +108,12 @@ function _alcDesgloseHtml(movimientos, fmtFn){
       const splitMama = m._splitMama || 0;
       yo   += splitYo;
       mama += splitMama;
+    } else if(tipo === 'multi'){
+      (m.partes || []).forEach(pt => {
+        if(pt.origen === 'regalo') mama += pt.monto || 0;
+        else if(pt.origen === 'mandado') mandado += pt.monto || 0;
+        else yo += pt.monto || 0; // cuenta / propio
+      });
     }
   });
 
@@ -135,33 +143,110 @@ function _alcDesgloseHtml(movimientos, fmtFn){
   </div>`;
 }
 
-/* ─── TIPO ORIGEN TOGGLE ─────────────────────────────────────────────────── */
-function _alcanciaActualizarTipo(){
-  const tipo = (document.getElementById('alc_dep_tipo')||{}).value || 'yo-directo';
-  const fuenteWrap = document.getElementById('alc_dep_fuente_wrap');
-  const splitWrap  = document.getElementById('alc_dep_split_wrap');
-  const montoLabel = document.querySelector('label[for="alc_dep_monto"]') ||
-                     (() => { const ig = document.getElementById('alc_dep_monto'); return ig ? ig.closest('.ig')?.querySelector('label') : null; })();
+/* ─── ORÍGENES DEL DEPÓSITO ──────────────────────────────────────────────
+   Antes había un selector de "tipo" (yo-directo / yo-cuenta / regalo / mandado /
+   split / cobro-deuda). Ahora cada depósito se arma con UNO o VARIOS orígenes:
+   una cuenta real (resta saldo), o uno de tres orígenes "sin cuenta" (plata que
+   nunca estuvo en ninguna cuenta → ingreso registrado, sin tocar saldos), o el
+   cobro de una deuda (solo en modo de un único origen). "Dividir ÷" reparte el
+   monto entre varios orígenes con el motor genérico js/core/split.js.
+   Con UN solo origen el registro guardado es idéntico al de siempre (tipo
+   yo-cuenta / yo-directo / regalo / mandado / cobro-deuda); con varios se guarda
+   tipo 'multi' con `partes[]`. Los depósitos 'split' viejos se siguen leyendo.  */
+const _ALC_VALOR_DEUDA = '@deuda';
+const _ALC_ORIGENES_SIN_CUENTA = {
+  '@propio':  { origen: 'propio',  tipo: 'yo-directo', label: 'Plata mía (no estaba en ninguna cuenta)', corto: 'Propio',        desc: 'Depósito en alcancía', nota: 'Ingreso registrado al guardar en alcancía (dinero directo)' },
+  '@regalo':  { origen: 'regalo',  tipo: 'regalo',     label: 'Regalo de mamá',                          corto: 'Regalo mamá',   desc: 'Regalo de mamá',       nota: 'Ingreso: regalo de mamá guardado en alcancía' },
+  '@mandado': { origen: 'mandado', tipo: 'mandado',    label: 'Pago de mamá por un mandado',             corto: 'Mandado mamá',  desc: 'Mandado de mamá',      nota: 'Ingreso: pago de mandado guardado en alcancía' }
+};
+const _ALC_INFO_ORIGEN = {};
+Object.keys(_ALC_ORIGENES_SIN_CUENTA).forEach(k => { _ALC_INFO_ORIGEN[_ALC_ORIGENES_SIN_CUENTA[k].origen] = _ALC_ORIGENES_SIN_CUENTA[k]; });
 
-  if(fuenteWrap) fuenteWrap.style.display = (tipo === 'yo-cuenta') ? '' : 'none';
-  if(splitWrap)  splitWrap.style.display  = (tipo === 'split')    ? '' : 'none';
+let _alcSplitMode = false; // true = "Dividir ÷" activo (varios orígenes)
+
+function _alcNombreFuente(f){
+  if(!f) return '';
+  if(typeof fuenteLabel === 'function'){ try { const l = fuenteLabel(f); if(l) return l; } catch(e){} }
+  if(f === 'nequi') return 'Nequi';
+  if(f === 'efectivo') return 'Efectivo';
+  if(f.startsWith('cajita:')){ const c=(window.S&&window.S.cajitas||[]).find(x=>x.id===f.split(':')[1]); return c?c.nombre:'Cajita'; }
+  if(f.startsWith('custom:')){ const c=(window.S&&window.S.cuentasPersonalizadas||[]).find(x=>x.id===f.split(':')[1]); return c?c.nombre:'Cuenta'; }
+  return f;
+}
+
+// <option>s del selector de origen: cuentas con saldo + orígenes sin cuenta (+ deuda si aplica).
+// `conDeuda` solo en modo de un único origen (un cobro de deuda necesita elegir persona/préstamo).
+function _alcOrigenOptsHtml(selected, conDeuda){
+  const tmp = document.createElement('select');
+  tmp.innerHTML = (typeof buildFuentesOptsHtml === 'function')
+    ? buildFuentesOptsHtml({incluirTC:false, placeholder:'Elegí de dónde viene'})
+    : '<option value="">Elegí de dónde viene</option>';
+  _alcFiltrarFuentesPorSaldo(tmp);
+  const ph = tmp.querySelector('option[value=""]');
+  if(ph) ph.textContent = 'Elegí de dónde viene'; // _alcFiltrarFuentesPorSaldo pone un texto de "sin cuentas" que aquí no aplica
+  let extra = '<optgroup label="Sin cuenta">'
+    + Object.keys(_ALC_ORIGENES_SIN_CUENTA).map(v => `<option value="${v}">${_ALC_ORIGENES_SIN_CUENTA[v].label}</option>`).join('')
+    + '</optgroup>';
+  if(conDeuda && (window.S && window.S.deudores || []).some(d => typeof getDeudorSaldo === 'function' && getDeudorSaldo(d) > 0.5)){
+    extra += `<optgroup label="Deudas"><option value="${_ALC_VALOR_DEUDA}">Me pagaron una deuda</option></optgroup>`;
+  }
+  return tmp.innerHTML + extra;
+}
+
+// valor de un <select> de origen → parte { origen, monto, [fuente] }
+function _alcParteDesdeValor(v, monto){
+  if(v === _ALC_VALOR_DEUDA) return { origen: 'deuda', monto };
+  const info = _ALC_ORIGENES_SIN_CUENTA[v];
+  if(info) return { origen: info.origen, monto };
+  return { origen: 'cuenta', fuente: v, monto };
+}
+
+// Muestra/oculta lo que depende del origen elegido (persona del cobro, saldo disponible, monto editable).
+function _alcOrigenActualizar(){
+  const sel = document.getElementById('alc_dep_origen');
+  const v = sel ? sel.value : '';
+  const esDeuda = !_alcSplitMode && v === _ALC_VALOR_DEUDA;
   const deudorWrap = document.getElementById('alc_dep_deudor_wrap');
-  if(deudorWrap) deudorWrap.style.display = (tipo === 'cobro-deuda') ? '' : 'none';
-  if(tipo === 'cobro-deuda') _alcDeudorSelActualizar();
-
-  // Cuando es split el campo total se auto-llena
-  const montoInput = document.getElementById('alc_dep_monto');
-  if(montoInput){
-    if(tipo === 'split'){
-      // Deshabilitar edición manual del total cuando es split
-      montoInput.readOnly = true;
-      montoInput.style.opacity = '0.6';
+  if(deudorWrap) deudorWrap.style.display = esDeuda ? '' : 'none';
+  if(esDeuda) _alcDeudorSelActualizar();
+  const hint = document.getElementById('alc_dep_saldo_hint');
+  if(hint){
+    if(!_alcSplitMode && v && v.charAt(0) !== '@'){
+      const s = (typeof getSaldoFuente === 'function') ? getSaldoFuente(v) : 0;
+      hint.textContent = 'Saldo disponible: ' + (typeof fmt === 'function' ? fmt(s) : s);
+      hint.style.color = s > 0 ? 'var(--accent)' : 'var(--red)';
     } else {
-      montoInput.readOnly = false;
-      montoInput.style.opacity = '';
+      hint.textContent = '';
     }
   }
+  // En modo dividido el total es la suma de las filas: no se edita a mano.
+  const montoInput = document.getElementById('alc_dep_monto');
+  if(montoInput){
+    montoInput.readOnly = _alcSplitMode;
+    montoInput.style.opacity = _alcSplitMode ? '0.6' : '';
+  }
 }
+
+// onPreview del motor split: recalcula el total a partir de las filas.
+function _alcSplitPreview(){
+  _alcOrigenActualizar();
+  if(!_alcSplitMode) return;
+  const filas = (typeof splitGetData === 'function') ? splitGetData('alcancia') : [];
+  const total = Math.round(filas.reduce((t, f) => t + f.monto, 0) * 100) / 100;
+  const hint = document.getElementById('alc_split_total_hint');
+  if(hint){
+    hint.textContent = total > 0 ? 'Total: ' + (typeof fmt === 'function' ? fmt(total) : total) : '';
+    hint.style.color = 'var(--amber)';
+  }
+  const montoInput = document.getElementById('alc_dep_monto');
+  if(montoInput){
+    montoInput.value = total > 0 ? total.toFixed(2).replace('.', ',') : '';
+    montoInput.dispatchEvent(new Event('input'));
+  }
+}
+
+window.alcanciaToggleDividir = function(){ if(typeof splitToggle === 'function') splitToggle('alcancia'); };
+window.alcanciaAgregarOrigen = function(){ if(typeof splitAgregarRow === 'function') splitAgregarRow('alcancia'); };
 
 /* ─── COBRO DE DEUDA: selector de deudor/grupo dentro de Depositar ───────
    Espejo simplificado de _initMovGrupoSelector (prestado.js): si la
@@ -224,34 +309,6 @@ function _alcDeudorSaldoHintActualizar(){
   }
 }
 
-function _alcSplitActualizarTotal(){
-  const yo   = _getMoneyVal('alc_split_yo')   || 0;
-  const mama = _getMoneyVal('alc_split_mama') || 0;
-  const total = yo + mama;
-  const hint  = document.getElementById('alc_split_total_hint');
-  const montoInput = document.getElementById('alc_dep_monto');
-
-  if(hint){
-    if(yo > 0 || mama > 0){
-      hint.textContent = 'Total: ' + (typeof fmt === 'function' ? fmt(total) : total);
-      hint.style.color = 'var(--amber)';
-    } else {
-      hint.textContent = '';
-    }
-  }
-
-  // Sincronizar el campo de monto total
-  if(montoInput && total > 0){
-    // Formatear igual que lo hacen los money-inputs: sin símbolo, con coma decimal
-    const formatted = total.toFixed(2).replace('.', ',');
-    montoInput.value = formatted;
-    montoInput.dispatchEvent(new Event('input'));
-  } else if(montoInput && total === 0){
-    montoInput.value = '';
-    montoInput.dispatchEvent(new Event('input'));
-  }
-}
-
 /* ─── INYECTAR SHEETS ───────────────────────────────────────────────────── */
 function _inyectarAlcanciaSheets(){
   if(document.getElementById('sheet-alcancia-depositar')) return;
@@ -266,16 +323,20 @@ function _inyectarAlcanciaSheets(){
       <div class="sheet-handle"></div>
       <div class="sheet-title">Guardar en la alcancía</div>
       <div class="ig">
-        <label class="il" for="alc_dep_tipo">¿De dónde viene este dinero?</label>
-        <div class="select-wrap">
-          <select id="alc_dep_tipo">
-            <option value="yo-directo"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Lo tenía yo (no sale de ninguna cuenta)</option>
-            <option value="yo-cuenta"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg> Lo saqué de una de mis cuentas</option>
-            <option value="regalo"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg> Me lo regaló mi mamá</option>
-            <option value="mandado"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg> Me lo dio mi mamá por un mandado</option>
-            <option value="split"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg> Pusimos entre los dos</option>
-            <option value="cobro-deuda"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg> Me pagaron una deuda que me tenían</option>
-          </select>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
+          <label class="il" for="alc_dep_origen" style="margin:0;">¿De dónde viene este dinero?</label>
+          <button type="button" id="alc_split_toggle" ${Events.attr('alcancia:toggleDividir')} style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;cursor:pointer;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-family:'DM Sans',sans-serif;">Dividir ÷</button>
+        </div>
+        <div id="alc_origen_simple">
+          <div class="select-wrap">
+            <select id="alc_dep_origen"></select>
+          </div>
+          <div id="alc_dep_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
+        </div>
+        <div id="alc_origen_split" style="display:none;">
+          <div id="alc_split_rows"></div>
+          <button type="button" ${Events.attr('alcancia:agregarOrigen')} style="width:100%;padding:8px;font-size:12px;font-weight:600;border-radius:7px;cursor:pointer;background:transparent;border:1px dashed var(--border2);color:var(--text2);font-family:'DM Sans',sans-serif;">+ Agregar otro origen</button>
+          <div id="alc_split_total_hint" style="font-size:12px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace;"></div>
         </div>
       </div>
       <div class="ig" id="alc_dep_deudor_wrap" style="display:none;">
@@ -288,34 +349,6 @@ function _inyectarAlcanciaSheets(){
           <div class="select-wrap"><select id="alc_dep_deudor_grupo"></select></div>
         </div>
         <div id="alc_dep_deudor_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
-      </div>
-      <div class="ig" id="alc_dep_fuente_wrap">
-        <label class="il" for="alc_dep_fuente">¿De qué cuenta sale?</label>
-        <div class="select-wrap">
-          <select id="alc_dep_fuente"></select>
-        </div>
-        <div id="alc_dep_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
-      </div>
-      <div class="ig" id="alc_dep_split_wrap" style="display:none;">
-        <div class="il">¿Cuánto puso cada uno?</div>
-        <div style="display:flex;gap:10px;align-items:flex-start;">
-          <div style="flex:1;">
-            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:500;">Vos</div>
-            <input type="text" inputmode="decimal" class="money-input" id="alc_split_yo" placeholder="0,00" autocomplete="off">
-          </div>
-          <div style="flex:1;">
-            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:500;">Tu mamá</div>
-            <input type="text" inputmode="decimal" class="money-input" id="alc_split_mama" placeholder="0,00" autocomplete="off">
-          </div>
-        </div>
-        <div id="alc_split_total_hint" style="font-size:12px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace;"></div>
-        <div id="alc_split_fuente_wrap" style="margin-top:10px;">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">¿De qué cuenta sale tu parte? <span style="opacity:.6;">(opcional)</span></div>
-          <div class="select-wrap">
-            <select id="alc_split_fuente"></select>
-          </div>
-          <div id="alc_split_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
-        </div>
       </div>
       <div class="ig">
         <label class="il" for="alc_dep_monto">Monto total</label>
@@ -397,53 +430,25 @@ function _inyectarAlcanciaSheets(){
   /* ---------- Money inputs ---------- */
   _alcInitMoneyInput('alc_dep_monto');
   _alcInitMoneyInput('alc_real_monto');
-  _alcInitMoneyInput('alc_split_yo');
-  _alcInitMoneyInput('alc_split_mama');
-
-  /* ---------- Split: recalcular total al cambiar cada campo ---------- */
-  ['alc_split_yo','alc_split_mama'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.addEventListener('input', _alcSplitActualizarTotal);
-  });
-
-  /* ---------- Tipo origen selector (muestra/oculta fuente) ---------- */
-  const tipoSel = document.getElementById('alc_dep_tipo');
-  if(tipoSel){
-    tipoSel.addEventListener('change', _alcanciaActualizarTipo);
+  /* ---------- Motor de "Dividir ÷" (js/core/split.js) ---------- */
+  if(typeof crearSplitWidget === 'function'){
+    crearSplitWidget('alcancia', {
+      simpleId: 'alc_origen_simple', splitId: 'alc_origen_split', toggleId: 'alc_split_toggle', rowsId: 'alc_split_rows',
+      getModo: () => _alcSplitMode,
+      setModo: v => { _alcSplitMode = !!v; },
+      getFuentesFn: sel => _alcOrigenOptsHtml(sel, false),   // en filas no hay "cobro de deuda"
+      onPreview: _alcSplitPreview
+    });
   }
+
+  /* ---------- Selector de origen (modo un solo origen) ---------- */
+  const origenSel = document.getElementById('alc_dep_origen');
+  if(origenSel) origenSel.addEventListener('change', _alcOrigenActualizar);
 
   /* ---------- Cobro de deuda: selector de deudor ---------- */
   const deudorSel = document.getElementById('alc_dep_deudor');
   if(deudorSel){
     deudorSel.addEventListener('change', _alcDeudorSelActualizar);
-  }
-
-  /* ---------- Fuente selector hint ---------- */
-  const fuenteSel = document.getElementById('alc_dep_fuente');
-  if(fuenteSel){
-    fuenteSel.addEventListener('change', function(){
-      const hint = document.getElementById('alc_dep_saldo_hint');
-      if(!hint) return;
-      const s = (typeof getSaldoFuente==='function') ? getSaldoFuente(this.value) : 0;
-      hint.textContent = this.value ? 'Saldo disponible: ' + (typeof fmt==='function'?fmt(s):s) : '';
-      hint.style.color = s > 0 ? 'var(--accent)' : 'var(--red)';
-    });
-  }
-
-  /* ---------- Split fuente selector hint ---------- */
-  const splitFuenteSel = document.getElementById('alc_split_fuente');
-  if(splitFuenteSel){
-    splitFuenteSel.addEventListener('change', function(){
-      const hint = document.getElementById('alc_split_saldo_hint');
-      if(!hint) return;
-      if(!this.value){
-        hint.textContent = '';
-        return;
-      }
-      const s = (typeof getSaldoFuente==='function') ? getSaldoFuente(this.value) : 0;
-      hint.textContent = 'Saldo disponible: ' + (typeof fmt==='function'?fmt(s):s);
-      hint.style.color = s > 0 ? 'var(--accent)' : 'var(--red)';
-    });
   }
 
   /* ---------- Diferencia hint en destapar ---------- */
@@ -628,34 +633,20 @@ hookGlobal('openSheet', function(id){
   if(id === 'alcancia-depositar'){
     _inyectarAlcanciaSheets();
     setTimeout(()=>{
-      const fsel = document.getElementById('alc_dep_fuente');
-      if(fsel && typeof buildFuentesOptsHtml==='function'){
-        fsel.innerHTML = buildFuentesOptsHtml({incluirTC:false,placeholder:'Seleccionar cuenta'});
-        _alcFiltrarFuentesPorSaldo(fsel);
-      }
       const fd = document.getElementById('alc_dep_fecha');
       if(fd) fd.value = (typeof hoy==='function'?hoy():new Date().toISOString().slice(0,10));
       const mi = document.getElementById('alc_dep_monto');
       if(mi){ mi.value = '0,00'; if(typeof moneyInputAttach==='function') moneyInputAttach(mi); }
-      const h = document.getElementById('alc_dep_saldo_hint');
-      if(h) h.textContent = '';
       const desc = document.getElementById('alc_dep_desc');
       if(desc) desc.value = '';
-      // Reset split
-      const splitYo   = document.getElementById('alc_split_yo');
-      const splitMama = document.getElementById('alc_split_mama');
-      if(splitYo)   { splitYo.value = '0,00';   if(typeof moneyInputAttach==='function') moneyInputAttach(splitYo); }
-      if(splitMama) { splitMama.value = '0,00'; if(typeof moneyInputAttach==='function') moneyInputAttach(splitMama); }
+      // Reset de orígenes: salir del modo dividido, vaciar filas y repoblar el selector
+      if(_alcSplitMode && typeof splitToggle === 'function') splitToggle('alcancia');
+      const splitRows = document.getElementById('alc_split_rows');
+      if(splitRows) splitRows.innerHTML = '';
       const splitHint = document.getElementById('alc_split_total_hint');
       if(splitHint) splitHint.textContent = '';
-      // Split fuente: poblar y limpiar hint
-      const splitFsel = document.getElementById('alc_split_fuente');
-      if(splitFsel && typeof buildFuentesOptsHtml==='function'){
-        splitFsel.innerHTML = buildFuentesOptsHtml({incluirTC:false,placeholder:'Lo tenía yo (efectivo)'});
-        _alcFiltrarFuentesPorSaldo(splitFsel);
-      }
-      const splitSaldoHint = document.getElementById('alc_split_saldo_hint');
-      if(splitSaldoHint) splitSaldoHint.textContent = '';
+      const origenSel = document.getElementById('alc_dep_origen');
+      if(origenSel){ origenSel.innerHTML = _alcOrigenOptsHtml('', true); origenSel.value = ''; }
       // Cobro de deuda: poblar personas con saldo pendiente y resetear el wrap
       const deudorSelReset = document.getElementById('alc_dep_deudor');
       if(deudorSelReset){
@@ -668,8 +659,7 @@ hookGlobal('openSheet', function(id){
       if(deudorGrupoWrapReset) deudorGrupoWrapReset.style.display = 'none';
       const deudorHintReset = document.getElementById('alc_dep_deudor_saldo_hint');
       if(deudorHintReset) deudorHintReset.textContent = '';
-      const tipo = document.getElementById('alc_dep_tipo');
-      if(tipo) { tipo.value = 'yo-directo'; _alcanciaActualizarTipo(); }
+      _alcOrigenActualizar();
     }, 30);
   }
   if(id === 'alcancia-destapar'){
@@ -780,7 +770,7 @@ window.renderAlcancia = function(){
               <div style="font-size:11px;color:var(--text3);">${m.fecha}${fmtFuente ? ' · de ' + fmtFuente : ''}</div>
               <div style="font-size:10px;color:${color};margin-top:2px;">${label}</div>
             </div>
-            <span class="alc-dep-monto" data-shown="0" data-mov-id="${m.id}" ${Events.attr('alcancia:toggleMontoDeposito', m.id)} title="Toca para ver el monto" style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text3);flex-shrink:0;cursor:pointer;letter-spacing:1px;">••••</span>
+            <span class="alc-dep-monto" data-shown="0" data-mov-id="${m.id}" ${Events.attr('alcancia:toggleMontoDeposito', m.id)} title="Toca para ver el monto" style="display:inline-flex;align-items:center;min-height:20px;font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text3);flex-shrink:0;cursor:pointer;">${_ALC_ICONO_OCULTO}</span>
             <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${Events.attr('alcancia:eliminarDeposito', m.id)} title="Eliminar este depósito" style="flex-shrink:0;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
             </button>
@@ -882,269 +872,125 @@ window.alcanciaIniciarNueva = function(){
   if(typeof toast==='function') toast('Alcancía iniciada', 'ok');
 };
 
-/* Confirmar depósito */
+/* Confirmar depósito
+   Un depósito = uno o varios ORÍGENES (ver "ORÍGENES DEL DEPÓSITO" arriba).
+   Por cada origen se crea su movimiento espejo:
+     · cuenta          → gasto interno en S.gastosVar (_esAlcancia) + resta saldo real
+     · propio/regalo/mandado → ingreso en S.movimientos (_esAlcanciaIngreso). NO toca ningún
+                         saldo: es plata que nunca estuvo en una cuenta. (Antes se sumaba y
+                         restaba el mismo monto a Efectivo para "cancelarlo".)
+     · deuda           → abono en el deudor (solo con un único origen)
+   Un único origen guarda el mismo registro de siempre (tipo yo-cuenta/yo-directo/...);
+   varios orígenes guardan tipo 'multi' con partes[]. */
 window.alcanciaConfirmarDeposito = function(){
-  const monto  = _getMoneyVal('alc_dep_monto');
-  const tipo   = (document.getElementById('alc_dep_tipo')||{}).value || 'yo-directo';
-  const fuente = (document.getElementById('alc_dep_fuente')||{}).value || '';
   const fecha  = (document.getElementById('alc_dep_fecha')||{}).value  || (typeof hoy==='function'?hoy():'');
   const descEl = document.getElementById('alc_dep_desc');
   const descVal = (descEl ? descEl.value.trim() : '') || '';
+  const err = m => { if(typeof toast==='function') toast(m, 'err'); };
 
-  // Valores split
-  const splitYo      = tipo === 'split' ? (_getMoneyVal('alc_split_yo')   || 0) : 0;
-  const splitMama    = tipo === 'split' ? (_getMoneyVal('alc_split_mama') || 0) : 0;
-  const splitFuente  = tipo === 'split' ? ((document.getElementById('alc_split_fuente')||{}).value || '') : '';
-
-  if(!monto || monto <= 0){
-    if(typeof toast==='function') toast('Ingresá un monto válido', 'err'); return;
+  /* ── 1. Armar las partes ── */
+  let partes = [];
+  if(_alcSplitMode){
+    const filas = (typeof splitGetData === 'function') ? splitGetData('alcancia') : [];
+    if(!filas.length){ err('Ingresá cuánto viene de cada origen'); return; }
+    if(filas.some(f => !f.fuente)){ err('Elegí el origen de cada monto'); return; }
+    partes = filas.map(f => _alcParteDesdeValor(f.fuente, f.monto));
+  } else {
+    const v = (document.getElementById('alc_dep_origen')||{}).value || '';
+    if(!v){ err('Elegí de dónde viene el dinero'); return; }
+    const m = _getMoneyVal('alc_dep_monto');
+    if(!m || m <= 0){ err('Ingresá un monto válido'); return; }
+    partes = [_alcParteDesdeValor(v, m)];
   }
+  const monto = Math.round(partes.reduce((t, p) => t + p.monto, 0) * 100) / 100;
+  if(!(monto > 0)){ err('Ingresá un monto válido'); return; }
+  const unica = partes.length === 1;
 
-  // Validación split: que la suma cuadre con el total
-  if(tipo === 'split'){
-    if(splitYo <= 0 && splitMama <= 0){
-      if(typeof toast==='function') toast('Ingresá cuánto puso cada uno', 'err'); return;
-    }
-    const sumaPartes = Math.round((splitYo + splitMama) * 100);
-    const totalMonto = Math.round(monto * 100);
-    if(sumaPartes !== totalMonto){
-      if(typeof toast==='function') toast('La suma de las partes no coincide con el total', 'err'); return;
-    }
-  }
-
-  // Solo requiere fuente cuando el dinero sale de una cuenta
-  if(tipo === 'yo-cuenta'){
-    if(!fuente){
-      if(typeof toast==='function') toast('Seleccioná la cuenta de origen', 'err'); return;
-    }
-    const saldoDisp = typeof getSaldoFuente==='function' ? getSaldoFuente(fuente) : 0;
-    if(monto > saldoDisp + 0.5){
-      if(typeof toast==='function') toast('Saldo insuficiente en la cuenta seleccionada', 'err'); return;
+  /* ── 2. Validar ── */
+  for(const p of partes){
+    if(p.origen !== 'cuenta') continue;
+    const saldoDisp = typeof getSaldoFuente==='function' ? getSaldoFuente(p.fuente) : 0;
+    if(p.monto > saldoDisp + 0.5){
+      err(unica ? 'Saldo insuficiente en la cuenta seleccionada' : 'Saldo insuficiente en ' + _alcNombreFuente(p.fuente)); return;
     }
   }
 
-  // Split con fuente: validar que hay saldo suficiente para la parte tuya
-  if(tipo === 'split' && splitFuente && splitYo > 0){
-    const saldoDisp = typeof getSaldoFuente==='function' ? getSaldoFuente(splitFuente) : 0;
-    if(splitYo > saldoDisp + 0.5){
-      if(typeof toast==='function') toast('Saldo insuficiente en la cuenta seleccionada para tu parte', 'err'); return;
-    }
-  }
-
-  // Cobro de deuda: validar persona + (si aplica) grupo, y que el monto no
-  // supere lo que esa persona (o ese préstamo puntual) todavía debe.
+  // Cobro de deuda: persona + (si aplica) préstamo, y que el monto no supere lo que todavía debe.
   let cobroDeudorId = '', cobroGrupoId = '', cobroDeudorNombre = '';
-  if(tipo === 'cobro-deuda'){
+  const esCobro = unica && partes[0].origen === 'deuda';
+  if(esCobro){
     cobroDeudorId = (document.getElementById('alc_dep_deudor')||{}).value || '';
-    if(!cobroDeudorId){ if(typeof toast==='function') toast('Seleccioná quién te pagó', 'err'); return; }
+    if(!cobroDeudorId){ err('Seleccioná quién te pagó'); return; }
     const dCheck = (window.S && window.S.deudores || []).find(x => x.id === cobroDeudorId);
-    if(!dCheck){ if(typeof toast==='function') toast('Esa persona ya no existe', 'err'); return; }
+    if(!dCheck){ err('Esa persona ya no existe'); return; }
     if(typeof _migrarGruposDeudor === 'function') _migrarGruposDeudor(dCheck);
     cobroDeudorNombre = dCheck.nombre;
     const grupoWrapCheck = document.getElementById('alc_dep_deudor_grupo_wrap');
     if(grupoWrapCheck && grupoWrapCheck.style.display !== 'none'){
       cobroGrupoId = (document.getElementById('alc_dep_deudor_grupo')||{}).value || '';
-      if(!cobroGrupoId){ if(typeof toast==='function') toast('Seleccioná a cuál préstamo corresponde', 'err'); return; }
+      if(!cobroGrupoId){ err('Seleccioná a cuál préstamo corresponde'); return; }
     }
     const saldoDisp = cobroGrupoId ? getGrupoSaldo(dCheck, cobroGrupoId) : getDeudorSaldo(dCheck);
     if(monto > saldoDisp + 0.5){
-      if(typeof toast==='function') toast(`${escHtml(dCheck.nombre)} solo debe ${typeof fmt==='function'?fmt(saldoDisp):saldoDisp}`, 'err'); return;
+      err(`${escHtml(dCheck.nombre)} solo debe ${typeof fmt==='function'?fmt(saldoDisp):saldoDisp}`); return;
     }
   }
 
+  /* ── 3. Crear los movimientos espejo ── */
   _initA();
   const a = window.S.alcancia;
+  const uidF = () => typeof uid==='function' ? uid() : Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const entryId = uidF();
+  partes.forEach((p, i) => { p.movId = i === 0 ? entryId : uidF(); }); // la 1ª parte comparte id con la entrada (como siempre)
 
-  const movId = typeof uid==='function' ? uid() : Date.now().toString(36);
-  const tipoLabel = {
-    'yo-directo':  'Propio (directo)',
-    'yo-cuenta':   'Propio (de cuenta)',
-    'regalo':      'Regalo mamá',
-    'mandado':     'Mandado mamá',
-    'split':       'Entre los dos',
-    'cobro-deuda': 'Cobro de deuda'
-  }[tipo] || tipo;
-
-  const descFinal = descVal || {
-    'yo-directo':  'Depósito en alcancía',
-    'yo-cuenta':   'Depósito en alcancía',
-    'regalo':      'Regalo de mamá',
-    'mandado':     'Mandado de mamá',
-    'split':       'Depósito compartido',
-    'cobro-deuda': 'Cobro de deuda — ' + cobroDeudorNombre
-  }[tipo] || 'Depósito en alcancía';
-
-  // ── yo-cuenta: descuenta de la cuenta elegida (gasto interno de alcancía)
-  if(tipo === 'yo-cuenta'){
-    window.S.gastosVar = window.S.gastosVar || [];
-    window.S.gastosVar.push({
-      id: movId,
-      desc: descFinal || 'Alcancía',
-      monto: monto,
-      fecha: fecha,
-      cat: 'Ahorro',
-      fuente: fuente,
-      nota: 'Guardado en alcancía oculta' + (descVal ? ': ' + descVal : ''),
-      _esAlcancia: true,
-      _alcTipo: tipo,
-      _secundario: true, _origenSeccion: 'Alcancía',
-      ts: Date.now()
-    });
-    // Restar el saldo físico de la cuenta de origen
-    if(typeof sumarFuente === 'function') sumarFuente(fuente, -monto);
-  }
-
-  // ── yo-directo: plata que tenías en efectivo sin registrar → es un ingreso nuevo
-  if(tipo === 'yo-directo'){
-    window.S.movimientos = window.S.movimientos || [];
-    window.S.movimientos.push({
-      id: movId,
-      tipo: 'entrada',
-      fuente: 'efectivo',
-      monto: monto,
-      fecha: fecha,
-      desc: descFinal || 'Depósito en alcancía',
-      nota: 'Ingreso registrado al guardar en alcancía (dinero directo)',
-      _esAlcanciaIngreso: true,
-      _secundario: true, _origenSeccion: 'Alcancía',
-      ts: Date.now()
-    });
-    // Suma a efectivo para que el saldo refleje ese dinero... y luego lo resta
-    // porque ahora está "en" la alcancía (no disponible en efectivo).
-    // Neto: 0 en efectivo, pero el ingreso queda en estadísticas del mes.
-    if(typeof sumarFuente === 'function'){
-      sumarFuente('efectivo', monto);
-      sumarFuente('efectivo', -monto);
-    }
-  }
-
-  // ── regalo: dinero que mamá regaló → es un ingreso real tuyo
-  if(tipo === 'regalo'){
-    window.S.movimientos = window.S.movimientos || [];
-    window.S.movimientos.push({
-      id: movId,
-      tipo: 'entrada',
-      fuente: 'efectivo',
-      monto: monto,
-      fecha: fecha,
-      desc: descFinal || 'Regalo de mamá',
-      nota: 'Ingreso: regalo de mamá guardado en alcancía',
-      _esAlcanciaIngreso: true,
-      _secundario: true, _origenSeccion: 'Alcancía',
-      ts: Date.now()
-    });
-    // Igual que yo-directo: el ingreso se registra pero no queda disponible en efectivo
-    if(typeof sumarFuente === 'function'){
-      sumarFuente('efectivo', monto);
-      sumarFuente('efectivo', -monto);
-    }
-  }
-
-  // ── mandado: pago de mamá por un servicio → es un ingreso tuyo
-  if(tipo === 'mandado'){
-    window.S.movimientos = window.S.movimientos || [];
-    window.S.movimientos.push({
-      id: movId,
-      tipo: 'entrada',
-      fuente: 'efectivo',
-      monto: monto,
-      fecha: fecha,
-      desc: descFinal || 'Mandado de mamá',
-      nota: 'Ingreso: pago de mandado guardado en alcancía',
-      _esAlcanciaIngreso: true,
-      _secundario: true, _origenSeccion: 'Alcancía',
-      ts: Date.now()
-    });
-    if(typeof sumarFuente === 'function'){
-      sumarFuente('efectivo', monto);
-      sumarFuente('efectivo', -monto);
-    }
-  }
-
-  // ── split: tu parte puede venir de cuenta (resta) o de efectivo directo (ingreso).
-  //    La parte de mamá siempre es ingreso nuevo para ti.
-  let splitMamaMovId = null;
-  if(tipo === 'split'){
-    // Parte de mamá → ingreso real (ella te dio esa plata)
-    if(splitMama > 0){
-      splitMamaMovId = (typeof uid==='function' ? uid() : Date.now().toString(36)+'_m');
-      window.S.movimientos = window.S.movimientos || [];
-      window.S.movimientos.push({
-        id: splitMamaMovId,
-        tipo: 'entrada',
-        fuente: 'efectivo',
-        monto: splitMama,
-        fecha: fecha,
-        desc: (descVal || 'Depósito compartido') + ' (parte mamá)',
-        nota: 'Ingreso: aporte de mamá al split de alcancía',
-        _esAlcanciaIngreso: true,
-        _secundario: true, _origenSeccion: 'Alcancía',
-        ts: Date.now()
-      });
-      // El ingreso de mamá se registra pero no queda en efectivo (va a la alcancía)
-      if(typeof sumarFuente === 'function'){
-        sumarFuente('efectivo', splitMama);
-        sumarFuente('efectivo', -splitMama);
-      }
-    }
-
-    // Tu parte: si viene de una cuenta → restar esa cuenta (movimiento interno)
-    if(splitFuente && splitYo > 0){
+  partes.forEach(p => {
+    if(p.origen === 'cuenta'){
       window.S.gastosVar = window.S.gastosVar || [];
       window.S.gastosVar.push({
-        id: movId,
-        desc: descFinal || 'Alcancía',
-        monto: splitYo,
-        fecha: fecha,
+        id: p.movId,
+        desc: descVal || 'Depósito en alcancía',
+        monto: p.monto,
+        fecha,
         cat: 'Ahorro',
-        fuente: splitFuente,
-        nota: 'Guardado en alcancía (tu parte)' + (descVal ? ': ' + descVal : ''),
+        fuente: p.fuente,
+        nota: (unica ? 'Guardado en alcancía oculta' : 'Guardado en alcancía oculta (depósito dividido)') + (descVal ? ': ' + descVal : ''),
         _esAlcancia: true,
-        _alcTipo: 'split',
+        _alcTipo: unica ? 'yo-cuenta' : 'multi',
         _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
       });
-      // Restar el saldo físico de la cuenta de origen
-      if(typeof sumarFuente === 'function') sumarFuente(splitFuente, -splitYo);
-    } else if(!splitFuente && splitYo > 0){
-      // Tu parte es efectivo directo (sin cuenta) → ingreso nuevo
+      if(typeof sumarFuente === 'function') sumarFuente(p.fuente, -p.monto);
+    } else if(p.origen !== 'deuda'){
+      const info = _ALC_INFO_ORIGEN[p.origen];
       window.S.movimientos = window.S.movimientos || [];
       window.S.movimientos.push({
-        id: movId,
+        id: p.movId,
         tipo: 'entrada',
+        // NO cambiar `fuente`: inicio.js (ingresosMes) solo suma entradas de S.movimientos cuya fuente sea
+        // nequi/efectivo/cajita:/custom:, así que con otra fuente este ingreso dejaría de contar en el mes.
+        // No mueve ningún saldo y no aparece en el historial de Efectivo (cuentas.js lo salta).
         fuente: 'efectivo',
-        monto: splitYo,
-        fecha: fecha,
-        desc: (descVal || 'Depósito compartido') + ' (tu parte)',
-        nota: 'Ingreso: tu aporte al split de alcancía (efectivo directo)',
+        monto: p.monto,
+        fecha,
+        desc: unica ? (descVal || info.desc) : (descVal ? descVal + ' (' + info.corto + ')' : info.desc),
+        nota: info.nota,
         _esAlcanciaIngreso: true,
         _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
       });
-      if(typeof sumarFuente === 'function'){
-        sumarFuente('efectivo', splitYo);
-        sumarFuente('efectivo', -splitYo);
-      }
     }
-  }
+  });
 
-  // ── cobro-deuda: registra el abono en la persona (descuenta la deuda).
-  //    No toca ninguna cuenta real ni cuenta como ingreso — es plata que ya
-  //    era tuya (estaba prestada) cambiando de "por cobrar" a "en la
-  //    alcancía", igual que un 'prestamo' de salida tampoco genera entrada
-  //    secundaria en ninguna cuenta (ver prestado.md §4.1).
+  // Cobro de deuda: abono en la persona (descuenta la deuda). No toca ninguna cuenta ni cuenta como ingreso.
   let cobroAbonoMovId = null;
-  if(tipo === 'cobro-deuda'){
+  if(esCobro){
     const d = (window.S.deudores || []).find(x => x.id === cobroDeudorId);
     if(d){
       if(!d.movimientos) d.movimientos = [];
-      // Deudores creados antes de que existieran los grupos (o nunca abiertos
-      // desde entonces) no tienen d.grupos — sin esto, _autoGrupoIdMov ve 0
-      // grupos abiertos y crea uno en blanco, dejando la deuda vieja huérfana
-      // sin grupo (ver prestado.md §2.4, migración silenciosa).
+      // Deudores viejos sin d.grupos: migrar antes, si no _autoGrupoIdMov crea un grupo en blanco (ver prestado.md §2.4).
       if(typeof _migrarGruposDeudor === 'function') _migrarGruposDeudor(d);
       const grupoIdFinal = cobroGrupoId || (typeof _autoGrupoIdMov === 'function' ? _autoGrupoIdMov(d, fecha) : undefined);
-      cobroAbonoMovId = typeof uid==='function' ? uid() : Date.now().toString(36) + '_ab';
+      cobroAbonoMovId = uidF();
       d.movimientos.push({
         id: cobroAbonoMovId,
         tipo: 'abono',
@@ -1154,7 +1000,7 @@ window.alcanciaConfirmarDeposito = function(){
         destino: '',
         grupoId: grupoIdFinal,
         _viaAlcancia: true,
-        _alcanciaMovId: movId,
+        _alcanciaMovId: entryId,
         ts: Date.now()
       });
       if(typeof _autoCerrarGruposEnCero === 'function') _autoCerrarGruposEnCero(d);
@@ -1162,32 +1008,36 @@ window.alcanciaConfirmarDeposito = function(){
     }
   }
 
-  // Actualizar estado alcancía
+  /* ── 4. Registro propio de la alcancía ── */
   a.saldoRegistrado = (a.saldoRegistrado || 0) + monto;
   a.depositos = (a.depositos || 0) + 1;
   a.movimientos = a.movimientos || [];
-  const movEntry = {
-    id: movId,
-    monto,
-    fecha,
-    fuenteOrigen: tipo === 'yo-cuenta' ? fuente : (tipo === 'split' && splitFuente ? splitFuente : null),
-    tipo,
-    tipoLabel,
-    desc: descFinal,
-    ts: Date.now()
-  };
-  // Guardar las partes del split
-  if(tipo === 'split'){
-    movEntry._splitYo     = splitYo;
-    movEntry._splitMama   = splitMama;
-    if(splitFuente) movEntry._splitFuente = splitFuente;
-    if(splitMamaMovId) movEntry._splitMamaMovId = splitMamaMovId;
-  }
-  // Guardar el enlace de vuelta hacia el abono del deudor (ver prestado.md §4.2:
-  // toda entrada secundaria necesita su id de vuelta para poder revertirse).
-  if(tipo === 'cobro-deuda'){
-    movEntry._prestamoDeudorId = cobroDeudorId;
-    movEntry._prestamoMovId = cobroAbonoMovId;
+  const movEntry = { id: entryId, monto, fecha, fuenteOrigen: null, ts: Date.now() };
+  if(unica){
+    const p = partes[0];
+    if(p.origen === 'cuenta'){
+      movEntry.tipo = 'yo-cuenta'; movEntry.tipoLabel = 'Propio (de cuenta)'; movEntry.fuenteOrigen = p.fuente;
+      movEntry.desc = descVal || 'Depósito en alcancía';
+    } else if(p.origen === 'deuda'){
+      movEntry.tipo = 'cobro-deuda'; movEntry.tipoLabel = 'Cobro de deuda';
+      movEntry.desc = descVal || ('Cobro de deuda — ' + cobroDeudorNombre);
+      movEntry._prestamoDeudorId = cobroDeudorId;
+      movEntry._prestamoMovId = cobroAbonoMovId;
+    } else {
+      const info = _ALC_INFO_ORIGEN[p.origen];
+      movEntry.tipo = info.tipo;
+      movEntry.tipoLabel = { propio: 'Propio (directo)', regalo: 'Regalo mamá', mandado: 'Mandado mamá' }[p.origen];
+      movEntry.desc = descVal || info.desc;
+    }
+  } else {
+    movEntry.tipo = 'multi';
+    movEntry.tipoLabel = partes.map(p => p.origen === 'cuenta' ? _alcNombreFuente(p.fuente) : _ALC_INFO_ORIGEN[p.origen].corto).join(' + ');
+    movEntry.desc = descVal || 'Depósito de varias fuentes';
+    movEntry.partes = partes.map(p => {
+      const o = { origen: p.origen, monto: p.monto, movId: p.movId };
+      if(p.fuente) o.fuente = p.fuente;
+      return o;
+    });
   }
   a.movimientos.push(movEntry);
   _setSaldoOfuscado(a.saldoRegistrado);
@@ -1442,7 +1292,7 @@ function _sumarASaldo(fuente, monto){
 }
 
 /* ─── REVELAR EL MONTO DE UN DEPÓSITO (uno a la vez) ─────────────────────
-   Por defecto la lista muestra "••••" en vez del monto — mostrarlos todos
+   Por defecto la lista muestra un ícono de "oculto" (ojo tachado) en vez del monto — mostrarlos todos
    de una permitiría sumarlos a mano y reconstruir el total que heroSaldo
    mantiene oculto ("$??"). El monto real nunca se guarda en el HTML antes
    de que el usuario lo pida: se busca en window.S.alcancia recién al
@@ -1452,7 +1302,7 @@ window.alcanciaToggleMontoDeposito = function(movId, el){
   const montoEl = el;
   const shown = montoEl.dataset.shown === '1';
   if(shown){
-    montoEl.textContent = '••••';
+    montoEl.innerHTML = _ALC_ICONO_OCULTO;
     montoEl.dataset.shown = '0';
     montoEl.style.color = 'var(--text3)';
   } else {
@@ -1508,6 +1358,7 @@ window.alcanciaEliminarDeposito = async function(movId){
       let nombreCuenta, direccion;
       if(entry.tipo === 'yo-cuenta' && entry.fuenteOrigen){ nombreCuenta = fuenteLabel(entry.fuenteOrigen); direccion = 'sube'; }
       else if(entry.tipo === 'split' && entry._splitFuente){ nombreCuenta = fuenteLabel(entry._splitFuente); direccion = 'sube'; }
+      else if(entry.tipo === 'multi' && (entry.partes||[]).some(pt => pt.origen === 'cuenta')){ nombreCuenta = entry.partes.filter(pt => pt.origen === 'cuenta').map(pt => _alcNombreFuente(pt.fuente)).join(' y '); direccion = 'sube'; }
       else if(entry.tipo === 'cobro-deuda' && deudorParaAviso){ nombreCuenta = 'la deuda de ' + deudorParaAviso.nombre; direccion = 'sube'; }
       else { nombreCuenta = 'tu alcancía'; direccion = 'baja'; }
       const ok = await confirmarBorrarMovimientoViejo(nombreCuenta, entry.monto || 0, direccion);
@@ -1521,7 +1372,7 @@ window.alcanciaEliminarDeposito = async function(movId){
 
   const dialogoTexto = entry.tipo === 'cobro-deuda'
     ? `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? Se le volverá a sumar esa plata a la deuda de la persona.`
-    : `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? ${entry.fuenteOrigen || entry._splitFuente ? 'Se devolverá el dinero a la cuenta de origen.' : 'No afecta ningún saldo (fue un ingreso registrado sin mover plata real).'}`;
+    : `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? ${entry.fuenteOrigen || entry._splitFuente || (entry.tipo === 'multi' && (entry.partes||[]).some(pt => pt.origen === 'cuenta')) ? 'Se devolverá el dinero a la cuenta de origen.' : 'No afecta ningún saldo (fue un ingreso registrado sin mover plata real).'}`;
   const ok = await dialogo('Eliminar depósito', dialogoTexto, 'Eliminar', true);
   if(!ok) return;
 
@@ -1543,6 +1394,16 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
     if(entry._splitMamaMovId){
       window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== entry._splitMamaMovId);
     }
+  } else if(entry.tipo === 'multi'){
+    // Varios orígenes: cada parte tiene su propio movimiento espejo (partes[].movId).
+    (entry.partes || []).forEach(pt => {
+      if(pt.origen === 'cuenta'){
+        window.S.gastosVar = (window.S.gastosVar || []).filter(x => x.id !== pt.movId);
+        if(pt.fuente && typeof sumarFuente === 'function') sumarFuente(pt.fuente, pt.monto);
+      } else {
+        window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== pt.movId);
+      }
+    });
   } else if(entry.tipo === 'cobro-deuda'){
     // No hay cuenta real ni movimiento en S.movimientos que revertir — el
     // rastro real es el abono en el deudor. Quitarlo de ahí reabre la deuda.
@@ -1604,6 +1465,8 @@ Events.registerAll('alcancia', {
   confirmarDestapar:  window.alcanciaConfirmarDestapar,
   eliminarDeposito:   window.alcanciaEliminarDeposito,
   toggleMontoDeposito: window.alcanciaToggleMontoDeposito,
+  toggleDividir:      window.alcanciaToggleDividir,
+  agregarOrigen:      window.alcanciaAgregarOrigen,
   toggleDesglose:     _alcanciaToggleDesglose
 });
 

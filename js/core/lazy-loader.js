@@ -219,19 +219,30 @@ const Loader = (function () {
   }
 
   // ── Precarga total en segundo plano ───────────────────────────────────────
-  // Por qué existe: "Necesita atención" en Inicio (inicio.js) depende de
-  // funciones de Préstamos/Tarjetas/Mesada/Spotify — todas lazy. Sin esto,
-  // esa sección solo se completa a medida que el usuario visita cada
-  // pantalla a mano, y un ítem pendiente real (ej. "Hermanito te debe
-  // $630.000") puede quedar invisible por sesiones enteras si nunca se
-  // entra a Préstamos. Se decidió explícitamente NO forzar la carga desde
-  // dentro de inicio.js/renderAttencion() (eso reintroduciría el problema
-  // que la modularización por pantalla buscaba resolver: bloquear Inicio
-  // con el peso de TODOS los módulos). En cambio, se precarga todo en
-  // PARALELO (no uno por uno) recién después de que la app ya pintó y
-  // cargó datos reales — así el primer pintado de Inicio sigue tan rápido
-  // como con los 11 grupos lazy, y el costo de red se paga una sola vez,
-  // en segundo plano, sin bloquear nada visible.
+  // Por qué existe: dos módulos lazy alimentan cálculos que corren fuera de
+  // sus propias pantallas — cuentas.js (calcC, calcCDT, calcRendimientoCDTsMes,
+  // nuTotal) y prestado.js (getDeudorSaldoPatrimonio, totalMisDeudasPendiente,
+  // totalPrestadoPendiente):
+  //   - snapshotPatrimonio() (core-state.js, corre en cada save()) no graba el
+  //     punto del historial de patrimonio hasta que calcC, calcCDT,
+  //     getDeudorSaldoPatrimonio y totalMisDeudasPendiente existan
+  //     (_patrimonioDependenciasListas): sin la precarga, una sesión donde el
+  //     usuario nunca abre Cuentas ni Préstamos no actualizaría el historial.
+  //   - la salud financiera y la alerta de gasto alto de Inicio (inicio.js)
+  //     las llaman con guard y, si no cargaron, caen a un valor de respaldo
+  //     (saldo guardado sin recalcular, préstamos en 0) — el número queda mal
+  //     hasta que el usuario visite esa pantalla a mano.
+  // "Necesita atención" en sí NO depende de ningún módulo lazy: las 6
+  // funciones que usa (getDeudorSaldo, getMesadaData, _mesNombreDeKey,
+  // tcCupoUsadoPct, spNombreDe, spPersonaPagadaVigente) viven en
+  // js/core/calc-helpers.js, que carga de entrada.
+  // Se decidió explícitamente NO forzar la carga desde dentro de inicio.js
+  // (eso reintroduciría el problema que la modularización por pantalla
+  // buscaba resolver: bloquear Inicio con el peso de TODOS los módulos). En
+  // cambio, se precarga en PARALELO (no uno por uno) recién después de que la
+  // app ya pintó y cargó datos reales — así el primer pintado de Inicio sigue
+  // tan rápido como con la carga lazy, y el costo de red se paga una sola
+  // vez, en segundo plano, sin bloquear nada visible.
   //
   // Dentro de cada grupo los archivos siguen cargando en orden (ver
   // ensure() arriba, sigue aplicando el motivo del header de este
@@ -246,15 +257,15 @@ const Loader = (function () {
   //     criterio que la fila del menú).
   //   - 'mesada' y 'spotify': si el toggle de Configuración → "Módulos
   //     activos" está apagado (S.modulos.<x> === false) su ítem del menú
-  //     "Más" está oculto. Inicio no necesita estos archivos para nada:
-  //     las funciones que lee de ambos viven en js/core/calc-helpers.js
-  //     (carga de entrada) y inicio.js ya se salta el módulo cuando el
-  //     toggle está apagado. Solo se omite con
-  //     `=== false` explícito: si S.modulos no existe o la clave falta, se
-  //     precarga (el comportamiento seguro). `S` se lee con typeof y no como
-  //     window.S: no se asume que sea propiedad de window. Al reactivar el toggle no
-  //     hace falta ningún paso extra: showScreen() llama a Loader.ensure() la
-  //     primera vez que se entra a la pantalla, como con cualquier grupo lazy.
+  //     "Más" está oculto. Inicio no necesita estos archivos para nada: las
+  //     funciones que lee de ambos viven en js/core/calc-helpers.js (carga de
+  //     entrada) y inicio.js ya se salta el módulo cuando el toggle está
+  //     apagado. Solo se omite con `=== false` explícito: si S.modulos no
+  //     existe o la clave falta, se precarga (el comportamiento seguro). `S`
+  //     se lee con typeof y no como window.S: no se asume que sea propiedad
+  //     de window. Al reactivar el toggle no hace falta ningún paso extra:
+  //     showScreen() llama a Loader.ensure() la primera vez que se entra a la
+  //     pantalla, como con cualquier grupo lazy.
   // ensureAll() corre tras 'appDataLoaded', así que S.modulos ya es el real.
   const _MODULO_DE_GRUPO = { mesada: 'mesada', spotify: 'spotify' };
 
@@ -304,11 +315,9 @@ const Loader = (function () {
   // puede estar tocando algo justo en ese momento.
   function _iniciarEnsureAll() {
     ensureAll().then(() => {
-      // Bandera global: recién acá `items` de renderAttencion() (inicio.js)
-      // queda completo — antes de esto, algunos de sus datos (Préstamos/
-      // Spotify/Tarjetas/Mesada) pueden faltar por no haber cargado todavía,
-      // ver CHANGELOG.md#sheets--ui. inicio.js la lee para no comparar/guardar
-      // un fingerprint parcial contra el completo de la sesión anterior.
+      // Bandera global: marca que la precarga terminó. inicio.js
+      // (renderAttencion) la lee para no comparar/guardar el fingerprint de
+      // "Necesita atención" antes de ese punto (ver CHANGELOG.md#sheets--ui).
       window._appFullyLoaded = true;
       if (typeof refresh === 'function') refresh();
       if (typeof applyModulos === 'function') applyModulos();
@@ -319,10 +328,10 @@ const Loader = (function () {
   // la primera carga real de datos (evento 'appDataLoaded', ver
   // firebase-sync.js#_finishFirstLoad — se dispara tanto con datos de la
   // nube como en el camino de error/sin conexión, así que cubre ambos
-  // casos). Al terminar, un solo refresh()/applyModulos() para que
-  // "Necesita atención" (y cualquier otra cosa que dependía de un módulo
-  // lazy) se actualice sola, sin que el usuario tenga que tocar nada ni
-  // volver a entrar a Inicio.
+  // casos). Al terminar, un solo refresh()/applyModulos() para que todo lo
+  // de Inicio que dependía de un módulo lazy (salud financiera, alerta de
+  // gasto alto) se actualice sola, sin que el usuario tenga que tocar nada
+  // ni volver a entrar a Inicio.
   // Descartado (2026-08-17, sesión de investigación del punto 12 de
   // auditoria-tecnica.md): se probó acá un guard con MutationObserver sobre
   // #pin-screen.open, bajo la hipótesis de que _iniciarEnsureAll podía

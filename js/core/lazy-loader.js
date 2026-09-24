@@ -237,20 +237,37 @@ const Loader = (function () {
   // ensure() arriba, sigue aplicando el motivo del header de este
   // archivo); ENTRE grupos no hay dependencia de orden — cada pantalla es
   // independiente — así que sí se piden todas a la vez.
+  //
+  // Se precargan todos los grupos MENOS los que el usuario no tiene forma de
+  // abrir en este momento (bajar código que nadie puede usar es costo puro):
+  //   - 'wrapped': fuera de su ventana de enero la fila de menú está oculta
+  //     (ver js/core/wrapped-gate.js y wrapped.md §7decies). Guard typeof: si
+  //     ese script no cargó, se asume "no disponible" (falla cerrado, mismo
+  //     criterio que la fila del menú).
+  //   - 'mesada' y 'spotify': si el toggle de Configuración → "Módulos
+  //     activos" está apagado (S.modulos.<x> === false) su ítem del menú
+  //     "Más" está oculto. Inicio no necesita estos archivos para nada:
+  //     las funciones que lee de ambos viven en js/core/calc-helpers.js
+  //     (carga de entrada) y inicio.js ya se salta el módulo cuando el
+  //     toggle está apagado. Solo se omite con
+  //     `=== false` explícito: si S.modulos no existe o la clave falta, se
+  //     precarga (el comportamiento seguro). `S` se lee con typeof y no como
+  //     window.S: no se asume que sea propiedad de window. Al reactivar el toggle no
+  //     hace falta ningún paso extra: showScreen() llama a Loader.ensure() la
+  //     primera vez que se entra a la pantalla, como con cualquier grupo lazy.
+  // ensureAll() corre tras 'appDataLoaded', así que S.modulos ya es el real.
+  const _MODULO_DE_GRUPO = { mesada: 'mesada', spotify: 'spotify' };
+
   function ensureAll() {
-    // 'wrapped' es un caso especial desde 2026-09-15 (ver
-    // js/core/wrapped-gate.js, resuelve wrapped.md §7decies): fuera de su
-    // ventana de enero, la fila de menú que lo abre está oculta y el
-    // usuario no tiene ningún camino para llegar a esa pantalla — precargar
-    // igual sería bajar ~4000 líneas que nadie puede usar hasta el próximo
-    // enero. Se excluye de la precarga en segundo plano salvo que
-    // wrapped-gate.js confirme que la ventana está abierta. Guard typeof:
-    // si por lo que sea ese script no cargó, se asume "no disponible"
-    // (mismo criterio de "fallar cerrado" que ya usa la fila del menú) en
-    // vez de gastar la descarga de más.
     const grupos = Object.keys(GROUPS).filter(g => {
-      if (g !== 'wrapped') return true;
-      return typeof window._wrappedDisponible === 'function' && window._wrappedDisponible();
+      if (g === 'wrapped') {
+        return typeof window._wrappedDisponible === 'function' && window._wrappedDisponible();
+      }
+      const modulo = _MODULO_DE_GRUPO[g];
+      if (modulo && typeof S !== 'undefined' && S && S.modulos && S.modulos[modulo] === false) {
+        return false;
+      }
+      return true;
     });
     return Promise.all(grupos.map(g => ensure(g).catch(() => {})));
   }

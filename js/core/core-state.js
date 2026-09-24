@@ -113,7 +113,8 @@ let S={
       plata_comprometida:{opsAviso:2,opsBloqueo:5}
     }
   }
-  // alcancia: {saldoRegistrado, depositos, fechaInicio, movimientos:[{id,monto,fecha,fuenteOrigen,ts}], historial:[...]}
+  // alcancia: {saldoRegistrado, depositos, fechaInicio, movimientos:[{id,monto,fecha,tipo,tipoLabel,desc,fuenteOrigen,ts,partes?}], historial:[...]}
+  //   tipo: yo-cuenta|yo-directo|regalo|mandado|cobro-deuda (un solo origen) | multi (varios: partes:[{origen,monto,fuente?,movId}]) | split (legacy)
   // alcanciaSaldoOfuscado: string (XOR+Base64 del JSON {saldo:N}) — guardado en S pero no visible en UI
   // ingresosFijos: [{id, nombre, monto, desde}]
   // desde: 'YYYY-MM' — el mes desde el cual aplica este ingreso (para escalar en el futuro)

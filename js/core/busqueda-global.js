@@ -147,14 +147,18 @@
     if(q.length < 2){ busquedaResultados.innerHTML = '<div style="text-align:center;padding:24px 0;font-size:13px;color:var(--text3);">Escribe al menos 2 caracteres</div>'; return; }
     const S = window.S || {};
     const resultados = [];
+    // Ícono (SVG inline) que reemplaza al monto de los depósitos de Alcancía. `meta` se escapa con escHtml(),
+    // así que el ícono viaja aparte en `metaHtml` (el texto va escapado dentro de él).
+    const _iconoOculto = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-label="Monto oculto" style="display:inline-block;vertical-align:middle"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
 
     // Gastos variables
     // Depósitos a la alcancía (`_esAlcancia`): el resultado aparece pero con el monto oculto — sin esto,
     // buscar "alcancía" o "Ahorro" listaba cada depósito con su monto exacto (ver alcancia.md §3).
     (S.gastosVar||[]).forEach(g => {
       if((g.desc||'').toLowerCase().includes(q) || (g.cat||'').toLowerCase().includes(q) || (g.nota||'').toLowerCase().includes(q)){
-        const montoTxt = g._esAlcancia ? '••••' : (window.fmt?window.fmt(g.monto):'');
-        resultados.push({ tipo:'Gasto variable', desc:g.desc||'Sin descripción', meta: montoTxt + ' · ' + (g.cat||'') + ' · ' + (g.fecha||''), color:'var(--red)', navTipo:'gastos', navId:null });
+        const montoTxt = g._esAlcancia ? '' : (window.fmt?window.fmt(g.monto):'');
+        const restoMeta = ' · ' + (g.cat||'') + ' · ' + (g.fecha||'');
+        resultados.push({ tipo:'Gasto variable', desc:g.desc||'Sin descripción', meta: montoTxt + restoMeta, metaHtml: g._esAlcancia ? _iconoOculto + escHtml(restoMeta) : null, color:'var(--red)', navTipo:'gastos', navId:null });
       }
     });
 
@@ -268,8 +272,9 @@
     (S.movimientos||[]).forEach(m => {
       if((m.desc||m.nota||'').toLowerCase().includes(q)){
         const fuente = m.fuente ? ' · '+m.fuente : '';
-        const montoTxt = m._esAlcanciaIngreso ? '••••' : (window.fmt?window.fmt(m.monto):'');
-        resultados.push({ tipo:'Movimiento', desc:m.desc||m.nota||'Movimiento', meta:montoTxt+(m.fecha?' · '+m.fecha:'')+fuente, color:'var(--accent)', navTipo:m.fuente==='nequi'?'nequi':m.fuente==='efectivo'?'efectivo':'movimiento_general', navId:m.fuente||null });
+        const montoTxt = m._esAlcanciaIngreso ? '' : (window.fmt?window.fmt(m.monto):'');
+        const restoMeta = (m.fecha?' · '+m.fecha:'')+fuente;
+        resultados.push({ tipo:'Movimiento', desc:m.desc||m.nota||'Movimiento', meta:montoTxt+restoMeta, metaHtml: m._esAlcanciaIngreso ? _iconoOculto + escHtml(restoMeta) : null, color:'var(--accent)', navTipo:m.fuente==='nequi'?'nequi':m.fuente==='efectivo'?'efectivo':'movimiento_general', navId:m.fuente||null });
       }
     });
 
@@ -310,7 +315,7 @@
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                 <div class="busqueda-desc" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(r.desc)}</div>
               </div>
-              <div class="busqueda-meta">${escHtml(r.meta)}</div>
+              <div class="busqueda-meta">${r.metaHtml || escHtml(r.meta)}</div>
               ${navHint}
             </div>
             ${tieneNav ? `<div style="color:var(--text3);flex-shrink:0;">${_arrowRight}</div>` : ''}

@@ -1138,6 +1138,16 @@ window.alcanciaConfirmarDestapar = function(){
   a.saldoRegistrado = 0;
   _setSaldoOfuscado(0);
 
+  // ── Historial de patrimonio: al destapar, la plata deja de ser oculta también
+  // hacia atrás. Cada punto guarda `valor` (con alcancía) y `valorVisible` (sin
+  // ella); igualarlos hace que la gráfica de Análisis y la tendencia/proyección
+  // reflejen los depósitos en el día en que ocurrieron, en vez de un salto único
+  // el día del destape. Todo lo oculto pertenece a esta alcancía o a ciclos ya
+  // destapados, así que aplica a todos los puntos.
+  (window.S.patrimonioHistorial || []).forEach(function(p){
+    if(p && typeof p.valor === 'number' && p.valorVisible != null) p.valorVisible = p.valor;
+  });
+
   // ── Guardar en historial
   const diasDuracion = _diasDesde(a.fechaInicio);
   if(!a.historial) a.historial = [];

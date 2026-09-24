@@ -1,0 +1,36 @@
+# Regenera mapa-codigo.md cada vez que cambia el código de js/ o index.html
+# y hace commit solo si el archivo cambió.
+name: Mapa de código
+
+on:
+  push:
+    branches: [main]          # cambia a master si tu rama principal se llama así
+    paths:
+      - 'js/**'
+      - 'index.html'
+      - 'scripts/generar-mapa.js'
+
+permissions:
+  contents: write
+
+jobs:
+  mapa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Generar mapa
+        run: node scripts/generar-mapa.js
+      - name: Commit si cambió
+        run: |
+          if [ -n "$(git status --porcelain mapa-codigo.md)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add mapa-codigo.md
+            git commit -m "docs: regenerar mapa-codigo.md [skip ci]"
+            git push
+          else
+            echo "mapa-codigo.md ya está al día"
+          fi

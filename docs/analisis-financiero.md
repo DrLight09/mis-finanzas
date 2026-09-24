@@ -50,7 +50,7 @@ Repite el mismo cálculo de ingresos/gastos/balance (mismo criterio de ingreso/g
 **ID:** `an-patrimonio-chart`. Gráfica de línea con los últimos 30 puntos de `S.patrimonioHistorial`.
 
 - La serie **no** se grafica cruda: a cada punto se le resta el `montoBase` acumulado (aperturas de cuenta nuevas, correcciones de saldo inicial) para que abrir una cuenta nueva o corregir un saldo no se vea como un salto/caída falsa de patrimonio.
-- Se usa `valorVisible` (patrimonio sin la alcancía) en vez de `valor` (patrimonio real total), tanto en la curva como en el número de encabezado ("Últimos N días: $X") y en el tooltip al tocar un punto — para no revelar el saldo/depósitos de la alcancía a través de la gráfica, mismo criterio que el hero de Inicio. Puntos guardados antes de que existiera `valorVisible` caen a `valor` como fallback.
+- Se usa `valorVisible` (patrimonio sin la alcancía) en vez de `valor` (patrimonio real total), tanto en la curva como en el número de encabezado ("Últimos N días: $X") y en el tooltip al tocar un punto — para no revelar el saldo/depósitos de la alcancía a través de la gráfica, mismo criterio que el hero de Inicio. Puntos guardados antes de que existiera `valorVisible` caen a `valor` como fallback. Al destapar la alcancía (`alcanciaConfirmarDestapar()`), `valorVisible` se iguala a `valor` en todo el historial: esa plata ya dejó de ser oculta, así que la curva y la tendencia la reflejan en el día en que se depositó, sin un salto único el día del destape.
 - Debajo de la gráfica se muestra el cambio total de la ventana (`diffTotal`) en monto y %.
 
 ### ¿Cómo se genera cada punto del historial? (`snapshotPatrimonio()`)
@@ -61,6 +61,14 @@ Repite el mismo cálculo de ingresos/gastos/balance (mismo criterio de ingreso/g
 - Guarda `valor` (patrimonio total real, con alcancía) y `valorVisible` (sin alcancía) por separado — ver arriba.
 - Guarda también `montoBase` (monto exacto de aperturas/ajustes de saldo inicial ese día), usado tanto por esta gráfica como por la Proyección financiera (§8) para no confundir un saldo inicial con crecimiento real.
 - El array se recorta a los últimos 365 puntos.
+
+### Limitación conocida: movimientos backdateados
+
+`snapshotPatrimonio()` clasifica el punto por la fecha real del guardado (`hoy()`), nunca por la `fecha` que se le haya puesto al movimiento. Si el día 10 se carga un ingreso con fecha 6 (algo que se había olvidado registrar), el punto ya existente del día 6 no se toca, y el salto de patrimonio aparece en el punto del día 10 — el día en que se guardó, no el día en que "pasó" según la fecha elegida.
+
+`montoBase` no cubre este caso: solo resta aperturas de cuenta y ajustes de saldo inicial fechados hoy, no entradas manuales normales backdateadas — así que ese salto queda sin filtrar, tanto en la curva como en la tendencia que usa la Proyección financiera (§8), que no aplica recorte de outliers.
+
+Esto es distinto del "Resumen del mes" y la "Comparación con el mes anterior" (§2, §4), que sí agrupan por la `fecha` real del movimiento (`mesKey(m.fecha)`) y no por la fecha de guardado — ahí un ingreso backdateado dentro del mismo mes se refleja correctamente sin importar cuándo se cargó. La discrepancia queda documentada acá a propósito, sin corrección: dado el uso actual (backdatear es poco frecuente), no se justifica sumar la complejidad de recalcular puntos pasados de `S.patrimonioHistorial` cada vez que se guarda un movimiento no fechado hoy.
 
 ## 6. Top categorías este mes
 

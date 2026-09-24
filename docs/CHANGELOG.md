@@ -6,6 +6,14 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Sheets / UI
 
+### 🔧 Cambio (2026-09-23) — `split.js`: con 2 filas (el mínimo) ya no queda un hueco donde iba el botón de borrar
+
+Al activar "Dividir" en cualquier pantalla que use el motor de split (Mesada, Encargos, Préstamos, Gastos, etc.), las 2 filas mínimas ocultaban el botón "×" con `visibility:hidden` — que esconde el botón pero **sigue ocupando su espacio** (28px + el gap de la grilla), dejando un hueco vacío a la derecha del campo de monto.
+
+Fix: `splitActualizarBotones()` ahora usa `display:none` en vez de `visibility:hidden` cuando hay 2 filas, y además cambia el `grid-template-columns` de cada fila de `1fr auto auto` a `1fr auto` (una columna vacía en un grid igual reserva su gap, así que solo ocultar el botón no alcanzaba). Con 3 o más filas todo vuelve al layout de 3 columnas con el botón visible. La regla de negocio (mínimo 2 filas, no se puede bajar de eso) no cambia — solo cómo se ve. Como vive en el motor común, aplica a todos los módulos sin tocarlos.
+
+---
+
 ### ✅ Corregido (2026-08-24) — Decimales y NBSP raro en la card "Proyección financiera" (header + tarjetas 3m/6m/12m + tooltips)
 
 `renderProyeccion()` en `inicio.js` usaba `window.fmt` (formateador global, definido en otro archivo, que sí muestra decimales) tanto para pintar el header/tarjetas como para los tooltips (`fmt2`, al tocar el header o una tarjeta). Una proyección a 3/6/12 meses es una estimación, no un saldo exacto, así que los centavos no aportaban info y solo generaban ruido. Se reemplazó `fmt`/`fmt2` en esta función por un formateador local (`Math.round(x)` + `maximumFractionDigits:0`), aislado a `renderProyeccion()` — no se tocó `window.fmt` global por si otras pantallas sí necesitan decimales.
@@ -80,6 +88,16 @@ De paso, `guia-estilo-sheets.md` §3 quedó actualizada con 4 sheets que existí
 ---
 
 ## Infraestructura / seguridad
+
+### ✅ Mejorado (2026-09-23) — `Loader.ensureAll()` ya no precarga Mesada ni Spotify si su toggle de Configuración está apagado
+
+`ensureAll()` (`lazy-loader.js`) precargaba en segundo plano todos los grupos lazy sin mirar `S.modulos`, así que `mesada.js` (~1.160 líneas) y `spotify.js` (~1.790) se descargaban y ejecutaban aunque el usuario los tuviera desactivados en Configuración → "Módulos activos" — con su ítem del menú "Más" oculto y sin ningún camino para abrir esas pantallas. Mismo criterio que ya se usaba para `wrapped` fuera de enero.
+
+**Por qué es seguro:** Inicio no necesita esos archivos. Las funciones que lee de ambos (`getMesadaData`, `_getCuotaAnio`, `spNombreDe`, `spPersonaPagadaVigente`) viven en `calc-helpers.js` (carga de entrada), y `inicio.js` ya se salta ambos módulos cuando `S.modulos.mesada`/`S.modulos.spotify` no están activos. `applyModulos()` (`mas-menu.js`) solo muestra u oculta los ítems del menú; no interviene en la carga.
+
+**Fix:** dentro del `filter` de `ensureAll()`, los grupos `mesada` y `spotify` se omiten solo si `S.modulos.<clave> === false` explícito. Si `S`, `S.modulos` o la clave no existen se precarga, como antes. `S` se lee con `typeof S !== 'undefined'`, no como `window.S`. Sin cambios en `toggleModulo()`: al reactivar el toggle, el grupo se descarga la primera vez que se entra a la pantalla (`showScreen()` → `Loader.ensure()`), como cualquier grupo lazy. Se actualizó además el comentario de `ensureAll()`: ahora lista qué grupos se excluyen de la precarga y por qué, y su "Por qué existe" — que decía que "Necesita atención" dependía de funciones lazy de Préstamos/Tarjetas/Mesada/Spotify — se corrigió tras verificarlo contra `inicio.js`, `prestado.js` y `tarjetas_credito.js`: las 6 funciones que usa `renderAttencion()` (`getDeudorSaldo`, `getMesadaData`, `_mesNombreDeKey`, `tcCupoUsadoPct`, `spNombreDe`, `spPersonaPagadaVigente`) ya viven en `calc-helpers.js`, así que esa sección no depende de ningún módulo lazy. Lo que sí sigue necesitando la precarga son dos cosas que usan `cuentas.js` (`calcC`/`calcCDT`/`calcRendimientoCDTsMes`/`nuTotal`) y `prestado.js` (`getDeudorSaldoPatrimonio`/`totalMisDeudasPendiente`/`totalPrestadoPendiente`): el snapshot del historial de patrimonio (`snapshotPatrimonio()` no graba nada hasta que `_patrimonioDependenciasListas()` ve cargadas `calcC`, `calcCDT`, `getDeudorSaldoPatrimonio` y `totalMisDeudasPendiente`) y la salud financiera / alerta de gasto alto de Inicio, que caen a un valor de respaldo si el archivo no cargó. Verificado también con `core-state.js`: `calcDeudaTcPropia`, `calcPatrimonioTotal` y `getIngresosFijosMes` viven ahí (carga de entrada, con sus dependencias internas), y ni `core-state.js`, ni `inicio.js`, ni `calc-helpers.js` llaman a nada de `mesada.js`/`spotify.js` salvo `renderMesada()`/`renderSpotify()` con guard `typeof` y solo si su pantalla está activa. Los comentarios de `_appFullyLoaded` y del disparo por `appDataLoaded` también repetían la afirmación vieja y se reescribieron.
+
+Validado con `node --check` y un test con `vm` cargando el `lazy-loader.js` real, con `document`/`window` simulados y `S` como `let` de nivel superior: con todo activo se piden 11 grupos; con Mesada apagado 10 (sin `mesada.js`); con Spotify apagado 10 (sin `spotify.js`); con ambos apagados 9; con `S`, `S.modulos` o la clave sin definir se piden los 11; `wrapped` sigue el mismo criterio de antes; `_appFullyLoaded` termina en `true` en todos los casos. **No probado en navegador real:** confirmar que con Mesada/Spotify apagados esos dos archivos ya no aparecen en la pestaña Network, y que al reactivar el toggle y entrar a la pantalla cargan normal.
 
 ### 🔧 Consolidado (2026-09-22) — Cierre de `auditoria-tecnica.md`: CSP, escapado, modularización y rendimiento
 
@@ -1462,6 +1480,16 @@ El selector "¿De qué cuenta sale?" (depósito simple) y "Lo tenía yo (efectiv
 No se tocó el selector de destino del destape (`alc_destino`): ahí la plata entra a la cuenta, no sale, así que filtrar por saldo no aplica.
 
 Validado con `node --check` y una simulación jsdom (cuentas con saldo variado, caso de "ninguna cuenta con saldo").
+
+### 🔧 Cambio (2026-09-24) — Al destapar la alcancía, el historial de patrimonio deja de ocultarla hacia atrás (`alcanciaConfirmarDestapar()`)
+
+*(pedido del usuario al ver que el 22 de septiembre la gráfica de Historial de patrimonio bajaba $5.190,84: era un depósito de $6.000 a la alcancía, restado de `valorVisible` mientras estaba oculta)*
+
+Cada punto de `S.patrimonioHistorial` guarda `valor` (patrimonio real, con alcancía) y `valorVisible` (sin ella). Mientras la alcancía está tapada, la gráfica de Análisis, la Tendencia mensual y la Proyección leen `valorVisible`, así que cada depósito se ve como una caída y, al destapar, la plata aparece de golpe en una sola subida. Como al destapar esa plata deja de ser secreta, ahora `alcanciaConfirmarDestapar()` iguala `valorVisible = valor` en todos los puntos que lo tienen, justo después de resetear `saldoRegistrado`. Los depósitos pasan a verse en el día en que ocurrieron y no queda un salto el día del destape.
+
+Aplica a todos los puntos porque todo lo oculto pertenece a la alcancía que se está destapando o a ciclos ya destapados. `valor`, `montoBase` y `fecha` no se tocan; los puntos sin `valorVisible` ya usaban `valor` como fallback. No hay cambio en el hero de Inicio, Salud financiera ni `calcPatrimonioTotal()`: al destapar, la plata ya está en la cuenta destino y `saldoRegistrado` queda en 0, así que sus valores actuales ya reflejaban el destape.
+
+Verificado con `node --check` y una prueba jsdom sobre el backup del 2026-09-23: los 17 puntos tenían `valorVisible ≠ valor` antes y 0 después, con `valor`/`montoBase`/`fecha` intactos; sin el cambio, los 17 seguían distintos. Confirmación en navegador real pendiente.
 
 ### ✅ Agregado (2026-09-01) — Protección por antigüedad en `alcanciaEliminarDeposito` (no tenía ninguna)
 

@@ -54,7 +54,7 @@ Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<scri
 | Archivo | Tipo | Qué hace |
 |---|---|---|
 | `sheet-stack.js` | clásico | Sistema de apertura/cierre de sheets (`openSheet`/`closeSheet`), `showScreen()`, `applyModulos()` y el wiring legacy de `_initEventListeners()` — un solo sistema lógico, con restricciones de orden de carga documentadas. |
-| `sheet-behavior.js` | clásico | Comportamiento de un sheet ya abierto: swipe-to-close, reposicionamiento con el teclado en Android (Visual Viewport), scroll-into-view al enfocar un input. |
+| `sheet-behavior.js` | clásico | Comportamiento de un sheet ya abierto: swipe-to-close, reposicionamiento con el teclado en Android (Visual Viewport) y mantener visible el campo enfocado. Los ajustes automáticos esperan a que no haya toques en curso, para no mover botones bajo el dedo. |
 | `wrapped-gate.js` | clásico | Decide si Wrapped está disponible en este momento (solo durante la ventana de enero, ver `wrapped.md`): muestra/oculta la tarjeta `#wrapped-promo` y le avisa a `Loader.ensureAll()` que no precargue el grupo lazy `wrapped` fuera de esa ventana, sin descargar el módulo real solo para saber si mostrarlo. |
 | `mas-menu.js` | clásico | Abrir/cerrar el menú "Más", navegación desde sus ítems, y mostrar/ocultar Spotify/Mesada en ese menú según los módulos activos. |
 | `gastos-fijos-progress.js` | clásico | Barra de progreso de "gastos fijos pagados este mes" en el panel de Gastos. |

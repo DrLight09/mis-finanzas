@@ -6,6 +6,45 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Sheets / UI
 
+### ✅ Corregido (2026-09-24) — `sheet-behavior.js`: los sheets se movían bajo el dedo al tocar botones rápido
+
+**Síntoma (celular):** el usuario ve un botón, va a tocarlo, y justo antes el contenido del sheet se corre solo — el toque cae sobre otra cosa. Pasaba sobre todo al tocar un control y enseguida otro.
+
+**Causa raíz** (tres ajustes automáticos que movían la pantalla sin importar si había un toque en curso):
+
+1. **Scroll al enfocar.** El handler de `focusin` hacía `scrollIntoView({block:'center', behavior:'smooth'})` 350 ms después de enfocar *cualquier* `input`/`textarea`/`select` dentro de un sheet — incluidos checkbox (toggles como "quedó debiendo"), selects y campos que ya estaban a la vista. Ese scroll suave arrancaba justo cuando el dedo iba hacia el siguiente botón. Además `scrollIntoView` puede desplazar también contenedores ancestros, no solo el sheet.
+2. **Reposicionado por teclado.** Al abrir o cerrar el teclado, el sheet cambiaba de margen y de `maxHeight` con un debounce de 120 ms, sin mirar si el usuario estaba tocando algo en ese instante (típico: tocar un botón cierra el teclado → el sheet se reacomoda entre el `touchstart` y el `click`). Además tenía dos defectos propios: solo se limpiaba el estilo en los overlays que existían al cargar la página (uno inyectado después podía quedar con el margen pegado), y un cambio chico que cruzaba el umbral de 100 px (ej. 105 → 85) se descartaba por el filtro de "cambio < 20 px", dejando el margen viejo.
+3. **Swipe para cerrar demasiado sensible.** Con solo 8 px de movimiento hacia abajo, un toque con el dedo algo corrido ya arrastraba el sheet entero. Arrastres casi horizontales o que empezaban sobre un campo de texto también contaban. Y la velocidad de "flick" se calculaba entre la última posición registrada y la posición al soltar, que casi siempre son la misma — así que cerrar con un gesto rápido en la práctica nunca funcionaba (solo el arrastre largo de 90 px). Tampoco se manejaba `touchcancel`: si el sistema interrumpía el gesto, el sheet podía quedar desplazado y con el scroll bloqueado.
+
+**Fix:**
+
+- Se agregó una noción compartida de "pantalla quieta" (sin dedos apoyados y sin toques en los últimos 300 ms). El reposicionado por teclado y el scroll al campo enfocado esperan a que la pantalla esté quieta antes de aplicarse, así el toque en curso siempre se completa sobre el layout que el usuario vio.
+- Scroll al enfocar: solo para campos que realmente abren el teclado de texto (no checkbox/radio/select/fecha/etc.), solo si el campo quedó tapado (por el teclado o el borde del sheet), moviendo el scroll del propio `.sheet` lo mínimo necesario y sin animación. Si el campo ya se ve, no se mueve nada; si perdió el foco antes de aplicarse, se cancela.
+- Teclado: el estado se compara contra el último aplicado (0 o la altura real), se aplica a todos los sheets (no solo los vigilados al cargar), y un overlay que se abre con el teclado ya visible arranca con el margen correcto; al cerrarse queda limpio. `_makeSheetSwipeable` también registra el overlay para esta vigilancia.
+- Swipe: umbral de arrastre 14 px (el sheet arranca desde 0, sin "salto"), ignora gestos más horizontales que verticales y toques que empiezan sobre `input`/`textarea`/`select`, velocidad de flick calculada entre los dos últimos movimientos (cierra con ≥ 40 px y > 0,5 px/ms; se anula si el dedo se frena antes de soltar), `touchcancel` deja el sheet limpio sin cerrarlo, y `overscroll-behavior-y: contain` en el sheet para que el rebote no se encadene con la pantalla de atrás.
+
+No cambia: el umbral de cierre por distancia (90 px) ni la regla de deshabilitar el swipe con el teclado abierto.
+
+Validado con `node --check` y pruebas jsdom con toques simulados y `visualViewport` simulado (27 casos: checkbox/select/fecha sin scroll, campo visible sin scroll, scroll mínimo cuando está tapado, espera con el dedo apoyado, teclado que se cierra con el dedo apoyado, umbral 105→85, overlays abiertos/inyectados con el teclado visible, y los gestos de swipe descritos arriba). **Pendiente:** confirmación en celular real (jsdom no calcula layout, solo valida la lógica).
+
+### ✅ Corregido (2026-09-24) — `mostrarAlertaFuente()`: elegir cuenta en "Registrar movimiento" empujaba los botones de golpe
+
+Revisando `styles.css` se confirmó que el patrón "reservar el espacio para que el hint no salte el layout" (`.field-hint{min-height:14px}` + `[style*="min-height"]:empty{min-height:0}`, documentado en `reglas-visuales.md#hints-vacíos`) ya está bien aplicado en los hints de Encargos (`ctc_destino_hint`, `moverenc_destino_hint`). Pero `mostrarAlertaFuente(prefix)` — usada por `mov_fuente_hint`/`mov_destino_hint` en "Registrar movimiento" (Préstamos) y por `gv_fuente_hint` en "Nuevo gasto" — es anterior a ese patrón y todavía alternaba `display:'none'`/`'block'`. `display:none` saca el elemento del layout por completo sin importar el `min-height` de `.field-hint`, así que elegir una cuenta hacía aparecer el hint de golpe y empujaba ~18px todo lo de abajo — justo el tipo de salto que hace que, si se toca rápido, el dedo caiga sobre otro botón.
+
+Fix: `mostrarAlertaFuente()` pasó a alternar `visibility` en vez de `display` (mismo criterio de "reservar el espacio" que ya usan los hints de Encargos, aplicado con la herramienta que tenía disponible este toggle en particular). Los tres divs (`gv_fuente_hint`, `mov_fuente_hint`, `mov_destino_hint`) perdieron el `display:none;` inicial en su `style` inline — sin eso, `visibility:hidden` no alcanza para que el hueco quede reservado desde que se abre el sheet.
+
+**Efecto colateral esperado, no un bug:** ahora esos tres sheets muestran un hueco en blanco de ~18px mientras no se eligió cuenta, en vez de no ocupar nada. Es el mismo trade-off que ya se aceptó a propósito en los hints de Encargos — mejor un hueco fijo que un salto de layout. Si visualmente no gusta, se puede revertir con solo cambiar `visibility` de vuelta a `display` en `mostrarAlertaFuente()` y restaurar el `display:none;` en los tres divs.
+
+### ✅ Corregido (2026-09-24) — El aviso de "se carga a la TC" quedaba invisible tras el fix anterior
+
+Al revisar `tarjetas_credito.js` (pendiente en la entrada anterior) apareció el caso que ahí se dejó como "no revisado": el archivo parchea `window.mostrarAlertaFuente` — cuando la fuente elegida es una tarjeta de crédito (`val.startsWith('tc:')`, ej. "Préstamo con TC" en Registrar movimiento), toma el control para mostrar un aviso rojo distinto ("El gasto se cargará a la TC — no sale plata de tus cuentas") en vez de delegar en la función original. Ese branch hacía `hint.style.display=''`, nunca tocaba `visibility` — así que con el cambio de la entrada anterior (que dejó esos hints ocultos vía `visibility:hidden` en vez de `display:none`), elegir una tarjeta de crédito como fuente dejaba el aviso con el texto y el color ya puestos, pero invisible: `display=''` no alcanza para revertir un `visibility:hidden` que había quedado de antes.
+
+Fix: la línea pasó a `hint.style.visibility='visible'`, igual que el resto de `mostrarAlertaFuente()`. Sin cambios en `sheet-stack.js` ni en `index.html` — el problema estaba solo en este patch.
+
+Validado con una prueba de integración en jsdom que carga `mostrarAlertaFuente()` real de `sheet-stack.js` + el patch real de `tarjetas_credito.js` y alterna la fuente entre vacía / cuenta normal / tarjeta de crédito (4 casos); confirmado además que fallaba exactamente así contra el archivo sin este fix.
+
+---
+
 ### 🔧 Cambio (2026-09-23) — `split.js`: con 2 filas (el mínimo) ya no queda un hueco donde iba el botón de borrar
 
 Al activar "Dividir" en cualquier pantalla que use el motor de split (Mesada, Encargos, Préstamos, Gastos, etc.), las 2 filas mínimas ocultaban el botón "×" con `visibility:hidden` — que esconde el botón pero **sigue ocupando su espacio** (28px + el gap de la grilla), dejando un hueco vacío a la derecha del campo de monto.

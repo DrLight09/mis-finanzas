@@ -1071,7 +1071,7 @@ if(ptcMonto)ptcMonto.addEventListener('input',ptcActualizarPreview);
         const tc=getTCById(id);
         const hint=document.getElementById(prefix+'_fuente_hint')||document.getElementById(prefix+'fuente_hint');
         const saldoEl=document.getElementById(prefix+'_fuente_saldo')||document.getElementById(prefix+'fuente_saldo');
-        if(hint)hint.style.display='';
+        if(hint)hint.style.visibility='visible';
         if(tc&&hint)hint.textContent='El gasto se cargará a la TC — no sale plata de tus cuentas';
         if(tc&&hint)hint.style.color='var(--red)';
         if(saldoEl)saldoEl.textContent='Deuda actual en TC: '+fmt(tc?tc.deuda||0:0);

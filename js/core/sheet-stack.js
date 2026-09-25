@@ -39,10 +39,13 @@
 
 
 function mostrarAlertaFuente(prefix){
+  // visibility, no display: el hint siempre ocupa su espacio (mismo criterio
+  // que .field-hint/min-height en los demás hints, ver reglas-visuales.md#hints-vacíos)
+  // para que elegir una cuenta no empuje de golpe los botones de más abajo.
   const fuenteEl=document.getElementById(prefix+'_fuente');
-  if(fuenteEl){const val=fuenteEl.value;const hint=document.getElementById(prefix+'_fuente_hint');if(hint)hint.style.display=val?'block':'none';}
+  if(fuenteEl){const val=fuenteEl.value;const hint=document.getElementById(prefix+'_fuente_hint');if(hint)hint.style.visibility=val?'visible':'hidden';}
   const destEl=document.getElementById(prefix+'_destino');
-  if(destEl){const val=destEl.value;const hint=document.getElementById(prefix+'_destino_hint');if(hint)hint.style.display=val?'block':'none';}
+  if(destEl){const val=destEl.value;const hint=document.getElementById(prefix+'_destino_hint');if(hint)hint.style.visibility=val?'visible':'hidden';}
 }
 
 /* ---- NAV / SHEETS ---- */
@@ -56,7 +59,7 @@ const _sheetStack = [];
 
 function openSheet(id){
   // Efectos secundarios por sheet específico
-  if(id==='gasto-var'){poblarFuente('gv_fuente',true);FuentesFiltro.podar('gv_fuente',{...FuentesFiltro.PRESET.SALIDA,sinOpcionesTexto:FuentesFiltro.MSG_SIN_SALDO});const h=document.getElementById('gv_fuente_hint');if(h)h.style.display='none';document.getElementById('gv_fuente').onchange=function(){const sd=document.getElementById('gv_fuente_saldo');if(!sd)return;const val=this.value;if(!val){sd.textContent='';return;}const esTC=val.startsWith('tc:');const s=getSaldoFuente(val);if(esTC){const tcId=val.split(':')[1];const tc=(S.tarjetasCredito||[]).find(x=>x.id===tcId);const sinCupo=!tc||!tc.cupo;if(sinCupo){sd.textContent='El gasto se cargará a la TC — no sale plata de tus cuentas.';sd.style.color='var(--text2)';}else{sd.textContent='Cupo disponible: '+fmt(s);sd.style.color=s>0?'var(--accent)':'var(--red)';}}else{sd.textContent='Saldo disponible: '+fmt(s);sd.style.color=s>0?'var(--accent)':'var(--red)';}};}
+  if(id==='gasto-var'){poblarFuente('gv_fuente',true);FuentesFiltro.podar('gv_fuente',{...FuentesFiltro.PRESET.SALIDA,sinOpcionesTexto:FuentesFiltro.MSG_SIN_SALDO});const h=document.getElementById('gv_fuente_hint');if(h)h.style.visibility='hidden';document.getElementById('gv_fuente').onchange=function(){const sd=document.getElementById('gv_fuente_saldo');if(!sd)return;const val=this.value;if(!val){sd.textContent='';return;}const esTC=val.startsWith('tc:');const s=getSaldoFuente(val);if(esTC){const tcId=val.split(':')[1];const tc=(S.tarjetasCredito||[]).find(x=>x.id===tcId);const sinCupo=!tc||!tc.cupo;if(sinCupo){sd.textContent='El gasto se cargará a la TC — no sale plata de tus cuentas.';sd.style.color='var(--text2)';}else{sd.textContent='Cupo disponible: '+fmt(s);sd.style.color=s>0?'var(--accent)':'var(--red)';}}else{sd.textContent='Saldo disponible: '+fmt(s);sd.style.color=s>0?'var(--accent)':'var(--red)';}};}
   if(id==='nueva-persona'){initColorPicker();document.getElementById('np_nombre').value='';}
   if(id==='registrar-movimiento'){poblarFuente('mov_fuente');poblarFuente('mov_destino');}
   if(id==='agregar-dinero-menu'){save();openSheet_adMenu();}

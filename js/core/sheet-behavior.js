@@ -99,14 +99,42 @@
     sheet.scrollTop += delta;
   }
 
+  // Si el teclado está a mitad de abrirse, el margen del sheet (ver más abajo,
+  // "TECLADO") todavía no llegó a su valor final. Medir el campo enfocado
+  // en ese momento da un resultado que la propia animación del teclado deja
+  // desactualizado un instante después — se ve como un segundo ajuste extra
+  // justo después del primero. true si no hay nada pendiente (no hay
+  // visualViewport, no hay sheet, o el margen ya quedó donde debía).
+  function focusedSheetMarginListo(){
+    if(!window.visualViewport) return true;
+    var sheet = focusEl && focusEl.closest ? focusEl.closest('.sheet') : null;
+    if(!sheet) return true;
+    var vv = window.visualViewport;
+    var raw = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    var eff = raw > 100 ? raw : 0;
+    var actual = parseFloat(sheet.style.marginBottom) || 0;
+    return Math.abs(actual - eff) < 20;
+  }
+
   document.addEventListener('focusin', function(e){
     var el = e.target;
     if(!needsKeyboard(el) || !el.closest('.sheet')) return;
     focusEl = el;
     clearTimeout(focusTimer);
     // Da tiempo a que el teclado empiece a animar; el ajuste real espera
-    // además a que no haya toques en curso.
-    focusTimer = setTimeout(function(){ whenQuiet(ensureFocusedVisible); }, 350);
+    // además a que no haya toques en curso y a que el margen del teclado
+    // ya haya llegado a destino (máx. 10 reintentos de 60ms = 600ms extra,
+    // por si algo impide que el margen se actualice — mejor centrar tarde
+    // que nunca a que quedar esperando para siempre).
+    focusTimer = setTimeout(function(){
+      var intentos = 0;
+      (function esperar(){
+        whenQuiet(function(){
+          if(!focusedSheetMarginListo() && intentos++ < 10){ setTimeout(esperar, 60); return; }
+          ensureFocusedVisible();
+        });
+      })();
+    }, 350);
   });
   document.addEventListener('focusout', function(e){
     if(e.target === focusEl){ focusEl = null; clearTimeout(focusTimer); }
@@ -132,6 +160,32 @@
       }
     };
 
+    // Espera a que el sheet indicado termine su transición de margin-bottom/
+    // max-height (definida en styles.css) antes de llamar fn. Sin esto,
+    // ensureFocusedVisible medía la posición del campo a mitad de camino del
+    // salto del teclado, calculaba mal cuánto scrollear, y el resultado se
+    // veía como "el sheet sube de golpe y después baja un poco" — dos
+    // movimientos en vez de uno solo.
+    function afterSheetSettles(sheet, fn){
+      if(!sheet){ fn(); return; }
+      var done = false;
+      var finish = function(){
+        if(done) return;
+        done = true;
+        sheet.removeEventListener('transitionend', onEnd);
+        fn();
+      };
+      var onEnd = function(e){
+        if(e.target === sheet && (e.propertyName === 'margin-bottom' || e.propertyName === 'max-height')) finish();
+      };
+      sheet.addEventListener('transitionend', onEnd);
+      // Respaldo por si el navegador no dispara transitionend (ej. el valor
+      // no cambió lo suficiente para animar, o la transición está deshabilitada
+      // en ese momento por el swipe — ver makeSwipeable). 260ms = duración de
+      // la transición (220ms, en sync con .sheet en styles.css) + margen.
+      setTimeout(finish, 260);
+    }
+
     var applyKbLayout = function(){
       var vv = window.visualViewport;
       var raw = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
@@ -142,7 +196,8 @@
       // así un sheet inyectado después, o uno que cerró con el teclado abierto,
       // nunca conserva un margen viejo.
       document.querySelectorAll('.overlay .sheet').forEach(function(s){ styleSheet(s, kbState); });
-      requestAnimationFrame(ensureFocusedVisible);
+      var focusedSheet = focusEl && focusEl.closest ? focusEl.closest('.sheet') : null;
+      afterSheetSettles(focusedSheet, ensureFocusedVisible);
     };
 
     // Debounce de 120 ms para no reaccionar a cada frame de la animación del

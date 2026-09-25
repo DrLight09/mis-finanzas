@@ -579,6 +579,32 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
    común, solo el patrón de estilo inline — ver reglas-visuales.md#hints-vacíos. */
 [style*="min-height"]:empty{min-height:0 !important;}
 
+/* gv_fuente_hint / gv_fuente_saldo (sheet "Registrar gasto"): a diferencia del
+   resto de hints, mostrarAlertaFuente() (js/core/sheet-stack.js) alterna
+   visibility en vez de vaciar el textContent, así que la regla :empty de arriba
+   no aplica — el div queda con su texto siempre presente, solo invisible, y
+   ocupa su alto de línea + margin-top igual. Se colapsa a 0 explícitamente
+   mientras esté en visibility:hidden. OJO: esto reintroduce a propósito, solo
+   acá, el salto de layout que la regla de arriba evita en el resto de la app
+   (mov_fuente_hint/mov_destino_hint en Préstamos NO se tocan y siguen
+   reservando el espacio). Con transición: el salto pasa a ser progresivo
+   (mismo criterio que .sheet con el reacomodo de teclado, ver entrada del
+   2026-09-24 en CHANGELOG.md) en vez de instantáneo — no elimina el
+   desplazamiento pero da tiempo a que el layout se asiente antes del
+   siguiente toque. max-height en vez de height porque height:auto no anima. */
+#gv_fuente_hint{
+  overflow:hidden;
+  max-height:20px;
+  transition:max-height .18s ease, margin-top .18s ease;
+}
+#gv_fuente_hint[style*="visibility: hidden"],
+#gv_fuente_hint[style*="visibility:hidden"]{
+  max-height:0;
+  margin-top:0;
+}
+#gv_fuente_saldo{transition:min-height .18s ease, margin-top .18s ease;}
+#gv_fuente_saldo:empty{margin-top:0;}
+
 /* Botón ghost secundario de cancelar en sheets: sin margen top extra cuando está al final y precedido de btn-primary */
 .btn-primary + .btn-ghost{margin-top:7px;}
 

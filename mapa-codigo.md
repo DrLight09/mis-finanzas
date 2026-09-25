@@ -48,7 +48,6 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
 | `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 100 | 1 |
-| `js/modules/split.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 5 | 0 |
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 48 | 2 |
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 29 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 105 | 1 |
@@ -315,12 +314,6 @@ Carga: lazy — grupo `prestamos`
 
 **Asigna a `window`:** `_miDeudaEditColor`
 
-### `js/modules/split.js`
-
-Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
-
-**Funciones:** `crearSplitWidget`, `splitAgregarRow`, `splitGetData`, `splitPreview`, `splitToggle`
-
 ### `js/modules/spotify.js`
 
 Carga: lazy — grupo `spotify`
@@ -349,15 +342,7 @@ Carga: lazy — grupo `wrapped`
 
 ## 3. Nombres declarados en más de un archivo
 
-Un nombre declarado (function/const/let/var) en dos archivos es una posible colisión: la última carga pisa a la anterior. No cuenta `window.x = …`, que se usa a propósito para parchar.
-
-| Nombre | Archivos |
-|---|---|
-| `crearSplitWidget` | `js/core/split.js`, `js/modules/split.js` |
-| `splitAgregarRow` | `js/core/split.js`, `js/modules/split.js` |
-| `splitGetData` | `js/core/split.js`, `js/modules/split.js` |
-| `splitPreview` | `js/core/split.js`, `js/modules/split.js` |
-| `splitToggle` | `js/core/split.js`, `js/modules/split.js` |
+Ninguno.
 
 ## 4. Índice inverso (nombre → archivo)
 
@@ -911,7 +896,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `crearEncargo` | `js/modules/encargos.js` |
 | `crearMiDeuda` | `js/modules/prestado.js` |
 | `crearMovimientoApertura` | `js/core/core-state.js` |
-| `crearSplitWidget` | `js/core/split.js`, `js/modules/split.js` |
+| `crearSplitWidget` | `js/core/split.js` |
 | `debounceSave` | `js/core/core-state.js` |
 | `deleteCajita` | `js/modules/cuentas.js` |
 | `deleteGastoFijo` | `js/modules/gastos.js` |
@@ -1128,11 +1113,11 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `spCobradoDePersona` | `js/modules/spotify.js` |
 | `splitActualizarBotones` | `js/core/split.js` |
 | `splitActualizarOpciones` | `js/core/split.js` |
-| `splitAgregarRow` | `js/core/split.js`, `js/modules/split.js` |
-| `splitGetData` | `js/core/split.js`, `js/modules/split.js` |
+| `splitAgregarRow` | `js/core/split.js` |
+| `splitGetData` | `js/core/split.js` |
 | `splitOpcionesUsadas` | `js/core/split.js` |
-| `splitPreview` | `js/core/split.js`, `js/modules/split.js` |
-| `splitToggle` | `js/core/split.js`, `js/modules/split.js` |
+| `splitPreview` | `js/core/split.js` |
+| `splitToggle` | `js/core/split.js` |
 | `spMontoAntesDe` | `js/modules/spotify.js` |
 | `spNombreDe` | `js/core/calc-helpers.js` |
 | `spPeriodosVencidos` | `js/modules/spotify.js` |

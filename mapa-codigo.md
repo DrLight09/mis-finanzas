@@ -41,7 +41,6 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 8 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 10 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 115 | 1 |
-| `js/modules/diferencial.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 22 | 0 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 98 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 20 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 6 | 0 |
@@ -266,12 +265,6 @@ Carga: lazy — grupo `cuentas`
 
 **Globales:** `ICONOS_CUENTA`
 
-### `js/modules/diferencial.js`
-
-Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
-
-**Funciones:** `_diffActualizarMiCuenta`, `_diffFuentesOptsHtml`, `_difRenderHistorial`, `diffAddParte`, `diffAplicar`, `diffCalcular`, `diffEstaAbierto`, `diffHtmlBloque`, `diffInst`, `diffRegistrarInstancia`, `diffRemoveParte`, `diffRenderHistorial`, `diffRenderPartes`, `diffReset`, `diffResumen`, `diffSetCuentaEntrada`, `diffSetCuentaSalida`, `diffSetMonto`, `diffSetNombre`, `diffToggle`, `diffTogglePagoYo`, `diffValidarIntercambios`
-
 ### `js/modules/encargos.js`
 
 Carga: lazy — grupo `encargos`
@@ -360,29 +353,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 
 | Nombre | Archivos |
 |---|---|
-| `_diffActualizarMiCuenta` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `_diffFuentesOptsHtml` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `_difRenderHistorial` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `crearSplitWidget` | `js/core/split.js`, `js/modules/split.js` |
-| `diffAddParte` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffAplicar` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffCalcular` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffEstaAbierto` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffHtmlBloque` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffInst` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffRegistrarInstancia` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffRemoveParte` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffRenderHistorial` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffRenderPartes` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffReset` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffResumen` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffSetCuentaEntrada` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffSetCuentaSalida` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffSetMonto` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffSetNombre` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffToggle` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffTogglePagoYo` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffValidarIntercambios` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `splitAgregarRow` | `js/core/split.js`, `js/modules/split.js` |
 | `splitGetData` | `js/core/split.js`, `js/modules/split.js` |
 | `splitPreview` | `js/core/split.js`, `js/modules/split.js` |
@@ -504,10 +475,10 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_diasDesde` | `js/modules/alcancia.js` |
 | `_diasEntreFechas` | `js/modules/cuentas.js` |
 | `_difAddBenef` | `js/modules/encargos.js` |
-| `_diffActualizarMiCuenta` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `_diffFuentesOptsHtml` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
+| `_diffActualizarMiCuenta` | `js/core/diferencial.js` |
+| `_diffFuentesOptsHtml` | `js/core/diferencial.js` |
 | `_difRemoveBenef` | `js/modules/encargos.js` |
-| `_difRenderHistorial` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
+| `_difRenderHistorial` | `js/core/diferencial.js` |
 | `_difRenderHistorialParte` | `js/modules/encargos.js` |
 | `_difResumen` | `js/modules/encargos.js` |
 | `_difSetCuentaEntrada` | `js/modules/encargos.js` |
@@ -952,25 +923,25 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `deshacerAbonoPendienteSp` | `js/modules/spotify.js` |
 | `deshacerPendienteMesada` | `js/modules/mesada.js` |
 | `dialogo` | `js/core/core-state.js` |
-| `diffAddParte` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffAplicar` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffCalcular` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffEstaAbierto` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffHtmlBloque` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffInst` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffRegistrarInstancia` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffRemoveParte` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffRenderHistorial` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffRenderPartes` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffReset` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffResumen` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffSetCuentaEntrada` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffSetCuentaSalida` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffSetMonto` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffSetNombre` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffToggle` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffTogglePagoYo` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `diffValidarIntercambios` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
+| `diffAddParte` | `js/core/diferencial.js` |
+| `diffAplicar` | `js/core/diferencial.js` |
+| `diffCalcular` | `js/core/diferencial.js` |
+| `diffEstaAbierto` | `js/core/diferencial.js` |
+| `diffHtmlBloque` | `js/core/diferencial.js` |
+| `diffInst` | `js/core/diferencial.js` |
+| `diffRegistrarInstancia` | `js/core/diferencial.js` |
+| `diffRemoveParte` | `js/core/diferencial.js` |
+| `diffRenderHistorial` | `js/core/diferencial.js` |
+| `diffRenderPartes` | `js/core/diferencial.js` |
+| `diffReset` | `js/core/diferencial.js` |
+| `diffResumen` | `js/core/diferencial.js` |
+| `diffSetCuentaEntrada` | `js/core/diferencial.js` |
+| `diffSetCuentaSalida` | `js/core/diferencial.js` |
+| `diffSetMonto` | `js/core/diferencial.js` |
+| `diffSetNombre` | `js/core/diferencial.js` |
+| `diffToggle` | `js/core/diferencial.js` |
+| `diffTogglePagoYo` | `js/core/diferencial.js` |
+| `diffValidarIntercambios` | `js/core/diferencial.js` |
 | `editarCDT` | `js/modules/cuentas.js` |
 | `editarCuentaCustom` | `js/modules/cuentas.js` |
 | `editarDeudorActual` | `js/modules/prestado.js` |

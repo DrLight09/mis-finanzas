@@ -44,7 +44,6 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/diferencial.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 22 | 0 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 98 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 20 | 0 |
-| `js/modules/import-validado.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 6 | 0 |
 | `js/modules/lazy-loader.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 34 | 0 |
@@ -286,12 +285,6 @@ Carga: de entrada (defer)
 
 **Funciones:** `_gvDiaLabel`, `abrirNuevoGastoFijo`, `abrirNuevoGastoVar`, `abrirPagarGastoFijo`, `actualizarGvSplitPreview`, `addGastoFijo`, `addGastoVar`, `agregarGvSplitRow`, `confirmarPagarGastoFijo`, `deleteGastoFijo`, `deleteGastoVar`, `getGvSplitData`, `getGvSplitFuentesOptions`, `pgfActualizarSaldo`, `renderGastosFijos`, `renderGastosVar`, `renderMesFiltros`, `setMesFiltro`, `switchGastoTab`, `toggleGvSplit`
 
-### `js/modules/import-validado.js`
-
-Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
-
-**Funciones:** `_validarEstructuraJSON`
-
 ### `js/modules/inicio.js`
 
 Carga: de entrada (defer)
@@ -377,7 +370,6 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_diffActualizarMiCuenta` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `_diffFuentesOptsHtml` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `_difRenderHistorial` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `_validarEstructuraJSON` | `js/modules/configuracion.js`, `js/modules/import-validado.js` |
 | `crearSplitWidget` | `js/core/split.js`, `js/modules/split.js` |
 | `diffAddParte` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `diffAplicar` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
@@ -704,7 +696,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_usarParteSetMonto` | `js/modules/encargos.js` |
 | `_usarParteSetNombre` | `js/modules/encargos.js` |
 | `_usarParteSplitToggle` | `js/modules/encargos.js` |
-| `_validarEstructuraJSON` | `js/modules/configuracion.js`, `js/modules/import-validado.js` |
+| `_validarEstructuraJSON` | `js/modules/configuracion.js` |
 | `_validarIntercambiosBenefs` | `js/modules/encargos.js` |
 | `_validarMovEncMia` | `js/modules/encargos.js` |
 | `_verificarIntegridadSaldoDeudor` | `js/modules/prestado.js` |

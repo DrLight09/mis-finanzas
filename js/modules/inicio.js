@@ -567,7 +567,7 @@ function renderProyeccion(){
 
   el.innerHTML = historialInsuficiente ? `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:2px 0;">
-      <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
+      <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;display:inline-flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
       <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text3);">—</span>
     </div>
     <div style="text-align:center;background:var(--bg3);border-radius:8px;padding:16px 10px;">
@@ -576,7 +576,7 @@ function renderProyeccion(){
     ${deudaInfo}
   ` : `
     <div id="_proy-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer;padding:2px 0;" data-tendencia="${tendenciaMensual}">
-      <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
+      <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;display:inline-flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
       <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${col};">${tendenciaMensual>=0?'+':''}${fmt(tendenciaMensual)}</span>
     </div>
     <div id="_proy-cards-wrap" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:relative;">

@@ -45,7 +45,6 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 98 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 20 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 6 | 0 |
-| `js/modules/lazy-loader.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 34 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
 | `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
@@ -293,12 +292,6 @@ Carga: de entrada (defer)
 
 **Asigna a `window`:** `refresh`
 
-### `js/modules/lazy-loader.js`
-
-Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
-
-**Funciones:** `Loader`
-
 ### `js/modules/mesada.js`
 
 Carga: lazy — grupo `mesada`
@@ -390,7 +383,6 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `diffToggle` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `diffTogglePagoYo` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `diffValidarIntercambios` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `Loader` | `js/core/lazy-loader.js`, `js/modules/lazy-loader.js` |
 | `splitAgregarRow` | `js/core/split.js`, `js/modules/split.js` |
 | `splitGetData` | `js/core/split.js`, `js/modules/split.js` |
 | `splitPreview` | `js/core/split.js`, `js/modules/split.js` |
@@ -1078,7 +1070,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `leerArchivoImport` | `js/modules/configuracion.js` |
 | `liberarCDTManual` | `js/modules/cuentas.js` |
 | `load` | `js/core/core-state.js` |
-| `Loader` | `js/core/lazy-loader.js`, `js/modules/lazy-loader.js` |
+| `Loader` | `js/core/lazy-loader.js` |
 | `marcarColorSeleccionado` | `js/core/color-picker.js` |
 | `marcarMesadaComoPendiente` | `js/modules/mesada.js` |
 | `marcarPagoSpotify` | `js/modules/spotify.js` |

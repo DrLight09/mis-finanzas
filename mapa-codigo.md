@@ -40,7 +40,6 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 32 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 8 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 10 | 0 |
-| `js/modules/core-state.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 49 | 5 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 115 | 1 |
 | `js/modules/diferencial.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 22 | 0 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 98 | 0 |
@@ -261,16 +260,6 @@ Carga: lazy — grupo `config`
 
 **Funciones:** `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `eliminarCat`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `toggleModulo`
 
-### `js/modules/core-state.js`
-
-Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
-
-**Funciones:** `_closeDialog`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_moneyRender`, `_moneyValue`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `debounceSave`, `descontarFuente`, `dialogo`, `emptyState`, `escHtml`, `fmt`, `fmtInput`, `fmtNoCents`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `poblarCatSelect`, `poblarFuente`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`
-
-**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `MAX`, `MC`, `S`
-
-**Asigna a `window`:** `_dialogResolve`, `_locallyModified`
-
 ### `js/modules/cuentas.js`
 
 Carga: lazy — grupo `cuentas`
@@ -385,32 +374,11 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 
 | Nombre | Archivos |
 |---|---|
-| `_closeDialog` | `js/core/core-state.js`, `js/modules/core-state.js` |
 | `_diffActualizarMiCuenta` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `_diffFuentesOptsHtml` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `_difRenderHistorial` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `_esEntradaEspejoNoIngreso` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `_esGastoVarNoReal` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `_moneyRender` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `_moneyValue` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `_saldoCPAjeno` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `_saldoEncargosEnCuenta` | `js/core/core-state.js`, `js/modules/core-state.js` |
 | `_validarEstructuraJSON` | `js/modules/configuracion.js`, `js/modules/import-validado.js` |
-| `avisarMovimientoBloqueado` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `buildFuentesOptsHtml` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `calcDeudaAjenaDeTarjeta` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `calcDeudaTcPropia` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `calcDeudaTcPropiaDeTarjeta` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `calcPatrimonioTotal` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `calcSaldoInicialPendiente` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `CATS_FIJO_DEFAULT` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `CATS_VAR_DEFAULT` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `confirmarBorrarMovimientoViejo` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `crearMovimientoApertura` | `js/core/core-state.js`, `js/modules/core-state.js` |
 | `crearSplitWidget` | `js/core/split.js`, `js/modules/split.js` |
-| `debounceSave` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `descontarFuente` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `dialogo` | `js/core/core-state.js`, `js/modules/core-state.js` |
 | `diffAddParte` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `diffAplicar` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `diffCalcular` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
@@ -430,44 +398,11 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `diffToggle` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `diffTogglePagoYo` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `diffValidarIntercambios` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
-| `emptyState` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `escHtml` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `fmt` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `fmtInput` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `fmtNoCents` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `fuenteBadgeClass` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `fuenteLabel` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `gastosMes` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `getCatsFijo` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `getCatsVar` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `getFuentes` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `getFuentesSinTC` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `getIngresosFijosMes` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `getSaldoFuente` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `hoy` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `load` | `js/core/core-state.js`, `js/modules/core-state.js` |
 | `Loader` | `js/core/lazy-loader.js`, `js/modules/lazy-loader.js` |
-| `MAX` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `MC` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `medirAnchoTexto` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `mesActual` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `mesKey` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `nivelAntiguedadMovimiento` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `parseMoney` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `parsePct` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `poblarCatSelect` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `poblarFuente` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `refresh` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `S` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `save` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `snapshotPatrimonio` | `js/core/core-state.js`, `js/modules/core-state.js` |
 | `splitAgregarRow` | `js/core/split.js`, `js/modules/split.js` |
 | `splitGetData` | `js/core/split.js`, `js/modules/split.js` |
 | `splitPreview` | `js/core/split.js`, `js/modules/split.js` |
 | `splitToggle` | `js/core/split.js`, `js/modules/split.js` |
-| `sumarFuente` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `toast` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `uid` | `js/core/core-state.js`, `js/modules/core-state.js` |
 
 ## 4. Índice inverso (nombre → archivo)
 
@@ -536,7 +471,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_calcPrestadoMeta` | `js/modules/cuentas.js` |
 | `_cancelarCobrarCDT` | `js/modules/cuentas.js` |
 | `_checkGastoAlto` | `js/modules/inicio.js` |
-| `_closeDialog` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `_closeDialog` | `js/core/core-state.js` |
 | `_confirmarMoverEncCuentasSplit` | `js/modules/encargos.js` |
 | `_confirmarMovimientoConGuard` | `js/modules/prestado.js` |
 | `_confirmarUsarParte` | `js/modules/encargos.js` |
@@ -581,7 +516,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_deudorCuentasDe` | `js/modules/prestado.js` |
 | `_deudorOpsPosteriores` | `js/modules/prestado.js` |
 | `_deudorTieneCuentaAfectada` | `js/modules/prestado.js` |
-| `_dialogResolve` | `js/core/core-state.js` (window._dialogResolve = …), `js/modules/core-state.js` (window._dialogResolve = …) |
+| `_dialogResolve` | `js/core/core-state.js` (window._dialogResolve = …) |
 | `_diasDesde` | `js/modules/alcancia.js` |
 | `_diasEntreFechas` | `js/modules/cuentas.js` |
 | `_difAddBenef` | `js/modules/encargos.js` |
@@ -600,8 +535,8 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_editarPersonaDesdePerfilSheet` | `js/modules/personas.js` |
 | `_encAbrirSelectorPersonaNueva` | `js/modules/encargos.js` |
 | `_ensureMesadas` | `js/core/calc-helpers.js` |
-| `_esEntradaEspejoNoIngreso` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `_esGastoVarNoReal` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `_esEntradaEspejoNoIngreso` | `js/core/core-state.js` |
+| `_esGastoVarNoReal` | `js/core/core-state.js` |
 | `_expandCajitaCDTs` | `js/modules/cuentas.js` |
 | `_fmtTiempo` | `js/modules/alcancia.js` |
 | `_fuenteLabelHtml` | `js/core/movimientos.js` |
@@ -650,7 +585,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_irAEncargo` | `js/modules/encargos.js` |
 | `_irAMiDeuda` | `js/modules/prestado.js` |
 | `_irASpotify` | `js/modules/personas.js` |
-| `_locallyModified` | `js/core/core-state.js` (window._locallyModified = …), `js/modules/core-state.js` (window._locallyModified = …) |
+| `_locallyModified` | `js/core/core-state.js` (window._locallyModified = …) |
 | `_markError` | `js/core/sheet-stack.js` |
 | `_mdPickColor` | `js/modules/prestado.js` |
 | `_mesadaClavesParent` | `js/modules/mesada.js` |
@@ -665,8 +600,8 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_miDeudaOpsPosteriores` | `js/modules/prestado.js` |
 | `_miDeudaTieneCuentaAfectada` | `js/modules/prestado.js` |
 | `_migrarGruposDeudor` | `js/modules/prestado.js` |
-| `_moneyRender` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `_moneyValue` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `_moneyRender` | `js/core/core-state.js` |
+| `_moneyValue` | `js/core/core-state.js` |
 | `_mostrarMppDestinoNormal` | `js/modules/mesada.js` |
 | `_mostrarSeccionDestinoNormal` | `js/modules/mesada.js` |
 | `_movEncActualizarFaltante` | `js/modules/encargos.js` |
@@ -729,9 +664,9 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_resetSheetNuevaCuenta` | `js/modules/cuentas.js` |
 | `_resolverGrupoIdMov` | `js/modules/prestado.js` |
 | `_resolverGrupoIdSel` | `js/modules/prestado.js` |
-| `_saldoCPAjeno` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `_saldoCPAjeno` | `js/core/core-state.js` |
 | `_saldoEncargosEnCajita` | `js/modules/cuentas.js` |
-| `_saldoEncargosEnCuenta` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `_saldoEncargosEnCuenta` | `js/core/core-state.js` |
 | `_saldoRegistrado` | `js/modules/alcancia.js` |
 | `_salidaEncMenuIr` | `js/modules/encargos.js` |
 | `_segmentosTasaNu` | `js/modules/cuentas.js` |
@@ -966,32 +901,32 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `alcanciaToggleDividir` | `js/modules/alcancia.js` (window.alcanciaToggleDividir = …) |
 | `alcanciaToggleMontoDeposito` | `js/modules/alcancia.js` (window.alcanciaToggleMontoDeposito = …) |
 | `applyModulos` | `js/core/sheet-stack.js` |
-| `avisarMovimientoBloqueado` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `avisarMovimientoBloqueado` | `js/core/core-state.js` |
 | `borrarTodo` | `js/modules/configuracion.js` |
-| `buildFuentesOptsHtml` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `buildFuentesOptsHtml` | `js/core/core-state.js` |
 | `calcC` | `js/modules/cuentas.js` |
 | `calcCDT` | `js/modules/cuentas.js` |
-| `calcDeudaAjenaDeTarjeta` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `calcDeudaTcPropia` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `calcDeudaTcPropiaDeTarjeta` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `calcDeudaAjenaDeTarjeta` | `js/core/core-state.js` |
+| `calcDeudaTcPropia` | `js/core/core-state.js` |
+| `calcDeudaTcPropiaDeTarjeta` | `js/core/core-state.js` |
 | `calcHealthScore` | `js/modules/inicio.js` |
 | `calcMetaProgreso` | `js/modules/cuentas.js` |
-| `calcPatrimonioTotal` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `calcPatrimonioTotal` | `js/core/core-state.js` |
 | `calcRendimientoCDTMes` | `js/modules/cuentas.js` |
 | `calcRendimientoCDTsMes` | `js/modules/cuentas.js` |
-| `calcSaldoInicialPendiente` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `calcSaldoInicialPendiente` | `js/core/core-state.js` |
 | `calcularSerieTasaImplicitaNu` | `js/modules/cuentas.js` |
 | `cambiarAnio` | `js/modules/mesada.js` |
 | `cambiarTabPrestamos` | `js/modules/prestado.js` |
-| `CATS_FIJO_DEFAULT` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `CATS_VAR_DEFAULT` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `CATS_FIJO_DEFAULT` | `js/core/core-state.js` |
+| `CATS_VAR_DEFAULT` | `js/core/core-state.js` |
 | `cerrarPartSheet` | `js/modules/encargos.js` |
 | `clickMesDot` | `js/modules/mesada.js` |
 | `closeSheet` | `js/core/sheet-stack.js` |
 | `closeSwipeSheet` | `js/modules/alcancia.js` |
 | `confirmarAgregarDinero` | `js/modules/cuentas.js` |
 | `confirmarAgregarDineroMenu` | `js/modules/cuentas.js` |
-| `confirmarBorrarMovimientoViejo` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `confirmarBorrarMovimientoViejo` | `js/core/core-state.js` |
 | `confirmarCambioTasaNu` | `js/modules/cuentas.js` |
 | `confirmarCargoEspecialTC` | `js/modules/tarjetas_credito.js` |
 | `confirmarCobrarCDT` | `js/modules/cuentas.js` |
@@ -1020,19 +955,19 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `crearCuentaCustom` | `js/modules/cuentas.js` |
 | `crearEncargo` | `js/modules/encargos.js` |
 | `crearMiDeuda` | `js/modules/prestado.js` |
-| `crearMovimientoApertura` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `crearMovimientoApertura` | `js/core/core-state.js` |
 | `crearSplitWidget` | `js/core/split.js`, `js/modules/split.js` |
-| `debounceSave` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `debounceSave` | `js/core/core-state.js` |
 | `deleteCajita` | `js/modules/cuentas.js` |
 | `deleteGastoFijo` | `js/modules/gastos.js` |
 | `deleteGastoVar` | `js/modules/gastos.js` |
 | `deleteMovEncargo` | `js/modules/encargos.js` |
 | `deleteSpHistorial` | `js/modules/spotify.js` |
 | `deleteSpotify` | `js/modules/spotify.js` |
-| `descontarFuente` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `descontarFuente` | `js/core/core-state.js` |
 | `deshacerAbonoPendienteSp` | `js/modules/spotify.js` |
 | `deshacerPendienteMesada` | `js/modules/mesada.js` |
-| `dialogo` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `dialogo` | `js/core/core-state.js` |
 | `diffAddParte` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `diffAplicar` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
 | `diffCalcular` | `js/core/diferencial.js`, `js/modules/diferencial.js` |
@@ -1074,11 +1009,11 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `eliminarPagoTC` | `js/modules/tarjetas_credito.js` |
 | `eliminarParte` | `js/modules/encargos.js` |
 | `eliminarTC` | `js/modules/tarjetas_credito.js` |
-| `emptyState` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `emptyState` | `js/core/core-state.js` |
 | `encargoComprometido` | `js/modules/encargos.js` |
 | `encargoLibre` | `js/modules/encargos.js` |
 | `encargoSaldo` | `js/modules/encargos.js` |
-| `escHtml` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `escHtml` | `js/core/core-state.js` |
 | `escHtml2` | `js/modules/wrapped.js` |
 | `Events` | `js/core/events.js` |
 | `exportarCSV` | `js/modules/configuracion.js` |
@@ -1092,29 +1027,29 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `extSetMonto` | `js/modules/prestado.js` |
 | `extSetQuien` | `js/modules/prestado.js` |
 | `extSetTipo` | `js/modules/prestado.js` |
-| `fmt` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `fmtInput` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `fmtNoCents` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `fuenteBadgeClass` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `fuenteLabel` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `fmt` | `js/core/core-state.js` |
+| `fmtInput` | `js/core/core-state.js` |
+| `fmtNoCents` | `js/core/core-state.js` |
+| `fuenteBadgeClass` | `js/core/core-state.js` |
+| `fuenteLabel` | `js/core/core-state.js` |
 | `fuenteLabel2` | `js/modules/prestado.js` |
 | `FuentesFiltro` | `js/core/fuentes-filtro.js` |
-| `gastosMes` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `gastosMes` | `js/core/core-state.js` |
 | `getAperturaMov` | `js/modules/cuentas.js` |
 | `getCajitaNombre` | `js/modules/encargos.js` |
-| `getCatsFijo` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `getCatsVar` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `getCatsFijo` | `js/core/core-state.js` |
+| `getCatsVar` | `js/core/core-state.js` |
 | `getDeudorSaldo` | `js/core/calc-helpers.js` |
 | `getDeudorSaldoPatrimonio` | `js/modules/prestado.js` |
 | `getEncargo` | `js/modules/encargos.js` |
-| `getFuentes` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `getFuentes` | `js/core/core-state.js` |
 | `getFuentesOptions` | `js/modules/mesada.js` |
-| `getFuentesSinTC` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `getFuentesSinTC` | `js/core/core-state.js` |
 | `getGrupoSaldo` | `js/modules/prestado.js` |
 | `getGvSplitData` | `js/modules/gastos.js` |
 | `getGvSplitFuentesOptions` | `js/modules/gastos.js` |
 | `getIconoData` | `js/modules/cuentas.js` |
-| `getIngresosFijosMes` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `getIngresosFijosMes` | `js/core/core-state.js` |
 | `getMesadaData` | `js/core/calc-helpers.js` |
 | `getMiDeudaSaldo` | `js/modules/prestado.js` |
 | `getMontoPadre` | `js/modules/mesada.js` |
@@ -1125,7 +1060,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `getPersonaColor` | `js/modules/personas.js` |
 | `getPersonaDatos` | `js/modules/personas.js` |
 | `getPersonaNombre` | `js/modules/personas.js` |
-| `getSaldoFuente` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `getSaldoFuente` | `js/core/core-state.js` |
 | `getSpCajita` | `js/modules/spotify.js` |
 | `getSpCajitaSaldo` | `js/modules/spotify.js` |
 | `getSpCobSplitData` | `js/modules/spotify.js` |
@@ -1142,7 +1077,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `guardarTC` | `js/modules/tarjetas_credito.js` |
 | `hexToRgb` | `js/modules/cuentas.js` |
 | `hookGlobal` | `js/core/hook-global.js` |
-| `hoy` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `hoy` | `js/core/core-state.js` |
 | `html` | `js/core/html-tag.js` |
 | `ICONOS_CUENTA` | `js/modules/cuentas.js` |
 | `importarJSON` | `js/modules/configuracion.js` |
@@ -1150,41 +1085,41 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `initMovSheet` | `js/modules/prestado.js` |
 | `leerArchivoImport` | `js/modules/configuracion.js` |
 | `liberarCDTManual` | `js/modules/cuentas.js` |
-| `load` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `load` | `js/core/core-state.js` |
 | `Loader` | `js/core/lazy-loader.js`, `js/modules/lazy-loader.js` |
 | `marcarColorSeleccionado` | `js/core/color-picker.js` |
 | `marcarMesadaComoPendiente` | `js/modules/mesada.js` |
 | `marcarPagoSpotify` | `js/modules/spotify.js` |
 | `markDirty` | `js/core/sheet-stack.js` |
 | `materializarIntereses` | `js/modules/cuentas.js` |
-| `MAX` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `MC` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `medirAnchoTexto` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `mesActual` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `mesKey` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `MAX` | `js/core/core-state.js` |
+| `MC` | `js/core/core-state.js` |
+| `medirAnchoTexto` | `js/core/core-state.js` |
+| `mesActual` | `js/core/core-state.js` |
+| `mesKey` | `js/core/core-state.js` |
 | `mostrarAlertaFuente` | `js/core/sheet-stack.js` |
 | `nextMonthFixed` | `js/modules/spotify.js` |
-| `nivelAntiguedadMovimiento` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `nivelAntiguedadMovimiento` | `js/core/core-state.js` |
 | `nuTotal` | `js/modules/cuentas.js` |
 | `onChangeMov_enc_cuenta` | `js/modules/prestado.js` |
 | `onChangeMov_enc_sel` | `js/modules/prestado.js` |
 | `openSheet` | `js/core/sheet-stack.js` |
 | `openSheet_adMenu` | `js/modules/cuentas.js` |
 | `openSheet_pagarSpotify` | `js/modules/spotify.js` |
-| `parseMoney` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `parsePct` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `parseMoney` | `js/core/core-state.js` |
+| `parsePct` | `js/core/core-state.js` |
 | `PERSONA_COLORES` | `js/modules/personas.js` |
 | `PERSONA_COLORES_MD` | `js/modules/prestado.js` |
 | `pgfActualizarSaldo` | `js/modules/gastos.js` |
 | `pintarAvatarPersona` | `js/core/core-state.js` |
-| `poblarCatSelect` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `poblarCatSelect` | `js/core/core-state.js` |
 | `poblarChequeoNu` | `js/modules/cuentas.js` |
-| `poblarFuente` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `poblarFuente` | `js/core/core-state.js` |
 | `ptcActualizarPreview` | `js/modules/tarjetas_credito.js` |
 | `ptcSetMonto` | `js/modules/tarjetas_credito.js` |
 | `quitarMetaCajita` | `js/modules/cuentas.js` |
 | `raw` | `js/core/html-tag.js` |
-| `refresh` | `js/core/core-state.js`, `js/modules/core-state.js`, `js/modules/inicio.js` (window.refresh = …) |
+| `refresh` | `js/core/core-state.js`, `js/modules/inicio.js` (window.refresh = …) |
 | `registrarEntradaConApertura` | `js/modules/cuentas.js` |
 | `registrarSalida` | `js/modules/cuentas.js` |
 | `registrarTasaNuHistorial` | `js/modules/cuentas.js` |
@@ -1222,15 +1157,15 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `renderTCScreen` | `js/modules/tarjetas_credito.js` |
 | `renderWrapped` | `js/modules/wrapped.js` (window.renderWrapped = …) |
 | `resolverPendienteSpHistorial` | `js/modules/spotify.js` |
-| `S` | `js/core/core-state.js`, `js/modules/core-state.js` |
-| `save` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `S` | `js/core/core-state.js` |
+| `save` | `js/core/core-state.js` |
 | `saveAndRefresh` | `js/core/sheet-stack.js` |
 | `selColorNC` | `js/modules/cuentas.js` |
 | `selIconoNC` | `js/modules/cuentas.js` |
 | `selSpMeses` | `js/modules/spotify.js` |
 | `setMesFiltro` | `js/modules/gastos.js` |
 | `showScreen` | `js/core/sheet-stack.js` |
-| `snapshotPatrimonio` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `snapshotPatrimonio` | `js/core/core-state.js` |
 | `SP_EMPATE_PERIODOS` | `js/modules/spotify.js` |
 | `SP_PERIODO_DIAS` | `js/modules/spotify.js` |
 | `spAsignarPeriodos` | `js/modules/spotify.js` |
@@ -1250,7 +1185,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `spResumenCicloActual` | `js/modules/spotify.js` |
 | `spSumarDias` | `js/modules/spotify.js` |
 | `spTramosDeCobro` | `js/modules/spotify.js` |
-| `sumarFuente` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `sumarFuente` | `js/core/core-state.js` |
 | `switchGastoTab` | `js/modules/gastos.js` |
 | `TC_ESTADOS` | `js/modules/tarjetas_credito.js` |
 | `TC_MOTIVOS_CARGO` | `js/modules/tarjetas_credito.js` |
@@ -1266,7 +1201,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `tcNormalizarTarjetas` | `js/modules/tarjetas_credito.js` |
 | `tcRecalcular` | `js/modules/tarjetas_credito.js` |
 | `tcSelColor` | `js/modules/tarjetas_credito.js` |
-| `toast` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `toast` | `js/core/core-state.js` |
 | `toggleAbonoSplit` | `js/modules/prestado.js` |
 | `toggleAdApertura` | `js/modules/cuentas.js` |
 | `toggleCajita` | `js/modules/cuentas.js` |
@@ -1283,7 +1218,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `toggleSpPagarSplit` | `js/modules/spotify.js` |
 | `totalMisDeudasPendiente` | `js/modules/prestado.js` |
 | `totalPrestadoPendiente` | `js/modules/prestado.js` |
-| `uid` | `js/core/core-state.js`, `js/modules/core-state.js` |
+| `uid` | `js/core/core-state.js` |
 | `usarParte` | `js/modules/encargos.js` |
 | `verificarTasaNu` | `js/modules/cuentas.js` |
 | `verificarVencimientosCDT` | `js/modules/cuentas.js` |

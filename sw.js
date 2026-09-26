@@ -18,15 +18,13 @@ const APP_SHELL = [
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
 
-// TODO: pegar el mismo objeto de config que en firebase-init.js /
-// notificaciones-push.js.
 firebase.initializeApp({
-  apiKey: 'TODO',
-  authDomain: 'TODO.firebaseapp.com',
-  projectId: 'TODO',
-  storageBucket: 'TODO.appspot.com',
-  messagingSenderId: 'TODO',
-  appId: 'TODO',
+  apiKey: "AIzaSyBNGhKxrd6nuUXamRytHEgrv3ggrafr4HU",
+  authDomain: "mis-finanzas-z.firebaseapp.com",
+  projectId: "mis-finanzas-z",
+  storageBucket: "mis-finanzas-z.firebasestorage.app",
+  messagingSenderId: "469399538471",
+  appId: "1:469399538471:web:adaf95bc43b3355b087702"
 });
 
 const _messaging = firebase.messaging();

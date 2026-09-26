@@ -30,6 +30,17 @@ const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 
+console.log('project_id en la clave:', serviceAccount.project_id);
+console.log('projectId con el que arrancó la app:', admin.app().options.credential.projectId);
+
+// DIAGNÓSTICO TEMPORAL — reemplaza este ID por uno real de tu colección
+// "usuarios" (lo ves en Firestore console) para probar un fetch directo,
+// sin pasar por collection().get(). Borrar este bloque una vez resuelto.
+const _uidDePrueba = 'ELoANX8tRIPGIJ6Cnafsn92MFOn1';
+db.doc(`usuarios/${_uidDePrueba}`).get()
+  .then((snap) => console.log(`[diagnóstico] doc usuarios/${_uidDePrueba} existe:`, snap.exists))
+  .catch((e) => console.error('[diagnóstico] error al leer doc directo:', e));
+
 // Colombia no tiene horario de verano (offset fijo UTC-5), pero se usa
 // Intl.DateTimeFormat en vez de hardcodear el offset por las dudas.
 function hoyBogota() {

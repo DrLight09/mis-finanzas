@@ -30,21 +30,6 @@ const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
 
-console.log('project_id en la clave:', serviceAccount.project_id);
-console.log('projectId con el que arrancó la app:', admin.app().options.credential.projectId);
-
-// DIAGNÓSTICO TEMPORAL — reemplaza este ID por uno real de tu colección
-// "usuarios" (lo ves en Firestore console) para probar un fetch directo,
-// sin pasar por collection().get(). Borrar este bloque una vez resuelto.
-const _uidDePrueba = 'ELoANX8tRIPGIJ6Cnafsn92MFOn1';
-db.doc(`usuarios/${_uidDePrueba}`).get()
-  .then((snap) => console.log(`[diagnóstico] doc usuarios/${_uidDePrueba} existe:`, snap.exists))
-  .catch((e) => console.error('[diagnóstico] error al leer doc directo:', e));
-
-db.listCollections()
-  .then((cols) => console.log('[diagnóstico] colecciones raíz que ve Firestore:', cols.map((c) => c.id)))
-  .catch((e) => console.error('[diagnóstico] error al listar colecciones:', e));
-
 // Colombia no tiene horario de verano (offset fijo UTC-5), pero se usa
 // Intl.DateTimeFormat en vez de hardcodear el offset por las dudas.
 function hoyBogota() {
@@ -60,11 +45,16 @@ function hoyBogota() {
 async function main() {
   const hoyStr = hoyBogota();
   console.log(`Chequeo de notificaciones — hoy=${hoyStr}`);
-  const usuariosSnap = await db.collection('usuarios').get();
-  console.log(`usuarios encontrados: ${usuariosSnap.size}`);
+  // listDocuments() (no .get()) porque usuarios/{uid} nunca se crea como
+  // documento con campos propios — solo existe como "padre" de la
+  // subcolección usuarios/{uid}/data/. Con .get() esos uids no cuentan
+  // como documentos reales y la colección aparece vacía aunque la
+  // consola de Firebase sí los liste (ver README de esta carpeta).
+  const usuariosRefs = await db.collection('usuarios').listDocuments();
+  console.log(`usuarios encontrados: ${usuariosRefs.length}`);
 
-  for (const usuarioDoc of usuariosSnap.docs) {
-    const uid = usuarioDoc.id;
+  for (const usuarioRef of usuariosRefs) {
+    const uid = usuarioRef.id;
     try {
       const [finanzasSnap, notifSnap] = await Promise.all([
         db.collection('usuarios').doc(uid).collection('data').doc('finanzas').get(),

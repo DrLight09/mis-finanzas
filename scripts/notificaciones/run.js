@@ -44,7 +44,9 @@ function hoyBogota() {
 
 async function main() {
   const hoyStr = hoyBogota();
+  console.log(`Chequeo de notificaciones — hoy=${hoyStr}`);
   const usuariosSnap = await db.collection('usuarios').get();
+  console.log(`usuarios encontrados: ${usuariosSnap.size}`);
 
   for (const usuarioDoc of usuariosSnap.docs) {
     const uid = usuarioDoc.id;
@@ -54,7 +56,10 @@ async function main() {
         db.collection('usuarios').doc(uid).collection('data').doc('notificaciones').get(),
       ]);
 
-      if (!finanzasSnap.exists) continue;
+      if (!finanzasSnap.exists) {
+        console.log(`uid=${uid}: no tiene documento data/finanzas, se salta`);
+        continue;
+      }
       const tokens = notifSnap.exists ? notifSnap.data().fcmTokens || [] : [];
       if (!tokens.length) {
         console.log(`uid=${uid}: sin tokens registrados, se salta`);
@@ -109,9 +114,7 @@ async function main() {
   }
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((e) => {
-    console.error('Error fatal:', e);
-    process.exit(1); // que el workflow quede en rojo si algo rompió de verdad
-  });
+main().catch((e) => {
+  console.error('Error fatal:', e);
+  process.exitCode = 1; // marca el job como fallido sin forzar el exit
+});

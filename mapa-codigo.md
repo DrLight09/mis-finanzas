@@ -28,6 +28,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/mejoras-adicionales.js` | de entrada (defer) | 0 | 0 |
 | `js/core/money-input.js` | de entrada (defer) | 1 | 0 |
 | `js/core/movimientos.js` | de entrada (defer) | 5 | 0 |
+| `js/core/notificaciones-push.js` | de entrada (defer) | 1 | 0 |
 | `js/core/personas-init.js` | de entrada (defer) | 1 | 0 |
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/sheet-behavior.js` | de entrada (defer) | 0 | 0 |
@@ -51,10 +52,6 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 48 | 2 |
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 29 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 105 | 1 |
-
-**Referenciados en `index.html` o `Loader.GROUPS` pero que no existen en las carpetas escaneadas:**
-
-- `js/core/notificaciones-push.js`
 
 ## 2. Qué declara cada archivo
 
@@ -181,6 +178,12 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `_cuentaOpsPosteriores`, `_fuenteLabelHtml`, `_rerenderCuentaActiva`, `abrirDetalleMov`, `eliminarMovimiento`
+
+### `js/core/notificaciones-push.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** `activarNotificaciones`
 
 ### `js/core/personas-init.js`
 
@@ -820,6 +823,7 @@ Ninguno.
 | `abrirTransferir` | `js/modules/cuentas.js` |
 | `abrirTraspasoEncargo` | `js/modules/encargos.js` |
 | `abrirUsarParteSheet` | `js/modules/encargos.js` |
+| `activarNotificaciones` | `js/core/notificaciones-push.js` |
 | `actualizarAdMenuPreview` | `js/modules/cuentas.js` |
 | `actualizarAdMenuSaldo` | `js/modules/cuentas.js` |
 | `actualizarBotonesTransferir` | `js/modules/cuentas.js` |

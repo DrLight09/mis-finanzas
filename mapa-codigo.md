@@ -40,7 +40,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 32 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 8 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 10 | 0 |
-| `js/modules/cuentas.js` | lazy — grupo `cuentas` | 115 | 1 |
+| `js/modules/cuentas.js` | lazy — grupo `cuentas` | 117 | 1 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 98 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 20 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 6 | 0 |
@@ -260,7 +260,7 @@ Carga: lazy — grupo `config`
 
 Carga: lazy — grupo `cuentas`
 
-**Funciones:** `_abrirConfirmarTasaNu`, `_aperturaToggleUI`, `_cajitaDetDelete`, `_calcPrestadoMeta`, `_cancelarCobrarCDT`, `_diasEntreFechas`, `_expandCajitaCDTs`, `_getMovimientosCuentaCustom`, `_getMovsFilter`, `_interpretarLecturaChequeoNu`, `_metaAporteEliminar`, `_movsAplicarFiltro`, `_movsLimpiarFechas`, `_movsOnFecha`, `_movsOnSearch`, `_movsOnTipo`, `_movsRefresh`, `_nuMovActualizarPreview`, `_nuMovRenderCajitas`, `_nuMovToggleApertura`, `_procesarSiguienteCDTVencido`, `_refreshCajitaDet`, `_renderDetalleCajita`, `_renderMetaAportes`, `_renderTasaHistorialTag`, `_rendimientoCDTaDias`, `_resetSheetNuevaCuenta`, `_saldoEncargosEnCajita`, `_segmentosTasaNu`, `_setBtnTransferir`, `_showCuentasPanel`, `_tasaVigenteEnFecha`, `_trDestinoCambio`, `_trOrigenCambio`, `_trPodarSelect`, `_updateMetaCuotaPreview`, `abrirAgregarDinero`, `abrirCobrarCDT`, `abrirCrearCDT`, `abrirCuenta`, `abrirCustomCuenta`, `abrirDetalleCajita`, `abrirEditarApertura`, `abrirMetaCajita`, `abrirNuevaCuenta`, `abrirNuMovimiento`, `abrirRegistrarApertura`, `abrirRestarDinero`, `abrirSubCDTs`, `abrirSubMeta`, `abrirTransferir`, `actualizarAdMenuPreview`, `actualizarAdMenuSaldo`, `actualizarBotonesTransferir`, `actualizarTransfPreview`, `addCajita`, `calcC`, `calcCDT`, `calcMetaProgreso`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `calcularSerieTasaImplicitaNu`, `confirmarAgregarDinero`, `confirmarAgregarDineroMenu`, `confirmarCambioTasaNu`, `confirmarCobrarCDT`, `confirmarCrearCDT`, `confirmarEditarApertura`, `confirmarNuMovimiento`, `confirmarRestarDinero`, `confirmarTransferir`, `corregirChequeoNu`, `crearCuentaCustom`, `deleteCajita`, `editarCDT`, `editarCuentaCustom`, `eliminarCuentaCustom`, `getAperturaMov`, `getIconoData`, `getMovimientosCuenta`, `getNuTasaGlobal`, `guardarCDT`, `guardarChequeoNu`, `guardarMetaCajita`, `hexToRgb`, `liberarCDTManual`, `materializarIntereses`, `nuTotal`, `openSheet_adMenu`, `poblarChequeoNu`, `quitarMetaCajita`, `registrarEntradaConApertura`, `registrarSalida`, `registrarTasaNuHistorial`, `renderBannerApertura`, `renderCajitas`, `renderCustomCuentasList`, `renderDetalleCuenta`, `renderIconGrid`, `renderIconoCustom`, `renderMetaProgress`, `renderMovsCuenta`, `renderMovsCustom`, `renderMovsFiltros`, `selColorNC`, `selIconoNC`, `toggleAdApertura`, `toggleCajita`, `toggleCDT`, `toggleMetaMinWrap`, `verificarTasaNu`, `verificarVencimientosCDT`, `volverADetalleCajita`, `volverANu`, `volverSelector`
+**Funciones:** `_abrirConfirmarTasaNu`, `_aperturaToggleUI`, `_cajitaDetDelete`, `_calcPrestadoMeta`, `_cancelarCobrarCDT`, `_diasEntreFechas`, `_expandCajitaCDTs`, `_fechasCambioEncargoEnCajita`, `_getMovimientosCuentaCustom`, `_getMovsFilter`, `_interpretarLecturaChequeoNu`, `_metaAporteEliminar`, `_movsAplicarFiltro`, `_movsLimpiarFechas`, `_movsOnFecha`, `_movsOnSearch`, `_movsOnTipo`, `_movsRefresh`, `_nuMovActualizarPreview`, `_nuMovRenderCajitas`, `_nuMovToggleApertura`, `_procesarSiguienteCDTVencido`, `_refreshCajitaDet`, `_renderDetalleCajita`, `_renderMetaAportes`, `_renderTasaHistorialTag`, `_rendimientoCDTaDias`, `_resetSheetNuevaCuenta`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasaNu`, `_setBtnTransferir`, `_showCuentasPanel`, `_tasaVigenteEnFecha`, `_trDestinoCambio`, `_trOrigenCambio`, `_trPodarSelect`, `_updateMetaCuotaPreview`, `abrirAgregarDinero`, `abrirCobrarCDT`, `abrirCrearCDT`, `abrirCuenta`, `abrirCustomCuenta`, `abrirDetalleCajita`, `abrirEditarApertura`, `abrirMetaCajita`, `abrirNuevaCuenta`, `abrirNuMovimiento`, `abrirRegistrarApertura`, `abrirRestarDinero`, `abrirSubCDTs`, `abrirSubMeta`, `abrirTransferir`, `actualizarAdMenuPreview`, `actualizarAdMenuSaldo`, `actualizarBotonesTransferir`, `actualizarTransfPreview`, `addCajita`, `calcC`, `calcCDT`, `calcMetaProgreso`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `calcularSerieTasaImplicitaNu`, `confirmarAgregarDinero`, `confirmarAgregarDineroMenu`, `confirmarCambioTasaNu`, `confirmarCobrarCDT`, `confirmarCrearCDT`, `confirmarEditarApertura`, `confirmarNuMovimiento`, `confirmarRestarDinero`, `confirmarTransferir`, `corregirChequeoNu`, `crearCuentaCustom`, `deleteCajita`, `editarCDT`, `editarCuentaCustom`, `eliminarCuentaCustom`, `getAperturaMov`, `getIconoData`, `getMovimientosCuenta`, `getNuTasaGlobal`, `guardarCDT`, `guardarChequeoNu`, `guardarMetaCajita`, `hexToRgb`, `liberarCDTManual`, `materializarIntereses`, `nuTotal`, `openSheet_adMenu`, `poblarChequeoNu`, `quitarMetaCajita`, `registrarEntradaConApertura`, `registrarSalida`, `registrarTasaNuHistorial`, `renderBannerApertura`, `renderCajitas`, `renderCustomCuentasList`, `renderDetalleCuenta`, `renderIconGrid`, `renderIconoCustom`, `renderMetaProgress`, `renderMovsCuenta`, `renderMovsCustom`, `renderMovsFiltros`, `selColorNC`, `selIconoNC`, `toggleAdApertura`, `toggleCajita`, `toggleCDT`, `toggleMetaMinWrap`, `verificarTasaNu`, `verificarVencimientosCDT`, `volverADetalleCajita`, `volverANu`, `volverSelector`
 
 **Globales:** `ICONOS_CUENTA`
 
@@ -478,6 +478,7 @@ Ninguno.
 | `_esEntradaEspejoNoIngreso` | `js/core/core-state.js` |
 | `_esGastoVarNoReal` | `js/core/core-state.js` |
 | `_expandCajitaCDTs` | `js/modules/cuentas.js` |
+| `_fechasCambioEncargoEnCajita` | `js/modules/cuentas.js` |
 | `_fmtTiempo` | `js/modules/alcancia.js` |
 | `_fuenteLabelHtml` | `js/core/movimientos.js` |
 | `_getA` | `js/modules/alcancia.js` |
@@ -606,6 +607,7 @@ Ninguno.
 | `_resolverGrupoIdSel` | `js/modules/prestado.js` |
 | `_saldoCPAjeno` | `js/core/core-state.js` |
 | `_saldoEncargosEnCajita` | `js/modules/cuentas.js` |
+| `_saldoEncargosEnCajitaEnFecha` | `js/modules/cuentas.js` |
 | `_saldoEncargosEnCuenta` | `js/core/core-state.js` |
 | `_saldoRegistrado` | `js/modules/alcancia.js` |
 | `_salidaEncMenuIr` | `js/modules/encargos.js` |

@@ -514,31 +514,91 @@ function _segmentosTasaNu(desdeStr,hastaStr){
   return segmentos;
 }
 
-function calcC(c){
-  // Interés diario compuesto sobre el saldo total en la cajita.
-  // El saldo guardado (c.saldo) ya incluye los intereses materializados anteriormente.
-  // La base real para el interés = c.saldo (propio) + saldo de encargos en esta cajita.
-  // IMPORTANTE: si la tasa EA cambió durante el periodo (ver S.historialTasasNu), el
-  // cálculo se hace POR TRAMOS — cada tramo compone con la tasa que estuvo vigente en
-  // ese tramo — en vez de aplicar la tasa de hoy a todo el periodo.
-  const saldoPropio=c.saldo||0;
-  const saldoEncargos=_saldoEncargosEnCajita(c.id);
-  const saldoBase=saldoPropio+saldoEncargos;
-  const tasaHoy=_tasaVigenteEnFecha(hoy());
-  if(!c.fecha||!saldoBase)return{val:saldoPropio,ganado:0,dias:0,tasaDiaria:0,tasa:tasaHoy,saldoEncargos};
-  const hoyStr=hoy();
-  const segmentos=_segmentosTasaNu(c.fecha,hoyStr);
-  let valor=saldoBase;
-  segmentos.forEach(seg=>{
-    const tasaDiaria=Math.pow(1+seg.tasa/100,1/365)-1;
-    valor=valor*Math.pow(1+tasaDiaria,seg.dias);
+// Reconstruye cuánto saldo de encargos había en una cajita a una fecha dada (solo contando
+// movimientos del encargo hasta esa fecha inclusive) — a diferencia de
+// _saldoEncargosEnCajita()/_saldoEncargosEnCuenta(), que siempre da el saldo de HOY.
+// Se usa en calcC() para no darle intereses retroactivos a plata de un encargo que
+// todavía no había entrado en tramos anteriores del periodo (ver CHANGELOG.md#cuentas).
+function _saldoEncargosEnCajitaEnFecha(cajitaId,fechaStr){
+  const cuentaKey='cajita:'+cajitaId;
+  let total=0;
+  (S.encargos||[]).forEach(enc=>{
+    const map={};
+    if((enc.saldoInicial||0)>0){
+      const k=enc.cuentaInicial||'__sin__';
+      map[k]=(map[k]||0)+(enc.saldoInicial||0);
+    }
+    (enc.movimientos||[]).forEach(m=>{
+      if((m.fecha||'')>fechaStr)return; // ignora movimientos posteriores a la fecha pedida
+      const k=m.cuenta||'__sin__';
+      if(m.tipo==='entrada')map[k]=(map[k]||0)+(m.monto||0);
+      else map[k]=(map[k]||0)-(m.monto||0);
+    });
+    const v=map[cuentaKey]||0;
+    if(v>0)total+=v;
   });
-  const val=valor-saldoEncargos;
+  return total;
+}
+
+// Fechas (dentro de (desde, hasta]) en que algún movimiento de encargo tocó esta cajita —
+// puntos donde el saldo de encargos "vigente" cambia, para partir el cálculo de interés ahí.
+function _fechasCambioEncargoEnCajita(cajitaId,desdeStr,hastaStr){
+  const cuentaKey='cajita:'+cajitaId;
+  const fechas=new Set();
+  (S.encargos||[]).forEach(enc=>{
+    (enc.movimientos||[]).forEach(m=>{
+      if((m.cuenta||'')===cuentaKey&&m.fecha>desdeStr&&m.fecha<=hastaStr)fechas.add(m.fecha);
+    });
+  });
+  return fechas;
+}
+
+function calcC(c){
+  // Interés diario compuesto sobre el saldo total físico en la cajita (propio + lo que haya
+  // de encargos guardado ahí — Nu no distingue de quién es la plata al pagar interés; esos
+  // intereses son del dueño de la cajita, ver nota en core-state.js). c.saldo guarda solo la
+  // porción propia; el saldo de encargos se reconstruye aparte con _saldoEncargosEnCajita().
+  //
+  // IMPORTANTE: el cálculo se hace POR TRAMOS, partiendo tanto en cada cambio de tasa EA
+  // (ver S.historialTasasNu) como en cada fecha en que cambió el saldo de encargos dentro
+  // de esta cajita — así una plata de encargo que entra a mitad del periodo solo compone
+  // intereses desde el día en que realmente llegó, no desde la última vez que se
+  // materializó la cajita completa.
+  // Corregido (ver CHANGELOG.md#cuentas): antes se usaba el saldo de encargos DE HOY
+  // aplicado a TODO el periodo compuesto, dándole intereses retroactivos a cualquier plata
+  // de encargo recién depositada.
+  const saldoPropio=c.saldo||0;
+  const tasaHoy=_tasaVigenteEnFecha(hoy());
+  const saldoEncargosHoy=_saldoEncargosEnCajita(c.id);
+  if(!c.fecha||(!saldoPropio&&!saldoEncargosHoy))return{val:saldoPropio,ganado:0,dias:0,tasaDiaria:0,tasa:tasaHoy,saldoEncargos:saldoEncargosHoy};
+  const hoyStr=hoy();
+  const cambiosTasa=(S.historialTasasNu||[]).filter(h=>h.fecha>c.fecha&&h.fecha<=hoyStr).map(h=>h.fecha);
+  const cambiosEncargo=[..._fechasCambioEncargoEnCajita(c.id,c.fecha,hoyStr)];
+  const puntos=[...new Set([c.fecha,...cambiosTasa,...cambiosEncargo,hoyStr])].sort();
+  let saldoEncActual=_saldoEncargosEnCajitaEnFecha(c.id,c.fecha);
+  let valor=saldoPropio+saldoEncActual;
+  let diasTotal=0;
+  for(let i=0;i<puntos.length-1;i++){
+    const desde=puntos[i],hasta=puntos[i+1];
+    const dias=_diasEntreFechas(desde,hasta);
+    if(dias>0){
+      const tasaTramo=_tasaVigenteEnFecha(desde);
+      const tasaDiariaTramo=Math.pow(1+tasaTramo/100,1/365)-1;
+      valor=valor*Math.pow(1+tasaDiariaTramo,dias);
+      diasTotal+=dias;
+    }
+    // Al llegar a este punto, actualizar el saldo de encargos vigente desde acá en
+    // adelante (si el quiebre fue por un movimiento de encargo, no solo por tasa).
+    const nuevoSaldoEnc=_saldoEncargosEnCajitaEnFecha(c.id,hasta);
+    if(nuevoSaldoEnc!==saldoEncActual){
+      valor+=(nuevoSaldoEnc-saldoEncActual);
+      saldoEncActual=nuevoSaldoEnc;
+    }
+  }
+  const val=valor-saldoEncActual; // saldoEncActual ya quedó igual a saldoEncargosHoy
   const ganado=val-saldoPropio;
-  const dias=segmentos.reduce((a,s)=>a+s.dias,0);
-  const tasaActual=segmentos.length?segmentos[segmentos.length-1].tasa:tasaHoy;
-  const tasaDiaria=Math.pow(1+tasaActual/100,1/365)-1;
-  return{val,ganado,dias,tasaDiaria,tasa:tasaActual,saldoEncargos};
+  const tasaDiaria=Math.pow(1+tasaHoy/100,1/365)-1;
+  return{val,ganado,dias:diasTotal,tasaDiaria,tasa:tasaHoy,saldoEncargos:saldoEncActual};
 }
 
 // Materializa los intereses acumulados en el saldo (llama esto antes de depósitos/retiros)

@@ -41,6 +41,10 @@ db.doc(`usuarios/${_uidDePrueba}`).get()
   .then((snap) => console.log(`[diagnóstico] doc usuarios/${_uidDePrueba} existe:`, snap.exists))
   .catch((e) => console.error('[diagnóstico] error al leer doc directo:', e));
 
+db.listCollections()
+  .then((cols) => console.log('[diagnóstico] colecciones raíz que ve Firestore:', cols.map((c) => c.id)))
+  .catch((e) => console.error('[diagnóstico] error al listar colecciones:', e));
+
 // Colombia no tiene horario de verano (offset fijo UTC-5), pero se usa
 // Intl.DateTimeFormat en vez de hardcodear el offset por las dudas.
 function hoyBogota() {

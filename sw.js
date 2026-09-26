@@ -15,16 +15,16 @@ const APP_SHELL = [
 // index.html (importScripts() cae bajo worker-src, no bajo script-src) y
 // https://fcm.googleapis.com, https://fcmregistrations.googleapis.com,
 // https://firebaseinstallations.googleapis.com a connect-src.
-importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/11.1.0/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-  apiKey: "AIzaSyBNGhKxrd6nuUXamRytHEgrv3ggrafr4HU",
-  authDomain: "mis-finanzas-z.firebaseapp.com",
-  projectId: "mis-finanzas-z",
-  storageBucket: "mis-finanzas-z.firebasestorage.app",
-  messagingSenderId: "469399538471",
-  appId: "1:469399538471:web:adaf95bc43b3355b087702"
+  apiKey: 'AIzaSyBNGhKxrd6nuUXamRytHEgrv3ggrafr4HU',
+  authDomain: 'mis-finanzas-z.firebaseapp.com',
+  projectId: 'mis-finanzas-z',
+  storageBucket: 'mis-finanzas-z.firebasestorage.app',
+  messagingSenderId: '469399538471',
+  appId: '1:469399538471:web:adaf95bc43b3355b087702',
 });
 
 const _messaging = firebase.messaging();

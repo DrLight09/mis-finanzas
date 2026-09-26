@@ -68,7 +68,7 @@
       manifest-src 'self' data:;
       connect-src 'self' https://www.gstatic.com https://*.googleapis.com https://firestore.googleapis.com wss://*.firebaseio.com https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://apis.google.com;
       frame-src https://*.firebaseapp.com https://accounts.google.com;
-      worker-src 'self';
+      worker-src 'self' https://www.gstatic.com;
       base-uri 'self';
       form-action 'self';
       object-src 'none';
@@ -2551,6 +2551,18 @@
                 <div class="cfg-toggle-label">Personas</div>
                 <div class="cfg-toggle-sub" id="cfg-personas-sub">Perfiles y
                   actividad financiera</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="var(--text3)" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round"><polyline
+                  points="9 18 15 12 9 6" /></svg>
+            </div>
+            <div class="cfg-toggle" id="cfg-notificaciones-row"
+              style="cursor:pointer;"
+              data-action="notificaciones:activar">
+              <div class="cfg-toggle-info">
+                <div class="cfg-toggle-label">Notificaciones</div>
+                <div class="cfg-toggle-sub">Avisos de Spotify, CDT y encargos por vencer</div>
               </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="var(--text3)" stroke-width="2" stroke-linecap="round"
@@ -5646,6 +5658,20 @@
      CHANGELOG.md#encargos y CHANGELOG.md#spotify.
      ═══════════════════════════════════════════════════════════════ -->
 <script src="js/core/personas-init.js" defer></script>
+
+    <!-- Notificaciones push (FCM) — ver docs de la sesión de septiembre 2026.
+         SDK "compat" cargado aparte de firebase-init.js/firebase-sync.js
+         (que usan el SDK modular) a propósito: notificaciones-push.js
+         inicializa una segunda instancia de la app bajo el nombre
+         'messaging' para no interferir con la instancia modular ya en uso.
+         defer + este orden garantiza que firebase-app-compat.js y
+         firebase-messaging-compat.js ya corrieron antes que
+         notificaciones-push.js (los defer se ejecutan en orden de
+         documento). Requiere que Events (js/core/events.js, ya cargado
+         más arriba) exista al momento de correr. -->
+    <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-messaging-compat.js" defer></script>
+    <script src="js/core/notificaciones-push.js" defer></script>
 
     <!-- ===== MÓDULO ALCANCÍA OCULTA =====
          Migrado a js/modules/alcancia.js — ver auditoria-tecnica.md,

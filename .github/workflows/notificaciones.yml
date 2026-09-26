@@ -1,0 +1,33 @@
+name: Notificaciones diarias
+
+# Corre todos los días a las 17:00 UTC = 12:00 mediodía en Colombia
+# (UTC-5, sin horario de verano, así que no hay que ajustar por
+# temporada). workflow_dispatch además permite dispararlo a mano desde
+# la pestaña "Actions" del repo, sin esperar al horario — útil para
+# probar que todo funciona.
+on:
+  schedule:
+    - cron: '0 17 * * *'
+  workflow_dispatch:
+
+jobs:
+  notificar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repo
+        uses: actions/checkout@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependencias
+        working-directory: scripts/notificaciones
+        run: npm install
+
+      - name: Correr el chequeo de notificaciones
+        working-directory: scripts/notificaciones
+        env:
+          FIREBASE_SERVICE_ACCOUNT_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        run: node run.js

@@ -1,10 +1,50 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v6';
+const VERSION = 'mis-finanzas-v7';
 
 const APP_SHELL = [
   '/mis-finanzas/',
   '/mis-finanzas/index.html'
 ];
+
+// ── Firebase Cloud Messaging (notificaciones en segundo plano) ─────────────
+// Mismo config que en js/core/notificaciones-push.js. Tiene que repetirse
+// acá porque el Service Worker corre en su propio contexto global, sin
+// acceso a `window` ni a lo que carga firebase-init.js en la página — no
+// hay forma de compartir el objeto entre los dos archivos.
+// Requiere sumar https://www.gstatic.com a worker-src en la CSP de
+// index.html (importScripts() cae bajo worker-src, no bajo script-src) y
+// https://fcm.googleapis.com, https://fcmregistrations.googleapis.com,
+// https://firebaseinstallations.googleapis.com a connect-src.
+importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
+
+// TODO: pegar el mismo objeto de config que en firebase-init.js /
+// notificaciones-push.js.
+firebase.initializeApp({
+  apiKey: 'TODO',
+  authDomain: 'TODO.firebaseapp.com',
+  projectId: 'TODO',
+  storageBucket: 'TODO.appspot.com',
+  messagingSenderId: 'TODO',
+  appId: 'TODO',
+});
+
+const _messaging = firebase.messaging();
+_messaging.onBackgroundMessage((payload) => {
+  const { title, body } = payload.notification || {};
+  const icon = payload.webpush && payload.webpush.notification && payload.webpush.notification.icon;
+  self.registration.showNotification(title || 'Mis Finanzas', {
+    body: body || '',
+    icon,
+    data: { url: (payload.fcmOptions && payload.fcmOptions.link) || '/mis-finanzas/' },
+  });
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || '/mis-finanzas/';
+  e.waitUntil(clients.openWindow(url));
+});
 
 const CACHE_FONTS = [
   'https://fonts.googleapis.com',

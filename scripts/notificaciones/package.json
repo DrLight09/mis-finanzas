@@ -1,0 +1,8 @@
+{
+  "name": "mis-finanzas-notificaciones-runner",
+  "private": true,
+  "description": "Script standalone que corre desde GitHub Actions (ver .github/workflows/notificaciones.yml) para chequear vencimientos y mandar el push por FCM. No es parte del deploy de GitHub Pages.",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

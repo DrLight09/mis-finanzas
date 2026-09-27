@@ -644,10 +644,19 @@ import { waitFor } from './wait-for-module.js';
   };
 
   // ── Cerrar sesión ─────────────────────────────────────────────────────────
+  // FIX (2026-09-27): entre confirmar y el location.reload() final había un
+  // guardado a Firestore + el propio signOut(), todo async — nada bloqueaba
+  // la app en esa ventana, así que se podía seguir navegando/editando datos
+  // mientras tanto (efecto observado: "me puedo seguir moviendo unos
+  // segundos"). Se reutiliza #fb-loading-screen (overlay de pantalla
+  // completa que ya usa el arranque de la app, ver index.html) para
+  // bloquear cualquier interacción hasta que la sesión termine de cerrarse.
   window._fbSignOut = async function() {
     const ok = await dialogo('Cerrar sesión', '¿Seguro que quieres salir? Tus datos quedan guardados en la nube.', 'Cerrar sesión', true);
     if(!ok) return;
     if(!window._fb) return;
+    const _overlay = document.getElementById('fb-loading-screen');
+    if(_overlay) _overlay.style.display = 'flex';
     // Cancelar cualquier guardado pendiente antes de salir para evitar
     // que un timer de debounce guarde datos vacíos o corruptos post-signout.
     // Ambos timers se exponen en window para que este módulo pueda cancelarlos.
@@ -668,6 +677,7 @@ import { waitFor } from './wait-for-module.js';
         console.warn('Error en guardado final antes de cerrar sesión:', e);
         // No seguir con el cierre de sesión: si este guardado no llegó a Firestore,
         // cerrar sesión igual arriesga perder en silencio el último cambio financiero.
+        if(_overlay) _overlay.style.display = 'none'; // no dejar la app bloqueada: no habrá reload en este camino
         if(typeof toast === 'function') toast('No se pudo guardar el último cambio en la nube. Revisa tu conexión e intenta cerrar sesión de nuevo.', 'err', 6000);
         return;
       }
@@ -701,6 +711,14 @@ import { waitFor } from './wait-for-module.js';
     setTimeout(() => input.focus(), 50);
   };
   window._cerrarEliminarCuenta = function() {
+    // FIX (2026-09-27): mientras _fbDeleteAccount está en curso, esta misma
+    // función se dispara al tocar "Cancelar" o al hacer clic fuera del
+    // overlay (ver _wireDeleteAccountOverlay) — cerraba el overlay y dejaba
+    // seguir navegando mientras el borrado seguía en Firestore en segundo
+    // plano. El botón "Confirmar" ya se autobloquea vía Events.dispatch
+    // (js/core/events.js) por ser un handler async, pero eso no cubre otros
+    // elementos como este.
+    if(window._fbDeleteAccountEnCurso) return;
     document.getElementById('del-account-overlay').classList.remove('open');
   };
 
@@ -760,6 +778,11 @@ import { waitFor } from './wait-for-module.js';
     if(input.value.trim() !== 'ELIMINAR') return;
     if(!window._fb || !window._fbUser) return;
 
+    // FIX (2026-09-27): antes se podía cancelar el overlay (botón "Cancelar"
+    // o clic afuera) mientras el borrado seguía en curso en segundo plano —
+    // ver el guard equivalente en _cerrarEliminarCuenta más arriba.
+    window._fbDeleteAccountEnCurso = true;
+
     const btn = document.getElementById('del-account-confirm');
     const textoOriginal = btn.textContent;
     btn.disabled = true;
@@ -793,12 +816,14 @@ import { waitFor } from './wait-for-module.js';
           await deleteDoc(doc(db, 'usuarios', uid, 'data', 'finanzas'));
           await deleteUser(auth.currentUser);
         } catch(e2) {
+          window._fbDeleteAccountEnCurso = false;
           btn.disabled = false;
           btn.textContent = textoOriginal;
           if(typeof toast === 'function') toast('No se pudo eliminar la cuenta: ' + (e2.message || e2), 'err');
           return;
         }
       } else {
+        window._fbDeleteAccountEnCurso = false;
         btn.disabled = false;
         btn.textContent = textoOriginal;
         if(typeof toast === 'function') toast('No se pudo eliminar la cuenta: ' + (e.message || e), 'err');

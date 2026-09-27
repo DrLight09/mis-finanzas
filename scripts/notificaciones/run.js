@@ -42,6 +42,10 @@ function hoyBogota() {
   return fmt.format(new Date()); // formato 'en-CA' da YYYY-MM-DD directo
 }
 
+function esperar(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function main() {
   const hoyStr = hoyBogota();
   console.log(`Chequeo de notificaciones — hoy=${hoyStr}`);
@@ -78,34 +82,46 @@ async function main() {
         continue;
       }
 
-      const hayRojo = items.some((i) => i.tipo === 'red');
-      const title = hayRojo ? '⚠️ Mis Finanzas' : 'Mis Finanzas';
-      const body = items.length === 1 ? items[0].texto : `${items.length} cosas necesitan tu atención`;
+      console.log(`uid=${uid}: ${items.length} item(s), mandando uno por uno...`);
+      const tokensInvalidos = new Set();
 
-      const message = {
-        tokens,
-        notification: { title, body },
-        webpush: {
-          notification: {
-            body: items.map((i) => i.texto).join('\n'),
-            icon: '/mis-finanzas/icons/icon-192.png', // ajustar si tu ícono vive en otra ruta
+      // Un push POR ITEM (no uno solo con todo junto), sin `tag` — así el
+      // navegador los apila como notificaciones separadas en vez de
+      // reemplazarse entre sí. Pausa aleatoria entre cada uno para que no
+      // lleguen los tres en el mismo instante exacto.
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const title = item.tipo === 'red' ? '⚠️ Mis Finanzas' : 'Mis Finanzas';
+
+        const message = {
+          tokens,
+          notification: { title, body: item.texto },
+          webpush: {
+            notification: {
+              icon: 'https://drlight09.github.io/mis-finanzas/icons/icon-192.png',
+            },
+            fcmOptions: { link: '/mis-finanzas/' },
           },
-          fcmOptions: { link: '/mis-finanzas/' },
-        },
-      };
+        };
 
-      const resp = await admin.messaging().sendEachForMulticast(message);
-      console.log(`uid=${uid}: ${items.length} item(s), ${resp.successCount}/${tokens.length} tokens ok`);
+        const resp = await admin.messaging().sendEachForMulticast(message);
+        console.log(`  [${i + 1}/${items.length}] "${item.texto}" — ${resp.successCount}/${tokens.length} tokens ok`);
+
+        resp.responses.forEach((r, j) => {
+          const code = r.error && r.error.code;
+          if (!r.success && (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token')) {
+            tokensInvalidos.add(tokens[j]);
+          }
+        });
+
+        if (i < items.length - 1) {
+          const pausaMs = 5000 + Math.floor(Math.random() * 25000); // 5-30s
+          await esperar(pausaMs);
+        }
+      }
 
       // Limpieza de tokens muertos, igual que en la versión Cloud Function.
-      const tokensInvalidos = [];
-      resp.responses.forEach((r, i) => {
-        const code = r.error && r.error.code;
-        if (!r.success && (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token')) {
-          tokensInvalidos.push(tokens[i]);
-        }
-      });
-      if (tokensInvalidos.length) {
+      if (tokensInvalidos.size) {
         await db
           .collection('usuarios')
           .doc(uid)

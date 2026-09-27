@@ -29,8 +29,7 @@ firebase.initializeApp({
 
 const _messaging = firebase.messaging();
 _messaging.onBackgroundMessage((payload) => {
-  const { title, body } = payload.notification || {};
-  const icon = payload.webpush && payload.webpush.notification && payload.webpush.notification.icon;
+  const { title, body, icon } = payload.notification || {};
   self.registration.showNotification(title || 'Mis Finanzas', {
     body: body || '',
     icon,

@@ -300,6 +300,7 @@ function getFuentesSinTC(){
 
 function fuenteLabel(val){
   if(!val)return'Sin especificar';
+  if(val==='alcancia')return'Alcancía';
   if(val==='ganancia')return'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no desembolsada)';
   if(val==='nequi')return'Nequi';
   if(val==='efectivo')return'Efectivo';

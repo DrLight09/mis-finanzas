@@ -104,6 +104,10 @@
     } else if (r.navTipo === 'spotify') {
       // Ir directo a la pantalla real de Spotify
       showScreen('spotify');
+    } else if (r.navTipo === 'alcancia') {
+      // Ir directo a la pantalla de Alcancía (sin detalle de fila puntual: el
+      // monto oculto no tiene una vista individual a la que navegar)
+      showScreen('alcancia');
     } else if (r.navTipo === 'movimiento_general') {
       // Movimiento de cuenta personalizada o general → ir a cuentas
       if (r.navId) {
@@ -135,6 +139,7 @@
       spotify: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M8 11.8c2.5-1.1 5.5-1.1 8 0"/><path d="M7 15c2.9-1.2 6.1-1.2 9 0"/><path d="M9 8.6c2.1-.9 4.9-.9 7 0"/></svg>`,
       movimiento_general: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
       'mi-deuda': `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+      alcancia: `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
     };
     return icons[navTipo] || `<svg viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
   }
@@ -152,13 +157,15 @@
     const _iconoOculto = '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="5" viewBox="0 0 26 5" fill="currentColor" role="img" aria-label="Monto oculto" style="display:inline-block;vertical-align:middle"><circle cx="1.6" cy="2.5" r="1.6"/><circle cx="9.2" cy="2.5" r="1.6"/><circle cx="16.8" cy="2.5" r="1.6"/><circle cx="24.4" cy="2.5" r="1.6"/></svg>';
 
     // Gastos variables
-    // Depósitos a la alcancía (`_esAlcancia`): el resultado aparece pero con el monto oculto — sin esto,
-    // buscar "alcancía" o "Ahorro" listaba cada depósito con su monto exacto (ver alcancia.md §3).
+    // Depósitos a la alcancía (`_esAlcancia`) — desde el 2026-09-27 los depósitos con cuenta de
+    // origen ya no se guardan acá (ver bloque de S.transferencias más abajo); esta rama queda
+    // solo como red de seguridad por si sobrevive algún registro viejo sin migrar.
     (S.gastosVar||[]).forEach(g => {
       if((g.desc||'').toLowerCase().includes(q) || (g.cat||'').toLowerCase().includes(q) || (g.nota||'').toLowerCase().includes(q)){
         const montoTxt = g._esAlcancia ? '' : (window.fmt?window.fmt(g.monto):'');
         const restoMeta = ' · ' + (g.cat||'') + ' · ' + (g.fecha||'');
-        resultados.push({ tipo:'Gasto variable', desc:g.desc||'Sin descripción', meta: montoTxt + restoMeta, metaHtml: g._esAlcancia ? _iconoOculto + escHtml(restoMeta) : null, color:'var(--red)', navTipo:'gastos', navId:null });
+        const tipoResultado = g._esAlcancia ? (g.cat||'Ahorro') : 'Gasto variable';
+        resultados.push({ tipo:tipoResultado, desc:g.desc||'Sin descripción', meta: montoTxt + restoMeta, metaHtml: g._esAlcancia ? _iconoOculto + escHtml(restoMeta) : null, color: g._esAlcancia ? 'var(--accent)' : 'var(--red)', navTipo:'gastos', navId:null });
       }
     });
 
@@ -275,6 +282,17 @@
         const montoTxt = m._esAlcanciaIngreso ? '' : (window.fmt?window.fmt(m.monto):'');
         const restoMeta = (m.fecha?' · '+m.fecha:'')+fuente;
         resultados.push({ tipo:'Movimiento', desc:m.desc||m.nota||'Movimiento', meta:montoTxt+restoMeta, metaHtml: m._esAlcanciaIngreso ? _iconoOculto + escHtml(restoMeta) : null, color:'var(--accent)', navTipo:m.fuente==='nequi'?'nequi':m.fuente==='efectivo'?'efectivo':'movimiento_general', navId:m.fuente||null });
+      }
+    });
+
+    // Depósitos a la alcancía desde una cuenta real (S.transferencias, destino:'alcancia').
+    // Desde el 2026-09-27 viven acá en vez de en S.gastosVar (ver CHANGELOG.md#alcancia) —
+    // mismo criterio de monto oculto que ya aplicaba antes del cambio (ver alcancia.md §3).
+    (S.transferencias||[]).forEach(t => {
+      if(t.destino !== 'alcancia') return;
+      if(((t.desc||'')+' '+(t.nota||'')).toLowerCase().includes(q)){
+        const restoMeta = ' · Ahorro · ' + (t.fecha||'');
+        resultados.push({ tipo:'Ahorro', desc:t.desc||'Depósito en alcancía', meta:restoMeta, metaHtml: _iconoOculto + escHtml(restoMeta), color:'var(--accent)', navTipo:'alcancia', navId:null });
       }
     });
 

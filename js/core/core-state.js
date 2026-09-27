@@ -712,7 +712,13 @@ function snapshotPatrimonio(){
   const hoyStr=hoy();
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
   const val=calcPatrimonioTotal();
-  if(val==null||isNaN(val))return;
+  if(val==null||isNaN(val)){
+    // Mismo motivo que el guard de refresh() más abajo: antes esto fallaba
+    // en silencio total (ni siquiera un $0 en pantalla, solo un snapshot que
+    // nunca se grababa). Ver CHANGELOG.md#patrimonio-y-cálculos-globales.
+    console.error('[snapshotPatrimonio] calcPatrimonioTotal() dio', val, '— no se graba el punto de hoy. Revisar fechas corruptas u otra fuente de NaN.');
+    return;
+  }
   // Alcancía: se resta para el valor "visible" del historial/gráfica de Análisis Financiero.
   // El total real (val) sí la incluye y es el que usan el health score y la proyección,
   // pero mostrar la serie cruda en la gráfica revelaría los depósitos día a día —
@@ -893,6 +899,35 @@ document.getElementById('dialog-overlay').addEventListener('click',function(e){
   if(e.target===this) _closeDialog(false);
 });
 
+// Convierte un string de fecha 'YYYY-M-D' o 'YYYY-MM-DD' (con o sin ceros a
+// la izquierda en mes/día) en un Date válido a medianoche local, construido
+// por componentes numéricos en vez de confiar en el parser de strings de JS.
+//
+// Blindaje ante un bug real (2026-09-26): `new Date(fechaStr+'T00:00:00')` —
+// patrón usado en 14 sitios entre este archivo y cuentas.js — da `Invalid
+// Date` si mes o día no tienen 2 dígitos (ej. '2026-9-26' en vez de
+// '2026-09-26'). Sin el sufijo de hora el parser de JS es permisivo, pero
+// CON él exige ISO 8601 estricto. Ese `Invalid Date` se propaga como `NaN`
+// en cualquier cálculo downstream (calcCDT, nivelAntiguedadMovimiento, etc.)
+// sin tirar ningún error — y `fmt()`/`fmtNoCents()` lo muestran como "$0"
+// (`NaN||0`), indistinguible de un valor real de cero. Así se vio: un CDT
+// con `vence` sin padear dejó `calcCDT().val` en NaN, que subió a
+// `_patrimonioVisible` en refresh() y mostró "Patrimonio visible $0" y
+// "CDTs Nu $0" con datos reales de sobra en las demás cuentas. Ver
+// CHANGELOG.md#patrimonio-y-cálculos-globales.
+//
+// Por la UI normal esto no puede pasar (los `<input type="date">` siempre
+// devuelven YYYY-MM-DD con ceros a la izquierda) — apareció por una edición
+// manual de datos fuera de la app. Este helper cierra la puerta para
+// cualquier otra vía futura (import, script, edición directa en Firebase).
+function _fechaSafe(fechaStr){
+  if(!fechaStr) return new Date(NaN);
+  const partes=String(fechaStr).split('-').map(Number);
+  if(partes.length!==3||partes.some(isNaN)) return new Date(NaN);
+  const [anio,mes,dia]=partes;
+  return new Date(anio,mes-1,dia); // hora local 00:00:00, sin pasar por el parser de strings ISO
+}
+
 /* ---- PROTECCIÓN POR ANTIGÜEDAD DE MOVIMIENTOS ---- */
 // Ver docs/proteccion-antiguedad-movimientos.md para el detalle completo.
 // Un movimiento viejo ya se mezcló lógicamente con todo lo que pasó en su
@@ -919,7 +954,7 @@ document.getElementById('dialog-overlay').addEventListener('click',function(e){
 function nivelAntiguedadMovimiento(fecha, opsPosteriores, modulo){
   const cfg=S.config.proteccionAntiguedad;
   const modCfg=cfg[modulo]||{};
-  const dias=Math.floor((Date.now()-new Date(fecha+'T00:00:00').getTime())/86400000);
+  const dias=Math.floor((Date.now()-_fechaSafe(fecha).getTime())/86400000);
   const ops=opsPosteriores||0;
   if(dias>cfg.diasBloqueo || (modCfg.opsBloqueo!=null && ops>=modCfg.opsBloqueo)) return 'bloqueado';
   if(dias>cfg.diasAviso || (modCfg.opsAviso!=null && ops>=modCfg.opsAviso)) return 'viejo';
@@ -1107,6 +1142,14 @@ function refresh(){
   // Alcancía: el patrimonio real la incluye, pero el hero la oculta para mantener la sorpresa
   const _alcSaldo = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
   const _patrimonioVisible = disp+prest+cdts-deudaTCTotal-_cpAjenoHero; // sin alcancía
+  // Red de seguridad (2026-09-26): fmt()/fmtNoCents() hacen `n||0`, así que un
+  // NaN acá se mostraría como "$0" silencioso, indistinguible de un patrimonio
+  // real en cero — exactamente lo que pasó con el bug de fecha sin padear en
+  // un CDT (ver _fechaSafe() más arriba). Esto no arregla la causa, pero deja
+  // rastro en consola para no perder otra sesión entera diagnosticando a ciegas.
+  if(isNaN(_patrimonioVisible)){
+    console.error('[refresh] _patrimonioVisible dio NaN — revisar fechas corruptas u otra fuente de NaN en cajitas/CDTs/deudores/tarjetas', {disp,prest,cdts,deudaTCTotal,_cpAjenoHero});
+  }
   document.getElementById('heroTotal').textContent=fmt(_patrimonioVisible);
   // Indicador de alcancía en el hero — ícono chico junto al label, no un
   // bloque aparte (docs/auditoria-tecnica.md, "Reservar espacio para

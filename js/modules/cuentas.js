@@ -1931,8 +1931,23 @@ function _getMovimientosCuentaCustom(fuente) {
 
   // 5. Transferencias entre cuentas
   (S.transferencias || []).forEach(t => {
+    // Depósito a la alcancía desde esta cuenta (t.destino==='alcancia'): fila visible,
+    // monto oculto, sin "otras cuentas" (la alcancía no es una cuenta navegable) — mismo
+    // criterio que ya aplicaba a estos depósitos cuando vivían en S.gastosVar antes del
+    // 2026-09-27 (ver docs/alcancia.md §3 y CHANGELOG.md#alcancia).
+    const esAlc = t.destino === 'alcancia';
     if (t.origen === fuente) {
-      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia → ' + fuenteLabel(t.destino), monto: -t.monto, nota: t.nota, fuente, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino, _origen: 'Cuentas · Transferencia', _otrasCuentas: [{ fuente: t.destino, monto: +t.monto }] });
+      movs.push({
+        tipo: esAlc ? 'alcancia' : 'transferencia',
+        fecha: t.fecha,
+        desc: esAlc ? (t.desc || 'Depósito en alcancía') : 'Transferencia → ' + fuenteLabel(t.destino),
+        monto: -t.monto, nota: t.nota, fuente,
+        _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino,
+        _origen: esAlc ? 'Alcancía' : 'Cuentas · Transferencia',
+        _otrasCuentas: esAlc ? null : [{ fuente: t.destino, monto: +t.monto }],
+        _secundario: esAlc || !!t._secundario, _origenSeccion: esAlc ? 'Alcancía' : '',
+        _alcOculto: esAlc
+      });
     }
     if (t.destino === fuente) {
       movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia ← ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino, _origen: 'Cuentas · Transferencia', _otrasCuentas: [{ fuente: t.origen, monto: -t.monto }] });
@@ -2114,8 +2129,23 @@ function getMovimientosCuenta(tipo) {
     const estaEnDestino = tipo === 'nu'
       ? (t.destino && t.destino.startsWith('cajita:'))
       : t.destino === tipo;
+    // Depósito a la alcancía (t.destino==='alcancia'): nunca hace match con estaEnDestino
+    // (ninguna cuenta real se llama 'alcancia'), así que solo hace falta el caso "esta
+    // cuenta es el origen" — mismo criterio oculto que cuando vivía en S.gastosVar antes
+    // del 2026-09-27 (ver docs/alcancia.md §3 y CHANGELOG.md#alcancia).
+    const esAlc = t.destino === 'alcancia';
     if (estaEnOrigen) {
-      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia → ' + fuenteLabel(t.destino), monto: -t.monto, nota: t.nota, fuente: t.origen, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino, _origen: 'Cuentas · Transferencia', _otrasCuentas: [{fuente:t.destino, monto:+t.monto}] });
+      movs.push({
+        tipo: esAlc ? 'alcancia' : 'transferencia',
+        fecha: t.fecha,
+        desc: esAlc ? (t.desc || 'Depósito en alcancía') : 'Transferencia → ' + fuenteLabel(t.destino),
+        monto: -t.monto, nota: t.nota, fuente: t.origen,
+        _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino,
+        _origen: esAlc ? 'Alcancía' : 'Cuentas · Transferencia',
+        _otrasCuentas: esAlc ? null : [{fuente:t.destino, monto:+t.monto}],
+        _secundario: esAlc || !!t._secundario, _origenSeccion: esAlc ? 'Alcancía' : '',
+        _alcOculto: esAlc
+      });
     }
     if (estaEnDestino) {
       movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia ← ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente: t.destino, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino, _origen: 'Cuentas · Transferencia', _otrasCuentas: [{fuente:t.origen, monto:-t.monto}] });

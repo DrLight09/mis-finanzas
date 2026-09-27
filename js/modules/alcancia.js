@@ -945,21 +945,28 @@ window.alcanciaConfirmarDeposito = function(){
 
   partes.forEach(p => {
     if(p.origen === 'cuenta'){
-      window.S.gastosVar = window.S.gastosVar || [];
-      window.S.gastosVar.push({
+      // Cambio 2026-09-27: un depósito desde una cuenta real es un TRASLADO, no un
+      // gasto — antes vivía en S.gastosVar con _esAlcancia:true, obligando a que
+      // _esGastoVarNoReal()/busqueda-global.js/actividad_reciente.js lo excluyeran
+      // a mano en cada pantalla. Ahora se registra como transferencia (origen: la
+      // cuenta, destino: 'alcancia'), igual que cualquier traslado entre cuentas
+      // (ver docs/alcancia.md §4 y CHANGELOG.md#alcancia). El monto sigue oculto en
+      // todo lado — eso no cambia, solo cambia dónde vive el registro.
+      window.S.transferencias = window.S.transferencias || [];
+      window.S.transferencias.push({
         id: p.movId,
-        desc: descVal || 'Depósito en alcancía',
-        monto: p.monto,
         fecha,
-        cat: 'Ahorro',
-        fuente: p.fuente,
+        origen: p.fuente,
+        destino: 'alcancia',
+        monto: p.monto,
+        desc: descVal || 'Depósito en alcancía',
         nota: (unica ? 'Guardado en alcancía oculta' : 'Guardado en alcancía oculta (depósito dividido)') + (descVal ? ': ' + descVal : ''),
         _esAlcancia: true,
         _alcTipo: unica ? 'yo-cuenta' : 'multi',
         _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
       });
-      if(typeof sumarFuente === 'function') sumarFuente(p.fuente, -p.monto);
+      if(typeof descontarFuente === 'function') descontarFuente(p.fuente, p.monto);
     } else if(p.origen !== 'deuda'){
       const info = _ALC_INFO_ORIGEN[p.origen];
       window.S.movimientos = window.S.movimientos || [];
@@ -1389,14 +1396,25 @@ window.alcanciaEliminarDeposito = async function(movId){
   return _alcanciaEjecutarEliminarDeposito(a, idx, entry);
 };
 
+// Quita el movimiento espejo de un depósito con cuenta de origen. Vive en
+// S.transferencias desde el cambio de 2026-09-27 (ver CHANGELOG.md#alcancia);
+// también se filtra de S.gastosVar por si queda algún registro viejo sin
+// migrar de antes de ese cambio — no debería pasar tras la migración, pero
+// cubrir el caso no cuesta nada y evita un depósito "fantasma" imborrable.
+function _alcQuitarMirrorCuenta(id){
+  if(!id) return;
+  window.S.transferencias = (window.S.transferencias || []).filter(x => x.id !== id);
+  window.S.gastosVar = (window.S.gastosVar || []).filter(x => x.id !== id);
+}
+
 async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
   // Revertir el/los registro(s) reales según el tipo
   if(entry.tipo === 'yo-cuenta'){
-    window.S.gastosVar = (window.S.gastosVar || []).filter(x => x.id !== entry.id);
+    _alcQuitarMirrorCuenta(entry.id);
     if(entry.fuenteOrigen && typeof sumarFuente === 'function') sumarFuente(entry.fuenteOrigen, entry.monto);
   } else if(entry.tipo === 'split'){
     if(entry._splitFuente){
-      window.S.gastosVar = (window.S.gastosVar || []).filter(x => x.id !== entry.id);
+      _alcQuitarMirrorCuenta(entry.id);
       if(typeof sumarFuente === 'function') sumarFuente(entry._splitFuente, entry._splitYo || 0);
     } else if(entry._splitYo > 0){
       window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== entry.id);
@@ -1408,7 +1426,7 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
     // Varios orígenes: cada parte tiene su propio movimiento espejo (partes[].movId).
     (entry.partes || []).forEach(pt => {
       if(pt.origen === 'cuenta'){
-        window.S.gastosVar = (window.S.gastosVar || []).filter(x => x.id !== pt.movId);
+        _alcQuitarMirrorCuenta(pt.movId);
         if(pt.fuente && typeof sumarFuente === 'function') sumarFuente(pt.fuente, pt.monto);
       } else {
         window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== pt.movId);

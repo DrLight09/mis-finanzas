@@ -250,9 +250,21 @@ function toggleModulo(nombre){
 }
 
 /* ---- BORRAR TODOS LOS DATOS ---- */
+// FIX (2026-09-27): nada bloqueaba la app mientras esta función corría —
+// solo el diálogo de confirmación, que se cierra apenas se confirma. En esa
+// ventana (el setDoc a Firestore + el reload) se podía seguir navegando y,
+// en particular, tocar "Cerrar sesión": el guardado final de _fbSignOut usa
+// window.S (el estado en memoria, todavía completo — borrarTodo nunca lo
+// vacía, solo escribe {} directo a Firestore) y podía sobrescribir el
+// borrado recién hecho con los datos viejos. Se reutiliza el overlay
+// #fb-loading-screen (ya cubre toda la pantalla, z-index 99999, ver
+// index.html) para bloquear cualquier otra acción hasta el location.reload()
+// final — mismo criterio ahora en _fbSignOut/_fbDeleteAccount (firebase-sync.js).
 async function borrarTodo(){
   const ok=await dialogo('Borrar todos los datos','¿Seguro que quieres borrar TODO? Esta acción no se puede deshacer y perderás toda tu información financiera.','Borrar todo',true);
   if(!ok)return;
+  const _overlay = document.getElementById('fb-loading-screen');
+  if(_overlay) _overlay.style.display = 'flex';
   // Registrar en historial antes de borrar todo (quedará como primer evento visible si el historial no se borra)
   // Luego limpiar también el historial local para que no queden registros huérfanos
   localStorage.removeItem('mf_historial_v1');

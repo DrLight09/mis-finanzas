@@ -1,5 +1,5 @@
 /* ================================================================
-   functions/checks.js
+   scripts/notificaciones/checks.js
    ================================================================
    Chequeos de "vencimiento" para las notificaciones push diarias.
 
@@ -107,6 +107,21 @@ function checkEncargos(S, hoyStr) {
   return items;
 }
 
+/* ---- Wrapped: aviso único cuando se abre la ventana de disponibilidad ----
+   La ventana real (1-31 de enero) vive en js/core/wrapped-gate.js
+   (WRAPPED_VENTANA_DIAS, ver wrapped.md §7decies). Acá solo avisamos el
+   PRIMER día de esa ventana — no los 31 — porque el objetivo es anunciar
+   "ya está disponible", no repetir un recordatorio todo el mes. No
+   depende de nada de S: es puramente la fecha. */
+function checkWrapped(S, hoyStr) {
+  const items = [];
+  const [, mes, dia] = hoyStr.split('-');
+  if (mes === '01' && dia === '01') {
+    items.push({ tipo: 'amber', texto: 'Tu resumen anual (Wrapped) ya está disponible 🎉' });
+  }
+  return items;
+}
+
 /**
  * Registro de chequeos activos. El orden acá define el orden en que
  * aparecen los avisos dentro de una misma notificación.
@@ -115,6 +130,7 @@ const CHECKS = [
   { id: 'spotify-vencido', run: checkSpotifyVencido },
   { id: 'cdt', run: checkCDT },
   { id: 'encargos', run: checkEncargos },
+  { id: 'wrapped', run: checkWrapped },
 ];
 
 function ejecutarChecks(S, hoyStr) {

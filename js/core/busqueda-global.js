@@ -148,7 +148,7 @@
   const _arrowRight = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="flex-shrink:0;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
 
   busquedaInput.addEventListener('input', function(){
-    const q = this.value.trim().toLowerCase();
+    const q = this.value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     if(q.length < 2){ busquedaResultados.innerHTML = '<div style="text-align:center;padding:24px 0;font-size:13px;color:var(--text3);">Escribe al menos 2 caracteres</div>'; return; }
     const S = window.S || {};
     const resultados = [];
@@ -161,7 +161,7 @@
     // origen ya no se guardan acá (ver bloque de S.transferencias más abajo); esta rama queda
     // solo como red de seguridad por si sobrevive algún registro viejo sin migrar.
     (S.gastosVar||[]).forEach(g => {
-      if((g.desc||'').toLowerCase().includes(q) || (g.cat||'').toLowerCase().includes(q) || (g.nota||'').toLowerCase().includes(q)){
+      if((g.desc||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q) || (g.cat||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q) || (g.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         const montoTxt = g._esAlcancia ? '' : (window.fmt?window.fmt(g.monto):'');
         const restoMeta = ' · ' + (g.cat||'') + ' · ' + (g.fecha||'');
         const tipoResultado = g._esAlcancia ? (g.cat||'Ahorro') : 'Gasto variable';
@@ -171,14 +171,14 @@
 
     // Gastos fijos
     (S.gastosFijos||[]).forEach(g => {
-      if((g.nombre||'').toLowerCase().includes(q)){
+      if((g.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         resultados.push({ tipo:'Gasto fijo', desc:g.nombre, meta: (window.fmt?window.fmt(g.monto):'') + ' / mes · ' + (g.cat||''), color:'var(--amber)', navTipo:'gastos', navId:null });
       }
     });
 
     // Préstamos / deudores
     (S.deudores||[]).forEach(d => {
-      if((d.nombre||'').toLowerCase().includes(q)){
+      if((d.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         const s = window.getDeudorSaldo ? window.getDeudorSaldo(d) : 0;
         resultados.push({ tipo:'Persona prestada', desc:d.nombre, meta: 'Pendiente: ' + (window.fmt?window.fmt(s):''), color:'var(--blue)', navTipo:'deudor', navId:d.id });
       }
@@ -186,7 +186,7 @@
 
     // Cajitas
     (S.cajitas||[]).forEach(c => {
-      if((c.nombre||'').toLowerCase().includes(q)){
+      if((c.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         const k = window.calcC ? window.calcC(c) : {val:c.saldo||0};
         resultados.push({ tipo:'Cajita Nu', desc:c.nombre, meta: window.fmt?window.fmt(k.val):'', color:'var(--nu-light)', navTipo:'cajita', navId:c.id });
       }
@@ -194,19 +194,19 @@
 
     // Cuentas personalizadas
     (S.cuentasPersonalizadas||[]).forEach(c => {
-      if((c.nombre||'').toLowerCase().includes(q)){
+      if((c.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         resultados.push({ tipo:'Cuenta', desc:c.nombre, meta: window.fmt?window.fmt(c.saldo||0):'', color:'var(--blue)', navTipo:'cuenta_custom', navId:c.id });
       }
     });
 
     // Encargos
     (S.encargos||[]).forEach(e => {
-      if((e.nombre||'').toLowerCase().includes(q) || (e.nota||'').toLowerCase().includes(q)){
+      if((e.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q) || (e.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         resultados.push({ tipo:'Encargo', desc:e.nombre||'Encargo', meta: window.fmt?window.fmt(e.saldo||0):'', color:'var(--blue)', navTipo:'encargo', navId:e.id });
       }
       // Movimientos de encargos
       (e.movimientos||[]).forEach(m => {
-        if((m.desc||'').toLowerCase().includes(q)||(m.nota||'').toLowerCase().includes(q)){
+        if((m.desc||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)||(m.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
           resultados.push({ tipo:'Mov. encargo', desc:(m.desc||e.nombre||'Encargo'), meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'var(--blue)', navTipo:'encargo_mov', navId:e.id });
         }
       });
@@ -215,13 +215,13 @@
     // Préstamos individuales
     (S.deudores||[]).forEach(d => {
       (d.abonos||[]).forEach(a => {
-        if((a.nota||'').toLowerCase().includes(q)){
+        if((a.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
           resultados.push({ tipo:'Abono · '+d.nombre, desc:a.nota||'Abono', meta:(window.fmt?window.fmt(a.monto):'')+(a.fecha?' · '+a.fecha:''), color:'var(--accent)', navTipo:'prestamo_mov', navId:d.id });
         }
       });
       // También buscar en movimientos unificados del deudor
       (d.movimientos||[]).forEach(m => {
-        if((m.concepto||m.nota||m.desc||'').toLowerCase().includes(q)){
+        if((m.concepto||m.nota||m.desc||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
           const already = resultados.find(r => r.navTipo==='prestamo_mov' && r.navId===d.id && r.desc===(m.concepto||m.nota||m.desc||''));
           if(!already) resultados.push({ tipo:'Mov. · '+d.nombre, desc:m.concepto||m.nota||m.desc||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'var(--blue)', navTipo:'prestamo_mov', navId:d.id });
         }
@@ -231,7 +231,7 @@
     // Movimientos cuentas personalizadas
     (S.cuentasPersonalizadas||[]).forEach(c => {
       (c.movimientos||[]).forEach(m => {
-        if((m.desc||m.nota||'').toLowerCase().includes(q)){
+        if((m.desc||m.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
           resultados.push({ tipo:'Mov. '+c.nombre, desc:m.desc||m.nota||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'var(--blue)', navTipo:'cuenta_custom', navId:c.id });
         }
       });
@@ -239,19 +239,19 @@
 
     // Personas
     (S.personas||[]).forEach(p => {
-      if((p.nombre||'').toLowerCase().includes(q)||(p.alias||'').toLowerCase().includes(q)||(p.notas||'').toLowerCase().includes(q)){
+      if((p.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)||(p.alias||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)||(p.notas||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         resultados.push({ tipo:'Persona', desc:p.nombre, meta:(p.alias?'@'+p.alias+' · ':'')+(p.notas||'Sin notas'), color:p.color||'var(--blue)', navTipo:'persona', navId:p.id });
       }
     });
 
     // Mis Deudas (Yo debo)
     (S.misDeudas||[]).forEach(d => {
-      if((d.nombre||'').toLowerCase().includes(q)){
+      if((d.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         const s = window.getMiDeudaSaldo ? window.getMiDeudaSaldo(d) : 0;
         resultados.push({ tipo:'Yo debo', desc:d.nombre, meta:'Pendiente: '+(window.fmt?window.fmt(s):''), color:'var(--red)', navTipo:'mi-deuda', navId:d.id });
       }
       (d.movimientos||[]).forEach(m => {
-        if((m.nota||'').toLowerCase().includes(q)){
+        if((m.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
           resultados.push({ tipo:'Mov. · '+d.nombre, desc:m.nota||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'var(--red)', navTipo:'mi-deuda', navId:d.id });
         }
       });
@@ -260,7 +260,7 @@
     // Spotify — personas del plan
     (S.spotifyPersonas||[]).forEach(p => {
       const nombreActual = (typeof spNombreDe==='function') ? spNombreDe(p) : p.nombre;
-      if((nombreActual||'').toLowerCase().includes(q)){
+      if((nombreActual||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         const estado = (typeof spPersonaPagadaVigente==='function') ? (spPersonaPagadaVigente(p)?'Al día':'Pendiente') : (p.pagado?'Al día':'Pendiente');
         resultados.push({ tipo:'Spotify', desc:nombreActual, meta:(window.fmt?window.fmt(p.monto||0):'')+' / mes · '+estado, color:'#1db954', navTipo:'spotify', navId:null });
       }
@@ -268,20 +268,33 @@
     // Spotify — historial de cobros y pagos
     (S.spotifyHistorial||[]).forEach(h => {
       const texto = h.tipo==='pago' ? 'Pago a Spotify' : 'Cobro de '+(h.nombre||'');
-      if(texto.toLowerCase().includes(q)||(h.nota||'').toLowerCase().includes(q)){
+      if(texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)||(h.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         resultados.push({ tipo:'Mov. Spotify', desc:texto, meta:(window.fmt?window.fmt(h.monto||0):'')+(h.fecha?' · '+h.fecha:''), color:'#1db954', navTipo:'spotify', navId:null });
       }
     });
 
     // Movimientos generales de cuentas (S.movimientos)
-    // Ingresos neto-cero de Alcancía (`_esAlcanciaIngreso`): monto oculto, igual que arriba. Los movimientos
-    // del destape (`_esAlcancia` en S.movimientos) NO se ocultan: el total ya se reveló al destapar.
+    // Ingresos neto-cero de Alcancía (`_esAlcanciaIngreso`): mismo criterio que los depósitos con cuenta
+    // de origen (arriba, S.transferencias) — se agrupan como "Ahorro", monto oculto, y navegan a la
+    // pantalla de Alcancía en vez de a "Efectivo" (la `fuente:'efectivo'` de estas entradas es un truco
+    // interno para que cuenten en ingresosMes — ver alcancia.js — no es dónde realmente "vive" el registro,
+    // así que ir ahí con "Ir ahí" sería engañoso: cuentas.js las salta del historial de Efectivo a propósito).
+    // Los movimientos del destape (`_esAlcancia` en S.movimientos) NO se ocultan: el total ya se reveló al destapar.
     (S.movimientos||[]).forEach(m => {
-      if((m.desc||m.nota||'').toLowerCase().includes(q)){
-        const fuente = m.fuente ? ' · '+m.fuente : '';
-        const montoTxt = m._esAlcanciaIngreso ? '' : (window.fmt?window.fmt(m.monto):'');
-        const restoMeta = (m.fecha?' · '+m.fecha:'')+fuente;
-        resultados.push({ tipo:'Movimiento', desc:m.desc||m.nota||'Movimiento', meta:montoTxt+restoMeta, metaHtml: m._esAlcanciaIngreso ? _iconoOculto + escHtml(restoMeta) : null, color:'var(--accent)', navTipo:m.fuente==='nequi'?'nequi':m.fuente==='efectivo'?'efectivo':'movimiento_general', navId:m.fuente||null });
+      if((m.desc||m.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
+        const esAlcIngreso = !!m._esAlcanciaIngreso;
+        const fuente = (!esAlcIngreso && m.fuente) ? ' · '+m.fuente : '';
+        const montoTxt = esAlcIngreso ? '' : (window.fmt?window.fmt(m.monto):'');
+        const restoMeta = esAlcIngreso ? ' · Ahorro · '+(m.fecha||'') : (m.fecha?' · '+m.fecha:'')+fuente;
+        resultados.push({
+          tipo: esAlcIngreso ? 'Ahorro' : 'Movimiento',
+          desc: m.desc||m.nota||'Movimiento',
+          meta: montoTxt+restoMeta,
+          metaHtml: esAlcIngreso ? _iconoOculto + escHtml(restoMeta) : null,
+          color:'var(--accent)',
+          navTipo: esAlcIngreso ? 'alcancia' : (m.fuente==='nequi'?'nequi':m.fuente==='efectivo'?'efectivo':'movimiento_general'),
+          navId: esAlcIngreso ? null : (m.fuente||null)
+        });
       }
     });
 
@@ -290,7 +303,7 @@
     // mismo criterio de monto oculto que ya aplicaba antes del cambio (ver alcancia.md §3).
     (S.transferencias||[]).forEach(t => {
       if(t.destino !== 'alcancia') return;
-      if(((t.desc||'')+' '+(t.nota||'')).toLowerCase().includes(q)){
+      if(((t.desc||'')+' '+(t.nota||'')).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         const restoMeta = ' · Ahorro · ' + (t.fecha||'');
         resultados.push({ tipo:'Ahorro', desc:t.desc||'Depósito en alcancía', meta:restoMeta, metaHtml: _iconoOculto + escHtml(restoMeta), color:'var(--accent)', navTipo:'alcancia', navId:null });
       }

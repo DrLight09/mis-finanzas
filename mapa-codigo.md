@@ -38,7 +38,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/wait-for.js` | de entrada (defer) | 1 | 0 |
 | `js/core/wrapped-gate.js` | de entrada (defer) | 8 | 1 |
 | `js/modules/actividad_reciente.js` | lazy — grupo `historial` | 0 | 0 |
-| `js/modules/alcancia.js` | lazy — grupo `alcancia` | 32 | 0 |
+| `js/modules/alcancia.js` | lazy — grupo `alcancia` | 33 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 8 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 10 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 117 | 1 |
@@ -247,7 +247,7 @@ Carga: lazy — grupo `historial`
 
 Carga: lazy — grupo `alcancia`
 
-**Funciones:** `_actualizarDiferenciaHint`, `_alcanciaEjecutarEliminarDeposito`, `_alcanciaInit`, `_alcanciaToggleDesglose`, `_alcDecode`, `_alcDesgloseHtml`, `_alcDeudorSaldoHintActualizar`, `_alcDeudorSelActualizar`, `_alcEncode`, `_alcFiltrarFuentesPorSaldo`, `_alcInitMoneyInput`, `_alcMejorCiclo`, `_alcNombreFuente`, `_alcOrigenActualizar`, `_alcOrigenOptsHtml`, `_alcParteDesdeValor`, `_alcRachaAhorro`, `_alcSplitPreview`, `_alcWrappedBarrasSvg`, `_alcWrappedProgresoHtml`, `_diasDesde`, `_fmtTiempo`, `_getA`, `_getMoneyVal`, `_getSaldoOfuscado`, `_initA`, `_inyectarAlcanciaSheets`, `_inyectarMasMenuItem`, `_saldoRegistrado`, `_setSaldoOfuscado`, `_sumarASaldo`, `closeSwipeSheet`
+**Funciones:** `_actualizarDiferenciaHint`, `_alcanciaEjecutarEliminarDeposito`, `_alcanciaInit`, `_alcanciaToggleDesglose`, `_alcDecode`, `_alcDesgloseHtml`, `_alcDeudorSaldoHintActualizar`, `_alcDeudorSelActualizar`, `_alcEncode`, `_alcFiltrarFuentesPorSaldo`, `_alcInitMoneyInput`, `_alcMejorCiclo`, `_alcNombreFuente`, `_alcOrigenActualizar`, `_alcOrigenOptsHtml`, `_alcParteDesdeValor`, `_alcQuitarMirrorCuenta`, `_alcRachaAhorro`, `_alcSplitPreview`, `_alcWrappedBarrasSvg`, `_alcWrappedProgresoHtml`, `_diasDesde`, `_fmtTiempo`, `_getA`, `_getMoneyVal`, `_getSaldoOfuscado`, `_initA`, `_inyectarAlcanciaSheets`, `_inyectarMasMenuItem`, `_saldoRegistrado`, `_setSaldoOfuscado`, `_sumarASaldo`, `closeSwipeSheet`
 
 **Asigna a `window`:** `_alcanciaQuitarPorCobroDeuda`, `alcanciaAgregarOrigen`, `alcanciaConfirmarDeposito`, `alcanciaConfirmarDestapar`, `alcanciaEliminarDeposito`, `alcanciaIniciarNueva`, `alcanciaToggleDividir`, `alcanciaToggleMontoDeposito`, `renderAlcancia`
 
@@ -402,6 +402,7 @@ Ninguno.
 | `_alcOrigenActualizar` | `js/modules/alcancia.js` |
 | `_alcOrigenOptsHtml` | `js/modules/alcancia.js` |
 | `_alcParteDesdeValor` | `js/modules/alcancia.js` |
+| `_alcQuitarMirrorCuenta` | `js/modules/alcancia.js` |
 | `_alcRachaAhorro` | `js/modules/alcancia.js` |
 | `_alcSplitPreview` | `js/modules/alcancia.js` |
 | `_alcWrappedBarrasSvg` | `js/modules/alcancia.js` |

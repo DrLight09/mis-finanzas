@@ -606,8 +606,19 @@ import { waitFor } from './wait-for-module.js';
   }
 
   // ── Login con Google ──────────────────────────────────────────────────────
+  // Guard de doble ejecución (2026-09-27): el doble popup por doble clic/
+  // doble tap mientras el primero seguía abierto ya lo cubre el bloqueo
+  // genérico de Events.dispatch (js/core/events.js) — cualquier handler
+  // async queda bloqueado en su propio elemento hasta que su promesa
+  // resuelve, así que no hace falta repetir esa lógica acá.
+  // Lo que Events NO puede saber es esto: si la pantalla #fb-login-screen
+  // alcanza a quedar visible un instante después de un login exitoso
+  // (onAuthStateChanged/DOM aún resolviendo) con el botón ya habilitado de
+  // antes, un clic ahí repetiría el signIn aunque ya hubiera una sesión
+  // activa — por eso el corte por `window._fbUser` sigue siendo local.
   window._fbSignIn = async function() {
     if(!window._fb) return;
+    if(window._fbUser) return; // ya hay sesión — ignora clics durante el parpadeo de la pantalla de login
     const {auth, provider, signInWithPopup, popupResolver} = window._fb;
     try {
       // popupResolver explícito: si esta carga arrancó sin resolver (ver

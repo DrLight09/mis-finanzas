@@ -69,10 +69,36 @@
    clickeable (ej. un botón "eliminar" dentro de una fila que también
    navega al detalle), agregar data-stop-propagation="true" para que
    Events llame a evt.stopPropagation() antes de despachar.
+
+   ── Bloqueo automático de doble clic en acciones async ───────────
+   (2026-09-27) Un handler async (login con Google, guardar en la nube,
+   biometría, etc.) tarda; si el usuario hace doble clic/doble tap
+   mientras la promesa sigue pendiente, antes se despachaba una segunda
+   vez y se disparaban dos popups, dos escrituras, etc.
+
+   Si el handler devuelve algo con `.then` (una promesa — típicamente
+   una función `async`), Events bloquea ESE elemento hasta que la
+   promesa se resuelva o falle: clics repetidos sobre él se ignoran
+   mientras tanto. No hace falta declarar nada en el módulo — basta con
+   que el handler sea `async` o devuelva una promesa.
+
+   Los handlers síncronos (la inmensa mayoría — abrir un sheet, cambiar
+   de tab, un dígito del teclado del PIN) no se tocan: bloquearlos
+   rompería casos legítimos de clics rápidos repetidos, como teclear
+   "11" en el PIN. El bloqueo es por elemento, no global, así que un
+   clic en un botón async no afecta a los demás botones de la pantalla.
+
+   Esto no reemplaza un `btn.disabled = true` manual dentro de un
+   handler que además quiera dar feedback visual propio (texto tipo
+   "Guardando…", como ya hace _fbDeleteAccount) — ambos conviven sin
+   pisarse.
    ═══════════════════════════════════════════════════════════════ */
 
 const Events = (function () {
   const registry = {};
+  // Elementos con una acción async todavía en vuelo — clics sobre ellos
+  // se ignoran hasta que la promesa se resuelva o falle.
+  const elementosOcupados = new WeakSet();
 
   /**
    * Registra el handler de una acción. Si la acción ya existía, se
@@ -106,6 +132,10 @@ const Events = (function () {
   function dispatch(evt) {
     const el = evt.target.closest('[data-action]');
     if (!el) return;
+    // Doble clic/doble tap mientras la acción anterior de este mismo
+    // elemento sigue en vuelo (ver nota arriba) — se ignora en silencio,
+    // no es un error del usuario.
+    if (elementosOcupados.has(el)) return;
     const action = el.dataset.action;
     const handler = registry[action];
     if (!handler) {
@@ -121,7 +151,13 @@ const Events = (function () {
         console.error(`[Events] data-args inválido en la acción "${action}":`, el.dataset.args, e);
       }
     }
-    handler(...args, el, evt);
+    const resultado = handler(...args, el, evt);
+    // Si el handler es async (devuelve una promesa), bloquear este
+    // elemento hasta que termine.
+    if (resultado && typeof resultado.then === 'function') {
+      elementosOcupados.add(el);
+      resultado.finally(() => elementosOcupados.delete(el));
+    }
   }
 
   /**

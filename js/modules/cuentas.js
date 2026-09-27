@@ -498,7 +498,10 @@ function registrarTasaNuHistorial(fechaStr, tasa){
 }
 
 function _diasEntreFechas(a,b){
-  return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
+  // Ver _fechaSafe() en core-state.js: new Date(str+'T00:00:00') da Invalid
+  // Date si a/b no tienen mes/día de 2 dígitos, propagando NaN en silencio
+  // a calcC() y todo lo que dependa de esta función.
+  return Math.round((_fechaSafe(b)-_fechaSafe(a))/86400000);
 }
 function _segmentosTasaNu(desdeStr,hastaStr){
   const cambios=(S.historialTasasNu||[])
@@ -875,8 +878,8 @@ function calcCDT(cdt){
   if(!cdt||!cdt.monto||!cdt.inicio)return{val:cdt?cdt.monto:0,ganado:0,ganado_bruto:0,retencion:0,dias:0};
   const rate=cdt.tasa/100;
   const rte=(cdt.rte!=null?cdt.rte:4)/100; // retención en fuente (default 4%)
-  const desde=new Date(cdt.inicio+'T00:00:00');
-  const hasta=cdt.vence?new Date(cdt.vence+'T00:00:00'):new Date();
+  const desde=_fechaSafe(cdt.inicio);
+  const hasta=cdt.vence?_fechaSafe(cdt.vence):new Date();
   const ahora=new Date();
   const fechaFin=ahora<hasta?ahora:hasta;
   const dias=Math.max(0,Math.floor((fechaFin-desde)/86400000));
@@ -908,12 +911,12 @@ function _rendimientoCDTaDias(cdt,dias){
 // disponible no cambie (Opción 2: patrimonio real, sin movimiento visible).
 function calcRendimientoCDTMes(cdt,mesK){
   if(!cdt||!cdt.monto||!cdt.inicio||!mesK)return 0;
-  const inicio=new Date(cdt.inicio+'T00:00:00');
+  const inicio=_fechaSafe(cdt.inicio);
   const [anioM,mesM]=mesK.split('-').map(Number);
   const inicioMes=new Date(anioM,mesM-1,1);
   const finMes=new Date(anioM,mesM,0); // último día del mes
   const ahora=new Date();
-  const vence=cdt.vence?new Date(cdt.vence+'T00:00:00'):null;
+  const vence=cdt.vence?_fechaSafe(cdt.vence):null;
   const limiteSup=vence&&vence<ahora?vence:ahora;
   if(limiteSup<inicioMes||inicio>finMes)return 0;
   // Días acumulados desde el inicio del CDT hasta el corte de inicio/fin de este mes
@@ -953,7 +956,12 @@ function verificarVencimientosCDT(){
   (S.cajitas||[]).forEach(c=>{
     (c.cdts||[]).forEach(cdt=>{
       if(cdt.vence){
-        const vence=new Date(cdt.vence+'T00:00:00');
+        // Antes: new Date(cdt.vence+'T00:00:00'). Con una fecha sin padear
+        // (ej. '2026-9-26') esto da Invalid Date, y new Date()>=Invalid Date
+        // es SIEMPRE false — el CDT nunca se detecta como vencido, ni
+        // aparece en la cola para cobrar. Es la otra cara del mismo bug que
+        // dejó "Patrimonio visible $0" (ver calcCDT() y _fechaSafe()).
+        const vence=_fechaSafe(cdt.vence);
         if(new Date()>=vence){
           _colaCDTsVencidos.push({cajitaId:c.id,cdtId:cdt.id});
         }
@@ -1002,9 +1010,9 @@ function calcMetaProgreso(c){
   const hoyStr = hoy();
   const inicio = meta.inicio || hoyStr;
   const fin = meta.fin;
-  const totalMeses = Math.max(1, Math.round((new Date(fin+'T00:00:00') - new Date(inicio+'T00:00:00')) / (1000*60*60*24*30.44)));
-  const mesesPasados = Math.max(0, Math.round((new Date(hoyStr+'T00:00:00') - new Date(inicio+'T00:00:00')) / (1000*60*60*24*30.44)));
-  const mesesRestantes = Math.max(0, Math.round((new Date(fin+'T00:00:00') - new Date(hoyStr+'T00:00:00')) / (1000*60*60*24*30.44)));
+  const totalMeses = Math.max(1, Math.round((_fechaSafe(fin) - _fechaSafe(inicio)) / (1000*60*60*24*30.44)));
+  const mesesPasados = Math.max(0, Math.round((_fechaSafe(hoyStr) - _fechaSafe(inicio)) / (1000*60*60*24*30.44)));
+  const mesesRestantes = Math.max(0, Math.round((_fechaSafe(fin) - _fechaSafe(hoyStr)) / (1000*60*60*24*30.44)));
   const esperadoHoy = obj * (mesesPasados / totalMeses);
   const cuotaMensual = meta.aportes && meta.aportes.length ? meta.aportes.reduce((a,ap)=>a+(ap.monto||0),0) : (obj / totalMeses);
   const pct = Math.min(100, (saldo / obj) * 100);
@@ -1152,7 +1160,7 @@ function _updateMetaCuotaPreview(){
   const el = document.getElementById('meta_cuota_preview');
   if(!el) return;
   if(!obj || !fin){ el.textContent=''; return; }
-  const meses = Math.max(1, Math.round((new Date(fin+'T00:00:00') - new Date((inicio||hoy())+'T00:00:00')) / (1000*60*60*24*30.44)));
+  const meses = Math.max(1, Math.round((_fechaSafe(fin) - _fechaSafe(inicio||hoy())) / (1000*60*60*24*30.44)));
   const totalAportes = _metaAportesTemp.reduce((a,ap)=>a+(ap.monto||0),0);
   const cuota = totalAportes || (obj / meses);
   el.textContent = `${meses} meses · cuota estimada: ${fmt(cuota)}/mes${totalAportes&&totalAportes!==cuota?' (suma de tus aportes)':''}`;
@@ -1221,7 +1229,7 @@ function _renderTasaHistorialTag(){
   if(!tag)return;
   const hist=(S.historialTasasNu||[]).slice().sort((a,b)=>a.fecha<b.fecha?-1:1);
   if(!hist.length){tag.textContent='';return;}
-  const fmtFecha=f=>{const d=new Date(f+'T00:00:00');return d.toLocaleDateString('es-CO',{day:'2-digit',month:'short'}).replace('.','');};
+  const fmtFecha=f=>{const d=_fechaSafe(f);return d.toLocaleDateString('es-CO',{day:'2-digit',month:'short'}).replace('.','');};
   const partes=hist.slice(-3).map(h=>String(h.tasa).replace('.',',')+'% desde '+fmtFecha(h.fecha));
   tag.textContent=partes.join(' · ');
 }
@@ -1297,9 +1305,9 @@ function confirmarCrearCDT(){
   const inicio=document.getElementById('cdt_inicio').value||hoy();
   const vence=document.getElementById('cdt_vence').value;
   if(monto<50000){toast('El monto mínimo para un CDT es $50.000','err');return;}
-  if(new Date(inicio+'T00:00:00')>new Date()){toast('La fecha de apertura no puede ser futura','err');return;}
+  if(_fechaSafe(inicio)>new Date()){toast('La fecha de apertura no puede ser futura','err');return;}
   if(!vence){toast('Debes definir la fecha de vencimiento','err');return;}
-  if(new Date(vence+'T00:00:00')<=new Date(inicio+'T00:00:00')){toast('La fecha de vencimiento debe ser posterior a la apertura','err');return;}
+  if(_fechaSafe(vence)<=_fechaSafe(inicio)){toast('La fecha de vencimiento debe ser posterior a la apertura','err');return;}
   // Calcular saldo real incluyendo intereses sub-día (lo mismo que muestra el modal)
   const saldoReal=calcC(c).val;
   // Tolerancia de 1 centavo: fmtInput() redondea el saldo mostrado (p.ej. al usar
@@ -1693,7 +1701,7 @@ function abrirSubCDTs(){
   } else {
     contenido=html`${cdts.map(cdt=>{
       const cdtK=calcCDT(cdt);
-      const dr=cdt.vence?Math.ceil((new Date(cdt.vence+'T00:00:00')-new Date())/86400000):null;
+      const dr=cdt.vence?Math.ceil((_fechaSafe(cdt.vence)-new Date())/86400000):null;
       const vencido=dr!==null&&dr<=0;
       return html`<div class="card" style="margin-bottom:9px;background:rgba(176,144,240,.06);border-color:rgba(176,144,240,.25);">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
@@ -2993,7 +3001,7 @@ document.addEventListener('input',function(e){
   const prev=document.getElementById('cdt_preview');
   if(!prev)return;
   if(monto>=50000&&vence){
-    const dias=Math.max(0,Math.ceil((new Date(vence+'T00:00:00')-new Date())/86400000));
+    const dias=Math.max(0,Math.ceil((_fechaSafe(vence)-new Date())/86400000));
     const tasaDiaria=Math.pow(1+tasa/100,1/365)-1;
     const tasaDiariaNet=tasaDiaria*(1-rte);
     const valorFinal=monto*Math.pow(1+tasaDiariaNet,dias);

@@ -29,11 +29,16 @@ firebase.initializeApp({
 
 const _messaging = firebase.messaging();
 _messaging.onBackgroundMessage((payload) => {
-  const { title, body, icon } = payload.notification || {};
-  self.registration.showNotification(title || 'Mis Finanzas', {
-    body: body || '',
-    icon,
-    data: { url: (payload.fcmOptions && payload.fcmOptions.link) || '/mis-finanzas/' },
+  // A propósito el mensaje que manda run.js NO trae campo `notification`
+  // (solo `data`) — si lo trajera, Firebase muestra una notificación
+  // automáticamente por su cuenta ADEMÁS de esta, duplicando todo (ver
+  // GITHUB-ACTIONS-README.md, sección de notificaciones duplicadas).
+  // Con data-only, el único que decide qué se ve es este código.
+  const data = payload.data || {};
+  self.registration.showNotification(data.title || 'Mis Finanzas', {
+    body: data.body || '',
+    icon: data.icon,
+    data: { url: data.link || '/mis-finanzas/' },
   });
 });
 

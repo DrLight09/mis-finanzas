@@ -2,18 +2,19 @@
 /* ================================================================
    scripts/notificaciones/run.js
    ================================================================
-   Reemplaza a la Cloud Function (functions/index.js) — misma lógica,
-   distinto lugar donde corre. Se ejecuta desde GitHub Actions
-   (.github/workflows/notificaciones.yml) en vez de Cloud Scheduler,
-   porque desplegar una Cloud Function programada requiere el plan
-   Blaze de Firebase pase lo que pase, y GitHub Actions no necesita
-   ninguna tarjeta ni plan de pago para esto.
+   Reemplaza al enfoque de Cloud Function que se intentó primero (ese
+   código ya no existe en el repo) — misma lógica, distinto lugar donde
+   corre. Se ejecuta desde GitHub Actions (.github/workflows/notificaciones.yml)
+   en vez de Cloud Scheduler, porque desplegar una Cloud Function
+   programada requiere el plan Blaze de Firebase pase lo que pase, y
+   GitHub Actions no necesita ninguna tarjeta ni plan de pago para esto.
 
-   checks.js NO cambió — es una copia exacta del que vive en
-   functions/checks.js. La única diferencia real entre las dos
-   versiones es CÓMO se autentica contra Firestore:
-     - Cloud Function: admin.initializeApp() sin argumentos, usa
-       credenciales automáticas del propio proyecto de Firebase.
+   checks.js (al lado de este archivo, en esta misma carpeta) es el
+   registro extensible de chequeos de vencimiento. La única diferencia
+   real entre correr esto acá vs. en una Cloud Function es CÓMO se
+   autentica contra Firestore:
+     - Cloud Function (enfoque abandonado): admin.initializeApp() sin
+       argumentos, usa credenciales automáticas del propio proyecto.
      - Este script: corre fuera de Firebase, así que necesita una
        cuenta de servicio explícita (ver README.md de esta carpeta
        para cómo generarla y guardarla como secret de GitHub).
@@ -85,22 +86,22 @@ async function main() {
       console.log(`uid=${uid}: ${items.length} item(s), mandando uno por uno...`);
       const tokensInvalidos = new Set();
 
-      // Un push POR ITEM (no uno solo con todo junto), sin `tag` — así el
-      // navegador los apila como notificaciones separadas en vez de
-      // reemplazarse entre sí. Pausa aleatoria entre cada uno para que no
-      // lleguen los tres en el mismo instante exacto.
+      // Un push POR ITEM. IMPORTANTE: mensaje "data-only" (sin campo
+      // `notification` en absoluto) — si lleva `notification`, Firebase
+      // muestra una notificación automáticamente por su cuenta, ADEMÁS
+      // de la que arma sw.js, duplicando todo. Con data-only, sw.js es
+      // el único que decide qué se ve, sin ambigüedad ni duplicados.
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         const title = item.tipo === 'red' ? '⚠️ Mis Finanzas' : 'Mis Finanzas';
 
         const message = {
           tokens,
-          notification: { title, body: item.texto },
-          webpush: {
-            notification: {
-              icon: 'https://drlight09.github.io/mis-finanzas/icons/icon-192.png',
-            },
-            fcmOptions: { link: '/mis-finanzas/' },
+          data: {
+            title,
+            body: item.texto,
+            icon: 'https://drlight09.github.io/mis-finanzas/icons/icon-192.png',
+            link: '/mis-finanzas/',
           },
         };
 
@@ -120,7 +121,7 @@ async function main() {
         }
       }
 
-      // Limpieza de tokens muertos, igual que en la versión Cloud Function.
+      // Limpieza de tokens muertos.
       if (tokensInvalidos.size) {
         await db
           .collection('usuarios')

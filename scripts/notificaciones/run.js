@@ -86,22 +86,22 @@ async function main() {
       console.log(`uid=${uid}: ${items.length} item(s), mandando uno por uno...`);
       const tokensInvalidos = new Set();
 
-      // Un push POR ITEM. IMPORTANTE: mensaje "data-only" (sin campo
-      // `notification` en absoluto) — si lleva `notification`, Firebase
-      // muestra una notificación automáticamente por su cuenta, ADEMÁS
-      // de la que arma sw.js, duplicando todo. Con data-only, sw.js es
-      // el único que decide qué se ve, sin ambigüedad ni duplicados.
+      // Un push POR ITEM (no uno solo con todo junto), sin `tag` — así el
+      // navegador los apila como notificaciones separadas en vez de
+      // reemplazarse entre sí. Pausa aleatoria entre cada uno para que no
+      // lleguen los tres en el mismo instante exacto.
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         const title = item.tipo === 'red' ? '⚠️ Mis Finanzas' : 'Mis Finanzas';
 
         const message = {
           tokens,
-          data: {
-            title,
-            body: item.texto,
-            icon: 'https://drlight09.github.io/mis-finanzas/icons/icon-192.png',
-            link: '/mis-finanzas/',
+          notification: { title, body: item.texto },
+          webpush: {
+            notification: {
+              icon: 'https://drlight09.github.io/mis-finanzas/icons/icon-192.png',
+            },
+            fcmOptions: { link: '/mis-finanzas/' },
           },
         };
 
@@ -121,7 +121,7 @@ async function main() {
         }
       }
 
-      // Limpieza de tokens muertos.
+      // Limpieza de tokens muertos, igual que en la versión Cloud Function.
       if (tokensInvalidos.size) {
         await db
           .collection('usuarios')

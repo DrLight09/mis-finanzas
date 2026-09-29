@@ -41,10 +41,8 @@
    menú "Más") — se eliminan del selector y se deja esta nota en vez
    de borrar en silencio, mismo criterio que `toggleCDT()`/
    `toggleCajita()` en Cuentas. Solo `#cfg-historial-row` (el atajo
-   "Actividad reciente" en Configuración) es real. Ese elemento
-   todavía tiene su propio `onclick="showScreen('historial')"`
-   inline en index.html — pertenece a la migración de Configuración,
-   no a este módulo, así que no se toca acá.
+   "Actividad reciente" en Configuración) es real. Ese elemento navega con
+   `data-action="config:irA"` (configuracion.js).
 
    ── .innerHTML: migrado a html`` ──────────────────────────────────
    Los dos únicos usos de `.innerHTML` (mensaje de "vacío" y el
@@ -479,8 +477,8 @@
   // carga tarde — que es SIEMPRE el caso si se vuelve lazy, disparado
   // por el clic en #cfg-historial-row — ninguno de los 3 triggers de
   // arriba se activa nunca: DOMContentLoaded y appDataLoaded ya pasaron
-  // hace rato, y el listener de clic recién se registra en la línea
-  // 435 de este archivo, demasiado tarde para capturar el mismo clic
+  // hace rato, y el listener de clic recién se registra más
+  // arriba en este mismo archivo, demasiado tarde para capturar el mismo clic
   // que disparó la carga. Sin esto, la pantalla se queda pegada en
   // "Cargando..." para siempre la primera vez. Se agrega un cuarto
   // trigger sin condición de evento — mismo criterio que usa

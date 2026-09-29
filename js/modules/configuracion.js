@@ -5,10 +5,7 @@
    seguridad (exportar/importar JSON, exportar CSV), módulos activos
    y borrado de datos.
 
-   Migrado desde index.html a js/core/events.js (data-action) con el
-   mismo patrón que Spotify, Mesada, Encargos, Préstamos, Tarjetas de
-   Crédito, Cuentas, Gastos, Plata Comprometida y Alcancía — ver
-   docs/auditoria-tecnica.md.
+   Documentación del módulo: configuracion.md.
 
    Funciones que se QUEDAN en index.html a propósito, por ser núcleo
    compartido con otras pantallas (mismo criterio ya aplicado con
@@ -26,16 +23,9 @@
      - getCatsVar()/getCatsFijo()/CATS_VAR_DEFAULT/CATS_FIJO_DEFAULT:
        compartidas con el módulo de Gastos (selectores de categoría).
 
-   Nota sobre leerArchivoImport(): incluye validación de estructura del JSON
-   (_validarEstructuraJSON) directo en el cuerpo — hasta 2026-08-30 vivía como
-   un override en un archivo aparte (import-validado.js, cargado después en el
-   mismo grupo lazy) que reemplazaba esta función por una versión con
-   validación, dejando el cuerpo de acá como código muerto (nunca se
-   ejecutaba, pero tenía que existir para que el override pudiera capturar su
-   referencia antes de reemplazarla). Se fusionó en una sola función real: sin
-   depender del orden de carga entre dos archivos, sin una implementación
-   fantasma que alguien podría editar por error pensando que hace algo. Ver
-   CHANGELOG.md#configuración.
+   leerArchivoImport() valida la estructura del JSON (_validarEstructuraJSON) y pide
+   confirmación antes de reemplazar nada; solo recarga la página cuando el guardado
+   en la nube se confirmó.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ---- CATEGORÍAS PERSONALIZADAS ---- */
@@ -117,8 +107,9 @@ function importarJSON(){
   document.getElementById('importFileInput').click();
 }
 
-// Validación de estructura al importar un backup JSON (fusionada acá desde
-// import-validado.js el 2026-08-30 — ver nota de cabecera del archivo).
+// Validación de estructura al importar un backup JSON. Devuelve la lista de
+// errores (vacía = válido). Deliberadamente laxa: exige al menos un campo
+// conocido y el tipo correcto de los que estén presentes.
 function _validarEstructuraJSON(data){
   const errores=[];
   if(typeof data!=='object'||Array.isArray(data)){
@@ -154,7 +145,7 @@ function leerArchivoImport(e){
   reader.onload=async function(ev){
     try{
       const data=JSON.parse(ev.target.result);
-      // MEJORA 5: validar estructura antes de reemplazar nada.
+      // Validar estructura antes de reemplazar nada.
       const errores=_validarEstructuraJSON(data);
       if(errores.length>0){
         toast('Archivo inválido: '+errores[0],'err');
@@ -179,16 +170,10 @@ function leerArchivoImport(e){
       try { localStorage.setItem('mf_lastSavedAt', String(_impTs)); } catch(_){}
       window._importing = true;
       setTimeout(() => { window._importing = false; }, 5000);
-      // FIX (2026-09-05): antes se llamaba a _fbSaveToCloud() sin revisar el
-      // resultado y se mostraba "Datos importados correctamente" + reload a
-      // los 4s pase lo que pase. Si _fbSaveToCloud() no llegaba a escribir
-      // (p.ej. window._dataLoaded todavía en false justo después de un
-      // reinicio de la app), el toast mentía: no se había guardado nada, y
-      // el reload de los 4s volvía a traer el dato viejo de Firestore. Ver
-      // auditoria-tecnica.md — caso real: cajita Spotify import que "quedó
-      // bien" en pantalla pero no sobrevivió al recargar.
-      // Ahora _fbSaveToCloud() devuelve una promesa con el resultado real, y
-      // el toast + el reload dependen de que esa promesa diga ok:true.
+      // El toast de éxito y el reload dependen del resultado REAL del guardado:
+      // _fbSaveToCloud() devuelve una promesa {ok, reason}. Si no llegó a escribir
+      // (p.ej. window._dataLoaded todavía en false), recargar traería de vuelta el
+      // dato viejo de la nube y el aviso de éxito habría mentido.
       if(!window._fbSaveToCloud){
         toast('Los datos se cargaron en la app pero no se pudo confirmar el guardado en la nube (función de guardado no disponible). No recargues la página todavía — avisa antes de seguir.','err',7000);
         return;
@@ -250,25 +235,22 @@ function toggleModulo(nombre){
 }
 
 /* ---- BORRAR TODOS LOS DATOS ---- */
-// FIX (2026-09-27): nada bloqueaba la app mientras esta función corría —
-// solo el diálogo de confirmación, que se cierra apenas se confirma. En esa
-// ventana (el setDoc a Firestore + el reload) se podía seguir navegando y,
-// en particular, tocar "Cerrar sesión": el guardado final de _fbSignOut usa
-// window.S (el estado en memoria, todavía completo — borrarTodo nunca lo
-// vacía, solo escribe {} directo a Firestore) y podía sobrescribir el
-// borrado recién hecho con los datos viejos. Se reutiliza el overlay
-// #fb-loading-screen (ya cubre toda la pantalla, z-index 99999, ver
-// index.html) para bloquear cualquier otra acción hasta el location.reload()
-// final — mismo criterio ahora en _fbSignOut/_fbDeleteAccount (firebase-sync.js).
+// Entre la confirmación y el location.reload() final la app queda bloqueada con el
+// overlay #fb-loading-screen (cubre toda la pantalla, z-index 99999). Es obligatorio:
+// borrarTodo() no vacía window.S en memoria, solo escribe {} en Firestore; si en esa
+// ventana se pudiera tocar "Cerrar sesión", el guardado final de _fbSignOut() volvería
+// a subir el S viejo y pisaría el borrado. Mismo criterio en _fbSignOut/_fbDeleteAccount
+// (firebase-sync.js).
 async function borrarTodo(){
   const ok=await dialogo('Borrar todos los datos','¿Seguro que quieres borrar TODO? Esta acción no se puede deshacer y perderás toda tu información financiera.','Borrar todo',true);
   if(!ok)return;
   const _overlay = document.getElementById('fb-loading-screen');
   if(_overlay) _overlay.style.display = 'flex';
-  // Registrar en historial antes de borrar todo (quedará como primer evento visible si el historial no se borra)
-  // Luego limpiar también el historial local para que no queden registros huérfanos
+  // Limpiar la clave local del historial para que no queden registros huérfanos.
+  // (Actividad reciente se deriva de S, no de esta clave; ver configuracion.md §8.)
   localStorage.removeItem('mf_historial_v1');
-  // Borrar en Firebase — guardar estructura vacía correcta (no {} vacío que rompe el payload)
+  // Borrar en Firebase: payload "{}" a propósito — la carga lo lee como "vacío", lo verifica
+  // contra el servidor y arranca con el estado por defecto de S (ver firebase-sync.js).
   let _borradoFirebaseOk = true;
   if(window._fbUser && window._fb){
     try{

@@ -2950,6 +2950,30 @@ function _trDestinoCambio() {
   actualizarTransfPreview();
 }
 
+// Regla de "plata real" para Transferir (2026-09-28): solo entre cajitas de Nu se
+// pueden mover centavos. Si el origen o el destino es Nequi, Efectivo o una cuenta
+// personalizada, el monto tiene que ser un número entero de pesos (esas cuentas no
+// aceptan centavos en la vida real). Además, si Efectivo participa, el mínimo es
+// $50 (la moneda más pequeña que existe). Devuelve el mensaje de error, o '' si el
+// monto es válido. Lo usan la vista previa y la confirmación, para que digan lo mismo.
+const TR_MIN_EFECTIVO = 50;
+function _trValidarMonto(origen, destino, monto) {
+  if (!origen || !destino || !(monto > 0)) return '';
+  const centavos = Math.round(monto * 100);
+  const esCajita = v => typeof v === 'string' && v.startsWith('cajita:');
+  const involucraEfectivo = origen === 'efectivo' || destino === 'efectivo';
+  const soloCajitas = esCajita(origen) && esCajita(destino);
+  if (!soloCajitas && centavos % 100 !== 0) {
+    return involucraEfectivo
+      ? 'El efectivo no tiene centavos: usa un monto entero (ej. ' + fmt(TR_MIN_EFECTIVO) + ')'
+      : 'Solo entre cajitas de Nu se pueden mover centavos: usa un monto entero de pesos';
+  }
+  if (involucraEfectivo && centavos < TR_MIN_EFECTIVO * 100) {
+    return 'El mínimo para mover plata desde o hacia Efectivo es ' + fmt(TR_MIN_EFECTIVO);
+  }
+  return '';
+}
+
 function actualizarTransfPreview() {
   const origen = document.getElementById('tr_origen').value;
   const destino = document.getElementById('tr_destino').value;
@@ -2970,6 +2994,8 @@ function actualizarTransfPreview() {
     return;
   }
   if (monto <= 0) { prev.textContent = ''; return; }
+  const errMonto = _trValidarMonto(origen, destino, monto);
+  if (errMonto) { prev.textContent = errMonto; prev.style.color = 'var(--amber)'; return; }
   const nuevoOrigen = saldoOrigen - monto;
   const nuevoDestino = saldoDestino + monto;
   const colorOrigen = nuevoOrigen < 0 ? 'var(--red)' : 'var(--accent)';
@@ -2990,6 +3016,8 @@ function confirmarTransferir() {
   if (!origen || !destino) { toast('Elige origen y destino', 'err'); return; }
   if (origen === destino) { toast('El origen y destino deben ser diferentes', 'err'); return; }
   if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
+  const errMonto = _trValidarMonto(origen, destino, monto);
+  if (errMonto) { toast(errMonto, 'err', 3500); return; }
   const saldoOrigen = getSaldoActual(origen);
   if (Math.round(monto * 100) > Math.round(saldoOrigen * 100)) {
     toast(`Saldo insuficiente en ${escHtml(fuenteLabel(origen))} (${fmt(saldoOrigen)})`, 'err');

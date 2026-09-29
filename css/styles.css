@@ -605,6 +605,21 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 #gv_fuente_saldo{transition:min-height .18s ease, margin-top .18s ease;}
 #gv_fuente_saldo:empty{margin-top:0;}
 
+/* traspaso_origen_hint / traspaso_saldo_hint (sheet "Me lo regalaron") y
+   movenc_cuenta_hint (sheets "Registrar salida de plata" / "Registrar entrada de
+   plata"): los tres se vacían con textContent='' (o quedan display:none cuando el
+   select ya muestra el saldo), así que a diferencia de gv_fuente_hint alcanza con
+   colapsar el estado :empty — min-height y margin-top a 0 mientras no hay texto.
+   Sin esto .field-hint (clase, no inline) dejaba ~18px de hueco vacío que la regla
+   genérica [style*="min-height"]:empty no cubre. Mismo transition que
+   gv_fuente_saldo para que el salto al aparecer el texto sea progresivo. */
+#traspaso_origen_hint,
+#traspaso_saldo_hint,
+#movenc_cuenta_hint{transition:min-height .18s ease, margin-top .18s ease;}
+#traspaso_origen_hint:empty,
+#traspaso_saldo_hint:empty,
+#movenc_cuenta_hint:empty{min-height:0;margin-top:0;}
+
 /* Botón ghost secundario de cancelar en sheets: sin margen top extra cuando está al final y precedido de btn-primary */
 .btn-primary + .btn-ghost{margin-top:7px;}
 

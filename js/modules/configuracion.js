@@ -33,12 +33,10 @@
 // exhaustiva de .innerHTML"): `c` (nombre de categoría, texto libre creado por
 // el usuario en agregarCat()) ya no depende de que alguien se acuerde de
 // envolverlo en escHtml() a mano — html`` lo escapa por defecto.
-// Events.attr(...) se deja envuelto en raw(): ya arma su propio HTML de
-// atributos (incluyendo `tipo`/`c`) y hoy se interpola sin pasar por
-// escHtml() en ningún punto de este archivo, exactamente igual que antes de
-// esta migración — no es un cambio de comportamiento. Si event.js no escapa
-// `c` internamente, sigue siendo el mismo hallazgo pendiente de investigar
-// (ver auditoria-tecnica.md), no algo que este migración deba resolver de paso.
+// Events.attr(...) se deja envuelto en raw(): ya devuelve el atributo armado y
+// escapado (serializa los argumentos a JSON y los pasa por escHtml() dentro de
+// events.js), así que un nombre de categoría con comillas o HTML no rompe el
+// atributo `data-action`.
 function renderCatsConfig(){
   // Render lista de categorías variables
   const elVar=document.getElementById('cats-var-list');
@@ -246,9 +244,6 @@ async function borrarTodo(){
   if(!ok)return;
   const _overlay = document.getElementById('fb-loading-screen');
   if(_overlay) _overlay.style.display = 'flex';
-  // Limpiar la clave local del historial para que no queden registros huérfanos.
-  // (Actividad reciente se deriva de S, no de esta clave; ver configuracion.md §8.)
-  localStorage.removeItem('mf_historial_v1');
   // Borrar en Firebase: payload "{}" a propósito — la carga lo lee como "vacío", lo verifica
   // contra el servidor y arranca con el estado por defecto de S (ver firebase-sync.js).
   let _borradoFirebaseOk = true;

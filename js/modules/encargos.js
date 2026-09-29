@@ -1053,7 +1053,8 @@ async function _confirmarUsarParte() {
       fuente,
       monto,
       fecha: hoy(),
-      desc: `Margen encargo ${enc.nombre} — ${parte.desc}`
+      desc: `Margen encargo ${enc.nombre} — ${parte.desc}`,
+      _esExtraIngreso: true   // margen = plata nueva tuya (ver _esEntradaEspejoNoIngreso)
     });
     _usarParteMargenPendiente = null;
   }
@@ -2042,6 +2043,7 @@ function confirmarTraspasoEncargo() {
         _secundario: true,
         _origenSeccion: 'Encargos',
         _encMovId: encMovId,
+        _esExtraIngreso: true,   // regalo recibido = ingreso real (ver _esEntradaEspejoNoIngreso)
         ts: Date.now()
       });
     }
@@ -2054,7 +2056,8 @@ function confirmarTraspasoEncargo() {
       monto,
       fecha,
       desc: desc + ' (de encargo ' + enc.nombre + ')',
-      _encMovId: encMovId
+      _encMovId: encMovId,
+      _esExtraIngreso: true   // regalo recibido = ingreso real (ver _esEntradaEspejoNoIngreso)
     });
   }
 

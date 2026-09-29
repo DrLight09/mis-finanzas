@@ -1427,24 +1427,26 @@ function confirmarMovimiento() {
           // Sumar saldo
           sumarFuente(p.cuenta, p.monto);
           // Registrar movimiento visible en el historial de la cuenta
+          // _esExtraIngreso: el extra/propina de un pago SÍ es ingreso real (no un espejo
+          // de plata ya contada) — ver _esEntradaEspejoNoIngreso() en core-state.js.
           const descMovExtra = `Extra de pago — ${nombreDeudor}`;
           let movExtraId = uid();
           if (p.cuenta === 'efectivo' || p.cuenta === 'nequi') {
             if (!S.movimientos) S.movimientos = [];
-            S.movimientos.push({ id: movExtraId, tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
+            S.movimientos.push({ id: movExtraId, tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben', _esExtraIngreso: true });
           } else if (p.cuenta.startsWith('custom:')) {
             const cId = p.cuenta.split(':')[1];
             const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
             if (cObj) {
               if (!cObj.movimientos) cObj.movimientos = [];
-              cObj.movimientos.push({ id: movExtraId, tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
+              cObj.movimientos.push({ id: movExtraId, tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben', _esExtraIngreso: true });
             }
           } else if (p.cuenta.startsWith('cajita:')) {
             const cId = p.cuenta.split(':')[1];
             const cObj = (S.cajitas || []).find(x => x.id === cId);
             if (cObj) {
               if (!cObj.historial) cObj.historial = [];
-              cObj.historial.push({ id: movExtraId, tipo: 'entrada', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
+              cObj.historial.push({ id: movExtraId, tipo: 'entrada', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben', _esExtraIngreso: true });
             }
           }
           // Guardar referencia para reversión

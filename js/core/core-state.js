@@ -813,6 +813,12 @@ function getIngresosFijosMes(mesK){
 // - _esReposicionCP: devolución de plata comprometida que ya salió antes.
 function _esEntradaEspejoNoIngreso(m){
   if(!m) return false;
+  // Extra/propina recibida sobre un pago de deuda (Prestado, rama normal): ingreso real,
+  // aunque su _origenSeccion sea 'Prestado' (que por sí solo lo marcaría como espejo).
+  if(m._esExtraIngreso) return false;
+  // Margen/diferencial de Encargos y Préstamo con TC (lo escribe diffAplicar() en diferencial.js):
+  // plata nueva que se queda el usuario, aunque lleve _encMovId o desc 'Margen…'.
+  if(m._esDiferencialEncargo) return false;
   if(m._esReposicionCP) return true;
   // Fallback por desc para movimientos viejos sin _esReposicionCP
   if(/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'')) return true;

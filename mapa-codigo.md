@@ -42,7 +42,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 8 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 10 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 118 | 2 |
-| `js/modules/encargos.js` | lazy — grupo `encargos` | 98 | 0 |
+| `js/modules/encargos.js` | lazy — grupo `encargos` | 112 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 20 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 6 | 0 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 34 | 0 |
@@ -275,7 +275,7 @@ Carga: lazy — grupo `cuentas`
 
 Carga: lazy — grupo `encargos`
 
-**Funciones:** `_actualizarMovEncCuentaHint`, `_actualizarMoverEncDestinoHint`, `_actualizarMoverEncOrigenHint`, `_actualizarMoverEncPreview`, `_actualizarPartePreview`, `_actualizarTransfEncPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_confirmarMoverEncCuentasSplit`, `_confirmarUsarParte`, `_ctcActualizarCuentaEncHint`, `_ctcActualizarDestinoHint`, `_ctcActualizarPreview`, `_ctcDifResumen`, `_ctcDifToggle`, `_difAddBenef`, `_difRemoveBenef`, `_difRenderHistorialParte`, `_difResumen`, `_difSetCuentaEntrada`, `_difSetCuentaSalida`, `_difSetMonto`, `_difSetNombre`, `_difToggle`, `_difTogglePagoYo`, `_encAbrirSelectorPersonaNueva`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_getUsarParteFuentesOptions`, `_getUsarParteSplitData`, `_initNuevoEncargoPersonaSelector`, `_irAEncargo`, `_movEncActualizarFaltante`, `_movEncAgregarSplitRow`, `_movEncConfirmarPrestarFaltante`, `_movEncFaltanteCuentaHint`, `_movEncGetFuentesOptions`, `_movEncGetSplitData`, `_movEncMiaPreview`, `_movEncMiaToggle`, `_movEncSplitPreview`, `_movEncSplitToggle`, `_moverEncAgregarSplitRow`, `_moverEncGetFuentesOptions`, `_moverEncGetSplitData`, `_moverEncSplitPreview`, `_moverEncSplitToggle`, `_onSelPersonaNuevoEncargo`, `_procesarDiferencial`, `_procesarMovEncMia`, `_salidaEncMenuIr`, `_usarParteAddBenef`, `_usarParteAgregarSplitRow`, `_usarParteDifResumen`, `_usarParteDifToggle`, `_usarParteFuentePreview`, `_usarParteRemoveBenef`, `_usarParteSetMonto`, `_usarParteSetNombre`, `_usarParteSplitToggle`, `_validarIntercambiosBenefs`, `_validarMovEncMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMovEncargo`, `abrirMoverEntreCuentasEncargo`, `abrirNuevaParte`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMovEncargo`, `confirmarMoverEncCuentas`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getCajitaNombre`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
+**Funciones:** `_actualizarMovEncCuentaHint`, `_actualizarMoverEncDestinoHint`, `_actualizarMoverEncOrigenHint`, `_actualizarMoverEncPreview`, `_actualizarPartePreview`, `_actualizarTransfEncPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_confirmarMoverEncCuentasSplit`, `_confirmarUsarParte`, `_crearSplitSobrante`, `_ctcActualizarCuentaEncHint`, `_ctcActualizarDestinoHint`, `_ctcActualizarPreview`, `_ctcDifResumen`, `_ctcDifToggle`, `_ctcMiAgregarRow`, `_ctcMiSplitToggle`, `_difAddBenef`, `_difMiAgregarRow`, `_difMiSplitPreview`, `_difMiSplitToggle`, `_difRemoveBenef`, `_difRenderHistorialParte`, `_difResumen`, `_difSetCuentaEntrada`, `_difSetCuentaSalida`, `_difSetMonto`, `_difSetNombre`, `_difToggle`, `_difTogglePagoYo`, `_encAbrirSelectorPersonaNueva`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_getUsarParteFuentesOptions`, `_getUsarParteSplitData`, `_initNuevoEncargoPersonaSelector`, `_irAEncargo`, `_miaEntraAgregarRow`, `_miaEntraSplitToggle`, `_miaLeerCuentas`, `_miaResumenLado`, `_miaSaleAgregarRow`, `_miaSaleSplitToggle`, `_movEncActualizarFaltante`, `_movEncAgregarSplitRow`, `_movEncConfirmarPrestarFaltante`, `_movEncFaltanteCuentaHint`, `_movEncGetFuentesOptions`, `_movEncGetSplitData`, `_movEncMiaPreview`, `_movEncMiaToggle`, `_movEncSplitPreview`, `_movEncSplitToggle`, `_moverEncAgregarSplitRow`, `_moverEncGetFuentesOptions`, `_moverEncGetSplitData`, `_moverEncSplitPreview`, `_moverEncSplitToggle`, `_onSelPersonaNuevoEncargo`, `_procesarDiferencial`, `_procesarMovEncMia`, `_salidaEncMenuIr`, `_usarParteAddBenef`, `_usarParteAgregarSplitRow`, `_usarParteDifResumen`, `_usarParteDifToggle`, `_usarParteFuentePreview`, `_usarParteMiAgregarRow`, `_usarParteMiSplitToggle`, `_usarParteRemoveBenef`, `_usarParteSetMonto`, `_usarParteSetNombre`, `_usarParteSplitToggle`, `_validarIntercambiosBenefs`, `_validarMovEncMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMovEncargo`, `abrirMoverEntreCuentasEncargo`, `abrirNuevaParte`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMovEncargo`, `confirmarMoverEncCuentas`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getCajitaNombre`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
 
 ### `js/modules/gastos.js`
 
@@ -456,11 +456,14 @@ Ninguno.
 | `_cpToggleMarcar` | `js/modules/plata_comprometida.js` |
 | `_crearGrupoDeudor` | `js/modules/prestado.js` |
 | `_crearPersonaGlobal` | `js/modules/personas.js` |
+| `_crearSplitSobrante` | `js/modules/encargos.js` |
 | `_ctcActualizarCuentaEncHint` | `js/modules/encargos.js` |
 | `_ctcActualizarDestinoHint` | `js/modules/encargos.js` |
 | `_ctcActualizarPreview` | `js/modules/encargos.js` |
 | `_ctcDifResumen` | `js/modules/encargos.js` |
 | `_ctcDifToggle` | `js/modules/encargos.js` |
+| `_ctcMiAgregarRow` | `js/modules/encargos.js` |
+| `_ctcMiSplitToggle` | `js/modules/encargos.js` |
 | `_cuentaOpsPosteriores` | `js/core/movimientos.js` |
 | `_deudorCuentasDe` | `js/modules/prestado.js` |
 | `_deudorOpsPosteriores` | `js/modules/prestado.js` |
@@ -471,6 +474,9 @@ Ninguno.
 | `_difAddBenef` | `js/modules/encargos.js` |
 | `_diffActualizarMiCuenta` | `js/core/diferencial.js` |
 | `_diffFuentesOptsHtml` | `js/core/diferencial.js` |
+| `_difMiAgregarRow` | `js/modules/encargos.js` |
+| `_difMiSplitPreview` | `js/modules/encargos.js` |
+| `_difMiSplitToggle` | `js/modules/encargos.js` |
 | `_difRemoveBenef` | `js/modules/encargos.js` |
 | `_difRenderHistorial` | `js/core/diferencial.js` |
 | `_difRenderHistorialParte` | `js/modules/encargos.js` |
@@ -546,6 +552,12 @@ Ninguno.
 | `_mesadaTieneCuentaAfectada` | `js/modules/mesada.js` |
 | `_mesNombreDeKey` | `js/core/calc-helpers.js` |
 | `_metaAporteEliminar` | `js/modules/cuentas.js` |
+| `_miaEntraAgregarRow` | `js/modules/encargos.js` |
+| `_miaEntraSplitToggle` | `js/modules/encargos.js` |
+| `_miaLeerCuentas` | `js/modules/encargos.js` |
+| `_miaResumenLado` | `js/modules/encargos.js` |
+| `_miaSaleAgregarRow` | `js/modules/encargos.js` |
+| `_miaSaleSplitToggle` | `js/modules/encargos.js` |
 | `_miDeudaCuentasDe` | `js/modules/prestado.js` |
 | `_miDeudaEditColor` | `js/modules/prestado.js` (window._miDeudaEditColor = …) |
 | `_miDeudaOpsPosteriores` | `js/modules/prestado.js` |
@@ -653,6 +665,8 @@ Ninguno.
 | `_usarParteDifResumen` | `js/modules/encargos.js` |
 | `_usarParteDifToggle` | `js/modules/encargos.js` |
 | `_usarParteFuentePreview` | `js/modules/encargos.js` |
+| `_usarParteMiAgregarRow` | `js/modules/encargos.js` |
+| `_usarParteMiSplitToggle` | `js/modules/encargos.js` |
 | `_usarParteRemoveBenef` | `js/modules/encargos.js` |
 | `_usarParteSetMonto` | `js/modules/encargos.js` |
 | `_usarParteSetNombre` | `js/modules/encargos.js` |

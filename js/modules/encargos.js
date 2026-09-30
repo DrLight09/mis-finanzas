@@ -754,6 +754,7 @@ diffRegistrarInstancia('movenc', {
   permiteMiCuenta: true,
   getDijo: () => parseMoney(document.getElementById('movenc_monto')?.value) || 0,
   descMargen: () => 'Margen de encargo — ',
+  origenSeccion: 'Encargos', // margen/intercambios protegidos contra borrado suelto (ver diferencial.js)
   getMiCuentaSplit: () => _difMiSplitMode ? splitGetData('movencDifMi') : null,
   onReset: () => splitReset('movencDifMi'),
   onResumen: () => _difMiSplitPreview()
@@ -2967,6 +2968,7 @@ diffRegistrarInstancia('ctc', {
   labelMargenNegativo: 'El valor real debe ser menor que el monto del encargo',
   getDijo: () => parseMoney(document.getElementById('ctc_monto')?.value) || 0,
   descMargen: (mov) => `Diferencial encargo ${mov._encNombre || ''} — `,
+  origenSeccion: 'Encargos', // ídem: deleteMovEncargo limpia estos por _encMovId
   getMiCuentaSplit: () => _ctcMi.getData(),
   onReset: () => _ctcMi.reset(),
   onResumen: () => { _ctcMi.preview(); _ctcActualizarPreview(); }

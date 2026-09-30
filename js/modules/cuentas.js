@@ -2623,7 +2623,7 @@ function confirmarEditarApertura(){
   if(diff===0){toast('El valor es igual al actual','err');return;}
   // Ajustar saldo de la cuenta por la diferencia
   if(diff>0) sumarFuente(_eaFuente,diff);
-  else descontarFuente(_eaFuente,Math.abs(diff));
+  else descontarFuente(_eaFuente,Math.abs(diff), { exacto: true });
   // Actualizar o crear el movimiento de apertura
   if(mov){
     mov.monto=nuevo;

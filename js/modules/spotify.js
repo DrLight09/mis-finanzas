@@ -651,13 +651,13 @@ async function _borrarSpHistorial(i,h){
     const montoOriginalCobro=Math.max(0,(h.monto||0)-historialPendTotal);
     // Revertir el movimiento secundario: la plata que entró a la(s) cuenta(s) destino al cobrar
     if(h.splits&&h.splits.length){
-      h.splits.forEach(s=>{ if(s.fuente)descontarFuente(s.fuente,s.monto||0); });
+      h.splits.forEach(s=>{ if(s.fuente)descontarFuente(s.fuente,s.monto||0, { exacto: true }); });
     } else if(h.fuente){
-      descontarFuente(h.fuente,montoOriginalCobro);
+      descontarFuente(h.fuente,montoOriginalCobro, { exacto: true });
     }
     // Revertir cada abono de lo pendiente por separado (cada uno pudo ir a otra cuenta)
     (h.pendienteHistorial||[]).forEach(ab=>{
-      if(ab.destino)descontarFuente(ab.destino,ab.monto||0);
+      if(ab.destino)descontarFuente(ab.destino,ab.monto||0, { exacto: true });
     });
     // Si este cobro estaba saldando deuda de un ciclo ya cerrado (_pagoIdCierre), devolver
     // esa plata al pendiente congelado de ese pago — si el pago referenciado ya no existe
@@ -738,7 +738,7 @@ async function deshacerAbonoPendienteSp(i,abIdx){
   if(!ab)return;
   const ok=await dialogo('Deshacer abono',`¿Deshacer este abono de ${fmt(ab.monto)}? Esta acción no se puede deshacer. Esto revierte esa plata de ${ab.destino?fuenteLabel(ab.destino):'la cuenta elegida'} y vuelve a marcar esa parte como pendiente.`,'Deshacer',true);
   if(!ok)return;
-  if(ab.destino)descontarFuente(ab.destino,ab.monto||0);
+  if(ab.destino)descontarFuente(ab.destino,ab.monto||0, { exacto: true });
   h.monto=Math.max(0,(h.monto||0)-(ab.monto||0));
   h.pendiente=(h.pendiente||0)+(ab.monto||0);
   h.pendienteHistorial.splice(abIdx,1);

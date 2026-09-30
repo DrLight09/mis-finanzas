@@ -791,26 +791,26 @@ function _borrarMesadaPago(parent,key,info){
       if(info.splits&&info.splits.length){
         info.splits.forEach(s=>{
           if(s.fuente){
-            descontarFuente(s.fuente,s.monto);
+            descontarFuente(s.fuente,s.monto, { exacto: true });
             _borrarMovSecundarioMesada(s.fuente,s._movSecId);
           }
         });
       } else {
         if(oe.sumado&&info.destino&&montoOrig){
-          descontarFuente(info.destino,montoOrig);
+          descontarFuente(info.destino,montoOrig, { exacto: true });
         }
         _borrarMovSecundarioMesada(info.destino,info._movSecId);
       }
     } else if(info.splits&&info.splits.length){
       info.splits.forEach(s=>{
         if(s.fuente){
-          descontarFuente(s.fuente,s.monto);
+          descontarFuente(s.fuente,s.monto, { exacto: true });
           _borrarMovSecundarioMesada(s.fuente,s._movSecId);
         }
       });
     } else if(info.destino){
       const montoOriginal=Math.max(0,(info.monto||0)-historialTotal);
-      descontarFuente(info.destino,montoOriginal);
+      descontarFuente(info.destino,montoOriginal, { exacto: true });
       _borrarMovSecundarioMesada(info.destino,info._movSecId);
     }
     // Devolver también los abonos que fueron saldando lo pendiente
@@ -825,11 +825,11 @@ function _borrarMesadaPago(parent,key,info){
           enc.movimientos=enc.movimientos.filter(m=>m.id!==oe.movId);
         }
         if(oe.sumado&&h.destino&&montoOrig){
-          descontarFuente(h.destino,montoOrig);
+          descontarFuente(h.destino,montoOrig, { exacto: true });
         }
         _borrarMovSecundarioMesada(h.destino,h._movSecId);
       } else if(h.destino){
-        descontarFuente(h.destino,h.monto);
+        descontarFuente(h.destino,h.monto, { exacto: true });
         _borrarMovSecundarioMesada(h.destino,h._movSecId);
       }
     });
@@ -1026,11 +1026,11 @@ async function deshacerPendienteMesada(parent,key,idx){
       enc.movimientos=enc.movimientos.filter(m=>m.id!==oe.movId);
     }
     if(oe.sumado&&h.destino&&montoOrig){
-      descontarFuente(h.destino,montoOrig);
+      descontarFuente(h.destino,montoOrig, { exacto: true });
     }
     _borrarMovSecundarioMesada(h.destino,h._movSecId);
   } else if(h.destino){
-    descontarFuente(h.destino,h.monto);
+    descontarFuente(h.destino,h.monto, { exacto: true });
     _borrarMovSecundarioMesada(h.destino,h._movSecId);
   }
   info.monto=Math.max(0,(info.monto||0)-h.monto);

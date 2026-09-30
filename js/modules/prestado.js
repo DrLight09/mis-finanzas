@@ -713,9 +713,9 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
           // Sin _abonoDestinoMovId (abono antiguo sin el mov registrado): igual descontamos
           movDestinoExiste = true;
         }
-        if (movDestinoExiste) descontarFuente(m.destino, m.monto);
+        if (movDestinoExiste) descontarFuente(m.destino, m.monto, { exacto: true });
       } else if (m.destinos && m.destinos.length) {
-        m.destinos.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto); });
+        m.destinos.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto, { exacto: true }); });
       }
     } else if (m.destinos && m.destinos.length) {
       m.destinos.forEach(r => {
@@ -742,7 +742,7 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
             }
           }
         }
-        if (movDestinoExiste) descontarFuente(r.fuente, r.monto);
+        if (movDestinoExiste) descontarFuente(r.fuente, r.monto, { exacto: true });
       });
     } else if (m.destino) {
       let movDestinoExiste = true;
@@ -767,7 +767,7 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
           }
         }
       }
-      if (movDestinoExiste) descontarFuente(m.destino, m.monto);
+      if (movDestinoExiste) descontarFuente(m.destino, m.monto, { exacto: true });
     }
 
     // Revertir el extra si lo tenía
@@ -775,7 +775,7 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
       for (const p of m._extPartes) {
         if (p.tipo === 'guardar' && p.cuenta) {
           // Quitar el saldo que se sumó
-          descontarFuente(p.cuenta, p.monto);
+          descontarFuente(p.cuenta, p.monto, { exacto: true });
           // Eliminar el movimiento de historial asociado
           if (p.movExtraId) {
             if (p.cuenta === 'efectivo' || p.cuenta === 'nequi') {
@@ -2180,7 +2180,7 @@ async function eliminarMovMiDeuda(deudaId, movId) {
 
   // Revertir el efecto en la cuenta involucrada
   if (m.tipo === 'recibido' && m.destino) {
-    descontarFuente(m.destino, m.monto);
+    descontarFuente(m.destino, m.monto, { exacto: true });
     // Eliminar movimiento secundario si existe
     if (m._movSecId) {
       if (m.destino === 'efectivo' || m.destino === 'nequi') {

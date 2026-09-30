@@ -1793,7 +1793,7 @@ async function _cpEliminar(id){
                 const caj=(S.cajitas||[]).find(x=>x.id===cuenta.split(':')[1]);
                 if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
               }
-              descontarFuente(cuenta, d.monto);
+              descontarFuente(cuenta, d.monto, { exacto: true });
             }
           } else if(d.tipo==='gasto' && d.gastoOrigen==='tc' && d.gastoTcId){
             // Revertir deuda y compra de TC generada al recibir
@@ -1807,7 +1807,7 @@ async function _cpEliminar(id){
                   const caj=(S.cajitas||[]).find(x=>x.id===d.gastoTcCajita.split(':')[1]);
                   if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
                 }
-                descontarFuente(d.gastoTcCajita, d.monto);
+                descontarFuente(d.gastoTcCajita, d.monto, { exacto: true });
               }
             }
           } else if(d.tipo==='gasto' && d.gastoOrigen==='cajita' && d.gastoCajita){
@@ -1817,7 +1817,7 @@ async function _cpEliminar(id){
                 const caj=(S.cajitas||[]).find(x=>x.id===d.gastoCajita.split(':')[1]);
                 if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
               }
-              descontarFuente(d.gastoCajita, d.monto);
+              descontarFuente(d.gastoCajita, d.monto, { exacto: true });
             }
           }
         } catch(e){ console.warn('[CP] Error revirtiendo destino al eliminar:', e); }

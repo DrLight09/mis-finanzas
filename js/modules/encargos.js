@@ -1926,7 +1926,7 @@ async function deleteMovEncargo(encId, movId) {
     if (!(enc.saldoInicial > 0)) return;
     const ok = await dialogo('Eliminar saldo inicial', `¿Eliminar el saldo inicial de ${fmt(enc.saldoInicial)}?${enc.cuentaInicial ? ' Se descontará de ' + fuenteLabel(enc.cuentaInicial) + '.' : ''}`, 'Eliminar', true);
     if (!ok) return;
-    if (enc.cuentaInicial) descontarFuente(enc.cuentaInicial, enc.saldoInicial);
+    if (enc.cuentaInicial) descontarFuente(enc.cuentaInicial, enc.saldoInicial, { exacto: true });
     enc.saldoInicial = 0;
     enc.cuentaInicial = '';
     save(); refresh();
@@ -1991,7 +1991,7 @@ async function deleteMovEncargo(encId, movId) {
     // con fallback a _tcMonto y luego a monto para compatibilidad con registros anteriores.
     if (mov._destino) {
       const montoARevertir = mov._destinoMonto || mov._tcMonto || mov.monto;
-      if (montoARevertir) descontarFuente(mov._destino, montoARevertir);
+      if (montoARevertir) descontarFuente(mov._destino, montoARevertir, { exacto: true });
     }
 
     // Revertir la deuda de la TC (paso 3)
@@ -2009,7 +2009,7 @@ async function deleteMovEncargo(encId, movId) {
     // y revertir sus sumas. Excluye los de intercambio — esos los maneja el bloque siguiente.
     if (S.movimientos) {
       const difMovs = S.movimientos.filter(m => m._encMovId === movId && !m._esIntercambioEncargo);
-      difMovs.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto); });
+      difMovs.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, { exacto: true }); });
       S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && !m._esIntercambioEncargo));
     }
   }
@@ -2028,7 +2028,7 @@ async function deleteMovEncargo(encId, movId) {
   // Revertir "Me lo regalaron" (traspaso de encargo a cuenta propia)
   if (mov && mov._traspasoEncargo) {
     // Revertir el sumarFuente que se hizo en el paso 2
-    if (mov._destino && mov.monto) descontarFuente(mov._destino, mov.monto);
+    if (mov._destino && mov.monto) descontarFuente(mov._destino, mov.monto, { exacto: true });
     // Borrar el movimiento de ingreso vinculado (puede estar en c.movimientos de una
     // cuenta custom o en S.movimientos para cuentas estándar).
     if (mov._destino && mov._destino.startsWith('custom:')) {
@@ -2051,7 +2051,7 @@ async function deleteMovEncargo(encId, movId) {
         if (m._intercambioSalida) {
           sumarFuente(m.fuente, m.monto);
         } else if (m._intercambioEntrada) {
-          descontarFuente(m.fuente, m.monto);
+          descontarFuente(m.fuente, m.monto, { exacto: true });
         }
       });
       S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && m._esIntercambioEncargo));
@@ -2069,7 +2069,7 @@ async function deleteMovEncargo(encId, movId) {
           sumarFuente(m.fuente, m.monto);
         } else if (m._intercambioEntrada) {
           // Recuperé en mi cuenta → revertir descontando
-          descontarFuente(m.fuente, m.monto);
+          descontarFuente(m.fuente, m.monto, { exacto: true });
         }
       });
       S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && m._esIntercambioEncargo));
@@ -2080,7 +2080,7 @@ async function deleteMovEncargo(encId, movId) {
   // por cuenta si se repartió con "Dividir ÷"). La compra con TC ya lo limpió arriba.
   if (mov && mov.diferencial && !mov._esTcEncargo && S.movimientos) {
     S.movimientos.filter(m => m._encMovId === movId && m._esDiferencialEncargo)
-      .forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto); });
+      .forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, { exacto: true }); });
     S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && m._esDiferencialEncargo));
   }
 

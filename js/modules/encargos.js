@@ -456,9 +456,9 @@ function abrirEncargoDetalle(id) {
       const esTcEncargo = !esEntrada && m._esTcEncargo;
       const esMia = !esEntrada && !!m._miaCuentaSale;
       const tcNombreLbl = esTcEncargo && m._tcId ? ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{}).nombre||'' : '';
-      const _miaLbl = arr => (arr||[]).map(r=>fuenteLabel(r.cuenta)).join(' + ');
-      const miaSaleLbl  = esMia ? ((m._miaCuentas && m._miaCuentas.sale.length>1) ? _miaLbl(m._miaCuentas.sale) : fuenteLabel(m._miaCuentaSale)) : '';
-      const miaEntraLbl = esMia && m._miaCuentaEntra ? ((m._miaCuentas && m._miaCuentas.entra.length>1) ? _miaLbl(m._miaCuentas.entra) : fuenteLabel(m._miaCuentaEntra)) : '';
+      const _miaLbl = arr => (arr||[]).map(r=>fuenteLabel(r.cuenta)+' '+fmt(r.monto)).join(' + ');
+      const miaSaleLbl  = esMia ? ((m._miaCuentas && m._miaCuentas.sale.length>1) ? _miaLbl(m._miaCuentas.sale) : fuenteLabel(m._miaCuentaSale)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
+      const miaEntraLbl = esMia && m._miaCuentaEntra ? ((m._miaCuentas && m._miaCuentas.entra.length>1) ? _miaLbl(m._miaCuentas.entra) : fuenteLabel(m._miaCuentaEntra)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
       const origenEnc = esAbonoPrestamo ? ('Préstamos · ' + (((S.deudores||[]).find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+enc.nombre);
       return html`<div class="gasto-item" ${raw(_encAttrs(m,origenEnc))} style="cursor:pointer;border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':esTcEncargo?'rgba(96,176,240,.25)':'rgba(240,104,104,.15)'};">
         <div class="gasto-item-top">
@@ -967,6 +967,7 @@ function _procesarMovEncMia(movimiento) {
   });
 
   movimiento._miaCuentaSale = salidas[0].fuente;
+  movimiento._miaMonto = monto; // lo que puse de mi bolsillo (puede ser menor al monto del movimiento si hay diferencial)
   if (entradas.length) movimiento._miaCuentaEntra = entradas[0].fuente;
   if (salidas.length > 1 || entradas.length > 1) {
     movimiento._miaCuentas = {

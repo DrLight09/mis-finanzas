@@ -634,7 +634,7 @@ async function eliminarMovimiento(btn) {
     const tr = (S.transferencias || []).find(t => t.id === movId);
     if (tr) {
       sumarFuente(tr.origen, tr.monto);   // devolver al origen
-      descontarFuente(tr.destino, tr.monto); // quitar del destino
+      descontarFuente(tr.destino, tr.monto, { exacto: true }); // quitar del destino
       S.transferencias = S.transferencias.filter(t => t.id !== movId);
     }
   } else if (movTipoEl === 'salida_manual') {
@@ -655,8 +655,8 @@ async function eliminarMovimiento(btn) {
     const m = (S.movimientos || []).find(x => x.id === movId);
     if (m) {
       const fuente = m.fuente || fuenteOrigen;
-      if (fuente) descontarFuente(fuente, m.monto);
-      else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto);
+      if (fuente) descontarFuente(fuente, m.monto, { exacto: true });
+      else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto, { exacto: true });
       if (m.tipo === 'apertura') {
         if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
         S._ajustesBaseLog.push({ fecha: hoy(), monto: -(m.monto||0) });
@@ -676,7 +676,7 @@ async function eliminarMovimiento(btn) {
       // revertía el saldo pero no limpiaba nada más, dejando el registro
       // huérfano en c.movimientos para siempre — visible en pantalla aunque la
       // plata ya se hubiera devuelto. Ver CHANGELOG.md#cuentas (2026-08-31).
-      descontarFuente(fuenteOrigen, monto);
+      descontarFuente(fuenteOrigen, monto, { exacto: true });
       if (fuenteOrigen.startsWith('custom:')) {
         const cid = fuenteOrigen.split(':')[1];
         const cc = (S.cuentasPersonalizadas || []).find(x => x.id === cid);
@@ -771,9 +771,9 @@ async function eliminarMovimiento(btn) {
         if (info && info._id === movId) {
           // Revertir destino(s)
           if (info.splits && info.splits.length) {
-            info.splits.forEach(s => { if (s.fuente) descontarFuente(s.fuente, s.monto); });
+            info.splits.forEach(s => { if (s.fuente) descontarFuente(s.fuente, s.monto, { exacto: true }); });
           } else if (info.destino) {
-            descontarFuente(info.destino, info.monto);
+            descontarFuente(info.destino, info.monto, { exacto: true });
           }
           delete data[k];
           found = true;

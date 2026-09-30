@@ -14,7 +14,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/calc-helpers.js` | de entrada (defer) | 10 | 0 |
 | `js/core/color-picker.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
 | `js/core/core-state.js` | de entrada (defer) | 57 | 5 |
-| `js/core/diferencial.js` | de entrada (defer) | 22 | 0 |
+| `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
 | `js/core/firebase-init.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/firebase-sync.js` | de entrada (módulo ES) | 0 | 0 |
@@ -33,7 +33,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/sheet-behavior.js` | de entrada (defer) | 0 | 0 |
 | `js/core/sheet-stack.js` | de entrada (defer) | 12 | 0 |
-| `js/core/split.js` | de entrada (defer) | 8 | 0 |
+| `js/core/split.js` | de entrada (defer) | 9 | 0 |
 | `js/core/wait-for-module.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 0 | 0 |
 | `js/core/wait-for.js` | de entrada (defer) | 1 | 0 |
 | `js/core/wrapped-gate.js` | de entrada (defer) | 8 | 1 |
@@ -99,7 +99,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_diffActualizarMiCuenta`, `_diffFuentesOptsHtml`, `_difRenderHistorial`, `diffAddParte`, `diffAplicar`, `diffCalcular`, `diffEstaAbierto`, `diffHtmlBloque`, `diffInst`, `diffRegistrarInstancia`, `diffRemoveParte`, `diffRenderHistorial`, `diffRenderPartes`, `diffReset`, `diffResumen`, `diffSetCuentaEntrada`, `diffSetCuentaSalida`, `diffSetMonto`, `diffSetNombre`, `diffToggle`, `diffTogglePagoYo`, `diffValidarIntercambios`
+**Funciones:** `_diffActualizarMiCuenta`, `_diffFuentesOptsHtml`, `_difRenderHistorial`, `diffAddParte`, `diffAplicar`, `diffCalcular`, `diffEstaAbierto`, `diffHtmlBloque`, `diffInst`, `diffRegistrarInstancia`, `diffRemoveParte`, `diffRenderHistorial`, `diffRenderPartes`, `diffReset`, `diffResumen`, `diffSetCuentaEntrada`, `diffSetCuentaSalida`, `diffSetMonto`, `diffSetNombre`, `diffToggle`, `diffTogglePagoYo`, `diffValidarIntercambios`, `diffValidarMiCuenta`
 
 ### `js/core/events.js`
 
@@ -213,7 +213,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `crearSplitWidget`, `splitActualizarBotones`, `splitActualizarOpciones`, `splitAgregarRow`, `splitGetData`, `splitOpcionesUsadas`, `splitPreview`, `splitToggle`
+**Funciones:** `crearSplitWidget`, `splitActualizarBotones`, `splitActualizarOpciones`, `splitAgregarRow`, `splitGetData`, `splitOpcionesUsadas`, `splitPreview`, `splitReset`, `splitToggle`
 
 ### `js/core/wait-for-module.js`
 
@@ -955,6 +955,7 @@ Ninguno.
 | `diffToggle` | `js/core/diferencial.js` |
 | `diffTogglePagoYo` | `js/core/diferencial.js` |
 | `diffValidarIntercambios` | `js/core/diferencial.js` |
+| `diffValidarMiCuenta` | `js/core/diferencial.js` |
 | `editarCDT` | `js/modules/cuentas.js` |
 | `editarCuentaCustom` | `js/modules/cuentas.js` |
 | `editarDeudorActual` | `js/modules/prestado.js` |
@@ -1145,6 +1146,7 @@ Ninguno.
 | `splitGetData` | `js/core/split.js` |
 | `splitOpcionesUsadas` | `js/core/split.js` |
 | `splitPreview` | `js/core/split.js` |
+| `splitReset` | `js/core/split.js` |
 | `splitToggle` | `js/core/split.js` |
 | `spMontoAntesDe` | `js/modules/spotify.js` |
 | `spNombreDe` | `js/core/calc-helpers.js` |

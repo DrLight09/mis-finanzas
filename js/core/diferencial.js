@@ -71,6 +71,11 @@ const _diffInstancias = {};
  *   ids: { wrap, body, icon, real, partesList, resumen, miCuentaWrap, miCuenta }
  *   permiteBeneficiarios: bool — muestra lista "quién se quedó con qué"
  *   permiteIntercambio: bool — cada beneficiario puede ser "lo pagué yo" (sale de mi cuenta, entra a otra)
+ *   origenSeccion: string (opcional) — si se define (ej. 'Encargos'), los movimientos que diffAplicar()
+ *     escribe en S.movimientos (margen e intercambios) se marcan _secundario:true + _origenSeccion, así
+ *     eliminarMovimiento() (movimientos.js) NO los deja borrar sueltos y manda al usuario a borrar el
+ *     movimiento principal. Definirlo SOLO si el módulo dueño revierte esos movimientos al borrar el
+ *     principal (Encargos lo hace vía _encMovId en deleteMovEncargo). Sin definir = comportamiento anterior.
  *   permiteMiCuenta: bool — muestra selector de cuenta propia para el sobrante libre
  *   getDijo: () => number — de dónde sacar el monto "dijiste/correspondía"
  *   exigeMargenPositivo: bool — si true, margen<=0 se muestra como error (no permite "cobré de más")
@@ -401,6 +406,9 @@ function diffAplicar(instId, movimiento, linkId) {
     ...intercambios.map(b => ({ nombre: b.nombre, monto: b.monto, pagadoPorMi: true, miCuentaSalida: b.miCuentaSalida || '', miCuentaEntrada: b.miCuentaEntrada || '' }))
   ];
 
+  // Marca de "movimiento secundario" (ver cfg.origenSeccion arriba). Vacío si el módulo no la definió.
+  const _sec = inst.cfg.origenSeccion ? { _secundario: true, _origenSeccion: inst.cfg.origenSeccion } : {};
+
   const diferencial = { dijo, real, margen, beneficiarios: beneficiariosGuardados, miCuenta: yoMeQuedo > 0 ? miCuenta : '', yoMeQuedo: yoMeQuedo || yoMeQuedoFantasma };
   if (filasMi && yoMeQuedo > 0 && filasMi.length > 1) diferencial.miCuentas = filasMi.map(r => ({ cuenta: r.fuente, monto: r.monto }));
   movimiento.diferencial = diferencial;
@@ -416,6 +424,7 @@ function diffAplicar(instId, movimiento, linkId) {
         id: uid(), tipo: 'entrada', fuente: r.fuente,
         ...(linkId ? { _encMovId: linkId } : {}),
         _esDiferencialEncargo: true,
+        ..._sec,
         _difDijo: dijo, _difReal: real, _difMargen: margen,
         monto: r.monto, fecha,
         desc: (inst.cfg.descMargen ? inst.cfg.descMargen(movimiento) : 'Margen — ') + (movimiento.desc || ''),
@@ -431,6 +440,7 @@ function diffAplicar(instId, movimiento, linkId) {
       id: uid(), tipo: 'entrada', fuente: '',
       ...(linkId ? { _encMovId: linkId } : {}),
       _esDiferencialEncargo: true,
+      ..._sec,
       _difDijo: dijo, _difReal: real, _difMargen: margen,
       monto: yoMeQuedoFantasma, fecha,
       desc: (inst.cfg.descMargen ? inst.cfg.descMargen(movimiento) : 'Margen — ') + (movimiento.desc || ''),
@@ -452,6 +462,7 @@ function diffAplicar(instId, movimiento, linkId) {
         id: uid(), tipo: 'transferencia', fuente: cuentaSalida, _fuenteDestino: cuentaEntrada || '',
         ...(linkId ? { _encMovId: linkId } : {}),
         _esIntercambioEncargo: true, _intercambioSalida: true,
+        ..._sec,
         monto: b.monto, fecha,
         desc: `Intercambio: le di a ${nombreBenef} de mi ${fuenteLabel(cuentaSalida)}`,
         nota: 'Movimiento contable neutro — no es ingreso ni gasto. Pagué de mi bolsillo, recupero del encargo.',
@@ -464,6 +475,7 @@ function diffAplicar(instId, movimiento, linkId) {
         id: uid(), tipo: 'transferencia', fuente: cuentaEntrada, _fuenteDestino: cuentaSalida || '',
         ...(linkId ? { _encMovId: linkId } : {}),
         _esIntercambioEncargo: true, _intercambioEntrada: true,
+        ..._sec,
         monto: b.monto, fecha,
         desc: `Intercambio: recupero de ${nombreBenef} en ${fuenteLabel(cuentaEntrada)}`,
         nota: 'Movimiento contable neutro — no es ingreso ni gasto. Equivale al efectivo que di de mi bolsillo.',

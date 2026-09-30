@@ -456,8 +456,9 @@ function abrirEncargoDetalle(id) {
       const esTcEncargo = !esEntrada && m._esTcEncargo;
       const esMia = !esEntrada && !!m._miaCuentaSale;
       const tcNombreLbl = esTcEncargo && m._tcId ? ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{}).nombre||'' : '';
-      const miaSaleLbl  = esMia ? fuenteLabel(m._miaCuentaSale) : '';
-      const miaEntraLbl = esMia && m._miaCuentaEntra ? fuenteLabel(m._miaCuentaEntra) : '';
+      const _miaLbl = arr => (arr||[]).map(r=>fuenteLabel(r.cuenta)).join(' + ');
+      const miaSaleLbl  = esMia ? ((m._miaCuentas && m._miaCuentas.sale.length>1) ? _miaLbl(m._miaCuentas.sale) : fuenteLabel(m._miaCuentaSale)) : '';
+      const miaEntraLbl = esMia && m._miaCuentaEntra ? ((m._miaCuentas && m._miaCuentas.entra.length>1) ? _miaLbl(m._miaCuentas.entra) : fuenteLabel(m._miaCuentaEntra)) : '';
       const origenEnc = esAbonoPrestamo ? ('Préstamos · ' + (((S.deudores||[]).find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+enc.nombre);
       return html`<div class="gasto-item" ${raw(_encAttrs(m,origenEnc))} style="cursor:pointer;border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':esTcEncargo?'rgba(96,176,240,.25)':'rgba(240,104,104,.15)'};">
         <div class="gasto-item-top">
@@ -721,6 +722,10 @@ function crearEncargo() {
    INSTANCIA 1 — "Salió plata" de un encargo (movenc-dif)
    ═══════════════════════════════════════════════════════════════ */
 
+// Split (Dividir ÷) del sobrante del margen: true cuando el usuario repartió lo que sobra
+// entre varias cuentas suyas en vez de una sola. Ver crearSplitWidget('movencDifMi') abajo.
+let _difMiSplitMode = false;
+
 diffRegistrarInstancia('movenc', {
   ids: {
     wrap: 'movenc-dif-wrap', body: 'movenc-dif-body', icon: 'movenc-dif-toggle-icon',
@@ -731,8 +736,37 @@ diffRegistrarInstancia('movenc', {
   permiteIntercambio: true,
   permiteMiCuenta: true,
   getDijo: () => parseMoney(document.getElementById('movenc_monto')?.value) || 0,
-  descMargen: () => 'Margen de encargo — '
+  descMargen: () => 'Margen de encargo — ',
+  getMiCuentaSplit: () => _difMiSplitMode ? splitGetData('movencDifMi') : null,
+  onReset: () => splitReset('movencDifMi'),
+  onResumen: () => _difMiSplitPreview()
 });
+
+crearSplitWidget('movencDifMi', {
+  simpleId: 'movenc_dif_mi_simple', splitId: 'movenc_dif_mi_split', toggleId: 'movenc_dif_mi_toggle', rowsId: 'movencDifMiRows',
+  getModo: () => _difMiSplitMode, setModo: v => { _difMiSplitMode = v; },
+  getFuentesFn: sel => buildFuentesOptsHtml({ selectedVal: sel, incluirTC: false, placeholder: 'Elegir cuenta' }),
+  onPreview: () => _difMiSplitPreview()
+});
+function _difMiSplitToggle() { splitToggle('movencDifMi'); }
+function _difMiAgregarRow() { splitAgregarRow('movencDifMi'); }
+
+function _difMiSplitPreview() {
+  const el = document.getElementById('movenc_dif_mi_preview');
+  if (!el) return;
+  if (!_difMiSplitMode) { el.textContent = ''; return; }
+  const calc = diffCalcular('movenc');
+  const sobra = calc ? Math.max(0, calc.sinAsignar) : 0;
+  const filas = splitGetData('movencDifMi');
+  if (!filas.length) { el.textContent = sobra > 0.5 ? `Repartí ${fmt(sobra)} entre tus cuentas` : ''; el.style.color = 'var(--text3)'; return; }
+  const total = filas.reduce((a, r) => a + r.monto, 0);
+  const lineas = filas.map(r => `${r.fuente ? fuenteLabel(r.fuente) : '?'}: ${fmt(r.monto)}`).join(' · ');
+  const resto = sobra - total;
+  if (sobra <= 0.5)      { el.textContent = lineas; el.style.color = 'var(--text2)'; }
+  else if (resto > 0.5)  { el.textContent = lineas + ` · Sin asignar: ${fmt(resto)}`; el.style.color = 'var(--amber)'; }
+  else if (resto < -0.5) { el.textContent = lineas + ` · Excede: ${fmt(-resto)}`; el.style.color = 'var(--red)'; }
+  else                   { el.textContent = lineas + ' \u2713'; el.style.color = 'var(--accent)'; }
+}
 
 // Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual, cero cambios de markup
 function _difToggle() { diffToggle('movenc'); }
@@ -773,28 +807,90 @@ function _movEncMiaToggle() {
   }
 }
 
+/* Split (Dividir ÷) de "Yo puse la plata": el monto total puede haber salido de
+   varias cuentas tuyas y/o recuperarse en varias. Cada lado tiene su propio widget. */
+let _miaSaleSplitMode  = false;
+let _miaEntraSplitMode = false;
+
+crearSplitWidget('miaSale', {
+  simpleId: 'movenc_mia_sale_simple', splitId: 'movenc_mia_sale_split', toggleId: 'movenc_mia_sale_toggle', rowsId: 'miaSaleRows',
+  getModo: () => _miaSaleSplitMode, setModo: v => { _miaSaleSplitMode = v; },
+  getFuentesFn: sel => _diffFuentesOptsHtml(sel, true),
+  onPreview: () => _movEncMiaPreview()
+});
+crearSplitWidget('miaEntra', {
+  simpleId: 'movenc_mia_entra_simple', splitId: 'movenc_mia_entra_split', toggleId: 'movenc_mia_entra_toggle', rowsId: 'miaEntraRows',
+  getModo: () => _miaEntraSplitMode, setModo: v => { _miaEntraSplitMode = v; },
+  getFuentesFn: sel => _diffFuentesOptsHtml(sel, false),
+  onPreview: () => _movEncMiaPreview()
+});
+function _miaSaleSplitToggle()  { splitToggle('miaSale'); }
+function _miaSaleAgregarRow()   { splitAgregarRow('miaSale'); }
+function _miaEntraSplitToggle() { splitToggle('miaEntra'); }
+function _miaEntraAgregarRow()  { splitAgregarRow('miaEntra'); }
+
+// Lee las cuentas de cada lado como listas [{fuente, monto}], sea modo simple (una fila
+// con el monto total) o dividido (las filas que puso el usuario).
+function _miaLeerCuentas(monto) {
+  const saleSel  = document.getElementById('movenc_mia_cuenta_sale');
+  const entraSel = document.getElementById('movenc_mia_cuenta_entra');
+  return {
+    sale:  _miaSaleSplitMode  ? splitGetData('miaSale')  : [{ fuente: saleSel  ? saleSel.value  : '', monto }],
+    entra: _miaEntraSplitMode ? splitGetData('miaEntra') : [{ fuente: entraSel ? entraSel.value : '', monto }]
+  };
+}
+
+function _miaResumenLado(filas, monto, dividido) {
+  const txt = filas.map(r => `${r.fuente ? fuenteLabel(r.fuente) : '?'} ${fmt(r.monto)}`).join(' + ') || '?';
+  if (!dividido || !filas.length) return txt;
+  const resto = monto - filas.reduce((a, r) => a + r.monto, 0);
+  if (resto > 0.5)  return `${txt} (sin asignar ${fmt(resto)})`;
+  if (resto < -0.5) return `${txt} (excede ${fmt(-resto)})`;
+  return `${txt} \u2713`;
+}
+
 function _movEncMiaPreview() {
   const el = document.getElementById('movenc-mia-preview');
   if (!el) return;
   const monto = parseMoney(document.getElementById('movenc_monto').value) || 0;
   if (!monto) { el.textContent = ''; return; }
-  const sale  = document.getElementById('movenc_mia_cuenta_sale').value;
-  const entra = document.getElementById('movenc_mia_cuenta_entra').value;
-  const saleTxt  = sale  ? fuenteLabel(sale)  : '?';
-  const entraTxt = entra ? fuenteLabel(entra) : '?';
-  el.innerHTML = html`↔ Sale ${fmt(monto)} de ${saleTxt} · Recupero ${fmt(monto)} en ${entraTxt}`;
+  const { sale, entra } = _miaLeerCuentas(monto);
+  if (!_miaSaleSplitMode && !_miaEntraSplitMode) {
+    const saleTxt  = sale[0].fuente  ? fuenteLabel(sale[0].fuente)  : '?';
+    const entraTxt = entra[0].fuente ? fuenteLabel(entra[0].fuente) : '?';
+    el.innerHTML = html`↔ Sale ${fmt(monto)} de ${saleTxt} · Recupero ${fmt(monto)} en ${entraTxt}`;
+  } else {
+    el.innerHTML = html`↔ Sale ${_miaResumenLado(sale, monto, _miaSaleSplitMode)} · Recupero ${_miaResumenLado(entra, monto, _miaEntraSplitMode)}`;
+  }
 }
 
 function _validarMovEncMia() {
   const body = document.getElementById('movenc-mia-body');
   if (!body || body.style.display === 'none') return null;
   const monto = parseMoney(document.getElementById('movenc_monto').value) || 0;
-  const sale  = document.getElementById('movenc_mia_cuenta_sale').value;
   if (!monto) return null;
-  if (!sale) return 'Elegí de qué cuenta tuya salió la plata';
-  const saldo = getSaldoFuente(sale);
-  if (monto > saldo + 0.5) {
-    return `No tenés ${fmt(monto)} en ${escHtml(fuenteLabel(sale))}. Disponible: ${fmt(saldo)}.`;
+  const { sale, entra } = _miaLeerCuentas(monto);
+
+  if (_miaSaleSplitMode) {
+    if (!sale.length) return 'Repartí de qué cuentas tuyas salió la plata';
+    if (sale.some(r => !r.fuente)) return 'Elegí la cuenta en cada fila de "sale"';
+    const total = sale.reduce((a, r) => a + r.monto, 0);
+    if (Math.abs(total - monto) > 0.5) return `Lo que sale de tus cuentas (${fmt(total)}) tiene que ser igual al monto (${fmt(monto)})`;
+  } else if (!sale[0].fuente) {
+    return 'Elegí de qué cuenta tuya salió la plata';
+  }
+  for (const r of sale) {
+    const saldo = getSaldoFuente(r.fuente);
+    if (r.monto > saldo + 0.5) {
+      return `No tenés ${fmt(r.monto)} en ${escHtml(fuenteLabel(r.fuente))}. Disponible: ${fmt(saldo)}.`;
+    }
+  }
+
+  // Recupero: sin filas = "sin especificar" (igual que el modo simple con la opción vacía)
+  if (_miaEntraSplitMode && entra.length) {
+    if (entra.some(r => !r.fuente)) return 'Elegí la cuenta en cada fila de "recupero"';
+    const total = entra.reduce((a, r) => a + r.monto, 0);
+    if (Math.abs(total - monto) > 0.5) return `Lo que recuperás (${fmt(total)}) tiene que ser igual al monto (${fmt(monto)})`;
   }
   return null;
 }
@@ -802,55 +898,69 @@ function _validarMovEncMia() {
 function _procesarMovEncMia(movimiento) {
   const body = document.getElementById('movenc-mia-body');
   if (!body || body.style.display === 'none') return;
-  const sale  = document.getElementById('movenc_mia_cuenta_sale').value;
-  const entra = document.getElementById('movenc_mia_cuenta_entra').value;
-  if (!sale) return;
-  const monto = movimiento.monto;
+  // Monto TOTAL del campo, no movimiento.monto: en una salida dividida entre cuentas
+  // del encargo, `movimiento` es solo la primera porción y "Yo puse" cubre el gasto entero.
+  const monto = parseMoney(document.getElementById('movenc_monto').value) || movimiento.monto;
+  const { sale, entra } = _miaLeerCuentas(monto);
+  const salidas  = sale.filter(r => r.fuente && r.monto > 0);
+  const entradas = entra.filter(r => r.fuente && r.monto > 0);
+  if (!salidas.length) return;
   const fecha = movimiento.fecha || hoy();
   if (!S.movimientos) S.movimientos = [];
+  const destinoUnico = entradas.length === 1 ? entradas[0].fuente : '';
+  const origenUnico  = salidas.length === 1 ? salidas[0].fuente : '';
+  let k = 1;
 
-  // Egreso de mi cuenta propia (lo que puse de mi bolsillo)
-  descontarFuente(sale, monto);
-  S.movimientos.push({
-    id: uid(),
-    tipo: 'transferencia',
-    fuente: sale,
-    _fuenteDestino: entra || '',
-    _encMovId: movimiento.id,
-    _esIntercambioEncargo: true,
-    _intercambioSalida: true,
-    _secundario: true,
-    _origenSeccion: 'Encargos',
-    monto,
-    fecha,
-    desc: `Yo puse la plata: ${movimiento.desc || ''}`,
-    nota: `Salida de ${fuenteLabel(sale)} — generado automáticamente al registrar "Yo puse la plata" en encargo.`,
-    ts: Date.now() + 1
-  });
-
-  // Ingreso a mi cuenta destino (lo que recupero del encargo)
-  if (entra) {
-    sumarFuente(entra, monto);
+  // Egresos de mis cuentas propias (lo que puse de mi bolsillo) — uno por cuenta
+  salidas.forEach(r => {
+    descontarFuente(r.fuente, r.monto);
     S.movimientos.push({
       id: uid(),
       tipo: 'transferencia',
-      fuente: entra,
-      _fuenteDestino: sale,
+      fuente: r.fuente,
+      _fuenteDestino: destinoUnico,
+      _encMovId: movimiento.id,
+      _esIntercambioEncargo: true,
+      _intercambioSalida: true,
+      _secundario: true,
+      _origenSeccion: 'Encargos',
+      monto: r.monto,
+      fecha,
+      desc: `Yo puse la plata: ${movimiento.desc || ''}`,
+      nota: `Salida de ${fuenteLabel(r.fuente)} — generado automáticamente al registrar "Yo puse la plata" en encargo.`,
+      ts: Date.now() + k++
+    });
+  });
+
+  // Ingresos a mis cuentas destino (lo que recupero del encargo) — uno por cuenta
+  entradas.forEach(r => {
+    sumarFuente(r.fuente, r.monto);
+    S.movimientos.push({
+      id: uid(),
+      tipo: 'transferencia',
+      fuente: r.fuente,
+      _fuenteDestino: origenUnico,
       _encMovId: movimiento.id,
       _esIntercambioEncargo: true,
       _intercambioEntrada: true,
       _secundario: true,
       _origenSeccion: 'Encargos',
-      monto,
+      monto: r.monto,
       fecha,
       desc: `Recupero de encargo: ${movimiento.desc || ''}`,
-      nota: `Entrada a ${fuenteLabel(entra)} — generado automáticamente al registrar "Yo puse la plata" en encargo.`,
-      ts: Date.now() + 2
+      nota: `Entrada a ${fuenteLabel(r.fuente)} — generado automáticamente al registrar "Yo puse la plata" en encargo.`,
+      ts: Date.now() + k++
     });
-  }
+  });
 
-  movimiento._miaCuentaSale = sale;
-  if (entra) movimiento._miaCuentaEntra = entra;
+  movimiento._miaCuentaSale = salidas[0].fuente;
+  if (entradas.length) movimiento._miaCuentaEntra = entradas[0].fuente;
+  if (salidas.length > 1 || entradas.length > 1) {
+    movimiento._miaCuentas = {
+      sale:  salidas.map(r => ({ cuenta: r.fuente, monto: r.monto })),
+      entra: entradas.map(r => ({ cuenta: r.fuente, monto: r.monto }))
+    };
+  }
 }
 
 function _procesarDiferencial(movimiento) {
@@ -862,6 +972,51 @@ function _procesarDiferencial(movimiento) {
 /* ─── Diferencial en "Ya la usé" — instancia del motor común ───── */
 let _usarParteEncId = null;
 let _usarParteId    = null;
+
+/* ─── Split (Dividir ÷) del sobrante del margen — fábrica para "Ya la usé" y "Compra con TC" ───
+   Mismo comportamiento que el de "Registrar salida" (movencDifMi): el usuario reparte lo que
+   sobra entre varias cuentas suyas. ids: {simple, split, toggle, rows, preview} (elementos del sheet). */
+function _crearSplitSobrante(instId, key, ids) {
+  let modo = false;
+  const ctl = {
+    activo: () => modo,
+    // [{fuente,monto}] si "Dividir ÷" está activo; null si está en modo "una sola cuenta"
+    getData: () => modo ? splitGetData(key) : null,
+    reset: () => splitReset(key),
+    toggle: () => splitToggle(key),
+    agregar: () => splitAgregarRow(key),
+    preview() {
+      const el = document.getElementById(ids.preview);
+      if (!el) return;
+      if (!modo) { el.textContent = ''; return; }
+      const calc = diffCalcular(instId);
+      const sobra = calc ? Math.max(0, calc.sinAsignar) : 0;
+      const filas = splitGetData(key);
+      if (!filas.length) { el.textContent = sobra > 0.5 ? `Repartí ${fmt(sobra)} entre tus cuentas` : ''; el.style.color = 'var(--text3)'; return; }
+      const total = filas.reduce((a, r) => a + r.monto, 0);
+      const lineas = filas.map(r => `${r.fuente ? fuenteLabel(r.fuente) : '?'}: ${fmt(r.monto)}`).join(' · ');
+      const resto = sobra - total;
+      if (sobra <= 0.5)      { el.textContent = lineas; el.style.color = 'var(--text2)'; }
+      else if (resto > 0.5)  { el.textContent = lineas + ` · Sin asignar: ${fmt(resto)}`; el.style.color = 'var(--amber)'; }
+      else if (resto < -0.5) { el.textContent = lineas + ` · Excede: ${fmt(-resto)}`; el.style.color = 'var(--red)'; }
+      else                   { el.textContent = lineas + ' \u2713'; el.style.color = 'var(--accent)'; }
+    }
+  };
+  crearSplitWidget(key, {
+    simpleId: ids.simple, splitId: ids.split, toggleId: ids.toggle, rowsId: ids.rows,
+    getModo: () => modo, setModo: v => { modo = v; },
+    getFuentesFn: sel => buildFuentesOptsHtml({ selectedVal: sel, incluirTC: false, placeholder: 'Elegir cuenta' }),
+    onPreview: () => ctl.preview()
+  });
+  return ctl;
+}
+
+const _usarParteMi = _crearSplitSobrante('usarParte', 'usarParteMi', {
+  simple: 'usar_parte_dif_mi_simple', split: 'usar_parte_dif_mi_split', toggle: 'usar_parte_dif_mi_toggle',
+  rows: 'usarParteDifMiRows', preview: 'usar_parte_dif_mi_preview'
+});
+function _usarParteMiSplitToggle() { _usarParteMi.toggle(); }
+function _usarParteMiAgregarRow() { _usarParteMi.agregar(); }
 
 diffRegistrarInstancia('usarParte', {
   ids: {
@@ -878,7 +1033,10 @@ diffRegistrarInstancia('usarParte', {
     const parte = enc ? (enc.partes || []).find(p => p.id === _usarParteId) : null;
     return parte ? (parte.monto || 0) : 0;
   },
-  descMargen: (mov) => `Margen encargo ${mov._encNombre || ''} — `
+  descMargen: (mov) => `Margen encargo ${mov._encNombre || ''} — `,
+  getMiCuentaSplit: () => _usarParteMi.getData(),
+  onReset: () => _usarParteMi.reset(),
+  onResumen: () => _usarParteMi.preview()
 });
 
 // Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual
@@ -974,6 +1132,10 @@ async function _confirmarUsarParte() {
     }
   }
 
+  // Validar el reparto del sobrante (si usó "Dividir ÷") ANTES de tocar ningún saldo
+  const _errMiSplit = diffValidarMiCuenta('usarParte');
+  if (_errMiSplit) { toast(_errMiSplit, 'err', 5000); return; }
+
   // Guardar diferencial y mover margen a cuenta propia si aplica — vía el motor común.
   // Nota: el sumarFuente/push del margen se difiere a _usarParteMargenPendiente (ver más abajo)
   // para que su uid() salga después de los movimientos de salida del encargo, igual que antes.
@@ -984,19 +1146,28 @@ async function _confirmarUsarParte() {
       const benefs = normales.map(b => ({ nombre: b.nombre, monto: b.monto }));
       const yoMeQuedo = Math.max(0, margen - asignadoNormal);
 
+      // Reparto del sobrante: filas de "Dividir ÷" si está activo, si no el select único
+      const repartoMi = _usarParteMi.getData();
+      const filasMi = repartoMi ? repartoMi.filter(r => r.fuente && r.monto > 0) : null;
       const miCuentaSel = document.getElementById('usar_parte_dif_mi_cuenta');
-      const miCuenta = miCuentaSel ? miCuentaSel.value : '';
+      const miCuenta = filasMi ? (filasMi[0] ? filasMi[0].fuente : '') : (miCuentaSel ? miCuentaSel.value : '');
+      const yoMeQuedoFinal = filasMi ? Math.min(filasMi.reduce((a, r) => a + r.monto, 0), yoMeQuedo) : yoMeQuedo;
+      const aplicaMi = !!miCuenta && yoMeQuedoFinal > 0.5;
 
       parte.diferencial = {
         dijo, real, margen,
         beneficiarios: benefs,
-        miCuenta: (miCuenta && yoMeQuedo > 0.5) ? miCuenta : '',
-        yoMeQuedo: (miCuenta && yoMeQuedo > 0.5) ? yoMeQuedo : 0
+        miCuenta: aplicaMi ? miCuenta : '',
+        yoMeQuedo: aplicaMi ? yoMeQuedoFinal : 0
       };
+      if (aplicaMi && filasMi && filasMi.length > 1) {
+        parte.diferencial.miCuentas = filasMi.map(r => ({ cuenta: r.fuente, monto: r.monto }));
+      }
 
-      if (miCuenta && yoMeQuedo > 0.5) {
-        sumarFuente(miCuenta, yoMeQuedo);
-        _usarParteMargenPendiente = { fuente: miCuenta, monto: yoMeQuedo };
+      if (aplicaMi) {
+        const destinosMi = (filasMi && filasMi.length) ? filasMi : [{ fuente: miCuenta, monto: yoMeQuedo }];
+        destinosMi.forEach(r => sumarFuente(r.fuente, r.monto));
+        _usarParteMargenPendiente = destinosMi.map(r => ({ fuente: r.fuente, monto: r.monto }));
       }
     }
   }
@@ -1045,16 +1216,17 @@ async function _confirmarUsarParte() {
 
   // Registrar el ingreso del margen al final, para que su uid() sea mayor que los de salida del encargo
   if (_usarParteMargenPendiente) {
-    const { fuente, monto } = _usarParteMargenPendiente;
     if (!S.movimientos) S.movimientos = [];
-    S.movimientos.push({
-      id: uid(),
-      tipo: 'entrada',
-      fuente,
-      monto,
-      fecha: hoy(),
-      desc: `Margen encargo ${enc.nombre} — ${parte.desc}`,
-      _esExtraIngreso: true   // margen = plata nueva tuya (ver _esEntradaEspejoNoIngreso)
+    _usarParteMargenPendiente.forEach(({ fuente, monto }) => {
+      S.movimientos.push({
+        id: uid(),
+        tipo: 'entrada',
+        fuente,
+        monto,
+        fecha: hoy(),
+        desc: `Margen encargo ${enc.nombre} — ${parte.desc}`,
+        _esExtraIngreso: true   // margen = plata nueva tuya (ver _esEntradaEspejoNoIngreso)
+      });
     });
     _usarParteMargenPendiente = null;
   }
@@ -1124,7 +1296,9 @@ function _difRenderHistorialParte(parte) {
     const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b =>
       `${b.nombre} ${fmt(b.monto)}`
     ).join(' · ');
-    const miParte = d.miCuenta && d.yoMeQuedo > 0 ? `Yo (${fuenteLabel(d.miCuenta)}) ${fmt(d.yoMeQuedo)}` : '';
+    const miParte = (d.miCuentas && d.miCuentas.length > 1 && d.yoMeQuedo > 0)
+      ? `Yo (${d.miCuentas.map(r => `${fuenteLabel(r.cuenta)} ${fmt(r.monto)}`).join(' + ')})`
+      : (d.miCuenta && d.yoMeQuedo > 0 ? `Yo (${fuenteLabel(d.miCuenta)}) ${fmt(d.yoMeQuedo)}` : '');
     const todas = [benefs, miParte].filter(Boolean).join(' · ');
     out.push(html`<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`);
   }
@@ -1231,6 +1405,7 @@ function abrirMovEncargo(tipo) {
       const entraSel = document.getElementById('movenc_mia_cuenta_entra');
       if (saleSel)  saleSel.value  = '';
       if (entraSel) entraSel.value = '';
+      splitReset('miaSale'); splitReset('miaEntra');
       const miaPrev = document.getElementById('movenc-mia-preview');
       if (miaPrev) miaPrev.textContent = '';
     } else {
@@ -1405,6 +1580,8 @@ function confirmarMovEncargo() {
     if (_errIntSplit) { toast(_errIntSplit, 'err', 5000); return; }
     const _errMiaSplit = _validarMovEncMia();
     if (_errMiaSplit) { toast(_errMiaSplit, 'err', 5000); return; }
+    const _errDifMiSplit = diffValidarMiCuenta('movenc');
+    if (_errDifMiSplit) { toast(_errDifMiSplit, 'err', 5000); return; }
     // Registrar un movimiento por cada porción del split
     const fecha = document.getElementById('movenc_fecha').value || hoy();
     const nota  = document.getElementById('movenc_nota').value.trim();
@@ -1461,6 +1638,8 @@ function confirmarMovEncargo() {
       if (_errInt) { toast(_errInt, 'err', 5000); return; }
       const _errMia = _validarMovEncMia();
       if (_errMia) { toast(_errMia, 'err', 5000); return; }
+      const _errDifMi = diffValidarMiCuenta('movenc');
+      if (_errDifMi) { toast(_errDifMi, 'err', 5000); return; }
     }
     enc.movimientos.push(nuevoMov);
     if (movEncargoTipo === 'salida') {
@@ -1826,6 +2005,14 @@ async function deleteMovEncargo(encId, movId) {
       });
       S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && m._esIntercambioEncargo));
     }
+  }
+
+  // Revertir el margen que entró a mis cuentas (sobrante libre del diferencial — una entrada
+  // por cuenta si se repartió con "Dividir ÷"). La compra con TC ya lo limpió arriba.
+  if (mov && mov.diferencial && !mov._esTcEncargo && S.movimientos) {
+    S.movimientos.filter(m => m._encMovId === movId && m._esDiferencialEncargo)
+      .forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto); });
+    S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && m._esDiferencialEncargo));
   }
 
   enc.movimientos = (enc.movimientos||[]).filter(m=>m.id!==movId);
@@ -2691,6 +2878,13 @@ if (_origNavEncargos) {
      ni intercambio, solo "real" + cuenta propia para el margen.
    ================================================================ */
 
+const _ctcMi = _crearSplitSobrante('ctc', 'ctcMi', {
+  simple: 'ctc_dif_mi_simple', split: 'ctc_dif_mi_split', toggle: 'ctc_dif_mi_toggle',
+  rows: 'ctcDifMiRows', preview: 'ctc_dif_mi_preview'
+});
+function _ctcMiSplitToggle() { _ctcMi.toggle(); }
+function _ctcMiAgregarRow() { _ctcMi.agregar(); }
+
 diffRegistrarInstancia('ctc', {
   ids: {
     wrap: 'ctc-dif-wrap', body: 'ctc-dif-body', icon: 'ctc-dif-icon',
@@ -2705,7 +2899,9 @@ diffRegistrarInstancia('ctc', {
   labelMargenNegativo: 'El valor real debe ser menor que el monto del encargo',
   getDijo: () => parseMoney(document.getElementById('ctc_monto')?.value) || 0,
   descMargen: (mov) => `Diferencial encargo ${mov._encNombre || ''} — `,
-  onResumen: () => _ctcActualizarPreview()
+  getMiCuentaSplit: () => _ctcMi.getData(),
+  onReset: () => _ctcMi.reset(),
+  onResumen: () => { _ctcMi.preview(); _ctcActualizarPreview(); }
 });
 
 // Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual
@@ -2870,6 +3066,10 @@ function confirmarCompraConTC() {
     }
   }
 
+  // Reparto del sobrante en varias cuentas (si usó "Dividir ÷") — antes de escribir nada
+  const _errCtcMi = diffValidarMiCuenta('ctc');
+  if (_errCtcMi) { toast(_errCtcMi, 'err', 5000); return; }
+
   // Diferencial — vía motor común. tcMonto/margen dependen de si el real es válido (real>0 y real<monto).
   const difActivo = diffEstaAbierto('ctc');
   const calc = difActivo ? diffCalcular('ctc') : null;
@@ -2982,10 +3182,12 @@ function confirmarCompraConTC() {
    ═══════════════════════════════════════════════════════════════ */
 [
   ['movenc_monto', 'input', _movEncSplitPreview],
+  ['movenc_monto', 'input', _difResumen],
   ['movenc_mia_cuenta_sale', 'change', _movEncMiaPreview],
   ['movenc_mia_cuenta_entra', 'change', _movEncMiaPreview],
   ['movenc_faltante_cuenta', 'change', _movEncFaltanteCuentaHint],
   ['ctc_monto', 'input', _ctcActualizarPreview],
+  ['ctc_monto', 'input', _ctcDifResumen],
   ['ctc_cuenta_enc', 'change', _ctcActualizarPreview],
   ['ctc_tarjeta', 'change', _ctcActualizarPreview],
   ['ctc_destino', 'change', _ctcActualizarPreview],
@@ -3040,6 +3242,16 @@ Events.registerAll('encargos', {
   difToggle:              (...args) => _difToggle(...args),
   difAddBenef:            (...args) => _difAddBenef(...args),
   miaToggle:              (...args) => _movEncMiaToggle(...args),
+  miaSaleSplitToggle:     (...args) => _miaSaleSplitToggle(...args),
+  miaSaleAgregarRow:      (...args) => _miaSaleAgregarRow(...args),
+  miaEntraSplitToggle:    (...args) => _miaEntraSplitToggle(...args),
+  miaEntraAgregarRow:     (...args) => _miaEntraAgregarRow(...args),
+  difMiSplitToggle:       (...args) => _difMiSplitToggle(...args),
+  ctcMiSplitToggle:       (...args) => _ctcMiSplitToggle(...args),
+  ctcMiAgregarRow:        (...args) => _ctcMiAgregarRow(...args),
+  usarParteMiSplitToggle: (...args) => _usarParteMiSplitToggle(...args),
+  usarParteMiAgregarRow:  (...args) => _usarParteMiAgregarRow(...args),
+  difMiAgregarRow:        (...args) => _difMiAgregarRow(...args),
   confirmarPrestarFaltante: (...args) => _movEncConfirmarPrestarFaltante(...args),
   guardarParte:           (...args) => guardarParte(...args),
   cerrarParteSheet:       (...args) => cerrarPartSheet(...args),

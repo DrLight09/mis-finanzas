@@ -829,6 +829,19 @@ function _miaSaleAgregarRow()   { splitAgregarRow('miaSale'); }
 function _miaEntraSplitToggle() { splitToggle('miaEntra'); }
 function _miaEntraAgregarRow()  { splitAgregarRow('miaEntra'); }
 
+// Monto que realmente puso el usuario de su bolsillo (2026-09-29): si el bloque
+// "El valor real era diferente" está abierto y el real es válido (0 < real < monto),
+// "Yo puse la plata" trabaja con el REAL (lo que costó de verdad), no con el monto
+// cobrado. La diferencia (margen) la maneja el diferencial como ganancia tuya; si
+// acá también se usara el monto total, ese margen se contaría dos veces.
+function _miaMontoEfectivo(montoCampo) {
+  if (typeof diffEstaAbierto === 'function' && diffEstaAbierto('movenc')) {
+    const c = diffCalcular('movenc');
+    if (c && c.real > 0 && c.real < montoCampo) return c.real;
+  }
+  return montoCampo;
+}
+
 // Lee las cuentas de cada lado como listas [{fuente, monto}], sea modo simple (una fila
 // con el monto total) o dividido (las filas que puso el usuario).
 function _miaLeerCuentas(monto) {
@@ -852,7 +865,7 @@ function _miaResumenLado(filas, monto, dividido) {
 function _movEncMiaPreview() {
   const el = document.getElementById('movenc-mia-preview');
   if (!el) return;
-  const monto = parseMoney(document.getElementById('movenc_monto').value) || 0;
+  const monto = _miaMontoEfectivo(parseMoney(document.getElementById('movenc_monto').value) || 0);
   if (!monto) { el.textContent = ''; return; }
   const { sale, entra } = _miaLeerCuentas(monto);
   if (!_miaSaleSplitMode && !_miaEntraSplitMode) {
@@ -867,7 +880,7 @@ function _movEncMiaPreview() {
 function _validarMovEncMia() {
   const body = document.getElementById('movenc-mia-body');
   if (!body || body.style.display === 'none') return null;
-  const monto = parseMoney(document.getElementById('movenc_monto').value) || 0;
+  const monto = _miaMontoEfectivo(parseMoney(document.getElementById('movenc_monto').value) || 0);
   if (!monto) return null;
   const { sale, entra } = _miaLeerCuentas(monto);
 
@@ -900,7 +913,7 @@ function _procesarMovEncMia(movimiento) {
   if (!body || body.style.display === 'none') return;
   // Monto TOTAL del campo, no movimiento.monto: en una salida dividida entre cuentas
   // del encargo, `movimiento` es solo la primera porción y "Yo puse" cubre el gasto entero.
-  const monto = parseMoney(document.getElementById('movenc_monto').value) || movimiento.monto;
+  const monto = _miaMontoEfectivo(parseMoney(document.getElementById('movenc_monto').value) || movimiento.monto);
   const { sale, entra } = _miaLeerCuentas(monto);
   const salidas  = sale.filter(r => r.fuente && r.monto > 0);
   const entradas = entra.filter(r => r.fuente && r.monto > 0);
@@ -3183,6 +3196,8 @@ function confirmarCompraConTC() {
 [
   ['movenc_monto', 'input', _movEncSplitPreview],
   ['movenc_monto', 'input', _difResumen],
+  ['movenc_monto', 'input', _movEncMiaPreview],
+  ['movenc_dif_real', 'input', _movEncMiaPreview],
   ['movenc_mia_cuenta_sale', 'change', _movEncMiaPreview],
   ['movenc_mia_cuenta_entra', 'change', _movEncMiaPreview],
   ['movenc_faltante_cuenta', 'change', _movEncFaltanteCuentaHint],

@@ -451,6 +451,9 @@ function load(){
     (S.movimientos||[]).forEach(sumarApertura);
     (S.cuentasPersonalizadas||[]).forEach(c=>(c.movimientos||[]).forEach(sumarApertura));
     (S._ajustesBaseLog||[]).forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); });
+    // Destapes de alcancía ya hechos (sobrante/faltante): mismo tratamiento que una apertura — ver _ajusteAlcanciaPorFecha().
+    const _ajAlc=_ajusteAlcanciaPorFecha();
+    Object.keys(_ajAlc).forEach(f=>{ montoAperturaPorFecha[f]=(montoAperturaPorFecha[f]||0)+_ajAlc[f]; });
     S.patrimonioHistorial.forEach(h=>{
       if(montoAperturaPorFecha[h.fecha]&&montoAperturaPorFecha[h.fecha]!==0){ h.montoBase=montoAperturaPorFecha[h.fecha]; }
       else { delete h.baseAjustada; } // limpiar flag de versión anterior del fix, si existe
@@ -708,6 +711,23 @@ function _patrimonioDependenciasListas(){
       && typeof totalMisDeudasPendiente==='function';
 }
 
+// Ajuste por destape de la alcancía, por fecha: sobrante (+) o faltante (−) entre el efectivo real y
+// lo que estaba registrado. Es plata que ya existía y no estaba anotada (o dinero que faltaba), no
+// crecimiento del día: se suma a `montoBase` para que ni la gráfica de Análisis ni la Proyección lo
+// tomen como ritmo normal de ahorro (2026-09-29). Sigue contando como ingreso/gasto del mes en Análisis.
+// - Sobrante: S.movimientos, tipo 'entrada', _esAlcancia (sin _esAlcanciaIngreso, que son depósitos).
+// - Faltante: S.gastosVar con _esAlcanciaAjuste.
+function _ajusteAlcanciaPorFecha(){
+  const r={};
+  (S.movimientos||[]).forEach(m=>{
+    if(m&&m.tipo==='entrada'&&m._esAlcancia&&!m._esAlcanciaIngreso&&m.fecha){ r[m.fecha]=(r[m.fecha]||0)+(m.monto||0); }
+  });
+  (S.gastosVar||[]).forEach(g=>{
+    if(g&&g._esAlcanciaAjuste&&g.fecha){ r[g.fecha]=(r[g.fecha]||0)-(g.monto||0); }
+  });
+  return r;
+}
+
 function snapshotPatrimonio(){
   if(!_patrimonioDependenciasListas()) return;
   const hoyStr=hoy();
@@ -741,7 +761,8 @@ function snapshotPatrimonio(){
   const montoAperturaHoy =
     sumarAperturasYAjustesDeHoy(S.movimientos)
     + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+sumarAperturasYAjustesDeHoy(c.movimientos),0)
-    + (S._ajustesBaseLog||[]).filter(aj=>aj.fecha===hoyStr).reduce((a,aj)=>a+(aj.monto||0),0);
+    + (S._ajustesBaseLog||[]).filter(aj=>aj.fecha===hoyStr).reduce((a,aj)=>a+(aj.monto||0),0)
+    + (_ajusteAlcanciaPorFecha()[hoyStr]||0);
   const ultimo=S.patrimonioHistorial[S.patrimonioHistorial.length-1];
   if(ultimo&&ultimo.fecha===hoyStr){
     ultimo.valor=val;
@@ -819,6 +840,10 @@ function _esEntradaEspejoNoIngreso(m){
   // Margen/diferencial de Encargos y Préstamo con TC (lo escribe diffAplicar() en diferencial.js):
   // plata nueva que se queda el usuario, aunque lleve _encMovId o desc 'Margen…'.
   if(m._esDiferencialEncargo) return false;
+  // Datos viejos (antes del 2026-09-29): al destapar la alcancía hacia una cuenta personalizada, _sumarASaldo()
+  // dejaba en c.movimientos un 'ingreso' con desc exacta 'Alcancía destapada' — duplicado de filas que ya
+  // están en S.movimientos. No es ingreso nuevo (el saldo registrado ya era tuyo y el sobrante ya cuenta por S.movimientos).
+  if((m.desc||'')==='Alcancía destapada') return true;
   if(m._esReposicionCP) return true;
   // Fallback por desc para movimientos viejos sin _esReposicionCP
   if(/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'')) return true;

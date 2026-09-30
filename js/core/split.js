@@ -199,6 +199,26 @@ function splitActualizarOpciones(instId){
   }
 }
 
+// Devuelve un widget a su estado base: modo simple, sin filas, botón "Dividir ÷".
+// Se usa al reabrir un sheet (para que no quede un split viejo de la vez anterior).
+function splitReset(instId){
+  const cfg = _splitInstancias[instId]; if(!cfg) return;
+  cfg.setModo(false);
+  const simple = document.getElementById(cfg.simpleId);
+  const split  = document.getElementById(cfg.splitId);
+  const rows   = document.getElementById(cfg.rowsId);
+  const btn    = document.getElementById(cfg.toggleId);
+  if(simple) simple.style.display = '';
+  if(split)  split.style.display  = 'none';
+  if(rows)   rows.innerHTML = '';
+  if(btn){
+    btn.textContent = 'Dividir ÷';
+    btn.style.background  = 'rgba(200,240,96,.1)';
+    btn.style.borderColor = 'rgba(200,240,96,.3)';
+    btn.style.color       = 'var(--accent)';
+  }
+}
+
 function splitGetData(instId){
   const cfg = _splitInstancias[instId]; if(!cfg) return [];
   const rows = document.getElementById(cfg.rowsId);

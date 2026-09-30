@@ -101,6 +101,7 @@ function diffReset(instId) {
   if (resumen) resumen.textContent = '';
   if (ids.miCuentaWrap) { const w = document.getElementById(ids.miCuentaWrap); if (w) w.style.display = 'none'; }
   if (ids.partesList) { const l = document.getElementById(ids.partesList); if (l) l.innerHTML = ''; }
+  if (inst.cfg.onReset) inst.cfg.onReset();
 }
 
 function diffToggle(instId) {
@@ -333,6 +334,27 @@ function diffValidarIntercambios(instId) {
 }
 
 /**
+ * Valida el reparto del sobrante en varias cuentas (solo si la instancia define
+ * cfg.getMiCuentaSplit y el usuario activó "Dividir ÷"). Retorna string de error o null.
+ * Con el split apagado, o sin filas con monto, no valida nada (igual que "Sin especificar").
+ */
+function diffValidarMiCuenta(instId) {
+  const inst = diffInst(instId);
+  if (!inst || !inst.cfg.permiteMiCuenta || !inst.cfg.getMiCuentaSplit) return null;
+  const filas = inst.cfg.getMiCuentaSplit();
+  if (!filas || !filas.length) return null;
+  if (!diffEstaAbierto(instId)) return null;
+  const calc = diffCalcular(instId);
+  if (!calc || !calc.real || calc.margen <= 0 || calc.sinAsignar <= 0.5) return null;
+  if (filas.some(r => !r.fuente)) return 'Elegí la cuenta en cada fila donde se reparte el sobrante';
+  const total = filas.reduce((a, r) => a + r.monto, 0);
+  if (Math.abs(total - calc.sinAsignar) > 0.5) {
+    return `El sobrante es ${fmt(calc.sinAsignar)} y repartiste ${fmt(total)}. Tienen que coincidir.`;
+  }
+  return null;
+}
+
+/**
  * Aplica los efectos del diferencial sobre `movimiento` (un objeto que ya
  * existe — el préstamo, el abono, el movimiento del encargo, etc).
  * Genera el campo movimiento.diferencial = {dijo, real, margen, beneficiarios, miCuenta, yoMeQuedo}
@@ -361,8 +383,15 @@ function diffAplicar(instId, movimiento, linkId) {
 
   const sinAsignar = margen - asignadoNormal - asignadoIntercambio;
   const miCuentaSel = inst.cfg.permiteMiCuenta && inst.cfg.ids.miCuenta ? document.getElementById(inst.cfg.ids.miCuenta) : null;
-  const miCuenta = miCuentaSel ? miCuentaSel.value : '';
-  const yoMeQuedo = (sinAsignar > 0.5 && miCuenta) ? sinAsignar : 0;
+  // Si la instancia tiene split del sobrante (cfg.getMiCuentaSplit) y está activo,
+  // devuelve [{fuente,monto}]; si está en modo "una sola cuenta" devuelve null.
+  const repartoMi = (inst.cfg.permiteMiCuenta && inst.cfg.getMiCuentaSplit) ? inst.cfg.getMiCuentaSplit() : null;
+  const filasMi = repartoMi ? repartoMi.filter(r => r.fuente && r.monto > 0) : null;
+  const miCuenta = filasMi ? (filasMi[0] ? filasMi[0].fuente : '') : (miCuentaSel ? miCuentaSel.value : '');
+  const totalFilasMi = filasMi ? filasMi.reduce((a, r) => a + r.monto, 0) : 0;
+  const yoMeQuedo = filasMi
+    ? (sinAsignar > 0.5 ? Math.min(totalFilasMi, sinAsignar) : 0)
+    : ((sinAsignar > 0.5 && miCuenta) ? sinAsignar : 0);
   // Modo "ingreso fantasma": no hay selector de cuenta propia en este sheet, pero el sobrante
   // sigue siendo plata tuya — se registra igual, sin tocar ninguna fuente.
   const yoMeQuedoFantasma = (!inst.cfg.permiteMiCuenta && sinAsignar > 0.5) ? sinAsignar : 0;
@@ -373,20 +402,26 @@ function diffAplicar(instId, movimiento, linkId) {
   ];
 
   const diferencial = { dijo, real, margen, beneficiarios: beneficiariosGuardados, miCuenta: yoMeQuedo > 0 ? miCuenta : '', yoMeQuedo: yoMeQuedo || yoMeQuedoFantasma };
+  if (filasMi && yoMeQuedo > 0 && filasMi.length > 1) diferencial.miCuentas = filasMi.map(r => ({ cuenta: r.fuente, monto: r.monto }));
   movimiento.diferencial = diferencial;
 
   // 1) Sobrante libre → ingreso a mi cuenta
   if (yoMeQuedo > 0 && miCuenta) {
-    sumarFuente(miCuenta, yoMeQuedo);
-    S.movimientos.push({
-      id: uid(), tipo: 'entrada', fuente: miCuenta,
-      ...(linkId ? { _encMovId: linkId } : {}),
-      _esDiferencialEncargo: true,
-      _difDijo: dijo, _difReal: real, _difMargen: margen,
-      monto: yoMeQuedo, fecha,
-      desc: (inst.cfg.descMargen ? inst.cfg.descMargen(movimiento) : 'Margen — ') + (movimiento.desc || ''),
-      nota: 'Generado automáticamente por el diferencial.',
-      ts: Date.now()
+    // Una entrada por cada cuenta donde el usuario repartió el sobrante
+    // (una sola si no usó "Dividir ÷"). Todas comparten _encMovId para poder revertirse juntas.
+    const destinosMi = (filasMi && filasMi.length) ? filasMi : [{ fuente: miCuenta, monto: yoMeQuedo }];
+    destinosMi.forEach(r => {
+      sumarFuente(r.fuente, r.monto);
+      S.movimientos.push({
+        id: uid(), tipo: 'entrada', fuente: r.fuente,
+        ...(linkId ? { _encMovId: linkId } : {}),
+        _esDiferencialEncargo: true,
+        _difDijo: dijo, _difReal: real, _difMargen: margen,
+        monto: r.monto, fecha,
+        desc: (inst.cfg.descMargen ? inst.cfg.descMargen(movimiento) : 'Margen — ') + (movimiento.desc || ''),
+        nota: 'Generado automáticamente por el diferencial.',
+        ts: Date.now()
+      });
     });
   }
 
@@ -489,7 +524,9 @@ function diffRenderHistorial(diferencial) {
   if (!diferencial) return '';
   const d = diferencial;
   const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b => `${escHtml(b.nombre)} ${fmt(b.monto)}`).join(' · ');
-  const miParte = d.miCuenta && d.yoMeQuedo > 0 ? `Yo → ${escHtml(fuenteLabel(d.miCuenta))} ${fmt(d.yoMeQuedo)}` : (d.yoMeQuedo > 0 ? `Yo ${fmt(d.yoMeQuedo)}` : '');
+  const miParte = (d.miCuentas && d.miCuentas.length > 1 && d.yoMeQuedo > 0)
+    ? `Yo → ${d.miCuentas.map(r => `${escHtml(fuenteLabel(r.cuenta))} ${fmt(r.monto)}`).join(' + ')}`
+    : (d.miCuenta && d.yoMeQuedo > 0 ? `Yo → ${escHtml(fuenteLabel(d.miCuenta))} ${fmt(d.yoMeQuedo)}` : (d.yoMeQuedo > 0 ? `Yo ${fmt(d.yoMeQuedo)}` : ''));
   const todas = [benefs, miParte].filter(Boolean).join(' · ');
   return `<div style="margin-top:4px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${todas ? ' · ' + todas : ''}

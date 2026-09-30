@@ -430,11 +430,28 @@ function abrirEncargoDetalle(id) {
     // Ya escapa a mano (escHtml) porque arma una lista de atributos, no un solo valor —
     // se interpola siempre envuelto en raw() en los sitios de abajo.
     const _encAttrs=(m, origenLbl)=>{
-      const sd=_encSaldoPorId.get(m.id);
+      const sd=m._sd||_encSaldoPorId.get(m.id);
       if(!sd) return '';
       return `data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="encargo" data-mov-origen="${escHtml(origenLbl)}" data-mov-saldo-antes="${sd.antes}" data-mov-saldo-despues="${sd.despues}" data-mov-saldo-label="Saldo de ${escHtml(enc.nombre)}" data-mov-desc="${escHtml(m.desc||'')}" data-mov-fecha="${escHtml(m.fecha)}" style="cursor:pointer;" data-action="core:abrirDetalleMov"`;
     };
-    const contenido = todosMovs.map((m,i) => {
+    // Salidas divididas → una sola fila (ver _encGrupoSplit)
+    const _gruposVistos = new Set();
+    const movsRender = [];
+    todosMovs.forEach(m => {
+      const partes = m._esSaldoInicial ? null : _encGrupoSplit(enc, m);
+      if (!partes) { movsRender.push(m); return; }
+      const k = _encSplitKey(m);
+      if (_gruposVistos.has(k)) return;
+      _gruposVistos.add(k);
+      const sds = partes.map(x => _encSaldoPorId.get(x.id)).filter(Boolean);
+      movsRender.push({
+        ..._encSplitCarrier(partes),
+        monto: partes.reduce((a, x) => a + x.monto, 0),
+        _grupo: partes,
+        _sd: sds.length ? { antes: Math.max(...sds.map(x => x.antes)), despues: Math.min(...sds.map(x => x.despues)) } : undefined
+      });
+    });
+    const contenido = movsRender.map((m,i) => {
       if (m._esSaldoInicial) {
         const lblCuentaIni = m.cuenta ? fuenteLabel(m.cuenta) : '';
         return html`<div class="gasto-item" ${raw(_encAttrs(m,'Encargos · '+enc.nombre))} style="cursor:pointer;border-color:rgba(96,176,240,.2);">
@@ -451,7 +468,7 @@ function abrirEncargoDetalle(id) {
         </div>`;
       }
       const esEntrada = m.tipo === 'entrada';
-      const lblCuenta = m.cuenta ? fuenteLabel(m.cuenta) : '';
+      const lblCuenta = m._grupo ? m._grupo.map(x => (x.cuenta ? fuenteLabel(x.cuenta) : 'Sin especificar') + ' ' + fmt(x.monto)).join(' + ') : (m.cuenta ? fuenteLabel(m.cuenta) : '');
       const esAbonoPrestamo = !esEntrada && m._esAbonoDeudor;
       const esTcEncargo = !esEntrada && m._esTcEncargo;
       const esMia = !esEntrada && !!m._miaCuentaSale;
@@ -478,7 +495,7 @@ function abrirEncargoDetalle(id) {
         <div class="gasto-item-meta">
           <span class="badge ${esEntrada?'bg-blue':esAbonoPrestamo?'bg-amber':esTcEncargo?'bg-blue':'bg-red'}" style="font-size:9px;">${esEntrada?'Entrada':esAbonoPrestamo?'Pago préstamo':esTcEncargo?'Pagado con TC':'Salida'}</span>
           ${esMia?html`<span class="badge" style="font-size:9px;background:rgba(240,184,64,.15);color:var(--amber);border:none;">Yo puse la plata</span>`:''}
-          ${lblCuenta?html`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuenta}</span>`:''}
+          ${m._grupo?raw(m._grupo.filter(x=>x.cuenta).map(x=>`<span class="badge ${fuenteBadgeClass(x.cuenta)}" style="font-size:9px;">${escHtml(fuenteLabel(x.cuenta))}</span>`).join('')):(lblCuenta?html`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuenta}</span>`:'')}
           ${tcNombreLbl?html`<span class="badge bg-blue" style="font-size:9px;">${tcNombreLbl}</span>`:''}
         </div>
         ${raw(typeof _difRenderHistorial === 'function' ? _difRenderHistorial(m) : '')}
@@ -1559,6 +1576,34 @@ function _getEncargoSaldoEnCuenta(enc, cuentaVal) {
   return map[cuentaVal] || 0;
 }
 
+/* ── Salida dividida (Retirar plata + "Dividir ÷"): una sola fila en el historial ──
+   (2026-09-29) Los datos NO cambian: cada cuenta del encargo sigue teniendo su propio
+   registro en enc.movimientos, porque el saldo del encargo se calcula por cuenta
+   (m.cuenta). Lo que cambia es la vista: las porciones de una misma salida se pintan
+   como UN movimiento, y borrar ese movimiento borra todas las porciones.
+   Aplica solo a "Retirar plata" (no a "Reubicación", que sigue con filas independientes).
+   Las salidas nuevas llevan _splitGrupo; las viejas (sin ese campo) se agrupan solo si
+   el conjunto está completo (mismas desc/fecha/total y partes 1..N). */
+function _encSplitKey(m) {
+  if (!m || m.tipo !== 'salida' || !m._splitTotal || !(m._splitDe > 1)) return '';
+  if (m._splitGrupo) return m._splitGrupo;
+  if (String(m.desc || '').startsWith('Reubicación') || m._esAbonoDeudor || m._esTcEncargo) return '';
+  return ['h', m.desc, m.fecha, m._splitTotal, m._splitDe].join('|');
+}
+function _encGrupoSplit(enc, m) {
+  const k = _encSplitKey(m);
+  if (!k) return null;
+  const partes = (enc.movimientos || []).filter(x => _encSplitKey(x) === k)
+    .sort((a, b) => a._splitParte - b._splitParte);
+  if (partes.length !== m._splitDe) return null;
+  if (!partes.every((x, i) => x._splitParte === i + 1)) return null;
+  return partes;
+}
+// La porción que lleva los efectos secundarios (diferencial / "Yo puse la plata"): la primera.
+function _encSplitCarrier(partes) {
+  return partes.find(x => x._miaCuentaSale || x.diferencial) || partes[0];
+}
+
 function confirmarMovEncargo() {
   const desc  = document.getElementById('movenc_desc').value.trim();
   const monto = parseMoney(document.getElementById('movenc_monto').value) || 0;
@@ -1599,6 +1644,7 @@ function confirmarMovEncargo() {
     // Registrar un movimiento por cada porción del split
     const fecha = document.getElementById('movenc_fecha').value || hoy();
     const nota  = document.getElementById('movenc_nota').value.trim();
+    const _grupoSplitId = uid();
     splits.forEach((s, i) => {
       const mov = {
         id: uid(),
@@ -1609,7 +1655,7 @@ function confirmarMovEncargo() {
         fecha,
         nota,
         ts: Date.now() + i,
-        ...(splits.length > 1 ? { _splitTotal: monto, _splitParte: i + 1, _splitDe: splits.length } : {})
+        ...(splits.length > 1 ? { _splitTotal: monto, _splitParte: i + 1, _splitDe: splits.length, _splitGrupo: _grupoSplitId } : {})
       };
       enc.movimientos.push(mov);
       // Procesar diferencial e intercambio "yo puse la plata" solo en el primer movimiento del grupo
@@ -1891,6 +1937,14 @@ async function deleteMovEncargo(encId, movId) {
   const mov = (enc.movimientos||[]).find(m=>m.id===movId);
   if (!mov) return;
 
+  // Salida dividida: se borra como UN movimiento. Si llegó el id de una porción que no es la
+  // que lleva los efectos secundarios (diferencial / "Yo puse la plata"), se redirige a esa.
+  const _grupoDel = _encGrupoSplit(enc, mov);
+  if (_grupoDel) {
+    const _carrier = _encSplitCarrier(_grupoDel);
+    if (_carrier && _carrier.id !== movId) return deleteMovEncargo(encId, _carrier.id);
+  }
+
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
   // Nota: a diferencia de los demás módulos, acá no afirmamos si la cuenta
   // "sube" o "baja" — el motor de diferencial/intercambios de Encargos hace
@@ -2029,7 +2083,7 @@ async function deleteMovEncargo(encId, movId) {
     S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && m._esDiferencialEncargo));
   }
 
-  enc.movimientos = (enc.movimientos||[]).filter(m=>m.id!==movId);
+  enc.movimientos = (enc.movimientos||[]).filter(m => m.id!==movId && !(_grupoDel && _grupoDel.some(x => x.id === m.id)));
   save();
   refresh();
   if (cuentaActual && typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);

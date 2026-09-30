@@ -209,17 +209,23 @@ function pintarAvatarPersona(av, persona, opts){
 }
 
 /* ---- MOVER PLATA ENTRE CUENTAS ---- */
-function descontarFuente(fuente,monto){
+// opts.exacto=true → NO recorta en 0 (se usa al REVERTIR un efecto ya aplicado).
+// Recortar al revertir pierde la diferencia para siempre: si el saldo es 49.000 y se
+// revierte un +54.000, el saldo real pasa a -5.000; recortarlo a 0 hace que al volver a
+// registrar el movimiento el saldo quede 5.000 por encima del real. Para gastos normales
+// (sin exacto) se mantiene el piso en 0 como antes.
+function descontarFuente(fuente,monto,opts){
   if(!fuente||!monto)return;
+  const _piso=(opts&&opts.exacto)?(v=>v):(v=>Math.max(0,v));
   if(fuente==='ganancia'){
     // Plata virtual: no salió de ninguna cuenta real, es ganancia futura
     return;
   }
   if(fuente==='nequi'){
-    S.nequiSaldo=Math.max(0,(S.nequiSaldo||0)-monto);
+    S.nequiSaldo=_piso((S.nequiSaldo||0)-monto);
     document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
   } else if(fuente==='efectivo'){
-    S.efectivoSaldo=Math.max(0,(S.efectivoSaldo||0)-monto);
+    S.efectivoSaldo=_piso((S.efectivoSaldo||0)-monto);
     document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
   } else if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
@@ -235,13 +241,13 @@ function descontarFuente(fuente,monto){
       // el interés de ese día hasta que se visite Cuentas) en vez de tumbar
       // el gasto/movimiento completo con un ReferenceError.
       if(typeof materializarIntereses==='function') materializarIntereses(c);
-      c.saldo=Math.max(0,(c.saldo||0)-monto);
+      c.saldo=_piso((c.saldo||0)-monto);
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
     }
   } else if(fuente.startsWith('custom:')){
     const id=fuente.split(':')[1];
     const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
-    if(c)c.saldo=Math.max(0,(c.saldo||0)-monto);
+    if(c)c.saldo=_piso((c.saldo||0)-monto);
   } else if(fuente.startsWith('tc:')){
     // Para TC: descontar = hacer una compra = aumentar la deuda
     const id=fuente.split(':')[1];
@@ -376,10 +382,10 @@ function fmtInput(n){
   const num=parseFloat(n);
   if(isNaN(num)||num===0)return'';
   // Always show with 2 decimals, using es-CO separators
-  const cents=Math.round(num*100);
+  const cents=Math.round(Math.abs(num)*100);
   const intPart=Math.floor(cents/100);
   const decPart=String(cents%100).padStart(2,'0');
-  return intPart.toLocaleString('es-CO')+','+decPart;
+  return (num<0?'-':'')+intPart.toLocaleString('es-CO')+','+decPart;
 }
 
 // Calculator-style money input: digits push right-to-left from centavos

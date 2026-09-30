@@ -140,6 +140,8 @@ Cada módulo se documenta en su propio `.md`, siguiendo la estructura definida e
 
 **Documentados (14 de 14 módulos):** Inicio (`inicio.md`), Cuentas (`cuentas.md`), Gastos (`gastos.md`), Tarjetas de crédito (`tarjetas-credito.md`), Préstamos — Me deben / Yo debo, un solo doc para los dos flujos (`prestado.md`), Encargos (`encargos.md`), Mesada (`mesada.md`), Spotify (`spotify.md`), Alcancía (`alcancia.md`), Plata Comprometida (`plata-comprometida.md`), Análisis financiero (`analisis-financiero.md`), Wrapped (`wrapped.md`), Personas (`personas.md`).
 
+**Pantallas de utilidad** (no son un dominio financiero, por eso no aparecen en la tabla de módulos, pero tienen su propio `.md` con la misma estructura): Configuración (`configuracion.md`) y Actividad reciente (`actividad-reciente.md`).
+
 **Sub-documentos de Inicio** (no son módulos de la tabla de arriba, pero tampoco caben dentro de `inicio.md` porque cada uno tiene su propia lógica de cálculo extensa, compartida con Análisis financiero): [`salud-financiera.md`](./salud-financiera.md) (`health-score-card`) y [`proyeccion-financiera.md`](./proyeccion-financiera.md) (`proyeccion-card`).
 
 **Documentación de proyecto (no son módulos):**
@@ -150,5 +152,3 @@ Cada módulo se documenta en su propio `.md`, siguiendo la estructura definida e
 | `guia-estilo-sheets.md` | Orden estándar de campos e inventario de sheets de toda la app. |
 | `auditoria-tecnica.md` | Hallazgos técnicos **pendientes** de seguridad, arquitectura o rendimiento — lo ya resuelto vive en `CHANGELOG.md#infraestructura--seguridad`. |
 | `CHANGELOG.md` | Historial de bugs corregidos y limpieza de código de todos los módulos, en un solo archivo compartido. |
-
-No se verificó si `configuracion.js` y `actividad_reciente.js` (`js/modules/`, ver tabla de arriba) tienen o deberían tener su propio `.md` — no aparecen como filas en "Módulos de la aplicación" porque son pantallas de utilidad/infraestructura, no un dominio financiero propio, pero es una asimetría que vale la pena decidir a propósito y no dejar así por omisión.

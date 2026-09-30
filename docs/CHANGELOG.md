@@ -6,6 +6,55 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Sheets / UI
 
+### 🔧 Cambio (2026-09-28) — Hints vacíos de Encargos ya no ocupan espacio (`traspaso_origen_hint`, `traspaso_saldo_hint`, `movenc_cuenta_hint`)
+
+Mismo pedido que el del 2026-09-25 en "Registrar gasto", ahora para tres hints de Encargos: `traspaso_origen_hint` y `traspaso_saldo_hint` (sheet "Me lo regalaron") y `movenc_cuenta_hint` (sheet "Registrar salida de plata" / "Registrar entrada de plata" — es el mismo sheet y el mismo div, `abrirMovEncargo` solo cambia el tipo).
+
+**Causa:** `.field-hint` reserva `min-height:14px` + `margin-top:4px` desde la clase, y la regla genérica `[style*="min-height"]:empty` solo aplica a `min-height` *inline*, así que estos tres divs dejaban un hueco vacío aunque no tuvieran texto.
+
+**Fix, solo en `styles.css`, scoped por ID:** `:empty` colapsa `min-height` y `margin-top` a 0, con `transition` de 180ms al aparecer el texto. No hizo falta la variante `visibility` de `gv_fuente_hint`: estos hints se vacían con `textContent=''` (o quedan `display:none` cuando el select ya pinta el saldo en cada opción), así que `:empty` sí aplica. Sin cambios en JS ni HTML.
+
+**Efecto colateral aceptado:** al elegir una cuenta cuyo hint sí aparece (select sin saldo en la opción), el contenido de abajo se desplaza ~18px, de forma progresiva.
+
+---
+
+### 🔧 Cambio (2026-09-25) — `gv_fuente_hint`/`gv_fuente_saldo` (Registrar gasto): ya no ocupan espacio vacíos
+
+El trade-off aceptado el 2026-09-24 en `mostrarAlertaFuente()` (hueco fijo de ~18px en vez de salto de layout) dejó de gustar puntualmente en el sheet "Registrar gasto" (`gasto-var`). Se revirtió el trade-off ahí, sin tocar `mostrarAlertaFuente()` ni los sheets de Préstamos que la comparten (`mov_fuente_hint`/`mov_destino_hint`, que siguen reservando el espacio).
+
+**Fix, solo en `styles.css`, scoped por ID:**
+- `#gv_fuente_hint[style*="visibility: hidden"]` colapsa a `max-height:0;margin-top:0` (con `overflow:hidden` y `max-height:20px` como estado base) — como el toggle es `visibility` (no `textContent`), la regla general `[style*="min-height"]:empty` no aplicaba acá (el div siempre tiene texto, solo invisible).
+- `#gv_fuente_saldo:empty` pierde el `margin-top` (ese div sí se vacía con `textContent=''`, así que la regla `:empty` ya colapsaba el `min-height`, pero quedaba el margen).
+- Ambos con `transition` (`max-height`/`min-height`/`margin-top`, 180ms) para que el salto sea progresivo en vez de instantáneo — mismo criterio que el `transition` de `.sheet` para el reacomodo de teclado (entrada anterior, 2026-09-24). `max-height` en vez de `height` porque `height:auto` no anima.
+
+**Efecto colateral aceptado a propósito:** sigue habiendo un desplazamiento al elegir cuenta en "Registrar gasto" — es el mismo salto que el fix del 2026-09-24 evitaba, revertido acá a pedido explícito, aunque ahora suavizado con transición en vez de instantáneo. Si en el futuro se quiere lo mismo en Préstamos, extender el mismo selector a `#mov_fuente_hint`/`#mov_destino_hint`.
+
+Comentario agregado en `sheet-stack.js` (junto a `mostrarAlertaFuente()`) documentando la excepción para que no se lea como inconsistencia.
+
+---
+
+### ✅ Corregido (2026-09-25) — Al abrir un sheet con teclado, el contenido pegaba un salto y después se reajustaba solo
+
+**Síntoma:** al enfocar un campo (típicamente el autofocus de `mejoras-adicionales.js`, 250ms después de abrir el sheet), el sheet sube junto con el teclado, pega un salto, y un instante después se corre un poco más — como si se centrara el input en dos pasos en vez de uno.
+
+**Causa raíz:** el reacomodo por teclado (`marginBottom`/`maxHeight`, según cuánto tapa el teclado) y el centrado del campo enfocado (`ensureFocusedVisible`, que hace scroll interno del sheet si el campo quedó tapado) corrían de forma independiente, sin esperarse entre sí:
+
+1. El `marginBottom`/`maxHeight` se aplicaba **instantáneo**, sin transición — un salto seco en vez de un movimiento suave.
+2. El centrado del campo tenía su propio temporizador de 350ms desde el `focus`, sin mirar si el reacomodo por teclado ya había terminado de aplicarse. Si el teclado tardaba en animar más que esos 350ms (dispositivo lento, o varios eventos de resize seguidos mientras el SO anima la apertura), el centrado se calculaba **antes** de que el sheet tuviera su margen final — con una geometría vieja, daba un delta incorrecto (de más). Cuando el margen del teclado se aplicaba después, todo lo ya corregido se corría de nuevo — dos movimientos en cadena, uno de ellos mal calculado.
+
+**Fix (dos cambios, ambos quirúrgicos):**
+
+- `styles.css`: se agregó `transition:margin-bottom .22s ease,max-height .22s ease` a `.sheet`, para que el reacomodo por teclado sea un deslizamiento suave en vez de un salto instantáneo (mismos 220ms que ya usa el swipe-to-close, por consistencia).
+- `sheet-behavior.js`: el centrado del campo enfocado ahora **espera** a que el margen del teclado ya esté aplicado antes de medir:
+  - Cuando lo dispara el propio reacomodo por teclado (`applyKbLayout`), espera a que termine la transición del `margin-bottom`/`max-height` de ese sheet (`transitionend`, con un respaldo de 260ms por si el navegador no la dispara) antes de centrar.
+  - Cuando lo dispara el `focus` (temporizador de 350ms), reintenta cada 60ms (hasta 10 veces) si el margen del sheet todavía no coincide con la altura actual del teclado, en vez de medir con una geometría que sabe que está vieja.
+
+Con esto, los dos caminos siempre terminan midiendo sobre el mismo layout ya asentado — cuando ambos disparan, el segundo no hace nada (el campo ya quedó bien) en vez de corregir una medición equivocada.
+
+Validado con una simulación en jsdom que reproduce la carrera con eventos de resize escalonados (imitando cómo el SO anima la apertura del teclado) en dos escenarios — teclado rápido (se asienta antes de los 350ms) y teclado lento (sigue en eventos más allá de los 350ms). En el escenario lento, contra el código de antes de este fix, se reprodujo exactamente el defecto: un scroll de 186px con geometría vieja **antes** de que se aplicara el margen del teclado, seguido del salto del margen — dos movimientos en cadena. Con el fix, el margen se aplica primero y el ajuste del campo llega después, ya correcto (36px), en un solo paso perceptible. **Pendiente:** confirmación visual en celular real — jsdom no ejecuta transiciones CSS de verdad, así que la suavidad del `transition` no se pudo validar automáticamente, solo su coordinación con el JS.
+
+---
+
 ### ✅ Corregido (2026-09-24) — `sheet-behavior.js`: los sheets se movían bajo el dedo al tocar botones rápido
 
 **Síntoma (celular):** el usuario ve un botón, va a tocarlo, y justo antes el contenido del sheet se corre solo — el toque cae sobre otra cosa. Pasaba sobre todo al tocar un control y enseguida otro.
@@ -127,6 +176,41 @@ De paso, `guia-estilo-sheets.md` §3 quedó actualizada con 4 sheets que existí
 ---
 
 ## Infraestructura / seguridad
+
+### ✅ Corregido (2026-09-27) — Flujos destructivos (borrar datos, cerrar sesión, eliminar cuenta) no bloqueaban el resto de la app mientras corrían
+
+**Síntoma reportado:** al tocar "Borrar todos los datos", se podía seguir navegando mientras la operación corría en segundo plano; si en ese momento se tocaba "Cerrar sesión", la sesión se cerraba pero los datos **no** quedaban borrados. Por separado, al cerrar sesión la app seguía respondiendo a toques durante unos segundos antes de recargar.
+
+**Causa raíz:** el guard agregado el mismo día en `Events.dispatch()` (entrada anterior de este changelog) solo bloquea el *mismo* elemento que disparó una acción async — no impide interactuar con el resto de la UI mientras esa acción corre. Ni `borrarTodo()` (`configuracion.js`) ni `_fbSignOut()` (`firebase-sync.js`) mostraban ningún overlay entre la confirmación y el `location.reload()` final (el único overlay era el diálogo de confirmación, que se cierra al instante al confirmar). Consecuencia real y verificada en el código: `borrarTodo()` nunca vacía `window.S` en memoria — solo escribe `{}` directo a Firestore —, así que si en esa ventana se alcanzaba a disparar `_fbSignOut()`, su guardado final (`setDoc` con `window.S`, todavía completo) volvía a subir los datos viejos, pisando el borrado recién hecho.
+
+De paso, mismo patrón encontrado en `_fbDeleteAccount()`: mientras la eliminación de cuenta corría, se podía cerrar su overlay de confirmación tocando "Cancelar" o haciendo clic afuera (`_cerrarEliminarCuenta`), sin que eso detuviera el borrado en curso.
+
+**Fix:** se reutiliza `#fb-loading-screen` (overlay de pantalla completa, `position:fixed`, `z-index:99999`, ya usado por el arranque de la app — ver `index.html`) para bloquear cualquier interacción con el resto de la app mientras corren estos tres flujos:
+- `borrarTodo()`: se muestra apenas se confirma, se mantiene hasta el `location.reload()` final (todos sus caminos terminan en reload, incluido el de error de red).
+- `_fbSignOut()`: igual, con la excepción de que si el guardado final falla (no hay reload en ese camino) el overlay se vuelve a ocultar antes del `return` para no dejar la app bloqueada.
+- `_fbDeleteAccount()`: se agregó `window._fbDeleteAccountEnCurso`, chequeada en `_cerrarEliminarCuenta` — mientras es `true`, ni "Cancelar" ni el clic afuera del overlay hacen nada. Se limpia en los dos caminos de error (que no terminan en reload); en el camino de éxito es innecesario porque termina en `location.reload()`.
+
+`#toast-container` tiene `z-index:2147483647` (por encima de cualquier overlay), así que los toasts de error de estos flujos se siguen viendo con el overlay de carga puesto.
+
+**No probado en navegador real:** verificado con `node --check` en los tres archivos. Falta confirmar en un dispositivo real que el overlay tapa de verdad los toques durante cada flujo, y reproducir el escenario original (borrar datos → cerrar sesión durante la carga) para confirmar que ya no revive los datos viejos.
+
+---
+
+### ✅ Corregido (2026-09-27) — Doble clic en botones con acción async podía disparar la acción dos veces (ej. dos ventanas de login con Google)
+
+**Síntoma:** al presionar el botón "Entrar con Google" dos veces seguidas, o mientras la ventana de login seguía abierta, se abría más de una ventana de Google. Además, si la pantalla de login llegaba a reaparecer un instante justo después de haber iniciado sesión con éxito (mientras `onAuthStateChanged` terminaba de resolver), un clic ahí volvía a intentar iniciar sesión aunque ya hubiera una sesión activa.
+
+**Causa raíz:** `Events.dispatch()` (`js/core/events.js`) despachaba cada clic sin mirar si el handler anterior de ese mismo elemento seguía en curso — no existía ningún bloqueo por elemento para acciones asíncronas. `window._fbSignIn` (`firebase-sync.js`) tampoco tenía guard propio de re-entrada, ni chequeaba si ya había una sesión activa antes de llamar a `signInWithPopup`.
+
+**Fix (dos capas, quirúrgico):**
+- `js/core/events.js`: en `dispatch()`, si el handler devuelve una promesa (es `async`), el elemento que disparó el clic queda marcado como "ocupado" (`WeakSet`) hasta que la promesa se resuelva o falle; clics repetidos sobre ese mismo elemento mientras tanto se ignoran. No requiere ningún cambio en los módulos — basta con que el handler sea `async`. Los handlers síncronos (la mayoría: abrir un sheet, el teclado del PIN) no se ven afectados, para no romper casos legítimos de clics rápidos repetidos (ej. teclear "11" en el PIN).
+- `firebase-sync.js`: `_fbSignIn` corta temprano si `window._fbUser` ya existe — cubre el caso que `Events` no puede deducir por sí solo (la pantalla de login reapareciendo brevemente tras un login ya exitoso).
+
+Efecto colateral positivo: el mismo bloqueo de `Events.dispatch()` protege ahora, sin cambios adicionales, a cualquier otro botón `data-action` cuyo handler sea `async` (cerrar sesión, eliminar cuenta, activar/desactivar biometría, entre otros).
+
+**No probado en navegador real:** verificado solo con `node --check` en ambos archivos. Falta confirmar en un dispositivo real que el doble tap en el botón de Google ya no abre dos ventanas, y que el parpadeo post-login (si sigue ocurriendo visualmente) ya no permite reiniciar el login.
+
+---
 
 ### ✅ Mejorado (2026-09-23) — `Loader.ensureAll()` ya no precarga Mesada ni Spotify si su toggle de Configuración está apagado
 
@@ -763,6 +847,30 @@ Con los 14 módulos de dominio completos por primera vez, un barrido sistemátic
 
 ## Encargos
 
+### ✅ Corregido (2026-09-28) — El margen de "Ya la usé" no contaba como ingreso
+
+**Síntoma:** al usar una parte de un encargo por menos de lo que se había dicho (ej. dijiste 100.000, el servicio costó 90.000), los 10.000 que te quedas subían en tu cuenta pero no aparecían como ingreso en Análisis, Inicio ni Salud financiera.
+
+**Causa raíz:** `_esEntradaEspejoNoIngreso()` excluía toda entrada cuyo `desc` empezara con `"Margen"`. Esa exclusión entró en el fix del 2026-08 (movimientos espejo / capital de Encargos) sin una razón propia para el margen: el margen no es capital devuelto, es plata que nunca estuvo en tus cuentas.
+
+**Fix:** el ingreso de margen de `usarParte()` lleva ahora `_esExtraIngreso: true` (misma bandera que el extra de Prestado y "Me lo regalaron"). Solo cuenta la parte que te quedas (`yoMeQuedo`); lo asignado a beneficiarios nunca entra a tu cuenta ni a este movimiento.
+
+**Resto de rutas:** el margen de la salida normal de encargo (`movenc`), de la compra con TC (`ctc`) y del "ingreso fantasma" de Préstamo con TC (`prtc`, `_prestadoDirectamente`) lo escribe `diffAplicar()` (`js/core/diferencial.js`) con la marca `_esDiferencialEncargo`. `_esEntradaEspejoNoIngreso()` ahora devuelve `false` para esa marca, así que las tres cuentan como ingreso sin tocar `diferencial.js`. En `prtc` esto restaura la intención original: el comentario de `diffAplicar()` y el filtro de Salud en `inicio.js` (`||m._prestadoDirectamente`) ya esperaban que ese ingreso contara, pero el prefijo `"Margen"` del `desc` lo descartaba. Como la marca ya existía en los movimientos guardados, el cambio también aplica a márgenes viejos del mes actual y el anterior (lo único que Análisis suma).
+
+---
+
+### ✅ Corregido (2026-09-28) — "Me lo regalaron" (traspaso de encargo a cuenta propia) no contaba como ingreso
+
+**Síntoma:** al quedarte con parte de un encargo porque la persona te lo regaló (`confirmarTraspasoEncargo()`), la plata subía en tu cuenta pero Análisis, Inicio y Salud financiera no la veían como ingreso del mes.
+
+**Causa raíz:** el movimiento `entrada` del traspaso lleva `_encMovId` (necesario para poder revertirlo desde `deleteMovEncargo()`), y `_esEntradaEspejoNoIngreso()` descarta todo lo que tenga `_encMovId`. La regla es correcta para depósitos, reubicaciones y "yo puse la plata" (movimientos espejo), pero aquí la plata sí es un regalo nuevo.
+
+**Fix:** las dos escrituras del traspaso (`S.movimientos` para cuentas estándar, `c.movimientos` para cuentas personalizadas) llevan ahora `_esExtraIngreso: true`. Se conserva `_encMovId`, así que la reversión no cambia. Misma bandera que el extra/propina de Prestado (ver `CHANGELOG.md#prestado`).
+
+**Sin tocar a propósito:** ~~el margen/diferencial de "Ya la usé" (`Margen encargo …`) sigue excluido de ingresos~~ — **obsoleto**: ese mismo día se corrigió (ver "El margen de 'Ya la usé' no contaba como ingreso", arriba); en `analisis.js` nunca hubo una exclusión propia, solo el comentario viejo de la línea ~78, ya actualizado (2026-09-29). Los traspasos hechos antes de este cambio no tienen la bandera y siguen sin contar. Análisis solo suma `S.movimientos`, así que un traspaso a cuenta personalizada se refleja en Salud/Inicio pero no en Análisis (limitación previa).
+
+---
+
 ### ✅ Corregido — Migrado a `html\`\`` completo (~52 sitios de `.innerHTML`); dos hallazgos reales de paso
 
 *(2026-08-28, primero de los tres módulos que quedaban)*
@@ -1249,6 +1357,16 @@ Ambos migrados a `html\`\`` esa sesión. En "Top categorías" el array de fragme
 
 ## Patrimonio y cálculos globales
 
+### ✅ Corregido (2026-09-29) — El sobrante/faltante del destape de la alcancía inflaba la tendencia y la proyección
+
+**Síntoma:** al destapar una alcancía con más (o menos) efectivo del registrado (ej. $1.000.000 reales vs $200.000 registrados), el patrimonio saltaba $800.000 en un solo día y `renderProyeccion()` lo tomaba como ritmo normal de crecimiento (no aplica recorte de outliers), proyectando a 3/6/12 meses un patrimonio inflado. El faltante hacía lo contrario.
+
+**Fix (`core-state.js`):** nuevo `_ajusteAlcanciaPorFecha()` (sobrante = `entrada` con `_esAlcancia` sin `_esAlcanciaIngreso`; faltante = gasto con `_esAlcanciaAjuste`). `snapshotPatrimonio()` lo suma a `montoBase` del día, y la migración retroactiva de `montoBase` lo aplica también a destapes ya hechos. Resultado: la curva de Análisis y la Proyección lo tratan como un saldo inicial (no crecimiento). **Sigue contando** como ingreso/gasto del mes en Análisis y Salud, en la fecha del destape.
+
+**Decisión de diseño — por qué no se reparte el sobrante en el tiempo (promedio de alcancías anteriores):** se evaluó estimar cuándo se acumuló usando el ritmo de ahorro de destapes previos y no reescribir datos. Se descartó porque (1) el ritmo de lo *registrado* no dice nada de lo *no registrado*: el sobrante es justamente lo que no siguió ese patrón; (2) con pocas alcancías destapadas no hay base estadística; (3) cambiaría el ingreso de meses ya cerrados en pantalla y dejaría Análisis desalineado del patrimonio real (que sí saltó el día del destape). Decisión cerrada: el sobrante cuenta completo el mes del destape y queda fuera de la tendencia; no queda nada pendiente.
+
+**Verificación:** `node --check` OK; prueba sintética de `_ajusteAlcanciaPorFecha()` (sobrante $800.000 el 29 y faltante −$30.000 el 10; depósitos `_esAlcanciaIngreso` y gastos normales ignorados). **Sin verificar en navegador real.**
+
 *(`calcPatrimonioTotal()`, `snapshotPatrimonio()`, hero de Inicio, salud financiera — funciones compartidas por varias pantallas, no exclusivas de un solo módulo)*
 
 ### ✅ Corregido (2026-08-26) — `snapshotPatrimonio()` grababa un patrimonio artificialmente bajo cuando corría antes de que cargaran los módulos lazy de Cuentas/Préstamos
@@ -1300,6 +1418,22 @@ Verificado con los números exactos del backup del usuario: patrimonio implícit
 A diferencia de Proyección financiera, `calcHealthScore()` nunca muestra el monto de `patrimonio` en pesos — solo lo usa como gate booleano (`tieneAlgo`) y en un ratio deuda-TC/patrimonio que solo aplica cuando hay deuda de TC y cero ingresos registrados en el mes. El riesgo real de que un depósito a la alcancía se note acá es bajo (en el peor caso cambia un tip o unos pocos puntos de score, nunca un monto exacto). Se corrigió de todas formas, restando `S.alcancia.saldoRegistrado` de `patrimonio` igual que en Proyección financiera, para mantener el mismo principio en toda la app: mientras la alcancía esté tapada, no debe influir en nada visible al usuario, ni siquiera indirectamente.
 
 Validado con `node --check`. **Sin verificar en navegador real.**
+
+### ✅ Corregido (2026-09-26) — Patrimonio visible (hero de Inicio) y "CDTs Nu" se veían en $0 con datos reales de sobra: una fecha de CDT sin cero adelante rompía `calcCDT()` en silencio
+
+*(reportado por el usuario: "Patrimonio visible $0" en el hero de Inicio, con "Disponible", "Nu libre", "Efectivo" y "Prestado" mostrando montos reales al lado; "CDTs Nu" también en $0 pese a tener un CDT activo de $2.000.000)*
+
+Diagnóstico: descartado primero el sospechoso obvio — el mismo patrón de módulos lazy sin cargar que causó el bug de `snapshotPatrimonio()` del 2026-08-26 (ver arriba) — corriendo `typeof calcC/calcCDT/getDeudorSaldoPatrimonio/totalMisDeudasPendiente` en consola: los cuatro daban `"function"` (todo ya cargado), y forzar `refresh()` a mano no cambió nada, descartando timing/carrera. Causa real, encontrada al revisar el backup real del usuario: el CDT "CDTS" tenía `vence:"2026-9-26"` (mes sin cero adelante) en vez de `"2026-09-26"`. `calcCDT()` arma la fecha con `new Date(cdt.vence+'T00:00:00')` — sin el sufijo de hora el parser de fechas de JS es permisivo con un mes de un solo dígito, pero *con* él exige ISO 8601 estricto y devuelve `Invalid Date`. Esa `Invalid Date` se propaga como `NaN` a través de toda la aritmética de días/interés (`dias`, `ganado_bruto_exacto`, `val`) sin tirar ninguna excepción en ningún punto. `cdts` en `refresh()` termina en `NaN`, y de ahí `_patrimonioVisible = disp+prest+cdts-deudaTCTotal-_cpAjenoHero` también da `NaN`. Como `fmt()`/`fmtNoCents()` hacen `n||0` (y `NaN` es *falsy* en JS), el `NaN` se mostró como "$0" tanto en `heroTotal` como en `s-cdt` — indistinguible de un valor real de cero, sin ningún rastro en consola.
+
+Efecto secundario encontrado de yapa, mismo origen: `verificarVencimientosCDT()` usa el mismo patrón para decidir si un CDT ya venció (`new Date()>=vence`) — con `vence` en `Invalid Date`, esa comparación es siempre `false` (cualquier comparación con `NaN` lo es), así que este CDT, aunque vencía exactamente ese día, nunca entraba a la cola de "cobrar CDT" ni se marcaba como vencido en su tarjeta (mismo patrón en el cálculo de "días restantes" del listado de Cuentas).
+
+Por la UI normal esto no puede pasar — el `<input type="date">` del sheet de crear/editar CDT siempre devuelve `YYYY-MM-DD` con ceros a la izquierda. La fecha llegó rota por una edición manual de datos fuera de la app (consola de Firebase). Se corrigió igual de raíz porque el patrón `new Date(str+'T00:00:00')` aparecía repetido **14 veces** entre `core-state.js` y `cuentas.js`, todas con la misma fragilidad ante cualquier fuente futura de una fecha sin padear (import, script, u otra edición manual).
+
+**Fix, dos capas:**
+- **Cierre de raíz:** nuevo helper `_fechaSafe(fechaStr)` en `core-state.js` — parsea el string partiéndolo a mano (`split('-').map(Number)`) y arma el `Date` por componentes en vez de confiar en el parser de strings de JS, inmune a la falta de padding. Reemplazó los 14 usos de `new Date(str+'T00:00:00')`: en `core-state.js` (`nivelAntiguedadMovimiento()`) y en `cuentas.js` (`_diasEntreFechas()` — la usa `calcC()` para intereses de cajitas —, `calcCDT()`, `calcRendimientoCDTMes()`, `verificarVencimientosCDT()`, `calcMetaProgreso()`, `_updateMetaCuotaPreview()`, el badge "vencido"/días-restantes de la tarjeta de CDT, y el preview + la validación al crear un CDT nuevo).
+- **Red de seguridad:** `refresh()` ahora hace `console.error` con el desglose (`disp`, `prest`, `cdts`, `deudaTCTotal`, `_cpAjenoHero`) si `_patrimonioVisible` da `NaN`, antes de pintarlo; `snapshotPatrimonio()` hace lo mismo si `calcPatrimonioTotal()` da `NaN`/`null` (antes salía en silencio total, sin grabar el punto y sin ningún rastro). No arregla la causa, pero evita perder otra sesión entera diagnosticando a ciegas si algo similar vuelve a colarse por otra vía.
+
+Validado con el CDT real del backup del usuario (`monto:2000000, tasa:9.5, rte:4, inicio:'2026-08-05', vence:'2026-9-26'`): confirmado que `new Date('2026-9-26T00:00:00')` da `Invalid Date`; con el fix, `calcCDT()` da `{val:2024985.44, ganado:24985.44, dias:52}`. `node --check` sin errores en los dos archivos. **Pendiente:** confirmar en el navegador real que `verificarVencimientosCDT()` ahora sí detecta el CDT como vencido y abre el sheet de cobro al cargar la app; y corregir el dato ya guardado en Firebase (`vence:"2026-9-26"` → `"2026-09-26"`), a mano o reabriendo el sheet de editar el CDT (el date picker lo va a guardar bien padeado solo).
 
 ---
 
@@ -1592,6 +1726,18 @@ Validado con `node --check`. **Sin verificar en navegador real** (mismo entorno 
 
 ## Prestado
 
+### ✅ Corregido (2026-09-28) — El extra/propina de un pago de deuda no contaba como ingreso en Análisis ni en Salud financiera
+
+**Síntoma:** al registrar el pago de un préstamo con "me dio de más" (extra → guardar en cuenta), la plata sumaba al saldo de la cuenta y al patrimonio, pero Análisis financiero y Salud financiera no la veían como ingreso.
+
+**Causa raíz:** el movimiento `entrada` que se escribe para el extra llevaba `_origenSeccion: 'Prestado · Me deben'`, y `_esEntradaEspejoNoIngreso()` descarta todo lo que empiece con `Prestado` (pensado para el abono principal, que solo devuelve capital ya contado).
+
+**Fix:** los movimientos del extra "guardar" de la **rama normal** de `confirmarMovimiento()` llevan ahora `_esExtraIngreso: true`, y `_esEntradaEspejoNoIngreso()` devuelve `false` para ellos antes de cualquier otra regla. El abono principal sigue siendo espejo (no ingreso).
+
+**Alcance a propósito:** la rama "abono vía encargo" no cambió — ahí el extra sale de plata del encargo, no de un regalo del deudor. Los extras "gastar" siguen excluidos (`_esExtraPrestamo`). Análisis solo suma `S.movimientos`, así que el fix se refleja para destinos Efectivo/Nequi; un extra guardado en cajita o cuenta personalizada solo escribe en el historial de esa cuenta (comportamiento previo, sin tocar).
+
+---
+
 ### 🔧 Cambio (2026-09-20) — `getDeudorSaldo()` se movió a `js/core/calc-helpers.js`
 
 Es un `reduce` puro sobre `d.movimientos` y "Necesita atención" (`inicio.js`) la necesita en el primer render. Sigue siendo global: el resto de `prestado.js` la usa igual, pero `prestado.js` ya no la define. `getDeudorSaldoPatrimonio()` se dejó donde estaba. Detalle en `CHANGELOG.md#inicio`; el efecto en los tests, en `CHANGELOG.md#infraestructura--seguridad`.
@@ -1753,6 +1899,69 @@ También se corrigió la atribución de tres funciones que la Referencia de impl
 (Corrección sobre esta misma entrada: con `core-state.js` a la vista se confirmó que `calcDeudaTcPropiaDeTarjeta` sí existe ahí — se había quitado por error al no tener ese archivo disponible en el momento del primer pase; se restauró con la atribución correcta, junto con `calcSaldoInicialPendiente`. También se corrigió el orden real de cancelación de un pago en §3: primero el saldo inicial pendiente, luego lo ajeno, luego lo propio — antes decía solo "ajena primero, luego propia", sin mencionar el saldo inicial.)
 
 ## Cuentas
+
+### ✅ Corregido (2026-09-29) — Alcancía: destape a cuenta personalizada duplicaba filas y contaba como ingreso; depósitos sin orden por fecha
+
+**1. Destape hacia una cuenta personalizada.** `_sumarASaldo()` (`alcancia.js`) además de subir el saldo escribía en `c.movimientos` un `ingreso` "Alcancía destapada" (y un `egreso` para el faltante). Esas mismas filas ya se guardan en `S.movimientos` y `S.gastosVar`, y el historial de la cuenta (`_getMovimientosCuentaCustom`) lee de ambos lados, así que salían dobles. Efectos: (a) el saldo registrado (plata que ya era tuya) contaba como **ingreso del mes** en Salud financiera, (b) el sobrante contaba **dos veces** (una por `c.movimientos` y otra por la entrada de `S.movimientos`), (c) el feed mostraba "+ ingreso" repetido. **Fix:** `_sumarASaldo()` ahora solo mueve `c.saldo`. Para datos viejos: `_esEntradaEspejoNoIngreso()` (`core-state.js`) ignora la desc exacta `Alcancía destapada`, y `_normMovimientos()` (`actividad_reciente.js`) salta las filas viejas de cuentas personalizadas con esa desc o "Ajuste alcancía — faltante". **Limitación:** el historial de la propia cuenta (`cuentas.js`) no se tocó, así que en destapes anteriores a hoy puede seguir mostrando la fila doble.
+
+**2. Orden de "Movimientos actuales".** La lista de depósitos se pintaba en orden de registro invertido, no por fecha: un depósito anotado tarde con fecha 23 quedaba arriba del 25 y el 24. Ahora se ordena por fecha del depósito (desc) y, a igual fecha, por `ts` (desc). Archivo: `alcancia.js`, `renderAlcancia()`.
+
+**Verificación:** `node --check` OK en los 3 archivos; prueba con datos sintéticos: `_sumarASaldo('custom:…')` cambia el saldo (100 → 130) sin dejar filas en `c.movimientos`, y las fechas 23/25/24 salen 25, 25, 24, 23. **Sin verificar en navegador real.**
+
+### 🔧 Cambio (2026-09-28) — Transferir: sin centavos fuera de cajitas de Nu, y mínimo $50 con Efectivo
+
+*(pedido del usuario: en la vida real no existe dinero físico en centavos, y Nequi tampoco deja mover $9,90 desde Nu)*
+
+**Regla nueva en `confirmarTransferir()` y en la vista previa:** solo entre dos cajitas de Nu se aceptan centavos. Si el origen o el destino es Nequi, Efectivo o una cuenta personalizada, el monto debe ser entero. Si Efectivo interviene en cualquiera de los dos lados, el mínimo es $50. Antes se podía transferir cualquier monto ≥ $0,01 entre cualquier par de cuentas.
+
+**Fix:** función `_trValidarMonto(origen, destino, monto)` en `cuentas.js`, llamada desde `actualizarTransfPreview()` (mensaje ámbar, sin mostrar el resumen de saldos) y desde `confirmarTransferir()` (toast de error, no mueve nada). Una sola función para las dos, para que no puedan decir cosas distintas. No cambia qué cuentas se ofrecen ni el mínimo de $1,00 para poder abrir "Mover a otra cuenta".
+
+**Alcance:** solo el sheet Transferir de Cuentas. No toca otros flujos que también mueven plata hacia Efectivo (gastos, Encargos, abonos, etc.).
+
+---
+
+### 🐛 Corregido (2026-09-27, mismo día) — Buscador global: ignoraba tildes, y un depósito de Alcancía sin cuenta de origen aparecía como "Movimiento" en vez de "Ahorro"
+
+*(pedido del usuario: buscar "alcancia" sin tilde no encontraba "Depósito en alcancía"; y notó que, de los 9 resultados de Alcancía, uno salía agrupado aparte bajo "Movimiento" en vez de bajo "Ahorro" con los otros 8)*
+
+Dos hallazgos independientes en `busqueda-global.js`:
+
+1. **Sin normalización de tildes.** Las 18 comparaciones del archivo (`(campo||'').toLowerCase().includes(q)`, una por cada tipo de dato buscable) comparaban texto tal cual, así que "alcancia" (sin tilde, lo más natural al escribir rápido en el celular) no hacía match con "alcancía". Fix: cada comparación (25 ocurrencias en total, contando las que combinan varios campos con `||`) ahora encadena `.normalize('NFD').replace(/[\u0300-\u036f]/g,'')` después de `.toLowerCase()`, separando la tilde de la letra base y descartándola — tanto en `q` (lo que escribe el usuario) como en cada campo contra el que se compara. Efecto general, no solo para Alcancía: cualquier búsqueda con acentos deja de ser sensible a si el usuario los tipeó o no.
+
+2. **El depósito `yo-directo`/`regalo`/`mandado` (sin cuenta de origen, vive en `S.movimientos` con `_esAlcanciaIngreso`) tenía el mismo bug de fondo que ya se había corregido para los depósitos con cuenta** (ver entrada de arriba, mismo día): el bloque que busca en `S.movimientos` fijaba `tipo:'Movimiento'` sin mirar la bandera, así que agrupaba aparte de los demás depósitos de Alcancía. Además, su "Ir ahí" navegaba a Efectivo — engañoso, porque `fuente:'efectivo'` en estas entradas es un truco interno de `alcancia.js` para que cuenten en `ingresosMes()`, no el lugar real del registro; `cuentas.js` las salta del historial de Efectivo a propósito (ver `alcancia.md` §7). Fix: cuando `m._esAlcanciaIngreso`, el resultado agrupa como "Ahorro" (se une a los depósitos con cuenta) y navega a `alcancia` en vez de a `efectivo`.
+
+Validado con `node --check` y una prueba puntual en Node confirmando que `"Depósito en alcancía".normalize('NFD')...` sí contiene `"alcancia"` sin tilde. **Sin verificar en navegador real.**
+
+### 🔧 Cambio (2026-09-27) — Los depósitos a la Alcancía con cuenta de origen dejan de vivir en `S.gastosVar`: ahora son una transferencia (`S.transferencias`, `destino: 'alcancia'`)
+
+*(pedido del usuario: notó que el buscador global mostraba los depósitos a la alcancía como "Gasto variable" — al revisar el porqué, planteó que conceptualmente nunca debieron contar como gasto, sino como un traslado entre cuentas, "así traiga riesgos" hacerlo bien)*
+
+Diagnóstico de fondo (más allá del bug puntual del buscador, ya corregido antes de esta entrada — ver más abajo): un depósito `yo-cuenta`, o la parte con cuenta de un `multi`/`split`, es plata que sigue siendo tuya — un traslado, no un gasto. Ya se trataba así en las **cifras** (`_esGastoVarNoReal()` los excluye de "gasto real" desde antes, y `calcPatrimonioTotal()` los cuenta neto-cero como cualquier traslado), pero la **implementación** vivía como una excepción sobre `S.gastosVar` (`_esAlcancia: true`) que cada pantalla nueva tenía que recordar excluir a mano: `_esGastoVarNoReal()` (Análisis/Inicio/Salud/Presupuestos), `actividad_reciente.js`, el historial de cada cuenta en `cuentas.js`, y — el síntoma que disparó esto — `busqueda-global.js`, que ocultaba el monto pero seguía agrupando el resultado bajo "Gasto variable" porque el `tipo` del resultado estaba fijo al string literal, sin mirar la categoría real.
+
+Cambio: estas dos situaciones (`yo-cuenta`, y la parte con `origen:'cuenta'` de un `multi`) ya no se guardan en `S.gastosVar`. Se guardan en `S.transferencias` — la misma tabla y el mismo mecanismo (`descontarFuente`/`sumarFuente`) que usa `confirmarTransferir()` en Cuentas para cualquier traslado entre cuentas reales — con `origen: <cuenta elegida>, destino: 'alcancia'`. `'alcancia'` se agregó como destino reconocido solo para este flujo interno; **no** se agregó a `getFuentes()`/`getFuentesSinTC()`, así que sigue sin poder elegirse desde el sheet genérico "Transferir" — el depósito real sigue siendo un flujo propio de Alcancía, con sus propias reglas de ofuscación y borrado.
+
+Archivos tocados:
+
+- **`alcancia.js`** (`alcanciaConfirmarDeposito`, `_alcanciaEjecutarEliminarDeposito`): al depositar, push a `S.transferencias` en vez de `S.gastosVar`, y `descontarFuente(cuenta, monto)` en vez del truco `sumarFuente(cuenta, -monto)`. Al eliminar, nueva función `_alcQuitarMirrorCuenta(id)` que filtra el espejo de `S.transferencias` (y, como red de seguridad, también de `S.gastosVar` por si queda algún registro sin migrar) — cubre `yo-cuenta`, `split` legado con `_splitFuente`, y cada parte con `origen:'cuenta'` de un `multi`.
+- **`cuentas.js`** (`getMovimientosCuenta()`, `_getMovimientosCuentaCustom()`): el bucle que ya listaba `S.transferencias` en el historial de cada cuenta ahora reconoce `destino==='alcancia'` y arma la fila igual que antes (monto oculto, `tipo:'alcancia'`, `_secundario:true`, `_origenSeccion:'Alcancía'`, sin `_otrasCuentas` porque la alcancía no es una cuenta navegable). `renderMovsCuenta()` no se tocó — ya renderizaba estas filas genéricamente a partir de esos mismos flags, vinieran de donde vinieran.
+- **`busqueda-global.js`**: nueva sección que busca en `S.transferencias` (`destino==='alcancia'`), agrupa el resultado como "Ahorro" (antes "Gasto variable", el bug original) y navega directo a la pantalla de Alcancía (`navTipo:'alcancia'`, nuevo ícono). La rama vieja que ocultaba el monto en `S.gastosVar` se deja como red de seguridad — ya no debería encontrar ningún `_esAlcancia` ahí.
+- **`core-state.js`**: un agregado de una línea, `fuenteLabel('alcancia')` → `"Alcancía"` (antes devolvía el string crudo). Sin cambios en `descontarFuente`/`sumarFuente`/`getFuentes` más allá de eso — `S.alcancia.saldoRegistrado` lo sigue manejando `alcancia.js` directamente, no a través de estas funciones, para no duplicar la suma que ya hace por separado.
+- **`_esGastoVarNoReal()`, `calcPatrimonioTotal()`, `analisis.js`, `inicio.js`**: sin cambios — no hacía falta. El primero conserva su chequeo de `_esAlcancia` como red de seguridad para datos viejos; el segundo ya sumaba `S.alcancia.saldoRegistrado` aparte, así que el patrimonio no se mueve ni un peso.
+- **`actividad_reciente.js`**: revisado, sin cambios. Nunca leyó `S.transferencias` (ni para estos depósitos ni para transferencias normales entre cuentas — hueco preexistente sin relación con este cambio), así que el depósito sigue sin aparecer en Actividad reciente, exactamente igual que antes.
+
+**Migración del historial existente:** los depósitos ya guardados (formato antiguo, en `S.gastosVar` con `_esAlcancia:true`) se migraron a `S.transferencias` en un backup exportado, con verificación de que ningún saldo de cuenta cambia (`nequiSaldo`, `efectivoSaldo`, saldo de cada cajita, y `S.alcancia` completo idénticos antes/después — solo cambia dónde vive el registro-espejo) y que la suma migrada coincide exacto entre origen y destino. Incluye un caso legado real: un depósito `split` (formato previo al 2026-08-06, con `_splitFuente`) donde solo la parte con cuenta ($1.800 de $2.000) se migra — la parte de mamá sigue en `S.movimientos` sin tocar, fuera de alcance de este cambio.
+
+Documentado en `alcancia.md` §3 y §4 (tabla de movimientos espejo). **Sin verificar en navegador real ni con `node --check` — pendiente antes de desplegar.**
+
+
+
+Reportado por el usuario: depositó $70.000 hoy en el encargo "Madre" (que vive en la cajita Nu "Madre"), y al poco rato el saldo de la cajita ya mostraba ~$239 de más — sin que hubiera pasado ni una hora, muchísimo menos un día.
+
+Causa raíz: `calcC()` calcula `saldoEncargos=_saldoEncargosEnCajita(c.id)` — el saldo del encargo **de hoy** (`_saldoEncargosEnCuenta()` suma todos los movimientos sin filtrar por fecha) — y lo mete en `saldoBase` para componer interés sobre **todo** el rango de días desde `c.fecha` (última materialización) hasta hoy. Si la cajita no se materializaba hacía 15 días y el encargo recibió plata nueva hoy, la fórmula la trataba como si hubiera estado ahí generando interés los 15 días completos. Reconstruido con el backup real del usuario: cajita "Madre" con `c.saldo=81.16`, `c.fecha='2026-09-10'` (último chequeo); el encargo tenía $111.000 un solo día (9-10→11, antes de gastarse) y $70.000 depositados hoy. El cálculo viejo daba `ganado=$256,58` sobre esos 15 días; el correcto es `ganado=$27,44` (básicamente el único día real en que hubo plata ajena de más: los $111.000 del 10 al 11).
+
+Fix: `calcC()` ahora parte el cálculo también en cada fecha en que cambió el saldo de encargos dentro de la cajita (no solo en cambios de tasa EA), reconstruyendo con dos funciones nuevas — `_saldoEncargosEnCajitaEnFecha(cajitaId, fecha)` (saldo de encargo *a una fecha pasada*, no el de hoy) y `_fechasCambioEncargoEnCajita(cajitaId, desde, hasta)` (los puntos de quiebre). Cada tramo compone con el saldo de encargo que realmente había vigente en ese tramo, igual que ya se hacía con los tramos de tasa. Validado con `node --check` y una simulación con los datos reales del backup del usuario, comparando la versión vieja vs. la corregida (ver arriba). **No corrige retroactivamente saldos ya inflados por el bug** (p. ej. el de "Madre" en este caso) — eso requiere un chequeo manual del usuario contra el valor real de Nu. **Sin verificar en navegador real.**
+
+Documentado en `cuentas.md` §3 (nueva regla, análoga a la de tramos de tasa), §6 (caso especial) y §8 (`calcC()` no estaba en la tabla de funciones clave — se agregó junto con las dos funciones nuevas).
 
 ### 🔧 Cambio (2026-09-21) — Corrección de un dato desactualizado en cuentas.md
 
@@ -2112,25 +2321,73 @@ Validado con `node --check` en ambos archivos (`core-state.js`, `inicio.js`). **
 
 ## Configuración
 
+### ✅ Corregido (2026-09-28) — Código sin uso en `borrarTodo()`: `localStorage.removeItem('mf_historial_v1')`
+
+Esa clave no la lee ni la escribe ningún archivo del proyecto (confirmado por búsqueda en todo el repo): era resto del historial anterior a que Actividad reciente pasara a derivarse de `S`. La línea se quitó de `borrarTodo()`; no cambia ningún comportamiento (`removeItem` sobre una clave inexistente no hace nada). Validado con `node --check`.
+
+### ✅ Corregido (2026-09-28) — Comentarios de `configuracion.js` desactualizados o con historia que ya no importa
+
+Limpieza solo de comentarios, sin cambios de comportamiento: en `borrarTodo()`, dos comentarios describían algo que la función no hace (uno decía que registraba un evento en el historial; otro decía que se evitaba un "`{}` vacío", cuando el código escribe `payload: "{}"` a propósito), y otros describían cómo era el código antes (fusión de `import-validado.js`, "MEJORA 5", el `FIX` de import y de borrado narrados como historia). Ahora dicen la regla vigente. La cabecera apunta a `configuracion.md`. Validado con `node --check`.
+
+**Observaciones anotadas en `configuracion.md` (sin tocar código):** `exportarCSV()` ordena `S.gastosVar` en el sitio (deja el arreglo reordenado en memoria, sin `save()`); `S.modulos` nace en `core-state.js` con solo `mesada` y `spotify`, así que `corregirSaldo` no existe hasta el primer toggle (cómo lo interpreta `applyModulos()` cuando falta no se pudo verificar, `sheet-stack.js` no estaba disponible). Descartados con el código real: `Events.attr()` sí escapa (ver la entrada de `renderCatsConfig()` más abajo) y `getCatsVar()`/`getCatsFijo()` devuelven una copia de los `*_DEFAULT`, no la constante.
+
 ### ✅ Confirmado — Sin hallazgos de escapado al migrar a `data-action`
 
 *(2026-07-25, décimo módulo migrado)*
 
 A diferencia de los nueve módulos anteriores, Configuración salió limpia: los chips de categorías (`renderCatsConfig`) y los `toast()` de agregar/eliminar categoría ya interpolaban el nombre libre de la categoría envuelto en `escHtml()` en todos los sitios — segunda vez (de diez módulos) que este hallazgo no aparece (la primera fue Alcancía). 6 `onclick` migrados, todos estáticos.
 
-### ✅ Corregido — Migrado a `html\`\`` (sin escapado nuevo) — hallazgo abierto sobre `Events.attr()`
+### ✅ Corregido — Migrado a `html\`\`` (sin escapado nuevo) — hallazgo sobre `Events.attr()` descartado (2026-09-28)
 
 *(2026-08-25, primera de la tanda de diez módulos pendientes)*
 
 `renderCatsConfig()` convertido a `html\`\``. No agrega escapado nuevo — `escHtml(c)` ya cubría el nombre de categoría antes de este cambio — pero deja de depender de acordarse de envolverlo a mano si se toca esta función en el futuro. Los `toast()` de `agregarCat()`/`eliminarCat()` se dejaron con `escHtml()` a mano, mismo criterio que `renderPresupuestos()`.
 
-**Hallazgo nuevo, sin cerrar — necesita `js/core/events.js` para confirmarlo.** El botón de eliminar categoría arma su atributo `data-action` vía `Events.attr('config:eliminarCat', tipo, c)`, donde `c` es el nombre de categoría (texto libre, hasta 30 caracteres). Ese valor se interpola en el atributo sin pasar por `escHtml()` en ningún punto de `configuracion.js`, tanto antes como después de esta migración — se envolvió en `raw()` a propósito para preservar el comportamiento actual tal cual, no porque esté confirmado que es seguro. Una simulación jsdom (con `Events.attr` mockeado para reproducir la interpolación directa que el código real parece hacer) muestra que una categoría con una comilla doble en el nombre rompe la estructura del atributo del `<button>` y permite inyectar un atributo nuevo — **si `Events.attr()` real no escapa internamente sus argumentos, esto es explotable hoy, no solo después de esta migración.** Sospecha sin confirmar: el mismo patrón probablemente se repite en cualquier módulo que arme `data-action` con texto libre del usuario (nombres de persona en Encargos/Préstamos/Spotify, candidatos más obvios). Si se confirma, el fix correcto es centralizado dentro de `Events.attr()`, no un parche por módulo. **Pendiente:** conseguir `js/core/events.js` real para confirmar o descartar esto.
+**Hallazgo sobre `Events.attr()` — descartado (2026-09-28, con `js/core/events.js` y `core-state.js` reales).** La sospecha era que el nombre de categoría (texto libre) se interpolaba en `data-action`/`data-args` sin escapar. `Events.attr()` real serializa los argumentos a JSON y los pasa por `escHtml()` (que escapa `&`, `<`, `>`, `"` y `'`) antes de armar el atributo, y el despachador los lee con `dataset` + `JSON.parse`. Simulación jsdom con el `events.js` y el `escHtml` reales y cuatro nombres hostiles (`Ropa "vintage"`, `O'Neil`, `<img src=x onerror=alert(1)>`, `A&B "C" 'D' <e>`): el atributo queda bien formado, no se crea ningún nodo extra y el handler recibe exactamente el texto original. **Sin bug.** Por extensión, el mismo patrón queda cubierto en todo módulo que arme sus `data-action` con `Events.attr()` (nombres de persona en Encargos/Préstamos/Spotify incluidos); solo queda fuera un `data-action` armado a mano sin `Events.attr()`, que no se revisó.
 
 Validado con `node --check` y una simulación jsdom con una categoría maliciosa (`<img src=x onerror=alert(1)>`) y otra con comillas dobles: el texto visible del chip queda escapado correctamente en ambos casos, y el botón "eliminar" sigue apareciendo solo en categorías no-default. **Sin verificar en navegador real.**
 
 ---
 
 ## Actividad reciente
+
+### ✅ Corregido (2026-09-29) — El feed escondía dos ingresos reales que Análisis sí cuenta
+
+**Síntoma:** el saldo de una cuenta subía pero no aparecía ninguna fila en Actividad reciente, en dos casos: el sobrante al destapar la alcancía ("Dinero extra encontrado en alcancía") y el margen o regalo de un encargo ("Margen encargo …", "Margen — …", "Me lo regalaron"). Análisis, Inicio y Salud financiera sí los suman como ingreso (`_esEntradaEspejoNoIngreso()` en `core-state.js`). Verificado leyendo `analisis.js`, `inicio.js`, `diferencial.js` y `alcancia.js`. Al revés, el faltante del destape ("Ajuste alcancía — faltante") sí se veía, así que el feed mostraba la pérdida y escondía la ganancia.
+
+**Causa raíz:** `_normMovimientos()` descartaba todo lo que llevara `_esAlcancia`, `_encMovId` o descripción "Margen…". Los filtros son anteriores a los fixes del 2026-09-28 que hicieron que esas entradas cuenten como ingreso, y el motivo original ("evitar duplicados con `_normEncargos`") no aplicaba: `_normEncargos()` lee `enc.movimientos` y estas filas viven en `S.movimientos`. Además, la privacidad de `_esAlcancia` ya no protegía nada en esta fila: el total se revela al destapar y desde el 2026-09-27 los depósitos van a `S.transferencias` (que el feed no lee).
+
+**Fix (`actividad_reciente.js`, solo `_normMovimientos()`):** pasan al feed (a) las `entrada` con `_esExtraIngreso` o `_esDiferencialEncargo`, aunque lleven `_encMovId` o desc "Margen…", y (b) las `entrada` con `_esAlcancia` que no sean `_esAlcanciaIngreso`. Se decide por bandera, no por descripción, para que el feed y Análisis usen el mismo criterio.
+
+**Sigue oculto a propósito:** transferencias y espejos de encargos ("Yo puse la plata", intercambios, depósitos), depósitos de alcancía (`_esAlcanciaIngreso`), y márgenes viejos sin bandera (Análisis tampoco los cuenta).
+
+**Verificación:** `node --check` OK, y prueba con datos sintéticos extrayendo `_normMovimientos()`: pasan el sobrante de alcancía, el margen con `_esDiferencialEncargo` y el margen con `_esExtraIngreso`; siguen ocultos la transferencia del destape, el margen viejo sin bandera, el espejo "Yo puse la plata" y el depósito `_esAlcanciaIngreso`. **Sin verificar en navegador real.**
+
+**~~Pendiente detectado, sin tocar~~ → resuelto el mismo día (ver "Alcancía" en Cuentas, abajo):** si el destino del destape es una cuenta personalizada, `_sumarASaldo()` (`alcancia.js:1298`) escribe en `c.movimientos` un `tipo:'ingreso'` "Alcancía destapada" por el saldo registrado (movimiento neutro). El feed lo muestra como "+ ingreso" y el bloque de cuentas personalizadas de `inicio.js` (`calcHealthScore`) lo cuenta como ingreso del mes en Salud financiera. No se corrigió porque no estaba en el alcance pedido.
+
+### ✅ Corregido (2026-09-28) — Mesada y préstamos hacia una cajita Nu no aparecían en el feed
+
+**Causa raíz:** los movimientos manuales de una cajita (agregar/restar dinero) se guardan en `S.movimientos` con `fuente: 'cajita:ID'`, pero los espejos que Mesada y Préstamos dejan al entrar plata a una cajita se guardan en `cajita.historial` (con `_secundario`), y el feed nunca leía ese arreglo. Escenario: cobrar una mesada con destino a una cajita Nu — el saldo subía, aparecía en el historial de la cuenta, pero no en Actividad reciente.
+
+**Fix (`actividad_reciente.js`):** nuevo `_normCajitas()` que lee `S.cajitas[].historial` filtrado a `_secundario` y aplica las mismas exclusiones que `_normMovimientos` (espejo de abono de "Me deben", `_encMovId`, alcancía, márgenes de encargo). La detección de espejos de "Me deben" se extrajo a `_espejosDeudores()` para compartirla entre ambos normalizadores.
+
+**Validado:** `node --check` y jsdom con datos con la forma real (`mesada.js`, `prestado.js`). Antes → después: "Mesada papá" 0 → 1, propina 0 → 1, "Yo debo" 0 → 1, espejo del abono de Cami 0 → 0 (sigue saliendo una sola vez como "Abono de Cami"). **Sin verificar en navegador real.** Revisado también `encargos.js` y `alcancia.js`: ninguno escribe en `cajita.historial` (Encargos deja sus espejos en `S.movimientos` con `_encMovId`; Alcancía en `S.movimientos` con `_esAlcancia`, y su `historial` es el de `S.alcancia`, no el de una cajita), así que `_normCajitas` no puede duplicarlos.
+
+### ✅ Corregido (2026-09-28) — Duplicados y borrados en el feed (pago de tarjeta, abonos de "Me deben")
+
+**Síntoma:** un pago de tarjeta salía dos veces ("Pago tarjeta X" como gasto y "Abono a deuda · X"); un abono de un deudor también dos veces ("Abono de X" y una entrada "Ingreso" con el texto "Abono de deuda — X"); y un pago de tarjeta eliminado seguía apareciendo.
+
+**Causa raíz:** el feed lee cada módulo por separado, pero esos módulos dejan más de un registro por la misma operación. `confirmarPagarTC()` crea el pago en `tarjetasCredito[].pagos` **y** un gasto `_esPagoTC` en `gastosVar`; `confirmarMovimiento()` de "Me deben" crea el movimiento del deudor **y** un espejo `_secundario` en `S.movimientos` (o en la cuenta personalizada) que el movimiento señala con `_abonoDestinoMovId` / `destinos[]._movId`. Y `tcEliminarPagoInterna()` solo marca `eliminado: true`, sin quitar el pago de la lista, y `_normTC` no miraba ese flag.
+
+**Fix (`actividad_reciente.js`, solo el feed, sin tocar los módulos):** `_normGastos` excluye `_esPagoTC`; `_normTC` ignora pagos y avisos de corte con `eliminado`; `_normMovimientos` oculta los espejos que un abono de "Me deben" referencia por id. No se usa `_secundario` ni `_esEntradaEspejoNoIngreso()` como filtro general: ocultarían filas que no tienen otra fuente (gasto "Spotify Premium", perdón, espejos de "Yo debo", Mesada).
+
+**Validado:** `node --check` y una simulación jsdom con datos con la forma real de cada módulo. Antes: "Abono de deuda — Ana" 1, "Abono de deuda — Ben" (cuenta personalizada) 1, "Pago tarjeta Nu" 1, "Abono a deuda" 2, "Corte llegó" 1 (eliminado). Después: 0, 0, 0, 1 y 0; siguen visibles "Abono de Ana", "Abono de Ben", la propina de Ana, la mesada y el almuerzo. **Sin verificar en navegador real ni con `html-tag.js` real** (la prueba usó un stub equivalente).
+
+**Revisados y sin duplicado:** préstamo entregado, "Yo debo", cobro de Spotify, Encargos; Mesada (`mesada.js` solo escribe el espejo). Detalle en `actividad-reciente.md` §6.
+
+### ✅ Corregido (2026-09-28) — Dos comentarios de `actividad_reciente.js` desactualizados
+
+Solo comentarios: la cabecera decía que `#cfg-historial-row` conservaba un `onclick` inline en `index.html` (hoy navega con `data-action="config:irA"`), y un comentario apuntaba a "la línea 435" del archivo. Sin cambios de comportamiento. **Observación anotada en `actividad-reciente.md` (sin tocar código):** `#mas-historial-sub` no tiene elemento en el HTML.
 
 ### ✅ Confirmado — Sin hallazgos de escapado al extraer el módulo
 

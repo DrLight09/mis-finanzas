@@ -17,7 +17,7 @@ Un "cerdito oculto" digital: permite guardar dinero apartándolo de la vista nor
 
 ## 3. Reglas que nunca deben romperse
 
-- **El total acumulado (`saldoRegistrado`) nunca se muestra mientras la alcancía está activa — en ningún lado.** Ni en Cuentas, ni dentro de la propia pantalla de Alcancía. `heroSaldo` no es un blur de CSS sobre el número real: mientras está activa, ese elemento contiene literalmente el string `"$??"`. Cualquier función nueva que toque esta pantalla debe preservar esto — incluida la lista de depósitos individuales (§7, muestran montos ocultos por defecto, uno a la vez). **Lo mismo aplica al historial de cada cuenta en Cuentas** (desde 2026-09-19): los depósitos aparecen como filas, pero con `••••` en lugar del monto y sin abrir el detalle (marca `_alcOculto`, ver §7 y `cuentas.md` §3) — a diferencia de la lista de Alcancía, ahí no hay forma de revelarlo fila por fila. También aplica a la **búsqueda global** (`busqueda-global.js`: depósitos con `••••`) y a **Actividad reciente** (`actividad_reciente.js`: ni los gastos `_esAlcancia` ni los ingresos `_esAlcanciaIngreso` aparecen). Cualquier pantalla nueva que liste movimientos leyendo `S.gastosVar`/`S.movimientos` directo tiene que aplicar el mismo criterio.
+- **El total acumulado (`saldoRegistrado`) nunca se muestra mientras la alcancía está activa — en ningún lado.** Ni en Cuentas, ni dentro de la propia pantalla de Alcancía. `heroSaldo` no es un blur de CSS sobre el número real: mientras está activa, ese elemento contiene literalmente el string `"$??"`. Cualquier función nueva que toque esta pantalla debe preservar esto — incluida la lista de depósitos individuales (§7, muestran montos ocultos por defecto, uno a la vez). **Lo mismo aplica al historial de cada cuenta en Cuentas** (desde 2026-09-19): los depósitos aparecen como filas, pero con `••••` en lugar del monto y sin abrir el detalle (marca `_alcOculto`, ver §7 y `cuentas.md` §3) — a diferencia de la lista de Alcancía, ahí no hay forma de revelarlo fila por fila. También aplica a la **búsqueda global** (`busqueda-global.js`: depósitos con `••••`, agrupados como "Ahorro") y a **Actividad reciente** (`actividad_reciente.js`: ni los depósitos con cuenta de origen — desde 2026-09-27 en `S.transferencias`, antes en `S.gastosVar` — ni los ingresos `_esAlcanciaIngreso` aparecen; este módulo nunca lee `S.transferencias`, así que la exclusión es automática, no necesitó tocarse). Cualquier pantalla nueva que liste movimientos leyendo `S.gastosVar`/`S.movimientos`/`S.transferencias` directo tiene que aplicar el mismo criterio.
 - **Todo movimiento que Alcancía empuja a `S.movimientos`/`S.gastosVar` debe llevar `_secundario: true, _origenSeccion: 'Alcancía'`.** El borrado real de un depósito o del destape solo puede pasar desde dentro de Alcancía (`alcanciaEliminarDeposito`), nunca desde el feed genérico de Cuentas — `eliminarMovimiento()` no sabe revertir el estado propio de `S.alcancia` (`saldoRegistrado`, `depositos`, `movimientos[]`, el saldo ofuscado). Ver CHANGELOG.md § Alcancía, 2026-08-06, para el bug real que causó esto al no cumplirse.
 - **Un depósito `cobro-deuda` puede borrarse desde dos lados** (la lista de depósitos de Alcancía, o el historial del deudor en Prestado) — cada lado guarda el id del otro (`_prestamoMovId`/`_prestamoDeudorId` en la entrada de Alcancía; `_alcanciaMovId` en el abono del deudor) y debe revertir ambos, nunca solo el propio. `eliminarMovDeudor()` usa `window._alcanciaQuitarPorCobroDeuda()` (sin diálogo propio ni tocar al deudor) y `alcanciaEliminarDeposito()` borra directo del deudor (sin diálogo propio ni tocar la alcancía) — ninguno de los dos vuelve a llamar al otro, para no duplicar la confirmación ni entrar en recursión.
 - **El truco de ingreso neto-cero es obligatorio para los tipos que no vienen de una cuenta** (`yo-directo`, `regalo`, `mandado`, la parte de mamá en un `split`). Si algún día se simplifica a "no crear ningún movimiento", esos depósitos dejan de contar en las estadísticas de ingreso del mes. Si se simplifica a "solo sumar sin restar", el dinero queda incorrectamente disponible en Efectivo.
@@ -45,7 +45,7 @@ Un "cerdito oculto" digital: permite guardar dinero apartándolo de la vista nor
 
 ```js
 {
-  id: "abc123",                  // mismo id que el movimiento espejo en S.movimientos/gastosVar
+  id: "abc123",                  // mismo id que el movimiento espejo en S.movimientos/gastosVar/transferencias
   monto: 20000,
   fecha: "2026-06-15",
   tipo: "yo-cuenta",              // yo-directo | yo-cuenta | regalo | mandado | split
@@ -87,17 +87,19 @@ Un "cerdito oculto" digital: permite guardar dinero apartándolo de la vista nor
 
 | Situación | Dónde se guarda | Efecto en saldo real |
 |---|---|---|
-| Depósito `yo-cuenta` | `S.gastosVar`, `_esAlcancia: true` | Resta de la cuenta elegida |
+| Depósito `yo-cuenta` | `S.transferencias`, `origen: cuenta, destino: 'alcancia'`, `_esAlcancia: true` (desde 2026-09-27; antes `S.gastosVar`, ver CHANGELOG.md) | Resta de la cuenta elegida |
 | Depósito `yo-directo` / `regalo` / `mandado` | `S.movimientos`, `_esAlcanciaIngreso: true` | Ninguno (ingreso neto-cero) |
-| Depósito `split`, parte propia con cuenta | `S.gastosVar`, `_esAlcancia: true` | Resta de la cuenta elegida |
-| Depósito `split`, parte propia sin cuenta | `S.movimientos`, `_esAlcanciaIngreso: true` | Ninguno (ingreso neto-cero) |
-| Depósito `split`, parte de mamá | `S.movimientos`, `_esAlcanciaIngreso: true` | Ninguno (ingreso neto-cero) |
+| Depósito `multi` (varios orígenes), parte con cuenta | `S.transferencias`, `origen: cuenta, destino: 'alcancia'`, `_esAlcancia: true` (desde 2026-09-27; antes `S.gastosVar`) | Resta de la cuenta elegida |
+| Depósito `multi`, parte sin cuenta | `S.movimientos`, `_esAlcanciaIngreso: true` | Ninguno (ingreso neto-cero) |
+| Depósito `split` (formato legado, antes del 2026-08-06), parte de mamá | `S.movimientos`, `_esAlcanciaIngreso: true` | Ninguno (ingreso neto-cero) |
 | Destape — saldo registrado | `S.movimientos`, tipo `transferencia`, `_esAlcancia: true` | Suma a la cuenta destino |
 | Destape — diferencia positiva | `S.movimientos`, tipo `entrada`, `_esAlcancia: true` | Suma a la cuenta destino |
 | Destape — diferencia negativa | `S.gastosVar`, `_esAlcanciaAjuste: true` | Resta de la cuenta destino |
-| Depósito `cobro-deuda` | `d.movimientos[]` del deudor (Prestado), no en `S.movimientos`/`gastosVar` | Ninguno en cuentas reales — reduce la deuda de la persona |
+| Depósito `cobro-deuda` | `d.movimientos[]` del deudor (Prestado), no en `S.movimientos`/`gastosVar`/`transferencias` | Ninguno en cuentas reales — reduce la deuda de la persona |
 
-Todos estos, desde el 2026-08-06, llevan `_secundario: true, _origenSeccion: 'Alcancía'` (ver §3 y CHANGELOG.md) — excepto `cobro-deuda`, que no genera entrada en `S.movimientos`/`S.gastosVar` en absoluto (ver §7).
+Todos estos, desde el 2026-08-06, llevan `_secundario: true, _origenSeccion: 'Alcancía'` (ver §3 y CHANGELOG.md) — excepto `cobro-deuda`, que no genera entrada en `S.movimientos`/`S.gastosVar`/`S.transferencias` en absoluto (ver §7).
+
+> **Por qué `S.transferencias` y no `S.gastosVar` para las filas con cuenta de origen (desde 2026-09-27):** un depósito con cuenta real es un traslado entre cuentas, no un gasto — la plata sigue siendo tuya. Antes vivía en `S.gastosVar` con `_esAlcancia: true`, lo que obligaba a que cada pantalla nueva que sumara gastos (`_esGastoVarNoReal()`, `busqueda-global.js`, `actividad_reciente.js`, el historial de cada cuenta en Cuentas) excluyera esta bandera a mano — 5 puntos de exclusión manual para un mismo criterio. Modelarlo como transferencia (mismo mecanismo que ya usa `confirmarTransferir()` en Cuentas: `descontarFuente`/`sumarFuente` + una fila en `S.transferencias`) hace que deje de ser gasto por construcción, sin necesidad de excluirlo en ningún lado — solo el renderer de transferencias necesita saber ocultar el monto cuando `destino==='alcancia'`. `_esGastoVarNoReal()` conserva su chequeo de `_esAlcancia` como red de seguridad para datos viejos, pero ya no debería encontrar ninguno. Ver CHANGELOG.md § Alcancía, 2026-09-27, para el detalle completo y la migración del historial existente.
 
 ### Entrada de `S.alcancia.movimientos[]` para `cobro-deuda`
 
@@ -167,6 +169,9 @@ Resetear saldoRegistrado, depositos, movimientos[] y fechaInicio
 ```
 
 ## 6. Casos especiales
+
+- **Orden de "Movimientos actuales" (desde 2026-09-29).** La lista de depósitos se ordena por la **fecha** del depósito (más reciente arriba) y, si dos comparten fecha, por el momento en que se registraron (`ts`). Antes salían en orden de registro, así que un depósito olvidado y anotado con fecha pasada quedaba arriba de otros más nuevos.
+- **Destape hacia una cuenta personalizada (desde 2026-09-29).** `_sumarASaldo()` solo mueve `c.saldo`; ya no escribe nada en `c.movimientos`. Las filas del destape viven únicamente en `S.movimientos` (transferencia y "Dinero extra…") y `S.gastosVar` (faltante). Los destapes anteriores a esa fecha dejaron en `c.movimientos` filas duplicadas ("Alcancía destapada", "Ajuste alcancía — faltante"): Salud financiera y el feed las ignoran por descripción, pero el historial de la propia cuenta puede seguir mostrándolas dobles.
 
 - **Alcancía "fantasma"** — `_destapada: true` sin reiniciar se trata como "no activa" en la pantalla principal (`renderAlcancia`), para no mostrar un hero vacío o con datos de un ciclo que ya terminó.
 - **Diferencia menor a $1** al destapar se considera "exacta" (por redondeo de punto flotante), no se genera ningún movimiento de ajuste.

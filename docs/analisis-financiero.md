@@ -49,7 +49,7 @@ Repite el mismo cálculo de ingresos/gastos/balance (mismo criterio de ingreso/g
 
 **ID:** `an-patrimonio-chart`. Gráfica de línea con los últimos 30 puntos de `S.patrimonioHistorial`.
 
-- La serie **no** se grafica cruda: a cada punto se le resta el `montoBase` acumulado (aperturas de cuenta nuevas, correcciones de saldo inicial) para que abrir una cuenta nueva o corregir un saldo no se vea como un salto/caída falsa de patrimonio.
+- La serie **no** se grafica cruda: a cada punto se le resta el `montoBase` acumulado (aperturas de cuenta nuevas, correcciones de saldo inicial) para que abrir una cuenta nueva, corregir un saldo o destapar una alcancía con sobrante/faltante no se vea como un salto/caída falsa de patrimonio. (El sobrante o faltante **sí** cuenta como ingreso/gasto del mes en §2: aparece el día en que se encontró.)
 - Se usa `valorVisible` (patrimonio sin la alcancía) en vez de `valor` (patrimonio real total), tanto en la curva como en el número de encabezado ("Últimos N días: $X") y en el tooltip al tocar un punto — para no revelar el saldo/depósitos de la alcancía a través de la gráfica, mismo criterio que el hero de Inicio. Puntos guardados antes de que existiera `valorVisible` caen a `valor` como fallback. Al destapar la alcancía (`alcanciaConfirmarDestapar()`), `valorVisible` se iguala a `valor` en todo el historial: esa plata ya dejó de ser oculta, así que la curva y la tendencia la reflejan en el día en que se depositó, sin un salto único el día del destape.
 - Debajo de la gráfica se muestra el cambio total de la ventana (`diffTotal`) en monto y %.
 
@@ -59,7 +59,7 @@ Repite el mismo cálculo de ingresos/gastos/balance (mismo criterio de ingreso/g
 - Si ya existe un punto para **hoy**, lo **sobrescribe** con el valor actual. Si no existe, crea uno nuevo.
 - Consecuencia práctica: lo que queda registrado para un día es el patrimonio en el momento del **último** guardado/sync de ese día — no el primero, ni un promedio, ni el más alto.
 - Guarda `valor` (patrimonio total real, con alcancía) y `valorVisible` (sin alcancía) por separado — ver arriba.
-- Guarda también `montoBase` (monto exacto de aperturas/ajustes de saldo inicial ese día), usado tanto por esta gráfica como por la Proyección financiera (§8) para no confundir un saldo inicial con crecimiento real.
+- Guarda también `montoBase` (monto exacto de aperturas/ajustes de saldo inicial ese día **más el sobrante (+) o faltante (−) de un destape de alcancía ese día**, desde 2026-09-29 — es plata que ya existía y no estaba anotada, no crecimiento), usado tanto por esta gráfica como por la Proyección financiera (§8) para no confundir un saldo inicial con crecimiento real.
 - El array se recorta a los últimos 365 puntos.
 
 ### Limitación conocida: movimientos backdateados
@@ -94,7 +94,7 @@ Recorren `S.gastosVar` (mismo criterio de gasto real que en §2, vía `_esGastoV
 
 Ambos viven en `js/core/core-state.js`, no en `analisis.js` — por eso los puede usar cualquier pantalla sin cargar el módulo de Análisis. Todos los bloques de esta pantalla que suman ingresos o gastos (§2, §4, §7, §9) usan dos helpers centralizados, no un filtro propio cada uno:
 
-- **`_esEntradaEspejoNoIngreso(m)`** — decide si un movimiento `tipo:'entrada'` de `S.movimientos` es ingreso real o solo un movimiento espejo que ya se contó en otro lado (reposición de plata comprometida, intercambio/traspaso de Encargos, Mesada, Prestado — con fallback por descripción para movimientos viejos sin la bandera `_esReposicionCP`).
+- **`_esEntradaEspejoNoIngreso(m)`** — decide si un movimiento `tipo:'entrada'` de `S.movimientos` es ingreso real o solo un movimiento espejo que ya se contó en otro lado (reposición de plata comprometida, intercambio/traspaso de Encargos, Mesada, Prestado — con fallback por descripción para movimientos viejos sin la bandera `_esReposicionCP`). **Excepción:** lo que lleva `_esExtraIngreso` sí es ingreso real, aunque tenga `_origenSeccion` de Prestado o `_encMovId` de Encargos: el extra/propina de un pago de deuda guardado en una cuenta el traspaso "Me lo regalaron" de un encargo el margen de "Ya la usé" (`yoMeQuedo`), y todo margen que escribe el motor de diferencial (`_esDiferencialEncargo`: salida de encargo, compra con TC, Préstamo con TC).
 - **`_esGastoVarNoReal(g)`** — decide si un gasto de `S.gastosVar` cuenta como gasto real del mes: excluye pagos de gasto fijo, pagos de TC (cancelación de deuda, no gasto nuevo), alcancía (sigue siendo plata propia) y extras de préstamo gastados de inmediato (`_esExtraPrestamo`, plata que nunca se contó como ingreso).
 
 Estos dos helpers **no son exclusivos de esta pantalla** — también los usan el dashboard de Inicio, la pantalla de Gastos, el resumen de cierre de mes y Salud financiera (ver §Relación con otras secciones). Son la única fuente de verdad de "qué es ingreso/gasto real" en toda la app: si se agrega una exclusión nueva, agregarla acá basta para que se propague a todas las pantallas — no hace falta (ni se debe) copiar la condición a mano en cada lugar. Antes de que existieran centralizados así, la misma exclusión llegó a faltar en 9 lugares distintos por estar duplicada a mano (ver `CHANGELOG.md#análisis-financiero`).

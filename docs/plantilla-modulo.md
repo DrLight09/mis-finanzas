@@ -74,7 +74,8 @@ Todo bug ya arreglado, con su causa y su fix, va en el **`CHANGELOG.md` comparti
 - `plata-comprometida.md`
 - `analisis-financiero.md`
 - `wrapped.md`
+- `configuracion.md` y `actividad-reciente.md` — pantallas de utilidad, no dominios financieros; misma estructura
 - `salud-financiera.md` y `proyeccion-financiera.md` — sub-documentos de Inicio, misma estructura, no son un "módulo" de la tabla de pantallas pero comparten cálculos con Análisis financiero
 - `CHANGELOG.md` — historial de bugs y limpieza de código, compartido entre todos los módulos
 
-Sin `.md` propio todavía: ninguno de los 14 módulos de dominio — este índice quedó completo el 2026-09-10.
+Sin `.md` propio todavía: ninguno de los 14 módulos de dominio ni de las dos pantallas de utilidad (`configuracion.js`, `actividad_reciente.js`) — este índice quedó completo el 2026-09-28.

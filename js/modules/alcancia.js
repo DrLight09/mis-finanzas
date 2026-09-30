@@ -746,7 +746,15 @@ window.renderAlcancia = function(){
       } else {
         const tipoIcon = { yo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>', regalo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', mandado: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>', split: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg>', 'cobro-deuda': '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>' };
         const tipoColor = { yo: 'var(--accent)', regalo: 'var(--amber)', mandado: 'var(--amber)', split: 'var(--amber)', 'cobro-deuda': 'var(--accent)' };
-        movsEl.innerHTML = [...movs].reverse().map(m => {
+        // Orden por FECHA del depósito (más reciente arriba); si dos tienen la misma fecha, gana el que se
+        // registró después (ts). Antes se usaba el orden de registro, así que un depósito olvidado y anotado
+        // con fecha pasada quedaba arriba de otros más nuevos.
+        const movsOrdenados = [...movs].sort((x, y) => {
+          const fx = x.fecha || '', fy = y.fecha || '';
+          if(fx !== fy) return fy.localeCompare(fx);
+          return (y.ts || 0) - (x.ts || 0);
+        });
+        movsEl.innerHTML = movsOrdenados.map(m => {
           const icon  = tipoIcon[m.tipo]  || '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>';
           const color = tipoColor[m.tipo] || 'var(--accent)';
           const label = m.tipoLabel || (m.fuenteOrigen ? 'Propio' : 'Externo');
@@ -1291,19 +1299,11 @@ function _sumarASaldo(fuente, monto){
   if(fuente.startsWith('custom:')){
     const id = fuente.split(':')[1];
     const c  = (S.cuentasPersonalizadas||[]).find(x=>x.id===id);
-    if(c){
-      c.saldo = (c.saldo||0) + monto;
-      c.movimientos = c.movimientos || [];
-      const esNegativo = monto < 0;
-      c.movimientos.push({
-        id: typeof uid==='function'?uid():Date.now().toString(36),
-        tipo: esNegativo ? 'egreso' : 'ingreso',
-        monto: Math.abs(monto),
-        fecha: typeof hoy==='function'?hoy():'',
-        desc: esNegativo ? 'Ajuste alcancía — faltante' : 'Alcancía destapada',
-        nota: ''
-      });
-    }
+    // Solo sube/baja el saldo. NO se escribe nada en c.movimientos: las filas del destape ya viven en
+    // S.movimientos (transferencia y "Dinero extra…") y S.gastosVar (faltante), y el historial de la cuenta
+    // las lee de ahí. Antes se duplicaban acá como 'ingreso'/'egreso' (2026-09-29), y ese 'ingreso' de
+    // "Alcancía destapada" (plata que ya era tuya) contaba como ingreso del mes en Salud financiera.
+    if(c) c.saldo = (c.saldo||0) + monto;
     return;
   }
 }

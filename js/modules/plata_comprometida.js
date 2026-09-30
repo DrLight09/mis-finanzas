@@ -994,6 +994,7 @@ function _cpdConfirmar(){
 
   const yaSaque = tipo === 'reposicion' ? (_cpdYaSaqueVal === true) : false;
   const yaPague = (tipo === 'gasto' || tipo === 'otro') ? (_cpdYaPagueVal === true) : false;
+  let _tcCompraIdInicial = '';
 
   // Si ya adelantó plata de una cajita (reposicion)
   if(yaSaque && cuentaId && typeof sumarFuente === 'function'){
@@ -1011,6 +1012,44 @@ function _cpdConfirmar(){
     } catch(e){ toast('No se pudo descontar el saldo: '+e.message,'err'); }
   }
 
+  // FIX (2026-09-10, ver CHANGELOG.md#plata-comprometida): si ya pagó un
+  // Gasto (cajita o TC) al momento de crearlo, hay que moverle la plata YA
+  // MISMO — igual que la reposición de arriba —, no solo guardar el flag
+  // `yaPague:true`. Antes esta rama no existía acá: marcar "ya pagué" al
+  // crear el destino guardaba el flag pero nunca descontaba la cajita ni
+  // cargaba la TC, y como _cpGuardarMarcados() (el sheet "Marcar pagos")
+  // solo actúa sobre transiciones false→true, un destino que ya nacía en
+  // true jamás pasaba por ahí — la plata "pagada" quedaba sin moverse para
+  // siempre, en silencio, sin ningún error. Misma lógica que ya usa
+  // _cpGuardarMarcados() para la transición false→true, sin comparar
+  // contra un estado viejo porque acá no lo hay: el destino recién nace.
+  if(tipo === 'gasto' && yaPague){
+    if(gastoOrigen === 'cajita' && gastoCajita && typeof descontarFuente === 'function'){
+      try {
+        const cajId2 = gastoCajita.startsWith('cajita:') ? gastoCajita.split(':')[1] : null;
+        const caj2 = cajId2 ? (S.cajitas||[]).find(x=>x.id===cajId2) : null;
+        if(caj2 && typeof materializarIntereses==='function') materializarIntereses(caj2);
+        descontarFuente(gastoCajita, monto);
+        if(!S.movimientos) S.movimientos = [];
+        S.movimientos.push({ id:uid(), tipo:'salida', fuente:gastoCajita, monto, fecha:hoy(), desc:'Pago: '+desc });
+        if(window.logCambio) logCambio('Pagaste '+desc, fmt(monto)+' de '+_cpFuenteLabel(gastoCajita), monto, 'gasto');
+        if(typeof refresh === 'function') refresh();
+      } catch(e){ toast('No se pudo descontar el saldo: '+e.message,'err'); }
+    } else if(gastoOrigen === 'tc' && gastoTcId){
+      try {
+        const tc = (S.tarjetasCredito||[]).find(x=>x.id===gastoTcId);
+        if(tc && typeof tcCrearCompra === 'function'){
+          const _compraTc = tcCrearCompra(tc, {desc, monto, fecha:hoy(),
+            cat:'Plata comprometida', nota:'Favor — cubierto por ingreso comprometido',
+            _desdeCP:true, _esFavor:true});
+          _tcCompraIdInicial = _compraTc.id;
+          if(window.logCambio) logCambio('Gasto cargado a '+tc.nombre+' (plata comprometida — favor)', fmt(monto)+' sumado a la deuda', monto, 'gasto');
+          if(typeof refresh === 'function') refresh();
+        }
+      } catch(e){ toast('No se pudo cargar el gasto a la tarjeta: '+e.message,'err'); }
+    }
+  }
+
   // Leer fecha de pago (solo para gastos de cajita no pagados)
   let fechaPago = '';
   if(tipo === 'gasto' && gastoOrigen === 'cajita' && !yaPague){
@@ -1018,7 +1057,7 @@ function _cpdConfirmar(){
     fechaPago = fpEl ? (fpEl.value || '') : '';
   }
 
-  _cpDestinosTmp.push({ id:uid(), tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId, gastoTcCajita, fechaPago });
+  _cpDestinosTmp.push({ id:uid(), tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId, gastoTcCajita, fechaPago, _tcCompraId:_tcCompraIdInicial||undefined });
   closeSheet('cp-destino');
   _cpRenderDestinosTmp();
 };

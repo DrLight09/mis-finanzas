@@ -171,22 +171,33 @@
     // Tipos: 'entrada' | 'salida_manual' | 'salida' | 'apertura' (apertura excluida)
     // Excluimos movimientos internos generados automáticamente por encargos (_encMovId,
     // "Margen de encargo", "Margen encargo") para evitar duplicados con _normEncargos.
+    // EXCEPCIÓN (2026-09-29): las entradas que son ingreso REAL para Análisis/Salud sí se muestran
+    // (mismo criterio que _esEntradaEspejoNoIngreso en core-state.js): margen/regalo de un encargo
+    // (_esExtraIngreso / _esDiferencialEncargo) y el "Dinero extra encontrado en alcancía" del
+    // destape. Antes el saldo subía sin ninguna fila en Actividad reciente. Ojo: _normEncargos
+    // solo lee enc.movimientos, y estas filas viven en S.movimientos, así que no hay duplicado.
     var fl = (typeof fuenteLabel === 'function') ? fuenteLabel : function(v){ return v || ''; };
     var espejoDeudores = _espejosDeudores(S);
     var items = (S.movimientos || [])
       .filter(function(m){
         if (m.tipo === 'apertura') return false;
         if (m.tipo === 'transferencia') return false; // intercambios contables, no son ingresos ni gastos
-        if (m._encMovId) return false; // generado como efecto secundario de un encargo
+        // Ingresos reales que se quedan el usuario: pasan aunque lleven _encMovId o desc "Margen…".
+        // Se decide por bandera, no por descripción: los márgenes viejos sin bandera siguen ocultos
+        // (igual que en Análisis, que tampoco los cuenta).
+        var esIngresoReal = m.tipo === 'entrada' && (m._esExtraIngreso || m._esDiferencialEncargo);
+        // Sobrante del destape de la alcancía: plata que nunca estuvo en ninguna cuenta.
+        var esExtraAlcancia = m.tipo === 'entrada' && m._esAlcancia && !m._esAlcanciaIngreso;
+        if (m._encMovId && !esIngresoReal) return false; // generado como efecto secundario de un encargo
         if (espejoDeudores[m.id]) return false; // espejo de un abono de "Me deben"
-        if (m._esAlcancia) return false; // movimientos internos de alcancía oculta (destape)
+        if (m._esAlcancia && !esExtraAlcancia) return false; // movimientos internos de alcancía oculta (destape)
         // Ingresos neto-cero de depósitos sin cuenta de origen (yo-directo/regalo/mandado/split): antes se
         // colaban acá como "+ $X Ingreso" con el monto a la vista — mismo criterio que los gastos
         // `_esAlcancia` de _normGastos(), que ya se excluían.
         if (m._esAlcanciaIngreso) return false;
         var desc = (m.desc || '').toLowerCase();
-        if (desc.indexOf('margen de encargo') === 0) return false;
-        if (desc.indexOf('margen encargo') === 0) return false;
+        if (!esIngresoReal && desc.indexOf('margen de encargo') === 0) return false;
+        if (!esIngresoReal && desc.indexOf('margen encargo') === 0) return false;
         return true;
       })
       .map(function(m){
@@ -209,6 +220,8 @@
     (S.cuentasPersonalizadas || []).forEach(function(c){
       (c.movimientos || []).forEach(function(m){
         if (espejoDeudores[m.id]) return; // espejo de un abono de "Me deben"
+        // Datos viejos del destape de la alcancía: duplicaban filas que ya salen por S.movimientos / S.gastosVar.
+        if (m.desc === 'Alcancía destapada' || m.desc === 'Ajuste alcancía — faltante') return;
         var esIngreso = m.tipo === 'ingreso';
         items.push({
           id:        'custom_' + c.id + '_' + m.id,

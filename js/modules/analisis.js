@@ -75,7 +75,8 @@ function renderAnalisis(){
   // Sumar ingresos fijos configurados (sueldo, freelance, etc.)
   ingresosEstimados+=getIngresosFijosMes(mes);
   // Sumar entradas reales registradas en movimientos (trabajos puntuales, regalos, etc.)
-  // Excluir: apertura, transferencias, intercambios de encargo, reposiciones de plata comprometida, margenes de encargo
+  // Excluir: apertura, transferencias, intercambios de encargo, reposiciones de plata comprometida y margenes viejos
+  // sin bandera. El margen/regalo nuevo de encargos (_esExtraIngreso / _esDiferencialEncargo) SÍ cuenta — ver _esEntradaEspejoNoIngreso.
   (S.movimientos||[]).forEach(function(m){
     if(m.tipo==='entrada' && mesKey(m.fecha)===mes){
       if(_esEntradaEspejoNoIngreso(m)) return;

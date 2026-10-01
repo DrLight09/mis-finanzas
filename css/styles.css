@@ -620,6 +620,14 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 #traspaso_saldo_hint:empty,
 #movenc_cuenta_hint:empty{min-height:0;margin-top:0;}
 
+/* mov-dif-resumen ("El valor real era diferente" en Nuevo préstamo): la regla genérica
+   [style*="min-height"]:empty de arriba solo anula el min-height, pero este div además tiene
+   fondo y padding inline (9px 11px), así que vacío seguía viéndose como una barra oscura de
+   ~18px. Mientras no hay texto (sin monto real, o recién abierto/reseteado — diffResumen y
+   diffReset lo dejan con textContent='') se quita del layout por completo; aparece en cuanto
+   el motor le escribe el resumen o el aviso de error. display:none no deja hueco. */
+#mov-dif-resumen:empty{display:none;}
+
 /* Botón ghost secundario de cancelar en sheets: sin margen top extra cuando está al final y precedido de btn-primary */
 .btn-primary + .btn-ghost{margin-top:7px;}
 

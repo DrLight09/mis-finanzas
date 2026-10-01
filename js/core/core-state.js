@@ -1223,9 +1223,11 @@ function refresh(){
   const selNequi=document.getElementById('sel-nequi-saldo');
   const selNu=document.getElementById('sel-nu-saldo');
   const selEf=document.getElementById('sel-ef-saldo');
-  if(selNequi)selNequi.textContent=fmt(nequi);
-  if(selNu)selNu.textContent=fmt(nu);
-  if(selEf)selEf.textContent=fmt(ef);
+  // Selector: solo entero (fmtNoCents), así un saldo con decimales largos no se
+  // desborda de la tarjeta. El detalle de cada cuenta sigue usando fmt() con centavos.
+  if(selNequi)selNequi.textContent=fmtNoCents(nequi);
+  if(selNu)selNu.textContent=fmtNoCents(nu);
+  if(selEf)selEf.textContent=fmtNoCents(ef);
   // Si hay una cuenta abierta, actualizar su detalle
   // FIX (auditoria-tecnica.md #5): las llamadas de este bloque no tenían
   // guard typeof — bloqueaban de raíz volver lazy cuentas/encargos/gastos/

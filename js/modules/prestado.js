@@ -1058,7 +1058,27 @@ function _initGrupoSelector(prefix, esPrestamoNuevo) {
   }
 }
 
+// Un abono que cubre TODO lo que la persona debe es, en la práctica, un pago completo: si abrieron
+// "Registrar abono" pero el monto iguala el saldo, se guarda como 'pago-completo' (mismo tipo,
+// descripción del movimiento secundario y etiqueta en el historial que si hubieran abierto ese sheet).
+// movTipo se promueve solo durante este guardado y se restaura al terminar: si una validación
+// aborta, el sheet sigue siendo "abono" y el siguiente intento se evalúa de nuevo desde cero.
 function confirmarMovimiento() {
+  const tipoOriginal = movTipo;
+  try {
+    if (movTipo === 'abono') {
+      const d = (S.deudores || []).find(x => x.id === deudorActualId);
+      const monto = parseMoney(document.getElementById('mov_monto').value) || 0;
+      const saldo = d ? getDeudorSaldo(d) : 0;
+      if (d && saldo > 0 && monto > 0 && Math.abs(monto - saldo) <= 0.5) movTipo = 'pago-completo';
+    }
+    return _confirmarMovimientoInterno();
+  } finally {
+    movTipo = tipoOriginal;
+  }
+}
+
+function _confirmarMovimientoInterno() {
   const monto = parseMoney(document.getElementById('mov_monto').value) || 0;
   // Validación con foco+mensaje inline (antes vivía en un override aparte).
   if (!monto) { _markError('mov_monto', 'mov_monto_err', 'Ingresa un monto mayor a 0'); return; }

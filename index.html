@@ -4138,6 +4138,42 @@
             <div id="mov_split_metas" style="margin-top:6px;"></div>
           </div>
         </div>
+        <!-- ══ EL VALOR ERA DIFERENTE (solo "Nuevo préstamo") ══
+             Motor diferencial, instancia 'prestamoDif' (ver prestado.js). Monto = lo que le
+             cobras; "¿Cuánto era en realidad?" = lo que de verdad salió de tu cuenta. -->
+        <div id="mov-dif-wrap" style="display:none;margin-bottom:10px;">
+          <div
+            style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;margin-bottom:0;"
+            data-action="prestado:movDifToggle" data-args="[]">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:15px;color:var(--amber);"><svg
+                  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"
+                  style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path
+                    d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z" /><circle
+                    cx="8" cy="8" r="7" fill="none" stroke="currentColor"
+                    stroke-width="1.2" /></svg></span>
+              <div>
+                <div style="font-size:12px;font-weight:600;color:var(--amber);">El
+                  valor real era diferente</div>
+                <div style="font-size:10px;color:var(--text3);">Registrar margen
+                  cobrado</div>
+              </div>
+            </div>
+            <div id="mov-dif-icon"
+              style="font-size:16px;color:var(--amber);transition:transform .2s;">›</div>
+          </div>
+          <div id="mov-dif-body"
+            style="display:none;background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;">
+            <div class="ig" style="margin-bottom:10px;">
+              <label for="mov_dif_real" class="il" style="color:var(--amber);">¿Cuánto era en
+                realidad?</label>
+              <input type="text" inputmode="decimal" id="mov_dif_real"
+                placeholder="0,00" class="money-input">
+            </div>
+            <div id="mov-dif-resumen"
+              style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
+          </div>
+        </div>
         <!-- ══ PERDONAR LO QUE FALTA (solo "Pagar préstamo completo") ══ -->
         <div id="mov_perdon_wrap" style="display:none;">
           <div class="cfg-toggle" style="padding:0 0 12px;border-bottom:none;">

@@ -48,7 +48,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 34 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
 | `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
-| `js/modules/prestado.js` | lazy — grupo `prestamos` | 100 | 1 |
+| `js/modules/prestado.js` | lazy — grupo `prestamos` | 103 | 1 |
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 48 | 2 |
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 29 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 105 | 1 |
@@ -315,7 +315,7 @@ Carga: lazy — grupo `comprometida`
 
 Carga: lazy — grupo `prestamos`
 
-**Funciones:** `_abonoEncCuentaAgregarSplitRow`, `_abonoEncCuentaSplitPreview`, `_abonoEncCuentaSplitToggle`, `_abrirMovMiDeudaPago`, `_abrirMovMiDeudaRecibido`, `_abrirPerfilDesdeDeudor`, `_abrirPerfilDesdeDeudorActual`, `_abrirPerfilDesdeMiDeuda`, `_abrirPerfilDesdeMiDeudaActual`, `_abrirSheetAbono`, `_abrirSheetNuevaDeuda`, `_abrirSheetNuevaPersona`, `_abrirSheetNuevoPrestamo`, `_abrirSheetPagoCompleto`, `_actualizarBtnPrestamoTC`, `_actualizarEncPreview`, `_autoCerrarGruposEnCero`, `_autoGrupoIdMov`, `_confirmarMovimientoConGuard`, `_crearGrupoDeudor`, `_deudorCuentasDe`, `_deudorOpsPosteriores`, `_deudorTieneCuentaAfectada`, `_getAbonoDestinoFuentesOptions`, `_getAbonoDestinoSplitData`, `_getAbonoEncCuentaFuentesOptions`, `_getAbonoEncCuentaSplitData`, `_getOrCrearHistorico`, `_getPrestSplitFuentesOptions`, `_gruposAbiertos`, `_initGrupoSelector`, `_initMovGrupoSelector`, `_initNuevaDeudaPersonaSelector`, `_irADeudor`, `_irAMiDeuda`, `_mdPickColor`, `_miDeudaCuentasDe`, `_miDeudaOpsPosteriores`, `_miDeudaTieneCuentaAfectada`, `_migrarGruposDeudor`, `_movEsPerdon`, `_movTieneEncargoVinculado`, `_ndPoblarSelectDestino`, `_onMovMontoInput`, `_onSelPersonaMeDeben`, `_onSelPersonaNuevaDeuda`, `_prEnsureAlcancia`, `_prestAddSplitRow`, `_prtcDifResumen`, `_prtcDifToggle`, `_resetEncCuentaSplitToggleStyle`, `_resolverGrupoIdMov`, `_resolverGrupoIdSel`, `_updatePrestSplitResumen`, `_verificarIntegridadSaldoDeudor`, `abonoAddSplitRow`, `abonoSplitResumen`, `abrirDeudor`, `abrirMiDeuda`, `abrirMovMiDeuda`, `abrirSheetPrestamoTC`, `cambiarTabPrestamos`, `confirmarMovimiento`, `confirmarMovMiDeuda`, `confirmarPrestamoTC`, `crearMiDeuda`, `editarDeudorActual`, `editarMiDeudaActual`, `eliminarDeudorActual`, `eliminarMiDeuda`, `eliminarMovDeudor`, `eliminarMovMiDeuda`, `extAddParte`, `extDelParte`, `extRenderPartes`, `extResumenPartes`, `extSetCuenta`, `extSetDesc`, `extSetMonto`, `extSetQuien`, `extSetTipo`, `fuenteLabel2`, `getDeudorSaldoPatrimonio`, `getGrupoSaldo`, `getMiDeudaSaldo`, `guardarEditarMiDeuda`, `initMovSheet`, `onChangeMov_enc_cuenta`, `onChangeMov_enc_sel`, `renderDeudoresList`, `renderMisDeudasList`, `toggleAbonoSplit`, `toggleDesdeEncargo`, `toggleExtraSection`, `toggleMovPerdon`, `togglePrestSplit`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`, `volverDeudores`, `volverMisDeudas`
+**Funciones:** `_abonoEncCuentaAgregarSplitRow`, `_abonoEncCuentaSplitPreview`, `_abonoEncCuentaSplitToggle`, `_abrirMovMiDeudaPago`, `_abrirMovMiDeudaRecibido`, `_abrirPerfilDesdeDeudor`, `_abrirPerfilDesdeDeudorActual`, `_abrirPerfilDesdeMiDeuda`, `_abrirPerfilDesdeMiDeudaActual`, `_abrirSheetAbono`, `_abrirSheetNuevaDeuda`, `_abrirSheetNuevaPersona`, `_abrirSheetNuevoPrestamo`, `_abrirSheetPagoCompleto`, `_actualizarBtnPrestamoTC`, `_actualizarEncPreview`, `_autoCerrarGruposEnCero`, `_autoGrupoIdMov`, `_confirmarMovimientoConGuard`, `_crearGrupoDeudor`, `_deudorCuentasDe`, `_deudorOpsPosteriores`, `_deudorTieneCuentaAfectada`, `_getAbonoDestinoFuentesOptions`, `_getAbonoDestinoSplitData`, `_getAbonoEncCuentaFuentesOptions`, `_getAbonoEncCuentaSplitData`, `_getOrCrearHistorico`, `_getPrestSplitFuentesOptions`, `_gruposAbiertos`, `_initGrupoSelector`, `_initMovGrupoSelector`, `_initNuevaDeudaPersonaSelector`, `_irADeudor`, `_irAMiDeuda`, `_mdPickColor`, `_miDeudaCuentasDe`, `_miDeudaOpsPosteriores`, `_miDeudaTieneCuentaAfectada`, `_migrarGruposDeudor`, `_movDifResumen`, `_movDifToggle`, `_movEsPerdon`, `_movTieneEncargoVinculado`, `_ndPoblarSelectDestino`, `_onMovMontoInput`, `_onSelPersonaMeDeben`, `_onSelPersonaNuevaDeuda`, `_prEnsureAlcancia`, `_prestAddSplitRow`, `_prestMontoSalida`, `_prtcDifResumen`, `_prtcDifToggle`, `_resetEncCuentaSplitToggleStyle`, `_resolverGrupoIdMov`, `_resolverGrupoIdSel`, `_updatePrestSplitResumen`, `_verificarIntegridadSaldoDeudor`, `abonoAddSplitRow`, `abonoSplitResumen`, `abrirDeudor`, `abrirMiDeuda`, `abrirMovMiDeuda`, `abrirSheetPrestamoTC`, `cambiarTabPrestamos`, `confirmarMovimiento`, `confirmarMovMiDeuda`, `confirmarPrestamoTC`, `crearMiDeuda`, `editarDeudorActual`, `editarMiDeudaActual`, `eliminarDeudorActual`, `eliminarMiDeuda`, `eliminarMovDeudor`, `eliminarMovMiDeuda`, `extAddParte`, `extDelParte`, `extRenderPartes`, `extResumenPartes`, `extSetCuenta`, `extSetDesc`, `extSetMonto`, `extSetQuien`, `extSetTipo`, `fuenteLabel2`, `getDeudorSaldoPatrimonio`, `getGrupoSaldo`, `getMiDeudaSaldo`, `guardarEditarMiDeuda`, `initMovSheet`, `onChangeMov_enc_cuenta`, `onChangeMov_enc_sel`, `renderDeudoresList`, `renderMisDeudasList`, `toggleAbonoSplit`, `toggleDesdeEncargo`, `toggleExtraSection`, `toggleMovPerdon`, `togglePrestSplit`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`, `volverDeudores`, `volverMisDeudas`
 
 **Globales:** `PERSONA_COLORES_MD`
 
@@ -571,6 +571,8 @@ Ninguno.
 | `_moneyValue` | `js/core/core-state.js` |
 | `_mostrarMppDestinoNormal` | `js/modules/mesada.js` |
 | `_mostrarSeccionDestinoNormal` | `js/modules/mesada.js` |
+| `_movDifResumen` | `js/modules/prestado.js` |
+| `_movDifToggle` | `js/modules/prestado.js` |
 | `_movEncActualizarFaltante` | `js/modules/encargos.js` |
 | `_movEncAgregarSplitRow` | `js/modules/encargos.js` |
 | `_movEncConfirmarPrestarFaltante` | `js/modules/encargos.js` |
@@ -612,6 +614,7 @@ Ninguno.
 | `_poblarMppEncargoCuentas` | `js/modules/mesada.js` |
 | `_prEnsureAlcancia` | `js/modules/prestado.js` |
 | `_prestAddSplitRow` | `js/modules/prestado.js` |
+| `_prestMontoSalida` | `js/modules/prestado.js` |
 | `_procesarDiferencial` | `js/modules/encargos.js` |
 | `_procesarMovEncMia` | `js/modules/encargos.js` |
 | `_procesarSiguienteCDTVencido` | `js/modules/cuentas.js` |

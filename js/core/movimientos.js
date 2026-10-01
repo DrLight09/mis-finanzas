@@ -274,14 +274,15 @@ function abrirDetalleMov(el){
       const benefsNorm   = benefs.filter(b => !b.pagadoPorMi);
       const benefsYoPague = benefs.filter(b => b.pagadoPorMi);
 
-      // Frase 1: qué dijo vs qué costó realmente
+      // Cabecera compacta: cuánto fue la ganancia (o pérdida) y de qué a qué, sin explicación.
+      const _difPerdida = d.margen < 0;
       richParts.push(`
         <div style="padding:12px 14px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:8px;">
-          <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;font-weight:600;">¿Qué pasó con el precio?</div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.7;">
-            Le dijiste que costó <strong style="color:var(--text1);">${fmt(d.dijo)}</strong>, pero en realidad costó <strong style="color:var(--text1);">${fmt(d.real)}</strong>.
-            La diferencia de <strong style="color:var(--amber);">${fmt(d.margen)}</strong> ${d.margen > 0 ? 'es tu margen' : 'es pérdida tuya'}.
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+            <span style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;font-weight:600;">${_difPerdida ? 'Pérdida' : 'Ganancia'} por valor diferente</span>
+            <span style="font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:${_difPerdida ? 'var(--red)' : 'var(--amber)'};">${_difPerdida ? '− ' : '+ '}${fmt(Math.abs(d.margen))}</span>
           </div>
+          <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Cobrado ${fmt(d.dijo)} · Real ${fmt(d.real)}</div>
           ${d.yoMeQuedo > 0 && d.miCuenta ? `
           <div style="font-size:12px;color:var(--text2);">
             Guardaste <strong style="color:var(--accent);">${fmt(d.yoMeQuedo)}</strong> en <strong>${_fuenteLabelHtml(d.miCuenta)}</strong>.

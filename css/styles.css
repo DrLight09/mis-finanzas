@@ -72,6 +72,13 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
    la letra sola cuando el valor crece, y overflow-wrap cubre el caso extremo
    (número tan largo que ni achicando entra) partiéndolo en vez de desbordar. */
 .stat-value{font-size:clamp(11px,3.4vw,16px);font-weight:600;font-family:'DM Mono',monospace;overflow-wrap:break-word;word-break:break-word;line-height:1.25;}
+/* Selector de cuentas (Nequi / Nu): el número del saldo no tiene espacios, así que
+   no puede partirse solo. min-width:0 deja que la tarjeta (grid item) se encoja en
+   vez de crecer con el número, y overflow-wrap:anywhere lo baja a una segunda línea
+   en vez de salirse (la tarjeta tiene overflow:hidden y lo ocultaba). padding-right
+   evita que el número pise la flechita de abajo a la derecha. */
+#cuentas-selector [data-cuenta]{min-width:0;}
+#sel-nequi-saldo,#sel-nu-saldo{overflow-wrap:anywhere;word-break:break-word;line-height:1.25;padding-right:16px;}
 .c-green{color:var(--accent);}
 .c-amber{color:var(--amber);}
 .c-blue{color:var(--blue);}

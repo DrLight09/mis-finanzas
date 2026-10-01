@@ -73,6 +73,40 @@ crearSplitWidget('prest', {
   onPreview:_updatePrestSplitResumen
 });
 
+/* ---- "EL VALOR ERA DIFERENTE" EN NUEVO PRÉSTAMO (instancia 'prestamoDif') ----
+   Caso: compré algo por 698.000 y le cobro 700.000 a la persona (siempre redondea).
+   mov_monto = lo que le cobro (la deuda), real = lo que realmente salió de mi cuenta.
+   El margen (dijo - real) es un ingreso mío, pero nunca tocó una cuenta (quedó prestado
+   directamente) → mismo criterio que "Préstamo con TC" (instancia 'prtc'): ingreso fantasma
+   fuente:'' (permiteMiCuenta:false), enlazado al préstamo para poder borrarlo con él. */
+diffRegistrarInstancia('prestamoDif', {
+  ids: { wrap: 'mov-dif-wrap', body: 'mov-dif-body', icon: 'mov-dif-icon', real: 'mov_dif_real', resumen: 'mov-dif-resumen' },
+  permiteBeneficiarios: false,
+  permiteIntercambio: false,
+  permiteMiCuenta: false,
+  exigeMargenPositivo: true,
+  labelMargenNegativo: 'El valor real debe ser menor que lo que le cobras',
+  flagIngresoFantasma: '_prestadoDirectamente',
+  getDijo: () => parseMoney(document.getElementById('mov_monto')?.value) || 0,
+  descMargen: (mov) => `Margen préstamo — ${mov._deudorNombre || ''}: `,
+  // Con el split de cuentas abierto, "lo que falta repartir" depende del valor real.
+  onToggle: () => { if (_prestSplitMode) _updatePrestSplitResumen(); },
+  onResumen: () => { if (_prestSplitMode) _updatePrestSplitResumen(); }
+});
+
+// Plata que de verdad sale de las cuentas en este préstamo: el valor real si el bloque
+// "El valor era diferente" está abierto y es menor que el monto cobrado; si no, el monto.
+function _prestMontoSalida() {
+  const monto = parseMoney(document.getElementById('mov_monto')?.value) || 0;
+  if (!diffEstaAbierto('prestamoDif')) return monto;
+  const calc = diffCalcular('prestamoDif');
+  const real = calc ? calc.real : 0;
+  return (real > 0 && real < monto - 0.5) ? real : monto;
+}
+
+function _movDifToggle() { diffToggle('prestamoDif'); }
+function _movDifResumen() { diffResumen('prestamoDif'); }
+
 function togglePrestSplit(){ splitToggle('prest'); }
 function _prestAddSplitRow(){ splitAgregarRow('prest'); }
 
@@ -96,7 +130,7 @@ function _getPrestSplitFuentesOptions(selectedVal) {
 function _updatePrestSplitResumen(){
   const splitData = splitGetData('prest');
   const totalSplit = splitData.reduce((a,r)=>a+(r.monto||0),0);
-  const montoTotal = parseMoney(document.getElementById('mov_monto').value)||0;
+  const montoTotal = _prestMontoSalida();
   const resEl = document.getElementById('mov_split_resumen');
   if(resEl){
     const diff = montoTotal - totalSplit;
@@ -463,6 +497,7 @@ function abrirDeudor(id) {
             </div>
             <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m._viaTC ? '' : raw(m.fuentes ? ' · ' + m.fuentes.map(f=>_fuenteLabelHtml(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + _fuenteLabelHtml(m.fuente) : ''))}${destinoInfo}</div>
             ${extraHtml}
+            ${esPrestamo && m.diferencial && !m._viaTC ? raw(diffRenderHistorial(m.diferencial)) : ''}
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
             <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esPrestamo ? 'var(--amber)' : 'var(--accent)'};">${esPrestamo ? '+' : '−'} ${fmt(m.monto)}</div>
@@ -670,6 +705,11 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
     } else if (m.fuente) {
       sumarFuente(m.fuente, m.monto);
     }
+    // Margen de "El valor era diferente" (ingreso sin cuenta, enlazado por _encMovId): no hay
+    // saldo que revertir, solo se quita para que deje de contar como ingreso.
+    if (m.diferencial && S.movimientos) {
+      S.movimientos = S.movimientos.filter(x => !(x._esDiferencialEncargo && x._encMovId === m.id));
+    }
   } else {
     // Era un abono: plata entró al destino → quitar
     if (m._viaEncargo && m._encId && m._encMovId) {
@@ -842,6 +882,9 @@ function initMovSheet(tipo) {
   document.getElementById('movBtnConfirm').style.border = esPrestamo ? 'none' : esPagoCompleto ? '1px solid rgba(240,184,64,.4)' : '1px solid rgba(200,240,96,.4)';
   document.getElementById('movBtnConfirm').style.boxShadow = esPrestamo ? '0 2px 14px rgba(200,240,96,.25)' : 'none';
   document.getElementById('mov_fuente_wrap').style.display = esPrestamo ? '' : 'none';
+  // "El valor era diferente": solo en Nuevo préstamo (abonos/pago completo no lo usan).
+  diffReset('prestamoDif');
+  { const difWrap = document.getElementById('mov-dif-wrap'); if (difWrap) difWrap.style.display = esPrestamo ? '' : 'none'; }
   document.getElementById('mov_destino_wrap').style.display = esAbono ? '' : 'none';
   document.getElementById('mov_extra_wrap').style.display = esAbono ? '' : 'none';
   // "¿Se lo regalas?" (perdonar lo que falta) solo existe en "Pagar préstamo completo".
@@ -1054,20 +1097,48 @@ function confirmarMovimiento() {
     });
 
   } else if (movTipo === 'prestamo') {
+    // ── "El valor era diferente": monto = lo que le cobro (la deuda); real = lo que salió ──
+    // Se valida ANTES de escribir nada. real vacío/0 = sin diferencial.
+    let montoSalio = monto;
+    let hayMargen = false;
+    if (diffEstaAbierto('prestamoDif')) {
+      const real = (diffCalcular('prestamoDif') || {}).real || 0;
+      if (real > monto + 0.5) {
+        toast(`El valor real (${fmt(real)}) no puede ser mayor que lo que le cobras (${fmt(monto)})`, 'err', 4000);
+        return;
+      }
+      if (real > 0 && monto - real > 0.5) { montoSalio = real; hayMargen = true; }
+    }
+    const movId = uid();
+    let movObj;
     if (_prestSplitMode) {
       const fuentes = splitGetData('prest');
       const totalSplit = fuentes.reduce((a,r)=>a+(r.monto||0),0);
-      if(Math.abs(totalSplit - monto) > 1){
-        toast(`La suma de las fuentes (${fmt(totalSplit)}) no coincide con el monto (${fmt(monto)})`,'err',4000);
+      if(Math.abs(totalSplit - montoSalio) > 1){
+        toast(`La suma de las fuentes (${fmt(totalSplit)}) no coincide con ${hayMargen ? 'el valor real' : 'el monto'} (${fmt(montoSalio)})`,'err',4000);
         return;
       }
       fuentes.forEach(r=>{ if(r.fuente) descontarFuente(r.fuente, r.monto); });
       const _gananciaVirtual = fuentes.filter(r=>r.fuente==='ganancia').reduce((a,r)=>a+r.monto,0);
-      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota, _gananciaVirtual: _gananciaVirtual||undefined, grupoId: _grupoIdMov, ts: Date.now() });
+      movObj = { id: movId, tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r=>({fuente:r.fuente,monto:r.monto})), nota, _gananciaVirtual: _gananciaVirtual||undefined, grupoId: _grupoIdMov, ts: Date.now() };
     } else {
       const fuente = document.getElementById('mov_fuente').value;
-      d.movimientos.push({ id: uid(), tipo: 'prestamo', monto, fecha, fuente, nota, grupoId: _grupoIdMov, ts: Date.now() });
-      descontarFuente(fuente, monto);
+      if (hayMargen && fuente) {
+        // Con margen, de la cuenta sale `montoSalio`, no `monto`. Se guarda como `fuentes`
+        // (misma forma que el préstamo dividido) para que revertir, el historial de la cuenta
+        // y el detalle usen el monto real sin ningún caso especial.
+        movObj = { id: movId, tipo: 'prestamo', monto, fecha, fuentes: [{ fuente, monto: montoSalio }], nota, grupoId: _grupoIdMov, ts: Date.now() };
+      } else {
+        movObj = { id: movId, tipo: 'prestamo', monto, fecha, fuente, nota, grupoId: _grupoIdMov, ts: Date.now() };
+      }
+      descontarFuente(fuente, montoSalio);
+    }
+    d.movimientos.push(movObj);
+    // El margen queda como ingreso (fantasma, sin cuenta) enlazado a este préstamo (linkId = movId)
+    // para que eliminarMovDeudor() lo borre junto con él.
+    if (hayMargen) {
+      const diferencial = diffAplicar('prestamoDif', { desc: nota || 'Préstamo', fecha, _deudorNombre: d.nombre }, movId);
+      if (diferencial) movObj.diferencial = diferencial;
     }
 
   } else {
@@ -2561,6 +2632,7 @@ Events.registerAll('prestado', {
   confirmarMovimientoGuard: _confirmarMovimientoConGuard,
   togglePrestSplit: togglePrestSplit,
   prestAddSplitRow: _prestAddSplitRow,
+  movDifToggle: _movDifToggle,
   toggleAbonoSplit: toggleAbonoSplit,
   abonoAddSplitRow: abonoAddSplitRow,
   toggleExtraSection: toggleExtraSection,
@@ -2597,7 +2669,10 @@ Events.registerAll('prestado', {
 {
   const movMonto = document.getElementById('mov_monto');
   if (movMonto) movMonto.addEventListener('input', () => {
-    if (_prestSplitMode) _updatePrestSplitResumen();
+    // Con "El valor era diferente" abierto, "dijiste" cambia con el monto: refresca el resumen
+    // (que a su vez refresca el split si está abierto). Si no, solo el split.
+    if (diffEstaAbierto('prestamoDif')) _movDifResumen();
+    else if (_prestSplitMode) _updatePrestSplitResumen();
     _onMovMontoInput();
   });
 }
@@ -2618,6 +2693,7 @@ Events.registerAll('prestado', {
   ['mov_perdon', 'change', toggleMovPerdon],
   ['mov_extra_monto', 'input', extResumenPartes],
   ['prtc_dif_real', 'input', _prtcDifResumen],
+  ['mov_dif_real', 'input', _movDifResumen],
 ].forEach(([elId, evt, fn]) => {
   const el = document.getElementById(elId);
   if (el) el.addEventListener(evt, fn);

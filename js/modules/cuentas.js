@@ -257,7 +257,7 @@ function renderCustomCuentasList(){
         ${iconoHtml}
         <div>
           <div style="font-size:13px;font-weight:600;color:${hex};">${c.nombre}</div>
-          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${fmt(c.saldo||0)}</div>
+          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${fmtNoCents(c.saldo||0)}</div>
         </div>
       </div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${hex}" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>

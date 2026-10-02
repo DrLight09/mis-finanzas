@@ -2087,7 +2087,9 @@ async function deleteMovEncargo(encId, movId) {
   enc.movimientos = (enc.movimientos||[]).filter(m => m.id!==movId && !(_grupoDel && _grupoDel.some(x => x.id === m.id)));
   save();
   refresh();
-  if (cuentaActual && typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);
+  // cuentaActual vive en cuentas.js (lazy): sin typeof, borrar un movimiento de encargo con
+  // cuentas.js sin cargar tiraba ReferenceError antes de reabrir el detalle del encargo.
+  if (typeof cuentaActual !== 'undefined' && cuentaActual && typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);
   abrirEncargoDetalle(encId);
   toast('Movimiento eliminado y saldos revertidos', 'info');
 }

@@ -647,7 +647,10 @@ function _checkGastoAlto() {
   const nu = typeof nuTotal === 'function' ? nuTotal() : 0;
   const nequi = getSaldoFuente('nequi');
   const ef = getSaldoFuente('efectivo');
-  const disp = nu + nequi + ef;
+  // Las cuentas personalizadas también son plata disponible: el "Disponible" del hero
+  // (refresh() en core-state.js) y liquidoReal (más arriba en este archivo) ya las suman.
+  const custom = cuentasCustom().reduce((a, c) => a + (c.saldo || 0), 0);
+  const disp = nu + nequi + ef + custom;
   const indicator = document.getElementById('hero-change-indicator');
   if (!indicator) return;
   if (disp > 0 && (gvMes + gfTotal) > disp * 0.8) {

@@ -2261,7 +2261,7 @@ function _wrappedCopyCierrePoema(ctx){
    candidatos aplican, el primero de la lista es el rasgo principal. */
 function _wrappedPersonalidad(S, anioK){
   const cajitas = _wrappedListaCajitas(S);
-  const cuentasPersonalizadas = S.cuentasPersonalizadas || [];
+  const cuentasPersonalizadas = cuentasCustom();
   const deudores = S.deudores || [];
   const prestado = _wrappedCalcularPrestado(S, 'anio', null, anioK);
   const periodo = _wrappedCalcularPeriodo(S, 'anio', null, anioK);

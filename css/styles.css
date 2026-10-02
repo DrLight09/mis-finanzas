@@ -72,13 +72,35 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
    la letra sola cuando el valor crece, y overflow-wrap cubre el caso extremo
    (número tan largo que ni achicando entra) partiéndolo en vez de desbordar. */
 .stat-value{font-size:clamp(11px,3.4vw,16px);font-weight:600;font-family:'DM Mono',monospace;overflow-wrap:break-word;word-break:break-word;line-height:1.25;}
-/* Selector de cuentas (Nequi / Nu): el número del saldo no tiene espacios, así que
-   no puede partirse solo. min-width:0 deja que la tarjeta (grid item) se encoja en
-   vez de crecer con el número, y overflow-wrap:anywhere lo baja a una segunda línea
-   en vez de salirse (la tarjeta tiene overflow:hidden y lo ocultaba). padding-right
-   evita que el número pise la flechita de abajo a la derecha. */
-#cuentas-selector [data-cuenta]{min-width:0;}
-#sel-nequi-saldo,#sel-nu-saldo{overflow-wrap:anywhere;word-break:break-word;line-height:1.25;padding-right:16px;}
+/* Selector de cuentas (pantalla Cuentas): tarjeta grande (Nequi, Nu) y pastilla (Efectivo y
+   cuentas personalizadas). Cada cuenta trae su color por variables inline: --cuenta (texto) y
+   --cuenta-rgb ("r,g,b", para bordes y fondos). Lo pinta renderSelectorCuentas() (cuentas.js).
+   Saldo de la tarjeta: es un número sin espacios, no puede partirse solo. min-width:0 deja que
+   la tarjeta (grid item) se encoja en vez de crecer con el número, overflow-wrap:anywhere lo baja
+   a una segunda línea en vez de salirse (la tarjeta tiene overflow:hidden y lo ocultaba) y
+   padding-right evita que pise la flecha. Mismo criterio que .stat-value. */
+.cuentas-selector-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.cuentas-selector-pills{display:flex;flex-direction:column;gap:8px;}
+.cuenta-card,.cuenta-pill{cursor:pointer;}
+.cuenta-card{min-width:0;position:relative;overflow:hidden;transition:all .15s;padding:18px 15px;border-radius:var(--radius);background:linear-gradient(135deg,rgba(var(--cuenta-rgb),.18) 0%,rgba(var(--cuenta-rgb),.06) 100%);border:1px solid rgba(var(--cuenta-rgb),.35);}
+.cuenta-card-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.cuenta-card-nombre{font-size:14px;font-weight:600;color:var(--cuenta);}
+.cuenta-card-etiqueta{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;}
+.cuenta-card-saldo{font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--cuenta);overflow-wrap:anywhere;word-break:break-word;line-height:1.25;padding-right:16px;}
+.cuenta-card-flecha{position:absolute;bottom:12px;right:12px;stroke:rgba(var(--cuenta-rgb),.4);}
+.cuenta-pill{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-radius:var(--radius-sm);background:linear-gradient(135deg,rgba(var(--cuenta-rgb),.12) 0%,rgba(var(--cuenta-rgb),.04) 100%);border:1px solid rgba(var(--cuenta-rgb),.35);}
+.cuenta-pill-info{display:flex;align-items:center;gap:10px;min-width:0;}
+.cuenta-pill-nombre{font-size:13px;font-weight:600;color:var(--cuenta);}
+.cuenta-pill-saldo{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;overflow-wrap:anywhere;}
+.cuenta-pill-flecha{flex-shrink:0;stroke:var(--cuenta);}
+/* Detalle de cuenta simple (Nequi, Efectivo, personalizadas): mismas variables que el selector,
+   puestas por renderDetalleCuenta() sobre #cuentas-detalle-simple. */
+.cuenta-hero{border-radius:var(--radius);padding:20px;margin-bottom:10px;background:linear-gradient(135deg,rgba(var(--cuenta-rgb),.15),rgba(var(--cuenta-rgb),.04));border:1px solid rgba(var(--cuenta-rgb),.3);}
+.cuenta-hero-label{font-size:10px;color:var(--cuenta);opacity:.7;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;}
+.cuenta-hero-saldo{font-size:36px;font-weight:300;letter-spacing:-1px;font-family:'DM Mono',monospace;color:var(--cuenta);margin:6px 0 14px;}
+.cuenta-action-btn.cuenta-action-btn--cuenta{background:rgba(var(--cuenta-rgb),.12);border-color:rgba(var(--cuenta-rgb),.35);color:var(--cuenta);}
+.cuenta-action-btn.cuenta-action-btn--rojo{background:rgba(240,104,104,.08);border-color:rgba(240,104,104,.3);color:var(--red);}
+.cuenta-action-btn.cuenta-action-btn--azul{background:rgba(96,176,240,.08);border-color:rgba(96,176,240,.3);color:var(--blue);}
 .c-green{color:var(--accent);}
 .c-amber{color:var(--amber);}
 .c-blue{color:var(--blue);}
@@ -372,8 +394,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
 /* Dashboard improvement */
 .hero-stats-row { display: flex; gap: 8px; margin-bottom: 9px; }
 .attn-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; }
-/* Cuentas selector cursor */
-[data-cuenta] { cursor: pointer; }
 /* Sheet inner - prevent accidental close */
 .sheet { pointer-events: all; }
 /* Btn volver selector */

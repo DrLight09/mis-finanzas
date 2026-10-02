@@ -13,7 +13,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
 | `js/core/calc-helpers.js` | de entrada (defer) | 10 | 0 |
 | `js/core/color-picker.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
-| `js/core/core-state.js` | de entrada (defer) | 57 | 5 |
+| `js/core/core-state.js` | de entrada (defer) | 64 | 5 |
 | `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
 | `js/core/firebase-init.js` | de entrada (módulo ES) | 0 | 0 |
@@ -89,7 +89,7 @@ Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ajusteAlcanciaPorFecha`, `_calcCDTSafe`, `_calcCSafe`, `_closeDialog`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_getNuTasaGlobalSafe`, `_moneyRender`, `_moneyValue`, `_nuTotalSafe`, `_patrimonioDependenciasListas`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `debounceSave`, `descontarFuente`, `dialogo`, `emptyState`, `escHtml`, `fmt`, `fmtInput`, `fmtNoCents`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`
+**Funciones:** `_ajusteAlcanciaPorFecha`, `_calcCDTSafe`, `_calcCSafe`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_getNuTasaGlobalSafe`, `_moneyRender`, `_moneyValue`, `_nuTotalSafe`, `_patrimonioDependenciasListas`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `descontarFuente`, `dialogo`, `emptyState`, `escHtml`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `migrarCuentasLegacy`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`
 
 **Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `MAX`, `MC`, `S`
 
@@ -466,6 +466,7 @@ Ninguno.
 | `_ctcMiAgregarRow` | `js/modules/encargos.js` |
 | `_ctcMiSplitToggle` | `js/modules/encargos.js` |
 | `_cuentaOpsPosteriores` | `js/core/movimientos.js` |
+| `_cuentasArr` | `js/core/core-state.js` |
 | `_cuentaSelectorHtml` | `js/modules/cuentas.js` |
 | `_cuentasSelector` | `js/modules/cuentas.js` |
 | `_descriptorCuenta` | `js/modules/cuentas.js` |
@@ -939,6 +940,7 @@ Ninguno.
 | `crearMovimientoApertura` | `js/core/core-state.js` |
 | `crearSplitWidget` | `js/core/split.js` |
 | `CUENTAS_FIJAS_SELECTOR` | `js/modules/cuentas.js` |
+| `cuentasCustom` | `js/core/core-state.js` |
 | `debounceSave` | `js/core/core-state.js` |
 | `deleteCajita` | `js/modules/cuentas.js` |
 | `deleteGastoFijo` | `js/modules/gastos.js` |
@@ -1013,6 +1015,7 @@ Ninguno.
 | `fmt` | `js/core/core-state.js` |
 | `fmtInput` | `js/core/core-state.js` |
 | `fmtNoCents` | `js/core/core-state.js` |
+| `fmtSaldoSelector` | `js/core/core-state.js` |
 | `fuenteBadgeClass` | `js/core/core-state.js` |
 | `fuenteLabel` | `js/core/core-state.js` |
 | `fuenteLabel2` | `js/modules/prestado.js` |
@@ -1022,6 +1025,9 @@ Ninguno.
 | `getCajitaNombre` | `js/modules/encargos.js` |
 | `getCatsFijo` | `js/core/core-state.js` |
 | `getCatsVar` | `js/core/core-state.js` |
+| `getCuenta` | `js/core/core-state.js` |
+| `getCuentaCustom` | `js/core/core-state.js` |
+| `getCuentaDeFuente` | `js/core/core-state.js` |
 | `getDeudorSaldo` | `js/core/calc-helpers.js` |
 | `getDeudorSaldoPatrimonio` | `js/modules/prestado.js` |
 | `getEncargo` | `js/modules/encargos.js` |
@@ -1081,6 +1087,7 @@ Ninguno.
 | `medirAnchoTexto` | `js/core/core-state.js` |
 | `mesActual` | `js/core/core-state.js` |
 | `mesKey` | `js/core/core-state.js` |
+| `migrarCuentasLegacy` | `js/core/core-state.js` |
 | `mostrarAlertaFuente` | `js/core/sheet-stack.js` |
 | `nextMonthFixed` | `js/modules/spotify.js` |
 | `nivelAntiguedadMovimiento` | `js/core/core-state.js` |

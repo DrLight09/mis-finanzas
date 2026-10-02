@@ -217,7 +217,7 @@
       });
 
     // Cuentas personalizadas tienen sus propios movimientos[{tipo:'ingreso'|'egreso'}]
-    (S.cuentasPersonalizadas || []).forEach(function(c){
+    cuentasCustom().forEach(function(c){
       (c.movimientos || []).forEach(function(m){
         if (espejoDeudores[m.id]) return; // espejo de un abono de "Me deben"
         // Datos viejos del destape de la alcancía: duplicaban filas que ya salen por S.movimientos / S.gastosVar.
@@ -232,7 +232,7 @@
           monto:     m.monto || 0,
           titulo:    m.nota || (esIngreso ? 'Ingreso' : 'Retiro'),
           subtitulo: c.nombre || '',
-          fuente:    'cuentasPersonalizadas',
+          fuente:    'cuenta_custom',
         });
       });
     });

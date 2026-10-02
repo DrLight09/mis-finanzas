@@ -217,7 +217,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
   let color = colorMap[tipoCuenta] || 'var(--blue)';
   if (tipoCuenta.startsWith('custom:')) {
     const cId = tipoCuenta.split(':')[1];
-    const cc = (S.cuentasPersonalizadas||[]).find(x=>x.id===cId);
+    const cc = getCuentaCustom(cId);
     if (cc && cc.color) color = cc.color;
   }
   el.innerHTML = html`
@@ -847,7 +847,7 @@ function _miaSaleAgregarRow()   { splitAgregarRow('miaSale'); }
 function _miaEntraSplitToggle() { splitToggle('miaEntra'); }
 function _miaEntraAgregarRow()  { splitAgregarRow('miaEntra'); }
 
-// Monto que realmente puso el usuario de su bolsillo (2026-09-29): si el bloque
+// Monto que realmente puso el usuario de su bolsillo (2026-09-30): si el bloque
 // "El valor real era diferente" está abierto y el real es válido (0 < real < monto),
 // "Yo puse la plata" trabaja con el REAL (lo que costó de verdad), no con el monto
 // cobrado. La diferencia (margen) la maneja el diferencial como ganancia tuya; si
@@ -1578,7 +1578,7 @@ function _getEncargoSaldoEnCuenta(enc, cuentaVal) {
 }
 
 /* ── Salida dividida (Retirar plata + "Dividir ÷"): una sola fila en el historial ──
-   (2026-09-29) Los datos NO cambian: cada cuenta del encargo sigue teniendo su propio
+   (2026-09-30) Los datos NO cambian: cada cuenta del encargo sigue teniendo su propio
    registro en enc.movimientos, porque el saldo del encargo se calcula por cuenta
    (m.cuenta). Lo que cambia es la vista: las porciones de una misma salida se pintan
    como UN movimiento, y borrar ese movimiento borra todas las porciones.
@@ -2033,7 +2033,7 @@ async function deleteMovEncargo(encId, movId) {
     // cuenta custom o en S.movimientos para cuentas estándar).
     if (mov._destino && mov._destino.startsWith('custom:')) {
       const customId = mov._destino.split(':')[1];
-      const cDest = (S.cuentasPersonalizadas || []).find(x => x.id === customId);
+      const cDest = getCuentaCustom(customId);
       if (cDest && cDest.movimientos) {
         cDest.movimientos = cDest.movimientos.filter(m => m._encMovId !== movId);
       }
@@ -2287,7 +2287,7 @@ function confirmarTraspasoEncargo() {
   //    Cuentas estándar: va en S.movimientos.
   if (destino.startsWith('custom:')) {
     const customId = destino.split(':')[1];
-    const cDest = (S.cuentasPersonalizadas || []).find(x => x.id === customId);
+    const cDest = getCuentaCustom(customId);
     if (cDest) {
       if (!cDest.movimientos) cDest.movimientos = [];
       cDest.movimientos.push({

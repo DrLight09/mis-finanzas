@@ -1439,7 +1439,7 @@ function _cpConfirmarRecibir(){
         // Si es cuenta personalizada: registrar también en sus movimientos para que cuente en análisis
         if(sobranteCuenta.startsWith('custom:')){
           const cId = sobranteCuenta.split(':')[1];
-          const cObj = (S.cuentasPersonalizadas||[]).find(x=>x.id===cId);
+          const cObj = getCuentaCustom(cId);
           if(cObj){
             if(!cObj.movimientos) cObj.movimientos = [];
             cObj.movimientos.push({id:uid(), tipo:'ingreso', monto:ganancia, fecha,

@@ -170,7 +170,7 @@ function _alcNombreFuente(f){
   if(f === 'nequi') return 'Nequi';
   if(f === 'efectivo') return 'Efectivo';
   if(f.startsWith('cajita:')){ const c=(window.S&&window.S.cajitas||[]).find(x=>x.id===f.split(':')[1]); return c?c.nombre:'Cajita'; }
-  if(f.startsWith('custom:')){ const c=(window.S&&window.S.cuentasPersonalizadas||[]).find(x=>x.id===f.split(':')[1]); return c?c.nombre:'Cuenta'; }
+  if(f.startsWith('custom:')){ const c=getCuentaCustom(f.split(':')[1]); return c?c.nombre:'Cuenta'; }
   return f;
 }
 
@@ -764,7 +764,7 @@ window.renderAlcancia = function(){
                 if(f === 'nequi') return 'Nequi';
                 if(f === 'efectivo') return 'Efectivo';
                 if(f.startsWith('cajita:')){ const id=f.split(':')[1]; const c=(window.S&&window.S.cajitas||[]).find(x=>x.id===id); return c?c.nombre:'Cajita'; }
-                if(f.startsWith('custom:')){ const id=f.split(':')[1]; const c=(window.S&&window.S.cuentasPersonalizadas||[]).find(x=>x.id===id); return c?c.nombre:'Cuenta'; }
+                if(f.startsWith('custom:')){ const id=f.split(':')[1]; const c=getCuentaCustom(id); return c?c.nombre:'Cuenta'; }
                 return f;
               })()
             : (m.tipo === 'cobro-deuda' && m._prestamoDeudorId
@@ -1242,17 +1242,10 @@ window.alcanciaConfirmarDestapar = function(){
   a._destapada = true;
 
   // ── Sincronizar DOM antes de save() ─────────────────────────────────────
-  // _sumarASaldo actualiza S.nequiSaldo y S.efectivoSaldo directamente,
-  // pero save() los vuelve a leer del input DOM (document.getElementById('nequiSaldo').value).
-  // Si el input no se actualiza primero, save() sobreescribe S con el valor
-  // viejo del DOM, y snapshotPatrimonio() registra un patrimonio incorrecto
-  // (sin los 70k del destapar), distorsionando la tendencia mensual.
+  // Nequi, Efectivo y las personalizadas guardan su saldo en S.cuentas y save() ya no lo relee
+  // del DOM: no hay nada que sincronizar. Las cajitas Nu sí siguen espejadas en su input.
   if(typeof fmtInput === 'function'){
-    const _elNq = document.getElementById('nequiSaldo');
-    const _elEf = document.getElementById('efectivoSaldo');
-    if(_elNq) _elNq.value = fmtInput(window.S.nequiSaldo || 0);
-    if(_elEf) _elEf.value = fmtInput(window.S.efectivoSaldo || 0);
-    // Si el destino fue una cajita, sincronizar también su input de saldo
+    // Si el destino fue una cajita, sincronizar su input de saldo
     if(destino && destino.startsWith('cajita:')){
       const _cajId = destino.split(':')[1];
       const _cajEl = document.getElementById('cs_' + _cajId);
@@ -1288,8 +1281,7 @@ function _alcanciaToggleDesglose(desgloseId, el){
 function _sumarASaldo(fuente, monto){
   if(!fuente || !monto) return;
   const S = window.S;
-  if(fuente === 'nequi'){ S.nequiSaldo = (S.nequiSaldo||0) + monto; return; }
-  if(fuente === 'efectivo'){ S.efectivoSaldo = (S.efectivoSaldo||0) + monto; return; }
+  if(fuente === 'nequi' || fuente === 'efectivo'){ const c = getCuenta(fuente); if(c) c.saldo = (c.saldo||0) + monto; return; }
   if(fuente.startsWith('cajita:')){
     const id = fuente.split(':')[1];
     const c  = (S.cajitas||[]).find(x=>x.id===id);
@@ -1298,7 +1290,7 @@ function _sumarASaldo(fuente, monto){
   }
   if(fuente.startsWith('custom:')){
     const id = fuente.split(':')[1];
-    const c  = (S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+    const c  = getCuentaCustom(id);
     // Solo sube/baja el saldo. NO se escribe nada en c.movimientos: las filas del destape ya viven en
     // S.movimientos (transferencia y "Dinero extra…") y S.gastosVar (faltante), y el historial de la cuenta
     // las lee de ahí. Antes se duplicaban acá como 'ingreso'/'egreso' (2026-09-29), y ese 'ingreso' de

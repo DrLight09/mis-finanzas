@@ -114,13 +114,22 @@ function _validarEstructuraJSON(data){
     return ['El archivo no tiene el formato esperado (debe ser un objeto JSON).'];
   }
   // Verificar campos clave
-  const camposOpcionales=['nuRate','cajitas','nequiSaldo','efectivoSaldo',
+  const camposOpcionales=['nuRate','cajitas','cuentas','nequiSaldo','efectivoSaldo',
+    'cuentasPersonalizadas',
     'deudores','gastosFijos','gastosVar','modulos'];
   const tieneAlgunCampo=camposOpcionales.some(c=>c in data);
   if(!tieneAlgunCampo){
     errores.push('El archivo no parece ser un backup de Mis Finanzas (no se encontraron campos conocidos).');
   }
   // Verificar tipos básicos
+  // Backups nuevos traen 'cuentas'; los anteriores a la unificación traen nequiSaldo,
+  // efectivoSaldo y cuentasPersonalizadas (migrarCuentasLegacy() los convierte al importar).
+  if('cuentas' in data&&!Array.isArray(data.cuentas)){
+    errores.push('El campo "cuentas" debe ser un array.');
+  }
+  if('cuentasPersonalizadas' in data&&!Array.isArray(data.cuentasPersonalizadas)){
+    errores.push('El campo "cuentasPersonalizadas" debe ser un array.');
+  }
   if('cajitas' in data&&!Array.isArray(data.cajitas)){
     errores.push('El campo "cajitas" debe ser un array.');
   }
@@ -158,6 +167,9 @@ function leerArchivoImport(e){
       // Reemplazar CONTENIDO de S sin romper la referencia de window.S
       Object.keys(S).forEach(k => delete S[k]);
       Object.assign(S, data);
+      // Un backup anterior a la unificación de cuentas trae nequiSaldo / efectivoSaldo /
+      // cuentasPersonalizadas: convertirlos a S.cuentas antes de repintar (y de guardar).
+      migrarCuentasLegacy();
       // Repintar YA la pantalla activa con los datos recién importados — sin esto,
       // S ya tiene los datos nuevos pero la UI sigue mostrando lo que había antes
       // de importar hasta que el location.reload() de más abajo confirme el guardado.

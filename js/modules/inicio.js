@@ -263,7 +263,7 @@ function calcHealthScore(){
   // "Agregar dinero" que ahora comparte con Nequi/Efectivo) ya no tocan
   // c.movimientos en absoluto — por eso el bloque de abajo las suma aparte, con
   // cuidado de no volver a contar acá las viejas que sí quedaron dual-escritas.
-  (S.cuentasPersonalizadas||[]).forEach(c => {
+  cuentasCustom().forEach(c => {
     (c.movimientos||[]).filter(m=>(m.tipo==='ingreso')&&window.mesKey&&window.mesKey(m.fecha)===mes&&!(window._esEntradaEspejoNoIngreso&&window._esEntradaEspejoNoIngreso(m))).forEach(m=>{ ingresosMes += (m.monto||0); });
   });
   // Entradas manuales a Nequi, Efectivo, cajitas y cuentas personalizadas
@@ -280,7 +280,7 @@ function calcHealthScore(){
       // Evitar doble conteo con el bloque de arriba: si esta entrada de cuenta
       // personalizada ya se contó desde c.movimientos (dual-escritura vieja de
       // confirmarMovCustom(), mismo id en los dos arrays), saltarla acá.
-      !(m.fuente && m.fuente.startsWith('custom:') && (S.cuentasPersonalizadas||[]).some(c=>(c.movimientos||[]).some(cm=>cm.id===m.id)))
+      !(m.fuente && m.fuente.startsWith('custom:') && cuentasCustom().some(c=>(c.movimientos||[]).some(cm=>cm.id===m.id)))
     ).forEach(m=>{ ingresosMes += (m.monto||0); });
   }
   // Ingresos fijos configurados (sueldo, freelance, etc.)
@@ -301,8 +301,8 @@ function calcHealthScore(){
   // registrar una entrada de encargo con esa cuenta nunca suma esa plata al saldo real (a
   // diferencia de una cajita de Nu, donde sí forma parte de la base que gana interés), así que
   // restarla acá producía una liquidez negativa falsa. Ver CHANGELOG.md#encargos.
-  const liquidoReal = nu + (S.nequiSaldo||0) + (S.efectivoSaldo||0)
-    + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0)
+  const liquidoReal = nu + getSaldoFuente('nequi') + getSaldoFuente('efectivo')
+    + cuentasCustom().reduce((a,c)=>a+(c.saldo||0),0)
     - deudaTC;
   // patrimonio total sí incluye CDTs para otros cálculos
   const liquidoConCDTs = liquidoReal + cdtVal;
@@ -645,8 +645,8 @@ function _checkGastoAlto() {
   // más adelante), esto no debe tirar la app entera — se salta el chequeo
   // de gasto alto esta vez, refresh() sigue con todo lo demás.
   const nu = typeof nuTotal === 'function' ? nuTotal() : 0;
-  const nequi = S.nequiSaldo || 0;
-  const ef = S.efectivoSaldo || 0;
+  const nequi = getSaldoFuente('nequi');
+  const ef = getSaldoFuente('efectivo');
   const disp = nu + nequi + ef;
   const indicator = document.getElementById('hero-change-indicator');
   if (!indicator) return;

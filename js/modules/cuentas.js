@@ -69,62 +69,37 @@
    SECCIÓN: Selector de cuentas (Nequi / Nu / Efectivo / personalizada)
    ─────────────────────────────────────────────────────────────── */
 /* ---- CUENTAS SELECTOR ---- */
-let cuentaActual = ''; // 'nequi' | 'nu' | 'efectivo'
+// Fuente de la cuenta abierta en el detalle: 'nequi' | 'nu' | 'efectivo' | 'custom:ID' ('' si no hay
+// ninguna). Una sola variable para todas las cuentas; la leen core-state.js, sheet-stack.js,
+// movimientos.js y encargos.js (siempre con guard typeof: este archivo es lazy).
+let cuentaActual = '';
 
-function abrirCuenta(tipo) {
-  cuentaActual = tipo;
+// Abre el detalle de una cuenta. `fuente` es el identificador de siempre
+// ('nequi' | 'nu' | 'efectivo' | 'custom:ID'). Nu tiene su propia pantalla (cajitas, CDTs);
+// todas las demás comparten #cuentas-detalle-simple.
+function abrirCuenta(fuente) {
+  const esCustom = fuente.startsWith('custom:');
+  if (fuente !== 'nu' && !_descriptorCuenta(fuente)) return; // cuenta personalizada ya borrada
+  cuentaActual = fuente;
   _cajitaActualId = null;
-  document.getElementById('cuentas-selector').style.display = 'none';
-  document.getElementById('cuentas-detalle-nequi').style.display = 'none';
-  document.getElementById('cuentas-detalle-nu').style.display = 'none';
-  document.getElementById('cuentas-detalle-efectivo').style.display = 'none';
-  document.getElementById('cuentas-detalle-custom').style.display = 'none';
-  document.getElementById('cuentas-detalle-cajita').style.display = 'none';
-  document.getElementById('cuentas-sub-meta').style.display = 'none';
-  document.getElementById('cuentas-sub-cdts').style.display = 'none';
-  if (tipo === 'nequi') {
-    document.getElementById('cuentas-detalle-nequi').style.display = '';
-    renderDetalleCuenta('nequi');
-  } else if (tipo === 'nu') {
-    document.getElementById('cuentas-detalle-nu').style.display = '';
-    renderDetalleCuenta('nu');
-  } else if (tipo === 'efectivo') {
-    document.getElementById('cuentas-detalle-efectivo').style.display = '';
-    renderDetalleCuenta('efectivo');
-  }
+  _showCuentasPanel(fuente === 'nu' ? 'cuentas-detalle-nu' : 'cuentas-detalle-simple');
+  renderDetalleCuenta(fuente);
   document.getElementById('scrollArea').scrollTop = 0;
 }
 
 function volverSelector() {
   cuentaActual = '';
-  _customCuentaActualId = null;
   _cajitaActualId = null;
-  document.getElementById('cuentas-selector').style.display = '';
-  document.getElementById('cuentas-detalle-nequi').style.display = 'none';
-  document.getElementById('cuentas-detalle-nu').style.display = 'none';
-  document.getElementById('cuentas-detalle-efectivo').style.display = 'none';
-  document.getElementById('cuentas-detalle-custom').style.display = 'none';
-  document.getElementById('cuentas-detalle-cajita').style.display = 'none';
-  document.getElementById('cuentas-sub-meta').style.display = 'none';
-  document.getElementById('cuentas-sub-cdts').style.display = 'none';
+  _showCuentasPanel('cuentas-selector');
   document.getElementById('scrollArea').scrollTop = 0;
 }
 
-function renderDetalleCuenta(tipo) {
-  // FIX (auditoria-tecnica.md #5, hallazgo "Cuentas→Encargos"): las 3 llamadas
-  // de este bloque no tenían guard typeof. Hoy encargos.js carga eager, así
+function renderDetalleCuenta(fuente) {
+  // FIX (auditoria-tecnica.md #5, hallazgo "Cuentas→Encargos"): las llamadas a
+  // renderEncargosEnCuenta no tenían guard typeof. Hoy encargos.js carga eager, así
   // que no rompe nada — pero es el acoplamiento exacto que bloquearía volver
   // lazy cuentas o encargos por separado.
-  if (tipo === 'nequi') {
-    document.getElementById('det-nequi-saldo').textContent = fmt(S.nequiSaldo || 0);
-    // Banner saldo inicial Nequi
-    renderBannerApertura('nequi');
-    // Encargos en Nequi
-    if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-nequi-encargos', 'nequi');
-    // Movimientos relacionados con Nequi
-    const movs = getMovimientosCuenta('nequi');
-    renderMovsCuenta('det-nequi-movs', movs, '#ff4da6', 'nequi');
-  } else if (tipo === 'nu') {
+  if (fuente === 'nu') {
     // Cajitas ya se renderizan en renderCajitas()
     renderCajitas();
     // Encargos en Nu (cualquier cajita)
@@ -132,16 +107,33 @@ function renderDetalleCuenta(tipo) {
     // Movimientos Nu (cajitas)
     const movs = getMovimientosCuenta('nu');
     renderMovsCuenta('det-nu-movs', movs, 'var(--nu-light)', 'nu');
-  } else if (tipo === 'efectivo') {
-    document.getElementById('det-ef-saldo').textContent = fmt(S.efectivoSaldo || 0);
-    // Banner saldo inicial Efectivo
-    renderBannerApertura('efectivo');
-    // Encargos en Efectivo
-    if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-ef-encargos', 'efectivo');
-    const movs = getMovimientosCuenta('efectivo');
-    renderMovsCuenta('det-ef-movs', movs, 'var(--amber)', 'efectivo');
+  } else {
+    _renderDetalleSimple(fuente);
   }
   actualizarBotonesTransferir(); // "Mover a otra cuenta" solo activo con saldo >= $1,00
+}
+
+// Detalle de Nequi, Efectivo y cuentas personalizadas: misma pantalla, el descriptor de la
+// cuenta (ver CUENTAS_FIJAS_SELECTOR) aporta nombre, color, etiqueta y saldo.
+function _renderDetalleSimple(fuente) {
+  const d = _descriptorCuenta(fuente);
+  if (!d) return;
+  const cont = document.getElementById('cuentas-detalle-simple');
+  cont.style.setProperty('--cuenta', d.color);
+  cont.style.setProperty('--cuenta-rgb', d.rgb);
+  document.getElementById('det-cuenta-nombre').innerHTML =
+    html`<div style="display:flex;align-items:center;gap:8px;">${d.iconoHtml(28)}<span>${d.nombre}</span></div>`;
+  document.getElementById('det-cuenta-label').textContent = d.etiquetaDetalle;
+  document.getElementById('det-cuenta-saldo').textContent = fmt(d.saldo());
+  document.getElementById('det-cuenta-acciones-custom').style.display = d.esCustom ? 'flex' : 'none';
+  // Banner saldo inicial. El div es único (banner-apertura-cuenta), por eso el elId va explícito:
+  // el default de renderBannerApertura armaría un id con el ':' de 'custom:ID'.
+  renderBannerApertura(fuente, { elId: 'banner-apertura-cuenta' });
+  // Encargos en esta cuenta
+  if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-cuenta-encargos', fuente);
+  // Movimientos. cuentaKey ('nequi' | 'efectivo' | 'custom') es la clave de los filtros y el
+  // valor que abrirDetalleMov() lee de data-cuenta-key; las personalizadas comparten 'custom'.
+  renderMovsCuenta('det-cuenta-movs', getMovimientosCuenta(fuente), d.color, d.cuentaKey, 'movs-filtros-cuenta');
 }
 
 // renderEncargosEnCuenta() y abrirEncargoDesdeCuenta() migradas a js/modules/encargos.js (ver docs/encargos.md).
@@ -181,7 +173,6 @@ function renderIconoCustom(c, size=30){
 
 let _ncColorSel='#60b0f0';
 let _ncIconoSel='otro';
-let _customCuentaActualId=null;
 
 function selColorNC(color){
   _ncColorSel=color;
@@ -233,39 +224,92 @@ function crearCuentaCustom(){
   const nombre=(document.getElementById('nc_nombre').value||'').trim();
   if(!nombre){toast('Escribe un nombre para la cuenta','err');return;}
   const saldo=parseMoney(document.getElementById('nc_saldo').value)||0;
-  if(!S.cuentasPersonalizadas)S.cuentasPersonalizadas=[];
-  const nueva={id:uid(),nombre,icono:_ncIconoSel,color:_ncColorSel,saldo,movimientos:[]};
+  const nueva={id:uid(),tipo:'custom',nombre,icono:_ncIconoSel,color:_ncColorSel,saldo,movimientos:[]};
   if(saldo>0) nueva.movimientos.push(crearMovimientoApertura(saldo,hoy(),'Saldo inicial'));
-  S.cuentasPersonalizadas.push(nueva);
+  _cuentasArr().push(nueva);
   save();refresh();
   closeSheet('nueva-cuenta');
   toast(`Cuenta "${escHtml(nombre)}" creada`,'ok');
   if(window.logCambio)logCambio('Creaste cuenta "'+nombre+'"','',saldo||0,'cajita');
 }
 
-function renderCustomCuentasList(){
-  const el=document.getElementById('custom-cuentas-list');
-  if(!el)return;
-  const cuentas=S.cuentasPersonalizadas||[];
-  if(!cuentas.length){el.innerHTML='';return;}
-  el.innerHTML=html`${cuentas.map(c=>{
-    const hex=c.color||(getIconoData(c.icono).color)||'#60b0f0';
-    const hexRgb=hexToRgb(hex);
-    const iconoHtml=renderIconoCustom(c,30);
-    return html`<div data-cuenta-custom="${c.id}" style="margin-top:8px;background:linear-gradient(135deg,rgba(${hexRgb},.12) 0%,rgba(${hexRgb},.04) 100%);border:1px solid rgba(${hexRgb},.35);border-radius:var(--radius-sm);padding:13px 15px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        ${iconoHtml}
-        <div>
-          <div style="font-size:13px;font-weight:600;color:${hex};">${c.nombre}</div>
-          <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${fmtNoCents(c.saldo||0)}</div>
-        </div>
+/* ---- CUENTAS DIRIGIDAS POR DATOS (selector + detalle) ----
+   Una sola lista de descriptores alimenta la pantalla "Selecciona una cuenta" y el detalle de
+   cuenta simple: las cuentas fijas (CUENTAS_FIJAS_SELECTOR) + las personalizadas
+   (personalizadas de S.cuentas). Agregar una cuenta fija nueva es agregar un descriptor acá; el
+   formato del saldo del selector vive en fmtSaldoSelector() (core-state.js) y el estilo en
+   .cuenta-card / .cuenta-pill / .cuenta-hero (styles.css).
+   Descriptor: { fuente, nombre, color (texto), rgb (bordes/fondos "r,g,b"), estilo
+   ('tarjeta'|'pastilla'), etiqueta (solo tarjeta), etiquetaDetalle (rótulo del saldo en el
+   detalle), cuentaKey (clave de filtros de movimientos), esCustom, iconoHtml(size), saldo() }.
+   `fuente` es el mismo identificador que usa el resto de la app
+   ('nequi' | 'nu' | 'efectivo' | 'custom:ID'). Nu figura acá solo para el selector: su detalle
+   es una pantalla propia. */
+const ICONO_EFECTIVO_SELECTOR = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>`;
+function _iconoEfectivo(size){
+  return html`<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(240,184,64,.15);display:flex;align-items:center;justify-content:center;color:var(--amber);">${raw(ICONO_EFECTIVO_SELECTOR)}</div>`;
+}
+
+const CUENTAS_FIJAS_SELECTOR = [
+  { fuente:'nequi',    nombre:'Nequi',    color:'#ff4da6',         rgb:'229,0,116',  estilo:'tarjeta',  etiqueta:'Saldo',    etiquetaDetalle:'Saldo disponible',      cuentaKey:'nequi',    iconoHtml:size=>renderIconoCustom({icono:'nequi'},size), saldo:()=>getSaldoFuente('nequi') },
+  { fuente:'nu',       nombre:'Nu',       color:'var(--nu-light)', rgb:'192,96,240', estilo:'tarjeta',  etiqueta:'Total Nu', etiquetaDetalle:'Total Nu',              cuentaKey:'nu',       iconoHtml:size=>renderIconoCustom({icono:'nu'},size),    saldo:()=>nuTotal() },
+  { fuente:'efectivo', nombre:'Efectivo', color:'var(--amber)',    rgb:'240,184,64', estilo:'pastilla',                        etiquetaDetalle:'Disponible en efectivo', cuentaKey:'efectivo', iconoHtml:_iconoEfectivo,                                  saldo:()=>getSaldoFuente('efectivo') },
+];
+
+function _descriptorCustom(c){
+  const hex=c.color||(getIconoData(c.icono).color)||'#60b0f0';
+  return { fuente:'custom:'+c.id, nombre:c.nombre, color:hex, rgb:hexToRgb(hex), estilo:'pastilla',
+    etiquetaDetalle:'Saldo disponible', cuentaKey:'custom', esCustom:true,
+    iconoHtml:size=>renderIconoCustom(c,size), saldo:()=>c.saldo||0 };
+}
+
+// Descriptor de una cuenta por su fuente; null si no existe (p. ej. personalizada ya borrada).
+function _descriptorCuenta(fuente){
+  if(fuente.startsWith('custom:')){
+    const id=fuente.slice('custom:'.length);
+    const c=getCuentaCustom(id);
+    return c?_descriptorCustom(c):null;
+  }
+  return CUENTAS_FIJAS_SELECTOR.find(d=>d.fuente===fuente)||null;
+}
+
+function _cuentasSelector(){
+  return [...CUENTAS_FIJAS_SELECTOR, ...cuentasCustom().map(c=>_descriptorCustom(c))];
+}
+
+function _cuentaSelectorHtml(d){
+  const vars='--cuenta:'+d.color+';--cuenta-rgb:'+d.rgb;
+  const flecha=(cls,pts)=>html`<svg class="${cls}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><polyline points="${pts}"/></svg>`;
+  if(d.estilo==='tarjeta'){
+    return html`<div class="cuenta-card" data-fuente="${d.fuente}" style="${vars}">
+      <div class="cuenta-card-head">
+        ${d.iconoHtml(34)}
+        <span class="cuenta-card-nombre">${d.nombre}</span>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${hex}" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      <div class="cuenta-card-etiqueta">${d.etiqueta}</div>
+      <div class="cuenta-card-saldo">${fmtSaldoSelector(d.saldo())}</div>
+      ${flecha('cuenta-card-flecha','9 18 15 12 9 6')}
     </div>`;
-  })}`;
-  el.querySelectorAll('[data-cuenta-custom]').forEach(div=>{
-    div.addEventListener('click',()=>abrirCustomCuenta(div.dataset.cuentaCustom));
-  });
+  }
+  return html`<div class="cuenta-pill" data-fuente="${d.fuente}" style="${vars}">
+    <div class="cuenta-pill-info">
+      ${d.iconoHtml(30)}
+      <div>
+        <div class="cuenta-pill-nombre">${d.nombre}</div>
+        <div class="cuenta-pill-saldo">${fmtSaldoSelector(d.saldo())}</div>
+      </div>
+    </div>
+    ${flecha('cuenta-pill-flecha','9 18 15 12 9 6')}
+  </div>`;
+}
+
+function renderSelectorCuentas(){
+  const el=document.getElementById('selector-cuentas-lista');
+  if(!el)return;
+  const cuentas=_cuentasSelector();
+  const tarjetas=cuentas.filter(d=>d.estilo==='tarjeta');
+  const pastillas=cuentas.filter(d=>d.estilo==='pastilla');
+  el.innerHTML=html`${tarjetas.length?html`<div class="cuentas-selector-grid">${tarjetas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}${pastillas.length?html`<div class="cuentas-selector-pills">${pastillas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}`;
 }
 
 function hexToRgb(hex){
@@ -276,84 +320,17 @@ function hexToRgb(hex){
   return`${r},${g},${b}`;
 }
 
-function abrirCustomCuenta(id){
-  const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
-  if(!c)return;
-  _customCuentaActualId=id;
-  const hex=c.color||(getIconoData(c.icono).color)||'#60b0f0';
-  const hexRgb=hexToRgb(hex);
-  const hero=document.getElementById('det-custom-hero');
-  if(hero){
-    hero.style.background=`linear-gradient(135deg,rgba(${hexRgb},.15),rgba(${hexRgb},.04))`;
-    hero.style.border=`1px solid rgba(${hexRgb},.3)`;
-  }
-  const nombreEl=document.getElementById('det-custom-nombre');
-  // Mostrar ícono + nombre en el header
-  if(nombreEl){
-    const iconoHtml=renderIconoCustom(c,28);
-    nombreEl.innerHTML=html`<div style="display:flex;align-items:center;gap:8px;">${iconoHtml}<span style="color:${hex};">${c.nombre}</span></div>`;
-    nombreEl.style.color=hex;
-  }
-  const saldoEl=document.getElementById('det-custom-saldo');
-  if(saldoEl){saldoEl.textContent=fmt(c.saldo||0);saldoEl.style.color=hex;}
-  const labelEl=document.getElementById('det-custom-label');
-  if(labelEl)labelEl.style.color=hex;
-  const btnAg=document.getElementById('btn-agregar-custom-det');
-  if(btnAg){
-    btnAg.style.background=`rgba(${hexRgb},.12)`;
-    btnAg.style.borderColor=`rgba(${hexRgb},.35)`;
-    btnAg.style.color=hex;
-    // Antes abría el sheet simple "mov-cuenta-custom" (solo monto/nota/fecha).
-    // Ahora reutiliza el mismo sheet "agregar-dinero" que usan Nequi/Efectivo,
-    // así las cuentas personalizadas también tienen el toggle "Es saldo
-    // inicial (ya lo tenía)" — antes solo se podía fijar el saldo inicial
-    // una vez, al crear la cuenta.
-    btnAg.onclick=()=>abrirAgregarDinero('custom:'+id,c.nombre);
-  }
-  const btnRe=document.getElementById('btn-restar-custom-det');
-  if(btnRe) btnRe.onclick=()=>abrirRestarDinero('custom:'+id,c.nombre);
-  const btnTr=document.getElementById('btn-transferir-custom-det');
-  if(btnTr) btnTr.onclick=()=>abrirTransferir('custom:'+id);
-  actualizarBotonesTransferir();
-  const btnEl=document.getElementById('btn-eliminar-cuenta-custom');
-  if(btnEl) btnEl.onclick=()=>eliminarCuentaCustom(id);
-  const btnEd=document.getElementById('btn-editar-cuenta-custom');
-  if(btnEd) btnEd.onclick=()=>editarCuentaCustom(id);
-  // Banner saldo inicial (mismo patrón que Nequi/Efectivo). El div es fijo
-  // (banner-apertura-custom) porque esta pantalla se reutiliza para cualquier
-  // cuenta personalizada — no hay un div por cada id — por eso el elId se pasa
-  // explícito en vez del elId por-defecto que arma renderBannerApertura con el
-  // fuente completo (que traería el ':' del id y no matchearía nada).
-  renderBannerApertura('custom:'+id,{elId:'banner-apertura-custom'});
-  renderMovsCustom(c);
-  if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-custom-encargos', 'custom:'+id);
-  document.getElementById('cuentas-selector').style.display='none';
-  document.getElementById('cuentas-detalle-nequi').style.display='none';
-  document.getElementById('cuentas-detalle-nu').style.display='none';
-  document.getElementById('cuentas-detalle-efectivo').style.display='none';
-  document.getElementById('cuentas-detalle-custom').style.display='';
-  document.getElementById('scrollArea').scrollTop=0;
-}
-
-function renderMovsCustom(c){
-  // Ahora delega al mismo render genérico que usan Nequi/efectivo,
-  // leyendo todos los movimientos desde getMovimientosCuenta('custom:ID').
-  const fuente = 'custom:' + c.id;
-  const hex = c.color || (getIconoData(c.icono).color) || '#60b0f0';
-  const movs = getMovimientosCuenta(fuente);
-  renderMovsCuenta('det-custom-movs', movs, hex, 'custom');
-}
-
 // abrirMovCustom()/confirmarMovCustom() (sheet "mov-cuenta-custom": solo
 // monto/nota/fecha, sin toggle de saldo inicial) se retiraron — Agregar/Retirar
 // en cuentas personalizadas ahora usan los mismos sheets genéricos
-// "agregar-dinero"/"restar-dinero" que Nequi y Efectivo (ver abrirCustomCuenta).
+// "agregar-dinero"/"restar-dinero" que Nequi y Efectivo (ver el listener de
+// #cuentas-detalle-simple al final de este archivo).
 // Se elimina la función completa en vez de dejarla como código muerto sin
 // llamador (mismo criterio que en configuracion.js, ver su nota de cabecera
 // sobre leerArchivoImport/import-validado.js).
 
 async function eliminarCuentaCustom(id){
-  const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+  const c=getCuentaCustom(id);
   if(!c)return;
   if((c.saldo||0)>0){
     await dialogo('No se puede eliminar','Para eliminar "'+c.nombre+'" primero retira todo el saldo. Disponible: '+fmt(c.saldo||0)+'.','Entendido',false);
@@ -389,17 +366,15 @@ async function eliminarCuentaCustom(id){
   }
   const ok=await dialogo('Eliminar cuenta','¿Eliminar "'+c.nombre+'" y su historial? Esta acción no se puede deshacer.','Eliminar',true);
   if(!ok)return;
-  S.cuentasPersonalizadas=(S.cuentasPersonalizadas||[]).filter(x=>x.id!==id);
+  S.cuentas=_cuentasArr().filter(x=>x.id!==id);
   save();refresh();
-  document.getElementById('cuentas-detalle-custom').style.display='none';
-  document.getElementById('cuentas-selector').style.display='';
-  _customCuentaActualId=null;
+  volverSelector();
   toast(`Cuenta "${escHtml(c.nombre)}" eliminada`,'info');
 }
 
 /* ---- Editar cuenta personalizada ---- */
 function editarCuentaCustom(id){
-  const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+  const c=getCuentaCustom(id);
   if(!c)return;
   // Rellenar el sheet reutilizando el mismo form de nueva cuenta
   const ni=document.getElementById('nc_nombre');
@@ -428,7 +403,7 @@ function editarCuentaCustom(id){
     btnCrear.onclick=function(){
       const nombre=(document.getElementById('nc_nombre').value||'').trim();
       if(!nombre){toast('Escribe un nombre para la cuenta','err');return;}
-      const cc=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+      const cc=getCuentaCustom(id);
       if(!cc){closeSheet('nueva-cuenta');return;}
       cc.nombre=nombre;
       cc.icono=_ncIconoSel;
@@ -436,7 +411,7 @@ function editarCuentaCustom(id){
       save();refresh();
       closeSheet('nueva-cuenta');
       // Volver a abrir la cuenta con datos actualizados
-      abrirCustomCuenta(id);
+      abrirCuenta('custom:'+id);
       toast(`Cuenta "${escHtml(nombre)}" actualizada`,'ok');
       if(window.logCambio)logCambio('Editaste cuenta "'+nombre+'"','',0,'editar');
       // Resetear estado del sheet
@@ -1522,7 +1497,7 @@ function renderCajitas(){
 let _cajitaActualId = null;
 
 function _showCuentasPanel(panelId){
-  const panels=['cuentas-selector','cuentas-detalle-nequi','cuentas-detalle-nu','cuentas-detalle-efectivo','cuentas-detalle-custom','cuentas-detalle-cajita','cuentas-sub-meta','cuentas-sub-cdts'];
+  const panels=['cuentas-selector','cuentas-detalle-simple','cuentas-detalle-nu','cuentas-detalle-cajita','cuentas-sub-meta','cuentas-sub-cdts'];
   panels.forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.style.display = id===panelId ? '' : 'none';
@@ -1843,7 +1818,7 @@ function toggleCajita(e, id){
 // hace para nequi/efectivo/cajitas.
 function _getMovimientosCuentaCustom(fuente) {
   const cid = fuente.split(':')[1];
-  const c = (S.cuentasPersonalizadas || []).find(x => x.id === cid);
+  const c = getCuentaCustom(cid);
   const movs = [];
   let _idx = 0;
 
@@ -2214,18 +2189,21 @@ function renderMovsFiltros(elId, cuentaKey, movs, accentColor) {
     </div>
   `;
   // Reemplaza los oninput/onchange inline (CSP los bloquea). Delegado,
-  // enganchado una sola vez por wrap — cada cuentaKey tiene su propio wrap
-  // fijo (filtrosElId = 'movs-filtros-'+cuentaKey), así que cerrar sobre
-  // cuentaKey acá es seguro: nunca cambia para este wrap en particular,
-  // a diferencia de `items` en el bug de renderAttencion() (Inicio).
+  // enganchado una sola vez por wrap. El wrap de la cuenta simple
+  // (movs-filtros-cuenta) lo comparten Nequi, Efectivo y las personalizadas, así que su
+  // cuentaKey cambia entre renders: los listeners leen wrap._movsKey (se actualiza en cada
+  // render) en vez de cerrar sobre cuentaKey — igual que el bug de `items` en
+  // renderAttencion() (Inicio), cerrar sobre un valor que cambia dejaría filtrando la cuenta
+  // equivocada.
+  wrap._movsKey = cuentaKey;
   if(!wrap._movsFiltrosHooked){
     wrap._movsFiltrosHooked = true;
     wrap.addEventListener('input', (e)=>{
-      if(e.target.classList.contains('movs-search-input')) _movsOnSearch(e.target, cuentaKey);
+      if(e.target.classList.contains('movs-search-input')) _movsOnSearch(e.target, wrap._movsKey);
     });
     wrap.addEventListener('change', (e)=>{
-      if(e.target.classList.contains('movs-fecha-desde')) _movsOnFecha('desde', e.target.value, cuentaKey);
-      else if(e.target.classList.contains('movs-fecha-hasta')) _movsOnFecha('hasta', e.target.value, cuentaKey);
+      if(e.target.classList.contains('movs-fecha-desde')) _movsOnFecha('desde', e.target.value, wrap._movsKey);
+      else if(e.target.classList.contains('movs-fecha-hasta')) _movsOnFecha('hasta', e.target.value, wrap._movsKey);
     });
   }
 }
@@ -2249,12 +2227,9 @@ function _movsLimpiarFechas(cuentaKey) {
 }
 
 function _movsRefresh(cuentaKey) {
-  if (cuentaKey === 'custom') {
-    const c = (S.cuentasPersonalizadas||[]).find(x=>x.id===_customCuentaActualId);
-    if (c) renderMovsCustom(c);
-    return;
-  }
-  renderDetalleCuenta(cuentaKey);
+  // 'custom' es la clave compartida de las personalizadas: la cuenta es la abierta ahora.
+  const fuente = cuentaKey === 'custom' ? (cuentaActual.startsWith('custom:') ? cuentaActual : '') : cuentaKey;
+  if (fuente) renderDetalleCuenta(fuente);
 }
 
 function _movsAplicarFiltro(movs, cuentaKey) {
@@ -2270,12 +2245,12 @@ function _movsAplicarFiltro(movs, cuentaKey) {
   return res;
 }
 
-function renderMovsCuenta(elId, movs, accentColor, cuentaKey) {
+function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplicito) {
   const el = document.getElementById(elId);
   if (!el) return;
 
   // Render filtros (siempre, aunque no haya movs)
-  const filtrosElId = 'movs-filtros-' + (cuentaKey || '');
+  const filtrosElId = filtrosElIdExplicito || ('movs-filtros-' + (cuentaKey || ''));
   if (cuentaKey) renderMovsFiltros(filtrosElId, cuentaKey, movs, accentColor);
 
   // Aplicar filtros
@@ -2538,7 +2513,7 @@ function getAperturaMov(fuente){
   // crear un segundo registro de apertura duplicado.
   if(fuente&&fuente.startsWith('custom:')){
     const id=fuente.split(':')[1];
-    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+    const c=getCuentaCustom(id);
     if(c)return (c.movimientos||[]).find(m=>m.tipo==='apertura');
   }
   return undefined;
@@ -2877,12 +2852,12 @@ function _setBtnTransferir(btn, ok) {
 }
 
 function actualizarBotonesTransferir() {
-  _setBtnTransferir(document.getElementById('btn-transferir-nequi-det'), FuentesFiltro.puedeMover('nequi'));
-  _setBtnTransferir(document.getElementById('btn-transferir-efectivo-det'), FuentesFiltro.puedeMover('efectivo'));
+  // Cuenta simple abierta (Nequi, Efectivo o personalizada): un solo botón compartido
+  const fuenteSimple = cuentaActual;
+  if (fuenteSimple && fuenteSimple !== 'nu') _setBtnTransferir(document.getElementById('btn-transferir-cuenta-det'), FuentesFiltro.puedeMover(fuenteSimple));
   // Pantalla Nu: activo si alguna cajita (no CDT) tiene saldo movible
   const hayNu = (S.cajitas || []).some(c => !c.esCDT && FuentesFiltro.puedeMover('cajita:' + c.id));
   _setBtnTransferir(document.getElementById('btn-transferir-nu-det'), hayNu);
-  if (_customCuentaActualId) _setBtnTransferir(document.getElementById('btn-transferir-custom-det'), FuentesFiltro.puedeMover('custom:' + _customCuentaActualId));
   if (_cajitaActualId) _setBtnTransferir(document.getElementById('cajita-det-mover'), FuentesFiltro.puedeMover('cajita:' + _cajitaActualId));
 }
 
@@ -3169,22 +3144,31 @@ const btnSwitchTr = document.getElementById('btn-switch-to-transferir');
 if (btnSwitchTr) btnSwitchTr.addEventListener('click', () => { closeSheet('agregar-dinero-menu'); abrirTransferir(); });
 
 // --- Selector de cuentas (tarjetas de screen-cuentas + botón "volver") ---
-document.querySelectorAll('[data-cuenta]').forEach(card => {
-  card.addEventListener('click', () => abrirCuenta(card.dataset.cuenta));
+// Un solo listener delegado para todas las cuentas del selector (el contenido se
+// reescribe en cada renderSelectorCuentas(), el contenedor no).
+const _selectorCuentasLista = document.getElementById('selector-cuentas-lista');
+if (_selectorCuentasLista) _selectorCuentasLista.addEventListener('click', e => {
+  const item = e.target.closest('[data-fuente]');
+  if (item) abrirCuenta(item.dataset.fuente);
 });
 document.querySelectorAll('.btn-volver-selector').forEach(btn => {
   btn.addEventListener('click', volverSelector);
 });
 
-// --- Nequi / Efectivo: agregar y restar dinero ---
-const btnAgrNequiDet = document.getElementById('btn-agregar-nequi-det');
-if (btnAgrNequiDet) btnAgrNequiDet.addEventListener('click', () => abrirAgregarDinero('nequi'));
-const btnRestNequiDet = document.getElementById('btn-restar-nequi-det');
-if (btnRestNequiDet) btnRestNequiDet.addEventListener('click', () => abrirRestarDinero('nequi'));
-const btnAgrEfDet = document.getElementById('btn-agregar-efectivo-det');
-if (btnAgrEfDet) btnAgrEfDet.addEventListener('click', () => abrirAgregarDinero('efectivo'));
-const btnRestEfDet = document.getElementById('btn-restar-efectivo-det');
-if (btnRestEfDet) btnRestEfDet.addEventListener('click', () => abrirRestarDinero('efectivo'));
+// --- Cuenta simple (Nequi / Efectivo / personalizada): un listener delegado para todos los
+// botones del detalle; la cuenta es la que esté abierta (cuentaActual) ---
+const _detalleSimple = document.getElementById('cuentas-detalle-simple');
+if (_detalleSimple) _detalleSimple.addEventListener('click', e => {
+  const btn = e.target.closest('button[id]');
+  const fuente = cuentaActual;
+  const d = btn && fuente ? _descriptorCuenta(fuente) : null;
+  if (!d) return;
+  if (btn.id === 'btn-agregar-cuenta-det') abrirAgregarDinero(fuente, d.nombre);
+  else if (btn.id === 'btn-restar-cuenta-det') abrirRestarDinero(fuente, d.nombre);
+  else if (btn.id === 'btn-transferir-cuenta-det') abrirTransferir(fuente);
+  else if (btn.id === 'btn-editar-cuenta-custom' && d.esCustom) editarCuentaCustom(fuente.slice('custom:'.length));
+  else if (btn.id === 'btn-eliminar-cuenta-custom' && d.esCustom) eliminarCuentaCustom(fuente.slice('custom:'.length));
+});
 
 // --- Nu: entró / salió plata ---
 const btnNuEntro = document.getElementById('btn-nu-entro');

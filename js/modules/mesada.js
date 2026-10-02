@@ -534,7 +534,7 @@ function _registrarMovSecundarioMesada(destino,monto,fecha,desc){
     S.movimientos.push({id,tipo:'entrada',fuente:destino,monto,fecha,desc,_secundario:true,_origenSeccion:'Mesada'});
   } else if(destino.startsWith('custom:')){
     const cId=destino.split(':')[1];
-    const cObj=(S.cuentasPersonalizadas||[]).find(x=>x.id===cId);
+    const cObj=getCuentaCustom(cId);
     if(cObj){
       if(!cObj.movimientos)cObj.movimientos=[];
       cObj.movimientos.push({id,tipo:'ingreso',monto,fecha,nota:desc,_secundario:true,_origenSeccion:'Mesada'});
@@ -560,7 +560,7 @@ function _borrarMovSecundarioMesada(destino,movSecId){
     S.movimientos=(S.movimientos||[]).filter(x=>x.id!==movSecId);
   } else if(destino.startsWith('custom:')){
     const cId=destino.split(':')[1];
-    const cObj=(S.cuentasPersonalizadas||[]).find(x=>x.id===cId);
+    const cObj=getCuentaCustom(cId);
     if(cObj&&cObj.movimientos)cObj.movimientos=cObj.movimientos.filter(x=>x.id!==movSecId);
   } else if(destino.startsWith('cajita:')){
     const cId=destino.split(':')[1];

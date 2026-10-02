@@ -736,7 +736,7 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
             if (movDestinoExiste) S.movimientos = S.movimientos.filter(x => x.id !== m._abonoDestinoMovId);
           } else if (m.destino.startsWith('custom:')) {
             const cId = m.destino.split(':')[1];
-            const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+            const cObj = getCuentaCustom(cId);
             if (cObj && cObj.movimientos) {
               movDestinoExiste = !!(cObj.movimientos.find(x => x.id === m._abonoDestinoMovId));
               if (movDestinoExiste) cObj.movimientos = cObj.movimientos.filter(x => x.id !== m._abonoDestinoMovId);
@@ -768,7 +768,7 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
             if (movDestinoExiste) S.movimientos = S.movimientos.filter(x => x.id !== r._movId);
           } else if (r.fuente.startsWith('custom:')) {
             const cId = r.fuente.split(':')[1];
-            const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+            const cObj = getCuentaCustom(cId);
             if (cObj && cObj.movimientos) {
               movDestinoExiste = !!(cObj.movimientos.find(x => x.id === r._movId));
               if (movDestinoExiste) cObj.movimientos = cObj.movimientos.filter(x => x.id !== r._movId);
@@ -793,7 +793,7 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
           if (movDestinoExiste) S.movimientos = S.movimientos.filter(x => x.id !== m._abonoDestinoMovId);
         } else if (m.destino.startsWith('custom:')) {
           const cId = m.destino.split(':')[1];
-          const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+          const cObj = getCuentaCustom(cId);
           if (cObj && cObj.movimientos) {
             movDestinoExiste = !!(cObj.movimientos.find(x => x.id === m._abonoDestinoMovId));
             if (movDestinoExiste) cObj.movimientos = cObj.movimientos.filter(x => x.id !== m._abonoDestinoMovId);
@@ -822,7 +822,7 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
               if (S.movimientos) S.movimientos = S.movimientos.filter(x => x.id !== p.movExtraId);
             } else if (p.cuenta.startsWith('custom:')) {
               const cId = p.cuenta.split(':')[1];
-              const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+              const cObj = getCuentaCustom(cId);
               if (cObj && cObj.movimientos) cObj.movimientos = cObj.movimientos.filter(x => x.id !== p.movExtraId);
             } else if (p.cuenta.startsWith('cajita:')) {
               const cId = p.cuenta.split(':')[1];
@@ -1321,7 +1321,7 @@ function _confirmarMovimientoInterno() {
             S.movimientos.push({ id: abonoDestinoMovId, tipo: 'entrada', fuente: abonoDestino, monto, fecha, desc: descAbonoDest, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
           } else if (abonoDestino.startsWith('custom:')) {
             const cId = abonoDestino.split(':')[1];
-            const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+            const cObj = getCuentaCustom(cId);
             if (cObj) {
               if (!cObj.movimientos) cObj.movimientos = [];
               cObj.movimientos.push({ id: abonoDestinoMovId, tipo: 'ingreso', monto, fecha, nota: descAbonoDest, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
@@ -1392,7 +1392,7 @@ function _confirmarMovimientoInterno() {
               S.movimientos.push({ id: movExtraId, tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
             } else if (p.cuenta.startsWith('custom:')) {
               const cId = p.cuenta.split(':')[1];
-              const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+              const cObj = getCuentaCustom(cId);
               if (cObj) {
                 if (!cObj.movimientos) cObj.movimientos = [];
                 cObj.movimientos.push({ id: movExtraId, tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
@@ -1453,7 +1453,7 @@ function _confirmarMovimientoInterno() {
           S.movimientos.push({ id: r._movId, tipo: 'entrada', fuente: r.fuente, monto: r.monto, fecha, desc: descSplit, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
         } else if (r.fuente.startsWith('custom:')) {
           const cId = r.fuente.split(':')[1];
-          const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+          const cObj = getCuentaCustom(cId);
           if (cObj) {
             if (!cObj.movimientos) cObj.movimientos = [];
             cObj.movimientos.push({ id: r._movId, tipo: 'ingreso', monto: r.monto, fecha, nota: descSplit, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
@@ -1480,7 +1480,7 @@ function _confirmarMovimientoInterno() {
         S.movimientos.push({ id: abonoDestinoMovId, tipo: 'entrada', fuente: destino, monto, fecha, desc: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
       } else if (destino.startsWith('custom:')) {
         const cId = destino.split(':')[1];
-        const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+        const cObj = getCuentaCustom(cId);
         if (cObj) {
           if (!cObj.movimientos) cObj.movimientos = [];
           cObj.movimientos.push({ id: abonoDestinoMovId, tipo: 'ingreso', monto, fecha, nota: descMovSecundario, _secundario: true, _origenSeccion: 'Prestado · Me deben' });
@@ -1527,7 +1527,7 @@ function _confirmarMovimientoInterno() {
             S.movimientos.push({ id: movExtraId, tipo: 'entrada', fuente: p.cuenta, monto: p.monto, fecha, desc: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben', _esExtraIngreso: true });
           } else if (p.cuenta.startsWith('custom:')) {
             const cId = p.cuenta.split(':')[1];
-            const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+            const cObj = getCuentaCustom(cId);
             if (cObj) {
               if (!cObj.movimientos) cObj.movimientos = [];
               cObj.movimientos.push({ id: movExtraId, tipo: 'ingreso', monto: p.monto, fecha, nota: descMovExtra, _secundario: true, _origenSeccion: 'Prestado · Me deben', _esExtraIngreso: true });
@@ -2174,7 +2174,7 @@ function confirmarMovMiDeuda() {
         S.movimientos.push({ id: movSecId, tipo: 'entrada', fuente: cuenta, monto, fecha, desc: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
       } else if (cuenta.startsWith('custom:')) {
         const cId = cuenta.split(':')[1];
-        const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+        const cObj = getCuentaCustom(cId);
         if (cObj) {
           if (!cObj.movimientos) cObj.movimientos = [];
           cObj.movimientos.push({ id: movSecId, tipo: 'ingreso', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
@@ -2205,7 +2205,7 @@ function confirmarMovMiDeuda() {
         S.movimientos.push({ id: movSecId, tipo: 'salida', fuente: cuenta, monto, fecha, desc: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
       } else if (cuenta.startsWith('custom:')) {
         const cId = cuenta.split(':')[1];
-        const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+        const cObj = getCuentaCustom(cId);
         if (cObj) {
           if (!cObj.movimientos) cObj.movimientos = [];
           cObj.movimientos.push({ id: movSecId, tipo: 'egreso', monto, fecha, nota: descSec, _secundario: true, _origenSeccion: 'Prestado · Yo debo' });
@@ -2278,7 +2278,7 @@ async function eliminarMovMiDeuda(deudaId, movId) {
         S.movimientos = (S.movimientos || []).filter(x => x.id !== m._movSecId);
       } else if (m.destino.startsWith('custom:')) {
         const cId = m.destino.split(':')[1];
-        const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+        const cObj = getCuentaCustom(cId);
         if (cObj && cObj.movimientos) cObj.movimientos = cObj.movimientos.filter(x => x.id !== m._movSecId);
       } else if (m.destino.startsWith('cajita:')) {
         const cId = m.destino.split(':')[1];
@@ -2294,7 +2294,7 @@ async function eliminarMovMiDeuda(deudaId, movId) {
         S.movimientos = (S.movimientos || []).filter(x => x.id !== m._movSecId);
       } else if (m.fuente.startsWith('custom:')) {
         const cId = m.fuente.split(':')[1];
-        const cObj = (S.cuentasPersonalizadas || []).find(x => x.id === cId);
+        const cObj = getCuentaCustom(cId);
         if (cObj && cObj.movimientos) cObj.movimientos = cObj.movimientos.filter(x => x.id !== m._movSecId);
       } else if (m.fuente.startsWith('cajita:')) {
         const cId = m.fuente.split(':')[1];

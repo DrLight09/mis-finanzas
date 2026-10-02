@@ -4,7 +4,7 @@
    Extraído de index.html (auditoria-tecnica.md, punto 3) el 2026-07-26.
    Vive en js/core/ y no en js/modules/ porque es transversal por
    naturaleza: busca sobre S.gastosVar, S.gastosFijos, S.deudores,
-   S.cajitas, S.cuentasPersonalizadas, S.encargos, S.personas,
+   S.cajitas, S.cuentas, S.encargos, S.personas,
    S.misDeudas, S.spotifyPersonas/S.spotifyHistorial y S.movimientos —
    no pertenece a un solo dominio.
 
@@ -193,7 +193,7 @@
     });
 
     // Cuentas personalizadas
-    (S.cuentasPersonalizadas||[]).forEach(c => {
+    cuentasCustom().forEach(c => {
       if((c.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         resultados.push({ tipo:'Cuenta', desc:c.nombre, meta: window.fmt?window.fmt(c.saldo||0):'', color:'var(--blue)', navTipo:'cuenta_custom', navId:c.id });
       }
@@ -229,7 +229,7 @@
     });
 
     // Movimientos cuentas personalizadas
-    (S.cuentasPersonalizadas||[]).forEach(c => {
+    cuentasCustom().forEach(c => {
       (c.movimientos||[]).forEach(m => {
         if((m.desc||m.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
           resultados.push({ tipo:'Mov. '+c.nombre, desc:m.desc||m.nota||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'var(--blue)', navTipo:'cuenta_custom', navId:c.id });

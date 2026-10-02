@@ -186,7 +186,7 @@ function showScreen(name){
   // hechos en otras pantallas (ej: eliminar un encargo desde Más → Encargos)
   //
   // FIX (2026-08-17, auditoria-tecnica.md #12): renderCajitas()/
-  // renderCustomCuentasList() (las vistas de LISTA, lo que se ve al entrar
+  // renderSelectorCuentas() (las vistas de LISTA, lo que se ve al entrar
   // sin ninguna cuenta abierta) no tenían hook acá — solo el detalle de una
   // cuenta ya abierta lo tenía. Sin esto, gatear esas dos llamadas en
   // refresh() a "solo si Cuentas está activa" (ver core-state.js) habría
@@ -196,12 +196,11 @@ function showScreen(name){
   // más abajo — son funciones puras de render (confirmado contra
   // cuentas.js), no tienen costo relevante de llamarlas de más.
   if(name==='cuentas') {
-    if(cuentaActual && typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);
-    if(typeof _customCuentaActualId!=='undefined' && _customCuentaActualId) {
-      if(typeof renderDetalleCustomCuenta==='function') renderDetalleCustomCuenta(_customCuentaActualId);
-    }
+    // Detalle de la cuenta abierta (incluye las personalizadas: 'custom:ID'). Antes la rama de
+    // personalizadas llamaba a renderDetalleCustomCuenta(), que nunca existió: no hacía nada.
+    if(typeof renderDetalleCuenta==='function' && typeof cuentaActual!=='undefined' && cuentaActual) renderDetalleCuenta(cuentaActual);
     if(typeof renderCajitas==='function') renderCajitas();
-    if(typeof renderCustomCuentasList==='function') renderCustomCuentasList();
+    if(typeof renderSelectorCuentas==='function') renderSelectorCuentas();
   }
   // Re-renderizar Gastos al entrar a esa pantalla — FIX (2026-08-17,
   // auditoria-tecnica.md #12): no existía ninguna rama para 'gastos' acá,
@@ -296,10 +295,8 @@ function applyModulos(){
   }
   // Mostrar u ocultar banners de saldo inicial completos
   const mostrarBanners=(mod.corregirSaldo!==false);
-  ['nequi','efectivo'].forEach(f=>{
-    const b=document.getElementById('banner-apertura-'+f);
-    if(b)b.style.display=mostrarBanners?'':'none';
-  });
+  const bannerApertura=document.getElementById('banner-apertura-cuenta');
+  if(bannerApertura)bannerApertura.style.display=mostrarBanners?'':'none';
   // Ocultar el toggle "Es saldo inicial" en el sheet de agregar dinero
   const adAperturaWrap=document.getElementById('adAperturaWrap');
   if(adAperturaWrap)adAperturaWrap.style.display=mostrarBanners?'flex':'none';

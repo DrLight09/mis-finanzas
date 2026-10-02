@@ -81,7 +81,7 @@ function poblarCatSelect(selectId, cats, valorActual){
 }
 
 let S={
-  nuRate:9.25,cajitas:[],nequiSaldo:0,efectivoSaldo:0,
+  nuRate:9.25,cajitas:[],
   personas:[],
   deudores:[],misDeudas:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
   spotifyPersonas:[],spotifyCosto:0,spotifyCajitaId:'',spotifyHistorial:[],
@@ -93,7 +93,7 @@ let S={
   modulos:{mesada:true,spotify:true},
   catsVar:[],
   catsFijo:[],
-  cuentasPersonalizadas:[],
+  cuentas:[{id:'nequi',tipo:'nequi',saldo:0},{id:'efectivo',tipo:'efectivo',saldo:0}],
   patrimonioHistorial:[],
   tarjetasCredito:[],
   ingresosFijos:[],
@@ -126,7 +126,10 @@ let S={
 // Exponer S globalmente para que el módulo de Firebase pueda accederlo
 window.S = S;
 // patrimonioHistorial: [{fecha:'YYYY-MM-DD', valor:number}]
-// cuentasPersonalizadas: [{id, nombre, icono, color, saldo, movimientos:[{id,tipo,monto,fecha,nota}]}]
+// cuentas: modelo único de cuentas (ver "CUENTAS: MODELO ÚNICO" más abajo). Nequi y Efectivo:
+//   {id:'nequi'|'efectivo', tipo, saldo}. Personalizadas:
+//   {id, tipo:'custom', nombre, icono, color, saldo, movimientos:[{id,tipo,monto,fecha,nota}]}
+// (reemplaza a S.nequiSaldo, S.efectivoSaldo y S.cuentasPersonalizadas)
 // Cajita structure: {id, nombre, saldo (saldo actual total con intereses ya "materializados"), 
 //   fecha (cuando se creó / última vez que se materializó intereses),
 //   tasa (EA %), cdt: {monto, tasa, inicio, vence} | null}
@@ -153,6 +156,11 @@ function fmtNoCents(n){
   const intPart=Math.floor(Math.abs(num));
   return sign+'$'+intPart.toLocaleString('es-CO');
 }
+// Formato del saldo en el selector de Cuentas (todas las cuentas, fijas y personalizadas,
+// pasan por acá desde renderSelectorCuentas() en cuentas.js). Hoy: solo entero con puntos de
+// mil, truncado. Cambiar el formato del selector (redondear, agregar "COP", etc.) es editar
+// esta función — el detalle de cada cuenta sigue usando fmt() con centavos.
+function fmtSaldoSelector(n){return fmtNoCents(n);}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
 // Mide el ancho de un texto sin tocar el DOM (evita forced reflow en tooltips
 // que se reposicionan muy seguido, ej. arrastrar sobre gráficos). Un canvas
@@ -208,6 +216,56 @@ function pintarAvatarPersona(av, persona, opts){
   if(opts.conIniciales!==false)av.textContent=iniciales(persona.nombre);
 }
 
+/* ---- CUENTAS: MODELO ÚNICO ----
+   S.cuentas es la única fuente de verdad de los saldos de Nequi, Efectivo y las cuentas
+   personalizadas (Nu sigue en S.cajitas). Antes eran tres campos distintos: S.nequiSaldo,
+   S.efectivoSaldo y S.cuentasPersonalizadas, y save() releía los dos primeros de inputs
+   ocultos del DOM. Ya no hay inputs: el saldo se lee y se escribe en el objeto de la cuenta.
+     Nequi / Efectivo : {id:'nequi'|'efectivo', tipo, saldo}   (nombre y color viven en el
+                         descriptor de cuentas.js: son cuentas fijas de la app)
+     Personalizada    : {id, tipo:'custom', nombre, icono, color, saldo, movimientos:[...]}
+   Identificador de fuente en toda la app: 'nequi' | 'efectivo' | 'custom:ID'.
+   Migración (migrarCuentasLegacy): si S trae alguno de los tres campos viejos, SON la verdad
+   — llegan de un backup viejo importado o de un dispositivo con la versión anterior, que
+   solo conoce esos campos — y se reconstruye S.cuentas desde ellos y se borran. Por eso S ya
+   no puede traerlos por defecto. load(), importarJSON() y cada lectura la llaman: es
+   idempotente y barata cuando no hay nada que migrar.
+   Una excepción, para no perder plata: un cliente viejo que abre un documento YA migrado no ve
+   ningún saldo (para él nequiSaldo no existe) y, si guarda, devuelve ceros y una lista vacía.
+   Un valor viejo en 0 (o una lista vieja vacía) NO pisa a una cuenta que ya tiene saldo (o a las
+   personalizadas que ya existen). Un valor viejo distinto de cero sí manda. */
+function migrarCuentasLegacy(){
+  const hayLegacy=typeof S.nequiSaldo==='number'||typeof S.efectivoSaldo==='number'||Array.isArray(S.cuentasPersonalizadas);
+  const previas=Array.isArray(S.cuentas)?S.cuentas:[];
+  if(!hayLegacy&&previas.some(c=>c.id==='nequi')&&previas.some(c=>c.id==='efectivo'))return false;
+  const previa=id=>{const p=previas.find(c=>c.id===id);return(p&&p.saldo)||0;};
+  const saldoFijo=(legacy,id)=>(typeof legacy==='number'&&!(legacy===0&&previa(id)!==0))?legacy:previa(id);
+  const previasCustom=previas.filter(c=>c.tipo==='custom');
+  const customs=(Array.isArray(S.cuentasPersonalizadas)&&!(S.cuentasPersonalizadas.length===0&&previasCustom.length))?S.cuentasPersonalizadas:previasCustom;
+  customs.forEach(c=>{c.tipo='custom';});
+  S.cuentas=[
+    {id:'nequi',tipo:'nequi',saldo:saldoFijo(S.nequiSaldo,'nequi')},
+    {id:'efectivo',tipo:'efectivo',saldo:saldoFijo(S.efectivoSaldo,'efectivo')},
+    ...customs
+  ];
+  delete S.nequiSaldo;delete S.efectivoSaldo;delete S.cuentasPersonalizadas;
+  return true;
+}
+function _cuentasArr(){migrarCuentasLegacy();return S.cuentas;}
+// Cuenta por id: 'nequi' | 'efectivo' | id de una personalizada. undefined si no existe.
+function getCuenta(id){return _cuentasArr().find(c=>c.id===id);}
+// Solo personalizadas (undefined si el id es de una cuenta fija o ya no existe).
+function getCuentaCustom(id){const c=getCuenta(id);return c&&c.tipo==='custom'?c:undefined;}
+// Lista de personalizadas, en el orden en que se crearon.
+function cuentasCustom(){return _cuentasArr().filter(c=>c.tipo==='custom');}
+// Cuenta a partir de una fuente ('nequi' | 'efectivo' | 'custom:ID'); undefined para el resto.
+function getCuentaDeFuente(fuente){
+  if(!fuente)return undefined;
+  if(fuente==='nequi'||fuente==='efectivo')return getCuenta(fuente);
+  if(fuente.startsWith('custom:'))return getCuentaCustom(fuente.slice('custom:'.length));
+  return undefined;
+}
+
 /* ---- MOVER PLATA ENTRE CUENTAS ---- */
 // opts.exacto=true → NO recorta en 0 (se usa al REVERTIR un efecto ya aplicado).
 // Recortar al revertir pierde la diferencia para siempre: si el saldo es 49.000 y se
@@ -221,12 +279,9 @@ function descontarFuente(fuente,monto,opts){
     // Plata virtual: no salió de ninguna cuenta real, es ganancia futura
     return;
   }
-  if(fuente==='nequi'){
-    S.nequiSaldo=_piso((S.nequiSaldo||0)-monto);
-    document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
-  } else if(fuente==='efectivo'){
-    S.efectivoSaldo=_piso((S.efectivoSaldo||0)-monto);
-    document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
+  if(fuente==='nequi'||fuente==='efectivo'||fuente.startsWith('custom:')){
+    const c=getCuentaDeFuente(fuente);
+    if(c)c.saldo=_piso((c.saldo||0)-monto);
   } else if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -244,10 +299,6 @@ function descontarFuente(fuente,monto,opts){
       c.saldo=_piso((c.saldo||0)-monto);
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
     }
-  } else if(fuente.startsWith('custom:')){
-    const id=fuente.split(':')[1];
-    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
-    if(c)c.saldo=_piso((c.saldo||0)-monto);
   } else if(fuente.startsWith('tc:')){
     // Para TC: descontar = hacer una compra = aumentar la deuda
     const id=fuente.split(':')[1];
@@ -257,12 +308,9 @@ function descontarFuente(fuente,monto,opts){
 }
 function sumarFuente(fuente,monto){
   if(!fuente||!monto)return;
-  if(fuente==='nequi'){
-    S.nequiSaldo=(S.nequiSaldo||0)+monto;
-    document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
-  } else if(fuente==='efectivo'){
-    S.efectivoSaldo=(S.efectivoSaldo||0)+monto;
-    document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
+  if(fuente==='nequi'||fuente==='efectivo'||fuente.startsWith('custom:')){
+    const c=getCuentaDeFuente(fuente);
+    if(c)c.saldo=(c.saldo||0)+monto;
   } else if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -272,10 +320,6 @@ function sumarFuente(fuente,monto){
       c.saldo=(c.saldo||0)+monto;
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
     }
-  } else if(fuente.startsWith('custom:')){
-    const id=fuente.split(':')[1];
-    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
-    if(c)c.saldo=(c.saldo||0)+monto;
   } else if(fuente.startsWith('tc:')){
     // Para TC: sumar = revertir compra = disminuir la deuda
     const id=fuente.split(':')[1];
@@ -290,7 +334,7 @@ function getFuentes(){
   (S.cajitas||[]).forEach(c=>{if(!c.esCDT)arr.push({val:'cajita:'+c.id,label:c.nombre+' (Nu)'});});
   arr.push({val:'nequi',label:'Nequi'});
   arr.push({val:'efectivo',label:'Efectivo'});
-  (S.cuentasPersonalizadas||[]).forEach(c=>arr.push({val:'custom:'+c.id,label:c.nombre}));
+  cuentasCustom().forEach(c=>arr.push({val:'custom:'+c.id,label:c.nombre}));
   (S.tarjetasCredito||[]).filter(tc=>(tc.estado||'activa')==='activa').forEach(tc=>arr.push({val:'tc:'+tc.id,label:tc.nombre+' (TC)'}));
   return arr;
 }
@@ -300,7 +344,7 @@ function getFuentesSinTC(){
   (S.cajitas||[]).forEach(c=>{if(!c.esCDT)arr.push({val:'cajita:'+c.id,label:c.nombre+' (Nu)'});});
   arr.push({val:'nequi',label:'Nequi'});
   arr.push({val:'efectivo',label:'Efectivo'});
-  (S.cuentasPersonalizadas||[]).forEach(c=>arr.push({val:'custom:'+c.id,label:c.nombre}));
+  cuentasCustom().forEach(c=>arr.push({val:'custom:'+c.id,label:c.nombre}));
   return arr;
 }
 
@@ -317,7 +361,7 @@ function fuenteLabel(val){
   }
   if(val.startsWith('custom:')){
     const id=val.split(':')[1];
-    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
+    const c=getCuentaCustom(id);
     return c?c.nombre:val;
   }
   if(val.startsWith('tc:')){
@@ -347,17 +391,14 @@ function poblarFuente(selectId, required=false, incluirTC=true){
 
 function getSaldoFuente(fuente){
   if(!fuente)return 0;
-  if(fuente==='nequi')return S.nequiSaldo||0;
-  if(fuente==='efectivo')return S.efectivoSaldo||0;
+  if(fuente==='nequi'||fuente==='efectivo'||fuente.startsWith('custom:')){
+    const c=getCuentaDeFuente(fuente);
+    return c?c.saldo||0:0;
+  }
   if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
     return c?_calcCSafe(c).val:0;
-  }
-  if(fuente.startsWith('custom:')){
-    const id=fuente.split(':')[1];
-    const c=(S.cuentasPersonalizadas||[]).find(x=>x.id===id);
-    return c?c.saldo||0:0;
   }
   if(fuente.startsWith('tc:')){
     // TC: retornar el cupo disponible real (cupo - deuda).
@@ -418,7 +459,7 @@ function load(){
   // Solo inicializamos campos faltantes y sincronizamos el DOM
   if(!S.encargos)S.encargos=[];
   if(!S.movimientos)S.movimientos=[];
-  if(!S.cuentasPersonalizadas)S.cuentasPersonalizadas=[];
+  migrarCuentasLegacy(); // modelo único de cuentas (ver "CUENTAS: MODELO ÚNICO")
   if(!S.catsVar)S.catsVar=[];
   if(!S.catsFijo)S.catsFijo=[];
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
@@ -455,7 +496,7 @@ function load(){
       if(m._ajustes){ m._ajustes.forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); }); }
     };
     (S.movimientos||[]).forEach(sumarApertura);
-    (S.cuentasPersonalizadas||[]).forEach(c=>(c.movimientos||[]).forEach(sumarApertura));
+    cuentasCustom().forEach(c=>(c.movimientos||[]).forEach(sumarApertura));
     (S._ajustesBaseLog||[]).forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); });
     // Destapes de alcancía ya hechos (sobrante/faltante): mismo tratamiento que una apertura — ver _ajusteAlcanciaPorFecha().
     const _ajAlc=_ajusteAlcanciaPorFecha();
@@ -478,8 +519,6 @@ function load(){
   document.getElementById('nuRate').value=S.nuRate||9.25;
   const nuTasaEl=document.getElementById('nuTasaGlobal');
   if(nuTasaEl)nuTasaEl.value=(S.nuTasaGlobal!=null)?String(S.nuTasaGlobal).replace('.',','):'';
-  document.getElementById('nequiSaldo').value=fmtInput(S.nequiSaldo);
-  document.getElementById('efectivoSaldo').value=fmtInput(S.efectivoSaldo);
   if(typeof _getCuotaAnio==='function'){
     if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(_getCuotaAnio('papa',S.mesadaAnio||new Date().getFullYear()));
     if(document.getElementById('mesadaMonteMama'))document.getElementById('mesadaMonteMama').value=fmtInput(_getCuotaAnio('mama',S.mesadaAnio||new Date().getFullYear()));
@@ -516,20 +555,7 @@ function save(){
     console.warn('[save] Bloqueado: datos de Firebase aún no cargados.');
     return;
   }
-  // Leer del DOM solo si el input existe y tiene un valor real (no vacío/placeholder).
-  // Esto evita sobreescribir S con 0 cuando el input está oculto o sin foco.
-  function _readMoney(id, fallback){
-    const el=document.getElementById(id);
-    if(!el)return fallback;
-    const v=parseMoney(el.value);
-    // Si el input está vacío o su valor parseado es 0 pero el saldo guardado es positivo,
-    // conservamos el valor de S para no sobrescribir con 0 accidentalmente.
-    if(!el.value.trim()&&fallback>0)return fallback;
-    return v||fallback||0;
-  }
   S.nuRate=parseMoney(document.getElementById('nuRate').value)||9.25;
-  S.nequiSaldo=_readMoney('nequiSaldo', S.nequiSaldo);
-  S.efectivoSaldo=_readMoney('efectivoSaldo', S.efectivoSaldo);
   // Cuota mensual por año — guardada en S.mesadas[parent].cuotas[anio]
   const _anioActivo=S.mesadaAnio||new Date().getFullYear();
   // El guard de inicialización de S.mesadas vive en _ensureMesadas()
@@ -683,15 +709,15 @@ function calcPatrimonioTotal(){
   // de la base que gana interés en calcC()/_saldoEncargosEnCajita()). Restarla
   // acá contaba de menos un patrimonio que en realidad nunca se sumó. Ver
   // CHANGELOG.md#encargos.
-  const nequi=(S.nequiSaldo||0);
-  const ef=(S.efectivoSaldo||0);
+  const nequi=getSaldoFuente('nequi');
+  const ef=getSaldoFuente('efectivo');
   // FIX (auditoria-tecnica.md #5): getDeudorSaldoPatrimonio (prestado.js) se
   // llamaba sin guard typeof — calcPatrimonioTotal() corre en CADA save() de
   // la app (vía snapshotPatrimonio), no solo en refresh(), así que esto
   // bloqueaba volver lazy Préstamos igual que tcNormalizarTarjetas bloqueaba
   // Tarjetas de Crédito.
   const prest=(S.deudores||[]).reduce((a,d)=>{ const s=typeof getDeudorSaldoPatrimonio==='function'?getDeudorSaldoPatrimonio(d):0; return a+(s>0?s:0); },0);
-  const custom=(S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0);
+  const custom=cuentasCustom().reduce((a,c)=>a+(c.saldo||0),0);
   const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
   // Lo que le debo a otras personas (S.misDeudas) — esa plata está físicamente en
   // mis cuentas pero no es mía, así que se resta igual que la deuda de TC.
@@ -766,7 +792,7 @@ function snapshotPatrimonio(){
   },0);
   const montoAperturaHoy =
     sumarAperturasYAjustesDeHoy(S.movimientos)
-    + (S.cuentasPersonalizadas||[]).reduce((a,c)=>a+sumarAperturasYAjustesDeHoy(c.movimientos),0)
+    + cuentasCustom().reduce((a,c)=>a+sumarAperturasYAjustesDeHoy(c.movimientos),0)
     + (S._ajustesBaseLog||[]).filter(aj=>aj.fecha===hoyStr).reduce((a,aj)=>a+(aj.monto||0),0)
     + (_ajusteAlcanciaPorFecha()[hoyStr]||0);
   const ultimo=S.patrimonioHistorial[S.patrimonioHistorial.length-1];
@@ -1137,8 +1163,8 @@ function refresh(){
   const nu=_nuTotalSafe();
   // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas
   // personalizadas — mismo criterio y misma razón que en calcPatrimonioTotal().
-  const nequi=(S.nequiSaldo||0);
-  const ef=(S.efectivoSaldo||0);
+  const nequi=getSaldoFuente('nequi');
+  const ef=getSaldoFuente('efectivo');
   // FIX 2026-08-13: totalPrestadoPendiente (prestado.js, grupo lazy) sin
   // guard — mismo patrón de fallback (0) que ya usa inicio.js línea ~253
   // (window.totalPrestadoPendiente?...:0) para el mismo caso.
@@ -1147,7 +1173,7 @@ function refresh(){
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+_calcCDTSafe(cdt).val,0),0);
   const cajitasLibres=(S.cajitas||[]).reduce((a,c)=>a+_calcCSafe(c).val,0);
   // Cuentas personalizadas marcadas para incluir en total
-  const customTotal=(S.cuentasPersonalizadas||[]).reduce((a,c)=>a+(c.saldo||0),0);
+  const customTotal=cuentasCustom().reduce((a,c)=>a+(c.saldo||0),0);
   const disp=cajitasLibres+nequi+ef+customTotal;
   // Expuesto para que inicio.js (Neto de TC) reste la deuda de TC de este
   // MISMO número en vez de recalcular "disponible" por su cuenta — evita
@@ -1219,15 +1245,6 @@ function refresh(){
   const nuInterEl=document.getElementById('nuTotalIntereses');
   if(nuInterEl)nuInterEl.textContent=interesesTotalHoy>0.5?'+'+fmt(interesesTotalHoy)+' intereses estimados hoy':'';
 
-  // Actualizar saldos en el selector de cuentas
-  const selNequi=document.getElementById('sel-nequi-saldo');
-  const selNu=document.getElementById('sel-nu-saldo');
-  const selEf=document.getElementById('sel-ef-saldo');
-  // Selector: solo entero (fmtNoCents), así un saldo con decimales largos no se
-  // desborda de la tarjeta. El detalle de cada cuenta sigue usando fmt() con centavos.
-  if(selNequi)selNequi.textContent=fmtNoCents(nequi);
-  if(selNu)selNu.textContent=fmtNoCents(nu);
-  if(selEf)selEf.textContent=fmtNoCents(ef);
   // Si hay una cuenta abierta, actualizar su detalle
   // FIX (auditoria-tecnica.md #5): las llamadas de este bloque no tenían
   // guard typeof — bloqueaban de raíz volver lazy cuentas/encargos/gastos/
@@ -1235,22 +1252,15 @@ function refresh(){
   // refresh() tras cargar el módulo bajo demanda). Mismo patrón defensivo
   // ya usado para renderMesada/_refreshCajitaDet/renderTCScreen — no cambia
   // el comportamiento actual (todo sigue cargando de entrada).
-  // FIX 2026-08-13: cuentaActual y _customCuentaActualId son VARIABLES (no
-  // funciones) que viven en cuentas.js, grupo lazy — a diferencia de las
+  // FIX 2026-08-13: cuentaActual es una VARIABLE (no
+  // función) que vive en cuentas.js, grupo lazy — a diferencia de las
   // llamadas de función de acá abajo (que sí tenían guard con
   // typeof fn==='function'), estas se referenciaban bare (if(cuentaActual)),
   // lo que también tira ReferenceError si cuentas.js no cargó. Mismo
   // guard typeof!=='undefined' que ya usa este archivo para Events.
-  if(typeof cuentaActual!=='undefined' && cuentaActual){ if(typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual); }
-  else if(typeof _customCuentaActualId!=='undefined' && _customCuentaActualId){
-    const _cc=(S.cuentasPersonalizadas||[]).find(x=>x.id===_customCuentaActualId);
-    if(_cc){
-      const saldoEl=document.getElementById('det-custom-saldo');
-      if(saldoEl)saldoEl.textContent=fmt(_cc.saldo||0);
-      if(typeof renderMovsCustom==='function') renderMovsCustom(_cc);
-      if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-custom-encargos', 'custom:'+_customCuentaActualId);
-    }
-  }
+  // Detalle de la cuenta abierta (Nequi, Nu, Efectivo o personalizada): renderDetalleCuenta()
+  // recibe la fuente ('custom:ID' para las personalizadas) y ya ignora una cuenta borrada.
+  if(typeof renderDetalleCuenta==='function' && typeof cuentaActual!=='undefined' && cuentaActual) renderDetalleCuenta(cuentaActual);
   // Siempre actualizar el detalle/sub-pantallas de cajita si hay una abierta
   if(typeof _refreshCajitaDet==='function') _refreshCajitaDet();
   // FIX (2026-08-17, hallazgo nuevo al confirmar contra gastos.md):
@@ -1267,16 +1277,16 @@ function refresh(){
   // importar si el usuario la estaba viendo. Ya se re-renderizan al ENTRAR
   // a su pantalla (showScreen(), ver sheet-stack.js) — Cuentas y Gastos
   // recibieron sus hooks recién el 2026-08-17 (renderCajitas/
-  // renderCustomCuentasList/renderMesFiltros/renderGastosFijos, confirmado
+  // renderSelectorCuentas/renderMesFiltros/renderGastosFijos, confirmado
   // contra cuentas.js/gastos.js reales que son funciones puras de render),
   // así que ya es seguro sumarlas al mismo guard "está activa AHORA" que
   // ya usan renderDeudoresList/renderMesada/renderSpotify más abajo.
   const _screenCuentasActiva=document.getElementById('screen-cuentas')&&document.getElementById('screen-cuentas').classList.contains('active');
   const _screenGastosActiva=document.getElementById('screen-gastos')&&document.getElementById('screen-gastos').classList.contains('active');
-  if(_screenCuentasActiva && !(typeof cuentaActual!=='undefined' && cuentaActual) && !(typeof _customCuentaActualId!=='undefined' && _customCuentaActualId)){
+  if(_screenCuentasActiva && !(typeof cuentaActual!=='undefined' && cuentaActual)){
     if(typeof renderCajitas==='function') renderCajitas();
   }
-  if(_screenCuentasActiva && typeof renderCustomCuentasList==='function') renderCustomCuentasList();
+  if(_screenCuentasActiva && typeof renderSelectorCuentas==='function') renderSelectorCuentas();
   if(_screenGastosActiva && typeof renderGastosFijos==='function') renderGastosFijos();
   if(_screenGastosActiva && typeof renderMesFiltros==='function') renderMesFiltros();
   if(typeof renderDeudoresList==='function' && document.getElementById('screen-prestamos') && document.getElementById('screen-prestamos').classList.contains('active')) renderDeudoresList();

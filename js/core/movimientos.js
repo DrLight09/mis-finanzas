@@ -27,7 +27,7 @@
        de abajo (movTipoEl === ...) sabe limpiar. Ej.: un "espejo" guardado
        en `cajita.historial` o en el historial propio de otro módulo — las
        ramas genéricas solo saben tocar S.movimientos, S.gastosVar,
-       cuentasPersonalizadas[].movimientos y deudores[].movimientos.
+       S.cuentas[].movimientos (personalizadas) y deudores[].movimientos.
        Si el array de destino no está ahí, borrar revierte el saldo pero
        deja el registro zombie parado para siempre.
    (b) Relacional — el objeto SÍ se borra limpio de su propio array, pero
@@ -67,7 +67,7 @@
    getMovimientosCuenta, sumarFuente, descontarFuente, openSheet, dialogo,
    toast, getMesadaData, mesKey) y de funciones de otros módulos ya migrados
    (tcEliminarCompraInterna/tcEliminarPagoInterna de Tarjetas de Crédito,
-   abrirCustomCuenta/renderDetalleCuenta de Cuentas, getEncargo de Encargos)
+   renderDetalleCuenta de Cuentas, getEncargo de Encargos)
    — todos ya cargados antes de este archivo en index.html.
    ========================================================================== */
 
@@ -214,7 +214,7 @@ function abrirDetalleMov(el){
         }
         if (!_rawMov && fuente.startsWith('custom:')) {
           const cid = fuente.split(':')[1];
-          const c = (S.cuentasPersonalizadas||[]).find(x=>x.id===cid);
+          const c = getCuentaCustom(cid);
           if (c) _rawMov = (c.movimientos||[]).find(m=>m.id===movId) || null;
         }
       }
@@ -472,7 +472,7 @@ async function eliminarMovimiento(btn) {
   const movObj = (S.movimientos || []).find(x => x.id === movId)
     || (() => { for (const enc of (S.encargos||[])) { const m=(enc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (() => { for (const caj of (S.cajitas||[])) { const m=(caj.historial||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
-    || (() => { for (const cc of (S.cuentasPersonalizadas||[])) { const m=(cc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
+    || (() => { for (const cc of cuentasCustom()) { const m=(cc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (() => { for (const d of (S.deudores||[])) { const m=(d.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (S.gastosVar || []).find(x => x.id === movId)
     || (S.spotifyHistorial || []).find(x => x.id === movId)
@@ -646,7 +646,7 @@ async function eliminarMovimiento(btn) {
       // Si era movimiento de cuenta custom, eliminar también de c.movimientos (doble-escritura)
       if (m.fuente && m.fuente.startsWith('custom:')) {
         const cid = m.fuente.split(':')[1];
-        const cc = (S.cuentasPersonalizadas || []).find(x => x.id === cid);
+        const cc = getCuentaCustom(cid);
         if (cc) cc.movimientos = (cc.movimientos || []).filter(x => x.id !== movId);
       }
       S.movimientos = S.movimientos.filter(x => x.id !== movId);
@@ -665,7 +665,7 @@ async function eliminarMovimiento(btn) {
       // Si era movimiento de cuenta custom, eliminar también de c.movimientos (doble-escritura)
       if (fuente && fuente.startsWith('custom:')) {
         const cid = fuente.split(':')[1];
-        const cc = (S.cuentasPersonalizadas || []).find(x => x.id === cid);
+        const cc = getCuentaCustom(cid);
         if (cc) cc.movimientos = (cc.movimientos || []).filter(x => x.id !== movId);
       }
       S.movimientos = S.movimientos.filter(x => x.id !== movId);
@@ -680,7 +680,7 @@ async function eliminarMovimiento(btn) {
       descontarFuente(fuenteOrigen, monto, { exacto: true });
       if (fuenteOrigen.startsWith('custom:')) {
         const cid = fuenteOrigen.split(':')[1];
-        const cc = (S.cuentasPersonalizadas || []).find(x => x.id === cid);
+        const cc = getCuentaCustom(cid);
         if (cc) cc.movimientos = (cc.movimientos || []).filter(x => x.id !== movId);
       }
       if (movTipoEl === 'apertura') {
@@ -712,7 +712,7 @@ async function eliminarMovimiento(btn) {
     S.movimientos = (S.movimientos || []).filter(x => x.id !== movId);
     if (fuente && fuente.startsWith('custom:')) {
       const cid = fuente.split(':')[1];
-      const cc = (S.cuentasPersonalizadas || []).find(x => x.id === cid);
+      const cc = getCuentaCustom(cid);
       if (cc) cc.movimientos = (cc.movimientos || []).filter(x => x.id !== movId);
     }
   } else if (movTipoEl === 'gasto') {
@@ -792,13 +792,10 @@ async function eliminarMovimiento(btn) {
 // borrar un movimiento. Compartido por el final de eliminarMovimiento() y por la
 // delegación en eliminarMovDeudor() (préstamo/abono).
 function _rerenderCuentaActiva() {
-  if (!cuentaActual) return;
-  if (cuentaActual === 'custom' && _customCuentaActualId) {
-    // Re-abrir la cuenta custom activa para refrescar saldo + movimientos
-    if (typeof abrirCustomCuenta==='function') abrirCustomCuenta(_customCuentaActualId);
-  } else {
-    if (typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);
-  }
+  // cuentaActual vive en cuentas.js (grupo lazy): guard typeof, igual que refresh() en
+  // core-state.js. Vale para cualquier cuenta abierta; las personalizadas son 'custom:ID'.
+  if (typeof renderDetalleCuenta !== 'function') return;
+  if (typeof cuentaActual !== 'undefined' && cuentaActual) renderDetalleCuenta(cuentaActual);
 }
 
 // Registro bajo el namespace 'core' — ver nota de cabecera de este archivo.

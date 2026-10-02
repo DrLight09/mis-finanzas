@@ -87,7 +87,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
 .cuenta-card-nombre{font-size:14px;font-weight:600;color:var(--cuenta);}
 .cuenta-card-etiqueta{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;}
 .cuenta-card-saldo{font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--cuenta);overflow-wrap:anywhere;word-break:break-word;line-height:1.25;padding-right:16px;}
-.cuenta-card-flecha{position:absolute;bottom:12px;right:12px;stroke:rgba(var(--cuenta-rgb),.4);}
+.cuenta-card-flecha{position:absolute;bottom:12px;right:12px;stroke:var(--cuenta);}
 .cuenta-pill{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-radius:var(--radius-sm);background:linear-gradient(135deg,rgba(var(--cuenta-rgb),.12) 0%,rgba(var(--cuenta-rgb),.04) 100%);border:1px solid rgba(var(--cuenta-rgb),.35);}
 .cuenta-pill-info{display:flex;align-items:center;gap:10px;min-width:0;}
 .cuenta-pill-nombre{font-size:13px;font-weight:600;color:var(--cuenta);}

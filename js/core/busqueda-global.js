@@ -145,6 +145,15 @@
   }
 
   // ── Flecha de navegación SVG ─────────────────────────────────────────────
+  // Texto plano de una fuente de movimiento para el meta del resultado ('nequi' → "Nequi",
+  // 'cajita:ID' → "Nombre (Nu)", 'custom:ID' → nombre de la cuenta, 'tc:ID' → nombre de la
+  // tarjeta). fuenteLabel() devuelve HTML (ícono) para 'ganancia' y deja el id crudo si la cuenta
+  // personalizada ya no existe: acá ambos casos se resuelven a texto legible.
+  const _fuenteTexto = f => {
+    if(f === 'ganancia') return 'Ganancia';
+    const l = typeof fuenteLabel === 'function' ? fuenteLabel(f) : f;
+    return (l === f && String(f).includes(':')) ? 'Cuenta eliminada' : l;
+  };
   const _arrowRight = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="flex-shrink:0;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
 
   busquedaInput.addEventListener('input', function(){
@@ -283,7 +292,7 @@
     (S.movimientos||[]).forEach(m => {
       if((m.desc||m.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         const esAlcIngreso = !!m._esAlcanciaIngreso;
-        const fuente = (!esAlcIngreso && m.fuente) ? ' · '+m.fuente : '';
+        const fuente = (!esAlcIngreso && m.fuente) ? ' · '+_fuenteTexto(m.fuente) : '';
         const montoTxt = esAlcIngreso ? '' : (window.fmt?window.fmt(m.monto):'');
         const restoMeta = esAlcIngreso ? ' · Ahorro · '+(m.fecha||'') : (m.fecha?' · '+m.fecha:'')+fuente;
         resultados.push({

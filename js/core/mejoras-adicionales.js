@@ -29,10 +29,13 @@
   const MONEY_SELECTORS = [
     '#heroTotal','#s-disp','#s-nu','#s-ef','#s-nequi','#s-prest','#s-cdt',
     '#s-gf','#s-gv','#s-gtotal','.hero-amount','.stat-value','.row-amount',
-    '#det-nequi-saldo','#det-ef-saldo','#nuTotalDisp','#sel-nequi-saldo',
-    '#sel-nu-saldo','#sel-ef-saldo','.cajita-val','#det-custom-saldo',
-    '#tc-hero-cupo'
+    '#det-cuenta-saldo','#nuTotalDisp','.cajita-val','#tc-hero-cupo'
   ];
+  // #det-cuenta-saldo: saldo del detalle de Nequi, Efectivo y cuentas personalizadas (una sola
+  // pantalla; reemplaza a #det-nequi-saldo, #det-ef-saldo y #det-custom-saldo). Los saldos del
+  // selector de Cuentas (#sel-nequi-saldo, #sel-nu-saldo, #sel-ef-saldo, antes elementos fijos) ya
+  // no son elementos fijos: renderSelectorCuentas() reescribe todo el contenedor con innerHTML,
+  // por eso se tratan como área dinámica (SALDO_DINAMICO_IDS, 'selector-cuentas-lista').
 
   // Aplica el estado actual de _saldosOcultos al ícono del botón y a los
   // elementos de dinero, sin cambiar el valor de _saldosOcultos. Se usa
@@ -55,7 +58,7 @@
       });
     });
     // Proyección, "Necesita atención" (deudas de personas y cobros
-    // vencidos), tarjetas de crédito, cuentas personalizadas y las listas
+    // vencidos), tarjetas de crédito, selector de cuentas y las listas
     // de gastos: los montos ya están envueltos en spans .saldo-inline
     // (ver 1b más abajo), acá solo se prende/apaga.
     _aplicarOcultoEnAreas();
@@ -73,7 +76,7 @@
      1b. OCULTAR MONTOS EN ÁREAS DINÁMICAS
          (Tendencia mensual/proyección, "Necesita atención" —
          deudas de personas y cobros vencidos—, tarjetas de
-         crédito, cuentas personalizadas en "Cuentas", las
+         crédito, el selector de cuentas en "Cuentas" (Nequi, Nu, Efectivo y personalizadas), las
          listas de gastos variables/fijos en "Gastos", los
          listados y el historial de Préstamos (me deben / yo
          debo), la lista y estadísticas de Spotify, la lista
@@ -95,7 +98,7 @@
          cada gasto (ej. "Uber", "Farmacia") sigue visible — no
          se toca ese texto.
   ==================================================== */
-  const SALDO_DINAMICO_IDS = ['proyeccion-card','s-attn-list','tc-deuda-card','custom-cuentas-list','gastosVarList','gastosFijosList',
+  const SALDO_DINAMICO_IDS = ['proyeccion-card','s-attn-list','tc-deuda-card','selector-cuentas-lista','gastosVarList','gastosFijosList',
     // Préstamos (lo que me deben / lo que debo): listas y detalle
     'deudoresList','misDeudasList','ddHistorial','mdHistorial',
     // Spotify: lista de personas, estadísticas (ganancias) e historial de cobros

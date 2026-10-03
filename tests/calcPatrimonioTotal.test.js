@@ -83,9 +83,9 @@ test('calcPatrimonioTotal — GUARD: cajitas sin cuentas.js cargado usa fallback
   assert.equal(ctx.calcPatrimonioTotal(), 300000);
 });
 
-test('calcPatrimonioTotal — GUARD: plata prestada (S.deudores) sin prestado.js cargado no suma nada', () => {
-  // getDeudorSaldoPatrimonio vive en prestado.js (lazy, no cargado acá).
-  // El guard typeof debe devolver 0 por deudor, nunca sumar el saldo crudo.
+test('calcPatrimonioTotal — GUARD: plata prestada (S.deudores) sin calc-helpers.js cargado no suma nada', () => {
+  // `Deudas` vive en calc-helpers.js (no cargado acá, solo core-state.js).
+  // El guard typeof debe devolver 0, nunca sumar el saldo crudo.
   const ctx = freshApp({
     nequiSaldo: 100000,
     deudores: [{ id: 'd1', nombre: 'Hermanito', saldo: 630000 }],
@@ -93,8 +93,8 @@ test('calcPatrimonioTotal — GUARD: plata prestada (S.deudores) sin prestado.js
   assert.equal(ctx.calcPatrimonioTotal(), 100000);
 });
 
-test('calcPatrimonioTotal — GUARD: misDeudas sin prestado.js cargado no resta nada', () => {
-  // totalMisDeudasPendiente también vive en prestado.js (lazy).
+test('calcPatrimonioTotal — GUARD: misDeudas sin calc-helpers.js cargado no resta nada', () => {
+  // Mismo guard: sin `Deudas` cargado no se resta nada.
   const ctx = freshApp({ nequiSaldo: 100000, misDeudas: [{ id: 'm1', saldo: 999999 }] });
   assert.equal(ctx.calcPatrimonioTotal(), 100000);
 });

@@ -8,10 +8,13 @@ modificarlo, usando `vm` para simular cómo el navegador carga
 - `calcHealthScore()` — `js/modules/inicio.js`
 - `calcC()`/`calcCDT()` (interés compuesto real de Nu, por tramos de
   tasa, redondeo de CDT) — `js/modules/cuentas.js`
-- `totalPrestadoPendiente()`/`getDeudorSaldoPatrimonio()`/
-  `totalMisDeudasPendiente()` — `js/modules/prestado.js`
+- `Deudas` (capa de acceso a Me deben / Yo debo), `totalPrestadoPendiente()`/
+  `totalMisDeudasPendiente()` — `js/core/calc-helpers.js`
+- Yo debo (pago dividido, perdón, pago de más, pago con tarjeta) y
+  `registrarMovEspejo()`/`borrarMovEspejo()` — `js/modules/prestado.js`,
+  `js/core/cuenta-efectos.js`
 
-**35 tests, los 35 pasan** contra tus archivos reales (confirmado acá
+**49 tests, los 49 pasan** contra tus archivos reales (confirmado acá
 antes de entregarte esto, no es teoría).
 
 ## Cómo correrlos
@@ -60,12 +63,12 @@ MIS_FINANZAS_CORE_DIR=./ruta/a/core MIS_FINANZAS_MODULES_DIR=./ruta/a/modules np
 
 ## Cargar `calc-helpers.js` cuando el archivo bajo test lo use (2026-09-20)
 
-`getDeudorSaldo()` (Préstamos) y `spNombreDe()`/`spPersonaPagadaVigente()`
+`Deudas` y sus envoltorios `getDeudorSaldo()`/`getMiDeudaSaldo()`/`totalPrestadoPendiente()`/`totalMisDeudasPendiente()` (Préstamos) y `spNombreDe()/`spPersonaPagadaVigente()`
 (Spotify) viven ahora en `js/core/calc-helpers.js`, no en `prestado.js`/
 `spotify.js`, igual que las funciones puras de Mesada y Tarjetas. Si un test
 carga `prestado.js` o `spotify.js` y ejercita algo que las llama (por ejemplo
 `totalPrestadoPendiente()`), tiene que cargar también `calc-helpers.js`, en el
-mismo orden que `index.html`: `core-state.js` → `calc-helpers.js` → módulo.
+mismo orden que `index.html`: `core-state.js` → `cuenta-efectos.js` → `calc-helpers.js` → módulo. `prestado.js` y `mesada.js` además necesitan `cuenta-efectos.js` (movimiento espejo en cuentas) para registrar o revertir movimientos.
 
 Ojo en modo `permissive`: no falla con un error, **da resultados en silencio**
 (la función faltante cae a un no-op que devuelve `undefined`, y

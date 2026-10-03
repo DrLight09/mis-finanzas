@@ -14,17 +14,18 @@ const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR
 // events.js) a nivel de módulo. permissive:true las deja caer a no-op.
 // Ver tests/support/load-app.js para el porqué y el riesgo de esto.
 //
-// Se carga prestado.js también (aunque estos tests no prueban sus
-// funciones directamente): calcPatrimonioTotal() llama a
-// getDeudorSaldoPatrimonio/totalMisDeudasPendiente con un guard
-// `typeof X==='function'` — en modo permissive ESE guard siempre da
-// true (el Proxy inventa una función para cualquier nombre), así que
-// sin prestado.js real cargado, el guard llamaría al no-op fantasma
-// (devuelve undefined) y contaminaría la resta final con NaN. Cargar
-// el archivo real evita ese falso positivo del guard.
+// Se cargan prestado.js y calc-helpers.js también (aunque estos tests no
+// prueban sus funciones directamente): calcPatrimonioTotal() consulta
+// `Deudas` (js/core/calc-helpers.js) con un guard `typeof Deudas!=='undefined'`
+// — en modo permissive ESE guard siempre da true (el Proxy inventa un valor
+// para cualquier nombre), así que sin calc-helpers.js real cargado el guard
+// pasaría y `Deudas.totalPendiente(...)` no devolvería un número (NaN en la
+// resta final). Cargar el archivo real evita ese falso positivo del guard.
+// Orden igual que index.html: core-state.js → calc-helpers.js → módulos.
 function freshApp(sOverrides = {}) {
   const ctx = loadApp([
     path.join(CORE_DIR, 'core-state.js'),
+    path.join(CORE_DIR, 'calc-helpers.js'),
     path.join(MODULES_DIR, 'cuentas.js'),
     path.join(MODULES_DIR, 'prestado.js'),
   ], { permissive: true });

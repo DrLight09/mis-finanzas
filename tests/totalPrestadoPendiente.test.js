@@ -13,7 +13,7 @@ const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR
 // (openSheet/toast/dialogo) a nivel de módulo — mismo caso que cuentas.js,
 // ver tests/support/load-app.js.
 //
-// calc-helpers.js (2026-09-20): getDeudorSaldo() se movió de prestado.js a
+// calc-helpers.js (2026-09-20): getDeudorSaldo() se movió (y hoy delega en `Deudas`, la capa de acceso a Me deben / Yo debo) de prestado.js a
 // js/core/calc-helpers.js (carga de entrada) para que "Necesita atención"
 // la tenga en el primer render. prestado.js la sigue usando como global
 // (totalPrestadoPendiente() la llama), así que hay que cargar calc-helpers.js
@@ -30,7 +30,7 @@ function freshApp(sOverrides = {}) {
   return ctx;
 }
 
-test('getDeudorSaldoPatrimonio — suma préstamos y resta abonos, sin importar el signo neto', () => {
+test('getDeudorSaldo — suma préstamos y resta abonos, sin importar el signo neto', () => {
   const ctx = freshApp();
   const d = {
     movimientos: [
@@ -38,10 +38,10 @@ test('getDeudorSaldoPatrimonio — suma préstamos y resta abonos, sin importar 
       { tipo: 'abono', monto: 200000 },
     ],
   };
-  assert.equal(ctx.getDeudorSaldoPatrimonio(d), 300000);
+  assert.equal(ctx.getDeudorSaldo(d), 300000);
 });
 
-test('getDeudorSaldoPatrimonio — puede dar negativo si abonó de más (a diferencia de totalPrestadoPendiente, que no lo pisa a 0)', () => {
+test('getDeudorSaldo — puede dar negativo si abonó de más (a diferencia de totalPrestadoPendiente, que no lo pisa a 0)', () => {
   const ctx = freshApp();
   const d = {
     movimientos: [
@@ -49,7 +49,15 @@ test('getDeudorSaldoPatrimonio — puede dar negativo si abonó de más (a difer
       { tipo: 'abono', monto: 150000 },
     ],
   };
-  assert.equal(ctx.getDeudorSaldoPatrimonio(d), -50000);
+  assert.equal(ctx.getDeudorSaldo(d), -50000);
+});
+
+test('getDeudorSaldo / getMiDeudaSaldo — una sola fórmula para las dos direcciones (Deudas.saldo)', () => {
+  const ctx = freshApp();
+  const meDeben = { movimientos: [{ tipo: 'prestamo', monto: 300 }, { tipo: 'abono', monto: 100 }, { tipo: 'pago-completo', monto: 50 }] };
+  const yoDebo = { movimientos: [{ tipo: 'recibido', monto: 300 }, { tipo: 'pago', monto: 100 }] };
+  assert.equal(ctx.getDeudorSaldo(meDeben), 150);
+  assert.equal(ctx.getMiDeudaSaldo(yoDebo), 200);
 });
 
 test('totalPrestadoPendiente — suma solo los deudores con saldo positivo, ignora los saldados o negativos', () => {
@@ -94,7 +102,7 @@ test('calcPatrimonioTotal — con prestado.js real cargado, la plata prestada S�
     deudores: [{ nombre: 'Hermanito', movimientos: [{ tipo: 'prestamo', monto: 630000 }] }],
   });
   // Sin prestado.js (guard) esto daba 100000 — ver calcPatrimonioTotal.test.js.
-  // Con prestado.js real cargado, getDeudorSaldoPatrimonio() SÍ corre.
+  // Con prestado.js real cargado, Deudas.totalPendiente() SÍ corre (calc-helpers.js).
   assert.equal(ctx.calcPatrimonioTotal(), 730000);
 });
 

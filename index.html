@@ -3669,40 +3669,6 @@
     </div>
 
     <!-- NUEVA DEUDA (yo le debo a alguien) -->
-    <div class="overlay" id="sheet-nueva-deuda" data-sheet-id="nueva-deuda">
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title">Nueva deuda</div>
-        <div class="ig"><label class="il" for="nd_nombre">¿A quién le
-            debes?</label>
-          <input type="text" id="nd_nombre" maxlength="30"
-            placeholder="Ej: Papá, Carlos, Mamá...">
-        </div>
-        <div class="ig"><label class="il" for="nd_monto">¿Cuánto te
-            prestó?</label>
-          <input type="text" inputmode="decimal" id="nd_monto"
-            placeholder="0,00" class="money-input">
-        </div>
-        <div class="ig">
-          <label for="nd_destino" class="il">¿A qué cuenta entró la plata?</label>
-          <div class="select-wrap"><select id="nd_destino"><option value>Sin
-                especificar</option></select></div>
-          <div class="field-hint field-hint-green">Se sumará automáticamente al
-            saldo de esa cuenta</div>
-        </div>
-        <div class="ig"><label class="il" for="nd_fecha">Fecha</label>
-          <input type="date" id="nd_fecha">
-        </div>
-        <div class="ig"><label class="il" for="nd_nota">Nota (opcional)</label>
-          <input type="text" id="nd_nota" maxlength="60" placeholder="Ej: Para el arriendo">
-        </div>
-        <button type="button" class="btn btn-primary"
-          id="btn-crear-mi-deuda" data-action="prestado:crearMiDeuda" data-args="[]">Crear deuda</button>
-        <button type="button" class="btn btn-ghost"
-          data-close-sheet="nueva-deuda">Cancelar</button>
-      </div>
-    </div>
-
     <!-- EDITAR MI DEUDA -->
     <div class="overlay" id="sheet-editar-mi-deuda"
       data-sheet-id="editar-mi-deuda">

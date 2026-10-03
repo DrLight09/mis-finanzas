@@ -1363,9 +1363,9 @@
         <div class="screen" id="screen-prestamos">
           <div style="display:flex;gap:6px;margin-bottom:14px;"
             id="prestamos-tabs">
-            <button type="button" class="btn" id="tab-me-deben"
+            <button type="button" class="btn btn-tab-activa" id="tab-me-deben"
               data-action="prestado:cambiarTabPrestamos" data-args="[&quot;me-deben&quot;]"
-              style="flex:1;background:rgba(200,240,96,.12);border-color:rgba(200,240,96,.4);color:var(--accent);">
+              style="flex:1;">
               Me deben
             </button>
             <button type="button" class="btn btn-ghost" id="tab-yo-debo"
@@ -3734,13 +3734,62 @@
           <input type="text" inputmode="decimal" id="md_monto"
             placeholder="0,00" class="money-input">
         </div>
+        <!-- ══ PERDÓN (solo "Registrar pago") ══ -->
+        <div id="md_perdon_wrap" style="display:none;">
+          <div class="cfg-toggle" style="padding:0 0 12px;border-bottom:none;">
+            <div class="cfg-toggle-info">
+              <div class="cfg-toggle-label" style="font-size:13px;">¿Te lo perdonaron?</div>
+              <div class="cfg-toggle-sub">Te perdonan lo que falta: no sale plata de ninguna cuenta y
+                queda como ingreso tuyo</div>
+            </div>
+            <label class="toggle-sw">
+              <input type="checkbox" id="md_perdon">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="form-divider"></div>
+        </div>
         <div class="ig" id="md_cuenta_wrap">
-          <label for="md_cuenta" class="il" id="md_cuenta_label">¿A qué cuenta entró la
-            plata?</label>
-          <div class="select-wrap"><select id="md_cuenta"><option value>Sin
-                especificar</option></select></div>
-          <div class="field-hint field-hint-green" id="md_cuenta_hint">Se sumará
-            automáticamente al saldo de esa cuenta</div>
+          <div class="field-header">
+            <label for="md_cuenta" class="il" id="md_cuenta_label" style="margin-bottom:0;">¿A qué cuenta entró la
+              plata?</label>
+            <button type="button" id="md_split_toggle" data-action="prestado:toggleMdSplit" data-args="[]"
+              class="btn-split">Dividir ÷</button>
+          </div>
+          <!-- Modo simple -->
+          <div id="md_cuenta_simple">
+            <div class="select-wrap"><select id="md_cuenta"><option value>Sin
+                  especificar</option></select></div>
+            <div class="field-hint field-hint-green" id="md_cuenta_hint">Se sumará
+              automáticamente al saldo de esa cuenta</div>
+          </div>
+          <!-- Modo dividido -->
+          <div id="md_cuenta_split" style="display:none;">
+            <div id="md_split_rows"></div>
+            <button type="button" id="btn-add-md-split" data-action="prestado:mdAddSplitRow" data-args="[]"
+              class="btn-add-cuenta" style="margin-bottom:4px;">+ Agregar
+              cuenta</button>
+            <div id="md_split_resumen"
+              style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);min-height:16px;"></div>
+          </div>
+        </div>
+        <!-- ══ PAGUÉ DE MÁS (solo "Registrar pago") ══ -->
+        <div id="md_extra_wrap" style="display:none;">
+          <div class="cfg-toggle" style="padding:0 0 12px;border-bottom:none;">
+            <div class="cfg-toggle-info">
+              <div class="cfg-toggle-label" style="font-size:13px;">¿Pagaste de más?</div>
+              <div class="cfg-toggle-sub">Lo que pasa de la deuda sale de tu cuenta y queda como gasto tuyo</div>
+            </div>
+            <label class="toggle-sw">
+              <input type="checkbox" id="md_tiene_extra">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="ig" id="md_extra_body" style="display:none;">
+            <label class="il" for="md_extra_monto">Monto de más</label>
+            <input type="text" inputmode="decimal" id="md_extra_monto"
+              placeholder="0,00" class="money-input">
+          </div>
         </div>
         <div class="ig"><label class="il" for="md_fecha">Fecha</label>
           <input type="date" id="md_fecha">
@@ -4938,6 +4987,7 @@
     <script src="js/core/diferencial.js" defer></script>
     <script src="js/core/split.js" defer></script>
 <script src="js/core/core-state.js" defer></script>
+<script src="js/core/cuenta-efectos.js" defer></script>
 <!--
 // js/core/html-tag.js — primitivo html`` que escapa por defecto (ver
 // auditoria-tecnica.md, "Auditoría exhaustiva de .innerHTML" — solución de

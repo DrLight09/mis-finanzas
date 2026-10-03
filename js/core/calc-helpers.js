@@ -14,6 +14,8 @@
    Inicio tiene lo que necesita sin arrastrar el resto (botones,
    sheets, wiring de esas pantallas). Ver CHANGELOG.md.
 
+   También aloja `Deudas` (capa de acceso a "Me deben"/"Yo debo" y sus saldos).
+
    Este archivo carga de entrada (<script defer>, sin passar por
    Loader), justo después de core-state.js — ver orden de <script>
    en index.html. mesada.js y tarjetas_credito.js YA NO definen estas
@@ -73,14 +75,67 @@ function tcCupoDisponible(tc){
   return Math.max(0,(tc.cupo||0)-(tc.deuda||0));
 }
 
-/* ---- Préstamos (antes en prestado.js) — 2026-09-20 ----
-   "Necesita atención" muestra una tarjeta "X te debe $…" por cada deudor con
-   saldo. Con getDeudorSaldo dentro de prestado.js (lazy), esas tarjetas
-   aparecían recién cuando el módulo terminaba de cargar y empujaban hacia
-   abajo todo lo que hay debajo en Inicio (CLS ~0.14-0.19 en Lighthouse). */
-function getDeudorSaldo(d) {
-  return (d.movimientos || []).reduce((a, m) => m.tipo === 'prestamo' ? a + m.monto : a - m.monto, 0);
-}
+/* ---- Deudas: "Me deben" (S.deudores) y "Yo debo" (S.misDeudas) ----
+   Capa de acceso única. Ningún módulo debería leer ni escribir S.deudores /
+   S.misDeudas directo: pasa por `Deudas`. Así, cómo se guardan las deudas
+   (hoy dos listas) es un detalle de este bloque y no de los 12 archivos que
+   las consultan.
+
+   Dirección:  'favor'  = me deben (S.deudores)   — abre con 'prestamo'
+               'contra' = yo debo (S.misDeudas)   — abre con 'recibido'
+   El resto de tipos ('abono', 'pago-completo', 'pago') reducen la deuda. Los
+   nombres de tipo son disjuntos, así que el saldo no necesita saber la
+   dirección: saldo = lo que abre − lo que reduce, en la propia dirección de
+   esa deuda (positivo = queda algo pendiente).
+
+   Vive acá (carga de entrada) y no en prestado.js (lazy) porque el patrimonio,
+   "Necesita atención" y Personas la consultan sin esperar al módulo — antes
+   core-state.js caía a 0 con guards typeof y tuvo que bloquear snapshots
+   mientras prestado.js no cargaba (ver _patrimonioDependenciasListas). */
+const Deudas = (() => {
+  const COLECCION = { favor: 'deudores', contra: 'misDeudas' };
+  const ABRE = { prestamo: true, recibido: true };
+  return {
+    FAVOR: 'favor',
+    CONTRA: 'contra',
+    // Tolerancias en pesos, una sola vez para todo el módulo:
+    //  TOL       — suma de partes vs. total, saldo "≈ 0", guardia de integridad.
+    //  TOL_FINO  — comparar un monto contra un saldo/tope (evita que un resto de
+    //              decimales bloquee un pago completo).
+    TOL: 1,
+    TOL_FINO: 0.5,
+    // Lista viva (nunca undefined). Para agregar/quitar usar agregar()/quitar().
+    lista(dir) { return S[COLECCION[dir]] || []; },
+    porId(dir, id) { return this.lista(dir).find(d => d.id === id); },
+    porPersona(dir, personaId) { return this.lista(dir).find(d => d.personaId === personaId); },
+    agregar(dir, deuda) {
+      const k = COLECCION[dir];
+      if (!S[k]) S[k] = [];
+      S[k].push(deuda);
+      return deuda;
+    },
+    quitar(dir, id) {
+      const k = COLECCION[dir];
+      S[k] = (S[k] || []).filter(d => d.id !== id);
+    },
+    // ¿Este tipo de movimiento abre/aumenta la deuda?
+    abre(m) { return !!ABRE[m.tipo]; },
+    // Saldo pendiente de UNA deuda (cualquier dirección).
+    saldo(d) {
+      return (d.movimientos || []).reduce((a, m) => ABRE[m.tipo] ? a + m.monto : a - m.monto, 0);
+    },
+    // Suma de lo que queda pendiente en una dirección (ignora saldos <= 0).
+    totalPendiente(dir) {
+      return this.lista(dir).reduce((a, d) => { const s = this.saldo(d); return a + (s > 0 ? s : 0); }, 0);
+    }
+  };
+})();
+
+// Nombres históricos (los usan 8 archivos y los tests): delegan en Deudas.
+function getDeudorSaldo(d) { return Deudas.saldo(d); }
+function getMiDeudaSaldo(d) { return Deudas.saldo(d); }
+function totalPrestadoPendiente() { return Deudas.totalPendiente('favor'); }
+function totalMisDeudasPendiente() { return Deudas.totalPendiente('contra'); }
 
 /* ---- Spotify (antes en spotify.js) — 2026-09-20 ----
    Mismo motivo: los avisos "Cobro Spotify de X vencido" de "Necesita

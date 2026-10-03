@@ -186,7 +186,7 @@
     });
 
     // Préstamos / deudores
-    (S.deudores||[]).forEach(d => {
+    Deudas.lista('favor').forEach(d => {
       if((d.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         const s = window.getDeudorSaldo ? window.getDeudorSaldo(d) : 0;
         resultados.push({ tipo:'Persona prestada', desc:d.nombre, meta: 'Pendiente: ' + (window.fmt?window.fmt(s):''), color:'var(--blue)', navTipo:'deudor', navId:d.id });
@@ -222,7 +222,7 @@
     });
 
     // Préstamos individuales
-    (S.deudores||[]).forEach(d => {
+    Deudas.lista('favor').forEach(d => {
       (d.abonos||[]).forEach(a => {
         if((a.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
           resultados.push({ tipo:'Abono · '+d.nombre, desc:a.nota||'Abono', meta:(window.fmt?window.fmt(a.monto):'')+(a.fecha?' · '+a.fecha:''), color:'var(--accent)', navTipo:'prestamo_mov', navId:d.id });
@@ -254,7 +254,7 @@
     });
 
     // Mis Deudas (Yo debo)
-    (S.misDeudas||[]).forEach(d => {
+    Deudas.lista('contra').forEach(d => {
       if((d.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         const s = window.getMiDeudaSaldo ? window.getMiDeudaSaldo(d) : 0;
         resultados.push({ tipo:'Yo debo', desc:d.nombre, meta:'Pendiente: '+(window.fmt?window.fmt(s):''), color:'var(--red)', navTipo:'mi-deuda', navId:d.id });

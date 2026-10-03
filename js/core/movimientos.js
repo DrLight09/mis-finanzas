@@ -188,7 +188,7 @@ function abrirDetalleMov(el){
           }
         }
       } else if (cuentaKey === 'deudor') {
-        for (const d of (S.deudores||[])) {
+        for (const d of Deudas.lista('favor')) {
           const found = (d.movimientos||[]).find(m=>m.id===movId);
           if (found) { _rawMov = found; break; }
         }
@@ -207,7 +207,7 @@ function abrirDetalleMov(el){
                || (S.transferencias||[]).find(m=>m.id===movId)
                || null;
         if (!_rawMov) {
-          for (const d of (S.deudores||[])) {
+          for (const d of Deudas.lista('favor')) {
             const found = (d.movimientos||[]).find(m=>m.id===movId);
             if (found) { _rawMov = found; break; }
           }
@@ -473,7 +473,7 @@ async function eliminarMovimiento(btn) {
     || (() => { for (const enc of (S.encargos||[])) { const m=(enc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (() => { for (const caj of (S.cajitas||[])) { const m=(caj.historial||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (() => { for (const cc of cuentasCustom()) { const m=(cc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
-    || (() => { for (const d of (S.deudores||[])) { const m=(d.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
+    || (() => { for (const d of Deudas.lista('favor')) { const m=(d.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (S.gastosVar || []).find(x => x.id === movId)
     || (S.spotifyHistorial || []).find(x => x.id === movId)
     || (() => { for (const h of (S.spotifyHistorial||[])) { const ab=(h.pendienteHistorial||[]).find(x=>x.id===movId); if(ab) return ab; } return null; })();
@@ -492,7 +492,7 @@ async function eliminarMovimiento(btn) {
   // eliminarMovDeudor(), que trae todo eso; { desdeFeed: true } evita que navegue
   // al detalle del deudor (el usuario se queda en la cuenta desde donde borró).
   if (movTipoEl === 'prestamo' || movTipoEl === 'abono') {
-    const deudorDueno = (S.deudores || []).find(d => (d.movimientos || []).some(x => x.id === movId));
+    const deudorDueno = Deudas.lista('favor').find(d => (d.movimientos || []).some(x => x.id === movId));
     if (!deudorDueno) {
       toast('No se encontró este movimiento en Préstamos — puede que ya se haya eliminado', 'err', 4000);
       return;

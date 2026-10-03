@@ -478,7 +478,8 @@ function load(){
   const _paDefaults={spotify:{opsAviso:2,opsBloqueo:5},mesada:{opsAviso:2,opsBloqueo:5},prestamos:{opsAviso:2,opsBloqueo:5},encargos:{opsAviso:2,opsBloqueo:5},tarjetas:{opsAviso:2,opsBloqueo:5},cuentas:{opsAviso:2,opsBloqueo:5},gastos:{opsAviso:2,opsBloqueo:5},alcancia:{opsAviso:2,opsBloqueo:5},plata_comprometida:{opsAviso:2,opsBloqueo:5}};
   Object.keys(_paDefaults).forEach(k=>{ if(!S.config.proteccionAntiguedad[k])S.config.proteccionAntiguedad[k]=_paDefaults[k]; });
   // Sincronizar color de misDeudas desde la persona vinculada (fuente de verdad)
-  (S.misDeudas || []).forEach(d => {
+  // load() puede correr antes de que calc-helpers.js (donde vive Deudas) haya cargado: guard.
+  (typeof Deudas !== 'undefined' ? Deudas.lista('contra') : (S.misDeudas || [])).forEach(d => {
     if (d.personaId && S.personas) {
       const p = S.personas.find(x => x.id === d.personaId);
       if (p && p.color) d.color = p.color;
@@ -711,17 +712,14 @@ function calcPatrimonioTotal(){
   // CHANGELOG.md#encargos.
   const nequi=getSaldoFuente('nequi');
   const ef=getSaldoFuente('efectivo');
-  // FIX (auditoria-tecnica.md #5): getDeudorSaldoPatrimonio (prestado.js) se
-  // llamaba sin guard typeof — calcPatrimonioTotal() corre en CADA save() de
-  // la app (vía snapshotPatrimonio), no solo en refresh(), así que esto
-  // bloqueaba volver lazy Préstamos igual que tcNormalizarTarjetas bloqueaba
-  // Tarjetas de Crédito.
-  const prest=(S.deudores||[]).reduce((a,d)=>{ const s=typeof getDeudorSaldoPatrimonio==='function'?getDeudorSaldoPatrimonio(d):0; return a+(s>0?s:0); },0);
+  // Deudas (calc-helpers.js, carga de entrada) — calcPatrimonioTotal() corre en
+  // CADA save() de la app (vía snapshotPatrimonio), no solo en refresh().
+  const prest=typeof Deudas!=='undefined'?Deudas.totalPendiente('favor'):0;
   const custom=cuentasCustom().reduce((a,c)=>a+(c.saldo||0),0);
   const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
   // Lo que le debo a otras personas (S.misDeudas) — esa plata está físicamente en
   // mis cuentas pero no es mía, así que se resta igual que la deuda de TC.
-  const misDeudas=typeof totalMisDeudasPendiente==="function"?totalMisDeudasPendiente():0;
+  const misDeudas=typeof Deudas!=='undefined'?Deudas.totalPendiente('contra'):0;
   // Restar plata comprometida ajena que está físicamente en cuentas propias
   // (igual que se restan encargos) — es plata de otras personas que administrás
   const cpAjeno = _saldoCPAjeno();
@@ -739,8 +737,7 @@ function calcPatrimonioTotal(){
 function _patrimonioDependenciasListas(){
   return typeof calcC==='function'
       && typeof calcCDT==='function'
-      && typeof getDeudorSaldoPatrimonio==='function'
-      && typeof totalMisDeudasPendiente==='function';
+      && typeof Deudas!=='undefined';
 }
 
 // Ajuste por destape de la alcancía, por fecha: sobrante (+) o faltante (−) entre el efectivo real y
@@ -869,6 +866,9 @@ function _esEntradaEspejoNoIngreso(m){
   // Extra/propina recibida sobre un pago de deuda (Prestado, rama normal): ingreso real,
   // aunque su _origenSeccion sea 'Prestado' (que por sí solo lo marcaría como espejo).
   if(m._esExtraIngreso) return false;
+  // Deuda propia ("Yo debo") perdonada: tu patrimonio neto sube sin que entre plata a ninguna cuenta,
+  // así que es ingreso real aunque su _origenSeccion sea 'Prestado · Yo debo'.
+  if(m._esPerdonRecibido) return false;
   // Margen/diferencial de Encargos y Préstamo con TC (lo escribe diffAplicar() en diferencial.js):
   // plata nueva que se queda el usuario, aunque lleve _encMovId o desc 'Margen…'.
   if(m._esDiferencialEncargo) return false;
@@ -1168,7 +1168,7 @@ function refresh(){
   // FIX 2026-08-13: totalPrestadoPendiente (prestado.js, grupo lazy) sin
   // guard — mismo patrón de fallback (0) que ya usa inicio.js línea ~253
   // (window.totalPrestadoPendiente?...:0) para el mismo caso.
-  const prest=typeof totalPrestadoPendiente==='function'?totalPrestadoPendiente():0;
+  const prest=typeof Deudas!=='undefined'?Deudas.totalPendiente('favor'):0;
   // CDTs value comes from calcCDT nested in cajitas
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+_calcCDTSafe(cdt).val,0),0);
   const cajitasLibres=(S.cajitas||[]).reduce((a,c)=>a+_calcCSafe(c).val,0);

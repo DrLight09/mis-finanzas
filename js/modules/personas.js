@@ -306,10 +306,17 @@ function _actualizarMasPersonasSub() {
 }
 let _selPersonaCallback = null; // fn(personaId) llamada al seleccionar
 let _selPersonaTitulo = '¿De quién es la plata?'; // título del sheet, según quién lo abrió
+let _selPersonaExcluir = null; // fn(persona) → true si NO se debe ofrecer (ej. ya está en la lista donde se agrega)
 
-function abrirSelPersona(callback, titulo) {
+// abrirSelPersona(callback, titulo, opts)
+//   callback(personaId)  se llama al elegir (o al crear una persona nueva desde el selector).
+//   titulo               texto del sheet; sin él queda el de Encargos ("¿De quién es la plata?").
+//   opts.excluir         fn(persona) → true para ocultar a esa persona (ej. quien ya tiene una deuda
+//                        en la lista donde se está agregando: no se puede agregar dos veces).
+function abrirSelPersona(callback, titulo, opts) {
   _selPersonaCallback = callback;
   _selPersonaTitulo = titulo || '¿De quién es la plata?';
+  _selPersonaExcluir = (opts && typeof opts.excluir === 'function') ? opts.excluir : null;
   _inyectarPersonaSheets();
   const tituloEl = document.querySelector('#sheet-sel-persona .sheet-title');
   if (tituloEl) tituloEl.textContent = _selPersonaTitulo;
@@ -324,8 +331,21 @@ function _selPersonaFiltrar() {
   const q = (document.getElementById('sel-persona-buscar')?.value || '').toLowerCase().trim();
   const lista = document.getElementById('sel-persona-lista');
   if (!lista) return;
-  const personas = (S.personas || []).filter(p => !q || p.nombre.toLowerCase().includes(q));
+  const todas = S.personas || [];
+  const excluidas = _selPersonaExcluir ? todas.filter(p => _selPersonaExcluir(p)) : [];
+  const personas = todas.filter(p => !(_selPersonaExcluir && _selPersonaExcluir(p)) && (!q || p.nombre.toLowerCase().includes(q)));
   if (!personas.length) {
+    // Lo que escribió coincide exacto con alguien que ya está en esa lista: no tiene sentido ofrecer crearla de nuevo.
+    const yaEsta = q && excluidas.find(p => p.nombre.trim().toLowerCase() === q);
+    if (yaEsta) {
+      lista.innerHTML = html`<div style="font-size:12px;color:var(--text3);padding:10px 0;">${yaEsta.nombre} ya está en esta lista.</div>`;
+      return;
+    }
+    // Todas las personas que existen ya están en la lista: solo queda crear una nueva.
+    if (!q && excluidas.length) {
+      lista.innerHTML = html`<div style="font-size:12px;color:var(--text3);padding:10px 0;">Todas tus personas ya están en esta lista. Crea una nueva.</div>`;
+      return;
+    }
     lista.innerHTML = html`${q
       ? html`<div style="padding:10px 0;">
           <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">No se encontró "${q}".</div>
@@ -413,7 +433,7 @@ function _volverASelPersona() {
   if (_cpgDesdeListaPersonas) {
     _abrirListaPersonas();
   } else {
-    abrirSelPersona(_selPersonaCallback, _selPersonaTitulo);
+    abrirSelPersona(_selPersonaCallback, _selPersonaTitulo, { excluir: _selPersonaExcluir });
   }
   document.getElementById('sheet-crear-persona-global').classList.remove('open');
 }

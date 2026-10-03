@@ -1823,42 +1823,6 @@ function cambiarTabPrestamos(tab) {
   if (yoDebo) renderMisDeudasList();
 }
 
-function _ndPoblarSelectDestino() {
-  const sel = document.getElementById('nd_destino');
-  if (!sel) return;
-  const fuentes = getFuentesSinTC();
-  sel.innerHTML = html`<option value>Sin especificar</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
-}
-
-function crearMiDeuda() {
-  const nombre = (document.getElementById('nd_nombre').value || '').trim();
-  if (!nombre) { toast('Ingresa el nombre de la persona', 'err'); return; }
-  const monto = parseMoney(document.getElementById('nd_monto').value) || 0;
-  if (!monto) { toast('Ingresa cuánto te prestó', 'err'); return; }
-  const fecha = document.getElementById('nd_fecha').value || hoy();
-  const destino = document.getElementById('nd_destino').value;
-  const nota = (document.getElementById('nd_nota').value || '').trim();
-  // Vincular a una persona existente si ya hay alguien con ese nombre
-  let personaId = null;
-  if (S.personas) {
-    const p = S.personas.find(x => x.nombre.trim().toLowerCase() === nombre.toLowerCase());
-    if (p) personaId = p.id;
-  }
-  const colores = ['#60b0f0', '#c8f060', '#f0b840', '#b090f0', '#f06868', '#c060f0'];
-  const d = {
-    id: uid(), nombre, personaId,
-    color: colores[Deudas.lista('contra').length % colores.length],
-    movimientos: [{ id: uid(), tipo: 'recibido', monto, fecha, destino: destino || undefined, nota, ts: Date.now() }]
-  };
-  if (destino) sumarFuente(destino, monto);
-  Deudas.agregar('contra', d);
-  document.getElementById('nd_nombre').value = '';
-  document.getElementById('nd_monto').value = '';
-  document.getElementById('nd_nota').value = '';
-  save(); refresh(); closeSheet('nueva-deuda');
-  toast(`Deuda con ${escHtml(nombre)} agregada`, 'ok');
-}
-
 function renderMisDeudasList() {
   const el = document.getElementById('misDeudasList');
   if (!el) return;
@@ -2541,9 +2505,7 @@ function _abrirSheetPagoCompleto() {
 }
 
 function _abrirSheetNuevaDeuda() {
-  document.getElementById('nd_fecha').value = hoy();
-  _ndPoblarSelectDestino();
-  openSheet('nueva-deuda');
+  openSheet('nueva-deuda'); // el hook de openSheet (más abajo) abre el selector de personas
 }
 
 function _abrirMovMiDeudaRecibido() {
@@ -2622,7 +2584,6 @@ Events.registerAll('prestado', {
 
   // Yo debo
   abrirSheetNuevaDeuda: _abrirSheetNuevaDeuda,
-  crearMiDeuda: (...args) => crearMiDeuda(...args), // arrow-wrap: se reasigna más abajo en este mismo archivo (antes lo hacían prestado-personas.js y deudores-personas.js, hoy fusionados acá — mismo patrón que encargos.js)
   volverMisDeudas: volverMisDeudas,
   eliminarMiDeuda: eliminarMiDeuda,
   abrirMiDeuda: abrirMiDeuda,
@@ -2719,28 +2680,6 @@ _guardarEditarPersonaGlobal = function() {
   }
 };
 
-
-const _origCrearMiDeudaPersonas = crearMiDeuda;
-crearMiDeuda = function() {
-  const nombre = (document.getElementById('nd_nombre').value || '').trim();
-  if (!nombre) { _origCrearMiDeudaPersonas.apply(this, arguments); return; }
-  _origCrearMiDeudaPersonas.apply(this, arguments);
-  // Vincular la misDeuda recién creada a S.personas (crear si no existe)
-  const deuda = Deudas.lista('contra').find(d => d.nombre === nombre && !d.personaId);
-  if (deuda) {
-    if (!S.personas) S.personas = [];
-    let p = S.personas.find(x => x.nombre.trim().toLowerCase() === nombre.toLowerCase());
-    if (!p) {
-      p = { id: uid(), nombre, color: deuda.color || '#f06868', creadoEn: hoy() };
-      S.personas.push(p);
-    } else {
-      // Si ya existe persona con ese nombre, usar su color en la deuda
-      deuda.color = p.color || deuda.color;
-    }
-    deuda.personaId = p.id;
-    save();
-  }
-};
 
 /* ── Abrir perfil desde una misDeuda (crea persona si no tiene) ── */
 function _abrirPerfilDesdeMiDeuda(miDeudaId) {
@@ -2850,13 +2789,11 @@ Events.registerAll('prestado-personas', {
 
 /* ═══════════════════════════════════════════════════════════════
    INTEGRACIÓN "DEUDORES + PERSONAS"
-   (antes js/modules/deudores-personas.js — fusionado acá el 2026-08-03)
 
    Mismo selector de persona (existente o nueva) en "Agregar persona"
-   (Me deben) y "Nueva deuda" (Yo debo). Necesita openSheet y
-   crearMiDeuda ya definidos/envueltos una vez (por el bloque de
-   arriba) — satisfecho por estar en este mismo archivo, en este
-   orden. Ver docs/prestado.md.
+   (Me deben) y "Nueva deuda" (Yo debo): cada uno con su título y sin
+   ofrecer a quien ya está en esa lista. Necesita openSheet definido
+   (sheet-stack.js). Ver prestado.md.
    ═══════════════════════════════════════════════════════════════ */
 
 
@@ -2887,111 +2824,44 @@ function _onSelPersonaMeDeben(personaId) {
   abrirDeudor(d.id);
 }
 
-/* ── Yo debo: selector de persona dentro de "Nueva deuda" ───────── */
-let _nuevaDeudaPersonaId = null;
-
-function _initNuevaDeudaPersonaSelector() {
-  const sheet = document.getElementById('sheet-nueva-deuda');
-  if (!sheet || sheet._personaHook) return;
-  sheet._personaHook = true;
-  const ndNombreEl = document.getElementById('nd_nombre');
-  if (!ndNombreEl) return;
-  const ig = ndNombreEl.closest('.ig');
-  if (!ig) return;
-  ig.innerHTML = `
-    <div class="il">¿A quién le debes?</div>
-    <div id="nd-persona-btn"
-      style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
-      border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
-      cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
-      <div id="nd-persona-avatar" class="avatar" style="width:28px;height:28px;font-size:10px;margin:0;display:none;flex-shrink:0;"></div>
-      <span id="nd-persona-label">Seleccionar persona...</span>
-      <svg style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-    </div>
-    <input type="hidden" id="nd_nombre" value="">`;
-  // Antes onclick="abrirSelPersona(_onSelPersonaNuevaDeuda)" inline — este bloque
-  // solo se renderiza una vez (guardado por sheet._personaHook), así que alcanza
-  // con adjuntar el listener una sola vez acá, igual que en splitAgregarRow.
-  const ndBtn = document.getElementById('nd-persona-btn');
-  if (ndBtn) ndBtn.addEventListener('click', () => abrirSelPersona(_onSelPersonaNuevaDeuda));
-}
-
-function _onSelPersonaNuevaDeuda(personaId) {
+/* ── Yo debo: "Nueva deuda" abre directamente el mismo selector ────
+   Igual que Me deben: se elige (o crea) a la persona, queda la deuda
+   vacía y se abre su detalle; el primer "Me prestó" se registra desde
+   ahí (con Dividir ÷, movimiento espejo, etc.). */
+function _onSelPersonaYoDebo(personaId) {
   const p = getPersona(personaId);
   if (!p) return;
-  // ¿Ya existe una deuda registrada con esa persona?
-  const existente = Deudas.lista('contra').find(d => d.personaId === personaId);
+  // Red de seguridad: el selector ya no ofrece a quien tiene deuda (excluir), pero si llegara, se abre la existente.
+  const existente = Deudas.porPersona('contra', personaId);
   if (existente) {
-    closeSheet('nueva-deuda');
     toast(`Ya tienes una deuda registrada con ${escHtml(p.nombre)}`, 'info');
     showScreen('prestamos');
     cambiarTabPrestamos('yo-debo');
     setTimeout(() => abrirMiDeuda(existente.id), 200);
     return;
   }
-  _nuevaDeudaPersonaId = personaId;
-  document.getElementById('nd_nombre').value = p.nombre;
-  const btn = document.getElementById('nd-persona-btn');
-  const lbl = document.getElementById('nd-persona-label');
-  const av = document.getElementById('nd-persona-avatar');
-  if (btn) btn.style.borderColor = 'var(--accent)';
-  if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
-  if (av) pintarAvatarPersona(av, p, { mostrar: true });
+  const d = Deudas.agregar('contra', { id: uid(), nombre: p.nombre, color: p.color || '#f06868', personaId: p.id, movimientos: [] });
+  save(); refresh();
+  toast(`${escHtml(p.nombre)} agregado/a`, 'ok');
+  showScreen('prestamos');
+  cambiarTabPrestamos('yo-debo');
+  abrirMiDeuda(d.id);
 }
 
-/* ── Hook en openSheet: 'nueva-persona' abre el selector directo;
-     'nueva-deuda' inicializa su propio selector interno ────────── */
+/* ── Hook en openSheet: 'nueva-persona' (Me deben) y 'nueva-deuda' (Yo debo)
+     abren el selector de personas directo, cada uno con su título y su filtro ── */
 const _origOpenSheetMeDebenYoDebo = openSheet;
 openSheet = function(id) {
   if (id === 'nueva-persona') {
     _inyectarPersonaSheets();
-    abrirSelPersona(_onSelPersonaMeDeben);
+    abrirSelPersona(_onSelPersonaMeDeben, '¿Quién te debe?', { excluir: pe => !!Deudas.porPersona('favor', pe.id) });
     return;
   }
   if (id === 'nueva-deuda') {
     _inyectarPersonaSheets();
-    _nuevaDeudaPersonaId = null;
-    setTimeout(_initNuevaDeudaPersonaSelector, 30);
-    setTimeout(() => {
-      const lbl = document.getElementById('nd-persona-label');
-      const av = document.getElementById('nd-persona-avatar');
-      const btn = document.getElementById('nd-persona-btn');
-      if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
-      if (av) av.style.display = 'none';
-      if (btn) btn.style.borderColor = 'var(--border2)';
-      const ndN = document.getElementById('nd_nombre');
-      if (ndN) ndN.value = '';
-    }, 50);
+    abrirSelPersona(_onSelPersonaYoDebo, '¿A quién le debes?', { excluir: pe => !!Deudas.porPersona('contra', pe.id) });
+    return;
   }
   _origOpenSheetMeDebenYoDebo.apply(this, arguments);
 };
 
-/* ── Hook en crearMiDeuda: exigir persona seleccionada y usar su
-     personaId real en vez de adivinar por coincidencia de nombre ── */
-const _origCrearMiDeudaSelector = crearMiDeuda;
-crearMiDeuda = function() {
-  const ndN = document.getElementById('nd_nombre');
-  if (ndN && !ndN.value.trim()) {
-    const btn = document.getElementById('nd-persona-btn');
-    if (btn) {
-      btn.style.borderColor = 'var(--red)';
-      setTimeout(() => { if (btn) btn.style.borderColor = 'var(--border2)'; }, 2000);
-    }
-    toast('Selecciona una persona', 'err');
-    return;
-  }
-  const pId = _nuevaDeudaPersonaId;
-  _origCrearMiDeudaSelector.apply(this, arguments);
-  const _listaContra = Deudas.lista('contra');
-  if (pId && _listaContra.length) {
-    const last = _listaContra[_listaContra.length - 1];
-    const p = getPersona(pId);
-    if (last && p) {
-      last.personaId = pId;
-      last.nombre = p.nombre;
-      last.color = p.color || last.color;
-      save();
-    }
-  }
-  _nuevaDeudaPersonaId = null;
-};

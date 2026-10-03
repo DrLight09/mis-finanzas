@@ -49,9 +49,9 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 34 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
 | `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
-| `js/modules/prestado.js` | lazy — grupo `prestamos` | 104 | 1 |
+| `js/modules/prestado.js` | lazy — grupo `prestamos` | 114 | 1 |
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 48 | 2 |
-| `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 29 | 2 |
+| `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 30 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 105 | 1 |
 
 ## 2. Qué declara cada archivo
@@ -322,7 +322,7 @@ Carga: lazy — grupo `comprometida`
 
 Carga: lazy — grupo `prestamos`
 
-**Funciones:** `_abonoEncCuentaAgregarSplitRow`, `_abonoEncCuentaSplitPreview`, `_abonoEncCuentaSplitToggle`, `_abrirMovMiDeudaPago`, `_abrirMovMiDeudaRecibido`, `_abrirPerfilDesdeDeudor`, `_abrirPerfilDesdeDeudorActual`, `_abrirPerfilDesdeMiDeuda`, `_abrirPerfilDesdeMiDeudaActual`, `_abrirSheetAbono`, `_abrirSheetNuevaDeuda`, `_abrirSheetNuevaPersona`, `_abrirSheetNuevoPrestamo`, `_abrirSheetPagoCompleto`, `_actualizarBtnPrestamoTC`, `_actualizarEncPreview`, `_autoCerrarGruposEnCero`, `_autoGrupoIdMov`, `_confirmarMovimientoConGuard`, `_confirmarMovimientoInterno`, `_crearGrupoDeudor`, `_deudorCuentasDe`, `_deudorOpsPosteriores`, `_deudorTieneCuentaAfectada`, `_getAbonoDestinoFuentesOptions`, `_getAbonoDestinoSplitData`, `_getAbonoEncCuentaFuentesOptions`, `_getAbonoEncCuentaSplitData`, `_getOrCrearHistorico`, `_getPrestSplitFuentesOptions`, `_gruposAbiertos`, `_initGrupoSelector`, `_initMovGrupoSelector`, `_initNuevaDeudaPersonaSelector`, `_irADeudor`, `_irAMiDeuda`, `_mdPickColor`, `_miDeudaCuentasDe`, `_miDeudaOpsPosteriores`, `_miDeudaTieneCuentaAfectada`, `_migrarGruposDeudor`, `_movDifResumen`, `_movDifToggle`, `_movEsPerdon`, `_movTieneEncargoVinculado`, `_ndPoblarSelectDestino`, `_onMovMontoInput`, `_onSelPersonaMeDeben`, `_onSelPersonaNuevaDeuda`, `_prEnsureAlcancia`, `_prestAddSplitRow`, `_prestMontoSalida`, `_prtcDifResumen`, `_prtcDifToggle`, `_resetEncCuentaSplitToggleStyle`, `_resolverGrupoIdMov`, `_resolverGrupoIdSel`, `_updatePrestSplitResumen`, `_verificarIntegridadSaldoDeudor`, `abonoAddSplitRow`, `abonoSplitResumen`, `abrirDeudor`, `abrirMiDeuda`, `abrirMovMiDeuda`, `abrirSheetPrestamoTC`, `cambiarTabPrestamos`, `confirmarMovimiento`, `confirmarMovMiDeuda`, `confirmarPrestamoTC`, `crearMiDeuda`, `editarDeudorActual`, `editarMiDeudaActual`, `eliminarDeudorActual`, `eliminarMiDeuda`, `eliminarMovDeudor`, `eliminarMovMiDeuda`, `extAddParte`, `extDelParte`, `extRenderPartes`, `extResumenPartes`, `extSetCuenta`, `extSetDesc`, `extSetMonto`, `extSetQuien`, `extSetTipo`, `fuenteLabel2`, `getDeudorSaldoPatrimonio`, `getGrupoSaldo`, `getMiDeudaSaldo`, `guardarEditarMiDeuda`, `initMovSheet`, `onChangeMov_enc_cuenta`, `onChangeMov_enc_sel`, `renderDeudoresList`, `renderMisDeudasList`, `toggleAbonoSplit`, `toggleDesdeEncargo`, `toggleExtraSection`, `toggleMovPerdon`, `togglePrestSplit`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`, `volverDeudores`, `volverMisDeudas`
+**Funciones:** `_abonoEncCuentaAgregarSplitRow`, `_abonoEncCuentaSplitPreview`, `_abonoEncCuentaSplitToggle`, `_abrirMovMiDeudaPago`, `_abrirMovMiDeudaRecibido`, `_abrirPerfilDesdeDeudor`, `_abrirPerfilDesdeDeudorActual`, `_abrirPerfilDesdeMiDeuda`, `_abrirPerfilDesdeMiDeudaActual`, `_abrirSheetAbono`, `_abrirSheetNuevaDeuda`, `_abrirSheetNuevaPersona`, `_abrirSheetNuevoPrestamo`, `_abrirSheetPagoCompleto`, `_actualizarBtnPrestamoTC`, `_actualizarEncPreview`, `_aplicarMovMiDeuda`, `_autoCerrarGruposEnCero`, `_autoGrupoIdMov`, `_confirmarMovimientoConGuard`, `_confirmarMovimientoInterno`, `_crearGrupoDeudor`, `_deudaCuentasDe`, `_deudaOpsPosteriores`, `_deudaTieneCuentaAfectada`, `_getAbonoDestinoFuentesOptions`, `_getAbonoDestinoSplitData`, `_getAbonoEncCuentaFuentesOptions`, `_getAbonoEncCuentaSplitData`, `_getMdSplitFuentesOptions`, `_getOrCrearHistorico`, `_getPrestSplitFuentesOptions`, `_gruposAbiertos`, `_initGrupoSelector`, `_initMovGrupoSelector`, `_initNuevaDeudaPersonaSelector`, `_irADeudor`, `_irAMiDeuda`, `_mdAddSplitRow`, `_mdEl`, `_mdEsPerdon`, `_mdExtra`, `_mdPickColor`, `_mdTitulo`, `_mdTotalCuentas`, `_migrarGruposDeudor`, `_movDifResumen`, `_movDifToggle`, `_movEsPerdon`, `_movTieneEncargoVinculado`, `_ndPoblarSelectDestino`, `_onMovMontoInput`, `_onSelPersonaMeDeben`, `_onSelPersonaNuevaDeuda`, `_pintarTabPrestamos`, `_planMovMiDeuda`, `_prEnsureAlcancia`, `_prestAddSplitRow`, `_prestMontoSalida`, `_prtcDifResumen`, `_prtcDifToggle`, `_resetEncCuentaSplitToggleStyle`, `_resolverGrupoIdMov`, `_resolverGrupoIdSel`, `_revertirDestinoAbono`, `_revertirDestinosAbono`, `_revertirMovMiDeuda`, `_updateMdSplitResumen`, `_updatePrestSplitResumen`, `_verificarIntegridadSaldoDeudor`, `abonoAddSplitRow`, `abonoSplitResumen`, `abrirDeudor`, `abrirMiDeuda`, `abrirMovMiDeuda`, `abrirSheetPrestamoTC`, `cambiarTabPrestamos`, `confirmarMovimiento`, `confirmarMovMiDeuda`, `confirmarPrestamoTC`, `crearMiDeuda`, `editarDeudorActual`, `editarMiDeudaActual`, `eliminarDeudorActual`, `eliminarMiDeuda`, `eliminarMovDeudor`, `eliminarMovMiDeuda`, `extAddParte`, `extDelParte`, `extRenderPartes`, `extResumenPartes`, `extSetCuenta`, `extSetDesc`, `extSetMonto`, `extSetQuien`, `extSetTipo`, `fuenteLabel2`, `getGrupoSaldo`, `guardarEditarMiDeuda`, `initMovSheet`, `onChangeMov_enc_cuenta`, `onChangeMov_enc_sel`, `renderDeudoresList`, `renderMisDeudasList`, `toggleAbonoSplit`, `toggleDesdeEncargo`, `toggleExtraSection`, `toggleMdExtra`, `toggleMdPerdon`, `toggleMdSplit`, `toggleMovPerdon`, `togglePrestSplit`, `volverDeudores`, `volverMisDeudas`
 
 **Globales:** `PERSONA_COLORES_MD`
 
@@ -340,7 +340,7 @@ Carga: lazy — grupo `spotify`
 
 Carga: lazy — grupo `tarjetas`
 
-**Funciones:** `_tcOpsPosteriores`, `_tcPoblarSelectCajita`, `abrirCargoEspecialTC`, `abrirCompraTC`, `abrirDetalleTCSheet`, `abrirEditarTC`, `abrirNuevaTarjeta`, `abrirPagarTC`, `confirmarCargoEspecialTC`, `confirmarCompraTC`, `confirmarPagarTC`, `eliminarCompraTC`, `eliminarPagoTC`, `eliminarTC`, `guardarTC`, `ptcActualizarPreview`, `ptcSetMonto`, `renderTCDashboard`, `renderTCScreen`, `tcBuscarCompraPorIdOMatch`, `tcCrearCompra`, `tcCrearPago`, `tcDeudaTotal`, `tcEliminarCompraInterna`, `tcEliminarPagoInterna`, `tcEstadoInfo`, `tcNormalizarTarjetas`, `tcRecalcular`, `tcSelColor`
+**Funciones:** `_tcEsCargoExterno`, `_tcOpsPosteriores`, `_tcPoblarSelectCajita`, `abrirCargoEspecialTC`, `abrirCompraTC`, `abrirDetalleTCSheet`, `abrirEditarTC`, `abrirNuevaTarjeta`, `abrirPagarTC`, `confirmarCargoEspecialTC`, `confirmarCompraTC`, `confirmarPagarTC`, `eliminarCompraTC`, `eliminarPagoTC`, `eliminarTC`, `guardarTC`, `ptcActualizarPreview`, `ptcSetMonto`, `renderTCDashboard`, `renderTCScreen`, `tcBuscarCompraPorIdOMatch`, `tcCrearCompra`, `tcCrearPago`, `tcDeudaTotal`, `tcEliminarCompraInterna`, `tcEliminarPagoInterna`, `tcEstadoInfo`, `tcNormalizarTarjetas`, `tcRecalcular`, `tcSelColor`
 
 **Globales:** `TC_ESTADOS`, `TC_MOTIVOS_CARGO`
 
@@ -356,13 +356,7 @@ Carga: lazy — grupo `wrapped`
 
 ## 3. Nombres declarados en más de un archivo
 
-Un nombre declarado (function/const/let/var) en dos archivos es una posible colisión: la última carga pisa a la anterior. No cuenta `window.x = …`, que se usa a propósito para parchar.
-
-| Nombre | Archivos |
-|---|---|
-| `getMiDeudaSaldo` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
-| `totalMisDeudasPendiente` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
-| `totalPrestadoPendiente` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
+Ninguno.
 
 ## 4. Índice inverso (nombre → archivo)
 
@@ -422,6 +416,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_alcWrappedBarrasSvg` | `js/modules/alcancia.js` |
 | `_alcWrappedProgresoHtml` | `js/modules/alcancia.js` |
 | `_aperturaToggleUI` | `js/modules/cuentas.js` |
+| `_aplicarMovMiDeuda` | `js/modules/prestado.js` |
 | `_autoCerrarGruposEnCero` | `js/modules/prestado.js` |
 | `_autoGrupoIdMov` | `js/modules/prestado.js` |
 | `_borrarMesadaPago` | `js/modules/mesada.js` |
@@ -484,9 +479,9 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_cuentasSelector` | `js/modules/cuentas.js` |
 | `_descriptorCuenta` | `js/modules/cuentas.js` |
 | `_descriptorCustom` | `js/modules/cuentas.js` |
-| `_deudorCuentasDe` | `js/modules/prestado.js` |
-| `_deudorOpsPosteriores` | `js/modules/prestado.js` |
-| `_deudorTieneCuentaAfectada` | `js/modules/prestado.js` |
+| `_deudaCuentasDe` | `js/modules/prestado.js` |
+| `_deudaOpsPosteriores` | `js/modules/prestado.js` |
+| `_deudaTieneCuentaAfectada` | `js/modules/prestado.js` |
 | `_dialogResolve` | `js/core/core-state.js` (window._dialogResolve = …) |
 | `_diasDesde` | `js/modules/alcancia.js` |
 | `_diasEntreFechas` | `js/modules/cuentas.js` |
@@ -529,6 +524,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_getEncargoSaldoEnCuenta` | `js/modules/encargos.js` |
 | `_getEncargoSaldoPorCuenta` | `js/modules/encargos.js` |
 | `_getEncargoSaldoSinCuenta` | `js/modules/encargos.js` |
+| `_getMdSplitFuentesOptions` | `js/modules/prestado.js` |
 | `_getMoneyVal` | `js/modules/alcancia.js` |
 | `_getMovimientosCuentaCustom` | `js/modules/cuentas.js` |
 | `_getMovsFilter` | `js/modules/cuentas.js` |
@@ -568,7 +564,13 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_irASpotify` | `js/modules/personas.js` |
 | `_locallyModified` | `js/core/core-state.js` (window._locallyModified = …) |
 | `_markError` | `js/core/sheet-stack.js` |
+| `_mdAddSplitRow` | `js/modules/prestado.js` |
+| `_mdEl` | `js/modules/prestado.js` |
+| `_mdEsPerdon` | `js/modules/prestado.js` |
+| `_mdExtra` | `js/modules/prestado.js` |
 | `_mdPickColor` | `js/modules/prestado.js` |
+| `_mdTitulo` | `js/modules/prestado.js` |
+| `_mdTotalCuentas` | `js/modules/prestado.js` |
 | `_mesadaClavesParent` | `js/modules/mesada.js` |
 | `_mesadaEncargosDelParent` | `js/modules/mesada.js` |
 | `_mesadaFuentesDe` | `js/modules/mesada.js` |
@@ -583,10 +585,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_miaResumenLado` | `js/modules/encargos.js` |
 | `_miaSaleAgregarRow` | `js/modules/encargos.js` |
 | `_miaSaleSplitToggle` | `js/modules/encargos.js` |
-| `_miDeudaCuentasDe` | `js/modules/prestado.js` |
 | `_miDeudaEditColor` | `js/modules/prestado.js` (window._miDeudaEditColor = …) |
-| `_miDeudaOpsPosteriores` | `js/modules/prestado.js` |
-| `_miDeudaTieneCuentaAfectada` | `js/modules/prestado.js` |
 | `_migrarGruposDeudor` | `js/modules/prestado.js` |
 | `_moneyRender` | `js/core/core-state.js` |
 | `_moneyValue` | `js/core/core-state.js` |
@@ -631,6 +630,8 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_onSelPersonaSpotify` | `js/modules/spotify.js` |
 | `_onSelPersonaSpotifyEdit` | `js/modules/spotify.js` |
 | `_patrimonioDependenciasListas` | `js/core/core-state.js` |
+| `_pintarTabPrestamos` | `js/modules/prestado.js` |
+| `_planMovMiDeuda` | `js/modules/prestado.js` |
 | `_poblarMpEncargoCuentas` | `js/modules/mesada.js` |
 | `_poblarMppEncargoCuentas` | `js/modules/mesada.js` |
 | `_prEnsureAlcancia` | `js/modules/prestado.js` |
@@ -656,6 +657,9 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_resetSheetNuevaCuenta` | `js/modules/cuentas.js` |
 | `_resolverGrupoIdMov` | `js/modules/prestado.js` |
 | `_resolverGrupoIdSel` | `js/modules/prestado.js` |
+| `_revertirDestinoAbono` | `js/modules/prestado.js` |
+| `_revertirDestinosAbono` | `js/modules/prestado.js` |
+| `_revertirMovMiDeuda` | `js/modules/prestado.js` |
 | `_saldoCPAjeno` | `js/core/core-state.js` |
 | `_saldoEncargosEnCajita` | `js/modules/cuentas.js` |
 | `_saldoEncargosEnCajitaEnFecha` | `js/modules/cuentas.js` |
@@ -681,12 +685,14 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_syncMpDebeWrap` | `js/modules/mesada.js` |
 | `_syncSpDebeWrap` | `js/modules/spotify.js` |
 | `_tasaVigenteEnFecha` | `js/modules/cuentas.js` |
+| `_tcEsCargoExterno` | `js/modules/tarjetas_credito.js` |
 | `_tcOpsPosteriores` | `js/modules/tarjetas_credito.js` |
 | `_tcPoblarSelectCajita` | `js/modules/tarjetas_credito.js` |
 | `_trDestinoCambio` | `js/modules/cuentas.js` |
 | `_trOrigenCambio` | `js/modules/cuentas.js` |
 | `_trPodarSelect` | `js/modules/cuentas.js` |
 | `_trValidarMonto` | `js/modules/cuentas.js` |
+| `_updateMdSplitResumen` | `js/modules/prestado.js` |
 | `_updateMetaCuotaPreview` | `js/modules/cuentas.js` |
 | `_updatePrestSplitResumen` | `js/modules/prestado.js` |
 | `_usarParteAddBenef` | `js/modules/encargos.js` |
@@ -1045,7 +1051,6 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `getCuentaCustom` | `js/core/core-state.js` |
 | `getCuentaDeFuente` | `js/core/core-state.js` |
 | `getDeudorSaldo` | `js/core/calc-helpers.js` |
-| `getDeudorSaldoPatrimonio` | `js/modules/prestado.js` |
 | `getEncargo` | `js/modules/encargos.js` |
 | `getFuentes` | `js/core/core-state.js` |
 | `getFuentesOptions` | `js/modules/mesada.js` |
@@ -1056,7 +1061,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `getIconoData` | `js/modules/cuentas.js` |
 | `getIngresosFijosMes` | `js/core/core-state.js` |
 | `getMesadaData` | `js/core/calc-helpers.js` |
-| `getMiDeudaSaldo` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
+| `getMiDeudaSaldo` | `js/core/calc-helpers.js` |
 | `getMontoPadre` | `js/modules/mesada.js` |
 | `getMovimientosCuenta` | `js/modules/cuentas.js` |
 | `getMpSplitData` | `js/modules/mesada.js` |
@@ -1217,6 +1222,9 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `toggleDesdeEncargo` | `js/modules/prestado.js` |
 | `toggleExtraSection` | `js/modules/prestado.js` |
 | `toggleGvSplit` | `js/modules/gastos.js` |
+| `toggleMdExtra` | `js/modules/prestado.js` |
+| `toggleMdPerdon` | `js/modules/prestado.js` |
+| `toggleMdSplit` | `js/modules/prestado.js` |
 | `toggleMetaMinWrap` | `js/modules/cuentas.js` |
 | `toggleModulo` | `js/modules/configuracion.js` |
 | `toggleMovPerdon` | `js/modules/prestado.js` |
@@ -1224,8 +1232,8 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `togglePrestSplit` | `js/modules/prestado.js` |
 | `toggleSpCobSplit` | `js/modules/spotify.js` |
 | `toggleSpPagarSplit` | `js/modules/spotify.js` |
-| `totalMisDeudasPendiente` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
-| `totalPrestadoPendiente` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
+| `totalMisDeudasPendiente` | `js/core/calc-helpers.js` |
+| `totalPrestadoPendiente` | `js/core/calc-helpers.js` |
 | `TR_MIN_EFECTIVO` | `js/modules/cuentas.js` |
 | `uid` | `js/core/core-state.js` |
 | `usarParte` | `js/modules/encargos.js` |

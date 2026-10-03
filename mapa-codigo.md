@@ -11,9 +11,10 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/async-css.js` | de entrada (async) | 0 | 0 |
 | `js/core/bootstrap.js` | de entrada (defer) | 1 | 0 |
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
-| `js/core/calc-helpers.js` | de entrada (defer) | 10 | 0 |
+| `js/core/calc-helpers.js` | de entrada (defer) | 14 | 0 |
 | `js/core/color-picker.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
 | `js/core/core-state.js` | de entrada (defer) | 64 | 5 |
+| `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
 | `js/core/firebase-init.js` | de entrada (módulo ES) | 0 | 0 |
@@ -53,10 +54,6 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 29 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 105 | 1 |
 
-**Referenciados en `index.html` o `Loader.GROUPS` pero que no existen en las carpetas escaneadas:**
-
-- `js/core/cuenta-efectos.js`
-
 ## 2. Qué declara cada archivo
 
 ### `js/core/async-css.js`
@@ -81,7 +78,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ensureMesadas`, `_getCuotaAnio`, `_mesNombreDeKey`, `getDeudorSaldo`, `getMesadaData`, `getTCById`, `spNombreDe`, `spPersonaPagadaVigente`, `tcCupoDisponible`, `tcCupoUsadoPct`
+**Funciones:** `_ensureMesadas`, `_getCuotaAnio`, `_mesNombreDeKey`, `Deudas`, `getDeudorSaldo`, `getMesadaData`, `getMiDeudaSaldo`, `getTCById`, `spNombreDe`, `spPersonaPagadaVigente`, `tcCupoDisponible`, `tcCupoUsadoPct`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`
 
 ### `js/core/color-picker.js`
 
@@ -98,6 +95,12 @@ Carga: de entrada (defer)
 **Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `MAX`, `MC`, `S`
 
 **Asigna a `window`:** `_dialogResolve`, `_locallyModified`
+
+### `js/core/cuenta-efectos.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** `_espejoLista`, `borrarMovEspejo`, `registrarMovEspejo`
 
 ### `js/core/diferencial.js`
 
@@ -353,7 +356,13 @@ Carga: lazy — grupo `wrapped`
 
 ## 3. Nombres declarados en más de un archivo
 
-Ninguno.
+Un nombre declarado (function/const/let/var) en dos archivos es una posible colisión: la última carga pisa a la anterior. No cuenta `window.x = …`, que se usa a propósito para parchar.
+
+| Nombre | Archivos |
+|---|---|
+| `getMiDeudaSaldo` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
+| `totalMisDeudasPendiente` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
+| `totalPrestadoPendiente` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
 
 ## 4. Índice inverso (nombre → archivo)
 
@@ -505,6 +514,7 @@ Ninguno.
 | `_ensureMesadas` | `js/core/calc-helpers.js` |
 | `_esEntradaEspejoNoIngreso` | `js/core/core-state.js` |
 | `_esGastoVarNoReal` | `js/core/core-state.js` |
+| `_espejoLista` | `js/core/cuenta-efectos.js` |
 | `_expandCajitaCDTs` | `js/modules/cuentas.js` |
 | `_fechaSafe` | `js/core/core-state.js` |
 | `_fechasCambioEncargoEnCajita` | `js/modules/cuentas.js` |
@@ -888,6 +898,7 @@ Ninguno.
 | `alcanciaToggleMontoDeposito` | `js/modules/alcancia.js` (window.alcanciaToggleMontoDeposito = …) |
 | `applyModulos` | `js/core/sheet-stack.js` |
 | `avisarMovimientoBloqueado` | `js/core/core-state.js` |
+| `borrarMovEspejo` | `js/core/cuenta-efectos.js` |
 | `borrarTodo` | `js/modules/configuracion.js` |
 | `buildFuentesOptsHtml` | `js/core/core-state.js` |
 | `calcC` | `js/modules/cuentas.js` |
@@ -955,6 +966,7 @@ Ninguno.
 | `descontarFuente` | `js/core/core-state.js` |
 | `deshacerAbonoPendienteSp` | `js/modules/spotify.js` |
 | `deshacerPendienteMesada` | `js/modules/mesada.js` |
+| `Deudas` | `js/core/calc-helpers.js` |
 | `dialogo` | `js/core/core-state.js` |
 | `diffAddParte` | `js/core/diferencial.js` |
 | `diffAplicar` | `js/core/diferencial.js` |
@@ -1044,7 +1056,7 @@ Ninguno.
 | `getIconoData` | `js/modules/cuentas.js` |
 | `getIngresosFijosMes` | `js/core/core-state.js` |
 | `getMesadaData` | `js/core/calc-helpers.js` |
-| `getMiDeudaSaldo` | `js/modules/prestado.js` |
+| `getMiDeudaSaldo` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
 | `getMontoPadre` | `js/modules/mesada.js` |
 | `getMovimientosCuenta` | `js/modules/cuentas.js` |
 | `getMpSplitData` | `js/modules/mesada.js` |
@@ -1116,6 +1128,7 @@ Ninguno.
 | `raw` | `js/core/html-tag.js` |
 | `refresh` | `js/core/core-state.js`, `js/modules/inicio.js` (window.refresh = …) |
 | `registrarEntradaConApertura` | `js/modules/cuentas.js` |
+| `registrarMovEspejo` | `js/core/cuenta-efectos.js` |
 | `registrarSalida` | `js/modules/cuentas.js` |
 | `registrarTasaNuHistorial` | `js/modules/cuentas.js` |
 | `renderAlcancia` | `js/modules/alcancia.js` (window.renderAlcancia = …) |
@@ -1211,8 +1224,8 @@ Ninguno.
 | `togglePrestSplit` | `js/modules/prestado.js` |
 | `toggleSpCobSplit` | `js/modules/spotify.js` |
 | `toggleSpPagarSplit` | `js/modules/spotify.js` |
-| `totalMisDeudasPendiente` | `js/modules/prestado.js` |
-| `totalPrestadoPendiente` | `js/modules/prestado.js` |
+| `totalMisDeudasPendiente` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
+| `totalPrestadoPendiente` | `js/core/calc-helpers.js`, `js/modules/prestado.js` |
 | `TR_MIN_EFECTIVO` | `js/modules/cuentas.js` |
 | `uid` | `js/core/core-state.js` |
 | `usarParte` | `js/modules/encargos.js` |

@@ -55,7 +55,7 @@ function renderAttencion(){
   const hoyStr=hoy();
   // Deudores con saldo pendiente
   if(typeof getDeudorSaldo==='function'){
-    (S.deudores||[]).forEach(d=>{
+    Deudas.lista('favor').forEach(d=>{
       const s=getDeudorSaldo(d);
       if(s>0) items.push({tipo:'amber',texto:html`${d.nombre} te debe ${fmt(s)}`});
     });

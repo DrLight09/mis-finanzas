@@ -142,13 +142,21 @@ function tcEstadoInfo(estado){
 // sumando el saldo inicial, las compras no eliminadas y los cargos
 // externos (encargos/préstamos pagados con esta TC), y restando los
 // pagos no eliminados. Nunca deja valores negativos.
+// Cargos "externos" de S.tcMovimientos: suben tc.deuda y tienen que ser reconstruibles
+// desde sus registros (tcRecalcular corre en cada refresh y pisa tc.deuda). Un tipo
+// que no esté en esta lista se perdería en el siguiente refresh().
+//   cargo_encargo / cargo_prestamo / cargo_spotify — plata ajena (ver calcDeudaAjenaDeTarjeta)
+//   cargo_deuda — pago de una deuda PROPIA ("Yo debo") con esta tarjeta: es deuda tuya, no ajena
+function _tcEsCargoExterno(m){
+  return m.tipo==='cargo_encargo'||m.tipo==='cargo_prestamo'||m.tipo==='cargo_spotify'||m.tipo==='cargo_deuda';
+}
 function tcRecalcular(tc){
   if(!tc) return 0;
   let total=0;
   if(tc.saldoInicial && !tc.saldoInicial.eliminado) total+=(tc.saldoInicial.monto||0);
   (tc.compras||[]).forEach(c=>{ if(!c.eliminado) total+=(c.monto||0); });
   (S.tcMovimientos||[]).forEach(m=>{
-    if(m.tcId===tc.id && (m.tipo==='cargo_encargo'||m.tipo==='cargo_prestamo'||m.tipo==='cargo_spotify') && !m.eliminado) total+=(m.monto||0);
+    if(m.tcId===tc.id && _tcEsCargoExterno(m) && !m.eliminado) total+=(m.monto||0);
   });
   (tc.pagos||[]).forEach(p=>{ if(!p.eliminado) total-=(p.monto||0); });
   tc.deuda=Math.max(0,total);
@@ -186,7 +194,7 @@ function tcNormalizarTarjetas(){
     if(tc.saldoInicial===undefined){
       const sumCompras=tc.compras.filter(c=>!c.eliminado).reduce((a,c)=>a+(c.monto||0),0);
       const sumPagos=tc.pagos.filter(p=>!p.eliminado).reduce((a,p)=>a+(p.monto||0),0);
-      const sumCargos=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&(m.tipo==='cargo_encargo'||m.tipo==='cargo_prestamo'||m.tipo==='cargo_spotify')&&!m.eliminado).reduce((a,m)=>a+(m.monto||0),0);
+      const sumCargos=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&_tcEsCargoExterno(m)&&!m.eliminado).reduce((a,m)=>a+(m.monto||0),0);
       const inferido=Math.max(0,(tc.deuda||0)-sumCompras-sumCargos+sumPagos);
       let fechaInferida=hoy();
       const fechasConocidas=[...tc.compras.map(c=>c.fecha),...tc.pagos.map(p=>p.fecha)].filter(Boolean).sort();
@@ -893,7 +901,7 @@ function abrirDetalleTCSheet(tcId){
         const esFavor=c._esFavor||c._desdeCP;
         const esCargoEspecial=!!c._esCargoEspecial;
         const favorBadge=esFavor
-          ? `<span style="font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;"><i class="fa-solid fa-handshake" style="margin-right:3px;font-size:7px;"></i>favor</span>`
+          ? `<span style="font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;"><i class="fa-solid fa-arrow-down" style="margin-right:3px;font-size:7px;"></i>favor</span>`
           : '';
         const _origenC=esCargoEspecial?'Cargo especial del banco':(c._desdeCP?'Plata comprometida':'Tarjeta de crédito');
         const badgeLabel=esCargoEspecial?('Cargo especial · '+(TC_MOTIVOS_CARGO[c._motivoCargo]||'Otro')):(esFavor?'Favor cubierto':(c.cat||'Sin cat.'));
@@ -915,15 +923,20 @@ function abrirDetalleTCSheet(tcId){
       if(item._tipo==='tcmov'){
         const m=item;
         const esEncargo=m.tipo==='cargo_encargo';
-        const colorBorde=esEncargo?'rgba(240,184,64,.3)':'rgba(150,120,240,.3)';
-        const colorMonto=esEncargo?'var(--amber)':'rgba(180,140,255,1)';
-        const colorBadgeBg=esEncargo?'rgba(240,184,64,.12)':'rgba(150,120,240,.12)';
-        const colorBadgeTxt=esEncargo?'var(--amber)':'rgba(180,140,255,1)';
-        const labelBadge=esEncargo?'Encargo':'Préstamo';
+        const esDeuda=m.tipo==='cargo_deuda';
+        const colorBorde=esEncargo?'rgba(240,184,64,.3)':(esDeuda?'rgba(240,104,104,.3)':'rgba(150,120,240,.3)');
+        const colorMonto=esEncargo?'var(--amber)':(esDeuda?'var(--red)':'rgba(180,140,255,1)');
+        const colorBadgeBg=esEncargo?'rgba(240,184,64,.12)':(esDeuda?'rgba(240,104,104,.12)':'rgba(150,120,240,.12)');
+        const colorBadgeTxt=esEncargo?'var(--amber)':(esDeuda?'var(--red)':'rgba(180,140,255,1)');
+        const labelBadge=esEncargo?'Encargo':(esDeuda?'Pago de deuda':'Préstamo');
         const iconoBadge=esEncargo
           ? `<i class="fa-solid fa-box" style="margin-right:3px;font-size:7px;"></i>`
-          : `<i class="fa-solid fa-hand-holding-dollar" style="margin-right:3px;font-size:7px;"></i>`;
-        const _origenM=esEncargo?'Encargos':('Préstamos · '+(((S.deudores||[]).find(x=>x.id===m.deudorId)||{}).nombre||''));
+          : (esDeuda
+            ? `<i class="fa-solid fa-arrow-down" style="margin-right:3px;font-size:7px;"></i>`
+            : `<i class="fa-solid fa-hand-holding-dollar" style="margin-right:3px;font-size:7px;"></i>`);
+        const _origenM=esEncargo?'Encargos':(esDeuda
+          ?('Préstamos · Yo debo · '+(((S.misDeudas||[]).find(x=>x.id===m.miDeudaId)||{}).nombre||''))
+          :('Préstamos · '+(((S.deudores||[]).find(x=>x.id===m.deudorId)||{}).nombre||'')));
         return html`<div class="gasto-item" ${raw(_tcAttrs(m,_origenM,null))} style="margin-bottom:7px;cursor:pointer;border-color:${colorBorde};">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${m.desc}</div><div class="row-sub">${m.fecha}</div></div>

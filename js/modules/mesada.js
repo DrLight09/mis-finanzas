@@ -527,46 +527,13 @@ function _syncMpDebeWrap(v){
 // mesada, o null si el destino no corresponde a una cuenta rastreable (ej.
 // destino vacío = "no especificar").
 function _registrarMovSecundarioMesada(destino,monto,fecha,desc){
-  if(!destino||!monto)return null;
-  const id=uid();
-  if(destino==='efectivo'||destino==='nequi'){
-    if(!S.movimientos)S.movimientos=[];
-    S.movimientos.push({id,tipo:'entrada',fuente:destino,monto,fecha,desc,_secundario:true,_origenSeccion:'Mesada'});
-  } else if(destino.startsWith('custom:')){
-    const cId=destino.split(':')[1];
-    const cObj=getCuentaCustom(cId);
-    if(cObj){
-      if(!cObj.movimientos)cObj.movimientos=[];
-      cObj.movimientos.push({id,tipo:'ingreso',monto,fecha,nota:desc,_secundario:true,_origenSeccion:'Mesada'});
-    }
-  } else if(destino.startsWith('cajita:')){
-    const cId=destino.split(':')[1];
-    const cObj=(S.cajitas||[]).find(x=>x.id===cId);
-    if(cObj){
-      if(!cObj.historial)cObj.historial=[];
-      cObj.historial.push({id,tipo:'entrada',monto,fecha,nota:desc,_secundario:true,_origenSeccion:'Mesada'});
-    }
-  } else {
-    return null;
-  }
-  return id;
+  return registrarMovEspejo({cuenta:destino,flujo:'entrada',monto,fecha,desc,origen:'Mesada'});
 }
 
 // Elimina el movimiento espejo generado por _registrarMovSecundarioMesada,
 // dado el destino original donde se creó y el id guardado.
 function _borrarMovSecundarioMesada(destino,movSecId){
-  if(!destino||!movSecId)return;
-  if(destino==='efectivo'||destino==='nequi'){
-    S.movimientos=(S.movimientos||[]).filter(x=>x.id!==movSecId);
-  } else if(destino.startsWith('custom:')){
-    const cId=destino.split(':')[1];
-    const cObj=getCuentaCustom(cId);
-    if(cObj&&cObj.movimientos)cObj.movimientos=cObj.movimientos.filter(x=>x.id!==movSecId);
-  } else if(destino.startsWith('cajita:')){
-    const cId=destino.split(':')[1];
-    const cObj=(S.cajitas||[]).find(x=>x.id===cId);
-    if(cObj&&cObj.historial)cObj.historial=cObj.historial.filter(x=>x.id!==movSecId);
-  }
+  borrarMovEspejo(destino,movSecId);
 }
 
 function confirmarMesadaPago(){

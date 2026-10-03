@@ -1037,7 +1037,7 @@ function renderMetaProgress(c){
 function _calcPrestadoMeta(cajitaId){
   // Suma todos los préstamos pendientes que incluyen esta cajita como fuente
   let total = 0;
-  (S.deudores||[]).forEach(d=>{
+  Deudas.lista('favor').forEach(d=>{
     (d.movimientos||[]).forEach(m=>{
       if(m.tipo==='prestamo'){
         // fuente simple
@@ -1888,7 +1888,7 @@ function _getMovimientosCuentaCustom(fuente) {
   });
 
   // 4. Préstamos dados desde esta cuenta
-  (S.deudores || []).forEach(d => {
+  Deudas.lista('favor').forEach(d => {
     (d.movimientos || []).forEach(m => {
       if (m.tipo === 'prestamo' && (m.fuente === fuente || (m.fuentes || []).some(f => f.fuente === fuente))) {
         const _origenP = 'Préstamos · ' + d.nombre;
@@ -2038,7 +2038,7 @@ function getMovimientosCuenta(tipo) {
     }
   });
   // Préstamos dados desde esta fuente
-  (S.deudores || []).forEach(d => {
+  Deudas.lista('favor').forEach(d => {
     (d.movimientos || []).forEach(m => {
       const matchFuente = tipo === 'nu'
         ? (m.fuente && m.fuente.startsWith('cajita:'))

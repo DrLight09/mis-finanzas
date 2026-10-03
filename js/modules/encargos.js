@@ -476,7 +476,7 @@ function abrirEncargoDetalle(id) {
       const _miaLbl = arr => (arr||[]).map(r=>fuenteLabel(r.cuenta)+' '+fmt(r.monto)).join(' + ');
       const miaSaleLbl  = esMia ? ((m._miaCuentas && m._miaCuentas.sale.length>1) ? _miaLbl(m._miaCuentas.sale) : fuenteLabel(m._miaCuentaSale)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
       const miaEntraLbl = esMia && m._miaCuentaEntra ? ((m._miaCuentas && m._miaCuentas.entra.length>1) ? _miaLbl(m._miaCuentas.entra) : fuenteLabel(m._miaCuentaEntra)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
-      const origenEnc = esAbonoPrestamo ? ('Préstamos · ' + (((S.deudores||[]).find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+enc.nombre);
+      const origenEnc = esAbonoPrestamo ? ('Préstamos · ' + ((Deudas.lista('favor').find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+enc.nombre);
       return html`<div class="gasto-item" ${raw(_encAttrs(m,origenEnc))} style="cursor:pointer;border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':esTcEncargo?'rgba(96,176,240,.25)':'rgba(240,104,104,.15)'};">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;">
@@ -1883,11 +1883,9 @@ function _movEncConfirmarPrestarFaltante() {
 
   // 2) El faltante, como préstamo real tuyo — mismo deudor que ya usa este
   //    encargo si existe (nunca duplicar persona, ver prestado.md §6).
-  let deudor = (S.deudores || []).find(d => d.personaId === enc.personaId);
+  let deudor = Deudas.porPersona('favor', enc.personaId);
   if (!deudor) {
-    if (!S.deudores) S.deudores = [];
-    deudor = { id: uid(), nombre: persona.nombre, color: persona.color || '#60b0f0', personaId: persona.id, movimientos: [] };
-    S.deudores.push(deudor);
+    deudor = Deudas.agregar('favor', { id: uid(), nombre: persona.nombre, color: persona.color || '#60b0f0', personaId: persona.id, movimientos: [] });
   }
   if (!deudor.movimientos) deudor.movimientos = [];
   const grupoId = _autoGrupoIdMov(deudor, fecha);
@@ -1971,7 +1969,7 @@ async function deleteMovEncargo(encId, movId) {
 
   // Revertir efectos secundarios de un pago de préstamo vía encargo
   if (mov && mov._esAbonoDeudor && mov._deudorId) {
-    const d = (S.deudores || []).find(x => x.id === mov._deudorId);
+    const d = Deudas.lista('favor').find(x => x.id === mov._deudorId);
     if (d) {
       // Eliminar el abono correspondiente del deudor (vinculado por _encMovId,
       // o por _encMovIds si el pago salió de varias cuentas del encargo)

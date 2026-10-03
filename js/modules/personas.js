@@ -64,12 +64,12 @@ function getPersonaColor(id) {
 // Datos vinculados a una persona
 function getPersonaDatos(personaId) {
   const encargos = (S.encargos || []).filter(e => e.personaId === personaId);
-  const deudores = (S.deudores || []).filter(d => d.personaId === personaId);
+  const deudores = Deudas.lista('favor').filter(d => d.personaId === personaId);
   const deudor = deudores[0] || null; // compatibilidad: primer deudor para referencias puntuales
   const saldoEncargos = encargos.reduce((a, e) => a + encargoSaldo(e), 0);
   const saldoPrestamo = deudores.reduce((a, d) => a + (typeof getDeudorSaldo === 'function' ? getDeudorSaldo(d) : 0), 0);
   // misDeudas: lo que YO le debo a esta persona
-  const misDeudas = (S.misDeudas || []).filter(d => d.personaId === personaId);
+  const misDeudas = Deudas.lista('contra').filter(d => d.personaId === personaId);
   const saldoMisDeudas = misDeudas.reduce((a, d) => a + getMiDeudaSaldo(d), 0);
   return { encargos, deudor, deudores, saldoEncargos, saldoPrestamo, misDeudas, saldoMisDeudas };
 }
@@ -194,9 +194,9 @@ function _renderListaPersonas() {
   // Reunir personas: las de S.personas + deudores sin personaId que aún no están
   const personas = [...(S.personas || [])];
   // También incluir deudores no vinculados como "sin perfil"
-  const sinPerfil = (S.deudores || []).filter(d => !d.personaId);
+  const sinPerfil = Deudas.lista('favor').filter(d => !d.personaId);
   // misDeudas sin vincular (sin personaId)
-  const sinPerfilMisDeudas = (S.misDeudas || []).filter(d => !d.personaId);
+  const sinPerfilMisDeudas = Deudas.lista('contra').filter(d => !d.personaId);
 
   const total = personas.length + sinPerfil.length + sinPerfilMisDeudas.length;
   if (!total) {
@@ -298,7 +298,7 @@ function _renderListaPersonas() {
 
 // Actualizar el sub-texto del ítem Personas (ahora en Configuración)
 function _actualizarMasPersonasSub() {
-  const total = (S.personas || []).length + (S.deudores || []).filter(d => !d.personaId).length + (S.misDeudas || []).filter(d => !d.personaId).length;
+  const total = (S.personas || []).length + Deudas.lista('favor').filter(d => !d.personaId).length + Deudas.lista('contra').filter(d => !d.personaId).length;
   const txt = total ? total + ' persona' + (total !== 1 ? 's' : '') + ' registrada' + (total !== 1 ? 's' : '') : 'Perfiles y actividad financiera';
   // Actualizar en Config
   const cfgSub = document.getElementById('cfg-personas-sub');
@@ -463,11 +463,11 @@ function _guardarEditarPersonaGlobal() {
   p.nombre = nombre;
   p.color = _epgColorSel;
   // Sincronizar nombre en deudores vinculados
-  (S.deudores || []).forEach(d => { if (d.personaId === p.id) { d.nombre = nombre; d.color = _epgColorSel; } });
+  Deudas.lista('favor').forEach(d => { if (d.personaId === p.id) { d.nombre = nombre; d.color = _epgColorSel; } });
   // Sincronizar nombre en encargos vinculados
   (S.encargos || []).forEach(e => { if (e.personaId === p.id) e.nombre = nombre; });
   // Sincronizar nombre y color en misDeudas vinculadas
-  (S.misDeudas || []).forEach(d => { if (d.personaId === p.id) { d.nombre = nombre; d.color = _epgColorSel; } });
+  Deudas.lista('contra').forEach(d => { if (d.personaId === p.id) { d.nombre = nombre; d.color = _epgColorSel; } });
   // Sincronizar nombre en integrantes de Spotify vinculados (el campo crudo .nombre
   // se usa directo en la validación de nombres duplicados de addSpotify)
   (S.spotifyPersonas || []).forEach(sp => { if (sp.personaId === p.id) sp.nombre = nombre; });

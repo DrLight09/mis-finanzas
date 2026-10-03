@@ -394,7 +394,7 @@ function _cpPoblarCuentas(selId, incluirTC){
 function _cpPoblarPersonas(selId){
   const sel = document.getElementById(selId);
   if(!sel) return;
-  const deudores = (window.S && S.deudores) ? S.deudores : [];
+  const deudores = Deudas.lista('favor');
   // Solo mostrar personas que realmente me deben plata (saldo > 0)
   const conDeuda = deudores.filter(d => {
     const saldo = typeof getDeudorSaldo === 'function' ? getDeudorSaldo(d) : 0;
@@ -1101,7 +1101,7 @@ function _cpRenderDestinosTmp(){
           : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.35);color:var(--amber);font-family:'DM Mono',monospace;"><i class="fa-regular fa-clock"></i> Pendiente</span>`;
         badges = origenBadge + ' ' + pagoBadge;
       } else if(d.tipo === 'abono_deuda' && d.personaId){
-        const deu = (window.S && S.deudores) ? (S.deudores||[]).find(x=>x.id===d.personaId) : null;
+        const deu = Deudas.lista('favor').find(x=>x.id===d.personaId);
         if(deu) badges = html`<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.25);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-solid fa-user" style="font-size:8px;margin-right:2px;"></i>${deu.nombre}</span>`;
       } else {
         badges = d.yaPague
@@ -1182,7 +1182,7 @@ function _cpAbrirRecibir(id){
         let extraInfo = '';
 
         if(d.tipo==='abono_deuda'||d.tipo==='prestamo'){
-          const deu = (S.deudores||[]).find(x=>x.id===d.personaId);
+          const deu = Deudas.lista('favor').find(x=>x.id===d.personaId);
           if(deu) detalle = html` · ${deu.nombre}`;
         }
         if(d.tipo==='tc'){
@@ -1356,7 +1356,7 @@ function _cpConfirmarRecibir(){
         }
       }
       else if(d.tipo === 'abono_deuda' && d.personaId){
-        const deu = (S.deudores||[]).find(x=>x.id===d.personaId);
+        const deu = Deudas.lista('favor').find(x=>x.id===d.personaId);
         if(deu){
           if(!deu.movimientos) deu.movimientos = [];
           deu.movimientos.push({id:uid(), tipo:'abono', monto:d.monto, fecha, nota:'Abono desde: '+item.desc, ts:Date.now()});

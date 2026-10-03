@@ -187,7 +187,7 @@ function _alcOrigenOptsHtml(selected, conDeuda){
   let extra = '<optgroup label="Sin cuenta">'
     + Object.keys(_ALC_ORIGENES_SIN_CUENTA).map(v => `<option value="${v}">${_ALC_ORIGENES_SIN_CUENTA[v].label}</option>`).join('')
     + '</optgroup>';
-  if(conDeuda && (window.S && window.S.deudores || []).some(d => typeof getDeudorSaldo === 'function' && getDeudorSaldo(d) > 0.5)){
+  if(conDeuda && Deudas.lista('favor').some(d => typeof getDeudorSaldo === 'function' && getDeudorSaldo(d) > 0.5)){
     extra += `<optgroup label="Deudas"><option value="${_ALC_VALOR_DEUDA}">Me pagaron una deuda</option></optgroup>`;
   }
   return tmp.innerHTML + extra;
@@ -265,7 +265,7 @@ function _alcDeudorSelActualizar(){
     if(hint) hint.textContent = '';
     return;
   }
-  const d = (window.S && window.S.deudores || []).find(x => x.id === deudorId);
+  const d = Deudas.lista('favor').find(x => x.id === deudorId);
   if(!d) return;
   // Migrar antes de leer d.grupos — un deudor viejo sin d.grupos parece tener
   // "0 grupos abiertos" aunque tenga deuda real, y eso hace que el auto-resolver
@@ -291,7 +291,7 @@ function _alcDeudorSaldoHintActualizar(){
   const hint = document.getElementById('alc_dep_deudor_saldo_hint');
   const deudorId = sel ? sel.value : '';
   if(!deudorId) return;
-  const d = (window.S && window.S.deudores || []).find(x => x.id === deudorId);
+  const d = Deudas.lista('favor').find(x => x.id === deudorId);
   if(!d) return;
   const grupoVisible = grupoWrap && grupoWrap.style.display !== 'none';
   const saldo = (grupoVisible && grupoSel && grupoSel.value) ? getGrupoSaldo(d, grupoSel.value) : getDeudorSaldo(d);
@@ -650,7 +650,7 @@ hookGlobal('openSheet', function(id){
       // Cobro de deuda: poblar personas con saldo pendiente y resetear el wrap
       const deudorSelReset = document.getElementById('alc_dep_deudor');
       if(deudorSelReset){
-        const deudoresConSaldo = (window.S && window.S.deudores || [])
+        const deudoresConSaldo = Deudas.lista('favor')
           .filter(d => typeof getDeudorSaldo === 'function' && getDeudorSaldo(d) > 0.5);
         deudorSelReset.innerHTML = '<option value="">Seleccionar persona</option>'
           + deudoresConSaldo.map(d => `<option value="${d.id}">${escHtml(d.nombre)} (${fmt(getDeudorSaldo(d))})</option>`).join('');
@@ -768,7 +768,7 @@ window.renderAlcancia = function(){
                 return f;
               })()
             : (m.tipo === 'cobro-deuda' && m._prestamoDeudorId
-                ? (() => { const dd=(window.S&&window.S.deudores||[]).find(x=>x.id===m._prestamoDeudorId); return dd?dd.nombre:null; })()
+                ? (() => { const dd=Deudas.lista('favor').find(x=>x.id===m._prestamoDeudorId); return dd?dd.nombre:null; })()
                 : null);
           return `
           <div class="card card-sm" style="margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
@@ -929,7 +929,7 @@ window.alcanciaConfirmarDeposito = function(){
   if(esCobro){
     cobroDeudorId = (document.getElementById('alc_dep_deudor')||{}).value || '';
     if(!cobroDeudorId){ err('Seleccioná quién te pagó'); return; }
-    const dCheck = (window.S && window.S.deudores || []).find(x => x.id === cobroDeudorId);
+    const dCheck = Deudas.lista('favor').find(x => x.id === cobroDeudorId);
     if(!dCheck){ err('Esa persona ya no existe'); return; }
     if(typeof _migrarGruposDeudor === 'function') _migrarGruposDeudor(dCheck);
     cobroDeudorNombre = dCheck.nombre;
@@ -999,7 +999,7 @@ window.alcanciaConfirmarDeposito = function(){
   // Cobro de deuda: abono en la persona (descuenta la deuda). No toca ninguna cuenta ni cuenta como ingreso.
   let cobroAbonoMovId = null;
   if(esCobro){
-    const d = (window.S.deudores || []).find(x => x.id === cobroDeudorId);
+    const d = Deudas.lista('favor').find(x => x.id === cobroDeudorId);
     if(d){
       if(!d.movimientos) d.movimientos = [];
       // Deudores viejos sin d.grupos: migrar antes, si no _autoGrupoIdMov crea un grupo en blanco (ver prestado.md §2.4).
@@ -1354,7 +1354,7 @@ window.alcanciaEliminarDeposito = async function(movId){
   // se usa en Encargos desde 2026-09-01 — ver CHANGELOG.md#encargos).
   let deudorParaAviso = null;
   if(entry.tipo === 'cobro-deuda' && entry._prestamoDeudorId){
-    deudorParaAviso = (window.S.deudores || []).find(x => x.id === entry._prestamoDeudorId) || null;
+    deudorParaAviso = Deudas.lista('favor').find(x => x.id === entry._prestamoDeudorId) || null;
   }
   if(typeof nivelAntiguedadMovimiento === 'function'){
     const opsPosteriores = entry.fecha ? (a.movimientos||[]).filter(m => m.id!==entry.id && m.fecha && m.fecha>entry.fecha).length : 0;
@@ -1428,7 +1428,7 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
     // No hay cuenta real ni movimiento en S.movimientos que revertir — el
     // rastro real es el abono en el deudor. Quitarlo de ahí reabre la deuda.
     if(entry._prestamoDeudorId && entry._prestamoMovId){
-      const d = (window.S.deudores || []).find(x => x.id === entry._prestamoDeudorId);
+      const d = Deudas.lista('favor').find(x => x.id === entry._prestamoDeudorId);
       if(d && d.movimientos){
         d.movimientos = d.movimientos.filter(x => x.id !== entry._prestamoMovId);
         if(typeof _autoCerrarGruposEnCero === 'function') _autoCerrarGruposEnCero(d);

@@ -157,7 +157,7 @@
   // extra/propina) sigue visible. Lo usan _normMovimientos y _normCajitas.
   function _espejosDeudores(S) {
     var ids = {};
-    (S.deudores || []).forEach(function(d){
+    Deudas.lista('favor').forEach(function(d){
       (d.movimientos || []).forEach(function(m){
         if (m._abonoDestinoMovId) ids[m._abonoDestinoMovId] = true;
         (m.destinos || []).forEach(function(r){ if (r && r._movId) ids[r._movId] = true; });
@@ -293,7 +293,7 @@
 
   function _normDeudores(S) {
     var items = [];
-    (S.deudores || []).forEach(function(d){
+    Deudas.lista('favor').forEach(function(d){
       (d.movimientos || []).forEach(function(m){
         // Perdón de deuda ("¿Se lo regalas?"): no entró plata, así que NO es un
         // "Abono" (+). Ya aparece una sola vez como gasto ("Perdoné deuda — …", -)

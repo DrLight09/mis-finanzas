@@ -191,3 +191,40 @@ test('cuenta-efectos — registrarMovEspejo / borrarMovEspejo: sin cuenta, tipo 
   assert.equal(ctx.borrarMovEspejo('cajita:cj1', c), true);
   assert.equal(ctx.S.movimientos.length, 0);
 });
+
+test('Yo debo — grupos de préstamo: el primer "Me prestó" crea el Histórico y getGrupoSaldo cuenta lo recibido como deuda que sube', () => {
+  const ctx = freshApp();
+  ctx.S.misDeudas[0].movimientos = [];
+  const mov = ctx._aplicarMovMiDeuda(plan(ctx, { tipo: 'recibido', monto: 50000, cuentas: [{ cuenta: 'efectivo', monto: 50000 }] }));
+  const d = ctx.S.misDeudas[0];
+  assert.equal(d.grupos.length, 1);
+  assert.equal(mov.grupoId, d.grupos[0].id);
+  assert.equal(ctx.getGrupoSaldo(d, d.grupos[0].id), 50000);
+});
+
+test('Yo debo — un préstamo aparte se cierra solo al saldarse y se reabre si se revierte el pago (el Histórico nunca se cierra solo)', () => {
+  const ctx = freshApp();
+  const d = ctx.S.misDeudas[0];
+  d.movimientos = [];
+  ctx._aplicarMovMiDeuda(plan(ctx, { tipo: 'recibido', monto: 50000, cuentas: [{ cuenta: 'efectivo', monto: 50000 }] })); // cae en el Histórico
+  const moto = ctx._crearGrupoDeudor(d, '2026-10-03', 'Moto');
+  d.movimientos.push({ id: 'm1', tipo: 'recibido', monto: 30000, fecha: '2026-10-03', grupoId: moto.id });
+  d.movimientos.push({ id: 'p1', tipo: 'pago', monto: 30000, fecha: '2026-10-04', grupoId: moto.id });
+  ctx._autoCerrarGruposEnCero(d);
+  assert.equal(moto.cerrado, true, 'el grupo saldado se cierra solo');
+  assert.ok(!d.grupos[0].cerrado, 'el Histórico queda abierto aunque su saldo sea distinto de 0');
+  d.movimientos = d.movimientos.filter((x) => x.id !== 'p1');
+  ctx._autoCerrarGruposEnCero(d);
+  assert.equal(moto.cerrado, false, 'al borrar el pago el grupo se reabre');
+});
+
+test('Yo debo — una deuda anterior a los grupos se migra al Histórico sin cambiar su saldo', () => {
+  const ctx = freshApp();
+  const d = ctx.S.misDeudas[0];
+  d.movimientos = [{ id: 'a', tipo: 'recibido', monto: 90000, fecha: '2026-09-01' }, { id: 'b', tipo: 'pago', monto: 20000, fecha: '2026-09-10' }];
+  const antes = ctx.getMiDeudaSaldo(d);
+  assert.equal(ctx._migrarGruposDeudor(d), true);
+  assert.ok(d.movimientos.every((m) => m.grupoId === '_historico'));
+  assert.equal(ctx.getMiDeudaSaldo(d), antes);
+  assert.equal(ctx._migrarGruposDeudor(d), false, 'es idempotente');
+});

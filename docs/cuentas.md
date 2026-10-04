@@ -39,6 +39,7 @@ A diferencia de Spotify, Mesada o Encargos — que registran la actividad propia
 - **Las tarjetas de crédito nunca son un destino válido para dinero que entra** — ni "Agregar dinero", ni el menú `+` del header, ni "Transferir" permiten una TC como destino. Sí se puede pagar *con* una TC en otros módulos (genera deuda), pero nunca "guardar" plata ahí.
 - **Todo movimiento que otro módulo genera dentro de una cuenta (mesada, cobro de Spotify, abono de un préstamo, encargo) se ve en el historial de esa cuenta marcado como "Automático" y protegido contra borrado directo** — solo se puede deshacer desde el módulo que lo originó, nunca desde el historial de la cuenta. Cuentas es quien *muestra* la protección (candado 🔒, ícono de eliminar bloqueado), no quien la implementa por cuenta propia — cada módulo marca sus propios movimientos.
 - **Eliminar un movimiento revierte exactamente la plata de ese movimiento, ni más ni menos** — incluyendo una transferencia, donde hay que revertir **ambos lados** (restar de donde entró, devolver a donde salió), y una cuenta personalizada, donde `eliminarMovimiento()` tiene que saber leer **ambas** convenciones según la antigüedad del dato: los movimientos nuevos viven en `S.movimientos` igual que Nequi/Efectivo; el saldo inicial fijado al crear la cuenta y los movimientos viejos (anteriores a 2026-09) viven en `c.movimientos` con su propia convención (`ingreso`/`egreso`, ver §4/§7).
+- **Revertir un saldo nunca lo recorta en 0.** `descontarFuente()` (en `core-state.js`) tiene piso en 0 para gastos y pagos nuevos, pero toda reversión (borrar un movimiento, un abono, una transferencia, corregir un saldo inicial hacia abajo) debe llamarla con `{ exacto: true }`. Con piso, si el saldo del momento era menor que el monto revertido, la diferencia se perdía y al rehacer el movimiento el saldo quedaba por encima del real (caso real: Efectivo 49.000 → 54.000). Con `exacto` el saldo puede quedar negativo mientras no se rehaga el movimiento; es lo correcto. Los saldos negativos se muestran tal cual, y `fmtInput()` los formatea con signo porque `save()` relee el saldo de Efectivo desde un input oculto. Ver `CHANGELOG.md#patrimonio-y-cálculos-globales` (2026-09-30).
 - **El saldo inicial (apertura) es un movimiento especial, no un ingreso normal** — nunca debe sumarse como "ingreso del mes" en Análisis financiero, y corregirlo (`abrirEditarApertura`) nunca debe borrar y recrear el movimiento como si fuera nuevo, porque eso perdería su fecha original y afectaría el historial de patrimonio.
 - **Una persona puede pagar/mover plata en la misma cuenta varias veces**; ningún cálculo de saldo o de intereses debe asumir "un solo movimiento por día/mes".
 - **El cálculo de intereses de Nu respeta los tramos de tasa histórica** — nunca aplica la tasa de hoy retroactivamente a todo el saldo. Si se corrige una tasa vieja, solo afecta el período donde esa tasa estuvo vigente.
@@ -101,9 +102,14 @@ S.cajitas = [
   }
 ]
 
-S.cuentasPersonalizadas = [
+// Modelo único de cuentas (desde 2026-10-01). Reemplaza a S.nequiSaldo, S.efectivoSaldo y
+// S.cuentasPersonalizadas. Nu sigue en S.cajitas. Helpers en core-state.js: getCuenta(id),
+// getCuentaCustom(id), cuentasCustom(), getCuentaDeFuente(fuente), migrarCuentasLegacy().
+S.cuentas = [
+  { id: "nequi",    tipo: "nequi",    saldo: 1500000 },   // cuentas fijas: nombre/color en el descriptor
+  { id: "efectivo", tipo: "efectivo", saldo: 38000 },     // de cuentas.js (CUENTAS_FIJAS_SELECTOR)
   {
-    id: "uid", nombre: "Bancolombia", saldo: 300000,
+    id: "uid", tipo: "custom", nombre: "Bancolombia", saldo: 300000,
     icono: "bank", color: "#60b0f0",
     movimientos: [
       // Convención PROPIA (histórica) — ver §7. Desde 2026-09 solo quedan acá
@@ -177,6 +183,7 @@ eliminarMovimiento (punto de entrada único, compartido con toda la app)
 ¿Es un movimiento "Automático" (marcado por otro módulo)? → bloqueado, avisa que se borre desde el módulo dueño
   ↓
 Si es propio de Cuentas: revertir la plata de la cuenta (o de AMBAS cuentas si era una transferencia)
+  (la reversión usa descontarFuente(..., { exacto: true }): sin piso en 0, ver §3)
   ↓
 Si la cuenta es personalizada: el registro puede vivir en S.movimientos (movimientos
 nuevos, desde 2026-09) o en c.movimientos (saldo inicial de creación + datos viejos)
@@ -287,8 +294,9 @@ El primer chequeo de una cajita solo fija su punto de partida; la primera compar
 
 | Función | Qué hace |
 |---|---|
-| `abrirCuenta(fuente)` / `volverSelector()` | Navegación entre el selector de cuentas y el detalle de una |
-| `renderDetalleCuenta()` | Pinta saldo, acciones y lista de movimientos de la cuenta activa |
+| `renderSelectorCuentas()` | Pinta la pantalla "Selecciona una cuenta" desde una sola lista de descriptores: `CUENTAS_FIJAS_SELECTOR` (Nequi, Nu, Efectivo) + las personalizadas de `S.cuentas`. Estilo `tarjeta` (grid de 2) o `pastilla`; el clic es un único listener delegado sobre `#selector-cuentas-lista` (`data-fuente`). El saldo pasa siempre por `fmtSaldoSelector()` (`core-state.js`). El botón de ocultar saldos (`mejoras-adicionales.js`) depende de dos ids: `#selector-cuentas-lista` (en `SALDO_DINAMICO_IDS`) y `#det-cuenta-saldo` (en `MONEY_SELECTORS`); si se renombran, actualizar esas listas |
+| `abrirCuenta(fuente)` / `volverSelector()` | Navegación entre el selector de cuentas y el detalle de una. `fuente` es `'nequi'`, `'nu'`, `'efectivo'` o `'custom:ID'`; Nu abre su pantalla propia (`cuentas-detalle-nu`) y todas las demás comparten `cuentas-detalle-simple` |
+| `renderDetalleCuenta(fuente)` | Pinta el detalle de la cuenta abierta. Nu: cajitas, encargos y movimientos. Resto (`_renderDetalleSimple`): nombre, ícono, color (`--cuenta`/`--cuenta-rgb` sobre `#cuentas-detalle-simple`), saldo, banner de saldo inicial, encargos y movimientos, a partir del descriptor de la cuenta (`_descriptorCuenta`). Los botones del detalle son un único listener delegado que actúa sobre `cuentaActual` (la fuente de la cuenta abierta: `'nequi'`, `'nu'`, `'efectivo'` o `'custom:ID'`; una sola variable) |
 | `getMovimientosCuenta(fuente)` / `_getMovimientosCuentaCustom(fuente)` | Reconstruyen el historial de una cuenta desde todas las fuentes que la tocan (ver §7) |
 | `renderMovsCuenta(cuentaKey)` | Aplica filtros y pinta la lista de movimientos, con protección de borrado para los "Automático" y monto oculto (`••••`, sin detalle) para las filas con `_alcOculto` (depósitos a Alcancía) |
 | `abrirTransferir(origen?)` / `confirmarTransferir()` | Sheet y confirmación de transferencia entre cuentas |
@@ -297,7 +305,8 @@ El primer chequeo de una cajita solo fija su punto de partida; la primera compar
 | `actualizarBotonesTransferir()` | Habilita/deshabilita los botones "Mover a otra cuenta" según saldo ≥ $1,00 |
 | `abrirAgregarDinero(fuente,nombre)` / `confirmarAgregarDinero()` | Agregar dinero (con o sin toggle de apertura) — Nequi/Efectivo/cuenta personalizada |
 | `abrirRestarDinero(fuente,nombre)` / `confirmarRestarDinero()` | Restar dinero — mismo alcance que arriba |
-| `abrirEditarApertura(fuente)` / `confirmarEditarApertura()` | Corregir el saldo inicial ya registrado |
+| `abrirEditarApertura(fuente)` / `confirmarEditarApertura()` | Corregir el saldo inicial ya registrado — si el saldo baja, revierte con `{ exacto: true }` |
+| `descontarFuente(fuente, monto, opts)` / `sumarFuente(fuente, monto)` (`core-state.js`) | Mueven el saldo guardado de Nequi/Efectivo/cajita/cuenta personalizada. `descontarFuente` tiene piso en 0 salvo que se pase `opts.exacto` (obligatorio al revertir, ver §3) | 
 | `getAperturaMov(fuente)` | Busca el movimiento de apertura vigente — revisa `S.movimientos` y, para `'custom:ID'`, hace fallback a `c.movimientos` (ver §7) |
 | `addCajita()` / `deleteCajita(id)` | Crear/eliminar una cajita de Nu |
 | `calcC(c)` | Motor de interés diario compuesto de una cajita — por tramos de tasa (`S.historialTasasNu`) **y** por tramos de saldo de encargo (fechas en que un encargo depositó/retiró plata de esa cajita), para que cada porción de plata gane interés solo por los días que realmente estuvo ahí (ver §3, §6) |

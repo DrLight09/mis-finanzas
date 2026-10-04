@@ -142,6 +142,8 @@ Revertir cada abono del pendienteHistorial de su propia cuenta (y de su encargo,
 Borrar todos los movimientos espejo asociados
 ```
 
+Todas las reversiones de saldo de este flujo (pago original, splits y abonos del pendiente) usan `descontarFuente(..., { exacto: true })`: sin piso en 0, para que borrar y volver a registrar un pago no deje la cuenta con un saldo distinto al real (ver `CHANGELOG.md#patrimonio-y-cálculos-globales`, 2026-09-30).
+
 ---
 
 ## 6. Casos especiales

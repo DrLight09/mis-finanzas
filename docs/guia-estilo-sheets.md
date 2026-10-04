@@ -152,19 +152,21 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 **`sheet-editar-encargo`** — Editar encargo: ¿De quién es la plata? → Nota (opcional)
 
-**`sheet-mov-encargo`** — Registrar movimiento: Descripción → Monto → ¿En qué cuenta está esa plata? → [Expandible] Yo puse la plata → ¿De cuál cuenta tuya sale lo prestado? → Fecha → Nota (opcional) → [Expandible] El valor real era diferente → ¿Cuánto era en realidad? + ¿A cuál de tus cuentas entra ese sobrante?
+**`sheet-mov-encargo`** — Registrar movimiento: Descripción → Monto → ¿En qué cuenta está esa plata? → [Expandible] Yo puse la plata → ¿De cuál cuenta tuya sale lo prestado? (÷) + ¿En cuál cuenta lo recuperás? (÷) → Fecha → Nota (opcional) → [Expandible] El valor real era diferente → ¿Cuánto era en realidad? + ¿A cuál de tus cuentas entra ese sobrante? (÷)
 
 > Nota: los dos expandibles quedan en posiciones distintas (uno antes de Fecha, el otro después de Nota) porque así está en el código actual — no es el ideal, pero tocarlo implica reordenar lógica condicional en `encargos.js`, fuera del alcance de esta limpieza de sheets estáticos.
+
+> **(÷)** = el campo trae el botón "Dividir ÷" del motor `js/core/split.js`: pasa de un select a filas cuenta + monto (mínimo 2, sin repetir cuenta, botón de quitar solo con 3 o más filas). Con el split activo, lo repartido tiene que sumar exactamente el monto total ("Yo puse la plata") o el sobrante (margen) — se valida al confirmar, antes de tocar ningún saldo. En los sheets de sobrante el bloque se muestra solo cuando hay margen libre, y al reabrir el sheet vuelve a "una sola cuenta".
 
 **`sheet-traspaso-encargo`** — Me lo regalaron: Descripción (opcional) → ¿Cuánto te regalaron? → ¿De qué cuenta del encargo salió? → ¿A cuál de tus cuentas entra? → Fecha
 
 **`sheet-transferencia-encargo`** — Pagarle a otro encargo desde este: ¿A cuál encargo le pagaste? → Descripción (opcional) → ¿Cuánto le pagaste? → ¿De qué cuenta del encargo salió? → ¿En qué cuenta quedó, para el otro encargo? → Fecha
 
-**`sheet-compra-tc-encargo`** — Pagué con mi TC: ¿Qué compraste? → Monto del encargo → ¿De qué cuenta salía esa plata del encargo? → ¿Con cuál tarjeta de crédito pagaste? → ¿A dónde va el dinero del encargo? (para pagar la TC) → [Expandible] El valor real era diferente → Valor real cobrado por la TC + ¿A cuál de tus cuentas entra el diferencial? → Fecha → Nota (opcional)
+**`sheet-compra-tc-encargo`** — Pagué con mi TC: ¿Qué compraste? → Monto del encargo → ¿De qué cuenta salía esa plata del encargo? → ¿Con cuál tarjeta de crédito pagaste? → ¿A dónde va el dinero del encargo? (para pagar la TC) → [Expandible] El valor real era diferente → Valor real cobrado por la TC + ¿A cuál de tus cuentas entra el diferencial? (÷) → Fecha → Nota (opcional)
 
 **`sheet-parte-encargo`** — Agregar parte: ¿Para qué es? `*` → Monto `*` → ¿Cuándo la vas a usar? (opcional)
 
-**`sheet-usar-parte`** — Ya la usé: ¿De dónde sacaste la plata? → [Expandible] El valor real era diferente → ¿Cuánto era en realidad? + ¿En qué cuenta te cayó ese margen?
+**`sheet-usar-parte`** — Ya la usé: ¿De dónde sacaste la plata? → [Expandible] El valor real era diferente → ¿Cuánto era en realidad? + ¿En qué cuenta te cayó ese margen? (÷)
 
 **`sheet-mover-enc-cuentas`** — Mover entre cuentas (encargo): ¿De qué cuenta sale? → ¿A qué cuenta va? → ¿Cuánto vas a mover? → Fecha
 

@@ -145,6 +145,8 @@ Si corresponde, chequear antigüedad de los movimientos afectados
 Confirmar → revertir → sacar el ingreso de S.plataCometida
 ```
 
+Las reversiones que restan saldo (reposición a cada destino, cajita usada para pagar TC, reposición de un gasto de cajita) usan `descontarFuente(..., { exacto: true })`, sin piso en 0 — ver `CHANGELOG.md#patrimonio-y-cálculos-globales` (2026-09-30).
+
 ## 6. Casos especiales
 
 - **Reposición adelantada vs. no adelantada, al recibir:** en los dos casos la cuenta termina sumando el mismo monto — la única diferencia es el texto del movimiento generado ("Reposición" vs. "Reposición (adelantada)"). El adelanto ya había descontado la cuenta por separado, así que el efecto neto a través del tiempo es el mismo, solo cambia cuándo se sintió la baja de saldo.

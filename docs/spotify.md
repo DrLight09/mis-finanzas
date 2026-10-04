@@ -267,6 +267,8 @@ Pago:
   restaurar el estado Pagó/Pendiente guardado en _estadoAntes
 ```
 
+Las reversiones de saldo (cobro, abonos del pendiente y "Deshacer abono") usan `descontarFuente(..., { exacto: true })`, sin piso en 0 — ver `CHANGELOG.md#patrimonio-y-cálculos-globales` (2026-09-30).
+
 ---
 
 ## 6. Casos especiales

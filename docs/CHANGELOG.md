@@ -6,6 +6,118 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Sheets / UI
 
+### 🔧 Corrección (2026-10-02) — El botón "ocultar saldos" vuelve a ocultar el selector y el detalle de cuentas (`mejoras-adicionales.js`)
+
+**Causa:** el módulo apuntaba a elementos que desaparecieron al unificar las cuentas (etapas 1 y 2). `MONEY_SELECTORS` listaba `#sel-nequi-saldo`, `#sel-nu-saldo`, `#sel-ef-saldo`, `#det-nequi-saldo`, `#det-ef-saldo` y `#det-custom-saldo`, y `SALDO_DINAMICO_IDS` observaba `#custom-cuentas-list`. Ningún selector coincidía con el HTML nuevo, así que el botón cambiaba de ícono pero no ocultaba nada de esas pantallas.
+
+**Ahora:**
+- `SALDO_DINAMICO_IDS`: `custom-cuentas-list` → `selector-cuentas-lista`. Es el mecanismo correcto para el selector: `renderSelectorCuentas()` reescribe todo el contenedor con `innerHTML` en cada `refresh()`, y esa lista envuelve cada monto `$…` en un `<span class="saldo-inline">` y lo vuelve a envolver con un `MutationObserver` tras cada repintado. Cubre Nequi, Nu, Efectivo y las personalizadas con un solo contenedor (antes Nequi, Nu y Efectivo eran elementos fijos con clase puesta una vez; ese enfoque no sirve con elementos que se recrean).
+- `MONEY_SELECTORS`: se quitan los seis ids muertos y se agrega `#det-cuenta-saldo` (saldo del detalle unificado; es un elemento fijo, solo cambia su texto).
+- Los nombres de las cuentas siguen visibles: solo se oculta el monto.
+
+**Verificado en jsdom** con el `mejoras-adicionales.js` real y el `index.html` real (13 comprobaciones): arrancar con saldos ocultos restaura el estado, el botón alterna selector y detalle, y los saldos siguen ocultos (o visibles) tras volver a repintar el selector. `hookGlobal` se estubeó (viene de `js/core/hook-global.js`). Sin probar en navegador real.
+
+**Observación (sin cambiar):** los montos de la lista de movimientos del detalle de una cuenta (`#det-cuenta-movs`, antes `#det-nequi-movs`, etc.) no figuraban en `SALDO_DINAMICO_IDS` ni usan `.row-amount`, así que el botón nunca los ocultó.
+
+### 🔧 Corrección (2026-10-02) — Búsqueda global muestra el nombre de la cuenta (no su id) y las flechas del selector quedan iguales
+
+- **`busqueda-global.js`:** en los resultados de "Movimiento" el meta mostraba `m.fuente` crudo (`cajita:mpkdex5cksh`, `custom:mtrq491i8sj`, `nequi`). Ahora pasa por `fuenteLabel()` vía un helper `_fuenteTexto()`: `nequi` → "Nequi", `cajita:ID` → "Nombre (Nu)", `custom:ID` → nombre de la cuenta, `tc:ID` → nombre de la tarjeta. Dos casos que `fuenteLabel()` no resuelve a texto se cubren en el helper: `ganancia` (devuelve un SVG, que `escHtml` mostraría como texto) y una cuenta personalizada ya borrada (devuelve el id crudo; ahora muestra "Cuenta eliminada").
+- **`styles.css`:** la flecha de las tarjetas (Nequi, Nu) usaba el color de la cuenta al 40 % de opacidad; la de las pastillas (Efectivo y personalizadas) usa el color completo. Ahora la tarjeta usa también `var(--cuenta)` completo, como la pastilla (se mantiene su posición abajo a la derecha).
+
+### 🔧 Corrección (2026-10-02) — "Gastos altos" cuenta las cuentas personalizadas y `encargos.js` protege `cuentaActual`
+
+- **`inicio.js` (chequeo de "Gastos altos"):** el disponible contra el que se compara el 80 % era `nu + nequi + ef`; ahora suma también las cuentas personalizadas (`cuentasCustom()`), igual que el "Disponible" del hero (`refresh()`) y `liquidoReal` del mismo archivo. Efecto visible: quien tenga saldo en cuentas personalizadas deja de ver el aviso cuando solo lo disparaba haber dejado esa plata fuera de la cuenta. Sin saldo en personalizadas el resultado es idéntico al anterior. Es una decisión de criterio (no un error de sintaxis): si se prefiere el cálculo anterior, es borrar la línea `custom` y su suma.
+- **`encargos.js` (`eliminarMovimientoEncargo`):** `cuentaActual` se leía sin `typeof`. Vive en `cuentas.js` (lazy), así que si ese módulo no estaba cargado, borrar un movimiento de un encargo tiraba `ReferenceError` justo antes de reabrir el detalle del encargo. Ahora usa el mismo guard que `refresh()`, `sheet-stack.js` y `movimientos.js`. Con el estado único de la etapa 3 también repinta la cuenta abierta cuando es personalizada.
+
+### 🔧 Cambio (2026-10-01) — Modelo único de cuentas: `S.cuentas` reemplaza a `S.nequiSaldo`, `S.efectivoSaldo` y `S.cuentasPersonalizadas` (etapa 3 de 3)
+
+**Causa:** Nequi y Efectivo eran dos números sueltos, las personalizadas una lista aparte, y `save()` volvía a leer los dos números de inputs ocultos del DOM (`#nequiSaldo`, `#efectivoSaldo`) — cada módulo que movía plata tenía que acordarse de espejar el input antes de guardar (ver el bloque "Sincronizar DOM antes de save()" de `alcancia.js`). Además cada módulo repetía su propio `(S.cuentasPersonalizadas||[]).find(x=>x.id===id)` (una treintena de veces) y había dos variables de estado para la cuenta abierta.
+
+**Ahora:**
+- **Datos:** `S.cuentas = [{id:'nequi',tipo:'nequi',saldo}, {id:'efectivo',tipo:'efectivo',saldo}, ...personalizadas {id,tipo:'custom',nombre,icono,color,saldo,movimientos}]`. Las personalizadas conservan su forma de siempre (más `tipo:'custom'`); Nu sigue en `S.cajitas`. El identificador de fuente no cambia (`'nequi' | 'efectivo' | 'custom:ID'`). `S` ya no trae los tres campos viejos por defecto.
+- **`core-state.js`:** helpers `getCuenta(id)`, `getCuentaCustom(id)`, `cuentasCustom()`, `getCuentaDeFuente(fuente)` y `migrarCuentasLegacy()`. `sumarFuente()`, `descontarFuente()` y `getSaldoFuente()` tratan Nequi, Efectivo y personalizadas por el mismo camino (misma semántica: piso en 0, `exacto` sin piso). `save()` ya no relee saldos del DOM; `load()` migra. Los inputs `#nequiSaldo` / `#efectivoSaldo` se eliminan de `index.html`.
+- **Migración (`migrarCuentasLegacy`):** idempotente; corre en `load()` (que ya se llama tras cada hidratación desde Firestore y en cada snapshot), en `importarJSON()` y en cada lectura. Si `S` trae alguno de los campos viejos, son la verdad: se arma `S.cuentas` desde ellos y se borran. Eso cubre documentos de la nube anteriores al cambio, backups JSON viejos y dispositivos con la versión anterior. Excepción deliberada: un valor viejo en 0 (o una lista vieja vacía) no pisa una cuenta que ya tiene saldo — un cliente viejo que abre un documento ya migrado no ve ningún saldo y, si guarda, devuelve ceros.
+- **Estado único de cuenta abierta:** `cuentaActual` ahora guarda la fuente completa (`'custom:ID'` para las personalizadas) y se elimina `_customCuentaActualId` (y `_fuenteAbierta()`). `refresh()`, `sheet-stack.js`, `movimientos.js` y `cuentas.js` dejan de tener dos ramas.
+- **Resto de módulos** (`cuentas`, `movimientos`, `alcancia`, `inicio`, `busqueda-global`, `actividad_reciente`, `encargos`, `mesada`, `plata_comprometida`, `prestado`, `wrapped`, `configuracion`): los `find` repetidos pasan a `getCuentaCustom(id)`, los recorridos a `cuentasCustom()` y las lecturas de Nequi/Efectivo a `getSaldoFuente()`. `crearCuentaCustom()` agrega a `S.cuentas` con `tipo:'custom'` y `eliminarCuentaCustom()` filtra `S.cuentas`. En `actividad_reciente.js` la etiqueta interna `fuente:'cuentasPersonalizadas'` pasa a `'cuenta_custom'` (nadie la leía). `importarJSON()` valida `cuentas` y convierte backups viejos con `migrarCuentasLegacy()` antes de repintar.
+- **`probar-migracion.js`** (nuevo, raíz del proyecto): prueba en seco con una copia de tus datos (`node probar-migracion.js backup.json js/core/core-state.js`). Usa el `migrarCuentasLegacy()` real, compara saldos antes/después, comprueba que no cambie nada más, que sea idempotente y que sobreviva un viaje por JSON.
+
+**Cambio de formato en la nube:** el documento de Firestore pasa a traer `cuentas` y deja de traer los tres campos viejos. Una versión anterior de la app (PWA en caché de otro dispositivo, o revertir el código) no sabe leer `cuentas`: vería todos los saldos en 0. Por eso, después de desplegar: recargar con caché limpia en cada dispositivo y no abrir una versión vieja. Antes de desplegar: exportar un backup JSON desde Configuración.
+
+**Hallazgos de esta etapa:** `inicio.js` calculaba `disp = nu + nequi + ef` (sin personalizadas) en la comprobación de "Gastos altos", y `encargos.js` referenciaba `cuentaActual` sin `typeof`. Ambos se corrigen en la entrada siguiente.
+
+**Verificado** con el código real: migración (21 casos: documento viejo, ida y vuelta por JSON, backup viejo importado, cliente viejo en ceros, valores no cero, S vacío), `core-state.js` completo cargado sobre el `index.html` real (`load()`, movimientos de saldo, `calcPatrimonioTotal()`, `refresh()`, `save()` y payload sin campos viejos), `alcancia._sumarASaldo`, validación de backups y las pruebas del selector y del detalle de las etapas 1 y 2 (49 comprobaciones). Sin probar en navegador real ni contra Firestore.
+
+### 🔧 Corrección (2026-10-01) — `movimientos.js`: `_rerenderCuentaActiva()` ya no llama a `abrirCustomCuenta()` (resto de la etapa 2)
+
+`_rerenderCuentaActiva()` (se usa al borrar un movimiento) tenía una rama para cuentas personalizadas que llamaba a `abrirCustomCuenta()`, eliminada al unificar el detalle de cuentas simples. La rama además estaba muerta desde antes: comparaba `cuentaActual === 'custom'`, pero una cuenta personalizada abierta deja `cuentaActual` en `''` (su identificador es `_customCuentaActualId`), así que la función salía en la primera línea y quien refrescaba el detalle era `refresh()`. Ahora vuelve a pintar la cuenta abierta con `renderDetalleCuenta()` (fuente `'custom:ID'` para las personalizadas) y usa `typeof` para las dos variables, que viven en `cuentas.js` (grupo lazy). Verificado en jsdom; sin probar en navegador real.
+
+### 🔧 Cambio (2026-10-01) — Detalle de cuenta unificado: Nequi, Efectivo y las personalizadas comparten una sola pantalla (etapa 2 de 3)
+
+**Causa:** el detalle de una cuenta simple estaba escrito tres veces: `cuentas-detalle-nequi`, `cuentas-detalle-efectivo` y `cuentas-detalle-custom` en `index.html` (HTML casi idéntico), con ids por cuenta (`det-nequi-saldo`, `det-ef-movs`, `btn-agregar-efectivo-det`, …), tres ramas en `abrirCuenta`/`renderDetalleCuenta`/`volverSelector`, una función aparte para las personalizadas (`abrirCustomCuenta` + `renderMovsCustom`) y una rama duplicada de esa misma lógica dentro de `refresh()`.
+
+**Ahora:**
+- `index.html`: un solo `#cuentas-detalle-simple` (header con editar/eliminar solo para personalizadas, hero, banner de saldo inicial, encargos, filtros y movimientos). Salen 130 líneas de HTML. Nu conserva su pantalla propia (`cuentas-detalle-nu`: cajitas, CDTs, chequeo de tasa).
+- `cuentas.js`: `abrirCuenta(fuente)` acepta `'nequi' | 'nu' | 'efectivo' | 'custom:ID'`; `renderDetalleCuenta(fuente)` delega en `_renderDetalleSimple()`, que lee el descriptor de la cuenta (los mismos de la etapa 1, ahora con `etiquetaDetalle`, `cuentaKey`, `esCustom` e `iconoHtml(size)`; helper `_descriptorCuenta(fuente)`). Se eliminan `abrirCustomCuenta()` y `renderMovsCustom()`. Los botones del detalle son un único listener delegado sobre `#cuentas-detalle-simple` que actúa sobre `_fuenteAbierta()`. `actualizarBotonesTransferir()` maneja un solo botón. `renderMovsCuenta()` recibe un 5º parámetro opcional con el id del contenedor de filtros.
+- `core-state.js`: `refresh()` ya no tiene una rama aparte para la cuenta personalizada abierta; llama a `renderDetalleCuenta(fuente)` en los dos casos.
+- `sheet-stack.js`: el hook de `showScreen('cuentas')` llama a `renderSelectorCuentas()` (cierra el cambio pendiente de la etapa 1) y re-renderiza la cuenta abierta con `renderDetalleCuenta()`; el banner de saldo inicial pasa a ser uno solo (`banner-apertura-cuenta`).
+- `styles.css`: `.cuenta-hero*` y los modificadores `.cuenta-action-btn--cuenta|rojo|azul`, con el color por las mismas variables del selector.
+
+**Bugs que se corrigen de paso:**
+- El hook de `showScreen('cuentas')` llamaba a `renderDetalleCustomCuenta()`, una función que nunca existió: el detalle de una cuenta personalizada abierta no se re-renderizaba al volver a la pantalla.
+- `refresh()` solo actualizaba saldo, movimientos y encargos de la cuenta personalizada abierta; ahora repinta todo (banner, botón de transferir deshabilitado según saldo).
+- Las cuentas personalizadas nunca mostraron el banner "Registrar saldo inicial": el código escribía en `banner-apertura-custom`, pero ese div no existía en `index.html`. Ahora lo tienen, y respetan el toggle "Saldo inicial" de Configuración.
+- Los filtros de movimientos de una pantalla compartida: los listeners de `renderMovsFiltros()` cerraban sobre `cuentaKey`, lo que con un contenedor compartido habría filtrado siempre la primera cuenta abierta. Ahora leen `wrap._movsKey`, que se actualiza en cada render.
+
+**Se mantiene a propósito (contratos que pueden leer módulos que no se revisaron):** `cuentaActual` y `_customCuentaActualId` siguen siendo dos variables, y `cuentaKey` sigue valiendo `'nequi' | 'efectivo' | 'custom' | 'nu'` (es lo que `abrirDetalleMov()` lee de `data-cuenta-key`). Se unifican en la etapa 3.
+
+**Los inputs ocultos `nequiSaldo` / `efectivoSaldo`** vivían dentro de las pantallas eliminadas y `core-state.js` los escribe sin guard (`getElementById('nequiSaldo').value=…`); borrarlos habría roto cada movimiento. Se movieron fuera de las pantallas, con un comentario; se eliminan en la etapa 3.
+
+**Cambios visuales mínimos:** el header de Nequi y Efectivo ahora lleva el ícono de la cuenta (como las personalizadas); el rótulo del saldo usa el mismo 70 % de opacidad en las tres.
+
+**Verificado en jsdom** con el `index.html` real y el código real: navegación y estado de las cuatro cuentas, color, rótulos, botones (agregar/retirar/transferir/editar/eliminar con la fuente correcta), cuenta borrada, re-render por `refresh()` y filtros con contenedor compartido. Sin probar en navegador real.
+
+### 🔧 Cambio (2026-10-01) — Selector de cuentas dirigido por datos: una sola función pinta Nequi, Nu, Efectivo y las personalizadas
+
+**Causa:** el mismo dato (la pastilla/tarjeta de una cuenta en el selector) se escribía en cuatro lugares: tres bloques de HTML a mano en `index.html` (con su `sel-*-saldo`) escritos desde `refresh()`, más `renderCustomCuentasList()` para las personalizadas. Cambiar el formato en uno y olvidar el otro ya había dejado las personalizadas con decimales el 2026-09-30.
+
+**Ahora:**
+- `cuentas.js`: `renderSelectorCuentas()` reemplaza a `renderCustomCuentasList()`. Recorre `CUENTAS_FIJAS_SELECTOR` (descriptores de Nequi, Nu y Efectivo: `fuente`, `nombre`, `color`, `rgb`, `estilo` `'tarjeta'|'pastilla'`, `saldo()`) más `S.cuentasPersonalizadas`, y pinta cada una con `_cuentaSelectorHtml()`. Los logos de Nequi y Nu salen de `ICONOS_CUENTA` (antes estaban duplicados en `index.html`). El clic es un solo listener delegado sobre `#selector-cuentas-lista` (`data-fuente`; `custom:ID` abre `abrirCustomCuenta`, el resto `abrirCuenta`), reemplazando el `querySelectorAll('[data-cuenta]')`.
+- `core-state.js`: nueva `fmtSaldoSelector(n)` (hoy = `fmtNoCents`), único punto de formato del selector. Se quitaron de `refresh()` las tres escrituras a `sel-nequi-saldo` / `sel-nu-saldo` / `sel-ef-saldo`; `refresh()` ahora llama a `renderSelectorCuentas()` con el mismo gate de "pantalla Cuentas activa".
+- `index.html`: los bloques a mano de Nequi, Nu, Efectivo y `#custom-cuentas-list` (83 líneas) pasan a un único `<div id="selector-cuentas-lista">`.
+- `styles.css`: clases `.cuentas-selector-grid`, `.cuenta-card*` y `.cuenta-pill*` con el color por variables (`--cuenta`, `--cuenta-rgb`). El wrap del saldo largo de la tarjeta (`min-width:0`, `overflow-wrap:anywhere`, `padding-right`) se mantiene.
+
+**Cambios visuales mínimos:** el borde de la pastilla de Efectivo pasa de `.3` a `.35` (igual al de las personalizadas) y el fondo del ícono de Nequi/Nu usa el color del catálogo (`#ff4da6`/`#c060f0` al .18) en vez de `rgba(229,0,116,.2)`/`rgba(192,96,240,.2)`.
+
+**Requiere un cambio fuera de estos archivos:** el hook de `showScreen()` en `sheet-stack.js` (rama `name==='cuentas'`) debe llamar a `renderSelectorCuentas()` en vez de `renderCustomCuentasList()` (la función vieja ya no existe). Verificado en jsdom con el código real (render, formato, escape del nombre, orden, clics y un único listener tras re-render); sin probar en navegador real.
+
+**Siguientes etapas previstas:** (2) pantalla de detalle genérica en lugar de las cuatro escritas a mano (`abrirCuenta`/`renderDetalleCuenta` sin `if/else` por cuenta); (3) colección única `S.cuentas` con migración de `S.nequiSaldo`/`S.efectivoSaldo`.
+
+### 🔧 Cambio (2026-09-30) — Selector de cuentas: los saldos de Nequi, Nu y Efectivo se muestran sin decimales
+
+**Antes:** `refresh()` (`core-state.js`) pintaba `sel-nequi-saldo`, `sel-nu-saldo` y `sel-ef-saldo` con `fmt()`, que muestra centavos; un saldo con decimales (ej. Nu con intereses) hacía el número largo dentro de la tarjeta.
+
+**Ahora:** esas tres líneas usan `fmtNoCents()` (solo entero con puntos de mil; trunca, igual que `s-cdt`, `s-gf`, etc.). El detalle de cada cuenta (`nuTotalDisp`, `det-nequi-saldo`, `det-ef-saldo`) y Inicio no se tocaron y siguen con `fmt()`. El wrap de `styles.css` de la entrada anterior queda como red de seguridad. Sin probar en navegador.
+
+**Ampliación (mismo día):** las cuentas personalizadas también — `renderCustomCuentasList()` (`cuentas.js`) usa `fmtNoCents(c.saldo||0)` en la pastilla del selector. El detalle de la cuenta custom (`det-custom-saldo`) sigue con `fmt()`.
+
+### 🔧 Cambio (2026-09-30) — Selector de cuentas: el saldo largo de Nequi/Nu ya baja de línea en vez de salirse
+
+**Causa:** el saldo (`sel-nequi-saldo`, `sel-nu-saldo`) es un solo "palabra" sin espacios, así que no tenía dónde partirse; además la tarjeta es un grid item (`1fr` = `minmax(auto,1fr)`) y crecía con el número, y su `overflow:hidden` recortaba lo que sobraba.
+
+**Fix, solo en `styles.css`:** `min-width:0` en `#cuentas-selector [data-cuenta]` y `overflow-wrap:anywhere` + `line-height:1.25` + `padding-right:16px` (para no pisar la flecha) en los dos saldos. Mismo criterio que `.stat-value`. Sin cambios en JS ni HTML. No se tocó la pastilla de Efectivo (`sel-ef-saldo`), que es flex y tiene el número chico. Sin probar en navegador.
+
+### 🔧 Cambio (2026-10-01) — Detalle de un movimiento con diferencial: se quitó "¿Qué pasó con el precio?" y la explicación en frases
+
+**Antes:** el recuadro decía "¿Qué pasó con el precio? Le dijiste que costó $108.000, pero en realidad costó $107.910. La diferencia de $90 es tu margen." — título confuso y texto largo para algo que solo usa el dueño de la app.
+
+**Ahora:** una línea con "Ganancia por valor diferente" y el monto a la derecha ("Pérdida" en rojo si el margen es negativo), y debajo "Cobrado $108.000 · Real $107.910". Es el bloque `rm.diferencial` de `abrirDetalleMov()` (`movimientos.js`), así que aplica igual a los movimientos de Encargos, Préstamo con TC y Nuevo préstamo. Las líneas de abajo ("Guardaste … en", "Del margen le diste", "Pagaste de tu bolsillo por") quedaron igual. Sin probar en navegador.
+
+### 🔧 Cambio (2026-10-01) — `mov-dif-resumen` ("El valor real era diferente", Nuevo préstamo): ya no se ve ni ocupa espacio vacío
+
+**Causa:** la regla genérica `[style*="min-height"]:empty` solo anula el `min-height`; este div además lleva fondo y `padding` inline, así que vacío se veía como una barra oscura de ~18px dentro del bloque.
+
+**Fix, solo en `styles.css`, scoped por ID:** `#mov-dif-resumen:empty{display:none;}`. `diffReset()` y `diffResumen()` (sin monto real) lo dejan con `textContent=''`, así que aparece solo cuando hay resumen o el aviso "El valor real debe ser menor…". Sin cambios en JS ni HTML. No se tocó `prtc-dif-resumen` (Préstamo con TC), que tiene el mismo markup y sigue mostrando la barra vacía. Sin probar en navegador.
+
 ### 🔧 Cambio (2026-09-28) — Hints vacíos de Encargos ya no ocupan espacio (`traspaso_origen_hint`, `traspaso_saldo_hint`, `movenc_cuenta_hint`)
 
 Mismo pedido que el del 2026-09-25 en "Registrar gasto", ahora para tres hints de Encargos: `traspaso_origen_hint` y `traspaso_saldo_hint` (sheet "Me lo regalaron") y `movenc_cuenta_hint` (sheet "Registrar salida de plata" / "Registrar entrada de plata" — es el mismo sheet y el mismo div, `abrirMovEncargo` solo cambia el tipo).
@@ -847,6 +959,87 @@ Con los 14 módulos de dominio completos por primera vez, un barrido sistemátic
 
 ## Encargos
 
+### ✅ Corregido (2026-09-30) — "Yo puse la plata" contaba el margen dos veces cuando se usaba junto con el diferencial
+
+**Síntoma:** encargo cobrado por $91.000 (54.000 Efectivo + 37.000 Nequi) que costó $89.405 pagados desde Nu. Con "Yo puse la plata" y el diferencial activos a la vez, de Nu salían $91.000 y además el margen de $1.595 entraba como ingreso aparte: el total quedaba $1.595 por encima de la realidad.
+
+**Causa raíz:** `_validarMovEncMia`, `_movEncMiaPreview` y `_procesarMovEncMia` leían siempre el monto completo del campo (`movenc_monto`), sin saber que el diferencial ya trataba la diferencia como ganancia propia.
+
+**Fix:** nueva `_miaMontoEfectivo()`: si el bloque del diferencial está abierto y `0 < real < monto`, "Yo puse la plata" usa el real. Sin diferencial, o con un real inválido, nada cambia. Se agregaron listeners de `movenc_monto` y `movenc_dif_real` para refrescar el preview. Además se guarda `_miaMonto` en el movimiento y la fila del historial muestra montos por cuenta ("Salió de Nu $89.405 · Entró a Efectivo $54.000 + Nequi $35.405"); antes solo decía los nombres.
+
+**Sin probar en la app:** solo `node --check` y revisión del código. Tras registrar un caso real, confirmar que Nu baje exactamente el real y que el neto entre cuentas sea el margen.
+
+### 🔧 Cambio (2026-09-30) — Una sola fila para la salida dividida (÷) de "Registrar salida"
+
+**Pedido:** cuando el dinero del encargo estaba en dos cuentas, una sola salida generaba dos filas en el historial del encargo (una por cuenta).
+
+**Qué cambió:** los datos **no** cambian (siguen siendo un registro por cuenta: el saldo del encargo se calcula por cuenta). Cambia la vista y el borrado: las porciones con el mismo `_splitGrupo` se pintan como un movimiento (monto total, cuentas con sus montos, saldo antes/después del grupo) y eliminarlo quita todas (`_encSplitKey`, `_encGrupoSplit`, `_encSplitCarrier`; `deleteMovEncargo` se redirige a la porción que lleva los efectos). Las salidas nuevas llevan `_splitGrupo`; las viejas se agrupan solo si el conjunto está completo y no son "Reubicación", abono de deudor ni compra con TC.
+
+**Decisión de diseño que cambia:** antes las porciones eran independientes también al borrar. "Mover entre cuentas" (Reubicación) **no** cambió: sus salidas y su entrada siguen siendo filas independientes.
+
+**Pendiente / no verificado:** la hoja de detalle muestra el total y el bloque de precio, pero no "Yo puse la plata" ni las cuentas del split (no emite `data-mov-otras`). Sin probar en la app; se probó la lógica de agrupado con datos de ejemplo.
+
+### ✅ Corregido (2026-09-30) — El margen y los intercambios del diferencial se podían borrar sueltos desde el feed
+
+**Síntoma:** la fila "Margen de encargo — …" en el detalle de Nequi tenía su botón de eliminar activo. Borrarla dejaba el encargo diciendo que se guardó un margen que ya no estaba en la cuenta.
+
+**Causa raíz:** `diffAplicar()` escribía el margen, el ingreso sin cuenta y los intercambios de beneficiarios sin `_secundario` (los de "Yo puse la plata" sí lo llevaban), así que `eliminarMovimiento()` no los protegía. Comprobado en la consola con `S.movimientos`: los movimientos de margen salían con `_secundario: undefined`.
+
+**Fix:** nueva opción `cfg.origenSeccion` en las instancias del diferencial; si se define, `diffAplicar()` marca esos movimientos con `_secundario: true` y `_origenSeccion`. Es **opt-in**: solo `movenc` y `ctc` la activan (`'Encargos'`), porque `deleteMovEncargo` ya los revierte por `_encMovId`. `prtc` (Préstamo con TC) no la activa; `usarParte` no pasa por `diffAplicar`.
+
+**Alcance:** solo movimientos nuevos. Los ya guardados no llevan la marca; se pueden marcar a mano desde la consola, solo los que tienen dueño (`_encMovId` existente en algún encargo). Los huérfanos se dejan sin marcar. Sin probar en la app: confirmar que, al borrar el margen de un movimiento nuevo, salga el aviso "Movimiento vinculado…".
+
+### 🔧 Cambio (2026-09-29) — "Dividir ÷" en "Yo puse la plata" y en el sobrante del margen (`movenc`, `ctc`, `usarParte`)
+
+**Pedido:** al pagar servicios con plata propia de un encargo que estaba repartido en dos cuentas (Efectivo + Nequi), "Yo puse la plata" solo dejaba elegir **una** cuenta de salida y **una** de recuperación. Y si lo real había costado menos de lo dicho (ej. 98.000 en vez de 100.000), el sobrante solo podía entrar a **una** cuenta.
+
+**Qué cambió:**
+- **"Yo puse la plata":** cada lado ("De mi cuenta (sale)" y "Y recupero en (entra)") tiene su propio botón "Dividir ÷", con el motor común de split (`crearSplitWidget('miaSale')` / `('miaEntra')`; mínimo 2 filas, sin repetir cuenta). `_validarMovEncMia()` exige que cada lado sume el monto total (el de recupero puede quedar sin filas = "sin especificar") y que cada cuenta de salida tenga saldo. `_procesarMovEncMia()` genera un movimiento espejo por cuenta, todos con el mismo `_encMovId`, así que `deleteMovEncargo()` los revierte juntos sin cambios. Con más de una cuenta en algún lado el movimiento guarda además `_miaCuentas`; `_miaCuentaSale`/`_miaCuentaEntra` conservan la primera de cada lado.
+- **Sobrante del margen:** "¿A cuál cuenta entra el sobrante?" (Registrar salida), "¿En qué cuenta te cayó ese margen?" (Ya la usé) y "¿A cuál cuenta entra el diferencial?" (Compra con TC) tienen "Dividir ÷". Es una opción del motor `js/core/diferencial.js`: `cfg.getMiCuentaSplit()` (devuelve `[{fuente,monto}]` si el split está activo, `null` si no), `cfg.onReset()` (que `diffReset()` llama para limpiar el split al reabrir el sheet) y la nueva `diffValidarMiCuenta(instId)`. `diffAplicar()` acredita una entrada por cuenta y guarda `diferencial.miCuentas` si fueron 2 o más. "Ya la usé" no pasa por `diffAplicar()`, así que `_confirmarUsarParte()` aplica la misma regla a mano (y `_usarParteMargenPendiente` pasó de objeto a array).
+- **`js/core/split.js`:** nueva `splitReset(instId)` (devuelve un widget al modo simple, sin filas y con el botón "Dividir ÷" original). Sin otros cambios; `crearSplitWidget`/`splitToggle`/`splitGetData` intactos.
+- **Historial:** el margen repartido se muestra como "Yo → Nequi $1.500 + Efectivo $500" (`diffRenderHistorial`) y "Yo (Nequi $1.500 + Efectivo $500)" en la parte usada; los movimientos de "Yo puse" con varias cuentas muestran todas.
+- **`index.html`:** markup de los 5 widgets nuevos (2 de "Yo puse", 3 de sobrante), reusando las clases `btn-split` / `btn-add-cuenta`. Acciones nuevas registradas en `encargos.js`: `miaSaleSplitToggle`, `miaSaleAgregarRow`, `miaEntraSplitToggle`, `miaEntraAgregarRow`, `difMiSplitToggle`, `difMiAgregarRow`, `ctcMiSplitToggle`, `ctcMiAgregarRow`, `usarParteMiSplitToggle`, `usarParteMiAgregarRow`.
+
+**Regla de validación del sobrante:** con el split activo, lo repartido debe sumar **exactamente** el sobrante y toda fila con monto necesita cuenta — se bloquea antes de tocar ningún saldo. Con el split apagado nada cambió.
+
+**Verificación:** `node --check` OK en `encargos.js`, `diferencial.js` y `split.js`, y pruebas con jsdom y datos sintéticos: "Yo puse" (sale 40.000 Efectivo + 60.000 Nequi, recupera 70.000 Nequi + 30.000 Efectivo → saldos correctos, 4 espejos, rechazo cuando un lado suma 90.000), sobrante de 2.000 en 2 cuentas en las tres instancias (`movenc`, `usarParte`, `ctc`), rechazo de reparto que no cuadra, y `diffReset()` limpiando el split. **Sin verificar en navegador real.**
+
+---
+
+### ✅ Corregido (2026-09-29) — El resumen "Dijiste / Real / Margen" no se actualizaba al cambiar el monto
+
+**Síntoma:** en "Registrar salida de plata" (y en "Compra con TC"), si se escribía el monto, luego "¿Cuánto era en realidad?" y después se corregía el monto, el resumen seguía mostrando el valor viejo (ej. "Dijiste: $200.000 Real: $198.000 Margen: +$2.000" con el monto ya en $198.000).
+
+**Causa raíz:** `diffResumen()` solo se recalculaba desde el input del valor real y desde las partes; el input de monto (`movenc_monto`, `ctc_monto`) solo disparaba el preview del split / de la compra, y `getDijo()` se lee únicamente al calcular.
+
+**Fix:** dos listeners nuevos en el wiring de `encargos.js`: `movenc_monto` → `_difResumen` y `ctc_monto` → `_ctcDifResumen`. "Ya la usé" no necesitaba fix: su "dijo" es el monto fijo de la parte.
+
+---
+
+### ✅ Corregido (2026-09-29) — Eliminar una salida con margen no devolvía el margen a tus cuentas
+
+**Síntoma:** al borrar de un encargo una salida que tenía margen a favor tuyo (`diferencial` con sobrante acreditado), el movimiento del encargo se eliminaba pero la entrada de margen en tu cuenta (`_esDiferencialEncargo`) y su suma al saldo quedaban. Solo la compra con TC limpiaba esas entradas (por su propio bloque en `deleteMovEncargo()`).
+
+**Fix:** `deleteMovEncargo()` ahora revierte, para movimientos con `diferencial` que no son `_esTcEncargo`, todas las entradas `_esDiferencialEncargo` vinculadas por `_encMovId` (`descontarFuente` + borrado), sean una o varias cuentas. Los intercambios "lo pagué yo" siguen manejándose en su bloque de siempre.
+
+---
+
+### ✅ Corregido (2026-09-29) — "Yo puse la plata" en una salida dividida solo recuperaba la primera porción
+
+**Síntoma:** al registrar una salida dividida entre varias cuentas *del encargo* con "Yo puse la plata" activo, solo se descontaba de tu cuenta y se recuperaba el monto de la primera porción, no el total del gasto.
+
+**Causa raíz:** `confirmarMovEncargo()` en modo split crea un movimiento por porción y llama a `_procesarMovEncMia(mov)` solo con el primero, y esa función usaba `movimiento.monto` (la porción) en vez del monto completo.
+
+**Fix:** `_procesarMovEncMia()` lee el monto total del campo `movenc_monto` (con `movimiento.monto` de respaldo).
+
+---
+
+### ⚠️ Pendiente / limitación conocida (2026-09-29) — El margen de "Ya la usé" no se puede revertir
+
+No existe ninguna acción para deshacer una parte marcada como usada, así que las entradas de margen que crea `_confirmarUsarParte()` (una por cuenta si se repartió con "Dividir ÷") no se revierten en ningún camino. Es previo al split y no se tocó; si se agrega un "deshacer usada" en el futuro, tiene que borrar esas entradas (marcadas `_esExtraIngreso`, sin `_encMovId`, así que habría que vincularlas primero) y restar cada una de su cuenta.
+
+---
+
 ### ✅ Corregido (2026-09-28) — El margen de "Ya la usé" no contaba como ingreso
 
 **Síntoma:** al usar una parte de un encargo por menos de lo que se había dicho (ej. dijiste 100.000, el servicio costó 90.000), los 10.000 que te quedas subían en tu cuenta pero no aparecían como ingreso en Análisis, Inicio ni Salud financiera.
@@ -1357,6 +1550,32 @@ Ambos migrados a `html\`\`` esa sesión. En "Top categorías" el array de fragme
 
 ## Patrimonio y cálculos globales
 
+### ✅ Corregido (2026-09-30) — Borrar un movimiento y rehacerlo inflaba el saldo: `descontarFuente()` recortaba en 0 al revertir
+
+Reportado con un caso real. En un encargo, el margen y la plata puesta de su bolsillo se habían registrado en Nequi y debían ir a la cuenta personalizada "Madre". Para corregirlo hubo que borrar el movimiento del encargo y rehacerlo. Efectivo estaba en $49.000 (con el recupero de +$54.000 ya incluido) y, tras borrar y rehacer, quedó en $54.000. Las demás cuentas cuadraban.
+
+**Causa:** Efectivo, Nequi, las cajitas y las cuentas personalizadas guardan un saldo corrido (`S.efectivoSaldo`, `S.nequiSaldo`, `c.saldo`) que cada operación suma o resta. `descontarFuente()` terminaba en `Math.max(0, saldo − monto)`. Al borrar el movimiento se revertían los +$54.000, pero otras operaciones posteriores ya habían bajado el saldo: la reversión daba −$5.000 y se guardaba 0, y esos $5.000 se perdían. Al rehacer el movimiento se sumaban otra vez los +$54.000 sobre 0, y el saldo quedaba $5.000 por encima del real. El borrado del encargo (`deleteMovEncargo()`) revertía bien cada efecto; lo que fallaba era el piso en 0 de la reversión, común a todos los módulos.
+
+**Fix:** `descontarFuente(fuente, monto, opts)` acepta ahora `{ exacto: true }`, que no recorta en 0 y deja el saldo en negativo mientras dure la inconsistencia. Sin esa opción se comporta como siempre: el piso en 0 sigue valiendo para gastos y pagos normales, que ya validan saldo antes de descontar. Todas las reversiones pasaron a `{ exacto: true }`:
+- `core-state.js`: la propia función; además `fmtInput()` maneja números negativos (el saldo de Efectivo se relee desde un input oculto en `save()` y se rompía con negativos).
+- `encargos.js`: las 7 reversiones de `deleteMovEncargo()`.
+- `movimientos.js`: transferencia, entradas y aperturas, fallback de saldo inicial y borrado de mesada desde el feed (6).
+- `mesada.js`: `_borrarMesadaPago` y los abonos pendientes (8).
+- `spotify.js`: borrar un cobro, sus abonos pendientes y "Deshacer abono" (4).
+- `cuentas.js`: "editar saldo inicial" cuando el saldo baja (1).
+- `prestado.js`: borrar abonos recibidos (destino simple y dividido), la parte "guardar" de un extra y "me pagaron" (6).
+- `plata_comprometida.js`: al eliminar un ingreso, los destinos de reposición y la cajita usada para pagar TC (3).
+
+**No se tocó, a propósito:** los descuentos al crear un gasto, pago o depósito (`gastos.js`, `alcancia.js`, `tarjetas_credito.js`, pago de Spotify, transferencia, "Pagar mi deuda"), porque validan saldo antes de descontar.
+
+**Efecto visible:** un saldo puede mostrarse temporalmente negativo tras borrar un movimiento cuyo dinero ya se gastó. Es la consecuencia correcta y se corrige sola al rehacer el movimiento.
+
+**Datos ya afectados:** el JSON con el error no se repara solo. Para el caso reportado, Efectivo quedó en $54.000 y el valor correcto era $49.000; se corrigió a mano con "ajustar saldo".
+
+**No cubierto / pendiente:** `tc.deuda` tiene un piso en 0 parecido en varias reversiones de tarjeta (`Math.max(0, deuda − monto)`). Puede pasar al borrar una compra después de haber pagado la tarjeta; arreglarlo implica decidir cómo mostrar una deuda "a favor". Los cambios pasan `node --check` pero no se probaron en la app.
+
+---
+
 ### ✅ Corregido (2026-09-29) — El sobrante/faltante del destape de la alcancía inflaba la tendencia y la proyección
 
 **Síntoma:** al destapar una alcancía con más (o menos) efectivo del registrado (ej. $1.000.000 reales vs $200.000 registrados), el patrimonio saltaba $800.000 en un solo día y `renderProyeccion()` lo tomaba como ritmo normal de crecimiento (no aplica recorte de outliers), proyectando a 3/6/12 meses un patrimonio inflado. El faltante hacía lo contrario.
@@ -1725,6 +1944,128 @@ Validado con `node --check`. **Sin verificar en navegador real** (mismo entorno 
 ---
 
 ## Prestado
+
+### ✨ Agregado (2026-10-03) — "Yo debo": grupos de préstamo, y pantallas compartidas con "Me deben"
+
+**Grupos en "Yo debo":** igual que "Me deben": cada deuda propia se organiza en préstamos (Histórico, "Es un préstamo aparte", selector con 2 o más abiertos, cierre automático al saldarse y reapertura al borrar, acordeón en el detalle, migración silenciosa de deudas anteriores). La maquinaria de grupos ya recibía la deuda por parámetro; solo `getGrupoSaldo` asumía que lo que abre la deuda es `'prestamo'`, y ahora usa `Deudas.abre()`. El grupo se resuelve al aplicar el movimiento, no al validar, así que un error no deja grupos vacíos. Sheet nuevo: `md_grupo`, `md_grupo_check`, `md_grupo_nombre`.
+
+**Pantallas compartidas:** las dos listas pasaron a un solo render (`_renderListaDeudas(dir)`, con la tabla `_UI_LISTA` para lo que cambia) y el encabezado del detalle a `_pintarEncabezadoDeuda`. El historial agrupado es una sola función (`_htmlHistorialPorGrupos`). Cambios visibles: el color de cada deuda ahora sale siempre de la persona vinculada (antes "Me deben" usaba `d.color` directo), y la lista de "Yo debo" también se ordena de mayor a menor saldo.
+
+**Guardia de integridad:** también corre al registrar y eliminar en "Yo debo". Sigue siendo un aviso (con el registro dividido en validar y aplicar, solo puede saltar por datos corruptos); no revierte nada.
+
+**Lecturas directas que quedaban:** `tarjetas_credito.js` ahora pasa por `Deudas`. Fuera de `Deudas`, solo quedan el valor inicial de `S` en `core-state.js`, la validación del backup JSON en `configuracion.js` y un chequeo de tipo en `wrapped.js`, que miran la estructura guardada a propósito.
+
+**Decisión: las dos colecciones se quedan separadas.** Con todo el código pasando por `Deudas`, fusionar `S.deudores` y `S.misDeudas` en una sola lista con `direccion` ya no aportaría nada que se use hoy, y sí cambiaría datos guardados, el formato del backup JSON (`configuracion.js` exige `deudores`) y lo que lee `firebase-sync.js`. Si algún día hace falta (por ejemplo, para netear a una persona en ambas listas), solo cambia `Deudas` y se agrega una migración.
+
+**Verificación (jsdom, sobre el `index.html` real):** 6 comprobaciones de grupos en Yo debo (primer grupo, préstamo aparte, selector con 2 abiertos, cierre y reapertura, acordeón, migración, error sin grupos huérfanos); las demás pruebas de Prestado siguen idénticas.
+
+### 🔧 Reestructuración (2026-10-03) — "Me deben": registrar y eliminar un movimiento en dos pasos (validar → aplicar)
+
+**Qué cambió:** `_confirmarMovimientoInterno` (unas 590 líneas, con las validaciones mezcladas con las escrituras) se partió en `_planMovimiento` (lee el formulario y valida; no escribe nada) y `_aplicarMovimiento` (escribe; sin ningún `return` de validación), con un par `_plan…`/`_aplicar…` por rama: perdón, préstamo, abono desde encargo y abono a cuenta propia. Los extras de las dos ramas de abono, que estaban copiados, quedaron en `_planExtra` y `_aplicarExtraPartes`. De `eliminarMovDeudor` se sacó la reversión a `_revertirMovDeudor(d, m)`; la función original conserva solo lo que decide si se puede borrar (antigüedad, confirmación, que Alcancía cargue). La guardia de integridad del saldo sigue ahí como aviso. `abrirDeudor` no se tocó: solo dibuja la pantalla y partirla no protege ningún saldo.
+
+**Otro bug corregido:** el grupo del movimiento (`_resolverGrupoIdMov`) se calculaba al principio, antes de validar, y puede crear un grupo nuevo si se eligió "Es un préstamo nuevo". Un error de validación (por ejemplo, un reparto que no suma) dejaba ese grupo creado y vacío. Reproducido: 1 grupo antes, 2 después del error. Ahora se resuelve al aplicar: 1 y 1.
+
+**Sin cambios de comportamiento:** mismos datos guardados, mismos avisos y mismo orden de validación.
+
+**Verificación (jsdom):** 16 escenarios (perdón, préstamo simple, dividido y con margen, abono simple, dividido y sin cuenta, pago completo, abono con extra de las cuatro clases, abono vía encargo simple, sin cuenta, dividido y con extra, pago completo vía encargo) dan exactamente los mismos registros y saldos que la versión anterior, y al eliminarlos vuelve todo al estado inicial; 12 errores dan el mismo aviso y no cambian ningún dato; 6 casos de eliminación (préstamo vía TC, con margen, abono vía Alcancía, cuando Alcancía no carga, y abonos antiguos sin ids) son idénticos. 10 tests nuevos en `tests/medeben.test.js`.
+
+### 🔧 Cambio (2026-10-02) — Agregar persona: título propio, sin repetidos, y "Yo debo" igual que "Me deben"
+
+**Qué se veía mal:** (1) el selector de personas decía "¿De quién es la plata?" (el texto de Encargos) también al agregar a alguien a Me deben o Yo debo. (2) En Yo debo, "Nueva deuda" abría un sheet distinto, con un campo "¿A quién le debes?" que a su vez abría el selector por encima. (3) El selector ofrecía a personas que ya estaban en la lista, que luego no se podían volver a agregar.
+
+**Qué cambió:** `abrirSelPersona(callback, titulo, opts)` acepta título y un filtro `opts.excluir`. Me deben usa "¿Quién te debe?" y oculta a quienes ya tienen un deudor; Yo debo usa "¿A quién le debes?" y oculta a quienes ya tienen una deuda propia. "Nueva deuda" ya no abre un sheet propio: abre el mismo selector, crea la deuda vacía y abre su detalle (igual que Me deben), y el primer "Me prestó" se registra desde ahí. Buscar a alguien ya agregado avisa que ya está en la lista en vez de ofrecer crearla; si todas ya están, avisa. Encargos no cambia.
+
+**Código retirado:** `sheet-nueva-deuda` (HTML), `crearMiDeuda` y sus dos envoltorios (uno en la sección de Personas y otro del selector), `_ndPoblarSelectDestino`, `_initNuevaDeudaPersonaSelector` y `_onSelPersonaNuevaDeuda`. Eran tres capas para un formulario que ya no existe.
+
+**Efecto colateral bueno:** el sheet viejo sumaba el primer monto a la cuenta sin dejar movimiento espejo en su historial (rompía la regla del proyecto). Ahora el primer "Me prestó" pasa por el flujo común y sí lo deja.
+
+**Verificación (jsdom, sobre el `index.html` real):** título y lista de cada flujo, ocultar a quien ya está, búsqueda de alguien ya agregado, "todas ya están", crear la deuda vacía y abrir el detalle (lista y detalle renderizan con 0 movimientos), y que Encargos conserve su título y lista completa.
+
+### ✨ Agregado (2026-10-02) — "Yo debo": pagar una deuda con tarjeta de crédito
+
+**Qué cambió:** el selector de cuenta de un pago de "Yo debo" ahora ofrece las tarjetas de crédito con cupo disponible (sola o como una fila del reparto). El pago baja la deuda con el prestamista y sube la deuda de la tarjeta por el mismo monto. Pagar o recibir una deuda sigue sin poder usar una tarjeta como destino de plata que entra.
+
+**Tratamiento financiero:** es un cambio de deuda por deuda, no un gasto: patrimonio igual, y la parte cargada a la tarjeta cuenta como deuda **propia** de la TC (`calcDeudaAjenaDeTarjeta` solo suma encargos y préstamos). Con "pagaste de más", la tarjeta sube `monto + extra` y el extra es el gasto.
+
+**Detalle técnico:** cada fila con tarjeta deja un cargo `cargo_deuda` en `S.tcMovimientos` (`miDeudaId`, `_miDeudaMovId`). `tarjetas_credito.js` reconstruye `tc.deuda` desde sus registros en cada refresh (`tcRecalcular`, `tcNormalizarTarjetas`); se agregó `_tcEsCargoExterno()` con el tipo nuevo en ambos sitios. Sin eso, la deuda sumada a la TC se perdía en el siguiente refresh (reproducido en las pruebas). El detalle de la tarjeta muestra estos cargos como "Pago de deuda". Eliminar el pago quita el cargo y baja la deuda de la TC.
+
+**Verificación (jsdom):** pago simple y dividido (efectivo + TC), la deuda de la TC sobrevive a `tcNormalizarTarjetas()`, patrimonio sin cambios, pago de más con TC (−extra), cupo insuficiente y TC como destino sin escribir nada, reversión exacta, y `cargo_prestamo` sigue contando como ajena.
+
+### ✨ Agregado (2026-10-02) — "Yo debo": pago dividido, perdón y pago de más (Fase 3)
+
+**Qué cambió:** el sheet de movimientos de "Yo debo" (`sheet-mov-mi-deuda`) ahora puede (1) **dividir** un préstamo recibido o un pago entre varias cuentas (`destinos[]` / `fuentes[]`), (2) registrar que **te perdonaron** lo que faltaba y (3) registrar que **pagaste de más**. Lo hace con el mismo patrón que "Me deben": validar todo antes de escribir (`_planMovMiDeuda`), luego aplicar (`_aplicarMovMiDeuda`, sin `return` de validación), y una sola reversión (`_revertirMovMiDeuda`).
+
+**Tratamiento financiero:** perdón = **ingreso** (la deuda baja sin que salga plata: patrimonio +saldo). Pago de más = **gasto** (sale de la cuenta pero no baja la deuda: patrimonio −extra); las cuentas descuentan `monto + extra`. Pagar o recibir una deuda por sí solo deja el patrimonio igual. `_esEntradaEspejoNoIngreso()` ahora no excluye `_esPerdonRecibido`, porque todo `_origenSeccion` que empieza por "Prestado" se excluía como espejo.
+
+**Cambios de comportamiento en lo que ya existía:** (a) un pago ahora se rechaza si la cuenta elegida no tiene saldo suficiente (antes podía dejarla en negativo); (b) `_deudaCuentasDe` ahora también cuenta las cuentas de `destinos[]`/`fuentes[]`, así que la protección por antigüedad cuenta bien los abonos repartidos de "Me deben" (antes no los veía); (c) un perdón de "Yo debo" no suma en "Pagado" ni en Wrapped.
+
+**Pendiente en "Yo debo":** nada de lo que tiene "Me deben" (los grupos se agregaron después, ver arriba).
+
+**Verificación (jsdom):** pago y recibido divididos, perdón, pago de más y su reversión exacta; patrimonio antes/después de cada caso; 6 casos de error que no cambian ningún dato; y un registro antiguo de una sola cuenta se elimina igual que antes.
+
+### 🔧 Cambio (2026-10-02) — Pestañas Me deben / Yo debo con clase CSS (`.btn-tab-activa`)
+
+Antes se pintaban con estilos inline desde `_pintarTabPrestamos()`. Ahora la pestaña activa lleva `.btn.btn-tab-activa` (definida en `css/styles.css`) y la inactiva `.btn-ghost`; el botón inicial de `index.html` ya nace con la clase.
+
+### 🔧 Reestructuración (2026-10-02) — Fase 2: capa de acceso `Deudas`, un solo juego de helpers y tolerancias con nombre
+
+**Qué cambió:** "Me deben" (`S.deudores`) y "Yo debo" (`S.misDeudas`) ahora se consultan por un único objeto, `Deudas` (en `js/core/calc-helpers.js`, carga de entrada): `lista(dir)`, `porId`, `porPersona`, `agregar`, `quitar`, `saldo(d)`, `totalPendiente(dir)`, con dirección `'favor'` / `'contra'`. Los datos guardados **no cambian** (siguen las dos listas, mismos tipos de movimiento). 11 archivos (`actividad_reciente`, `alcancia`, `busqueda-global`, `cuentas`, `encargos`, `inicio`, `movimientos`, `personas`, `plata_comprometida`, `wrapped`, `prestado`) y `core-state.js` dejaron de leer/escribir las listas directo.
+
+**H3 resuelto (era una sospecha):** `getDeudorSaldo` y `getDeudorSaldoPatrimonio` eran el mismo `reduce`. Se eliminó `getDeudorSaldoPatrimonio`; el patrimonio y la pantalla usan la misma definición (`Deudas.saldo`). Los nombres `getDeudorSaldo`, `getMiDeudaSaldo`, `totalPrestadoPendiente` y `totalMisDeudasPendiente` se conservan como envoltorios (los usan 8 archivos y los tests). `_patrimonioDependenciasListas` ya no depende de que `prestado.js` haya cargado, porque `Deudas` carga de entrada.
+
+**H4 resuelto:** `Deudas.TOL` ($1) y `Deudas.TOL_FINO` ($0,50) reemplazan los `1` y `0.5` sueltos de `prestado.js`. Mismos valores que antes, ahora con nombre.
+
+**Helpers espejo unificados:** `_deudorCuentasDe`/`_miDeudaCuentasDe`, `_deudorOpsPosteriores`/`_miDeudaOpsPosteriores` y `_deudorTieneCuentaAfectada`/`_miDeudaTieneCuentaAfectada` pasaron a `_deudaCuentasDe`, `_deudaOpsPosteriores` y `_deudaTieneCuentaAfectada`. Los tipos de movimiento son disjuntos, así que no necesitan saber la dirección. Las pestañas Me deben / Yo debo se pintan con una sola función (`_pintarTabPrestamos`).
+
+**Verificación:** `node --check` en los 15 archivos tocados; en jsdom, mismo patrimonio y mismos totales que el código anterior, `agregar`/`quitar`/`porPersona`, equivalencia de los helpers unificados y de las pestañas, y la prueba dorada de la Fase 1 sigue idéntica.
+
+### 🔧 Reestructuración (2026-10-02) — Fase 1: el efecto sobre la cuenta vive en un solo lugar (`js/core/cuenta-efectos.js`)
+
+**Qué cambió:** `registrarMovEspejo()` y `borrarMovEspejo()` reemplazan los 7 bloques de escritura y 6 de reversión del movimiento espejo que `prestado.js` repetía por tipo de cuenta, y las dos funciones propias de `mesada.js` (que ahora delegan). `prestado.js` pasó de 3.040 a ~2.780 líneas. Solo escriben/borran el registro del historial; el saldo sigue siendo `sumarFuente`/`descontarFuente`. Si la cuenta ya no existe, el id del espejo queda `null` (antes quedaba un id de algo que nunca se escribió; sin efecto sobre saldos).
+
+**También corregido:** un abono vía encargo con pago dividido entre varias cuentas sumaba saldo a cada cuenta destino pero no dejaba movimiento espejo en su historial. Ahora lo deja, guarda su id en cada fila de `destinos[]` y la eliminación lo revierte. Los abonos antiguos sin ese id se revierten como antes.
+
+**Verificación:** misma entrada en el código anterior y el nuevo da exactamente los mismos registros y saldos (8 escenarios, ver arriba), y al eliminar todo vuelve al estado inicial.
+
+### 🐛 Corregido (2026-10-02) — Abono con "extra" inválido quedaba aplicado a medias (y se duplicaba al corregirlo)
+
+**Causa:** en la rama normal de `_confirmarMovimientoInterno`, el abono se registraba (`d.movimientos.push`, `sumarFuente`, movimientos espejo) **antes** de validar el extra. Con el monto del extra vacío, sin partes o con partes que no sumaban, la función hacía `return` con un toast, pero el abono ya estaba aplicado en memoria con el sheet abierto: al corregir y volver a confirmar se registraba dos veces, y un `save()` de cualquier otra pantalla lo guardaba a medias.
+
+**Arreglo:** las tres validaciones del extra se hacen primero (paso 0) y el resto de la rama ya no puede salirse a medias. Caso reproducido: abono de $20.000 a Nequi con extra vacío, luego corregido. Antes: Nequi $40.000, deuda $60.000. Ahora: Nequi $20.000, deuda $80.000.
+
+### ✨ Agregado (2026-10-01) — Un abono que cubre toda la deuda se guarda como "Pago completo"
+
+**Caso:** la persona debe 4.000, abrís "Registrar abono" (en vez de "Pagar préstamo completo") y ponés 4.000. Antes quedaba como `'abono'`; ahora queda como `'pago-completo'`, con la etiqueta "Pago completo" en el historial y la descripción "Pago de deuda completo — …" en el movimiento de la cuenta, igual que si hubieran abierto el otro sheet.
+
+**Cómo:** `confirmarMovimiento()` pasó a ser un envoltorio de `_confirmarMovimientoInterno()`. Si `movTipo === 'abono'` y el monto iguala el saldo total de la persona (`getDeudorSaldo`, tolerancia $0,50), promueve `movTipo` a `'pago-completo'` solo durante el guardado y lo restaura en `finally`, así que si una validación aborta el sheet sigue siendo "abono". Todo lo que ya dependía de `movTipo` (tipo guardado, desc secundaria, rama de encargo) lo toma solo, sin tocar nada más.
+
+**Alcance:** se compara contra el saldo TOTAL de la persona (igual que "Pagar préstamo completo"), no el de un grupo. Un abono menor al saldo sigue siendo abono. Solo aplica a abonos; no a préstamos ni a "¿Se lo regalas?". Verificado en sandbox con los archivos reales (abono 1.000 → `abono`; abono 3.000 que salda → `pago-completo`; `movTipo` restaurado). No probado en navegador.
+
+### ✨ Agregado (2026-09-30) — "Nuevo préstamo": opción "El valor real era diferente" (margen cuando cobras más de lo que costó)
+
+**Caso:** prestás algo que pagaste a 698.000 y le cobrás 700.000 a la persona (siempre redondea). Antes solo se podía registrar 700.000 de deuda *y* 700.000 salidos de la cuenta, o bien usar el préstamo con TC, que sí tenía este bloque.
+
+**Qué hace:** en `sheet-registrar-movimiento`, solo en "Nuevo préstamo", aparece el mismo bloque colapsable que ya usan Encargos y "Préstamo con TC" (`mov-dif-wrap`, instancia `'prestamoDif'` del motor `diferencial.js`). *Monto* = lo que le cobrás (la deuda de la persona); *¿Cuánto era en realidad?* = lo que de verdad sale de tu cuenta. Con 700.000 / 698.000: la deuda queda en 700.000, de la cuenta salen 698.000 y los 2.000 de margen se registran como ingreso.
+
+**Decisiones:**
+- El margen es un ingreso **sin cuenta** (`fuente:''`, `_prestadoDirectamente`, `permiteMiCuenta:false`), igual que en "Préstamo con TC": esos 2.000 nunca pasaron por ninguna cuenta tuya; cuando te paguen los 700.000 entran enteros a la cuenta destino del abono.
+- El ingreso se enlaza al préstamo (`diffAplicar('prestamoDif', …, movId)` → `_encMovId`), y `eliminarMovDeudor()` lo borra junto con el préstamo (no hay saldo que revertir).
+- En modo simple con margen, el préstamo se guarda como `fuentes:[{fuente, monto: real}]` (la misma forma del préstamo dividido) en vez de `fuente`. Así revertir, el detalle y el historial de la cuenta usan el monto real sin ningún caso especial. Sin margen, nada cambia (sigue `fuente`).
+- Con "Dividir ÷", las filas deben sumar el valor real (no el monto cobrado); `_updatePrestSplitResumen()` usa `_prestMontoSalida()`.
+- Si el valor real es mayor que el monto cobrado se bloquea con un toast (cobrar de menos no se modela). Real vacío, o igual al monto, = sin diferencial.
+- La tarjeta del movimiento muestra el margen con `diffRenderHistorial()` (solo en préstamos normales; los de TC siguen como estaban).
+
+**Verificado:** corrido con los archivos reales (`diferencial.js`, `calc-helpers.js`, `fuentes-filtro.js`, `prestado.js`) en un sandbox con DOM simulado: préstamo 700.000/698.000 desde Nequi → deuda 700.000, Nequi −698.000, un ingreso de 2.000 enlazado; borrarlo deja deuda 0, Nequi como antes y sin ingreso; real > monto bloquea sin escribir nada; sin diferencial sigue igual. **No probado en un navegador real** (el bloque HTML, el toggle y la lectura de `mov_dif_real` en vivo).
+
+### ✅ Corregido (2026-09-30) — El margen de un préstamo con TC quedaba huérfano al borrar el préstamo
+
+**Síntoma:** al borrar un préstamo hecho con tarjeta, la deuda de la TC y su cargo se revertían, pero el ingreso "Margen préstamo TC — …" seguía en `S.movimientos` y seguía contando como ingreso en Análisis y Salud financiera.
+
+**Causa raíz:** `confirmarPrestamoTC()` llamaba a `diffAplicar('prtc', {...})` sin el tercer argumento (vínculo), así que el margen no quedaba ligado al préstamo, y la rama `_viaTC` de `eliminarMovDeudor()` no lo limpiaba.
+
+**Fix:** `diffAplicar('prtc', …, movId)` deja `_encMovId` = id del préstamo, y `eliminarMovDeudor()` borra en la rama `_viaTC` los `_esDiferencialEncargo` con ese vínculo. El ingreso se escribe sin cuenta, así que no hay saldo que revertir.
+
+**Alcance a propósito:** solo préstamos nuevos; los guardados antes no tienen el vínculo y su margen seguiría huérfano al borrar el préstamo. Tampoco se le puso `_secundario` a ese margen (ver la entrada de Encargos del mismo día): sin vínculo en datos viejos, protegerlo lo dejaría sin forma de borrarse. Sin probar en la app.
 
 ### ✅ Corregido (2026-09-28) — El extra/propina de un pago de deuda no contaba como ingreso en Análisis ni en Salud financiera
 

@@ -123,4 +123,6 @@ nu (cajitas Nu) + CDTs + Nequi + Efectivo + prestado (Me deben) + cuentas person
 − deuda TC total − Yo debo (S.misDeudas) − plata comprometida ajena (_saldoCPAjeno)
 ```
 
+Un saldo (Efectivo, Nequi, cuenta personalizada) puede quedar temporalmente negativo tras borrar un movimiento cuyo dinero ya se gastó (reversión sin piso en 0, 2026-09-30): el patrimonio lo suma tal cual, sin recortarlo, y vuelve al valor correcto al rehacer el movimiento.
+
 Todo lo que es plata **ajena** que solo estás cuidando (encargos, plata comprometida de otra persona, lo que le debés a alguien) se resta para que el patrimonio refleje solo lo que es realmente tuyo. Ver [`CHANGELOG.md`](./CHANGELOG.md#patrimonio-y-cálculos-globales) para el detalle de qué faltaba restar acá y ya se corrigió.

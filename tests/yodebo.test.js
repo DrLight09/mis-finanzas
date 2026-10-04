@@ -19,6 +19,7 @@ function freshApp() {
     path.join(CORE_DIR, 'core-state.js'),
     path.join(CORE_DIR, 'cuenta-efectos.js'),
     path.join(CORE_DIR, 'calc-helpers.js'),
+    path.join(MODULES_DIR, 'inicio.js'),
     path.join(MODULES_DIR, 'prestado.js'),
     path.join(MODULES_DIR, 'tarjetas_credito.js'),
   ], { permissive: true });
@@ -227,4 +228,26 @@ test('Yo debo — una deuda anterior a los grupos se migra al Histórico sin cam
   assert.ok(d.movimientos.every((m) => m.grupoId === '_historico'));
   assert.equal(ctx.getMiDeudaSaldo(d), antes);
   assert.equal(ctx._migrarGruposDeudor(d), false, 'es idempotente');
+});
+
+function hoyISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+test('Yo debo — el perdón cuenta en el ingreso del mes de Inicio (sin _prestadoDirectamente, una entrada sin cuenta no se contaba)', () => {
+  const ctx = freshApp();
+  const antes = ctx.calcHealthScore().ingresosMes;
+  ctx._aplicarMovMiDeuda(plan(ctx, { monto: 90000, perdon: true, cuentas: [], fecha: hoyISO() }));
+  assert.equal(ctx.calcHealthScore().ingresosMes - antes, 90000);
+});
+
+test('Yo debo — pagar o recibir una deuda NO cuenta como ingreso ni gasto del mes (solo el perdón y el pago de más lo son)', () => {
+  const ctx = freshApp();
+  ctx.S.cuentas.find((c) => c.id === 'efectivo').saldo = 500000;
+  const antes = ctx.calcHealthScore().ingresosMes;
+  ctx._aplicarMovMiDeuda(plan(ctx, { tipo: 'recibido', monto: 40000, cuentas: [{ cuenta: 'efectivo', monto: 40000 }], fecha: hoyISO() }));
+  ctx._aplicarMovMiDeuda(plan(ctx, { monto: 20000, cuentas: [{ cuenta: 'efectivo', monto: 20000 }], fecha: hoyISO() }));
+  assert.equal(ctx.calcHealthScore().ingresosMes, antes, 'recibir un préstamo no es un ingreso');
+  assert.equal(ctx.S.gastosVar.length, 0, 'pagar la deuda no es un gasto');
 });

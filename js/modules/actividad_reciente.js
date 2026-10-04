@@ -163,6 +163,15 @@
         (m.destinos || []).forEach(function(r){ if (r && r._movId) ids[r._movId] = true; });
       });
     });
+    // "Yo debo": cada movimiento ya sale como una fila propia en _normMisDeudas, así que se ocultan sus
+    // espejos en las cuentas (de una cuenta: _movSecId; repartido: destinos[]/fuentes[]._movId).
+    Deudas.lista('contra').forEach(function(d){
+      (d.movimientos || []).forEach(function(m){
+        if (m._movSecId) ids[m._movSecId] = true;
+        (m.destinos || []).forEach(function(r){ if (r && r._movId) ids[r._movId] = true; });
+        (m.fuentes || []).forEach(function(r){ if (r && r._movId) ids[r._movId] = true; });
+      });
+    });
     return ids;
   }
 
@@ -316,6 +325,31 @@
     return items;
   }
 
+  // "Yo debo": una fila por movimiento, igual que _normDeudores, sin importar si pasó por una cuenta, por una
+  // tarjeta o por ninguna (antes solo se veían los que dejaban un espejo en una cuenta). El perdón recibido no
+  // se repite acá: ya sale como ingreso desde S.movimientos (_normMovimientos).
+  function _normMisDeudas(S) {
+    var items = [];
+    Deudas.lista('contra').forEach(function(d){
+      (d.movimientos || []).forEach(function(m){
+        if (m._perdon) return;
+        var recibido = m.tipo === 'recibido';
+        items.push({
+          id:        'mideu_' + d.id + '_' + m.id,
+          fecha:     m.fecha || '0000-00-00',
+          ts:        m.ts || 0,
+          tipo:      recibido ? 'abono' : 'prestamo',
+          signo:     recibido ? '+' : '-',
+          monto:     m.monto || 0,
+          titulo:    recibido ? 'Me prestó ' + d.nombre : 'Pago a ' + d.nombre,
+          subtitulo: m.nota || '',
+          fuente:    'misDeudas',
+        });
+      });
+    });
+    return items;
+  }
+
   function _normSpotify(S) {
     return (S.spotifyHistorial || [])
       .filter(function(h){ return h.tipo === 'cobro'; })
@@ -433,6 +467,7 @@
       _normCajitas(Sx),
       _normGastos(Sx),
       _normDeudores(Sx),
+      _normMisDeudas(Sx),
       _normSpotify(Sx),
       _normEncargos(Sx),
       _normTC(Sx),

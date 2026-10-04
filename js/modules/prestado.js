@@ -658,6 +658,7 @@ function volverDeudores() {
   deudorActualId = null;
   document.getElementById('deudoresView').style.display = '';
   document.getElementById('deudorDetalle').style.display = 'none';
+  renderDeudoresList();
   const _pt2 = document.getElementById('prestamos-tabs');
   // Ojo: 'flex' explícito, no ''. #prestamos-tabs trae display:flex inline
   // en el HTML (para poner los botones lado a lado); al ocultarlo con
@@ -1846,8 +1847,12 @@ let prestamosTabActiva = 'me-deben'; // Recuerda qué pestaña (Me deben / Yo de
 // Pinta una pestaña (Me deben / Yo debo) como activa o inactiva.
 function _pintarTabPrestamos(el, activa) {
   if (!el) return;
-  el.classList.toggle('btn-tab-activa', activa);
-  el.classList.toggle('btn-ghost', !activa);
+  // En línea a propósito: el Service Worker sirve el CSS desde caché y puede tardar una carga en actualizarse,
+  // y una pestaña activa que no se ve verde durante ese tiempo parece un bug.
+  el.className = activa ? 'btn' : 'btn btn-ghost';
+  el.style.background  = activa ? 'rgba(200,240,96,.12)' : '';
+  el.style.borderColor = activa ? 'rgba(200,240,96,.4)' : '';
+  el.style.color       = activa ? 'var(--accent)' : '';
 }
 function cambiarTabPrestamos(tab) {
   prestamosTabActiva = tab;
@@ -1930,6 +1935,7 @@ function volverMisDeudas() {
   miDeudaActualId = null;
   document.getElementById('misDeudasView').style.display = '';
   document.getElementById('miDeudaDetalle').style.display = 'none';
+  renderMisDeudasList(); // al volver siempre se pinta: no depender de que un refresh() lo haya hecho
   const _pt4 = document.getElementById('prestamos-tabs');
   if (_pt4) _pt4.style.display = 'flex'; // ver nota en volverDeudores() — no usar ''
 }
@@ -1941,8 +1947,8 @@ function volverMisDeudas() {
      / `fuentes[]`, cada fila con el id de su movimiento espejo para revertirla.
    - Perdón ("¿Te lo perdonaron?"): lo que faltaba se borra de la deuda sin mover
      ninguna cuenta, y SÍ es un ingreso real (tu patrimonio neto sube). Queda un
-     ingreso "fantasma" (fuente '', como el margen de un préstamo) enlazado al
-     pago por `_ingresoPerdonId`; el pago lleva `_perdon: true`.
+     ingreso "fantasma" (fuente '' + `_prestadoDirectamente`, como el margen de un préstamo)
+     enlazado al pago por `_ingresoPerdonId`; el pago lleva `_perdon: true`.
    - Pago de más ("¿Pagaste de más?"): el pago baja la deuda solo hasta el saldo;
      el extra sale de la cuenta pero NO baja la deuda, así que es un gasto real
      (`S.gastosVar`, enlazado por `extra.gastoId`). Las cuentas descuentan
@@ -2141,6 +2147,9 @@ function _aplicarMovMiDeuda(p) {
     const ingId = uid();
     S.movimientos.push({
       id: ingId, tipo: 'entrada', fuente: '', monto, fecha, desc: `Me perdonó la deuda — ${d.nombre}`, nota,
+      // _prestadoDirectamente: sin esta bandera, Inicio no cuenta una entrada sin cuenta (fuente '') como ingreso del mes
+      // (ver el filtro de ingresosMes en inicio.js); es la misma que usa el margen de un préstamo (diferencial.js).
+      _prestadoDirectamente: true,
       _secundario: true, _origenSeccion: origen, _esPerdonRecibido: true, _deudaId: d.id, _deudaMovId: mov.id, ts: Date.now()
     });
     mov._perdon = true;
@@ -2246,6 +2255,7 @@ async function eliminarMiDeuda() {
   Deudas.quitar('contra', miDeudaActualId);
   save(); refresh();
   volverMisDeudas();
+  toast(`${escHtml(d.nombre)} eliminado`, 'ok');
 }
 
 /* ── PRÉSTAMO CON TARJETA DE CRÉDITO ─────────────────────────────────────── */

@@ -237,7 +237,7 @@ function _deudaTieneCuentaAfectada(m) {
 // duplicado o corrupto en d.movimientos que no se está viendo a simple vista.
 function _verificarIntegridadSaldoDeudor(d, saldoAntes, deltaEsperado) {
   if (!d) return;
-  const saldoDespues = getDeudorSaldo(d);
+  const saldoDespues = Deudas.saldo(d);
   const deltaReal = saldoDespues - saldoAntes;
   if (Math.abs(deltaReal - deltaEsperado) > Deudas.TOL) {
     console.warn(`[Integridad] Saldo de ${escHtml(d.nombre)} cambió ${deltaReal} en vez de ${deltaEsperado} (antes: ${saldoAntes}, después: ${saldoDespues}). Revisa d.movimientos por duplicados.`, d.movimientos);
@@ -302,7 +302,7 @@ function _migrarGruposDeudor(d) {
 // Saldo de un grupo específico dentro de un deudor (mismo criterio que
 // getDeudorSaldo pero filtrado por grupoId).
 function getGrupoSaldo(d, grupoId) {
-  return (d.movimientos || []).filter(m => m.grupoId === grupoId).reduce((a, m) => m.tipo === 'prestamo' ? a + m.monto : a - m.monto, 0);
+  return (d.movimientos || []).filter(m => m.grupoId === grupoId).reduce((a, m) => Deudas.abre(m) ? a + m.monto : a - m.monto, 0);
 }
 
 // Grupos abiertos (no cerrados manualmente) de un deudor, más recientes primero.
@@ -387,41 +387,128 @@ function _resolverGrupoIdSel(prefix, d, fecha) {
   return _autoGrupoIdMov(d, fecha);
 }
 
-function renderDeudoresList() {
-  const el = document.getElementById('deudoresList');
-  // Ordenado de mayor a menor por lo que te deben: quien más te debe (saldo
-  // positivo más alto) aparece primero. Saldo a favor de él/ella (negativo)
-  // y al día (0) quedan después, en ese mismo orden descendente.
-  const list = [...Deudas.lista('favor')].sort((a, b) => getDeudorSaldo(b) - getDeudorSaldo(a));
-  if (typeof _actualizarMasPersonasSub === 'function') _actualizarMasPersonasSub();
+/* ── Lista de personas (Me deben / Yo debo): un solo render ─────────────
+   Las dos listas eran casi idénticas; solo cambian los textos, a qué pantalla va cada
+   tap y cómo se lee el saldo. Esa diferencia vive en esta tabla, no en dos funciones. */
+const _UI_LISTA = {
+  favor: {
+    el: 'deudoresList', abrir: 'prestado:abrirDeudor',
+    // Con persona vinculada, el avatar abre su perfil; si no, el detalle.
+    avatarAccion: d => d.personaId ? ['prestado:abrirPerfilDeudor', d.id] : ['prestado:abrirDeudor', d.id],
+    vacio: 'Aún no has agregado personas. Puedes crear a tu papá, mamá, amigos...',
+    sub: s => s > 0 ? 'Pendiente por cobrar' : s < 0 ? 'Saldo a favor de él/ella' : 'Al día',
+    claseMonto: s => s > 0 ? 'c-amber' : s < 0 ? 'c-red' : 'c-green',
+    monto: s => fmt(s)
+  },
+  contra: {
+    el: 'misDeudasList', abrir: 'prestado:abrirMiDeuda',
+    avatarAccion: d => d.personaId ? ['prestado:abrirPerfilPersonaDeDeuda', d.personaId] : ['prestado:abrirMiDeuda', d.id],
+    vacio: 'Aún no registras deudas. Si alguien te presta plata, agrégala aquí.',
+    sub: s => s > 0 ? 'Le debes' : s < 0 ? 'Saldo a tu favor' : 'Al día',
+    claseMonto: s => s > 0 ? 'c-red' : 'c-green',
+    monto: s => fmt(Math.abs(s))
+  }
+};
+
+// Color de una deuda: la persona vinculada es la fuente de verdad (ver Personas); d.color es el respaldo.
+function _colorDeuda(d) {
+  const p = d.personaId && typeof getPersona === 'function' ? getPersona(d.personaId) : null;
+  return (p && p.color) ? p.color : (d.color || '#60b0f0');
+}
+
+function _renderListaDeudas(dir) {
+  const ui = _UI_LISTA[dir];
+  const el = document.getElementById(ui.el);
+  if (!el) return;
+  // Mayor a menor: a quien más le debes / quien más te debe primero; saldados y a favor de la otra parte, después.
+  const list = [...Deudas.lista(dir)].sort((a, b) => Deudas.saldo(b) - Deudas.saldo(a));
+  if (dir === 'favor' && typeof _actualizarMasPersonasSub === 'function') _actualizarMasPersonasSub();
   if (!list.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 10px;">Aún no has agregado personas. Puedes crear a tu papá, mamá, amigos...</div>';
+    el.innerHTML = html`<div style="font-size:12px;color:var(--text3);padding:4px 0 10px;">${ui.vacio}</div>`;
     return;
   }
   el.innerHTML = html`${list.map(d => {
-    const saldo = getDeudorSaldo(d);
+    const saldo = Deudas.saldo(d);
     const initials = d.nombre.substring(0, 2).toUpperCase();
     const ultimoMov = (d.movimientos || []).slice(-1)[0];
     const tienePerfil = !!d.personaId;
+    const color = _colorDeuda(d);
+    const [accionAvatar, argAvatar] = ui.avatarAccion(d);
     return html`<div class="card card-sm" style="margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <button type="button" class="avatar" ${raw(Events.attr(tienePerfil ? 'prestado:abrirPerfilDeudor' : 'prestado:abrirDeudor', d.id))}
-          style="color:${raw(d.color)};border-color:${raw(d.color)}33;background:${raw(d.color)}18;width:38px;height:38px;font-size:13px;margin-right:0;flex-shrink:0;border:1px solid;cursor:pointer;${raw(tienePerfil ? 'box-shadow:0 0 0 2px '+d.color+'33;' : '')}"
-          title="${tienePerfil ? 'Ver perfil de '+d.nombre : d.nombre}">${initials}</button>
-        <div style="flex:1;min-width:0;cursor:pointer;" ${raw(Events.attr('prestado:abrirDeudor', d.id))}>
+        <button type="button" class="avatar" ${raw(Events.attr(accionAvatar, argAvatar))}
+          style="color:${raw(color)};border-color:${raw(color)}33;background:${raw(color)}18;width:38px;height:38px;font-size:13px;margin-right:0;flex-shrink:0;border:1px solid;cursor:pointer;${raw(tienePerfil ? 'box-shadow:0 0 0 2px ' + color + '44;' : '')}"
+          title="${tienePerfil ? 'Ver perfil de ' + d.nombre : d.nombre}">${initials}</button>
+        <div style="flex:1;min-width:0;cursor:pointer;" ${raw(Events.attr(ui.abrir, d.id))}>
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <div class="row-name">${d.nombre}</div>
-            <div class="row-amount ${raw(saldo > 0 ? 'c-amber' : saldo < 0 ? 'c-red' : 'c-green')}">${fmt(saldo)}</div>
+            <div class="row-amount ${raw(ui.claseMonto(saldo))}">${ui.monto(saldo)}</div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:3px;">
-            <div class="row-sub">${saldo > 0 ? 'Pendiente por cobrar' : saldo < 0 ? 'Saldo a favor de él/ella' : 'Al día'}</div>
+            <div class="row-sub">${ui.sub(saldo)}</div>
             ${ultimoMov ? html`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimoMov.fecha}</span>` : ''}
           </div>
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;cursor:pointer;" ${raw(Events.attr('prestado:abrirDeudor', d.id))}><polyline points="9 18 15 12 9 6"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;cursor:pointer;" ${raw(Events.attr(ui.abrir, d.id))}><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>`;
   })}`;
+}
+function renderDeudoresList() { _renderListaDeudas('favor'); }
+function renderMisDeudasList() { _renderListaDeudas('contra'); }
+
+// Historial de una deuda (de cualquier dirección) agrupado por préstamo. `porGrupo`: grupoId → [tarjetas html``].
+// Con un solo grupo se ve plano (sin acordeón); con 2 o más, un acordeón por grupo con su saldo.
+function _htmlHistorialPorGrupos(d, porGrupo) {
+  const _porGrupo = porGrupo;
+  // Orden de secciones: grupos abiertos primero (más nuevo primero),
+  // luego cerrados. Si por alguna razón un grupoId no está en d.grupos
+  // (dato corrupto), se muestra igual como sección suelta al final.
+  const gruposOrdenados = [...(d.grupos || [])].sort((a, b) => {
+    if (!!a.cerrado !== !!b.cerrado) return a.cerrado ? 1 : -1;
+    return (b.creadoEn || '').localeCompare(a.creadoEn || '');
+  });
+  const idsConocidos = new Set(gruposOrdenados.map(g => g.id));
+  Object.keys(_porGrupo).forEach(gid => { if (!idsConocidos.has(gid)) gruposOrdenados.push({ id: gid, nombre: 'Otros', cerrado: false }); });
+
+  const soloUnGrupo = gruposOrdenados.filter(g => _porGrupo[g.id]).length <= 1;
+  return html`${gruposOrdenados.filter(g => _porGrupo[g.id]).map(g => {
+    const cards = _porGrupo[g.id]; // array de fragmentos html`` ya escapados — html`` externo los concatena sin re-escapar
+    const saldoGrupo = getGrupoSaldo(d, g.id);
+    const saldoTxt = saldoGrupo > 0 ? fmt(saldoGrupo) + ' pendiente' : saldoGrupo < 0 ? 'a favor ' + fmt(-saldoGrupo) : 'al día';
+    if (soloUnGrupo) {
+      // Un solo grupo: no vale la pena el acordeón, se ve como el historial plano de siempre.
+      return cards;
+    }
+    return html`<details class="card card-sm" style="margin-bottom:9px;padding:0;overflow:hidden;" ${raw(g.cerrado ? '' : 'open')}>
+      <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none;">
+        <span style="display:flex;align-items:center;gap:6px;min-width:0;">
+          <span style="font-size:12px;font-weight:500;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${g.nombre}</span>
+          ${g.cerrado ? html` <span class="badge" style="font-size:9px;opacity:.6;">Cerrado</span>` : ''}
+        </span>
+        <span style="font-size:11px;font-family:'DM Mono',monospace;color:${raw(saldoGrupo > 0 ? 'var(--amber)' : saldoGrupo < 0 ? 'var(--red)' : 'var(--text3)')};flex-shrink:0;">${saldoTxt}</span>
+      </summary>
+      <div style="padding:0 10px 10px;">${cards}</div>
+    </details>`;
+  })}`;
+}
+
+// Encabezado del detalle de una deuda (avatar, nombre, saldo y los dos totales). Los ids del DOM
+// difieren entre Me deben (dd*) y Yo debo (md*); el resto es igual.
+function _pintarEncabezadoDeuda(ids, d, saldoTxt, saldoColor, total1, total2) {
+  const color = _colorDeuda(d);
+  const av = document.getElementById(ids.avatar);
+  av.textContent = d.nombre.substring(0, 2).toUpperCase();
+  av.style.color = color;
+  av.style.borderColor = color + '44';
+  av.style.background = color + '20';
+  av.style.boxShadow = d.personaId ? '0 0 0 2px ' + color + '44' : '';
+  document.getElementById(ids.nombre).textContent = d.nombre;
+  const lbl = document.getElementById(ids.saldo);
+  lbl.textContent = saldoTxt;
+  lbl.style.color = saldoColor;
+  document.getElementById(ids.total1).textContent = fmt(total1);
+  document.getElementById(ids.total2).textContent = fmt(total2);
 }
 
 function abrirDeudor(id) {
@@ -437,15 +524,9 @@ function abrirDeudor(id) {
   // Lo perdonado (_perdon) NO es plata que pagó: no entra en "Pagado" (queda en el historial como "Perdonado").
   const totalAbonado = (d.movimientos || []).filter(m => (m.tipo === 'abono' || m.tipo === 'pago-completo') && !m._perdon).reduce((a, m) => a + m.monto, 0);
 
-  document.getElementById('ddAvatar').textContent = d.nombre.substring(0, 2).toUpperCase();
-  document.getElementById('ddAvatar').style.color = d.color;
-  document.getElementById('ddAvatar').style.borderColor = d.color + '44';
-  document.getElementById('ddAvatar').style.background = d.color + '20';
-  document.getElementById('ddNombre').textContent = d.nombre;
-  document.getElementById('ddSaldoLabel').textContent = saldo > 0 ? 'Te debe ' + fmt(saldo) : saldo < 0 ? 'Saldo a su favor: ' + fmt(-saldo) : 'Está al día';
-  document.getElementById('ddSaldoLabel').style.color = saldo > 0 ? 'var(--amber)' : saldo < 0 ? 'var(--red)' : 'var(--accent)';
-  document.getElementById('ddDebe').textContent = fmt(totalPrestado);
-  document.getElementById('ddPago').textContent = fmt(totalAbonado);
+  _pintarEncabezadoDeuda({ avatar: 'ddAvatar', nombre: 'ddNombre', saldo: 'ddSaldoLabel', total1: 'ddDebe', total2: 'ddPago' }, d,
+    saldo > 0 ? 'Te debe ' + fmt(saldo) : saldo < 0 ? 'Saldo a su favor: ' + fmt(-saldo) : 'Está al día',
+    saldo > 0 ? 'var(--amber)' : saldo < 0 ? 'var(--red)' : 'var(--accent)', totalPrestado, totalAbonado);
 
   // Render historial
   const movs = [...(d.movimientos || [])].sort((a,b)=>{
@@ -535,36 +616,7 @@ function abrirDeudor(id) {
       (_porGrupo[_gid] = _porGrupo[_gid] || []).push(_cardHtml);
     });
 
-    // Orden de secciones: grupos abiertos primero (más nuevo primero),
-    // luego cerrados. Si por alguna razón un grupoId no está en d.grupos
-    // (dato corrupto), se muestra igual como sección suelta al final.
-    const gruposOrdenados = [...(d.grupos || [])].sort((a, b) => {
-      if (!!a.cerrado !== !!b.cerrado) return a.cerrado ? 1 : -1;
-      return (b.creadoEn || '').localeCompare(a.creadoEn || '');
-    });
-    const idsConocidos = new Set(gruposOrdenados.map(g => g.id));
-    Object.keys(_porGrupo).forEach(gid => { if (!idsConocidos.has(gid)) gruposOrdenados.push({ id: gid, nombre: 'Otros', cerrado: false }); });
-
-    const soloUnGrupo = gruposOrdenados.filter(g => _porGrupo[g.id]).length <= 1;
-    histEl.innerHTML = html`${gruposOrdenados.filter(g => _porGrupo[g.id]).map(g => {
-      const cards = _porGrupo[g.id]; // array de fragmentos html`` ya escapados — html`` externo los concatena sin re-escapar
-      const saldoGrupo = getGrupoSaldo(d, g.id);
-      const saldoTxt = saldoGrupo > 0 ? fmt(saldoGrupo) + ' pendiente' : saldoGrupo < 0 ? 'a favor ' + fmt(-saldoGrupo) : 'al día';
-      if (soloUnGrupo) {
-        // Un solo grupo: no vale la pena el acordeón, se ve como el historial plano de siempre.
-        return cards;
-      }
-      return html`<details class="card card-sm" style="margin-bottom:9px;padding:0;overflow:hidden;" ${raw(g.cerrado ? '' : 'open')}>
-        <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none;">
-          <span style="display:flex;align-items:center;gap:6px;min-width:0;">
-            <span style="font-size:12px;font-weight:500;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${g.nombre}</span>
-            ${g.cerrado ? html` <span class="badge" style="font-size:9px;opacity:.6;">Cerrado</span>` : ''}
-          </span>
-          <span style="font-size:11px;font-family:'DM Mono',monospace;color:${raw(saldoGrupo > 0 ? 'var(--amber)' : saldoGrupo < 0 ? 'var(--red)' : 'var(--text3)')};flex-shrink:0;">${saldoTxt}</span>
-        </summary>
-        <div style="padding:0 10px 10px;">${cards}</div>
-      </details>`;
-    })}`;
+    histEl.innerHTML = _htmlHistorialPorGrupos(d, _porGrupo);
   }
 
   // Mostrar detalle, ocultar lista y las pestañas Me deben/Yo debo (no
@@ -958,7 +1010,8 @@ function _initMovGrupoSelector() {
 // los ids en el DOM. `esPrestamoNuevo` indica si el movimiento que se está
 // creando en este sheet es siempre/puede-ser un préstamo (y por tanto tiene
 // sentido ofrecer el checkbox "préstamo aparte" cuando hay 1 solo abierto).
-function _initGrupoSelector(prefix, esPrestamoNuevo) {
+// `deuda`: la deuda a la que pertenece el sheet; sin ella se usa la de "Me deben" abierta (deudorActualId).
+function _initGrupoSelector(prefix, esPrestamoNuevo, deuda) {
   const wrap = document.getElementById(prefix + '_grupo_wrap');
   if (!wrap) return; // sheet aún no tiene el markup — no romper si falta
   const nombreWrap = document.getElementById(prefix + '_grupo_nombre_wrap');
@@ -966,7 +1019,7 @@ function _initGrupoSelector(prefix, esPrestamoNuevo) {
   const nombreInput = document.getElementById(prefix + '_grupo_nombre');
   const checkWrap = document.getElementById(prefix + '_grupo_check_wrap');
   const check = document.getElementById(prefix + '_grupo_check');
-  const d = Deudas.lista('favor').find(x => x.id === deudorActualId);
+  const d = deuda || Deudas.porId('favor', deudorActualId);
   const abiertos = d ? _gruposAbiertos(d) : [];
 
   if (check) check.checked = false;
@@ -1810,68 +1863,23 @@ function cambiarTabPrestamos(tab) {
   if (yoDebo) renderMisDeudasList();
 }
 
-function renderMisDeudasList() {
-  const el = document.getElementById('misDeudasList');
-  if (!el) return;
-  const list = Deudas.lista('contra');
-  if (!list.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 10px;">Aún no registras deudas. Si alguien te presta plata, agrégala aquí.</div>';
-    return;
-  }
-  el.innerHTML = html`${list.map(d => {
-    const saldo = getMiDeudaSaldo(d);
-    const initials = d.nombre.substring(0, 2).toUpperCase();
-    const ultimoMov = (d.movimientos || []).slice(-1)[0];
-    const tienePerfil = !!d.personaId;
-    // Color: la persona es fuente de verdad
-    const _rPersona = tienePerfil && typeof getPersona === 'function' ? getPersona(d.personaId) : null;
-    const color = (_rPersona && _rPersona.color) ? _rPersona.color : (d.color || '#60b0f0');
-    return html`<div class="card card-sm" style="margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <button type="button" class="avatar" ${raw(Events.attr(tienePerfil ? 'prestado:abrirPerfilPersonaDeDeuda' : 'prestado:abrirMiDeuda', tienePerfil ? d.personaId : d.id))}
-          style="color:${raw(color)};border-color:${raw(color)}33;background:${raw(color)}18;width:38px;height:38px;font-size:13px;margin-right:0;flex-shrink:0;border:1px solid;cursor:pointer;${raw(tienePerfil ? 'box-shadow:0 0 0 2px ' + color + '33;' : '')}"
-          title="${tienePerfil ? 'Ver perfil de ' + d.nombre : d.nombre}">${initials}</button>
-        <div style="flex:1;min-width:0;cursor:pointer;" ${raw(Events.attr('prestado:abrirMiDeuda', d.id))}>
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            <div class="row-name">${d.nombre}</div>
-            <div class="row-amount ${raw(saldo > 0 ? 'c-red' : 'c-green')}">${fmt(Math.abs(saldo))}</div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:3px;">
-            <div class="row-sub">${saldo > 0 ? 'Le debes' : saldo < 0 ? 'Saldo a tu favor' : 'Al día'}</div>
-            ${ultimoMov ? html`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimoMov.fecha}</span>` : ''}
-          </div>
-        </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-    </div>`;
-  })}`;
-}
 
 function abrirMiDeuda(id) {
   miDeudaActualId = id;
   const d = Deudas.lista('contra').find(x => x.id === id);
   if (!d) return;
+  // Migración silenciosa: deudas creadas antes de los grupos caen en un grupo "Histórico".
+  if (_migrarGruposDeudor(d)) save();
   const saldo = getMiDeudaSaldo(d);
   const totalRecibido = (d.movimientos || []).filter(m => m.tipo === 'recibido').reduce((a, m) => a + m.monto, 0);
   // Lo perdonado (_perdon) no es plata que pagó: queda en el historial como "Perdonada".
   const totalPagado = (d.movimientos || []).filter(m => m.tipo === 'pago' && !m._perdon).reduce((a, m) => a + m.monto, 0);
 
-  const mdAv = document.getElementById('mdAvatar');
-  // Color: la persona es la fuente de verdad; d.color es fallback
-  const _mdPersona = d.personaId && typeof getPersona === 'function' ? getPersona(d.personaId) : null;
-  const _mdColor = (_mdPersona && _mdPersona.color) ? _mdPersona.color : (d.color || '#60b0f0');
-  mdAv.textContent = d.nombre.substring(0, 2).toUpperCase();
-  mdAv.style.color = _mdColor;
-  mdAv.style.borderColor = _mdColor + '44';
-  mdAv.style.background = _mdColor + '20';
-  mdAv.style.boxShadow = d.personaId ? '0 0 0 2px ' + _mdColor + '44' : '';
-  document.getElementById('mdNombre').textContent = d.nombre;
-  document.getElementById('mdSaldoLabel').textContent = saldo > 0 ? 'Le debes ' + fmt(saldo) : saldo < 0 ? 'Saldo a tu favor: ' + fmt(-saldo) : 'Estás al día';
-  document.getElementById('mdSaldoLabel').style.color = saldo > 0 ? 'var(--red)' : saldo < 0 ? 'var(--amber)' : 'var(--accent)';
+  _pintarEncabezadoDeuda({ avatar: 'mdAvatar', nombre: 'mdNombre', saldo: 'mdSaldoLabel', total1: 'mdRecibido', total2: 'mdPagado' }, d,
+    saldo > 0 ? 'Le debes ' + fmt(saldo) : saldo < 0 ? 'Saldo a tu favor: ' + fmt(-saldo) : 'Estás al día',
+    saldo > 0 ? 'var(--red)' : saldo < 0 ? 'var(--amber)' : 'var(--accent)', totalRecibido, totalPagado);
   const mdChip = document.getElementById('md-perfil-chip');
   if (mdChip) mdChip.style.display = d.personaId ? '' : 'none';
-  document.getElementById('mdRecibido').textContent = fmt(totalRecibido);
-  document.getElementById('mdPagado').textContent = fmt(totalPagado);
 
   const movs = [...(d.movimientos || [])].sort((a, b) => {
     const fechaDiff = (b.fecha || '').localeCompare(a.fecha || '');
@@ -1882,11 +1890,12 @@ function abrirMiDeuda(id) {
   if (!movs.length) {
     histEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 8px;">Sin movimientos aún.</div>';
   } else {
-    histEl.innerHTML = html`${movs.map(m => {
+    const _porGrupo = {}; // grupoId -> [tarjetas html``]
+    movs.forEach(m => {
       const esRecibido = m.tipo === 'recibido';
       const esPerdon = !esRecibido && !!m._perdon;
       const cuentasRef = _deudaCuentasDe(m);
-      return html`<div class="card card-sm" style="margin-bottom:7px;">
+      const _cardHtml = html`<div class="card card-sm" style="margin-bottom:7px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
@@ -1904,7 +1913,10 @@ function abrirMiDeuda(id) {
           </div>
         </div>
       </div>`;
-    })}`;
+      const _gid = m.grupoId || '_historico';
+      (_porGrupo[_gid] = _porGrupo[_gid] || []).push(_cardHtml);
+    });
+    histEl.innerHTML = _htmlHistorialPorGrupos(d, _porGrupo);
   }
 
   document.getElementById('misDeudasView').style.display = 'none';
@@ -2038,6 +2050,7 @@ function abrirMovMiDeuda(tipo) {
   _mdEl('md_monto').value = '';
   _mdEl('md_fecha').value = hoy();
   _mdEl('md_nota').value = '';
+  _initGrupoSelector('md', tipo === 'recibido', Deudas.porId('contra', miDeudaActualId));
   openSheet('mov-mi-deuda');
 }
 
@@ -2099,6 +2112,8 @@ function _planMovMiDeuda() {
 function _aplicarMovMiDeuda(p) {
   const { d, tipo, monto, fecha, nota, perdon, extra, cuentas, partido } = p;
   const origen = 'Prestado · Yo debo';
+  // A qué préstamo pertenece. Puede crear un grupo, por eso se resuelve acá (al aplicar) y no al validar.
+  const grupoId = _resolverGrupoIdSel('md', d, fecha);
   const entra = tipo === 'recibido';
   const desc = entra ? `Me prestó — ${d.nombre}` : `Pago de deuda — ${d.nombre}`;
   const movId = uid();
@@ -2117,8 +2132,8 @@ function _aplicarMovMiDeuda(p) {
   });
   const unica = (!partido && efectos.length === 1) ? efectos[0] : null;
   const mov = entra
-    ? { id: movId, tipo, monto, fecha, destino: unica ? unica.fuente : undefined, nota, ts: Date.now(), _movSecId: unica ? unica._movId : undefined }
-    : { id: movId, tipo, monto, fecha, fuente: unica ? unica.fuente : undefined, nota, ts: Date.now(), _movSecId: unica ? unica._movId : undefined, _tcMovId: unica ? unica._tcMovId : undefined };
+    ? { id: movId, tipo, monto, fecha, destino: unica ? unica.fuente : undefined, nota, grupoId, ts: Date.now(), _movSecId: unica ? unica._movId : undefined }
+    : { id: movId, tipo, monto, fecha, fuente: unica ? unica.fuente : undefined, nota, grupoId, ts: Date.now(), _movSecId: unica ? unica._movId : undefined, _tcMovId: unica ? unica._tcMovId : undefined };
   if (partido) mov[entra ? 'destinos' : 'fuentes'] = efectos;
   if (perdon) {
     // Ingreso real que no tocó ninguna cuenta: fuente '' (mismo criterio que el margen de un préstamo).
@@ -2143,6 +2158,7 @@ function _aplicarMovMiDeuda(p) {
     mov.extra = { monto: extra, gastoId };
   }
   d.movimientos.push(mov);
+  _autoCerrarGruposEnCero(d);
   return mov;
 }
 
@@ -2150,7 +2166,9 @@ function confirmarMovMiDeuda() {
   const plan = _planMovMiDeuda();
   if (!plan) return;
   if (plan.error) { toast(plan.error, 'err', 4000); return; }
+  const saldoAntes = Deudas.saldo(plan.d);
   _aplicarMovMiDeuda(plan);
+  _verificarIntegridadSaldoDeudor(plan.d, saldoAntes, plan.tipo === 'recibido' ? plan.monto : -plan.monto);
   save(); refresh(); closeSheet('mov-mi-deuda');
   abrirMiDeuda(plan.d.id);
   toast(plan.perdon ? 'Deuda perdonada' : 'Movimiento registrado', 'ok');
@@ -2205,8 +2223,11 @@ async function eliminarMovMiDeuda(deudaId, movId) {
     }
   }
 
+  const saldoAntes = Deudas.saldo(d);
   _revertirMovMiDeuda(m);
   d.movimientos = d.movimientos.filter(x => x.id !== movId);
+  _autoCerrarGruposEnCero(d); // el grupo pudo saldarse (o reabrirse) al borrar este movimiento
+  _verificarIntegridadSaldoDeudor(d, saldoAntes, m.tipo === 'recibido' ? -m.monto : m.monto);
   save(); refresh();
   abrirMiDeuda(deudaId);
 }

@@ -935,8 +935,8 @@ function abrirDetalleTCSheet(tcId){
             ? `<i class="fa-solid fa-arrow-down" style="margin-right:3px;font-size:7px;"></i>`
             : `<i class="fa-solid fa-hand-holding-dollar" style="margin-right:3px;font-size:7px;"></i>`);
         const _origenM=esEncargo?'Encargos':(esDeuda
-          ?('Préstamos · Yo debo · '+(((S.misDeudas||[]).find(x=>x.id===m.miDeudaId)||{}).nombre||''))
-          :('Préstamos · '+(((S.deudores||[]).find(x=>x.id===m.deudorId)||{}).nombre||'')));
+          ?('Préstamos · Yo debo · '+((Deudas.porId('contra',m.miDeudaId)||{}).nombre||''))
+          :('Préstamos · '+((Deudas.porId('favor',m.deudorId)||{}).nombre||'')));
         return html`<div class="gasto-item" ${raw(_tcAttrs(m,_origenM,null))} style="margin-bottom:7px;cursor:pointer;border-color:${colorBorde};">
         <div class="gasto-item-top">
           <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${m.desc}</div><div class="row-sub">${m.fecha}</div></div>

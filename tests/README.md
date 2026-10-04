@@ -10,11 +10,11 @@ modificarlo, usando `vm` para simular cómo el navegador carga
   tasa, redondeo de CDT) — `js/modules/cuentas.js`
 - `Deudas` (capa de acceso a Me deben / Yo debo), `totalPrestadoPendiente()`/
   `totalMisDeudasPendiente()` — `js/core/calc-helpers.js`
-- Yo debo (pago dividido, perdón, pago de más, pago con tarjeta) y
+- Me deben (registrar con `_aplicarMovimiento`, revertir con `_revertirMovDeudor`) y Yo debo (pago dividido, perdón, pago de más, pago con tarjeta) y
   `registrarMovEspejo()`/`borrarMovEspejo()` — `js/modules/prestado.js`,
   `js/core/cuenta-efectos.js`
 
-**49 tests, los 49 pasan** contra tus archivos reales (confirmado acá
+**59 tests, los 59 pasan** contra tus archivos reales (confirmado acá
 antes de entregarte esto, no es teoría).
 
 ## Cómo correrlos

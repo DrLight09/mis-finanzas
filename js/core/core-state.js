@@ -1289,7 +1289,13 @@ function refresh(){
   if(_screenCuentasActiva && typeof renderSelectorCuentas==='function') renderSelectorCuentas();
   if(_screenGastosActiva && typeof renderGastosFijos==='function') renderGastosFijos();
   if(_screenGastosActiva && typeof renderMesFiltros==='function') renderMesFiltros();
-  if(typeof renderDeudoresList==='function' && document.getElementById('screen-prestamos') && document.getElementById('screen-prestamos').classList.contains('active')) renderDeudoresList();
+  // Préstamos tiene DOS listas (Me deben / Yo debo) y las dos viven en el DOM aunque una esté oculta: se pintan
+  // las dos, así un cambio en una pestaña no deja la otra con datos viejos (antes solo se pintaba "Me deben" y
+  // "Yo debo" quedaba desactualizada hasta cambiar de pantalla).
+  if(document.getElementById('screen-prestamos') && document.getElementById('screen-prestamos').classList.contains('active')){
+    if(typeof renderDeudoresList==='function') renderDeudoresList();
+    if(typeof renderMisDeudasList==='function') renderMisDeudasList();
+  }
   if(typeof renderMesada==='function' && document.getElementById('screen-mesada') && document.getElementById('screen-mesada').classList.contains('active')) renderMesada();
   if(typeof renderSpotify==='function' && document.getElementById('screen-spotify') && document.getElementById('screen-spotify').classList.contains('active')) renderSpotify();
   if(typeof renderAttencion==='function') renderAttencion();

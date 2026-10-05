@@ -872,6 +872,11 @@ function _esEntradaEspejoNoIngreso(m){
   // Margen/diferencial de Encargos y Préstamo con TC (lo escribe diffAplicar() en diferencial.js):
   // plata nueva que se queda el usuario, aunque lleve _encMovId o desc 'Margen…'.
   if(m._esDiferencialEncargo) return false;
+  // Movimiento espejo marcado EXPLÍCITAMENTE (desde 2026-10-04 lo pone registrarMovEspejo()
+  // por defecto): no es ingreso. Va después de las banderas "sí es ingreso" de arriba, que
+  // lo anulan cuando un espejo es plata nueva de verdad (extra, perdón, diferencial).
+  // Los datos anteriores a esa fecha no la tienen y siguen cayendo en los fallbacks de abajo.
+  if(m._esEspejo) return true;
   // Datos viejos (antes del 2026-09-29): al destapar la alcancía hacia una cuenta personalizada, _sumarASaldo()
   // dejaba en c.movimientos un 'ingreso' con desc exacta 'Alcancía destapada' — duplicado de filas que ya
   // están en S.movimientos. No es ingreso nuevo (el saldo registrado ya era tuyo y el sobrante ya cuenta por S.movimientos).
@@ -885,6 +890,45 @@ function _esEntradaEspejoNoIngreso(m){
   if(m._origenSeccion==='Mesada') return true;
   if((m._origenSeccion||'').indexOf('Prestado')===0) return true;
   return false;
+}
+
+// ── INGRESO REAL: UNA sola definición para Inicio, Análisis y Wrapped (2026-10-04) ──
+// Antes cada pantalla armaba su propia lista: Inicio exigía además una cuenta (o
+// `_prestadoDirectamente`) y sumaba por separado los `ingreso` de c.movimientos de las
+// cuentas personalizadas; Análisis y Wrapped solo miraban S.movimientos. Esa condición
+// de cuenta ya hizo fallar al perdón de "Yo debo" (subía el patrimonio pero no el
+// ingreso del mes). Regla única: ingreso real = plata nueva que sube el patrimonio,
+// tenga o no cuenta (el margen de un préstamo y el perdón recibido no la tienen).
+//
+// Devuelve la LISTA de movimientos que cuentan; cada pantalla filtra por fecha y suma.
+//   · S.movimientos tipo 'entrada' que no sean espejo (_esEntradaEspejoNoIngreso).
+//   · c.movimientos tipo 'ingreso' de cuentas personalizadas, que no sean espejo
+//     (los espejos nuevos de Prestado a una cuenta personalizada solo viven ahí).
+//   · Datos VIEJOS de cuentas personalizadas escritos en las dos listas con el mismo id
+//     (confirmarMovCustom(), ya retirada): se cuentan UNA vez, por la lista de la cuenta.
+// `estado` es opcional (por defecto S): Wrapped recibe el estado como parámetro.
+function entradasIngresoReal(estado){
+  const st = estado || S;
+  const customs = (st.cuentas||[]).filter(c => c && c.tipo==='custom');
+  const idsEnCuenta = new Set();
+  const lista = [];
+  customs.forEach(c => (c.movimientos||[]).forEach(m => {
+    if(!m) return;
+    if(m.id) idsEnCuenta.add(m.id);
+    if(m.tipo==='ingreso' && !_esEntradaEspejoNoIngreso(m)) lista.push(m);
+  }));
+  (st.movimientos||[]).forEach(m => {
+    if(!m || m.tipo!=='entrada' || _esEntradaEspejoNoIngreso(m)) return;
+    if(m.fuente && m.fuente.startsWith('custom:') && idsEnCuenta.has(m.id)) return; // ya contada arriba
+    lista.push(m);
+  });
+  return lista;
+}
+
+// Suma de ingresos reales de un mes 'YYYY-MM' (no incluye mesada ni ingresos fijos:
+// esos los suma cada pantalla aparte).
+function ingresosRealesDelMes(mes, estado){
+  return entradasIngresoReal(estado).reduce((a,m) => mesKey(m.fecha)===mes ? a+(m.monto||0) : a, 0);
 }
 
 // Determina si un gasto de S.gastosVar debe excluirse de los cálculos de "gasto real"

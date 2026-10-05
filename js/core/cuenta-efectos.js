@@ -29,6 +29,9 @@
         cajita:<id>       cajita.historial      'entrada'    'salida'  nota
 
    `extra` se mezcla en el registro (ej. { _esExtraIngreso: true }).
+   Todo espejo nace con `_esEspejo: true` (2026-10-04): _esEntradaEspejoNoIngreso() lo
+   excluye del ingreso sin depender del texto ni del prefijo de _origenSeccion. Las
+   banderas de "sí es ingreso" de `extra` tienen prioridad sobre `_esEspejo`.
 
    Carga de entrada (<script defer>), después de core-state.js: usa uid(),
    getCuentaCustom() y S. Por ser núcleo, lo pueden usar módulos lazy
@@ -71,6 +74,7 @@ function registrarMovEspejo(o) {
   reg.fecha = o.fecha;
   reg[dest.campoTexto] = o.desc;
   reg._secundario = true;
+  reg._esEspejo = true; // por defecto un espejo NO es ingreso; `extra` lo anula si es plata nueva (_esExtraIngreso, _esPerdonRecibido, _esDiferencialEncargo)
   reg._origenSeccion = o.origen;
   if (o.extra) Object.assign(reg, o.extra);
   dest.lista.push(reg);

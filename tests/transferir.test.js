@@ -9,7 +9,9 @@ const path = require('node:path');
 const { loadApp } = require('./support/load-app');
 
 const RAIZ = path.join(__dirname, '..');
-const ARCHIVOS = ['core-state.js', 'calc-helpers.js', 'cuenta-efectos.js', 'cuentas.js'].map(f => path.join(RAIZ, f));
+const core = f => path.join(RAIZ, 'js', 'core', f);
+const modulo = f => path.join(RAIZ, 'js', 'modules', f);
+const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
 const plano = x => JSON.parse(JSON.stringify(x)); // objetos del vm → datos planos
 
 function cargar() { return loadApp(ARCHIVOS, { permissive: true }); }

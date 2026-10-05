@@ -251,3 +251,23 @@ test('Yo debo — pagar o recibir una deuda NO cuenta como ingreso ni gasto del 
   assert.equal(ctx.calcHealthScore().ingresosMes, antes, 'recibir un préstamo no es un ingreso');
   assert.equal(ctx.S.gastosVar.length, 0, 'pagar la deuda no es un gasto');
 });
+
+test('Yo debo — te perdonan UNA PARTE: la deuda baja, ninguna cuenta se mueve, el ingreso es lo perdonado y revertir lo quita', () => {
+  const ctx = freshApp(); const p0 = ctx.calcPatrimonioTotal();
+  const mov = ctx._aplicarMovMiDeuda(plan(ctx, { monto: 40000, perdon: true, cuentas: [] }));
+  assert.equal(debe(ctx), 50000);
+  assert.equal(saldo(ctx, 'efectivo'), 50000);
+  assert.equal(ctx.calcPatrimonioTotal() - p0, 40000);
+  const ing = ctx.S.movimientos.find((m) => m._esPerdonRecibido);
+  assert.equal(ing.monto, 40000);
+  assert.match(ing.desc, /parte de la deuda/);
+  assert.equal(ing._prestadoDirectamente, true);
+  // perdonar el resto
+  const resto = ctx._aplicarMovMiDeuda(plan(ctx, { monto: 50000, perdon: true, cuentas: [] }));
+  assert.equal(debe(ctx), 0);
+  assert.match(ctx.S.movimientos.filter((m) => m._esPerdonRecibido)[1].desc, /Me perdonó la deuda/);
+  eliminar(ctx, resto);
+  eliminar(ctx, mov);
+  assert.equal(debe(ctx), 90000);
+  assert.equal(ctx.S.movimientos.length, 0);
+});

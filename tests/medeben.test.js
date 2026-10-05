@@ -168,3 +168,34 @@ test('Me deben — revertir un abono cuyo espejo ya no existe NO devuelve el sal
   revertir(ctx, mov);
   assert.equal(saldo(ctx, 'nequi'), 230000);
 });
+
+test('Me deben — perdonar UNA PARTE: la deuda baja, ninguna cuenta se mueve, el gasto es lo perdonado y revertir devuelve solo esa parte', () => {
+  const ctx = freshApp(); const p0 = ctx.calcPatrimonioTotal();
+  const parcial = aplicar(ctx, { tipo: 'abono', monto: 30000, perdon: true });
+  assert.equal(debe(ctx), 70000);
+  assert.equal(parcial.tipo, 'abono', 'una parte se guarda como abono (con _perdon)');
+  assert.equal(parcial._perdon, true);
+  assert.equal(saldo(ctx, 'nequi'), 200000);
+  assert.equal(ctx.S.gastosVar.length, 1);
+  assert.equal(ctx.S.gastosVar[0].monto, 30000);
+  assert.equal(ctx._esGastoVarNoReal(ctx.S.gastosVar[0]), false, 'cuenta como gasto real');
+  assert.equal(ctx.calcPatrimonioTotal() - p0, -30000);
+  // perdonar lo que queda = pago completo
+  const resto = aplicar(ctx, { tipo: 'abono', monto: 70000, perdon: true });
+  assert.equal(resto.tipo, 'pago-completo');
+  assert.equal(debe(ctx), 0);
+  assert.equal(ctx.S.gastosVar.length, 2);
+  // revertir solo la primera
+  revertir(ctx, parcial);
+  assert.equal(debe(ctx), 30000);
+  assert.equal(ctx.S.gastosVar.length, 1);
+  assert.equal(ctx.S.gastosVar[0].monto, 70000);
+});
+
+test('Me deben — lo perdonado no cuenta como plata recibida (los totales filtran _perdon)', () => {
+  const ctx = freshApp();
+  aplicar(ctx, { tipo: 'abono', monto: 30000, perdon: true });
+  const d = ctx.S.deudores[0];
+  const recibido = d.movimientos.filter((m) => (m.tipo === 'abono' || m.tipo === 'pago-completo') && !m._perdon);
+  assert.equal(recibido.length, 0);
+});

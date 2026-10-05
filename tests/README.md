@@ -14,7 +14,7 @@ modificarlo, usando `vm` para simular cómo el navegador carga
   `registrarMovEspejo()`/`borrarMovEspejo()` — `js/modules/prestado.js`,
   `js/core/cuenta-efectos.js`
 
-**64 tests, los 64 pasan** contra tus archivos reales (confirmado acá
+**67 tests, los 67 pasan** contra tus archivos reales (confirmado acá
 antes de entregarte esto, no es teoría).
 
 ## Cómo correrlos

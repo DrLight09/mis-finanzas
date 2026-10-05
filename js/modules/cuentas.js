@@ -2925,28 +2925,54 @@ function _trDestinoCambio() {
   actualizarTransfPreview();
 }
 
-// Regla de "plata real" para Transferir (2026-09-28): solo entre cajitas de Nu se
-// pueden mover centavos. Si el origen o el destino es Nequi, Efectivo o una cuenta
-// personalizada, el monto tiene que ser un número entero de pesos (esas cuentas no
-// aceptan centavos en la vida real). Además, si Efectivo participa, el mínimo es
-// $50 (la moneda más pequeña que existe). Devuelve el mensaje de error, o '' si el
-// monto es válido. Lo usan la vista previa y la confirmación, para que digan lo mismo.
+// ── Validación de Transferir — UNA sola función, sin DOM ─────────────────────
+// Reglas (2026-09-28, "plata real"): solo entre cajitas de Nu se pueden mover
+// centavos. Si el origen o el destino es Nequi, Efectivo o una cuenta
+// personalizada, el monto tiene que ser un número entero de pesos. Si Efectivo
+// participa, el mínimo es $50 (la moneda más pequeña que existe).
+// 2026-10-04: pasó de validar solo el monto (_trValidarMonto) a validar TODA la
+// transferencia, para que la vista previa y la confirmación digan lo mismo y
+// la regla se pueda probar sin abrir el sheet (tests/transferir.test.js).
+//
+//   validarTransferencia({ origen, destino, monto, saldoOrigen, etiquetaOrigen })
+//     → { ok: true }
+//     → { ok: false, codigo, mensaje }
+//
+//   codigo:  'falta_cuenta' | 'mismo' | 'sin_monto' | 'monto' | 'saldo'
+//   etiquetaOrigen: texto para el aviso de saldo. Quien llama lo escapa
+//     (toast() no escapa — patrón del proyecto: se escapa al interpolar).
+//   saldoOrigen: si no es un número finito, no se valida el saldo (así la
+//     vista previa puede validar la forma antes de leer saldos).
+// El orden de las comprobaciones es parte del contrato: lo que se avisa primero
+// es lo que el usuario debe corregir primero.
 const TR_MIN_EFECTIVO = 50;
-function _trValidarMonto(origen, destino, monto) {
-  if (!origen || !destino || !(monto > 0)) return '';
+function validarTransferencia({ origen, destino, monto, saldoOrigen, etiquetaOrigen } = {}) {
+  const fallo = (codigo, mensaje) => ({ ok: false, codigo, mensaje });
+  if (!origen || !destino) return fallo('falta_cuenta', 'Elige origen y destino');
+  if (origen === destino) return fallo('mismo', 'El origen y destino deben ser diferentes');
+  // Number.isFinite también deja fuera NaN e Infinity; monto <= 0 deja fuera los
+  // negativos (descontarFuente con un monto negativo SUMARÍA al origen).
+  if (typeof monto !== 'number' || !Number.isFinite(monto) || !(monto > 0)) {
+    return fallo('sin_monto', 'Ingresa un monto válido');
+  }
   const centavos = Math.round(monto * 100);
+  if (centavos <= 0) return fallo('sin_monto', 'Ingresa un monto válido');
   const esCajita = v => typeof v === 'string' && v.startsWith('cajita:');
   const involucraEfectivo = origen === 'efectivo' || destino === 'efectivo';
   const soloCajitas = esCajita(origen) && esCajita(destino);
   if (!soloCajitas && centavos % 100 !== 0) {
-    return involucraEfectivo
+    return fallo('monto', involucraEfectivo
       ? 'El efectivo no tiene centavos: usa un monto entero (ej. ' + fmt(TR_MIN_EFECTIVO) + ')'
-      : 'Solo entre cajitas de Nu se pueden mover centavos: usa un monto entero de pesos';
+      : 'Solo entre cajitas de Nu se pueden mover centavos: usa un monto entero de pesos');
   }
   if (involucraEfectivo && centavos < TR_MIN_EFECTIVO * 100) {
-    return 'El mínimo para mover plata desde o hacia Efectivo es ' + fmt(TR_MIN_EFECTIVO);
+    return fallo('monto', 'El mínimo para mover plata desde o hacia Efectivo es ' + fmt(TR_MIN_EFECTIVO));
   }
-  return '';
+  if (typeof saldoOrigen === 'number' && Number.isFinite(saldoOrigen)
+      && centavos > Math.round(saldoOrigen * 100)) {
+    return fallo('saldo', 'Saldo insuficiente en ' + (etiquetaOrigen || 'el origen') + ' (' + fmt(saldoOrigen) + ')');
+  }
+  return { ok: true };
 }
 
 function actualizarTransfPreview() {
@@ -2963,20 +2989,22 @@ function actualizarTransfPreview() {
   if (dsEl) dsEl.textContent = destino ? 'Saldo actual: ' + fmt(saldoDestino) : '';
 
   const prev = document.getElementById('tr_preview');
-  if (!origen || !destino || origen === destino) {
-    prev.textContent = origen === destino ? 'El origen y destino deben ser diferentes' : '';
+  const v = validarTransferencia({ origen, destino, monto, saldoOrigen });
+  // Avisos que se muestran en ámbar. 'falta_cuenta' y 'sin_monto' no avisan nada
+  // todavía (el usuario aún no terminó de llenar el formulario). 'saldo' no corta
+  // la vista previa: se muestran los saldos y el aviso rojo va al final.
+  if (!v.ok && v.codigo !== 'saldo') {
+    const avisa = v.codigo === 'mismo' || v.codigo === 'monto';
+    prev.textContent = avisa ? v.mensaje : '';
     prev.style.color = 'var(--amber)';
     return;
   }
-  if (monto <= 0) { prev.textContent = ''; return; }
-  const errMonto = _trValidarMonto(origen, destino, monto);
-  if (errMonto) { prev.textContent = errMonto; prev.style.color = 'var(--amber)'; return; }
   const nuevoOrigen = saldoOrigen - monto;
   const nuevoDestino = saldoDestino + monto;
   const colorOrigen = nuevoOrigen < 0 ? 'var(--red)' : 'var(--accent)';
   prev.innerHTML = html`<span style="color:var(--red);">${fuenteLabel(origen)}: ${fmt(saldoOrigen)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoOrigen)}</span><br>
     <span style="color:var(--accent);">${fuenteLabel(destino)}: ${fmt(saldoDestino)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoDestino)}</span>`;
-  if (Math.round(nuevoOrigen * 100) < 0) {
+  if (!v.ok) { // v.codigo === 'saldo' (los demás ya salieron arriba)
     prev.innerHTML = html`${raw(prev.innerHTML)}<br><span style="color:var(--red);font-size:10px;">Saldo insuficiente en ${fuenteLabel(origen)}</span>`;
   }
 }
@@ -2988,16 +3016,9 @@ function confirmarTransferir() {
   const nota = document.getElementById('tr_nota').value.trim();
   const fecha = document.getElementById('tr_fecha')?.value || hoy();
 
-  if (!origen || !destino) { toast('Elige origen y destino', 'err'); return; }
-  if (origen === destino) { toast('El origen y destino deben ser diferentes', 'err'); return; }
-  if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
-  const errMonto = _trValidarMonto(origen, destino, monto);
-  if (errMonto) { toast(errMonto, 'err', 3500); return; }
   const saldoOrigen = getSaldoActual(origen);
-  if (Math.round(monto * 100) > Math.round(saldoOrigen * 100)) {
-    toast(`Saldo insuficiente en ${escHtml(fuenteLabel(origen))} (${fmt(saldoOrigen)})`, 'err');
-    return;
-  }
+  const v = validarTransferencia({ origen, destino, monto, saldoOrigen, etiquetaOrigen: escHtml(fuenteLabel(origen)) });
+  if (!v.ok) { toast(v.mensaje, 'err', v.codigo === 'monto' ? 3500 : undefined); return; }
 
   // Perform transfer
   descontarFuente(origen, monto);

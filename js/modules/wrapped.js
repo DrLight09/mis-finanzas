@@ -447,14 +447,23 @@ function _wrappedItemsRealesPeriodo(S, tipo, mesK, anioK){
   };
 }
 
+// Entradas que cuentan como ingreso real: la definición única de core-state.js
+// (entradasIngresoReal — la misma de Inicio y Análisis). Recibe el estado porque Wrapped
+// trabaja sobre el `S` que le pasan, no necesariamente el global.
+function _wrappedEntradasIngreso(S){
+  // Sin core-state.js cargado (tests/demos aisladas) se mantiene el comportamiento anterior sin filtro.
+  return typeof entradasIngresoReal === 'function'
+    ? entradasIngresoReal(S)
+    : ((S && S.movimientos) || []).filter(m => m && m.tipo==='entrada');
+}
+
 function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
   S = S || {};
   const movs = S.movimientos || [];
 
-  const esEntradaNoReal  = typeof _esEntradaEspejoNoIngreso === 'function' ? _esEntradaEspejoNoIngreso : (()=>false);
 
   const { gastosVarPeriodo, pagosFijosPeriodo } = _wrappedItemsRealesPeriodo(S, tipo, mesK, anioK);
-  const ingresosPeriodo   = movs.filter(m => m.tipo==='entrada' && _wrappedEnRango(m.fecha, tipo, mesK, anioK) && !esEntradaNoReal(m));
+  const ingresosPeriodo   = _wrappedEntradasIngreso(S).filter(m => _wrappedEnRango(m.fecha, tipo, mesK, anioK));
 
   // Mesada + ingresos fijos del período, sumados mes a mes (ver comentario
   // arriba de `_wrappedMesadaMes`/`_wrappedIngresosFijosMes`) — para "mes"
@@ -758,8 +767,7 @@ function _wrappedFmtFechaLarga(fecha){
    romper, ver wrapped.md §3 último punto). */
 function _wrappedRangoFechasAnio(S, anioK){
   const { gastosVarPeriodo, pagosFijosPeriodo } = _wrappedItemsRealesPeriodo(S, 'anio', null, anioK);
-  const esEntradaNoReal = typeof _esEntradaEspejoNoIngreso === 'function' ? _esEntradaEspejoNoIngreso : (()=>false);
-  const ingresosPeriodo = (S.movimientos||[]).filter(m => m && m.tipo==='entrada' && _wrappedEnRango(m.fecha, 'anio', null, anioK) && !esEntradaNoReal(m));
+  const ingresosPeriodo = _wrappedEntradasIngreso(S).filter(m => _wrappedEnRango(m.fecha, 'anio', null, anioK));
   const fechas = [...gastosVarPeriodo, ...pagosFijosPeriodo, ...ingresosPeriodo]
     .map(x => x && x.fecha)
     .filter(_wrappedFechaLuceValida)
@@ -2700,10 +2708,9 @@ function _wrappedDescubrimientos(S, anioK, s, prestadoAnio){
    puntual (el gasto más grande, el mes más caro) o un conteo, igual que
    el resto de "datos curiosos" de este módulo. */
 function _wrappedRecordsAnio(S, anioK, s, prestadoAnio, serieMensual){
-  const esEntradaNoReal = typeof _esEntradaEspejoNoIngreso === 'function' ? _esEntradaEspejoNoIngreso : (()=>false);
   let mayorIngreso = null;
-  (S.movimientos||[]).forEach(m => {
-    if(m && m.tipo==='entrada' && _wrappedEnRango(m.fecha,'anio',null,anioK) && !esEntradaNoReal(m) && (m.monto||0) > (mayorIngreso?mayorIngreso.monto:0)){
+  _wrappedEntradasIngreso(S).forEach(m => {
+    if(_wrappedEnRango(m.fecha,'anio',null,anioK) && (m.monto||0) > (mayorIngreso?mayorIngreso.monto:0)){
       mayorIngreso = { monto: m.monto||0 };
     }
   });

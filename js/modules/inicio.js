@@ -254,35 +254,11 @@ function calcHealthScore(){
     if(_infoPapa) ingresosMes += (_infoPapa.monto||_cuota('papa',anio)||0);
     if(_infoMama) ingresosMes += (_infoMama.monto||_cuota('mama',anio)||0);
   }
-  // Sumar ingresos de cuentas personalizadas del mes actual
-  // (excluye movimientos espejo de Mesada/Prestado/Encargos — ver _esEntradaEspejoNoIngreso)
-  // Esto solo alcanza datos VIEJOS: entradas escritas por confirmarMovCustom()
-  // (función ya retirada, ver cuentas.js) que dual-escribía en c.movimientos
-  // (tipo:'ingreso') Y en S.movimientos (tipo:'entrada', mismo id). Las entradas
-  // NUEVAS a una cuenta personalizada (desde 2026-09, vía el sheet genérico
-  // "Agregar dinero" que ahora comparte con Nequi/Efectivo) ya no tocan
-  // c.movimientos en absoluto — por eso el bloque de abajo las suma aparte, con
-  // cuidado de no volver a contar acá las viejas que sí quedaron dual-escritas.
-  cuentasCustom().forEach(c => {
-    (c.movimientos||[]).filter(m=>(m.tipo==='ingreso')&&window.mesKey&&window.mesKey(m.fecha)===mes&&!(window._esEntradaEspejoNoIngreso&&window._esEntradaEspejoNoIngreso(m))).forEach(m=>{ ingresosMes += (m.monto||0); });
-  });
-  // Entradas manuales a Nequi, Efectivo, cajitas y cuentas personalizadas
-  // (igual que el análisis de tendencia)
-  // Excluir: apertura, _encMovId (encargos), _esReposicionCP (plata comprometida devuelta),
-  // Mesada y Prestado (movimientos espejo — ver _esEntradaEspejoNoIngreso, que ya incluye
-  // el fallback por desc para movimientos viejos sin _esReposicionCP)
-  if(window.mesKey){
-    (S.movimientos||[]).filter(m=>
-      m.tipo==='entrada' &&
-      !(window._esEntradaEspejoNoIngreso&&window._esEntradaEspejoNoIngreso(m)) &&
-      (m.fuente==='nequi'||m.fuente==='efectivo'||(m.fuente&&m.fuente.startsWith('cajita:'))||(m.fuente&&m.fuente.startsWith('custom:'))||m._prestadoDirectamente) &&
-      window.mesKey(m.fecha)===mes &&
-      // Evitar doble conteo con el bloque de arriba: si esta entrada de cuenta
-      // personalizada ya se contó desde c.movimientos (dual-escritura vieja de
-      // confirmarMovCustom(), mismo id en los dos arrays), saltarla acá.
-      !(m.fuente && m.fuente.startsWith('custom:') && cuentasCustom().some(c=>(c.movimientos||[]).some(cm=>cm.id===m.id)))
-    ).forEach(m=>{ ingresosMes += (m.monto||0); });
-  }
+  // Entradas reales del mes: UNA sola definición compartida con Análisis y Wrapped
+  // (entradasIngresoReal, core-state.js — ver su comentario). Incluye los ingresos de
+  // cuentas personalizadas (c.movimientos) y las entradas a Nequi/Efectivo/cajitas, excluye
+  // los movimientos espejo, y ya no exige que la entrada tenga cuenta.
+  if(window.mesKey && window.ingresosRealesDelMes) ingresosMes += window.ingresosRealesDelMes(mes);
   // Ingresos fijos configurados (sueldo, freelance, etc.)
   if(window.getIngresosFijosMes) ingresosMes+=getIngresosFijosMes(mes);
 

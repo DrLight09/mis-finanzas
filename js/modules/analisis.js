@@ -77,12 +77,8 @@ function renderAnalisis(){
   // Sumar entradas reales registradas en movimientos (trabajos puntuales, regalos, etc.)
   // Excluir: apertura, transferencias, intercambios de encargo, reposiciones de plata comprometida y margenes viejos
   // sin bandera. El margen/regalo nuevo de encargos (_esExtraIngreso / _esDiferencialEncargo) SÍ cuenta — ver _esEntradaEspejoNoIngreso.
-  (S.movimientos||[]).forEach(function(m){
-    if(m.tipo==='entrada' && mesKey(m.fecha)===mes){
-      if(_esEntradaEspejoNoIngreso(m)) return;
-      ingresosEstimados+=m.monto||0;
-    }
-  });
+  // Regla única de ingreso real (core-state.js), la misma de Inicio y Wrapped.
+  ingresosEstimados+=ingresosRealesDelMes(mes);
 
   // ── Balance ────────────────────────────────────────────────────────────
   const balance=ingresosEstimados-gastosTotalMes;
@@ -327,12 +323,7 @@ function renderAnalisis(){
       if(iMama) ingresosPrev+=(iMama.monto||_getCuotaAnio('mama',anioPrev)||0);
     }
     ingresosPrev+=getIngresosFijosMes(mesPrev);
-    (S.movimientos||[]).forEach(function(m){
-      if(m.tipo==='entrada' && mesKey(m.fecha)===mesPrev){
-        if(_esEntradaEspejoNoIngreso(m)) return;
-        ingresosPrev+=m.monto||0;
-      }
-    });
+    ingresosPrev+=ingresosRealesDelMes(mesPrev);
     const balancePrev=ingresosPrev-totalPrev;
 
     const diffGastos=gastosTotalMes-totalPrev;

@@ -1812,192 +1812,92 @@ function toggleCajita(e, id){
    SECCIÓN: Movimientos por cuenta (recopilación desde todas las
    fuentes: manuales, gastos, préstamos, mesada, Spotify, transferencias)
    ─────────────────────────────────────────────────────────────── */
-/* ---- MOVIMIENTOS PARA CUENTA PERSONALIZADA ---- */
-// Recopila todos los movimientos que afectan a una cuenta personalizada
-// (fuente 'custom:ID') desde todas las fuentes, igual que getMovimientosCuenta
-// hace para nequi/efectivo/cajitas.
-function _getMovimientosCuentaCustom(fuente) {
-  const cid = fuente.split(':')[1];
-  const c = getCuentaCustom(cid);
+/* ---- HISTORIAL DE UNA CUENTA: UNA sola función (2026-10-04) ---- */
+// Antes eran dos funciones casi gemelas (getMovimientosCuenta para Nequi/Efectivo/cajitas y
+// _getMovimientosCuentaCustom para las personalizadas) que ya se habían desviado: cada arreglo
+// había que hacerlo dos veces, y una fuente nueva había que escribirla dos veces. Ahora hay UN
+// bloque por fuente y un predicado `coincide(fuente)` que dice si esa fuente pertenece a la cuenta:
+//   'nequi' | 'efectivo' → la fuente exacta   ·   'custom:ID' → la fuente exacta
+//   'nu'                 → CUALQUIER cajita ('cajita:...'), para la pantalla de Nu
+// Recopila lo que afecta a la cuenta desde todas las fuentes: S.movimientos, la lista propia de la
+// cuenta, gastos variables, préstamos dados, transferencias y cobros de Spotify.
+//
+// Lo que DIFIERE a propósito entre tipos de cuenta (no son descuidos; no unificar):
+//  1. Tipo de una salida manual: 'egreso' (personalizada) vs 'salida_manual' (las demás).
+//     movimientos.js elige la rama de borrado y de reversión de saldo según ese tipo.
+//  2. La lista propia: una personalizada guarda su historial en c.movimientos (se lee ENTERO, y
+//     antes que S.movimientos); las cajitas guardan los espejos en cajita.historial (solo los
+//     `_secundario`, después de S.movimientos). Nequi y Efectivo no tienen lista propia: todo está
+//     en S.movimientos. Ver la tabla de formas de guardar en cuenta-efectos.js.
+//  3. Texto cuando el registro no trae descripción: 'Ingreso'/'Retiro' vs 'Entrada de efectivo'/
+//     'Salida manual'.
+//  4. Datos viejos de personalizadas escritos en las dos listas con el mismo id: se cuentan una vez
+//     (por la lista de la cuenta) y el gemelo de S.movimientos se salta.
+// Cada fila lleva `_movId` (id del registro de origen); ordenado por fecha desc y luego por id desc.
+function getMovimientosCuenta(tipo) {
+  const esCustom = !!tipo && tipo.startsWith('custom:');
+  const coincide = tipo === 'nu' ? (f => !!f && f.startsWith('cajita:')) : (f => f === tipo);
+  const cuentaCustom = esCustom ? getCuentaCustom(tipo.split(':')[1]) : null;
+  const idsPropios = new Set(cuentaCustom ? (cuentaCustom.movimientos || []).map(x => x.id) : []);
+  const tipoSalidaManual = esCustom ? 'egreso' : 'salida_manual';
+  const textoEntrada = esCustom ? 'Ingreso' : 'Entrada de efectivo';
+  const textoSalida = esCustom ? 'Retiro' : 'Salida manual';
   const movs = [];
   let _idx = 0;
 
-  // 1. Movimientos manuales directos guardados en c.movimientos[] (legacy + nuevos tipo ingreso/egreso)
-  (c ? (c.movimientos || []) : []).forEach(m => {
-    const esApertura = m.tipo === 'apertura';
-    const esIngreso  = m.tipo === 'ingreso' || m.tipo === 'entrada';
-    const esEgreso   = m.tipo === 'egreso'  || m.tipo === 'salida_manual';
-    const tipoDisplay = esApertura ? 'apertura' : esIngreso ? 'ingreso' : 'egreso';
-    const montoDisplay = esIngreso ? +m.monto : esEgreso ? -m.monto : +m.monto;
-    let _origen = esApertura ? 'Saldo inicial' : m._origenSeccion || 'Cuenta personalizada · Movimiento manual';
-    movs.push({
-      tipo: tipoDisplay, fecha: m.fecha, desc: m.nota || m.desc || (esApertura ? 'Saldo inicial' : esIngreso ? 'Ingreso' : 'Retiro'),
-      monto: montoDisplay, fuente, _idx: _idx++, _movId: m.id,
-      _fuenteOrigen: fuente, _fuenteDestino: '', _origen,
-      _otrasCuentas: null, _secundario: !!m._secundario, _origenSeccion: m._origenSeccion || ''
-    });
-  });
-
-  // 2. Movimientos en S.movimientos con fuente o destino = custom:ID
-  (S.movimientos || []).forEach(m => {
-    if (m.fuente !== fuente) return;
-    // Ingreso de Alcancía sin cuenta de origen (propio/regalo/mandado): no movió esta cuenta, así que no
-    // es un movimiento de la cuenta y no se lista en su historial (ver alcancia.md §3).
-    if (m._esAlcanciaIngreso) return;
-    // Evitar duplicados: los que están en c.movimientos ya se incluyen arriba
-    const yaIncluido = c && (c.movimientos || []).some(x => x.id === m.id);
-    if (yaIncluido) return;
-    const esEntrada = m.tipo === 'entrada';
-    const esApertura = m.tipo === 'apertura';
-    const esTransferencia = m.tipo === 'transferencia';
-    const esIntercambioSalida = esTransferencia && (
-      m._intercambioSalida ? true :
-      m._intercambioEntrada ? false :
-      !!(m._fuenteDestino && m._fuenteDestino !== m.fuente)
-    );
-    const tipoDisplay = m._esAlcanciaIngreso ? 'alcancia' : esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'egreso';
-    const montoDisplay = m._esAlcanciaIngreso ? 0 : esApertura ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto; // neto-cero de Alcancía: efecto 0 sobre el saldo (ver getMovimientosCuenta)
-    let _origen, _otrasCuentas = null;
-    if (esApertura) { _origen = 'Saldo inicial'; }
-    else if (m._esAlcanciaIngreso) { _origen = 'Alcancía'; }
-    else if (m._esIntercambioEncargo) {
-      _origen = 'Encargos · Intercambio';
-      const hermano = (S.movimientos || []).find(x => x._esIntercambioEncargo && x._encMovId === m._encMovId && x.id !== m.id);
-      if (hermano) _otrasCuentas = [{ fuente: hermano.fuente, monto: hermano._intercambioSalida ? -hermano.monto : +hermano.monto }];
-    }
-    else if (esTransferencia) { _origen = 'Cuentas · Movimiento manual'; if (m._fuenteDestino) _otrasCuentas = [{ fuente: m._fuenteDestino, monto: esIntercambioSalida ? +m.monto : -m.monto }]; }
-    else if (m._esReposicionCP) { _origen = 'Plata comprometida'; }
-    else if (m._encMovId || /encargo/i.test(m.desc || '')) { _origen = 'Encargos'; }
-    else { _origen = 'Cuentas · Movimiento manual'; }
-    movs.push({
-      tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Ingreso' : esTransferencia ? 'Intercambio' : 'Retiro'),
-      monto: montoDisplay, fuente, _idx: _idx++, _movId: m.id,
-      _fuenteOrigen: fuente, _fuenteDestino: m._fuenteDestino || '', _origen, _otrasCuentas,
-      _secundario: !!m._secundario || !!m._esAlcanciaIngreso, _origenSeccion: m._origenSeccion || (m._esAlcanciaIngreso ? 'Alcancía' : ''),
-      _alcOculto: !!m._esAlcanciaIngreso
-    });
-  });
-
-  // 3. Gastos variables pagados desde esta cuenta
-  (S.gastosVar || []).forEach(g => {
-    if (g.fuente !== fuente) return;
-    // A diferencia de getMovimientosCuenta() (que se los saltaba), acá los depósitos a la alcancía
-    // siempre se mostraron — con el monto a la vista. Ahora igual que arriba: fila visible, monto oculto.
-    const _origen = g._esAlcancia ? 'Alcancía' : g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : 'Gastos';
-    movs.push({ tipo: g._esAlcancia ? 'alcancia' : 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, fuente, _idx: _idx++, _movId: g.id, _fuenteOrigen: fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario || !!g._esAlcancia, _origenSeccion: g._origenSeccion || (g._esAlcancia ? 'Alcancía' : ''), _alcOculto: !!g._esAlcancia });
-  });
-
-  // 4. Préstamos dados desde esta cuenta
-  Deudas.lista('favor').forEach(d => {
-    (d.movimientos || []).forEach(m => {
-      if (m.tipo === 'prestamo' && (m.fuente === fuente || (m.fuentes || []).some(f => f.fuente === fuente))) {
-        const _origenP = 'Préstamos · ' + d.nombre;
-        if (m.fuente === fuente) {
-          movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -m.monto, nota: m.nota, fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: fuente, _origen: _origenP, _otrasCuentas: null });
-        }
-        (m.fuentes || []).forEach(f => {
-          if (f.fuente === fuente && f.monto) {
-            movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -f.monto, nota: m.nota, fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: fuente, _origen: _origenP, _otrasCuentas: null });
-          }
+  // Lista propia de la cuenta (diferencia 2).
+  const desdeListaPropia = () => {
+    if (esCustom) {
+      // c.movimientos[]: manuales directos (legacy + espejos nuevos tipo ingreso/egreso)
+      (cuentaCustom ? (cuentaCustom.movimientos || []) : []).forEach(m => {
+        const esApertura = m.tipo === 'apertura';
+        const esIngreso  = m.tipo === 'ingreso' || m.tipo === 'entrada';
+        const esEgreso   = m.tipo === 'egreso'  || m.tipo === 'salida_manual';
+        const tipoDisplay = esApertura ? 'apertura' : esIngreso ? 'ingreso' : 'egreso';
+        const montoDisplay = esIngreso ? +m.monto : esEgreso ? -m.monto : +m.monto;
+        const _origen = esApertura ? 'Saldo inicial' : m._origenSeccion || 'Cuenta personalizada · Movimiento manual';
+        movs.push({
+          tipo: tipoDisplay, fecha: m.fecha, desc: m.nota || m.desc || (esApertura ? 'Saldo inicial' : esIngreso ? textoEntrada : textoSalida),
+          monto: montoDisplay, fuente: tipo, _idx: _idx++, _movId: m.id,
+          _fuenteOrigen: tipo, _fuenteDestino: '', _origen,
+          _otrasCuentas: null, _secundario: !!m._secundario, _origenSeccion: m._origenSeccion || ''
         });
-      }
-    });
-  });
-
-  // 5. Transferencias entre cuentas
-  (S.transferencias || []).forEach(t => {
-    // Depósito a la alcancía desde esta cuenta (t.destino==='alcancia'): fila visible,
-    // monto oculto, sin "otras cuentas" (la alcancía no es una cuenta navegable) — mismo
-    // criterio que ya aplicaba a estos depósitos cuando vivían en S.gastosVar antes del
-    // 2026-09-27 (ver docs/alcancia.md §3 y CHANGELOG.md#alcancia).
-    const esAlc = t.destino === 'alcancia';
-    if (t.origen === fuente) {
-      movs.push({
-        tipo: esAlc ? 'alcancia' : 'transferencia',
-        fecha: t.fecha,
-        desc: esAlc ? (t.desc || 'Depósito en alcancía') : 'Transferencia → ' + fuenteLabel(t.destino),
-        monto: -t.monto, nota: t.nota, fuente,
-        _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino,
-        _origen: esAlc ? 'Alcancía' : 'Cuentas · Transferencia',
-        _otrasCuentas: esAlc ? null : [{ fuente: t.destino, monto: +t.monto }],
-        _secundario: esAlc || !!t._secundario, _origenSeccion: esAlc ? 'Alcancía' : '',
-        _alcOculto: esAlc
+      });
+    } else if (tipo === 'nu') {
+      // cajita.historial: solo los espejos (_secundario) — los manuales ya vienen por S.movimientos
+      (S.cajitas || []).forEach(c => {
+        (c.historial || []).forEach(h => {
+          if (!h._secundario) return;
+          const esEntradaH = h.tipo === 'entrada';
+          const cajitaFuente = 'cajita:' + c.id;
+          movs.push({ tipo: esEntradaH ? 'ingreso' : 'salida_manual', fecha: h.fecha, desc: h.nota || h.desc || (esEntradaH ? 'Entrada' : 'Salida'), monto: esEntradaH ? +h.monto : -h.monto, fuente: cajitaFuente, _idx: _idx++, _movId: h.id, _fuenteOrigen: cajitaFuente, _fuenteDestino: '', _origen: h._origenSeccion || 'Automático', _otrasCuentas: null, _secundario: true, _origenSeccion: h._origenSeccion || '' });
+        });
       });
     }
-    if (t.destino === fuente) {
-      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia ← ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino, _origen: 'Cuentas · Transferencia', _otrasCuentas: [{ fuente: t.origen, monto: -t.monto }] });
-    }
-  });
+  };
 
-  // 6. Cobros Spotify (+ abonos posteriores de lo pendiente, cada uno como su propia
-  // tarjeta — antes quedaban invisibles, fundidos dentro de h.monto del cobro original,
-  // ver CHANGELOG.md#spotify). Cada abono puede haber ido a una cuenta distinta a la del
-  // cobro original, así que se filtran por su propio `destino`, no por `h.fuente`.
-  (S.spotifyHistorial || []).forEach((h, _spIdx) => {
-    if (h.tipo === 'pago') return;
-    // h.monto acumula el cobro original + todos los abonos ya recibidos (ver
-    // confirmarSpResolverPendiente en spotify.js) — hay que restar los abonos para
-    // no contar esa misma plata dos veces (una acá, otra en su propia tarjeta de abajo).
-    const historialPendTotal = (h.pendienteHistorial || []).reduce((a, ab) => a + (ab.monto || 0), 0);
-    const montoOriginalCobro = Math.max(0, (h.monto || 0) - historialPendTotal);
-    // Fallback estable si el registro no tiene id (p.ej. historial antiguo, previo
-    // a que se empezara a asignar id a cada cobro de Spotify): usa el índice fijo
-    // dentro de S.spotifyHistorial en vez de dejar _movId en null.
-    if (h.fuente === fuente) {
-      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +montoOriginalCobro, fuente, _idx: _idx++, _movId: h.id || ('sp_legacy_' + _spIdx), _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
-    }
-    (h.pendienteHistorial || []).forEach(ab => {
-      if (ab.destino !== fuente) return;
-      movs.push({ tipo: 'ingreso', fecha: ab.fecha, desc: 'Abono pendiente Spotify (' + h.nombre + ')', monto: +ab.monto, fuente, _idx: _idx++, _movId: ab.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
-    });
-  });
-
-  // Sort: fecha desc, luego _movId desc (timestamp base-36)
-  movs.sort((a, b) => {
-    const dc = (b.fecha || '').localeCompare(a.fecha || '');
-    if (dc !== 0) return dc;
-    const aId = a._movId || '', bId = b._movId || '';
-    if (aId && bId) return bId.localeCompare(aId);
-    if (aId) return -1; if (bId) return 1;
-    return (b._idx || 0) - (a._idx || 0);
-  });
-  return movs;
-}
-
-function getMovimientosCuenta(tipo) {
-  // Custom accounts: 'custom:ID' — delegate to specialised function
-  if (tipo && tipo.startsWith('custom:')) return _getMovimientosCuentaCustom(tipo);
-  const movs = [];
-  let _idx = 0;
-  // Movimientos manuales de entrada/salida (agregar/restar dinero)
-  (S.movimientos || []).forEach(m => {
-    // Ingreso de Alcancía sin cuenta de origen (propio/regalo/mandado): no movió esta cuenta, así que no
-    // es un movimiento de la cuenta y no se lista en su historial (ver alcancia.md §3).
-    if (m._esAlcanciaIngreso) return;
-    const matchFuente = tipo === 'nu'
-      ? (m.fuente && m.fuente.startsWith('cajita:'))
-      : m.fuente === tipo;
-    if (matchFuente) {
+  // S.movimientos: entradas/salidas manuales, aperturas, intercambios de Encargos, espejos.
+  const desdeMovimientos = () => {
+    (S.movimientos || []).forEach(m => {
+      // Ingreso de Alcancía sin cuenta de origen (propio/regalo/mandado): no movió esta cuenta, así que no
+      // es un movimiento de la cuenta y no se lista en su historial (ver alcancia.md §3).
+      if (m._esAlcanciaIngreso) return;
+      if (!coincide(m.fuente)) return;
+      if (idsPropios.has(m.id)) return; // diferencia 4: ya incluido arriba desde c.movimientos
       const esEntrada = m.tipo === 'entrada';
       const esApertura = m.tipo === 'apertura';
       const esTransferencia = m.tipo === 'transferencia';
-      // Para transferencias de intercambio encargo: usar los flags semánticos directamente.
-      // _intercambioSalida = plata que salió de esta cuenta (negativo)
-      // _intercambioEntrada = plata que entró a esta cuenta (positivo)
-      // Sin esos flags, caer al comportamiento anterior: _fuenteDestino distinto → salida
+      // Intercambio de Encargos: los flags semánticos dicen si la plata salió (_intercambioSalida) o
+      // entró (_intercambioEntrada) de ESTA cuenta; sin flags, _fuenteDestino distinto → salida.
       const esIntercambioSalida = esTransferencia && (
         m._intercambioSalida ? true :
         m._intercambioEntrada ? false :
         !!(m._fuenteDestino && m._fuenteDestino !== m.fuente)
       );
-      const tipoDisplay = m._esAlcanciaIngreso ? 'alcancia' : esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : 'salida_manual';
-      // Ingreso neto-cero de Alcancía (yo-directo/regalo/mandado/split): alcancia.js suma y resta el mismo
-      // monto, así que el saldo de la cuenta NO cambia. `monto` acá es el efecto sobre el saldo (lo usa
-      // abrirDetalleMov() en movimientos.js para reconstruir Antes/Después) → 0, no +monto.
-      const montoDisplay = m._esAlcanciaIngreso ? 0 : (esApertura) ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto;
+      const tipoDisplay = esApertura ? 'apertura' : esTransferencia ? 'transferencia' : esEntrada ? 'ingreso' : tipoSalidaManual;
+      const montoDisplay = esApertura ? +m.monto : esTransferencia ? (esIntercambioSalida ? -m.monto : +m.monto) : esEntrada ? +m.monto : -m.monto;
       let _origen, _otrasCuentas = null;
       if (esApertura) { _origen = 'Saldo inicial'; }
-      else if (m._esAlcanciaIngreso) { _origen = 'Alcancía'; } // depósito a la alcancía sin cuenta de origen (yo-directo/regalo/mandado/split): fila visible, monto oculto
       else if (m._esIntercambioEncargo) {
         _origen = 'Encargos · Intercambio';
         const hermano = (S.movimientos || []).find(x => x._esIntercambioEncargo && x._encMovId === m._encMovId && x.id !== m.id);
@@ -2005,111 +1905,81 @@ function getMovimientosCuenta(tipo) {
       }
       else if (esTransferencia) { _origen = 'Cuentas · Movimiento manual'; if (m._fuenteDestino) _otrasCuentas = [{ fuente: m._fuenteDestino, monto: esIntercambioSalida ? +m.monto : -m.monto }]; }
       else if (m._esReposicionCP) { _origen = 'Plata comprometida'; }
-      else if (m._encMovId || /encargo/i.test(m.desc||'')) { _origen = 'Encargos'; }
+      else if (m._encMovId || /encargo/i.test(m.desc || '')) { _origen = 'Encargos'; }
       else if (m._secundario && m._origenSeccion) { _origen = m._origenSeccion; }
       else { _origen = 'Cuentas · Movimiento manual'; }
-      movs.push({ tipo: tipoDisplay, fecha: m.fecha, desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? 'Entrada de efectivo' : esTransferencia ? 'Intercambio' : 'Salida manual'), monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '', _origen, _otrasCuentas, _secundario: m._secundario || !!m._esAlcanciaIngreso, _origenSeccion: m._origenSeccion || (m._esAlcanciaIngreso ? 'Alcancía' : ''), _alcOculto: !!m._esAlcanciaIngreso });
-    }
-  });
-  // Movimientos secundarios guardados en cajita.historial (tipo 'nu' o cajita específica)
-  if (tipo === 'nu') {
-    (S.cajitas || []).forEach(c => {
-      (c.historial || []).forEach(h => {
-        if (!h._secundario) return; // solo secundarios — los manuales ya van por otro path
-        const esEntradaH = h.tipo === 'entrada';
-        const montoH = esEntradaH ? +h.monto : -h.monto;
-        const tipoH = esEntradaH ? 'ingreso' : 'salida_manual';
-        const cajitaFuente = 'cajita:' + c.id;
-        movs.push({ tipo: tipoH, fecha: h.fecha, desc: h.nota || h.desc || (esEntradaH ? 'Entrada' : 'Salida'), monto: montoH, fuente: cajitaFuente, _idx: _idx++, _movId: h.id, _fuenteOrigen: cajitaFuente, _fuenteDestino: '', _origen: h._origenSeccion || 'Automático', _otrasCuentas: null, _secundario: true, _origenSeccion: h._origenSeccion || '' });
+      movs.push({
+        tipo: tipoDisplay, fecha: m.fecha,
+        desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? textoEntrada : esTransferencia ? 'Intercambio' : textoSalida),
+        monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '',
+        _origen, _otrasCuentas, _secundario: !!m._secundario, _origenSeccion: m._origenSeccion || '', _alcOculto: false
       });
     });
-  }
-  // Gastos variables que usaron esta fuente
+  };
+
+  if (esCustom) desdeListaPropia();
+  desdeMovimientos();
+  if (!esCustom) desdeListaPropia();
+
+  // Gastos variables pagados desde esta cuenta. Los depósitos a la alcancía se muestran como fila
+  // visible con el monto oculto (`_alcOculto`).
   (S.gastosVar || []).forEach(g => {
-    // Depósito a la alcancía desde una cuenta (yo-cuenta / parte propia de un split): antes se
-    // saltaba acá y la fila desaparecía del historial. Ahora se muestra, pero con `_alcOculto`
-    // para que renderMovsCuenta() pinte el monto oculto (ver CHANGELOG.md#cuentas, 2026-09-19).
-    const match = tipo === 'nu'
-      ? (g.fuente && g.fuente.startsWith('cajita:'))
-      : g.fuente === tipo;
-    if (match) {
-      const _origen = g._esAlcancia ? 'Alcancía' : g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota||'') ? 'Encargos' : 'Gastos';
-      movs.push({ tipo: g._esAlcancia ? 'alcancia' : 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario || !!g._esAlcancia, _origenSeccion: g._origenSeccion || (g._esAlcancia ? 'Alcancía' : ''), _alcOculto: !!g._esAlcancia });
-    }
+    if (!coincide(g.fuente)) return;
+    const _origen = g._esAlcancia ? 'Alcancía' : g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota || '') ? 'Encargos' : 'Gastos';
+    movs.push({ tipo: g._esAlcancia ? 'alcancia' : 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario || !!g._esAlcancia, _origenSeccion: g._origenSeccion || (g._esAlcancia ? 'Alcancía' : ''), _alcOculto: !!g._esAlcancia });
   });
-  // Préstamos dados desde esta fuente
+
+  // Préstamos dados desde esta cuenta (incluye los divididos entre varias cuentas).
   Deudas.lista('favor').forEach(d => {
     (d.movimientos || []).forEach(m => {
-      const matchFuente = tipo === 'nu'
-        ? (m.fuente && m.fuente.startsWith('cajita:'))
-        : m.fuente === tipo;
+      const matchFuente = coincide(m.fuente);
       if (m.tipo === 'prestamo' && (matchFuente || (m.fuentes && m.fuentes.length))) {
         const _origenP = 'Préstamos · ' + d.nombre;
         if (matchFuente) {
-          const otrasFuentesSplit = (m.fuentes||[]).filter(f=>f.fuente!==m.fuente).map(f=>({fuente:f.fuente, monto:-f.monto}));
+          const otrasFuentesSplit = (m.fuentes || []).filter(f => f.fuente !== m.fuente).map(f => ({ fuente: f.fuente, monto: -f.monto }));
           movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -m.monto, nota: m.nota, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _origen: _origenP, _otrasCuentas: otrasFuentesSplit.length ? otrasFuentesSplit : null });
         }
-        // Préstamo con fuentes split
-        if (m.fuentes) {
-          m.fuentes.forEach(f => {
-            const mfSplit = tipo === 'nu' ? (f.fuente && f.fuente.startsWith('cajita:')) : f.fuente === tipo;
-            if (mfSplit && f.monto) {
-              const otras = (m.fuentes||[]).filter(f2=>f2.fuente!==f.fuente).map(f2=>({fuente:f2.fuente, monto:-f2.monto}));
-              if (m.fuente) otras.push({fuente:m.fuente, monto:-m.monto});
-              movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -f.monto, nota: m.nota, fuente: f.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: f.fuente, _origen: _origenP, _otrasCuentas: otras.length ? otras : null });
-            }
-          });
-        }
+        (m.fuentes || []).forEach(f => {
+          if (coincide(f.fuente) && f.monto) {
+            const otras = (m.fuentes || []).filter(f2 => f2.fuente !== f.fuente).map(f2 => ({ fuente: f2.fuente, monto: -f2.monto }));
+            if (m.fuente) otras.push({ fuente: m.fuente, monto: -m.monto });
+            movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -f.monto, nota: m.nota, fuente: f.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: f.fuente, _origen: _origenP, _otrasCuentas: otras.length ? otras : null });
+          }
+        });
       }
     });
   });
-  // NOTA (2026-08-30): el bloque "Mesadas recibidas en esta cuenta" que vivía acá
-  // se eliminó — duplicaba cada pago de mesada con destino real. mesada.js ya
-  // genera el movimiento espejo real vía _registrarMovSecundarioMesada() (guardado
-  // en S.movimientos con _secundario:true), que el loop principal de esta función
-  // ya recorre más arriba. Este bloque volvía a sintetizar el mismo pago leyendo
-  // directamente S.mesadas, generando un segundo movimiento fantasma sin candado
-  // (sin _movId) por cada pago con destino/split real. Ver CHANGELOG.md#mesada.
-  // Spotify cobros a personas (no pagos, que ya están en gastosVar como gasto variable)
-  // + abonos posteriores de lo pendiente, cada uno como su propia tarjeta — antes quedaban
-  // invisibles, fundidos dentro de h.monto del cobro original (ver CHANGELOG.md#spotify).
-  // Cada abono puede haber ido a una cuenta distinta a la del cobro original, así que se
-  // filtran por su propio `destino`, no por `h.fuente`.
+
+  // NOTA (2026-08-30): no hay un bloque "Mesadas recibidas en esta cuenta": duplicaba cada pago de
+  // mesada con un movimiento fantasma sin candado. mesada.js ya genera el espejo real vía
+  // _registrarMovSecundarioMesada() (en S.movimientos con _secundario:true), que desdeMovimientos()
+  // recorre. No volver a sintetizar el pago desde S.mesadas. Ver CHANGELOG.md#mesada.
+
+  // Cobros de Spotify a personas (los pagos del plan ya están en gastosVar) + abonos posteriores de lo
+  // pendiente, cada uno como su propia fila. Cada abono puede haber ido a una cuenta distinta a la del
+  // cobro original, así que se filtra por su propio `destino`, no por `h.fuente`.
   (S.spotifyHistorial || []).forEach((h, _spIdx) => {
     if (h.tipo === 'pago') return;
-    const matchFuente = tipo === 'nu'
-      ? (h.fuente && h.fuente.startsWith('cajita:'))
-      : h.fuente === tipo;
-    // h.monto acumula el cobro original + todos los abonos ya recibidos (ver
-    // confirmarSpResolverPendiente en spotify.js) — hay que restar los abonos para
-    // no contar esa misma plata dos veces (una acá, otra en su propia tarjeta de abajo).
+    // h.monto acumula el cobro original + los abonos ya recibidos (confirmarSpResolverPendiente): hay que
+    // restar los abonos para no contar la misma plata dos veces (una acá, otra en su propia fila).
     const historialPendTotal = (h.pendienteHistorial || []).reduce((a, ab) => a + (ab.monto || 0), 0);
     const montoOriginalCobro = Math.max(0, (h.monto || 0) - historialPendTotal);
-    if (matchFuente) {
-      // Usar h.id si existe, o fabricar un _movId estable a partir del índice para que el sort
-      // funcione igual que los demás movimientos (por timestamp de registro, no por orden de iteración)
+    if (coincide(h.fuente)) {
+      // Sin id (historial antiguo): _movId estable a partir del índice, para que el orden funcione igual.
       movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +montoOriginalCobro, fuente: h.fuente, _idx: _idx++, _movId: h.id || ('sp_legacy_' + _spIdx), _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
     }
     (h.pendienteHistorial || []).forEach(ab => {
-      const abMatch = tipo === 'nu' ? (ab.destino && ab.destino.startsWith('cajita:')) : ab.destino === tipo;
-      if (!abMatch) return;
+      if (!coincide(ab.destino)) return;
       movs.push({ tipo: 'ingreso', fecha: ab.fecha, desc: 'Abono pendiente Spotify (' + h.nombre + ')', monto: +ab.monto, fuente: ab.destino, _idx: _idx++, _movId: ab.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
     });
   });
-  // Transferencias entre cuentas
+
+  // Transferencias entre cuentas. Un depósito a la alcancía (t.destino==='alcancia') solo hace match
+  // como origen (ninguna cuenta real se llama 'alcancia'): fila visible, monto oculto, sin "otras
+  // cuentas" (la alcancía no es una cuenta navegable). Ver docs/alcancia.md §3.
   (S.transferencias || []).forEach(t => {
-    const estaEnOrigen = tipo === 'nu'
-      ? (t.origen && t.origen.startsWith('cajita:'))
-      : t.origen === tipo;
-    const estaEnDestino = tipo === 'nu'
-      ? (t.destino && t.destino.startsWith('cajita:'))
-      : t.destino === tipo;
-    // Depósito a la alcancía (t.destino==='alcancia'): nunca hace match con estaEnDestino
-    // (ninguna cuenta real se llama 'alcancia'), así que solo hace falta el caso "esta
-    // cuenta es el origen" — mismo criterio oculto que cuando vivía en S.gastosVar antes
-    // del 2026-09-27 (ver docs/alcancia.md §3 y CHANGELOG.md#alcancia).
     const esAlc = t.destino === 'alcancia';
-    if (estaEnOrigen) {
+    if (coincide(t.origen)) {
       movs.push({
         tipo: esAlc ? 'alcancia' : 'transferencia',
         fecha: t.fecha,
@@ -2117,25 +1987,25 @@ function getMovimientosCuenta(tipo) {
         monto: -t.monto, nota: t.nota, fuente: t.origen,
         _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino,
         _origen: esAlc ? 'Alcancía' : 'Cuentas · Transferencia',
-        _otrasCuentas: esAlc ? null : [{fuente:t.destino, monto:+t.monto}],
+        _otrasCuentas: esAlc ? null : [{ fuente: t.destino, monto: +t.monto }],
         _secundario: esAlc || !!t._secundario, _origenSeccion: esAlc ? 'Alcancía' : '',
         _alcOculto: esAlc
       });
     }
-    if (estaEnDestino) {
-      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia ← ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente: t.destino, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino, _origen: 'Cuentas · Transferencia', _otrasCuentas: [{fuente:t.origen, monto:-t.monto}] });
+    if (coincide(t.destino)) {
+      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia ← ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente: t.destino, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino, _origen: 'Cuentas · Transferencia', _otrasCuentas: [{ fuente: t.origen, monto: -t.monto }] });
     }
   });
-  // Sort by date desc, then by creation time desc (_movId starts with Date.now().toString(36))
+
+  // Orden: fecha desc y luego por creación desc (_movId empieza con Date.now().toString(36), así que
+  // comparar el id en texto da el orden de inserción). Sin id en alguno, va primero el que sí tiene
+  // (timestamp confiable); si ninguno tiene, por orden de recolección.
   movs.sort((a, b) => {
     const dateCmp = (b.fecha || '').localeCompare(a.fecha || '');
     if (dateCmp !== 0) return dateCmp;
-    // Use _movId as tiebreaker: uid() = Date.now().toString(36) + random,
-    // so lexicographic comparison of the base-36 timestamp gives insertion order
     const aId = a._movId || '';
     const bId = b._movId || '';
     if (aId && bId) return bId.localeCompare(aId);
-    // Si solo uno tiene _movId, ese va primero (tiene timestamp confiable)
     if (aId) return -1;
     if (bId) return 1;
     return (b._idx || 0) - (a._idx || 0);

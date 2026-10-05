@@ -689,14 +689,15 @@ async function eliminarMovimiento(btn) {
       }
     }
   } else if (movTipoEl === 'egreso') {
-    // Retiro manual de una cuenta personalizada. _getMovimientosCuentaCustom()
+    // Retiro manual de una cuenta personalizada. getMovimientosCuenta('custom:ID')
     // (cuentas.js) muestra así CUALQUIER salida de una cuenta custom cuyo
     // registro vive en S.movimientos (tipo 'salida_manual', escrito hoy por
     // registrarSalida() vía el sheet genérico "Restar dinero" — el mismo que
     // usan Nequi/Efectivo) — a diferencia de las cuentas estándar, donde ese
     // mismo tipo 'salida_manual' se muestra tal cual, sin traducir a 'egreso'
-    // (ver tipoDisplay en getMovimientosCuenta() vs _getMovimientosCuentaCustom()
-    // en cuentas.js — inconsistencia de nombres entre ambos, no de datos).
+    // (ver `tipoSalidaManual` en getMovimientosCuenta() de cuentas.js: ese tipo es
+    // 'egreso' en una cuenta personalizada y 'salida_manual' en las demás, A PROPÓSITO —
+    // esta rama y la de 'salida_manual' de arriba dependen de esa diferencia, no unificarlo).
     // También cubre datos históricos de una función ya retirada del código
     // (confirmarMovCustom(), sheet "mov-cuenta-custom") que además duplicaba el
     // registro en c.movimientos con tipo 'egreso' — de ahí el filter() sobre

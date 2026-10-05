@@ -890,11 +890,12 @@ function initMovSheet(tipo) {
   { const difWrap = document.getElementById('mov-dif-wrap'); if (difWrap) difWrap.style.display = esPrestamo ? '' : 'none'; }
   document.getElementById('mov_destino_wrap').style.display = esAbono ? '' : 'none';
   document.getElementById('mov_extra_wrap').style.display = esAbono ? '' : 'none';
-  // "¿Se lo regalas?" (perdonar lo que falta) solo existe en "Pagar préstamo completo".
+  // "¿Se lo regalas?" existe en "Registrar abono" (perdonas el monto que escribas: una parte o todo) y en
+  // "Pagar préstamo completo" (perdonas todo lo que falta, monto fijo).
   const perdonWrap = document.getElementById('mov_perdon_wrap');
   const perdonChk = document.getElementById('mov_perdon');
   if (perdonChk) perdonChk.checked = false;
-  if (perdonWrap) perdonWrap.style.display = esPagoCompleto ? '' : 'none';
+  if (perdonWrap) perdonWrap.style.display = esAbono ? '' : 'none';
   document.getElementById('mov_monto').value = '';
   const montoInput = document.getElementById('mov_monto');
   if (esPagoCompleto) {
@@ -977,14 +978,15 @@ function _movTieneEncargoVinculado() {
   return !!(d && d.personaId && (S.encargos || []).some(e => e.personaId === d.personaId && encargoLibre(e) > 0));
 }
 
-// ── Perdonar lo que falta ("se lo regalé") — solo en "Pagar préstamo completo" ──
-// Queda como un 'pago-completo' con _perdon:true (así saldo, grupos y reversión
-// funcionan igual que siempre), pero NO entra plata a ninguna cuenta y, además,
-// registra un gasto real en S.gastosVar (fuente '', _secundario, _esPerdonDeuda)
-// enlazado por _gastoPerdonId / _deudorMovId. Ver CHANGELOG 2026-09-19.
+// ── Perdonar ("se lo regalé"): una parte de la deuda o todo lo que falta ──
+// Se registra como un 'abono' con _perdon:true (o 'pago-completo' si lo perdonado es todo lo que faltaba), así
+// saldo, grupos y reversión funcionan igual que siempre. NO entra plata a ninguna cuenta y registra un gasto real
+// por lo perdonado en S.gastosVar (fuente '', _secundario, _esPerdonDeuda), enlazado por _gastoPerdonId /
+// _deudorMovId. En "Registrar abono" el monto es libre (hasta lo que debe); en "Pagar préstamo completo" queda
+// fijo en lo que falta. Ver CHANGELOG 2026-09-19 y 2026-10-03.
 function _movEsPerdon() {
   const chk = document.getElementById('mov_perdon');
-  return movTipo === 'pago-completo' && !!(chk && chk.checked);
+  return (movTipo === 'pago-completo' || movTipo === 'abono') && !!(chk && chk.checked);
 }
 function toggleMovPerdon() {
   const perdon = _movEsPerdon();
@@ -999,8 +1001,13 @@ function toggleMovPerdon() {
   document.getElementById('mov_extra_wrap').style.display = perdon ? 'none' : '';
   const encWrap = document.getElementById('mov_enc_wrap');
   if (encWrap) encWrap.style.display = (!perdon && _movTieneEncargoVinculado()) ? '' : 'none';
-  document.getElementById('movSheetTitle').textContent = perdon ? 'Perdonar deuda' : 'Pagar préstamo completo';
-  document.getElementById('movBtnConfirm').textContent = perdon ? 'Perdonar deuda' : 'Confirmar pago total';
+  const completo = movTipo === 'pago-completo';
+  document.getElementById('movSheetTitle').textContent = perdon
+    ? (completo ? 'Perdonar deuda' : 'Perdonar parte de la deuda')
+    : (completo ? 'Pagar préstamo completo' : 'Registrar abono');
+  document.getElementById('movBtnConfirm').textContent = perdon
+    ? (completo ? 'Perdonar deuda' : 'Perdonar')
+    : (completo ? 'Confirmar pago total' : 'Guardar abono');
 }
 
 function _initMovGrupoSelector() {
@@ -1109,7 +1116,12 @@ function _planMovimiento() {
     saldoAntes: getDeudorSaldo(d),
     deltaEsperado: movTipo === 'prestamo' ? monto : -monto
   };
-  if (base.perdon) return base;
+  if (base.perdon) {
+    // Solo se puede perdonar lo que la persona todavía debe: perdonar de más no tiene sentido (sería un gasto inventado).
+    if (base.saldoAntes <= Deudas.TOL_FINO) return _planErr('No hay saldo pendiente para perdonar');
+    if (monto > base.saldoAntes + Deudas.TOL_FINO) return _planErr(`Solo te debe ${fmt(base.saldoAntes)}: no puedes perdonar más`, 4000);
+    return base;
+  }
   if (movTipo === 'prestamo') return _planPrestamo(base);
   return _abonoDesdeEncargo ? _planAbonoEncargo(base) : _planAbonoNormal(base);
 }
@@ -1122,24 +1134,26 @@ function _aplicarMovimiento(p) {
   return p.enc ? _aplicarAbonoEncargo(p) : _aplicarAbonoNormal(p);
 }
 
-/* ── Perdón: le regalas lo que falta ──────────────────────────────── */
+/* ── Perdón: le regalas una parte de la deuda, o todo lo que falta ──── */
 // No entra plata a ninguna cuenta (por eso destino '' y nada de sumarFuente), pero SÍ cuenta como
-// gasto real del mes: la plata ya había salido de tus cuentas cuando prestaste y ahora la das por
-// perdida. El gasto no descuenta ningún saldo (fuente ''), es _secundario (solo se borra desde acá)
-// y _esGastoVarNoReal() no lo excluye, así que entra a Gastos/Análisis/salud.
+// gasto real del mes por lo perdonado: la plata ya había salido de tus cuentas cuando prestaste y ahora
+// la das por perdida. El gasto no descuenta ningún saldo (fuente ''), es _secundario (solo se borra desde acá)
+// y _esGastoVarNoReal() no lo excluye, así que entra a Gastos/Análisis/salud. Si lo perdonado es todo lo que
+// faltaba queda como 'pago-completo'; si es una parte, como 'abono' (ambos con _perdon:true).
 function _aplicarPerdon(p) {
   const { d, monto, fecha, nota } = p;
+  const esTodo = Math.abs(monto - getDeudorSaldo(d)) <= Deudas.TOL_FINO;
   if (!S.gastosVar) S.gastosVar = [];
   const perdonMovId = uid();
   const gastoPerdonId = uid();
   S.gastosVar.push({
     id: gastoPerdonId, monto, fecha, cat: 'Otro',
-    desc: `Perdoné deuda — ${d.nombre}`, nota, fuente: '', ts: Date.now(),
+    desc: esTodo ? `Perdoné deuda — ${d.nombre}` : `Perdoné parte de la deuda — ${d.nombre}`, nota, fuente: '', ts: Date.now(),
     _secundario: true, _origenSeccion: 'Prestado · Me deben',
     _esPerdonDeuda: true, _deudorId: d.id, _deudorMovId: perdonMovId
   });
   d.movimientos.push({
-    id: perdonMovId, tipo: 'pago-completo', monto, fecha, destino: '', nota,
+    id: perdonMovId, tipo: esTodo ? 'pago-completo' : 'abono', monto, fecha, destino: '', nota,
     grupoId: p.grupoId, ts: Date.now(), _perdon: true, _gastoPerdonId: gastoPerdonId
   });
 }
@@ -1459,12 +1473,13 @@ function _confirmarMovimientoInterno() {
     return;
   }
   const { d, monto, perdon, tipo, enc, extraMonto } = plan;
+  const perdonTodo = perdon && Math.abs(monto - plan.saldoAntes) <= Deudas.TOL_FINO;
   _aplicarMovimiento(plan);
 
   // Log cambio
   if (window.logCambio) {
     if (enc) logCambio(`Abono de ${escHtml(d.nombre)} vía encargo de ${escHtml(enc.nombre)}`, d.nombre, monto, 'abono');
-    else logCambio(tipo === 'prestamo' ? 'Prestaste a ' + d.nombre : (perdon ? 'Perdonaste la deuda de ' + d.nombre : 'Registraste abono de ' + d.nombre), d.nombre, monto, tipo === 'prestamo' ? 'prestamo' : 'abono');
+    else logCambio(tipo === 'prestamo' ? 'Prestaste a ' + d.nombre : (perdon ? (perdonTodo ? 'Perdonaste la deuda de ' : 'Perdonaste parte de la deuda de ') + d.nombre : 'Registraste abono de ' + d.nombre), d.nombre, monto, tipo === 'prestamo' ? 'prestamo' : 'abono');
   }
   _autoCerrarGruposEnCero(d);
   _verificarIntegridadSaldoDeudor(d, plan.saldoAntes, plan.deltaEsperado);
@@ -1474,7 +1489,9 @@ function _confirmarMovimientoInterno() {
     const msgExtra = extraMonto > 0 ? ` + ${fmt(extraMonto)} de extra` : '';
     toast(`${fmt(monto)}${msgExtra} descontados del encargo de ${escHtml(enc.nombre)}`, 'ok', 3500);
   } else if (perdon) {
-    toast(`Deuda de ${escHtml(d.nombre)} perdonada — quedó como gasto de ${fmt(monto)}`, 'ok', 4000);
+    toast(perdonTodo
+      ? `Deuda de ${escHtml(d.nombre)} perdonada — quedó como gasto de ${fmt(monto)}`
+      : `Le perdonaste ${fmt(monto)} a ${escHtml(d.nombre)} — quedó como gasto. Todavía te debe ${fmt(plan.saldoAntes - monto)}`, 'ok', 4000);
   }
 }
 
@@ -2027,7 +2044,8 @@ function toggleMdPerdon() {
     if (_mdSplitMode) splitToggle('mdSplit');
     const d = Deudas.porId('contra', miDeudaActualId);
     const saldo = d ? Deudas.saldo(d) : 0;
-    _mdEl('md_monto').value = fmtInput(saldo > 0 ? saldo : 0);
+    // Sugiere perdonar todo lo que falta, pero el monto se puede bajar para perdonar solo una parte; no pisa lo que ya escribió.
+    if (!_mdEl('md_monto').value) _mdEl('md_monto').value = fmtInput(saldo > 0 ? saldo : 0);
   }
   _mdEl('md_cuenta_wrap').style.display = perdon ? 'none' : '';
   _mdEl('md_extra_wrap').style.display = (perdon || _mdMovTipo !== 'pago') ? 'none' : '';
@@ -2079,7 +2097,8 @@ function _planMovMiDeuda() {
     const saldo = Deudas.saldo(d);
     if (perdon) {
       if (saldo <= Deudas.TOL_FINO) return { error: 'No hay saldo pendiente' };
-      if (Math.abs(monto - saldo) > Deudas.TOL) return { error: `El perdón cubre todo lo que falta (${fmt(saldo)})` };
+      // Una parte o todo, pero nunca más de lo que debes: perdonar de más inventaría un ingreso.
+      if (monto > saldo + Deudas.TOL_FINO) return { error: `Solo le debes ${fmt(saldo)}: no te pueden perdonar más` };
     } else if (monto > saldo + Deudas.TOL) {
       return { error: `Solo le debes ${fmt(saldo)}` };
     }
@@ -2146,7 +2165,8 @@ function _aplicarMovMiDeuda(p) {
     if (!S.movimientos) S.movimientos = [];
     const ingId = uid();
     S.movimientos.push({
-      id: ingId, tipo: 'entrada', fuente: '', monto, fecha, desc: `Me perdonó la deuda — ${d.nombre}`, nota,
+      id: ingId, tipo: 'entrada', fuente: '', monto, fecha, nota,
+      desc: Math.abs(monto - Deudas.saldo(d)) <= Deudas.TOL_FINO ? `Me perdonó la deuda — ${d.nombre}` : `Me perdonó parte de la deuda — ${d.nombre}`,
       // _prestadoDirectamente: sin esta bandera, Inicio no cuenta una entrada sin cuenta (fuente '') como ingreso del mes
       // (ver el filtro de ingresosMes en inicio.js); es la misma que usa el margen de un préstamo (diferencial.js).
       _prestadoDirectamente: true,
@@ -2180,7 +2200,8 @@ function confirmarMovMiDeuda() {
   _verificarIntegridadSaldoDeudor(plan.d, saldoAntes, plan.tipo === 'recibido' ? plan.monto : -plan.monto);
   save(); refresh(); closeSheet('mov-mi-deuda');
   abrirMiDeuda(plan.d.id);
-  toast(plan.perdon ? 'Deuda perdonada' : 'Movimiento registrado', 'ok');
+  const perdonTodo = plan.perdon && Math.abs(plan.monto - saldoAntes) <= Deudas.TOL_FINO;
+  toast(plan.perdon ? (perdonTodo ? 'Deuda perdonada' : `Te perdonaron ${fmt(plan.monto)} — todavía debes ${fmt(saldoAntes - plan.monto)}`) : 'Movimiento registrado', 'ok');
 }
 
 // Revierte EXACTAMENTE lo que hizo _aplicarMovMiDeuda (o el registro antiguo, de una sola cuenta).
@@ -2824,7 +2845,7 @@ function _onSelPersonaMeDeben(personaId) {
   // grupos de préstamo (d.grupos[] — ver prestado.md §2.4), un préstamo
   // nuevo con alguien que ya está en la lista se maneja como un grupo
   // aparte DENTRO del mismo deudor, no como una persona duplicada en la
-  // lista. Mismo patrón que _onSelPersonaNuevaDeuda (lado "Yo debo").
+  // lista. Mismo patrón que _onSelPersonaYoDebo (lado "Yo debo").
   const existente = Deudas.lista('favor').find(d => d.personaId === personaId);
   if (existente) {
     closeSheet('nueva-persona');

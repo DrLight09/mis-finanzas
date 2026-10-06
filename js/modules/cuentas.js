@@ -1589,6 +1589,10 @@ function abrirDetalleCajita(cajitaId){
 function _renderDetalleCajita(c){
   if(!c) c=(S.cajitas||[]).find(x=>x.id===_cajitaActualId);
   if(!c) return;
+  // El color de una cajita es el de Nu: llega por --cuenta / --cuenta-rgb (como en los detalles de cuenta) a
+  // .cuenta-hero, al título y al campo de nombre. Todas las rutas al detalle de cajita pasan por acá.
+  const _dNuCaj=_descriptorCuenta('nu'), _pCaj=document.getElementById('cuentas-detalle-cajita');
+  if(_dNuCaj&&_pCaj){_pCaj.style.setProperty('--cuenta',_dNuCaj.color);_pCaj.style.setProperty('--cuenta-rgb',_dNuCaj.rgb);}
   const k=calcC(c);
   const tasaDisplay=getNuTasaGlobal();
   // Interés diario sobre la base completa (saldo propio + encargos en la cajita)

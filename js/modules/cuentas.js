@@ -20,6 +20,7 @@
    S, save(), load(), escHtml(), toast(), dialogo(), fmt()/fmtInput(),
    uid(), hoy(), descontarFuente()/sumarFuente(), getFuentes()/
    getFuentesSinTC()/fuenteLabel()/poblarFuente()/getSaldoFuente(),
+   CUENTAS_FIJAS/getCuentaFija() (nombre, color, rgb y badge de Nequi/Nu/Efectivo),
    buildFuentesOptsHtml(), calcPatrimonioTotal(), snapshotPatrimonio(),
    _saldoEncargosEnCuenta() (generalizado, lo usa también Encargos),
    abrirDetalleMov()/eliminarMovimiento() (genéricos para TODA la app,
@@ -100,6 +101,10 @@ function renderDetalleCuenta(fuente) {
   // que no rompe nada — pero es el acoplamiento exacto que bloquearía volver
   // lazy cuentas o encargos por separado.
   if (fuente === 'nu') {
+    // Título con ícono: mismo helper que el detalle simple, así Nu no queda como texto suelto.
+    const dNu = _descriptorCuenta('nu');
+    const tituloNu = document.getElementById('det-nu-nombre');
+    if (dNu && tituloNu) tituloNu.innerHTML = _tituloCuentaHtml(dNu);
     // Cajitas ya se renderizan en renderCajitas()
     renderCajitas();
     // Encargos en Nu (cualquier cajita)
@@ -113,6 +118,12 @@ function renderDetalleCuenta(fuente) {
   actualizarBotonesTransferir(); // "Mover a otra cuenta" solo activo con saldo >= $1,00
 }
 
+// Título del header de cualquier detalle de cuenta: ícono + nombre, siempre desde el descriptor.
+// Lo usan el detalle simple (Nequi/Efectivo/personalizadas) y el de Nu.
+function _tituloCuentaHtml(d) {
+  return html`<div style="display:flex;align-items:center;gap:8px;">${d.iconoHtml(28)}<span>${d.nombre}</span></div>`;
+}
+
 // Detalle de Nequi, Efectivo y cuentas personalizadas: misma pantalla, el descriptor de la
 // cuenta (ver CUENTAS_FIJAS_SELECTOR) aporta nombre, color, etiqueta y saldo.
 function _renderDetalleSimple(fuente) {
@@ -121,8 +132,7 @@ function _renderDetalleSimple(fuente) {
   const cont = document.getElementById('cuentas-detalle-simple');
   cont.style.setProperty('--cuenta', d.color);
   cont.style.setProperty('--cuenta-rgb', d.rgb);
-  document.getElementById('det-cuenta-nombre').innerHTML =
-    html`<div style="display:flex;align-items:center;gap:8px;">${d.iconoHtml(28)}<span>${d.nombre}</span></div>`;
+  document.getElementById('det-cuenta-nombre').innerHTML = _tituloCuentaHtml(d);
   document.getElementById('det-cuenta-label').textContent = d.etiquetaDetalle;
   document.getElementById('det-cuenta-saldo').textContent = fmt(d.saldo());
   document.getElementById('det-cuenta-acciones-custom').style.display = d.esCustom ? 'flex' : 'none';
@@ -250,11 +260,14 @@ function _iconoEfectivo(size){
   return html`<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(240,184,64,.15);display:flex;align-items:center;justify-content:center;color:var(--amber);">${raw(ICONO_EFECTIVO_SELECTOR)}</div>`;
 }
 
-const CUENTAS_FIJAS_SELECTOR = [
-  { fuente:'nequi',    nombre:'Nequi',    color:'#ff4da6',         rgb:'229,0,116',  estilo:'tarjeta',  etiqueta:'Saldo',    etiquetaDetalle:'Saldo disponible',      cuentaKey:'nequi',    iconoHtml:size=>renderIconoCustom({icono:'nequi'},size), saldo:()=>getSaldoFuente('nequi') },
-  { fuente:'nu',       nombre:'Nu',       color:'var(--nu-light)', rgb:'192,96,240', estilo:'tarjeta',  etiqueta:'Total Nu', etiquetaDetalle:'Total Nu',              cuentaKey:'nu',       iconoHtml:size=>renderIconoCustom({icono:'nu'},size),    saldo:()=>nuTotal() },
-  { fuente:'efectivo', nombre:'Efectivo', color:'var(--amber)',    rgb:'240,184,64', estilo:'pastilla',                        etiquetaDetalle:'Disponible en efectivo', cuentaKey:'efectivo', iconoHtml:_iconoEfectivo,                                  saldo:()=>getSaldoFuente('efectivo') },
-];
+// Lo propio de cuentas.js para cada cuenta fija (estilo del selector, ícono, saldo). Nombre, color,
+// rgb y badge NO se repiten acá: vienen de CUENTAS_FIJAS (core-state.js).
+const _SELECTOR_FIJAS_EXTRA = {
+  nequi:    { estilo:'tarjeta',  etiqueta:'Saldo',    etiquetaDetalle:'Saldo disponible',       cuentaKey:'nequi',    iconoHtml:size=>renderIconoCustom({icono:'nequi'},size), saldo:()=>getSaldoFuente('nequi') },
+  nu:       { estilo:'tarjeta',  etiqueta:'Total Nu', etiquetaDetalle:'Total Nu',               cuentaKey:'nu',       iconoHtml:size=>renderIconoCustom({icono:'nu'},size),    saldo:()=>nuTotal() },
+  efectivo: { estilo:'pastilla',                      etiquetaDetalle:'Disponible en efectivo', cuentaKey:'efectivo', iconoHtml:_iconoEfectivo,                                  saldo:()=>getSaldoFuente('efectivo') },
+};
+const CUENTAS_FIJAS_SELECTOR = CUENTAS_FIJAS.map(f => ({ ...f, ..._SELECTOR_FIJAS_EXTRA[f.fuente] }));
 
 function _descriptorCustom(c){
   const hex=c.color||(getIconoData(c.icono).color)||'#60b0f0';

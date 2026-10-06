@@ -714,7 +714,11 @@ async function guardarChequeoNu(){
   inputs.forEach(inp=>{
     const raw=(inp.value||'').replace(/\./g,'').replace(',','.');
     const val=parseFloat(raw);
-    if(!raw||isNaN(val))return;
+    // Un campo money-input se rellena con "0,00" apenas se toca (focusin) y nada lo limpia al salir,
+    // así que 0 significa "no anoté nada", no "esta cajita tiene $0". Antes se guardaba como lectura
+    // real: ponía la cajita en 0 (solo con aviso si se alejaba más de max($1.000, 2%)) y ensuciaba
+    // S.chequeosNu. Si de verdad quedó vacía, se registra el retiro como movimiento (lo dice el aviso).
+    if(!raw||isNaN(val)||val<=0)return;
     lecturas.push({cajitaId:inp.dataset.chqCajita,val,texto:inp.value});
   });
   if(lecturas.length===0){if(window.toast)toast('No pusiste ningún saldo para chequear.','err',3000);return;}
@@ -1276,7 +1280,13 @@ function confirmarCrearCDT(){
   if(!c){toast('Cajita no encontrada','err');return;}
   const monto=parseMoney(document.getElementById('cdt_monto').value)||0;
   const tasa=parsePct(document.getElementById('cdt_tasa').value)||9.25;
-  const rte=parsePct(document.getElementById('cdt_rte').value)||4;
+  // RTE: vacío = 4 (el valor por defecto del formulario); 0 es válido (la edición, guardarCDT(), ya lo
+  // aceptaba; antes la creación lo convertía en 4 en silencio con `||4`). Texto no numérico o fuera de
+  // 0–100 se rechaza en vez de leerse como 0.
+  const rteRaw=(document.getElementById('cdt_rte').value||'').trim();
+  if(rteRaw!==''&&!/^\d+([.,]\d+)?$/.test(rteRaw)){toast('La retención (RTE) no es un número válido','err');return;}
+  const rte=rteRaw===''?4:parsePct(rteRaw);
+  if(rte>100){toast('La retención (RTE) no puede pasar de 100 %','err');return;}
   const inicio=document.getElementById('cdt_inicio').value||hoy();
   const vence=document.getElementById('cdt_vence').value;
   if(monto<50000){toast('El monto mínimo para un CDT es $50.000','err');return;}
@@ -2297,7 +2307,8 @@ function confirmarAgregarDinero(){
   const nota=document.getElementById('adNota')?.value.trim()||'';
   const esApertura=document.getElementById('adEsApertura')?.checked||false;
   if(!esApertura&&!desc){toast('Describe de dónde viene esta plata','err');return;}
-  if(!v||!adFuente)return;
+  if(!v){toast('Ingresa un monto válido','err');return;}
+  if(!adFuente)return;
   // Materializar intereses antes de agregar dinero a la cajita
   if(adFuente.startsWith('cajita:')){
     const id=adFuente.split(':')[1];
@@ -2642,6 +2653,18 @@ function confirmarNuMovimiento() {
   const caj = (S.cajitas || []).find(x => x.id === cid);
   if (!caj) { toast('Cajita no encontrada', 'err'); return; }
 
+  // Guarda de saldo (2026-10-05): misma razón que confirmarRestarDinero(). descontarFuente() recorta el
+  // saldo en 0 pero registrarSalida() guarda el monto completo; sacar más de lo que hay dejaba el
+  // historial desfasado y borrar el movimiento devolvía de más. Se comprueba ANTES de materializar los
+  // intereses para no dejar la cajita modificada a medias si se rechaza.
+  if (_nuMovTipo !== 'entrada') {
+    const disponible = typeof calcC === 'function' ? calcC(caj).val : (caj.saldo || 0);
+    if (Math.round(v * 100) > Math.round(disponible * 100)) {
+      toast('Saldo insuficiente en ' + escHtml(caj.nombre || 'cajita') + ' (' + fmt(disponible) + ')', 'err', 3500);
+      return;
+    }
+  }
+
   // Materializar intereses antes de tocar el saldo
   if (typeof materializarIntereses === 'function') materializarIntereses(caj);
 
@@ -2697,7 +2720,17 @@ function confirmarRestarDinero(){
   const fecha=document.getElementById('rdFecha').value||hoy();
   const nota=document.getElementById('rdNota')?.value.trim()||'';
   if(!desc){toast('Describe en qué se gastó o a dónde fue','err');return;}
-  if(!v||!rdFuente)return;
+  if(!v){toast('Ingresa un monto válido','err');return;}
+  if(!rdFuente)return;
+  // Guarda de saldo (2026-10-05). descontarFuente() recorta el saldo en 0, pero registrarSalida()
+  // guarda el movimiento con el monto COMPLETO: restar más de lo que hay dejaba el saldo en 0 y el
+  // historial diciendo que salió más plata de la que había, y al borrar ese movimiento
+  // (sumarFuente(monto)) la cuenta recibía de más. Misma regla que Transferir: se compara en centavos.
+  const saldoDisponible=getSaldoActual(rdFuente);
+  if(Math.round(v*100)>Math.round(saldoDisponible*100)){
+    toast('Saldo insuficiente en '+escHtml(fuenteLabel(rdFuente))+' ('+fmt(saldoDisponible)+')','err',3500);
+    return;
+  }
   registrarSalida(rdFuente,v,fecha,desc,nota);
   save();refresh();
   closeSheet('restar-dinero');

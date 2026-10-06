@@ -13,7 +13,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
 | `js/core/calc-helpers.js` | de entrada (defer) | 14 | 0 |
 | `js/core/color-picker.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
-| `js/core/core-state.js` | de entrada (defer) | 66 | 5 |
+| `js/core/core-state.js` | de entrada (defer) | 68 | 6 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
@@ -90,9 +90,9 @@ Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ajusteAlcanciaPorFecha`, `_calcCDTSafe`, `_calcCSafe`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_getNuTasaGlobalSafe`, `_moneyRender`, `_moneyValue`, `_nuTotalSafe`, `_patrimonioDependenciasListas`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `migrarCuentasLegacy`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`
+**Funciones:** `_ajusteAlcanciaPorFecha`, `_calcCDTSafe`, `_calcCSafe`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_getNuTasaGlobalSafe`, `_listaFuentes`, `_moneyRender`, `_moneyValue`, `_nuTotalSafe`, `_patrimonioDependenciasListas`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `migrarCuentasLegacy`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`
 
-**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `MAX`, `MC`, `S`
+**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CUENTAS_FIJAS`, `MAX`, `MC`, `S`
 
 **Asigna a `window`:** `_dialogResolve`, `_locallyModified`
 
@@ -568,6 +568,7 @@ Ninguno.
 | `_irAEncargo` | `js/modules/encargos.js` |
 | `_irAMiDeuda` | `js/modules/prestado.js` |
 | `_irASpotify` | `js/modules/personas.js` |
+| `_listaFuentes` | `js/core/core-state.js` |
 | `_locallyModified` | `js/core/core-state.js` (window._locallyModified = …) |
 | `_markError` | `js/core/sheet-stack.js` |
 | `_mdAddSplitRow` | `js/modules/prestado.js` |
@@ -973,6 +974,7 @@ Ninguno.
 | `crearEncargo` | `js/modules/encargos.js` |
 | `crearMovimientoApertura` | `js/core/core-state.js` |
 | `crearSplitWidget` | `js/core/split.js` |
+| `CUENTAS_FIJAS` | `js/core/core-state.js` |
 | `CUENTAS_FIJAS_SELECTOR` | `js/modules/cuentas.js` |
 | `cuentasCustom` | `js/core/core-state.js` |
 | `debounceSave` | `js/core/core-state.js` |
@@ -1064,6 +1066,7 @@ Ninguno.
 | `getCuenta` | `js/core/core-state.js` |
 | `getCuentaCustom` | `js/core/core-state.js` |
 | `getCuentaDeFuente` | `js/core/core-state.js` |
+| `getCuentaFija` | `js/core/core-state.js` |
 | `getDeudorSaldo` | `js/core/calc-helpers.js` |
 | `getEncargo` | `js/modules/encargos.js` |
 | `getFuentes` | `js/core/core-state.js` |

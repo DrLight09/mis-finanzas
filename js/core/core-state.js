@@ -419,6 +419,26 @@ function getSaldoFuente(fuente){
   }
   return 0;
 }
+// ¿Se puede sacar `monto` de esta fuente? Un solo lugar para el "Saldo/Cupo insuficiente" que antes
+// escribía a mano cada módulo (Gastos, Spotify…) con redacción distinta y, en Spotify, sin escapar el
+// nombre de la cuenta antes de toast() (que pinta HTML). Devuelve {ok:true} o {ok:false, mensaje}, con
+// `mensaje` YA escapado y listo para toast(). No toca el DOM ni los saldos.
+//  · Cuenta/cajita: falla si el saldo disponible es menor que el monto.
+//  · TC: falla solo si la tarjeta tiene cupo configurado y el cupo disponible no alcanza (sin cupo, no
+//    hay límite que validar; una TC inexistente tampoco bloquea: eso lo decide quien la busca).
+//  · Fuente vacía: ok (el gasto "sin especificar" no mueve plata).
+// Comparación estricta (disponible < monto), igual que los módulos que la usaban.
+function validarSalidaFuente(fuente,monto){
+  if(!fuente)return{ok:true};
+  const disp=getSaldoFuente(fuente);
+  if(fuente.startsWith('tc:')){
+    const tc=(S.tarjetasCredito||[]).find(x=>x.id===fuente.slice(3));
+    if(tc&&tc.cupo&&disp<monto)return{ok:false,mensaje:'Cupo insuficiente en '+escHtml(fuenteLabel(fuente))+'. Disponible: '+fmt(disp)};
+    return{ok:true};
+  }
+  if(disp<monto)return{ok:false,mensaje:'Saldo insuficiente en '+escHtml(fuenteLabel(fuente))+'. Disponible: '+fmt(disp)};
+  return{ok:true};
+}
 // Alias canónico: getSaldoFuente es la función completa (maneja tc:, guard null).
 // getSaldoActual se mantiene como alias para compatibilidad con todos los call sites existentes.
 const getSaldoActual = getSaldoFuente;

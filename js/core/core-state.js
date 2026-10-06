@@ -225,32 +225,11 @@ function pintarAvatarPersona(av, persona, opts){
                          descriptor de cuentas.js: son cuentas fijas de la app)
      Personalizada    : {id, tipo:'custom', nombre, icono, color, saldo, movimientos:[...]}
    Identificador de fuente en toda la app: 'nequi' | 'efectivo' | 'custom:ID'.
-   Migración (migrarCuentasLegacy): si S trae alguno de los tres campos viejos, SON la verdad
-   — llegan de un backup viejo importado o de un dispositivo con la versión anterior, que
-   solo conoce esos campos — y se reconstruye S.cuentas desde ellos y se borran. Por eso S ya
-   no puede traerlos por defecto. load(), importarJSON() y cada lectura la llaman: es
-   idempotente y barata cuando no hay nada que migrar.
-   Una excepción, para no perder plata: un cliente viejo que abre un documento YA migrado no ve
-   ningún saldo (para él nequiSaldo no existe) y, si guarda, devuelve ceros y una lista vacía.
-   Un valor viejo en 0 (o una lista vieja vacía) NO pisa a una cuenta que ya tiene saldo (o a las
-   personalizadas que ya existen). Un valor viejo distinto de cero sí manda. */
-function migrarCuentasLegacy(){
-  const hayLegacy=typeof S.nequiSaldo==='number'||typeof S.efectivoSaldo==='number'||Array.isArray(S.cuentasPersonalizadas);
-  const previas=Array.isArray(S.cuentas)?S.cuentas:[];
-  if(!hayLegacy&&previas.some(c=>c.id==='nequi')&&previas.some(c=>c.id==='efectivo'))return false;
-  const previa=id=>{const p=previas.find(c=>c.id===id);return(p&&p.saldo)||0;};
-  const saldoFijo=(legacy,id)=>(typeof legacy==='number'&&!(legacy===0&&previa(id)!==0))?legacy:previa(id);
-  const previasCustom=previas.filter(c=>c.tipo==='custom');
-  const customs=(Array.isArray(S.cuentasPersonalizadas)&&!(S.cuentasPersonalizadas.length===0&&previasCustom.length))?S.cuentasPersonalizadas:previasCustom;
-  customs.forEach(c=>{c.tipo='custom';});
-  S.cuentas=[
-    {id:'nequi',tipo:'nequi',saldo:saldoFijo(S.nequiSaldo,'nequi')},
-    {id:'efectivo',tipo:'efectivo',saldo:saldoFijo(S.efectivoSaldo,'efectivo')},
-    ...customs
-  ];
-  delete S.nequiSaldo;delete S.efectivoSaldo;delete S.cuentasPersonalizadas;
-  return true;
-}
+   Garantía (_cuentasArr): S.cuentas siempre existe y siempre trae Nequi y Efectivo; si faltan
+   (documento nuevo, nube vacía, backup sin 'cuentas') se crean en 0. La migración desde los campos
+   viejos (migrarCuentasLegacy) se eliminó el 2026-10-05: el único documento existente ya estaba
+   migrado y desde ahí las cuentas se crean ya en el modelo nuevo. Un backup en el formato viejo
+   se rechaza al importar (ver _validarEstructuraJSON en configuracion.js). */
 /* ---- CUENTAS FIJAS: nombre, color y badge en UN solo lugar ----
    Nequi, Nu y Efectivo no viven en S.cuentas con nombre propio (Nu ni siquiera vive ahí), así que
    antes su nombre/color/clase de badge estaban escritos a mano en fuenteLabel(), fuenteBadgeClass(),
@@ -265,7 +244,11 @@ const CUENTAS_FIJAS=[
 ];
 // Cuenta fija por su fuente; undefined si no es una de las tres (cajita:ID, custom:ID, tc:ID…).
 function getCuentaFija(fuente){return CUENTAS_FIJAS.find(d=>d.fuente===fuente);}
-function _cuentasArr(){migrarCuentasLegacy();return S.cuentas;}
+function _cuentasArr(){
+  if(!Array.isArray(S.cuentas))S.cuentas=[];
+  ['nequi','efectivo'].forEach(id=>{if(!S.cuentas.some(c=>c.id===id))S.cuentas.push({id,tipo:id,saldo:0});});
+  return S.cuentas;
+}
 // Cuenta por id: 'nequi' | 'efectivo' | id de una personalizada. undefined si no existe.
 function getCuenta(id){return _cuentasArr().find(c=>c.id===id);}
 // Solo personalizadas (undefined si el id es de una cuenta fija o ya no existe).
@@ -486,7 +469,7 @@ function load(){
   // Solo inicializamos campos faltantes y sincronizamos el DOM
   if(!S.encargos)S.encargos=[];
   if(!S.movimientos)S.movimientos=[];
-  migrarCuentasLegacy(); // modelo único de cuentas (ver "CUENTAS: MODELO ÚNICO")
+  _cuentasArr(); // garantiza S.cuentas con Nequi y Efectivo (ver "CUENTAS: MODELO ÚNICO")
   if(!S.catsVar)S.catsVar=[];
   if(!S.catsFijo)S.catsFijo=[];
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];

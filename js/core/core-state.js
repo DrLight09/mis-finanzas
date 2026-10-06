@@ -251,6 +251,20 @@ function migrarCuentasLegacy(){
   delete S.nequiSaldo;delete S.efectivoSaldo;delete S.cuentasPersonalizadas;
   return true;
 }
+/* ---- CUENTAS FIJAS: nombre, color y badge en UN solo lugar ----
+   Nequi, Nu y Efectivo no viven en S.cuentas con nombre propio (Nu ni siquiera vive ahí), así que
+   antes su nombre/color/clase de badge estaban escritos a mano en fuenteLabel(), fuenteBadgeClass(),
+   getFuentes() y en cuentas.js. Ahora esos datos salen de acá. cuentas.js (lazy) le suma a cada
+   descriptor lo que solo él necesita: ícono, saldo, estilo del selector (CUENTAS_FIJAS_SELECTOR).
+   Campos: fuente ('nequi'|'nu'|'efectivo'), nombre, color (texto, puede ser var(--x)),
+   rgb ("r,g,b" para bordes/fondos), badge (clase CSS de fuenteBadgeClass). */
+const CUENTAS_FIJAS=[
+  {fuente:'nequi',   nombre:'Nequi',   color:'#ff4da6',         rgb:'229,0,116',  badge:'bg-nequi'},
+  {fuente:'nu',      nombre:'Nu',      color:'var(--nu-light)', rgb:'192,96,240', badge:'bg-nu'},
+  {fuente:'efectivo',nombre:'Efectivo',color:'var(--amber)',    rgb:'240,184,64', badge:'bg-amber'}
+];
+// Cuenta fija por su fuente; undefined si no es una de las tres (cajita:ID, custom:ID, tc:ID…).
+function getCuentaFija(fuente){return CUENTAS_FIJAS.find(d=>d.fuente===fuente);}
 function _cuentasArr(){migrarCuentasLegacy();return S.cuentas;}
 // Cuenta por id: 'nequi' | 'efectivo' | id de una personalizada. undefined si no existe.
 function getCuenta(id){return _cuentasArr().find(c=>c.id===id);}
@@ -329,31 +343,25 @@ function sumarFuente(fuente,monto){
 }
 
 // Cuentas personalizadas migradas a js/modules/cuentas.js (ver docs/cuentas.md).
-function getFuentes(){
+// Lista de cuentas que se pueden elegir como origen/destino. Orden: cajitas de Nu, Nequi, Efectivo,
+// personalizadas y (si incluirTC) tarjetas activas. getFuentes() y getFuentesSinTC() son la misma
+// lista, con y sin TC — antes eran dos copias casi idénticas.
+function _listaFuentes(incluirTC){
   const arr=[];
   (S.cajitas||[]).forEach(c=>{if(!c.esCDT)arr.push({val:'cajita:'+c.id,label:c.nombre+' (Nu)'});});
-  arr.push({val:'nequi',label:'Nequi'});
-  arr.push({val:'efectivo',label:'Efectivo'});
+  ['nequi','efectivo'].forEach(f=>arr.push({val:f,label:getCuentaFija(f).nombre}));
   cuentasCustom().forEach(c=>arr.push({val:'custom:'+c.id,label:c.nombre}));
-  (S.tarjetasCredito||[]).filter(tc=>(tc.estado||'activa')==='activa').forEach(tc=>arr.push({val:'tc:'+tc.id,label:tc.nombre+' (TC)'}));
+  if(incluirTC)(S.tarjetasCredito||[]).filter(tc=>(tc.estado||'activa')==='activa').forEach(tc=>arr.push({val:'tc:'+tc.id,label:tc.nombre+' (TC)'}));
   return arr;
 }
-
-function getFuentesSinTC(){
-  const arr=[];
-  (S.cajitas||[]).forEach(c=>{if(!c.esCDT)arr.push({val:'cajita:'+c.id,label:c.nombre+' (Nu)'});});
-  arr.push({val:'nequi',label:'Nequi'});
-  arr.push({val:'efectivo',label:'Efectivo'});
-  cuentasCustom().forEach(c=>arr.push({val:'custom:'+c.id,label:c.nombre}));
-  return arr;
-}
+function getFuentes(){return _listaFuentes(true);}
+function getFuentesSinTC(){return _listaFuentes(false);}
 
 function fuenteLabel(val){
   if(!val)return'Sin especificar';
   if(val==='alcancia')return'Alcancía';
   if(val==='ganancia')return'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no desembolsada)';
-  if(val==='nequi')return'Nequi';
-  if(val==='efectivo')return'Efectivo';
+  if(val==='nequi'||val==='efectivo')return getCuentaFija(val).nombre;
   if(val.startsWith('cajita:')){
     const id=val.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -375,9 +383,8 @@ function fuenteLabel(val){
 function fuenteBadgeClass(val){
   if(!val)return'bg-blue';
   if(val==='ganancia')return'bg-green';
-  if(val==='nequi')return'bg-nequi';
-  if(val==='efectivo')return'bg-amber';
-  if(val.startsWith('cajita:'))return'bg-nu';
+  if(val==='nequi'||val==='efectivo')return getCuentaFija(val).badge;
+  if(val.startsWith('cajita:'))return getCuentaFija('nu').badge;
   if(val.startsWith('custom:'))return'bg-blue';
   if(val.startsWith('tc:'))return'bg-red';
   return'bg-nu';

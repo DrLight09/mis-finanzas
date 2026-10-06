@@ -331,21 +331,14 @@ function addGastoVar() {
       return;
     }
     for (const s of splits) {
-      const saldoDisp = getSaldoFuente(s.fuente);
-      if (saldoDisp < s.monto) { toast('Saldo insuficiente en ' + escHtml(fuenteLabel(s.fuente)) + ' — disponible: ' + fmt(saldoDisp), 'err'); return; }
+      const v = validarSalidaFuente(s.fuente, s.monto); // core-state.js: saldo/cupo, mensaje ya escapado
+      if (!v.ok) { toast(v.mensaje, 'err'); return; }
     }
   } else {
     fuente = document.getElementById('gv_fuente').value;
     if (!fuente) { toast('Selecciona de dónde salió la plata', 'err'); return; }
-    const saldoDisp = getSaldoFuente(fuente);
-    if (fuente.startsWith('tc:')) {
-      // Validar cupo solo si la TC tiene cupo configurado
-      const tcId = fuente.split(':')[1];
-      const tc = (S.tarjetasCredito || []).find(x => x.id === tcId);
-      if (tc && tc.cupo && saldoDisp < monto) { toast('Cupo insuficiente en ' + escHtml(fuenteLabel(fuente)) + ' — cupo disponible: ' + fmt(saldoDisp), 'err'); return; }
-    } else {
-      if (saldoDisp < monto) { toast('Saldo insuficiente en ' + escHtml(fuenteLabel(fuente)) + ' — disponible: ' + fmt(saldoDisp), 'err'); return; }
-    }
+    const v = validarSalidaFuente(fuente, monto);
+    if (!v.ok) { toast(v.mensaje, 'err'); return; }
   }
 
   const compraId = uid();
@@ -587,13 +580,9 @@ function abrirPagarGastoFijo(id) {
   // Poblar fuentes
   const sel = document.getElementById('pgf-fuente');
   // Solo cuentas con saldo >= $1,00 y TC con cupo (FuentesFiltro, js/core/fuentes-filtro.js).
-  const fuentes = FuentesFiltro.filtrar(getFuentes(), FuentesFiltro.PRESET.SALIDA);
-  // f.val no se envuelve en raw(): a diferencia de un uid() interno
-  // confirmado (ver ing.id en analisis.js, auditoria-tecnica.md #2), acá no
-  // hay confirmación de que getFuentes() (core-state.js, no disponible esta
-  // sesión) garantice que `val` nunca incluya texto de una cuenta
-  // personalizada — se escapa por defecto hasta confirmar lo contrario.
-  sel.innerHTML = html`<option value="">${fuentes.length ? 'Seleccionar cuenta' : FuentesFiltro.MSG_SIN_SALDO}</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
+  // FuentesFiltro.optsHtml filtra por saldo/cupo y arma las <option> con buildFuentesOptsHtml (core-state.js),
+  // que escapa label y val: este sheet ya no reimplementa el selector a mano.
+  sel.innerHTML = FuentesFiltro.optsHtml(getFuentes(), { ...FuentesFiltro.PRESET.SALIDA, placeholder: 'Seleccionar cuenta', sinOpcionesTexto: FuentesFiltro.MSG_SIN_SALDO });
   document.getElementById('pgf-saldo-info').textContent = '';
   openSheet('pagar-gasto-fijo');
 }
@@ -621,7 +610,7 @@ function pgfActualizarSaldo() {
     }
     return;
   }
-  const saldo = getSaldoActual(fuente);
+  const saldo = getSaldoFuente(fuente);
   const suficiente = saldo >= monto;
   info.textContent = 'Saldo disponible: ' + fmt(saldo);
   info.style.color = suficiente ? 'var(--accent)' : 'var(--red)';
@@ -661,7 +650,7 @@ function confirmarPagarGastoFijo() {
     gastoObj._tcCompraId = compra.id;
     S.gastosVar.push(gastoObj);
   } else {
-    const saldo = getSaldoActual(fuente);
+    const saldo = getSaldoFuente(fuente);
     if (saldo < gf.monto) {
       errEl.textContent = 'Saldo insuficiente. Disponible: ' + fmt(saldo) + ' — Necesario: ' + fmt(gf.monto);
       errEl.style.display = 'block';

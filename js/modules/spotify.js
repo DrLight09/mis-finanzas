@@ -79,9 +79,7 @@ function _spSplitFuentesOpts(selectedVal){
 // propósito: esa la comparte el split de COBRO ('spc'), donde la plata ENTRA y una cuenta
 // vacía es un destino válido — no debe filtrarse por saldo.
 function _spPagarSplitFuentesOpts(selectedVal){
-  const fuentes=FuentesFiltro.filtrar(getFuentesSinTC(),FuentesFiltro.PRESET.SPOTIFY);
-  return '<option value="" disabled'+(selectedVal?'':' selected')+'>'+(fuentes.length?'Selecciona una cuenta...':FuentesFiltro.MSG_SIN_SALDO)+'</option>'
-    +fuentes.map(f=>`<option value="${escHtml(f.val)}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`).join('');
+  return FuentesFiltro.optsHtml(getFuentesSinTC(),{...FuentesFiltro.PRESET.SPOTIFY,selectedVal,placeholder:'Selecciona una cuenta...',sinOpcionesTexto:FuentesFiltro.MSG_SIN_SALDO});
 }
 
 crearSplitWidget('spc', {
@@ -1085,9 +1083,7 @@ function openSheet_pagarSpotify(){
   const sel=document.getElementById('spPagarFuente');
   // Solo cuentas con saldo >= $50 y TC con cupo disponible (FuentesFiltro.PRESET.SPOTIFY,
   // js/core/fuentes-filtro.js). Si la cajita de Spotify no llega al mínimo, no se preselecciona.
-  const fuentes=FuentesFiltro.filtrar(getFuentes(),FuentesFiltro.PRESET.SPOTIFY);
-  // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
-  sel.innerHTML=html`<option value="">Sin especificar</option>${fuentes.map(f=>html`<option value="${f.val}"${cajita&&f.val==='cajita:'+cajita.id?' selected':''}>${f.label}</option>`)}`;
+  sel.innerHTML=FuentesFiltro.optsHtml(getFuentes(),{...FuentesFiltro.PRESET.SPOTIFY,selectedVal:cajita?'cajita:'+cajita.id:''});
   actualizarSpPagarPreview();
   const notaEl=document.getElementById('spPagarNota');
   if(notaEl)notaEl.value='';
@@ -1182,11 +1178,8 @@ async function confirmarPagarSpotify(){
       return;
     }
     for(const s of splits){
-      const saldoDisp=getSaldoActual(s.fuente);
-      if(saldoDisp<s.monto){
-        toast('Saldo insuficiente en '+fuenteLabel(s.fuente)+'. Disponible: '+fmt(saldoDisp),'err',3500);
-        return;
-      }
+      const v=validarSalidaFuente(s.fuente,s.monto); // core-state.js: saldo/cupo, mensaje ya escapado
+      if(!v.ok){toast(v.mensaje,'err',3500);return;}
     }
     splits.forEach(s=>descontarFuente(s.fuente,s.monto));
     notaGasto+=' · dividido entre '+splits.map(s=>fuenteLabel(s.fuente)).join(', ');
@@ -1200,20 +1193,15 @@ async function confirmarPagarSpotify(){
       // tipo 'cargo_*'), en vez de descontarFuente().
       const tc=getTCById(fuente.slice(3));
       if(!tc){toast('Tarjeta no encontrada','err');return;}
-      if(tc.cupo&&tcCupoDisponible(tc)<monto){
-        toast('Cupo insuficiente en '+fuenteLabel(fuente)+'. Disponible: '+fmt(tcCupoDisponible(tc)),'err',3500);
-        return;
-      }
+      const v=validarSalidaFuente(fuente,monto);
+      if(!v.ok){toast(v.mensaje,'err',3500);return;}
       if(!S.tcMovimientos)S.tcMovimientos=[];
       tcMovId=uid();
       S.tcMovimientos.push({id:tcMovId,tcId:tc.id,tipo:'cargo_spotify',monto,fecha:fechaPago0,nota:nota||'Pago Spotify',eliminado:false});
       tcRecalcular(tc);
     } else if(fuente){
-      const saldoDisp=getSaldoActual(fuente);
-      if(saldoDisp<monto){
-        toast('Saldo insuficiente en '+fuenteLabel(fuente)+'. Disponible: '+fmt(saldoDisp),'err',3500);
-        return;
-      }
+      const v=validarSalidaFuente(fuente,monto);
+      if(!v.ok){toast(v.mensaje,'err',3500);return;}
       descontarFuente(fuente,monto);
     }
   }

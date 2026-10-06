@@ -55,15 +55,11 @@
    Tarjetas de Crédito), confirmando que no es un caso aislado de un
    módulo. Detalle completo de cada sitio en CHANGELOG.md#cuentas.
 
-   ── Código muerto encontrado (no se tocó) ────────────────────────
-   toggleCDT(), toggleCajita() y _expandCajitaCDTs() ya no se llaman
-   desde ningún lado — trabajan sobre ids ('cajita-wrap-*',
-   'cajita-cdt-*-*') que renderCajitas()/_renderDetalleCajita() ya no
-   generan (quedaron de un diseño de UI anterior, con las cajitas
-   expandibles en una sola lista en vez de una pantalla de detalle
-   aparte). Se dejaron intactas y comentadas como tal, mismo criterio
-   que `mpMesNombre` en Mesada: se anota para una limpieza futura, no
-   se borra de paso en una migración que no es sobre eso.
+   ── Código muerto eliminado (2026-10-05) ─────────────────────────
+   toggleCDT(), toggleCajita() y _expandCajitaCDTs() se borraron: no los
+   llamaba nadie y trabajaban sobre ids ('cajita-wrap-*', 'cajita-cdt-*-*')
+   que el render actual de cajitas ya no genera (diseño anterior, con las
+   cajitas expandibles en una sola lista). Ver CHANGELOG.md.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ───────────────────────────────────────────────────────────────
@@ -101,17 +97,23 @@ function renderDetalleCuenta(fuente) {
   // que no rompe nada — pero es el acoplamiento exacto que bloquearía volver
   // lazy cuentas o encargos por separado.
   if (fuente === 'nu') {
-    // Título con ícono: mismo helper que el detalle simple, así Nu no queda como texto suelto.
+    // Color, título y rótulo salen del descriptor de Nu, igual que el detalle simple: el color llega por
+    // --cuenta / --cuenta-rgb sobre #cuentas-detalle-nu y los estilos .cuenta-hero / .cuenta-action-btn lo usan.
     const dNu = _descriptorCuenta('nu');
-    const tituloNu = document.getElementById('det-nu-nombre');
-    if (dNu && tituloNu) tituloNu.innerHTML = _tituloCuentaHtml(dNu);
+    const contNu = document.getElementById('cuentas-detalle-nu');
+    if (dNu && contNu) {
+      contNu.style.setProperty('--cuenta', dNu.color);
+      contNu.style.setProperty('--cuenta-rgb', dNu.rgb);
+      document.getElementById('det-nu-nombre').innerHTML = _tituloCuentaHtml(dNu);
+      document.getElementById('det-nu-label').textContent = dNu.etiquetaDetalle;
+    }
     // Cajitas ya se renderizan en renderCajitas()
     renderCajitas();
     // Encargos en Nu (cualquier cajita)
     if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-nu-encargos', 'nu');
     // Movimientos Nu (cajitas)
     const movs = getMovimientosCuenta('nu');
-    renderMovsCuenta('det-nu-movs', movs, 'var(--nu-light)', 'nu');
+    renderMovsCuenta('det-nu-movs', movs, dNu ? dNu.color : 'var(--nu-light)', 'nu');
   } else {
     _renderDetalleSimple(fuente);
   }
@@ -1759,76 +1761,6 @@ function _refreshCajitaDet(){
   if(subMeta&&subMeta.style.display!=='none') abrirSubMeta();
   const subCDTs=document.getElementById('cuentas-sub-cdts');
   if(subCDTs&&subCDTs.style.display!=='none') abrirSubCDTs();
-}
-
-/* ---- CAJITA TOGGLE ---- */
-function toggleCDT(e, cajitaId, cdtId){
-  if(e&&e.stopPropagation)e.stopPropagation();
-  const box=document.getElementById('cajita-cdt-'+cajitaId+'-'+cdtId);
-  if(!box){
-    // Abrir body de la cajita si está colapsado
-    const wrap=document.getElementById('cajita-wrap-'+cajitaId);
-    if(wrap){
-      const body=wrap.querySelector('.cajita-body');
-      if(body&&body.style.display==='none'){body.style.display='block';wrap.classList.add('cajita-expanded');}
-    }
-    return;
-  }
-  // Si la cajita está colapsada, expandirla primero
-  const wrap=document.getElementById('cajita-wrap-'+cajitaId);
-  if(wrap){
-    const body=wrap.querySelector('.cajita-body');
-    if(body&&body.style.display==='none'){body.style.display='block';wrap.classList.add('cajita-expanded');}
-  }
-  const isOpen=box.style.display!=='none';
-  box.style.display=isOpen?'none':'block';
-}
-
-// Expande cajita y muestra todos sus CDTs (llamado desde el pill único en header)
-function _expandCajitaCDTs(cajitaId){
-  const wrap=document.getElementById("cajita-wrap-"+cajitaId);
-  if(!wrap)return;
-  const body=wrap.querySelector(".cajita-body");
-  const prefix="cajita-cdt-"+cajitaId+"-";
-  const allBoxes=wrap.querySelectorAll("[id]");
-  const cdtBoxes=[...allBoxes].filter(el=>el.id.startsWith(prefix));
-  // Toggle: si todos los CDTs están abiertos los cierra, si no los abre
-  const allOpen=cdtBoxes.length>0&&cdtBoxes.every(b=>b.style.display!=='none'&&b.style.display!=='');
-  if(allOpen){
-    cdtBoxes.forEach(box=>{ box.style.display='none'; });
-  } else {
-    if(body&&body.style.display==='none'){
-      body.style.display='block';
-      wrap.classList.remove('cajita-collapsed');
-      wrap.classList.add('cajita-expanded');
-      const btn=wrap.querySelector('.cajita-toggle-btn');
-      if(btn)btn.style.transform='rotate(180deg)';
-    }
-    cdtBoxes.forEach(box=>{ box.style.display='block'; });
-    if(cdtBoxes.length>0){
-      setTimeout(()=>{ cdtBoxes[0].scrollIntoView({behavior:'smooth',block:'nearest'}); },80);
-    }
-  }
-}
-
-function toggleCajita(e, id){
-  if(e&&e.stopPropagation)e.stopPropagation();
-  const wrap=document.getElementById('cajita-wrap-'+id);
-  if(!wrap)return;
-  const body=wrap.querySelector('.cajita-body');
-  const btn=wrap.querySelector('.cajita-toggle-btn');
-  const isOpen=wrap.classList.contains('cajita-expanded');
-  if(isOpen){
-    body.style.display='none';
-    wrap.classList.remove('cajita-expanded');
-    wrap.classList.add('cajita-collapsed');
-    if(btn)btn.style.transform='';
-  } else {
-    body.style.display='block';
-    wrap.classList.remove('cajita-collapsed');
-    wrap.classList.add('cajita-expanded');
-    if(btn)btn.style.transform='rotate(180deg)';
-  }
 }
 
 /* ───────────────────────────────────────────────────────────────

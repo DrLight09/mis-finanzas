@@ -219,6 +219,10 @@ function renderIconGrid(){
 }
 
 function abrirNuevaCuenta(){
+  // El sheet también sirve para editar una cuenta (editarCuentaCustom). Cerrarlo tocando el fondo no pasa por
+  // "Cancelar" (único que lo reiniciaba), así que se reinicia acá: si no, "Nueva cuenta" podía quedar en modo
+  // edición y guardar renombrando la cuenta anterior en vez de crear una.
+  _resetSheetNuevaCuenta();
   _ncIconoSel='otro';
   _ncColorSel='#888880';
   renderIconGrid();
@@ -1266,8 +1270,37 @@ async function deleteCajita(id){
 }
 
 let _cdtCajitaId=null;
+// Interruptor ÚNICO del sheet "crear-cdt": null = crear; con un id = editar ese CDT. El botón del sheet
+// tiene UN solo listener (confirmarSheetCDT) que mira esta variable. Antes el modo edición le sumaba un
+// segundo handler con `btn.onclick`, y al guardar corrían los dos: confirmarCrearCDT() (que exige saldo en la
+// cajita y, con saldo, creaba un CDT duplicado descontándolo) y guardarCDT().
+let _cdtEditId=null;
+
+// Pinta el sheet para crear (editando=false) o editar (true): título, texto, botón, y qué campos aplican.
+// En edición el capital NO se puede cambiar (la plata ya está en el CDT) y no tiene sentido mostrar el
+// saldo disponible ni "Invertir todo".
+function _cdtModoSheet(editando){
+  const set=(id,fn)=>{const el=document.getElementById(id);if(el)fn(el);};
+  set('cdtSheetTitle',e=>{e.textContent=editando?'Editar CDT':'Crear CDT en cajita';});
+  set('cdtDesc',e=>{e.textContent=editando
+    ?'El capital ya está invertido y no cambia. Puedes corregir la tasa, las fechas y la retención; el valor del CDT se recalcula.'
+    :'La plata sale de la cajita y queda bloqueada en el CDT hasta la fecha de vencimiento. Al vencer, regresa con los intereses generados.';});
+  set('cdtDisponibleBox',e=>{e.style.display=editando?'none':'';});
+  set('btn-cdt-invertir-todo',e=>{e.style.display=editando?'none':'';});
+  set('cdtMontoLabel',e=>{e.textContent=editando?'Capital invertido (no se puede cambiar)':'Monto a invertir (mín. $50.000)';});
+  set('cdt_monto',e=>{e.readOnly=editando;});
+  set('btn-confirmar-crear-cdt',e=>{e.textContent=editando?'Guardar cambios':'Crear CDT';});
+}
+
+function confirmarSheetCDT(){
+  if(_cdtEditId)guardarCDT(_cdtCajitaId,_cdtEditId);
+  else confirmarCrearCDT();
+}
+
 function abrirCrearCDT(cajitaId){
   _cdtCajitaId=cajitaId;
+  _cdtEditId=null;
+  _cdtModoSheet(false);
   const c=(S.cajitas||[]).find(x=>x.id===cajitaId);
   if(!c)return;
   const k=calcC(c);
@@ -1284,7 +1317,7 @@ function abrirCrearCDT(cajitaId){
     btnInv.onclick=function(){
       const saldo=calcC((S.cajitas||[]).find(x=>x.id===_cdtCajitaId)||{}).val||0;
       document.getElementById('cdt_monto').value=fmtInput(saldo);
-      document.getElementById('cdt_monto').dispatchEvent(new Event('input'));
+      document.getElementById('cdt_monto').dispatchEvent(new Event('input',{bubbles:true}));
     };
   }
   openSheet('crear-cdt');
@@ -1323,6 +1356,7 @@ function confirmarCrearCDT(){
   // Agregar CDT al array de CDTs de la cajita
   if(!c.cdts)c.cdts=[];
   c.cdts.push({id:uid(),monto:montoFinal,tasa,rte,inicio,vence});
+  _cdtEditId=null;
   save();
   closeSheet('crear-cdt');
   refresh();
@@ -1434,47 +1468,50 @@ async function editarCDT(cajitaId,cdtId){
   if(!c)return;
   const cdt=(c.cdts||[]).find(x=>x.id===cdtId);
   if(!cdt)return;
-  // Reutilizar el sheet de creación en modo edición
+  // Reutiliza el sheet de creación en modo edición (ver _cdtModoSheet): el botón no se re-cablea.
   _cdtCajitaId=cajitaId;
   _cdtEditId=cdtId;
-  document.getElementById('cdtCajitaSaldo').textContent=fmt(calcC(c).val+cdt.monto);
+  _cdtModoSheet(true);
   document.getElementById('cdt_monto').value=fmtInput(cdt.monto);
   document.getElementById('cdt_tasa').value=String(cdt.tasa).replace('.',',');
   document.getElementById('cdt_inicio').value=cdt.inicio||hoy();
   document.getElementById('cdt_vence').value=cdt.vence||'';
-  document.getElementById('cdt_rte').value=cdt.rte!=null?cdt.rte:'4';
-  // Cambiar botón confirmar para que guarde en modo edición
-  const btn=document.querySelector('#sheet-crear-cdt .btn-primary');
-  if(btn){ btn._origOnclick=btn.onclick; btn.textContent='Guardar cambios'; btn.onclick=()=>guardarCDT(cajitaId,cdtId); }
+  document.getElementById('cdt_rte').value=cdt.rte!=null?String(cdt.rte).replace('.',','):'4';
+  document.getElementById('cdt_preview').textContent='';
+  document.getElementById('cdt_tasa').dispatchEvent(new Event('input',{bubbles:true})); // preview con los valores actuales
   openSheet('crear-cdt');
-  toast('Edita los campos y presiona guardar','info');
 }
 
-let _cdtEditId=null;
-
+// Guarda los cambios de un CDT existente. SOLO toca tasa, fechas y retención: el capital (cdt.monto) y el
+// saldo de la cajita no se tocan, así que no depende del saldo disponible. Mismas reglas de campos que al
+// crear (confirmarCrearCDT): tasa > 0, RTE numérica entre 0 y 100, apertura no futura, vencimiento posterior.
 function guardarCDT(cajitaId,cdtId){
   const c=(S.cajitas||[]).find(x=>x.id===cajitaId);
-  if(!c)return;
+  if(!c){toast('Cajita no encontrada','err');return;}
   const cdt=(c.cdts||[]).find(x=>x.id===cdtId);
-  if(!cdt)return;
-  const nuevaTasa=parsePct(document.getElementById('cdt_tasa').value)||cdt.tasa;
-  const nuevoVence=document.getElementById('cdt_vence').value||cdt.vence;
-  const nuevoRte=parsePct(document.getElementById('cdt_rte').value);
-  if(isNaN(nuevaTasa)||nuevaTasa<=0){toast('Tasa inválida','err');return;}
+  if(!cdt){toast('Ese CDT ya no existe','err');return;}
+  const tasaRaw=(document.getElementById('cdt_tasa').value||'').trim();
+  const nuevaTasa=tasaRaw===''?cdt.tasa:parsePct(tasaRaw);
+  if(!(nuevaTasa>0)){toast('Tasa inválida','err');return;}
+  const rteRaw=(document.getElementById('cdt_rte').value||'').trim();
+  if(rteRaw!==''&&!/^\d+([.,]\d+)?$/.test(rteRaw)){toast('La retención (RTE) no es un número válido','err');return;}
+  const nuevoRte=rteRaw===''?(cdt.rte!=null?cdt.rte:4):parsePct(rteRaw);
+  if(nuevoRte>100){toast('La retención (RTE) no puede pasar de 100 %','err');return;}
+  const nuevoInicio=document.getElementById('cdt_inicio').value||cdt.inicio||hoy();
+  const nuevoVence=document.getElementById('cdt_vence').value;
+  if(_fechaSafe(nuevoInicio)>new Date()){toast('La fecha de apertura no puede ser futura','err');return;}
   if(!nuevoVence){toast('Fecha de vencimiento requerida','err');return;}
-  const nuevoInicio=document.getElementById('cdt_inicio').value||cdt.inicio;
+  if(_fechaSafe(nuevoVence)<=_fechaSafe(nuevoInicio)){toast('La fecha de vencimiento debe ser posterior a la apertura','err');return;}
   cdt.tasa=nuevaTasa;
-  cdt.inicio=nuevoInicio||cdt.inicio;
+  cdt.rte=nuevoRte;
+  cdt.inicio=nuevoInicio;
   cdt.vence=nuevoVence;
-  if(!isNaN(nuevoRte))cdt.rte=nuevoRte;
-  // Restaurar botón original
-  const btn=document.querySelector('#sheet-crear-cdt .btn-primary');
-  if(btn&&btn._origOnclick){ btn.onclick=btn._origOnclick; btn.textContent='Crear CDT'; delete btn._origOnclick; }
   _cdtEditId=null;
+  _cdtModoSheet(false);
   save();
   closeSheet('crear-cdt');
   refresh();
-  if(window.logCambio){const _ce=(S.cajitas||[]).find(x=>x.id===cajitaId);if(_ce)logCambio('Editaste CDT en "'+_ce.nombre+'"','Tasa o fechas modificadas',0,'editar',cajitaId);}
+  if(window.logCambio)logCambio('Editaste CDT en "'+c.nombre+'"','Tasa o fechas modificadas',0,'editar',cajitaId);
   toast('CDT actualizado','ok',3000);
 }
 
@@ -2898,7 +2935,8 @@ document.addEventListener('input',function(e){
   if(!['cdt_monto','cdt_tasa','cdt_vence','cdt_rte'].includes(e.target.id))return;
   const monto=parseMoney(document.getElementById('cdt_monto').value)||0;
   const tasa=parsePct(document.getElementById('cdt_tasa').value)||9.25;
-  const rte=(parsePct(document.getElementById('cdt_rte').value)||4)/100;
+  const rteTxt=(document.getElementById('cdt_rte').value||'').trim();
+  const rte=(rteTxt===''?4:(parsePct(rteTxt)||0))/100; // vacío = 4 (por defecto); 0 es válido
   const vence=document.getElementById('cdt_vence').value;
   const prev=document.getElementById('cdt_preview');
   if(!prev)return;
@@ -2912,7 +2950,7 @@ document.addEventListener('input',function(e){
     const retencionTotal=valorBruto-valorFinal;
     prev.textContent=`En ${dias}d recibirás ~${fmt(valorFinal)} neto (+${fmt(ganado)} · RTE ${(rte*100).toFixed(0)}%: -${fmt(retencionTotal)})`;
     prev.style.color='var(--accent)';
-  } else if(monto>0&&monto<50000){
+  } else if(monto>0&&monto<50000&&!_cdtEditId){
     prev.textContent='Mínimo $50.000 para el CDT';
     prev.style.color='var(--red)';
   } else {
@@ -2981,7 +3019,7 @@ if (btnCrearCuentaCustom) btnCrearCuentaCustom.onclick = crearCuentaCustom;
 
 // --- CDT ---
 const btnCDTConf = document.getElementById('btn-confirmar-crear-cdt');
-if (btnCDTConf) btnCDTConf.addEventListener('click', confirmarCrearCDT);
+if (btnCDTConf) btnCDTConf.addEventListener('click', confirmarSheetCDT); // crear o editar según _cdtEditId
 const btnCobrarConf = document.getElementById('btn-confirmar-cobrar-cdt');
 if (btnCobrarConf) btnCobrarConf.addEventListener('click', confirmarCobrarCDT);
 

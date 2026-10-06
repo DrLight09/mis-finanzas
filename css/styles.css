@@ -143,6 +143,8 @@ textarea{resize:none;height:60px;}
 .btn-red:active{box-shadow:none;}
 .btn-ghost{background:transparent;border:1.5px solid var(--border2);color:var(--text2);}
 .btn-ghost:active{background:rgba(255,255,255,.04);border-color:var(--border2);}
+/* Pestaña activa de Préstamos (Me deben / Yo debo): se combina con .btn; la inactiva usa .btn-ghost */
+.btn.btn-tab-activa{background:rgba(200,240,96,.12);border-color:rgba(200,240,96,.4);color:var(--accent);}
 .btn-ghost:not(.btn-sm){margin-top:8px;}
 .btn-sm{width:auto;padding:6px 12px;font-size:12px;}
 .btn-icon{background:none;border:none;cursor:pointer;color:var(--text3);padding:0;display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;transition:color .15s;}
@@ -190,21 +192,8 @@ textarea{resize:none;height:60px;}
 .action-card-label{font-size:14px;font-weight:600;}
 .action-card-sub{font-size:11px;color:var(--text2);}
 /* CAJITAS */
-.cajita{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:13px;margin-bottom:8px;}
-.cajita-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.cajita-name{background:transparent;border:none;font-size:13px;font-weight:500;color:var(--text);font-family:'DM Sans',sans-serif;flex:1;padding:0;outline:none;min-width:0;}
-.cajita-name::placeholder{color:var(--text3);}
 .cajita-val{font-size:17px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);}
-.cajita-grow{font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:3px;}
-.cajita-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
-.cajita-fields .ig{margin-bottom:0;}
 .cajita-limit-msg{font-size:10px;color:var(--text3);text-align:center;padding:8px 0 4px;font-family:'DM Mono',monospace;}
-/* CAJITA COLAPSABLE */
-.cajita-collapsed{padding:12px 13px;margin-bottom:8px;}
-.cajita-collapsed .cajita-body{display:none;}
-.cajita-expanded .cajita-body{display:block;}
-.cajita-toggle-btn{background:none;border:none;cursor:pointer;color:var(--text3);padding:0;display:flex;align-items:center;transition:transform .2s;}
-.cajita-expanded .cajita-toggle-btn{transform:rotate(180deg);}
 
 /* META DE AHORRO inline dentro de cajita */
 .cajita-meta-box{margin-top:10px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.22);border-radius:9px;padding:11px 12px;}
@@ -226,12 +215,6 @@ textarea{resize:none;height:60px;}
 .prest-split-row select{flex:1;}
 .prest-split-row input{width:110px;flex-shrink:0;}
 .prest-split-del{background:none;border:none;cursor:pointer;color:var(--text3);padding:4px;min-width:30px;min-height:30px;display:flex;align-items:center;justify-content:center;}
-/* CDT inline dentro de cajita */
-.cajita-cdt-box{margin-top:11px;background:rgba(176,144,240,.07);border:1px solid rgba(176,144,240,.3);border-radius:9px;padding:11px 12px;}
-.cajita-cdt-locked{display:flex;align-items:center;gap:7px;margin-bottom:8px;}
-.cajita-cdt-locked svg{flex-shrink:0;}
-.cajita-cdt-val{font-size:15px;font-weight:500;font-family:'DM Mono',monospace;color:var(--purple);}
-.cajita-cdt-meta{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;}
 /* GASTOS */
 .gasto-item{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 15px;margin-bottom:7px;}
 .gasto-item-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;}
@@ -413,18 +396,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
 .cuenta-action-btn:active { opacity:.75; }
 .cuenta-action-btn svg { flex-shrink:0;width:13px;height:13px; }
 
-/* 3. Cajitas colapsables */
-.cajita { background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);margin-bottom:8px;overflow:hidden;transition:border-color .2s; }
-.cajita-header { display:flex;align-items:center;justify-content:space-between;padding:14px 13px;cursor:pointer;min-height:52px; }
-.cajita-header-left { display:flex;flex-direction:column;gap:3px;flex:1;min-width:0; }
-.cajita-header-right { display:flex;align-items:center;gap:10px;flex-shrink:0; }
-.cajita-chevron { transition:transform .25s;color:var(--text3); }
-.cajita.expanded .cajita-chevron { transform:rotate(180deg); }
-.cajita-body { display:none;padding:0 13px 13px;border-top:1px solid var(--border); }
-.cajita.expanded .cajita-body { display:block; }
-/* Cajita name editable indicator */
-.cajita-name { background:transparent;border:none;border-bottom:1px dashed var(--border2);font-size:13px;font-weight:500;color:var(--text);font-family:'DM Sans',sans-serif;flex:1;padding:0 0 1px;outline:none;min-width:0;transition:border-color .2s; }
-.cajita-name:focus { border-bottom-color:var(--accent); }
 
 /* 4. Gastos fijos: barra de progreso */
 .fijos-progress-card { background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px; }
@@ -479,9 +450,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
 /* Cards con hover sutil */
 .card, .stat, .gasto-item { transition: border-color .2s; }
 
-/* Cajita header más robusto */
-.cajita-header { padding:15px 14px; }
-.cajita-body { padding:0 14px 14px; }
 
 /* Btn add money más cómodo */
 .add-money-btn { min-height:46px; font-size:13px; padding:11px 16px; }

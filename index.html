@@ -4787,12 +4787,12 @@
     <div class="overlay" id="sheet-crear-cdt" data-sheet-id="crear-cdt">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title">Crear CDT en cajita</div>
+        <div class="sheet-title" id="cdtSheetTitle">Crear CDT en cajita</div>
         <p style="font-size:12px;color:var(--text2);margin-bottom:14px;"
           id="cdtDesc">La plata sale de la cajita y queda bloqueada en el CDT
           hasta la fecha de vencimiento. Al vencer, regresa con los intereses
           generados.</p>
-        <div
+        <div id="cdtDisponibleBox"
           style="background:rgba(176,144,240,.08);border:1px solid rgba(176,144,240,.3);border-radius:9px;padding:11px 13px;margin-bottom:14px;">
           <div
             style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:3px;">Disponible
@@ -4804,7 +4804,7 @@
         <div class="ig">
           <div
             style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-            <label class="il" for="cdt_monto" style="margin-bottom:0;">Monto a
+            <label class="il" for="cdt_monto" id="cdtMontoLabel" style="margin-bottom:0;">Monto a
               invertir (mín. $50.000)</label>
             <button type="button" id="btn-cdt-invertir-todo"
               style="font-size:10px;font-family:'DM Mono',monospace;padding:3px 9px;border-radius:20px;background:rgba(176,144,240,.15);border:1px solid rgba(176,144,240,.4);color:var(--purple);cursor:pointer;white-space:nowrap;font-weight:600;line-height:1.4;">

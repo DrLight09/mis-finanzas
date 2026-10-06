@@ -213,8 +213,8 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
     }
   });
   if (!filas.length) { el.innerHTML = ''; return; }
-  const colorMap = { nequi: '#ff4da6', efectivo: 'var(--amber)' };
-  let color = colorMap[tipoCuenta] || 'var(--blue)';
+  // Color de Nequi/Efectivo: de CUENTAS_FIJAS (core-state.js), no repetido acá.
+  let color = (tipoCuenta === 'nequi' || tipoCuenta === 'efectivo') ? getCuentaFija(tipoCuenta).color : 'var(--blue)';
   if (tipoCuenta.startsWith('custom:')) {
     const cId = tipoCuenta.split(':')[1];
     const cc = getCuentaCustom(cId);

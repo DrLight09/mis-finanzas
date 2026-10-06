@@ -759,14 +759,7 @@ window.renderAlcancia = function(){
           const color = tipoColor[m.tipo] || 'var(--accent)';
           const label = m.tipoLabel || (m.fuenteOrigen ? 'Propio' : 'Externo');
           const fmtFuente = m.fuenteOrigen
-            ? (() => {
-                const f = m.fuenteOrigen;
-                if(f === 'nequi') return 'Nequi';
-                if(f === 'efectivo') return 'Efectivo';
-                if(f.startsWith('cajita:')){ const id=f.split(':')[1]; const c=(window.S&&window.S.cajitas||[]).find(x=>x.id===id); return c?c.nombre:'Cajita'; }
-                if(f.startsWith('custom:')){ const id=f.split(':')[1]; const c=getCuentaCustom(id); return c?c.nombre:'Cuenta'; }
-                return f;
-              })()
+            ? _alcNombreFuente(m.fuenteOrigen) // misma resolución de nombre que el resto del módulo
             : (m.tipo === 'cobro-deuda' && m._prestamoDeudorId
                 ? (() => { const dd=Deudas.lista('favor').find(x=>x.id===m._prestamoDeudorId); return dd?dd.nombre:null; })()
                 : null);

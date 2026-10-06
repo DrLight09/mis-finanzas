@@ -118,11 +118,7 @@ function _prestAddSplitRow(){ splitAgregarRow('prest'); }
 function _getPrestSplitFuentesOptions(selectedVal) {
   // Solo cuentas con saldo >= $1,00: de una cuenta vacía no puede salir el préstamo
   // (FuentesFiltro, js/core/fuentes-filtro.js). "Sin especificar" y "Ganancia" no se filtran.
-  const fuentes = FuentesFiltro.filtrar(getFuentesSinTC(), FuentesFiltro.PRESET.SALIDA);
-  let out = '<option value="">Sin especificar</option>';
-  for (const f of fuentes) {
-    out += `<option value="${f.val}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`;
-  }
+  let out = FuentesFiltro.optsHtml(getFuentesSinTC(), { ...FuentesFiltro.PRESET.SALIDA, selectedVal });
   out += `<option value="ganancia"${selectedVal==='ganancia'?' selected':''}><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>`;
   return out;
 }
@@ -1979,12 +1975,8 @@ let _mdSplitMode = false;
 function _getMdSplitFuentesOptions(selectedVal) {
   // 'recibido' = plata que entra: sin tarjetas (nunca son destino) y sin filtrar por saldo.
   // 'pago' = plata que sale: cuentas con saldo >= $1,00 y tarjetas con cupo disponible.
-  const fuentes = _mdMovTipo === 'recibido' ? getFuentesSinTC() : FuentesFiltro.filtrar(getFuentes(), FuentesFiltro.PRESET.SALIDA);
-  let out = '<option value="">Elige cuenta</option>';
-  for (const f of fuentes) {
-    out += `<option value="${f.val}"${f.val === selectedVal ? ' selected' : ''}>${escHtml(f.label)}</option>`;
-  }
-  return out;
+  if (_mdMovTipo === 'recibido') return buildFuentesOptsHtml({ selectedVal, placeholder: 'Elige cuenta', incluirTC: false });
+  return FuentesFiltro.optsHtml(getFuentes(), { ...FuentesFiltro.PRESET.SALIDA, selectedVal, placeholder: 'Elige cuenta' });
 }
 
 crearSplitWidget('mdSplit', {
@@ -2069,8 +2061,9 @@ function abrirMovMiDeuda(tipo) {
   const sel = _mdEl('md_cuenta');
   // 'recibido' = plata que entra (sin tarjetas ni filtro de saldo); 'pago' = plata que sale: cuentas con
   // saldo >= $1,00 y tarjetas de crédito con cupo disponible (el pago queda como deuda de la tarjeta).
-  const fuentes = tipo === 'recibido' ? getFuentesSinTC() : FuentesFiltro.filtrar(getFuentes(), FuentesFiltro.PRESET.SALIDA);
-  sel.innerHTML = html`<option value>Sin especificar</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
+  sel.innerHTML = tipo === 'recibido'
+    ? buildFuentesOptsHtml({ incluirTC: false })
+    : FuentesFiltro.optsHtml(getFuentes(), FuentesFiltro.PRESET.SALIDA);
   _mdEl('md_monto').value = '';
   _mdEl('md_fecha').value = hoy();
   _mdEl('md_nota').value = '';

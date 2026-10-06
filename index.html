@@ -1050,16 +1050,12 @@
                     points="15 18 9 12 15 6" /></svg>
               </button>
               <div class="detail-header-title" id="det-nu-nombre"
-                style="color:var(--nu-light);flex:1;min-width:0;">Nu</div>
+                style="color:var(--cuenta);flex:1;min-width:0;">Nu</div>
             </div>
             <!-- Saldo hero Nu -->
-            <div
-              style="background:linear-gradient(135deg,rgba(192,96,240,.15),rgba(192,96,240,.04));border:1px solid rgba(192,96,240,.3);border-radius:var(--radius);padding:20px;margin-bottom:10px;">
-              <div
-                style="font-size:10px;color:var(--nu-light);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;">Total
-                Nu</div>
-              <div
-                style="font-size:36px;font-weight:300;letter-spacing:-1px;font-family:'DM Mono',monospace;color:var(--nu-light);margin:6px 0 6px;"
+            <div class="cuenta-hero">
+              <div class="cuenta-hero-label" id="det-nu-label">Total Nu</div>
+              <div class="cuenta-hero-saldo" style="margin-bottom:6px;"
                 id="nuTotalDisp">$0</div>
               <div style="font-size:11px;color:var(--text3);"
                 id="nuTotalIntereses"></div>
@@ -1067,10 +1063,10 @@
                 aria-label="Tasa EA Nu">
               <!-- Tasa global para todas las cajitas -->
               <div
-                style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(192,96,240,.2);display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(var(--cuenta-rgb),.2);display:flex;align-items:center;justify-content:space-between;gap:12px;">
                 <div>
                   <div
-                    style="font-size:10px;color:var(--nu-light);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;">Tasa
+                    style="font-size:10px;color:var(--cuenta);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;">Tasa
                     EA % (aplica a todas las cajitas)</div>
                   <div
                     style="font-size:10px;color:var(--text3);margin-top:2px;font-family:'DM Mono',monospace;">Crece
@@ -1079,37 +1075,34 @@
                 <div style="display:flex;align-items:center;gap:7px;">
                   <input type="text" inputmode="decimal" id="nuTasaGlobal"
                     value placeholder="9,25"
-                    style="width:70px;padding:7px 10px;background:rgba(0,0,0,.35);border:1px solid rgba(192,96,240,.4);border-radius:8px;color:var(--nu-light);font-size:14px;font-weight:500;font-family:'DM Mono',monospace;outline:none;text-align:center;">
+                    style="width:70px;padding:7px 10px;background:rgba(0,0,0,.35);border:1px solid rgba(var(--cuenta-rgb),.4);border-radius:8px;color:var(--cuenta);font-size:14px;font-weight:500;font-family:'DM Mono',monospace;outline:none;text-align:center;">
                   <span
-                    style="font-size:12px;color:var(--nu-light);font-family:'DM Mono',monospace;">%</span>
+                    style="font-size:12px;color:var(--cuenta);font-family:'DM Mono',monospace;">%</span>
                 </div>
               </div>
               <div id="nuTasaHistorialTag"
                 style="font-size:10px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace;"></div>
               <button type="button" data-action="cuentas:openSheet" data-args="[&quot;chequeo-nu&quot;]"
-                style="margin-top:8px;width:100%;background:rgba(192,96,240,.15);border:1px solid rgba(192,96,240,.4);color:var(--nu-light);font-size:11px;font-weight:600;padding:8px;border-radius:8px;cursor:pointer;">Chequeo
+                style="margin-top:8px;width:100%;background:rgba(var(--cuenta-rgb),.15);border:1px solid rgba(var(--cuenta-rgb),.4);color:var(--cuenta);font-size:11px;font-weight:600;padding:8px;border-radius:8px;cursor:pointer;">Chequeo
                 rápido de cajitas</button>
             </div>
             <!-- Botones entrada/salida Nu -->
             <div class="cuenta-actions" style="margin-bottom:14px;">
-              <button type="button" class="cuenta-action-btn" id="btn-nu-entro"
-                style="background:rgba(192,96,240,.12);border-color:rgba(192,96,240,.35);color:var(--nu-light);">
+              <button type="button" class="cuenta-action-btn cuenta-action-btn--cuenta" id="btn-nu-entro">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><line x1="12" y1="5" x2="12"
                     y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 <span class="cuenta-action-btn-label">Entró plata</span>
               </button>
-              <button type="button" class="cuenta-action-btn" id="btn-nu-salio"
-                style="background:rgba(240,104,104,.08);border-color:rgba(240,104,104,.3);color:var(--red);">
+              <button type="button" class="cuenta-action-btn cuenta-action-btn--rojo" id="btn-nu-salio">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><line x1="5" y1="12" x2="19"
                     y2="12" /></svg>
                 <span class="cuenta-action-btn-label">Salió plata</span>
               </button>
-              <button type="button" class="cuenta-action-btn"
-                style="background:rgba(96,176,240,.08);border-color:rgba(96,176,240,.3);color:var(--blue);"
+              <button type="button" class="cuenta-action-btn cuenta-action-btn--azul"
                 id="btn-transferir-nu-det"
                   data-action="cuentas:abrirTransferir">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"

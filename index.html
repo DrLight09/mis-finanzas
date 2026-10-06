@@ -1146,7 +1146,7 @@
                     points="15 18 9 12 15 6" /></svg>
               </button>
               <div class="detail-header-title" id="cajita-det-nombre"
-                style="color:var(--nu-light);">Cajita</div>
+                style="color:var(--cuenta);">Cajita</div>
               <button type="button" class="btn-icon detail-header-action"
                 id="cajita-det-delete-btn" data-action="cuentas:cajitaDetDelete"
                 style="color:var(--text3);" aria-label="Eliminar cajita">
@@ -1158,25 +1158,21 @@
               </button>
             </div>
             <!-- Hero saldo cajita -->
-            <div
-              style="background:linear-gradient(135deg,rgba(192,96,240,.15),rgba(192,96,240,.04));border:1px solid rgba(192,96,240,.3);border-radius:var(--radius);padding:20px;margin-bottom:10px;">
-              <div
-                style="font-size:10px;color:var(--nu-light);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;"
-                id="cajita-det-label">Disponible</div>
-              <div
-                style="font-size:36px;font-weight:300;letter-spacing:-1px;font-family:'DM Mono',monospace;color:var(--nu-light);margin:6px 0 4px;"
+            <div class="cuenta-hero">
+              <div class="cuenta-hero-label" id="cajita-det-label">Disponible</div>
+              <div class="cuenta-hero-saldo" style="margin-bottom:4px;"
                 id="cajita-det-saldo">$0</div>
               <div
                 style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"
                 id="cajita-det-interes"></div>
               <!-- Nombre editable -->
               <div
-                style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(192,96,240,.2);">
+                style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(var(--cuenta-rgb),.2);">
                 <div
-                  style="font-size:10px;color:var(--nu-light);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:6px;">Nombre
+                  style="font-size:10px;color:var(--cuenta);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:6px;">Nombre
                   de la cajita</div>
                 <input type="text" id="cajita-det-name-input" maxlength="30"
-                  style="width:100%;padding:9px 12px;background:rgba(0,0,0,.3);border:1px solid rgba(192,96,240,.35);border-radius:8px;color:var(--nu-light);font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;outline:none;">
+                  style="width:100%;padding:9px 12px;background:rgba(0,0,0,.3);border:1px solid rgba(var(--cuenta-rgb),.35);border-radius:8px;color:var(--cuenta);font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;outline:none;">
               </div>
             </div>
             <!-- Acciones -->
@@ -1190,8 +1186,7 @@
                     y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 <span class="cuenta-action-btn-label">Agregar</span>
               </button>
-              <button type="button" class="cuenta-action-btn"
-                style="background:rgba(240,104,104,.08);border-color:rgba(240,104,104,.3);color:var(--red);"
+              <button type="button" class="cuenta-action-btn cuenta-action-btn--rojo"
                 id="cajita-det-retirar">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
@@ -1199,8 +1194,7 @@
                     y2="12" /></svg>
                 <span class="cuenta-action-btn-label">Retirar</span>
               </button>
-              <button type="button" class="cuenta-action-btn"
-                style="background:rgba(96,176,240,.08);border-color:rgba(96,176,240,.3);color:var(--blue);"
+              <button type="button" class="cuenta-action-btn cuenta-action-btn--azul"
                 id="cajita-det-mover">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"

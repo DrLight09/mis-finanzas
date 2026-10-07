@@ -9,6 +9,14 @@ const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR
 const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR
   || path.join(__dirname, '..', 'js', 'modules');
 
+// Saldos en el modelo actual: S.cuentas[] (Nequi y Efectivo fijos + personalizadas). Antes estos tests
+// cargaban los campos viejos de saldo y migrarCuentasLegacy() los convertía; esa migración ya no existe.
+const cuentas = ({ nequi = 0, efectivo = 0, custom = [] } = {}) => [
+  { id: 'nequi', tipo: 'nequi', saldo: nequi },
+  { id: 'efectivo', tipo: 'efectivo', saldo: efectivo },
+  ...custom,
+];
+
 function currentMonthKey() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
@@ -40,7 +48,7 @@ test('calcHealthScore — sin datos reales (todo en 0), score base 50 y tip de "
 test('calcHealthScore — 6+ meses de reserva líquida suma +20, sin tip de alerta', () => {
   const mes = currentMonthKey();
   const ctx = freshApp({
-    nequiSaldo: 6000000, // 6 meses de 1M de gastos
+    cuentas: cuentas({ nequi: 6000000 }), // 6 meses de 1M de gastos
     gastosFijos: [{ id: 'g1', monto: 1000000 }],
     pagosGastosFijos: { ['g1_' + mes]: true },
   });
@@ -52,7 +60,7 @@ test('calcHealthScore — 6+ meses de reserva líquida suma +20, sin tip de aler
 test('calcHealthScore — menos de 3 meses de reserva resta puntos y avisa', () => {
   const mes = currentMonthKey();
   const ctx = freshApp({
-    nequiSaldo: 500000, // 0.5 meses de 1M
+    cuentas: cuentas({ nequi: 500000 }), // 0.5 meses de 1M
     gastosFijos: [{ id: 'g1', monto: 1000000 }],
     pagosGastosFijos: { ['g1_' + mes]: true },
   });
@@ -62,7 +70,7 @@ test('calcHealthScore — menos de 3 meses de reserva resta puntos y avisa', () 
 
 test('calcHealthScore — liquidez negativa (deuda TC > patrimonio líquido) penaliza -15', () => {
   const ctx = freshApp({
-    nequiSaldo: 100000,
+    cuentas: cuentas({ nequi: 100000 }),
     tarjetasCredito: [{ id: 'tc1', deuda: 300000, cupo: 1000000 }],
     gastosFijos: [{ id: 'g1', monto: 50000 }],
     pagosGastosFijos: { ['g1_' + currentMonthKey()]: true },
@@ -82,7 +90,7 @@ test('calcHealthScore — deuda TC alta y patrimonio que no la cubre (rama sin i
 test('calcHealthScore — gastando más de lo que ingresa este mes avisa', () => {
   const mes = currentMonthKey();
   const ctx = freshApp({
-    nequiSaldo: 2000000,
+    cuentas: cuentas({ nequi: 2000000 }),
     ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 1000000, desde: '2020-01' }],
     gastosFijos: [{ id: 'g1', monto: 1500000 }],
     pagosGastosFijos: { ['g1_' + mes]: true },
@@ -104,7 +112,7 @@ test('calcHealthScore — score nunca baja de 0 ni sube de 100 (clamp), caso ext
 
 test('calcHealthScore — CDT activo con liquidez sana suma el bonus completo (+10)', () => {
   const ctx = freshApp({
-    nequiSaldo: 100000,
+    cuentas: cuentas({ nequi: 100000 }),
     cajitas: [{ id: 'nu1', saldo: 500000, cdts: [{ monto: 1000000, tasa: 9 }] }],
   });
   const r = ctx.calcHealthScore();

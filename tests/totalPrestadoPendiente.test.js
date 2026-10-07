@@ -20,6 +20,14 @@ const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR
 // ANTES, igual que en index.html (core-state.js → calc-helpers.js → ... →
 // prestado.js lazy). Sin él, en modo permissive la función cae al no-op
 // fantasma y totalPrestadoPendiente() da 0 en silencio.
+// Saldos en el modelo actual: S.cuentas[] (Nequi y Efectivo fijos + personalizadas). Antes estos tests
+// cargaban los campos viejos de saldo y migrarCuentasLegacy() los convertía; esa migración ya no existe.
+const cuentas = ({ nequi = 0, efectivo = 0, custom = [] } = {}) => [
+  { id: 'nequi', tipo: 'nequi', saldo: nequi },
+  { id: 'efectivo', tipo: 'efectivo', saldo: efectivo },
+  ...custom,
+];
+
 function freshApp(sOverrides = {}) {
   const ctx = loadApp([
     path.join(CORE_DIR, 'core-state.js'),
@@ -98,7 +106,7 @@ test('totalMisDeudasPendiente — simétrico a totalPrestadoPendiente pero con S
 
 test('calcPatrimonioTotal — con prestado.js real cargado, la plata prestada SÍ suma al patrimonio', () => {
   const ctx = freshApp({
-    nequiSaldo: 100000,
+    cuentas: cuentas({ nequi: 100000 }),
     deudores: [{ nombre: 'Hermanito', movimientos: [{ tipo: 'prestamo', monto: 630000 }] }],
   });
   // Sin prestado.js (guard) esto daba 100000 — ver calcPatrimonioTotal.test.js.
@@ -108,7 +116,7 @@ test('calcPatrimonioTotal — con prestado.js real cargado, la plata prestada S�
 
 test('calcPatrimonioTotal — con prestado.js real cargado, misDeudas SÍ resta del patrimonio', () => {
   const ctx = freshApp({
-    nequiSaldo: 500000,
+    cuentas: cuentas({ nequi: 500000 }),
     misDeudas: [{ nombre: 'Le debo a papá', movimientos: [{ tipo: 'recibido', monto: 200000 }] }],
   });
   assert.equal(ctx.calcPatrimonioTotal(), 300000);

@@ -8,6 +8,14 @@ const { loadApp } = require('./support/load-app');
 const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR
   || path.join(__dirname, '..', 'js', 'core');
 
+// Saldos en el modelo actual: S.cuentas[] (Nequi y Efectivo fijos + personalizadas). Antes estos tests
+// cargaban los campos viejos de saldo y migrarCuentasLegacy() los convertía; esa migración ya no existe.
+const cuentas = ({ nequi = 0, efectivo = 0, custom = [] } = {}) => [
+  { id: 'nequi', tipo: 'nequi', saldo: nequi },
+  { id: 'efectivo', tipo: 'efectivo', saldo: efectivo },
+  ...custom,
+];
+
 function freshApp(sOverrides = {}) {
   const ctx = loadApp([path.join(CORE_DIR, 'core-state.js')]);
   Object.assign(ctx.S, sOverrides);
@@ -21,16 +29,14 @@ test('calcPatrimonioTotal — S vacío (recién abierta la app) da 0', () => {
 
 test('calcPatrimonioTotal — suma Nequi + Efectivo + cuentas personalizadas', () => {
   const ctx = freshApp({
-    nequiSaldo: 100000,
-    efectivoSaldo: 50000,
-    cuentasPersonalizadas: [{ id: 'c1', saldo: 200000 }],
+    cuentas: cuentas({ nequi: 100000, efectivo: 50000, custom: [{ id: 'c1', tipo: 'custom', nombre: 'C1', saldo: 200000, movimientos: [] }] }),
   });
   assert.equal(ctx.calcPatrimonioTotal(), 350000);
 });
 
 test('calcPatrimonioTotal — resta la deuda de tarjetas de crédito', () => {
   const ctx = freshApp({
-    nequiSaldo: 500000,
+    cuentas: cuentas({ nequi: 500000 }),
     tarjetasCredito: [{ id: 'tc1', deuda: 150000, cupo: 1000000 }],
   });
   assert.equal(ctx.calcPatrimonioTotal(), 350000);
@@ -38,7 +44,7 @@ test('calcPatrimonioTotal — resta la deuda de tarjetas de crédito', () => {
 
 test('calcPatrimonioTotal — puede dar negativo (deuda de TC mayor a todo lo demás)', () => {
   const ctx = freshApp({
-    nequiSaldo: 50000,
+    cuentas: cuentas({ nequi: 50000 }),
     tarjetasCredito: [{ id: 'tc1', deuda: 500000, cupo: 1000000 }],
   });
   assert.equal(ctx.calcPatrimonioTotal(), -450000);
@@ -51,7 +57,7 @@ test('calcPatrimonioTotal — alcancía suma su saldoRegistrado', () => {
 
 test('calcPatrimonioTotal — plata comprometida ajena (recibida, sin pagar) se resta', () => {
   const ctx = freshApp({
-    nequiSaldo: 200000,
+    cuentas: cuentas({ nequi: 200000 }),
     plataCometida: [{
       recibido: true,
       destinos: [
@@ -64,7 +70,7 @@ test('calcPatrimonioTotal — plata comprometida ajena (recibida, sin pagar) se 
 
 test('calcPatrimonioTotal — plata comprometida ajena YA PAGADA no se resta', () => {
   const ctx = freshApp({
-    nequiSaldo: 200000,
+    cuentas: cuentas({ nequi: 200000 }),
     plataCometida: [{
       recibido: true,
       destinos: [
@@ -87,7 +93,7 @@ test('calcPatrimonioTotal — GUARD: plata prestada (S.deudores) sin calc-helper
   // `Deudas` vive en calc-helpers.js (no cargado acá, solo core-state.js).
   // El guard typeof debe devolver 0, nunca sumar el saldo crudo.
   const ctx = freshApp({
-    nequiSaldo: 100000,
+    cuentas: cuentas({ nequi: 100000 }),
     deudores: [{ id: 'd1', nombre: 'Hermanito', saldo: 630000 }],
   });
   assert.equal(ctx.calcPatrimonioTotal(), 100000);
@@ -95,6 +101,6 @@ test('calcPatrimonioTotal — GUARD: plata prestada (S.deudores) sin calc-helper
 
 test('calcPatrimonioTotal — GUARD: misDeudas sin calc-helpers.js cargado no resta nada', () => {
   // Mismo guard: sin `Deudas` cargado no se resta nada.
-  const ctx = freshApp({ nequiSaldo: 100000, misDeudas: [{ id: 'm1', saldo: 999999 }] });
+  const ctx = freshApp({ cuentas: cuentas({ nequi: 100000 }), misDeudas: [{ id: 'm1', saldo: 999999 }] });
   assert.equal(ctx.calcPatrimonioTotal(), 100000);
 });

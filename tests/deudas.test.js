@@ -10,6 +10,14 @@ const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR
 // `Deudas` (capa de acceso a "Me deben"/"Yo debo") vive en calc-helpers.js. Es un `const` de
 // nivel superior, así que no se ve como propiedad del contexto: se prueba por las funciones que
 // la envuelven (getDeudorSaldo, totalPrestadoPendiente, calcPatrimonioTotal...), que es lo que usa el resto de la app.
+// Saldos en el modelo actual: S.cuentas[] (Nequi y Efectivo fijos + personalizadas). Antes estos tests
+// cargaban los campos viejos de saldo y migrarCuentasLegacy() los convertía; esa migración ya no existe.
+const cuentas = ({ nequi = 0, efectivo = 0, custom = [] } = {}) => [
+  { id: 'nequi', tipo: 'nequi', saldo: nequi },
+  { id: 'efectivo', tipo: 'efectivo', saldo: efectivo },
+  ...custom,
+];
+
 function freshApp(sOverrides = {}) {
   const ctx = loadApp([
     path.join(CORE_DIR, 'core-state.js'),
@@ -45,7 +53,7 @@ test('Deudas — totales por dirección ignoran los saldos en 0 o negativos', ()
 
 test('Deudas — el patrimonio suma lo que te deben y resta lo que debes, con la misma definición de saldo que la pantalla', () => {
   const ctx = freshApp({
-    nequiSaldo: 100000,
+    cuentas: cuentas({ nequi: 100000 }),
     deudores: [{ id: 'a', movimientos: [{ tipo: 'prestamo', monto: 300000 }, { tipo: 'abono', monto: 100000 }] }],
     misDeudas: [{ id: 'b', movimientos: [{ tipo: 'recibido', monto: 50000 }] }],
   });

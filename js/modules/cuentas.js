@@ -1323,24 +1323,45 @@ function abrirCrearCDT(cajitaId){
   openSheet('crear-cdt');
 }
 
+// Reglas de los campos de un CDT (tasa, retención, fechas): UNA sola vez, para crear (confirmarCrearCDT) y
+// para editar (guardarCDT). Pura: no lee el DOM ni muestra avisos; recibe los textos del formulario.
+//  · tasa:   vacía → tasaDefecto; si no, un número > 0 (lo que lea parsePct).
+//  · rte:    vacía → rteDefecto; si no, número 0–100 con punto o coma (0 es válido; texto o negativo se rechaza).
+//  · inicio: vacío → inicioDefecto; no puede ser futuro.
+//  · vence:  obligatoria y posterior a la apertura.
+// Devuelve {ok:true, tasa, rte, inicio, vence} o {ok:false, mensaje}. `ahora` solo existe para poder probarla.
+function validarCamposCDT(o,ahora){
+  const err=mensaje=>({ok:false,mensaje});
+  const txt=v=>(v==null?'':String(v)).trim();
+  const tasaRaw=txt(o.tasa);
+  const tasa=tasaRaw===''?o.tasaDefecto:parsePct(tasaRaw);
+  if(!(tasa>0))return err('La tasa (EA) debe ser un número mayor que 0');
+  const rteRaw=txt(o.rte);
+  if(rteRaw!==''&&!/^\d+([.,]\d+)?$/.test(rteRaw))return err('La retención (RTE) no es un número válido');
+  const rte=rteRaw===''?o.rteDefecto:parsePct(rteRaw);
+  if(rte>100)return err('La retención (RTE) no puede pasar de 100 %');
+  const inicio=o.inicio||o.inicioDefecto;
+  const vence=o.vence;
+  if(_fechaSafe(inicio)>(ahora||new Date()))return err('La fecha de apertura no puede ser futura');
+  if(!vence)return err('Debes definir la fecha de vencimiento');
+  if(_fechaSafe(vence)<=_fechaSafe(inicio))return err('La fecha de vencimiento debe ser posterior a la apertura');
+  return{ok:true,tasa,rte,inicio,vence};
+}
+
 function confirmarCrearCDT(){
   const c=(S.cajitas||[]).find(x=>x.id===_cdtCajitaId);
   if(!c){toast('Cajita no encontrada','err');return;}
   const monto=parseMoney(document.getElementById('cdt_monto').value)||0;
-  const tasa=parsePct(document.getElementById('cdt_tasa').value)||9.25;
-  // RTE: vacío = 4 (el valor por defecto del formulario); 0 es válido (la edición, guardarCDT(), ya lo
-  // aceptaba; antes la creación lo convertía en 4 en silencio con `||4`). Texto no numérico o fuera de
-  // 0–100 se rechaza en vez de leerse como 0.
-  const rteRaw=(document.getElementById('cdt_rte').value||'').trim();
-  if(rteRaw!==''&&!/^\d+([.,]\d+)?$/.test(rteRaw)){toast('La retención (RTE) no es un número válido','err');return;}
-  const rte=rteRaw===''?4:parsePct(rteRaw);
-  if(rte>100){toast('La retención (RTE) no puede pasar de 100 %','err');return;}
-  const inicio=document.getElementById('cdt_inicio').value||hoy();
-  const vence=document.getElementById('cdt_vence').value;
+  // Tasa, RTE y fechas: validarCamposCDT (mismas reglas que al editar). Vacío = tasa 9,25 y RTE 4 (valores por
+  // defecto del formulario); la RTE 0 es válida.
+  const v=validarCamposCDT({
+    tasa:document.getElementById('cdt_tasa').value, rte:document.getElementById('cdt_rte').value,
+    inicio:document.getElementById('cdt_inicio').value, vence:document.getElementById('cdt_vence').value,
+    tasaDefecto:9.25, rteDefecto:4, inicioDefecto:hoy()
+  });
+  if(!v.ok){toast(v.mensaje,'err');return;}
+  const {tasa,rte,inicio,vence}=v;
   if(monto<50000){toast('El monto mínimo para un CDT es $50.000','err');return;}
-  if(_fechaSafe(inicio)>new Date()){toast('La fecha de apertura no puede ser futura','err');return;}
-  if(!vence){toast('Debes definir la fecha de vencimiento','err');return;}
-  if(_fechaSafe(vence)<=_fechaSafe(inicio)){toast('La fecha de vencimiento debe ser posterior a la apertura','err');return;}
   // Calcular saldo real incluyendo intereses sub-día (lo mismo que muestra el modal)
   const saldoReal=calcC(c).val;
   // Tolerancia de 1 centavo: fmtInput() redondea el saldo mostrado (p.ej. al usar
@@ -1483,29 +1504,23 @@ async function editarCDT(cajitaId,cdtId){
 }
 
 // Guarda los cambios de un CDT existente. SOLO toca tasa, fechas y retención: el capital (cdt.monto) y el
-// saldo de la cajita no se tocan, así que no depende del saldo disponible. Mismas reglas de campos que al
-// crear (confirmarCrearCDT): tasa > 0, RTE numérica entre 0 y 100, apertura no futura, vencimiento posterior.
+// saldo de la cajita no se tocan, así que no depende del saldo disponible. Los campos se validan con
+// validarCamposCDT, igual que al crear.
 function guardarCDT(cajitaId,cdtId){
   const c=(S.cajitas||[]).find(x=>x.id===cajitaId);
   if(!c){toast('Cajita no encontrada','err');return;}
   const cdt=(c.cdts||[]).find(x=>x.id===cdtId);
   if(!cdt){toast('Ese CDT ya no existe','err');return;}
-  const tasaRaw=(document.getElementById('cdt_tasa').value||'').trim();
-  const nuevaTasa=tasaRaw===''?cdt.tasa:parsePct(tasaRaw);
-  if(!(nuevaTasa>0)){toast('Tasa inválida','err');return;}
-  const rteRaw=(document.getElementById('cdt_rte').value||'').trim();
-  if(rteRaw!==''&&!/^\d+([.,]\d+)?$/.test(rteRaw)){toast('La retención (RTE) no es un número válido','err');return;}
-  const nuevoRte=rteRaw===''?(cdt.rte!=null?cdt.rte:4):parsePct(rteRaw);
-  if(nuevoRte>100){toast('La retención (RTE) no puede pasar de 100 %','err');return;}
-  const nuevoInicio=document.getElementById('cdt_inicio').value||cdt.inicio||hoy();
-  const nuevoVence=document.getElementById('cdt_vence').value;
-  if(_fechaSafe(nuevoInicio)>new Date()){toast('La fecha de apertura no puede ser futura','err');return;}
-  if(!nuevoVence){toast('Fecha de vencimiento requerida','err');return;}
-  if(_fechaSafe(nuevoVence)<=_fechaSafe(nuevoInicio)){toast('La fecha de vencimiento debe ser posterior a la apertura','err');return;}
-  cdt.tasa=nuevaTasa;
-  cdt.rte=nuevoRte;
-  cdt.inicio=nuevoInicio;
-  cdt.vence=nuevoVence;
+  const v=validarCamposCDT({
+    tasa:document.getElementById('cdt_tasa').value, rte:document.getElementById('cdt_rte').value,
+    inicio:document.getElementById('cdt_inicio').value, vence:document.getElementById('cdt_vence').value,
+    tasaDefecto:cdt.tasa, rteDefecto:cdt.rte!=null?cdt.rte:4, inicioDefecto:cdt.inicio||hoy() // vacío = conserva el valor actual
+  });
+  if(!v.ok){toast(v.mensaje,'err');return;}
+  cdt.tasa=v.tasa;
+  cdt.rte=v.rte;
+  cdt.inicio=v.inicio;
+  cdt.vence=v.vence;
   _cdtEditId=null;
   _cdtModoSheet(false);
   save();

@@ -452,6 +452,9 @@ function renderSpHistorial(){
     const abonosHtml=(h.pendienteHistorial&&h.pendienteHistorial.length)
       ?html`<div style="margin-top:6px;padding-left:8px;border-left:2px solid var(--border);">${h.pendienteHistorial.map((ab,abIdx)=>html`<div style="font-size:10px;color:var(--text2);margin-top:3px;display:flex;align-items:center;gap:6px;"><span style="flex:1;min-width:0;"><span style="color:var(--accent);">+ ${fmt(ab.monto)}</span> · ${ab.fecha}${ab.destino?' · '+fuenteLabel(ab.destino):''}${ab.nota?html` · <span style="color:var(--blue);">${ab.nota}</span>`:''}</span><span style="cursor:pointer;text-decoration:underline;flex-shrink:0;" ${raw(Events.attr('spotify:deshacerAbonoPendiente', h._realIdx, abIdx))}>deshacer</span></div>`)}</div>`
       :'';
+    const extraHtml=(h.tipo==='cobro'&&(h.extra||0)>0)
+      ?html`<div style="font-size:10px;color:var(--text2);margin-top:3px;"><span style="color:var(--blue);">+ ${fmt(h.extra)} extra</span> · ${h.extraFuente?fuenteLabel(h.extraFuente):'sin cuenta'} · aparte del cobro de Spotify</div>`
+      :'';
     const fuentesInfo=h.splits&&h.splits.length
       ?' · '+h.splits.map(s=>fuenteLabel(s.fuente||'')).join(' + ')
       :(h.fuente?' · '+fuenteLabel(h.fuente):'');
@@ -463,6 +466,7 @@ function renderSpHistorial(){
           <div style="font-size:10px;color:var(--text2);margin-top:1px;">${h.fecha}${fuentesInfo}${h.nota?html` · <span style="color:var(--blue);">${h.nota}</span>`:''}</div>
           ${pendienteHtml}
           ${abonosHtml}
+          ${extraHtml}
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
           <div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace;white-space:nowrap;color:${raw(h.tipo==='pago'?'var(--red)':'var(--accent)')};">${h.tipo==='pago'?'−':'+'} ${fmt(h.monto)}</div>
@@ -517,7 +521,10 @@ function renderSpStats(){
   hist.filter(h=>h.tipo==='pago').forEach((h,j)=>{
     const cobradoCiclo=tramosStats.filter(t=>t.ciclo===j).reduce((a,t)=>a+t.monto,0);
     const cuotaAdminDeEseCiclo=h._cuotaAdmin!=null?h._cuotaAdmin:cuotaAdmin;
-    ciclosCompletos.push({fecha:h.fecha, cobrado:cobradoCiclo, pagado:h.monto||0, ganancia:cobradoCiclo-(h.monto||0)+cuotaAdminDeEseCiclo});
+    // Dos lecturas del mismo ciclo (ver docs/spotify.md §7):
+    //   mano     = cobrado − pagado             → plata nueva libre para gastar
+    //   ganancia = cobrado − pagado + tu parte  → beneficio total (suma el mes que te salió gratis)
+    ciclosCompletos.push({fecha:h.fecha, cobrado:cobradoCiclo, pagado:h.monto||0, mano:cobradoCiclo-(h.monto||0), ganancia:cobradoCiclo-(h.monto||0)+cuotaAdminDeEseCiclo});
   });
   // Plata cobrada por períodos que todavía no empiezan: no es ganancia de ningún ciclo aún.
   const flotanteTotal=tramosStats.filter(t=>t.flotante).reduce((a,t)=>a+t.monto,0);
@@ -525,25 +532,57 @@ function renderSpStats(){
   const ultimoCiclo=ciclosCompletos.length?ciclosCompletos[ciclosCompletos.length-1].ganancia:null;
   const mejorCiclo=ciclosCompletos.length?Math.max(...ciclosCompletos.map(c=>c.ganancia)):null;
   const peorCiclo=ciclosCompletos.length?Math.min(...ciclosCompletos.map(c=>c.ganancia)):null;
+  const promedioMano=ciclosCompletos.length?ciclosCompletos.reduce((a,c)=>a+c.mano,0)/ciclosCompletos.length:null;
 
   // ── Ganancia real: solo calculable cuando hay pagos registrados
-  const gananciaReal=(totalCobradoHist-flotanteTotal)-totalPagadoHist+ahorroCuotaAdmin;
+  const gananciaMano=(totalCobradoHist-flotanteTotal)-totalPagadoHist;       // sin tu parte
+  const gananciaReal=gananciaMano+ahorroCuotaAdmin;                           // con tu parte
+  // Extras: plata de más que dieron las personas. Va aparte, nunca suma a la ganancia de Spotify.
+  const extrasTotal=cobros.reduce((a,h)=>a+(h.extra||0),0);
+  const extrasN=cobros.filter(h=>(h.extra||0)>0).length;
   const hayCiclo=ciclosPagados>0;
 
   const cV=(v)=>v>0?'var(--accent)':v<0?'var(--red)':'var(--text2)';
+  const sg=(v)=>(v>=0?'+':'\u2212')+fmt(Math.abs(v));
 
   let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px;">`;
 
   // Flujo mensual: promedio real por ciclo pagado (si ya hay al menos uno),
   // o una proyección teórica mientras tanto — claramente marcada como tal.
   if(promedioCiclo!==null){
+    const nCiclos=ciclosCompletos.length;
+    // Con tu parte en juego hay dos lecturas distintas y se muestran las dos, lado a lado.
+    // Sin cuota del admin (costo sin configurar) serían idénticas: se muestra una sola.
+    const hayDosLecturas=ahorroCuotaAdmin>0;
+    // Último / mejor / peor: si no hubo variación (mejor = peor) repetir los tres números
+    // no aporta nada — se colapsa a una línea y vuelve solo en cuanto aparezca una diferencia.
+    let pieCiclos;
+    if(nCiclos===1){
+      pieCiclos=`único ciclo pagado todavía`;
+    } else if(Math.round(mejorCiclo)===Math.round(peorCiclo)){
+      pieCiclos=`todos los ciclos: ${sg(ultimoCiclo)} · sin variación`;
+    } else {
+      pieCiclos=`último: ${sg(ultimoCiclo)} · mejor: ${sg(mejorCiclo)} · peor: ${sg(peorCiclo)}`;
+    }
+    const colMano=`<div style="flex:1;min-width:0;">
+          <div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">En mano</div>
+          <div class="stat-value" style="color:${cV(promedioMano)};" title="Cobrado menos pagado: plata nueva que te queda libre para gastar.">${sg(promedioMano)}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;">cobrado \u2212 pagado</div>
+        </div>`;
+    const colTotal=`<div style="flex:1;min-width:0;">
+          <div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">${hayDosLecturas?'Beneficio total':'Por ciclo'}</div>
+          <div class="stat-value" style="color:${cV(promedioCiclo)};" title="${hayDosLecturas?'En mano más tu parte del plan, que te salió gratis y no pagaste de tu bolsillo.':'Cobrado menos pagado.'}">${sg(promedioCiclo)}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:2px;">${hayDosLecturas?'+ tu parte del plan':'cobrado \u2212 pagado'}</div>
+        </div>`;
     html+=`<div class="stat" style="grid-column:1/-1;">
-      <div class="stat-label">Promedio real por ciclo pagado</div>
-      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
-        <div class="stat-value" style="color:${cV(promedioCiclo)};">${promedioCiclo>=0?'+':'\u2212'}${fmt(Math.abs(promedioCiclo))}</div>
-        <div style="font-size:11px;color:var(--text2);">basado en ${ciclosCompletos.length} ciclo${ciclosCompletos.length!==1?'s':''} pagado${ciclosCompletos.length!==1?'s':''}</div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div class="stat-label" style="margin-bottom:0;">Promedio real por ciclo pagado</div>
+        <div style="font-size:10px;color:var(--text2);">basado en ${nCiclos} ciclo${nCiclos!==1?'s':''} pagado${nCiclos!==1?'s':''}</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:3px;">último: ${ultimoCiclo>=0?'+':'\u2212'}${fmt(Math.abs(ultimoCiclo))}${ciclosCompletos.length>1?` · mejor: +${fmt(mejorCiclo)} · peor: ${peorCiclo>=0?'+':'\u2212'}${fmt(Math.abs(peorCiclo))}`:''}</div>
+      <div style="display:flex;gap:12px;margin-top:8px;">
+        ${hayDosLecturas?colMano+`<div style="width:1px;background:var(--border);flex-shrink:0;"></div>`+colTotal:colTotal}
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:8px;padding-top:7px;border-top:1px solid var(--border);">${hayDosLecturas?'beneficio total · ':''}${pieCiclos}</div>
     </div>`;
   } else {
     html+=`<div class="stat" style="grid-column:1/-1;">
@@ -582,6 +621,7 @@ function renderSpStats(){
       <div class="stat-label">Ganancia acumulada</div>
       <div class="stat-value" style="color:${cV(gananciaReal)};">${gananciaReal>=0?'+':'\u2212'}${fmt(Math.abs(gananciaReal))}</div>
       <div style="font-size:10px;color:var(--text3);margin-top:3px;" title="${ahorroCuotaAdmin>0?'Cobrado menos pagado, más tu parte del plan, que ya quedó cubierta y no la pagaste de tu bolsillo.':'Cobrado menos pagado.'}">${gananciaReal<0?'de tu bolsillo · ':''}cobrado \u2212 pagado${ahorroCuotaAdmin>0?' + tu parte':''}</div>
+      ${ahorroCuotaAdmin>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px;" title="Cobrado menos pagado, sin sumar tu parte: la plata nueva que realmente tienes libre.">en mano: <span style="color:${cV(gananciaMano)};">${sg(gananciaMano)}</span></div>`:''}
     </div>`;
   } else {
     html+=`<div class="stat">
@@ -591,10 +631,23 @@ function renderSpStats(){
     </div>`;
   }
 
+  // Extras recibidos: independientes de Spotify (no entran a cobrado, ni a la ganancia,
+  // ni al promedio). Solo aparece si alguna vez te dieron de más.
+  if(extrasTotal>0){
+    html+=`<div class="stat" style="grid-column:1/-1;">
+      <div class="stat-label">Extras recibidos</div>
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+        <div class="stat-value" style="color:var(--blue);">+${fmt(extrasTotal)}</div>
+        <div style="font-size:11px;color:var(--text2);">${extrasN} vez${extrasN!==1?'es':''} te dieron de más</div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:3px;">aparte de Spotify · no suman a la ganancia ni al promedio · cuentan como ingreso extra</div>
+    </div>`;
+  }
+
   // Aviso contextual mientras no haya un ciclo pagado
   if(!hayCiclo&&costo>0){
     html+=`<div style="grid-column:1/-1;font-size:10px;color:var(--text3);padding:6px 0 2px;">
-      Registrá el pago a Spotify cuando lo hagas para ver la ganancia real acumulada.
+      Registra el pago a Spotify cuando lo hagas para ver la ganancia real acumulada.
     </div>`;
   }
 
@@ -628,7 +681,7 @@ async function deleteSpHistorial(i){
   const tienePendienteAlBorrar=h.tipo==='cobro'&&(h.pendiente||0)>0;
   const msgBorrar=tienePendienteAlBorrar
     ?'¿Eliminar este registro del historial? Esta acción no se puede deshacer. Esto revierte la plata movida por este registro (incluyendo abonos de lo pendiente ya recibidos) y cancela la deuda de '+fmt(h.pendiente)+' que quedaba abierta.'
-    :'¿Eliminar este registro del historial? Esta acción no se puede deshacer. Esto también revierte la plata movida por este registro.';
+    :'¿Eliminar este registro del historial? Esta acción no se puede deshacer. Esto también revierte la plata movida por este registro'+((h.tipo==='cobro'&&(h.extra||0)>0)?', incluido el extra de '+fmt(h.extra):'')+'.';
   const ok=await dialogo('Eliminar movimiento',msgBorrar,'Eliminar',true);
   if(!ok)return;
   return _borrarSpHistorial(i,h);
@@ -657,6 +710,11 @@ async function _borrarSpHistorial(i,h){
     (h.pendienteHistorial||[]).forEach(ab=>{
       if(ab.destino)descontarFuente(ab.destino,ab.monto||0, { exacto: true });
     });
+    // Revertir el EXTRA (si dio de más): sale de su cuenta y se quita su movimiento espejo.
+    if((h.extra||0)>0&&h.extraFuente){
+      descontarFuente(h.extraFuente,h.extra,{ exacto: true });
+      if(h.extraMovId)borrarMovEspejo(h.extraFuente,h.extraMovId);
+    }
     // Si este cobro estaba saldando deuda de un ciclo ya cerrado (_pagoIdCierre), devolver
     // esa plata al pendiente congelado de ese pago — si el pago referenciado ya no existe
     // (se borró aparte), no hay nada que restaurar, se queda como estaba.
@@ -772,6 +830,10 @@ function marcarPagoSpotify(i){
   if(chkDebeSp)chkDebeSp.checked=false;
   const debeWrapSp=document.getElementById('spDebeWrap');
   if(debeWrapSp)debeWrapSp.style.display='none';
+  const extraWrapSp=document.getElementById('spExtraWrap');
+  if(extraWrapSp)extraWrapSp.style.display='none';
+  const extraSelSp=document.getElementById('spExtraDestino');
+  if(extraSelSp){extraSelSp.innerHTML='';delete extraSelSp.dataset.modo;}
   // Resetear split (mismo patrón que abrirRegistrarMesada en mesada.js)
   spcSplitMode=false;
   document.getElementById('spCobModoSimple').style.display='';
@@ -834,12 +896,56 @@ function _syncSpDebeWrap(){
   }
 }
 
+// Opciones del destino del EXTRA (plata de más que dio la persona). En modo simple
+// se ofrece "Misma cuenta del cobro" como opción visible (no se asume en silencio);
+// en modo dividido no existe "la misma cuenta", así que hay que elegir una.
+// Como todo destino donde ENTRA plata: sin TC, sin filtro por saldo.
+function _spExtraOpts(esSplit){
+  const fuentes=getFuentesSinTC();
+  const primera=esSplit
+    ?'<option value="" disabled selected>Selecciona una opción...</option>'
+    :'<option value="__mismo__" selected>Misma cuenta del cobro</option>';
+  return html`${raw(primera)}${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}<option value="__sin_especificar__">Sin especificar (no mover)</option>`;
+}
+
+// Muestra/oculta el bloque "te dio un extra" según lo recibido vs. lo esperado.
+// El extra = recibido − (períodos × cuota). Nunca es parte del cobro de Spotify.
+function _syncSpExtraWrap(){
+  const wrap=document.getElementById('spExtraWrap');
+  const sel=document.getElementById('spExtraDestino');
+  const lbl=document.getElementById('spExtraLabel');
+  if(!wrap||!sel||spDestinoIdx===null)return;
+  const p=S.spotifyPersonas[spDestinoIdx];
+  const n=parseInt(document.getElementById('spMesesSelect').value)||1;
+  const montoEsperado=(p?.monto||0)*n;
+  const v=parseMoney(document.getElementById('spMontoRecibido').value)||0;
+  const extra=v-montoEsperado;
+  if(extra>1){
+    wrap.style.display='block';
+    if(lbl)lbl.textContent='Te dio un extra de +'+fmt(extra);
+    const modo=spcSplitMode?'split':'simple';
+    // Solo se reconstruyen las opciones si cambió el modo (o si está vacío), para no
+    // pisar la cuenta que el usuario ya eligió mientras sigue escribiendo el monto.
+    if(sel.dataset.modo!==modo||!sel.options.length){
+      const previo=sel.value;
+      sel.innerHTML=_spExtraOpts(spcSplitMode);
+      sel.dataset.modo=modo;
+      if(previo&&Array.from(sel.options).some(o=>o.value===previo))sel.value=previo;
+    }
+  } else {
+    wrap.style.display='none';
+    sel.innerHTML='';
+    delete sel.dataset.modo;
+  }
+}
+
 // Preview del split de cobro — mismo estilo que actualizarMpPreview() en
 // mesada.js. En modo simple no hay nada que mostrar acá (spMesesTotal ya
 // cubre el total); solo pinta cuando spcSplitMode está activo. Siempre
 // sincroniza el toggle de "quedó debiendo", independientemente del modo.
 function actualizarSpDestinoPreview(){
   _syncSpDebeWrap();
+  _syncSpExtraWrap();
   const prev=document.getElementById('spCobPreview');
   if(!prev)return;
   if(!spcSplitMode){prev.textContent='';return;}
@@ -848,7 +954,9 @@ function actualizarSpDestinoPreview(){
   const n=parseInt(document.getElementById('spMesesSelect').value)||1;
   const montoEsperadoSplit=(S.spotifyPersonas[spDestinoIdx]?.monto||0)*n;
   const montoRecInp=parseMoney(document.getElementById('spMontoRecibido').value);
-  const monto=(montoRecInp||montoRecInp===0)?montoRecInp:montoEsperadoSplit;
+  const recibidoSplit=(montoRecInp||montoRecInp===0)?montoRecInp:montoEsperadoSplit;
+  // Si dio de más, el extra tiene su propio destino: el split reparte solo la cuota.
+  const monto=Math.min(recibidoSplit,montoEsperadoSplit);
   const splits=getSpCobSplitData();
   const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
   const restante=monto-totalSplit;
@@ -872,13 +980,15 @@ function confirmarSpDestino(){
   const montoRecInp=parseMoney(document.getElementById('spMontoRecibido').value);
   const montoTotal=(montoRecInp||montoRecInp===0)?montoRecInp:montoEsperado;
   if(montoTotal<=0){
-    toast('Ingresá cuánto te pagó','err');
+    toast('Ingresa cuánto te pagó','err');
     return;
   }
-  if(montoTotal>montoEsperado+1){
-    toast('Eso es más de lo esperado para '+meses+' período'+(meses>1?'s':'')+' — aumentá los períodos si pagó de más','err');
-    return;
-  }
+  // Pagar DE MÁS ya no se rechaza: lo que exceda (períodos × cuota) es un EXTRA.
+  // El cobro de Spotify queda en la cuota exacta (así ganancia, promedio y
+  // "Recaudado" no se inflan) y el extra se registra aparte, como ingreso extra,
+  // en la cuenta que se elija. Ver docs/spotify.md §7quater.
+  const extraSp=montoTotal>montoEsperado+1?Math.round((montoTotal-montoEsperado)*100)/100:0;
+  const cuotaRecibida=extraSp>0?montoEsperado:montoTotal;
   // "Quedó debiendo la diferencia": solo aplica si el usuario marcó el toggle
   // explícitamente. Si no lo marca, un monto menor al esperado se registra
   // tal cual, sin deuda — el período de todas formas se cuenta como cubierto.
@@ -897,8 +1007,8 @@ function confirmarSpDestino(){
       document.getElementById('spCobPreview').style.color='var(--red)';
       return;
     }
-    if(totalSplit>montoTotal+1){
-      document.getElementById('spCobPreview').textContent='El total dividido supera lo cobrado';
+    if(totalSplit>cuotaRecibida+1){
+      document.getElementById('spCobPreview').textContent=extraSp>0?'El total dividido supera la cuota (el extra va aparte)':'El total dividido supera lo cobrado';
       document.getElementById('spCobPreview').style.color='var(--red)';
       return;
     }
@@ -909,6 +1019,18 @@ function confirmarSpDestino(){
       return;
     }
     spDestinoSel=destVal==='__sin_especificar__'?'':destVal;
+  }
+
+  // Destino del extra: explícito, igual que el del cobro (nunca se asume en silencio).
+  // Se valida acá, antes de tocar ningún saldo ni el historial.
+  let extraFuenteSp='';
+  if(extraSp>0){
+    const exVal=document.getElementById('spExtraDestino')?.value||'';
+    if(!exVal){
+      toast('Selecciona a dónde fue el extra (o marca "Sin especificar")','err');
+      return;
+    }
+    extraFuenteSp=exVal==='__mismo__'?spDestinoSel:(exVal==='__sin_especificar__'?'':exVal);
   }
 
   const fechaEl=document.getElementById('spFecha');
@@ -924,7 +1046,7 @@ function confirmarSpDestino(){
   if(splits){
     splits.forEach(s=>{ if(s.fuente)sumarFuente(s.fuente,s.monto); });
   } else if(spDestinoSel){
-    sumarFuente(spDestinoSel,montoTotal);
+    sumarFuente(spDestinoSel,cuotaRecibida);
   }
   // Avanzar fecha de cobro N meses pero respetando el día original fijo
   if(p.proximoPago)p.proximoPago=nextMonthFixed(p.proximoPago,meses);
@@ -942,14 +1064,14 @@ function confirmarSpDestino(){
   // ganancia al ciclo que ya cerré. Ver docs/spotify.md §7ter.
   let lastPago=null;
   for(let i=S.spotifyHistorial.length-1;i>=0;i--){ if(S.spotifyHistorial[i].tipo==='pago'){lastPago=S.spotifyHistorial[i];break;} }
-  let restante=montoTotal;
+  let restante=cuotaRecibida;
   let periodosCierre=0;
   if(lastPago&&lastPago._pendienteAlCerrar&&lastPago._pendienteAlCerrar[p.id]>0){
     const pendienteViejo=lastPago._pendienteAlCerrar[p.id];
     const cierreMonto=Math.min(restante,pendienteViejo);
     lastPago._pendienteAlCerrar[p.id]=pendienteViejo-cierreMonto;
     if(lastPago._pendienteAlCerrar[p.id]<=0)delete lastPago._pendienteAlCerrar[p.id];
-    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:cierreMonto,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,cierreMonto,montoTotal)||undefined,fecha:fechaCobro,nota:'Pago atrasado del ciclo anterior'+(notaBase?' · '+notaBase:''),proximoPagoAntes,_pagoIdCierre:lastPago.id,_secundario:true,_origenSeccion:'Spotify'});
+    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:cierreMonto,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,cierreMonto,cuotaRecibida)||undefined,fecha:fechaCobro,nota:'Pago atrasado del ciclo anterior'+(notaBase?' · '+notaBase:''),proximoPagoAntes,_pagoIdCierre:lastPago.id,_secundario:true,_origenSeccion:'Spotify'});
     restante-=cierreMonto;
     // Períodos del pago que ya cubrió el registro de cierre: el registro "resto" arranca
     // después de ellos (ver spTramosDeCobro / _periodoOffset).
@@ -961,7 +1083,7 @@ function confirmarSpDestino(){
   // la nota. Se guarda el nombre ACTUAL de la persona vinculada, no el crudo, para que
   // no quede fijado desactualizado.
   if(restante>0||diferenciaSp>0){
-    const nuevoCobro={id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:restante,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,restante,montoTotal)||undefined,fecha:fechaCobro,nota:notaBase,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'};
+    const nuevoCobro={id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:restante,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,restante,cuotaRecibida)||undefined,fecha:fechaCobro,nota:notaBase,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'};
     if(periodosCierre>0)nuevoCobro._periodoOffset=periodosCierre;
     if(diferenciaSp>0){
       nuevoCobro.cuotaEsperada=montoEsperado;
@@ -970,13 +1092,30 @@ function confirmarSpDestino(){
     }
     S.spotifyHistorial.push(nuevoCobro);
   }
+  // Extra: queda colgado del ÚLTIMO registro que acaba de nacer de este cobro (si hubo
+  // "pago atrasado" son dos registros; el extra no pertenece a ningún período). La plata
+  // entra a la cuenta elegida y deja un movimiento espejo visible en su historial,
+  // marcado como ingreso extra (_esExtraIngreso) y protegido contra borrado directo.
+  if(extraSp>0){
+    const ultimoReg=S.spotifyHistorial[S.spotifyHistorial.length-1];
+    if(ultimoReg){
+      ultimoReg.extra=extraSp;
+      if(extraFuenteSp){
+        sumarFuente(extraFuenteSp,extraSp);
+        ultimoReg.extraFuente=extraFuenteSp;
+        const movId=registrarMovEspejo({cuenta:extraFuenteSp,flujo:'entrada',monto:extraSp,fecha:fechaCobro,desc:'Extra de Spotify · '+nombreActual,origen:'Spotify',extra:{_esExtraIngreso:true}});
+        if(movId)ultimoReg.extraMovId=movId;
+      }
+    }
+  }
   spDestinoIdx=null;
   spcSplitMode=false;
   save();refresh();closeSheet('sp-destino');
   if(diferenciaSp>0){
     toast(`Cobro registrado · ${escHtml(nombreActual)} quedó debiendo ${fmt(diferenciaSp)}`,'info',3500);
   } else {
-    toast(meses>1?`Cobrados ${meses} períodos adelantados a ${escHtml(nombreActual)} · ${fmt(montoTotal)}`:`Cobro registrado · ${escHtml(nombreActual)}`,'ok');
+    const sufijoExtra=extraSp>0?` · extra +${fmt(extraSp)}`:'';
+    toast((meses>1?`Cobrados ${meses} períodos adelantados a ${escHtml(nombreActual)} · ${fmt(cuotaRecibida)}`:`Cobro registrado · ${escHtml(nombreActual)}`)+sufijoExtra,'ok');
   }
 }
 
@@ -1625,7 +1764,7 @@ addSpotify = function() {
       btn.style.borderColor = 'var(--red)';
       setTimeout(() => { if (btn) btn.style.borderColor = 'var(--border2)'; }, 2000);
     }
-    toast('Seleccioná una persona', 'err');
+    toast('Selecciona una persona', 'err');
     return;
   }
   const pId = _spPersonaId;

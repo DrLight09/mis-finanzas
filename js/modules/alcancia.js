@@ -179,11 +179,11 @@ function _alcNombreFuente(f){
 function _alcOrigenOptsHtml(selected, conDeuda){
   const tmp = document.createElement('select');
   tmp.innerHTML = (typeof buildFuentesOptsHtml === 'function')
-    ? buildFuentesOptsHtml({incluirTC:false, placeholder:'Elegí de dónde viene'})
-    : '<option value="">Elegí de dónde viene</option>';
+    ? buildFuentesOptsHtml({incluirTC:false, placeholder:'Elige de dónde viene'})
+    : '<option value="">Elige de dónde viene</option>';
   _alcFiltrarFuentesPorSaldo(tmp);
   const ph = tmp.querySelector('option[value=""]');
-  if(ph) ph.textContent = 'Elegí de dónde viene'; // _alcFiltrarFuentesPorSaldo pone un texto de "sin cuentas" que aquí no aplica
+  if(ph) ph.textContent = 'Elige de dónde viene'; // _alcFiltrarFuentesPorSaldo pone un texto de "sin cuentas" que aquí no aplica
   let extra = '<optgroup label="Sin cuenta">'
     + Object.keys(_ALC_ORIGENES_SIN_CUENTA).map(v => `<option value="${v}">${_ALC_ORIGENES_SIN_CUENTA[v].label}</option>`).join('')
     + '</optgroup>';
@@ -526,7 +526,7 @@ function _alcFiltrarFuentesPorSaldo(selectEl){
   });
   if(!quedanCuentas){
     const ph = selectEl.querySelector('option[value=""]');
-    if(ph) ph.textContent = 'No tenés cuentas con saldo disponible';
+    if(ph) ph.textContent = 'No tienes cuentas con saldo disponible';
   }
 }
 
@@ -893,18 +893,18 @@ window.alcanciaConfirmarDeposito = function(){
   let partes = [];
   if(_alcSplitMode){
     const filas = (typeof splitGetData === 'function') ? splitGetData('alcancia') : [];
-    if(!filas.length){ err('Ingresá cuánto viene de cada origen'); return; }
-    if(filas.some(f => !f.fuente)){ err('Elegí el origen de cada monto'); return; }
+    if(!filas.length){ err('Ingresa cuánto viene de cada origen'); return; }
+    if(filas.some(f => !f.fuente)){ err('Elige el origen de cada monto'); return; }
     partes = filas.map(f => _alcParteDesdeValor(f.fuente, f.monto));
   } else {
     const v = (document.getElementById('alc_dep_origen')||{}).value || '';
-    if(!v){ err('Elegí de dónde viene el dinero'); return; }
+    if(!v){ err('Elige de dónde viene el dinero'); return; }
     const m = _getMoneyVal('alc_dep_monto');
-    if(!m || m <= 0){ err('Ingresá un monto válido'); return; }
+    if(!m || m <= 0){ err('Ingresa un monto válido'); return; }
     partes = [_alcParteDesdeValor(v, m)];
   }
   const monto = Math.round(partes.reduce((t, p) => t + p.monto, 0) * 100) / 100;
-  if(!(monto > 0)){ err('Ingresá un monto válido'); return; }
+  if(!(monto > 0)){ err('Ingresa un monto válido'); return; }
   const unica = partes.length === 1;
 
   /* ── 2. Validar ── */
@@ -921,7 +921,7 @@ window.alcanciaConfirmarDeposito = function(){
   const esCobro = unica && partes[0].origen === 'deuda';
   if(esCobro){
     cobroDeudorId = (document.getElementById('alc_dep_deudor')||{}).value || '';
-    if(!cobroDeudorId){ err('Seleccioná quién te pagó'); return; }
+    if(!cobroDeudorId){ err('Selecciona quién te pagó'); return; }
     const dCheck = Deudas.lista('favor').find(x => x.id === cobroDeudorId);
     if(!dCheck){ err('Esa persona ya no existe'); return; }
     if(typeof _migrarGruposDeudor === 'function') _migrarGruposDeudor(dCheck);
@@ -929,7 +929,7 @@ window.alcanciaConfirmarDeposito = function(){
     const grupoWrapCheck = document.getElementById('alc_dep_deudor_grupo_wrap');
     if(grupoWrapCheck && grupoWrapCheck.style.display !== 'none'){
       cobroGrupoId = (document.getElementById('alc_dep_deudor_grupo')||{}).value || '';
-      if(!cobroGrupoId){ err('Seleccioná a cuál préstamo corresponde'); return; }
+      if(!cobroGrupoId){ err('Selecciona a cuál préstamo corresponde'); return; }
     }
     const saldoDisp = cobroGrupoId ? getGrupoSaldo(dCheck, cobroGrupoId) : getDeudorSaldo(dCheck);
     if(monto > saldoDisp + 0.5){
@@ -1063,10 +1063,10 @@ window.alcanciaConfirmarDestapar = function(){
   const destino   = (document.getElementById('alc_destino')||{}).value || '';
 
   if(saldoReal <= 0){
-    if(typeof toast==='function') toast('Ingresá el monto real encontrado', 'err'); return;
+    if(typeof toast==='function') toast('Ingresa el monto real encontrado', 'err'); return;
   }
   if(!destino){
-    if(typeof toast==='function') toast('Seleccioná una cuenta destino', 'err'); return;
+    if(typeof toast==='function') toast('Selecciona una cuenta destino', 'err'); return;
   }
 
   _initA();

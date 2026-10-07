@@ -582,7 +582,7 @@
             demás) tanto de este dispositivo como de la nube, y se va a cerrar
             tu sesión.
           </div>
-          <div id="del-account-msg2">Escribí <b>ELIMINAR</b> para
+          <div id="del-account-msg2">Escribe <b>ELIMINAR</b> para
             confirmar:</div>
           <input type="text" id="del-account-input" autocomplete="off"
             spellcheck="false" placeholder="ELIMINAR">
@@ -936,7 +936,7 @@
           <div id="cp-lista"></div>
           <div style="background:rgba(200,240,96,.05);border:1px solid rgba(200,240,96,.15);border-radius:var(--radius-sm);padding:12px 14px;margin-top:10px;">
             <div style="font-size:10px;font-weight:700;color:rgba(200,240,96,.6);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;margin-bottom:5px;">¿Cómo funciona?</div>
-            <div style="font-size:11px;color:var(--text3);line-height:1.6;">Registrá aquí ingresos que todavía no te han llegado pero que ya sabés que van a tener destino. Cuando la plata llegue de verdad, tocás <b style="color:var(--text2);">Recibir</b> y la app te guía a distribuirla sin enredos.</div>
+            <div style="font-size:11px;color:var(--text3);line-height:1.6;">Registra aquí ingresos que todavía no te han llegado pero que ya sabes que van a tener destino. Cuando la plata llegue de verdad, tocás <b style="color:var(--text2);">Recibir</b> y la app te guía a distribuirla sin enredos.</div>
           </div>
         </div>
 
@@ -3403,7 +3403,7 @@
         <div class="sheet-title" id="parte-sheet-title">Agregar parte</div>
         <p
           style="font-size:12px;color:var(--text2);margin-bottom:14px;line-height:1.5;">
-          Marcá para qué está destinada una porción de esta plata.<br>
+          Marca para qué está destinada una porción de esta plata.<br>
           <b style="color:var(--text);">No mueve ningún saldo</b> — es solo una
           etiqueta para que vos (y quien te pregunta) sepan cuánto queda libre.
         </p>
@@ -4206,6 +4206,17 @@
           <input type="text" inputmode="decimal" id="spMontoRecibido"
             placeholder="8000" class="money-input">
         </div>
+        <!-- Extra: te dio MÁS de lo esperado (ej. cuota 5.100, te dio 5.500) -->
+        <div id="spExtraWrap"
+          style="background:rgba(96,168,240,.07);border:1px solid rgba(96,168,240,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;display:none;">
+          <div style="font-size:13px;font-weight:600;color:var(--blue);"
+            id="spExtraLabel">Te dio un extra</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;margin-bottom:9px;">No
+            cuenta como cobro de Spotify ni suma a su ganancia: se registra
+            aparte, como un ingreso extra.</div>
+          <label class="il" for="spExtraDestino">¿A dónde fue el extra?</label>
+          <div class="select-wrap"><select id="spExtraDestino"></select></div>
+        </div>
         <!-- Toggle: la diferencia quedó debiendo -->
         <div id="spDebeWrap"
           style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;display:none;">
@@ -4215,7 +4226,7 @@
             <div style="font-size:13px;font-weight:600;color:var(--amber);"
               id="spDebeLabel">Te está debiendo la diferencia</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px;">Si
-              no marcás esto, el período queda cubierto con lo que te dio —
+              no marcas esto, el período queda cubierto con lo que te dio —
               sin deuda</div>
           </div>
         </div>
@@ -4399,7 +4410,7 @@
             <div style="font-size:13px;font-weight:600;color:var(--amber);"
               id="mpDebeLabel">Te está debiendo la diferencia</div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px;">Si
-              no marcás esto, el mes queda cerrado con lo que recibiste — sin
+              no marcas esto, el mes queda cerrado con lo que recibiste — sin
               deuda</div>
           </div>
         </div>

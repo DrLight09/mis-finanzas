@@ -28,8 +28,7 @@
      - js/core/events.js (Events.attr/registerAll) y el motor de split
        (js/core/split.js: crearSplitWidget, splitToggle, splitAgregarRow,
        splitGetData, splitReset).
-     - js/modules/personas.js (abrirSelPersona, getPersona) y Encargos
-       (getEncargo, encargoSaldo, ...) solo de forma opcional, con guards.
+     - Encargos (getEncargo, encargoSaldo, ...) solo de forma opcional, con guards.
 
    ── Por qué un solo archivo ────────────────────────────────────
    Se probó separarlo en mesada-dominio.js + mesada.js (2026-10-08) y se
@@ -173,31 +172,13 @@ function _mesadaNombreCoincide(nombre, claves) {
   return _normTxt(nombre).split(/[^a-z0-9ñ]+/).some(t => claves.some(c => t === c || t === c + 's'));
 }
 
-// Persona del sistema unificado vinculada a papá/mamá (S.mesadas[parent].personaId), o ''.
-function mesadaPersonaDe(parent) {
-  _ensureMesadas();
-  const id = S.mesadas[parent].personaId || '';
-  // Si la persona ya no existe, el vínculo se ignora (vuelve la búsqueda por nombre) en vez de
-  // dejar a papá/mamá sin ningún encargo candidato.
-  if (id && typeof getPersona === 'function' && !getPersona(id)) return '';
-  return id;
-}
-
-function mesadaVincularPersona(parent, personaId) {
-  _ensureMesadas();
-  if (personaId) S.mesadas[parent].personaId = personaId;
-  else delete S.mesadas[parent].personaId;
-}
-
-// Encargos con saldo que pueden haber financiado la mesada de ese padre.
-// Con persona vinculada: SOLO los de esa persona (vínculo explícito, sin adivinar).
-// Sin vínculo: por nombre (palabra completa), como antes — ver mesada.md §8.
+// Encargos con saldo que pueden haber financiado la mesada de ese padre: los que por NOMBRE
+// coinciden con papá/mamá (palabra completa o su plural; ver _mesadaNombreCoincide y mesada.md §8).
 function mesadaEncargosDelParent(parent) {
   if (typeof encargoSaldo !== 'function' || !S.encargos || !S.encargos.length) return [];
-  const personaId = mesadaPersonaDe(parent);
   const claves = _MESADA_CLAVES[parent];
   return S.encargos
-    .filter(e => personaId ? e.personaId === personaId : _mesadaNombreCoincide(e.nombre, claves))
+    .filter(e => _mesadaNombreCoincide(e.nombre, claves))
     .map(e => ({ enc: e, saldo: encargoSaldo(e) }))
     .filter(x => x.saldo > 0.5)
     .sort((a, b) => b.saldo - a.saldo);
@@ -562,8 +543,6 @@ function renderMesada() {
     if (x.mesesPendientes > 0) sub += ' · ' + fmt(x.totalPendiente) + ' pendiente';
     _msEl('ms-' + parent + '-sub').textContent = sub;
   });
-  _renderPersonaLink('papa');
-  _renderPersonaLink('mama');
 
   // Banner combinado (papá + mamá): deuda pendiente a la vista.
   const banner = _msEl('ms-pendiente-banner');
@@ -600,32 +579,6 @@ function cambiarAnio(d) {
   const nuevo = (S.mesadaAnio || hoyAnio) + d;
   if (nuevo < hoyAnio - 2 || nuevo > hoyAnio + 2) return;
   save(); S.mesadaAnio = nuevo; renderMesada();
-}
-
-/* ── Vínculo de papá/mamá con una persona (encargos por vínculo, no por nombre) ── */
-
-function _renderPersonaLink(parent) {
-  const btn = _msEl('ms-' + parent + '-persona'), x = _msEl('ms-' + parent + '-persona-x');
-  if (!btn) return;
-  const pid = mesadaPersonaDe(parent);
-  const persona = pid && typeof getPersona === 'function' ? getPersona(pid) : null;
-  btn.textContent = persona ? 'Vinculado a ' + persona.nombre : 'Vincular a una persona';
-  if (x) x.style.display = persona ? '' : 'none';
-}
-
-function vincularPersonaMesada(parent) {
-  if (typeof abrirSelPersona !== 'function') { toast('Personas todavía no cargó, intenta de nuevo', 'err'); return; }
-  abrirSelPersona(personaId => {
-    mesadaVincularPersona(parent, personaId);
-    save(); _renderPersonaLink(parent);
-    toast('Ahora se ofrecen los encargos de esa persona', 'ok', 2500);
-  }, parent === 'papa' ? '¿Quién es papá?' : '¿Quién es mamá?');
-}
-
-function desvincularPersonaMesada(parent) {
-  mesadaVincularPersona(parent, '');
-  save(); _renderPersonaLink(parent);
-  toast('Desvinculado: se buscan encargos por nombre', 'info', 2500);
 }
 
 /* ── Sheet "Registrar pago" (mp) ─────────────────────────────────── */
@@ -948,10 +901,6 @@ function _msCablear() {
     ['mppDestino',                'change', actualizarMppPreview],
     ['mpSplitToggle',             'click',  () => splitToggle('mp')],
     ['btn-add-split-row',         'click',  () => splitAgregarRow('mp')],
-    ['ms-papa-persona',           'click',  () => vincularPersonaMesada('papa')],
-    ['ms-mama-persona',           'click',  () => vincularPersonaMesada('mama')],
-    ['ms-papa-persona-x',         'click',  () => desvincularPersonaMesada('papa')],
-    ['ms-mama-persona-x',         'click',  () => desvincularPersonaMesada('mama')],
   ].forEach(([id, evt, fn]) => _msOn(id, evt, fn));
 
   _msFilaClickeable('mpDebeWrap', 'mpQuedaDebiendo');

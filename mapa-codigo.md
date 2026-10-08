@@ -46,7 +46,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 116 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 20 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 6 | 0 |
-| `js/modules/mesada.js` | lazy — grupo `mesada` | 34 | 0 |
+| `js/modules/mesada.js` | lazy — grupo `mesada` | 60 | 1 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
 | `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 128 | 1 |
@@ -302,7 +302,9 @@ Carga: de entrada (defer)
 
 Carga: lazy — grupo `mesada`
 
-**Funciones:** `_borrarMesadaPago`, `_borrarMovSecundarioMesada`, `_mesadaClavesParent`, `_mesadaEncargosDelParent`, `_mesadaFuentesDe`, `_mesadaOpsPosteriores`, `_mesadaTieneCuentaAfectada`, `_mostrarMppDestinoNormal`, `_mostrarSeccionDestinoNormal`, `_normTxt`, `_poblarMpEncargoCuentas`, `_poblarMppEncargoCuentas`, `_registrarMovSecundarioMesada`, `_sincronizarMpDestinoConEncargo`, `_sincronizarMppDestinoConEncargo`, `_syncMpDebeWrap`, `abrirDetalleMesada`, `abrirRegistrarMesada`, `abrirResolverPendiente`, `actualizarMppPreview`, `actualizarMpPreview`, `agregarMpSplitRow`, `cambiarAnio`, `clickMesDot`, `confirmarMesadaPago`, `confirmarPendienteMesada`, `deshacerPendienteMesada`, `eliminarMesadaPago`, `getFuentesOptions`, `getMontoPadre`, `getMpSplitData`, `marcarMesadaComoPendiente`, `renderMesada`, `toggleMpSplit`
+**Funciones:** `_crearEncargoPicker`, `_htmlMesDot`, `_mesadaAnioDeKey`, `_mesadaApiEncargos`, `_mesadaAplicarEntrada`, `_mesadaCrearSalidaEncargo`, `_mesadaEntrar`, `_mesadaMostrarError`, `_mesadaNombreCoincide`, `_mesadaQuitarSalidaEncargo`, `_mesadaSacar`, `_mesadaSumaSplits`, `_mesadaValidarEncargo`, `_msCablear`, `_msEl`, `_msFilaClickeable`, `_msOn`, `_msVal`, `_normTxt`, `_poblarDestinoMesada`, `_previewDisponible`, `_previewSplit`, `_renderPersonaLink`, `_syncMpDebeWrap`, `abrirDetalleMesada`, `abrirRegistrarMesada`, `abrirResolverPendiente`, `actualizarMppPreview`, `actualizarMpPreview`, `cambiarAnio`, `clickMesDot`, `confirmarMesadaPago`, `confirmarPendienteMesada`, `deshacerPendienteMesada`, `desvincularPersonaMesada`, `eliminarMesadaPago`, `getFuentesOptions`, `marcarMesadaComoPendiente`, `mesadaAbonarPendiente`, `mesadaAbonosDe`, `mesadaBorrarPago`, `mesadaCuentasDeEncargo`, `mesadaCuotaDeKey`, `mesadaDeshacerAbono`, `mesadaDisponibleEncargo`, `mesadaEncargosDelParent`, `mesadaEstadoMes`, `mesadaFuentesDe`, `mesadaMarcarPendiente`, `mesadaMesVencido`, `mesadaNombrePadre`, `mesadaOpsPosteriores`, `mesadaPersonaDe`, `mesadaRegistrarPago`, `mesadaResumenAnio`, `mesadaRevertirAbono`, `mesadaTieneCuentaAfectada`, `mesadaVincularPersona`, `renderMesada`, `vincularPersonaMesada`
+
+**Globales:** `MESADA_PADRES`
 
 ### `js/modules/personas.js`
 
@@ -425,8 +427,6 @@ Ninguno.
 | `_aplicarPrestamo` | `js/modules/prestado.js` |
 | `_autoCerrarGruposEnCero` | `js/modules/prestado.js` |
 | `_autoGrupoIdMov` | `js/modules/prestado.js` |
-| `_borrarMesadaPago` | `js/modules/mesada.js` |
-| `_borrarMovSecundarioMesada` | `js/modules/mesada.js` |
 | `_borrarSpHistorial` | `js/modules/spotify.js` |
 | `_cajitaDetDelete` | `js/modules/cuentas.js` |
 | `_calcCDTSafe` | `js/core/core-state.js` |
@@ -471,6 +471,7 @@ Ninguno.
 | `_cpRenderLista` | `js/modules/plata_comprometida.js` |
 | `_cpRenderMarcarList` | `js/modules/plata_comprometida.js` |
 | `_cpToggleMarcar` | `js/modules/plata_comprometida.js` |
+| `_crearEncargoPicker` | `js/modules/mesada.js` |
 | `_crearGrupoDeudor` | `js/modules/prestado.js` |
 | `_crearPersonaGlobal` | `js/modules/personas.js` |
 | `_crearSplitSobrante` | `js/modules/encargos.js` |
@@ -546,6 +547,7 @@ Ninguno.
 | `_hideScreenLoading` | `js/core/sheet-stack.js` |
 | `_htmlEscapeValue` | `js/core/html-tag.js` |
 | `_htmlHistorialPorGrupos` | `js/modules/prestado.js` |
+| `_htmlMesDot` | `js/modules/mesada.js` |
 | `_iconoEfectivo` | `js/modules/cuentas.js` |
 | `_initA` | `js/modules/alcancia.js` |
 | `_initEventListeners` | `js/core/sheet-stack.js` |
@@ -578,11 +580,17 @@ Ninguno.
 | `_mdPickColor` | `js/modules/prestado.js` |
 | `_mdTitulo` | `js/modules/prestado.js` |
 | `_mdTotalCuentas` | `js/modules/prestado.js` |
-| `_mesadaClavesParent` | `js/modules/mesada.js` |
-| `_mesadaEncargosDelParent` | `js/modules/mesada.js` |
-| `_mesadaFuentesDe` | `js/modules/mesada.js` |
-| `_mesadaOpsPosteriores` | `js/modules/mesada.js` |
-| `_mesadaTieneCuentaAfectada` | `js/modules/mesada.js` |
+| `_mesadaAnioDeKey` | `js/modules/mesada.js` |
+| `_mesadaApiEncargos` | `js/modules/mesada.js` |
+| `_mesadaAplicarEntrada` | `js/modules/mesada.js` |
+| `_mesadaCrearSalidaEncargo` | `js/modules/mesada.js` |
+| `_mesadaEntrar` | `js/modules/mesada.js` |
+| `_mesadaMostrarError` | `js/modules/mesada.js` |
+| `_mesadaNombreCoincide` | `js/modules/mesada.js` |
+| `_mesadaQuitarSalidaEncargo` | `js/modules/mesada.js` |
+| `_mesadaSacar` | `js/modules/mesada.js` |
+| `_mesadaSumaSplits` | `js/modules/mesada.js` |
+| `_mesadaValidarEncargo` | `js/modules/mesada.js` |
 | `_mesNombreDeKey` | `js/core/calc-helpers.js` |
 | `_metaAporteEliminar` | `js/modules/cuentas.js` |
 | `_miaEntraAgregarRow` | `js/modules/encargos.js` |
@@ -596,8 +604,6 @@ Ninguno.
 | `_migrarGruposDeudor` | `js/modules/prestado.js` |
 | `_moneyRender` | `js/core/core-state.js` |
 | `_moneyValue` | `js/core/core-state.js` |
-| `_mostrarMppDestinoNormal` | `js/modules/mesada.js` |
-| `_mostrarSeccionDestinoNormal` | `js/modules/mesada.js` |
 | `_movDifResumen` | `js/modules/prestado.js` |
 | `_movDifToggle` | `js/modules/prestado.js` |
 | `_movEncActualizarFaltante` | `js/modules/encargos.js` |
@@ -623,6 +629,11 @@ Ninguno.
 | `_movsOnTipo` | `js/modules/cuentas.js` |
 | `_movsRefresh` | `js/modules/cuentas.js` |
 | `_movTieneEncargoVinculado` | `js/modules/prestado.js` |
+| `_msCablear` | `js/modules/mesada.js` |
+| `_msEl` | `js/modules/mesada.js` |
+| `_msFilaClickeable` | `js/modules/mesada.js` |
+| `_msOn` | `js/modules/mesada.js` |
+| `_msVal` | `js/modules/mesada.js` |
 | `_normTxt` | `js/modules/mesada.js` |
 | `_nuMovActualizarPreview` | `js/modules/cuentas.js` |
 | `_nuMovRenderCajitas` | `js/modules/cuentas.js` |
@@ -645,18 +656,18 @@ Ninguno.
 | `_planMovimiento` | `js/modules/prestado.js` |
 | `_planMovMiDeuda` | `js/modules/prestado.js` |
 | `_planPrestamo` | `js/modules/prestado.js` |
-| `_poblarMpEncargoCuentas` | `js/modules/mesada.js` |
-| `_poblarMppEncargoCuentas` | `js/modules/mesada.js` |
+| `_poblarDestinoMesada` | `js/modules/mesada.js` |
 | `_prEnsureAlcancia` | `js/modules/prestado.js` |
 | `_prestAddSplitRow` | `js/modules/prestado.js` |
 | `_prestMontoSalida` | `js/modules/prestado.js` |
+| `_previewDisponible` | `js/modules/mesada.js` |
+| `_previewSplit` | `js/modules/mesada.js` |
 | `_procesarDiferencial` | `js/modules/encargos.js` |
 | `_procesarMovEncMia` | `js/modules/encargos.js` |
 | `_procesarSiguienteCDTVencido` | `js/modules/cuentas.js` |
 | `_prtcDifResumen` | `js/modules/prestado.js` |
 | `_prtcDifToggle` | `js/modules/prestado.js` |
 | `_refreshCajitaDet` | `js/modules/cuentas.js` |
-| `_registrarMovSecundarioMesada` | `js/modules/mesada.js` |
 | `_renderColorPicker` | `js/modules/personas.js` |
 | `_renderDetalleCajita` | `js/modules/cuentas.js` |
 | `_renderDetalleSimple` | `js/modules/cuentas.js` |
@@ -664,6 +675,7 @@ Ninguno.
 | `_renderListaDeudas` | `js/modules/prestado.js` |
 | `_renderListaPersonas` | `js/modules/personas.js` |
 | `_renderMetaAportes` | `js/modules/cuentas.js` |
+| `_renderPersonaLink` | `js/modules/mesada.js` |
 | `_renderTasaHistorialTag` | `js/modules/cuentas.js` |
 | `_rendimientoCDTaDias` | `js/modules/cuentas.js` |
 | `_rerenderCuentaActiva` | `js/core/movimientos.js` |
@@ -690,8 +702,6 @@ Ninguno.
 | `_setSaldoOfuscado` | `js/modules/alcancia.js` |
 | `_showCuentasPanel` | `js/modules/cuentas.js` |
 | `_showScreenLoading` | `js/core/sheet-stack.js` |
-| `_sincronizarMpDestinoConEncargo` | `js/modules/mesada.js` |
-| `_sincronizarMppDestinoConEncargo` | `js/modules/mesada.js` |
 | `_spEnsureTC` | `js/modules/spotify.js` |
 | `_spExtraOpts` | `js/modules/spotify.js` |
 | `_spPagarSplitFuentesOpts` | `js/modules/spotify.js` |
@@ -910,7 +920,6 @@ Ninguno.
 | `addSpotify` | `js/modules/spotify.js` |
 | `agregarCat` | `js/modules/configuracion.js` |
 | `agregarGvSplitRow` | `js/modules/gastos.js` |
-| `agregarMpSplitRow` | `js/modules/mesada.js` |
 | `agregarSpCobSplitRow` | `js/modules/spotify.js` |
 | `agregarSpPagarSplitRow` | `js/modules/spotify.js` |
 | `alcanciaAgregarOrigen` | `js/modules/alcancia.js` (window.alcanciaAgregarOrigen = …) |
@@ -991,6 +1000,7 @@ Ninguno.
 | `descontarFuente` | `js/core/core-state.js` |
 | `deshacerAbonoPendienteSp` | `js/modules/spotify.js` |
 | `deshacerPendienteMesada` | `js/modules/mesada.js` |
+| `desvincularPersonaMesada` | `js/modules/mesada.js` |
 | `Deudas` | `js/core/calc-helpers.js` |
 | `dialogo` | `js/core/core-state.js` |
 | `diffAddParte` | `js/core/diferencial.js` |
@@ -1083,9 +1093,7 @@ Ninguno.
 | `getIngresosFijosMes` | `js/core/core-state.js` |
 | `getMesadaData` | `js/core/calc-helpers.js` |
 | `getMiDeudaSaldo` | `js/core/calc-helpers.js` |
-| `getMontoPadre` | `js/modules/mesada.js` |
 | `getMovimientosCuenta` | `js/modules/cuentas.js` |
-| `getMpSplitData` | `js/modules/mesada.js` |
 | `getNuTasaGlobal` | `js/modules/cuentas.js` |
 | `getPersona` | `js/modules/personas.js` |
 | `getPersonaColor` | `js/modules/personas.js` |
@@ -1129,6 +1137,27 @@ Ninguno.
 | `MC` | `js/core/core-state.js` |
 | `medirAnchoTexto` | `js/core/core-state.js` |
 | `mesActual` | `js/core/core-state.js` |
+| `MESADA_PADRES` | `js/modules/mesada.js` |
+| `mesadaAbonarPendiente` | `js/modules/mesada.js` |
+| `mesadaAbonosDe` | `js/modules/mesada.js` |
+| `mesadaBorrarPago` | `js/modules/mesada.js` |
+| `mesadaCuentasDeEncargo` | `js/modules/mesada.js` |
+| `mesadaCuotaDeKey` | `js/modules/mesada.js` |
+| `mesadaDeshacerAbono` | `js/modules/mesada.js` |
+| `mesadaDisponibleEncargo` | `js/modules/mesada.js` |
+| `mesadaEncargosDelParent` | `js/modules/mesada.js` |
+| `mesadaEstadoMes` | `js/modules/mesada.js` |
+| `mesadaFuentesDe` | `js/modules/mesada.js` |
+| `mesadaMarcarPendiente` | `js/modules/mesada.js` |
+| `mesadaMesVencido` | `js/modules/mesada.js` |
+| `mesadaNombrePadre` | `js/modules/mesada.js` |
+| `mesadaOpsPosteriores` | `js/modules/mesada.js` |
+| `mesadaPersonaDe` | `js/modules/mesada.js` |
+| `mesadaRegistrarPago` | `js/modules/mesada.js` |
+| `mesadaResumenAnio` | `js/modules/mesada.js` |
+| `mesadaRevertirAbono` | `js/modules/mesada.js` |
+| `mesadaTieneCuentaAfectada` | `js/modules/mesada.js` |
+| `mesadaVincularPersona` | `js/modules/mesada.js` |
 | `mesKey` | `js/core/core-state.js` |
 | `mostrarAlertaFuente` | `js/core/sheet-stack.js` |
 | `nextMonthFixed` | `js/modules/spotify.js` |
@@ -1247,7 +1276,6 @@ Ninguno.
 | `toggleMetaMinWrap` | `js/modules/cuentas.js` |
 | `toggleModulo` | `js/modules/configuracion.js` |
 | `toggleMovPerdon` | `js/modules/prestado.js` |
-| `toggleMpSplit` | `js/modules/mesada.js` |
 | `togglePrestSplit` | `js/modules/prestado.js` |
 | `toggleSpCobSplit` | `js/modules/spotify.js` |
 | `toggleSpPagarSplit` | `js/modules/spotify.js` |
@@ -1261,6 +1289,7 @@ Ninguno.
 | `validarTransferencia` | `js/modules/cuentas.js` |
 | `verificarTasaNu` | `js/modules/cuentas.js` |
 | `verificarVencimientosCDT` | `js/modules/cuentas.js` |
+| `vincularPersonaMesada` | `js/modules/mesada.js` |
 | `volverADetalleCajita` | `js/modules/cuentas.js` |
 | `volverANu` | `js/modules/cuentas.js` |
 | `volverDeudores` | `js/modules/prestado.js` |

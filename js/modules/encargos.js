@@ -1936,6 +1936,15 @@ async function deleteMovEncargo(encId, movId) {
   const mov = (enc.movimientos||[]).find(m=>m.id===movId);
   if (!mov) return;
 
+  // Salida creada por un pago de Mesada: su efecto real vive en Mesada (suma a la cuenta destino y
+  // deja un movimiento espejo). Borrarla desde acá devolvería la plata al encargo pero dejaría el
+  // pago de mesada contándola y la cuenta destino inflada — se borra desde Mesada, que revierte todo.
+  const _origenMesada = typeof mesadaOrigenDeMovEncargo === 'function' ? mesadaOrigenDeMovEncargo(movId) : null;
+  if (_origenMesada) {
+    toast('Esta salida viene de la mesada de ' + (_origenMesada.parent === 'papa' ? 'papá' : 'mamá') + ' (' + _mesNombreDeKey(_origenMesada.key) + '). Para deshacerla, bórrala desde Mesada.', 'info', 4500);
+    return;
+  }
+
   // Salida dividida: se borra como UN movimiento. Si llegó el id de una porción que no es la
   // que lleva los efectos secundarios (diferencial / "Yo puse la plata"), se redirige a esa.
   const _grupoDel = _encGrupoSplit(enc, mov);

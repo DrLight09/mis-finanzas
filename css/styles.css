@@ -704,11 +704,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .ms-debe-box{background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;}
 .ms-debe-label{font-size:13px;font-weight:600;color:var(--amber);}
 
-/* Vínculo de papá/mamá con una persona (en su tarjeta) */
-.ms-persona-row{display:flex;align-items:center;gap:6px;margin-top:3px;}
-.ms-persona-link{background:none;border:none;padding:0;font-size:10px;color:var(--blue);cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:2px;}
-.ms-persona-x{background:none;border:none;padding:0 2px;font-size:13px;line-height:1;color:var(--text3);cursor:pointer;}
-
 /* Detalle de un mes */
 .ms-card-mb{margin-bottom:10px;}
 .ms-fila{margin-bottom:6px;}

@@ -42,8 +42,8 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 33 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 8 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 10 | 0 |
-| `js/modules/cuentas.js` | lazy — grupo `cuentas` | 122 | 4 |
-| `js/modules/encargos.js` | lazy — grupo `encargos` | 116 | 0 |
+| `js/modules/cuentas.js` | lazy — grupo `cuentas` | 109 | 4 |
+| `js/modules/encargos.js` | lazy — grupo `encargos` | 115 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 20 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 6 | 0 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 55 | 1 |
@@ -274,7 +274,7 @@ Carga: lazy — grupo `config`
 
 Carga: lazy — grupo `cuentas`
 
-**Funciones:** `_abrirConfirmarTasaNu`, `_aperturaToggleUI`, `_cajitaDetDelete`, `_calcPrestadoMeta`, `_cancelarCobrarCDT`, `_cdtModoSheet`, `_cuentaSelectorHtml`, `_cuentasSelector`, `_descriptorCuenta`, `_descriptorCustom`, `_diasEntreFechas`, `_fechasCambioEncargoEnCajita`, `_getMovsFilter`, `_iconoEfectivo`, `_interpretarLecturaChequeoNu`, `_metaAporteEliminar`, `_movsAplicarFiltro`, `_movsLimpiarFechas`, `_movsOnFecha`, `_movsOnSearch`, `_movsOnTipo`, `_movsRefresh`, `_nuMovActualizarPreview`, `_nuMovRenderCajitas`, `_nuMovToggleApertura`, `_procesarSiguienteCDTVencido`, `_refreshCajitaDet`, `_renderDetalleCajita`, `_renderDetalleSimple`, `_renderMetaAportes`, `_renderTasaHistorialTag`, `_rendimientoCDTaDias`, `_resetSheetNuevaCuenta`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasaNu`, `_setBtnTransferir`, `_showCuentasPanel`, `_tasaVigenteEnFecha`, `_tituloCuentaHtml`, `_trDestinoCambio`, `_trOrigenCambio`, `_trPodarSelect`, `_updateMetaCuotaPreview`, `abrirAgregarDinero`, `abrirCobrarCDT`, `abrirCrearCDT`, `abrirCuenta`, `abrirDetalleCajita`, `abrirEditarApertura`, `abrirMetaCajita`, `abrirNuevaCuenta`, `abrirNuMovimiento`, `abrirRegistrarApertura`, `abrirRestarDinero`, `abrirSubCDTs`, `abrirSubMeta`, `abrirTransferir`, `actualizarAdMenuPreview`, `actualizarAdMenuSaldo`, `actualizarBotonesTransferir`, `actualizarTransfPreview`, `addCajita`, `calcC`, `calcCDT`, `calcMetaProgreso`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `calcularSerieTasaImplicitaNu`, `confirmarAgregarDinero`, `confirmarAgregarDineroMenu`, `confirmarCambioTasaNu`, `confirmarCobrarCDT`, `confirmarCrearCDT`, `confirmarEditarApertura`, `confirmarNuMovimiento`, `confirmarRestarDinero`, `confirmarSheetCDT`, `confirmarTransferir`, `corregirChequeoNu`, `crearCuentaCustom`, `deleteCajita`, `editarCDT`, `editarCuentaCustom`, `eliminarCuentaCustom`, `getAperturaMov`, `getIconoData`, `getMovimientosCuenta`, `getNuTasaGlobal`, `guardarCDT`, `guardarChequeoNu`, `guardarMetaCajita`, `hexToRgb`, `liberarCDTManual`, `materializarIntereses`, `nuTotal`, `openSheet_adMenu`, `poblarChequeoNu`, `quitarMetaCajita`, `registrarEntradaConApertura`, `registrarSalida`, `registrarTasaNuHistorial`, `renderBannerApertura`, `renderCajitas`, `renderDetalleCuenta`, `renderIconGrid`, `renderIconoCustom`, `renderMetaProgress`, `renderMovsCuenta`, `renderMovsFiltros`, `renderSelectorCuentas`, `selColorNC`, `selIconoNC`, `toggleAdApertura`, `toggleMetaMinWrap`, `validarCamposCDT`, `validarTransferencia`, `verificarTasaNu`, `verificarVencimientosCDT`, `volverADetalleCajita`, `volverANu`, `volverSelector`
+**Funciones:** `_abrirConfirmarTasaNu`, `_aperturaToggleUI`, `_cajitaDetDelete`, `_calcPrestadoMeta`, `_cancelarCobrarCDT`, `_cdtModoSheet`, `_cuentaSelectorHtml`, `_cuentasSelector`, `_descriptorCuenta`, `_descriptorCustom`, `_getMovsFilter`, `_iconoEfectivo`, `_interpretarLecturaChequeoNu`, `_metaAporteEliminar`, `_movsAplicarFiltro`, `_movsLimpiarFechas`, `_movsOnFecha`, `_movsOnSearch`, `_movsOnTipo`, `_movsRefresh`, `_nuMovActualizarPreview`, `_nuMovRenderCajitas`, `_nuMovToggleApertura`, `_procesarSiguienteCDTVencido`, `_refreshCajitaDet`, `_renderDetalleCajita`, `_renderDetalleSimple`, `_renderMetaAportes`, `_renderTasaHistorialTag`, `_resetSheetNuevaCuenta`, `_setBtnTransferir`, `_showCuentasPanel`, `_tituloCuentaHtml`, `_trDestinoCambio`, `_trOrigenCambio`, `_trPodarSelect`, `_updateMetaCuotaPreview`, `abrirAgregarDinero`, `abrirCobrarCDT`, `abrirCrearCDT`, `abrirCuenta`, `abrirDetalleCajita`, `abrirEditarApertura`, `abrirMetaCajita`, `abrirNuevaCuenta`, `abrirNuMovimiento`, `abrirRegistrarApertura`, `abrirRestarDinero`, `abrirSubCDTs`, `abrirSubMeta`, `abrirTransferir`, `actualizarAdMenuPreview`, `actualizarAdMenuSaldo`, `actualizarBotonesTransferir`, `actualizarTransfPreview`, `addCajita`, `calcMetaProgreso`, `calcularSerieTasaImplicitaNu`, `confirmarAgregarDinero`, `confirmarAgregarDineroMenu`, `confirmarCambioTasaNu`, `confirmarCobrarCDT`, `confirmarCrearCDT`, `confirmarEditarApertura`, `confirmarNuMovimiento`, `confirmarRestarDinero`, `confirmarSheetCDT`, `confirmarTransferir`, `corregirChequeoNu`, `crearCuentaCustom`, `deleteCajita`, `editarCDT`, `editarCuentaCustom`, `eliminarCuentaCustom`, `getAperturaMov`, `getIconoData`, `getMovimientosCuenta`, `guardarCDT`, `guardarChequeoNu`, `guardarMetaCajita`, `hexToRgb`, `liberarCDTManual`, `materializarIntereses`, `openSheet_adMenu`, `poblarChequeoNu`, `quitarMetaCajita`, `registrarEntradaConApertura`, `registrarSalida`, `registrarTasaNuHistorial`, `renderBannerApertura`, `renderCajitas`, `renderDetalleCuenta`, `renderIconGrid`, `renderIconoCustom`, `renderMetaProgress`, `renderMovsCuenta`, `renderMovsFiltros`, `renderSelectorCuentas`, `selColorNC`, `selIconoNC`, `toggleAdApertura`, `toggleMetaMinWrap`, `validarCamposCDT`, `validarTransferencia`, `verificarTasaNu`, `verificarVencimientosCDT`, `volverADetalleCajita`, `volverANu`, `volverSelector`
 
 **Globales:** `CUENTAS_FIJAS_SELECTOR`, `ICONO_EFECTIVO_SELECTOR`, `ICONOS_CUENTA`, `TR_MIN_EFECTIVO`
 
@@ -282,7 +282,7 @@ Carga: lazy — grupo `cuentas`
 
 Carga: lazy — grupo `encargos`
 
-**Funciones:** `_actualizarMovEncCuentaHint`, `_actualizarMoverEncDestinoHint`, `_actualizarMoverEncOrigenHint`, `_actualizarMoverEncPreview`, `_actualizarPartePreview`, `_actualizarTransfEncPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_confirmarMoverEncCuentasSplit`, `_confirmarUsarParte`, `_crearSplitSobrante`, `_ctcActualizarCuentaEncHint`, `_ctcActualizarDestinoHint`, `_ctcActualizarPreview`, `_ctcDifResumen`, `_ctcDifToggle`, `_ctcMiAgregarRow`, `_ctcMiSplitToggle`, `_difAddBenef`, `_difMiAgregarRow`, `_difMiSplitPreview`, `_difMiSplitToggle`, `_difRemoveBenef`, `_difRenderHistorialParte`, `_difResumen`, `_difSetCuentaEntrada`, `_difSetCuentaSalida`, `_difSetMonto`, `_difSetNombre`, `_difToggle`, `_difTogglePagoYo`, `_encAbrirSelectorPersonaNueva`, `_encGrupoSplit`, `_encSplitCarrier`, `_encSplitKey`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_getUsarParteFuentesOptions`, `_getUsarParteSplitData`, `_initNuevoEncargoPersonaSelector`, `_irAEncargo`, `_miaEntraAgregarRow`, `_miaEntraSplitToggle`, `_miaLeerCuentas`, `_miaMontoEfectivo`, `_miaResumenLado`, `_miaSaleAgregarRow`, `_miaSaleSplitToggle`, `_movEncActualizarFaltante`, `_movEncAgregarSplitRow`, `_movEncConfirmarPrestarFaltante`, `_movEncFaltanteCuentaHint`, `_movEncGetFuentesOptions`, `_movEncGetSplitData`, `_movEncMiaPreview`, `_movEncMiaToggle`, `_movEncSplitPreview`, `_movEncSplitToggle`, `_moverEncAgregarSplitRow`, `_moverEncGetFuentesOptions`, `_moverEncGetSplitData`, `_moverEncSplitPreview`, `_moverEncSplitToggle`, `_onSelPersonaNuevoEncargo`, `_procesarDiferencial`, `_procesarMovEncMia`, `_salidaEncMenuIr`, `_usarParteAddBenef`, `_usarParteAgregarSplitRow`, `_usarParteDifResumen`, `_usarParteDifToggle`, `_usarParteFuentePreview`, `_usarParteMiAgregarRow`, `_usarParteMiSplitToggle`, `_usarParteRemoveBenef`, `_usarParteSetMonto`, `_usarParteSetNombre`, `_usarParteSplitToggle`, `_validarIntercambiosBenefs`, `_validarMovEncMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMovEncargo`, `abrirMoverEntreCuentasEncargo`, `abrirNuevaParte`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMovEncargo`, `confirmarMoverEncCuentas`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getCajitaNombre`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
+**Funciones:** `_actualizarMovEncCuentaHint`, `_actualizarMoverEncDestinoHint`, `_actualizarMoverEncOrigenHint`, `_actualizarMoverEncPreview`, `_actualizarPartePreview`, `_actualizarTransfEncPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_confirmarMoverEncCuentasSplit`, `_confirmarUsarParte`, `_crearSplitSobrante`, `_ctcActualizarCuentaEncHint`, `_ctcActualizarDestinoHint`, `_ctcActualizarPreview`, `_ctcDifResumen`, `_ctcDifToggle`, `_ctcMiAgregarRow`, `_ctcMiSplitToggle`, `_difAddBenef`, `_difMiAgregarRow`, `_difMiSplitPreview`, `_difMiSplitToggle`, `_difRemoveBenef`, `_difRenderHistorialParte`, `_difResumen`, `_difSetCuentaEntrada`, `_difSetCuentaSalida`, `_difSetMonto`, `_difSetNombre`, `_difToggle`, `_difTogglePagoYo`, `_encAbrirSelectorPersonaNueva`, `_encGrupoSplit`, `_encSplitCarrier`, `_encSplitKey`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_getUsarParteFuentesOptions`, `_getUsarParteSplitData`, `_initNuevoEncargoPersonaSelector`, `_irAEncargo`, `_miaEntraAgregarRow`, `_miaEntraSplitToggle`, `_miaLeerCuentas`, `_miaMontoEfectivo`, `_miaResumenLado`, `_miaSaleAgregarRow`, `_miaSaleSplitToggle`, `_movEncActualizarFaltante`, `_movEncAgregarSplitRow`, `_movEncConfirmarPrestarFaltante`, `_movEncFaltanteCuentaHint`, `_movEncGetFuentesOptions`, `_movEncGetSplitData`, `_movEncMiaPreview`, `_movEncMiaToggle`, `_movEncSplitPreview`, `_movEncSplitToggle`, `_moverEncAgregarSplitRow`, `_moverEncGetFuentesOptions`, `_moverEncGetSplitData`, `_moverEncSplitPreview`, `_moverEncSplitToggle`, `_onSelPersonaNuevoEncargo`, `_procesarDiferencial`, `_procesarMovEncMia`, `_salidaEncMenuIr`, `_usarParteAddBenef`, `_usarParteAgregarSplitRow`, `_usarParteDifResumen`, `_usarParteDifToggle`, `_usarParteFuentePreview`, `_usarParteMiAgregarRow`, `_usarParteMiSplitToggle`, `_usarParteRemoveBenef`, `_usarParteSetMonto`, `_usarParteSetNombre`, `_usarParteSplitToggle`, `_validarIntercambiosBenefs`, `_validarMovEncMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMovEncargo`, `abrirMoverEntreCuentasEncargo`, `abrirNuevaParte`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMovEncargo`, `confirmarMoverEncCuentas`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
 
 ### `js/modules/gastos.js`
 
@@ -493,7 +493,6 @@ Ninguno.
 | `_deudaTieneCuentaAfectada` | `js/modules/prestado.js` |
 | `_dialogResolve` | `js/core/core-state.js` (window._dialogResolve = …) |
 | `_diasDesde` | `js/modules/alcancia.js` |
-| `_diasEntreFechas` | `js/modules/cuentas.js` |
 | `_difAddBenef` | `js/modules/encargos.js` |
 | `_diffActualizarMiCuenta` | `js/core/diferencial.js` |
 | `_diffFuentesOptsHtml` | `js/core/diferencial.js` |
@@ -520,7 +519,6 @@ Ninguno.
 | `_esGastoVarNoReal` | `js/core/core-state.js` |
 | `_espejoLista` | `js/core/cuenta-efectos.js` |
 | `_fechaSafe` | `js/core/core-state.js` |
-| `_fechasCambioEncargoEnCajita` | `js/modules/cuentas.js` |
 | `_fmtTiempo` | `js/modules/alcancia.js` |
 | `_fuenteLabelHtml` | `js/core/movimientos.js` |
 | `_getA` | `js/modules/alcancia.js` |
@@ -676,7 +674,6 @@ Ninguno.
 | `_renderListaPersonas` | `js/modules/personas.js` |
 | `_renderMetaAportes` | `js/modules/cuentas.js` |
 | `_renderTasaHistorialTag` | `js/modules/cuentas.js` |
-| `_rendimientoCDTaDias` | `js/modules/cuentas.js` |
 | `_rerenderCuentaActiva` | `js/core/movimientos.js` |
 | `_resetEncCuentaSplitToggleStyle` | `js/modules/prestado.js` |
 | `_resetSheetNuevaCuenta` | `js/modules/cuentas.js` |
@@ -687,12 +684,9 @@ Ninguno.
 | `_revertirMovDeudor` | `js/modules/prestado.js` |
 | `_revertirMovMiDeuda` | `js/modules/prestado.js` |
 | `_saldoCPAjeno` | `js/core/core-state.js` |
-| `_saldoEncargosEnCajita` | `js/modules/cuentas.js` |
-| `_saldoEncargosEnCajitaEnFecha` | `js/modules/cuentas.js` |
 | `_saldoEncargosEnCuenta` | `js/core/core-state.js` |
 | `_saldoRegistrado` | `js/modules/alcancia.js` |
 | `_salidaEncMenuIr` | `js/modules/encargos.js` |
-| `_segmentosTasaNu` | `js/modules/cuentas.js` |
 | `_seleccionarColorPersona` | `js/modules/personas.js` |
 | `_selPersonaCrearDirecto` | `js/modules/personas.js` |
 | `_selPersonaElegir` | `js/modules/personas.js` |
@@ -710,7 +704,6 @@ Ninguno.
 | `_syncMpDebeWrap` | `js/modules/mesada.js` |
 | `_syncSpDebeWrap` | `js/modules/spotify.js` |
 | `_syncSpExtraWrap` | `js/modules/spotify.js` |
-| `_tasaVigenteEnFecha` | `js/modules/cuentas.js` |
 | `_tcEsCargoExterno` | `js/modules/tarjetas_credito.js` |
 | `_tcOpsPosteriores` | `js/modules/tarjetas_credito.js` |
 | `_tcPoblarSelectCajita` | `js/modules/tarjetas_credito.js` |
@@ -933,16 +926,12 @@ Ninguno.
 | `borrarMovEspejo` | `js/core/cuenta-efectos.js` |
 | `borrarTodo` | `js/modules/configuracion.js` |
 | `buildFuentesOptsHtml` | `js/core/core-state.js` |
-| `calcC` | `js/modules/cuentas.js` |
-| `calcCDT` | `js/modules/cuentas.js` |
 | `calcDeudaAjenaDeTarjeta` | `js/core/core-state.js` |
 | `calcDeudaTcPropia` | `js/core/core-state.js` |
 | `calcDeudaTcPropiaDeTarjeta` | `js/core/core-state.js` |
 | `calcHealthScore` | `js/modules/inicio.js` |
 | `calcMetaProgreso` | `js/modules/cuentas.js` |
 | `calcPatrimonioTotal` | `js/core/core-state.js` |
-| `calcRendimientoCDTMes` | `js/modules/cuentas.js` |
-| `calcRendimientoCDTsMes` | `js/modules/cuentas.js` |
 | `calcSaldoInicialPendiente` | `js/core/core-state.js` |
 | `calcularSerieTasaImplicitaNu` | `js/modules/cuentas.js` |
 | `cambiarAnio` | `js/modules/mesada.js` |
@@ -1072,7 +1061,6 @@ Ninguno.
 | `FuentesFiltro` | `js/core/fuentes-filtro.js` |
 | `gastosMes` | `js/core/core-state.js` |
 | `getAperturaMov` | `js/modules/cuentas.js` |
-| `getCajitaNombre` | `js/modules/encargos.js` |
 | `getCatsFijo` | `js/core/core-state.js` |
 | `getCatsVar` | `js/core/core-state.js` |
 | `getCuenta` | `js/core/core-state.js` |
@@ -1092,7 +1080,6 @@ Ninguno.
 | `getMesadaData` | `js/core/calc-helpers.js` |
 | `getMiDeudaSaldo` | `js/core/calc-helpers.js` |
 | `getMovimientosCuenta` | `js/modules/cuentas.js` |
-| `getNuTasaGlobal` | `js/modules/cuentas.js` |
 | `getPersona` | `js/modules/personas.js` |
 | `getPersonaColor` | `js/modules/personas.js` |
 | `getPersonaDatos` | `js/modules/personas.js` |
@@ -1159,7 +1146,6 @@ Ninguno.
 | `mostrarAlertaFuente` | `js/core/sheet-stack.js` |
 | `nextMonthFixed` | `js/modules/spotify.js` |
 | `nivelAntiguedadMovimiento` | `js/core/core-state.js` |
-| `nuTotal` | `js/modules/cuentas.js` |
 | `onChangeMov_enc_cuenta` | `js/modules/prestado.js` |
 | `onChangeMov_enc_sel` | `js/modules/prestado.js` |
 | `openSheet` | `js/core/sheet-stack.js` |

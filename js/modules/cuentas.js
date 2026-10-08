@@ -458,25 +458,6 @@ function _resetSheetNuevaCuenta(){
 /* ───────────────────────────────────────────────────────────────
    SECCIÓN: Nu — tasa EA (con historial por tramos) y cálculo de CDTs
    ─────────────────────────────────────────────────────────────── */
-function _saldoEncargosEnCajita(cajitaId){
-  if(!cajitaId)return 0;
-  return _saldoEncargosEnCuenta('cajita:'+cajitaId);
-}
-
-// Devuelve la tasa EA vigente en una fecha dada, según S.historialTasasNu.
-// Si la fecha es anterior a cualquier cambio registrado, usa la tasa base (S.nuTasaGlobal).
-function _tasaVigenteEnFecha(fechaStr){
-  const hist=(S.historialTasasNu||[]).slice().sort((a,b)=>a.fecha<b.fecha?-1:(a.fecha>b.fecha?1:0));
-  let tasa=(S.nuTasaGlobal!=null?S.nuTasaGlobal:(S.nuRate||9.25));
-  let encontrada=null;
-  for(const h of hist){
-    if(h.fecha<=fechaStr) encontrada=h.tasa; else break;
-  }
-  if(encontrada!=null) tasa=encontrada;
-  else if(hist.length) tasa=hist[0].tasa;
-  return tasa;
-}
-
 // Registra (o actualiza) un cambio de tasa Nu vigente desde una fecha específica.
 // Permite corregir retroactivamente: si Nu subió la tasa el 6 de julio pero te enteraste
 // el 12, registras {fecha:'2026-07-06', tasa:9.30} y calcC() recalcula automáticamente
@@ -489,113 +470,6 @@ function registrarTasaNuHistorial(fechaStr, tasa){
   else S.historialTasasNu.push({fecha:fechaStr,tasa});
   S.historialTasasNu.sort((a,b)=>a.fecha<b.fecha?-1:(a.fecha>b.fecha?1:0));
   if(S.historialTasasNu.length>60)S.historialTasasNu=S.historialTasasNu.slice(-60);
-}
-
-function _diasEntreFechas(a,b){
-  // Ver _fechaSafe() en core-state.js: new Date(str+'T00:00:00') da Invalid
-  // Date si a/b no tienen mes/día de 2 dígitos, propagando NaN en silencio
-  // a calcC() y todo lo que dependa de esta función.
-  return Math.round((_fechaSafe(b)-_fechaSafe(a))/86400000);
-}
-function _segmentosTasaNu(desdeStr,hastaStr){
-  const cambios=(S.historialTasasNu||[])
-    .filter(h=>h.fecha>desdeStr&&h.fecha<hastaStr)
-    .sort((a,b)=>a.fecha<b.fecha?-1:1);
-  const puntos=[desdeStr,...cambios.map(h=>h.fecha),hastaStr];
-  const segmentos=[];
-  for(let i=0;i<puntos.length-1;i++){
-    const dias=_diasEntreFechas(puntos[i],puntos[i+1]);
-    if(dias<=0)continue;
-    segmentos.push({desde:puntos[i],hasta:puntos[i+1],dias,tasa:_tasaVigenteEnFecha(puntos[i])});
-  }
-  return segmentos;
-}
-
-// Reconstruye cuánto saldo de encargos había en una cajita a una fecha dada (solo contando
-// movimientos del encargo hasta esa fecha inclusive) — a diferencia de
-// _saldoEncargosEnCajita()/_saldoEncargosEnCuenta(), que siempre da el saldo de HOY.
-// Se usa en calcC() para no darle intereses retroactivos a plata de un encargo que
-// todavía no había entrado en tramos anteriores del periodo (ver CHANGELOG.md#cuentas).
-function _saldoEncargosEnCajitaEnFecha(cajitaId,fechaStr){
-  const cuentaKey='cajita:'+cajitaId;
-  let total=0;
-  (S.encargos||[]).forEach(enc=>{
-    const map={};
-    if((enc.saldoInicial||0)>0){
-      const k=enc.cuentaInicial||'__sin__';
-      map[k]=(map[k]||0)+(enc.saldoInicial||0);
-    }
-    (enc.movimientos||[]).forEach(m=>{
-      if((m.fecha||'')>fechaStr)return; // ignora movimientos posteriores a la fecha pedida
-      const k=m.cuenta||'__sin__';
-      if(m.tipo==='entrada')map[k]=(map[k]||0)+(m.monto||0);
-      else map[k]=(map[k]||0)-(m.monto||0);
-    });
-    const v=map[cuentaKey]||0;
-    if(v>0)total+=v;
-  });
-  return total;
-}
-
-// Fechas (dentro de (desde, hasta]) en que algún movimiento de encargo tocó esta cajita —
-// puntos donde el saldo de encargos "vigente" cambia, para partir el cálculo de interés ahí.
-function _fechasCambioEncargoEnCajita(cajitaId,desdeStr,hastaStr){
-  const cuentaKey='cajita:'+cajitaId;
-  const fechas=new Set();
-  (S.encargos||[]).forEach(enc=>{
-    (enc.movimientos||[]).forEach(m=>{
-      if((m.cuenta||'')===cuentaKey&&m.fecha>desdeStr&&m.fecha<=hastaStr)fechas.add(m.fecha);
-    });
-  });
-  return fechas;
-}
-
-function calcC(c){
-  // Interés diario compuesto sobre el saldo total físico en la cajita (propio + lo que haya
-  // de encargos guardado ahí — Nu no distingue de quién es la plata al pagar interés; esos
-  // intereses son del dueño de la cajita, ver nota en core-state.js). c.saldo guarda solo la
-  // porción propia; el saldo de encargos se reconstruye aparte con _saldoEncargosEnCajita().
-  //
-  // IMPORTANTE: el cálculo se hace POR TRAMOS, partiendo tanto en cada cambio de tasa EA
-  // (ver S.historialTasasNu) como en cada fecha en que cambió el saldo de encargos dentro
-  // de esta cajita — así una plata de encargo que entra a mitad del periodo solo compone
-  // intereses desde el día en que realmente llegó, no desde la última vez que se
-  // materializó la cajita completa.
-  // Corregido (ver CHANGELOG.md#cuentas): antes se usaba el saldo de encargos DE HOY
-  // aplicado a TODO el periodo compuesto, dándole intereses retroactivos a cualquier plata
-  // de encargo recién depositada.
-  const saldoPropio=c.saldo||0;
-  const tasaHoy=_tasaVigenteEnFecha(hoy());
-  const saldoEncargosHoy=_saldoEncargosEnCajita(c.id);
-  if(!c.fecha||(!saldoPropio&&!saldoEncargosHoy))return{val:saldoPropio,ganado:0,dias:0,tasaDiaria:0,tasa:tasaHoy,saldoEncargos:saldoEncargosHoy};
-  const hoyStr=hoy();
-  const cambiosTasa=(S.historialTasasNu||[]).filter(h=>h.fecha>c.fecha&&h.fecha<=hoyStr).map(h=>h.fecha);
-  const cambiosEncargo=[..._fechasCambioEncargoEnCajita(c.id,c.fecha,hoyStr)];
-  const puntos=[...new Set([c.fecha,...cambiosTasa,...cambiosEncargo,hoyStr])].sort();
-  let saldoEncActual=_saldoEncargosEnCajitaEnFecha(c.id,c.fecha);
-  let valor=saldoPropio+saldoEncActual;
-  let diasTotal=0;
-  for(let i=0;i<puntos.length-1;i++){
-    const desde=puntos[i],hasta=puntos[i+1];
-    const dias=_diasEntreFechas(desde,hasta);
-    if(dias>0){
-      const tasaTramo=_tasaVigenteEnFecha(desde);
-      const tasaDiariaTramo=Math.pow(1+tasaTramo/100,1/365)-1;
-      valor=valor*Math.pow(1+tasaDiariaTramo,dias);
-      diasTotal+=dias;
-    }
-    // Al llegar a este punto, actualizar el saldo de encargos vigente desde acá en
-    // adelante (si el quiebre fue por un movimiento de encargo, no solo por tasa).
-    const nuevoSaldoEnc=_saldoEncargosEnCajitaEnFecha(c.id,hasta);
-    if(nuevoSaldoEnc!==saldoEncActual){
-      valor+=(nuevoSaldoEnc-saldoEncActual);
-      saldoEncActual=nuevoSaldoEnc;
-    }
-  }
-  const val=valor-saldoEncActual; // saldoEncActual ya quedó igual a saldoEncargosHoy
-  const ganado=val-saldoPropio;
-  const tasaDiaria=Math.pow(1+tasaHoy/100,1/365)-1;
-  return{val,ganado,dias:diasTotal,tasaDiaria,tasa:tasaHoy,saldoEncargos:saldoEncActual};
 }
 
 // Materializa los intereses acumulados en el saldo (llama esto antes de depósitos/retiros)
@@ -864,81 +738,6 @@ function confirmarCambioTasaNu(){
   _chequeoNuUndo=null;
 }
 
-// Calcula intereses del CDT de una cajita
-// Nu calcula el CDT así:
-// 1. Rendimiento bruto = monto × ((1 + EA)^(dias/365) - 1)  [compuesto, base 365]
-// 2. Nu redondea el bruto al $0,50 más cercano: round(bruto × 2) / 2
-// 3. RTE = bruto_redondeado × rte%
-// 4. Rendimiento neto = bruto_redondeado - RTE
-// 5. Total neto = monto + rendimiento neto
-// Verificado con dos CDTs reales: replica exactamente los valores de la app Nu.
-function calcCDT(cdt){
-  if(!cdt||!cdt.monto||!cdt.inicio)return{val:cdt?cdt.monto:0,ganado:0,ganado_bruto:0,retencion:0,dias:0};
-  const rate=cdt.tasa/100;
-  const rte=(cdt.rte!=null?cdt.rte:4)/100; // retención en fuente (default 4%)
-  const desde=_fechaSafe(cdt.inicio);
-  const hasta=cdt.vence?_fechaSafe(cdt.vence):new Date();
-  const ahora=new Date();
-  const fechaFin=ahora<hasta?ahora:hasta;
-  const dias=Math.max(0,Math.floor((fechaFin-desde)/86400000));
-  // Rendimiento bruto compuesto (fórmula EA base 365, igual que Nu)
-  const ganado_bruto_exacto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
-  // Nu redondea el bruto al $0,50 más cercano antes de calcular RTE
-  const ganado_bruto=Math.round(ganado_bruto_exacto*2)/2;
-  // RTE se aplica sobre el bruto redondeado
-  const retencion=ganado_bruto*rte;
-  const ganado=ganado_bruto-retencion;
-  const val=cdt.monto+ganado;
-  return{val,ganado,ganado_bruto,retencion,dias};
-}
-
-// Rendimiento neto acumulado de un CDT después de N días (misma fórmula que calcCDT, sin fechas).
-function _rendimientoCDTaDias(cdt,dias){
-  if(dias<=0)return 0;
-  const rate=cdt.tasa/100;
-  const rte=(cdt.rte!=null?cdt.rte:4)/100;
-  const ganado_bruto_exacto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
-  const ganado_bruto=Math.round(ganado_bruto_exacto*2)/2;
-  const retencion=ganado_bruto*rte;
-  return ganado_bruto-retencion;
-}
-
-// Calcula el rendimiento neto de un CDT que corresponde específicamente a un mes dado (formato 'YYYY-MM').
-// No es flujo de caja disponible (el dinero sigue bloqueado en el CDT), pero sí es
-// "rendimiento generado" ese mes — patrimonio que aumenta día a día aunque el efectivo
-// disponible no cambie (Opción 2: patrimonio real, sin movimiento visible).
-function calcRendimientoCDTMes(cdt,mesK){
-  if(!cdt||!cdt.monto||!cdt.inicio||!mesK)return 0;
-  const inicio=_fechaSafe(cdt.inicio);
-  const [anioM,mesM]=mesK.split('-').map(Number);
-  const inicioMes=new Date(anioM,mesM-1,1);
-  const finMes=new Date(anioM,mesM,0); // último día del mes
-  const ahora=new Date();
-  const vence=cdt.vence?_fechaSafe(cdt.vence):null;
-  const limiteSup=vence&&vence<ahora?vence:ahora;
-  if(limiteSup<inicioMes||inicio>finMes)return 0;
-  // Días acumulados desde el inicio del CDT hasta el corte de inicio/fin de este mes
-  const cortePrev=inicioMes>inicio?inicioMes:inicio;
-  const corteFin=limiteSup<finMes?limiteSup:finMes;
-  const diasPrev=Math.max(0,Math.floor((cortePrev-inicio)/86400000));
-  const diasFin=Math.max(0,Math.floor((corteFin-inicio)/86400000));
-  if(diasFin<=diasPrev)return 0;
-  return Math.max(0,_rendimientoCDTaDias(cdt,diasFin)-_rendimientoCDTaDias(cdt,diasPrev));
-}
-
-// Suma el rendimiento de TODOS los CDTs (en todas las cajitas) generado durante un mes dado.
-// Esto es "rendimiento acumulado/patrimonio" — el patrimonio total aumenta, pero NO es
-// efectivo disponible (el dinero sigue bloqueado hasta que el CDT venza/se cobre).
-function calcRendimientoCDTsMes(mesK){
-  let total=0;
-  (S.cajitas||[]).forEach(c=>{
-    (c.cdts||[]).forEach(cdt=>{
-      total+=calcRendimientoCDTMes(cdt,mesK);
-    });
-  });
-  return total;
-}
-
 // Verifica y libera CDTs vencidos automáticamente
 // Cola de CDTs vencidos pendientes de confirmar (uno a la vez vía sheet 'cobrar-cdt')
 let _colaCDTsVencidos=[];
@@ -982,14 +781,6 @@ function _procesarSiguienteCDTVencido(){
     return;
   }
   abrirCobrarCDT(cajitaId,cdtId,true);
-}
-
-function nuTotal(){
-  return(S.cajitas||[]).reduce((a,c)=>{
-    const k=calcC(c);
-    const cdtVal=(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0);
-    return a+k.val+cdtVal;
-  },0);
 }
 
 /* ───────────────────────────────────────────────────────────────
@@ -1212,13 +1003,6 @@ function quitarMetaCajita(){
 
 // Sección "Préstamo con origen dividido" (togglePrestSplit / _renderPrestSplit /
 // _updatePrestSplitResumen) migrada a js/modules/prestado.js — ver docs/prestado.md.
-
-function getNuTasaGlobal(){
-  const el=document.getElementById('nuTasaGlobal');
-  const v=el?parseFloat(el.value.replace(',','.'))||9.25:9.25;
-  S.nuTasaGlobal=v;
-  return v;
-}
 
 // Muestra un resumen corto ("9,25% hasta 05 jul · 9,30% desde 06 jul") de los últimos
 // cambios de tasa registrados.
@@ -2575,7 +2359,7 @@ function _nuMovRenderCajitas() {
     return;
   }
   wrap.innerHTML = html`${cajitas.map(c => {
-    const saldo = typeof calcC === 'function' ? calcC(c).val : (c.saldo || 0);
+    const saldo = calcC(c).val;
     return html`<div data-nu-cajita="cajita:${c.id}"
       style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;transition:all .15s;">
       <div>
@@ -2625,7 +2409,7 @@ function _nuMovActualizarPreview() {
   const cid = _nuMovCajitaSel.split(':')[1];
   const caj = (S.cajitas || []).find(x => x.id === cid);
   if (!caj) return;
-  const saldoActual = typeof calcC === 'function' ? calcC(caj).val : (caj.saldo || 0);
+  const saldoActual = calcC(caj).val;
   if (_nuMovTipo === 'entrada') {
     prev.textContent = fmt(saldoActual) + ' + ' + fmt(v) + ' = ' + fmt(saldoActual + v);
     prev.style.color = 'var(--accent)';
@@ -2659,7 +2443,7 @@ function confirmarNuMovimiento() {
   // historial desfasado y borrar el movimiento devolvía de más. Se comprueba ANTES de materializar los
   // intereses para no dejar la cajita modificada a medias si se rechaza.
   if (_nuMovTipo !== 'entrada') {
-    const disponible = typeof calcC === 'function' ? calcC(caj).val : (caj.saldo || 0);
+    const disponible = calcC(caj).val;
     if (Math.round(v * 100) > Math.round(disponible * 100)) {
       toast('Saldo insuficiente en ' + escHtml(caj.nombre || 'cajita') + ' (' + fmt(disponible) + ')', 'err', 3500);
       return;
@@ -3118,8 +2902,6 @@ const adMenuMonto = document.getElementById('adMenuMonto');
 if (adMenuMonto) adMenuMonto.addEventListener('input', actualizarAdMenuPreview);
 
 // --- Nu: tasa EA ---
-const nuRateEl = document.getElementById('nuRate');
-if (nuRateEl) nuRateEl.addEventListener('input', () => debounceSave(1000));
 
 // --- Transferir: selects y monto (preview en vivo + exclusión mutua origen/destino) ---
 const trOrigen = document.getElementById('tr_origen');

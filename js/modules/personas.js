@@ -8,14 +8,16 @@
    (S.personas), pantalla "Personas" (lista + perfil), y los sheets
    compartidos de seleccionar/crear/editar persona.
 
-   La integración específica de cada módulo con Personas vive aparte,
-   en su propio archivo (mismo motivo que llevó a partir Spotify y
-   Encargos en dos: dependen de funciones — getPersona, abrirSelPersona,
-   _inyectarPersonaSheets — recién definidas acá, por eso cargan
-   DESPUÉS de este archivo, no junto al resto de su módulo):
-     - js/modules/encargos-personas.js
-     - js/modules/spotify-personas.js
-     - js/modules/prestado-personas.js
+   La integración de cada módulo con Personas vive en el propio módulo, no
+   en este archivo (los archivos *-personas.js que existieron se fusionaron
+   de vuelta el 2026-08-03):
+     - Encargos:  js/modules/encargos.js (selector en "Nuevo encargo",
+                  hook que exige personaId, botones de perfil, _irAEncargo)
+     - Spotify:   js/modules/spotify.js
+     - Préstamos: js/modules/prestado.js
+   Este archivo no las llama a nivel superior: personas.js carga antes que
+   esos módulos y ellos usan sus funciones (getPersona, abrirSelPersona,
+   _inyectarPersonaSheets) solo dentro de handlers, es decir en el click.
 
    Ver docs/personas.md para el resto de la documentación funcional.
    ═══════════════════════════════════════════════════════════════ */
@@ -808,9 +810,7 @@ function _editarPersonaDesdePerfilSheet() {
   document.getElementById('sheet-perfil-persona').classList.remove('open');
 }
 
-// _irADeudor() migrada a js/modules/prestado-personas.js.
-
-// _irAEncargo() migrada a js/modules/encargos-personas.js.
+// _irADeudor() vive en js/modules/prestado.js; _irAEncargo() en js/modules/encargos.js.
 
 function _irASpotify() {
   document.getElementById('sheet-perfil-persona').classList.remove('open');
@@ -839,24 +839,15 @@ function _seleccionarColorPersona(containerId, varName, color) {
   _renderColorPicker(containerId, varName);
 }
 
-// Selector de persona en "Nuevo encargo" (+ hooks de openSheet/crearEncargo) migrado a js/modules/encargos-personas.js.
-
-// Integración "nueva persona de Préstamos también usa S.personas" y el hook
-// de refresco al editar desde el sheet global migrados a
-// js/modules/prestado-personas.js — ver docs/prestado.md.
-
-// Integración de Encargos con Personas migrada a js/modules/encargos-personas.js
-// — mismo motivo que spotify-personas.js: depende de openSheet, getPersona,
-// abrirSelPersona y _inyectarPersonaSheets, recién definidos en este punto
-// del archivo, por eso carga acá y no junto al resto de Encargos (que está
-// arriba, en encargos.js). Ver también docs/encargos.md.
+// El selector de persona en "Nuevo encargo", la integración de Préstamos con S.personas y el
+// refresco al editar desde el sheet global viven en encargos.js y prestado.js. Ver docs/encargos.md
+// y docs/prestado.md.
 
 /* ── REGISTRO DE EVENTOS (data-action → handler) ───────────────── */
-// Reemplaza los onclick inline propios de este módulo. El botón "Ver →" de
-// cada encargo en el perfil de persona (arriba) ya usa
-// data-action="encargos-personas:irAEncargo" en vez de onclick — se registra
-// desde encargos-personas.js, no desde acá, porque _irAEncargo() vive ahí
-// (ver docs/auditoria-tecnica.md, nota 2026-07-29).
+// Reemplaza los onclick inline propios de este módulo. Los botones "Ver →" del perfil
+// (encargos, deudores, mis deudas) usan data-action con el prefijo de su módulo
+// ("encargos-personas:irAEncargo", "prestado-personas:irADeudor"...): el prefijo es solo el
+// namespace del evento y se registra desde encargos.js / prestado.js, donde viven los handlers.
 Events.registerAll('personas', {
   abrirPerfil: abrirPerfilPersona,
   abrirCrearGlobal: _abrirCrearPersonaGlobal,

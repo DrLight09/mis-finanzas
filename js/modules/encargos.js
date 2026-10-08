@@ -17,19 +17,18 @@
      viven las INSTANCIAS que este módulo registra en esos motores
      (diffRegistrarInstancia('movenc', ...), ('usarParte', ...),
      ('ctc', ...) y crearSplitWidget('movenc', ...), ('usarParte', ...)).
-   - iniciales() y getCajitaNombre() se quedan en index.html porque
-     también los usa el sistema de Personas.
+   - iniciales() se queda en bootstrap.js porque también la usa el sistema
+     de Personas. getCajitaNombre() vive en js/core/nu-calc.js.
    - _normEncargos(S) (normalización para el feed unificado de
      movimientos) se queda en index.html: vive anidada dentro de una
      misma factory compartida con _normDeudores/_normSpotify/_normTC/
      etc. — sacarla sola hubiera exigido reestructurar esa factory
      entera, que no es un cambio quirúrgico para este módulo.
-   - La integración con el Sistema de Personas (selector de persona en
-     "Nuevo encargo", hook que exige personaId, botones de perfil en
-     lista/detalle) vive en js/modules/encargos-personas.js, cargado
-     más abajo en index.html — mismo motivo que spotify-personas.js:
-     depende de getPersona/abrirSelPersona/_inyectarPersonaSheets,
-     definidos más adelante en el archivo.
+   - La integración con el Sistema de Personas (selector en "Nuevo encargo",
+     hook que exige personaId, botones de perfil en lista/detalle) vive al
+     final de este mismo archivo (fusionada el 2026-08-03). Usa getPersona/
+     abrirSelPersona/_inyectarPersonaSheets, de personas.js, solo dentro de
+     handlers.
    - La integración cruzada con Préstamos ("Pago de una deuda con
      plata de un encargo", dentro del sheet de abono de deudor) no se
      tocó: es código de Deudores que consume datos de Encargos, no al
@@ -123,7 +122,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
       let interesMioHoy = 0;
       let valorActualPorcion = saldoEncargo;
       let interesAcumulado = 0;
-      if (cajita && cajita.saldo > 0 && typeof calcC==='function') {
+      if (cajita && cajita.saldo > 0) {
         const k = calcC(cajita);
         const proporcion = saldoEncargo / cajita.saldo; // fracción del saldo base que es del encargo
         valorActualPorcion = k.val * proporcion;        // valor actual de esa fracción (crece con la cajita)
@@ -252,12 +251,6 @@ function abrirEncargoDesdeCuenta(id) {
   setTimeout(() => abrirEncargoDetalle(id), 80);
 }
 
-function getCajitaNombre(fuente) {
-  if (!fuente || !fuente.startsWith('cajita:')) return null;
-  const id = fuente.split(':')[1];
-  const c = (S.cajitas || []).find(x => x.id === id);
-  return c ? (c.nombre || 'Cajita') : null;
-}
 /* ================================================================
    ENCARGOS — plata de otros que administrás (NO suma al patrimonio)
    ================================================================ */
@@ -731,7 +724,7 @@ function crearEncargo() {
   document.getElementById('enc_cuenta_wrap').style.display = 'none';
   save(); renderEncargosList();
   closeSheet('nuevo-encargo');
-  if(window.logCambio){const _enomEl=document.getElementById('enc_nombre');logCambio('Creaste un encargo',_enomEl?_enomEl.value:'','','editar');}
+  if(window.logCambio) logCambio('Creaste un encargo',nombre,'','editar');
   toast('Encargo creado', 'ok');
 }
 

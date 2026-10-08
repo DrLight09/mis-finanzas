@@ -351,23 +351,9 @@ test('encargos candidatos — por nombre, palabra completa, con saldo y de mayor
     enc('g', 'MADRE', [entrada(100)]),
   ] });
   // 'Papás' (plural) entra; 'papayera' no. 'Papas' a secas (las del almuerzo) es indistinguible de 'Papás':
-  // para eso existe el vínculo por persona.
+  // la forma de evitarlo es ponerle otro nombre al encargo.
   assert.deepEqual(candidatos(ctx, 'papa'), ['b', 'a', 'd']);
   assert.deepEqual(candidatos(ctx, 'mama'), ['f', 'g']);
-});
-
-test('encargos candidatos — con persona vinculada manda el vínculo, no el nombre', () => {
-  const ctx = fresh({ encargos: [
-    { ...enc('a', 'Carlos', [entrada(1000)]), personaId: 'p1' },
-    enc('b', 'Papá', [entrada(5000)]),
-  ] });
-  assert.deepEqual(candidatos(ctx, 'papa'), ['b']);
-  ctx.mesadaVincularPersona('papa', 'p1');
-  assert.equal(ctx.mesadaPersonaDe('papa'), 'p1');
-  assert.deepEqual(candidatos(ctx, 'papa'), ['a']);
-  ctx.mesadaVincularPersona('papa', '');
-  assert.equal(ctx.mesadaPersonaDe('papa'), '');
-  assert.deepEqual(candidatos(ctx, 'papa'), ['b']);
 });
 
 test('sin Encargos cargado no hay candidatos (guard)', () => {
@@ -376,7 +362,7 @@ test('sin Encargos cargado no hay candidatos (guard)', () => {
   assert.deepEqual(clone(ctx.mesadaEncargosDelParent('papa')), []);
 });
 
-/* ── Protección en Encargos y vínculo con personas ────────────────── */
+/* ── Protección en Encargos ───────────────────────────────────────── */
 
 test('mesadaOrigenDeMovEncargo — reconoce la salida de un pago y la de un abono; ignora las demás', () => {
   const ctx = fresh({ encargos: [enc('e1', 'Papá', [entrada(300000, 'nequi')])] });
@@ -398,12 +384,3 @@ test('mesadaOrigenDeMovEncargo — tras borrar el mes ya no bloquea (la salida d
   assert.equal(ctx.mesadaOrigenDeMovEncargo(movId), null);
 });
 
-test('persona vinculada que ya no existe: se ignora el vínculo y vuelve la búsqueda por nombre', () => {
-  const ctx = fresh({ encargos: [enc('b', 'Papá', [entrada(5000)])] });
-  ctx.getPersona = id => (id === 'viva' ? { id } : null);
-  ctx.mesadaVincularPersona('papa', 'muerta');
-  assert.equal(ctx.mesadaPersonaDe('papa'), '');
-  assert.deepEqual(candidatos(ctx, 'papa'), ['b']);
-  ctx.mesadaVincularPersona('papa', 'viva');
-  assert.equal(ctx.mesadaPersonaDe('papa'), 'viva');
-});

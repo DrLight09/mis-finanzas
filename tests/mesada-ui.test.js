@@ -29,7 +29,6 @@ function ui({ dom = {}, encargos = [] } = {}) {
   const tag = createHtmlTag(ctx.escHtml); ctx.html = tag.html; ctx.raw = tag.raw;
   const toasts = []; ctx.toast = (m, t) => toasts.push([m, t]);
   ctx.save = () => {}; ctx.refresh = () => {};
-  ctx.getPersona = id => ({ id, nombre: 'Persona ' + id }); // en permissive todo es no-op: sin esto parecería "persona inexistente"
   const d = createFakeDom(dom); ctx.document = d.document;
   ctx._msCablear(); // re-cablea los listeners sobre el DOM simulado
   ctx._ensureMesadas(); ctx.S.mesadas.papa.cuotas = { '2026': 80000 };
@@ -133,19 +132,6 @@ test('UI — detalle de un mes con abonos usa las clases (sin estilos inline) y 
   assert.match(h, /ms-hist-row/);
   assert.ok(!h.includes('<b>x</b>') && !h.includes('<i>y</i>'));
   assert.ok(!/style="margin-bottom/.test(h));
-});
-
-test('UI — vincular persona: se guarda y cambia qué encargos se ofrecen', () => {
-  const { ctx, d } = ui({ encargos: [{ ...enc('e1', 'Carlos', 100000, 'nequi'), personaId: 'p1' }] });
-  ctx.abrirRegistrarMesada('papa', '2026-3', 'x');
-  assert.equal(d.el('mpEncargoBox').style.display, 'none');
-  ctx.abrirSelPersona = cb => cb('p1');
-  d.fire('ms-papa-persona', 'click');
-  assert.equal(ctx.mesadaPersonaDe('papa'), 'p1');
-  ctx.abrirRegistrarMesada('papa', '2026-3', 'x');
-  assert.equal(d.el('mpEncargoBox').style.display, '');
-  d.fire('ms-papa-persona-x', 'click');
-  assert.equal(ctx.mesadaPersonaDe('papa'), '');
 });
 
 test('UI — borrar un mes revierte todo', async () => {

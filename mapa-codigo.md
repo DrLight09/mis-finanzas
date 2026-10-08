@@ -11,7 +11,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/async-css.js` | de entrada (async) | 0 | 0 |
 | `js/core/bootstrap.js` | de entrada (defer) | 1 | 0 |
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
-| `js/core/calc-helpers.js` | de entrada (defer) | 14 | 0 |
+| `js/core/calc-helpers.js` | de entrada (defer) | 15 | 0 |
 | `js/core/color-picker.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
 | `js/core/core-state.js` | de entrada (defer) | 68 | 6 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
@@ -78,7 +78,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ensureMesadas`, `_getCuotaAnio`, `_mesNombreDeKey`, `Deudas`, `getDeudorSaldo`, `getMesadaData`, `getMiDeudaSaldo`, `getTCById`, `spNombreDe`, `spPersonaPagadaVigente`, `tcCupoDisponible`, `tcCupoUsadoPct`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`
+**Funciones:** `_ensureMesadas`, `_getCuotaAnio`, `_mesNombreDeKey`, `Deudas`, `getDeudorSaldo`, `getMesadaData`, `getMiDeudaSaldo`, `getTCById`, `mesadaOrigenDeMovEncargo`, `spNombreDe`, `spPersonaPagadaVigente`, `tcCupoDisponible`, `tcCupoUsadoPct`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`
 
 ### `js/core/color-picker.js`
 
@@ -1152,6 +1152,7 @@ Ninguno.
 | `mesadaMesVencido` | `js/modules/mesada.js` |
 | `mesadaNombrePadre` | `js/modules/mesada.js` |
 | `mesadaOpsPosteriores` | `js/modules/mesada.js` |
+| `mesadaOrigenDeMovEncargo` | `js/core/calc-helpers.js` |
 | `mesadaPersonaDe` | `js/modules/mesada.js` |
 | `mesadaRegistrarPago` | `js/modules/mesada.js` |
 | `mesadaResumenAnio` | `js/modules/mesada.js` |

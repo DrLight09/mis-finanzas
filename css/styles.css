@@ -690,6 +690,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .ms-mb0{margin-bottom:0;}
 .ms-preview{font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--accent);}
 .ms-preview-amber{color:var(--amber);}
+/* Sin texto no ocupa lugar: el JS lo deja vacío con textContent = '' (mpPreview y mppPreview) */
+.ms-preview:empty{display:none;}
 .ms-chk{width:17px;height:17px;cursor:pointer;flex-shrink:0;}
 .ms-chk-blue{accent-color:var(--blue);}
 .ms-chk-amber{accent-color:var(--amber);}

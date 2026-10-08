@@ -675,3 +675,80 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .busqueda-meta { font-size:11px; color:var(--text2); margin-top:2px; }
 
 
+
+/* ═══════════════════════════════════════════════════════════════
+   MESADA — sheets y detalle (2026-10-08)
+   Antes: estilos inline repetidos en index.html (los dos sheets) y en la
+   template de abrirDetalleMesada() (js/modules/mesada.js). Prefijo .ms-
+   (de "mesada"). Las clases de la grilla (.mesada-grid, .mes-dot*) están
+   más arriba. Ver docs/mesada.md.
+   ═══════════════════════════════════════════════════════════════ */
+.ms-desc{font-size:12px;color:var(--text2);margin-bottom:14px;}
+.ms-flex-1{flex:1;min-width:0;}
+.ms-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+.ms-mb8{margin-bottom:8px;}
+.ms-mb0{margin-bottom:0;}
+.ms-preview{font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--accent);}
+.ms-preview-amber{color:var(--amber);}
+.ms-chk{width:17px;height:17px;cursor:pointer;flex-shrink:0;}
+.ms-chk-blue{accent-color:var(--blue);}
+.ms-chk-amber{accent-color:var(--amber);}
+
+/* "Me pagó con plata que ya le tenía guardada" (un bloque por sheet) */
+.ms-enc-box{background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;}
+.ms-enc-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;}
+.ms-enc-label{font-size:13px;font-weight:600;color:var(--blue);}
+.ms-enc-detalle{margin-top:10px;}
+
+/* "Te está debiendo la diferencia" (sheet de registrar pago) */
+.ms-debe-box{background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;}
+.ms-debe-label{font-size:13px;font-weight:600;color:var(--amber);}
+
+/* Vínculo de papá/mamá con una persona (en su tarjeta) */
+.ms-persona-row{display:flex;align-items:center;gap:6px;margin-top:3px;}
+.ms-persona-link{background:none;border:none;padding:0;font-size:10px;color:var(--blue);cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:2px;}
+.ms-persona-x{background:none;border:none;padding:0 2px;font-size:13px;line-height:1;color:var(--text3);cursor:pointer;}
+
+/* Detalle de un mes */
+.ms-card-mb{margin-bottom:10px;}
+.ms-fila{margin-bottom:6px;}
+.ms-fila-pend{margin-bottom:2px;}
+.ms-lbl{font-size:12px;color:var(--text2);}
+.ms-lbl-amber{color:var(--amber);font-weight:600;}
+.ms-mono{font-size:13px;font-family:'DM Mono',monospace;}
+.ms-nota{font-size:12px;color:var(--text2);margin-top:4px;}
+.ms-badge-enc{background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);}
+.ms-splits{margin-top:5px;display:flex;flex-direction:column;gap:4px;}
+.ms-split-row{display:flex;justify-content:space-between;align-items:center;}
+.ms-split-monto{font-size:12px;font-family:'DM Mono',monospace;color:var(--accent);}
+.ms-pend-card{margin-bottom:10px;border-left:4px solid var(--border2);}
+.ms-pend-card.debe{border-left-color:var(--amber);background:rgba(240,184,64,.06);}
+.ms-pend-card.saldado{border-left-color:var(--accent);background:rgba(200,240,96,.06);}
+.ms-sugerir-txt{font-size:12px;color:var(--text2);margin-bottom:8px;}
+.ms-saldado{font-size:12px;color:var(--accent);font-weight:600;}
+.ms-saldado i{margin-right:4px;}
+.ms-historial{margin-top:9px;display:flex;flex-direction:column;gap:5px;}
+.ms-hist-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);gap:8px;}
+.ms-hist-txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ms-hist-acc{display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.ms-hist-monto{font-family:'DM Mono',monospace;color:var(--accent);}
+.ms-hist-undo{cursor:pointer;color:var(--red);display:inline-flex;align-items:center;}
+.ms-btn-top{margin-top:10px;}
+.btn.btn-soft-amber{background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.3);color:var(--amber);}
+.btn.btn-soft-red{background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);}
+
+/* Pantalla principal de Mesada (tarjetas de papá y mamá) — antes estilos inline repetidos en index.html */
+.ms-sec-top{margin-top:20px;}
+.ms-mb9{margin-bottom:9px;}
+.ms-mb10{margin-bottom:10px;}
+.ms-banner.attn-card{margin-bottom:9px;font-size:12px;color:var(--amber);font-weight:600;}
+.ms-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.ms-head-left{display:flex;align-items:center;gap:8px;}
+.avatar.ms-avatar{width:30px;height:30px;font-size:11px;margin-right:0;}
+.avatar.ms-avatar-papa{color:var(--blue);border-color:#60b0f044;background:#60b0f018;}
+.avatar.ms-avatar-mama{color:var(--purple);border-color:#b090f044;background:#b090f018;}
+.ms-name{font-size:13px;font-weight:600;}
+.ms-card-sub{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;}
+.ms-right{text-align:right;}
+.ms-cuota-lbl{font-size:10px;color:var(--text3);margin-bottom:3px;}
+input.money-input.ms-cuota-input{width:90px;padding:4px 8px;font-size:12px;text-align:right;}

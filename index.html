@@ -1059,8 +1059,6 @@
                 id="nuTotalDisp">$0</div>
               <div style="font-size:11px;color:var(--text3);"
                 id="nuTotalIntereses"></div>
-              <input type="hidden" id="nuRate" value="9.25"
-                aria-label="Tasa EA Nu">
               <!-- Tasa global para todas las cajitas -->
               <div
                 style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(var(--cuenta-rgb),.2);display:flex;align-items:center;justify-content:space-between;gap:12px;">
@@ -1629,9 +1627,9 @@
                 <div class="ms-right">
                   <div class="ms-cuota-lbl">Cuota
                     <span id="ms-papa-anio-label"></span></div>
-                  <input type="text" inputmode="decimal" id="mesadaMontoPapa"
+                  <input type="text" inputmode="decimal" id="mesadaMontoPapa" data-s-bind="cuota:papa"
                     placeholder="80000" aria-label="Cuota mensual papá"
-                    class="money-input ms-cuota-input" data-save-refresh="true">
+                    class="money-input ms-cuota-input">
                 </div>
               </div>
               <div class="mesada-grid" id="mesadaGridPapa"></div>
@@ -1649,9 +1647,9 @@
                 <div class="ms-right">
                   <div class="ms-cuota-lbl">Cuota
                     <span id="ms-mama-anio-label"></span></div>
-                  <input type="text" inputmode="decimal" id="mesadaMontoMama"
+                  <input type="text" inputmode="decimal" id="mesadaMontoMama" data-s-bind="cuota:mama"
                     placeholder="80000" aria-label="Cuota mensual mamá"
-                    class="money-input ms-cuota-input" data-save-refresh="true">
+                    class="money-input ms-cuota-input">
                 </div>
               </div>
               <div class="mesada-grid" id="mesadaGridMama"></div>
@@ -1670,10 +1668,10 @@
               <div><div class="row-name" style="font-size:13px;">Costo mensual
                   Spotify</div><div class="row-sub">Lo que cuesta el
                   plan</div></div>
-              <input type="text" inputmode="decimal" id="spotifyCosto"
+              <input type="text" inputmode="decimal" id="spotifyCosto" data-s-bind="spotifyCosto"
                 placeholder="0" aria-label="Costo mensual Spotify"
                 style="width:110px;text-align:right;" class="money-input"
-                data-save-refresh="true">
+               >
             </div>
             <div class="divider" style="margin:8px 0;"></div>
             <div class="row">
@@ -2660,28 +2658,6 @@
         <button type="button" class="btn btn-ghost" data-action="cuentas:corregirChequeoNu" data-args="[]">Me equivoqué —
           corregir los saldos</button>
         <button type="button" class="btn btn-ghost" data-close-sheet="confirmar-tasa-nu">Dejar la tasa como está</button>
-      </div>
-    </div>
-
-    <!-- MOVIMIENTO CUENTA PERSONALIZADA -->
-    <div class="overlay" id="sheet-mov-cuenta-custom"
-      data-sheet-id="mov-cuenta-custom">
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title" id="mcc-title">Agregar dinero</div>
-        <div class="ig"><label class="il" for="mcc-nota">Descripción <span
-              style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label><input
-            type="text" id="mcc-nota" maxlength="60"
-            placeholder="Ej: encargo de Juan, pago recibido..."></div>
-        <div class="ig"><label class="il" for="mcc-monto">Monto</label><input
-            type="text" inputmode="decimal" id="mcc-monto" placeholder="0,00"
-            class="money-input"></div>
-        <div class="ig"><label class="il" for="mcc-fecha">Fecha</label><input
-            type="date" id="mcc-fecha"></div>
-        <button type="button" class="btn btn-primary" id="mcc-btn"
-          data-action="cuentas:confirmarMovCustom" data-args="[]">Agregar</button>
-        <button type="button" class="btn btn-ghost"
-          data-close-sheet="mov-cuenta-custom">Cancelar</button>
       </div>
     </div>
 
@@ -4896,8 +4872,7 @@
           id="btn-toggle-meta-min"
           data-action="cuentas:toggleMetaMinWrap" data-args="[]"><i
             class="fa-solid fa-chevron-down"
-            style="margin-right:4px;"></i>Configurar saldo mínimo
-          Configurar saldo mínimo</button>
+            style="margin-right:4px;"></i>Configurar saldo mínimo</button>
         <div style="height:10px;"></div>
         <button type="button" class="btn btn-primary"
           id="btn-guardar-meta">Guardar meta</button>
@@ -4951,6 +4926,7 @@
 // cuándo termine de cargar ese módulo lazy en sí.
 -->
 <script src="js/core/html-tag.js" defer></script>
+<script src="js/core/nu-calc.js" defer></script>
 <script src="js/core/calc-helpers.js" defer></script>
 <!--
 // js/core/fuentes-filtro.js — filtros de "de dónde sale la plata" (saldo

@@ -1590,10 +1590,10 @@
         <!-- MESADA -->
         <div class="screen" id="screen-mesada">
           <div id="mesadaSection">
-            <div class="sec-title" style="margin-top:20px;" data-mesada>Mesada
+            <div class="sec-title ms-sec-top" data-mesada>Mesada
               de papás</div>
             <!-- Navegación año -->
-            <div class="anio-nav" style="margin-bottom:10px;">
+            <div class="anio-nav ms-mb10">
               <button type="button" class="anio-btn" id="btn-anio-prev" aria-label="Año anterior"><svg
                   width="13" height="13" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
@@ -1607,7 +1607,7 @@
                     points="9 18 15 12 9 6" /></svg></button>
             </div>
             <!-- Resumen año -->
-            <div class="grid2" style="margin-bottom:9px;">
+            <div class="grid2 ms-mb9">
               <div class="stat"><div class="stat-label">Recibido este
                   año</div><div class="stat-value c-green"
                   id="ms-total">$0</div></div>
@@ -1615,56 +1615,45 @@
                   class="stat-value c-blue" id="ms-count">0/0</div></div>
             </div>
             <!-- Banner de mensualidades con pago parcial pendiente -->
-            <div id="ms-pendiente-banner" class="card card-sm attn-card"
-              style="display:none;margin-bottom:9px;font-size:12px;color:var(--amber);font-weight:600;"></div>
+            <div id="ms-pendiente-banner" class="card card-sm attn-card ms-banner" style="display:none;"></div>
             <!-- Papa -->
-            <div class="card" style="margin-bottom:9px;">
-              <div
-                style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <div class="avatar"
-                    style="color:var(--blue);border-color:#60b0f044;background:#60b0f018;width:30px;height:30px;font-size:11px;margin-right:0;">PA</div>
+            <div class="card ms-mb9">
+              <div class="ms-card-head">
+                <div class="ms-head-left">
+                  <div class="avatar ms-avatar ms-avatar-papa">PA</div>
                   <div>
-                    <div style="font-size:13px;font-weight:600;">Papá</div>
-                    <div
-                      style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;"
-                      id="ms-papa-sub">$0 recibidos</div>
+                    <div class="ms-name">Papá</div>
+                    <div class="ms-card-sub" id="ms-papa-sub">$0 recibidos</div>
+                    <div class="ms-persona-row"><button type="button" class="ms-persona-link" id="ms-papa-persona">Vincular a una persona</button><button type="button" class="ms-persona-x" id="ms-papa-persona-x" aria-label="Desvincular persona de papá" style="display:none;">×</button></div>
                   </div>
                 </div>
-                <div style="text-align:right;">
-                  <div
-                    style="font-size:10px;color:var(--text3);margin-bottom:3px;">Cuota
+                <div class="ms-right">
+                  <div class="ms-cuota-lbl">Cuota
                     <span id="ms-papa-anio-label"></span></div>
                   <input type="text" inputmode="decimal" id="mesadaMontoPapa"
                     placeholder="80000" aria-label="Cuota mensual papá"
-                    style="width:90px;padding:4px 8px;font-size:12px;text-align:right;"
-                    class="money-input" data-save-refresh="true">
+                    class="money-input ms-cuota-input" data-save-refresh="true">
                 </div>
               </div>
               <div class="mesada-grid" id="mesadaGridPapa"></div>
             </div>
             <!-- Mama -->
             <div class="card">
-              <div
-                style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <div class="avatar"
-                    style="color:var(--purple);border-color:#b090f044;background:#b090f018;width:30px;height:30px;font-size:11px;margin-right:0;">MA</div>
+              <div class="ms-card-head">
+                <div class="ms-head-left">
+                  <div class="avatar ms-avatar ms-avatar-mama">MA</div>
                   <div>
-                    <div style="font-size:13px;font-weight:600;">Mamá</div>
-                    <div
-                      style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;"
-                      id="ms-mama-sub">$0 recibidos</div>
+                    <div class="ms-name">Mamá</div>
+                    <div class="ms-card-sub" id="ms-mama-sub">$0 recibidos</div>
+                    <div class="ms-persona-row"><button type="button" class="ms-persona-link" id="ms-mama-persona">Vincular a una persona</button><button type="button" class="ms-persona-x" id="ms-mama-persona-x" aria-label="Desvincular persona de mamá" style="display:none;">×</button></div>
                   </div>
                 </div>
-                <div style="text-align:right;">
-                  <div
-                    style="font-size:10px;color:var(--text3);margin-bottom:3px;">Cuota
+                <div class="ms-right">
+                  <div class="ms-cuota-lbl">Cuota
                     <span id="ms-mama-anio-label"></span></div>
-                  <input type="text" inputmode="decimal" id="mesadaMonteMama"
+                  <input type="text" inputmode="decimal" id="mesadaMontoMama"
                     placeholder="80000" aria-label="Cuota mensual mamá"
-                    style="width:90px;padding:4px 8px;font-size:12px;text-align:right;"
-                    class="money-input" data-save-refresh="true">
+                    class="money-input ms-cuota-input" data-save-refresh="true">
                 </div>
               </div>
               <div class="mesada-grid" id="mesadaGridMama"></div>
@@ -4341,36 +4330,29 @@
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title" id="mpTitle">Mesada recibida</div>
-        <p style="font-size:12px;color:var(--text2);margin-bottom:14px;"
-          id="mpDesc">¿Cuándo te pagó y qué hiciste con esa plata?</p>
+        <p class="ms-desc" id="mpDesc">¿Cuándo te pagó y qué hiciste con esa plata?</p>
         <div class="ig">
           <label class="il" for="mpMonto">Monto recibido</label>
           <input type="text" inputmode="decimal" id="mpMonto"
             placeholder="80000" class="money-input">
         </div>
         <!-- ¿Pagó con plata que ya le tenía guardada en un encargo? -->
-        <div id="mpEncargoBox"
-          style="display:none;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;">
-          <div style="display:flex;align-items:center;gap:10px;cursor:pointer;"
-            id="mpEncargoToggleWrap">
-            <input type="checkbox" id="mpUsarEncargo"
-              style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:600;color:var(--blue);"
-                id="mpEncargoLabel">Me pagó con plata que ya le tenía
+        <div id="mpEncargoBox" class="ms-enc-box" style="display:none;">
+          <div class="ms-enc-toggle" id="mpEncargoToggleWrap">
+            <input type="checkbox" id="mpUsarEncargo" class="ms-chk ms-chk-blue">
+            <div class="ms-flex-1">
+              <div class="ms-enc-label" id="mpEncargoLabel">Me pagó con plata que ya le tenía
                 guardada</div>
-              <div style="font-size:11px;color:var(--text3);margin-top:2px;"
-                id="mpEncargoSub"></div>
+              <div class="ms-sub" id="mpEncargoSub"></div>
             </div>
           </div>
-          <div id="mpEncargoDetalle" style="display:none;margin-top:10px;">
-            <div class="ig" id="mpEncargoSelWrap"
-              style="display:none;margin-bottom:8px;">
+          <div id="mpEncargoDetalle" class="ms-enc-detalle" style="display:none;">
+            <div class="ig ms-mb8" id="mpEncargoSelWrap" style="display:none;">
               <label class="il" for="mpEncargoSel">¿Cuál encargo?</label>
               <div class="select-wrap"><select id="mpEncargoSel"></select>
               </div>
             </div>
-            <div class="ig" style="margin-bottom:0;">
+            <div class="ig ms-mb0">
               <label class="il" for="mpEncargoCuentaSel">¿De cuál cuenta
                 sale esa plata?</label>
               <div class="select-wrap"><select
@@ -4379,8 +4361,8 @@
           </div>
         </div>
         <!-- Modo destino: simple o dividido -->
-        <div class="field-header" style="margin-bottom:8px;">
-          <label for="mpDestino" class="il" style="margin-bottom:0;">¿Qué hiciste con esa
+        <div class="field-header ms-mb8">
+          <label for="mpDestino" class="il ms-mb0">¿Qué hiciste con esa
             plata?</label>
           <button type="button" id="mpSplitToggle"
             class="btn-split">Dividir
@@ -4396,20 +4378,16 @@
         <div id="mpModoDividido" style="display:none;">
           <div id="mpSplitRows"></div>
           <button type="button" id="btn-add-split-row"
-            class="btn-add-cuenta" style="margin-bottom:8px;">+
+            class="btn-add-cuenta ms-mb8">+
             Agregar cuenta</button>
         </div>
-        <div id="mpPreview"
-          style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--accent);"></div>
+        <div id="mpPreview" class="ms-preview"></div>
         <!-- Toggle: la diferencia quedó debiendo -->
-        <div id="mpDebeWrap"
-          style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;display:none;">
-          <input type="checkbox" id="mpQuedaDebiendo"
-            style="width:17px;height:17px;accent-color:var(--amber);cursor:pointer;flex-shrink:0;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:600;color:var(--amber);"
-              id="mpDebeLabel">Te está debiendo la diferencia</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Si
+        <div id="mpDebeWrap" class="ms-debe-box" style="display:none;">
+          <input type="checkbox" id="mpQuedaDebiendo" class="ms-chk ms-chk-amber">
+          <div class="ms-flex-1">
+            <div class="ms-debe-label" id="mpDebeLabel">Te está debiendo la diferencia</div>
+            <div class="ms-sub">Si
               no marcas esto, el mes queda cerrado con lo que recibiste — sin
               deuda</div>
           </div>
@@ -4446,36 +4424,29 @@
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title" id="mppTitle">Pago de lo pendiente</div>
-        <p style="font-size:12px;color:var(--text2);margin-bottom:14px;"
-          id="mppDesc">¿Cuánto te dio de lo que te quedó debiendo?</p>
+        <p class="ms-desc" id="mppDesc">¿Cuánto te dio de lo que te quedó debiendo?</p>
         <div class="ig">
           <label class="il" for="mppMonto">Monto recibido</label>
           <input type="text" inputmode="decimal" id="mppMonto"
             placeholder="20000" class="money-input">
         </div>
         <!-- ¿Pagó con plata que ya le tenía guardada en un encargo? -->
-        <div id="mppEncargoBox"
-          style="display:none;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;">
-          <div style="display:flex;align-items:center;gap:10px;cursor:pointer;"
-            id="mppEncargoToggleWrap">
-            <input type="checkbox" id="mppUsarEncargo"
-              style="width:17px;height:17px;accent-color:var(--blue);cursor:pointer;flex-shrink:0;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:600;color:var(--blue);"
-                id="mppEncargoLabel">Me pagó con plata que ya le tenía
+        <div id="mppEncargoBox" class="ms-enc-box" style="display:none;">
+          <div class="ms-enc-toggle" id="mppEncargoToggleWrap">
+            <input type="checkbox" id="mppUsarEncargo" class="ms-chk ms-chk-blue">
+            <div class="ms-flex-1">
+              <div class="ms-enc-label" id="mppEncargoLabel">Me pagó con plata que ya le tenía
                 guardada</div>
-              <div style="font-size:11px;color:var(--text3);margin-top:2px;"
-                id="mppEncargoSub"></div>
+              <div class="ms-sub" id="mppEncargoSub"></div>
             </div>
           </div>
-          <div id="mppEncargoDetalle" style="display:none;margin-top:10px;">
-            <div class="ig" id="mppEncargoSelWrap"
-              style="display:none;margin-bottom:8px;">
+          <div id="mppEncargoDetalle" class="ms-enc-detalle" style="display:none;">
+            <div class="ig ms-mb8" id="mppEncargoSelWrap" style="display:none;">
               <label class="il" for="mppEncargoSel">¿Cuál encargo?</label>
               <div class="select-wrap"><select id="mppEncargoSel"></select>
               </div>
             </div>
-            <div class="ig" style="margin-bottom:0;">
+            <div class="ig ms-mb0">
               <label class="il" for="mppEncargoCuentaSel">¿De cuál cuenta
                 sale esa plata?</label>
               <div class="select-wrap"><select
@@ -4489,8 +4460,7 @@
               <option value>No especificar / lo gasté</option>
             </select></div>
         </div>
-        <div id="mppPreview"
-          style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--amber);"></div>
+        <div id="mppPreview" class="ms-preview ms-preview-amber"></div>
         <div class="ig">
           <label class="il" for="mppFecha">Fecha en que te pagó</label>
           <input type="date" id="mppFecha">

@@ -62,6 +62,24 @@ function _mesNombreDeKey(key){
   return (MC[mesIdx]||'')+' '+anio;
 }
 
+// ¿Esta salida de un encargo la creó un pago de Mesada ("Usado para mesada")? Devuelve
+// { parent, key } del mes que la originó, o null. Lo usa Encargos (grupo lazy distinto) para no
+// dejar borrar a mano una salida cuyo efecto vive en Mesada (cuenta destino + espejo): solo
+// Mesada sabe revertirla completa. No depende de marcas en el movimiento, así que también
+// reconoce las creadas antes de este cambio.
+function mesadaOrigenDeMovEncargo(movId){
+  if(!movId||!S.mesadas)return null;
+  for(const parent of ['papa','mama']){
+    const pagos=(S.mesadas[parent]&&S.mesadas[parent].pagos)||{};
+    for(const key of Object.keys(pagos)){
+      const info=pagos[key];
+      if(info.origenEncargo&&info.origenEncargo.movId===movId)return {parent,key};
+      if((info.pendienteHistorial||[]).some(h=>h.origenEncargo&&h.origenEncargo.movId===movId))return {parent,key};
+    }
+  }
+  return null;
+}
+
 /* ---- Tarjetas de crédito (antes en tarjetas_credito.js) ---- */
 function getTCById(id){ return (S.tarjetasCredito||[]).find(x=>x.id===id); }
 

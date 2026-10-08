@@ -532,7 +532,7 @@ function load(){
   if(nuTasaEl)nuTasaEl.value=(S.nuTasaGlobal!=null)?String(S.nuTasaGlobal).replace('.',','):'';
   if(typeof _getCuotaAnio==='function'){
     if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(_getCuotaAnio('papa',S.mesadaAnio||new Date().getFullYear()));
-    if(document.getElementById('mesadaMonteMama'))document.getElementById('mesadaMonteMama').value=fmtInput(_getCuotaAnio('mama',S.mesadaAnio||new Date().getFullYear()));
+    if(document.getElementById('mesadaMontoMama'))document.getElementById('mesadaMontoMama').value=fmtInput(_getCuotaAnio('mama',S.mesadaAnio||new Date().getFullYear()));
   }
   document.getElementById('spotifyCosto').value=fmtInput(S.spotifyCosto);
   document.getElementById('gv_fecha').value=hoy();
@@ -574,7 +574,7 @@ function save(){
   // se reimplementaba acá a mano, duplicando la misma lógica.
   if(typeof _ensureMesadas==='function')_ensureMesadas();
   const _elPapa=document.getElementById('mesadaMontoPapa');
-  const _elMama=document.getElementById('mesadaMonteMama');
+  const _elMama=document.getElementById('mesadaMontoMama');
   // Solo grabamos una cuota explícita para este año si el valor en pantalla
   // realmente difiere del heredado (_getCuotaAnio). Si coincide, es porque el
   // usuario nunca tocó el input — sigue siendo el fallback de un año anterior,
@@ -582,7 +582,7 @@ function save(){
   // cuanto se disparara CUALQUIER save() de la app (agregar un gasto, marcar
   // un pago de Nu, etc.), rompiendo la herencia hacia años futuros.
   // GUARD (restaurado — ver CHANGELOG.md#mesada, 2026-09-04): mesadaMontoPapa/
-  // mesadaMonteMama son inputs ESTÁTICOS, presentes en el DOM aunque la pantalla
+  // mesadaMontoMama son inputs ESTÁTICOS, presentes en el DOM aunque la pantalla
   // Mesada no esté abierta. Sin este guard, cualquier save() disparado desde
   // OTRA pantalla (ej. Spotify) confirma como cuota permanente lo que sea que
   // tengan esos inputs en ese momento — el origen exacto del valor sigue sin

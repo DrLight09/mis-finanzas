@@ -427,10 +427,10 @@ function _initEventListeners() {
 
   // --- mpSplitToggle / btn-add-split-row: migrados a js/modules/mesada.js ---
 
-  // --- data-save-refresh inputs: use debounced save ---
-  document.querySelectorAll('[data-save-refresh]').forEach(el => {
-    el.addEventListener('input', () => debounceSave(600));
-  });
+  // --- Inputs que escriben directo en S (data-s-bind) ---
+  // S es la única fuente de verdad: el input actualiza S en cada cambio y luego se
+  // guarda con debounce. save() ya no lee estos campos del DOM.
+  _bindInputsAS();
 
   // --- Named input callbacks ---
   // gv_fuente: migrado a js/modules/gastos.js (su propio wiring).
@@ -584,3 +584,23 @@ function _injectErrorSpans() {
 // Encargos. La integración con Personas (selector en "Nuevo encargo",
 // hooks de perfil) vive aparte, en encargos-personas.js, cargada más
 // abajo — ver el comentario de ese archivo.
+
+// Cuota de Mesada del año visible y costo de Spotify. Solo se graba una cuota explícita
+// si difiere de la heredada (_getCuotaAnio): si no, escribir el valor "congelaría" el
+// fallback de un año anterior y rompería la herencia hacia años futuros.
+function _bindInputsAS(){
+  document.querySelectorAll('[data-s-bind]').forEach(el => {
+    el.addEventListener('input', () => {
+      const bind = el.getAttribute('data-s-bind');
+      if (bind === 'spotifyCosto') {
+        S.spotifyCosto = parseMoney(el.value) || 0;
+      } else if (bind.startsWith('cuota:')) {
+        const parent = bind.split(':')[1];
+        const anio = S.mesadaAnio || new Date().getFullYear();
+        const v = el.value.trim() ? parseMoney(el.value) : 0;
+        if (v && v !== _getCuotaAnio(parent, anio)) S.mesadas[parent].cuotas[String(anio)] = v;
+      }
+      debounceSave(600);
+    });
+  });
+}

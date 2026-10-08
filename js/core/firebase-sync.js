@@ -188,7 +188,7 @@ import { waitFor } from './wait-for-module.js';
         el.addEventListener('blur',function(){
           if(this.value&&parseFloat(this.value)<=0)this.value='';
           if(this.value&&window.toast){
-            const total=(S.cajitas||[]).reduce((a,c)=>a+(typeof calcC==='function'?calcC(c).val:(c.saldo||0)),0);
+            const total=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
             toast('Cajitas recalculadas: '+fmt(total)+' — compara con la app de Nu','ok',4000);
           }
         });

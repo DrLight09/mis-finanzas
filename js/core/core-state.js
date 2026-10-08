@@ -388,7 +388,7 @@ function getSaldoFuente(fuente){
   if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
-    return c?_calcCSafe(c).val:0;
+    return c?calcC(c).val:0;
   }
   if(fuente.startsWith('tc:')){
     // TC: retornar el cupo disponible real (cupo - deuda).
@@ -464,9 +464,39 @@ function _moneyValue(digits){
   return parseInt(intRaw||'0',10)+(parseInt(dec,10)/100);
 }
 
+/* ---- MIGRACIONES DEL MODELO DE DATOS ----
+   Un solo lugar para cambiar la forma de los datos guardados (renombrar campos,
+   mover listas, completar valores). Cada migración corre UNA vez, en orden, sobre
+   cualquier objeto con forma de S: el estado cargado de Firestore y, vía
+   aplicarMigraciones(), un backup JSON viejo antes de importarlo.
+
+   Cómo agregar una: sumar { v: N+1, nombre, fn(d) } al final de MIGRACIONES. `fn`
+   recibe el objeto de datos y lo modifica en sitio; debe ser idempotente (si el
+   dato ya está migrado, no hace nada). Nunca editar ni reordenar una existente.
+   La versión guardada vive en S.schemaVersion. */
+const MIGRACIONES = [
+  { v: 1, nombre: 'línea base del modelo', fn(d) { /* sin cambios: marca el punto de partida */ } }
+];
+const SCHEMA_VERSION_ACTUAL = MIGRACIONES[MIGRACIONES.length - 1].v;
+
+function aplicarMigraciones(d) {
+  if (!d || typeof d !== 'object') return d;
+  let actual = Number(d.schemaVersion) || 0;
+  if (actual > SCHEMA_VERSION_ACTUAL) {
+    console.warn('[migraciones] datos de una versión más nueva (' + actual + ' > ' + SCHEMA_VERSION_ACTUAL + '): no se tocan');
+    return d;
+  }
+  MIGRACIONES.filter(m => m.v > actual).sort((a, b) => a.v - b.v).forEach(m => {
+    try { m.fn(d); d.schemaVersion = m.v; }
+    catch (e) { console.error('[migraciones] falló v' + m.v + ' (' + m.nombre + '):', e); throw e; }
+  });
+  return d;
+}
+
 function load(){
   // Firebase version: datos ya cargados en S por _fbLoadData()
   // Solo inicializamos campos faltantes y sincronizamos el DOM
+  aplicarMigraciones(S);
   if(!S.encargos)S.encargos=[];
   if(!S.movimientos)S.movimientos=[];
   _cuentasArr(); // garantiza S.cuentas con Nequi y Efectivo (ver "CUENTAS: MODELO ÚNICO")
@@ -527,7 +557,7 @@ function load(){
   }
   if(S.gastosFijos){S.gastosFijos=S.gastosFijos.filter(x=>!(x.id==='gf1'&&x.nombre==='Spotify Premium'&&(x.monto||0)===0));}
   if(!S.pagosGastosFijos)S.pagosGastosFijos={};
-  document.getElementById('nuRate').value=S.nuRate||9.25;
+  if(!S.nuRate)S.nuRate=9.25;
   const nuTasaEl=document.getElementById('nuTasaGlobal');
   if(nuTasaEl)nuTasaEl.value=(S.nuTasaGlobal!=null)?String(S.nuTasaGlobal).replace('.',','):'';
   if(typeof _getCuotaAnio==='function'){
@@ -566,49 +596,16 @@ function save(){
     console.warn('[save] Bloqueado: datos de Firebase aún no cargados.');
     return;
   }
-  S.nuRate=parseMoney(document.getElementById('nuRate').value)||9.25;
+  if(!S.nuRate)S.nuRate=9.25;
   // Cuota mensual por año — guardada en S.mesadas[parent].cuotas[anio]
-  const _anioActivo=S.mesadaAnio||new Date().getFullYear();
-  // El guard de inicialización de S.mesadas vive en _ensureMesadas()
-  // (js/core/calc-helpers.js, carga eager justo después de este archivo) —
-  // se reimplementaba acá a mano, duplicando la misma lógica.
+  // Cuotas de Mesada y costo de Spotify: los inputs escriben directo en S (ver
+  // _bindInputsAS() en sheet-stack.js); save() ya no lee nada del DOM.
   if(typeof _ensureMesadas==='function')_ensureMesadas();
-  const _elPapa=document.getElementById('mesadaMontoPapa');
-  const _elMama=document.getElementById('mesadaMontoMama');
-  // Solo grabamos una cuota explícita para este año si el valor en pantalla
-  // realmente difiere del heredado (_getCuotaAnio). Si coincide, es porque el
-  // usuario nunca tocó el input — sigue siendo el fallback de un año anterior,
-  // no una decisión explícita — y grabarlo igual "congelaría" ese número en
-  // cuanto se disparara CUALQUIER save() de la app (agregar un gasto, marcar
-  // un pago de Nu, etc.), rompiendo la herencia hacia años futuros.
-  // GUARD (restaurado — ver CHANGELOG.md#mesada, 2026-09-04): mesadaMontoPapa/
-  // mesadaMontoMama son inputs ESTÁTICOS, presentes en el DOM aunque la pantalla
-  // Mesada no esté abierta. Sin este guard, cualquier save() disparado desde
-  // OTRA pantalla (ej. Spotify) confirma como cuota permanente lo que sea que
-  // tengan esos inputs en ese momento — el origen exacto del valor sigue sin
-  // confirmarse, pero este guard es el que impide que se vuelva permanente.
-  const _screenMesadaActiva=document.getElementById('screen-mesada')&&document.getElementById('screen-mesada').classList.contains('active');
-  if(_screenMesadaActiva&&typeof _getCuotaAnio==='function'){
-    if(_elPapa&&_elPapa.value.trim()){const v=parseMoney(_elPapa.value);if(v&&v!==_getCuotaAnio('papa',_anioActivo))S.mesadas.papa.cuotas[String(_anioActivo)]=v;}
-    if(_elMama&&_elMama.value.trim()){const v=parseMoney(_elMama.value);if(v&&v!==_getCuotaAnio('mama',_anioActivo))S.mesadas.mama.cuotas[String(_anioActivo)]=v;}
-  }
-  S.spotifyCosto=parseMoney(document.getElementById('spotifyCosto').value)||0;
+  // Las cajitas ya no tienen inputs en el DOM (nombre, saldo y CDT se editan por sheets que
+  // escriben directo en S): save() solo normaliza lo que vive en S.
   (S.cajitas||[]).forEach(c=>{
-    const elN=document.getElementById('cn_'+c.id);
-    const elS=document.getElementById('cs_'+c.id);
-    if(elN)c.nombre=elN.value||c.nombre;
-    if(elS && !(c.cdts&&c.cdts.length))c.saldo=parseMoney(elS.value)||0;
-    const globalTasa=_getNuTasaGlobalSafe();
-    c.tasa=globalTasa;
+    c.tasa=getNuTasaGlobal();
     if(!c.fecha)c.fecha=hoy();
-    (c.cdts||[]).forEach(function(cdt){
-      const elCT=document.getElementById('cdt_tasa_'+c.id+'_'+cdt.id);
-      const elCV=document.getElementById('cdt_vence_'+c.id+'_'+cdt.id);
-      const elCR=document.getElementById('cdt_rte_'+c.id+'_'+cdt.id);
-      if(elCT)cdt.tasa=parsePct(elCT.value)||cdt.tasa;
-      if(elCV)cdt.vence=elCV.value||cdt.vence;
-      if(elCR&&elCR.value.trim()!==''){const rv=parsePct(elCR.value);if(rv!=null)cdt.rte=rv;}
-    });
   });
   snapshotPatrimonio();
   // Guardar en Firebase con debounce de 1.5s
@@ -711,8 +708,8 @@ function calcDeudaTcPropia() {
 }
 
 function calcPatrimonioTotal(){
-  const nu=(S.cajitas||[]).reduce((a,c)=>a+_calcCSafe(c).val,0);
-  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+_calcCDTSafe(cdt).val,0),0);
+  const nu=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
+  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
   // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas
   // personalizadas. Registrar una entrada de encargo con esa cuenta es solo
   // metadata de dónde está físicamente esa plata — nunca suma nada al saldo
@@ -738,12 +735,11 @@ function calcPatrimonioTotal(){
   return nu+cdts+nequi+ef+prest+custom+alcancia-deudaTC-misDeudas-cpAjeno;
 }
 
-// Evita grabar un snapshot cuando calcPatrimonioTotal() todavía depende de un
-// módulo lazy sin cargar (cuentas.js, prestado.js). Sin este guard, sus
-// fallbacks silenciosos (typeof...?fn():0) producen un patrimonio
-// artificialmente bajo que queda grabado permanentemente en
-// S.patrimonioHistorial hasta el próximo save() con todo cargado — ver
-// CHANGELOG.md#patrimonio-y-cálculos-globales (bug de caídas de un día).
+// calcC/calcCDT (nu-calc.js) y Deudas (calc-helpers.js) son núcleo de carga de
+// entrada, así que el patrimonio ya no depende de ningún módulo lazy: el snapshot
+// siempre se puede tomar. Se conserva la función como guard mínimo por si el
+// orden de <script> se rompiera (un snapshot sin estas piezas grabaría un valor
+// artificialmente bajo en S.patrimonioHistorial).
 function _patrimonioDependenciasListas(){
   return typeof calcC==='function'
       && typeof calcCDT==='function'
@@ -1182,39 +1178,13 @@ function emptyState(icon, title, sub, btnLabel, btnFn){
 // interpolado directo, mismo patrón ya visto 5 veces en otros módulos).
 
 // ── Guards de carga bajo demanda para cuentas.js (FIX 2026-08-13) ──────────
-// cuentas.js se volvió grupo lazy (auditoria-tecnica.md, ronda de
-// modularización de spotify/prestado/cuentas/analisis/encargos), pero
-// calcC/calcCDT/nuTotal/getNuTasaGlobal se seguían llamando SIN guard desde
-// calcPatrimonioTotal() y refresh() — que corren en CADA save()/refresh()
-// de la app, no solo al visitar Cuentas. A diferencia de mesada/tarjetas
-// (features secundarias que se pueden saltar en silencio), esto tumbaba
-// TODA la app con un ReferenceError en el primer save() o refresh(), sin
-// que el usuario hubiera hecho nada relacionado con Cuentas. Mismo patrón
-// de fallback que ya usa inicio.js (window.calcC?...:c.saldo||0) — se
-// centraliza acá para no repetirlo suelto en cada punto de uso.
-function _calcCSafe(c){
-  if(typeof calcC==='function') return calcC(c);
-  return { val:(c&&c.saldo)||0, saldoEncargos:0 };
-}
-function _calcCDTSafe(cdt){
-  if(typeof calcCDT==='function') return calcCDT(cdt);
-  return { val:(cdt&&cdt.monto)||0 };
-}
-function _nuTotalSafe(){
-  if(typeof nuTotal==='function') return nuTotal();
-  return (S.cajitas||[]).reduce((a,c)=>a+_calcCSafe(c).val,0);
-}
-function _getNuTasaGlobalSafe(){
-  if(typeof getNuTasaGlobal==='function') return getNuTasaGlobal();
-  return S.nuTasaGlobal||9.25;
-}
 
 function refresh(){
   // Auto-sanación de tarjetas de crédito: agrega campos nuevos, infiere el
   // saldo inicial de tarjetas migradas y recalcula la deuda de cada una a
   // partir de sus movimientos (regla de consistencia). Es idempotente.
   if(typeof tcNormalizarTarjetas==='function') tcNormalizarTarjetas();
-  const nu=_nuTotalSafe();
+  const nu=nuTotal();
   // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas
   // personalizadas — mismo criterio y misma razón que en calcPatrimonioTotal().
   const nequi=getSaldoFuente('nequi');
@@ -1224,8 +1194,8 @@ function refresh(){
   // (window.totalPrestadoPendiente?...:0) para el mismo caso.
   const prest=typeof Deudas!=='undefined'?Deudas.totalPendiente('favor'):0;
   // CDTs value comes from calcCDT nested in cajitas
-  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+_calcCDTSafe(cdt).val,0),0);
-  const cajitasLibres=(S.cajitas||[]).reduce((a,c)=>a+_calcCSafe(c).val,0);
+  const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
+  const cajitasLibres=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
   // Cuentas personalizadas marcadas para incluir en total
   const customTotal=cuentasCustom().reduce((a,c)=>a+(c.saldo||0),0);
   const disp=cajitasLibres+nequi+ef+customTotal;
@@ -1248,7 +1218,7 @@ function refresh(){
   // Total intereses generados hoy en cajitas libres (base = saldo propio + encargos en la cajita)
   const _globalTasa=S.nuTasaGlobal||9.25;
   const interesesTotalHoy=(S.cajitas||[]).reduce((a,c)=>{
-    const k=_calcCSafe(c);
+    const k=calcC(c);
     const tasaCajita=(!(c.cdts&&c.cdts.length)&&c.tasa!=null)?c.tasa:_globalTasa;
     // Incluir saldo de encargos en la base del interés (son intereses a mi favor)
     const baseInteres=k.val+(k.saldoEncargos||0);
@@ -1402,8 +1372,8 @@ function refresh(){
 // Carga temprana (acá mismo, no más abajo): un par de wirings de botones de
 // otros módulos referencian addSpotify/guardarEditarSpotify de forma
 // inmediata (no diferida) más adelante en este archivo, y necesitan que ya
-// existan. La integración con Personas vive aparte, en spotify-personas.js,
-// cargada mucho más abajo — ver el comentario de ese archivo.
+// existan. La integración con Personas vive dentro de
+// spotify.js (fusionada el 2026-08-03).
 
 // Módulo Mesada migrado a js/modules/mesada.js — ver docs/mesada.md.
 // Carga acá y no más arriba (donde vivía antes) porque depende de

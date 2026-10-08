@@ -1,1122 +1,966 @@
 /* ═══════════════════════════════════════════════════════════════
    js/modules/mesada.js
 
-   Módulo Mesada — extraído de index.html. Ver docs/mesada.md para
-   el diseño completo (modelo de datos, reglas, flujos) y
-   docs/CHANGELOG.md#mesada para el historial de bugs corregidos.
+   Módulo Mesada: cuota mensual que papá y mamá te dan, mes a mes. Un solo
+   archivo con DOS PARTES, en este orden:
+
+     PARTE 1 — Reglas de negocio (sin DOM): registrar un pago, abonar lo
+               pendiente, borrar/deshacer, resumen del año, encargos
+               candidatos. Funciones `mesada*` / `_mesada*`.
+     PARTE 2 — Pantalla: lee formularios, llama a las reglas y pinta.
+               Funciones de UI y helpers `_ms*`.
+
+   La Parte 2 solo habla con la Parte 1 por su API (`mesadaRegistrarPago`,
+   etc.): no toca `S.mesadas` directamente para escribir. Ver docs/mesada.md
+   (modelo de datos, reglas, flujos) y docs/CHANGELOG.md#mesada.
 
    ── Dependencias ─────────────────────────────────────────────
-   Este archivo es un grupo lazy (Loader.GROUPS.mesada en
-   js/core/lazy-loader.js) y asume que ya existen en `window`:
-     - El núcleo compartido: S, save, refresh, escHtml, fmt,
-       fmtInput, parseMoney, hoy, uid, toast, openSheet, closeSheet,
-       dialogo, sumarFuente, descontarFuente, poblarFuente,
-       buildFuentesOptsHtml, fuenteLabel, fuenteBadgeClass,
-       getSaldoActual, MC (nombres de mes).
-     - js/core/calc-helpers.js: _ensureMesadas(), getMesadaData(),
-       _getCuotaAnio() y _mesNombreDeKey() (Inicio también las usa;
-       este archivo las consume como globales y no las define).
-     - js/core/events.js (Events.on/attr/registerAll).
-     - El motor genérico de "split de fuentes" (crearSplitWidget,
-       splitToggle, splitAgregarRow, splitGetData, splitPreview),
-       compartido con Encargos y "Yo debo" — no vive acá.
-     - Encargos (getEncargo, encargoSaldo, ...) solo de forma
-       opcional, con guards typeof: si encargos.js no está cargado,
-       simplemente no se ofrece "pagar con plata de un encargo".
+   Grupo lazy (Loader.GROUPS.mesada en js/core/lazy-loader.js). Asume que ya
+   existen en `window`:
+     - El núcleo compartido: S, save, refresh, escHtml, fmt, fmtInput,
+       parseMoney, hoy, uid, toast, openSheet, closeSheet, dialogo,
+       buildFuentesOptsHtml, fuenteLabel, fuenteBadgeClass, getSaldoActual,
+       sumarFuente, descontarFuente, MC, nivelAntiguedadMovimiento,
+       avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, html/raw.
+     - js/core/calc-helpers.js: _ensureMesadas, getMesadaData, _getCuotaAnio,
+       _mesNombreDeKey, mesadaOrigenDeMovEncargo.
+     - js/core/cuenta-efectos.js: registrarMovEspejo, borrarMovEspejo.
+     - js/core/events.js (Events.attr/registerAll) y el motor de split
+       (js/core/split.js: crearSplitWidget, splitToggle, splitAgregarRow,
+       splitGetData, splitReset).
+     - js/modules/personas.js (abrirSelPersona, getPersona) y Encargos
+       (getEncargo, encargoSaldo, ...) solo de forma opcional, con guards.
 
-   ── Eventos (CSP) ──────────────────────────────────────────────
-   Los onclick inline que armaba este módulo en sus template strings
-   ahora se registran acá mismo con Events.registerAll('mesada', {...})
-   y se emiten en el HTML con Events.attr('mesada:accion', ...args)
-   en vez de onclick="funcion(...)". Ver js/core/events.js para el
-   detalle del mecanismo.
+   ── Por qué un solo archivo ────────────────────────────────────
+   Se probó separarlo en mesada-dominio.js + mesada.js (2026-10-08) y se
+   descartó: cada grupo lazy de la app es un único archivo y la separación
+   no justificaba una excepción ni una dependencia de orden de carga. La
+   separación lógica se mantiene con las dos partes de abajo.
    ═══════════════════════════════════════════════════════════════ */
 
-/* ---- MESADA ---- */
-// S.mesadas = {
-//   papa: { cuotas: { "2025": 90000 }, pagos: { "2025-3": {
-//     monto,fecha,destino,nota,splits,
-//     // Campos opcionales de "pago parcial con deuda pendiente" (ej. te dieron
-//     // 60k de una cuota de 80k y te quedaron debiendo los 20k restantes):
-//     cuotaEsperada,       // snapshot de la cuota del año cuando se marcó como pendiente
-//     pendiente,           // cuánto falta por recibir de esa mensualidad (0/ausente = saldado)
-//     pendienteHistorial,  // [{monto,fecha,destino,nota}] abonos posteriores que fueron cerrando `pendiente`
-//   } } },
-//   mama: { cuotas: { "2025": 80000 }, pagos: { "2025-3": {...} } }
-// }
+/* ═══════════════════════════════════════════════════════════════
+   PARTE 1 — REGLAS DE NEGOCIO (sin DOM)
 
-let mpParent=''; // 'papa' | 'mama'
-let mpMesKey=''; // '2025-3'
-let mpMesNombre=''; // 'Abril 2025'
-let mppParent=''; // 'papa' | 'mama' — para el sheet de pago de lo pendiente
-let mppMesKey=''; // '2025-3'
+   Qué resolvió (2026-10-08, ver CHANGELOG.md#mesada): la lógica estaba
+   mezclada con el DOM y repetida en tres sitios (pago original, abonos del
+   pendiente y "deshacer abono"): crear la salida del encargo, sumar a la
+   cuenta + movimiento espejo, y revertirlo. Ahora hay una sola versión:
 
-// ── "Me pagó con plata de un encargo" ──────────────────────────────────
-// Si ya le tenías guardada plata a papá/mamá en un encargo (módulo
-// Encargos), al registrar el pago de mesada podés usar esa plata en vez de
-// que entre plata nueva: se descuenta del encargo y se cuenta como pago
-// recibido. Ver confirmarMesadaPago() y _borrarMesadaPago() para el
-// registro y la reversión.
-let mpUsarEncargoActivo=false;
-let mpEncargoActualId='';
-// Misma idea pero para el sheet de "pago de lo pendiente" (abrirResolverPendiente
-// / confirmarPendienteMesada): un abono de lo pendiente también puede venir de
-// plata que ya estaba guardada en un encargo.
-let mppUsarEncargoActivo=false;
-let mppEncargoActualId='';
+     mesadaAbonosDe(info)        vista NORMALIZADA de un mes: el pago
+                                 original + cada abono de
+                                 pendienteHistorial, todos con la misma
+                                 forma. No toca lo guardado (sin migración).
+     _mesadaAplicarEntrada()     efecto de UN abono (salida de encargo +
+                                 suma a cuenta(s) + espejo).
+     mesadaRevertirAbono()       su inverso exacto.
+     mesadaRegistrarPago()       pago de un mes.
+     mesadaAbonarPendiente()     abono a lo pendiente.
+     mesadaBorrarPago() / mesadaDeshacerAbono()
 
-function _normTxt(s){
-  return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+   Contrato de las funciones que cambian datos: VALIDAN TODO ANTES DE
+   MUTAR (un rechazo nunca deja efectos a medias) y devuelven
+   { ok:true, ... } o { ok:false, motivo, ... }. No llaman a save(),
+   refresh(), toast() ni tocan el DOM: eso es de la Parte 2.
+
+   Modelo guardado (sin cambios, ver mesada.md §4):
+     S.mesadas[parent].pagos['2026-3'] = {
+       monto, fecha, destino, nota, splits?, _movSecId?,
+       origenEncargo?: { encargoId, movId, nombre, sumado? },
+       cuotaEsperada?, pendiente?, pendienteHistorial?: [abono...]
+     }
+   ═══════════════════════════════════════════════════════════════ */
+
+const MESADA_PADRES = ['papa', 'mama'];
+
+function mesadaNombrePadre(parent) { return parent === 'papa' ? 'Papá' : 'Mamá'; }
+
+function _mesadaAnioDeKey(key) { return parseInt(String(key).split('-')[0], 10); }
+
+// Cuota que rige para el año del mes `key` (no para el año visible en pantalla).
+function mesadaCuotaDeKey(parent, key) { return _getCuotaAnio(parent, _mesadaAnioDeKey(key)); }
+
+/* ── Estado de cada mes (pantalla principal) ──────────────────────── */
+
+// ¿Ya venció el mes `mesIdx` (0-11) del año `anio` para ese padre?
+// Papá vence el día 30 del propio mes; mamá el día 1 del mes SIGUIENTE, así que
+// dentro de su mes nunca está vencida (su vencimiento lo cubre `mesIdx < mes actual`).
+function mesadaMesVencido(parent, anio, mesIdx, hoyDate) {
+  const ya = hoyDate.getFullYear(), m = hoyDate.getMonth(), d = hoyDate.getDate();
+  if (anio < ya) return true;
+  if (anio > ya) return false;
+  if (mesIdx < m) return true;
+  if (mesIdx === m) return parent === 'papa' && d > 30;
+  return false;
 }
 
-function _mesadaClavesParent(parent){
-  return parent==='papa' ? ['papa','padre','papi'] : ['mama','madre','mami'];
+// 'pagado' | 'pendiente' (pagado con deuda) | 'perdido' (vencido sin pago) | 'vacio'
+function mesadaEstadoMes(info, vencido) {
+  if (info) return (info.pendiente || 0) > 0 ? 'pendiente' : 'pagado';
+  return vencido ? 'perdido' : 'vacio';
 }
 
-// Encargos con saldo disponible cuyo nombre coincide con "papá"/"mamá" (o
-// variantes) — candidatos a que la mesada de ese mes se haya pagado con
-// plata que ya les tenías guardada. Requiere que encargos.js ya esté
-// cargado (getEncargo/encargoSaldo son globales de ese módulo).
-function _mesadaEncargosDelParent(parent){
-  if(typeof encargoSaldo!=='function'||!S.encargos||!S.encargos.length)return [];
-  const claves=_mesadaClavesParent(parent);
+// Todo lo que pinta renderMesada(), calculado una sola vez y sin DOM.
+function mesadaResumenAnio(anio, hoyDate) {
+  _ensureMesadas();
+  hoyDate = hoyDate || new Date();
+  const padres = {};
+  let totalAnio = 0, pagadosAnio = 0;
+  MESADA_PADRES.forEach(parent => {
+    const data = getMesadaData(parent);
+    const cuota = _getCuotaAnio(parent, anio);
+    const r = { cuota, meses: [], totalRecibido: 0, mesesPagados: 0, mesesPerdidos: 0, totalPendiente: 0, mesesPendientes: 0 };
+    MC.forEach((nombre, i) => {
+      const key = anio + '-' + i;
+      const info = data[key] || null;
+      const estado = mesadaEstadoMes(info, mesadaMesVencido(parent, anio, i, hoyDate));
+      if (info) { r.totalRecibido += (info.monto || cuota); r.mesesPagados++; }
+      if (estado === 'pendiente') { r.totalPendiente += info.pendiente; r.mesesPendientes++; }
+      if (estado === 'perdido') r.mesesPerdidos++;
+      r.meses.push({ key, nombre, info, estado });
+    });
+    totalAnio += r.totalRecibido;
+    pagadosAnio += r.mesesPagados;
+    padres[parent] = r;
+  });
+  const ya = hoyDate.getFullYear();
+  const mesesHastaHoy = anio < ya ? 12 : (anio === ya ? hoyDate.getMonth() + 1 : 0);
+  return { anio, padres, totalAnio, pagadosAnio, esperadosAnio: mesesHastaHoy * MESADA_PADRES.length };
+}
+
+/* ── Encargos como fuente del pago ────────────────────────────────── */
+// Encargos.js es otro grupo lazy: Mesada lo consulta solo con guards. Sin él, la
+// opción "pagar con plata de un encargo" simplemente no se ofrece.
+
+function _mesadaApiEncargos() {
+  if (typeof getEncargo !== 'function') return null;
+  return {
+    get: getEncargo,
+    enCuenta: typeof _getEncargoSaldoEnCuenta === 'function' ? _getEncargoSaldoEnCuenta : () => 0,
+    sinCuenta: typeof _getEncargoSaldoSinCuenta === 'function' ? _getEncargoSaldoSinCuenta : () => 0,
+    porCuenta: typeof _getEncargoSaldoPorCuenta === 'function' ? _getEncargoSaldoPorCuenta : () => [],
+  };
+}
+
+// Cuánta plata hay disponible en el encargo, en la cuenta elegida ('' = "sin cuenta").
+// Devuelve { enc, disponible } o null si el encargo no existe / Encargos no cargó.
+function mesadaDisponibleEncargo(encId, cuentaSel) {
+  const api = _mesadaApiEncargos();
+  const enc = api ? api.get(encId) : null;
+  if (!enc) return null;
+  return { enc, disponible: cuentaSel ? api.enCuenta(enc, cuentaSel) : api.sinCuenta(enc) };
+}
+
+// Opciones del selector "¿de cuál cuenta sale esa plata?": [{val,label,saldo}] + sinCuenta.
+function mesadaCuentasDeEncargo(encId) {
+  const api = _mesadaApiEncargos();
+  const enc = api ? api.get(encId) : null;
+  if (!enc) return null;
+  return { enc, cuentas: api.porCuenta(enc), sinCuenta: api.sinCuenta(enc) };
+}
+
+const _MESADA_CLAVES = {
+  papa: ['papa', 'papi', 'papito', 'padre'],
+  mama: ['mama', 'mami', 'mamita', 'madre'],
+};
+
+function _normTxt(s) {
+  return (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+// Coincidencia por PALABRA completa (o su plural): "Plata de papá" sí; "papayera" y
+// "Papas fritas" no (antes era includes() y daba falsos positivos).
+function _mesadaNombreCoincide(nombre, claves) {
+  return _normTxt(nombre).split(/[^a-z0-9ñ]+/).some(t => claves.some(c => t === c || t === c + 's'));
+}
+
+// Persona del sistema unificado vinculada a papá/mamá (S.mesadas[parent].personaId), o ''.
+function mesadaPersonaDe(parent) {
+  _ensureMesadas();
+  const id = S.mesadas[parent].personaId || '';
+  // Si la persona ya no existe, el vínculo se ignora (vuelve la búsqueda por nombre) en vez de
+  // dejar a papá/mamá sin ningún encargo candidato.
+  if (id && typeof getPersona === 'function' && !getPersona(id)) return '';
+  return id;
+}
+
+function mesadaVincularPersona(parent, personaId) {
+  _ensureMesadas();
+  if (personaId) S.mesadas[parent].personaId = personaId;
+  else delete S.mesadas[parent].personaId;
+}
+
+// Encargos con saldo que pueden haber financiado la mesada de ese padre.
+// Con persona vinculada: SOLO los de esa persona (vínculo explícito, sin adivinar).
+// Sin vínculo: por nombre (palabra completa), como antes — ver mesada.md §8.
+function mesadaEncargosDelParent(parent) {
+  if (typeof encargoSaldo !== 'function' || !S.encargos || !S.encargos.length) return [];
+  const personaId = mesadaPersonaDe(parent);
+  const claves = _MESADA_CLAVES[parent];
   return S.encargos
-    .filter(e=>claves.some(c=>_normTxt(e.nombre).includes(c)))
-    .map(e=>({enc:e,saldo:encargoSaldo(e)}))
-    .filter(x=>x.saldo>0.5)
-    .sort((a,b)=>b.saldo-a.saldo);
+    .filter(e => personaId ? e.personaId === personaId : _mesadaNombreCoincide(e.nombre, claves))
+    .map(e => ({ enc: e, saldo: encargoSaldo(e) }))
+    .filter(x => x.saldo > 0.5)
+    .sort((a, b) => b.saldo - a.saldo);
 }
 
-// Puebla el selector de cuentas del encargo elegido (dónde físicamente
-// está guardada esa plata) — reutiliza los helpers de encargos.js.
-function _poblarMpEncargoCuentas(){
-  const sel=document.getElementById('mpEncargoCuentaSel');
-  if(!sel)return;
-  const enc=typeof getEncargo==='function'?getEncargo(mpEncargoActualId):null;
-  if(!enc){sel.innerHTML='';return;}
-  const cuentas=typeof _getEncargoSaldoPorCuenta==='function'?_getEncargoSaldoPorCuenta(enc):[];
-  const sinCuenta=typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0;
-  let opts=cuentas.map(c=>html`<option value="${c.cuenta}">${c.label} (${fmt(c.saldo)})</option>`).join('');
-  if(sinCuenta>0.5)opts+=`<option value="">Sin especificar (${fmt(sinCuenta)})</option>`;
-  sel.innerHTML=opts||'<option value="">Sin especificar</option>';
-  actualizarMpPreview();
+/* ── Efectos de UN abono (aplicar / revertir) ─────────────────────── */
+
+// Sube el saldo de la cuenta y deja el movimiento espejo. Devuelve el id del espejo
+// (null si no hay cuenta rastreable).
+function _mesadaEntrar(destino, monto, fecha, desc) {
+  if (!destino || !monto) return null;
+  sumarFuente(destino, monto);
+  return registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Mesada' });
 }
 
-// Precarga el selector de destino con la misma cuenta que tiene el
-// encargo seleccionado (como sugerencia razonable: si la plata ya estaba
-// en Nequi, lo más probable es que se quede en Nequi), pero deja el campo
-// visible y editable — el usuario puede elegir cualquier otra cuenta, ya
-// que la cuenta del encargo solo dice de dónde SALE la plata, no a dónde
-// tiene que entrar.
-function _sincronizarMpDestinoConEncargo(){
-  const cuentaSel=document.getElementById('mpEncargoCuentaSel');
-  const dest=document.getElementById('mpDestino');
-  if(!cuentaSel||!dest)return;
-  const val=cuentaSel.value;
-  if(val && [...dest.options].some(o=>o.value===val)){
-    dest.value=val;
-  } else {
-    dest.value='';
+// Inverso de _mesadaEntrar. `descontar=false` solo borra el espejo (ver mesadaRevertirAbono).
+function _mesadaSacar(destino, monto, movSecId, descontar) {
+  if (!destino) return;
+  if (descontar) descontarFuente(destino, monto, { exacto: true });
+  borrarMovEspejo(destino, movSecId);
+}
+
+function _mesadaCrearSalidaEncargo(enc, monto, cuentaSel, fecha, desc, nota) {
+  const mov = { id: uid(), tipo: 'salida', desc, monto, cuenta: cuentaSel || '', fecha, nota, ts: Date.now() };
+  if (!enc.movimientos) enc.movimientos = [];
+  enc.movimientos.push(mov);
+  return mov;
+}
+
+function _mesadaQuitarSalidaEncargo(oe) {
+  const api = _mesadaApiEncargos();
+  const enc = api && oe ? api.get(oe.encargoId) : null;
+  if (!enc || !enc.movimientos) return false;
+  const antes = enc.movimientos.length;
+  enc.movimientos = enc.movimientos.filter(m => m.id !== oe.movId);
+  return enc.movimientos.length < antes;
+}
+
+// Valida que el encargo exista y tenga plata suficiente. NO muta nada.
+function _mesadaValidarEncargo(encargo, monto) {
+  const d = mesadaDisponibleEncargo(encargo.id, encargo.cuentaSel);
+  if (!d) return { ok: false, motivo: 'encargo-invalido' };
+  if (monto > d.disponible + 0.5) return { ok: false, motivo: 'encargo-insuficiente', disponible: d.disponible, encNombre: d.enc.nombre };
+  return { ok: true, enc: d.enc, disponible: d.disponible };
+}
+
+// Aplica UN abono y devuelve su registro, con la misma forma para el pago original y
+// para cada entrada de pendienteHistorial.
+//   b = { monto, fecha, nota, destino, splits|null }
+//   encargo = { enc, cuentaSel, nota } | null  (plata que ya estaba guardada en un encargo)
+function _mesadaAplicarEntrada(b, desc, encargo) {
+  const reg = { monto: b.monto, fecha: b.fecha, nota: b.nota };
+  if (encargo) {
+    const mov = _mesadaCrearSalidaEncargo(encargo.enc, b.monto, encargo.cuentaSel, b.fecha, desc, encargo.nota);
+    reg.origenEncargo = { encargoId: encargo.enc.id, movId: mov.id, nombre: encargo.enc.nombre };
   }
-}
-
-// Misma lógica que _poblarMpEncargoCuentas() pero para el sheet de "pago de
-// lo pendiente" (ids mpp*).
-function _poblarMppEncargoCuentas(){
-  const sel=document.getElementById('mppEncargoCuentaSel');
-  if(!sel)return;
-  const enc=typeof getEncargo==='function'?getEncargo(mppEncargoActualId):null;
-  if(!enc){sel.innerHTML='';return;}
-  const cuentas=typeof _getEncargoSaldoPorCuenta==='function'?_getEncargoSaldoPorCuenta(enc):[];
-  const sinCuenta=typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0;
-  let opts=cuentas.map(c=>html`<option value="${c.cuenta}">${c.label} (${fmt(c.saldo)})</option>`).join('');
-  if(sinCuenta>0.5)opts+=`<option value="">Sin especificar (${fmt(sinCuenta)})</option>`;
-  sel.innerHTML=opts||'<option value="">Sin especificar</option>';
-  actualizarMppPreview();
-}
-
-// Igual que _sincronizarMpDestinoConEncargo() pero para el sheet de
-// pendiente (ids mpp*).
-function _sincronizarMppDestinoConEncargo(){
-  const cuentaSel=document.getElementById('mppEncargoCuentaSel');
-  const dest=document.getElementById('mppDestino');
-  if(!cuentaSel||!dest)return;
-  const val=cuentaSel.value;
-  if(val && [...dest.options].some(o=>o.value===val)){
-    dest.value=val;
+  if (b.splits) {
+    reg.destino = '';
+    reg.splits = b.splits;
+    b.splits.forEach(s => { if (s.fuente) s._movSecId = _mesadaEntrar(s.fuente, s.monto, b.fecha, desc); });
   } else {
-    dest.value='';
+    reg.destino = b.destino || '';
+    if (reg.destino) reg._movSecId = _mesadaEntrar(reg.destino, b.monto, b.fecha, desc);
+    // `sumado`: ¿esa plata del encargo entró de verdad a una cuenta? (si no, al borrar no hay saldo que devolver)
+    if (reg.origenEncargo) reg.origenEncargo.sumado = !!reg.destino;
   }
+  return reg;
 }
 
-// Muestra u oculta el campo "¿Dónde la metiste?" del sheet de pendiente —
-// se oculta cuando el abono se cubre con plata de un encargo ya ligada a
-// una cuenta conocida (esa cuenta ya es el destino, mismo criterio que
-// _mostrarSeccionDestinoNormal — ver ahí para el porqué).
-function _mostrarMppDestinoNormal(mostrar){
-  const wrap=document.getElementById('mppDestinoWrap');
-  if(wrap)wrap.style.display=mostrar?'':'none';
+// Vista normalizada de un mes: [pagoOriginal, ...abonosDelPendiente], todos con la forma
+//   { esOriginal, monto, fecha, nota, destino, splits, _movSecId, origenEncargo }
+// `info.monto` incluye los abonos posteriores, así que el original = monto − Σ abonos.
+function mesadaAbonosDe(info) {
+  const hist = info.pendienteHistorial || [];
+  const totalHist = hist.reduce((a, h) => a + (h.monto || 0), 0);
+  const norm = (x, esOriginal, monto) => ({
+    esOriginal, monto, fecha: x.fecha, nota: x.nota,
+    destino: x.destino || '', splits: x.splits || null,
+    _movSecId: x._movSecId || null, origenEncargo: x.origenEncargo || null,
+  });
+  return [norm(info, true, Math.max(0, (info.monto || 0) - totalHist))]
+    .concat(hist.map(h => norm(h, false, h.monto || 0)));
 }
 
-// Muestra u oculta la sección normal "¿Qué hiciste con esa plata?"
-// (destino simple/dividido). Se oculta cuando el pago se cubre con plata
-// de un encargo ya ligada a una cuenta conocida — no hace falta volver a
-// preguntar el destino porque la cuenta elegida arriba YA es el destino
-// (ver confirmarMesadaPago: esa plata se le suma a esa cuenta ahí mismo,
-// no antes). Se muestra si hace falta elegir dónde cae la plata (pago
-// normal, o encargo "sin especificar").
-function _mostrarSeccionDestinoNormal(mostrar){
-  const header=document.querySelector('#sheet-mesada-pago .field-header');
-  if(header)header.style.display=mostrar?'':'none';
-  const simple=document.getElementById('mpModoSimple');
-  const split=document.getElementById('mpModoDividido');
-  if(!mostrar){
-    if(simple)simple.style.display='none';
-    if(split)split.style.display='none';
-  } else {
-    if(simple)simple.style.display=mpSplitMode?'none':'';
-    if(split)split.style.display=mpSplitMode?'':'none';
+// Deshace los efectos de UN abono: devuelve la salida al encargo (si la hubo) y saca la
+// plata de la(s) cuenta(s) donde entró, con su espejo.
+// Usa el monto GUARDADO en el abono, no el del movimiento del encargo: si ese movimiento
+// ya no existe, igual se devuelve la plata a la cuenta (antes quedaba el saldo inflado).
+function mesadaRevertirAbono(ab) {
+  const oe = ab.origenEncargo;
+  if (oe) _mesadaQuitarSalidaEncargo(oe);
+  if (ab.splits && ab.splits.length) {
+    ab.splits.forEach(s => { if (s.fuente) _mesadaSacar(s.fuente, s.monto, s._movSecId, true); });
+    return;
   }
+  // Con encargo, solo se había sumado a la cuenta si `sumado`; sin encargo, siempre.
+  _mesadaSacar(ab.destino, ab.monto, ab._movSecId, oe ? !!oe.sumado : true);
 }
 
-// _ensureMesadas(), getMesadaData() y _getCuotaAnio() se movieron a
-// js/core/calc-helpers.js (2026-08-04): Inicio las necesita para
-// "Necesita atención" pero mesada.js ahora es lazy, así que esas 3
-// funciones puras viven en un archivo que carga de entrada. Acá se
-// siguen usando igual, como globales — ver ese archivo para el detalle.
+/* ── Casos de uso ─────────────────────────────────────────────────── */
 
-// Cuentas realmente afectadas por un pago de mesada — el destino simple, o
-// cada fuente del split si se repartió entre varias cuentas.
-function _mesadaFuentesDe(info){
-  if(info.splits&&info.splits.length)return info.splits.map(s=>s.fuente).filter(Boolean);
-  return info.destino?[info.destino]:[];
+const _mesadaSumaSplits = splits => splits.reduce((a, s) => a + s.monto, 0);
+
+// p = { parent, key, monto, fecha, nota, destino, splits, splitMode,
+//       quedaDebiendo, encargo: { id, cuentaSel } | null }
+function mesadaRegistrarPago(p) {
+  const monto = p.monto || 0;
+  if (!monto || !p.parent || !p.key) return { ok: false, motivo: 'datos-incompletos' };
+  const fecha = p.fecha || hoy();
+  const splits = p.splitMode ? (p.splits || []).map(s => ({ fuente: s.fuente, monto: s.monto })) : null;
+
+  // 1) Validar TODO antes de tocar nada.
+  let val = null;
+  if (p.encargo) {
+    val = _mesadaValidarEncargo(p.encargo, monto);
+    if (!val.ok) return val;
+  }
+  if (splits && _mesadaSumaSplits(splits) > monto + 1) return { ok: false, motivo: 'split-excede' };
+
+  // 2) Aplicar.
+  const desc = 'Mesada — ' + mesadaNombrePadre(p.parent) + ' · ' + _mesNombreDeKey(p.key);
+  const reg = _mesadaAplicarEntrada(
+    { monto, fecha, nota: p.nota || '', destino: p.destino, splits },
+    desc,
+    val ? { enc: val.enc, cuentaSel: p.encargo.cuentaSel, nota: 'Usado para mesada' } : null
+  );
+  const cuotaDelMes = mesadaCuotaDeKey(p.parent, p.key);
+  const pendiente = p.quedaDebiendo ? Math.max(0, cuotaDelMes - monto) : 0;
+  if (pendiente > 0) {
+    reg.cuotaEsperada = cuotaDelMes;
+    reg.pendiente = pendiente;
+    reg.pendienteHistorial = [];
+  }
+  getMesadaData(p.parent)[p.key] = reg;
+  return { ok: true, pendiente, usoEncargo: !!val };
 }
 
-// Cantidad de pagos de mesada (papa + mama) posteriores a este, que tocaron
-// alguna de las mismas cuentas — criterio de "operaciones posteriores" de la
-// protección por antigüedad (ver core-state.js#nivelAntiguedadMovimiento y
-// docs/proteccion-antiguedad-movimientos.md §4: sin ciclo natural como
-// Spotify, se cuenta contra la cuenta destino en su lugar).
-// True si borrar este pago realmente movería el saldo de alguna cuenta o
-// encargo — es decir, si _borrarMesadaPago() va a llamar a descontarFuente()
-// o a tocar los movimientos de algún encargo. Si el pago (y todos sus
-// abonos de "pendiente") fueron "Sin especificar"/"me lo gasté", no hay
-// ninguna cuenta real afectada y la protección por antigüedad no tiene
-// nada que proteger.
-function _mesadaTieneCuentaAfectada(info){
-  if(info.origenEncargo)return true;
-  if(info.splits&&info.splits.length)return true;
-  if(info.destino)return true;
-  return (info.pendienteHistorial||[]).some(h=>h.destino||h.origenEncargo);
+// p = { parent, key, monto, fecha, nota, destino, encargo: { id, cuentaSel } | null }
+function mesadaAbonarPendiente(p) {
+  const info = getMesadaData(p.parent)[p.key];
+  if (!info || !((info.pendiente || 0) > 0)) return { ok: false, motivo: 'sin-pendiente' };
+  const monto = Math.min(p.monto || 0, info.pendiente); // no se puede saldar más de lo pendiente
+  if (monto <= 0) return { ok: false, motivo: 'datos-incompletos' };
+  const fecha = p.fecha || hoy();
+
+  let val = null;
+  if (p.encargo) {
+    val = _mesadaValidarEncargo(p.encargo, monto);
+    if (!val.ok) return val;
+  }
+  const desc = 'Mesada (pendiente) — ' + mesadaNombrePadre(p.parent) + ' · ' + _mesNombreDeKey(p.key);
+  const reg = _mesadaAplicarEntrada(
+    { monto, fecha, nota: p.nota || '', destino: p.destino, splits: null },
+    desc,
+    val ? { enc: val.enc, cuentaSel: p.encargo.cuentaSel, nota: 'Usado para mesada (pendiente)' } : null
+  );
+  if (!info.pendienteHistorial) info.pendienteHistorial = [];
+  info.pendienteHistorial.push(reg);
+  info.pendiente = Math.max(0, info.pendiente - monto);
+  info.monto = (info.monto || 0) + monto;
+  return { ok: true, pendiente: info.pendiente, monto };
 }
 
-function _mesadaOpsPosteriores(parentActual,keyActual,info){
-  const fuentes=_mesadaFuentesDe(info);
-  if(!fuentes.length||!info.fecha)return 0;
-  let count=0;
-  ['papa','mama'].forEach(p=>{
-    const data=getMesadaData(p);
-    Object.keys(data).forEach(k=>{
-      if(p===parentActual&&k===keyActual)return;
-      const otro=data[k];
-      if(!otro||!otro.fecha||otro.fecha<=info.fecha)return;
-      if(_mesadaFuentesDe(otro).some(f=>fuentes.includes(f)))count++;
+// Convierte retroactivamente un mes cerrado con menos plata que la cuota en uno con deuda.
+function mesadaMarcarPendiente(parent, key) {
+  const info = getMesadaData(parent)[key];
+  if (!info) return { ok: false, motivo: 'no-existe' };
+  const cuota = mesadaCuotaDeKey(parent, key);
+  const pend = Math.max(0, cuota - (info.monto || 0));
+  if (pend <= 0) return { ok: false, motivo: 'completo' };
+  info.cuotaEsperada = cuota;
+  info.pendiente = pend;
+  if (!info.pendienteHistorial) info.pendienteHistorial = [];
+  return { ok: true, pendiente: pend };
+}
+
+// Borra el registro del mes y revierte TODO (pago original + cada abono).
+function mesadaBorrarPago(parent, key) {
+  const data = getMesadaData(parent);
+  const info = data[key];
+  if (!info) return false;
+  mesadaAbonosDe(info).forEach(mesadaRevertirAbono);
+  delete data[key];
+  return true;
+}
+
+// Deshace un abono puntual del pendiente: revierte sus efectos y vuelve a dejar esa plata como deuda.
+function mesadaDeshacerAbono(parent, key, idx) {
+  const info = getMesadaData(parent)[key];
+  const h = info && info.pendienteHistorial && info.pendienteHistorial[idx];
+  if (!h) return false;
+  mesadaRevertirAbono(mesadaAbonosDe(info)[idx + 1]);
+  info.monto = Math.max(0, (info.monto || 0) - h.monto);
+  info.pendiente = (info.pendiente || 0) + h.monto;
+  info.pendienteHistorial.splice(idx, 1);
+  return true;
+}
+
+/* ── Insumos de la protección por antigüedad al borrar ────────────── */
+
+// Cuentas realmente afectadas por el mes (pago original Y abonos del pendiente).
+function mesadaFuentesDe(info) {
+  const out = [];
+  mesadaAbonosDe(info).forEach(ab => {
+    if (ab.splits && ab.splits.length) ab.splits.forEach(s => { if (s.fuente) out.push(s.fuente); });
+    else if (ab.destino) out.push(ab.destino);
+  });
+  return Array.from(new Set(out));
+}
+
+// ¿Borrar este mes movería el saldo de alguna cuenta o encargo? Si todo fue
+// "no especificar / lo gasté", no hay nada que proteger.
+function mesadaTieneCuentaAfectada(info) {
+  return mesadaAbonosDe(info).some(ab => ab.origenEncargo || (ab.splits && ab.splits.length) || ab.destino);
+}
+
+// Pagos de mesada (papá + mamá) posteriores a este que tocaron alguna de las mismas cuentas.
+function mesadaOpsPosteriores(parentActual, keyActual, info) {
+  const fuentes = mesadaFuentesDe(info);
+  if (!fuentes.length || !info.fecha) return 0;
+  let count = 0;
+  MESADA_PADRES.forEach(p => {
+    const data = getMesadaData(p);
+    Object.keys(data).forEach(k => {
+      if (p === parentActual && k === keyActual) return;
+      const otro = data[k];
+      if (!otro || !otro.fecha || otro.fecha <= info.fecha) return;
+      if (mesadaFuentesDe(otro).some(f => fuentes.includes(f))) count++;
     });
   });
   return count;
 }
 
-function getMontoPadre(parent){
-  return _getCuotaAnio(parent,S.mesadaAnio||new Date().getFullYear());
+
+/* ═══════════════════════════════════════════════════════════════
+   PARTE 2 — PANTALLA
+
+   Solo capa de pantalla: lee formularios, llama a las reglas de la Parte 1
+   y pinta.
+
+   ── Dos sheets, un solo widget de encargo ─────────────────────
+   "Registrar pago" (prefijo mp) y "Pago de lo pendiente" (prefijo mpp) usan el
+   MISMO bloque "Me pagó con plata de un encargo". Antes eran dos copias de
+   funciones idénticas salvo el prefijo del id; ahora _crearEncargoPicker(prefijo)
+   arma una instancia por sheet (mismo patrón que crearSplitWidget).
+
+   ── Eventos (CSP) ──────────────────────────────────────────────
+   Los clicks de las template strings se emiten con Events.attr('mesada:accion', ...)
+   y se registran al final con Events.registerAll('mesada', {...}). Los controles
+   estáticos de los sheets se cablean en las tablas de _msCablear() más abajo.
+   ═══════════════════════════════════════════════════════════════ */
+
+const _msEl = id => document.getElementById(id);
+const _msVal = id => { const e = _msEl(id); return e ? e.value : ''; };
+
+// Estado de cada sheet. mp = registrar pago, mpp = pago de lo pendiente.
+const _msFlujos = {
+  mp:  { parent: '', key: '', usarEncargo: false, encargoId: '' },
+  mpp: { parent: '', key: '', usarEncargo: false, encargoId: '' },
+};
+let mpSplitMode = false; // lo lee/escribe el motor de split (ver crearSplitWidget abajo)
+
+/* ── Widget "Me pagó con plata de un encargo" (uno por sheet) ───────── */
+
+function _crearEncargoPicker(p, f, onCambio) {
+  const chk = () => _msEl(p + 'UsarEncargo');
+
+  const picker = {
+    // El destino sigue siendo elegible aunque la cuenta del encargo sea conocida: esa
+    // cuenta solo dice de dónde SALE la plata (para validar cuánta hay), no a dónde ENTRA.
+    // Se precarga con la misma cuenta como sugerencia, pero es editable.
+    sincronizarDestino() {
+      const cuentaSel = _msEl(p + 'EncargoCuentaSel'), dest = _msEl(p + 'Destino');
+      if (!cuentaSel || !dest) return;
+      const val = cuentaSel.value;
+      dest.value = (val && [...dest.options].some(o => o.value === val)) ? val : '';
+    },
+
+    poblarCuentas() {
+      const sel = _msEl(p + 'EncargoCuentaSel');
+      if (!sel) return;
+      const d = mesadaCuentasDeEncargo(f.encargoId);
+      if (!d) { sel.innerHTML = ''; return; }
+      let opts = d.cuentas.map(c => html`<option value="${c.cuenta}">${c.label} (${fmt(c.saldo)})</option>`).join('');
+      if (d.sinCuenta > 0.5) opts += `<option value="">Sin especificar (${fmt(d.sinCuenta)})</option>`;
+      sel.innerHTML = opts || '<option value="">Sin especificar</option>';
+      onCambio();
+    },
+
+    // Deja el widget apagado y, si hay encargos candidatos del padre, lo muestra.
+    abrir(parent) {
+      f.usarEncargo = false;
+      f.encargoId = '';
+      if (chk()) chk().checked = false;
+      const det = _msEl(p + 'EncargoDetalle');
+      if (det) det.style.display = 'none';
+      const box = _msEl(p + 'EncargoBox');
+      if (!box) return;
+      const cands = mesadaEncargosDelParent(parent);
+      if (!cands.length) { box.style.display = 'none'; return; }
+      box.style.display = '';
+      const sub = _msEl(p + 'EncargoSub');
+      if (sub) sub.textContent = 'Tienes ' + fmt(cands.reduce((a, x) => a + x.saldo, 0)) + ' guardados de ' + mesadaNombrePadre(parent) + ' en encargos';
+      const sel = _msEl(p + 'EncargoSel');
+      if (sel) sel.innerHTML = cands.map(x => html`<option value="${x.enc.id}">${x.enc.nombre} (${fmt(x.saldo)})</option>`).join('');
+      const wrap = _msEl(p + 'EncargoSelWrap');
+      if (wrap) wrap.style.display = cands.length > 1 ? '' : 'none';
+      f.encargoId = cands[0].enc.id;
+      picker.poblarCuentas();
+    },
+
+    // { id, cuentaSel } si está activo; null si el pago no sale de un encargo.
+    seleccion() {
+      return f.usarEncargo ? { id: f.encargoId, cuentaSel: _msVal(p + 'EncargoCuentaSel') } : null;
+    },
+
+    cablear() {
+      _msOn(p + 'UsarEncargo', 'change', () => {
+        f.usarEncargo = chk().checked;
+        const det = _msEl(p + 'EncargoDetalle');
+        if (det) det.style.display = f.usarEncargo ? '' : 'none';
+        if (f.usarEncargo) picker.sincronizarDestino();
+        onCambio();
+      });
+      _msOn(p + 'EncargoSel', 'change', () => { f.encargoId = _msVal(p + 'EncargoSel'); picker.poblarCuentas(); });
+      _msOn(p + 'EncargoCuentaSel', 'change', () => { if (f.usarEncargo) picker.sincronizarDestino(); onCambio(); });
+      _msFilaClickeable(p + 'EncargoToggleWrap', p + 'UsarEncargo');
+    },
+  };
+  return picker;
 }
 
-function renderMesada(){
+const _msPickers = {
+  mp:  _crearEncargoPicker('mp',  _msFlujos.mp,  () => actualizarMpPreview()),
+  mpp: _crearEncargoPicker('mpp', _msFlujos.mpp, () => actualizarMppPreview()),
+};
+
+/* ── Pantalla principal ──────────────────────────────────────────── */
+
+function renderMesada() {
   _ensureMesadas();
-  const a=S.mesadaAnio||new Date().getFullYear();
-  const hoy=new Date().getFullYear();
-  document.getElementById('anioLabel').textContent=a;
+  const a = S.mesadaAnio || new Date().getFullYear();
+  const hoyAnio = new Date().getFullYear();
+  _msEl('anioLabel').textContent = a;
+  if (_msEl('btn-anio-prev')) _msEl('btn-anio-prev').disabled = (a <= hoyAnio - 2);
+  if (_msEl('btn-anio-next')) _msEl('btn-anio-next').disabled = (a >= hoyAnio + 2);
+  MESADA_PADRES.forEach(p => { if (_msEl('ms-' + p + '-anio-label')) _msEl('ms-' + p + '-anio-label').textContent = a; });
 
-  // Deshabilitar botones en los límites ±2
-  const btnP=document.getElementById('btn-anio-prev');
-  const btnN=document.getElementById('btn-anio-next');
-  if(btnP)btnP.disabled=(a<=hoy-2);
-  if(btnN)btnN.disabled=(a>=hoy+2);
+  const r = mesadaResumenAnio(a);
 
-  // Poner el año en los labels de cuota
-  const lblP=document.getElementById('ms-papa-anio-label');
-  const lblM=document.getElementById('ms-mama-anio-label');
-  if(lblP)lblP.textContent=a;
-  if(lblM)lblM.textContent=a;
-
-  // Sync inputs de cuota para el año visible
-  const cuotaPapa=_getCuotaAnio('papa',a);
-  const cuotaMama=_getCuotaAnio('mama',a);
-  const elPapa=document.getElementById('mesadaMontoPapa');
-  const elMama=document.getElementById('mesadaMonteMama');
-  if(elPapa&&document.activeElement!==elPapa)elPapa.value=fmtInput(cuotaPapa);
-  if(elMama&&document.activeElement!==elMama)elMama.value=fmtInput(cuotaMama);
-
-  const hoyD=new Date();
-  const anioActual=hoyD.getFullYear();
-  const mesActualNum=hoyD.getMonth(); // 0-based
-  const diaActual=hoyD.getDate();
-
-  const pendientesResumen={papa:0,mama:0}; // totales de deuda pendiente, para el banner
-  ['papa','mama'].forEach(parent=>{
-    const data=getMesadaData(parent);
-    const gridId=parent==='papa'?'mesadaGridPapa':'mesadaGridMama';
-    const subId=parent==='papa'?'ms-papa-sub':'ms-mama-sub';
-    const cuota=_getCuotaAnio(parent,a);
-    let totalRecibido=0;
-    let mesesPagados=0;
-    let mesesPerdidos=0;
-    let totalPendienteParent=0;
-    let mesesPendientes=0;
-
-    document.getElementById(gridId).innerHTML=MC.map((m,i)=>{
-      const k=a+'-'+i;
-      const info=data[k];
-      const pagado=!!info;
-      const tienePendiente=pagado&&(info.pendiente||0)>0;
-
-      if(pagado){totalRecibido+=(info.monto||cuota);mesesPagados++;}
-      if(tienePendiente){totalPendienteParent+=info.pendiente;mesesPendientes++;}
-
-      // Determinar si el mes ya pasó sin pago (puede marcarse rojo)
-      // Un mes "pasado" es cualquier mes cuya fecha esperada ya venció:
-      // - Para papá: día 30 del mes i del año a
-      // - Para mamá: día 1 del mes i+1 del año a (o sea el 1 del mes siguiente,
-      //   así que dentro del propio mes i mamá nunca está vencida)
-      // El mes ya es pasado si (a < anioActual) o (a === anioActual && i < mesActualNum),
-      // más el caso especial de papá dentro del mes en curso (diaActual > 30).
-      let esPasado=false;
-      if(a<anioActual){
-        esPasado=true;
-      } else if(a===anioActual){
-        if(i<mesActualNum) esPasado=true;
-        else if(i===mesActualNum){
-          // Papá: vence el 30 del mismo mes, así que dentro del mes puede
-          // marcarse vencido. Mamá: vence el 1 del mes SIGUIENTE (i+1), o sea
-          // que dentro del mes i todavía está en plazo — su vencimiento real
-          // ya está cubierto por la rama i<mesActualNum de arriba (que se activa
-          // apenas entramos al mes siguiente), así que aquí nunca es "pasado".
-          esPasado=(parent==='papa'&&diaActual>30);
-        }
-      }
-      const esPerdido=esPasado&&!pagado;
-      if(esPerdido)mesesPerdidos++;
-
-      const tooltip=tienePendiente?fmt(info.monto)+' recibidos · debe '+fmt(info.pendiente)
-        :pagado?(info.fecha||'pagado')
-        :esPerdido?'Sin pagar'
-        :'';
-      const dotClass=tienePendiente?'mes-dot on mes-dot-pend'
-        :pagado?'mes-dot on'
-        :esPerdido?'mes-dot perdido'
-        :'mes-dot';
-      return`<div class="${dotClass}" title="${tooltip}"
-        ${Events.attr('mesada:clickMesDot', parent, k, m+' '+a)}>${m}</div>`;
-    }).join('');
-
-    let subTxt=fmt(totalRecibido)+' recibidos ('+mesesPagados+'/12)';
-    if(mesesPerdidos>0) subTxt+=' · '+mesesPerdidos+' sin pagar';
-    if(mesesPendientes>0) subTxt+=' · '+fmt(totalPendienteParent)+' pendiente';
-    document.getElementById(subId).textContent=subTxt;
-    pendientesResumen[parent]=totalPendienteParent;
+  // Inputs de cuota del año visible (sin pisar lo que el usuario está escribiendo).
+  MESADA_PADRES.forEach(p => {
+    const inp = _msEl(p === 'papa' ? 'mesadaMontoPapa' : 'mesadaMontoMama');
+    if (inp && document.activeElement !== inp) inp.value = fmtInput(r.padres[p].cuota);
   });
 
-  // Banner combinado (papá + mamá) — visibilidad clara de deuda pendiente
-  const bannerPend=document.getElementById('ms-pendiente-banner');
-  if(bannerPend){
-    const partesPend=[];
-    if(pendientesResumen.papa>0)partesPend.push('Papá te debe '+fmt(pendientesResumen.papa));
-    if(pendientesResumen.mama>0)partesPend.push('Mamá te debe '+fmt(pendientesResumen.mama));
-    if(partesPend.length){
-      bannerPend.style.display='';
-      bannerPend.textContent=partesPend.join(' · ');
-    } else {
-      bannerPend.style.display='none';
-    }
-  }
-
-  // Resumen global año
-  let totalAnio=0,pagadosAnio=0,esperadosAnio=0;
-  const mesesHastahoy=a<anioActual?12:(a===anioActual?mesActualNum+1:0);
-  esperadosAnio=mesesHastahoy*2; // papa + mama
-  ['papa','mama'].forEach(parent=>{
-    const data=getMesadaData(parent);
-    const cuota=_getCuotaAnio(parent,a);
-    for(let i=0;i<12;i++){
-      const k=a+'-'+i;
-      const info=data[k];
-      if(info){totalAnio+=(info.monto||cuota);pagadosAnio++;}
-    }
+  MESADA_PADRES.forEach(parent => {
+    const x = r.padres[parent];
+    _msEl(parent === 'papa' ? 'mesadaGridPapa' : 'mesadaGridMama').innerHTML = x.meses.map(m => _htmlMesDot(parent, m, a)).join('');
+    let sub = fmt(x.totalRecibido) + ' recibidos (' + x.mesesPagados + '/12)';
+    if (x.mesesPerdidos > 0) sub += ' · ' + x.mesesPerdidos + ' sin pagar';
+    if (x.mesesPendientes > 0) sub += ' · ' + fmt(x.totalPendiente) + ' pendiente';
+    _msEl('ms-' + parent + '-sub').textContent = sub;
   });
-  document.getElementById('ms-total').textContent=fmt(totalAnio);
-  document.getElementById('ms-count').textContent=pagadosAnio+'/'+(esperadosAnio||'—');
-}
+  _renderPersonaLink('papa');
+  _renderPersonaLink('mama');
 
-function clickMesDot(parent,key,nombre){
-  const data=getMesadaData(parent);
-  if(data[key]){
-    // Ya pagado → mostrar detalle
-    abrirDetalleMesada(parent,key,nombre);
-  } else {
-    // No pagado → registrar pago
-    abrirRegistrarMesada(parent,key,nombre);
+  // Banner combinado (papá + mamá): deuda pendiente a la vista.
+  const banner = _msEl('ms-pendiente-banner');
+  if (banner) {
+    const partes = [];
+    if (r.padres.papa.totalPendiente > 0) partes.push('Papá te debe ' + fmt(r.padres.papa.totalPendiente));
+    if (r.padres.mama.totalPendiente > 0) partes.push('Mamá te debe ' + fmt(r.padres.mama.totalPendiente));
+    banner.style.display = partes.length ? '' : 'none';
+    if (partes.length) banner.textContent = partes.join(' · ');
   }
+
+  _msEl('ms-total').textContent = fmt(r.totalAnio);
+  _msEl('ms-count').textContent = r.pagadosAnio + '/' + (r.esperadosAnio || '—');
 }
 
-let mpSplitMode=false;
+const _MES_DOT_CLASE = { pendiente: 'mes-dot on mes-dot-pend', pagado: 'mes-dot on', perdido: 'mes-dot perdido', vacio: 'mes-dot' };
+
+function _htmlMesDot(parent, m, anio) {
+  const info = m.info;
+  const tooltip = m.estado === 'pendiente' ? fmt(info.monto) + ' recibidos · debe ' + fmt(info.pendiente)
+    : m.estado === 'pagado' ? (info.fecha || 'pagado')
+    : m.estado === 'perdido' ? 'Sin pagar' : '';
+  return `<div class="${_MES_DOT_CLASE[m.estado]}" title="${tooltip}"
+    ${Events.attr('mesada:clickMesDot', parent, m.key, m.nombre + ' ' + anio)}>${m.nombre}</div>`;
+}
+
+function clickMesDot(parent, key, nombre) {
+  if (getMesadaData(parent)[key]) abrirDetalleMesada(parent, key, nombre); // ya pagado → detalle
+  else abrirRegistrarMesada(parent, key, nombre);                          // no pagado → registrar
+}
+
+function cambiarAnio(d) {
+  const hoyAnio = new Date().getFullYear();
+  const nuevo = (S.mesadaAnio || hoyAnio) + d;
+  if (nuevo < hoyAnio - 2 || nuevo > hoyAnio + 2) return;
+  save(); S.mesadaAnio = nuevo; renderMesada();
+}
+
+/* ── Vínculo de papá/mamá con una persona (encargos por vínculo, no por nombre) ── */
+
+function _renderPersonaLink(parent) {
+  const btn = _msEl('ms-' + parent + '-persona'), x = _msEl('ms-' + parent + '-persona-x');
+  if (!btn) return;
+  const pid = mesadaPersonaDe(parent);
+  const persona = pid && typeof getPersona === 'function' ? getPersona(pid) : null;
+  btn.textContent = persona ? 'Vinculado a ' + persona.nombre : 'Vincular a una persona';
+  if (x) x.style.display = persona ? '' : 'none';
+}
+
+function vincularPersonaMesada(parent) {
+  if (typeof abrirSelPersona !== 'function') { toast('Personas todavía no cargó, intenta de nuevo', 'err'); return; }
+  abrirSelPersona(personaId => {
+    mesadaVincularPersona(parent, personaId);
+    save(); _renderPersonaLink(parent);
+    toast('Ahora se ofrecen los encargos de esa persona', 'ok', 2500);
+  }, parent === 'papa' ? '¿Quién es papá?' : '¿Quién es mamá?');
+}
+
+function desvincularPersonaMesada(parent) {
+  mesadaVincularPersona(parent, '');
+  save(); _renderPersonaLink(parent);
+  toast('Desvinculado: se buscan encargos por nombre', 'info', 2500);
+}
+
+/* ── Sheet "Registrar pago" (mp) ─────────────────────────────────── */
 
 crearSplitWidget('mp', {
-  simpleId:'mpModoSimple', splitId:'mpModoDividido', toggleId:'mpSplitToggle', rowsId:'mpSplitRows',
-  getModo:()=>mpSplitMode, setModo:v=>{mpSplitMode=v;},
-  getFuentesFn:getFuentesOptions,
-  onPreview:actualizarMpPreview
+  simpleId: 'mpModoSimple', splitId: 'mpModoDividido', toggleId: 'mpSplitToggle', rowsId: 'mpSplitRows',
+  getModo: () => mpSplitMode, setModo: v => { mpSplitMode = v; },
+  getFuentesFn: getFuentesOptions,
+  onPreview: () => actualizarMpPreview(),
 });
 
-function toggleMpSplit(){ splitToggle('mp'); }
-
-function getFuentesOptions(selectedVal){
-  return buildFuentesOptsHtml({ selectedVal, placeholder: 'No especificar', incluirTC:false });
+function getFuentesOptions(selectedVal) {
+  return buildFuentesOptsHtml({ selectedVal, placeholder: 'No especificar', incluirTC: false });
 }
 
-function agregarMpSplitRow(){ splitAgregarRow('mp'); }
+// <select> de destino: cuentas rastreables (sin TC: es plata que entra) + "no especificar".
+function _poblarDestinoMesada(selectId) {
+  const sel = _msEl(selectId);
+  if (sel) sel.innerHTML = buildFuentesOptsHtml({ placeholder: 'No especificar / lo gasté', incluirTC: false });
+}
 
-function getMpSplitData(){ return splitGetData('mp'); }
-
-function abrirRegistrarMesada(parent,key,nombre){
-  mpParent=parent;mpMesKey=key;mpMesNombre=nombre;
-  mpSplitMode=false;
-  const cuota=getMontoPadre(parent);
-  const pNombre=parent==='papa'?'Papá':'Mamá';
-  document.getElementById('mpTitle').textContent=pNombre+' · '+nombre;
-  document.getElementById('mpDesc').textContent='Registrá cuándo te pagó y qué hiciste con esa plata.';
-  document.getElementById('mpMonto').value=cuota||'';
-  document.getElementById('mpFecha').value=hoy();
-  document.getElementById('mpNota').value='';
-  document.getElementById('mpPreview').textContent='';
-  document.getElementById('mpModoSimple').style.display='';
-  document.getElementById('mpModoDividido').style.display='none';
-  document.getElementById('mpSplitRows').innerHTML='';
-  document.getElementById('mpSplitToggle').textContent='Dividir ÷';
-  document.getElementById('mpSplitToggle').style.background='rgba(200,240,96,.1)';
-  document.getElementById('mpSplitToggle').style.borderColor='rgba(200,240,96,.3)';
-  document.getElementById('mpSplitToggle').style.color='var(--accent)';
-  document.getElementById('mpSplitToggle').style.display='';
-  poblarFuente('mpDestino', false, false);
-  const sel=document.getElementById('mpDestino');
-  sel.innerHTML='<option value="">No especificar / lo gasté</option>'+sel.innerHTML.replace('<option value="">Sin especificar</option>','');
-  // Resetear toggle "quedó debiendo la diferencia"
-  const chkDebe=document.getElementById('mpQuedaDebiendo');
-  if(chkDebe){ chkDebe.checked=false; }
-  const debeWrap=document.getElementById('mpDebeWrap');
-  if(debeWrap){ debeWrap.style.display='none'; }
-
-  // ── "Me pagó con plata de un encargo" — resetear y poblar si aplica ──
-  mpUsarEncargoActivo=false;
-  mpEncargoActualId='';
-  const boxEnc=document.getElementById('mpEncargoBox');
-  const chkEnc=document.getElementById('mpUsarEncargo');
-  const detEnc=document.getElementById('mpEncargoDetalle');
-  if(chkEnc)chkEnc.checked=false;
-  if(detEnc)detEnc.style.display='none';
-  if(boxEnc){
-    const encMatches=_mesadaEncargosDelParent(parent);
-    if(encMatches.length){
-      boxEnc.style.display='';
-      const totalDisp=encMatches.reduce((a,x)=>a+x.saldo,0);
-      const subEnc=document.getElementById('mpEncargoSub');
-      if(subEnc)subEnc.textContent='Tenés '+fmt(totalDisp)+' guardados de '+pNombre+' en encargos';
-      const selEnc=document.getElementById('mpEncargoSel');
-      if(selEnc)selEnc.innerHTML=encMatches.map(x=>html`<option value="${x.enc.id}">${x.enc.nombre} (${fmt(x.saldo)})</option>`).join('');
-      const selWrapEnc=document.getElementById('mpEncargoSelWrap');
-      if(selWrapEnc)selWrapEnc.style.display=encMatches.length>1?'':'none';
-      mpEncargoActualId=encMatches[0].enc.id;
-      _poblarMpEncargoCuentas();
-    } else {
-      boxEnc.style.display='none';
-    }
-  }
-  _mostrarSeccionDestinoNormal(true);
+function abrirRegistrarMesada(parent, key, nombre) {
+  const f = _msFlujos.mp;
+  f.parent = parent; f.key = key;
+  _msEl('mpTitle').textContent = mesadaNombrePadre(parent) + ' · ' + nombre;
+  _msEl('mpDesc').textContent = 'Registra cuándo te pagó y qué hiciste con esa plata.';
+  _msEl('mpMonto').value = mesadaCuotaDeKey(parent, key) || '';
+  _msEl('mpFecha').value = hoy();
+  _msEl('mpNota').value = '';
+  _msEl('mpPreview').textContent = '';
+  splitReset('mp'); // vuelve el widget de dividir a su estado base (modo simple, sin filas)
+  _msEl('mpSplitToggle').style.display = '';
+  _poblarDestinoMesada('mpDestino');
+  // "Quedó debiendo la diferencia": siempre empieza apagado.
+  if (_msEl('mpQuedaDebiendo')) _msEl('mpQuedaDebiendo').checked = false;
+  if (_msEl('mpDebeWrap')) _msEl('mpDebeWrap').style.display = 'none';
+  _msPickers.mp.abrir(parent);
   openSheet('mesada-pago');
 }
 
-function actualizarMpPreview(){
-  const v=parseMoney(document.getElementById('mpMonto').value)||0;
-  const prev=document.getElementById('mpPreview');
+// Texto de preview cuando se reparte entre cuentas (con o sin encargo de origen).
+function _previewSplit(prev, v, splits, deEncargo) {
+  const total = splits.reduce((a, s) => a + s.monto, 0);
+  const restante = v - total;
+  if (!splits.length) { prev.textContent = fmt(v) + (deEncargo ? ' de ' + deEncargo : '') + ' por distribuir'; prev.style.color = 'var(--text2)'; return; }
+  const lineas = splits.map(s => fuenteLabel(s.fuente || '') + ': +' + fmt(s.monto)).join(' · ');
+  if (restante > 0) { prev.textContent = lineas + ' · Sin asignar: ' + fmt(restante); prev.style.color = 'var(--amber)'; }
+  else if (restante < 0) { prev.textContent = lineas + ' · Excede por: ' + fmt(-restante); prev.style.color = 'var(--red)'; }
+  else { prev.textContent = lineas + ' · Todo distribuido' + (deEncargo ? ' (de ' + deEncargo + ')' : ''); prev.style.color = 'var(--accent)'; }
+}
+
+// Valida lo disponible en el encargo para el preview. Devuelve {enc,disponible} o null (ya pintó el motivo).
+function _previewDisponible(prev, picker, v) {
+  const sel = picker.seleccion();
+  const d = mesadaDisponibleEncargo(sel.id, sel.cuentaSel);
+  if (!d) { prev.textContent = ''; return null; }
+  if (v > d.disponible + 0.5) { prev.textContent = 'Ahí solo tienes ' + fmt(d.disponible) + ' de ' + d.enc.nombre; prev.style.color = 'var(--red)'; return null; }
+  return d;
+}
+
+function actualizarMpPreview() {
+  const f = _msFlujos.mp;
+  const v = parseMoney(_msVal('mpMonto')) || 0;
+  const prev = _msEl('mpPreview');
   _syncMpDebeWrap(v);
-  if(!v){prev.textContent='';return;}
-  if(mpUsarEncargoActivo){
-    const enc=typeof getEncargo==='function'?getEncargo(mpEncargoActualId):null;
-    if(!enc){prev.textContent='';return;}
-    const cuentaSel=document.getElementById('mpEncargoCuentaSel')?document.getElementById('mpEncargoCuentaSel').value:'';
-    const disponible=cuentaSel
-      ?(typeof _getEncargoSaldoEnCuenta==='function'?_getEncargoSaldoEnCuenta(enc,cuentaSel):0)
-      :(typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0);
-    if(v>disponible+0.5){
-      prev.textContent='Ahí solo tenés '+fmt(disponible)+' de '+enc.nombre;
-      prev.style.color='var(--red)';
-      return;
-    }
-    if(mpSplitMode){
-      // Repartir la plata que sale del encargo entre varias cuentas —
-      // mismo widget de split que el flujo normal, la única diferencia es
-      // de dónde sale la plata (del encargo, no "de la nada").
-      const splits=getMpSplitData();
-      const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
-      const restante=v-totalSplit;
-      if(splits.length===0){prev.textContent=fmt(v)+' de '+enc.nombre+' por distribuir';prev.style.color='var(--text2)';return;}
-      let lines=splits.map(s=>fuenteLabel(s.fuente||'')+': +'+fmt(s.monto)).join(' · ');
-      if(restante>0){prev.textContent=lines+' · Sin asignar: '+fmt(restante);prev.style.color='var(--amber)';}
-      else if(restante<0){prev.textContent=lines+' · Excede por: '+fmt(-restante);prev.style.color='var(--red)';}
-      else{prev.textContent=lines+' · Todo distribuido (de '+enc.nombre+')';prev.style.color='var(--accent)';}
-      return;
-    }
-    prev.textContent='Se descuenta de lo que le tenías guardado a '+enc.nombre+' · queda '+fmt(disponible-v);
-    prev.style.color='var(--blue)';
+  if (!v) { prev.textContent = ''; return; }
+  if (f.usarEncargo) {
+    const d = _previewDisponible(prev, _msPickers.mp, v);
+    if (!d) return;
+    if (mpSplitMode) { _previewSplit(prev, v, splitGetData('mp'), d.enc.nombre); return; }
+    prev.textContent = 'Se descuenta de lo que le tenías guardado a ' + d.enc.nombre + ' · queda ' + fmt(d.disponible - v);
+    prev.style.color = 'var(--blue)';
     return;
   }
-  if(mpSplitMode){
-    const splits=getMpSplitData();
-    const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
-    const restante=v-totalSplit;
-    if(splits.length===0){prev.textContent=fmt(v)+' por distribuir';prev.style.color='var(--text2)';return;}
-    let lines=splits.map(s=>fuenteLabel(s.fuente||'')+': +'+fmt(s.monto)).join(' · ');
-    if(restante>0){prev.textContent=lines+' · Sin asignar: '+fmt(restante);prev.style.color='var(--amber)';}
-    else if(restante<0){prev.textContent=lines+' · Excede por: '+fmt(-restante);prev.style.color='var(--red)';}
-    else{prev.textContent=lines+' Todo distribuido';prev.style.color='var(--accent)';}
+  if (mpSplitMode) { _previewSplit(prev, v, splitGetData('mp'), ''); return; }
+  const dest = _msVal('mpDestino');
+  if (dest) {
+    const actual = getSaldoActual(dest);
+    prev.textContent = fuenteLabel(dest) + ': ' + fmt(actual) + ' + ' + fmt(v) + ' = ' + fmt(actual + v);
+    prev.style.color = 'var(--accent)';
   } else {
-    const dest=document.getElementById('mpDestino').value;
-    if(dest){
-      const actual=getSaldoActual(dest);
-      prev.textContent=fuenteLabel(dest)+': '+fmt(actual)+' + '+fmt(v)+' = '+fmt(actual+v);
-      prev.style.color='var(--accent)';
-    } else {
-      prev.textContent=fmt(v)+' registrados';
-      prev.style.color='var(--text2)';
-    }
+    prev.textContent = fmt(v) + ' registrados';
+    prev.style.color = 'var(--text2)';
   }
 }
 
-// Muestra/oculta el toggle "me quedó debiendo la diferencia" según el monto
-// ingresado vs. la cuota esperada. Se llama desde actualizarMpPreview() cada
-// vez que cambia el monto.
-function _syncMpDebeWrap(v){
-  const wrap=document.getElementById('mpDebeWrap');
-  const chk=document.getElementById('mpQuedaDebiendo');
-  const lbl=document.getElementById('mpDebeLabel');
-  if(!wrap||!chk)return;
-  const cuota=mpParent?getMontoPadre(mpParent):0;
-  const diff=cuota-v;
-  if(v>0&&diff>0){
-    wrap.style.display='flex';
-    if(lbl)lbl.textContent='Te está debiendo '+fmt(diff)+' — ¿marcar como pendiente?';
+// Muestra/oculta "me quedó debiendo la diferencia" según monto vs. la cuota del mes.
+function _syncMpDebeWrap(v) {
+  const wrap = _msEl('mpDebeWrap'), chk = _msEl('mpQuedaDebiendo');
+  if (!wrap || !chk) return;
+  const f = _msFlujos.mp;
+  const diff = (f.parent ? mesadaCuotaDeKey(f.parent, f.key) : 0) - v;
+  if (v > 0 && diff > 0) {
+    wrap.style.display = 'flex';
+    if (_msEl('mpDebeLabel')) _msEl('mpDebeLabel').textContent = 'Te está debiendo ' + fmt(diff) + ' — ¿marcar como pendiente?';
   } else {
-    wrap.style.display='none';
-    chk.checked=false;
+    wrap.style.display = 'none';
+    chk.checked = false;
   }
 }
 
-// Registra un movimiento "espejo" visible en la cuenta destino cuando entra
-// plata de mesada — mismo patrón que usan Prestado, Encargos y Spotify. Sin
-// esto, el saldo de la cuenta sube pero no queda ningún rastro en su propio
-// historial de que esa plata vino de mesada (candado + "Automático"). Devuelve
-// el id del movimiento creado, para poder revertirlo si se borra el pago de
-// mesada, o null si el destino no corresponde a una cuenta rastreable (ej.
-// destino vacío = "no especificar").
-function _registrarMovSecundarioMesada(destino,monto,fecha,desc){
-  return registrarMovEspejo({cuenta:destino,flujo:'entrada',monto,fecha,desc,origen:'Mesada'});
+// Muestra al usuario por qué el dominio rechazó la operación. `enc.nombre` es texto libre
+// y toast() inserta con innerHTML: se escapa acá.
+function _mesadaMostrarError(r, previewId) {
+  if (r.motivo === 'encargo-invalido') toast('Selecciona un encargo válido', 'err');
+  else if (r.motivo === 'encargo-insuficiente') toast('Ahí solo hay ' + fmt(r.disponible) + ' guardados de ' + escHtml(r.encNombre), 'err');
+  else if (r.motivo === 'split-excede') {
+    const prev = _msEl(previewId);
+    prev.textContent = 'El total dividido supera el monto recibido';
+    prev.style.color = 'var(--red)';
+  }
+  // 'datos-incompletos' / 'sin-pendiente': nada que decir (el botón simplemente no hace nada, como siempre)
 }
 
-// Elimina el movimiento espejo generado por _registrarMovSecundarioMesada,
-// dado el destino original donde se creó y el id guardado.
-function _borrarMovSecundarioMesada(destino,movSecId){
-  borrarMovEspejo(destino,movSecId);
-}
-
-function confirmarMesadaPago(){
-  const monto=parseMoney(document.getElementById('mpMonto').value)||0;
-  const fecha=document.getElementById('mpFecha').value||hoy();
-  const nota=document.getElementById('mpNota').value.trim();
-  if(!monto||!mpParent||!mpMesKey)return;
-  const data=getMesadaData(mpParent);
-  // "Quedó debiendo la diferencia": solo aplica si el usuario marcó
-  // explícitamente el toggle. Si no lo marca, un monto menor a la cuota
-  // simplemente se registra tal cual, sin deuda (ej: "ese mes solo fueron
-  // 60mil, no me quedó debiendo nada").
-  const chkDebe=document.getElementById('mpQuedaDebiendo');
-  const quedaDebiendo=!!(chkDebe&&chkDebe.checked);
-  const cuotaDelMes=getMontoPadre(mpParent);
-  const pendienteInicial=quedaDebiendo?Math.max(0,cuotaDelMes-monto):0;
-  const pNombre=mpParent==='papa'?'Papá':'Mamá';
-  const descMov='Mesada — '+pNombre+' · '+_mesNombreDeKey(mpMesKey);
-
-  if(mpUsarEncargoActivo){
-    const enc=typeof getEncargo==='function'?getEncargo(mpEncargoActualId):null;
-    if(!enc){toast('Selecciona un encargo válido','err');return;}
-    const cuentaSel=document.getElementById('mpEncargoCuentaSel')?document.getElementById('mpEncargoCuentaSel').value:'';
-    const disponible=cuentaSel
-      ?(typeof _getEncargoSaldoEnCuenta==='function'?_getEncargoSaldoEnCuenta(enc,cuentaSel):0)
-      :(typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0);
-    if(monto>disponible+0.5){
-      toast('Ahí solo hay '+fmt(disponible)+' guardados de '+enc.nombre,'err');
-      return;
-    }
-    if(!enc.movimientos)enc.movimientos=[];
-    const movEnc={id:uid(),tipo:'salida',desc:descMov,monto,cuenta:cuentaSel||'',fecha,nota:'Usado para mesada',ts:Date.now()};
-    enc.movimientos.push(movEnc);
-    // El saldo de un encargo por cuenta (_getEncargoSaldoPorCuenta) es un
-    // registro puramente interno del módulo Encargos: entradas/salidas de
-    // un encargo NUNCA llaman a sumarFuente/descontarFuente (confirmado
-    // revisando confirmarMovEncargo() en encargos.js) — la
-    // "cuenta" es solo una etiqueta de dónde está físicamente esa plata,
-    // no afecta el saldo real de esa cuenta en la app. Solo se le suma a
-    // una cuenta real en el momento exacto en que esa plata deja de ser
-    // del encargo y pasa a ser tuya (mismo patrón que usa Encargos al
-    // convertir una salida en pago de TC).
-    // `cuentaSel` (arriba) solo dice de dónde SALE la plata del encargo —
-    // sirve para validar cuánto hay disponible ahí. El destino real
-    // (simple o dividido en varias cuentas) es independiente.
-    if(mpSplitMode){
-      const splits=getMpSplitData();
-      const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
-      if(totalSplit>monto+1){
-        document.getElementById('mpPreview').textContent='El total dividido supera el monto recibido';
-        document.getElementById('mpPreview').style.color='var(--red)';
-        return;
-      }
-      splits.forEach(s=>{
-        if(s.fuente){
-          sumarFuente(s.fuente,s.monto);
-          s._movSecId=_registrarMovSecundarioMesada(s.fuente,s.monto,fecha,descMov);
-        }
-      });
-      data[mpMesKey]={
-        monto,fecha,nota,destino:'',splits,
-        origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre}
-      };
-    } else {
-      const destinoFinal=document.getElementById('mpDestino')?document.getElementById('mpDestino').value:'';
-      let movSecId=null;
-      if(destinoFinal){
-        sumarFuente(destinoFinal,monto);
-        movSecId=_registrarMovSecundarioMesada(destinoFinal,monto,fecha,descMov);
-      }
-      data[mpMesKey]={
-        monto,fecha,nota,
-        destino:destinoFinal||'',
-        _movSecId:movSecId,
-        origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre,sumado:!!destinoFinal}
-      };
-    }
-  } else if(mpSplitMode){
-    const splits=getMpSplitData();
-    const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
-    if(totalSplit>monto+1){
-      document.getElementById('mpPreview').textContent='El total dividido supera el monto recibido';
-      document.getElementById('mpPreview').style.color='var(--red)';
-      return;
-    }
-    data[mpMesKey]={monto,fecha,destino:'',splits,nota};
-    splits.forEach(s=>{
-      if(s.fuente){
-        sumarFuente(s.fuente,s.monto);
-        s._movSecId=_registrarMovSecundarioMesada(s.fuente,s.monto,fecha,descMov);
-      }
-    });
-  } else {
-    const destino=document.getElementById('mpDestino').value;
-    data[mpMesKey]={monto,fecha,destino,nota};
-    if(destino){
-      sumarFuente(destino,monto);
-      data[mpMesKey]._movSecId=_registrarMovSecundarioMesada(destino,monto,fecha,descMov);
-    }
-  }
-  if(pendienteInicial>0){
-    data[mpMesKey].cuotaEsperada=cuotaDelMes;
-    data[mpMesKey].pendiente=pendienteInicial;
-    data[mpMesKey].pendienteHistorial=[];
-  }
-  save();refresh();
+function confirmarMesadaPago() {
+  const f = _msFlujos.mp;
+  const chk = _msEl('mpQuedaDebiendo');
+  const r = mesadaRegistrarPago({
+    parent: f.parent, key: f.key,
+    monto: parseMoney(_msVal('mpMonto')) || 0,
+    fecha: _msVal('mpFecha') || hoy(),
+    nota: _msVal('mpNota').trim(),
+    destino: _msVal('mpDestino'),
+    splitMode: mpSplitMode,
+    splits: mpSplitMode ? splitGetData('mp') : null,
+    quedaDebiendo: !!(chk && chk.checked),
+    encargo: _msPickers.mp.seleccion(),
+  });
+  if (!r.ok) { _mesadaMostrarError(r, 'mpPreview'); return; }
+  save(); refresh();
   closeSheet('mesada-pago');
-  if(pendienteInicial>0){
-    toast('Guardado — quedó pendiente '+fmt(pendienteInicial),'info',3500);
-  } else if(mpUsarEncargoActivo){
-    toast('Guardado — se descontó de lo que le tenías guardado','ok',3000);
-  }
+  if (r.pendiente > 0) toast('Guardado — quedó pendiente ' + fmt(r.pendiente), 'info', 3500);
+  else if (r.usoEncargo) toast('Guardado — se descontó de lo que le tenías guardado', 'ok', 3000);
 }
 
-function abrirDetalleMesada(parent,key,nombre){
-  const data=getMesadaData(parent);
-  const info=data[key];
-  const pNombre=parent==='papa'?'Papá':'Mamá';
-  document.getElementById('mdTitle').textContent=pNombre+' · '+nombre;
-  let destinoHtml='';
-  const origenEncargoHtml=info.origenEncargo
-    ?html`<div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Pagó con</span><span class="badge" style="background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);">Plata guardada de ${info.origenEncargo.nombre}</span></div>`
-    :'';
-  if(info.splits&&info.splits.length){
-    destinoHtml=html`<div style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Dividido en</span>
-      <div style="margin-top:5px;display:flex;flex-direction:column;gap:4px;">
-        ${raw(info.splits.map(s=>html`<div style="display:flex;justify-content:space-between;align-items:center;"><span class="badge ${raw(fuenteBadgeClass(s.fuente||''))}" style="font-size:9px;">${fuenteLabel(s.fuente||'')}</span><span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(s.monto)}</span></div>`).join(''))}
+/* ── Detalle de un mes ───────────────────────────────────────────── */
+
+function abrirDetalleMesada(parent, key, nombre) {
+  const info = getMesadaData(parent)[key];
+  _msEl('mdTitle').textContent = mesadaNombrePadre(parent) + ' · ' + nombre;
+
+  const origenEncargoHtml = info.origenEncargo
+    ? html`<div class="row ms-fila"><span class="ms-lbl">Pagó con</span><span class="badge ms-badge-enc">Plata guardada de ${info.origenEncargo.nombre}</span></div>`
+    : '';
+  let destinoHtml = '';
+  if (info.splits && info.splits.length) {
+    destinoHtml = html`<div class="ms-fila"><span class="ms-lbl">Dividido en</span>
+      <div class="ms-splits">
+        ${raw(info.splits.map(s => html`<div class="ms-split-row"><span class="badge ${raw(fuenteBadgeClass(s.fuente || ''))}" style="font-size:9px;">${fuenteLabel(s.fuente || '')}</span><span class="ms-split-monto">+${fmt(s.monto)}</span></div>`).join(''))}
       </div></div>`;
-  } else if(info.destino){
-    destinoHtml=html`<div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Lo metiste en</span><span class="badge ${raw(fuenteBadgeClass(info.destino))}">${fuenteLabel(info.destino)}</span></div>`;
-  }
-  destinoHtml=origenEncargoHtml+destinoHtml;
-  // ── Pendiente: estado y acciones ──────────────────────────────────
-  const anioKey=parseInt(key.split('-')[0],10);
-  const cuotaDelMesDet=_getCuotaAnio(parent,anioKey);
-  const tienePendienteDet=(info.pendiente||0)>0;
-  const tieneHistorialDet=!!(info.pendienteHistorial&&info.pendienteHistorial.length);
-  const puedeMarcarPendiente=!info.cuotaEsperada&&!tienePendienteDet&&(info.monto||0)<cuotaDelMesDet;
-
-  let pendienteHtml='';
-  if(info.cuotaEsperada&&(tienePendienteDet||tieneHistorialDet)){
-    pendienteHtml=html`
-    <div class="card card-sm" style="margin-bottom:10px;border-left:4px solid ${raw(tienePendienteDet?'var(--amber)':'var(--accent)')};background:${raw(tienePendienteDet?'rgba(240,184,64,.06)':'rgba(200,240,96,.06)')};">
-      <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Cuota esperada</span><span style="font-size:13px;font-family:'DM Mono',monospace;">${fmt(info.cuotaEsperada)}</span></div>
-      ${tienePendienteDet?html`<div class="row" style="margin-bottom:2px;"><span style="font-size:12px;color:var(--amber);font-weight:600;">Pendiente</span><span class="row-amount c-amber">${fmt(info.pendiente)}</span></div>`:html`<div style="font-size:12px;color:var(--accent);font-weight:600;"><i class="fa-solid fa-check" style="margin-right:4px;"></i>Ya te dio todo lo que faltaba</div>`}
-      ${tieneHistorialDet?html`<div style="margin-top:9px;display:flex;flex-direction:column;gap:5px;">${raw(info.pendienteHistorial.map((h,idx)=>html`<div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);gap:8px;"><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.fecha||''}${h.origenEncargo?' · Plata guardada de '+h.origenEncargo.nombre:(h.destino?' · '+fuenteLabel(h.destino):'')}${h.nota?' · '+h.nota:''}</span><span style="display:flex;align-items:center;gap:7px;flex-shrink:0;"><span style="font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(h.monto)}</span><span ${raw(Events.attr('mesada:deshacerPendiente', parent, key, idx))} style="cursor:pointer;color:var(--red);display:inline-flex;align-items:center;" title="Deshacer este abono"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></span></div>`).join(''))}</div>`:''}
-      ${tienePendienteDet?html`<button type="button" class="btn" style="margin-top:10px;background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.3);color:var(--amber);" ${raw(Events.attr('mesada:resolverPendiente', parent, key))}>Registrar pago de lo pendiente</button>`:''}
-    </div>`;
-  } else if(puedeMarcarPendiente){
-    pendienteHtml=html`
-    <div class="card card-sm" style="margin-bottom:10px;border-left:4px solid var(--border2);">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Este mes recibiste menos que la cuota (${fmt(cuotaDelMesDet)}). ¿Te quedó debiendo la diferencia?</div>
-      <button type="button" class="btn" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.3);color:var(--amber);" ${raw(Events.attr('mesada:marcarPendiente', parent, key))}>Marcar diferencia como pendiente</button>
-    </div>`;
+  } else if (info.destino) {
+    destinoHtml = html`<div class="row ms-fila"><span class="ms-lbl">Lo metiste en</span><span class="badge ${raw(fuenteBadgeClass(info.destino))}">${fuenteLabel(info.destino)}</span></div>`;
   }
 
-  const contenido=html`
-    <div class="card card-sm" style="margin-bottom:10px;">
-      <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Monto</span><span class="row-amount c-green">${fmt(info.monto)}</span></div>
-      <div class="row" style="margin-bottom:6px;"><span style="font-size:12px;color:var(--text2);">Fecha</span><span style="font-size:13px;font-family:'DM Mono',monospace;">${info.fecha||'—'}</span></div>
-      ${raw(destinoHtml)}
-      ${info.nota?html`<div style="font-size:12px;color:var(--text2);margin-top:4px;">${info.nota}</div>`:''}
+  // ── Pendiente: estado y acciones ──
+  const cuotaDelMes = mesadaCuotaDeKey(parent, key);
+  const debe = (info.pendiente || 0) > 0;
+  const tieneHistorial = !!(info.pendienteHistorial && info.pendienteHistorial.length);
+  const puedeMarcarPendiente = !info.cuotaEsperada && !debe && (info.monto || 0) < cuotaDelMes;
+
+  let pendienteHtml = '';
+  if (info.cuotaEsperada && (debe || tieneHistorial)) {
+    pendienteHtml = html`
+    <div class="card card-sm ms-pend-card ${debe ? 'debe' : 'saldado'}">
+      <div class="row ms-fila"><span class="ms-lbl">Cuota esperada</span><span class="ms-mono">${fmt(info.cuotaEsperada)}</span></div>
+      ${debe
+        ? html`<div class="row ms-fila-pend"><span class="ms-lbl ms-lbl-amber">Pendiente</span><span class="row-amount c-amber">${fmt(info.pendiente)}</span></div>`
+        : html`<div class="ms-saldado"><i class="fa-solid fa-check"></i>Ya te dio todo lo que faltaba</div>`}
+      ${tieneHistorial ? html`<div class="ms-historial">${raw(info.pendienteHistorial.map((h, idx) => html`<div class="ms-hist-row"><span class="ms-hist-txt">${h.fecha || ''}${h.origenEncargo ? ' · Plata guardada de ' + h.origenEncargo.nombre : (h.destino ? ' · ' + fuenteLabel(h.destino) : '')}${h.nota ? ' · ' + h.nota : ''}</span><span class="ms-hist-acc"><span class="ms-hist-monto">+${fmt(h.monto)}</span><span ${raw(Events.attr('mesada:deshacerPendiente', parent, key, idx))} class="ms-hist-undo" title="Deshacer este abono"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span></span></div>`).join(''))}</div>` : ''}
+      ${debe ? html`<button type="button" class="btn btn-soft-amber ms-btn-top" ${raw(Events.attr('mesada:resolverPendiente', parent, key))}>Registrar pago de lo pendiente</button>` : ''}
+    </div>`;
+  } else if (puedeMarcarPendiente) {
+    pendienteHtml = html`
+    <div class="card card-sm ms-pend-card">
+      <div class="ms-sugerir-txt">Este mes recibiste menos que la cuota (${fmt(cuotaDelMes)}). ¿Te quedó debiendo la diferencia?</div>
+      <button type="button" class="btn btn-soft-amber" ${raw(Events.attr('mesada:marcarPendiente', parent, key))}>Marcar diferencia como pendiente</button>
+    </div>`;
+  }
+
+  _msEl('mdContent').innerHTML = html`
+    <div class="card card-sm ms-card-mb">
+      <div class="row ms-fila"><span class="ms-lbl">Monto</span><span class="row-amount c-green">${fmt(info.monto)}</span></div>
+      <div class="row ms-fila"><span class="ms-lbl">Fecha</span><span class="ms-mono">${info.fecha || '—'}</span></div>
+      ${raw(origenEncargoHtml)}${raw(destinoHtml)}
+      ${info.nota ? html`<div class="ms-nota">${info.nota}</div>` : ''}
     </div>
     ${raw(pendienteHtml)}
-    <button type="button" class="btn" style="background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);" ${raw(Events.attr('mesada:eliminarPago', parent, key))}>Borrar este registro</button>
+    <button type="button" class="btn btn-soft-red" ${raw(Events.attr('mesada:eliminarPago', parent, key))}>Borrar este registro</button>
   `;
-  document.getElementById('mdContent').innerHTML=contenido;
   openSheet('mesada-det');
 }
 
-async function eliminarMesadaPago(parent,key){
-  const data=getMesadaData(parent);
-  const info=data[key];
-  if(!info)return;
+/* ── Borrar un mes ────────────────────────────────────────────────── */
 
-  // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
-  // Nivel 1 (reciente) no cambia nada, sigue igual que siempre (sin aviso previo).
-  // Solo aplica si borrar esto realmente movería el saldo de alguna cuenta o
-  // encargo (ver _mesadaTieneCuentaAfectada) — un pago 100% "Sin especificar"/
-  // "me lo gasté" (y sin abonos de pendiente con destino propio) no revierte
-  // nada, así que no hay ningún saldo que la protección deba proteger.
-  if(_mesadaTieneCuentaAfectada(info)){
-    const opsPosteriores=_mesadaOpsPosteriores(parent,key,info);
-    const nivel=nivelAntiguedadMovimiento(info.fecha,opsPosteriores,'mesada');
-    if(nivel==='bloqueado'){
-      await avisarMovimientoBloqueado();
-      return;
-    }
-    if(nivel==='viejo'){
-      const fuentes=_mesadaFuentesDe(info);
-      const nombreCuenta=fuentes.length>1?`${fuentes.length} cuentas`:fuenteLabel(fuentes[0]);
-      const ok=await confirmarBorrarMovimientoViejo(nombreCuenta,info.monto||0,'baja');
-      if(!ok)return;
+async function eliminarMesadaPago(parent, key) {
+  const info = getMesadaData(parent)[key];
+  if (!info) return;
+
+  // Protección por antigüedad (docs/proteccion-antiguedad-movimientos.md): solo si borrar
+  // realmente movería el saldo de alguna cuenta o encargo. Un pago 100% "no especificar"
+  // no revierte nada, así que no hay saldo que proteger.
+  if (mesadaTieneCuentaAfectada(info)) {
+    const nivel = nivelAntiguedadMovimiento(info.fecha, mesadaOpsPosteriores(parent, key, info), 'mesada');
+    if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
+    if (nivel === 'viejo') {
+      const fuentes = mesadaFuentesDe(info);
+      const nombreCuenta = fuentes.length > 1 ? `${fuentes.length} cuentas` : (fuentes.length ? fuenteLabel(fuentes[0]) : 'Encargos');
+      if (!await confirmarBorrarMovimientoViejo(nombreCuenta, info.monto || 0, 'baja')) return;
     }
   }
-  _borrarMesadaPago(parent,key,info);
-}
-
-// Cuerpo real del borrado, separado para que ambos caminos (confirmación
-// normal y aviso por antigüedad) terminen acá sin duplicar la reversión.
-function _borrarMesadaPago(parent,key,info){
-  const data=getMesadaData(parent);
-    // Si hubo abonos posteriores que fueron saldando un "pendiente", info.monto
-    // ya incluye esos abonos además del pago original. Hay que separarlos para
-    // devolver cada plata a la cuenta correcta (pueden ser cuentas distintas).
-    const historialTotal=(info.pendienteHistorial||[]).reduce((acc,h)=>acc+(h.monto||0),0);
-    // Devolver el dinero del pago original a las cuentas correspondientes
-    if(info.origenEncargo){
-      // Este pago se cubrió con plata que ya le tenías guardada en un
-      // encargo: siempre hay que devolverle ese saldo al encargo (quitar
-      // el movimiento de salida que se creó). Además, hay que revertir a
-      // donde sea que haya ido esa plata — puede ser un solo destino o
-      // repartida en varios (mismo patrón que el split normal, ver rama de abajo).
-      const oe=info.origenEncargo;
-      const enc=typeof getEncargo==='function'?getEncargo(oe.encargoId):null;
-      let montoOrig=0;
-      if(enc&&enc.movimientos){
-        const mv=enc.movimientos.find(m=>m.id===oe.movId);
-        if(mv)montoOrig=mv.monto||0;
-        enc.movimientos=enc.movimientos.filter(m=>m.id!==oe.movId);
-      }
-      if(info.splits&&info.splits.length){
-        info.splits.forEach(s=>{
-          if(s.fuente){
-            descontarFuente(s.fuente,s.monto, { exacto: true });
-            _borrarMovSecundarioMesada(s.fuente,s._movSecId);
-          }
-        });
-      } else {
-        if(oe.sumado&&info.destino&&montoOrig){
-          descontarFuente(info.destino,montoOrig, { exacto: true });
-        }
-        _borrarMovSecundarioMesada(info.destino,info._movSecId);
-      }
-    } else if(info.splits&&info.splits.length){
-      info.splits.forEach(s=>{
-        if(s.fuente){
-          descontarFuente(s.fuente,s.monto, { exacto: true });
-          _borrarMovSecundarioMesada(s.fuente,s._movSecId);
-        }
-      });
-    } else if(info.destino){
-      const montoOriginal=Math.max(0,(info.monto||0)-historialTotal);
-      descontarFuente(info.destino,montoOriginal, { exacto: true });
-      _borrarMovSecundarioMesada(info.destino,info._movSecId);
-    }
-    // Devolver también los abonos que fueron saldando lo pendiente
-    (info.pendienteHistorial||[]).forEach(h=>{
-      if(h.origenEncargo){
-        const oe=h.origenEncargo;
-        const enc=typeof getEncargo==='function'?getEncargo(oe.encargoId):null;
-        let montoOrig=0;
-        if(enc&&enc.movimientos){
-          const mv=enc.movimientos.find(m=>m.id===oe.movId);
-          if(mv)montoOrig=mv.monto||0;
-          enc.movimientos=enc.movimientos.filter(m=>m.id!==oe.movId);
-        }
-        if(oe.sumado&&h.destino&&montoOrig){
-          descontarFuente(h.destino,montoOrig, { exacto: true });
-        }
-        _borrarMovSecundarioMesada(h.destino,h._movSecId);
-      } else if(h.destino){
-        descontarFuente(h.destino,h.monto, { exacto: true });
-        _borrarMovSecundarioMesada(h.destino,h._movSecId);
-      }
-    });
-  delete data[key];
-  save();refresh();
+  mesadaBorrarPago(parent, key);
+  save(); refresh();
   closeSheet('mesada-det');
 }
 
-// ── Pago parcial con deuda pendiente ──────────────────────────────────────
+/* ── Pago parcial con deuda pendiente ─────────────────────────────── */
 
-// _mesNombreDeKey() se movió a js/core/calc-helpers.js (2026-08-04) junto
-// con _ensureMesadas/getMesadaData/_getCuotaAnio — mismo motivo: Inicio la
-// necesita y este módulo ahora es lazy. Se sigue usando igual, como global.
-
-// Convierte retroactivamente un mes ya cerrado (registrado con menos plata de
-// la cuota, sin haber marcado el toggle al momento de guardar) en un mes con
-// deuda pendiente. Útil para el caso típico: "ya anoté los 60mil, pero ahora
-// caigo en que me quedó debiendo los 20mil restantes".
-function marcarMesadaComoPendiente(parent,key){
-  const data=getMesadaData(parent);
-  const info=data[key];
-  if(!info)return;
-  const anio=parseInt(String(key).split('-')[0],10);
-  const cuota=_getCuotaAnio(parent,anio);
-  const pend=Math.max(0,cuota-(info.monto||0));
-  if(pend<=0){toast('Ese mes ya está completo, no hay diferencia pendiente','info');return;}
-  info.cuotaEsperada=cuota;
-  info.pendiente=pend;
-  if(!info.pendienteHistorial)info.pendienteHistorial=[];
-  save();refresh();
-  toast('Marcado como pendiente — debe '+fmt(pend),'info',3000);
-  abrirDetalleMesada(parent,key,_mesNombreDeKey(key));
+function marcarMesadaComoPendiente(parent, key) {
+  const r = mesadaMarcarPendiente(parent, key);
+  if (!r.ok) {
+    if (r.motivo === 'completo') toast('Ese mes ya está completo, no hay diferencia pendiente', 'info');
+    return;
+  }
+  save(); refresh();
+  toast('Marcado como pendiente — debe ' + fmt(r.pendiente), 'info', 3000);
+  abrirDetalleMesada(parent, key, _mesNombreDeKey(key));
 }
 
-// Abre el sheet para registrar cuánto pagó de lo que había quedado pendiente.
-function abrirResolverPendiente(parent,key){
-  const data=getMesadaData(parent);
-  const info=data[key];
-  if(!info||!(info.pendiente>0))return;
-  mppParent=parent;mppMesKey=key;
-  const pNombre=parent==='papa'?'Papá':'Mamá';
-  document.getElementById('mppTitle').textContent=pNombre+' · '+_mesNombreDeKey(key);
-  document.getElementById('mppDesc').textContent='Te debía '+fmt(info.pendiente)+'. ¿Cuánto te dio ahora?';
-  document.getElementById('mppMonto').value=fmtInput(info.pendiente);
-  document.getElementById('mppFecha').value=hoy();
-  document.getElementById('mppNota').value='';
-  poblarFuente('mppDestino', false, false);
-  const sel=document.getElementById('mppDestino');
-  sel.innerHTML='<option value="">No especificar / lo gasté</option>'+sel.innerHTML.replace('<option value="">Sin especificar</option>','');
-
-  // ── "Me pagó con plata de un encargo" — resetear y poblar si aplica ──
-  mppUsarEncargoActivo=false;
-  mppEncargoActualId='';
-  const boxEnc=document.getElementById('mppEncargoBox');
-  const chkEnc=document.getElementById('mppUsarEncargo');
-  const detEnc=document.getElementById('mppEncargoDetalle');
-  if(chkEnc)chkEnc.checked=false;
-  if(detEnc)detEnc.style.display='none';
-  if(boxEnc){
-    const encMatches=_mesadaEncargosDelParent(parent);
-    if(encMatches.length){
-      boxEnc.style.display='';
-      const totalDisp=encMatches.reduce((a,x)=>a+x.saldo,0);
-      const subEnc=document.getElementById('mppEncargoSub');
-      if(subEnc)subEnc.textContent='Tenés '+fmt(totalDisp)+' guardados de '+pNombre+' en encargos';
-      const selEnc=document.getElementById('mppEncargoSel');
-      if(selEnc)selEnc.innerHTML=encMatches.map(x=>html`<option value="${x.enc.id}">${x.enc.nombre} (${fmt(x.saldo)})</option>`).join('');
-      const selWrapEnc=document.getElementById('mppEncargoSelWrap');
-      if(selWrapEnc)selWrapEnc.style.display=encMatches.length>1?'':'none';
-      mppEncargoActualId=encMatches[0].enc.id;
-      _poblarMppEncargoCuentas();
-    } else {
-      boxEnc.style.display='none';
-    }
-  }
-  _mostrarMppDestinoNormal(true);
+// Sheet "Pago de lo pendiente" (mpp).
+function abrirResolverPendiente(parent, key) {
+  const info = getMesadaData(parent)[key];
+  if (!info || !(info.pendiente > 0)) return;
+  const f = _msFlujos.mpp;
+  f.parent = parent; f.key = key;
+  _msEl('mppTitle').textContent = mesadaNombrePadre(parent) + ' · ' + _mesNombreDeKey(key);
+  _msEl('mppDesc').textContent = 'Te debía ' + fmt(info.pendiente) + '. ¿Cuánto te dio ahora?';
+  _msEl('mppMonto').value = fmtInput(info.pendiente);
+  _msEl('mppFecha').value = hoy();
+  _msEl('mppNota').value = '';
+  _poblarDestinoMesada('mppDestino');
+  _msPickers.mpp.abrir(parent);
   actualizarMppPreview();
   openSheet('mesada-pend');
 }
 
-function actualizarMppPreview(){
-  const prev=document.getElementById('mppPreview');
-  const data=getMesadaData(mppParent);
-  const info=data[mppMesKey];
-  const v=parseMoney(document.getElementById('mppMonto').value)||0;
-  if(!info||!v){prev.textContent='';return;}
-  if(v>info.pendiente+1){
-    prev.textContent='Eso es más de lo que quedó pendiente ('+fmt(info.pendiente)+')';
-    prev.style.color='var(--red)';
+function actualizarMppPreview() {
+  const f = _msFlujos.mpp;
+  const prev = _msEl('mppPreview');
+  const info = getMesadaData(f.parent)[f.key];
+  const v = parseMoney(_msVal('mppMonto')) || 0;
+  if (!info || !v) { prev.textContent = ''; return; }
+  if (v > info.pendiente + 1) {
+    prev.textContent = 'Eso es más de lo que quedó pendiente (' + fmt(info.pendiente) + ')';
+    prev.style.color = 'var(--red)';
     return;
   }
-  if(mppUsarEncargoActivo){
-    const enc=typeof getEncargo==='function'?getEncargo(mppEncargoActualId):null;
-    if(!enc){prev.textContent='';return;}
-    const cuentaSel=document.getElementById('mppEncargoCuentaSel')?document.getElementById('mppEncargoCuentaSel').value:'';
-    const disponible=cuentaSel
-      ?(typeof _getEncargoSaldoEnCuenta==='function'?_getEncargoSaldoEnCuenta(enc,cuentaSel):0)
-      :(typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0);
-    if(v>disponible+0.5){
-      prev.textContent='Ahí solo tenés '+fmt(disponible)+' de '+enc.nombre;
-      prev.style.color='var(--red)';
-      return;
-    }
-    const restanteEnc=info.pendiente-v;
-    prev.textContent=(restanteEnc>0?('Quedaría debiendo '+fmt(restanteEnc)+' más · '):'Con esto queda saldado · ')+'se descuenta de lo guardado de '+enc.nombre;
-    prev.style.color=restanteEnc>0?'var(--amber)':'var(--accent)';
-    return;
-  }
-  const restante=info.pendiente-v;
-  prev.textContent=restante>0?('Quedaría debiendo '+fmt(restante)+' más'):'Con esto queda saldado';
-  prev.style.color=restante>0?'var(--amber)':'var(--accent)';
+  let d = null;
+  if (f.usarEncargo) { d = _previewDisponible(prev, _msPickers.mpp, v); if (!d) return; }
+  const restante = info.pendiente - v;
+  prev.textContent = (restante > 0 ? 'Quedaría debiendo ' + fmt(restante) + ' más' : 'Con esto queda saldado')
+    + (d ? ' · se descuenta de lo guardado de ' + d.enc.nombre : '');
+  prev.style.color = restante > 0 ? 'var(--amber)' : 'var(--accent)';
 }
 
-function confirmarPendienteMesada(){
-  const data=getMesadaData(mppParent);
-  const info=data[mppMesKey];
-  if(!info||!(info.pendiente>0))return;
-  let monto=parseMoney(document.getElementById('mppMonto').value)||0;
-  if(monto<=0)return;
-  if(monto>info.pendiente)monto=info.pendiente; // no se puede saldar más de lo que quedó pendiente
-  const fecha=document.getElementById('mppFecha').value||hoy();
-  const nota=document.getElementById('mppNota').value.trim();
-  if(!info.pendienteHistorial)info.pendienteHistorial=[];
-  const pNombre=mppParent==='papa'?'Papá':'Mamá';
-  const descMov='Mesada (pendiente) — '+pNombre+' · '+_mesNombreDeKey(mppMesKey);
-
-  if(mppUsarEncargoActivo){
-    const enc=typeof getEncargo==='function'?getEncargo(mppEncargoActualId):null;
-    if(!enc){toast('Selecciona un encargo válido','err');return;}
-    const cuentaSel=document.getElementById('mppEncargoCuentaSel')?document.getElementById('mppEncargoCuentaSel').value:'';
-    const disponible=cuentaSel
-      ?(typeof _getEncargoSaldoEnCuenta==='function'?_getEncargoSaldoEnCuenta(enc,cuentaSel):0)
-      :(typeof _getEncargoSaldoSinCuenta==='function'?_getEncargoSaldoSinCuenta(enc):0);
-    if(monto>disponible+0.5){
-      toast('Ahí solo hay '+fmt(disponible)+' guardados de '+enc.nombre,'err');
-      return;
-    }
-    if(!enc.movimientos)enc.movimientos=[];
-    const movEnc={id:uid(),tipo:'salida',desc:descMov,monto,cuenta:cuentaSel||'',fecha,nota:'Usado para mesada (pendiente)',ts:Date.now()};
-    enc.movimientos.push(movEnc);
-    // Mismo criterio que confirmarMesadaPago() (ver comentario ahí): el
-    // saldo del encargo por cuenta nunca estuvo contado en el saldo real
-    // de esa cuenta, así que siempre hay que sumarFuente al convertirlo en
-    // tuyo. `destinoFinal` sale del selector "¿Dónde la metiste?"
-    // (independiente de `cuentaSel`, que solo valida disponibilidad).
-    const destinoFinal=document.getElementById('mppDestino')?document.getElementById('mppDestino').value:'';
-    let movSecId=null;
-    if(destinoFinal){
-      sumarFuente(destinoFinal,monto);
-      movSecId=_registrarMovSecundarioMesada(destinoFinal,monto,fecha,descMov);
-    }
-    info.pendienteHistorial.push({
-      monto,fecha,destino:destinoFinal||'',nota,_movSecId:movSecId,
-      origenEncargo:{encargoId:enc.id,movId:movEnc.id,nombre:enc.nombre,sumado:!!destinoFinal}
-    });
-  } else {
-    const destino=document.getElementById('mppDestino').value;
-    let movSecId=null;
-    if(destino){
-      sumarFuente(destino,monto);
-      movSecId=_registrarMovSecundarioMesada(destino,monto,fecha,descMov);
-    }
-    info.pendienteHistorial.push({monto,fecha,destino,nota,_movSecId:movSecId});
-  }
-
-  info.pendiente=Math.max(0,info.pendiente-monto);
-  info.monto=(info.monto||0)+monto;
-  save();refresh();
+function confirmarPendienteMesada() {
+  const f = _msFlujos.mpp;
+  const monto = parseMoney(_msVal('mppMonto')) || 0;
+  if (monto <= 0) return;
+  const r = mesadaAbonarPendiente({
+    parent: f.parent, key: f.key, monto,
+    fecha: _msVal('mppFecha') || hoy(),
+    nota: _msVal('mppNota').trim(),
+    destino: _msVal('mppDestino'),
+    encargo: _msPickers.mpp.seleccion(),
+  });
+  if (!r.ok) { _mesadaMostrarError(r, 'mppPreview'); return; }
+  save(); refresh();
   closeSheet('mesada-pend');
-  toast(info.pendiente>0?('Abono registrado — todavía debe '+fmt(info.pendiente)):'¡Pendiente saldado!','ok',3000);
-  abrirDetalleMesada(mppParent,mppMesKey,_mesNombreDeKey(mppMesKey));
+  toast(r.pendiente > 0 ? ('Abono registrado — todavía debe ' + fmt(r.pendiente)) : '¡Pendiente saldado!', 'ok', 3000);
+  abrirDetalleMesada(f.parent, f.key, _mesNombreDeKey(f.key));
 }
 
 // Deshace un abono puntual de lo pendiente (por si se registró por error).
-async function deshacerPendienteMesada(parent,key,idx){
-  const data=getMesadaData(parent);
-  const info=data[key];
-  if(!info||!info.pendienteHistorial||!info.pendienteHistorial[idx])return;
-  const ok=await dialogo('Deshacer abono','¿Deshacer este abono de lo pendiente? La plata se restará de la cuenta donde la registraste y volverá a quedar como deuda.','Deshacer',true);
-  if(!ok)return;
-  const h=info.pendienteHistorial[idx];
-  if(h.origenEncargo){
-    // Este abono se cubrió con plata de un encargo: devolverle el saldo
-    // (quitar el movimiento de salida) y, solo si de verdad había entrado
-    // plata nueva a una cuenta (caso "sin especificar"), revertir esa
-    // entrada también. Mismo patrón que _borrarMesadaPago() para el pago
-    // principal.
-    const oe=h.origenEncargo;
-    const enc=typeof getEncargo==='function'?getEncargo(oe.encargoId):null;
-    let montoOrig=0;
-    if(enc&&enc.movimientos){
-      const mv=enc.movimientos.find(m=>m.id===oe.movId);
-      if(mv)montoOrig=mv.monto||0;
-      enc.movimientos=enc.movimientos.filter(m=>m.id!==oe.movId);
-    }
-    if(oe.sumado&&h.destino&&montoOrig){
-      descontarFuente(h.destino,montoOrig, { exacto: true });
-    }
-    _borrarMovSecundarioMesada(h.destino,h._movSecId);
-  } else if(h.destino){
-    descontarFuente(h.destino,h.monto, { exacto: true });
-    _borrarMovSecundarioMesada(h.destino,h._movSecId);
-  }
-  info.monto=Math.max(0,(info.monto||0)-h.monto);
-  info.pendiente=(info.pendiente||0)+h.monto;
-  info.pendienteHistorial.splice(idx,1);
-  save();refresh();
-  toast('Abono deshecho','ok',2000);
-  abrirDetalleMesada(parent,key,_mesNombreDeKey(key));
+async function deshacerPendienteMesada(parent, key, idx) {
+  const info = getMesadaData(parent)[key];
+  if (!info || !info.pendienteHistorial || !info.pendienteHistorial[idx]) return;
+  const ok = await dialogo('Deshacer abono', '¿Deshacer este abono de lo pendiente? La plata se restará de la cuenta donde la registraste y volverá a quedar como deuda.', 'Deshacer', true);
+  if (!ok) return;
+  mesadaDeshacerAbono(parent, key, idx);
+  save(); refresh();
+  toast('Abono deshecho', 'ok', 2000);
+  abrirDetalleMesada(parent, key, _mesNombreDeKey(key));
 }
 
-function cambiarAnio(d){const hoy=new Date().getFullYear();const nuevo=(S.mesadaAnio||hoy)+d;if(nuevo<hoy-2||nuevo>hoy+2)return;save();S.mesadaAnio=nuevo;renderMesada();}
+/* ── Wiring de controles estáticos de la pantalla ─────────────────────
+   Los ids ya existen en el DOM antes de este script (index.html). Todo el wiring
+   vive en estas tablas: agregar un control = agregar una fila. ── */
 
-/* ── Wiring de controles propios de la pantalla ──────────────────────────
-   Movido desde _initEventListeners() (index.html) el 2026-07-26 — ver
-   auditoria-tecnica.md, punto 3. No son onclick inline (no hay problema
-   de CSP acá), es solo mover el addEventListener directo a su módulo
-   dueño en vez de dejarlo mezclado con el de otros ~15 dominios en
-   index.html. Todos estos ids ya existen en el DOM estático antes de
-   este <script> (verificado contra index.html), así que no hace falta
-   esperar a DOMContentLoaded. ── */
-const _mBtnAnioP = document.getElementById('btn-anio-prev');
-if (_mBtnAnioP) _mBtnAnioP.addEventListener('click', () => cambiarAnio(-1));
-const _mBtnAnioN = document.getElementById('btn-anio-next');
-if (_mBtnAnioN) _mBtnAnioN.addEventListener('click', () => cambiarAnio(1));
-
-const _mBtnMesadaConf = document.getElementById('btn-confirmar-mesada');
-if (_mBtnMesadaConf) _mBtnMesadaConf.addEventListener('click', confirmarMesadaPago);
-const _mBtnMesadaPendConf = document.getElementById('btn-confirmar-mesada-pend');
-if (_mBtnMesadaPendConf) _mBtnMesadaPendConf.addEventListener('click', confirmarPendienteMesada);
-
-const _mMpDestino = document.getElementById('mpDestino');
-if (_mMpDestino) _mMpDestino.addEventListener('change', actualizarMpPreview);
-const _mMpMonto = document.getElementById('mpMonto');
-if (_mMpMonto) _mMpMonto.addEventListener('input', actualizarMpPreview);
-
-// "Me pagó con plata de un encargo" — toggle y selects
-const _mChkUsarEncargo = document.getElementById('mpUsarEncargo');
-if (_mChkUsarEncargo) _mChkUsarEncargo.addEventListener('change', () => {
-  mpUsarEncargoActivo = _mChkUsarEncargo.checked;
-  const det = document.getElementById('mpEncargoDetalle');
-  if (det) det.style.display = mpUsarEncargoActivo ? '' : 'none';
-  // El destino sigue siendo elegible aunque la cuenta del encargo sea
-  // conocida — la cuenta del encargo solo dice de dónde SALE la plata
-  // (para validar cuánta hay disponible ahí), no a dónde tiene que ENTRAR.
-  // Se precarga con esa misma cuenta como sugerencia, pero es editable.
-  // El botón "Dividir ÷" sí funciona con encargo activo (2026-08-05):
-  // reparte la misma plata que sale del encargo entre varias cuentas,
-  // igual que el split normal — no hace falta forzar modo simple.
-  _mostrarSeccionDestinoNormal(true);
-  if (mpUsarEncargoActivo) _sincronizarMpDestinoConEncargo();
-  actualizarMpPreview();
-});
-const _mSelEncargo = document.getElementById('mpEncargoSel');
-if (_mSelEncargo) _mSelEncargo.addEventListener('change', () => {
-  mpEncargoActualId = _mSelEncargo.value;
-  _poblarMpEncargoCuentas();
-});
-const _mSelEncargoCuenta = document.getElementById('mpEncargoCuentaSel');
-if (_mSelEncargoCuenta) _mSelEncargoCuenta.addEventListener('change', () => {
-  if (mpUsarEncargoActivo) _sincronizarMpDestinoConEncargo();
-  actualizarMpPreview();
-});
-const _mEncargoToggleWrap = document.getElementById('mpEncargoToggleWrap');
-if (_mEncargoToggleWrap) _mEncargoToggleWrap.addEventListener('click', (e) => {
-  if (e.target && e.target.id === 'mpUsarEncargo') return; // evitar doble toggle
-  const chk = document.getElementById('mpUsarEncargo');
-  if (chk) chk.click();
-});
-
-// mpDebeWrap / mpQuedaDebiendo: el wrap entero es clickeable (delega el click
-// al checkbox real), pero el checkbox no debe re-disparar el click del wrap.
-const _mMpDebeWrap = document.getElementById('mpDebeWrap');
-if (_mMpDebeWrap) _mMpDebeWrap.addEventListener('click', () => document.getElementById('mpQuedaDebiendo').click());
-const _mMpQuedaDebiendo = document.getElementById('mpQuedaDebiendo');
-if (_mMpQuedaDebiendo) {
-  _mMpQuedaDebiendo.addEventListener('click', (e) => e.stopPropagation());
-  _mMpQuedaDebiendo.addEventListener('change', actualizarMpPreview);
+function _msOn(id, evt, fn) {
+  const el = _msEl(id);
+  if (el) el.addEventListener(evt, fn);
 }
 
-const _mMppDestino = document.getElementById('mppDestino');
-if (_mMppDestino) _mMppDestino.addEventListener('change', actualizarMppPreview);
-const _mMppMonto = document.getElementById('mppMonto');
-if (_mMppMonto) _mMppMonto.addEventListener('input', actualizarMppPreview);
+// La fila entera es clickeable y delega en su checkbox (sin re-disparar su propio click).
+function _msFilaClickeable(wrapId, chkId) {
+  const wrap = _msEl(wrapId), chk = _msEl(chkId);
+  if (wrap && chk) wrap.addEventListener('click', e => { if (e.target !== chk) chk.click(); });
+}
 
-// "Me pagó con plata de un encargo" — toggle y selects (sheet de pendiente)
-const _mChkUsarEncargoPend = document.getElementById('mppUsarEncargo');
-if (_mChkUsarEncargoPend) _mChkUsarEncargoPend.addEventListener('change', () => {
-  mppUsarEncargoActivo = _mChkUsarEncargoPend.checked;
-  const det = document.getElementById('mppEncargoDetalle');
-  if (det) det.style.display = mppUsarEncargoActivo ? '' : 'none';
-  _mostrarMppDestinoNormal(true);
-  if (mppUsarEncargoActivo) _sincronizarMppDestinoConEncargo();
-  actualizarMppPreview();
-});
-const _mSelEncargoPend = document.getElementById('mppEncargoSel');
-if (_mSelEncargoPend) _mSelEncargoPend.addEventListener('change', () => {
-  mppEncargoActualId = _mSelEncargoPend.value;
-  _poblarMppEncargoCuentas();
-});
-const _mSelEncargoCuentaPend = document.getElementById('mppEncargoCuentaSel');
-if (_mSelEncargoCuentaPend) _mSelEncargoCuentaPend.addEventListener('change', () => {
-  if (mppUsarEncargoActivo) _sincronizarMppDestinoConEncargo();
-  actualizarMppPreview();
-});
-const _mEncargoToggleWrapPend = document.getElementById('mppEncargoToggleWrap');
-if (_mEncargoToggleWrapPend) _mEncargoToggleWrapPend.addEventListener('click', (e) => {
-  if (e.target && e.target.id === 'mppUsarEncargo') return; // evitar doble toggle
-  const chk = document.getElementById('mppUsarEncargo');
-  if (chk) chk.click();
-});
+function _msCablear() {
+  [
+    ['btn-anio-prev',             'click',  () => cambiarAnio(-1)],
+    ['btn-anio-next',             'click',  () => cambiarAnio(1)],
+    ['btn-confirmar-mesada',      'click',  confirmarMesadaPago],
+    ['btn-confirmar-mesada-pend', 'click',  confirmarPendienteMesada],
+    ['mpMonto',                   'input',  actualizarMpPreview],
+    ['mpDestino',                 'change', actualizarMpPreview],
+    ['mpQuedaDebiendo',           'change', actualizarMpPreview],
+    ['mppMonto',                  'input',  actualizarMppPreview],
+    ['mppDestino',                'change', actualizarMppPreview],
+    ['mpSplitToggle',             'click',  () => splitToggle('mp')],
+    ['btn-add-split-row',         'click',  () => splitAgregarRow('mp')],
+    ['ms-papa-persona',           'click',  () => vincularPersonaMesada('papa')],
+    ['ms-mama-persona',           'click',  () => vincularPersonaMesada('mama')],
+    ['ms-papa-persona-x',         'click',  () => desvincularPersonaMesada('papa')],
+    ['ms-mama-persona-x',         'click',  () => desvincularPersonaMesada('mama')],
+  ].forEach(([id, evt, fn]) => _msOn(id, evt, fn));
 
-const _mSplitToggle = document.getElementById('mpSplitToggle');
-if (_mSplitToggle) _mSplitToggle.addEventListener('click', toggleMpSplit);
-const _mBtnSplitRow = document.getElementById('btn-add-split-row');
-if (_mBtnSplitRow) _mBtnSplitRow.addEventListener('click', agregarMpSplitRow);
+  _msFilaClickeable('mpDebeWrap', 'mpQuedaDebiendo');
+  _msPickers.mp.cablear();
+  _msPickers.mpp.cablear();
+}
+_msCablear();
 
-/* ── Registro de acciones para el despachador central de eventos ──
-   Reemplaza los onclick inline que este módulo armaba en sus
-   template strings. Ver js/core/events.js. ── */
+/* ── Acciones del despachador central de eventos (reemplaza onclick inline). Ver js/core/events.js. ── */
 Events.registerAll('mesada', {
   clickMesDot: clickMesDot,
   eliminarPago: eliminarMesadaPago,

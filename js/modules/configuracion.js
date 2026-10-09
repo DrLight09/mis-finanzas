@@ -7,10 +7,9 @@
 
    Documentación del módulo: configuracion.md.
 
-   Funciones que se QUEDAN en index.html a propósito, por ser núcleo
-   compartido con otras pantallas (mismo criterio ya aplicado con
-   navTo()/refresh() en migraciones anteriores):
-     - applyModulos(): además de reflejar los toggles en esta pantalla,
+   Funciones que NO viven acá a propósito, por ser núcleo compartido con
+   otras pantallas:
+     - applyModulos() (js/core/sheet-stack.js): además de reflejar los toggles en esta pantalla,
        oculta/muestra la pestaña de Spotify en el nav, la pantalla de
        Mesada, los banners de saldo inicial en Cuentas y dispara
        renderAttencion() en Inicio. toggleModulo() (acá abajo) la llama.

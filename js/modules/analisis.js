@@ -13,25 +13,15 @@
    Encargos, Préstamos, Tarjetas de Crédito, Cuentas, Gastos, Plata
    Comprometida, Alcancía y Configuración.
 
-   Funciones que se QUEDAN en index.html a propósito, por ser núcleo
-   compartido (mismo criterio que renderCatsConfig/agregarCat con
-   Gastos en configuracion.js):
-     - calcPatrimonioTotal() / snapshotPatrimonio(): las llama save()
-       en CADA guardado (no solo al entrar a Análisis) para alimentar
-       el historial que después se grafica acá. Moverlas habría hecho
-       que Análisis "fuera dueño" de algo que en realidad es del ciclo
-       de guardado central.
-     - renderHealthScore()/renderProyeccion() (js/modules/inicio.js) y
-       el hook _renderMejoras() que las llama junto con
-       renderPresupuestos(): ese hook vive en index.html porque
-       conecta tres módulos distintos (Inicio + Análisis) al ciclo de
-       refresh() — no es exclusivo de ninguno.
+   Lo que NO vive acá a propósito (núcleo compartido):
+     - calcPatrimonioTotal() / snapshotPatrimonio() están en js/core/core-state.js:
+       las llama save() en CADA guardado, no solo al entrar a Análisis, para
+       alimentar el historial que después se grafica acá.
+     - renderHealthScore()/renderProyeccion() están en js/modules/inicio.js.
+     - Todo lo que cuenta como ingreso o gasto de un mes sale de Periodo
+       (js/core/periodo.js), la misma fuente que usan Inicio, el cierre de mes,
+       el CSV de Configuración y Wrapped.
 
-   Presupuestos vivía metido dentro de una IIFE compartida en
-   index.html ("1. Ocultar/mostrar saldos ... 8. Hook en refresh")
-   junto con Búsqueda global y el hook de refresh — mismo problema de
-   "código no relacionado en el mismo bloque" que ya describía la
-   auditoría para TC y Cuentas. Se mueve acá completo.
    ═══════════════════════════════════════════════════════════════ */
 
 /* ---- ANÁLISIS FINANCIERO ---- */

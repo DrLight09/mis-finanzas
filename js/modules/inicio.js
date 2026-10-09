@@ -682,11 +682,9 @@ function _renderDispNetoTC() {
   el.style.color = neto < 0 ? 'var(--red)' : 'var(--text3)';
 }
 
-// Hook _checkGastoAlto/_renderDispNetoTC en refresh — refresh() ya existe
-// para este punto (se define en index.html, cargado antes que este módulo).
-// Ya no hace falta reintento por carga lazy (versión anterior lo tenía por
-// una función que ya no se usa acá): _nuTotalSafe() trae su propio fallback
-// seguro, no revienta aunque cuentas.js (lazy) no haya cargado.
+// Hook _checkGastoAlto/_renderDispNetoTC en refresh. refresh() se define en core-state.js, que
+// carga antes que este módulo; calcC/nuTotal (nu-calc.js) también son núcleo de entrada, así que
+// no hace falta ningún reintento ni guard por carga lazy.
 const _origRefreshInicio = window.refresh;
 window.refresh = function() {
   if (_origRefreshInicio) _origRefreshInicio.apply(this, arguments);

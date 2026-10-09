@@ -19,11 +19,8 @@
      ('ctc', ...) y crearSplitWidget('movenc', ...), ('usarParte', ...)).
    - iniciales() se queda en bootstrap.js porque también la usa el sistema
      de Personas. getCajitaNombre() vive en js/core/nu-calc.js.
-   - _normEncargos(S) (normalización para el feed unificado de
-     movimientos) se queda en index.html: vive anidada dentro de una
-     misma factory compartida con _normDeudores/_normSpotify/_normTC/
-     etc. — sacarla sola hubiera exigido reestructurar esa factory
-     entera, que no es un cambio quirúrgico para este módulo.
+   - _normEncargos(S) (normalización para el feed unificado de movimientos)
+     vive en js/modules/actividad_reciente.js, junto a las de los demás módulos.
    - La integración con el Sistema de Personas (selector en "Nuevo encargo",
      hook que exige personaId, botones de perfil en lista/detalle) vive al
      final de este mismo archivo (fusionada el 2026-08-03). Usa getPersona/
@@ -3285,10 +3282,9 @@ function confirmarCompraConTC() {
    IMPORTANTE — por qué cada entrada es `(...args) => fn(...args)` y
    no la función directa: `Events.registerAll`/`on` guardan el VALOR
    que reciben en el momento en que este bloque corre. Si más adelante
-   `encargos-personas.js` (o cualquier otro módulo que llegue después,
-   ej. un futuro `encargos-recordatorios.js`) reasigna una de estas
-   funciones (`abrirEncargoDetalle = function(id) {...}`, mismo patrón
-   que usan todos los *-personas.js para agregar su integración), esa
+   otro módulo que llegue después reasigna una de estas
+   funciones (`abrirEncargoDetalle = function(id) {...}`, el patrón de
+   monkey-patch que usa el resto de la app para agregar integraciones), esa
    reasignación cambia la variable global pero NO lo que ya quedó
    copiado acá adentro — los clicks con data-action seguirían llamando
    a la versión vieja, sin el hook del módulo nuevo, en silencio
@@ -3336,7 +3332,7 @@ Events.registerAll('encargos', {
   confirmarUsarParte:     (...args) => _confirmarUsarParte(...args),
   ctcDifToggle:           (...args) => _ctcDifToggle(...args),
   // Con argumentos dinámicos (id de encargo / movimiento / parte):
-  abrirDetalle:           (...args) => abrirEncargoDetalle(...args),       // (encId) — esta es la que hoy reasigna encargos-personas.js
+  abrirDetalle:           (...args) => abrirEncargoDetalle(...args),       // (encId)
   abrirDesdeCuenta:       (...args) => abrirEncargoDesdeCuenta(...args),   // (encId)
   deleteMov:              (...args) => deleteMovEncargo(...args),         // (encId, movId)
   usarParte:              (...args) => usarParte(...args),                // (encId, parteId)

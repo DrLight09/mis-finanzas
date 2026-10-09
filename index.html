@@ -4898,7 +4898,7 @@
          la app; no hay ningún elemento del HTML que dependa de que uno de
          estos scripts corra a mitad de parseo). El orden entre ellos
          importa (ver el comentario de sheet-stack.js sobre
-         addGastoVar/addGastoFijo y el de deudores-personas.js sobre
+         addGastoVar/addGastoFijo y el de prestado.js sobre
          openSheet) — `defer` preserva el orden del documento, así que no
          se tocó el orden de los <script>, solo se agregó el atributo.
          Los tres módulos de Firebase (firebase-init/sync, pin-bio) NO
@@ -5035,32 +5035,9 @@
 // addGastoVar/addGastoFijo necesitan esos globales ya definidos).
 -->
 <script src="js/core/sheet-stack.js" defer></script>
-<!-- ═══════════════════════════════════════════════════════════════
-     Módulo Préstamos — js/modules/prestado.js (2026-08-03: fusionado
-     con lo que antes era prestado-personas.js + deudores-personas.js,
-     ver el comentario de cabecera del propio archivo y
-     CHANGELOG.md#préstamos). Antes cargaba mucho más arriba (justo
-     después de gastos.js) porque depende de crearSplitWidget() y
-     diffRegistrarInstancia() (ya definidos ahí); se movió a esta
-     posición, después de personas.js Y de sheet-stack.js, porque el
-     archivo fusionado necesita ambos: PERSONA_COLORES/
-     _guardarEditarPersonaGlobal de personas.js, y openSheet (para
-     poder envolverlo) de sheet-stack.js — las dos dependencias reales
-     de nivel superior confirmadas en esta sesión.
-
-     (Actualización, ronda de lazy-loading — docs/auditoria-tecnica.md #4,
-     octavo grupo lazy) Las dos dependencias de arriba (PERSONA_COLORES/
-     _guardarEditarPersonaGlobal de personas.js, openSheet de
-     sheet-stack.js) siguen satisfechas sin tener que preservar esta
-     posición geográfica: ambos son núcleo/transversal, siempre eager, así
-     que ya están cargados y ejecutados mucho antes de que
-     Loader.ensure('prestamos') pueda siquiera dispararse (requiere que el
-     usuario navegue a Préstamos, después de que toda la carga inicial
-     terminó). Auditado también el bloque de reset de showScreen() en
-     sheet-stack.js — corría en cada navegación, no solo al entrar a
-     Préstamos, y no tenía guard; corregido ahí, ver ese archivo.
-     #screen-prestamos y #nav-prestamos ya eran HTML estático.
-     ═══════════════════════════════════════════════════════════════ -->
+<!-- Módulo Préstamos — js/modules/prestado.js (lazy, grupo 'prestamos'; sin <script> propio).
+     Depende de personas.js y sheet-stack.js, ambos de entrada, así que ya están cargados cuando
+     el usuario entra a Préstamos. #screen-prestamos y #nav-prestamos son HTML estático. -->
 <!-- prestado.js: ver js/core/lazy-loader.js (Loader.GROUPS.prestamos) -->
 <!--
 // js/core/lazy-loader.js — motor de carga bajo demanda (docs/auditoria-
@@ -5471,20 +5448,8 @@
 ══════════════════════════════════════════════════════════════════ -->
 <!-- plata_comprometida.js: ver js/core/lazy-loader.js (Loader.GROUPS.comprometida) -->
 
-    <!-- ═══════════════════════════════════════════════════════════════
-     SISTEMA DE PERSONAS — Libreta central vinculada
-     Encargos y Préstamos comparten la misma identidad de persona.
-     Módulo migrado a js/modules/personas.js — su <script src> se movió
-     de acá a mucho más arriba (2026-08-03, ver ese comentario, cerca de
-     gastos.js/sheet-stack.js) porque js/modules/prestado.js (fusionado
-     con prestado-personas.js/deudores-personas.js esta misma sesión)
-     sí tenía dependencia real de nivel superior contra este archivo.
-
-     La integración de Encargos y de Spotify con Personas se fusionó de
-     vuelta en encargos.js/spotify.js (2026-08-03, sin mover nada de
-     posición: nunca tuvieron esa dependencia real) — ver
-     CHANGELOG.md#encargos y CHANGELOG.md#spotify.
-     ═══════════════════════════════════════════════════════════════ -->
+    <!-- SISTEMA DE PERSONAS — libreta central vinculada: Encargos, Préstamos y Spotify comparten la
+     misma identidad (js/modules/personas.js; su integración vive dentro de cada módulo). -->
 <script src="js/core/personas-init.js" defer></script>
 
     <!-- Notificaciones push (FCM) — ver docs de la sesión de septiembre 2026.

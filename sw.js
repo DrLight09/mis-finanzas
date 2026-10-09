@@ -1,5 +1,5 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v20';
+const VERSION = 'mis-finanzas-v21';
 
 const APP_SHELL = [
   '/mis-finanzas/',

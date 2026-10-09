@@ -31,6 +31,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/movimientos.js` | de entrada (defer) | 5 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 1 | 0 |
 | `js/core/nu-calc.js` | de entrada (defer) | 14 | 0 |
+| `js/core/periodo.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
 | `js/core/personas-init.js` | de entrada (defer) | 1 | 0 |
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/sheet-behavior.js` | de entrada (defer) | 0 | 0 |
@@ -198,6 +199,12 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `_diasEntreFechas`, `_fechasCambioEncargoEnCajita`, `_rendimientoCDTaDias`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasaNu`, `_tasaVigenteEnFecha`, `calcC`, `calcCDT`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `getCajitaNombre`, `getNuTasaGlobal`, `nuTotal`
+
+### `js/core/periodo.js`
+
+Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
+
+**Funciones:** `Periodo`
 
 ### `js/core/personas-init.js`
 
@@ -1173,6 +1180,7 @@ Ninguno.
 | `openSheet_pagarSpotify` | `js/modules/spotify.js` |
 | `parseMoney` | `js/core/core-state.js` |
 | `parsePct` | `js/core/core-state.js` |
+| `Periodo` | `js/core/periodo.js` |
 | `PERSONA_COLORES` | `js/modules/personas.js` |
 | `PERSONA_COLORES_MD` | `js/modules/prestado.js` |
 | `pgfActualizarSaldo` | `js/modules/gastos.js` |

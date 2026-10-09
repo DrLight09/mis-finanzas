@@ -116,7 +116,7 @@
     // Los movimientos individuales (Reposición, Ingreso libre) ya aparecen en _normMovimientos.
     // Aquí mostramos el evento de alto nivel: "Llegó plata comprometida" o "Plata comprometida pendiente".
     var items = [];
-    (S.plataCometida || []).forEach(function(item) {
+    (S.plataComprometida || []).forEach(function(item) {
       if (!item || !item.monto) return;
       if (item.recibido) {
         // Ya llegó: mostrar el evento de recibo
@@ -131,7 +131,7 @@
           subtitulo: (item.destinos && item.destinos.length)
                        ? item.destinos.length + ' destino' + (item.destinos.length !== 1 ? 's' : '')
                        : '',
-          fuente:    'plataCometida',
+          fuente:    'plataComprometida',
         });
       } else {
         // Pendiente: mostrar la expectativa registrada
@@ -144,7 +144,7 @@
           monto:     item.monto || 0,
           titulo:    'Esperando: ' + (item.desc || 'Plata comprometida'),
           subtitulo: 'Registrado, pendiente de recibo',
-          fuente:    'plataCometida',
+          fuente:    'plataComprometida',
         });
       }
     });

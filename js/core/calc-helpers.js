@@ -42,15 +42,7 @@ function getMesadaData(parent){
 
 function _getCuotaAnio(parent,anio){
   _ensureMesadas();
-  const cuotas=S.mesadas[parent].cuotas;
-  const key=String(anio);
-  if(cuotas[key])return cuotas[key];
-  // Buscar el año más cercano hacia atrás
-  const anios=Object.keys(cuotas).map(Number).sort((a,b)=>b-a);
-  for(const a of anios){ if(a<=anio)return cuotas[String(a)]; }
-  // Fallback al más antiguo disponible
-  if(anios.length)return cuotas[String(anios[anios.length-1])];
-  return 80000;
+  return Periodo.cuotaMesada(S.mesadas[parent].cuotas,anio);
 }
 
 // Formatea una clave "2026-4" → "Mayo 2026" (depende de MC, la lista de

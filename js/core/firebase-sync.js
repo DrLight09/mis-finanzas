@@ -587,10 +587,7 @@ import { waitFor } from './wait-for-module.js';
     const fmt = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
     const S = window.S;
     const mesK = ultimoMesVisto;
-    const pagosGF = S.pagosGastosFijos || {};
-    const gvMes = (S.gastosVar||[]).filter(g=>(g.fecha||'').startsWith(mesK)&&!_esGastoVarNoReal(g)).reduce((a,g)=>a+(g.monto||0),0);
-    const gfMes = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mesK]?a+(g.monto||0):a,0);
-    const totalGastos = gvMes + gfMes;
+    const totalGastos = Periodo.gastosDelMes(mesK).total;
     // Patrimonio al cierre (último registro del mes anterior en el historial)
     const hist = S.patrimonioHistorial || [];
     const snapMes = [...hist].filter(h=>(h.fecha||'').startsWith(mesK)).pop();

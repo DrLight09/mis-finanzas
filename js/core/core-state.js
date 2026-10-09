@@ -475,7 +475,18 @@ function _moneyValue(digits){
    dato ya está migrado, no hace nada). Nunca editar ni reordenar una existente.
    La versión guardada vive en S.schemaVersion. */
 const MIGRACIONES = [
-  { v: 1, nombre: 'línea base del modelo', fn(d) { /* sin cambios: marca el punto de partida */ } }
+  { v: 1, nombre: 'línea base del modelo', fn(d) { /* sin cambios: marca el punto de partida */ } },
+  // v2: S.plataCometida → S.plataComprometida (nombre con typo en el modelo). Si por alguna razón
+  // existen las dos (un dispositivo con la app vieja escribió el campo viejo después de migrar),
+  // se juntan sin repetir ids.
+  { v: 2, nombre: 'plataCometida → plataComprometida', fn(d) {
+      if (!('plataCometida' in d)) return;
+      const nuevo = Array.isArray(d.plataComprometida) ? d.plataComprometida : [];
+      const ids = new Set(nuevo.map(i => i && i.id));
+      (Array.isArray(d.plataCometida) ? d.plataCometida : []).forEach(i => { if (!i || !ids.has(i.id)) nuevo.push(i); });
+      d.plataComprometida = nuevo;
+      delete d.plataCometida;
+  } }
 ];
 const SCHEMA_VERSION_ACTUAL = MIGRACIONES[MIGRACIONES.length - 1].v;
 
@@ -621,7 +632,7 @@ function _saldoCPAjeno(){
   // (gastos de cajita/nequi/efectivo pendientes de pagar, y plata para TC aún en cajita).
   // Una vez que se paga (yaPague=true) la plata ya salió → no restar.
   let total = 0;
-  (S.plataCometida||[]).forEach(item => {
+  (S.plataComprometida||[]).forEach(item => {
     if(!item.recibido) return; // aún no llegó → no está en ninguna cuenta
     (item.destinos||[]).forEach(d => {
       if(d.yaPague) return; // ya se pagó → salió de la cuenta
@@ -848,13 +859,7 @@ function gastosMes(mesK){
 }
 
 // Suma los ingresos fijos configurados que aplican para un mes dado (YYYY-MM)
-function getIngresosFijosMes(mesK){
-  return(S.ingresosFijos||[]).reduce((acc,ing)=>{
-    // Solo contar si el ingreso ya estaba activo ese mes (desde <= mesK, o sin desde)
-    if(!ing.desde||ing.desde<=mesK) acc+=(ing.monto||0);
-    return acc;
-  },0);
-}
+function getIngresosFijosMes(mesK){ return Periodo.ingresosFijosDelMes(mesK); }
 
 // Determina si un movimiento tipo:'entrada' es un movimiento "espejo" generado
 // automáticamente por otro módulo (Mesada, Prestado, Encargos) y que por lo tanto
@@ -1204,16 +1209,11 @@ function refresh(){
   // que ambos cálculos se desalineen (ver CHANGELOG.md#inicio, 2026-09-20).
   window._dispActualHoy = disp;
   const mes=mesActual();
-  const _gfFijos=(S.gastosFijos||[]).reduce((a,g)=>{
-    // Solo sumar si fue pagado este mes
-    const pagos=S.pagosGastosFijos||{};
-    return pagos[g.id+'_'+mes]?a+(g.monto||0):a;
-  },0);
-  // _spFijo eliminado: el costo mensual de Spotify es solo un valor de referencia para el módulo.
-  // Se cuenta como gasto real únicamente cuando se registra el pago (queda en gastosVar).
-  const gfTotal=_gfFijos;
-  // Excluir de variables los que son pagos de gastos fijos (ya se cuentan en gfTotal) y los pagos de TC (no son gasto real)
-  const gvMes=gastosMes(mes).filter(g=>!_esGastoVarNoReal(g)).reduce((a,g)=>a+(g.monto||0),0);
+  // Gasto del mes: definición única en periodo.js (gastos fijos pagados con su monto pagado +
+  // gastos variables reales, sin pagos de gasto fijo/TC/alcancía/extras de préstamo).
+  const _gastosMesHoy=Periodo.gastosDelMes(mes);
+  const gfTotal=_gastosMesHoy.gfTotal;
+  const gvMes=_gastosMesHoy.gvTotal;
 
   // Total intereses generados hoy en cajitas libres (base = saldo propio + encargos en la cajita)
   const _globalTasa=S.nuTasaGlobal||9.25;

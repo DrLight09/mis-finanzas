@@ -116,12 +116,8 @@ function getSpCajita(){
 
 function getSpCajitaSaldo(){
   const c=getSpCajita();
-  // GUARD (bug real encontrado en prueba de navegador post-lazy, ver
-  // auditoria-tecnica.md): calcC vive en cuentas.js. Se reusa el mismo
-  // helper con fallback que ya usa core-state.js (_calcCSafe) en vez de
-  // duplicar la lógica acá — si cuentas.js todavía no cargó, cae al mismo
-  // saldo crudo que usa el resto de la app en ese caso.
-  return c?_calcCSafe(c).val:0;
+  // calcC() (interés real de la cajita) vive en js/core/nu-calc.js, núcleo de carga de entrada.
+  return c?calcC(c).val:0;
 }
 
 // spNombreDe() y spPersonaPagadaVigente() se movieron a js/core/calc-helpers.js

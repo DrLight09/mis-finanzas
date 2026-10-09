@@ -176,3 +176,6 @@ const Periodo = (() => {
   return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosDelMes,
            pagosFijos, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPorCategoria, balanceDelMes };
 })();
+
+// Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.
+if (typeof window !== 'undefined') window.Periodo = Periodo;

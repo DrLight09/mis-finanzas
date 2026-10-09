@@ -29,7 +29,7 @@ function stubEncargos(ctx) {
 
 function fresh({ nequi = 0, efectivo = 0, encargos = [], extra = {} } = {}) {
   const ctx = loadApp([
-    path.join(CORE, 'core-state.js'),
+    path.join(CORE, 'core-state.js'), path.join(CORE, 'periodo.js'), path.join(CORE, 'nu-calc.js'),
     path.join(CORE, 'calc-helpers.js'),
     path.join(CORE, 'cuenta-efectos.js'),
     path.join(CORE, 'split.js'),          // mesada.js registra su widget de split al cargar

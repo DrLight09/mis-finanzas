@@ -11,7 +11,7 @@ const { loadApp } = require('./support/load-app');
 const RAIZ = path.join(__dirname, '..');
 const core = f => path.join(RAIZ, 'js', 'core', f);
 const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
 const plano = x => JSON.parse(JSON.stringify(x));
 
 const AHORA = new Date('2026-10-05T12:00:00');

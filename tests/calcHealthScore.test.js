@@ -24,7 +24,7 @@ function currentMonthKey() {
 
 function freshApp(sOverrides = {}) {
   const ctx = loadApp([
-    path.join(CORE_DIR, 'core-state.js'),
+    path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
     path.join(CORE_DIR, 'calc-helpers.js'),
     path.join(MODULES_DIR, 'inicio.js'),
   ]);

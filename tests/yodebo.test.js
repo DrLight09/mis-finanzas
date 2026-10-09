@@ -16,7 +16,7 @@ const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR
 // permissive: prestado.js referencia funciones de UI (openSheet/toast/Events) a nivel de módulo.
 function freshApp() {
   const ctx = loadApp([
-    path.join(CORE_DIR, 'core-state.js'),
+    path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
     path.join(CORE_DIR, 'cuenta-efectos.js'),
     path.join(CORE_DIR, 'calc-helpers.js'),
     path.join(MODULES_DIR, 'inicio.js'),

@@ -14,7 +14,7 @@ const clone = o => JSON.parse(JSON.stringify(o));
 // Modo permissive: las funciones de UI de otros archivos (openSheet, closeSheet, refresh...) son no-op.
 function ui({ dom = {}, encargos = [] } = {}) {
   const ctx = loadApp([
-    path.join(CORE, 'core-state.js'), path.join(CORE, 'calc-helpers.js'), path.join(CORE, 'cuenta-efectos.js'),
+    path.join(CORE, 'core-state.js'), path.join(CORE, 'periodo.js'), path.join(CORE, 'nu-calc.js'), path.join(CORE, 'calc-helpers.js'), path.join(CORE, 'cuenta-efectos.js'),
     path.join(CORE, 'split.js'), path.join(MODS, 'mesada.js'),
   ], { permissive: true });
   Object.assign(ctx.S, {

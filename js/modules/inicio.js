@@ -100,7 +100,7 @@ function renderAttencion(){
   }
   // Cajitas con CDT próximas a vencer (7 días)
   (S.cajitas||[]).forEach(c=>{(c.cdts||[]).filter(cdt=>cdt.vence).forEach(cdt=>{
-    const diasRestantes=Math.ceil((new Date(cdt.vence+'T00:00:00')-new Date())/86400000);
+    const diasRestantes=Math.ceil((_fechaSafe(cdt.vence)-new Date())/86400000);
     if(diasRestantes>=0&&diasRestantes<=7) items.push({tipo:'amber',texto:html`CDT "${c.nombre}" vence en ${diasRestantes}d`});
     if(diasRestantes<0) items.push({tipo:'red',texto:html`CDT "${c.nombre}" venció — ¡libera tu plata!`});
   });});
@@ -110,7 +110,7 @@ function renderAttencion(){
   // plata sigue comprometida y sin usar.
   (S.encargos||[]).forEach(enc=>{
     (enc.partes||[]).filter(p=>!p.usada&&p.fecha).forEach(p=>{
-      const dias=Math.round((new Date(p.fecha+'T00:00:00')-new Date(hoyStr+'T00:00:00'))/86400000);
+      const dias=Math.round((_fechaSafe(p.fecha)-_fechaSafe(hoyStr))/86400000);
       if(dias<0){
         items.push({tipo:'red',texto:html`${enc.nombre}: "${p.desc}" (${fmt(p.monto)}) venció hace ${Math.abs(dias)}d sin usarse — sigue comprometida`});
       } else if(dias<=1){
@@ -232,35 +232,17 @@ function calcHealthScore(){
   const _alcSaldoOcultoHS = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
   const patrimonio = (window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0) - _alcSaldoOcultoHS;
   const mes = window.mesActual ? window.mesActual() : '';
-  const pagosGF = S.pagosGastosFijos || {};
 
-  // Gastos del mes: variables + fijos pagados (ver _esGastoVarNoReal para el criterio de exclusión, compartido con Análisis financiero)
-  const gvMes = (S.gastosVar||[]).filter(g=>window.mesKey?window.mesKey(g.fecha)===mes&&!(window._esGastoVarNoReal&&window._esGastoVarNoReal(g)):true).reduce((a,g)=>a+(g.monto||0),0);
-  const gfTotal = (S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mes]?a+(g.monto||0):a,0);
-  const gastosMes = gvMes + gfTotal;
+  // Gastos e ingresos del mes: definición única en periodo.js (la misma de Análisis, cierre de mes y Wrapped).
+  const _gMes = Periodo.gastosDelMes(mes);
+  const gvMes = _gMes.gvTotal;
+  const gastosMes = _gMes.total;
 
   // Deuda TC que realmente es mía (excluye encargos, plata comprometida, préstamos TC)
   const deudaTC = typeof calcDeudaTcPropia==='function' ? calcDeudaTcPropia() : 0;
 
-  // Ingresos del mes: mesada + movimientos tipo ingreso de cuentas personalizadas
-  const mesNum = mes ? parseInt(mes.split('-')[1])-1 : 0;
-  const anio = mes ? parseInt(mes.split('-')[0]) : 0;
-  let ingresosMes = 0;
-  if(S.modulos && S.modulos.mesada && typeof getMesadaData==='function'){
-    const _mk=anio+'-'+mesNum;
-    const _infoPapa=getMesadaData('papa')[_mk];
-    const _infoMama=getMesadaData('mama')[_mk];
-    const _cuota = typeof _getCuotaAnio==='function' ? _getCuotaAnio : ()=>0;
-    if(_infoPapa) ingresosMes += (_infoPapa.monto||_cuota('papa',anio)||0);
-    if(_infoMama) ingresosMes += (_infoMama.monto||_cuota('mama',anio)||0);
-  }
-  // Entradas reales del mes: UNA sola definición compartida con Análisis y Wrapped
-  // (entradasIngresoReal, core-state.js — ver su comentario). Incluye los ingresos de
-  // cuentas personalizadas (c.movimientos) y las entradas a Nequi/Efectivo/cajitas, excluye
-  // los movimientos espejo, y ya no exige que la entrada tenga cuenta.
-  if(window.mesKey && window.ingresosRealesDelMes) ingresosMes += window.ingresosRealesDelMes(mes);
-  // Ingresos fijos configurados (sueldo, freelance, etc.)
-  if(window.getIngresosFijosMes) ingresosMes+=getIngresosFijosMes(mes);
+  // Ingresos del mes: mesada + ingresos fijos + entradas reales (periodo.js).
+  const ingresosMes = Periodo.ingresosDelMes(mes).total;
 
   // ── Rendimiento de CDTs generado este mes (Opción 2: patrimonio real) ──
   // Es plata que el patrimonio total ya ganó este mes, pero sigue bloqueada
@@ -604,23 +586,30 @@ function renderProyeccion(){
       wrap.addEventListener('click', function(e){ const card=e.target.closest('[data-proy-key]'); if(card) bindCard(card,e); });
       wrap.addEventListener('touchend', function(e){ const card=e.target.closest('[data-proy-key]'); if(card){ e.preventDefault(); bindCard(card,e); } });
     }
-    // Cerrar al tocar fuera
-    document.addEventListener('click', function(e){ if(!e.target.closest('#proyeccion-card')){ tt.style.display='none'; } });
+    // "Cerrar al tocar fuera": un solo listener global (más abajo, _initCierreTooltipProyeccion),
+    // no uno nuevo por cada render — esta función corre en cada refresh().
   })();
 }
+
+// Cierra el tooltip de Proyección al tocar fuera de la tarjeta. Se registra UNA vez al cargar el
+// módulo y busca el tooltip vigente en cada click (el DOM de la tarjeta se reemplaza en cada render).
+(function _initCierreTooltipProyeccion(){
+  document.addEventListener('click', function(e){
+    if(e.target.closest('#proyeccion-card')) return;
+    const tt = document.getElementById('_proy-tt');
+    if(tt) tt.style.display = 'none';
+  });
+})();
 
 /* ================================================================
    ALERTA DE GASTO ALTO EN EL HERO
    ================================================================ */
 function _checkGastoAlto() {
-  const mes = mesActual();
-  const gvMes = gastosMes(mes).reduce((a,g) => a + (g.monto||0), 0);
-  const gfTotal = (S.gastosFijos||[]).reduce((a,g) => a + (g.monto||0), 0);
-  // GUARD defensivo: nuTotal() vive en cuentas.js. Si en algún momento
-  // cuentas.js no está cargado (lazy sin terminar de resolver, o revertido
-  // más adelante), esto no debe tirar la app entera — se salta el chequeo
-  // de gasto alto esta vez, refresh() sigue con todo lo demás.
-  const nu = typeof nuTotal === 'function' ? nuTotal() : 0;
+  // Gasto real del mes: definición única (periodo.js). Antes sumaba TODOS los gastos variables
+  // (incluidos pagos de gasto fijo y de TC, que ya estaban en el total) más TODOS los gastos
+  // fijos configurados, estuvieran pagados o no.
+  const gastoMes = Periodo.gastosDelMes(mesActual()).total;
+  const nu = nuTotal();
   const nequi = getSaldoFuente('nequi');
   const ef = getSaldoFuente('efectivo');
   // Las cuentas personalizadas también son plata disponible: el "Disponible" del hero
@@ -629,7 +618,7 @@ function _checkGastoAlto() {
   const disp = nu + nequi + ef + custom;
   const indicator = document.getElementById('hero-change-indicator');
   if (!indicator) return;
-  if (disp > 0 && (gvMes + gfTotal) > disp * 0.8) {
+  if (disp > 0 && gastoMes > disp * 0.8) {
     indicator.textContent = 'Gastos altos';
     indicator.style.color = 'var(--amber)';
   } else {

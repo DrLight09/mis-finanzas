@@ -381,8 +381,8 @@ let _cpdYaPagueVal = false;        // ¿ya pagó/cargó? (destino "Gasto"/"Otro"
 /* ── HELPERS ─────────────────────────────────────────────────────── */
 function _cpData(){
   if(!window.S) return [];
-  if(!S.plataCometida) S.plataCometida = [];
-  return S.plataCometida;
+  if(!S.plataComprometida) S.plataComprometida = [];
+  return S.plataComprometida;
 }
 
 function _cpPoblarCuentas(selId, incluirTC){
@@ -724,9 +724,9 @@ function _cpGuardar(){
     toast('Los destinos superan el monto total','err'); return;
   }
 
-  _cpData(); // asegurar que existe S.plataCometida
+  _cpData(); // asegurar que existe S.plataComprometida
   if(_cpEditId){
-    const item = S.plataCometida.find(i=>i.id===_cpEditId);
+    const item = S.plataComprometida.find(i=>i.id===_cpEditId);
     if(item){
       item.desc = desc;
       item.montoTotal = monto;
@@ -735,7 +735,7 @@ function _cpGuardar(){
       item.destinos = JSON.parse(JSON.stringify(_cpDestinosTmp));
     }
   } else {
-    S.plataCometida.push({
+    S.plataComprometida.push({
       id: uid(),
       desc,
       montoTotal: monto,
@@ -1858,7 +1858,7 @@ async function _cpEliminar(id){
   } catch(e){ console.error('[CP] Error en reversión al eliminar:', e); }
 
   // ── Eliminar el registro ─────────────────────────────────────────
-  S.plataCometida = S.plataCometida.filter(i=>i.id!==id);
+  S.plataComprometida = S.plataComprometida.filter(i=>i.id!==id);
   save();
   if(typeof refresh==='function') refresh();
   _cpRenderLista();
@@ -1995,7 +1995,7 @@ function _cpInit(){
   });
 
   // Render inicial si hay datos
-  if(window.S && (window.S.plataCometida||[]).length) _cpRenderLista();
+  if(window.S && (window.S.plataComprometida||[]).length) _cpRenderLista();
 }
 
 /* ── EVENTOS: registrar acciones en el despachador central ─────────

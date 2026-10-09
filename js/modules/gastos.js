@@ -496,8 +496,7 @@ function renderGastosFijos() {
   const todos = [...extras, ...g];
   // totalGF: solo contar gastos fijos reales que ya fueron PAGADOS este mes (no los virtuales ni los pendientes)
   const mesClaveTot = mesActual();
-  const pagosTot = S.pagosGastosFijos || {};
-  const totalGFPagado = g.reduce((a, x) => pagosTot[x.id + '_' + mesClaveTot] ? a + (x.monto || 0) : a, 0);
+  const totalGFPagado = Periodo.gastosFijosDelMes(mesClaveTot).reduce((a, p) => a + p.monto, 0);
   document.getElementById('totalGF').textContent = fmt(totalGFPagado);
   if (!todos.length) {
     el.innerHTML = emptyState(
@@ -555,12 +554,11 @@ function addGastoFijo() {
 }
 
 async function deleteGastoFijo(id) {
-  const ok = await dialogo('Eliminar gasto fijo', '¿Seguro que quieres eliminar este gasto fijo? Se perderá también su historial de pagos del mes.', 'Eliminar', true);
+  const ok = await dialogo('Eliminar gasto fijo', '¿Seguro que quieres eliminar este gasto fijo? Los pagos ya registrados se conservan en tu historial de gastos.', 'Eliminar', true);
   if (!ok) return;
   S.gastosFijos = (S.gastosFijos || []).filter(x => x.id !== id);
-  // Limpiar pagos registrados de este gasto fijo
-  const pagos = S.pagosGastosFijos || {};
-  Object.keys(pagos).forEach(k => { if (k.startsWith(id + '_')) delete pagos[k]; });
+  // Los pagos ya registrados NO se borran: esa plata salió de una cuenta de verdad y el análisis
+  // por mes (Periodo.pagosFijos) los sigue contando con su categoría y monto pagado.
   save(); refresh();
   toast('Gasto fijo eliminado', 'ok');
 }
@@ -661,7 +659,9 @@ function confirmarPagarGastoFijo() {
   }
   // Registrar pago del mes
   if (!S.pagosGastosFijos) S.pagosGastosFijos = {};
-  S.pagosGastosFijos[gf.id + '_' + mesActual()] = { fecha, fuente, monto: gf.monto };
+  // cat/nombre se guardan en el pago: si el gasto fijo se elimina después, el pago (plata que ya salió)
+  // sigue contando en los análisis con su categoría.
+  S.pagosGastosFijos[gf.id + '_' + mesActual()] = { fecha, fuente, monto: gf.monto, cat: gf.cat, nombre: gf.nombre };
   save(); refresh();
   closeSheet('pagar-gasto-fijo');
   if (window.logCambio) { const _pgfg = (S.gastosFijos || []).find(x => x.id === pgfIdActual); if (_pgfg) logCambio('Pagaste ' + _pgfg.nombre, '', _pgfg.monto, 'gasto_fijo'); }

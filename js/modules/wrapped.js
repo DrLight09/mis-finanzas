@@ -53,8 +53,7 @@
    para las categorías propias. Cada dominio nuevo tiene su propia
    función `_wrappedCalcular*` que lee directamente la estructura de
    datos de su módulo dueño (`S.encargos`, `S.deudores`/`S.misDeudas`,
-   `S.mesadas`, `S.spotifyHistorial`, `S.plataCometida` — sí, ese último
-   con el nombre real del campo, sin la "m" de "comprometida", ver
+   `S.mesadas`, `S.spotifyHistorial`, `S.plataComprometida`; ver
    plata-comprometida.md §4) — nunca se copia un cálculo que ya vive
    centralizado en el módulo dueño (`getDeudorSaldo`, `encargoSaldo`,
    etc., ver prestado.md/encargos.md); donde no existe una función
@@ -164,8 +163,8 @@ function _wrappedValidarDatos(S){
   if(S.spotifyHistorial !== undefined && !Array.isArray(S.spotifyHistorial)){
     warnings.push('S.spotifyHistorial existe pero no es un array.');
   }
-  if(S.plataCometida !== undefined && !Array.isArray(S.plataCometida)){
-    warnings.push('S.plataCometida existe pero no es un array.');
+  if(S.plataComprometida !== undefined && !Array.isArray(S.plataComprometida)){
+    warnings.push('S.plataComprometida existe pero no es un array.');
   }
 
   const revisarMontos = (arr, nombre) => {
@@ -400,6 +399,8 @@ function _wrappedCategoriaMasConcentrada(items){
    el guard `typeof` porque acá solo se lee la FORMA de `S`, ya
    documentada (mesada.md §4, analisis-financiero.md §3), igual que el
    resto de este archivo lee `S.alcancia`/`S.gastosVar` directo. */
+// (Sin uso interno desde que Mesada pasó a Periodo.mesadaDelMes — js/core/periodo.js; se conserva
+// exportada por los tests.)
 function _wrappedCuotaAnioFallback(cuotas, anio){
   if(!cuotas || typeof cuotas !== 'object') return 0;
   let mejorAnio = null;
@@ -409,22 +410,13 @@ function _wrappedCuotaAnioFallback(cuotas, anio){
   });
   return mejorAnio!==null ? (cuotas[mejorAnio]||0) : 0;
 }
+// Mesada e ingresos fijos de un mes: definición única en js/core/periodo.js (la misma de
+// Inicio y Análisis). `mesIdx` es 0-indexado (convención de Mesada), `mesK` es 'YYYY-MM'.
 function _wrappedMesadaMes(S, anio, mesIdx){
-  const mesadas = S.mesadas;
-  if(!mesadas || typeof mesadas !== 'object' || !(S.modulos && S.modulos.mesada)) return 0;
-  const key = anio + '-' + mesIdx;
-  let total = 0;
-  ['papa','mama'].forEach(parent => {
-    const p = mesadas[parent];
-    const info = p && p.pagos && p.pagos[key];
-    if(info) total += (info.monto || _wrappedCuotaAnioFallback(p.cuotas, anio) || 0);
-  });
-  return total;
+  return Periodo.mesadaDelMes(anio + '-' + String(mesIdx + 1).padStart(2, '0'), S);
 }
 function _wrappedIngresosFijosMes(S, mesK){
-  const fijos = S.ingresosFijos;
-  if(!Array.isArray(fijos)) return 0;
-  return fijos.reduce((s,ing) => (!ing.desde || ing.desde<=mesK) ? s+(ing.monto||0) : s, 0);
+  return Periodo.ingresosFijosDelMes(mesK, S);
 }
 
 /* Extraído de `_wrappedCalcularPeriodo` (2026-09-14) para que las nuevas
@@ -435,15 +427,13 @@ function _wrappedIngresosFijosMes(S, mesK){
    ahora llama a esto en vez de tener las mismas líneas inline. */
 function _wrappedItemsRealesPeriodo(S, tipo, mesK, anioK){
   const gastosVar = S.gastosVar || [];
-  // S.pagosGastosFijos puede llegar como array O como objeto/mapa (visto
-  // en datos reales de producción) — normalizamos para no romper la
-  // pantalla si algún día no es un array plano.
-  const pagosFijosRaw = S.pagosGastosFijos;
-  const pagosFijos = Array.isArray(pagosFijosRaw) ? pagosFijosRaw : Object.values(pagosFijosRaw || {});
+  // Pagos de gastos fijos: normalizados por Periodo.pagosFijos (mapa u array, con categoría y el
+  // monto realmente pagado). Pertenecen al mes que cubre el pago (su clave), igual que en Análisis.
+  const pagosFijos = Periodo.pagosFijos(S);
   const esGastoNoReal = typeof _esGastoVarNoReal === 'function' ? _esGastoVarNoReal : (()=>false);
   return {
     gastosVarPeriodo: gastosVar.filter(g => _wrappedEnRango(g.fecha, tipo, mesK, anioK) && !esGastoNoReal(g)),
-    pagosFijosPeriodo: pagosFijos.filter(p => _wrappedEnRango(p.fecha, tipo, mesK, anioK))
+    pagosFijosPeriodo: pagosFijos.filter(p => _wrappedEnRango(p.mes + '-01', tipo, mesK, anioK))
   };
 }
 
@@ -1691,14 +1681,13 @@ function _wrappedCambioDeHabitos(S, anioK, mesMax){
   if(mesMax < 5) return null; // menos de 6 meses: no hay dos mitades que valga la pena comparar
 
   const gastosVar = S.gastosVar || [];
-  const pagosFijosRaw = S.pagosGastosFijos;
-  const pagosFijos = Array.isArray(pagosFijosRaw) ? pagosFijosRaw : Object.values(pagosFijosRaw || {});
+  const pagosFijos = Periodo.pagosFijos(S);
   const esGastoNoReal = typeof _esGastoVarNoReal === 'function' ? _esGastoVarNoReal : (()=>false);
 
   const { enPrimera, enSegunda } = _wrappedCorteMitadAnio(anioK, mesMax);
 
-  const itemsPrimera = [...gastosVar.filter(g => enPrimera(g.fecha) && !esGastoNoReal(g)), ...pagosFijos.filter(p => enPrimera(p.fecha))];
-  const itemsSegunda = [...gastosVar.filter(g => enSegunda(g.fecha) && !esGastoNoReal(g)), ...pagosFijos.filter(p => enSegunda(p.fecha))];
+  const itemsPrimera = [...gastosVar.filter(g => enPrimera(g.fecha) && !esGastoNoReal(g)), ...pagosFijos.filter(p => enPrimera(p.mes + '-01'))];
+  const itemsSegunda = [...gastosVar.filter(g => enSegunda(g.fecha) && !esGastoNoReal(g)), ...pagosFijos.filter(p => enSegunda(p.mes + '-01'))];
 
   const totalPrimera = itemsPrimera.reduce((s,g)=>s+(g.monto||0),0);
   const totalSegunda = itemsSegunda.reduce((s,g)=>s+(g.monto||0),0);
@@ -2022,12 +2011,11 @@ function _wrappedCalcularSpotify(S, tipo, mesK, anioK){
 
 /* ─── PLATA COMPROMETIDA ──────────────────────────────────────────────
    Plata que estabas esperando y de verdad llegó este período —
-   `S.plataCometida[]` (sí, ese es el nombre real del campo en `S`, sin
-   la "m" de "comprometida", ver plata-comprometida.md §4) filtrado por
+   `S.plataComprometida[]` (ver plata-comprometida.md §4) filtrado por
    `recibido:true` y `fechaRecibido` en el período — nunca por
    `fechaLlegada`, que es solo la fecha ESTIMADA. */
 function _wrappedCalcularComprometida(S, tipo, mesK, anioK){
-  const items = S.plataCometida;
+  const items = S.plataComprometida;
   if(!Array.isArray(items) || !items.length) return null;
 
   let total = 0, topItem = null;

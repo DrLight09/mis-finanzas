@@ -142,6 +142,17 @@ function _validarEstructuraJSON(data){
   if('nuRate' in data&&typeof data.nuRate!=='number'){
     errores.push('El campo "nuRate" debe ser un número.');
   }
+  ['gastosFijos','ingresosFijos','movimientos','misDeudas','encargos','tarjetasCredito','personas'].forEach(k=>{
+    if(k in data&&!Array.isArray(data[k]))errores.push('El campo "'+k+'" debe ser un array.');
+  });
+  ['pagosGastosFijos','mesadas','presupuestos'].forEach(k=>{
+    if(k in data&&(data[k]===null||typeof data[k]!=='object'))errores.push('El campo "'+k+'" debe ser un objeto.');
+  });
+  // Un backup de una versión más nueva del modelo de datos que esta app no sabe leer: importarlo
+  // lo dejaría a medio interpretar. Los más viejos se actualizan solos (aplicarMigraciones).
+  if(Number(data.schemaVersion)>SCHEMA_VERSION_ACTUAL){
+    errores.push('Este backup es de una versión más nueva de la app. Actualiza la app antes de importarlo.');
+  }
   return errores;
 }
 
@@ -164,6 +175,8 @@ function leerArchivoImport(e){
       }
       const ok=await dialogo('Importar datos','¿Reemplazar todos los datos actuales con el archivo importado? Esta acción no se puede deshacer.','Importar',true);
       if(!ok)return;
+      // Llevar el backup al modelo de datos actual (si falla, el catch avisa y NO se reemplaza nada).
+      aplicarMigraciones(data);
       // Reemplazar CONTENIDO de S sin romper la referencia de window.S
       Object.keys(S).forEach(k => delete S[k]);
       Object.assign(S, data);
@@ -212,16 +225,13 @@ function leerArchivoImport(e){
 /* ---- EXPORTAR CSV (gastos) ---- */
 function exportarCSV(){
   const rows = [['Fecha','Descripción','Categoría','Monto','Tipo','Cuenta']];
-  (S.gastosVar||[]).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')).forEach(g=>{
+  // Mismo criterio de "gasto real" que el resto de la app (core-state.js + periodo.js): los pagos
+  // de gasto fijo salen como filas "Fijo" (con el monto realmente pagado), no también como variables.
+  (S.gastosVar||[]).filter(g=>!_esGastoVarNoReal(g)).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')).forEach(g=>{
     rows.push([g.fecha||'',g.desc||'',g.cat||'',-(g.monto||0),'Variable',fuenteLabel?fuenteLabel(g.fuente):(g.fuente||'')]);
   });
-  (S.gastosFijos||[]).forEach(g=>{
-    Object.keys(S.pagosGastosFijos||{}).forEach(key=>{
-      if(key.startsWith(g.id+'_')){
-        const mes=key.split('_').pop();
-        rows.push([mes+'-01',g.nombre,g.cat||'',-(g.monto||0),'Fijo','']);
-      }
-    });
+  Periodo.pagosFijos().sort((a,b)=>b.mes.localeCompare(a.mes)).forEach(p=>{
+    rows.push([p.mes+'-01',p.nombre||'Gasto fijo',p.cat||'',-p.monto,'Fijo','']);
   });
   const csv = rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
   const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});

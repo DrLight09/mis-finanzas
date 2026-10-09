@@ -49,36 +49,17 @@ function renderAnalisis(){
   // cajita marcada con _esReposicionCP en S.movimientos. Ver _esEntradaEspejoNoIngreso.
   // También excluir _esExtraPrestamo: es plata de un extra/propina que se gastó de inmediato
   // (nunca se registró como ingreso, así que contarla como gasto real infla el balance negativamente)
-  const gvMes=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mes&&!_esGastoVarNoReal(g));
-  const gvTotal=gvMes.reduce((a,g)=>a+(g.monto||0),0);
+  const _bal=Periodo.balanceDelMes(mes);
+  const gastosMesDet=_bal.gastos;
+  const gvTotal=gastosMesDet.gvTotal;
+  const gfTotal=gastosMesDet.gfTotal;
+  const gastosTotalMes=gastosMesDet.total;
 
-  const pagosGF=S.pagosGastosFijos||{};
-  const gfTotal=(S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mes]?a+(g.monto||0):a,0);
-  const gastosTotalMes=gvTotal+gfTotal;
-
-  // ── Ingresos estimados del mes (mesada + ingresos fijos) ─────────────
+  // ── Ingresos del mes: mesada + ingresos fijos + entradas reales (periodo.js, regla única
+  // compartida con Inicio, cierre de mes y Wrapped) ─────────────────────
   const mesNum=parseInt(mes.split('-')[1])-1;
   const anio=parseInt(mes.split('-')[0]);
-  let ingresosEstimados=0;
-  if(S.modulos&&S.modulos.mesada&&typeof getMesadaData==='function'){
-    // mesKey2 nunca estaba definida acá (bug real, no relacionado a lazy
-    // loading — ver CHANGELOG.md 2026-08-04). Mismo cálculo que ya usa
-    // inicio.js (calcHealthScore, variable local `_mk`) para lo mismo: la
-    // clave con la que getMesadaData() indexa los pagos, "año-mesIdx"
-    // (mesIdx 0-indexado, no la misma convención que mesKey(fecha)).
-    const mesKey2=anio+'-'+mesNum;
-    const infoPapa=getMesadaData('papa')[mesKey2];
-    const infoMama=getMesadaData('mama')[mesKey2];
-    if(infoPapa) ingresosEstimados+=(infoPapa.monto||_getCuotaAnio('papa',anio)||0);
-    if(infoMama) ingresosEstimados+=(infoMama.monto||_getCuotaAnio('mama',anio)||0);
-  }
-  // Sumar ingresos fijos configurados (sueldo, freelance, etc.)
-  ingresosEstimados+=getIngresosFijosMes(mes);
-  // Sumar entradas reales registradas en movimientos (trabajos puntuales, regalos, etc.)
-  // Excluir: apertura, transferencias, intercambios de encargo, reposiciones de plata comprometida y margenes viejos
-  // sin bandera. El margen/regalo nuevo de encargos (_esExtraIngreso / _esDiferencialEncargo) SÍ cuenta — ver _esEntradaEspejoNoIngreso.
-  // Regla única de ingreso real (core-state.js), la misma de Inicio y Wrapped.
-  ingresosEstimados+=ingresosRealesDelMes(mes);
+  const ingresosEstimados=_bal.ingresos.total;
 
   // ── Balance ────────────────────────────────────────────────────────────
   const balance=ingresosEstimados-gastosTotalMes;
@@ -93,7 +74,7 @@ function renderAnalisis(){
     const emoji=sinIngresos?'':esPositivo?'↑':' ↓';
     let mensaje='';
     const moduloMesadaActivo=!!(S.modulos&&S.modulos.mesada);
-    if(sinIngresos) mensaje=moduloMesadaActivo?'Registrá tus ingresos en Mesada para ver el balance.':'Total gastado este mes.';
+    if(sinIngresos) mensaje=moduloMesadaActivo?'Registra tus ingresos en Mesada para ver el balance.':'Total gastado este mes.';
     else if(esPositivo) mensaje='¡Vas bien! Gastaste menos de lo que entraste.';
     else mensaje='Ojo: gastaste más de lo que entraste este mes.';
     hero.style.cssText='border-radius:var(--radius);padding:20px;margin-bottom:10px;background:'+bgColor+';border:1px solid '+borderColor+';';
@@ -115,18 +96,7 @@ function renderAnalisis(){
   if(elVar) elVar.textContent=fmt(gvTotal);
 
   // ── Top categorías este mes ────────────────────────────────────────────
-  const catMap={};
-  gvMes.forEach(g=>{
-    const c=g.cat||'Otro';
-    catMap[c]=(catMap[c]||0)+(g.monto||0);
-  });
-  // También contar gastos fijos pagados por categoría
-  (S.gastosFijos||[]).forEach(g=>{
-    if(pagosGF[g.id+'_'+mes]){
-      const c=g.cat||'Otro';
-      catMap[c]=(catMap[c]||0)+(g.monto||0);
-    }
-  });
+  const catMap=Periodo.gastoPorCategoria(mes);
   const catsOrdenadas=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const maxCat=catsOrdenadas.length?catsOrdenadas[0][1]:1;
   const catsEl=document.getElementById('an-cats-mes');
@@ -157,20 +127,7 @@ function renderAnalisis(){
   }
 
   // ── Gráfico de barras — últimos 12 meses ──────────────────────────────
-  const hoy12=[];
-  const d=new Date();
-  for(let i=11;i>=0;i--){
-    const dd=new Date(d.getFullYear(),d.getMonth()-i,1);
-    const k=dd.getFullYear()+'-'+String(dd.getMonth()+1).padStart(2,'0');
-    const label=MESES_NOMBRE[dd.getMonth()];
-    // Nota: gastoOrigen "cajita"/"tc" desde Plata comprometida nunca escribe en
-    // S.gastosVar (ver comentario en "Gastos del mes actual"), así que no hace
-    // falta filtrar por eso aquí — el filtro viejo (g.fuente!=='plata-comprometida')
-    // era código muerto: gastosVar.fuente nunca toma ese valor.
-    const gv=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===k&&!_esGastoVarNoReal(g)).reduce((a,g)=>a+(g.monto||0),0);
-    const gf=(S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+k]?a+(g.monto||0):a,0);
-    hoy12.push({k,label,total:gv+gf});
-  }
+  const hoy12=Periodo.ultimosMeses(12,mes).map(k=>({k,label:MESES_NOMBRE[parseInt(k.split('-')[1])-1],total:Periodo.gastosDelMes(k).total}));
   const maxBar=Math.max(...hoy12.map(x=>x.total),1);
   const barEl=document.getElementById('an-grafico-barras');
   const labEl=document.getElementById('an-grafico-labels');
@@ -218,23 +175,7 @@ function renderAnalisis(){
 
   // ── Ranking meses ──────────────────────────────────────────────────────
   // Recopilar todos los meses con datos
-  const mesesConDatos={};
-  // Nota: mismo caso que arriba — S.gastosVar nunca contiene gastos de
-  // plata comprometida, así que no se filtra por eso (ver "Gastos del mes actual").
-  (S.gastosVar||[]).forEach(g=>{
-    if(!_esGastoVarNoReal(g)){
-      const k=mesKey(g.fecha);
-      if(k) mesesConDatos[k]=(mesesConDatos[k]||0)+(g.monto||0);
-    }
-  });
-  Object.keys(pagosGF).forEach(key=>{
-    // key = "gfId_YYYY-MM"
-    const parts=key.split('_');
-    const mesK=parts[parts.length-1];
-    const gfId=parts.slice(0,-1).join('_');
-    const gf=(S.gastosFijos||[]).find(g=>g.id===gfId);
-    if(gf&&mesK) mesesConDatos[mesK]=(mesesConDatos[mesK]||0)+(gf.monto||0);
-  });
+  const mesesConDatos=Periodo.gastosPorMes();
   const ranking=Object.entries(mesesConDatos)
     .sort((a,b)=>b[1]-a[1])
     .slice(0,6);
@@ -271,14 +212,8 @@ function renderAnalisis(){
   const mesadaTotal=document.getElementById('an-mesada-total');
   if(S.modulos&&S.modulos.mesada&&mesadaSection&&mesadaTotal&&typeof getMesadaData==='function'){
     mesadaSection.style.display='';
-    const dataPapa=getMesadaData('papa');
-    const dataMama=getMesadaData('mama');
     let totalMesada=0;
-    for(let m=0;m<12;m++){
-      const k=anio+'-'+m;
-      if(dataPapa[k]) totalMesada+=(dataPapa[k].monto||_getCuotaAnio('papa',anio)||0);
-      if(dataMama[k]) totalMesada+=(dataMama[k].monto||_getCuotaAnio('mama',anio)||0);
-    }
+    for(let m=1;m<=12;m++) totalMesada+=Periodo.mesadaDelMes(anio+'-'+String(m).padStart(2,'0'));
     mesadaTotal.textContent=fmt(totalMesada);
   } else if(mesadaSection) mesadaSection.style.display='none';
 
@@ -307,24 +242,11 @@ function renderAnalisis(){
     // Calcular mes anterior
     const dPrev=new Date(parseInt(mes.split('-')[0]),parseInt(mes.split('-')[1])-2,1);
     const mesPrev=dPrev.getFullYear()+'-'+String(dPrev.getMonth()+1).padStart(2,'0');
-    const gvPrev=(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mesPrev&&!_esGastoVarNoReal(g)).reduce((a,g)=>a+(g.monto||0),0);
-    const gfPrev=(S.gastosFijos||[]).reduce((a,g)=>pagosGF[g.id+'_'+mesPrev]?a+(g.monto||0):a,0);
-    const totalPrev=gvPrev+gfPrev;
     const mesNomPrev=MESES_NOMBRE[dPrev.getMonth()]+' '+dPrev.getFullYear();
-
-    // Ingresos mes anterior
-    const mesNumPrev=dPrev.getMonth();
-    const anioPrev=dPrev.getFullYear();
-    let ingresosPrev=0;
-    if(S.modulos&&S.modulos.mesada&&typeof getMesadaData==='function'){
-      const iPapa=getMesadaData('papa')[mesPrev];
-      const iMama=getMesadaData('mama')[mesPrev];
-      if(iPapa) ingresosPrev+=(iPapa.monto||_getCuotaAnio('papa',anioPrev)||0);
-      if(iMama) ingresosPrev+=(iMama.monto||_getCuotaAnio('mama',anioPrev)||0);
-    }
-    ingresosPrev+=getIngresosFijosMes(mesPrev);
-    ingresosPrev+=ingresosRealesDelMes(mesPrev);
-    const balancePrev=ingresosPrev-totalPrev;
+    const balPrev=Periodo.balanceDelMes(mesPrev);
+    const totalPrev=balPrev.gastos.total;
+    const balancePrev=balPrev.balance;
+    const ingresosPrev=balPrev.ingresos.total;
 
     const diffGastos=gastosTotalMes-totalPrev;
     const diffBalance=balance-balancePrev;
@@ -658,15 +580,9 @@ function renderPresupuestos(){
   const cats = Object.keys(presup);
   if(!cats.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px 0;">Sin presupuestos configurados. Toca "Editar" para definirlos.</div>'; return; }
   const mes = window.mesActual ? window.mesActual() : '';
-  const pagosGF = S.pagosGastosFijos || {};
 
-  // Calcular gasto por categoría este mes
-  const gastoCat = {};
-  (S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mes&&!_esGastoVarNoReal(g)).forEach(g=>{
-    const c=g.cat||'Otro';
-    gastoCat[c]=(gastoCat[c]||0)+(g.monto||0);
-  });
-  (S.gastosFijos||[]).forEach(g=>{ if(pagosGF[g.id+'_'+mes]){ const c=g.cat||'Otro'; gastoCat[c]=(gastoCat[c]||0)+(g.monto||0); } });
+  // Gasto por categoría este mes (periodo.js: mismo criterio que el resto de la pantalla)
+  const gastoCat = Periodo.gastoPorCategoria(mes);
 
   // Migrado a html`` — ver nota en abrirPresupuestos() más arriba. El toast()
   // de aviso al 80% se queda con escHtml() a mano (no es un innerHTML, toast()

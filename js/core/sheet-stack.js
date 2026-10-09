@@ -24,7 +24,7 @@
 //     existir en ese momento. (El override de `addSpotify`, en cambio,
 //     vive dentro de `_injectErrorSpans()` y se resuelve recién cuando esa
 //     función se invoca — sin esta restricción.)
-//   - Debe cargar ANTES de js/modules/deudores-personas.js: ese archivo
+//   - Debe cargar ANTES de js/modules/prestado.js: ese módulo
 //     monkey-patchea `openSheet()` (intercepta `id==='nueva-persona'`
 //     antes de invocar el original) — necesita que `openSheet` ya exista
 //     como global al momento de parsearse.
@@ -419,7 +419,7 @@ function _initEventListeners() {
 
   // --- Avatar color picker (sheet "Nueva persona"): wiring migrado a
   // js/modules/prestado.js (junto a selColor(), que sí existe ahí).
-  // Con deudores-personas.js cargado, este sheet nunca se muestra:
+  // Con prestado.js cargado, este sheet nunca se muestra:
   // ese módulo sobrescribe openSheet() e intercepta 'nueva-persona'
   // antes de llegar al sheet real, redirigiendo al selector genérico
   // de Personas. Código muerto documentado, no borrado — ver detalle
@@ -582,8 +582,7 @@ function _injectErrorSpans() {
 // definidos en este punto del archivo. iniciales() se queda acá porque
 // también la usa el sistema de Personas más abajo — no es exclusiva de
 // Encargos. La integración con Personas (selector en "Nuevo encargo",
-// hooks de perfil) vive aparte, en encargos-personas.js, cargada más
-// abajo — ver el comentario de ese archivo.
+// hooks de perfil) vive dentro de encargos.js.
 
 // Cuota de Mesada del año visible y costo de Spotify. Solo se graba una cuota explícita
 // si difiere de la heredada (_getCuotaAnio): si no, escribir el valor "congelaría" el

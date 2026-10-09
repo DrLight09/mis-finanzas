@@ -1350,11 +1350,9 @@ function refresh(){
 // migrado a js/modules/gastos.js — ver docs/gastos.md.
 
 // Módulo Préstamos (Me deben / Yo debo / Préstamo con TC) migrado a
-// js/modules/prestado.js — ver docs/prestado.md. La integración con
-// Personas vive aparte, en prestado-personas.js, cargada más abajo — ver
-// el comentario de ese archivo. El <script src> real está más abajo,
-// junto a mesada.js/spotify.js — depende de crearSplitWidget() y
-// diffRegistrarInstancia(), definidos en este bloque de acá.
+// js/modules/prestado.js — ver docs/prestado.md (la integración con Personas vive dentro
+// de ese mismo módulo). El <script src> real está más abajo, junto a mesada.js/spotify.js:
+// depende de crearSplitWidget() y diffRegistrarInstancia().
 
 /* ---- MOTOR GENÉRICO "SPLIT DE FUENTES": migrado a js/core/split.js (crearSplitWidget,
    splitToggle, splitAgregarRow, splitGetData, splitPreview). Se carga junto con

@@ -4,6 +4,8 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { loadApp } = require('./support/load-app');
 
+// Carga core-state.js + periodo.js + nu-calc.js (núcleo de carga de entrada, mismo orden que index.html):
+// calcPatrimonioTotal() llama a calcC/calcCDT (nu-calc.js) sin guards.
 // Ajustá esta ruta si tu estructura de carpetas es distinta a js/core/.
 const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR
   || path.join(__dirname, '..', 'js', 'core');
@@ -17,7 +19,7 @@ const cuentas = ({ nequi = 0, efectivo = 0, custom = [] } = {}) => [
 ];
 
 function freshApp(sOverrides = {}) {
-  const ctx = loadApp([path.join(CORE_DIR, 'core-state.js')]);
+  const ctx = loadApp([path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js')]);
   Object.assign(ctx.S, sOverrides);
   return ctx;
 }
@@ -58,7 +60,7 @@ test('calcPatrimonioTotal — alcancía suma su saldoRegistrado', () => {
 test('calcPatrimonioTotal — plata comprometida ajena (recibida, sin pagar) se resta', () => {
   const ctx = freshApp({
     cuentas: cuentas({ nequi: 200000 }),
-    plataCometida: [{
+    plataComprometida: [{
       recibido: true,
       destinos: [
         { yaPague: false, tipo: 'gasto', gastoOrigen: 'cajita', gastoCajita: 'nu1', monto: 60000 },
@@ -71,7 +73,7 @@ test('calcPatrimonioTotal — plata comprometida ajena (recibida, sin pagar) se 
 test('calcPatrimonioTotal — plata comprometida ajena YA PAGADA no se resta', () => {
   const ctx = freshApp({
     cuentas: cuentas({ nequi: 200000 }),
-    plataCometida: [{
+    plataComprometida: [{
       recibido: true,
       destinos: [
         { yaPague: true, tipo: 'gasto', gastoOrigen: 'cajita', gastoCajita: 'nu1', monto: 60000 },
@@ -81,12 +83,14 @@ test('calcPatrimonioTotal — plata comprometida ajena YA PAGADA no se resta', (
   assert.equal(ctx.calcPatrimonioTotal(), 200000);
 });
 
-test('calcPatrimonioTotal — GUARD: cajitas sin cuentas.js cargado usa fallback c.saldo (auditoria-tecnica.md #5)', () => {
-  // cuentas.js (donde vive calcC real, con interés compuesto) es un grupo
-  // lazy y NO está cargado acá a propósito — prueba el guard `_calcCSafe`
-  // que evita el ReferenceError que ya rompió producción una vez.
-  const ctx = freshApp({ cajitas: [{ id: 'nu1', saldo: 300000 }] });
-  assert.equal(ctx.calcPatrimonioTotal(), 300000);
+test('calcPatrimonioTotal — una cajita sin fecha (recién creada) vale su saldo; con fecha suma el interés real de calcC (nu-calc.js)', () => {
+  // calcC/calcCDT viven en js/core/nu-calc.js (núcleo): ya no hay fallback "c.saldo" porque nunca faltan.
+  const sinFecha = freshApp({ cajitas: [{ id: 'nu1', saldo: 300000 }] });
+  assert.equal(sinFecha.calcPatrimonioTotal(), 300000);
+  const d = new Date(Date.now() - 365 * 86400000);
+  const fecha = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const conInteres = freshApp({ nuTasaGlobal: 9.3003, cajitas: [{ id: 'nu1', saldo: 1000000, fecha }] });
+  assert.ok(conInteres.calcPatrimonioTotal() > 1050000);
 });
 
 test('calcPatrimonioTotal — GUARD: plata prestada (S.deudores) sin calc-helpers.js cargado no suma nada', () => {

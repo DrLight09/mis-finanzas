@@ -9,7 +9,8 @@ const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR
 const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR
   || path.join(__dirname, '..', 'js', 'modules');
 
-// cuentas.js referencia funciones de UI de otros archivos core que no
+// calcC/calcCDT viven en js/core/nu-calc.js (núcleo, carga de entrada); cuentas.js sigue cargándose
+// por sus funciones de UI/mutación (materializarIntereses, etc.). cuentas.js referencia funciones de UI de otros archivos core que no
 // están en este harness (openSheet/toast/dialogo — sheet-stack.js /
 // events.js) a nivel de módulo. permissive:true las deja caer a no-op.
 // Ver tests/support/load-app.js para el porqué y el riesgo de esto.
@@ -24,7 +25,7 @@ const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR
 // Orden igual que index.html: core-state.js → calc-helpers.js → módulos.
 function freshApp(sOverrides = {}) {
   const ctx = loadApp([
-    path.join(CORE_DIR, 'core-state.js'),
+    path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
     path.join(CORE_DIR, 'calc-helpers.js'),
     path.join(MODULES_DIR, 'cuentas.js'),
     path.join(MODULES_DIR, 'prestado.js'),
@@ -147,15 +148,12 @@ test('calcCDT — sin monto o sin fecha de inicio, devuelve el monto tal cual si
   assert.equal(ctx.calcCDT({ monto: 100000 }).val, 100000); // sin `inicio`
 });
 
-test('calcPatrimonioTotal — con cuentas.js real cargado, usa calcC (interés real) en vez del fallback c.saldo', () => {
+test('calcPatrimonioTotal — usa calcC (interés real de nu-calc.js), no el saldo crudo', () => {
   const ctx = freshApp({
     nuTasaGlobal: 9.3003,
     cajitas: [{ id: 'nu1', saldo: 1000000, fecha: daysAgo(365) }],
   });
   const patrimonio = ctx.calcPatrimonioTotal();
-  // Con el fallback (guard, sin cuentas.js) esto daría exactamente
-  // 1000000 — con calcC real cargado debe ser ~1093003 (ver test de
-  // 365 días arriba). Confirma que _calcCSafe está usando la función
-  // real, no el fallback, cuando calcC() sí está definida.
+  // Sin interés daría exactamente 1000000; con calcC debe ser ~1093003 (ver test de 365 días arriba).
   assert.ok(patrimonio > 1050000, `esperaba patrimonio > 1.05M con interés real, dio ${patrimonio}`);
 });

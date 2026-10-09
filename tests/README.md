@@ -7,15 +7,17 @@ modificarlo, usando `vm` para simular cómo el navegador carga
 - `calcPatrimonioTotal()` — `js/core/core-state.js`
 - `calcHealthScore()` — `js/modules/inicio.js`
 - `calcC()`/`calcCDT()` (interés compuesto real de Nu, por tramos de
-  tasa, redondeo de CDT) — `js/modules/cuentas.js`
+  tasa, redondeo de CDT) — `js/core/nu-calc.js`
+- `Periodo` (ingresos, gastos y balance de un mes: la única definición para
+  Inicio, Análisis, cierre de mes, CSV y Wrapped) — `js/core/periodo.js`
+- `aplicarMigraciones()` / `S.schemaVersion` — `js/core/core-state.js`
 - `Deudas` (capa de acceso a Me deben / Yo debo), `totalPrestadoPendiente()`/
   `totalMisDeudasPendiente()` — `js/core/calc-helpers.js`
 - Me deben (registrar con `_aplicarMovimiento`, revertir con `_revertirMovDeudor`) y Yo debo (pago dividido, perdón, pago de más, pago con tarjeta) y
   `registrarMovEspejo()`/`borrarMovEspejo()` — `js/modules/prestado.js`,
   `js/core/cuenta-efectos.js`
 
-**67 tests, los 67 pasan** contra tus archivos reales (confirmado acá
-antes de entregarte esto, no es teoría).
+Corren contra tus archivos reales, sin copiarlos.
 
 ## Cómo correrlos
 
@@ -60,6 +62,18 @@ MIS_FINANZAS_CORE_DIR=./ruta/a/core MIS_FINANZAS_MODULES_DIR=./ruta/a/modules np
   depende de que algo NO exista, vas a contaminar el resultado con
   `NaN`/`undefined` en silencio — cargá el módulo real en vez de confiar
   en el guard cuando estés en este modo.
+
+## Orden de carga del núcleo (2026-10-08)
+
+Todo test que cargue `core-state.js` debe cargar también `periodo.js` y
+`nu-calc.js`, en el mismo orden que `index.html`:
+`core-state.js` → `periodo.js` → `nu-calc.js` → `calc-helpers.js` → `cuenta-efectos.js` → módulos.
+`calcPatrimonioTotal()` llama a `calcC`/`calcCDT` (nu-calc.js) sin guards,
+`_getCuotaAnio()` (calc-helpers.js) delega en `Periodo.cuotaMesada`, y Inicio,
+Análisis y Wrapped leen el mes de `Periodo`. Sin ellos: `ReferenceError` en modo
+estricto, o resultados en silencio en modo `permissive`.
+`Periodo` también se expone como `window.Periodo` (un `const` de nivel superior
+no es propiedad del contexto), así que los tests lo leen como `ctx.Periodo`.
 
 ## Cargar `calc-helpers.js` cuando el archivo bajo test lo use (2026-09-20)
 

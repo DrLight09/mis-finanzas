@@ -194,7 +194,7 @@
         // Ingresos reales que se quedan el usuario: pasan aunque lleven _encMovId o desc "Margen…".
         // Se decide por bandera, no por descripción: los márgenes viejos sin bandera siguen ocultos
         // (igual que en Análisis, que tampoco los cuenta).
-        var esIngresoReal = m.tipo === 'entrada' && (m._esExtraIngreso || m._esDiferencialEncargo);
+        var esIngresoReal = m.tipo === 'entrada' && (m.clase ? m.clase === 'ingreso' : (m._esExtraIngreso || m._esDiferencialEncargo));
         // Sobrante del destape de la alcancía: plata que nunca estuvo en ninguna cuenta.
         var esExtraAlcancia = m.tipo === 'entrada' && m._esAlcancia && !m._esAlcanciaIngreso;
         if (m._encMovId && !esIngresoReal) return false; // generado como efecto secundario de un encargo
@@ -594,3 +594,4 @@
   renderFeedActividad();
 
 })();
+

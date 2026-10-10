@@ -1099,7 +1099,7 @@ function confirmarSpDestino(){
       if(extraFuenteSp){
         sumarFuente(extraFuenteSp,extraSp);
         ultimoReg.extraFuente=extraFuenteSp;
-        const movId=registrarMovEspejo({cuenta:extraFuenteSp,flujo:'entrada',monto:extraSp,fecha:fechaCobro,desc:'Extra de Spotify · '+nombreActual,origen:'Spotify',extra:{_esExtraIngreso:true}});
+        const movId=registrarMovEspejo({cuenta:extraFuenteSp,flujo:'entrada',monto:extraSp,fecha:fechaCobro,desc:'Extra de Spotify · '+nombreActual,origen:'Spotify',clase:'ingreso',extra:{_esExtraIngreso:true}});
         if(movId)ultimoReg.extraMovId=movId;
       }
     }
@@ -1344,7 +1344,7 @@ async function confirmarPagarSpotify(){
   // Registrar también como gasto variable para que aparezca en la sección Gastos
   if(!S.gastosVar)S.gastosVar=[];
   const gastoId=uid();
-  S.gastosVar.push({id:gastoId,desc:'Spotify Premium',monto,fecha:hoy(),cat:'Suscripciones',fuente,nota:notaGasto,_secundario:true,_origenSeccion:'Spotify'});
+  S.gastosVar.push({id:gastoId,desc:'Spotify Premium',monto,fecha:hoy(),cat:'Suscripciones',fuente,nota:notaGasto,clase:'gasto',_secundario:true,_origenSeccion:'Spotify'});
   // Se guarda la cuota del administrador vigente EN ESTE MOMENTO (según cuántas personas
   // hay ahora), para que si la cantidad de integrantes cambia en el futuro, la ganancia
   // de este ciclo ya pagado no se recalcule con datos de otra época.

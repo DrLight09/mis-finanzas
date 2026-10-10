@@ -53,6 +53,7 @@ function renderAnalisis(){
 
   // ── Balance ────────────────────────────────────────────────────────────
   const balance=ingresosEstimados-gastosTotalMes;
+  const _rendNu=_bal.rendimientos?_bal.rendimientos.total:0; // intereses de cajitas y CDT del mes (periodo.js)
   const hero=document.getElementById('analisis-balance-hero');
   if(hero){
     const esPositivo=balance>=0;
@@ -72,6 +73,7 @@ function renderAnalisis(){
       <div style="font-size:10px;color:${sinIngresos?'var(--text3)':color};text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;">${emoji} Balance de ${mes2d}</div>
       <div style="font-size:36px;font-weight:300;letter-spacing:-2px;font-family:'DM Mono',monospace;color:${color};margin:6px 0 6px;">${sinIngresos?fmt(gastosTotalMes*-1):(balance>=0?'+':'')+fmt(balance)}</div>
       <div style="font-size:11px;color:var(--text3);">${mensaje}</div>
+      ${_rendNu>0.5?`<div style="font-size:11px;color:var(--text3);margin-top:8px;padding-top:8px;border-top:1px solid var(--border2);">+ ${fmt(_rendNu)} en rendimientos de Nu este mes <span style=\"opacity:.7\">(aparte: no cuentan en el balance ni en el ahorro)</span></div>`:''}
     `;
   }
 

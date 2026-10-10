@@ -249,7 +249,7 @@ function calcHealthScore(){
   // dentro del CDT — NO es efectivo disponible, así que NO se suma a ingresosMes
   // (que mide flujo de caja real para los ratios de deuda/gasto).
   // Se expone aparte para que la app "sepa" que ese rendimiento existe.
-  const rendimientoCDTMes = window.calcRendimientoCDTsMes ? window.calcRendimientoCDTsMes(mes) : 0;
+  const rendimientoCDTMes = Periodo.rendimientosDelMes(mes).total; // cajitas + CDTs (ver periodo.js)
 
   // ── Liquidez real (solo cuentas disponibles, sin CDTs bloqueados) ─────
   const nu = (S.cajitas||[]).reduce((a,c)=>a+(window.calcC?window.calcC(c).val:c.saldo||0),0);
@@ -720,3 +720,4 @@ _renderDispNetoTC();
     hero.parentNode.insertBefore(attnSection, hero.nextSibling);
   }
 })();
+

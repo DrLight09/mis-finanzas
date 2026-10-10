@@ -1146,7 +1146,7 @@ function _aplicarPerdon(p) {
     id: gastoPerdonId, monto, fecha, cat: 'Otro',
     desc: esTodo ? `Perdoné deuda — ${d.nombre}` : `Perdoné parte de la deuda — ${d.nombre}`, nota, fuente: '', ts: Date.now(),
     _secundario: true, _origenSeccion: 'Prestado · Me deben',
-    _esPerdonDeuda: true, _deudorId: d.id, _deudorMovId: perdonMovId
+    clase: 'gasto', _esPerdonDeuda: true, _deudorId: d.id, _deudorMovId: perdonMovId
   });
   d.movimientos.push({
     id: perdonMovId, tipo: esTodo ? 'pago-completo' : 'abono', monto, fecha, destino: '', nota,
@@ -1239,12 +1239,12 @@ function _aplicarExtraPartes(p, mov, v) {
     if (x.tipo === 'guardar') {
       if (!x.cuenta) continue;
       sumarFuente(x.cuenta, x.monto);
-      const movExtraId = registrarMovEspejo({ cuenta: x.cuenta, flujo: 'entrada', monto: x.monto, fecha, desc: v.descGuardar, origen: 'Prestado · Me deben', extra: v.extraIngreso ? { _esExtraIngreso: true } : undefined });
+      const movExtraId = registrarMovEspejo({ cuenta: x.cuenta, flujo: 'entrada', monto: x.monto, fecha, desc: v.descGuardar, origen: 'Prestado · Me deben', clase: v.extraIngreso ? 'ingreso' : 'neutro', extra: v.extraIngreso ? { _esExtraIngreso: true } : undefined });
       mov._extPartes.push({ tipo: 'guardar', cuenta: x.cuenta, monto: x.monto, movExtraId });
     } else if (x.tipo === 'gastar') {
       if (!S.gastosVar) S.gastosVar = [];
       const gastoId = uid();
-      S.gastosVar.push({ id: gastoId, monto: x.monto, fecha, cat: 'Varios', desc: x.desc || v.descGastar, fuente: '', ts: Date.now(), _esExtraPrestamo: true });
+      S.gastosVar.push({ id: gastoId, monto: x.monto, fecha, cat: 'Varios', desc: x.desc || v.descGastar, fuente: '', ts: Date.now(), clase: 'neutro', _esExtraPrestamo: true });
       mov._extPartes.push({ tipo: 'gastar', gastoId, monto: x.monto });
     } else if (x.tipo === 'regalar') {
       // No entra a ninguna cuenta — solo queda registrado en el abono del deudor
@@ -2163,6 +2163,7 @@ function _aplicarMovMiDeuda(p) {
       // _prestadoDirectamente: sin esta bandera, Inicio no cuenta una entrada sin cuenta (fuente '') como ingreso del mes
       // (ver el filtro de ingresosMes en inicio.js); es la misma que usa el margen de un préstamo (diferencial.js).
       _prestadoDirectamente: true,
+      clase: 'ingreso',
       _secundario: true, _origenSeccion: origen, _esPerdonRecibido: true, _deudaId: d.id, _deudaMovId: mov.id, ts: Date.now()
     });
     mov._perdon = true;
@@ -2175,7 +2176,7 @@ function _aplicarMovMiDeuda(p) {
     const gastoId = uid();
     S.gastosVar.push({
       id: gastoId, monto: extra, fecha, cat: 'Otro', desc: `Pagué de más — ${d.nombre}`, nota, fuente: '', ts: Date.now(),
-      _secundario: true, _origenSeccion: origen, _esExtraDeuda: true, _deudaId: d.id, _deudaMovId: mov.id
+      clase: 'gasto', _secundario: true, _origenSeccion: origen, _esExtraDeuda: true, _deudaId: d.id, _deudaMovId: mov.id
     });
     mov.extra = { monto: extra, gastoId };
   }

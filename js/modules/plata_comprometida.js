@@ -1335,7 +1335,7 @@ function _cpConfirmarRecibir(){
             sumarFuente(cuenta, d.monto);
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionCP:true → excluido del análisis de tendencia (no es ingreso nuevo, es devolución)
-            S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc, _esReposicionCP:true});
+            S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc, clase:'neutro', _esReposicionCP:true});
             if(window.logCambio) logCambio('Reposición en '+_cpFuenteLabel(cuenta), fmt(d.monto)+' de "'+item.desc+'"', d.monto, 'ingreso');
           }
         } else {
@@ -1350,7 +1350,7 @@ function _cpConfirmarRecibir(){
             sumarFuente(cuenta, d.monto);
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionCP:true → excluido del análisis de tendencia (devolución de plata que ya salió)
-            S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición (adelantada): '+item.desc, _esReposicionCP:true});
+            S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición (adelantada): '+item.desc, clase:'neutro', _esReposicionCP:true});
             if(window.logCambio) logCambio('Reposición (ya adelantada) en '+_cpFuenteLabel(cuenta), fmt(d.monto)+' repuesto', d.monto, 'ingreso');
           }
         }
@@ -1391,7 +1391,7 @@ function _cpConfirmarRecibir(){
               sumarFuente(destCajita, d.monto);
               if(!S.movimientos) S.movimientos = [];
               // _esReposicionCP:true → excluido del análisis de tendencia (es plata del ingreso comprometido, no tuya)
-              S.movimientos.push({id:uid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc, _esReposicionCP:true});
+              S.movimientos.push({id:uid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc, clase:'neutro', _esReposicionCP:true});
               if(window.logCambio) logCambio('Plata para pagar TC → '+_cpFuenteLabel(destCajita), fmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
             }
           }
@@ -1406,7 +1406,7 @@ function _cpConfirmarRecibir(){
             sumarFuente(d.gastoCajita, d.monto);
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionCP:true → excluido del análisis de tendencia (repone cajita, no es ingreso nuevo)
-            S.movimientos.push({id:uid(), tipo:'entrada', fuente:d.gastoCajita, monto:d.monto, fecha, desc:'Reposición gasto: '+d.desc, _esReposicionCP:true});
+            S.movimientos.push({id:uid(), tipo:'entrada', fuente:d.gastoCajita, monto:d.monto, fecha, desc:'Reposición gasto: '+d.desc, clase:'neutro', _esReposicionCP:true});
             if(window.logCambio) logCambio('Repuesto gasto en '+_cpFuenteLabel(d.gastoCajita), fmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
           }
         }
@@ -1435,14 +1435,14 @@ function _cpConfirmarRecibir(){
         sumarFuente(sobranteCuenta, ganancia);
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({id:uid(), tipo:'entrada', fuente:sobranteCuenta, monto:ganancia, fecha,
-          desc:'Ingreso libre: '+item.desc, _esSobrante:true});
+          desc:'Ingreso libre: '+item.desc, clase:'ingreso', _esSobrante:true});
         // Si es cuenta personalizada: registrar también en sus movimientos para que cuente en análisis
         if(sobranteCuenta.startsWith('custom:')){
           const cId = sobranteCuenta.split(':')[1];
           const cObj = getCuentaCustom(cId);
           if(cObj){
             if(!cObj.movimientos) cObj.movimientos = [];
-            cObj.movimientos.push({id:uid(), tipo:'ingreso', monto:ganancia, fecha,
+            cObj.movimientos.push({id:uid(), tipo:'ingreso', clase:'ingreso', monto:ganancia, fecha,
               nota:'Ingreso libre de "'+item.desc+'"'});
           }
         }

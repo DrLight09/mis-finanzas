@@ -982,6 +982,7 @@ window.alcanciaConfirmarDeposito = function(){
         fecha,
         desc: unica ? (descVal || info.desc) : (descVal ? descVal + ' (' + info.corto + ')' : info.desc),
         nota: info.nota,
+        clase: 'ingreso', // propio/regalo/mandado: plata que nunca estuvo en una cuenta (ver alcanciaConfirmarDeposito)
         _esAlcanciaIngreso: true,
         _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
@@ -1086,6 +1087,7 @@ window.alcanciaConfirmarDestapar = function(){
       fuente: destino,
       monto: saldoReg,
       fecha: hoyStr,
+      clase: 'neutro',
       desc: 'Alcancía destapada — saldo registrado',
       nota: 'Transferencia interna desde alcancía',
       _esAlcancia: true,
@@ -1105,6 +1107,7 @@ window.alcanciaConfirmarDestapar = function(){
       fuente: destino,
       monto: dif,
       fecha: hoyStr,
+      clase: 'ingreso',
       desc: 'Dinero extra encontrado en alcancía',
       nota: 'Ajuste: dinero físico no registrado previamente',
       _esAlcancia: true,
@@ -1120,6 +1123,7 @@ window.alcanciaConfirmarDestapar = function(){
     window.S.gastosVar = window.S.gastosVar || [];
     window.S.gastosVar.push({
       id: typeof uid==='function' ? uid() : Date.now().toString(36),
+      clase: 'gasto',
       desc: 'Ajuste alcancía — faltante',
       monto: absDif,
       fecha: hoyStr,

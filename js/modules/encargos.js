@@ -941,6 +941,7 @@ function _procesarMovEncMia(movimiento) {
       fuente: r.fuente,
       _fuenteDestino: destinoUnico,
       _encMovId: movimiento.id,
+      clase: 'neutro',
       _esIntercambioEncargo: true,
       _intercambioSalida: true,
       _secundario: true,
@@ -962,6 +963,7 @@ function _procesarMovEncMia(movimiento) {
       fuente: r.fuente,
       _fuenteDestino: origenUnico,
       _encMovId: movimiento.id,
+      clase: 'neutro',
       _esIntercambioEncargo: true,
       _intercambioEntrada: true,
       _secundario: true,
@@ -1247,6 +1249,7 @@ async function _confirmarUsarParte() {
         monto,
         fecha: hoy(),
         desc: `Margen encargo ${enc.nombre} — ${parte.desc}`,
+        clase: 'ingreso',
         _esExtraIngreso: true   // margen = plata nueva tuya (ver _esEntradaEspejoNoIngreso)
       });
     });
@@ -2298,6 +2301,7 @@ function confirmarTraspasoEncargo() {
         _secundario: true,
         _origenSeccion: 'Encargos',
         _encMovId: encMovId,
+        clase: 'ingreso',
         _esExtraIngreso: true,   // regalo recibido = ingreso real (ver _esEntradaEspejoNoIngreso)
         ts: Date.now()
       });
@@ -2312,6 +2316,7 @@ function confirmarTraspasoEncargo() {
       fecha,
       desc: desc + ' (de encargo ' + enc.nombre + ')',
       _encMovId: encMovId,
+      clase: 'ingreso',
       _esExtraIngreso: true   // regalo recibido = ingreso real (ver _esEntradaEspejoNoIngreso)
     });
   }
@@ -3178,6 +3183,7 @@ function confirmarCompraConTC() {
     tipo: 'entrada',
     fuente: destino,
     _encMovId,
+    clase: 'neutro',
     _esTcEncargo: true,
     monto: tcMonto,
     fecha,

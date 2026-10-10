@@ -477,6 +477,12 @@ function materializarIntereses(c){
   if(!c.fecha)c.fecha=hoy();
   const k=calcC(c);
   if(k.dias>0&&k.ganado>0.005){
+    // Antes de fundir el interés en el saldo, anota cuánto rindió en cada mes (c.rendimientos): sin esto
+    // se pierde para siempre en qué mes se ganó. No es un movimiento (no toca saldos ni historial):
+    // Periodo.rendimientosDelMes() lo lee para mostrar los rendimientos como una línea aparte del ingreso.
+    const porMes=rendimientoCajitaPorMes(c);
+    if(!c.rendimientos)c.rendimientos={};
+    Object.keys(porMes).forEach(mk=>{c.rendimientos[mk]=Math.round(((c.rendimientos[mk]||0)+porMes[mk])*100)/100;});
     c.saldo=k.val;
     c.fecha=hoy();
   }
@@ -2050,7 +2056,7 @@ function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota){
     mov=crearMovimientoApertura(monto,fecha,desc);
     mov.fuente=fuente;
   } else {
-    mov={id:uid(),tipo:'entrada',fuente,monto,fecha,desc:desc||''};
+    mov={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto,fecha,desc:desc||''};
   }
   if(nota)mov.nota=nota;
   S.movimientos.push(mov);
@@ -2065,7 +2071,9 @@ function registrarSalida(fuente,monto,fecha,desc,nota){
   // `nota` es opcional — ver nota en registrarEntradaConApertura de arriba.
   descontarFuente(fuente,monto);
   if(!S.movimientos)S.movimientos=[];
-  const mov={id:uid(),tipo:'salida_manual',fuente,monto,fecha,desc:desc||''};
+  // clase 'gasto': plata que sale del patrimonio sin pasar por un gasto registrado (simétrico a sumar dinero = ingreso;
+  // en la práctica se usa para cuadrar la diferencia entre lo registrado y lo real). Cuenta en Periodo.gastosDelMes.
+  const mov={id:uid(),tipo:'salida_manual',clase:'gasto',fuente,monto,fecha,desc:desc||''};
   if(nota)mov.nota=nota;
   S.movimientos.push(mov);
   return mov.desc;
@@ -2151,7 +2159,7 @@ function confirmarAgregarDineroMenu(){
   sumarFuente(fuente,v);
   // Registrar movimiento de entrada
   if(!S.movimientos)S.movimientos=[];
-  const _movAdMenu={id:uid(),tipo:'entrada',fuente,monto:v,fecha,desc};
+  const _movAdMenu={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto:v,fecha,desc};
   if(nota)_movAdMenu.nota=nota;
   S.movimientos.push(_movAdMenu);
   save();

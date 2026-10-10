@@ -608,6 +608,7 @@ function confirmarCompraTC(){
     id:uid(),desc,monto,fecha,cat,
     fuente:'tc:'+tc.id,
     nota:nota||'Compra en '+tc.nombre,
+    clase:'gasto',
     _esCompraTC:true,
     _tcId:tc.id,
     _tcCompraId:compra.id
@@ -670,6 +671,7 @@ async function confirmarCargoEspecialTC(){
     id:uid(),desc,monto,fecha,cat:'Cargo especial',
     fuente:'tc:'+tc.id,
     nota:nota||(motivoLbl+' cobrado por el banco en '+tc.nombre),
+    clase:'gasto',
     _esCompraTC:true,
     _tcId:tc.id,
     _tcCompraId:compra.id
@@ -775,6 +777,7 @@ function confirmarPagarTC(){
     cat:'Servicios',
     fuente,
     nota:nota||'Pago de tarjeta de crédito',
+    clase:'neutro',
     _esPagoTC:true,
     _tcId:tc.id,
     _tcPagoId:pago.id
@@ -1100,3 +1103,4 @@ if(ptcMonto)ptcMonto.addEventListener('input',ptcActualizarPreview);
     _patch();
   }
 })();
+

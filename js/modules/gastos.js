@@ -347,7 +347,7 @@ function addGastoVar() {
   const notaGasto = document.getElementById('gv_nota').value.trim();
   if (!S.gastosVar) S.gastosVar = [];
   const esTCFuente = fuente && fuente.startsWith('tc:');
-  const gastoObj = { id: compraId, desc, monto, fecha: fechaGasto, cat: catGasto, fuente, splits: splits || undefined, nota: notaGasto };
+  const gastoObj = { id: compraId, desc, monto, fecha: fechaGasto, cat: catGasto, fuente, splits: splits || undefined, nota: notaGasto, clase: 'gasto' };
   // Si la fuente es TC, registrar la compra a través del mismo servicio que
   // usa el módulo de tarjetas (tcCrearCompra) — misma lógica, un solo lugar.
   if (esTCFuente) {
@@ -630,7 +630,7 @@ function confirmarPagarGastoFijo() {
   }
   const nota = document.getElementById('pgf-nota') ? document.getElementById('pgf-nota').value.trim() : '';
   if (!S.gastosVar) S.gastosVar = [];
-  const gastoObj = { id: uid(), desc: 'Pago de ' + gf.nombre, monto: gf.monto, fecha, cat: gf.cat, fuente, nota: nota || 'Pago de gasto fijo', esPagoGastoFijo: true, gastoFijoId: gf.id };
+  const gastoObj = { id: uid(), desc: 'Pago de ' + gf.nombre, monto: gf.monto, fecha, cat: gf.cat, fuente, nota: nota || 'Pago de gasto fijo', clase: 'neutro', esPagoGastoFijo: true, gastoFijoId: gf.id }; // neutro: el pago ya cuenta en Periodo.gastosFijosDelMes
   if (fuente.startsWith('tc:')) {
     // Cargar el pago a la tarjeta (sube tc.deuda) en vez de descontar saldo de una
     // cuenta — misma ruta que addGastoVar() usa para un gasto variable con TC.

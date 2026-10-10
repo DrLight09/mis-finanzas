@@ -198,11 +198,18 @@ const Periodo = (() => {
   }
 
   /* ---- BALANCE ---- */
-  function balanceDelMes(mes, estado) {
-    const ingresos = ingresosDelMes(mes, estado);
+  // `opciones.conRendimientos` (solo Análisis lo pide): suma los rendimientos de Nu a los ingresos, de modo que el
+  // balance y la tasa de ahorro midan cuánto creció el patrimonio por ingresos − gastos (los intereses son plata
+  // nueva). Sin la opción el balance queda como flujo de caja operativo, que es lo que miden los ratios de deuda y
+  // gasto de Salud financiera, el cierre de mes y Wrapped. `ingresos.rendimientos` indica cuánto de `total` son intereses.
+  function balanceDelMes(mes, estado, opciones) {
+    const rendimientos = rendimientosDelMes(mes, estado);
+    const base = ingresosDelMes(mes, estado);
+    const ingresos = opciones && opciones.conRendimientos
+      ? Object.assign({}, base, { rendimientos: rendimientos.total, total: base.total + rendimientos.total })
+      : base;
     const gastos = gastosDelMes(mes, estado);
     const balance = ingresos.total - gastos.total;
-    const rendimientos = rendimientosDelMes(mes, estado);
     return { mes, ingresos, gastos, balance, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }
 

@@ -475,18 +475,9 @@ function _moneyValue(digits){
    dato ya está migrado, no hace nada). Nunca editar ni reordenar una existente.
    La versión guardada vive en S.schemaVersion. */
 const MIGRACIONES = [
-  { v: 1, nombre: 'línea base del modelo', fn(d) { /* sin cambios: marca el punto de partida */ } },
-  // v2: S.plataCometida → S.plataComprometida (nombre con typo en el modelo). Si por alguna razón
-  // existen las dos (un dispositivo con la app vieja escribió el campo viejo después de migrar),
-  // se juntan sin repetir ids.
-  { v: 2, nombre: 'plataCometida → plataComprometida', fn(d) {
-      if (!('plataCometida' in d)) return;
-      const nuevo = Array.isArray(d.plataComprometida) ? d.plataComprometida : [];
-      const ids = new Set(nuevo.map(i => i && i.id));
-      (Array.isArray(d.plataCometida) ? d.plataCometida : []).forEach(i => { if (!i || !ids.has(i.id)) nuevo.push(i); });
-      d.plataComprometida = nuevo;
-      delete d.plataCometida;
-  } },
+  // v1 (línea base) y v2 (S.plataCometida → S.plataComprometida) se retiraron el 2026-10-09: todos los datos
+  // guardados ya estaban en v2 y no quedan backups anteriores. La numeración sigue en v3 a propósito
+  // (S.schemaVersion de los datos existentes vale 2): no renumerar. Historial en CHANGELOG.md#infraestructura--seguridad.
   // v3: estampa `clase` en el histórico de movimientos (ver plan-clasificacion-movimientos.md §4.3).
   // Usa las reglas históricas UNA sola vez; lo que no se puede clasificar con certeza se deja
   // sin `clase` (se cuenta en console.info) y las lecturas siguen cayendo en la cascada.

@@ -96,7 +96,9 @@ function _fechasCambioEncargoEnCajita(cajitaId,desdeStr,hastaStr){
   return fechas;
 }
 
-function calcC(c){
+function calcC(c,hastaStr){
+  // hastaStr (opcional, 'YYYY-MM-DD'): calcula el valor a esa fecha en vez de hoy; se usa para repartir el
+  // interés por mes (ver rendimientoCajitaPorMes). Sin argumento todo funciona exactamente como siempre.
   // Interés diario compuesto sobre el saldo total físico en la cajita (propio + lo que haya
   // de encargos guardado ahí — Nu no distingue de quién es la plata al pagar interés; esos
   // intereses son del dueño de la cajita, ver nota en core-state.js). c.saldo guarda solo la
@@ -114,7 +116,8 @@ function calcC(c){
   const tasaHoy=_tasaVigenteEnFecha(hoy());
   const saldoEncargosHoy=_saldoEncargosEnCajita(c.id);
   if(!c.fecha||(!saldoPropio&&!saldoEncargosHoy))return{val:saldoPropio,ganado:0,dias:0,tasaDiaria:0,tasa:tasaHoy,saldoEncargos:saldoEncargosHoy};
-  const hoyStr=hoy();
+  const hoyStr=hastaStr||hoy();
+  if(hoyStr<=c.fecha)return{val:saldoPropio,ganado:0,dias:0,tasaDiaria:0,tasa:tasaHoy,saldoEncargos:saldoEncargosHoy};
   const cambiosTasa=(S.historialTasasNu||[]).filter(h=>h.fecha>c.fecha&&h.fecha<=hoyStr).map(h=>h.fecha);
   const cambiosEncargo=[..._fechasCambioEncargoEnCajita(c.id,c.fecha,hoyStr)];
   const puntos=[...new Set([c.fecha,...cambiosTasa,...cambiosEncargo,hoyStr])].sort();
@@ -142,6 +145,29 @@ function calcC(c){
   const ganado=val-saldoPropio;
   const tasaDiaria=Math.pow(1+tasaHoy/100,1/365)-1;
   return{val,ganado,dias:diasTotal,tasaDiaria,tasa:tasaHoy,saldoEncargos:saldoEncActual};
+}
+
+// Reparte por mes el interés que una cajita lleva acumulado SIN materializar (desde c.fecha hasta hoy):
+// { 'YYYY-MM': pesos }. Es la misma cuenta de calcC() cortada en cada fin de mes (la suma de los meses da
+// calcC(c).ganado). Sirve para saber cuánto rindió la cajita EN un mes, no solo en total.
+function rendimientoCajitaPorMes(c){
+  const out={};
+  if(!c||!c.fecha)return out;
+  const hasta=hoy();
+  if(hasta<=c.fecha)return out;
+  const p2=n=>String(n).padStart(2,'0');
+  let[a,m]=c.fecha.slice(0,7).split('-').map(Number);
+  let prev=0;
+  for(;;){
+    const mes=a+'-'+p2(m);
+    const fin=mes+'-'+p2(new Date(a,m,0).getDate());
+    if(fin>=hasta)break; // el último tramo (hasta hoy) se cierra abajo
+    if(fin>c.fecha){const g=calcC(c,fin).ganado;out[mes]=g-prev;prev=g;}
+    m++;if(m>12){m=1;a++;}
+  }
+  out[hasta.slice(0,7)]=(out[hasta.slice(0,7)]||0)+(calcC(c,hasta).ganado-prev);
+  Object.keys(out).forEach(k=>{if(!(out[k]>0))delete out[k];});
+  return out;
 }
 
 // Calcula intereses del CDT de una cajita
@@ -240,3 +266,4 @@ function getCajitaNombre(fuente) {
   const c = (S.cajitas || []).find(x => x.id === id);
   return c ? (c.nombre || 'Cajita') : null;
 }
+

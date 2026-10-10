@@ -423,7 +423,7 @@ function diffAplicar(instId, movimiento, linkId) {
       S.movimientos.push({
         id: uid(), tipo: 'entrada', fuente: r.fuente,
         ...(linkId ? { _encMovId: linkId } : {}),
-        _esDiferencialEncargo: true,
+        clase: 'ingreso', _esDiferencialEncargo: true,
         ..._sec,
         _difDijo: dijo, _difReal: real, _difMargen: margen,
         monto: r.monto, fecha,
@@ -439,7 +439,7 @@ function diffAplicar(instId, movimiento, linkId) {
     S.movimientos.push({
       id: uid(), tipo: 'entrada', fuente: '',
       ...(linkId ? { _encMovId: linkId } : {}),
-      _esDiferencialEncargo: true,
+      clase: 'ingreso', _esDiferencialEncargo: true,
       ..._sec,
       _difDijo: dijo, _difReal: real, _difMargen: margen,
       monto: yoMeQuedoFantasma, fecha,
@@ -461,7 +461,7 @@ function diffAplicar(instId, movimiento, linkId) {
       S.movimientos.push({
         id: uid(), tipo: 'transferencia', fuente: cuentaSalida, _fuenteDestino: cuentaEntrada || '',
         ...(linkId ? { _encMovId: linkId } : {}),
-        _esIntercambioEncargo: true, _intercambioSalida: true,
+        clase: 'neutro', _esIntercambioEncargo: true, _intercambioSalida: true,
         ..._sec,
         monto: b.monto, fecha,
         desc: `Intercambio: le di a ${nombreBenef} de mi ${fuenteLabel(cuentaSalida)}`,
@@ -474,7 +474,7 @@ function diffAplicar(instId, movimiento, linkId) {
       S.movimientos.push({
         id: uid(), tipo: 'transferencia', fuente: cuentaEntrada, _fuenteDestino: cuentaSalida || '',
         ...(linkId ? { _encMovId: linkId } : {}),
-        _esIntercambioEncargo: true, _intercambioEntrada: true,
+        clase: 'neutro', _esIntercambioEncargo: true, _intercambioEntrada: true,
         ..._sec,
         monto: b.monto, fecha,
         desc: `Intercambio: recupero de ${nombreBenef} en ${fuenteLabel(cuentaEntrada)}`,
@@ -560,3 +560,4 @@ Events.registerAll('diferencial', {
   removeParte: diffRemoveParte,
   togglePagoYo: diffTogglePagoYo,
 });
+

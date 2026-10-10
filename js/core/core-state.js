@@ -178,7 +178,7 @@ function crearMovimientoApertura(monto,fecha,nota){
   // registrar un saldo inicial en un array de movimientos propio (ej: cuenta
   // personalizada recién creada) debe usar esto en vez de armar el objeto a mano,
   // así el tipo y la forma del movimiento quedan consistentes en toda la app.
-  return {id:uid(),tipo:'apertura',monto,fecha:fecha||hoy(),desc:nota||'Saldo inicial',nota:nota||'Saldo inicial'};
+  return {id:uid(),tipo:'apertura',clase:'ajuste',monto,fecha:fecha||hoy(),desc:nota||'Saldo inicial',nota:nota||'Saldo inicial'};
 }
 // Escapa caracteres HTML para prevenir XSS al insertar datos de usuario en innerHTML
 function escHtml(s){if(!s&&s!==0)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
@@ -486,8 +486,57 @@ const MIGRACIONES = [
       (Array.isArray(d.plataCometida) ? d.plataCometida : []).forEach(i => { if (!i || !ids.has(i.id)) nuevo.push(i); });
       d.plataComprometida = nuevo;
       delete d.plataCometida;
-  } }
+  } },
+  // v3: estampa `clase` en el histórico de movimientos (ver plan-clasificacion-movimientos.md §4.3).
+  // Usa las reglas históricas UNA sola vez; lo que no se puede clasificar con certeza se deja
+  // sin `clase` (se cuenta en console.info) y las lecturas siguen cayendo en la cascada.
+  { v: 3, nombre: 'clase explícita en movimientos', fn(d) { estamparClasesMovimientos(d); } }
 ];
+// Clase de un movimiento ya existente según las reglas históricas, o null si no hay certeza.
+// `origen`: 'movimientos' (S.movimientos), 'custom' (cuenta.movimientos), 'cajita' (cajita.historial)
+// o 'gastosVar'. Solo se clasifica lo que los lectores de ingreso/gasto realmente consultan más
+// lo que es inequívoco (apertura = ajuste, transferencia propia o espejo = neutro).
+function deducirClaseMovimiento(m, origen){
+  if(!m || typeof m !== 'object') return null;
+  if(origen === 'gastosVar') return _esGastoVarNoRealLegacy(m) ? 'neutro' : 'gasto';
+  const t = m.tipo;
+  // cajita.historial solo lo escribe registrarMovEspejo(): todo lo que hay ahí es un espejo, y solo es
+  // plata nueva (ingreso) si lleva una bandera explícita (extra de Spotify, extra de un pago de deuda,
+  // perdón recibido, diferencial). Sin esto, un espejo viejo sin etiquetas se leería como ingreso.
+  if(origen === 'cajita' && (t === 'entrada' || t === 'ingreso'))
+    return (m._esExtraIngreso || m._esPerdonRecibido || m._esDiferencialEncargo) ? 'ingreso' : 'neutro';
+  if(t === 'entrada' || t === 'ingreso') return _esEntradaEspejoNoIngresoLegacy(m) ? 'neutro' : 'ingreso';
+  if(t === 'apertura') return 'ajuste';
+  if(t === 'transferencia') return 'neutro';
+  if((t === 'salida' || t === 'egreso') && m._esEspejo) return 'neutro';
+  // 'Restar dinero': plata que sale del patrimonio sin gasto registrado. Es el opuesto de 'Sumar dinero' (ingreso).
+  if(t === 'salida_manual') return 'gasto';
+  return null; // salida/egreso sin etiqueta de espejo: no se adivina
+}
+
+// Clase de un movimiento: la guardada, o (si todavía no la tiene) la deducida. null = sin certeza.
+function claseEfectivaMovimiento(m, origen){
+  if(!m) return null;
+  return _claseValida(m.clase) ? m.clase : deducirClaseMovimiento(m, origen);
+}
+
+// Estampa `clase` en los movimientos que no la tengan. Idempotente. Devuelve el conteo para auditar.
+function estamparClasesMovimientos(d, opciones){
+  const r = { estampados: 0, yaTenian: 0, sinClase: 0, porClase: { ingreso: 0, gasto: 0, neutro: 0, ajuste: 0 } };
+  const pasar = (lista, origen) => (Array.isArray(lista) ? lista : []).forEach(m => {
+    if(!m || typeof m !== 'object') return;
+    if(_claseValida(m.clase)){ r.yaTenian++; r.porClase[m.clase]++; return; }
+    const c = deducirClaseMovimiento(m, origen);
+    if(c){ m.clase = c; r.estampados++; r.porClase[c]++; } else r.sinClase++;
+  });
+  pasar(d.movimientos, 'movimientos');
+  pasar(d.gastosVar, 'gastosVar');
+  (Array.isArray(d.cuentas) ? d.cuentas : []).forEach(c => { if(c) pasar(c.movimientos, 'custom'); });
+  (Array.isArray(d.cajitas) ? d.cajitas : []).forEach(c => { if(c) pasar(c.historial, 'cajita'); });
+  if(r.sinClase && !(opciones && opciones.silencioso) && typeof console !== 'undefined') console.info('[migraciones] v3: ' + r.sinClase + ' movimientos sin clase (salidas sin etiqueta de espejo): se leen con las reglas históricas');
+  return r;
+}
+
 const SCHEMA_VERSION_ACTUAL = MIGRACIONES[MIGRACIONES.length - 1].v;
 
 function aplicarMigraciones(d) {
@@ -618,6 +667,14 @@ function save(){
     c.tasa=getNuTasaGlobal();
     if(!c.fecha)c.fecha=hoy();
   });
+  // Red de seguridad de la clase (plan-clasificacion-movimientos.md): todo movimiento sale a la nube con
+  // `clase`. Los módulos la escriben al crear; si alguno (o un dispositivo con la app vieja) no lo hizo,
+  // se deduce aquí con las mismas reglas de la migración v3 y se avisa UNA vez por sesión en consola.
+  const _red = estamparClasesMovimientos(S, { silencioso: true });
+  if(_red.estampados && !window._claseRedAvisada){
+    window._claseRedAvisada = true;
+    console.warn('[clase] ' + _red.estampados + ' movimiento(s) llegaron sin clase explícita y se estamparon por deducción: revisar qué módulo los creó.');
+  }
   snapshotPatrimonio();
   // Guardar en Firebase con debounce de 1.5s
   if(typeof window._fbSaveToCloud === 'function') {
@@ -872,7 +929,24 @@ function getIngresosFijosMes(mesK){ return Periodo.ingresosFijosDelMes(mesK); }
 // - Encargos (_esIntercambioEncargo/_intercambioEntrada/_encMovId, desc "Margen..."):
 //   es capital o margen de encargo que se maneja aparte.
 // - _esReposicionCP: devolución de plata comprometida que ya salió antes.
+// ── CLASE EXPLÍCITA (plan-clasificacion-movimientos.md, etapa 1) ──
+// Cada movimiento nace con `clase`: 'ingreso' (sube el patrimonio), 'gasto' (lo baja),
+// 'neutro' (mueve plata sin cambiar el patrimonio: el "espejo") o 'ajuste' (corrección de
+// datos, ej. apertura de cuenta). Si el movimiento trae `clase`, ESA manda; si no (datos o
+// módulos que todavía no la escriben) se cae a la cascada histórica de más abajo, que es
+// la que la migración v3 usa UNA vez para estamparla en el histórico.
+const CLASES_MOV = ['ingreso', 'gasto', 'neutro', 'ajuste'];
+const _claseValida = c => CLASES_MOV.indexOf(c) !== -1;
+
 function _esEntradaEspejoNoIngreso(m){
+  if(!m) return false;
+  if(_claseValida(m.clase)) return m.clase !== 'ingreso';
+  return _esEntradaEspejoNoIngresoLegacy(m);
+}
+
+// Cascada histórica (ANOTADA COMO OBSOLETA: se borra en la etapa E5, cuando todos los
+// módulos escriban `clase`). Solo la usan el fallback de arriba y deducirClaseMovimiento().
+function _esEntradaEspejoNoIngresoLegacy(m){
   if(!m) return false;
   // Extra/propina recibida sobre un pago de deuda (Prestado, rama normal): ingreso real,
   // aunque su _origenSeccion sea 'Prestado' (que por sí solo lo marcaría como espejo).
@@ -915,6 +989,7 @@ function _esEntradaEspejoNoIngreso(m){
 //   · S.movimientos tipo 'entrada' que no sean espejo (_esEntradaEspejoNoIngreso).
 //   · c.movimientos tipo 'ingreso' de cuentas personalizadas, que no sean espejo
 //     (los espejos nuevos de Prestado a una cuenta personalizada solo viven ahí).
+//   · cajita.historial tipo 'entrada' con clase 'ingreso' (extras que entran directo a una cajita).
 //   · Datos VIEJOS de cuentas personalizadas escritos en las dos listas con el mismo id
 //     (confirmarMovCustom(), ya retirada): se cuentan UNA vez, por la lista de la cuenta.
 // `estado` es opcional (por defecto S): Wrapped recibe el estado como parámetro.
@@ -933,6 +1008,15 @@ function entradasIngresoReal(estado){
     if(m.fuente && m.fuente.startsWith('custom:') && idsEnCuenta.has(m.id)) return; // ya contada arriba
     lista.push(m);
   });
+  // Cajitas de Nu: su historial solo guarda espejos, pero un espejo con clase 'ingreso' es plata NUEVA que
+  // entró directo a la cajita (extra/propina de Spotify, extra de un pago de deuda, perdón recibido): es
+  // ingreso del mes aunque nunca pase por Nequi/Efectivo. Antes no se contaba (solo se leían S.movimientos
+  // y las cuentas personalizadas), así que el patrimonio subía y el ingreso del mes no.
+  const ids = new Set(lista.map(m => m.id).filter(Boolean));
+  (st.cajitas||[]).forEach(c => ((c && c.historial) || []).forEach(m => {
+    if(!m || m.tipo!=='entrada' || (m.id && ids.has(m.id))) return;
+    if(claseEfectivaMovimiento(m, 'cajita') === 'ingreso') lista.push(m);
+  }));
   return lista;
 }
 
@@ -953,6 +1037,12 @@ function ingresosRealesDelMes(mes, estado){
 // Centralizado acá para que un flag nuevo de exclusión no tenga que agregarse a mano en
 // cada pantalla — ya pasó dos veces que un filtro se corrigiera en un lugar y no en otro.
 function _esGastoVarNoReal(g){
+  if(!g) return false;
+  if(_claseValida(g.clase)) return g.clase !== 'gasto';
+  return _esGastoVarNoRealLegacy(g);
+}
+// Reglas históricas (OBSOLETAS, ver nota en _esEntradaEspejoNoIngresoLegacy).
+function _esGastoVarNoRealLegacy(g){
   if(!g) return false;
   if(g.esPagoGastoFijo) return true;
   if(g._esPagoTC) return true;

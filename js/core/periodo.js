@@ -130,8 +130,18 @@ const Periodo = (() => {
 
   const gastosFijosDelMes = (mes, estado) => pagosFijos(estado).filter(p => p.mes === mes);
 
+  // 'Restar dinero' (S.movimientos tipo 'salida_manual', clase 'gasto'): plata que salió del patrimonio sin un
+  // gasto registrado, normalmente para cuadrar lo registrado con lo real. Es el opuesto de sumar dinero
+  // (ingreso), así que cuenta como gasto del mes, en la categoría 'Ajuste'. Se agrupa con los variables.
+  function retirosManuales(estado) {
+    return (_st(estado).movimientos || [])
+      .filter(m => m && m.tipo === 'salida_manual' && claseEfectivaMovimiento(m, 'movimientos') === 'gasto')
+      .map(m => ({ id: m.id, monto: m.monto || 0, fecha: m.fecha, cat: 'Ajuste', desc: m.desc || m.nota || 'Retiro manual', fuente: m.fuente, _esRetiroManual: true }));
+  }
+
   const gastosVarRealesDelMes = (mes, estado) =>
-    (_st(estado).gastosVar || []).filter(g => mesKey(g.fecha) === mes && !_esGastoVarNoReal(g));
+    (_st(estado).gastosVar || []).filter(g => mesKey(g.fecha) === mes && !_esGastoVarNoReal(g))
+      .concat(retirosManuales(estado).filter(r => mesKey(r.fecha) === mes));
 
   // { variables:[gastos], fijos:[pagos], gvTotal, gfTotal, total, items }
   // `items` junta ambos (cada uno con cat y monto) para agrupar por categoría.
@@ -151,6 +161,7 @@ const Periodo = (() => {
       const k = mesKey(g.fecha);
       if (k) out[k] = (out[k] || 0) + (g.monto || 0);
     });
+    retirosManuales(estado).forEach(r => { const k = mesKey(r.fecha); if (k) out[k] = (out[k] || 0) + r.monto; });
     pagosFijos(estado).forEach(p => { out[p.mes] = (out[p.mes] || 0) + p.monto; });
     return out;
   }
@@ -165,17 +176,40 @@ const Periodo = (() => {
     return out;
   }
 
+  /* ---- RENDIMIENTOS (intereses de Nu) ---- */
+  // Los intereses de las cajitas y CDTs de Nu SON ingreso económico (plata nueva que antes no tenías), pero no
+  // entran en `ingresosDelMes().total`: ese total mide flujo de caja operativo y alimenta los ratios de deuda y
+  // ahorro de Inicio, y un CDT ni siquiera es plata disponible. Se reportan aparte, sumando:
+  //  · cajitas: lo ya materializado (c.rendimientos, anotado por mes al materializar) + lo acumulado sin
+  //    materializar, repartido por mes (rendimientoCajitaPorMes). Meses anteriores a que existiera el registro
+  //    por mes no se pueden reconstruir y salen en 0.
+  //  · CDTs: calcRendimientoCDTsMes(), exacto para cualquier mes.
+  // Con un `estado` distinto del global solo se lee lo ya anotado (el cálculo en vivo depende de S).
+  function rendimientosDelMes(mes, estado) {
+    const st = _st(estado), esGlobal = st === S;
+    let cajitas = 0;
+    (st.cajitas || []).forEach(c => {
+      if (!c) return;
+      cajitas += (c.rendimientos && c.rendimientos[mes]) || 0;
+      if (esGlobal && typeof rendimientoCajitaPorMes === 'function') cajitas += rendimientoCajitaPorMes(c)[mes] || 0;
+    });
+    const cdts = esGlobal && typeof calcRendimientoCDTsMes === 'function' ? calcRendimientoCDTsMes(mes) : 0;
+    return { cajitas, cdts, total: cajitas + cdts };
+  }
+
   /* ---- BALANCE ---- */
   function balanceDelMes(mes, estado) {
     const ingresos = ingresosDelMes(mes, estado);
     const gastos = gastosDelMes(mes, estado);
     const balance = ingresos.total - gastos.total;
-    return { mes, ingresos, gastos, balance, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
+    const rendimientos = rendimientosDelMes(mes, estado);
+    return { mes, ingresos, gastos, balance, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }
 
   return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosDelMes,
-           pagosFijos, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPorCategoria, balanceDelMes };
+           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPorCategoria, balanceDelMes };
 })();
 
 // Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.
 if (typeof window !== 'undefined') window.Periodo = Periodo;
+

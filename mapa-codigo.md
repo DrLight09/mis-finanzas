@@ -13,7 +13,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
 | `js/core/calc-helpers.js` | de entrada (defer) | 15 | 0 |
 | `js/core/color-picker.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
-| `js/core/core-state.js` | de entrada (defer) | 65 | 8 |
+| `js/core/core-state.js` | de entrada (defer) | 71 | 9 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
@@ -30,7 +30,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/money-input.js` | de entrada (defer) | 1 | 0 |
 | `js/core/movimientos.js` | de entrada (defer) | 5 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 1 | 0 |
-| `js/core/nu-calc.js` | de entrada (defer) | 14 | 0 |
+| `js/core/nu-calc.js` | de entrada (defer) | 15 | 0 |
 | `js/core/periodo.js` | de entrada (defer) | 1 | 0 |
 | `js/core/personas-init.js` | de entrada (defer) | 1 | 0 |
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
@@ -92,9 +92,9 @@ Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ajusteAlcanciaPorFecha`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_listaFuentes`, `_moneyRender`, `_moneyValue`, `_patrimonioDependenciasListas`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
+**Funciones:** `_ajusteAlcanciaPorFecha`, `_claseValida`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esEntradaEspejoNoIngresoLegacy`, `_esGastoVarNoReal`, `_esGastoVarNoRealLegacy`, `_fechaSafe`, `_listaFuentes`, `_moneyRender`, `_moneyValue`, `_patrimonioDependenciasListas`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `claseEfectivaMovimiento`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `deducirClaseMovimiento`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `estamparClasesMovimientos`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
 
-**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CUENTAS_FIJAS`, `MAX`, `MC`, `MIGRACIONES`, `S`, `SCHEMA_VERSION_ACTUAL`
+**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CUENTAS_FIJAS`, `MAX`, `MC`, `MIGRACIONES`, `S`, `SCHEMA_VERSION_ACTUAL`
 
 **Asigna a `window`:** `_dialogResolve`, `_locallyModified`
 
@@ -198,7 +198,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_diasEntreFechas`, `_fechasCambioEncargoEnCajita`, `_rendimientoCDTaDias`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasaNu`, `_tasaVigenteEnFecha`, `calcC`, `calcCDT`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `getCajitaNombre`, `getNuTasaGlobal`, `nuTotal`
+**Funciones:** `_diasEntreFechas`, `_fechasCambioEncargoEnCajita`, `_rendimientoCDTaDias`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasaNu`, `_tasaVigenteEnFecha`, `calcC`, `calcCDT`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `getCajitaNombre`, `getNuTasaGlobal`, `nuTotal`, `rendimientoCajitaPorMes`
 
 ### `js/core/periodo.js`
 
@@ -448,6 +448,7 @@ Ninguno.
 | `_cancelarCobrarCDT` | `js/modules/cuentas.js` |
 | `_cdtModoSheet` | `js/modules/cuentas.js` |
 | `_checkGastoAlto` | `js/modules/inicio.js` |
+| `_claseValida` | `js/core/core-state.js` |
 | `_closeDialog` | `js/core/core-state.js` |
 | `_colorDeuda` | `js/modules/prestado.js` |
 | `_confirmarMoverEncCuentasSplit` | `js/modules/encargos.js` |
@@ -530,7 +531,9 @@ Ninguno.
 | `_encSplitKey` | `js/modules/encargos.js` |
 | `_ensureMesadas` | `js/core/calc-helpers.js` |
 | `_esEntradaEspejoNoIngreso` | `js/core/core-state.js` |
+| `_esEntradaEspejoNoIngresoLegacy` | `js/core/core-state.js` |
 | `_esGastoVarNoReal` | `js/core/core-state.js` |
+| `_esGastoVarNoRealLegacy` | `js/core/core-state.js` |
 | `_espejoLista` | `js/core/cuenta-efectos.js` |
 | `_fechaSafe` | `js/core/core-state.js` |
 | `_fechasCambioEncargoEnCajita` | `js/core/nu-calc.js` |
@@ -962,6 +965,8 @@ Ninguno.
 | `CATS_FIJO_DEFAULT` | `js/core/core-state.js` |
 | `CATS_VAR_DEFAULT` | `js/core/core-state.js` |
 | `cerrarPartSheet` | `js/modules/encargos.js` |
+| `claseEfectivaMovimiento` | `js/core/core-state.js` |
+| `CLASES_MOV` | `js/core/core-state.js` |
 | `clickMesDot` | `js/modules/mesada.js` |
 | `closeSheet` | `js/core/sheet-stack.js` |
 | `closeSwipeSheet` | `js/modules/alcancia.js` |
@@ -1002,6 +1007,7 @@ Ninguno.
 | `CUENTAS_FIJAS_SELECTOR` | `js/modules/cuentas.js` |
 | `cuentasCustom` | `js/core/core-state.js` |
 | `debounceSave` | `js/core/core-state.js` |
+| `deducirClaseMovimiento` | `js/core/core-state.js` |
 | `deleteCajita` | `js/modules/cuentas.js` |
 | `deleteGastoFijo` | `js/modules/gastos.js` |
 | `deleteGastoVar` | `js/modules/gastos.js` |
@@ -1062,6 +1068,7 @@ Ninguno.
 | `entradasIngresoReal` | `js/core/core-state.js` |
 | `escHtml` | `js/core/core-state.js` |
 | `escHtml2` | `js/modules/wrapped.js` |
+| `estamparClasesMovimientos` | `js/core/core-state.js` |
 | `Events` | `js/core/events.js` |
 | `exportarCSV` | `js/modules/configuracion.js` |
 | `exportarJSON` | `js/modules/configuracion.js` |
@@ -1229,6 +1236,7 @@ Ninguno.
 | `renderTCDashboard` | `js/modules/tarjetas_credito.js` |
 | `renderTCScreen` | `js/modules/tarjetas_credito.js` |
 | `renderWrapped` | `js/modules/wrapped.js` (window.renderWrapped = …) |
+| `rendimientoCajitaPorMes` | `js/core/nu-calc.js` |
 | `resolverPendienteSpHistorial` | `js/modules/spotify.js` |
 | `S` | `js/core/core-state.js` |
 | `save` | `js/core/core-state.js` |

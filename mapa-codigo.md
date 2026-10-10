@@ -92,7 +92,7 @@ Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ajusteAlcanciaPorFecha`, `_claseValida`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esEntradaEspejoNoIngresoLegacy`, `_esGastoVarNoReal`, `_esGastoVarNoRealLegacy`, `_fechaSafe`, `_listaFuentes`, `_moneyRender`, `_moneyValue`, `_patrimonioDependenciasListas`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `claseEfectivaMovimiento`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `deducirClaseMovimiento`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `estamparClasesMovimientos`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
+**Funciones:** `_ajusteAlcanciaPorFecha`, `_claseValida`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_listaFuentes`, `_moneyRender`, `_moneyValue`, `_patrimonioDependenciasListas`, `_reglaHistoricaEntradaEspejo`, `_reglaHistoricaGastoVarNoReal`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `claseEfectivaMovimiento`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `deducirClaseMovimiento`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `estamparClasesMovimientos`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
 
 **Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CUENTAS_FIJAS`, `MAX`, `MC`, `MIGRACIONES`, `S`, `SCHEMA_VERSION_ACTUAL`
 
@@ -531,9 +531,7 @@ Ninguno.
 | `_encSplitKey` | `js/modules/encargos.js` |
 | `_ensureMesadas` | `js/core/calc-helpers.js` |
 | `_esEntradaEspejoNoIngreso` | `js/core/core-state.js` |
-| `_esEntradaEspejoNoIngresoLegacy` | `js/core/core-state.js` |
 | `_esGastoVarNoReal` | `js/core/core-state.js` |
-| `_esGastoVarNoRealLegacy` | `js/core/core-state.js` |
 | `_espejoLista` | `js/core/cuenta-efectos.js` |
 | `_fechaSafe` | `js/core/core-state.js` |
 | `_fechasCambioEncargoEnCajita` | `js/core/nu-calc.js` |
@@ -682,6 +680,8 @@ Ninguno.
 | `_prtcDifResumen` | `js/modules/prestado.js` |
 | `_prtcDifToggle` | `js/modules/prestado.js` |
 | `_refreshCajitaDet` | `js/modules/cuentas.js` |
+| `_reglaHistoricaEntradaEspejo` | `js/core/core-state.js` |
+| `_reglaHistoricaGastoVarNoReal` | `js/core/core-state.js` |
 | `_renderColorPicker` | `js/modules/personas.js` |
 | `_renderDetalleCajita` | `js/modules/cuentas.js` |
 | `_renderDetalleSimple` | `js/modules/cuentas.js` |

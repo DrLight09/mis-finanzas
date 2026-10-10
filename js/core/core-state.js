@@ -489,14 +489,14 @@ const MIGRACIONES = [
 // lo que es inequívoco (apertura = ajuste, transferencia propia o espejo = neutro).
 function deducirClaseMovimiento(m, origen){
   if(!m || typeof m !== 'object') return null;
-  if(origen === 'gastosVar') return _esGastoVarNoRealLegacy(m) ? 'neutro' : 'gasto';
+  if(origen === 'gastosVar') return _reglaHistoricaGastoVarNoReal(m) ? 'neutro' : 'gasto';
   const t = m.tipo;
   // cajita.historial solo lo escribe registrarMovEspejo(): todo lo que hay ahí es un espejo, y solo es
   // plata nueva (ingreso) si lleva una bandera explícita (extra de Spotify, extra de un pago de deuda,
   // perdón recibido, diferencial). Sin esto, un espejo viejo sin etiquetas se leería como ingreso.
   if(origen === 'cajita' && (t === 'entrada' || t === 'ingreso'))
     return (m._esExtraIngreso || m._esPerdonRecibido || m._esDiferencialEncargo) ? 'ingreso' : 'neutro';
-  if(t === 'entrada' || t === 'ingreso') return _esEntradaEspejoNoIngresoLegacy(m) ? 'neutro' : 'ingreso';
+  if(t === 'entrada' || t === 'ingreso') return _reglaHistoricaEntradaEspejo(m) ? 'neutro' : 'ingreso';
   if(t === 'apertura') return 'ajuste';
   if(t === 'transferencia') return 'neutro';
   if((t === 'salida' || t === 'egreso') && m._esEspejo) return 'neutro';
@@ -658,9 +658,9 @@ function save(){
     c.tasa=getNuTasaGlobal();
     if(!c.fecha)c.fecha=hoy();
   });
-  // Red de seguridad de la clase (plan-clasificacion-movimientos.md): todo movimiento sale a la nube con
-  // `clase`. Los módulos la escriben al crear; si alguno (o un dispositivo con la app vieja) no lo hizo,
-  // se deduce aquí con las mismas reglas de la migración v3 y se avisa UNA vez por sesión en consola.
+  // Normalizador permanente de la clase (plan-clasificacion-movimientos.md): todo movimiento sale a la nube con
+  // `clase`, así los datos guardados quedan completos para cualquier lector. Los módulos la escriben al crear; si
+  // alguno no lo hizo, se deduce aquí con las reglas congeladas y se avisa UNA vez por sesión en consola.
   const _red = estamparClasesMovimientos(S, { silencioso: true });
   if(_red.estampados && !window._claseRedAvisada){
     window._claseRedAvisada = true;
@@ -924,20 +924,23 @@ function getIngresosFijosMes(mesK){ return Periodo.ingresosFijosDelMes(mesK); }
 // Cada movimiento nace con `clase`: 'ingreso' (sube el patrimonio), 'gasto' (lo baja),
 // 'neutro' (mueve plata sin cambiar el patrimonio: el "espejo") o 'ajuste' (corrección de
 // datos, ej. apertura de cuenta). Si el movimiento trae `clase`, ESA manda; si no (datos o
-// módulos que todavía no la escriben) se cae a la cascada histórica de más abajo, que es
-// la que la migración v3 usa UNA vez para estamparla en el histórico.
+// módulos que todavía no la escriben) se DEDUCE con las reglas históricas congeladas de más
+// abajo (_reglaHistoricaEntradaEspejo / _reglaHistoricaGastoVarNoReal), las mismas que usó la
+// migración v3 para estamparla en el histórico. Todo lector pasa por claseEfectivaMovimiento():
+// no hay otro camino que mire etiquetas.
 const CLASES_MOV = ['ingreso', 'gasto', 'neutro', 'ajuste'];
 const _claseValida = c => CLASES_MOV.indexOf(c) !== -1;
 
 function _esEntradaEspejoNoIngreso(m){
   if(!m) return false;
-  if(_claseValida(m.clase)) return m.clase !== 'ingreso';
-  return _esEntradaEspejoNoIngresoLegacy(m);
+  return claseEfectivaMovimiento(m, 'movimientos') !== 'ingreso';
 }
 
-// Cascada histórica (ANOTADA COMO OBSOLETA: se borra en la etapa E5, cuando todos los
-// módulos escriban `clase`). Solo la usan el fallback de arriba y deducirClaseMovimiento().
-function _esEntradaEspejoNoIngresoLegacy(m){
+// REGLAS HISTÓRICAS CONGELADAS (plan-clasificacion-movimientos.md, E5). Es la cascada de etiquetas con la
+// que se clasificaba antes de existir `clase`. YA NO SE EDITA: un módulo nuevo escribe `clase` al crear el
+// movimiento (tests/clase-cobertura.test.js lo exige) y esto solo se aplica a un movimiento que llegue sin
+// ella, vía deducirClaseMovimiento() (migración v3 y red de seguridad de save()).
+function _reglaHistoricaEntradaEspejo(m){
   if(!m) return false;
   // Extra/propina recibida sobre un pago de deuda (Prestado, rama normal): ingreso real,
   // aunque su _origenSeccion sea 'Prestado' (que por sí solo lo marcaría como espejo).
@@ -1029,11 +1032,10 @@ function ingresosRealesDelMes(mes, estado){
 // cada pantalla — ya pasó dos veces que un filtro se corrigiera en un lugar y no en otro.
 function _esGastoVarNoReal(g){
   if(!g) return false;
-  if(_claseValida(g.clase)) return g.clase !== 'gasto';
-  return _esGastoVarNoRealLegacy(g);
+  return claseEfectivaMovimiento(g, 'gastosVar') !== 'gasto';
 }
-// Reglas históricas (OBSOLETAS, ver nota en _esEntradaEspejoNoIngresoLegacy).
-function _esGastoVarNoRealLegacy(g){
+// Reglas históricas CONGELADAS (ver nota en _reglaHistoricaEntradaEspejo).
+function _reglaHistoricaGastoVarNoReal(g){
   if(!g) return false;
   if(g.esPagoGastoFijo) return true;
   if(g._esPagoTC) return true;

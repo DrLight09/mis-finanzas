@@ -136,7 +136,7 @@ const Periodo = (() => {
   function retirosManuales(estado) {
     return (_st(estado).movimientos || [])
       .filter(m => m && m.tipo === 'salida_manual' && claseEfectivaMovimiento(m, 'movimientos') === 'gasto')
-      .map(m => ({ id: m.id, monto: m.monto || 0, fecha: m.fecha, cat: 'Ajuste', desc: m.desc || m.nota || 'Retiro manual', fuente: m.fuente, _esRetiroManual: true }));
+      .map(m => ({ id: m.id, monto: m.monto || 0, fecha: m.fecha, cat: 'Ajuste', desc: m.desc || m.nota || 'Retiro manual', fuente: m.fuente, clase: 'gasto', _esRetiroManual: true }));
   }
 
   const gastosVarRealesDelMes = (mes, estado) =>

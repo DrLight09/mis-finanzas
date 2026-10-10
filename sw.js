@@ -1,5 +1,5 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v21';
+const VERSION = 'mis-finanzas-v22'; // v22 (2026-10-09): clase explícita en movimientos, Restar dinero = gasto, rendimientos de Nu
 
 const APP_SHELL = [
   '/mis-finanzas/',

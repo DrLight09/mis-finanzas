@@ -173,6 +173,7 @@ function renderMesFiltros() {
   const meses = new Set();
   meses.add('todos');
   (S.gastosVar || []).forEach(g => { if (g.fecha) meses.add(mesKey(g.fecha)); });
+  Periodo.retirosManuales().forEach(r => { if (r.fecha) meses.add(mesKey(r.fecha)); }); // un mes con solo un retiro también se puede elegir
   const sorted = ['todos', ...[...meses].filter(m => m !== 'todos').sort().reverse()];
   document.getElementById('mesFilter').innerHTML = html`${sorted.map(m => html`
     <div class="${raw('mf-chip ' + (mesFilter === m ? 'active' : ''))}" ${raw(Events.attr('gastos:setMesFiltro', m))}>
@@ -212,6 +213,10 @@ function renderGastosVar() {
   // ordenaba solo por fecha y, como el sort es estable, los gastos de un
   // mismo día quedaban en orden de creación (el más viejo arriba).
   let conIdx = (S.gastosVar || []).map((g, i) => ({ g, i }));
+  // 'Restar dinero' (S.movimientos, clase gasto) cuenta como gasto del mes en Inicio, Análisis y Wrapped (Periodo): acá
+  // se muestra también, de solo lectura (no es un gasto variable: se elimina desde Cuentas), para que esta pantalla
+  // sume lo mismo que el resto. Va después de los gastos del mismo día (índice -1).
+  Periodo.retirosManuales().forEach(r => conIdx.push({ g: Object.assign({}, r, { _secundario: true, _origenSeccion: 'Cuentas · Restar dinero' }), i: -1 }));
   if (mesFilter !== 'todos') conIdx = conIdx.filter(x => mesKey(x.g.fecha) === mesFilter);
   conIdx.sort((a, b) => (b.g.fecha || '').localeCompare(a.g.fecha || '') || b.i - a.i);
   const gastos = conIdx.map(x => x.g);

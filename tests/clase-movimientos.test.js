@@ -140,3 +140,14 @@ test('balanceDelMes — con { conRendimientos } los intereses de Nu suben ingres
   assert.ok(Math.abs(con.tasaAhorro - 700 / 1100 * 100) < 1e-9);
   assert.equal(ctx.Periodo.ingresosDelMes('2026-09').total, 1000, 'ingresosDelMes (Inicio, Salud financiera, Wrapped) no cambia');
 });
+
+test('Periodo.retirosManuales — solo los salida_manual de clase gasto, ya con clase para que Gastos los cuente igual que Análisis', () => {
+  const ctx = app({ movimientos: [
+    { id: 'a', tipo: 'salida_manual', fuente: 'efectivo', monto: 400, fecha: '2026-10-09', desc: 'Ajuste', clase: 'gasto' },
+    { id: 'b', tipo: 'salida', fuente: 'nequi', monto: 9, fecha: '2026-10-09', _esEspejo: true, clase: 'neutro' },
+    { id: 'c', tipo: 'entrada', fuente: 'nequi', monto: 5, fecha: '2026-10-09', clase: 'ingreso' }] });
+  const r = ctx.Periodo.retirosManuales();
+  assert.equal(r.length, 1);
+  assert.deepEqual([r[0].id, r[0].cat, r[0].clase, r[0].monto], ['a', 'Ajuste', 'gasto', 400]);
+  assert.equal(ctx._esGastoVarNoReal(r[0]), false, 'cuenta como gasto real');
+});

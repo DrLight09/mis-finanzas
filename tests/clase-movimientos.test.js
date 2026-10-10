@@ -9,7 +9,7 @@ const { loadApp } = require('./support/load-app');
 const CORE = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core');
 
 function app(estado = {}) {
-  const ctx = loadApp(['core-state.js', 'periodo.js', 'cuenta-efectos.js'].map(f => path.join(CORE, f)), { permissive: true });
+  const ctx = loadApp(['core-state.js', 'periodo.js', 'cuenta-efectos.js', 'nu-calc.js'].map(f => path.join(CORE, f)), { permissive: true });
   Object.assign(ctx.S, {
     modulos: {}, cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
     movimientos: [], gastosVar: [], gastosFijos: [], pagosGastosFijos: {}, ingresosFijos: [], cajitas: [],
@@ -123,4 +123,20 @@ test('Restar dinero (salida_manual) cuenta como gasto del mes, en categoría Aju
   assert.equal(g.total, 41500);
   assert.equal(ctx.Periodo.gastoPorCategoria('2026-10').Ajuste, 40500);
   assert.equal(ctx.Periodo.gastosPorMes()['2026-09'], 9);
+});
+
+test('balanceDelMes — con { conRendimientos } los intereses de Nu suben ingresos, balance y tasa de ahorro; sin la opción queda como flujo de caja', () => {
+  const ctx = app({
+    movimientos: [{ id: 'i1', tipo: 'entrada', fuente: 'nequi', monto: 1000, fecha: '2026-09-10', desc: 'Sueldo', clase: 'ingreso' }],
+    gastosVar: [{ id: 'g1', fecha: '2026-09-11', monto: 400, clase: 'gasto' }],
+    cajitas: [{ id: 'c1', nombre: 'Ahorros', saldo: 0, rendimientos: { '2026-09': 100 } }] });
+  const sin = ctx.Periodo.balanceDelMes('2026-09');
+  const con = ctx.Periodo.balanceDelMes('2026-09', undefined, { conRendimientos: true });
+  assert.equal(sin.ingresos.total, 1000);
+  assert.equal(sin.balance, 600);
+  assert.equal(con.ingresos.total, 1100);
+  assert.equal(con.ingresos.rendimientos, 100);
+  assert.equal(con.balance, 700);
+  assert.ok(Math.abs(con.tasaAhorro - 700 / 1100 * 100) < 1e-9);
+  assert.equal(ctx.Periodo.ingresosDelMes('2026-09').total, 1000, 'ingresosDelMes (Inicio, Salud financiera, Wrapped) no cambia');
 });

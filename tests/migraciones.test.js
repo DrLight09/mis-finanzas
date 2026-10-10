@@ -9,26 +9,20 @@ const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..',
 const app = () => loadApp([path.join(CORE_DIR, 'core-state.js')]);
 const plano = x => JSON.parse(JSON.stringify(x));
 
-test('un objeto sin schemaVersion se migra y queda en la versión actual', () => {
+test('un objeto sin schemaVersion se migra y queda en la versión actual (3)', () => {
   const d = app().aplicarMigraciones({ cuentas: [] });
-  assert.ok(d.schemaVersion >= 2);
+  assert.equal(d.schemaVersion, 3);
 });
 
-test('v2 — plataCometida (typo histórico) pasa a plataComprometida y el campo viejo desaparece', () => {
-  const d = plano(app().aplicarMigraciones({ plataCometida: [{ id: 'a', monto: 1 }] }));
-  assert.deepEqual(d.plataComprometida, [{ id: 'a', monto: 1 }]);
-  assert.equal('plataCometida' in d, false);
-});
-
-test('v2 — si existen los dos campos (app vieja escribió el viejo) se juntan sin repetir ids', () => {
-  const d = plano(app().aplicarMigraciones({ plataComprometida: [{ id: 'a' }], plataCometida: [{ id: 'a' }, { id: 'b' }] }));
-  assert.deepEqual(d.plataComprometida.map(i => i.id), ['a', 'b']);
-  assert.equal('plataCometida' in d, false);
+test('datos en v2 (los existentes) solo ejecutan v3: estampan `clase` y suben la versión', () => {
+  const d = plano(app().aplicarMigraciones({ schemaVersion: 2, movimientos: [{ id: 'a', tipo: 'entrada', monto: 5, fecha: '2026-10-01', desc: 'Sueldo' }] }));
+  assert.equal(d.schemaVersion, 3);
+  assert.equal(d.movimientos[0].clase, 'ingreso');
 });
 
 test('es idempotente: aplicarla dos veces no cambia nada', () => {
   const ctx = app();
-  const una = plano(ctx.aplicarMigraciones({ plataCometida: [{ id: 'a' }] }));
+  const una = plano(ctx.aplicarMigraciones({ schemaVersion: 2, movimientos: [{ id: 'a', tipo: 'entrada', monto: 5, fecha: '2026-10-01' }], gastosVar: [{ id: 'g', monto: 1, fecha: '2026-10-01' }] }));
   const dos = plano(ctx.aplicarMigraciones(plano(una)));
   assert.deepEqual(dos, una);
 });
@@ -44,3 +38,4 @@ test('valores que no son objeto se devuelven tal cual', () => {
   assert.equal(ctx.aplicarMigraciones(null), null);
   assert.equal(ctx.aplicarMigraciones(undefined), undefined);
 });
+

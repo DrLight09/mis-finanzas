@@ -47,6 +47,7 @@ describe('confirmarRestarDinero', () => {
     assert.equal(e.app.S.movimientos.length, 1);
     assert.equal(e.app.S.movimientos[0].monto, 2000);
     assert.equal(e.app.S.movimientos[0].tipo, 'salida_manual');
+    assert.equal(e.app.S.movimientos[0].clase, 'gasto', 'restar dinero es un gasto del mes');
     assert.equal(e.guardados(), 1);
     assert.deepEqual(plano(e.cerrados), ['restar-dinero']);
   });
@@ -101,3 +102,4 @@ describe('confirmarRestarDinero', () => {
     assert.equal(e.saldo(), 5000);
   });
 });
+

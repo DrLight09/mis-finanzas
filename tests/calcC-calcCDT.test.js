@@ -157,3 +157,40 @@ test('calcPatrimonioTotal — usa calcC (interés real de nu-calc.js), no el sal
   // Sin interés daría exactamente 1000000; con calcC debe ser ~1093003 (ver test de 365 días arriba).
   assert.ok(patrimonio > 1050000, `esperaba patrimonio > 1.05M con interés real, dio ${patrimonio}`);
 });
+
+
+// ── Rendimientos por mes (Periodo.rendimientosDelMes): el interés se reparte por mes y se anota al materializar ──
+const mesDe = f => f.slice(0, 7);
+
+test('rendimientoCajitaPorMes — repartido por mes suma exactamente calcC(c).ganado y cada mes cae en su mes', () => {
+  const ctx = freshApp({ nuTasaGlobal: 9.3, cajitas: [] });
+  const c = { id: 'nu1', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(75) };
+  const porMes = ctx.rendimientoCajitaPorMes(c);
+  const suma = Object.values(porMes).reduce((a, b) => a + b, 0);
+  assert.ok(Math.abs(suma - ctx.calcC(c).ganado) < 0.01, `suma ${suma} vs ${ctx.calcC(c).ganado}`);
+  assert.ok(Object.keys(porMes).length >= 3, 'más de 75 días cruzan al menos 3 meses');
+  assert.ok(Object.keys(porMes).every(k => /^\d{4}-\d{2}$/.test(k) && k >= mesDe(c.fecha)));
+  assert.ok(porMes[mesDe(daysAgo(0))] > 0, 'el mes en curso también rinde');
+});
+
+test('calcC(c, hasta) — sin argumento es idéntico a antes; con una fecha pasada da el valor a ese día', () => {
+  const ctx = freshApp({ nuTasaGlobal: 9.3 });
+  const c = { id: 'nu1', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(40) };
+  assert.equal(ctx.calcC(c).val, ctx.calcC(c, daysAgo(0)).val);
+  assert.equal(ctx.calcC(c, c.fecha).ganado, 0);
+  assert.ok(ctx.calcC(c, daysAgo(20)).ganado < ctx.calcC(c).ganado);
+});
+
+test('materializarIntereses — anota lo ganado por mes en c.rendimientos y Periodo.rendimientosDelMes lo reporta sin tocar el ingreso', () => {
+  const c = { id: 'nu1', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(75) };
+  const ctx = freshApp({ nuTasaGlobal: 9.3, cajitas: [c], movimientos: [], gastosVar: [], modulos: {}, ingresosFijos: [], pagosGastosFijos: {} });
+  const ganado = ctx.calcC(c).ganado;
+  ctx.materializarIntereses(c);
+  const anotado = Object.values(c.rendimientos).reduce((a, b) => a + b, 0);
+  assert.ok(Math.abs(anotado - ganado) < 0.05, `anotado ${anotado} vs ganado ${ganado}`);
+  assert.equal(c.fecha, daysAgo(0), 'el saldo ya incluye el interés y el conteo reinicia');
+  const mes = mesDe(daysAgo(0));
+  assert.ok(Math.abs(ctx.Periodo.rendimientosDelMes(mes).cajitas - c.rendimientos[mes]) < 0.05, 'materializado + pendiente (≈0)');
+  assert.equal(ctx.Periodo.ingresosDelMes(mes).total, 0, 'los rendimientos NO entran al ingreso operativo');
+  assert.ok(ctx.Periodo.balanceDelMes(mes).rendimientos.total > 0);
+});

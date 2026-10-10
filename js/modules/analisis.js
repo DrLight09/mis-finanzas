@@ -39,7 +39,9 @@ function renderAnalisis(){
   // cajita marcada con _esReposicionCP en S.movimientos. Ver _esEntradaEspejoNoIngreso.
   // También excluir _esExtraPrestamo: es plata de un extra/propina que se gastó de inmediato
   // (nunca se registró como ingreso, así que contarla como gasto real infla el balance negativamente)
-  const _bal=Periodo.balanceDelMes(mes);
+  // conRendimientos: en Análisis los intereses de Nu (cajitas y CDT) cuentan como ingreso del mes, para que el balance
+  // mida cuánto creció el patrimonio. Inicio/Salud financiera no lo piden: sus ratios miden flujo de caja operativo.
+  const _bal=Periodo.balanceDelMes(mes,undefined,{conRendimientos:true});
   const gastosMesDet=_bal.gastos;
   const gvTotal=gastosMesDet.gvTotal;
   const gfTotal=gastosMesDet.gfTotal;
@@ -53,11 +55,12 @@ function renderAnalisis(){
 
   // ── Balance ────────────────────────────────────────────────────────────
   const balance=ingresosEstimados-gastosTotalMes;
-  const _rendNu=_bal.rendimientos?_bal.rendimientos.total:0; // intereses de cajitas y CDT del mes (periodo.js)
+  const _rendNu=_bal.ingresos.rendimientos||0; // intereses de cajitas y CDT incluidos en los ingresos del mes
+  const _hayIngresos=ingresosEstimados-_rendNu>0; // sin ingresos operativos no hay balance que evaluar, aunque haya intereses
   const hero=document.getElementById('analisis-balance-hero');
   if(hero){
     const esPositivo=balance>=0;
-    const sinIngresos=ingresosEstimados===0;
+    const sinIngresos=!_hayIngresos;
     const color=sinIngresos?'var(--text3)':esPositivo?'var(--accent)':'var(--red)';
     const bgColor=sinIngresos?'rgba(255,255,255,.04)':esPositivo?'rgba(200,240,96,.07)':'rgba(240,104,104,.07)';
     const borderColor=sinIngresos?'var(--border2)':esPositivo?'rgba(200,240,96,.25)':'rgba(240,104,104,.25)';
@@ -73,7 +76,7 @@ function renderAnalisis(){
       <div style="font-size:10px;color:${sinIngresos?'var(--text3)':color};text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;">${emoji} Balance de ${mes2d}</div>
       <div style="font-size:36px;font-weight:300;letter-spacing:-2px;font-family:'DM Mono',monospace;color:${color};margin:6px 0 6px;">${sinIngresos?fmt(gastosTotalMes*-1):(balance>=0?'+':'')+fmt(balance)}</div>
       <div style="font-size:11px;color:var(--text3);">${mensaje}</div>
-      ${_rendNu>0.5?`<div style="font-size:11px;color:var(--text3);margin-top:8px;padding-top:8px;border-top:1px solid var(--border2);">+ ${fmt(_rendNu)} en rendimientos de Nu este mes <span style=\"opacity:.7\">(aparte: no cuentan en el balance ni en el ahorro)</span></div>`:''}
+      ${_rendNu>0.5?`<div style="font-size:11px;color:var(--text3);margin-top:8px;padding-top:8px;border-top:1px solid var(--border2);">Incluye ${fmt(_rendNu)} de rendimientos de Nu <span style=\"opacity:.7\">(intereses de cajitas y CDT)</span></div>`:''}
     `;
   }
 
@@ -82,7 +85,7 @@ function renderAnalisis(){
   const elGas=document.getElementById('an-gastos');
   const elFij=document.getElementById('an-fijos');
   const elVar=document.getElementById('an-variables');
-  if(elIng) elIng.textContent=ingresosEstimados>0?fmt(ingresosEstimados):'—';
+  if(elIng) elIng.textContent=_hayIngresos?fmt(ingresosEstimados):'—';
   if(elGas) elGas.textContent=fmt(gastosTotalMes);
   if(elFij) elFij.textContent=fmt(gfTotal);
   if(elVar) elVar.textContent=fmt(gvTotal);
@@ -213,7 +216,7 @@ function renderAnalisis(){
   const elTasaAhorro=document.getElementById('an-tasa-ahorro');
   const elAhorrado=document.getElementById('an-ahorrado');
   if(elTasaAhorro&&elAhorrado){
-    if(ingresosEstimados>0){
+    if(_hayIngresos){
       const tasa=balance/ingresosEstimados*100;
       const esPos=balance>=0;
       elTasaAhorro.textContent=(esPos?'+':'')+tasa.toFixed(1)+'%';
@@ -235,10 +238,10 @@ function renderAnalisis(){
     const dPrev=new Date(parseInt(mes.split('-')[0]),parseInt(mes.split('-')[1])-2,1);
     const mesPrev=dPrev.getFullYear()+'-'+String(dPrev.getMonth()+1).padStart(2,'0');
     const mesNomPrev=MESES_NOMBRE[dPrev.getMonth()]+' '+dPrev.getFullYear();
-    const balPrev=Periodo.balanceDelMes(mesPrev);
+    const balPrev=Periodo.balanceDelMes(mesPrev,undefined,{conRendimientos:true});
     const totalPrev=balPrev.gastos.total;
     const balancePrev=balPrev.balance;
-    const ingresosPrev=balPrev.ingresos.total;
+    const ingresosPrev=balPrev.ingresos.total-(balPrev.ingresos.rendimientos||0); // solo ingresos operativos: decide si hay datos que comparar
 
     const diffGastos=gastosTotalMes-totalPrev;
     const diffBalance=balance-balancePrev;
@@ -264,7 +267,7 @@ function renderAnalisis(){
             </div>
           </div>
           <div style="height:1px;background:var(--border);"></div>
-          ${ingresosEstimados>0&&ingresosPrev>0?`
+          ${_hayIngresos&&ingresosPrev>0?`
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div>
               <div style="font-size:13px;font-weight:600;">Balance</div>

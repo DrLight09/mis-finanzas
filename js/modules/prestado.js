@@ -892,6 +892,12 @@ function initMovSheet(tipo) {
   const perdonChk = document.getElementById('mov_perdon');
   if (perdonChk) perdonChk.checked = false;
   if (perdonWrap) perdonWrap.style.display = esAbono ? '' : 'none';
+  // "¿Es plata nueva para ti?": solo en Nuevo préstamo. Con una cuenta de origen se ignora; sin ella el préstamo es un
+  // regalo que te llega como deuda y cuenta como ingreso (clase 'ingreso') en vez de ajuste de base.
+  const regaloWrap = document.getElementById('mov_regalo_wrap');
+  const regaloChk = document.getElementById('mov_regalo');
+  if (regaloChk) regaloChk.checked = false;
+  if (regaloWrap) regaloWrap.style.display = esPrestamo ? '' : 'none';
   document.getElementById('mov_monto').value = '';
   const montoInput = document.getElementById('mov_monto');
   if (esPagoCompleto) {
@@ -1177,7 +1183,8 @@ function _planPrestamo(base) {
   } else {
     fuente = document.getElementById('mov_fuente').value;
   }
-  return { ...base, montoSalio, hayMargen, fuentes, fuente };
+  const regaloChk = document.getElementById('mov_regalo');
+  return { ...base, montoSalio, hayMargen, fuentes, fuente, regalo: !!(regaloChk && regaloChk.checked) };
 }
 
 function _aplicarPrestamo(p) {
@@ -1196,6 +1203,8 @@ function _aplicarPrestamo(p) {
       movObj = { id: movId, tipo: 'prestamo', monto, fecha, fuentes: [{ fuente, monto: montoSalio }], nota, grupoId: p.grupoId, ts: Date.now() };
     } else {
       movObj = { id: movId, tipo: 'prestamo', monto, fecha, fuente, nota, grupoId: p.grupoId, ts: Date.now() };
+      // Sin cuenta de origen + "¿Es plata nueva?": regalo recibido como deuda = ingreso del mes (ver _movsDeudaSinCuenta).
+      if (p.regalo && !fuente) movObj.clase = 'ingreso';
     }
     descontarFuente(fuente, montoSalio);
   }

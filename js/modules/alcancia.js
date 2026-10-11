@@ -1277,24 +1277,14 @@ function _alcanciaToggleDesglose(desgloseId, el){
 /* ─── SUMAR A SALDO DE CUENTA ───────────────────────────────────────────── */
 function _sumarASaldo(fuente, monto){
   if(!fuente || !monto) return;
-  const S = window.S;
-  if(fuente === 'nequi' || fuente === 'efectivo'){ const c = getCuenta(fuente); if(c) c.saldo = (c.saldo||0) + monto; return; }
-  if(fuente.startsWith('cajita:')){
-    const id = fuente.split(':')[1];
-    const c  = (S.cajitas||[]).find(x=>x.id===id);
-    if(c) c.saldo = (c.saldo||0) + monto;
-    return;
-  }
-  if(fuente.startsWith('custom:')){
-    const id = fuente.split(':')[1];
-    const c  = getCuentaCustom(id);
-    // Solo sube/baja el saldo. NO se escribe nada en c.movimientos: las filas del destape ya viven en
-    // S.movimientos (transferencia y "Dinero extra…") y S.gastosVar (faltante), y el historial de la cuenta
-    // las lee de ahí. Antes se duplicaban acá como 'ingreso'/'egreso' (2026-09-29), y ese 'ingreso' de
-    // "Alcancía destapada" (plata que ya era tuya) contaba como ingreso del mes en Salud financiera.
-    if(c) c.saldo = (c.saldo||0) + monto;
-    return;
-  }
+  // Solo sube/baja el saldo (y deja la entrada en el libro). En cuentas personalizadas NO se escribe nada en
+  // c.movimientos: las filas del destape ya viven en S.movimientos (transferencia y "Dinero extra…") y S.gastosVar
+  // (faltante), y el historial de la cuenta las lee de ahí. Antes se duplicaban acá como 'ingreso'/'egreso'
+  // (2026-09-29), y ese 'ingreso' de "Alcancía destapada" (plata que ya era tuya) contaba como ingreso del mes.
+  const cuenta = fuente.startsWith('cajita:')
+    ? (window.S.cajitas||[]).find(x=>x.id===fuente.split(':')[1])
+    : getCuentaDeFuente(fuente);
+  if(cuenta) ajustarSaldoCuenta(fuente, (cuenta.saldo||0) + monto, {tipo:'movimiento', desc:'Alcancía', origen:{modulo:'alcancia'}});
 }
 
 /* ─── REVELAR EL MONTO DE UN DEPÓSITO (uno a la vez) ─────────────────────

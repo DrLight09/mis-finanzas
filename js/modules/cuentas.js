@@ -243,6 +243,7 @@ function crearCuentaCustom(){
   const nueva={id:uid(),tipo:'custom',nombre,icono:_ncIconoSel,color:_ncColorSel,saldo,movimientos:[]};
   if(saldo>0) nueva.movimientos.push(crearMovimientoApertura(saldo,hoy(),'Saldo inicial'));
   _cuentasArr().push(nueva);
+  if(saldo>0)_libroPata('custom:'+nueva.id,saldo,{tipo:'apertura',desc:'Saldo inicial',origen:{modulo:'cuentas',ref:nueva.movimientos[0].id}});
   save();refresh();
   closeSheet('nueva-cuenta');
   toast(`Cuenta "${escHtml(nombre)}" creada`,'ok');
@@ -483,7 +484,8 @@ function materializarIntereses(c){
     const porMes=rendimientoCajitaPorMes(c);
     if(!c.rendimientos)c.rendimientos={};
     Object.keys(porMes).forEach(mk=>{c.rendimientos[mk]=Math.round(((c.rendimientos[mk]||0)+porMes[mk])*100)/100;});
-    c.saldo=k.val;
+    // Los intereses entran al libro como 'rendimiento' (una entrada por cajita y mes).
+    ajustarSaldoCuenta('cajita:'+c.id,k.val,{tipo:'rendimiento',desc:'Intereses de Nu',origen:{modulo:'cuentas'}});
     c.fecha=hoy();
   }
 }
@@ -664,7 +666,8 @@ async function guardarChequeoNu(){
     // es un ajuste de saldo, no plata que entra o sale de ningún lado.
     const c=(S.cajitas||[]).find(cc=>cc.id===cajitaId);
     if(c){
-      c.saldo=_interpretarLecturaChequeoNu(c,val).saldoPropio;
+      // El chequeo pisa el saldo con la lectura real de Nu: la diferencia queda en el libro como 'ajuste' (antes no dejaba rastro).
+      ajustarSaldoCuenta('cajita:'+c.id,_interpretarLecturaChequeoNu(c,val).saldoPropio,{tipo:'ajuste',desc:'Chequeo rápido de Nu: saldo real anotado',origen:{modulo:'cuentas'}});
       c.fecha=hoyStr;
     }
   });
@@ -690,7 +693,7 @@ function corregirChequeoNu(){
   S.chequeosNu=u.chequeos;
   u.cajitas.forEach(s=>{
     const c=(S.cajitas||[]).find(x=>x.id===s.id);
-    if(c){c.saldo=s.saldo;c.fecha=s.fecha;}
+    if(c){ajustarSaldoCuenta('cajita:'+c.id,s.saldo,{tipo:'ajuste',desc:'Chequeo de Nu deshecho',origen:{modulo:'cuentas'}});c.fecha=s.fecha;}
   });
   _chequeoNuUndo=null;
   save();refresh();
@@ -1161,9 +1164,9 @@ function confirmarCrearCDT(){
   if(monto>saldoReal+0.01){toast(`Saldo insuficiente. Solo tienes ${fmt(saldoReal)} en la cajita.`,'err');return;}
   const montoFinal=Math.min(monto,saldoReal);
   // Materializar los intereses acumulados y descontar el monto del CDT
-  c.saldo=saldoReal;
+  ajustarSaldoCuenta('cajita:'+c.id,saldoReal,{tipo:'rendimiento',desc:'Intereses de Nu',origen:{modulo:'cuentas'}});
   c.fecha=hoy();
-  c.saldo=c.saldo-montoFinal;
+  ajustarSaldoCuenta('cajita:'+c.id,c.saldo-montoFinal,{tipo:'cdt',desc:'Capital invertido en CDT',origen:{modulo:'cuentas'}});
   // Agregar CDT al array de CDTs de la cajita
   if(!c.cdts)c.cdts=[];
   c.cdts.push({id:uid(),monto:montoFinal,tasa,rte,inicio,vence});
@@ -1184,7 +1187,7 @@ async function liberarCDTManual(cajitaId,cdtId){
   const ok=await dialogo('Cerrar CDT','Se cierra el CDT y los '+fmt(k.val)+' (capital '+fmt(cdt.monto)+' + '+fmt(k.ganado)+' de intereses netos) se suman al saldo de la cajita "'+c.nombre+'".','Cerrar y acreditar',false);
   if(!ok)return;
   materializarIntereses(c);
-  c.saldo=(c.saldo||0)+k.val;
+  ajustarSaldoCuenta('cajita:'+c.id,(c.saldo||0)+k.val,{tipo:'cdt',desc:'CDT cerrado (capital + intereses)',origen:{modulo:'cuentas',ref:cdtId}});
   c.fecha=hoy();
   c.cdts=(c.cdts||[]).filter(x=>x.id!==cdtId);
   refresh();save();
@@ -1243,7 +1246,7 @@ async function confirmarCobrarCDT(){
     'Confirmar cobro',false);
   if(!ok)return;
   materializarIntereses(c);
-  c.saldo=(c.saldo||0)+valorReal;
+  ajustarSaldoCuenta('cajita:'+c.id,(c.saldo||0)+valorReal,{tipo:'cdt',desc:'CDT cobrado (valor real de Nu)',origen:{modulo:'cuentas',ref:cdtId}});
   c.fecha=hoy();
   c.cdts=(c.cdts||[]).filter(x=>x.id!==cdtId);
   closeSheet('cobrar-cdt');

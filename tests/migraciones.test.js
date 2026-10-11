@@ -9,14 +9,14 @@ const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..',
 const app = () => loadApp([path.join(CORE_DIR, 'core-state.js')]);
 const plano = x => JSON.parse(JSON.stringify(x));
 
-test('un objeto sin schemaVersion se migra y queda en la versión actual (3)', () => {
+test('un objeto sin schemaVersion se migra y queda en la versión actual (4)', () => {
   const d = app().aplicarMigraciones({ cuentas: [] });
-  assert.equal(d.schemaVersion, 3);
+  assert.equal(d.schemaVersion, 4);
 });
 
-test('datos en v2 (los existentes) solo ejecutan v3: estampan `clase` y suben la versión', () => {
+test('datos en v2 (los existentes) ejecutan v3 y v4: estampan `clase` y suben la versión', () => {
   const d = plano(app().aplicarMigraciones({ schemaVersion: 2, movimientos: [{ id: 'a', tipo: 'entrada', monto: 5, fecha: '2026-10-01', desc: 'Sueldo' }] }));
-  assert.equal(d.schemaVersion, 3);
+  assert.equal(d.schemaVersion, 4);
   assert.equal(d.movimientos[0].clase, 'ingreso');
 });
 
@@ -39,3 +39,14 @@ test('valores que no son objeto se devuelven tal cual', () => {
   assert.equal(ctx.aplicarMigraciones(undefined), undefined);
 });
 
+
+test('migración v4 — el regalo de la abuela ($500.000 a Padre, sin cuenta) pasa a clase "ingreso"; otro préstamo parecido no se toca; es idempotente', () => {
+  const mov = (id, extra) => Object.assign({ id, tipo: 'prestamo', monto: 500000, fecha: '2026-09-25', fuente: '', nota: 'Regalo - Abuela' }, extra);
+  const d = plano(app().aplicarMigraciones({ schemaVersion: 3, deudores: [{ id: 'p', nombre: 'Padre', movimientos: [
+    mov('muhdltc2018'), mov('otro'), mov('muhdltc2018', { id: 'x1', fuente: 'nequi' })] }] }));
+  const ms = d.deudores[0].movimientos;
+  assert.equal(ms[0].clase, 'ingreso');
+  assert.equal(ms[1].clase, undefined, 'otro id: intacto');
+  assert.equal(d.schemaVersion, 4);
+  assert.deepEqual(plano(app().aplicarMigraciones(plano(d))), d);
+});

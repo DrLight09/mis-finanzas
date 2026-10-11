@@ -67,12 +67,12 @@ test('deducirClaseMovimiento — tabla de casos (lo que no es seguro devuelve nu
   CASOS.forEach(([origen, m, esperado]) => assert.equal(ctx.deducirClaseMovimiento(m, origen), esperado, JSON.stringify(m)));
 });
 
-test('migración v3 — idempotente, no pisa una `clase` existente y sube schemaVersion', () => {
+test('migraciones v3-v4 — idempotentes, no pisan una `clase` existente y suben schemaVersion', () => {
   const ctx = app();
   const d = { schemaVersion: 2, movimientos: CASOS.filter(c => c[0] === 'movimientos').map(c => ({ ...c[1] })),
     gastosVar: [{ monto: 1 }, { monto: 2, clase: 'neutro' }] };
   ctx.aplicarMigraciones(d);
-  assert.equal(d.schemaVersion, 3);
+  assert.equal(d.schemaVersion, 4);
   assert.equal(d.gastosVar[1].clase, 'neutro', 'respeta la clase existente');
   const antes = JSON.stringify(d);
   const r = ctx.estamparClasesMovimientos(d);

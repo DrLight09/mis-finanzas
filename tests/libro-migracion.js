@@ -6,7 +6,8 @@ const dom=new JSDOM('<!doctype html><html><body><div id="toast"></div></body></h
 const w=dom.window; w.console=console;
 w.HTMLCanvasElement.prototype.getContext=()=>({measureText:()=>({width:10}),font:''});
 const errs=[];
-const files=['core/core-state.js','core/cuenta-efectos.js','core/periodo.js','core/nu-calc.js','core/libro.js','core/calc-helpers.js','modules/cuentas.js'].filter(f=>fs.existsSync(OUT+f));
+const files=['core/core-state.js','core/cuenta-efectos.js','core/periodo.js','core/nu-calc.js','core/libro.js','core/calc-helpers.js','core/diferencial.js','modules/cuentas.js','modules/prestado.js'].filter(f=>fs.existsSync(OUT+f));
+w.eval("function crearSplitWidget(){} window.Events={on(){},attr(){},registerAll(){}}; window._guardarEditarPersonaGlobal=function(){}; window.PERSONA_COLORES=['#c8f060']; window.openSheet=window.closeSheet=function(){};"); // stubs de split.js, events.js y personas.js (no hacen falta para lo que se prueba)
 for(const f of files){ const p=OUT+f; try{ w.eval(fs.readFileSync(p,'utf8')); }catch(e){ errs.push(f+': '+e.message); } }
 if(errs.length) console.log('errores de carga (informativo):',errs);
 const run=c=>w.eval(c);
@@ -44,3 +45,16 @@ w.S.libro.push({id:'x',fecha:'2026-10-11',cuenta:'efectivo',monto:50,tipo:'ajust
 let aviso=null; w.toast=(m)=>{aviso=m;}; w.eval('window._dataLoaded=true;window._fbLoadData=undefined;');
 try{ run('save()'); }catch(e){ console.log('save() lanzó (informativo):',e.message); }
 console.log('11) descuadre forzado detectado por save():',aviso?('✓ aviso → '+aviso):'✗ sin aviso', '· _libroDescuadres =',JSON.stringify(w.eval('window._libroDescuadres||null')).slice(0,120));
+
+w.S.libro.pop(); run('window._libroAvisado=false'); // deshace el descuadre forzado de la prueba 11
+// 12) origen y reversión (Libro.conOrigen con rev → tipo 'reversion')
+run(`Libro.conOrigen({modulo:'prestado',ref:'m1',rev:true},()=>sumarFuente('efectivo',300))`);
+const ult1=w.S.libro[w.S.libro.length-1]; console.log('12) reversión por contexto:',ult1.tipo==='reversion'&&ult1.origen.ref==='m1'&&ult1.origen.rev?'✓ tipo reversion, ref m1':'✗ '+JSON.stringify(ult1));
+// 13) revertir un préstamo "Me deben" real de prestado.js (si el módulo carga en este entorno)
+if(run("typeof _revertirMovDeudor")==='function'){
+  run(`window.__d={id:'d1',nombre:'Test',movimientos:[]};window.__m={id:'mm1',tipo:'prestamo',monto:5000,fecha:'2026-10-11',fuente:'efectivo'};
+       __d.movimientos.push(__m);descontarFuente('efectivo',5000,{origen:{modulo:'prestado',ref:'mm1'}});`);
+  chk('13a) préstamo aplicado con origen prestado');
+  try{ run('_revertirMovDeudor(__d,__m)'); const rv=w.S.libro.filter(l=>l.origen&&l.origen.ref==='mm1'); console.log('13b) entradas con ref mm1:',rv.map(l=>l.tipo+' '+l.monto).join(' | ')); chk('13c) libro tras revertir el préstamo');
+  }catch(e){ console.log('13b) _revertirMovDeudor no pudo correr en jsdom (faltan helpers del navegador):',e.message.slice(0,90)); }
+} else console.log('13) prestado.js no cargó en este entorno (omitido)');

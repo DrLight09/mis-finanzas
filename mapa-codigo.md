@@ -13,7 +13,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
 | `js/core/calc-helpers.js` | de entrada (defer) | 15 | 0 |
 | `js/core/color-picker.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
-| `js/core/core-state.js` | de entrada (defer) | 71 | 9 |
+| `js/core/core-state.js` | de entrada (defer) | 74 | 10 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
@@ -92,9 +92,9 @@ Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ajusteAlcanciaPorFecha`, `_claseValida`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_listaFuentes`, `_moneyRender`, `_moneyValue`, `_patrimonioDependenciasListas`, `_reglaHistoricaEntradaEspejo`, `_reglaHistoricaGastoVarNoReal`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `claseEfectivaMovimiento`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `deducirClaseMovimiento`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `estamparClasesMovimientos`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
+**Funciones:** `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_claseValida`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_listaFuentes`, `_moneyRender`, `_moneyValue`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_reglaHistoricaEntradaEspejo`, `_reglaHistoricaGastoVarNoReal`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `claseEfectivaMovimiento`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `deducirClaseMovimiento`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `estamparClasesMovimientos`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `recalcularMontoBaseHistorial`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
 
-**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CUENTAS_FIJAS`, `MAX`, `MC`, `MIGRACIONES`, `S`, `SCHEMA_VERSION_ACTUAL`
+**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CUENTAS_FIJAS`, `MAX`, `MC`, `ME_DEBEN_ABRE`, `MIGRACIONES`, `S`, `SCHEMA_VERSION_ACTUAL`
 
 **Asigna a `window`:** `_dialogResolve`, `_locallyModified`
 
@@ -410,6 +410,7 @@ Ninguno.
 | `_actualizarTraspasoOrigenHint` | `js/modules/encargos.js` |
 | `_actualizarTraspasoPreview` | `js/modules/encargos.js` |
 | `_ajusteAlcanciaPorFecha` | `js/core/core-state.js` |
+| `_ajusteDeudasSinCuentaPorFecha` | `js/core/core-state.js` |
 | `_alcanciaEjecutarEliminarDeposito` | `js/modules/alcancia.js` |
 | `_alcanciaInit` | `js/modules/alcancia.js` |
 | `_alcanciaQuitarPorCobroDeuda` | `js/modules/alcancia.js` (window._alcanciaQuitarPorCobroDeuda = …) |
@@ -636,6 +637,7 @@ Ninguno.
 | `_moverEncSplitToggle` | `js/modules/encargos.js` |
 | `_movEsPerdon` | `js/modules/prestado.js` |
 | `_movsAplicarFiltro` | `js/modules/cuentas.js` |
+| `_movsDeudaSinCuenta` | `js/core/core-state.js` |
 | `_movsLimpiarFechas` | `js/modules/cuentas.js` |
 | `_movsOnFecha` | `js/modules/cuentas.js` |
 | `_movsOnSearch` | `js/modules/cuentas.js` |
@@ -1152,6 +1154,7 @@ Ninguno.
 | `materializarIntereses` | `js/modules/cuentas.js` |
 | `MAX` | `js/core/core-state.js` |
 | `MC` | `js/core/core-state.js` |
+| `ME_DEBEN_ABRE` | `js/core/core-state.js` |
 | `medirAnchoTexto` | `js/core/core-state.js` |
 | `mesActual` | `js/core/core-state.js` |
 | `MESADA_PADRES` | `js/modules/mesada.js` |
@@ -1199,6 +1202,7 @@ Ninguno.
 | `ptcSetMonto` | `js/modules/tarjetas_credito.js` |
 | `quitarMetaCajita` | `js/modules/cuentas.js` |
 | `raw` | `js/core/html-tag.js` |
+| `recalcularMontoBaseHistorial` | `js/core/core-state.js` |
 | `refresh` | `js/core/core-state.js`, `js/modules/inicio.js` (window.refresh = …) |
 | `registrarEntradaConApertura` | `js/modules/cuentas.js` |
 | `registrarMovEspejo` | `js/core/cuenta-efectos.js` |

@@ -13,7 +13,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
 | `js/core/calc-helpers.js` | de entrada (defer) | 15 | 0 |
 | `js/core/color-picker.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
-| `js/core/core-state.js` | de entrada (defer) | 74 | 10 |
+| `js/core/core-state.js` | de entrada (defer) | 76 | 10 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
@@ -25,6 +25,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/hook-global.js` | de entrada (defer) | 1 | 0 |
 | `js/core/html-tag.js` | de entrada (defer) | 3 | 0 |
 | `js/core/lazy-loader.js` | de entrada (defer) | 1 | 0 |
+| `js/core/libro.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
 | `js/core/mas-menu.js` | de entrada (defer) | 0 | 0 |
 | `js/core/mejoras-adicionales.js` | de entrada (defer) | 0 | 0 |
 | `js/core/money-input.js` | de entrada (defer) | 1 | 0 |
@@ -92,7 +93,7 @@ Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_claseValida`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_listaFuentes`, `_moneyRender`, `_moneyValue`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_reglaHistoricaEntradaEspejo`, `_reglaHistoricaGastoVarNoReal`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `claseEfectivaMovimiento`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `deducirClaseMovimiento`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `estamparClasesMovimientos`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `recalcularMontoBaseHistorial`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
+**Funciones:** `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_claseValida`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_libroPata`, `_listaFuentes`, `_moneyRender`, `_moneyValue`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_reglaHistoricaEntradaEspejo`, `_reglaHistoricaGastoVarNoReal`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `ajustarSaldoCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `claseEfectivaMovimiento`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `deducirClaseMovimiento`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `estamparClasesMovimientos`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `recalcularMontoBaseHistorial`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
 
 **Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CUENTAS_FIJAS`, `MAX`, `MC`, `ME_DEBEN_ABRE`, `MIGRACIONES`, `S`, `SCHEMA_VERSION_ACTUAL`
 
@@ -163,6 +164,12 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `Loader`
+
+### `js/core/libro.js`
+
+Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
+
+**Funciones:** `Libro`
 
 ### `js/core/mas-menu.js`
 
@@ -584,6 +591,7 @@ Ninguno.
 | `_irAEncargo` | `js/modules/encargos.js` |
 | `_irAMiDeuda` | `js/modules/prestado.js` |
 | `_irASpotify` | `js/modules/personas.js` |
+| `_libroPata` | `js/core/core-state.js` |
 | `_listaFuentes` | `js/core/core-state.js` |
 | `_locallyModified` | `js/core/core-state.js` (window._locallyModified = …) |
 | `_markError` | `js/core/sheet-stack.js` |
@@ -937,6 +945,7 @@ Ninguno.
 | `agregarGvSplitRow` | `js/modules/gastos.js` |
 | `agregarSpCobSplitRow` | `js/modules/spotify.js` |
 | `agregarSpPagarSplitRow` | `js/modules/spotify.js` |
+| `ajustarSaldoCuenta` | `js/core/core-state.js` |
 | `alcanciaAgregarOrigen` | `js/modules/alcancia.js` (window.alcanciaAgregarOrigen = …) |
 | `alcanciaConfirmarDeposito` | `js/modules/alcancia.js` (window.alcanciaConfirmarDeposito = …) |
 | `alcanciaConfirmarDestapar` | `js/modules/alcancia.js` (window.alcanciaConfirmarDestapar = …) |
@@ -1145,6 +1154,7 @@ Ninguno.
 | `initMovSheet` | `js/modules/prestado.js` |
 | `leerArchivoImport` | `js/modules/configuracion.js` |
 | `liberarCDTManual` | `js/modules/cuentas.js` |
+| `Libro` | `js/core/libro.js` |
 | `load` | `js/core/core-state.js` |
 | `Loader` | `js/core/lazy-loader.js` |
 | `marcarColorSeleccionado` | `js/core/color-picker.js` |

@@ -25,7 +25,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/hook-global.js` | de entrada (defer) | 1 | 0 |
 | `js/core/html-tag.js` | de entrada (defer) | 3 | 0 |
 | `js/core/lazy-loader.js` | de entrada (defer) | 1 | 0 |
-| `js/core/libro.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
+| `js/core/libro.js` | de entrada (defer) | 1 | 0 |
 | `js/core/mas-menu.js` | de entrada (defer) | 0 | 0 |
 | `js/core/mejoras-adicionales.js` | de entrada (defer) | 0 | 0 |
 | `js/core/money-input.js` | de entrada (defer) | 1 | 0 |
@@ -167,7 +167,7 @@ Carga: de entrada (defer)
 
 ### `js/core/libro.js`
 
-Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
+Carga: de entrada (defer)
 
 **Funciones:** `Libro`
 

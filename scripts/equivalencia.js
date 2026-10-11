@@ -32,7 +32,7 @@ function comparar(rutaA, rutaB, tolPatrimonio) {
 function foto(rutaBackup) {
   const { loadApp } = require('../tests/support/load-app');
   const CORE = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core'); // MIS_FINANZAS_CORE_DIR: calcular con otra copia del código (p. ej. la original, para la foto "antes")
-  const files = ['core-state.js', 'periodo.js', 'cuenta-efectos.js', 'nu-calc.js', 'calc-helpers.js'].map(f => path.join(CORE, f));
+  const files = ['core-state.js', 'periodo.js', 'cuenta-efectos.js', 'nu-calc.js', 'libro.js', 'calc-helpers.js'].map(f => path.join(CORE, f));
   const ctx = loadApp(files, { permissive: true });
   Object.keys(ctx.S).forEach(k => delete ctx.S[k]);
   Object.assign(ctx.S, JSON.parse(JSON.stringify(JSON.parse(fs.readFileSync(rutaBackup, 'utf8')))));

@@ -240,6 +240,11 @@ function _verificarIntegridadSaldoDeudor(d, saldoAntes, deltaEsperado) {
     toast(`El saldo de ${escHtml(d.nombre)} no cambió como se esperaba (esperado: ${fmt(deltaEsperado)}, real: ${fmt(deltaReal)}). Revisa su historial antes de seguir.`, 'err', 6000);
   }
 }
+// ── Libro (js/core/libro.js): origen de cada cambio de saldo ────────────────────────────────────────────────
+// _og(ref): al aplicar un movimiento, cada sumar/descontarFuente deja en el libro { modulo:'prestado', ref:<id del movimiento> }.
+// _enReversion(ref, fn): al revertir, todo lo que fn() mueva queda como tipo 'reversion' con el id del movimiento revertido.
+const _og = ref => ({ origen: { modulo: 'prestado', ref } });
+const _enReversion = (ref, fn) => (typeof Libro !== 'undefined' ? Libro.conOrigen({ modulo: 'prestado', ref, rev: true }, fn) : fn());
 // Revierte el efecto de UN abono sobre su cuenta destino: quita el movimiento espejo del
 // historial y descuenta el saldo que había sumado. Si el abono guardó el id del espejo
 // pero el espejo ya no existe, el saldo NO se descuenta otra vez (evita doble descuento).
@@ -701,7 +706,8 @@ async function _prEnsureAlcancia() {
 // TC, salidas del encargo, extras, gasto del perdón, margen) y lo quita de la deuda. No pregunta ni valida nada: todo
 // lo que puede impedir el borrado (antigüedad, confirmación, que Alcancía cargue) se resuelve ANTES, en eliminarMovDeudor,
 // así que acá no hay ningún `return` que pueda dejar la reversión a medias. También la usa movimientos.js (desdeFeed).
-function _revertirMovDeudor(d, m) {
+function _revertirMovDeudor(d, m) { return _enReversion(m.id, () => _revertirMovDeudorImpl(d, m)); }
+function _revertirMovDeudorImpl(d, m) {
   const esPrestamo = m.tipo === 'prestamo';
   // Efecto en las cuentas
   if (esPrestamo) {
@@ -1192,7 +1198,7 @@ function _aplicarPrestamo(p) {
   const movId = uid();
   let movObj;
   if (fuentes) {
-    fuentes.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto); });
+    fuentes.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto, _og(movId)); });
     const gananciaVirtual = fuentes.filter(r => r.fuente === 'ganancia').reduce((a, r) => a + r.monto, 0);
     movObj = { id: movId, tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r => ({ fuente: r.fuente, monto: r.monto })), nota, _gananciaVirtual: gananciaVirtual || undefined, grupoId: p.grupoId, ts: Date.now() };
   } else {
@@ -1206,7 +1212,7 @@ function _aplicarPrestamo(p) {
       // Sin cuenta de origen + "¿Es plata nueva?": regalo recibido como deuda = ingreso del mes (ver _movsDeudaSinCuenta).
       if (p.regalo && !fuente) movObj.clase = 'ingreso';
     }
-    descontarFuente(fuente, montoSalio);
+    descontarFuente(fuente, montoSalio, _og(movId));
   }
   d.movimientos.push(movObj);
   // El margen queda como ingreso (fantasma, sin cuenta) enlazado a este préstamo (linkId = movId)
@@ -1247,7 +1253,7 @@ function _aplicarExtraPartes(p, mov, v) {
     if (!x.monto || x.monto <= 0) continue;
     if (x.tipo === 'guardar') {
       if (!x.cuenta) continue;
-      sumarFuente(x.cuenta, x.monto);
+      sumarFuente(x.cuenta, x.monto, _og(mov.id));
       const movExtraId = registrarMovEspejo({ cuenta: x.cuenta, flujo: 'entrada', monto: x.monto, fecha, desc: v.descGuardar, origen: 'Prestado · Me deben', clase: v.extraIngreso ? 'ingreso' : 'neutro', extra: v.extraIngreso ? { _esExtraIngreso: true } : undefined });
       mov._extPartes.push({ tipo: 'guardar', cuenta: x.cuenta, monto: x.monto, movExtraId });
     } else if (x.tipo === 'gastar') {
@@ -1371,7 +1377,7 @@ function _aplicarAbonoEncargo(p) {
     : `Abono de deuda — ${d.nombre} (vía encargo ${enc.nombre})`;
   let mov;
   if (destinos) {
-    destinos.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto); });
+    destinos.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto, _og(abonMovId)); });
     // Movimiento visible en el historial de cada cuenta destino (igual que el destino simple)
     destinos.forEach(r => {
       r._movId = registrarMovEspejo({ cuenta: r.fuente, flujo: 'entrada', monto: r.monto, fecha, desc: descDestino, origen: 'Prestado · Me deben' });
@@ -1383,7 +1389,7 @@ function _aplicarAbonoEncargo(p) {
       grupoId: p.grupoId, ts: Date.now()
     };
   } else {
-    if (destino) sumarFuente(destino, monto);
+    if (destino) sumarFuente(destino, monto, _og(abonMovId));
     // Movimiento visible en el historial de la cuenta destino
     const abonoDestinoMovId = destino
       ? registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc: descDestino, origen: 'Prestado · Me deben' })
@@ -1442,15 +1448,16 @@ function _aplicarAbonoNormal(p) {
   const desc = esPagoCompleto ? `Pago de deuda completo — ${d.nombre}` : `Abono de deuda — ${d.nombre}`;
   let mov;
   if (destinos) {
-    destinos.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto); });
+    const idMov = uid();
+    destinos.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto, _og(idMov)); });
     // Movimiento visible en cada cuenta destino
     destinos.forEach(r => {
       r._movId = registrarMovEspejo({ cuenta: r.fuente, flujo: 'entrada', monto: r.monto, fecha, desc, origen: 'Prestado · Me deben' });
     });
-    mov = { id: uid(), tipo: tipoGuardar, monto, fecha, destinos: destinos.map(r => ({ fuente: r.fuente, monto: r.monto, _movId: r._movId })), nota, grupoId: p.grupoId, ts: Date.now() };
+    mov = { id: idMov, tipo: tipoGuardar, monto, fecha, destinos: destinos.map(r => ({ fuente: r.fuente, monto: r.monto, _movId: r._movId })), nota, grupoId: p.grupoId, ts: Date.now() };
   } else {
     const abonoMovId = uid();
-    sumarFuente(destino, monto);
+    sumarFuente(destino, monto, _og(abonoMovId));
     // Movimiento visible en la cuenta destino (null si no hay cuenta rastreable)
     const abonoDestinoMovId = registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Prestado · Me deben' });
     mov = { id: abonoMovId, tipo: tipoGuardar, monto, fecha, destino, nota, _abonoDestinoMovId: abonoDestinoMovId, grupoId: p.grupoId, ts: Date.now() };
@@ -2145,7 +2152,7 @@ function _aplicarMovMiDeuda(p) {
   const desc = entra ? `Me prestó — ${d.nombre}` : `Pago de deuda — ${d.nombre}`;
   const movId = uid();
   const efectos = cuentas.map(c => {
-    if (entra) sumarFuente(c.cuenta, c.monto); else descontarFuente(c.cuenta, c.monto);
+    if (entra) sumarFuente(c.cuenta, c.monto, _og(movId)); else descontarFuente(c.cuenta, c.monto, _og(movId));
     if (c.cuenta.startsWith('tc:')) {
       // Pago con tarjeta: sube la deuda de la TC. descontarFuente ya la subió; falta el cargo que la respalda
       // (tcRecalcular reconstruye tc.deuda desde sus registros en cada refresh). Es deuda PROPIA, no ajena.
@@ -2208,7 +2215,8 @@ function confirmarMovMiDeuda() {
 }
 
 // Revierte EXACTAMENTE lo que hizo _aplicarMovMiDeuda (o el registro antiguo, de una sola cuenta).
-function _revertirMovMiDeuda(m) {
+function _revertirMovMiDeuda(m) { return _enReversion(m.id, () => _revertirMovMiDeudaImpl(m)); }
+function _revertirMovMiDeudaImpl(m) {
   const entra = m.tipo === 'recibido';
   const total = (m.monto || 0) + (m.extra ? m.extra.monto : 0);
   let filas;

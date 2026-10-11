@@ -90,6 +90,7 @@ let S={
   gastosVar:[],
   encargos:[],
   movimientos:[],
+  libro:[],
   modulos:{mesada:true,spotify:true},
   catsVar:[],
   catsFijo:[],
@@ -264,21 +265,41 @@ function getCuentaDeFuente(fuente){
 }
 
 /* ---- MOVER PLATA ENTRE CUENTAS ---- */
-// opts.exacto=true → NO recorta en 0 (se usa al REVERTIR un efecto ya aplicado).
-// Recortar al revertir pierde la diferencia para siempre: si el saldo es 49.000 y se
-// revierte un +54.000, el saldo real pasa a -5.000; recortarlo a 0 hace que al volver a
-// registrar el movimiento el saldo quede 5.000 por encima del real. Para gastos normales
-// (sin exacto) se mantiene el piso en 0 como antes.
+// LIBRO (js/core/libro.js): todo cambio de saldo de una cuenta con saldo (Nequi, Efectivo, personalizadas,
+// cajitas de Nu) pasa por sumarFuente / descontarFuente / ajustarSaldoCuenta y deja una entrada en S.libro, de
+// modo que el saldo guardado SIEMPRE sea la suma del libro. Ningún módulo debe escribir `c.saldo` directamente.
+// `opts` (opcional, en ambas): { tipo, desc, origen:{modulo, ref}, fecha } — qué es el movimiento y quién lo originó.
+// Sin `origen` queda como 'sin-origen' (o el de Libro.conOrigen); los módulos lo van pasando de a poco.
+function _libroPata(fuente,monto,opts){
+  if(typeof Libro==='undefined'){
+    if(!window._libroFaltaAvisada){window._libroFaltaAvisada=true;console.error('[libro] libro.js no cargó: los saldos cambian sin registrarse en el libro.');}
+    return null;
+  }
+  return Libro.registrar(fuente,monto,opts);
+}
+// Fija el saldo de una cuenta a `nuevoSaldo` (intereses de Nu, chequeo rápido, CDT…) y registra la DIFERENCIA en el
+// libro. Devuelve esa diferencia. Es la única forma permitida de asignar un saldo "absoluto".
+function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
+  const c=fuente.startsWith('cajita:')?(S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]):getCuentaDeFuente(fuente);
+  if(!c)return 0;
+  const delta=nuevoSaldo-(c.saldo||0);
+  c.saldo=nuevoSaldo;
+  if(Math.abs(delta)>1e-9)_libroPata(fuente,delta,opts);
+  return delta;
+}
+// Restar plata de una fuente. Antes recortaba el saldo en 0 (y la diferencia se perdía sin avisar); ahora el saldo
+// refleja exactamente lo restado, aunque quede negativo — los selectores ya solo ofrecen cuentas con saldo
+// suficiente, así que un negativo indica un movimiento mal registrado y se ve en vez de esconderse.
+// `opts.exacto` se acepta por compatibilidad (ya no hay recorte).
 function descontarFuente(fuente,monto,opts){
   if(!fuente||!monto)return;
-  const _piso=(opts&&opts.exacto)?(v=>v):(v=>Math.max(0,v));
   if(fuente==='ganancia'){
     // Plata virtual: no salió de ninguna cuenta real, es ganancia futura
     return;
   }
   if(fuente==='nequi'||fuente==='efectivo'||fuente.startsWith('custom:')){
     const c=getCuentaDeFuente(fuente);
-    if(c)c.saldo=_piso((c.saldo||0)-monto);
+    if(c){c.saldo=(c.saldo||0)-monto;_libroPata(fuente,-monto,opts);}
   } else if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -293,7 +314,8 @@ function descontarFuente(fuente,monto,opts){
       // el interés de ese día hasta que se visite Cuentas) en vez de tumbar
       // el gasto/movimiento completo con un ReferenceError.
       if(typeof materializarIntereses==='function') materializarIntereses(c);
-      c.saldo=_piso((c.saldo||0)-monto);
+      c.saldo=(c.saldo||0)-monto;
+      _libroPata(fuente,-monto,opts);
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
     }
   } else if(fuente.startsWith('tc:')){
@@ -303,11 +325,11 @@ function descontarFuente(fuente,monto,opts){
     if(tc)tc.deuda=(tc.deuda||0)+monto;
   }
 }
-function sumarFuente(fuente,monto){
+function sumarFuente(fuente,monto,opts){
   if(!fuente||!monto)return;
   if(fuente==='nequi'||fuente==='efectivo'||fuente.startsWith('custom:')){
     const c=getCuentaDeFuente(fuente);
-    if(c)c.saldo=(c.saldo||0)+monto;
+    if(c){c.saldo=(c.saldo||0)+monto;_libroPata(fuente,monto,opts);}
   } else if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -315,6 +337,7 @@ function sumarFuente(fuente,monto){
       // Ver nota equivalente en descontarFuente() más arriba.
       if(typeof materializarIntereses==='function') materializarIntereses(c);
       c.saldo=(c.saldo||0)+monto;
+      _libroPata(fuente,monto,opts);
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
     }
   } else if(fuente.startsWith('tc:')){
@@ -489,6 +512,13 @@ const MIGRACIONES = [
     (Array.isArray(d.deudores) ? d.deudores : []).forEach(x => (Array.isArray(x && x.movimientos) ? x.movimientos : []).forEach(m => {
       if (m && m.id === 'muhdltc2018' && m.tipo === 'prestamo' && m.monto === 500000 && m.fecha === '2026-09-25' && !m.fuente && !m.clase) m.clase = 'ingreso';
     }));
+  } },
+  // v5: libro de movimientos (plan-libro-de-movimientos.md). Siembra S.libro desde las listas heredadas y añade una
+  // entrada explícita por cada diferencia con el saldo guardado (apertura faltante, intereses de Nu no registrados,
+  // diferencias sin explicar), para que desde aquí `saldo == suma del libro` (Libro.verificar). Requiere libro.js.
+  { v: 5, nombre: 'libro de movimientos (saldo derivado)', fn(d) {
+    if (typeof Libro === 'undefined') throw new Error('libro.js no está cargado: no se puede sembrar el libro');
+    Libro.sembrar(d);
   } }
 ];
 // Clase de un movimiento ya existente según las reglas históricas, o null si no hay certeza.
@@ -558,6 +588,7 @@ function load(){
   aplicarMigraciones(S);
   if(!S.encargos)S.encargos=[];
   if(!S.movimientos)S.movimientos=[];
+  if(!Array.isArray(S.libro))S.libro=[];
   _cuentasArr(); // garantiza S.cuentas con Nequi y Efectivo (ver "CUENTAS: MODELO ÚNICO")
   if(!S.catsVar)S.catsVar=[];
   if(!S.catsFijo)S.catsFijo=[];
@@ -652,6 +683,17 @@ function save(){
   if(_red.estampados && !window._claseRedAvisada){
     window._claseRedAvisada = true;
     console.warn('[clase] ' + _red.estampados + ' movimiento(s) llegaron sin clase explícita y se estamparon por deducción: revisar qué módulo los creó.');
+  }
+  // Invariante del libro: saldo guardado == suma de S.libro. Un descuadre significa que algún código movió un saldo
+  // sin pasar por sumarFuente/descontarFuente/ajustarSaldoCuenta. Se avisa UNA vez por sesión (consola + aviso).
+  if(typeof Libro!=='undefined'){
+    const _lv=Libro.verificar();
+    window._libroDescuadres=_lv.ok?[]:_lv.descuadres;
+    if(!_lv.ok&&!window._libroAvisado){
+      window._libroAvisado=true;
+      console.warn('[libro] el saldo guardado no coincide con la suma del libro:',_lv.descuadres);
+      if(typeof toast==='function')toast('El libro no cuadra con el saldo de '+_lv.descuadres.map(f=>f.nombre).join(', ')+' (ver consola).','err',6000);
+    }
   }
   snapshotPatrimonio();
   // Guardar en Firebase con debounce de 1.5s

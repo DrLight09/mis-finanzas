@@ -10,7 +10,8 @@
    que escriben aquí con Libro.registrar(). Ningún módulo debe tocar `c.saldo` directamente.
 
    Entrada del libro:  { id, fecha, cuenta, monto (con signo), tipo, desc?, origen? }
-     tipo:    'apertura' | 'movimiento' | 'rendimiento' | 'ajuste' | 'cdt'
+     tipo:    'apertura' | 'movimiento' | 'reversion' | 'rendimiento' | 'ajuste' | 'cdt'
+              ('reversion' = deshace un movimiento anterior: lleva el mismo origen.ref y origen.rev=true)
      origen:  { modulo, ref? }  → módulo que la originó y, cuando se conoce, el id de su registro.
               Sin origen explícito queda como { modulo:'sin-origen' }: se asigna módulo por módulo con
               Libro.conOrigen() o pasando `origen` en las opts de sumarFuente/descontarFuente.
@@ -56,7 +57,8 @@ const Libro = (() => {
     if (!esCuenta(cuenta) || !monto) return null;
     const st = _st(estado); if (!Array.isArray(st.libro)) st.libro = [];
     o = o || {};
-    const fecha = o.fecha || _hoyStr(), tipo = o.tipo || 'movimiento';
+    const og = o.origen || _ctx || { modulo: 'sin-origen' };
+    const fecha = o.fecha || _hoyStr(), tipo = o.tipo || (og.rev ? 'reversion' : 'movimiento');
     if (tipo === 'rendimiento') {           // intereses: una entrada por cuenta y mes (evita ~1 entrada/día/cajita)
       const mes = fecha.slice(0, 7);
       for (let i = st.libro.length - 1, n = 0; i >= 0 && n < 400; i--, n++) {
@@ -66,7 +68,7 @@ const Libro = (() => {
     }
     const reg = { id: _id(), fecha, cuenta, monto, tipo };
     if (o.desc) reg.desc = o.desc;
-    reg.origen = o.origen || _ctx || { modulo: 'sin-origen' };
+    reg.origen = og;
     st.libro.push(reg);
     return reg.id;
   }

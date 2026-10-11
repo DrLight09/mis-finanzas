@@ -481,7 +481,15 @@ const MIGRACIONES = [
   // v3: estampa `clase` en el histórico de movimientos (ver plan-clasificacion-movimientos.md §4.3).
   // Usa las reglas históricas UNA sola vez; lo que no se puede clasificar con certeza se deja
   // sin `clase` (se cuenta en console.info) y las lecturas siguen cayendo en la cascada.
-  { v: 3, nombre: 'clase explícita en movimientos', fn(d) { estamparClasesMovimientos(d); } }
+  { v: 3, nombre: 'clase explícita en movimientos', fn(d) { estamparClasesMovimientos(d); } },
+  // v4: corrección de datos del dueño (2026-10-10). El préstamo "Me deben" a Padre de $500.000 sin cuenta (25-sep, nota
+  // "Regalo - Abuela") fue un REGALO: la abuela le dijo al papá que le pagara a él lo que le debía a ella. Es plata nueva
+  // (ingreso de septiembre), no un ajuste. Se identifica por id y se verifica monto/fecha/sin cuenta para no tocar otro.
+  { v: 4, nombre: 'regalo de la abuela como ingreso', fn(d) {
+    (Array.isArray(d.deudores) ? d.deudores : []).forEach(x => (Array.isArray(x && x.movimientos) ? x.movimientos : []).forEach(m => {
+      if (m && m.id === 'muhdltc2018' && m.tipo === 'prestamo' && m.monto === 500000 && m.fecha === '2026-09-25' && !m.fuente && !m.clase) m.clase = 'ingreso';
+    }));
+  } }
 ];
 // Clase de un movimiento ya existente según las reglas históricas, o null si no hay certeza.
 // `origen`: 'movimientos' (S.movimientos), 'custom' (cuenta.movimientos), 'cajita' (cajita.historial)
@@ -576,28 +584,7 @@ function load(){
       if (p && p.color) d.color = p.color;
     }
   });
-  // Migración retroactiva: calcular el monto exacto de aperturas y ajustes de saldo inicial
-  // (incluyendo borrados de apertura, que generan un ajuste negativo en _ajustesBaseLog)
-  // por fecha en el historial de patrimonio que ya existía antes de este fix. Así la
-  // tendencia mensual descuenta solo esa parte del cambio del día y conserva cualquier
-  // ingreso real que haya ocurrido la misma fecha, sin tener que esperar a un nuevo snapshot.
-  if(S.patrimonioHistorial.length){
-    const montoAperturaPorFecha = {};
-    const sumarApertura=(m)=>{
-      if(m.tipo==='apertura'){ montoAperturaPorFecha[m.fecha]=(montoAperturaPorFecha[m.fecha]||0)+(m.monto||0); }
-      if(m._ajustes){ m._ajustes.forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); }); }
-    };
-    (S.movimientos||[]).forEach(sumarApertura);
-    cuentasCustom().forEach(c=>(c.movimientos||[]).forEach(sumarApertura));
-    (S._ajustesBaseLog||[]).forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); });
-    // Destapes de alcancía ya hechos (sobrante/faltante): mismo tratamiento que una apertura — ver _ajusteAlcanciaPorFecha().
-    const _ajAlc=_ajusteAlcanciaPorFecha();
-    Object.keys(_ajAlc).forEach(f=>{ montoAperturaPorFecha[f]=(montoAperturaPorFecha[f]||0)+_ajAlc[f]; });
-    S.patrimonioHistorial.forEach(h=>{
-      if(montoAperturaPorFecha[h.fecha]&&montoAperturaPorFecha[h.fecha]!==0){ h.montoBase=montoAperturaPorFecha[h.fecha]; }
-      else { delete h.baseAjustada; } // limpiar flag de versión anterior del fix, si existe
-    });
-  }
+  recalcularMontoBaseHistorial();
   if(S.cajitas){
     S.cajitas=S.cajitas.map(c=>{
       if(!c.cdts)c.cdts=[];
@@ -822,6 +809,68 @@ function _ajusteAlcanciaPorFecha(){
   return r;
 }
 
+// Recalcula `montoBase` de cada punto del historial de patrimonio a partir de los datos actuales (aperturas, ajustes de
+// saldo inicial, destapes de alcancía y deudas sin pata de caja). load() la llama en cada carga, así las correcciones
+// valen también hacia atrás sin migración; scripts/conciliacion.js la usa para medir lo mismo que ve la app.
+function recalcularMontoBaseHistorial(){
+  // Migración retroactiva: calcular el monto exacto de aperturas y ajustes de saldo inicial
+  // (incluyendo borrados de apertura, que generan un ajuste negativo en _ajustesBaseLog)
+  // por fecha en el historial de patrimonio que ya existía antes de este fix. Así la
+  // tendencia mensual descuenta solo esa parte del cambio del día y conserva cualquier
+  // ingreso real que haya ocurrido la misma fecha, sin tener que esperar a un nuevo snapshot.
+  if(S.patrimonioHistorial.length){
+    const montoAperturaPorFecha = {};
+    const sumarApertura=(m)=>{
+      if(m.tipo==='apertura'){ montoAperturaPorFecha[m.fecha]=(montoAperturaPorFecha[m.fecha]||0)+(m.monto||0); }
+      if(m._ajustes){ m._ajustes.forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); }); }
+    };
+    (S.movimientos||[]).forEach(sumarApertura);
+    cuentasCustom().forEach(c=>(c.movimientos||[]).forEach(sumarApertura));
+    (S._ajustesBaseLog||[]).forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); });
+    // Destapes de alcancía ya hechos (sobrante/faltante): mismo tratamiento que una apertura — ver _ajusteAlcanciaPorFecha().
+    const _ajAlc=_ajusteAlcanciaPorFecha();
+    Object.keys(_ajAlc).forEach(f=>{ montoAperturaPorFecha[f]=(montoAperturaPorFecha[f]||0)+_ajAlc[f]; });
+    // Deudas sin pata de caja (ver _movsDeudaSinCuenta): ajuste de base, no crecimiento. Vale hacia atrás: se recalcula en cada carga.
+    const _ajDeu=_ajusteDeudasSinCuentaPorFecha();
+    Object.keys(_ajDeu).forEach(f=>{ montoAperturaPorFecha[f]=(montoAperturaPorFecha[f]||0)+_ajDeu[f]; });
+    S.patrimonioHistorial.forEach(h=>{
+      if(montoAperturaPorFecha[h.fecha]&&montoAperturaPorFecha[h.fecha]!==0){ h.montoBase=montoAperturaPorFecha[h.fecha]; }
+      else { delete h.baseAjustada; delete h.montoBase; } // sin respaldo en los datos actuales: se limpia (p. ej. se borró el préstamo sin cuenta que lo originó)
+    });
+  }
+}
+
+// Movimientos de DEUDAS que cambian el patrimonio sin pasar por ninguna cuenta ("sin pata de caja"): un préstamo
+// "Me deben" sin cuenta ni tarjeta de origen (sube lo que te deben y ninguna cuenta baja → patrimonio +), un abono
+// o pago recibido sin cuenta destino (baja lo que te deben y ninguna cuenta sube → −), y lo mismo en "Yo debo"
+// (recibido sin cuenta → −, pago sin cuenta → +). No son ingreso ni gasto del mes: si se contaran como flujo,
+// inflarían o hundirían el balance; y si no se descuentan de la tendencia, la gráfica y la proyección de Inicio
+// los leen como crecimiento real (un solo préstamo de $500.000 sin cuenta llevó la proyección a 12 meses de
+// +$1,2 M a +$6,7 M). Por eso se tratan como ajuste de base, igual que una apertura de cuenta (montoBase).
+// Quedan fuera: los perdones (ya cuentan como gasto/ingreso), lo pagado con TC (`_viaTC`: la tarjeta es la otra
+// pata) y los movimientos con `fuentes`/`destinos` repartidos (la diferencia puede ser un margen ya registrado).
+// Si el movimiento trae `clase:'ingreso'` es plata nueva (p. ej. un regalo): cuenta como ingreso del mes y NO como base.
+function _movsDeudaSinCuenta(estado){
+  const st=estado||S, out=[];
+  const veces=(lista,abre,reduce)=>(lista||[]).forEach(d=>(d.movimientos||[]).forEach(m=>{
+    if(!m||!m.fecha||!(m.monto>0)||m._perdon||m._viaTC) return;
+    if(m.fuente||m.destino||(m.fuentes&&m.fuentes.length)||(m.destinos&&m.destinos.length)) return;
+    let signo=0;
+    if(abre.indexOf(m.tipo)!==-1) signo=abre===ME_DEBEN_ABRE?1:-1;
+    else if(reduce.indexOf(m.tipo)!==-1) signo=abre===ME_DEBEN_ABRE?-1:1;
+    if(signo) out.push({m,deuda:d,fecha:m.fecha,monto:signo*m.monto,clase:m.clase});
+  }));
+  veces(st.deudores,ME_DEBEN_ABRE,['abono','pago-completo']);
+  veces(st.misDeudas,YO_DEBO_ABRE,['pago','abono','pago-completo']);
+  return out;
+}
+const ME_DEBEN_ABRE=['prestamo'], YO_DEBO_ABRE=['recibido'];
+function _ajusteDeudasSinCuentaPorFecha(){
+  const r={};
+  _movsDeudaSinCuenta().forEach(x=>{ if(x.clase!=='ingreso') r[x.fecha]=(r[x.fecha]||0)+x.monto; });
+  return r;
+}
+
 function snapshotPatrimonio(){
   if(!_patrimonioDependenciasListas()) return;
   const hoyStr=hoy();
@@ -856,7 +905,8 @@ function snapshotPatrimonio(){
     sumarAperturasYAjustesDeHoy(S.movimientos)
     + cuentasCustom().reduce((a,c)=>a+sumarAperturasYAjustesDeHoy(c.movimientos),0)
     + (S._ajustesBaseLog||[]).filter(aj=>aj.fecha===hoyStr).reduce((a,aj)=>a+(aj.monto||0),0)
-    + (_ajusteAlcanciaPorFecha()[hoyStr]||0);
+    + (_ajusteAlcanciaPorFecha()[hoyStr]||0)
+    + (_ajusteDeudasSinCuentaPorFecha()[hoyStr]||0);
   const ultimo=S.patrimonioHistorial[S.patrimonioHistorial.length-1];
   if(ultimo&&ultimo.fecha===hoyStr){
     ultimo.valor=val;
@@ -1011,6 +1061,8 @@ function entradasIngresoReal(estado){
     if(!m || m.tipo!=='entrada' || (m.id && ids.has(m.id))) return;
     if(claseEfectivaMovimiento(m, 'cajita') === 'ingreso') lista.push(m);
   }));
+  // Deudas sin pata de caja marcadas `clase:'ingreso'` (p. ej. un regalo registrado como "Me deben"): plata nueva.
+  _movsDeudaSinCuenta(st).forEach(x=>{ if(x.clase==='ingreso'&&x.monto>0) lista.push({id:x.m.id,tipo:'entrada',monto:x.monto,fecha:x.fecha,desc:x.m.nota||('Ingreso vía '+(x.deuda.nombre||'deuda')),clase:'ingreso',_esDeudaSinCuenta:true}); });
   return lista;
 }
 

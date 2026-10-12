@@ -121,6 +121,10 @@ const TC_MOTIVOS_CARGO = {
 // (ver core-state.js#nivelAntiguedadMovimiento y
 // docs/proteccion-antiguedad-movimientos.md §4: sin ciclo natural como
 // Spotify, se cuenta contra la cuenta/tarjeta afectada en su lugar).
+// ── Libro (js/core/libro.js) ─────────────────────────────────────────────────────────────────────────────────
+// _ogTc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'tarjetas', ref:<id del pago de la tarjeta> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _ogTc = (ref, rev) => ({ origen: { modulo: 'tarjetas', ref, rev: rev || undefined } });
+
 function _tcOpsPosteriores(tc, fecha, excludeId){
   if(!fecha)return 0;
   const compras=(tc.compras||[]).filter(c=>!c.eliminado&&c.id!==excludeId&&c.fecha>fecha).length;
@@ -766,8 +770,8 @@ function confirmarPagarTC(){
   const saldo=getSaldoFuente(fuente);
   if(Math.round(saldo*100)<Math.round(monto*100)){toast('Saldo insuficiente en '+escHtml(fuenteLabel(fuente))+' — disponible: '+fmt(saldo),'err');return;}
 
-  descontarFuente(fuente,monto);
   const pago=tcCrearPago(tc,{monto,fecha,fuente,nota});
+  descontarFuente(fuente,monto,_ogTc(pago.id)); // después de crear el pago, para que el libro apunte a su id
 
   if(!S.gastosVar)S.gastosVar=[];
   S.gastosVar.push({
@@ -1019,7 +1023,7 @@ async function eliminarPagoTC(tcId,pagoId){
     : await dialogo('Eliminar pago','¿Eliminar este pago de '+fmt(pago.monto)+'? Se devolverá el dinero a '+fuenteLabel(pago.fuente)+' y aumentará la deuda de la tarjeta.','Eliminar',true);
   if(!ok)return;
   tcEliminarPagoInterna(tc,pagoId);
-  if(pago.fuente) sumarFuente(pago.fuente,pago.monto);
+  if(pago.fuente) sumarFuente(pago.fuente,pago.monto,_ogTc(pagoId,true));
   if(S.gastosVar)S.gastosVar=S.gastosVar.filter(g=>!(g._esPagoTC&&g._tcPagoId===pagoId));
   save();refresh();renderTCScreen();
   abrirDetalleTCSheet(tcId);

@@ -43,6 +43,12 @@
    CHANGELOG.md#encargos.
    ═══════════════════════════════════════════════════════════════ */
 
+// ── Libro (js/core/libro.js): origen de cada cambio de saldo ────────────────────────────────────────────────
+// _ogEnc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'encargos', ref:<id del movimiento del encargo> }.
+// Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace). `opts.exacto` ya no existe: el saldo
+// nunca se recorta en 0 (ver descontarFuente en core-state.js).
+const _ogEnc = (ref, rev) => ({ origen: { modulo: 'encargos', ref, rev: rev || undefined } });
+
 function editarEncargoActual() {
   if (!encargoActualId) return;
   const enc = getEncargo(encargoActualId);
@@ -934,7 +940,7 @@ function _procesarMovEncMia(movimiento) {
 
   // Egresos de mis cuentas propias (lo que puse de mi bolsillo) — uno por cuenta
   salidas.forEach(r => {
-    descontarFuente(r.fuente, r.monto);
+    descontarFuente(r.fuente, r.monto, _ogEnc(movimiento.id));
     S.movimientos.push({
       id: uid(),
       tipo: 'transferencia',
@@ -956,7 +962,7 @@ function _procesarMovEncMia(movimiento) {
 
   // Ingresos a mis cuentas destino (lo que recupero del encargo) — uno por cuenta
   entradas.forEach(r => {
-    sumarFuente(r.fuente, r.monto);
+    sumarFuente(r.fuente, r.monto, _ogEnc(movimiento.id));
     S.movimientos.push({
       id: uid(),
       tipo: 'transferencia',
@@ -1190,7 +1196,7 @@ async function _confirmarUsarParte() {
 
       if (aplicaMi) {
         const destinosMi = (filasMi && filasMi.length) ? filasMi : [{ fuente: miCuenta, monto: yoMeQuedo }];
-        destinosMi.forEach(r => sumarFuente(r.fuente, r.monto));
+        destinosMi.forEach(r => sumarFuente(r.fuente, r.monto, _ogEnc(parte.id)));
         _usarParteMargenPendiente = destinosMi.map(r => ({ fuente: r.fuente, monto: r.monto }));
       }
     }
@@ -1894,7 +1900,7 @@ function _movEncConfirmarPrestarFaltante() {
     _encargoOrigenMovId: movEncId,
     ts: Date.now() + 1
   });
-  descontarFuente(fuentePrestamo, faltante);
+  descontarFuente(fuentePrestamo, faltante, _ogEnc(movEncId));
 
   save();
   refresh();
@@ -1917,7 +1923,7 @@ async function deleteMovEncargo(encId, movId) {
     if (!(enc.saldoInicial > 0)) return;
     const ok = await dialogo('Eliminar saldo inicial', `¿Eliminar el saldo inicial de ${fmt(enc.saldoInicial)}?${enc.cuentaInicial ? ' Se descontará de ' + fuenteLabel(enc.cuentaInicial) + '.' : ''}`, 'Eliminar', true);
     if (!ok) return;
-    if (enc.cuentaInicial) descontarFuente(enc.cuentaInicial, enc.saldoInicial, { exacto: true });
+    if (enc.cuentaInicial) descontarFuente(enc.cuentaInicial, enc.saldoInicial, _ogEnc('saldo-inicial:' + enc.id, true));
     enc.saldoInicial = 0;
     enc.cuentaInicial = '';
     save(); refresh();
@@ -1991,7 +1997,7 @@ async function deleteMovEncargo(encId, movId) {
     // con fallback a _tcMonto y luego a monto para compatibilidad con registros anteriores.
     if (mov._destino) {
       const montoARevertir = mov._destinoMonto || mov._tcMonto || mov.monto;
-      if (montoARevertir) descontarFuente(mov._destino, montoARevertir, { exacto: true });
+      if (montoARevertir) descontarFuente(mov._destino, montoARevertir, _ogEnc(movId, true));
     }
 
     // Revertir la deuda de la TC (paso 3)
@@ -2009,7 +2015,7 @@ async function deleteMovEncargo(encId, movId) {
     // y revertir sus sumas. Excluye los de intercambio — esos los maneja el bloque siguiente.
     if (S.movimientos) {
       const difMovs = S.movimientos.filter(m => m._encMovId === movId && !m._esIntercambioEncargo);
-      difMovs.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, { exacto: true }); });
+      difMovs.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _ogEnc(movId, true)); });
       S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && !m._esIntercambioEncargo));
     }
   }
@@ -2028,7 +2034,7 @@ async function deleteMovEncargo(encId, movId) {
   // Revertir "Me lo regalaron" (traspaso de encargo a cuenta propia)
   if (mov && mov._traspasoEncargo) {
     // Revertir el sumarFuente que se hizo en el paso 2
-    if (mov._destino && mov.monto) descontarFuente(mov._destino, mov.monto, { exacto: true });
+    if (mov._destino && mov.monto) descontarFuente(mov._destino, mov.monto, _ogEnc(movId, true));
     // Borrar el movimiento de ingreso vinculado (puede estar en c.movimientos de una
     // cuenta custom o en S.movimientos para cuentas estándar).
     if (mov._destino && mov._destino.startsWith('custom:')) {
@@ -2049,9 +2055,9 @@ async function deleteMovEncargo(encId, movId) {
       intercambioMovs.forEach(m => {
         if (!m.fuente || !m.monto) return;
         if (m._intercambioSalida) {
-          sumarFuente(m.fuente, m.monto);
+          sumarFuente(m.fuente, m.monto, _ogEnc(movId, true));
         } else if (m._intercambioEntrada) {
-          descontarFuente(m.fuente, m.monto, { exacto: true });
+          descontarFuente(m.fuente, m.monto, _ogEnc(movId, true));
         }
       });
       S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && m._esIntercambioEncargo));
@@ -2066,10 +2072,10 @@ async function deleteMovEncargo(encId, movId) {
         if (!m.fuente || !m.monto) return;
         if (m._intercambioSalida) {
           // Pagué de mi bolsillo → revertir sumando de vuelta a esa cuenta
-          sumarFuente(m.fuente, m.monto);
+          sumarFuente(m.fuente, m.monto, _ogEnc(movId, true));
         } else if (m._intercambioEntrada) {
           // Recuperé en mi cuenta → revertir descontando
-          descontarFuente(m.fuente, m.monto, { exacto: true });
+          descontarFuente(m.fuente, m.monto, _ogEnc(movId, true));
         }
       });
       S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && m._esIntercambioEncargo));
@@ -2080,7 +2086,7 @@ async function deleteMovEncargo(encId, movId) {
   // por cuenta si se repartió con "Dividir ÷"). La compra con TC ya lo limpió arriba.
   if (mov && mov.diferencial && !mov._esTcEncargo && S.movimientos) {
     S.movimientos.filter(m => m._encMovId === movId && m._esDiferencialEncargo)
-      .forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, { exacto: true }); });
+      .forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _ogEnc(movId, true)); });
     S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && m._esDiferencialEncargo));
   }
 
@@ -2282,7 +2288,7 @@ function confirmarTraspasoEncargo() {
   });
 
   // 2. Sumar a mi cuenta (cambia "de quién es" la plata)
-  sumarFuente(destino, monto);
+  sumarFuente(destino, monto, _ogEnc(encMovId));
 
   // 3. Registrar ingreso visible en el historial de la cuenta destino.
   //    Cuentas custom: va en c.movimientos (lo que renderMovsCustom lee).
@@ -3176,7 +3182,7 @@ function confirmarCompraConTC() {
   // ── 2. Mover el dinero del encargo a la cuenta destino
   //    Solo entra el valor real cobrado por la TC (tcMonto), no el total del encargo.
   //    La diferencia (margen) ya fue separada como ganancia tuya en el paso diferencial.
-  sumarFuente(destino, tcMonto);
+  sumarFuente(destino, tcMonto, _ogEnc(_encMovId));
   if (!S.movimientos) S.movimientos = [];
   S.movimientos.push({
     id: uid(),

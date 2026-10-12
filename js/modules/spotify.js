@@ -62,6 +62,11 @@ let sppSplitMode=false;
 // (parte cierra deuda de un ciclo viejo, el resto es del ciclo nuevo — ver
 // confirmarSpDestino), cada registro necesita su propia porción del split para
 // que borrar uno solo revierta solo esa porción de cada cuenta, no el total.
+// ── Libro (js/core/libro.js): origen de cada cambio de saldo ────────────────────────────────────────────────
+// _ogSp(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'spotify', ref:<id del registro de spotifyHistorial,
+// o del pago> }. Con rev=true es una reversión (tipo 'reversion'). `opts.exacto` ya no existe: el saldo no se recorta en 0.
+const _ogSp = (ref, rev) => ({ origen: { modulo: 'spotify', ref, rev: rev || undefined } });
+
 function _spProporcionarSplits(splits,montoParcial,montoTotal){
   if(!splits||!splits.length||montoTotal<=0||montoParcial<=0)return null;
   const factor=montoParcial/montoTotal;
@@ -698,17 +703,17 @@ async function _borrarSpHistorial(i,h){
     const montoOriginalCobro=Math.max(0,(h.monto||0)-historialPendTotal);
     // Revertir el movimiento secundario: la plata que entró a la(s) cuenta(s) destino al cobrar
     if(h.splits&&h.splits.length){
-      h.splits.forEach(s=>{ if(s.fuente)descontarFuente(s.fuente,s.monto||0, { exacto: true }); });
+      h.splits.forEach(s=>{ if(s.fuente)descontarFuente(s.fuente,s.monto||0,_ogSp(h.id,true)); });
     } else if(h.fuente){
-      descontarFuente(h.fuente,montoOriginalCobro, { exacto: true });
+      descontarFuente(h.fuente,montoOriginalCobro,_ogSp(h.id,true));
     }
     // Revertir cada abono de lo pendiente por separado (cada uno pudo ir a otra cuenta)
     (h.pendienteHistorial||[]).forEach(ab=>{
-      if(ab.destino)descontarFuente(ab.destino,ab.monto||0, { exacto: true });
+      if(ab.destino)descontarFuente(ab.destino,ab.monto||0,_ogSp(h.id,true));
     });
     // Revertir el EXTRA (si dio de más): sale de su cuenta y se quita su movimiento espejo.
     if((h.extra||0)>0&&h.extraFuente){
-      descontarFuente(h.extraFuente,h.extra,{ exacto: true });
+      descontarFuente(h.extraFuente,h.extra,_ogSp(h.id,true));
       if(h.extraMovId)borrarMovEspejo(h.extraFuente,h.extraMovId);
     }
     // Si este cobro estaba saldando deuda de un ciclo ya cerrado (_pagoIdCierre), devolver
@@ -754,9 +759,9 @@ async function _borrarSpHistorial(i,h){
         }
       }
     } else if(h.splits&&h.splits.length){
-      h.splits.forEach(s=>{ if(s.fuente)sumarFuente(s.fuente,s.monto||0); });
+      h.splits.forEach(s=>{ if(s.fuente)sumarFuente(s.fuente,s.monto||0,_ogSp(h.id,true)); });
     } else if(h.fuente){
-      sumarFuente(h.fuente,h.monto||0);
+      sumarFuente(h.fuente,h.monto||0,_ogSp(h.id,true));
     }
     // Eliminar el gasto variable que se generó junto con este pago
     if(h._gastoVarId&&S.gastosVar){
@@ -790,7 +795,7 @@ async function deshacerAbonoPendienteSp(i,abIdx){
   if(!ab)return;
   const ok=await dialogo('Deshacer abono',`¿Deshacer este abono de ${fmt(ab.monto)}? Esta acción no se puede deshacer. Esto revierte esa plata de ${ab.destino?fuenteLabel(ab.destino):'la cuenta elegida'} y vuelve a marcar esa parte como pendiente.`,'Deshacer',true);
   if(!ok)return;
-  if(ab.destino)descontarFuente(ab.destino,ab.monto||0, { exacto: true });
+  if(ab.destino)descontarFuente(ab.destino,ab.monto||0,_ogSp(h.id,true));
   h.monto=Math.max(0,(h.monto||0)-(ab.monto||0));
   h.pendiente=(h.pendiente||0)+(ab.monto||0);
   h.pendienteHistorial.splice(abIdx,1);
@@ -1038,11 +1043,13 @@ function confirmarSpDestino(){
   p.mesesAdelantados=meses;
   p.ultimoDestino=spDestinoSel||'';
   p.ultimoDestinoSplit=!!splits;
-  // Sumar dinero a la(s) fuente(s)
+  // Sumar dinero a la(s) fuente(s). `_cobroRef` es el id del PRIMER registro de historial que nace de este cobro (el de
+  // cierre de deuda vieja si lo hay; si no, el cobro normal): así el libro apunta a un registro que existe.
+  const _cobroRef=uid();
   if(splits){
-    splits.forEach(s=>{ if(s.fuente)sumarFuente(s.fuente,s.monto); });
+    splits.forEach(s=>{ if(s.fuente)sumarFuente(s.fuente,s.monto,_ogSp(_cobroRef)); });
   } else if(spDestinoSel){
-    sumarFuente(spDestinoSel,cuotaRecibida);
+    sumarFuente(spDestinoSel,cuotaRecibida,_ogSp(_cobroRef));
   }
   // Avanzar fecha de cobro N meses pero respetando el día original fijo
   if(p.proximoPago)p.proximoPago=nextMonthFixed(p.proximoPago,meses);
@@ -1067,7 +1074,7 @@ function confirmarSpDestino(){
     const cierreMonto=Math.min(restante,pendienteViejo);
     lastPago._pendienteAlCerrar[p.id]=pendienteViejo-cierreMonto;
     if(lastPago._pendienteAlCerrar[p.id]<=0)delete lastPago._pendienteAlCerrar[p.id];
-    S.spotifyHistorial.push({id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:cierreMonto,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,cierreMonto,cuotaRecibida)||undefined,fecha:fechaCobro,nota:'Pago atrasado del ciclo anterior'+(notaBase?' · '+notaBase:''),proximoPagoAntes,_pagoIdCierre:lastPago.id,_secundario:true,_origenSeccion:'Spotify'});
+    S.spotifyHistorial.push({id:_cobroRef,spId:p.id,tipo:'cobro',nombre:nombreActual,monto:cierreMonto,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,cierreMonto,cuotaRecibida)||undefined,fecha:fechaCobro,nota:'Pago atrasado del ciclo anterior'+(notaBase?' · '+notaBase:''),proximoPagoAntes,_pagoIdCierre:lastPago.id,_secundario:true,_origenSeccion:'Spotify'});
     restante-=cierreMonto;
     // Períodos del pago que ya cubrió el registro de cierre: el registro "resto" arranca
     // después de ellos (ver spTramosDeCobro / _periodoOffset).
@@ -1079,7 +1086,7 @@ function confirmarSpDestino(){
   // la nota. Se guarda el nombre ACTUAL de la persona vinculada, no el crudo, para que
   // no quede fijado desactualizado.
   if(restante>0||diferenciaSp>0){
-    const nuevoCobro={id:uid(),spId:p.id,tipo:'cobro',nombre:nombreActual,monto:restante,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,restante,cuotaRecibida)||undefined,fecha:fechaCobro,nota:notaBase,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'};
+    const nuevoCobro={id:periodosCierre>0?uid():_cobroRef,spId:p.id,tipo:'cobro',nombre:nombreActual,monto:restante,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,restante,cuotaRecibida)||undefined,fecha:fechaCobro,nota:notaBase,proximoPagoAntes,_secundario:true,_origenSeccion:'Spotify'};
     if(periodosCierre>0)nuevoCobro._periodoOffset=periodosCierre;
     if(diferenciaSp>0){
       nuevoCobro.cuotaEsperada=montoEsperado;
@@ -1097,7 +1104,7 @@ function confirmarSpDestino(){
     if(ultimoReg){
       ultimoReg.extra=extraSp;
       if(extraFuenteSp){
-        sumarFuente(extraFuenteSp,extraSp);
+        sumarFuente(extraFuenteSp,extraSp,_ogSp(ultimoReg.id));
         ultimoReg.extraFuente=extraFuenteSp;
         const movId=registrarMovEspejo({cuenta:extraFuenteSp,flujo:'entrada',monto:extraSp,fecha:fechaCobro,desc:'Extra de Spotify · '+nombreActual,origen:'Spotify',clase:'ingreso',extra:{_esExtraIngreso:true}});
         if(movId)ultimoReg.extraMovId=movId;
@@ -1162,7 +1169,7 @@ function confirmarSpResolverPendiente(){
   const fecha=document.getElementById('spResFecha').value||hoy();
   const nota=document.getElementById('spResNota').value.trim();
   const destino=document.getElementById('spResDestino').value;
-  if(destino)sumarFuente(destino,monto);
+  if(destino)sumarFuente(destino,monto,_ogSp(h.id));
   if(!h.pendienteHistorial)h.pendienteHistorial=[];
   // id + _secundario/_origenSeccion: mismo criterio que cualquier otro registro
   // de spotifyHistorial (ver §3 de docs/spotify.md) — permite que cuentas.js
@@ -1290,6 +1297,7 @@ async function actualizarSpPagarPreview(){
 }
 
 async function confirmarPagarSpotify(){
+  const _pagoRef=uid(); // id del gasto de este pago: lo usan el libro y, más abajo, S.gastosVar
   const monto=parseMoney(document.getElementById('spPagarMonto').value)||0;
   const nota=document.getElementById('spPagarNota')?document.getElementById('spPagarNota').value.trim():'';
   if(!monto){toast('Ingresa el monto a pagar','err');return;}
@@ -1316,7 +1324,7 @@ async function confirmarPagarSpotify(){
       const v=validarSalidaFuente(s.fuente,s.monto); // core-state.js: saldo/cupo, mensaje ya escapado
       if(!v.ok){toast(v.mensaje,'err',3500);return;}
     }
-    splits.forEach(s=>descontarFuente(s.fuente,s.monto));
+    splits.forEach(s=>descontarFuente(s.fuente,s.monto,_ogSp(_pagoRef)));
     notaGasto+=' · dividido entre '+splits.map(s=>fuenteLabel(s.fuente)).join(', ');
   } else {
     fuente=document.getElementById('spPagarFuente').value;
@@ -1337,13 +1345,13 @@ async function confirmarPagarSpotify(){
     } else if(fuente){
       const v=validarSalidaFuente(fuente,monto);
       if(!v.ok){toast(v.mensaje,'err',3500);return;}
-      descontarFuente(fuente,monto);
+      descontarFuente(fuente,monto,_ogSp(_pagoRef));
     }
   }
   if(!S.spotifyHistorial)S.spotifyHistorial=[];
   // Registrar también como gasto variable para que aparezca en la sección Gastos
   if(!S.gastosVar)S.gastosVar=[];
-  const gastoId=uid();
+  const gastoId=_pagoRef;
   S.gastosVar.push({id:gastoId,desc:'Spotify Premium',monto,fecha:hoy(),cat:'Suscripciones',fuente,nota:notaGasto,clase:'gasto',_secundario:true,_origenSeccion:'Spotify'});
   // Se guarda la cuota del administrador vigente EN ESTE MOMENTO (según cuántas personas
   // hay ahora), para que si la cantidad de integrantes cambia en el futuro, la ganancia

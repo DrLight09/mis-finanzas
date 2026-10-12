@@ -71,6 +71,10 @@
 
 const MESADA_PADRES = ['papa', 'mama'];
 
+// ── Libro (js/core/libro.js) ─────────────────────────────────────────────────────────────────────────────────
+// _ogMes(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'mesada', ref:<id del movimiento espejo del abono> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _ogMes = (ref, rev) => ({ origen: { modulo: 'mesada', ref, rev: rev || undefined } });
+
 function mesadaNombrePadre(parent) { return parent === 'papa' ? 'Papá' : 'Mamá'; }
 
 function _mesadaAnioDeKey(key) { return parseInt(String(key).split('-')[0], 10); }
@@ -190,14 +194,16 @@ function mesadaEncargosDelParent(parent) {
 // (null si no hay cuenta rastreable).
 function _mesadaEntrar(destino, monto, fecha, desc) {
   if (!destino || !monto) return null;
-  sumarFuente(destino, monto);
-  return registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Mesada' });
+  // El espejo se crea primero para que el libro apunte a su id (el orden no afecta al saldo).
+  const movId = registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Mesada' });
+  sumarFuente(destino, monto, _ogMes(movId || undefined));
+  return movId;
 }
 
 // Inverso de _mesadaEntrar. `descontar=false` solo borra el espejo (ver mesadaRevertirAbono).
 function _mesadaSacar(destino, monto, movSecId, descontar) {
   if (!destino) return;
-  if (descontar) descontarFuente(destino, monto, { exacto: true });
+  if (descontar) descontarFuente(destino, monto, _ogMes(movSecId, true));
   borrarMovEspejo(destino, movSecId);
 }
 

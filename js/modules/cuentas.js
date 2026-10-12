@@ -74,6 +74,10 @@ let cuentaActual = '';
 // Abre el detalle de una cuenta. `fuente` es el identificador de siempre
 // ('nequi' | 'nu' | 'efectivo' | 'custom:ID'). Nu tiene su propia pantalla (cajitas, CDTs);
 // todas las demás comparten #cuentas-detalle-simple.
+// ── Libro (js/core/libro.js) ─────────────────────────────────────────────────────────────────────────────────
+// _ogCta(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'cuentas', ref:<id del movimiento o de la transferencia> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _ogCta = (ref, rev) => ({ origen: { modulo: 'cuentas', ref, rev: rev || undefined } });
+
 function abrirCuenta(fuente) {
   const esCustom = fuente.startsWith('custom:');
   if (fuente !== 'nu' && !_descriptorCuenta(fuente)) return; // cuenta personalizada ya borrada
@@ -2052,7 +2056,6 @@ function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota){
   // `nota` es opcional — ver auditoria-tecnica.md / guia-estilo-sheets.md
   // (2026-08-22): el campo Nota de estos sheets existía en el HTML desde antes
   // pero nunca se leía ni se guardaba en el movimiento.
-  sumarFuente(fuente,monto);
   if(!S.movimientos)S.movimientos=[];
   let mov;
   if(esApertura){
@@ -2063,6 +2066,7 @@ function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota){
   }
   if(nota)mov.nota=nota;
   S.movimientos.push(mov);
+  sumarFuente(fuente,monto,_ogCta(mov.id)); // el saldo se aplica una vez creado el movimiento, para que el libro apunte a su id
   return mov.desc;
 }
 
@@ -2072,13 +2076,13 @@ function registrarSalida(fuente,monto,fecha,desc,nota){
   // fuente (cuenta, cajita, etc.) debe usar esto en vez de reimplementar
   // descontarFuente + push manual a S.movimientos.
   // `nota` es opcional — ver nota en registrarEntradaConApertura de arriba.
-  descontarFuente(fuente,monto);
   if(!S.movimientos)S.movimientos=[];
   // clase 'gasto': plata que sale del patrimonio sin pasar por un gasto registrado (simétrico a sumar dinero = ingreso;
   // en la práctica se usa para cuadrar la diferencia entre lo registrado y lo real). Cuenta en Periodo.gastosDelMes.
   const mov={id:uid(),tipo:'salida_manual',clase:'gasto',fuente,monto,fecha,desc:desc||''};
   if(nota)mov.nota=nota;
   S.movimientos.push(mov);
+  descontarFuente(fuente,monto,_ogCta(mov.id));
   return mov.desc;
 }
 
@@ -2159,12 +2163,12 @@ function confirmarAgregarDineroMenu(){
   const nota=document.getElementById('adMenuNota')?.value.trim()||'';
   if(!desc){toast('Describe de dónde viene esta plata','err');return;}
   if(!v||!fuente)return;
-  sumarFuente(fuente,v);
   // Registrar movimiento de entrada
   if(!S.movimientos)S.movimientos=[];
   const _movAdMenu={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto:v,fecha,desc};
   if(nota)_movAdMenu.nota=nota;
   S.movimientos.push(_movAdMenu);
+  sumarFuente(fuente,v,_ogCta(_movAdMenu.id));
   save();
   closeSheet('agregar-dinero-menu');
   refresh();
@@ -2274,8 +2278,8 @@ function confirmarEditarApertura(){
   const diff=nuevo-anterior;
   if(diff===0){toast('El valor es igual al actual','err');return;}
   // Ajustar saldo de la cuenta por la diferencia
-  if(diff>0) sumarFuente(_eaFuente,diff);
-  else descontarFuente(_eaFuente,Math.abs(diff), { exacto: true });
+  if(diff>0) sumarFuente(_eaFuente,diff,_ogCta(mov?mov.id:'apertura:'+_eaFuente));
+  else descontarFuente(_eaFuente,Math.abs(diff),_ogCta(mov?mov.id:'apertura:'+_eaFuente,true));
   // Actualizar o crear el movimiento de apertura
   if(mov){
     mov.monto=nuevo;
@@ -2720,13 +2724,14 @@ function confirmarTransferir() {
   if (!v.ok) { toast(v.mensaje, 'err', v.codigo === 'monto' ? 3500 : undefined); return; }
 
   // Perform transfer
-  descontarFuente(origen, monto);
-  sumarFuente(destino, monto);
+  const _trId = uid();
+  descontarFuente(origen, monto, _ogCta(_trId));
+  sumarFuente(destino, monto, _ogCta(_trId));
 
   // Save transfer record
   if (!S.transferencias) S.transferencias = [];
   S.transferencias.push({
-    id: uid(),
+    id: _trId,
     fecha,
     origen,
     destino,

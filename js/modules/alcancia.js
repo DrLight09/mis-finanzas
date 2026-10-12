@@ -24,6 +24,10 @@
 const _ALC_KEY = 0x4D;
 // Ícono (SVG inline) que reemplaza al texto "••••" cuando el monto de un depósito está oculto.
 const _ALC_ICONO_OCULTO = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" style="display:block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg>';
+// ── Libro (js/core/libro.js) ─────────────────────────────────────────────────────────────────────────────────
+// _ogAlc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'alcancia', ref:<id del depósito> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _ogAlc = (ref, rev) => ({ origen: { modulo: 'alcancia', ref, rev: rev || undefined } });
+
 function _alcEncode(saldo){
   const raw = JSON.stringify({s: saldo});
   const bytes = new TextEncoder().encode(raw);
@@ -967,7 +971,7 @@ window.alcanciaConfirmarDeposito = function(){
         _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
       });
-      if(typeof descontarFuente === 'function') descontarFuente(p.fuente, p.monto);
+      if(typeof descontarFuente === 'function') descontarFuente(p.fuente, p.monto, _ogAlc(p.movId));
     } else if(p.origen !== 'deuda'){
       const info = _ALC_INFO_ORIGEN[p.origen];
       window.S.movimientos = window.S.movimientos || [];
@@ -1390,11 +1394,11 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
   // Revertir el/los registro(s) reales según el tipo
   if(entry.tipo === 'yo-cuenta'){
     _alcQuitarMirrorCuenta(entry.id);
-    if(entry.fuenteOrigen && typeof sumarFuente === 'function') sumarFuente(entry.fuenteOrigen, entry.monto);
+    if(entry.fuenteOrigen && typeof sumarFuente === 'function') sumarFuente(entry.fuenteOrigen, entry.monto, _ogAlc(entry.id, true));
   } else if(entry.tipo === 'split'){
     if(entry._splitFuente){
       _alcQuitarMirrorCuenta(entry.id);
-      if(typeof sumarFuente === 'function') sumarFuente(entry._splitFuente, entry._splitYo || 0);
+      if(typeof sumarFuente === 'function') sumarFuente(entry._splitFuente, entry._splitYo || 0, _ogAlc(entry.id, true));
     } else if(entry._splitYo > 0){
       window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== entry.id);
     }
@@ -1406,7 +1410,7 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
     (entry.partes || []).forEach(pt => {
       if(pt.origen === 'cuenta'){
         _alcQuitarMirrorCuenta(pt.movId);
-        if(pt.fuente && typeof sumarFuente === 'function') sumarFuente(pt.fuente, pt.monto);
+        if(pt.fuente && typeof sumarFuente === 'function') sumarFuente(pt.fuente, pt.monto, _ogAlc(pt.movId || entry.id, true));
       } else {
         window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== pt.movId);
       }

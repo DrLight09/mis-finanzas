@@ -92,6 +92,10 @@ let gvSplitMode = false;
 
 // Solo cuentas con saldo >= $1,00 (FuentesFiltro, js/core/fuentes-filtro.js): de una cuenta
 // vacía no puede salir plata. Sin TC en modo dividido (ver comentario de arriba).
+// ── Libro (js/core/libro.js) ─────────────────────────────────────────────────────────────────────────────────
+// _ogGv(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'gastos', ref:<id del gasto> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _ogGv = (ref, rev) => ({ origen: { modulo: 'gastos', ref, rev: rev || undefined } });
+
 function getGvSplitFuentesOptions(selectedVal) {
   return FuentesFiltro.optsHtml(getFuentesSinTC(), {
     ...FuentesFiltro.PRESET.SALIDA, selectedVal,
@@ -370,12 +374,12 @@ function addGastoVar() {
     }
   } else if (splits) {
     S.gastosVar.push(gastoObj);
-    splits.forEach(s => descontarFuente(s.fuente, s.monto));
+    splits.forEach(s => descontarFuente(s.fuente, s.monto, _ogGv(gastoObj.id)));
     toast('Gasto registrado — dividido entre ' + splits.length + ' cuentas', 'ok');
     if (window.logCambio) { const _gvd = document.getElementById('gv_desc'); logCambio('Registraste un gasto', _gvd ? _gvd.value : '', monto, 'gasto'); }
   } else {
     S.gastosVar.push(gastoObj);
-    descontarFuente(fuente, monto);
+    descontarFuente(fuente, monto, _ogGv(gastoObj.id));
     toast('Gasto registrado', 'ok');
     if (window.logCambio) { const _gvd = document.getElementById('gv_desc'); const _gvm = parseMoney(document.getElementById('gv_monto').value); logCambio('Registraste un gasto', _gvd ? _gvd.value : '', _gvm, 'gasto'); }
   }
@@ -463,15 +467,15 @@ async function deleteGastoVar(id) {
       // Revertir pago: restaurar la deuda en la TC y devolver plata a la cuenta
       const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
       if (tc && g._tcPagoId) tcEliminarPagoInterna(tc, g._tcPagoId);
-      if (g.fuente) sumarFuente(g.fuente, g.monto);
+      if (g.fuente) sumarFuente(g.fuente, g.monto, _ogGv(g.id, true));
     } else {
       // Gasto normal: devolver el dinero a la cuenta origen (una sola cuenta,
       // o cada una de las cuentas del split si el gasto se dividió — ver
       // addGastoVar)
       if (g.splits && g.splits.length) {
-        g.splits.forEach(s => { if (s.fuente) sumarFuente(s.fuente, s.monto || 0); });
+        g.splits.forEach(s => { if (s.fuente) sumarFuente(s.fuente, s.monto || 0, _ogGv(g.id, true)); });
       } else if (g.fuente) {
-        sumarFuente(g.fuente, g.monto);
+        sumarFuente(g.fuente, g.monto, _ogGv(g.id, true));
       }
     }
     // Bug fix: si era pago de gasto fijo, desmarcar como pagado
@@ -659,7 +663,7 @@ function confirmarPagarGastoFijo() {
       errEl.style.display = 'block';
       return;
     }
-    descontarFuente(fuente, gf.monto);
+    descontarFuente(fuente, gf.monto, _ogGv(gastoObj.id));
     S.gastosVar.push(gastoObj);
   }
   // Registrar pago del mes

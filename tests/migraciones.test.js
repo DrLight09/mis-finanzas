@@ -10,15 +10,15 @@ const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..',
 const app = () => loadApp(['core-state.js', 'libro.js'].map(f => path.join(CORE_DIR, f)));
 const plano = x => JSON.parse(JSON.stringify(x));
 
-test('un objeto sin schemaVersion se migra y queda en la versión actual (5)', () => {
+test('un objeto sin schemaVersion se migra y queda en la versión actual (6)', () => {
   const d = app().aplicarMigraciones({ cuentas: [] });
-  assert.equal(d.schemaVersion, 5);
+  assert.equal(d.schemaVersion, 6);
   assert.deepEqual(plano(d.libro), [], 'sin cuentas con saldo el libro nace vacío');
 });
 
-test('datos en v2 (los existentes) ejecutan v3, v4 y v5: estampan `clase`, siembran el libro y suben la versión', () => {
+test('datos en v2 (los existentes) ejecutan v3 a v6: estampan `clase`, siembran el libro, unifican el historial y suben la versión', () => {
   const d = plano(app().aplicarMigraciones({ schemaVersion: 2, movimientos: [{ id: 'a', tipo: 'entrada', monto: 5, fecha: '2026-10-01', desc: 'Sueldo' }] }));
-  assert.equal(d.schemaVersion, 5);
+  assert.equal(d.schemaVersion, 6);
   assert.equal(d.movimientos[0].clase, 'ingreso');
 });
 
@@ -49,7 +49,7 @@ test('migración v4 — el regalo de la abuela ($500.000 a Padre, sin cuenta) pa
   const ms = d.deudores[0].movimientos;
   assert.equal(ms[0].clase, 'ingreso');
   assert.equal(ms[1].clase, undefined, 'otro id: intacto');
-  assert.equal(d.schemaVersion, 5);
+  assert.equal(d.schemaVersion, 6);
   assert.deepEqual(plano(app().aplicarMigraciones(plano(d))), d);
 });
 
@@ -75,7 +75,7 @@ const backupV4 = () => ({ schemaVersion: 4,
 test('migración v5 — siembra el libro y CADA cuenta cuadra con su saldo guardado (Libro.verificar)', () => {
   const ctx = app();
   const d = plano(ctx.aplicarMigraciones(backupV4()));
-  assert.equal(d.schemaVersion, 5);
+  assert.equal(d.schemaVersion, 6);
   const v = ctx.Libro.verificar(d);
   assert.equal(v.ok, true, JSON.stringify(v.descuadres));
   assert.equal(v.filas.length, 5);
@@ -145,4 +145,56 @@ test('Libro.entradasVisibles — solo lo que ningún registro heredado represent
   assert.equal(v.some(l => l.cuenta === 'nequi'), false, 'Nequi no tiene nada sin fila: sus movimientos ya salen de las listas heredadas');
   assert.equal(v.some(l => l.tipo === 'apertura' && l.origen.modulo !== 'migracion-v5'), false, 'una apertura con su propia fila (S.movimientos) no se duplica');
   assert.equal(v.reduce((a, l) => a + l.monto, 0), 600 + 600 + 7 - 2000 + 500, 'suma de lo que añaden al historial');
+});
+
+// ── v6: el historial de TODAS las cuentas en S.movimientos ───────────────────────────────────────────────────
+const legacyCuentas = () => ({ schemaVersion: 5,
+  cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 },
+    { id: 'cu1', tipo: 'custom', nombre: 'Madre', saldo: 100, movimientos: [
+      { id: 'k1', tipo: 'apertura', monto: 100, fecha: '2026-09-07', desc: 'Saldo inicial' },
+      { id: 'k2', tipo: 'ingreso', monto: 50, fecha: '2026-09-08', nota: 'Regalo', clase: 'ingreso' },
+      { id: 'k3', tipo: 'egreso', monto: 20, fecha: '2026-09-09', nota: 'Compra', _secundario: true, _origenSeccion: 'Prestado', clase: 'neutro' },
+      { id: 'k4', tipo: 'ingreso', monto: 5, fecha: '2026-09-10', nota: 'Gemelo', clase: 'ingreso' }] }],
+  cajitas: [{ id: 'cj', nombre: 'Sobra', saldo: 0, historial: [
+    { id: 'h1', tipo: 'entrada', monto: 30, fecha: '2026-09-11', nota: 'Abono', _secundario: true, _origenSeccion: 'Prestado · Me deben', clase: 'neutro' },
+    { id: 'h2', tipo: 'salida', monto: 7, fecha: '2026-09-12', nota: 'Pago', _secundario: true, clase: 'neutro' },
+    { id: 'h3', tipo: 'entrada', monto: 9, fecha: '2026-09-13', nota: 'Gemelo cajita', _secundario: true, clase: 'neutro' }] }],
+  movimientos: [{ id: 'k4', tipo: 'entrada', fuente: 'custom:cu1', monto: 5, fecha: '2026-09-10', desc: 'Gemelo (S.movimientos)', clase: 'ingreso' },
+    { id: 'h3', tipo: 'entrada', fuente: 'cajita:cj', monto: 9, fecha: '2026-09-13', desc: 'Gemelo cajita (S.movimientos)', clase: 'neutro' }] });
+
+test('migración v6 — personalizadas y cajitas pasan a S.movimientos con `fuente`, tipo entrada/salida y texto en `desc`; las listas propias quedan vacías', () => {
+  const ctx = app();
+  const d = plano(ctx.aplicarMigraciones(legacyCuentas()));
+  assert.equal(d.schemaVersion, 6);
+  assert.deepEqual(d.cuentas.find(c => c.id === 'cu1').movimientos, []);
+  assert.deepEqual(d.cajitas[0].historial, []);
+  const por = id => d.movimientos.find(m => m.id === id);
+  assert.deepEqual([por('k1').tipo, por('k1').fuente], ['apertura', 'custom:cu1']);
+  assert.deepEqual([por('k2').tipo, por('k2').desc, 'nota' in por('k2')], ['entrada', 'Regalo', false], 'ingreso→entrada, nota→desc');
+  assert.deepEqual([por('k3').tipo, por('k3')._secundario, por('k3').clase], ['salida', true, 'neutro'], 'egreso→salida: nunca es un "Restar dinero" que cuente como gasto');
+  assert.deepEqual([por('h1').tipo, por('h1').fuente, por('h1').desc], ['entrada', 'cajita:cj', 'Abono']);
+  assert.deepEqual([por('h2').tipo, por('h2').fuente], ['salida', 'cajita:cj']);
+});
+
+test('migración v6 — un registro en las dos listas con el mismo id se cuenta UNA vez (personalizadas: manda la cuenta; cajitas: manda S.movimientos)', () => {
+  const d = plano(app().aplicarMigraciones(legacyCuentas()));
+  const k4 = d.movimientos.filter(m => m.id === 'k4'), h3 = d.movimientos.filter(m => m.id === 'h3');
+  assert.equal(k4.length, 1); assert.equal(k4[0].desc, 'Gemelo');
+  assert.equal(h3.length, 1); assert.equal(h3[0].desc, 'Gemelo cajita (S.movimientos)');
+});
+
+test('migración v6 — conserva el libro cuadrado (v5 siembra con las listas viejas y v6 las mueve), los ids no cambian y es idempotente', () => {
+  const ctx = app();
+  const d = plano(ctx.aplicarMigraciones(Object.assign(legacyCuentas(), { schemaVersion: 4 })));
+  assert.equal(ctx.Libro.verificar(d).ok, true, JSON.stringify(ctx.Libro.verificar(d).descuadres));
+  assert.deepEqual(plano(ctx.aplicarMigraciones(plano(d))), d);
+  assert.equal(plano(ctx.unificarHistorialCuentas(plano(d))).movidos, 0, 'sin listas propias no hay nada que mover');
+});
+
+test('Libro.patas — lee igual el historial unificado (S.movimientos con `fuente`) que la forma anterior', () => {
+  const ctx = app();
+  const antes = plano(ctx.Libro.patas(legacyCuentas()).patas).map(p => [p.cuenta, p.monto]).sort();
+  const d = plano(ctx.aplicarMigraciones(legacyCuentas()));  // v5 ya aplicada: solo corre la v6
+  const despues = plano(ctx.Libro.patas(d).patas).map(p => [p.cuenta, p.monto]).sort();
+  assert.deepEqual(despues, antes, 'las mismas patas de caja antes y después de mover las listas');
 });

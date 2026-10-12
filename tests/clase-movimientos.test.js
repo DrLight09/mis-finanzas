@@ -67,12 +67,12 @@ test('deducirClaseMovimiento — tabla de casos (lo que no es seguro devuelve nu
   CASOS.forEach(([origen, m, esperado]) => assert.equal(ctx.deducirClaseMovimiento(m, origen), esperado, JSON.stringify(m)));
 });
 
-test('migraciones v3-v5 — idempotentes, no pisan una `clase` existente y suben schemaVersion', () => {
+test('migraciones v3-v6 — idempotentes, no pisan una `clase` existente y suben schemaVersion', () => {
   const ctx = app();
   const d = { schemaVersion: 2, movimientos: CASOS.filter(c => c[0] === 'movimientos').map(c => ({ ...c[1] })),
     gastosVar: [{ monto: 1 }, { monto: 2, clase: 'neutro' }] };
   ctx.aplicarMigraciones(d);
-  assert.equal(d.schemaVersion, 5);
+  assert.equal(d.schemaVersion, 6);
   assert.equal(d.gastosVar[1].clase, 'neutro', 'respeta la clase existente');
   const antes = JSON.stringify(d);
   const r = ctx.estamparClasesMovimientos(d);
@@ -92,21 +92,44 @@ test('EQUIVALENCIA — estampar `clase` no cambia ingresos ni gastos reales del 
   assert.equal(foto(), antes);
 });
 
+// Las cajitas guardaban sus espejos en cajita.historial; desde la migración v6 viven en S.movimientos con `fuente: 'cajita:ID'`.
+// Estas pruebas parten de DATOS VIEJOS (forma anterior), los migran y comprueban que los ingresos del mes no cambian.
+const migrado = legacy => { const c0 = app(); const d = JSON.parse(JSON.stringify(c0.aplicarMigraciones(legacy))); return app(d); };
+
 test('cajitas — un espejo con clase "ingreso" (extra de Spotify, extra de un pago) SÍ cuenta como ingreso del mes; uno neutro no', () => {
-  const ctx = app({ cajitas: [{ id: 'c1', nombre: 'Sobra', saldo: 0, historial: [
-    { id: 'a', tipo: 'entrada', monto: 400, fecha: '2026-10-06', nota: 'Extra de Spotify', _esExtraIngreso: true, clase: 'ingreso' },
-    { id: 'b', tipo: 'entrada', monto: 5000, fecha: '2026-10-07', nota: 'Abono de deuda', clase: 'neutro' },
-    { id: 'c', tipo: 'entrada', monto: 2000, fecha: '2026-10-08', nota: 'Extra de pago (dato viejo, sin clase)', _esExtraIngreso: true },
-    { id: 'd', tipo: 'entrada', monto: 9000, fecha: '2026-10-09', nota: 'Espejo viejo sin etiquetas' },
+  const ctx = migrado({ schemaVersion: 2, cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
+    movimientos: [], gastosVar: [], cajitas: [{ id: 'c1', nombre: 'Sobra', saldo: 0, historial: [
+    { id: 'a', tipo: 'entrada', monto: 400, fecha: '2026-10-06', nota: 'Extra de Spotify', _esExtraIngreso: true, _secundario: true, clase: 'ingreso' },
+    { id: 'b', tipo: 'entrada', monto: 5000, fecha: '2026-10-07', nota: 'Abono de deuda', _secundario: true, clase: 'neutro' },
+    { id: 'c', tipo: 'entrada', monto: 2000, fecha: '2026-10-08', nota: 'Extra de pago (dato viejo, sin clase)', _esExtraIngreso: true, _secundario: true },
+    { id: 'd', tipo: 'entrada', monto: 9000, fecha: '2026-10-09', nota: 'Espejo viejo sin etiquetas', _secundario: true },
   ] }] });
   assert.equal(ctx.Periodo.ingresosDelMes('2026-10').entradas, 2400, 'a + c; b y d son espejos');
   assert.equal(ctx.deducirClaseMovimiento({ tipo: 'entrada' }, 'cajita'), 'neutro');
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.S.cajitas[0].historial)), [], 'la lista propia de la cajita queda vacía: todo vive en S.movimientos');
+  assert.equal(ctx.S.movimientos.filter(m => m.fuente === 'cajita:c1').length, 4);
 });
 
-test('cajitas — sin duplicar: el mismo id no se cuenta dos veces', () => {
-  const ctx = app({ cajitas: [{ id: 'c1', historial: [{ id: 'x', tipo: 'entrada', monto: 10, fecha: '2026-10-01', clase: 'ingreso' }] }],
-    movimientos: [{ id: 'x', tipo: 'entrada', monto: 10, fecha: '2026-10-01', fuente: 'nequi' }] });
+test('cajitas — sin duplicar: el mismo id en las dos listas se cuenta UNA vez', () => {
+  const ctx = migrado({ schemaVersion: 2, cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
+    cajitas: [{ id: 'c1', historial: [{ id: 'x', tipo: 'entrada', monto: 10, fecha: '2026-10-01', clase: 'ingreso', _secundario: true }] }],
+    movimientos: [{ id: 'x', tipo: 'entrada', monto: 10, fecha: '2026-10-01', fuente: 'nequi', clase: 'ingreso' }] });
   assert.equal(ctx.Periodo.ingresosDelMes('2026-10').entradas, 10);
+  assert.equal(ctx.S.movimientos.filter(m => m.id === 'x').length, 1);
+});
+
+test('registrarMovEspejo / borrarMovEspejo — toda cuenta (Nequi, personalizada, cajita) escribe y borra en S.movimientos con su `fuente`', () => {
+  const ctx = app({ cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }, { id: 'cu1', tipo: 'custom', nombre: 'Madre', saldo: 0 }],
+    cajitas: [{ id: 'c1', nombre: 'Sobra', saldo: 0 }] });
+  const a = ctx.registrarMovEspejo({ cuenta: 'custom:cu1', flujo: 'entrada', monto: 10, fecha: '2026-10-01', desc: 'x', origen: 'Prestado' });
+  const b = ctx.registrarMovEspejo({ cuenta: 'cajita:c1', flujo: 'salida', monto: 4, fecha: '2026-10-01', desc: 'y', origen: 'Mesada' });
+  const por = id => JSON.parse(JSON.stringify(ctx.S.movimientos.find(m => m.id === id)));
+  assert.deepEqual([por(a).fuente, por(a).tipo, por(a).desc], ['custom:cu1', 'entrada', 'x']);
+  assert.deepEqual([por(b).fuente, por(b).tipo, por(b).desc], ['cajita:c1', 'salida', 'y']);
+  assert.equal(ctx.registrarMovEspejo({ cuenta: 'custom:no-existe', flujo: 'entrada', monto: 1, fecha: '2026-10-01', desc: 'z', origen: 'P' }), null, 'cuenta que ya no existe: no se escribe');
+  assert.equal(ctx.borrarMovEspejo('cajita:c1', b), true);
+  assert.equal(ctx.borrarMovEspejo('cajita:c1', b), false);
+  assert.equal(ctx.S.movimientos.some(m => m.id === b), false);
 });
 
 test('Restar dinero (salida_manual) cuenta como gasto del mes, en categoría Ajuste, y se agrupa con los variables', () => {

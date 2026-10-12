@@ -79,6 +79,10 @@
 // los 4 módulos con historial de movimientos, y no se puede depender de que
 // prestado.js ya haya cargado — mismo criterio de las demás funciones de este
 // archivo que evitan acoplarse a un módulo de dominio específico.
+// ── Libro (js/core/libro.js) ─────────────────────────────────────────────────────────────────────────────────
+// _ogMov(ref, rev): al borrar un movimiento desde el feed o el historial de una cuenta, todo lo que se devuelve queda en el libro como reversión de ese movimiento (ref = id borrado). Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _ogMov = (ref, rev) => ({ origen: { modulo: 'movimientos', ref, rev: rev || undefined } });
+
 function _fuenteLabelHtml(code){
   const raw = fuenteLabel(code);
   return code === 'ganancia' ? raw : escHtml(raw);
@@ -634,15 +638,15 @@ async function eliminarMovimiento(btn) {
     // Para revertir: origen recupera, destino pierde.
     const tr = (S.transferencias || []).find(t => t.id === movId);
     if (tr) {
-      sumarFuente(tr.origen, tr.monto);   // devolver al origen
-      descontarFuente(tr.destino, tr.monto, { exacto: true }); // quitar del destino
+      sumarFuente(tr.origen, tr.monto, _ogMov(movId, true));   // devolver al origen
+      descontarFuente(tr.destino, tr.monto, _ogMov(movId, true)); // quitar del destino
       S.transferencias = S.transferencias.filter(t => t.id !== movId);
     }
   } else if (movTipoEl === 'salida_manual') {
     // Fue una salida manual (S.movimientos tipo 'salida_manual')
     const m = (S.movimientos || []).find(x => x.id === movId);
     if (m) {
-      sumarFuente(m.fuente, m.monto);
+      sumarFuente(m.fuente, m.monto, _ogMov(movId, true));
       // Si era movimiento de cuenta custom, eliminar también de c.movimientos (doble-escritura)
       if (m.fuente && m.fuente.startsWith('custom:')) {
         const cid = m.fuente.split(':')[1];
@@ -656,8 +660,8 @@ async function eliminarMovimiento(btn) {
     const m = (S.movimientos || []).find(x => x.id === movId);
     if (m) {
       const fuente = m.fuente || fuenteOrigen;
-      if (fuente) descontarFuente(fuente, m.monto, { exacto: true });
-      else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto, { exacto: true });
+      if (fuente) descontarFuente(fuente, m.monto, _ogMov(movId, true));
+      else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto, _ogMov(movId, true));
       if (m.tipo === 'apertura') {
         if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
         S._ajustesBaseLog.push({ fecha: hoy(), monto: -(m.monto||0) });
@@ -677,7 +681,7 @@ async function eliminarMovimiento(btn) {
       // revertía el saldo pero no limpiaba nada más, dejando el registro
       // huérfano en c.movimientos para siempre — visible en pantalla aunque la
       // plata ya se hubiera devuelto. Ver CHANGELOG.md#cuentas (2026-08-31).
-      descontarFuente(fuenteOrigen, monto, { exacto: true });
+      descontarFuente(fuenteOrigen, monto, _ogMov(movId, true));
       if (fuenteOrigen.startsWith('custom:')) {
         const cid = fuenteOrigen.split(':')[1];
         const cc = getCuentaCustom(cid);
@@ -709,7 +713,7 @@ async function eliminarMovimiento(btn) {
     // save()+refresh()+toast de éxito de más abajo — ver CHANGELOG.md#cuentas
     // (2026-08-30).
     const fuente = fuenteOrigen; // siempre 'custom:ID' para este tipoDisplay (ver dataFuente en cuentas.js)
-    if (fuente && monto > 0) sumarFuente(fuente, monto);
+    if (fuente && monto > 0) sumarFuente(fuente, monto, _ogMov(movId, true));
     S.movimientos = (S.movimientos || []).filter(x => x.id !== movId);
     if (fuente && fuente.startsWith('custom:')) {
       const cid = fuente.split(':')[1];
@@ -743,9 +747,9 @@ async function eliminarMovimiento(btn) {
         }
         const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
         if (tc && g._tcPagoId) tcEliminarPagoInterna(tc, g._tcPagoId);
-        if (g.fuente) sumarFuente(g.fuente, g.monto);
+        if (g.fuente) sumarFuente(g.fuente, g.monto, _ogMov(movId, true));
       } else if (g.fuente) {
-        sumarFuente(g.fuente, g.monto); // devolver el dinero
+        sumarFuente(g.fuente, g.monto, _ogMov(movId, true)); // devolver el dinero
       }
       // Bug fix: si era pago de gasto fijo, desmarcar como pagado
       if(g.esPagoGastoFijo && g.gastoFijoId){
@@ -773,9 +777,9 @@ async function eliminarMovimiento(btn) {
         if (info && info._id === movId) {
           // Revertir destino(s)
           if (info.splits && info.splits.length) {
-            info.splits.forEach(s => { if (s.fuente) descontarFuente(s.fuente, s.monto, { exacto: true }); });
+            info.splits.forEach(s => { if (s.fuente) descontarFuente(s.fuente, s.monto, _ogMov(movId, true)); });
           } else if (info.destino) {
-            descontarFuente(info.destino, info.monto, { exacto: true });
+            descontarFuente(info.destino, info.monto, _ogMov(movId, true));
           }
           delete data[k];
           found = true;

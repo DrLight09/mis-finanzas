@@ -4,13 +4,14 @@ const {JSDOM}=require('jsdom'),fs=require('fs');
 const ROOT=process.env.MIS_FINANZAS_ROOT||process.cwd(), OUT=ROOT+'/js/';
 const dom=new JSDOM('<!doctype html><html><body><div id="toast"></div></body></html>',{runScripts:'outside-only',url:'https://localhost/'});
 const w=dom.window; w.console=console;
+const vm=require('vm'), ctxv=dom.getInternalVMContext(); // como <script> clásicos: los `const` de nivel superior se ven entre archivos
 w.HTMLCanvasElement.prototype.getContext=()=>({measureText:()=>({width:10}),font:''});
 const errs=[];
-const files=['core/core-state.js','core/cuenta-efectos.js','core/periodo.js','core/nu-calc.js','core/libro.js','core/calc-helpers.js','core/diferencial.js','modules/cuentas.js','modules/prestado.js'].filter(f=>fs.existsSync(OUT+f));
+const files=['core/core-state.js','core/cuenta-efectos.js','core/periodo.js','core/nu-calc.js','core/libro.js','core/calc-helpers.js','core/diferencial.js','modules/cuentas.js','modules/prestado.js','modules/mesada.js'].filter(f=>fs.existsSync(OUT+f));
 w.eval("function crearSplitWidget(){} window.Events={on(){},attr(){},registerAll(){}}; window._guardarEditarPersonaGlobal=function(){}; window.PERSONA_COLORES=['#c8f060']; window.openSheet=window.closeSheet=function(){};"); // stubs de split.js, events.js y personas.js (no hacen falta para lo que se prueba)
-for(const f of files){ const p=OUT+f; try{ w.eval(fs.readFileSync(p,'utf8')); }catch(e){ errs.push(f+': '+e.message); } }
+for(const f of files){ const p=OUT+f; try{ vm.runInContext(fs.readFileSync(p,'utf8'),ctxv,{filename:p}); }catch(e){ errs.push(f+': '+e.message); } }
 if(errs.length) console.log('errores de carga (informativo):',errs);
-const run=c=>w.eval(c);
+const run=c=>vm.runInContext(c,ctxv);
 const backup=JSON.parse(fs.readFileSync(process.argv[2],'utf8'));
 run('Object.keys(S).forEach(k=>delete S[k])');
 Object.assign(w.S,JSON.parse(JSON.stringify(backup)));
@@ -58,3 +59,24 @@ if(run("typeof _revertirMovDeudor")==='function'){
   try{ run('_revertirMovDeudor(__d,__m)'); const rv=w.S.libro.filter(l=>l.origen&&l.origen.ref==='mm1'); console.log('13b) entradas con ref mm1:',rv.map(l=>l.tipo+' '+l.monto).join(' | ')); chk('13c) libro tras revertir el préstamo');
   }catch(e){ console.log('13b) _revertirMovDeudor no pudo correr en jsdom (faltan helpers del navegador):',e.message.slice(0,90)); }
 } else console.log('13) prestado.js no cargó en este entorno (omitido)');
+
+// 14) cuentas.js: "Sumar dinero" y "Restar dinero" dejan origen = id del movimiento que crean (cuentas.js ya aplica el saldo DESPUÉS de crearlo)
+if(run("typeof registrarEntradaConApertura")==='function'){
+  w.S.libro=w.S.libro||[]; const n0=w.S.libro.length;
+  run(`registrarEntradaConApertura('efectivo',1000,'2026-10-11','Sueldo de prueba',false,'')`);
+  const movIn=w.S.movimientos[w.S.movimientos.length-1];
+  const eIn=w.S.libro[w.S.libro.length-1];
+  console.log('14a) Sumar dinero → libro:',eIn.monto===1000&&eIn.origen.modulo==='cuentas'&&eIn.origen.ref===movIn.id?'✓ origen cuentas, ref = id del movimiento':'✗ '+JSON.stringify(eIn));
+  run(`registrarSalida('efectivo',400,'2026-10-11','Restar de prueba','')`);
+  const movOut=w.S.movimientos[w.S.movimientos.length-1], eOut=w.S.libro[w.S.libro.length-1];
+  console.log('14b) Restar dinero → libro:',eOut.monto===-400&&eOut.origen.ref===movOut.id?'✓':'✗ '+JSON.stringify(eOut));
+  chk('14c) tras sumar y restar dinero');
+} else console.log('14) cuentas.js sin registrarEntradaConApertura (omitido)');
+// 15) mesada.js: entrar y sacar un abono — el ref es el id del espejo
+if(run("typeof _mesadaEntrar")==='function'){
+  const id=run(`_mesadaEntrar('nequi',500,'2026-10-11','Mesada de prueba')`);
+  const a=w.S.libro[w.S.libro.length-1]; console.log('15a) _mesadaEntrar → libro:',a.origen.modulo==='mesada'&&a.origen.ref===id&&!!id?'✓ ref = id del espejo':'✗ '+JSON.stringify(a));
+  run(`_mesadaSacar('nequi',500,'${id}',true)`);
+  const b=w.S.libro[w.S.libro.length-1]; console.log('15b) _mesadaSacar → libro:',b.tipo==='reversion'&&b.origen.ref===id?'✓ tipo reversion, mismo ref':'✗ '+JSON.stringify(b));
+  chk('15c) tras entrar y sacar el abono');
+} else console.log('15) mesada.js no cargó en este entorno (omitido)');

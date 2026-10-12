@@ -9,7 +9,7 @@ const { loadApp } = require('./support/load-app');
 const CORE = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core');
 
 function app(estado = {}) {
-  const ctx = loadApp(['core-state.js', 'periodo.js', 'cuenta-efectos.js', 'nu-calc.js'].map(f => path.join(CORE, f)), { permissive: true });
+  const ctx = loadApp(['core-state.js', 'periodo.js', 'cuenta-efectos.js', 'nu-calc.js', 'libro.js'].map(f => path.join(CORE, f)), { permissive: true });
   Object.assign(ctx.S, {
     modulos: {}, cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
     movimientos: [], gastosVar: [], gastosFijos: [], pagosGastosFijos: {}, ingresosFijos: [], cajitas: [],
@@ -67,12 +67,12 @@ test('deducirClaseMovimiento — tabla de casos (lo que no es seguro devuelve nu
   CASOS.forEach(([origen, m, esperado]) => assert.equal(ctx.deducirClaseMovimiento(m, origen), esperado, JSON.stringify(m)));
 });
 
-test('migraciones v3-v4 — idempotentes, no pisan una `clase` existente y suben schemaVersion', () => {
+test('migraciones v3-v5 — idempotentes, no pisan una `clase` existente y suben schemaVersion', () => {
   const ctx = app();
   const d = { schemaVersion: 2, movimientos: CASOS.filter(c => c[0] === 'movimientos').map(c => ({ ...c[1] })),
     gastosVar: [{ monto: 1 }, { monto: 2, clase: 'neutro' }] };
   ctx.aplicarMigraciones(d);
-  assert.equal(d.schemaVersion, 4);
+  assert.equal(d.schemaVersion, 5);
   assert.equal(d.gastosVar[1].clase, 'neutro', 'respeta la clase existente');
   const antes = JSON.stringify(d);
   const r = ctx.estamparClasesMovimientos(d);

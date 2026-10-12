@@ -29,7 +29,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/mas-menu.js` | de entrada (defer) | 0 | 0 |
 | `js/core/mejoras-adicionales.js` | de entrada (defer) | 0 | 0 |
 | `js/core/money-input.js` | de entrada (defer) | 1 | 0 |
-| `js/core/movimientos.js` | de entrada (defer) | 5 | 0 |
+| `js/core/movimientos.js` | de entrada (defer) | 6 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 1 | 0 |
 | `js/core/nu-calc.js` | de entrada (defer) | 15 | 0 |
 | `js/core/periodo.js` | de entrada (defer) | 1 | 0 |
@@ -193,7 +193,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_cuentaOpsPosteriores`, `_fuenteLabelHtml`, `_rerenderCuentaActiva`, `abrirDetalleMov`, `eliminarMovimiento`
+**Funciones:** `_cuentaOpsPosteriores`, `_fuenteLabelHtml`, `_ogMov`, `_rerenderCuentaActiva`, `abrirDetalleMov`, `eliminarMovimiento`
 
 ### `js/core/notificaciones-push.js`
 
@@ -668,6 +668,7 @@ Ninguno.
 | `_ogEnc` | `js/modules/encargos.js` |
 | `_ogGv` | `js/modules/gastos.js` |
 | `_ogMes` | `js/modules/mesada.js` |
+| `_ogMov` | `js/core/movimientos.js` |
 | `_ogSp` | `js/modules/spotify.js` |
 | `_ogTc` | `js/modules/tarjetas_credito.js` |
 | `_onClickSpEditPersonaBtn` | `js/modules/spotify.js` |

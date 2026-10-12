@@ -13,7 +13,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
 | `js/core/calc-helpers.js` | de entrada (defer) | 15 | 0 |
 | `js/core/color-picker.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
-| `js/core/core-state.js` | de entrada (defer) | 76 | 10 |
+| `js/core/core-state.js` | de entrada (defer) | 77 | 10 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
@@ -93,7 +93,7 @@ Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_claseValida`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_libroPata`, `_listaFuentes`, `_moneyRender`, `_moneyValue`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_reglaHistoricaEntradaEspejo`, `_reglaHistoricaGastoVarNoReal`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `ajustarSaldoCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `claseEfectivaMovimiento`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `deducirClaseMovimiento`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `estamparClasesMovimientos`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `recalcularMontoBaseHistorial`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
+**Funciones:** `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_claseValida`, `_closeDialog`, `_cuentasArr`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_libroPata`, `_listaFuentes`, `_moneyRender`, `_moneyValue`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_reglaHistoricaEntradaEspejo`, `_reglaHistoricaGastoVarNoReal`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `ajustarSaldoCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `buildFuentesOptsHtml`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcPatrimonioTotal`, `calcSaldoInicialPendiente`, `claseEfectivaMovimiento`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `deducirClaseMovimiento`, `descontarFuente`, `dialogo`, `emptyState`, `entradasIngresoReal`, `escHtml`, `estamparClasesMovimientos`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `load`, `medirAnchoTexto`, `mesActual`, `mesKey`, `nivelAntiguedadMovimiento`, `parseMoney`, `parsePct`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `recalcularMontoBaseHistorial`, `refresh`, `save`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `unificarHistorialCuentas`, `validarSalidaFuente`
 
 **Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CUENTAS_FIJAS`, `MAX`, `MC`, `ME_DEBEN_ABRE`, `MIGRACIONES`, `S`, `SCHEMA_VERSION_ACTUAL`
 
@@ -1329,6 +1329,7 @@ Ninguno.
 | `totalPrestadoPendiente` | `js/core/calc-helpers.js` |
 | `TR_MIN_EFECTIVO` | `js/modules/cuentas.js` |
 | `uid` | `js/core/core-state.js` |
+| `unificarHistorialCuentas` | `js/core/core-state.js` |
 | `usarParte` | `js/modules/encargos.js` |
 | `validarCamposCDT` | `js/modules/cuentas.js` |
 | `validarSalidaFuente` | `js/core/core-state.js` |

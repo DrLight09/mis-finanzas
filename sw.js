@@ -1,5 +1,5 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v27'; // v27 (2026-10-11): libro de movimientos (S.libro, migración v5, js/core/libro.js). v26 (2026-10-10): interruptor "¿Es plata nueva?" en préstamos y migración v4. v25: préstamos/abonos sin cuenta = ajuste de base (tendencia y proyección). v24: Gastos muestra los retiros manuales, E5 (reglas históricas congeladas). v23: clase explícita en movimientos, Restar dinero = gasto, rendimientos de Nu (en el balance de Análisis), migraciones v1/v2 retiradas
+const VERSION = 'mis-finanzas-v28'; // v28 (2026-10-12): historial de TODAS las cuentas en S.movimientos (migración v6), cuenta-efectos escribe solo ahí. v27 (2026-10-11): libro de movimientos (S.libro, migración v5, js/core/libro.js). v26 (2026-10-10): interruptor "¿Es plata nueva?" en préstamos y migración v4. v25: préstamos/abonos sin cuenta = ajuste de base (tendencia y proyección). v24: Gastos muestra los retiros manuales, E5 (reglas históricas congeladas). v23: clase explícita en movimientos, Restar dinero = gasto, rendimientos de Nu (en el balance de Análisis), migraciones v1/v2 retiradas
 
 const APP_SHELL = [
   '/mis-finanzas/',

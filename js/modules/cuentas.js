@@ -244,10 +244,12 @@ function crearCuentaCustom(){
   const nombre=(document.getElementById('nc_nombre').value||'').trim();
   if(!nombre){toast('Escribe un nombre para la cuenta','err');return;}
   const saldo=parseMoney(document.getElementById('nc_saldo').value)||0;
-  const nueva={id:uid(),tipo:'custom',nombre,icono:_ncIconoSel,color:_ncColorSel,saldo,movimientos:[]};
-  if(saldo>0) nueva.movimientos.push(crearMovimientoApertura(saldo,hoy(),'Saldo inicial'));
+  const nueva={id:uid(),tipo:'custom',nombre,icono:_ncIconoSel,color:_ncColorSel,saldo};
+  // El saldo inicial es un movimiento de apertura en S.movimientos con `fuente` (igual que Nequi y Efectivo).
+  const movApertura=saldo>0?crearMovimientoApertura(saldo,hoy(),'Saldo inicial'):null;
+  if(movApertura){movApertura.fuente='custom:'+nueva.id;if(!S.movimientos)S.movimientos=[];S.movimientos.push(movApertura);}
   _cuentasArr().push(nueva);
-  if(saldo>0)_libroPata('custom:'+nueva.id,saldo,{tipo:'apertura',desc:'Saldo inicial',origen:{modulo:'cuentas',ref:nueva.movimientos[0].id}});
+  if(movApertura)_libroPata('custom:'+nueva.id,saldo,{tipo:'apertura',desc:'Saldo inicial',origen:{modulo:'cuentas',ref:movApertura.id}});
   save();refresh();
   closeSheet('nueva-cuenta');
   toast(`Cuenta "${escHtml(nombre)}" creada`,'ok');
@@ -1627,62 +1629,26 @@ function _refreshCajitaDet(){
 // bloque por fuente y un predicado `coincide(fuente)` que dice si esa fuente pertenece a la cuenta:
 //   'nequi' | 'efectivo' → la fuente exacta   ·   'custom:ID' → la fuente exacta
 //   'nu'                 → CUALQUIER cajita ('cajita:...'), para la pantalla de Nu
-// Recopila lo que afecta a la cuenta desde todas las fuentes: S.movimientos, la lista propia de la
-// cuenta, gastos variables, préstamos dados, transferencias y cobros de Spotify.
+// Recopila lo que afecta a la cuenta desde todas las fuentes: S.movimientos (el historial de TODAS las cuentas, con
+// `fuente`, desde la migración v6), gastos variables, préstamos dados, transferencias, cobros de Spotify y las
+// entradas del libro sin fila propia (intereses, ajustes, CDT).
 //
 // Lo que DIFIERE a propósito entre tipos de cuenta (no son descuidos; no unificar):
 //  1. Tipo de una salida manual: 'egreso' (personalizada) vs 'salida_manual' (las demás).
 //     movimientos.js elige la rama de borrado y de reversión de saldo según ese tipo.
-//  2. La lista propia: una personalizada guarda su historial en c.movimientos (se lee ENTERO, y
-//     antes que S.movimientos); las cajitas guardan los espejos en cajita.historial (solo los
-//     `_secundario`, después de S.movimientos). Nequi y Efectivo no tienen lista propia: todo está
-//     en S.movimientos. Ver la tabla de formas de guardar en cuenta-efectos.js.
+//  2. (Retirada en la migración v6) Antes una personalizada guardaba su historial en c.movimientos y las cajitas
+//     sus espejos en cajita.historial; hoy todo está en S.movimientos. Ver cuenta-efectos.js.
 //  3. Texto cuando el registro no trae descripción: 'Ingreso'/'Retiro' vs 'Entrada de efectivo'/
 //     'Salida manual'.
-//  4. Datos viejos de personalizadas escritos en las dos listas con el mismo id: se cuentan una vez
-//     (por la lista de la cuenta) y el gemelo de S.movimientos se salta.
 // Cada fila lleva `_movId` (id del registro de origen); ordenado por fecha desc y luego por id desc.
 function getMovimientosCuenta(tipo) {
   const esCustom = !!tipo && tipo.startsWith('custom:');
   const coincide = tipo === 'nu' ? (f => !!f && f.startsWith('cajita:')) : (f => f === tipo);
-  const cuentaCustom = esCustom ? getCuentaCustom(tipo.split(':')[1]) : null;
-  const idsPropios = new Set(cuentaCustom ? (cuentaCustom.movimientos || []).map(x => x.id) : []);
   const tipoSalidaManual = esCustom ? 'egreso' : 'salida_manual';
   const textoEntrada = esCustom ? 'Ingreso' : 'Entrada de efectivo';
   const textoSalida = esCustom ? 'Retiro' : 'Salida manual';
   const movs = [];
   let _idx = 0;
-
-  // Lista propia de la cuenta (diferencia 2).
-  const desdeListaPropia = () => {
-    if (esCustom) {
-      // c.movimientos[]: manuales directos (legacy + espejos nuevos tipo ingreso/egreso)
-      (cuentaCustom ? (cuentaCustom.movimientos || []) : []).forEach(m => {
-        const esApertura = m.tipo === 'apertura';
-        const esIngreso  = m.tipo === 'ingreso' || m.tipo === 'entrada';
-        const esEgreso   = m.tipo === 'egreso'  || m.tipo === 'salida_manual';
-        const tipoDisplay = esApertura ? 'apertura' : esIngreso ? 'ingreso' : 'egreso';
-        const montoDisplay = esIngreso ? +m.monto : esEgreso ? -m.monto : +m.monto;
-        const _origen = esApertura ? 'Saldo inicial' : m._origenSeccion || 'Cuenta personalizada · Movimiento manual';
-        movs.push({
-          tipo: tipoDisplay, fecha: m.fecha, desc: m.nota || m.desc || (esApertura ? 'Saldo inicial' : esIngreso ? textoEntrada : textoSalida),
-          monto: montoDisplay, fuente: tipo, _idx: _idx++, _movId: m.id,
-          _fuenteOrigen: tipo, _fuenteDestino: '', _origen,
-          _otrasCuentas: null, _secundario: !!m._secundario, _origenSeccion: m._origenSeccion || ''
-        });
-      });
-    } else if (tipo === 'nu') {
-      // cajita.historial: solo los espejos (_secundario) — los manuales ya vienen por S.movimientos
-      (S.cajitas || []).forEach(c => {
-        (c.historial || []).forEach(h => {
-          if (!h._secundario) return;
-          const esEntradaH = h.tipo === 'entrada';
-          const cajitaFuente = 'cajita:' + c.id;
-          movs.push({ tipo: esEntradaH ? 'ingreso' : 'salida_manual', fecha: h.fecha, desc: h.nota || h.desc || (esEntradaH ? 'Entrada' : 'Salida'), monto: esEntradaH ? +h.monto : -h.monto, fuente: cajitaFuente, _idx: _idx++, _movId: h.id, _fuenteOrigen: cajitaFuente, _fuenteDestino: '', _origen: h._origenSeccion || 'Automático', _otrasCuentas: null, _secundario: true, _origenSeccion: h._origenSeccion || '' });
-        });
-      });
-    }
-  };
 
   // S.movimientos: entradas/salidas manuales, aperturas, intercambios de Encargos, espejos.
   const desdeMovimientos = () => {
@@ -1691,7 +1657,6 @@ function getMovimientosCuenta(tipo) {
       // es un movimiento de la cuenta y no se lista en su historial (ver alcancia.md §3).
       if (m._esAlcanciaIngreso) return;
       if (!coincide(m.fuente)) return;
-      if (idsPropios.has(m.id)) return; // diferencia 4: ya incluido arriba desde c.movimientos
       const esEntrada = m.tipo === 'entrada';
       const esApertura = m.tipo === 'apertura';
       const esTransferencia = m.tipo === 'transferencia';
@@ -1725,9 +1690,7 @@ function getMovimientosCuenta(tipo) {
     });
   };
 
-  if (esCustom) desdeListaPropia();
   desdeMovimientos();
-  if (!esCustom) desdeListaPropia();
 
   // Gastos variables pagados desde esta cuenta. Los depósitos a la alcancía se muestran como fila
   // visible con el monto oculto (`_alcOculto`).
@@ -2198,20 +2161,7 @@ function getAperturaMov(fuente){
   // Busca el movimiento de apertura de S.movimientos para nequi/efectivo/custom
   // (registrado desde el banner "Registrar saldo inicial" o desde el toggle
   // del sheet "Agregar dinero").
-  const mov=(S.movimientos||[]).find(m=>m.fuente===fuente&&m.tipo==='apertura');
-  if(mov)return mov;
-  // Cuentas personalizadas: si el saldo inicial se fijó al CREAR la cuenta
-  // (crearCuentaCustom), ese movimiento vive en c.movimientos[] — no en
-  // S.movimientos, porque no lleva campo `fuente` (no hace falta, ya está
-  // adentro de la cuenta). Sin este fallback, el banner de saldo inicial
-  // mostraría "Registrar" en vez de "Corregir" para esas cuentas y dejaría
-  // crear un segundo registro de apertura duplicado.
-  if(fuente&&fuente.startsWith('custom:')){
-    const id=fuente.split(':')[1];
-    const c=getCuentaCustom(id);
-    if(c)return (c.movimientos||[]).find(m=>m.tipo==='apertura');
-  }
-  return undefined;
+  return (S.movimientos||[]).find(m=>m.fuente===fuente&&m.tipo==='apertura');
 }
 
 function renderBannerApertura(fuente,opts){

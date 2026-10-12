@@ -154,7 +154,7 @@
   // Ids de movimientos espejo que un abono de "Me deben" señala explícitamente
   // (_abonoDestinoMovId / destinos[]._movId): ese abono ya sale como "Abono de X" en
   // _normDeudores. Solo se ocultan los referenciados; un espejo sin referencia (p.ej. el
-  // extra/propina) sigue visible. Lo usan _normMovimientos y _normCajitas.
+  // extra/propina) sigue visible. Lo usa _normMovimientos.
   function _espejosDeudores(S) {
     var ids = {};
     Deudas.lista('favor').forEach(function(d){
@@ -225,59 +225,9 @@
         };
       });
 
-    // Cuentas personalizadas tienen sus propios movimientos[{tipo:'ingreso'|'egreso'}]
-    cuentasCustom().forEach(function(c){
-      (c.movimientos || []).forEach(function(m){
-        if (espejoDeudores[m.id]) return; // espejo de un abono de "Me deben"
-        // Datos viejos del destape de la alcancía: duplicaban filas que ya salen por S.movimientos / S.gastosVar.
-        if (m.desc === 'Alcancía destapada' || m.desc === 'Ajuste alcancía — faltante') return;
-        var esIngreso = m.tipo === 'ingreso';
-        items.push({
-          id:        'custom_' + c.id + '_' + m.id,
-          fecha:     m.fecha || '0000-00-00',
-          ts:        m.ts || 0,
-          tipo:      esIngreso ? 'ingreso' : 'gasto',
-          signo:     esIngreso ? '+' : '-',
-          monto:     m.monto || 0,
-          titulo:    m.nota || (esIngreso ? 'Ingreso' : 'Retiro'),
-          subtitulo: c.nombre || '',
-          fuente:    'cuenta_custom',
-        });
-      });
-    });
+    // (Desde la migración v6 los movimientos de cuentas personalizadas y los espejos de cajitas también viven en S.movimientos
+    // y salen por la lista de arriba, con los mismos filtros.)
 
-    return items;
-  }
-
-  // Movimientos "espejo" que otros módulos dejan en cajita.historial (los manuales de
-  // una cajita van a S.movimientos con fuente 'cajita:ID' y ya salen por _normMovimientos).
-  // Sin esto, una mesada o un préstamo que entra a una cajita Nu no aparecía en el feed.
-  // Mismas exclusiones que _normMovimientos, para no duplicar lo que otra fuente ya cubre.
-  function _normCajitas(S) {
-    var fl = (typeof fuenteLabel === 'function') ? fuenteLabel : function(v){ return v || ''; };
-    var espejoDeudores = _espejosDeudores(S);
-    var items = [];
-    (S.cajitas || []).forEach(function(c){
-      (c.historial || []).forEach(function(h){
-        if (!h._secundario) return; // los demás ya van por S.movimientos
-        if (espejoDeudores[h.id]) return; // espejo de un abono de "Me deben"
-        if (h._encMovId || h._esAlcancia || h._esAlcanciaIngreso) return;
-        var desc = (h.nota || h.desc || '').toLowerCase();
-        if (desc.indexOf('margen de encargo') === 0 || desc.indexOf('margen encargo') === 0) return;
-        var esEntrada = h.tipo === 'entrada';
-        items.push({
-          id:        'caj_' + c.id + '_' + h.id,
-          fecha:     h.fecha || '0000-00-00',
-          ts:        h.ts || 0,
-          tipo:      esEntrada ? 'ingreso' : 'gasto',
-          signo:     esEntrada ? '+' : '-',
-          monto:     h.monto || 0,
-          titulo:    h.nota || h.desc || (esEntrada ? 'Ingreso' : 'Retiro'),
-          subtitulo: fl('cajita:' + c.id),
-          fuente:    'cajitas',
-        });
-      });
-    });
     return items;
   }
 
@@ -464,7 +414,6 @@
     // Recopilar y mezclar todas las fuentes
     var todos = [].concat(
       _normMovimientos(Sx),
-      _normCajitas(Sx),
       _normGastos(Sx),
       _normDeudores(Sx),
       _normMisDeudas(Sx),

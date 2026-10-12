@@ -290,7 +290,6 @@ function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
 // Restar plata de una fuente. Antes recortaba el saldo en 0 (y la diferencia se perdía sin avisar); ahora el saldo
 // refleja exactamente lo restado, aunque quede negativo — los selectores ya solo ofrecen cuentas con saldo
 // suficiente, así que un negativo indica un movimiento mal registrado y se ve en vez de esconderse.
-// `opts.exacto` se acepta por compatibilidad (ya no hay recorte).
 function descontarFuente(fuente,monto,opts){
   if(!fuente||!monto)return;
   if(fuente==='ganancia'){
@@ -521,7 +520,8 @@ const MIGRACIONES = [
     Libro.sembrar(d);
   } },
   // v6: el historial de TODAS las cuentas vive en una sola lista (S.movimientos, con `fuente`). Antes eran tres formas:
-  // S.movimientos (Nequi/Efectivo), cuenta.movimientos (personalizadas: ingreso/egreso + nota) y cajita.historial.
+  // S.movimientos (Nequi/Efectivo), cuenta.movimientos (personalizadas: ingreso/egreso + nota) y cajita.historial
+// (las dos últimas solo existen en datos ANTERIORES a la migración v6; esta función sirve a las migraciones v3/v4).
   { v: 6, nombre: 'historial de cuentas unificado en S.movimientos', fn(d) { unificarHistorialCuentas(d); } }
 ];
 // Clase de un movimiento ya existente según las reglas históricas, o null si no hay certeza.

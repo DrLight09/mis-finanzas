@@ -1805,6 +1805,20 @@ function getMovimientosCuenta(tipo) {
     }
   });
 
+  // Entradas del LIBRO sin fila heredada (intereses de Nu, ajustes del chequeo rápido y de la migración, CDT, saldo
+  // previo al reinicio): sin ellas el historial no sumaba el saldo de la cuenta y esa plata "aparecía de la nada".
+  // Van como filas automáticas (_secundario: con candado, sin botón de eliminar). Ver libro.js (entradasVisibles).
+  if (typeof Libro !== 'undefined') Libro.entradasVisibles().forEach(l => {
+    if (!coincide(l.cuenta)) return;
+    const etiqueta = l.tipo === 'rendimiento' ? 'Intereses de Nu' : l.tipo === 'cdt' ? 'CDT' : l.tipo === 'apertura' ? 'Saldo inicial' : 'Ajuste';
+    movs.push({
+      tipo: l.tipo === 'apertura' ? 'apertura' : l.monto > 0 ? 'ingreso' : tipoSalidaManual,
+      fecha: l.fecha, desc: l.desc || etiqueta, monto: l.monto, fuente: l.cuenta, _idx: _idx++, _movId: l.id,
+      _fuenteOrigen: l.cuenta, _fuenteDestino: '', _origen: 'Libro · ' + etiqueta, _otrasCuentas: null,
+      _secundario: true, _origenSeccion: etiqueta, _alcOculto: false
+    });
+  });
+
   // Orden: fecha desc y luego por creación desc (_movId empieza con Date.now().toString(36), así que
   // comparar el id en texto da el orden de inserción). Sin id en alguno, va primero el que sí tiene
   // (timestamp confiable); si ninguno tiene, por orden de recolección.

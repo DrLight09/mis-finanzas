@@ -135,3 +135,14 @@ test('sumarFuente / descontarFuente — cada cambio deja su pata en el libro y e
   assert.equal(ctx.S.libro[ctx.S.libro.length - 1].monto, 30, 'ajustarSaldoCuenta registra la DIFERENCIA');
   assert.equal(ctx.Libro.verificar().ok, true);
 });
+
+test('Libro.entradasVisibles — solo lo que ningún registro heredado representa (intereses, ajustes, CDT, saldo previo del reinicio)', () => {
+  const ctx = app();
+  const d = plano(ctx.aplicarMigraciones(backupV4()));
+  const v = plano(ctx.Libro.entradasVisibles(d));
+  const etiqueta = l => l.cuenta + ':' + l.tipo;
+  assert.deepEqual(v.map(etiqueta).sort(), ['cajita:cCdt:cdt', 'cajita:cNu:rendimiento', 'cajita:cSp:apertura', 'cajita:cSp:rendimiento', 'efectivo:ajuste']);
+  assert.equal(v.some(l => l.cuenta === 'nequi'), false, 'Nequi no tiene nada sin fila: sus movimientos ya salen de las listas heredadas');
+  assert.equal(v.some(l => l.tipo === 'apertura' && l.origen.modulo !== 'migracion-v5'), false, 'una apertura con su propia fila (S.movimientos) no se duplica');
+  assert.equal(v.reduce((a, l) => a + l.monto, 0), 600 + 600 + 7 - 2000 + 500, 'suma de lo que añaden al historial');
+});

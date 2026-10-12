@@ -80,3 +80,23 @@ if(run("typeof _mesadaEntrar")==='function'){
   const b=w.S.libro[w.S.libro.length-1]; console.log('15b) _mesadaSacar → libro:',b.tipo==='reversion'&&b.origen.ref===id?'✓ tipo reversion, mismo ref':'✗ '+JSON.stringify(b));
   chk('15c) tras entrar y sacar el abono');
 } else console.log('15) mesada.js no cargó en este entorno (omitido)');
+
+// 16) el historial de cada cuenta (getMovimientosCuenta) ahora incluye las entradas del libro sin fila heredada
+if(run("typeof getMovimientosCuenta")==='function'){
+  try{
+    if(!w.Deudas) w.Deudas={lista:()=>[]}; // viene de calc-helpers.js (no está en este entorno de prueba)
+    const cid=w.S.cajitas[0].id;
+    run(`ajustarSaldoCuenta('cajita:${cid}',(S.cajitas[0].saldo||0)+123.45,{tipo:'ajuste',desc:'Chequeo de prueba'})`);
+    run(`ajustarSaldoCuenta('cajita:${cid}',(S.cajitas[0].saldo||0)+10,{tipo:'rendimiento',desc:'Intereses de Nu'})`);
+    const filas=run(`getMovimientosCuenta('nu')`).filter(f=>f._origen&&f._origen.indexOf('Libro')===0);
+    const ok=filas.length>=3&&filas.every(f=>f._secundario===true&&f._movId&&f.fuente.startsWith('cajita:'));
+    console.log('16a) historial de Nu incluye filas del libro:',ok?'✓ '+filas.length+' filas (intereses, ajustes, CDT…), todas con candado':'✗ '+filas.length);
+    const aj=filas.find(f=>f.desc==='Chequeo de prueba');
+    console.log('16b) fila del ajuste:',aj&&aj.monto===123.45&&aj.tipo==='ingreso'?'✓ +123,45 como ingreso con candado':'✗ '+JSON.stringify(aj));
+    const sinExp=filas.find(f=>f.desc.indexOf('sin explicar')>-1);
+    console.log('16c) la diferencia de Sobra aparece como fila visible:',sinExp&&Math.abs(sinExp.monto+7848.54)<0.01?'✓ −7.848,54 "sin explicar" (ya no es plata invisible)':'✗ '+JSON.stringify(sinExp));
+    const ef=run(`getMovimientosCuenta('efectivo')`).filter(f=>f._origen&&f._origen.indexOf('Libro')===0);
+    console.log('16e) Efectivo (cuadra al centavo) no recibe filas extra:',ef.length===0?'✓':'✗ '+ef.length);
+    chk('16d) libro tras los ajustes de prueba');
+  }catch(e){ console.log('16) getMovimientosCuenta no pudo correr en jsdom:',e.message.slice(0,120)); }
+} else console.log('16) cuentas.js sin getMovimientosCuenta (omitido)');

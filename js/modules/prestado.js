@@ -252,7 +252,7 @@ const _enReversion = (ref, fn) => (typeof Libro !== 'undefined' ? Libro.conOrige
 function _revertirDestinoAbono(destino, movId, monto) {
   if (!destino) return;
   const existe = movId ? borrarMovEspejo(destino, movId) : true;
-  if (existe) descontarFuente(destino, monto, { exacto: true });
+  if (existe) descontarFuente(destino, monto);
 }
 // Igual, para un abono repartido entre varias cuentas (m.destinos[]).
 function _revertirDestinosAbono(destinos) {
@@ -761,7 +761,7 @@ function _revertirMovDeudorImpl(d, m) {
       for (const p of m._extPartes) {
         if (p.tipo === 'guardar' && p.cuenta) {
           // Quitar el saldo que se sumó
-          descontarFuente(p.cuenta, p.monto, { exacto: true });
+          descontarFuente(p.cuenta, p.monto);
           // Eliminar el movimiento de historial asociado
           if (p.movExtraId) borrarMovEspejo(p.cuenta, p.movExtraId);
         } else if (p.tipo === 'gastar' && p.gastoId) {
@@ -2234,7 +2234,7 @@ function _revertirMovMiDeudaImpl(m) {
     // Si el movimiento espejo ya no existe, el saldo no se toca otra vez (evita doble reversión).
     const existe = r._movId ? borrarMovEspejo(r.fuente, r._movId) : true;
     if (!existe) return;
-    if (entra) descontarFuente(r.fuente, r.monto, { exacto: true }); else sumarFuente(r.fuente, r.monto);
+    if (entra) descontarFuente(r.fuente, r.monto); else sumarFuente(r.fuente, r.monto);
   });
   if (m._perdon && m._ingresoPerdonId) S.movimientos = (S.movimientos || []).filter(x => x.id !== m._ingresoPerdonId);
   if (m.extra && m.extra.gastoId) S.gastosVar = (S.gastosVar || []).filter(x => x.id !== m.extra.gastoId);

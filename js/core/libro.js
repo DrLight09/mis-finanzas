@@ -82,6 +82,14 @@ const Libro = (() => {
     const descuadres = filas.filter(f => Math.abs(f.dif) >= TOL);
     return { ok: descuadres.length === 0, filas, descuadres };
   }
+  // Entradas del libro que NINGÚN registro heredado representa (no tienen fila propia en el historial de una cuenta):
+  // intereses de Nu, ajustes (chequeo rápido, diferencias anteriores al libro), CDT y el saldo previo al reinicio que
+  // sembró la migración. getMovimientosCuenta() (cuentas.js) las añade como filas para que el historial de cada
+  // cuenta explique TODO su saldo. Los movimientos de módulos ('movimiento'/'reversion') ya tienen su fila heredada.
+  function entradasVisibles(estado) {
+    return _arr(_st(estado).libro).filter(l => l && esCuenta(l.cuenta) &&
+      (l.tipo === 'rendimiento' || l.tipo === 'ajuste' || l.tipo === 'cdt' || (l.tipo === 'apertura' && l.origen && l.origen.modulo === 'migracion-v5')));
+  }
   const saldo = (cuenta, estado) => _arr(_st(estado).libro).reduce((a, l) => (l && l.cuenta === cuenta ? a + (l.monto || 0) : a), 0);
 
   /* ───────────── LECTURA DE LAS LISTAS HEREDADAS ───────────── */
@@ -219,7 +227,7 @@ const Libro = (() => {
     });
   }
 
-  return { esCuenta, registrar, conOrigen, verificar, saldo, patas, sembrar, saldoDerivado, auditar, diferenciasPorChequeo, fechaInicio, TOL };
+  return { esCuenta, registrar, conOrigen, verificar, entradasVisibles, saldo, patas, sembrar, saldoDerivado, auditar, diferenciasPorChequeo, fechaInicio, TOL };
 })();
 
 if (typeof window !== 'undefined') window.Libro = Libro;

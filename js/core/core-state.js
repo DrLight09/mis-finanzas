@@ -519,7 +519,10 @@ const MIGRACIONES = [
   { v: 5, nombre: 'libro de movimientos (saldo derivado)', fn(d) {
     if (typeof Libro === 'undefined') throw new Error('libro.js no está cargado: no se puede sembrar el libro');
     Libro.sembrar(d);
-  } }
+  } },
+  // v6: el historial de TODAS las cuentas vive en una sola lista (S.movimientos, con `fuente`). Antes eran tres formas:
+  // S.movimientos (Nequi/Efectivo), cuenta.movimientos (personalizadas: ingreso/egreso + nota) y cajita.historial.
+  { v: 6, nombre: 'historial de cuentas unificado en S.movimientos', fn(d) { unificarHistorialCuentas(d); } }
 ];
 // Clase de un movimiento ya existente según las reglas históricas, o null si no hay certeza.
 // `origen`: 'movimientos' (S.movimientos), 'custom' (cuenta.movimientos), 'cajita' (cajita.historial)
@@ -563,6 +566,49 @@ function estamparClasesMovimientos(d, opciones){
   (Array.isArray(d.cuentas) ? d.cuentas : []).forEach(c => { if(c) pasar(c.movimientos, 'custom'); });
   (Array.isArray(d.cajitas) ? d.cajitas : []).forEach(c => { if(c) pasar(c.historial, 'cajita'); });
   if(r.sinClase && !(opciones && opciones.silencioso) && typeof console !== 'undefined') console.info('[migraciones] v3: ' + r.sinClase + ' movimientos sin clase (salidas sin etiqueta de espejo): se leen con las reglas históricas');
+  return r;
+}
+
+// Mueve a S.movimientos lo que cuentas personalizadas (cuenta.movimientos) y cajitas (cajita.historial) guardaban en listas
+// propias, con la forma única: tipo 'entrada' | 'salida' | 'apertura' | …, `fuente` = la cuenta ('custom:ID' | 'cajita:ID'),
+// texto en `desc`. Los ids no cambian (el libro y los espejos siguen apuntando a ellos). Idempotente.
+//  · Un registro con el mismo id en las dos listas (datos viejos) se cuenta UNA vez: en personalizadas manda el de la cuenta
+//    (así lo leían el historial y los ingresos); en cajitas manda el de S.movimientos.
+//  · El tipo de salida de una personalizada ('egreso'/'salida_manual') pasa a 'salida': solo 'salida_manual' de S.movimientos es
+//    un "Restar dinero" que cuenta como gasto (Periodo.retirosManuales), y esos registros nunca lo fueron.
+function unificarHistorialCuentas(d) {
+  const r = { movidos: 0, duplicados: 0 };
+  if (!d || typeof d !== 'object') return r;
+  if (!Array.isArray(d.movimientos)) d.movimientos = [];
+  estamparClasesMovimientos(d, { silencioso: true }); // todo lo que se mueve lleva `clase` (idempotente: la v3 ya lo hizo)
+  const unico = (m, fuente, porCuenta) => {
+    if (!m || typeof m !== 'object') return;
+    const gemelo = m.id ? d.movimientos.findIndex(x => x && x.id === m.id) : -1;
+    if (gemelo >= 0) {
+      r.duplicados++;
+      if (!porCuenta) return;               // cajitas: queda el de S.movimientos
+      d.movimientos.splice(gemelo, 1);      // personalizadas: queda el de la cuenta
+    }
+    const n = Object.assign({}, m);
+    if (porCuenta) n.tipo = m.tipo === 'ingreso' ? 'entrada' : (m.tipo === 'egreso' || m.tipo === 'salida_manual') ? 'salida' : m.tipo;
+    n.fuente = fuente;
+    const txt = m.nota || m.desc;
+    if (txt) n.desc = txt;
+    delete n.nota;
+    d.movimientos.push(n);
+    r.movidos++;
+  };
+  (Array.isArray(d.cuentas) ? d.cuentas : []).forEach(c => {
+    if (!c || !Array.isArray(c.movimientos) || !c.movimientos.length) return;
+    const fuente = c.tipo === 'custom' ? 'custom:' + c.id : c.id;
+    c.movimientos.forEach(m => unico(m, fuente, true));
+    c.movimientos = [];
+  });
+  (Array.isArray(d.cajitas) ? d.cajitas : []).forEach(c => {
+    if (!c || !Array.isArray(c.historial) || !c.historial.length) return;
+    c.historial.forEach(m => unico(m, 'cajita:' + c.id, false));
+    c.historial = [];
+  });
   return r;
 }
 
@@ -867,7 +913,6 @@ function recalcularMontoBaseHistorial(){
       if(m._ajustes){ m._ajustes.forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); }); }
     };
     (S.movimientos||[]).forEach(sumarApertura);
-    cuentasCustom().forEach(c=>(c.movimientos||[]).forEach(sumarApertura));
     (S._ajustesBaseLog||[]).forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); });
     // Destapes de alcancía ya hechos (sobrante/faltante): mismo tratamiento que una apertura — ver _ajusteAlcanciaPorFecha().
     const _ajAlc=_ajusteAlcanciaPorFecha();
@@ -945,7 +990,6 @@ function snapshotPatrimonio(){
   },0);
   const montoAperturaHoy =
     sumarAperturasYAjustesDeHoy(S.movimientos)
-    + cuentasCustom().reduce((a,c)=>a+sumarAperturasYAjustesDeHoy(c.movimientos),0)
     + (S._ajustesBaseLog||[]).filter(aj=>aj.fecha===hoyStr).reduce((a,aj)=>a+(aj.monto||0),0)
     + (_ajusteAlcanciaPorFecha()[hoyStr]||0)
     + (_ajusteDeudasSinCuentaPorFecha()[hoyStr]||0);
@@ -1072,37 +1116,18 @@ function _reglaHistoricaEntradaEspejo(m){
 // tenga o no cuenta (el margen de un préstamo y el perdón recibido no la tienen).
 //
 // Devuelve la LISTA de movimientos que cuentan; cada pantalla filtra por fecha y suma.
-//   · S.movimientos tipo 'entrada' que no sean espejo (_esEntradaEspejoNoIngreso).
-//   · c.movimientos tipo 'ingreso' de cuentas personalizadas, que no sean espejo
-//     (los espejos nuevos de Prestado a una cuenta personalizada solo viven ahí).
-//   · cajita.historial tipo 'entrada' con clase 'ingreso' (extras que entran directo a una cajita).
-//   · Datos VIEJOS de cuentas personalizadas escritos en las dos listas con el mismo id
-//     (confirmarMovCustom(), ya retirada): se cuentan UNA vez, por la lista de la cuenta.
+//   · S.movimientos tipo 'entrada' que no sean espejo (_esEntradaEspejoNoIngreso), de CUALQUIER cuenta: Nequi, Efectivo,
+//     personalizadas y cajitas de Nu (desde la migración v6 todas viven aquí, con `fuente`). Un espejo con clase 'ingreso'
+//     (extra de Spotify, extra de un pago de deuda, perdón recibido) es plata NUEVA aunque entre directo a una cajita.
+//   · Deudas sin pata de caja marcadas `clase:'ingreso'` (p. ej. un regalo registrado como "Me deben").
 // `estado` es opcional (por defecto S): Wrapped recibe el estado como parámetro.
 function entradasIngresoReal(estado){
   const st = estado || S;
-  const customs = (st.cuentas||[]).filter(c => c && c.tipo==='custom');
-  const idsEnCuenta = new Set();
   const lista = [];
-  customs.forEach(c => (c.movimientos||[]).forEach(m => {
-    if(!m) return;
-    if(m.id) idsEnCuenta.add(m.id);
-    if(m.tipo==='ingreso' && !_esEntradaEspejoNoIngreso(m)) lista.push(m);
-  }));
   (st.movimientos||[]).forEach(m => {
     if(!m || m.tipo!=='entrada' || _esEntradaEspejoNoIngreso(m)) return;
-    if(m.fuente && m.fuente.startsWith('custom:') && idsEnCuenta.has(m.id)) return; // ya contada arriba
     lista.push(m);
   });
-  // Cajitas de Nu: su historial solo guarda espejos, pero un espejo con clase 'ingreso' es plata NUEVA que
-  // entró directo a la cajita (extra/propina de Spotify, extra de un pago de deuda, perdón recibido): es
-  // ingreso del mes aunque nunca pase por Nequi/Efectivo. Antes no se contaba (solo se leían S.movimientos
-  // y las cuentas personalizadas), así que el patrimonio subía y el ingreso del mes no.
-  const ids = new Set(lista.map(m => m.id).filter(Boolean));
-  (st.cajitas||[]).forEach(c => ((c && c.historial) || []).forEach(m => {
-    if(!m || m.tipo!=='entrada' || (m.id && ids.has(m.id))) return;
-    if(claseEfectivaMovimiento(m, 'cajita') === 'ingreso') lista.push(m);
-  }));
   // Deudas sin pata de caja marcadas `clase:'ingreso'` (p. ej. un regalo registrado como "Me deben"): plata nueva.
   _movsDeudaSinCuenta(st).forEach(x=>{ if(x.clase==='ingreso'&&x.monto>0) lista.push({id:x.m.id,tipo:'entrada',monto:x.monto,fecha:x.fecha,desc:x.m.nota||('Ingreso vía '+(x.deuda.nombre||'deuda')),clase:'ingreso',_esDeudaSinCuenta:true}); });
   return lista;

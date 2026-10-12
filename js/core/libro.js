@@ -17,8 +17,9 @@
               Libro.conOrigen() o pasando `origen` en las opts de sumarFuente/descontarFuente.
      Los 'rendimiento' (intereses de Nu) se agrupan por cuenta y mes: una sola entrada por cajita y mes.
 
-   Este archivo también reconstruye las patas desde las listas heredadas (S.movimientos,
-   cuenta.movimientos, cajita.historial, gastosVar, transferencias, deudores, Spotify, Mesada) para:
+   Este archivo también reconstruye las patas desde las listas de los módulos (S.movimientos, gastosVar, transferencias,
+   deudores, Spotify, Mesada; y cuenta.movimientos / cajita.historial solo en datos ANTERIORES a la migración v6, que los
+   unificó en S.movimientos) para:
      · sembrar el libro en la migración v5 (Libro.sembrar), y
      · auditar que las listas heredadas y el libro cuadren (Libro.auditar, scripts/auditoria-libro.js).
 

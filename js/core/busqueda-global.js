@@ -237,14 +237,7 @@
       });
     });
 
-    // Movimientos cuentas personalizadas
-    cuentasCustom().forEach(c => {
-      (c.movimientos||[]).forEach(m => {
-        if((m.desc||m.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
-          resultados.push({ tipo:'Mov. '+c.nombre, desc:m.desc||m.nota||'Movimiento', meta:(window.fmt?window.fmt(m.monto):'')+(m.fecha?' · '+m.fecha:''), color:'var(--blue)', navTipo:'cuenta_custom', navId:c.id });
-        }
-      });
-    });
+    // (Los movimientos de cuentas personalizadas viven en S.movimientos desde la migración v6: salen en la búsqueda de más abajo.)
 
     // Personas
     (S.personas||[]).forEach(p => {

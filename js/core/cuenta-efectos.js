@@ -20,13 +20,12 @@
    sumarFuente()/descontarFuente() de core-state.js. Solo escriben/borran el
    registro del historial.
 
-   Cada tipo de cuenta guarda su historial con campos distintos (así lo leen
-   Cuentas, Actividad reciente y Búsqueda): no se unifican acá.
+   TODAS las cuentas guardan su historial en una sola lista, S.movimientos (migración v6), con la cuenta en `fuente`:
 
-        cuenta            lista                 entrada      salida    texto
-        nequi / efectivo  S.movimientos         'entrada'    'salida'  desc  (+ fuente)
-        custom:<id>       cuenta.movimientos    'ingreso'    'egreso'  nota
-        cajita:<id>       cajita.historial      'entrada'    'salida'  nota
+        cuenta                 tipo entrada / salida    texto   fuente
+        nequi / efectivo       'entrada' / 'salida'     desc    'nequi' | 'efectivo'
+        custom:<id>            'entrada' / 'salida'     desc    'custom:<id>'
+        cajita:<id>            'entrada' / 'salida'     desc    'cajita:<id>'
 
    `extra` se mezcla en el registro (ej. { _esExtraIngreso: true }).
    Todo espejo nace con `_esEspejo: true` (2026-10-04): _esEntradaEspejoNoIngreso() lo
@@ -38,29 +37,17 @@
    (prestado, mesada, alcancia, encargos) sin depender del orden de carga.
    ═══════════════════════════════════════════════════════════════ */
 
-// Resuelve la lista del historial donde vive el espejo de esa cuenta, y el
-// 'tipo' que corresponde al flujo. crear=true crea la lista si no existe.
-// Devuelve null si la cuenta no es rastreable (vacía, tipo desconocido o ya no existe).
+// Resuelve dónde vive el espejo de esa cuenta (siempre S.movimientos) y el 'tipo' que corresponde al flujo.
+// crear=true crea la lista si no existe. Devuelve null si la cuenta no es rastreable (vacía, tipo desconocido o ya no existe).
 function _espejoLista(cuenta, flujo, crear) {
   if (!cuenta || typeof cuenta !== 'string') return null;
   const entra = flujo !== 'salida';
-  if (cuenta === 'efectivo' || cuenta === 'nequi') {
-    if (!S.movimientos) { if (!crear) return null; S.movimientos = []; }
-    return { lista: S.movimientos, tipo: entra ? 'entrada' : 'salida', campoTexto: 'desc', conFuente: true };
-  }
-  if (cuenta.startsWith('custom:')) {
-    const c = getCuentaCustom(cuenta.split(':')[1]);
-    if (!c) return null;
-    if (!c.movimientos) { if (!crear) return null; c.movimientos = []; }
-    return { lista: c.movimientos, tipo: entra ? 'ingreso' : 'egreso', campoTexto: 'nota', conFuente: false };
-  }
-  if (cuenta.startsWith('cajita:')) {
-    const c = (S.cajitas || []).find(x => x.id === cuenta.split(':')[1]);
-    if (!c) return null;
-    if (!c.historial) { if (!crear) return null; c.historial = []; }
-    return { lista: c.historial, tipo: entra ? 'entrada' : 'salida', campoTexto: 'nota', conFuente: false };
-  }
-  return null;
+  const existe = cuenta === 'efectivo' || cuenta === 'nequi'
+    || (cuenta.startsWith('custom:') && !!getCuentaCustom(cuenta.split(':')[1]))
+    || (cuenta.startsWith('cajita:') && !!(S.cajitas || []).find(x => x.id === cuenta.split(':')[1]));
+  if (!existe) return null;
+  if (!S.movimientos) { if (!crear) return null; S.movimientos = []; }
+  return { lista: S.movimientos, tipo: entra ? 'entrada' : 'salida', campoTexto: 'desc', conFuente: true };
 }
 
 function registrarMovEspejo(o) {
@@ -91,13 +78,8 @@ function borrarMovEspejo(cuenta, id) {
   if (!cuenta || !id) return false;
   const dest = _espejoLista(cuenta, 'entrada', false);
   if (!dest) return false;
-  const habia = dest.lista.some(x => x.id === id);
-  if (!habia) return false;
-  const restantes = dest.lista.filter(x => x.id !== id);
-  // Las listas se reasignan en su dueño (como hacía el código original), no se mutan en sitio.
-  if (cuenta === 'efectivo' || cuenta === 'nequi') S.movimientos = restantes;
-  else if (cuenta.startsWith('custom:')) getCuentaCustom(cuenta.split(':')[1]).movimientos = restantes;
-  else (S.cajitas || []).find(x => x.id === cuenta.split(':')[1]).historial = restantes;
+  if (!dest.lista.some(x => x.id === id && x.fuente === cuenta)) return false;
+  // La lista se reasigna en su dueño (como hacía el código original), no se muta en sitio.
+  S.movimientos = dest.lista.filter(x => !(x.id === id && x.fuente === cuenta));
   return true;
 }
-

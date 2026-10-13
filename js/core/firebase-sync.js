@@ -12,6 +12,7 @@
 // garantía de orden frente a ningún <script defer>. Ver
 // CHANGELOG.md#infraestructura--seguridad.
 import { waitFor } from './wait-for-module.js';
+import { codificarPayload, decodificarPayload } from './payload-codec.js';
 
   // ── Helpers de estado de sync ──────────────────────────────────────────────
   function setSyncStatus(state, text) {
@@ -51,6 +52,10 @@ import { waitFor } from './wait-for-module.js';
   // esperando una promesa que el clearTimeout canceló.
   let _savePromise = null;
   let _saveResolve = null;
+  const PAYLOAD_AVISO_BYTES = 800000, PAYLOAD_LIMITE_BYTES = 1000000; // el documento de Firestore admite 1 MiB
+  // Cada guardado toma su número al empezar. Comprimir es asíncrono: si mientras tanto arrancó un guardado más nuevo, este
+  // ya quedó viejo y no debe escribir después (pisaría datos más recientes en la nube).
+  let _saveSeq = 0;
   // Cuerpo del guardado con debounce, extraído tal cual del setTimeout para
   // poder ejecutarlo también de inmediato (ver _fbFlushSave más abajo).
   async function _ejecutarGuardado() {
@@ -63,6 +68,7 @@ import { waitFor } from './wait-for-module.js';
         if(!window.S){setSyncStatus("error","Error: datos no inicializados");resolve({ok:false, reason:'no-data'});return;}
         const data = JSON.parse(JSON.stringify(window.S));
         const payloadStr = JSON.stringify(data);
+        const miSeq = ++_saveSeq; // antes del chequeo "¿cambió algo?": un guardado sin cambios también deja viejo a uno en vuelo
         // Nada cambió desde el último guardado real (ni local ni el que
         // acabamos de recibir de la nube) — no hay razón para escribir.
         if(payloadStr === window._lastSavedPayload) {
@@ -71,6 +77,24 @@ import { waitFor } from './wait-for-module.js';
             : 'Sin cambios');
           resolve({ok:true, reason:'no-changes'});
           return;
+        }
+        // Tope de tamaño (2026-10-13): todo el estado va en UN documento de Firestore (límite 1 MiB). Si se pasa, `setDoc`
+        // falla y el catch de abajo diría "revisa conexión" mientras la nube se queda para siempre en el último guardado
+        // bueno. Se mide antes de escribir: aviso a los 800 KB (una vez por sesión) y se detiene a 1.000.000 bytes con un
+        // mensaje que dice la causa real.
+        const payloadNube = await codificarPayload(payloadStr);
+        if(miSeq !== _saveSeq) { resolve({ok:true, reason:'superseded'}); return; }
+        const bytes = payloadNube.length; // base64 o JSON plano: todo ASCII salvo tildes del plano (≈ 1 byte por carácter)
+        window._payloadBytes = bytes;
+        if(bytes > PAYLOAD_LIMITE_BYTES) {
+          setSyncStatus('error', 'Datos demasiado grandes para la nube (' + Math.round(bytes/1024) + ' KB de 1.000 KB)');
+          if(typeof toast === 'function') toast('Tus datos ya no caben en la nube (' + Math.round(bytes/1024) + ' KB de 1.000 KB) y no se están guardando. Exporta un backup y avisa para archivar meses antiguos.', 'err', 10000);
+          resolve({ok:false, reason:'too-large', bytes});
+          return;
+        }
+        if(bytes > PAYLOAD_AVISO_BYTES && !window._avisoTamanoMostrado) {
+          window._avisoTamanoMostrado = true;
+          if(typeof toast === 'function') toast('Tus datos ocupan ' + Math.round(bytes/1024) + ' KB de 1.000 KB en la nube. Conviene archivar meses antiguos pronto.', 'info', 8000);
         }
         const savedAt = Date.now();
         // FIX (2026-08-17, hallazgo #2 — el toast falso pasaba INCLUSO sin
@@ -97,7 +121,7 @@ import { waitFor } from './wait-for-module.js';
         try { localStorage.setItem('mf_lastSavedAt', String(savedAt)); } catch(_){}
         await setDoc(
           doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
-          { payload: payloadStr, updatedAt: savedAt }
+          { payload: payloadNube, updatedAt: savedAt }
         );
         window._lastSavedPayload = payloadStr;
         setSyncStatus('ok', 'Guardado en la nube · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
@@ -318,7 +342,7 @@ import { waitFor } from './wait-for-module.js';
 
     _unsubscribeSnapshot = onSnapshot(docRef,
       { includeMetadataChanges: true },
-      (snap) => {
+      (snapCrudo) => { _colaSnapshots = _colaSnapshots.then(() => _decodificarSnap(snapCrudo)).then((snap) => {
         const fromCache = snap.metadata.fromCache;
         const hasPendingWrites = snap.metadata.hasPendingWrites;
         // Diagnóstico: qué tipo de evento llegó (caché o servidor) y en qué
@@ -399,8 +423,8 @@ import { waitFor } from './wait-for-module.js';
             }
           }
         }
-      },
-      (error) => {
+      }).catch(e => console.error('[Sync] Error procesando snapshot:', e)); },
+      (error) => { _colaSnapshots = _colaSnapshots.then(() => {
         console.error('[Sync] Error en onSnapshot:', error);
         setSyncStatus('error', 'Error de conexión — reintentando…');
         // Registro persistente en localStorage (sobrevive a cerrar la consola
@@ -423,9 +447,27 @@ import { waitFor } from './wait-for-module.js';
         clearTimeout(window._syncConfirmTimer);
         _avisarSinConfirmar();
         _firstLoad = false;
-      }
+      }).catch(e => console.error('[Sync] Error manejando el error del listener:', e)); }
     );
   };
+
+  // Devuelve un snapshot equivalente con el `payload` ya descomprimido, para que _applyCloudData y el listener sigan siendo
+  // síncronos y trabajen siempre con JSON plano. Si no hay payload o no se pudo descomprimir, lo devuelve sin cambios.
+  async function _decodificarSnap(snap) {
+    try {
+      if(!snap || !snap.exists()) return snap;
+      const datos = snap.data();
+      if(!datos || typeof datos.payload !== 'string') return snap;
+      const plano = await decodificarPayload(datos.payload);
+      if(plano === datos.payload) return snap;
+      return { exists: () => true, data: () => Object.assign({}, datos, { payload: plano }), metadata: snap.metadata };
+    } catch(e) {
+      console.error('[Sync] _decodificarSnap:', e);
+      return snap;
+    }
+  }
+  // Los snapshots (y el error del listener) se procesan de a uno y en el orden en que llegaron, aunque descomprimir sea asíncrono.
+  let _colaSnapshots = Promise.resolve();
 
   // Aplica datos de un snapshot de Firestore a window.S
   // Devuelve qué pasó, para que el llamador decida si S es confiable:
@@ -497,7 +539,7 @@ import { waitFor } from './wait-for-module.js';
     try {
       const ref = doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas');
       const snap = await runTransaction(db, tx => tx.get(ref));
-      return {ok:true, snap};
+      return {ok:true, snap: await _decodificarSnap(snap)};
     } catch(e) {
       return {ok:false, error:e};
     }
@@ -668,7 +710,7 @@ import { waitFor } from './wait-for-module.js';
         try { localStorage.setItem('mf_lastSavedAt', String(signOutTs)); } catch(_){}
         await setDoc(
           doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
-          { payload: JSON.stringify(data), updatedAt: signOutTs }
+          { payload: await codificarPayload(JSON.stringify(data)), updatedAt: signOutTs }
         );
       } catch(e) {
         console.warn('Error en guardado final antes de cerrar sesión:', e);

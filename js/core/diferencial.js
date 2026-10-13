@@ -385,6 +385,9 @@ function diffAplicar(instId, movimiento, linkId) {
 
   const fecha = movimiento.fecha || hoy();
   if (!S.movimientos) S.movimientos = [];
+  // Origen de las patas de saldo de este margen (libro-de-movimientos.md §3.3): el módulo es 'diferencial' y el `ref` es
+  // el movimiento que lo enlaza (linkId), el mismo con el que quien lo revierte pasa `rev: true`.
+  const _ogDif = { origen: { modulo: 'diferencial', ...(linkId ? { ref: linkId } : {}) } };
 
   const sinAsignar = margen - asignadoNormal - asignadoIntercambio;
   const miCuentaSel = inst.cfg.permiteMiCuenta && inst.cfg.ids.miCuenta ? document.getElementById(inst.cfg.ids.miCuenta) : null;
@@ -419,7 +422,7 @@ function diffAplicar(instId, movimiento, linkId) {
     // (una sola si no usó "Dividir ÷"). Todas comparten _encMovId para poder revertirse juntas.
     const destinosMi = (filasMi && filasMi.length) ? filasMi : [{ fuente: miCuenta, monto: yoMeQuedo }];
     destinosMi.forEach(r => {
-      sumarFuente(r.fuente, r.monto);
+      sumarFuente(r.fuente, r.monto, _ogDif);
       S.movimientos.push({
         id: uid(), tipo: 'entrada', fuente: r.fuente,
         ...(linkId ? { _encMovId: linkId } : {}),
@@ -457,7 +460,7 @@ function diffAplicar(instId, movimiento, linkId) {
     const nombreBenef = b.nombre || 'Persona';
 
     if (cuentaSalida) {
-      descontarFuente(cuentaSalida, b.monto);
+      descontarFuente(cuentaSalida, b.monto, _ogDif);
       S.movimientos.push({
         id: uid(), tipo: 'transferencia', fuente: cuentaSalida, _fuenteDestino: cuentaEntrada || '',
         ...(linkId ? { _encMovId: linkId } : {}),
@@ -470,7 +473,7 @@ function diffAplicar(instId, movimiento, linkId) {
       });
     }
     if (cuentaEntrada) {
-      sumarFuente(cuentaEntrada, b.monto);
+      sumarFuente(cuentaEntrada, b.monto, _ogDif);
       S.movimientos.push({
         id: uid(), tipo: 'transferencia', fuente: cuentaEntrada, _fuenteDestino: cuentaSalida || '',
         ...(linkId ? { _encMovId: linkId } : {}),

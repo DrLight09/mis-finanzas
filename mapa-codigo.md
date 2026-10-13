@@ -25,7 +25,6 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/hook-global.js` | de entrada (defer) | 1 | 0 |
 | `js/core/html-tag.js` | de entrada (defer) | 3 | 0 |
 | `js/core/lazy-loader.js` | de entrada (defer) | 1 | 0 |
-| `js/core/libro.js` | de entrada (defer) | 1 | 0 |
 | `js/core/mas-menu.js` | de entrada (defer) | 0 | 0 |
 | `js/core/mejoras-adicionales.js` | de entrada (defer) | 0 | 0 |
 | `js/core/money-input.js` | de entrada (defer) | 1 | 0 |
@@ -56,6 +55,10 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 51 | 2 |
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 31 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 106 | 1 |
+
+**Referenciados en `index.html` o `Loader.GROUPS` pero que no existen en las carpetas escaneadas:**
+
+- `js/core/libro.js`
 
 ## 2. Qué declara cada archivo
 
@@ -164,12 +167,6 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `Loader`
-
-### `js/core/libro.js`
-
-Carga: de entrada (defer)
-
-**Funciones:** `Libro`
 
 ### `js/core/mas-menu.js`
 
@@ -1166,7 +1163,6 @@ Ninguno.
 | `initMovSheet` | `js/modules/prestado.js` |
 | `leerArchivoImport` | `js/modules/configuracion.js` |
 | `liberarCDTManual` | `js/modules/cuentas.js` |
-| `Libro` | `js/core/libro.js` |
 | `load` | `js/core/core-state.js` |
 | `Loader` | `js/core/lazy-loader.js` |
 | `marcarColorSeleccionado` | `js/core/color-picker.js` |

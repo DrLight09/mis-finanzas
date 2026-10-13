@@ -56,10 +56,6 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 31 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 106 | 1 |
 
-**Referenciados en `index.html` o `Loader.GROUPS` pero que no existen en las carpetas escaneadas:**
-
-- `js/core/libro.js`
-
 ## 2. Qué declara cada archivo
 
 ### `js/core/async-css.js`

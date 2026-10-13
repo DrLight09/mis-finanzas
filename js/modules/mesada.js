@@ -71,7 +71,7 @@
 
 const MESADA_PADRES = ['papa', 'mama'];
 
-// ── Libro (js/core/libro.js) ─────────────────────────────────────────────────────────────────────────────────
+// ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogMes(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'mesada', ref:<id del movimiento espejo del abono> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogMes = (ref, rev) => ({ origen: { modulo: 'mesada', ref, rev: rev || undefined } });
 

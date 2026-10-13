@@ -225,8 +225,8 @@
         };
       });
 
-    // (Desde la migración v6 los movimientos de cuentas personalizadas y los espejos de cajitas también viven en S.movimientos
-    // y salen por la lista de arriba, con los mismos filtros.)
+    // (Los movimientos de cuentas personalizadas y los espejos de cajitas también viven en S.movimientos y salen por la lista de
+    // arriba, con los mismos filtros.)
 
     return items;
   }

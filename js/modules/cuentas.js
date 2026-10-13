@@ -74,7 +74,7 @@ let cuentaActual = '';
 // Abre el detalle de una cuenta. `fuente` es el identificador de siempre
 // ('nequi' | 'nu' | 'efectivo' | 'custom:ID'). Nu tiene su propia pantalla (cajitas, CDTs);
 // todas las demás comparten #cuentas-detalle-simple.
-// ── Libro (js/core/libro.js) ─────────────────────────────────────────────────────────────────────────────────
+// ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogCta(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'cuentas', ref:<id del movimiento o de la transferencia> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogCta = (ref, rev) => ({ origen: { modulo: 'cuentas', ref, rev: rev || undefined } });
 
@@ -1630,15 +1630,13 @@ function _refreshCajitaDet(){
 //   'nequi' | 'efectivo' → la fuente exacta   ·   'custom:ID' → la fuente exacta
 //   'nu'                 → CUALQUIER cajita ('cajita:...'), para la pantalla de Nu
 // Recopila lo que afecta a la cuenta desde todas las fuentes: S.movimientos (el historial de TODAS las cuentas, con
-// `fuente`, desde la migración v6), gastos variables, préstamos dados, transferencias, cobros de Spotify y las
+// `fuente`), gastos variables, préstamos dados, transferencias, cobros de Spotify y las
 // entradas del libro sin fila propia (intereses, ajustes, CDT).
 //
 // Lo que DIFIERE a propósito entre tipos de cuenta (no son descuidos; no unificar):
 //  1. Tipo de una salida manual: 'egreso' (personalizada) vs 'salida_manual' (las demás).
 //     movimientos.js elige la rama de borrado y de reversión de saldo según ese tipo.
-//  2. (Retirada en la migración v6) Antes una personalizada guardaba su historial en c.movimientos y las cajitas
-//     sus espejos en cajita.historial; hoy todo está en S.movimientos. Ver cuenta-efectos.js.
-//  3. Texto cuando el registro no trae descripción: 'Ingreso'/'Retiro' vs 'Entrada de efectivo'/
+//  2. Texto cuando el registro no trae descripción: 'Ingreso'/'Retiro' vs 'Entrada de efectivo'/
 //     'Salida manual'.
 // Cada fila lleva `_movId` (id del registro de origen); ordenado por fecha desc y luego por id desc.
 function getMovimientosCuenta(tipo) {
@@ -1768,10 +1766,9 @@ function getMovimientosCuenta(tipo) {
     }
   });
 
-  // Entradas del LIBRO sin fila heredada (intereses de Nu, ajustes del chequeo rápido y de la migración, CDT, saldo
-  // previo al reinicio): sin ellas el historial no sumaba el saldo de la cuenta y esa plata "aparecía de la nada".
-  // Van como filas automáticas (_secundario: con candado, sin botón de eliminar). Ver libro.js (entradasVisibles).
-  if (typeof Libro !== 'undefined') Libro.entradasVisibles().forEach(l => {
+  // Entradas del LIBRO sin fila de módulo (intereses de Nu, ajustes del chequeo rápido, CDT): sin ellas el historial no sumaba el saldo de la cuenta y esa plata "aparecía de la nada".
+  // Van como filas automáticas (_secundario: con candado, sin botón de eliminar). Ver Libro.entradasVisibles (core-state.js).
+  Libro.entradasVisibles().forEach(l => {
     if (!coincide(l.cuenta)) return;
     const etiqueta = l.tipo === 'rendimiento' ? 'Intereses de Nu' : l.tipo === 'cdt' ? 'CDT' : l.tipo === 'apertura' ? 'Saldo inicial' : 'Ajuste';
     movs.push({

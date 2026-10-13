@@ -147,10 +147,13 @@ function _validarEstructuraJSON(data){
   ['pagosGastosFijos','mesadas','presupuestos'].forEach(k=>{
     if(k in data&&(data[k]===null||typeof data[k]!=='object'))errores.push('El campo "'+k+'" debe ser un objeto.');
   });
-  // Un backup de una versión más nueva del modelo de datos que esta app no sabe leer: importarlo
-  // lo dejaría a medio interpretar. Los más viejos se actualizan solos (aplicarMigraciones).
-  if(Number(data.schemaVersion)>SCHEMA_VERSION_ACTUAL){
+  // Un backup de una versión más nueva del modelo de datos que esta app no sabe leer: importarlo lo dejaría a medio
+  // interpretar. Uno anterior a la versión base tampoco se puede importar: esta versión nació limpia y no migra datos viejos.
+  const _sv=Number(data.schemaVersion);
+  if(_sv>SCHEMA_VERSION_ACTUAL){
     errores.push('Este backup es de una versión más nueva de la app. Actualiza la app antes de importarlo.');
+  } else if(_sv>0&&_sv<SCHEMA_BASE){
+    errores.push('Este backup es de una versión anterior (esquema '+_sv+'): esta versión de la app empieza de cero y no importa datos de versiones anteriores.');
   }
   return errores;
 }

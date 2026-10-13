@@ -121,7 +121,7 @@ const TC_MOTIVOS_CARGO = {
 // (ver core-state.js#nivelAntiguedadMovimiento y
 // docs/proteccion-antiguedad-movimientos.md §4: sin ciclo natural como
 // Spotify, se cuenta contra la cuenta/tarjeta afectada en su lugar).
-// ── Libro (js/core/libro.js) ─────────────────────────────────────────────────────────────────────────────────
+// ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogTc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'tarjetas', ref:<id del pago de la tarjeta> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogTc = (ref, rev) => ({ origen: { modulo: 'tarjetas', ref, rev: rev || undefined } });
 

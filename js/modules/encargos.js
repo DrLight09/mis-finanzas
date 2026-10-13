@@ -43,7 +43,7 @@
    CHANGELOG.md#encargos.
    ═══════════════════════════════════════════════════════════════ */
 
-// ── Libro (js/core/libro.js): origen de cada cambio de saldo ────────────────────────────────────────────────
+// ── Libro (core-state.js): origen de cada cambio de saldo ────────────────────────────────────────────────
 // _ogEnc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'encargos', ref:<id del movimiento del encargo> }.
 // Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace). `opts.exacto` ya no existe: el saldo
 // nunca se recorta en 0 (ver descontarFuente en core-state.js).

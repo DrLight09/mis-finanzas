@@ -92,7 +92,7 @@ let gvSplitMode = false;
 
 // Solo cuentas con saldo >= $1,00 (FuentesFiltro, js/core/fuentes-filtro.js): de una cuenta
 // vacía no puede salir plata. Sin TC en modo dividido (ver comentario de arriba).
-// ── Libro (js/core/libro.js) ─────────────────────────────────────────────────────────────────────────────────
+// ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogGv(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'gastos', ref:<id del gasto> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogGv = (ref, rev) => ({ origen: { modulo: 'gastos', ref, rev: rev || undefined } });
 

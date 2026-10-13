@@ -1,200 +1,42 @@
 'use strict';
-// MIGRACIONES / aplicarMigraciones (core-state.js): cambios de modelo de datos con versión.
+// VERSIÓN DEL ESQUEMA / aplicarMigraciones (core-state.js). La app nació limpia en el esquema 7: no migra datos anteriores.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { loadApp } = require('./support/load-app');
 
 const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core');
-// La migración v5 siembra el libro con Libro.sembrar(): hay que cargar libro.js junto con core-state.js.
-const app = () => loadApp(['core-state.js', 'libro.js'].map(f => path.join(CORE_DIR, f)));
+const app = () => loadApp([path.join(CORE_DIR, 'core-state.js')]);
 const plano = x => JSON.parse(JSON.stringify(x));
 
-test('un objeto sin schemaVersion se migra y queda en la versión actual (6)', () => {
-  const d = app().aplicarMigraciones({ cuentas: [] });
-  assert.equal(d.schemaVersion, 6);
-  assert.deepEqual(plano(d.libro), [], 'sin cuentas con saldo el libro nace vacío');
-});
-
-test('datos en v2 (los existentes) ejecutan v3 a v6: estampan `clase`, siembran el libro, unifican el historial y suben la versión', () => {
-  const d = plano(app().aplicarMigraciones({ schemaVersion: 2, movimientos: [{ id: 'a', tipo: 'entrada', monto: 5, fecha: '2026-10-01', desc: 'Sueldo' }] }));
-  assert.equal(d.schemaVersion, 6);
-  assert.equal(d.movimientos[0].clase, 'ingreso');
+test('datos nuevos (sin schemaVersion) nacen en la versión base (7)', () => {
+  const d = plano(app().aplicarMigraciones({ cuentas: [] }));
+  assert.equal(d.schemaVersion, 7);
 });
 
 test('es idempotente: aplicarla dos veces no cambia nada', () => {
   const ctx = app();
-  const una = plano(ctx.aplicarMigraciones({ schemaVersion: 2, movimientos: [{ id: 'a', tipo: 'entrada', monto: 5, fecha: '2026-10-01' }], gastosVar: [{ id: 'g', monto: 1, fecha: '2026-10-01' }] }));
-  const dos = plano(ctx.aplicarMigraciones(plano(una)));
-  assert.deepEqual(dos, una);
+  const una = plano(ctx.aplicarMigraciones({ movimientos: [{ id: 'a', tipo: 'entrada', monto: 5, fecha: '2026-10-01' }] }));
+  assert.deepEqual(plano(ctx.aplicarMigraciones(plano(una))), una);
 });
 
 test('datos de una versión MÁS NUEVA que la app no se tocan', () => {
-  const d = plano(app().aplicarMigraciones({ schemaVersion: 999, plataCometida: [{ id: 'a' }] }));
+  const d = plano(app().aplicarMigraciones({ schemaVersion: 999, algoNuevo: [{ id: 'a' }] }));
   assert.equal(d.schemaVersion, 999);
-  assert.ok(d.plataCometida, 'no se migra lo que esta versión no entiende');
+  assert.ok(d.algoNuevo, 'no se migra lo que esta versión no entiende');
+});
+
+test('datos de una versión ANTERIOR a la base no se tocan: se marcan (S._esquemaAnterior) para que la app avise y se empiece de cero', () => {
+  for (const v of [2, 4, 6]) {
+    const d = plano(app().aplicarMigraciones({ schemaVersion: v, movimientos: [{ id: 'a' }] }));
+    assert.equal(d.schemaVersion, v, 'no se sube la versión: los datos viejos NO están en la forma nueva');
+    assert.equal(d._esquemaAnterior, v);
+    assert.equal(d.libro, undefined, 'y no se inventa un libro');
+  }
 });
 
 test('valores que no son objeto se devuelven tal cual', () => {
   const ctx = app();
   assert.equal(ctx.aplicarMigraciones(null), null);
   assert.equal(ctx.aplicarMigraciones(undefined), undefined);
-});
-
-
-test('migración v4 — el regalo de la abuela ($500.000 a Padre, sin cuenta) pasa a clase "ingreso"; otro préstamo parecido no se toca; es idempotente', () => {
-  const mov = (id, extra) => Object.assign({ id, tipo: 'prestamo', monto: 500000, fecha: '2026-09-25', fuente: '', nota: 'Regalo - Abuela' }, extra);
-  const d = plano(app().aplicarMigraciones({ schemaVersion: 3, deudores: [{ id: 'p', nombre: 'Padre', movimientos: [
-    mov('muhdltc2018'), mov('otro'), mov('muhdltc2018', { id: 'x1', fuente: 'nequi' })] }] }));
-  const ms = d.deudores[0].movimientos;
-  assert.equal(ms[0].clase, 'ingreso');
-  assert.equal(ms[1].clase, undefined, 'otro id: intacto');
-  assert.equal(d.schemaVersion, 6);
-  assert.deepEqual(plano(app().aplicarMigraciones(plano(d))), d);
-});
-
-// ── v5: libro de movimientos (plan-libro-de-movimientos.md) ──────────────────────────────────────────────────
-const backupV4 = () => ({ schemaVersion: 4,
-  cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 1150 }, { id: 'efectivo', tipo: 'efectivo', saldo: 500 }],
-  cajitas: [
-    { id: 'cSp', nombre: 'Spotify', saldo: 1200, historial: [], cdts: [] },
-    { id: 'cNu', nombre: 'Ahorro', saldo: 1007, historial: [], cdts: [] },
-    { id: 'cCdt', nombre: 'CDTS', saldo: 0, historial: [], cdts: [{ id: 'cdt1', monto: 2000, inicio: '2026-08-05', tasa: 10 }] }],
-  movimientos: [
-    { id: 'a1', tipo: 'apertura', fuente: 'nequi', monto: 1000, fecha: '2026-09-07' },
-    { id: 'a2', tipo: 'apertura', fuente: 'cajita:cNu', monto: 1000, fecha: '2026-09-07' },
-    { id: 'a3', tipo: 'apertura', fuente: 'cajita:cCdt', monto: 2000, fecha: '2026-09-07' },
-    { id: 'e1', tipo: 'entrada', fuente: 'nequi', monto: 200, fecha: '2026-09-10', desc: 'Sueldo' },
-    { id: 'x1', tipo: 'entrada', fuente: 'efectivo', monto: 40, fecha: '2026-09-11', desc: 'Directo a la alcancía', _esAlcanciaIngreso: true }],
-  gastosVar: [{ id: 'g1', fecha: '2026-09-12', monto: 50, fuente: 'nequi', desc: 'Comida' }],
-  spotifyHistorial: [
-    { id: 's1', tipo: 'cobro', monto: 300, fecha: '2026-08-01', fuente: 'cajita:cSp' },
-    { id: 's2', tipo: 'cobro', monto: 300, fecha: '2026-08-15', fuente: 'cajita:cSp' }],
-});
-
-test('migración v5 — siembra el libro y CADA cuenta cuadra con su saldo guardado (Libro.verificar)', () => {
-  const ctx = app();
-  const d = plano(ctx.aplicarMigraciones(backupV4()));
-  assert.equal(d.schemaVersion, 6);
-  const v = ctx.Libro.verificar(d);
-  assert.equal(v.ok, true, JSON.stringify(v.descuadres));
-  assert.equal(v.filas.length, 5);
-});
-
-test('migración v5 — lo que no está en ninguna lista queda como entrada EXPLÍCITA y etiquetada (no se oculta)', () => {
-  const ctx = app();
-  const d = plano(ctx.aplicarMigraciones(backupV4()));
-  const de = c => d.libro.filter(l => l.cuenta === c);
-  // Nequi: apertura + sueldo − gasto, sin ajustes. `_esAlcanciaIngreso` NO es pata de ninguna cuenta (Efectivo no sube 40).
-  assert.deepEqual(de('nequi').map(l => l.monto).sort((a, b) => a - b), [-50, 200, 1000]);
-  assert.equal(de('nequi').some(l => l.origen.modulo === 'migracion-v5'), false);
-  // Efectivo: saldo 500 sin ningún registro → ajuste "sin explicar".
-  assert.deepEqual(de('efectivo').map(l => [l.tipo, l.monto, l.origen.modulo]), [['ajuste', 500, 'migracion-v5']]);
-  // Spotify: saldo previo al reinicio (cobros de agosto, sin apertura) → apertura de 600; el resto (600) = intereses.
-  const sp = de('cajita:cSp');
-  assert.deepEqual(sp.map(l => [l.tipo, l.monto]), [['apertura', 600], ['rendimiento', 600]]);
-  assert.equal(sp[0].fecha, '2026-09-07', 'la apertura lleva la fecha de inicio');
-  // Cajita normal: su apertura + 7 de intereses de Nu que nunca se registraron.
-  assert.deepEqual(de('cajita:cNu').map(l => [l.tipo, l.monto]).sort(), [['apertura', 1000], ['rendimiento', 7]]);
-  // CDT: el capital sale del saldo de la cajita sin registro → pata inferida de tipo 'cdt'.
-  assert.deepEqual(de('cajita:cCdt').map(l => [l.tipo, l.monto]).sort(), [['apertura', 2000], ['cdt', -2000]]);
-});
-
-test('migración v5 — idempotente y NO resiembra un libro que ya existe', () => {
-  const ctx = app();
-  const una = plano(ctx.aplicarMigraciones(backupV4()));
-  assert.deepEqual(plano(ctx.aplicarMigraciones(plano(una))), una);
-  const d = plano(una); d.schemaVersion = 4; d.libro.push({ id: 'mio', fecha: '2026-10-11', cuenta: 'efectivo', monto: 1, tipo: 'ajuste' });
-  const n = d.libro.length;
-  ctx.aplicarMigraciones(d);
-  assert.equal(d.libro.length, n, 'con un libro ya sembrado no se vuelve a sembrar ni duplica');
-});
-
-test('Libro.registrar — rendimiento: una entrada por cajita y mes; reversión por contexto: tipo "reversion" con el mismo ref', () => {
-  const ctx = app();
-  const st = { libro: [] };
-  ctx.Libro.registrar('cajita:c1', 10, { tipo: 'rendimiento', fecha: '2026-10-01' }, st);
-  ctx.Libro.registrar('cajita:c1', 5, { tipo: 'rendimiento', fecha: '2026-10-20' }, st);
-  ctx.Libro.registrar('cajita:c1', 7, { tipo: 'rendimiento', fecha: '2026-11-02' }, st);
-  assert.deepEqual(st.libro.map(l => [l.fecha.slice(0, 7), l.monto]), [['2026-10', 15], ['2026-11', 7]]);
-  ctx.Libro.conOrigen({ modulo: 'prestado', ref: 'm1', rev: true }, () => ctx.Libro.registrar('nequi', 100, { fecha: '2026-10-21' }, st));
-  const u = st.libro[st.libro.length - 1];
-  assert.deepEqual([u.tipo, u.origen.modulo, u.origen.ref, u.origen.rev], ['reversion', 'prestado', 'm1', true]);
-  assert.equal(ctx.Libro.registrar('tc:x', 5, {}, st), null, 'una tarjeta de crédito no es cuenta con saldo: no entra al libro');
-});
-
-test('sumarFuente / descontarFuente — cada cambio deja su pata en el libro y el saldo ya NO se recorta en 0', () => {
-  const ctx = app();
-  Object.assign(ctx.S, { cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }], cajitas: [], libro: [] });
-  ctx.sumarFuente('efectivo', 50, { origen: { modulo: 't', ref: 'r1' } });
-  ctx.descontarFuente('nequi', 300, { origen: { modulo: 't', ref: 'r2' } });
-  assert.equal(ctx.S.cuentas.find(c => c.id === 'nequi').saldo, -300, 'antes se recortaba en 0 y la salida de $300 se perdía');
-  assert.deepEqual(plano(ctx.S.libro.map(l => [l.cuenta, l.monto, l.origen.ref])), [['efectivo', 50, 'r1'], ['nequi', -300, 'r2']]);
-  assert.equal(ctx.Libro.verificar().ok, true);
-  ctx.ajustarSaldoCuenta('efectivo', 80, { tipo: 'ajuste', desc: 'chequeo' });
-  assert.equal(ctx.S.libro[ctx.S.libro.length - 1].monto, 30, 'ajustarSaldoCuenta registra la DIFERENCIA');
-  assert.equal(ctx.Libro.verificar().ok, true);
-});
-
-test('Libro.entradasVisibles — solo lo que ningún registro heredado representa (intereses, ajustes, CDT, saldo previo del reinicio)', () => {
-  const ctx = app();
-  const d = plano(ctx.aplicarMigraciones(backupV4()));
-  const v = plano(ctx.Libro.entradasVisibles(d));
-  const etiqueta = l => l.cuenta + ':' + l.tipo;
-  assert.deepEqual(v.map(etiqueta).sort(), ['cajita:cCdt:cdt', 'cajita:cNu:rendimiento', 'cajita:cSp:apertura', 'cajita:cSp:rendimiento', 'efectivo:ajuste']);
-  assert.equal(v.some(l => l.cuenta === 'nequi'), false, 'Nequi no tiene nada sin fila: sus movimientos ya salen de las listas heredadas');
-  assert.equal(v.some(l => l.tipo === 'apertura' && l.origen.modulo !== 'migracion-v5'), false, 'una apertura con su propia fila (S.movimientos) no se duplica');
-  assert.equal(v.reduce((a, l) => a + l.monto, 0), 600 + 600 + 7 - 2000 + 500, 'suma de lo que añaden al historial');
-});
-
-// ── v6: el historial de TODAS las cuentas en S.movimientos ───────────────────────────────────────────────────
-const legacyCuentas = () => ({ schemaVersion: 5,
-  cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 },
-    { id: 'cu1', tipo: 'custom', nombre: 'Madre', saldo: 100, movimientos: [
-      { id: 'k1', tipo: 'apertura', monto: 100, fecha: '2026-09-07', desc: 'Saldo inicial' },
-      { id: 'k2', tipo: 'ingreso', monto: 50, fecha: '2026-09-08', nota: 'Regalo', clase: 'ingreso' },
-      { id: 'k3', tipo: 'egreso', monto: 20, fecha: '2026-09-09', nota: 'Compra', _secundario: true, _origenSeccion: 'Prestado', clase: 'neutro' },
-      { id: 'k4', tipo: 'ingreso', monto: 5, fecha: '2026-09-10', nota: 'Gemelo', clase: 'ingreso' }] }],
-  cajitas: [{ id: 'cj', nombre: 'Sobra', saldo: 0, historial: [
-    { id: 'h1', tipo: 'entrada', monto: 30, fecha: '2026-09-11', nota: 'Abono', _secundario: true, _origenSeccion: 'Prestado · Me deben', clase: 'neutro' },
-    { id: 'h2', tipo: 'salida', monto: 7, fecha: '2026-09-12', nota: 'Pago', _secundario: true, clase: 'neutro' },
-    { id: 'h3', tipo: 'entrada', monto: 9, fecha: '2026-09-13', nota: 'Gemelo cajita', _secundario: true, clase: 'neutro' }] }],
-  movimientos: [{ id: 'k4', tipo: 'entrada', fuente: 'custom:cu1', monto: 5, fecha: '2026-09-10', desc: 'Gemelo (S.movimientos)', clase: 'ingreso' },
-    { id: 'h3', tipo: 'entrada', fuente: 'cajita:cj', monto: 9, fecha: '2026-09-13', desc: 'Gemelo cajita (S.movimientos)', clase: 'neutro' }] });
-
-test('migración v6 — personalizadas y cajitas pasan a S.movimientos con `fuente`, tipo entrada/salida y texto en `desc`; las listas propias quedan vacías', () => {
-  const ctx = app();
-  const d = plano(ctx.aplicarMigraciones(legacyCuentas()));
-  assert.equal(d.schemaVersion, 6);
-  assert.deepEqual(d.cuentas.find(c => c.id === 'cu1').movimientos, []);
-  assert.deepEqual(d.cajitas[0].historial, []);
-  const por = id => d.movimientos.find(m => m.id === id);
-  assert.deepEqual([por('k1').tipo, por('k1').fuente], ['apertura', 'custom:cu1']);
-  assert.deepEqual([por('k2').tipo, por('k2').desc, 'nota' in por('k2')], ['entrada', 'Regalo', false], 'ingreso→entrada, nota→desc');
-  assert.deepEqual([por('k3').tipo, por('k3')._secundario, por('k3').clase], ['salida', true, 'neutro'], 'egreso→salida: nunca es un "Restar dinero" que cuente como gasto');
-  assert.deepEqual([por('h1').tipo, por('h1').fuente, por('h1').desc], ['entrada', 'cajita:cj', 'Abono']);
-  assert.deepEqual([por('h2').tipo, por('h2').fuente], ['salida', 'cajita:cj']);
-});
-
-test('migración v6 — un registro en las dos listas con el mismo id se cuenta UNA vez (personalizadas: manda la cuenta; cajitas: manda S.movimientos)', () => {
-  const d = plano(app().aplicarMigraciones(legacyCuentas()));
-  const k4 = d.movimientos.filter(m => m.id === 'k4'), h3 = d.movimientos.filter(m => m.id === 'h3');
-  assert.equal(k4.length, 1); assert.equal(k4[0].desc, 'Gemelo');
-  assert.equal(h3.length, 1); assert.equal(h3[0].desc, 'Gemelo cajita (S.movimientos)');
-});
-
-test('migración v6 — conserva el libro cuadrado (v5 siembra con las listas viejas y v6 las mueve), los ids no cambian y es idempotente', () => {
-  const ctx = app();
-  const d = plano(ctx.aplicarMigraciones(Object.assign(legacyCuentas(), { schemaVersion: 4 })));
-  assert.equal(ctx.Libro.verificar(d).ok, true, JSON.stringify(ctx.Libro.verificar(d).descuadres));
-  assert.deepEqual(plano(ctx.aplicarMigraciones(plano(d))), d);
-  assert.equal(plano(ctx.unificarHistorialCuentas(plano(d))).movidos, 0, 'sin listas propias no hay nada que mover');
-});
-
-test('Libro.patas — lee igual el historial unificado (S.movimientos con `fuente`) que la forma anterior', () => {
-  const ctx = app();
-  const antes = plano(ctx.Libro.patas(legacyCuentas()).patas).map(p => [p.cuenta, p.monto]).sort();
-  const d = plano(ctx.aplicarMigraciones(legacyCuentas()));  // v5 ya aplicada: solo corre la v6
-  const despues = plano(ctx.Libro.patas(d).patas).map(p => [p.cuenta, p.monto]).sort();
-  assert.deepEqual(despues, antes, 'las mismas patas de caja antes y después de mover las listas');
 });

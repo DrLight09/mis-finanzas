@@ -1,10 +1,9 @@
 // tests/historial-cuenta.test.js — historial de una cuenta: UNA función (cuentas.js)
 // Corre con:  node --test tests/historial-cuenta.test.js
 //
-// PRUEBA DORADA: compara getMovimientosCuenta (función única, nueva) con las dos funciones
-// anteriores congeladas en tests/support/historial-legacy.js, sobre los mismos datos, fila por
-// fila. Lo único que puede diferir son los cambios deliberados de la unificación, y cada uno
-// está enumerado abajo con su valor esperado. Cualquier otra diferencia hace fallar la prueba.
+// getMovimientosCuenta junta lo que afecta a una cuenta desde todas las fuentes: S.movimientos (el historial de TODAS las
+// cuentas, con `fuente`), gastos variables, préstamos dados, transferencias, cobros de Spotify y las entradas del libro sin
+// fila propia (intereses, ajustes, CDT). Estas pruebas fijan lo que debe mostrar cada cuenta y las reglas de presentación.
 const { test, describe } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -13,34 +12,19 @@ const { loadApp } = require('./support/load-app');
 const RAIZ = path.join(__dirname, '..');
 const core = f => path.join(RAIZ, 'js', 'core', f);
 const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'),
-  modulo('cuentas.js'), path.join(__dirname, 'support', 'historial-legacy.js')];
+const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
 
 const plano = x => JSON.parse(JSON.stringify(x)); // saca los undefined y los prototipos del vm
 
+// Fixture en la forma única: S.movimientos con `fuente` (ninguna cuenta tiene lista propia).
 function fixture(S) {
   const D = (n) => '2026-10-0' + n;
   S.cuentas = [
     { id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 },
-    { id: 'z', tipo: 'custom', nombre: 'Ahorro', saldo: 0, movimientos: [
-      { id: 'zc1', tipo: 'ingreso', monto: 1000, fecha: D(2), nota: 'viejo con gemelo' },
-      { id: 'zc2', tipo: 'egreso', monto: 200, fecha: D(3), nota: 'retiro propio' },
-      { id: 'zc3', tipo: 'apertura', monto: 5000, fecha: '2026-09-01' },
-      { id: 'zc4', tipo: 'ingreso', monto: 300, fecha: D(4), nota: 'espejo', _secundario: true, _esEspejo: true, _origenSeccion: 'Prestado · Me deben' },
-      { id: 'zc5', tipo: 'entrada', monto: 10, fecha: D(4), desc: 'legacy entrada' },
-      { id: 'zc6', tipo: 'salida_manual', monto: 20, fecha: D(4), desc: 'legacy salida' },
-      { id: 'zc7', tipo: 'egreso', monto: 15, fecha: D(5) },
-      { id: 'zc8', tipo: 'ingreso', monto: 9, fecha: D(5) },
-    ] },
-    { id: 'y', tipo: 'custom', nombre: 'Otra', saldo: 0, movimientos: [{ id: 'yc1', tipo: 'ingreso', monto: 7, fecha: D(5), nota: 'y' }] },
+    { id: 'z', tipo: 'custom', nombre: 'Ahorro', saldo: 0 }, { id: 'y', tipo: 'custom', nombre: 'Otra', saldo: 0 },
   ];
-  S.cajitas = [
-    { id: 'k1', nombre: 'K1', saldo: 0, historial: [
-      { id: 'h1', tipo: 'entrada', monto: 100, fecha: D(2), nota: 'espejo', _secundario: true, _origenSeccion: 'Prestado · Me deben' },
-      { id: 'h2', tipo: 'salida', monto: 50, fecha: D(3), desc: 'x', _secundario: true },
-      { id: 'h3', tipo: 'entrada', monto: 1, fecha: D(3) } ] },
-    { id: 'k2', nombre: 'K2', saldo: 0, historial: [{ id: 'h4', tipo: 'salida', monto: 4, fecha: D(1), _secundario: true }] },
-  ];
+  S.cajitas = [{ id: 'k1', nombre: 'K1', saldo: 0 }, { id: 'k2', nombre: 'K2', saldo: 0 }];
+  S.libro = [];
   S.movimientos = [
     { id: 'm01', tipo: 'entrada', fuente: 'nequi', monto: 100000, fecha: D(1), desc: 'Sueldo' },
     { id: 'm02', tipo: 'salida_manual', fuente: 'efectivo', monto: 5000, fecha: D(1), desc: 'Almuerzo' },
@@ -58,13 +42,23 @@ function fixture(S) {
     { id: 'm14', tipo: 'salida_manual', fuente: 'cajita:k2', monto: 40, fecha: D(3) },
     { id: 'm15', tipo: 'entrada', fuente: 'custom:z', monto: 70, fecha: D(3), desc: 'Propina' },
     { id: 'm16', tipo: 'salida_manual', fuente: 'custom:z', monto: 80, fecha: D(3), desc: 'Retiro S' },
-    { id: 'zc1', tipo: 'entrada', fuente: 'custom:z', monto: 1000, fecha: D(2), desc: 'gemelo viejo' },
     { id: 'm17', tipo: 'transferencia', fuente: 'custom:z', monto: 25, fecha: D(4), _esIntercambioEncargo: true, _encMovId: 'em2', _intercambioSalida: true, _fuenteDestino: 'nequi' },
     { id: 'm18', tipo: 'transferencia', fuente: 'nequi', monto: 25, fecha: D(4), _esIntercambioEncargo: true, _encMovId: 'em2', _intercambioEntrada: true, _fuenteDestino: 'custom:z' },
     { id: 'm19', tipo: 'entrada', fuente: 'custom:z', monto: 6000, fecha: D(4), desc: 'Mesada mamá', _secundario: true, _origenSeccion: 'Mesada' },
     { id: 'm20', tipo: 'entrada', fuente: 'custom:z', monto: 99, fecha: D(4), _esAlcanciaIngreso: true },
     { id: 'm21', tipo: 'entrada', fuente: 'custom:z', monto: 45, fecha: D(4), desc: 'Encargo X' },
     { id: 'm22', tipo: 'entrada', fuente: 'custom:y', monto: 11, fecha: D(4), desc: 'otra cuenta' },
+    // lo que antes vivía en cuenta.movimientos / cajita.historial, ya en la lista única
+    { id: 'zc1', tipo: 'entrada', fuente: 'custom:z', monto: 1000, fecha: D(2), desc: 'ingreso de la cuenta' },
+    { id: 'zc2', tipo: 'salida', fuente: 'custom:z', monto: 200, fecha: D(3), desc: 'retiro propio' },
+    { id: 'zc3', tipo: 'apertura', fuente: 'custom:z', monto: 5000, fecha: '2026-09-01' },
+    { id: 'zc4', tipo: 'entrada', fuente: 'custom:z', monto: 300, fecha: D(4), desc: 'espejo', _secundario: true, _esEspejo: true, _origenSeccion: 'Prestado · Me deben' },
+    { id: 'zc7', tipo: 'salida', fuente: 'custom:z', monto: 15, fecha: D(5) },
+    { id: 'zc8', tipo: 'entrada', fuente: 'custom:z', monto: 9, fecha: D(5) },
+    { id: 'yc1', tipo: 'entrada', fuente: 'custom:y', monto: 7, fecha: D(5), desc: 'y' },
+    { id: 'h1', tipo: 'entrada', fuente: 'cajita:k1', monto: 100, fecha: D(2), desc: 'espejo', _secundario: true, _origenSeccion: 'Prestado · Me deben' },
+    { id: 'h2', tipo: 'salida', fuente: 'cajita:k1', monto: 50, fecha: D(3), desc: 'x', _secundario: true },
+    { id: 'h4', tipo: 'salida', fuente: 'cajita:k2', monto: 4, fecha: D(1), _secundario: true },
     { tipo: 'entrada', fuente: 'nequi', monto: 1, fecha: D(5), desc: 'sin id A' },     // legado sin id: el orden depende de _idx
     { tipo: 'salida_manual', fuente: 'nequi', monto: 2, fecha: D(5), desc: 'sin id B' },
   ];
@@ -118,147 +112,135 @@ function cargar() {
   fixture(app.S);
   return app;
 }
-const CUENTAS = ['nequi', 'efectivo', 'nu', 'cajita:k1', 'custom:z', 'custom:y'];
-function ambas(app, tipo) {
-  const legacy = plano(app._legacyGetMovimientosCuenta(tipo));
-  const nuevo = plano(app.getMovimientosCuenta(tipo));
-  return { legacy, nuevo };
-}
-// _idx es un número interno de recolección (solo desempata filas sin id, y el orden ya se compara);
-// _secundario se normaliza a booleano.
-const norm = m => { const o = { ...m }; delete o._idx; o._secundario = !!o._secundario; return o; };
-const clavesDistintas = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])].filter(k => JSON.stringify(a[k]) !== JSON.stringify(b[k]));
+const filas = (app, tipo) => plano(app.getMovimientosCuenta(tipo));
+const ids = (app, tipo) => filas(app, tipo).map(m => m._movId || '?');
+const fila = (app, tipo, id) => filas(app, tipo).find(m => m._movId === id);
 
-// Cambios DELIBERADOS de la unificación — solo en cuentas personalizadas (las demás no cambian nada).
-const PERMITIDAS = nuevo => {
-  if (nuevo.tipo === 'gasto') return ['cat', 'nota', '_origen'];               // ahora lleva categoría, nota y el origen "Encargos"
-  if (nuevo.tipo === 'prestamo') return ['_otrasCuentas'];                       // ahora muestra las otras cuentas de un préstamo dividido
-  if (nuevo._secundario && nuevo._origenSeccion) return ['_origen'];             // ahora usa la sección de origen (Mesada, …)
-  return [];
-};
-
-describe('prueba dorada: la función única no pierde, duplica ni reordena filas', () => {
-  for (const tipo of CUENTAS) {
-    test(`${tipo}: mismas filas, mismo orden`, () => {
-      const { legacy, nuevo } = ambas(cargar(), tipo);
-      assert.ok(legacy.length > 0, 'el fixture debe producir filas para esta cuenta');
-      assert.equal(nuevo.length, legacy.length, 'misma cantidad de filas');
-      assert.deepEqual(nuevo.map(m => [m._movId, m.tipo, m.monto, m.fecha, m.fuente]), legacy.map(m => [m._movId, m.tipo, m.monto, m.fecha, m.fuente]));
-    });
+describe('qué filas muestra cada cuenta, y en qué orden (fecha desc; misma fecha: id más reciente primero)', () => {
+  const ESPERADO = {
+    'nequi': '?,?,?,?,m18,t06,t05,t04,p5,m11,g07,g06,t01,sp1,p2,p1,m10,m09,m08,m06,g05,g04,g03,g01,m04,m01,m05',
+    'efectivo': '?,p5,ab1,t02,t01,p2,m07,g02,m03,m02',
+    'nu': 'sp4,t03,t03,p7,p4,m14,m13,h2,g08,ab3,t02,h1,h4',
+    'cajita:k1': 'sp4,t03,p4,m13,h2,g08,ab3,t02,h1',
+    'custom:z': 'zc8,zc7,zc4,m21,m19,m17,zc2,t09,t07,t06,t05,sp_legacy_1,p4,m16,m15,g12,g11,g10,g09,ab2,zc1,p3,zc3',
+    'custom:y': 'yc1,m22,t07,g13',
+  };
+  for (const [cuenta, esperado] of Object.entries(ESPERADO)) {
+    test(cuenta, () => assert.equal(ids(cargar(), cuenta).join(','), esperado));
   }
-  for (const tipo of ['nequi', 'efectivo', 'nu', 'cajita:k1']) {
-    test(`${tipo} (cuenta estándar): resultado IDÉNTICO campo por campo`, () => {
-      const { legacy, nuevo } = ambas(cargar(), tipo);
-      assert.deepEqual(nuevo.map(norm), legacy.map(norm));
-    });
-  }
-  for (const tipo of ['custom:z', 'custom:y']) {
-    test(`${tipo}: solo difieren los cambios deliberados`, () => {
-      const { legacy, nuevo } = ambas(cargar(), tipo);
-      nuevo.forEach((n, i) => {
-        const dif = clavesDistintas(norm(legacy[i]), norm(n));
-        const permitidas = PERMITIDAS(n);
-        const noPermitidas = dif.filter(k => !permitidas.includes(k));
-        assert.deepEqual(noPermitidas, [], `fila ${n._movId} (${n.tipo}) difiere en campos no previstos`);
-      });
-    });
-  }
-});
-
-describe('cambios deliberados en cuentas personalizadas (cuenta z)', () => {
-  const fila = (arr, id, extra = () => true) => arr.find(m => m._movId === id && extra(m));
-  test('un gasto ahora trae categoría y nota', () => {
-    const { legacy, nuevo } = ambas(cargar(), 'custom:z');
-    assert.equal(fila(legacy, 'g09').cat, undefined);
-    assert.equal(fila(nuevo, 'g09').cat, 'Ocio');
-    assert.equal(fila(nuevo, 'g09').nota, 'zn');
-  });
-  test('un gasto con "encargo" en la nota se etiqueta Encargos (antes: Gastos)', () => {
-    const { legacy, nuevo } = ambas(cargar(), 'custom:z');
-    assert.equal(fila(legacy, 'g10')._origen, 'Gastos');
-    assert.equal(fila(nuevo, 'g10')._origen, 'Encargos');
-  });
-  test('un préstamo dividido muestra las otras cuentas (antes: ninguna)', () => {
-    const { legacy, nuevo } = ambas(cargar(), 'custom:z');
-    assert.equal(fila(legacy, 'p4')._otrasCuentas, null);
-    assert.deepEqual(fila(nuevo, 'p4')._otrasCuentas, [{ fuente: 'cajita:k1', monto: -200 }]);
-  });
-  test('un movimiento de Mesada en la cuenta ya no sale como "Movimiento manual"', () => {
-    const { legacy, nuevo } = ambas(cargar(), 'custom:z');
-    assert.equal(fila(legacy, 'm19')._origen, 'Cuentas · Movimiento manual');
-    assert.equal(fila(nuevo, 'm19')._origen, 'Mesada');
-  });
-  test('el tipo de una salida manual sigue siendo "egreso" (movimientos.js elige el borrado por ese tipo)', () => {
-    const { nuevo } = ambas(cargar(), 'custom:z');
-    assert.equal(fila(nuevo, 'm16').tipo, 'egreso');
-    assert.equal(fila(nuevo, 'zc2').tipo, 'egreso');
-    assert.ok(!nuevo.some(m => m.tipo === 'salida_manual'));
-  });
-});
-
-describe('cuentas estándar: el tipo de una salida manual sigue siendo "salida_manual"', () => {
-  test('Nequi, Efectivo y cajitas', () => {
+  test('una cuenta cuyo historial está todo en S.movimientos no necesita ninguna lista propia', () => {
     const app = cargar();
-    for (const [tipo, id] of [['nequi', 'm04'], ['efectivo', 'm02'], ['nu', 'm14']]) {
-      assert.equal(app.getMovimientosCuenta(tipo).find(m => m._movId === id).tipo, 'salida_manual', tipo);
-    }
+    assert.ok(app.S.cuentas.every(c => !('movimientos' in c)) && app.S.cajitas.every(c => !('historial' in c)));
+    assert.ok(filas(app, 'custom:z').length > 0 && filas(app, 'cajita:k1').length > 0);
+  });
+});
+
+describe('el tipo de una salida manual depende del tipo de cuenta (movimientos.js elige el borrado por ese tipo)', () => {
+  test('cuenta personalizada: siempre "egreso"', () => {
+    const app = cargar();
+    assert.equal(fila(app, 'custom:z', 'm16').tipo, 'egreso');
+    assert.equal(fila(app, 'custom:z', 'zc2').tipo, 'egreso');
+    assert.ok(!filas(app, 'custom:z').some(m => m.tipo === 'salida_manual'));
+  });
+  test('Nequi, Efectivo y cajitas: "salida_manual"', () => {
+    const app = cargar();
+    for (const [tipo, id] of [['nequi', 'm04'], ['efectivo', 'm02'], ['nu', 'm14']]) assert.equal(fila(app, tipo, id).tipo, 'salida_manual', tipo);
+  });
+});
+
+describe('cómo se presenta cada fila', () => {
+  test('un gasto trae categoría y nota', () => {
+    const g = fila(cargar(), 'custom:z', 'g09');
+    assert.equal(g.cat, 'Ocio'); assert.equal(g.nota, 'zn');
+  });
+  test('un gasto con "encargo" en la nota se etiqueta Encargos', () => {
+    const app = cargar();
+    assert.equal(fila(app, 'custom:z', 'g10')._origen, 'Encargos');
+    assert.equal(fila(app, 'nequi', 'g05')._origen, 'Encargos');
+  });
+  test('un préstamo dividido muestra las otras cuentas', () => {
+    assert.deepEqual(fila(cargar(), 'custom:z', 'p4')._otrasCuentas, [{ fuente: 'cajita:k1', monto: -200 }]);
+  });
+  test('un movimiento automático lleva la sección que lo originó (Mesada, Préstamos…) y candado', () => {
+    const app = cargar();
+    assert.equal(fila(app, 'custom:z', 'm19')._origen, 'Mesada');
+    assert.equal(fila(app, 'custom:z', 'm19')._secundario, true);
+    assert.equal(fila(app, 'cajita:k1', 'h1')._origen, 'Prestado · Me deben');
   });
 });
 
 describe('reglas que la función debe cumplir', () => {
-  test('datos viejos con gemelo (mismo id en c.movimientos y S.movimientos): una sola fila', () => {
-    const { nuevo } = ambas(cargar(), 'custom:z');
-    assert.equal(nuevo.filter(m => m._movId === 'zc1').length, 1);
-    assert.equal(nuevo.find(m => m._movId === 'zc1').desc, 'viejo con gemelo', 'queda la de la cuenta, no la de S.movimientos');
-  });
   test('un ingreso de Alcancía sin cuenta de origen no aparece en el historial', () => {
     const app = cargar();
-    for (const tipo of ['nequi', 'custom:z']) assert.ok(!app.getMovimientosCuenta(tipo).some(m => m._movId === 'm12' || m._movId === 'm20'), tipo);
+    for (const tipo of ['nequi', 'custom:z']) assert.ok(!filas(app, tipo).some(m => m._movId === 'm12' || m._movId === 'm20'), tipo);
   });
   test('un depósito a la alcancía sale como fila "alcancia" con monto oculto, en cuenta estándar y personalizada', () => {
     const app = cargar();
-    const e = app.getMovimientosCuenta('nequi').find(m => m._movId === 't04');
-    const c = app.getMovimientosCuenta('custom:z').find(m => m._movId === 't09');
+    const e = fila(app, 'nequi', 't04'), c = fila(app, 'custom:z', 't09');
     assert.equal(e.tipo, 'alcancia'); assert.equal(e._alcOculto, true);
     assert.equal(c.tipo, 'alcancia'); assert.equal(c._alcOculto, true);
   });
   test('el cobro de Spotify descuenta los abonos ya recibidos (no cuenta la plata dos veces)', () => {
     const app = cargar();
-    const cobro = app.getMovimientosCuenta('nequi').find(m => m._movId === 'sp1');
-    assert.equal(cobro.monto, 15000 - (5000 + 2000 + 1000));
-    assert.equal(app.getMovimientosCuenta('efectivo').find(m => m._movId === 'ab1').monto, 5000);
-    assert.equal(app.getMovimientosCuenta('custom:z').find(m => m._movId === 'ab2').monto, 2000);
+    assert.equal(fila(app, 'nequi', 'sp1').monto, 15000 - (5000 + 2000 + 1000));
+    assert.equal(fila(app, 'efectivo', 'ab1').monto, 5000);
+    assert.equal(fila(app, 'custom:z', 'ab2').monto, 2000);
   });
   test('un cobro de Spotify sin id recibe un id estable (sp_legacy_<índice>)', () => {
-    const f = cargar().getMovimientosCuenta('custom:z').find(m => m.desc === 'Cobro Spotify (Sin id)');
-    assert.equal(f._movId, 'sp_legacy_1');
+    assert.equal(filas(cargar(), 'custom:z').find(m => m.desc === 'Cobro Spotify (Sin id)')._movId, 'sp_legacy_1');
   });
-  test('la pantalla de Nu ("nu") junta las filas de TODAS las cajitas', () => {
-    const fuentes = new Set(cargar().getMovimientosCuenta('nu').map(m => m.fuente));
+  test('la pantalla de Nu ("nu") junta las filas de TODAS las cajitas, y solo de cajitas', () => {
+    const fuentes = new Set(filas(cargar(), 'nu').map(m => m.fuente));
     assert.ok(fuentes.has('cajita:k1') && fuentes.has('cajita:k2'));
     assert.ok([...fuentes].every(f => f.startsWith('cajita:')));
   });
-  test('los espejos de cajita.historial solo aparecen para "nu", y solo los _secundario', () => {
+  test('los espejos de una cajita salen en su cajita y en "nu", no en otras cuentas', () => {
     const app = cargar();
-    const nu = app.getMovimientosCuenta('nu').map(m => m._movId);
+    const nu = ids(app, 'nu');
     assert.ok(nu.includes('h1') && nu.includes('h2') && nu.includes('h4'));
-    assert.ok(!nu.includes('h3'), 'h3 no es secundario');
-    assert.ok(!app.getMovimientosCuenta('nequi').some(m => m._movId === 'h1'));
+    assert.ok(ids(app, 'cajita:k1').includes('h2') && !ids(app, 'cajita:k1').includes('h4'));
+    assert.ok(!ids(app, 'nequi').includes('h1'));
   });
   test('una cuenta personalizada que ya no existe no revienta y aún muestra lo que apuntaba a ella', () => {
     const app = cargar();
     app.S.cuentas = app.S.cuentas.filter(c => c.id !== 'z');
-    const filas = app.getMovimientosCuenta('custom:z');
-    assert.ok(filas.length > 0);
-    assert.ok(filas.some(m => m._movId === 'zc1'), 'sin la cuenta no hay gemelo que saltar: queda la fila de S.movimientos');
+    assert.ok(ids(app, 'custom:z').includes('zc1'));
   });
   test('sin datos devuelve una lista vacía', () => {
     const app = loadApp(ARCHIVOS, { permissive: true });
     assert.deepEqual(plano(app.getMovimientosCuenta('nequi')), []);
     assert.deepEqual(plano(app.getMovimientosCuenta('custom:nada')), []);
   });
-  test('orden: fecha descendente; en la misma fecha, el id más reciente primero', () => {
-    const fs = Array.from(cargar().getMovimientosCuenta('nequi'), m => m.fecha);
+  test('orden: fecha descendente', () => {
+    const fs = filas(cargar(), 'nequi').map(m => m.fecha);
     assert.deepEqual(fs, [...fs].sort((a, b) => b.localeCompare(a)));
+  });
+});
+
+describe('entradas del libro sin fila de módulo: intereses, ajustes y CDT salen como filas con candado', () => {
+  const conLibro = () => {
+    const app = cargar();
+    app.S.libro = [
+      { id: 'l1', fecha: '2026-10-05', cuenta: 'cajita:k1', monto: 12.5, tipo: 'rendimiento', desc: 'Intereses de Nu', origen: { modulo: 'cuentas' } },
+      { id: 'l2', fecha: '2026-10-06', cuenta: 'cajita:k2', monto: -2000, tipo: 'cdt', desc: 'Capital invertido en CDT', origen: { modulo: 'cuentas' } },
+      { id: 'l3', fecha: '2026-10-07', cuenta: 'efectivo', monto: -30, tipo: 'ajuste', desc: 'Diferencia sin explicar', origen: { modulo: 'cuentas' } },
+      { id: 'l4', fecha: '2026-10-07', cuenta: 'efectivo', monto: 99, tipo: 'movimiento', origen: { modulo: 'prestado', ref: 'x' } },
+    ];
+    return app;
+  };
+  test('aparecen en la cuenta que cambiaron, en "nu" para las cajitas, con candado y origen "Libro"', () => {
+    const app = conLibro();
+    const r = fila(app, 'cajita:k1', 'l1');
+    assert.deepEqual([r.tipo, r.monto, r._secundario, r._origen], ['ingreso', 12.5, true, 'Libro · Intereses de Nu']);
+    assert.ok(ids(app, 'nu').includes('l1') && ids(app, 'nu').includes('l2'));
+    const c = fila(app, 'nu', 'l2');
+    assert.deepEqual([c.tipo, c.monto, c._origen], ['salida_manual', -2000, 'Libro · CDT']);
+    assert.deepEqual([fila(app, 'efectivo', 'l3').tipo, fila(app, 'efectivo', 'l3')._origen], ['salida_manual', 'Libro · Ajuste']);
+  });
+  test('los movimientos de módulos del libro NO se duplican como fila: ya tienen la suya', () => {
+    assert.ok(!ids(conLibro(), 'efectivo').includes('l4'));
+  });
+  test('no aparecen en otras cuentas', () => {
+    assert.ok(!ids(conLibro(), 'nequi').includes('l1') && !ids(conLibro(), 'custom:z').includes('l3'));
   });
 });

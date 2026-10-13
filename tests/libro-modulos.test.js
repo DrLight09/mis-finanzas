@@ -7,7 +7,7 @@ const path = require('node:path');
 const { loadApp } = require('./support/load-app');
 const RAIZ = path.join(__dirname, '..');
 const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
-const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js'), modulo('mesada.js')];
+const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), core('periodo.js'), core('nu-calc.js'), modulo('cuentas.js'), modulo('mesada.js'), modulo('encargos.js')];
 const plano = x => JSON.parse(JSON.stringify(x));
 
 function cargar() {
@@ -51,4 +51,17 @@ test('un saldo cambiado sin pasar por la puerta única lo detecta verificar()', 
   app.sumarFuente('nequi', 100);
   app.S.cuentas.find(c => c.id === 'nequi').saldo += 5;
   assert.equal(plano(app.Libro.verificar()).descuadres[0].dif, 5);
+});
+
+test('Encargos — eliminar el saldo inicial NO toca el saldo de la cuenta ni el libro (es plata ajena, no está en c.saldo)', async () => {
+  const app = cargar();
+  app.dialogo = async () => true;
+  app.S.cuentas.find(c => c.id === 'nequi').saldo = 0; app.sumarFuente('nequi', 1000, { origen: { modulo: 't', ref: 'x' } });
+  app.S.encargos = [{ id: 'e1', nombre: 'Ana', saldoInicial: 300, cuentaInicial: 'nequi', movimientos: [] }];
+  const antes = app.S.libro.length;
+  await app.deleteMovEncargo('e1', '__saldo_ini__');
+  assert.equal(app.S.cuentas.find(c => c.id === 'nequi').saldo, 1000, 'el saldo propio queda intacto');
+  assert.equal(app.S.libro.length, antes, 'sin entrada nueva en el libro');
+  assert.equal(app.S.encargos[0].saldoInicial, 0);
+  assert.equal(app.Libro.verificar().ok, true);
 });

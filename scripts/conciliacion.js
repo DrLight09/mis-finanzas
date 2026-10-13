@@ -11,7 +11,7 @@ const CORE = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js
 const ruta = process.argv[2];
 if (!ruta) { console.error('Uso: node scripts/conciliacion.js backup.json [--umbral=30000]'); process.exit(2); }
 const umbral = Number((process.argv.find(a => a.startsWith('--umbral=')) || '--umbral=30000').split('=')[1]);
-const ctx = loadApp(['core-state.js', 'periodo.js', 'cuenta-efectos.js', 'nu-calc.js', 'libro.js', 'calc-helpers.js'].map(f => path.join(CORE, f)), { permissive: true });
+const ctx = loadApp(['core-state.js', 'periodo.js', 'cuenta-efectos.js', 'nu-calc.js', 'calc-helpers.js'].map(f => path.join(CORE, f)), { permissive: true });
 Object.keys(ctx.S).forEach(k => delete ctx.S[k]);
 Object.assign(ctx.S, JSON.parse(fs.readFileSync(ruta, 'utf8')));
 const S = ctx.S;

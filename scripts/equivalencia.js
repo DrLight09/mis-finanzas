@@ -32,7 +32,7 @@ function comparar(rutaA, rutaB, tolPatrimonio) {
 function foto(rutaBackup) {
   const { loadApp } = require('../tests/support/load-app');
   const CORE = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core'); // MIS_FINANZAS_CORE_DIR: calcular con otra copia del código (p. ej. la original, para la foto "antes")
-  const files = ['core-state.js', 'periodo.js', 'cuenta-efectos.js', 'nu-calc.js', 'libro.js', 'calc-helpers.js'].map(f => path.join(CORE, f));
+  const files = ['core-state.js', 'periodo.js', 'cuenta-efectos.js', 'nu-calc.js', 'calc-helpers.js'].map(f => path.join(CORE, f));
   const ctx = loadApp(files, { permissive: true });
   Object.keys(ctx.S).forEach(k => delete ctx.S[k]);
   Object.assign(ctx.S, JSON.parse(JSON.stringify(JSON.parse(fs.readFileSync(rutaBackup, 'utf8')))));
@@ -43,8 +43,6 @@ function foto(rutaBackup) {
   const add = f => { const m = /^(\d{4})-(\d{2})/.exec(f || ''); if (m) claves.add(+m[1] * 12 + (+m[2] - 1)); };
   (S.movimientos || []).forEach(m => add(m.fecha));
   (S.gastosVar || []).forEach(g => add(g.fecha));
-  (S.cuentas || []).forEach(c => (c.movimientos || []).forEach(m => add(m.fecha)));
-  (S.cajitas || []).forEach(c => (c.historial || []).forEach(m => add(m.fecha)));
   (S.patrimonioHistorial || []).forEach(h => add(h.fecha));
   Object.keys(S.pagosGastosFijos || {}).forEach(k => { const m = /(\d{4}-\d{2})$/.exec(k); if (m) add(m[1]); });
   ['papa', 'mama'].forEach(p => Object.keys(((S.mesadas || {})[p] || {}).pagos || {}).forEach(k => { // clave 'YYYY-<mes 0-11>'
@@ -61,7 +59,6 @@ function foto(rutaBackup) {
   }
   const sin = m => { if (m && typeof m === 'object' && !m.clase && !['salida', 'egreso'].includes(m.tipo)) out.sinClase++; };
   (S.movimientos || []).forEach(sin); (S.gastosVar || []).forEach(sin);
-  (S.cuentas || []).forEach(c => (c.movimientos || []).forEach(sin)); (S.cajitas || []).forEach(c => (c.historial || []).forEach(sin));
   try { out.patrimonio = ctx.calcPatrimonioTotal(); } catch (e) { out.patrimonio = 'ERR ' + e.message; }
   if (typeof out.patrimonio !== 'number' || !Number.isFinite(out.patrimonio)) console.warn('⚠️  El patrimonio no se pudo calcular (' + out.patrimonio + '): no se podrá comparar.');
   return out;

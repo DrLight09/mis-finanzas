@@ -1921,9 +1921,10 @@ async function deleteMovEncargo(encId, movId) {
   // lo hubiera encontrado — ver CHANGELOG.md#encargos (2026-08-30).
   if (movId === '__saldo_ini__') {
     if (!(enc.saldoInicial > 0)) return;
-    const ok = await dialogo('Eliminar saldo inicial', `¿Eliminar el saldo inicial de ${fmt(enc.saldoInicial)}?${enc.cuentaInicial ? ' Se descontará de ' + fuenteLabel(enc.cuentaInicial) + '.' : ''}`, 'Eliminar', true);
+    // El saldo inicial es plata AJENA que ya estaba guardada en esa cuenta: nunca formó parte de `c.saldo` (el saldo propio),
+    // así que borrarlo solo quita la anotación del encargo y no mueve ninguna cuenta ni el libro.
+    const ok = await dialogo('Eliminar saldo inicial', `¿Eliminar el saldo inicial de ${fmt(enc.saldoInicial)}? Solo se quita del encargo; no cambia el saldo de ninguna cuenta.`, 'Eliminar', true);
     if (!ok) return;
-    if (enc.cuentaInicial) descontarFuente(enc.cuentaInicial, enc.saldoInicial, _ogEnc('saldo-inicial:' + enc.id, true));
     enc.saldoInicial = 0;
     enc.cuentaInicial = '';
     save(); refresh();

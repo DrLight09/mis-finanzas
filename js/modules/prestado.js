@@ -2417,7 +2417,7 @@ function confirmarPrestamoTC() {
   //    El motor lo registra como ingreso fantasma (fuente:'', flag _prestadoDirectamente) y
   //    deja el resumen en movObj.diferencial para futuro uso en el historial.
   if (margen > Deudas.TOL_FINO) {
-    const diferencial = diffAplicar('prtc', { desc, fecha, _deudorNombre: d.nombre });
+    const diferencial = diffAplicar('prtc', { desc, fecha, _deudorNombre: d.nombre }, movId); // movId enlaza el margen al préstamo: así _revertirMovDeudor lo quita con él
     if (diferencial) movObj.diferencial = diferencial;
   }
 

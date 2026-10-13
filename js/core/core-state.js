@@ -264,19 +264,78 @@ function getCuentaDeFuente(fuente){
   return undefined;
 }
 
-/* ---- MOVER PLATA ENTRE CUENTAS ---- */
-// LIBRO (js/core/libro.js): todo cambio de saldo de una cuenta con saldo (Nequi, Efectivo, personalizadas,
-// cajitas de Nu) pasa por sumarFuente / descontarFuente / ajustarSaldoCuenta y deja una entrada en S.libro, de
-// modo que el saldo guardado SIEMPRE sea la suma del libro. Ningún módulo debe escribir `c.saldo` directamente.
-// `opts` (opcional, en ambas): { tipo, desc, origen:{modulo, ref}, fecha } — qué es el movimiento y quién lo originó.
-// Sin `origen` queda como 'sin-origen' (o el de Libro.conOrigen); los módulos lo van pasando de a poco.
-function _libroPata(fuente,monto,opts){
-  if(typeof Libro==='undefined'){
-    if(!window._libroFaltaAvisada){window._libroFaltaAvisada=true;console.error('[libro] libro.js no cargó: los saldos cambian sin registrarse en el libro.');}
-    return null;
+/* ---- LIBRO DE MOVIMIENTOS ----
+   S.libro es la lista de entradas de plata de las cuentas con saldo (nequi, efectivo, custom:ID, cajita:ID): una entrada por
+   cada cambio de saldo. Regla central: el saldo guardado de una cuenta == la suma de sus entradas (Libro.verificar).
+   Vive en el núcleo porque sumarFuente/descontarFuente (la puerta única de saldos) lo necesitan en CUALQUIER pantalla.
+   Entrada: { id, fecha, cuenta, monto (con signo), tipo, desc?, origen:{modulo, ref?, rev?} }
+     tipo: 'apertura' | 'movimiento' | 'reversion' | 'rendimiento' | 'ajuste' | 'cdt'
+   Documentación: libro-de-movimientos.md. */
+const Libro = (() => {
+  const TOL = 0.01; // diferencia máxima tolerada entre el saldo guardado y el libro
+  let _seq = 0, _ctx = null;
+  const _arr = x => (Array.isArray(x) ? x : []);
+  const _id = () => 'l' + Date.now().toString(36) + (_seq++).toString(36);
+  const esCuenta = k => typeof k === 'string' && (k === 'nequi' || k === 'efectivo' || k.startsWith('custom:') || k.startsWith('cajita:'));
+
+  function _cuentasDe(st) {
+    const out = {};
+    _arr(st.cuentas).forEach(c => { if (c && c.id) out[c.tipo === 'custom' ? 'custom:' + c.id : c.id] = { saldo: c.saldo || 0, nombre: c.tipo === 'custom' ? (c.nombre || c.id) : c.id }; });
+    _arr(st.cajitas).forEach(c => { if (c && c.id) out['cajita:' + c.id] = { saldo: c.saldo || 0, nombre: (c.nombre || 'Cajita') + ' (Nu)' }; });
+    return out;
   }
-  return Libro.registrar(fuente,monto,opts);
-}
+
+  // Contexto de origen para código SÍNCRONO: Libro.conOrigen({modulo, ref, rev}, () => { sumarFuente(...); ... }).
+  function conOrigen(origen, fn) { const prev = _ctx; _ctx = origen; try { return fn(); } finally { _ctx = prev; } }
+
+  // Añade una entrada. `o`: { tipo, desc, origen, fecha }. Devuelve su id (o null si la cuenta no tiene saldo en el libro).
+  function registrar(cuenta, monto, o, estado) {
+    if (!esCuenta(cuenta) || !monto) return null;
+    const st = estado || S; if (!Array.isArray(st.libro)) st.libro = [];
+    o = o || {};
+    const og = o.origen || _ctx || { modulo: 'sin-origen' };
+    const fecha = o.fecha || hoy(), tipo = o.tipo || (og.rev ? 'reversion' : 'movimiento');
+    if (tipo === 'rendimiento') { // intereses: una entrada por cuenta y mes (evita ~1 entrada/día/cajita)
+      const mes = fecha.slice(0, 7);
+      for (let i = st.libro.length - 1, n = 0; i >= 0 && n < 400; i--, n++) {
+        const l = st.libro[i];
+        if (l && l.cuenta === cuenta && l.tipo === 'rendimiento' && String(l.fecha).slice(0, 7) === mes) { l.monto += monto; if (fecha > l.fecha) l.fecha = fecha; return l.id; }
+      }
+    }
+    const reg = { id: _id(), fecha, cuenta, monto, tipo };
+    if (o.desc) reg.desc = o.desc;
+    reg.origen = og;
+    st.libro.push(reg);
+    return reg.id;
+  }
+
+  // Saldo guardado vs suma del libro, por cuenta. ok=false → algún código movió un saldo sin pasar por la puerta única.
+  function verificar(estado) {
+    const st = estado || S, cu = _cuentasDe(st), suma = {};
+    _arr(st.libro).forEach(l => { if (l && cu[l.cuenta]) suma[l.cuenta] = (suma[l.cuenta] || 0) + (l.monto || 0); });
+    const filas = Object.keys(cu).map(k => ({ cuenta: k, nombre: cu[k].nombre, guardado: cu[k].saldo, libro: suma[k] || 0, dif: cu[k].saldo - (suma[k] || 0) }));
+    const descuadres = filas.filter(f => Math.abs(f.dif) >= TOL);
+    return { ok: descuadres.length === 0, filas, descuadres };
+  }
+  const saldo = (cuenta, estado) => _arr((estado || S).libro).reduce((a, l) => (l && l.cuenta === cuenta ? a + (l.monto || 0) : a), 0);
+
+  // Entradas que NINGÚN registro de módulo representa (no tienen fila propia en el historial de una cuenta): intereses de Nu,
+  // ajustes y CDT. getMovimientosCuenta() (cuentas.js) las añade como filas para que el historial explique TODO el saldo.
+  function entradasVisibles(estado) {
+    return _arr((estado || S).libro).filter(l => l && esCuenta(l.cuenta) && (l.tipo === 'rendimiento' || l.tipo === 'ajuste' || l.tipo === 'cdt'));
+  }
+
+  return { esCuenta, registrar, conOrigen, verificar, entradasVisibles, saldo, TOL };
+})();
+if (typeof window !== 'undefined') window.Libro = Libro; // los tests lo leen como ctx.Libro
+
+/* ---- MOVER PLATA ENTRE CUENTAS ---- */
+// Todo cambio de saldo de una cuenta con saldo (Nequi, Efectivo, personalizadas, cajitas de Nu) pasa por sumarFuente /
+// descontarFuente / ajustarSaldoCuenta y deja una entrada en S.libro, de modo que el saldo guardado SIEMPRE sea la suma
+// del libro. Ningún módulo debe escribir `c.saldo` directamente.
+// `opts` (opcional, en ambas): { tipo, desc, origen:{modulo, ref, rev}, fecha } — qué es el movimiento y quién lo originó.
+// Sin `origen` queda como 'sin-origen' (o el de Libro.conOrigen).
+const _libroPata = (fuente, monto, opts) => Libro.registrar(fuente, monto, opts);
 // Fija el saldo de una cuenta a `nuevoSaldo` (intereses de Nu, chequeo rápido, CDT…) y registra la DIFERENCIA en el
 // libro. Devuelve esa diferencia. Es la única forma permitida de asignar un saldo "absoluto".
 function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
@@ -486,44 +545,6 @@ function _moneyValue(digits){
   return parseInt(intRaw||'0',10)+(parseInt(dec,10)/100);
 }
 
-/* ---- MIGRACIONES DEL MODELO DE DATOS ----
-   Un solo lugar para cambiar la forma de los datos guardados (renombrar campos,
-   mover listas, completar valores). Cada migración corre UNA vez, en orden, sobre
-   cualquier objeto con forma de S: el estado cargado de Firestore y, vía
-   aplicarMigraciones(), un backup JSON viejo antes de importarlo.
-
-   Cómo agregar una: sumar { v: N+1, nombre, fn(d) } al final de MIGRACIONES. `fn`
-   recibe el objeto de datos y lo modifica en sitio; debe ser idempotente (si el
-   dato ya está migrado, no hace nada). Nunca editar ni reordenar una existente.
-   La versión guardada vive en S.schemaVersion. */
-const MIGRACIONES = [
-  // v1 (línea base) y v2 (S.plataCometida → S.plataComprometida) se retiraron el 2026-10-09: todos los datos
-  // guardados ya estaban en v2 y no quedan backups anteriores. La numeración sigue en v3 a propósito
-  // (S.schemaVersion de los datos existentes vale 2): no renumerar. Historial en CHANGELOG.md#infraestructura--seguridad.
-  // v3: estampa `clase` en el histórico de movimientos (ver plan-clasificacion-movimientos.md §4.3).
-  // Usa las reglas históricas UNA sola vez; lo que no se puede clasificar con certeza se deja
-  // sin `clase` (se cuenta en console.info) y las lecturas siguen cayendo en la cascada.
-  { v: 3, nombre: 'clase explícita en movimientos', fn(d) { estamparClasesMovimientos(d); } },
-  // v4: corrección de datos del dueño (2026-10-10). El préstamo "Me deben" a Padre de $500.000 sin cuenta (25-sep, nota
-  // "Regalo - Abuela") fue un REGALO: la abuela le dijo al papá que le pagara a él lo que le debía a ella. Es plata nueva
-  // (ingreso de septiembre), no un ajuste. Se identifica por id y se verifica monto/fecha/sin cuenta para no tocar otro.
-  { v: 4, nombre: 'regalo de la abuela como ingreso', fn(d) {
-    (Array.isArray(d.deudores) ? d.deudores : []).forEach(x => (Array.isArray(x && x.movimientos) ? x.movimientos : []).forEach(m => {
-      if (m && m.id === 'muhdltc2018' && m.tipo === 'prestamo' && m.monto === 500000 && m.fecha === '2026-09-25' && !m.fuente && !m.clase) m.clase = 'ingreso';
-    }));
-  } },
-  // v5: libro de movimientos (plan-libro-de-movimientos.md). Siembra S.libro desde las listas heredadas y añade una
-  // entrada explícita por cada diferencia con el saldo guardado (apertura faltante, intereses de Nu no registrados,
-  // diferencias sin explicar), para que desde aquí `saldo == suma del libro` (Libro.verificar). Requiere libro.js.
-  { v: 5, nombre: 'libro de movimientos (saldo derivado)', fn(d) {
-    if (typeof Libro === 'undefined') throw new Error('libro.js no está cargado: no se puede sembrar el libro');
-    Libro.sembrar(d);
-  } },
-  // v6: el historial de TODAS las cuentas vive en una sola lista (S.movimientos, con `fuente`). Antes eran tres formas:
-  // S.movimientos (Nequi/Efectivo), cuenta.movimientos (personalizadas: ingreso/egreso + nota) y cajita.historial
-// (las dos últimas solo existen en datos ANTERIORES a la migración v6; esta función sirve a las migraciones v3/v4).
-  { v: 6, nombre: 'historial de cuentas unificado en S.movimientos', fn(d) { unificarHistorialCuentas(d); } }
-];
 // Clase de un movimiento ya existente según las reglas históricas, o null si no hay certeza.
 // `origen`: 'movimientos' (S.movimientos), 'custom' (cuenta.movimientos), 'cajita' (cajita.historial)
 // o 'gastosVar'. Solo se clasifica lo que los lectores de ingreso/gasto realmente consultan más
@@ -552,7 +573,7 @@ function claseEfectivaMovimiento(m, origen){
   return _claseValida(m.clase) ? m.clase : deducirClaseMovimiento(m, origen);
 }
 
-// Estampa `clase` en los movimientos que no la tengan. Idempotente. Devuelve el conteo para auditar.
+// Estampa `clase` en los movimientos que no la tengan (red de seguridad permanente, ver save()). Idempotente. Devuelve el conteo.
 function estamparClasesMovimientos(d, opciones){
   const r = { estampados: 0, yaTenian: 0, sinClase: 0, porClase: { ingreso: 0, gasto: 0, neutro: 0, ajuste: 0 } };
   const pasar = (lista, origen) => (Array.isArray(lista) ? lista : []).forEach(m => {
@@ -563,65 +584,32 @@ function estamparClasesMovimientos(d, opciones){
   });
   pasar(d.movimientos, 'movimientos');
   pasar(d.gastosVar, 'gastosVar');
-  (Array.isArray(d.cuentas) ? d.cuentas : []).forEach(c => { if(c) pasar(c.movimientos, 'custom'); });
-  (Array.isArray(d.cajitas) ? d.cajitas : []).forEach(c => { if(c) pasar(c.historial, 'cajita'); });
-  if(r.sinClase && !(opciones && opciones.silencioso) && typeof console !== 'undefined') console.info('[migraciones] v3: ' + r.sinClase + ' movimientos sin clase (salidas sin etiqueta de espejo): se leen con las reglas históricas');
+  if(r.sinClase && !(opciones && opciones.silencioso) && typeof console !== 'undefined') console.info('[clase] ' + r.sinClase + ' movimientos sin clase (salidas sin etiqueta de espejo): se leen con las reglas históricas');
   return r;
 }
 
-// Mueve a S.movimientos lo que cuentas personalizadas (cuenta.movimientos) y cajitas (cajita.historial) guardaban en listas
-// propias, con la forma única: tipo 'entrada' | 'salida' | 'apertura' | …, `fuente` = la cuenta ('custom:ID' | 'cajita:ID'),
-// texto en `desc`. Los ids no cambian (el libro y los espejos siguen apuntando a ellos). Idempotente.
-//  · Un registro con el mismo id en las dos listas (datos viejos) se cuenta UNA vez: en personalizadas manda el de la cuenta
-//    (así lo leían el historial y los ingresos); en cajitas manda el de S.movimientos.
-//  · El tipo de salida de una personalizada ('egreso'/'salida_manual') pasa a 'salida': solo 'salida_manual' de S.movimientos es
-//    un "Restar dinero" que cuenta como gasto (Periodo.retirosManuales), y esos registros nunca lo fueron.
-function unificarHistorialCuentas(d) {
-  const r = { movidos: 0, duplicados: 0 };
-  if (!d || typeof d !== 'object') return r;
-  if (!Array.isArray(d.movimientos)) d.movimientos = [];
-  estamparClasesMovimientos(d, { silencioso: true }); // todo lo que se mueve lleva `clase` (idempotente: la v3 ya lo hizo)
-  const unico = (m, fuente, porCuenta) => {
-    if (!m || typeof m !== 'object') return;
-    const gemelo = m.id ? d.movimientos.findIndex(x => x && x.id === m.id) : -1;
-    if (gemelo >= 0) {
-      r.duplicados++;
-      if (!porCuenta) return;               // cajitas: queda el de S.movimientos
-      d.movimientos.splice(gemelo, 1);      // personalizadas: queda el de la cuenta
-    }
-    const n = Object.assign({}, m);
-    if (porCuenta) n.tipo = m.tipo === 'ingreso' ? 'entrada' : (m.tipo === 'egreso' || m.tipo === 'salida_manual') ? 'salida' : m.tipo;
-    n.fuente = fuente;
-    const txt = m.nota || m.desc;
-    if (txt) n.desc = txt;
-    delete n.nota;
-    d.movimientos.push(n);
-    r.movidos++;
-  };
-  (Array.isArray(d.cuentas) ? d.cuentas : []).forEach(c => {
-    if (!c || !Array.isArray(c.movimientos) || !c.movimientos.length) return;
-    const fuente = c.tipo === 'custom' ? 'custom:' + c.id : c.id;
-    c.movimientos.forEach(m => unico(m, fuente, true));
-    c.movimientos = [];
-  });
-  (Array.isArray(d.cajitas) ? d.cajitas : []).forEach(c => {
-    if (!c || !Array.isArray(c.historial) || !c.historial.length) return;
-    c.historial.forEach(m => unico(m, 'cajita:' + c.id, false));
-    c.historial = [];
-  });
-  return r;
-}
+/* ---- VERSIÓN DEL MODELO DE DATOS ----
+   Esta versión de la app nació limpia (esquema 7, 2026-10-12): NO migra datos de versiones anteriores. Quien trae datos de un
+   esquema menor los ve marcados (S._esquemaAnterior) y empieza de cero (Configuración → Borrar todo).
 
-const SCHEMA_VERSION_ACTUAL = MIGRACIONES[MIGRACIONES.length - 1].v;
+   Para cambiar la forma de los datos guardados en el futuro: sumar { v: N+1, nombre, fn(d) } al final de MIGRACIONES. `fn`
+   recibe el objeto de datos y lo modifica en sitio; debe ser idempotente. Nunca editar ni reordenar una existente. Corren UNA
+   vez, en orden, sobre el estado cargado de Firestore y, vía aplicarMigraciones(), sobre un backup JSON antes de importarlo.
+   La versión guardada vive en S.schemaVersion. */
+const SCHEMA_BASE = 7;      // primera versión compatible
+const MIGRACIONES = [];
+const SCHEMA_VERSION_ACTUAL = MIGRACIONES.length ? MIGRACIONES[MIGRACIONES.length - 1].v : SCHEMA_BASE;
 
 function aplicarMigraciones(d) {
   if (!d || typeof d !== 'object') return d;
-  let actual = Number(d.schemaVersion) || 0;
+  const actual = Number(d.schemaVersion) || 0;
   if (actual > SCHEMA_VERSION_ACTUAL) {
     console.warn('[migraciones] datos de una versión más nueva (' + actual + ' > ' + SCHEMA_VERSION_ACTUAL + '): no se tocan');
     return d;
   }
-  MIGRACIONES.filter(m => m.v > actual).sort((a, b) => a.v - b.v).forEach(m => {
+  if (actual === 0) { d.schemaVersion = SCHEMA_BASE; } // datos nuevos: nacen en la versión base
+  else if (actual < SCHEMA_BASE) { d._esquemaAnterior = actual; return d; } // incompatible: se marca y no se toca
+  MIGRACIONES.filter(m => m.v > (Number(d.schemaVersion) || 0)).sort((a, b) => a.v - b.v).forEach(m => {
     try { m.fn(d); d.schemaVersion = m.v; }
     catch (e) { console.error('[migraciones] falló v' + m.v + ' (' + m.nombre + '):', e); throw e; }
   });
@@ -632,6 +620,8 @@ function load(){
   // Firebase version: datos ya cargados en S por _fbLoadData()
   // Solo inicializamos campos faltantes y sincronizamos el DOM
   aplicarMigraciones(S);
+  if(S._esquemaAnterior && typeof toast==='function')
+    toast('Estos datos son de una versión anterior (esquema '+S._esquemaAnterior+') y esta versión empieza de cero. Exporta un backup si lo quieres y usa Configuración → Borrar todo.','err',12000);
   if(!S.encargos)S.encargos=[];
   if(!S.movimientos)S.movimientos=[];
   if(!Array.isArray(S.libro))S.libro=[];
@@ -732,7 +722,7 @@ function save(){
   }
   // Invariante del libro: saldo guardado == suma de S.libro. Un descuadre significa que algún código movió un saldo
   // sin pasar por sumarFuente/descontarFuente/ajustarSaldoCuenta. Se avisa UNA vez por sesión (consola + aviso).
-  if(typeof Libro!=='undefined'){
+  {
     const _lv=Libro.verificar();
     window._libroDescuadres=_lv.ok?[]:_lv.descuadres;
     if(!_lv.ok&&!window._libroAvisado){
@@ -1117,7 +1107,7 @@ function _reglaHistoricaEntradaEspejo(m){
 //
 // Devuelve la LISTA de movimientos que cuentan; cada pantalla filtra por fecha y suma.
 //   · S.movimientos tipo 'entrada' que no sean espejo (_esEntradaEspejoNoIngreso), de CUALQUIER cuenta: Nequi, Efectivo,
-//     personalizadas y cajitas de Nu (desde la migración v6 todas viven aquí, con `fuente`). Un espejo con clase 'ingreso'
+//     personalizadas y cajitas de Nu (todas viven aquí, con `fuente`). Un espejo con clase 'ingreso'
 //     (extra de Spotify, extra de un pago de deuda, perdón recibido) es plata NUEVA aunque entre directo a una cajita.
 //   · Deudas sin pata de caja marcadas `clase:'ingreso'` (p. ej. un regalo registrado como "Me deben").
 // `estado` es opcional (por defecto S): Wrapped recibe el estado como parámetro.

@@ -26,7 +26,7 @@
    (a) Estructural — el objeto vive en un array que ninguna rama del switch
        de abajo (movTipoEl === ...) sabe limpiar. Ej.: un "espejo" guardado
        en el historial propio de otro módulo — las ramas genéricas solo saben
-        tocar S.movimientos (que desde la migración v6 es el historial de TODAS
+        tocar S.movimientos (el historial de TODAS
         las cuentas), S.gastosVar y deudores[].movimientos.
        Si el array de destino no está ahí, borrar revierte el saldo pero
        deja el registro zombie parado para siempre.
@@ -79,7 +79,7 @@
 // los 4 módulos con historial de movimientos, y no se puede depender de que
 // prestado.js ya haya cargado — mismo criterio de las demás funciones de este
 // archivo que evitan acoplarse a un módulo de dominio específico.
-// ── Libro (js/core/libro.js) ─────────────────────────────────────────────────────────────────────────────────
+// ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogMov(ref, rev): al borrar un movimiento desde el feed o el historial de una cuenta, todo lo que se devuelve queda en el libro como reversión de ese movimiento (ref = id borrado). Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogMov = (ref, rev) => ({ origen: { modulo: 'movimientos', ref, rev: rev || undefined } });
 
@@ -666,7 +666,7 @@ async function eliminarMovimiento(btn) {
     // Salida de una cuenta personalizada. getMovimientosCuenta('custom:ID') (cuentas.js) muestra así CUALQUIER salida de una
     // cuenta custom (tipo 'egreso'), mientras que en las demás cuentas se muestra tal cual ('salida_manual'): A PROPÓSITO,
     // esta rama y la de 'salida_manual' de arriba dependen de esa diferencia, no unificarlo (ver `tipoSalidaManual`).
-    // Desde la migración v6 el registro vive solo en S.movimientos (con `fuente: 'custom:ID'`).
+    // El registro vive solo en S.movimientos (con `fuente: 'custom:ID'`).
     const fuente = fuenteOrigen; // siempre 'custom:ID' para este tipoDisplay (ver dataFuente en cuentas.js)
     if (fuente && monto > 0) sumarFuente(fuente, monto, _ogMov(movId, true));
     S.movimientos = (S.movimientos || []).filter(x => x.id !== movId);

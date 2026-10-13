@@ -237,7 +237,7 @@
       });
     });
 
-    // (Los movimientos de cuentas personalizadas viven en S.movimientos desde la migración v6: salen en la búsqueda de más abajo.)
+    // (Los movimientos de cuentas personalizadas viven en S.movimientos: salen en la búsqueda de más abajo.)
 
     // Personas
     (S.personas||[]).forEach(p => {

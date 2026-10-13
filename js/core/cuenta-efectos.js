@@ -20,7 +20,7 @@
    sumarFuente()/descontarFuente() de core-state.js. Solo escriben/borran el
    registro del historial.
 
-   TODAS las cuentas guardan su historial en una sola lista, S.movimientos (migración v6), con la cuenta en `fuente`:
+   TODAS las cuentas guardan su historial en una sola lista, S.movimientos, con la cuenta en `fuente`:
 
         cuenta                 tipo entrada / salida    texto   fuente
         nequi / efectivo       'entrada' / 'salida'     desc    'nequi' | 'efectivo'

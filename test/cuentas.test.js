@@ -1185,3 +1185,39 @@ describe('transferir', () => {
     });
   });
 });
+
+describe('spotify-cajita', () => {
+  // REGRESIÓN: spotify.js llamaba a _calcCSafe() (eliminada del núcleo el 2026-10-08 al mover calcC a
+  // js/core/nu-calc.js) y getSpCajitaSaldo() lanzaba ReferenceError al abrir Spotify. Ningún test lo cubría.
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+
+  const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core');
+  const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR || path.join(__dirname, '..', 'js', 'modules');
+
+  function freshApp(S = {}) {
+    const ctx = loadApp([
+      path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
+      path.join(CORE_DIR, 'calc-helpers.js'), path.join(MODULES_DIR, 'spotify.js'),
+    ], { permissive: true });
+    Object.assign(ctx.S, S);
+    return ctx;
+  }
+  const hace = n => { const d = new Date(Date.now() - n * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+  test('getSpCajitaSaldo — sin cajita de Spotify da 0', () => {
+    assert.equal(freshApp({ cajitas: [] }).getSpCajitaSaldo(), 0);
+  });
+
+  test('getSpCajitaSaldo — cajita recién creada (sin fecha) vale su saldo', () => {
+    const ctx = freshApp({ cajitas: [{ id: 's1', nombre: 'Spotify', saldo: 12000 }] });
+    assert.equal(ctx.getSpCajitaSaldo(), 12000);
+  });
+
+  test('getSpCajitaSaldo — suma el interés real de calcC cuando la cajita tiene fecha', () => {
+    const ctx = freshApp({ nuTasaGlobal: 9.3003, cajitas: [{ id: 's1', nombre: 'Spotify', saldo: 1000000, fecha: hace(365) }] });
+    assert.ok(ctx.getSpCajitaSaldo() > 1050000);
+  });
+});

@@ -31,6 +31,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/movimientos.js` | de entrada (defer) | 6 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 1 | 0 |
 | `js/core/nu-calc.js` | de entrada (defer) | 15 | 0 |
+| `js/core/payload-codec.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 2 | 0 |
 | `js/core/periodo.js` | de entrada (defer) | 1 | 0 |
 | `js/core/personas-init.js` | de entrada (defer) | 1 | 0 |
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
@@ -199,6 +200,12 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `_diasEntreFechas`, `_fechasCambioEncargoEnCajita`, `_rendimientoCDTaDias`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasaNu`, `_tasaVigenteEnFecha`, `calcC`, `calcCDT`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `getCajitaNombre`, `getNuTasaGlobal`, `nuTotal`, `rendimientoCajitaPorMes`
+
+### `js/core/payload-codec.js`
+
+Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
+
+**Funciones:** `_aBase64`, `_deBase64`
 
 ### `js/core/periodo.js`
 
@@ -378,6 +385,7 @@ Ninguno.
 
 | Nombre | Archivo |
 |---|---|
+| `_aBase64` | `js/core/payload-codec.js` |
 | `_abonoEncCuentaAgregarSplitRow` | `js/modules/prestado.js` |
 | `_abonoEncCuentaSplitPreview` | `js/modules/prestado.js` |
 | `_abonoEncCuentaSplitToggle` | `js/modules/prestado.js` |
@@ -501,6 +509,7 @@ Ninguno.
 | `_cuentasArr` | `js/core/core-state.js` |
 | `_cuentaSelectorHtml` | `js/modules/cuentas.js` |
 | `_cuentasSelector` | `js/modules/cuentas.js` |
+| `_deBase64` | `js/core/payload-codec.js` |
 | `_descriptorCuenta` | `js/modules/cuentas.js` |
 | `_descriptorCustom` | `js/modules/cuentas.js` |
 | `_deudaCuentasDe` | `js/modules/prestado.js` |

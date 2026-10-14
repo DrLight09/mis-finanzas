@@ -811,12 +811,8 @@ async function eliminarMovimiento(btn) {
     // (ver `tipoSalidaManual` en getMovimientosCuenta() de cuentas.js: ese tipo es
     // 'egreso' en una cuenta personalizada y 'salida_manual' en las demás, A PROPÓSITO —
     // esta rama y la de 'salida_manual' de arriba dependen de esa diferencia, no unificarlo).
-    // También cubre datos históricos de una función ya retirada del código
-    // (confirmarMovCustom(), sheet "mov-cuenta-custom") que además duplicaba el
-    // registro en c.movimientos con tipo 'egreso' — de ahí el filter() sobre
-    // c.movimientos más abajo, que hoy es un no-op para movimientos nuevos
-    // (solo viven en S.movimientos) y sigue siendo necesario para limpiar los
-    // viejos. Hasta el fix original ninguna rama de este switch coincidía
+    // Desde el esquema 7 (2026-10-12) el registro vive SOLO en S.movimientos: ninguna cuenta
+    // tiene lista propia (`c.movimientos`), así que no hay nada más que limpiar. Hasta el fix original ninguna rama de este switch coincidía
     // con 'egreso': el borrado no revertía el saldo (c.saldo) ni quitaba el
     // registro de ninguno de los dos arrays, y aun así caía en el
     // save()+refresh()+toast de éxito de más abajo — ver CHANGELOG.md#cuentas
@@ -824,11 +820,6 @@ async function eliminarMovimiento(btn) {
     const fuente = fuenteOrigen; // siempre 'custom:ID' para este tipoDisplay (ver dataFuente en cuentas.js)
     if (fuente && monto > 0) sumarFuente(fuente, monto, _ogMov(movId, true));
     S.movimientos = (S.movimientos || []).filter(x => x.id !== movId);
-    if (fuente && fuente.startsWith('custom:')) {
-      const cid = fuente.split(':')[1];
-      const cc = getCuentaCustom(cid);
-      if (cc) cc.movimientos = (cc.movimientos || []).filter(x => x.id !== movId);
-    }
   } else if (movTipoEl === 'gasto') {
     // Gasto variable (S.gastosVar)
     const g = (S.gastosVar || []).find(x => x.id === movId);

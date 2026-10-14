@@ -51,7 +51,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/inicio.js` | de entrada (defer) | 6 | 0 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 56 | 1 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
-| `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
+| `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 34 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 132 | 1 |
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 51 | 2 |
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 31 | 2 |
@@ -339,7 +339,7 @@ Carga: de entrada (defer)
 
 Carga: lazy — grupo `comprometida`
 
-**Funciones:** `_cpAbrirEditar`, `_cpAbrirNuevo`, `_cpAbrirRecibir`, `_cpAgregarDestino`, `_cpCancelSheet`, `_cpConfirmarRecibir`, `_cpData`, `_cpdConfirmar`, `_cpDiasHastaStr`, `_cpdPoblarGastoSelectores`, `_cpdSetGastoOrigen`, `_cpdSetTipo`, `_cpdSetYaPague`, `_cpdSetYaSaque`, `_cpdTipoChange`, `_cpEliminar`, `_cpFuenteLabel`, `_cpGuardar`, `_cpGuardarMarcados`, `_cpInit`, `_cpInitSwipe`, `_cpMarcarPagos`, `_cpPoblarCuentas`, `_cpPoblarPersonas`, `_cpPoblarTC`, `_cpQuitarDestino`, `_cpRenderDestinosTmp`, `_cpRenderLista`, `_cpRenderMarcarList`, `_cpToggleMarcar`, `_injectMasItem`, `_injectScreen`, `_injectSheet`
+**Funciones:** `_cpAbrirEditar`, `_cpAbrirNuevo`, `_cpAbrirRecibir`, `_cpAgregarDestino`, `_cpCancelSheet`, `_cpConfirmarRecibir`, `_cpData`, `_cpdConfirmar`, `_cpDiasHastaStr`, `_cpdPoblarGastoSelectores`, `_cpdSetGastoOrigen`, `_cpdSetTipo`, `_cpdSetYaPague`, `_cpdSetYaSaque`, `_cpdTipoChange`, `_cpEliminar`, `_cpFuenteLabel`, `_cpGuardar`, `_cpGuardarMarcados`, `_cpInit`, `_cpInitSwipe`, `_cpMarcarPagos`, `_cpPoblarCuentas`, `_cpPoblarPersonas`, `_cpPoblarTC`, `_cpQuitarDestino`, `_cpRenderDestinosTmp`, `_cpRenderLista`, `_cpRenderMarcarList`, `_cpToggleMarcar`, `_injectMasItem`, `_injectScreen`, `_injectSheet`, `_ogCp`
 
 ### `js/modules/prestado.js`
 
@@ -666,6 +666,7 @@ Ninguno.
 | `_nuMovToggleApertura` | `js/modules/cuentas.js` |
 | `_og` | `js/modules/prestado.js` |
 | `_ogAlc` | `js/modules/alcancia.js` |
+| `_ogCp` | `js/modules/plata_comprometida.js` |
 | `_ogCta` | `js/modules/cuentas.js` |
 | `_ogEnc` | `js/modules/encargos.js` |
 | `_ogGv` | `js/modules/gastos.js` |

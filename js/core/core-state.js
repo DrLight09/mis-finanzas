@@ -545,47 +545,24 @@ function _moneyValue(digits){
   return parseInt(intRaw||'0',10)+(parseInt(dec,10)/100);
 }
 
-// Clase de un movimiento ya existente según las reglas históricas, o null si no hay certeza.
-// `origen`: 'movimientos' (S.movimientos), 'custom' (cuenta.movimientos), 'cajita' (cajita.historial)
-// o 'gastosVar'. Solo se clasifica lo que los lectores de ingreso/gasto realmente consultan más
-// lo que es inequívoco (apertura = ajuste, transferencia propia o espejo = neutro).
-function deducirClaseMovimiento(m, origen){
-  if(!m || typeof m !== 'object') return null;
-  if(origen === 'gastosVar') return _reglaHistoricaGastoVarNoReal(m) ? 'neutro' : 'gasto';
-  const t = m.tipo;
-  // cajita.historial solo lo escribe registrarMovEspejo(): todo lo que hay ahí es un espejo, y solo es
-  // plata nueva (ingreso) si lleva una bandera explícita (extra de Spotify, extra de un pago de deuda,
-  // perdón recibido, diferencial). Sin esto, un espejo viejo sin etiquetas se leería como ingreso.
-  if(origen === 'cajita' && (t === 'entrada' || t === 'ingreso'))
-    return (m._esExtraIngreso || m._esPerdonRecibido || m._esDiferencialEncargo) ? 'ingreso' : 'neutro';
-  if(t === 'entrada' || t === 'ingreso') return _reglaHistoricaEntradaEspejo(m) ? 'neutro' : 'ingreso';
-  if(t === 'apertura') return 'ajuste';
-  if(t === 'transferencia') return 'neutro';
-  if((t === 'salida' || t === 'egreso') && m._esEspejo) return 'neutro';
-  // 'Restar dinero': plata que sale del patrimonio sin gasto registrado. Es el opuesto de 'Sumar dinero' (ingreso).
-  if(t === 'salida_manual') return 'gasto';
-  return null; // salida/egreso sin etiqueta de espejo: no se adivina
+// Clase guardada de un movimiento ('ingreso' | 'gasto' | 'neutro' | 'ajuste'), o null si no la tiene.
+// Es la ÚNICA fuente de verdad: no hay reglas de respaldo que la deduzcan de etiquetas o textos (se retiraron el 2026-10-13: la
+// app nace limpia y tests/nucleo.test.js, bloque `clase-cobertura`, exige que todo escritor la ponga al crear el movimiento).
+function claseEfectivaMovimiento(m){
+  return m && _claseValida(m.clase) ? m.clase : null;
 }
 
-// Clase de un movimiento: la guardada, o (si todavía no la tiene) la deducida. null = sin certeza.
-function claseEfectivaMovimiento(m, origen){
-  if(!m) return null;
-  return _claseValida(m.clase) ? m.clase : deducirClaseMovimiento(m, origen);
-}
-
-// Estampa `clase` en los movimientos que no la tengan (red de seguridad permanente, ver save()). Idempotente. Devuelve el conteo.
-function estamparClasesMovimientos(d, opciones){
-  const r = { estampados: 0, yaTenian: 0, sinClase: 0, porClase: { ingreso: 0, gasto: 0, neutro: 0, ajuste: 0 } };
-  const pasar = (lista, origen) => (Array.isArray(lista) ? lista : []).forEach(m => {
-    if(!m || typeof m !== 'object') return;
-    if(_claseValida(m.clase)){ r.yaTenian++; r.porClase[m.clase]++; return; }
-    const c = deducirClaseMovimiento(m, origen);
-    if(c){ m.clase = c; r.estampados++; r.porClase[c]++; } else r.sinClase++;
+// Movimientos y gastos que llegaron SIN clase válida (un módulo no la escribió). Las salidas/egresos de espejo no la necesitan:
+// ningún lector de ingreso o gasto las consulta. Lo usa save() para avisar, igual que Libro.verificar() con los saldos.
+function movimientosSinClase(estado){
+  const st = estado || S, out = [];
+  (st.movimientos || []).forEach(m => {
+    if(m && typeof m === 'object' && m.tipo !== 'salida' && m.tipo !== 'egreso' && !_claseValida(m.clase)) out.push({ lista: 'movimientos', id: m.id, tipo: m.tipo, desc: m.desc });
   });
-  pasar(d.movimientos, 'movimientos');
-  pasar(d.gastosVar, 'gastosVar');
-  if(r.sinClase && !(opciones && opciones.silencioso) && typeof console !== 'undefined') console.info('[clase] ' + r.sinClase + ' movimientos sin clase (salidas sin etiqueta de espejo): se leen con las reglas históricas');
-  return r;
+  (st.gastosVar || []).forEach(g => {
+    if(g && typeof g === 'object' && !_claseValida(g.clase)) out.push({ lista: 'gastosVar', id: g.id, desc: g.desc });
+  });
+  return out;
 }
 
 /* ---- VERSIÓN DEL MODELO DE DATOS ----
@@ -712,13 +689,15 @@ function save(){
     c.tasa=getNuTasaGlobal();
     if(!c.fecha)c.fecha=hoy();
   });
-  // Normalizador permanente de la clase (plan-clasificacion-movimientos.md): todo movimiento sale a la nube con
-  // `clase`, así los datos guardados quedan completos para cualquier lector. Los módulos la escriben al crear; si
-  // alguno no lo hizo, se deduce aquí con las reglas congeladas y se avisa UNA vez por sesión en consola.
-  const _red = estamparClasesMovimientos(S, { silencioso: true });
-  if(_red.estampados && !window._claseRedAvisada){
-    window._claseRedAvisada = true;
-    console.warn('[clase] ' + _red.estampados + ' movimiento(s) llegaron sin clase explícita y se estamparon por deducción: revisar qué módulo los creó.');
+  // La clase de cada movimiento la escribe el módulo que lo crea (no hay deducción de respaldo). Si alguno llega sin ella se
+  // avisa UNA vez por sesión (consola; detalle en window._movimientosSinClase): sin clase un movimiento no cuenta como ingreso.
+  {
+    const _sc = movimientosSinClase(S);
+    window._movimientosSinClase = _sc;
+    if(_sc.length && !window._claseAvisada){
+      window._claseAvisada = true;
+      console.warn('[clase] ' + _sc.length + ' movimiento(s) sin clase: revisar qué módulo los creó.', _sc);
+    }
   }
   // Invariante del libro: saldo guardado == suma de S.libro. Un descuadre significa que algún código movió un saldo
   // sin pasar por sumarFuente/descontarFuente/ajustarSaldoCuenta. Se avisa UNA vez por sesión (consola + aviso).
@@ -1035,66 +1014,17 @@ function gastosMes(mesK){
 // Suma los ingresos fijos configurados que aplican para un mes dado (YYYY-MM)
 function getIngresosFijosMes(mesK){ return Periodo.ingresosFijosDelMes(mesK); }
 
-// Determina si un movimiento tipo:'entrada' es un movimiento "espejo" generado
-// automáticamente por otro módulo (Mesada, Prestado, Encargos) y que por lo tanto
-// NO debe contarse como ingreso nuevo en Análisis financiero ni en Salud financiera:
-// - Mesada: la plata ya se cuenta directamente desde getMesadaData(); contarla de
-//   nuevo aquí sería doble conteo.
-// - Prestado · Me deben: es la devolución de plata que ya era tuya (un abono de
-//   deuda), no ingreso nuevo.
-// - Prestado · Yo debo: es plata que te prestaron (deuda tuya), no ingreso.
-// - Encargos (_esIntercambioEncargo/_intercambioEntrada/_encMovId, desc "Margen..."):
-//   es capital o margen de encargo que se maneja aparte.
-// - _esReposicionCP: devolución de plata comprometida que ya salió antes.
-// ── CLASE EXPLÍCITA (plan-clasificacion-movimientos.md, etapa 1) ──
-// Cada movimiento nace con `clase`: 'ingreso' (sube el patrimonio), 'gasto' (lo baja),
-// 'neutro' (mueve plata sin cambiar el patrimonio: el "espejo") o 'ajuste' (corrección de
-// datos, ej. apertura de cuenta). Si el movimiento trae `clase`, ESA manda; si no (datos o
-// módulos que todavía no la escriben) se DEDUCE con las reglas históricas congeladas de más
-// abajo (_reglaHistoricaEntradaEspejo / _reglaHistoricaGastoVarNoReal), las mismas que usó la
-// migración v3 para estamparla en el histórico. Todo lector pasa por claseEfectivaMovimiento():
-// no hay otro camino que mire etiquetas.
+// ── CLASE EXPLÍCITA (plan-clasificacion-movimientos.md) ──
+// Cada movimiento nace con `clase`: 'ingreso' (sube el patrimonio), 'gasto' (lo baja), 'neutro' (mueve plata sin cambiar el
+// patrimonio: el "espejo" de Mesada, Préstamos, Encargos, plata comprometida…) o 'ajuste' (corrección de datos, ej. la apertura
+// de una cuenta). Todo lector pasa por claseEfectivaMovimiento(): no hay otro camino que mire etiquetas ni textos.
 const CLASES_MOV = ['ingreso', 'gasto', 'neutro', 'ajuste'];
 const _claseValida = c => CLASES_MOV.indexOf(c) !== -1;
 
+// ¿Esta entrada NO cuenta como ingreso real? Solo cuenta la que tiene `clase: 'ingreso'`; una sin clase no cuenta (y save() avisa).
 function _esEntradaEspejoNoIngreso(m){
   if(!m) return false;
-  return claseEfectivaMovimiento(m, 'movimientos') !== 'ingreso';
-}
-
-// REGLAS HISTÓRICAS CONGELADAS (plan-clasificacion-movimientos.md, E5). Es la cascada de etiquetas con la
-// que se clasificaba antes de existir `clase`. YA NO SE EDITA: un módulo nuevo escribe `clase` al crear el
-// movimiento (tests/clase-cobertura.test.js lo exige) y esto solo se aplica a un movimiento que llegue sin
-// ella, vía deducirClaseMovimiento() (migración v3 y red de seguridad de save()).
-function _reglaHistoricaEntradaEspejo(m){
-  if(!m) return false;
-  // Extra/propina recibida sobre un pago de deuda (Prestado, rama normal): ingreso real,
-  // aunque su _origenSeccion sea 'Prestado' (que por sí solo lo marcaría como espejo).
-  if(m._esExtraIngreso) return false;
-  // Deuda propia ("Yo debo") perdonada: tu patrimonio neto sube sin que entre plata a ninguna cuenta,
-  // así que es ingreso real aunque su _origenSeccion sea 'Prestado · Yo debo'.
-  if(m._esPerdonRecibido) return false;
-  // Margen/diferencial de Encargos y Préstamo con TC (lo escribe diffAplicar() en diferencial.js):
-  // plata nueva que se queda el usuario, aunque lleve _encMovId o desc 'Margen…'.
-  if(m._esDiferencialEncargo) return false;
-  // Movimiento espejo marcado EXPLÍCITAMENTE (desde 2026-10-04 lo pone registrarMovEspejo()
-  // por defecto): no es ingreso. Va después de las banderas "sí es ingreso" de arriba, que
-  // lo anulan cuando un espejo es plata nueva de verdad (extra, perdón, diferencial).
-  // Los datos anteriores a esa fecha no la tienen y siguen cayendo en los fallbacks de abajo.
-  if(m._esEspejo) return true;
-  // Datos viejos (antes del 2026-09-29): al destapar la alcancía hacia una cuenta personalizada, _sumarASaldo()
-  // dejaba en c.movimientos un 'ingreso' con desc exacta 'Alcancía destapada' — duplicado de filas que ya
-  // están en S.movimientos. No es ingreso nuevo (el saldo registrado ya era tuyo y el sobrante ya cuenta por S.movimientos).
-  if((m.desc||'')==='Alcancía destapada') return true;
-  if(m._esReposicionCP) return true;
-  // Fallback por desc para movimientos viejos sin _esReposicionCP
-  if(/^(Reposición[: ]|Para pagar TC \()/.test(m.desc||'')) return true;
-  if(m._esIntercambioEncargo||m._intercambioEntrada) return true;
-  if(m._encMovId) return true;
-  if((m.desc||'').startsWith('Margen')) return true;
-  if(m._origenSeccion==='Mesada') return true;
-  if((m._origenSeccion||'').indexOf('Prestado')===0) return true;
-  return false;
+  return claseEfectivaMovimiento(m) !== 'ingreso';
 }
 
 // ── INGRESO REAL: UNA sola definición para Inicio, Análisis y Wrapped (2026-10-04) ──
@@ -1129,28 +1059,14 @@ function ingresosRealesDelMes(mes, estado){
   return entradasIngresoReal(estado).reduce((a,m) => mesKey(m.fecha)===mes ? a+(m.monto||0) : a, 0);
 }
 
-// Determina si un gasto de S.gastosVar debe excluirse de los cálculos de "gasto real"
-// del mes (balance/tasa de ahorro, salud financiera, ranking, presupuestos, resumen de
-// cierre de mes, etc.) porque su efecto ya está contabilizado o neutralizado en otro lado:
-// - esPagoGastoFijo: ya se cuenta aparte en gfTotal (gastos fijos pagados)
-// - _esPagoTC: cancelación de deuda ya contada cuando se hizo la compra, no gasto nuevo
-// - _esAlcancia: sigue siendo plata tuya, solo cambió de lugar
-// - _esExtraPrestamo: extra/propina de un préstamo gastado de inmediato — nunca se contó
-//   como ingreso, así que tampoco debe contar como gasto real (ver CHANGELOG)
-// Centralizado acá para que un flag nuevo de exclusión no tenga que agregarse a mano en
-// cada pantalla — ya pasó dos veces que un filtro se corrigiera en un lugar y no en otro.
+// ¿Este gasto de S.gastosVar queda fuera del "gasto real" del mes (balance, salud financiera, ranking, presupuestos, cierre de
+// mes)? Sí cuando su `clase` no es 'gasto': 'neutro' (pago de gasto fijo, que ya cuenta aparte; pago de TC, que cancela una deuda
+// ya contada; alcancía, que solo cambió de lugar; extra de un préstamo gastado de inmediato). Un gasto sin clase cuenta como gasto,
+// que es lo que es por estar en esta lista, y save() avisa del módulo que no la puso.
 function _esGastoVarNoReal(g){
   if(!g) return false;
-  return claseEfectivaMovimiento(g, 'gastosVar') !== 'gasto';
-}
-// Reglas históricas CONGELADAS (ver nota en _reglaHistoricaEntradaEspejo).
-function _reglaHistoricaGastoVarNoReal(g){
-  if(!g) return false;
-  if(g.esPagoGastoFijo) return true;
-  if(g._esPagoTC) return true;
-  if(g._esAlcancia) return true;
-  if(g._esExtraPrestamo) return true;
-  return false;
+  const c = claseEfectivaMovimiento(g);
+  return c ? c !== 'gasto' : false;
 }
 
 /* ---- TOAST ---- */

@@ -1221,3 +1221,53 @@ describe('spotify-cajita', () => {
     assert.ok(ctx.getSpCajitaSaldo() > 1050000);
   });
 });
+
+describe('gastos-ida-y-vuelta', () => {
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const { createFakeDom } = require('./support/fake-dom');
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('tarjetas_credito.js'), modulo('gastos.js')];
+  const plano = x => JSON.parse(JSON.stringify(x));
+
+  function entorno(campos) {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    Object.assign(app.S, { modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], pagosGastosFijos: {}, tcMovimientos: [],
+      tarjetasCredito: [{ id: 'tc1', nombre: 'Visa', cupo: 1e6, deuda: 0, estado: 'activa', compras: [], pagos: [], saldoInicial: null }],
+      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }] });
+    app.sumarFuente('nequi', 100000, { origen: { modulo: 't', ref: 'base' } });
+    const dom = createFakeDom({ gv_desc: { value: 'Almuerzo' }, gv_monto: { value: '25.000,00' }, gv_fecha: { value: '' }, gv_cat: { value: 'Comida' }, gv_nota: { value: '' }, ...campos });
+    app.document = dom.document;
+    app.dialogo = async () => true; app.save = () => {}; app.refresh = () => {}; app.toast = () => {};
+    return app;
+  }
+  const sinLibro = S => { const c = plano(S); delete c.libro; return c; };
+  const netoLibroDesde = (S, n) => { const t = {}; S.libro.slice(n).forEach(e => { t[e.cuenta] = (t[e.cuenta] || 0) + e.monto; }); return Object.values(t).filter(v => Math.abs(v) > 1e-9); };
+
+  test('gasto desde una cuenta: registrar y eliminar deja todo como estaba', async () => {
+    const app = entorno({ gv_fuente: { value: 'nequi' } });
+    const antes = sinLibro(app.S), n = app.S.libro.length;
+    app.addGastoVar();
+    assert.equal(app.getSaldoFuente('nequi'), 75000);
+    assert.equal(app.S.gastosVar.length, 1);
+    await app.deleteGastoVar(app.S.gastosVar[0].id);
+    assert.deepEqual(sinLibro(app.S), antes);
+    assert.deepEqual(netoLibroDesde(app.S, n), [], 'el libro suma cero');
+    assert.equal(app.Libro.verificar().ok, true);
+  });
+
+  test('gasto con tarjeta: registrar y eliminar deja la deuda y las compras como estaban', async () => {
+    const app = entorno({ gv_fuente: { value: 'tc:tc1' } });
+    app.addGastoVar();
+    assert.equal(app.S.tarjetasCredito[0].deuda, 25000);
+    await app.deleteGastoVar(app.S.gastosVar[0].id);
+    assert.equal(app.S.gastosVar.length, 0);
+    assert.equal(app.S.tarjetasCredito[0].deuda, 0);
+    assert.equal(app.getSaldoFuente('nequi'), 100000, 'ninguna cuenta se movió');
+    app.tcNormalizarTarjetas();
+    assert.equal(app.S.tarjetasCredito[0].deuda, 0, 'y sigue en 0 tras recalcular');
+  });
+});

@@ -314,7 +314,7 @@ describe('periodo', () => {
   test('gastos variables — los pagos de gasto fijo (ya contados como fijos) no se cuentan dos veces', () => {
     const ctx = app({
       gastosFijos: [{ id: 'g1', monto: 800 }], pagosGastosFijos: { 'g1_2026-09': { fecha: '2026-09-02', monto: 800 } },
-      gastosVar: [{ fecha: '2026-09-02', monto: 800, esPagoGastoFijo: true }, { fecha: '2026-09-03', monto: 50, cat: 'Comida' }, { fecha: '2026-10-01', monto: 9 }],
+      gastosVar: [{ fecha: '2026-09-02', monto: 800, esPagoGastoFijo: true, clase: 'neutro' }, { fecha: '2026-09-03', monto: 50, cat: 'Comida', clase: 'gasto' }, { fecha: '2026-10-01', monto: 9, clase: 'gasto' }],
     });
     const g = P(ctx).gastosDelMes('2026-09');
     assert.equal(g.gvTotal, 50);
@@ -325,7 +325,7 @@ describe('periodo', () => {
   test('gastosPorMes — una sola pasada para el ranking: variables reales + fijos pagados por mes', () => {
     const ctx = app({
       pagosGastosFijos: { 'g1_2026-09': { monto: 800 }, 'huerfano_2026-10': { monto: 100 } },
-      gastosVar: [{ fecha: '2026-09-03', monto: 50 }, { fecha: '2026-10-01', monto: 20 }, { fecha: '2026-10-02', monto: 999, esPagoGastoFijo: true }],
+      gastosVar: [{ fecha: '2026-09-03', monto: 50, clase: 'gasto' }, { fecha: '2026-10-01', monto: 20, clase: 'gasto' }, { fecha: '2026-10-02', monto: 999, esPagoGastoFijo: true, clase: 'neutro' }],
     });
     assert.deepEqual(plano(P(ctx).gastosPorMes()), { '2026-09': 850, '2026-10': 120 });
   });
@@ -334,8 +334,8 @@ describe('periodo', () => {
     const ctx = app({
       mesadas: { papa: { cuotas: { 2026: 80000 }, pagos: { '2026-8': {} } }, mama: { cuotas: {}, pagos: {} } },
       ingresosFijos: [{ monto: 20000, desde: '2026-01' }],
-      movimientos: [{ id: 'm', tipo: 'entrada', monto: 10000, fecha: '2026-09-10', fuente: 'nequi' }, { id: 'e', tipo: 'entrada', monto: 999, fecha: '2026-09-11', _esEspejo: true }],
-      gastosVar: [{ fecha: '2026-09-03', monto: 30000, cat: 'Comida' }],
+      movimientos: [{ id: 'm', tipo: 'entrada', monto: 10000, fecha: '2026-09-10', fuente: 'nequi', clase: 'ingreso' }, { id: 'e', tipo: 'entrada', monto: 999, fecha: '2026-09-11', _esEspejo: true, clase: 'neutro' }],
+      gastosVar: [{ fecha: '2026-09-03', monto: 30000, cat: 'Comida', clase: 'gasto' }],
     });
     const b = P(ctx).balanceDelMes('2026-09');
     assert.deepEqual(plano(b.ingresos), { mesada: 80000, fijos: 20000, entradas: 10000, total: 110000 });
@@ -423,7 +423,8 @@ describe('ingreso-real', () => {
   const cuentas = (custom = []) => [
     { id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }, ...custom,
   ];
-  const mov = (id, monto, extra = {}) => ({ id, tipo: 'entrada', monto, fecha: '2026-10-05', fuente: 'nequi', desc: 'x', ...extra });
+  const mov = (id, monto, extra = {}) => ({ id, tipo: 'entrada', clase: 'ingreso', monto, fecha: '2026-10-05', fuente: 'nequi', desc: 'x', ...extra });
+  const neutro = (id, monto, extra = {}) => mov(id, monto, { clase: 'neutro', ...extra });
 
   function app(archivos = BASE, estado = {}) {
     const a = loadApp(archivos, { permissive: true });
@@ -450,27 +451,30 @@ describe('ingreso-real', () => {
       ] });
       assert.deepEqual(ids(a), ['dif', 'extra', 'perdon']);
     });
-    test('espejos y movimientos que NO son ingreso se excluyen', () => {
-      const a = app(BASE, { movimientos: [
-        mov('mesada', 1, { _origenSeccion: 'Mesada' }),
-        mov('prestado', 2, { _origenSeccion: 'Prestado · Me deben' }),
-        mov('espejo-nuevo', 3, { _esEspejo: true }),
-        mov('repos', 4, { _esReposicionCP: true }),
-        mov('repos-viejo', 5, { desc: 'Reposición: algo' }),
-        mov('tc', 6, { desc: 'Para pagar TC (Nu)' }),
-        mov('margen-viejo', 7, { desc: 'Margen de encargo' }),
-        mov('intercambio', 8, { _esIntercambioEncargo: true }),
-        mov('encmov', 9, { _encMovId: 'e1' }),
-        mov('alcancia', 10, { desc: 'Alcancía destapada' }),
-        mov('salida', 11, { tipo: 'salida' }),
-      ] });
-      assert.deepEqual(ids(a), []);
-    });
-    test('_esEspejo no anula una bandera de ingreso (la bandera tiene prioridad)', () => {
-      const a = app(BASE, { movimientos: [mov('x', 1, { _esEspejo: true, _esExtraIngreso: true })] });
-      assert.deepEqual(ids(a), ['x']);
-    });
+    test('solo cuenta `clase: "ingreso"`: neutro, ajuste y sin clase no cuentan, lleven la etiqueta que lleven', () => {
+    const sinClase = { id: 'sin-clase', tipo: 'entrada', monto: 12, fecha: '2026-10-05', fuente: 'nequi', desc: 'Sueldo' };
+    const a = app(BASE, { movimientos: [
+      neutro('mesada', 1, { _origenSeccion: 'Mesada' }),
+      neutro('prestado', 2, { _origenSeccion: 'Prestado · Me deben' }),
+      neutro('espejo-nuevo', 3, { _esEspejo: true }),
+      neutro('repos', 4, { _esReposicionCP: true }),
+      neutro('repos-viejo', 5, { desc: 'Reposición: algo' }),
+      neutro('tc', 6, { desc: 'Para pagar TC (Nu)' }),
+      neutro('margen-viejo', 7, { desc: 'Margen de encargo' }),
+      neutro('intercambio', 8, { _esIntercambioEncargo: true }),
+      neutro('encmov', 9, { _encMovId: 'e1' }),
+      neutro('alcancia', 10, { desc: 'Alcancía destapada' }),
+      mov('salida', 11, { tipo: 'salida' }),
+      mov('apertura', 13, { tipo: 'apertura', clase: 'ajuste' }),
+      sinClase,
+    ] });
+    assert.deepEqual(ids(a), [], 'ningún ingreso');
   });
+  test('la clase manda, no las etiquetas: un movimiento con etiqueta de espejo pero clase "ingreso" cuenta', () => {
+    const a = app(BASE, { movimientos: [mov('x', 1, { _esEspejo: true, _origenSeccion: 'Mesada' })] });
+    assert.deepEqual(ids(a), ['x']);
+  });
+});
 
   describe('cuentas personalizadas (su historial vive en S.movimientos, con fuente "custom:<id>")', () => {
     const custom = () => cuentas([{ id: 'z', tipo: 'custom', saldo: 0 }]);
@@ -480,7 +484,7 @@ describe('ingreso-real', () => {
     });
     test('espejo en la cuenta no cuenta; espejo con extra de ingreso sí', () => {
       const a = app(BASE, { cuentas: custom(), movimientos: [
-        mov('e1', 5, { fuente: 'custom:z', _esEspejo: true, _origenSeccion: 'Prestado · Me deben' }),
+        neutro('e1', 5, { fuente: 'custom:z', _esEspejo: true, _origenSeccion: 'Prestado · Me deben' }),
         mov('e2', 6, { fuente: 'custom:z', _esEspejo: true, _esExtraIngreso: true }),
       ] });
       assert.deepEqual(ids(a), ['e2']);
@@ -541,9 +545,9 @@ describe('ingreso-real', () => {
           mov('c1', 1000, { fuente: 'custom:ahorro', fecha: '2026-10-02' }),
           mov('c2', 2000, { fuente: 'custom:ahorro', fecha: '2026-10-03' }),
           mov('c3', 3000, { fuente: 'custom:ahorro', fecha: '2026-10-04', _esEspejo: true, _esExtraIngreso: true }),
-          mov('c4', 4000, { fuente: 'custom:ahorro', fecha: '2026-10-05', _esEspejo: true, _origenSeccion: 'Prestado · Me deben' }),
-          mov('m4', 8000, { _origenSeccion: 'Mesada' }),
-          mov('m5', 9000, { _esEspejo: true, _origenSeccion: 'Prestado · Me deben' }),
+          neutro('c4', 4000, { fuente: 'custom:ahorro', fecha: '2026-10-05', _esEspejo: true, _origenSeccion: 'Prestado · Me deben' }),
+          neutro('m4', 8000, { _origenSeccion: 'Mesada' }),
+          neutro('m5', 9000, { _esEspejo: true, _origenSeccion: 'Prestado · Me deben' }),
           mov('m7', 700, { fuente: '', _esPerdonRecibido: true, _origenSeccion: 'Prestado · Yo debo' }),
           mov('m10', 11, { fuente: '' }),
           mov('m9', 900, { fecha: '2026-09-30' }),
@@ -570,9 +574,7 @@ describe('ingreso-real', () => {
 });
 
 describe('clase-movimientos', () => {
-  // Clase explícita de movimientos (plan-clasificacion-movimientos.md, etapa 1):
-  // 1) registrarMovEspejo la escribe, 2) los lectores prefieren `clase` y caen a la cascada
-  // histórica si falta, 3) la migración v3 estampa lo mismo que decía la cascada (equivalencia).
+  // La `clase` guardada es la única fuente de verdad (2026-10-13: se retiró la cascada de reglas históricas por etiquetas y textos).
   const test = require('node:test');
   const assert = require('node:assert/strict');
   const path = require('node:path');
@@ -587,6 +589,7 @@ describe('clase-movimientos', () => {
     }, estado);
     return ctx;
   }
+  const plano = x => JSON.parse(JSON.stringify(x));
 
   test('registrarMovEspejo — por defecto el espejo nace "neutro"; con banderas de plata nueva, "ingreso"; `clase` explícita manda', () => {
     const ctx = app();
@@ -598,80 +601,42 @@ describe('clase-movimientos', () => {
     assert.deepEqual([por(a), por(b), por(c), por(d)], ['neutro', 'ingreso', 'neutro', 'ingreso']);
   });
 
-  test('lectores — `clase` manda sobre las etiquetas viejas; sin `clase` cae a la cascada histórica', () => {
+  test('lectores — solo la `clase` guardada decide; las etiquetas y los textos ya no se miran', () => {
     const ctx = app();
-    assert.equal(ctx._esEntradaEspejoNoIngreso({ tipo: 'entrada', _origenSeccion: 'Mesada', clase: 'ingreso' }), false);
+    assert.equal(ctx._esEntradaEspejoNoIngreso({ tipo: 'entrada', _origenSeccion: 'Mesada', clase: 'ingreso' }), false, 'clase ingreso cuenta aunque diga Mesada');
     assert.equal(ctx._esEntradaEspejoNoIngreso({ tipo: 'entrada', clase: 'neutro' }), true);
-    assert.equal(ctx._esEntradaEspejoNoIngreso({ tipo: 'entrada', _origenSeccion: 'Mesada' }), true, 'sin clase: cascada');
-    assert.equal(ctx._esEntradaEspejoNoIngreso({ tipo: 'entrada', desc: 'Sueldo' }), false);
+    assert.equal(ctx._esEntradaEspejoNoIngreso({ tipo: 'entrada', clase: 'ajuste' }), true);
+    assert.equal(ctx._esEntradaEspejoNoIngreso({ tipo: 'entrada', _origenSeccion: 'Mesada' }), true, 'sin clase no cuenta como ingreso');
+    assert.equal(ctx._esEntradaEspejoNoIngreso({ tipo: 'entrada', desc: 'Sueldo' }), true, 'tampoco se adivina por el texto');
     assert.equal(ctx._esGastoVarNoReal({ _esAlcancia: true, clase: 'gasto' }), false);
     assert.equal(ctx._esGastoVarNoReal({ clase: 'neutro' }), true);
-    assert.equal(ctx._esGastoVarNoReal({ _esPagoTC: true }), true, 'sin clase: reglas históricas');
+    assert.equal(ctx._esGastoVarNoReal({ _esPagoTC: true }), false, 'sin clase es un gasto de la lista de gastos: cuenta (y save() avisa)');
+    assert.equal(ctx.claseEfectivaMovimiento({ clase: 'ajuste' }), 'ajuste');
+    assert.equal(ctx.claseEfectivaMovimiento({ clase: 'rara' }), null);
+    assert.equal(ctx.claseEfectivaMovimiento(null), null);
   });
 
-  const CASOS = [
-    ['movimientos', { tipo: 'entrada', desc: 'Sueldo' }, 'ingreso'],
-    ['movimientos', { tipo: 'entrada', _origenSeccion: 'Mesada' }, 'neutro'],
-    ['movimientos', { tipo: 'entrada', _origenSeccion: 'Prestado · Me deben', _esExtraIngreso: true }, 'ingreso'],
-    ['movimientos', { tipo: 'entrada', _origenSeccion: 'Prestado · Yo debo', _esPerdonRecibido: true }, 'ingreso'],
-    ['movimientos', { tipo: 'entrada', _encMovId: 'e1', _esDiferencialEncargo: true }, 'ingreso'],
-    ['movimientos', { tipo: 'entrada', _encMovId: 'e1' }, 'neutro'],
-    ['movimientos', { tipo: 'entrada', desc: 'Alcancía destapada' }, 'neutro'],
-    ['movimientos', { tipo: 'entrada', desc: 'Reposición: algo' }, 'neutro'],
-    ['movimientos', { tipo: 'apertura' }, 'ajuste'],
-    ['movimientos', { tipo: 'transferencia', _esIntercambioEncargo: true }, 'neutro'],
-    ['movimientos', { tipo: 'salida', _esEspejo: true }, 'neutro'],
-    ['movimientos', { tipo: 'salida_manual' }, 'gasto'],
-    ['movimientos', { tipo: 'salida' }, null],
-    ['custom', { tipo: 'ingreso', nota: 'x' }, 'ingreso'],
-    ['cajita', { tipo: 'entrada', _esEspejo: true }, 'neutro'],
-    ['gastosVar', { monto: 1 }, 'gasto'],
-    ['gastosVar', { esPagoGastoFijo: true }, 'neutro'],
-    ['gastosVar', { _esPagoTC: true }, 'neutro'],
-    ['gastosVar', { _esAlcancia: true }, 'neutro'],
-    ['gastosVar', { _esExtraPrestamo: true }, 'neutro'],
-    ['gastosVar', { _esPerdonDeuda: true }, 'gasto'],
-  ];
-
-  test('deducirClaseMovimiento — tabla de casos (lo que no es seguro devuelve null, no se adivina)', () => {
-    const ctx = app();
-    CASOS.forEach(([origen, m, esperado]) => assert.equal(ctx.deducirClaseMovimiento(m, origen), esperado, JSON.stringify(m)));
+  test('movimientosSinClase — detecta lo que un módulo creó sin clase; las salidas de espejo no la necesitan', () => {
+    const ctx = app({
+      movimientos: [
+        { id: 'a', tipo: 'entrada', clase: 'ingreso' }, { id: 'b', tipo: 'entrada', desc: 'olvidó la clase' },
+        { id: 'c', tipo: 'salida', _esEspejo: true }, { id: 'd', tipo: 'apertura' }, { id: 'e', tipo: 'salida_manual', clase: 'gasto' },
+      ],
+      gastosVar: [{ id: 'g1', clase: 'gasto' }, { id: 'g2' }],
+    });
+    assert.deepEqual(plano(ctx.movimientosSinClase()).map(x => x.lista + ':' + x.id), ['movimientos:b', 'movimientos:d', 'gastosVar:g2']);
+    assert.deepEqual(plano(ctx.movimientosSinClase({ movimientos: [], gastosVar: [] })), []);
   });
 
-  test('estamparClasesMovimientos — idempotente y no pisa una `clase` existente', () => {
-    const ctx = app();
-    const d = { movimientos: CASOS.filter(c => c[0] === 'movimientos').map(c => ({ ...c[1] })), gastosVar: [{ monto: 1 }, { monto: 2, clase: 'neutro' }] };
-    ctx.estamparClasesMovimientos(d, { silencioso: true });
-    assert.equal(d.gastosVar[1].clase, 'neutro', 'respeta la clase existente');
-    assert.equal(d.gastosVar[0].clase, 'gasto');
-    const antes = JSON.stringify(d);
-    const r = ctx.estamparClasesMovimientos(d, { silencioso: true });
-    assert.equal(r.estampados, 0);
-    assert.equal(JSON.stringify(d), antes);
-  });
-
-  test('EQUIVALENCIA — estampar `clase` no cambia ingresos ni gastos reales del mes (plan §6)', () => {
-    const ctx = app();
-    const f = '2026-09-15';
-    ctx.S.movimientos = CASOS.filter(c => c[0] === 'movimientos' && c[1].tipo === 'entrada').map((c, i) => ({ id: 'm' + i, fecha: f, monto: 100 + i, ...c[1] }));
-    ctx.S.gastosVar = CASOS.filter(c => c[0] === 'gastosVar').map((c, i) => ({ id: 'g' + i, fecha: f, monto: 10 + i, ...c[1] }));
-    const foto = () => { const i = ctx.Periodo.ingresosDelMes('2026-09'), g = ctx.Periodo.gastosDelMes('2026-09'); return JSON.stringify([i, g.gvTotal, g.gfTotal, g.total, g.variables.map(x => x.id)]); };
-    const antes = foto();
-    ctx.estamparClasesMovimientos(ctx.S);
-    assert.ok(ctx.S.movimientos.every(m => m.clase) && ctx.S.gastosVar.every(g => g.clase));
-    assert.equal(foto(), antes);
-  });
-
-  test('cajitas — un espejo con clase "ingreso" (extra de Spotify, extra de un pago) SÍ cuenta como ingreso del mes; uno neutro no', () => {
+  test('cajitas — un espejo con clase "ingreso" (extra de Spotify, extra de un pago) SÍ cuenta como ingreso del mes; uno neutro o sin clase no', () => {
     const e = (id, monto, extra) => ({ id, tipo: 'entrada', fuente: 'cajita:c1', monto, fecha: '2026-10-0' + (1 + extra.d), _secundario: true, ...extra.m });
     const ctx = app({ cajitas: [{ id: 'c1', nombre: 'Sobra', saldo: 0 }], movimientos: [
       e('a', 400, { d: 5, m: { desc: 'Extra de Spotify', _esExtraIngreso: true, clase: 'ingreso' } }),
       e('b', 5000, { d: 6, m: { desc: 'Abono de deuda', _esEspejo: true, clase: 'neutro' } }),
-      e('c', 2000, { d: 7, m: { desc: 'Extra de pago (sin clase)', _esExtraIngreso: true } }),
-      e('d', 9000, { d: 8, m: { desc: 'Espejo sin etiquetas', _origenSeccion: 'Prestado · Me deben' } }),
+      e('c', 2000, { d: 7, m: { desc: 'Extra de pago', _esExtraIngreso: true, clase: 'ingreso' } }),
+      e('d', 9000, { d: 8, m: { desc: 'Espejo sin clase', _origenSeccion: 'Prestado · Me deben' } }),
     ] });
-    assert.equal(ctx.Periodo.ingresosDelMes('2026-10').entradas, 2400, 'a + c; b y d son espejos');
-    assert.equal(ctx.deducirClaseMovimiento({ tipo: 'entrada' }, 'cajita'), 'neutro');
+    assert.equal(ctx.Periodo.ingresosDelMes('2026-10').entradas, 2400, 'a + c; b es neutro y d no tiene clase');
   });
 
   test('un ingreso con el mismo id en dos lugares no existe: una sola lista, un solo conteo', () => {
@@ -695,12 +660,12 @@ describe('clase-movimientos', () => {
 
   test('Restar dinero (salida_manual) cuenta como gasto del mes, en categoría Ajuste, y se agrupa con los variables', () => {
     const ctx = app({
-      gastosVar: [{ id: 'g1', fecha: '2026-10-02', monto: 1000, cat: 'Comida' }],
+      gastosVar: [{ id: 'g1', fecha: '2026-10-02', monto: 1000, cat: 'Comida', clase: 'gasto' }],
       movimientos: [
         { id: 'r1', tipo: 'salida_manual', fuente: 'nequi', monto: 40000, fecha: '2026-10-01', desc: '40', clase: 'gasto' },
-        { id: 'r2', tipo: 'salida_manual', fuente: 'nequi', monto: 500, fecha: '2026-10-03', desc: 'dato viejo sin clase' },
+        { id: 'r2', tipo: 'salida_manual', fuente: 'nequi', monto: 500, fecha: '2026-10-03', desc: 'otro retiro', clase: 'gasto' },
         { id: 'r3', tipo: 'salida', fuente: 'nequi', monto: 7000, fecha: '2026-10-03', _esEspejo: true, clase: 'neutro' },
-        { id: 'r4', tipo: 'salida_manual', fuente: 'nequi', monto: 9, fecha: '2026-09-30', desc: 'otro mes' },
+        { id: 'r4', tipo: 'salida_manual', fuente: 'nequi', monto: 9, fecha: '2026-09-30', desc: 'otro mes', clase: 'gasto' },
       ] });
     const g = ctx.Periodo.gastosDelMes('2026-10');
     assert.equal(g.gvTotal, 41500, '1.000 gasto + 40.000 + 500 retiros; el espejo (neutro) no cuenta');

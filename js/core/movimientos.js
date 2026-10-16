@@ -457,7 +457,31 @@ function _cuentaOpsPosteriores(cuenta, fecha, excludeId) {
   return count;
 }
 
+// ¿Existe todavía el registro que borra eliminarMovimiento()? true / false, o null si el tipo no se puede comprobar aquí.
+function _movExiste(tipo, id) {
+  switch (tipo) {
+    case 'transferencia': return (S.transferencias || []).some(t => t.id === id);
+    case 'salida_manual': case 'ingreso': case 'apertura': case 'entrada': case 'egreso':
+      return (S.movimientos || []).some(m => m.id === id);
+    case 'gasto': return (S.gastosVar || []).some(g => g.id === id);
+    default: return null;
+  }
+}
+
+// Movimientos que se están eliminando ahora mismo: un segundo disparo del mismo clic (o un doble clic) no abre otro diálogo ni
+// revierte otra vez. Se libera siempre al terminar, cancele o no el usuario.
+const _movEliminando = new Set();
 async function eliminarMovimiento(btn) {
+  const item = btn && btn.closest && btn.closest('.gasto-item');
+  const id = item && item.dataset && item.dataset.movId;
+  if (!id) return;
+  if (_movEliminando.has(id)) return;
+  _movEliminando.add(id);
+  try { await _eliminarMovimientoImpl(btn); }
+  finally { _movEliminando.delete(id); }
+}
+
+async function _eliminarMovimientoImpl(btn) {
   const item = btn.closest('.gasto-item');
   if (!item) return;
   const movId = item.dataset.movId;
@@ -620,10 +644,18 @@ async function eliminarMovimiento(btn) {
   }
 
   // Confirmación
+  // Seguridad: si el movimiento ya no existe (otro clic, otra pestaña, otro dispositivo) no se pregunta ni se revierte nada:
+  // revertir dos veces el mismo movimiento duplica la plata.
+  if (_movExiste(movTipoEl, movId) === false) {
+    toast('Este movimiento ya se eliminó', 'info', 3000);
+    _rerenderCuentaActiva();
+    return;
+  }
   if (!confirmado) {
     const ok = await dialogo('Eliminar movimiento', '¿Eliminar este movimiento? Se revertirá el efecto en los saldos de todas las cuentas involucradas.', 'Eliminar', true);
     if (!ok) return;
   }
+  if (_movExiste(movTipoEl, movId) === false) { _rerenderCuentaActiva(); return; }
 
   // Revertir según el tipo
   if (movTipoEl === 'transferencia') {
@@ -654,152 +686,6 @@ async function eliminarMovimiento(btn) {
         S._ajustesBaseLog.push({ fecha: hoy(), monto: -(m.monto||0) });
       }
       S.movimientos = S.movimientos.filter(x => x.id !== movId);
-    } else if (fuenteOrigen && monto > 0) {
-      // El registro ya no está en S.movimientos (dato huérfano): se devuelve el saldo que mostraba la fila.
-      descontarFuente(fuenteOrigen, monto, _ogMov(movId, true));
-      if (movTipoEl === 'apertura') {
-        if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
-        S._ajustesBaseLog.push({ fecha: hoy(), monto: -monto });
-      }
-    }
-  } else if (movTipoEl === 'egreso') {
-    // Salida de una cuenta personalizada. getMovimientosCuenta('custom:ID') (cuentas.js) muestra así CUALQUIER salida de una
-    // cuenta custom (tipo 'egreso'), mientras que en las demás cuentas se muestra tal cual ('salida_manual'): A PROPÓSITO,
-    // esta rama y la de 'salida_manual' de arriba dependen de esa diferencia, no unificarlo (ver `tipoSalidaManual`).
-    // El registro vive solo en S.movimientos (con `fuente: 'custom:ID'`).
-    const fuente = fuenteOrigen; // siempre 'custom:ID' para este tipoDisplay (ver dataFuente en cuentas.js)
-    if (fuente && monto > 0) sumarFuente(fuente, monto, _ogMov(movId, true));
-    S.movimientos = (S.movimientos || []).filter(x => x.id !== movId);
-  } else if (movTipoEl === 'gasto') {
-    const g = (S.gastosVar || []).find(x => x.id === movId);
-    if (g && (g._esCompraTC || g._esPagoTC) && g._tcId) {
-      const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
-      const item = g._esCompraTC
-        ? (tc && (tc.compras || []).find(c => c.id === g._tcCompraId))
-        : (tc && (tc.pagos || []).find(p => p.id === g._tcPagoId));
-      if (tc && item) {
-        const opsPosteriores = _tcOpsPosteriores(tc, item.fecha, item.id);
-        const nivel = nivelAntiguedadMovimiento(item.fecha, opsPosteriores, 'tarjetas');
-        if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-        if (nivel === 'viejo') {
-          confirmado = await confirmarBorrarMovimientoViejo(tc.nombre, item.monto || 0, g._esCompraTC ? 'baja' : 'sube', 'deuda');
-          if (!confirmado) return;
-        }
-      }
-    } else if (g && g.fuente) {
-      // Gasto variable genérico (no TC): plata salió de g.fuente.
-      const opsPosteriores = _cuentaOpsPosteriores(g.fuente, g.fecha, g.id);
-      const nivel = nivelAntiguedadMovimiento(g.fecha, opsPosteriores, 'gastos');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(g.fuente), g.monto || 0, 'sube');
-        if (!confirmado) return;
-      }
-    } else if (g && g.splits && g.splits.length) {
-      // Gasto dividido entre varias cuentas — antes no tenía NINGUNA
-      // protección (g.fuente queda vacío en este caso, ver addGastoVar en
-      // gastos.js), a diferencia del gasto de una sola cuenta de arriba.
-      // Ver CHANGELOG.md#gastos (2026-09-01).
-      const conFuente = g.splits.filter(s => s.fuente);
-      if (conFuente.length) {
-        const opsPosteriores = Math.max(...conFuente.map(s => _cuentaOpsPosteriores(s.fuente, g.fecha, g.id)));
-        const nivel = nivelAntiguedadMovimiento(g.fecha, opsPosteriores, 'gastos');
-        if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-        if (nivel === 'viejo') {
-          const nombreCuenta = conFuente.length > 1 ? `${conFuente.length} cuentas` : fuenteLabel(conFuente[0].fuente);
-          confirmado = await confirmarBorrarMovimientoViejo(nombreCuenta, g.monto || 0, 'sube');
-          if (!confirmado) return;
-        }
-      }
-    }
-  } else if (movTipoEl === 'transferencia') {
-    const tr = (S.transferencias || []).find(t => t.id === movId);
-    if (tr) {
-      const fecha = tr.fecha || fechaItem;
-      const opsPosteriores = Math.max(_cuentaOpsPosteriores(tr.origen, fecha, tr.id), _cuentaOpsPosteriores(tr.destino, fecha, tr.id));
-      const nivel = nivelAntiguedadMovimiento(fecha, opsPosteriores, 'cuentas');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        // Dos cuentas afectadas en direcciones opuestas — no encaja en
-        // confirmarBorrarMovimientoViejo() (una cuenta, una dirección), así
-        // que se arma un diálogo propio con el mismo espíritu.
-        confirmado = await dialogo(
-          'Movimiento antiguo',
-          `Esta transferencia ya tiene tiempo y puede estar mezclada con operaciones más recientes. Si la eliminas, "${fuenteLabel(tr.origen)}" recupera ${fmt(tr.monto)} y "${fuenteLabel(tr.destino)}" pierde ${fmt(tr.monto)} ahora mismo — no se recalcula el historial completo. ¿Eliminar de todas formas?`,
-          'Eliminar de todas formas', true
-        );
-        if (!confirmado) return;
-      }
-    }
-  } else if (movTipoEl === 'salida_manual') {
-    const m = (S.movimientos || []).find(x => x.id === movId);
-    if (m && m.fuente) {
-      const fecha = m.fecha || fechaItem;
-      const opsPosteriores = _cuentaOpsPosteriores(m.fuente, fecha, m.id);
-      const nivel = nivelAntiguedadMovimiento(fecha, opsPosteriores, 'cuentas');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(m.fuente), m.monto || 0, 'sube');
-        if (!confirmado) return;
-      }
-    }
-  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada' || movTipoEl === 'egreso') {
-    const m = (S.movimientos || []).find(x => x.id === movId);
-    const fuente = (m && m.fuente) || fuenteOrigen;
-    const fecha = (m && m.fecha) || fechaItem;
-    if (fuente) {
-      const opsPosteriores = _cuentaOpsPosteriores(fuente, fecha, m ? m.id : null);
-      const nivel = nivelAntiguedadMovimiento(fecha, opsPosteriores, 'cuentas');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(fuente), (m ? m.monto : monto) || 0, movTipoEl === 'egreso' ? 'sube' : 'baja');
-        if (!confirmado) return;
-      }
-    }
-  }
-
-  // Confirmación
-  if (!confirmado) {
-    const ok = await dialogo('Eliminar movimiento', '¿Eliminar este movimiento? Se revertirá el efecto en los saldos de todas las cuentas involucradas.', 'Eliminar', true);
-    if (!ok) return;
-  }
-
-  // Revertir según el tipo
-  if (movTipoEl === 'transferencia') {
-    // Una transferencia afecta dos cuentas: origen pierde, destino gana.
-    // Para revertir: origen recupera, destino pierde.
-    const tr = (S.transferencias || []).find(t => t.id === movId);
-    if (tr) {
-      sumarFuente(tr.origen, tr.monto, _ogMov(movId, true));   // devolver al origen
-      descontarFuente(tr.destino, tr.monto, _ogMov(movId, true)); // quitar del destino
-      S.transferencias = S.transferencias.filter(t => t.id !== movId);
-    }
-  } else if (movTipoEl === 'salida_manual') {
-    // Fue una salida manual (S.movimientos tipo 'salida_manual')
-    const m = (S.movimientos || []).find(x => x.id === movId);
-    if (m) {
-      sumarFuente(m.fuente, m.monto, _ogMov(movId, true));
-      S.movimientos = S.movimientos.filter(x => x.id !== movId);
-    }
-  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada') {
-    // Fue una entrada manual (S.movimientos tipo 'entrada', 'apertura', o legacy 'ingreso')
-    const m = (S.movimientos || []).find(x => x.id === movId);
-    if (m) {
-      const fuente = m.fuente || fuenteOrigen;
-      if (fuente) descontarFuente(fuente, m.monto, _ogMov(movId, true));
-      else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto, _ogMov(movId, true));
-      if (m.tipo === 'apertura') {
-        if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
-        S._ajustesBaseLog.push({ fecha: hoy(), monto: -(m.monto||0) });
-      }
-      S.movimientos = S.movimientos.filter(x => x.id !== movId);
-    } else if (fuenteOrigen && monto > 0) {
-      // El registro ya no está en S.movimientos (dato huérfano): se devuelve el saldo que mostraba la fila.
-      descontarFuente(fuenteOrigen, monto, _ogMov(movId, true));
-      if (movTipoEl === 'apertura') {
-        if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
-        S._ajustesBaseLog.push({ fecha: hoy(), monto: -monto });
-      }
     }
   } else if (movTipoEl === 'egreso') {
     // Retiro manual de una cuenta personalizada. getMovimientosCuenta('custom:ID')
@@ -817,9 +703,11 @@ async function eliminarMovimiento(btn) {
     // registro de ninguno de los dos arrays, y aun así caía en el
     // save()+refresh()+toast de éxito de más abajo — ver CHANGELOG.md#cuentas
     // (2026-08-30).
-    const fuente = fuenteOrigen; // siempre 'custom:ID' para este tipoDisplay (ver dataFuente en cuentas.js)
-    if (fuente && monto > 0) sumarFuente(fuente, monto, _ogMov(movId, true));
-    S.movimientos = (S.movimientos || []).filter(x => x.id !== movId);
+    const m = (S.movimientos || []).find(x => x.id === movId);
+    if (m) {
+      sumarFuente(m.fuente || fuenteOrigen, m.monto, _ogMov(movId, true)); // el monto sale del REGISTRO, no de lo que muestra la fila
+      S.movimientos = S.movimientos.filter(x => x.id !== movId);
+    }
   } else if (movTipoEl === 'gasto') {
     // Gasto variable (S.gastosVar)
     const g = (S.gastosVar || []).find(x => x.id === movId);
@@ -850,6 +738,10 @@ async function eliminarMovimiento(btn) {
         if (g.fuente) sumarFuente(g.fuente, g.monto, _ogMov(movId, true));
       } else if (g.fuente) {
         sumarFuente(g.fuente, g.monto, _ogMov(movId, true)); // devolver el dinero
+      } else if (g.splits && g.splits.length) {
+        // Gasto dividido entre varias cuentas (`fuente` vacío): se devuelve cada parte a su cuenta, igual que deleteGastoVar() en
+        // gastos.js. Antes esta rama no las devolvía y la plata se perdía al borrar desde la cuenta o desde el feed.
+        g.splits.forEach(sp => { if (sp.fuente) sumarFuente(sp.fuente, sp.monto || 0, _ogMov(movId, true)); });
       }
       // Bug fix: si era pago de gasto fijo, desmarcar como pagado
       if(g.esPagoGastoFijo && g.gastoFijoId){

@@ -1111,6 +1111,9 @@ function _closeDialog(val){
 }
 function dialogo(titulo, msg, btnOk='Confirmar', peligro=false){
   return new Promise(res=>{
+    // Un solo diálogo a la vez: si ya hay uno abierto se cancela (resuelve en false) en vez de perder su resolvedor, que dejaba
+    // la función que lo esperaba colgada para siempre y, con un doble disparo, una acción pendiente que nunca se cancelaba.
+    if(window._dialogResolve){ const _previo=window._dialogResolve; window._dialogResolve=null; _previo(false); }
     window._dialogResolve=res;
     document.getElementById('dialog-title').textContent=titulo;
     document.getElementById('dialog-msg').textContent=msg;

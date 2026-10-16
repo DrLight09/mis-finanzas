@@ -1693,6 +1693,16 @@ function getMovimientosCuenta(tipo) {
   // Gastos variables pagados desde esta cuenta. Los depósitos a la alcancía se muestran como fila
   // visible con el monto oculto (`_alcOculto`).
   (S.gastosVar || []).forEach(g => {
+    // Gasto dividido entre varias cuentas: `g.fuente` queda vacío (ver addGastoVar en gastos.js) y cada parte salió de su cuenta,
+    // así que cada cuenta muestra SU parte (con las otras cuentas en el detalle). Antes no coincidía con ninguna y no se veía en ninguna.
+    if (!g.fuente && g.splits && g.splits.length) {
+      g.splits.forEach(sp => {
+        if (!sp.fuente || !sp.monto || !coincide(sp.fuente)) return;
+        const otras = g.splits.filter(o => o !== sp && o.fuente).map(o => ({ fuente: o.fuente, monto: -o.monto }));
+        movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -sp.monto, cat: g.cat, fuente: sp.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: sp.fuente, _origen: 'Gastos', _otrasCuentas: otras.length ? otras : null, _secundario: false, _origenSeccion: '', _alcOculto: false });
+      });
+      return;
+    }
     if (!coincide(g.fuente)) return;
     const _origen = g._esAlcancia ? 'Alcancía' : g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota || '') ? 'Encargos' : 'Gastos';
     movs.push({ tipo: g._esAlcancia ? 'alcancia' : 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario || !!g._esAlcancia, _origenSeccion: g._origenSeccion || (g._esAlcancia ? 'Alcancía' : ''), _alcOculto: !!g._esAlcancia });

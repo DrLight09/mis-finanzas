@@ -28,7 +28,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/mas-menu.js` | de entrada (defer) | 0 | 0 |
 | `js/core/mejoras-adicionales.js` | de entrada (defer) | 0 | 0 |
 | `js/core/money-input.js` | de entrada (defer) | 1 | 0 |
-| `js/core/movimientos.js` | de entrada (defer) | 6 | 0 |
+| `js/core/movimientos.js` | de entrada (defer) | 8 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 1 | 0 |
 | `js/core/nu-calc.js` | de entrada (defer) | 15 | 0 |
 | `js/core/payload-codec.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 2 | 0 |
@@ -187,7 +187,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_cuentaOpsPosteriores`, `_fuenteLabelHtml`, `_ogMov`, `_rerenderCuentaActiva`, `abrirDetalleMov`, `eliminarMovimiento`
+**Funciones:** `_cuentaOpsPosteriores`, `_eliminarMovimientoImpl`, `_fuenteLabelHtml`, `_movExiste`, `_ogMov`, `_rerenderCuentaActiva`, `abrirDetalleMov`, `eliminarMovimiento`
 
 ### `js/core/notificaciones-push.js`
 
@@ -535,6 +535,7 @@ Ninguno.
 | `_difToggle` | `js/modules/encargos.js` |
 | `_difTogglePagoYo` | `js/modules/encargos.js` |
 | `_editarPersonaDesdePerfilSheet` | `js/modules/personas.js` |
+| `_eliminarMovimientoImpl` | `js/core/movimientos.js` |
 | `_encAbrirSelectorPersonaNueva` | `js/modules/encargos.js` |
 | `_encGrupoSplit` | `js/modules/encargos.js` |
 | `_encSplitCarrier` | `js/modules/encargos.js` |
@@ -647,6 +648,7 @@ Ninguno.
 | `_moverEncSplitPreview` | `js/modules/encargos.js` |
 | `_moverEncSplitToggle` | `js/modules/encargos.js` |
 | `_movEsPerdon` | `js/modules/prestado.js` |
+| `_movExiste` | `js/core/movimientos.js` |
 | `_movsAplicarFiltro` | `js/modules/cuentas.js` |
 | `_movsDeudaSinCuenta` | `js/core/core-state.js` |
 | `_movsLimpiarFechas` | `js/modules/cuentas.js` |

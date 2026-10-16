@@ -1271,3 +1271,149 @@ describe('gastos-ida-y-vuelta', () => {
     assert.equal(app.S.tarjetasCredito[0].deuda, 0, 'y sigue en 0 tras recalcular');
   });
 });
+
+describe('eliminar-movimiento', () => {
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const { createFakeDom } = require('./support/fake-dom');
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'),
+    modulo('tarjetas_credito.js'), modulo('cuentas.js'), modulo('gastos.js'), core('movimientos.js')];
+  const plano = x => JSON.parse(JSON.stringify(x));
+  const HOY = '2026-10-13';
+
+  function entorno(campos = {}) {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    Object.assign(app.S, { modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], transferencias: [], pagosGastosFijos: {}, tcMovimientos: [], tarjetasCredito: [],
+      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }, { id: 'z', tipo: 'custom', nombre: 'Z', saldo: 0 }] });
+    const dom = createFakeDom({ gv_desc: { value: 'Almuerzo' }, gv_monto: { value: '2.000,00' }, gv_fecha: { value: '' }, gv_cat: { value: 'Comida' }, gv_nota: { value: '' }, ...campos });
+    app.document = dom.document;
+    let dialogos = 0;
+    app.dialogo = async () => { dialogos++; await Promise.resolve(); return true; };
+    app.save = () => {}; app.refresh = () => {}; app.toast = () => {}; app.fuenteLabel = f => f;
+    return { app, dialogos: () => dialogos, saldo: id => app.getSaldoFuente(id) };
+  }
+  // La fila que pinta la pantalla: los datos del movimiento viajan en dataset, y el botón sabe encontrar su fila.
+  const boton = (tipo, id, fuente, monto) => { const item = { dataset: { movId: id, movTipo: tipo, movFuente: fuente, movMonto: String(monto), movFecha: HOY } }; return { closest: () => item }; };
+  const neto = S => { const t = {}; S.libro.forEach(e => { t[e.cuenta] = (t[e.cuenta] || 0) + e.monto; }); return t; };
+
+  test('saldo inicial: eliminar lo deja en 0 (no en −10), con UN solo diálogo', async () => {
+    const e = entorno();
+    e.app.registrarEntradaConApertura('efectivo', 10, HOY, 'Saldo inicial', true, '');
+    const m = e.app.S.movimientos[0];
+    assert.equal(e.saldo('efectivo'), 10);
+    await e.app.eliminarMovimiento(boton('apertura', m.id, 'efectivo', 10));
+    assert.equal(e.saldo('efectivo'), 0);
+    assert.equal(e.dialogos(), 1, 'una sola confirmación');
+    assert.equal(e.app.S.movimientos.length, 0);
+    assert.equal(e.app.Libro.verificar().ok, true);
+  });
+
+  test('retiro de una cuenta: 10.000 − 2.000 = 8.000 y al eliminar vuelve a 10.000 (no a 12.000)', async () => {
+    const e = entorno({ rdMonto: { value: '2.000,00' } });
+    e.app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
+    e.app.registrarSalida('nequi', 2000, HOY, 'Retiro', '');
+    assert.equal(e.saldo('nequi'), 8000);
+    const m = e.app.S.movimientos.find(x => x.tipo === 'salida_manual');
+    await e.app.eliminarMovimiento(boton('salida_manual', m.id, 'nequi', 2000));
+    assert.equal(e.saldo('nequi'), 10000);
+    assert.equal(e.dialogos(), 1);
+  });
+
+  test('retiro de una cuenta personalizada (tipo "egreso"): vuelve a 10.000 y no a 12.000', async () => {
+    const e = entorno();
+    e.app.sumarFuente('custom:z', 10000, { origen: { modulo: 't', ref: 'base' } });
+    e.app.registrarSalida('custom:z', 2000, HOY, 'Retiro', '');
+    assert.equal(e.saldo('custom:z'), 8000);
+    const m = e.app.S.movimientos.find(x => x.tipo === 'salida_manual');
+    await e.app.eliminarMovimiento(boton('egreso', m.id, 'custom:z', 2000));
+    assert.equal(e.saldo('custom:z'), 10000);
+    assert.equal(e.dialogos(), 1);
+    assert.equal(e.app.Libro.verificar().ok, true);
+  });
+
+  test('ingreso manual: eliminarlo baja el saldo una sola vez', async () => {
+    const e = entorno();
+    e.app.registrarEntradaConApertura('nequi', 5000, HOY, 'Sueldo', false, '');
+    const m = e.app.S.movimientos[0];
+    await e.app.eliminarMovimiento(boton('entrada', m.id, 'nequi', 5000));
+    assert.equal(e.saldo('nequi'), 0);
+    assert.equal(e.dialogos(), 1);
+  });
+
+  test('transferencia: se revierte una sola vez, con UN solo diálogo', async () => {
+    const e = entorno({ tr_origen: { value: 'nequi' }, tr_destino: { value: 'efectivo' }, tr_monto: { value: '3.000,00' }, tr_nota: { value: '' }, tr_fecha: { value: HOY } });
+    e.app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
+    e.app.getSaldoActual = f => e.app.getSaldoFuente(f);
+    e.app.confirmarTransferir();
+    assert.equal(e.saldo('nequi'), 7000); assert.equal(e.saldo('efectivo'), 3000);
+    const t = e.app.S.transferencias[0];
+    await e.app.eliminarMovimiento(boton('transferencia', t.id, 'nequi', 3000));
+    assert.equal(e.saldo('nequi'), 10000); assert.equal(e.saldo('efectivo'), 0);
+    assert.equal(e.dialogos(), 1);
+  });
+
+  test('gasto desde la cuenta: un solo diálogo y se revierte bien', async () => {
+    const e = entorno({ gv_fuente: { value: 'nequi' } });
+    e.app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
+    e.app.addGastoVar();
+    assert.equal(e.saldo('nequi'), 8000);
+    const g = e.app.S.gastosVar[0];
+    await e.app.eliminarMovimiento(boton('gasto', g.id, 'nequi', 2000));
+    assert.equal(e.saldo('nequi'), 10000);
+    assert.equal(e.dialogos(), 1);
+    assert.equal(e.app.S.gastosVar.length, 0);
+  });
+
+  test('SEGURIDAD — dos disparos del mismo clic: un diálogo, una reversión', async () => {
+    const e = entorno();
+    e.app.registrarEntradaConApertura('efectivo', 10, HOY, 'Saldo inicial', true, '');
+    const m = e.app.S.movimientos[0], b = boton('apertura', m.id, 'efectivo', 10);
+    await Promise.all([e.app.eliminarMovimiento(b), e.app.eliminarMovimiento(b)]);
+    assert.equal(e.saldo('efectivo'), 0, 'antes: −10');
+    assert.equal(e.dialogos(), 1);
+  });
+
+  test('SEGURIDAD — un movimiento que ya no existe no pregunta ni revierte (la fila quedó pintada)', async () => {
+    const e = entorno();
+    e.app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
+    e.app.registrarSalida('nequi', 2000, HOY, 'Retiro', '');
+    const m = e.app.S.movimientos.find(x => x.tipo === 'salida_manual');
+    const b = boton('salida_manual', m.id, 'nequi', 2000);
+    await e.app.eliminarMovimiento(b);
+    assert.equal(e.saldo('nequi'), 10000);
+    await e.app.eliminarMovimiento(b); // la pantalla todavía mostraba la fila
+    assert.equal(e.saldo('nequi'), 10000, 'no se devuelve otra vez');
+    assert.equal(e.dialogos(), 1, 'y no vuelve a preguntar');
+    for (const [tipo, fuente] of [['apertura', 'nequi'], ['egreso', 'custom:z'], ['entrada', 'nequi'], ['gasto', 'nequi'], ['transferencia', 'nequi']]) {
+      const antes = e.saldo(fuente);
+      await e.app.eliminarMovimiento(boton(tipo, 'no-existe', fuente, 999));
+      assert.equal(e.saldo(fuente), antes, `${tipo}: ningún saldo cambia`);
+    }
+    assert.equal(e.dialogos(), 1);
+  });
+
+  test('gasto dividido entre dos cuentas: aparece en CADA cuenta con su parte, y eliminarlo desde una devuelve las dos', async () => {
+    const e = entorno();
+    e.app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'b1' } });
+    e.app.sumarFuente('efectivo', 5000, { origen: { modulo: 't', ref: 'b2' } });
+    // lo que deja addGastoVar en modo dividido: sin `fuente` y con la lista `splits`
+    const g = { id: 'gs1', desc: 'Mercado', monto: 3000, fecha: HOY, cat: 'Comida', fuente: '', splits: [{ fuente: 'nequi', monto: 2000 }, { fuente: 'efectivo', monto: 1000 }], clase: 'gasto' };
+    e.app.S.gastosVar.push(g);
+    e.app.descontarFuente('nequi', 2000, { origen: { modulo: 'gastos', ref: 'gs1' } });
+    e.app.descontarFuente('efectivo', 1000, { origen: { modulo: 'gastos', ref: 'gs1' } });
+    const fila = (cuenta) => plano(e.app.getMovimientosCuenta(cuenta)).filter(m => m._movId === 'gs1');
+    const fn = fila('nequi'), fe = fila('efectivo');
+    assert.equal(fn.length, 1, 'aparece en Nequi'); assert.equal(fe.length, 1, 'aparece en Efectivo');
+    assert.equal(fn[0].monto, -2000); assert.equal(fe[0].monto, -1000);
+    assert.deepEqual(fn[0]._otrasCuentas, [{ fuente: 'efectivo', monto: -1000 }]);
+    assert.equal(fila('custom:z').length, 0, 'y en ninguna otra cuenta');
+    await e.app.eliminarMovimiento(boton('gasto', 'gs1', 'nequi', 2000));
+    assert.equal(e.saldo('nequi'), 10000); assert.equal(e.saldo('efectivo'), 5000);
+    assert.equal(e.dialogos(), 1);
+    assert.equal(e.app.S.gastosVar.length, 0);
+  });
+});

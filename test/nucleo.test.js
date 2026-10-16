@@ -741,3 +741,55 @@ describe('clase-cobertura', () => {
     assert.deepEqual(faltan, [], 'movimientos creados sin clase: ' + faltan.join(', '));
   });
 });
+
+describe('sin-bloques-duplicados', () => {
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  // Guardia: ningún archivo de js/ contiene el mismo bloque de código dos veces. Un copiar y pegar accidental dentro de una función
+  // (pasó en eliminarMovimiento: la confirmación y la reversión corrían dos veces y duplicaban la plata) no rompe ningún test por sí
+  // solo, pero sí rompe este.
+  const RAIZ = process.env.MIS_FINANZAS_JS_DIR || path.join(__dirname, '..', 'js');
+  const archivos = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? archivos(path.join(d, e.name)) : /\.js$/.test(e.name) ? [path.join(d, e.name)] : []);
+  const VENTANA = 10; // líneas significativas seguidas e idénticas
+
+  function bloquesRepetidos(src) {
+    const sig = [];
+    src.split('\n').forEach((l, i) => { const t = l.trim(); if (t.length > 25 && !/^(\/\/|\*|\/\*)/.test(t)) sig.push([i + 1, t]); });
+    const vistos = new Map(), repetidos = [];
+    for (let k = 0; k + VENTANA <= sig.length; k++) {
+      const clave = sig.slice(k, k + VENTANA).map(x => x[1]).join('\n');
+      if (vistos.has(clave)) repetidos.push([vistos.get(clave), sig[k][0]]); else vistos.set(clave, sig[k][0]);
+    }
+    return repetidos;
+  }
+
+  test('ningún archivo de js/ repite un bloque de código', () => {
+    const malos = [];
+    archivos(RAIZ).forEach(f => {
+      const r = bloquesRepetidos(fs.readFileSync(f, 'utf8'));
+      if (r.length) malos.push(path.relative(RAIZ, f) + ': el bloque de la línea ~' + r[0][0] + ' se repite en la ~' + r[0][1]);
+    });
+    assert.deepEqual(malos, [], 'bloques duplicados (¿copiar y pegar accidental?):\n  ' + malos.join('\n  '));
+  });
+});
+
+describe('dialogo', () => {
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const CORE = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core');
+
+  test('un segundo diálogo cancela el anterior en vez de dejarlo colgado; solo el último se confirma', async () => {
+    const ctx = loadApp([path.join(CORE, 'core-state.js')]);
+    const resultados = [];
+    const a = ctx.dialogo('Uno', 'primero').then(v => resultados.push(['a', v]));
+    const b = ctx.dialogo('Dos', 'segundo').then(v => resultados.push(['b', v]));
+    ctx._closeDialog(true);
+    await Promise.all([a, b]);
+    assert.deepEqual(resultados.sort(), [['a', false], ['b', true]]);
+    assert.equal(ctx._dialogResolve, null);
+  });
+});

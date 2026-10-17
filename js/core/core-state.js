@@ -81,7 +81,7 @@ function poblarCatSelect(selectId, cats, valorActual){
 }
 
 let S={
-  nuRate:9.25,cajitas:[],
+  nuRate:null,cajitas:[], // nuRate: tasa EA % de TODAS las cajitas de Nu (null = sin configurar; ver nuTasaConfigurada() en nu-calc.js)
   personas:[],
   deudores:[],misDeudas:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
   spotifyPersonas:[],spotifyCosto:0,spotifyCajitaId:'',spotifyHistorial:[],
@@ -131,9 +131,10 @@ window.S = S;
 //   {id:'nequi'|'efectivo', tipo, saldo}. Personalizadas:
 //   {id, tipo:'custom', nombre, icono, color, saldo, movimientos:[{id,tipo,monto,fecha,nota}]}
 // (reemplaza a S.nequiSaldo, S.efectivoSaldo y S.cuentasPersonalizadas)
-// Cajita structure: {id, nombre, saldo (saldo actual total con intereses ya "materializados"), 
-//   fecha (cuando se creó / última vez que se materializó intereses),
-//   tasa (EA %), cdt: {monto, tasa, inicio, vence} | null}
+// Cajita structure: {id, nombre, saldo (saldo actual total con intereses ya "materializados"),
+//   fecha (reloj de sus intereses: último sellado de intereses o primer depósito; NO la fecha de creación),
+//   cdts: [{monto, tasa, inicio, vence, ...}]}  — la tasa EA de la cajita es S.nuRate (una sola para todas);
+//   solo cada CDT guarda su propia tasa.
 // El interés es diario compuesto: a las 12am cada día se "paga" el interés y queda en el saldo.
 // Nosotros simulamos esto: el saldo mostrado = saldo_guardado * (1 + tasaDiaria)^diasTranscurridos
 // Cuando el usuario agrega/retira plata, se materializa el interés acumulado primero.
@@ -574,7 +575,20 @@ function movimientosSinClase(estado){
    vez, en orden, sobre el estado cargado de Firestore y, vía aplicarMigraciones(), sobre un backup JSON antes de importarlo.
    La versión guardada vive en S.schemaVersion. */
 const SCHEMA_BASE = 7;      // primera versión compatible
-const MIGRACIONES = [];
+const MIGRACIONES = [
+  // v8 (2026-10-16): una sola tasa EA para las cajitas de Nu. Antes había tres sitios: S.nuRate (9,25 puesto por la app, sin que el
+  // usuario lo eligiera), S.nuTasaGlobal (la que el usuario escribía) y `tasa` en cada cajita (copia de la global que save() reescribía).
+  // Ahora solo existe S.nuRate (null = sin configurar). Los CDT conservan su tasa propia.
+  { v: 8, nombre: 'tasa-nu-global', fn(d) {
+    const cajitas = Array.isArray(d.cajitas) ? d.cajitas : [];
+    const escrita = Number(d.nuTasaGlobal);
+    if (escrita > 0) d.nuRate = escrita;                                           // la que el usuario había puesto
+    else if (cajitas.length) d.nuRate = Number(d.nuRate) > 0 ? Number(d.nuRate) : 9.25; // con cajitas: la que se venía usando
+    else d.nuRate = null;                                                          // sin cajitas: nunca la eligió
+    delete d.nuTasaGlobal;
+    cajitas.forEach(c => { if (c && typeof c === 'object') delete c.tasa; });
+  } }
+];
 const SCHEMA_VERSION_ACTUAL = MIGRACIONES.length ? MIGRACIONES[MIGRACIONES.length - 1].v : SCHEMA_BASE;
 
 function aplicarMigraciones(d) {
@@ -632,16 +646,14 @@ function load(){
   if(S.cajitas){
     S.cajitas=S.cajitas.map(c=>{
       if(!c.cdts)c.cdts=[];
-      if(!c.tasa)c.tasa=S.nuRate||9.25;
       if(!c.fecha)c.fecha=hoy();
       return c;
     });
   }
   if(S.gastosFijos){S.gastosFijos=S.gastosFijos.filter(x=>!(x.id==='gf1'&&x.nombre==='Spotify Premium'&&(x.monto||0)===0));}
   if(!S.pagosGastosFijos)S.pagosGastosFijos={};
-  if(!S.nuRate)S.nuRate=9.25;
   const nuTasaEl=document.getElementById('nuTasaGlobal');
-  if(nuTasaEl)nuTasaEl.value=(S.nuTasaGlobal!=null)?String(S.nuTasaGlobal).replace('.',','):'';
+  if(nuTasaEl)nuTasaEl.value=nuTasaConfigurada()?String(S.nuRate).replace('.',','):'';
   if(typeof _getCuotaAnio==='function'){
     if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(_getCuotaAnio('papa',S.mesadaAnio||new Date().getFullYear()));
     if(document.getElementById('mesadaMontoMama'))document.getElementById('mesadaMontoMama').value=fmtInput(_getCuotaAnio('mama',S.mesadaAnio||new Date().getFullYear()));
@@ -678,7 +690,6 @@ function save(){
     console.warn('[save] Bloqueado: datos de Firebase aún no cargados.');
     return;
   }
-  if(!S.nuRate)S.nuRate=9.25;
   // Cuota mensual por año — guardada en S.mesadas[parent].cuotas[anio]
   // Cuotas de Mesada y costo de Spotify: los inputs escriben directo en S (ver
   // _bindInputsAS() en sheet-stack.js); save() ya no lee nada del DOM.
@@ -686,7 +697,6 @@ function save(){
   // Las cajitas ya no tienen inputs en el DOM (nombre, saldo y CDT se editan por sheets que
   // escriben directo en S): save() solo normaliza lo que vive en S.
   (S.cajitas||[]).forEach(c=>{
-    c.tasa=getNuTasaGlobal();
     if(!c.fecha)c.fecha=hoy();
   });
   // La clase de cada movimiento la escribe el módulo que lo crea (no hay deducción de respaldo). Si alguno llega sin ella se
@@ -1327,10 +1337,10 @@ function refresh(){
   const gvMes=_gastosMesHoy.gvTotal;
 
   // Total intereses generados hoy en cajitas libres (base = saldo propio + encargos en la cajita)
-  const _globalTasa=S.nuTasaGlobal||9.25;
+  const _globalTasa=getNuTasaGlobal();
   const interesesTotalHoy=(S.cajitas||[]).reduce((a,c)=>{
     const k=calcC(c);
-    const tasaCajita=(!(c.cdts&&c.cdts.length)&&c.tasa!=null)?c.tasa:_globalTasa;
+    const tasaCajita=_globalTasa; // una sola tasa para todas las cajitas
     // Incluir saldo de encargos en la base del interés (son intereses a mi favor)
     const baseInteres=k.val+(k.saldoEncargos||0);
     return a+(baseInteres>0?baseInteres*(Math.pow(1+tasaCajita/100,1/365)-1):0);

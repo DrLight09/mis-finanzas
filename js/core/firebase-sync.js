@@ -185,7 +185,7 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
     (function(){
       const el=document.getElementById('nuTasaGlobal');
       const elFecha=document.getElementById('nuTasaVigenciaFecha');
-      if(el&&window.S.nuTasaGlobal!=null)el.value=String(window.S.nuTasaGlobal).replace('.',',');
+      if(el&&nuTasaConfigurada())el.value=String(window.S.nuRate).replace('.',',');
       if(elFecha&&!elFecha.value)elFecha.value=hoy();
       // FIX 2026-08-13: _renderTasaHistorialTag (cuentas.js) corre acá sin
       // guard, dentro de _initAppUI() — que se ejecuta en CADA arranque de
@@ -199,18 +199,18 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
       if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
       if(el){
         el.addEventListener('input',function(){
-          const raw=this.value.replace(',','.');
-          const v=raw===''?null:(parseFloat(raw)||null);
-          window.S.nuTasaGlobal=v;
-          if(v!=null){
-            const fecha=(elFecha&&elFecha.value)?elFecha.value:hoy();
-            if(typeof registrarTasaNuHistorial==='function') registrarTasaNuHistorial(fecha,v);
-          }
+          // La tasa es UNA para todas las cajitas (S.nuRate) y no se puede dejar en blanco ni en 0: mientras se escribe, un
+          // valor vacío o inválido se ignora (se conserva la anterior) y al salir del campo se restaura (ver 'blur').
+          const v=nuTasaDesdeTexto(this.value);
+          if(v==null)return;
+          window.S.nuRate=v;
+          const fecha=(elFecha&&elFecha.value)?elFecha.value:hoy();
+          if(typeof registrarTasaNuHistorial==='function') registrarTasaNuHistorial(fecha,v);
           save();refresh();
           if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
         });
         el.addEventListener('blur',function(){
-          if(this.value&&parseFloat(this.value)<=0)this.value='';
+          if(nuTasaDesdeTexto(this.value)==null) this.value=nuTasaConfigurada()?String(window.S.nuRate).replace('.',','):'';
           if(this.value&&window.toast){
             const total=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
             toast('Cajitas recalculadas: '+fmt(total)+' — compara con la app de Nu','ok',4000);

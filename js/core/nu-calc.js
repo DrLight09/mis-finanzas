@@ -23,11 +23,23 @@ function _saldoEncargosEnCajita(cajitaId){
   return _saldoEncargosEnCuenta('cajita:'+cajitaId);
 }
 
+// ── Tasa EA de las cajitas de Nu: UNA sola para todas, S.nuRate (null = sin configurar) ──
+// Los CDT son la excepción: cada uno guarda su propia tasa (cdt.tasa).
+function nuTasaConfigurada(){
+  return Number.isFinite(S.nuRate)&&S.nuRate>0;
+}
+
+// Lo que el usuario escribió en el campo de tasa → número, o null si no sirve (vacío, texto, 0 o negativo).
+function nuTasaDesdeTexto(texto){
+  const v=parsePct(texto==null?'':String(texto));
+  return Number.isFinite(v)&&v>0?v:null;
+}
+
 // Devuelve la tasa EA vigente en una fecha dada, según S.historialTasasNu.
-// Si la fecha es anterior a cualquier cambio registrado, usa la tasa base (S.nuTasaGlobal).
+// Si la fecha es anterior a cualquier cambio registrado, usa la tasa base (S.nuRate).
 function _tasaVigenteEnFecha(fechaStr){
   const hist=(S.historialTasasNu||[]).slice().sort((a,b)=>a.fecha<b.fecha?-1:(a.fecha>b.fecha?1:0));
-  let tasa=(S.nuTasaGlobal!=null?S.nuTasaGlobal:(S.nuRate||9.25));
+  let tasa=getNuTasaGlobal();
   let encontrada=null;
   for(const h of hist){
     if(h.fecha<=fechaStr) encontrada=h.tasa; else break;
@@ -253,11 +265,24 @@ function nuTotal(){
   },0);
 }
 
-// Tasa EA global de Nu. S es la única fuente de verdad: el input #nuTasaGlobal
-// escribe en S.nuTasaGlobal en cada cambio (ver firebase-sync.js), y esta función
-// ya no lee el DOM ni escribe en S como efecto colateral.
+// Tasa EA global de Nu (0 si todavía no se configuró: sin tasa no hay intereses, en vez de inventar una).
+// S es la única fuente de verdad: el input #nuTasaGlobal escribe en S.nuRate en cada cambio
+// (ver firebase-sync.js), y esta función no lee el DOM ni escribe en S.
 function getNuTasaGlobal(){
-  return S.nuTasaGlobal||9.25;
+  return nuTasaConfigurada()?S.nuRate:0;
+}
+
+// ¿Esta cajita ya generó intereses durante al menos un día completo? Se mide con el reloj REAL de sus
+// intereses, el mismo de calcC() (c.fecha: último sellado de intereses o primer depósito), no con la
+// fecha de creación: una cajita creada hace una semana pero vacía hasta hoy no ha generado nada.
+// calcC().dias solo cuenta días con plata adentro (propia o de encargos) y con tasa configurada.
+function cajitaGeneraIntereses(c){
+  return !!c&&nuTasaConfigurada()&&calcC(c).dias>=1;
+}
+
+// Las cajitas que ya cumplen lo anterior (cada una por su cuenta). Es la lista del Chequeo rápido.
+function cajitasConIntereses(){
+  return (S.cajitas||[]).filter(cajitaGeneraIntereses);
 }
 
 function getCajitaNombre(fuente) {

@@ -653,7 +653,7 @@ function load(){
   if(S.gastosFijos){S.gastosFijos=S.gastosFijos.filter(x=>!(x.id==='gf1'&&x.nombre==='Spotify Premium'&&(x.monto||0)===0));}
   if(!S.pagosGastosFijos)S.pagosGastosFijos={};
   const nuTasaEl=document.getElementById('nuTasaGlobal');
-  if(nuTasaEl)nuTasaEl.value=nuTasaConfigurada()?String(S.nuRate).replace('.',','):'';
+  if(nuTasaEl)nuTasaEl.value=nuTasaConfigurada()?nuTasaATexto(S.nuRate):'';
   if(typeof _getCuotaAnio==='function'){
     if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(_getCuotaAnio('papa',S.mesadaAnio||new Date().getFullYear()));
     if(document.getElementById('mesadaMontoMama'))document.getElementById('mesadaMontoMama').value=fmtInput(_getCuotaAnio('mama',S.mesadaAnio||new Date().getFullYear()));
@@ -1099,12 +1099,20 @@ function _esGastoVarNoReal(g){
 // `diferencial.js`/`diffValidarIntercambios()` (`fuenteLabel(...)` sin
 // escapar). Ver CHANGELOG.md para el detalle de esos tres.
 function toast(msg, tipo='ok', dur=2800){
+  // tipo: 'ok' (éxito / plata que entra, verde) · 'salida' (plata que sale, rojo con flecha) · 'err' (algo salió mal, rojo con X)
+  //       · 'info' (neutro, azul). Los colores y el tamaño están en la clase .toast-<tipo> (CSS crítico de index.html).
   const c=document.getElementById('toast-container');
   const el=document.createElement('div');
-  const col={ok:'var(--accent)',err:'var(--red)',info:'var(--blue)'}[tipo]||'var(--text2)';
-  const ico={ok:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>',err:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',info:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'}[tipo]||'•';
+  const svg=(trazo,ancho)=>`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${ancho}" stroke-linecap="round" stroke-linejoin="round">${trazo}</svg>`;
+  const ICONOS={
+    ok:svg('<polyline points="20 6 9 17 4 12"/>',3),
+    salida:svg('<line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>',2.6),
+    err:svg('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',3),
+    info:svg('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',2.5)
+  };
   el.className='toast toast-'+tipo;
-  el.innerHTML=`<span style="font-size:15px;color:${col};">${ico}</span><span>${msg}</span>`;
+  el.setAttribute('role',tipo==='err'?'alert':'status');
+  el.innerHTML=`<span class="toast-ico">${ICONOS[tipo]||'•'}</span><span class="toast-msg">${msg}</span>`;
   c.appendChild(el);
   setTimeout(()=>{el.classList.add('hiding');setTimeout(()=>el.remove(),220);},dur);
 }

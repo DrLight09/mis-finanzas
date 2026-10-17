@@ -29,10 +29,27 @@ function nuTasaConfigurada(){
   return Number.isFinite(S.nuRate)&&S.nuRate>0;
 }
 
-// Lo que el usuario escribió en el campo de tasa → número, o null si no sirve (vacío, texto, 0 o negativo).
+// Campo de tasa EA: solo dígitos y UN separador decimal (coma o punto), hasta 3 enteros y 4 decimales. Quita lo demás
+// mientras se escribe (letras, signos, un segundo separador); no valida el valor, eso es nuTasaDesdeTexto().
+function nuTasaSanear(texto){
+  const solo=String(texto==null?'':texto).replace(/[^0-9.,]/g,'');
+  const i=solo.search(/[.,]/);
+  if(i<0)return solo.slice(0,3);
+  return solo.slice(0,i).slice(0,3)+solo[i]+solo.slice(i+1).replace(/[.,]/g,'').slice(0,4);
+}
+
+// Lo que el usuario escribió en el campo de tasa → número, o null si no sirve: vacío, con letras o símbolos ("9abc"), con
+// separador sin decimales ("9,"), 0 o más de 100 (una tasa EA no llega ahí: es un error de digitación).
 function nuTasaDesdeTexto(texto){
-  const v=parsePct(texto==null?'':String(texto));
-  return Number.isFinite(v)&&v>0?v:null;
+  const t=String(texto==null?'':texto).trim();
+  if(!/^\d{1,3}([.,]\d{1,4})?$/.test(t))return null;
+  const v=parseFloat(t.replace(',','.'));
+  return v>0&&v<=100?v:null;
+}
+
+// Una tasa lista para mostrarse en un campo (coma decimal, como se escribe en Colombia).
+function nuTasaATexto(n){
+  return String(n).replace('.',',');
 }
 
 // Devuelve la tasa EA vigente en una fecha dada, según S.historialTasasNu.
@@ -270,6 +287,15 @@ function nuTotal(){
 // (ver firebase-sync.js), y esta función no lee el DOM ni escribe en S.
 function getNuTasaGlobal(){
   return nuTasaConfigurada()?S.nuRate:0;
+}
+
+// Lo que Nu debería mostrar HOY en esta cajita: el saldo propio con sus intereses MÁS el dinero de encargos guardado ahí
+// (físicamente está en la cajita y Nu no distingue de quién es; los intereses de esa plata son del dueño de la cajita,
+// ver calcC). `propio` es lo que la app cuenta como suyo; `total` es lo que se compara con la app de Nu.
+function nuValorEsperadoCajita(c){
+  const k=calcC(c);
+  const encargos=k.saldoEncargos||0;
+  return{propio:k.val,encargos,total:k.val+encargos,ganado:k.ganado};
 }
 
 // ¿Esta cajita ya generó intereses durante al menos un día completo? Se mide con el reloj REAL de sus

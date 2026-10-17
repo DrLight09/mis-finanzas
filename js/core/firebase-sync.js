@@ -184,50 +184,33 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
     load();
     (function(){
       const el=document.getElementById('nuTasaGlobal');
-      const elFecha=document.getElementById('nuTasaVigenciaFecha');
-      if(el&&nuTasaConfigurada())el.value=String(window.S.nuRate).replace('.',',');
-      if(elFecha&&!elFecha.value)elFecha.value=hoy();
+      if(el&&nuTasaConfigurada())el.value=nuTasaATexto(window.S.nuRate);
       // FIX 2026-08-13: _renderTasaHistorialTag (cuentas.js) corre acá sin
       // guard, dentro de _initAppUI() — que se ejecuta en CADA arranque de
       // la app, no solo al visitar Cuentas. Con cuentas.js como grupo lazy
       // (ver auditoria-tecnica.md), esto tumbaba el arranque completo con
       // ReferenceError antes de llegar a _initEventListeners()/refresh().
-      // El resto de las llamadas de este bloque (registrarTasaNuHistorial,
-      // calcC) solo se disparan al interactuar con #nuTasaGlobal, que vive
-      // en la pantalla de Cuentas — en teoría ya cargado para entonces vía
-      // Loader, pero se guardan igual por seguridad/consistencia.
+      // Lo demás de este bloque (registrarTasaNuHistorial) solo se dispara al
+      // escribir en #nuTasaGlobal, que vive en la pantalla de Cuentas; se guarda igual.
       if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
       if(el){
+        // La tasa es UNA para todas las cajitas (S.nuRate): solo números con coma o punto decimal, y no se puede dejar en
+        // blanco ni en 0. Mientras se escribe se quita lo que no sirve (letras, signos); un valor incompleto o inválido se
+        // ignora (se conserva la tasa anterior) y al salir del campo se restaura. Cambiarla NO recalcula nada hacia atrás:
+        // el historial de tasas (S.historialTasasNu) la aplica desde hoy y los intereses ya sellados no se reabren. Para
+        // contrastar con la app de Nu está el Chequeo rápido de cajitas.
         el.addEventListener('input',function(){
-          // La tasa es UNA para todas las cajitas (S.nuRate) y no se puede dejar en blanco ni en 0: mientras se escribe, un
-          // valor vacío o inválido se ignora (se conserva la anterior) y al salir del campo se restaura (ver 'blur').
-          const v=nuTasaDesdeTexto(this.value);
+          const limpio=nuTasaSanear(this.value);
+          if(limpio!==this.value)this.value=limpio;
+          const v=nuTasaDesdeTexto(limpio);
           if(v==null)return;
           window.S.nuRate=v;
-          const fecha=(elFecha&&elFecha.value)?elFecha.value:hoy();
-          if(typeof registrarTasaNuHistorial==='function') registrarTasaNuHistorial(fecha,v);
+          if(typeof registrarTasaNuHistorial==='function') registrarTasaNuHistorial(hoy(),v);
           save();refresh();
           if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
         });
         el.addEventListener('blur',function(){
-          if(nuTasaDesdeTexto(this.value)==null) this.value=nuTasaConfigurada()?String(window.S.nuRate).replace('.',','):'';
-          if(this.value&&window.toast){
-            const total=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
-            toast('Cajitas recalculadas: '+fmt(total)+' — compara con la app de Nu','ok',4000);
-          }
-        });
-      }
-      if(elFecha){
-        elFecha.addEventListener('change',function(){
-          if(el&&el.value){
-            const raw=el.value.replace(',','.');
-            const v=parseFloat(raw);
-            if(!isNaN(v)){
-              if(typeof registrarTasaNuHistorial==='function') registrarTasaNuHistorial(this.value,v);
-              save();refresh();
-              if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
-            }
-          }
+          if(nuTasaDesdeTexto(this.value)==null) this.value=nuTasaConfigurada()?nuTasaATexto(window.S.nuRate):'';
         });
       }
     })();

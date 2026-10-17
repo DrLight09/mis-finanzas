@@ -176,10 +176,19 @@
       @keyframes fbDot{0%,80%,100%{opacity:.2;transform:scale(.8);}40%{opacity:1;transform:scale(1);}}
       /* ===== TOAST (global, puede dispararse durante el gate de auth) ===== */
       #toast-container{position:fixed;top:calc(env(safe-area-inset-top,0px) + 14px);left:50%;transform:translateX(-50%);z-index:2147483647;display:flex;flex-direction:column;align-items:center;gap:7px;pointer-events:none;width:calc(100% - 32px);max-width:400px;}
-      .toast{background:#1e1e1e;border:1px solid var(--border2);border-radius:14px;padding:13px 18px;font-size:14px;color:var(--text);box-shadow:0 12px 40px rgba(0,0,0,.85),0 3px 10px rgba(0,0,0,.6);animation:toastIn .28s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;gap:10px;width:100%;pointer-events:all;}
+      /* Toast: ícono en un círculo del color del tipo + mensaje. Tipos: ok (verde, éxito o plata que entra), salida (rojo, plata que
+         sale: flecha), err (rojo, algo salió mal: X), info (azul, neutro). Ver toast() en core-state.js. */
+      .toast{background:#1e1e1e;border:1px solid var(--border2);border-radius:14px;padding:11px 16px 11px 12px;font-size:13.5px;line-height:1.4;color:var(--text);box-shadow:0 12px 40px rgba(0,0,0,.85),0 3px 10px rgba(0,0,0,.6);animation:toastIn .28s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;gap:11px;width:100%;pointer-events:all;}
+      .toast-ico{flex-shrink:0;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.07);color:var(--text2);}
+      .toast-msg{flex:1;min-width:0;overflow-wrap:anywhere;}
       .toast.toast-ok{border-color:rgba(200,240,96,.5);background:#1d2614;}
+      .toast.toast-ok .toast-ico{background:rgba(200,240,96,.16);color:var(--accent);}
+      .toast.toast-salida{border-color:rgba(240,104,104,.5);background:#261414;}
+      .toast.toast-salida .toast-ico{background:rgba(240,104,104,.16);color:var(--red);}
       .toast.toast-err{border-color:rgba(240,104,104,.5);background:#261414;}
+      .toast.toast-err .toast-ico{background:rgba(240,104,104,.16);color:var(--red);}
       .toast.toast-info{border-color:rgba(96,176,240,.5);background:#131e26;}
+      .toast.toast-info .toast-ico{background:rgba(96,176,240,.16);color:var(--blue);}
       .toast.hiding{animation:toastOut .22s ease forwards;}
       @keyframes toastIn{from{opacity:0;transform:translateY(-14px) scale(.95);}to{opacity:1;transform:translateY(0) scale(1);}}
       @keyframes toastOut{to{opacity:0;transform:translateY(-10px) scale(.95);}}
@@ -1072,7 +1081,7 @@
                 </div>
                 <div style="display:flex;align-items:center;gap:7px;">
                   <input type="text" inputmode="decimal" id="nuTasaGlobal"
-                    value placeholder="9,25"
+                    value placeholder="9,25" maxlength="8" autocomplete="off" aria-label="Tasa EA de las cajitas de Nu"
                     style="width:70px;padding:7px 10px;background:rgba(0,0,0,.35);border:1px solid rgba(var(--cuenta-rgb),.4);border-radius:8px;color:var(--cuenta);font-size:14px;font-weight:500;font-family:'DM Mono',monospace;outline:none;text-align:center;">
                   <span
                     style="font-size:12px;color:var(--cuenta);font-family:'DM Mono',monospace;">%</span>
@@ -1096,14 +1105,14 @@
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><line x1="12" y1="5" x2="12"
                     y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                <span class="cuenta-action-btn-label">Entró plata</span>
+                <span class="cuenta-action-btn-label">Agregar dinero</span>
               </button>
               <button type="button" class="cuenta-action-btn cuenta-action-btn--rojo" id="btn-nu-salio">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><line x1="5" y1="12" x2="19"
                     y2="12" /></svg>
-                <span class="cuenta-action-btn-label">Salió plata</span>
+                <span class="cuenta-action-btn-label">Retirar dinero</span>
               </button>
               <button type="button" class="cuenta-action-btn cuenta-action-btn--azul"
                 id="btn-transferir-nu-det"
@@ -1187,7 +1196,7 @@
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><line x1="12" y1="5" x2="12"
                     y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                <span class="cuenta-action-btn-label">Agregar</span>
+                <span class="cuenta-action-btn-label">Agregar dinero</span>
               </button>
               <button type="button" class="cuenta-action-btn cuenta-action-btn--rojo"
                 id="cajita-det-retirar">
@@ -1195,7 +1204,7 @@
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><line x1="5" y1="12" x2="19"
                     y2="12" /></svg>
-                <span class="cuenta-action-btn-label">Retirar</span>
+                <span class="cuenta-action-btn-label">Retirar dinero</span>
               </button>
               <button type="button" class="cuenta-action-btn cuenta-action-btn--azul"
                 id="cajita-det-mover">
@@ -1204,7 +1213,7 @@
                   stroke-linecap="round"><path d="M5 9l4-4-4-4" /><path
                     d="M19 15l-4 4 4 4" /><line x1="9" y1="5" x2="19"
                     y2="5" /><line x1="5" y1="19" x2="15" y2="19" /></svg>
-                <span class="cuenta-action-btn-label">Mover</span>
+                <span class="cuenta-action-btn-label">Mover a otra cuenta</span>
               </button>
             </div>
             <!-- Accesos a sub-pantallas -->
@@ -2636,10 +2645,11 @@
         <div class="sheet-handle"></div>
         <div class="sheet-title">Chequeo rápido — cajitas Nu</div>
         <div style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.5;">
-          Pon el saldo que ves AHORA MISMO en cada cajita de Nu. Si el crecimiento real ya
-          no cuadra con la tasa que tienes registrada, la app te va a avisar y te ofrece
-          corregirla con un clic. Si algún saldo se aleja mucho de lo calculado, también te
-          pide confirmar antes de guardarlo.
+          Pon el saldo TOTAL que ves AHORA MISMO en cada cajita de Nu, tal cual lo muestra su
+                  app (si guardas dinero de encargos ahí, va incluido; al lado de cada cajita ves lo
+                  que debería marcar). Si el crecimiento real ya no cuadra con la tasa que tienes
+                  registrada, la app te va a avisar y te ofrece corregirla con un clic. Si algún saldo
+                  se aleja mucho de lo calculado, también te pide confirmar antes de guardarlo.
         </div>
         <div id="chequeoNuLista"></div>
         <button type="button" class="btn btn-primary" data-action="cuentas:guardarChequeoNu" data-args="[]">Guardar
@@ -2655,7 +2665,7 @@
         <div class="sheet-title">Cambio de tasa Nu detectado</div>
         <div id="ctn-msg" style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5;"></div>
         <div class="ig"><label class="il" for="ctn-tasa">Nueva tasa EA %</label><input
-            type="text" inputmode="decimal" id="ctn-tasa" placeholder="9,25"></div>
+            type="text" inputmode="decimal" id="ctn-tasa" placeholder="9,25" maxlength="8" autocomplete="off" data-tasa-ea></div>
         <div class="ig"><label class="il" for="ctn-fecha">Aplicar desde</label><input
             type="date" id="ctn-fecha"></div>
         <button type="button" class="btn btn-primary" data-action="cuentas:confirmarCambioTasaNu" data-args="[]">Aplicar
@@ -4583,12 +4593,12 @@
       </div>
     </div>
 
-    <!-- RESTAR DINERO -->
+    <!-- RETIRAR DINERO -->
     <!-- ENTRÓ / SALIÓ PLATA EN NU -->
     <div class="overlay" id="sheet-nu-movimiento" data-sheet-id="nu-movimiento">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title" id="nuMovTitle">Entró plata a Nu</div>
+        <div class="sheet-title" id="nuMovTitle">Agregar a Nu</div>
         <p id="nuMovSubtitle"
           style="font-size:12px;color:var(--text2);margin-bottom:16px;">El valor
           se <b style="color:var(--nu-light);">sumará</b> a la cajita que
@@ -4646,7 +4656,7 @@
     <div class="overlay" id="sheet-restar-dinero" data-sheet-id="restar-dinero">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title" id="rdTitle">Restar dinero</div>
+        <div class="sheet-title" id="rdTitle">Retirar dinero</div>
         <p style="font-size:12px;color:var(--text2);margin-bottom:16px;">El
           valor se <b style="color:var(--red);">restará</b> del saldo
           actual.</p>
@@ -4669,7 +4679,7 @@
             placeholder="Detalle adicional"></div>
         <div id="rdPreview"
           style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:14px;"></div>
-        <button type="button" class="btn btn-red" id="btn-confirmar-restar">Restar
+        <button type="button" class="btn btn-red" id="btn-confirmar-restar">Retirar
           del saldo</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="restar-dinero">Cancelar</button>
@@ -4785,7 +4795,7 @@
         </div>
         <div class="ig"><label class="il" for="cdt_tasa">Tasa EA %</label><input
             type="text" inputmode="decimal" id="cdt_tasa"
-            placeholder="9,25"></div>
+            placeholder="9,25" maxlength="8" autocomplete="off" data-tasa-ea></div>
         <div class="ig"><label class="il" for="cdt_inicio">Fecha de apertura
             <span
               style="font-size:10px;color:var(--text3);font-weight:400;">(cuándo

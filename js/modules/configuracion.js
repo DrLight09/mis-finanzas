@@ -138,8 +138,9 @@ function _validarEstructuraJSON(data){
   if('deudores' in data&&!Array.isArray(data.deudores)){
     errores.push('El campo "deudores" debe ser un array.');
   }
-  if('nuRate' in data&&typeof data.nuRate!=='number'){
-    errores.push('El campo "nuRate" debe ser un número.');
+  // nuRate es la tasa EA de las cajitas de Nu; null = todavía sin configurar (un backup exportado así debe poder importarse).
+  if('nuRate' in data&&data.nuRate!==null&&typeof data.nuRate!=='number'){
+    errores.push('El campo "nuRate" debe ser un número (o null si no se configuró).');
   }
   ['gastosFijos','ingresosFijos','movimientos','misDeudas','encargos','tarjetasCredito','personas','libro'].forEach(k=>{
     if(k in data&&!Array.isArray(data[k]))errores.push('El campo "'+k+'" debe ser un array.');

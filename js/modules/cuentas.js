@@ -231,9 +231,7 @@ function abrirNuevaCuenta(){
   _ncIconoSel='otro';
   _ncColorSel='#888880';
   renderIconGrid();
-  document.querySelectorAll('.nc-color-opt').forEach(el=>{
-    el.style.border=el.dataset.color===_ncColorSel?'2px solid var(--accent)':'2px solid transparent';
-  });
+  marcarColorSeleccionado('.nc-color-opt', _ncColorSel); // js/core/color-picker.js
   const ni=document.getElementById('nc_nombre');
   const si=document.getElementById('nc_saldo');
   if(ni)ni.value='';
@@ -413,9 +411,7 @@ function editarCuentaCustom(id){
   _ncIconoSel=c.icono||'otro';
   _ncColorSel=c.color||'#60b0f0';
   // Actualizar UI del picker de color
-  document.querySelectorAll('.nc-color-opt').forEach(el=>{
-    el.style.border=el.dataset.color===_ncColorSel?'2px solid var(--accent)':'2px solid transparent';
-  });
+  marcarColorSeleccionado('.nc-color-opt', _ncColorSel); // js/core/color-picker.js
   // Actualizar UI del picker de ícono: se vuelve a dibujar el grid (así marca SU ícono; antes se dejaba el
   // que hubiera quedado marcado de la última vez que se abrió el sheet).
   renderIconGrid();
@@ -587,7 +583,7 @@ function poblarChequeoNu(){
   if(!cont)return;
   // Solo las cajitas que ya generaron intereses un día completo (cada una por su cuenta): comparar el saldo real con un
   // cálculo de 0 días no dice nada de la tasa. Las nuevas aparecen solas cuando cumplen su primer día.
-  const aptas=cajitasConIntereses();
+  const aptas=cajitasChequeables();
   const faltan=(S.cajitas||[]).length-aptas.length;
   cont.innerHTML=html`${aptas.map(c=>{
     const calc=calcC(c);
@@ -632,8 +628,8 @@ let _chequeoNuUndo=null;
 
 async function guardarChequeoNu(){
   const motivo=_motivoNuChequeo();
-  if(motivo){if(window.toast)toast(motivo,'err',4000);return;}
-  const aptas=new Set(cajitasConIntereses().map(c=>c.id));
+  if(motivo){toast(motivo,'err',4000);return;}
+  const aptas=new Set(cajitasChequeables().map(c=>c.id));
   const inputs=document.querySelectorAll('[data-chq-cajita]');
   const hoyStr=hoy();
   // 1) Leer lo anotado SIN tocar nada todavía.
@@ -2594,7 +2590,7 @@ function _motivoNuMovimiento(tipo) {
 function _motivoNuChequeo() {
   const m = _motivoNuSinCajitas() || _motivoNuSinTasa();
   if (m) return m;
-  if (!cajitasConIntereses().length) return 'Se habilita cuando una cajita lleve un día completo generando intereses.';
+  if (!cajitasChequeables().length) return 'Se habilita cuando una cajita lleve un día completo generando intereses.';
   return '';
 }
 

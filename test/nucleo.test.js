@@ -95,7 +95,7 @@ describe('calcPatrimonioTotal', () => {
     assert.equal(sinFecha.calcPatrimonioTotal(), 300000);
     const d = new Date(Date.now() - 365 * 86400000);
     const fecha = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    const conInteres = freshApp({ nuTasaGlobal: 9.3003, cajitas: [{ id: 'nu1', saldo: 1000000, fecha }] });
+    const conInteres = freshApp({ nuRate: 9.3003, cajitas: [{ id: 'nu1', saldo: 1000000, fecha }] });
     assert.ok(conInteres.calcPatrimonioTotal() > 1050000);
   });
 
@@ -361,7 +361,8 @@ describe('periodo', () => {
 });
 
 describe('migraciones', () => {
-  // VERSIÓN DEL ESQUEMA / aplicarMigraciones (core-state.js). La app nació limpia en el esquema 7: no migra datos anteriores.
+  // VERSIÓN DEL ESQUEMA / aplicarMigraciones (core-state.js). La app nació limpia en el esquema 7: no migra datos anteriores a 7.
+  // Desde el 7 sí hay migraciones (MIGRACIONES): v8 = una sola tasa de Nu (S.nuRate).
   const test = require('node:test');
   const assert = require('node:assert/strict');
   const path = require('node:path');
@@ -371,9 +372,43 @@ describe('migraciones', () => {
   const app = () => loadApp([path.join(CORE_DIR, 'core-state.js')]);
   const plano = x => JSON.parse(JSON.stringify(x));
 
-  test('datos nuevos (sin schemaVersion) nacen en la versión base (7)', () => {
+  test('datos nuevos (sin schemaVersion) nacen en la versión actual (8)', () => {
     const d = plano(app().aplicarMigraciones({ cuentas: [] }));
-    assert.equal(d.schemaVersion, 7);
+    assert.equal(d.schemaVersion, 8);
+  });
+
+  describe('v8 — una sola tasa de Nu (S.nuRate)', () => {
+    const v7 = extra => ({ schemaVersion: 7, ...extra });
+    test('la tasa que el usuario escribía (nuTasaGlobal) pasa a nuRate; se borran nuTasaGlobal y la `tasa` de cada cajita', () => {
+      const d = plano(app().aplicarMigraciones(v7({ nuRate: 9.25, nuTasaGlobal: 12.5, cajitas: [{ id: 'a', tasa: 9.3 }, { id: 'b', tasa: 9.25 }] })));
+      assert.equal(d.schemaVersion, 8);
+      assert.equal(d.nuRate, 12.5);
+      assert.equal('nuTasaGlobal' in d, false);
+      assert.equal(d.cajitas.some(c => 'tasa' in c), false);
+    });
+    test('con cajitas y sin tasa escrita queda la que se venía usando (nuRate, o 9,25 si faltaba)', () => {
+      assert.equal(plano(app().aplicarMigraciones(v7({ nuRate: 9.4, cajitas: [{ id: 'a' }] }))).nuRate, 9.4);
+      assert.equal(plano(app().aplicarMigraciones(v7({ cajitas: [{ id: 'a' }] }))).nuRate, 9.25);
+    });
+    test('sin cajitas ni tasa escrita queda SIN configurar (el 9,25 antiguo lo ponía la app, no el usuario)', () => {
+      assert.equal(plano(app().aplicarMigraciones(v7({ nuRate: 9.25, cajitas: [] }))).nuRate, null);
+      assert.equal(plano(app().aplicarMigraciones(v7({}))).nuRate, null);
+    });
+    test('un nuTasaGlobal inválido (0, texto, null) no se usa como tasa', () => {
+      for (const malo of [0, -2, 'abc', null]) {
+        assert.equal(plano(app().aplicarMigraciones(v7({ nuRate: 9.25, nuTasaGlobal: malo, cajitas: [] }))).nuRate, null, String(malo));
+      }
+    });
+    test('los CDT conservan su tasa propia y el historial de tasas no se toca', () => {
+      const historialTasasNu = [{ fecha: '2026-01-01', tasa: 9 }];
+      const d = plano(app().aplicarMigraciones(v7({ nuTasaGlobal: 10, historialTasasNu, cajitas: [{ id: 'a', tasa: 9.3, cdts: [{ id: 'x', tasa: 5 }] }] })));
+      assert.equal(d.cajitas[0].cdts[0].tasa, 5);
+      assert.deepEqual(d.historialTasasNu, historialTasasNu);
+    });
+    test('un backup ya migrado (esquema 8) no se vuelve a tocar', () => {
+      const d = plano(app().aplicarMigraciones({ schemaVersion: 8, nuRate: null, cajitas: [{ id: 'a' }] }));
+      assert.equal(d.nuRate, null);
+    });
   });
 
   test('es idempotente: aplicarla dos veces no cambia nada', () => {
@@ -401,6 +436,75 @@ describe('migraciones', () => {
     const ctx = app();
     assert.equal(ctx.aplicarMigraciones(null), null);
     assert.equal(ctx.aplicarMigraciones(undefined), undefined);
+  });
+});
+
+describe('backup-import', () => {
+  // Validación de un backup JSON antes de importarlo (configuracion.js, _validarEstructuraJSON) y el viaje exportar → migrar → importar.
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f);
+  const modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const app = () => loadApp([core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('configuracion.js')], { permissive: true });
+  const plano = x => JSON.parse(JSON.stringify(x));
+
+  test('un backup exportado sin tasa de Nu (nuRate: null) se puede importar', () => {
+    const ctx = app();
+    assert.deepEqual(plano(ctx._validarEstructuraJSON({ schemaVersion: 8, nuRate: null, cajitas: [] })), []);
+  });
+  test('nuRate numérico sigue siendo válido; texto u otro tipo se rechaza', () => {
+    const ctx = app();
+    assert.deepEqual(plano(ctx._validarEstructuraJSON({ schemaVersion: 8, nuRate: 9.3, cajitas: [] })), []);
+    for (const malo of ['9,3', true, {}, []]) {
+      assert.equal(ctx._validarEstructuraJSON({ schemaVersion: 8, nuRate: malo, cajitas: [] }).length, 1, JSON.stringify(malo));
+    }
+  });
+  test('un backup del esquema 7 (con nuTasaGlobal y `tasa` por cajita) se valida y, al migrarlo, queda en la forma nueva', () => {
+    const ctx = app();
+    const viejo = { schemaVersion: 7, nuRate: 9.25, nuTasaGlobal: 11, cajitas: [{ id: 'a', saldo: 5, tasa: 11 }] };
+    assert.deepEqual(plano(ctx._validarEstructuraJSON(viejo)), []);
+    const nuevo = plano(ctx.aplicarMigraciones(plano(viejo)));
+    assert.equal(nuevo.nuRate, 11);
+    assert.equal('nuTasaGlobal' in nuevo, false);
+    assert.equal('tasa' in nuevo.cajitas[0], false);
+    assert.deepEqual(plano(ctx._validarEstructuraJSON(nuevo)), [], 'lo migrado se vuelve a poder exportar e importar');
+  });
+  test('un backup de una versión más nueva que la app se rechaza', () => {
+    const ctx = app();
+    assert.match(ctx._validarEstructuraJSON({ schemaVersion: 99, cajitas: [] })[0], /más nueva/);
+  });
+});
+
+describe('archivos-cargados', () => {
+  // Guardia contra el bug de color-picker.js: un archivo de js/ que ninguna página carga. selColorNC() lo usaba por nombre y,
+  // sin <script> en index.html ni grupo lazy, lanzaba ReferenceError en el navegador mientras todos los tests pasaban (los
+  // tests cargan los archivos a mano). Cada archivo de js/core y js/modules tiene que llegar al navegador por alguna vía:
+  //   · un <script src> en index.html, · un grupo de Loader.GROUPS (lazy-loader.js), · un `import` desde otro archivo.
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs');
+  const path = require('node:path');
+
+  const RAIZ = path.join(__dirname, '..');
+  const leer = f => fs.readFileSync(path.join(RAIZ, f), 'utf8');
+  const listar = d => fs.existsSync(path.join(RAIZ, d)) ? fs.readdirSync(path.join(RAIZ, d)).filter(f => f.endsWith('.js')).map(f => d + '/' + f) : [];
+
+  test('todo js/core y js/modules se carga desde index.html, el cargador lazy o un import', () => {
+    const index = leer('index.html');
+    const lazy = fs.existsSync(path.join(RAIZ, 'js/core/lazy-loader.js')) ? leer('js/core/lazy-loader.js') : '';
+    const archivos = [...listar('js/core'), ...listar('js/modules')];
+    const importados = new Set();
+    archivos.forEach(f => { for (const m of leer(f).matchAll(/import[^'"]*['"]\.\/([\w-]+\.js)['"]/g)) importados.add(m[1]); });
+    const sinCargar = archivos.filter(f => {
+      const nombre = path.basename(f);
+      const enIndex = new RegExp('<script[^>]*src="' + f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '"').test(index);
+      return !(enIndex || lazy.includes(nombre) || importados.has(nombre));
+    });
+    assert.deepEqual(sinCargar, [], 'archivos que ninguna página carga (¿falta el <script> en index.html o el grupo lazy?):\n  ' + sinCargar.join('\n  '));
   });
 });
 

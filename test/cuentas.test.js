@@ -294,7 +294,7 @@ describe('calcC-calcCDT', () => {
   }
 
   test('calcC — cajita sin fecha (recién creada, saldo aún no empezó a ganar) devuelve el saldo tal cual', () => {
-    const ctx = freshApp({ nuTasaGlobal: 9.3 });
+    const ctx = freshApp({ nuRate: 9.3 });
     const c = { id: 'nu1', nombre: 'Ahorros', saldo: 500000, fecha: null };
     const r = ctx.calcC(c);
     assert.equal(r.val, 500000);
@@ -307,7 +307,7 @@ describe('calcC-calcCDT', () => {
     // compuesto, base 365. Un año exacto de interés compuesto diario a la
     // tasa EA X% debe dar como resultado EXACTAMENTE X% de crecimiento —
     // es la propiedad matemática que define qué es una tasa "efectiva anual".
-    const ctx = freshApp({ nuTasaGlobal: 9.3003 });
+    const ctx = freshApp({ nuRate: 9.3003 });
     const c = { id: 'nu1', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(365) };
     const r = ctx.calcC(c);
     const esperado = 1000000 * 1.093003;
@@ -323,15 +323,15 @@ describe('calcC-calcCDT', () => {
     // sin tramos).
     //
     // OJO con _tasaVigenteEnFecha: una fecha anterior a CUALQUIER entrada
-    // de historialTasasNu usa hist[0].tasa, NO nuTasaGlobal — por eso acá
+    // de historialTasasNu usa hist[0].tasa, NO nuRate — por eso acá
     // hay que registrar la tasa vieja como su propia entrada del
-    // historial (no alcanza con nuTasaGlobal solo).
+    // historial (no alcanza con nuRate solo).
     const tasaVieja = 9.0;
     const tasaNueva = 9.3;
     const inicioPeriodo = daysAgo(20);
     const fechaCambio = daysAgo(10);
     const ctxTramos = freshApp({
-      nuTasaGlobal: tasaNueva,
+      nuRate: tasaNueva,
       historialTasasNu: [
         { fecha: inicioPeriodo, tasa: tasaVieja },
         { fecha: fechaCambio, tasa: tasaNueva },
@@ -340,7 +340,7 @@ describe('calcC-calcCDT', () => {
     const c1 = { id: 'nu1', saldo: 1000000, fecha: inicioPeriodo };
     const porTramos = ctxTramos.calcC(c1).val;
 
-    const ctxIngenuo = freshApp({ nuTasaGlobal: tasaNueva }); // sin historial → toda la tasa nueva
+    const ctxIngenuo = freshApp({ nuRate: tasaNueva }); // sin historial → toda la tasa nueva
     const c2 = { id: 'nu1', saldo: 1000000, fecha: inicioPeriodo };
     const ingenuo = ctxIngenuo.calcC(c2).val;
 
@@ -351,7 +351,7 @@ describe('calcC-calcCDT', () => {
 
   test('calcC — incluye el saldo de encargos guardados en esa cajita como base del interés (gana intereses también)', () => {
     const ctx = freshApp({
-      nuTasaGlobal: 9.3,
+      nuRate: 9.3,
       cajitas: [{ id: 'nu1', saldo: 500000, fecha: daysAgo(30) }],
       encargos: [{ saldoInicial: 200000, cuentaInicial: 'cajita:nu1', movimientos: [] }],
     });
@@ -359,7 +359,7 @@ describe('calcC-calcCDT', () => {
     const conEncargo = ctx.calcC(c).val;
 
     const ctxSinEncargo = freshApp({
-      nuTasaGlobal: 9.3,
+      nuRate: 9.3,
       cajitas: [{ id: 'nu1', saldo: 500000, fecha: daysAgo(30) }],
     });
     const sinEncargo = ctxSinEncargo.calcC(ctxSinEncargo.S.cajitas[0]).val;
@@ -404,7 +404,7 @@ describe('calcC-calcCDT', () => {
 
   test('calcPatrimonioTotal — usa calcC (interés real de nu-calc.js), no el saldo crudo', () => {
     const ctx = freshApp({
-      nuTasaGlobal: 9.3003,
+      nuRate: 9.3003,
       cajitas: [{ id: 'nu1', saldo: 1000000, fecha: daysAgo(365) }],
     });
     const patrimonio = ctx.calcPatrimonioTotal();
@@ -417,7 +417,7 @@ describe('calcC-calcCDT', () => {
   const mesDe = f => f.slice(0, 7);
 
   test('rendimientoCajitaPorMes — repartido por mes suma exactamente calcC(c).ganado y cada mes cae en su mes', () => {
-    const ctx = freshApp({ nuTasaGlobal: 9.3, cajitas: [] });
+    const ctx = freshApp({ nuRate: 9.3, cajitas: [] });
     const c = { id: 'nu1', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(75) };
     const porMes = ctx.rendimientoCajitaPorMes(c);
     const suma = Object.values(porMes).reduce((a, b) => a + b, 0);
@@ -428,7 +428,7 @@ describe('calcC-calcCDT', () => {
   });
 
   test('calcC(c, hasta) — sin argumento es idéntico a antes; con una fecha pasada da el valor a ese día', () => {
-    const ctx = freshApp({ nuTasaGlobal: 9.3 });
+    const ctx = freshApp({ nuRate: 9.3 });
     const c = { id: 'nu1', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(40) };
     assert.equal(ctx.calcC(c).val, ctx.calcC(c, daysAgo(0)).val);
     assert.equal(ctx.calcC(c, c.fecha).ganado, 0);
@@ -437,7 +437,7 @@ describe('calcC-calcCDT', () => {
 
   test('materializarIntereses — anota lo ganado por mes en c.rendimientos y Periodo.rendimientosDelMes lo reporta sin tocar el ingreso', () => {
     const c = { id: 'nu1', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(75) };
-    const ctx = freshApp({ nuTasaGlobal: 9.3, cajitas: [c], movimientos: [], gastosVar: [], modulos: {}, ingresosFijos: [], pagosGastosFijos: {} });
+    const ctx = freshApp({ nuRate: 9.3, cajitas: [c], movimientos: [], gastosVar: [], modulos: {}, ingresosFijos: [], pagosGastosFijos: {} });
     const ganado = ctx.calcC(c).ganado;
     ctx.materializarIntereses(c);
     const anotado = Object.values(c.rendimientos).reduce((a, b) => a + b, 0);
@@ -520,7 +520,7 @@ describe('cdt-campos', () => {
       const app = loadApp(ARCHIVOS, { permissive: true });
       Object.assign(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [],
         cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
-        cajitas: [{ id: 'a', nombre: 'A', saldo, fecha: app.hoy(), tasa: 9.25,
+        cajitas: [{ id: 'a', nombre: 'A', saldo, fecha: app.hoy(),
           cdts: [{ id: 'd1', monto: 1000000, tasa: 9.25, rte: 4, inicio: '2026-01-01', vence: '2027-01-01' }] }] });
       const campos = domFalso(app);
       const toasts = [], cerrados = [];
@@ -606,9 +606,14 @@ describe('chequeo-nu', () => {
   function entornoChequeo({ cajitas, lecturas, dialogoRespuesta = true }) {
     const app = loadApp(ARCHIVOS, { permissive: true });
     const hoyStr = app.hoy();
-    Object.assign(app.S, { movimientos: [], gastosVar: [], encargos: [], chequeosNu: [], historialTasasNu: [],
+    // El chequeo solo existe con la tasa configurada y con cajitas que ya llevan un día completo de intereses
+    // (por defecto, 3 días: así las pruebas de abajo siguen midiendo lo suyo; qué cajitas entran se prueba en
+    // 'chequeo-nu — qué cajitas entran').
+    const hace3 = new Date(Date.now() - 3 * 86400000);
+    const fechaApta = hace3.getFullYear() + '-' + String(hace3.getMonth() + 1).padStart(2, '0') + '-' + String(hace3.getDate()).padStart(2, '0');
+    Object.assign(app.S, { movimientos: [], gastosVar: [], encargos: [], chequeosNu: [], historialTasasNu: [], nuRate: 9.3,
       cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
-      cajitas: cajitas.map(c => ({ nombre: c.id.toUpperCase(), fecha: hoyStr, ...c })) });
+      cajitas: cajitas.map(c => ({ nombre: c.id.toUpperCase(), fecha: fechaApta, ...c })) });
     const inputs = Object.entries(lecturas).map(([id, value]) => ({ value, dataset: { chqCajita: id } }));
     app.document.querySelectorAll = sel => (String(sel).includes('data-chq-cajita') ? inputs : []);
     const toasts = [], dialogos = [], cerrados = [];
@@ -757,7 +762,7 @@ describe('nu-cdt', () => {
 
   function entornoNu({ tipo = 'salida', saldo = 5000, monto, desc = 'Pago', nombre = 'Cajita <A>' }) {
     const app = loadApp(ARCHIVOS, { permissive: true });
-    Object.assign(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [],
+    Object.assign(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [], nuRate: 9.3,
       cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
       cajitas: [{ id: 'a', nombre, saldo, fecha: app.hoy() }] });
     const campos = domFalso(app);
@@ -825,7 +830,7 @@ describe('nu-cdt', () => {
       const app = loadApp(ARCHIVOS, { permissive: true });
       Object.assign(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [],
         cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
-        cajitas: [{ id: 'a', nombre: 'A', saldo, fecha: app.hoy(), tasa: 9.25 }] });
+        cajitas: [{ id: 'a', nombre: 'A', saldo, fecha: app.hoy() }] });
       const campos = domFalso(app);
       const toasts = [], cerrados = [];
       let guardados = 0;
@@ -897,7 +902,7 @@ describe('restar-dinero', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
   function entorno({ fuente = 'nequi', saldo = 5000, monto, desc = 'Retiro de prueba' }) {
@@ -1217,7 +1222,7 @@ describe('spotify-cajita', () => {
   });
 
   test('getSpCajitaSaldo — suma el interés real de calcC cuando la cajita tiene fecha', () => {
-    const ctx = freshApp({ nuTasaGlobal: 9.3003, cajitas: [{ id: 's1', nombre: 'Spotify', saldo: 1000000, fecha: hace(365) }] });
+    const ctx = freshApp({ nuRate: 9.3003, cajitas: [{ id: 's1', nombre: 'Spotify', saldo: 1000000, fecha: hace(365) }] });
     assert.ok(ctx.getSpCajitaSaldo() > 1050000);
   });
 });
@@ -1415,5 +1420,414 @@ describe('eliminar-movimiento', () => {
     assert.equal(e.saldo('nequi'), 10000); assert.equal(e.saldo('efectivo'), 5000);
     assert.equal(e.dialogos(), 1);
     assert.equal(e.app.S.gastosVar.length, 0);
+  });
+});
+
+describe('cuenta-iconos-colores', () => {
+  // "Nueva cuenta" / "Editar cuenta": el ícono y el color elegidos se marcan (cuentas.js + js/core/color-picker.js).
+  // Causa del bug: color-picker.js no tenía <script> en index.html, así que selColorNC() lanzaba ReferenceError antes de
+  // que selIconoNC() terminara de pintar; la cuenta se guardaba bien pero la pantalla seguía mostrando "Otra".
+  const { test, describe } = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f);
+  const modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('color-picker.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ACENTO = '2px solid var(--accent)';
+
+  // Círculos de color e íconos falsos: lo único que importa es qué borde les queda.
+  function pantalla(app, { colores = [], iconos = [] }) {
+    const circulos = colores.map(color => ({ dataset: { color }, style: {} }));
+    const botones = iconos.map(id => ({ dataset: { icono: id }, style: {} }));
+    app.document.querySelectorAll = sel => (sel === '.nc-color-opt' ? circulos : sel === '.nc-icon-opt' ? botones : []);
+    return { circulos, botones };
+  }
+
+  test('index.html carga color-picker.js (sin ese <script>, selColorNC no existía en la página)', () => {
+    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    assert.match(html, /<script src="js\/core\/color-picker\.js" defer><\/script>/);
+  });
+
+  test('elegir un color marca solo ese círculo', () => {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    const p = pantalla(app, { colores: ['#60b0f0', '#f06868', '#b090f0'] });
+    app.selColorNC('#f06868');
+    assert.deepEqual(p.circulos.map(c => c.style.border), ['2px solid transparent', ACENTO, '2px solid transparent']);
+    app.selColorNC('#b090f0');
+    assert.deepEqual(p.circulos.map(c => c.style.border), ['2px solid transparent', '2px solid transparent', ACENTO]);
+  });
+
+  test('elegir un ícono no lanza, lo marca, desmarca "Otra" y marca el color de esa marca', () => {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    const colorNequi = app.getIconoData('nequi').color;
+    const p = pantalla(app, { colores: ['#000001', colorNequi], iconos: ['otro', 'nequi'] });
+    p.botones[0].style.border = ACENTO; // "Otra" viene marcada por defecto
+    assert.doesNotThrow(() => app.selIconoNC('nequi'));
+    assert.equal(p.botones[1].style.border, ACENTO);
+    assert.notEqual(p.botones[0].style.border, ACENTO);
+    assert.equal(p.circulos[1].style.border, ACENTO, 'el color de la marca queda marcado');
+    assert.equal(p.circulos[0].style.border, '2px solid transparent');
+  });
+
+  test('editar una cuenta vuelve a dibujar el grid de íconos (marca SU ícono, no el último que se dibujó)', () => {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    app.S.cuentas = [{ id: 'c1', tipo: 'custom', nombre: 'Mi banco', icono: 'bbva', color: '#60b0f0', saldo: 0 }];
+    const el = () => ({ value: '', style: {}, closest: () => ({ style: {} }), dataset: {} });
+    app.document.getElementById = () => el();
+    app.document.querySelector = () => el();
+    pantalla(app, { colores: ['#60b0f0'] });
+    let dibujos = 0;
+    app.renderIconGrid = () => { dibujos++; };
+    app.openSheet = () => {};
+    app.editarCuentaCustom('c1');
+    assert.equal(dibujos, 1);
+  });
+});
+
+describe('nu-tasa-global', () => {
+  // Una sola tasa EA para todas las cajitas de Nu: S.nuRate (null = sin configurar). Los CDT guardan la suya.
+  const { test, describe } = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f);
+  const modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const hace = n => { const d = new Date(Date.now() - n * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const app = (S = {}) => { const a = loadApp(ARCHIVOS, { permissive: true }); Object.assign(a.S, S); return a; };
+
+  describe('qué cuenta como "tasa configurada"', () => {
+    test('el estado nuevo no trae tasa (ya no se inventa 9,25)', () => {
+      const a = app();
+      assert.equal(a.S.nuRate, null);
+      assert.equal('nuTasaGlobal' in a.S, false);
+      assert.equal(a.nuTasaConfigurada(), false);
+      assert.equal(a.getNuTasaGlobal(), 0);
+    });
+    test('solo un número mayor que 0 cuenta', () => {
+      for (const [v, ok] of [[9.25, true], [0.5, true], [0, false], [-1, false], [null, false], [undefined, false], ['9', false], [NaN, false]]) {
+        assert.equal(app({ nuRate: v }).nuTasaConfigurada(), ok, String(v));
+      }
+    });
+    test('nuTasaDesdeTexto: acepta "9,25" y "12.5"; vacío, texto, 0 y negativos son null', () => {
+      const a = app();
+      assert.equal(a.nuTasaDesdeTexto('9,25'), 9.25);
+      assert.equal(a.nuTasaDesdeTexto('12.5'), 12.5);
+      for (const t of ['', ' ', '0', '-3', 'abc', null, undefined]) assert.equal(a.nuTasaDesdeTexto(t), null, String(t));
+    });
+  });
+
+  describe('todas las cajitas calculan con S.nuRate; el CDT con la suya', () => {
+    test('calcC usa nuRate (una cajita sin campo `tasa`)', () => {
+      const a = app({ nuRate: 12 });
+      const c = { id: 'a', saldo: 100000, fecha: hace(10) };
+      assert.equal(a.calcC(c).tasa, 12);
+      const esperado = 100000 * (Math.pow(1.12, 10 / 365) - 1);
+      assert.ok(Math.abs(a.calcC(c).ganado - esperado) < 0.01);
+    });
+    test('dos cajitas con distinto saldo usan la misma tasa; cambiar nuRate cambia las dos', () => {
+      const a = app({ nuRate: 10 });
+      const c1 = { id: 'a', saldo: 100000, fecha: hace(30) }, c2 = { id: 'b', saldo: 50000, fecha: hace(30) };
+      assert.equal(a.calcC(c1).tasa, a.calcC(c2).tasa);
+      const antes = a.calcC(c1).ganado;
+      a.S.nuRate = 20;
+      assert.ok(a.calcC(c1).ganado > antes);
+    });
+    test('sin tasa configurada no hay intereses (en vez de inventar una)', () => {
+      const a = app({ nuRate: null });
+      const r = a.calcC({ id: 'a', saldo: 100000, fecha: hace(30) });
+      assert.equal(r.ganado, 0);
+      assert.equal(r.val, 100000);
+    });
+    test('un CDT conserva su tasa propia aunque cambie la global', () => {
+      const a = app({ nuRate: 12 });
+      const cdt = { monto: 100000, tasa: 5, rte: 0, inicio: hace(73), vence: hace(-300) };
+      const esperado = Math.round(100000 * (Math.pow(1.05, 73 / 365) - 1) * 2) / 2;
+      assert.equal(a.calcCDT(cdt).ganado_bruto, esperado);
+      a.S.nuRate = 30;
+      assert.equal(a.calcCDT(cdt).ganado_bruto, esperado);
+    });
+    test('el historial de tasas manda sobre nuRate para los días anteriores al cambio', () => {
+      const a = app({ nuRate: 9.3, historialTasasNu: [{ fecha: hace(20), tasa: 9 }, { fecha: hace(10), tasa: 9.3 }] });
+      assert.equal(a.calcC({ id: 'a', saldo: 1000000, fecha: hace(20) }).tasa, 9.3, 'la tasa de hoy es la de nuRate');
+      assert.ok(a.calcC({ id: 'a', saldo: 1000000, fecha: hace(20) }).val < 1000000 * Math.pow(1.093, 20 / 365));
+    });
+  });
+
+  describe('guardar y precargar', () => {
+    test('save() no copia la tasa a cada cajita', () => {
+      const a = app({ nuRate: 9.3, cajitas: [{ id: 'a', nombre: 'A', saldo: 0, cdts: [] }] });
+      a.save();
+      assert.equal('tasa' in a.S.cajitas[0], false);
+    });
+    test('el CDT nuevo se precarga con la tasa global (se puede cambiar) y vacío si no hay tasa', () => {
+      for (const [nuRate, esperado] of [[11.5, '11,5'], [null, '']]) {
+        const a = app({ nuRate, cajitas: [{ id: 'a', nombre: 'A', saldo: 5000, fecha: hace(2), cdts: [] }] });
+        const cache = {};
+        const el = () => ({ value: 'x', textContent: '', innerHTML: '', style: {}, dataset: {}, focus() {}, readOnly: false });
+        a.document.getElementById = id => (cache[id] = cache[id] || el());
+        a.openSheet = () => {};
+        a.abrirCrearCDT('a');
+        assert.equal(cache.cdt_tasa.value, esperado);
+      }
+    });
+  });
+});
+
+describe('nu-acciones', () => {
+  // "Entró plata", "Salió plata", "Chequeo rápido" y "Agregar cajita" dependen de la tasa y de las cajitas: el botón sale
+  // deshabilitado con su motivo y cada acción lo vuelve a comprobar (por si se llama de otra forma). Chequeo rápido: solo
+  // entran las cajitas que ya generaron intereses un día completo, cada una por su cuenta.
+  const { test, describe } = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f);
+  const modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const hace = n => { const d = new Date(Date.now() - n * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const caja = (id, saldo, fecha) => ({ id, nombre: 'Cajita ' + id, saldo, fecha, cdts: [] });
+
+  function entorno({ nuRate = 9.3, cajitas = [], chequeosNu = [] } = {}) {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    Object.assign(app.S, { nuRate, cajitas, chequeosNu, movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [], libro: [],
+      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }] });
+    const cache = {};
+    const el = () => ({ value: '', textContent: '', innerHTML: '', disabled: false, title: '', style: {}, dataset: {}, attrs: {}, enfocado: false,
+      setAttribute(k, v) { this.attrs[k] = v; }, focus() { this.enfocado = true; }, addEventListener() {},
+      querySelector: () => null, querySelectorAll: () => [], classList: { add() {}, remove() {}, toggle() {}, contains: () => false } });
+    app.document.getElementById = id => (cache[id] = cache[id] || el());
+    const toasts = [], abiertos = [];
+    app.toast = (msg, tipo, ms) => toasts.push({ msg, tipo, ms });
+    app.openSheet = n => abiertos.push(n);
+    app.closeSheet = () => {};
+    app.save = () => {};
+    app.refresh = () => {};
+    return { app, campos: cache, toasts, abiertos, btn: id => app.document.getElementById(id) };
+  }
+
+  describe('botones de Nu', () => {
+    test('sin cajitas: Entró, Salió y Chequeo salen deshabilitados', () => {
+      const e = entorno({ cajitas: [] });
+      e.app.actualizarBotonesNu();
+      for (const id of ['btn-nu-entro', 'btn-nu-salio', 'btn-nu-chequeo']) {
+        assert.equal(e.btn(id).disabled, true, id);
+        assert.match(e.btn(id).title, /cajita/i, id + ': el título dice por qué');
+      }
+    });
+    test('sin tasa: no se puede crear cajita, el aviso de tasa se ve y las acciones siguen cerradas', () => {
+      const e = entorno({ nuRate: null, cajitas: [] });
+      e.app.actualizarBotonesNu();
+      assert.equal(e.btn('btnAddCajita').disabled, true);
+      assert.notEqual(e.btn('nuTasaAviso').style.display, 'none');
+      e.app.S.nuRate = 9.3; e.app.actualizarBotonesNu();
+      assert.equal(e.btn('btnAddCajita').disabled, false);
+      assert.equal(e.btn('nuTasaAviso').style.display, 'none');
+    });
+    test('cajita sin saldo: Entró sí; Salió y Chequeo no', () => {
+      const e = entorno({ cajitas: [caja('a', 0, hace(0))] });
+      e.app.actualizarBotonesNu();
+      assert.equal(e.btn('btn-nu-entro').disabled, false);
+      assert.equal(e.btn('btn-nu-salio').disabled, true);
+      assert.equal(e.btn('btn-nu-chequeo').disabled, true);
+    });
+    test('cajita con saldo y un día de intereses: los tres se habilitan', () => {
+      const e = entorno({ cajitas: [caja('a', 50000, hace(1))] });
+      e.app.actualizarBotonesNu();
+      for (const id of ['btn-nu-entro', 'btn-nu-salio', 'btn-nu-chequeo']) assert.equal(e.btn(id).disabled, false, id);
+    });
+    test('se actualizan solos cuando cambia el estado (renderCajitas los reevalúa)', () => {
+      const e = entorno({ cajitas: [] });
+      e.app.renderCajitas();
+      assert.equal(e.btn('btn-nu-entro').disabled, true);
+      e.app.S.cajitas.push(caja('a', 50000, hace(0)));
+      e.app.renderCajitas();
+      assert.equal(e.btn('btn-nu-entro').disabled, false);
+      assert.equal(e.btn('btn-nu-chequeo').disabled, true, 'la cajita es de hoy: aún no cumple su primer día');
+      e.app.S.cajitas[0].fecha = hace(1);
+      e.app.renderCajitas();
+      assert.equal(e.btn('btn-nu-chequeo').disabled, false);
+    });
+  });
+
+  describe('la lógica de cada acción también lo comprueba', () => {
+    test('abrirNuMovimiento sin cajitas no abre el sheet y explica', () => {
+      const e = entorno({ cajitas: [] });
+      e.app.abrirNuMovimiento('entrada'); e.app.abrirNuMovimiento('salida');
+      assert.deepEqual(e.abiertos, []);
+      assert.equal(e.toasts.length, 2);
+      assert.match(e.toasts[0].msg, /cajita/i);
+    });
+    test('abrirNuMovimiento sin tasa no abre el sheet', () => {
+      const e = entorno({ nuRate: null, cajitas: [caja('a', 1000, hace(1))] });
+      e.app.abrirNuMovimiento('entrada');
+      assert.deepEqual(e.abiertos, []);
+      assert.match(e.toasts.at(-1).msg, /tasa/i);
+    });
+    test('"Salió plata" exige alguna cajita con saldo; "Entró plata" no', () => {
+      const e = entorno({ cajitas: [caja('a', 0, hace(0))] });
+      e.app.abrirNuMovimiento('salida');
+      assert.deepEqual(e.abiertos, []);
+      e.app.abrirNuMovimiento('entrada');
+      assert.deepEqual(e.abiertos, ['nu-movimiento']);
+    });
+    test('addCajita sin tasa: no crea nada, avisa y lleva el cursor al campo de la tasa', () => {
+      const e = entorno({ nuRate: null });
+      e.app.addCajita();
+      assert.equal(e.app.S.cajitas.length, 0);
+      assert.match(e.toasts.at(-1).msg, /tasa/i);
+      assert.equal(e.btn('nuTasaGlobal').enfocado, true);
+      e.app.S.nuRate = 9.3;
+      e.app.addCajita();
+      assert.equal(e.app.S.cajitas.length, 1);
+      assert.equal('tasa' in e.app.S.cajitas[0], false, 'la cajita no guarda tasa propia');
+    });
+  });
+
+  describe('qué cajitas entran al Chequeo rápido (una por una)', () => {
+    test('cajitaGeneraIntereses mide el reloj de los intereses: con saldo y al menos un día', () => {
+      const e = entorno({ cajitas: [caja('a', 100000, hace(3)), caja('b', 100000, hace(0)), caja('c', 0, hace(9))] });
+      const [a, b, c] = e.app.S.cajitas;
+      assert.equal(e.app.cajitaGeneraIntereses(a), true);
+      assert.equal(e.app.cajitaGeneraIntereses(b), false, 'de hoy: aún no cumple un día');
+      assert.equal(e.app.cajitaGeneraIntereses(c), false, 'vacía: no genera nada aunque lleve días creada');
+    });
+    test('sin tasa ninguna cajita cuenta', () => {
+      const e = entorno({ nuRate: null, cajitas: [caja('a', 100000, hace(3))] });
+      assert.equal(e.app.cajitaGeneraIntereses(e.app.S.cajitas[0]), false);
+    });
+    test('una cajita nueva no sale en el chequeo mientras las que ya cumplen siguen', () => {
+      const e = entorno({ cajitas: [caja('a', 100000, hace(3)), caja('b', 100000, hace(0))] });
+      assert.deepEqual(e.app.cajitasChequeables().map(c => c.id), ['a']);
+      e.app.S.cajitas[1].fecha = hace(1); // pasó su primer día
+      assert.deepEqual(e.app.cajitasChequeables().map(c => c.id), ['a', 'b']);
+    });
+    test('una cajita ya chequeada HOY sigue disponible hoy (para corregir la lectura)', () => {
+      const e = entorno({ cajitas: [caja('a', 100000, hace(0))], chequeosNu: [{ fecha: hace(0), cajitaId: 'a', saldoReal: 100000 }] });
+      assert.deepEqual(e.app.cajitasChequeables().map(c => c.id), ['a']);
+      e.app.S.chequeosNu[0].fecha = hace(1);
+      assert.deepEqual(e.app.cajitasChequeables(), [], 'un chequeo de ayer no la mantiene');
+    });
+    test('abrirChequeoNu: no abre si ninguna cumple y explica; abre si alguna cumple', () => {
+      const e = entorno({ cajitas: [caja('b', 100000, hace(0))] });
+      e.app.abrirChequeoNu();
+      assert.deepEqual(e.abiertos, []);
+      assert.match(e.toasts.at(-1).msg, /día completo/);
+      e.app.S.cajitas.push(caja('a', 100000, hace(2)));
+      e.app.abrirChequeoNu();
+      assert.deepEqual(e.abiertos, ['chequeo-nu']);
+    });
+    test('guardarChequeoNu ignora la cajita que aún no cumple aunque llegue su campo', async () => {
+      const e = entorno({ cajitas: [caja('a', 100000, hace(3)), caja('b', 100000, hace(0))] });
+      e.app.dialogo = async () => true;
+      e.app.document.querySelectorAll = sel => (String(sel).includes('data-chq-cajita')
+        ? [{ value: '100.500,00', dataset: { chqCajita: 'a' } }, { value: '999.999,00', dataset: { chqCajita: 'b' } }] : []);
+      await e.app.guardarChequeoNu();
+      assert.equal(e.app.S.cajitas[1].saldo, 100000, 'b no se toca');
+      assert.deepEqual(e.app.S.chequeosNu.map(c => c.cajitaId), ['a']);
+    });
+    test('guardarChequeoNu sin ninguna cajita que cumpla: avisa y no guarda', async () => {
+      const e = entorno({ cajitas: [caja('b', 100000, hace(0))] });
+      e.app.document.querySelectorAll = () => [{ value: '100.000,00', dataset: { chqCajita: 'b' } }];
+      await e.app.guardarChequeoNu();
+      assert.deepEqual(e.app.S.chequeosNu, []);
+      assert.match(e.toasts.at(-1).msg, /día completo/);
+    });
+  });
+
+  describe('el reloj de los intereses arranca con el primer depósito', () => {
+    // materializarIntereses() solo avanzaba c.fecha si había intereses que sellar. Con la cajita en $0 se quedaba en el día
+    // de creación y el primer depósito (días después) ganaba intereses retroactivos de los días que la cajita estuvo vacía.
+    test('depósito en una cajita vacía creada hace 5 días: no hay intereses retroactivos', () => {
+      const e = entorno({ cajitas: [caja('a', 0, hace(5))] });
+      e.app.sumarFuente('cajita:a', 100000, { origen: { modulo: 'test', ref: 'r1' } });
+      const c = e.app.S.cajitas[0];
+      assert.equal(c.fecha, hace(0));
+      assert.equal(e.app.calcC(c).dias, 0);
+      assert.equal(e.app.calcC(c).ganado, 0);
+      assert.equal(e.app.cajitaGeneraIntereses(c), false, 'recién depositada: aún no cumple su primer día');
+    });
+    test('con saldo ya existente no cambia nada: los intereses se sellan como siempre', () => {
+      const e = entorno({ cajitas: [caja('a', 100000, hace(30))] });
+      const antes = e.app.calcC(e.app.S.cajitas[0]).ganado;
+      e.app.materializarIntereses(e.app.S.cajitas[0]);
+      assert.ok(antes > 0);
+      assert.ok(Math.abs(e.app.S.cajitas[0].saldo - (100000 + antes)) < 0.01);
+    });
+  });
+});
+
+describe('retirar-sin-saldo', () => {
+  // Efectivo, Nequi y cuentas personalizadas (y cajitas): el botón de retirar sale deshabilitado con saldo 0 y abrirRestarDinero()
+  // lo vuelve a comprobar. Que un monto mayor al saldo se rechace ya lo cubre 'restar-dinero'.
+  const { test } = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f);
+  const modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+
+  const FUENTES = [['efectivo', 'efectivo'], ['Nequi', 'nequi'], ['cuenta personalizada', 'custom:z']];
+
+  function entorno(fuente, saldo) {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    Object.assign(app.S, { cajitas: [], movimientos: [], gastosVar: [], cuentas: [
+      { id: 'nequi', tipo: 'nequi', saldo: fuente === 'nequi' ? saldo : 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: fuente === 'efectivo' ? saldo : 0 },
+      { id: 'z', tipo: 'custom', nombre: 'Ahorro', saldo: fuente === 'custom:z' ? saldo : 0 }] });
+    const campos = {};
+    const el = () => ({ value: '', textContent: '', style: {}, disabled: false, title: '', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, focus() {} });
+    app.document.getElementById = id => (campos[id] = campos[id] || el());
+    const toasts = [], abiertos = [];
+    app.toast = (msg, tipo) => toasts.push({ msg, tipo });
+    app.openSheet = n => abiertos.push(n);
+    app.save = () => {};
+    app.getSaldoActual = f => app.getSaldoFuente(f);
+    app.fuenteLabel = f => f;
+    return { app, toasts, abiertos, boton: el() };
+  }
+
+  for (const [nombre, fuente] of FUENTES) {
+    test(nombre + ': con saldo 0 el botón sale deshabilitado, con motivo; con saldo se habilita', () => {
+      const e = entorno(fuente, 0);
+      e.app.actualizarBotonRetirar(e.boton, fuente);
+      assert.equal(e.boton.disabled, true);
+      assert.equal(e.boton.attrs['aria-disabled'], 'true');
+      assert.match(e.boton.title, /saldo/i);
+      const e2 = entorno(fuente, 5000);
+      e2.app.actualizarBotonRetirar(e2.boton, fuente);
+      assert.equal(e2.boton.disabled, false);
+      assert.equal(e2.boton.title, '');
+    });
+    test(nombre + ': abrirRestarDinero con saldo 0 no abre el sheet y explica por qué', () => {
+      const e = entorno(fuente, 0);
+      e.app.abrirRestarDinero(fuente, 'Cuenta');
+      assert.deepEqual(e.abiertos, []);
+      assert.match(e.toasts.at(-1).msg, /saldo/i);
+      assert.equal(e.toasts.at(-1).tipo, 'err');
+    });
+    test(nombre + ': abrirRestarDinero con saldo abre el sheet', () => {
+      const e = entorno(fuente, 5000);
+      e.app.abrirRestarDinero(fuente, 'Cuenta');
+      assert.deepEqual(e.abiertos, ['restar-dinero']);
+    });
+  }
+  test('un centavo de saldo ya permite retirar; menos de un centavo no', () => {
+    const e = entorno('efectivo', 0.01);
+    e.app.actualizarBotonRetirar(e.boton, 'efectivo');
+    assert.equal(e.boton.disabled, false);
+    const e2 = entorno('efectivo', 0.004);
+    e2.app.actualizarBotonRetirar(e2.boton, 'efectivo');
+    assert.equal(e2.boton.disabled, true);
   });
 });

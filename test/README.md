@@ -13,6 +13,11 @@ modificarlo, usando `vm` para simular cómo el navegador carga
 - `aplicarMigraciones()` / `S.schemaVersion` — `js/core/core-state.js`
 - `Deudas` (capa de acceso a Me deben / Yo debo), `totalPrestadoPendiente()`/
   `totalMisDeudasPendiente()` — `js/core/calc-helpers.js`
+- Tasa única de Nu (`S.nuRate`, CDT con tasa propia), acciones de Nu que dependen de la tasa y de las cajitas, Chequeo rápido por
+  cajita (un día completo de intereses), reloj de intereses al primer depósito, retiros sin saldo e iconos/colores de "Nueva cuenta"
+  — `js/core/nu-calc.js`, `js/modules/cuentas.js`, `js/core/color-picker.js` (`tests/cuentas.test.js`)
+- Migración v8 del esquema, validación de backups al importar y la guardia `archivos-cargados` (todo archivo de `js/core` y `js/modules`
+  llega al navegador por un `<script>`, un grupo lazy o un `import`) — `tests/nucleo.test.js`
 - Me deben (registrar con `_aplicarMovimiento`, revertir con `_revertirMovDeudor`) y Yo debo (pago dividido, perdón, pago de más, pago con tarjeta) y
   `registrarMovEspejo()`/`borrarMovEspejo()` — `js/modules/prestado.js`,
   `js/core/cuenta-efectos.js`

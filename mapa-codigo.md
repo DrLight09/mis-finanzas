@@ -12,7 +12,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/bootstrap.js` | de entrada (defer) | 1 | 0 |
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
 | `js/core/calc-helpers.js` | de entrada (defer) | 15 | 0 |
-| `js/core/color-picker.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
+| `js/core/color-picker.js` | de entrada (defer) | 1 | 0 |
 | `js/core/core-state.js` | de entrada (defer) | 74 | 11 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
@@ -85,7 +85,7 @@ Carga: de entrada (defer)
 
 ### `js/core/color-picker.js`
 
-Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
+Carga: de entrada (defer)
 
 **Funciones:** `marcarColorSeleccionado`
 

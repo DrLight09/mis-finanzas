@@ -1080,9 +1080,14 @@
               </div>
               <div id="nuTasaHistorialTag"
                 style="font-size:10px;color:var(--text3);margin-top:4px;font-family:'DM Mono',monospace;"></div>
-              <button type="button" data-action="cuentas:openSheet" data-args="[&quot;chequeo-nu&quot;]"
+              <div id="nuTasaAviso"
+                style="display:none;font-size:11px;color:var(--amber, #f0b840);margin-top:6px;line-height:1.4;">Escribe la
+                tasa EA de Nu para poder crear cajitas. Todas las cajitas usan esta misma tasa.</div>
+              <button type="button" id="btn-nu-chequeo" data-action="cuentas:abrirChequeoNu" data-args="[]"
                 style="margin-top:8px;width:100%;background:rgba(var(--cuenta-rgb),.15);border:1px solid rgba(var(--cuenta-rgb),.4);color:var(--cuenta);font-size:11px;font-weight:600;padding:8px;border-radius:8px;cursor:pointer;">Chequeo
                 rápido de cajitas</button>
+              <div id="nuChequeoAviso"
+                style="display:none;font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4;font-family:'DM Mono',monospace;"></div>
             </div>
             <!-- Botones entrada/salida Nu -->
             <div class="cuenta-actions" style="margin-bottom:14px;">
@@ -4952,6 +4957,13 @@
 // módulos lazy (cuentas, spotify, prestado, tarjetas). Ver CHANGELOG.md.
 -->
 <script src="js/core/fuentes-filtro.js" defer></script>
+<!--
+// js/core/color-picker.js — marcarColorSeleccionado(): marca el círculo de color elegido en los
+// selectores de color (Cuentas, Tarjetas de crédito, Prestado). Núcleo eager: lo usan tres módulos
+// lazy, así que no puede depender de que uno de ellos haya cargado. Sin este <script>, selColorNC /
+// selIconoNC (cuentas.js) lanzaban ReferenceError y el ícono/color elegido nunca se marcaba.
+-->
+<script src="js/core/color-picker.js" defer></script>
 <!--
 // js/core/wait-for.js — helper waitFor() para los <script defer> clásicos.
 // Consumidores directos: personas-init.js y js/core/hook-global.js (que

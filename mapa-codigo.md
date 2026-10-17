@@ -30,7 +30,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/money-input.js` | de entrada (defer) | 1 | 0 |
 | `js/core/movimientos.js` | de entrada (defer) | 8 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 1 | 0 |
-| `js/core/nu-calc.js` | de entrada (defer) | 19 | 0 |
+| `js/core/nu-calc.js` | de entrada (defer) | 20 | 0 |
 | `js/core/payload-codec.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 2 | 0 |
 | `js/core/periodo.js` | de entrada (defer) | 1 | 0 |
 | `js/core/personas-init.js` | de entrada (defer) | 1 | 0 |
@@ -199,7 +199,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_diasEntreFechas`, `_fechasCambioEncargoEnCajita`, `_rendimientoCDTaDias`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasaNu`, `_tasaVigenteEnFecha`, `cajitaGeneraIntereses`, `cajitasConIntereses`, `calcC`, `calcCDT`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `getCajitaNombre`, `getNuTasaGlobal`, `nuTasaConfigurada`, `nuTasaDesdeTexto`, `nuTotal`, `rendimientoCajitaPorMes`
+**Funciones:** `_diasEntreFechas`, `_fechasCambioEncargoEnCajita`, `_rendimientoCDTaDias`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasaNu`, `_tasaVigenteEnFecha`, `cajitaChequeable`, `cajitaGeneraIntereses`, `cajitasChequeables`, `calcC`, `calcCDT`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `getCajitaNombre`, `getNuTasaGlobal`, `nuTasaConfigurada`, `nuTasaDesdeTexto`, `nuTotal`, `rendimientoCajitaPorMes`
 
 ### `js/core/payload-codec.js`
 
@@ -983,8 +983,9 @@ Ninguno.
 | `borrarMovEspejo` | `js/core/cuenta-efectos.js` |
 | `borrarTodo` | `js/modules/configuracion.js` |
 | `buildFuentesOptsHtml` | `js/core/core-state.js` |
+| `cajitaChequeable` | `js/core/nu-calc.js` |
 | `cajitaGeneraIntereses` | `js/core/nu-calc.js` |
-| `cajitasConIntereses` | `js/core/nu-calc.js` |
+| `cajitasChequeables` | `js/core/nu-calc.js` |
 | `calcC` | `js/core/nu-calc.js` |
 | `calcCDT` | `js/core/nu-calc.js` |
 | `calcDeudaAjenaDeTarjeta` | `js/core/core-state.js` |

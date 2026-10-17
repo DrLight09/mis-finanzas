@@ -1560,6 +1560,40 @@ describe('nu-tasa-global', () => {
     });
   });
 
+  describe('el campo de tasa solo acepta números con coma o punto decimal', () => {
+    test('nuTasaSanear quita letras, signos y separadores de más mientras se escribe', () => {
+      const a = app();
+      const casos = [['9,25', '9,25'], ['9.3', '9.3'], ['9abc,2', '9,2'], ['abc', ''], ['-9,2', '9,2'], ['1.234,5', '1.2345'],
+        ['9,2,5', '9,25'], ['12345', '123'], ['9,123456', '9,1234'], ['', ''], [null, ''], ['9 %', '9']];
+      for (const [entra, sale] of casos) assert.equal(a.nuTasaSanear(entra), sale, String(entra));
+    });
+    test('nuTasaDesdeTexto solo da número con un valor completo y razonable', () => {
+      const a = app();
+      for (const [t, v] of [['9,25', 9.25], ['12.5', 12.5], ['9', 9], ['100', 100], ['0,5', 0.5], ['9.3003', 9.3003], [' 9,25 ', 9.25]]) assert.equal(a.nuTasaDesdeTexto(t), v, t);
+      for (const t of ['', ' ', '0', '0,0', '-3', 'abc', '9abc', '9,', ',5', '9,2,5', '1.234,5', '101', '1000', '9 %', null, undefined]) assert.equal(a.nuTasaDesdeTexto(t), null, String(t));
+    });
+    test('nuTasaATexto la muestra con coma decimal y vuelve a ser la misma tasa', () => {
+      const a = app();
+      assert.equal(a.nuTasaATexto(9.25), '9,25');
+      assert.equal(a.nuTasaATexto(10), '10');
+      assert.equal(a.nuTasaDesdeTexto(a.nuTasaATexto(9.3003)), 9.3003);
+    });
+    test('confirmarCambioTasaNu rechaza una tasa con letras o fuera de rango y no toca nada', () => {
+      for (const malo of ['9abc', 'abc', '0', '150', '']) {
+        const a = app({ nuRate: 9.3, historialTasasNu: [] });
+        const avisos = [];
+        a.toast = (m, t) => avisos.push({ m, t });
+        a.closeSheet = () => {}; a.save = () => {}; a.refresh = () => {};
+        a.document.getElementById = id => ({ id, value: id === 'ctn-tasa' ? malo : '', style: {} });
+        a._abrirConfirmarTasaNu({ sugerida: 10, desde: hace(5) });
+        a.confirmarCambioTasaNu();
+        assert.equal(a.S.nuRate, 9.3, malo);
+        assert.deepEqual(a.S.historialTasasNu, [], malo);
+        assert.equal(avisos.at(-1).t, 'err', malo);
+      }
+    });
+  });
+
   describe('guardar y precargar', () => {
     test('save() no copia la tasa a cada cajita', () => {
       const a = app({ nuRate: 9.3, cajitas: [{ id: 'a', nombre: 'A', saldo: 0, cdts: [] }] });
@@ -1743,6 +1777,76 @@ describe('nu-acciones', () => {
     });
   });
 
+  describe('Chequeo rápido con encargos: se muestra y se anota el TOTAL que marca Nu', () => {
+    // Una cajita con plata propia y plata de encargos (física en la misma cajita). Nu muestra la suma; antes el chequeo mostraba
+    // solo lo propio y obligaba a restar los encargos a mano (y adivinaba qué número había anotado el usuario).
+    const conEncargos = (propio = 100000, enc = 200000) => {
+      const e = entorno({ cajitas: [caja('a', propio, hace(3))] });
+      e.app.S.encargos = [{ id: 'e1', nombre: 'Papá', saldoInicial: enc, cuentaInicial: 'cajita:a', movimientos: [] }];
+      e.app.dialogo = async () => true;
+      return e;
+    };
+    const texto = n => n.toFixed(2).replace('.', ',');
+    const lectura = (e, valor) => { e.app.document.querySelectorAll = sel => (String(sel).includes('data-chq-cajita') ? [{ value: valor, dataset: { chqCajita: 'a' } }] : []); };
+
+    test('nuValorEsperadoCajita: total = propio con intereses + encargos guardados en la cajita', () => {
+      const e = conEncargos();
+      const v = e.app.nuValorEsperadoCajita(e.app.S.cajitas[0]);
+      assert.equal(v.encargos, 200000);
+      assert.ok(v.propio > 100000, 'el propio ya trae sus intereses');
+      assert.ok(Math.abs(v.total - (v.propio + 200000)) < 0.001);
+    });
+    test('sin encargos el total es el propio (nada cambia para el resto de cajitas)', () => {
+      const e = entorno({ cajitas: [caja('a', 100000, hace(3))] });
+      const v = e.app.nuValorEsperadoCajita(e.app.S.cajitas[0]);
+      assert.equal(v.encargos, 0);
+      assert.equal(v.total, v.propio);
+    });
+    test('la lectura se interpreta siempre como total: saldo propio = lectura − encargos; la referencia es el total esperado', () => {
+      const e = conEncargos();
+      const c = e.app.S.cajitas[0];
+      const t = e.app.nuValorEsperadoCajita(c).total;
+      const r = e.app._interpretarLecturaChequeoNu(c, t);
+      assert.ok(Math.abs(r.saldoPropio - e.app.nuValorEsperadoCajita(c).propio) < 0.001);
+      assert.equal(r.referencia, t);
+      assert.equal(r.encargos, 200000);
+    });
+    test('anotar el total de Nu corrige el saldo propio SIN contar los encargos, y no pide confirmar', async () => {
+      const e = conEncargos();
+      const c = e.app.S.cajitas[0];
+      const total = Math.round(e.app.nuValorEsperadoCajita(c).total * 100) / 100;
+      let preguntas = 0;
+      e.app.dialogo = async () => { preguntas++; return true; };
+      lectura(e, texto(total));
+      await e.app.guardarChequeoNu();
+      assert.equal(preguntas, 0, 'es justo lo que se esperaba');
+      assert.ok(Math.abs(c.saldo - (total - 200000)) < 0.01, 'el saldo propio no incluye los encargos');
+      assert.equal(e.app.S.chequeosNu.at(-1).saldoReal, total, 'el chequeo guarda lo que marcó Nu');
+    });
+    test('anotar solo lo propio (como antes) ya no se acepta en silencio: avisa que es menor que los encargos y no guarda nada', async () => {
+      const e = conEncargos();
+      const c = e.app.S.cajitas[0];
+      const antes = c.saldo;
+      lectura(e, texto(e.app.nuValorEsperadoCajita(c).propio));
+      await e.app.guardarChequeoNu();
+      assert.equal(c.saldo, antes);
+      assert.deepEqual(e.app.S.chequeosNu, []);
+      assert.equal(e.toasts.at(-1).tipo, 'err');
+      assert.match(e.toasts.at(-1).msg, /encargos/);
+    });
+    test('un total que se aleja mucho de lo esperado sí pide confirmar (se compara contra el total, no contra lo propio)', async () => {
+      const e = conEncargos();
+      const c = e.app.S.cajitas[0];
+      const total = e.app.nuValorEsperadoCajita(c).total;
+      let mensaje = '';
+      e.app.dialogo = async (t, m) => { mensaje = m; return false; };
+      lectura(e, texto(total + 50000));
+      await e.app.guardarChequeoNu();
+      assert.match(mensaje, /anotaste/);
+      assert.deepEqual(e.app.S.chequeosNu, [], 'cancelado: no se guarda');
+    });
+  });
+
   describe('el reloj de los intereses arranca con el primer depósito', () => {
     // materializarIntereses() solo avanzaba c.fecha si había intereses que sellar. Con la cajita en $0 se quedaba en el día
     // de creación y el primer depósito (días después) ganaba intereses retroactivos de los días que la cajita estuvo vacía.
@@ -1829,5 +1933,56 @@ describe('retirar-sin-saldo', () => {
     const e2 = entorno('efectivo', 0.004);
     e2.app.actualizarBotonRetirar(e2.boton, 'efectivo');
     assert.equal(e2.boton.disabled, true);
+  });
+});
+
+describe('cuentas-textos', () => {
+  // Misma nomenclatura en todas las cuentas ("Agregar dinero" / "Retirar dinero"), campos de tasa solo numéricos y toast de salida roja.
+  const { test } = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const RAIZ = path.join(__dirname, '..');
+  const leer = f => fs.readFileSync(path.join(RAIZ, f), 'utf8');
+  const index = leer('index.html');
+  const etiquetaDe = id => { const i = index.indexOf('id="' + id + '"'); return /cuenta-action-btn-label">([^<]+)</.exec(index.slice(i))[1].trim(); };
+
+  test('Nu usa los mismos botones que las demás cuentas', () => {
+    assert.equal(etiquetaDe('btn-nu-entro'), etiquetaDe('btn-agregar-cuenta-det'));
+    assert.equal(etiquetaDe('btn-nu-salio'), etiquetaDe('btn-restar-cuenta-det'));
+    assert.equal(etiquetaDe('btn-nu-entro'), 'Agregar dinero');
+    assert.equal(etiquetaDe('btn-nu-salio'), 'Retirar dinero');
+  });
+  test('el detalle de una cajita también', () => {
+    assert.equal(etiquetaDe('cajita-det-agregar'), 'Agregar dinero');
+    assert.equal(etiquetaDe('cajita-det-retirar'), 'Retirar dinero');
+  });
+  test('los sheets y mensajes del retiro y del movimiento de Nu usan "retirar"/"agregar", no "restar"/"entró"/"salió"', () => {
+    assert.match(index, /id="rdTitle">Retirar dinero</);
+    assert.match(index, /id="btn-confirmar-restar">\s*Retirar\s+del saldo/);
+    assert.match(index, /id="nuMovTitle">Agregar a Nu</);
+    const cuentas = leer('js/modules/cuentas.js');
+    assert.doesNotMatch(cuentas, /'Entró plata a |'Salió plata de |'Restar de '/);
+  });
+  const etiquetaInput = id => { const i = index.indexOf('id="' + id + '"'); return index.slice(index.lastIndexOf('<', i), index.indexOf('>', i)); };
+  test('los campos de tasa son de solo números: maxlength, sin autocompletar y (CDT y sugerida) con el saneo delegado', () => {
+    for (const id of ['nuTasaGlobal', 'ctn-tasa', 'cdt_tasa']) {
+      const tag = etiquetaInput(id);
+      assert.match(tag, /maxlength="8"/, id);
+      assert.match(tag, /autocomplete="off"/, id);
+      assert.match(tag, /inputmode="decimal"/, id);
+    }
+    assert.match(etiquetaInput('ctn-tasa'), /data-tasa-ea/);
+    assert.match(etiquetaInput('cdt_tasa'), /data-tasa-ea/);
+  });
+  test('cambiar la tasa ya no muestra el aviso "Cajitas recalculadas" (no recalculaba nada hacia atrás)', () => {
+    assert.doesNotMatch(leer('js/core/firebase-sync.js'), /recalculadas/);
+    assert.doesNotMatch(leer('js/core/firebase-sync.js'), /nuTasaVigenciaFecha/, 'el campo "Vigente desde" ya no existe en la página');
+  });
+  test('retirar dinero (cuentas y Nu) avisa con el toast de salida, no con el azul de info', () => {
+    const cuentas = leer('js/modules/cuentas.js');
+    assert.match(cuentas, /retirado — '\+escHtml\(desc\),'salida'/);
+    assert.match(cuentas, /escHtml\(desc\), 'salida'\)/);
+    assert.match(index, /\.toast\.toast-salida\{/);
   });
 });

@@ -280,9 +280,17 @@ function cajitaGeneraIntereses(c){
   return !!c&&nuTasaConfigurada()&&calcC(c).dias>=1;
 }
 
-// Las cajitas que ya cumplen lo anterior (cada una por su cuenta). Es la lista del Chequeo rápido.
-function cajitasConIntereses(){
-  return (S.cajitas||[]).filter(cajitaGeneraIntereses);
+// ¿Entra esta cajita en el Chequeo rápido? Cuando ya generó intereses un día completo, o cuando ya se chequeó HOY: el
+// chequeo reinicia el reloj de la cajita (c.fecha = hoy), y sin esta segunda condición no se podría corregir una lectura
+// mal anotada hasta el día siguiente. Sale de S.chequeosNu, que ya existe: no hay estado nuevo.
+function cajitaChequeable(c){
+  if(!c||!nuTasaConfigurada())return false;
+  return cajitaGeneraIntereses(c)||(S.chequeosNu||[]).some(x=>x.cajitaId===c.id&&x.fecha===hoy());
+}
+
+// Las cajitas del Chequeo rápido, cada una evaluada por su cuenta (una nueva no afecta a las demás).
+function cajitasChequeables(){
+  return (S.cajitas||[]).filter(cajitaChequeable);
 }
 
 function getCajitaNombre(fuente) {

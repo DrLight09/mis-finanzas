@@ -141,6 +141,7 @@ function _renderDetalleSimple(fuente) {
   document.getElementById('det-cuenta-nombre').innerHTML = _tituloCuentaHtml(d);
   document.getElementById('det-cuenta-label').textContent = d.etiquetaDetalle;
   document.getElementById('det-cuenta-saldo').textContent = fmt(d.saldo());
+  actualizarBotonRetirar(document.getElementById('btn-restar-cuenta-det'), fuente);
   document.getElementById('det-cuenta-acciones-custom').style.display = d.esCustom ? 'flex' : 'none';
   // Banner saldo inicial. El div es único (banner-apertura-cuenta), por eso el elId va explícito:
   // el default de renderBannerApertura armaría un id con el ':' de 'custom:ID'.
@@ -409,16 +410,15 @@ function editarCuentaCustom(id){
   // Saldo no editable aquí (se maneja con depósitos/retiros), ocultarlo
   if(si){si.value='';si.closest('.ig').style.display='none';}
   // Preseleccionar ícono y color actuales
-  _ncIconoSel=c.icono||'banco';
+  _ncIconoSel=c.icono||'otro';
   _ncColorSel=c.color||'#60b0f0';
   // Actualizar UI del picker de color
   document.querySelectorAll('.nc-color-opt').forEach(el=>{
     el.style.border=el.dataset.color===_ncColorSel?'2px solid var(--accent)':'2px solid transparent';
   });
-  // Actualizar UI del picker de ícono (si ya está renderizado)
-  document.querySelectorAll('#nc-icon-grid .nc-icon-opt').forEach(el=>{
-    el.classList.toggle('selected',el.dataset.icono===_ncIconoSel);
-  });
+  // Actualizar UI del picker de ícono: se vuelve a dibujar el grid (así marca SU ícono; antes se dejaba el
+  // que hubiera quedado marcado de la última vez que se abrió el sheet).
+  renderIconGrid();
   // Cambiar título y botón del sheet
   const titulo=document.querySelector('#sheet-nueva-cuenta .sheet-title');
   if(titulo) titulo.textContent='Editar cuenta';
@@ -492,6 +492,11 @@ function materializarIntereses(c){
     Object.keys(porMes).forEach(mk=>{c.rendimientos[mk]=Math.round(((c.rendimientos[mk]||0)+porMes[mk])*100)/100;});
     // Los intereses entran al libro como 'rendimiento' (una entrada por cajita y mes).
     ajustarSaldoCuenta('cajita:'+c.id,k.val,{tipo:'rendimiento',desc:'Intereses de Nu',origen:{modulo:'cuentas'}});
+    c.fecha=hoy();
+  }else if(!((c.saldo||0)>0)&&!(_saldoEncargosEnCajita(c.id)>0)){
+    // Sin plata adentro (ni propia ni de encargos) no hay intereses que sellar, pero el reloj de la cajita (c.fecha) no
+    // puede quedarse en el día en que se creó: calcC() le contaría al primer depósito los días que la cajita estuvo
+    // vacía. El reloj arranca HOY, que es cuando entra la plata (Nu paga el primer interés a las 12 a.m. siguientes).
     c.fecha=hoy();
   }
 }
@@ -580,13 +585,25 @@ function verificarTasaNu(){
 function poblarChequeoNu(){
   const cont=document.getElementById('chequeoNuLista');
   if(!cont)return;
-  cont.innerHTML=html`${(S.cajitas||[]).map(c=>{
+  // Solo las cajitas que ya generaron intereses un día completo (cada una por su cuenta): comparar el saldo real con un
+  // cálculo de 0 días no dice nada de la tasa. Las nuevas aparecen solas cuando cumplen su primer día.
+  const aptas=cajitasConIntereses();
+  const faltan=(S.cajitas||[]).length-aptas.length;
+  cont.innerHTML=html`${aptas.map(c=>{
     const calc=calcC(c);
     return html`<div class="ig" style="margin-bottom:10px;">
       <label class="il" for="chq-${c.id}">${c.nombre} <span style="font-size:10px;color:var(--text3);font-weight:400;">(calculado: ${fmt(calc.val)})</span></label>
       <input type="text" inputmode="decimal" class="money-input" id="chq-${c.id}" data-chq-cajita="${c.id}" placeholder="${fmt(calc.val)}">
     </div>`;
-  })}`;
+  })}${faltan>0?html`<div style="font-size:11px;color:var(--text3);margin:2px 0 10px;line-height:1.4;">${faltan===1?'Hay 1 cajita que no aparece':'Hay '+faltan+' cajitas que no aparecen'}: todavía no ${faltan===1?'cumple':'cumplen'} un día completo generando intereses.</div>`:''}`;
+}
+
+// Abre el chequeo solo si hay algo que chequear (el botón ya sale deshabilitado; esto cubre cualquier otra vía).
+function abrirChequeoNu(){
+  const motivo=_motivoNuChequeo();
+  if(motivo){toast(motivo,'err',4000);return;}
+  openSheet('chequeo-nu');
+  poblarChequeoNu();
 }
 
 // Qué saldo propio quedaría en la cajita si se acepta lo que el usuario anotó, y contra qué
@@ -614,6 +631,9 @@ function _interpretarLecturaChequeoNu(c,val){
 let _chequeoNuUndo=null;
 
 async function guardarChequeoNu(){
+  const motivo=_motivoNuChequeo();
+  if(motivo){if(window.toast)toast(motivo,'err',4000);return;}
+  const aptas=new Set(cajitasConIntereses().map(c=>c.id));
   const inputs=document.querySelectorAll('[data-chq-cajita]');
   const hoyStr=hoy();
   // 1) Leer lo anotado SIN tocar nada todavía.
@@ -626,6 +646,7 @@ async function guardarChequeoNu(){
     // real: ponía la cajita en 0 (solo con aviso si se alejaba más de max($1.000, 2%)) y ensuciaba
     // S.chequeosNu. Si de verdad quedó vacía, se registra el retiro como movimiento (lo dice el aviso).
     if(!raw||isNaN(val)||val<=0)return;
+    if(!aptas.has(inp.dataset.chqCajita))return; // aún no cumple su primer día completo de intereses
     lecturas.push({cajitaId:inp.dataset.chqCajita,val,texto:inp.value});
   });
   if(lecturas.length===0){if(window.toast)toast('No pusiste ningún saldo para chequear.','err',3000);return;}
@@ -744,7 +765,7 @@ function confirmarCambioTasaNu(){
   registrarTasaNuHistorial(fechaEditada,tasaEditada);
   const el=document.getElementById('nuTasaGlobal');
   if(el)el.value=String(tasaEditada).replace('.',',');
-  S.nuTasaGlobal=tasaEditada;
+  S.nuRate=tasaEditada;
   save();refresh();
   _renderTasaHistorialTag();
   closeSheet('confirmar-tasa-nu');
@@ -1032,6 +1053,12 @@ function _renderTasaHistorialTag(){
 }
 
 function addCajita(){
+  if(!nuTasaConfigurada()){
+    toast(_motivoNuSinTasa(),'err',4000);
+    const inp=document.getElementById('nuTasaGlobal');
+    if(inp)inp.focus();
+    return;
+  }
   if(!S.cajitas)S.cajitas=[];
   if(S.cajitas.length>=MAX)return;
   const nombre='Cajita '+(S.cajitas.length+1);
@@ -1105,7 +1132,7 @@ function abrirCrearCDT(cajitaId){
   const k=calcC(c);
   document.getElementById('cdtCajitaSaldo').textContent=fmt(k.val);
   document.getElementById('cdt_monto').value='';
-  document.getElementById('cdt_tasa').value=c.tasa?String(c.tasa).replace('.',','):'';
+  document.getElementById('cdt_tasa').value=nuTasaConfigurada()?String(S.nuRate).replace('.',','):''; // precarga la tasa global; cada CDT guarda la suya
   document.getElementById('cdt_inicio').value=hoy();
   document.getElementById('cdt_vence').value='';
   document.getElementById('cdt_rte').value='4,00';
@@ -1330,6 +1357,7 @@ function guardarCDT(cajitaId,cdtId){
 }
 
 function renderCajitas(){
+  actualizarBotonesNu(); // depende solo de S: se evalúa antes de los retornos de abajo
   const el=document.getElementById('cajitasList');
   const msg=document.getElementById('cajitasMsg');
   const btn=document.getElementById('btnAddCajita');
@@ -1445,6 +1473,7 @@ function _renderDetalleCajita(c){
   // Botones acción
   document.getElementById('cajita-det-agregar').onclick=()=>abrirAgregarDinero('cajita:'+c.id, c.nombre);
   document.getElementById('cajita-det-retirar').onclick=()=>abrirRestarDinero('cajita:'+c.id, c.nombre);
+  actualizarBotonRetirar(document.getElementById('cajita-det-retirar'), 'cajita:'+c.id);
   document.getElementById('cajita-det-mover').onclick=()=>abrirTransferir('cajita:'+c.id);
   actualizarBotonesTransferir();
 
@@ -2294,6 +2323,8 @@ let _nuMovTipo = 'entrada'; // 'entrada' | 'salida'
 let _nuMovCajitaSel = null; // fuente seleccionada: 'cajita:id'
 
 function abrirNuMovimiento(tipo) {
+  const motivo = _motivoNuMovimiento(tipo);
+  if (motivo) { toast(motivo, 'err', 4000); return; } // los botones ya salen deshabilitados; esto cubre cualquier otra vía
   save();
   _nuMovTipo = tipo;
   _nuMovCajitaSel = null;
@@ -2456,6 +2487,8 @@ function confirmarNuMovimiento() {
 }
 
 function abrirRestarDinero(fuente,nombre){
+  const motivo=_motivoSinRetiro(fuente);
+  if(motivo){toast(motivo,'err',3500);return;}
   save();
   rdFuente=fuente;
   const label=nombre||(fuente==='nequi'?'Nequi':fuente==='efectivo'?'Efectivo':'Cuenta');
@@ -2516,13 +2549,71 @@ function confirmarRestarDinero(){
    que no se puede completar. Se re-evalúa cada vez que se pinta el detalle de
    la cuenta (renderDetalleCuenta / detalle de cuenta personalizada / de
    cajita), que es también lo que corre tras cada save()+refresh(). */
-function _setBtnTransferir(btn, ok) {
+// Estado de cualquier botón de acción: deshabilitado (y con el motivo como título) o activo.
+function _setBtnEstado(btn, ok, motivo) {
   if (!btn) return;
   btn.disabled = !ok;
   btn.setAttribute('aria-disabled', ok ? 'false' : 'true');
   btn.style.opacity = ok ? '' : '.4';
   btn.style.cursor = ok ? '' : 'not-allowed';
-  btn.title = ok ? '' : 'Necesitas al menos ' + fmt(FuentesFiltro.MIN.GENERAL) + ' en esta cuenta para moverla';
+  btn.title = ok ? '' : (motivo || '');
+}
+
+function _setBtnTransferir(btn, ok) {
+  _setBtnEstado(btn, ok, 'Necesitas al menos ' + fmt(FuentesFiltro.MIN.GENERAL) + ' en esta cuenta para moverla');
+}
+
+/* ---- Retirar dinero: solo con saldo ----
+   Nequi, Efectivo, cuentas personalizadas (y cajitas) no pueden retirar con saldo 0: el botón sale deshabilitado y
+   abrirRestarDinero() lo vuelve a comprobar. confirmarRestarDinero() sigue validando el monto contra el saldo. */
+const _MIN_RETIRO = 0.01; // cualquier saldo positivo (se compara en centavos, como el resto de FuentesFiltro)
+
+function _motivoSinRetiro(fuente) {
+  return FuentesFiltro.puedeMover(fuente, _MIN_RETIRO) ? '' : 'No hay saldo para retirar en esta cuenta.';
+}
+
+function actualizarBotonRetirar(btn, fuente) {
+  const motivo = _motivoSinRetiro(fuente);
+  _setBtnEstado(btn, !motivo, motivo);
+}
+
+/* ---- Acciones de Nu que dependen de la tasa y de las cajitas ----
+   Una sola fuente del "por qué no" (vacío = se puede) para el botón (título y aviso) y para la lógica de cada acción. */
+function _motivoNuSinCajitas() { return (S.cajitas || []).length ? '' : 'Primero crea una cajita de Nu.'; }
+function _motivoNuSinTasa() { return nuTasaConfigurada() ? '' : 'Configura primero la tasa EA de Nu (campo "Tasa EA %").'; }
+
+function _motivoNuMovimiento(tipo) {
+  const m = _motivoNuSinCajitas() || _motivoNuSinTasa();
+  if (m) return m;
+  if (tipo === 'salida' && !(S.cajitas || []).some(c => Math.round(calcC(c).val * 100) >= Math.round(_MIN_RETIRO * 100))) {
+    return 'Ninguna cajita tiene saldo para sacar.';
+  }
+  return '';
+}
+
+function _motivoNuChequeo() {
+  const m = _motivoNuSinCajitas() || _motivoNuSinTasa();
+  if (m) return m;
+  if (!cajitasConIntereses().length) return 'Se habilita cuando una cajita lleve un día completo generando intereses.';
+  return '';
+}
+
+function actualizarBotonesNu() {
+  const $ = id => document.getElementById(id);
+  const mEntro = _motivoNuMovimiento('entrada'), mSalio = _motivoNuMovimiento('salida'), mChq = _motivoNuChequeo();
+  _setBtnEstado($('btn-nu-entro'), !mEntro, mEntro);
+  _setBtnEstado($('btn-nu-salio'), !mSalio, mSalio);
+  _setBtnEstado($('btn-nu-chequeo'), !mChq, mChq);
+  const sinTasa = !nuTasaConfigurada();
+  const avisoTasa = $('nuTasaAviso');
+  if (avisoTasa) avisoTasa.style.display = sinTasa ? '' : 'none';
+  _setBtnEstado($('btnAddCajita'), !sinTasa, _motivoNuSinTasa());
+  const avisoChq = $('nuChequeoAviso');
+  if (avisoChq) { // el motivo a la vista (en celular no hay tooltips); si falta la tasa o las cajitas ya lo dicen otros textos
+    const mostrar = !!mChq && !sinTasa && (S.cajitas || []).length > 0;
+    avisoChq.style.display = mostrar ? '' : 'none';
+    avisoChq.textContent = mostrar ? mChq : '';
+  }
 }
 
 function actualizarBotonesTransferir() {
@@ -2781,6 +2872,7 @@ Events.registerAll('cuentas', {
   abrirEditarApertura,
   abrirRegistrarApertura,
   // Nu — chequeo de saldo real
+  abrirChequeoNu,
   guardarChequeoNu,
   corregirChequeoNu,
   confirmarCambioTasaNu,

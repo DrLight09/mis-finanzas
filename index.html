@@ -1092,7 +1092,7 @@
               <div id="nuTasaAviso"
                 style="display:none;font-size:11px;color:var(--amber, #f0b840);margin-top:6px;line-height:1.4;">Escribe la
                 tasa EA de Nu para poder crear cajitas. Todas las cajitas usan esta misma tasa.</div>
-              <button type="button" id="btn-nu-chequeo" data-action="cuentas:abrirChequeoNu" data-args="[]"
+              <button type="button" id="btn-nu-chequeo" data-action="nu:abrirChequeoNu" data-args="[]"
                 style="margin-top:8px;width:100%;background:rgba(var(--cuenta-rgb),.15);border:1px solid rgba(var(--cuenta-rgb),.4);color:var(--cuenta);font-size:11px;font-weight:600;padding:8px;border-radius:8px;cursor:pointer;">Chequeo
                 rápido de cajitas</button>
               <div id="nuChequeoAviso"
@@ -1151,7 +1151,7 @@
           <div id="cuentas-detalle-cajita" style="display:none;">
             <div class="detail-header">
               <button type="button" class="detail-header-back"
-                data-action="cuentas:volverANu" aria-label="Volver">
+                data-action="nu:volverANu" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -1160,7 +1160,7 @@
               <div class="detail-header-title" id="cajita-det-nombre"
                 style="color:var(--cuenta);">Cajita</div>
               <button type="button" class="btn-icon detail-header-action"
-                id="cajita-det-delete-btn" data-action="cuentas:cajitaDetDelete"
+                id="cajita-det-delete-btn" data-action="nu:cajitaDetDelete"
                 style="color:var(--text3);" aria-label="Eliminar cajita">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2"
@@ -1220,7 +1220,7 @@
             <div
               style="display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px;">
               <!-- Meta -->
-              <div id="cajita-det-meta-card" data-action="cuentas:abrirSubMeta"
+              <div id="cajita-det-meta-card" data-action="nu:abrirSubMeta"
                 style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:border-color .2s;">
                 <div
                   style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -1249,7 +1249,7 @@
                 </div>
               </div>
               <!-- CDTs -->
-              <div id="cajita-det-cdt-card" data-action="cuentas:abrirSubCDTs"
+              <div id="cajita-det-cdt-card" data-action="nu:abrirSubCDTs"
                 style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px;cursor:pointer;transition:border-color .2s;">
                 <div
                   style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
@@ -1277,7 +1277,7 @@
           <div id="cuentas-sub-meta" style="display:none;">
             <div class="detail-header">
               <button type="button" class="detail-header-back"
-                data-action="cuentas:volverADetalleCajita" aria-label="Volver">
+                data-action="nu:volverADetalleCajita" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -1293,7 +1293,7 @@
           <div id="cuentas-sub-cdts" style="display:none;">
             <div class="detail-header">
               <button type="button" class="detail-header-back"
-                data-action="cuentas:volverADetalleCajita" aria-label="Volver">
+                data-action="nu:volverADetalleCajita" aria-label="Volver">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round"><polyline
@@ -2574,7 +2574,7 @@
               stroke-width="1.6" stroke-linecap="round"><rect x="2" y="6"
                 width="20" height="13" rx="2" /><path d="M2 10h20" /><circle
                 cx="12" cy="15" r="2" /><path d="M17 15h2M5 15h2" /></svg>
-            <div><div class="action-card-label">Sumar dinero</div><div
+            <div><div class="action-card-label">Agregar dinero</div><div
                 class="action-card-sub">Agregar a Nequi, cajita...</div></div>
           </div>
 
@@ -2652,7 +2652,7 @@
                   se aleja mucho de lo calculado, también te pide confirmar antes de guardarlo.
         </div>
         <div id="chequeoNuLista"></div>
-        <button type="button" class="btn btn-primary" data-action="cuentas:guardarChequeoNu" data-args="[]">Guardar
+        <button type="button" class="btn btn-primary" data-action="nu:guardarChequeoNu" data-args="[]">Guardar
           chequeo</button>
         <button type="button" class="btn btn-ghost" data-close-sheet="chequeo-nu">Cancelar</button>
       </div>
@@ -2668,9 +2668,9 @@
             type="text" inputmode="decimal" id="ctn-tasa" placeholder="9,25" maxlength="8" autocomplete="off" data-tasa-ea></div>
         <div class="ig"><label class="il" for="ctn-fecha">Aplicar desde</label><input
             type="date" id="ctn-fecha"></div>
-        <button type="button" class="btn btn-primary" data-action="cuentas:confirmarCambioTasaNu" data-args="[]">Aplicar
+        <button type="button" class="btn btn-primary" data-action="nu:confirmarCambioTasaNu" data-args="[]">Aplicar
           cambio de tasa</button>
-        <button type="button" class="btn btn-ghost" data-action="cuentas:corregirChequeoNu" data-args="[]">Me equivoqué —
+        <button type="button" class="btn btn-ghost" data-action="nu:corregirChequeoNu" data-args="[]">Me equivoqué —
           corregir los saldos</button>
         <button type="button" class="btn btn-ghost" data-close-sheet="confirmar-tasa-nu">Dejar la tasa como está</button>
       </div>
@@ -4534,7 +4534,7 @@
         <div id="adPreview"
           style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
         <button type="button" class="btn btn-primary"
-          id="btn-confirmar-agregar-dinero">Sumar al saldo</button>
+          id="btn-confirmar-agregar-dinero">Agregar al saldo</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="agregar-dinero">Cancelar</button>
       </div>
@@ -4587,7 +4587,7 @@
         <div id="adMenuPreview"
           style="font-size:12px;color:var(--text3);margin-bottom:14px;font-family:'DM Mono',monospace;min-height:18px;"></div>
         <button type="button" class="btn btn-primary"
-          id="btn-confirmar-agregar-dinero-menu">Sumar al saldo</button>
+          id="btn-confirmar-agregar-dinero-menu">Agregar al saldo</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="agregar-dinero-menu">Cancelar</button>
       </div>
@@ -4851,7 +4851,7 @@
           id="btn-confirmar-cobrar-cdt">Cobrar y acreditar a cajita</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="cobrar-cdt"
-          data-action="cuentas:cancelarCobrarCDT" data-args="[]">Cancelar</button>
+          data-action="nu:cancelarCobrarCDT" data-args="[]">Cancelar</button>
       </div>
     </div>
 
@@ -4900,7 +4900,7 @@
         <button type="button"
           style="margin-top:10px;background:none;border:none;color:var(--text3);font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;padding:4px 0;"
           id="btn-toggle-meta-min"
-          data-action="cuentas:toggleMetaMinWrap" data-args="[]"><i
+          data-action="nu:toggleMetaMinWrap" data-args="[]"><i
             class="fa-solid fa-chevron-down"
             style="margin-right:4px;"></i>Configurar saldo mínimo</button>
         <div style="height:10px;"></div>

@@ -375,12 +375,12 @@ function addGastoVar() {
   } else if (splits) {
     S.gastosVar.push(gastoObj);
     splits.forEach(s => descontarFuente(s.fuente, s.monto, _ogGv(gastoObj.id)));
-    toast('Gasto registrado — dividido entre ' + splits.length + ' cuentas', 'ok');
+    toast('Gasto registrado — dividido entre ' + splits.length + ' cuentas', 'salida');
     if (window.logCambio) { const _gvd = document.getElementById('gv_desc'); logCambio('Registraste un gasto', _gvd ? _gvd.value : '', monto, 'gasto'); }
   } else {
     S.gastosVar.push(gastoObj);
     descontarFuente(fuente, monto, _ogGv(gastoObj.id));
-    toast('Gasto registrado', 'ok');
+    toast('Gasto registrado', 'salida');
     if (window.logCambio) { const _gvd = document.getElementById('gv_desc'); const _gvm = parseMoney(document.getElementById('gv_monto').value); logCambio('Registraste un gasto', _gvd ? _gvd.value : '', _gvm, 'gasto'); }
   }
   document.getElementById('gv_desc').value = '';
@@ -674,7 +674,7 @@ function confirmarPagarGastoFijo() {
   save(); refresh();
   closeSheet('pagar-gasto-fijo');
   if (window.logCambio) { const _pgfg = (S.gastosFijos || []).find(x => x.id === pgfIdActual); if (_pgfg) logCambio('Pagaste ' + _pgfg.nombre, '', _pgfg.monto, 'gasto_fijo'); }
-  toast('Pago registrado correctamente', 'ok');
+  toast('Pago registrado correctamente', 'salida');
 }
 
 /* ── Wiring de controles propios de la pantalla ──────────────────────────

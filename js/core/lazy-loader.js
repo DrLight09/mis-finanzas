@@ -159,7 +159,10 @@ const Loader = (function () {
     // pin-bio.js/mejoras-adicionales.js/gastos-fijos-progress.js no llaman
     // ninguna función de cuentas.js. Ver auditoria-tecnica.md, corrección
     // del 2026-08-13.
-    cuentas: ['js/modules/cuentas.js'],
+    // El grupo carga DOS archivos, uno tras otro: nu.js (cajitas, tasa, CDTs, metas, chequeo) y cuentas.js (selector, cuentas
+    // simples, historial, agregar/retirar/transferir). Ninguno usa al otro al cargar, solo cuando una función corre, así que el
+    // orden no es obligatorio; se deja nu.js primero por convención.
+    cuentas: ['js/modules/nu.js', 'js/modules/cuentas.js'],
     analisis: ['js/modules/analisis.js'],
     encargos: ['js/modules/encargos.js'],
     // Duodécimo grupo lazy (2026-09-07, rediseñado a solo-anual 2026-09-08).

@@ -16,6 +16,7 @@ modificarlo, usando `vm` para simular cómo el navegador carga
 - Tasa única de Nu (`S.nuRate`, CDT con tasa propia), acciones de Nu que dependen de la tasa y de las cajitas, Chequeo rápido por
   cajita (un día completo de intereses), reloj de intereses al primer depósito, retiros sin saldo e iconos/colores de "Nueva cuenta"
   — `js/core/nu-calc.js`, `js/modules/cuentas.js`, `js/core/color-picker.js` (`tests/cuentas.test.js`)
+- Estructura Cuentas/Nu (`cuentas-nu-archivos`: cada archivo carga solo, botones registrados, ningún test carga `cuentas.js` sin `nu.js`)
 - Textos y toast de las cuentas (`cuentas-textos`), campo de tasa numérico, Chequeo rápido con encargos (total de Nu) y `toast()` por tipo (`nucleo.test.js` → `toast`)
 - Migración v8 del esquema, validación de backups al importar y la guardia `archivos-cargados` (todo archivo de `js/core` y `js/modules`
   llega al navegador por un `<script>`, un grupo lazy o un `import`) — `tests/nucleo.test.js`
@@ -118,3 +119,7 @@ y como check en cada commit/PR.
   bajo "Sin tests", probablemente valga la pena borrarla o aclarar que
   no aplica a `mis-finanzas`.
 
+
+## Cuentas y Nu son dos archivos (2026-10-17)
+
+`js/modules/cuentas.js` y `js/modules/nu.js` forman el grupo lazy `cuentas`. **Todo test que cargue `cuentas.js` tiene que cargar también `nu.js`**: `modulo('nu.js'), modulo('cuentas.js')` (el orden no importa). En modo `permissive` su falta no da error: da resultados distintos en silencio (por ejemplo `materializarIntereses` queda como no-op). La guardia `cuentas-nu-archivos` de `cuentas.test.js` lo comprueba.

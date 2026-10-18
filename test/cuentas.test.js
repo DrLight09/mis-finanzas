@@ -18,7 +18,7 @@ describe('historial-cuenta', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
 
   const plano = x => JSON.parse(JSON.stringify(x)); // saca los undefined y los prototipos del vm
 
@@ -281,6 +281,7 @@ describe('calcC-calcCDT', () => {
     const ctx = loadApp([
       path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
       path.join(CORE_DIR, 'calc-helpers.js'),
+      path.join(MODULES_DIR, 'nu.js'),
       path.join(MODULES_DIR, 'cuentas.js'),
       path.join(MODULES_DIR, 'prestado.js'),
     ], { permissive: true });
@@ -463,7 +464,7 @@ describe('cdt-campos', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
   const AHORA = new Date('2026-10-05T12:00:00');
@@ -600,7 +601,7 @@ describe('chequeo-nu', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
   function entornoChequeo({ cajitas, lecturas, dialogoRespuesta = true }) {
@@ -747,7 +748,7 @@ describe('nu-cdt', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
   // Elemento DOM falso que se crea al pedirlo por id (los campos del sheet se llenan DESPUÉS de abrirlo,
@@ -902,7 +903,7 @@ describe('restar-dinero', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
   function entorno({ fuente = 'nequi', saldo = 5000, monto, desc = 'Retiro de prueba' }) {
@@ -1008,7 +1009,7 @@ describe('transferir', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const plano = x => JSON.parse(JSON.stringify(x)); // objetos del vm → datos planos
 
   function cargar() { return loadApp(ARCHIVOS, { permissive: true }); }
@@ -1286,7 +1287,7 @@ describe('eliminar-movimiento', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
   const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'),
-    modulo('tarjetas_credito.js'), modulo('cuentas.js'), modulo('gastos.js'), core('movimientos.js')];
+    modulo('tarjetas_credito.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('gastos.js'), core('movimientos.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
   const HOY = '2026-10-13';
 
@@ -1436,7 +1437,7 @@ describe('cuenta-iconos-colores', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('color-picker.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('color-picker.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const ACENTO = '2px solid var(--accent)';
 
   // Círculos de color e íconos falsos: lo único que importa es qué borde les queda.
@@ -1498,7 +1499,7 @@ describe('nu-tasa-global', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const hace = n => { const d = new Date(Date.now() - n * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   const app = (S = {}) => { const a = loadApp(ARCHIVOS, { permissive: true }); Object.assign(a.S, S); return a; };
 
@@ -1626,7 +1627,7 @@ describe('nu-acciones', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const hace = n => { const d = new Date(Date.now() - n * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   const caja = (id, saldo, fecha) => ({ id, nombre: 'Cajita ' + id, saldo, fecha, cdts: [] });
 
@@ -1880,7 +1881,7 @@ describe('retirar-sin-saldo', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
 
   const FUENTES = [['efectivo', 'efectivo'], ['Nequi', 'nequi'], ['cuenta personalizada', 'custom:z']];
 
@@ -1961,8 +1962,7 @@ describe('cuentas-textos', () => {
     assert.match(index, /id="rdTitle">Retirar dinero</);
     assert.match(index, /id="btn-confirmar-restar">\s*Retirar\s+del saldo/);
     assert.match(index, /id="nuMovTitle">Agregar a Nu</);
-    const cuentas = leer('js/modules/cuentas.js');
-    assert.doesNotMatch(cuentas, /'Entró plata a |'Salió plata de |'Restar de '/);
+    for (const f of ['js/modules/cuentas.js', 'js/modules/nu.js']) assert.doesNotMatch(leer(f), /'Entró plata a |'Salió plata de |'Restar de /, f);
   });
   const etiquetaInput = id => { const i = index.indexOf('id="' + id + '"'); return index.slice(index.lastIndexOf('<', i), index.indexOf('>', i)); };
   test('los campos de tasa son de solo números: maxlength, sin autocompletar y (CDT y sugerida) con el saneo delegado', () => {
@@ -1975,14 +1975,94 @@ describe('cuentas-textos', () => {
     assert.match(etiquetaInput('ctn-tasa'), /data-tasa-ea/);
     assert.match(etiquetaInput('cdt_tasa'), /data-tasa-ea/);
   });
+  test('todas las formas de meter plata a una cuenta dicen "Agregar" (el menú +, sus sheets y los avisos), no "Sumar"', () => {
+    assert.doesNotMatch(index, /Sumar dinero|Sumar al saldo/);
+    assert.match(index, /action-card-label">Agregar dinero</);
+    for (const f of ['js/modules/cuentas.js', 'js/modules/nu.js']) assert.doesNotMatch(leer(f), /'Sumaste dinero en |' sumado — |' sumado a /, f);
+  });
+  test('convención de toast: la plata que sale (retirar, gasto, pago de gasto fijo) es "salida"; transferir entre cuentas es éxito neutro ("ok")', () => {
+    const gastos = leer('js/modules/gastos.js');
+    assert.match(gastos, /toast\('Gasto registrado', 'salida'\)/);
+    assert.match(gastos, /toast\('Gasto registrado — dividido entre ' \+ splits\.length \+ ' cuentas', 'salida'\)/);
+    assert.match(gastos, /toast\('Pago registrado correctamente', 'salida'\)/);
+    assert.match(leer('js/modules/cuentas.js'), /transferido de \$\{escHtml\(fuenteLabel\(origen\)\)\} a \$\{escHtml\(fuenteLabel\(destino\)\)\}`, 'ok'/);
+  });
   test('cambiar la tasa ya no muestra el aviso "Cajitas recalculadas" (no recalculaba nada hacia atrás)', () => {
     assert.doesNotMatch(leer('js/core/firebase-sync.js'), /recalculadas/);
     assert.doesNotMatch(leer('js/core/firebase-sync.js'), /nuTasaVigenciaFecha/, 'el campo "Vigente desde" ya no existe en la página');
   });
   test('retirar dinero (cuentas y Nu) avisa con el toast de salida, no con el azul de info', () => {
-    const cuentas = leer('js/modules/cuentas.js');
-    assert.match(cuentas, /retirado — '\+escHtml\(desc\),'salida'/);
-    assert.match(cuentas, /escHtml\(desc\), 'salida'\)/);
+    assert.match(leer('js/modules/cuentas.js'), /retirado — '\+escHtml\(desc\),'salida'/);
+    assert.match(leer('js/modules/nu.js'), /escHtml\(desc\), 'salida'\)/);
     assert.match(index, /\.toast\.toast-salida\{/);
+  });
+});
+
+describe('cuentas-nu-archivos', () => {
+  // Cuentas se reparte en dos archivos del mismo grupo lazy: nu.js (todo lo de Nu) y cuentas.js (el resto). Estas pruebas
+  // protegen esa estructura: orden de carga, botones registrados, y que ningún test se olvide de cargar nu.js.
+  const { test } = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const RAIZ = path.join(__dirname, '..');
+  const leer = f => fs.readFileSync(path.join(RAIZ, f), 'utf8');
+  const core = f => path.join(RAIZ, 'js', 'core', f);
+  const modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const BASE = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js')];
+
+  test('el grupo lazy "cuentas" carga los dos archivos (nu.js y cuentas.js)', () => {
+    const m = /cuentas:\s*\[([^\]]*)\]/.exec(leer('js/core/lazy-loader.js'));
+    assert.ok(m, 'no se encontró el grupo cuentas en lazy-loader.js');
+    const archivos = [...m[1].matchAll(/'([^']+)'/g)].map(x => x[1]);
+    assert.deepEqual([...archivos].sort(), ['js/modules/cuentas.js', 'js/modules/nu.js']);
+  });
+
+  test('cada archivo carga SOLO: ninguno usa al otro al cargar, solo cuando una función corre (el orden no importa)', () => {
+    assert.doesNotThrow(() => loadApp([...BASE, modulo('nu.js')]), 'nu.js solo');
+    assert.doesNotThrow(() => loadApp([...BASE, modulo('cuentas.js')]), 'cuentas.js solo');
+    assert.doesNotThrow(() => loadApp([...BASE, modulo('cuentas.js'), modulo('nu.js')]), 'en el orden contrario');
+  });
+
+  test('cada función vive en UN solo archivo: nada declarado a nivel superior en los dos', () => {
+    const nombres = f => [...leer(f).matchAll(/^(?:async function |function |let |const |var )([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
+    const enNu = new Set(nombres('js/modules/nu.js'));
+    const repetidas = nombres('js/modules/cuentas.js').filter(n => enNu.has(n));
+    assert.deepEqual(repetidas, []);
+  });
+
+  test('todo botón data-action="cuentas:…" / "nu:…" (en index.html y en el HTML que arman los módulos) está registrado en su namespace', () => {
+    const fuentes = ['index.html', 'js/modules/cuentas.js', 'js/modules/nu.js'];
+    const registrado = ns => {
+      const claves = new Set();
+      for (const f of ['js/modules/cuentas.js', 'js/modules/nu.js']) {
+        const t = leer(f);
+        const i = t.indexOf("Events.registerAll('" + ns + "', {");
+        if (i < 0) continue;
+        const bloque = t.slice(i, t.indexOf('\n});', i)).split('\n').slice(1).map(l => l.replace(/\/\/.*$/, '')).join('\n');
+        for (const m of bloque.matchAll(/^\s*([A-Za-z_]\w*)\s*(?::|,)/gm)) claves.add(m[1]);
+      }
+      return claves;
+    };
+    const reg = { cuentas: registrado('cuentas'), nu: registrado('nu') };
+    assert.ok(reg.cuentas.size > 3 && reg.nu.size > 10, 'no se pudieron leer los registros');
+    const usadas = [];
+    for (const f of fuentes) {
+      const t = leer(f);
+      for (const m of t.matchAll(/(?:data-action="|Events\.attr\(\s*')(cuentas|nu):([A-Za-z_]\w*)/g)) usadas.push([f, m[1], m[2]]);
+    }
+    assert.ok(usadas.length > 20, 'no se encontraron usos');
+    const rotas = usadas.filter(([, ns, nombre]) => !reg[ns].has(nombre)).map(([f, ns, n]) => f + ' → ' + ns + ':' + n);
+    assert.deepEqual([...new Set(rotas)], []);
+  });
+
+  test('ningún test carga cuentas.js sin cargar también nu.js (permissive lo taparía en silencio)', () => {
+    const tests = fs.readdirSync(__dirname).filter(f => f.endsWith('.test.js'));
+    const sinNu = tests.filter(f => {
+      const t = fs.readFileSync(path.join(__dirname, f), 'utf8').split('\n').filter(l => !l.trim().startsWith('//')).join('\n');
+      return /['"]cuentas\.js['"]/.test(t) && !/['"]nu\.js['"]/.test(t);
+    });
+    assert.deepEqual(sinNu, []);
   });
 });

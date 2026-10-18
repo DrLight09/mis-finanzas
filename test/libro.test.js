@@ -132,7 +132,7 @@ describe('libro-modulos', () => {
   const { loadApp } = require('./support/load-app');
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), core('periodo.js'), core('nu-calc.js'), modulo('cuentas.js'), modulo('mesada.js'), modulo('encargos.js')];
+  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), core('periodo.js'), core('nu-calc.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('mesada.js'), modulo('encargos.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
   function cargar() {
@@ -292,7 +292,7 @@ describe('plata-comprometida', () => {
   // Un archivo previo reemplaza ese registro para capturar los handlers (así es como la app misma los usa).
   const CAPTURA = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cp-')), 'captura.js');
   fs.writeFileSync(CAPTURA, "Events.registerAll = function(ns, mapa){ (window.__reg = window.__reg || {})[ns] = mapa; };");
-  const ARCHIVOS = [CAPTURA, core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('cuentas.js'), modulo('plata_comprometida.js')];
+  const ARCHIVOS = [CAPTURA, core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('plata_comprometida.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
   function entorno(item, { sobranteCuenta = 'nequi', extraCuentas = [] } = {}) {

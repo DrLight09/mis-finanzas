@@ -559,7 +559,7 @@ describe('ingreso-real', () => {
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
   const BASE = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js')];
-  const TODO = [...BASE, modulo('cuentas.js'), modulo('inicio.js'), modulo('analisis.js'), core('wrapped-gate.js'), modulo('wrapped.js')];
+  const TODO = [...BASE, modulo('nu.js'), modulo('cuentas.js'), modulo('inicio.js'), modulo('analisis.js'), core('wrapped-gate.js'), modulo('wrapped.js')];
   const MES = '2026-10';
 
   const cuentas = (custom = []) => [

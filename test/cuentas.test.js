@@ -2000,7 +2000,8 @@ describe('cuentas-textos', () => {
 
 describe('cuentas-nu-archivos', () => {
   // Cuentas se reparte en dos archivos del mismo grupo lazy: nu.js (todo lo de Nu) y cuentas.js (el resto). Estas pruebas
-  // protegen esa estructura: orden de carga, botones registrados, y que ningún test se olvide de cargar nu.js.
+  // protegen esa estructura: dependencia en un solo sentido (Nu → Cuentas), orden de carga, botones registrados, y que ningún
+  // test se olvide de cargar nu.js.
   const { test } = require('node:test');
   const assert = require('node:assert/strict');
   const fs = require('node:fs');
@@ -2019,7 +2020,7 @@ describe('cuentas-nu-archivos', () => {
     assert.deepEqual([...archivos].sort(), ['js/modules/cuentas.js', 'js/modules/nu.js']);
   });
 
-  test('cada archivo carga SOLO: ninguno usa al otro al cargar, solo cuando una función corre (el orden no importa)', () => {
+  test('cada archivo carga SOLO: ninguno necesita al otro al cargar (el orden no importa)', () => {
     assert.doesNotThrow(() => loadApp([...BASE, modulo('nu.js')]), 'nu.js solo');
     assert.doesNotThrow(() => loadApp([...BASE, modulo('cuentas.js')]), 'cuentas.js solo');
     assert.doesNotThrow(() => loadApp([...BASE, modulo('cuentas.js'), modulo('nu.js')]), 'en el orden contrario');
@@ -2030,6 +2031,25 @@ describe('cuentas-nu-archivos', () => {
     const enNu = new Set(nombres('js/modules/nu.js'));
     const repetidas = nombres('js/modules/cuentas.js').filter(n => enNu.has(n));
     assert.deepEqual(repetidas, []);
+  });
+
+  // Frontera entre las dos capas. Se lee el código SIN comentarios ni cadenas de documentación, porque lo que cuenta es qué usa de verdad.
+  const sinComentarios = t => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
+  const declaradas = t => new Set([...t.matchAll(/^(?:async function |function |let |const |var )([A-Za-z_$][\w$]*)/gm)].map(m => m[1]));
+  const usadasDe = (codigo, nombres) => [...nombres].filter(n => new RegExp('(?<![\\w$.])' + n.replace(/\$/g, '\\$') + '(?![\\w$])').test(codigo)).sort();
+
+  test('la dependencia va en UN solo sentido: cuentas.js no usa nada de nu.js (Nu se le presenta registrándose en CuentaPantallas)', () => {
+    const usadas = usadasDe(sinComentarios(leer('js/modules/cuentas.js')), declaradas(leer('js/modules/nu.js')));
+    assert.deepEqual(usadas, [], 'cuentas.js nombra cosas de nu.js: muévelas a nu.js o pásalas por CuentaPantallas');
+    assert.match(leer('js/modules/nu.js'), /CuentaPantallas\.nu\s*=/);
+    assert.match(leer('js/core/core-state.js'), /const CuentaPantallas\s*=\s*\{\s*\}/);
+  });
+
+  test('lo que Nu toma de cuentas.js es esta lista (si cambia, se decide a propósito y se actualiza la cabecera de nu.js)', () => {
+    const usadas = usadasDe(sinComentarios(leer('js/modules/nu.js')), declaradas(leer('js/modules/cuentas.js')));
+    assert.deepEqual(usadas, ['_MIN_RETIRO', '_aperturaToggleUI', '_descriptorCuenta', '_setBtnEstado', '_setBtnTransferir', '_showCuentasPanel',
+      '_tituloCuentaHtml', 'abrirAgregarDinero', 'abrirRestarDinero', 'abrirTransferir', 'actualizarBotonRetirar', 'actualizarBotonesTransferir',
+      'getMovimientosCuenta', 'registrarEntradaConApertura', 'registrarSalida', 'renderMovsCuenta']);
   });
 
   test('todo botón data-action="cuentas:…" / "nu:…" (en index.html y en el HTML que arman los módulos) está registrado en su namespace', () => {

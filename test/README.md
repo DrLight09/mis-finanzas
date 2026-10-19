@@ -120,6 +120,6 @@ y como check en cada commit/PR.
   no aplica a `mis-finanzas`.
 
 
-## Cuentas y Nu son dos archivos (2026-10-17)
+## Cuentas y Nu son dos archivos (2026-10-17; frontera limpia 2026-10-18)
 
-`js/modules/cuentas.js` y `js/modules/nu.js` forman el grupo lazy `cuentas`. **Todo test que cargue `cuentas.js` tiene que cargar también `nu.js`**: `modulo('nu.js'), modulo('cuentas.js')` (el orden no importa). En modo `permissive` su falta no da error: da resultados distintos en silencio (por ejemplo `materializarIntereses` queda como no-op). La guardia `cuentas-nu-archivos` de `cuentas.test.js` lo comprueba.
+`js/modules/cuentas.js` (capa genérica de cuentas) y `js/modules/nu.js` (todo lo de Nu) forman el grupo lazy `cuentas`. **La dependencia va en un solo sentido: Nu usa a Cuentas, Cuentas no nombra nada de Nu.** Nu se le presenta a `cuentas.js` registrándose en `CuentaPantallas` (`core-state.js`) al cargar. **Todo test que cargue `cuentas.js` tiene que cargar también `nu.js`**: `modulo('nu.js'), modulo('cuentas.js')` (el orden no importa), porque sin `nu.js` Cuentas no tiene pantalla de Nu. En modo `permissive` su falta no da error: da resultados distintos en silencio. La guardia `cuentas-nu-archivos` de `cuentas.test.js` comprueba la carga, que `cuentas.js` no use nada de `nu.js` y la lista exacta de lo que Nu toma de Cuentas.

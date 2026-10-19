@@ -374,11 +374,11 @@ function descontarFuente(fuente,monto,opts){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
     if(c){
-      // FIX 2026-08-13: materializarIntereses (cuentas.js, grupo lazy) sin
+      // FIX 2026-08-13: materializarIntereses (nu.js, grupo lazy) sin
       // guard acá — a diferencia del guard que ya existía en firebase-sync.js
       // (arranque), este vive en descontarFuente(), el motor de mover plata
       // usado desde CUALQUIER módulo (Gastos, Encargos, Préstamos) cuando la
-      // fuente es una cajita Nu, no solo desde Cuentas. Si cuentas.js no
+      // fuente es una cajita Nu, no solo desde Cuentas. Si nu.js no
       // cargó, se salta la materialización del interés del día (mismo
       // riesgo ya aceptado para mesada/tarjetas: el saldo puede quedar sin
       // el interés de ese día hasta que se visite Cuentas) en vez de tumbar
@@ -1024,7 +1024,7 @@ function _saldoEncargosEnCuenta(cuentaKey){
 // Caso específico de cajitas de Nu — Nu genera interés sobre TODO el dinero de
 // la cajita (propio + encargos), y esos intereses son del dueño de la cajita.
 // Se mantiene esta función con nombre propio porque calcC() ya la usa así.
-// Nu: tasa EA (historial por tramos) y cálculo de CDTs migrados a js/modules/cuentas.js.
+// Nu: tasa EA (historial por tramos) y cálculo de CDTs migrados a js/modules/nu.js (el cálculo puro, a nu-calc.js).
 
 function mesActual(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
 
@@ -1476,7 +1476,7 @@ function refresh(){
 /* ---- ANÁLISIS FINANCIERO: migrado a js/modules/analisis.js (renderAnalisis, Ingresos Fijos, Presupuestos).
    calcPatrimonioTotal()/snapshotPatrimonio() se quedan acá — son núcleo, los llama save() en cada guardado. ---- */
 
-// Nu: cajitas, metas de ahorro y CDTs (UI) migrados a js/modules/cuentas.js.
+// Nu: cajitas, metas de ahorro y CDTs (UI) migrados a js/modules/nu.js.
 
 /* ---- GASTOS VARIABLES ---- */
 // (bloque completo: switchGastoTab, renderMesFiltros, setMesFiltro,

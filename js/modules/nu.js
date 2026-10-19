@@ -19,12 +19,18 @@
    patrimonio, Inicio y Encargos lo necesitan en cualquier pantalla. Este
    archivo es la parte que MUTA datos y pinta pantallas.
 
-   Carga: grupo lazy 'cuentas', junto con js/modules/cuentas.js (ver la
-   regla de dependencia en la cabecera de ese archivo). Al cargar solo
-   declara funciones y registra sus propios botones; usa lo de cuentas.js
-   (cuentaActual, _setBtnEstado, _MIN_RETIRO, _showCuentasPanel,
-   renderMovsCuenta, renderMovsFiltros, getMovimientosCuenta, hexToRgb,
-   abrirTransferir…) únicamente cuando una función corre.
+   Carga: grupo lazy 'cuentas', junto con js/modules/cuentas.js.
+   Regla de dependencia (UN solo sentido): Nu se apoya en cuentas.js, nunca
+   al revés. Nu es una cuenta más y reutiliza lo genérico de esa capa —
+   _descriptorCuenta, _tituloCuentaHtml, _showCuentasPanel, _setBtnEstado,
+   _setBtnTransferir, _MIN_RETIRO, getMovimientosCuenta, renderMovsCuenta,
+   abrirAgregarDinero, abrirRestarDinero, abrirTransferir,
+   actualizarBotonRetirar, actualizarBotonesTransferir,
+   registrarEntradaConApertura, registrarSalida, _aperturaToggleUI —
+   únicamente cuando una función corre. cuentas.js no
+   nombra nada de este archivo: Nu se le presenta registrándose en
+   CuentaPantallas (core-state.js) al cargar. La prueba 'cuentas-nu-archivos'
+   (tests/cuentas.test.js) vigila las dos cosas.
 
    Ver docs/nu.md (objetivo, reglas y modelo de datos) y docs/cuentas.md.
    ═══════════════════════════════════════════════════════════════ */
@@ -973,6 +979,42 @@ function renderCajitas(){
   else{msg.innerHTML=html`<div class="cajita-limit-msg">${cajitas.length}/${MAX} cajitas</div>`;btn.style.display='';}
 }
 
+/* ══ PANTALLA DE NU (detalle de la cuenta) ══
+   Lo que cuentas.js le pide a una cuenta con pantalla propia (ver CuentaPantallas en core-state.js). */
+function renderDetalleNu(){
+  // Color, título y rótulo salen del descriptor de Nu, igual que el detalle simple: el color llega por
+  // --cuenta / --cuenta-rgb sobre #cuentas-detalle-nu y los estilos .cuenta-hero / .cuenta-action-btn lo usan.
+  const dNu=_descriptorCuenta('nu');
+  const contNu=document.getElementById('cuentas-detalle-nu');
+  if(dNu&&contNu){
+    contNu.style.setProperty('--cuenta',dNu.color);
+    contNu.style.setProperty('--cuenta-rgb',dNu.rgb);
+    document.getElementById('det-nu-nombre').innerHTML=_tituloCuentaHtml(dNu);
+    document.getElementById('det-nu-label').textContent=dNu.etiquetaDetalle;
+  }
+  // Cajitas
+  renderCajitas();
+  // Encargos en Nu (cualquier cajita)
+  if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-nu-encargos','nu');
+  // Movimientos Nu (cajitas)
+  renderMovsCuenta('det-nu-movs',getMovimientosCuenta('nu'),dNu?dNu.color:'var(--nu-light)','nu');
+}
+
+// Pantalla Nu: activo si alguna cajita (no CDT) tiene saldo movible; y el "Mover" de la cajita abierta.
+function _nuActualizarBotonesTransferir(){
+  const hayNu=(S.cajitas||[]).some(c=>!c.esCDT&&FuentesFiltro.puedeMover('cajita:'+c.id));
+  _setBtnTransferir(document.getElementById('btn-transferir-nu-det'),hayNu);
+  if(_cajitaActualId) _setBtnTransferir(document.getElementById('cajita-det-mover'),FuentesFiltro.puedeMover('cajita:'+_cajitaActualId));
+}
+
+CuentaPantallas.nu={
+  paneles:['cuentas-detalle-nu','cuentas-detalle-cajita','cuentas-sub-meta','cuentas-sub-cdts'],
+  panel:'cuentas-detalle-nu',
+  reiniciar:()=>{_cajitaActualId=null;},
+  render:renderDetalleNu,
+  actualizarBotones:_nuActualizarBotonesTransferir,
+};
+
 /* ══ NAVEGACIÓN CAJITA DETAIL ══ */
 let _cajitaActualId = null;
 
@@ -1455,6 +1497,47 @@ document.addEventListener('input', function(e) {
 // --- Cajita: agregar ---
 const btnAddCajita = document.getElementById('btnAddCajita');
 if (btnAddCajita) btnAddCajita.addEventListener('click', addCajita);
+
+// Preview en vivo del sheet "crear CDT" (monto/tasa/fecha → valor neto
+// estimado). Se encontró compartiendo <script> con Tarjetas de Crédito en
+// index.html — mismo problema de "código no relacionado en el mismo bloque"
+// que ya describía la auditoría para TC. Es de Nu (CDT), así que vive en nu.js.
+// CDT preview
+document.addEventListener('input',function(e){
+  if(!['cdt_monto','cdt_tasa','cdt_vence','cdt_rte'].includes(e.target.id))return;
+  const monto=parseMoney(document.getElementById('cdt_monto').value)||0;
+  const tasa=parsePct(document.getElementById('cdt_tasa').value)||9.25;
+  const rteTxt=(document.getElementById('cdt_rte').value||'').trim();
+  const rte=(rteTxt===''?4:(parsePct(rteTxt)||0))/100; // vacío = 4 (por defecto); 0 es válido
+  const vence=document.getElementById('cdt_vence').value;
+  const prev=document.getElementById('cdt_preview');
+  if(!prev)return;
+  if(monto>=50000&&vence){
+    const dias=Math.max(0,Math.ceil((_fechaSafe(vence)-new Date())/86400000));
+    const tasaDiaria=Math.pow(1+tasa/100,1/365)-1;
+    const tasaDiariaNet=tasaDiaria*(1-rte);
+    const valorFinal=monto*Math.pow(1+tasaDiariaNet,dias);
+    const valorBruto=monto*Math.pow(1+tasaDiaria,dias);
+    const ganado=valorFinal-monto;
+    const retencionTotal=valorBruto-valorFinal;
+    prev.textContent=`En ${dias}d recibirás ~${fmt(valorFinal)} neto (+${fmt(ganado)} · RTE ${(rte*100).toFixed(0)}%: -${fmt(retencionTotal)})`;
+    prev.style.color='var(--accent)';
+  } else if(monto>0&&monto<50000&&!_cdtEditId){
+    prev.textContent='Mínimo $50.000 para el CDT';
+    prev.style.color='var(--red)';
+  } else {
+    prev.textContent='';
+  }
+});
+
+// Campos de tasa EA que no tienen manejador propio (la tasa de un CDT y la que sugiere el chequeo rápido; la de las cajitas lo hace
+// en firebase-sync.js): solo números y un separador decimal, coma o punto.
+document.addEventListener('input',function(e){
+  const t=e.target;
+  if(!t||!t.matches||!t.matches('[data-tasa-ea]'))return;
+  const limpio=nuTasaSanear(t.value);
+  if(limpio!==t.value)t.value=limpio;
+});
 
 // ── Botones de Nu (data-action="nu:…" en index.html y en el HTML generado por este archivo) ──
 Events.registerAll('nu', {

@@ -13,12 +13,11 @@
    Nu (cajitas, tasa EA, CDTs, metas, chequeo rápido y "Agregar/Retirar
    dinero" de una cajita) vive en js/modules/nu.js. Los dos archivos forman
    el grupo lazy 'cuentas' (js/core/lazy-loader.js) y comparten el scope
-   global. Regla de dependencia: ninguno usa al otro AL CARGAR (cada uno
-   registra sus propios botones); solo se llaman cuando una función corre
-   (nu.js usa cuentaActual, _setBtnEstado, _showCuentasPanel,
-   renderMovsCuenta…; este archivo usa materializarIntereses, renderCajitas,
-   actualizarBotonesNu…). Por eso el orden de carga no importa: cada archivo
-   se carga solo sin romper (lo comprueba tests/cuentas.test.js).
+   global. Regla de dependencia (UN solo sentido): este archivo es la capa
+   genérica de cuentas y NO nombra nada de nu.js; Nu se apoya en lo que
+   exportamos acá (ver la cabecera de nu.js) y se le presenta a esta capa
+   registrándose en CuentaPantallas (core-state.js). Cada archivo carga solo
+   y el orden no importa (lo comprueba tests/cuentas.test.js).
 
    Ver docs/cuentas.md (objetivo, reglas y modelo de datos) y docs/nu.md.
    El historial de bugs corregidos vive en CHANGELOG.md, no acá.
@@ -48,19 +47,26 @@ let cuentaActual = '';
 // _ogCta(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'cuentas', ref:<id del movimiento o de la transferencia> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogCta = (ref, rev) => ({ origen: { modulo: 'cuentas', ref, rev: rev || undefined } });
 
+// Al cambiar de cuenta o volver al selector, cada cuenta con pantalla propia (Nu) deja en blanco su estado interno.
+function _reiniciarPantallasCuenta() {
+  Object.values(CuentaPantallas).forEach(p => { if (p.reiniciar) p.reiniciar(); });
+}
+
 function abrirCuenta(fuente) {
-  const esCustom = fuente.startsWith('custom:');
-  if (fuente !== 'nu' && !_descriptorCuenta(fuente)) return; // cuenta personalizada ya borrada
+  const d = _descriptorCuenta(fuente);
+  if (!d) return; // cuenta personalizada ya borrada
+  const pantalla = CuentaPantallas[fuente]; // cuenta con pantalla propia (Nu): su archivo la registra
+  if (d.pantallaPropia && !pantalla) return;
   cuentaActual = fuente;
-  _cajitaActualId = null;
-  _showCuentasPanel(fuente === 'nu' ? 'cuentas-detalle-nu' : 'cuentas-detalle-simple');
+  _reiniciarPantallasCuenta();
+  _showCuentasPanel(pantalla ? pantalla.panel : 'cuentas-detalle-simple');
   renderDetalleCuenta(fuente);
   document.getElementById('scrollArea').scrollTop = 0;
 }
 
 function volverSelector() {
   cuentaActual = '';
-  _cajitaActualId = null;
+  _reiniciarPantallasCuenta();
   _showCuentasPanel('cuentas-selector');
   document.getElementById('scrollArea').scrollTop = 0;
 }
@@ -70,32 +76,15 @@ function renderDetalleCuenta(fuente) {
   // renderEncargosEnCuenta no tenían guard typeof. Hoy encargos.js carga eager, así
   // que no rompe nada — pero es el acoplamiento exacto que bloquearía volver
   // lazy cuentas o encargos por separado.
-  if (fuente === 'nu') {
-    // Color, título y rótulo salen del descriptor de Nu, igual que el detalle simple: el color llega por
-    // --cuenta / --cuenta-rgb sobre #cuentas-detalle-nu y los estilos .cuenta-hero / .cuenta-action-btn lo usan.
-    const dNu = _descriptorCuenta('nu');
-    const contNu = document.getElementById('cuentas-detalle-nu');
-    if (dNu && contNu) {
-      contNu.style.setProperty('--cuenta', dNu.color);
-      contNu.style.setProperty('--cuenta-rgb', dNu.rgb);
-      document.getElementById('det-nu-nombre').innerHTML = _tituloCuentaHtml(dNu);
-      document.getElementById('det-nu-label').textContent = dNu.etiquetaDetalle;
-    }
-    // Cajitas ya se renderizan en renderCajitas()
-    renderCajitas();
-    // Encargos en Nu (cualquier cajita)
-    if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-nu-encargos', 'nu');
-    // Movimientos Nu (cajitas)
-    const movs = getMovimientosCuenta('nu');
-    renderMovsCuenta('det-nu-movs', movs, dNu ? dNu.color : 'var(--nu-light)', 'nu');
-  } else {
-    _renderDetalleSimple(fuente);
-  }
+  // Una cuenta con pantalla propia (Nu) se pinta a sí misma; las demás comparten el detalle simple.
+  const pantalla = CuentaPantallas[fuente];
+  if (pantalla) pantalla.render();
+  else _renderDetalleSimple(fuente);
   actualizarBotonesTransferir(); // "Mover a otra cuenta" solo activo con saldo >= $1,00
 }
 
 // Título del header de cualquier detalle de cuenta: ícono + nombre, siempre desde el descriptor.
-// Lo usan el detalle simple (Nequi/Efectivo/personalizadas) y el de Nu.
+// Lo usan el detalle simple (Nequi/Efectivo/personalizadas) y el de Nu (nu.js).
 function _tituloCuentaHtml(d) {
   return html`<div style="display:flex;align-items:center;gap:8px;">${d.iconoHtml(28)}<span>${d.nombre}</span></div>`;
 }
@@ -233,10 +222,11 @@ function crearCuentaCustom(){
    .cuenta-card / .cuenta-pill / .cuenta-hero (styles.css).
    Descriptor: { fuente, nombre, color (texto), rgb (bordes/fondos "r,g,b"), estilo
    ('tarjeta'|'pastilla'), etiqueta (solo tarjeta), etiquetaDetalle (rótulo del saldo en el
-   detalle), cuentaKey (clave de filtros de movimientos), esCustom, iconoHtml(size), saldo() }.
+   detalle), cuentaKey (clave de filtros de movimientos), esCustom, pantallaPropia (Nu: su detalle lo pinta
+   CuentaPantallas[fuente], registrado por su archivo), iconoHtml(size), saldo() }.
    `fuente` es el mismo identificador que usa el resto de la app
-   ('nequi' | 'nu' | 'efectivo' | 'custom:ID'). Nu figura acá solo para el selector: su detalle
-   es una pantalla propia. */
+   ('nequi' | 'nu' | 'efectivo' | 'custom:ID'). Nu figura acá para el selector (y su color/ícono); su detalle
+   es una pantalla propia que se registra en CuentaPantallas (core-state.js). */
 const ICONO_EFECTIVO_SELECTOR = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>`;
 function _iconoEfectivo(size){
   return html`<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(240,184,64,.15);display:flex;align-items:center;justify-content:center;color:var(--amber);">${raw(ICONO_EFECTIVO_SELECTOR)}</div>`;
@@ -246,7 +236,7 @@ function _iconoEfectivo(size){
 // rgb y badge NO se repiten acá: vienen de CUENTAS_FIJAS (core-state.js).
 const _SELECTOR_FIJAS_EXTRA = {
   nequi:    { estilo:'tarjeta',  etiqueta:'Saldo',    etiquetaDetalle:'Saldo disponible',       cuentaKey:'nequi',    iconoHtml:size=>renderIconoCustom({icono:'nequi'},size), saldo:()=>getSaldoFuente('nequi') },
-  nu:       { estilo:'tarjeta',  etiqueta:'Total Nu', etiquetaDetalle:'Total Nu',               cuentaKey:'nu',       iconoHtml:size=>renderIconoCustom({icono:'nu'},size),    saldo:()=>nuTotal() },
+  nu:       { estilo:'tarjeta',  etiqueta:'Total Nu', etiquetaDetalle:'Total Nu',               cuentaKey:'nu',       pantallaPropia:true, iconoHtml:size=>renderIconoCustom({icono:'nu'},size),    saldo:()=>nuTotal() },
   efectivo: { estilo:'pastilla',                      etiquetaDetalle:'Disponible en efectivo', cuentaKey:'efectivo', iconoHtml:_iconoEfectivo,                                  saldo:()=>getSaldoFuente('efectivo') },
 };
 const CUENTAS_FIJAS_SELECTOR = CUENTAS_FIJAS.map(f => ({ ...f, ..._SELECTOR_FIJAS_EXTRA[f.fuente] }));
@@ -429,7 +419,8 @@ function _resetSheetNuevaCuenta(){
 /* ---- FIN CUENTAS PERSONALIZADAS ---- */
 
 function _showCuentasPanel(panelId){
-  const panels=['cuentas-selector','cuentas-detalle-simple','cuentas-detalle-nu','cuentas-detalle-cajita','cuentas-sub-meta','cuentas-sub-cdts'];
+  // Los paneles de cada cuenta con pantalla propia (Nu) los aporta su registro en CuentaPantallas.
+  const panels=['cuentas-selector','cuentas-detalle-simple'].concat(...Object.values(CuentaPantallas).map(p=>p.paneles||[]));
   panels.forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.style.display = id===panelId ? '' : 'none';
@@ -911,12 +902,7 @@ function confirmarAgregarDinero(){
   if(!esApertura&&!desc){toast('Describe de dónde viene esta plata','err');return;}
   if(!v){toast('Ingresa un monto válido','err');return;}
   if(!adFuente)return;
-  // Materializar intereses antes de agregar dinero a la cajita
-  if(adFuente.startsWith('cajita:')){
-    const id=adFuente.split(':')[1];
-    const c=(S.cajitas||[]).find(x=>x.id===id);
-    if(c)materializarIntereses(c);
-  }
+  // Los intereses de una cajita se materializan solos al sumar (sumarFuente, core-state.js).
   const descFinal=registrarEntradaConApertura(adFuente,v,fecha,desc,esApertura,nota);
   save();
   closeSheet('agregar-dinero');
@@ -1202,10 +1188,8 @@ function actualizarBotonesTransferir() {
   // Cuenta simple abierta (Nequi, Efectivo o personalizada): un solo botón compartido
   const fuenteSimple = cuentaActual;
   if (fuenteSimple && fuenteSimple !== 'nu') _setBtnTransferir(document.getElementById('btn-transferir-cuenta-det'), FuentesFiltro.puedeMover(fuenteSimple));
-  // Pantalla Nu: activo si alguna cajita (no CDT) tiene saldo movible
-  const hayNu = (S.cajitas || []).some(c => !c.esCDT && FuentesFiltro.puedeMover('cajita:' + c.id));
-  _setBtnTransferir(document.getElementById('btn-transferir-nu-det'), hayNu);
-  if (_cajitaActualId) _setBtnTransferir(document.getElementById('cajita-det-mover'), FuentesFiltro.puedeMover('cajita:' + _cajitaActualId));
+  // Cuentas con pantalla propia (Nu: botón de la cuenta y de la cajita abierta)
+  Object.values(CuentaPantallas).forEach(p => { if (p.actualizarBotones) p.actualizarBotones(); });
 }
 
 /* ---- TRANSFERIR ENTRE CUENTAS ---- */
@@ -1389,52 +1373,11 @@ function confirmarTransferir() {
 }
 
 
-// Preview en vivo del sheet "crear CDT" (monto/tasa/fecha → valor neto
-// estimado). Se encontró compartiendo <script> con Tarjetas de Crédito en
-// index.html — mismo problema de "código no relacionado en el mismo bloque"
-// que ya describía la auditoría para TC. Es de Cuentas, así que se mueve acá.
-// CDT preview
-document.addEventListener('input',function(e){
-  if(!['cdt_monto','cdt_tasa','cdt_vence','cdt_rte'].includes(e.target.id))return;
-  const monto=parseMoney(document.getElementById('cdt_monto').value)||0;
-  const tasa=parsePct(document.getElementById('cdt_tasa').value)||9.25;
-  const rteTxt=(document.getElementById('cdt_rte').value||'').trim();
-  const rte=(rteTxt===''?4:(parsePct(rteTxt)||0))/100; // vacío = 4 (por defecto); 0 es válido
-  const vence=document.getElementById('cdt_vence').value;
-  const prev=document.getElementById('cdt_preview');
-  if(!prev)return;
-  if(monto>=50000&&vence){
-    const dias=Math.max(0,Math.ceil((_fechaSafe(vence)-new Date())/86400000));
-    const tasaDiaria=Math.pow(1+tasa/100,1/365)-1;
-    const tasaDiariaNet=tasaDiaria*(1-rte);
-    const valorFinal=monto*Math.pow(1+tasaDiariaNet,dias);
-    const valorBruto=monto*Math.pow(1+tasaDiaria,dias);
-    const ganado=valorFinal-monto;
-    const retencionTotal=valorBruto-valorFinal;
-    prev.textContent=`En ${dias}d recibirás ~${fmt(valorFinal)} neto (+${fmt(ganado)} · RTE ${(rte*100).toFixed(0)}%: -${fmt(retencionTotal)})`;
-    prev.style.color='var(--accent)';
-  } else if(monto>0&&monto<50000&&!_cdtEditId){
-    prev.textContent='Mínimo $50.000 para el CDT';
-    prev.style.color='var(--red)';
-  } else {
-    prev.textContent='';
-  }
-});
-
 /* ═══════════════════════════════════════════════════════════════
    Registro de acciones — Events.on / Events.registerAll
    (ver js/core/events.js). Todas las funciones ya existían con
    estos nombres; acá solo se conectan al despachador centralizado.
    ═══════════════════════════════════════════════════════════════ */
-// Campos de tasa EA que no tienen manejador propio (la tasa de un CDT y la que sugiere el chequeo rápido; la de las cajitas lo hace
-// en firebase-sync.js): solo números y un separador decimal, coma o punto.
-document.addEventListener('input',function(e){
-  const t=e.target;
-  if(!t||!t.matches||!t.matches('[data-tasa-ea]'))return;
-  const limpio=nuTasaSanear(t.value);
-  if(limpio!==t.value)t.value=limpio;
-});
-
 Events.registerAll('cuentas', {
   // Cuentas personalizadas
   selIconoNC,
@@ -1515,8 +1458,6 @@ if (adMenuDest) adMenuDest.addEventListener('change', actualizarAdMenuSaldo);
 const adMenuMonto = document.getElementById('adMenuMonto');
 if (adMenuMonto) adMenuMonto.addEventListener('input', actualizarAdMenuPreview);
 
-// --- Nu: tasa EA ---
-
 // --- Transferir: selects y monto (preview en vivo + exclusión mutua origen/destino) ---
 const trOrigen = document.getElementById('tr_origen');
 if (trOrigen) trOrigen.addEventListener('change', _trOrigenCambio);
@@ -1534,7 +1475,7 @@ if (trMonto) trMonto.addEventListener('input', actualizarTransfPreview);
    criterio ya usado en configuracion.js para data-modulo/inputs de archivo,
    en vez de pasar por el despachador de data-action.
    El 'change' de cada checkbox (antes onchange="toggleAdApertura()" /
-   onchange="_nuMovToggleApertura()" inline en el HTML) se agrega acá mismo. */
+   onchange="_nuMovToggleApertura()" inline en el HTML; el de Nu vive en nu.js) se agrega acá mismo. */
 [['adAperturaWrap','adEsApertura',toggleAdApertura]].forEach(([wrapId,chkId,onChangeFn])=>{
   const wrap=document.getElementById(wrapId);
   const chk=document.getElementById(chkId);

@@ -246,6 +246,17 @@ const CUENTAS_FIJAS=[
 ];
 // Cuenta fija por su fuente; undefined si no es una de las tres (cajita:ID, custom:ID, tc:ID…).
 function getCuentaFija(fuente){return CUENTAS_FIJAS.find(d=>d.fuente===fuente);}
+/* Cuentas con pantalla propia (hoy solo Nu). cuentas.js es la capa genérica de cuentas y NO conoce a Nu: cada
+   cuenta con pantalla propia se registra acá (desde su archivo, al cargar) y cuentas.js le pregunta lo que necesita.
+   Vive en el núcleo para que el orden de carga de los archivos lazy no importe.
+   CuentaPantallas[fuente] = {
+     paneles: [ids de sus paneles dentro de #screen-cuentas],  // _showCuentasPanel los oculta/muestra
+     panel:   id del panel que se abre al tocar la cuenta en el selector,
+     reiniciar(),         // al abrir cualquier cuenta o volver al selector: deja en blanco su estado interno (cajita abierta…)
+     render(),            // pinta su detalle (renderDetalleCuenta)
+     actualizarBotones()  // botones de Mover/Transferir de sus pantallas (actualizarBotonesTransferir)
+   } */
+const CuentaPantallas={};
 function _cuentasArr(){
   if(!Array.isArray(S.cuentas))S.cuentas=[];
   ['nequi','efectivo'].forEach(id=>{if(!S.cuentas.some(c=>c.id===id))S.cuentas.push({id,tipo:id,saldo:0});});

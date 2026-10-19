@@ -123,3 +123,17 @@ y como check en cada commit/PR.
 ## Cuentas y Nu son dos archivos (2026-10-17; frontera limpia 2026-10-18)
 
 `js/modules/cuentas.js` (capa genérica de cuentas) y `js/modules/nu.js` (todo lo de Nu) forman el grupo lazy `cuentas`. **La dependencia va en un solo sentido: Nu usa a Cuentas, Cuentas no nombra nada de Nu.** Nu se le presenta a `cuentas.js` registrándose en `CuentaPantallas` (`core-state.js`) al cargar. **Todo test que cargue `cuentas.js` tiene que cargar también `nu.js`**: `modulo('nu.js'), modulo('cuentas.js')` (el orden no importa), porque sin `nu.js` Cuentas no tiene pantalla de Nu. En modo `permissive` su falta no da error: da resultados distintos en silencio. La guardia `cuentas-nu-archivos` de `cuentas.test.js` comprueba la carga, que `cuentas.js` no use nada de `nu.js` y la lista exacta de lo que Nu toma de Cuentas.
+
+## Prueba de humo con la página real (2026-10-18)
+
+`tests/smoke-browser.js` no es parte de `npm test` (no usa `node --test` y necesita una dependencia de desarrollo: `npm i -D jsdom@24`; la 25 en adelante quitó `ResourceLoader`). Carga `index.html` y todos sus `<script>` en jsdom, carga todos los grupos lazy y hace dos cosas:
+
+1. **Toca cada botón `data-action` del DOM** e informa los que no tienen handler registrado y los que lanzan una excepción.
+2. **Escenario de Cuentas/Nu con datos** (una cajita con un CDT): navega selector → Nu → cajita → volver → Nequi, comprueba qué panel queda visible y que `_cajitaActualId` se reinicie, y toca todos los botones que cada pantalla genera.
+
+```bash
+npm i -D jsdom@24
+node tests/smoke-browser.js [--verbose]
+```
+
+Resultado esperado hoy: la fase 2 con **0 fallos**. Las líneas de la fase 1 que siempre aparecen son de entorno, no de la app: `authgate:*` y `pin:*` los registran módulos ES (`firebase-init.js`, `pin-bio.js`) que jsdom no ejecuta, y `config:signOut` / `config:abrirEliminarCuenta` dependen de ellos. Comprobado por mutación: sin registrar Nu o con un botón apuntando a una acción inexistente, la prueba falla. **No sustituye abrir la app en un navegador real** (no hay layout, CSS ni Firebase), pero habría atrapado un botón sin registrar tras cambiar de `cuentas:` a `nu:`.

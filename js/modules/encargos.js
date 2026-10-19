@@ -3313,12 +3313,9 @@ Events.registerAll('encargos', {
   abrirMov:               (...args) => abrirMovEncargo(...args),          // data-args: ["entrada"] | ["salida"]
   abrirSalidaMenu:        (...args) => abrirSalidaEncargoMenu(...args),
   salidaMenuIr:           (...args) => _salidaEncMenuIr(...args),         // data-args: ["normal"|"mio"|"otroEncargo"|"tc"]
-  abrirTraspaso:          (...args) => abrirTraspasoEncargo(...args),
   abrirMoverCuentas:      (...args) => abrirMoverEntreCuentasEncargo(...args),
   moverEncSplitToggle:      (...args) => _moverEncSplitToggle(...args),
   moverEncAgregarSplitRow:  (...args) => _moverEncAgregarSplitRow(...args),
-  abrirTransferencia:     (...args) => abrirTransferenciaEncargo(...args),
-  abrirCompraTC:          (...args) => abrirCompraConTC(...args),
   abrirNuevaParte:        (...args) => abrirNuevaParte(...args),
   movSplitToggle:         (...args) => _movEncSplitToggle(...args),
   movAgregarSplitRow:     (...args) => _movEncAgregarSplitRow(...args),

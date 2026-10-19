@@ -2621,7 +2621,6 @@ Events.registerAll('prestado', {
   movDifToggle: _movDifToggle,
   toggleAbonoSplit: toggleAbonoSplit,
   abonoAddSplitRow: abonoAddSplitRow,
-  toggleExtraSection: toggleExtraSection,
   extAddParte: extAddParte,
   extDelParte: extDelParte,
   abonoEncCuentaSplitToggle: _abonoEncCuentaSplitToggle,

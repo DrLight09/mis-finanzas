@@ -494,7 +494,7 @@ function abrirEncargoDetalle(id) {
           ${m._grupo?raw(m._grupo.filter(x=>x.cuenta).map(x=>`<span class="badge ${fuenteBadgeClass(x.cuenta)}" style="font-size:9px;">${escHtml(fuenteLabel(x.cuenta))}</span>`).join('')):(lblCuenta?html`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuenta}</span>`:'')}
           ${tcNombreLbl?html`<span class="badge bg-blue" style="font-size:9px;">${tcNombreLbl}</span>`:''}
         </div>
-        ${raw(typeof _difRenderHistorial === 'function' ? _difRenderHistorial(m) : '')}
+        ${raw(m && m.diferencial ? diffRenderHistorial(m.diferencial) : '')}
       </div>`;
     });
     histEl.innerHTML = html`${contenido}`;
@@ -793,8 +793,6 @@ function _difSetCuentaSalida(i, v) { diffSetCuentaSalida('movenc', i, v); }
 function _difSetCuentaEntrada(i, v) { diffSetCuentaEntrada('movenc', i, v); }
 function _difResumen() { diffResumen('movenc'); }
 function _validarIntercambiosBenefs() { return diffValidarIntercambios('movenc'); }
-// _difBenefs expuesto como alias en vivo por compatibilidad (algo viejo podría leer/asignar esta variable)
-Object.defineProperty(window, '_difBenefs', { get() { return diffInst('movenc').partes; }, set(v) { diffInst('movenc').partes = v; } });
 
 /* ─── "Yo puse la plata" — intercambio simple sin diferencial ─────
    Para cuando lo que dijiste = lo real, pero la plata no salió de la

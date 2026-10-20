@@ -30,7 +30,7 @@ function comparar(rutaA, rutaB, tolPatrimonio) {
 }
 
 function foto(rutaBackup) {
-  const { loadApp } = require('../tests/support/load-app');
+  const { loadApp } = require(require('path').join(__dirname, '..', require('fs').existsSync(require('path').join(__dirname, '..', 'tests')) ? 'tests' : 'test', 'support', 'load-app'));
   const CORE = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core'); // MIS_FINANZAS_CORE_DIR: calcular con otra copia del código (p. ej. la original, para la foto "antes")
   const files = ['core-state.js', 'periodo.js', 'cuenta-efectos.js', 'nu-calc.js', 'calc-helpers.js'].map(f => path.join(CORE, f));
   const ctx = loadApp(files, { permissive: true });
@@ -57,7 +57,7 @@ function foto(rutaBackup) {
       out.meses[mes] = { ingresos: { mesada: i.mesada, fijos: i.fijos, entradas: i.entradas, total: i.total }, gastos: { gv: g.gvTotal, gf: g.gfTotal, total: g.total } };
     }
   }
-  const sin = m => { if (m && typeof m === 'object' && !m.clase && !['salida', 'egreso'].includes(m.tipo)) out.sinClase++; };
+  const sin = m => { if (m && typeof m === 'object' && !m.clase && !['salida'].includes(m.tipo)) out.sinClase++; };
   (S.movimientos || []).forEach(sin); (S.gastosVar || []).forEach(sin);
   try { out.patrimonio = ctx.calcPatrimonioTotal(); } catch (e) { out.patrimonio = 'ERR ' + e.message; }
   if (typeof out.patrimonio !== 'number' || !Number.isFinite(out.patrimonio)) console.warn('⚠️  El patrimonio no se pudo calcular (' + out.patrimonio + '): no se podrá comparar.');

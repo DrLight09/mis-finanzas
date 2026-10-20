@@ -6,7 +6,7 @@
 // sin cuenta de $500.000 inflaba la proyección). Es una guía, no una igualdad exacta: el patrimonio se fotografía por día de
 // guardado y los movimientos por su fecha (ver analisis-financiero.md §5), y hay intereses de Nu y de TC.
 const fs = require('fs'), path = require('path');
-const { loadApp } = require('../tests/support/load-app');
+const { loadApp } = require(require('path').join(__dirname, '..', require('fs').existsSync(require('path').join(__dirname, '..', 'tests')) ? 'tests' : 'test', 'support', 'load-app'));
 const CORE = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core');
 const ruta = process.argv[2];
 if (!ruta) { console.error('Uso: node scripts/conciliacion.js backup.json [--umbral=30000]'); process.exit(2); }

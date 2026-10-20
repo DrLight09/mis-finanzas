@@ -442,18 +442,16 @@ function _showCuentasPanel(panelId){
 // `fuente`), gastos variables, préstamos dados, transferencias, cobros de Spotify y las
 // entradas del libro sin fila propia (intereses, ajustes, CDT).
 //
-// Lo que DIFIERE a propósito entre tipos de cuenta (no son descuidos; no unificar):
-//  1. Tipo de una salida manual: 'egreso' (personalizada) vs 'salida_manual' (las demás).
-//     movimientos.js elige la rama de borrado y de reversión de saldo según ese tipo.
-//  2. Texto cuando el registro no trae descripción: 'Ingreso'/'Retiro' vs 'Entrada de efectivo'/
-//     'Salida manual'.
+// Todas las cuentas se leen igual: una salida manual es siempre 'salida_manual' (desde 2026-10-18 ya no existe el
+// tipo 'egreso' de las personalizadas: su borrado hacía lo mismo que el de 'salida_manual') y, sin descripción,
+// los textos son 'Ingreso' / 'Retiro'.
 // Cada fila lleva `_movId` (id del registro de origen); ordenado por fecha desc y luego por id desc.
 function getMovimientosCuenta(tipo) {
   const esCustom = !!tipo && tipo.startsWith('custom:');
   const coincide = tipo === 'nu' ? (f => !!f && f.startsWith('cajita:')) : (f => f === tipo);
-  const tipoSalidaManual = esCustom ? 'egreso' : 'salida_manual';
-  const textoEntrada = esCustom ? 'Ingreso' : 'Entrada de efectivo';
-  const textoSalida = esCustom ? 'Retiro' : 'Salida manual';
+  const tipoSalidaManual = 'salida_manual';
+  const textoEntrada = 'Ingreso';
+  const textoSalida = 'Retiro';
   const movs = [];
   let _idx = 0;
 
@@ -546,7 +544,7 @@ function getMovimientosCuenta(tipo) {
   // Cobros de Spotify a personas (los pagos del plan ya están en gastosVar) + abonos posteriores de lo
   // pendiente, cada uno como su propia fila. Cada abono puede haber ido a una cuenta distinta a la del
   // cobro original, así que se filtra por su propio `destino`, no por `h.fuente`.
-  (S.spotifyHistorial || []).forEach((h, _spIdx) => {
+  (S.spotify.historial || []).forEach((h, _spIdx) => {
     if (h.tipo === 'pago') return;
     // h.monto acumula el cobro original + los abonos ya recibidos (confirmarSpResolverPendiente): hay que
     // restar los abonos para no contar la misma plata dos veces (una acá, otra en su propia fila).
@@ -737,13 +735,13 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplici
   }
 
   el.innerHTML = html`${filtrados.map(m => {
-    const esSalida = m.tipo === 'salida_manual' || m.tipo === 'gasto' || m.tipo === 'egreso';
+    const esSalida = m.tipo === 'salida_manual' || m.tipo === 'gasto';
     const esApertura = m.tipo === 'apertura';
     const esPositivo = esApertura ? true : esSalida ? false : m.monto > 0;
     const colorMonto = esApertura ? 'var(--blue)' : esPositivo ? 'var(--accent)' : 'var(--red)';
     const signo = esApertura ? '' : esPositivo ? '+' : '−';
-    const tipoLabel = { gasto: 'Gasto', ingreso: 'Ingreso', egreso: 'Retiro', apertura: 'Apertura', prestamo: 'Préstamo', abono: 'Abono', alcancia: 'Alcancía', mesada: 'Mesada', transferencia: 'Transferencia', salida_manual: 'Salida' }[m.tipo] || m.tipo;
-    const bgLabel = esApertura ? 'bg-blue' : esPositivo ? 'bg-green' : m.tipo === 'gasto' || m.tipo === 'salida_manual' || m.tipo === 'egreso' ? 'bg-red' : m.tipo === 'transferencia' ? 'bg-blue' : 'bg-amber';
+    const tipoLabel = { gasto: 'Gasto', ingreso: 'Ingreso', apertura: 'Apertura', prestamo: 'Préstamo', abono: 'Abono', alcancia: 'Alcancía', mesada: 'Mesada', transferencia: 'Transferencia', salida_manual: 'Retiro' }[m.tipo] || m.tipo;
+    const bgLabel = esApertura ? 'bg-blue' : esPositivo ? 'bg-green' : m.tipo === 'gasto' || m.tipo === 'salida_manual' ? 'bg-red' : m.tipo === 'transferencia' ? 'bg-blue' : 'bg-amber';
     const dataId = m._movId ? html`data-mov-id="${m._movId}"` : '';
     const dataTipo = html`data-mov-tipo="${m.tipo}"`;
     const dataFuente = m._fuenteOrigen ? html`data-mov-fuente="${m._fuenteOrigen}"` : '';

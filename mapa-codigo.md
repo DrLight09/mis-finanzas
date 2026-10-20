@@ -15,7 +15,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/color-picker.js` | de entrada (defer) | 1 | 0 |
 | `js/core/core-state.js` | de entrada (defer) | 75 | 12 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
-| `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
+| `js/core/diferencial.js` | de entrada (defer) | 22 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
 | `js/core/firebase-init.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/firebase-sync.js` | de entrada (módulo ES) | 0 | 0 |
@@ -110,7 +110,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_diffActualizarMiCuenta`, `_diffFuentesOptsHtml`, `_difRenderHistorial`, `diffAddParte`, `diffAplicar`, `diffCalcular`, `diffEstaAbierto`, `diffHtmlBloque`, `diffInst`, `diffRegistrarInstancia`, `diffRemoveParte`, `diffRenderHistorial`, `diffRenderPartes`, `diffReset`, `diffResumen`, `diffSetCuentaEntrada`, `diffSetCuentaSalida`, `diffSetMonto`, `diffSetNombre`, `diffToggle`, `diffTogglePagoYo`, `diffValidarIntercambios`, `diffValidarMiCuenta`
+**Funciones:** `_diffActualizarMiCuenta`, `_diffFuentesOptsHtml`, `diffAddParte`, `diffAplicar`, `diffCalcular`, `diffEstaAbierto`, `diffHtmlBloque`, `diffInst`, `diffRegistrarInstancia`, `diffRemoveParte`, `diffRenderHistorial`, `diffRenderPartes`, `diffReset`, `diffResumen`, `diffSetCuentaEntrada`, `diffSetCuentaSalida`, `diffSetMonto`, `diffSetNombre`, `diffToggle`, `diffTogglePagoYo`, `diffValidarIntercambios`, `diffValidarMiCuenta`
 
 ### `js/core/events.js`
 
@@ -532,7 +532,6 @@ Ninguno.
 | `_difMiSplitPreview` | `js/modules/encargos.js` |
 | `_difMiSplitToggle` | `js/modules/encargos.js` |
 | `_difRemoveBenef` | `js/modules/encargos.js` |
-| `_difRenderHistorial` | `js/core/diferencial.js` |
 | `_difRenderHistorialParte` | `js/modules/encargos.js` |
 | `_difResumen` | `js/modules/encargos.js` |
 | `_difSetCuentaEntrada` | `js/modules/encargos.js` |

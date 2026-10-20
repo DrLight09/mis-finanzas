@@ -168,7 +168,7 @@ describe('calcHealthScore', () => {
     const ctx = freshApp({
       cuentas: cuentas({ nequi: 6000000 }), // 6 meses de 1M de gastos
       gastosFijos: [{ id: 'g1', monto: 1000000 }],
-      pagosGastosFijos: { ['g1_' + mes]: true },
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
     });
     const r = ctx.calcHealthScore();
     assert.ok(r.score >= 70, `esperaba score alto (>=70), dio ${r.score}`);
@@ -180,7 +180,7 @@ describe('calcHealthScore', () => {
     const ctx = freshApp({
       cuentas: cuentas({ nequi: 500000 }), // 0.5 meses de 1M
       gastosFijos: [{ id: 'g1', monto: 1000000 }],
-      pagosGastosFijos: { ['g1_' + mes]: true },
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
     });
     const r = ctx.calcHealthScore();
     assert.ok(r.tips.some((t) => t.includes('menos de 3 meses')));
@@ -191,7 +191,7 @@ describe('calcHealthScore', () => {
       cuentas: cuentas({ nequi: 100000 }),
       tarjetasCredito: [{ id: 'tc1', deuda: 300000, cupo: 1000000 }],
       gastosFijos: [{ id: 'g1', monto: 50000 }],
-      pagosGastosFijos: { ['g1_' + currentMonthKey()]: true },
+      pagosGastosFijos: { ['g1_' + currentMonthKey()]: { monto: 50000 } },
     });
     const r = ctx.calcHealthScore();
     assert.ok(r.tips.some((t) => t.includes('deuda en tarjetas supera tu patrimonio líquido')));
@@ -211,7 +211,7 @@ describe('calcHealthScore', () => {
       cuentas: cuentas({ nequi: 2000000 }),
       ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 1000000, desde: '2020-01' }],
       gastosFijos: [{ id: 'g1', monto: 1500000 }],
-      pagosGastosFijos: { ['g1_' + mes]: true },
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1500000 } },
     });
     const r = ctx.calcHealthScore();
     assert.ok(r.tips.some((t) => t.includes('gastando más de lo que ingresas')));
@@ -222,7 +222,7 @@ describe('calcHealthScore', () => {
     const ctx = freshApp({
       tarjetasCredito: [{ id: 'tc1', deuda: 50000000, cupo: 50000000 }],
       gastosFijos: [{ id: 'g1', monto: 30000000 }],
-      pagosGastosFijos: { ['g1_' + mes]: true },
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 30000000 } },
     });
     const r = ctx.calcHealthScore();
     assert.ok(r.score >= 0 && r.score <= 100, `score fuera de rango: ${r.score}`);
@@ -304,11 +304,9 @@ describe('periodo', () => {
     assert.deepEqual(plano(P(ctx).gastoPorCategoria('2026-09')), { Ocio: 100 });
   });
 
-  test('gastos fijos — formatos viejos: valor `true` cae al monto actual; array se agrupa por la fecha del pago', () => {
-    const conTrue = app({ gastosFijos: [{ id: 'g1', monto: 300 }], pagosGastosFijos: { 'g1_2026-09': true } });
-    assert.equal(P(conTrue).gastosDelMes('2026-09').gfTotal, 300);
-    const comoArray = app({ gastosFijos: [{ id: 'g1', monto: 300, cat: 'X' }], pagosGastosFijos: [{ gastoFijoId: 'g1', fecha: '2026-09-10', monto: 250 }] });
-    assert.equal(P(comoArray).gastosDelMes('2026-09').gfTotal, 250);
+  test('gastos fijos — un pago sin monto cuenta 0 (no se inventa el monto actual del gasto fijo)', () => {
+    const ctx = app({ gastosFijos: [{ id: 'g1', monto: 300 }], pagosGastosFijos: { 'g1_2026-09': { fecha: '2026-09-10' } } });
+    assert.equal(P(ctx).gastosDelMes('2026-09').gfTotal, 0);
   });
 
   test('gastos variables — los pagos de gasto fijo (ya contados como fijos) no se cuentan dos veces', () => {
@@ -361,7 +359,7 @@ describe('periodo', () => {
 });
 
 describe('migraciones', () => {
-  // VERSIÓN DEL ESQUEMA / aplicarMigraciones (core-state.js). La app nació limpia en el esquema 7: no migra datos anteriores a 7.
+  // VERSIÓN DEL ESQUEMA / aplicarMigraciones (core-state.js). La app nació limpia en el esquema 9: no migra datos anteriores a 9 y MIGRACIONES empieza vacía.
   // Desde el 7 sí hay migraciones (MIGRACIONES): v8 = una sola tasa de Nu (S.nuRate).
   const test = require('node:test');
   const assert = require('node:assert/strict');
@@ -377,77 +375,19 @@ describe('migraciones', () => {
     assert.equal(d.schemaVersion, 9);
   });
 
-  describe('v8 — una sola tasa de Nu (S.nuRate)', () => {
-    const v7 = extra => ({ schemaVersion: 7, ...extra });
-    test('la tasa que el usuario escribía (nuTasaGlobal) pasa a nuRate; se borran nuTasaGlobal y la `tasa` de cada cajita', () => {
-      const d = plano(app().aplicarMigraciones(v7({ nuRate: 9.25, nuTasaGlobal: 12.5, cajitas: [{ id: 'a', tasa: 9.3 }, { id: 'b', tasa: 9.25 }] })));
-      assert.equal(d.schemaVersion, 9); // v7 pasa por la v8 y por la v9
-      assert.equal(d.nuRate, 12.5);
-      assert.equal('nuTasaGlobal' in d, false);
-      assert.equal(d.cajitas.some(c => 'tasa' in c), false);
-    });
-    test('con cajitas y sin tasa escrita queda la que se venía usando (nuRate, o 9,25 si faltaba)', () => {
-      assert.equal(plano(app().aplicarMigraciones(v7({ nuRate: 9.4, cajitas: [{ id: 'a' }] }))).nuRate, 9.4);
-      assert.equal(plano(app().aplicarMigraciones(v7({ cajitas: [{ id: 'a' }] }))).nuRate, 9.25);
-    });
-    test('sin cajitas ni tasa escrita queda SIN configurar (el 9,25 antiguo lo ponía la app, no el usuario)', () => {
-      assert.equal(plano(app().aplicarMigraciones(v7({ nuRate: 9.25, cajitas: [] }))).nuRate, null);
-      assert.equal(plano(app().aplicarMigraciones(v7({}))).nuRate, null);
-    });
-    test('un nuTasaGlobal inválido (0, texto, null) no se usa como tasa', () => {
-      for (const malo of [0, -2, 'abc', null]) {
-        assert.equal(plano(app().aplicarMigraciones(v7({ nuRate: 9.25, nuTasaGlobal: malo, cajitas: [] }))).nuRate, null, String(malo));
-      }
-    });
-    test('los CDT conservan su tasa propia y el historial de tasas no se toca', () => {
-      const historialTasasNu = [{ fecha: '2026-01-01', tasa: 9 }];
-      const d = plano(app().aplicarMigraciones(v7({ nuTasaGlobal: 10, historialTasasNu, cajitas: [{ id: 'a', tasa: 9.3, cdts: [{ id: 'x', tasa: 5 }] }] })));
-      assert.equal(d.cajitas[0].cdts[0].tasa, 5);
-      assert.deepEqual(d.historialTasasNu, historialTasasNu);
-    });
-    test('un backup ya migrado (esquema 8) no se vuelve a tocar', () => {
-      const d = plano(app().aplicarMigraciones({ schemaVersion: 8, nuRate: null, cajitas: [{ id: 'a' }] }));
-      assert.equal(d.nuRate, null);
-    });
-  });
-
-  describe('v9 — todo el estado de Spotify en S.spotify', () => {
-    const v8 = extra => ({ schemaVersion: 8, ...extra });
-    const viejo = { spotifyPersonas: [{ id: 'p1', nombre: 'Ana' }], spotifyCosto: 17500, spotifyCajitaId: 'k1', spotifyHistorial: [{ id: 'h1', tipo: 'cobro' }] };
-    test('las cuatro llaves sueltas pasan a S.spotify y se borran', () => {
-      const d = plano(app().aplicarMigraciones(v8(viejo)));
-      assert.equal(d.schemaVersion, 9);
-      assert.deepEqual(d.spotify, { personas: [{ id: 'p1', nombre: 'Ana' }], costo: 17500, cajitaId: 'k1', historial: [{ id: 'h1', tipo: 'cobro' }] });
-      for (const k of ['spotifyPersonas', 'spotifyCosto', 'spotifyCajitaId', 'spotifyHistorial']) assert.equal(k in d, false, k);
-    });
-    test('sin datos de Spotify queda el objeto vacío de siempre', () => {
-      assert.deepEqual(plano(app().aplicarMigraciones(v8({}))).spotify, { personas: [], costo: 0, cajitaId: '', historial: [] });
-    });
-    test('las llaves viejas mandan sobre un `spotify` vacío que puso el estado por defecto (Object.assign de la nube sobre S)', () => {
-      const d = plano(app().aplicarMigraciones(v8({ ...viejo, spotify: { personas: [], costo: 0, cajitaId: '', historial: [] } })));
-      assert.equal(d.spotify.personas.length, 1); assert.equal(d.spotify.costo, 17500); assert.equal(d.spotify.historial.length, 1);
-    });
-    test('valores inválidos se normalizan (costo no numérico, cajitaId no texto, listas que no son arrays)', () => {
-      const d = plano(app().aplicarMigraciones(v8({ spotifyPersonas: 'x', spotifyCosto: 'abc', spotifyCajitaId: 5, spotifyHistorial: null })));
-      assert.deepEqual(d.spotify, { personas: [], costo: 0, cajitaId: '', historial: [] });
-    });
-    test('un backup ya en esquema 9 no se vuelve a tocar', () => {
-      const spotify = { personas: [{ id: 'p1' }], costo: 5, cajitaId: 'k', historial: [] };
-      assert.deepEqual(plano(app().aplicarMigraciones({ schemaVersion: 9, spotify })).spotify, spotify);
-    });
+  describe('estado de Spotify (S.spotify, esquema 9)', () => {
     test('el estado por defecto y load() dejan S.spotify completo (sin guardas en el resto de la app)', () => {
       const ctx = app();
       assert.deepEqual(plano(ctx.S.spotify), { personas: [], costo: 0, cajitaId: '', historial: [] });
       ctx.S.spotify = { costo: '12000' }; ctx._ensureSpotify();
       assert.deepEqual(plano(ctx.S.spotify), { personas: [], costo: 12000, cajitaId: '', historial: [] });
     });
-    test('guardia: ningún archivo de la app vuelve a usar las cuatro llaves viejas (solo la migración las nombra)', () => {
+    test('guardia: ningún archivo de la app usa las cuatro llaves sueltas de antes (S.spotifyPersonas/Costo/CajitaId/Historial)', () => {
       const fs = require('fs'), dir = path.join(CORE_DIR, '..');
       const archivos = ['core', 'modules'].flatMap(d => fs.readdirSync(path.join(dir, d)).filter(f => f.endsWith('.js')).map(f => path.join(dir, d, f)));
       const mal = [];
       for (const f of archivos) {
         const t = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
-        if (f.endsWith('core-state.js')) continue; // la migración v9 las nombra a propósito
         if (/\.(spotifyPersonas|spotifyCosto|spotifyCajitaId|spotifyHistorial)\b/.test(t)) mal.push(path.basename(f));
       }
       assert.deepEqual(mal, [], 'usan S.spotifyX en vez de S.spotify.X');
@@ -467,7 +407,7 @@ describe('migraciones', () => {
   });
 
   test('datos de una versión ANTERIOR a la base no se tocan: se marcan (S._esquemaAnterior) para que la app avise y se empiece de cero', () => {
-    for (const v of [2, 4, 6]) {
+    for (const v of [2, 7, 8]) {
       const d = plano(app().aplicarMigraciones({ schemaVersion: v, movimientos: [{ id: 'a' }] }));
       assert.equal(d.schemaVersion, v, 'no se sube la versión: los datos viejos NO están en la forma nueva');
       assert.equal(d._esquemaAnterior, v);
@@ -497,24 +437,24 @@ describe('backup-import', () => {
 
   test('un backup exportado sin tasa de Nu (nuRate: null) se puede importar', () => {
     const ctx = app();
-    assert.deepEqual(plano(ctx._validarEstructuraJSON({ schemaVersion: 8, nuRate: null, cajitas: [] })), []);
+    assert.deepEqual(plano(ctx._validarEstructuraJSON({ schemaVersion: 9, nuRate: null, cajitas: [] })), []);
   });
   test('nuRate numérico sigue siendo válido; texto u otro tipo se rechaza', () => {
     const ctx = app();
-    assert.deepEqual(plano(ctx._validarEstructuraJSON({ schemaVersion: 8, nuRate: 9.3, cajitas: [] })), []);
+    assert.deepEqual(plano(ctx._validarEstructuraJSON({ schemaVersion: 9, nuRate: 9.3, cajitas: [] })), []);
     for (const malo of ['9,3', true, {}, []]) {
-      assert.equal(ctx._validarEstructuraJSON({ schemaVersion: 8, nuRate: malo, cajitas: [] }).length, 1, JSON.stringify(malo));
+      assert.equal(ctx._validarEstructuraJSON({ schemaVersion: 9, nuRate: malo, cajitas: [] }).length, 1, JSON.stringify(malo));
     }
   });
-  test('un backup del esquema 7 (con nuTasaGlobal y `tasa` por cajita) se valida y, al migrarlo, queda en la forma nueva', () => {
+  test('un backup de un esquema anterior al actual se rechaza (la app nació limpia: no migra datos viejos)', () => {
     const ctx = app();
-    const viejo = { schemaVersion: 7, nuRate: 9.25, nuTasaGlobal: 11, cajitas: [{ id: 'a', saldo: 5, tasa: 11 }] };
-    assert.deepEqual(plano(ctx._validarEstructuraJSON(viejo)), []);
-    const nuevo = plano(ctx.aplicarMigraciones(plano(viejo)));
-    assert.equal(nuevo.nuRate, 11);
-    assert.equal('nuTasaGlobal' in nuevo, false);
-    assert.equal('tasa' in nuevo.cajitas[0], false);
-    assert.deepEqual(plano(ctx._validarEstructuraJSON(nuevo)), [], 'lo migrado se vuelve a poder exportar e importar');
+    for (const v of [7, 8]) assert.match(ctx._validarEstructuraJSON({ schemaVersion: v, cajitas: [] })[0], /versión anterior/, 'esquema ' + v);
+  });
+  test('un backup exportado por esta versión se valida y no cambia al pasar por aplicarMigraciones', () => {
+    const ctx = app();
+    const actual = { schemaVersion: 9, nuRate: 11, cajitas: [{ id: 'a', saldo: 5 }], spotify: { personas: [], costo: 0, cajitaId: '', historial: [] } };
+    assert.deepEqual(plano(ctx._validarEstructuraJSON(actual)), []);
+    assert.deepEqual(plano(ctx.aplicarMigraciones(plano(actual))), actual);
   });
   test('un backup de una versión más nueva que la app se rechaza', () => {
     const ctx = app();

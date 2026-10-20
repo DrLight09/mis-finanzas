@@ -18,7 +18,7 @@ modificarlo, usando `vm` para simular cómo el navegador carga
   — `js/core/nu-calc.js`, `js/modules/cuentas.js`, `js/core/color-picker.js` (`tests/cuentas.test.js`)
 - Estructura Cuentas/Nu (`cuentas-nu-archivos`: cada archivo carga solo, botones registrados, ningún test carga `cuentas.js` sin `nu.js`)
 - Textos y toast de las cuentas (`cuentas-textos`), campo de tasa numérico, Chequeo rápido con encargos (total de Nu) y `toast()` por tipo (`nucleo.test.js` → `toast`)
-- Migración v8 del esquema, validación de backups al importar y la guardia `archivos-cargados` (todo archivo de `js/core` y `js/modules`
+- Esquema 9 sin migraciones (mecanismo vacío), estado de Spotify (`S.spotify`), validación de backups al importar (rechaza los de esquemas anteriores) y la guardia `archivos-cargados` (todo archivo de `js/core` y `js/modules`
   llega al navegador por un `<script>`, un grupo lazy o un `import`) — `tests/nucleo.test.js`
 - Me deben (registrar con `_aplicarMovimiento`, revertir con `_revertirMovDeudor`) y Yo debo (pago dividido, perdón, pago de más, pago con tarjeta) y
   `registrarMovEspejo()`/`borrarMovEspejo()` — `js/modules/prestado.js`,
@@ -126,14 +126,20 @@ y como check en cada commit/PR.
 
 ## Prueba de humo con la página real (2026-10-18)
 
-`tests/smoke-browser.js` no es parte de `npm test` (no usa `node --test` y necesita una dependencia de desarrollo: `npm i -D jsdom@24`; la 25 en adelante quitó `ResourceLoader`). Carga `index.html` y todos sus `<script>` en jsdom, carga todos los grupos lazy y hace dos cosas:
+`scripts/smoke-browser.js` NO vive en la carpeta de tests a propósito: `node --test` ejecuta todo `.js` que encuentra ahí, y esto necesita una dependencia de desarrollo (`npm i -D jsdom@24`; la 25 en adelante quitó `ResourceLoader`), así que el CI lo contaba como un test roto. Carga `index.html` y todos sus `<script>` en jsdom, carga todos los grupos lazy y hace tres cosas:
 
 1. **Toca cada botón `data-action` del DOM** e informa los que no tienen handler registrado y los que lanzan una excepción.
-2. **Escenario de Cuentas/Nu con datos** (una cajita con un CDT): navega selector → Nu → cajita → volver → Nequi, comprueba qué panel queda visible y que `_cajitaActualId` se reinicie, y toca todos los botones que cada pantalla genera.
+2. **Escenarios con datos:** Cuentas/Nu (una cajita con un CDT) y Spotify (un integrante y un cobro en `S.spotify`; pinta la pantalla y toca sus botones). Cuentas/Nu: navega selector → Nu → cajita → volver → Nequi, comprueba qué panel queda visible y que `_cajitaActualId` se reinicie, y toca todos los botones que cada pantalla genera.
+
+3. **Mapa de acciones de TODO el proyecto:** compara cada acción `ns:nombre` que nombran `index.html` y los `.js` (en `data-action`, en `Events.attr` o guardada en una variable) con las que `Events.registerAll`/`Events.on` registraron de verdad al cargar la página. Informa las usadas sin registrar, las registradas que nadie nombra (código muerto) y las registradas dos veces. Sale con código 1 si hay una usada sin registrar, una duplicada o un fallo de la fase 2.
 
 ```bash
 npm i -D jsdom@24
-node tests/smoke-browser.js [--verbose]
+node scripts/smoke-browser.js [--verbose]
 ```
 
-Resultado esperado hoy: la fase 2 con **0 fallos**. Las líneas de la fase 1 que siempre aparecen son de entorno, no de la app: `authgate:*` y `pin:*` los registran módulos ES (`firebase-init.js`, `pin-bio.js`) que jsdom no ejecuta, y `config:signOut` / `config:abrirEliminarCuenta` dependen de ellos. Comprobado por mutación: sin registrar Nu o con un botón apuntando a una acción inexistente, la prueba falla. **No sustituye abrir la app en un navegador real** (no hay layout, CSS ni Firebase), pero habría atrapado un botón sin registrar tras cambiar de `cuentas:` a `nu:`.
+Resultado esperado hoy: fase 2 con **0 fallos** y fase 3 con **0 usadas sin registrar, 0 sin usar y 0 duplicadas** (207 acciones usadas, 196 registradas en tiempo de ejecución, 11 más de `authgate`/`pin` que viven en módulos ES y no se pueden verificar aquí). Las líneas de la fase 1 que siempre aparecen son de entorno, no de la app: `authgate:*` y `pin:*` los registran módulos ES (`firebase-init.js`, `pin-bio.js`) que jsdom no ejecuta, y `config:signOut` / `config:abrirEliminarCuenta` dependen de ellos. Comprobado por mutación: sin registrar Nu o con un botón apuntando a una acción inexistente, la prueba falla. **No sustituye abrir la app en un navegador real** (no hay layout, CSS ni Firebase), pero habría atrapado un botón sin registrar tras cambiar de `cuentas:` a `nu:`.
+
+## Qué ejecuta `npm test` (2026-10-18)
+
+`node --test` sin argumentos ejecuta como prueba **todo `.js` de la carpeta de tests**, incluidos los de `support/` (pasan vacíos). Para que solo corran las pruebas de verdad, en `package.json`: `"test": "node --test tests/*.test.js"` (con `test/` en vez de `tests/` si esa es la carpeta del repo). Los scripts de `scripts/` (`equivalencia.js`, `conciliacion.js`, `smoke-browser.js`) encuentran solos la carpeta `tests/` o `test/` para cargar `support/load-app.js`.

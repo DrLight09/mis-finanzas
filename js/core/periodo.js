@@ -98,8 +98,7 @@ const Periodo = (() => {
 
   /* ---- GASTOS ---- */
   // Todos los pagos de gastos fijos, normalizados: [{id, mes, monto, fecha, cat, nombre}].
-  // S.pagosGastosFijos es un mapa {"<gfId>_YYYY-MM": {fecha, fuente, monto}}, pero datos
-  // viejos pueden traerlo como array: ahí el mes sale de la fecha.
+  // S.pagosGastosFijos es un mapa {"<gfId>_YYYY-MM": {fecha, fuente, monto}}; el mes sale de la clave.
   function pagosFijos(estado) {
     const st = _st(estado);
     const raw = st.pagosGastosFijos;
@@ -111,20 +110,16 @@ const Periodo = (() => {
       const gf = gfs.find(x => x.id === id);
       out.push({
         id, mes,
-        monto: (p.monto != null ? p.monto : (gf ? gf.monto : 0)) || 0,
+        monto: p.monto || 0,
         fecha: p.fecha || '',
         cat: (gf && gf.cat) || p.cat || null,
         nombre: (gf && gf.nombre) || p.nombre || ''
       });
     };
-    if (Array.isArray(raw)) {
-      raw.forEach(p => p && sumar(p.gastoFijoId || p.id, mesKey(p.fecha), p));
-    } else {
-      Object.keys(raw).forEach(k => {
-        const m = /^(.*)_(\d{4}-\d{2})$/.exec(k);
-        if (m) sumar(m[1], m[2], raw[k]);
-      });
-    }
+    Object.keys(raw).forEach(k => {
+      const m = /^(.*)_(\d{4}-\d{2})$/.exec(k);
+      if (m) sumar(m[1], m[2], raw[k]);
+    });
     return out;
   }
 

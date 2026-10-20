@@ -26,8 +26,7 @@
    Justo después de js/core/events.js y antes que mesada.js/
    spotify.js/gastos.js/prestado.js/encargos.js/tarjetas_credito.js
    — todos ellos llaman a diffRegistrarInstancia()/diffAplicar()/
-   diffValidarIntercambios()/diffRenderHistorial() (o su alias
-   _difRenderHistorial) durante su propia inicialización o al
+   diffValidarIntercambios()/diffRenderHistorial() durante su propia inicialización o al
    confirmar sus sheets. Esos módulos NO se tocaron acá: siguen
    llamando estas funciones por nombre, como siempre — son globales
    (script clásico), así que mover el archivo no rompe nada del lado
@@ -534,7 +533,7 @@ function diffHtmlBloque(ids, opts) {
   // después de insertarlo en el DOM — Events no despacha oninput, solo clicks.
 }
 
-/** Renderiza el resumen de un diferencial ya guardado, para el historial. Reemplaza a _difRenderHistorial. */
+/** Renderiza el resumen de un diferencial ya guardado, para el historial. */
 function diffRenderHistorial(diferencial) {
   if (!diferencial) return '';
   const d = diferencial;
@@ -547,9 +546,6 @@ function diffRenderHistorial(diferencial) {
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${todas ? ' · ' + todas : ''}
   </div>`;
 }
-
-/* ─── Compatibilidad retro: alias del nombre viejo, por si quedó alguna referencia ─── */
-function _difRenderHistorial(mov) { return mov && mov.diferencial ? diffRenderHistorial(mov.diferencial) : ''; }
 
 /* ---- EVENTOS: acciones con data-action="diferencial:..." ----
    Nota: diffToggle/diffAddParte quedan registradas para diffHtmlBloque()

@@ -61,7 +61,7 @@ function buildFuentesOptsHtml({
 
 /* ---- Resto del motor de Diferencial (diffRenderPartes, diffCalcular, diffResumen,
    _diffActualizarMiCuenta, diffValidarIntercambios, diffAplicar, diffHtmlBloque,
-   diffRenderHistorial, _difRenderHistorial, _diffFuentesOptsHtml, _diffInstancias) ----
+   diffRenderHistorial, _diffFuentesOptsHtml, _diffInstancias) ----
    migrado a js/core/diferencial.js. Ver comentario ahí para el detalle de qué se
    migró exactamente (incluida la limpieza de onclick/oninput/onchange en
    diffRenderPartes/diffHtmlBloque). ---- */
@@ -578,42 +578,17 @@ function movimientosSinClase(estado){
 }
 
 /* ---- VERSIÓN DEL MODELO DE DATOS ----
-   Esta versión de la app nació limpia (esquema 7, 2026-10-12): NO migra datos de versiones anteriores. Quien trae datos de un
-   esquema menor los ve marcados (S._esquemaAnterior) y empieza de cero (Configuración → Borrar todo).
+   Esta versión de la app nació limpia en el esquema 9 (2026-10-18): NO migra datos de versiones anteriores y no arrastra
+   migraciones antiguas (las de las versiones 8 y 9 se plegaron en el modelo actual: una sola tasa de Nu, S.nuRate, y todo
+   Spotify en S.spotify). Quien trae datos de un esquema menor los ve marcados (S._esquemaAnterior) y empieza de cero
+   (Configuración → Borrar todo); un backup de esa versión se rechaza al importar.
 
    Para cambiar la forma de los datos guardados en el futuro: sumar { v: N+1, nombre, fn(d) } al final de MIGRACIONES. `fn`
    recibe el objeto de datos y lo modifica en sitio; debe ser idempotente. Nunca editar ni reordenar una existente. Corren UNA
    vez, en orden, sobre el estado cargado de Firestore y, vía aplicarMigraciones(), sobre un backup JSON antes de importarlo.
    La versión guardada vive en S.schemaVersion. */
-const SCHEMA_BASE = 7;      // primera versión compatible
-const MIGRACIONES = [
-  // v8 (2026-10-16): una sola tasa EA para las cajitas de Nu. Antes había tres sitios: S.nuRate (9,25 puesto por la app, sin que el
-  // usuario lo eligiera), S.nuTasaGlobal (la que el usuario escribía) y `tasa` en cada cajita (copia de la global que save() reescribía).
-  // Ahora solo existe S.nuRate (null = sin configurar). Los CDT conservan su tasa propia.
-  { v: 8, nombre: 'tasa-nu-global', fn(d) {
-    const cajitas = Array.isArray(d.cajitas) ? d.cajitas : [];
-    const escrita = Number(d.nuTasaGlobal);
-    if (escrita > 0) d.nuRate = escrita;                                           // la que el usuario había puesto
-    else if (cajitas.length) d.nuRate = Number(d.nuRate) > 0 ? Number(d.nuRate) : 9.25; // con cajitas: la que se venía usando
-    else d.nuRate = null;                                                          // sin cajitas: nunca la eligió
-    delete d.nuTasaGlobal;
-    cajitas.forEach(c => { if (c && typeof c === 'object') delete c.tasa; });
-  } },
-  // v9 (2026-10-18): todo el estado de Spotify en una sola llave, como alcancia/mesadas. Antes eran cuatro sueltas con prefijo
-  // (spotifyPersonas, spotifyCosto, spotifyCajitaId, spotifyHistorial). Las llaves viejas, si existen, mandan sobre un `spotify`
-  // vacío que haya puesto el estado por defecto (Object.assign de la nube sobre S).
-  { v: 9, nombre: 'spotify-un-solo-objeto', fn(d) {
-    const prev = d.spotify && typeof d.spotify === 'object' && !Array.isArray(d.spotify) ? d.spotify : {};
-    const lista = (viejo, nuevo) => Array.isArray(viejo) ? viejo : (Array.isArray(nuevo) ? nuevo : []);
-    d.spotify = {
-      personas: lista(d.spotifyPersonas, prev.personas),
-      costo: Number(d.spotifyCosto !== undefined ? d.spotifyCosto : prev.costo) || 0,
-      cajitaId: typeof (d.spotifyCajitaId !== undefined ? d.spotifyCajitaId : prev.cajitaId) === 'string' ? (d.spotifyCajitaId !== undefined ? d.spotifyCajitaId : prev.cajitaId) : '',
-      historial: lista(d.spotifyHistorial, prev.historial)
-    };
-    delete d.spotifyPersonas; delete d.spotifyCosto; delete d.spotifyCajitaId; delete d.spotifyHistorial;
-  } }
-];
+const SCHEMA_BASE = 9;     // primera versión compatible (y la actual mientras MIGRACIONES esté vacía)
+const MIGRACIONES = [];
 const SCHEMA_VERSION_ACTUAL = MIGRACIONES.length ? MIGRACIONES[MIGRACIONES.length - 1].v : SCHEMA_BASE;
 
 function aplicarMigraciones(d) {

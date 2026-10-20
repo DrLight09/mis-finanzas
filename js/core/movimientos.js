@@ -147,7 +147,7 @@ function abrirDetalleMov(el){
   const esPositivo = monto >= 0;
   const colorMonto = esPositivo ? 'var(--accent)' : 'var(--red)';
   const signo = esPositivo ? '+' : '−';
-  const tipoLabel = { gasto:'Gasto', ingreso:'Ingreso', egreso:'Retiro', apertura:'Apertura', prestamo:'Préstamo', abono:'Abono', compra:'Compra', mesada:'Mesada', transferencia:'Transferencia', salida_manual:'Salida' }[movTipo] || movTipo;
+  const tipoLabel = { gasto:'Gasto', ingreso:'Ingreso', apertura:'Apertura', prestamo:'Préstamo', abono:'Abono', compra:'Compra', mesada:'Mesada', transferencia:'Transferencia', salida_manual:'Retiro' }[movTipo] || movTipo;
 
   // Sección de origen (módulo donde se registró este movimiento)
   const origenLabel = el.dataset.movOrigen || '';
@@ -461,7 +461,7 @@ function _cuentaOpsPosteriores(cuenta, fecha, excludeId) {
 function _movExiste(tipo, id) {
   switch (tipo) {
     case 'transferencia': return (S.transferencias || []).some(t => t.id === id);
-    case 'salida_manual': case 'ingreso': case 'apertura': case 'entrada': case 'egreso':
+    case 'salida_manual': case 'ingreso': case 'apertura': case 'entrada':
       return (S.movimientos || []).some(m => m.id === id);
     case 'gasto': return (S.gastosVar || []).some(g => g.id === id);
     default: return null;
@@ -496,8 +496,8 @@ async function _eliminarMovimientoImpl(btn) {
     || (() => { for (const enc of (S.encargos||[])) { const m=(enc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (() => { for (const d of Deudas.lista('favor')) { const m=(d.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
     || (S.gastosVar || []).find(x => x.id === movId)
-    || (S.spotifyHistorial || []).find(x => x.id === movId)
-    || (() => { for (const h of (S.spotifyHistorial||[])) { const ab=(h.pendienteHistorial||[]).find(x=>x.id===movId); if(ab) return ab; } return null; })();
+    || (S.spotify.historial || []).find(x => x.id === movId)
+    || (() => { for (const h of (S.spotify.historial||[])) { const ab=(h.pendienteHistorial||[]).find(x=>x.id===movId); if(ab) return ab; } return null; })();
   if (movObj && movObj._secundario) {
     const seccion = movObj._origenSeccion || 'la sección de origen';
     await dialogo('Movimiento vinculado', `Este movimiento fue generado automáticamente desde ${seccion}. Para eliminarlo, ve a ${seccion} y borra el movimiento principal — eso revertirá todo.`, 'Entendido', false);
@@ -628,7 +628,7 @@ async function _eliminarMovimientoImpl(btn) {
         if (!confirmado) return;
       }
     }
-  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada' || movTipoEl === 'egreso') {
+  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada') {
     const m = (S.movimientos || []).find(x => x.id === movId);
     const fuente = (m && m.fuente) || fuenteOrigen;
     const fecha = (m && m.fecha) || fechaItem;
@@ -637,7 +637,7 @@ async function _eliminarMovimientoImpl(btn) {
       const nivel = nivelAntiguedadMovimiento(fecha, opsPosteriores, 'cuentas');
       if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
       if (nivel === 'viejo') {
-        confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(fuente), (m ? m.monto : monto) || 0, movTipoEl === 'egreso' ? 'sube' : 'baja');
+        confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(fuente), (m ? m.monto : monto) || 0, 'baja');
         if (!confirmado) return;
       }
     }
@@ -685,27 +685,6 @@ async function _eliminarMovimientoImpl(btn) {
         if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
         S._ajustesBaseLog.push({ fecha: hoy(), monto: -(m.monto||0) });
       }
-      S.movimientos = S.movimientos.filter(x => x.id !== movId);
-    }
-  } else if (movTipoEl === 'egreso') {
-    // Retiro manual de una cuenta personalizada. getMovimientosCuenta('custom:ID')
-    // (cuentas.js) muestra así CUALQUIER salida de una cuenta custom cuyo
-    // registro vive en S.movimientos (tipo 'salida_manual', escrito hoy por
-    // registrarSalida() vía el sheet genérico "Restar dinero" — el mismo que
-    // usan Nequi/Efectivo) — a diferencia de las cuentas estándar, donde ese
-    // mismo tipo 'salida_manual' se muestra tal cual, sin traducir a 'egreso'
-    // (ver `tipoSalidaManual` en getMovimientosCuenta() de cuentas.js: ese tipo es
-    // 'egreso' en una cuenta personalizada y 'salida_manual' en las demás, A PROPÓSITO —
-    // esta rama y la de 'salida_manual' de arriba dependen de esa diferencia, no unificarlo).
-    // Desde el esquema 7 (2026-10-12) el registro vive SOLO en S.movimientos: ninguna cuenta
-    // tiene lista propia (`c.movimientos`), así que no hay nada más que limpiar. Hasta el fix original ninguna rama de este switch coincidía
-    // con 'egreso': el borrado no revertía el saldo (c.saldo) ni quitaba el
-    // registro de ninguno de los dos arrays, y aun así caía en el
-    // save()+refresh()+toast de éxito de más abajo — ver CHANGELOG.md#cuentas
-    // (2026-08-30).
-    const m = (S.movimientos || []).find(x => x.id === movId);
-    if (m) {
-      sumarFuente(m.fuente || fuenteOrigen, m.monto, _ogMov(movId, true)); // el monto sale del REGISTRO, no de lo que muestra la fila
       S.movimientos = S.movimientos.filter(x => x.id !== movId);
     }
   } else if (movTipoEl === 'gasto') {

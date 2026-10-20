@@ -84,7 +84,7 @@ let S={
   nuRate:null,cajitas:[], // nuRate: tasa EA % de TODAS las cajitas de Nu (null = sin configurar; ver nuTasaConfigurada() en nu-calc.js)
   personas:[],
   deudores:[],misDeudas:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
-  spotifyPersonas:[],spotifyCosto:0,spotifyCajitaId:'',spotifyHistorial:[],
+  spotify:{personas:[],costo:0,cajitaId:'',historial:[]}, // todo el estado de Spotify en una llave (migración v9); ver _ensureSpotify()
   gastosFijos:[],
   pagosGastosFijos:{},
   gastosVar:[],
@@ -564,12 +564,12 @@ function claseEfectivaMovimiento(m){
   return m && _claseValida(m.clase) ? m.clase : null;
 }
 
-// Movimientos y gastos que llegaron SIN clase válida (un módulo no la escribió). Las salidas/egresos de espejo no la necesitan:
+// Movimientos y gastos que llegaron SIN clase válida (un módulo no la escribió). Las salidas de espejo no la necesitan:
 // ningún lector de ingreso o gasto las consulta. Lo usa save() para avisar, igual que Libro.verificar() con los saldos.
 function movimientosSinClase(estado){
   const st = estado || S, out = [];
   (st.movimientos || []).forEach(m => {
-    if(m && typeof m === 'object' && m.tipo !== 'salida' && m.tipo !== 'egreso' && !_claseValida(m.clase)) out.push({ lista: 'movimientos', id: m.id, tipo: m.tipo, desc: m.desc });
+    if(m && typeof m === 'object' && m.tipo !== 'salida' && !_claseValida(m.clase)) out.push({ lista: 'movimientos', id: m.id, tipo: m.tipo, desc: m.desc });
   });
   (st.gastosVar || []).forEach(g => {
     if(g && typeof g === 'object' && !_claseValida(g.clase)) out.push({ lista: 'gastosVar', id: g.id, desc: g.desc });
@@ -598,6 +598,20 @@ const MIGRACIONES = [
     else d.nuRate = null;                                                          // sin cajitas: nunca la eligió
     delete d.nuTasaGlobal;
     cajitas.forEach(c => { if (c && typeof c === 'object') delete c.tasa; });
+  } },
+  // v9 (2026-10-18): todo el estado de Spotify en una sola llave, como alcancia/mesadas. Antes eran cuatro sueltas con prefijo
+  // (spotifyPersonas, spotifyCosto, spotifyCajitaId, spotifyHistorial). Las llaves viejas, si existen, mandan sobre un `spotify`
+  // vacío que haya puesto el estado por defecto (Object.assign de la nube sobre S).
+  { v: 9, nombre: 'spotify-un-solo-objeto', fn(d) {
+    const prev = d.spotify && typeof d.spotify === 'object' && !Array.isArray(d.spotify) ? d.spotify : {};
+    const lista = (viejo, nuevo) => Array.isArray(viejo) ? viejo : (Array.isArray(nuevo) ? nuevo : []);
+    d.spotify = {
+      personas: lista(d.spotifyPersonas, prev.personas),
+      costo: Number(d.spotifyCosto !== undefined ? d.spotifyCosto : prev.costo) || 0,
+      cajitaId: typeof (d.spotifyCajitaId !== undefined ? d.spotifyCajitaId : prev.cajitaId) === 'string' ? (d.spotifyCajitaId !== undefined ? d.spotifyCajitaId : prev.cajitaId) : '',
+      historial: lista(d.spotifyHistorial, prev.historial)
+    };
+    delete d.spotifyPersonas; delete d.spotifyCosto; delete d.spotifyCajitaId; delete d.spotifyHistorial;
   } }
 ];
 const SCHEMA_VERSION_ACTUAL = MIGRACIONES.length ? MIGRACIONES[MIGRACIONES.length - 1].v : SCHEMA_BASE;
@@ -618,10 +632,20 @@ function aplicarMigraciones(d) {
   return d;
 }
 
+// S.spotify siempre existe y trae sus cuatro campos (como _ensureMesadas con S.mesadas): el resto de la app lo lee sin guardas.
+function _ensureSpotify(){
+  if(!S.spotify||typeof S.spotify!=='object'||Array.isArray(S.spotify))S.spotify={};
+  if(!Array.isArray(S.spotify.personas))S.spotify.personas=[];
+  if(!Array.isArray(S.spotify.historial))S.spotify.historial=[];
+  if(typeof S.spotify.costo!=='number')S.spotify.costo=Number(S.spotify.costo)||0;
+  if(typeof S.spotify.cajitaId!=='string')S.spotify.cajitaId='';
+}
+
 function load(){
   // Firebase version: datos ya cargados en S por _fbLoadData()
   // Solo inicializamos campos faltantes y sincronizamos el DOM
   aplicarMigraciones(S);
+  _ensureSpotify();
   if(S._esquemaAnterior && typeof toast==='function')
     toast('Estos datos son de una versión anterior (esquema '+S._esquemaAnterior+') y esta versión empieza de cero. Exporta un backup si lo quieres y usa Configuración → Borrar todo.','err',12000);
   if(!S.encargos)S.encargos=[];
@@ -669,7 +693,7 @@ function load(){
     if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(_getCuotaAnio('papa',S.mesadaAnio||new Date().getFullYear()));
     if(document.getElementById('mesadaMontoMama'))document.getElementById('mesadaMontoMama').value=fmtInput(_getCuotaAnio('mama',S.mesadaAnio||new Date().getFullYear()));
   }
-  document.getElementById('spotifyCosto').value=fmtInput(S.spotifyCosto);
+  document.getElementById('spotifyCosto').value=fmtInput(S.spotify.costo);
   document.getElementById('gv_fecha').value=hoy();
   document.getElementById('mov_fecha').value=hoy();
 }

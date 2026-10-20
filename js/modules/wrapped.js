@@ -53,7 +53,7 @@
    para las categorías propias. Cada dominio nuevo tiene su propia
    función `_wrappedCalcular*` que lee directamente la estructura de
    datos de su módulo dueño (`S.encargos`, `S.deudores`/`S.misDeudas`,
-   `S.mesadas`, `S.spotifyHistorial`, `S.plataComprometida`; ver
+   `S.mesadas`, `(S.spotify||{}).historial`, `S.plataComprometida`; ver
    plata-comprometida.md §4) — nunca se copia un cálculo que ya vive
    centralizado en el módulo dueño (`getDeudorSaldo`, `encargoSaldo`,
    etc., ver prestado.md/encargos.md); donde no existe una función
@@ -160,8 +160,8 @@ function _wrappedValidarDatos(S){
   if(S.mesadas !== undefined && S.mesadas !== null && typeof S.mesadas !== 'object'){
     warnings.push('S.mesadas existe pero no es un objeto.');
   }
-  if(S.spotifyHistorial !== undefined && !Array.isArray(S.spotifyHistorial)){
-    warnings.push('S.spotifyHistorial existe pero no es un array.');
+  if((S.spotify||{}).historial !== undefined && !Array.isArray((S.spotify||{}).historial)){
+    warnings.push('(S.spotify||{}).historial existe pero no es un array.');
   }
   if(S.plataComprometida !== undefined && !Array.isArray(S.plataComprometida)){
     warnings.push('S.plataComprometida existe pero no es un array.');
@@ -1986,7 +1986,7 @@ function _wrappedCalcularMesada(S, tipo, mesK, anioK){
 }
 
 /* ─── SPOTIFY ──────────────────────────────────────────────────────────
-   Cobrado − pagado del período, sobre `S.spotifyHistorial` (ver
+   Cobrado − pagado del período, sobre `(S.spotify||{}).historial` (ver
    spotify.md §4). Simplificación reconocida y anotada a propósito: la
    "Ganancia acumulada" real del módulo (spotify.md §7) suma además
    `cuotaAdmin × ciclos pagados`, calculada inline dentro de
@@ -1995,7 +1995,7 @@ function _wrappedCalcularMesada(S, tipo, mesK, anioK){
    pantalla de Spotify. Es un "cobrado menos pagado del año" honesto, no
    la ganancia oficial del módulo. */
 function _wrappedCalcularSpotify(S, tipo, mesK, anioK){
-  const hist = S.spotifyHistorial;
+  const hist = (S.spotify||{}).historial;
   if(!Array.isArray(hist) || !hist.length) return null;
 
   let cobrado = 0, pagado = 0;
@@ -2394,9 +2394,9 @@ function _wrappedProtagonistas(S, tipo, mesK, anioK){
     const n = (d.movimientos||[]).filter(m => m && _wrappedEnRango(m.fecha, tipo, mesK, anioK)).length;
     if(n>0) sumar(d.personaId||d.nombre, d.nombre, d.personaId||null, n);
   });
-  (S.spotifyHistorial||[]).forEach(h => {
+  ((S.spotify||{}).historial||[]).forEach(h => {
     if(h && h.tipo==='cobro' && h.spId && _wrappedEnRango(h.fecha, tipo, mesK, anioK)){
-      const sp = (S.spotifyPersonas||[]).find(p => p.id === h.spId);
+      const sp = ((S.spotify||{}).personas||[]).find(p => p.id === h.spId);
       const nombre = sp ? sp.nombre : h.nombre;
       const personaId = sp ? sp.personaId : null;
       sumar(personaId||nombre, nombre, personaId||null, 1);
@@ -2539,7 +2539,7 @@ function _wrappedFrasesHtml(frases){
 /* ─── COMPARACIONES QUE SE ENTIENDEN MEJOR ASÍ ─────────────────────────
    Ninguna cifra nueva: relaciona números que este archivo ya calcula en
    otro lado (gasto más grande vs. gasto promedio, ambos de `s`; el mismo
-   `S.spotifyCosto` que usa `spotify.js`; los depósitos de Alcancía del
+   `(S.spotify||{}).costo` que usa `spotify.js`; los depósitos de Alcancía del
    período que ya sabe contar `_wrappedCalcularPeriodo`) — nunca un
    cálculo propio, mismo principio de §3. Necesita al menos 2
    comparaciones reales para armar el slide — una sola suelta no amerita
@@ -2560,7 +2560,7 @@ function _wrappedComparaciones(S, tipo, mesK, anioK, s){
 
   const { gastosVarPeriodo } = _wrappedItemsRealesPeriodo(S, tipo, mesK, anioK);
   const transporte = gastosVarPeriodo.filter(g => g.cat === 'Transporte').reduce((a,g)=>a+(g.monto||0),0);
-  const spotifyCosto = S.spotifyCosto || 0;
+  const spotifyCosto = (S.spotify||{}).costo || 0;
   if(transporte > 0 && spotifyCosto > 0){
     const veces = transporte / spotifyCosto;
     if(veces >= 0.3){
@@ -2606,12 +2606,12 @@ function _wrappedSuscripciones(S){
     .map(f => ({ desc: f.nombre || 'Suscripción', monto: f.monto || 0 }))
     .filter(p => p.monto > 0);
 
-  const spotifyActivo = Array.isArray(S.spotifyPersonas) && S.spotifyPersonas.length > 0;
+  const spotifyActivo = Array.isArray((S.spotify||{}).personas) && (S.spotify||{}).personas.length > 0;
   if(!personales.length && !spotifyActivo) return null;
 
   return {
     personales,
-    spotify: spotifyActivo ? { personas: S.spotifyPersonas.length, costoMensual: S.spotifyCosto || 0 } : null
+    spotify: spotifyActivo ? { personas: (S.spotify||{}).personas.length, costoMensual: (S.spotify||{}).costo || 0 } : null
   };
 }
 
@@ -2740,7 +2740,7 @@ function _wrappedPersonasInvolucradas(S){
   const add = (personaId, nombre) => { if(personaId) set.add('p:'+personaId); else if(nombre) set.add('n:'+String(nombre).toLowerCase()); };
   Deudas.lista('favor').forEach(d => add(d.personaId, d.nombre));
   Deudas.lista('contra').forEach(d => add(d.personaId, d.nombre));
-  (S.spotifyPersonas||[]).forEach(p => add(p.personaId, p.nombre));
+  ((S.spotify||{}).personas||[]).forEach(p => add(p.personaId, p.nombre));
   (S.encargos||[]).forEach(e => add(e.personaId, e.nombre));
   return set.size;
 }

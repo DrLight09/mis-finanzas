@@ -109,13 +109,13 @@ function getSpPagarSplitData(){ return splitGetData('spp'); }
 
 function getSpCajita(){
   // Finds or returns null for the Spotify cajita
-  if(S.spotifyCajitaId){
-    const c=(S.cajitas||[]).find(x=>x.id===S.spotifyCajitaId);
+  if(S.spotify.cajitaId){
+    const c=(S.cajitas||[]).find(x=>x.id===S.spotify.cajitaId);
     if(c)return c;
   }
   // Try to find one named Spotify
   const c=(S.cajitas||[]).find(x=>x.nombre&&x.nombre.toLowerCase().includes('spotify'));
-  if(c){S.spotifyCajitaId=c.id;return c;}
+  if(c){S.spotify.cajitaId=c.id;return c;}
   return null;
 }
 
@@ -155,7 +155,7 @@ function spCicloCobrosActual(){
   // Se excluyen los cobros con _pagoIdCierre: aunque queden posicionados después del
   // último pago (porque se registraron más tarde), son plata que en realidad saldó
   // deuda de ESE ciclo que ya cerró — ver confirmarSpDestino().
-  const hist=S.spotifyHistorial||[];
+  const hist=S.spotify.historial||[];
   let lastPagoIdx=-1;
   for(let i=hist.length-1;i>=0;i--){ if(hist[i].tipo==='pago'){lastPagoIdx=i;break;} }
   return hist.map((h,idx)=>({...h,_idx:idx})).filter(h=>h.tipo==='cobro'&&h._idx>lastPagoIdx&&!h._pagoIdCierre);
@@ -231,7 +231,7 @@ function spMontoAntesDe(h,fechaCorte){
 function spAsignarPeriodos(hist){
   // Devuelve un tramo por período de cada cobro, con el ciclo al que pertenece
   // (0 = antes del primer pago a Spotify; M = pagos.length = ciclo abierto).
-  hist=hist||S.spotifyHistorial||[];
+  hist=hist||S.spotify.historial||[];
   const pagos=[];
   hist.forEach((h,idx)=>{ if(h.tipo==='pago')pagos.push({idx,id:h.id,fecha:h.fecha||''}); });
   const M=pagos.length;
@@ -282,7 +282,7 @@ function spResumenCicloActual(hist){
   // "Recaudado este ciclo" = tramos del ciclo abierto que ya empezaron. Los períodos
   // prepagados que todavía no empiezan quedan aparte, como `flotante`.
   const tramos=spAsignarPeriodos(hist);
-  const M=(hist||S.spotifyHistorial||[]).filter(h=>h.tipo==='pago').length;
+  const M=(hist||S.spotify.historial||[]).filter(h=>h.tipo==='pago').length;
   let recaudado=0,flotante=0;
   tramos.forEach(t=>{
     if(t.h._pagoIdCierre||t.ciclo!==M)return;
@@ -293,8 +293,8 @@ function spResumenCicloActual(hist){
 
 function renderSpotify(){
   const el=document.getElementById('spotifyList');
-  const p=S.spotifyPersonas||[];
-  const costo=S.spotifyCosto||0;
+  const p=S.spotify.personas||[];
+  const costo=S.spotify.costo||0;
   // "Recaudado"/"Pendiente" se calculan desde el historial del ciclo actual (movimientos reales),
   // no desde el flag "pagado" — así no se descuadran si solo tocas el badge para corregir un error.
   const cicloCobros=spCicloCobrosActual();
@@ -425,7 +425,7 @@ function renderSpotify(){
 function renderSpHistorial(){
   const el=document.getElementById('spHistorial');
   if(!el)return;
-  const total=S.spotifyHistorial||[];
+  const total=S.spotify.historial||[];
   // Mapear con índice real, luego ordenar por fecha descendente. A igual fecha,
   // gana el orden de registro descendente (el más reciente en agregarse va primero) —
   // así un cobro atrasado con fecha vieja no se cuela por encima de uno más reciente.
@@ -481,9 +481,9 @@ function renderSpHistorial(){
 function renderSpStats(){
   const el=document.getElementById('spStats');
   if(!el)return;
-  const personas=S.spotifyPersonas||[];
-  const hist=S.spotifyHistorial||[];
-  const costo=S.spotifyCosto||0;
+  const personas=S.spotify.personas||[];
+  const hist=S.spotify.historial||[];
+  const costo=S.spotify.costo||0;
 
   if(!personas.length&&!hist.length){
     el.innerHTML='';
@@ -656,7 +656,7 @@ function renderSpStats(){
   el.innerHTML=html;
 }
 async function deleteSpHistorial(i){
-  const h=S.spotifyHistorial[i];
+  const h=S.spotify.historial[i];
   if(!h)return;
 
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
@@ -664,7 +664,7 @@ async function deleteSpHistorial(i){
   // borrándose igual que siempre, su alcance ya es pequeño y contenido (solo
   // revierte el proximoPago de un integrante).
   if(h.tipo==='pago'){
-    const opsPosteriores=S.spotifyHistorial.filter((h2,idx2)=>idx2>i&&h2.tipo==='pago').length;
+    const opsPosteriores=S.spotify.historial.filter((h2,idx2)=>idx2>i&&h2.tipo==='pago').length;
     const nivel=nivelAntiguedadMovimiento(h.fecha,opsPosteriores,'spotify');
     if(nivel==='bloqueado'){
       await avisarMovimientoBloqueado();
@@ -720,7 +720,7 @@ async function _borrarSpHistorial(i,h){
     // esa plata al pendiente congelado de ese pago — si el pago referenciado ya no existe
     // (se borró aparte), no hay nada que restaurar, se queda como estaba.
     if(h._pagoIdCierre&&h.spId){
-      const pagoRef=(S.spotifyHistorial||[]).find(x=>x.id===h._pagoIdCierre&&x.tipo==='pago');
+      const pagoRef=(S.spotify.historial||[]).find(x=>x.id===h._pagoIdCierre&&x.tipo==='pago');
       if(pagoRef){
         if(!pagoRef._pendienteAlCerrar)pagoRef._pendienteAlCerrar={};
         pagoRef._pendienteAlCerrar[h.spId]=(pagoRef._pendienteAlCerrar[h.spId]||0)+(h.monto||0);
@@ -729,16 +729,16 @@ async function _borrarSpHistorial(i,h){
     // Si este era el cobro MÁS RECIENTE de la persona, su "Pagó" queda sin respaldo → vuelve a Pendiente.
     // Si no es el más reciente (la persona pagó 2+ veces este ciclo y se borra uno viejo), no se toca
     // el estado, porque el cobro más nuevo sigue respaldando el "Pagó".
-    const p=(S.spotifyPersonas||[]).find(x=>h.spId?x.id===h.spId:x.nombre===h.nombre);
+    const p=(S.spotify.personas||[]).find(x=>h.spId?x.id===h.spId:x.nombre===h.nombre);
     if(p){
       const mismaPersona=(h2)=>h.spId?h2.spId===h.spId:h2.nombre===h.nombre;
-      const esElMasReciente=!S.spotifyHistorial.some((h2,idx2)=>idx2>i&&h2.tipo==='cobro'&&mismaPersona(h2));
+      const esElMasReciente=!S.spotify.historial.some((h2,idx2)=>idx2>i&&h2.tipo==='cobro'&&mismaPersona(h2));
       if(esElMasReciente){
         p.pagado=false;
         // Si ya no queda ningún "hermano" del mismo lote (mismos meses adelantados desde la
         // misma fecha previa), es seguro devolver la fecha de próximo pago a como estaba antes.
         if(h.proximoPagoAntes!==undefined){
-          const quedaHermano=S.spotifyHistorial.some((h2,idx2)=>idx2!==i&&h2.tipo==='cobro'&&mismaPersona(h2)&&h2.proximoPagoAntes===h.proximoPagoAntes);
+          const quedaHermano=S.spotify.historial.some((h2,idx2)=>idx2!==i&&h2.tipo==='cobro'&&mismaPersona(h2)&&h2.proximoPagoAntes===h.proximoPagoAntes);
           if(!quedaHermano)p.proximoPago=h.proximoPagoAntes;
         }
       }
@@ -772,13 +772,13 @@ async function _borrarSpHistorial(i,h){
     // dejar a todo el mundo en "Pendiente" sin forma de deshacerlo.
     if(h._estadoAntes&&Array.isArray(h._estadoAntes)){
       h._estadoAntes.forEach(snap=>{
-        const per=(S.spotifyPersonas||[]).find(x=>x.id===snap.id);
+        const per=(S.spotify.personas||[]).find(x=>x.id===snap.id);
         if(per)per.pagado=snap.pagado;
       });
     }
   }
 
-  S.spotifyHistorial.splice(i,1);
+  S.spotify.historial.splice(i,1);
   save();refresh();
   toast('Movimiento eliminado y plata revertida','ok');
 }
@@ -789,7 +789,7 @@ async function _borrarSpHistorial(i,h){
 // Distinto de deleteSpHistorial/_borrarSpHistorial, que borran el cobro completo
 // (con todos sus abonos) de una sola vez.
 async function deshacerAbonoPendienteSp(i,abIdx){
-  const h=S.spotifyHistorial[i];
+  const h=S.spotify.historial[i];
   if(!h||!h.pendienteHistorial)return;
   const ab=h.pendienteHistorial[abIdx];
   if(!ab)return;
@@ -804,7 +804,7 @@ async function deshacerAbonoPendienteSp(i,abIdx){
 }
 
 function marcarPagoSpotify(i){
-  const p=S.spotifyPersonas[i];
+  const p=S.spotify.personas[i];
   if(spPersonaPagadaVigente(p)){
     // Ya pagó (y sigue vigente) → esto es solo una corrección manual del badge.
     // NO revierte ningún cobro ni movimiento de plata: si quieres revertir el dinero
@@ -866,7 +866,7 @@ function marcarPagoSpotify(i){
 
 function selSpMeses(){
   const n=parseInt(document.getElementById('spMesesSelect').value)||1;
-  const monto=(S.spotifyPersonas[spDestinoIdx]?.monto||0)*n;
+  const monto=(S.spotify.personas[spDestinoIdx]?.monto||0)*n;
   document.getElementById('spMesesTotal').textContent='Total a cobrar: '+fmt(monto);
   // Cambiar la cantidad de períodos redefine "lo esperado" — resetea el monto
   // recibido a ese nuevo total (el usuario puede volver a editarlo si pagó de menos).
@@ -883,7 +883,7 @@ function _syncSpDebeWrap(){
   const chk=document.getElementById('spQuedaDebiendo');
   const lbl=document.getElementById('spDebeLabel');
   if(!wrap||!chk||spDestinoIdx===null)return;
-  const p=S.spotifyPersonas[spDestinoIdx];
+  const p=S.spotify.personas[spDestinoIdx];
   const n=parseInt(document.getElementById('spMesesSelect').value)||1;
   const montoEsperado=(p?.monto||0)*n;
   const v=parseMoney(document.getElementById('spMontoRecibido').value)||0;
@@ -916,7 +916,7 @@ function _syncSpExtraWrap(){
   const sel=document.getElementById('spExtraDestino');
   const lbl=document.getElementById('spExtraLabel');
   if(!wrap||!sel||spDestinoIdx===null)return;
-  const p=S.spotifyPersonas[spDestinoIdx];
+  const p=S.spotify.personas[spDestinoIdx];
   const n=parseInt(document.getElementById('spMesesSelect').value)||1;
   const montoEsperado=(p?.monto||0)*n;
   const v=parseMoney(document.getElementById('spMontoRecibido').value)||0;
@@ -953,7 +953,7 @@ function actualizarSpDestinoPreview(){
   // El split reparte lo REALMENTE recibido, no lo esperado — si la persona pagó
   // de menos, es esa plata (ya menor) la que hay que repartir entre cuentas.
   const n=parseInt(document.getElementById('spMesesSelect').value)||1;
-  const montoEsperadoSplit=(S.spotifyPersonas[spDestinoIdx]?.monto||0)*n;
+  const montoEsperadoSplit=(S.spotify.personas[spDestinoIdx]?.monto||0)*n;
   const montoRecInp=parseMoney(document.getElementById('spMontoRecibido').value);
   const recibidoSplit=(montoRecInp||montoRecInp===0)?montoRecInp:montoEsperadoSplit;
   // Si dio de más, el extra tiene su propio destino: el split reparte solo la cuota.
@@ -970,7 +970,7 @@ function actualizarSpDestinoPreview(){
 
 function confirmarSpDestino(){
   if(spDestinoIdx===null)return;
-  const p=S.spotifyPersonas[spDestinoIdx];
+  const p=S.spotify.personas[spDestinoIdx];
   const meses=parseInt(document.getElementById('spMesesSelect').value)||1;
   const montoEsperado=(p.monto||0)*meses;
 
@@ -1053,7 +1053,7 @@ function confirmarSpDestino(){
   }
   // Avanzar fecha de cobro N meses pero respetando el día original fijo
   if(p.proximoPago)p.proximoPago=nextMonthFixed(p.proximoPago,meses);
-  if(!S.spotifyHistorial)S.spotifyHistorial=[];
+  if(!S.spotify.historial)S.spotify.historial=[];
   const notaPeriodos=meses>1?`${meses} períodos × ${fmt(p.monto||0)} (pago adelantado)`:'';
   const notaBase=[notaUsuario,notaPeriodos].filter(Boolean).join(' · ');
 
@@ -1066,7 +1066,7 @@ function confirmarSpDestino(){
   // me va a pagar) sin que esa plata infle "Recaudado" del ciclo nuevo ni le reste
   // ganancia al ciclo que ya cerré. Ver docs/spotify.md §7ter.
   let lastPago=null;
-  for(let i=S.spotifyHistorial.length-1;i>=0;i--){ if(S.spotifyHistorial[i].tipo==='pago'){lastPago=S.spotifyHistorial[i];break;} }
+  for(let i=S.spotify.historial.length-1;i>=0;i--){ if(S.spotify.historial[i].tipo==='pago'){lastPago=S.spotify.historial[i];break;} }
   let restante=cuotaRecibida;
   let periodosCierre=0;
   if(lastPago&&lastPago._pendienteAlCerrar&&lastPago._pendienteAlCerrar[p.id]>0){
@@ -1074,7 +1074,7 @@ function confirmarSpDestino(){
     const cierreMonto=Math.min(restante,pendienteViejo);
     lastPago._pendienteAlCerrar[p.id]=pendienteViejo-cierreMonto;
     if(lastPago._pendienteAlCerrar[p.id]<=0)delete lastPago._pendienteAlCerrar[p.id];
-    S.spotifyHistorial.push({id:_cobroRef,spId:p.id,tipo:'cobro',nombre:nombreActual,monto:cierreMonto,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,cierreMonto,cuotaRecibida)||undefined,fecha:fechaCobro,nota:'Pago atrasado del ciclo anterior'+(notaBase?' · '+notaBase:''),proximoPagoAntes,_pagoIdCierre:lastPago.id,_secundario:true,_origenSeccion:'Spotify'});
+    S.spotify.historial.push({id:_cobroRef,spId:p.id,tipo:'cobro',nombre:nombreActual,monto:cierreMonto,periodos:meses,fuente:spDestinoSel||'',splits:_spProporcionarSplits(splits,cierreMonto,cuotaRecibida)||undefined,fecha:fechaCobro,nota:'Pago atrasado del ciclo anterior'+(notaBase?' · '+notaBase:''),proximoPagoAntes,_pagoIdCierre:lastPago.id,_secundario:true,_origenSeccion:'Spotify'});
     restante-=cierreMonto;
     // Períodos del pago que ya cubrió el registro de cierre: el registro "resto" arranca
     // después de ellos (ver spTramosDeCobro / _periodoOffset).
@@ -1093,14 +1093,14 @@ function confirmarSpDestino(){
       nuevoCobro.pendiente=diferenciaSp;
       nuevoCobro.pendienteHistorial=[];
     }
-    S.spotifyHistorial.push(nuevoCobro);
+    S.spotify.historial.push(nuevoCobro);
   }
   // Extra: queda colgado del ÚLTIMO registro que acaba de nacer de este cobro (si hubo
   // "pago atrasado" son dos registros; el extra no pertenece a ningún período). La plata
   // entra a la cuenta elegida y deja un movimiento espejo visible en su historial,
   // marcado como ingreso extra (_esExtraIngreso) y protegido contra borrado directo.
   if(extraSp>0){
-    const ultimoReg=S.spotifyHistorial[S.spotifyHistorial.length-1];
+    const ultimoReg=S.spotify.historial[S.spotify.historial.length-1];
     if(ultimoReg){
       ultimoReg.extra=extraSp;
       if(extraFuenteSp){
@@ -1125,9 +1125,9 @@ function confirmarSpDestino(){
 // ── Registrar pago de lo pendiente de un cobro puntual ──────────────────────
 // Mismo patrón que abrirResolverPendiente()/confirmarPendienteMesada() en
 // mesada.js, pero aplicado a un registro de spotifyHistorial en vez de a un
-// mes calendario. `i` es el índice REAL en S.spotifyHistorial (h._realIdx).
+// mes calendario. `i` es el índice REAL en S.spotify.historial (h._realIdx).
 function resolverPendienteSpHistorial(i){
-  const h=S.spotifyHistorial[i];
+  const h=S.spotify.historial[i];
   if(!h||!(h.pendiente>0))return;
   spResolverIdx=i;
   document.getElementById('spResTitle').textContent='Pendiente de '+escHtml(h.nombre);
@@ -1146,7 +1146,7 @@ function resolverPendienteSpHistorial(i){
 function actualizarSpResolverPreview(){
   const prev=document.getElementById('spResPreview');
   if(!prev||spResolverIdx===null)return;
-  const h=S.spotifyHistorial[spResolverIdx];
+  const h=S.spotify.historial[spResolverIdx];
   const v=parseMoney(document.getElementById('spResMonto').value)||0;
   if(!h||!v){prev.textContent='';return;}
   if(v>h.pendiente+1){
@@ -1161,7 +1161,7 @@ function actualizarSpResolverPreview(){
 
 function confirmarSpResolverPendiente(){
   if(spResolverIdx===null)return;
-  const h=S.spotifyHistorial[spResolverIdx];
+  const h=S.spotify.historial[spResolverIdx];
   if(!h||!(h.pendiente>0))return;
   let monto=parseMoney(document.getElementById('spResMonto').value)||0;
   if(monto<=0)return;
@@ -1205,7 +1205,7 @@ async function _spEnsureTC(){
 }
 
 function openSheet_pagarSpotify(){
-  const costo=S.spotifyCosto||0;
+  const costo=S.spotify.costo||0;
   // Resetear split (mismo patrón que abrirRegistrarMesada en mesada.js)
   sppSplitMode=false;
   document.getElementById('spPagarModoSimple').style.display='';
@@ -1348,7 +1348,7 @@ async function confirmarPagarSpotify(){
       descontarFuente(fuente,monto,_ogSp(_pagoRef));
     }
   }
-  if(!S.spotifyHistorial)S.spotifyHistorial=[];
+  if(!S.spotify.historial)S.spotify.historial=[];
   // Registrar también como gasto variable para que aparezca en la sección Gastos
   if(!S.gastosVar)S.gastosVar=[];
   const gastoId=_pagoRef;
@@ -1356,12 +1356,12 @@ async function confirmarPagarSpotify(){
   // Se guarda la cuota del administrador vigente EN ESTE MOMENTO (según cuántas personas
   // hay ahora), para que si la cantidad de integrantes cambia en el futuro, la ganancia
   // de este ciclo ya pagado no se recalcule con datos de otra época.
-  const totalSlotsAhora=(S.spotifyPersonas||[]).length+1;
-  const cuotaAdminAhora=S.spotifyCosto>0?Math.round(S.spotifyCosto/totalSlotsAhora):0;
+  const totalSlotsAhora=(S.spotify.personas||[]).length+1;
+  const cuotaAdminAhora=S.spotify.costo>0?Math.round(S.spotify.costo/totalSlotsAhora):0;
   // Foto de quién estaba "Pagó" justo antes de resetear el ciclo: si más adelante se
   // elimina este pago del historial, hay que poder devolver a cada persona a como
   // estaba, no dejar a todos en "Pendiente" sin poder deshacerlo.
-  const estadoAntesReset=(S.spotifyPersonas||[]).map(p=>({id:p.id,pagado:!!p.pagado}));
+  const estadoAntesReset=(S.spotify.personas||[]).map(p=>({id:p.id,pagado:!!p.pagado}));
 
   const fechaPago=fechaPago0;
 
@@ -1372,9 +1372,9 @@ async function confirmarPagarSpotify(){
   // el historial para que spCicloCobrosActual() los cuente donde de verdad corresponden.
   // Ver docs/spotify.md §7ter.
   let lastPagoIdx=-1;
-  for(let i=S.spotifyHistorial.length-1;i>=0;i--){ if(S.spotifyHistorial[i].tipo==='pago'){lastPagoIdx=i;break;} }
-  const antesDelSegmento=S.spotifyHistorial.slice(0,lastPagoIdx+1);
-  const segmentoAbierto=S.spotifyHistorial.slice(lastPagoIdx+1);
+  for(let i=S.spotify.historial.length-1;i>=0;i--){ if(S.spotify.historial[i].tipo==='pago'){lastPagoIdx=i;break;} }
+  const antesDelSegmento=S.spotify.historial.slice(0,lastPagoIdx+1);
+  const segmentoAbierto=S.spotify.historial.slice(lastPagoIdx+1);
 
   const quedanCerrando=[];   // de verdad pertenecen al ciclo que se está cerrando ahora
   const pasanANuevo=[];      // ya eran, en la realidad, del ciclo que arranca con este pago
@@ -1391,7 +1391,7 @@ async function confirmarPagarSpotify(){
       // Mismo día que este pago: desempate por deuda, no por hora exacta. Si esa persona
       // ya tenía cubierta su cuota del ciclo que se cierra ANTES de este cobro puntual,
       // este cobro ya era, en la realidad, del ciclo nuevo — aunque comparta fecha.
-      const persona=h.spId?(S.spotifyPersonas||[]).find(x=>x.id===h.spId):null;
+      const persona=h.spId?(S.spotify.personas||[]).find(x=>x.id===h.spId):null;
       const cuota=persona?(persona.monto||0):0;
       const yaCubierto=h.spId?(cubiertoPorPersona[h.spId]||0):0;
       // Empate: pasa al ciclo nuevo solo si ya tenía SP_EMPATE_PERIODOS o más períodos
@@ -1411,7 +1411,7 @@ async function confirmarPagarSpotify(){
   // para que, si alguien paga atrasado DESPUÉS de este pago, ese cobro se le atribuya al
   // ciclo que en realidad estaba saldando — ver confirmarSpDestino() y docs/spotify.md §7ter.
   const pendienteAlCerrar={};
-  (S.spotifyPersonas||[]).forEach(x=>{
+  (S.spotify.personas||[]).forEach(x=>{
     if(spPersonaPagadaVigente(x))return;
     // Se cuenta por PERÍODOS vencidos (via proximoPago), no por dinero total cobrado
     // contra una sola cuota — un ciclo puede durar más de un período de esta persona,
@@ -1428,11 +1428,11 @@ async function confirmarPagarSpotify(){
   });
 
   const pagoObj={id:uid(),tipo:'pago',monto,fuente,splits:splits||undefined,fecha:fechaPago,nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar,_tcMovId:tcMovId};
-  S.spotifyHistorial=[...antesDelSegmento,...quedanCerrando,pagoObj,...pasanANuevo];
+  S.spotify.historial=[...antesDelSegmento,...quedanCerrando,pagoObj,...pasanANuevo];
   // Reset pagados del ciclo — pero respeta a quienes ya prepagaron períodos futuros:
   // si su próxima fecha de cobro sigue en el futuro, su "Pagó" sigue vigente y no debe
   // volver a Pendiente solo porque yo ya le pagué a Spotify.
-  (S.spotifyPersonas||[]).forEach(p=>{
+  (S.spotify.personas||[]).forEach(p=>{
     const hoy0=new Date();hoy0.setHours(0,0,0,0);
     const sigueVigente=p.proximoPago&&new Date(p.proximoPago+'T00:00:00')>hoy0;
     if(!sigueVigente)p.pagado=false;
@@ -1445,7 +1445,7 @@ function addSpotify(){
   const n=document.getElementById('sp_n').value.trim();
   const m=parseMoney(document.getElementById('sp_m').value)||0;
   if(!n){toast('Ingresa el nombre','err');return;}
-  const yaExisteNombre=(S.spotifyPersonas||[]).some(p=>(p.nombre||'').trim().toLowerCase()===n.toLowerCase());
+  const yaExisteNombre=(S.spotify.personas||[]).some(p=>(p.nombre||'').trim().toLowerCase()===n.toLowerCase());
   if(yaExisteNombre){
     toast(`Ya hay un integrante llamado "${escHtml(n)}". Usa un nombre distinto (agregá un apellido o apodo) para no mezclar sus cobros en el historial.`,'err',4200);
     return;
@@ -1456,7 +1456,7 @@ function addSpotify(){
   const dIng=new Date(fechaIngresoRaw+'T00:00:00');
   dIng.setDate(dIng.getDate()+30);
   const proximoPago=dIng.toISOString().split('T')[0];
-  S.spotifyPersonas.push({id:uid(),nombre:n,monto:m,pagado:false,proximoPago,fechaIngreso:fechaIngresoRaw,ultimoDestino:'',ultimoDestinoSplit:false,mesesAdelantados:1});
+  S.spotify.personas.push({id:uid(),nombre:n,monto:m,pagado:false,proximoPago,fechaIngreso:fechaIngresoRaw,ultimoDestino:'',ultimoDestinoSplit:false,mesesAdelantados:1});
   document.getElementById('sp_n').value='';
   document.getElementById('sp_m').value='';
   document.getElementById('sp_fecha_ingreso').value='';
@@ -1464,19 +1464,19 @@ function addSpotify(){
   toast(`${escHtml(n)} agregado · primer cobro el ${proximoPago}`,'ok');
 }
 async function deleteSpotify(i){
-  const p=(S.spotifyPersonas||[])[i];
+  const p=(S.spotify.personas||[])[i];
   if(!p)return;
   const nombreActual=spNombreDe(p);
   const ok=await dialogo('Eliminar integrante',`¿Eliminar a ${nombreActual} de Spotify? Esta acción no se puede deshacer. Su historial de cobros anteriores se conserva en las estadísticas, pero dejará de aparecer en la lista.`,'Eliminar',true);
   if(!ok)return;
-  S.spotifyPersonas.splice(i,1);
+  S.spotify.personas.splice(i,1);
   save();refresh();
   toast(`${escHtml(nombreActual)} eliminado de Spotify`,'ok');
 }
 
 let _spEditIdx = null;
 function editarSpotify(i) {
-  const p = S.spotifyPersonas[i];
+  const p = S.spotify.personas[i];
   if (!p) return;
   _spEditIdx = i;
   document.getElementById('sp_edit_n').value = p.nombre || '';
@@ -1488,7 +1488,7 @@ function editarSpotify(i) {
 }
 function guardarEditarSpotify() {
   if (_spEditIdx === null) return;
-  const p = S.spotifyPersonas[_spEditIdx];
+  const p = S.spotify.personas[_spEditIdx];
   if (!p) return;
   const n = document.getElementById('sp_edit_n').value.trim();
   if (!n) { toast('Ingresa el nombre', 'err'); return; }
@@ -1772,14 +1772,14 @@ addSpotify = function() {
     return;
   }
   const pId = _spPersonaId;
-  if (pId && (S.spotifyPersonas||[]).some(x=>x.personaId===pId)) {
+  if (pId && (S.spotify.personas||[]).some(x=>x.personaId===pId)) {
     toast('Esta persona ya está agregada en Spotify','err');
     return;
   }
   _origAddSpotifyPersonas.apply(this, arguments);
   // Asignar personaId al último spotifyPersona creado
-  if (pId && S.spotifyPersonas && S.spotifyPersonas.length) {
-    const last = S.spotifyPersonas[S.spotifyPersonas.length - 1];
+  if (pId && S.spotify.personas && S.spotify.personas.length) {
+    const last = S.spotify.personas[S.spotify.personas.length - 1];
     if (last && !last.personaId) {
       last.personaId = pId;
       // Sincronizar nombre con la persona
@@ -1802,7 +1802,7 @@ addSpotify = function() {
 const _origEditarSpotifyPersonas = editarSpotify;
 editarSpotify = function(i) {
   _origEditarSpotifyPersonas.apply(this, arguments);
-  const sp = (S.spotifyPersonas || [])[i];
+  const sp = (S.spotify.personas || [])[i];
   if (!sp) return;
   _spEditPersonaId = sp.personaId || null;
   _spEditPersonaLocked = !!sp.personaId;
@@ -1845,7 +1845,7 @@ guardarEditarSpotify = function() {
   // selección (ni elegir a alguien de la lista, ni crear una persona nueva), el
   // input oculto sigue con el nombre anterior — avisar en vez de guardarlo en silencio.
   if (_spEditPersonaPickerAbierto && !_spEditPersonaPickerConfirmado) {
-    const spActual = (S.spotifyPersonas || [])[_spEditIdx];
+    const spActual = (S.spotify.personas || [])[_spEditIdx];
     toast(`No se seleccionó una persona nueva — se mantuvo a "${spActual ? escHtml(spActual.nombre) : 'la persona anterior'}"`, 'err', 4000);
   }
   // Capturar idx ANTES de llamar al original (que lo pone a null)
@@ -1853,7 +1853,7 @@ guardarEditarSpotify = function() {
   // Si se vinculó (por primera vez) a una persona que ya está usada por OTRO integrante
   // de Spotify, bloquear — mismo criterio que ya aplica en addSpotify.
   if (_spEditPersonaId) {
-    const yaUsadaPorOtro = (S.spotifyPersonas || []).some((x, idx) => idx !== idxAntes && x.personaId === _spEditPersonaId);
+    const yaUsadaPorOtro = (S.spotify.personas || []).some((x, idx) => idx !== idxAntes && x.personaId === _spEditPersonaId);
     if (yaUsadaPorOtro) {
       toast('Esta persona ya está agregada en Spotify', 'err');
       return;
@@ -1861,8 +1861,8 @@ guardarEditarSpotify = function() {
   }
   _origGuardarEditarSpotifyPersonas.apply(this, arguments);
   // Asignar personaId al spotifyPersona editado (si se confirmó una selección nueva)
-  if (idxAntes !== null && S.spotifyPersonas && S.spotifyPersonas[idxAntes]) {
-    const sp = S.spotifyPersonas[idxAntes];
+  if (idxAntes !== null && S.spotify.personas && S.spotify.personas[idxAntes]) {
+    const sp = S.spotify.personas[idxAntes];
     if (_spEditPersonaId) {
       sp.personaId = _spEditPersonaId;
     }
@@ -1889,7 +1889,7 @@ renderSpotify = function() {
   // Aplicar color y nombre correcto a cada avatar del listado Spotify
   const lista = document.getElementById('spotifyList');
   if (!lista) return;
-  const p = S.spotifyPersonas || [];
+  const p = S.spotify.personas || [];
   // Ordenar igual que en renderSpotify
   const pOrdenado = [...p].map((x, i) => ({ ...x, _origIdx: i })).sort((a, b) => {
     const far = 99999;

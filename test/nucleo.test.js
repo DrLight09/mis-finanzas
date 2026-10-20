@@ -372,16 +372,16 @@ describe('migraciones', () => {
   const app = () => loadApp([path.join(CORE_DIR, 'core-state.js')]);
   const plano = x => JSON.parse(JSON.stringify(x));
 
-  test('datos nuevos (sin schemaVersion) nacen en la versión actual (8)', () => {
+  test('datos nuevos (sin schemaVersion) nacen en la versión actual (9)', () => {
     const d = plano(app().aplicarMigraciones({ cuentas: [] }));
-    assert.equal(d.schemaVersion, 8);
+    assert.equal(d.schemaVersion, 9);
   });
 
   describe('v8 — una sola tasa de Nu (S.nuRate)', () => {
     const v7 = extra => ({ schemaVersion: 7, ...extra });
     test('la tasa que el usuario escribía (nuTasaGlobal) pasa a nuRate; se borran nuTasaGlobal y la `tasa` de cada cajita', () => {
       const d = plano(app().aplicarMigraciones(v7({ nuRate: 9.25, nuTasaGlobal: 12.5, cajitas: [{ id: 'a', tasa: 9.3 }, { id: 'b', tasa: 9.25 }] })));
-      assert.equal(d.schemaVersion, 8);
+      assert.equal(d.schemaVersion, 9); // v7 pasa por la v8 y por la v9
       assert.equal(d.nuRate, 12.5);
       assert.equal('nuTasaGlobal' in d, false);
       assert.equal(d.cajitas.some(c => 'tasa' in c), false);
@@ -408,6 +408,49 @@ describe('migraciones', () => {
     test('un backup ya migrado (esquema 8) no se vuelve a tocar', () => {
       const d = plano(app().aplicarMigraciones({ schemaVersion: 8, nuRate: null, cajitas: [{ id: 'a' }] }));
       assert.equal(d.nuRate, null);
+    });
+  });
+
+  describe('v9 — todo el estado de Spotify en S.spotify', () => {
+    const v8 = extra => ({ schemaVersion: 8, ...extra });
+    const viejo = { spotifyPersonas: [{ id: 'p1', nombre: 'Ana' }], spotifyCosto: 17500, spotifyCajitaId: 'k1', spotifyHistorial: [{ id: 'h1', tipo: 'cobro' }] };
+    test('las cuatro llaves sueltas pasan a S.spotify y se borran', () => {
+      const d = plano(app().aplicarMigraciones(v8(viejo)));
+      assert.equal(d.schemaVersion, 9);
+      assert.deepEqual(d.spotify, { personas: [{ id: 'p1', nombre: 'Ana' }], costo: 17500, cajitaId: 'k1', historial: [{ id: 'h1', tipo: 'cobro' }] });
+      for (const k of ['spotifyPersonas', 'spotifyCosto', 'spotifyCajitaId', 'spotifyHistorial']) assert.equal(k in d, false, k);
+    });
+    test('sin datos de Spotify queda el objeto vacío de siempre', () => {
+      assert.deepEqual(plano(app().aplicarMigraciones(v8({}))).spotify, { personas: [], costo: 0, cajitaId: '', historial: [] });
+    });
+    test('las llaves viejas mandan sobre un `spotify` vacío que puso el estado por defecto (Object.assign de la nube sobre S)', () => {
+      const d = plano(app().aplicarMigraciones(v8({ ...viejo, spotify: { personas: [], costo: 0, cajitaId: '', historial: [] } })));
+      assert.equal(d.spotify.personas.length, 1); assert.equal(d.spotify.costo, 17500); assert.equal(d.spotify.historial.length, 1);
+    });
+    test('valores inválidos se normalizan (costo no numérico, cajitaId no texto, listas que no son arrays)', () => {
+      const d = plano(app().aplicarMigraciones(v8({ spotifyPersonas: 'x', spotifyCosto: 'abc', spotifyCajitaId: 5, spotifyHistorial: null })));
+      assert.deepEqual(d.spotify, { personas: [], costo: 0, cajitaId: '', historial: [] });
+    });
+    test('un backup ya en esquema 9 no se vuelve a tocar', () => {
+      const spotify = { personas: [{ id: 'p1' }], costo: 5, cajitaId: 'k', historial: [] };
+      assert.deepEqual(plano(app().aplicarMigraciones({ schemaVersion: 9, spotify })).spotify, spotify);
+    });
+    test('el estado por defecto y load() dejan S.spotify completo (sin guardas en el resto de la app)', () => {
+      const ctx = app();
+      assert.deepEqual(plano(ctx.S.spotify), { personas: [], costo: 0, cajitaId: '', historial: [] });
+      ctx.S.spotify = { costo: '12000' }; ctx._ensureSpotify();
+      assert.deepEqual(plano(ctx.S.spotify), { personas: [], costo: 12000, cajitaId: '', historial: [] });
+    });
+    test('guardia: ningún archivo de la app vuelve a usar las cuatro llaves viejas (solo la migración las nombra)', () => {
+      const fs = require('fs'), dir = path.join(CORE_DIR, '..');
+      const archivos = ['core', 'modules'].flatMap(d => fs.readdirSync(path.join(dir, d)).filter(f => f.endsWith('.js')).map(f => path.join(dir, d, f)));
+      const mal = [];
+      for (const f of archivos) {
+        const t = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
+        if (f.endsWith('core-state.js')) continue; // la migración v9 las nombra a propósito
+        if (/\.(spotifyPersonas|spotifyCosto|spotifyCajitaId|spotifyHistorial)\b/.test(t)) mal.push(path.basename(f));
+      }
+      assert.deepEqual(mal, [], 'usan S.spotifyX en vez de S.spotify.X');
     });
   });
 
@@ -848,7 +891,7 @@ describe('clase-cobertura', () => {
   // Guardia de cobertura (plan-clasificacion-movimientos.md): todo código que CREA un movimiento ingreso/gasto en
   // S.movimientos, S.gastosVar o cuenta.movimientos (objeto literal) debe escribir `clase`. Un módulo nuevo que
   // lo olvide rompe este test en vez de dejar el ingreso o gasto del mes mal sin avisar.
-  // Quedan fuera a propósito: las salidas espejo (tipo 'salida'/'egreso'; 'salida_manual' SÍ lleva clase: es un gasto,
+  // Quedan fuera a propósito: las salidas espejo (tipo 'salida'; 'salida_manual' SÍ lleva clase: es un gasto,
   // ver §7 del plan) y las listas sin lectores de clase (deudores, encargos, transferencias, tcMovimientos).
   const test = require('node:test');
   const assert = require('node:assert/strict');
@@ -876,7 +919,7 @@ describe('clase-cobertura', () => {
       while ((m = PUSH.exec(src))) {
         const lit = literal(src, m.index + m[0].length - 1);
         if (/\bclase\s*[:,]/.test(lit)) continue;
-        if (/tipo\s*:\s*'(salida|egreso)'/.test(lit)) continue;
+        if (/tipo\s*:\s*'salida'/.test(lit)) continue;
         faltan.push(path.relative(RAIZ, f) + ':' + src.slice(0, m.index).split('\n').length);
       }
     });

@@ -1,6 +1,6 @@
 // Prueba de humo con la página REAL en jsdom: carga index.html y todos sus <script>, carga los grupos lazy, y toca cada
 // botón data-action presente. Informa (a) acciones sin handler registrado y (b) excepciones al tocar cada botón.
-// Uso: node scripts/smoke-browser.js [raiz-del-repo] [--verbose]   (por defecto, la raíz del repo; necesita `npm i -D jsdom@24`)
+// Uso: node scripts/smoke-browser.js [raiz-del-repo] [--verbose]   (por defecto, la raíz del repo; necesita `npm install`: jsdom ^27.4.0 está en devDependencies; atajo: `npm run smoke`)
 // Vive en scripts/ y NO en la carpeta de tests: `node --test` ejecuta todo .js que encuentra ahí y esto necesita jsdom.
 const { JSDOM, ResourceLoader, VirtualConsole } = require('jsdom');
 const fs = require('fs'), path = require('path');

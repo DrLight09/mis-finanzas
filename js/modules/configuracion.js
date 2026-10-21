@@ -44,16 +44,16 @@ function renderCatsConfig(){
 
   const renderCatChips=(cats,defaults,tipo)=>cats.map(c=>{
     const esDefault=defaults.includes(c);
-    return html`<span class="cat-chip" style="display:inline-flex;align-items:center;gap:4px;padding:4px 9px 4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;margin:0 4px 6px 0;color:var(--text2);">
+    return html`<span class="cat-chip">
       ${c}
-      ${!esDefault?html`<button type="button" class="cat-chip-del" title="Eliminar" ${raw(Events.attr('config:eliminarCat',tipo,c))} style="background:none;border:none;cursor:pointer;color:var(--text3);padding:0 0 0 2px;line-height:1;display:flex;align-items:center;">
+      ${!esDefault?html`<button type="button" class="cat-chip-del" title="Eliminar" ${raw(Events.attr('config:eliminarCat',tipo,c))}>
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>`:''}
     </span>`;
   });
 
-  elVar.innerHTML=html`<div style="display:flex;flex-wrap:wrap;">${renderCatChips(getCatsVar(),CATS_VAR_DEFAULT,'var')}</div>`;
-  elFijo.innerHTML=html`<div style="display:flex;flex-wrap:wrap;">${renderCatChips(getCatsFijo(),CATS_FIJO_DEFAULT,'fijo')}</div>`;
+  elVar.innerHTML=html`<div class="cat-chips">${renderCatChips(getCatsVar(),CATS_VAR_DEFAULT,'var')}</div>`;
+  elFijo.innerHTML=html`<div class="cat-chips">${renderCatChips(getCatsFijo(),CATS_FIJO_DEFAULT,'fijo')}</div>`;
 }
 
 function agregarCat(tipo){

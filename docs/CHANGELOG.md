@@ -4,7 +4,484 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Libro de movimientos
+
+Documentación: [`libro-de-movimientos.md`](./libro-de-movimientos.md).
+
+### 🎨 Estilos inline → clases (2026-10-21, Paso 5, tanda 5) — `wrapped.js`
+
+`wrapped.js` pasa de 16 `style=""` a 1: el gráfico de línea y el mensual (`wrapped-svg-block`, zonas táctiles `wrapped-hit`), el número grande de cada slide, el detalle de un mes, los puntos de color de la vista mensual (`wrapped-mes-dot-ok/mal/cero`), el separador de la nota de préstamos (`wrapped-sub-sep`) y el ícono de la estrella (`wrapped-icono-sep`). Las clases nuevas van **dentro del `<style>` que inyecta el propio archivo** (`_wrappedInyectarEstilos`, donde ya vivía todo el CSS de Wrapped); los colores usan las utilidades `c-green/red/amber/purple/blue` de `styles.css` y `wrapped-c-text`. El que queda es el `animation-delay` de cada punto de la línea (`i*0.09s`: un valor distinto por punto, no puede ser clase).
+- **Causa raíz que casi se cuela (otro lector del estilo inline):** el color de fondo de cada slide (`mood`) se deducía con una regex sobre el HTML del slide (`color:\s*var\(--X\)`, en `_wrappedBuildSlides`). Al quitar el `style="color:…"` esa regex ya no encontraba nada y **todos los slides sin mood explícito habrían caído a `accent`** (verde) sin dar error. Ahora lee la clase (`c-purple`…`c-green`, `c-green` → `accent`) y `_wrappedColorClase(color)` traduce el `var(--X)` que reciben los 14 llamadores de `_wrappedSlideBignum` (avisa por consola si llega uno sin clase). Regla para el resto del Paso 5: **antes de convertir un archivo, buscar quién lee su HTML o su `.style`** (regex sobre `color:`, `getAttribute('style')`, selectores `[style*=…]`).
+- **Código muerto quitado:** la clase `wrapped-dot-final` (y `esFinal`) del último punto de la línea: sin regla CSS ni lector.
+- **Verificado ejecutando `_wrappedBuildSlides` completo** con el código de `js.zip` y el nuevo (herramienta nueva `scripts/equivalencia-wrapped.js`: expone `_wrappedBuildSlides` en una copia de prueba, suma el CSS inyectado a `styles.css` y compara mood + estilo efectivo de cada elemento) sobre 5 escenarios (base, racha de alcancía, préstamo devuelto rápido y otro sin devolver, mes con balance exacto 0, gasto raro que no es el mayor): **86 slides, 0 diferencias**, las 13 clases nuevas ejercitadas. Mutación: con el regex roto salen 17 fallos de mood; con un color de punto cambiado, 5 fallos de estilo.
+- `tests/estilos.test.js` suma el archivo (con `cssEn` para leer el CSS inyectado) y una prueba del mapa de colores/mood. Pruebas: `npm test` 399/399; smoke sin fallos. `sw.js` v42.
+
+### 🎨 Estilos inline → clases (2026-10-21, Paso 5, tanda 4) — `inicio.js`
+
+`inicio.js` pasa de 43 `style=""` a 1: tarjeta "Necesita atención" (badge e ítems), Salud financiera (anillo, puntaje, consejos) y Proyección (estado vacío, tendencia, tarjetas 3m/6m/12m, chips de confianza y los dos tooltips que arma `showTT`). Clases `inicio-*` al final de `css/styles.css`. El que queda es `display:none` del tooltip `#_proy-tt`, que JS conmuta con `style.display`.
+- **Colores calculados → clases modificadoras:** `inicio-attn-badge-red/amber`, `inicio-attn-texto-red/amber`, `inicio-salud-ok/warn/mal`, `inicio-tip-ok/warn`, `inicio-proy-pos/neg`, `inicio-tt-pos/neg`. Se quitaron la variable `col` de `renderProyeccion` (ya no se usa), `color` de los consejos y `col2` del tooltip.
+- **Verificado renderizando antes y después** con la herramienta nueva `scripts/equivalencia-inicio.js` (JSDOM real: ejecuta el `inicio.js` de `js.zip` y el nuevo con los mismos datos y compara el estilo efectivo de cada elemento con `equivalencia-estilos.js`): atención ámbar y roja con la sección abierta y cerrada, salud con puntaje 100/80/60/30 y sin datos, proyección sin patrimonio / historial insuficiente / preliminar / normal / estable / tendencia negativa, y el tooltip que sale al tocar la cabecera y las tarjetas 3m y 12m: **27 comparaciones, 0 diferencias, 0 avisos**. Se comprobó por mutación (cambiar el color de `.inicio-proy-neg` y el tamaño de `.inicio-tt-delta`) que el verificador falla.
+- `tests/estilos.test.js` suma el archivo. Pruebas: `npm test` 396/396; smoke sin fallos (207/0/0). `sw.js` v41.
+
+### 🎨 Estilos inline → clases (2026-10-20, Paso 5, tanda 3) — `gastos.js`
+
+`gastos.js` pasa de 29 `style=""` a 0: lista de gastos variables (fila, chip "Automático", candado, nota, cabecera por día con su variante de primer día), lista de gastos fijos (Pagado, botón Pagar, fila de meta) y la flecha de deuda del sheet de pago de un fijo. Clases `gasto-*`, `badge-xs` y `row-name-13` al final de `css/styles.css`.
+- **Verificado renderizando antes y después** (`renderGastosVar` y `renderGastosFijos` con el código de `js.zip` y el nuevo, mismos datos: gasto normal con nota, dividido en dos cuentas, compra con TC, pago de TC, pago de gasto fijo con y sin TC, movimiento automático/secundario, "Restar dinero", fijos pagados, pendientes y Spotify virtual): 150 + 43 elementos equivalentes, sin avisos. La flecha de `pgfActualizarSaldo` se comprobó aparte.
+- Lo calculado (opacidad del gasto fijo/pago de TC, color del monto, margen del primer día) pasó a clases modificadoras: `gasto-item-atenuado`, `c-red`/`c-green`/`gasto-monto-fijo`, `gasto-dia-primero`. El badge de 9px se repetía 9 veces y ahora es `badge-xs`.
+- `tests/estilos.test.js` suma el archivo. Pruebas: `npm test` 394/394; smoke sin fallos.
+
+### 🎨 Estilos inline → clases (2026-10-20, Paso 5, tanda 2) — `busqueda-global.js` y `configuracion.js`
+
+`busqueda-global.js` pasa de 16 `style=""` a 2 y `configuracion.js` de 4 a 0. Las clases nuevas (`busqueda-*`, `cat-chips`, `cat-chip`, `cat-chip-del`) van al final de `css/styles.css`. Los 2 que quedan en búsqueda son valores que salen del resultado (el color del tipo y el fondo del ícono según el color).
+- **Verificado en un DOM real:** se ejecutó el código anterior y el nuevo en jsdom con los mismos datos (gastos, fijos, deudores, cajitas, encargos, personas, Spotify, movimientos, alcancía; con y sin resultados; con menos de 2 caracteres) y se comparó con `scripts/equivalencia-estilos.js`: 372 elementos equivalentes. Chips de categorías: 14 elementos equivalentes.
+- **Cambio de comportamiento deliberado:** la regla `.cat-chip-del:hover{color:var(--red)}` ya existía pero nunca se aplicaba (el `color` inline del botón le ganaba). Ahora la `x` de una categoría se pone roja al pasar el ratón, que era lo previsto.
+- Los resultados sin destino (`navTipo` vacío) usan `.busqueda-item.busqueda-item-sin-nav{cursor:default}` en vez de un `cursor` inline.
+- `tests/estilos.test.js` suma estos dos archivos y ahora solo cuenta clases dentro de atributos `class`/`className` (los ids `busqueda-*` no cuentan); acepta como permitido un texto exacto o una expresión regular.
+- Pruebas: `npm test` 392/392; smoke sin fallos.
+
+### 🎨 Estilos inline → clases (2026-10-20, Paso 5, tanda 1) — `diferencial.js` y `split.js`
+
+38 `style=""` de `diferencial.js` (quedan 3 `display:none` que JS conmuta) y 3 + un `style.cssText` de `split.js` pasan a clases `diferencial-*` / `split-*` al final de `css/styles.css`. Es la primera tanda del Paso 5; el método y los hallazgos están en `CONTINUAR.md` §13.16.
+- **Equivalencia comprobada, no supuesta:** `scripts/equivalencia-estilos.js` (nuevo) compara, elemento por elemento, el estilo efectivo antes y después con la cascada real (especificidad, orden, `!important`, shorthands, reglas de estado y `@media`). Cubre la fila de beneficiario con y sin intercambio, la plantilla completa, el historial, los 5 estados del resumen y la fila de split: todo equivalente. Por mutación se comprobó que detecta diferencias.
+- **Lo que casi se pierde:** el resumen vacío se colapsaba por `[style*="min-height"]:empty` sobre el `style=""`; al pasar a clase se añadió `.diferencial-resumen:empty{min-height:0}`.
+- **Especificidad:** las reglas base de `input[type=text]`, `select`, `.il`, `.ig` ganan a una clase suelta, así que las nuevas son `input.diferencial-input`, `select.diferencial-select`, `.il.diferencial-lbl-*`, `.ig.diferencial-ig` y el bloque va al final.
+- Nuevo `tests/estilos.test.js`: ningún `style=""` estático nuevo en los archivos convertidos y toda clase que usan existe en el CSS (+ la regla `:empty`).
+- Pruebas: `npm test` 388/388; smoke sin fallos.
+
+### 🧹 Limpieza (2026-10-20) — fuera el código que existía solo para datos anteriores (§13.15 de `CONTINUAR.md`)
+
+La app no tiene datos antiguos que proteger (decisión de Sebas, 2026-10-18), así que se borró en vez de mantenerse. Para cada candidato se buscó antes quién escribe el dato; si nadie, el código de lectura era muerto.
+- **`_migrarGruposDeudor`** (`prestado.js`, con 5 llamadas en `prestado.js` y `alcancia.js`) y su prueba. Los 7 sitios que crean movimientos de deuda ya escriben `grupoId`; `_getOrCrearHistorico` crea `d.grupos` cuando hace falta y `_gruposAbiertos`/`_autoCerrarGruposEnCero` toleran su ausencia.
+- **Spotify / Cuentas:** el id `sp_legacy_<índice>` para cobros sin id (`cuentas.js`; todo cobro nace con `id`), el respaldo por nombre en `spCobradoDePersona` (todo cobro lleva `spId`) y el respaldo de `_cuotaAdmin` (todo pago la guarda). El fixture de `cuentas.test.js` pasó el cobro "Sin id" a un cobro con id (`sp9`) y la prueba del id estable se quitó.
+- **Wrapped:** el fallback `S.nu.cajitas` (`_wrappedListaCajitas` lee solo `S.cajitas`) y los comentarios que decían que `pagosGastosFijos` podía ser un array (`Periodo` ya solo lee el mapa).
+- **Alcancía:** el tipo de depósito `'split'` (lectura en el desglose, aviso de antigüedad, texto del diálogo y reversión; nada lo escribe desde que existe `'multi'`) y el filtro de `S.gastosVar` en `_alcQuitarMirrorCuenta` (el espejo de un depósito con cuenta vive solo en `S.transferencias`).
+- **Búsqueda global:** la rama `_esAlcancia` de los gastos variables (el destape guarda `_esAlcanciaAjuste`, nunca `_esAlcancia`, en `S.gastosVar`).
+- **`getSaldoActual`:** el alias de `getSaldoFuente` (27 usos renombrados; los tests dejan de enlazarlo a mano).
+- Comentarios: `split (legacy)` en el modelo de origen de `core-state.js`; "legacy" en `movimientos.js` (`'ingreso'` no es legado: es como la vista de Cuentas rotula una entrada).
+
+Documentación ajustada: `alcancia.md` (sin `split` ni migración de grupos), `prestado.md`, `spotify.md`, `wrapped.md`. **Sin hacer, anotado como candidato:** `_esAlcancia` en `S.gastosVar` también se lee en `cuentas.js` (~514), `actividad_reciente.js` (~237) y `_esGastoVarNoReal`, y los fixtures g06/g11 de `cuentas.test.js` lo usan; nada lo escribe ya. `configuracion.js` conserva su rechazo del formato viejo de cuentas (una línea útil).
+
+Verificación: `npm test` 383/383, `scripts/smoke-browser.js` sin fallos (207 usadas, 0 sin registrar, 0 duplicadas).
+
+### 🐛 Corregido (2026-10-13) — Plata comprometida: al eliminar un ingreso no se devolvía todo, y las llamadas de saldo no llevaban `origen` (`plata_comprometida.js`)
+
+La guardia `puerta-unica` encontró 15 llamadas a `sumarFuente`/`descontarFuente` sin `origen`; al revisarlas aparecieron cuatro fallos de fondo en la reversión, todos contra la regla "eliminar el movimiento principal lo deshace todo, como si nunca hubiera pasado":
+- **El sobrante ("Ingreso libre") nunca se devolvía.** `_cpEliminar` borraba la fila de `S.movimientos` pero dejaba la plata en la cuenta (el saldo quedaba más alto que su historial). Ahora el ingreso guarda `item.sobrante = { cuenta, monto }` al recibirse y eliminarlo lo descuenta.
+- **Un adelanto o un pago ya hechos tampoco se devolvían** si el ingreso ya estaba recibido: solo se revertía lo que se movió al recibir. Con un adelanto de $30.000 repuesto y luego eliminado, la cuenta quedaba $30.000 abajo. Ahora se devuelven también (y su fila de `S.movimientos`).
+- **Quedaba una fila huérfana** (`Reposición gasto: …`) porque el filtro buscaba el texto del ingreso, que esa fila no incluye. Las filas que se crean al recibir llevan ahora `_cpItemId` y se borran por ese id.
+- **Seguía escribiendo la lista vieja `cuenta.movimientos`** cuando el sobrante entraba a una cuenta personalizada. Se quitó.
+
+Todas las llamadas llevan `origen` (`_ogCp(ref, rev)`, módulo `plata-comprometida`, `ref` = id del destino, o del ingreso para el sobrante) y las reversiones pasan el mismo `ref` con `rev: true`. La opción `{ exacto: true }` (ya sin efecto desde que el saldo no se recorta) se retiró. Pruebas nuevas en `tests/libro.test.js` (bloque `plata-comprometida`, 6 casos); fallan todas con el código anterior.
+
+**Decisión de comportamiento:** eliminar un ingreso recibido ahora también devuelve los adelantos y pagos que ya se habían hecho. Antes los dejaba (el aviso solo prometía revertir lo generado al recibir); ahora el aviso y el código coinciden con la regla de arriba.
+
+### 🐛 Corregido (2026-10-13) — Eliminar un movimiento desde una cuenta pedía dos clics y revertía dos veces (`movimientos.js`)
+
+Causa raíz: `eliminarMovimiento()` tenía **todo el bloque "confirmación + reversión" duplicado dentro de la misma función** (un copiar y pegar accidental). Corría así: protección por antigüedad → confirmación 1 → reversión 1 → confirmación 2 → reversión 2. Por eso el primer clic en "Eliminar" parecía no hacer nada (era el segundo diálogo, idéntico) y el segundo clic revertía otra vez.
+
+El efecto dependía del tipo de movimiento: en gastos y transferencias la segunda reversión no encontraba el registro y no hacía nada (por eso "se revierte bien"), pero en **saldo inicial, ingresos manuales y retiros de cuentas personalizadas** la segunda vuelta usaba el monto que mostraba la fila (sin comprobar que el registro siguiera existiendo) y devolvía la plata dos veces: un saldo inicial de $10 pasaba a −$10 y un retiro de $2.000 sobre $10.000 terminaba en $12.000.
+
+Arreglo: se quitó la copia (queda una sola confirmación y una sola cadena de reversión, −112 líneas) y se añadieron tres protecciones para que no se pueda duplicar plata aunque el clic se dispare dos veces o la fila quede pintada:
+- `eliminarMovimiento` es ahora un envoltorio con un candado por movimiento (`_movEliminando`): un segundo disparo del mismo clic no abre otro diálogo ni revierte.
+- `_movExiste(tipo, id)`: antes de preguntar y otra vez después de confirmar se comprueba que el registro siga existiendo; si no, avisa "Este movimiento ya se eliminó" y no mueve nada.
+- La reversión sale del **registro**, nunca del monto de la pantalla; se retiró la rama "dato huérfano" que devolvía el monto de la fila aunque el registro ya no estuviera.
+
+Pruebas (`tests/cuentas.test.js`, bloque `eliminar-movimiento`, 9 casos): saldo inicial, retiro, retiro de cuenta personalizada, ingreso, transferencia, gasto, doble disparo, movimiento ya eliminado y gasto dividido. Con el archivo anterior fallan las 9 con los mismos números que se vieron en pantalla (−10, 12.000, dos diálogos).
+
+### 🐛 Corregido (2026-10-13) — Un gasto dividido entre dos cuentas no aparecía en ninguna y, borrado desde la cuenta, no devolvía la plata (`cuentas.js`, `movimientos.js`)
+
+- **No aparecía:** `getMovimientosCuenta` solo buscaba gastos con `g.fuente`, y un gasto dividido guarda `fuente: ''` más una lista `splits`, así que no coincidía con ninguna cuenta aunque el saldo sí bajaba (los préstamos divididos sí lo contemplaban). Ahora cada cuenta muestra **su parte** del gasto, con las otras cuentas en el detalle.
+- **No devolvía la plata:** la rama de gastos de `eliminarMovimiento` solo devolvía `g.fuente`; con un gasto dividido borraba el registro y la plata no volvía a ninguna cuenta. Ahora devuelve cada parte a su cuenta, igual que `deleteGastoVar` en `gastos.js`.
+
+### 🔧 Cambio (2026-10-13) — `dialogo()` cancela el diálogo anterior en vez de dejarlo colgado (`core-state.js`)
+
+`dialogo()` guarda un único resolvedor (`window._dialogResolve`): abrir un segundo diálogo mientras había uno abierto perdía el primero, y la función que lo esperaba (`await dialogo(...)`) quedaba colgada para siempre. Ahora el anterior se resuelve en `false` (cancelado). Prueba en `tests/nucleo.test.js` (bloque `dialogo`).
+
+### ✨ Agregado (2026-10-13) — Guardia contra bloques de código duplicados (`tests/nucleo.test.js`, bloque `sin-bloques-duplicados`)
+
+Falla si algún archivo de `js/` repite 10 líneas significativas seguidas. Habría detectado el bug de `eliminarMovimiento` (líneas 534 y 673 del archivo original). Hoy no hay ningún duplicado en todo el proyecto. Variable `MIS_FINANZAS_JS_DIR` para apuntarlo a otra carpeta.
+
+### 🔍 Auditoría (2026-10-13) — "Eliminar el movimiento principal lo deshace todo": revisión por módulo
+
+Se revisó, módulo por módulo, que borrar un registro devuelva lo mismo que su creación movió (cuentas, espejos, márgenes, estado de pago), con el mismo `ref` en el libro:
+- **Cubierto por pruebas de ida y vuelta** (estado final igual al inicial salvo el libro, y el libro suma cero por cuenta): Mesada, Me deben, Yo debo, Plata comprometida (esta tras el arreglo de arriba), Préstamo con TC y **Gastos** (cuenta, y tarjeta; bloque `gastos-ida-y-vuelta` de `tests/cuentas.test.js`).
+- **Revisado por lectura, sin hallazgos:** Spotify (`_borrarSpHistorial`: cobro con extra, abonos del pendiente, pago con tarjeta), Tarjetas (`eliminarCompraTC`, `eliminarPagoTC`) y Alcancía (`_alcanciaEjecutarEliminarDeposito`, todos los tipos de depósito). No se añadieron pruebas porque su registro depende de formularios muy grandes; quedan para la verificación en el navegador.
+
+### 🔧 Cambio (2026-10-13) — `clase` pasa a ser la única fuente de verdad: se retiran las reglas históricas (`core-state.js`)
+
+Desde el esquema 7 la app nace limpia y todo escritor pone `clase` al crear el movimiento (lo exige `tests/nucleo.test.js`, bloque `clase-cobertura`, y se auditó que ningún `push` por variable se la salte). La cascada de respaldo ya no servía a nadie y era frágil: clasificaba por etiquetas y por **texto** (`/^(Reposición[: ]|Para pagar TC \(/`, `desc` que empezara por "Margen", prefijos de `_origenSeccion`…).
+
+Se eliminan `deducirClaseMovimiento`, `estamparClasesMovimientos`, `_reglaHistoricaEntradaEspejo` y `_reglaHistoricaGastoVarNoReal` (−84 líneas del núcleo). Los lectores quedan así:
+- `claseEfectivaMovimiento(m)`: la `clase` guardada o `null`.
+- `_esEntradaEspejoNoIngreso(m)`: solo cuenta como ingreso la entrada con `clase: 'ingreso'`; una sin clase no cuenta.
+- `_esGastoVarNoReal(g)`: queda fuera del gasto real el que tenga `clase` distinta de `'gasto'`; uno sin clase cuenta como gasto (es lo que es por estar en esa lista).
+- `movimientosSinClase()` + aviso en `save()` (una vez por sesión en consola; detalle en `window._movimientosSinClase`), igual que `Libro.verificar()` con los saldos. Sustituye al normalizador que estampaba por deducción.
+
+Las pruebas que armaban datos a mano sin `clase` (`periodo`, `ingreso-real`, `clase-movimientos`) ahora la llevan; se retiraron las tres que probaban las funciones eliminadas y se añadió la de `movimientosSinClase`. Todas las pruebas que pasan por los módulos reales siguieron en verde sin tocarlas, que es la comprobación de que los escritores ponen `clase`.
+
+### 🔧 Cambio (2026-10-13) — Retirado el último borrado de la lista vieja `cuenta.movimientos` (`movimientos.js`)
+
+`eliminarMovimiento()`, en la rama de "retiro manual de una cuenta personalizada", todavía filtraba `cc.movimientos` para limpiar datos de una función ya retirada. Desde el esquema 7 esa lista no existe, así que el filtro era un no-op; se quitó junto con su comentario. Con esto, un barrido de todo `js/` ya no encuentra ninguna lectura ni escritura de `cuenta.movimientos` ni `cajita.historial` (las `.movimientos` que quedan son las de Encargos y Deudas, que son su historia propia). Las escrituras directas a `tc.deuda` se revisaron y se dejan: cada una tiene su registro (`tcMovimientos`, compras) y `tcRecalcular` reconstruye el mismo valor (lo cubren las pruebas de "Me deben" y "Yo debo" con tarjeta).
+
+### 🔧 Cambio (2026-10-13) — Pruebas: un archivo por sección y arreglo de las que seguían el modelo anterior (`tests/`)
+
+Las pruebas sueltas (27, con `yodebo`, `transferir`, `totalPrestadoPendiente` y `spotify-cajita`) pasan a 6 archivos, uno por sección de la app, con un bloque `describe` por cada archivo anterior (sin perder ninguna prueba: 239 antes y después): `nucleo.test.js` (patrimonio, salud financiera, Periodo, migraciones, ingreso real, clase), `libro.test.js` (libro, módulos, puerta única), `cuentas.test.js` (historial, Nu, CDT, chequeo, Restar dinero), `prestamos.test.js` (Me deben, deudas, margen), `mesada.test.js` (reglas y pantalla) y `sync.test.js` (Firestore).
+
+Para limpiar el repo, desde su raíz (conserva solo los 6 archivos nuevos): `cd tests && ls *.test.js | grep -vE '^(nucleo|libro|cuentas|prestamos|mesada|sync)\.test\.js$' | xargs git rm && git rm libro-migracion.js historial-unificado.js`. `libro.test.js` no se borra: el archivo nuevo del mismo nombre lo reemplaza.
+
+Tres grupos fallaban en el CI por seguir el modelo anterior, no por un error de la app:
+- `ingreso-real` (4 pruebas): daban por bueno `cuenta.movimientos` y los "gemelos" con el mismo id. Ahora comprueban que el historial de una cuenta personalizada vive en `S.movimientos` con `fuente`, y que lo que quede en `cuenta.movimientos` no se lee.
+- `mesada-reglas` (7 pruebas de "ida y vuelta"): comparaban todo `S` antes y después de registrar y borrar, pero el libro no borra (deja entrada + reversión). Ahora comparan `S` sin el libro y exigen que lo que el libro sumó neto a cero por cuenta.
+- `firebase-sync`: fallaba porque `js/core/payload-codec.js` no estaba en el repo.
+
+Las dos pruebas que seguían en rojo eran fallas reales y quedan arregladas: `puerta-unica` (15 llamadas sin `origen` en `plata_comprometida.js`, ver arriba) y `yodebo` (`registrarMovEspejo / borrarMovEspejo` leía las listas `cuenta.movimientos` y `cajita.historial`, que ya no existen). `yodebo` y `totalPrestadoPendiente` se unieron a `prestamos.test.js`, `transferir` y `spotify-cajita` a `cuentas.test.js` y las de plata comprometida a `libro.test.js`: 307 pruebas en 6 archivos.
+
+### 📝 Documentación (2026-10-13) — Modelo de una sola lista en los `.md` de módulo
+
+`cuentas.md` ya no describe `c.movimientos`, `cajita.historial`, los gemelos ni la lectura "de ambas convenciones": todo está en `S.movimientos` con `fuente`. `propuesta-movimientos-en-un-solo-lugar.md`, `plan-clasificacion-movimientos.md` y `plan-reestructuracion.md` llevan un aviso de estado arriba (Parte A hecha, B pendiente; migraciones retiradas; tope de 1 MiB resuelto con compresión). `actividad-reciente.md` se reescribió contra `actividad_reciente.js` (el feed ya lee solo `S.movimientos`). `plata-comprometida.md` documenta el libro (`_ogCp`), `item.sobrante`, `_cpItemId` y que eliminar un ingreso recibido lo devuelve todo.
+
+### 🐛 Corregido (2026-10-13) — El margen de "Préstamo con TC" se quedaba como ingreso al borrar el préstamo (`prestado.js`)
+
+Regla: borrar un movimiento principal revierte todo lo que generó (margen incluido), como si no hubiera pasado. El préstamo normal con "El valor era diferente" ya la cumplía, pero `confirmarPrestamoTC` llamaba `diffAplicar('prtc', …)` sin `linkId`: el ingreso del margen nacía sin `_encMovId` y `_revertirMovDeudorImpl` (que lo busca por ese campo) no lo encontraba. Borrar el préstamo dejaba el margen contando como ingreso del mes para siempre.
+
+Ahora se pasa `movId` como `linkId`. Pruebas en `tests/prestamo-margen.test.js`: el margen se va con el préstamo, y una prueba estática exige `linkId` en toda llamada a `diffAplicar` (falla con el código anterior).
+
+### 🐛 Corregido (2026-10-13) — Eliminar el saldo inicial de un encargo descontaba plata propia de la cuenta (`encargos.js`)
+
+Causa raíz: el saldo inicial de un encargo (`enc.saldoInicial` / `enc.cuentaInicial`) es plata **ajena** que ya estaba guardada en esa cuenta; nunca formó parte de `c.saldo`, que guarda solo la porción propia (ver `calcC` en `nu-calc.js` y `_saldoEncargosEnCuenta`). Por eso `crearEncargo` no suma nada a la cuenta, y es correcto. El borrado añadido el 2026-08-30 llamaba `descontarFuente(enc.cuentaInicial, enc.saldoInicial)`: al quitar una anotación, restaba esa plata de la cuenta propia. Antes quedaba oculto porque el saldo se recortaba en 0 y el historial no lo contaba; con "el saldo nunca se recorta" la cuenta quedaba por debajo de lo real.
+
+Escenario que lo dispara: crear un encargo con saldo inicial en Nequi y luego eliminar ese saldo inicial desde el historial del encargo; Nequi bajaba por ese monto (reproducido en un test: 1.000 → 700).
+
+Ahora eliminarlo solo quita la anotación del encargo (el diálogo lo dice) y no mueve ninguna cuenta ni deja entrada en el libro. Prueba nueva en `tests/libro-modulos.test.js`, que falla sin el cambio.
+
+### ✨ Agregado (2026-10-13) — Guardia estática de la puerta única de saldos (`tests/puerta-unica.test.js`)
+
+Dos reglas del libro pasan de convención a prueba de CI: nadie escribe `.saldo` fuera de `sumarFuente`/`descontarFuente`/`ajustarSaldoCuenta`, y toda llamada a `sumarFuente`/`descontarFuente` lleva `origen` (las 5 de las reversiones de Préstamos que corren dentro de `_enReversion` están listadas por texto exacto). Detecta el caso de `diffAplicar` de arriba. Sin esto, `Libro.verificar` solo avisa una vez por sesión y una llamada sin origen ni siquiera descuadra.
+
+### 🔧 Cambio (2026-10-13) — El estado viaja comprimido a Firestore y hay tope de tamaño (`firebase-sync.js`, `payload-codec.js`)
+
+Todo el estado se guarda como un único campo `payload` de un único documento, que Firestore limita a 1 MiB. Cada movimiento de cuenta ocupa ≈ 150 B en el libro más ≈ 210 B de espejo en `S.movimientos`: con 5 movimientos al día solo esas dos listas suman ≈ 650 KB por año, y con el resto del estado el documento se llenaba en poco más de un año. Si se pasaba, `setDoc` fallaba y la app decía "Error al guardar — revisa conexión", mientras la nube se quedaba en el último guardado bueno.
+
+Ahora:
+- **Compresión.** `js/core/payload-codec.js` (módulo ES, solo vía `import`, como `wait-for-module.js`) guarda el JSON como gzip + base64 con prefijo `gz1:`. Con datos sintéticos de 2 años a 5 movimientos al día: 1.374 KB → 218 KB (6,3×), unos 9 años hasta el límite en lugar de poco más de 1. Un payload sin prefijo se sigue leyendo como JSON plano; sin `CompressionStream` se guarda en plano; un `gz1:` ilegible se trata como `parse-error` (nunca se guarda encima).
+- **Lectura.** `_applyCloudData` y el cuerpo del listener no cambiaron: el listener recibe un snapshot ya descomprimido (`_decodificarSnap`), y los snapshots y el error del listener se procesan en una cola para respetar el orden de llegada aunque descomprimir sea asíncrono.
+- **Escritura.** `_ejecutarGuardado` comprime antes de `setDoc`. Como comprimir es asíncrono, cada guardado toma un número al empezar y uno que quedó viejo no escribe (evita que un guardado lento pise a uno más nuevo). La comparación "¿cambió algo?" sigue usando el JSON plano.
+- **Tope.** Se mide el tamaño ya comprimido: aviso a los 800 KB (una vez por sesión), y a 1.000.000 de bytes no escribe y lo dice (`window._payloadBytes` deja el valor).
+- El cierre de sesión también guarda comprimido. `sw.js` pasa a `v30`.
+
+Pruebas: `tests/firebase-sync.test.js` carga el `firebase-sync.js` real con un Firestore simulado (ida y vuelta, plano, ilegible, orden, guardados concurrentes, tope). Sin Firestore real no se probó la entrega en la nube ni el listener en un navegador.
+
+### 🐛 Corregido (2026-10-13) — `diffAplicar` movía saldo sin `origen`, y esas entradas quedaban como `sin-origen` (`diferencial.js`)
+
+Causa raíz: las tres llamadas de saldo de `diffAplicar` (el sobrante que entra a "mi cuenta" y las dos patas de un intercambio "lo pagué yo") no pasaban `origen`, y quien las invoca (`prestado.js`, y Encargos) no las envuelve en `Libro.conOrigen`. Al venir de un módulo que no las cubría, la regla 3 de `libro-de-movimientos.md` se rompía sin que ninguna prueba lo notara: el saldo seguía cuadrando con el libro, pero la entrada nacía como `{ modulo: 'sin-origen' }` y sin `ref`, así que no se podía enlazar con la reversión.
+
+Escenario que lo dispara: un préstamo o un encargo con "El valor era diferente" donde el usuario se queda con un sobrante en una cuenta, o paga una parte de su bolsillo.
+
+Ahora `diffAplicar` arma `{ origen: { modulo: 'diferencial', ref: linkId } }` (sin `ref` cuando el llamador no pasa `linkId`, como en Préstamo con TC) y lo pasa a las tres llamadas.
+
+### 🔧 Cambio (2026-10-12) — App limpia: esquema 7, sin migraciones; el libro vive en el núcleo (`core-state.js`, `configuracion.js`, `index.html`, `sw.js`)
+
+La app empieza de cero con el modelo ya estructurado, sin cargar con código que transforma datos de formas anteriores. Se retiraron las migraciones v3–v6 (clase explícita, corrección del regalo de la abuela, siembra del libro, historial unificado) y `unificarHistorialCuentas`; `MIGRACIONES` queda vacía y `SCHEMA_VERSION_ACTUAL` = `SCHEMA_BASE` = 7. El mecanismo (`aplicarMigraciones`) se conserva para cambios futuros.
+
+Datos de un esquema anterior (< 7) no se tocan: `aplicarMigraciones` los marca (`S._esquemaAnterior`), `load()` avisa que esta versión empieza de cero (Configuración → Borrar todo) y el import de un backup de esa versión se rechaza con ese mismo motivo (`_validarEstructuraJSON`). Datos de una versión más nueva siguen sin tocarse.
+
+El libro (`Libro`) pasó de `libro.js` al propio `core-state.js`: `sumarFuente`/`descontarFuente` lo necesitan en cualquier pantalla y los tests que cargaban solo `core-state.js` (modo permisivo) recibían un `Libro` vacío ("`Libro.registrar is not a function`", 82 tests). Ya no hay archivo aparte ni guardas `typeof Libro`.
+
+### ✨ Agregado (2026-10-11) — Libro de movimientos (`S.libro`) y puerta única de saldos (`core-state.js`, `cuentas.js`, `alcancia.js`, todos los módulos que mueven plata)
+
+Verificado con un backup real: el saldo de una cuenta era un número guardado aparte (`c.saldo += monto`) y el historial un registro paralelo; nada garantizaba que sumaran igual. Quedaron diferencias que ningún registro explicaba (intereses de Nu, el capital de un CDT de $2.000.000, el saldo previo de Spotify, ≈ $10.000 salidos de Sobra).
+
+`S.libro` guarda una entrada por cada cambio de saldo (monto con signo, `tipo`, `origen: { modulo, ref }`) y la regla es **saldo == suma del libro**. `sumarFuente`, `descontarFuente` y la nueva `ajustarSaldoCuenta` son la única forma de cambiar un saldo; `save()` verifica la regla y avisa una vez por sesión si no se cumple. Cada módulo (Préstamos, Encargos, Spotify, Gastos, Mesada, Tarjetas, Cuentas, Alcancía, `movimientos.js`) pasa su `origen`; las reversiones quedan como `tipo: 'reversion'` con el mismo `ref`. Cuando el id del registro nacía después de mover el saldo, se reordenó (crear el registro y luego aplicar el saldo; en Tarjetas, crear el pago y luego descontar).
+
+### 🔧 Cambio (2026-10-12) — El historial de TODAS las cuentas vive en una sola lista, `S.movimientos` (`cuenta-efectos.js`, `cuentas.js`, `movimientos.js`, `actividad_reciente.js`, `busqueda-global.js`, `core-state.js`)
+
+Verificado: el historial de una cuenta se guardaba en tres formas — `S.movimientos` (Nequi/Efectivo), `cuenta.movimientos` (personalizadas: `ingreso`/`egreso` + `nota`) y `cajita.historial` — y se juntaba en cada lectura con reglas de deduplicación a mano (`entradasIngresoReal` combinaba tres fuentes; `getMovimientosCuenta` listaba cuatro diferencias a propósito). Cualquier lector que olvidara una lista daba un número mal sin avisar.
+
+Ahora todo está en `S.movimientos` con `fuente` (`'nequi'`, `'efectivo'`, `'custom:ID'`, `'cajita:ID'`), tipo `entrada`/`salida` y texto en `desc`. `registrarMovEspejo`/`borrarMovEspejo` escriben y borran solo ahí. Se simplificaron `getMovimientosCuenta`, `entradasIngresoReal`, el borrado de `movimientos.js`, Actividad reciente (una apertura de cuenta personalizada ya no sale como "Retiro") y Búsqueda.
+
+### ✨ Agregado (2026-10-11) — Historial de cuenta: las entradas del libro sin fila propia (intereses, ajustes, CDT) salen como filas con candado (`core-state.js`, `cuentas.js`)
+
+Verificado: el saldo de una cuenta incluía plata que ninguna fila del historial explicaba (intereses de Nu materializados, el chequeo rápido, el capital de un CDT). `Libro.entradasVisibles()` las devuelve y `getMovimientosCuenta` las añade como filas automáticas (`_secundario`, sin botón de eliminar). El "Antes/Después" del detalle de un movimiento sale más exacto.
+
+### 🐛 Corrección (2026-10-11) — `descontarFuente` recortaba el saldo en 0 y la diferencia se perdía sin avisar (`core-state.js`)
+
+Verificado: restar más de lo que había dejaba la cuenta en 0 y descartaba el resto (en un backup real, $108,23 de una cajita; la opción `exacto` solo existía para saltarse el recorte en reversiones). Ahora el saldo refleja exactamente lo restado, aunque quede negativo, y se ve. La opción `exacto` se retiró.
+
+### 🐛 Corrección (2026-10-11) — El chequeo rápido de Nu pisaba el saldo sin dejar rastro (`cuentas.js`)
+
+Verificado: `guardarChequeoNu` asignaba `c.saldo` con la lectura real de Nu sin ningún movimiento asociado. La diferencia queda ahora como entrada `ajuste` del libro (y deshacer el chequeo deja otra), y los intereses materializados quedan como `rendimiento`, una entrada por cajita y mes.
+
+### 🗑️ Eliminado (2026-10-12) — Listas propias de las cuentas, `libro.js`, las migraciones v3–v6 y las herramientas de transición
+
+`cuenta.movimientos` y `cajita.historial` (y la rama que las leía), `libro.js`, `Libro.sembrar`/`patas`/`auditar`, `scripts/auditoria-libro.js`, y las pruebas `historial-cuenta.test.js` (dorada, contra la implementación anterior congelada) y `tests/support/historial-legacy.js`, que servían solo para validar la transición.
+
+---
+
 ## Sheets / UI
+
+### 🔧 Cambio (2026-10-18) — App limpia: esquema 9 sin migraciones y fuera la compatibilidad con datos viejos (`core-state.js`, `periodo.js`, `diferencial.js`, `encargos.js`, `scripts/`, `sw.js`)
+**Por qué:** no hay usuarios ni backups que conservar, y mantener código que entiende formas antiguas de los datos es complejidad sin dueño. Decisión: la app nace limpia en el esquema 9.
+**Qué se hizo:** (1) `SCHEMA_BASE = 9` y `MIGRACIONES = []`: las migraciones v8 (tasa única de Nu) y v9 (Spotify en `S.spotify`) se plegaron en el modelo actual; el mecanismo queda para el próximo cambio de forma. Un backup de un esquema anterior se rechaza al importar y unos datos así se marcan (`_esquemaAnterior`) y empiezan de cero, como ya pasaba con los menores de 7. (2) `Periodo.pagosFijos` solo lee el mapa `{"<id>_YYYY-MM": {fecha, fuente, monto}}` que escribe la app: se quitan el formato en array, el valor `true` y el respaldo al monto actual del gasto fijo (un pago sin monto cuenta 0). (3) Se quitan dos alias que nadie leía: `window._difBenefs` (Encargos) y `_difRenderHistorial` (Diferencial; Encargos llama directo a `diffRenderHistorial`).
+**Pruebas:** `nucleo.test.js` pierde los bloques de las migraciones v8 y v9 y gana "estado de Spotify" (por defecto completo y guardia de las cuatro llaves sueltas), "un backup de un esquema anterior se rechaza" y "un backup de esta versión no cambia al pasar por `aplicarMigraciones`"; los fixtures de `calcHealthScore` pasan a `{ monto }` en `pagosGastosFijos`. **385/385** en `node --test tests/*.test.js` (cuentas, nucleo, libro, mesada, prestamos, sync), prueba de humo sin fallos (0 acciones sin registrar).
+**CI (diagnóstico de la corrida con 12 fallos):** (a) los fallos de `historial-cuenta`, `eliminar-movimiento` y de la guardia de las llaves de Spotify eran de una copia **parcial** de la entrega (un `cuentas.test.js` anterior al cambio de `'egreso'` y de `S.spotify`, y seis archivos `.js` que aún usaban `S.spotifyHistorial`); con todos los archivos copiados pasan. (b) `smoke-browser.js` fallaba porque `node --test` ejecuta todo `.js` de la carpeta de tests y esa prueba necesita `jsdom`: se movió a `scripts/`. `scripts/` ahora encuentra solo la carpeta `tests/` o `test/`. `package.json`: se añade `npm run smoke`, `engines.node` pasa a `>=20` (jsdom 27) y jsdom se queda en `^27.4.0` (la 28 quitó `ResourceLoader`); `package-lock.json` regenerado (solo cambia `engines`). `sw.js` pasa a v37.
+**Quedan, a propósito, como lista de candidatos (no se tocaron):** ver `CONTINUAR.md` §13.15.
+
+### 🔧 Cambio (2026-10-18) — Todo el estado de Spotify en una sola llave `S.spotify` (esquema 9) (`core-state.js` y 10 archivos más, `sw.js`)
+**Por qué:** el JSON guardaba Spotify en cuatro llaves sueltas con prefijo (`spotifyPersonas`, `spotifyCosto`, `spotifyCajitaId`, `spotifyHistorial`): un espacio de nombres escrito a mano, distinto de `alcancia` y `mesadas`, que ya son una llave por sección. Se mantienen **dos listas** dentro (integrantes e historial): un estado que cambia y hechos que solo se añaden son cosas distintas, y el historial de Spotify guarda a quién y qué periodos, cosa que un movimiento de cuenta no tiene (lo que sí toca una cuenta ya se refleja con espejo y libro).
+**Cómo:** `S.spotify = { personas, costo, cajitaId, historial }`. Migración **v9** (`spotify-un-solo-objeto`): arma el objeto desde las cuatro llaves, las borra, normaliza valores inválidos y deja que las llaves viejas manden sobre un `spotify` vacío que ponga el estado por defecto (caso `Object.assign` de la nube sobre `S`). Nuevo `_ensureSpotify()` en `load()` (como `_ensureMesadas`): `S.spotify` siempre existe y trae sus cuatro campos. 103 referencias cambiadas en `spotify.js` (73), `wrapped.js` (15, con lectura tolerante `(S.spotify||{})` porque recibe el estado por parámetro), `busqueda-global.js`, `personas.js`, `movimientos.js`, `inicio.js`, `gastos.js`, `actividad_reciente.js`, `cuentas.js`, `sheet-stack.js` (el campo de costo conserva su id `spotifyCosto`, solo cambia dónde guarda) y `core-state.js`. `_validarEstructuraJSON` rechaza un backup donde `spotify` no sea un objeto.
+**Pruebas:** `nucleo.test.js` → `v9` (migración con datos, vacía, llaves viejas sobre `spotify` vacío, valores inválidos, ya migrado, `_ensureSpotify`) y una **guardia** que impide volver a usar `S.spotifyPersonas/Costo/CajitaId/Historial` fuera de la migración; los tests de `schemaVersion` pasan a 9. La prueba de humo ahora pinta la pantalla de Spotify con datos y toca sus botones. **338/338** en `npm test` (cuentas 182, nucleo 85, libro 24, mesada 47), prueba de humo sin fallos, y `equivalencia.js` con un backup en esquema 8 (llaves viejas) migra y sale equivalente. **Sin verificar:** con un backup real y en el navegador. **Pendiente de documentar:** `docs/spotify.md` (§3 y el modelo de datos nombran `S.spotifyHistorial`; no lo tenía). Mesada (`mesadas` + `mesadaAnio`) se dejó como está a propósito. `sw.js` pasa a v36.
+
+### 🔧 Cambio (2026-10-18) — Movimientos: se cierra E6 con la parte que vale la pena (sin tipo `'egreso'`) (`cuentas.js`, `movimientos.js`, `core-state.js`)
+**Análisis (qué se hizo y qué no, para no repetirlo):** E6 era "unificar los nombres de campo". Tras la lista única de historial (`S.movimientos`) casi todo ya estaba unificado: dentro de esa lista `desc` es el título y `nota` el detalle opcional (9 sitios llevan los dos a propósito), y el resto de listas (Deudas, Encargos, Spotify con `spotifyHistorial`, tarjetas, mesadas) guardan información que un movimiento de cuenta no tiene y se quedan con su propia forma. Renombrar `nota`/`desc` en las demás habría tocado 124 usos en 17 archivos, la migración y los backups sin cambiar ningún comportamiento: **no se hace**. Lo único que seguía siendo una diferencia artificial era el tipo `'egreso'`, que `getMovimientosCuenta()` fabricaba solo para las cuentas personalizadas y cuya rama de borrado en `movimientos.js` era idéntica a la de `'salida_manual'`.
+**Cómo:** todas las cuentas muestran la salida manual como `'salida_manual'`, con etiqueta "Retiro" (antes "Salida" en Nequi/Efectivo y "Retiro" en las personalizadas) y textos por defecto "Ingreso"/"Retiro" en todas (antes "Entrada de efectivo"/"Salida manual" en las demás). Se quitan las ramas y casos de `'egreso'` de `movimientos.js` (`_movExiste`, el aviso de antigüedad y el borrado), de `cuentas.js` (`getMovimientosCuenta`, `renderMovsCuenta`) y de `core-state.js`; se actualizan `cuentas.test.js` (la salida de una personalizada es `salida_manual` y su borrado devuelve el saldo) y `nucleo.test.js`.
+**Verificado:** 331/331 en `npm test` (cuentas, nucleo, libro, mesada), la prueba de humo sin fallos, y `scripts/equivalencia.js` antes/después con un backup sintético: equivalente. **Sin verificar con un backup real** (no lo tengo): correr `equivalencia.js` y `conciliacion.js` con el tuyo; el cambio solo toca cómo se muestra y se borra una salida, no cómo se suma ingreso ni gasto. `sw.js` pasa a v35.
+
+### 🔧 Cambio (2026-10-18) — Frontera limpia entre `cuentas.js` y `nu.js`: Nu se apoya en Cuentas, nunca al revés (`core-state.js`, `cuentas.js`, `nu.js`, `sw.js`)
+**Por qué:** el corte del 2026-10-17 fue mecánico por líneas y dejó un ciclo: `nu.js` usaba 16 cosas genéricas de `cuentas.js` (legítimo: Nu es una cuenta) pero `cuentas.js` seguía llamando a 4 cosas de Nu (`_cdtEditId`, `renderCajitas`, `materializarIntereses`, `_cajitaActualId`). Se evaluó volver a un solo archivo y se descartó: Nu es un subdominio propio y Cuentas la capa genérica sobre la que se apoya.
+**Cómo:** (1) El preview en vivo del CDT, el filtro de los campos `[data-tasa-ea]`, la rama de Nu de `renderDetalleCuenta` (ahora `renderDetalleNu()`) y la parte de Nu de `actualizarBotonesTransferir` (ahora `_nuActualizarBotonesTransferir()`) pasan a `nu.js`. (2) Se quita la llamada a `materializarIntereses` de `confirmarAgregarDinero`: era redundante, `sumarFuente` ya materializa los intereses de una cajita al sumar. (3) Nuevo registro `CuentaPantallas` en `core-state.js` (junto a `CUENTAS_FIJAS`): una cuenta con pantalla propia se registra al cargar su archivo con `{ paneles, panel, reiniciar, render, actualizarBotones }` y `cuentas.js` le pregunta lo que necesita (`abrirCuenta`, `volverSelector`, `renderDetalleCuenta`, `_showCuentasPanel`, `actualizarBotonesTransferir`); vive en el núcleo para que el orden de carga no importe. El descriptor de Nu lleva `pantallaPropia: true`: sin `nu.js`, tocar Nu en el selector no hace nada. `cuentas.js` ya no nombra nada de `nu.js`.
+**Pruebas:** `cuentas.test.js` → `cuentas-nu-archivos`: `cuentas.js` no usa nada de `nu.js` y lo que Nu toma de `cuentas.js` es una lista exacta (16 nombres); `libro.test.js` ahora carga `nu.js` (lo detectó esa guardia). Nuevo `tests/smoke-browser.js` (jsdom con la página real: toca cada `data-action` y recorre selector → Nu → cajita → volver → Nequi; comprobado por mutación). La prueba de humo también compara todas las acciones `data-action` del proyecto con las registradas en tiempo de ejecución (207 usadas, 0 sin registrar, 0 duplicadas) y encontró 4 registros muertos que nadie nombraba (`encargos:abrirTraspaso`, `encargos:abrirTransferencia`, `encargos:abrirCompraTC`, `prestado:toggleExtraSection`, restos de antes de `salidaMenuIr` y de un listener directo); se quitaron de `encargos.js` y `prestado.js` (las funciones siguen, porque otras las llaman). Con la carpeta `js/` completa: 331/331 en `npm test` (cuentas, nucleo, libro, mesada). **Sin verificar en navegador:** abrir Nu → cajita → volver → Nequi, botones Mover, preview del CDT. Documentación: `nu.md` §7, `cuentas.md` (§4, §7 y funciones clave, que además describían listas ya retiradas por el libro) y `CONTINUAR.md` §13.10. `sw.js` pasa a v34.
+
+### 🔧 Cambio (2026-10-17) — `cuentas.js` se parte en `nu.js` + `cuentas.js` (estructura, sin cambio de comportamiento)
+**Por qué:** `cuentas.js` llegó a ~3.000 líneas con Nu (cajitas, CDTs, metas, chequeo, tasa) ocupando casi la mitad; el cálculo ya estaba en el núcleo (`nu-calc.js`) y lo que quedaba era un subsistema completo con sus propios botones. El proyecto es "un archivo por dominio".
+**Cómo:** se movieron líneas sin reescribirlas (168 declaraciones de nivel superior: ninguna perdida ni repetida, comprobado por script) a `js/modules/nu.js`; el cableado de Nu (botones, `Events.registerAll`) se fue con Nu. Mismo grupo lazy (`cuentas: ['js/modules/nu.js','js/modules/cuentas.js']` en `lazy-loader.js`): ninguno usa al otro al cargar, solo cuando una función corre, así que el orden no importa y cada archivo carga solo. Los 19 botones de Nu pasan de `data-action="cuentas:…"` a `"nu:…"` (`index.html` y el HTML que arma `nu.js`). Se quitó además el registro muerto `cuentas:openSheet` y el objeto `S.cuentas` obsoleto de `cuentas.md`.
+**Pruebas:** `cuentas.test.js` → `cuentas-nu-archivos` (cada archivo carga solo; ninguna función en los dos; todo botón registrado; ningún test carga `cuentas.js` sin `nu.js`). Los tests que cargaban `cuentas.js` ahora cargan también `nu.js`. Documentación: `nu.md` (nuevo) y `cuentas.md` recortado.
+
+### 🔧 Cambio (2026-10-17) — Vocabulario único y toast de plata que sale (`index.html`, `cuentas.js`, `nu.js`, `gastos.js`)
+Todo el flujo de meter plata a una cuenta dice "Agregar" (la tarjeta "Sumar dinero" del menú `+` → "Agregar dinero", "Sumar al saldo" → "Agregar al saldo", avisos "agregado", historial "Agregaste dinero en …") y el de sacar dice "Retirar". El toast `salida` (rojo, flecha) se usa para toda plata que sale de tus cuentas: retirar dinero, gasto registrado y pago de gasto fijo (`gastos.js`, 3 líneas). Transferir entre cuentas propias se queda en `ok` (éxito neutro). Convenciones en `guia-estilo-sheets.md` §2 bis. **Pruebas:** `cuentas-textos`.
+
+### 🐛 Corregido (2026-10-17) — "Cajitas recalculadas: $0 — compara con la app de Nu" al cambiar la tasa (`firebase-sync.js`)
+**Causa raíz:** el aviso se disparaba en cada `blur` del campo de tasa y solo mostraba `calcC().val` sumado de las cajitas: no recalculaba nada. Era un resto de cuando la tasa se aplicaba hacia atrás; con los intereses sellados en cada movimiento (`materializarIntereses`) eso ya no es posible (por eso se quitó "Vigente desde") y el Chequeo rápido cubre contrastar con Nu. Con ninguna cajita decía "$0".
+**Ahora:** el aviso desaparece. Cambiar la tasa la registra en `S.historialTasasNu` desde hoy y refresca; nada más. Se quitó también el código del campo `nuTasaVigenciaFecha` (no existe en la página). **Pruebas:** `cuentas-textos`.
+
+### ✨ Agregado (2026-10-17) — El campo de tasa solo acepta números con coma o punto (`nu-calc.js`, `firebase-sync.js`, `cuentas.js`, `index.html`)
+**Antes:** permitía escribir letras y `parsePct` aceptaba "9abc" como 9. **Ahora:** `nuTasaSanear` limpia lo que se escribe (letras, signos, segundo separador; 3 enteros y 4 decimales); `nuTasaDesdeTexto` valida estricto (número completo, > 0 y ≤ 100; "9abc" y "9," no valen); un valor inválido no cambia la tasa y al salir del campo se restaura. Lo usan la tasa de las cajitas, la sugerida tras un chequeo (`confirmarCambioTasaNu`, que antes también aceptaba letras) y el saneo de la tasa de un CDT (`data-tasa-ea`). `nuTasaATexto` reemplaza cuatro `String(x).replace('.',',')` repetidos. **Pruebas:** `nu-tasa-global` → "el campo de tasa solo acepta números…", `cuentas-textos`.
+
+### 🔧 Cambio (2026-10-17) — Misma nomenclatura en todas las cuentas: "Agregar dinero" / "Retirar dinero" (`index.html`, `cuentas.js`)
+Nu ("Entró plata" / "Salió plata"), el detalle de cajita ("Agregar" / "Retirar" / "Mover") y el sheet de retiro ("Restar…") pasan a los mismos textos que Nequi, Efectivo y cuentas personalizadas: botones, títulos de sheet (`Agregar a X` / `Retirar de X`), botón "Retirar del saldo" y movimientos del historial (`Sumaste dinero en X` / `Retiraste dinero de X`). Encargos no cambia (no es una cuenta propia). **Pruebas:** `cuentas-textos`.
+
+### ✨ Agregado (2026-10-17) — Toast de salida (rojo) y toast rediseñado (`core-state.js`, `index.html`, `cuentas.js`)
+**Antes:** retirar dinero avisaba con el azul de `info`. **Ahora:** nuevo tipo `salida` (rojo con flecha) para retirar dinero de una cuenta o de Nu; `err` (rojo con X) queda para errores. Todos los toast llevan un círculo de color con su ícono, texto con mejor ajuste y `role` accesible (`alert` en errores, `status` en el resto). Gastos y transferencias mantienen su tipo. **Pruebas:** `nucleo.test.js` → `toast`; `cuentas-textos`.
+
+### 🐛 Corregido (2026-10-17) — Chequeo rápido: en una cajita con encargos mostraba solo lo propio (`cuentas.js`, `nu-calc.js`)
+**Causa raíz:** el sheet mostraba `calcC().val`, que excluye el dinero de encargos (la cajita física lo tiene y Nu muestra la suma). El usuario tenía que sumarlo a mano, y al guardar `_interpretarLecturaChequeoNu` adivinaba si lo anotado era el total o lo propio según cuál referencia quedaba más cerca.
+**Ahora:** `nuValorEsperadoCajita(c)` devuelve `{propio, encargos, total}`; el sheet muestra el total que Nu debería marcar (con una nota de cuánto son encargos) y se anota siempre el total. Saldo propio = lectura − encargos, referencia = total esperado, y `S.chequeosNu.saldoReal` guarda el total. Sin sumar ni omitir nada: `calcC` ya compone intereses sobre la base total y devuelve `val` solo con lo propio. Si lo anotado es menor que el dinero de encargos de esa cajita se avisa y no se guarda. Sin encargos nada cambia. **Pruebas:** `nu-acciones` → "Chequeo rápido con encargos".
+
+### 🐛 Corregido (2026-10-16) — El ícono y el color elegidos en "Nueva cuenta" no se marcaban y la consola lanzaba `marcarColorSeleccionado is not defined` (`index.html`, `cuentas.js`)
+**Causa raíz:** `selColorNC()` llama a `marcarColorSeleccionado()` (`js/core/color-picker.js`), pero ese archivo no tenía `<script>` en `index.html` ni grupo lazy (el mapa de código ya lo marcaba como "sin `<script>`"). Al tocar un color el `ReferenceError` cortaba la función; `selIconoNC()` llama a `selColorNC()` ANTES de repintar el grid de íconos, así que el ícono tampoco se marcaba (y "Otra" seguía activa) aunque `_ncIconoSel` y `_ncColorSel` sí se guardaban: por eso la cuenta salía con el ícono correcto.
+**Ahora:** `index.html` carga `color-picker.js` (núcleo eager, lo usan Cuentas, Tarjetas y Prestado). Además `editarCuentaCustom()` dejaba marcado en el grid el ícono de la última vez que se abrió el sheet (alternaba una clase `selected` sin estilo) y usaba el id inexistente `'banco'` por defecto: ahora vuelve a dibujar el grid con `renderIconGrid()` y el defecto es `'otro'`.
+**Pruebas:** `tests/cuentas.test.js` → `cuenta-iconos-colores`; `tests/nucleo.test.js` → `archivos-cargados` (guardia: todo archivo de `js/core` y `js/modules` debe llegar al navegador por un `<script>`, un grupo lazy o un `import`; con el código anterior habría señalado `color-picker.js`). Los dos bloques de color en `abrirNuevaCuenta`/`editarCuentaCustom` que repetían a mano lo mismo ahora usan `marcarColorSeleccionado`. **Sin verificar en navegador real.** Los errores `content.js` / "message port closed" no son de la app (ver abajo).
+
+### 🔧 Cambio (2026-10-16) — Una sola tasa EA para todas las cajitas de Nu: `S.nuRate` (`core-state.js`, `nu-calc.js`, `cuentas.js`, `firebase-sync.js`, migración v8)
+**Causa raíz:** la tasa vivía en tres sitios. `S.nuRate` (9,25 por defecto, nadie lo elegía y NO se leía si existía la otra), `S.nuTasaGlobal` (la que se escribía en el campo) y `tasa` en cada cajita, que `save()` reescribía con `getNuTasaGlobal()` en cada guardado (la copia nunca aportaba nada; con `nuRate = 9,3` y sin `nuTasaGlobal`, las cajitas quedaban en 9,25). Además `getNuTasaGlobal()` inventaba 9,25 cuando el usuario no había puesto nada, así que no se podía saber si la tasa estaba configurada.
+**Ahora:** solo existe `S.nuRate` (`null` = sin configurar). Se eliminan `S.nuTasaGlobal` y `cajita.tasa`; los CDT conservan `cdt.tasa` (el CDT nuevo se precarga con la tasa global). `getNuTasaGlobal()` devuelve 0 sin tasa (sin tasa no hay intereses, en vez de inventarla); nuevas `nuTasaConfigurada()` y `nuTasaDesdeTexto()` (`nu-calc.js`). El campo "Tasa EA %" ya no puede quedar vacío ni en 0: un valor inválido se ignora y al salir del campo se restaura.
+**Migración v8 (`MIGRACIONES`, `SCHEMA_VERSION_ACTUAL` pasa a 8):** si había `nuTasaGlobal` → `nuRate = nuTasaGlobal`; con cajitas y sin ella → la que se venía usando (`nuRate` o 9,25); sin cajitas → `null`. Borra `nuTasaGlobal` y `cajita.tasa`. Corre al cargar de Firestore y al importar un backup (`aplicarMigraciones`), por eso el import/export no necesita código aparte. `historialTasasNu` no cambia.
+**Import/export:** `_validarEstructuraJSON` (`configuracion.js`) rechazaba `nuRate: null` ("debe ser un número"): un backup exportado sin tasa configurada no se habría podido importar. Ahora acepta número o `null`. `encargos.js` conservaba un respaldo muerto `S.nuTasaGlobal || 9.25` (nunca se usaba porque `getNuTasaGlobal` siempre existe): ahora llama directo a `getNuTasaGlobal()`.
+**Pruebas:** `tests/cuentas.test.js` → `nu-tasa-global`; `tests/nucleo.test.js` → `migraciones` (v8, sus casos) y `backup-import`. Las pruebas existentes que sembraban `nuTasaGlobal` pasaron a `nuRate`.
+
+### ✨ Agregado (2026-10-16) — Acciones de Nu que dependen de las cajitas y de la tasa (`cuentas.js`, `index.html`)
+**Antes:** "Entró plata", "Salió plata" y "Chequeo rápido" se podían abrir sin cajitas, y se podían crear cajitas sin tasa.
+**Ahora:** sin tasa no se crea cajita (el botón queda deshabilitado, hay un aviso y `addCajita()` lo vuelve a comprobar y enfoca el campo). Sin cajitas, los tres botones salen deshabilitados; "Salió plata" además exige alguna cajita con saldo. Cada acción vuelve a comprobarlo (`abrirNuMovimiento`, `abrirChequeoNu`, `guardarChequeoNu`), una sola fuente del motivo (`_motivoNu*`) alimenta el título del botón, el aviso en pantalla y el mensaje. Los botones se reevalúan en cada `renderCajitas()` (lo que corre tras cada `refresh()`). Momento elegido para pedir la tasa: **al crear la primera cajita** (el campo está en la misma pantalla); como la tasa no puede quedar vacía, una cajita nunca existe sin tasa. `_setBtnTransferir` pasa a usar el nuevo `_setBtnEstado`.
+**Pruebas:** `tests/cuentas.test.js` → `nu-acciones` (botones de Nu y lógica de cada acción).
+
+### 🐛 Corregido (2026-10-16) — Un depósito en una cajita vacía ganaba intereses desde el día en que se creó la cajita (`cuentas.js`)
+**Causa raíz:** el reloj de los intereses es `c.fecha`, y `materializarIntereses()` solo lo avanzaba cuando había intereses que sellar. Con la cajita en $0, `calcC()` devolvía 0 días y `c.fecha` seguía en la fecha de creación; el primer depósito (días después) se componía retroactivamente desde ahí. Escenario: cajita creada hace 5 días, depósito de $100.000 hoy → mostraba intereses de 5 días al instante.
+**Ahora:** si no hay plata adentro (ni propia ni de encargos), `materializarIntereses()` pone `c.fecha = hoy()`: el reloj arranca con el depósito. No cambia nada con saldo > 0.
+**Pruebas:** `nu-acciones` → "el reloj de los intereses arranca con el primer depósito".
+
+### ✨ Agregado (2026-10-16) — "Chequeo rápido" solo con cajitas que ya generaron intereses un día completo, evaluado por cajita (`nu-calc.js`, `cuentas.js`)
+**Referencia temporal:** no la fecha de creación sino la de `calcC()` (`c.fecha`, último sellado de intereses o primer depósito) con plata adentro: `cajitaGeneraIntereses(c)` = tasa configurada y `calcC(c).dias >= 1`. `cajitaChequeable(c)` suma una excepción: una cajita ya chequeada HOY (sale de `S.chequeosNu`, sin estado nuevo) sigue disponible hoy, porque el chequeo reinicia su reloj y, sin esto, no se podía corregir una lectura mal anotada (lo cubría una prueba existente). `cajitasChequeables()` es la lista. El botón se deshabilita mientras ninguna cumpla (con aviso del motivo); el sheet lista solo las que cumplen y avisa cuántas faltan; `guardarChequeoNu` ignora cualquier cajita que no cumpla. Una cajita nueva no afecta a las demás. **Consecuencia a conocer:** tras "Entró/Salió plata" una cajita sale del chequeo hasta el día siguiente (su reloj se reinicia hoy).
+**Pruebas:** `nu-acciones` → "qué cajitas entran al Chequeo rápido (una por una)". Las pruebas existentes de `chequeo-nu` ahora siembran la tasa y cajitas con 3 días de intereses.
+
+### 🐛 Corregido (2026-10-16) — "Retirar dinero" se podía abrir con saldo 0 (`cuentas.js`)
+**Ahora:** en Efectivo, Nequi, cuentas personalizadas (y en el detalle de cajita) el botón sale deshabilitado con saldo menor a $0,01 y `abrirRestarDinero()` lo vuelve a comprobar con el mensaje "No hay saldo para retirar en esta cuenta". `confirmarRestarDinero()` ya rechazaba montos mayores al saldo ("Saldo insuficiente en …"): se dejó igual y ahora tiene prueba de regresión junto con el retiro válido. Se reevalúa al pintar el detalle (también tras cada `refresh()`).
+**Pruebas:** `tests/cuentas.test.js` → `retirar-sin-saldo` (3 tipos de cuenta); el bloque `restar-dinero` ahora carga `fuentes-filtro.js`, que `abrirRestarDinero` usa.
+
+### 🔍 Investigación (2026-10-16) — Errores de consola ajenos a la app
+`content.js:18 ... reading 'useCache'`, `Unchecked runtime.lastError: The message port closed...` y `A listener indicated an asynchronous response ... globals-front.js`: la app no tiene ningún `content.js` ni `globals-front.js` (no están en el repo ni en el HTML) y no usa `chrome.runtime`; son scripts de contenido de una extensión del navegador. No se tocó nada. Para confirmarlo: abre la app en una ventana de incógnito sin extensiones, o desactiva las extensiones una a una. El único error propio era `marcarColorSeleccionado` (arriba).
+
+### 🔧 Cambio (2026-10-07) — Textos de la interfaz unificados en tuteo (se mezclaba con voseo)
+
+Verificado: `spotify.js`, `alcancia.js` e `index.html` mezclaban voseo ("Ingresá", "Elegí", "Seleccioná", "Registrá", "Marcá", "sabés", "No tenés") con tuteo ("Selecciona", "Ingresa", "Revisa"). El resto de la app (`core-state.js`, `movimientos.js`, `inicio.js`) ya estaba en tuteo, así que se unificó hacia ahí en 21 líneas: `spotify.js` (3), `alcancia.js` (13) e `index.html` (5 en Spotify, Mesada, Plata comprometida y eliminar cuenta). Solo cambian los textos mostrados; ningún id, clave ni lógica. **Pendiente:** `cuentas.js` no se revisó (no estaba disponible en esa sesión); conviene un `grep` por las mismas formas.
+
+### 🔧 Refactor (2026-10-07) — Las reglas de los campos del CDT viven en una sola función pura, `validarCamposCDT` (`cuentas.js`)
+
+**Antes:** al arreglar la edición del CDT, `guardarCDT()` quedó con una copia de las reglas de `confirmarCrearCDT()` (tasa, retención, apertura y vencimiento). Dos copias de la misma regla se desalinean con el tiempo: ya se habían separado (el vencimiento vacío avisaba con dos textos distintos y la tasa se validaba solo al editar).
+
+**Ahora:** `validarCamposCDT(campos, ahora?)` es pura (no lee el DOM ni muestra avisos) y la usan crear y editar. Cada una pasa sus valores por defecto: al crear, tasa 9,25 y RTE 4; al editar, los valores actuales del CDT. `confirmarCrearCDT()` conserva el monto mínimo de $50.000 y el chequeo contra el saldo de la cajita, que solo aplican al crear. `guardarCDT()` no cambia su comportamiento.
+
+**Cambios visibles (a propósito):**
+- Al crear, una tasa escrita como `0` o como texto que no se pueda leer ahora se rechaza con "La tasa (EA) debe ser un número mayor que 0"; antes se convertía en 9,25 sin avisar. La tasa vacía sigue valiendo 9,25.
+- Un vencimiento vacío avisa siempre con "Debes definir la fecha de vencimiento" (al editar decía "Fecha de vencimiento requerida").
+- Al crear, si hay varios errores a la vez, el aviso del monto mínimo sale después de los de tasa, retención y fechas (antes salía en medio).
+
+**Tests:** nuevo `tests/cdt-campos.test.js` (11 tests). Prueba la función pura (campos válidos, tasa y RTE por defecto y rechazadas, RTE 0, apertura futura, vencimiento) y la edición real: con la cajita en $0 y con saldo solo sale "CDT actualizado", sin crear otro CDT ni mover plata; los errores no tocan el CDT y dejan el sheet abierto; cancelar una edición y abrir "crear" devuelve el sheet a modo crear sin pisar el CDT anterior. Con ese archivo y `nu-cdt`, `chequeo-nu`, `restar-dinero`, `transferir`, `calcPatrimonioTotal`, `calcHealthScore`, `deudas` y `totalPrestadoPendiente` pasan 97 de 97 en una copia con un stub de DOM mío; falta correr la suite completa en tu repo.
+
+### 🗑️ Eliminado (2026-10-05) — CSS de cajitas sin uso (`styles.css`)
+
+**Qué se borró:** 29 reglas (y los 5 comentarios de sección que quedaban vacíos) de dos diseños anteriores de cajita: el acordeón (`.cajita`, `.cajita-header`, `-header-left`, `-header-right`, `-chevron`, `-body`, `.cajita.expanded …`, `-collapsed`, `-expanded`, `-toggle-btn`), la tarjeta editable (`.cajita-top`, `-name`, `-grow`, `-fields`) y el CDT en línea (`.cajita-cdt-box`, `-locked`, `-val`, `-meta`).
+
+**Cómo se comprobó:** ninguna de esas clases aparece como clase en `index.html` ni en los módulos JS revisados (incluidos `prestado`, `mesada`, `encargos`, `alcancia`, `spotify`, `gastos`); los únicos usos eran las funciones ya eliminadas de `cuentas.js`. Las llaves del archivo quedan balanceadas (445/445).
+
+**Se conserva** porque sí tiene referencia: `.cajita-val` (selector de ocultar saldos), `.cajita-limit-msg`, `.cajita-meta-*` y `.cajita-row-hover` (usados por `cuentas.js`). Antes de desplegar, busca `class="cajita` y `cajita-header` en los módulos que no revisé.
+
+### 🔧 Refactor (2026-10-05) — Prestado, Encargos y Alcancía reutilizan lo compartido en vez de repetirlo (`prestado.js`, `encargos.js`, `alcancia.js`)
+
+- **`prestado.js`:** `_getPrestSplitFuentesOptions`, `_getMdSplitFuentesOptions` y el select de "Yo debo" (`md_cuenta`) armaban las `<option>` a mano con `FuentesFiltro.filtrar()`; ahora usan `FuentesFiltro.optsHtml()` (plata que sale) o `buildFuentesOptsHtml({incluirTC:false})` (plata que entra, sin filtrar por saldo). La opción "Ganancia" del split de préstamo se sigue agregando aparte.
+- **`encargos.js`:** el mapa `{nequi:'#ff4da6', efectivo:'var(--amber)'}` de "Encargos en esta cuenta" salió de `CUENTAS_FIJAS` (`getCuentaFija()`).
+- **`alcancia.js`:** el historial de la alcancía tenía una copia de `_alcNombreFuente()` en línea (nequi / efectivo / cajita / custom); ahora la llama. Único cambio visible: si la cajita de origen ya no existe, el nombre sale como lo resuelve `fuenteLabel()` ("Cajita Nu") en vez de "Cajita".
+
+**Docs:** `prestado.md` (§2.1 y §5b), `encargos.md` (§7 y tabla de funciones) y `alcancia.md` (§7 y tabla de funciones) explican estos cambios y por qué sus validaciones de saldo siguen siendo propias. `sw.js` pasa a `mis-finanzas-v18` con esta tanda.
+
+**Verificación:** prueba con DOM (jsdom) comparando, con los archivos viejos y nuevos y las funciones reales de `core-state.js` y `fuentes-filtro.js`, las opciones (valor, texto, seleccionada) de los tres selectores de Prestado: 2 tipos × 3 escenarios de saldo × 4 selecciones, todas iguales. `node --check` limpio en los tres archivos. Encargos y Alcancía sin prueba automática.
+
+**Revisado y NO cambiado, con motivo:**
+- Los avisos de saldo de Prestado (`_planMovMiDeuda`, cupo de TC), Encargos (`_validarMovEncMia`, "para prestar") y Alcancía no usan `validarSalidaFuente()`: comparan con una tolerancia de $0,50 (`Deudas.TOL_FINO`) en lugar de estricto y cada uno redacta su mensaje con el contexto del flujo ("No tenés $X en Y", "En Y solo hay $Z"). Unificarlos cambiaría textos y tolerancias; si se quiere, `validarSalidaFuente` necesitaría una opción `tolerancia`.
+- Los avisos que muestran un nombre de cuenta ya escapan con `escHtml()` (`toast()` pinta HTML) y los `dialogo()` pasan el texto por `textContent`, así que no necesitan escape. No se encontraron huecos del tipo corregido en Spotify.
+- `_alcNombreFuente()` conserva sus fallbacks defensivos con `typeof`.
+
+### 🔧 Cambio (2026-10-05) — El detalle de cajita usa el mismo estilo compartido y el color de Nu viene del descriptor (`cuentas.js`, `index.html`)
+
+**Antes:** `#cuentas-detalle-cajita` repetía `rgba(192,96,240,…)` y `var(--nu-light)` en estilos inline (5 y 5 veces) para el hero, el título y el campo de nombre, y escribía a mano los colores de Retirar y Mover.
+
+**Ahora:** `_renderDetalleCajita()` (por donde pasan todas las rutas al detalle) pone `--cuenta` y `--cuenta-rgb` sobre el panel desde el descriptor de Nu; el hero es `.cuenta-hero` (con `.cuenta-hero-label` y `.cuenta-hero-saldo`), el título y el campo de nombre usan las variables, y Retirar y Mover usan `.cuenta-action-btn--rojo` y `--azul` (mismo aspecto). "Agregar" conserva su verde de acento. Cambio visual mínimo: el rótulo "Disponible" queda con la misma opacidad que en las demás cuentas. Ids sin cambios. No se tocaron los sub-paneles de meta y de CDTs ni las tarjetas de cajita de la lista de Nu. Sin pruebas automáticas; `node --check` limpio.
+
+### 🐛 Corrección (2026-10-05) — "Nueva cuenta" podía quedar en modo edición si se cerraba el sheet tocando el fondo (`cuentas.js`)
+
+**Síntoma posible:** abrir "Editar cuenta" de una cuenta personalizada, cerrar el sheet tocando fuera (en vez de "Cancelar") y abrir "Nueva cuenta": el sheet seguía con título "Editar cuenta", botón "Guardar cambios" y sin campo de saldo, y guardar renombraba la cuenta anterior en lugar de crear una. Solo "Cancelar" reiniciaba el sheet (`resetSheetNuevaCuenta`); `sheet-stack.js` también cierra los sheets al tocar el fondo.
+
+**Ahora:** `abrirNuevaCuenta()` llama a `_resetSheetNuevaCuenta()` al abrir, igual que `abrirCrearCDT()` con el CDT. Se razonó sobre el código; no hay prueba automática de este caso.
+
+### 🐛 Corrección (2026-10-05) — Editar un CDT mostraba "Saldo insuficiente" y, con saldo en la cajita, podía crear un CDT duplicado (`cuentas.js`, `index.html`)
+
+**Síntoma:** al editar un CDT y guardar aparecían juntos "Saldo insuficiente. Solo tienes $0 en la cajita." y "CDT actualizado"; el CDT quedaba bien.
+
+**Causa:** el modo edición reutiliza el sheet de crear y le ponía un segundo handler al botón (`btn.onclick = () => guardarCDT(...)`), pero el listener de `confirmarCrearCDT` (`addEventListener` al cargar) seguía activo. Al guardar corrían los dos. `confirmarCrearCDT()` toma el capital que muestra el formulario como "monto a invertir" y lo compara con el saldo libre de la cajita: con la cajita en $0 fallaba (el aviso que viste, y `guardarCDT()` seguía y guardaba); con saldo suficiente habría creado un CDT nuevo del mismo monto descontándolo de la cajita. Otro riesgo del mismo origen: si se cancelaba una edición, el botón quedaba en "Guardar cambios" y el siguiente "Crear CDT" volvía a ejecutar `guardarCDT()` sobre el CDT viejo.
+
+**Ahora:**
+- Un solo listener en el botón (`confirmarSheetCDT`) que decide por `_cdtEditId`: `guardarCDT()` si hay un CDT en edición, `confirmarCrearCDT()` si no. Se eliminó el `btn.onclick`/`_origOnclick`.
+- `_cdtModoSheet(editando)` ajusta el sheet cada vez que se abre: al editar el título es "Editar CDT", el capital queda de solo lectura ("no se puede cambiar"), se ocultan "Disponible en cajita" e "Invertir todo" y el botón dice "Guardar cambios". `abrirCrearCDT()` lo devuelve a modo crear, así que cancelar una edición ya no deja estado pegado.
+- `guardarCDT()` solo toca tasa, fechas y retención (capital y saldo de la cajita intactos) y valida como al crear: tasa > 0, RTE numérica entre 0 y 100 (0 es válido), apertura no futura, vencimiento obligatorio y posterior a la apertura. Antes aceptaba un vencimiento anterior a la apertura, ignoraba una RTE inválida y fallaba en silencio si la cajita o el CDT ya no existían (ahora avisa). El campo RTE vacío conserva la retención actual.
+- Preview del sheet: la RTE 0 ya no se leía como 4, no muestra "Mínimo $50.000" al editar un CDT existente, y "Invertir todo" ahora actualiza la vista previa (el evento no burbujeaba hasta el listener).
+- `index.html`: ids `cdtSheetTitle`, `cdtDisponibleBox` y `cdtMontoLabel` en el sheet.
+
+**Verificación:** prueba con un DOM real (jsdom) y el HTML del sheet: editar con la cajita en $0 y con $5.000.000 deja solo "CDT actualizado", sin crear otro CDT ni mover saldo; cancelar la edición y abrir "crear" devuelve el sheet a modo crear y crea un CDT nuevo sin tocar el viejo; seis errores de validación (vencimiento anterior, vacío, RTE no numérica, RTE > 100, tasa 0, apertura futura) se rechazan sin modificar el CDT y el sheet sigue en edición; RTE 0 se acepta. `node --check` limpio. No se probó en el navegador real con tus datos.
+
+### 🗑️ Eliminado (2026-10-05) — Migración de cuentas `migrarCuentasLegacy()` (`core-state.js`, `configuracion.js`)
+
+**Qué era:** al arrancar, al importar un backup y en cada lectura, convertía los campos viejos `S.nequiSaldo`, `S.efectivoSaldo` y `S.cuentasPersonalizadas` al modelo único `S.cuentas` (con reglas para que un cliente viejo no pisara saldos con ceros).
+
+**Por qué se quita:** el único documento existente ya está migrado y las cuentas que se creen desde ahora nacen en el modelo actual; no queda nada que convertir.
+
+**Qué cambió:**
+- `core-state.js`: se borra la función (≈ 20 líneas y su comentario). `_cuentasArr()` conserva solo la garantía que sí hace falta: si `S.cuentas` no existe o le falta Nequi o Efectivo (documento nuevo, nube vacía, backup sin `cuentas`), los crea en 0. `load()` llama a `_cuentasArr()` para que ese estado se guarde.
+- `configuracion.js`: `leerArchivoImport()` ya no llama a la migración. `_validarEstructuraJSON()` deja de reconocer los campos viejos y, si un backup los trae sin `cuentas`, lo rechaza con "Este backup usa el formato anterior de cuentas y ya no se puede importar." (antes se convertía; ahora importarlo habría dejado Nequi, Efectivo y las personalizadas en cero sin avisar).
+- Dejan de tener sentido y se pueden borrar del repo: `probar-migracion.js` (raíz) y cualquier test de la migración en `tests/`.
+- **Tests:** doce tests fallaron en CI porque cargaban los saldos con los campos viejos (`nequiSaldo`, `efectivoSaldo`, `cuentasPersonalizadas`) y dependían de que la migración los convirtiera: 7 en `calcPatrimonioTotal.test.js`, 2 en `calcHealthScore.test.js`, 1 en `deudas.test.js` y 2 en `totalPrestadoPendiente.test.js`. Se actualizaron para armar `S.cuentas` directamente (helper `cuentas({ nequi, efectivo, custom })`); las comprobaciones no cambian. Con los archivos nuevos pasan los 32 tests de esos cuatro archivos; los otros 154 de la suite ya pasaban en CI.
+
+**Verificación:** prueba con `S` vacío (crea las dos cuentas fijas en 0), con `S.cuentas` parcial (conserva saldo de Nequi y la personalizada, agrega Efectivo; idempotente) y con la validación de backups (formato viejo rechazado, formato nuevo aceptado, `cuentas` que no es array y objeto sin campos conocidos siguen dando error). `node --check` limpio. No se probó la importación de un archivo real en el navegador.
+
+### 🔧 Refactor (2026-10-05) — Gastos y Spotify arman el selector de cuentas de salida con `FuentesFiltro.optsHtml()` (`gastos.js`, `spotify.js`, `sw.js`)
+
+**Antes:** `abrirPagarGastoFijo()` (Gastos), `openSheet_pagarSpotify()` y `_spPagarSplitFuentesOpts()` (Spotify) filtraban con `FuentesFiltro.filtrar()` y luego escribían las `<option>` a mano, reimplementando lo que `FuentesFiltro.optsHtml()` ya hace para el split de gasto variable.
+
+**Ahora:** los tres llaman a `optsHtml()` con su preset (`SALIDA` / `SPOTIFY`). Salida idéntica, comprobada con el `fuentes-filtro.js` real en tres escenarios de saldo (cuenta con saldo, saldos mínimos, ninguna cuenta; con y sin cajita preseleccionada; nombre con `<b>`). **Única diferencia visible:** en las filas del split de pago de Spotify la opción vacía "Selecciona una cuenta..." deja de estar bloqueada (`disabled`), igual que en el split de Gastos. Los selects donde la plata ENTRA no se tocaron: `optsHtml()` filtra por saldo y una cuenta vacía es un destino válido. `sw.js` pasa a `mis-finanzas-v17` para que los dispositivos descarguen los archivos nuevos.
+
+### 🔧 Corrección (2026-10-05) — Spotify mostraba el nombre de la cuenta sin escapar en 3 avisos de "saldo/cupo insuficiente"; ahora Gastos y Spotify validan con una sola función (`core-state.js`, `gastos.js`, `spotify.js`)
+
+**Hallazgo real:** en `confirmarPagarSpotify` (Pagar Spotify) tres `toast()` armaban "Saldo/Cupo insuficiente en …" con `fuenteLabel()` sin pasar por `escHtml()`, y `toast()` inserta el mensaje con `innerHTML`. El nombre de una cuenta personalizada o de una cajita es texto libre, así que era el mismo patrón ya corregido en Cuentas, Gastos, Mesada y Encargos. Gastos sí escapaba.
+
+**Causa de fondo:** la comprobación "¿alcanza el saldo/cupo?" estaba escrita a mano en cada módulo, con redacción distinta (`— disponible:`, `. Disponible:`, `(…)`) y cada uno decidía por su cuenta si escapaba.
+
+**Ahora:** `validarSalidaFuente(fuente, monto)` en `core-state.js` devuelve `{ok, mensaje}` con el mensaje ya escapado. Reglas: cuenta o cajita falla si saldo < monto; TC falla solo si tiene cupo configurado y no alcanza; fuente vacía, TC sin cupo o TC inexistente no bloquean. `gastos.js` (`addGastoVar`, modo simple y dividido) y `spotify.js` (`confirmarPagarSpotify`: dividido, TC y cuenta) la usan; el mensaje queda "Saldo insuficiente en X. Disponible: $N" / "Cupo insuficiente en X. Disponible: $N" en ambos. **Cambio visible:** en Gastos el texto pasa de "— disponible:" a ". Disponible:". Además `pgfActualizarSaldo()` y `confirmarPagarGastoFijo()` usan `getSaldoFuente()` en vez del alias `getSaldoActual()` (misma función).
+
+**No se tocó:** las validaciones de Cuentas (`validarTransferencia`, restar dinero, salida de Nu) ni los mensajes en línea de gastos fijos ("Necesario: …"), por tener tests y otra redacción.
+
+**Verificación:** prueba con 9 casos de la función nueva (igual al saldo pasa, uno más falla, efectivo en 0, TC con y sin cupo, TC inexistente, fuente vacía, nombre con `<b>` escapado); `node --check` limpio en los tres archivos. Los tests existentes de Gastos y Spotify no se corrieron: si alguno compara el texto del aviso, hay que actualizarlo.
+
+### 🔧 Cambio (2026-10-05) — El detalle de Nu usa el mismo estilo compartido que las demás cuentas, y se borró el código sin uso de cajitas (`cuentas.js`, `index.html`)
+
+**Antes:** el hero y los tres botones del detalle de Nu repetían `rgba(192,96,240,…)` y `var(--nu-light)` en estilos inline (unas 10 veces), mientras Nequi, Efectivo y las personalizadas ya usaban `.cuenta-hero` y `.cuenta-action-btn--*` con `--cuenta`/`--cuenta-rgb`.
+
+**Ahora:** `renderDetalleCuenta('nu')` pone `--cuenta`, `--cuenta-rgb`, el título y el rótulo "Total Nu" desde el descriptor de Nu; el hero es `.cuenta-hero` (con `.cuenta-hero-label` y `.cuenta-hero-saldo`), los botones son `--cuenta` (Entró plata), `--rojo` (Salió plata) y `--azul` (Mover a otra cuenta), y el bloque de tasa/chequeo usa las variables. El historial de Nu recibe el color del descriptor. Cambiar el color de Nu en `CUENTAS_FIJAS` cambia selector y detalle a la vez. Ids sin cambios (`nuTotalDisp`, `btn-nu-entro`, `btn-nu-salio`, `btn-transferir-nu-det`), así que el ocultar saldos y los listeners siguen igual. El detalle de cajita (`#cuentas-detalle-cajita`) y las tarjetas de cajita conservan su morado propio; no se tocaron.
+
+**Código sin uso eliminado:** `toggleCDT()`, `toggleCajita()` y `_expandCajitaCDTs()` (≈85 líneas): sin ningún llamador en los archivos revisados y trabajaban sobre ids (`cajita-wrap-*`, `cajita-cdt-*-*`) que el render actual no genera.
+
+### 🔧 Cambio (2026-10-05) — El título del detalle de Nu lleva el mismo ícono que las demás cuentas (`cuentas.js`, `index.html`)
+
+**Antes:** el detalle de Nequi, Efectivo y las personalizadas mostraba ícono + nombre en el header (lo pintaba `_renderDetalleSimple`), pero el de Nu era un `<div>` escrito a mano en `index.html` con el texto "Nu" y nada más.
+
+**Ahora:** el bloque ícono + nombre salió de `_renderDetalleSimple` a un helper, `_tituloCuentaHtml(d)`, y lo usan los dos detalles. El título de Nu tiene id `det-nu-nombre` y `renderDetalleCuenta('nu')` lo pinta con el descriptor de Nu (`CUENTAS_FIJAS_SELECTOR`), la misma fuente del selector. Se agregó `flex:1;min-width:0` al título de Nu, igual que el de las otras cuentas. No cambia ningún dato ni saldo. El header de una cajita (`#cajita-det-nombre`) no se tocó a propósito: una cajita no es una cuenta.
+
+### 🔧 Refactor (2026-10-05) — Nombre, color y badge de Nequi/Nu/Efectivo en un solo lugar: `CUENTAS_FIJAS` (`core-state.js`, `cuentas.js`)
+
+**Antes:** esos tres datos estaban repetidos en `fuenteLabel()`, `fuenteBadgeClass()`, `getFuentes()`, `getFuentesSinTC()` (`core-state.js`) y en `CUENTAS_FIJAS_SELECTOR` (`cuentas.js`). Además `getFuentes()` y `getFuentesSinTC()` eran dos copias casi idénticas que solo diferían en las tarjetas de crédito.
+
+**Ahora:** `CUENTAS_FIJAS` + `getCuentaFija(fuente)` en `core-state.js` (carga de entrada) guardan `{fuente, nombre, color, rgb, badge}`. Las cuatro funciones del núcleo la leen; `getFuentes()` y `getFuentesSinTC()` son envoltorios de `_listaFuentes(incluirTC)`; y `CUENTAS_FIJAS_SELECTOR` se arma como `CUENTAS_FIJAS` + `_SELECTOR_FIJAS_EXTRA` (estilo del selector, ícono y saldo, que son lo único que solo `cuentas.js` puede aportar porque es lazy y `nuTotal()` es suyo). Comportamiento idéntico: mismas etiquetas, mismas clases de badge, misma lista y orden de cuentas, mismos descriptores del selector.
+
+**Verificación:** script contra los archivos anteriores y los nuevos (con las funciones extraídas y datos de prueba: cajita normal y de CDT, TC activa y cerrada, cuenta personalizada, y trece valores de `fuente` incluyendo ids inexistentes, `''`, `alcancia`, `ganancia` y desconocidos). `getFuentes()`, `getFuentesSinTC()`, `fuenteLabel()` y `fuenteBadgeClass()` devuelven exactamente lo mismo, y los tres descriptores de `CUENTAS_FIJAS_SELECTOR` quedan iguales (salvo el campo nuevo `badge`). `node --check` limpio en `core-state.js` y `cuentas.js`. No se probó en navegador.
+
+### 🔧 Corrección (2026-10-05) — Revisión de `cuentas.js`: salidas que superaban el saldo, chequeo de Nu con campos sin anotar y RTE 0 de un CDT (`cuentas.js`)
+
+Revisión de las funciones de `cuentas.js` que mueven plata y no se habían leído (chequeo de Nu, CDT, agregar/restar, movimientos de Nu, apertura). Cuatro defectos reales, cada uno reproducido con un test contra el código anterior antes de arreglarlo:
+
+1. **Restar dinero (`confirmarRestarDinero`) y "Salió plata de Nu" (`confirmarNuMovimiento`) permitían sacar más de lo que había.** `descontarFuente()` recorta el saldo en 0, pero `registrarSalida()` guardaba el movimiento con el monto COMPLETO: restar 20.000 de una cuenta con 5.000 la dejaba en 0 con un movimiento de −20.000, el historial no cuadraba con el saldo y, al borrar ese movimiento, `sumarFuente(monto)` devolvía 20.000 (15.000 inventados). La pantalla solo pintaba el resultado en rojo, sin bloquear. Ahora se rechaza con "Saldo insuficiente en X (saldo)", comparando en centavos (misma regla y mismo mensaje que `gastos.js`, `spotify.js` y Transferir). En Nu la comprobación va antes de materializar intereses para no dejar la cajita modificada a medias.
+2. **Chequeo rápido de Nu (`guardarChequeoNu`): un campo tocado y dejado en `0,00` se guardaba como "esta cajita tiene $0".** `money-input.js` rellena `0,00` al enfocar y nada lo limpia al salir. Ponía la cajita en 0 (con aviso solo si se alejaba más de max($1.000; 2 %), o sea, en silencio para cajitas chicas) y ensuciaba `S.chequeosNu`. Ahora 0 significa "no anoté"; si de verdad quedó vacía, se registra el retiro como movimiento (lo que ya decía el aviso).
+3. **`confirmarCrearCDT` convertía un RTE de 0 en 4** (`parsePct(...)||4`), mientras que `guardarCDT` (editar) sí aceptaba 0. Ahora: vacío = 4, 0 se respeta, texto no numérico o > 100 se rechaza.
+4. **Agregar/restar dinero con monto 0 no avisaba nada** (`return` silencioso). Ahora muestra "Ingresa un monto válido".
+
+**Verificación:** `tests/restar-dinero.test.js` (8), `tests/chequeo-nu.test.js` (10) y `tests/nu-cdt.test.js` (12). Contra el código anterior fallan exactamente los casos que reproducen cada defecto y pasan los de control; con los arreglos pasan los 30. **Sin verificar en navegador real.**
+
+**Observaciones sin cambio:** (a) prestar desde una cuenta en `prestado.js` (`_planPrestamo`) no compara el monto con el saldo de origen: medido en la capa de datos, prestar 150.000 desde una cuenta con 100.000 deja la cuenta en 0, la deuda en 150.000 y sube el patrimonio 50.000. No se confirmó si la pantalla lo impide (`FuentesFiltro`, que filtra las cuentas del selector, no estaba entre los archivos revisados); (b) el tuteo y el voseo conviven en los textos (`cuentas.js`, `spotify.js`, `alcancia.js`): puede ser intencional y no se tocó.
+
+
+### 📝 Documentación (2026-10-04) — Las formas de guardar un movimiento de cuenta, escritas en un solo lugar (`cuentas.md`, `proyeccion-financiera.md`)
+
+Era conocimiento repartido en comentarios de `cuenta-efectos.js`, `cuentas.js` y `movimientos.js`. Ahora `cuentas.md` (§4, "Cómo se guarda un movimiento de una cuenta") separa movimiento **manual** (siempre `S.movimientos`) de **espejo** (una forma por tipo de cuenta: Nequi/Efectivo en `S.movimientos` con `entrada`/`salida`; personalizada en `c.movimientos` con `ingreso`/`egreso`; cajita en `cajita.historial`), explica los gemelos viejos de las personalizadas, lista lo que no pasa por `registrarMovEspejo()` a propósito (Me deben, Mesada, Alcancía, Encargos) y deja escrito el acoplamiento entre el `tipo` mostrado y el borrado de `movimientos.js`. §3 suma dos reglas: los espejos nuevos nacen con `_esEspejo`, y no unificar `egreso`/`salida_manual` sin tocar el borrado. `proyeccion-financiera.md` citaba `S.nequiSaldo`, `S.efectivoSaldo` y `S.cuentasPersonalizadas` (reemplazados por `S.cuentas` el 2026-10-01); corregido. Sin cambios de código.
+
+
+### 🔧 Refactor (2026-10-04) — El historial de una cuenta lo arma UNA sola función (`cuentas.js`)
+
+**Antes:** `getMovimientosCuenta()` (Nequi, Efectivo, cajitas) y `_getMovimientosCuentaCustom()` (personalizadas) eran dos funciones casi gemelas (184 y 148 líneas); cuatro bloques (gastos, préstamos dados, transferencias, Spotify) estaban duplicados casi palabra por palabra y ya se habían desviado: la personalizada no mostraba `cat`/`nota` de un gasto, ni la etiqueta "Encargos", ni las otras cuentas de un préstamo dividido, y un movimiento de Mesada en una personalizada salía como "Movimiento manual". Cada arreglo había que hacerlo dos veces (Spotify, Alcancía y transferencias se corrigieron en las dos, una por una).
+
+**Ahora:** `getMovimientosCuenta(tipo)` es la única función, con un bloque por fuente y un predicado `coincide(fuente)` (`'nu'` = cualquier cajita; el resto, la fuente exacta). `_getMovimientosCuentaCustom` desaparece. Se quitaron además las ramas de Alcancía que quedaban dentro de un bloque que ya hacía `return` antes (código muerto en las dos funciones).
+
+**Diferencias que se conservan a propósito** (opciones explícitas, comentadas en el código): (1) el tipo de una salida manual: `'egreso'` en personalizadas y `'salida_manual'` en las demás — `movimientos.js` elige la rama de borrado y de reversión de saldo por ese tipo, así que unificarlo habría roto el borrado; (2) la lista propia: `c.movimientos` entera y leída primero (personalizadas) vs `cajita.historial` solo `_secundario` y después (cajitas); (3) el texto cuando no hay descripción; (4) el salto del gemelo viejo de S.movimientos.
+
+**Cambios visibles (solo cuentas personalizadas, todos aditivos):** un gasto ahora trae categoría y nota, y se etiqueta "Encargos" si su nota lo menciona; un préstamo dividido entre cuentas muestra las otras cuentas; un movimiento secundario (Mesada, etc.) usa su sección de origen en vez de "Movimiento manual". Nequi, Efectivo y cajitas: resultado idéntico campo por campo.
+
+**Verificación:** `tests/historial-cuenta.test.js` (28 tests). Prueba dorada: compara la función nueva con las dos anteriores, congeladas en `tests/support/historial-legacy.js`, sobre los mismos datos (fixture con ~90 registros: manuales, aperturas, intercambios de Encargos, espejos, Alcancía, gastos, préstamos simples y divididos, Spotify con abonos y sin id, transferencias, gemelos viejos, filas sin id) para 6 cuentas: mismas filas, mismo orden, y solo difieren los cambios deliberados, cada uno con su valor esperado. 12 mutaciones (perder el salto del gemelo, unificar el tipo de salida, mostrar el ingreso de Alcancía, contar pagos de Spotify, no restar abonos, perder transferencias entrantes o préstamos divididos, listar espejos no secundarios, perder `c.movimientos`, que Nu deje de juntar las cajitas, invertir el desempate) hacen fallar entre 2 y 11 tests. **Sin verificar en navegador real.** `historial-legacy.js` y la comparación son transitorios: se pueden borrar cuando la función lleve un tiempo en producción sin incidencias.
+
+
+### 🔧 Corrección (2026-10-04) — Una sola definición de "ingreso real" para Inicio, Análisis y Wrapped (`core-state.js`, `inicio.js`, `analisis.js`, `wrapped.js`, `cuenta-efectos.js`)
+
+**Antes:** la pregunta "¿esto cuenta como ingreso del mes?" se respondía en tres sitios, con tres reglas:
+- **Inicio** exigía además que la entrada tuviera cuenta (Nequi, Efectivo, cajita, personalizada) o `_prestadoDirectamente`, y sumaba aparte los `ingreso` de `c.movimientos` de las cuentas personalizadas.
+- **Análisis y Wrapped** solo miraban `S.movimientos` con el filtro `_esEntradaEspejoNoIngreso`: no veían `c.movimientos` ni exigían cuenta.
+
+Dos divergencias reales: una entrada sin cuenta ni bandera contaba en Análisis/Wrapped y no en Inicio (así falló el perdón de "Yo debo"), y un ingreso que solo vive en `c.movimientos` (p. ej. el extra de un préstamo que cae en una cuenta personalizada, porque `registrarMovEspejo` escribe ahí) contaba en Inicio y no en Análisis/Wrapped. Con un mismo conjunto de datos de prueba, Inicio daba 126.600 y Wrapped 122.311 para el mismo mes.
+
+**Regla única** (decisión del 2026-10-04): ingreso real = plata nueva que sube el patrimonio, tenga o no cuenta. Se implementa una vez, en `core-state.js`:
+- `entradasIngresoReal(estado?)` devuelve la lista de movimientos que cuentan: `S.movimientos` tipo `entrada` que no sean espejo + `c.movimientos` tipo `ingreso` que no sean espejo; los datos viejos escritos en las dos listas con el mismo id (`confirmarMovCustom()`, retirada) se cuentan una vez. Recibe el estado porque Wrapped trabaja sobre el `S` que le pasan.
+- `ingresosRealesDelMes(mes, estado?)` suma esa lista por mes. La mesada y los ingresos fijos los sigue sumando cada pantalla aparte.
+Inicio (`calcHealthScore`), Análisis (balance del mes y del mes anterior) y Wrapped (periodo, año y "mayor ingreso") la usan. Se borraron las tres copias de la lógica.
+
+**Espejos marcados por defecto:** `registrarMovEspejo()` ahora marca todo espejo nuevo con `_esEspejo: true`, y `_esEntradaEspejoNoIngreso()` lo respeta (después de `_esExtraIngreso`, `_esPerdonRecibido` y `_esDiferencialEncargo`, que tienen prioridad: un espejo que sea plata nueva se marca con esas banderas vía `extra`). Así un módulo nuevo es seguro por defecto y ya no depende del texto de `desc` ni de que su `_origenSeccion` empiece por "Prestado". Los datos anteriores no tienen la bandera y siguen cayendo en los fallbacks por texto/prefijo, que **no** se borraron.
+
+**Qué puede cambiar en pantalla:** Inicio puede subir si hay entradas reales sin cuenta ni bandera (el diagnóstico `diagnostico-ingresos.js` sobre los datos reales dio 0 de esas). Análisis y Wrapped pueden subir si hay ingresos que solo viven en `c.movimientos` (a comprobar con `diagnostico-ingresos-cuentas.js`). Si ambos dan vacío, ninguna cifra cambia.
+
+**Verificación:** `tests/ingreso-real.test.js`, 17 tests con `load-app.js`: qué cuenta y qué no (sueldo, regalo, sin cuenta, perdón, extra, diferencial; espejos de Mesada/Prestado, reposiciones, márgenes viejos, intercambios, alcancía destapada), cuentas personalizadas (solo en cuenta, espejos, gemelos viejos una sola vez), espejos nuevos nacen marcados, y Inicio / `ingresosRealesDelMes` / Wrapped dan la misma cifra con los mismos datos. Los 17 fallan contra el código anterior y pasan con el nuevo; 6 mutaciones (no filtrar espejos de cuenta, quitar el dedupe del gemelo, quitar `_esEspejo` en el filtro o en `registrarMovEspejo`, Wrapped o Inicio con su regla vieja) hacen fallar entre 1 y 4 tests. **Sin verificar en navegador real.**
+
+
+### 🔧 Corrección (2026-10-04) — Transferir: una sola función valida toda la transferencia, y un monto negativo ya no pasa (`cuentas.js`)
+
+**Antes:** `_trValidarMonto()` solo validaba la regla del monto (centavos y mínimo con Efectivo). El resto (cuentas faltantes, origen = destino, monto vacío, saldo) estaba escrito dos veces: en `actualizarTransfPreview()` y en `confirmarTransferir()`. Además `confirmarTransferir()` solo comprobaba `!monto`, así que un monto **negativo** pasaba todas las validaciones (`_trValidarMonto` lo ignoraba, y el saldo es mayor que un negativo) y llegaba a `descontarFuente(origen, -X)`, que **suma** al origen y resta del destino. Revisado `money-input.js`: el campo bloquea todo salvo dígitos (teclado) y el pegado solo acepta números > 0, así que **desde la pantalla no se podía llegar a un monto negativo**. Era un hueco latente (cualquier otro camino que llame a la función, o un cambio futuro en el input), no un bug activo; ahora la validación no depende del input.
+
+**Ahora:** `validarTransferencia({origen, destino, monto, saldoOrigen, etiquetaOrigen})` devuelve `{ok:true}` o `{ok:false, codigo, mensaje}` (`falta_cuenta`, `mismo`, `sin_monto`, `monto`, `saldo`). Rechaza monto no numérico, NaN, Infinity, 0 y negativos. La vista previa y la confirmación la usan, así que dicen lo mismo. `_trValidarMonto` desaparece (solo la usaban esos dos sitios). Las reglas de negocio no cambian.
+
+**Cambios de comportamiento (deliberados):** (1) monto negativo o no finito → "Ingresa un monto válido" y no se escribe nada; (2) con origen y destino vacíos la vista previa ya no dice "deben ser diferentes", queda en blanco; (3) el aviso de saldo insuficiente ahora lo da la misma función en la confirmación (mismo texto, mismo escape del nombre de cuenta).
+
+**Verificación:** `tests/transferir.test.js`, 24 tests con `node --test`, que cargan `core-state.js`, `calc-helpers.js`, `cuenta-efectos.js` y `cuentas.js` reales con `tests/support/load-app.js` (modo `permissive`; `getSaldoActual`, que vive en `index.html`, se enlaza a `getSaldoFuente`) y usan los saldos reales de `S.cuentas`: centavos (cajita↔cajita sí; con Nequi, Efectivo o personalizada no), mínimo $50 con Efectivo en las dos direcciones, saldo comparado en centavos, orden de los avisos, y que cada rechazo no llama `descontarFuente`/`sumarFuente`, no guarda y no cierra el sheet. Probado también por mutación: quitar la regla de centavos, el mínimo, el saldo o la comprobación origen = destino hace fallar entre 2 y 4 tests; el rechazo de montos ≤ 0 tiene dos guardas redundantes a propósito y los tests fallan solo si se quitan las dos. **Sin verificar en navegador real.**
+
 
 ### 🔧 Corrección (2026-10-02) — El botón "ocultar saldos" vuelve a ocultar el selector y el detalle de cuentas (`mejoras-adicionales.js`)
 
@@ -288,6 +765,137 @@ De paso, `guia-estilo-sheets.md` §3 quedó actualizada con 4 sheets que existí
 ---
 
 ## Infraestructura / seguridad
+
+### 🐛 Corrección (2026-10-10) — Los préstamos y abonos sin cuenta inflaban la tendencia y la proyección de Inicio (`core-state.js`)
+
+**Síntoma:** un préstamo "Me deben" a Padre de $500.000 sin cuenta de origen (25 de septiembre) subió el patrimonio $500.000 sin ser ingreso, y la gráfica de patrimonio y la proyección lo leían como crecimiento real: tendencia de **+$558.680 al mes y +$6,7 M a 12 meses**, cuando sin ese salto era de **+$104.135 y +$1,25 M**. Se detectó con una conciliación del cambio de patrimonio contra los ingresos y gastos que explica la app (septiembre dejaba $473.869 sin explicar).
+
+**Corrección:** los movimientos de deudas **sin pata de caja** (préstamo "Me deben" sin cuenta ni tarjeta, abono/pago recibido sin cuenta destino, y sus equivalentes en "Yo debo") se tratan como **ajuste de base** igual que una apertura: `_movsDeudaSinCuenta()` los enumera y `montoBase` los descuenta. Quedan fuera los perdones, lo pagado con TC (`_viaTC`) y los movimientos con `fuentes`/`destinos` repartidos. Si el movimiento trae `clase: 'ingreso'` (plata nueva, p. ej. un regalo) cuenta como ingreso del mes y no como ajuste (`entradasIngresoReal()`).
+- `load()` recalcula `montoBase` de todo el historial con la nueva `recalcularMontoBaseHistorial()` (sin migración: vale hacia atrás), y ahora también **limpia** un `montoBase` que ya no tiene respaldo en los datos (antes un ajuste viejo quedaba pegado si se borraba el movimiento).
+- Nuevo `scripts/conciliacion.js backup.json`: por mes, compara el cambio de patrimonio contra ingresos + mesada − gastos − retiros − fijos + rendimientos y marca lo que queda sin explicar. Con tu backup: septiembre pasó de $473.869 a −$26.131 sin explicar; octubre queda en $7.164.
+- Tests: `tests/deudas-sin-cuenta.test.js` (6 casos), `tests/migraciones.test.js` (v4) y `scripts/conciliacion.js` aplica las migraciones como `load()`; 265 de 265 en verde. Ingresos y gastos por mes no cambian (`scripts/equivalencia.js --comparar`).
+- **Plata nueva en un préstamo sin cuenta:** "Nuevo préstamo" tiene ahora el interruptor **"¿Es plata nueva para ti?"** (`index.html` `mov_regalo`, leído en `prestado.js`): sin cuenta de origen guarda `clase: 'ingreso'` y cuenta como ingreso del mes. La **migración v4** corrige el caso existente: el préstamo a Padre de $500.000 (25-sep, "Regalo - Abuela": la abuela le dijo al papá que le pagara a ella lo que le debía, y ahora te lo debe a ti) fue un regalo, así que septiembre suma **+$500.000 de ingreso** (se identifica por id y se verifica monto, fecha y que no tenga cuenta).
+
+### 🐛 Corrección (2026-10-10) — La pantalla Gastos no mostraba ni sumaba los "Restar dinero" (`gastos.js`, `periodo.js`)
+
+**Síntoma:** un retiro de "Restar dinero" ya contaba como gasto en Inicio, Análisis, cierre de mes y Wrapped (`Periodo`), pero no aparecía en la pantalla Gastos y su total del mes quedaba por debajo (esa pantalla arma su lista y su total solo con `S.gastosVar`).
+
+**Corrección:** `renderGastosVar()` agrega los retiros (`Periodo.retirosManuales()`, ahora con `clase: 'gasto'`) como filas de solo lectura —categoría `Ajuste`, "elimínalo desde Cuentas · Restar dinero"— y los incluye en el total del mes y en los subtotales por día; el filtro de meses también ofrece un mes que solo tenga un retiro. Se comprobó con el backup del 2026-10-10: octubre suma $96.300 en Gastos, igual que `Periodo`.
+
+### 🔧 Refactor (2026-10-10) — Etapa E5: reglas históricas congeladas y lectores unificados (`core-state.js`)
+
+Con `schemaVersion` 3 y 0 movimientos sin `clase` en el backup del 2026-10-10: la cascada de etiquetas pasó a `_reglaHistoricaEntradaEspejo` / `_reglaHistoricaGastoVarNoReal` (congeladas, sin cambios de lógica); `_esEntradaEspejoNoIngreso()` y `_esGastoVarNoReal()` leen todo vía `claseEfectivaMovimiento()`. El normalizador de `save()` se **conserva** (los datos guardados quedan completos y un módulo futuro que olvide la clase no rompe nada; `tests/clase-cobertura.test.js` lo detecta). Las etiquetas (`_esEspejo`, `_esExtraIngreso`…) **no** se borran: siguen en los datos existentes y las usa la presentación (origen, borrado protegido) y la deducción. Verificado con ambos backups (`scripts/equivalencia.js --comparar`): sin diferencias respecto a antes de E5.
+
+### 🔧 Mantenimiento (2026-10-10) — Service Worker `mis-finanzas-v21` → `v26` (`sw.js`)
+
+Los JS se sirven con `staleWhileRevalidate`: sin cambiar `VERSION`, un dispositivo con la app instalada podía seguir con el código anterior (sin `clase`, con la cascada vieja) hasta una segunda carga. Subir la versión borra la caché vieja al activar. Es el único cambio de `sw.js`.
+
+### 🐛 Corrección (2026-10-09) — "Restar dinero" no contaba como gasto del mes (`cuentas.js`, `core-state.js`, `periodo.js`)
+
+**Síntoma:** "Sumar dinero" cuenta como ingreso del mes, pero "Restar dinero" bajaba el saldo y el patrimonio sin aparecer en los gastos de Inicio, Análisis, cierre de mes ni Wrapped. En la práctica se usa para cuadrar la diferencia entre lo registrado y lo real (gastos que se olvidaron de registrar), así que esos gastos nunca se veían.
+
+**Corrección:** `registrarSalida()` escribe `clase: 'gasto'` y `Periodo` los cuenta (`Periodo.retirosManuales()`, agrupados con los gastos variables, categoría **Ajuste**), de modo que Inicio, Análisis, cierre de mes y Wrapped cambian a la vez. La migración v3 también estampa `gasto` en los `salida_manual` antiguos. Los espejos de salida (`salida`, `egreso`) siguen siendo neutros. Borrar el retiro lo quita del gasto (la clase viaja con el movimiento).
+
+**Efecto sobre tus datos (backup 2026-10-09):** octubre +$40.000 de gasto (el retiro del 1 de octubre). El patrimonio no cambia.
+
+**Límite:** los retiros antiguos de cuentas personalizadas guardados como `egreso` dentro de la propia cuenta no se cuentan (son copias "gemelas" de datos anteriores a 2026-09 y contarlos podría duplicar).
+
+### ✨ Mejora (2026-10-09) — Rendimientos de Nu por mes: los intereses ya se pueden reportar como ingreso económico, aparte del ingreso operativo (`nu-calc.js`, `cuentas.js`, `periodo.js`, `inicio.js`)
+
+**Antes:** el interés de las cajitas se calculaba al leer (`calcC`) y se fundía en el saldo al materializarlo, sin dejar rastro de en qué mes se ganó; el de los CDT solo se calculaba en Inicio y nadie lo usaba.
+
+**Ahora:** los intereses son ingreso económico (plata nueva). **No** se suman a `ingresosDelMes().total`: ese total es flujo de caja operativo, alimenta los ratios de deuda y ahorro de Inicio (y un CDT ni siquiera es plata disponible); Análisis los suma a su balance mediante una opción. Se reportan en `Periodo.rendimientosDelMes(mes)` → `{ cajitas, cdts, total }`, y `balanceDelMes()` los trae en `rendimientos`.
+- `calcC(c, hasta)` acepta una fecha opcional (sin ella funciona igual que siempre) y `rendimientoCajitaPorMes(c)` reparte el interés acumulado por mes (la suma da `calcC(c).ganado`).
+- `materializarIntereses()` anota lo ganado por mes en `c.rendimientos` antes de fundirlo en el saldo. No es un movimiento: no toca saldos ni historial.
+- Cajitas = lo anotado + lo acumulado aún sin materializar; CDT = `calcRendimientoCDTsMes()`, exacto para cualquier mes. Inicio ahora expone cajitas + CDT en `rendimientoCDTMes`. **Análisis** los suma a Ingresos, Balance, Tasa de ahorro y Ahorrado (y a la comparación con el mes anterior) y lo dice bajo el balance: "Incluye $X de rendimientos de Nu" (`analisis.js`), con `Periodo.balanceDelMes(mes, estado, { conRendimientos: true })`. Los demás consumidores (Inicio, Salud financiera, cierre de mes, Wrapped) no la piden y siguen midiendo flujo de caja operativo.
+- **Límite:** los meses anteriores a este cambio no se pueden reconstruir (el interés ya estaba fundido en el saldo) y salen en 0; el registro empieza desde la próxima vez que se materialice cada cajita.
+- Tests: `calcC-calcCDT.test.js` (reparto por mes, `calcC` con fecha, materialización) y `clase-movimientos.test.js` (retiros como gasto); 257 de 257 en verde.
+
+### 🔧 Mantenimiento (2026-10-09) — Se retiran las migraciones v1 y v2 de `MIGRACIONES` (`core-state.js`)
+
+Todos los datos guardados (y no existen backups anteriores) ya estaban en v2, así que `MIGRACIONES` empieza ahora en v3 (la de `clase`). La numeración no se reinicia: `S.schemaVersion` de los datos existentes vale 2 y la v3 se ejecuta sola al cargar. `tests/migraciones.test.js` ahora prueba v3 (estampa `clase`, idempotencia, datos más nuevos que la app).
+
+### 🔧 Refactor (2026-10-09) — Clase explícita en los movimientos (`clase`): "¿ingreso, gasto o solo plata que se movió?" deja de deducirse y pasa a guardarse (`core-state.js`, `cuenta-efectos.js`, `diferencial.js`, `encargos.js`, `prestado.js`, `spotify.js`, `alcancia.js`, `plata_comprometida.js`, `gastos.js`, `tarjetas_credito.js`, `cuentas.js`, `actividad_reciente.js`)
+
+Etapa 1 de `plan-clasificacion-movimientos.md`. **Antes:** la clasificación se reconstruía al leer, con una cascada de 12 condiciones sobre ~30 etiquetas (`_esEspejo`, `_secundario`, `_origenSeccion`, `_encMovId`, `_esExtraIngreso`…) y 3 comprobaciones por texto de la descripción. Cada módulo nuevo tenía que acordarse de la combinación correcta; si olvidaba una, el patrimonio salía bien pero el ingreso o gasto del mes salía mal, sin aviso.
+
+**Ahora:** cada movimiento lleva `clase`: `ingreso` (plata nueva, sube el patrimonio), `gasto` (lo baja), `neutro` (mueve plata sin cambiar el patrimonio: el "espejo") o `ajuste` (corrección de datos, p. ej. apertura de cuenta). La clase viaja con el movimiento, así que borrarlo la revierte con él.
+
+- **Se escribe al crear, en cada módulo.** `registrarMovEspejo()` recibe `clase` (por defecto `neutro`; `ingreso` si `extra` trae `_esExtraIngreso`/`_esPerdonRecibido`/`_esDiferencialEncargo`). Las escriben explícitamente: gasto variable y pago de gasto fijo (`gastos.js`), compra y pago de TC (`tarjetas_credito.js`), margen/diferencial, regalo e intercambios de Encargos (`diferencial.js`, `encargos.js`), perdón dado/recibido y extra de un pago (`prestado.js`), extra y gasto de Spotify (`spotify.js`), depósitos y destape de Alcancía (`alcancia.js`), reposiciones e ingreso libre de Plata comprometida (`plata_comprometida.js`), entrada manual y apertura (`cuentas.js`, `crearMovimientoApertura()`).
+- **Migración v3** (`MIGRACIONES`): estampa `clase` en el histórico con las reglas de siempre, una sola vez, de forma idempotente y sin pisar una `clase` existente. También corre al importar un backup. Los movimientos que no se pueden clasificar con certeza (las `salida`/`egreso` sin etiqueta de espejo) se dejan sin `clase` y se cuentan en consola: no se adivina.
+- **Lectores:** `_esEntradaEspejoNoIngreso()` y `_esGastoVarNoReal()` leen `clase`; si falta, la deducen con la cascada anterior, que desde la etapa E5 (2026-10-10) quedó **congelada** como `_reglaHistoricaEntradaEspejo` / `_reglaHistoricaGastoVarNoReal` y solo se usa vía `deducirClaseMovimiento()` (migración v3 y `claseEfectivaMovimiento()`): ningún lector mira etiquetas por su cuenta. `actividad_reciente.js` ya no mantiene su propia copia de la regla de "ingreso real".
+- **Red de seguridad en `save()`:** todo movimiento sale a la nube con `clase`. Si un módulo, o un dispositivo con la app vieja, crea uno sin ella, se deduce con las mismas reglas de la migración y se avisa una vez por sesión en consola.
+- **Guardia contra regresiones:** `tests/clase-cobertura.test.js` falla si algún código crea un movimiento (objeto literal en `S.movimientos`, `S.gastosVar` o una cuenta personalizada) sin `clase`. Se verificó rompiéndola a propósito.
+- **No cambia:** almacenamiento (siguen las mismas listas), saldos, `calcPatrimonioTotal()` y la API de `Periodo`.
+- **Fuera de alcance, a propósito:** `tcMovimientos`, `deudores/misDeudas/encargos[].movimientos` y `transferencias` no se estampan (nada lee su clase y no hay regla para clasificarlas sin adivinar). Las `salida`/`egreso` espejo tampoco (no son ingreso ni gasto: solo mueven plata). "Restar dinero" sí lleva `clase` `gasto`: ver la entrada siguiente.
+- **Alcancía (revisado):** los depósitos "Plata mía / Regalo de mamá / Pago de mamá por un mandado" son plata que nunca estuvo en una cuenta y se registran como `ingreso` (es lo que el módulo ya hacía a propósito); lo que otras pantallas excluyen de ellos es solo para no mostrar el monto en las listas, no cambia el ingreso del mes. El único dudoso es "Plata mía" (ahorro propio que antes no estaba registrado), que se mantiene como ingreso.
+- **Verificación:** sobre el backup del 2026-10-09 (`scripts/equivalencia.js`, que cubre todos los meses de enero a octubre, cuenta `sinClase` y tiene modo `--comparar`) ingresos y gastos por mes y patrimonio quedan idénticos, salvo la corrección de la entrada siguiente. Tests: `tests/clase-movimientos.test.js` (equivalencia, migración idempotente, tabla de deducción) y `tests/clase-cobertura.test.js`; 253 de 253 en verde.
+- **Documentación:** actualizados `mis-finanzas.md` (principio de `clase`, filas de `periodo.js` y `nu-calc.js`), `analisis-financiero.md`, `salud-financiera.md`, `inicio.md`, `proyeccion-financiera.md`, `cuentas.md`, `alcancia.md`, `encargos.md`, `plata-comprometida.md`, `gastos.md`, `tarjetas-credito.md`, `mesada.md`, `spotify.md`, `prestado.md`, `actividad-reciente.md` y `configuracion.md`; se corrigió además en `cuentas.md` que la Mesada sí pasa por `registrarMovEspejo()`.
+- **Pendiente:** (1) etapa E5 (ver `plan-clasificacion-movimientos.md` §11: congelar la cascada dentro de la migración v3 y quitar los fallbacks una vez desplegada); las migraciones v1/v2 ya se retiraron; (2) recomendado: una vez que ningún dispositivo use la app vieja, quitar la red de seguridad de `save()` si ya no se dispara.
+
+### 🐛 Corrección (2026-10-09) — Los extras que entran directo a una cajita de Nu no contaban como ingreso del mes (`core-state.js`)
+
+**Síntoma:** el extra/propina de Spotify o el extra de un pago de deuda guardado en una cajita (ej. $400 de Spotify, $2.000 de "Extra de pago") subía el patrimonio, pero el ingreso del mes de Inicio, Análisis y Wrapped no cambiaba.
+
+**Causa:** `entradasIngresoReal()` solo leía `S.movimientos` y las cuentas personalizadas; el historial de las cajitas (`cajita.historial`) nunca se miraba, aunque esos movimientos ya estaban marcados `_esExtraIngreso`.
+
+**Corrección:** `entradasIngresoReal()` suma también las entradas de `cajita.historial` con `clase` `ingreso` (sin duplicar ids). Es plata nueva que antes no tenías, así que es ingreso aunque nunca pase por Nequi/Efectivo. Como el historial de una cajita solo lo escribe `registrarMovEspejo()`, un espejo viejo sin etiquetas se deduce `neutro` (no ingreso): solo cuenta con bandera explícita de plata nueva. Los intereses de Nu se tratan en la entrada "Rendimientos de Nu por mes" (abajo).
+
+**Efecto sobre tus datos (backup 2026-10-09):** septiembre +$2.000 y octubre +$400 de ingreso; el patrimonio no cambia (esa plata ya estaba sumada). Tests: `clase-movimientos.test.js` (cajitas).
+
+### 🔧 Refactor (2026-10-08) — `Periodo` (`js/core/periodo.js`): una sola definición del mes
+
+**Antes:** refresh() (núcleo), Inicio (salud financiera y aviso de "Gastos altos"), Análisis (resumen, comparación, barras de 12 meses, ranking, presupuestos), el resumen de cierre de mes, la exportación CSV, la pantalla Gastos y Wrapped armaban cada uno su propia suma de gastos variables + gastos fijos pagados + mesada + ingresos fijos. Las copias se habían desalineado:
+- **Comparación con el mes anterior (Análisis):** buscaba la Mesada con la clave `'2026-09'` en vez de `'2026-8'` (año-índice 0-11), así que el balance del mes anterior **nunca** incluía Mesada y la diferencia de balance salía inflada.
+- **Gastos fijos pagados:** Análisis, Inicio, el núcleo y el cierre de mes usaban el monto *actual* del gasto fijo (editarlo reescribía los meses pasados); Wrapped usaba el monto realmente pagado. Un pago de un gasto fijo ya eliminado se perdía en el ranking de Análisis pero Wrapped sí lo contaba.
+- **Cuota de Mesada sin dato:** Análisis/Inicio caían en la cuota más antigua (o 80.000); Wrapped en 0.
+- **"Gastos altos" (hero de Inicio):** sumaba TODOS los gastos variables (incluidos pagos de gasto fijo y de TC) más TODOS los gastos fijos configurados, pagados o no: contaba doble y avisaba de más.
+- **Exportar CSV:** cada gasto fijo pagado salía dos veces (como variable y como fijo).
+- **Wrapped:** los pagos de gasto fijo llegaban sin categoría a "categoría top" y a "cambio de hábitos".
+
+**Ahora:** `Periodo` (carga de entrada, sin DOM, recibe `estado` opcional) es la única fuente: `gastosDelMes`, `ingresosDelMes`, `balanceDelMes`, `mesadaDelMes`, `ingresosFijosDelMes`, `pagosFijos`, `gastosPorMes`, `gastoPorCategoria`, `cuotaMesada`, `ultimosMeses`. Reglas: un gasto fijo pertenece al mes de su **clave** en `S.pagosGastosFijos` (el mes que cubre, el mismo que usa la pantalla Gastos para "Pagado"); su monto es el **pagado**; los gastos variables reales excluyen `_esGastoVarNoReal()`. `getIngresosFijosMes()` y `_getCuotaAnio()` delegan en `Periodo`; `_wrappedMesadaMes`/`_wrappedIngresosFijosMes`/`_wrappedItemsRealesPeriodo`/`_wrappedCambioDeHabitos` también (Wrapped asigna un pago fijo a su mes-clave, no a su `fecha`). Todo test que cargue estos módulos debe cargar también `periodo.js` y `nu-calc.js` (ver `tests/README.md`); `Periodo` se expone además como `window.Periodo`. Tests nuevos: `periodo.test.js`, `migraciones.test.js`.
+
+**Cambio de comportamiento deliberado en Gastos fijos:** el pago ahora guarda `cat` y `nombre`, y **eliminar un gasto fijo ya no borra sus pagos** (esa plata salió de una cuenta de verdad; borrarlos hacía desaparecer un gasto real de los meses pasados). El diálogo lo dice.
+
+### 🐛 Bugs menores (2026-10-08, Inicio)
+- `renderAttencion()` (CDT por vencer) y los avisos de encargos usaban `new Date(fecha+'T00:00:00')`: con fechas sin ceros (`2026-9-5`) daba `Invalid Date` y el aviso fallaba. Ahora usan `_fechaSafe()`.
+- `renderProyeccion()` registraba un `document.addEventListener('click')` nuevo en cada `refresh()`. Ahora hay un solo listener global.
+
+### 🔧 Modelo (2026-10-08) — `S.plataCometida` → `S.plataComprometida` (migración v2)
+El campo tenía un typo desde el principio. `MIGRACIONES` v2 lo renombra al cargar (y junta ambos sin repetir ids si un dispositivo con la app vieja escribió el campo viejo). Cambiado en `core-state.js`, `plata_comprometida.js` y `wrapped.js`. **Antes de desplegar, buscar `plataCometida` en el resto de `js/` (p. ej. `tarjetas_credito.js`, `busqueda-global.js`, `actividad_reciente.js`): cualquier lectura que quede con el nombre viejo verá una lista vacía.**
+`spotify.js` llamaba a `_calcCSafe()` (eliminada al mover `calcC` al núcleo): `getSpCajitaSaldo()` fallaba al abrir Spotify; ahora usa `calcC()` y hay test de regresión (`spotify-cajita.test.js`).
+`actividad_reciente.js` también leía `S.plataCometida` (el feed dejaba de mostrar "Llegó/Esperando plata comprometida"): corregido.
+La importación de backups (`configuracion.js`) ahora valida más campos, rechaza backups de una versión más nueva y ejecuta `aplicarMigraciones()` antes de reemplazar `S`.
+
+### 🔧 Refactor (2026-10-08) — El cálculo de Nu pasa al núcleo (`js/core/nu-calc.js`); desaparecen los guards `typeof calcC`
+
+**Antes:** `calcC`, `calcCDT`, `nuTotal`, `getNuTasaGlobal` y sus auxiliares vivían en `cuentas.js` (grupo lazy) y `getCajitaNombre` en `encargos.js` (lazy). El núcleo (`calcPatrimonioTotal`, `refresh`, `save`) las llamaba con envoltorios `_calcCSafe`/`_calcCDTSafe`/`_nuTotalSafe` y valores de respaldo, y `snapshotPatrimonio()` necesitaba `_patrimonioDependenciasListas()` para no grabar un patrimonio artificialmente bajo. Además `cuentas.js` llamaba `getCajitaNombre` sin guard aunque estaba en otro módulo lazy: si se abría Cuentas antes de que Encargos cargara, fallaba al pintar movimientos con cajita.
+
+**Ahora:** todo el cálculo puro de Nu (tramos de tasa EA, saldo de encargos en cajita por fecha, CDT, rendimiento mensual de CDTs, `getCajitaNombre`) vive en `js/core/nu-calc.js`, de carga de entrada justo después de `core-state.js`. `cuentas.js` y `encargos.js` conservan solo UI y lo que muta datos (`materializarIntereses`, `registrarTasaNuHistorial`). Se eliminaron `_calcCSafe`, `_calcCDTSafe`, `_nuTotalSafe`, `_getNuTasaGlobalSafe` y los `typeof calcC === 'function'` de `cuentas.js`, `encargos.js` y `firebase-sync.js`. `_patrimonioDependenciasListas()` queda solo como guard mínimo contra un orden de `<script>` roto.
+
+**Cambio de comportamiento:** `getNuTasaGlobal()` ya no lee el input `#nuTasaGlobal` ni escribe en `S` como efecto colateral: devuelve `S.nuTasaGlobal || 9.25`. El input ya escribía en `S` en cada cambio (`firebase-sync.js`).
+
+**Todo test que cargue `cuentas.js`, `encargos.js` o `core-state.js` y use estas funciones debe cargar también `nu-calc.js`.**
+
+### 🔧 Refactor (2026-10-08) — `save()` ya no lee inputs del DOM
+
+**Antes:** `save()` leía `#nuRate`, `#mesadaMontoPapa/Mama`, `#spotifyCosto` y los inputs `cn_`, `cs_`, `cdt_*` de las cajitas. Estos últimos ya no se generaban en ningún render (código muerto), pero los demás hacían que el guardado dependiera de qué pantalla estuviera pintada (la cuota de Mesada necesitaba un guard por pantalla activa para no congelar un valor heredado).
+
+**Ahora:** la cuota de Mesada y el costo de Spotify llevan `data-s-bind` y escriben en `S` al teclear (`_bindInputsAS()` en `sheet-stack.js`); la cuota solo se graba si difiere de la heredada (`_getCuotaAnio`), igual que antes. Se quitó el input oculto `#nuRate` (nadie lo editaba): `S.nuRate` solo se inicializa en 9,25 si falta. `save()` solo serializa `S`.
+
+### ✅ Migraciones del modelo (2026-10-08) — `S.schemaVersion` y `MIGRACIONES` (`core-state.js`)
+
+Antes no había dónde enganchar un cambio de modelo: `migrarCuentasLegacy()` se eliminó el 2026-10-05 y los backups viejos se rechazaban. Ahora existe `MIGRACIONES` (lista ordenada, cada una corre una vez y debe ser idempotente) y `aplicarMigraciones(d)`, llamada al inicio de `load()`. Versión actual: 1 (línea base, sin cambios de datos). Pendiente: llamarla también desde la importación de backups (`configuracion.js`).
+
+### 🐛 Bugs menores (2026-10-08)
+- `index.html`: el botón "Configurar saldo mínimo" tenía el texto duplicado.
+- `index.html`: se borró el HTML del sheet `mov-cuenta-custom` (su acción `confirmarMovCustom` ya no existía; el botón "Agregar" no hacía nada). La rama `egreso` de `eliminarMovimiento()` se conserva: limpia datos históricos.
+- `encargos.js`: `crearEncargo()` vaciaba `enc_nombre` y después lo leía para el log de actividad, que quedaba sin nombre.
+
+### 🔧 Cambio (2026-10-08) — Service worker v18 → v19 (despliegue del refactor de Mesada)
+
+Los JS se sirven con stale-while-revalidate y `index.html` con network-first, así que justo después de desplegar la **primera** carga mezcla `index.html` nuevo con JS viejos en caché (el `mesada.js` viejo no conoce el id renombrado `mesadaMontoMama`). Subir `VERSION` hace que el nuevo SW borre las cachés viejas al activarse y las cargas siguientes queden limpias; esa primera carga mezclada no se puede evitar (si algo se ve raro, recargar). `APP_SHELL` solo lista `index.html`, así que los JS de Mesada no necesitaron entrar en ninguna lista: se cachean al cargarse.
+
 
 ### ✅ Corregido (2026-09-27) — Flujos destructivos (borrar datos, cerrar sesión, eliminar cuenta) no bloqueaban el resto de la app mientras corrían
 
@@ -959,6 +1567,11 @@ Con los 14 módulos de dominio completos por primera vez, un barrido sistemátic
 
 ## Encargos
 
+### ✅ Corregido (2026-10-08) — Se podía borrar a mano la salida "Usado para mesada" de un encargo
+
+`deleteMovEncargo` trataba esa salida como cualquier otra: devolvía la plata al encargo, pero el pago de mesada seguía contándola y su cuenta destino (más el espejo) quedaba inflada. Ahora la reconoce con `mesadaOrigenDeMovEncargo(movId)` (`calc-helpers.js`, carga de entrada porque Encargos y Mesada son grupos lazy distintos) y avisa que se borra desde Mesada. Detecta por lo guardado en `S.mesadas`, no por una marca en el movimiento, así que cubre también las salidas anteriores a este cambio. Ver `#mesada`.
+
+
 ### ✅ Corregido (2026-09-30) — "Yo puse la plata" contaba el margen dos veces cuando se usaba junto con el diferencial
 
 **Síntoma:** encargo cobrado por $91.000 (54.000 Efectivo + 37.000 Nequi) que costó $89.405 pagados desde Nu. Con "Yo puse la plata" y el diferencial activos a la vez, de Nu salían $91.000 y además el margen de $1.595 entraba como ingreso aparte: el total quedaba $1.595 por encima de la realidad.
@@ -1120,6 +1733,51 @@ Al migrar Encargos como tercer módulo completo (junto con `encargos-personas.js
 
 ## Mesada
 
+### 🔧 Refactor (2026-10-08) — Mesada se ordena en reglas (Parte 1) y pantalla (Parte 2) dentro de `mesada.js`; una sola versión de cada operación
+
+**Antes:** `mesada.js` (1.126 líneas) mezclaba DOM y reglas de negocio, y repetía en tres sitios (pago original, abonos del pendiente y "deshacer abono") la misma secuencia: crear la salida del encargo, sumar a la cuenta + movimiento espejo, y revertirlo. Además tenía dos copias del widget "pagó con plata de un encargo" (prefijos `mp` y `mpp`): `_poblarMpEncargoCuentas`/`_poblarMppEncargoCuentas` y `_sincronizarMpDestinoConEncargo`/`_sincronizarMppDestinoConEncargo` eran idénticas salvo el id del DOM (comprobado con `diff`), y el cálculo de "disponible en el encargo" estaba escrito 4 veces.
+
+**Ahora:**
+- Parte 1 de `mesada.js` (reglas, sin DOM): `mesadaRegistrarPago`, `mesadaAbonarPendiente`, `mesadaMarcarPendiente`, `mesadaBorrarPago`, `mesadaDeshacerAbono`, `mesadaResumenAnio` (todo lo que pinta la pantalla, calculado una vez). Las operaciones **validan todo antes de mutar** y devuelven `{ok, motivo}`.
+- `mesadaAbonosDe(info)` ve cada mes como `[pago original, ...abonos]` con la misma forma, **sin migrar lo guardado** (no se tocó el modelo de datos ni Firestore). Con eso, revertir es una sola función (`mesadaRevertirAbono`) en vez de tres copias.
+- `_mesadaEntrar`/`_mesadaSacar` fusionan "sumar/restar saldo + espejo" (15 sitios) y reemplazan a los wrappers `_registrarMovSecundarioMesada`/`_borrarMovSecundarioMesada`. Se descartó simplemente inlinear los wrappers: habría repetido `flujo:'entrada', origen:'Mesada'` 15 veces sin quitar la duplicación real.
+- Parte 2 de `mesada.js` (pantalla, que solo usa la API de la Parte 1): `_crearEncargoPicker(prefijo)` (una instancia por sheet, mismo patrón que `crearSplitWidget`) reemplaza las dos copias del widget; el wiring pasa a tablas (`_msCablear`); `renderMesada()` solo pinta lo que calcula `mesadaResumenAnio()`.
+- **Un solo archivo.** Se probó separarlo en `mesada-dominio.js` + `mesada.js` y se descartó: cada grupo lazy de la app es un único archivo y la separación no justificaba una excepción ni una dependencia de orden de carga. `Loader.GROUPS.mesada` queda `['js/modules/mesada.js']`.
+
+**Cómo se verificó:** `tests/mesada-reglas.test.js` (38 tests) y `tests/mesada-ui.test.js` (9 tests) + los 10 existentes de `calcPatrimonioTotal`: 57 en total. Además, antes de reemplazar el archivo se ejecutó el código **viejo** y el nuevo sobre el mismo estado y se comparó `S` completo: 9 escenarios de borrado, 8 de registro (incluido `confirmarMesadaPago` real con un DOM simulado) y 5 de abono: idénticos, salvo los bugs de abajo. Esas pruebas de paridad fueron un script de una sola vez (necesitaban el archivo viejo), no quedaron en el repo. Se comprobó por mutación que las regresiones fallan si se reintroduce cada bug.
+
+**Cambios visibles (a propósito):** los dos previews de "dividido" ahora dicen igual `· Todo distribuido` (antes el flujo sin encargo omitía el `·`); el aviso de "dividido supera el monto" ahora aparece **antes** de tocar el encargo; los textos de `mesada.js` pasan a tuteo (ver `#sheets--ui`, 2026-10-07: `mesada.js` no había sido revisado). `_movSecId: null` ya no se guarda cuando no hay cuenta (nada lo leía fuera de Mesada).
+
+### ✅ Corregido (2026-10-08) — Pago con encargo + dividido que se pasaba del monto dejaba la salida descontada del encargo
+
+`confirmarMesadaPago` agregaba la salida al encargo **antes** de validar `totalSplit > monto`. Si la validación fallaba, el `return` dejaba la salida en `enc.movimientos` sin pago de mesada, y al corregir y confirmar de nuevo se descontaba por segunda vez (cualquier `save()` intermedio lo persistía). Ahora el dominio valida encargo y split antes de crear nada. Test: `REGRESIÓN bug 1`.
+
+### ✅ Corregido (2026-10-08) — Borrar un pago pagado con encargo no devolvía la plata a la cuenta si la salida del encargo ya no existía
+
+La reversión leía el monto a devolver del movimiento del encargo; sin ese movimiento el monto quedaba en 0, no se descontaba nada de la cuenta destino y **sí** se borraba el espejo: saldo inflado y sin rastro. Era alcanzable porque `deleteMovEncargo` no distinguía las salidas creadas por Mesada y se podían borrar a mano desde Encargos (lo que además devolvía la plata al encargo mientras Mesada seguía contándola). Ahora (a) la reversión usa el monto guardado en el abono y (b) Encargos bloquea ese borrado (ver `#encargos`). Misma causa en el bucle de `pendienteHistorial` y en `deshacerPendienteMesada`. Test: `REGRESIÓN bug 2`.
+
+### ✅ Corregido (2026-10-08) — Nombre del encargo sin escapar en dos `toast()`
+
+"Ahí solo hay $X guardados de «nombre»" (`confirmarMesadaPago` y `confirmarPendienteMesada`) concatenaba `enc.nombre` (texto libre, sincronizado a toda la familia por Firebase) en un `toast()` que inserta con `innerHTML`. Ahora pasa por `escHtml()` en `_mesadaMostrarError`. Test: `REGRESIÓN bug 3`.
+
+### ✅ Corregido (2026-10-08) — Protección por antigüedad: cuentas de los abonos y etiqueta vacía
+
+`_mesadaFuentesDe` solo miraba el pago original, no las cuentas de los abonos del pendiente. Si el original fue "no especificar" y un abono fue a Nequi, `_mesadaTieneCuentaAfectada` daba `true` pero `fuentes` quedaba vacío, y el aviso de nivel "viejo" llamaba `fuenteLabel(undefined)`. Ahora `mesadaFuentesDe` incluye todos los abonos y, si solo hay encargos, la etiqueta es "Encargos". **No se cambió** a propósito qué fecha se usa para medir la antigüedad (la del pago original).
+
+### 🔧 Cambio (2026-10-08) — El match de encargos por nombre ahora es por palabra completa (se probó un vínculo con persona y se quitó)
+
+`mesadaEncargosDelParent` buscaba con `includes` sobre el nombre del encargo: "papayera" coincidía con papá. Ahora compara por **palabra completa o su plural** (papá, papi, papito, padre; mamá, mami, mamita, madre; sin tildes ni mayúsculas). Limitaciones que quedan: "Papas" (comida) sigue coincidiendo con "Papás", y un encargo con otro nombre ("Carlos") no aparece; la solución es renombrar el encargo. El modo por nombre ya estaba documentado como decisión de diseño (`mesada.md` §8), así que no se trató como bug.
+
+**Probado y descartado:** un vínculo opcional `S.mesadas[parent].personaId` (enlace "Vincular a una persona" en cada tarjeta) para ofrecer los encargos de esa persona sin depender del nombre. Se quitó antes de desplegar por no hacer falta (el costo es una pantalla más y un dato más que mantener). Si algún día hace falta, la lógica era: con vínculo, `e.personaId === personaId`; sin vínculo, por nombre; y un vínculo a una persona eliminada se ignora.
+
+### 🔧 Cambio (2026-10-08) — Los previews de los sheets de Mesada no ocupan lugar cuando están vacíos
+
+`#mpPreview` y `#mppPreview` (clase `.ms-preview`) reservaban `min-height:18px` + margen aunque no tuvieran texto, dejando un hueco en el sheet. Ahora `.ms-preview:empty{display:none}`: el JS los vacía con `textContent = ''`, y al escribir un mensaje reaparecen. Efecto secundario: al aparecer el primer mensaje el contenido de abajo baja unos píxeles (antes el espacio estaba reservado).
+
+### 🔧 Cambio (2026-10-08) — Estilos inline de Mesada pasan a clases (`.ms-*` en `styles.css`) y se renombra `mesadaMonteMama`
+
+La pantalla principal (las tarjetas de papá y mamá repetían el mismo bloque de estilos), los dos sheets (`index.html`) y la template de `abrirDetalleMesada()` repetían estilos inline (el bloque de encargo estaba duplicado entero). Ahora son clases `.ms-*` con los mismos valores; en `index.html` solo quedan los `style="display:none;"` iniciales, que el JS alterna con `style.display`; el botón ámbar de "marcar pendiente" quedó en `.12` de opacidad (antes `.10` en un lugar y `.12` en otro). El id `mesadaMonteMama` (typo) pasa a `mesadaMontoMama` en `index.html`, `core-state.js` y `mesada.js`. Se eliminó `_mostrarSeccionDestinoNormal(mostrar)`/`_mostrarMppDestinoNormal(mostrar)`: solo se llamaban con `true` y su selector `#sheet-mesada-pago .field-header` dependía del orden del DOM. También se eliminó `mpMesNombre` (variable sin uso) y se reemplazó el reseteo manual del widget de dividir por `splitReset('mp')`.
+
 ### 🔧 Cambio (2026-09-21) — Documentación de "pagar con plata de un encargo" y limpieza de comentarios
 
 `mesada.md` no documentaba el flujo "Me pagó con plata de un encargo" (sheets `mpUsarEncargo`/`mppUsarEncargo`, campo `origenEncargo`), presente en `mesada.js` desde antes: se agregó a §2, §3, §4 (modelo de datos), §5 (flujos) y §6 (casos especiales). También se documentó la protección por antigüedad al borrar un pago (ya implementada, sin mencionar). Se quitaron fechas y referencias a la migración a módulos separados que ya no aportan (el archivo en sí ya dice dónde vive el código). `mesada.js`: limpieza de comentarios (sin cambios de código) que fechaban decisiones ya asentadas.
@@ -1219,6 +1877,31 @@ Fix: agregado el mismo guard de pantalla activa que ya usa `refresh()`, como con
 ---
 
 ## Spotify
+
+### ✨ Nuevo (2026-10-06) — "Te dio un extra": pagar de más ya no se rechaza, se registra aparte
+
+**Pedido:** a veces el período cuesta $5.100 y te dan $5.500. Antes, `confirmarSpDestino()` rechazaba cualquier monto mayor a lo esperado ("aumentá los períodos si pagó de más"), así que ese extra no tenía dónde vivir.
+
+**Qué hace ahora:** si "¿Cuánto te dio?" supera períodos × cuota, el sheet muestra un bloque azul "Te dio un extra de +$400" con su propio selector "¿A dónde fue el extra?" (misma cuenta del cobro, otra cuenta o "Sin especificar"; en modo dividido hay que elegir una, no existe "la misma"). El cobro de Spotify guarda **solo la cuota** (`monto = períodos × cuota`), así que "Recaudado", "Total cobrado", ganancia y promedio por ciclo **no se inflan**. El extra va aparte:
+- Se suma a la cuenta elegida (`sumarFuente`) y deja un movimiento espejo en su historial vía `registrarMovEspejo()` (`_esExtraIngreso: true`, `_secundario`, `_origenSeccion: 'Spotify'`) — cuenta como **ingreso real independiente** en Análisis, Salud financiera y Wrapped, y no se puede borrar desde la cuenta.
+- Queda en el registro del cobro: `extra`, `extraFuente`, `extraMovId`. Si hubo "pago atrasado" (dos registros), cuelga del último, porque el extra no pertenece a ningún período.
+- Borrar el cobro revierte el extra (`descontarFuente` exacto + `borrarMovEspejo`); el diálogo de borrado lo menciona.
+- El historial de Spotify muestra una línea "+ $400 extra · Nequi · aparte del cobro de Spotify" y las estadísticas una tarjeta "Extras recibidos" (solo aparece si alguna vez hubo uno).
+- Validado todo antes de tocar saldos (el destino del extra es obligatorio), para no repetir el bug de "aplicado a medias" de Prestado (2026-10-02).
+
+**Límites conocidos:** con destino "Sin especificar" el extra queda anotado en el cobro pero no entra a ninguna cuenta ni cuenta como ingreso (no hay plata que mover). Un extra guardado en una cajita aparece en el historial de la cajita pero, como cualquier espejo de cajita, no entra a `entradasIngresoReal()` (comportamiento previo del núcleo).
+
+### ✨ Cambio (2026-10-06) — Estadísticas: "En mano" y "Beneficio total" lado a lado
+
+Antes la app mostraba una sola lectura: `cobrado − pagado + tu parte`. Ahora muestra las dos, porque responden preguntas distintas:
+- **En mano** = `cobrado − pagado`: plata nueva y libre para gastar hoy.
+- **Beneficio total** = `cobrado − pagado + tu parte`: lo anterior más el mes de Spotify que te salió gratis (el dinero que no tuviste que sacar de tu bolsillo).
+
+"Promedio real por ciclo pagado" muestra ambos promedios en dos columnas; "Ganancia acumulada" mantiene el beneficio total como cifra grande y agrega la línea "en mano: …". Si el costo del plan no está configurado (no hay cuota del admin), las dos serían idénticas y se muestra una sola.
+
+**Último / mejor / peor sin repetir:** con 1 ciclo dice "único ciclo pagado todavía"; si todos los ciclos dieron lo mismo, "todos los ciclos: +$20.483 · sin variación"; en cuanto hay diferencia vuelve el detalle "último · mejor · peor". De paso se corrigió que "mejor:" siempre llevaba un `+` fijo aunque el valor fuera negativo.
+
+**Verificación:** `node --check spotify.js` limpio y 18 comprobaciones en jsdom (extra a la misma cuenta, a otra, con split, sin destino → bloquea sin escribir, borrar revierte saldos y espejo, cuota exacta y pago de menos sin bloque extra, y los tres formatos del pie de ciclos). **No probado en navegador real.**
 
 ### 🔧 Cambio (2026-09-20) — Limpieza de documentación y comentarios obsoletos de Spotify
 
@@ -1945,6 +2628,40 @@ Validado con `node --check`. **Sin verificar en navegador real** (mismo entorno 
 
 ## Prestado
 
+### 🔧 Limpieza (2026-10-04) — referencias obsoletas tras la reestructuración
+
+Un comentario de `prestado.js` apuntaba a `_onSelPersonaNuevaDeuda` (ya no existe; ahora es `_onSelPersonaYoDebo`), `prestado.md` mencionaba `nd_destino` (el sheet "Nueva deuda" ya no existe) y no decía que un pago de "Yo debo" sí ofrece tarjetas con cupo. Se corrigieron. El documento del proyecto (`mis-finanzas.md`) ahora lista `cuenta-efectos.js` entre los archivos de `js/core/` y describe `Deudas` en la fila de `calc-helpers.js`. Sin cambios de comportamiento.
+
+### ✨ Agregado (2026-10-03) — Perdonar una parte de la deuda (Me deben y Yo debo)
+
+**Qué cambió:** "¿Se lo regalas?" ya no obliga a perdonar todo lo que falta. En "Registrar abono" el toggle está disponible y el monto es libre (hasta lo que debe); en "Pagar préstamo completo" sigue siendo todo lo que falta. Lo perdonado cuenta como **gasto real** (patrimonio − lo perdonado) y la deuda baja solo esa parte. Una parte se guarda como `'abono'` con `_perdon: true`; si es todo lo que faltaba, como `'pago-completo'` con `_perdon: true` (se decide por el saldo al aplicar, y también cuando el abono iguala el saldo y se promueve solo a pago completo). El gasto se describe "Perdoné parte de la deuda — X" o "Perdoné deuda — X", y el aviso final dice cuánto todavía debe la persona.
+
+**"Yo debo", igual:** que te perdonen una parte o todo. Lo perdonado es **ingreso** (con `_prestadoDirectamente`, para que Inicio lo cuente) y el monto sugerido es todo lo que falta, pero se puede bajar sin que el toggle pise lo ya escrito.
+
+**Validación nueva:** no se puede perdonar más de lo que la persona debe (ni cuando no hay saldo): el monto perdonado se compara con el saldo con `Deudas.TOL_FINO` ($0,50). Antes no hacía falta porque el monto estaba fijo.
+
+**Sin cambios para lo existente:** los perdones ya registrados (siempre `'pago-completo'` + `_perdon`) se leen, se muestran y se eliminan igual; todos los totales que filtran por `_perdon` (detalle, Personas, Wrapped) siguen igual.
+
+**Verificación (jsdom, `index.html` real, y tests nuevos en `tests/medeben.test.js` y `tests/yodebo.test.js`):** perdonar 30.000 de 100.000 (debe 70.000, gasto 30.000, patrimonio −30.000, ninguna cuenta se mueve), perdonar lo que queda (pago completo), eliminar el perdón parcial (devuelve su parte y solo borra su gasto), perdonar todo desde "Registrar abono", perdonar de más (error sin escribir nada), y lo mismo en "Yo debo" con ingreso.
+
+### 🐛 Corregido (2026-10-03) — "Yo debo": la lista no se actualizaba al eliminar o cambiar una persona; pestañas sin depender del CSS
+
+**Causa (lista desactualizada):** `refresh()` (`core-state.js`) solo volvía a pintar la lista de "Me deben" cuando Préstamos estaba activa; la de "Yo debo" solo se pintaba al entrar a la pantalla o al cambiar de pestaña. Al eliminar a una persona de "Yo debo", la app volvía a la lista, pero la lista seguía mostrando a la persona hasta cambiar de pantalla. Lo mismo pasaba con cualquier cambio de saldo: registrar un movimiento y volver mostraba el saldo anterior. **Arreglo:** `refresh()` pinta las dos listas cuando Préstamos está activa (las dos viven en el DOM aunque una esté oculta), y `volverMisDeudas()` / `volverDeudores()` también pintan su lista al volver. Eliminar a alguien de "Yo debo" ahora muestra el aviso "X eliminado", igual que en "Me deben". Reproducido antes del arreglo con el `index.html` real.
+
+**Pestañas Me deben / Yo debo:** se había pasado el color de la pestaña activa a una clase CSS (`.btn-tab-activa`). El Service Worker sirve el CSS desde caché y puede tardar una carga en actualizarse, y mientras tanto la pestaña activa dejaba de verse verde. Se volvió a pintar en línea (`_pintarTabPrestamos`, una sola función para las dos pestañas), que no depende de ningún archivo aparte. La regla `.btn.btn-tab-activa` ya no existe en `styles.css`.
+
+**Verificación (jsdom, `index.html` real):** al eliminar a una persona de "Yo debo" y de "Me deben" la lista deja de mostrarla; después de registrar un movimiento y volver, la lista muestra el saldo nuevo; las pestañas activa e inactiva con el color correcto.
+
+### 🐛 Corregido (2026-10-03) — "Yo debo": el perdón no sumaba al ingreso del mes, y los movimientos sin cuenta no salían en Actividad reciente
+
+**Causa 1 (ingreso del mes):** el perdón de una deuda propia crea una entrada sin cuenta (`fuente: ''`). Inicio (`ingresosMes` en `inicio.js`) solo suma las entradas con cuenta (Nequi, Efectivo, cajita, cuenta personalizada) o con la bandera `_prestadoDirectamente`. El perdón subía el patrimonio pero no el ingreso del mes, y por lo tanto tampoco entraba en los ratios de salud financiera. Mis pruebas de la Fase 3 solo comprobaban el patrimonio y `_esEntradaEspejoNoIngreso`, y no lo vieron. Reproducido: ingreso del mes 0 después de perdonar $90.000. **Arreglo:** la entrada lleva `_prestadoDirectamente: true`, la misma bandera que usa el margen de un préstamo. Ahora suma $90.000.
+
+**Causa 2 (Actividad reciente):** el feed solo mostraba de "Yo debo" los movimientos que dejaban un espejo en una cuenta, con el texto del espejo ("Me prestó — X"). Los pagos con tarjeta y los movimientos "sin especificar" no aparecían en ningún lado. **Arreglo:** una fila propia por movimiento (`_normMisDeudas`: "Me prestó X" / "Pago a X"), y los espejos de "Yo debo" se ocultan como ya se hacía con los de "Me deben" (`_espejosDeudores`). El perdón sigue saliendo una sola vez, como ingreso, y el pago de más como gasto.
+
+**Verificación:** 2 tests nuevos en `tests/yodebo.test.js` (el perdón cuenta en el ingreso del mes; pagar o recibir una deuda no cuenta como ingreso ni gasto) y una prueba del feed sobre el `index.html` real (2 "Me prestó", 4 "Pago a", 1 perdón, 1 pago de más, ningún espejo duplicado).
+
+**Sobre fusionar `S.deudores` y `S.misDeudas`:** `firebase-sync.js` no lee ninguna de las dos (sincroniza todo `S` tal cual), así que ese riesgo no existe. Se mantiene la decisión de dejarlas separadas por lo que sigue siendo cierto: cambiaría el formato del backup JSON (`configuracion.js` exige `deudores`), reescribiría datos guardados sin copias automáticas, y hoy no aporta nada que se use.
+
 ### ✨ Agregado (2026-10-03) — "Yo debo": grupos de préstamo, y pantallas compartidas con "Me deben"
 
 **Grupos en "Yo debo":** igual que "Me deben": cada deuda propia se organiza en préstamos (Histórico, "Es un préstamo aparte", selector con 2 o más abiertos, cierre automático al saldarse y reapertura al borrar, acordeón en el detalle, migración silenciosa de deudas anteriores). La maquinaria de grupos ya recibía la deuda por parámetro; solo `getGrupoSaldo` asumía que lo que abre la deuda es `'prestamo'`, y ahora usa `Deudas.abre()`. El grupo se resuelve al aplicar el movimiento, no al validar, así que un error no deja grupos vacíos. Sheet nuevo: `md_grupo`, `md_grupo_check`, `md_grupo_nombre`.
@@ -2002,10 +2719,6 @@ Validado con `node --check`. **Sin verificar en navegador real** (mismo entorno 
 **Pendiente en "Yo debo":** nada de lo que tiene "Me deben" (los grupos se agregaron después, ver arriba).
 
 **Verificación (jsdom):** pago y recibido divididos, perdón, pago de más y su reversión exacta; patrimonio antes/después de cada caso; 6 casos de error que no cambian ningún dato; y un registro antiguo de una sola cuenta se elimina igual que antes.
-
-### 🔧 Cambio (2026-10-02) — Pestañas Me deben / Yo debo con clase CSS (`.btn-tab-activa`)
-
-Antes se pintaban con estilos inline desde `_pintarTabPrestamos()`. Ahora la pestaña activa lleva `.btn.btn-tab-activa` (definida en `css/styles.css`) y la inactiva `.btn-ghost`; el botón inicial de `index.html` ya nace con la clase.
 
 ### 🔧 Reestructuración (2026-10-02) — Fase 2: capa de acceso `Deudas`, un solo juego de helpers y tolerancias con nombre
 

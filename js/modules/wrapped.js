@@ -1346,12 +1346,11 @@ function _wrappedGraficoAnimadoSvg(serie){
   const ultimo = coords[coords.length-1];
   const areaD = pathD + ` L${ultimo.x.toFixed(1)},${baseY} L${coords[0].x.toFixed(1)},${baseY} Z`;
   const dots = coords.map((c,i) => {
-    const esFinal = i === coords.length-1;
-    return `<circle class="wrapped-dot${esFinal?' wrapped-dot-final':''}" style="animation-delay:${(0.5 + i*0.09).toFixed(2)}s" cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="${color}"/>`;
+    return `<circle class="wrapped-dot" style="animation-delay:${(0.5 + i*0.09).toFixed(2)}s" cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3.5" fill="${color}"/>`;
   }).join('');
   const labelIni = `<text x="${coords[0].x.toFixed(1)}" y="${h-2}" font-size="9" fill="var(--text3)" text-anchor="start" font-family="'DM Mono',monospace">${_wrappedMesKaAbrev(serie[0].mesK)}</text>`;
   const labelFin = `<text x="${ultimo.x.toFixed(1)}" y="${h-2}" font-size="9" fill="var(--text3)" text-anchor="end" font-family="'DM Mono',monospace">${_wrappedMesKaAbrev(serie[serie.length-1].mesK)}</text>`;
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block;overflow:visible;">
+  return `<svg class="wrapped-svg-block" viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
     <defs>
       <linearGradient id="wrappedAreaGradient" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="${color}" stop-opacity="0.35"/>
@@ -1525,6 +1524,14 @@ function _wrappedInyectarEstilos(){
 .wrapped-mes-cell{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:10px 11px;}
 .wrapped-mes-cell-top{display:flex;align-items:center;gap:6px;margin-bottom:5px;}
 .wrapped-mes-dot-color{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.wrapped-mes-dot-ok{background:var(--accent);}
+.wrapped-mes-dot-mal{background:var(--red);}
+.wrapped-mes-dot-cero{background:var(--text3);}
+.wrapped-svg-block{display:block;overflow:visible;}
+.wrapped-hit{cursor:pointer;}
+.wrapped-sub.wrapped-sub-sep{margin-top:14px;}
+.wrapped-icono-sep{margin-right:8px;}
+.wrapped-c-text{color:var(--text);}
 .wrapped-mes-nombre{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;}
 .wrapped-mes-linea{font-size:12px;color:var(--text2);line-height:1.4;}
 .wrapped-bars{width:100%;margin-top:14px;display:flex;flex-direction:column;gap:10px;text-align:left;}
@@ -1626,6 +1633,13 @@ function _wrappedInyectarEstilos(){
 }
 
 /* ─── ARMADO DE CADA SLIDE ────────────────────────────────────────────── */
+// El color del número grande llega como `var(--x)` desde cada slide; se traduce a una clase (la CSP sin 'unsafe-inline'
+// bloquearía un atributo de estilo). `_moodRegex` (en _wrappedBuildSlides) lee esas mismas clases para el fondo del slide. Las clases c-* viven en styles.css; wrapped-c-text, en el CSS de este archivo.
+function _wrappedColorClase(color){
+  const mapa = { 'var(--accent)':'c-green', 'var(--red)':'c-red', 'var(--amber)':'c-amber', 'var(--purple)':'c-purple', 'var(--blue)':'c-blue', 'var(--text)':'wrapped-c-text' };
+  if(!mapa[color] && typeof console !== 'undefined') console.warn('[wrapped] color sin clase:', color);
+  return mapa[color] || '';
+}
 function _wrappedSlideBignum(eyebrow, headline, value, color, opts){
   opts = opts || {};
   // Robustez: si `value` llegara indefinido/NaN (dato corrupto, campo
@@ -1643,7 +1657,7 @@ function _wrappedSlideBignum(eyebrow, headline, value, color, opts){
   return `<div class="wrapped-slide-inner">
     <div class="wrapped-eyebrow">${eyebrow}</div>
     ${headline ? `<div class="wrapped-headline">${headline}</div>` : ''}
-    <div class="wrapped-bignum${claseOculto}" data-value="${valorSeguro}"${opts.signed?' data-signed="1"':''}${opts.sufijo?` data-sufijo="${opts.sufijo}"`:''} style="color:${color};">0</div>
+    <div class="wrapped-bignum ${_wrappedColorClase(color)}${claseOculto}" data-value="${valorSeguro}"${opts.signed?' data-signed="1"':''}${opts.sufijo?` data-sufijo="${opts.sufijo}"`:''}>0</div>
     ${opts.sub ? `<div class="wrapped-sub">${opts.sub}</div>` : ''}
   </div>`;
 }
@@ -2448,8 +2462,8 @@ function _wrappedGraficoMensualSvg(meses){
   const pathDe = key => meses.map((m,i) => (i===0?'M':'L') + xOf(i).toFixed(1) + ',' + yOf(m[key]).toFixed(1)).join(' ');
   const dotsDe = (key, clase) => meses.map((m,i) => `<circle class="wrapped-mes-dot ${clase}" data-idx="${i}" cx="${xOf(i).toFixed(1)}" cy="${yOf(m[key]).toFixed(1)}" r="3.5"/>`).join('');
   const labels = meses.map((m,i) => `<text class="wrapped-mes-label" data-idx="${i}" x="${xOf(i).toFixed(1)}" y="${h-2}" font-size="9" text-anchor="middle" font-family="'DM Mono',monospace" fill="var(--text3)">${_wrappedMesKaAbrev(m.mesK)}</text>`).join('');
-  const hitzones = meses.map((m,i) => `<rect data-wrapped-mesidx="${i}" x="${(xOf(i)-(stepX||w)/2).toFixed(1)}" y="0" width="${(stepX||w).toFixed(1)}" height="${h}" fill="transparent" style="cursor:pointer;"/>`).join('');
-  return `<svg class="wrapped-mensual-svg" viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block;overflow:visible;">
+  const hitzones = meses.map((m,i) => `<rect data-wrapped-mesidx="${i}" x="${(xOf(i)-(stepX||w)/2).toFixed(1)}" y="0" width="${(stepX||w).toFixed(1)}" height="${h}" fill="transparent" class="wrapped-hit"/>`).join('');
+  return `<svg class="wrapped-mensual-svg wrapped-svg-block" viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
     <path d="${pathDe('ingresos')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="${pathDe('gastos')}" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     <g>${dotsDe('ingresos','wrapped-dot-ingreso')}${dotsDe('gastos','wrapped-dot-gasto')}</g>
@@ -2471,11 +2485,11 @@ function _wrappedMesDetalleHtml(meses, idx, fmt2){
   } else {
     comparacion = 'Tu primer mes con datos este año.';
   }
-  const colorBalance = m.balance >= 0 ? 'var(--accent)' : 'var(--red)';
+  const colorBalance = m.balance >= 0 ? 'c-green' : 'c-red';
   return `<div class="wrapped-mes-head">${_wrappedMesKaNombre(m.mesK)}</div>
-    <div class="wrapped-mes-fila"><span>Ingresos</span><b style="color:var(--accent);">${fmt2(m.ingresos)}</b></div>
-    <div class="wrapped-mes-fila"><span>Gastos</span><b style="color:var(--red);">${fmt2(m.gastos)}</b></div>
-    <div class="wrapped-mes-fila"><span>Balance</span><b style="color:${colorBalance};">${_wrappedFmtSigned(fmt2, m.balance)}</b></div>
+    <div class="wrapped-mes-fila"><span>Ingresos</span><b class="c-green">${fmt2(m.ingresos)}</b></div>
+    <div class="wrapped-mes-fila"><span>Gastos</span><b class="c-red">${fmt2(m.gastos)}</b></div>
+    <div class="wrapped-mes-fila"><span>Balance</span><b class="${colorBalance}">${_wrappedFmtSigned(fmt2, m.balance)}</b></div>
     <div class="wrapped-mes-compara">${comparacion}</div>`;
 }
 
@@ -3007,8 +3021,7 @@ function _wrappedBuildSlides(S, fmt2){
   if(graficoSvg){
     let bignum = '', sub = '';
     if(patrimonio && Number.isFinite(patrimonio.diff)){
-      const color = patrimonio.diff >= 0 ? 'var(--accent)' : 'var(--red)';
-      bignum = `<div class="wrapped-bignum" data-value="${patrimonio.diff}" data-signed="1" style="color:${color};">0</div>`;
+      bignum = `<div class="wrapped-bignum ${patrimonio.diff >= 0 ? 'c-green' : 'c-red'}" data-value="${patrimonio.diff}" data-signed="1">0</div>`;
       sub = `<div class="wrapped-sub">${_wrappedCopyPatrimonio(patrimonio)}</div>`;
     }
     slides.push({
@@ -3068,9 +3081,9 @@ function _wrappedBuildSlides(S, fmt2){
     // una cuadrícula de 2 columnas sin scroll: nombre corto de mes +
     // punto de color según el balance + la misma frase de siempre.
     const celdas = historiasMensuales.map(m => {
-      const color = m.balance > 0 ? 'var(--accent)' : (m.balance < 0 ? 'var(--red)' : 'var(--text3)');
+      const claseDot = m.balance > 0 ? 'wrapped-mes-dot-ok' : (m.balance < 0 ? 'wrapped-mes-dot-mal' : 'wrapped-mes-dot-cero');
       return `<div class="wrapped-mes-cell">
-        <div class="wrapped-mes-cell-top"><span class="wrapped-mes-dot-color" style="background:${color};"></span><span class="wrapped-mes-nombre">${_wrappedMesKaAbrev(m.mesK)}</span></div>
+        <div class="wrapped-mes-cell-top"><span class="wrapped-mes-dot-color ${claseDot}"></span><span class="wrapped-mes-nombre">${_wrappedMesKaAbrev(m.mesK)}</span></div>
         <div class="wrapped-mes-linea">${m.linea}</div>
       </div>`;
     }).join('');
@@ -3129,7 +3142,7 @@ function _wrappedBuildSlides(S, fmt2){
       id: 'racha',
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">Racha de ahorro</div>
-        <div class="wrapped-bignum" style="color:var(--amber);">${racha}</div>
+        <div class="wrapped-bignum c-amber">${racha}</div>
         <div class="wrapped-sub">alcancías seguidas — ${_wrappedCopyRacha(racha)}</div>
       </div>`
     });
@@ -3172,7 +3185,7 @@ function _wrappedBuildSlides(S, fmt2){
           <div class="wrapped-stat"><div class="wrapped-stat-v">${fmt2(prestadoAnio.totalPrestado)}</div><div class="wrapped-stat-l">Prestado</div></div>
           <div class="wrapped-stat"><div class="wrapped-stat-v">${fmt2(prestadoAnio.totalDevuelto)}</div><div class="wrapped-stat-l">Recuperado</div></div>
         </div>
-        <div class="wrapped-sub" style="margin-top:14px;">${_wrappedCopyPrestado(prestadoAnio, fmt2)}</div>
+        <div class="wrapped-sub wrapped-sub-sep">${_wrappedCopyPrestado(prestadoAnio, fmt2)}</div>
       </div>`
     });
   }
@@ -3327,7 +3340,7 @@ function _wrappedBuildSlides(S, fmt2){
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">El regreso triunfal</div>
         <div class="wrapped-headline">${_wrappedNombrePersona(recuperacion.personaId, recuperacion.nombre)}</div>
-        <div class="wrapped-bignum" style="color:var(--accent);">${recuperacion.dias}</div>
+        <div class="wrapped-bignum c-green">${recuperacion.dias}</div>
         <div class="wrapped-sub">día${recuperacion.dias===1?'':'s'} para devolverte por completo lo que le prestaste.</div>
       </div>`
     });
@@ -3362,8 +3375,8 @@ function _wrappedBuildSlides(S, fmt2){
       intensidad: gastoRandom.z, // reutiliza el mismo z ya calculado, nunca uno nuevo
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">Premio al gasto más inesperado</div>
-        <div class="wrapped-headline"><i class="fa-solid fa-star" style="margin-right:8px;color:var(--purple);"></i>${escHtml(gastoRandom.desc)}</div>
-        <div class="wrapped-bignum" data-value="${gastoRandom.monto}" style="color:var(--purple);">0</div>
+        <div class="wrapped-headline"><i class="fa-solid fa-star wrapped-icono-sep c-purple"></i>${escHtml(gastoRandom.desc)}</div>
+        <div class="wrapped-bignum c-purple" data-value="${gastoRandom.monto}">0</div>
         <div class="wrapped-sub">No esperábamos verte por acá este año.</div>
       </div>`
     });
@@ -3535,17 +3548,18 @@ function _wrappedBuildSlides(S, fmt2){
   // racha, y todos los "insights" de terceros armados con
   // `_wrappedSlideBignum`): en vez de tocar cada `slides.push(...)` de
   // arriba a mano, se reutiliza el MISMO color que esa función ya eligió
-  // para pintar el número grande (`style="color:var(--purple)"`, etc.) —
+  // para pintar el número grande (la clase `c-purple`, etc.) —
   // así el acento de fondo siempre combina con el número del propio
   // slide, sin definir una segunda vez qué color le corresponde a cada
   // dato. Si un slide no trae ningún color inline (los puramente de
   // texto, que ya recibieron su `mood` explícito arriba), cae a
   // `--accent`, el mismo default neutro de siempre.
-  const _moodRegex = /color:\s*var\(--(purple|blue|amber|red|accent)\)/;
+  const _MOOD_DE_CLASE = { 'c-purple':'purple', 'c-blue':'blue', 'c-amber':'amber', 'c-red':'red', 'c-green':'accent' };
+  const _moodRegex = /(?:^|[\s"])(c-purple|c-blue|c-amber|c-red|c-green)(?=[\s"])/;
   slides.forEach(sl => {
     if(sl.mood) return;
     const m = _moodRegex.exec(sl.html);
-    sl.mood = m ? m[1] : 'accent';
+    sl.mood = m ? _MOOD_DE_CLASE[m[1]] : 'accent';
   });
 
   // Snapshot para el panel de debug visual (2026-09-15, ver

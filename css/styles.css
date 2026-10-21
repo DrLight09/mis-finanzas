@@ -839,3 +839,61 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .gasto-btn-pagar{font-size:11px;padding:5px 10px;background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;font-weight:600;}
 .gasto-item-meta.gasto-meta-fijo{justify-content:space-between;}
 .gasto-flecha{margin:0 3px;font-size:10px;}
+
+/* ── Inicio (Paso 5: estilos inline → clases) ─────────────────────────────── */
+/* Necesita atención */
+.inicio-attn-badge{font-size:11px;font-family:'DM Mono',monospace;padding:2px 8px;border-radius:20px;}
+.inicio-attn-badge-red{color:var(--red);background:rgba(240,104,104,.12);}
+.inicio-attn-badge-amber{color:var(--amber);background:rgba(240,184,64,.12);}
+.card.inicio-attn-item{margin-bottom:7px;}
+.inicio-attn-texto{font-size:12px;}
+.inicio-attn-texto-red{color:var(--red);}
+.inicio-attn-texto-amber{color:var(--amber);}
+/* Salud financiera */
+.inicio-salud-vacio{font-size:12px;color:var(--text3);}
+.inicio-salud-wrap{align-items:flex-start;}
+.health-ring.inicio-salud-anillo{flex-shrink:0;}
+.inicio-salud-arco{transition:stroke-dasharray .8s cubic-bezier(.4,0,.2,1);}
+.health-score-num.inicio-salud-ok{color:var(--accent);}
+.health-score-num.inicio-salud-warn{color:var(--amber);}
+.health-score-num.inicio-salud-mal{color:var(--red);}
+.inicio-tip{display:flex;align-items:flex-start;gap:5px;margin-top:4px;font-size:11px;line-height:1.4;}
+.inicio-tip-ok{color:var(--accent);}
+.inicio-tip-warn{color:var(--amber);}
+/* Proyección */
+.inicio-proy-vacio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;min-height:100px;padding:4px 8px;}
+.inicio-proy-vacio-ico{width:34px;height:34px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.inicio-proy-vacio-titulo{font-size:12px;font-weight:600;color:var(--text2);}
+.inicio-proy-vacio-texto{font-size:11px;color:var(--text3);line-height:1.5;max-width:210px;}
+.inicio-proy-deuda{font-size:10px;color:var(--red);margin-top:5px;font-family:'DM Mono',monospace;}
+.inicio-proy-fila{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:2px 0;}
+.inicio-proy-fila.inicio-proy-fila-click{cursor:pointer;}
+.inicio-proy-etiqueta{font-size:12px;color:var(--text2);}
+.inicio-proy-info{font-size:9px;color:var(--text3);margin-left:5px;display:inline-flex;align-items:center;}
+.inicio-proy-valor{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;}
+.inicio-proy-valor-nulo{color:var(--text3);}
+.inicio-proy-pos{color:var(--accent);}
+.inicio-proy-neg{color:var(--red);}
+.inicio-proy-aviso{text-align:center;background:var(--bg3);border-radius:8px;padding:16px 10px;}
+.inicio-proy-aviso-txt{font-size:11px;color:var(--text3);line-height:1.5;}
+.inicio-proy-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:relative;}
+.inicio-proy-card{text-align:center;background:var(--bg3);border-radius:8px;padding:10px 6px;min-width:0;cursor:pointer;-webkit-tap-highlight-color:rgba(200,240,96,.12);transition:background .12s;}
+.inicio-proy-card-k{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:4px;}
+.inicio-proy-card-v{font-size:clamp(10px,3vw,13px);font-weight:600;font-family:'DM Mono',monospace;overflow-wrap:break-word;word-break:break-word;}
+.inicio-proy-tt{position:absolute;top:calc(100% + 8px);left:0;right:0;background:#1a1a1a;border:1px solid #383838;border-radius:10px;padding:10px 13px;font-family:'DM Mono',monospace;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,.7);}
+.inicio-proy-pie{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
+.inicio-proy-base{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;}
+.inicio-proy-chip{font-size:9px;font-family:'DM Mono',monospace;border-radius:4px;padding:1px 6px;}
+.inicio-proy-chip-prelim{color:#e8a838;background:rgba(232,168,56,.12);border:1px solid rgba(232,168,56,.25);letter-spacing:.3px;}
+.inicio-proy-chip-estable{color:var(--accent);background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.2);letter-spacing:.3px;}
+.inicio-proy-chip-est{color:var(--text3);}
+/* Tooltip de la proyección */
+.inicio-tt-titulo{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.inicio-tt-cuerpo{font-size:11px;color:#f0ede8;line-height:1.5;}
+.inicio-tt-nota{font-size:9px;color:var(--text3);}
+.inicio-tt-nota.inicio-tt-nota-top{margin-top:4px;}
+.inicio-tt-fila{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
+.inicio-tt-monto{font-size:14px;font-weight:700;color:#f0ede8;}
+.inicio-tt-delta{font-size:11px;font-weight:600;}
+.inicio-tt-pos{color:#c8f060;}
+.inicio-tt-neg{color:#f06868;}

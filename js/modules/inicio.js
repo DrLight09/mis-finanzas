@@ -166,7 +166,7 @@ function renderAttencion(){
     // para esperar un posible doble-tap (zoom), que es justo la ventana en la
     // que un tap rápido termina reinterpretándose como selección de texto.
     titleEl.style.touchAction = 'manipulation';
-    titleEl.innerHTML = `Necesita atención <span style="font-size:11px;font-family:'DM Mono',monospace;color:${hasRed?'var(--red)':'var(--amber)'};background:${hasRed?'rgba(240,104,104,.12)':'rgba(240,184,64,.12)'};padding:2px 8px;border-radius:20px;">${items.length} <i class="fa-solid ${isOpen?'fa-chevron-up':'fa-chevron-down'}"></i></span>`;
+    titleEl.innerHTML = `Necesita atención <span class="inicio-attn-badge ${hasRed?'inicio-attn-badge-red':'inicio-attn-badge-amber'}">${items.length} <i class="fa-solid ${isOpen?'fa-chevron-up':'fa-chevron-down'}"></i></span>`;
     // NOTA: renderAttencion() corre en cada refresh() y titleEl es el MISMO
     // nodo del DOM entre renders (solo se le pisa el innerHTML, no se
     // recrea) — por eso hay que sacar el listener anterior antes de agregar
@@ -205,8 +205,8 @@ function renderAttencion(){
   // (misma propiedad de anidamiento que abrirPresupuestos()/renderPresupuestos()
   // en analisis.js). raw(it.tipo) porque tipo es vocabulario fijo del propio
   // código ('red'/'amber'), nunca texto del usuario.
-  list.innerHTML=html`${items.map(it=>html`<div class="card card-sm ${raw(it.tipo==='red'?'attn-card-red':'attn-card')}" style="margin-bottom:7px;">
-    <div style="font-size:12px;color:${raw(it.tipo==='red'?'var(--red)':'var(--amber)')};">${it.texto}</div>
+  list.innerHTML=html`${items.map(it=>html`<div class="card card-sm ${raw(it.tipo==='red'?'attn-card-red':'attn-card')} inicio-attn-item">
+    <div class="inicio-attn-texto ${raw(it.tipo==='red'?'inicio-attn-texto-red':'inicio-attn-texto-amber')}">${it.texto}</div>
   </div>`)}`;
 }
 
@@ -370,9 +370,10 @@ function renderHealthScore(){
   // (con o sin datos) el alto lo debe definir el contenido, no el skeleton —
   // si no, queda espacio vacío de sobra cuando el contenido es corto.
   el.style.minHeight = '';
-  if(!res){ el.innerHTML = '<div style="font-size:12px;color:var(--text3);">Registra más datos para calcular tu salud financiera.</div>'; return; }
+  if(!res){ el.innerHTML = '<div class="inicio-salud-vacio">Registra más datos para calcular tu salud financiera.</div>'; return; }
   const { score, tips } = res;
   const col = score >= 75 ? 'var(--accent)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
+  const claseSalud = score >= 75 ? 'inicio-salud-ok' : score >= 50 ? 'inicio-salud-warn' : 'inicio-salud-mal';
   const label = score >= 75 ? 'Excelente' : score >= 50 ? 'Regular' : 'Necesita atención';
   const r = 28, circ = 2 * Math.PI * r;
   // A score=100 el patrón dash/gap (dash=circ, gap=circ) con linecap round deja
@@ -389,21 +390,21 @@ function renderHealthScore(){
   const positivosPrefijos = ['¡Excelente','Vas bien','Registra más','Considera poner'];
   const tipsHtml = tips.map(t => {
     const esPositivo = positivosPrefijos.some(p => t.startsWith(p));
-    const color = esPositivo ? 'var(--accent)' : 'var(--amber)';
+    const claseTip = esPositivo ? 'inicio-tip-ok' : 'inicio-tip-warn';
     const icon = esPositivo ? icoOk : icoWarn;
-    return `<div style="display:flex;align-items:flex-start;gap:5px;margin-top:4px;color:${color};font-size:11px;line-height:1.4;">${icon}<span>${t}</span></div>`;
+    return `<div class="inicio-tip ${claseTip}">${icon}<span>${t}</span></div>`;
   }).join('');
-  el.innerHTML = `<div class="health-ring-wrap" style="align-items:flex-start;">
-    <svg class="health-ring" width="76" height="76" viewBox="0 0 76 76" style="flex-shrink:0;">
+  el.innerHTML = `<div class="health-ring-wrap inicio-salud-wrap">
+    <svg width="76" height="76" viewBox="0 0 76 76" class="health-ring inicio-salud-anillo">
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="7"/>
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="${col}" stroke-width="7"
         ${dasharrayAttr}
         transform="rotate(-90 38 38)"
-        stroke-linecap="${linecap}" style="transition:stroke-dasharray .8s cubic-bezier(.4,0,.2,1);"/>
+        stroke-linecap="${linecap}" class="inicio-salud-arco"/>
       <text x="38" y="43" text-anchor="middle" font-size="16" font-weight="600" fill="${col}" font-family="DM Mono,monospace">${score}</text>
     </svg>
     <div class="health-details">
-      <div class="health-score-num" style="color:${col};">${label}</div>
+      <div class="health-score-num ${claseSalud}">${label}</div>
       ${tipsHtml}
     </div>
   </div>`;
@@ -436,12 +437,12 @@ function renderProyeccion(){
   const patrimonioReal = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
   const patrimonio = patrimonioReal - _alcSaldoOculto;
   if(!patrimonio){
-    el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;min-height:100px;padding:4px 8px;">
-      <div style="width:34px;height:34px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+    el.innerHTML = `<div class="inicio-proy-vacio">
+      <div class="inicio-proy-vacio-ico">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
       </div>
-      <div style="font-size:12px;font-weight:600;color:var(--text2);">Sin datos suficientes</div>
-      <div style="font-size:11px;color:var(--text3);line-height:1.5;max-width:210px;">Registra movimientos para ver tu proyección a 3, 6 y 12 meses.</div>
+      <div class="inicio-proy-vacio-titulo">Sin datos suficientes</div>
+      <div class="inicio-proy-vacio-texto">Registra movimientos para ver tu proyección a 3, 6 y 12 meses.</div>
     </div>`;
     return;
   }
@@ -510,11 +511,10 @@ function renderProyeccion(){
   const p3 = patrimonio + tendenciaMensual * 3;
   const p6 = patrimonio + tendenciaMensual * 6;
   const p12 = patrimonio + tendenciaMensual * 12;
-  const col = tendenciaMensual >= 0 ? 'var(--accent)' : 'var(--red)';
 
   // Deuda TC propia para mostrar impacto (excluye encargos y PC)
   const deudaTC = typeof calcDeudaTcPropia==='function' ? calcDeudaTcPropia() : 0;
-  const deudaInfo = deudaTC > 0 ? `<div style="font-size:10px;color:var(--red);margin-top:5px;font-family:'DM Mono',monospace;">Deuda TC propia: ${fmt(deudaTC)} ya descontada del patrimonio</div>` : '';
+  const deudaInfo = deudaTC > 0 ? `<div class="inicio-proy-deuda">Deuda TC propia: ${fmt(deudaTC)} ya descontada del patrimonio</div>` : '';
 
   // Calcular diferencias absolutas para el tooltip de cada card
   const proyCards = [
@@ -524,20 +524,20 @@ function renderProyeccion(){
   ];
 
   el.innerHTML = historialInsuficiente ? `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:2px 0;">
-      <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;display:inline-flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
-      <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text3);">—</span>
+    <div class="inicio-proy-fila">
+      <span class="inicio-proy-etiqueta">Tendencia mensual<span class="inicio-proy-info"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
+      <span class="inicio-proy-valor inicio-proy-valor-nulo">—</span>
     </div>
-    <div style="text-align:center;background:var(--bg3);border-radius:8px;padding:16px 10px;">
-      <div style="font-size:11px;color:var(--text3);line-height:1.5;">Aún no hay suficiente historial para proyectar.<br>Vuelve en unos días para ver tendencias y proyecciones.</div>
+    <div class="inicio-proy-aviso">
+      <div class="inicio-proy-aviso-txt">Aún no hay suficiente historial para proyectar.<br>Vuelve en unos días para ver tendencias y proyecciones.</div>
     </div>
     ${deudaInfo}
   ` : `
-    <div id="_proy-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;cursor:pointer;padding:2px 0;" data-tendencia="${tendenciaMensual}">
-      <span style="font-size:12px;color:var(--text2);">Tendencia mensual<span style="font-size:9px;color:var(--text3);margin-left:5px;display:inline-flex;align-items:center;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
-      <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${col};">${tendenciaMensual>=0?'+':''}${fmt(tendenciaMensual)}</span>
+    <div id="_proy-header" class="inicio-proy-fila inicio-proy-fila-click" data-tendencia="${tendenciaMensual}">
+      <span class="inicio-proy-etiqueta">Tendencia mensual<span class="inicio-proy-info"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
+      <span class="inicio-proy-valor ${tendenciaMensual>=0?'inicio-proy-pos':'inicio-proy-neg'}">${tendenciaMensual>=0?'+':''}${fmt(tendenciaMensual)}</span>
     </div>
-    <div id="_proy-cards-wrap" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;position:relative;">
+    <div id="_proy-cards-wrap" class="inicio-proy-grid">
       ${proyCards.map(({lbl,key,val,meses})=>{
         const diff = val - patrimonio;
         const pct = patrimonio > 0 ? ((diff/patrimonio)*100).toFixed(1) : '0.0';
@@ -548,21 +548,21 @@ function renderProyeccion(){
           data-proy-diff="${diff}"
           data-proy-pct="${pct}"
           data-proy-meses="${meses}"
-          style="text-align:center;background:var(--bg3);border-radius:8px;padding:10px 6px;min-width:0;cursor:pointer;-webkit-tap-highlight-color:rgba(200,240,96,.12);transition:background .12s;">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:4px;">${key}</div>
-          <div style="font-size:clamp(10px,3vw,13px);font-weight:600;font-family:'DM Mono',monospace;color:${val>=patrimonio?'var(--accent)':'var(--red)'};overflow-wrap:break-word;word-break:break-word;">${fmt(Math.max(0,val))}</div>
+          class="inicio-proy-card">
+          <div class="inicio-proy-card-k">${key}</div>
+          <div class="inicio-proy-card-v ${val>=patrimonio?'inicio-proy-pos':'inicio-proy-neg'}">${fmt(Math.max(0,val))}</div>
         </div>`;
       }).join('')}
-      <div id="_proy-tt" style="display:none;position:absolute;top:calc(100% + 8px);left:0;right:0;background:#1a1a1a;border:1px solid #383838;border-radius:10px;padding:10px 13px;font-family:'DM Mono',monospace;z-index:50;box-shadow:0 4px 20px rgba(0,0,0,.7);"></div>
+      <div id="_proy-tt" class="inicio-proy-tt" style="display:none;"></div>
     </div>
     ${deudaInfo}
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">
-      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">Basado en ${diasReales} días de historial</span>
+    <div class="inicio-proy-pie">
+      <span class="inicio-proy-base">Basado en ${diasReales} días de historial</span>
       ${nivelConfianza==='preliminar'
-        ? `<span style="font-size:9px;font-family:'DM Mono',monospace;color:#e8a838;background:rgba(232,168,56,.12);border:1px solid rgba(232,168,56,.25);border-radius:4px;padding:1px 6px;letter-spacing:.3px;">PRELIMINAR</span>`
+        ? `<span class="inicio-proy-chip inicio-proy-chip-prelim">PRELIMINAR</span>`
         : nivelConfianza==='estable'
-        ? `<span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--accent);background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.2);border-radius:4px;padding:1px 6px;letter-spacing:.3px;">ESTABLE</span>`
-        : `<span style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);border-radius:4px;padding:1px 6px;">estimación</span>`
+        ? `<span class="inicio-proy-chip inicio-proy-chip-estable">ESTABLE</span>`
+        : `<span class="inicio-proy-chip inicio-proy-chip-est">estimación</span>`
       }
     </div>`;
 
@@ -575,14 +575,14 @@ function renderProyeccion(){
     // Header (tendencia mensual)
     const header = el.querySelector('#_proy-header');
     if(header){
-      function bindHeader(ev){ ev.stopPropagation(); const t=parseFloat(header.dataset.tendencia)||0; const pos=t>=0; showTT(`<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">¿Qué significa esto?</div><div style="font-size:11px;color:#f0ede8;line-height:1.5;">Ritmo mensual de <b style="color:${pos?'#c8f060':'#f06868'}">crecimiento real del patrimonio</b> (ingresos, gastos, intereses y rendimientos — sin contar saldos iniciales ni ajustes de base).</div><div style="font-size:9px;color:var(--text3);margin-top:4px;">${pos?'Tu patrimonio está creciendo ~'+fmt2(t)+' por mes en promedio.':'Tu patrimonio está bajando ~'+fmt2(Math.abs(t))+'/mes en promedio.'}</div>`); }
+      function bindHeader(ev){ ev.stopPropagation(); const t=parseFloat(header.dataset.tendencia)||0; const pos=t>=0; showTT(`<div class="inicio-tt-titulo">¿Qué significa esto?</div><div class="inicio-tt-cuerpo">Ritmo mensual de <b class="${pos?'inicio-tt-pos':'inicio-tt-neg'}">crecimiento real del patrimonio</b> (ingresos, gastos, intereses y rendimientos — sin contar saldos iniciales ni ajustes de base).</div><div class="inicio-tt-nota inicio-tt-nota-top">${pos?'Tu patrimonio está creciendo ~'+fmt2(t)+' por mes en promedio.':'Tu patrimonio está bajando ~'+fmt2(Math.abs(t))+'/mes en promedio.'}</div>`); }
       header.addEventListener('click', bindHeader);
       header.addEventListener('touchend', function(e){ e.preventDefault(); bindHeader(e); });
     }
     // Cards 3m/6m/12m
     const wrap = el.querySelector('#_proy-cards-wrap');
     if(wrap){
-      function bindCard(card, e){ e.stopPropagation(); const lbl=card.dataset.proyLbl; const val=parseFloat(card.dataset.proyVal)||0; const diff=parseFloat(card.dataset.proyDiff)||0; const pct=card.dataset.proyPct; const meses=card.dataset.proyMeses; const col2=diff>=0?'#c8f060':'#f06868'; const ico=diff>=0?'↑':'↓'; showTT(`<div style="font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Proyección a ${lbl}</div><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;"><span style="font-size:14px;font-weight:700;color:#f0ede8;">${fmt2(Math.max(0,val))}</span><span style="font-size:11px;font-weight:600;color:${col2};">${ico} ${diff>=0?'+':''}${fmt2(diff)}</span></div><div style="font-size:9px;color:var(--text3);">${diff>=0?'+':''}${pct}% vs hoy · acumulado ${meses} meses</div>`); card.style.background='var(--bg4)'; setTimeout(()=>{ card.style.background='var(--bg3)'; },200); }
+      function bindCard(card, e){ e.stopPropagation(); const lbl=card.dataset.proyLbl; const val=parseFloat(card.dataset.proyVal)||0; const diff=parseFloat(card.dataset.proyDiff)||0; const pct=card.dataset.proyPct; const meses=card.dataset.proyMeses; const claseDelta=diff>=0?'inicio-tt-pos':'inicio-tt-neg'; const ico=diff>=0?'↑':'↓'; showTT(`<div class="inicio-tt-titulo">Proyección a ${lbl}</div><div class="inicio-tt-fila"><span class="inicio-tt-monto">${fmt2(Math.max(0,val))}</span><span class="inicio-tt-delta ${claseDelta}">${ico} ${diff>=0?'+':''}${fmt2(diff)}</span></div><div class="inicio-tt-nota">${diff>=0?'+':''}${pct}% vs hoy · acumulado ${meses} meses</div>`); card.style.background='var(--bg4)'; setTimeout(()=>{ card.style.background='var(--bg3)'; },200); }
       wrap.addEventListener('click', function(e){ const card=e.target.closest('[data-proy-key]'); if(card) bindCard(card,e); });
       wrap.addEventListener('touchend', function(e){ const card=e.target.closest('[data-proy-key]'); if(card){ e.preventDefault(); bindCard(card,e); } });
     }

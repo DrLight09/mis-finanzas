@@ -18,9 +18,15 @@ const CONVERTIDOS = [
   { f: 'js/core/busqueda-global.js', prefijos: ['busqueda-'], permitidos: [/^(background|color):\$\{/] },
   { f: 'js/modules/configuracion.js', prefijos: ['cat-chip'], permitidos: [] },
   { f: 'js/modules/gastos.js', prefijos: ['gasto-', 'badge-xs', 'row-name-13'], permitidos: [] },
+  // inicio: solo queda el display:none del tooltip de la proyección, que JS conmuta (showTT)
+  { f: 'js/modules/inicio.js', prefijos: ['inicio-'], permitidos: ['display:none;'] },
+  // wrapped: su CSS vive en el <style> que inyecta el propio archivo (cssEn). Solo queda el retraso de animación de cada punto de la línea,
+  // un valor distinto por punto (i*0.09s) que no puede ser una clase.
+  { f: 'js/modules/wrapped.js', prefijos: ['wrapped-'], cssEn: ['js/modules/wrapped.js'], permitidos: [/^animation-delay:\$\{/] },
 ];
 
-CONVERTIDOS.forEach(({ f, prefijos, permitidos }) => {
+CONVERTIDOS.forEach(({ f, prefijos, permitidos, cssEn = [] }) => {
+  const css = CSS + cssEn.map(leer).join('\n');
   const src = leer(f);
   test(`${f} — no queda ningún style="" estático (solo lo permitido: display:none que JS conmuta o valores calculados)`, () => {
     const usados = [...src.matchAll(/style=\\?"([^"]*)"/g)].map(m => m[1]);
@@ -33,11 +39,21 @@ CONVERTIDOS.forEach(({ f, prefijos, permitidos }) => {
     const trozos = [...src.matchAll(/class=\\?"([^"]*)"|className\s*=\s*'([^']*)'/g)].map(m => m[1] || m[2]).join(' ');
     const clases = [...new Set([...trozos.matchAll(re)].map(m => m[1]))];
     assert.ok(clases.length > 0);
-    const faltan = clases.filter(c => !new RegExp('\\.' + c.replace(/-/g, '\\-') + '(?![\\w-])').test(CSS));
+    const faltan = clases.filter(c => !new RegExp('\\.' + c.replace(/-/g, '\\-') + '(?![\\w-])').test(css));
     assert.deepEqual(faltan, []);
   });
 });
 
 test('el resumen vacío del diferencial se colapsa (antes lo hacía [style*="min-height"]:empty sobre el style inline)', () => {
   assert.match(CSS, /\.diferencial-resumen:empty\{min-height:0;?\}/);
+});
+
+test('wrapped: el mood de cada slide se lee de la clase de color del número grande (antes leía el style inline)', () => {
+  const w = leer('js/modules/wrapped.js');
+  assert.match(w, /_moodRegex = \/\(\?:\^\|\[\\s"\]\)\(c-purple\|c-blue\|c-amber\|c-red\|c-green\)/);
+  // todo color que se le pasa a _wrappedSlideBignum tiene clase en _wrappedColorClase
+  const mapa = /const mapa = \{([^}]*)\}/.exec(w)[1];
+  const usados = new Set([...w.matchAll(/_wrappedSlideBignum\([\s\S]*?'(var\(--[a-z]+\))'\s*,\s*\{/g)].map(m => m[1]));
+  assert.ok(usados.size >= 5);
+  usados.forEach(c => assert.ok(mapa.includes(`'${c}'`), `color sin clase en wrapped: ${c}`));
 });

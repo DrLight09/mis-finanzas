@@ -592,7 +592,7 @@ function _bindInputsAS(){
     el.addEventListener('input', () => {
       const bind = el.getAttribute('data-s-bind');
       if (bind === 'spotifyCosto') {
-        S.spotifyCosto = parseMoney(el.value) || 0;
+        S.spotify.costo = parseMoney(el.value) || 0;
       } else if (bind.startsWith('cuota:')) {
         const parent = bind.split(':')[1];
         const anio = S.mesadaAnio || new Date().getFullYear();

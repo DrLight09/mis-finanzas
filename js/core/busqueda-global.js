@@ -5,7 +5,7 @@
    Vive en js/core/ y no en js/modules/ porque es transversal por
    naturaleza: busca sobre S.gastosVar, S.gastosFijos, S.deudores,
    S.cajitas, S.cuentas, S.encargos, S.personas,
-   S.misDeudas, S.spotifyPersonas/S.spotifyHistorial y S.movimientos —
+   S.misDeudas, S.spotify.personas/S.spotify.historial y S.movimientos —
    no pertenece a un solo dominio.
 
    Sin dependencia real de orden de carga: no llama a ninguna función
@@ -260,7 +260,7 @@
     });
 
     // Spotify — personas del plan
-    (S.spotifyPersonas||[]).forEach(p => {
+    (S.spotify.personas||[]).forEach(p => {
       const nombreActual = (typeof spNombreDe==='function') ? spNombreDe(p) : p.nombre;
       if((nombreActual||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         const estado = (typeof spPersonaPagadaVigente==='function') ? (spPersonaPagadaVigente(p)?'Al día':'Pendiente') : (p.pagado?'Al día':'Pendiente');
@@ -268,7 +268,7 @@
       }
     });
     // Spotify — historial de cobros y pagos
-    (S.spotifyHistorial||[]).forEach(h => {
+    (S.spotify.historial||[]).forEach(h => {
       const texto = h.tipo==='pago' ? 'Pago a Spotify' : 'Cobro de '+(h.nombre||'');
       if(texto.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)||(h.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         resultados.push({ tipo:'Mov. Spotify', desc:texto, meta:(window.fmt?window.fmt(h.monto||0):'')+(h.fecha?' · '+h.fecha:''), color:'#1db954', navTipo:'spotify', navId:null });

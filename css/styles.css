@@ -749,3 +749,49 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .ms-right{text-align:right;}
 .ms-cuota-lbl{font-size:10px;color:var(--text3);margin-bottom:3px;}
 input.money-input.ms-cuota-input{width:90px;padding:4px 8px;font-size:12px;text-align:right;}
+
+/* ── Diferencial ("El valor era diferente") y Split de fuentes — Paso 5 (estilos inline → clases, 2026-10-20) ──
+   Antes vivían como style="" en js/core/diferencial.js y js/core/split.js. Va al FINAL del archivo a propósito: un style=""
+   ganaba siempre a las reglas base (input[type=text], select, .il, .ig, input:focus…); ahora ganan por especificidad
+   igual o mayor + orden. Se comprobó con scripts/equivalencia-estilos.js (mismo estilo efectivo por elemento). */
+.diferencial-parte{margin-bottom:10px;background:rgba(0,0,0,.15);border-radius:var(--radius-sm);padding:8px 10px;}
+.diferencial-parte-fila{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+input.diferencial-input{padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;}
+input.diferencial-input-nombre{flex:2;color:var(--text);font-family:'DM Sans',sans-serif;}
+input.diferencial-input-monto{flex:1;color:var(--amber);font-family:'DM Mono',monospace;}
+.diferencial-quitar{padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;}
+.diferencial-pago-yo{width:100%;padding:6px 10px;border-radius:var(--radius-sm);border:1.5px solid rgba(96,176,240,.2);background:transparent;color:var(--text3);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;display:flex;align-items:center;gap:7px;margin-bottom:0;}
+.diferencial-pago-yo.activo{border:1.5px solid rgba(96,176,240,.5);background:rgba(96,176,240,.12);color:var(--blue);margin-bottom:8px;}
+.diferencial-check{font-size:10px;}
+.diferencial-cuentas-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 0 2px;}
+.diferencial-etiqueta{font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;}
+.diferencial-etiqueta.diferencial-etiqueta-entra{color:var(--accent);}
+select.diferencial-select{font-size:12px;padding:7px 10px;}
+.diferencial-nota-intercambio{font-size:10px;color:var(--blue);margin-top:5px;font-family:'DM Mono',monospace;opacity:.8;}
+.diferencial-txt{color:var(--text);}
+.diferencial-txt2{color:var(--text2);}
+.diferencial-ok{color:var(--accent);}
+.diferencial-mal{color:var(--red);}
+.diferencial-azul{color:var(--blue);}
+.diferencial-wrap{margin-top:4px;}
+.diferencial-cabecera{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;}
+.diferencial-cabecera-izq{display:flex;align-items:center;gap:8px;}
+.diferencial-icono{font-size:15px;color:var(--amber);}
+.diferencial-svg{width:15px;height:15px;fill:currentColor;vertical-align:middle;}
+.diferencial-titulo{font-size:12px;font-weight:600;color:var(--amber);}
+.diferencial-subtitulo{font-size:10px;color:var(--text3);}
+.diferencial-chevron{font-size:16px;color:var(--amber);transition:transform .2s;}
+.diferencial-cuerpo{background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;}
+.ig.diferencial-ig{margin-bottom:10px;}
+.il.diferencial-lbl-amber{color:var(--amber);}
+.il.diferencial-lbl-accent{color:var(--accent);margin-bottom:6px;}
+.diferencial-seccion{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;}
+.diferencial-agregar{width:100%;padding:8px;border-radius:var(--radius-sm);border:1.5px dashed rgba(240,184,64,.35);background:transparent;color:var(--amber);font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px;font-family:'DM Sans',sans-serif;}
+.diferencial-resumen{background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;}
+.diferencial-micuenta{margin-top:10px;}
+.diferencial-badge{margin-top:4px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;}
+.split-fila{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:7px;}
+select.split-select{padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;}
+input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Mono',monospace;outline:none;}
+.split-quitar{width:28px;height:36px;background:rgba(240,104,104,.1);border:1px solid rgba(240,104,104,.2);border-radius:7px;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.diferencial-resumen:empty{min-height:0;}

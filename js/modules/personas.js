@@ -492,7 +492,7 @@ function _guardarEditarPersonaGlobal() {
   Deudas.lista('contra').forEach(d => { if (d.personaId === p.id) { d.nombre = nombre; d.color = _epgColorSel; } });
   // Sincronizar nombre en integrantes de Spotify vinculados (el campo crudo .nombre
   // se usa directo en la validación de nombres duplicados de addSpotify)
-  (S.spotifyPersonas || []).forEach(sp => { if (sp.personaId === p.id) sp.nombre = nombre; });
+  (S.spotify.personas || []).forEach(sp => { if (sp.personaId === p.id) sp.nombre = nombre; });
   save(); refresh();
   _renderListaPersonas();
   if (typeof renderEncargosList === 'function') renderEncargosList();
@@ -527,7 +527,7 @@ function abrirPerfilPersona(personaId) {
   if (nm) nm.textContent = p.nombre;
 
   const datos = getPersonaDatos(personaId);
-  const spEntry = (S.spotifyPersonas || []).find(sp => sp.personaId === personaId);
+  const spEntry = (S.spotify.personas || []).find(sp => sp.personaId === personaId);
   const partes = [];
   if (datos.deudor) partes.push('Préstamos');
   if (datos.encargos.length) partes.push(datos.encargos.length + ' encargo' + (datos.encargos.length !== 1 ? 's' : ''));
@@ -688,7 +688,7 @@ function abrirPerfilPersona(personaId) {
       : html`<span class="badge bg-red" style="font-size:9px;">Pendiente</span>`;
 
     // Stats Spotify de esta persona
-    const histSp = (S.spotifyHistorial || []).filter(h => h.tipo === 'cobro' && h.nombre === spEntry.nombre);
+    const histSp = (S.spotify.historial || []).filter(h => h.tipo === 'cobro' && h.nombre === spEntry.nombre);
     const totalCobradoSp = histSp.reduce((a, h) => a + (h.monto || 0), 0);
     const mayorCobroSp   = histSp.length ? histSp.reduce((mx, h) => h.monto > mx.monto ? h : mx, histSp[0]) : null;
     const diasEnPlan     = spEntry.fechaIngreso

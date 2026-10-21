@@ -496,7 +496,7 @@ function renderGastosFijos() {
   const el = document.getElementById('gastosFijosList');
   const g = S.gastosFijos || [];
   // Incluir Spotify como gasto fijo virtual si está configurado y no fue pagado este mes
-  const spCosto = S.spotifyCosto || 0;
+  const spCosto = S.spotify.costo || 0;
   const spotifyModuloActivo = !!(S.modulos && S.modulos.spotify);
   const yaExisteSpotify = g.some(x => x.nombre && x.nombre.toLowerCase().includes('spotify'));
   const spYaPagadoMes = (S.gastosVar || []).some(gv => mesKey(gv.fecha) === mesActual() && gv.desc && gv.desc.toLowerCase().includes('spotify'));

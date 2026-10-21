@@ -301,7 +301,7 @@
   }
 
   function _normSpotify(S) {
-    return (S.spotifyHistorial || [])
+    return (S.spotify.historial || [])
       .filter(function(h){ return h.tipo === 'cobro'; })
       .map(function(h){
         return {

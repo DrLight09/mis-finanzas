@@ -89,7 +89,7 @@ function renderAttencion(){
   });
   // Spotify personas vencidas (solo si el módulo está activo)
   if(S.modulos&&S.modulos.spotify&&typeof spPersonaPagadaVigente==='function'&&typeof spNombreDe==='function'){
-    (S.spotifyPersonas||[]).forEach(p=>{
+    (S.spotify.personas||[]).forEach(p=>{
       if(p.proximoPago&&p.proximoPago<hoyStr&&!spPersonaPagadaVigente(p)){
         // spNombreDe() devuelve texto libre (nombre de persona) — html`` lo
         // escapa por defecto. Mismo hallazgo que motivó el fix original con

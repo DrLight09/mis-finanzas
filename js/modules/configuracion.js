@@ -132,6 +132,9 @@ function _validarEstructuraJSON(data){
   if('cajitas' in data&&!Array.isArray(data.cajitas)){
     errores.push('El campo "cajitas" debe ser un array.');
   }
+  if('spotify' in data&&(!data.spotify||typeof data.spotify!=='object'||Array.isArray(data.spotify))){
+    errores.push('El campo "spotify" debe ser un objeto { personas, costo, cajitaId, historial }.');
+  }
   if('gastosVar' in data&&!Array.isArray(data.gastosVar)){
     errores.push('El campo "gastosVar" debe ser un array.');
   }

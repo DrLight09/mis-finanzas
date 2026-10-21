@@ -126,7 +126,7 @@ y como check en cada commit/PR.
 
 ## Prueba de humo con la página real (2026-10-18)
 
-`scripts/smoke-browser.js` NO vive en la carpeta de tests a propósito: `node --test` ejecuta todo `.js` que encuentra ahí, y esto necesita una dependencia de desarrollo (`npm i -D jsdom@24`; la 25 en adelante quitó `ResourceLoader`), así que el CI lo contaba como un test roto. Carga `index.html` y todos sus `<script>` en jsdom, carga todos los grupos lazy y hace tres cosas:
+`scripts/smoke-browser.js` NO vive en la carpeta de tests a propósito: `node --test` ejecuta todo `.js` que encuentra ahí, y esto necesita una dependencia de desarrollo (jsdom, ya en `devDependencies` de `package.json`; **hay que quedarse en la 27**: la 28 en adelante quitó `ResourceLoader`, y el `^27.4.0` del `package.json` lo respeta), así que el CI lo contaba como un test roto. Carga `index.html` y todos sus `<script>` en jsdom, carga todos los grupos lazy y hace tres cosas:
 
 1. **Toca cada botón `data-action` del DOM** e informa los que no tienen handler registrado y los que lanzan una excepción.
 2. **Escenarios con datos:** Cuentas/Nu (una cajita con un CDT) y Spotify (un integrante y un cobro en `S.spotify`; pinta la pantalla y toca sus botones). Cuentas/Nu: navega selector → Nu → cajita → volver → Nequi, comprueba qué panel queda visible y que `_cajitaActualId` se reinicie, y toca todos los botones que cada pantalla genera.
@@ -134,12 +134,12 @@ y como check en cada commit/PR.
 3. **Mapa de acciones de TODO el proyecto:** compara cada acción `ns:nombre` que nombran `index.html` y los `.js` (en `data-action`, en `Events.attr` o guardada en una variable) con las que `Events.registerAll`/`Events.on` registraron de verdad al cargar la página. Informa las usadas sin registrar, las registradas que nadie nombra (código muerto) y las registradas dos veces. Sale con código 1 si hay una usada sin registrar, una duplicada o un fallo de la fase 2.
 
 ```bash
-npm i -D jsdom@24
-node scripts/smoke-browser.js [--verbose]
+npm install            # una vez: instala jsdom
+npm run smoke          # o: node scripts/smoke-browser.js [--verbose]
 ```
 
 Resultado esperado hoy: fase 2 con **0 fallos** y fase 3 con **0 usadas sin registrar, 0 sin usar y 0 duplicadas** (207 acciones usadas, 196 registradas en tiempo de ejecución, 11 más de `authgate`/`pin` que viven en módulos ES y no se pueden verificar aquí). Las líneas de la fase 1 que siempre aparecen son de entorno, no de la app: `authgate:*` y `pin:*` los registran módulos ES (`firebase-init.js`, `pin-bio.js`) que jsdom no ejecuta, y `config:signOut` / `config:abrirEliminarCuenta` dependen de ellos. Comprobado por mutación: sin registrar Nu o con un botón apuntando a una acción inexistente, la prueba falla. **No sustituye abrir la app en un navegador real** (no hay layout, CSS ni Firebase), pero habría atrapado un botón sin registrar tras cambiar de `cuentas:` a `nu:`.
 
 ## Qué ejecuta `npm test` (2026-10-18)
 
-`node --test` sin argumentos ejecuta como prueba **todo `.js` de la carpeta de tests**, incluidos los de `support/` (pasan vacíos). Para que solo corran las pruebas de verdad, en `package.json`: `"test": "node --test tests/*.test.js"` (con `test/` en vez de `tests/` si esa es la carpeta del repo). Los scripts de `scripts/` (`equivalencia.js`, `conciliacion.js`, `smoke-browser.js`) encuentran solos la carpeta `tests/` o `test/` para cargar `support/load-app.js`.
+`package.json` tiene `"test": "node --test"` y así debe quedarse. Node decide qué ejecutar por el **nombre de la carpeta**: dentro de una carpeta llamada exactamente `test` (singular) trata como prueba **todo `.js`** (incluidos los de `support/`, que pasan vacíos, y cualquier script que se deje ahí); en cualquier otra carpeta (por ejemplo `tests`, plural) solo corren los archivos `*.test.js`. Por eso lo que no es una prueba (como `smoke-browser.js`, que necesita jsdom) vive en `scripts/`, fuera de la carpeta de tests. No usar globs como `tests/*.test.js` en el script de npm: en Windows `npm` ejecuta con `cmd`, que no los expande. Los scripts de `scripts/` (`equivalencia.js`, `conciliacion.js`, `smoke-browser.js`) encuentran solos la carpeta `tests/` o `test/` para cargar `support/load-app.js`.

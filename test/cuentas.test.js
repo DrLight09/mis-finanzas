@@ -93,7 +93,7 @@ describe('historial-cuenta', () => {
       { id: 'p6', tipo: 'abono', fuente: 'nequi', monto: 10, fecha: D(3) },
       { id: 'p7', tipo: 'prestamo', fuente: 'cajita:k2', monto: 9, fecha: D(3) },
     ] }];
-    S.spotifyHistorial = [
+    S.spotify.historial = [
       { id: 'sp1', tipo: 'cobro', nombre: 'Ana', fuente: 'nequi', fecha: D(2), monto: 15000, pendienteHistorial: [
         { id: 'ab1', fecha: D(3), monto: 5000, destino: 'efectivo' }, { id: 'ab2', fecha: D(3), monto: 2000, destino: 'custom:z' }, { id: 'ab3', fecha: D(3), monto: 1000, destino: 'cajita:k1' }] },
       { tipo: 'cobro', nombre: 'Sin id', fuente: 'custom:z', fecha: D(3), monto: 700 },
@@ -141,12 +141,12 @@ describe('historial-cuenta', () => {
     });
   });
 
-  describe('el tipo de una salida manual depende del tipo de cuenta (movimientos.js elige el borrado por ese tipo)', () => {
-    test('cuenta personalizada: siempre "egreso"', () => {
+  describe('el tipo de una salida manual es el mismo en todas las cuentas (movimientos.js elige el borrado por ese tipo)', () => {
+    test('cuenta personalizada: "salida_manual", como las demás (ya no existe "egreso")', () => {
       const app = cargar();
-      assert.equal(fila(app, 'custom:z', 'm16').tipo, 'egreso');
-      assert.equal(fila(app, 'custom:z', 'zc2').tipo, 'egreso');
-      assert.ok(!filas(app, 'custom:z').some(m => m.tipo === 'salida_manual'));
+      assert.equal(fila(app, 'custom:z', 'm16').tipo, 'salida_manual');
+      assert.equal(fila(app, 'custom:z', 'zc2').tipo, 'salida_manual');
+      assert.ok(!filas(app, 'custom:z').some(m => m.tipo === 'egreso'));
     });
     test('Nequi, Efectivo y cajitas: "salida_manual"', () => {
       const app = cargar();
@@ -1329,13 +1329,13 @@ describe('eliminar-movimiento', () => {
     assert.equal(e.dialogos(), 1);
   });
 
-  test('retiro de una cuenta personalizada (tipo "egreso"): vuelve a 10.000 y no a 12.000', async () => {
+  test('retiro de una cuenta personalizada: vuelve a 10.000 y no a 12.000', async () => {
     const e = entorno();
     e.app.sumarFuente('custom:z', 10000, { origen: { modulo: 't', ref: 'base' } });
     e.app.registrarSalida('custom:z', 2000, HOY, 'Retiro', '');
     assert.equal(e.saldo('custom:z'), 8000);
     const m = e.app.S.movimientos.find(x => x.tipo === 'salida_manual');
-    await e.app.eliminarMovimiento(boton('egreso', m.id, 'custom:z', 2000));
+    await e.app.eliminarMovimiento(boton('salida_manual', m.id, 'custom:z', 2000));
     assert.equal(e.saldo('custom:z'), 10000);
     assert.equal(e.dialogos(), 1);
     assert.equal(e.app.Libro.verificar().ok, true);
@@ -1394,7 +1394,7 @@ describe('eliminar-movimiento', () => {
     await e.app.eliminarMovimiento(b); // la pantalla todavía mostraba la fila
     assert.equal(e.saldo('nequi'), 10000, 'no se devuelve otra vez');
     assert.equal(e.dialogos(), 1, 'y no vuelve a preguntar');
-    for (const [tipo, fuente] of [['apertura', 'nequi'], ['egreso', 'custom:z'], ['entrada', 'nequi'], ['gasto', 'nequi'], ['transferencia', 'nequi']]) {
+    for (const [tipo, fuente] of [['apertura', 'nequi'], ['salida_manual', 'custom:z'], ['entrada', 'nequi'], ['gasto', 'nequi'], ['transferencia', 'nequi']]) {
       const antes = e.saldo(fuente);
       await e.app.eliminarMovimiento(boton(tipo, 'no-existe', fuente, 999));
       assert.equal(e.saldo(fuente), antes, `${tipo}: ningún saldo cambia`);

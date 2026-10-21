@@ -795,3 +795,24 @@ select.split-select{padding:8px 10px;background:var(--bg3);border:1px solid var(
 input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Mono',monospace;outline:none;}
 .split-quitar{width:28px;height:36px;background:rgba(240,104,104,.1);border:1px solid rgba(240,104,104,.2);border-radius:7px;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .diferencial-resumen:empty{min-height:0;}
+
+/* ── Búsqueda global y chips de categorías — Paso 5, tanda 2 (2026-10-20) ──
+   Lo dinámico (el color del tipo y el fondo del ícono, que salen del resultado) sigue como style="" en busqueda-global.js. */
+.busqueda-flecha{flex-shrink:0;}
+.busqueda-aviso{text-align:center;padding:24px 0;font-size:13px;color:var(--text3);}
+.busqueda-oculto{display:inline-block;vertical-align:middle;}
+.busqueda-sin-resultados{text-align:center;padding:48px 0;}
+.busqueda-sin-resultados-icono{margin-bottom:10px;display:flex;justify-content:center;}
+.busqueda-sin-resultados-txt{font-size:13px;color:var(--text3);}
+.busqueda-sin-resultados-txt b{color:var(--text);}
+.busqueda-nav-hint{display:flex;align-items:center;gap:4px;margin-top:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:.3px;}
+.busqueda-item.busqueda-item-sin-nav{cursor:default;}
+.busqueda-fila{display:flex;align-items:center;gap:10px;}
+.busqueda-icono{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.busqueda-cuerpo{flex:1;min-width:0;}
+.busqueda-desc-fila{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.busqueda-desc.busqueda-desc-elipsis{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.busqueda-ir{color:var(--text3);flex-shrink:0;}
+.cat-chips{display:flex;flex-wrap:wrap;}
+.cat-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 9px 4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;margin:0 4px 6px 0;color:var(--text2);}
+.cat-chip-del{background:none;border:none;cursor:pointer;color:var(--text3);padding:0 0 0 2px;line-height:1;display:flex;align-items:center;}

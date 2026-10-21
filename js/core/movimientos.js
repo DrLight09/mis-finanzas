@@ -111,7 +111,7 @@ function abrirDetalleMov(el){
     saldoDespues = parseFloat(el.dataset.movSaldoDespues) || 0;
     saldoLabel = el.dataset.movSaldoLabel || 'Saldo';
   } else if(!fuente){
-    // Sin fuente identificable (ej: mesadas/Spotify legacy sin _fuenteOrigen) — no hay saldo que calcular
+    // Sin fuente identificable — no hay saldo que calcular
     return;
   } else {
   // Reconstruir la lista de movimientos de esta fuente para hallar el saldo histórico
@@ -675,7 +675,7 @@ async function _eliminarMovimientoImpl(btn) {
       S.movimientos = S.movimientos.filter(x => x.id !== movId);
     }
   } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada') {
-    // Fue una entrada manual (S.movimientos tipo 'entrada', 'apertura', o legacy 'ingreso')
+    // Fue una entrada manual (S.movimientos tipo 'entrada' o 'apertura'; 'ingreso' es como la vista de Cuentas rotula una entrada)
     const m = (S.movimientos || []).find(x => x.id === movId);
     if (m) {
       const fuente = m.fuente || fuenteOrigen;

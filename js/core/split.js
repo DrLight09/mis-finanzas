@@ -109,11 +109,11 @@ function splitAgregarRow(instId){
   const id = 'spr_'+uid();
   const div = document.createElement('div');
   div.id = id;
-  div.style.cssText = 'display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center;margin-bottom:7px;';
+  div.className = 'split-fila';
   div.innerHTML = `
-    <div class="select-wrap"><select style="padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;">${cfg.getFuentesFn('')}</select></div>
-    <input type="text" inputmode="decimal" placeholder="monto" class="money-input" style="width:96px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Mono',monospace;outline:none;">
-    <button type="button" style="width:28px;height:36px;background:rgba(240,104,104,.1);border:1px solid rgba(240,104,104,.2);border-radius:7px;color:var(--red);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+    <div class="select-wrap"><select class="split-select">${cfg.getFuentesFn('')}</select></div>
+    <input type="text" inputmode="decimal" placeholder="monto" class="money-input split-monto">
+    <button type="button" class="split-quitar">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>`;
 

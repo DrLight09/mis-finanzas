@@ -166,15 +166,11 @@
     const _iconoOculto = '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="5" viewBox="0 0 26 5" fill="currentColor" role="img" aria-label="Monto oculto" style="display:inline-block;vertical-align:middle"><circle cx="1.6" cy="2.5" r="1.6"/><circle cx="9.2" cy="2.5" r="1.6"/><circle cx="16.8" cy="2.5" r="1.6"/><circle cx="24.4" cy="2.5" r="1.6"/></svg>';
 
     // Gastos variables
-    // Depósitos a la alcancía (`_esAlcancia`) — desde el 2026-09-27 los depósitos con cuenta de
-    // origen ya no se guardan acá (ver bloque de S.transferencias más abajo); esta rama queda
-    // solo como red de seguridad por si sobrevive algún registro viejo sin migrar.
     (S.gastosVar||[]).forEach(g => {
       if((g.desc||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q) || (g.cat||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q) || (g.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
-        const montoTxt = g._esAlcancia ? '' : (window.fmt?window.fmt(g.monto):'');
+        const montoTxt = window.fmt?window.fmt(g.monto):'';
         const restoMeta = ' · ' + (g.cat||'') + ' · ' + (g.fecha||'');
-        const tipoResultado = g._esAlcancia ? (g.cat||'Ahorro') : 'Gasto variable';
-        resultados.push({ tipo:tipoResultado, desc:g.desc||'Sin descripción', meta: montoTxt + restoMeta, metaHtml: g._esAlcancia ? _iconoOculto + escHtml(restoMeta) : null, color: g._esAlcancia ? 'var(--accent)' : 'var(--red)', navTipo:'gastos', navId:null });
+        resultados.push({ tipo:'Gasto variable', desc:g.desc||'Sin descripción', meta: montoTxt + restoMeta, metaHtml: null, color: 'var(--red)', navTipo:'gastos', navId:null });
       }
     });
 

@@ -182,34 +182,32 @@ function diffRenderPartes(instId) {
     const pagoYo = permiteIntercambio && (b.pagadoPorMi || false);
     const montoFmt = b.monto ? (typeof fmtInput === 'function' ? fmtInput(b.monto) : String(b.monto)) : '';
     return `
-    <div style="margin-bottom:10px;background:rgba(0,0,0,.15);border-radius:var(--radius-sm);padding:8px 10px;">
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+    <div class="diferencial-parte">
+      <div class="diferencial-parte-fila">
         <input type="text" placeholder="Nombre (ej: Mi mamá)" value="${escHtml(b.nombre)}"
-          class="diff-nombre-input" data-i="${i}"
-          style="flex:2;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;">
+          class="diff-nombre-input diferencial-input diferencial-input-nombre" data-i="${i}">
         <input type="text" inputmode="decimal" placeholder="Monto" value="${montoFmt}"
-          class="diff-monto-input" data-i="${i}"
-          style="flex:1;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--amber);font-size:13px;font-family:'DM Mono',monospace;">
-        <button type="button" ${Events.attr('diferencial:removeParte', instId, i)} style="padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;">&#x2715;</button>
+          class="diff-monto-input diferencial-input diferencial-input-monto" data-i="${i}">
+        <button type="button" ${Events.attr('diferencial:removeParte', instId, i)} class="diferencial-quitar">&#x2715;</button>
       </div>
       ${permiteIntercambio ? `
       <button type="button" ${Events.attr('diferencial:togglePagoYo', instId, i)}
-        style="width:100%;padding:6px 10px;border-radius:var(--radius-sm);border:1.5px solid ${pagoYo ? 'rgba(96,176,240,.5)' : 'rgba(96,176,240,.2)'};background:${pagoYo ? 'rgba(96,176,240,.12)' : 'transparent'};color:${pagoYo ? 'var(--blue)' : 'var(--text3)'};font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;display:flex;align-items:center;gap:7px;margin-bottom:${pagoYo ? '8px' : '0'};">
+        class="diferencial-pago-yo${pagoYo ? ' activo' : ''}">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1H0zm0 3h16v5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm3 2a.5.5 0 0 0 0 1h1a.5.5 0 0 0 0-1zm2.5 0a.5.5 0 0 0 0 1h2a.5.5 0 0 0 0-1z"/></svg>
-        ${pagoYo ? '<i class="fa-solid fa-check" style="font-size:10px;"></i> Lo pagué yo (de mi cuenta)' : 'Lo pagué yo (de mi cuenta)'}
+        ${pagoYo ? '<i class="fa-solid fa-check diferencial-check"></i> Lo pagué yo (de mi cuenta)' : 'Lo pagué yo (de mi cuenta)'}
       </button>
       ${pagoYo ? `
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px 0 2px;">
+      <div class="diferencial-cuentas-grid">
         <div>
-          <div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">De mi cuenta (sale)</div>
-          <div class="select-wrap"><select class="diff-cuenta-salida" data-i="${i}" style="font-size:12px;padding:7px 10px;">${_diffFuentesOptsHtml(b.miCuentaSalida || '', true)}</select></div>
+          <div class="diferencial-etiqueta">De mi cuenta (sale)</div>
+          <div class="select-wrap"><select class="diff-cuenta-salida diferencial-select" data-i="${i}">${_diffFuentesOptsHtml(b.miCuentaSalida || '', true)}</select></div>
         </div>
         <div>
-          <div style="font-size:10px;color:var(--accent);margin-bottom:4px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Y recupero en (entra)</div>
-          <div class="select-wrap"><select class="diff-cuenta-entrada" data-i="${i}" style="font-size:12px;padding:7px 10px;">${_diffFuentesOptsHtml(b.miCuentaEntrada || '', false)}</select></div>
+          <div class="diferencial-etiqueta diferencial-etiqueta-entra">Y recupero en (entra)</div>
+          <div class="select-wrap"><select class="diff-cuenta-entrada diferencial-select" data-i="${i}">${_diffFuentesOptsHtml(b.miCuentaEntrada || '', false)}</select></div>
         </div>
       </div>
-      <div style="font-size:10px;color:var(--blue);margin-top:5px;font-family:'DM Mono',monospace;opacity:.8;">
+      <div class="diferencial-nota-intercambio">
         ↔ Intercambio: yo pago ${b.monto > 0 ? fmt(b.monto) : '?'} de mi cuenta, y recupero ese monto del encargo a la cuenta que elijo.
       </div>` : ''}` : ''}
     </div>`;
@@ -265,27 +263,27 @@ function diffResumen(instId) {
   if (!real) { el.textContent = cfg.placeholderSinReal || ''; el.style.color = 'var(--text3)'; _diffActualizarMiCuenta(instId, false); if (cfg.onResumen) cfg.onResumen(calc); return; }
 
   if (margen <= 0 && cfg.exigeMargenPositivo) {
-    el.innerHTML = `<span style="color:var(--red);">${cfg.labelMargenNegativo || 'El valor real debe ser menor que el monto original'}</span>`;
+    el.innerHTML = `<span class="diferencial-mal">${cfg.labelMargenNegativo || 'El valor real debe ser menor que el monto original'}</span>`;
     _diffActualizarMiCuenta(instId, false);
     if (cfg.onResumen) cfg.onResumen(calc);
     return;
   }
 
   el.style.color = 'var(--text2)';
-  let html = `Dijiste: <span style="color:var(--text)">${fmt(dijo)}</span>  Real: <span style="color:var(--text2)">${fmt(real)}</span>  Margen: <span style="color:${margen >= 0 ? 'var(--accent)' : 'var(--red)'}">${margen >= 0 ? '+' : ''}${fmt(margen)}</span>`;
+  let html = `Dijiste: <span class="diferencial-txt">${fmt(dijo)}</span>  Real: <span class="diferencial-txt2">${fmt(real)}</span>  Margen: <span class="${margen >= 0 ? 'diferencial-ok' : 'diferencial-mal'}">${margen >= 0 ? '+' : ''}${fmt(margen)}</span>`;
 
   let sinAsignarMostrar = sinAsignar;
   if (cfg.permiteBeneficiarios && inst.partes.length && margen > 0) {
     const totalAsignado = calc.asignadoNormal + calc.asignadoIntercambio;
-    html += `<br>Asignado: <span style="color:var(--text2)">${fmt(totalAsignado)}</span>  `;
-    if (calc.asignadoIntercambio > 0) html += `<span style="color:var(--blue)">Intercambio tuyo: ${fmt(calc.asignadoIntercambio)}</span>  `;
+    html += `<br>Asignado: <span class="diferencial-txt2">${fmt(totalAsignado)}</span>  `;
+    if (calc.asignadoIntercambio > 0) html += `<span class="diferencial-azul">Intercambio tuyo: ${fmt(calc.asignadoIntercambio)}</span>  `;
     if (Math.abs(sinAsignarMostrar) < 1) {
-      html += `<span style="color:var(--accent)">&#x2713; Cuadra</span>`;
+      html += `<span class="diferencial-ok">&#x2713; Cuadra</span>`;
       sinAsignarMostrar = 0;
     } else if (sinAsignarMostrar > 0) {
-      html += `<span style="color:var(--accent)">Tuyo: ${fmt(sinAsignarMostrar)}</span>`;
+      html += `<span class="diferencial-ok">Tuyo: ${fmt(sinAsignarMostrar)}</span>`;
     } else {
-      html += `<span style="color:var(--red)">Te pasaste: ${fmt(Math.abs(sinAsignarMostrar))}</span>`;
+      html += `<span class="diferencial-mal">Te pasaste: ${fmt(Math.abs(sinAsignarMostrar))}</span>`;
       sinAsignarMostrar = 0;
     }
   }
@@ -294,7 +292,7 @@ function diffResumen(instId) {
     if (b.monto > 0) {
       const salida = b.miCuentaSalida ? fuenteLabel(b.miCuentaSalida) : '?';
       const entrada = b.miCuentaEntrada ? fuenteLabel(b.miCuentaEntrada) : '?';
-      html += `<br><span style="color:var(--blue);">↔ ${escHtml(b.nombre || 'Tú')}: sale ${fmt(b.monto)} de ${salida} · entra ${fmt(b.monto)} a ${entrada}</span>`;
+      html += `<br><span class="diferencial-azul">↔ ${escHtml(b.nombre || 'Tú')}: sale ${fmt(b.monto)} de ${salida} · entra ${fmt(b.monto)} a ${entrada}</span>`;
     }
   });
 
@@ -499,31 +497,31 @@ function diffHtmlBloque(ids, opts) {
   const titulo = opts.titulo || 'El valor real era diferente';
   const subtitulo = opts.subtitulo || 'Registrar margen cobrado';
   return `
-  <div id="${ids.wrap}" style="display:none;margin-top:4px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius-sm);cursor:pointer;" ${Events.attr('diferencial:toggle', opts.instId)}>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:15px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span>
+  <div id="${ids.wrap}" class="diferencial-wrap" style="display:none;">
+    <div class="diferencial-cabecera" ${Events.attr('diferencial:toggle', opts.instId)}>
+      <div class="diferencial-cabecera-izq">
+        <span class="diferencial-icono"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="diferencial-svg"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span>
         <div>
-          <div style="font-size:12px;font-weight:600;color:var(--amber);">${titulo}</div>
-          <div style="font-size:10px;color:var(--text3);">${subtitulo}</div>
+          <div class="diferencial-titulo">${titulo}</div>
+          <div class="diferencial-subtitulo">${subtitulo}</div>
         </div>
       </div>
-      <div id="${ids.icon}" style="font-size:16px;color:var(--amber);transition:transform .2s;">›</div>
+      <div id="${ids.icon}" class="diferencial-chevron">›</div>
     </div>
-    <div id="${ids.body}" style="display:none;background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;">
-      <div class="ig" style="margin-bottom:10px;">
-        <label class="il" style="color:var(--amber);">${opts.labelReal || '¿Cuánto era en realidad?'}</label>
+    <div id="${ids.body}" class="diferencial-cuerpo" style="display:none;">
+      <div class="ig diferencial-ig">
+        <label class="il diferencial-lbl-amber">${opts.labelReal || '¿Cuánto era en realidad?'}</label>
         <input type="text" inputmode="decimal" id="${ids.real}" placeholder="0,00" class="money-input diff-real-input" data-inst-id="${opts.instId}">
       </div>
       ${opts.permiteBeneficiarios ? `
-      <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;">Quién se quedó con qué (opcional)</div>
+      <div class="diferencial-seccion">Quién se quedó con qué (opcional)</div>
       <div id="${ids.partesList}"></div>
-      <button type="button" ${Events.attr('diferencial:addParte', opts.instId)} style="width:100%;padding:8px;border-radius:var(--radius-sm);border:1.5px dashed rgba(240,184,64,.35);background:transparent;color:var(--amber);font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px;font-family:'DM Sans',sans-serif;">+ Agregar persona</button>
+      <button type="button" ${Events.attr('diferencial:addParte', opts.instId)} class="diferencial-agregar">+ Agregar persona</button>
       ` : ''}
-      <div id="${ids.resumen}" style="background:rgba(0,0,0,.2);border-radius:var(--radius-sm);padding:9px 11px;font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);min-height:36px;"></div>
+      <div id="${ids.resumen}" class="diferencial-resumen"></div>
       ${opts.permiteMiCuenta ? `
-      <div id="${ids.miCuentaWrap}" style="display:none;margin-top:10px;">
-        <label class="il" style="color:var(--accent);margin-bottom:6px;">¿A cuál de tus cuentas entra ese sobrante?</label>
+      <div id="${ids.miCuentaWrap}" class="diferencial-micuenta" style="display:none;">
+        <label class="il diferencial-lbl-accent">¿A cuál de tus cuentas entra ese sobrante?</label>
         <div class="select-wrap"><select id="${ids.miCuenta}"><option value="">Sin especificar</option></select></div>
       </div>` : ''}
     </div>
@@ -542,8 +540,8 @@ function diffRenderHistorial(diferencial) {
     ? `Yo → ${d.miCuentas.map(r => `${escHtml(fuenteLabel(r.cuenta))} ${fmt(r.monto)}`).join(' + ')}`
     : (d.miCuenta && d.yoMeQuedo > 0 ? `Yo → ${escHtml(fuenteLabel(d.miCuenta))} ${fmt(d.yoMeQuedo)}` : (d.yoMeQuedo > 0 ? `Yo ${fmt(d.yoMeQuedo)}` : ''));
   const todas = [benefs, miParte].filter(Boolean).join(' · ');
-  return `<div style="margin-top:4px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${todas ? ' · ' + todas : ''}
+  return `<div class="diferencial-badge">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="diferencial-svg"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> Margen ${fmt(d.margen)} (real: ${fmt(d.real)})${todas ? ' · ' + todas : ''}
   </div>`;
 }
 

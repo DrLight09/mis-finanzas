@@ -115,7 +115,7 @@ let S={
     }
   }
   // alcancia: {saldoRegistrado, depositos, fechaInicio, movimientos:[{id,monto,fecha,tipo,tipoLabel,desc,fuenteOrigen,ts,partes?}], historial:[...]}
-  //   tipo: yo-cuenta|yo-directo|regalo|mandado|cobro-deuda (un solo origen) | multi (varios: partes:[{origen,monto,fuente?,movId}]) | split (legacy)
+  //   tipo: yo-cuenta|yo-directo|regalo|mandado|cobro-deuda (un solo origen) | multi (varios: partes:[{origen,monto,fuente?,movId}])
   // alcanciaSaldoOfuscado: string (XOR+Base64 del JSON {saldo:N}) — guardado en S pero no visible en UI
   // ingresosFijos: [{id, nombre, monto, desde}]
   // desde: 'YYYY-MM' — el mes desde el cual aplica este ingreso (para escalar en el futuro)
@@ -515,9 +515,6 @@ function validarSalidaFuente(fuente,monto){
   if(disp<monto)return{ok:false,mensaje:'Saldo insuficiente en '+escHtml(fuenteLabel(fuente))+'. Disponible: '+fmt(disp)};
   return{ok:true};
 }
-// Alias canónico: getSaldoFuente es la función completa (maneja tc:, guard null).
-// getSaldoActual se mantiene como alias para compatibilidad con todos los call sites existentes.
-const getSaldoActual = getSaldoFuente;
 
 /* ---- LOAD / SAVE ---- */
 function fmtInput(n){

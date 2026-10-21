@@ -17,6 +17,7 @@ const CONVERTIDOS = [
   // búsqueda global: solo quedan el color del tipo y el fondo del ícono, que salen del resultado
   { f: 'js/core/busqueda-global.js', prefijos: ['busqueda-'], permitidos: [/^(background|color):\$\{/] },
   { f: 'js/modules/configuracion.js', prefijos: ['cat-chip'], permitidos: [] },
+  { f: 'js/modules/gastos.js', prefijos: ['gasto-', 'badge-xs', 'row-name-13'], permitidos: [] },
 ];
 
 CONVERTIDOS.forEach(({ f, prefijos, permitidos }) => {

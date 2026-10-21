@@ -17,9 +17,19 @@ jobs:
       - name: Instalar Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # LTS. El test runner nativo (node --test) solo pide Node 18+.
+          node-version: 20 # LTS. jsdom 27 (prueba de humo) pide Node 20+.
 
-      # Sin "npm install": el harness no tiene dependencias (ver
-      # package.json), así que no hace falta node_modules ni cache de npm.
+      # Las pruebas unitarias no necesitan nada, pero la prueba de humo
+      # (scripts/smoke-browser.js) usa jsdom, que está en devDependencies.
+      # "npm ci" instala EXACTAMENTE lo que dice package-lock.json (por eso
+      # package.json y package-lock.json tienen que estar subidos al repo).
+      - name: Instalar dependencias
+        run: npm ci
+
       - name: Correr los tests
         run: npm test
+
+      # Carga index.html y todos los js/ en jsdom, toca cada botón y falla si
+      # alguna acción data-action no tiene handler o está registrada dos veces.
+      - name: Prueba de humo (página real en jsdom)
+        run: npm run smoke

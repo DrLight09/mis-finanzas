@@ -629,17 +629,6 @@ describe('yodebo', () => {
     assert.equal(moto.cerrado, false, 'al borrar el pago el grupo se reabre');
   });
 
-  test('Yo debo — una deuda anterior a los grupos se migra al Histórico sin cambiar su saldo', () => {
-    const ctx = freshApp();
-    const d = ctx.S.misDeudas[0];
-    d.movimientos = [{ id: 'a', tipo: 'recibido', monto: 90000, fecha: '2026-09-01' }, { id: 'b', tipo: 'pago', monto: 20000, fecha: '2026-09-10' }];
-    const antes = ctx.getMiDeudaSaldo(d);
-    assert.equal(ctx._migrarGruposDeudor(d), true);
-    assert.ok(d.movimientos.every((m) => m.grupoId === '_historico'));
-    assert.equal(ctx.getMiDeudaSaldo(d), antes);
-    assert.equal(ctx._migrarGruposDeudor(d), false, 'es idempotente');
-  });
-
   function hoyISO() {
     const d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');

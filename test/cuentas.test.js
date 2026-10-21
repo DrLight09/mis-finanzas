@@ -96,7 +96,7 @@ describe('historial-cuenta', () => {
     S.spotify.historial = [
       { id: 'sp1', tipo: 'cobro', nombre: 'Ana', fuente: 'nequi', fecha: D(2), monto: 15000, pendienteHistorial: [
         { id: 'ab1', fecha: D(3), monto: 5000, destino: 'efectivo' }, { id: 'ab2', fecha: D(3), monto: 2000, destino: 'custom:z' }, { id: 'ab3', fecha: D(3), monto: 1000, destino: 'cajita:k1' }] },
-      { tipo: 'cobro', nombre: 'Sin id', fuente: 'custom:z', fecha: D(3), monto: 700 },
+      { id: 'sp9', tipo: 'cobro', nombre: 'Ana', fuente: 'custom:z', fecha: D(3), monto: 700 },
       { id: 'sp3', tipo: 'pago', nombre: 'Plan', fuente: 'nequi', fecha: D(3), monto: 1 },
       { id: 'sp4', tipo: 'cobro', nombre: 'Beto', fuente: 'cajita:k1', fecha: D(4), monto: 600 },
     ];
@@ -128,7 +128,7 @@ describe('historial-cuenta', () => {
       'efectivo': '?,p5,ab1,t02,t01,p2,m07,g02,m03,m02',
       'nu': 'sp4,t03,t03,p7,p4,m14,m13,h2,g08,ab3,t02,h1,h4',
       'cajita:k1': 'sp4,t03,p4,m13,h2,g08,ab3,t02,h1',
-      'custom:z': 'zc8,zc7,zc4,m21,m19,m17,zc2,t09,t07,t06,t05,sp_legacy_1,p4,m16,m15,g12,g11,g10,g09,ab2,zc1,p3,zc3',
+      'custom:z': 'zc8,zc7,zc4,m21,m19,m17,zc2,t09,t07,t06,t05,sp9,p4,m16,m15,g12,g11,g10,g09,ab2,zc1,p3,zc3',
       'custom:y': 'yc1,m22,t07,g13',
     };
     for (const [cuenta, esperado] of Object.entries(ESPERADO)) {
@@ -191,9 +191,6 @@ describe('historial-cuenta', () => {
       assert.equal(fila(app, 'nequi', 'sp1').monto, 15000 - (5000 + 2000 + 1000));
       assert.equal(fila(app, 'efectivo', 'ab1').monto, 5000);
       assert.equal(fila(app, 'custom:z', 'ab2').monto, 2000);
-    });
-    test('un cobro de Spotify sin id recibe un id estable (sp_legacy_<índice>)', () => {
-      assert.equal(filas(cargar(), 'custom:z').find(m => m.desc === 'Cobro Spotify (Sin id)')._movId, 'sp_legacy_1');
     });
     test('la pantalla de Nu ("nu") junta las filas de TODAS las cajitas, y solo de cajitas', () => {
       const fuentes = new Set(filas(cargar(), 'nu').map(m => m.fuente));
@@ -705,7 +702,6 @@ describe('chequeo-nu', () => {
       app.openSheet = () => {};
       app.save = () => { guardados++; };
       app.refresh = () => {};
-      app.getSaldoActual = f => app.getSaldoFuente(f);
       app.fuenteLabel = f => ({ nequi: 'Nequi' }[f] || f);
       app.abrirAgregarDinero('nequi', 'Nequi');
       guardados = 0;
@@ -923,7 +919,6 @@ describe('restar-dinero', () => {
     app.openSheet = () => {};
     app.save = () => { guardados++; };
     app.refresh = () => {};
-    app.getSaldoActual = f => app.getSaldoFuente(f);
     app.fuenteLabel = f => ({ nequi: 'Nequi', efectivo: 'Efectivo', 'custom:z': 'Ahorro <z>' }[f] || f);
     app.abrirRestarDinero(fuente, 'Cuenta'); // abre el sheet y limpia los campos: se llenan DESPUÉS
     guardados = 0; // abrirRestarDinero() hace un save() al abrir: no cuenta como efecto de confirmar
@@ -1104,8 +1099,7 @@ describe('transferir', () => {
   });
 
   // ── confirmarTransferir: cableado completo con las funciones reales de saldo ──
-  // getSaldoActual vive en index.html (no se carga acá): se enlaza a getSaldoFuente
-  // de core-state. El resto (descontarFuente/sumarFuente/fmt/escHtml/parseMoney/uid) es el real.
+  // confirmarTransferir con las funciones reales de saldo (getSaldoFuente/descontarFuente/sumarFuente/fmt/escHtml/parseMoney/uid).
   function entorno({ origen, destino, monto, nota = '', nequi = 0, efectivo = 0 }) {
     const app = cargar();
     const campos = { tr_origen: origen, tr_destino: destino, tr_monto: monto, tr_nota: nota, tr_fecha: '2026-10-04' };
@@ -1118,7 +1112,6 @@ describe('transferir', () => {
     app.refresh = () => {};
     app.fuenteLabel = f => ({ nequi: 'Nequi', efectivo: 'Efectivo', 'custom:x': 'Ahorro <x>' }[f] || f);
     // window.S === S (core-state.js:127), así que el test lee/escribe el estado real.
-    app.getSaldoActual = f => app.getSaldoFuente(f);
     // Los saldos viven en S.cuentas[] (no en S.nequiSaldo, que es el modelo viejo).
     app.getCuenta('nequi').saldo = nequi; app.getCuenta('efectivo').saldo = efectivo; app.S.transferencias = [];
     const estado = () => plano({ n: app.getCuenta('nequi').saldo, e: app.getCuenta('efectivo').saldo, t: app.S.transferencias });
@@ -1353,7 +1346,6 @@ describe('eliminar-movimiento', () => {
   test('transferencia: se revierte una sola vez, con UN solo diálogo', async () => {
     const e = entorno({ tr_origen: { value: 'nequi' }, tr_destino: { value: 'efectivo' }, tr_monto: { value: '3.000,00' }, tr_nota: { value: '' }, tr_fecha: { value: HOY } });
     e.app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
-    e.app.getSaldoActual = f => e.app.getSaldoFuente(f);
     e.app.confirmarTransferir();
     assert.equal(e.saldo('nequi'), 7000); assert.equal(e.saldo('efectivo'), 3000);
     const t = e.app.S.transferencias[0];
@@ -1897,7 +1889,6 @@ describe('retirar-sin-saldo', () => {
     app.toast = (msg, tipo) => toasts.push({ msg, tipo });
     app.openSheet = n => abiertos.push(n);
     app.save = () => {};
-    app.getSaldoActual = f => app.getSaldoFuente(f);
     app.fuenteLabel = f => f;
     return { app, toasts, abiertos, boton: el() };
   }

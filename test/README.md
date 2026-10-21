@@ -24,6 +24,8 @@ modificarlo, usando `vm` para simular cómo el navegador carga
   `registrarMovEspejo()`/`borrarMovEspejo()` — `js/modules/prestado.js`,
   `js/core/cuenta-efectos.js`
 
+- Paso 5 (estilos inline → clases): `tests/estilos.test.js` vigila los archivos ya convertidos (ningún `style=""` estático nuevo, toda clase usada existe en `css/styles.css`). La herramienta `scripts/equivalencia-estilos.js` (no es un test) compara el estilo efectivo antes/después de convertir un archivo, con cascada y especificidad reales; ver `CONTINUAR.md` §13.16.
+
 Corren contra tus archivos reales, sin copiarlos.
 
 ## Cómo correrlos

@@ -258,28 +258,28 @@ function renderGastosVar() {
     const esTC = !!g._esCompraTC;
     const esPagoTC = !!g._esPagoTC;
     const esSecundario = !!g._secundario;
-    const colorMonto = esFijo ? 'var(--text2)' : esTC ? 'var(--red)' : esPagoTC ? 'var(--accent)' : 'var(--red)';
+    const claseMonto = esFijo ? 'gasto-monto-fijo' : esTC ? 'c-red' : esPagoTC ? 'c-green' : 'c-red';
     // Etiquetas de tipo. Un fijo pagado con TC tiene las dos banderas: antes
     // aparecía dos veces (en "Compras en TC" y en "Pagos de fijos") y la
     // etiqueta de fijo tapaba la de TC. Ahora es una sola fila con ambas.
     const tipoBadges = esFijo
-      ? [html`<span class="badge" style="font-size:9px;background:rgba(200,240,96,.1);color:var(--accent);border:1px solid rgba(200,240,96,.2);">Fijo — ya sumado en Fijos mensuales</span>`,
-         esTC ? html`<span class="badge bg-red" style="font-size:9px;">TC — deuda</span>` : '']
+      ? [html`<span class="badge badge-xs gasto-badge-fijo">Fijo — ya sumado en Fijos mensuales</span>`,
+         esTC ? html`<span class="badge badge-xs bg-red">TC — deuda</span>` : '']
       : esTC
-        ? [html`<span class="badge bg-red" style="font-size:9px;">TC — deuda</span>`, html`<span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>`]
+        ? [html`<span class="badge badge-xs bg-red">TC — deuda</span>`, html`<span class="badge badge-xs bg-blue">${g.cat}</span>`]
         : esPagoTC
-          ? [html`<span class="badge bg-green" style="font-size:9px;">Pago TC</span>`]
-          : [html`<span class="badge bg-blue" style="font-size:9px;">${g.cat}</span>`];
-    return html`<div class="gasto-item" style="${raw((esFijo || esPagoTC) ? 'opacity:.75;' : '')}">
+          ? [html`<span class="badge badge-xs bg-green">Pago TC</span>`]
+          : [html`<span class="badge badge-xs bg-blue">${g.cat}</span>`];
+    return html`<div class="gasto-item${raw((esFijo || esPagoTC) ? ' gasto-item-atenuado' : '')}">
       <div class="gasto-item-top">
-        <div style="flex:1;min-width:0;">
-          <div class="row-name" style="font-size:13px;display:flex;align-items:center;gap:6px;">${g.desc}${esSecundario ? html`<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:1px 5px;white-space:nowrap;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
+        <div class="gasto-item-info">
+          <div class="row-name gasto-nombre-fila">${g.desc}${esSecundario ? html`<span class="gasto-chip-auto"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
           <div class="row-sub">${g.fecha}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span class="row-amount" style="color:${raw(colorMonto)};">${esPagoTC ? '-' : ''}${fmt(g.monto)}</span>
+        <div class="gasto-acciones">
+          <span class="row-amount ${raw(claseMonto)}">${esPagoTC ? '-' : ''}${fmt(g.monto)}</span>
           ${esSecundario
-            ? html`<span title="Generado automáticamente — elimínalo desde ${g._origenSeccion || 'la sección de origen'}" style="display:flex;align-items:center;justify-content:center;padding:4px;color:var(--text3);opacity:.4;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
+            ? html`<span title="Generado automáticamente — elimínalo desde ${g._origenSeccion || 'la sección de origen'}" class="gasto-candado"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
             : html`<button type="button" class="btn-delete-hover" ${raw(Events.attr('gastos:deleteGastoVar', g.id))} title="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>`}
@@ -287,8 +287,8 @@ function renderGastosVar() {
       </div>
       <div class="gasto-item-meta">
         ${tipoBadges}
-        ${g.splits && g.splits.length ? html`<span class="badge" style="font-size:9px;">Dividido: ${g.splits.map(s => fuenteLabel(s.fuente || '')).join(', ')}</span>` : (g.fuente ? html`<span class="badge ${raw(fuenteBadgeClass(g.fuente))}" style="font-size:9px;">${fuenteLabel(g.fuente)}</span>` : '')}
-        ${(!(esFijo || esTC) && g.nota) ? html`<span style="font-size:10px;color:var(--text3);">${g.nota}</span>` : ''}
+        ${g.splits && g.splits.length ? html`<span class="badge badge-xs">Dividido: ${g.splits.map(s => fuenteLabel(s.fuente || '')).join(', ')}</span>` : (g.fuente ? html`<span class="badge badge-xs ${raw(fuenteBadgeClass(g.fuente))}">${fuenteLabel(g.fuente)}</span>` : '')}
+        ${(!(esFijo || esTC) && g.nota) ? html`<span class="gasto-nota">${g.nota}</span>` : ''}
       </div>
     </div>`;
   }
@@ -312,9 +312,9 @@ function renderGastosVar() {
     const partes = [];
     if (realDia > 0) partes.push(fmt(realDia));
     if (tcDia > 0) partes.push((realDia > 0 ? '+ ' : '') + fmt(tcDia) + ' en TC');
-    return html`<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px;margin:${raw(idx === 0 ? '2px' : '16px')} 0 6px;">
-      <span style="font-size:11px;font-weight:600;color:var(--text2);">${_gvDiaLabel(dia.fecha)}</span>
-      <span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;">${partes.join(' ')}</span>
+    return html`<div class="gasto-dia${raw(idx === 0 ? ' gasto-dia-primero' : '')}">
+      <span class="gasto-dia-label">${_gvDiaLabel(dia.fecha)}</span>
+      <span class="gasto-dia-total">${partes.join(' ')}</span>
     </div>${dia.items.map(itemHtml)}`;
   });
   el.innerHTML = html`${contenido}`;
@@ -524,27 +524,27 @@ function renderGastosFijos() {
     const pagado = !!infoPago;
     let accionHtml;
     if (pagado) {
-      accionHtml = html`<div style="text-align:right;">
-        <span class="badge" style="background:rgba(100,220,100,.15);color:#4caf50;border:1px solid rgba(100,220,100,.3);font-size:9px;padding:3px 7px;">Pagado</span>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px;">${infoPago.fecha || ''}</div>
+      accionHtml = html`<div class="gasto-pago-col">
+        <span class="badge badge-xs gasto-badge-pagado">Pagado</span>
+        <div class="gasto-fecha-pago">${infoPago.fecha || ''}</div>
       </div>`;
     } else if (!x._virtual) {
-      accionHtml = html`<button type="button" ${raw(Events.attr('gastos:abrirPagarGastoFijo', x.id))} style="font-size:11px;padding:5px 10px;background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;font-weight:600;">Pagar</button>`;
+      accionHtml = html`<button type="button" ${raw(Events.attr('gastos:abrirPagarGastoFijo', x.id))} class="gasto-btn-pagar">Pagar</button>`;
     } else {
-      accionHtml = html`<span style="font-size:10px;color:var(--text3);">Spotify</span>`;
+      accionHtml = html`<span class="gasto-nota">Spotify</span>`;
     }
     return html`<div class="gasto-item">
       <div class="gasto-item-top">
-        <div><div class="row-name" style="font-size:13px;">${x.nombre}</div></div>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div><div class="row-name row-name-13">${x.nombre}</div></div>
+        <div class="gasto-acciones">
           <span class="row-amount c-red">${fmt(x.monto)}</span>
           ${!x._virtual ? html`<button type="button" class="btn-delete-hover" ${raw(Events.attr('gastos:deleteGastoFijo', x.id))} title="Eliminar">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>` : ''}
         </div>
       </div>
-      <div class="gasto-item-meta" style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
-        <span class="badge bg-blue" style="font-size:9px;">${x.cat}</span>
+      <div class="gasto-item-meta gasto-meta-fijo">
+        <span class="badge badge-xs bg-blue">${x.cat}</span>
         ${accionHtml}
       </div>
     </div>`;
@@ -610,7 +610,7 @@ function pgfActualizarSaldo() {
     if (tc) {
       const nuevaDeuda = (tc.deuda || 0) + monto;
       const cupoDisp = tc.cupo ? tcCupoDisponible(tc) : null;
-      info.innerHTML = 'Deuda: ' + fmt(tc.deuda || 0) + ' <i class="fa-solid fa-arrow-right" style="margin:0 3px;font-size:10px;"></i> ' + fmt(nuevaDeuda);
+      info.innerHTML = 'Deuda: ' + fmt(tc.deuda || 0) + ' <i class="fa-solid fa-arrow-right gasto-flecha"></i> ' + fmt(nuevaDeuda);
       info.style.color = (cupoDisp !== null && monto > cupoDisp) ? 'var(--red)' : 'var(--accent)';
     } else {
       info.textContent = '';

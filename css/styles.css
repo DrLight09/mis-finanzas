@@ -816,3 +816,26 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .cat-chips{display:flex;flex-wrap:wrap;}
 .cat-chip{display:inline-flex;align-items:center;gap:4px;padding:4px 9px 4px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;margin:0 4px 6px 0;color:var(--text2);}
 .cat-chip-del{background:none;border:none;cursor:pointer;color:var(--text3);padding:0 0 0 2px;line-height:1;display:flex;align-items:center;}
+
+/* ── Gastos (lista de gastos variables y fijos, sheet de pago de fijo) — Paso 5, tanda 3 (2026-10-20) ── */
+.badge.badge-xs{font-size:9px;}
+.badge.gasto-badge-fijo{background:rgba(200,240,96,.1);color:var(--accent);border:1px solid rgba(200,240,96,.2);}
+.badge.gasto-badge-pagado{background:rgba(100,220,100,.15);color:#4caf50;border:1px solid rgba(100,220,100,.3);padding:3px 7px;}
+.gasto-item.gasto-item-atenuado{opacity:.75;}
+.gasto-item-info{flex:1;min-width:0;}
+.row-name.gasto-nombre-fila{font-size:13px;display:flex;align-items:center;gap:6px;}
+.row-name.row-name-13{font-size:13px;}
+.gasto-chip-auto{display:inline-flex;align-items:center;gap:2px;font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:1px 5px;white-space:nowrap;}
+.gasto-acciones{display:flex;align-items:center;gap:8px;}
+.row-amount.gasto-monto-fijo{color:var(--text2);}
+.gasto-candado{display:flex;align-items:center;justify-content:center;padding:4px;color:var(--text3);opacity:.4;}
+.gasto-nota{font-size:10px;color:var(--text3);}
+.gasto-dia{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px;margin:16px 0 6px;}
+.gasto-dia.gasto-dia-primero{margin:2px 0 6px;}
+.gasto-dia-label{font-size:11px;font-weight:600;color:var(--text2);}
+.gasto-dia-total{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;white-space:nowrap;}
+.gasto-pago-col{text-align:right;}
+.gasto-fecha-pago{font-size:10px;color:var(--text3);margin-top:3px;}
+.gasto-btn-pagar{font-size:11px;padding:5px 10px;background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:var(--radius-sm);cursor:pointer;white-space:nowrap;font-family:'DM Sans',sans-serif;font-weight:600;}
+.gasto-item-meta.gasto-meta-fijo{justify-content:space-between;}
+.gasto-flecha{margin:0 3px;font-size:10px;}

@@ -10,7 +10,7 @@
 
    Depende de globals del núcleo compartido (S, save, refresh,
    escHtml, fmt, toast, dialogo, uid, hoy, emptyState, getFuentes*,
-   sumarFuente, descontarFuente, calcC, getSaldoActual) y de
+   sumarFuente, descontarFuente, calcC, getSaldoFuente) y de
    js/core/events.js (Events), que debe cargarse antes que este.
 
    Pagar Spotify con una tarjeta de crédito (fuente 'tc:<id>') es un CARGO a la
@@ -162,9 +162,8 @@ function spCicloCobrosActual(){
 }
 
 function spCobradoDePersona(p,cicloCobros){
-  // Suma lo que una persona ya aportó en el ciclo actual, vinculando por id
-  // (o por nombre como respaldo para registros antiguos sin spId).
-  return (cicloCobros||spCicloCobrosActual()).filter(h=>p.id?h.spId===p.id:h.nombre===p.nombre).reduce((a,h)=>a+(h.monto||0),0);
+  // Suma lo que una persona ya aportó en el ciclo actual, vinculando por id.
+  return (cicloCobros||spCicloCobrosActual()).filter(h=>h.spId===p.id).reduce((a,h)=>a+(h.monto||0),0);
 }
 
 function nextMonthFixed(dateStr, mesesAdelantar){
@@ -203,8 +202,8 @@ function spSumarDias(fechaStr,dias){
 }
 
 function spTramosDeCobro(h){
-  // Divide un registro de cobro en sus períodos. Registros viejos (sin `periodos` o sin
-  // `proximoPagoAntes`) → un solo tramo sin fecha de inicio: nunca flotan.
+  // Divide un registro de cobro en sus períodos. Un cobro sin `proximoPagoAntes` (la persona
+  // no tenía fecha de próximo pago) → tramos sin fecha de inicio: nunca flotan.
   // `_periodoOffset`: períodos del mismo pago que ya cubrió el registro hermano de
   // "Pago atrasado del ciclo anterior" (ver confirmarSpDestino).
   const total=Math.max(1,Math.round(h.periodos||1));
@@ -500,9 +499,8 @@ function renderSpStats(){
   const totalSlots=personas.length+1;
   const cuotaAdmin=costo>0?Math.round(costo/totalSlots):0;
   const ciclosPagados=pagosSpotify.length;
-  // Se usa la cuota guardada en cada pago (según la cantidad de personas de esa época);
-  // los registros antiguos que no la tengan usan la cuota actual como respaldo.
-  const ahorroCuotaAdmin=pagosSpotify.reduce((a,h)=>a+(h._cuotaAdmin!=null?h._cuotaAdmin:cuotaAdmin),0);
+  // Se usa la cuota guardada en cada pago (según la cantidad de personas de esa época).
+  const ahorroCuotaAdmin=pagosSpotify.reduce((a,h)=>a+(h._cuotaAdmin||0),0);
 
   // ── Ingreso mensual estimado (personas activas) — solo se usa como respaldo
   // mientras no haya ningún ciclo pagado todavía
@@ -521,7 +519,7 @@ function renderSpStats(){
   const tramosStats=spAsignarPeriodos(hist);
   hist.filter(h=>h.tipo==='pago').forEach((h,j)=>{
     const cobradoCiclo=tramosStats.filter(t=>t.ciclo===j).reduce((a,t)=>a+t.monto,0);
-    const cuotaAdminDeEseCiclo=h._cuotaAdmin!=null?h._cuotaAdmin:cuotaAdmin;
+    const cuotaAdminDeEseCiclo=h._cuotaAdmin||0;
     // Dos lecturas del mismo ciclo (ver docs/spotify.md §7):
     //   mano     = cobrado − pagado             → plata nueva libre para gastar
     //   ganancia = cobrado − pagado + tu parte  → beneficio total (suma el mes que te salió gratis)
@@ -1277,7 +1275,7 @@ async function actualizarSpPagarPreview(){
       fuenteInfo.textContent='';prev.textContent='';
     }
   } else if(fuente){
-    const actual=getSaldoActual(fuente);
+    const actual=getSaldoFuente(fuente);
     if(monto>0){
       // El cálculo de abajo ya incluye el saldo actual como primer término
       // ($actual − $monto = $resultado) — mostrar además "Saldo disponible: $actual"

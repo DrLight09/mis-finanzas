@@ -284,22 +284,6 @@ function _getOrCrearHistorico(d, fecha) {
   return historico;
 }
 
-// Migra deudores viejos (sin d.grupos) metiendo todos sus movimientos sueltos
-// al grupo "Histórico" (ver _getOrCrearHistorico). Idempotente — se puede
-// llamar en cada abrirDeudor() sin costo si ya está migrado. No llama a
-// save() — eso lo decide quien la invoque, para no generar escrituras de más
-// si el deudor no tiene movimientos que migrar.
-function _migrarGruposDeudor(d) {
-  if (!d) return false;
-  if (!d.grupos) d.grupos = [];
-  const movs = d.movimientos || [];
-  const sinGrupo = movs.filter(m => !m.grupoId);
-  if (!sinGrupo.length) return false;
-  const historico = _getOrCrearHistorico(d, sinGrupo[0] && sinGrupo[0].fecha);
-  sinGrupo.forEach(m => { m.grupoId = historico.id; });
-  return true;
-}
-
 // Saldo de un grupo específico dentro de un deudor (mismo criterio que
 // getDeudorSaldo pero filtrado por grupoId).
 function getGrupoSaldo(d, grupoId) {
@@ -517,9 +501,6 @@ function abrirDeudor(id) {
   const d = Deudas.lista('favor').find(x => x.id === id);
   if (!d) return;
   _actualizarBtnPrestamoTC();
-  // Migración silenciosa de deudores creados antes de que existieran los
-  // grupos de préstamo — todo movimiento suelto cae en un grupo "Histórico".
-  if (_migrarGruposDeudor(d)) save();
   const saldo = getDeudorSaldo(d);
   const totalPrestado = (d.movimientos || []).filter(m => m.tipo === 'prestamo').reduce((a, m) => a + m.monto, 0);
   // Lo perdonado (_perdon) NO es plata que pagó: no entra en "Pagado" (queda en el historial como "Perdonado").
@@ -1902,8 +1883,6 @@ function abrirMiDeuda(id) {
   miDeudaActualId = id;
   const d = Deudas.lista('contra').find(x => x.id === id);
   if (!d) return;
-  // Migración silenciosa: deudas creadas antes de los grupos caen en un grupo "Histórico".
-  if (_migrarGruposDeudor(d)) save();
   const saldo = getMiDeudaSaldo(d);
   const totalRecibido = (d.movimientos || []).filter(m => m.tipo === 'recibido').reduce((a, m) => a + m.monto, 0);
   // Lo perdonado (_perdon) no es plata que pagó: queda en el historial como "Perdonada".

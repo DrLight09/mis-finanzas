@@ -107,11 +107,6 @@ function _alcDesgloseHtml(movimientos, fmtFn){
       mandado += monto;
     } else if(tipo === 'regalo'){
       mama += monto;
-    } else if(tipo === 'split'){
-      const splitYo   = m._splitYo   || 0;
-      const splitMama = m._splitMama || 0;
-      yo   += splitYo;
-      mama += splitMama;
     } else if(tipo === 'multi'){
       (m.partes || []).forEach(pt => {
         if(pt.origen === 'regalo') mama += pt.monto || 0;
@@ -156,7 +151,7 @@ function _alcDesgloseHtml(movimientos, fmtFn){
    monto entre varios orígenes con el motor genérico js/core/split.js.
    Con UN solo origen el registro guardado es idéntico al de siempre (tipo
    yo-cuenta / yo-directo / regalo / mandado / cobro-deuda); con varios se guarda
-   tipo 'multi' con `partes[]`. Los depósitos 'split' viejos se siguen leyendo.  */
+   tipo 'multi' con `partes[]`.  */
 const _ALC_VALOR_DEUDA = '@deuda';
 const _ALC_ORIGENES_SIN_CUENTA = {
   '@propio':  { origen: 'propio',  tipo: 'yo-directo', label: 'Plata mía (no estaba en ninguna cuenta)', corto: 'Propio',        desc: 'Depósito en alcancía', nota: 'Ingreso registrado al guardar en alcancía (dinero directo)' },
@@ -271,10 +266,6 @@ function _alcDeudorSelActualizar(){
   }
   const d = Deudas.lista('favor').find(x => x.id === deudorId);
   if(!d) return;
-  // Migrar antes de leer d.grupos — un deudor viejo sin d.grupos parece tener
-  // "0 grupos abiertos" aunque tenga deuda real, y eso hace que el auto-resolver
-  // le cree un grupo nuevo en blanco en vez de reutilizar la deuda existente.
-  if(typeof _migrarGruposDeudor === 'function') _migrarGruposDeudor(d);
   const abiertos = (typeof _gruposAbiertos === 'function') ? _gruposAbiertos(d) : [];
   if(abiertos.length >= 2){
     if(grupoWrap) grupoWrap.style.display = '';
@@ -928,7 +919,6 @@ window.alcanciaConfirmarDeposito = function(){
     if(!cobroDeudorId){ err('Selecciona quién te pagó'); return; }
     const dCheck = Deudas.lista('favor').find(x => x.id === cobroDeudorId);
     if(!dCheck){ err('Esa persona ya no existe'); return; }
-    if(typeof _migrarGruposDeudor === 'function') _migrarGruposDeudor(dCheck);
     cobroDeudorNombre = dCheck.nombre;
     const grupoWrapCheck = document.getElementById('alc_dep_deudor_grupo_wrap');
     if(grupoWrapCheck && grupoWrapCheck.style.display !== 'none'){
@@ -1000,8 +990,6 @@ window.alcanciaConfirmarDeposito = function(){
     const d = Deudas.lista('favor').find(x => x.id === cobroDeudorId);
     if(d){
       if(!d.movimientos) d.movimientos = [];
-      // Deudores viejos sin d.grupos: migrar antes, si no _autoGrupoIdMov crea un grupo en blanco (ver prestado.md §2.4).
-      if(typeof _migrarGruposDeudor === 'function') _migrarGruposDeudor(d);
       const grupoIdFinal = cobroGrupoId || (typeof _autoGrupoIdMov === 'function' ? _autoGrupoIdMov(d, fecha) : undefined);
       cobroAbonoMovId = uidF();
       d.movimientos.push({
@@ -1317,13 +1305,12 @@ window.alcanciaToggleMontoDeposito = function(movId, el){
 
 /* ─── ELIMINAR UN DEPÓSITO ───────────────────────────────────────────────
    Revierte según el tipo del depósito (ver depositAlcancia() arriba):
-   - 'yo-directo' / 'regalo' / 'mandado' / la parte de mamá en 'split':
+   - 'yo-directo' / 'regalo' / 'mandado':
      fueron un ingreso neto-cero en S.movimientos (sumarFuente(+) seguido
      de sumarFuente(-)) — no tocan saldo real, así que basta con quitar el
      registro, sin revertir ningún saldo.
-   - 'yo-cuenta' / la parte propia de 'split' cuando vino de una cuenta:
-     fueron un gasto real en S.gastosVar que sí descontó saldo — hay que
-     devolver la plata con sumarFuente().
+   - 'yo-cuenta': fue un traslado a la alcancía en S.transferencias que sí
+     descontó saldo — hay que devolver la plata con sumarFuente().
    No usa eliminarMovimiento() de movimientos.js porque esos registros ya
    quedan marcados _secundario (ver arriba), así que esa función los
    bloquea a propósito — este es el único camino real para deshacerlos. */
@@ -1357,7 +1344,6 @@ window.alcanciaEliminarDeposito = async function(movId){
     if(nivel === 'viejo' && typeof confirmarBorrarMovimientoViejo === 'function'){
       let nombreCuenta, direccion;
       if(entry.tipo === 'yo-cuenta' && entry.fuenteOrigen){ nombreCuenta = fuenteLabel(entry.fuenteOrigen); direccion = 'sube'; }
-      else if(entry.tipo === 'split' && entry._splitFuente){ nombreCuenta = fuenteLabel(entry._splitFuente); direccion = 'sube'; }
       else if(entry.tipo === 'multi' && (entry.partes||[]).some(pt => pt.origen === 'cuenta')){ nombreCuenta = entry.partes.filter(pt => pt.origen === 'cuenta').map(pt => _alcNombreFuente(pt.fuente)).join(' y '); direccion = 'sube'; }
       else if(entry.tipo === 'cobro-deuda' && deudorParaAviso){ nombreCuenta = 'la deuda de ' + deudorParaAviso.nombre; direccion = 'sube'; }
       else { nombreCuenta = 'tu alcancía'; direccion = 'baja'; }
@@ -1372,22 +1358,17 @@ window.alcanciaEliminarDeposito = async function(movId){
 
   const dialogoTexto = entry.tipo === 'cobro-deuda'
     ? `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? Se le volverá a sumar esa plata a la deuda de la persona.`
-    : `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? ${entry.fuenteOrigen || entry._splitFuente || (entry.tipo === 'multi' && (entry.partes||[]).some(pt => pt.origen === 'cuenta')) ? 'Se devolverá el dinero a la cuenta de origen.' : 'No afecta ningún saldo (fue un ingreso registrado sin mover plata real).'}`;
+    : `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? ${entry.fuenteOrigen || (entry.tipo === 'multi' && (entry.partes||[]).some(pt => pt.origen === 'cuenta')) ? 'Se devolverá el dinero a la cuenta de origen.' : 'No afecta ningún saldo (fue un ingreso registrado sin mover plata real).'}`;
   const ok = await dialogo('Eliminar depósito', dialogoTexto, 'Eliminar', true);
   if(!ok) return;
 
   return _alcanciaEjecutarEliminarDeposito(a, idx, entry);
 };
 
-// Quita el movimiento espejo de un depósito con cuenta de origen. Vive en
-// S.transferencias desde el cambio de 2026-09-27 (ver CHANGELOG.md#alcancia);
-// también se filtra de S.gastosVar por si queda algún registro viejo sin
-// migrar de antes de ese cambio — no debería pasar tras la migración, pero
-// cubrir el caso no cuesta nada y evita un depósito "fantasma" imborrable.
+// Quita el movimiento espejo de un depósito con cuenta de origen (vive en S.transferencias).
 function _alcQuitarMirrorCuenta(id){
   if(!id) return;
   window.S.transferencias = (window.S.transferencias || []).filter(x => x.id !== id);
-  window.S.gastosVar = (window.S.gastosVar || []).filter(x => x.id !== id);
 }
 
 async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
@@ -1395,16 +1376,6 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
   if(entry.tipo === 'yo-cuenta'){
     _alcQuitarMirrorCuenta(entry.id);
     if(entry.fuenteOrigen && typeof sumarFuente === 'function') sumarFuente(entry.fuenteOrigen, entry.monto, _ogAlc(entry.id, true));
-  } else if(entry.tipo === 'split'){
-    if(entry._splitFuente){
-      _alcQuitarMirrorCuenta(entry.id);
-      if(typeof sumarFuente === 'function') sumarFuente(entry._splitFuente, entry._splitYo || 0, _ogAlc(entry.id, true));
-    } else if(entry._splitYo > 0){
-      window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== entry.id);
-    }
-    if(entry._splitMamaMovId){
-      window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== entry._splitMamaMovId);
-    }
   } else if(entry.tipo === 'multi'){
     // Varios orígenes: cada parte tiene su propio movimiento espejo (partes[].movId).
     (entry.partes || []).forEach(pt => {

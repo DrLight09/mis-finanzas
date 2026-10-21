@@ -2224,7 +2224,7 @@ function _actualizarTraspasoHint() {
   if (!hint) return;
   const val = sel.value;
   if (!val) { hint.textContent = ''; return; }
-  hint.textContent = 'Saldo actual: ' + fmt(getSaldoActual(val));
+  hint.textContent = 'Saldo actual: ' + fmt(getSaldoFuente(val));
 }
 
 function _actualizarTraspasoPreview(enc) {
@@ -2234,7 +2234,7 @@ function _actualizarTraspasoPreview(enc) {
   if (!prev) return;
   if (!monto || !destino) { prev.textContent = ''; return; }
   const saldoEnc = encargoLibre(enc);
-  const saldoCuenta = getSaldoActual(destino);
+  const saldoCuenta = getSaldoFuente(destino);
   const nuevoEnc = saldoEnc - monto;
   const nuevoCuenta = saldoCuenta + monto;
   const colorEnc = nuevoEnc < 0 ? 'var(--red)' : 'var(--blue)';
@@ -2435,7 +2435,7 @@ function _actualizarMoverEncDestinoHint() {
   if (!hint) return;
   const val = sel.value;
   if (!val) { hint.textContent = ''; return; }
-  hint.textContent = 'Saldo actual de la cuenta: ' + fmt(getSaldoActual(val));
+  hint.textContent = 'Saldo actual de la cuenta: ' + fmt(getSaldoFuente(val));
   hint.style.color = 'var(--text3)';
 }
 
@@ -3074,7 +3074,7 @@ function _ctcActualizarDestinoHint() {
   if (!hint) return;
   const val = sel.value;
   if (!val) { hint.textContent = ''; return; }
-  hint.textContent = 'Saldo actual: ' + fmt(getSaldoActual(val));
+  hint.textContent = 'Saldo actual: ' + fmt(getSaldoFuente(val));
   hint.style.color = 'var(--text3)';
 }
 
@@ -3104,7 +3104,7 @@ function _ctcActualizarPreview() {
   const nombreTC = tc ? tc.nombre : (tcId ? tcId : 'TC');
 
   // Destino
-  const saldoDest = destino ? getSaldoActual(destino) : 0;
+  const saldoDest = destino ? getSaldoFuente(destino) : 0;
   const lblDest = destino ? fuenteLabel(destino) : '';
 
   const lines = [];

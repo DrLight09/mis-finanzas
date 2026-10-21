@@ -112,9 +112,7 @@ function _wrappedAnioYMesActual(){
    Wrapped no es dueño de ningún dato — lee estructuras que ya arma el
    resto de la app (S.movimientos, S.gastosVar, S.patrimonioHistorial,
    S.alcancia) y que van evolucionando con el tiempo, con datos JSON reales
-   que a veces llegan en una forma inesperada (ver el propio comentario de
-   `_wrappedCalcularPeriodo` sobre `pagosGastosFijos` llegando como objeto
-   en vez de array). Esta función no cambia ningún cálculo ni bloquea el
+   que a veces llegan en una forma inesperada. Esta función no cambia ningún cálculo ni bloquea el
    render: solo junta advertencias sobre la FORMA de esos datos (¿es
    array?, ¿los montos son números?, ¿las fechas tienen pinta de
    "YYYY-MM-DD"?) para que un problema de normalización aguas arriba se
@@ -142,9 +140,6 @@ function _wrappedValidarDatos(S){
   if(S.patrimonioHistorial !== undefined && !Array.isArray(S.patrimonioHistorial)){
     warnings.push('S.patrimonioHistorial existe pero no es un array.');
   }
-  // S.pagosGastosFijos SÍ puede llegar como array u objeto/mapa en datos
-  // reales de producción (ver _wrappedCalcularPeriodo, ya normaliza esto
-  // con Object.values) — no es un error de forma, así que no se advierte.
   if(S.alcancia !== undefined && S.alcancia !== null && typeof S.alcancia !== 'object'){
     warnings.push('S.alcancia existe pero no es un objeto.');
   }
@@ -2170,15 +2165,9 @@ function _wrappedCopyMeta(m){
    aparte, no en esta pasada).
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* Lista de cajitas: en el modelo documentado (cuentas.md §4) viven en
-   `S.nu.cajitas[]`, pero en datos reales de producción (verificado contra
-   mis-finanzas-poblado-2026.json) viven directo en `S.cajitas[]`, sin el
-   contenedor `S.nu`. Se prueban ambas rutas, la real primero — mismo
-   espíritu que ya tiene `_wrappedValidarDatos` con `pagosGastosFijos`. */
+/* Lista de cajitas: viven directo en `S.cajitas[]` (cuentas.md §4). */
 function _wrappedListaCajitas(S){
-  if(Array.isArray(S.cajitas)) return S.cajitas;
-  if(S.nu && Array.isArray(S.nu.cajitas)) return S.nu.cajitas;
-  return [];
+  return Array.isArray(S.cajitas) ? S.cajitas : [];
 }
 
 /* ─── PÁRRAFO DE CIERRE ("poema"), 2026-09-14 ──────────────────────────
@@ -2595,8 +2584,7 @@ function _wrappedComparaciones(S, tipo, mesK, anioK, s){
    HOY de cada gasto fijo categoría "Suscripciones" (`S.gastosFijos`), no
    un total histórico pagado durante el año — no hay en este archivo forma
    segura de reconstruir esa suma sin conocer la forma interna exacta de
-   `S.pagosGastosFijos` más allá de lo ya documentado (array u
-   objeto/mapa). Mismo tipo de simplificación honesta que ya reconoce este
+   `S.pagosGastosFijos` más allá de lo ya documentado (un mapa). Mismo tipo de simplificación honesta que ya reconoce este
    archivo para la ganancia de Spotify (ver comentario de
    `_wrappedCalcularSpotify`). */
 function _wrappedSuscripciones(S){

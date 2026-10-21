@@ -19,7 +19,7 @@
    existen en `window`:
      - El núcleo compartido: S, save, refresh, escHtml, fmt, fmtInput,
        parseMoney, hoy, uid, toast, openSheet, closeSheet, dialogo,
-       buildFuentesOptsHtml, fuenteLabel, fuenteBadgeClass, getSaldoActual,
+       buildFuentesOptsHtml, fuenteLabel, fuenteBadgeClass, getSaldoFuente,
        sumarFuente, descontarFuente, MC, nivelAntiguedadMovimiento,
        avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, html/raw.
      - js/core/calc-helpers.js: _ensureMesadas, getMesadaData, _getCuotaAnio,
@@ -662,7 +662,7 @@ function actualizarMpPreview() {
   if (mpSplitMode) { _previewSplit(prev, v, splitGetData('mp'), ''); return; }
   const dest = _msVal('mpDestino');
   if (dest) {
-    const actual = getSaldoActual(dest);
+    const actual = getSaldoFuente(dest);
     prev.textContent = fuenteLabel(dest) + ': ' + fmt(actual) + ' + ' + fmt(v) + ' = ' + fmt(actual + v);
     prev.style.color = 'var(--accent)';
   } else {

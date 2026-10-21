@@ -544,15 +544,14 @@ function getMovimientosCuenta(tipo) {
   // Cobros de Spotify a personas (los pagos del plan ya están en gastosVar) + abonos posteriores de lo
   // pendiente, cada uno como su propia fila. Cada abono puede haber ido a una cuenta distinta a la del
   // cobro original, así que se filtra por su propio `destino`, no por `h.fuente`.
-  (S.spotify.historial || []).forEach((h, _spIdx) => {
+  (S.spotify.historial || []).forEach(h => {
     if (h.tipo === 'pago') return;
     // h.monto acumula el cobro original + los abonos ya recibidos (confirmarSpResolverPendiente): hay que
     // restar los abonos para no contar la misma plata dos veces (una acá, otra en su propia fila).
     const historialPendTotal = (h.pendienteHistorial || []).reduce((a, ab) => a + (ab.monto || 0), 0);
     const montoOriginalCobro = Math.max(0, (h.monto || 0) - historialPendTotal);
     if (coincide(h.fuente)) {
-      // Sin id (historial antiguo): _movId estable a partir del índice, para que el orden funcione igual.
-      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +montoOriginalCobro, fuente: h.fuente, _idx: _idx++, _movId: h.id || ('sp_legacy_' + _spIdx), _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
+      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +montoOriginalCobro, fuente: h.fuente, _idx: _idx++, _movId: h.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
     }
     (h.pendienteHistorial || []).forEach(ab => {
       if (!coincide(ab.destino)) return;
@@ -796,7 +795,7 @@ function abrirAgregarDinero(fuente,nombre){
   adFuente=fuente;
   const label=nombre||(fuente==='nequi'?'Nequi':fuente==='efectivo'?'Efectivo':'Cuenta');
   document.getElementById('adTitle').textContent='Agregar a '+label;
-  const actual=getSaldoActual(fuente);
+  const actual=getSaldoFuente(fuente);
   document.getElementById('adSaldoActual').textContent=fmt(actual);
   document.getElementById('adMonto').value='';
   document.getElementById('adDesc').value='';
@@ -884,7 +883,7 @@ function toggleAdApertura(){
 document.addEventListener('input',function(e){
   if(e.target.id==='adMonto'){
     const v=parseMoney(e.target.value)||0;
-    const actual=getSaldoActual(adFuente);
+    const actual=getSaldoFuente(adFuente);
     const prev=document.getElementById('adPreview');
     if(v>0){prev.textContent=fmt(actual)+' + '+fmt(v)+' = '+fmt(actual+v);prev.style.color='var(--accent)';}
     else{prev.textContent='';}
@@ -927,7 +926,7 @@ function openSheet_adMenu(){
 
 function actualizarAdMenuSaldo(){
   const fuente=document.getElementById('adMenuDest').value;
-  const actual=getSaldoActual(fuente);
+  const actual=getSaldoFuente(fuente);
   document.getElementById('adMenuSaldo').textContent='Saldo actual: '+fmt(actual);
   actualizarAdMenuPreview();
 }
@@ -935,7 +934,7 @@ function actualizarAdMenuSaldo(){
 function actualizarAdMenuPreview(){
   const fuente=document.getElementById('adMenuDest').value;
   const v=parseMoney(document.getElementById('adMenuMonto').value)||0;
-  const actual=getSaldoActual(fuente);
+  const actual=getSaldoFuente(fuente);
   const prev=document.getElementById('adMenuPreview');
   if(v>0){prev.textContent=fmt(actual)+' + '+fmt(v)+' = '+fmt(actual+v);prev.style.color='var(--accent)';}
   else{prev.textContent='';}
@@ -1098,7 +1097,7 @@ function abrirRestarDinero(fuente,nombre){
   rdFuente=fuente;
   const label=nombre||(fuente==='nequi'?'Nequi':fuente==='efectivo'?'Efectivo':'Cuenta');
   document.getElementById('rdTitle').textContent='Retirar de '+label;
-  const actual=getSaldoActual(fuente);
+  const actual=getSaldoFuente(fuente);
   document.getElementById('rdSaldoActual').textContent=fmt(actual);
   document.getElementById('rdMonto').value='';
   document.getElementById('rdDesc').value='';
@@ -1113,7 +1112,7 @@ function abrirRestarDinero(fuente,nombre){
 document.addEventListener('input',function(e){
   if(e.target.id==='rdMonto'){
     const v=parseMoney(e.target.value)||0;
-    const actual=getSaldoActual(rdFuente);
+    const actual=getSaldoFuente(rdFuente);
     const prev=document.getElementById('rdPreview');
     const resultado=actual-v;
     if(v>0){
@@ -1135,7 +1134,7 @@ function confirmarRestarDinero(){
   // guarda el movimiento con el monto COMPLETO: restar más de lo que hay dejaba el saldo en 0 y el
   // historial diciendo que salió más plata de la que había, y al borrar ese movimiento
   // (sumarFuente(monto)) la cuenta recibía de más. Misma regla que Transferir: se compara en centavos.
-  const saldoDisponible=getSaldoActual(rdFuente);
+  const saldoDisponible=getSaldoFuente(rdFuente);
   if(Math.round(v*100)>Math.round(saldoDisponible*100)){
     toast('Saldo insuficiente en '+escHtml(fuenteLabel(rdFuente))+' ('+fmt(saldoDisponible)+')','err',3500);
     return;
@@ -1308,8 +1307,8 @@ function actualizarTransfPreview() {
   const origen = document.getElementById('tr_origen').value;
   const destino = document.getElementById('tr_destino').value;
   const monto = parseMoney(document.getElementById('tr_monto').value) || 0;
-  const saldoOrigen = getSaldoActual(origen);
-  const saldoDestino = getSaldoActual(destino);
+  const saldoOrigen = getSaldoFuente(origen);
+  const saldoDestino = getSaldoFuente(destino);
 
   // Update saldo hints
   const orEl = document.getElementById('tr_origen_saldo');
@@ -1345,7 +1344,7 @@ function confirmarTransferir() {
   const nota = document.getElementById('tr_nota').value.trim();
   const fecha = document.getElementById('tr_fecha')?.value || hoy();
 
-  const saldoOrigen = getSaldoActual(origen);
+  const saldoOrigen = getSaldoFuente(origen);
   const v = validarTransferencia({ origen, destino, monto, saldoOrigen, etiquetaOrigen: escHtml(fuenteLabel(origen)) });
   if (!v.ok) { toast(v.mensaje, 'err', v.codigo === 'monto' ? 3500 : undefined); return; }
 

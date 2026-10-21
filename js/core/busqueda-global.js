@@ -154,16 +154,16 @@
     const l = typeof fuenteLabel === 'function' ? fuenteLabel(f) : f;
     return (l === f && String(f).includes(':')) ? 'Cuenta eliminada' : l;
   };
-  const _arrowRight = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" style="flex-shrink:0;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
+  const _arrowRight = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" class="busqueda-flecha"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`;
 
   busquedaInput.addEventListener('input', function(){
     const q = this.value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-    if(q.length < 2){ busquedaResultados.innerHTML = '<div style="text-align:center;padding:24px 0;font-size:13px;color:var(--text3);">Escribe al menos 2 caracteres</div>'; return; }
+    if(q.length < 2){ busquedaResultados.innerHTML = '<div class="busqueda-aviso">Escribe al menos 2 caracteres</div>'; return; }
     const S = window.S || {};
     const resultados = [];
     // Ícono (SVG inline) que reemplaza al monto de los depósitos de Alcancía. `meta` se escapa con escHtml(),
     // así que el ícono viaja aparte en `metaHtml` (el texto va escapado dentro de él).
-    const _iconoOculto = '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="5" viewBox="0 0 26 5" fill="currentColor" role="img" aria-label="Monto oculto" style="display:inline-block;vertical-align:middle"><circle cx="1.6" cy="2.5" r="1.6"/><circle cx="9.2" cy="2.5" r="1.6"/><circle cx="16.8" cy="2.5" r="1.6"/><circle cx="24.4" cy="2.5" r="1.6"/></svg>';
+    const _iconoOculto = '<svg xmlns="http://www.w3.org/2000/svg" width="26" height="5" viewBox="0 0 26 5" fill="currentColor" role="img" aria-label="Monto oculto" class="busqueda-oculto"><circle cx="1.6" cy="2.5" r="1.6"/><circle cx="9.2" cy="2.5" r="1.6"/><circle cx="16.8" cy="2.5" r="1.6"/><circle cx="24.4" cy="2.5" r="1.6"/></svg>';
 
     // Gastos variables
     (S.gastosVar||[]).forEach(g => {
@@ -308,7 +308,7 @@
     });
 
     if(!resultados.length){
-      busquedaResultados.innerHTML = '<div style="text-align:center;padding:48px 0;"><div style="margin-bottom:10px;display:flex;justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div style="font-size:13px;color:var(--text3);">Sin resultados para <b style="color:var(--text);">"'+escHtml(q)+'"</b></div></div>';
+      busquedaResultados.innerHTML = '<div class="busqueda-sin-resultados"><div class="busqueda-sin-resultados-icono"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="busqueda-sin-resultados-txt">Sin resultados para <b>"'+escHtml(q)+'"</b></div></div>';
       return;
     }
 
@@ -331,23 +331,23 @@
         const tieneNav = !!r.navTipo;
         const iconoSvg = _busquedaIcono(r.navTipo, r.color);
         const navHint = tieneNav
-          ? `<div style="display:flex;align-items:center;gap:4px;margin-top:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);letter-spacing:.3px;">
+          ? `<div class="busqueda-nav-hint">
                <span>Ir ahí</span>${_arrowRight}
              </div>`
           : '';
         return `
-        <div class="busqueda-item" data-bidx="${r._idx}" style="cursor:${tieneNav?'pointer':'default'};">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:36px;height:36px;border-radius:10px;background:${r.color.replace('var(--red)','rgba(240,104,104,.12)').replace('var(--amber)','rgba(240,184,64,.12)').replace('var(--blue)','rgba(96,176,240,.12)').replace('var(--nu-light)','rgba(192,96,240,.12)').replace('var(--accent)','rgba(200,240,96,.12)').replace('#ff4da6','rgba(255,77,166,.12)').replace('#1db954','rgba(29,185,84,.12)')};display:flex;align-items:center;justify-content:center;flex-shrink:0;">${iconoSvg}</div>
-            <div style="flex:1;min-width:0;">
+        <div class="busqueda-item${tieneNav ? '' : ' busqueda-item-sin-nav'}" data-bidx="${r._idx}">
+          <div class="busqueda-fila">
+            <div class="busqueda-icono" style="background:${r.color.replace('var(--red)','rgba(240,104,104,.12)').replace('var(--amber)','rgba(240,184,64,.12)').replace('var(--blue)','rgba(96,176,240,.12)').replace('var(--nu-light)','rgba(192,96,240,.12)').replace('var(--accent)','rgba(200,240,96,.12)').replace('#ff4da6','rgba(255,77,166,.12)').replace('#1db954','rgba(29,185,84,.12)')};">${iconoSvg}</div>
+            <div class="busqueda-cuerpo">
               <div class="busqueda-tipo" style="color:${r.color};">${escHtml(r.tipo)}</div>
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <div class="busqueda-desc" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(r.desc)}</div>
+              <div class="busqueda-desc-fila">
+                <div class="busqueda-desc busqueda-desc-elipsis">${escHtml(r.desc)}</div>
               </div>
               <div class="busqueda-meta">${r.metaHtml || escHtml(r.meta)}</div>
               ${navHint}
             </div>
-            ${tieneNav ? `<div style="color:var(--text3);flex-shrink:0;">${_arrowRight}</div>` : ''}
+            ${tieneNav ? `<div class="busqueda-ir">${_arrowRight}</div>` : ''}
           </div>
         </div>`;
       }).join('');

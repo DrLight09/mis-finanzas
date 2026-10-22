@@ -68,10 +68,10 @@ Esta función es el corazón del módulo. La proyección hereda todo lo que ella
 |---|---|
 | Cajitas Nu (capital + intereses acumulados) | `S.cajitas` → `_calcCSafe(c).val` (envoltorio defensivo de `calcC()`, ver nota abajo) |
 | CDTs en cajitas (capital + rendimiento proyectado) | `S.cajitas[].cdts` → `_calcCDTSafe(cdt).val` (envoltorio defensivo de `calcCDT()`, ver nota abajo) |
-| Saldo Nequi | `S.nequiSaldo` |
-| Saldo Efectivo | `S.efectivoSaldo` |
+| Saldo Nequi | `S.cuentas` (cuenta `nequi`, vía `getSaldoFuente('nequi')`) |
+| Saldo Efectivo | `S.cuentas` (cuenta `efectivo`, vía `getSaldoFuente('efectivo')`) |
 | Saldo deudores (lo que me deben, positivo únicamente) | `S.deudores` → `getDeudorSaldoPatrimonio(d)` |
-| Cuentas personalizadas (todas, sin filtro) | `S.cuentasPersonalizadas` → suma de `saldo` |
+| Cuentas personalizadas (todas, sin filtro) | `S.cuentas` con `tipo: 'custom'` (`cuentasCustom()`) → suma de `saldo` |
 | Alcancía oculta (saldo registrado mientras está activa) | `S.alcancia.saldoRegistrado` |
 
 ### Resta (pasivos)
@@ -125,6 +125,10 @@ Sí afecta la proyección real aunque esté oculta en el hero de Inicio: `calcPa
 
 Cada gasto descuenta una cuenta real → el patrimonio baja, capturado automáticamente. Excepciones que no afectan el análisis de gastos en pantalla (pero sí el patrimonio al salir de la cuenta): `_esAlcancia`, `esPagoGastoFijo`, `_esPagoTC`.
 
+### Restar dinero
+
+Baja el saldo de una cuenta real → el patrimonio baja, capturado automáticamente. Desde 2026-10-09 además cuenta como gasto del mes (`clase: 'gasto'`, categoría `Ajuste`) en Análisis, Inicio y Wrapped; la proyección no cambia porque ya salía del patrimonio.
+
 ### Ingresos a cualquier cuenta / intereses
 
 Cualquier flujo que suba el saldo de Nequi, Efectivo, cajita o cuenta personalizada mejora la tendencia. Los intereses de cajitas/CDTs se capturan automáticamente vía `calcC()`/`calcCDT()`, sin acción del usuario.
@@ -134,7 +138,7 @@ Cualquier flujo que suba el saldo de Nequi, Efectivo, cajita o cuenta personaliz
 ## 5. Qué NO afecta la proyección
 
 - **Transferencias entre cuentas propias:** la suma de activos no cambia.
-- **Préstamos a terceros con fuente especificada:** neto cero (una cuenta baja, el saldo deudor sube). **Excepción — sin fuente especificada:** `descontarFuente('')` no hace nada, así que el saldo deudor sube pero ninguna cuenta baja → el patrimonio sube ficticiamente. Es un uso legítimo cuando el usuario sabe que existe la deuda pero no de qué cuenta salió, no un bug.
+- **Préstamos a terceros con fuente especificada:** neto cero (una cuenta baja, el saldo deudor sube). **Sin fuente especificada:** `descontarFuente('')` no hace nada, así que el saldo deudor sube pero ninguna cuenta baja → el patrimonio sube sin que haya ingreso. Es un uso legítimo (se sabe que existe la deuda pero no de qué cuenta salió), y desde 2026-10-10 se trata como **ajuste de base**: `montoBase` del día lo descuenta, igual que una apertura, así que **no cuenta como crecimiento** en la tendencia ni en la proyección (`_movsDeudaSinCuenta()`, `recalcularMontoBaseHistorial()` en `core-state.js`). Antes un solo préstamo de $500.000 sin cuenta llevó la proyección a 12 meses de +$1,2 M a +$6,7 M. Lo mismo vale para un abono/pago recibido sin cuenta destino (−) y para "Yo debo" (recibido sin cuenta −, pago sin cuenta +). Si ese préstamo en realidad es plata nueva (p. ej. un regalo), el movimiento lleva `clase: 'ingreso'` y cuenta como ingreso del mes en vez de ajuste.
 - **Que alguien me preste plata (con cuenta especificada):** neto cero (la cuenta sube, `misDeudas` sube y se resta). **Excepción sin cuenta especificada:** revisar que `crearMiDeuda()` solo llame `sumarFuente(destino, monto)` cuando `destino` exista — actualmente sí está condicionado así.
 - **Saldos iniciales / aperturas:** descontados del cálculo vía `montoBase`.
 - **Pagos de TC:** neto cero (baja la cuenta de pago, baja la deuda en igual medida).
@@ -161,11 +165,12 @@ Cualquier flujo que suba el saldo de Nequi, Efectivo, cajita o cuenta personaliz
 | Alcancía — destapar | ✅ Si hay diferencia positiva | "Dinero extra" es ingreso nuevo tipo `'entrada'` |
 | Gasto variable | ✅ Sí — baja | Sale de una cuenta real |
 | Gasto fijo pagado | ✅ Sí — baja | Sale de una cuenta real |
+| Restar dinero | ✅ Sí — baja | Sale de una cuenta real (además cuenta como gasto `Ajuste`) |
 | Ingreso a cualquier cuenta | ✅ Sí — sube | Aumenta saldo de la cuenta |
-| Intereses de cajita / CDT | ✅ Sí — sube | `calcC()` y `calcCDT()` los incluyen en el activo |
+| Intereses de cajita / CDT | ✅ Sí — sube | `calcC()` y `calcCDT()` los incluyen en el activo (por mes: `Periodo.rendimientosDelMes`, aparte del ingreso operativo) |
 | Transferencia entre cuentas propias | ❌ Neto cero | Un activo sube, otro baja en igual monto |
 | Préstamo a tercero (fuente especificada) | ❌ Neto cero | La cuenta baja, el saldo deudor sube |
-| Préstamo a tercero (sin especificar fuente) | ✅ Sí — sube ficticiamente | Ninguna cuenta baja, el deudor sube |
+| Préstamo a tercero (sin especificar fuente) | ❌ Excluido (ajuste de base) | Ninguna cuenta baja, el deudor sube: `montoBase` lo descuenta (salvo `clase: 'ingreso'`) |
 | Alguien me prestó (con cuenta destino) | ❌ Neto cero | La cuenta sube, `misDeudas` sube y se resta |
 | Saldo inicial / apertura | ❌ Excluido | `montoBase` lo descuenta del cálculo de tendencia |
 | Abono de un deudor | ✅ Sí — depende | Entra a una cuenta real (sube) y el deudor baja |

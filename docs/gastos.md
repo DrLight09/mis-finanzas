@@ -82,6 +82,15 @@ No tiene campo de "pagado" — eso vive aparte, en `S.pagosGastosFijos`, precisa
 
 La clave combina el id del gasto fijo con el mes (`YYYY-MM`) — así un mismo gasto fijo puede tener (o no) un pago independiente cada mes, y "¿ya se pagó este mes?" es una sola consulta directa en vez de recorrer todo el historial de gasto variable.
 
+### Clase de los movimientos (2026-10-09)
+
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `plan-clasificacion-movimientos.md` y `CHANGELOG.md#infraestructura--seguridad`.
+
+- Gasto variable (`S.gastosVar[]`, incluida la compra con TC): `clase: 'gasto'`.
+- Pago de un gasto fijo (`esPagoGastoFijo`): `clase: 'neutro'` — el pago ya cuenta en `Periodo.gastosFijosDelMes` (clave `"<id>_YYYY-MM"` de `S.pagosGastosFijos`); contarlo otra vez como variable lo duplicaría. Es la clase que antes se deducía con `_esGastoVarNoReal()`.
+- Un gasto cuenta como real en el mes si su `clase` es `gasto`; `_esGastoVarNoReal(g)` lee la clase y solo cae a las reglas históricas congeladas (pago de TC, alcancía, extra de préstamo, pago de fijo) si falta.
+- **Retiros manuales ("Restar dinero")**: desde 2026-10-10 la pantalla también los lista, como filas de solo lectura (categoría `Ajuste`, "Generado automáticamente — elimínalo desde Cuentas · Restar dinero") y los suma a su total del mes (`Periodo.retirosManuales()`), para que Gastos sume lo mismo que Inicio y Análisis. Viven en `S.movimientos`, no en `S.gastosVar`: se eliminan desde Cuentas.
+
 ## 5. Flujo
 
 **Registrar un gasto variable (cuenta normal):**
@@ -119,6 +128,8 @@ Elegir "Pagar" en la plantilla → elegir cuenta de pago → validar que no est�
 - **¿Por qué eliminar un gasto revierte en vez de simplemente borrar el registro?** Para que el saldo de cuentas y tarjetas nunca quede desincronizado del historial visible — la alternativa (borrar y dejar que el usuario ajuste el saldo a mano) es la fuente más común de descuadres en una app de finanzas personales.
 - **¿Por qué el gasto fijo virtual de Spotify no se guarda como un gasto fijo real?** Porque su costo y su estado ya se gestionan enteramente en el módulo Spotify cuando está activo; mostrarlo también acá es solo una ayuda visual para quien no activó ese módulo, no una segunda fuente de verdad.
 - **¿Por qué el módulo quedó en un solo archivo (`gastos.js`) en vez de dividirse como Spotify o Encargos?** Porque ninguna de sus funciones depende de código definido más abajo en `index.html` al momento de cargar el script — a diferencia de Spotify/Encargos, que necesitan que Personas ya exista.
+- **¿Por qué "saldo insuficiente" no está escrito en `gastos.js`?** Porque esa comprobación es la misma para toda la app. `addGastoVar()` llama a `validarSalidaFuente(fuente, monto)` (`core-state.js`), que devuelve `{ok, mensaje}` con el mensaje ya escapado: cuenta o cajita falla si el saldo es menor que el monto; una TC falla solo si tiene cupo configurado y no alcanza. Antes cada módulo lo escribía a mano con redacción distinta y Spotify sin escapar el nombre de la cuenta. Los mensajes en línea de `confirmarPagarGastoFijo()` ("Necesario: …") se dejaron propios a propósito: son otro formato.
+- **¿Por qué el selector de "Pagar gasto fijo" no arma las `<option>` a mano?** `abrirPagarGastoFijo()` usa `FuentesFiltro.optsHtml()` (`js/core/fuentes-filtro.js`): filtra por saldo/cupo con `PRESET.SALIDA` y construye las opciones con `buildFuentesOptsHtml`, que escapa nombre y valor en un solo sitio. Es la misma pieza que usa el split de gasto variable.
 
 ## 8. Referencia de implementación
 

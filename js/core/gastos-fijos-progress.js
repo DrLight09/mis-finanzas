@@ -20,7 +20,7 @@
   progressCard.id = 'fijos-progress-card';
   progressCard.innerHTML = `
     <div class="fijos-progress-title" id="fijos-progress-title">Cargando...</div>
-    <div class="fijos-progress-bar"><div class="fijos-progress-fill" id="fijos-progress-fill" style="width:0%"></div></div>
+    <div class="fijos-progress-bar"><div class="fijos-progress-fill" id="fijos-progress-fill"></div></div>
     <div class="fijos-progress-label" id="fijos-progress-label"></div>
   `;
   panelFijo.insertBefore(progressCard, panelFijo.firstChild);

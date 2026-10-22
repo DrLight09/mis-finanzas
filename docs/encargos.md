@@ -69,6 +69,15 @@ Cada encargo vive en `S.encargos[]`:
 ```
 `fuente` (una cuenta) o `fuentes` (array, si se dividió) registran de dónde salió la plata al marcarla usada; `diferencial` guarda el margen si lo hubo en ese momento (con `miCuentas` si tu sobrante se repartió en varias cuentas, mismo formato que en un movimiento).
 
+### Clase de los movimientos (2026-10-09)
+
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `plan-clasificacion-movimientos.md` y `CHANGELOG.md#infraestructura--seguridad`.
+
+- Intercambios entre cuentas del motor de diferencial (`_esIntercambioEncargo`, transferencias de entrada/salida): `neutro`.
+- Margen / diferencial (`_esDiferencialEncargo`, `yoMeQuedo`) y traspaso "Me lo regalaron" (`_esExtraIngreso`): `ingreso` (plata nueva tuya).
+- Entrada de "dinero del encargo recibido para pagar la tarjeta" (`_esTcEncargo`, en `S.movimientos`): `neutro`.
+- Los movimientos del propio encargo (`enc.movimientos[]`, incluida la salida de una compra pagada con TC) no llevan `clase`: son plata ajena que solo administras, no ingreso ni gasto tuyo, y nada la lee.
+
 ## 5. Flujo
 
 **Crear un encargo**
@@ -156,6 +165,7 @@ Si el movimiento es una porción de una salida dividida de "Registrar salida" (`
 - Movimientos con nota `"Movimiento interno entre cuentas"` o `"Traspaso a cuenta propia"` se excluyen del feed general de cambios, para no ensuciar el historial unificado con reubicaciones internas.
 - Un encargo con saldo inicial pero sin cuenta inicial cuenta como "sin especificar" en el desglose por cuenta.
 - El interés que genera en Nu la porción de una cajita que pertenece a un encargo se calcula y muestra como ganancia del usuario (no del encargante), proporcional a esa porción — el encargante solo tiene derecho al monto nominal, nunca al rendimiento.
+- **El dinero de un encargo guardado en una cajita de Nu cuenta en el "valor esperado" del Chequeo rápido** (`nuValorEsperadoCajita`): Nu muestra la suma de lo propio y lo del encargo, así que el chequeo muestra y se anota con ese total (saldo propio = lectura − encargos). El encargo no se toca: sigue siendo solo metadata (`cuenta`) y el interés de esa porción sigue siendo del dueño de la cajita. Ver [`nu.md`](./nu.md).
 
 - **"Dividir ÷" en "Yo puse la plata": cada lado se valida por separado y ambos deben sumar el monto total.** Lo que sale de tus cuentas tiene que igualar el monto (y cada cuenta necesita saldo propio suficiente, `getSaldoFuente`); lo que recuperás también tiene que igualarlo — o quedar sin ninguna fila, que equivale a "sin especificar" (no se acredita nada). Los dos lados son independientes: se puede dividir uno y dejar el otro simple. Se crea un movimiento espejo por cuenta (`_intercambioSalida` / `_intercambioEntrada`, todos con el mismo `_encMovId`), y `deleteMovEncargo()` los revierte todos juntos por ese vínculo.
 - **"Yo puse la plata" cubre el monto TOTAL del campo, no solo la porción del movimiento.** En una salida dividida entre cuentas del *encargo*, `confirmarMovEncargo()` crea un movimiento por porción y aplica el intercambio solo sobre el primero. `_procesarMovEncMia()` lee el monto completo del input (`movenc_monto`) en vez de `movimiento.monto`; antes, en ese caso, solo se recuperaba la primera porción (ver `CHANGELOG.md#encargos`).
@@ -178,6 +188,8 @@ Si el movimiento es una porción de una salida dividida de "Registrar salida" (`
 
 - La salida dividida se unifica **por vista, no por dato.** La alternativa obvia (guardar un solo movimiento con una lista de cuentas) habría obligado a tocar todo lo que calcula saldo por cuenta (`_getEncargoSaldoPorCuenta` y derivados). Se descartó: el saldo por cuenta es la regla más sensible del módulo (§3), y agrupar al pintar y al borrar da lo mismo al usuario sin tocarla. "Reubicación" quedó fuera a propósito: sus salidas y su entrada no comparten id, y unificarlas exigiría enlazar las tres partes.
 - La protección de movimientos secundarios del diferencial es **opt-in por módulo** (`cfg.origenSeccion`), no automática. El motor también lo usan módulos que no limpian ese margen al borrar su movimiento principal; marcarlos sin esa limpieza dejaría registros imposibles de borrar. Encargos lo activa porque `deleteMovEncargo` ya revierte esos movimientos por `_encMovId`.
+- **"Encargos en esta cuenta" no repite el color de las cuentas.** `renderEncargosEnCuenta()` toma el color de Nequi y Efectivo de `CUENTAS_FIJAS` (`getCuentaFija()`, `core-state.js`), la fuente única de nombre/color/badge de las cuentas fijas; las personalizadas siguen usando su propio `color`. Antes tenía su propio mapa `{nequi: '#ff4da6', efectivo: ...}`, que habría quedado desactualizado al cambiar un color.
+- **Las validaciones de saldo de "Yo puse la plata" y de "Prestar el faltante" (`_validarMovEncMia`, `_movEncConfirmarPrestarFaltante`) son propias y no usan `validarSalidaFuente()`.** Comparan con tolerancia de $0,50 (`saldo + 0.5`) y su mensaje incluye cuánto falta ("No tenés $X en Y. Disponible: $Z"), cosa que el helper del núcleo (estricto, sin monto) no hace. Si algún día se unifican, el helper necesita una opción `tolerancia` y revisar los textos.
 
 ## 8. Referencia de implementación
 
@@ -209,7 +221,7 @@ Si el movimiento es una porción de una salida dividida de "Registrar salida" (`
 | `_movEncActualizarFaltante()` | Muestra/oculta el banner "Prestar lo que falta" según monto vs. `encargoLibre()`, en cada input de monto |
 | `_movEncConfirmarPrestarFaltante()` | Registra la salida normal (lo disponible) en el encargo + el préstamo del faltante en `S.deudores`, vía `_autoGrupoIdMov` (de `prestado.js`) |
 | `_initNuevoEncargoPersonaSelector`, `_onSelPersonaNuevoEncargo`, `editarEncargoActual`/`guardarEditarEncargo` | Vínculo e integración con `S.personas` |
-| `renderEncargosEnCuenta(elId, tipoCuenta)` | Muestra los encargos guardados en una cuenta específica dentro del detalle de esa cuenta |
+| `renderEncargosEnCuenta(elId, tipoCuenta)` | Muestra los encargos guardados en una cuenta específica dentro del detalle de esa cuenta (color de Nequi/Efectivo desde `CUENTAS_FIJAS`) |
 | `_normEncargos(S)` | Normaliza los movimientos de encargos para el feed unificado de historial/cambios |
 
 IDs de sheets relevantes: `sheet-nuevo-encargo`, `sheet-editar-encargo`, `sheet-mov-encargo`, `sheet-traspaso-encargo`, `sheet-transferencia-encargo`, `sheet-compra-tc-encargo`, `mover-enc-cuentas`, `parte-encargo`, `usar-parte`.

@@ -55,6 +55,12 @@ Campos que el feed asume opcionales: `fecha` (si falta, `0000-00-00` → agrupa 
 
 ---
 
+### Clase de los movimientos (2026-10-09)
+
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `plan-clasificacion-movimientos.md` y `CHANGELOG.md#infraestructura--seguridad`.
+
+El feed decide si un movimiento de encargo es un "ingreso real" que debe mostrarse (`esIngresoReal`) con la misma `clase` (`ingreso`) que usan los totales del mes, con las banderas antiguas (`_esExtraIngreso` / `_esDiferencialEncargo`) solo como respaldo para movimientos sin `clase`. Ya no mantiene su propia copia de la regla.
+
 ## 5. Flujo
 
 **Render del feed**
@@ -90,7 +96,7 @@ Carga lazy del módulo → render inmediato al final del archivo
 - **Compras con tarjeta.** Una compra con TC sale una vez, como gasto (`gastosVar`, marcado `_esCompraTC`). El pago posterior de la tarjeta sale una vez, como "Abono a deuda" (`tarjetasCredito[].pagos`); su gasto espejo `_esPagoTC` se excluye. Son dos filas con `-` por el mismo gasto de fondo, a propósito: una es lo que compraste y la otra es la deuda que pagaste.
 - **Borrado suave.** Un pago de tarjeta o un aviso de corte eliminado sigue en `S` con `eliminado: true`; el feed lo ignora. Las demás fuentes borran de verdad, así que no necesitan ese filtro.
 - **Mesada a una cajita o sin destino.** El espejo de una mesada cobrada en Nequi, Efectivo o una cuenta personalizada llega al feed; si el destino es una cajita Nu, el espejo se guarda en `cajita.historial` (que el feed no lee), y con destino vacío no hay espejo. Esa mesada no aparece en el feed. Lo mismo vale para cualquier otro módulo que deposite en una cajita. Es un hueco de cobertura, no un duplicado; no se verificó cómo registra `cuentas.js` los movimientos manuales de cajitas.
-- **Ingresos reales que el feed oculta.** "Dinero extra encontrado en alcancía" (`_esAlcancia`, lo escribe el destape) y "Margen encargo …" (`_esExtraIngreso`, se descarta por descripción) no aparecen en el feed, aunque `_esEntradaEspejoNoIngreso()` los cuenta como ingreso en Análisis. Es una decisión heredada del feed, no un efecto del fix de duplicados; no se cambió.
+- **Ingresos reales que el feed oculta.** "Dinero extra encontrado en alcancía" (`_esAlcancia`, lo escribe el destape) y "Margen encargo …" (`_esExtraIngreso`, se descarta por descripción) no aparecen en el feed, aunque `_esEntradaEspejoNoIngreso()` (que lee `clase`) los cuenta como ingreso en Análisis. Es una decisión heredada del feed, no un efecto del fix de duplicados; no se cambió.
 - **Transferencias.** Nunca aparecen (ni entre cuentas ni los depósitos a Alcancía con cuenta de origen). Es un hueco conocido, no un error.
 - **Abonos de deudores hechos con plata de un encargo o cuenta.** Se ven una sola vez, como "Abono de X", por la exclusión de `_esAbonoDeudor` en encargos.
 

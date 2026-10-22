@@ -8,6 +8,8 @@ Función principal que renderiza toda la pantalla: **`renderAnalisis()`**.
 
 ---
 
+> **Cómo se compone el mes (2026-10-08):** todos los números de ingresos/gastos de esta pantalla (resumen, comparación con el mes anterior, barras de 12 meses, ranking, categorías, presupuestos) salen de `Periodo` (`js/core/periodo.js`), la misma fuente que usan Inicio, el cierre de mes, la exportación CSV y Wrapped. Un gasto fijo pertenece al mes de su clave en `S.pagosGastosFijos` y cuenta con el monto realmente pagado; la Mesada se busca con la clave `año-índice de mes (0-11)`. Ver `CHANGELOG.md#infraestructura--seguridad`.
+
 ## 1. Estructura de la pantalla (de arriba hacia abajo)
 
 1. Resumen del mes
@@ -26,12 +28,13 @@ Función principal que renderiza toda la pantalla: **`renderAnalisis()`**.
 
 **IDs:** `analisis-balance-hero`, `an-ingresos`, `an-gastos`, `an-tasa-ahorro`, `an-ahorrado`, `an-fijos`, `an-variables`.
 
-- **Ingresos estimados** = mesada del mes (si el módulo está activo) + ingresos fijos configurados (`getIngresosFijosMes()`) + entradas manuales reales (`S.movimientos` tipo `'entrada'`, excluyendo movimientos espejo vía `_esEntradaEspejoNoIngreso()`: reposiciones de plata comprometida, intercambios/traspasos de Encargos, movimientos de Mesada y de Prestado — incluye un fallback por descripción para movimientos viejos sin la bandera `_esReposicionCP`).
-- **Gastos totales** = gastos variables del mes (`S.gastosVar`, excluyendo los que marca `_esGastoVarNoReal()` como no reales: pagos de gasto fijo, pagos de TC, alcancía y extras de préstamo gastados de inmediato — `_esExtraPrestamo`) + gastos fijos pagados ese mes (`S.pagosGastosFijos`). `_esGastoVarNoReal()` es el mismo criterio que usan también el dashboard de Inicio, la pantalla de Gastos, el resumen de cierre de mes, Salud financiera y Presupuestos por categoría — ver §9bis.
+- **Ingresos estimados** = mesada del mes (si el módulo está activo) + ingresos fijos configurados + entradas reales (`Periodo.ingresosDelMes()` → `entradasIngresoReal()`): los movimientos cuya `clase` es `ingreso` (ver §9bis) en `S.movimientos`, en cuentas personalizadas y, desde 2026-10-09, en el historial de las cajitas de Nu (extras que entran directo a una cajita: extra de Spotify, extra de un pago de deuda). Los espejos (`clase: 'neutro'`: reposiciones de plata comprometida, intercambios de Encargos, Mesada, abonos de deudores, etc.) no cuentan. **Desde 2026-10-09 incluye los rendimientos de Nu** (intereses de cajitas y CDT, ver más abajo): Análisis pide `Periodo.balanceDelMes(mes, undefined, { conRendimientos: true })`.
+- **Gastos totales** = gastos variables del mes (`S.gastosVar`, excluyendo los que marca `_esGastoVarNoReal()` como no reales: pagos de gasto fijo, pagos de TC, alcancía y extras de préstamo gastados de inmediato — `_esExtraPrestamo`) + **retiros manuales** ("Restar dinero": `S.movimientos` tipo `salida_manual`, `clase: 'gasto'`, categoría **Ajuste**, agrupados con los variables; desde 2026-10-09 — es el opuesto de "Sumar dinero" y suele usarse para cuadrar gastos que se olvidaron de registrar) + gastos fijos pagados ese mes (`S.pagosGastosFijos`). `_esGastoVarNoReal()` es el mismo criterio que usan también el dashboard de Inicio, la pantalla de Gastos, el resumen de cierre de mes, Salud financiera y Presupuestos por categoría — ver §9bis.
 - **Balance** = Ingresos estimados − Gastos totales. El hero cambia de color/mensaje según sea positivo, negativo, o si no hay ingresos registrados todavía.
 - **Tasa de ahorro** = Balance / Ingresos estimados, en %. Si no hay ingresos, muestra `—`.
 - **Ahorrado este mes** = el Balance mismo, mostrado aparte con signo.
-- **Gastos fijos pagados** / **Gastos variables**: desglose simple de `gastosTotalMes`.
+- **Gastos fijos pagados** / **Gastos variables**: desglose simple de `gastosTotalMes` (los retiros manuales van dentro de Variables).
+- **Rendimientos de Nu** (desde 2026-10-09): los intereses del mes (`Periodo.rendimientosDelMes(mes).total` = cajitas + CDTs) son plata nueva, así que **entran en Ingresos, Balance, Tasa de ahorro y Ahorrado** de esta pantalla (y en la comparación con el mes anterior), y una línea bajo el balance dice "Incluye $X de rendimientos de Nu". Así el balance mide cuánto creció el patrimonio por ingresos − gastos. Si no hay ingresos operativos (mesada, fijos, entradas) el hero sigue mostrando solo el gasto, aunque haya intereses. Inicio, Salud financiera, el cierre de mes y Wrapped **no** los suman (`balanceDelMes` sin la opción): sus ratios miden flujo de caja operativo. Los meses anteriores a 2026-10-09 salen en 0 para las cajitas (el interés ya estaba fundido en el saldo); el registro por mes (`cajita.rendimientos`) empieza al materializar. Los CDT sí se calculan exactos para cualquier mes.
 
 ## 3. Ingresos fijos
 
@@ -59,6 +62,7 @@ Repite el mismo cálculo de ingresos/gastos/balance (mismo criterio de ingreso/g
 - Si ya existe un punto para **hoy**, lo **sobrescribe** con el valor actual. Si no existe, crea uno nuevo.
 - Consecuencia práctica: lo que queda registrado para un día es el patrimonio en el momento del **último** guardado/sync de ese día — no el primero, ni un promedio, ni el más alto.
 - Guarda `valor` (patrimonio total real, con alcancía) y `valorVisible` (sin alcancía) por separado — ver arriba.
+- **`montoBase` también incluye (desde 2026-10-10) los movimientos de deudas sin pata de caja** (préstamo "Me deben" sin cuenta ni tarjeta, abono recibido sin cuenta destino, y su equivalente en "Yo debo"): mueven el patrimonio sin ser ingreso ni gasto. `load()` recalcula `montoBase` de todo el historial en cada carga (`recalcularMontoBaseHistorial()`), así que la corrección vale hacia atrás y se limpia sola si se borra el movimiento. `scripts/conciliacion.js` mide cuánto del cambio de patrimonio de cada mes queda sin explicar.
 - Guarda también `montoBase` (monto exacto de aperturas/ajustes de saldo inicial ese día **más el sobrante (+) o faltante (−) de un destape de alcancía ese día**, desde 2026-09-29 — es plata que ya existía y no estaba anotada, no crecimiento), usado tanto por esta gráfica como por la Proyección financiera (§8) para no confundir un saldo inicial con crecimiento real.
 - El array se recorta a los últimos 365 puntos.
 
@@ -72,7 +76,7 @@ Esto es distinto del "Resumen del mes" y la "Comparación con el mes anterior" (
 
 ## 6. Top categorías este mes
 
-**ID:** `an-cats-mes`. Agrupa `gvMes` (gastos variables del mes) + gastos fijos pagados por categoría (`g.cat`), ordena de mayor a menor y muestra el top 5 con barra proporcional al máximo.
+**ID:** `an-cats-mes`. Agrupa `gvMes` (gastos variables del mes, incluidos los retiros manuales bajo la categoría `Ajuste`) + gastos fijos pagados por categoría (`g.cat`), ordena de mayor a menor y muestra el top 5 con barra proporcional al máximo.
 
 ## 7. Gastos por mes (últimos 12) y Ranking de meses
 
@@ -90,7 +94,9 @@ Recorren `S.gastosVar` (mismo criterio de gasto real que en §2, vía `_esGastoV
 
 ---
 
-## 9bis. Qué cuenta como ingreso o gasto real (`_esEntradaEspejoNoIngreso()` / `_esGastoVarNoReal()`)
+## 9bis. Qué cuenta como ingreso o gasto real (`clase`, `_esEntradaEspejoNoIngreso()` / `_esGastoVarNoReal()`)
+
+> **Desde 2026-10-09 la respuesta está guardada en el movimiento:** cada uno lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita por el módulo que lo crea. Los dos helpers de abajo leen `clase` (vía `claseEfectivaMovimiento()`) y, **solo si falta**, la deducen con las reglas históricas **congeladas** (`_reglaHistoricaEntradaEspejo` / `_reglaHistoricaGastoVarNoReal`: ya no se editan). La lista de etiquetas que sigue describe esa cascada histórica y cómo se estampó el histórico (migración v3); para un módulo nuevo basta escribir `clase` al crear el movimiento. Ver `plan-clasificacion-movimientos.md`.
 
 Ambos viven en `js/core/core-state.js`, no en `analisis.js` — por eso los puede usar cualquier pantalla sin cargar el módulo de Análisis. Todos los bloques de esta pantalla que suman ingresos o gastos (§2, §4, §7, §9) usan dos helpers centralizados, no un filtro propio cada uno:
 
@@ -113,7 +119,7 @@ Estos dos bloques **no viven en `screen-analisis`**, sino en Inicio, pero se cal
 
 ## 10. Patrimonio total: `calcPatrimonioTotal()`
 
-**Ubicación:** el módulo de esta pantalla es [`js/modules/analisis.js`](../js/modules/analisis.js) (`renderAnalisis()`, ingresos fijos, presupuestos). `calcPatrimonioTotal()` y `snapshotPatrimonio()` se quedaron a propósito en `index.html`: `save()` las llama en cada guardado, no solo al entrar a esta pantalla, así que moverlas habría hecho que Análisis "fuera dueño" de algo del ciclo de guardado central. `renderHealthScore()`/`renderProyeccion()` viven en `js/modules/inicio.js`.
+**Ubicación:** el módulo de esta pantalla es [`js/modules/analisis.js`](../js/modules/analisis.js) (`renderAnalisis()`, ingresos fijos, presupuestos). `calcPatrimonioTotal()` y `snapshotPatrimonio()` viven en `js/core/core-state.js`, no en este módulo: `save()` las llama en cada guardado, no solo al entrar a esta pantalla. El cálculo de Nu que usa (`calcC`, `calcCDT`, `nuTotal`) está en `js/core/nu-calc.js`. `renderHealthScore()`/`renderProyeccion()` viven en `js/modules/inicio.js`.
 
 
 Es la base de todo lo anterior (historial, tendencia, proyección, salud financiera, hero de Inicio). Suma:

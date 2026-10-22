@@ -57,6 +57,13 @@ Aparte, `S.tcMovimientos[]` (compartido con Encargos y Préstamos, no exclusivo 
 
 `tcMovimientos` es leído por este módulo (para sumar a la deuda y mostrarlo en el historial de la tarjeta) pero **no** es creado ni eliminado por él — esa responsabilidad es de Encargos/Préstamos.
 
+### Clase de los movimientos (2026-10-09)
+
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `plan-clasificacion-movimientos.md` y `CHANGELOG.md#infraestructura--seguridad`.
+
+- Compra con TC (`_esCompraTC`, en `S.gastosVar`): `clase: 'gasto'`.
+- Pago de la tarjeta (`_esPagoTC`): `clase: 'neutro'` — cancela deuda, no es un gasto nuevo.
+
 ## 5. Flujo
 
 **Registrar una compra (desde este módulo):**

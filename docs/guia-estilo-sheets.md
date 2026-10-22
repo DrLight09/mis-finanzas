@@ -78,6 +78,31 @@ Los grupos de campo usan `class="ig"` con `margin-bottom: 13px`.
 
 ---
 
+## 2 bis. Vocabulario y avisos (toast)
+
+**Vocabulario de plata que entra o sale de una cuenta** — el mismo en Nequi, Efectivo, cuentas personalizadas, Nu y cajitas (botones, títulos de sheet, botones de confirmar, avisos y movimientos del historial):
+
+| Acción | Texto |
+|---|---|
+| Meter plata | **Agregar dinero** (sheet `Agregar a <cuenta>`, confirmar "Agregar al saldo", aviso "agregado", historial "Agregaste dinero en <cuenta>") |
+| Sacar plata | **Retirar dinero** (sheet `Retirar de <cuenta>`, confirmar "Retirar del saldo", aviso "retirado", historial "Retiraste dinero de <cuenta>") |
+| Mover entre cuentas | **Mover a otra cuenta** / **Transferir** |
+
+No usar "Sumar"/"Restar", "Entró plata"/"Salió plata" en Cuentas. **Encargos** conserva "Entró plata / Salió plata" a propósito: no es una cuenta propia sino plata ajena que se administra.
+
+**Tipos de toast** (`toast(msg, tipo)` en `core-state.js`; los estilos `.toast-<tipo>` están en el CSS crítico de `index.html`):
+
+| Tipo | Color / ícono | Cuándo |
+|---|---|---|
+| `ok` | verde / check | Éxito: plata que entra, guardar, crear, transferir entre cuentas propias |
+| `salida` | rojo / flecha | Plata que **sale** de tus cuentas: retirar dinero (cuentas y Nu), gasto registrado, pago de gasto fijo |
+| `err` | rojo / X | Algo salió mal o falta algo para continuar (se anuncia como `alert`) |
+| `info` | azul / i | Aviso neutro |
+
+**Campos de tasa EA** (`nuTasaGlobal`, `ctn-tasa`, `cdt_tasa`): `inputmode="decimal"`, `maxlength="8"`, `autocomplete="off"`; solo dígitos con coma o punto decimal. El saneo y la validación (> 0 y ≤ 100) viven en `nu-calc.js` (`nuTasaSanear` / `nuTasaDesdeTexto`); un campo de tasa nuevo reutiliza esas funciones, no una validación propia.
+
+---
+
 ## 3. Inventario de sheets por módulo
 
 ### Cuentas personalizadas
@@ -92,7 +117,7 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 **`sheet-agregar-dinero-menu`** — ¿A dónde entra la plata? *(desde el botón `+` del header sin cuenta seleccionada)*: Cuenta destino → ¿De dónde viene esta plata? `*` → ¿Cuánto recibiste? → Fecha → Nota (opcional)
 
-**`sheet-restar-dinero`** — Restar dinero *(Nequi, Efectivo o una cuenta personalizada)*: Saldo actual (informativo) → ¿En qué se gastó o a dónde fue? `*` → ¿Cuánto vas a restar? → Fecha → Nota (opcional)
+**`sheet-restar-dinero`** — Retirar dinero *(Nequi, Efectivo o una cuenta personalizada; el título del sheet es `Retirar de <cuenta>` y el botón "Retirar del saldo"; el id conserva `restar` por historia)*: Saldo actual (informativo) → ¿En qué se gastó o a dónde fue? `*` → ¿Cuánto vas a restar? → Fecha → Nota (opcional). Solo se abre con saldo; el botón "Retirar dinero" de la cuenta sale deshabilitado con saldo 0
 
 **`sheet-editar-apertura`** — Corregir saldo inicial *(Nequi, Efectivo o una cuenta personalizada)*: Nuevo saldo inicial
 
@@ -100,7 +125,11 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 ### Nu / Cajitas
 
-**`sheet-nu-movimiento`** — Entró / Salió plata a Nu: ¿A qué cajita? `*` → [Toggle] Es saldo inicial → ¿De dónde viene esta plata? `*` → ¿Cuánto recibiste? → Fecha → Nota (opcional)
+**`sheet-nu-movimiento`** — Agregar / Retirar dinero en Nu (título `Agregar a Nu` / `Retirar de Nu`): ¿A qué cajita? `*` → [Toggle] Es saldo inicial → ¿De dónde viene esta plata? `*` → ¿Cuánto recibiste? → Fecha → Nota (opcional). Solo se abre con tasa configurada y al menos una cajita (retirar: alguna con saldo)
+
+**`sheet-chequeo-nu`** (`chequeo-nu`) — Chequeo rápido de cajitas: una fila por cajita **que ya generó un día completo de intereses**, con "(debería verse: $X)" — el TOTAL que marca Nu, encargos incluidos, con una nota de cuánto son encargos — y el campo para anotar el saldo real de Nu (siempre el total)
+
+**`sheet-confirmar-tasa-nu`** (`confirmar-tasa-nu`) — Cambio de tasa detectado: Nueva tasa EA % *(solo números con coma o punto)* → Aplicar desde
 
 **`sheet-crear-cdt`** — Crear CDT en cajita: Monto a invertir (mín. $50.000) → Tasa EA % → Fecha de apertura → Fecha de vencimiento → Retefuente % (por defecto 4%)
 

@@ -17,8 +17,8 @@ Da un puntaje único de 0 a 100 que resume qué tan sana está la situación fin
 - **Score base:** arranca en 50 (neutro) y sube o baja según siete factores independientes (a–g, ver §5), y al final se recorta al rango [0, 100].
 - **Liquidez real (`liquidoReal`):** solo cuentas disponibles de inmediato — Nequi, efectivo, cajitas (sin CDTs) y cuentas personalizadas — restando la deuda de TC y la plata de encargos (ajena) guardada en esas cuentas. No incluye CDTs, porque están bloqueados y no sirven para una emergencia.
 - **Liquidez con CDTs (`liquidoConCDTs`):** `liquidoReal` + el valor de los CDTs. Se usa solo para distinguir "no tengo nada disponible" de "tengo algo, pero está todo bloqueado".
-- **Ingresos del mes (`ingresosMes`):** mesada + ingresos de cuentas personalizadas + entradas reales a Nequi/Efectivo/cajitas + ingresos fijos configurados — excluyendo siempre movimientos espejo (`_esEntradaEspejoNoIngreso()`, ver `analisis-financiero.md`).
-- **Gastos del mes (`gastosMes`):** gastos variables reales (vía `_esGastoVarNoReal()`: excluye pagos de gasto fijo, pagos de TC, alcancía y extras de préstamo gastados de inmediato) + gastos fijos pagados ese mes. Mismo criterio que "Gastos totales" en Análisis financiero.
+- **Ingresos del mes (`ingresosMes`):** mesada + ingresos reales del mes + ingresos fijos configurados. Los "ingresos reales" salen de `ingresosRealesDelMes()` (`core-state.js`), la misma definición que usan Análisis financiero y Wrapped (`entradasIngresoReal()`): movimientos con `clase: 'ingreso'` en `S.movimientos`, cuentas personalizadas y (desde 2026-10-09) el historial de las cajitas de Nu (extras que entran directo a una cajita), con o sin cuenta. Desde 2026-10-04 ya no se exige que la entrada tenga cuenta.
+- **Gastos del mes (`gastosMes`):** gastos variables reales (vía `_esGastoVarNoReal()`: excluye pagos de gasto fijo, pagos de TC, alcancía y extras de préstamo gastados de inmediato) + retiros manuales ("Restar dinero", `clase: 'gasto'`, desde 2026-10-09) + gastos fijos pagados ese mes. Mismo criterio que "Gastos totales" en Análisis financiero (todo sale de `Periodo`).
 - **`tieneAlgo`:** hay datos suficientes para evaluar (patrimonio, plata prestada, deuda TC o gasto del mes > 0). Si no, la tarjeta no muestra un score — evita mostrar un 50 o un 0 engañoso por falta de datos.
 
 ---
@@ -27,7 +27,7 @@ Da un puntaje único de 0 a 100 que resume qué tan sana está la situación fin
 
 - **El criterio de "qué es un ingreso o gasto real" debe coincidir siempre con Análisis financiero.** Se comparten dos helpers centralizados (`_esEntradaEspejoNoIngreso()` para ingresos, `_esGastoVarNoReal()` para gastos, documentados en `analisis-financiero.md#9bis`) precisamente porque ya pasó dos veces que la misma exclusión se corrigiera en una pantalla y no en la otra por estar duplicada a mano. Cualquier exclusión nueva se agrega en esos helpers, nunca copiada directamente en `calcHealthScore()`.
 - **Un CDT nunca cuenta como liquidez disponible para el fondo de emergencia**, aunque sí cuenta en el patrimonio general y en `liquidoConCDTs`. Está bloqueado, no sirve para una emergencia inmediata.
-- **El rendimiento generado por un CDT en el mes nunca se suma a `ingresosMes`.** Es plata que el patrimonio ya ganó, pero sigue atrapada dentro del CDT — no es flujo de caja real disponible, que es lo que miden los ratios de deuda y gasto.
+- **Los rendimientos del mes (intereses de cajitas y CDT) nunca se suman a `ingresosMes`.** Son ingreso económico, pero los ratios de deuda y gasto miden flujo de caja real y disponible, y un CDT sigue bloqueado. Desde 2026-10-09 `rendimientoCDTMes` trae cajitas + CDT (`Periodo.rendimientosDelMes(mes).total`); sigue siendo solo informativo. (Análisis financiero, en cambio, sí los suma a su balance: mide crecimiento de patrimonio, no flujo de caja.)
 - **El score siempre se recorta entre 0 y 100** antes de mostrarse.
 - **El puntaje nunca se persiste en `S`.** Se recalcula desde cero en cada render, para que nunca quede desactualizado respecto a los datos reales de los demás módulos.
 
@@ -43,7 +43,7 @@ No mantiene estado propio en `S` — se recalcula íntegramente en cada llamado 
   score: 78,               // 0-100, ya recortado
   tips: ["..."],           // mensajes de mejora o felicitación, uno por cada factor con penalización/bonus destacable
   ingresosMes: 450000,
-  rendimientoCDTMes: 1200  // informativo — no afecta el score, ver §3
+  rendimientoCDTMes: 1200  // rendimientos del mes (cajitas + CDT), informativo — no afecta el score, ver §3
 }
 ```
 
@@ -98,7 +98,7 @@ Si hay score → anillo de progreso SVG + etiqueta (Excelente / Regular / Necesi
 ## 7. Decisiones de diseño
 
 - **El score nunca se persiste, siempre se recalcula:** mismo principio de "los movimientos son la fuente de verdad" aplicado a un indicador derivado — evita que el puntaje quede desactualizado si se borra o edita algo en otro módulo.
-- **Rendimiento de CDT expuesto aparte, nunca sumado a ingresos:** los ratios de deuda/gasto necesitan medir flujo de caja real y disponible, no crecimiento de patrimonio todavía bloqueado dentro de un CDT.
+- **Rendimientos de Nu expuestos aparte, nunca sumados a ingresos:** los ratios de deuda/gasto necesitan medir flujo de caja real y disponible, no crecimiento de patrimonio (ni plata todavía bloqueada dentro de un CDT).
 - **Reutiliza los mismos filtros de ingreso/gasto real que Análisis financiero**, en vez de tener su propio criterio: `_esEntradaEspejoNoIngreso()` para ingresos, y `_esGastoVarNoReal()` para gastos (`_esPagoTC`, `_esAlcancia`, `_esExtraPrestamo`, `esPagoGastoFijo`). Ambos helpers están centralizados en un solo lugar del código — no duplicados a mano en cada pantalla —, que fue precisamente el fix que resolvió los dos bugs de divergencia detectados entre esta tarjeta y Análisis financiero (ver `CHANGELOG.md`).
 - **Liquidez con y sin CDTs separadas:** existir como dos variables (`liquidoReal` / `liquidoConCDTs`) en vez de una sola con un flag, para que cada factor del score pueda elegir explícitamente cuál necesita, sin ambigüedad.
 

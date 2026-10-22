@@ -401,7 +401,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
 .fijos-progress-card { background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:12px; }
 .fijos-progress-title { font-size:13px;font-weight:700;margin-bottom:9px; }
 .fijos-progress-bar { height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-bottom:7px; }
-.fijos-progress-fill { height:100%;border-radius:4px;background:var(--accent);transition:width .5s cubic-bezier(.4,0,.2,1); }
+.fijos-progress-fill { width:0%;height:100%;border-radius:4px;background:var(--accent);transition:width .5s cubic-bezier(.4,0,.2,1); }
 .fijos-progress-label { font-size:11px;color:var(--text3);font-family:'DM Mono',monospace; }
 /* Paid items dimmed */
 .gasto-item.pagado { opacity:.45; }
@@ -897,3 +897,11 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .inicio-tt-delta{font-size:11px;font-weight:600;}
 .inicio-tt-pos{color:#c8f060;}
 .inicio-tt-neg{color:#f06868;}
+
+/* ── Sueltos (Paso 5: estilos inline → clases) ────────────────────────────── */
+.ico-inline{vertical-align:middle;display:inline-block;}
+.wrapped-gate-flecha{vertical-align:-2px;}
+.pin-fila-btns{display:flex;gap:8px;}
+.btn.btn-flex1{flex:1;}
+.btn.btn-block{width:100%;}
+.btn.btn-ghost.btn-peligro{color:var(--red);border-color:rgba(240,104,104,.4);}

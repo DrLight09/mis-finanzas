@@ -172,7 +172,7 @@ function _wrappedGateMostrarBanner(){
     <div class="wrapped-banner-sub">${info.diasRestantes > 0 ? `Disponible ${info.diasRestantes} día${info.diasRestantes===1?'':'s'} más — después vuelve el próximo enero` : 'Hoy es el último día para verlo'}</div>
     <div class="wrapped-banner-row">
       <button type="button" class="wrapped-banner-btn">Ver mi resumen
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;"><polyline points="9 18 15 12 9 6"/></svg></button>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="wrapped-gate-flecha"><polyline points="9 18 15 12 9 6"/></svg></button>
       <button type="button" class="wrapped-banner-later">Después</button>
     </div>`;
   document.body.appendChild(el);

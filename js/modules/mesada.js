@@ -733,7 +733,7 @@ function abrirDetalleMesada(parent, key, nombre) {
   if (info.splits && info.splits.length) {
     destinoHtml = html`<div class="ms-fila"><span class="ms-lbl">Dividido en</span>
       <div class="ms-splits">
-        ${raw(info.splits.map(s => html`<div class="ms-split-row"><span class="badge ${raw(fuenteBadgeClass(s.fuente || ''))}" style="font-size:9px;">${fuenteLabel(s.fuente || '')}</span><span class="ms-split-monto">+${fmt(s.monto)}</span></div>`).join(''))}
+        ${raw(info.splits.map(s => html`<div class="ms-split-row"><span class="badge badge-xs ${raw(fuenteBadgeClass(s.fuente || ''))}">${fuenteLabel(s.fuente || '')}</span><span class="ms-split-monto">+${fmt(s.monto)}</span></div>`).join(''))}
       </div></div>`;
   } else if (info.destino) {
     destinoHtml = html`<div class="row ms-fila"><span class="ms-lbl">Lo metiste en</span><span class="badge ${raw(fuenteBadgeClass(info.destino))}">${fuenteLabel(info.destino)}</span></div>`;

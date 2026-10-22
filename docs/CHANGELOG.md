@@ -8,6 +8,13 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 Documentación: [`libro-de-movimientos.md`](./libro-de-movimientos.md).
 
+### 🎨 Estilos inline → clases (2026-10-21, Paso 5, tanda 6) — archivos sueltos
+
+Cinco archivos de 1 a 6 `style=""` quedan sin ninguno: `mesada.js` (badge 9px → `badge-xs`, que ya existía), `wrapped-gate.js` (flecha del botón → `wrapped-gate-flecha`), `core-state.js` (ícono de ganancia → `ico-inline`), `pin-bio.js` (6: fila de botones `pin-fila-btns`, `btn-flex1`, `btn-block`, `btn-peligro`) y `gastos-fijos-progress.js` (el `width:0%` inicial pasó a la regla de `.fijos-progress-fill`; JS sigue poniendo el ancho real al calcular). Clases al final de `css/styles.css`.
+- **Quedan `style=""` a propósito en dos archivos más pequeños:** `diferencial.js` (3 `display:none` que JS conmuta) y `actividad_reciente.js` (2 valores calculados: fondo del ícono y color del monto de cada movimiento). Ya estaban o quedan registrados en `tests/estilos.test.js` como permitidos.
+- **Verificado por pares** con `scripts/equivalencia-sueltos.js` (8 fragmentos antes/después con el CSS nuevo y `equivalencia-estilos.js`): 0 diferencias; por mutación (color de `btn-peligro`) falla. Los botones de `pin-bio` tenían tres fuentes de estilo que competían (`.btn-sm{width:auto}`, `.btn-ghost`, inline): las clases nuevas son de 2-3 clases para ganar igual que ganaba el inline.
+- La guardia `tests/estilos.test.js` ahora acepta una clase igual al prefijo (`badge-xs`, `ico-inline`) y suma los 7 archivos. Pruebas: `npm test` 411/411; smoke sin fallos. `sw.js` v43.
+
 ### 🎨 Estilos inline → clases (2026-10-21, Paso 5, tanda 5) — `wrapped.js`
 
 `wrapped.js` pasa de 16 `style=""` a 1: el gráfico de línea y el mensual (`wrapped-svg-block`, zonas táctiles `wrapped-hit`), el número grande de cada slide, el detalle de un mes, los puntos de color de la vista mensual (`wrapped-mes-dot-ok/mal/cero`), el separador de la nota de préstamos (`wrapped-sub-sep`) y el ícono de la estrella (`wrapped-icono-sep`). Las clases nuevas van **dentro del `<style>` que inyecta el propio archivo** (`_wrappedInyectarEstilos`, donde ya vivía todo el CSS de Wrapped); los colores usan las utilidades `c-green/red/amber/purple/blue` de `styles.css` y `wrapped-c-text`. El que queda es el `animation-delay` de cada punto de la línea (`i*0.09s`: un valor distinto por punto, no puede ser clase).

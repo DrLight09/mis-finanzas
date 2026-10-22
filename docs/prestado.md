@@ -34,7 +34,9 @@ Ambos lados afectan el saldo de una cuenta real (cajita, Nequi, efectivo o cuent
 
 **`sheet-registrar-movimiento`** — Nuevo préstamo / Abono / Pago completo *(sheet polivalente con campos condicionales según el tipo de movimiento)*: Monto → Fecha → ¿De dónde sacó la plata? (condicional, solo en préstamo) → ¿A dónde entra el pago? (condicional, solo en abono/pago-completo) → ¿De qué encargo? (condicional) → ¿De qué cuenta del encargo sale? (condicional) → ¿Cuánto de extra? + distribución (condicional en abonos con extra) → Nota (opcional)
 
-**Selects de cuenta en estos sheets:** ninguna tarjeta de crédito aparece en los selects de `sheet-registrar-movimiento`. `#mov_fuente` y `#mov_destino` (modo simple) se pueblan con `poblarFuente(id, false, false)` (3er parámetro `incluirTC=false`), igual que los modos divididos, `nd_destino`, `md_cuenta` y la cuenta del extra (`getFuentesSinTC()`). Una TC nunca recibe plata entrante, y un préstamo pagado con TC se registra únicamente por el botón "Préstamo con TC" (`sheet-prestamo-tc`: valida cupo, pide descripción, deja `_viaTC` + cargo `cargo_prestamo` enlazado en `S.tcMovimientos`; sin ese cargo `calcDeudaAjenaDeTarjeta()` no lo cuenta como deuda ajena y `tcRecalcular()`, que corre en cada `refresh()`, lo borra de `tc.deuda`). Se decidió no unir ambos sheets — razones en CHANGELOG 2026-09-19.
+**Selects de cuenta en estos sheets:** ninguna tarjeta de crédito aparece en los selects de `sheet-registrar-movimiento`. `#mov_fuente` y `#mov_destino` (modo simple) se pueblan con `poblarFuente(id, false, false)` (3er parámetro `incluirTC=false`), igual que los modos divididos, el destino de "Me prestó" en `md_cuenta` y la cuenta del extra (`getFuentesSinTC()`); en un pago de "Yo debo" (plata que sale) sí se ofrecen las tarjetas con cupo. Una TC nunca recibe plata entrante, y un préstamo pagado con TC se registra únicamente por el botón "Préstamo con TC" (`sheet-prestamo-tc`: valida cupo, pide descripción, deja `_viaTC` + cargo `cargo_prestamo` enlazado en `S.tcMovimientos`; sin ese cargo `calcDeudaAjenaDeTarjeta()` no lo cuenta como deuda ajena y `tcRecalcular()`, que corre en cada `refresh()`, lo borra de `tc.deuda`). Se decidió no unir ambos sheets — razones en CHANGELOG 2026-09-19.
+
+**Cómo se arman las opciones de cuenta (2026-10-05):** ninguno de estos selects escribe sus `<option>` a mano. Donde la plata SALE (split de préstamo `_getPrestSplitFuentesOptions`, split y select de un pago de "Yo debo" `_getMdSplitFuentesOptions` / `md_cuenta`) se usa `FuentesFiltro.optsHtml()` con `PRESET.SALIDA` (solo cuentas con saldo y tarjetas con cupo); donde ENTRA ("Me prestó") se usa `buildFuentesOptsHtml({ incluirTC: false })`, sin filtrar por saldo, porque una cuenta vacía es un destino válido. La opción "Ganancia" del split de préstamo se agrega aparte. Antes cada uno repetía el bucle de `<option>` con `FuentesFiltro.filtrar()`.
 
 ### 2.2 Tipos de movimiento (`d.movimientos[]`)
 
@@ -56,6 +58,12 @@ Ambos lados afectan el saldo de una cuenta real (cajita, Nequi, efectivo o cuent
 `_confirmarMovimientoInterno()` hace tres cosas, en este orden: `_planMovimiento()` lee el formulario y **valida todo sin escribir nada** (devuelve `{ error }` o un plan); `_aplicarMovimiento(plan)` escribe y **no tiene ningún `return` de validación**; luego se registra el log, se cierran los grupos saldados, se guarda y se refresca. Así un error de formulario no puede dejar una deuda a medias. Cada rama tiene su par: perdón (`_aplicarPerdon`), préstamo (`_planPrestamo` / `_aplicarPrestamo`), abono desde encargo (`_planAbonoEncargo` / `_aplicarAbonoEncargo`) y abono a una cuenta propia (`_planAbonoNormal` / `_aplicarAbonoNormal`). Los extras ("¿pagaron de más?") los comparten las dos ramas de abono (`_planExtra`, `_aplicarExtraPartes`); lo único que cambia entre ellas son las descripciones y que el extra de la rama normal es ingreso real (`_esExtraIngreso`).
 
 El grupo del movimiento (`_resolverGrupoIdMov`) se resuelve al **aplicar**, no antes de validar, porque puede crear un grupo nuevo ("Es un préstamo nuevo"): si se creara antes, un error de validación dejaría un grupo vacío.
+
+### 2.2c Perdonar ("¿Se lo regalas?")
+
+Se puede perdonar **una parte** de la deuda o **todo lo que falta**, desde "Registrar abono" (el monto es libre, hasta lo que debe) o desde "Pagar préstamo completo" (monto fijo en lo que falta). Al activar el toggle se oculta el destino, el extra y "viene de un encargo": no entra plata a ninguna cuenta. Lo perdonado es un **gasto real** del mes (`S.gastosVar`, `fuente: ''`, `_secundario`, `_esPerdonDeuda`, enlazado por `_gastoPerdonId` / `_deudorMovId`): la plata ya había salido de tus cuentas cuando prestaste, y ahora la das por perdida. El patrimonio baja exactamente lo perdonado.
+
+El movimiento queda como `'abono'` con `_perdon: true` si es una parte, y como `'pago-completo'` con `_perdon: true` si es todo lo que faltaba (se decide por el saldo al aplicar). Los totales de "Recibido" / "Pagado" filtran por `_perdon`: lo perdonado no es plata que entró; en el historial aparece como "Perdonado". `_planMovimiento` rechaza perdonar más de lo que la persona debe (con `Deudas.TOL_FINO`) y perdonar cuando no hay saldo. Eliminar un perdón borra su gasto y devuelve esa parte a la deuda; los demás movimientos no se tocan.
 
 ### 2.3 Eliminar un movimiento (`eliminarMovDeudor`)
 
@@ -83,7 +91,7 @@ Tras revertir, `_autoCerrarGruposEnCero(d)` reevalúa el grupo del movimiento bo
 
 ### 2.4 Grupos de préstamo (`d.grupos[]`) — Me deben y Yo debo
 
-**Aplica a las dos direcciones.** Toda la maquinaria de grupos (`_migrarGruposDeudor`, `_gruposAbiertos`, `_autoCerrarGruposEnCero`, `_resolverGrupoIdSel`, `_initGrupoSelector`, `getGrupoSaldo`, y el acordeón `_htmlHistorialPorGrupos`) recibe la deuda como parámetro y usa `Deudas.abre()`, así que sirve igual para "Yo debo", donde el movimiento que abre es `'recibido'` en vez de `'prestamo'`. En el sheet de "Yo debo" los ids son `md_grupo*` y el texto del checkbox es "Es un préstamo aparte (no sumarlo al que ya le debes)". Como en "Me deben", el grupo se resuelve al aplicar el movimiento, no al validar.
+**Aplica a las dos direcciones.** Toda la maquinaria de grupos (`_gruposAbiertos`, `_autoCerrarGruposEnCero`, `_resolverGrupoIdSel`, `_initGrupoSelector`, `getGrupoSaldo`, y el acordeón `_htmlHistorialPorGrupos`) recibe la deuda como parámetro y usa `Deudas.abre()`, así que sirve igual para "Yo debo", donde el movimiento que abre es `'recibido'` en vez de `'prestamo'`. En el sheet de "Yo debo" los ids son `md_grupo*` y el texto del checkbox es "Es un préstamo aparte (no sumarlo al que ya le debes)". Como en "Me deben", el grupo se resuelve al aplicar el movimiento, no al validar.
 
 Una misma persona puede tener varios préstamos separados en el tiempo (ej. "el préstamo viejo" y "el de la moto"), y confundirlos hace que responder "¿cuánto me debes de lo nuevo?" sea impreciso. Los grupos resuelven esto **sin duplicar a la persona en la lista**: cada deudor tiene un solo registro, pero sus movimientos se reparten en sub-préstamos aislados.
 
@@ -96,7 +104,6 @@ d.grupos = [
 m.grupoId = 'g_xxx'
 ```
 
-**Migración silenciosa (`_migrarGruposDeudor`)** — deudores creados antes de que existieran los grupos no tienen `d.grupos`. La primera vez que se abre su detalle (`abrirDeudor`), todos sus movimientos sueltos se agrupan automáticamente bajo un grupo `"Histórico"`. Idempotente, no requiere migración manual ni toca el saldo.
 
 **Saldo:** `getDeudorSaldo(d)` (envoltorio de `Deudas.saldo`, en `js/core/calc-helpers.js` — Inicio y el patrimonio lo necesitan sin cargar `prestado.js`; el total de la persona) no cambia — sigue sumando todos los movimientos sin filtrar por grupo. `getGrupoSaldo(d, grupoId)` es el mismo cálculo pero acotado a un grupo.
 
@@ -123,7 +130,7 @@ m.grupoId = 'g_xxx'
 
 **`sheet-editar-mi-deuda`** — Editar deuda: Nombre → Color del avatar
 
-**`sheet-mov-mi-deuda`** — Me prestó más / Registrar pago *(el título y el label de cuenta cambian según el tipo)*: Monto → ¿Te lo perdonaron? (solo en pago) → ¿A qué cuenta entró la plata? / ¿De qué cuenta sale el pago? (con **Dividir ÷** entre varias cuentas; se oculta si es perdón) → ¿Pagaste de más? + Monto de más (solo en pago; se oculta si es perdón) → Fecha → Nota (opcional)
+**`sheet-mov-mi-deuda`** — Me prestó más / Registrar pago *(el título y el label de cuenta cambian según el tipo)*: Monto → ¿Te lo perdonaron? (solo en pago; una parte o todo lo que falta) → ¿A qué cuenta entró la plata? / ¿De qué cuenta sale el pago? (con **Dividir ÷** entre varias cuentas; se oculta si es perdón) → ¿Pagaste de más? + Monto de más (solo en pago; se oculta si es perdón) → Fecha → Nota (opcional)
 
 ### 3.2 Tipos de movimiento (`d.movimientos[]`)
 
@@ -134,11 +141,13 @@ m.grupoId = 'g_xxx'
 **`'pago'`** — Le pagas parte de la deuda; sale de una o varias cuentas tuyas.
 - `fuente` + `_movSecId` (una sola cuenta) o `fuentes[]` (`{ fuente, monto, _movId }`, dividido). Los montos de las cuentas suman `monto` + el extra, si lo hay.
 - `extra: { monto, gastoId }` — pagaste de más. El pago baja la deuda solo `monto`; el extra sale de la cuenta pero no baja la deuda, así que es un **gasto real** del mes (`S.gastosVar`, `_esExtraDeuda`, `fuente: ''`, enlazado por `gastoId`). Las cuentas descuentan `monto + extra`.
-- `_perdon: true` + `_ingresoPerdonId` — te perdonaron lo que faltaba. El `monto` es el saldo completo; no sale plata de ninguna cuenta. Es un **ingreso real** (tu patrimonio neto sube): queda un ingreso "fantasma" en `S.movimientos` (`fuente: ''`, `_esPerdonRecibido`, enlazado por `_ingresoPerdonId`) que `_esEntradaEspejoNoIngreso()` no excluye. No cuenta como "Pagado" (ni en el detalle ni en Wrapped); en el historial aparece como "Perdonada".
+- `_perdon: true` + `_ingresoPerdonId` — te perdonaron una parte de lo que faltaba, o todo. El `monto` es lo perdonado (nunca más que el saldo); no sale plata de ninguna cuenta. Es un **ingreso real** (tu patrimonio neto sube): queda un ingreso "fantasma" en `S.movimientos` (`fuente: ''`, `_esPerdonRecibido`, enlazado por `_ingresoPerdonId`) que `_esEntradaEspejoNoIngreso()` no excluye. Lleva también `_prestadoDirectamente: true`: Inicio solo suma al ingreso del mes las entradas sin cuenta que traen esa bandera (la misma que el margen de un préstamo); sin ella el perdón subía el patrimonio pero no el ingreso del mes. No cuenta como "Pagado" (ni en el detalle ni en Wrapped); en el historial aparece como "Perdonada".
 
-Reglas que se validan **antes** de escribir nada (`_planMovMiDeuda`; `_aplicarMovMiDeuda` no tiene ningún `return` de validación, así que un error no puede dejar la deuda a medias): el pago no puede pasar del saldo (el extra es aparte); el perdón exige el saldo completo; con Dividir ÷ cada fila lleva cuenta y la suma debe cuadrar con `monto + extra`; en un pago, ninguna cuenta puede quedar con menos de lo que se le descuenta. Un pago puede salir de una tarjeta de crédito con cupo disponible (nunca una tarjeta recibe plata): ver abajo. Los movimientos de "Yo debo" también pertenecen a un grupo de préstamo (ver 2.4).
+Reglas que se validan **antes** de escribir nada (`_planMovMiDeuda`; `_aplicarMovMiDeuda` no tiene ningún `return` de validación, así que un error no puede dejar la deuda a medias): el pago no puede pasar del saldo (el extra es aparte); el perdón no puede pasar del saldo; con Dividir ÷ cada fila lleva cuenta y la suma debe cuadrar con `monto + extra`; en un pago, ninguna cuenta puede quedar con menos de lo que se le descuenta. Un pago puede salir de una tarjeta de crédito con cupo disponible (nunca una tarjeta recibe plata): ver abajo. Los movimientos de "Yo debo" también pertenecen a un grupo de préstamo (ver 2.4).
 
 **Pago con tarjeta de crédito.** La fuente de un pago puede ser `tc:<id>` (sola o como una fila del reparto). En vez de un movimiento secundario, deja un cargo `cargo_deuda` en `S.tcMovimientos` (`miDeudaId`, `_miDeudaMovId`) y sube `tc.deuda`; la fila guarda su id en `_tcMovId`. Es deuda **propia** de la tarjeta (no ajena, a diferencia de `cargo_encargo` y `cargo_prestamo`) y **no es un gasto**: cambiaste deuda con el prestamista por deuda de tarjeta, así que el patrimonio queda igual. Cupo insuficiente se rechaza antes de escribir. `tcRecalcular` reconstruye `tc.deuda` desde los cargos en cada refresh, por eso `cargo_deuda` tiene que figurar en `_tcEsCargoExterno` (`tarjetas_credito.js`); de otro modo la deuda se perdería en el siguiente refresh.
+
+**Actividad reciente.** Cada movimiento de "Yo debo" sale como una fila propia ("Me prestó X" en verde, "Pago a X" en rojo), haya pasado por una cuenta, una tarjeta o ninguna; los movimientos espejo en las cuentas se ocultan para no duplicarlos (`_espejosDeudores`, `_normMisDeudas` en `actividad_reciente.js`). El perdón no se repite: ya sale como ingreso desde `S.movimientos`, y el pago de más como gasto desde `S.gastosVar`.
 
 ### 3.3 Eliminar un movimiento (`eliminarMovMiDeuda`)
 
@@ -178,6 +187,14 @@ Los `'abono'`/`'pago-completo'` (dinero que *entra*) **no se reconstruyen acá**
 
 ---
 
+### 4.5 Deudas sin pata de caja (2026-10-10)
+
+Un préstamo "Me deben" sin cuenta ni tarjeta de origen, un abono/pago recibido sin cuenta destino, y sus equivalentes en "Yo debo", cambian el patrimonio sin pasar por ninguna cuenta. No son ingreso ni gasto del mes: se tratan como **ajuste de base** (`montoBase`, ver `analisis-financiero.md` §5) para que la gráfica de patrimonio y la proyección de Inicio no los lean como crecimiento. Quedan fuera los perdones (ya cuentan como gasto/ingreso), lo pagado con TC (`_viaTC`) y los movimientos con `fuentes`/`destinos` repartidos. Para registrar plata nueva así (p. ej. un regalo, o alguien que te cede lo que le debían), en "Nuevo préstamo" se activa **"¿Es plata nueva para ti?"** (`mov_regalo`): sin cuenta de origen el movimiento se guarda con `clase: 'ingreso'` y cuenta como ingreso del mes en vez de ajuste. Con una cuenta de origen el interruptor se ignora.
+
+### 4.4 Clase de los movimientos (2026-10-09)
+
+Cada movimiento secundario lleva `clase`: los abonos recibidos, pagos de deuda y préstamos son espejos `neutro`; son `ingreso` el **extra/propina de un pago** (`extraIngreso`, `_esExtraIngreso`) y el **perdón recibido** de una deuda "Yo debo" (`_esPerdonRecibido`); son `gasto` el **perdón dado** de una deuda "Me deben" (`_esPerdonDeuda`) y el extra de una deuda gastado de inmediato (`_esExtraDeuda`); el extra de un préstamo que se gasta al instante (`_esExtraPrestamo`) es `neutro` (nunca se contó como ingreso). Un extra guardado en una **cajita de Nu** cuenta como ingreso del mes (ver `cuentas.md`).
+
 ## 5. Meta de ahorro de cajita y "prestado"
 
 `_calcPrestadoMeta(cajitaId)` — usada en la tarjeta de la meta de una cajita — calcula cuánta plata de esa cajita sigue prestada:
@@ -197,7 +214,7 @@ Las dos listas se dibujan con un solo render, `_renderListaDeudas(dir)`; lo que 
 
 ## 5b. Tolerancias
 
-Dos constantes únicas, `Deudas.TOL` ($1: suma de partes contra total, saldo "≈ 0", guardia de integridad) y `Deudas.TOL_FINO` ($0,50: comparar un monto contra un saldo o tope, auto-detección de pago completo). No usar números sueltos.
+Dos constantes únicas, `Deudas.TOL` ($1: suma de partes contra total, saldo "≈ 0", guardia de integridad) y `Deudas.TOL_FINO` ($0,50: comparar un monto contra un saldo o tope, auto-detección de pago completo). No usar números sueltos. Por eso los avisos de saldo de un pago de "Yo debo" (`_planMovMiDeuda`: "En X solo hay $N" / "Cupo insuficiente en X") siguen siendo propios y no usan `validarSalidaFuente()` de `core-state.js` (que compara estricto y redacta distinto, para Gastos y Spotify): aquí la tolerancia es `Deudas.TOL_FINO` a propósito.
 
 ---
 

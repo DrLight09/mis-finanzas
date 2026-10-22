@@ -20,6 +20,14 @@ const CONVERTIDOS = [
   { f: 'js/modules/gastos.js', prefijos: ['gasto-', 'badge-xs', 'row-name-13'], permitidos: [] },
   // inicio: solo queda el display:none del tooltip de la proyección, que JS conmuta (showTT)
   { f: 'js/modules/inicio.js', prefijos: ['inicio-'], permitidos: ['display:none;'] },
+  // sueltos de 1-6 estilos
+  { f: 'js/modules/mesada.js', prefijos: ['badge-xs'], permitidos: [] },
+  { f: 'js/core/wrapped-gate.js', prefijos: ['wrapped-gate-'], permitidos: [] },
+  { f: 'js/core/core-state.js', prefijos: ['ico-inline'], permitidos: [] },
+  { f: 'js/core/pin-bio.js', prefijos: ['pin-fila', 'btn-flex1', 'btn-block', 'btn-peligro'], permitidos: [] },
+  { f: 'js/core/gastos-fijos-progress.js', prefijos: ['fijos-progress'], permitidos: [] },
+  // feed de actividad: solo quedan el fondo del ícono y el color del monto, que salen de cada movimiento
+  { f: 'js/modules/actividad_reciente.js', prefijos: ['feed-'], permitidos: [/^(background|color):\$\{/] },
   // wrapped: su CSS vive en el <style> que inyecta el propio archivo (cssEn). Solo queda el retraso de animación de cada punto de la línea,
   // un valor distinto por punto (i*0.09s) que no puede ser una clase.
   { f: 'js/modules/wrapped.js', prefijos: ['wrapped-'], cssEn: ['js/modules/wrapped.js'], permitidos: [/^animation-delay:\$\{/] },
@@ -34,7 +42,7 @@ CONVERTIDOS.forEach(({ f, prefijos, permitidos, cssEn = [] }) => {
     assert.deepEqual(extra, [], 'estilo inline nuevo: muévelo a una clase en css/styles.css');
   });
   test(`${f} — toda clase ${prefijos.join('/')}* que usa existe en styles.css`, () => {
-    const re = new RegExp(`\\b((?:${prefijos.map(p => p.replace('-', '\\-')).join('|')})[a-z0-9-]+)`, 'g');
+    const re = new RegExp(`\\b((?:${prefijos.map(p => p.replace('-', '\\-')).join('|')})[a-z0-9-]*)`, 'g');
     // solo lo que está dentro de class="…" / className = '…' (los ids de DOM con el mismo prefijo no cuentan)
     const trozos = [...src.matchAll(/class=\\?"([^"]*)"|className\s*=\s*'([^']*)'/g)].map(m => m[1] || m[2]).join(' ');
     const clases = [...new Set([...trozos.matchAll(re)].map(m => m[1]))];

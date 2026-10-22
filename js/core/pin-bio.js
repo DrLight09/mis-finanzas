@@ -366,11 +366,11 @@ import { hookGlobal } from './hook-global-module.js';
     if(!c) return;
     const has = !!_getPin();
     c.innerHTML = has
-      ? `<div style="display:flex;gap:8px;">
-           <button class="btn btn-ghost btn-sm" data-action="pin:setNew" style="flex:1;">Cambiar PIN</button>
-           <button class="btn btn-ghost btn-sm" data-action="pin:disable" style="flex:1;color:var(--red);border-color:rgba(240,104,104,.4);">Quitar PIN</button>
+      ? `<div class="pin-fila-btns">
+           <button class="btn btn-ghost btn-sm btn-flex1" data-action="pin:setNew">Cambiar PIN</button>
+           <button class="btn btn-ghost btn-sm btn-flex1 btn-peligro" data-action="pin:disable">Quitar PIN</button>
          </div>`
-      : `<button class="btn btn-primary btn-sm" data-action="pin:setNew" style="width:100%;">
+      : `<button class="btn btn-primary btn-sm btn-block" data-action="pin:setNew">
            Activar PIN de acceso
          </button>`;
     _renderBioBtn();
@@ -389,8 +389,8 @@ import { hookGlobal } from './hook-global-module.js';
     const isIOS   = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const label   = isIOS ? 'Face ID / Huella' : 'Huella dactilar';
     c.innerHTML = enabled
-      ? `<button class="btn btn-ghost btn-sm" data-action="pin:bioDisable" style="width:100%;color:var(--red);border-color:rgba(240,104,104,.4);">Desactivar ${label}</button>`
-      : `<button class="btn btn-primary btn-sm" data-action="pin:bioSetup" style="width:100%;">Activar ${label}</button>`;
+      ? `<button class="btn btn-ghost btn-sm btn-block btn-peligro" data-action="pin:bioDisable">Desactivar ${label}</button>`
+      : `<button class="btn btn-primary btn-sm btn-block" data-action="pin:bioSetup">Activar ${label}</button>`;
   }
 
   // Hook en refresh para re-renderizar botones cuando se abre Config —

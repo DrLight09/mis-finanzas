@@ -82,6 +82,14 @@ Todo vive en `S.plataCometida[]`:
 
 **`_tcCompraId` solo existe una vez que el gasto realmente se cargó a la tarjeta** (al marcar `yaPague` — sea al crear el destino o después, desde "Marcar pagos" — o al recibir el ingreso, lo que pase primero) — permite encontrar y revertir esa compra puntual sin ambigüedad si se desmarca o se elimina el ingreso completo.
 
+### Clase de los movimientos (2026-10-09)
+
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `plan-clasificacion-movimientos.md` y `CHANGELOG.md#infraestructura--seguridad`.
+
+- Reposiciones de plata comprometida a una cajita (`_esReposicionCP`): `neutro` (reponer lo que ya tenías comprometido no es plata nueva).
+- Ingreso libre (`_esSobrante`) y el ingreso de la cuenta personalizada de una ganancia: `ingreso`.
+- Los adelantos y pagos (`tipo: 'salida'`) no llevan `clase`: no son gasto del mes.
+
 ## 5. Flujo
 
 ### Registrar un ingreso comprometido

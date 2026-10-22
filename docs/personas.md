@@ -168,12 +168,14 @@ Crear una nueva → mismo flujo que "Crear persona nueva" de arriba,
 
 ### Integración con otros módulos
 
-La integración específica de cada módulo con Personas **no vive en este archivo**, sino en el suyo propio, cargado después de `personas.js` porque depende de `getPersona`/`abrirSelPersona`/`_inyectarPersonaSheets`:
+La integración de cada módulo con Personas **no vive en `personas.js`**, sino dentro del propio módulo (los archivos `*-personas.js` que existieron se fusionaron de vuelta el 2026-08-03; ver `CHANGELOG.md#encargos`, `#spotify` y `#préstamos`):
 
 | Módulo | Archivo |
 |---|---|
-| Encargos | `js/modules/encargos-personas.js` |
-| Spotify | `js/modules/spotify-personas.js` |
-| Préstamos ("Me deben" / "Yo debo") | `js/modules/prestado-personas.js` |
+| Encargos | `js/modules/encargos.js` (selector en "Nuevo encargo", hook que exige `personaId`, botones de perfil, `_irAEncargo`) |
+| Spotify | `js/modules/spotify.js` |
+| Préstamos ("Me deben" / "Yo debo") | `js/modules/prestado.js` |
 
-**Caso pendiente:** el botón "Ver →" de cada encargo dentro del perfil de persona todavía llama directo a `_irAEncargo()`, definida en `encargos-personas.js` — es el único punto de este módulo sin migrar al sistema de eventos (`js/core/events.js`), documentado en el propio código. Ver `auditoria-tecnica.md` punto 1.
+`personas.js` carga antes que esos módulos y estos usan `getPersona`, `abrirSelPersona` y `_inyectarPersonaSheets` solo dentro de handlers (en el click), así que el orden entre `<script defer>` no importa para esta dependencia.
+
+**Eventos:** los botones "Ver →" del perfil usan `data-action` con prefijos heredados (`encargos-personas:irAEncargo`, `prestado-personas:irADeudor`, `prestado-personas:irAMiDeuda`). El prefijo es solo el namespace del evento; cada handler se registra en `encargos.js` / `prestado.js`, donde vive la función. No queda ningún punto sin migrar a `js/core/events.js`.

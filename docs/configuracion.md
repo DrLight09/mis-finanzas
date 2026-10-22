@@ -128,6 +128,10 @@ Cambia el checkbox → S.modulos[nombre] = estado del checkbox → save() → ap
 
 ---
 
+### Migraciones y la clase de los movimientos (2026-10-09)
+
+Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual que al cargar desde la nube. La migración **v3** estampa `clase` en los movimientos que no la tengan (idempotente, no pisa una `clase` existente) y deja sin clase solo las `salida`/`egreso` sin etiqueta de espejo. Las migraciones v1 (línea base) y v2 (`plataCometida → plataComprometida`) se retiraron el 2026-10-09: todos los datos y backups ya estaban en v2, así que `MIGRACIONES` empieza en v3.
+
 ## 6. Casos especiales
 
 - **Validación de estructura (deliberadamente laxa).** Un backup es válido si es un objeto y trae **al menos uno** de `nuRate`, `cajitas`, `nequiSaldo`, `efectivoSaldo`, `deudores`, `gastosFijos`, `gastosVar`, `modulos`; y si están presentes, `cajitas`/`gastosVar`/`deudores` son arrays y `nuRate` es número. El resto de `S` (tarjetas, encargos, mesadas, personas, alcancía…) no se valida: un backup que solo tenga `modulos` pasa.

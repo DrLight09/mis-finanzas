@@ -905,3 +905,39 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .btn.btn-flex1{flex:1;}
 .btn.btn-block{width:100%;}
 .btn.btn-ghost.btn-peligro{color:var(--red);border-color:rgba(240,104,104,.4);}
+
+/* ── Cuentas (Paso 5: estilos inline → clases) ────────────────────────────── */
+.cuenta-flex-8{display:flex;align-items:center;gap:8px;}
+.cuenta-ico-box{display:flex;align-items:center;justify-content:center;}
+.cuenta-ico-box.cuenta-ico-box-ini{font-weight:700;font-family:'DM Mono',monospace;}
+.cuenta-ico-box.cuenta-ico-box-efectivo{background:rgba(240,184,64,.15);color:var(--amber);}
+.nc-icon-opt.cuenta-ico-op{display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px;border-radius:10px;cursor:pointer;border:2px solid var(--border2);background:var(--bg3);transition:all .15s;}
+.nc-icon-opt.cuenta-ico-op.cuenta-ico-op-sel{border:2px solid var(--accent);}
+.cuenta-ico-op-svg{display:flex;align-items:center;justify-content:center;width:24px;height:24px;}
+.cuenta-ico-op-label{font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);text-align:center;line-height:1.2;}
+.cuenta-movs-limpiar{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:'DM Mono',monospace;white-space:nowrap;padding:0 2px;}
+.cuenta-movs-vacio{font-size:12px;color:var(--text3);padding:8px 0 4px;}
+.cuenta-movs-sin-res{font-size:12px;color:var(--text3);padding:10px 0 4px;text-align:center;}
+.gasto-item.gasto-item-click{cursor:pointer;}
+.cuenta-chip-auto{display:inline-flex;align-items:center;gap:2px;font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:1px 5px;white-space:nowrap;}
+.row-sub.cuenta-mov-fecha{font-family:'DM Mono',monospace;}
+.cuenta-monto-oculto{display:flex;align-items:center;color:var(--text3);}
+.cuenta-svg-block{display:block;}
+.cuenta-monto{font-size:14px;font-weight:500;font-family:'DM Mono',monospace;}
+.btn-icon.cuenta-btn-del{color:var(--text3);min-width:32px;min-height:32px;}
+.cuenta-mov-lock{display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;color:var(--text3);opacity:.4;}
+.badge.cuenta-badge-alc{background:rgba(240,184,64,.18);color:var(--amber);border:none;}
+.cuenta-mov-nota{font-size:10px;color:var(--text3);}
+.cuenta-transf-destino{font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;}
+.cuenta-transf-ico{width:11px;height:11px;fill:currentColor;vertical-align:middle;}
+.cuenta-nota-opc{color:var(--text3);font-weight:400;}
+.cuenta-apertura{display:flex;align-items:center;justify-content:space-between;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:9px;padding:9px 13px;margin-bottom:12px;}
+.cuenta-apertura-lbl{font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:2px;}
+.cuenta-apertura-monto{font-size:15px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);}
+.cuenta-apertura-corregir{background:none;border:1px solid rgba(96,176,240,.3);border-radius:7px;color:var(--blue);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.cuenta-apertura-vacia{margin-bottom:12px;}
+.cuenta-apertura-registrar{width:100%;padding:11px;background:rgba(96,176,240,.07);border:1.5px dashed rgba(96,176,240,.35);border-radius:9px;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;}
+.cuenta-apertura-nota{font-size:11px;color:var(--text3);text-align:center;margin-top:5px;}
+.cuenta-flecha{margin:0 3px;font-size:10px;}
+.cuenta-svg-mid{vertical-align:middle;}
+.cuenta-prev-warn{color:var(--red);font-size:10px;}

@@ -28,6 +28,10 @@ const CONVERTIDOS = [
   { f: 'js/core/gastos-fijos-progress.js', prefijos: ['fijos-progress'], permitidos: [] },
   // feed de actividad: solo quedan el fondo del ícono y el color del monto, que salen de cada movimiento
   { f: 'js/modules/actividad_reciente.js', prefijos: ['feed-'], permitidos: [/^(background|color):\$\{/] },
+  // cuentas: solo quedan valores calculados: tamaño/colores del ícono de cada cuenta (elegidos por el usuario), el fondo/color de cada
+  // opción de la cuadrícula de íconos y las variables --cuenta/--cuenta-rgb de cada tarjeta del selector
+  { f: 'js/modules/cuentas.js', prefijos: ['cuenta-', 'gasto-item-', 'gasto-nombre-fila', 'badge-xs', 'ico-inline', 'nc-icon-opt'],
+    permitidos: [/^width:\$\{/, /^background:\$\{/, /^color:\$\{/, '${vars}'] },
   // wrapped: su CSS vive en el <style> que inyecta el propio archivo (cssEn). Solo queda el retraso de animación de cada punto de la línea,
   // un valor distinto por punto (i*0.09s) que no puede ser una clase.
   { f: 'js/modules/wrapped.js', prefijos: ['wrapped-'], cssEn: ['js/modules/wrapped.js'], permitidos: [/^animation-delay:\$\{/] },

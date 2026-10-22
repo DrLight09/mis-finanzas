@@ -86,7 +86,7 @@ function renderDetalleCuenta(fuente) {
 // Título del header de cualquier detalle de cuenta: ícono + nombre, siempre desde el descriptor.
 // Lo usan el detalle simple (Nequi/Efectivo/personalizadas) y el de Nu (nu.js).
 function _tituloCuentaHtml(d) {
-  return html`<div style="display:flex;align-items:center;gap:8px;">${d.iconoHtml(28)}<span>${d.nombre}</span></div>`;
+  return html`<div class="cuenta-flex-8">${d.iconoHtml(28)}<span>${d.nombre}</span></div>`;
 }
 
 // Detalle de Nequi, Efectivo y cuentas personalizadas: misma pantalla, el descriptor de la
@@ -138,13 +138,13 @@ function renderIconoCustom(c, size=30){
   const hex=c.color||icono.color||'#60b0f0';
   const hexRgb=hexToRgb(hex);
   if(icono && icono.id!=='otro'){
-    return html`<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(${hexRgb},.18);display:flex;align-items:center;justify-content:center;color:${hex};">${raw(icono.svg)}</div>`;
+    return html`<div class="cuenta-ico-box" style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(${hexRgb},.18);color:${hex};">${raw(icono.svg)}</div>`;
   }
   // Fallback: iniciales (derivadas de c.nombre, texto libre — antes se interpolaban sin
   // escapar; con solo 2 caracteres el vector real era mínimo, pero html`` lo cierra igual
   // que el resto de free text de este archivo, sin depender de que siga siendo así)
   const iniciales=(c.nombre||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  return html`<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(${hexRgb},.18);display:flex;align-items:center;justify-content:center;font-size:${Math.round(size*.38)}px;font-weight:700;color:${hex};font-family:'DM Mono',monospace;">${iniciales}</div>`;
+  return html`<div class="cuenta-ico-box cuenta-ico-box-ini" style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(${hexRgb},.18);font-size:${Math.round(size*.38)}px;color:${hex};">${iniciales}</div>`;
 }
 
 let _ncColorSel='#60b0f0';
@@ -174,10 +174,10 @@ function renderIconGrid(){
   grid.innerHTML=html`${ICONOS_CUENTA.map(ic=>{
     const sel=ic.id===_ncIconoSel;
     const hexRgb=hexToRgb(ic.color);
-    return html`<div class="nc-icon-opt" data-icono="${ic.id}" ${raw(Events.attr('cuentas:selIconoNC', ic.id))}
-      style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:9px 4px;border-radius:10px;cursor:pointer;border:2px solid ${sel?'var(--accent)':'var(--border2)'};background:${sel?`rgba(${hexRgb},.18)`:'var(--bg3)'};transition:all .15s;">
-      <div style="color:${ic.color};display:flex;align-items:center;justify-content:center;width:24px;height:24px;">${raw(ic.svg)}</div>
-      <div style="font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);text-align:center;line-height:1.2;">${ic.label}</div>
+    return html`<div class="nc-icon-opt cuenta-ico-op${sel?' cuenta-ico-op-sel':''}" data-icono="${ic.id}" ${raw(Events.attr('cuentas:selIconoNC', ic.id))}
+      style="background:${sel?`rgba(${hexRgb},.18)`:'var(--bg3)'};">
+      <div class="cuenta-ico-op-svg" style="color:${ic.color};">${raw(ic.svg)}</div>
+      <div class="cuenta-ico-op-label">${ic.label}</div>
     </div>`;
   })}`;
 }
@@ -229,7 +229,7 @@ function crearCuentaCustom(){
    es una pantalla propia que se registra en CuentaPantallas (core-state.js). */
 const ICONO_EFECTIVO_SELECTOR = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>`;
 function _iconoEfectivo(size){
-  return html`<div style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(240,184,64,.15);display:flex;align-items:center;justify-content:center;color:var(--amber);">${raw(ICONO_EFECTIVO_SELECTOR)}</div>`;
+  return html`<div class="cuenta-ico-box cuenta-ico-box-efectivo" style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;">${raw(ICONO_EFECTIVO_SELECTOR)}</div>`;
 }
 
 // Lo propio de cuentas.js para cada cuenta fija (estilo del selector, ícono, saldo). Nombre, color,
@@ -653,7 +653,7 @@ function renderMovsFiltros(elId, cuentaKey, movs, accentColor) {
       <input type="date" class="movs-fecha-desde" value="${f.desde}">
       <span class="movs-fecha-label">Hasta</span>
       <input type="date" class="movs-fecha-hasta" value="${f.hasta}">
-      ${(f.desde||f.hasta)?html`<button ${raw(Events.attr('cuentas:movsLimpiarFechas', cuentaKey))} style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:'DM Mono',monospace;white-space:nowrap;padding:0 2px;">× fechas</button>`:''}
+      ${(f.desde||f.hasta)?html`<button ${raw(Events.attr('cuentas:movsLimpiarFechas', cuentaKey))} class="cuenta-movs-limpiar">× fechas</button>`:''}
     </div>
   `;
   // Reemplaza los oninput/onchange inline (CSP los bloquea). Delegado,
@@ -725,11 +725,11 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplici
   const filtrados = cuentaKey ? _movsAplicarFiltro(movs, cuentaKey) : movs;
 
   if (!movs.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0 4px;">No hay movimientos registrados en esta cuenta.</div>';
+    el.innerHTML = '<div class="cuenta-movs-vacio">No hay movimientos registrados en esta cuenta.</div>';
     return;
   }
   if (!filtrados.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:10px 0 4px;text-align:center;">Sin resultados para esos filtros.</div>';
+    el.innerHTML = '<div class="cuenta-movs-sin-res">Sin resultados para esos filtros.</div>';
     return;
   }
 
@@ -737,7 +737,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplici
     const esSalida = m.tipo === 'salida_manual' || m.tipo === 'gasto';
     const esApertura = m.tipo === 'apertura';
     const esPositivo = esApertura ? true : esSalida ? false : m.monto > 0;
-    const colorMonto = esApertura ? 'var(--blue)' : esPositivo ? 'var(--accent)' : 'var(--red)';
+    const claseMonto = esApertura ? 'c-blue' : esPositivo ? 'c-green' : 'c-red';
     const signo = esApertura ? '' : esPositivo ? '+' : '−';
     const tipoLabel = { gasto: 'Gasto', ingreso: 'Ingreso', apertura: 'Apertura', prestamo: 'Préstamo', abono: 'Abono', alcancia: 'Alcancía', mesada: 'Mesada', transferencia: 'Transferencia', salida_manual: 'Retiro' }[m.tipo] || m.tipo;
     const bgLabel = esApertura ? 'bg-blue' : esPositivo ? 'bg-green' : m.tipo === 'gasto' || m.tipo === 'salida_manual' ? 'bg-red' : m.tipo === 'transferencia' ? 'bg-blue' : 'bg-amber';
@@ -758,26 +758,26 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplici
     // OTRAS filas no depende del DOM sino de getMovimientosCuenta(), que sí incluye estas filas.
     const alcOculto = !!m._alcOculto;
     const puedeVerDetalle = !!m.fuente && !alcOculto;
-    return html`<div class="gasto-item" ${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto} ${dataFuenteReal} ${dataFecha} ${dataOrigen} ${dataOtras} ${puedeVerDetalle ? raw('data-cuenta-key="'+escHtml(cuentaKey)+'" style="cursor:pointer;" data-action="core:abrirDetalleMov"') : ''}>
+    return html`<div class="gasto-item${puedeVerDetalle ? ' gasto-item-click' : ''}" ${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto} ${dataFuenteReal} ${dataFecha} ${dataOrigen} ${dataOtras} ${puedeVerDetalle ? raw('data-cuenta-key="'+escHtml(cuentaKey)+'" data-action="core:abrirDetalleMov"') : ''}>
       <div class="gasto-item-top">
-        <div style="flex:1;min-width:0;">
-          <div class="row-name" style="font-size:13px;display:flex;align-items:center;gap:6px;">${m.desc}${esSecundarioHist ? html`<span style="display:inline-flex;align-items:center;gap:2px;font-size:9px;color:var(--text3);background:var(--bg2);border-radius:4px;padding:1px 5px;white-space:nowrap;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
-          <div class="row-sub" style="font-family:'DM Mono',monospace;">${m.fecha || '—'}</div>
+        <div class="gasto-item-info">
+          <div class="row-name gasto-nombre-fila">${m.desc}${esSecundarioHist ? html`<span class="cuenta-chip-auto"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
+          <div class="row-sub cuenta-mov-fecha">${m.fecha || '—'}</div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div class="cuenta-flex-8">
           ${alcOculto
-            ? html`<div title="Monto oculto — se ve dentro de Alcancía" style="display:flex;align-items:center;color:var(--text3);"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" style="display:block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg></div>`
-            : html`<div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${colorMonto};">${signo} ${fmt(Math.abs(m.monto))}</div>`}
-          ${puedeEliminar ? html`<button type="button" class="btn-icon" data-action="core:eliminarMovimiento" data-stop-propagation="true" title="Eliminar movimiento" style="color:var(--text3);min-width:32px;min-height:32px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : esSecundarioHist && m._movId ? html`<span title="Generado automáticamente — elimínalo desde ${m._origenSeccion||'la sección de origen'}" style="display:flex;align-items:center;justify-content:center;min-width:32px;min-height:32px;color:var(--text3);opacity:.4;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : ''}
+            ? html`<div title="Monto oculto — se ve dentro de Alcancía" class="cuenta-monto-oculto"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" class="cuenta-svg-block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg></div>`
+            : html`<div class="cuenta-monto ${claseMonto}">${signo} ${fmt(Math.abs(m.monto))}</div>`}
+          ${puedeEliminar ? html`<button type="button" class="btn-icon cuenta-btn-del" data-action="core:eliminarMovimiento" data-stop-propagation="true" title="Eliminar movimiento"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : esSecundarioHist && m._movId ? html`<span title="Generado automáticamente — elimínalo desde ${m._origenSeccion||'la sección de origen'}" class="cuenta-mov-lock"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : ''}
         </div>
       </div>
       <div class="gasto-item-meta">
-        ${alcOculto ? '' : html`<span class="badge ${bgLabel}" style="font-size:9px;">${tipoLabel}</span>`}
-        ${(m._alcOculto || m._origen === 'Alcancía oculta') ? html`<span class="badge" style="font-size:9px;background:rgba(240,184,64,.18);color:var(--amber);border:none;"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
-        ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?html`<span class="badge bg-nu" style="font-size:9px;">${cn}</span>`:''; })()}
-        ${m.cat ? html`<span class="badge bg-blue" style="font-size:9px;">${m.cat}</span>` : ''}
-        ${m.nota ? html`<span style="font-size:10px;color:var(--text3);">${m.nota}</span>` : ''}
-        ${m.tipo === 'transferencia' && m._fuenteDestino ? html`<span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg> ${fuenteLabel(m._fuenteDestino||m._fuenteOrigen)}</span>` : ''}
+        ${alcOculto ? '' : html`<span class="badge badge-xs ${bgLabel}">${tipoLabel}</span>`}
+        ${(m._alcOculto || m._origen === 'Alcancía oculta') ? html`<span class="badge badge-xs cuenta-badge-alc"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
+        ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?html`<span class="badge badge-xs bg-nu">${cn}</span>`:''; })()}
+        ${m.cat ? html`<span class="badge badge-xs bg-blue">${m.cat}</span>` : ''}
+        ${m.nota ? html`<span class="cuenta-mov-nota">${m.nota}</span>` : ''}
+        ${m.tipo === 'transferencia' && m._fuenteDestino ? html`<span class="cuenta-transf-destino"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="cuenta-transf-ico"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg> ${fuenteLabel(m._fuenteDestino||m._fuenteOrigen)}</span>` : ''}
       </div>
     </div>`;
   })}`;
@@ -807,7 +807,7 @@ function abrirAgregarDinero(fuente,nombre){
   const chk=document.getElementById('adEsApertura');
   if(chk){chk.checked=false;}
   const lbl=document.getElementById('adDescLabel');
-  if(lbl)lbl.innerHTML='¿De dónde viene esta plata? <span style="color:var(--red);">*</span>';
+  if(lbl)lbl.innerHTML='¿De dónde viene esta plata? <span class="c-red">*</span>';
   const inp=document.getElementById('adDesc');
   if(inp)inp.placeholder='Ej: Mesada, regalo, venta, sueldo...';
   openSheet('agregar-dinero');
@@ -832,10 +832,10 @@ function _aperturaToggleUI(ids){
   const notaPh=ids.notaPlaceholder||'Ej: Ahorros de varios meses...';
   const descPh=ids.descPlaceholder||'Ej: Mesada, regalo, venta, sueldo...';
   if(chk.checked){
-    if(lbl)lbl.innerHTML='Nota opcional <span style="color:var(--text3);font-weight:400;">(ej: ahorros de varios meses)</span>';
+    if(lbl)lbl.innerHTML='Nota opcional <span class="cuenta-nota-opc">(ej: ahorros de varios meses)</span>';
     if(inp)inp.placeholder=notaPh;
   } else {
-    if(lbl)lbl.innerHTML='¿De dónde viene esta plata? <span style="color:var(--red);">*</span>';
+    if(lbl)lbl.innerHTML='¿De dónde viene esta plata? <span class="c-red">*</span>';
     if(inp)inp.placeholder=descPh;
   }
 }
@@ -990,21 +990,21 @@ function renderBannerApertura(fuente,opts){
   const color=colorMap[fuente]||'var(--blue)';
   if(mov){
     // Ya tiene saldo inicial — mostrar chip con valor y botón editar discreto
-    el.innerHTML=html`<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:9px;padding:9px 13px;margin-bottom:12px;">
+    el.innerHTML=html`<div class="cuenta-apertura">
       <div>
-        <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:2px;">Saldo inicial registrado</div>
-        <div style="font-size:15px;font-weight:500;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(mov.monto)}</div>
+        <div class="cuenta-apertura-lbl">Saldo inicial registrado</div>
+        <div class="cuenta-apertura-monto">${fmt(mov.monto)}</div>
       </div>
-      <button type="button" ${raw(Events.attr('cuentas:abrirEditarApertura', fuente))} style="background:none;border:1px solid rgba(96,176,240,.3);border-radius:7px;color:var(--blue);font-size:11px;font-weight:600;padding:5px 11px;cursor:pointer;font-family:'DM Sans',sans-serif;">Corregir</button>
+      <button type="button" ${raw(Events.attr('cuentas:abrirEditarApertura', fuente))} class="cuenta-apertura-corregir">Corregir</button>
     </div>`;
   } else {
     // No tiene saldo inicial — mostrar botón para registrarlo
-    el.innerHTML=html`<div style="margin-bottom:12px;">
-      <button type="button" ${raw(Events.attr('cuentas:abrirRegistrarApertura', fuente))} style="width:100%;padding:11px;background:rgba(96,176,240,.07);border:1.5px dashed rgba(96,176,240,.35);border-radius:9px;color:var(--blue);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;">
+    el.innerHTML=html`<div class="cuenta-apertura-vacia">
+      <button type="button" ${raw(Events.attr('cuentas:abrirRegistrarApertura', fuente))} class="cuenta-apertura-registrar">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Registrar saldo inicial
       </button>
-      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:5px;">Plata que ya tenías antes de usar la app</div>
+      <div class="cuenta-apertura-nota">Plata que ya tenías antes de usar la app</div>
     </div>`;
   }
 }
@@ -1081,7 +1081,7 @@ document.addEventListener('input',function(e){
     if(nuevo>0){
       const diff=nuevo-anterior;
       const signo=diff>=0?'+':'';
-      prev.innerHTML=fmt(anterior)+' <i class="fa-solid fa-arrow-right" style="margin:0 3px;font-size:10px;"></i> '+fmt(nuevo)+(diff!==0?' ('+signo+fmt(diff)+')':'');
+      prev.innerHTML=fmt(anterior)+' <i class="fa-solid fa-arrow-right cuenta-flecha"></i> '+fmt(nuevo)+(diff!==0?' ('+signo+fmt(diff)+')':'');
       prev.style.color=diff>0?'var(--accent)':diff<0?'var(--red)':'var(--text3)';
     } else {prev.textContent='';}
   }
@@ -1330,10 +1330,10 @@ function actualizarTransfPreview() {
   const nuevoOrigen = saldoOrigen - monto;
   const nuevoDestino = saldoDestino + monto;
   const colorOrigen = nuevoOrigen < 0 ? 'var(--red)' : 'var(--accent)';
-  prev.innerHTML = html`<span style="color:var(--red);">${fuenteLabel(origen)}: ${fmt(saldoOrigen)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoOrigen)}</span><br>
-    <span style="color:var(--accent);">${fuenteLabel(destino)}: ${fmt(saldoDestino)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoDestino)}</span>`;
+  prev.innerHTML = html`<span class="c-red">${fuenteLabel(origen)}: ${fmt(saldoOrigen)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cuenta-svg-mid"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoOrigen)}</span><br>
+    <span class="c-green">${fuenteLabel(destino)}: ${fmt(saldoDestino)} <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cuenta-svg-mid"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fmt(nuevoDestino)}</span>`;
   if (!v.ok) { // v.codigo === 'saldo' (los demás ya salieron arriba)
-    prev.innerHTML = html`${raw(prev.innerHTML)}<br><span style="color:var(--red);font-size:10px;">Saldo insuficiente en ${fuenteLabel(origen)}</span>`;
+    prev.innerHTML = html`${raw(prev.innerHTML)}<br><span class="cuenta-prev-warn">Saldo insuficiente en ${fuenteLabel(origen)}</span>`;
   }
 }
 

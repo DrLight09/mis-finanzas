@@ -32,12 +32,14 @@ const CONVERTIDOS = [
   // opción de la cuadrícula de íconos y las variables --cuenta/--cuenta-rgb de cada tarjeta del selector
   { f: 'js/modules/cuentas.js', prefijos: ['cuenta-', 'gasto-item-', 'gasto-nombre-fila', 'badge-xs', 'ico-inline', 'nc-icon-opt'],
     permitidos: [/^width:\$\{/, /^background:\$\{/, /^color:\$\{/, '${vars}'] },
+  // analisis: solo quedan los anchos/alturas de las barras (porcentaje calculado) y el display:none del tooltip del patrimonio, que JS conmuta
+  { f: 'js/modules/analisis.js', prefijos: ['an-', 'presup-bar-fill', 'presup-input'], armadas: ['an-t-', 'an-bg-'], permitidos: [/^width:\$\{/, /^height:\$\{/, 'display:none;'] },
   // wrapped: su CSS vive en el <style> que inyecta el propio archivo (cssEn). Solo queda el retraso de animación de cada punto de la línea,
   // un valor distinto por punto (i*0.09s) que no puede ser una clase.
   { f: 'js/modules/wrapped.js', prefijos: ['wrapped-'], cssEn: ['js/modules/wrapped.js'], permitidos: [/^animation-delay:\$\{/] },
 ];
 
-CONVERTIDOS.forEach(({ f, prefijos, permitidos, cssEn = [] }) => {
+CONVERTIDOS.forEach(({ f, prefijos, permitidos, cssEn = [], armadas = [] }) => {
   const css = CSS + cssEn.map(leer).join('\n');
   const src = leer(f);
   test(`${f} — no queda ningún style="" estático (solo lo permitido: display:none que JS conmuta o valores calculados)`, () => {
@@ -49,7 +51,8 @@ CONVERTIDOS.forEach(({ f, prefijos, permitidos, cssEn = [] }) => {
     const re = new RegExp(`\\b((?:${prefijos.map(p => p.replace('-', '\\-')).join('|')})[a-z0-9-]*)`, 'g');
     // solo lo que está dentro de class="…" / className = '…' (los ids de DOM con el mismo prefijo no cuentan)
     const trozos = [...src.matchAll(/class=\\?"([^"]*)"|className\s*=\s*'([^']*)'/g)].map(m => m[1] || m[2]).join(' ');
-    const clases = [...new Set([...trozos.matchAll(re)].map(m => m[1]))];
+    // `armadas`: prefijos de clases que el código completa con una variable (p. ej. an-t-${tono}); se verifican aparte, valor por valor
+    const clases = [...new Set([...trozos.matchAll(re)].map(m => m[1]))].filter(c => !armadas.includes(c));
     assert.ok(clases.length > 0);
     const faltan = clases.filter(c => !new RegExp('\\.' + c.replace(/-/g, '\\-') + '(?![\\w-])').test(css));
     assert.deepEqual(faltan, []);
@@ -68,4 +71,14 @@ test('wrapped: el mood de cada slide se lee de la clase de color del número gra
   const usados = new Set([...w.matchAll(/_wrappedSlideBignum\([\s\S]*?'(var\(--[a-z]+\))'\s*,\s*\{/g)].map(m => m[1]));
   assert.ok(usados.size >= 5);
   usados.forEach(c => assert.ok(mapa.includes(`'${c}'`), `color sin clase en wrapped: ${c}`));
+});
+
+test('analisis: los tonos que arma el código (an-t-X, an-bg-X) existen todos en styles.css', () => {
+  const css = leer('css/styles.css'), src = leer('js/modules/analisis.js');
+  // los tonos posibles salen de los arreglos/ternarios que arman `tono`
+  const tonos = ['red', 'amber', 'accent', 'blue', 'purple', 'text2'];
+  tonos.forEach(t => { ['an-t-', 'an-bg-'].forEach(p => assert.ok(new RegExp('\\.' + p + t + '(?![\\w-])').test(css), `falta .${p}${t}`)); });
+  // y el código no usa un tono que no esté en la lista
+  const usados = new Set([...src.matchAll(/'(red|amber|accent|blue|purple|text2)'/g)].map(m => m[1]));
+  usados.forEach(t => assert.ok(tonos.includes(t), t));
 });

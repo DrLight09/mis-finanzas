@@ -61,7 +61,7 @@ function renderAnalisis(){
   if(hero){
     const esPositivo=balance>=0;
     const sinIngresos=!_hayIngresos;
-    const color=sinIngresos?'var(--text3)':esPositivo?'var(--accent)':'var(--red)';
+    const claseTono=sinIngresos?'an-t-muted':esPositivo?'c-green':'c-red';
     const bgColor=sinIngresos?'rgba(255,255,255,.04)':esPositivo?'rgba(200,240,96,.07)':'rgba(240,104,104,.07)';
     const borderColor=sinIngresos?'var(--border2)':esPositivo?'rgba(200,240,96,.25)':'rgba(240,104,104,.25)';
     const mes2d=MESES_NOMBRE[mesNum]+' '+anio;
@@ -73,10 +73,10 @@ function renderAnalisis(){
     else mensaje='Ojo: gastaste más de lo que entraste este mes.';
     hero.style.cssText='border-radius:var(--radius);padding:20px;margin-bottom:10px;background:'+bgColor+';border:1px solid '+borderColor+';';
     hero.innerHTML=`
-      <div style="font-size:10px;color:${sinIngresos?'var(--text3)':color};text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;">${emoji} Balance de ${mes2d}</div>
-      <div style="font-size:36px;font-weight:300;letter-spacing:-2px;font-family:'DM Mono',monospace;color:${color};margin:6px 0 6px;">${sinIngresos?fmt(gastosTotalMes*-1):(balance>=0?'+':'')+fmt(balance)}</div>
-      <div style="font-size:11px;color:var(--text3);">${mensaje}</div>
-      ${_rendNu>0.5?`<div style="font-size:11px;color:var(--text3);margin-top:8px;padding-top:8px;border-top:1px solid var(--border2);">Incluye ${fmt(_rendNu)} de rendimientos de Nu <span style=\"opacity:.7\">(intereses de cajitas y CDT)</span></div>`:''}
+      <div class="an-hero-lbl ${claseTono}">${emoji} Balance de ${mes2d}</div>
+      <div class="an-hero-monto ${claseTono}">${sinIngresos?fmt(gastosTotalMes*-1):(balance>=0?'+':'')+fmt(balance)}</div>
+      <div class="an-hero-msg">${mensaje}</div>
+      ${_rendNu>0.5?`<div class="an-hero-rend">Incluye ${fmt(_rendNu)} de rendimientos de Nu <span class=\"an-opaco\">(intereses de cajitas y CDT)</span></div>`:''}
     `;
   }
 
@@ -97,7 +97,7 @@ function renderAnalisis(){
   const catsEl=document.getElementById('an-cats-mes');
   if(catsEl){
     if(!catsOrdenadas.length){
-      catsEl.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0;">Sin gastos registrados este mes.</div>';
+      catsEl.innerHTML='<div class="an-vacio an-vacio-4">Sin gastos registrados este mes.</div>';
     } else {
       // Migrado a html`` (ver auditoria-tecnica.md, cierre de la discrepancia
       // 2026-08-25 — este era el último sitio de renderAnalisis() sin migrar).
@@ -106,15 +106,15 @@ function renderAnalisis(){
       // igual que ya hace renderPresupuestos() con su variable `col` análoga.
       catsEl.innerHTML=html`${catsOrdenadas.map(([cat,monto],i)=>{
         const pct=Math.round((monto/maxCat)*100);
-        const colors=['var(--red)','var(--amber)','var(--accent)','var(--blue)','var(--purple)'];
-        const col=colors[i]||'var(--text2)';
-        return html`<div style="margin-bottom:${i<catsOrdenadas.length-1?'11':'0'}px;">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-            <span style="font-size:12px;font-weight:600;">${cat}</span>
-            <span style="font-size:12px;font-family:'DM Mono',monospace;color:${raw(col)};">${fmt(monto)}</span>
+        const tonos=['red','amber','accent','blue','purple'];
+        const tono=tonos[i]||'text2';
+        return html`<div class="an-cat-fila${i<catsOrdenadas.length-1?'':' an-cat-fila-ult'}">
+          <div class="an-fila-sb an-fila-sb-4">
+            <span class="an-nom-12">${cat}</span>
+            <span class="an-cat-monto an-t-${raw(tono)}">${fmt(monto)}</span>
           </div>
-          <div style="height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;">
-            <div style="height:100%;width:${pct}%;background:${raw(col)};border-radius:2px;transition:width .5s;"></div>
+          <div class="an-barra-riel">
+            <div class="an-barra-fill an-barra-anim an-bg-${raw(tono)}" style="width:${pct}%;"></div>
           </div>
         </div>`;
       })}`;
@@ -130,13 +130,11 @@ function renderAnalisis(){
     barEl.innerHTML=hoy12.map(({k,total,label},idx)=>{
       const pct=Math.max(total>0?Math.round((total/maxBar)*100):0,2);
       const esMesActual=k===mes;
-      const col=esMesActual?'var(--accent)':'var(--bg3)';
-      const border=esMesActual?'none':'1px solid var(--border2)';
-      return`<div data-bar-label="${label}" data-bar-val="${total}" data-bar-mes="${k}" style="flex:1;background:${col};border:${border};border-radius:4px 4px 0 0;height:${pct}%;min-height:${total>0?4:2}px;transition:height .4s;cursor:pointer;-webkit-tap-highlight-color:rgba(200,240,96,.18);"></div>`;
+      return`<div data-bar-label="${label}" data-bar-val="${total}" data-bar-mes="${k}" class="an-bar ${esMesActual?'an-bar-act':'an-bar-inact'}" style="height:${pct}%;min-height:${total>0?4:2}px;"></div>`;
     }).join('');
     labEl.innerHTML=hoy12.map(({label,k})=>{
       const esMesActual=k===mes;
-      return`<div style="flex:1;text-align:center;font-size:8px;font-family:'DM Mono',monospace;color:${esMesActual?'var(--accent)':'var(--text3)'};font-weight:${esMesActual?'700':'400'};">${label}</div>`;
+      return`<div class="an-bar-lbl ${esMesActual?'an-bar-lbl-act':''}">${label}</div>`;
     }).join('');
     // Event delegation en el contenedor — funciona para touch y click
     barEl.ontouchstart = barEl.onclick = function(e){
@@ -153,7 +151,7 @@ function renderAnalisis(){
       tt.id = '_bar-tt';
       tt._lastBar = bar;
       tt.style.cssText = 'position:fixed;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:9px 13px;font-family:\'DM Mono\',monospace;z-index:99999;pointer-events:none;box-shadow:0 4px 24px rgba(0,0,0,.8);text-align:center;min-width:90px;';
-      tt.innerHTML = `<div style="color:var(--text2);font-size:9px;text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px;">${label}</div><div style="color:${val>0?'#f06868':'var(--text2)'};font-size:14px;font-weight:700;">${fmt2(val)}</div>`;
+      tt.innerHTML = `<div class="an-tt-lbl">${label}</div><div class="an-tt-val ${val>0?'an-tt-val-pos':''}">${fmt2(val)}</div>`;
       document.body.appendChild(tt);
       const rect = bar.getBoundingClientRect();
       const ttW = tt.offsetWidth || 110;
@@ -177,7 +175,7 @@ function renderAnalisis(){
   const rkEl=document.getElementById('an-ranking-meses');
   if(rkEl){
     if(!ranking.length){
-      rkEl.innerHTML='<div style="font-size:12px;color:var(--text3);padding:13px 0;">Sin datos suficientes.</div>';
+      rkEl.innerHTML='<div class="an-vacio an-vacio-13">Sin datos suficientes.</div>';
     } else {
       const maxRk=ranking[0][1]||1;
       rkEl.innerHTML=ranking.map(([k,total],i)=>{
@@ -186,16 +184,16 @@ function renderAnalisis(){
         const esMesActual=k===mes;
         const pct=Math.round((total/maxRk)*100);
         const medal=['1º','2º','3º','4º','5º','6º'][i];
-        return`<div style="padding:11px 0;border-bottom:${i<ranking.length-1?'1px solid var(--border)':'none'};">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <span style="font-size:14px;">${medal}</span>
-              <span style="font-size:13px;font-weight:${esMesActual?'700':'500'};color:${esMesActual?'var(--accent)':'var(--text)'};">${label}${esMesActual?' ← este mes':''}</span>
+        return`<div class="an-rank-fila${i<ranking.length-1?' an-rank-fila-sep':''}">
+          <div class="an-fila-sb an-fila-sb-5">
+            <div class="an-flex-8">
+              <span class="an-medal">${medal}</span>
+              <span class="an-rank-nombre${esMesActual?' an-rank-nombre-act':''}">${label}${esMesActual?' ← este mes':''}</span>
             </div>
-            <span style="font-size:13px;font-family:'DM Mono',monospace;color:var(--red);">${fmt(total)}</span>
+            <span class="an-rank-monto">${fmt(total)}</span>
           </div>
-          <div style="height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;">
-            <div style="height:100%;width:${pct}%;background:${esMesActual?'var(--accent)':'var(--red)'};border-radius:2px;"></div>
+          <div class="an-barra-riel">
+            <div class="an-barra-fill ${esMesActual?'an-bg-accent':'an-bg-red'}" style="width:${pct}%;"></div>
           </div>
         </div>`;
       }).join('');
@@ -248,34 +246,34 @@ function renderAnalisis(){
     const hayDatos=totalPrev>0;
 
     function arrow(val){ return val>0?'<i class="fa-solid fa-arrow-up"></i>':'<i class="fa-solid fa-arrow-down"></i>'; }
-    function diffColor(val,invertir){ return invertir?(val<0?'var(--accent)':'var(--red)'):(val>0?'var(--accent)':'var(--red)'); }
+    function diffClase(val,invertir){ return invertir?(val<0?'c-green':'c-red'):(val>0?'c-green':'c-red'); }
 
     if(!hayDatos){
-      compEl.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:6px 0;">Sin datos del mes anterior para comparar.</div>';
+      compEl.innerHTML='<div class="an-vacio an-vacio-c6">Sin datos del mes anterior para comparar.</div>';
     } else {
       compEl.innerHTML=`
-        <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:12px;">vs. ${mesNomPrev}</div>
-        <div style="display:flex;flex-direction:column;gap:10px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="an-comp-titulo">vs. ${mesNomPrev}</div>
+        <div class="an-col-10">
+          <div class="an-fila-sb an-fila-sb-c">
             <div>
-              <div style="font-size:13px;font-weight:600;">Gastos</div>
-              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">Antes: ${fmt(totalPrev)}</div>
+              <div class="an-nom-13">Gastos</div>
+              <div class="an-comp-sub an-t-muted">Antes: ${fmt(totalPrev)}</div>
             </div>
-            <div style="text-align:right;">
-              <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${diffColor(diffGastos,true)};">${diffGastos===0?'=':arrow(diffGastos)} ${fmt(Math.abs(diffGastos))}</div>
-              <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);">${totalPrev>0?Math.abs(Math.round(diffGastos/totalPrev*100))+'%':''} ${diffGastos<0?'menos':'más'}</div>
+            <div class="an-der">
+              <div class="an-comp-val ${diffClase(diffGastos,true)}">${diffGastos===0?'=':arrow(diffGastos)} ${fmt(Math.abs(diffGastos))}</div>
+              <div class="an-comp-sub an-t-muted">${totalPrev>0?Math.abs(Math.round(diffGastos/totalPrev*100))+'%':''} ${diffGastos<0?'menos':'más'}</div>
             </div>
           </div>
-          <div style="height:1px;background:var(--border);"></div>
+          <div class="an-sep"></div>
           ${_hayIngresos&&ingresosPrev>0?`
-          <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div class="an-fila-sb an-fila-sb-c">
             <div>
-              <div style="font-size:13px;font-weight:600;">Balance</div>
-              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">Antes: ${balancePrev>=0?'+':''}${fmt(balancePrev)}</div>
+              <div class="an-nom-13">Balance</div>
+              <div class="an-comp-sub an-t-muted">Antes: ${balancePrev>=0?'+':''}${fmt(balancePrev)}</div>
             </div>
-            <div style="text-align:right;">
-              <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:${diffColor(diffBalance,false)};">${diffBalance===0?'=':arrow(diffBalance)} ${fmt(Math.abs(diffBalance))}</div>
-              <div style="font-size:10px;font-family:'DM Mono',monospace;color:${diffColor(diffBalance,false)};">${diffBalance>0?'Mejoró':'Empeoró'}</div>
+            <div class="an-der">
+              <div class="an-comp-val ${diffClase(diffBalance,false)}">${diffBalance===0?'=':arrow(diffBalance)} ${fmt(Math.abs(diffBalance))}</div>
+              <div class="an-comp-sub ${diffClase(diffBalance,false)}">${diffBalance>0?'Mejoró':'Empeoró'}</div>
             </div>
           </div>`:''}
         </div>`;
@@ -287,7 +285,7 @@ function renderAnalisis(){
   if(patriEl){
     const hist=(S.patrimonioHistorial||[]).slice(-30); // últimos 30 días
     if(hist.length<2){
-      patriEl.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:20px 0;">Aún no hay suficiente historial. Vuelve mañana.</div>';
+      patriEl.innerHTML='<div class="an-vacio an-vacio-c20">Aún no hay suficiente historial. Vuelve mañana.</div>';
     } else {
       let aperturaAcumulada = 0;
       const valsReales = hist.map(h=>{
@@ -314,21 +312,22 @@ function renderAnalisis(){
       const primeroReal = valsReales[0];
       const ultimoReal = valsReales[valsReales.length-1];
       const diffTotal = ultimoReal - primeroReal;
-      const diffColor=diffTotal>=0?'var(--accent)':'var(--red)';
+      const diffColor=diffTotal>=0?'var(--accent)':'var(--red)'; // para el trazo SVG y data-diffcolor (el JS del tooltip lo lee)
+      const diffClasePat=diffTotal>=0?'c-green':'c-red';
       const diffPct = primeroReal!==0 ? (diffTotal/Math.abs(primeroReal)*100) : 0;
       patriEl.innerHTML=`
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
+        <div class="an-pat-cab">
           <div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.7px;">Últimos ${hist.length} días</div>
-            <div style="font-size:20px;font-weight:500;font-family:'DM Mono',monospace;margin-top:2px;">${fmt(ultimo2.valorVisible!=null?ultimo2.valorVisible:ultimo2.valor)}</div>
+            <div class="an-pat-tit">Últimos ${hist.length} días</div>
+            <div class="an-pat-val">${fmt(ultimo2.valorVisible!=null?ultimo2.valorVisible:ultimo2.valor)}</div>
           </div>
-          <div style="text-align:right;">
-            <div style="font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:${diffColor};">${diffTotal>=0?'+':''}${fmt(diffTotal)}</div>
-            <div style="font-size:10px;color:${diffColor};font-family:'DM Mono',monospace;">${diffPct>=0?'+':''}${diffPct.toFixed(1)}%</div>
+          <div class="an-der">
+            <div class="an-pat-diff ${diffClasePat}">${diffTotal>=0?'+':''}${fmt(diffTotal)}</div>
+            <div class="an-pat-pct ${diffClasePat}">${diffPct>=0?'+':''}${diffPct.toFixed(1)}%</div>
           </div>
         </div>
-        <div id="_pat-wrap" style="position:relative;touch-action:pan-y;">
-          <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:90px;display:block;">
+        <div id="_pat-wrap" class="an-pat-wrap">
+          <svg viewBox="0 0 ${W} ${H}" class="an-pat-svg">
             <defs>
               <linearGradient id="pgGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0.25"/>
@@ -338,14 +337,14 @@ function renderAnalisis(){
             <path d="${areaPath}" fill="url(#pgGrad)"/>
             <polyline points="${polyline}" fill="none" stroke="${diffColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <circle id="_pat-dot" cx="${pts[pts.length-1][0]}" cy="${pts[pts.length-1][1]}" r="4" fill="${diffColor}"/>
-            <line id="_pat-line" x1="0" y1="0" x2="0" y2="${H}" stroke="${diffColor}" stroke-width="1" stroke-dasharray="3,3" opacity="0" style="pointer-events:none;"/>
+            <line id="_pat-line" x1="0" y1="0" x2="0" y2="${H}" stroke="${diffColor}" stroke-width="1" stroke-dasharray="3,3" opacity="0" class="an-pe-none"/>
           </svg>
-          <div id="_pat-tt" style="display:none;position:absolute;top:0;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:8px 12px;font-family:'DM Mono',monospace;pointer-events:none;z-index:50;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.8);transform:translateX(-50%);"></div>
-          <div id="_pat-overlay" style="position:absolute;inset:0;cursor:crosshair;" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:valsReales[i],valorReal:(hist[i].valorVisible!=null?hist[i].valorVisible:hist[i].valor)})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
+          <div id="_pat-tt" class="an-pat-tt" style="display:none;"></div>
+          <div id="_pat-overlay" class="an-pat-overlay" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:valsReales[i],valorReal:(hist[i].valorVisible!=null?hist[i].valorVisible:hist[i].valor)})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
         </div>
-        <div style="display:flex;justify-content:space-between;margin-top:4px;">
-          <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${primero.fecha.slice(5)}</span>
-          <span style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimo2.fecha.slice(5)}</span>
+        <div class="an-pat-pie">
+          <span class="an-pat-fecha">${primero.fecha.slice(5)}</span>
+          <span class="an-pat-fecha">${ultimo2.fecha.slice(5)}</span>
         </div>`;
       // Bind touch/click on the transparent overlay
       (function(){
@@ -394,7 +393,7 @@ function renderAnalisis(){
           if(ttLeft - ttW/2 < 0) ttLeft = ttW/2;
           if(ttLeft + ttW/2 > wrapW) ttLeft = wrapW - ttW/2;
           // Ahora sí, todas las ESCRITURAS juntas al final.
-          tt.innerHTML = `<div style="color:var(--text2);font-size:9px;margin-bottom:3px;">${fechaFmt}</div><div style="color:#f0ede8;font-size:13px;font-weight:700;">${valorTxt}</div>`;
+          tt.innerHTML = `<div class="an-pt-fecha">${fechaFmt}</div><div class="an-pt-valor">${valorTxt}</div>`;
           tt.style.display = 'block';
           tt.style.left = ttLeft + 'px';
           tt.style.top = '2px';
@@ -427,7 +426,7 @@ function renderIngresosFijos(){
   if(!el)return;
   const lista=S.ingresosFijos||[];
   if(!lista.length){
-    el.innerHTML='<div style="padding:13px 0;font-size:12px;color:var(--text3);">Sin ingresos fijos. Agregá tu sueldo, freelance u otro ingreso recurrente.</div>';
+    el.innerHTML='<div class="an-vacio an-vacio-13">Sin ingresos fijos. Agregá tu sueldo, freelance u otro ingreso recurrente.</div>';
     return;
   }
   // Migrado a html`` (ver auditoria-tecnica.md, cierre de la discrepancia
@@ -446,18 +445,18 @@ function renderIngresosFijos(){
   // `.join()` lo coacciona a string vía su propio `toString()`, sin volver
   // a escapar nada — misma coerción implícita ya validada para innerHTML.
   el.innerHTML=lista.map(ing=>{
-    const desdeLabel=ing.desde?html`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">desde ${ing.desde}</span>`:'';
-    return html`<div class="row" style="padding:12px 0;">
-      <div style="display:flex;flex-direction:column;gap:2px;flex:1;">
-        <span style="font-size:13px;font-weight:600;">${ing.nombre||'Sin nombre'}</span>
+    const desdeLabel=ing.desde?html`<span class="an-desde">desde ${ing.desde}</span>`:'';
+    return html`<div class="row an-ing-row">
+      <div class="an-col-2">
+        <span class="an-nom-13">${ing.nombre||'Sin nombre'}</span>
         ${desdeLabel}
       </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:14px;font-family:'DM Mono',monospace;color:var(--accent);font-weight:600;">${fmt(ing.monto||0)}</span>
-        <button type="button" ${raw(Events.attr('analisis:editarIngresoFijo', ing.id))} style="background:none;border:none;color:var(--text3);cursor:pointer;padding:4px;font-size:13px;">
+      <div class="an-flex-10">
+        <span class="an-ing-monto">${fmt(ing.monto||0)}</span>
+        <button type="button" ${raw(Events.attr('analisis:editarIngresoFijo', ing.id))} class="an-btn-icono an-t-muted">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        <button type="button" ${raw(Events.attr('analisis:eliminarIngresoFijo', ing.id))} style="background:none;border:none;color:var(--red);cursor:pointer;padding:4px;font-size:13px;">
+        <button type="button" ${raw(Events.attr('analisis:eliminarIngresoFijo', ing.id))} class="an-btn-icono an-t-red">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         </button>
       </div>
@@ -540,9 +539,9 @@ function abrirPresupuestos(){
     const val = S.presupuestos[cat] || '';
     return html`<div class="ig">
       <label class="il" for="presup-input-${i}">${cat}</label>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <input type="text" inputmode="decimal" id="presup-input-${i}" class="presup-input" data-cat="${cat}" placeholder="Sin límite" value="${val}" style="flex:1;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;">
-        <span style="font-size:12px;color:var(--text3);flex-shrink:0;">/mes</span>
+      <div class="an-flex-8">
+        <input type="text" inputmode="decimal" id="presup-input-${i}" class="presup-input an-presup-input" data-cat="${cat}" placeholder="Sin límite" value="${val}">
+        <span class="an-presup-mes">/mes</span>
       </div>
     </div>`;
   })}`;
@@ -573,7 +572,7 @@ function renderPresupuestos(){
   if(!window._presupWarnedKeys) window._presupWarnedKeys = new Set();
   const presup = S.presupuestos || {};
   const cats = Object.keys(presup);
-  if(!cats.length){ el.innerHTML='<div style="font-size:12px;color:var(--text3);text-align:center;padding:8px 0;">Sin presupuestos configurados. Toca "Editar" para definirlos.</div>'; return; }
+  if(!cats.length){ el.innerHTML='<div class="an-vacio an-vacio-c8">Sin presupuestos configurados. Toca "Editar" para definirlos.</div>'; return; }
   const mes = window.mesActual ? window.mesActual() : '';
 
   // Gasto por categoría este mes (periodo.js: mismo criterio que el resto de la pantalla)
@@ -587,7 +586,7 @@ function renderPresupuestos(){
     const limite = presup[cat];
     const gasto = gastoCat[cat]||0;
     const pct = Math.min(100, Math.round(gasto/limite*100));
-    const col = pct >= 100 ? 'var(--red)' : pct >= 80 ? 'var(--amber)' : 'var(--accent)';
+    const tono = pct >= 100 ? 'red' : pct >= 80 ? 'amber' : 'accent';
     const warnKey = cat+'_'+mes;
     if(pct >= 80 && pct < 100 && !window._presupWarnedKeys.has(warnKey)) {
       window._presupWarnedKeys.add(warnKey);
@@ -595,11 +594,11 @@ function renderPresupuestos(){
     }
     return html`<div class="presup-row">
       <div class="presup-label-row">
-        <span style="font-size:12px;font-weight:600;">${cat}</span>
-        <span style="font-size:11px;font-family:'DM Mono',monospace;color:${raw(col)};">${fmt(gasto)} / ${fmt(limite)}</span>
+        <span class="an-nom-12">${cat}</span>
+        <span class="an-presup-uso an-t-${raw(tono)}">${fmt(gasto)} / ${fmt(limite)}</span>
       </div>
       <div class="presup-bar">
-        <div class="presup-bar-fill" style="width:${pct}%;background:${raw(col)};"></div>
+        <div class="presup-bar-fill an-bg-${raw(tono)}" style="width:${pct}%;"></div>
       </div>
     </div>`;
   })}`;

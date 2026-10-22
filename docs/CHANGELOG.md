@@ -8,6 +8,15 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 Documentación: [`libro-de-movimientos.md`](./libro-de-movimientos.md).
 
+### 🎨 Estilos inline → clases (2026-10-22, Paso 5, tanda 8) — `analisis.js`
+
+`analisis.js` pasa de 73 `style=""` a 5, todos valores calculados que no pueden ser clase: el ancho en % de las barras (categorías, ranking de meses, presupuestos), la altura de las barras del gráfico de 12 meses y el `display:none` del tooltip del patrimonio (JS lo conmuta). Clases `an-*` al final de `styles.css`; `hero.style.cssText` y los `tt.style.*` son CSSOM y no cambian.
+- **Colores calculados → clases:** el tono de la categoría/presupuesto (`an-t-red|amber|accent|blue|purple|text2` para el texto y `an-bg-…` para la barra, armados con la variable `tono`), el balance del encabezado (`claseTono`: `an-t-muted`/`c-green`/`c-red`), la flecha y el color de la comparación con el mes anterior (`diffColor()` → `diffClase()`) y los de la gráfica de patrimonio (`diffClasePat`). **Se mantiene `diffColor` como valor `var(--x)` donde se usa como atributo** (trazo SVG y `data-diffcolor`, que lee el JS del tooltip).
+- **Estados de la barra del gráfico y del ranking** pasan a clases modificadoras (`an-bar-act/inact`, `an-bar-lbl-act`, `an-rank-fila-sep`, `an-rank-nombre-act`, `an-cat-fila-ult`).
+- **Verificado ejecutando** `renderAnalisis`, `renderIngresosFijos`, `renderPresupuestos` y `abrirPresupuestos` del archivo de `js.zip` y del nuevo (`scripts/equivalencia-analisis.js`: DOM falso con `createElement`, 5 escenarios —mes normal, sin ingresos, balance negativo con patrimonio bajando, sin mes anterior ni historial, sin presupuestos— más el editor, el `onclick` real de las barras y el tooltip del patrimonio): **48 comparaciones, 0 diferencias**. Mutación (5 reglas: ámbar, rojo de barra, tooltip, separador del ranking, barra activa): todas fallan.
+- **Lo que la verificación obligó a cuidar:** el comparador trata las longhands de forma estricta (`margin-bottom:0px` vs `0`, `margin:0` vs `margin-bottom:0`); las clases quedaron escritas igual que el inline original.
+- `tests/estilos.test.js` suma el archivo (con `armadas` para los prefijos que el código completa con una variable) y una prueba de que los 6 tonos existen. Pruebas: `npm test` 416/416; smoke sin fallos. `sw.js` v45. Documento del módulo (`analisis-financiero.md`) revisado: no describe estilos, sin cambios.
+
 ### 📚 Auditoría de documentación (2026-10-22)
 
 Se recorrieron los 26 `.md` de `docs/`, `libro-de-movimientos.md` y `tests/README.md` contra el código real (¿existe cada función, archivo, id y prueba que citan?) y se corrigió lo que describía un estado anterior:

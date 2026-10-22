@@ -128,9 +128,9 @@ Cambia el checkbox → S.modulos[nombre] = estado del checkbox → save() → ap
 
 ---
 
-### Migraciones y la clase de los movimientos (2026-10-09)
+### Migraciones y la clase de los movimientos
 
-Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual que al cargar desde la nube. La migración **v3** estampa `clase` en los movimientos que no la tengan (idempotente, no pisa una `clase` existente) y deja sin clase solo las `salida`/`egreso` sin etiqueta de espejo. Las migraciones v1 (línea base) y v2 (`plataCometida → plataComprometida`) se retiraron el 2026-10-09: todos los datos y backups ya estaban en v2, así que `MIGRACIONES` empieza en v3.
+Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual que al cargar desde la nube. Hoy `MIGRACIONES` está vacío: la app nació limpia en el esquema 9 (2026-10-18) y **no migra datos de versiones anteriores**. Un backup de un esquema menor se rechaza al importar (`_validarEstructuraJSON`: "esta versión de la app empieza de cero"), uno de una versión más nueva también (hay que actualizar la app), y quien trae datos de la nube de un esquema menor los ve marcados (`S._esquemaAnterior`) y empieza de cero (Configuración → Borrar todo). El mecanismo queda para el próximo cambio de forma de los datos (ver `libro-de-movimientos.md` §4 y §6). La `clase` de cada movimiento ya no se estampa con ninguna migración: la escribe el módulo que lo crea.
 
 ## 6. Casos especiales
 

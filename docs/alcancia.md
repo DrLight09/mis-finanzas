@@ -74,7 +74,6 @@ Un "cerdito oculto" digital: permite guardar dinero apartándolo de la vista nor
 ### Otros campos en `S` que usa el módulo
 
 - `S.alcanciaSaldoOfuscado` — el `saldoRegistrado` actual, codificado con XOR+Base64 (`_ALC_KEY = 0x4D`). Ver Decisiones de diseño (§7) sobre por qué existe si igual `saldoRegistrado` está en texto plano al lado.
-- `S.alcanciaMigrada` — bandera de una migración de datos anterior a este documento; no la toca ninguna función actual del módulo.
 
 ### Movimientos espejo que genera Alcancía (fuera de `S.alcancia`)
 
@@ -109,7 +108,7 @@ El abono espejo en `d.movimientos[]` (Prestado) lleva `destino: ''`, `_viaAlcanc
 
 ### Clase de los movimientos (2026-10-09)
 
-Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `plan-clasificacion-movimientos.md` y `CHANGELOG.md#infraestructura--seguridad`.
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
 
 | Movimiento | `clase` |
 |---|---|
@@ -219,7 +218,7 @@ Resetear saldoRegistrado, depositos, movimientos[] y fechaInicio
 | `_diasDesde()` / `_fmtTiempo()` | Helpers de tiempo activo ("3 semanas", "2 meses") |
 | `_alcDeudorSelActualizar()` / `_alcDeudorSaldoHintActualizar()` | Pueblan el selector de persona/grupo y el hint de saldo cuando el tipo elegido es `cobro-deuda` (agregado 2026-08-09) |
 | `window._alcanciaQuitarPorCobroDeuda(alcMovId)` | Quita solo el lado de Alcancía de un depósito `cobro-deuda`, sin tocar al deudor — usado por `eliminarMovDeudor()` (prestado.js) cuando el borrado se inicia desde Prestado (agregado 2026-08-09) |
-| `_alcFiltrarFuentesPorSaldo(selectEl)` | Quita del selector de origen (`alc_dep_fuente` / `alc_split_fuente`) las cuentas con saldo ≤ $50, tras poblarlo con `buildFuentesOptsHtml()` (agregado 2026-09-07) |
+| `_alcFiltrarFuentesPorSaldo(selectEl)` | Quita del selector de origen (`alc_dep_origen` y los selectores de `alc_split_rows`) las cuentas con saldo ≤ $50, tras poblarlo con `buildFuentesOptsHtml()` (agregado 2026-09-07) |
 | `_alcNombreFuente(f)` | Nombre legible de una cuenta (`nequi`, `efectivo`, `cajita:ID`, `custom:ID`): usa `fuenteLabel()` y cae a una resolución propia si no está disponible. Es la única que se usa para mostrar la cuenta de origen de un depósito, tanto en validaciones como en el historial |
 | `_alcRachaAhorro(hist)` / `_alcMejorCiclo(hist)` | Única fuente de verdad de la racha de ahorro y el mejor ciclo histórico — usadas tanto por la tarjeta persistente como por la sheet de resultado del destape (agregado 2026-09-07) |
 | `_alcWrappedBarrasSvg(hist)` / `_alcWrappedProgresoHtml(hist)` | Arman el gráfico de barras SVG y el HTML completo de la tarjeta "Tu progreso ahorrando" (agregado 2026-09-07) |
@@ -235,11 +234,11 @@ Resetear saldoRegistrado, depositos, movimientos[] y fechaInicio
 | `alcancia-movimientos-lista` | Lista de depósitos individuales (reactivada 2026-08-06) |
 | `alcancia-wrapped-progreso` | Tarjeta persistente de progreso de ahorro (racha, mejor ciclo, gráfico de barras) — oculta con menos de 2 ciclos (agregado 2026-09-07) |
 | `alcancia-historial-lista` | Historial de ciclos ya destapados |
-| `alc_dep_tipo` | Select del tipo de depósito — dispara `_alcanciaActualizarTipo()` |
+| `alc_dep_origen` | Select del origen del depósito (cuenta, origen sin cuenta o deuda): dispara `_alcOrigenActualizar()`. Con "Dividir…" (`alc_split_rows`) hay un selector por origen |
 
 ### Eventos registrados (`Events.registerAll('alcancia', ...)`)
 
-`abrirDepositar`, `abrirDestapar`, `iniciarNueva`, `confirmarDeposito`, `confirmarDestapar`, `eliminarDeposito`, `toggleMontoDeposito`, `toggleDesglose`.
+`abrirDepositar`, `abrirDestapar`, `iniciarNueva`, `confirmarDeposito`, `confirmarDestapar`, `eliminarDeposito`, `toggleMontoDeposito`, `toggleDividir`, `agregarOrigen`, `toggleDesglose`.
 
 ### Bugs corregidos
 

@@ -40,13 +40,7 @@ Es la trampa más frecuente al buscar una función.
 
 ## 4. Módulos lazy que alimentan cálculos globales
 
-El núcleo y Inicio los llaman **siempre con guard `typeof`** y un valor de respaldo, para no romper si el archivo todavía no cargó:
+El núcleo y Inicio llaman a lo que viva en un módulo lazy **siempre con guard `typeof`** y un valor de respaldo, para no romper si el archivo todavía no cargó. **Hoy no queda ninguno que alimente el patrimonio:** `calcC`, `calcCDT`, `calcRendimientoCDTsMes` y `nuTotal` viven en `js/core/nu-calc.js`, y `Deudas`, `totalPrestadoPendiente` y `totalMisDeudasPendiente` en `js/core/calc-helpers.js` (los dos de entrada); antes estaban en `cuentas.js` y `prestado.js`, de ahí esta sección. La regla sigue valiendo para cualquier cálculo nuevo.
 
-| Módulo lazy | Funciones que usan el núcleo / Inicio |
-|---|---|
-| `cuentas.js` | `calcC`, `calcCDT`, `calcRendimientoCDTsMes`, `nuTotal` |
-| `prestado.js` | `getDeudorSaldoPatrimonio`, `totalMisDeudasPendiente`, `totalPrestadoPendiente` |
-
-- `snapshotPatrimonio()` **no graba** el punto del historial hasta que `calcC`, `calcCDT`, `getDeudorSaldoPatrimonio` y `totalMisDeudasPendiente` existan (`_patrimonioDependenciasListas`): sin ese guard, los valores de respaldo grababan un patrimonio artificialmente bajo. Por eso `ensureAll()` no debe saltarse `cuentas` ni `prestamos`.
-- La salud financiera y la alerta de gasto alto de Inicio caen al valor de respaldo (saldo guardado sin recalcular, préstamos en 0) mientras esos archivos no hayan cargado.
+- `snapshotPatrimonio()` **no graba** el punto del historial hasta que `calcC`, `calcCDT` y `Deudas` existan (`_patrimonioDependenciasListas`): sin ese guard, un snapshot tomado antes de que carguen grabaría un patrimonio artificialmente bajo de forma permanente.
 - **Regla práctica:** un archivo de entrada que llame a una función de un módulo lazy la llama con guard `typeof`. Si es un cálculo que Inicio necesita en el primer render, la solución es moverlo a `calc-helpers.js`, no forzar la carga del módulo.

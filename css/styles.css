@@ -941,3 +941,6 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .cuenta-flecha{margin:0 3px;font-size:10px;}
 .cuenta-svg-mid{vertical-align:middle;}
 .cuenta-prev-warn{color:var(--red);font-size:10px;}
+
+/* Marca de campo opcional en un label (guia-estilo-sheets.md §2) */
+.lbl-opc{font-size:10px;color:var(--text3);font-weight:400;}

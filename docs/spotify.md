@@ -143,7 +143,7 @@ S.spotify.historial = [
 
 ### Clase de los movimientos (2026-10-09)
 
-Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `plan-clasificacion-movimientos.md` y `CHANGELOG.md#infraestructura--seguridad`.
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
 
 - Extra/propina de un cobro ("te dieron de más"): espejo con `clase: 'ingreso'`. Si el destino es una **cajita de Nu**, desde 2026-10-09 cuenta como ingreso del mes aunque nunca pase por Nequi/Efectivo (antes subía el patrimonio pero no el ingreso).
 - Cobros, pagos y abonos normales: espejos `neutro`. El gasto del plan de Spotify (`S.gastosVar`, `_origenSeccion: 'Spotify'`): `clase: 'gasto'`.
@@ -463,7 +463,7 @@ El módulo no recibe tratamiento especial: un cobro sube el saldo real de la cue
 
 Es un grupo lazy (`Loader.GROUPS.spotify` en `js/core/lazy-loader.js`): no tiene `<script>` propio en `index.html`. Depende de `js/core/events.js` y de los globals del núcleo (`S`, `save`, `escHtml`, `toast`, `dialogo`, etc., definidos en `js/core/`). Dos helpers que el módulo usa viven en `js/core/calc-helpers.js` porque Inicio los necesita en el primer render: `spNombreDe` y `spPersonaPagadaVigente`.
 
-**Spotify no genera movimiento espejo propio en `S.movimientos`** (a diferencia de Mesada, que sí tiene `_registrarMovSecundarioMesada`). El historial de cada cuenta se arma directamente desde `S.spotify.historial` en dos funciones de `cuentas.js`: `getMovimientosCuenta()` (Nequi/Efectivo/cajitas) y `_getMovimientosCuentaCustom()` (cuentas personalizadas). Esto es relevante para cualquier cambio futuro al modelo de datos de `S.spotify.historial` — cualquier campo nuevo que deba verse en el historial de una cuenta tiene que sintetizarse ahí, no alcanza con guardarlo en `S.spotify.historial`.
+**Spotify no genera movimiento espejo propio en `S.movimientos`** (a diferencia de Mesada, que sí tiene `_mesadaEntrar`). El historial de cada cuenta se arma directamente desde `S.spotify.historial` en dos funciones de `cuentas.js`: `getMovimientosCuenta()` (Nequi/Efectivo/cajitas) y `_getMovimientosCuentaCustom()` (cuentas personalizadas). Esto es relevante para cualquier cambio futuro al modelo de datos de `S.spotify.historial` — cualquier campo nuevo que deba verse en el historial de una cuenta tiene que sintetizarse ahí, no alcanza con guardarlo en `S.spotify.historial`.
 
 ### Funciones clave
 

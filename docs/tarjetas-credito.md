@@ -59,7 +59,7 @@ Aparte, `S.tcMovimientos[]` (compartido con Encargos y Préstamos, no exclusivo 
 
 ### Clase de los movimientos (2026-10-09)
 
-Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `plan-clasificacion-movimientos.md` y `CHANGELOG.md#infraestructura--seguridad`.
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
 
 - Compra con TC (`_esCompraTC`, en `S.gastosVar`): `clase: 'gasto'`.
 - Pago de la tarjeta (`_esPagoTC`): `clase: 'neutro'` — cancela deuda, no es un gasto nuevo.
@@ -125,4 +125,4 @@ Botón "+ Cargo especial" dentro del detalle de la tarjeta (`abrirDetalleTCSheet
 | `getFuentesSinTC` vs. `poblarFuente(..., incluirTC)` | Listas de cuentas destino (sin TC) vs. origen (con TC), ver regla en §3 |
 | `getSaldoFuente` / `descontarFuente` / `sumarFuente` | Genéricas de todo el proyecto; su rama `tc:` es la interfaz que usa el resto de la app para tratar una tarjeta como "cuenta" de origen |
 
-**Puntos de integración externa (no documentados acá, viven en sus propios módulos):** Encargos y Préstamos generan entradas en `S.tcMovimientos` (`cargo_encargo`/`cargo_prestamo`) cuando pagan algo con una tarjeta — ver `encargos.md`/`préstamos.md` para ese flujo. Este documento solo cubre el lado que Tarjetas de crédito posee: cómo esos cargos se leen, sí se sacan de cupo/deuda y sí de deuda ajena, sin volver a explicar cómo se crean.
+**Puntos de integración externa (no documentados acá, viven en sus propios módulos):** Encargos y Préstamos generan entradas en `S.tcMovimientos` (`cargo_encargo`/`cargo_prestamo`) cuando pagan algo con una tarjeta — ver `encargos.md`/`prestado.md` para ese flujo. Este documento solo cubre el lado que Tarjetas de crédito posee: cómo esos cargos se leen, sí se sacan de cupo/deuda y sí de deuda ajena, sin volver a explicar cómo se crean.

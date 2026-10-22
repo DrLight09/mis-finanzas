@@ -103,6 +103,8 @@ A diferencia de `js/core/`, acá **"clásico"** siempre significa `<script defer
 | `css/styles.css` | Hoja de estilos de toda la app. |
 | `css/fa-subset.css` | Subconjunto de Font Awesome autoalojado (solo los íconos usados). |
 | `sw.js` | Service Worker (PWA offline): `cacheFirst` para fuentes, `networkFirst` para el HTML y el SDK de Firebase (`gstatic.com/firebasejs`), `staleWhileRevalidate` para el resto. **Firestore, Identity Toolkit y SecureToken no pasan por el SW** (el canal de escucha es un stream largo: cachearlo fallaba con `Cache.put() ... network error`, y el fallback respondía HTML con status 200 a requests de Firestore). Toda escritura en caché va por `guardarEnCache()`, con `.catch`. Versión de caché en `VERSION` (bump manual al desplegar). |
+| `scripts/` | Herramientas de desarrollo (no se despliegan): `generar-mapa.js` (genera `mapa-codigo.md`), `smoke-browser.js` (prueba de humo con jsdom), `conciliacion.js` y las de verificación del Paso 5, `equivalencia-estilos.js` y `equivalencia-*.js` (ver `CONTINUAR.md` §13.16). |
+| `tests/` | Pruebas con el test runner nativo de Node (`npm test`, ver `tests/README.md`). `estilos.test.js` vigila que los archivos ya convertidos no vuelvan a tener `style=""`. |
 
 ---
 
@@ -158,4 +160,4 @@ Cada módulo se documenta en su propio `.md`, siguiendo la estructura definida e
 | `auditoria-tecnica.md` | Hallazgos técnicos **pendientes** de seguridad, arquitectura o rendimiento — lo ya resuelto vive en `CHANGELOG.md#infraestructura--seguridad`. |
 | `CHANGELOG.md` | Historial de bugs corregidos y limpieza de código de todos los módulos, en un solo archivo compartido. |
 
-No se verificó si `configuracion.js` y `actividad_reciente.js` (`js/modules/`, ver tabla de arriba) tienen o deberían tener su propio `.md` — no aparecen como filas en "Módulos de la aplicación" porque son pantallas de utilidad/infraestructura, no un dominio financiero propio, pero es una asimetría que vale la pena decidir a propósito y no dejar así por omisión.
+`configuracion.js` y `actividad_reciente.js` (pantallas de utilidad/infraestructura, no un dominio financiero propio) tienen su propio documento: [`configuracion.md`](./configuracion.md) y [`actividad-reciente.md`](./actividad-reciente.md).

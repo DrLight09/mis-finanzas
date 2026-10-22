@@ -66,8 +66,8 @@ Esta función es el corazón del módulo. La proyección hereda todo lo que ella
 
 | Componente | Fuente en `S` |
 |---|---|
-| Cajitas Nu (capital + intereses acumulados) | `S.cajitas` → `_calcCSafe(c).val` (envoltorio defensivo de `calcC()`, ver nota abajo) |
-| CDTs en cajitas (capital + rendimiento proyectado) | `S.cajitas[].cdts` → `_calcCDTSafe(cdt).val` (envoltorio defensivo de `calcCDT()`, ver nota abajo) |
+| Cajitas Nu (capital + intereses acumulados) | `S.cajitas` → `calcC(c).val` |
+| CDTs en cajitas (capital + rendimiento proyectado) | `S.cajitas[].cdts` → `calcCDT(cdt).val` |
 | Saldo Nequi | `S.cuentas` (cuenta `nequi`, vía `getSaldoFuente('nequi')`) |
 | Saldo Efectivo | `S.cuentas` (cuenta `efectivo`, vía `getSaldoFuente('efectivo')`) |
 | Saldo deudores (lo que me deben, positivo únicamente) | `S.deudores` → `getDeudorSaldoPatrimonio(d)` |
@@ -82,7 +82,7 @@ Esta función es el corazón del módulo. La proyección hereda todo lo que ella
 | Lo que yo le debo a otras personas | `S.misDeudas` → `totalMisDeudasPendiente()` | Físicamente en mis cuentas pero no es mía |
 | Plata comprometida ajena en cuentas propias | `_saldoCPAjeno()` | Plata de otra persona que administro y aún no pagué |
 
-> **`_calcCSafe`/`_calcCDTSafe`:** `calcC()`/`calcCDT()` viven en `cuentas.js` (módulo lazy); `calcPatrimonioTotal()` corre en cada `save()`, no solo al entrar a Cuentas, así que usa estos dos envoltorios en `core-state.js` en vez de llamarlas directo. Además, `snapshotPatrimonio()` no guarda ningún punto si `cuentas.js` o `prestado.js` todavía no cargaron (`_patrimonioDependenciasListas()`) — sin ese guard, un snapshot tomado antes de que carguen esos módulos grabaría un patrimonio artificialmente bajo de forma permanente en el historial.
+> **`calcC()`/`calcCDT()` y `Deudas`:** `calcC`, `calcCDT` viven en `js/core/nu-calc.js` y `Deudas` en `js/core/calc-helpers.js` (núcleo, carga de entrada), así que `calcPatrimonioTotal()` —que corre en cada `save()`— los llama directo (ya no hay envoltorios `_calcCSafe`/`_calcCDTSafe`). Aun así, `snapshotPatrimonio()` no guarda ningún punto si alguno todavía no cargó (`_patrimonioDependenciasListas()`: `calcC`, `calcCDT` y `Deudas` definidos): sin ese guard, un snapshot tomado antes de que carguen grabaría un patrimonio artificialmente bajo de forma permanente en el historial.
 
 > **Nota sobre `_saldoCPAjeno()`:** solo resta los destinos de plata comprometida que ya llegaron (`item.recibido = true`), son de tipo `gasto` con `gastoOrigen` cajita o TC, y todavía no se pagaron (`yaPague !== true`). Cuando se marca `yaPague`, la plata ya salió de la cuenta y deja de restarse.
 
@@ -98,7 +98,7 @@ Cobrar cuotas **sí afecta** la proyección: el cobro entra a una cuenta real (`
 
 ### Mesadas
 
-Registrar el pago **sí afecta** la proyección porque la plata entra a una cuenta real. `S.mesadasV2` se usa solo para proyectar cuánto se *espera* recibir; el impacto en la tendencia real llega por el cambio de saldo al momento del pago.
+Registrar el pago **sí afecta** la proyección porque la plata entra a una cuenta real. `S.mesadas` se usa solo para proyectar cuánto se *espera* recibir; el impacto en la tendencia real llega por el cambio de saldo al momento del pago.
 
 ### Tarjetas de crédito
 
@@ -139,7 +139,7 @@ Cualquier flujo que suba el saldo de Nequi, Efectivo, cajita o cuenta personaliz
 
 - **Transferencias entre cuentas propias:** la suma de activos no cambia.
 - **Préstamos a terceros con fuente especificada:** neto cero (una cuenta baja, el saldo deudor sube). **Sin fuente especificada:** `descontarFuente('')` no hace nada, así que el saldo deudor sube pero ninguna cuenta baja → el patrimonio sube sin que haya ingreso. Es un uso legítimo (se sabe que existe la deuda pero no de qué cuenta salió), y desde 2026-10-10 se trata como **ajuste de base**: `montoBase` del día lo descuenta, igual que una apertura, así que **no cuenta como crecimiento** en la tendencia ni en la proyección (`_movsDeudaSinCuenta()`, `recalcularMontoBaseHistorial()` en `core-state.js`). Antes un solo préstamo de $500.000 sin cuenta llevó la proyección a 12 meses de +$1,2 M a +$6,7 M. Lo mismo vale para un abono/pago recibido sin cuenta destino (−) y para "Yo debo" (recibido sin cuenta −, pago sin cuenta +). Si ese préstamo en realidad es plata nueva (p. ej. un regalo), el movimiento lleva `clase: 'ingreso'` y cuenta como ingreso del mes en vez de ajuste.
-- **Que alguien me preste plata (con cuenta especificada):** neto cero (la cuenta sube, `misDeudas` sube y se resta). **Excepción sin cuenta especificada:** revisar que `crearMiDeuda()` solo llame `sumarFuente(destino, monto)` cuando `destino` exista — actualmente sí está condicionado así.
+- **Que alguien me preste plata (con cuenta especificada):** neto cero (la cuenta sube, `misDeudas` sube y se resta). **Excepción sin cuenta especificada:** `_aplicarMovMiDeuda(p)` llama `sumarFuente(cuenta, monto, …)` solo por cada cuenta indicada en `p.cuentas`; con la lista vacía no toca ninguna cuenta, así que `misDeudas` sube sin que suba ningún activo.
 - **Saldos iniciales / aperturas:** descontados del cálculo vía `montoBase`.
 - **Pagos de TC:** neto cero (baja la cuenta de pago, baja la deuda en igual medida).
 - **Gastos de encargos sin diferencial:** el gasto queda registrado en el encargo, no en el patrimonio propio. Solo un margen que entra a cuenta propia cambia el patrimonio.

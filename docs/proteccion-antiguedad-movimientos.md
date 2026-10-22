@@ -43,7 +43,7 @@ Todos los módulos de la app fueron revisados. Estado final:
 | Spotify | ✅ | Pagos reales posteriores (evento natural del ciclo) |
 | Tarjetas de crédito | ✅ | Compras+pagos posteriores de la misma tarjeta (`tc.deuda` como cuenta propia) |
 | Mesada | ✅ | Cuenta(s) destino reales afectadas — gateado por `_mesadaTieneCuentaAfectada` |
-| Préstamos ("Me deben" y "Yo debo") | ✅ | Cuenta(s) reales afectadas (incluye Alcancía/TC/Encargo vía el préstamo) — gateado por `_deudorTieneCuentaAfectada`/`_miDeudaTieneCuentaAfectada` |
+| Préstamos ("Me deben" y "Yo debo") | ✅ | Cuenta(s) reales afectadas (incluye Alcancía/TC/Encargo vía el préstamo) — gateado por `_deudaTieneCuentaAfectada(m)` (un solo helper para Me deben y Yo debo) |
 | Encargos | ✅ | El encargo completo (`enc.movimientos`, sin filtrar por cuenta — ver §4) |
 | Cuentas (transferencias, salidas manuales, ajustes) | ✅ | Cuenta(s) reales afectadas, vía `movimientos.js` |
 | Gastos (variables, incl. divididos) | ✅ (nuevo 2026-09-01) | Cuenta(s) reales afectadas. Antes solo estaba protegido desde la pantalla de movimientos de una cuenta (`movimientos.js`); el botón propio de la pantalla de Gastos (`deleteGastoVar`) no tenía protección — ahora sí, con la misma lógica. Los gastos **divididos** (`splits`) tampoco estaban protegidos en ningún lado — ahora lo están en ambos puntos de entrada |

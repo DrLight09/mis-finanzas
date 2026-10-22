@@ -36,7 +36,7 @@ Registra dinero que **todavía no llegó** pero que ya se sabe que va a entrar (
 
 ## 4. Modelo de datos
 
-Todo vive en `S.plataCometida[]`:
+Todo vive en `S.plataComprometida[]`:
 
 ```js
 {
@@ -84,7 +84,7 @@ Todo vive en `S.plataCometida[]`:
 
 ### Clase de los movimientos (2026-10-09)
 
-Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `plan-clasificacion-movimientos.md` y `CHANGELOG.md#infraestructura--seguridad`.
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
 
 - Reposiciones de plata comprometida a una cajita (`_esReposicionCP`): `neutro` (reponer lo que ya tenías comprometido no es plata nueva).
 - Ingreso libre (`_esSobrante`) y el ingreso de la cuenta personalizada de una ganancia: `ingreso`.
@@ -100,7 +100,7 @@ Descripción + monto total + fecha estimada + cuenta destino por defecto
 (Opcional) agregar uno o más destinos: elegir tipo, describir, monto
   — la suma de destinos no puede superar el monto total
   ↓
-Guardar → S.plataCometida, recibido:false
+Guardar → S.plataComprometida, recibido:false
 ```
 
 ### Adelantar o marcar un gasto como ya cubierto (antes de recibir)
@@ -150,7 +150,7 @@ Si corresponde, chequear antigüedad de los movimientos afectados
   (puede bloquear o solo advertir, según qué tan viejo y qué tan
   intervenidas están las cuentas involucradas desde entonces)
   ↓
-Confirmar → revertir → sacar el ingreso de S.plataCometida
+Confirmar → revertir → sacar el ingreso de S.plataComprometida
 ```
 
 Las reversiones que restan saldo (reposición a cada destino, cajita usada para pagar TC, reposición de un gasto de cajita) usan `descontarFuente(..., { exacto: true })`, sin piso en 0 — ver `CHANGELOG.md#patrimonio-y-cálculos-globales` (2026-09-30).
@@ -197,7 +197,7 @@ Las reversiones que restan saldo (reposición a cada destino, cajita usada para 
 
 | Función | Qué hace |
 |---|---|
-| `_cpData()` | Devuelve `S.plataCometida`, garantizando que exista |
+| `_cpData()` | Devuelve `S.plataComprometida`, garantizando que exista |
 | `_cpFuenteLabel(val)` | Envuelve `fuenteLabel()` para el texto de una cuenta/cajita |
 | `_cpRenderLista()` | Pinta la pantalla completa: stats hero, pendientes con su barra de compromiso, y recibidos con pagos de cajita aún abiertos |
 | `_cpDiasHastaStr(fecha)` | Texto relativo ("Mañana", "En 3 días", "Vencido") para una fecha |

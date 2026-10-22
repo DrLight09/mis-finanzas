@@ -24,7 +24,7 @@ Da una identidad única a cada persona con la que hay relación financiera (fami
 
 ## 3. Reglas que nunca deben romperse
 
-- **Personas es una libreta de identidad, no una fuente de saldos propia.** Todo lo que se muestra en un perfil (deuda pendiente, encargos activos, estado de Spotify) se calcula en el momento a partir de los datos reales de cada módulo (`S.deudores`, `S.encargos`, `S.misDeudas`, `S.spotifyPersonas`) — Personas nunca guarda un total o un estado por su cuenta que pueda desincronizarse.
+- **Personas es una libreta de identidad, no una fuente de saldos propia.** Todo lo que se muestra en un perfil (deuda pendiente, encargos activos, estado de Spotify) se calcula en el momento a partir de los datos reales de cada módulo (`S.deudores`, `S.encargos`, `S.misDeudas`, `S.spotify.personas`) — Personas nunca guarda un total o un estado por su cuenta que pueda desincronizarse.
 - **No se puede crear dos personas con exactamente el mismo flujo sin querer:** cada módulo que crea una persona nueva (Encargos, Deudores, Spotify) lo hace a través del selector compartido, que ofrece elegir una existente antes de crear una — evita que "Juan" termine como tres personas distintas sin vínculo entre sí.
 - **Renombrar o cambiar el color de una persona se sincroniza en todos los módulos vinculados en el mismo momento** (deudores, encargos, misDeudas, integrantes de Spotify) — nunca queda un módulo mostrando el nombre viejo mientras otro ya tiene el nuevo.
 - **Eliminar una persona no es una operación de este módulo.** No existe "borrar persona" acá a propósito (ver §7): su historial financiero vive en otros módulos y son esos módulos los que deciden si algo se puede borrar, no Personas.
@@ -52,7 +52,7 @@ Cada módulo que se vincula a una persona guarda su propia referencia:
 S.deudores[i].personaId   // "Me deben"
 S.misDeudas[i].personaId  // "Yo debo"
 S.encargos[i].personaId   // Encargos
-S.spotifyPersonas[i].personaId  // Spotify (ver spotify.md §4)
+S.spotify.personas[i].personaId  // Spotify (ver spotify.md §4)
 ```
 
 **`personaId` es opcional en los cuatro casos.** Un registro sin `personaId` sigue siendo válido — es un deudor, encargo, deuda o integrante "sin perfil" (ver §2), no un dato roto.

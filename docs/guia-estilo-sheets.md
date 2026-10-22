@@ -8,6 +8,18 @@ Los cambios puntuales de una sesión de limpieza (renombres, tildes, reordenamie
 
 ---
 
+## 0. Estilos: clases, no `style=""`
+
+Los sheets y pantallas **no llevan `style="…"` en el HTML ni en los strings de JS**: se usan las clases de `css/styles.css` (en Wrapped, el CSS que inyecta su propio archivo). Es el Paso 5 del endurecimiento de la CSP (`CONTINUAR.md` §13.16): al terminar se quita `'unsafe-inline'` de `style-src`.
+
+- **Color semántico de un texto:** `c-green`, `c-red`, `c-amber`, `c-blue`, `c-purple`. Chip chico: `badge badge-xs`. Ícono en línea: `ico-inline`. Marcas de label: `<span class="c-red">*</span>` y `<span class="lbl-opc">(opcional)</span>` (ver §2).
+- **Valor que solo se conoce al ejecutar** (ancho de una barra, color elegido por el usuario) es la excepción: queda en un `style` con `${…}`, registrado como permitido en `tests/estilos.test.js`. El plan para eliminarlos (un helper que aplica `el.style.x = …` tras renderizar) está en `CONTINUAR.md` §13.16.
+- **Mostrar/ocultar en vivo:** `el.style.display` desde JS (la CSP lo permite) o una clase.
+- **Estado de la conversión:** archivos convertidos y pendientes en `CONTINUAR.md` §13.16; `index.html` todavía tiene los suyos y sus sheets usan estilos inline hasta que se convierta.
+- Antes de convertir un archivo, buscar quién lee su HTML o su `.style`, y verificar con `scripts/equivalencia-*.js`.
+
+---
+
 ## 1. Regla general de orden
 
 Para cualquier sheet que registre un movimiento de plata, el orden es siempre:
@@ -44,9 +56,9 @@ Para cualquier sheet que registre un movimiento de plata, el orden es siempre:
 
 ## 2. Convenciones de labels
 
-**Campos obligatorios:** se marcan con `*` en rojo al final del label: `<span style="color:var(--red);">*</span>`
+**Campos obligatorios:** se marcan con `*` en rojo al final del label: `<span class="c-red">*</span>`
 
-**Campos opcionales:** se marcan con `(opcional)` en pequeño y color `text3`: `<span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span>`
+**Campos opcionales:** se marcan con `(opcional)` en pequeño y color `text3`: `<span class="lbl-opc">(opcional)</span>`
 
 **Campos informativos (solo lectura):** se muestran como texto estático, no como `input`. Ej: "Saldo actual".
 
@@ -239,23 +251,21 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 **`sheet-alcancia-resultado`** — Resultado *(sheet de confirmación, sin campos editables)*: muestra registrado vs. real, la diferencia, y la comparación con la alcancía anterior. Acciones: "Iniciar nueva alcancía" / "Cerrar".
 
-#### Reglas de negocio de Alcancía — qué hace cada tipo de depósito
+#### Reglas de negocio de Alcancía — cómo se arma un depósito
 
-> Nota: esto excede lo puramente visual y es candidato a mudarse a un futuro `alcancia.md` propio siguiendo la plantilla del proyecto — se deja acá por ahora porque documenta directamente el comportamiento de estos sheets.
+> El detalle (tabla de efectos sobre saldos, tipos guardados, destape) vive en [`alcancia.md`](./alcancia.md); aquí solo lo que condiciona el diseño del sheet.
 
-Cada tipo de depósito tiene un efecto **distinto e intencional** sobre cuentas, ingresos y patrimonio:
+El sheet "Depositar" **no tiene selector de tipo**: cada depósito se arma con **uno o varios orígenes** (`_alcOrigenOptsHtml`, select `alc_dep_origen`). Con un solo origen se guarda el tipo clásico; con varios ("Dividir…", `js/core/split.js`), tipo `multi` con `partes[]`, y cada parte tiene el efecto de su origen:
 
-| Tipo | `_alcTipo` | ¿Descuenta cuenta? | ¿Genera ingreso del mes? | Mecanismo |
+| Origen | Tipo guardado (un origen) | ¿Descuenta cuenta? | ¿Ingreso del mes? | Dónde queda |
 |---|---|---|---|---|
-| Lo tenía yo (efectivo) | `yo-directo` | No | **Sí** | `S.movimientos` tipo `'entrada'` con `_esAlcanciaIngreso: true`. Entra y sale de `efectivo` en el mismo acto (neto = 0), pero el ingreso queda en estadísticas del mes. |
-| Lo saqué de una cuenta | `yo-cuenta` | **Sí** | No | `S.gastosVar` con `_esAlcancia: true` + `sumarFuente(fuente, -monto)`. Traslado, no gasto real ni ingreso nuevo. |
-| Me lo regaló mamá | `regalo` | No | **Sí** | Igual que `yo-directo`. Es plata nueva que entró a tu vida. |
-| Mamá me dio por mandado | `mandado` | No | **Sí** | Igual que `regalo`. Pago por un servicio — ingreso real aunque no sea un regalo. |
-| Entre los dos — tu parte con cuenta | `split` + `splitFuente` | **Sí (tu parte)** | No (tu parte) | `S.gastosVar` con `_esAlcancia: true` + `sumarFuente(splitFuente, -splitYo)`. Traslado. |
-| Entre los dos — tu parte sin cuenta (efectivo) | `split` sin `splitFuente` | No | **Sí (tu parte)** | Igual que `yo-directo`. |
-| Entre los dos — parte de mamá | `split` (campo `_splitMama`) | No | **Sí (parte mamá)** | La contribución de mamá siempre es ingreso nuevo para vos. |
+| Una cuenta real | `yo-cuenta` | **Sí** | No (traslado) | `S.transferencias`, `origen: cuenta`, `destino: 'alcancia'`, `_esAlcancia: true` |
+| Plata mía (no estaba en ninguna cuenta) | `yo-directo` | No | **Sí** | `S.movimientos` tipo `'entrada'` con `_esAlcanciaIngreso: true` |
+| Regalo de mamá | `regalo` | No | **Sí** | Igual que `yo-directo` |
+| Pago de mamá por un mandado | `mandado` | No | **Sí** | Igual que `yo-directo` |
+| Me pagaron una deuda (solo con un origen) | `cobro-deuda` | No | No (reduce la deuda de la persona) | `d.movimientos[]` del deudor (Prestado) |
 
-**Regla mnemotécnica:** si la plata ya estaba en una cuenta tuya → traslado (no ingreso). Si viene de afuera (efectivo sin cuenta, regalo, mandado, parte de mamá) → ingreso nuevo del mes.
+**Regla mnemotécnica:** si la plata ya estaba en una cuenta tuya → traslado (no ingreso). Si viene de afuera (efectivo sin cuenta, regalo, mandado) → ingreso del mes.
 
 #### Patrimonio y visibilidad
 
@@ -287,9 +297,9 @@ Al destapar se generan hasta 3 movimientos automáticos, y **no son intercambiab
 
 **Reglas que no se deben romper en el código:**
 
-- En `S.movimientos`, el campo `tipo` solo puede ser `'entrada'` o `'salida'` para contar como ingreso/gasto real. `'apertura'` y `'transferencia'` son los únicos tipos "neutros" reconocidos. **Cualquier otro valor (incluido `'ingreso'`) cae por descarte en la rama de "salida"** dentro de `getMovimientosCuenta()` y se muestra con signo negativo aunque el dinero esté entrando.
-- `cuentasPersonalizadas` (`c.movimientos`) usa una convención **distinta y no intercambiable**: `'ingreso'` / `'egreso'`. Si el destino de la alcancía es una cuenta personalizada, `_sumarASaldo()` usa `'ingreso'` para montos positivos y `'egreso'` para montos negativos, con `Math.abs(monto)`.
-- `_esAlcancia: true` oculta movimientos del feed general (`_normMovimientos`) — **no decide** si cuentan como ingreso; eso lo decide únicamente `tipo`.
-- `_esAlcanciaIngreso: true` identifica los ingresos reales generados al momento del depósito (regalo, mandado, yo-directo, parte de mamá en split). Son tipo `'entrada'` y **sí aparecen** en el feed porque son ingresos reales visibles.
+- En `S.movimientos`, `tipo` solo toma estos valores: `'entrada'`, `'salida'`, `'salida_manual'`, `'apertura'` y `'transferencia'`. **Cualquier otro valor (incluido `'ingreso'`) cae por descarte en la rama de "salida"** dentro de `getMovimientosCuenta()` y se muestra con signo negativo aunque el dinero esté entrando. Si un movimiento cuenta como ingreso o gasto del mes lo decide su `clase`, no el `tipo`.
+- Las cuentas personalizadas **no tienen convención propia**: su historial vive en `S.movimientos` con `fuente: 'custom:ID'` y los mismos `tipo` que Nequi o Efectivo (desde 2026-10-12; no existe `c.movimientos`). `_sumarASaldo()` solo mueve `c.saldo`; ver `cuentas.md`.
+- `_esAlcancia: true` oculta movimientos del feed general (`_normMovimientos`) — **no decide** si cuentan como ingreso; eso lo decide la `clase` guardada.
+- `_esAlcanciaIngreso: true` identifica los ingresos reales generados al momento del depósito (regalo, mandado, yo-directo, partes sin cuenta de un depósito dividido). Son tipo `'entrada'` y **sí aparecen** en el feed porque son ingresos reales visibles.
 - Al destapar, `S.alcancia.saldoRegistrado` se resetea a `0` — necesario porque `calcPatrimonioTotal()` suma ese campo mientras está activa; si no se reseteara, el dinero quedaría contado dos veces.
-- El historial (`entradaHist`) **incluye** `movimientos: [...a.movimientos]` para que las tarjetas de historial muestren el desglose por tipo. Sin esto, `totalMamá` siempre devuelve 0 en alcancías anteriores.
+- El historial (`entradaHist`) **incluye** `movimientos: [...a.movimientos]` para que las tarjetas de historial muestren el desglose por tipo. Sin esto, `_alcDesgloseHtml` no tendría de dónde sacar el desglose de los ciclos anteriores.

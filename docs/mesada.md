@@ -97,7 +97,7 @@ S.mesadaAnio  // año que se está viendo actualmente en la pantalla (nav ← �
 
 ### Clase de los movimientos (2026-10-09)
 
-Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `plan-clasificacion-movimientos.md` y `CHANGELOG.md#infraestructura--seguridad`.
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
 
 - El espejo de un pago de Mesada en la cuenta destino (`registrarMovEspejo` con `origen: 'Mesada'`) es `neutro`: el ingreso de la mesada se cuenta una sola vez, en `Periodo.mesadaDelMes`.
 
@@ -247,7 +247,7 @@ Navegación de año (`#anioLabel`, `cambiarAnio(d)`, rango ±2 años), resumen (
 node --test "tests/*.test.js"
 ```
 
-- `tests/mesada-reglas.test.js` — reglas (Parte 1): forma de lo guardado, validación sin efectos a medias, **ida y vuelta exacta** (registrar/abonar y luego borrar deja `S` idéntico, en 8 escenarios), regresiones de los bugs de `CHANGELOG.md#mesada` (2026-10-08), vencimientos, resumen anual, encargos candidatos.
-- `tests/mesada-ui.test.js` — la Parte 2 real sobre la Parte 1 real, con el DOM simulado de `tests/support/fake-dom.js`: abrir, escribir, confirmar, previews, detalle (clases y escape).
+- la suite `mesada-reglas` de `tests/mesada.test.js` — reglas (Parte 1): forma de lo guardado, validación sin efectos a medias, **ida y vuelta exacta** (registrar/abonar y luego borrar deja `S` idéntico, en 8 escenarios), regresiones de los bugs de `CHANGELOG.md#mesada` (2026-10-08), vencimientos, resumen anual, encargos candidatos.
+- la suite `mesada-ui` de `tests/mesada.test.js` — la Parte 2 real sobre la Parte 1 real, con el DOM simulado de `tests/support/fake-dom.js`: abrir, escribir, confirmar, previews, detalle (clases y escape).
 
 No cubren el navegador real (layout, CSS, eventos nativos, `html`/`raw` reales): eso sigue requiriendo una pasada manual.

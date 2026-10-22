@@ -4,6 +4,10 @@
 
 ---
 
+## Seguridad — pendiente
+
+- **La CSP todavía permite estilos inline (`'unsafe-inline'` en `style-src`, `index.html`).** Hoy hay ~784 `style="…"` en `index.html` y ~1236 en los `.js` (más un `<style>` inyectado por `wrapped.js` y el tercer `<style>` de `index.html`). Todo lo que se escribe va escapado (`html\`\``), así que el riesgo práctico es bajo, pero es la directiva laxa que queda. Plan y avance en `CONTINUAR.md` §13.16 (Paso 5): convertir a clases, resolver los ~100 estilos con valor calculado con un helper que use `el.style.x = …` (la CSP lo permite), mover el CSS inyectado a una hoja `.css` y entonces quitar `'unsafe-inline'`.
+
 ## Rendimiento — pendiente
 
 - **Minificar JS (~120 KiB estimados de ahorro, Lighthouse).** Ninguno de los archivos de `js/core/`/`js/modules/` está minificado. Requiere un paso de build (Vite/esbuild) que hoy no existe — GitHub Pages sirve los archivos tal cual se suben.

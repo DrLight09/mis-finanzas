@@ -24,7 +24,7 @@ modificarlo, usando `vm` para simular cómo el navegador carga
   `registrarMovEspejo()`/`borrarMovEspejo()` — `js/modules/prestado.js`,
   `js/core/cuenta-efectos.js`
 
-- Paso 5 (estilos inline → clases): `tests/estilos.test.js` vigila los archivos ya convertidos (ningún `style=""` estático nuevo, toda clase usada existe en `css/styles.css`). La herramienta `scripts/equivalencia-estilos.js` (no es un test) compara el estilo efectivo antes/después de convertir un archivo, con cascada y especificidad reales; ver `CONTINUAR.md` §13.16.
+- Paso 5 (estilos inline → clases): `tests/estilos.test.js` vigila los archivos ya convertidos (ningún `style=""` estático nuevo, toda clase usada existe en `css/styles.css` o en el CSS propio del archivo, y los colores de Wrapped tienen clase). **Herramientas (no son tests)** en `scripts/`: `equivalencia-estilos.js` compara el estilo efectivo de dos HTML (antes/después) y las plantillas `equivalencia-inicio.js`, `equivalencia-wrapped.js`, `equivalencia-cuentas.js` y `equivalencia-sueltos.js` ejecutan los render reales del archivo original y del nuevo sobre los mismos datos. Uso: `node scripts/equivalencia-<x>.js <archivo original>`; método y archivos pendientes en `CONTINUAR.md` §13.16.
 
 Corren contra tus archivos reales, sin copiarlos.
 
@@ -55,13 +55,13 @@ MIS_FINANZAS_CORE_DIR=./ruta/a/core MIS_FINANZAS_MODULES_DIR=./ruta/a/modules np
 `loadApp(files, { permissive })` tiene dos modos, ver comentarios en
 `tests/support/load-app.js`:
 
-- **`permissive: false` (default)** — usado por `calcPatrimonioTotal.test.js`
-  y `calcHealthScore.test.js`. Cualquier función no cargada da
+- **`permissive: false` (default)** — usado por las suites `calcPatrimonioTotal` y
+  `calcHealthScore` de `nucleo.test.js`. Cualquier función no cargada da
   `ReferenceError`/`undefined` de verdad — así se prueban los *guards*
   (`typeof calcC==='function'`) que protegen `calcPatrimonioTotal()` de
   que Cuentas/Préstamos sean lazy.
-- **`permissive: true`** — usado por `calcC-calcCDT.test.js` y
-  `totalPrestadoPendiente.test.js`, que cargan `cuentas.js`/`prestado.js`
+- **`permissive: true`** — usado por las suites `calcC-calcCDT` (`cuentas.test.js`) y
+  `totalPrestadoPendiente` (`prestamos.test.js`), que cargan `cuentas.js`/`prestado.js`
   reales. Esos archivos referencian funciones de UI de otros core (
   `openSheet`/`toast`/`dialogo`, viven en `sheet-stack.js`/`events.js`,
   no incluidos acá) a nivel de módulo — permissive las deja caer a
@@ -96,7 +96,7 @@ mismo orden que `index.html`: `core-state.js` → `cuenta-efectos.js` → `calc-
 Ojo en modo `permissive`: no falla con un error, **da resultados en silencio**
 (la función faltante cae a un no-op que devuelve `undefined`, y
 `totalPrestadoPendiente()` da 0). Así fue como falló en CI
-`totalPrestadoPendiente.test.js` — ver `CHANGELOG.md#infraestructura--seguridad`.
+la suite `totalPrestadoPendiente` (`tests/prestamos.test.js`) — ver `CHANGELOG.md#infraestructura--seguridad`.
 
 ## GitHub Action (corre solo en cada push)
 

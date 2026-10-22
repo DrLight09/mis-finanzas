@@ -84,7 +84,7 @@ La clave combina el id del gasto fijo con el mes (`YYYY-MM`) — así un mismo g
 
 ### Clase de los movimientos (2026-10-09)
 
-Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `plan-clasificacion-movimientos.md` y `CHANGELOG.md#infraestructura--seguridad`.
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
 
 - Gasto variable (`S.gastosVar[]`, incluida la compra con TC): `clase: 'gasto'`.
 - Pago de un gasto fijo (`esPagoGastoFijo`): `clase: 'neutro'` — el pago ya cuenta en `Periodo.gastosFijosDelMes` (clave `"<id>_YYYY-MM"` de `S.pagosGastosFijos`); contarlo otra vez como variable lo duplicaría. Es la clase que antes se deducía con `_esGastoVarNoReal()`.
@@ -153,6 +153,6 @@ Archivo: `js/modules/gastos.js`.
 | `pgfActualizarSaldo()` | Muestra el saldo disponible de la cuenta elegida para el pago. |
 | `confirmarPagarGastoFijo()` | Valida, descuenta la cuenta, crea el gasto espejo y marca el pago del mes. |
 
-Funciones núcleo de las que depende (definidas en `index.html`, compartidas con otras secciones): `escHtml`, `toast`, `save`, `refresh`, `openSheet`, `closeSheet`, `dialogo`, `uid`, `hoy`, `mesActual`, `mesKey`, `parseMoney`, `fmtInput`, `getSaldoFuente`, `getSaldoActual`, `getFuentes`, `fuenteLabel`, `fuenteBadgeClass`, `descontarFuente`, `sumarFuente`, `poblarCatSelect`, `getCatsVar`, `getCatsFijo`, `emptyState`, `logCambio`, `Events`. También depende de tres funciones del módulo de Tarjetas de Crédito (`tcCrearCompra`, `tcEliminarCompraInterna`, `tcEliminarPagoInterna`), y dos helpers compartidos con el resto de la app que **no** viven en este archivo porque se usan fuera de Gastos: `gastosMes()` y `_esGastoVarNoReal()` (ambos en `index.html`, usados también por Análisis y el dashboard de inicio).
+Funciones núcleo de las que depende (definidas en `index.html`, compartidas con otras secciones): `escHtml`, `toast`, `save`, `refresh`, `openSheet`, `closeSheet`, `dialogo`, `uid`, `hoy`, `mesActual`, `mesKey`, `parseMoney`, `fmtInput`, `getSaldoFuente`, `getFuentes`, `fuenteLabel`, `fuenteBadgeClass`, `descontarFuente`, `sumarFuente`, `poblarCatSelect`, `getCatsVar`, `getCatsFijo`, `emptyState`, `logCambio`, `Events`. También depende de tres funciones del módulo de Tarjetas de Crédito (`tcCrearCompra`, `tcEliminarCompraInterna`, `tcEliminarPagoInterna`), y dos helpers compartidos con el resto de la app que **no** viven en este archivo porque se usan fuera de Gastos: `gastosMes()` y `_esGastoVarNoReal()` (ambos en `index.html`, usados también por Análisis y el dashboard de inicio).
 
 IDs de sheets/inputs relevantes: `sheet-gasto-var` (`gv_desc`, `gv_monto`, `gv_fecha`, `gv_cat`, `gv_fuente`, `gv_nota`), `sheet-gasto-fijo` (`gf_n`, `gf_m`, `gf_c`), `sheet-pagar-gasto-fijo` (`pgf-title`, `pgf-monto`, `pgf-cat-badge`, `pgf-fuente`, `pgf-fecha`, `pgf-nota`, `pgf-error`).

@@ -16,7 +16,7 @@ Los sheets y pantallas **no llevan `style="…"` en el HTML ni en los strings de
 - **Valor que solo se conoce al ejecutar** (ancho de una barra, color elegido por el usuario) es la excepción: queda en un `style` con `${…}`, registrado como permitido en `tests/estilos.test.js`. El plan para eliminarlos (un helper que aplica `el.style.x = …` tras renderizar) está en `CONTINUAR.md` §13.16.
 - **Mostrar/ocultar en vivo:** `el.style.display` desde JS (la CSP lo permite) o una clase.
 - **Estado de la conversión:** archivos convertidos y pendientes en `CONTINUAR.md` §13.16; `index.html` todavía tiene los suyos y sus sheets usan estilos inline hasta que se convierta.
-- Antes de convertir un archivo, buscar quién lee su HTML o su `.style`, y verificar con `scripts/equivalencia-*.js`.
+- Antes de convertir un archivo, buscar quién lee su HTML o su `.style`, y verificar con `scripts/paso5/`.
 
 ---
 

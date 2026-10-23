@@ -8,6 +8,13 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 Documentación: [`libro-de-movimientos.md`](./libro-de-movimientos.md).
 
+### 🎨 Estilos inline → clases (2026-10-22, Paso 5, tanda 9) — `spotify.js` + verificadores reunidos en `scripts/paso5/`
+
+**`spotify.js`: 79 → 3** (los `display:none` de los avatares y del aviso del selector de persona, que el JS conmuta y deben seguir inline porque `style.display=''` los devolvería a la regla de la clase). Clases `sp-*` al final de `styles.css` (la lista de integrantes y sus botones, el historial de pagos y cobros con sus abonos pendientes, el panel de estadísticas, los selectores de persona). Los colores de `cV()` (valor positivo/negativo/neutro) pasan de `var(--x)` a clases (`c-green`/`c-red`/`sp-t-neu`). Los `style.cssText`/`style.color` del JS (aviso de costo, vista previa de cobros) son CSSOM y no cambian.
+- **Verificado ejecutando** `renderSpotify`, `renderSpHistorial`, `renderSpStats` y los dos selectores de persona del archivo de `js.zip` y del nuevo, en 8 escenarios (cuatro personas con vencida/hoy/futura/sin fecha, historial con abono pendiente, extra, cobro dividido y nota; sin pagos a Spotify, pago mayor que lo cobrado, tu parte del plan, ganancia exactamente cero, sin costo, sin historial, sin personas): **27 comparaciones, 0 diferencias**. Mutación de 10 reglas: las 10 hacen fallar (dos de ellas obligaron a añadir los escenarios de "tu parte del plan" y "cero" para que esas ramas se ejercitaran).
+- **Verificadores reunidos:** los 6 archivos `equivalencia-*.js` pasan a **`scripts/paso5/`** (`comparador.js` + un archivo por módulo + `verificar.js`, un único comando: `node scripts/paso5/verificar.js todos --antes=<carpeta con el repo anterior>`). Son herramientas **temporales**: necesitan la versión "antes" del archivo y no sirven como pruebas del producto; la carpeta se borra cuando el Paso 5 termine (la guardia permanente es `tests/estilos.test.js`). `scripts/equivalencia.js` (cifras por mes sobre un backup real) es otra herramienta y no se toca.
+- `tests/estilos.test.js` suma el archivo y una prueba de `cV()`. Pruebas: `npm test` 419/419; smoke sin fallos. `sw.js` v46.
+
 ### 🎨 Estilos inline → clases (2026-10-22, Paso 5, tanda 8) — `analisis.js`
 
 `analisis.js` pasa de 73 `style=""` a 5, todos valores calculados que no pueden ser clase: el ancho en % de las barras (categorías, ranking de meses, presupuestos), la altura de las barras del gráfico de 12 meses y el `display:none` del tooltip del patrimonio (JS lo conmuta). Clases `an-*` al final de `styles.css`; `hero.style.cssText` y los `tt.style.*` son CSSOM y no cambian.

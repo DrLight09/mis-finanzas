@@ -387,26 +387,26 @@ function renderSpotify(){
         const diasRestantes=Math.ceil((new Date(x.proximoPago+'T00:00:00')-new Date())/86400000);
         const vencido=diasRestantes<0;
         const hoy0=diasRestantes===0;
-        fechaInfo=html`<span class="badge ${raw(vencido?'bg-red':hoy0?'bg-amber':'bg-purple')}" style="font-size:9px;">${vencido?'Vencido hace '+Math.abs(diasRestantes)+'d':hoy0?'Vence hoy':'Paga en '+diasRestantes+'d · '+x.proximoPago}</span>`;
+        fechaInfo=html`<span class="badge badge-xs ${raw(vencido?'bg-red':hoy0?'bg-amber':'bg-purple')}">${vencido?'Vencido hace '+Math.abs(diasRestantes)+'d':hoy0?'Vence hoy':'Paga en '+diasRestantes+'d · '+x.proximoPago}</span>`;
       }
       const destinoBadge=x.ultimoDestinoSplit
-        ?html`<span class="badge bg-purple" style="font-size:8px;display:inline-flex;align-items:center;gap:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Dividido</span>`
-        :(x.ultimoDestino?html`<span class="badge ${raw(fuenteBadgeClass(x.ultimoDestino))}" style="font-size:8px;display:inline-flex;align-items:center;gap:3px;"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fuenteLabel(x.ultimoDestino)}</span>`:'');
+        ?html`<span class="badge bg-purple sp-badge-flecha"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Dividido</span>`
+        :(x.ultimoDestino?html`<span class="badge ${raw(fuenteBadgeClass(x.ultimoDestino))} sp-badge-flecha"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fuenteLabel(x.ultimoDestino)}</span>`:'');
       return html`<div class="sp-row">
-        <div style="display:flex;align-items:center;">
+        <div class="sp-flex-c">
           <div class="avatar">${spNombreDe(x).substring(0,2).toUpperCase()}</div>
           <div>
-            <div class="row-name" style="font-size:13px;">${spNombreDe(x)}</div>
+            <div class="row-name row-name-13">${spNombreDe(x)}</div>
             <div class="row-sub">${fmt(x.monto)}/período${(x.mesesAdelantados>1&&spPersonaPagadaVigente(x))?raw(' · <span class="sp-meses-badge">'+x.mesesAdelantados+'p adelantados</span>'):''}</div>
-            ${fechaInfo?html`<div style="margin-top:3px;">${fechaInfo}</div>`:''}
-            ${destinoBadge?html`<div style="margin-top:2px;">${destinoBadge}</div>`:''}
+            ${fechaInfo?html`<div class="sp-mt-3">${fechaInfo}</div>`:''}
+            ${destinoBadge?html`<div class="sp-mt-2">${destinoBadge}</div>`:''}
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:7px;">
-          <span class="badge ${raw(spPersonaPagadaVigente(x)?'bg-green':'bg-red')}" ${raw(Events.attr('spotify:marcarPago', i))} style="cursor:pointer;" title="${spPersonaPagadaVigente(x)?'Ya pagó · clic para revertir':'Cobrar a '+spNombreDe(x)}">${spPersonaPagadaVigente(x)?'Pagó':'Cobrar'}</span>
-          <div style="display:flex;align-items:center;gap:2px;">
-            <button type="button" class="btn-icon" style="color:var(--accent);min-width:34px;min-height:34px;" ${raw(Events.attr('spotify:editar', i))} title="Editar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button type="button" class="btn-icon" style="min-width:34px;min-height:34px;" ${raw(Events.attr('spotify:eliminar', i))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+        <div class="sp-acciones">
+          <span class="badge sp-click ${raw(spPersonaPagadaVigente(x)?'bg-green':'bg-red')}" ${raw(Events.attr('spotify:marcarPago', i))} title="${spPersonaPagadaVigente(x)?'Ya pagó · clic para revertir':'Cobrar a '+spNombreDe(x)}">${spPersonaPagadaVigente(x)?'Pagó':'Cobrar'}</span>
+          <div class="sp-flex-2">
+            <button type="button" class="btn-icon sp-btn-34 sp-btn-acento" ${raw(Events.attr('spotify:editar', i))} title="Editar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button type="button" class="btn-icon sp-btn-34" ${raw(Events.attr('spotify:eliminar', i))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
           </div>
         </div>
       </div>`;
@@ -431,7 +431,7 @@ function renderSpHistorial(){
   const hist=total.map((h,i)=>({...h,_realIdx:i}))
     .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b._realIdx-a._realIdx))
     .slice(0,12);
-  if(!hist.length){el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:4px 0;">Sin pagos registrados aún.</div>';return;}
+  if(!hist.length){el.innerHTML='<div class="sp-vacio">Sin pagos registrados aún.</div>';return;}
   // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
   // Hallazgo real de paso: fuenteLabel() en `fuentesInfo` (nombre de cajita/cuenta,
   // texto libre) nunca pasaba por escHtml() acá — a diferencia del badge de
@@ -442,35 +442,35 @@ function renderSpHistorial(){
     const tienePendiente=h.tipo==='cobro'&&(h.pendiente||0)>0;
     const yaSaldado=h.tipo==='cobro'&&h.cuotaEsperada&&!tienePendiente;
     const pendienteHtml=tienePendiente
-      ?html`<div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;">
-          <span class="badge bg-amber" style="font-size:9px;">Debe ${fmt(h.pendiente)}</span>
-          <span style="font-size:10px;color:var(--amber);text-decoration:underline;cursor:pointer;" ${raw(Events.attr('spotify:resolverPendiente', h._realIdx))}>Registrar pago de lo pendiente</span>
+      ?html`<div class="sp-pend-fila">
+          <span class="badge badge-xs bg-amber">Debe ${fmt(h.pendiente)}</span>
+          <span class="sp-pend-link" ${raw(Events.attr('spotify:resolverPendiente', h._realIdx))}>Registrar pago de lo pendiente</span>
         </div>`
-      :yaSaldado?html`<div style="font-size:10px;color:var(--accent);margin-top:3px;"><i class="fa-solid fa-check" style="margin-right:3px;"></i>Saldó lo pendiente</div>`:'';
+      :yaSaldado?html`<div class="sp-saldo-ok"><i class="fa-solid fa-check sp-mr-3"></i>Saldó lo pendiente</div>`:'';
     // Cada abono de lo pendiente, como su propia línea — antes quedaban invisibles,
     // fundidos dentro de h.monto (ver CHANGELOG.md#spotify, fix de visibilidad de abonos).
     const abonosHtml=(h.pendienteHistorial&&h.pendienteHistorial.length)
-      ?html`<div style="margin-top:6px;padding-left:8px;border-left:2px solid var(--border);">${h.pendienteHistorial.map((ab,abIdx)=>html`<div style="font-size:10px;color:var(--text2);margin-top:3px;display:flex;align-items:center;gap:6px;"><span style="flex:1;min-width:0;"><span style="color:var(--accent);">+ ${fmt(ab.monto)}</span> · ${ab.fecha}${ab.destino?' · '+fuenteLabel(ab.destino):''}${ab.nota?html` · <span style="color:var(--blue);">${ab.nota}</span>`:''}</span><span style="cursor:pointer;text-decoration:underline;flex-shrink:0;" ${raw(Events.attr('spotify:deshacerAbonoPendiente', h._realIdx, abIdx))}>deshacer</span></div>`)}</div>`
+      ?html`<div class="sp-abonos">${h.pendienteHistorial.map((ab,abIdx)=>html`<div class="sp-abono-fila"><span class="sp-flex1"><span class="c-green">+ ${fmt(ab.monto)}</span> · ${ab.fecha}${ab.destino?' · '+fuenteLabel(ab.destino):''}${ab.nota?html` · <span class="c-blue">${ab.nota}</span>`:''}</span><span class="sp-deshacer" ${raw(Events.attr('spotify:deshacerAbonoPendiente', h._realIdx, abIdx))}>deshacer</span></div>`)}</div>`
       :'';
     const extraHtml=(h.tipo==='cobro'&&(h.extra||0)>0)
-      ?html`<div style="font-size:10px;color:var(--text2);margin-top:3px;"><span style="color:var(--blue);">+ ${fmt(h.extra)} extra</span> · ${h.extraFuente?fuenteLabel(h.extraFuente):'sin cuenta'} · aparte del cobro de Spotify</div>`
+      ?html`<div class="sp-extra-nota"><span class="c-blue">+ ${fmt(h.extra)} extra</span> · ${h.extraFuente?fuenteLabel(h.extraFuente):'sin cuenta'} · aparte del cobro de Spotify</div>`
       :'';
     const fuentesInfo=h.splits&&h.splits.length
       ?' · '+h.splits.map(s=>fuenteLabel(s.fuente||'')).join(' + ')
       :(h.fuente?' · '+fuenteLabel(h.fuente):'');
     return html`
-    <div class="card card-sm" style="margin-bottom:7px;">
-      <div class="row" style="align-items:flex-start;gap:10px;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:500;">${h.tipo==='pago'?'Pago a Spotify':'Cobro de '+h.nombre}</div>
-          <div style="font-size:10px;color:var(--text2);margin-top:1px;">${h.fecha}${fuentesInfo}${h.nota?html` · <span style="color:var(--blue);">${h.nota}</span>`:''}</div>
+    <div class="card card-sm sp-hist-card">
+      <div class="row sp-hist-row">
+        <div class="sp-flex1">
+          <div class="sp-hist-tit">${h.tipo==='pago'?'Pago a Spotify':'Cobro de '+h.nombre}</div>
+          <div class="sp-hist-sub">${h.fecha}${fuentesInfo}${h.nota?html` · <span class="c-blue">${h.nota}</span>`:''}</div>
           ${pendienteHtml}
           ${abonosHtml}
           ${extraHtml}
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-          <div style="font-size:13px;font-weight:500;font-family:'DM Mono',monospace;white-space:nowrap;color:${raw(h.tipo==='pago'?'var(--red)':'var(--accent)')};">${h.tipo==='pago'?'−':'+'} ${fmt(h.monto)}</div>
-          <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" ${raw(Events.attr('spotify:eliminarHistorial', h._realIdx))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+        <div class="sp-hist-der">
+          <div class="sp-hist-monto ${raw(h.tipo==='pago'?'c-red':'c-green')}">${h.tipo==='pago'?'−':'+'} ${fmt(h.monto)}</div>
+          <button type="button" class="btn-icon sp-btn-36" ${raw(Events.attr('spotify:eliminarHistorial', h._realIdx))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
         </div>
       </div>
     </div>`;
@@ -541,10 +541,10 @@ function renderSpStats(){
   const extrasN=cobros.filter(h=>(h.extra||0)>0).length;
   const hayCiclo=ciclosPagados>0;
 
-  const cV=(v)=>v>0?'var(--accent)':v<0?'var(--red)':'var(--text2)';
+  const cV=(v)=>v>0?'c-green':v<0?'c-red':'sp-t-neu';
   const sg=(v)=>(v>=0?'+':'\u2212')+fmt(Math.abs(v));
 
-  let html=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px;">`;
+  let html=`<div class="sp-stats-grid">`;
 
   // Flujo mensual: promedio real por ciclo pagado (si ya hay al menos uno),
   // o una proyección teórica mientras tanto — claramente marcada como tal.
@@ -563,34 +563,34 @@ function renderSpStats(){
     } else {
       pieCiclos=`último: ${sg(ultimoCiclo)} · mejor: ${sg(mejorCiclo)} · peor: ${sg(peorCiclo)}`;
     }
-    const colMano=`<div style="flex:1;min-width:0;">
-          <div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">En mano</div>
-          <div class="stat-value" style="color:${cV(promedioMano)};" title="Cobrado menos pagado: plata nueva que te queda libre para gastar.">${sg(promedioMano)}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:2px;">cobrado \u2212 pagado</div>
+    const colMano=`<div class="sp-flex1">
+          <div class="sp-stat-eyebrow">En mano</div>
+          <div class="stat-value ${cV(promedioMano)}" title="Cobrado menos pagado: plata nueva que te queda libre para gastar.">${sg(promedioMano)}</div>
+          <div class="sp-stat-sub">cobrado \u2212 pagado</div>
         </div>`;
-    const colTotal=`<div style="flex:1;min-width:0;">
-          <div style="font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);">${hayDosLecturas?'Beneficio total':'Por ciclo'}</div>
-          <div class="stat-value" style="color:${cV(promedioCiclo)};" title="${hayDosLecturas?'En mano más tu parte del plan, que te salió gratis y no pagaste de tu bolsillo.':'Cobrado menos pagado.'}">${sg(promedioCiclo)}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:2px;">${hayDosLecturas?'+ tu parte del plan':'cobrado \u2212 pagado'}</div>
+    const colTotal=`<div class="sp-flex1">
+          <div class="sp-stat-eyebrow">${hayDosLecturas?'Beneficio total':'Por ciclo'}</div>
+          <div class="stat-value ${cV(promedioCiclo)}" title="${hayDosLecturas?'En mano más tu parte del plan, que te salió gratis y no pagaste de tu bolsillo.':'Cobrado menos pagado.'}">${sg(promedioCiclo)}</div>
+          <div class="sp-stat-sub">${hayDosLecturas?'+ tu parte del plan':'cobrado \u2212 pagado'}</div>
         </div>`;
-    html+=`<div class="stat" style="grid-column:1/-1;">
-      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-        <div class="stat-label" style="margin-bottom:0;">Promedio real por ciclo pagado</div>
-        <div style="font-size:10px;color:var(--text2);">basado en ${nCiclos} ciclo${nCiclos!==1?'s':''} pagado${nCiclos!==1?'s':''}</div>
+    html+=`<div class="stat sp-span-all">
+      <div class="sp-stat-cab">
+        <div class="stat-label sp-mb0">Promedio real por ciclo pagado</div>
+        <div class="sp-stat-nota">basado en ${nCiclos} ciclo${nCiclos!==1?'s':''} pagado${nCiclos!==1?'s':''}</div>
       </div>
-      <div style="display:flex;gap:12px;margin-top:8px;">
-        ${hayDosLecturas?colMano+`<div style="width:1px;background:var(--border);flex-shrink:0;"></div>`+colTotal:colTotal}
+      <div class="sp-flex-12">
+        ${hayDosLecturas?colMano+`<div class="sp-vsep"></div>`+colTotal:colTotal}
       </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:8px;padding-top:7px;border-top:1px solid var(--border);">${hayDosLecturas?'beneficio total · ':''}${pieCiclos}</div>
+      <div class="sp-stat-pie">${hayDosLecturas?'beneficio total · ':''}${pieCiclos}</div>
     </div>`;
   } else {
-    html+=`<div class="stat" style="grid-column:1/-1;">
+    html+=`<div class="stat sp-span-all">
       <div class="stat-label">Margen proyectado</div>
-      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
-        <div class="stat-value" style="color:${cV(margen)};">${margen>=0?'+':''}${fmt(Math.abs(margen))}</div>
-        <div style="font-size:11px;color:var(--text2);">cobras ${fmt(ingresoEstimado)} en cuotas · el plan cuesta ${costo>0?fmt(costo):'—'}</div>
+      <div class="sp-stat-base">
+        <div class="stat-value ${cV(margen)}">${margen>=0?'+':''}${fmt(Math.abs(margen))}</div>
+        <div class="sp-stat-nota2">cobras ${fmt(ingresoEstimado)} en cuotas · el plan cuesta ${costo>0?fmt(costo):'—'}</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:3px;">proyección con tu configuración actual, no con tu frecuencia real de pago — registrá un pago a Spotify para ver el promedio real por ciclo</div>
+      <div class="sp-stat-hint">proyección con tu configuración actual, no con tu frecuencia real de pago — registrá un pago a Spotify para ver el promedio real por ciclo</div>
     </div>`;
   }
 
@@ -598,7 +598,7 @@ function renderSpStats(){
   html+=`<div class="stat">
     <div class="stat-label">Total cobrado</div>
     <div class="stat-value c-green">${fmt(totalCobradoHist)}</div>
-    <div style="font-size:10px;color:var(--text3);margin-top:3px;">${cobros.length} cobro${cobros.length!==1?'s':''}${flotanteTotal>0?` · ${fmt(flotanteTotal)} adelantado`:''}</div>
+    <div class="sp-stat-hint">${cobros.length} cobro${cobros.length!==1?'s':''}${flotanteTotal>0?` · ${fmt(flotanteTotal)} adelantado`:''}</div>
   </div>`;
 
   // Segunda stat: ganancia real si hay ciclo, balance del ciclo si no
@@ -609,43 +609,43 @@ function renderSpStats(){
     html+=`<div class="stat">
       <div class="stat-label">Balance del ciclo</div>
       ${pendiente>0
-        ?`<div class="stat-value" style="color:var(--amber);">\u2212${fmt(pendiente)}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:3px;" title="Falta recaudar para cubrir el plan completo, tu parte incluida.">falta para cubrir el plan</div>`
-        :`<div class="stat-value" style="color:var(--accent);">+${fmt(sobra)}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:3px;" title="Esto es lo que ganas después de cubrir el plan completo, incluida tu propia parte.">ya cubriste el plan</div>`
+        ?`<div class="stat-value c-amber">\u2212${fmt(pendiente)}</div>
+          <div class="sp-stat-hint" title="Falta recaudar para cubrir el plan completo, tu parte incluida.">falta para cubrir el plan</div>`
+        :`<div class="stat-value c-green">+${fmt(sobra)}</div>
+          <div class="sp-stat-hint" title="Esto es lo que ganas después de cubrir el plan completo, incluida tu propia parte.">ya cubriste el plan</div>`
       }
     </div>`;
   } else if(hayCiclo){
     html+=`<div class="stat">
       <div class="stat-label">Ganancia acumulada</div>
-      <div class="stat-value" style="color:${cV(gananciaReal)};">${gananciaReal>=0?'+':'\u2212'}${fmt(Math.abs(gananciaReal))}</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:3px;" title="${ahorroCuotaAdmin>0?'Cobrado menos pagado, más tu parte del plan, que ya quedó cubierta y no la pagaste de tu bolsillo.':'Cobrado menos pagado.'}">${gananciaReal<0?'de tu bolsillo · ':''}cobrado \u2212 pagado${ahorroCuotaAdmin>0?' + tu parte':''}</div>
-      ${ahorroCuotaAdmin>0?`<div style="font-size:10px;color:var(--text3);margin-top:2px;" title="Cobrado menos pagado, sin sumar tu parte: la plata nueva que realmente tienes libre.">en mano: <span style="color:${cV(gananciaMano)};">${sg(gananciaMano)}</span></div>`:''}
+      <div class="stat-value ${cV(gananciaReal)}">${gananciaReal>=0?'+':'\u2212'}${fmt(Math.abs(gananciaReal))}</div>
+      <div class="sp-stat-hint" title="${ahorroCuotaAdmin>0?'Cobrado menos pagado, más tu parte del plan, que ya quedó cubierta y no la pagaste de tu bolsillo.':'Cobrado menos pagado.'}">${gananciaReal<0?'de tu bolsillo · ':''}cobrado \u2212 pagado${ahorroCuotaAdmin>0?' + tu parte':''}</div>
+      ${ahorroCuotaAdmin>0?`<div class="sp-stat-sub" title="Cobrado menos pagado, sin sumar tu parte: la plata nueva que realmente tienes libre.">en mano: <span class="${cV(gananciaMano)}">${sg(gananciaMano)}</span></div>`:''}
     </div>`;
   } else {
     html+=`<div class="stat">
       <div class="stat-label">Ganancia acumulada</div>
-      <div class="stat-value" style="color:var(--text3);">\u2014</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:3px;">sin cobros aún</div>
+      <div class="stat-value sp-t-muted">\u2014</div>
+      <div class="sp-stat-hint">sin cobros aún</div>
     </div>`;
   }
 
   // Extras recibidos: independientes de Spotify (no entran a cobrado, ni a la ganancia,
   // ni al promedio). Solo aparece si alguna vez te dieron de más.
   if(extrasTotal>0){
-    html+=`<div class="stat" style="grid-column:1/-1;">
+    html+=`<div class="stat sp-span-all">
       <div class="stat-label">Extras recibidos</div>
-      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
-        <div class="stat-value" style="color:var(--blue);">+${fmt(extrasTotal)}</div>
-        <div style="font-size:11px;color:var(--text2);">${extrasN} vez${extrasN!==1?'es':''} te dieron de más</div>
+      <div class="sp-stat-base">
+        <div class="stat-value c-blue">+${fmt(extrasTotal)}</div>
+        <div class="sp-stat-nota2">${extrasN} vez${extrasN!==1?'es':''} te dieron de más</div>
       </div>
-      <div style="font-size:10px;color:var(--text3);margin-top:3px;">aparte de Spotify · no suman a la ganancia ni al promedio · cuentan como ingreso extra</div>
+      <div class="sp-stat-hint">aparte de Spotify · no suman a la ganancia ni al promedio · cuentan como ingreso extra</div>
     </div>`;
   }
 
   // Aviso contextual mientras no haya un ciclo pagado
   if(!hayCiclo&&costo>0){
-    html+=`<div style="grid-column:1/-1;font-size:10px;color:var(--text3);padding:6px 0 2px;">
+    html+=`<div class="sp-aviso-final">
       Registra el pago a Spotify cuando lo hagas para ver la ganancia real acumulada.
     </div>`;
   }
@@ -1266,7 +1266,7 @@ async function actualizarSpPagarPreview(){
       fuenteInfo.textContent=cupoDisp!==null?'Cupo disponible: '+fmt(cupoDisp):'';
       if(monto>0){
         const nuevaDeuda=(tc.deuda||0)+monto;
-        prev.innerHTML='Deuda: '+fmt(tc.deuda||0)+' <i class="fa-solid fa-arrow-right" style="margin:0 3px;font-size:10px;"></i> '+fmt(nuevaDeuda);
+        prev.innerHTML='Deuda: '+fmt(tc.deuda||0)+' <i class="fa-solid fa-arrow-right cuenta-flecha"></i> '+fmt(nuevaDeuda);
         prev.style.color=(cupoDisp!==null&&monto>cupoDisp)?'var(--red)':'var(--accent)';
       } else {
         prev.textContent='';
@@ -1631,12 +1631,10 @@ function _initSpotifyPersonaSelector() {
   ig.innerHTML = `
     <div class="il">¿Quién es?</div>
     <div id="sp-persona-btn" ${Events.attr('spotify:abrirSelectorPersona')}
-      style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
-      border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
-      cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
-      <div id="sp-persona-avatar" class="avatar" style="width:28px;height:28px;font-size:10px;margin:0;display:none;flex-shrink:0;"></div>
+      class="sp-persona-btn">
+      <div id="sp-persona-avatar" class="avatar sp-persona-avatar" style="display:none;"></div>
       <span id="sp-persona-label">Seleccionar persona...</span>
-      <svg style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <svg class="sp-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <input type="hidden" id="sp_n" value="">`;
 }
@@ -1669,14 +1667,12 @@ function _initSpotifyEditPersonaSelector() {
   ig.innerHTML = `
     <div class="il">¿Quién es?</div>
     <div id="sp-edit-persona-btn" ${Events.attr('spotify:onClickEditPersonaBtn')}
-      style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
-      border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
-      cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
-      <div id="sp-edit-persona-avatar" class="avatar" style="width:28px;height:28px;font-size:10px;margin:0;display:none;flex-shrink:0;"></div>
+      class="sp-persona-btn">
+      <div id="sp-edit-persona-avatar" class="avatar sp-persona-avatar" style="display:none;"></div>
       <span id="sp-edit-persona-label">Seleccionar persona...</span>
-      <svg id="sp-edit-persona-chevron" style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <svg id="sp-edit-persona-chevron" class="sp-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <div id="sp-edit-persona-hint" style="font-size:11px;color:var(--text3);margin-top:5px;display:none;">Para asignarle este cobro a otra persona, eliminá este integrante y agregá uno nuevo — así el historial no se mezcla entre los dos.</div>
+    <div id="sp-edit-persona-hint" class="sp-persona-hint" style="display:none;">Para asignarle este cobro a otra persona, eliminá este integrante y agregá uno nuevo — así el historial no se mezcla entre los dos.</div>
     <input type="hidden" id="sp_edit_n" value="">`;
 }
 

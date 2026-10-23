@@ -103,7 +103,7 @@ A diferencia de `js/core/`, acá **"clásico"** siempre significa `<script defer
 | `css/styles.css` | Hoja de estilos de toda la app. |
 | `css/fa-subset.css` | Subconjunto de Font Awesome autoalojado (solo los íconos usados). |
 | `sw.js` | Service Worker (PWA offline): `cacheFirst` para fuentes, `networkFirst` para el HTML y el SDK de Firebase (`gstatic.com/firebasejs`), `staleWhileRevalidate` para el resto. **Firestore, Identity Toolkit y SecureToken no pasan por el SW** (el canal de escucha es un stream largo: cachearlo fallaba con `Cache.put() ... network error`, y el fallback respondía HTML con status 200 a requests de Firestore). Toda escritura en caché va por `guardarEnCache()`, con `.catch`. Versión de caché en `VERSION` (bump manual al desplegar). |
-| `scripts/` | Herramientas de desarrollo (no se despliegan): `generar-mapa.js` (genera `mapa-codigo.md`), `smoke-browser.js` (prueba de humo con jsdom), `conciliacion.js` y las de verificación del Paso 5, `equivalencia-estilos.js` y `equivalencia-*.js` (ver `CONTINUAR.md` §13.16). |
+| `scripts/` | Herramientas de desarrollo (no se despliegan): `generar-mapa.js` (genera `mapa-codigo.md`), `smoke-browser.js` (prueba de humo con jsdom), `equivalencia.js` (compara ingresos, gastos y patrimonio por mes sobre un backup real), `conciliacion.js` y `paso5/` (verificadores TEMPORALES de la conversión de estilos; la carpeta se borra al terminar el Paso 5, ver `CONTINUAR.md` §13.16). |
 | `tests/` | Pruebas con el test runner nativo de Node (`npm test`, ver `tests/README.md`). `estilos.test.js` vigila que los archivos ya convertidos no vuelvan a tener `style=""`. |
 
 ---

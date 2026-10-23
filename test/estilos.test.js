@@ -34,6 +34,8 @@ const CONVERTIDOS = [
     permitidos: [/^width:\$\{/, /^background:\$\{/, /^color:\$\{/, '${vars}'] },
   // analisis: solo quedan los anchos/alturas de las barras (porcentaje calculado) y el display:none del tooltip del patrimonio, que JS conmuta
   { f: 'js/modules/analisis.js', prefijos: ['an-', 'presup-bar-fill', 'presup-input'], armadas: ['an-t-', 'an-bg-'], permitidos: [/^width:\$\{/, /^height:\$\{/, 'display:none;'] },
+  // spotify: solo quedan 3 display:none (avatares y aviso del selector de persona) que el JS conmuta
+  { f: 'js/modules/spotify.js', prefijos: ['sp-', 'badge-xs', 'row-name-13', 'cuenta-flecha'], permitidos: ['display:none;'] },
   // wrapped: su CSS vive en el <style> que inyecta el propio archivo (cssEn). Solo queda el retraso de animación de cada punto de la línea,
   // un valor distinto por punto (i*0.09s) que no puede ser una clase.
   { f: 'js/modules/wrapped.js', prefijos: ['wrapped-'], cssEn: ['js/modules/wrapped.js'], permitidos: [/^animation-delay:\$\{/] },
@@ -81,4 +83,10 @@ test('analisis: los tonos que arma el código (an-t-X, an-bg-X) existen todos en
   // y el código no usa un tono que no esté en la lista
   const usados = new Set([...src.matchAll(/'(red|amber|accent|blue|purple|text2)'/g)].map(m => m[1]));
   usados.forEach(t => assert.ok(tonos.includes(t), t));
+});
+
+test('spotify: los colores de cV() (c-green, c-red, sp-t-neu) existen en styles.css', () => {
+  const css = leer('css/styles.css');
+  ['c-green', 'c-red', 'sp-t-neu'].forEach(c => assert.ok(new RegExp('\\.' + c + '(?![\\w-])').test(css), c));
+  assert.match(leer('js/modules/spotify.js'), /const cV=\(v\)=>v>0\?'c-green':v<0\?'c-red':'sp-t-neu'/);
 });

@@ -6,7 +6,7 @@
 
 ## Seguridad — pendiente
 
-- **La CSP todavía permite estilos inline (`'unsafe-inline'` en `style-src`, `index.html`).** Hoy hay ~784 `style="…"` en `index.html` y ~1167 en los `.js` (más un `<style>` inyectado por `wrapped.js` y el tercer `<style>` de `index.html`). Todo lo que se escribe va escapado (`html\`\``), así que el riesgo práctico es bajo, pero es la directiva laxa que queda. Plan y avance en `CONTINUAR.md` §13.16 (Paso 5): convertir a clases, resolver los ~100 estilos con valor calculado con un helper que use `el.style.x = …` (la CSP lo permite), mover el CSS inyectado a una hoja `.css` y entonces quitar `'unsafe-inline'`.
+- **La CSP todavía permite estilos inline (`'unsafe-inline'` en `style-src`, `index.html`).** Hoy hay ~784 `style="…"` en `index.html` y ~1089 en los `.js` (más un `<style>` inyectado por `wrapped.js` y el tercer `<style>` de `index.html`). Todo lo que se escribe va escapado (`html\`\``), así que el riesgo práctico es bajo, pero es la directiva laxa que queda. Plan y avance en `CONTINUAR.md` §13.16 (Paso 5): convertir a clases, resolver los ~100 estilos con valor calculado con un helper que use `el.style.x = …` (la CSP lo permite), mover el CSS inyectado a una hoja `.css` y entonces quitar `'unsafe-inline'`.
 
 ## Rendimiento — pendiente
 

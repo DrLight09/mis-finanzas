@@ -1000,3 +1000,37 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .presup-input.an-presup-input{flex:1;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;}
 .an-presup-mes{font-size:12px;color:var(--text3);flex-shrink:0;}
 .an-presup-uso{font-size:11px;font-family:'DM Mono',monospace;}
+
+/* ── Spotify (Paso 5: estilos inline → clases) ────────────────────────────── */
+.sp-flex-c{display:flex;align-items:center;} .sp-mt-3{margin-top:3px;} .sp-mt-2{margin-top:2px;} .sp-mr-3{margin-right:3px;}
+.sp-flex1{flex:1;min-width:0;} .sp-flex-2{display:flex;align-items:center;gap:2px;} .sp-acciones{display:flex;align-items:center;gap:7px;}
+.badge.sp-badge-flecha{font-size:8px;display:inline-flex;align-items:center;gap:3px;} .badge.sp-click{cursor:pointer;}
+.btn-icon.sp-btn-34{min-width:34px;min-height:34px;} .btn-icon.sp-btn-34.sp-btn-acento{color:var(--accent);}
+.btn-icon.sp-btn-36{color:var(--text3);min-width:36px;min-height:36px;}
+.sp-t-neu{color:var(--text2);} .sp-t-muted{color:var(--text3);}
+.sp-vacio{font-size:12px;color:var(--text3);padding:4px 0;}
+.sp-pend-fila{display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;}
+.sp-pend-link{font-size:10px;color:var(--amber);text-decoration:underline;cursor:pointer;}
+.sp-saldo-ok{font-size:10px;color:var(--accent);margin-top:3px;}
+.sp-abonos{margin-top:6px;padding-left:8px;border-left:2px solid var(--border);}
+.sp-abono-fila{font-size:10px;color:var(--text2);margin-top:3px;display:flex;align-items:center;gap:6px;}
+.sp-deshacer{cursor:pointer;text-decoration:underline;flex-shrink:0;}
+.sp-extra-nota{font-size:10px;color:var(--text2);margin-top:3px;}
+.card.sp-hist-card{margin-bottom:7px;} .row.sp-hist-row{align-items:flex-start;gap:10px;}
+.sp-hist-tit{font-size:12px;font-weight:500;} .sp-hist-sub{font-size:10px;color:var(--text2);margin-top:1px;}
+.sp-hist-der{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.sp-hist-monto{font-size:13px;font-weight:500;font-family:'DM Mono',monospace;white-space:nowrap;}
+.sp-stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px;}
+.sp-stat-eyebrow{font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);}
+.sp-stat-sub{font-size:10px;color:var(--text3);margin-top:2px;} .sp-stat-hint{font-size:10px;color:var(--text3);margin-top:3px;}
+.stat.sp-span-all{grid-column:1/-1;}
+.sp-stat-cab{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.stat-label.sp-mb0{margin-bottom:0;} .sp-stat-nota{font-size:10px;color:var(--text2);} .sp-stat-nota2{font-size:11px;color:var(--text2);}
+.sp-flex-12{display:flex;gap:12px;margin-top:8px;} .sp-vsep{width:1px;background:var(--border);flex-shrink:0;}
+.sp-stat-pie{font-size:10px;color:var(--text3);margin-top:8px;padding-top:7px;border-top:1px solid var(--border);}
+.sp-stat-base{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.sp-aviso-final{grid-column:1/-1;font-size:10px;color:var(--text3);padding:6px 0 2px;}
+.sp-persona-btn{width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;}
+.avatar.sp-persona-avatar{width:28px;height:28px;font-size:10px;margin:0;flex-shrink:0;}
+.sp-chevron{margin-left:auto;flex-shrink:0;}
+.sp-persona-hint{font-size:11px;color:var(--text3);margin-top:5px;}

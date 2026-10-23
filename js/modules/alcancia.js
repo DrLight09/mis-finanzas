@@ -23,7 +23,7 @@
    Clave fija. No es cifrado fuerte — solo esconde el número del JSON plano.  */
 const _ALC_KEY = 0x4D;
 // Ícono (SVG inline) que reemplaza al texto "••••" cuando el monto de un depósito está oculto.
-const _ALC_ICONO_OCULTO = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" style="display:block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg>';
+const _ALC_ICONO_OCULTO = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" class="alc-svg-block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg>';
 // ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogAlc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'alcancia', ref:<id del depósito> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogAlc = (ref, rev) => ({ origen: { modulo: 'alcancia', ref, rev: rev || undefined } });
@@ -129,15 +129,15 @@ function _alcDesgloseHtml(movimientos, fmtFn){
   if(!filas.length) return '';
 
   const filasHtml = filas.map(row => `
-    <div class="row" style="margin-bottom:5px;align-items:center;gap:6px;">
-      <span style="flex-shrink:0;display:inline-flex;align-items:center;">${row.icon}</span>
-      <span style="font-size:11px;color:var(--text3);flex:1;min-width:0;">${row.label}</span>
-      <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--amber);flex-shrink:0;">${f(row.monto)}</span>
+    <div class="row alc-desglose-fila">
+      <span class="alc-desglose-ico">${row.icon}</span>
+      <span class="alc-desglose-label">${row.label}</span>
+      <span class="alc-desglose-monto">${f(row.monto)}</span>
     </div>`).join('');
 
   return `
-  <div class="card card-sm" style="margin-top:10px;padding:12px 14px;background:rgba(240,184,64,.04);border-color:rgba(240,184,64,.15);">
-    <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Origen del dinero acumulado</div>
+  <div class="card card-sm alc-aviso-card">
+    <div class="alc-aviso-cap"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Origen del dinero acumulado</div>
     ${filasHtml}
   </div>`;
 }
@@ -318,20 +318,20 @@ function _inyectarAlcanciaSheets(){
       <div class="sheet-handle"></div>
       <div class="sheet-title">Guardar en la alcancía</div>
       <div class="ig">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;">
-          <label class="il" for="alc_dep_origen" style="margin:0;">¿De dónde viene este dinero?</label>
-          <button type="button" id="alc_split_toggle" ${Events.attr('alcancia:toggleDividir')} style="padding:5px 10px;font-size:11px;font-weight:600;border-radius:7px;cursor:pointer;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-family:'DM Sans',sans-serif;">Dividir ÷</button>
+        <div class="alc-origen-cab">
+          <label class="il alc-origen-lbl" for="alc_dep_origen">¿De dónde viene este dinero?</label>
+          <button type="button" id="alc_split_toggle" ${Events.attr('alcancia:toggleDividir')} class="alc-btn-dividir">Dividir ÷</button>
         </div>
         <div id="alc_origen_simple">
           <div class="select-wrap">
             <select id="alc_dep_origen"></select>
           </div>
-          <div id="alc_dep_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
+          <div id="alc_dep_saldo_hint" class="alc-hint"></div>
         </div>
         <div id="alc_origen_split" style="display:none;">
           <div id="alc_split_rows"></div>
-          <button type="button" ${Events.attr('alcancia:agregarOrigen')} style="width:100%;padding:8px;font-size:12px;font-weight:600;border-radius:7px;cursor:pointer;background:transparent;border:1px dashed var(--border2);color:var(--text2);font-family:'DM Sans',sans-serif;">+ Agregar otro origen</button>
-          <div id="alc_split_total_hint" style="font-size:12px;color:var(--text3);margin-top:6px;font-family:'DM Mono',monospace;"></div>
+          <button type="button" ${Events.attr('alcancia:agregarOrigen')} class="alc-btn-agregar-origen">+ Agregar otro origen</button>
+          <div id="alc_split_total_hint" class="alc-split-total"></div>
         </div>
       </div>
       <div class="ig" id="alc_dep_deudor_wrap" style="display:none;">
@@ -339,11 +339,11 @@ function _inyectarAlcanciaSheets(){
         <div class="select-wrap">
           <select id="alc_dep_deudor"><option value="">Seleccionar persona</option></select>
         </div>
-        <div class="ig" id="alc_dep_deudor_grupo_wrap" style="display:none;margin-top:8px;">
+        <div class="ig alc-mt8" id="alc_dep_deudor_grupo_wrap" style="display:none;">
           <label class="il" for="alc_dep_deudor_grupo">¿De cuál préstamo?</label>
           <div class="select-wrap"><select id="alc_dep_deudor_grupo"></select></div>
         </div>
-        <div id="alc_dep_deudor_saldo_hint" style="font-size:11px;color:var(--text3);margin-top:4px;"></div>
+        <div id="alc_dep_deudor_saldo_hint" class="alc-hint"></div>
       </div>
       <div class="ig">
         <label class="il" for="alc_dep_monto">Monto total</label>
@@ -354,11 +354,11 @@ function _inyectarAlcanciaSheets(){
         <input type="date" id="alc_dep_fecha" class="input-fecha">
       </div>
       <div class="ig">
-        <label class="il" for="alc_dep_desc">Descripción <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label>
+        <label class="il" for="alc_dep_desc">Descripción <span class="alc-opcional">(opcional)</span></label>
         <input type="text" id="alc_dep_desc" placeholder="Ej: ahorro semanal, regalo, vuelto...">
       </div>
-      <button type="button" class="btn btn-primary" ${Events.attr('alcancia:confirmarDeposito')} style="background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.25);">Guardar</button>
-      <button type="button" class="btn btn-ghost" data-close-sheet="alcancia-depositar" style="margin-top:6px;">Cancelar</button>
+      <button type="button" class="btn btn-primary alc-btn-amber" ${Events.attr('alcancia:confirmarDeposito')}>Guardar</button>
+      <button type="button" class="btn btn-ghost alc-mt6" data-close-sheet="alcancia-depositar">Cancelar</button>
     </div>`;
   document.body.appendChild(sheetDep);
 
@@ -371,11 +371,11 @@ function _inyectarAlcanciaSheets(){
     <div class="sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-title">Destapar alcancía</div>
-      <div id="alc-destapar-resumen" style="margin-bottom:18px;"></div>
+      <div id="alc-destapar-resumen" class="alc-mb18"></div>
       <div class="ig">
         <label class="il" for="alc_real_monto">¿Cuánto dinero encontraste realmente?</label>
         <input type="text" inputmode="decimal" class="money-input" id="alc_real_monto" placeholder="0,00" autocomplete="off">
-        <div id="alc_diferencia_hint" style="font-size:12px;margin-top:6px;font-family:'DM Mono',monospace;"></div>
+        <div id="alc_diferencia_hint" class="alc-nota-mono"></div>
       </div>
       <div class="ig">
         <label class="il" for="alc_destino">¿Dónde vas a guardar este dinero?</label>
@@ -383,8 +383,8 @@ function _inyectarAlcanciaSheets(){
           <select id="alc_destino"></select>
         </div>
       </div>
-      <button type="button" class="btn btn-primary" ${Events.attr('alcancia:confirmarDestapar')} style="background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.25);">Confirmar y destapar</button>
-      <button type="button" class="btn btn-ghost" data-close-sheet="alcancia-destapar" style="margin-top:6px;">Cancelar</button>
+      <button type="button" class="btn btn-primary alc-btn-amber" ${Events.attr('alcancia:confirmarDestapar')}>Confirmar y destapar</button>
+      <button type="button" class="btn btn-ghost alc-mt6" data-close-sheet="alcancia-destapar">Cancelar</button>
     </div>`;
   document.body.appendChild(sheetD1);
 
@@ -397,8 +397,8 @@ function _inyectarAlcanciaSheets(){
     <div class="sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-title">Resultado</div>
-      <div id="alc-resultado-body" style="margin-bottom:18px;"></div>
-      <button type="button" class="btn btn-primary" ${Events.attr('alcancia:iniciarNueva')} style="background:var(--amber);color:#0a0a0a;border:none;margin-bottom:8px;">Iniciar nueva alcancía</button>
+      <div id="alc-resultado-body" class="alc-mb18"></div>
+      <button type="button" class="btn btn-primary alc-btn-amber-mb8" ${Events.attr('alcancia:iniciarNueva')}>Iniciar nueva alcancía</button>
       <button type="button" class="btn btn-ghost" data-close-sheet="alcancia-resultado">Cerrar</button>
     </div>`;
   document.body.appendChild(sheetRes);
@@ -578,7 +578,7 @@ function _alcWrappedBarrasSvg(hist){
     const esUltimo = i === datos.length - 1;
     return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="3" fill="${esUltimo?'var(--amber)':'var(--accent)'}" opacity="${esUltimo?'1':'0.5'}"/>`;
   }).join('');
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" style="display:block;overflow:visible;">${bars}</svg>`;
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" class="alc-svg-visible">${bars}</svg>`;
 }
 
 /* Arma el HTML de la tarjeta persistente de progreso (pantalla principal de
@@ -594,12 +594,12 @@ function _alcWrappedProgresoHtml(hist, fmtFn){
     ? `🔥 Llevas ${racha} alcancías seguidas ahorrando más que la anterior`
     : (racha === 1 ? '📈 Ahorraste más que en tu alcancía anterior' : null);
   return `
-    <div class="card" style="padding:14px 16px;background:rgba(240,184,64,.05);border-color:rgba(240,184,64,.2);">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">Tu progreso ahorrando</div>
+    <div class="card alc-prog-card">
+      <div class="alc-prog-cap">Tu progreso ahorrando</div>
       ${_alcWrappedBarrasSvg(hist)}
-      <div style="margin-top:10px;">
-        ${rachaMsg ? `<div style="font-size:12px;color:var(--amber);margin-bottom:6px;">${rachaMsg}</div>` : ''}
-        <div style="font-size:12px;color:var(--text3);">Mejor alcancía hasta ahora: <span style="color:var(--text2);font-family:'DM Mono',monospace;">${fmt2(mejor.saldoRegistrado||0)}</span>${esMejorHastaAhora ? ' <span style="color:var(--amber);">← tu última</span>' : ''}</div>
+      <div class="alc-mt10">
+        ${rachaMsg ? `<div class="alc-racha">${rachaMsg}</div>` : ''}
+        <div class="alc-prog-txt">Mejor alcancía hasta ahora: <span class="alc-prog-val">${fmt2(mejor.saldoRegistrado||0)}</span>${esMejorHastaAhora ? ' <span class="alc-c-amber">← tu última</span>' : ''}</div>
       </div>
     </div>`;
 }
@@ -674,18 +674,18 @@ hookGlobal('openSheet', function(id){
       if(res && a){
         const dias = _diasDesde(a.fechaInicio);
         res.innerHTML = `
-          <div class="card" style="background:rgba(240,184,64,.07);border-color:rgba(240,184,64,.2);padding:14px 16px;">
-            <div class="row" style="margin-bottom:8px;">
-              <span style="font-size:12px;color:var(--text3);">Tiempo activa</span>
-              <span style="font-size:13px;font-weight:600;color:var(--amber);">${_fmtTiempo(dias)}</span>
+          <div class="card alc-act-card">
+            <div class="row alc-fila-mb8">
+              <span class="alc-prog-txt">Tiempo activa</span>
+              <span class="alc-act-val-amber">${_fmtTiempo(dias)}</span>
             </div>
-            <div class="row" style="margin-bottom:8px;">
-              <span style="font-size:12px;color:var(--text3);">Depósitos registrados</span>
-              <span style="font-size:13px;font-weight:600;color:var(--text);">${a.depositos || 0}</span>
+            <div class="row alc-fila-mb8">
+              <span class="alc-prog-txt">Depósitos registrados</span>
+              <span class="alc-act-val">${a.depositos || 0}</span>
             </div>
             <div class="row">
-              <span style="font-size:12px;color:var(--text3);">Saldo esperado (registrado)</span>
-              <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${typeof fmt==='function'?fmt(a.saldoRegistrado||0):'$'+a.saldoRegistrado}</span>
+              <span class="alc-prog-txt">Saldo esperado (registrado)</span>
+              <span class="alc-act-val-mono">${typeof fmt==='function'?fmt(a.saldoRegistrado||0):'$'+a.saldoRegistrado}</span>
             </div>
           </div>`;
       }
@@ -739,8 +739,8 @@ window.renderAlcancia = function(){
       if(!movs.length){
         movsEl.innerHTML = '<div class="feed-empty">Aún no hay movimientos en esta alcancía.</div>';
       } else {
-        const tipoIcon = { yo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>', regalo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', mandado: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>', split: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg>', 'cobro-deuda': '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>' };
-        const tipoColor = { yo: 'var(--accent)', regalo: 'var(--amber)', mandado: 'var(--amber)', split: 'var(--amber)', 'cobro-deuda': 'var(--accent)' };
+        const tipoIcon = { yo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>', regalo: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', mandado: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>', split: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg>', 'cobro-deuda': '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>' };
+        const tipoColor = { yo: 'alc-c-accent', regalo: 'alc-c-amber', mandado: 'alc-c-amber', split: 'alc-c-amber', 'cobro-deuda': 'alc-c-accent' };
         // Orden por FECHA del depósito (más reciente arriba); si dos tienen la misma fecha, gana el que se
         // registró después (ts). Antes se usaba el orden de registro, así que un depósito olvidado y anotado
         // con fecha pasada quedaba arriba de otros más nuevos.
@@ -750,8 +750,8 @@ window.renderAlcancia = function(){
           return (y.ts || 0) - (x.ts || 0);
         });
         movsEl.innerHTML = movsOrdenados.map(m => {
-          const icon  = tipoIcon[m.tipo]  || '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>';
-          const color = tipoColor[m.tipo] || 'var(--accent)';
+          const icon  = tipoIcon[m.tipo]  || '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>';
+          const color = tipoColor[m.tipo] || 'alc-c-accent';
           const label = m.tipoLabel || (m.fuenteOrigen ? 'Propio' : 'Externo');
           const fmtFuente = m.fuenteOrigen
             ? _alcNombreFuente(m.fuenteOrigen) // misma resolución de nombre que el resto del módulo
@@ -759,15 +759,15 @@ window.renderAlcancia = function(){
                 ? (() => { const dd=Deudas.lista('favor').find(x=>x.id===m._prestamoDeudorId); return dd?dd.nombre:null; })()
                 : null);
           return `
-          <div class="card card-sm" style="margin-bottom:8px;display:flex;align-items:flex-start;gap:10px;">
-            <div style="font-size:18px;flex-shrink:0;margin-top:1px;">${icon}</div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;">${escHtml(m.desc || 'Depósito')}</div>
-              <div style="font-size:11px;color:var(--text3);">${m.fecha}${fmtFuente ? ' · de ' + fmtFuente : ''}</div>
-              <div style="font-size:10px;color:${color};margin-top:2px;">${label}</div>
+          <div class="card card-sm alc-mov-card">
+            <div class="alc-mov-ico">${icon}</div>
+            <div class="alc-mov-cuerpo">
+              <div class="alc-mov-desc">${escHtml(m.desc || 'Depósito')}</div>
+              <div class="alc-mov-fecha">${m.fecha}${fmtFuente ? ' · de ' + fmtFuente : ''}</div>
+              <div class="alc-mov-tipo ${color}">${label}</div>
             </div>
-            <span class="alc-dep-monto" data-shown="0" data-mov-id="${m.id}" ${Events.attr('alcancia:toggleMontoDeposito', m.id)} title="Toca para ver el monto" style="display:inline-flex;align-items:center;min-height:20px;font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--text3);flex-shrink:0;cursor:pointer;">${_ALC_ICONO_OCULTO}</span>
-            <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${Events.attr('alcancia:eliminarDeposito', m.id)} title="Eliminar este depósito" style="flex-shrink:0;">
+            <span class="alc-dep-monto alc-mov-monto" data-shown="0" data-mov-id="${m.id}" ${Events.attr('alcancia:toggleMontoDeposito', m.id)} title="Toca para ver el monto">${_ALC_ICONO_OCULTO}</span>
+            <button type="button" class="btn-delete-hover alc-no-shrink" data-stop-propagation="true" ${Events.attr('alcancia:eliminarDeposito', m.id)} title="Eliminar este depósito">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
             </button>
           </div>`;
@@ -802,44 +802,44 @@ window.renderAlcancia = function(){
           const difFmt = Math.abs(dif) < 1 ? 'Exacto'
             : dif > 0 ? '+' + (typeof fmt==='function'?fmt(dif):dif)
             : '−' + (typeof fmt==='function'?fmt(Math.abs(dif)):Math.abs(dif));
-          const difColor = Math.abs(dif) < 1 ? 'var(--text3)' : dif > 0 ? 'var(--accent)' : 'var(--red)';
+          const difColor = Math.abs(dif) < 1 ? 'alc-c-text3' : dif > 0 ? 'alc-c-accent' : 'alc-c-red';
           const histIdx = hist.length - i; // número de alcancía (1-based, más reciente = mayor)
           const desgloseId = 'alc-hist-desglose-' + histIdx;
           const desgloseFmt = typeof fmt === 'function' ? fmt : v => '$' + Math.round(v).toLocaleString('es-CO');
           const desgloseHtml = _alcDesgloseHtml(h.movimientos || [], desgloseFmt);
           return `
-          <div class="card card-sm" style="margin-bottom:8px;">
-            <div class="row" style="margin-bottom:6px;">
-              <span style="font-size:12px;font-weight:700;color:var(--text);">Alcancía #${histIdx}</span>
-              <span style="font-size:11px;color:var(--text3);">${h.fechaInicio||''} → ${h.fechaFin||''}</span>
+          <div class="card card-sm alc-fila-mb8">
+            <div class="row alc-fila-mb6">
+              <span class="alc-hist-tit">Alcancía #${histIdx}</span>
+              <span class="alc-mov-fecha">${h.fechaInicio||''} → ${h.fechaFin||''}</span>
             </div>
-            <div class="row" style="margin-bottom:4px;">
-              <span style="font-size:11px;color:var(--text3);">Duración</span>
-              <span style="font-size:12px;color:var(--text2);">${_fmtTiempo(h.diasDuracion||0)}</span>
+            <div class="row alc-fila-mb4">
+              <span class="alc-mov-fecha">Duración</span>
+              <span class="alc-hist-dur">${_fmtTiempo(h.diasDuracion||0)}</span>
             </div>
-            <div class="row" style="margin-bottom:4px;">
-              <span style="font-size:11px;color:var(--text3);">Depósitos</span>
-              <span style="font-size:12px;color:var(--text2);">${h.depositos||0}</span>
+            <div class="row alc-fila-mb4">
+              <span class="alc-mov-fecha">Depósitos</span>
+              <span class="alc-hist-dur">${h.depositos||0}</span>
             </div>
-            <div class="row" style="margin-bottom:4px;">
-              <span style="font-size:11px;color:var(--text3);">Registrado</span>
-              <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--amber);">${typeof fmt==='function'?fmt(h.saldoRegistrado||0):'$'+h.saldoRegistrado}</span>
+            <div class="row alc-fila-mb4">
+              <span class="alc-mov-fecha">Registrado</span>
+              <span class="alc-hist-saldo-amber">${typeof fmt==='function'?fmt(h.saldoRegistrado||0):'$'+h.saldoRegistrado}</span>
             </div>
-            <div class="row" style="margin-bottom:4px;">
-              <span style="font-size:11px;color:var(--text3);">Real encontrado</span>
-              <span style="font-size:12px;font-family:'DM Mono',monospace;color:var(--text);">${typeof fmt==='function'?fmt(h.saldoReal||0):'$'+h.saldoReal}</span>
+            <div class="row alc-fila-mb4">
+              <span class="alc-mov-fecha">Real encontrado</span>
+              <span class="alc-hist-saldo">${typeof fmt==='function'?fmt(h.saldoReal||0):'$'+h.saldoReal}</span>
             </div>
             <div class="row">
-              <span style="font-size:11px;color:var(--text3);">Diferencia</span>
-              <span style="font-size:12px;font-family:'DM Mono',monospace;color:${difColor};">${difFmt}</span>
+              <span class="alc-mov-fecha">Diferencia</span>
+              <span class="alc-hist-dif ${difColor}">${difFmt}</span>
             </div>
             ${desgloseHtml ? `
-            <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">
-              <button type="button" ${Events.attr('alcancia:toggleDesglose', desgloseId)} style="display:flex;align-items:center;gap:5px;background:none;border:none;padding:0;cursor:pointer;color:var(--amber);font-size:11px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;width:100%;">
-                <span style="display:inline-flex;align-items:center;gap:4px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Ver origen del dinero</span>
-                <svg class="alc-hist-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="alc-hist-desg-box">
+              <button type="button" ${Events.attr('alcancia:toggleDesglose', desgloseId)} class="alc-hist-btn">
+                <span class="alc-hist-btn-txt"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Ver origen del dinero</span>
+                <svg class="alc-hist-chevron alc-hist-chev" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
-              <div id="${desgloseId}" style="display:none;margin-top:4px;">${desgloseHtml}</div>
+              <div id="${desgloseId}" class="alc-mt4" style="display:none;">${desgloseHtml}</div>
             </div>` : ''}
           </div>`;
         }).join('');
@@ -1175,52 +1175,52 @@ window.alcanciaConfirmarDestapar = function(){
     const prev = hist.length >= 2 ? hist[hist.length - 2] : null;
     let comparHtml = '';
     if(!prev){
-      comparHtml = `<div style="font-size:12px;color:var(--text3);text-align:center;margin-top:10px;">Esta es tu primera alcancía. ¡Se inicia tu historial de ahorro!</div>`;
+      comparHtml = `<div class="alc-primera">Esta es tu primera alcancía. ¡Se inicia tu historial de ahorro!</div>`;
     } else {
       const difMonto  = saldoReg - (prev.saldoRegistrado||0);
       const difDias   = diasDuracion - (prev.diasDuracion||0);
       const racha = _alcRachaAhorro(hist);
       const rachaMsg = racha >= 2 ? `🔥 Racha de ${racha} alcancías seguidas ahorrando más` : '';
       comparHtml = `
-        <div class="card" style="margin-top:10px;padding:12px 14px;background:rgba(255,255,255,.04);">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;">vs. alcancía anterior</div>
-          <div class="row" style="margin-bottom:4px;">
-            <span style="font-size:12px;color:var(--text3);">Monto</span>
-            <span style="font-size:12px;font-family:'DM Mono',monospace;color:${difMonto>=0?'var(--accent)':'var(--red)'};">${difMonto>=0?'+':''} ${fmt2(difMonto)}</span>
+        <div class="card alc-cmp-card">
+          <div class="alc-cmp-cap">vs. alcancía anterior</div>
+          <div class="row alc-fila-mb4">
+            <span class="alc-prog-txt">Monto</span>
+            <span class="alc-cmp-monto ${difMonto>=0?'alc-c-accent':'alc-c-red'}">${difMonto>=0?'+':''} ${fmt2(difMonto)}</span>
           </div>
-          <div class="row"${rachaMsg ? ' style="margin-bottom:8px;"' : ''}>
-            <span style="font-size:12px;color:var(--text3);">Duración</span>
-            <span style="font-size:12px;color:${difDias>=0?'var(--accent)':'var(--red)'};">${difDias>=0?'+':''} ${difDias} días</span>
+          <div class="row alc-fila-mb8"${rachaMsg ? '' : ''}>
+            <span class="alc-prog-txt">Duración</span>
+            <span class="alc-cmp-dias ${difDias>=0?'alc-c-accent':'alc-c-red'}">${difDias>=0?'+':''} ${difDias} días</span>
           </div>
-          ${rachaMsg ? `<div style="font-size:12px;color:var(--amber);">${rachaMsg}</div>` : ''}
+          ${rachaMsg ? `<div class="alc-cmp-racha">${rachaMsg}</div>` : ''}
         </div>`;
     }
-    const difMsgColor = Math.abs(dif)<1 ? 'var(--text3)' : dif>0 ? 'var(--accent)' : 'var(--red)';
+    const difMsgColor = Math.abs(dif)<1 ? 'alc-c-text3' : dif>0 ? 'alc-c-accent' : 'alc-c-red';
     const difMsg = Math.abs(dif)<1
       ? 'El dinero encontrado coincide exactamente con lo registrado.'
       : dif > 0
         ? `Encontraste ${fmt2(dif)} adicionales que no estaban registrados. Se suman al patrimonio.`
         : `Faltan ${fmt2(Math.abs(dif))} respecto a lo registrado. Se ajusta el patrimonio.`;
     resBody.innerHTML = `
-      <div class="card" style="background:rgba(240,184,64,.07);border-color:rgba(240,184,64,.3);padding:16px;margin-bottom:10px;text-align:center;">
-        <div style="font-size:28px;font-weight:700;font-family:'DM Mono',monospace;color:var(--amber);margin-bottom:4px;">${fmt2(saldoReal)}</div>
-        <div style="font-size:12px;color:var(--text3);">encontraste en la alcancía</div>
+      <div class="card alc-res-card">
+        <div class="alc-res-saldo">${fmt2(saldoReal)}</div>
+        <div class="alc-prog-txt">encontraste en la alcancía</div>
       </div>
-      <div class="card card-sm" style="margin-bottom:8px;">
-        <div class="row" style="margin-bottom:6px;">
-          <span style="font-size:12px;color:var(--text3);">Registrado por la app</span>
-          <span style="font-size:13px;font-family:'DM Mono',monospace;color:var(--amber);">${fmt2(saldoReg)}</span>
+      <div class="card card-sm alc-fila-mb8">
+        <div class="row alc-fila-mb6">
+          <span class="alc-prog-txt">Registrado por la app</span>
+          <span class="alc-res-reg-val">${fmt2(saldoReg)}</span>
         </div>
-        <div class="row" style="margin-bottom:6px;">
-          <span style="font-size:12px;color:var(--text3);">Real encontrado</span>
-          <span style="font-size:13px;font-family:'DM Mono',monospace;color:var(--text);">${fmt2(saldoReal)}</span>
+        <div class="row alc-fila-mb6">
+          <span class="alc-prog-txt">Real encontrado</span>
+          <span class="alc-res-real-val">${fmt2(saldoReal)}</span>
         </div>
         <div class="row">
-          <span style="font-size:12px;color:var(--text3);">Diferencia</span>
-          <span style="font-size:13px;font-family:'DM Mono',monospace;color:${difMsgColor};">${Math.abs(dif)<1?'$0':dif>0?'+'+fmt2(dif):'−'+fmt2(Math.abs(dif))}</span>
+          <span class="alc-prog-txt">Diferencia</span>
+          <span class="alc-res-dif ${difMsgColor}">${Math.abs(dif)<1?'$0':dif>0?'+'+fmt2(dif):'−'+fmt2(Math.abs(dif))}</span>
         </div>
       </div>
-      <div style="font-size:12px;color:${difMsgColor};padding:8px 12px;background:${Math.abs(dif)<1?'rgba(255,255,255,.04)':dif>0?'rgba(200,240,96,.06)':'rgba(240,104,104,.06)'};border-radius:var(--radius-sm);margin-bottom:4px;">${difMsg}</div>
+      <div class="alc-dif-msg ${Math.abs(dif)<1?'alc-dif-0':dif>0?'alc-dif-pos':'alc-dif-neg'}">${difMsg}</div>
       ${_alcDesgloseHtml(a.movimientos, fmt2)}
       ${comparHtml}`;
   }
@@ -1473,7 +1473,7 @@ function _inyectarMasMenuItem(){
   item.id = 'mas-alcancia';
   item.setAttribute('data-screen','alcancia');
   item.innerHTML = `
-    <div class="mas-item-icon" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.25);">
+    <div class="mas-item-icon alc-mas-ico">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
         <path d="M12 2a4 4 0 0 1 4 4v1h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1V6a4 4 0 0 1 4-4z"/>
         <circle cx="12" cy="14" r="1.5" fill="var(--amber)" stroke="none"/>

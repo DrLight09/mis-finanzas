@@ -164,12 +164,12 @@ function poblarChequeoNu(){
   const faltan=(S.cajitas||[]).length-aptas.length;
   cont.innerHTML=html`${aptas.map(c=>{
     const e=nuValorEsperadoCajita(c); // el total que debería mostrar Nu: propio + intereses + encargos guardados ahí
-    return html`<div class="ig" style="margin-bottom:10px;">
-      <label class="il" for="chq-${c.id}">${c.nombre} <span style="font-size:10px;color:var(--text3);font-weight:400;">(debería verse: ${fmt(e.total)})</span></label>
+    return html`<div class="ig nu-chq-campo">
+      <label class="il" for="chq-${c.id}">${c.nombre} <span class="nu-chq-debe">(debería verse: ${fmt(e.total)})</span></label>
       <input type="text" inputmode="decimal" class="money-input" id="chq-${c.id}" data-chq-cajita="${c.id}" placeholder="${fmt(e.total)}">
-      ${e.encargos>0?html`<div style="font-size:10px;color:var(--text3);margin-top:3px;line-height:1.4;font-family:'DM Mono',monospace;">Incluye ${fmt(e.encargos)} de encargos guardados en esta cajita.</div>`:''}
+      ${e.encargos>0?html`<div class="nu-chq-nota">Incluye ${fmt(e.encargos)} de encargos guardados en esta cajita.</div>`:''}
     </div>`;
-  })}${faltan>0?html`<div style="font-size:11px;color:var(--text3);margin:2px 0 10px;line-height:1.4;">${faltan===1?'Hay 1 cajita que no aparece':'Hay '+faltan+' cajitas que no aparecen'}: todavía no ${faltan===1?'cumple':'cumplen'} un día completo generando intereses.</div>`:''}`;
+  })}${faltan>0?html`<div class="nu-chq-faltan">${faltan===1?'Hay 1 cajita que no aparece':'Hay '+faltan+' cajitas que no aparecen'}: todavía no ${faltan===1?'cumple':'cumplen'} un día completo generando intereses.</div>`:''}`;
 }
 
 // Abre el chequeo solo si hay algo que chequear (el botón ya sale deshabilitado; esto cubre cualquier otra vía).
@@ -435,24 +435,23 @@ function renderMetaProgress(c){
   if(!p) return '';
   const estado = p.diferencia >= 0 ? 'ok' : (p.diferencia > -(p.cuotaMensual*0.5) ? 'warn' : 'late');
   const estadoLabels = {ok:'Al día', warn:'Un poco atrás', late:'Atrasado/a'};
-  const estadoColors = {ok:'var(--accent)', warn:'var(--amber)', late:'var(--red)'};
   const aportesHtml = c.meta.aportes && c.meta.aportes.length ? c.meta.aportes.map(ap=>`<span class="cajita-meta-aporte-chip">${escHtml(ap.desc)}: ${fmt(ap.monto)}/mes</span>`).join('') : '';
   // saldo mínimo
-  const minInfo = c.meta.minimo ? `<div style="margin-top:8px;padding:7px 9px;background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.2);border-radius:7px;">
-    <div style="font-size:9px;color:var(--red);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">Saldo mínimo configurado</div>
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:11px;color:var(--text2);">Mínimo: <b style="color:var(--text);">${fmt(c.meta.minimo)}</b></span>
-      ${p.saldo < c.meta.minimo ? `<span style="font-size:10px;color:var(--red);font-family:'DM Mono',monospace;">¡Bajo el mínimo! Faltan ${fmt(c.meta.minimo - p.saldo)}</span>` : `<span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;">OK (${fmt(p.saldo - c.meta.minimo)} sobre el mínimo)</span>`}
+  const minInfo = c.meta.minimo ? `<div class="nu-min-caja">
+    <div class="nu-min-cap">Saldo mínimo configurado</div>
+    <div class="nu-fila-sb">
+      <span class="nu-min-txt">Mínimo: <b class="nu-b-text">${fmt(c.meta.minimo)}</b></span>
+      ${p.saldo < c.meta.minimo ? `<span class="nu-min-bajo">¡Bajo el mínimo! Faltan ${fmt(c.meta.minimo - p.saldo)}</span>` : `<span class="nu-min-ok">OK (${fmt(p.saldo - c.meta.minimo)} sobre el mínimo)</span>`}
     </div>
-    ${_calcPrestadoMeta(c.id) > 0 ? `<div style="margin-top:5px;font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;">${fmt(_calcPrestadoMeta(c.id))} prestado de esta cajita · Debería haber: ${fmt(p.saldo + _calcPrestadoMeta(c.id))}</div>` : ''}
+    ${_calcPrestadoMeta(c.id) > 0 ? `<div class="nu-prestado-aviso">${fmt(_calcPrestadoMeta(c.id))} prestado de esta cajita · Debería haber: ${fmt(p.saldo + _calcPrestadoMeta(c.id))}</div>` : ''}
   </div>` : '';
   return `<div class="cajita-meta-box">
     <div class="cajita-meta-header">
       <span class="cajita-meta-title">Meta: ${fmt(p.obj)}</span>
-      <button type="button" ${Events.attr('nu:abrirMetaCajita', c.id)} data-stop-propagation="true" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:10px;font-family:'DM Mono',monospace;padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.07);">editar</button>
+      <button type="button" ${Events.attr('nu:abrirMetaCajita', c.id)} data-stop-propagation="true" class="nu-link-editar">editar</button>
     </div>
-    <div class="cajita-meta-progress"><div class="cajita-meta-fill" style="width:${p.pct.toFixed(1)}%;background:${estadoColors[estado]};"></div></div>
-    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">
+    <div class="cajita-meta-progress"><div class="cajita-meta-fill nu-fill-${estado}" style="width:${p.pct.toFixed(1)}%;"></div></div>
+    <div class="nu-meta-pct-fila">
       <span>${p.pct.toFixed(0)}% logrado</span>
       <span>${p.mesesRestantes} ${p.mesesRestantes===1?'mes':'meses'} restantes · ${fmt(p.falta)} por ahorrar</span>
     </div>
@@ -505,7 +504,7 @@ function abrirMetaCajita(cajitaId){
   _metaAportesTemp = (meta.aportes || []).map(a=>({...a}));
   const wrap = document.getElementById('meta_min_wrap');
   wrap.style.display = meta.minimo ? '' : 'none';
-  document.getElementById('btn-toggle-meta-min').innerHTML = meta.minimo ? '<i class="fa-solid fa-chevron-up" style="margin-right:4px;"></i>Ocultar saldo mínimo' : '<i class="fa-solid fa-chevron-down" style="margin-right:4px;"></i>Configurar saldo mínimo';
+  document.getElementById('btn-toggle-meta-min').innerHTML = meta.minimo ? '<i class="fa-solid fa-chevron-up nu-ico-r4"></i>Ocultar saldo mínimo' : '<i class="fa-solid fa-chevron-down nu-ico-r4"></i>Configurar saldo mínimo';
   document.getElementById('btn-quitar-meta').style.display = meta.objetivo ? '' : 'none';
   _renderMetaAportes();
   _updateMetaCuotaPreview();
@@ -516,9 +515,9 @@ function _renderMetaAportes(){
   const el = document.getElementById('meta_aportes_list');
   if(!el) return;
   el.innerHTML = html`${_metaAportesTemp.map((ap,i)=>html`
-    <div class="prest-split-row" style="gap:6px;margin-bottom:7px;">
-      <input type="text" value="${ap.desc||''}" placeholder="Ej: Papá, Mamá" class="meta-aporte-desc" data-idx="${i}" style="flex:1;font-size:13px;padding:8px 10px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);outline:none;font-family:'DM Sans',sans-serif;">
-      <input type="text" inputmode="decimal" value="${ap.monto?fmtInput(ap.monto):''}" placeholder="$0" class="money-input meta-aporte-monto" data-idx="${i}" style="width:100px;flex-shrink:0;">
+    <div class="prest-split-row nu-aporte-fila">
+      <input type="text" value="${ap.desc||''}" placeholder="Ej: Papá, Mamá" class="meta-aporte-desc nu-aporte-desc" data-idx="${i}">
+      <input type="text" inputmode="decimal" value="${ap.monto?fmtInput(ap.monto):''}" placeholder="$0" class="money-input meta-aporte-monto nu-aporte-monto" data-idx="${i}">
       <button class="prest-split-del" ${raw(Events.attr('nu:metaAporteEliminar', i))}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
@@ -605,8 +604,8 @@ function toggleMetaMinWrap(){
   const abierto=wrap.style.display==='none';
   wrap.style.display=abierto?'':'none';
   btn.innerHTML=abierto
-    ?'<i class="fa-solid fa-chevron-up" style="margin-right:4px;"></i>Ocultar saldo mínimo'
-    :'<i class="fa-solid fa-chevron-down" style="margin-right:4px;"></i>Configurar saldo mínimo';
+    ?'<i class="fa-solid fa-chevron-up nu-ico-r4"></i>Ocultar saldo mínimo'
+    :'<i class="fa-solid fa-chevron-down nu-ico-r4"></i>Configurar saldo mínimo';
 }
 
 function quitarMetaCajita(){
@@ -840,7 +839,7 @@ function abrirCobrarCDT(cajitaId,cdtId,esVencimientoAuto){
     if(!v||isNaN(v)){diff.textContent='';return;}
     const d=v-k.val;
     const abs=Math.abs(d).toFixed(2);
-    if(Math.abs(d)<0.01){diff.innerHTML='<i class="fa-solid fa-check" style="margin-right:4px;"></i>Coincide exacto con el estimado';diff.style.color='var(--accent)';}
+    if(Math.abs(d)<0.01){diff.innerHTML='<i class="fa-solid fa-check nu-ico-r4"></i>Coincide exacto con el estimado';diff.style.color='var(--accent)';}
     else if(d>0){diff.textContent='↑ +$'+abs.replace('.',',') +' más que el estimado';diff.style.color='var(--purple)';}
     else{diff.textContent='↓ −$'+abs.replace('.',',')+' menos que el estimado';diff.style.color='var(--text3)';}
   };
@@ -945,7 +944,7 @@ function renderCajitas(){
   const btn=document.getElementById('btnAddCajita');
   const cajitas=S.cajitas||[];
   if(!cajitas.length){
-    el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:6px 0 8px;">Sin cajitas. Agrega tu primera cajita de Nu — empieza en $0 y crece sola.</div>';
+    el.innerHTML='<div class="nu-vacio">Sin cajitas. Agrega tu primera cajita de Nu — empieza en $0 y crece sola.</div>';
     msg.textContent='';btn.style.display='';return;
   }
   el.innerHTML=html`${cajitas.map(c=>{
@@ -960,19 +959,19 @@ function renderCajitas(){
     const hasMeta=!!(c.meta&&c.meta.objetivo);
     const metaPct=hasMeta?Math.min(100,(k.val/c.meta.objetivo)*100):0;
     // Badges indicadores
-    const cdtBadge=hasCDTs?html`<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px 3px 6px;border-radius:20px;background:rgba(176,144,240,.15);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-size:10px;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0;"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${cdts.length===1?fmt(totalCDT):cdts.length+' CDTs'}</span>`:'';
-    const metaBadge=hasMeta?html`<span style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-size:10px;font-weight:600;font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0;">${metaPct.toFixed(0)}%</span>`:'';
-    return html`<div class="cajita-row-hover" style="background:var(--bg3);border-radius:var(--radius-sm);padding:14px 13px;margin-bottom:7px;cursor:pointer;transition:border-color .15s,background .15s;display:flex;align-items:center;gap:10px;" id="cajita-row-${c.id}" ${raw(Events.attr('nu:abrirDetalleCajita', c.id))}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.nombre}</div>
-        ${interesHoy>0.1?html`<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;">+${fmt(interesHoy)}/día</div>`:''}
+    const cdtBadge=hasCDTs?html`<span class="nu-badge-cdt"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${cdts.length===1?fmt(totalCDT):cdts.length+' CDTs'}</span>`:'';
+    const metaBadge=hasMeta?html`<span class="nu-badge-meta">${metaPct.toFixed(0)}%</span>`:'';
+    return html`<div class="cajita-row-hover nu-cajita-fila" id="cajita-row-${c.id}" ${raw(Events.attr('nu:abrirDetalleCajita', c.id))}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="2" stroke-linecap="round" class="nu-no-shrink"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+      <div class="nu-cajita-cuerpo">
+        <div class="nu-cajita-nombre">${c.nombre}</div>
+        ${interesHoy>0.1?html`<div class="nu-cajita-dia">+${fmt(interesHoy)}/día</div>`:''}
       </div>
-      <div style="display:flex;align-items:center;gap:5px;flex-wrap:nowrap;flex-shrink:0;">${cdtBadge}${metaBadge}</div>
-      <div style="text-align:right;flex-shrink:0;">
-        <div style="font-size:15px;font-weight:500;font-family:'DM Mono',monospace;color:var(--nu-light);">${fmt(k.val)}</div>
+      <div class="nu-cajita-badges">${cdtBadge}${metaBadge}</div>
+      <div class="nu-cajita-der">
+        <div class="nu-cajita-saldo">${fmt(k.val)}</div>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round" class="nu-no-shrink"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`;
   })}`;
   if(cajitas.length>=MAX){msg.innerHTML=html`<div class="cajita-limit-msg">Límite alcanzado (${MAX}/${MAX})</div>`;btn.style.display='none';}
@@ -1130,50 +1129,49 @@ function abrirSubMeta(){
   const p=calcMetaProgreso(c);
   if(!p){
     // Sin meta — mostrar formulario rápido
-    el.innerHTML=html`<div class="card" style="text-align:center;padding:24px 20px;">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" style="margin-bottom:12px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Sin meta configurada</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:18px;">Define un objetivo de ahorro para esta cajita y lleva el seguimiento mes a mes.</div>
+    el.innerHTML=html`<div class="card nu-meta-vacia">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" class="nu-mb12"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div class="nu-meta-vacia-titulo">Sin meta configurada</div>
+      <div class="nu-meta-vacia-txt">Define un objetivo de ahorro para esta cajita y lleva el seguimiento mes a mes.</div>
       <button type="button" class="btn btn-primary" ${raw(Events.attr('nu:abrirMetaCajita', c.id))}>Configurar meta</button>
     </div>`;
   } else {
-    const estadoColors={ok:'var(--accent)',warn:'var(--amber)',late:'var(--red)'};
     const estadoLabels={ok:'Al día',warn:'Un poco atrás',late:'Atrasado/a'};
     const estado=p.diferencia>=0?'ok':(p.diferencia>-(p.cuotaMensual*0.5)?'warn':'late');
     const aportesHtml=c.meta.aportes&&c.meta.aportes.length?html`${c.meta.aportes.map(ap=>html`<span class="cajita-meta-aporte-chip">${ap.desc}: ${fmt(ap.monto)}/mes</span>`)}`:'';
-    const minimoHtml=c.meta.minimo?html`<div style="margin-top:10px;padding:10px 12px;background:rgba(240,104,104,.08);border:1px solid rgba(240,104,104,.2);border-radius:9px;">
-      <div style="font-size:10px;color:var(--red);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Saldo mínimo</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:12px;color:var(--text2);">Mínimo: <b style="color:var(--text);">${fmt(c.meta.minimo)}</b></span>
-        ${p.saldo<c.meta.minimo?html`<span style="font-size:11px;color:var(--red);font-family:'DM Mono',monospace;">¡Bajo! −${fmt(c.meta.minimo-p.saldo)}</span>`:html`<span style="font-size:11px;color:var(--accent);font-family:'DM Mono',monospace;">OK +${fmt(p.saldo-c.meta.minimo)}</span>`}
+    const minimoHtml=c.meta.minimo?html`<div class="nu-min-caja-lg">
+      <div class="nu-min-cap-lg">Saldo mínimo</div>
+      <div class="nu-fila-sb">
+        <span class="nu-min-txt-12">Mínimo: <b class="nu-b-text">${fmt(c.meta.minimo)}</b></span>
+        ${p.saldo<c.meta.minimo?html`<span class="nu-min-bajo-11">¡Bajo! −${fmt(c.meta.minimo-p.saldo)}</span>`:html`<span class="nu-min-ok-11">OK +${fmt(p.saldo-c.meta.minimo)}</span>`}
       </div>
     </div>`:'';
     el.innerHTML=html`
-      <div class="card" style="margin-bottom:9px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <div class="card nu-meta-card">
+        <div class="nu-meta-cab">
           <div>
-            <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(p.obj)}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Objetivo</div>
+            <div class="nu-meta-obj">${fmt(p.obj)}</div>
+            <div class="nu-meta-obj-etq">Objetivo</div>
           </div>
-          <span class="badge" style="background:rgba(${estado==='ok'?'200,240,96':'warn'===estado?'240,184,64':'240,104,104'},.12);color:${estadoColors[estado]};border:1px solid;border-color:${estadoColors[estado]}40;">${estadoLabels[estado]}</span>
+          <span class="badge nu-estado-${estado}">${estadoLabels[estado]}</span>
         </div>
-        <div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-bottom:8px;">
-          <div style="height:100%;width:${p.pct.toFixed(1)}%;background:${estadoColors[estado]};border-radius:4px;transition:width .5s;"></div>
+        <div class="nu-meta-barra">
+          <div class="nu-meta-fill nu-fill-${estado}" style="width:${p.pct.toFixed(1)}%;"></div>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:14px;">
+        <div class="nu-meta-pie">
           <span>${p.pct.toFixed(0)}% logrado · ${fmt(p.saldo)} ahorrado</span>
           <span>Faltan ${fmt(p.falta)}</span>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:${aportesHtml||minimoHtml?'12':'0'}px;">
+        <div class="nu-meta-stats ${aportesHtml||minimoHtml?'nu-mb12':'nu-mb0'}">
           <div class="cajita-meta-stat"><div class="cajita-meta-stat-label">Cuota/mes</div><div class="cajita-meta-stat-val">${fmt(p.cuotaMensual)}</div></div>
           <div class="cajita-meta-stat"><div class="cajita-meta-stat-label">Esperado hoy</div><div class="cajita-meta-stat-val">${fmt(p.esperadoHoy)}</div></div>
           <div class="cajita-meta-stat"><div class="cajita-meta-stat-label">Meses rest.</div><div class="cajita-meta-stat-val">${p.mesesRestantes}</div></div>
         </div>
-        ${aportesHtml?html`<div class="cajita-meta-aporte-row" style="margin-bottom:10px;">${aportesHtml}</div>`:''}
+        ${aportesHtml?html`<div class="cajita-meta-aporte-row nu-chq-campo">${aportesHtml}</div>`:''}
         ${minimoHtml}
       </div>
-      <button type="button" class="btn btn-ghost" style="margin-bottom:8px;" ${raw(Events.attr('nu:abrirMetaCajita', c.id))}>Editar meta</button>
-      <button type="button" class="btn btn-ghost" style="color:var(--red);border-color:rgba(240,104,104,.3);" ${raw(Events.attr('nu:quitarMetaCajita'))}>Eliminar meta</button>`;
+      <button type="button" class="btn btn-ghost nu-mb8" ${raw(Events.attr('nu:abrirMetaCajita', c.id))}>Editar meta</button>
+      <button type="button" class="btn btn-ghost nu-btn-peligro" ${raw(Events.attr('nu:quitarMetaCajita'))}>Eliminar meta</button>`;
   }
   _showCuentasPanel('cuentas-sub-meta');
 }
@@ -1187,57 +1185,57 @@ function abrirSubCDTs(){
   const saldoDisp=calcC(c).val;
   let contenido='';
   if(!cdts.length){
-    contenido=html`<div class="card" style="text-align:center;padding:24px 20px;margin-bottom:9px;">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round" style="margin-bottom:12px;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      <div style="font-size:15px;font-weight:600;margin-bottom:6px;">Sin CDTs activos</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:18px;">Bloquea parte del saldo de esta cajita como CDT y gana intereses mientras esperas el vencimiento.</div>
+    contenido=html`<div class="card nu-cdt-vacio">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round" class="nu-mb12"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      <div class="nu-meta-vacia-titulo">Sin CDTs activos</div>
+      <div class="nu-meta-vacia-txt">Bloquea parte del saldo de esta cajita como CDT y gana intereses mientras esperas el vencimiento.</div>
     </div>`;
   } else {
     contenido=html`${cdts.map(cdt=>{
       const cdtK=calcCDT(cdt);
       const dr=cdt.vence?Math.ceil((_fechaSafe(cdt.vence)-new Date())/86400000):null;
       const vencido=dr!==null&&dr<=0;
-      return html`<div class="card" style="margin-bottom:9px;background:rgba(176,144,240,.06);border-color:rgba(176,144,240,.25);">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+      return html`<div class="card nu-cdt-card">
+        <div class="nu-cdt-cab">
           <div>
-            <div style="font-size:18px;font-weight:500;font-family:'DM Mono',monospace;color:var(--purple);">${fmt(cdtK.val)}</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px;">Capital: ${fmt(cdt.monto)} · +${fmt(cdtK.ganado)} netos · ${String(cdt.tasa).replace('.',',')}% EA</div>
-            ${cdtK.retencion>0.01?html`<div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">RTE ${cdt.rte!=null?cdt.rte:4}%: −${fmt(cdtK.retencion)}</div>`:''}
+            <div class="nu-cdt-val">${fmt(cdtK.val)}</div>
+            <div class="nu-meta-obj-etq">Capital: ${fmt(cdt.monto)} · +${fmt(cdtK.ganado)} netos · ${String(cdt.tasa).replace('.',',')}% EA</div>
+            ${cdtK.retencion>0.01?html`<div class="nu-cdt-rte">RTE ${cdt.rte!=null?cdt.rte:4}%: −${fmt(cdtK.retencion)}</div>`:''}
           </div>
           ${dr!==null?html`<span class="badge ${vencido?'bg-red':'bg-purple'}">${vencido?'¡Venció!':dr+'d'}</span>`:''}
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-          <div style="background:var(--bg4);border-radius:7px;padding:8px 10px;">
-            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;margin-bottom:3px;">Apertura</div>
-            <div style="font-size:12px;font-family:'DM Mono',monospace;">${cdt.inicio||'—'}</div>
+        <div class="nu-cdt-grid">
+          <div class="nu-cdt-celda">
+            <div class="nu-cdt-cap">Apertura</div>
+            <div class="nu-cdt-dato">${cdt.inicio||'—'}</div>
           </div>
-          <div style="background:var(--bg4);border-radius:7px;padding:8px 10px;">
-            <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;font-family:'DM Mono',monospace;margin-bottom:3px;">Vence</div>
-            <div style="font-size:12px;font-family:'DM Mono',monospace;">${cdt.vence||'—'}</div>
+          <div class="nu-cdt-celda">
+            <div class="nu-cdt-cap">Vence</div>
+            <div class="nu-cdt-dato">${cdt.vence||'—'}</div>
           </div>
         </div>
-        <div style="display:flex;gap:7px;">
-          <button type="button" class="btn btn-ghost btn-sm" style="flex:1;" ${raw(Events.attr('nu:editarCDT', c.id, cdt.id))}>Editar</button>
+        <div class="nu-cdt-btns">
+          <button type="button" class="btn btn-ghost btn-sm nu-flex1" ${raw(Events.attr('nu:editarCDT', c.id, cdt.id))}>Editar</button>
           ${vencido
-            ? html`<button type="button" class="btn btn-sm" style="flex:1;background:rgba(200,240,96,.18);border-color:rgba(200,240,96,.6);color:var(--accent);font-weight:700;" ${raw(Events.attr('nu:abrirCobrarCDT', c.id, cdt.id))}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:4px;vertical-align:middle;"><polyline points="20 6 9 17 4 12"/></svg>
+            ? html`<button type="button" class="btn btn-sm nu-btn-cobrar" ${raw(Events.attr('nu:abrirCobrarCDT', c.id, cdt.id))}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="nu-ico-chk"><polyline points="20 6 9 17 4 12"/></svg>
             Cobrar CDT
           </button>`
-            : html`<button type="button" class="btn btn-sm" style="flex:1;background:rgba(200,240,96,.12);border-color:rgba(200,240,96,.35);color:var(--accent);" ${raw(Events.attr('nu:liberarCDTManual', c.id, cdt.id))}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="margin-right:4px;vertical-align:middle;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
+            : html`<button type="button" class="btn btn-sm nu-btn-reinvertir" ${raw(Events.attr('nu:liberarCDTManual', c.id, cdt.id))}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="nu-ico-chk"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
             Cerrar CDT
           </button>`}
         </div>
       </div>`;
     })}`;
   }
-  contenido=html`${contenido}<button type="button" class="btn btn-ghost" style="margin-top:${cdts.length?'4':'0'}px;" ${raw(Events.attr('nu:abrirCrearCDT', c.id))}>
-    <span style="display:flex;align-items:center;justify-content:center;gap:5px;">
+  contenido=html`${contenido}<button type="button" class="btn btn-ghost ${cdts.length?'nu-mt4':'nu-mt0'}" ${raw(Events.attr('nu:abrirCrearCDT', c.id))}>
+    <span class="nu-btn-crear-ico">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       ${cdts.length?'Agregar otro CDT':'Crear CDT'}
     </span>
   </button>
-  <div style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-align:center;">Disponible en cajita: ${fmt(saldoDisp)}</div>`;
+  <div class="nu-disp">Disponible en cajita: ${fmt(saldoDisp)}</div>`;
   el.innerHTML=contenido;
   _showCuentasPanel('cuentas-sub-cdts');
 }
@@ -1271,11 +1269,11 @@ function abrirNuMovimiento(tipo) {
 
   document.getElementById('nuMovTitle').textContent = esEntrada ? 'Agregar a Nu' : 'Retirar de Nu';
   document.getElementById('nuMovSubtitle').innerHTML = esEntrada
-    ? 'El valor se <b style="color:var(--nu-light);">sumará</b> a la cajita que elijas y contará como ingreso del mes.'
-    : 'El valor se <b style="color:var(--red);">restará</b> de la cajita que elijas.';
+    ? 'El valor se <b class="nu-c-nu">sumará</b> a la cajita que elijas y contará como ingreso del mes.'
+    : 'El valor se <b class="nu-c-red">restará</b> de la cajita que elijas.';
   document.getElementById('nuMovDescLabel').innerHTML = esEntrada
-    ? '¿De dónde viene esta plata? <span style="color:var(--red);">*</span>'
-    : '¿En qué se gastó o a dónde fue? <span style="color:var(--red);">*</span>';
+    ? '¿De dónde viene esta plata? <span class="nu-c-red">*</span>'
+    : '¿En qué se gastó o a dónde fue? <span class="nu-c-red">*</span>';
   document.getElementById('nuMovMontoLabel').textContent = esEntrada ? '¿Cuánto recibiste?' : '¿Cuánto vas a restar?';
   const btnConf = document.getElementById('btn-confirmar-nu-mov');
   if (btnConf) {
@@ -1311,18 +1309,18 @@ function _nuMovRenderCajitas() {
   if (!wrap) return;
   const cajitas = S.cajitas || [];
   if (!cajitas.length) {
-    wrap.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0;">No tenés cajitas. Creá una primero desde la pantalla de Nu.</div>';
+    wrap.innerHTML = '<div class="nu-sel-vacio">No tenés cajitas. Creá una primero desde la pantalla de Nu.</div>';
     return;
   }
   wrap.innerHTML = html`${cajitas.map(c => {
     const saldo = calcC(c).val;
     return html`<div data-nu-cajita="cajita:${c.id}"
-      style="display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-radius:10px;border:1.5px solid var(--border2);background:var(--bg3);cursor:pointer;transition:all .15s;">
+      class="nu-sel-fila">
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);">${c.nombre||'Cajita'}</div>
-        <div style="font-size:11px;font-family:'DM Mono',monospace;color:var(--nu-light);margin-top:2px;">${fmt(saldo)}</div>
+        <div class="nu-sel-nombre">${c.nombre||'Cajita'}</div>
+        <div class="nu-sel-saldo">${fmt(saldo)}</div>
       </div>
-      <div id="_nuMovCheck_${c.id}" style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;"></div>
+      <div id="_nuMovCheck_${c.id}" class="nu-sel-radio"></div>
     </div>`;
   })}`;
 

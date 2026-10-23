@@ -74,12 +74,10 @@ describe('historial-cuenta', () => {
       { id: 'g03', fuente: 'nequi', desc: 'Pago TC', _esPagoTC: true, monto: 200, fecha: D(2) },
       { id: 'g04', fuente: 'nequi', desc: 'Extra', _esExtraPrestamo: true, monto: 300, fecha: D(2) },
       { id: 'g05', fuente: 'nequi', desc: 'Con nota', nota: 'pagado por encargo', monto: 400, fecha: D(2) },
-      { id: 'g06', fuente: 'nequi', desc: 'Alcancía', _esAlcancia: true, monto: 500, fecha: D(3) },
       { id: 'g07', fuente: 'nequi', desc: 'Espejo', _secundario: true, _origenSeccion: 'Prestado · Me deben', monto: 600, fecha: D(3) },
       { id: 'g08', fuente: 'cajita:k1', desc: 'Gasto cajita', cat: 'Otro', monto: 77, fecha: D(3) },
       { id: 'g09', fuente: 'custom:z', desc: 'Cine', cat: 'Ocio', nota: 'zn', monto: 88, fecha: D(3) },
       { id: 'g10', fuente: 'custom:z', desc: 'Mandado', nota: 'encargo foo', monto: 89, fecha: D(3) },
-      { id: 'g11', fuente: 'custom:z', desc: 'Alc z', _esAlcancia: true, monto: 90, fecha: D(3) },
       { id: 'g12', fuente: 'custom:z', desc: 'Fijo z', esPagoGastoFijo: true, monto: 91, fecha: D(3) },
       { id: 'g13', fuente: 'custom:y', desc: 'y', monto: 3, fecha: D(3) },
       { fuente: 'nequi', desc: 'gasto sin id', monto: 5, fecha: D(5) },
@@ -124,11 +122,11 @@ describe('historial-cuenta', () => {
 
   describe('qué filas muestra cada cuenta, y en qué orden (fecha desc; misma fecha: id más reciente primero)', () => {
     const ESPERADO = {
-      'nequi': '?,?,?,?,m18,t06,t05,t04,p5,m11,g07,g06,t01,sp1,p2,p1,m10,m09,m08,m06,g05,g04,g03,g01,m04,m01,m05',
+      'nequi': '?,?,?,?,m18,t06,t05,t04,p5,m11,g07,t01,sp1,p2,p1,m10,m09,m08,m06,g05,g04,g03,g01,m04,m01,m05',
       'efectivo': '?,p5,ab1,t02,t01,p2,m07,g02,m03,m02',
       'nu': 'sp4,t03,t03,p7,p4,m14,m13,h2,g08,ab3,t02,h1,h4',
       'cajita:k1': 'sp4,t03,p4,m13,h2,g08,ab3,t02,h1',
-      'custom:z': 'zc8,zc7,zc4,m21,m19,m17,zc2,t09,t07,t06,t05,sp9,p4,m16,m15,g12,g11,g10,g09,ab2,zc1,p3,zc3',
+      'custom:z': 'zc8,zc7,zc4,m21,m19,m17,zc2,t09,t07,t06,t05,sp9,p4,m16,m15,g12,g10,g09,ab2,zc1,p3,zc3',
       'custom:y': 'yc1,m22,t07,g13',
     };
     for (const [cuenta, esperado] of Object.entries(ESPERADO)) {

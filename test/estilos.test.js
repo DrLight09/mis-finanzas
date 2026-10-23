@@ -38,12 +38,19 @@ const CONVERTIDOS = [
   { f: 'js/modules/spotify.js', prefijos: ['sp-', 'badge-xs', 'row-name-13', 'cuenta-flecha'], permitidos: ['display:none;'] },
   // prestado: solo queda el color/fondo del avatar de cada persona (lo elige el usuario)
   { f: 'js/modules/prestado.js', prefijos: ['pr-', 'badge-xs', 'ico-inline', 'cuenta-flecha', 'cuenta-svg-mid'], permitidos: [/^color:\$\{/] },
+  // nu: solo queda el ancho (porcentaje calculado) de las barras de progreso de la meta; los colores por estado son clases nu-fill-/nu-estado-
+  { f: 'js/modules/nu.js', prefijos: ['nu-', 'cajita-meta-fill'], armadas: ['nu-estado-', 'nu-fill-'], permitidos: [/^width:\$\{/] },
+  // alcancia: solo quedan 4 display:none que JS conmuta (bloque de origen dividido, grupo de deudor, desglose del historial); `sinCss`: ganchos
+  // de JS que ya existían y no tienen regla. Colores por tipo/diferencia = clases alc-c-* y alc-dif-*
+  { f: 'js/modules/alcancia.js', prefijos: ['alc-'], armadas: ['alc-c-', 'alc-dif-'], sinCss: ['alc-hist-chevron', 'alc-dep-monto'], permitidos: ['display:none;'] },
+  // movimientos: detalle de un movimiento, sin ningún style="" (el color del monto sale de mdet-c-accent/red/amber)
+  { f: 'js/core/movimientos.js', prefijos: ['mdet-', 'badge-xs'], permitidos: [] },
   // wrapped: su CSS vive en el <style> que inyecta el propio archivo (cssEn). Solo queda el retraso de animación de cada punto de la línea,
   // un valor distinto por punto (i*0.09s) que no puede ser una clase.
   { f: 'js/modules/wrapped.js', prefijos: ['wrapped-'], cssEn: ['js/modules/wrapped.js'], permitidos: [/^animation-delay:\$\{/] },
 ];
 
-CONVERTIDOS.forEach(({ f, prefijos, permitidos, cssEn = [], armadas = [] }) => {
+CONVERTIDOS.forEach(({ f, prefijos, permitidos, cssEn = [], armadas = [], sinCss = [] }) => {
   const css = CSS + cssEn.map(leer).join('\n');
   const src = leer(f);
   test(`${f} — no queda ningún style="" estático (solo lo permitido: display:none que JS conmuta o valores calculados)`, () => {
@@ -56,7 +63,7 @@ CONVERTIDOS.forEach(({ f, prefijos, permitidos, cssEn = [], armadas = [] }) => {
     // solo lo que está dentro de class="…" / className = '…' (los ids de DOM con el mismo prefijo no cuentan)
     const trozos = [...src.matchAll(/class=\\?"([^"]*)"|className\s*=\s*'([^']*)'/g)].map(m => m[1] || m[2]).join(' ');
     // `armadas`: prefijos de clases que el código completa con una variable (p. ej. an-t-${tono}); se verifican aparte, valor por valor
-    const clases = [...new Set([...trozos.matchAll(re)].map(m => m[1]))].filter(c => !armadas.includes(c));
+    const clases = [...new Set([...trozos.matchAll(re)].map(m => m[1]))].filter(c => !armadas.includes(c) && !sinCss.includes(c));
     assert.ok(clases.length > 0);
     const faltan = clases.filter(c => !new RegExp('\\.' + c.replace(/-/g, '\\-') + '(?![\\w-])').test(css));
     assert.deepEqual(faltan, []);
@@ -98,4 +105,22 @@ test('prestado: las clases de color de los tipos de extra (clase: en _extTipos) 
   const clases = [...src.matchAll(/color: 'var\(--[a-z0-9]+\)', clase: '([a-z0-9-]+)'/g)].map(m => m[1]);
   assert.ok(clases.length === 4, 'debe haber 4 tipos de extra con clase');
   clases.forEach(c => assert.ok(new RegExp('\\.' + c + '(?![\\w-])').test(css), c));
+});
+
+test('nu: los estados que arma el código (nu-estado-X, nu-fill-X) existen en styles.css y no queda estadoColors', () => {
+  const css = leer('css/styles.css'), src = leer('js/modules/nu.js');
+  ['ok', 'warn', 'late'].forEach(e => ['nu-estado-', 'nu-fill-'].forEach(p => assert.ok(new RegExp('\\.' + p + e + '(?![\\w-])').test(css), p + e)));
+  assert.doesNotMatch(src, /estadoColors/);
+  assert.match(src, /const estado\s*=\s*p\.diferencia\s*>=\s*0\s*\?\s*'ok'\s*:\s*\(p\.diferencia\s*>\s*-\(p\.cuotaMensual\*0\.5\)\s*\?\s*'warn'\s*:\s*'late'\)/);
+});
+
+test('alcancia: las clases de color que arma el código (alc-c-X, alc-dif-X) existen en styles.css', () => {
+  const css = leer('css/styles.css');
+  ['alc-c-accent', 'alc-c-amber', 'alc-c-red', 'alc-c-text3', 'alc-dif-0', 'alc-dif-pos', 'alc-dif-neg'].forEach(c => assert.ok(new RegExp('\\.' + c + '(?![\\w-])').test(css), c));
+  const src = leer('js/modules/alcancia.js');
+  // los mapas de color que alimentan class=\"…\" son clases (el hint.style.color y el fill del SVG sí siguen usando var(--x), por CSSOM/atributo SVG)
+  for (const nombre of ['tipoColor', 'difColor', 'difMsgColor']) {
+    const linea = src.split('\n').find(l => l.includes('const ' + nombre));
+    assert.ok(linea && !/var\(--/.test(linea), nombre);
+  }
 });

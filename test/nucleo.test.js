@@ -733,7 +733,7 @@ describe('clase-movimientos', () => {
     assert.equal(ctx._esEntradaEspejoNoIngreso({ tipo: 'entrada', clase: 'ajuste' }), true);
     assert.equal(ctx._esEntradaEspejoNoIngreso({ tipo: 'entrada', _origenSeccion: 'Mesada' }), true, 'sin clase no cuenta como ingreso');
     assert.equal(ctx._esEntradaEspejoNoIngreso({ tipo: 'entrada', desc: 'Sueldo' }), true, 'tampoco se adivina por el texto');
-    assert.equal(ctx._esGastoVarNoReal({ _esAlcancia: true, clase: 'gasto' }), false);
+    assert.equal(ctx._esGastoVarNoReal({ clase: 'gasto' }), false);
     assert.equal(ctx._esGastoVarNoReal({ clase: 'neutro' }), true);
     assert.equal(ctx._esGastoVarNoReal({ _esPagoTC: true }), false, 'sin clase es un gasto de la lista de gastos: cuenta (y save() avisa)');
     assert.equal(ctx.claseEfectivaMovimiento({ clase: 'ajuste' }), 'ajuste');

@@ -8,6 +8,38 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 Documentación: [`libro-de-movimientos.md`](./libro-de-movimientos.md).
 
+### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 13) — `alcancia.js`
+
+**`alcancia.js`: 104 `style=""` → 4** (los 4 son `display:none` de elementos que el JS muestra/oculta: bloque de origen dividido, selector de préstamo del cobro de deuda, desglose de cada alcancía del historial). 61 clases `alc-*` al final de `styles.css`.
+- **Elementos que el JS conmuta:** el selector de préstamo (`alc_dep_deudor_grupo_wrap`) y el desglose (`alc-hist-desglose-N`) conservan `style="display:none;"` y ganan una clase solo para el margen (`alc-mt8`, `alc-mt4`): `_alcDeudorSaldoHintActualizar` lee `style.display !== 'none'`, así que ese inline tiene que seguir ahí.
+- **Colores por tipo/diferencia → clases:** `tipoColor`, `difColor` y `difMsgColor` ya no guardan `var(--x)` sino nombres de clase (`alc-c-accent|amber|red|text3`); el mensaje de diferencia usa `alc-dif-0|pos|neg` (color + fondo juntos). Los `hint.style.color = 'var(--x)'` (CSSOM) y el `fill` del SVG no se tocan: la CSP los permite.
+- **Hallazgo cerrado:** el "grupo de deudor" (`alc_dep_deudor_grupo`, `_gruposAbiertos`) **no es código muerto**: Préstamos usa `d.grupos` y `m.grupoId` (`prestado.js` ~267-306, "Préstamo aparte"). Se conserva.
+- **Especificidad:** compuestos `.btn.alc-…`, `.card.alc-…`, `.row.alc-…`, `.il.alc-…` donde la etiqueta ya tenía esa clase. Análisis por script contra `styles.css`: los únicos selectores más fuertes son de otros contenedores o igualan 0,2,0 (`.btn-primary + .btn-ghost`, `.btn-primary:active`) y ganan por orden, igual que antes ganaba el inline.
+- **Verificación (sin `jsdom`):** archivo sin `style`/`class` == original salvo las 4 líneas de mapas de color; declaraciones de cada clase == su `style`; ninguna etiqueta con dos `class`. Pendiente con `jsdom`: comparador de cascada (mapa en `scripts/paso5/alcancia.map.json`).
+- `tests/estilos.test.js`: `alcancia.js` en `CONVERTIDOS`; opción nueva `sinCss` (ganchos de JS que ya existían sin regla: `alc-hist-chevron`, `alc-dep-monto`) y una prueba de las clases armadas.
+
+### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 12) — `nu.js`
+
+**`nu.js`: 92 `style=""` → 2** (el `width:${pct}%` de las dos barras de progreso de la meta, valor calculado que irá al helper de estilos dinámicos del final del Paso 5). 69 clases `nu-*` al final de `styles.css`: aviso de chequeo, saldo mínimo, aportes de la meta, fila de cada cajita y sus insignias (CDT/meta), meta vacía, tarjeta de meta, tarjeta de CDT (cabecera, cuadrícula de datos, botones Cobrar/Reinvertir), selector de cajita del "Mover".
+- **Estados dinámicos → clases:** `estadoColors` (dos copias) desaparece; el color de la barra es `nu-fill-ok|warn|late`, el de la insignia `nu-estado-ok|warn|late`, y los márgenes que dependían de una condición, `nu-mb12|nu-mb0` y `nu-mt4|nu-mt0`. Se añadió prueba en `tests/estilos.test.js` que exige que existan los tres estados.
+- **Detalle conservado a propósito:** la insignia de estado traía `border:1px solid;border-color:var(--x)40`; `var(--x)40` no es un color válido, así que el navegador ignoraba ese `border-color` y el borde era `currentColor`. La clase `nu-estado-*` usa `border:1px solid` (mismo resultado).
+- **Especificidad:** los `<input>` de aportes llevan `input.nu-…` (`input[type=text]` y `.prest-split-row input` valen 0,1,1) y los botones `.btn.nu-…`; el resto, una sola clase al final de la hoja. Análisis de conflictos con `styles.css` hecho por script: los únicos selectores con más especificidad son de otros contenedores (`#dialog-actions`, `.ms-saldado`, `.busqueda-sin-resultados-txt`, `.fb-*`) y no alcanzan estos elementos.
+- **Verificación (otra vez sin `jsdom`):** el archivo nuevo, sin `style`/`class`, es idéntico al original salvo `estadoColors`; cada clase tiene exactamente las declaraciones de su `style`; no hay etiquetas con dos `class`. **Pendiente con `jsdom`:** pasar por pares con `scripts/paso5/` (verificador `nu.js` aún por escribir: copiar `movimientos.js` y usar `nu.map.json`).
+- `tests/estilos.test.js`: `nu.js` añadido a `CONVERTIDOS` (permitido solo `width:${…}`; `armadas: nu-estado-, nu-fill-`).
+
+### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 11) — `movimientos.js` (detalle de un movimiento)
+
+**`js/core/movimientos.js`: 97 `style=""` → 0.** Clases `mdet-*` al final de `styles.css` (59): cabecera con monto, caja de saldo antes/después, paneles de contexto (sobrante del diferencial, ganancia por valor diferente, destino del extra, ganancia incluida, compra con TC) y filas de "salió de / entró a". El color del monto era una variable `colorMonto` (`var(--accent)`/`var(--red)`); ahora es `claseMonto` (`mdet-c-accent`/`mdet-c-red`) y los dos valores calculados del panel de otras cuentas y de la pérdida/ganancia usan las mismas clases de color. Sin cambios de comportamiento.
+- **Verificación (sin jsdom en este entorno, no hubo comparador de cascada):** (1) por construcción el archivo nuevo, sin `style`/`class`, es idéntico al original salvo la constante de color; (2) cada clase tiene exactamente las declaraciones del `style` que reemplaza (comprobado una por una); (3) no hay selectores de descendiente en `styles.css` que alcancen esos elementos. **Pendiente de la próxima sesión con `jsdom`:** pasar `scripts/paso5/verificar.js` (el verificador de esta tanda es `scripts/paso5/movimientos.js`, pares estilo→clase).
+- `tests/estilos.test.js`: `movimientos.js` añadido a `CONVERTIDOS`.
+
+### 🧹 Limpieza: `_esAlcancia` en `S.gastosVar` (2026-10-23)
+
+Nada escribía `_esAlcancia` en `S.gastosVar` desde que el depósito desde cuenta pasó a ser una transferencia (2026-09-27). Se quitaron las lecturas muertas en `cuentas.js` (`getMovimientosCuenta`) y `actividad_reciente.js` (`_normGastos`), los fixtures g06/g11 de `tests/cuentas.test.js` y la bandera en la prueba de `_esGastoVarNoReal`. **Se conserva** `_esAlcancia` en `S.movimientos` (destape y sobrante) y en `S.transferencias` (depósito), que sí se escriben.
+
+### 📝 Decisión: lista única de archivos para las pruebas (2026-10-23) — descartada
+La guardia `ningún test carga cuentas.js sin cargar también nu.js` ya cubre el fallo silencioso que motivaba el helper `tests/support/modulos.js`; agregarlo cambiaba ~14 líneas por repetición, no por seguridad. Se deja como está.
+
 ### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 10) — `prestado.js`
 
 **`prestado.js`: 84 → 1** (el color/fondo del avatar de cada persona, que elige el usuario). Clases `pr-*` al final de `styles.css`: lista de personas con deuda, tarjeta de cada una, grupos de préstamos (acordeón), historial de movimientos de "Me deben" y de "Yo debo" (chips de destino, nota, monto, botón de borrar), los recuadros de impacto del préstamo y las partes de un pago de más. Los colores calculados pasan a clases (`c-amber|green|red` en saldos y montos, `clase:` en cada tipo de `_extTipos`).

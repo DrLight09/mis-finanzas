@@ -234,7 +234,7 @@
   function _normGastos(S) {
     // _esPagoTC: cancelación de deuda; el mismo pago ya sale como "Abono a deuda" en
     // _normTC (tarjetasCredito[].pagos) — se excluye acá para no mostrarlo dos veces.
-    return (S.gastosVar || []).filter(function(g){ return !g._esAlcancia && !g._esPagoTC; }).map(function(g){
+    return (S.gastosVar || []).filter(function(g){ return !g._esPagoTC; }).map(function(g){
       return {
         id:          'gv_' + g.id,
         fecha:       g.fecha || '0000-00-00',

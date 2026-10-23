@@ -145,29 +145,29 @@ function abrirDetalleMov(el){
   }
 
   const esPositivo = monto >= 0;
-  const colorMonto = esPositivo ? 'var(--accent)' : 'var(--red)';
+  const claseMonto = esPositivo ? 'mdet-c-accent' : 'mdet-c-red';
   const signo = esPositivo ? '+' : '−';
   const tipoLabel = { gasto:'Gasto', ingreso:'Ingreso', apertura:'Apertura', prestamo:'Préstamo', abono:'Abono', compra:'Compra', mesada:'Mesada', transferencia:'Transferencia', salida_manual:'Retiro' }[movTipo] || movTipo;
 
   // Sección de origen (módulo donde se registró este movimiento)
   const origenLabel = el.dataset.movOrigen || '';
   const origenHtml = origenLabel ? `
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;font-size:11px;color:var(--text3);">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>
-      Registrado desde <span style="color:var(--text2);font-weight:500;">${escHtml(origenLabel)}</span>
+    <div class="mdet-origen">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="mdet-no-shrink"><path d="M9 18l6-6-6-6"/></svg>
+      Registrado desde <span class="mdet-origen-nombre">${escHtml(origenLabel)}</span>
     </div>` : '';
 
   // Otras cuentas implicadas en este mismo movimiento (transferencias, splits, etc.)
   let otrasCuentas = [];
   try { otrasCuentas = JSON.parse(el.dataset.movOtras || '[]'); } catch(_){ otrasCuentas = []; }
   const otrasHtml = (otrasCuentas && otrasCuentas.length) ? `
-    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px 15px;margin-bottom:14px;">
-      <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Otras cuentas implicadas</div>
+    <div class="mdet-caja-saldo">
+      <div class="mdet-cap-saldo">Otras cuentas implicadas</div>
       ${otrasCuentas.map(oc=>{
         const ocPos = oc.monto>=0;
-        return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;">
-          <span class="badge ${fuenteBadgeClass(oc.fuente)}" style="font-size:9px;">${_fuenteLabelHtml(oc.fuente)}</span>
-          <span style="font-size:13px;font-family:'DM Mono',monospace;color:${ocPos?'var(--accent)':'var(--red)'};">${ocPos?'+':'−'} ${fmt(Math.abs(oc.monto))}</span>
+        return `<div class="mdet-otra-fila">
+          <span class="badge ${fuenteBadgeClass(oc.fuente)} badge-xs">${_fuenteLabelHtml(oc.fuente)}</span>
+          <span class="mdet-oc-monto ${ocPos?'mdet-c-accent':'mdet-c-red'}">${ocPos?'+':'−'} ${fmt(Math.abs(oc.monto))}</span>
         </div>`;
       }).join('')}
     </div>` : '';
@@ -229,9 +229,9 @@ function abrirDetalleMov(el){
     // Nota del movimiento (si es distinta a la descripción principal)
     if (rm.nota && rm.nota !== desc && !/automáticamente|contable neutro/i.test(rm.nota)) {
       richParts.push(`
-        <div style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Nota</div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.5;">${escHtml(rm.nota)}</div>
+        <div class="mdet-caja-nota">
+          <div class="mdet-cap-nota">Nota</div>
+          <div class="mdet-txt-lh15">${escHtml(rm.nota)}</div>
         </div>`);
     }
 
@@ -252,17 +252,17 @@ function abrirDetalleMov(el){
       const destino = encMovRef?.mov?._destino ? fuenteLabel(encMovRef.mov._destino) : '';
 
       richParts.push(`
-        <div style="padding:12px 14px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.22);border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:8px;">
-          <div style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;font-weight:600;">Sobrante del diferencial — generado automáticamente</div>
-          <div style="font-size:12px;color:var(--text3);line-height:1.6;">
+        <div class="mdet-panel-sobrante">
+          <div class="mdet-cap-amber">Sobrante del diferencial — generado automáticamente</div>
+          <div class="mdet-txt-suave">
             Este ingreso es el margen que quedó a tu favor porque le dijiste al encargo un valor diferente al real cargado a la tarjeta.
           </div>
-          ${dijo ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--text2);">Le dijiste al encargo</span><span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--text);">${fmt(dijo)}</span></div>` : ''}
-          ${real ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--text2);">Costó realmente (TC)</span><span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--blue);">${fmt(real)}</span></div>` : ''}
-          ${margenVal ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--amber);">Margen a tu favor</span><span style="font-family:'DM Mono',monospace;font-weight:600;color:var(--amber);">+ ${fmt(margenVal)}</span></div>` : ''}
-          ${tcUsada ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--text2);">Tarjeta que se usó</span><span style="font-weight:600;color:var(--blue);">${escHtml(tcUsada)}</span></div>` : ''}
-          ${encNombre ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--text2);">Encargo origen</span><span style="font-weight:600;color:var(--text2);">${escHtml(encNombre)}</span></div>` : ''}
-          ${destino ? `<div style="display:flex;justify-content:space-between;gap:6px;font-size:12px;"><span style="color:var(--text2);">Fondos para pagar la TC en</span><span style="font-weight:600;color:var(--accent);">${escHtml(destino)}</span></div>` : ''}
+          ${dijo ? `<div class="mdet-fila"><span class="mdet-c-text2">Le dijiste al encargo</span><span class="mdet-val-text">${fmt(dijo)}</span></div>` : ''}
+          ${real ? `<div class="mdet-fila"><span class="mdet-c-text2">Costó realmente (TC)</span><span class="mdet-val-blue">${fmt(real)}</span></div>` : ''}
+          ${margenVal ? `<div class="mdet-fila"><span class="mdet-c-amber">Margen a tu favor</span><span class="mdet-val-amber">+ ${fmt(margenVal)}</span></div>` : ''}
+          ${tcUsada ? `<div class="mdet-fila"><span class="mdet-c-text2">Tarjeta que se usó</span><span class="mdet-b-blue">${escHtml(tcUsada)}</span></div>` : ''}
+          ${encNombre ? `<div class="mdet-fila"><span class="mdet-c-text2">Encargo origen</span><span class="mdet-b-text2">${escHtml(encNombre)}</span></div>` : ''}
+          ${destino ? `<div class="mdet-fila"><span class="mdet-c-text2">Fondos para pagar la TC en</span><span class="mdet-b-accent">${escHtml(destino)}</span></div>` : ''}
         </div>`);
     }
 
@@ -276,26 +276,26 @@ function abrirDetalleMov(el){
       // Cabecera compacta: cuánto fue la ganancia (o pérdida) y de qué a qué, sin explicación.
       const _difPerdida = d.margen < 0;
       richParts.push(`
-        <div style="padding:12px 14px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:8px;">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
-            <span style="font-size:9px;color:var(--amber);text-transform:uppercase;letter-spacing:.5px;font-weight:600;">${_difPerdida ? 'Pérdida' : 'Ganancia'} por valor diferente</span>
-            <span style="font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:${_difPerdida ? 'var(--red)' : 'var(--amber)'};">${_difPerdida ? '− ' : '+ '}${fmt(Math.abs(d.margen))}</span>
+        <div class="mdet-panel-dif">
+          <div class="mdet-dif-cab">
+            <span class="mdet-cap-amber">${_difPerdida ? 'Pérdida' : 'Ganancia'} por valor diferente</span>
+            <span class="mdet-dif-monto ${_difPerdida ? 'mdet-c-red' : 'mdet-c-amber'}">${_difPerdida ? '− ' : '+ '}${fmt(Math.abs(d.margen))}</span>
           </div>
-          <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Cobrado ${fmt(d.dijo)} · Real ${fmt(d.real)}</div>
+          <div class="mdet-dif-detalle">Cobrado ${fmt(d.dijo)} · Real ${fmt(d.real)}</div>
           ${d.yoMeQuedo > 0 && d.miCuenta ? `
-          <div style="font-size:12px;color:var(--text2);">
-            Guardaste <strong style="color:var(--accent);">${fmt(d.yoMeQuedo)}</strong> en <strong>${_fuenteLabelHtml(d.miCuenta)}</strong>.
+          <div class="mdet-txt">
+            Guardaste <strong class="mdet-c-accent">${fmt(d.yoMeQuedo)}</strong> en <strong>${_fuenteLabelHtml(d.miCuenta)}</strong>.
           </div>` : ''}
           ${benefsNorm.length ? `
-          <div style="font-size:12px;color:var(--text2);">
+          <div class="mdet-txt">
             Del margen le diste:
-            ${benefsNorm.map(b => `<span style="display:inline-block;margin-top:3px;padding:2px 8px;background:rgba(240,184,64,.12);border-radius:4px;font-size:11px;"><strong>${escHtml(b.nombre)}</strong> → ${fmt(b.monto)}</span>`).join(' ')}
+            ${benefsNorm.map(b => `<span class="mdet-chip-amber"><strong>${escHtml(b.nombre)}</strong> → ${fmt(b.monto)}</span>`).join(' ')}
           </div>` : ''}
           ${benefsYoPague.length ? `
-          <div style="font-size:12px;color:var(--text2);">
+          <div class="mdet-txt">
             Pagaste de tu bolsillo por:
-            ${benefsYoPague.map(b => `<span style="display:inline-block;margin-top:3px;padding:2px 8px;background:rgba(96,176,240,.1);border-radius:4px;font-size:11px;color:var(--blue);"><strong>${escHtml(b.nombre)}</strong> ${fmt(b.monto)}${b.miCuentaSalida ? ' desde ' + _fuenteLabelHtml(b.miCuentaSalida) : ''}${b.miCuentaEntrada ? ' → recuperas en ' + _fuenteLabelHtml(b.miCuentaEntrada) : ''}</span>`).join(' ')}
-            <div style="font-size:11px;color:var(--text3);margin-top:4px;">Pusiste esa plata de tu cuenta pero se te descuenta del encargo, así que es plata neutra.</div>
+            ${benefsYoPague.map(b => `<span class="mdet-chip-blue"><strong>${escHtml(b.nombre)}</strong> ${fmt(b.monto)}${b.miCuentaSalida ? ' desde ' + _fuenteLabelHtml(b.miCuentaSalida) : ''}${b.miCuentaEntrada ? ' → recuperas en ' + _fuenteLabelHtml(b.miCuentaEntrada) : ''}</span>`).join(' ')}
+            <div class="mdet-nota-pie">Pusiste esa plata de tu cuenta pero se te descuenta del encargo, así que es plata neutra.</div>
           </div>` : ''}
         </div>`);
     }
@@ -304,13 +304,13 @@ function abrirDetalleMov(el){
     if (rm._extPartes && rm._extPartes.length) {
       const extraTotal = rm._extPartes.reduce((a,p)=>a+(p.monto||0),0);
       richParts.push(`
-        <div style="padding:12px 14px;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:6px;">
-          <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;font-weight:600;">¿A dónde fue el extra del pago? (${fmt(extraTotal)})</div>
+        <div class="mdet-panel-extra">
+          <div class="mdet-cap-blue">¿A dónde fue el extra del pago? (${fmt(extraTotal)})</div>
           ${rm._extPartes.map(p => {
-            if (p.tipo==='guardar')   return `<div style="font-size:12px;color:var(--text2);">→ Guardaste <strong style="color:var(--accent);">${fmt(p.monto)}</strong> en <strong>${_fuenteLabelHtml(p.cuenta)}</strong></div>`;
-            if (p.tipo==='gastar')    return `<div style="font-size:12px;color:var(--text2);">→ Se usó como gasto <strong>${fmt(p.monto)}</strong></div>`;
-            if (p.tipo==='regalar')   return `<div style="font-size:12px;color:var(--text2);">→ Lo regalaste: <strong>${fmt(p.monto)}</strong></div>`;
-            if (p.tipo==='pendiente') return `<div style="font-size:12px;color:var(--text2);">→ Quedó sin asignar: <strong>${fmt(p.monto)}</strong></div>`;
+            if (p.tipo==='guardar')   return `<div class="mdet-txt">→ Guardaste <strong class="mdet-c-accent">${fmt(p.monto)}</strong> en <strong>${_fuenteLabelHtml(p.cuenta)}</strong></div>`;
+            if (p.tipo==='gastar')    return `<div class="mdet-txt">→ Se usó como gasto <strong>${fmt(p.monto)}</strong></div>`;
+            if (p.tipo==='regalar')   return `<div class="mdet-txt">→ Lo regalaste: <strong>${fmt(p.monto)}</strong></div>`;
+            if (p.tipo==='pendiente') return `<div class="mdet-txt">→ Quedó sin asignar: <strong>${fmt(p.monto)}</strong></div>`;
             return '';
           }).filter(Boolean).join('')}
         </div>`);
@@ -319,10 +319,10 @@ function abrirDetalleMov(el){
     // ── Ganancia virtual en préstamo (no salió plata real) ─────────────────
     if (rm._gananciaVirtual) {
       richParts.push(`
-        <div style="padding:12px 14px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.18);border-radius:var(--radius-sm);">
-          <div style="font-size:9px;color:var(--accent);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:5px;">Ganancia incluida</div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.6;">
-            De este préstamo, <strong style="color:var(--accent);">${fmt(rm._gananciaVirtual)}</strong> son ganancia tuya que se registró como si los hubieras prestado, pero no salieron de ninguna cuenta.
+        <div class="mdet-panel-ganancia">
+          <div class="mdet-cap-accent">Ganancia incluida</div>
+          <div class="mdet-txt-lh16">
+            De este préstamo, <strong class="mdet-c-accent">${fmt(rm._gananciaVirtual)}</strong> son ganancia tuya que se registró como si los hubieras prestado, pero no salieron de ninguna cuenta.
           </div>
         </div>`);
     }
@@ -330,9 +330,9 @@ function abrirDetalleMov(el){
     // ── Fuentes split del préstamo ──────────────────────────────────────────
     if (rm.fuentes && rm.fuentes.length && !otrasCuentas.length) {
       richParts.push(`
-        <div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Salió de</div>
-          ${rm.fuentes.map(f=>`<div style="font-size:12px;color:var(--text2);padding:2px 0;"><strong>${_fuenteLabelHtml(f.fuente)}</strong> → ${fmt(f.monto)}</div>`).join('')}
+        <div class="mdet-caja">
+          <div class="mdet-cap-neutra">Salió de</div>
+          ${rm.fuentes.map(f=>`<div class="mdet-txt-fila"><strong>${_fuenteLabelHtml(f.fuente)}</strong> → ${fmt(f.monto)}</div>`).join('')}
         </div>`);
     }
 
@@ -340,9 +340,9 @@ function abrirDetalleMov(el){
     if (!otrasCuentas.length && (rm.destinos?.length || rm.destino)) {
       const destinos = rm.destinos?.length ? rm.destinos : [{fuente: rm.destino, monto: rm.monto}];
       richParts.push(`
-        <div style="padding:12px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Entró a</div>
-          ${destinos.map(r=>`<div style="font-size:12px;color:var(--text2);padding:2px 0;"><strong>${_fuenteLabelHtml(r.fuente)}</strong>${r.monto ? ' → ' + fmt(r.monto) : ''}</div>`).join('')}
+        <div class="mdet-caja">
+          <div class="mdet-cap-neutra">Entró a</div>
+          ${destinos.map(r=>`<div class="mdet-txt-fila"><strong>${_fuenteLabelHtml(r.fuente)}</strong>${r.monto ? ' → ' + fmt(r.monto) : ''}</div>`).join('')}
         </div>`);
     }
 
@@ -356,29 +356,29 @@ function abrirDetalleMov(el){
       const destinoLabel = rm._destino ? fuenteLabel(rm._destino) : '';
 
       richParts.push(`
-        <div style="padding:12px 14px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.22);border-radius:var(--radius-sm);display:flex;flex-direction:column;gap:8px;">
-          <div style="font-size:9px;color:var(--blue);text-transform:uppercase;letter-spacing:.5px;font-weight:600;">Compra pagada con tarjeta de crédito</div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
-            <span style="font-size:12px;color:var(--text2);">Tarjeta usada</span>
-            <span style="font-size:12px;font-weight:600;color:var(--blue);">${escHtml(tcNombre)}</span>
+        <div class="mdet-panel-tc">
+          <div class="mdet-cap-blue">Compra pagada con tarjeta de crédito</div>
+          <div class="mdet-fila-wrap">
+            <span class="mdet-txt">Tarjeta usada</span>
+            <span class="mdet-tc-blue">${escHtml(tcNombre)}</span>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
-            <span style="font-size:12px;color:var(--text2);">Salió del encargo</span>
-            <span style="font-size:13px;font-family:'DM Mono',monospace;font-weight:600;color:var(--red);">− ${fmt(montoEnc)}</span>
+          <div class="mdet-fila-wrap">
+            <span class="mdet-txt">Salió del encargo</span>
+            <span class="mdet-tc-monto mdet-c-red">− ${fmt(montoEnc)}</span>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
-            <span style="font-size:12px;color:var(--text2);">Cargado a la TC</span>
-            <span style="font-size:13px;font-family:'DM Mono',monospace;font-weight:600;color:var(--blue);">+ ${fmt(montoReal)}</span>
+          <div class="mdet-fila-wrap">
+            <span class="mdet-txt">Cargado a la TC</span>
+            <span class="mdet-tc-monto mdet-c-blue">+ ${fmt(montoReal)}</span>
           </div>
           ${hayMargen ? `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
-            <span style="font-size:12px;color:var(--amber);">Diferencia (tu margen)</span>
-            <span style="font-size:13px;font-family:'DM Mono',monospace;font-weight:600;color:var(--amber);">+ ${fmt(montoEnc - montoReal)}</span>
+          <div class="mdet-fila-wrap">
+            <span class="mdet-tc-amber">Diferencia (tu margen)</span>
+            <span class="mdet-tc-monto mdet-c-amber">+ ${fmt(montoEnc - montoReal)}</span>
           </div>` : ''}
           ${destinoLabel ? `
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
-            <span style="font-size:12px;color:var(--text2);">Fondos reservados para pagar la TC</span>
-            <span style="font-size:12px;font-weight:600;color:var(--accent);">${escHtml(destinoLabel)}</span>
+          <div class="mdet-fila-wrap">
+            <span class="mdet-txt">Fondos reservados para pagar la TC</span>
+            <span class="mdet-tc-accent">${escHtml(destinoLabel)}</span>
           </div>` : ''}
         </div>`);
     }
@@ -387,43 +387,43 @@ function abrirDetalleMov(el){
     if (rm._viaTC && rm._tcId) {
       const tcName = ((S.tarjetasCredito||[]).find(t=>t.id===rm._tcId)||{}).nombre||'';
       if (tcName) richParts.push(`
-        <div style="padding:10px 12px;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);">
-          <div style="font-size:12px;color:var(--text2);">Compra hecha con la tarjeta <strong>${escHtml(tcName)}</strong> — la deuda la tiene el deudor, no tu tarjeta.</div>
+        <div class="mdet-aviso-azul">
+          <div class="mdet-txt">Compra hecha con la tarjeta <strong>${escHtml(tcName)}</strong> — la deuda la tiene el deudor, no tu tarjeta.</div>
         </div>`);
     }
 
     // ── Vía encargo ─────────────────────────────────────────────────────────
     if (rm._viaEncargo && rm._encNombre) {
       richParts.push(`
-        <div style="padding:10px 12px;background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);">
-          <div style="font-size:12px;color:var(--text2);">Este pago salió del encargo de <strong>${escHtml(rm._encNombre)}</strong>, no de tu bolsillo directamente.</div>
+        <div class="mdet-aviso-azul">
+          <div class="mdet-txt">Este pago salió del encargo de <strong>${escHtml(rm._encNombre)}</strong>, no de tu bolsillo directamente.</div>
         </div>`);
     }
 
     if (richParts.length) {
-      richHtml = `<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">${richParts.join('')}</div>`;
+      richHtml = `<div class="mdet-rich">${richParts.join('')}</div>`;
     }
   }
 
   document.getElementById('mvdContent').innerHTML = `
-    <div style="text-align:center;padding:6px 0 18px;">
-      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">${escHtml(tipoLabel)}</div>
-      <div style="font-size:28px;font-weight:600;font-family:'DM Mono',monospace;color:${colorMonto};margin-bottom:6px;">${signo} ${fmt(Math.abs(monto))}</div>
-      <div style="font-size:13px;color:var(--text2);">${escHtml(desc)}</div>
-      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;">${escHtml(fecha)}</div>
+    <div class="mdet-cab">
+      <div class="mdet-tipo">${escHtml(tipoLabel)}</div>
+      <div class="mdet-monto-grande ${claseMonto}">${signo} ${fmt(Math.abs(monto))}</div>
+      <div class="mdet-desc">${escHtml(desc)}</div>
+      <div class="mdet-fecha">${escHtml(fecha)}</div>
     </div>
     ${origenHtml}
-    <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:14px 15px;margin-bottom:14px;">
-      <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">${(cuentaKey==='deudor'||cuentaKey==='tc'||cuentaKey==='encargo') ? escHtml(saldoLabel) : 'Saldo en ' + escHtml(saldoLabel)}</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    <div class="mdet-caja-saldo">
+      <div class="mdet-cap-saldo">${(cuentaKey==='deudor'||cuentaKey==='tc'||cuentaKey==='encargo') ? escHtml(saldoLabel) : 'Saldo en ' + escHtml(saldoLabel)}</div>
+      <div class="mdet-saldo-fila">
         <div>
-          <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Antes</div>
-          <div style="font-size:15px;font-family:'DM Mono',monospace;color:var(--text2);">${fmt(saldoAntes)}</div>
+          <div class="mdet-etq-saldo">Antes</div>
+          <div class="mdet-saldo-antes">${fmt(saldoAntes)}</div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        <div style="text-align:right;">
-          <div style="font-size:10px;color:var(--text3);margin-bottom:2px;">Después</div>
-          <div style="font-size:15px;font-family:'DM Mono',monospace;color:${colorMonto};font-weight:600;">${fmt(saldoDespues)}</div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="mdet-no-shrink"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        <div class="mdet-derecha">
+          <div class="mdet-etq-saldo">Después</div>
+          <div class="mdet-saldo-desp ${claseMonto}">${fmt(saldoDespues)}</div>
         </div>
       </div>
     </div>

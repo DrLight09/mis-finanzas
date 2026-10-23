@@ -119,7 +119,7 @@ function _getPrestSplitFuentesOptions(selectedVal) {
   // Solo cuentas con saldo >= $1,00: de una cuenta vacía no puede salir el préstamo
   // (FuentesFiltro, js/core/fuentes-filtro.js). "Sin especificar" y "Ganancia" no se filtran.
   let out = FuentesFiltro.optsHtml(getFuentesSinTC(), { ...FuentesFiltro.PRESET.SALIDA, selectedVal });
-  out += `<option value="ganancia"${selectedVal==='ganancia'?' selected':''}><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>`;
+  out += `<option value="ganancia"${selectedVal==='ganancia'?' selected':''}><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>`;
   return out;
 }
 
@@ -131,9 +131,9 @@ function _updatePrestSplitResumen(){
   if(resEl){
     const diff = montoTotal - totalSplit;
     if(montoTotal && Math.abs(diff)>1){
-      resEl.innerHTML = html`<span style="color:var(--amber);">Total dividido: ${fmt(totalSplit)} de ${fmt(montoTotal)} · ${diff>0?'Faltan':'Sobran'} ${fmt(Math.abs(diff))}</span>`;
+      resEl.innerHTML = html`<span class="c-amber">Total dividido: ${fmt(totalSplit)} de ${fmt(montoTotal)} · ${diff>0?'Faltan':'Sobran'} ${fmt(Math.abs(diff))}</span>`;
     } else if(montoTotal){
-      resEl.innerHTML = html`<span style="color:var(--accent);">Total: ${fmt(totalSplit)}</span>`;
+      resEl.innerHTML = html`<span class="c-green">Total: ${fmt(totalSplit)}</span>`;
     } else { resEl.textContent = ''; }
   }
   // Mostrar aviso de la(s) fila(s) de "ganancia" (plata virtual)
@@ -142,8 +142,8 @@ function _updatePrestSplitResumen(){
   const impactos = [];
   const gananciaTotal = splitData.filter(r=>r.fuente==='ganancia').reduce((a,r)=>a+(r.monto||0),0);
   if(gananciaTotal>0){
-    impactos.push(html`<div style="padding:7px 9px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.25);border-radius:7px;margin-top:5px;">
-      <div style="font-size:11px;color:var(--accent);"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> ${fmt(gananciaTotal)} de este préstamo es <b>ganancia tuya</b> que aún no recibiste — no se descuenta de ninguna cuenta. Cuando te paguen el préstamo completo, esa parte se sumará como ganancia.</div>
+    impactos.push(html`<div class="pr-impacto pr-impacto-ok">
+      <div class="pr-imp-ok"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> ${fmt(gananciaTotal)} de este préstamo es <b>ganancia tuya</b> que aún no recibiste — no se descuenta de ninguna cuenta. Cuando te paguen el préstamo completo, esa parte se sumará como ganancia.</div>
     </div>`);
   }
   splitData.forEach(r=>{
@@ -155,11 +155,11 @@ function _updatePrestSplitResumen(){
     const saldoTras = saldoActual - r.monto;
     const minimo = c.meta.minimo || 0;
     const obj = c.meta.objetivo || 0;
-    impactos.push(html`<div style="padding:7px 9px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:7px;margin-top:5px;">
-      <div style="font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;font-weight:600;margin-bottom:4px;">${c.nombre}</div>
-      <div style="font-size:11px;color:var(--text2);">Disponible ahora: <b style="color:var(--text);">${fmt(saldoActual)}</b> <i class="fa-solid fa-arrow-right" style="margin:0 3px;font-size:10px;"></i>tras préstamo: <b style="color:${saldoTras<0?'var(--red)':'var(--text)'};">${fmt(saldoTras)}</b></div>
-      ${obj ? html`<div style="font-size:10px;color:var(--text3);margin-top:2px;">Meta: ${fmt(obj)} · ${fmt(Math.max(0,obj-saldoTras))} aún por ahorrar (tras préstamo)</div>` : ''}
-      ${minimo && saldoTras < minimo ? html`<div style="font-size:10px;color:var(--red);margin-top:2px;">Quedarás ${fmt(minimo-saldoTras)} por debajo del mínimo (${fmt(minimo)})</div>` : ''}
+    impactos.push(html`<div class="pr-impacto pr-impacto-warn">
+      <div class="pr-imp-nombre">${c.nombre}</div>
+      <div class="pr-imp-linea">Disponible ahora: <b class="pr-t-text">${fmt(saldoActual)}</b> <i class="fa-solid fa-arrow-right cuenta-flecha"></i>tras préstamo: <b class="${saldoTras<0?'c-red':'pr-t-text'}">${fmt(saldoTras)}</b></div>
+      ${obj ? html`<div class="pr-imp-meta">Meta: ${fmt(obj)} · ${fmt(Math.max(0,obj-saldoTras))} aún por ahorrar (tras préstamo)</div>` : ''}
+      ${minimo && saldoTras < minimo ? html`<div class="pr-imp-minimo">Quedarás ${fmt(minimo-saldoTras)} por debajo del mínimo (${fmt(minimo)})</div>` : ''}
     </div>`);
   });
   metaEl.innerHTML = html`${impactos}`;
@@ -409,7 +409,7 @@ function _renderListaDeudas(dir) {
   const list = [...Deudas.lista(dir)].sort((a, b) => Deudas.saldo(b) - Deudas.saldo(a));
   if (dir === 'favor' && typeof _actualizarMasPersonasSub === 'function') _actualizarMasPersonasSub();
   if (!list.length) {
-    el.innerHTML = html`<div style="font-size:12px;color:var(--text3);padding:4px 0 10px;">${ui.vacio}</div>`;
+    el.innerHTML = html`<div class="pr-vacio pr-vacio-10">${ui.vacio}</div>`;
     return;
   }
   el.innerHTML = html`${list.map(d => {
@@ -419,22 +419,22 @@ function _renderListaDeudas(dir) {
     const tienePerfil = !!d.personaId;
     const color = _colorDeuda(d);
     const [accionAvatar, argAvatar] = ui.avatarAccion(d);
-    return html`<div class="card card-sm" style="margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <button type="button" class="avatar" ${raw(Events.attr(accionAvatar, argAvatar))}
-          style="color:${raw(color)};border-color:${raw(color)}33;background:${raw(color)}18;width:38px;height:38px;font-size:13px;margin-right:0;flex-shrink:0;border:1px solid;cursor:pointer;${raw(tienePerfil ? 'box-shadow:0 0 0 2px ' + color + '44;' : '')}"
+    return html`<div class="card card-sm pr-card-8">
+      <div class="pr-fila-10">
+        <button type="button" class="avatar pr-avatar" ${raw(Events.attr(accionAvatar, argAvatar))}
+          style="color:${raw(color)};background:${raw(color)}18;${raw(tienePerfil ? 'box-shadow:0 0 0 2px ' + color + '44;' : '')}"
           title="${tienePerfil ? 'Ver perfil de ' + d.nombre : d.nombre}">${initials}</button>
-        <div style="flex:1;min-width:0;cursor:pointer;" ${raw(Events.attr(ui.abrir, d.id))}>
-          <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="pr-flex1 pr-click" ${raw(Events.attr(ui.abrir, d.id))}>
+          <div class="pr-fila-sb">
             <div class="row-name">${d.nombre}</div>
             <div class="row-amount ${raw(ui.claseMonto(saldo))}">${ui.monto(saldo)}</div>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:3px;">
+          <div class="pr-fila-sb pr-mt-3">
             <div class="row-sub">${ui.sub(saldo)}</div>
-            ${ultimoMov ? html`<span style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">${ultimoMov.fecha}</span>` : ''}
+            ${ultimoMov ? html`<span class="pr-fecha">${ultimoMov.fecha}</span>` : ''}
           </div>
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;cursor:pointer;" ${raw(Events.attr(ui.abrir, d.id))}><polyline points="9 18 15 12 9 6"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pr-chevron" ${raw(Events.attr(ui.abrir, d.id))}><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>`;
   })}`;
@@ -465,15 +465,15 @@ function _htmlHistorialPorGrupos(d, porGrupo) {
       // Un solo grupo: no vale la pena el acordeón, se ve como el historial plano de siempre.
       return cards;
     }
-    return html`<details class="card card-sm" style="margin-bottom:9px;padding:0;overflow:hidden;" ${raw(g.cerrado ? '' : 'open')}>
-      <summary style="cursor:pointer;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;list-style:none;">
-        <span style="display:flex;align-items:center;gap:6px;min-width:0;">
-          <span style="font-size:12px;font-weight:500;color:var(--text1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${g.nombre}</span>
-          ${g.cerrado ? html` <span class="badge" style="font-size:9px;opacity:.6;">Cerrado</span>` : ''}
+    return html`<details class="card card-sm pr-grupo" ${raw(g.cerrado ? '' : 'open')}>
+      <summary class="pr-grupo-sum">
+        <span class="pr-grupo-izq">
+          <span class="pr-grupo-nom">${g.nombre}</span>
+          ${g.cerrado ? html` <span class="badge badge-xs pr-op6">Cerrado</span>` : ''}
         </span>
-        <span style="font-size:11px;font-family:'DM Mono',monospace;color:${raw(saldoGrupo > 0 ? 'var(--amber)' : saldoGrupo < 0 ? 'var(--red)' : 'var(--text3)')};flex-shrink:0;">${saldoTxt}</span>
+        <span class="pr-grupo-saldo ${raw(saldoGrupo > 0 ? 'c-amber' : saldoGrupo < 0 ? 'c-red' : 'pr-t-muted')}">${saldoTxt}</span>
       </summary>
-      <div style="padding:0 10px 10px;">${cards}</div>
+      <div class="pr-grupo-cuerpo">${cards}</div>
     </details>`;
   })}`;
 }
@@ -518,7 +518,7 @@ function abrirDeudor(id) {
   });
   const histEl = document.getElementById('ddHistorial');
   if (!movs.length) {
-    histEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 8px;">Sin movimientos aún.</div>';
+    histEl.innerHTML = '<div class="pr-vacio">Sin movimientos aún.</div>';
   } else {
     let saldoCorriente = saldo; // saldo de deuda ANTES de descontar la entry actual (al iterar desc, arranca en el saldo actual = saldo "después" del primer item)
     // Los movimientos se siguen recorriendo TODOS juntos y en orden cronológico
@@ -534,14 +534,14 @@ function abrirDeudor(id) {
       const saldoAntesDeuda = saldoCorriente - efectoDeuda;
       saldoCorriente = saldoAntesDeuda;
       // Destino info line
-      const arrowSvg = raw(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`);
+      const arrowSvg = raw(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cuenta-svg-mid"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`);
       let destinoInfo = '';
       if (m._perdon) {
-        destinoInfo = html` <span style="background:rgba(240,96,96,.12);color:var(--red);border:1px solid rgba(240,96,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">se lo regalé · cuenta como gasto</span>`;
+        destinoInfo = html` <span class="pr-chip pr-chip-red">se lo regalé · cuenta como gasto</span>`;
       } else if (m._viaEncargo && m._encNombre) {
-        destinoInfo = html` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">encargo de ${m._encNombre}</span>`;
+        destinoInfo = html` <span class="pr-chip pr-chip-blue">encargo de ${m._encNombre}</span>`;
       } else if (m._viaAlcancia) {
-        destinoInfo = html` <span style="background:rgba(240,184,64,.15);color:var(--amber);border:1px solid rgba(240,184,64,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">→ Alcancía</span>`;
+        destinoInfo = html` <span class="pr-chip pr-chip-amber">→ Alcancía</span>`;
       } else if (m.destinos && m.destinos.length) {
         destinoInfo = html` ${arrowSvg} ${raw(m.destinos.map(r => _fuenteLabelHtml(r.fuente) + ' ' + fmt(r.monto)).join(' + '))}`;
       } else if (m.destino) {
@@ -558,7 +558,7 @@ function abrirDeudor(id) {
           if (p.tipo === 'pendiente') return `Sin asignar ${fmt(p.monto)}`;
           return '';
         }).filter(Boolean).join(' · ');
-        extraHtml = html`<div style="margin-top:5px;padding:5px 7px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:6px;font-size:10px;font-family:'DM Mono',monospace;color:var(--blue);">
+        extraHtml = html`<div class="pr-extra-box">
           Extra ${fmt(extraTotal)}: ${raw(partesTexto)}
         </div>`;
       }
@@ -573,22 +573,22 @@ function abrirDeudor(id) {
         else if (m.destino) otrasCuentasDD = [{fuente:m.destino, monto:+m.monto}];
       }
       const dataOtrasDD = otrasCuentasDD.length ? html`data-mov-otras="${JSON.stringify(otrasCuentasDD)}"` : '';
-      const _cardHtml = html`<div class="card card-sm" style="margin-bottom:7px;cursor:pointer;" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-mov-origen="${origenDD}" ${dataOtrasDD} data-mov-saldo-antes="${saldoAntesDeuda}" data-mov-saldo-despues="${saldoDespuesDeuda}" data-mov-saldo-label="Deuda de ${d.nombre}" data-mov-desc="${m.nota || (esPrestamo?'Préstamo': m._perdon?'Deuda perdonada': esPagoCompleto?'Pago completo':'Abono')}" data-mov-fecha="${m.fecha}" ${raw(Events.attr('prestado:abrirDetalleMov'))}>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <span class="badge ${esPrestamo ? 'bg-amber' : m._perdon ? 'bg-red' : 'bg-green'}" style="font-size:9px;">${esPrestamo ? 'Préstamo' : m._perdon ? 'Perdonado' : esPagoCompleto ? 'Pago completo' : 'Abono'}</span>
-              ${m._gananciaVirtual ? html` <span style="background:rgba(200,240,96,.15);color:var(--accent);border:1px solid rgba(200,240,96,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
-              ${m._viaTC ? html` <span style="background:rgba(96,176,240,.15);color:var(--blue);border:1px solid rgba(96,176,240,.3);border-radius:4px;padding:1px 5px;font-size:9px;font-family:'DM Mono',monospace;">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
-              ${m.nota ? html` <span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
+      const _cardHtml = html`<div class="card card-sm pr-mov-card" data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-mov-origen="${origenDD}" ${dataOtrasDD} data-mov-saldo-antes="${saldoAntesDeuda}" data-mov-saldo-despues="${saldoDespuesDeuda}" data-mov-saldo-label="Deuda de ${d.nombre}" data-mov-desc="${m.nota || (esPrestamo?'Préstamo': m._perdon?'Deuda perdonada': esPagoCompleto?'Pago completo':'Abono')}" data-mov-fecha="${m.fecha}" ${raw(Events.attr('prestado:abrirDetalleMov'))}>
+        <div class="pr-fila-sb pr-gap-8">
+          <div class="pr-flex1">
+            <div class="pr-fila-wrap">
+              <span class="badge badge-xs ${esPrestamo ? 'bg-amber' : m._perdon ? 'bg-red' : 'bg-green'}">${esPrestamo ? 'Préstamo' : m._perdon ? 'Perdonado' : esPagoCompleto ? 'Pago completo' : 'Abono'}</span>
+              ${m._gananciaVirtual ? html` <span class="pr-chip pr-chip-ok"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
+              ${m._viaTC ? html` <span class="pr-chip pr-chip-blue">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
+              ${m.nota ? html` <span class="pr-nota">${m.nota}</span>` : ''}
             </div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${m._viaTC ? '' : raw(m.fuentes ? ' · ' + m.fuentes.map(f=>_fuenteLabelHtml(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + _fuenteLabelHtml(m.fuente) : ''))}${destinoInfo}</div>
+            <div class="pr-fecha pr-mt-3">${m.fecha}${m._viaTC ? '' : raw(m.fuentes ? ' · ' + m.fuentes.map(f=>_fuenteLabelHtml(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + _fuenteLabelHtml(m.fuente) : ''))}${destinoInfo}</div>
             ${extraHtml}
             ${esPrestamo && m.diferencial && !m._viaTC ? raw(diffRenderHistorial(m.diferencial)) : ''}
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-            <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esPrestamo ? 'var(--amber)' : 'var(--accent)'};">${esPrestamo ? '+' : '−'} ${fmt(m.monto)}</div>
-            <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" ${raw(Events.attr('prestado:eliminarMovDeudor', id, m.id))} data-stop-propagation="true">
+          <div class="pr-der">
+            <div class="pr-monto ${esPrestamo ? 'c-amber' : 'c-green'}">${esPrestamo ? '+' : '−'} ${fmt(m.monto)}</div>
+            <button type="button" class="btn-icon pr-btn-36" ${raw(Events.attr('prestado:eliminarMovDeudor', id, m.id))} data-stop-propagation="true">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </button>
           </div>
@@ -1701,9 +1701,9 @@ function abonoSplitResumen() {
   const diff  = monto - total;
   const el    = document.getElementById('mov_dest_split_resumen');
   if(!el) return;
-  if(Math.abs(diff)<1)  el.innerHTML=html`<span style="color:var(--accent);"><i class="fa-solid fa-check" style="margin-right:4px;"></i>Suma exacta ${fmt(total)}</span>`;
-  else if(diff>0)       el.innerHTML=html`<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`;
-  else                  el.innerHTML=html`<span style="color:var(--red);">Excede el abono en ${fmt(-diff)}</span>`;
+  if(Math.abs(diff)<1)  el.innerHTML=html`<span class="c-green"><i class="fa-solid fa-check pr-mr-4"></i>Suma exacta ${fmt(total)}</span>`;
+  else if(diff>0)       el.innerHTML=html`<span class="c-amber">Faltan ${fmt(diff)} por asignar</span>`;
+  else                  el.innerHTML=html`<span class="c-red">Excede el abono en ${fmt(-diff)}</span>`;
 }
 
 /* ─── "¿Te dio extra de más?" — usa el motor común para el cálculo
@@ -1734,13 +1734,13 @@ function toggleExtraSection() {
 // _extPartes declarado globalmente arriba junto a _abonoSplitMode etc.
 
 const _extTipos = {
-  guardar:   { label: 'Lo guardé en cuenta', color: 'var(--blue)',
+  guardar:   { label: 'Lo guardé en cuenta', color: 'var(--blue)', clase: 'c-blue',
     icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>' },
-  gastar:    { label: 'Lo gasté',             color: 'var(--amber)',
+  gastar:    { label: 'Lo gasté',             color: 'var(--amber)', clase: 'c-amber',
     icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>' },
-  regalar:   { label: 'Lo regalé / lo di',   color: 'var(--purple)',
+  regalar:   { label: 'Lo regalé / lo di',   color: 'var(--purple)', clase: 'c-purple',
     icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>' },
-  pendiente: { label: 'Sin decidir aún',      color: 'var(--text2)',
+  pendiente: { label: 'Sin decidir aún',      color: 'var(--text2)', clase: 'pr-t-text2',
     icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
 };
 
@@ -1774,40 +1774,36 @@ function extRenderPartes() {
   cont.innerHTML = html`${_extPartes.map((p, i) => {
     const tipoInfo = _extTipos[p.tipo] || _extTipos.guardar;
     const extraDetails = p.tipo === 'guardar' ? html`
-      <div class="select-wrap" style="margin-top:7px;">
-        <select class="_ext-set-cuenta" data-i="${i}" data-stop-click="true" style="font-size:12px;padding:7px 26px 7px 9px;">
+      <div class="select-wrap pr-mt-7">
+        <select class="_ext-set-cuenta pr-sel-sm" data-i="${i}" data-stop-click="true">
           <option value="">¿A cuál cuenta?</option>
           ${fuentes.map(f=>html`<option value="${f.val}" ${raw(p.cuenta===f.val?'selected':'')}>${f.label}</option>`)}
         </select>
       </div>` :
     p.tipo === 'gastar' ? html`
       <input type="text" value="${p.desc||''}" placeholder="¿En qué? (opcional)" data-stop-click="true"
-        class="_ext-set-desc" data-i="${i}"
-        style="margin-top:7px;width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:inherit;">` :
+        class="_ext-set-desc pr-ext-input" data-i="${i}">` :
     p.tipo === 'regalar' ? html`
       <input type="text" value="${p.quien||''}" placeholder="¿A quién? (opcional)" data-stop-click="true"
-        class="_ext-set-quien" data-i="${i}"
-        style="margin-top:7px;width:100%;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12px;color:var(--text);font-family:inherit;">` : '';
+        class="_ext-set-quien pr-ext-input" data-i="${i}">` : '';
 
-    return html`<div style="border-radius:9px;border:1.5px solid var(--border2);background:var(--bg3);padding:10px 11px;position:relative;">
+    return html`<div class="pr-ext-card">
       <!-- Fila principal: tipo + monto + borrar -->
-      <div style="display:flex;align-items:center;gap:7px;">
+      <div class="pr-fila-7">
         <!-- Selector de tipo -->
-        <div style="position:relative;flex:1;">
-          <select class="_ext-set-tipo" data-i="${i}" data-stop-click="true"
-            style="width:100%;appearance:none;background:var(--bg4);border:1px solid var(--border2);border-radius:7px;padding:7px 28px 7px 32px;font-size:12px;font-weight:600;color:${raw(tipoInfo.color)};font-family:inherit;cursor:pointer;">
+        <div class="pr-rel-flex1">
+          <select class="_ext-set-tipo pr-ext-tipo ${raw(tipoInfo.clase)}" data-i="${i}" data-stop-click="true">
             ${Object.entries(_extTipos).map(([k,v])=>html`<option value="${k}" ${raw(p.tipo===k?'selected':'')}>${v.label}</option>`)}
           </select>
-          <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none;color:${raw(tipoInfo.color)};">${raw(tipoInfo.icon)}</span>
-          <svg style="position:absolute;right:8px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text3);" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <span class="pr-ext-tipo-ico ${raw(tipoInfo.clase)}">${raw(tipoInfo.icon)}</span>
+          <svg class="pr-ext-tipo-flecha" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <!-- Monto -->
         <input type="text" inputmode="decimal" value="${p.monto?fmtInput(p.monto):''}" placeholder="0,00"
-          class="money-input _ext-set-monto" data-i="${i}" data-stop-click="true"
-          style="width:100px;padding:7px 9px;font-size:13px;flex-shrink:0;">
+          class="money-input _ext-set-monto pr-ext-monto" data-i="${i}" data-stop-click="true">
         <!-- Borrar -->
         <button type="button" ${raw(Events.attr('prestado:extDelParte', i))} data-stop-propagation="true"
-          style="background:none;border:none;cursor:pointer;color:var(--text3);min-width:24px;min-height:24px;display:flex;align-items:center;justify-content:center;flex-shrink:0;" ${raw(_extPartes.length<=1?'style="visibility:hidden;"':'')}>
+          class="pr-ext-quitar${_extPartes.length<=1?' pr-oculto':''}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
@@ -1836,9 +1832,9 @@ function extResumenPartes() {
   const el    = document.getElementById('ext_partes_resumen');
   if (!el) return;
   if (!extra) { el.innerHTML=''; return; }
-  if (Math.abs(diff)<1) el.innerHTML=html`<span style="color:var(--accent);">Suma exacta — listo</span>`;
-  else if (diff>0)      el.innerHTML=html`<span style="color:var(--amber);">Faltan ${fmt(diff)} por asignar</span>`;
-  else                  el.innerHTML=html`<span style="color:var(--red);">Excede el extra en ${fmt(-diff)}</span>`;
+  if (Math.abs(diff)<1) el.innerHTML=html`<span class="c-green">Suma exacta — listo</span>`;
+  else if (diff>0)      el.innerHTML=html`<span class="c-amber">Faltan ${fmt(diff)} por asignar</span>`;
+  else                  el.innerHTML=html`<span class="c-red">Excede el extra en ${fmt(-diff)}</span>`;
 }
 
 // Calcular total prestado para el resumen
@@ -1901,26 +1897,26 @@ function abrirMiDeuda(id) {
   });
   const histEl = document.getElementById('mdHistorial');
   if (!movs.length) {
-    histEl.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:4px 0 8px;">Sin movimientos aún.</div>';
+    histEl.innerHTML = '<div class="pr-vacio">Sin movimientos aún.</div>';
   } else {
     const _porGrupo = {}; // grupoId -> [tarjetas html``]
     movs.forEach(m => {
       const esRecibido = m.tipo === 'recibido';
       const esPerdon = !esRecibido && !!m._perdon;
       const cuentasRef = _deudaCuentasDe(m);
-      const _cardHtml = html`<div class="card card-sm" style="margin-bottom:7px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <div style="flex:1;min-width:0;">
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-              <span class="badge ${esRecibido ? 'bg-amber' : esPerdon ? 'bg-blue' : 'bg-green'}" style="font-size:9px;">${esRecibido ? 'Me prestó' : esPerdon ? 'Perdonada' : 'Pago'}</span>
-              ${m.nota ? html` <span style="font-size:11px;color:var(--text2);">${m.nota}</span>` : ''}
+      const _cardHtml = html`<div class="card card-sm pr-card-7">
+        <div class="pr-fila-sb pr-gap-8">
+          <div class="pr-flex1">
+            <div class="pr-fila-wrap">
+              <span class="badge badge-xs ${esRecibido ? 'bg-amber' : esPerdon ? 'bg-blue' : 'bg-green'}">${esRecibido ? 'Me prestó' : esPerdon ? 'Perdonada' : 'Pago'}</span>
+              ${m.nota ? html` <span class="pr-nota">${m.nota}</span>` : ''}
             </div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;">${m.fecha}${cuentasRef.length ? raw(' · ' + cuentasRef.map(_fuenteLabelHtml).join(' + ')) : ''}</div>
-            ${m.extra ? html`<div style="font-size:10px;color:var(--amber);font-family:'DM Mono',monospace;margin-top:2px;">Pagaste de más ${fmt(m.extra.monto)} · queda como gasto</div>` : ''}
+            <div class="pr-fecha pr-mt-3">${m.fecha}${cuentasRef.length ? raw(' · ' + cuentasRef.map(_fuenteLabelHtml).join(' + ')) : ''}</div>
+            ${m.extra ? html`<div class="pr-extra-aviso">Pagaste de más ${fmt(m.extra.monto)} · queda como gasto</div>` : ''}
           </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-            <div style="font-size:14px;font-weight:500;font-family:'DM Mono',monospace;color:${esRecibido ? 'var(--red)' : 'var(--accent)'};">${esRecibido ? '+' : '−'} ${fmt(m.monto)}</div>
-            <button type="button" class="btn-icon" style="color:var(--text3);min-width:36px;min-height:36px;" ${raw(Events.attr('prestado:eliminarMovMiDeuda', d.id, m.id))}>
+          <div class="pr-der">
+            <div class="pr-monto ${esRecibido ? 'c-red' : 'c-green'}">${esRecibido ? '+' : '−'} ${fmt(m.monto)}</div>
+            <button type="button" class="btn-icon pr-btn-36" ${raw(Events.attr('prestado:eliminarMovMiDeuda', d.id, m.id))}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </button>
           </div>
@@ -2006,9 +2002,9 @@ function _updateMdSplitResumen() {
   const repartido = splitGetData('mdSplit').reduce((a, r) => a + (r.monto || 0), 0);
   const diff = total - repartido;
   if (total && Math.abs(diff) > Deudas.TOL) {
-    resEl.innerHTML = html`<span style="color:var(--amber);">Total dividido: ${fmt(repartido)} de ${fmt(total)} · ${diff > 0 ? 'Faltan' : 'Sobran'} ${fmt(Math.abs(diff))}</span>`;
+    resEl.innerHTML = html`<span class="c-amber">Total dividido: ${fmt(repartido)} de ${fmt(total)} · ${diff > 0 ? 'Faltan' : 'Sobran'} ${fmt(Math.abs(diff))}</span>`;
   } else if (total) {
-    resEl.innerHTML = html`<span style="color:var(--accent);">Total: ${fmt(repartido)}</span>`;
+    resEl.innerHTML = html`<span class="c-green">Total: ${fmt(repartido)}</span>`;
   } else { resEl.textContent = ''; }
 }
 
@@ -2462,7 +2458,7 @@ function _abonoEncCuentaSplitPreview() {
     }
   }
 
-  if (excedeCuenta) { el.innerHTML = html`${lines} · <span style="color:var(--red);">excede el saldo de esa cuenta</span>`; el.style.color = 'var(--red)'; }
+  if (excedeCuenta) { el.innerHTML = html`${lines} · <span class="c-red">excede el saldo de esa cuenta</span>`; el.style.color = 'var(--red)'; }
   else if (Math.abs(restante) < 1) { el.innerHTML = html`${lines} &#x2713;`; el.style.color = 'var(--accent)'; }
   else if (restante > 0) { el.innerHTML = html`${lines} · Sin asignar: ${fmt(restante)}`; el.style.color = 'var(--amber)'; }
   else { el.innerHTML = html`${lines} · Excede: ${fmt(-restante)}`; el.style.color = 'var(--red)'; }

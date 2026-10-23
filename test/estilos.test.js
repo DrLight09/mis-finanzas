@@ -36,6 +36,8 @@ const CONVERTIDOS = [
   { f: 'js/modules/analisis.js', prefijos: ['an-', 'presup-bar-fill', 'presup-input'], armadas: ['an-t-', 'an-bg-'], permitidos: [/^width:\$\{/, /^height:\$\{/, 'display:none;'] },
   // spotify: solo quedan 3 display:none (avatares y aviso del selector de persona) que el JS conmuta
   { f: 'js/modules/spotify.js', prefijos: ['sp-', 'badge-xs', 'row-name-13', 'cuenta-flecha'], permitidos: ['display:none;'] },
+  // prestado: solo queda el color/fondo del avatar de cada persona (lo elige el usuario)
+  { f: 'js/modules/prestado.js', prefijos: ['pr-', 'badge-xs', 'ico-inline', 'cuenta-flecha', 'cuenta-svg-mid'], permitidos: [/^color:\$\{/] },
   // wrapped: su CSS vive en el <style> que inyecta el propio archivo (cssEn). Solo queda el retraso de animación de cada punto de la línea,
   // un valor distinto por punto (i*0.09s) que no puede ser una clase.
   { f: 'js/modules/wrapped.js', prefijos: ['wrapped-'], cssEn: ['js/modules/wrapped.js'], permitidos: [/^animation-delay:\$\{/] },
@@ -89,4 +91,11 @@ test('spotify: los colores de cV() (c-green, c-red, sp-t-neu) existen en styles.
   const css = leer('css/styles.css');
   ['c-green', 'c-red', 'sp-t-neu'].forEach(c => assert.ok(new RegExp('\\.' + c + '(?![\\w-])').test(css), c));
   assert.match(leer('js/modules/spotify.js'), /const cV=\(v\)=>v>0\?'c-green':v<0\?'c-red':'sp-t-neu'/);
+});
+
+test('prestado: las clases de color de los tipos de extra (clase: en _extTipos) existen en styles.css', () => {
+  const css = leer('css/styles.css'), src = leer('js/modules/prestado.js');
+  const clases = [...src.matchAll(/color: 'var\(--[a-z0-9]+\)', clase: '([a-z0-9-]+)'/g)].map(m => m[1]);
+  assert.ok(clases.length === 4, 'debe haber 4 tipos de extra con clase');
+  clases.forEach(c => assert.ok(new RegExp('\\.' + c + '(?![\\w-])').test(css), c));
 });

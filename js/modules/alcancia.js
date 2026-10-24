@@ -1188,7 +1188,7 @@ window.alcanciaConfirmarDestapar = function(){
             <span class="alc-prog-txt">Monto</span>
             <span class="alc-cmp-monto ${difMonto>=0?'alc-c-accent':'alc-c-red'}">${difMonto>=0?'+':''} ${fmt2(difMonto)}</span>
           </div>
-          <div class="row alc-fila-mb8"${rachaMsg ? '' : ''}>
+          <div class="row${rachaMsg ? ' alc-fila-mb8' : ''}">
             <span class="alc-prog-txt">Duración</span>
             <span class="alc-cmp-dias ${difDias>=0?'alc-c-accent':'alc-c-red'}">${difDias>=0?'+':''} ${difDias} días</span>
           </div>

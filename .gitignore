@@ -8,6 +8,8 @@
 /subir.sh
 /scripts/paso5/
 /mejoras.md
+/antes/
+/node_modules/
 
 # Credencial privada de Firebase
 /mis-finanzas-z-firebase-adminsdk-fbsvc-d1e82930fc.json

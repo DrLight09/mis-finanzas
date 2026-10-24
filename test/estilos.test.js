@@ -52,6 +52,12 @@ const CONVERTIDOS = [
   // plata comprometida: quedan 11 display:none que JS conmuta (selects ocultos, bloques de origen/destino, ingreso libre y recordatorios), el estilo inicial de #cp-balance-preview
   // (el JS lo reemplaza o lo vacía con cssText; una clase no se vaciaría) y el ancho calculado de la barra de comprometido
   { f: 'js/modules/plata_comprometida.js', prefijos: ['cp-'], armadas: ['cp-tbg-', 'cp-tc-', 'cp-c-'], permitidos: ['display:none;', "font-size:12px;font-family:'DM Mono',monospace;min-height:18px;padding:8px 0;", /^width:\$\{/] },
+  // index.html: quedan 110 style="". 98 son display:none que JS conmuta (style.display=''); 1 min-height y 1 avatar que JS vacía con ''; y el PRIMER PINTADO
+  // (#fb-loading-screen, #fb-login-screen, #pin-screen, #toast-container: styles.css es async y eso se ve antes de que llegue; ver comentario del <head>)
+  { f: 'index.html', prefijos: ['ix-'], permitidos: ['display:none;', 'display:flex;', 'display:flex', 'display:contents;', 'min-height:148px;', 'visibility:hidden;',
+    'background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);',
+    /^display:none;position:absolute;inset:0;background:rgba\(0,0,0,\.75\)/, /^background:var\(--bg2\);border:1px solid var\(--border2\);border-radius:var\(--radius\);padding:22px/,
+    /^font-size:15px;font-weight:600;margin-bottom:8px;$/, /^font-size:13px;color:var\(--text2\);margin-bottom:18px;line-height:1\.5;$/, 'display:flex;gap:8px;', /^flex:1;padding:10px;border-radius:var\(--radius-sm\);font-size:13px;font-weight:500;/] },
   // movimientos: detalle de un movimiento, sin ningún style="" (el color del monto sale de mdet-c-accent/red/amber)
   { f: 'js/core/movimientos.js', prefijos: ['mdet-', 'badge-xs'], permitidos: [] },
   // wrapped: su CSS vive en el <style> que inyecta el propio archivo (cssEn). Solo queda el retraso de animación de cada punto de la línea,
@@ -142,4 +148,48 @@ test('plata comprometida: las clases por tipo (cp-tbg-X, cp-tc-X) y los colores 
   }));
   ['cp-c-red', 'cp-c-amber', 'cp-c-text3'].forEach(c => assert.ok(new RegExp('\\.' + c + '(?![\\w-])').test(css), c));
   assert.doesNotMatch(src, /ti\.(bg|border|color)\b/, 'los colores por tipo son clases, no ti.bg/border/color');
+});
+
+test('index.html: cada clase ix-* con min-height tiene su regla :empty (reemplaza a [style*="min-height"]:empty, que ya no ve el inline)', () => {
+  const css = leer('css/styles.css');
+  const reglas = [...css.matchAll(/(^|\n)([^{}\n]*\.(ix-[\w-]+)[^{}\n]*)\{([^}]*)\}/g)];
+  const conMin = reglas.filter(m => /min-height/.test(m[4]) && !/:empty/.test(m[2])).map(m => m[3]);
+  assert.ok(conMin.length >= 20, 'se esperaban ~29 clases con min-height; hay ' + conMin.length);
+  conMin.forEach(c => assert.ok(new RegExp('\\.' + c + ':empty\\{min-height:0 !important;\\}').test(css), c + ' sin :empty'));
+});
+
+test('index.html: el primer pintado (carga, login, PIN, toasts) conserva sus style="" porque styles.css es async', () => {
+  const html = leer('index.html');
+  assert.match(html, /<div[^>]*id="fb-loading-screen"[^>]*style="display:flex;?"|<div[^>]*style="display:flex;?"[^>]*id="fb-loading-screen"/);
+  assert.match(html, /id="fb-loading-screen"/);
+  // un style="" de más aquí es intencional: si alguien lo mueve a styles.css, la pantalla de carga se vería sin estilo hasta que llegue el CSS
+  const i = html.indexOf('id="pin-screen"');
+  assert.ok(html.slice(i, i + 4000).includes('style="'), 'pin-screen conserva su estilo inline');
+});
+
+test('styles.css es CSS válido de punta a punta: llaves balanceadas y sin comillas escapadas (\\\' o \\") heredadas de cadenas JS', () => {
+  const css = leer('css/styles.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  let d = 0; for (const c of css) { if (c === '{') d++; if (c === '}') d--; assert.ok(d >= 0, 'llave de cierre de más'); }
+  assert.equal(d, 0, 'llaves sin cerrar');
+  // una comilla escapada dentro de una declaración es CSS inválido y el navegador descarta también las reglas siguientes (pasó con .cp-dev-tag)
+  assert.doesNotMatch(css, /\\['"]/);
+});
+
+test('alcancia: el margen inferior de la fila "Duración" solo existe cuando hay racha (era un style condicional, no fijo)', () => {
+  const src = leer('js/modules/alcancia.js');
+  assert.match(src, /<div class="row\$\{rachaMsg \? ' alc-fila-mb8' : ''\}">/);
+  assert.doesNotMatch(src, /rachaMsg \? '' : ''/);
+});
+
+test('index.html: #gv_fuente_hint conserva visibility:hidden inline (styles.css lo usa como selector de atributo)', () => {
+  assert.match(leer('index.html'), /id="gv_fuente_hint"[^>]*style="visibility:hidden;"|style="visibility:hidden;"[^>]*id="gv_fuente_hint"/);
+});
+
+test('styles.css: un parser real (jsdom) lee tantas reglas como bloques de nivel superior (ninguna se pierde por un error de sintaxis)', { skip: (() => { try { require('jsdom'); return false; } catch { return 'jsdom no instalado'; } })() }, () => {
+  const { JSDOM } = require('jsdom');
+  const css = leer('css/styles.css');
+  const limpio = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  let d = 0, bloques = 0; for (const c of limpio) { if (c === '{') { if (d === 0) bloques++; d++; } if (c === '}') d--; }
+  const st = new JSDOM('<style></style>').window.document.querySelector('style'); st.textContent = css;
+  assert.equal(st.sheet.cssRules.length, bloques);
 });

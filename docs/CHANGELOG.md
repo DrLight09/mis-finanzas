@@ -8,6 +8,29 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 Documentación: [`libro-de-movimientos.md`](./libro-de-movimientos.md).
 
+### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 17) — `plata_comprometida.js`
+
+**`plata_comprometida.js`: 186 `style=""` → 13.** 11 son `display:none` de elementos que el JS conmuta (selects ocultos, bloques de origen/destino de cada destino, el recordatorio y el bloque "ingreso libre", que conserva `display:none` inline y lleva el resto en `cp-sobrante`), 1 es el estilo inicial de `#cp-balance-preview` y 1 el `width:${pct}%` de la barra de comprometido. 168 clases `cp-*` al final de `styles.css`.
+- **Tipo de destino → clases:** `_CP_TIPO_LABELS` ya no guarda `bg/border/color` (nueve usos en línea) sino una clave `k`; el HTML usa `cp-tbg-${ti.k}` (fondo + borde) y `cp-tc-${ti.k}` (color) para los cuatro tipos (reposición, gasto, abono a deuda, otro). Se separaron fondo y color porque algunos elementos usan solo uno y añadir `color` a una caja habría cambiado la herencia de su contenido. Prueba nueva en `tests/estilos.test.js` que exige las 8 clases y la clave `k` de cada tipo.
+- **Botones "aún no / ya" (marcar pagado):** dos botones con `style` de 7 propiedades según `estado` y `esReposicion` → `cp-tgl` + `cp-tgl-inact|off-act|on-rep|on-ing`; desaparecen `colorOn`, `bgOn`, `borderOn`.
+- **Fechas de pago:** `colorFecha` es ahora `cp-c-text3|red|amber`; el chip de aviso de la cabecera usa `cp-c-${tipoG}` (`red`/`amber`).
+- **Conservado a propósito (trampa):** `#cp-balance-preview` mantiene su `style` inicial. El JS lo reemplaza con `style.cssText = '…'` y, cuando no hay monto, lo vacía con `cssText = ''`; con una clase ese vaciado dejaría el `min-height` y el `padding` del estado inicial y el elemento no se colapsaría.
+- **Los botones de selección** (tarjetas de tipo `cpd-tipo-card`, "Sí/No" de ya saqué / ya pagué) asignan siempre valores explícitos desde el JS (`btn.style.background = …`), así que la clase solo fija el estado inicial; no hay reseteos con `''`.
+- **Convertidor:** `select`/`textarea` ahora también reciben selector compuesto (`select.cp-sel13`), igual que `input`: compiten con `input[type=text]…select{}` (0,1,1).
+- **Especificidad:** los `.il`, botones `btn-primary` y `<b>` marcan solo selectores de 0,2,0 que empatan y ganan por orden, o de otros contenedores.
+- **Verificación (sin `jsdom`):** archivo sin `style`/`class` == original salvo `_CP_TIPO_LABELS`, `colorFecha` y las tres constantes de los botones; declaraciones de cada clase == su `style`; ninguna etiqueta con dos `class`.
+- `tests/estilos.test.js`: `plata_comprometida.js` en `CONVERTIDOS`.
+- **Con esto todos los `.js` de módulos y núcleo con estilos en línea están convertidos** salvo los valores calculados (inventario en `CONTINUAR.md`). Quedan `index.html` (784) y el helper de estilos dinámicos.
+
+### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 16) — `personas.js`
+
+**`personas.js`: 180 `style=""` → 7, todos calculados** (candidatos al helper de estilos dinámicos del final del Paso 5): el color elegido por el usuario para el avatar de cada persona (`color`, `background`, `border-color` con `${color}`, 4 sitios; el resto del avatar —tamaño, margen— pasa a `.avatar.pe-av-40|36`), el `width:${pct}%` de las dos barras de progreso (a favor y en contra) y el `background:${c}` de cada muestra de la paleta de colores. 75 clases `pe-*` + 12 de apoyo al final de `styles.css`.
+- **Colores por estado → clases:** `color2` (pendiente/le debes/saldado) y `colorDeuda` ya guardan `pe-c-amber|red|accent`; la barra de progreso es `pe-fill` + `pe-bg-accent|amber|red`; la muestra de color seleccionada es `pe-swatch-sel` y la no seleccionada `pe-swatch-no` (borde y sombra con la misma forma abreviada que traía el `style`).
+- **Hover de las filas** (`_persona-row-hover`, `_sel-persona-row`): ya era por JS (CSSOM, `row.style.borderColor` / `background`), así que no cambia; al salir se restaura `background=''` y la clase no define fondo, igual que antes.
+- **Especificidad:** el análisis solo marca `.btn-primary + .btn-ghost` (0,2,0, empata y gana por orden, como el inline) y selectores de otros contenedores. `<p>` de la introducción del selector vs `.header p`: el `<p>` no está en un `.header`.
+- **Verificación (sin `jsdom`):** archivo sin `style`/`class` == original salvo `color2` y `colorDeuda`; declaraciones de cada clase == su `style`; ninguna etiqueta con dos `class`.
+- `tests/estilos.test.js`: `personas.js` en `CONVERTIDOS` (permitidos: `width:${…}`, `color|background:${…}`).
+
 ### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 15) — `encargos.js`
 
 **`encargos.js`: 133 `style=""` → 2.** Quedan `display:none;` del avatar del selector de persona (`enc-persona-avatar`, que el JS conmuta con `style.display`; la clase `enc-persona-av` lleva el resto) y `cursor:pointer;` en `_encAttrs` (fragmento de atributos `data-mov-*` que se inserta en etiquetas ajenas y no puede llevar `class`). 88 clases `enc-*` al final de `styles.css`.

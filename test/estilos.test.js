@@ -47,6 +47,11 @@ const CONVERTIDOS = [
   { f: 'js/modules/tarjetas_credito.js', prefijos: ['tc-', 'badge-xs'], permitidos: [/^width:\$\{/, 'cursor:pointer;'] },
   // encargos: quedan el display:none del avatar del selector de persona (JS lo conmuta) y el cursor del fragmento de atributos _encAttrs (se inserta en etiquetas ajenas)
   { f: 'js/modules/encargos.js', prefijos: ['enc-'], permitidos: ['display:none;', 'cursor:pointer;'] },
+  // personas: quedan solo valores calculados — el ancho de las barras de progreso, el color elegido por el usuario para cada avatar (color/fondo/borde con ${color}) y el fondo de cada muestra de la paleta
+  { f: 'js/modules/personas.js', prefijos: ['pe-'], permitidos: [/^width:\$\{/, /^(color|background):\$\{/] },
+  // plata comprometida: quedan 11 display:none que JS conmuta (selects ocultos, bloques de origen/destino, ingreso libre y recordatorios), el estilo inicial de #cp-balance-preview
+  // (el JS lo reemplaza o lo vacía con cssText; una clase no se vaciaría) y el ancho calculado de la barra de comprometido
+  { f: 'js/modules/plata_comprometida.js', prefijos: ['cp-'], armadas: ['cp-tbg-', 'cp-tc-', 'cp-c-'], permitidos: ['display:none;', "font-size:12px;font-family:'DM Mono',monospace;min-height:18px;padding:8px 0;", /^width:\$\{/] },
   // movimientos: detalle de un movimiento, sin ningún style="" (el color del monto sale de mdet-c-accent/red/amber)
   { f: 'js/core/movimientos.js', prefijos: ['mdet-', 'badge-xs'], permitidos: [] },
   // wrapped: su CSS vive en el <style> que inyecta el propio archivo (cssEn). Solo queda el retraso de animación de cada punto de la línea,
@@ -127,4 +132,14 @@ test('alcancia: las clases de color que arma el código (alc-c-X, alc-dif-X) exi
     const linea = src.split('\n').find(l => l.includes('const ' + nombre));
     assert.ok(linea && !/var\(--/.test(linea), nombre);
   }
+});
+
+test('plata comprometida: las clases por tipo (cp-tbg-X, cp-tc-X) y los colores que arma el código existen en styles.css', () => {
+  const css = leer('css/styles.css'), src = leer('js/modules/plata_comprometida.js');
+  ['reposicion', 'gasto', 'abono_deuda', 'otro'].forEach(t => ['cp-tbg-', 'cp-tc-'].forEach(p => {
+    assert.ok(new RegExp('\\.' + p + t + '(?![\\w-])').test(css), p + t);
+    assert.ok(new RegExp("k:'" + t + "'").test(src), 'falta k:' + t + ' en _CP_TIPO_LABELS');
+  }));
+  ['cp-c-red', 'cp-c-amber', 'cp-c-text3'].forEach(c => assert.ok(new RegExp('\\.' + c + '(?![\\w-])').test(css), c));
+  assert.doesNotMatch(src, /ti\.(bg|border|color)\b/, 'los colores por tipo son clases, no ti.bg/border/color');
 });

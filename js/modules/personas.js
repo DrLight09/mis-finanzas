@@ -90,18 +90,18 @@ function _inyectarPersonaSheets() {
     <div class="sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-title">¿De quién es la plata?</div>
-      <p style="font-size:12px;color:var(--text2);margin-bottom:14px;">Elige una persona existente o crea una nueva.</p>
-      <div id="sel-persona-buscar-wrap" class="ig" style="position:relative;">
+      <p class="pe-intro">Elige una persona existente o crea una nueva.</p>
+      <div id="sel-persona-buscar-wrap" class="ig pe-sel-wrap">
         <input type="text" id="sel-persona-buscar" placeholder="Buscar persona..." autocomplete="off"
-          style="padding-left:36px;">
-        <svg style="position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          class="pe-sel-input">
+        <svg class="pe-sel-lupa" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </div>
-      <div id="sel-persona-lista" style="max-height:300px;overflow-y:auto;"></div>
-      <button type="button" class="btn btn-ghost" style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:6px;" ${Events.attr('personas:abrirCrearGlobal', false)}>
+      <div id="sel-persona-lista" class="pe-sel-lista"></div>
+      <button type="button" class="btn btn-ghost pe-btn-nueva" ${Events.attr('personas:abrirCrearGlobal', false)}>
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Nueva persona
       </button>
-      <button type="button" class="btn btn-ghost" data-close-sheet="sel-persona" style="margin-top:6px;">Cancelar</button>
+      <button type="button" class="btn btn-ghost pe-btn-cancelar" data-close-sheet="sel-persona">Cancelar</button>
     </div>`;
   document.body.appendChild(sheetSel);
   // oninput inline reemplazado por addEventListener — docs/auditoria-tecnica.md #1
@@ -120,10 +120,10 @@ function _inyectarPersonaSheets() {
       <div class="ig"><label class="il" for="cpg_nombre">Nombre</label>
         <input type="text" id="cpg_nombre" placeholder="Ej: Papá, Carlos, Mamá..."></div>
       <div class="ig"><div class="il">Color del avatar</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;" id="cpg_colores"></div>
+        <div class="pe-colores" id="cpg_colores"></div>
       </div>
       <button type="button" class="btn btn-primary" ${Events.attr('personas:confirmarCrear')}>Crear persona</button>
-      <button type="button" class="btn btn-ghost" ${Events.attr('personas:volverASel')} style="margin-top:6px;">← Volver</button>
+      <button type="button" class="btn btn-ghost pe-btn-cancelar" ${Events.attr('personas:volverASel')}>← Volver</button>
     </div>`;
   document.body.appendChild(sheetCreate);
 
@@ -135,18 +135,18 @@ function _inyectarPersonaSheets() {
   sheetPerfil.innerHTML = `
     <div class="sheet">
       <div class="sheet-handle"></div>
-      <div id="pperf-header" style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
-        <div id="pperf-avatar" class="avatar" style="width:46px;height:46px;font-size:16px;margin-right:0;flex-shrink:0;"></div>
-        <div style="flex:1;min-width:0;">
-          <div id="pperf-nombre" style="font-size:17px;font-weight:700;"></div>
-          <div id="pperf-sub" style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;"></div>
+      <div id="pperf-header" class="pe-perf-cab">
+        <div id="pperf-avatar" class="avatar pe-av-46"></div>
+        <div class="pe-flex1-min0">
+          <div id="pperf-nombre" class="pe-perf-nombre"></div>
+          <div id="pperf-sub" class="pe-perf-sub"></div>
         </div>
-        <button type="button" class="btn-icon" ${Events.attr('personas:editarDesdePerfil')} title="Editar" style="color:var(--accent);">
+        <button type="button" class="btn-icon pe-c-accent" ${Events.attr('personas:editarDesdePerfil')} title="Editar">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
       </div>
       <div id="pperf-body"></div>
-      <button type="button" class="btn btn-ghost" data-close-sheet="perfil-persona" style="margin-top:10px;">Cerrar</button>
+      <button type="button" class="btn btn-ghost pe-mt10" data-close-sheet="perfil-persona">Cerrar</button>
     </div>`;
   document.body.appendChild(sheetPerfil);
 
@@ -162,10 +162,10 @@ function _inyectarPersonaSheets() {
       <div class="ig"><label class="il" for="epg_nombre">Nombre</label>
         <input type="text" id="epg_nombre" placeholder="Ej: Papá, Carlos, Mamá..."></div>
       <div class="ig"><div class="il">Color del avatar</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;" id="epg_colores"></div>
+        <div class="pe-colores" id="epg_colores"></div>
       </div>
       <button type="button" class="btn btn-primary" ${Events.attr('personas:guardarEdicion')}>Guardar cambios</button>
-      <button type="button" class="btn btn-ghost" data-close-sheet="editar-persona-global" style="margin-top:6px;">Cancelar</button>
+      <button type="button" class="btn btn-ghost pe-btn-cancelar" data-close-sheet="editar-persona-global">Cancelar</button>
     </div>`;
   document.body.appendChild(sheetEdit);
 
@@ -221,15 +221,15 @@ function _renderListaPersonas() {
     if (datos.deudor) {
       const saldo = datos.saldoPrestamo;
       partesFrag.push(saldo !== 0
-        ? html`<span style="color:var(--amber);">${fmt(saldo)} pendiente</span>`
-        : html`<span style="color:var(--accent);">Al día</span>`);
+        ? html`<span class="pe-c-amber">${fmt(saldo)} pendiente</span>`
+        : html`<span class="pe-c-accent">Al día</span>`);
     }
     if (datos.encargos.length) partesFrag.push(html`${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}`);
     if (datos.misDeudas && datos.misDeudas.length) {
       const saldoMD = datos.saldoMisDeudas;
       partesFrag.push(saldoMD > 0
-        ? html`<span style="color:var(--red);">Le debes ${fmt(saldoMD)}</span>`
-        : html`<span style="color:var(--accent);">Deuda saldada</span>`);
+        ? html`<span class="pe-c-red">Le debes ${fmt(saldoMD)}</span>`
+        : html`<span class="pe-c-accent">Deuda saldada</span>`);
     }
     // partesConSeparador: array plano de fragmentos html`` intercalados con
     // el string ' · ' — interpolar el array directo (sin .join()) deja que
@@ -239,15 +239,15 @@ function _renderListaPersonas() {
     const partesConSeparador = partesFrag.flatMap((f, i) => i === 0 ? [f] : [' · ', f]);
     const subTexto = partesFrag.length
       ? partesConSeparador
-      : html`<span style="color:var(--text3);">Sin actividad</span>`;
+      : html`<span class="pe-c-text3">Sin actividad</span>`;
 
-    contenido.push(html`<div ${raw(Events.attr('personas:abrirPerfil', p.id))} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
-      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${iniciales(p.nombre)}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:600;">${p.nombre}</div>
-        <div style="font-size:11px;margin-top:2px;font-family:'DM Mono',monospace;">${subTexto}</div>
+    contenido.push(html`<div ${raw(Events.attr('personas:abrirPerfil', p.id))} class="_persona-row-hover pe-fila" data-hover-color="${color}">
+      <div class="avatar pe-av-40" style="color:${color};background:${color}18;border-color:${color}33;">${iniciales(p.nombre)}</div>
+      <div class="pe-flex1-min0">
+        <div class="pe-nombre">${p.nombre}</div>
+        <div class="pe-sub">${subTexto}</div>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`);
   });
 
@@ -256,17 +256,17 @@ function _renderListaPersonas() {
     const color = d.color || '#60b0f0';
     const saldo = getDeudorSaldo(d);
     const sub = saldo > 0
-      ? html`<span style="color:var(--amber);">${fmt(saldo)} pendiente</span>`
+      ? html`<span class="pe-c-amber">${fmt(saldo)} pendiente</span>`
       : saldo < 0
-        ? html`<span style="color:var(--red);">Saldo a su favor</span>`
-        : html`<span style="color:var(--accent);">Al día</span>`;
-    contenido.push(html`<div ${raw(Events.attr('prestado:abrirPerfilDeudor', d.id))} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
-      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:600;">${d.nombre}</div>
-        <div style="font-size:11px;margin-top:2px;font-family:'DM Mono',monospace;">${sub}</div>
+        ? html`<span class="pe-c-red">Saldo a su favor</span>`
+        : html`<span class="pe-c-accent">Al día</span>`;
+    contenido.push(html`<div ${raw(Events.attr('prestado:abrirPerfilDeudor', d.id))} class="_persona-row-hover pe-fila" data-hover-color="${color}">
+      <div class="avatar pe-av-40" style="color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
+      <div class="pe-flex1-min0">
+        <div class="pe-nombre">${d.nombre}</div>
+        <div class="pe-sub">${sub}</div>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`);
   });
 
@@ -275,15 +275,15 @@ function _renderListaPersonas() {
     const color = d.color || '#f06868';
     const saldo = getMiDeudaSaldo(d);
     const sub = saldo > 0
-      ? html`<span style="color:var(--red);">Le debes ${fmt(saldo)}</span>`
-      : html`<span style="color:var(--accent);">Saldado</span>`;
-    contenido.push(html`<div ${raw(Events.attr('prestado-personas:abrirPerfilMiDeuda', d.id))} class="_persona-row-hover" data-hover-color="${color}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;transition:border-color .15s;">
-      <div class="avatar" style="width:40px;height:40px;font-size:14px;margin-right:0;flex-shrink:0;color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:600;">${d.nombre}</div>
-        <div style="font-size:11px;margin-top:2px;font-family:'DM Mono',monospace;">${sub}</div>
+      ? html`<span class="pe-c-red">Le debes ${fmt(saldo)}</span>`
+      : html`<span class="pe-c-accent">Saldado</span>`;
+    contenido.push(html`<div ${raw(Events.attr('prestado-personas:abrirPerfilMiDeuda', d.id))} class="_persona-row-hover pe-fila" data-hover-color="${color}">
+      <div class="avatar pe-av-40" style="color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
+      <div class="pe-flex1-min0">
+        <div class="pe-nombre">${d.nombre}</div>
+        <div class="pe-sub">${sub}</div>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;"><polyline points="9 18 15 12 9 6"/></svg>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`);
   });
 
@@ -340,23 +340,23 @@ function _selPersonaFiltrar() {
     // Lo que escribió coincide exacto con alguien que ya está en esa lista: no tiene sentido ofrecer crearla de nuevo.
     const yaEsta = q && excluidas.find(p => p.nombre.trim().toLowerCase() === q);
     if (yaEsta) {
-      lista.innerHTML = html`<div style="font-size:12px;color:var(--text3);padding:10px 0;">${yaEsta.nombre} ya está en esta lista.</div>`;
+      lista.innerHTML = html`<div class="pe-vacio-12">${yaEsta.nombre} ya está en esta lista.</div>`;
       return;
     }
     // Todas las personas que existen ya están en la lista: solo queda crear una nueva.
     if (!q && excluidas.length) {
-      lista.innerHTML = html`<div style="font-size:12px;color:var(--text3);padding:10px 0;">Todas tus personas ya están en esta lista. Crea una nueva.</div>`;
+      lista.innerHTML = html`<div class="pe-vacio-12">Todas tus personas ya están en esta lista. Crea una nueva.</div>`;
       return;
     }
     lista.innerHTML = html`${q
-      ? html`<div style="padding:10px 0;">
-          <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">No se encontró "${q}".</div>
-          <button type="button" ${raw(Events.attr('personas:selCrearDirecto'))} style="width:100%;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px;border-radius:var(--radius-sm);background:rgba(200,240,96,.12);border:1.5px solid var(--accent);color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+      ? html`<div class="pe-pad10">
+          <div class="pe-sin-res">No se encontró "${q}".</div>
+          <button type="button" ${raw(Events.attr('personas:selCrearDirecto'))} class="pe-btn-crear">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Crear a "${q}"
           </button>
         </div>`
-      : html`<div style="font-size:12px;color:var(--text3);padding:10px 0;">No hay personas todavía. Creá una nueva.</div>`}`;
+      : html`<div class="pe-vacio-12">No hay personas todavía. Creá una nueva.</div>`}`;
     return;
   }
   // items: array de fragmentos html`` por persona — se interpolan directo
@@ -367,21 +367,21 @@ function _selPersonaFiltrar() {
     if (datos.deudor) {
       const saldo = datos.saldoPrestamo;
       badges.push(saldo > 0
-        ? html`<span class="badge bg-amber" style="font-size:9px;">Préstamo ${fmt(saldo)}</span>`
-        : html`<span class="badge bg-blue" style="font-size:9px;">Préstamos</span>`);
+        ? html`<span class="badge bg-amber pe-fs9">Préstamo ${fmt(saldo)}</span>`
+        : html`<span class="badge bg-blue pe-fs9">Préstamos</span>`);
     }
-    if (datos.encargos.length) badges.push(html`<span class="badge bg-blue" style="font-size:9px;">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>`);
+    if (datos.encargos.length) badges.push(html`<span class="badge bg-blue pe-fs9">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>`);
     if (datos.misDeudas && datos.misDeudas.length) {
       const saldoMD = datos.saldoMisDeudas;
       badges.push(saldoMD > 0
-        ? html`<span class="badge" style="font-size:9px;background:rgba(240,104,104,.18);color:var(--red);">Le debes ${fmt(saldoMD)}</span>`
-        : html`<span class="badge bg-green" style="font-size:9px;">Deuda saldada</span>`);
+        ? html`<span class="badge pe-badge-debes">Le debes ${fmt(saldoMD)}</span>`
+        : html`<span class="badge bg-green pe-fs9">Deuda saldada</span>`);
     }
-    return html`<div ${raw(Events.attr('personas:selElegir', p.id))} style="display:flex;align-items:center;gap:10px;padding:11px 4px;border-bottom:1px solid var(--border);cursor:pointer;" class="_sel-persona-row">
-      <div class="avatar" style="width:36px;height:36px;font-size:12px;margin-right:0;flex-shrink:0;background:${p.color}18;color:${p.color};border-color:${p.color}33;">${iniciales(p.nombre)}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:14px;font-weight:600;">${p.nombre}</div>
-        ${badges.length ? html`<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">${badges}</div>` : ''}
+    return html`<div ${raw(Events.attr('personas:selElegir', p.id))} class="_sel-persona-row pe-sel-fila">
+      <div class="avatar pe-av-36" style="background:${p.color}18;color:${p.color};border-color:${p.color}33;">${iniciales(p.nombre)}</div>
+      <div class="pe-flex1-min0">
+        <div class="pe-nombre">${p.nombre}</div>
+        ${badges.length ? html`<div class="pe-badges">${badges}</div>` : ''}
       </div>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`;
@@ -561,7 +561,7 @@ function abrirPerfilPersona(personaId) {
     const abonos   = movs.filter(m => (m.tipo === 'abono' || m.tipo === 'pago-completo') && !m._perdon);
     const totalPrestado = prestamos.reduce((a, m) => a + (m.monto || 0), 0);
     const totalAbonado  = abonos.reduce((a, m) => a + (m.monto || 0), 0);
-    const color2 = saldo > 0 ? 'var(--amber)' : saldo < 0 ? 'var(--red)' : 'var(--accent)';
+    const color2 = saldo > 0 ? 'pe-c-amber' : saldo < 0 ? 'pe-c-red' : 'pe-c-accent';
     const pct = totalPrestado > 0 ? Math.min(100, Math.round(totalAbonado / totalPrestado * 100)) : 0;
 
     // Stats interesantes
@@ -571,55 +571,55 @@ function abrirPerfilPersona(personaId) {
     const diasDesde     = movs.length ? Math.floor((new Date() - new Date(movs[0].fecha + 'T00:00:00')) / 86400000) : null;
     const ultimoMov     = movs.length ? movs[movs.length - 1] : null;
 
-    contenido.push(html`<div style="background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Préstamos</div>
-        <button type="button" ${raw(Events.attr('prestado-personas:irADeudor', d.id))} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver detalle →</button>
+    contenido.push(html`<div class="pe-card-amber">
+      <div class="pe-cab">
+        <div class="pe-cab-cap-amber"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Préstamos</div>
+        <button type="button" ${raw(Events.attr('prestado-personas:irADeudor', d.id))} class="pe-ver-detalle">Ver detalle →</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
-        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Pendiente</div>
-          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:${color2};">${fmt(saldo)}</div>
+      <div class="pe-grid3">
+        <div class="pe-celda">
+          <div class="pe-celda-cap">Pendiente</div>
+          <div class="pe-val15 ${color2}">${fmt(saldo)}</div>
         </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Prestado</div>
-          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(totalPrestado)}</div>
+        <div class="pe-celda">
+          <div class="pe-celda-cap">Prestado</div>
+          <div class="pe-val-text">${fmt(totalPrestado)}</div>
         </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Abonado</div>
-          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(totalAbonado)}</div>
+        <div class="pe-celda">
+          <div class="pe-celda-cap">Abonado</div>
+          <div class="pe-val-accent">${fmt(totalAbonado)}</div>
         </div>
       </div>
-      ${totalPrestado > 0 ? html`<div style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;">
+      ${totalPrestado > 0 ? html`<div class="pe-mb10">
+        <div class="pe-prog-cab">
           <span>Progreso de pago</span><span>${pct}%</span>
         </div>
-        <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;">
-          <div style="width:${pct}%;height:100%;background:${pct===100?'var(--accent)':'var(--amber)'};border-radius:2px;transition:width .4s;"></div>
+        <div class="pe-prog-barra">
+          <div class="pe-fill ${pct===100?'pe-bg-accent':'pe-bg-amber'}" style="width:${pct}%;"></div>
         </div>
       </div>` : ''}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-        ${mayorPrestamo ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor préstamo</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(mayorPrestamo.monto)}</div>
-          ${mayorPrestamo.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorPrestamo.fecha}</div>` : ''}
+      <div class="pe-grid2-gap7">
+        ${mayorPrestamo ? html`<div class="pe-celda">
+          <div class="pe-celda-cap">Mayor préstamo</div>
+          <div class="pe-val14-amber">${fmt(mayorPrestamo.monto)}</div>
+          ${mayorPrestamo.fecha ? html`<div class="pe-fecha10">${mayorPrestamo.fecha}</div>` : ''}
         </div>` : ''}
-        ${mayorAbono ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor abono</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(mayorAbono.monto)}</div>
-          ${mayorAbono.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorAbono.fecha}</div>` : ''}
+        ${mayorAbono ? html`<div class="pe-celda">
+          <div class="pe-celda-cap">Mayor abono</div>
+          <div class="pe-val14-accent">${fmt(mayorAbono.monto)}</div>
+          ${mayorAbono.fecha ? html`<div class="pe-fecha10">${mayorAbono.fecha}</div>` : ''}
         </div>` : ''}
-        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Veces prestado</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${cuantasveces}x</div>
+        <div class="pe-celda">
+          <div class="pe-celda-cap">Veces prestado</div>
+          <div class="pe-val14-text">${cuantasveces}x</div>
         </div>
-        ${diasDesde !== null ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Relación activa</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${diasDesde}d</div>
+        ${diasDesde !== null ? html`<div class="pe-celda">
+          <div class="pe-celda-cap">Relación activa</div>
+          <div class="pe-val14-text">${diasDesde}d</div>
         </div>` : ''}
       </div>
-      ${ultimoMov ? html`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
-        Último movimiento: <span style="color:var(--text2);font-weight:500;">${ultimoMov.tipo === 'prestamo' ? 'Préstamo' : (ultimoMov._perdon ? 'Deuda perdonada' : (ultimoMov.tipo === 'pago-completo' ? 'Pago completo' : 'Abono'))} de ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? html` · <i>${ultimoMov.nota}</i>` : ''}
+      ${ultimoMov ? html`<div class="pe-ultimo">
+        Último movimiento: <span class="pe-ultimo-val">${ultimoMov.tipo === 'prestamo' ? 'Préstamo' : (ultimoMov._perdon ? 'Deuda perdonada' : (ultimoMov.tipo === 'pago-completo' ? 'Pago completo' : 'Abono'))} de ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? html` · <i>${ultimoMov.nota}</i>` : ''}
       </div>` : ''}
     </div>`);
   }
@@ -633,38 +633,38 @@ function abrirPerfilPersona(personaId) {
     const mayorEntrada = entradasEnc.length ? entradasEnc.reduce((mx, m) => (m.monto||0) > (mx.monto||0) ? m : mx, entradasEnc[0]) : null;
     const encargoMayor = datos.encargos.length ? [...datos.encargos].sort((a,b) => encargoSaldo(b) - encargoSaldo(a))[0] : null;
 
-    contenido.push(html`<div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;display:flex;align-items:center;gap:5px;"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Encargos</div>
-        <span style="font-size:12px;color:var(--text2);">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>
+    contenido.push(html`<div class="pe-card-azul">
+      <div class="pe-cab">
+        <div class="pe-cab-cap-azul"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Encargos</div>
+        <span class="pe-enc-n">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px;">
-        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Total activo</div>
-          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(totalEnc)}</div>
+      <div class="pe-grid2-mb10">
+        <div class="pe-celda">
+          <div class="pe-celda-cap">Total activo</div>
+          <div class="pe-val15-azul">${fmt(totalEnc)}</div>
         </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Cantidad</div>
-          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${datos.encargos.length}</div>
+        <div class="pe-celda">
+          <div class="pe-celda-cap">Cantidad</div>
+          <div class="pe-val-text">${datos.encargos.length}</div>
         </div>
-        ${encargoMayor ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Encargo mayor</div>
-          <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(encargoSaldo(encargoMayor))}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${encargoMayor.nota||encargoMayor.nombre}</div>
+        ${encargoMayor ? html`<div class="pe-celda">
+          <div class="pe-celda-cap">Encargo mayor</div>
+          <div class="pe-val13-azul">${fmt(encargoSaldo(encargoMayor))}</div>
+          <div class="pe-nota10">${encargoMayor.nota||encargoMayor.nombre}</div>
         </div>` : ''}
-        ${mayorEntrada ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor entrada</div>
-          <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(mayorEntrada.monto)}</div>
-          ${mayorEntrada.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:1px;">${mayorEntrada.fecha}</div>` : ''}
+        ${mayorEntrada ? html`<div class="pe-celda">
+          <div class="pe-celda-cap">Mayor entrada</div>
+          <div class="pe-val13-accent">${fmt(mayorEntrada.monto)}</div>
+          ${mayorEntrada.fecha ? html`<div class="pe-fecha10-mt1">${mayorEntrada.fecha}</div>` : ''}
         </div>` : ''}
       </div>
       ${datos.encargos.map(e => {
         const saldoE = encargoSaldo(e);
-        return html`<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);">
-          <div style="font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.nota || e.nombre}</div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-            <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(saldoE)}</div>
-            <button type="button" ${raw(Events.attr('encargos-personas:irAEncargo', e.id))} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver →</button>
+        return html`<div class="pe-enc-fila">
+          <div class="pe-enc-nom">${e.nota || e.nombre}</div>
+          <div class="pe-enc-der">
+            <div class="pe-enc-saldo">${fmt(saldoE)}</div>
+            <button type="button" ${raw(Events.attr('encargos-personas:irAEncargo', e.id))} class="pe-ver-detalle">Ver →</button>
           </div>
         </div>`;
       })}
@@ -684,8 +684,8 @@ function abrirPerfilPersona(personaId) {
       hoy0    ? 'Vence hoy' :
                 'Paga en ' + diasRestantes + 'd · ' + spEntry.proximoPago;
     const estadoBadge = spEntry.pagado
-      ? html`<span class="badge bg-green" style="font-size:9px;">Pagó este ciclo</span>`
-      : html`<span class="badge bg-red" style="font-size:9px;">Pendiente</span>`;
+      ? html`<span class="badge bg-green pe-fs9">Pagó este ciclo</span>`
+      : html`<span class="badge bg-red pe-fs9">Pendiente</span>`;
 
     // Stats Spotify de esta persona
     const histSp = (S.spotify.historial || []).filter(h => h.tipo === 'cobro' && h.nombre === spEntry.nombre);
@@ -696,40 +696,40 @@ function abrirPerfilPersona(personaId) {
       : null;
     const mesesEstimados = diasEnPlan !== null ? Math.floor(diasEnPlan / 30) : null;
 
-    contenido.push(html`<div style="background:rgba(30,215,96,.06);border:1px solid rgba(30,215,96,.25);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:10px;color:#1ed760;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 64 64" style="vertical-align:middle;margin-right:3px;"><path d="M32 0C14.3 0 0 14.337 0 32c0 17.7 14.337 32 32 32 17.7 0 32-14.337 32-32S49.663 0 32 0zm14.68 46.184c-.573.956-1.797 1.223-2.753.65-7.532-4.588-16.975-5.62-28.14-3.097-1.07.23-2.14-.42-2.37-1.49s.42-2.14 1.49-2.37c12.196-2.79 22.67-1.606 31.082 3.556a2 2 0 0 1 .688 2.753zm3.9-8.717c-.726 1.185-2.256 1.53-3.44.84-8.602-5.276-21.716-6.805-31.885-3.747-1.338.382-2.714-.344-3.097-1.644-.382-1.338.344-2.714 1.682-3.097 11.622-3.517 26.074-1.835 35.976 4.244 1.147.688 1.49 2.217.765 3.403zm.344-9.1c-10.323-6.117-27.336-6.69-37.2-3.708-1.568.497-3.25-.42-3.747-1.988s.42-3.25 1.988-3.747c11.317-3.44 30.127-2.753 41.98 4.282 1.415.84 1.873 2.676 1.032 4.09-.765 1.453-2.638 1.912-4.053 1.07z" fill="#1ed760"/></svg>
+    contenido.push(html`<div class="pe-card-spotify">
+      <div class="pe-cab">
+        <div class="pe-cab-cap-spotify">
+          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 64 64" class="pe-sp-ico"><path d="M32 0C14.3 0 0 14.337 0 32c0 17.7 14.337 32 32 32 17.7 0 32-14.337 32-32S49.663 0 32 0zm14.68 46.184c-.573.956-1.797 1.223-2.753.65-7.532-4.588-16.975-5.62-28.14-3.097-1.07.23-2.14-.42-2.37-1.49s.42-2.14 1.49-2.37c12.196-2.79 22.67-1.606 31.082 3.556a2 2 0 0 1 .688 2.753zm3.9-8.717c-.726 1.185-2.256 1.53-3.44.84-8.602-5.276-21.716-6.805-31.885-3.747-1.338.382-2.714-.344-3.097-1.644-.382-1.338.344-2.714 1.682-3.097 11.622-3.517 26.074-1.835 35.976 4.244 1.147.688 1.49 2.217.765 3.403zm.344-9.1c-10.323-6.117-27.336-6.69-37.2-3.708-1.568.497-3.25-.42-3.747-1.988s.42-3.25 1.988-3.747c11.317-3.44 30.127-2.753 41.98 4.282 1.415.84 1.873 2.676 1.032 4.09-.765 1.453-2.638 1.912-4.053 1.07z" fill="#1ed760"/></svg>
           Spotify
         </div>
-        <button type="button" ${raw(Events.attr('personas:irASpotify'))} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver módulo →</button>
+        <button type="button" ${raw(Events.attr('personas:irASpotify'))} class="pe-ver-detalle">Ver módulo →</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:8px;">
-        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Cuota</div>
-          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${fmt(spEntry.monto || 0)}/período</div>
+      <div class="pe-grid2-mb8">
+        <div class="pe-celda">
+          <div class="pe-celda-cap">Cuota</div>
+          <div class="pe-val-text">${fmt(spEntry.monto || 0)}/período</div>
         </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Estado</div>
-          <div style="margin-top:4px;">${estadoBadge}</div>
+        <div class="pe-celda">
+          <div class="pe-celda-cap">Estado</div>
+          <div class="pe-mt4">${estadoBadge}</div>
         </div>
-        ${totalCobradoSp > 0 ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Total cobrado</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:#1ed760;">${fmt(totalCobradoSp)}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:1px;">${histSp.length} cobro${histSp.length !== 1 ? 's' : ''}</div>
+        ${totalCobradoSp > 0 ? html`<div class="pe-celda">
+          <div class="pe-celda-cap">Total cobrado</div>
+          <div class="pe-val14-spotify">${fmt(totalCobradoSp)}</div>
+          <div class="pe-fecha10-mt1">${histSp.length} cobro${histSp.length !== 1 ? 's' : ''}</div>
         </div>` : ''}
-        ${diasEnPlan !== null ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">En el plan</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text);">${mesesEstimados !== null ? mesesEstimados + ' período' + (mesesEstimados !== 1 ? 's' : '') : diasEnPlan + 'd'}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:1px;">desde ${spEntry.fechaIngreso}</div>
+        ${diasEnPlan !== null ? html`<div class="pe-celda">
+          <div class="pe-celda-cap">En el plan</div>
+          <div class="pe-val14-text">${mesesEstimados !== null ? mesesEstimados + ' período' + (mesesEstimados !== 1 ? 's' : '') : diasEnPlan + 'd'}</div>
+          <div class="pe-fecha10-mt1">desde ${spEntry.fechaIngreso}</div>
         </div>` : ''}
-        ${mayorCobroSp ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;grid-column:1/-1;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor cobro registrado</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:#1ed760;">${fmt(mayorCobroSp.monto)}${mayorCobroSp.nota ? html` <span style="font-size:10px;color:var(--text3);font-weight:400;">· ${mayorCobroSp.nota}</span>` : ''}</div>
-          ${mayorCobroSp.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:1px;">${mayorCobroSp.fecha}</div>` : ''}
+        ${mayorCobroSp ? html`<div class="pe-celda-full">
+          <div class="pe-celda-cap">Mayor cobro registrado</div>
+          <div class="pe-val14-spotify">${fmt(mayorCobroSp.monto)}${mayorCobroSp.nota ? html` <span class="pe-sp-nota">· ${mayorCobroSp.nota}</span>` : ''}</div>
+          ${mayorCobroSp.fecha ? html`<div class="pe-fecha10-mt1">${mayorCobroSp.fecha}</div>` : ''}
         </div>` : ''}
       </div>
-      ${badgeText ? html`<div>${spEntry.pagado ? '' : html`<span class="badge ${badgeClass}" style="font-size:9px;">${badgeText}</span>`}</div>` : ''}
+      ${badgeText ? html`<div>${spEntry.pagado ? '' : html`<span class="badge ${badgeClass} pe-fs9">${badgeText}</span>`}</div>` : ''}
     </div>`);
   }
 
@@ -746,58 +746,58 @@ function abrirPerfilPersona(personaId) {
     const mayorRecibido = recibidos.length ? recibidos.reduce((mx, m) => m.monto > mx.monto ? m : mx, recibidos[0]) : null;
     const mayorPago = pagos.length ? pagos.reduce((mx, m) => m.monto > mx.monto ? m : mx, pagos[0]) : null;
     const ultimoMov = movsTodos.length ? movsTodos[movsTodos.length - 1] : null;
-    const colorDeuda = totalMisDeudas > 0 ? 'var(--red)' : 'var(--accent)';
+    const colorDeuda = totalMisDeudas > 0 ? 'pe-c-red' : 'pe-c-accent';
     const primerMiDeuda = datos.misDeudas[0];
 
-    contenido.push(html`<div style="background:rgba(240,104,104,.07);border:1px solid rgba(240,104,104,.22);border-radius:var(--radius-sm);padding:13px 14px;margin-bottom:10px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;font-weight:600;display:flex;align-items:center;gap:5px;">
+    contenido.push(html`<div class="pe-card-rojo">
+      <div class="pe-cab">
+        <div class="pe-cab-cap-rojo">
           <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Le debo
         </div>
-        <button type="button" ${raw(Events.attr('prestado-personas:irAMiDeuda', primerMiDeuda.id))} style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Ver detalle →</button>
+        <button type="button" ${raw(Events.attr('prestado-personas:irAMiDeuda', primerMiDeuda.id))} class="pe-ver-detalle">Ver detalle →</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;">
-        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Pendiente</div>
-          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:${colorDeuda};">${fmt(totalMisDeudas)}</div>
+      <div class="pe-grid3">
+        <div class="pe-celda">
+          <div class="pe-celda-cap">Pendiente</div>
+          <div class="pe-val15 ${colorDeuda}">${fmt(totalMisDeudas)}</div>
         </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Recibido</div>
-          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(totalRecibido)}</div>
+        <div class="pe-celda">
+          <div class="pe-celda-cap">Recibido</div>
+          <div class="pe-val15-amber">${fmt(totalRecibido)}</div>
         </div>
-        <div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">He pagado</div>
-          <div style="font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(totalPagado)}</div>
+        <div class="pe-celda">
+          <div class="pe-celda-cap">He pagado</div>
+          <div class="pe-val-accent">${fmt(totalPagado)}</div>
         </div>
       </div>
-      ${totalRecibido > 0 ? html`<div style="margin-bottom:10px;">
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:4px;font-family:'DM Mono',monospace;">
+      ${totalRecibido > 0 ? html`<div class="pe-mb10">
+        <div class="pe-prog-cab">
           <span>Progreso de pago</span><span>${pct}%</span>
         </div>
-        <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;">
-          <div style="width:${pct}%;height:100%;background:${pct===100?'var(--accent)':'var(--red)'};border-radius:2px;transition:width .4s;"></div>
+        <div class="pe-prog-barra">
+          <div class="pe-fill ${pct===100?'pe-bg-accent':'pe-bg-red'}" style="width:${pct}%;"></div>
         </div>
       </div>` : ''}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-        ${mayorRecibido ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor préstamo</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(mayorRecibido.monto)}</div>
-          ${mayorRecibido.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorRecibido.fecha}</div>` : ''}
+      <div class="pe-grid2-gap7">
+        ${mayorRecibido ? html`<div class="pe-celda">
+          <div class="pe-celda-cap">Mayor préstamo</div>
+          <div class="pe-val14-red">${fmt(mayorRecibido.monto)}</div>
+          ${mayorRecibido.fecha ? html`<div class="pe-fecha10">${mayorRecibido.fecha}</div>` : ''}
         </div>` : ''}
-        ${mayorPago ? html`<div style="background:var(--bg3);border-radius:8px;padding:9px 10px;">
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:3px;">Mayor pago</div>
-          <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(mayorPago.monto)}</div>
-          ${mayorPago.fecha ? html`<div style="font-size:10px;color:var(--text3);margin-top:2px;">${mayorPago.fecha}</div>` : ''}
+        ${mayorPago ? html`<div class="pe-celda">
+          <div class="pe-celda-cap">Mayor pago</div>
+          <div class="pe-val14-accent">${fmt(mayorPago.monto)}</div>
+          ${mayorPago.fecha ? html`<div class="pe-fecha10">${mayorPago.fecha}</div>` : ''}
         </div>` : ''}
       </div>
-      ${ultimoMov ? html`<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
-        Último mov: <span style="color:var(--text2);font-weight:500;">${ultimoMov.tipo === 'recibido' ? 'Recibí' : 'Pagué'} ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? html` · <i>${ultimoMov.nota}</i>` : ''}
+      ${ultimoMov ? html`<div class="pe-ultimo">
+        Último mov: <span class="pe-ultimo-val">${ultimoMov.tipo === 'recibido' ? 'Recibí' : 'Pagué'} ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? html` · <i>${ultimoMov.nota}</i>` : ''}
       </div>` : ''}
     </div>`);
   }
 
   if (!datos.deudor && !datos.encargos.length && !spEntry && !(datos.misDeudas && datos.misDeudas.length)) {
-    contenido.push(html`<div style="font-size:12px;color:var(--text3);padding:8px 0 14px;line-height:1.6;">Esta persona no tiene préstamos, encargos ni está en Spotify todavía.</div>`);
+    contenido.push(html`<div class="pe-vacio-sin-prestamo">Esta persona no tiene préstamos, encargos ni está en Spotify todavía.</div>`);
   }
 
   body.innerHTML = html`${contenido}`;
@@ -824,10 +824,7 @@ function _renderColorPicker(containerId, varName) {
   const current = window[varName] || PERSONA_COLORES[0];
   el.innerHTML = PERSONA_COLORES.map(c =>
     `<div ${Events.attr('personas:seleccionarColor', containerId, varName, c)}
-      style="width:30px;height:30px;border-radius:50%;background:${c};cursor:pointer;
-      border:${c === current ? '2.5px solid var(--accent)' : '2px solid transparent'};
-      box-shadow:${c === current ? '0 0 0 2px rgba(200,240,96,.35)' : 'none'};
-      transition:all .15s;"></div>`
+      class="pe-swatch ${c === current ? 'pe-swatch-sel' : 'pe-swatch-no'}" style="background:${c};"></div>`
   ).join('');
 }
 

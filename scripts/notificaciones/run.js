@@ -26,6 +26,7 @@
 
 const admin = require('firebase-admin');
 const { ejecutarChecks } = require('./checks');
+const { decodificarPayload } = require('./payload-codec');
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
@@ -76,7 +77,7 @@ async function main() {
         continue;
       }
 
-      const S = JSON.parse(finanzasSnap.data().payload);
+      const S = JSON.parse(await decodificarPayload(finanzasSnap.data().payload));
       const items = ejecutarChecks(S, hoyStr);
       if (!items.length) {
         console.log(`uid=${uid}: nada que avisar hoy`);

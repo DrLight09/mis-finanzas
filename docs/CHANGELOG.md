@@ -8,6 +8,15 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 Documentación: [`libro-de-movimientos.md`](./libro-de-movimientos.md).
 
+### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 15) — `encargos.js`
+
+**`encargos.js`: 133 `style=""` → 2.** Quedan `display:none;` del avatar del selector de persona (`enc-persona-avatar`, que el JS conmuta con `style.display`; la clase `enc-persona-av` lleva el resto) y `cursor:pointer;` en `_encAttrs` (fragmento de atributos `data-mov-*` que se inserta en etiquetas ajenas y no puede llevar `class`). 88 clases `enc-*` al final de `styles.css`.
+- **Colores dinámicos → clases:** `colorEnc`, `color` y `colorOrigen` (×2) ya no guardan `var(--x)` sino `enc-c-red|amber|blue`; el borde de cada movimiento del encargo (cuatro estados: entrada, abono de préstamo, compra con TC, salida) usa `enc-item` + `enc-item-b-ent|abono|tc|sal`.
+- **Convertidor:** `convertir.py` ahora normaliza los saltos de línea dentro de un `style` (el selector de persona traía un `style` en cuatro líneas) y config en `scripts/paso5/config-encargos.py` (mapa `encargos.map.json`).
+- **Especificidad:** el análisis contra `styles.css` marca `.nav-item svg`, `.action-card svg`, `.movs-search-wrap svg`, `.busqueda-sin-resultados-txt b` y los de `#dialog-actions`/`.fb-*`/`.ms-saldado`; ninguno es ancestro de las etiquetas de Encargos (la barra de navegación y las tarjetas de acción no contienen su HTML). **A confirmar con el comparador cuando haya `jsdom`:** los `<svg>` de las etiquetas azul/ámbar de encargo (`enc-ico-11/15/12`), por si algún día se renderizan dentro de una `.action-card`.
+- **Verificación (sin `jsdom`):** archivo sin `style`/`class` == original salvo los 4 mapas de color; declaraciones de cada clase == su `style`; ninguna etiqueta con dos `class`.
+- `tests/estilos.test.js`: `encargos.js` en `CONVERTIDOS`.
+
 ### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 14) — `tarjetas_credito.js`
 
 **`tarjetas_credito.js`: 115 `style=""` → 4.** Quedan 3 `width:${pct}%` (barras de cupo y de cobertura, valor calculado) y 1 `style="cursor:pointer;"` dentro de `_tcAttrs`, que devuelve un fragmento de atributos `data-mov-*` que se inserta en etiquetas de otros sitios y no puede llevar `class`. 72 clases `tc-*` al final de `styles.css`.

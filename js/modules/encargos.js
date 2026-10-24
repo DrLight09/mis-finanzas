@@ -143,29 +143,29 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
 
       // Mostrar interés acumulado sólo si es significativo
       const acumuladoTag = interesAcumulado > 0.5
-        ? `<span style="font-size:9px;color:var(--accent);font-family:'DM Mono',monospace;opacity:.8;">+${fmt(interesAcumulado)} acumulado tuyo</span>`
+        ? `<span class="enc-int-acum">+${fmt(interesAcumulado)} acumulado tuyo</span>`
         : '';
 
       return html`
-        <div style="background:rgba(96,176,240,.04);border:1px solid rgba(96,176,240,.12);border-radius:9px;padding:10px 12px;margin-bottom:6px;cursor:pointer;" data-encargo-id="${enc.id}" ${raw(Events.attr('encargos:abrirDesdeCuenta', enc.id))}>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-            <div class="avatar" style="width:26px;height:26px;font-size:9px;background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;margin-right:0;">${iniciales(enc.nombre)}</div>
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${enc.nombre}</div>
-              ${enc.nota?html`<div style="font-size:10px;color:var(--text3);">${enc.nota}</div>`:''}
+        <div class="enc-nu-caja" data-encargo-id="${enc.id}" ${raw(Events.attr('encargos:abrirDesdeCuenta', enc.id))}>
+          <div class="enc-nu-cab">
+            <div class="avatar enc-av-azul-26">${iniciales(enc.nombre)}</div>
+            <div class="enc-flex1-min0">
+              <div class="enc-nombre-ell">${enc.nombre}</div>
+              ${enc.nota?html`<div class="enc-nota">${enc.nota}</div>`:''}
             </div>
-            <div style="text-align:right;flex-shrink:0;">
-              <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(saldoEncargo)}</div>
-              <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(encargoSaldo(enc))} total</div>
+            <div class="enc-der">
+              <div class="enc-saldo-azul">${fmt(saldoEncargo)}</div>
+              <div class="enc-de-total">de ${fmt(encargoSaldo(enc))} total</div>
             </div>
           </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding-top:6px;border-top:1px solid rgba(96,176,240,.1);">
-            <span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--nu-light);font-family:'DM Mono',monospace;">
+          <div class="enc-nu-pie">
+            <span class="enc-nu-tag">
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
               ${cajitaNombre}
             </span>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;">
-              ${interesMioHoy >= 0.01 ? html`<span style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;">+${fmt(interesMioHoy)}/día <span style="font-size:9px;opacity:.7;">(tuyo)</span></span>` : ''}
+            <div class="enc-nu-der">
+              ${interesMioHoy >= 0.01 ? html`<span class="enc-nu-int">+${fmt(interesMioHoy)}/día <span class="enc-nu-tuyo">(tuyo)</span></span>` : ''}
               ${raw(acumuladoTag)}
             </div>
           </div>
@@ -175,16 +175,16 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
     const totalAcumulado = totalValorActual - totalEncargosNu; // ganancia acumulada total tuya
     el.innerHTML = html`
       <div class="sec-title">Encargos en Nu</div>
-      <div style="background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;">
-        <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:10px;">Plata que administrás de otras personas, guardada en tus cajitas — los intereses que genera son tuyos</div>
+      <div class="enc-cap-caja">
+        <div class="enc-cap-txt">Plata que administrás de otras personas, guardada en tus cajitas — los intereses que genera son tuyos</div>
         ${filasHtml}
-        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;margin-top:2px;border-top:1px solid rgba(96,176,240,.12);">
+        <div class="enc-tot-fila">
           <div>
-            <div style="font-size:10px;color:var(--text3);">Total encargos en Nu</div>
-            ${totalInteresesMios >= 0.01 ? html`<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;">+${fmt(totalInteresesMios)}/día que ganás vos</div>` : ''}
-            ${totalAcumulado > 0.5 ? html`<div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-top:2px;opacity:.75;">+${fmt(totalAcumulado)} ganados hasta hoy</div>` : ''}
+            <div class="enc-nota">Total encargos en Nu</div>
+            ${totalInteresesMios >= 0.01 ? html`<div class="enc-tot-int-dia">+${fmt(totalInteresesMios)}/día que ganás vos</div>` : ''}
+            ${totalAcumulado > 0.5 ? html`<div class="enc-tot-acum">+${fmt(totalAcumulado)} ganados hasta hoy</div>` : ''}
           </div>
-          <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(totalEncargosNu)}</span>
+          <span class="enc-tot-val">${fmt(totalEncargosNu)}</span>
         </div>
       </div>`;
     return;
@@ -224,26 +224,26 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
   }
   el.innerHTML = html`
     <div class="sec-title">Encargos en esta cuenta</div>
-    <div style="background:rgba(96,176,240,.06);border:1px solid rgba(96,176,240,.18);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:10px;">
-      <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-bottom:8px;">Plata que administrás de otras personas guardada aquí</div>
+    <div class="enc-cap-caja">
+      <div class="enc-lista-cap">Plata que administrás de otras personas guardada aquí</div>
       ${filas.map(({enc, saldo}) => html`
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(96,176,240,.1);cursor:pointer;" data-encargo-id="${enc.id}" ${raw(Events.attr('encargos:abrirDesdeCuenta', enc.id))}>
-          <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer;" ${raw(Events.attr('encargos:abrirDesdeCuenta', enc.id))}>
-            <div class="avatar" style="width:28px;height:28px;font-size:10px;background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;margin-right:0;">${iniciales(enc.nombre)}</div>
-            <div style="min-width:0;">
-              <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${enc.nombre}</div>
-              ${enc.nota?html`<div style="font-size:10px;color:var(--text3);">${enc.nota}</div>`:''}
+        <div class="enc-lista-fila" data-encargo-id="${enc.id}" ${raw(Events.attr('encargos:abrirDesdeCuenta', enc.id))}>
+          <div class="enc-lista-pers" ${raw(Events.attr('encargos:abrirDesdeCuenta', enc.id))}>
+            <div class="avatar enc-av-azul-28">${iniciales(enc.nombre)}</div>
+            <div class="enc-lista-nombre">
+              <div class="enc-nombre-ell">${enc.nombre}</div>
+              ${enc.nota?html`<div class="enc-nota">${enc.nota}</div>`:''}
             </div>
           </div>
-          <div style="text-align:right;flex-shrink:0;margin-left:8px;">
-            <div style="font-size:14px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(saldo)}</div>
-            <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(encargoSaldo(enc))} total</div>
+          <div class="enc-lista-der">
+            <div class="enc-saldo-azul">${fmt(saldo)}</div>
+            <div class="enc-de-total">de ${fmt(encargoSaldo(enc))} total</div>
           </div>
         </div>
       `)}
-      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:8px;margin-top:4px;">
-        <span style="font-size:10px;color:var(--text3);">Total encargos aquí</span>
-        <span style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(filas.reduce((a,f)=>a+f.saldo,0))}</span>
+      <div class="enc-lista-pie">
+        <span class="enc-nota">Total encargos aquí</span>
+        <span class="enc-tot-val">${fmt(filas.reduce((a,f)=>a+f.saldo,0))}</span>
       </div>
     </div>`;
 }
@@ -299,19 +299,19 @@ function renderEncargosList() {
     const comprometido = encargoComprometido(enc);
     const libre = encargoLibre(enc);
     const ini = iniciales(enc.nombre);
-    return html`<div class="card card-sm" style="cursor:pointer;margin-bottom:8px;" data-encargo-id="${enc.id}" ${raw(Events.attr('encargos:abrirDetalle', enc.id))}>
+    return html`<div class="card card-sm enc-card-click" data-encargo-id="${enc.id}" ${raw(Events.attr('encargos:abrirDetalle', enc.id))}>
       <div class="row">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div class="avatar" style="background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;">${ini}</div>
+        <div class="enc-pers-cab">
+          <div class="avatar enc-av-det">${ini}</div>
           <div>
             <div class="row-name">${enc.nombre}</div>
             <div class="row-sub">${(enc.movimientos||[]).length} movimiento${(enc.movimientos||[]).length!==1?'s':''} · ${enc.nota||'Encargo'}</div>
           </div>
         </div>
-        <div style="text-align:right;">
+        <div class="enc-txt-der">
           <div class="row-amount c-blue">${fmt(libre)}</div>
-          ${comprometido > 0 ? html`<div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">de ${fmt(saldo)}, ${fmt(comprometido)} comprometido</div>` : ''}
-          <span class="badge bg-blue" style="font-size:9px;">No es tuyo</span>
+          ${comprometido > 0 ? html`<div class="enc-de-total">de ${fmt(saldo)}, ${fmt(comprometido)} comprometido</div>` : ''}
+          <span class="badge bg-blue enc-fs9">No es tuyo</span>
         </div>
       </div>
     </div>`;
@@ -371,15 +371,15 @@ function abrirEncargoDetalle(id) {
           // Si está en una cajita de Nu, calcular interés diario que genera (es mío)
           const esCajita = k && k.startsWith('cajita:');
           const interesMio = esCajita ? v * tasaDiaria : 0;
-          return html`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          return html`<div class="enc-int-cab">
             <div>
-              <span style="font-size:10px;color:rgba(96,176,240,.8);font-family:'DM Mono',monospace;">${lbl}</span>
-              ${interesMio >= 0.01 ? html`<div style="font-size:9px;color:var(--accent);font-family:'DM Mono',monospace;">+${fmt(interesMio)}/día tuyo</div>` : ''}
+              <span class="enc-int-lbl">${lbl}</span>
+              ${interesMio >= 0.01 ? html`<div class="enc-int-tuyo">+${fmt(interesMio)}/día tuyo</div>` : ''}
             </div>
-            <span style="font-size:11px;font-weight:600;font-family:'DM Mono',monospace;color:var(--blue);">${fmt(v)} <span style="font-size:9px;opacity:.6;">${pct}%</span></span>
+            <span class="enc-int-val">${fmt(v)} <span class="enc-fs9-op6">${pct}%</span></span>
           </div>`;
         });
-      desgEl.innerHTML = html`<div style="border-top:1px solid rgba(96,176,240,.15);padding-top:8px;margin-bottom:6px;">${filas}</div>`;
+      desgEl.innerHTML = html`<div class="enc-filas">${filas}</div>`;
     } else {
       desgEl.innerHTML = '';
     }
@@ -420,7 +420,7 @@ function abrirEncargoDetalle(id) {
     });
   }
   if (!todosMovs.length) {
-    histEl.innerHTML = `<div class="empty-state" style="padding:16px 0;"><div class="empty-state-sub">Sin movimientos aún. Registrá entradas y salidas.</div></div>`;
+    histEl.innerHTML = `<div class="empty-state enc-vacio-pad"><div class="empty-state-sub">Sin movimientos aún. Registrá entradas y salidas.</div></div>`;
   } else {
     // Helper: construye atributos data-mov-* para abrir el sheet de detalle (saldo = saldo del encargo)
     // Ya escapa a mano (escHtml) porque arma una lista de atributos, no un solo valor —
@@ -450,17 +450,17 @@ function abrirEncargoDetalle(id) {
     const contenido = movsRender.map((m,i) => {
       if (m._esSaldoInicial) {
         const lblCuentaIni = m.cuenta ? fuenteLabel(m.cuenta) : '';
-        return html`<div class="gasto-item" ${raw(_encAttrs(m,'Encargos · '+enc.nombre))} style="cursor:pointer;border-color:rgba(96,176,240,.2);">
+        return html`<div class="gasto-item enc-item-ent" ${raw(_encAttrs(m,'Encargos · '+enc.nombre))}>
           <div class="gasto-item-top">
-            <div style="flex:1;"><div class="row-name" style="font-size:13px;">Saldo inicial</div><div class="row-sub">${m.fecha!=='0000-00-00'?m.fecha:''}${lblCuentaIni?' · '+lblCuentaIni:''}</div></div>
-            <div style="display:flex;align-items:center;gap:6px;">
+            <div class="enc-flex1"><div class="row-name enc-rn13">Saldo inicial</div><div class="row-sub">${m.fecha!=='0000-00-00'?m.fecha:''}${lblCuentaIni?' · '+lblCuentaIni:''}</div></div>
+            <div class="enc-fila-g6">
               <span class="row-amount c-blue">${fmt(m.monto)}</span>
               <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${raw(Events.attr('encargos:deleteMov', enc.id, m.id))} title="Eliminar saldo inicial${lblCuentaIni?' (también se descuenta de '+lblCuentaIni+')':''}">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
               </button>
             </div>
           </div>
-          <div class="gasto-item-meta"><span class="badge bg-blue" style="font-size:9px;">Inicio</span>${lblCuentaIni?html`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuentaIni}</span>`:''}</div>
+          <div class="gasto-item-meta"><span class="badge bg-blue enc-fs9">Inicio</span>${lblCuentaIni?html`<span class="badge ${fuenteBadgeClass(m.cuenta)} enc-fs9">${lblCuentaIni}</span>`:''}</div>
         </div>`;
       }
       const esEntrada = m.tipo === 'entrada';
@@ -473,26 +473,26 @@ function abrirEncargoDetalle(id) {
       const miaSaleLbl  = esMia ? ((m._miaCuentas && m._miaCuentas.sale.length>1) ? _miaLbl(m._miaCuentas.sale) : fuenteLabel(m._miaCuentaSale)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
       const miaEntraLbl = esMia && m._miaCuentaEntra ? ((m._miaCuentas && m._miaCuentas.entra.length>1) ? _miaLbl(m._miaCuentas.entra) : fuenteLabel(m._miaCuentaEntra)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
       const origenEnc = esAbonoPrestamo ? ('Préstamos · ' + ((Deudas.lista('favor').find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+enc.nombre);
-      return html`<div class="gasto-item" ${raw(_encAttrs(m,origenEnc))} style="cursor:pointer;border-color:${esEntrada?'rgba(96,176,240,.2)':esAbonoPrestamo?'rgba(240,184,64,.18)':esTcEncargo?'rgba(96,176,240,.25)':'rgba(240,104,104,.15)'};">
+      return html`<div class="gasto-item enc-item ${esEntrada?'enc-item-b-ent':esAbonoPrestamo?'enc-item-b-abono':esTcEncargo?'enc-item-b-tc':'enc-item-b-sal'}" ${raw(_encAttrs(m,origenEnc))}>
         <div class="gasto-item-top">
-          <div style="flex:1;min-width:0;">
-            <div class="row-name" style="font-size:13px;">${m.desc}</div>
+          <div class="enc-flex1-min0">
+            <div class="row-name enc-rn13">${m.desc}</div>
             <div class="row-sub">${m.fecha}${lblCuenta?' · '+lblCuenta:''}${tcNombreLbl?' · '+tcNombreLbl:''}${esMia?' · Yo puse la plata':''}</div>
           </div>
-          <div style="display:flex;align-items:center;gap:6px;">
+          <div class="enc-fila-g6">
             <span class="row-amount ${esEntrada?'c-blue':esAbonoPrestamo?'c-amber':'c-red'}">${esEntrada?'+':'−'}${fmt(m.monto)}</span>
             <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${raw(Events.attr('encargos:deleteMov', enc.id, m.id))} title="Eliminar (también elimina movimientos secundarios en tus cuentas)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             </button>
           </div>
         </div>
-        ${m.nota&&!esTcEncargo&&!esMia?html`<div class="gasto-item-meta"><span style="font-size:10px;color:var(--text3);">${m.nota}</span></div>`:''}
-        ${esMia?html`<div class="gasto-item-meta" style="margin-top:3px;"><span style="font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px;flex-wrap:wrap;"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:10px;height:10px;fill:currentColor;flex-shrink:0;color:var(--amber);"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg>Salió de <strong style="color:var(--text2);">${miaSaleLbl}</strong>${miaEntraLbl?html` · Entró a <strong style="color:var(--text2);">${miaEntraLbl}</strong>`:''}</span></div>`:''}
+        ${m.nota&&!esTcEncargo&&!esMia?html`<div class="gasto-item-meta"><span class="enc-nota">${m.nota}</span></div>`:''}
+        ${esMia?html`<div class="gasto-item-meta enc-meta-mt3"><span class="enc-meta-txt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-meta-ico"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg>Salió de <strong class="enc-c-text2">${miaSaleLbl}</strong>${miaEntraLbl?html` · Entró a <strong class="enc-c-text2">${miaEntraLbl}</strong>`:''}</span></div>`:''}
         <div class="gasto-item-meta">
-          <span class="badge ${esEntrada?'bg-blue':esAbonoPrestamo?'bg-amber':esTcEncargo?'bg-blue':'bg-red'}" style="font-size:9px;">${esEntrada?'Entrada':esAbonoPrestamo?'Pago préstamo':esTcEncargo?'Pagado con TC':'Salida'}</span>
-          ${esMia?html`<span class="badge" style="font-size:9px;background:rgba(240,184,64,.15);color:var(--amber);border:none;">Yo puse la plata</span>`:''}
-          ${m._grupo?raw(m._grupo.filter(x=>x.cuenta).map(x=>`<span class="badge ${fuenteBadgeClass(x.cuenta)}" style="font-size:9px;">${escHtml(fuenteLabel(x.cuenta))}</span>`).join('')):(lblCuenta?html`<span class="badge ${fuenteBadgeClass(m.cuenta)}" style="font-size:9px;">${lblCuenta}</span>`:'')}
-          ${tcNombreLbl?html`<span class="badge bg-blue" style="font-size:9px;">${tcNombreLbl}</span>`:''}
+          <span class="badge ${esEntrada?'bg-blue':esAbonoPrestamo?'bg-amber':esTcEncargo?'bg-blue':'bg-red'} enc-fs9">${esEntrada?'Entrada':esAbonoPrestamo?'Pago préstamo':esTcEncargo?'Pagado con TC':'Salida'}</span>
+          ${esMia?html`<span class="badge enc-badge-yo">Yo puse la plata</span>`:''}
+          ${m._grupo?raw(m._grupo.filter(x=>x.cuenta).map(x=>`<span class="badge ${fuenteBadgeClass(x.cuenta)} enc-fs9">${escHtml(fuenteLabel(x.cuenta))}</span>`).join('')):(lblCuenta?html`<span class="badge ${fuenteBadgeClass(m.cuenta)} enc-fs9">${lblCuenta}</span>`:'')}
+          ${tcNombreLbl?html`<span class="badge bg-blue enc-fs9">${tcNombreLbl}</span>`:''}
         </div>
         ${raw(m && m.diferencial ? diffRenderHistorial(m.diferencial) : '')}
       </div>`;
@@ -514,8 +514,8 @@ function renderEncargoParts(enc) {
   const libre = encargoLibre(enc);
 
   if (!partes.length && !usadas.length) {
-    el.innerHTML = html`<div style="font-size:11px;color:var(--text3);padding:4px 0 10px;line-height:1.6;">
-      Toda la plata está sin asignar — <b style="color:var(--text2);">tuyo para usar: ${fmt(saldo)}</b>.
+    el.innerHTML = html`<div class="enc-sin-asignar">
+      Toda la plata está sin asignar — <b class="enc-c-text2">tuyo para usar: ${fmt(saldo)}</b>.
       <br>Agrega partes para saber cuánto de este encargo ya tiene destino.
     </div>`;
     return;
@@ -524,14 +524,14 @@ function renderEncargoParts(enc) {
   // Resumen rápido
   const contenido = [];
   if (partes.length) {
-    contenido.push(html`<div style="background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+    contenido.push(html`<div class="enc-comp-caja">
       <div>
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:2px;">Comprometido</div>
-        <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--red);">-${fmt(totalComp)}</div>
+        <div class="enc-comp-cap">Comprometido</div>
+        <div class="enc-comp-rojo">-${fmt(totalComp)}</div>
       </div>
-      <div style="text-align:right;">
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:2px;">Libre (de él)</div>
-        <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--accent);">+${fmt(libre)}</div>
+      <div class="enc-txt-der">
+        <div class="enc-comp-cap">Libre (de él)</div>
+        <div class="enc-comp-verde">+${fmt(libre)}</div>
       </div>
     </div>`);
   }
@@ -542,28 +542,28 @@ function renderEncargoParts(enc) {
     let fechaInfo = '';
     if (p.fecha) {
       const dias = Math.round((new Date(p.fecha + 'T00:00:00') - new Date(hoyStr + 'T00:00:00')) / 86400000);
-      if (dias < 0) fechaInfo = `<span style="font-size:9px;color:var(--red);">venció hace ${Math.abs(dias)}d</span>`;
-      else if (dias === 0) fechaInfo = `<span style="font-size:9px;color:var(--red);">hoy</span>`;
-      else if (dias === 1) fechaInfo = `<span style="font-size:9px;color:var(--amber);">mañana</span>`;
-      else if (dias <= 5) fechaInfo = `<span style="font-size:9px;color:var(--amber);">en ${dias}d (${p.fecha})</span>`;
-      else fechaInfo = `<span style="font-size:9px;color:var(--text3);">uso: ${p.fecha}</span>`;
+      if (dias < 0) fechaInfo = `<span class="enc-venc-rojo">venció hace ${Math.abs(dias)}d</span>`;
+      else if (dias === 0) fechaInfo = `<span class="enc-venc-rojo">hoy</span>`;
+      else if (dias === 1) fechaInfo = `<span class="enc-venc-amber">mañana</span>`;
+      else if (dias <= 5) fechaInfo = `<span class="enc-venc-amber">en ${dias}d (${p.fecha})</span>`;
+      else fechaInfo = `<span class="enc-fecha-uso">uso: ${p.fecha}</span>`;
     }
-    return html`<div class="card card-sm" style="margin-bottom:7px;border-color:rgba(96,176,240,.25);">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:13px;font-weight:600;">${p.desc}</div>
-          ${fechaInfo ? raw(`<div style="margin-top:2px;">${fechaInfo}</div>`) : ''}
+    return html`<div class="card card-sm enc-part-card">
+      <div class="enc-part-fila">
+        <div class="enc-flex1-min0">
+          <div class="enc-part-desc">${p.desc}</div>
+          ${fechaInfo ? raw(`<div class="enc-part-fecha">${fechaInfo}</div>`) : ''}
         </div>
-        <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue);white-space:nowrap;">${fmt(p.monto)}</div>
+        <div class="enc-part-monto">${fmt(p.monto)}</div>
       </div>
-      <div style="display:flex;gap:6px;margin-top:8px;">
-        <button type="button" ${raw(Events.attr('encargos:usarParte', enc.id, p.id))} style="flex:1;padding:7px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(200,240,96,.4);background:rgba(200,240,96,.08);color:var(--accent);">
-          <i class="fa-solid fa-check" style="margin-right:4px;"></i>Ya la usé
+      <div class="enc-part-btns">
+        <button type="button" ${raw(Events.attr('encargos:usarParte', enc.id, p.id))} class="enc-btn-usar">
+          <i class="fa-solid fa-check enc-ico-r4"></i>Ya la usé
         </button>
-        <button type="button" ${raw(Events.attr('encargos:editarParte', enc.id, p.id))} style="padding:7px 11px;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;border:1.5px solid var(--border2);background:transparent;color:var(--text2);">
+        <button type="button" ${raw(Events.attr('encargos:editarParte', enc.id, p.id))} class="enc-btn-edit">
           <i class="fa-solid fa-pen"></i>
         </button>
-        <button type="button" ${raw(Events.attr('encargos:eliminarParte', enc.id, p.id))} style="padding:7px 11px;border-radius:var(--radius-sm);font-size:11px;cursor:pointer;border:1.5px solid rgba(240,104,104,.3);background:rgba(240,104,104,.06);color:var(--red);">
+        <button type="button" ${raw(Events.attr('encargos:eliminarParte', enc.id, p.id))} class="enc-btn-borrar">
           <i class="fa-solid fa-trash"></i>
         </button>
       </div>
@@ -572,14 +572,14 @@ function renderEncargoParts(enc) {
 
   // Usadas recientes
   if (usadas.length) {
-    contenido.push(html`<div style="margin-top:6px;">
-      ${usadas.slice(-3).reverse().map(p => html`<div class="card card-sm" style="margin-bottom:5px;opacity:.5;">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <div style="font-size:11px;color:var(--text2);">${p.desc}</div>
-        <div style="display:flex;align-items:center;gap:6px;">
-          <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);"><s>${fmt(p.monto)}</s></span>
+    contenido.push(html`<div class="enc-usadas">
+      ${usadas.slice(-3).reverse().map(p => html`<div class="card card-sm enc-usada-card">
+      <div class="enc-usada-fila">
+        <div class="enc-usada-desc">${p.desc}</div>
+        <div class="enc-fila-g6">
+          <span class="enc-usada-monto"><s>${fmt(p.monto)}</s></span>
           ${raw(typeof _difRenderHistorialParte === 'function' ? _difRenderHistorialParte(p) : '')}
-          <button type="button" ${raw(Events.attr('encargos:eliminarParte', enc.id, p.id))} style="font-size:9px;padding:2px 6px;border-radius:5px;border:1px solid rgba(240,104,104,.2);background:rgba(240,104,104,.05);color:var(--red);cursor:pointer;">&#x2715;</button>
+          <button type="button" ${raw(Events.attr('encargos:eliminarParte', enc.id, p.id))} class="enc-usada-x">&#x2715;</button>
         </div>
       </div>
     </div>`)}
@@ -1124,7 +1124,7 @@ function _usarParteFuentePreview() {
     if (val) {
       const enc2 = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
       const saldoEnc = enc2 ? _getEncargoSaldoEnCuenta(enc2, val) : 0;
-      el.innerHTML = html`Del encargo guardado en ${fuenteLabel(val)}: <span style="color:var(--text)">${fmt(saldoEnc)}</span>`;
+      el.innerHTML = html`Del encargo guardado en ${fuenteLabel(val)}: <span class="enc-c-text">${fmt(saldoEnc)}</span>`;
       el.style.color = 'var(--text2)';
 
     } else {
@@ -1315,9 +1315,9 @@ function _difRenderHistorialParte(parte) {
   // Mostrar origen de la plata si se registró
   if (parte.fuentes && parte.fuentes.length > 0) {
     const labels = parte.fuentes.map(f => `${fuenteLabel(f.fuente)} ${fmt(f.monto)}`).join(' + ');
-    out.push(html`<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${labels}</span>`);
+    out.push(html`<span class="enc-tag-azul"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-11"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${labels}</span>`);
   } else if (parte.fuente) {
-    out.push(html`<span style="margin-left:5px;padding:2px 7px;background:rgba(96,176,240,.1);border-radius:5px;font-size:9px;color:var(--blue);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:11px;height:11px;fill:currentColor;vertical-align:middle;"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${fuenteLabel(parte.fuente)}</span>`);
+    out.push(html`<span class="enc-tag-azul"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-11"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${fuenteLabel(parte.fuente)}</span>`);
   }
   // Mostrar diferencial si existe
   if (parte.diferencial) {
@@ -1329,7 +1329,7 @@ function _difRenderHistorialParte(parte) {
       ? `Yo (${d.miCuentas.map(r => `${fuenteLabel(r.cuenta)} ${fmt(r.monto)}`).join(' + ')})`
       : (d.miCuenta && d.yoMeQuedo > 0 ? `Yo (${fuenteLabel(d.miCuenta)}) ${fmt(d.yoMeQuedo)}` : '');
     const todas = [benefs, miParte].filter(Boolean).join(' · ');
-    out.push(html`<span style="margin-left:5px;padding:2px 7px;background:rgba(240,184,64,.12);border-radius:5px;font-size:9px;color:var(--amber);"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:15px;height:15px;fill:currentColor;vertical-align:middle;"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`);
+    out.push(html`<span class="enc-tag-amber"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-15"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`);
   }
   return html`${out}`;
 }
@@ -2237,10 +2237,10 @@ function _actualizarTraspasoPreview(enc) {
   const saldoCuenta = getSaldoFuente(destino);
   const nuevoEnc = saldoEnc - monto;
   const nuevoCuenta = saldoCuenta + monto;
-  const colorEnc = nuevoEnc < 0 ? 'var(--red)' : 'var(--blue)';
-  prev.innerHTML = html`<span style="color:${colorEnc};">Encargo (disponible): ${fmt(saldoEnc)} → ${fmt(nuevoEnc)}</span><br>
-    <span style="color:var(--accent);">${fuenteLabel(destino)}: ${fmt(saldoCuenta)} → ${fmt(nuevoCuenta)}</span>
-    ${nuevoEnc < 0 ? html`<br><span style="color:var(--red);font-size:10px;">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : ''}`;
+  const colorEnc = nuevoEnc < 0 ? 'enc-c-red' : 'enc-c-blue';
+  prev.innerHTML = html`<span class="${colorEnc}">Encargo (disponible): ${fmt(saldoEnc)} → ${fmt(nuevoEnc)}</span><br>
+    <span class="enc-c-accent">${fuenteLabel(destino)}: ${fmt(saldoCuenta)} → ${fmt(nuevoCuenta)}</span>
+    ${nuevoEnc < 0 ? html`<br><span class="enc-aviso-rojo10">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : ''}`;
 }
 
 function confirmarTraspasoEncargo() {
@@ -2504,11 +2504,11 @@ function _actualizarMoverEncPreview(enc) {
     const filasIncompletas = splits.some(s => !s.fuente);
     const splitsCompletos = splits.filter(s => s.fuente);
     if (splitsCompletos.some(s => s.fuente === destino)) {
-      prev.innerHTML = '<span style="color:var(--red);">La cuenta destino no puede repetirse como origen</span>';
+      prev.innerHTML = '<span class="enc-c-red">La cuenta destino no puede repetirse como origen</span>';
       return;
     }
     if (splitsCompletos.length === 0) {
-      prev.innerHTML = filasIncompletas ? '<span style="color:var(--amber);font-size:10px;">Falta elegir la cuenta en una o más filas</span>' : '';
+      prev.innerHTML = filasIncompletas ? '<span class="enc-aviso-amber10">Falta elegir la cuenta en una o más filas</span>' : '';
       return;
     }
     const cuentas = _getEncargoSaldoPorCuenta(enc);
@@ -2522,8 +2522,8 @@ function _actualizarMoverEncPreview(enc) {
       const saldoEnOrigen = esSinEsp ? saldoSinCuenta : (cuentas.find(c => c.cuenta === s.fuente)?.saldo || 0);
       const excede = s.monto > saldoEnOrigen;
       if (excede) excedeAlguna = true;
-      const color = excede ? 'var(--red)' : 'var(--amber)';
-      return html`${i > 0 ? raw('<br>') : ''}<span style="color:${color};">${label} (encargo): ${fmt(saldoEnOrigen)} → ${fmt(saldoEnOrigen - s.monto)}</span>`;
+      const color = excede ? 'enc-c-red' : 'enc-c-amber';
+      return html`${i > 0 ? raw('<br>') : ''}<span class="${color}">${label} (encargo): ${fmt(saldoEnOrigen)} → ${fmt(saldoEnOrigen - s.monto)}</span>`;
     });
 
     const cuentaDestEnc = cuentas.find(c => c.cuenta === destino);
@@ -2531,9 +2531,9 @@ function _actualizarMoverEncPreview(enc) {
     const nuevoDestino = saldoEnDestino + totalSplit;
 
     prev.innerHTML = html`${lineasOrigen}<br>
-      <span style="color:var(--blue);">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} → ${fmt(nuevoDestino)}</span>
-      ${excedeAlguna ? html`<br><span style="color:var(--red);font-size:10px;">Excede lo que el encargo tiene en esa cuenta</span>` : ''}
-      ${filasIncompletas ? html`<br><span style="color:var(--amber);font-size:10px;">Falta elegir la cuenta en una o más filas</span>` : ''}`;
+      <span class="enc-c-blue">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} → ${fmt(nuevoDestino)}</span>
+      ${excedeAlguna ? html`<br><span class="enc-aviso-rojo10">Excede lo que el encargo tiene en esa cuenta</span>` : ''}
+      ${filasIncompletas ? html`<br><span class="enc-aviso-amber10">Falta elegir la cuenta en una o más filas</span>` : ''}`;
     return;
   }
 
@@ -2542,7 +2542,7 @@ function _actualizarMoverEncPreview(enc) {
   const origen = document.getElementById('moverenc_origen').value;
   if (!monto || !origen || !destino) { prev.innerHTML = ''; return; }
   if (origen === destino) {
-    prev.innerHTML = '<span style="color:var(--red);">Origen y destino no pueden ser la misma cuenta</span>';
+    prev.innerHTML = '<span class="enc-c-red">Origen y destino no pueden ser la misma cuenta</span>';
     return;
   }
   const cuentas = _getEncargoSaldoPorCuenta(enc);
@@ -2551,14 +2551,14 @@ function _actualizarMoverEncPreview(enc) {
     ? _getEncargoSaldoSinCuenta(enc)
     : (cuentas.find(c => c.cuenta === origen)?.saldo || 0);
   const excede = monto > saldoEnOrigen;
-  const colorOrigen = excede ? 'var(--red)' : 'var(--amber)';
+  const colorOrigen = excede ? 'enc-c-red' : 'enc-c-amber';
   const nuevoOrigen = saldoEnOrigen - monto;
   const cuentaDestEnc = cuentas.find(c => c.cuenta === destino);
   const saldoEnDestino = cuentaDestEnc ? cuentaDestEnc.saldo : 0;
   const nuevoDestino = saldoEnDestino + monto;
-  prev.innerHTML = html`<span style="color:${colorOrigen};">${labelOrigen} (encargo): ${fmt(saldoEnOrigen)} → ${fmt(nuevoOrigen)}</span><br>
-    <span style="color:var(--blue);">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} → ${fmt(nuevoDestino)}</span>
-    ${excede ? html`<br><span style="color:var(--red);font-size:10px;">Excede lo que el encargo tiene en esa cuenta</span>` : ''}`;
+  prev.innerHTML = html`<span class="${colorOrigen}">${labelOrigen} (encargo): ${fmt(saldoEnOrigen)} → ${fmt(nuevoOrigen)}</span><br>
+    <span class="enc-c-blue">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} → ${fmt(nuevoDestino)}</span>
+    ${excede ? html`<br><span class="enc-aviso-rojo10">Excede lo que el encargo tiene en esa cuenta</span>` : ''}`;
 }
 
 // Rama split de confirmarMoverEncCuentas: la plata a reubicar sale de varias
@@ -2764,10 +2764,10 @@ function _actualizarTransfEncPreview(enc) {
   const libreOrigen = encargoLibre(enc);
   const nuevoOrigen = libreOrigen - monto;
   const saldoDestino = encargoSaldo(destino);
-  const colorOrigen = nuevoOrigen < 0 ? 'var(--red)' : 'var(--blue)';
-  prev.innerHTML = html`<span style="color:${colorOrigen};">${enc.nombre} (disponible): ${fmt(libreOrigen)} → ${fmt(nuevoOrigen)}</span><br>
-    <span style="color:var(--blue);">${destino.nombre}: ${fmt(saldoDestino)} → ${fmt(saldoDestino + monto)}</span>
-    ${nuevoOrigen < 0 ? html`<br><span style="color:var(--red);font-size:10px;">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : ''}`;
+  const colorOrigen = nuevoOrigen < 0 ? 'enc-c-red' : 'enc-c-blue';
+  prev.innerHTML = html`<span class="${colorOrigen}">${enc.nombre} (disponible): ${fmt(libreOrigen)} → ${fmt(nuevoOrigen)}</span><br>
+    <span class="enc-c-blue">${destino.nombre}: ${fmt(saldoDestino)} → ${fmt(saldoDestino + monto)}</span>
+    ${nuevoOrigen < 0 ? html`<br><span class="enc-aviso-rojo10">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : ''}`;
 }
 
 function confirmarTransferenciaEncargo() {
@@ -3108,10 +3108,10 @@ function _ctcActualizarPreview() {
   const lblDest = destino ? fuenteLabel(destino) : '';
 
   const lines = [];
-  lines.push(html`<span style="color:var(--red);">Encargo ${enc?enc.nombre:''}: ${fmt(saldoEncCuenta)} → ${fmt(saldoEncCuenta - monto)}</span>`);
-  if (destino) lines.push(html`<span style="color:var(--accent);">${lblDest}: ${fmt(saldoDest)} → ${fmt(saldoDest + monto)}</span>`);
-  if (tc) lines.push(html`<span style="color:var(--red);">Deuda ${nombreTC}: ${fmt(deudaTC)} → ${fmt(deudaTC + tcMonto)}</span>`);
-  if (margen > 0) lines.push(html`<span style="color:var(--accent);">Diferencial tuyo: +${fmt(margen)}</span>`);
+  lines.push(html`<span class="enc-c-red">Encargo ${enc?enc.nombre:''}: ${fmt(saldoEncCuenta)} → ${fmt(saldoEncCuenta - monto)}</span>`);
+  if (destino) lines.push(html`<span class="enc-c-accent">${lblDest}: ${fmt(saldoDest)} → ${fmt(saldoDest + monto)}</span>`);
+  if (tc) lines.push(html`<span class="enc-c-red">Deuda ${nombreTC}: ${fmt(deudaTC)} → ${fmt(deudaTC + tcMonto)}</span>`);
+  if (margen > 0) lines.push(html`<span class="enc-c-accent">Diferencial tuyo: +${fmt(margen)}</span>`);
 
   prev.innerHTML = html`${lines.map((l,i)=> i===0 ? l : html`<br>${l}`)}`;
   prev.style.display = '';
@@ -3393,12 +3393,10 @@ function _initNuevoEncargoPersonaSelector() {
   ig.innerHTML = html`
     <div class="il">¿De quién es la plata?</div>
     <div id="enc-persona-btn" data-action="encargos:seleccionarPersonaNueva"
-      style="width:100%;padding:12px 14px;background:var(--bg3);border:1.5px solid var(--border2);
-      border-radius:var(--radius-sm);color:var(--text2);font-size:15px;font-family:'DM Sans',sans-serif;
-      cursor:pointer;display:flex;align-items:center;gap:10px;min-height:48px;transition:border-color .2s;">
-      <div id="enc-persona-avatar" class="avatar" style="width:28px;height:28px;font-size:10px;margin:0;display:none;flex-shrink:0;"></div>
+      class="enc-persona-btn">
+      <div id="enc-persona-avatar" class="avatar enc-persona-av" style="display:none;"></div>
       <span id="enc-persona-label">Seleccionar persona...</span>
-      <svg style="margin-left:auto;flex-shrink:0;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <svg class="enc-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <input type="hidden" id="enc_nombre" value="">`;
 }
@@ -3537,7 +3535,7 @@ abrirEncargoDetalle = function(id) {
     const chip = document.createElement('button');
     chip.id = 'enc-det-perfil-chip';
     chip.type = 'button';
-    chip.innerHTML = html`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" style="width:12px;height:12px;fill:currentColor;vertical-align:middle;"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg> Ver perfil completo`;
+    chip.innerHTML = html`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-12"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg> Ver perfil completo`;
     chip.style.cssText = 'font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:"DM Mono",monospace;padding:0;margin-top:2px;display:block;';
     chip.addEventListener('click', () => abrirPerfilPersona(p.id));
     anclaEl.after(chip);

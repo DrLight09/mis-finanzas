@@ -1295,3 +1295,97 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .alc-dif-pos{color:var(--accent);background:rgba(200,240,96,.06);}
 .alc-dif-neg{color:var(--red);background:rgba(240,104,104,.06);}
 .alc-c-accent{color:var(--accent);} .alc-c-text3{color:var(--text3);} .alc-c-red{color:var(--red);}
+
+/* ── Tarjetas de crédito (js/modules/tarjetas_credito.js, Paso 5 tanda 14): tc-* ── */
+.tc-cab{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
+.tc-flex1-min0{flex:1;min-width:0;}
+.tc-nombre{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.tc-ico-tarjeta{display:inline-block;vertical-align:middle;margin-right:2px;flex-shrink:0;}
+.tc-sub{font-size:11px;color:var(--text3);margin-top:3px;}
+.tc-acciones{display:flex;gap:6px;flex-shrink:0;}
+.tc-btn-editar{background:none;border:1px solid var(--border2);border-radius:7px;color:var(--text2);font-size:11px;padding:4px 9px;cursor:pointer;}
+.tc-btn-borrar{background:none;border:1px solid rgba(240,104,104,.3);border-radius:7px;color:var(--red);font-size:11px;padding:4px 9px;cursor:pointer;}
+.tc-resumen-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.tc-caja-deuda{background:rgba(240,104,104,.07);border-radius:9px;padding:10px 12px;}
+.tc-cap{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;}
+.tc-val-rojo{font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);}
+.tc-hint-mono{font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;}
+.tc-caja-disp{background:rgba(200,240,96,.07);border-radius:9px;padding:10px 12px;}
+.tc-val-verde{font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);}
+.tc-cupo{margin-bottom:12px;}
+.tc-cupo-cab{display:flex;justify-content:space-between;margin-bottom:4px;}
+.tc-cupo-txt{font-size:10px;color:var(--text3);}
+.tc-barra{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
+.tc-btns{display:flex;gap:8px;}
+.tc-btn-compra-act{flex:1;padding:10px;background:rgba(240,104,104,.12);border:1px solid rgba(240,104,104,.35);border-radius:9px;color:var(--red);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.tc-btn-compra-off{flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;color:var(--text3);font-size:13px;font-weight:600;cursor:not-allowed;font-family:'DM Sans',sans-serif;}
+.tc-btn-ver{padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:9px;color:var(--text2);font-size:13px;cursor:pointer;}
+.tc-fila{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);}
+.tc-fila-nombre{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;}
+.tc-ico-fila{display:inline-block;vertical-align:middle;margin-right:4px;flex-shrink:0;}
+.tc-badge-8, .badge.tc-badge-8{font-size:8px;}
+.tc-barra-fila{margin-top:4px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;width:100%;max-width:180px;}
+.tc-fila-der{text-align:right;flex-shrink:0;margin-left:10px;}
+.tc-fila-deuda{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);}
+.tc-fila-disp{font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;}
+.tc-sec-titulo, .sec-title.tc-sec-titulo{margin-top:14px;display:flex;align-items:center;justify-content:space-between;}
+.tc-btn-vertodo{background:none;border:1px solid rgba(240,104,104,.35);border-radius:7px;color:var(--red);font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.tc-lista-card, .card.tc-lista-card{padding:4px 15px 2px;}
+.tc-cubre-fila{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);}
+.tc-cubre-txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tc-cubre-ico, .fa-solid.tc-cubre-ico{color:var(--accent);margin-right:5px;font-size:9px;}
+.tc-cubre-monto{font-family:'DM Mono',monospace;color:var(--text3);white-space:nowrap;}
+.tc-falta-cab{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.tc-falta-ico{vertical-align:middle;margin-right:3px;}
+.tc-falta-barra{height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:6px;}
+.tc-falta-nombres{font-size:10px;color:var(--text3);margin-top:4px;}
+.tc-vincular{margin-top:10px;background:var(--bg3);border-radius:9px;padding:9px 12px;font-size:11px;color:var(--text3);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.tc-btn-vincular{background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:10px;padding:3px 8px;cursor:pointer;white-space:nowrap;}
+.tc-pago-total{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border2);cursor:pointer;width:100%;text-align:left;}
+.tc-pago-tit{font-size:13px;font-weight:600;color:var(--text);}
+.tc-pago-sub{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;}
+.tc-flecha, .fa-solid.tc-flecha{margin:0 3px;font-size:10px;}
+.tc-det-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.tc-det-caja-deuda{background:rgba(240,104,104,.07);border-radius:9px;padding:11px 12px;}
+.tc-det-cap{font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:3px;}
+.tc-det-caja{background:var(--bg3);border-radius:9px;padding:11px 12px;}
+.tc-det-n{font-weight:400;font-size:8px;}
+.tc-det-val{font-size:17px;font-weight:600;font-family:'DM Mono',monospace;}
+.tc-cob-caja{background:var(--bg3);border-radius:9px;padding:11px 12px;margin-bottom:10px;}
+.tc-cob-cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.tc-cob-tit{font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;}
+.tc-cob-txt{font-size:12px;color:var(--text2);}
+.tc-aviso{background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--amber);}
+.tc-btn-cargo{width:100%;margin-bottom:12px;padding:9px 12px;background:rgba(240,184,64,.08);border:1px dashed rgba(240,184,64,.35);border-radius:9px;color:var(--amber);font-size:11px;font-weight:600;cursor:pointer;text-align:left;}
+.tc-mov-tit{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;}
+.tc-mov-n{font-weight:400;font-size:9px;}
+.tc-vacio{font-size:12px;color:var(--text3);margin-bottom:14px;}
+.tc-saldo-ini, .gasto-item.tc-saldo-ini{margin-bottom:7px;cursor:pointer;border-left:3px solid var(--text3);}
+.tc-row-13, .row-name.tc-row-13{font-size:13px;}
+.tc-amount-text2, .row-amount.tc-amount-text2{color:var(--text2);}
+.tc-badge-ini, .badge.tc-badge-ini{font-size:9px;background:var(--bg3);color:var(--text3);}
+.tc-favor-badge{font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;}
+.tc-favor-ico, .fa-solid.tc-favor-ico{margin-right:3px;font-size:7px;}
+.tc-monto-fila{display:flex;align-items:center;gap:6px;}
+.tc-item-ok, .gasto-item.tc-item-ok{border-color:rgba(200,240,96,.3);border-left:3px solid var(--accent);margin-bottom:7px;background:rgba(200,240,96,.04);cursor:pointer;}
+.card.tc-card{margin-bottom:10px;} .card.tc-card-deuda{border-color:rgba(240,104,104,.3);}
+.tc-cupo-pct{font-size:10px;font-family:'DM Mono',monospace;} .tc-cob-pct{font-size:10px;font-weight:700;font-family:'DM Mono',monospace;}
+.tc-fill{height:100%;border-radius:3px;transition:width .4s;} .tc-fill-sm{height:100%;border-radius:2px;}
+.tc-falta-caja{margin-top:10px;background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:10px 12px;}
+.tc-falta-cap{font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;font-weight:600;}
+.tc-falta-monto{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);}
+.tc-falta-fill{height:100%;background:var(--amber);border-radius:2px;transition:width .4s;}
+.tc-falta-txt{font-size:11px;font-family:'DM Mono',monospace;color:var(--amber);}
+.tc-ok-caja{background:var(--bg3);border-radius:9px;padding:2px 12px;} .tc-mt6{margin-top:6px;} .tc-mt10{margin-top:10px;}
+.tc-pill{font-size:9px;padding:2px 6px;border-radius:20px;}
+.tc-pill-red{background:rgba(240,104,104,.1);color:var(--red);} .tc-pill-amber{background:rgba(240,184,64,.15);color:var(--amber);} .tc-pill-neutro{background:rgba(255,255,255,.07);color:var(--text2);}
+.gasto-item.tc-item{margin-bottom:7px;cursor:pointer;}
+.gasto-item.tc-item-b-amber{border-color:rgba(240,184,64,.3);} .gasto-item.tc-item-b-azul{border-color:rgba(96,176,240,.25);}
+.gasto-item.tc-item-b-rojo{border-color:rgba(240,104,104,.3);} .gasto-item.tc-item-b-morado{border-color:rgba(150,120,240,.3);}
+.badge.tc-badge-amber{background:rgba(240,184,64,.12);color:var(--amber);} .badge.tc-badge-azul{background:rgba(96,176,240,.12);color:var(--blue);}
+.badge.tc-badge-rojo{background:rgba(240,104,104,.12);color:var(--red);} .badge.tc-badge-morado{background:rgba(150,120,240,.12);color:rgba(180,140,255,1);}
+.tc-bg-red{background:var(--red);} .tc-bg-amber{background:var(--amber);} .tc-bg-accent{background:var(--accent);}
+.tc-c-red{color:var(--red);} .tc-c-amber{color:var(--amber);} .tc-c-text3{color:var(--text3);} .tc-c-accent{color:var(--accent);} .tc-c-blue{color:var(--blue);} .tc-c-purple{color:rgba(180,140,255,1);}
+.tc-btn-pagar{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;}
+.tc-btn-pagar-on{background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.35);color:var(--accent);cursor:pointer;}
+.tc-btn-pagar-off{background:var(--bg3);border:1px solid var(--border);color:var(--text3);cursor:not-allowed;}

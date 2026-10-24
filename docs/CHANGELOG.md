@@ -8,6 +8,17 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 Documentación: [`libro-de-movimientos.md`](./libro-de-movimientos.md).
 
+### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 14) — `tarjetas_credito.js`
+
+**`tarjetas_credito.js`: 115 `style=""` → 4.** Quedan 3 `width:${pct}%` (barras de cupo y de cobertura, valor calculado) y 1 `style="cursor:pointer;"` dentro de `_tcAttrs`, que devuelve un fragmento de atributos `data-mov-*` que se inserta en etiquetas de otros sitios y no puede llevar `class`. 72 clases `tc-*` al final de `styles.css`.
+- **Colores por estado → clases:** el color de la barra/porcentaje de cupo (`tc-c-red|amber|text3`, `tc-bg-red|amber|accent`, `tc-pill-red|amber|neutro`), el borde y la insignia de cada movimiento (`tc-item-b-amber|azul|rojo|morado`, `tc-badge-amber|azul|rojo|morado`) y el color de la cobertura de la cajita (`colorEstado`) ya no son valores `var(--x)`/`rgba()` sino nombres de clase. Desaparecen `badgeBg/badgeColor`, `colorBorde/colorMonto/colorBadgeBg/colorBadgeTxt` y las tres constantes `color/bg/borderC` del bloque "no alcanza" (era siempre ámbar: es la clase `tc-falta-*`).
+- **Botón "Pagar":** su `style` tenía 5 propiedades que cambiaban según `deuda<=0`; ahora `tc-btn-pagar` + `tc-btn-pagar-on|off` (mantiene `cursor:not-allowed`).
+- **Insignias de 9px:** reutilizan `badge-xs` (ya existía como `.badge.badge-xs`); no se duplicó la regla (el convertidor admite nombres con `=` delante para clases que ya existen).
+- **Especificidad:** el análisis contra `styles.css` solo encuentra selectores de otros contenedores (`#dialog-actions button`, `#del-account-actions button`, `.fb-*`, `.ms-saldado i`, `.cuenta-action-btn svg`), que no contienen los elementos de Tarjetas.
+- **Verificación (sin `jsdom`, la red del entorno sigue desactivada):** archivo sin `style`/`class` == original salvo los 7 mapas de color; declaraciones de cada clase == su `style`; ninguna etiqueta con dos `class`.
+- **Nuevo verificador genérico `scripts/paso5/etiquetas.js <antes> <nuevo>`:** empareja las etiquetas de ambos archivos en orden y pasa cada par por el comparador de cascada (salta las que llevan `${…}` en `style`/`class`). **Escrito pero no ejecutado** (falta `jsdom`): correrlo sobre las 4 conversiones anteriores en cuanto haya `npm install`.
+- `tests/estilos.test.js`: `tarjetas_credito.js` en `CONVERTIDOS`.
+
 ### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 13) — `alcancia.js`
 
 **`alcancia.js`: 104 `style=""` → 4** (los 4 son `display:none` de elementos que el JS muestra/oculta: bloque de origen dividido, selector de préstamo del cobro de deuda, desglose de cada alcancía del historial). 61 clases `alc-*` al final de `styles.css`.

@@ -432,49 +432,49 @@ function renderTCScreen(){
     const subtitulo=[tc.banco,tc.franquicia].filter(Boolean).join(' · ');
     const colorIcono=tc.color||'currentColor';
 
-    return html`<div class="card" style="margin-bottom:10px;border-color:${deuda>0?'rgba(240,104,104,.3)':'var(--border)'};">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;">
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${colorIcono}" stroke-width="2" stroke-linecap="round" style="display:inline-block;vertical-align:middle;margin-right:2px;flex-shrink:0;"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="${colorIcono}" stroke="none"/></svg>${tc.nombre}
-            ${raw(estadoInfo.badge?`<span class="badge ${estadoInfo.badge}" style="font-size:9px;">${estadoInfo.label}</span>`:'')}
+    return html`<div class="card tc-card ${deuda>0?'tc-card-deuda':''}">
+      <div class="tc-cab">
+        <div class="tc-flex1-min0">
+          <div class="tc-nombre">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${colorIcono}" stroke-width="2" stroke-linecap="round" class="tc-ico-tarjeta"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="${colorIcono}" stroke="none"/></svg>${tc.nombre}
+            ${raw(estadoInfo.badge?`<span class="badge ${estadoInfo.badge} badge-xs">${estadoInfo.label}</span>`:'')}
           </div>
-          ${subtitulo?html`<div style="font-size:11px;color:var(--text3);margin-top:3px;">${subtitulo}</div>`:''}
+          ${subtitulo?html`<div class="tc-sub">${subtitulo}</div>`:''}
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;">
-          <button type="button" ${raw(Events.attr('tarjetas:editar',tc.id))} style="background:none;border:1px solid var(--border2);border-radius:7px;color:var(--text2);font-size:11px;padding:4px 9px;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          <button type="button" ${raw(Events.attr('tarjetas:eliminar',tc.id))} style="background:none;border:1px solid rgba(240,104,104,.3);border-radius:7px;color:var(--red);font-size:11px;padding:4px 9px;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-        <div style="background:rgba(240,104,104,.07);border-radius:9px;padding:10px 12px;">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Deuda actual</div>
-          <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(deuda)}</div>
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">= cupo utilizado</div>
-        </div>
-        <div style="background:rgba(200,240,96,.07);border-radius:9px;padding:10px 12px;">
-          <div style="font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;">Cupo disponible</div>
-          <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);">${fmt(disponible)}</div>
-          <div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">de ${fmt(cupo)} en total</div>
+        <div class="tc-acciones">
+          <button type="button" ${raw(Events.attr('tarjetas:editar',tc.id))} class="tc-btn-editar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button type="button" ${raw(Events.attr('tarjetas:eliminar',tc.id))} class="tc-btn-borrar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
         </div>
       </div>
 
-      <div style="margin-bottom:12px;">
-        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span style="font-size:10px;color:var(--text3);">Cupo usado</span>
-          <span style="font-size:10px;font-family:'DM Mono',monospace;color:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--text3)'};">${pct.toFixed(0)}%</span>
+      <div class="tc-resumen-grid">
+        <div class="tc-caja-deuda">
+          <div class="tc-cap">Deuda actual</div>
+          <div class="tc-val-rojo">${fmt(deuda)}</div>
+          <div class="tc-hint-mono">= cupo utilizado</div>
         </div>
-        <div style="height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;">
-          <div style="height:100%;width:${pct.toFixed(0)}%;background:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--accent)'};border-radius:3px;transition:width .4s;"></div>
+        <div class="tc-caja-disp">
+          <div class="tc-cap">Cupo disponible</div>
+          <div class="tc-val-verde">${fmt(disponible)}</div>
+          <div class="tc-hint-mono">de ${fmt(cupo)} en total</div>
         </div>
       </div>
 
-      <div style="display:flex;gap:8px;">
-        ${raw(activa?`<button type="button" ${Events.attr('tarjetas:compra',tc.id)} style="flex:1;padding:10px;background:rgba(240,104,104,.12);border:1px solid rgba(240,104,104,.35);border-radius:9px;color:var(--red);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">+ Compra</button>`
-          :`<button type="button" disabled style="flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;color:var(--text3);font-size:13px;font-weight:600;cursor:not-allowed;font-family:'DM Sans',sans-serif;">+ Compra</button>`)}
-        <button type="button" ${raw(Events.attr('tarjetas:pagar',tc.id))} ${raw(deuda<=0?'disabled':'')} style="flex:1;padding:10px;background:${deuda<=0?'var(--bg3)':'rgba(200,240,96,.12)'};border:1px solid ${deuda<=0?'var(--border)':'rgba(200,240,96,.35)'};border-radius:9px;color:${deuda<=0?'var(--text3)':'var(--accent)'};font-size:13px;font-weight:600;cursor:${deuda<=0?'not-allowed':'pointer'};font-family:'DM Sans',sans-serif;">Pagar</button>
-        <button type="button" ${raw(Events.attr('tarjetas:verDetalle',tc.id))} style="padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:9px;color:var(--text2);font-size:13px;cursor:pointer;">Ver</button>
+      <div class="tc-cupo">
+        <div class="tc-cupo-cab">
+          <span class="tc-cupo-txt">Cupo usado</span>
+          <span class="tc-cupo-pct ${pct>80?'tc-c-red':pct>50?'tc-c-amber':'tc-c-text3'}">${pct.toFixed(0)}%</span>
+        </div>
+        <div class="tc-barra">
+          <div class="tc-fill ${pct>80?'tc-bg-red':pct>50?'tc-bg-amber':'tc-bg-accent'}" style="width:${pct.toFixed(0)}%;"></div>
+        </div>
+      </div>
+
+      <div class="tc-btns">
+        ${raw(activa?`<button type="button" ${Events.attr('tarjetas:compra',tc.id)} class="tc-btn-compra-act">+ Compra</button>`
+          :`<button type="button" disabled class="tc-btn-compra-off">+ Compra</button>`)}
+        <button type="button" ${raw(Events.attr('tarjetas:pagar',tc.id))} ${raw(deuda<=0?'disabled':'')} class="tc-btn-pagar ${deuda<=0?'tc-btn-pagar-off':'tc-btn-pagar-on'}">Pagar</button>
+        <button type="button" ${raw(Events.attr('tarjetas:verDetalle',tc.id))} class="tc-btn-ver">Ver</button>
       </div>
     </div>`;
   }).join('');
@@ -491,26 +491,26 @@ function renderTCDashboard(){
     const pct=tcCupoUsadoPct(tc);
     const disponible=tcCupoDisponible(tc);
     const estadoInfo=tcEstadoInfo(tc.estado);
-    return html`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:inline-block;vertical-align:middle;margin-right:4px;flex-shrink:0;"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>${tc.nombre}
-          ${raw(tc.cupo?`<span style="font-size:9px;padding:2px 6px;border-radius:20px;background:${pct>80?'rgba(240,104,104,.1)':pct>50?'rgba(240,184,64,.15)':'rgba(255,255,255,.07)'};color:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--text2)'};">${pct.toFixed(0)}% usado</span>`:'')}
-          ${raw(estadoInfo.badge?`<span class="badge ${estadoInfo.badge}" style="font-size:8px;">${estadoInfo.label}</span>`:'')}
+    return html`<div class="tc-fila">
+      <div class="tc-flex1-min0">
+        <div class="tc-fila-nombre">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="tc-ico-fila"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none"/></svg>${tc.nombre}
+          ${raw(tc.cupo?`<span class="tc-pill ${pct>80?'tc-pill-red':pct>50?'tc-pill-amber':'tc-pill-neutro'}">${pct.toFixed(0)}% usado</span>`:'')}
+          ${raw(estadoInfo.badge?`<span class="badge ${estadoInfo.badge} tc-badge-8">${estadoInfo.label}</span>`:'')}
         </div>
-        ${raw(tc.cupo?`<div style="margin-top:4px;height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;width:100%;max-width:180px;"><div style="height:100%;width:${pct.toFixed(0)}%;background:${pct>80?'var(--red)':pct>50?'var(--amber)':'var(--accent)'};border-radius:2px;"></div></div>`:'')}
+        ${raw(tc.cupo?`<div class="tc-barra-fila"><div class="tc-fill-sm ${pct>80?'tc-bg-red':pct>50?'tc-bg-amber':'tc-bg-accent'}" style="width:${pct.toFixed(0)}%;"></div></div>`:'')}
       </div>
-      <div style="text-align:right;flex-shrink:0;margin-left:10px;">
-        <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(tc.deuda||0)}</div>
-        ${raw(tc.cupo?`<div style="font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;">disp. ${fmt(disponible)}</div>`:'')}
+      <div class="tc-fila-der">
+        <div class="tc-fila-deuda">${fmt(tc.deuda||0)}</div>
+        ${raw(tc.cupo?`<div class="tc-fila-disp">disp. ${fmt(disponible)}</div>`:'')}
       </div>
     </div>`;
   }).join('');
-  el.innerHTML=html`<div class="sec-title" style="margin-top:14px;display:flex;align-items:center;justify-content:space-between;">
+  el.innerHTML=html`<div class="sec-title tc-sec-titulo">
     <span>Tarjetas de crédito</span>
-    <button type="button" ${raw(Events.attr('tarjetas:verTodo'))} style="background:none;border:1px solid rgba(240,104,104,.35);border-radius:7px;color:var(--red);font-size:11px;font-weight:600;padding:4px 10px;cursor:pointer;font-family:'DM Sans',sans-serif;">Ver todo</button>
+    <button type="button" ${raw(Events.attr('tarjetas:verTodo'))} class="tc-btn-vertodo">Ver todo</button>
   </div>
-    <div class="card" style="padding:4px 15px 2px;">${raw(items)}</div>
+    <div class="card tc-lista-card">${raw(items)}</div>
     ${raw((()=>{
       // Agrupa las tarjetas por cajita vinculada (tc.cajitaId) — puede haber
       // varios grupos si distintas tarjetas pagan desde cajitas distintas.
@@ -538,39 +538,36 @@ function renderTCDashboard(){
         const nombresTc=tcs.map(x=>x.nombre).join(', ');
         if(alcanza){
           // Cubierta: no necesita atención — una línea chiquita alcanza.
-          lineasOk.push(html`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);">
-            <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><i class="fa-solid fa-check" style="color:var(--accent);margin-right:5px;font-size:9px;"></i>"${cajita.nombre}" cubre ${etiqueta}${tcs.length>1?html` (${nombresTc})`:''}</span>
-            <span style="font-family:'DM Mono',monospace;color:var(--text3);white-space:nowrap;">${fmt(saldoCajita)}</span>
+          lineasOk.push(html`<div class="tc-cubre-fila">
+            <span class="tc-cubre-txt"><i class="fa-solid fa-check tc-cubre-ico"></i>"${cajita.nombre}" cubre ${etiqueta}${tcs.length>1?html` (${nombresTc})`:''}</span>
+            <span class="tc-cubre-monto">${fmt(saldoCajita)}</span>
           </div>`.toString());
           return;
         }
         // No alcanza: esto sí necesita atención — bloque completo con barra.
-        const color='var(--amber)';
-        const bg='rgba(240,184,64,.08)';
-        const borderC='rgba(240,184,64,.25)';
         const pct=Math.min(100,Math.round(saldoCajita/deudaGrupo*100));
-        bloquesFull.push(html`<div style="margin-top:10px;background:${bg};border:1px solid ${borderC};border-radius:9px;padding:10px 12px;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-            <div style="font-size:10px;color:${color};text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;font-weight:600;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12" style="vertical-align:middle;margin-right:3px;"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Cajita ${cajita.nombre}</div>
-            <div style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:${color};">${fmt(saldoCajita)}</div>
+        bloquesFull.push(html`<div class="tc-falta-caja">
+          <div class="tc-falta-cab">
+            <div class="tc-falta-cap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12" class="tc-falta-ico"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Cajita ${cajita.nombre}</div>
+            <div class="tc-falta-monto">${fmt(saldoCajita)}</div>
           </div>
-          <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:6px;">
-            <div style="height:100%;width:${pct}%;background:${color};border-radius:2px;transition:width .4s;"></div>
+          <div class="tc-falta-barra">
+            <div class="tc-falta-fill" style="width:${pct}%;"></div>
           </div>
-          <div style="font-size:11px;font-family:'DM Mono',monospace;color:${color};">
+          <div class="tc-falta-txt">
             Faltan ${fmt(-diferencia)} para cubrir ${etiqueta} (${pct}% cubierto)
           </div>
-          ${tcs.length>1?html`<div style="font-size:10px;color:var(--text3);margin-top:4px;">${nombresTc}</div>`:''}
+          ${tcs.length>1?html`<div class="tc-falta-nombres">${nombresTc}</div>`:''}
         </div>`.toString());
       });
       let out=bloquesFull.join('');
       if(lineasOk.length){
-        out+=`<div style="margin-top:${bloquesFull.length?'6px':'10px'};background:var(--bg3);border-radius:9px;padding:2px 12px;">${lineasOk.join('')}</div>`;
+        out+=`<div class="tc-ok-caja ${bloquesFull.length?'tc-mt6':'tc-mt10'}">${lineasOk.join('')}</div>`;
       }
       if(!out && tarjetas.some(tc=>(tc.deuda||0)>0)){
-        out=html`<div style="margin-top:10px;background:var(--bg3);border-radius:9px;padding:9px 12px;font-size:11px;color:var(--text3);display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        out=html`<div class="tc-vincular">
             <span>Vincula una cajita a tus tarjetas para ver si te alcanza cubrirlas.</span>
-            <button type="button" ${raw(Events.attr('tarjetas:verTodo'))} style="background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:10px;padding:3px 8px;cursor:pointer;white-space:nowrap;">Vincular</button>
+            <button type="button" ${raw(Events.attr('tarjetas:verTodo'))} class="tc-btn-vincular">Vincular</button>
           </div>`.toString();
       }
       return out;
@@ -703,10 +700,10 @@ function abrirPagarTC(tcId){
 
   const optsEl=document.getElementById('ptc-opciones-rapidas');
   if(optsEl){
-    optsEl.innerHTML=deuda>0?html`<button type="button" ${raw(Events.attr('tarjetas:pagoTotal',deuda))} style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border2);cursor:pointer;width:100%;text-align:left;">
+    optsEl.innerHTML=deuda>0?html`<button type="button" ${raw(Events.attr('tarjetas:pagoTotal',deuda))} class="tc-pago-total">
       <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text);">Pago total</div>
-        <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">${fmt(deuda)} — deja el cupo disponible al máximo</div>
+        <div class="tc-pago-tit">Pago total</div>
+        <div class="tc-pago-sub">${fmt(deuda)} — deja el cupo disponible al máximo</div>
       </div>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
     </button>`:'';
@@ -749,7 +746,7 @@ function ptcActualizarPreview(){
   }
   if(monto>0){
     const nuevaDeuda=Math.max(0,(tc.deuda||0)-monto);
-    prevEl.innerHTML='Deuda: '+fmt(tc.deuda)+' <i class="fa-solid fa-arrow-right" style="margin:0 3px;font-size:10px;"></i> '+fmt(nuevaDeuda);
+    prevEl.innerHTML='Deuda: '+fmt(tc.deuda)+' <i class="fa-solid fa-arrow-right tc-flecha"></i> '+fmt(nuevaDeuda);
     prevEl.style.color=nuevaDeuda<(tc.deuda||0)?'var(--accent)':'var(--text3)';
   } else {
     prevEl.textContent='';
@@ -810,14 +807,14 @@ function abrirDetalleTCSheet(tcId){
   const tcMovsMes=tcMovs.filter(m=>mesKey(m.fecha)===mesClave);
   const totalMes=comprasMes.reduce((a,c)=>a+(c.monto||0),0)+tcMovsMes.reduce((a,m)=>a+(m.monto||0),0);
   const totalItems=comprasMes.length+tcMovsMes.length;
-  contenido+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
-    <div style="background:rgba(240,104,104,.07);border-radius:9px;padding:11px 12px;">
-      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:3px;">Deuda actual</div>
-      <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);">${fmt(deuda)}</div>
+  contenido+=`<div class="tc-det-grid">
+    <div class="tc-det-caja-deuda">
+      <div class="tc-det-cap">Deuda actual</div>
+      <div class="tc-val-rojo">${fmt(deuda)}</div>
     </div>
-    <div style="background:var(--bg3);border-radius:9px;padding:11px 12px;">
-      <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:3px;">Este mes <span style="font-weight:400;font-size:8px;">(${totalItems})</span></div>
-      <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;">${fmt(totalMes)}</div>
+    <div class="tc-det-caja">
+      <div class="tc-det-cap">Este mes <span class="tc-det-n">(${totalItems})</span></div>
+      <div class="tc-det-val">${fmt(totalMes)}</div>
     </div>
   </div>`;
 
@@ -835,22 +832,22 @@ function abrirDetalleTCSheet(tcId){
     const saldoCajita=calcC(cajitaVinc).val;
     const pct=deudaGrupoTotal>0?Math.min(100,Math.round(saldoCajita/deudaGrupoTotal*100)):100;
     const cubre=saldoCajita>=deudaGrupoTotal;
-    const colorEstado=cubre?'var(--accent)':(pct>=50?'var(--amber)':'var(--red)');
+    const colorEstado=cubre?'tc-c-accent':(pct>=50?'tc-c-amber':'tc-c-red');
     const otrasNombres=tarjetasEnCajita.filter(x=>x.id!==tc.id).map(x=>x.nombre);
-    contenido+=html`<div style="background:var(--bg3);border-radius:9px;padding:11px 12px;margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <div style="font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;">Cobertura desde "${cajitaVinc.nombre}"</div>
-        <span style="font-size:10px;font-weight:700;color:${colorEstado};font-family:'DM Mono',monospace;">${cubre?'Cubre todo':pct+'%'}</span>
+    contenido+=html`<div class="tc-cob-caja">
+      <div class="tc-cob-cab">
+        <div class="tc-cob-tit">Cobertura desde "${cajitaVinc.nombre}"</div>
+        <span class="tc-cob-pct ${colorEstado}">${cubre?'Cubre todo':pct+'%'}</span>
       </div>
-      <div style="font-size:12px;color:var(--text2);">Saldo en la cajita: <b>${fmt(saldoCajita)}</b> · Deuda a cubrir: <b>${fmt(deudaGrupoTotal)}</b></div>
-      ${otrasNombres.length?html`<div style="font-size:10px;color:var(--text3);margin-top:4px;">Compartida con: ${otrasNombres.join(', ')}.</div>`:''}
+      <div class="tc-cob-txt">Saldo en la cajita: <b>${fmt(saldoCajita)}</b> · Deuda a cubrir: <b>${fmt(deudaGrupoTotal)}</b></div>
+      ${otrasNombres.length?html`<div class="tc-falta-nombres">Compartida con: ${otrasNombres.join(', ')}.</div>`:''}
     </div>`;
   } else if(tc.cajitaId && !cajitaVinc){
     // Tenía una cajita vinculada pero ya no existe (fue eliminada). Si
     // cajitaVinc sí existe pero calcC no cargó todavía (cuentas.js), el
     // widget simplemente no se muestra esta vez — no es lo mismo que
     // "se eliminó", así que no cae acá.
-    contenido+=`<div style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--amber);">
+    contenido+=`<div class="tc-aviso">
       La cajita que tenías vinculada para pagar esta tarjeta ya no existe. Podés vincular una nueva desde "Editar tarjeta".
     </div>`;
   }
@@ -877,12 +874,12 @@ function abrirDetalleTCSheet(tcId){
     });
   }
 
-  contenido+=html`<button type="button" ${raw(Events.attr('tarjetas:cargoEspecial',tc.id))} style="width:100%;margin-bottom:12px;padding:9px 12px;background:rgba(240,184,64,.08);border:1px dashed rgba(240,184,64,.35);border-radius:9px;color:var(--amber);font-size:11px;font-weight:600;cursor:pointer;text-align:left;">+ Cargo especial (interés, comisión...) — no valida cupo</button>`;
+  contenido+=html`<button type="button" ${raw(Events.attr('tarjetas:cargoEspecial',tc.id))} class="tc-btn-cargo">+ Cargo especial (interés, comisión...) — no valida cupo</button>`;
 
-  contenido+=`<div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">Movimientos <span style="font-weight:400;font-size:9px;">(${itemsLinea.length})</span></div>`;
+  contenido+=`<div class="tc-mov-tit">Movimientos <span class="tc-mov-n">(${itemsLinea.length})</span></div>`;
 
   if(!itemsLinea.length){
-    contenido+=`<div style="font-size:12px;color:var(--text3);margin-bottom:14px;">Sin movimientos registrados.</div>`;
+    contenido+=`<div class="tc-vacio">Sin movimientos registrados.</div>`;
   } else {
     // Arma los data-mov-* de cada fila (los usa el sheet de detalle de
     // movimiento al hacer click) — es HTML de confianza ya escapado acá
@@ -895,12 +892,12 @@ function abrirDetalleTCSheet(tcId){
     };
     contenido+=itemsLinea.slice(0,80).map(item=>{
       if(item._tipo==='saldo_inicial'){
-        return html`<div class="gasto-item" ${raw(_tcAttrs(item,'Tarjeta de crédito',null,'Saldo inicial'))} style="margin-bottom:7px;cursor:pointer;border-left:3px solid var(--text3);">
+        return html`<div class="gasto-item tc-saldo-ini" ${raw(_tcAttrs(item,'Tarjeta de crédito',null,'Saldo inicial'))}>
         <div class="gasto-item-top">
-          <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">Saldo inicial</div><div class="row-sub">${item.fecha}</div></div>
-          <span class="row-amount" style="color:var(--text2);">${fmt(item.monto)}</span>
+          <div class="tc-flex1-min0"><div class="row-name tc-row-13">Saldo inicial</div><div class="row-sub">${item.fecha}</div></div>
+          <span class="row-amount tc-amount-text2">${fmt(item.monto)}</span>
         </div>
-        <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:var(--bg3);color:var(--text3);">Deuda antes de usar la app</span></div>
+        <div class="gasto-item-meta"><span class="badge tc-badge-ini">Deuda antes de usar la app</span></div>
       </div>`;
       }
       if(item._tipo==='compra'){
@@ -908,60 +905,58 @@ function abrirDetalleTCSheet(tcId){
         const esFavor=c._esFavor||c._desdeCP;
         const esCargoEspecial=!!c._esCargoEspecial;
         const favorBadge=esFavor
-          ? `<span style="font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;"><i class="fa-solid fa-arrow-down" style="margin-right:3px;font-size:7px;"></i>favor</span>`
+          ? `<span class="tc-favor-badge"><i class="fa-solid fa-arrow-down tc-favor-ico"></i>favor</span>`
           : '';
         const _origenC=esCargoEspecial?'Cargo especial del banco':(c._desdeCP?'Plata comprometida':'Tarjeta de crédito');
         const badgeLabel=esCargoEspecial?('Cargo especial · '+(TC_MOTIVOS_CARGO[c._motivoCargo]||'Otro')):(esFavor?'Favor cubierto':(c.cat||'Sin cat.'));
-        const badgeBg=esCargoEspecial?'rgba(240,184,64,.12)':(esFavor?'rgba(96,176,240,.12)':'rgba(240,104,104,.12)');
-        const badgeColor=esCargoEspecial?'var(--amber)':(esFavor?'var(--blue)':'var(--red)');
-        return html`<div class="gasto-item" ${raw(_tcAttrs(c,_origenC,null))} style="margin-bottom:7px;cursor:pointer;${esCargoEspecial?'border-color:rgba(240,184,64,.3);':(esFavor?'border-color:rgba(96,176,240,.25);':'')}">
+        const badgeClase=esCargoEspecial?'tc-badge-amber':(esFavor?'tc-badge-azul':'tc-badge-rojo');
+        return html`<div class="gasto-item tc-item ${esCargoEspecial?'tc-item-b-amber':(esFavor?'tc-item-b-azul':'')}" ${raw(_tcAttrs(c,_origenC,null))}>
         <div class="gasto-item-top">
-          <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${c.desc}${raw(favorBadge)}</div><div class="row-sub">${c.fecha}</div></div>
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span class="row-amount" style="color:${esCargoEspecial?'var(--amber)':(esFavor?'var(--blue)':'var(--red)')};">${fmt(c.monto)}</span>
+          <div class="tc-flex1-min0"><div class="row-name tc-row-13">${c.desc}${raw(favorBadge)}</div><div class="row-sub">${c.fecha}</div></div>
+          <div class="tc-monto-fila">
+            <span class="row-amount ${esCargoEspecial?'tc-c-amber':(esFavor?'tc-c-blue':'tc-c-red')}">${fmt(c.monto)}</span>
             <button type="button" class="btn-delete-hover" ${raw(Events.attr('tarjetas:eliminarCompra',tc.id,c.id))} data-stop-propagation="true">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
             </button>
           </div>
         </div>
-        <div class="gasto-item-meta"><span class="badge" style="font-size:9px;background:${badgeBg};color:${badgeColor};">${badgeLabel}</span>${c.nota?html`<span style="font-size:10px;color:var(--text3);">${c.nota}</span>`:''}</div>
+        <div class="gasto-item-meta"><span class="badge badge-xs ${badgeClase}">${badgeLabel}</span>${c.nota?html`<span class="tc-cupo-txt">${c.nota}</span>`:''}</div>
       </div>`;
       }
       if(item._tipo==='tcmov'){
         const m=item;
         const esEncargo=m.tipo==='cargo_encargo';
         const esDeuda=m.tipo==='cargo_deuda';
-        const colorBorde=esEncargo?'rgba(240,184,64,.3)':(esDeuda?'rgba(240,104,104,.3)':'rgba(150,120,240,.3)');
-        const colorMonto=esEncargo?'var(--amber)':(esDeuda?'var(--red)':'rgba(180,140,255,1)');
-        const colorBadgeBg=esEncargo?'rgba(240,184,64,.12)':(esDeuda?'rgba(240,104,104,.12)':'rgba(150,120,240,.12)');
-        const colorBadgeTxt=esEncargo?'var(--amber)':(esDeuda?'var(--red)':'rgba(180,140,255,1)');
+        const claseBorde=esEncargo?'tc-item-b-amber':(esDeuda?'tc-item-b-rojo':'tc-item-b-morado');
+        const claseMonto=esEncargo?'tc-c-amber':(esDeuda?'tc-c-red':'tc-c-purple');
+        const claseBadge=esEncargo?'tc-badge-amber':(esDeuda?'tc-badge-rojo':'tc-badge-morado');
         const labelBadge=esEncargo?'Encargo':(esDeuda?'Pago de deuda':'Préstamo');
         const iconoBadge=esEncargo
-          ? `<i class="fa-solid fa-box" style="margin-right:3px;font-size:7px;"></i>`
+          ? `<i class="fa-solid fa-box tc-favor-ico"></i>`
           : (esDeuda
-            ? `<i class="fa-solid fa-arrow-down" style="margin-right:3px;font-size:7px;"></i>`
-            : `<i class="fa-solid fa-hand-holding-dollar" style="margin-right:3px;font-size:7px;"></i>`);
+            ? `<i class="fa-solid fa-arrow-down tc-favor-ico"></i>`
+            : `<i class="fa-solid fa-hand-holding-dollar tc-favor-ico"></i>`);
         const _origenM=esEncargo?'Encargos':(esDeuda
           ?('Préstamos · Yo debo · '+((Deudas.porId('contra',m.miDeudaId)||{}).nombre||''))
           :('Préstamos · '+((Deudas.porId('favor',m.deudorId)||{}).nombre||'')));
-        return html`<div class="gasto-item" ${raw(_tcAttrs(m,_origenM,null))} style="margin-bottom:7px;cursor:pointer;border-color:${colorBorde};">
+        return html`<div class="gasto-item tc-item ${claseBorde}" ${raw(_tcAttrs(m,_origenM,null))}>
         <div class="gasto-item-top">
-          <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">${m.desc}</div><div class="row-sub">${m.fecha}</div></div>
-          <span class="row-amount" style="color:${colorMonto};">${fmt(m.monto)}</span>
+          <div class="tc-flex1-min0"><div class="row-name tc-row-13">${m.desc}</div><div class="row-sub">${m.fecha}</div></div>
+          <span class="row-amount ${claseMonto}">${fmt(m.monto)}</span>
         </div>
         <div class="gasto-item-meta">
-          <span class="badge" style="font-size:9px;background:${colorBadgeBg};color:${colorBadgeTxt};">${raw(iconoBadge)}${labelBadge}</span>
-          ${m.nota?html`<span style="font-size:10px;color:var(--text3);">${m.nota}</span>`:''}
+          <span class="badge badge-xs ${claseBadge}">${raw(iconoBadge)}${labelBadge}</span>
+          ${m.nota?html`<span class="tc-cupo-txt">${m.nota}</span>`:''}
         </div>
       </div>`;
       }
       const p=item;
       const descPago=p.nota?p.nota:'Abono a la deuda de '+(tc.nombre||'tu tarjeta')+' — no corresponde a una compra específica';
       const otrasPago=p.fuente?[{fuente:p.fuente,monto:-p.monto}]:null;
-      return html`<div class="gasto-item" ${raw(_tcAttrs(p,'Tarjeta de crédito',otrasPago,'Abono a tu deuda'))} style="border-color:rgba(200,240,96,.3);border-left:3px solid var(--accent);margin-bottom:7px;background:rgba(200,240,96,.04);cursor:pointer;">
+      return html`<div class="gasto-item tc-item-ok" ${raw(_tcAttrs(p,'Tarjeta de crédito',otrasPago,'Abono a tu deuda'))}>
         <div class="gasto-item-top">
-          <div style="flex:1;min-width:0;"><div class="row-name" style="font-size:13px;">Abono a tu deuda</div><div class="row-sub">${p.fecha}</div></div>
-          <div style="display:flex;align-items:center;gap:6px;">
+          <div class="tc-flex1-min0"><div class="row-name tc-row-13">Abono a tu deuda</div><div class="row-sub">${p.fecha}</div></div>
+          <div class="tc-monto-fila">
             <span class="row-amount c-green">−${fmt(p.monto)}</span>
             <button type="button" class="btn-delete-hover" ${raw(Events.attr('tarjetas:eliminarPago',tc.id,p.id))} data-stop-propagation="true">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
@@ -969,9 +964,9 @@ function abrirDetalleTCSheet(tcId){
           </div>
         </div>
         <div class="gasto-item-meta">
-          <span class="badge bg-green" style="font-size:9px;"><i class="fa-solid fa-arrow-down" style="margin-right:3px;font-size:7px;"></i>Reduce deuda</span>
-          <span class="badge ${fuenteBadgeClass(p.fuente)}" style="font-size:9px;">Desde ${fuenteLabel(p.fuente)}</span>
-          <span style="font-size:10px;color:var(--text3);">${descPago}</span>
+          <span class="badge bg-green badge-xs"><i class="fa-solid fa-arrow-down tc-favor-ico"></i>Reduce deuda</span>
+          <span class="badge ${fuenteBadgeClass(p.fuente)} badge-xs">Desde ${fuenteLabel(p.fuente)}</span>
+          <span class="tc-cupo-txt">${descPago}</span>
         </div>
       </div>`;
     }).join('');

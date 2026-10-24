@@ -43,6 +43,8 @@ const CONVERTIDOS = [
   // alcancia: solo quedan 4 display:none que JS conmuta (bloque de origen dividido, grupo de deudor, desglose del historial); `sinCss`: ganchos
   // de JS que ya existían y no tienen regla. Colores por tipo/diferencia = clases alc-c-* y alc-dif-*
   { f: 'js/modules/alcancia.js', prefijos: ['alc-'], armadas: ['alc-c-', 'alc-dif-'], sinCss: ['alc-hist-chevron', 'alc-dep-monto'], permitidos: ['display:none;'] },
+  // tarjetas: solo quedan los anchos de barra (porcentaje calculado) y el cursor del fragmento de atributos _tcAttrs (se inserta en etiquetas ajenas, no puede llevar class)
+  { f: 'js/modules/tarjetas_credito.js', prefijos: ['tc-', 'badge-xs'], permitidos: [/^width:\$\{/, 'cursor:pointer;'] },
   // movimientos: detalle de un movimiento, sin ningún style="" (el color del monto sale de mdet-c-accent/red/amber)
   { f: 'js/core/movimientos.js', prefijos: ['mdet-', 'badge-xs'], permitidos: [] },
   // wrapped: su CSS vive en el <style> que inyecta el propio archivo (cssEn). Solo queda el retraso de animación de cada punto de la línea,

@@ -1,149 +1,149 @@
-'use strict';
 /* ================================================================
-   scripts/notificaciones/run.js
+   scripts/notificaciones/checks.js
    ================================================================
-   Reemplaza al enfoque de Cloud Function que se intentó primero (ese
-   código ya no existe en el repo) — misma lógica, distinto lugar donde
-   corre. Se ejecuta desde GitHub Actions (.github/workflows/notificaciones.yml)
-   en vez de Cloud Scheduler, porque desplegar una Cloud Function
-   programada requiere el plan Blaze de Firebase pase lo que pase, y
-   GitHub Actions no necesita ninguna tarjeta ni plan de pago para esto.
+   Chequeos de "vencimiento" para las notificaciones push diarias.
 
-   checks.js (al lado de este archivo, en esta misma carpeta) es el
-   registro extensible de chequeos de vencimiento. La única diferencia
-   real entre correr esto acá vs. en una Cloud Function es CÓMO se
-   autentica contra Firestore:
-     - Cloud Function (enfoque abandonado): admin.initializeApp() sin
-       argumentos, usa credenciales automáticas del propio proyecto.
-     - Este script: corre fuera de Firebase, así que necesita una
-       cuenta de servicio explícita (ver README.md de esta carpeta
-       para cómo generarla y guardarla como secret de GitHub).
+   Cada check es una función pura: recibe el estado completo `S` (el
+   mismo objeto que la app guarda en Firestore como JSON en
+   usuarios/{uid}/data/finanzas, ya con JSON.parse aplicado) y la
+   fecha de "hoy" en formato YYYY-MM-DD (zona horaria America/Bogota,
+   calculada en index.js), y devuelve una lista de items
+   { tipo: 'amber'|'red', texto: string }.
 
-   Estructura de Firestore que asume (igual que antes):
-     usuarios/{uid}/data/finanzas       → { payload: '<JSON de S>', updatedAt }
-     usuarios/{uid}/data/notificaciones → { fcmTokens: [token, ...] }
+   Portado 1:1 desde la lógica real de la app (no reinventado):
+     - Spotify vencido        → js/modules/inicio.js renderAttencion()
+                                 + js/core/calc-helpers.js spPersonaPagadaVigente()
+     - CDT por vencer/vencido → js/modules/inicio.js renderAttencion()
+     - Encargos comprometidos → js/modules/inicio.js renderAttencion()
+
+   A propósito quedaron AFUERA (ver conversación — no tienen fecha real):
+     - Deudores con saldo pendiente (préstamos sin fecha)
+     - Mesada con pago parcial (no es un recordatorio para el usuario,
+       es plata que le deben a él)
+     - Tarjetas con cupo casi agotado (umbral de cupo, no vencimiento)
+
+   Para agregar un chequeo nuevo más adelante (ej. "gasto alto" una vez
+   que se porte nuTotal() de cuentas.js):
+     1. Escribir una función `checkX(S, hoyStr)` que devuelva items.
+     2. Agregarla al array CHECKS al final de este archivo, con un
+        `id` único.
+   No hace falta tocar index.js — lee CHECKS dinámicamente.
    ================================================================ */
 
-const admin = require('firebase-admin');
-const { ejecutarChecks } = require('./checks');
+function spPersonaPagadaVigente(p, hoyStr) {
+  if (!p || !p.pagado) return false;
+  if (!p.proximoPago) return true;
+  const hoy0 = new Date(hoyStr + 'T00:00:00');
+  const prox = new Date(p.proximoPago + 'T00:00:00');
+  return prox > hoy0;
+}
 
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
-admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-const db = admin.firestore();
+// Igual que spNombreDe() en calc-helpers.js, pero sin getPersona() (esa
+// función vive en personas.js, que no corre acá) — se busca directo en
+// S.personas por id, que es lo mismo que hace getPersona() por dentro.
+function spNombreDe(S, p) {
+  if (!p) return '';
+  if (p.personaId) {
+    const per = (S.personas || []).find((x) => x.id === p.personaId);
+    if (per && per.nombre) return per.nombre;
+  }
+  return p.nombre || '';
+}
 
-// Colombia no tiene horario de verano (offset fijo UTC-5), pero se usa
-// Intl.DateTimeFormat en vez de hardcodear el offset por las dudas.
-function hoyBogota() {
-  const fmt = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Bogota',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+/* ---- Spotify: cobro vencido ---- */
+function checkSpotifyVencido(S, hoyStr) {
+  const items = [];
+  if (!(S.modulos && S.modulos.spotify)) return items;
+  (S.spotifyPersonas || []).forEach((p) => {
+    if (p.proximoPago && p.proximoPago < hoyStr && !spPersonaPagadaVigente(p, hoyStr)) {
+      items.push({ tipo: 'red', texto: `Cobro Spotify de ${spNombreDe(S, p)} vencido` });
+    }
   });
-  return fmt.format(new Date()); // formato 'en-CA' da YYYY-MM-DD directo
+  return items;
 }
 
-function esperar(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function main() {
-  const hoyStr = hoyBogota();
-  console.log(`Chequeo de notificaciones — hoy=${hoyStr}`);
-  // listDocuments() (no .get()) porque usuarios/{uid} nunca se crea como
-  // documento con campos propios — solo existe como "padre" de la
-  // subcolección usuarios/{uid}/data/. Con .get() esos uids no cuentan
-  // como documentos reales y la colección aparece vacía aunque la
-  // consola de Firebase sí los liste (ver README de esta carpeta).
-  const usuariosRefs = await db.collection('usuarios').listDocuments();
-  console.log(`usuarios encontrados: ${usuariosRefs.length}`);
-
-  for (const usuarioRef of usuariosRefs) {
-    const uid = usuarioRef.id;
-    try {
-      const [finanzasSnap, notifSnap] = await Promise.all([
-        db.collection('usuarios').doc(uid).collection('data').doc('finanzas').get(),
-        db.collection('usuarios').doc(uid).collection('data').doc('notificaciones').get(),
-      ]);
-
-      if (!finanzasSnap.exists) {
-        console.log(`uid=${uid}: no tiene documento data/finanzas, se salta`);
-        continue;
-      }
-      const tokens = notifSnap.exists ? notifSnap.data().fcmTokens || [] : [];
-      if (!tokens.length) {
-        console.log(`uid=${uid}: sin tokens registrados, se salta`);
-        continue;
-      }
-
-      const S = JSON.parse(finanzasSnap.data().payload);
-      const items = ejecutarChecks(S, hoyStr);
-      if (!items.length) {
-        console.log(`uid=${uid}: nada que avisar hoy`);
-        continue;
-      }
-
-      console.log(`uid=${uid}: ${items.length} item(s), mandando uno por uno...`);
-      const tokensInvalidos = new Set();
-
-      // Un push POR ITEM. IMPORTANTE: mensaje "data-only" (sin campo
-      // `notification` en absoluto) — si lleva `notification`, Firebase
-      // muestra una notificación automáticamente por su cuenta, ADEMÁS
-      // de la que arma sw.js, duplicando todo. Con data-only, sw.js es
-      // el único que decide qué se ve, sin ambigüedad ni duplicados.
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        const title = item.tipo === 'red' ? '⚠️ Mis Finanzas' : 'Mis Finanzas';
-
-        const message = {
-          tokens,
-          data: {
-            title,
-            body: item.texto,
-            icon: 'https://drlight09.github.io/mis-finanzas/icons/icon-192.png',
-            link: '/mis-finanzas/',
-          },
-          // Urgency alta: sin esto, el navegador/OS puede demorar o
-          // agrupar la entrega en modo de ahorro de batería (Doze),
-          // quedándose a veces solo con el más reciente de varios
-          // seguidos. (android.priority NO aplica acá — ese campo es
-          // solo para tokens de la app nativa de Android, no para
-          // tokens de Web Push como los nuestros.)
-          webpush: { headers: { Urgency: 'high' } },
-        };
-
-        const resp = await admin.messaging().sendEachForMulticast(message);
-        console.log(`  [${i + 1}/${items.length}] "${item.texto}" — ${resp.successCount}/${tokens.length} tokens ok`);
-
-        resp.responses.forEach((r, j) => {
-          const code = r.error && r.error.code;
-          if (!r.success && (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token')) {
-            tokensInvalidos.add(tokens[j]);
-          }
-        });
-
-        if (i < items.length - 1) {
-          const pausaMs = 5000 + Math.floor(Math.random() * 25000); // 5-30s
-          await esperar(pausaMs);
+/* ---- CDT: por vencer (7 días) o vencido ---- */
+function checkCDT(S, hoyStr) {
+  const items = [];
+  const hoyDate = new Date(hoyStr + 'T00:00:00');
+  (S.cajitas || []).forEach((c) => {
+    (c.cdts || [])
+      .filter((cdt) => cdt.vence)
+      .forEach((cdt) => {
+        const dias = Math.ceil((new Date(cdt.vence + 'T00:00:00') - hoyDate) / 86400000);
+        if (dias >= 0 && dias <= 7) {
+          items.push({ tipo: 'amber', texto: `CDT "${c.nombre}" vence en ${dias}d` });
         }
-      }
+        if (dias < 0) {
+          items.push({ tipo: 'red', texto: `CDT "${c.nombre}" venció — ¡libera tu plata!` });
+        }
+      });
+  });
+  return items;
+}
 
-      // Limpieza de tokens muertos.
-      if (tokensInvalidos.size) {
-        await db
-          .collection('usuarios')
-          .doc(uid)
-          .collection('data')
-          .doc('notificaciones')
-          .update({ fcmTokens: admin.firestore.FieldValue.arrayRemove(...tokensInvalidos) });
-      }
+/* ---- Encargos: partes comprometidas por vencer o vencidas ---- */
+function checkEncargos(S, hoyStr) {
+  const items = [];
+  const hoyDate = new Date(hoyStr + 'T00:00:00');
+  (S.encargos || []).forEach((enc) => {
+    (enc.partes || [])
+      .filter((p) => !p.usada && p.fecha)
+      .forEach((p) => {
+        const dias = Math.round((new Date(p.fecha + 'T00:00:00') - hoyDate) / 86400000);
+        if (dias < 0) {
+          items.push({
+            tipo: 'red',
+            texto: `${enc.nombre}: "${p.desc}" venció hace ${Math.abs(dias)}d sin usarse`,
+          });
+        } else if (dias <= 1) {
+          items.push({
+            tipo: 'amber',
+            texto: `${enc.nombre}: "${p.desc}" es ${dias === 0 ? 'hoy' : 'mañana'}`,
+          });
+        }
+      });
+  });
+  return items;
+}
+
+/* ---- Wrapped: aviso único cuando se abre la ventana de disponibilidad ----
+   La ventana real (1-31 de enero) vive en js/core/wrapped-gate.js
+   (WRAPPED_VENTANA_DIAS, ver wrapped.md §7decies). Acá solo avisamos el
+   PRIMER día de esa ventana — no los 31 — porque el objetivo es anunciar
+   "ya está disponible", no repetir un recordatorio todo el mes. No
+   depende de nada de S: es puramente la fecha. */
+function checkWrapped(S, hoyStr) {
+  const items = [];
+  const [, mes, dia] = hoyStr.split('-');
+  if (mes === '01' && dia === '01') {
+    items.push({ tipo: 'amber', texto: 'Tu resumen anual (Wrapped) ya está disponible 🎉' });
+  }
+  return items;
+}
+
+/**
+ * Registro de chequeos activos. El orden acá define el orden en que
+ * aparecen los avisos dentro de una misma notificación.
+ */
+const CHECKS = [
+  { id: 'spotify-vencido', run: checkSpotifyVencido },
+  { id: 'cdt', run: checkCDT },
+  { id: 'encargos', run: checkEncargos },
+  { id: 'wrapped', run: checkWrapped },
+];
+
+function ejecutarChecks(S, hoyStr) {
+  const items = [];
+  for (const check of CHECKS) {
+    try {
+      items.push(...check.run(S, hoyStr));
     } catch (e) {
-      console.error(`Error procesando uid=${uid}:`, e);
+      // Un chequeo roto no debe tumbar los demás ni la función entera.
+      console.error(`Error en check "${check.id}":`, e);
     }
   }
+  return items;
 }
 
-main().catch((e) => {
-  console.error('Error fatal:', e);
-  process.exitCode = 1; // marca el job como fallido sin forzar el exit
-});
+module.exports = { ejecutarChecks, CHECKS };

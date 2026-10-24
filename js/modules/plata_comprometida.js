@@ -76,23 +76,23 @@ function _injectScreen(){
   screen.id = 'screen-comprometida';
   screen.innerHTML = `
     <!-- Hero -->
-    <div style="background:linear-gradient(135deg,rgba(240,184,64,.12) 0%,rgba(240,184,64,.04) 100%);border:1px solid rgba(240,184,64,.25);border-radius:var(--radius);padding:20px;margin-bottom:10px;position:relative;overflow:hidden;">
-      <div style="position:absolute;top:-30px;right:-30px;width:110px;height:110px;background:rgba(240,184,64,.06);border-radius:50%;"></div>
-      <div style="font-size:10px;color:rgba(240,184,64,.7);letter-spacing:1.5px;text-transform:uppercase;font-family:'DM Mono',monospace;font-weight:600;">Plata por llegar</div>
-      <div style="font-size:36px;font-weight:300;margin:6px 0 4px;letter-spacing:-2px;font-family:'DM Mono',monospace;color:var(--amber);" id="cp-hero-total">$0</div>
-      <div style="font-size:11px;color:var(--text3);" id="cp-hero-sub">En ingresos futuros registrados</div>
+    <div class="cp-hero-caja">
+      <div class="cp-hero-aro"></div>
+      <div class="cp-hero-cap">Plata por llegar</div>
+      <div class="cp-hero-monto" id="cp-hero-total">$0</div>
+      <div class="cp-hero-sub" id="cp-hero-sub">En ingresos futuros registrados</div>
     </div>
 
     <!-- Stats -->
-    <div class="grid2" style="margin-bottom:9px;">
+    <div class="grid2 cp-mb9">
       <div class="stat"><div class="stat-label">Ya comprometido</div><div class="stat-value c-red" id="cp-stat-comprometido">$0</div></div>
       <div class="stat"><div class="stat-label">Libre al llegar</div><div class="stat-value c-green" id="cp-stat-libre">$0</div></div>
     </div>
 
     <!-- Lista -->
-    <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 8px;">
-      <div class="sec-title" style="margin:0;">Ingresos comprometidos</div>
-      <button type="button" ${Events.attr('cp:abrirNuevo')} style="display:flex;align-items:center;gap:5px;background:rgba(240,184,64,.12);border:1px solid rgba(240,184,64,.35);color:var(--amber);border-radius:8px;padding:5px 11px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+    <div class="cp-sec-cab">
+      <div class="sec-title cp-mt0">Ingresos comprometidos</div>
+      <button type="button" ${Events.attr('cp:abrirNuevo')} class="cp-btn-nuevo">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Nuevo
       </button>
@@ -100,9 +100,9 @@ function _injectScreen(){
     <div id="cp-lista"></div>
 
     <!-- Tip -->
-    <div style="background:rgba(200,240,96,.05);border:1px solid rgba(200,240,96,.15);border-radius:var(--radius-sm);padding:12px 14px;margin-top:10px;">
-      <div style="font-size:10px;font-weight:700;color:rgba(200,240,96,.6);text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;margin-bottom:5px;">¿Cómo funciona?</div>
-      <div style="font-size:11px;color:var(--text3);line-height:1.6;">Registrá aquí ingresos que todavía no te han llegado pero que ya sabés que van a tener destino. Cuando la plata llegue de verdad, tocás <b style="color:var(--text2);">Recibir</b> y la app te guía a distribuirla sin enredos.</div>
+    <div class="cp-ayuda-caja">
+      <div class="cp-ayuda-cap">¿Cómo funciona?</div>
+      <div class="cp-ayuda-txt">Registrá aquí ingresos que todavía no te han llegado pero que ya sabés que van a tener destino. Cuando la plata llegue de verdad, tocás <b class="cp-c-text2">Recibir</b> y la app te guía a distribuirla sin enredos.</div>
     </div>
   `;
   main.appendChild(screen);
@@ -117,7 +117,7 @@ function _injectMasItem(){
   item.id = 'mas-comprometida';
   item.setAttribute('data-screen', 'comprometida');
   item.innerHTML = `
-    <div class="mas-item-icon" style="background:rgba(240,184,64,.1);border-color:rgba(240,184,64,.25);">
+    <div class="mas-item-icon cp-ico-amber">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="6" width="20" height="13" rx="2"/>
         <path d="M2 10h20"/>
@@ -154,18 +154,18 @@ function _injectSheet(){
     <div class="sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-title" id="cp-sheet-title">Nuevo ingreso comprometido</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.5;">Registrá plata que todavía no llegó pero que ya tiene destino.<br>Los saldos <b style="color:var(--text);">no se tocan</b> hasta que vos confirmes que llegó.</div>
+      <div class="cp-form-intro">Registrá plata que todavía no llegó pero que ya tiene destino.<br>Los saldos <b class="cp-c-text">no se tocan</b> hasta que vos confirmes que llegó.</div>
 
       <div class="ig">
-        <label class="il" for="cp-desc">¿Qué plata es? <span style="color:var(--red);">*</span></label>
+        <label class="il" for="cp-desc">¿Qué plata es? <span class="cp-c-red">*</span></label>
         <input type="text" id="cp-desc" placeholder="Ej: Arriendo de mamá, Pago de Juan..." maxlength="80">
       </div>
       <div class="ig">
-        <label class="il" for="cp-monto-total">Monto total que va a llegar <span style="color:var(--red);">*</span></label>
+        <label class="il" for="cp-monto-total">Monto total que va a llegar <span class="cp-c-red">*</span></label>
         <input type="text" inputmode="decimal" id="cp-monto-total" placeholder="0,00" class="money-input">
       </div>
       <div class="ig">
-        <label class="il" for="cp-fecha-llegada">¿Cuándo llega? <span style="color:var(--red);">*</span></label>
+        <label class="il" for="cp-fecha-llegada">¿Cuándo llega? <span class="cp-c-red">*</span></label>
         <input type="date" id="cp-fecha-llegada">
       </div>
       <div class="ig">
@@ -174,16 +174,16 @@ function _injectSheet(){
       </div>
 
       <!-- Destinos / compromisos -->
-      <div style="margin-top:6px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div class="il" style="margin:0;">¿A dónde va esta plata?</div>
-          <button type="button" ${Events.attr('cp:agregarDestino')} style="font-size:10px;background:rgba(200,240,96,.1);border:1px solid rgba(200,240,96,.3);color:var(--accent);border-radius:6px;padding:3px 9px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">+ Agregar destino</button>
+      <div class="cp-dest-cab-wrap">
+        <div class="cp-dest-cab">
+          <div class="il cp-mt0">¿A dónde va esta plata?</div>
+          <button type="button" ${Events.attr('cp:agregarDestino')} class="cp-btn-add-dest">+ Agregar destino</button>
         </div>
         <div id="cp-destinos-list"></div>
         <div id="cp-balance-preview" style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;padding:8px 0;"></div>
       </div>
 
-      <button type="button" class="btn btn-primary" ${Events.attr('cp:guardar')} style="background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.3);">Guardar</button>
+      <button type="button" class="btn btn-primary cp-btn-guardar-amber" ${Events.attr('cp:guardar')}>Guardar</button>
       <button type="button" class="btn btn-ghost" data-close-sheet="cp-nuevo" ${Events.attr('cp:cancelarSheet')}>Cancelar</button>
     </div>
   </div>
@@ -193,31 +193,31 @@ function _injectSheet(){
     <div class="sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-title">Agregar destino</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">¿Para qué va a usarse parte de este ingreso?</div>
+      <div class="cp-sub-intro">¿Para qué va a usarse parte de este ingreso?</div>
 
       <!-- Tipo: tarjetas visuales -->
-      <div style="margin-bottom:14px;">
-        <div class="il" style="font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;color:var(--text3);margin-bottom:8px;font-weight:700;">Tipo de destino</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;" id="cpd-tipo-cards">
-          <button type="button" class="cpd-tipo-card" data-tipo="reposicion" ${Events.attr('cp:dSetTipo','reposicion')}
-            style="padding:11px 10px;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;border:1.5px solid rgba(176,144,240,.35);background:rgba(176,144,240,.1);color:var(--purple);transition:all .15s;">
-            <div style="font-size:13px;margin-bottom:2px;"><i class="fa-solid fa-rotate-left" style="margin-right:5px;font-size:12px;"></i>Reponer</div>
-            <div style="font-size:9px;opacity:.75;line-height:1.3;">Devolver plata de una cajita que ya usé</div>
+      <div class="cp-mb14">
+        <div class="il cp-cap-mono">Tipo de destino</div>
+        <div class="cp-tipos-grid" id="cpd-tipo-cards">
+          <button type="button" class="cpd-tipo-card cp-tipo-card-a" data-tipo="reposicion" ${Events.attr('cp:dSetTipo','reposicion')}
+           >
+            <div class="cp-tipo-tit"><i class="fa-solid fa-rotate-left cp-ico-r5-12"></i>Reponer</div>
+            <div class="cp-tipo-sub">Devolver plata de una cajita que ya usé</div>
           </button>
-          <button type="button" class="cpd-tipo-card" data-tipo="gasto" ${Events.attr('cp:dSetTipo','gasto')}
-            style="padding:11px 10px;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;border:1.5px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s;">
-            <div style="font-size:13px;margin-bottom:2px;"><i class="fa-solid fa-receipt" style="margin-right:5px;font-size:12px;"></i>Gasto</div>
-            <div style="font-size:9px;opacity:.75;line-height:1.3;">Cubrir un pago próximo o en TC</div>
+          <button type="button" class="cpd-tipo-card cp-tipo-card-b" data-tipo="gasto" ${Events.attr('cp:dSetTipo','gasto')}
+           >
+            <div class="cp-tipo-tit"><i class="fa-solid fa-receipt cp-ico-r5-12"></i>Gasto</div>
+            <div class="cp-tipo-sub">Cubrir un pago próximo o en TC</div>
           </button>
-          <button type="button" class="cpd-tipo-card" data-tipo="abono_deuda" ${Events.attr('cp:dSetTipo','abono_deuda')}
-            style="padding:11px 10px;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;border:1.5px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s;">
-            <div style="font-size:13px;margin-bottom:2px;"><i class="fa-solid fa-handshake" style="margin-right:5px;font-size:12px;"></i>Me devuelven</div>
-            <div style="font-size:9px;opacity:.75;line-height:1.3;">Abono a lo que me deben</div>
+          <button type="button" class="cpd-tipo-card cp-tipo-card-b" data-tipo="abono_deuda" ${Events.attr('cp:dSetTipo','abono_deuda')}
+           >
+            <div class="cp-tipo-tit"><i class="fa-solid fa-handshake cp-ico-r5-12"></i>Me devuelven</div>
+            <div class="cp-tipo-sub">Abono a lo que me deben</div>
           </button>
-          <button type="button" class="cpd-tipo-card" data-tipo="otro" ${Events.attr('cp:dSetTipo','otro')}
-            style="padding:11px 10px;border-radius:var(--radius-sm);cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;border:1.5px solid var(--border2);background:transparent;color:var(--text2);transition:all .15s;">
-            <div style="font-size:13px;margin-bottom:2px;"><i class="fa-solid fa-tag" style="margin-right:5px;font-size:12px;"></i>Otro</div>
-            <div style="font-size:9px;opacity:.75;line-height:1.3;">Solo registro, sin mover saldos</div>
+          <button type="button" class="cpd-tipo-card cp-tipo-card-b" data-tipo="otro" ${Events.attr('cp:dSetTipo','otro')}
+           >
+            <div class="cp-tipo-tit"><i class="fa-solid fa-tag cp-ico-r5-12"></i>Otro</div>
+            <div class="cp-tipo-sub">Solo registro, sin mover saldos</div>
           </button>
         </div>
         <!-- Hidden select para compatibilidad con el código existente -->
@@ -230,50 +230,50 @@ function _injectSheet(){
       </div>
 
       <div class="ig">
-        <label class="il" for="cpd-desc">Descripción <span style="color:var(--red);">*</span></label>
+        <label class="il" for="cpd-desc">Descripción <span class="cp-c-red">*</span></label>
         <input type="text" id="cpd-desc" placeholder="Ej: Internet + servicios, Abono mamá..." maxlength="60">
       </div>
       <div class="ig">
-        <label class="il" for="cpd-monto">Monto <span style="color:var(--red);">*</span></label>
+        <label class="il" for="cpd-monto">Monto <span class="cp-c-red">*</span></label>
         <input type="text" inputmode="decimal" id="cpd-monto" placeholder="0,00" class="money-input">
       </div>
       <!-- Selector de persona (para abono_deuda) — solo personas que me deben -->
       <div class="ig" id="cpd-persona-wrap" style="display:none;">
         <label class="il" for="cpd-persona">¿Quién te devuelve?</label>
         <div class="select-wrap"><select id="cpd-persona"><option value="">Seleccionar persona</option></select></div>
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4;"><i class="fa-solid fa-circle-info" style="margin-right:4px;color:var(--blue);font-size:9px;"></i>Solo aparecen personas que te deben plata.</div>
+        <div class="cp-nota10"><i class="fa-solid fa-circle-info cp-ico-info"></i>Solo aparecen personas que te deben plata.</div>
       </div>
       <!-- ¿De dónde salió el gasto? (para gasto) -->
       <div class="ig" id="cpd-gasto-origen-wrap" style="display:none;">
-        <div class="il" style="margin-bottom:8px;">¿De dónde salió o va a salir esta plata?</div>
-        <div style="display:flex;gap:7px;margin-bottom:8px;">
+        <div class="il cp-mb8">¿De dónde salió o va a salir esta plata?</div>
+        <div class="cp-origen-btns">
           <button type="button" id="cpd-origen-cajita-btn"
             ${Events.attr('cp:dSetGastoOrigen','cajita')}
-            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(176,144,240,.4);color:var(--purple);background:rgba(176,144,240,.1);transition:all .15s;">
-            <i class="fa-solid fa-box" style="margin-right:5px;"></i>De una cajita
+            class="cp-origen-btn-a">
+            <i class="fa-solid fa-box cp-ico-r5"></i>De una cajita
           </button>
           <button type="button" id="cpd-origen-tc-btn"
             ${Events.attr('cp:dSetGastoOrigen','tc')}
-            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid var(--border2);color:var(--text2);background:transparent;transition:all .15s;">
-            <i class="fa-solid fa-credit-card" style="margin-right:5px;"></i>De la tarjeta
+            class="cp-origen-btn-b">
+            <i class="fa-solid fa-credit-card cp-ico-r5"></i>De la tarjeta
           </button>
         </div>
         <div id="cpd-gasto-cajita-wrap" style="display:none;">
-          <label class="il" for="cpd-gasto-cajita" style="font-size:11px;margin-bottom:4px;">¿Qué cajita o cuenta?</label>
+          <label class="il cp-lbl11" for="cpd-gasto-cajita">¿Qué cajita o cuenta?</label>
           <div class="select-wrap"><select id="cpd-gasto-cajita"><option value="">Sin especificar</option></select></div>
         </div>
         <div id="cpd-gasto-tc-wrap" style="display:none;">
-          <label class="il" for="cpd-gasto-tc" style="font-size:11px;margin-bottom:4px;">¿Qué tarjeta?</label>
+          <label class="il cp-lbl11" for="cpd-gasto-tc">¿Qué tarjeta?</label>
           <div class="select-wrap"><select id="cpd-gasto-tc"><option value="">Sin especificar</option></select></div>
-          <div style="margin-top:10px;">
-            <label class="il" for="cpd-gasto-tc-cajita" style="font-size:11px;margin-bottom:4px;">¿A qué cajita va esta plata cuando llegue el ingreso?</label>
+          <div class="cp-mt10">
+            <label class="il cp-lbl11" for="cpd-gasto-tc-cajita">¿A qué cajita va esta plata cuando llegue el ingreso?</label>
             <div class="select-wrap"><select id="cpd-gasto-tc-cajita"><option value="">Sin especificar</option></select></div>
-            <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.5;">Ej: tu cajita "Tarjeta" para tener la plata lista al pagar el extracto.</div>
+            <div class="cp-nota10-mt5">Ej: tu cajita "Tarjeta" para tener la plata lista al pagar el extracto.</div>
           </div>
           <!-- Aviso: deuda de TC como favor -->
-          <div style="margin-top:10px;padding:9px 11px;background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.2);border-radius:var(--radius-sm);display:flex;align-items:flex-start;gap:8px;">
-            <i class="fa-solid fa-circle-info" style="color:var(--blue);font-size:11px;margin-top:1px;flex-shrink:0;"></i>
-            <div style="font-size:10px;color:var(--text3);line-height:1.5;">La deuda de la TC va a subir, pero la app sabe que <b style="color:var(--text2);">no es deuda tuya</b> — es un favor cubierto por este ingreso. Se marcará así en la pantalla de tarjetas.</div>
+          <div class="cp-aviso-tc">
+            <i class="fa-solid fa-circle-info cp-ico-info-tc"></i>
+            <div class="cp-aviso-tc-txt">La deuda de la TC va a subir, pero la app sabe que <b class="cp-c-text2">no es deuda tuya</b> — es un favor cubierto por este ingreso. Se marcará así en la pantalla de tarjetas.</div>
           </div>
         </div>
       </div>
@@ -284,44 +284,44 @@ function _injectSheet(){
       </div>
       <!-- ¿Ya saqué esta plata? (solo para reposicion) -->
       <div class="ig" id="cpd-ya-saque-wrap" style="display:none;">
-        <div class="il" style="margin-bottom:8px;">¿Ya adelantaste esta plata?</div>
-        <div style="display:flex;gap:8px;">
+        <div class="il cp-mb8">¿Ya adelantaste esta plata?</div>
+        <div class="cp-btns-fila">
           <button type="button" id="cpd-ya-saque-si"
             ${Events.attr('cp:dSetYaSaque',true)}
-            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid var(--border2);color:var(--text2);background:transparent;transition:all .15s;">
-            <i class="fa-solid fa-check" style="margin-right:5px;"></i>Sí, ya la saqué
+            class="cp-origen-btn-b">
+            <i class="fa-solid fa-check cp-ico-r5"></i>Sí, ya la saqué
           </button>
           <button type="button" id="cpd-ya-saque-no"
             ${Events.attr('cp:dSetYaSaque',false)}
-            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(200,240,96,.4);color:var(--accent);background:rgba(200,240,96,.08);transition:all .15s;">
-            <i class="fa-regular fa-circle" style="margin-right:5px;"></i>No, esperaré
+            class="cp-btn-fecha-a">
+            <i class="fa-regular fa-circle cp-ico-r5"></i>No, esperaré
           </button>
         </div>
-        <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.5;">Si ya la sacaste, la app descuenta el saldo ahora y lo repone cuando llegue el ingreso.</div>
+        <div class="cp-nota10-mt5">Si ya la sacaste, la app descuenta el saldo ahora y lo repone cuando llegue el ingreso.</div>
       </div>
       <!-- Fecha límite de pago (para gastos de cajita no pagados) -->
       <div class="ig" id="cpd-fecha-pago-wrap" style="display:none;">
-        <label class="il" for="cpd-fecha-pago">¿Para cuándo hay que pagarlo? <span style="font-size:10px;color:var(--text3);font-weight:400;">(opcional)</span></label>
+        <label class="il" for="cpd-fecha-pago">¿Para cuándo hay que pagarlo? <span class="cp-opcional">(opcional)</span></label>
         <input type="date" id="cpd-fecha-pago">
-        <div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4;"><i class="fa-solid fa-bell" style="margin-right:4px;color:var(--amber);"></i>Unos días antes te recordamos que usés la plata de la cajita.</div>
+        <div class="cp-nota10"><i class="fa-solid fa-bell cp-ico-bell"></i>Unos días antes te recordamos que usés la plata de la cajita.</div>
       </div>
       <!-- ¿Ya lo pagué? (para servicios, tc, otro) -->
       <div class="ig" id="cpd-ya-pague-wrap" style="display:none;">
-        <div class="il" style="margin-bottom:8px;">¿Ya lo pagaste?</div>
-        <div style="display:flex;gap:8px;">
+        <div class="il cp-mb8">¿Ya lo pagaste?</div>
+        <div class="cp-btns-fila">
           <button type="button" id="cpd-ya-pague-si"
             ${Events.attr('cp:dSetYaPague',true)}
-            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid var(--border2);color:var(--text2);background:transparent;transition:all .15s;">
-            <i class="fa-solid fa-check" style="margin-right:5px;"></i>Sí, ya lo pagué
+            class="cp-origen-btn-b">
+            <i class="fa-solid fa-check cp-ico-r5"></i>Sí, ya lo pagué
           </button>
           <button type="button" id="cpd-ya-pague-no"
             ${Events.attr('cp:dSetYaPague',false)}
-            style="flex:1;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1.5px solid rgba(240,184,64,.4);color:var(--amber);background:rgba(240,184,64,.08);transition:all .15s;">
-            <i class="fa-regular fa-circle" style="margin-right:5px;"></i>Pendiente de pagar
+            class="cp-btn-fecha-b">
+            <i class="fa-regular fa-circle cp-ico-r5"></i>Pendiente de pagar
           </button>
         </div>
       </div>
-      <button type="button" class="btn btn-primary" ${Events.attr('cp:dConfirmar')} style="background:var(--amber);color:#0a0a0a;border:none;">Agregar este destino</button>
+      <button type="button" class="btn btn-primary cp-btn-agregar-dest" ${Events.attr('cp:dConfirmar')}>Agregar este destino</button>
       <button type="button" class="btn btn-ghost" data-close-sheet="cp-destino">Cancelar</button>
     </div>
   </div>
@@ -330,37 +330,37 @@ function _injectSheet(){
   <div class="overlay" id="sheet-cp-recibir" data-sheet-id="cp-recibir">
     <div class="sheet">
       <div class="sheet-handle"></div>
-      <div class="sheet-title">¡Llegó la plata! <i class="fa-solid fa-star" style="margin-left:4px;color:var(--accent);font-size:14px;"></i></div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">Revisá el plan y confirma qué se va a hacer con cada parte.</div>
+      <div class="sheet-title">¡Llegó la plata! <i class="fa-solid fa-star cp-star"></i></div>
+      <div class="cp-rev-intro">Revisá el plan y confirma qué se va a hacer con cada parte.</div>
 
-      <div id="cp-recibir-desc-card" style="background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.2);border-radius:var(--radius-sm);padding:12px 14px;margin-bottom:14px;">
-        <div style="font-size:10px;color:rgba(240,184,64,.7);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;margin-bottom:3px;">Ingreso</div>
-        <div style="font-size:16px;font-weight:600;" id="cp-recibir-desc">—</div>
-        <div style="font-size:13px;font-family:'DM Mono',monospace;color:var(--amber);margin-top:2px;" id="cp-recibir-monto">$0</div>
+      <div id="cp-recibir-desc-card" class="cp-rev-ing">
+        <div class="cp-rev-cap">Ingreso</div>
+        <div class="cp-rev-nom" id="cp-recibir-desc">—</div>
+        <div class="cp-rev-monto" id="cp-recibir-monto">$0</div>
       </div>
 
-      <div style="font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;">Distribución</div>
+      <div class="cp-rev-dist">Distribución</div>
       <div id="cp-recibir-plan"></div>
 
-      <div id="cp-recibir-sobrante-wrap" style="display:none;margin-top:8px;padding:12px 14px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius-sm);">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+      <div id="cp-recibir-sobrante-wrap" class="cp-sobrante" style="display:none;">
+        <div class="cp-sob-cab">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(200,240,96,.8)" stroke-width="2.5" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-          <div style="font-size:10px;color:rgba(200,240,96,.7);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;font-weight:700;">Ingreso libre</div>
+          <div class="cp-sob-cap">Ingreso libre</div>
         </div>
-        <div style="font-size:18px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);margin-bottom:8px;" id="cp-recibir-sobrante">$0</div>
-        <label class="il" for="cp-recibir-sobrante-cuenta" style="font-size:10px;margin-bottom:6px;">¿A dónde va este ingreso?</label>
-        <div class="select-wrap"><select id="cp-recibir-sobrante-cuenta" style="font-size:13px;padding:9px 12px;"><option value="">Sin especificar</option></select></div>
-        <div style="font-size:10px;color:var(--text3);margin-top:5px;line-height:1.4;">Esta plata es tuya — entra como ingreso a la cuenta que elijas.</div>
+        <div class="cp-sob-monto" id="cp-recibir-sobrante">$0</div>
+        <label class="il cp-lbl10-mb6" for="cp-recibir-sobrante-cuenta">¿A dónde va este ingreso?</label>
+        <div class="select-wrap"><select id="cp-recibir-sobrante-cuenta" class="cp-sel13"><option value="">Sin especificar</option></select></div>
+        <div class="cp-nota10-mt5b">Esta plata es tuya — entra como ingreso a la cuenta que elijas.</div>
       </div>
 
       <div id="cp-recibir-recordatorios" style="display:none;"></div>
 
-      <div class="ig" style="margin-top:14px;">
+      <div class="ig cp-mt14">
         <label class="il" for="cp-recibir-fecha">Fecha de recibo</label>
         <input type="date" id="cp-recibir-fecha">
       </div>
 
-      <button type="button" class="btn btn-primary" ${Events.attr('cp:confirmarRecibir')} style="background:var(--accent);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(200,240,96,.25);">Confirmar y distribuir</button>
+      <button type="button" class="btn btn-primary cp-btn-confirmar" ${Events.attr('cp:confirmarRecibir')}>Confirmar y distribuir</button>
       <button type="button" class="btn btn-ghost" data-close-sheet="cp-recibir">Cancelar</button>
     </div>
   </div>
@@ -443,10 +443,10 @@ function _cpFuenteLabel(val){
 
 /* ── TIPOS DE DESTINO ────────────────────────────────────────────── */
 const _CP_TIPO_LABELS = {
-  reposicion:  { label:'Repone cajita/cuenta que ya usé', color:'var(--purple)', bg:'rgba(176,144,240,.1)',  border:'rgba(176,144,240,.3)' },
-  gasto:       { label:'Gasto pendiente',                  color:'var(--amber)',  bg:'rgba(240,184,64,.08)', border:'rgba(240,184,64,.2)' },
-  abono_deuda: { label:'Abono a deuda pendiente',          color:'var(--accent)', bg:'rgba(200,240,96,.08)', border:'rgba(200,240,96,.2)' },
-  otro:        { label:'Otro (sin efecto en saldos)',       color:'var(--text2)',  bg:'rgba(136,136,128,.08)', border:'rgba(136,136,128,.2)' },
+  reposicion:  { k:'reposicion', label:'Repone cajita/cuenta que ya usé' },
+  gasto:       { k:'gasto', label:'Gasto pendiente' },
+  abono_deuda: { k:'abono_deuda', label:'Abono a deuda pendiente' },
+  otro:        { k:'otro', label:'Otro (sin efecto en saldos)' },
 };
 
 /* ── RENDER LISTA PRINCIPAL ──────────────────────────────────────── */
@@ -479,12 +479,12 @@ function _cpRenderLista(){
   if(statLibre) statLibre.textContent = fmt(totalLibre);
 
   if(!items.length){
-    el.innerHTML = `<div style="text-align:center;padding:32px 16px;">
-      <div style="width:48px;height:48px;border-radius:14px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.2);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
+    el.innerHTML = `<div class="cp-vacio-caja">
+      <div class="cp-vacio-ico">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 6V4M18 6V4"/></svg>
       </div>
-      <div style="font-size:13px;font-weight:600;margin-bottom:5px;">Sin ingresos registrados</div>
-      <div style="font-size:11px;color:var(--text3);line-height:1.5;">Tocá <b style="color:var(--text2);">Nuevo</b> para registrar plata que va a llegar.</div>
+      <div class="cp-vacio-tit">Sin ingresos registrados</div>
+      <div class="cp-vacio-txt">Tocá <b class="cp-c-text2">Nuevo</b> para registrar plata que va a llegar.</div>
     </div>`;
     return;
   }
@@ -493,7 +493,7 @@ function _cpRenderLista(){
 
   // Pendientes
   if(pendientes.length){
-    contenido += '<div class="sec-title" style="margin-top:4px;">Por llegar</div>';
+    contenido += '<div class="sec-title cp-mt4">Por llegar</div>';
     pendientes.sort((a,b)=>(a.fechaLlegada||'').localeCompare(b.fechaLlegada||''));
     pendientes.forEach(item => {
       const comp = (item.destinos||[]).filter(d=>d.tipo!=='libre').reduce((s,d)=>s+(d.monto||0),0);
@@ -505,57 +505,57 @@ function _cpRenderLista(){
       // libre del usuario — se arma aparte y se interpola con raw() (mismo
       // criterio que un fragmento de HTML de confianza ya armado).
       const barraCompromiso = pctComp > 0 ? `
-        <div style="margin-bottom:10px;">
-          <div style="height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-bottom:4px;">
-            <div style="height:100%;width:${pctComp.toFixed(1)}%;background:var(--red);border-radius:2px;transition:width .4s;"></div>
+        <div class="cp-prog-wrap">
+          <div class="cp-prog-barra">
+            <div class="cp-fill-rojo" style="width:${pctComp.toFixed(1)}%;"></div>
           </div>
-          <div style="display:flex;justify-content:space-between;font-size:10px;font-family:'DM Mono',monospace;">
-            <span style="color:var(--red);">Comprometido: ${fmt(comp)}</span>
-            <span style="color:var(--accent);">Le sobra: ${fmt(libre)}</span>
+          <div class="cp-prog-pie">
+            <span class="cp-c-red">Comprometido: ${fmt(comp)}</span>
+            <span class="cp-c-accent">Le sobra: ${fmt(libre)}</span>
           </div>
         </div>` : `
-        <div style="font-size:10px;color:var(--accent);font-family:'DM Mono',monospace;margin-bottom:10px;">Le sobra: ${fmt(item.montoTotal)} (nada comprometido)</div>`;
+        <div class="cp-sobra">Le sobra: ${fmt(item.montoTotal)} (nada comprometido)</div>`;
 
       // Chips de destinos: cada uno arma su propio estadoBadge (markup fijo,
       // sin texto libre) y pasa por html`` para escapar d.desc; el join('')
       // final se interpola con raw() en el card exterior, mismo criterio ya
       // documentado (mesada.js/gastos.js) para fragmentos ya escapados.
       const chipsDestinos = (item.destinos||[]).length ? html`
-        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
+        <div class="cp-dest-chips">
           ${raw((item.destinos||[]).map(d=>{
             const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
             let estadoBadge = '';
             if(d.tipo === 'reposicion'){
               estadoBadge = d.yaSaque
-                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(176,144,240,.2);color:var(--purple);vertical-align:middle;"><i class="fa-solid fa-check" style="margin-right:2px;"></i>saqué</span>`
-                : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(200,240,96,.1);color:var(--accent);vertical-align:middle;">pendiente</span>`;
+                ? ` <span class="cp-chip-saque"><i class="fa-solid fa-check cp-ico-r2"></i>saqué</span>`
+                : ` <span class="cp-chip-pend">pendiente</span>`;
             } else if(d.tipo === 'gasto'){
               const origenTag = d.gastoOrigen === 'tc'
-                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(240,104,104,.12);color:var(--red);vertical-align:middle;"><i class="fa-solid fa-credit-card" style="margin-right:3px;"></i>TC</span>`
-                : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(176,144,240,.12);color:var(--purple);vertical-align:middle;"><i class="fa-solid fa-box" style="margin-right:3px;"></i>cajita</span>`;
+                ? ` <span class="cp-chip-tc"><i class="fa-solid fa-credit-card cp-ico-r3"></i>TC</span>`
+                : ` <span class="cp-chip-caja"><i class="fa-solid fa-box cp-ico-r3"></i>cajita</span>`;
               const pagoTag = d.yaPague
-                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(200,240,96,.15);color:var(--accent);vertical-align:middle;"><i class="fa-solid fa-check"></i></span>`
-                : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(240,184,64,.12);color:var(--amber);vertical-align:middle;"><i class="fa-regular fa-clock"></i></span>`;
+                ? ` <span class="cp-chip-ok"><i class="fa-solid fa-check"></i></span>`
+                : ` <span class="cp-chip-esp"><i class="fa-regular fa-clock"></i></span>`;
               estadoBadge = origenTag + pagoTag;
             } else {
               estadoBadge = d.yaPague
-                ? ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(200,240,96,.15);color:var(--accent);vertical-align:middle;"><i class="fa-solid fa-check" style="margin-right:2px;"></i>pagado</span>`
-                : ` <span style="font-size:8px;padding:1px 5px;border-radius:8px;background:rgba(240,184,64,.12);color:var(--amber);vertical-align:middle;"><i class="fa-regular fa-clock" style="margin-right:3px;"></i>por pagar</span>`;
+                ? ` <span class="cp-chip-ok"><i class="fa-solid fa-check cp-ico-r2"></i>pagado</span>`
+                : ` <span class="cp-chip-esp"><i class="fa-regular fa-clock cp-ico-r3"></i>por pagar</span>`;
             }
-            return html`<span style="font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;background:${ti.bg};border:1px solid ${ti.border};color:${ti.color};font-family:'DM Mono',monospace;">${d.desc}: ${fmt(d.monto)}${raw(estadoBadge)}</span>`;
+            return html`<span class="cp-chip-ti cp-tbg-${ti.k} cp-tc-${ti.k}">${d.desc}: ${fmt(d.monto)}${raw(estadoBadge)}</span>`;
           }).join(''))}
         </div>` : '';
 
-      contenido += html`<div class="card" style="margin-bottom:9px;padding:15px 15px 12px;">
+      contenido += html`<div class="card cp-item-card">
         <!-- Header -->
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.desc}</div>
-            <div style="font-size:11px;color:${diasStr.urgente?'var(--amber)':'var(--text3)'};font-family:'DM Mono',monospace;margin-top:2px;">${diasStr.texto}</div>
+        <div class="cp-item-cab">
+          <div class="cp-flex1-min0">
+            <div class="cp-item-desc">${item.desc}</div>
+            <div class="cp-item-dias ${diasStr.urgente?'cp-c-amber':'cp-c-text3'}">${diasStr.texto}</div>
           </div>
-          <div style="text-align:right;flex-shrink:0;margin-left:10px;">
-            <div style="font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(item.montoTotal)}</div>
-            ${item.cuentaDestino ? html`<div style="font-size:9px;color:var(--text3);margin-top:1px;">${_cpFuenteLabel(item.cuentaDestino)}</div>` : ''}
+          <div class="cp-item-der">
+            <div class="cp-item-monto">${fmt(item.montoTotal)}</div>
+            ${item.cuentaDestino ? html`<div class="cp-item-fuente">${_cpFuenteLabel(item.cuentaDestino)}</div>` : ''}
           </div>
         </div>
 
@@ -566,23 +566,23 @@ function _cpRenderLista(){
         ${chipsDestinos}
 
         <!-- Acciones -->
-        <div style="display:flex;gap:7px;flex-wrap:wrap;">
+        <div class="cp-item-btns">
           <button type="button" ${raw(Events.attr('cp:abrirRecibir', item.id))}
-            style="flex:1;min-width:80px;padding:8px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.12);border:1.5px solid rgba(200,240,96,.35);color:var(--accent);display:flex;align-items:center;justify-content:center;gap:5px;">
+            class="cp-btn-recibir">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
             ¡Llegó!
           </button>
           <button type="button" ${raw(Events.attr('cp:marcarPagos', item.id))}
-            style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(240,184,64,.08);border:1.5px solid rgba(240,184,64,.3);color:var(--amber);"
+            class="cp-btn-b"
             title="Marcar qué ya pagaste">
-            <i class="fa-solid fa-check-double" style="margin-right:5px;"></i>Pagos
+            <i class="fa-solid fa-check-double cp-ico-r5"></i>Pagos
           </button>
           <button type="button" ${raw(Events.attr('cp:abrirEditar', item.id))}
-            style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(136,136,128,.08);border:1.5px solid var(--border2);color:var(--text2);">
+            class="cp-btn-editar">
             Editar
           </button>
           <button type="button" ${raw(Events.attr('cp:eliminar', item.id))}
-            style="padding:8px 12px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;background:rgba(240,104,104,.08);border:1.5px solid rgba(240,104,104,.2);color:var(--red);">
+            class="cp-btn-borrar">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
           </button>
         </div>
@@ -596,7 +596,7 @@ function _cpRenderLista(){
   );
   if(recibidosConPendientes.length){
     const hoyMs = new Date(hoy()+'T00:00:00').getTime();
-    contenido += '<div class="sec-title" style="margin-top:14px;">Plata guardada para pagar</div>';
+    contenido += '<div class="sec-title cp-mt14">Plata guardada para pagar</div>';
     recibidosConPendientes.sort((a,b)=>(b.fechaRecibido||'').localeCompare(a.fechaRecibido||'')).slice(0,5).forEach(item=>{
       // Gastos pendientes de cajita con plata guardada
       const gastosGuardados = (item.destinos||[]).filter(d =>
@@ -604,31 +604,31 @@ function _cpRenderLista(){
       );
       let guardadaHtml = '';
       if(gastosGuardados.length){
-        guardadaHtml = html`<div style="margin-top:9px;padding:9px 11px;background:rgba(200,240,96,.06);border:1px solid rgba(200,240,96,.18);border-radius:var(--radius-sm);">
-          <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">
-            <i class="fa-solid fa-vault" style="color:var(--accent);font-size:10px;"></i>
-            <span style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;">Plata guardada para pagar</span>
+        guardadaHtml = html`<div class="cp-guardada">
+          <div class="cp-guardada-cab">
+            <i class="fa-solid fa-vault cp-ico-vault"></i>
+            <span class="cp-guardada-cap">Plata guardada para pagar</span>
           </div>
           ${raw(gastosGuardados.map(d => {
             const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
             let fechaInfo = '';
             if(d.fechaPago){
               const diasFecha = Math.round((new Date(d.fechaPago+'T00:00:00').getTime() - hoyMs)/86400000);
-              let colorFecha = 'var(--text3)';
+              let colorFecha = 'cp-c-text3';
               let iconoFecha = 'fa-calendar';
               let textoFecha = 'Pagar el '+d.fechaPago;
-              if(diasFecha < 0){ colorFecha='var(--red)'; iconoFecha='fa-triangle-exclamation'; textoFecha='¡Venció! ('+d.fechaPago+')'; }
-              else if(diasFecha === 0){ colorFecha='var(--amber)'; iconoFecha='fa-bell'; textoFecha='¡Pagar hoy!'; }
-              else if(diasFecha === 1){ colorFecha='var(--amber)'; iconoFecha='fa-bell'; textoFecha='Pagar mañana'; }
-              else if(diasFecha <= 4){ colorFecha='var(--amber)'; iconoFecha='fa-clock'; textoFecha='Pagar en '+diasFecha+' días ('+d.fechaPago+')'; }
-              fechaInfo = ` · <i class="fa-solid ${iconoFecha}" style="color:${colorFecha};font-size:9px;margin-right:2px;"></i><span style="color:${colorFecha};">${textoFecha}</span>`;
+              if(diasFecha < 0){ colorFecha='cp-c-red'; iconoFecha='fa-triangle-exclamation'; textoFecha='¡Venció! ('+d.fechaPago+')'; }
+              else if(diasFecha === 0){ colorFecha='cp-c-amber'; iconoFecha='fa-bell'; textoFecha='¡Pagar hoy!'; }
+              else if(diasFecha === 1){ colorFecha='cp-c-amber'; iconoFecha='fa-bell'; textoFecha='Pagar mañana'; }
+              else if(diasFecha <= 4){ colorFecha='cp-c-amber'; iconoFecha='fa-clock'; textoFecha='Pagar en '+diasFecha+' días ('+d.fechaPago+')'; }
+              fechaInfo = ` · <i class="fa-solid ${iconoFecha} cp-fecha-ico ${colorFecha}"></i><span class="${colorFecha}">${textoFecha}</span>`;
             }
-            return html`<div style="display:flex;align-items:flex-start;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(200,240,96,.1);">
-              <div style="min-width:0;flex:1;">
-                <div style="font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.desc}</div>
-                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;"><i class="fa-solid fa-box" style="font-size:9px;margin-right:3px;color:var(--purple);"></i>${cajLabel}${raw(fechaInfo)}</div>
+            return html`<div class="cp-g-fila">
+              <div class="cp-g-cuerpo">
+                <div class="cp-g-desc">${d.desc}</div>
+                <div class="cp-g-caja"><i class="fa-solid fa-box cp-ico-fecha-caja"></i>${cajLabel}${raw(fechaInfo)}</div>
               </div>
-              <span style="font-size:11px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);margin-left:8px;flex-shrink:0;">${fmt(d.monto)}</span>
+              <span class="cp-g-monto">${fmt(d.monto)}</span>
             </div>`;
           }).join(''))}
         </div>`;
@@ -640,18 +640,18 @@ function _cpRenderLista(){
         return dias <= 3;
       });
 
-      contenido += html`<div class="card card-sm" style="margin-bottom:7px;${tieneUrgente?'border-color:rgba(240,184,64,.4);':''}">
-        <div style="display:flex;align-items:center;justify-content:space-between;">
-          <div style="min-width:0;flex:1;">
-            <div style="font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${item.desc}</div>
-            <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;">Recibido el ${item.fechaRecibido||'—'}${raw(tieneUrgente?' <span style="color:var(--amber);font-weight:700;">· Pago próximo</span>':'')}</div>
+      contenido += html`<div class="card card-sm cp-card-urg ${tieneUrgente?'cp-card-urgente':''}">
+        <div class="cp-rec-fila">
+          <div class="cp-g-cuerpo">
+            <div class="cp-rec-desc">${item.desc}</div>
+            <div class="cp-g-caja">Recibido el ${item.fechaRecibido||'—'}${raw(tieneUrgente?' <span class="cp-rec-prox">· Pago próximo</span>':'')}</div>
           </div>
-          <span style="font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--text2);margin-left:8px;flex-shrink:0;">${fmt(item.montoTotal)}</span>
+          <span class="cp-rec-monto">${fmt(item.montoTotal)}</span>
         </div>
         ${guardadaHtml}
         <button type="button" ${raw(Events.attr('cp:marcarPagos', item.id))}
-          style="width:100%;margin-top:10px;padding:9px 0;border-radius:var(--radius-sm);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;background:rgba(200,240,96,.1);border:1.5px solid rgba(200,240,96,.3);color:var(--accent);">
-          <i class="fa-solid fa-check" style="margin-right:5px;"></i>Marcar como pagado
+          class="cp-rec-btn">
+          <i class="fa-solid fa-check cp-ico-r5"></i>Marcar como pagado
         </button>
       </div>`;
     });
@@ -1082,9 +1082,9 @@ function _cpRenderDestinosTmp(){
   };
 
   if(!_cpDestinosTmp.length){
-    el.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:12px;background:var(--bg3);border-radius:var(--radius-sm);border:1px dashed var(--border2);">
+    el.innerHTML = `<div class="cp-sd-caja">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;">Sin destinos — todo queda libre para vos.</div>
+      <div class="cp-sd-txt">Sin destinos — todo queda libre para vos.</div>
     </div>`;
   } else {
     el.innerHTML = _cpDestinosTmp.map((d,i)=>{
@@ -1093,37 +1093,37 @@ function _cpRenderDestinosTmp(){
       let badges = '';
       if(d.tipo === 'reposicion'){
         badges = d.yaSaque
-          ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.18);border:1px solid rgba(176,144,240,.4);color:var(--purple);font-family:'DM Mono',monospace;"><i class="fa-solid fa-check" style="font-size:8px;"></i>Ya saqué</span>`
-          : `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.3);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-regular fa-clock" style="font-size:8px;"></i>Pendiente</span>`;
+          ? `<span class="cp-bd-saque"><i class="fa-solid fa-check cp-ico-8"></i>Ya saqué</span>`
+          : `<span class="cp-bd-pend"><i class="fa-regular fa-clock cp-ico-8"></i>Pendiente</span>`;
         if(d.cuentaId){
           const label = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.cuentaId) : d.cuentaId;
-          badges += html` <span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.1);color:var(--purple);font-family:'DM Mono',monospace;">${label}</span>`;
+          badges += html` <span class="cp-bd-label">${label}</span>`;
         }
       } else if(d.tipo === 'gasto'){
         const origenBadge = d.gastoOrigen === 'tc'
-          ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,104,104,.12);border:1px solid rgba(240,104,104,.3);color:var(--red);font-family:'DM Mono',monospace;"><i class="fa-solid fa-credit-card" style="font-size:8px;"></i>TC</span>`
-          : `<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(176,144,240,.12);border:1px solid rgba(176,144,240,.3);color:var(--purple);font-family:'DM Mono',monospace;"><i class="fa-solid fa-box" style="font-size:8px;"></i>Cajita</span>`;
+          ? `<span class="cp-bd-tc"><i class="fa-solid fa-credit-card cp-ico-8"></i>TC</span>`
+          : `<span class="cp-bd-caja"><i class="fa-solid fa-box cp-ico-8"></i>Cajita</span>`;
         const pagoBadge = d.yaPague
-          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.15);border:1px solid rgba(200,240,96,.4);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-solid fa-check"></i> Pagado</span>`
-          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);border:1px solid rgba(240,184,64,.35);color:var(--amber);font-family:'DM Mono',monospace;"><i class="fa-regular fa-clock"></i> Pendiente</span>`;
+          ? `<span class="cp-bd-ok"><i class="fa-solid fa-check"></i> Pagado</span>`
+          : `<span class="cp-bd-pend2"><i class="fa-regular fa-clock"></i> Pendiente</span>`;
         badges = origenBadge + ' ' + pagoBadge;
       } else if(d.tipo === 'abono_deuda' && d.personaId){
         const deu = Deudas.lista('favor').find(x=>x.id===d.personaId);
-        if(deu) badges = html`<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.25);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-solid fa-user" style="font-size:8px;margin-right:2px;"></i>${deu.nombre}</span>`;
+        if(deu) badges = html`<span class="cp-bd-persona"><i class="fa-solid fa-user cp-ico-r2-8"></i>${deu.nombre}</span>`;
       } else {
         badges = d.yaPague
-          ? `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(200,240,96,.15);color:var(--accent);font-family:'DM Mono',monospace;"><i class="fa-solid fa-check"></i> Pagado</span>`
-          : `<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(240,184,64,.1);color:var(--amber);font-family:'DM Mono',monospace;"><i class="fa-regular fa-clock"></i> Pendiente</span>`;
+          ? `<span class="cp-bd-ok2"><i class="fa-solid fa-check"></i> Pagado</span>`
+          : `<span class="cp-bd-pend3"><i class="fa-regular fa-clock"></i> Pendiente</span>`;
       }
-      return html`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:7px;">
-        <div style="width:28px;height:28px;border-radius:8px;background:${ti.bg};border:1px solid ${ti.border};display:flex;align-items:center;justify-content:center;flex-shrink:0;color:${ti.color};">${raw(icon)}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:600;color:${ti.color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.desc}</div>
-          <div style="display:flex;align-items:center;gap:5px;margin-top:4px;flex-wrap:wrap;">${raw(badges)}</div>
+      return html`<div class="cp-tipo-fila cp-tbg-${ti.k}">
+        <div class="cp-tipo-ico cp-tbg-${ti.k} cp-tc-${ti.k}">${raw(icon)}</div>
+        <div class="cp-flex1-min0">
+          <div class="cp-tipo-nom cp-tc-${ti.k}">${d.desc}</div>
+          <div class="cp-bd-fila">${raw(badges)}</div>
         </div>
-        <div style="text-align:right;flex-shrink:0;">
-          <div style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace;color:${ti.color};">${fmt(d.monto)}</div>
-          <button type="button" ${raw(Events.attr('cp:quitarDestino', i))} style="background:none;border:none;cursor:pointer;color:var(--text3);padding:2px;line-height:1;margin-top:2px;" title="Quitar">
+        <div class="cp-sd-der">
+          <div class="cp-tipo-monto cp-tc-${ti.k}">${fmt(d.monto)}</div>
+          <button type="button" ${raw(Events.attr('cp:quitarDestino', i))} class="cp-btn-x" title="Quitar">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -1140,16 +1140,16 @@ function _cpRenderDestinosTmp(){
     if(total > 0){
       if(ganancia < 0){
         balEl.style.cssText = 'color:var(--red);font-size:11px;font-family:"DM Mono",monospace;padding:8px 10px;background:rgba(240,104,104,.07);border:1px solid rgba(240,104,104,.2);border-radius:var(--radius-sm);';
-        balEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="margin-right:5px;"></i>Los destinos superan el total por ${fmt(Math.abs(ganancia))}`;
+        balEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation cp-ico-r5"></i>Los destinos superan el total por ${fmt(Math.abs(ganancia))}`;
       } else if(ganancia > 0.99){
         balEl.style.cssText = 'font-size:11px;font-family:"DM Mono",monospace;padding:8px 10px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius-sm);display:flex;justify-content:space-between;align-items:center;';
-        balEl.innerHTML = `<span style="color:var(--text3);">Comprometido: ${fmt(comp)}</span><b style="color:var(--accent);">Libre: ${fmt(ganancia)} <i class="fa-solid fa-check" style="font-size:10px;"></i></b>`;
+        balEl.innerHTML = `<span class="cp-c-text3">Comprometido: ${fmt(comp)}</span><b class="cp-c-accent">Libre: ${fmt(ganancia)} <i class="fa-solid fa-check cp-fs10"></i></b>`;
       } else if(comp > 0){
         balEl.style.cssText = 'font-size:11px;font-family:"DM Mono",monospace;padding:8px 10px;background:rgba(200,240,96,.05);border:1px solid rgba(200,240,96,.15);border-radius:var(--radius-sm);color:var(--text3);text-align:center;';
-        balEl.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--accent);margin-right:5px;"></i>Todo asignado — ${fmt(comp)} comprometido`;
+        balEl.innerHTML = `<i class="fa-solid fa-circle-check cp-ico-ok-acc"></i>Todo asignado — ${fmt(comp)} comprometido`;
       } else {
         balEl.style.cssText = 'font-size:11px;font-family:"DM Mono",monospace;padding:8px 10px;background:rgba(200,240,96,.05);border:1px solid rgba(200,240,96,.15);border-radius:var(--radius-sm);color:var(--accent);';
-        balEl.innerHTML = `<i class="fa-solid fa-infinity" style="margin-right:5px;"></i>Libre: ${fmt(total)} (nada comprometido)`;
+        balEl.innerHTML = `<i class="fa-solid fa-infinity cp-ico-r5"></i>Libre: ${fmt(total)} (nada comprometido)`;
       }
     } else {
       balEl.style.cssText = '';
@@ -1180,7 +1180,7 @@ function _cpAbrirRecibir(id){
   const planEl = document.getElementById('cp-recibir-plan');
   if(planEl){
     if(!(item.destinos||[]).length){
-      planEl.innerHTML = `<div style="font-size:12px;color:var(--text3);padding:4px 0 10px;">Sin compromisos — todo el monto queda libre.</div>`;
+      planEl.innerHTML = `<div class="cp-vacio-sin">Sin compromisos — todo el monto queda libre.</div>`;
     } else {
       planEl.innerHTML = (item.destinos||[]).map(d=>{
         const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
@@ -1203,9 +1203,9 @@ function _cpAbrirRecibir(id){
           if(cuentaId){
             const label = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(cuentaId) : cuentaId;
             subLabel = 'Repone cajita/cuenta';
-            extraInfo = html`<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(176,144,240,.12);border-radius:6px;">
-              <i class="fa-solid fa-box" style="font-size:9px;color:var(--purple);"></i>
-              <span style="font-size:10px;font-weight:600;color:var(--purple);font-family:'DM Mono',monospace;">${label} recibe ${fmt(d.monto)}</span>
+            extraInfo = html`<div class="cp-int-caja-purple">
+              <i class="fa-solid fa-box cp-int-ico"></i>
+              <span class="cp-int-txt">${label} recibe ${fmt(d.monto)}</span>
             </div>`;
           }
         }
@@ -1218,30 +1218,30 @@ function _cpAbrirRecibir(id){
             const cajDestLabel = d.gastoTcCajita && typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoTcCajita) : null;
             if(d.yaPague){
               subLabel = html`Pagado con ${tcNombre}`;
-              extraInfo = html`<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(200,240,96,.1);border-radius:6px;">
-                <i class="fa-solid fa-check" style="font-size:9px;color:var(--accent);"></i>
-                <span style="font-size:10px;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace;">Ya pagado${cajDestLabel ? html` · La plata va a "${cajDestLabel}"` : ''}</span>
+              extraInfo = html`<div class="cp-int-caja-ok">
+                <i class="fa-solid fa-check cp-int-ok-ico"></i>
+                <span class="cp-int-ok-txt">Ya pagado${cajDestLabel ? html` · La plata va a "${cajDestLabel}"` : ''}</span>
               </div>`;
             } else {
               subLabel = html`Pendiente · Se cargará a ${tcNombre}`;
-              extraInfo = html`<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(240,104,104,.1);border-radius:6px;">
-                <i class="fa-solid fa-credit-card" style="font-size:9px;color:var(--red);"></i>
-                <span style="font-size:10px;font-weight:600;color:var(--red);font-family:'DM Mono',monospace;">Se cargará a ${tcNombre}${cajDestLabel ? html` · plata → "${cajDestLabel}"` : ''}</span>
+              extraInfo = html`<div class="cp-int-caja-tc">
+                <i class="fa-solid fa-credit-card cp-int-tc-ico"></i>
+                <span class="cp-int-tc-txt">Se cargará a ${tcNombre}${cajDestLabel ? html` · plata → "${cajDestLabel}"` : ''}</span>
               </div>`;
             }
           } else if(d.gastoOrigen==='cajita' && d.gastoCajita){
             const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
             if(d.yaPague){
               subLabel = 'Ya pagado';
-              extraInfo = html`<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(200,240,96,.1);border-radius:6px;">
-                <i class="fa-solid fa-check" style="font-size:9px;color:var(--accent);"></i>
-                <span style="font-size:10px;font-weight:600;color:var(--accent);font-family:'DM Mono',monospace;">Repone "${cajLabel}"</span>
+              extraInfo = html`<div class="cp-int-caja-ok">
+                <i class="fa-solid fa-check cp-int-ok-ico"></i>
+                <span class="cp-int-ok-txt">Repone "${cajLabel}"</span>
               </div>`;
             } else {
               subLabel = 'Gasto pendiente';
-              extraInfo = html`<div style="display:flex;align-items:center;gap:5px;margin-top:5px;padding:5px 8px;background:rgba(240,184,64,.08);border-radius:6px;">
-                <i class="fa-regular fa-clock" style="font-size:9px;color:var(--amber);"></i>
-                <span style="font-size:10px;font-weight:600;color:var(--amber);font-family:'DM Mono',monospace;">Guardada en "${cajLabel}" hasta vencimiento</span>
+              extraInfo = html`<div class="cp-int-caja-res">
+                <i class="fa-regular fa-clock cp-int-res-ico"></i>
+                <span class="cp-int-res-txt">Guardada en "${cajLabel}" hasta vencimiento</span>
               </div>`;
             }
           } else {
@@ -1249,15 +1249,15 @@ function _cpAbrirRecibir(id){
           }
         }
 
-        return html`<div style="padding:10px 12px;background:${ti.bg};border:1px solid ${ti.border};border-radius:var(--radius-sm);margin-bottom:6px;">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
-            <div style="flex:1;min-width:0;">
-              <div style="font-size:12px;font-weight:600;color:${ti.color};display:flex;align-items:center;gap:5px;">${d.desc}${detalle}${raw(d.tipo==='abono_deuda'?'<span style="font-size:8px;padding:1px 5px;border-radius:6px;background:rgba(200,240,96,.15);color:var(--accent);font-family:\'DM Mono\',monospace;">te devuelven</span>':'')}</div>
-              <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;">${subLabel}</div>
+        return html`<div class="cp-dev-caja cp-tbg-${ti.k}">
+          <div class="cp-dev-fila">
+            <div class="cp-flex1-min0">
+              <div class="cp-dev-tit cp-tc-${ti.k}">${d.desc}${detalle}${raw(d.tipo==='abono_deuda'?'<span class="cp-dev-tag">te devuelven</span>':'')}</div>
+              <div class="cp-dev-sub">${subLabel}</div>
               ${extraInfo}
-              ${raw((d.tipo==='gasto' && d.gastoOrigen==='tc') ? `<div style="display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:9px;padding:3px 7px;background:rgba(96,176,240,.1);border:1px solid rgba(96,176,240,.2);border-radius:6px;color:var(--blue);font-family:'DM Mono',monospace;"><i class="fa-solid fa-handshake" style="font-size:8px;"></i>La app sabe que es un favor</div>` : '')}
+              ${raw((d.tipo==='gasto' && d.gastoOrigen==='tc') ? `<div class="cp-dev-chip"><i class="fa-solid fa-handshake cp-ico-8"></i>La app sabe que es un favor</div>` : '')}
             </div>
-            <div style="font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:${ti.color};flex-shrink:0;">${fmt(d.monto)}</div>
+            <div class="cp-dev-monto cp-tc-${ti.k}">${fmt(d.monto)}</div>
           </div>
         </div>`;
       }).join('');
@@ -1291,22 +1291,22 @@ function _cpAbrirRecibir(id){
     if(pendientesConFecha.length){
       recWrap.style.display = '';
       recWrap.innerHTML = html`
-        <div style="margin-top:10px;padding:10px 12px;background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.22);border-radius:var(--radius-sm);">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px;">
-            <i class="fa-solid fa-bell" style="color:var(--amber);font-size:11px;"></i>
-            <span style="font-size:10px;font-weight:700;color:var(--amber);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;">Recordatorio de pagos pendientes</span>
+        <div class="cp-rec-caja">
+          <div class="cp-rec-cab">
+            <i class="fa-solid fa-bell cp-rec-ico"></i>
+            <span class="cp-rec-cap">Recordatorio de pagos pendientes</span>
           </div>
           ${raw(pendientesConFecha.map(d=>{
             const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
-            return html`<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(240,184,64,.12);">
+            return html`<div class="cp-rec-it">
               <div>
-                <div style="font-size:11px;font-weight:600;">${d.desc}</div>
-                <div style="font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;">La plata queda en "${cajLabel}"</div>
+                <div class="cp-rec-it-desc">${d.desc}</div>
+                <div class="cp-rec-it-sub">La plata queda en "${cajLabel}"</div>
               </div>
-              <span style="font-size:11px;font-weight:600;font-family:'DM Mono',monospace;color:var(--amber);">${fmt(d.monto)}</span>
+              <span class="cp-rec-it-monto">${fmt(d.monto)}</span>
             </div>`;
           }).join(''))}
-          <div style="font-size:10px;color:var(--text3);margin-top:7px;line-height:1.4;"><i class="fa-solid fa-circle-info" style="margin-right:4px;color:var(--text3);"></i>Cuando llegue la fecha de pago, usá la plata de esas cajitas.</div>
+          <div class="cp-rec-nota"><i class="fa-solid fa-circle-info cp-rec-nota-ico"></i>Cuando llegue la fecha de pago, usá la plata de esas cajitas.</div>
         </div>`;
     } else {
       recWrap.style.display = 'none';
@@ -1445,7 +1445,7 @@ function _cpConfirmarRecibir(){
         S.movimientos.push({id:uid(), tipo:'entrada', fuente:sobranteCuenta, monto:ganancia, fecha,
           desc:'Ingreso libre: '+item.desc, clase:'ingreso', _esSobrante:true, _cpItemId:item.id});
         if(window.logCambio) logCambio(
-          '<i class="fa-solid fa-sack-dollar" style="margin-right:4px;"></i>¡Ingreso libre de "'+item.desc+'"!',
+          '<i class="fa-solid fa-sack-dollar cp-ico-r4"></i>¡Ingreso libre de "'+item.desc+'"!',
           fmt(ganancia)+' → '+_cpFuenteLabel(sobranteCuenta),
           ganancia, 'ingreso'
         );
@@ -1469,7 +1469,7 @@ function _cpConfirmarRecibir(){
     const gananciaMsg = ganancia > 0.99
       ? ` · <b>+${fmt(ganancia)}</b> libres`
       : (totalAsignado > 0.99 ? ' · Todo asignado' : '');
-    toast('¡Plata distribuida! <i class="fa-solid fa-check" style="margin-left:3px;"></i>'+gananciaMsg,'ok');
+    toast('¡Plata distribuida! <i class="fa-solid fa-check cp-ico-l3"></i>'+gananciaMsg,'ok');
   }
 
   if(typeof renderAttencion === 'function') renderAttencion();
@@ -1504,9 +1504,9 @@ function _cpMarcarPagos(id){
     div.innerHTML = `<div class="sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-title">Marcar estado de pagos</div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">Tocá cada ítem para cambiar su estado.</div>
+      <div class="cp-sub-intro">Tocá cada ítem para cambiar su estado.</div>
       <div id="cp-marcar-list"></div>
-      <button type="button" class="btn btn-primary" ${Events.attr('cp:guardarMarcados')} style="background:var(--accent);color:#0a0a0a;border:none;margin-top:8px;">Guardar</button>
+      <button type="button" class="btn btn-primary cp-btn-guardar-acc" ${Events.attr('cp:guardarMarcados')}>Guardar</button>
       <button type="button" class="btn btn-ghost" data-close-sheet="cp-marcar" ${Events.attr('cp:cerrarMarcar')}>Cancelar</button>
     </div>`;
     document.body.appendChild(div);
@@ -1536,27 +1536,22 @@ function _cpRenderMarcarList(){
     if(esAbono) return ''; // los abonos son plata que te llega, no hay nada que marcar como pagado
     const esGastoTC = d.tipo === 'gasto' && d.gastoOrigen === 'tc';
     const estado = esReposicion ? d.yaSaque : d.yaPague;
-    const labelOff = esReposicion ? '<i class="fa-regular fa-circle" style="margin-right:4px;"></i>No la saqué aún' : '<i class="fa-regular fa-clock" style="margin-right:3px;"></i>Pendiente de pagar';
-    const labelOn  = esReposicion ? '<i class="fa-solid fa-check" style="margin-right:4px;"></i>Ya la saqué' : (esGastoTC ? '<i class="fa-solid fa-check" style="margin-right:4px;"></i>Ya lo cargué a la TC' : '<i class="fa-solid fa-check" style="margin-right:4px;"></i>Ya lo pagué');
-    const colorOn  = esReposicion ? 'var(--purple)' : 'var(--accent)';
-    const bgOn     = esReposicion ? 'rgba(176,144,240,.15)' : 'rgba(200,240,96,.12)';
-    const borderOn = esReposicion ? 'rgba(176,144,240,.4)' : 'rgba(200,240,96,.4)';
-    return html`<div style="padding:12px 0;border-bottom:1px solid var(--border);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+    const labelOff = esReposicion ? '<i class="fa-regular fa-circle cp-ico-r4"></i>No la saqué aún' : '<i class="fa-regular fa-clock cp-ico-r3"></i>Pendiente de pagar';
+    const labelOn  = esReposicion ? '<i class="fa-solid fa-check cp-ico-r4"></i>Ya la saqué' : (esGastoTC ? '<i class="fa-solid fa-check cp-ico-r4"></i>Ya lo cargué a la TC' : '<i class="fa-solid fa-check cp-ico-r4"></i>Ya lo pagué');
+    return html`<div class="cp-mar-it">
+      <div class="cp-mar-cab">
         <div>
-          <div style="font-size:13px;font-weight:600;">${d.desc}</div>
-          <div style="font-size:10px;color:${ti.color};font-family:'DM Mono',monospace;">${fmt(d.monto)} · ${ti.label}</div>
+          <div class="cp-mar-desc">${d.desc}</div>
+          <div class="cp-mar-sub cp-tc-${ti.k}">${fmt(d.monto)} · ${ti.label}</div>
         </div>
       </div>
-      <div style="display:flex;gap:7px;">
+      <div class="cp-mar-btns">
         <button type="button" ${raw(Events.attr('cp:toggleMarcar', i, false))}
-          style="flex:1;padding:8px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;
-          background:${!estado?'rgba(136,136,128,.15)':'transparent'};border:1.5px solid ${!estado?'var(--border2)':'var(--border)'};color:${!estado?'var(--text2)':'var(--text3)'};">
+          class="cp-tgl ${!estado?'cp-tgl-off-act':'cp-tgl-inact'}">
           ${raw(labelOff)}
         </button>
         <button type="button" ${raw(Events.attr('cp:toggleMarcar', i, true))}
-          style="flex:1;padding:8px 0;border-radius:var(--radius-sm);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;
-          background:${estado?bgOn:'transparent'};border:1.5px solid ${estado?borderOn:'var(--border)'};color:${estado?colorOn:'var(--text3)'};">
+          class="cp-tgl ${estado?(esReposicion?'cp-tgl-on-rep':'cp-tgl-on-ing'):'cp-tgl-inact'}">
           ${raw(labelOn)}
         </button>
       </div>
@@ -1678,13 +1673,13 @@ async function _cpEliminar(id){
   // Construir mensaje de advertencia con el detalle de lo que se revertirá
   let advertencia = '¿Eliminar «' + item.desc + '»?';
   if(yaRecibido){
-    advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Este ingreso ya fue marcado como recibido. Al eliminarlo se revertirán todos los movimientos generados (reposiciones en cuentas, entradas en cajitas) y las compras de TC asociadas.';
+    advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Este ingreso ya fue marcado como recibido. Al eliminarlo se revertirán todos los movimientos generados (reposiciones en cuentas, entradas en cajitas) y las compras de TC asociadas.';
   } else {
     if(hayAdelantos){
-      advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Hay plata adelantada de tus cuentas. Al eliminar se revertirán esos descuentos y quedarán como si nunca se hubieron hecho.';
+      advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Hay plata adelantada de tus cuentas. Al eliminar se revertirán esos descuentos y quedarán como si nunca se hubieron hecho.';
     }
     if(hayTcMarcada){
-      advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Hay gastos marcados como cargados a TC. Al eliminar se revertirá la deuda sumada a la tarjeta.';
+      advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Hay gastos marcados como cargados a TC. Al eliminar se revertirá la deuda sumada a la tarjeta.';
     }
     if(!hayAdelantos && !hayTcMarcada){
       advertencia += '\n\nEste ingreso no ha generado movimientos — se puede eliminar sin efectos secundarios.';
@@ -1746,7 +1741,7 @@ async function _cpEliminar(id){
         return;
       }
       if(nivel==='viejo'){
-        advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><path d="M12 8v4"/><path d="M12 16h.01"/><circle cx="12" cy="12" r="10"/></svg> Esto ya tiene tiempo y puede estar mezclado con operaciones más recientes de las cuentas involucradas — revertirlo hoy ajusta esos saldos actuales, no recalcula el historial completo.';
+        advertencia += '\n\n<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><path d="M12 8v4"/><path d="M12 16h.01"/><circle cx="12" cy="12" r="10"/></svg> Esto ya tiene tiempo y puede estar mezclado con operaciones más recientes de las cuentas involucradas — revertirlo hoy ajusta esos saldos actuales, no recalcula el historial completo.';
       }
     }
   }
@@ -1886,7 +1881,7 @@ async function _cpEliminar(id){
   save();
   if(typeof refresh==='function') refresh();
   _cpRenderLista();
-  toast('Ingreso eliminado y efectos revertidos <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;display:inline-block"><polyline points="20 6 9 17 4 12"/></svg>','ok');
+  toast('Ingreso eliminado y efectos revertidos <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><polyline points="20 6 9 17 4 12"/></svg>','ok');
 };
 
 /* ── INTEGRACIÓN CON renderAttencion — ver js/core/hook-global.js ── */
@@ -1921,7 +1916,7 @@ async function _cpEliminar(id){
         chip.className = 'card card-sm attn-card';
         chip.style.marginBottom='7px';
         chip.style.cursor='pointer';
-        chip.innerHTML = html`<div style="font-size:12px;color:var(--amber);">${txt}</div>`;
+        chip.innerHTML = html`<div class="cp-aviso-amber">${txt}</div>`;
         chip.onclick = ()=>{ if(typeof showScreen==='function') showScreen('comprometida'); setTimeout(_cpRenderLista,100); };
         list.appendChild(chip);
       }
@@ -1946,7 +1941,7 @@ async function _cpEliminar(id){
           chipG.style.marginBottom='7px';
           chipG.style.cursor='pointer';
           chipG.style.borderColor = tipoG==='red' ? 'rgba(240,104,104,.4)' : '';
-          chipG.innerHTML = html`<div style="font-size:12px;color:var(--${raw(tipoG)});">${txtG}</div>`;
+          chipG.innerHTML = html`<div class="cp-fs12 cp-c-${raw(tipoG)}">${txtG}</div>`;
           chipG.onclick = ()=>{ if(typeof showScreen==='function') showScreen('comprometida'); setTimeout(_cpRenderLista,100); };
           list.appendChild(chipG);
         }

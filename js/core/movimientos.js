@@ -657,6 +657,11 @@ async function _eliminarMovimientoImpl(btn) {
   }
   if (_movExiste(movTipoEl, movId) === false) { _rerenderCuentaActiva(); return; }
 
+  // Lo que cambie el patrimonio al revertir se quita también de las instantáneas del historial (core-state.js).
+  const _histAntes = medirPatrimonioParaHistorial();
+  const _histItem = movObj || (S.transferencias || []).find(t => t.id === movId) || { id: movId, fecha: fechaItem };
+  let _histApertura = null;
+
   // Revertir según el tipo
   if (movTipoEl === 'transferencia') {
     // Una transferencia afecta dos cuentas: origen pierde, destino gana.
@@ -681,10 +686,7 @@ async function _eliminarMovimientoImpl(btn) {
       const fuente = m.fuente || fuenteOrigen;
       if (fuente) descontarFuente(fuente, m.monto, _ogMov(movId, true));
       else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto, _ogMov(movId, true));
-      if (m.tipo === 'apertura') {
-        if(!S._ajustesBaseLog) S._ajustesBaseLog = [];
-        S._ajustesBaseLog.push({ fecha: hoy(), monto: -(m.monto||0) });
-      }
+      if (m.tipo === 'apertura') _histApertura = m;
       S.movimientos = S.movimientos.filter(x => x.id !== movId);
     }
   } else if (movTipoEl === 'gasto') {
@@ -759,6 +761,8 @@ async function _eliminarMovimientoImpl(btn) {
     });
   }
 
+  if (_histApertura) purgarAperturaDelHistorial(_histApertura);
+  else purgarEfectoEnHistorial(_histAntes, _histItem);
   save(); refresh();
   _rerenderCuentaActiva();
   toast('Movimiento eliminado y saldos revertidos', 'info');

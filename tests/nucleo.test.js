@@ -1235,3 +1235,149 @@ describe('requisitos-y-filtros-de-sheets', () => {
     assert.equal(w.filas(), 2);
   });
 });
+
+describe('historial-patrimonio', () => {
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { JSDOM } = require('jsdom');
+  const { loadApp } = require('./support/load-app');
+  const { createFakeDom } = require('./support/fake-dom');
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'),
+    modulo('tarjetas_credito.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('gastos.js'), core('movimientos.js'), core('html-tag.js'), core('fuentes-filtro.js'), modulo('analisis.js')];
+  const plano = x => JSON.parse(JSON.stringify(x));
+  const dia = off => { const d = new Date(Date.now() + off * 864e5); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  const ts = off => { const d = new Date(Date.now() + off * 864e5); d.setHours(12, 0, 0, 0); return d.getTime(); };
+  const boton = (tipo, id, fuente, monto) => { const item = { dataset: { movId: id, movTipo: tipo, movFuente: fuente, movMonto: String(monto), movFecha: dia(0) } }; return { closest: () => item }; };
+
+  // DOM de jsdom que crea cualquier id que el código pida: sirve para pintar la gráfica real de Análisis.
+  function docRico(htmlBase = '') {
+    const d = new JSDOM('<!doctype html><body>' + htmlBase + '</body>').window.document;
+    const orig = d.getElementById.bind(d);
+    d.getElementById = id => orig(id) || Object.assign(d.body.appendChild(d.createElement('div')), { id });
+    return d;
+  }
+
+  function entorno(historial, campos = {}) {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    Object.assign(app.S, { modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], transferencias: [], pagosGastosFijos: {}, tarjetasCredito: [], ingresosFijos: [], presupuestos: {},
+      patrimonioHistorial: historial,
+      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }] });
+    const dom = createFakeDom({ gv_desc: { value: 'Almuerzo' }, gv_monto: { value: '2.000,00' }, gv_fecha: { value: '' }, gv_cat: { value: 'Comida' }, gv_nota: { value: '' }, gv_fuente: { value: 'nequi' },
+      tr_origen: { value: 'nequi' }, tr_destino: { value: 'efectivo' }, tr_monto: { value: '3.000,00' }, tr_nota: { value: '' }, tr_fecha: { value: '' }, ...campos });
+    app.document = dom.document;
+    app.dialogo = async () => true; app.save = () => {}; app.refresh = () => {}; app.toast = () => {}; app.fuenteLabel = f => f;
+    return app;
+  }
+  // Lo que hace la app tras cada cambio: toma la instantánea de hoy y recalcula la base del historial.
+  const refrescar = app => { app.snapshotPatrimonio(); app.recalcularMontoBaseHistorial(); };
+  const valores = app => plano(app.S.patrimonioHistorial).map(h => [h.fecha, h.valor, h.valorVisible]);
+
+  // Lo que muestra la gráfica de Análisis con el estado actual.
+  function grafica(app) {
+    const d = docRico('<div id="an-patrimonio-chart"></div>');
+    app.document = d;
+    app.renderAnalisis();
+    const el = d.getElementById('an-patrimonio-chart');
+    return { puntos: JSON.parse(el.querySelector('#_pat-overlay').getAttribute('data-pts')), diff: el.querySelector('.an-pat-diff'), pct: el.querySelector('.an-pat-pct') };
+  }
+
+  test('reporte: crear saldos iniciales por error y eliminarlos el mismo día deja el historial y la gráfica como estaban', async () => {
+    const app = entorno([{ fecha: dia(-1), valor: 0, valorVisible: 0 }]);
+    const antes = valores(app);
+    app.registrarEntradaConApertura('nequi', 4444448888.88, dia(0), 'Saldo inicial', true, '');
+    app.registrarEntradaConApertura('efectivo', 0.0, dia(0), 'Saldo inicial', true, '');
+    refrescar(app);
+    for (const m of plano(app.S.movimientos)) await app.eliminarMovimiento(boton('apertura', m.id, m.fuente, m.monto));
+    refrescar(app);
+    assert.deepEqual(valores(app).slice(0, 1), antes);
+    assert.deepEqual(valores(app)[1].slice(1), [0, 0]);
+    assert.equal(app.S._ajustesBaseLog, undefined);
+    assert.ok(app.S.patrimonioHistorial.every(h => h.montoBase === undefined), 'no queda ninguna base del movimiento eliminado');
+    const g = grafica(app);
+    assert.ok(g.puntos.every(p => p.valor === p.valorReal && p.valor === 0), 'valor y valorReal coinciden en todos los puntos');
+    assert.equal(g.diff.textContent, '$0');
+    assert.ok(!/\+/.test(g.diff.textContent + g.pct.textContent), 'sin signo +');
+    assert.ok(!/c-green|c-red/.test(g.diff.className + g.pct.className), 'ni verde ni rojo');
+  });
+
+  test('datos ya contaminados (ajuste negativo sin saldo inicial que lo respalde): al cargar se retira y la gráfica queda plana', () => {
+    const app = entorno([{ fecha: dia(-1), valor: 0, valorVisible: 0 }, { fecha: dia(0), valor: 0, valorVisible: 0 }]);
+    app.S._ajustesBaseLog = [{ fecha: dia(0), monto: -4444448888.88 }];
+    app.recalcularMontoBaseHistorial();
+    assert.equal(app.S._ajustesBaseLog, undefined);
+    const g = grafica(app);
+    assert.deepEqual(g.puntos.map(p => [p.valor, p.valorReal]), [[0, 0], [0, 0]]);
+    assert.equal(g.diff.textContent, '$0');
+  });
+
+  test('un ingreso creado hace 3 días y eliminado hoy: las instantáneas intermedias vuelven a lo que eran antes de crearlo', async () => {
+    const app = entorno([{ fecha: dia(-4), valor: 0, valorVisible: 0 }, { fecha: dia(-3), valor: 5000, valorVisible: 5000 }, { fecha: dia(-2), valor: 5000, valorVisible: 5000 },
+      { fecha: dia(-1), valor: 5000, valorVisible: 5000 }, { fecha: dia(0), valor: 5000, valorVisible: 5000 }]);
+    app.registrarEntradaConApertura('nequi', 5000, dia(-3), 'Sueldo', false, '');
+    const m = app.S.movimientos[0]; m.ts = ts(-3);
+    await app.eliminarMovimiento(boton('entrada', m.id, 'nequi', 5000));
+    refrescar(app);
+    assert.deepEqual(valores(app).map(v => v.slice(1)), [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]]);
+    const g = grafica(app);
+    assert.ok(g.puntos.every(p => p.valor === 0 && p.valorReal === 0));
+    assert.equal(g.diff.textContent, '$0');
+  });
+
+  test('lo anterior a la creación no se toca: el ingreso eliminado no altera días en que no existía', async () => {
+    const app = entorno([{ fecha: dia(-5), valor: 700, valorVisible: 700 }, { fecha: dia(-4), valor: 700, valorVisible: 700 }, { fecha: dia(-3), valor: 5700, valorVisible: 5700 }, { fecha: dia(0), valor: 5700, valorVisible: 5700 }]);
+    app.S.cuentas[0].saldo = 700;
+    app.registrarEntradaConApertura('nequi', 5000, dia(-3), 'Sueldo', false, '');
+    const m = app.S.movimientos[0]; m.ts = ts(-3);
+    await app.eliminarMovimiento(boton('entrada', m.id, 'nequi', 5000));
+    refrescar(app);
+    assert.deepEqual(valores(app).map(v => v[1]), [700, 700, 700, 700]);
+  });
+
+  test('saldo inicial corregido y luego eliminado: cada parte sale del día en que entró', async () => {
+    const app = entorno([{ fecha: dia(-4), valor: 0, valorVisible: 0 }, { fecha: dia(-3), valor: 1000, valorVisible: 1000, montoBase: 1000 }, { fecha: dia(-2), valor: 1500, valorVisible: 1500, montoBase: 500 },
+      { fecha: dia(-1), valor: 1500, valorVisible: 1500 }, { fecha: dia(0), valor: 1500, valorVisible: 1500 }]);
+    app.registrarEntradaConApertura('efectivo', 1000, dia(-3), 'Saldo inicial', true, '');
+    const m = app.S.movimientos[0]; m.ts = ts(-3);
+    app.sumarFuente('efectivo', 500, { origen: { modulo: 't', ref: 'edicion' } });
+    m.monto = 1500; m._ajustes = [{ fecha: dia(-2), monto: 500 }];
+    await app.eliminarMovimiento(boton('apertura', m.id, 'efectivo', 1500));
+    refrescar(app);
+    assert.deepEqual(valores(app).map(v => v[1]), [0, 0, 0, 0, 0]);
+    assert.ok(app.S.patrimonioHistorial.every(h => h.montoBase === undefined));
+  });
+
+  test('un gasto eliminado desde Gastos devuelve las instantáneas desde el día en que se creó', async () => {
+    const app = entorno([{ fecha: dia(-3), valor: 10000, valorVisible: 10000 }, { fecha: dia(-2), valor: 8000, valorVisible: 8000 }, { fecha: dia(-1), valor: 8000, valorVisible: 8000 }, { fecha: dia(0), valor: 8000, valorVisible: 8000 }]);
+    app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
+    app.addGastoVar();
+    const g = app.S.gastosVar[0]; g.ts = ts(-2);
+    assert.equal(app.getSaldoFuente('nequi'), 8000);
+    await app.deleteGastoVar(g.id);
+    refrescar(app);
+    assert.equal(app.getSaldoFuente('nequi'), 10000);
+    assert.deepEqual(valores(app).map(v => v[1]), [10000, 10000, 10000, 10000]);
+  });
+
+  test('una transferencia entre cuentas propias no cambia el patrimonio: su eliminación no toca el historial', async () => {
+    const app = entorno([{ fecha: dia(-2), valor: 10000, valorVisible: 10000 }, { fecha: dia(-1), valor: 10000, valorVisible: 10000 }, { fecha: dia(0), valor: 10000, valorVisible: 10000 }]);
+    app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
+    app.confirmarTransferir();
+    const t = app.S.transferencias[0]; t.ts = ts(-2);
+    const antes = valores(app);
+    await app.eliminarMovimiento(boton('transferencia', t.id, 'nequi', 3000));
+    refrescar(app);
+    assert.deepEqual(valores(app), antes);
+  });
+
+  test('diaCreacionMov: ts, hora del id de uid(), y la fecha como último recurso', () => {
+    const app = entorno([]);
+    assert.equal(app.diaCreacionMov({ ts: ts(-3), id: 'x', fecha: '2020-01-01' }), dia(-3));
+    assert.equal(app.diaCreacionMov({ id: (ts(-2)).toString(36) + 'abc', fecha: '2020-01-01' }), dia(-2));
+    assert.equal(app.diaCreacionMov({ id: 'apertura:nequi', fecha: '2026-01-05' }), '2026-01-05');
+    assert.equal(app.diaCreacionMov({ fecha: '2026-01-05' }), '2026-01-05');
+    assert.equal(app.diaCreacionMov(null), '');
+  });
+});

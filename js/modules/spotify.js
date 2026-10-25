@@ -709,6 +709,7 @@ async function deleteSpHistorial(i){
 // (confirmación específica, ver arriba) terminen en el mismo lugar sin
 // duplicar la reversión de saldos.
 async function _borrarSpHistorial(i,h){
+  const _histAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este registro
 
   if(h.tipo==='cobro'){
     // Si este cobro tuvo pago parcial con deuda pendiente (ver §3 de docs/spotify.md),
@@ -795,6 +796,7 @@ async function _borrarSpHistorial(i,h){
   }
 
   S.spotify.historial.splice(i,1);
+  purgarEfectoEnHistorial(_histAntes,h);
   save();refresh();
   toast('Movimiento eliminado y plata revertida','ok');
 }

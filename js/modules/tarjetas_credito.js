@@ -993,8 +993,10 @@ async function eliminarCompraTC(tcId,compraId){
     ? await confirmarBorrarMovimientoViejo(tc.nombre,compra.monto||0,'baja','deuda')
     : await dialogo('Eliminar compra','¿Eliminar esta compra de '+fmt(compra.monto)+'? Se reducirá la deuda de la tarjeta.','Eliminar',true);
   if(!ok)return;
+  const _histAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar esta compra
   tcEliminarCompraInterna(tc,compraId);
   if(S.gastosVar)S.gastosVar=S.gastosVar.filter(g=>!(g._esCompraTC&&g._tcCompraId===compraId));
+  purgarEfectoEnHistorial(_histAntes,compra);
   save();refresh();renderTCScreen();
   abrirDetalleTCSheet(tcId);
   toast('Compra eliminada — deuda actualizada','ok');
@@ -1017,9 +1019,11 @@ async function eliminarPagoTC(tcId,pagoId){
     ? await confirmarBorrarMovimientoViejo(tc.nombre,pago.monto||0,'sube','deuda')
     : await dialogo('Eliminar pago','¿Eliminar este pago de '+fmt(pago.monto)+'? Se devolverá el dinero a '+fuenteLabel(pago.fuente)+' y aumentará la deuda de la tarjeta.','Eliminar',true);
   if(!ok)return;
+  const _histAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este pago
   tcEliminarPagoInterna(tc,pagoId);
   if(pago.fuente) sumarFuente(pago.fuente,pago.monto,_ogTc(pagoId,true));
   if(S.gastosVar)S.gastosVar=S.gastosVar.filter(g=>!(g._esPagoTC&&g._tcPagoId===pagoId));
+  purgarEfectoEnHistorial(_histAntes,pago);
   save();refresh();renderTCScreen();
   abrirDetalleTCSheet(tcId);
   toast('Pago eliminado — deuda actualizada','ok');

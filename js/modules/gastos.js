@@ -460,6 +460,7 @@ async function deleteGastoVar(id) {
     const ok = await dialogo('Eliminar gasto', '¿Seguro que quieres eliminar este gasto? Esta acción no se puede deshacer.', 'Eliminar', true);
     if (!ok) return;
   }
+  const _histAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este gasto
   if (g) {
     if (g._esCompraTC && g._tcId) {
       // Revertir: marcar la compra como eliminada (nunca se borra físicamente) y recalcular
@@ -487,6 +488,7 @@ async function deleteGastoVar(id) {
     }
   }
   S.gastosVar = (S.gastosVar || []).filter(x => x.id !== id);
+  if (g) purgarEfectoEnHistorial(_histAntes, g);
   save(); refresh();
   toast('Gasto eliminado', 'ok');
   if (window.logCambio && g) logCambio('Eliminaste un gasto', g.desc || '', g.monto, 'eliminar');

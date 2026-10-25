@@ -152,8 +152,56 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   console.log('FASE 3 registradas que nadie nombra en el código (' + muertas.length + ', posible código muerto o uso dinámico):', muertas.join(' ') || '—');
   console.log('FASE 3 registradas dos veces (' + duplicadas.length + '):', duplicadas.join(' ') || '—');
   dinamicas.forEach(d => console.log('FASE 3 dinámica (revisar a mano): ' + d));
-  if (rotas.length || fallos.length || duplicadas.length) process.exitCode = 1;
+
+  // ── Resumen final: qué es fallo real y qué es ruido de jsdom ──
+  // Los módulos ES (<script type="module">) NO se ejecutan en jsdom, así que sus
+  // handlers (authgate:*, pin:*) siempre aparecen como "sin handler" / "lanzan al
+  // tocar". Eso NO es un fallo del producto: se excluye del veredicto.
+  // Acciones de namespaces clásicos cuyo HANDLER vive en un módulo ES
+  // (firebase-sync.js define _fbSignOut/_abrirEliminarCuenta, pero se exponen
+  // bajo el namespace 'config'). jsdom no ejecuta módulos ES, así que estas
+  // acciones no se pueden tocar aquí. No es un fallo del producto.
+  const accionesQueDependenDeModuloES = new Set(['config:abrirEliminarCuenta', 'config:signOut']);
+  const esDeModulo = a => {
+    const ns = a.split(':')[0];
+    return nsModulo.has(ns) || accionesQueDependenDeModuloES.has(a);
+  };
+  const sinHandlerReales = [...new Set(sinHandler)].filter(a => !esDeModulo(a));
+  const lanzanReales = lanzan.filter(l => !esDeModulo(l.split(' →')[0].trim()));
+
+  const fallosReales = [];
+  if (jsFaltan.length) fallosReales.push(`${jsFaltan.length} archivo(s) .js faltante(s): ${jsFaltan.join(', ')}`);
+  if (antes > 0) fallosReales.push(`${antes} error(es) no atribuible(s) a un botón durante la carga (ver --verbose)`);
+  if (fallos.length) fallosReales.push(`${fallos.length} fallo(s) en FASE 2: ${fallos.join(' | ')}`);
+  if (sinHandlerReales.length) fallosReales.push(`${sinHandlerReales.length} acción(es) sin handler real: ${sinHandlerReales.join(', ')}`);
+  if (lanzanReales.length) fallosReales.push(`${lanzanReales.length} acción(es) que lanzan al tocar: ${lanzanReales.join(' | ')}`);
+  if (rotas.length) fallosReales.push(`${rotas.length} acción(es) usada(s) sin registrar: ${rotas.join(', ')}`);
+  if (duplicadas.length) fallosReales.push(`${duplicadas.length} acción(es) registrada(s) dos veces: ${duplicadas.join(', ')}`);
+
+  // Ruido esperado en jsdom (no cuenta como fallo)
+  const ruido = [];
+  const sinHandlerModulo = [...new Set(sinHandler)].filter(a => esDeModulo(a));
+  const lanzanModulo = lanzan.filter(l => esDeModulo(l.split(' →')[0].trim()));
+  if (sinHandlerModulo.length) ruido.push(`${sinHandlerModulo.length} sin handler en módulos ES (jsdom no los ejecuta): ${sinHandlerModulo.join(', ')}`);
+  if (lanzanModulo.length) ruido.push(`${lanzanModulo.length} que lanzan en módulos ES (jsdom no los ejecuta): ${lanzanModulo.map(l => l.split(' →')[0]).join(', ')}`);
+  if (dinamicas.length) ruido.push(`${dinamicas.length} acción(es) construida(s) dinámicamente (revisar a mano)`);
+
+  console.log('\n══════════════════════════════════════════════════════════════');
+  if (ruido.length) {
+    console.log('ℹ️  Ruido esperado en jsdom (NO es fallo):');
+    ruido.forEach(r => console.log('   · ' + r));
+  }
+  if (fallosReales.length) {
+    console.log('\n❌ FALLOS (' + fallosReales.length + '):');
+    fallosReales.forEach(f => console.log('   · ' + f));
+    console.log('\n══════════════════════════════════════════════════════════════');
+    process.exitCode = 1;
+  } else {
+    console.log('\n✅ TODO OK — sin fallos reales.');
+    console.log('══════════════════════════════════════════════════════════════');
+  }
+
   if (process.argv.includes('--verbose')) console.log('FASE 3 dinámicas:', dinamicas.slice(0, 15));
   if (process.argv.includes('--verbose')) { console.log('\nCARGA warn:', logs.warn.slice(0, 20)); console.log('CARGA error:', logs.error.slice(0, 20)); console.log('uncaught:', uncaught.slice(0, 20)); }
-  w.close(); process.exit(0);
+  w.close(); process.exit(process.exitCode || 0);
 })().catch(e => { console.error('FALLÓ la prueba de humo:', e); process.exit(1); });

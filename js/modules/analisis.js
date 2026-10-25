@@ -312,8 +312,12 @@ function renderAnalisis(){
       const primeroReal = valsReales[0];
       const ultimoReal = valsReales[valsReales.length-1];
       const diffTotal = ultimoReal - primeroReal;
-      const diffColor=diffTotal>=0?'var(--accent)':'var(--red)'; // para el trazo SVG y data-diffcolor (el JS del tooltip lo lee)
-      const diffClasePat=diffTotal>=0?'c-green':'c-red';
+      // Sin cambio en la ventana (p. ej. todo en $0): ni «+», ni verde, ni rojo; la línea se pinta neutra.
+      const sinCambio=Math.abs(diffTotal)<0.005;
+      const diffColor=sinCambio?'var(--text3)':(diffTotal>=0?'var(--accent)':'var(--red)'); // para el trazo SVG y data-diffcolor (el JS del tooltip lo lee)
+      const diffColorGrad=sinCambio?'#8e8e84':(diffTotal>=0?'#c8f060':'#f06868');
+      const diffClasePat=sinCambio?'an-t-muted':(diffTotal>=0?'c-green':'c-red');
+      const diffSigno=sinCambio?'':(diffTotal>=0?'+':'');
       const diffPct = primeroReal!==0 ? (diffTotal/Math.abs(primeroReal)*100) : 0;
       patriEl.innerHTML=`
         <div class="an-pat-cab">
@@ -322,16 +326,16 @@ function renderAnalisis(){
             <div class="an-pat-val">${fmt(ultimo2.valorVisible!=null?ultimo2.valorVisible:ultimo2.valor)}</div>
           </div>
           <div class="an-der">
-            <div class="an-pat-diff ${diffClasePat}">${diffTotal>=0?'+':''}${fmt(diffTotal)}</div>
-            <div class="an-pat-pct ${diffClasePat}">${diffPct>=0?'+':''}${diffPct.toFixed(1)}%</div>
+            <div class="an-pat-diff ${diffClasePat}">${diffSigno}${fmt(diffTotal)}</div>
+            <div class="an-pat-pct ${diffClasePat}">${sinCambio?'':(diffPct>=0?'+':'')}${diffPct.toFixed(1)}%</div>
           </div>
         </div>
         <div id="_pat-wrap" class="an-pat-wrap">
           <svg viewBox="0 0 ${W} ${H}" class="an-pat-svg">
             <defs>
               <linearGradient id="pgGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0.25"/>
-                <stop offset="100%" stop-color="${diffTotal>=0?'#c8f060':'#f06868'}" stop-opacity="0"/>
+                <stop offset="0%" stop-color="${diffColorGrad}" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="${diffColorGrad}" stop-opacity="0"/>
               </linearGradient>
             </defs>
             <path d="${areaPath}" fill="url(#pgGrad)"/>

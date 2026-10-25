@@ -816,6 +816,8 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
   );
   if (!ok) return;
 
+  const _histAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este movimiento
+
   // Abono guardado directo en la Alcancía (ver alcancia.md): su único rastro
   // fuera de este deudor vive en S.alcancia.movimientos[], no en ninguna
   // cuenta real — hay que revertir ese lado antes de tocar d.movimientos.
@@ -833,6 +835,7 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
   _revertirMovDeudor(d, m);
   _autoCerrarGruposEnCero(d); // el grupo pudo saldarse (o reabrirse) al borrar este movimiento
   _verificarIntegridadSaldoDeudor(d, _saldoAntesDel, _deltaEsperadoDel);
+  purgarEfectoEnHistorial(_histAntes, m);
   save(); refresh();
   if (!desdeFeed) abrirDeudor(deudorId);
   toast(`${esPrestamo ? 'Préstamo' : esPerdon ? 'Perdón' : 'Abono'} eliminado — ${esPerdon ? 'la deuda y el gasto se revirtieron' : 'saldo revertido'}`, 'ok');
@@ -2240,10 +2243,12 @@ async function eliminarMovMiDeuda(deudaId, movId) {
   }
 
   const saldoAntes = Deudas.saldo(d);
+  const _histAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este movimiento
   _revertirMovMiDeuda(m);
   d.movimientos = d.movimientos.filter(x => x.id !== movId);
   _autoCerrarGruposEnCero(d); // el grupo pudo saldarse (o reabrirse) al borrar este movimiento
   _verificarIntegridadSaldoDeudor(d, saldoAntes, m.tipo === 'recibido' ? -m.monto : m.monto);
+  purgarEfectoEnHistorial(_histAntes, m);
   save(); refresh();
   abrirMiDeuda(deudaId);
 }

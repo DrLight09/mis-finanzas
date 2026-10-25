@@ -56,7 +56,7 @@ Repite el mismo cálculo de ingresos/gastos/balance (mismo criterio de ingreso/g
 
 - La serie **no** se grafica cruda: a cada punto se le resta el `montoBase` acumulado (aperturas de cuenta nuevas, correcciones de saldo inicial) para que abrir una cuenta nueva, corregir un saldo o destapar una alcancía con sobrante/faltante no se vea como un salto/caída falsa de patrimonio. (El sobrante o faltante **sí** cuenta como ingreso/gasto del mes en §2: aparece el día en que se encontró.)
 - Se usa `valorVisible` (patrimonio sin la alcancía) en vez de `valor` (patrimonio real total), tanto en la curva como en el número de encabezado ("Últimos N días: $X") y en el tooltip al tocar un punto — para no revelar el saldo/depósitos de la alcancía a través de la gráfica, mismo criterio que el hero de Inicio. Puntos guardados antes de que existiera `valorVisible` caen a `valor` como fallback. Al destapar la alcancía (`alcanciaConfirmarDestapar()`), `valorVisible` se iguala a `valor` en todo el historial: esa plata ya dejó de ser oculta, así que la curva y la tendencia la reflejan en el día en que se depositó, sin un salto único el día del destape.
-- Debajo de la gráfica se muestra el cambio total de la ventana (`diffTotal`) en monto y %.
+- Debajo de la gráfica se muestra el cambio total de la ventana (`diffTotal`) en monto y %. Con cambio cero (p. ej. todo en $0) se muestra `$0` y `0.0%` sin signo, en el color neutro de la app, y la línea y el degradado van en gris; solo un cambio real usa `+` con verde o `−` con rojo.
 
 ### ¿Cómo se genera cada punto del historial? (`snapshotPatrimonio()`)
 
@@ -67,6 +67,14 @@ Repite el mismo cálculo de ingresos/gastos/balance (mismo criterio de ingreso/g
 - **`montoBase` también incluye (desde 2026-10-10) los movimientos de deudas sin pata de caja** (préstamo "Me deben" sin cuenta ni tarjeta, abono recibido sin cuenta destino, y su equivalente en "Yo debo"): mueven el patrimonio sin ser ingreso ni gasto. `load()` recalcula `montoBase` de todo el historial en cada carga (`recalcularMontoBaseHistorial()`), así que la corrección vale hacia atrás y se limpia sola si se borra el movimiento. `scripts/conciliacion.js` mide cuánto del cambio de patrimonio de cada mes queda sin explicar.
 - Guarda también `montoBase` (monto exacto de aperturas/ajustes de saldo inicial ese día **más el sobrante (+) o faltante (−) de un destape de alcancía ese día**, desde 2026-09-29 — es plata que ya existía y no estaba anotada, no crecimiento), usado tanto por esta gráfica como por la Proyección financiera (§8) para no confundir un saldo inicial con crecimiento real.
 - El array se recorta a los últimos 365 puntos.
+
+### Eliminar un movimiento no deja rastro en el historial
+
+Las instantáneas son una foto por día; si después se elimina algo que ya estaba contado (un ingreso por error, un gasto mal puesto), las fotos desde el día en que se creó siguen incluyéndolo y la gráfica mostraría un salto sin movimiento que lo respalde. Por eso **todo flujo que elimina algo que mueve el patrimonio lo quita también de las instantáneas**: mide `medirPatrimonioParaHistorial()` antes de revertir y, antes de guardar, llama a `purgarEfectoEnHistorial(antes, item)`, que resta lo que cambió (en `valor` y `valorVisible`) a todas las instantáneas con fecha ≥ el día de creación del movimiento (`diaCreacionMov()`: su `ts`, o la hora que lleva su id de `uid()`, y solo si no tiene ninguno, su `fecha`). Se usa el día de creación y no la `fecha` del movimiento porque un movimiento cargado con fecha pasada no estaba en las fotos de esos días. Cubre `eliminarMovimiento` (ingresos, saldos iniciales, retiros, transferencias, gastos y mesada), `deleteGastoVar`, `eliminarMovDeudor`, `eliminarMovMiDeuda`, `eliminarCompraTC`, `eliminarPagoTC`, `eliminarMesadaPago` y el borrado de un registro del historial de Spotify. Editar un movimiento es eliminar y crear otro, así que pasa por el mismo camino.
+
+- **Saldos iniciales:** `purgarAperturaDelHistorial(m)` quita el monto original desde el día en que se creó la cuenta y cada corrección (`_ajustes`) desde el día en que se hizo (`m.monto` ya incluye las correcciones). Eliminar un saldo inicial no deja ningún registro aparte: la base (`montoBase`) sale solo de lo que existe, así que `valor` y `valorReal` no pueden diferir por un movimiento eliminado.
+- **Una transferencia** entre cuentas propias no cambia el patrimonio; su eliminación no toca el historial.
+- **Límite:** el efecto se resta por igual en todos los días desde la creación; el interés que una cajita de Nu haya generado sobre ese dinero entre medias entra como si hubiera estado desde el primer día.
 
 ### Limitación conocida: movimientos backdateados
 

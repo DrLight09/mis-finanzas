@@ -795,7 +795,9 @@ async function eliminarMesadaPago(parent, key) {
       if (!await confirmarBorrarMovimientoViejo(nombreCuenta, info.monto || 0, 'baja')) return;
     }
   }
+  const _histAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este pago
   mesadaBorrarPago(parent, key);
+  purgarEfectoEnHistorial(_histAntes, info);
   save(); refresh();
   closeSheet('mesada-det');
 }

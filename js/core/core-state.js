@@ -887,11 +887,13 @@ function _ajusteAlcanciaPorFecha(){
 // saldo inicial, destapes de alcancía y deudas sin pata de caja). load() la llama en cada carga, así las correcciones
 // valen también hacia atrás sin migración; scripts/conciliacion.js la usa para medir lo mismo que ve la app.
 function recalcularMontoBaseHistorial(){
-  // Migración retroactiva: calcular el monto exacto de aperturas y ajustes de saldo inicial
-  // (incluyendo borrados de apertura, que generan un ajuste negativo en _ajustesBaseLog)
-  // por fecha en el historial de patrimonio que ya existía antes de este fix. Así la
-  // tendencia mensual descuenta solo esa parte del cambio del día y conserva cualquier
-  // ingreso real que haya ocurrido la misma fecha, sin tener que esperar a un nuevo snapshot.
+  // Eliminar un saldo inicial ya no deja ningún registro aparte (ver purgarAperturaDelHistorial): la base sale solo de
+  // lo que existe. `_ajustesBaseLog` era ese registro y, con el movimiento ya borrado, quedaba como un ajuste negativo
+  // sin respaldo que inflaba la gráfica; se retira de los datos que aún lo traen.
+  delete S._ajustesBaseLog;
+  // Calcular el monto exacto de aperturas y ajustes de saldo inicial por fecha en el historial de patrimonio. Así la
+  // tendencia mensual descuenta solo esa parte del cambio del día y conserva cualquier ingreso real que haya ocurrido
+  // la misma fecha, sin tener que esperar a un nuevo snapshot.
   if(S.patrimonioHistorial.length){
     const montoAperturaPorFecha = {};
     const sumarApertura=(m)=>{
@@ -899,7 +901,6 @@ function recalcularMontoBaseHistorial(){
       if(m._ajustes){ m._ajustes.forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); }); }
     };
     (S.movimientos||[]).forEach(sumarApertura);
-    (S._ajustesBaseLog||[]).forEach(aj=>{ montoAperturaPorFecha[aj.fecha]=(montoAperturaPorFecha[aj.fecha]||0)+(aj.monto||0); });
     // Destapes de alcancía ya hechos (sobrante/faltante): mismo tratamiento que una apertura — ver _ajusteAlcanciaPorFecha().
     const _ajAlc=_ajusteAlcanciaPorFecha();
     Object.keys(_ajAlc).forEach(f=>{ montoAperturaPorFecha[f]=(montoAperturaPorFecha[f]||0)+_ajAlc[f]; });
@@ -976,7 +977,6 @@ function snapshotPatrimonio(){
   },0);
   const montoAperturaHoy =
     sumarAperturasYAjustesDeHoy(S.movimientos)
-    + (S._ajustesBaseLog||[]).filter(aj=>aj.fecha===hoyStr).reduce((a,aj)=>a+(aj.monto||0),0)
     + (_ajusteAlcanciaPorFecha()[hoyStr]||0)
     + (_ajusteDeudasSinCuentaPorFecha()[hoyStr]||0);
   const ultimo=S.patrimonioHistorial[S.patrimonioHistorial.length-1];
@@ -992,6 +992,72 @@ function snapshotPatrimonio(){
   }
   if(S.patrimonioHistorial.length>365)S.patrimonioHistorial=S.patrimonioHistorial.slice(-365);
   // (No localStorage — Firebase lo guarda _fbSaveToCloud)
+}
+
+// ── Eliminar un movimiento no deja rastro en el historial de patrimonio ─────────────────────────────────────────
+// S.patrimonioHistorial guarda una instantánea por día (el patrimonio al cierre de ese día). Si después se elimina algo
+// que ya estaba contado (un ingreso puesto por error, un gasto mal registrado), las instantáneas desde el día en que se
+// creó siguen incluyéndolo: la gráfica mostraría un salto sin ningún movimiento que lo respalde. Quitar de esas
+// instantáneas lo que cambió el patrimonio al eliminar hace que borrar equivalga a «nunca ocurrió». Cada flujo de
+// eliminación mide el patrimonio antes de revertir y llama a purgarEfectoEnHistorial() antes de guardar. Editar un
+// movimiento es eliminar y crear otro, así que queda cubierto por el mismo camino.
+// Límite: el efecto se resta por igual en todos los días desde la creación; el interés que una cajita de Nu haya
+// generado sobre ese dinero entre medias entra en el cálculo como si hubiera estado desde el primer día.
+
+// Patrimonio total y el «visible» (sin Alcancía, el que guarda valorVisible), o null si no se puede medir.
+function medirPatrimonioParaHistorial(){
+  if(!_patrimonioDependenciasListas()) return null;
+  const val=calcPatrimonioTotal();
+  if(val==null||isNaN(val)) return null;
+  const alc=(S.alcancia&&S.alcancia.saldoRegistrado)?S.alcancia.saldoRegistrado:0;
+  return {val, vis:val-alc};
+}
+
+// Día (YYYY-MM-DD) en que el movimiento entró al patrimonio: el de su creación (ts, o la hora que lleva su id de uid()),
+// no la fecha que el usuario le puso, que puede ser pasada. Sin ninguno de los dos, su fecha.
+function diaCreacionMov(item){
+  if(!item) return '';
+  let ms=Number(item.ts);
+  if(!Number.isFinite(ms)||ms<=0){
+    const id=item.id!=null?item.id:item._id;
+    ms=(typeof id==='string'&&/^[0-9a-z]{10,12}$/.test(id))?parseInt(id.slice(0,-3),36):NaN;
+  }
+  if(Number.isFinite(ms)&&ms>1.5778e12&&ms<=Date.now()+864e5){
+    const d=new Date(ms);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  return item.fecha||'';
+}
+
+// Suma `delta` (y `deltaVisible`, por defecto igual) a las instantáneas con fecha >= dia.
+function quitarDeHistorial(dia, delta, deltaVisible){
+  if(!dia||!S.patrimonioHistorial) return;
+  const dv=deltaVisible===undefined?delta:deltaVisible;
+  const r=n=>Math.round(n*1e6)/1e6;
+  S.patrimonioHistorial.forEach(h=>{
+    if(!h.fecha||h.fecha<dia) return;
+    h.valor=r((h.valor||0)+delta);
+    if(h.valorVisible!=null) h.valorVisible=r(h.valorVisible+dv);
+  });
+}
+
+// `antes` viene de medirPatrimonioParaHistorial() justo antes de revertir; `item` es lo que se eliminó.
+function purgarEfectoEnHistorial(antes, item){
+  const despues=medirPatrimonioParaHistorial();
+  if(!antes||!despues) return;
+  const d=despues.val-antes.val, dv=despues.vis-antes.vis;
+  if(Math.abs(d)<0.005&&Math.abs(dv)<0.005) return;
+  quitarDeHistorial(diaCreacionMov(item), d, dv);
+}
+
+// Un saldo inicial entró por partes: el monto original el día que se creó la cuenta y cada corrección (`_ajustes`, que
+// confirmarEditarApertura deja con su fecha) el día en que se hizo. `m.monto` ya incluye las correcciones.
+function purgarAperturaDelHistorial(m){
+  if(!m) return;
+  const ajustes=m._ajustes||[];
+  const original=(m.monto||0)-ajustes.reduce((a,x)=>a+(x.monto||0),0);
+  quitarDeHistorial(diaCreacionMov(m), -original);
+  ajustes.forEach(x=>quitarDeHistorial(x.fecha, -(x.monto||0)));
 }
 
 // Calcula cuánta plata de encargos (dinero que estás cuidando de otra persona,

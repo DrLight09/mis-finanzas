@@ -8,6 +8,15 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 Documentación: [`libro-de-movimientos.md`](./libro-de-movimientos.md).
 
+### 🧪 `sync.test.js`: pruebas del listener sin esperas fijas (2026-10-25)
+
+En el equipo del usuario (suite entera 73 s, bloque `firebase-sync` 14 s) falló «listener — carga inicial con payload comprimido aplica los datos…» con `Cannot read properties of undefined (reading 'saldo')`: el test dormía **50 ms fijos** esperando la descompresión asíncrona del payload y en una máquina lenta no alcanzaba. No era un error de la app. Cuatro pruebas del listener esperaban con `esperar(50|100)`; ahora esperan **a la condición** (`hasta(() => app._dataLoaded)`, 5 s de tope) y, en las que comprueban que algo NO ocurre (payload ilegible no habilita el guardado; el snapshot lento no pisa al rápido), esperan a que **terminen todas las descompresiones** que arrancó el listener (`espiar(app)` envuelve `decodificarPayload`). Comprobado: pasa bajo carga de CPU artificial y, por mutación, sigue fallando si se rompe la cola ordenada de snapshots (`firebase-sync.js` línea de `_colaSnapshots`). No hay otras esperas fijas en el resto de pruebas.
+- **Cuenta de pruebas:** con la carpeta `tests/` (plural) `npm test` ejecuta **447** (solo los `*.test.js`); con `test/` eran 450 porque Node contaba como prueba los 3 `.js` de `support/`.
+
+### 🧹 Paso 5 cerrado: verificadores retirados (2026-10-24)
+
+El usuario pasó los 15 verificadores contra los archivos originales reales (`verificar.js todos --antes=antes`): inicio, wrapped, cuentas, analisis, spotify, prestado, nu, movimientos, alcancia, tarjetas, encargos, personas, plata_comprometida, `index.html` (2.697 etiquetas) y los sueltos — **0 con diferencias**; `npm test` 450/450 y `npm run smoke` sin fallos. Con eso se descartan `scripts/paso5/` y la carpeta `antes/`, que eran locales e ignoradas por git (nunca estuvieron en el repo). Se actualizan `docs/guia-estilo-sheets.md` §0 (reglas permanentes y trampas aprendidas), `docs/auditoria-tecnica.md` (CSP: decisión A), `docs/mis-finanzas.md` y `test/README.md`.
+
 ### 🔍 Verificación con `jsdom` y correcciones (2026-10-24, cierre del Paso 5)
 
 Con `jsdom` disponible por primera vez se pasó el comparador de cascada (`scripts/paso5/etiquetas.js`) sobre las 8 conversiones (`movimientos`, `nu`, `alcancia`, `tarjetas_credito`, `encargos`, `personas`, `plata_comprometida`, `index.html`) y los verificadores por módulo del usuario (`scripts/paso5/verificar.js todos`): **0 diferencias** tras corregir tres errores que las verificaciones sin `jsdom` no veían:

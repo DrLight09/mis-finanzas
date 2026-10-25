@@ -6,7 +6,7 @@
 
 ## Seguridad — pendiente
 
-- **La CSP todavía permite estilos inline (`'unsafe-inline'` en `style-src`, `index.html`).** Hoy hay ~784 `style="…"` en `index.html` y ~1006 en los `.js` (más un `<style>` inyectado por `wrapped.js` y el tercer `<style>` de `index.html`). Todo lo que se escribe va escapado (`html\`\``), así que el riesgo práctico es bajo, pero es la directiva laxa que queda. Plan y avance en `CONTINUAR.md` §13.16 (Paso 5): convertir a clases, resolver los ~100 estilos con valor calculado con un helper que use `el.style.x = …` (la CSP lo permite), mover el CSS inyectado a una hoja `.css` y entonces quitar `'unsafe-inline'`.
+- **La CSP sigue permitiendo estilos inline (`'unsafe-inline'` en `style-src`, `index.html`) — decisión tomada el 2026-10-24 (Paso 5, opción A).** Los `style="…"` estáticos se convirtieron a clases (quedan solo los casos de `guia-estilo-sheets.md` §0) y `tests/estilos.test.js` impide que vuelvan. Quitar la directiva exigiría un hash `sha256-…` por cada uno de los 5 bloques `<style>` de `index.html` y por el que inyecta `wrapped.js`, reubicar el primer pintado y reescribir ~140 usos de `style.display`; el riesgo real de XSS lo frena `script-src` sin `unsafe-inline` y el escapado de `html\`\``. Se reabre solo si se decide endurecer la CSP.
 
 ## Rendimiento — pendiente
 

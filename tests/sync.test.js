@@ -29,6 +29,10 @@ describe('firebase-sync', () => {
   const plano = x => JSON.parse(JSON.stringify(x));
   const guardar = app => { const p = app._fbSaveToCloud(); app._fbFlushSave(); return p; }; // encola y fuerza el guardado sin esperar el debounce
   const esperar = ms => new Promise(r => setTimeout(r, ms));
+  // Espera a una condición en vez de dormir un tiempo fijo: en una máquina lenta (OneDrive, antivirus) 50 ms no alcanzan para descomprimir y el test fallaba sin que la app tuviera un error.
+  const hasta = async (cond, ms = 5000) => { const t0 = Date.now(); while (!cond()) { if (Date.now() - t0 > ms) throw new Error('timeout esperando la condición'); await esperar(5); } };
+  // Cuenta las descompresiones que arranca el listener para poder esperar a que TODAS terminen (sirve también en los tests que esperan que algo NO ocurra).
+  const espiar = app => { const orig = app.decodificarPayload, p = []; app.decodificarPayload = t => { const r = orig(t); p.push(r); return r; }; return () => Promise.allSettled(p); };
   const gz = txt => 'gz1:' + zlib.gzipSync(txt).toString('base64');
 
   function entorno(estado) {
@@ -104,7 +108,7 @@ describe('firebase-sync', () => {
     const { app, listeners } = entorno({ cuentas: [], libro: [] });
     app._fbLoadData();
     listeners.next(snap(gz(JSON.stringify({ cuentas: [{ id: 'nequi', saldo: 123 }], libro: [{ id: 'l1' }] }))));
-    await esperar(50);
+    await hasta(() => app._dataLoaded);
     assert.equal(app.S.cuentas[0].saldo, 123);
     assert.equal(app._dataLoaded, true);
   });
@@ -113,16 +117,17 @@ describe('firebase-sync', () => {
     const { app, listeners } = entorno({ cuentas: [], libro: [] });
     app._fbLoadData();
     listeners.next(snap(JSON.stringify({ cuentas: [{ id: 'efectivo', saldo: 7 }] })));
-    await esperar(50);
+    await hasta(() => app._dataLoaded);
     assert.equal(app.S.cuentas[0].saldo, 7);
     assert.equal(app._dataLoaded, true);
   });
 
   test('listener — un payload comprimido ilegible NO habilita el guardado (nunca se pisa la nube)', async () => {
     const { app, listeners, escritos } = entorno({ cuentas: [], libro: [] });
+    const terminadas = espiar(app);
     app._fbLoadData();
     listeners.next(snap('gz1:basura-no-gzip'));
-    await esperar(50);
+    await terminadas(); await esperar(30); // la descompresión ya falló; margen para que el listener reaccione
     assert.ok(!app._dataLoaded, 'sigue en modo lectura');
     assert.equal(escritos.length, 0);
   });
@@ -131,9 +136,10 @@ describe('firebase-sync', () => {
     const { app, listeners } = entorno({ cuentas: [], libro: [] });
     app._fbLoadData();
     const grande = JSON.stringify({ cuentas: [{ id: 'nequi', saldo: 1 }], relleno: Array.from({ length: 4000 }, (_, i) => 'x' + i) });
+    const terminadas = espiar(app);
     listeners.next(snap(gz(grande)));                                              // tarda más en descomprimir
     listeners.next(snap(JSON.stringify({ cuentas: [{ id: 'nequi', saldo: 2 }] }))); // llega después y es instantáneo
-    await esperar(100);
+    await hasta(() => app.S.cuentas[0] && app.S.cuentas[0].saldo === 2); await terminadas(); await esperar(30); // el lento ya terminó: si se colara, pisaría el 2 con el 1
     assert.equal(app.S.cuentas[0].saldo, 2, 'gana el último en llegar, no el que terminó de descomprimir primero');
   });
 });

@@ -24,7 +24,7 @@ modificarlo, usando `vm` para simular cómo el navegador carga
   `registrarMovEspejo()`/`borrarMovEspejo()` — `js/modules/prestado.js`,
   `js/core/cuenta-efectos.js`
 
-- Paso 5 (estilos inline → clases): `tests/estilos.test.js` vigila los archivos ya convertidos (ningún `style=""` estático nuevo, toda clase usada existe en `css/styles.css` o en el CSS propio del archivo, y los colores de Wrapped tienen clase). **Verificadores (no son tests)** en `scripts/paso5/`, una carpeta TEMPORAL que se borra cuando el Paso 5 termine: `comparador.js` compara el estilo efectivo de dos HTML (antes/después) y un archivo por módulo (`inicio.js`, `wrapped.js`, `cuentas.js`, `analisis.js`, `spotify.js`, `sueltos.js`) ejecuta los render reales del archivo original y del nuevo sobre los mismos datos. Se corren todos con `node scripts/paso5/verificar.js todos --antes=<carpeta con el repo anterior>`; solo tienen sentido mientras exista la versión "antes" del archivo, por eso no entran en `npm test`. Método y archivos pendientes en `CONTINUAR.md` §13.16.
+- Paso 5 (estilos inline → clases): `tests/estilos.test.js` vigila los archivos ya convertidos (ningún `style=""` estático nuevo, toda clase usada existe en `css/styles.css` o en el CSS propio del archivo, y los colores de Wrapped tienen clase). **La herramienta de conversión y sus verificadores (`scripts/paso5/`) se retiraron al cerrar el Paso 5 (2026-10-24)**; siguen en el tag de git `paso5-cerrado` por si hace falta convertir o verificar otra vez (ver `docs/guia-estilo-sheets.md` §0).
 
 Corren contra tus archivos reales, sin copiarlos.
 

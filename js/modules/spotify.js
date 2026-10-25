@@ -290,6 +290,24 @@ function spResumenCicloActual(hist){
   return {recaudado,flotante,tramos};
 }
 
+// ¿El costo del plan es un número mayor que cero? Una sola condición para el aviso de renderSpotify y para
+// el bloqueo de «Pagar Spotify»: sin costo no hay cuota ni ganancia que calcular.
+function spCostoValido(){
+  const c=S.spotify.costo;
+  return typeof c==='number' && isFinite(c) && c>0;
+}
+
+// Abre «Pagar Spotify» solo con el costo configurado; si no, lleva al campo del costo.
+function abrirPagarSpotify(){
+  if(!spCostoValido()){
+    toast('Configura el costo del plan para registrar pagos','err');
+    const inp=document.getElementById('spotifyCosto');
+    if(inp){ inp.focus(); inp.select(); }
+    return;
+  }
+  openSheet('pagar-spotify');
+}
+
 function renderSpotify(){
   const el=document.getElementById('spotifyList');
   const p=S.spotify.personas||[];
@@ -321,15 +339,15 @@ function renderSpotify(){
   document.getElementById('spProg').style.width=(costo>0?Math.min(100,cob/costo*100):0).toFixed(0)+'%';
   document.getElementById('spProgLabel').textContent=(costo>0?Math.round(cob/costo*100)+'% recaudado':'')+(resCiclo.flotante>0?(costo>0?' · ':'')+'+ '+fmt(resCiclo.flotante)+' adelantado (aún no cuenta)':'');
 
-  // Aviso cuando no está configurado el costo del plan
+  // Aviso cuando el costo del plan no es válido (misma condición que el bloqueo de «Pagar Spotify»)
   let warnEl=document.getElementById('sp-costo-warn');
-  if(costo===0){
+  if(!spCostoValido()){
     if(!warnEl){
       warnEl=document.createElement('div');
       warnEl.id='sp-costo-warn';
-      warnEl.style.cssText='display:flex;align-items:center;gap:8px;background:rgba(240,184,64,0.12);border:1.5px solid var(--amber);border-radius:var(--radius-sm);padding:10px 13px;margin-bottom:12px;font-size:12px;color:var(--amber);cursor:pointer;';
-      warnEl.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>No configuraste el costo del plan — los cálculos de ganancia no son precisos. <u>Configurar ahora</u></span>';
-      warnEl.addEventListener('click', ()=>{ const inp=document.getElementById('spotifyCosto'); if(inp){ inp.focus(); inp.select(); } });
+      warnEl.className='sp-costo-aviso';
+      warnEl.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span class="sp-costo-aviso-txt">Configura el costo del plan para empezar a registrar pagos.</span><button type="button" class="btn btn-sm sp-costo-aviso-btn">Configurar costo</button>';
+      warnEl.querySelector('button').addEventListener('click', ()=>{ const inp=document.getElementById('spotifyCosto'); if(inp){ inp.focus(); inp.select(); } });
       const spList=document.getElementById('spotifyList');
       if(spList&&spList.parentNode) spList.parentNode.insertBefore(warnEl,spList);
     }
@@ -1532,7 +1550,7 @@ function guardarEditarSpotify() {
 const _spBtnAdd = document.getElementById('btn-add-spotify-persona');
 if (_spBtnAdd) _spBtnAdd.addEventListener('click', () => openSheet('spotify'));
 const _spBtnPagar = document.getElementById('btn-pagar-spotify');
-if (_spBtnPagar) _spBtnPagar.addEventListener('click', () => openSheet('pagar-spotify'));
+if (_spBtnPagar) _spBtnPagar.addEventListener('click', abrirPagarSpotify);
 
 const _spBtnSave = document.getElementById('btn-guardar-spotify');
 // OJO: igual que con Gastos — index.html sobrescribe el global addSpotify

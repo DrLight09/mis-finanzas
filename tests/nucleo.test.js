@@ -1018,3 +1018,220 @@ describe('borrar-todo-pin', () => {
     assert.notEqual(app.__recargado, true);
   });
 });
+
+describe('requisitos-y-filtros-de-sheets', () => {
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { JSDOM } = require('jsdom');
+  const { loadApp } = require('./support/load-app');
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const BASE = ['core-state.js', 'calc-helpers.js', 'cuenta-efectos.js', 'periodo.js', 'nu-calc.js', 'fuentes-filtro.js', 'split.js', 'html-tag.js'].map(core);
+  // FuentesFiltro es un `const` de script (no cuelga del global): un archivo previo lo expone para poder consultarlo.
+  const EXPONER = path.join(require('node:fs').mkdtempSync(path.join(require('node:os').tmpdir(), 'ff-')), 'exponer.js');
+  require('node:fs').writeFileSync(EXPONER, 'window.FuentesFiltro = FuentesFiltro;');
+  BASE.push(EXPONER);
+
+  // DOM real de jsdom que crea (como un <div>) cualquier id que el código pida y no exista; lo que importa
+  // (selects, inputs) se declara en `htmlBase`.
+  // `ausentes`: ids que el código busca para saber si existen (devuelven null, como en el navegador).
+  function docRico(htmlBase = '', ausentes = ['sp-costo-warn']) {
+    const d = new JSDOM('<!doctype html><body>' + htmlBase + '</body>').window.document;
+    const orig = d.getElementById.bind(d);
+    d.getElementById = id => orig(id) || (ausentes.includes(id) ? null : Object.assign(d.body.appendChild(d.createElement('div')), { id }));
+    return d;
+  }
+  const opciones = (d, id) => Array.from(d.getElementById(id).options).map(o => o.value);
+
+  function entorno(extra = [], { cuentas, tc = true, encargos = [], htmlBase = '' } = {}) {
+    const app = loadApp([...BASE, ...extra], { permissive: true });
+    Object.assign(app.S, {
+      cuentas: cuentas || [{ id: 'nequi', tipo: 'nequi', saldo: 50000 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
+      cajitas: [], movimientos: [], gastosVar: [], encargos,
+      tarjetasCredito: tc ? [{ id: 't1', nombre: 'Visa', cupo: 1000000, deuda: 0, estado: 'activa' }] : [],
+    });
+    app.document = docRico(htmlBase);
+    app.toasts = []; app.toast = (m, t) => app.toasts.push([m, t]);
+    app.abiertos = []; app.openSheet = id => app.abiertos.push(id);
+    app.save = () => {}; app.refresh = () => {}; app.closeSheet = () => {};
+    return app;
+  }
+  const ponerValores = (app, vals) => Object.entries(vals).forEach(([id, v]) => { app.document.getElementById(id).value = v; });
+
+  test('FuentesFiltro: las TC no pueden recibir plata, hayUtilizable mira saldo y el mensaje va en tuteo', () => {
+    const app = entorno();
+    const F = app.FuentesFiltro;
+    assert.equal(F.puedeRecibir('tc:t1'), false);
+    assert.equal(F.puedeRecibir('nequi'), true);
+    assert.equal(F.puedeRecibir('cajita:c1') && F.puedeRecibir('custom:x'), true);
+    assert.deepEqual(Array.from(F.receptoras(app.getFuentes()).map(f => f.val)), ['nequi', 'efectivo']);
+    assert.equal(F.hayUtilizable(app.getFuentes(), F.PRESET.SALIDA), true);
+    app.S.cuentas[0].saldo = 0;
+    app.S.tarjetasCredito = [];
+    assert.equal(F.hayUtilizable(app.getFuentes(), F.PRESET.SALIDA), false);
+    assert.equal(F.MSG_SIN_SALDO, 'No tienes cuentas con saldo disponible');
+  });
+
+  // ── Punto 2: requisitos para abrir los sheets ────────────────────────────────────────────────
+  test('«Pagar Spotify» no abre sin costo válido (vacío, 0, NaN, texto) y abre con costo', () => {
+    const app = entorno([modulo('spotify.js')], { htmlBase: '<input id="spotifyCosto">' });
+    app.S.spotify = { ...(app.S.spotify || {}), personas: [], historial: [] };
+    for (const malo of [0, NaN, undefined, '', 'abc', -5]) {
+      app.S.spotify.costo = malo; app.abiertos.length = 0; app.toasts.length = 0;
+      assert.equal(app.spCostoValido(), false, String(malo));
+      app.abrirPagarSpotify();
+      assert.deepEqual(app.abiertos, [], 'no abre con costo ' + String(malo));
+      assert.equal(app.toasts.length, 1);
+    }
+    app.S.spotify.costo = 30500; app.abiertos.length = 0;
+    assert.equal(app.spCostoValido(), true);
+    app.abrirPagarSpotify();
+    assert.deepEqual(app.abiertos, ['pagar-spotify']);
+  });
+
+  test('aviso de Spotify: misma condición que el bloqueo, con el texto nuevo, sin estilos inline, y desaparece con un costo válido', () => {
+    const app = entorno([modulo('spotify.js')], { htmlBase: '<div id="padre"><div id="spotifyList"></div></div><input id="spotifyCosto">' });
+    app.S.spotify = { costo: 0, personas: [], historial: [] };
+    app.renderSpotify();
+    const aviso = app.document.getElementById('sp-costo-warn');
+    assert.ok(aviso.parentNode, 'el aviso está en la página');
+    assert.equal(aviso.className, 'sp-costo-aviso');
+    assert.equal(aviso.getAttribute('style'), null);
+    assert.match(aviso.textContent, /Configura el costo del plan para empezar a registrar pagos\./);
+    assert.equal(aviso.querySelector('button').textContent, 'Configurar costo');
+    assert.equal(aviso.querySelector('button').getAttribute('style'), null);
+    app.S.spotify.costo = 30500;
+    app.renderSpotify();
+    assert.equal(app.document.getElementById('sp-costo-warn'), null, 'con costo válido el aviso se quita');
+  });
+
+  test('«Registrar gasto» no abre sin ninguna cuenta con saldo; con saldo, o con una TC con cupo, abre como antes', () => {
+    const app = entorno([modulo('tarjetas_credito.js'), modulo('gastos.js')], { cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }], tc: false });
+    app.abrirNuevoGastoVar();
+    assert.deepEqual(app.abiertos, []);
+    assert.deepEqual(app.toasts, [['No tienes cuentas con saldo disponible', 'err']]);
+    app.S.cuentas[0].saldo = 5000;
+    app.abrirNuevoGastoVar();
+    assert.deepEqual(app.abiertos, ['gasto-var']);
+    app.abiertos.length = 0; app.S.cuentas[0].saldo = 0;
+    app.S.tarjetasCredito = [{ id: 't1', nombre: 'Visa', cupo: 1000000, deuda: 0, estado: 'activa' }];
+    app.abrirNuevoGastoVar();
+    assert.deepEqual(app.abiertos, ['gasto-var'], 'un gasto también puede cargarse a una TC con cupo');
+  });
+
+  // ── Punto 3: filtros de «Me lo regalaron» y «Mover entre cuentas» ───────────────────────────
+  const ENC = () => [{ id: 'e1', nombre: 'Carlos', movimientos: [{ id: 'm1', tipo: 'entrada', monto: 100000, cuenta: 'nequi', fecha: '2026-10-01' }] }];
+  const HTML_ENC = '<select id="traspaso_destino"></select><select id="traspaso_origen"></select><select id="moverenc_destino"></select><select id="moverenc_origen"></select>';
+
+  test('«Me lo regalaron»: el destino no ofrece tarjetas de crédito', () => {
+    const app = entorno([modulo('encargos.js')], { encargos: ENC(), htmlBase: HTML_ENC });
+    app.abrirEncargoDetalle('e1');
+    app.abrirTraspasoEncargo();
+    assert.deepEqual(app.abiertos.slice(-1), ['traspaso-encargo']);
+    assert.deepEqual(opciones(app.document, 'traspaso_destino'), ['', 'nequi', 'efectivo']);
+  });
+
+  test('«Me lo regalaron»: al confirmar rechaza una TC como destino (aunque el selector no la ofrezca) y sigue funcionando con una cuenta', () => {
+    const app = entorno([modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="traspaso_destino"><input id="traspaso_origen">' });
+    app.abrirEncargoDetalle('e1');
+    const enc = app.S.encargos[0];
+    ponerValores(app, { traspaso_monto: '40000', traspaso_desc: 'regalo', traspaso_fecha: '2026-10-24', traspaso_origen: '', traspaso_destino: 'tc:t1' });
+    app.confirmarTraspasoEncargo();
+    assert.deepEqual(app.toasts.pop(), ['Una tarjeta de crédito no puede recibir plata', 'err']);
+    assert.equal(enc.movimientos.length, 1);
+    assert.equal(app.S.tarjetasCredito[0].deuda, 0);
+    ponerValores(app, { traspaso_destino: 'nequi' });
+    app.confirmarTraspasoEncargo();
+    assert.equal(enc.movimientos.length, 2);
+    assert.equal(app.S.cuentas[0].saldo, 90000);
+  });
+
+  test('«Mover entre cuentas»: ni origen ni destino ofrecen tarjetas de crédito', () => {
+    const enc = ENC(); enc[0].movimientos.push({ id: 'm2', tipo: 'entrada', monto: 5000, cuenta: 'tc:t1', fecha: '2026-10-01' }); // dato raro: plata "guardada" en una TC
+    const app = entorno([modulo('encargos.js')], { encargos: enc, htmlBase: HTML_ENC });
+    app.abrirEncargoDetalle('e1');
+    app.abrirMoverEntreCuentasEncargo();
+    assert.deepEqual(opciones(app.document, 'moverenc_destino'), ['', 'nequi', 'efectivo']);
+    assert.deepEqual(opciones(app.document, 'moverenc_origen'), ['', 'nequi']);
+  });
+
+  test('«Mover entre cuentas»: al confirmar rechaza una TC como destino o como origen; entre cuentas sigue funcionando', () => {
+    const app = entorno([modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="moverenc_destino"><input id="moverenc_origen">' });
+    app.abrirEncargoDetalle('e1');
+    const enc = app.S.encargos[0];
+    ponerValores(app, { moverenc_monto: '10000', moverenc_fecha: '2026-10-24', moverenc_origen: 'nequi', moverenc_destino: 'tc:t1' });
+    app.confirmarMoverEncCuentas();
+    assert.deepEqual(app.toasts.pop(), ['No puedes mover plata a una tarjeta de crédito', 'err']);
+    ponerValores(app, { moverenc_origen: 'tc:t1', moverenc_destino: 'efectivo' });
+    app.confirmarMoverEncCuentas();
+    assert.deepEqual(app.toasts.pop(), ['Una tarjeta de crédito no puede ser cuenta de origen', 'err']);
+    assert.equal(enc.movimientos.length, 1);
+    ponerValores(app, { moverenc_origen: 'nequi', moverenc_destino: 'efectivo' });
+    app.confirmarMoverEncCuentas();
+    assert.equal(enc.movimientos.length, 3, 'salida + entrada internas');
+  });
+
+  test('«Compra con TC» de un encargo: el destino de la plata no ofrece TC y al confirmar rechaza una', () => {
+    const app = entorno([modulo('encargos.js')], { encargos: ENC(), htmlBase: '<select id="ctc_destino"></select><select id="ctc_cuenta_enc"></select><select id="ctc_tarjeta"></select>' });
+    app.abrirEncargoDetalle('e1');
+    app.abrirCompraConTC();
+    assert.deepEqual(app.abiertos.slice(-1), ['compra-tc-encargo']);
+    assert.deepEqual(opciones(app.document, 'ctc_destino'), ['', 'nequi', 'efectivo']);
+    const app2 = entorno([modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="ctc_destino"><input id="ctc_tarjeta"><input id="ctc_cuenta_enc">' });
+    app2.abrirEncargoDetalle('e1');
+    ponerValores(app2, { ctc_desc: 'Zapatos', ctc_monto: '1000', ctc_tarjeta: 't1', ctc_destino: 'tc:t1', ctc_nota: '', ctc_fecha: '2026-10-24' });
+    app2.confirmarCompraConTC();
+    assert.deepEqual(app2.toasts.pop(), ['Una tarjeta de crédito no puede recibir plata', 'err']);
+    assert.equal(app2.S.encargos[0].movimientos.length, 1);
+    assert.equal(app2.S.tarjetasCredito[0].deuda, 0);
+  });
+
+  // ── Dividir: tope de filas y mínimo de cuentas (motor split.js, todos los sheets que lo usan) ──
+  function widget(app, cuentas) {
+    let modo = false;
+    app.crearSplitWidget('t', {
+      simpleId: 't_simple', splitId: 't_split', toggleId: 't_btn', rowsId: 't_rows',
+      getModo: () => modo, setModo: v => { modo = v; },
+      getFuentesFn: () => '<option value="">Elige cuenta</option>' + cuentas.map(c => '<option value="' + c + '">' + c + '</option>').join(''),
+      onPreview() {},
+    });
+    return { modo: () => modo, filas: () => app.document.getElementById('t_rows').children.length };
+  }
+
+  test('dividir: con una sola cuenta válida no se activa', () => {
+    const app = entorno();
+    const w = widget(app, ['nequi']);
+    app.splitToggle('t');
+    assert.equal(w.modo(), false);
+    assert.equal(w.filas(), 0);
+    assert.deepEqual(app.toasts.pop(), ['Necesitas al menos dos cuentas para dividir', 'err']);
+  });
+
+  test('dividir: el máximo de filas es el número de cuentas válidas y no se repite una cuenta', () => {
+    const app = entorno();
+    const w = widget(app, ['nequi', 'efectivo', 'custom:a']);
+    app.splitToggle('t');
+    assert.equal(w.modo(), true);
+    assert.equal(w.filas(), 2);
+    app.splitAgregarRow('t');
+    assert.equal(w.filas(), 3);
+    app.splitAgregarRow('t');
+    assert.equal(w.filas(), 3, 'una fila por cuenta, no más');
+    assert.deepEqual(app.toasts.pop(), ['Ya usaste todas las cuentas disponibles', 'err']);
+    // la cuenta elegida en una fila desaparece de las otras
+    const filas = Array.from(app.document.getElementById('t_rows').children);
+    filas[0].querySelector('select').value = 'nequi';
+    app.splitActualizarOpciones('t');
+    assert.ok(!Array.from(filas[1].querySelector('select').options).some(o => o.value === 'nequi'));
+  });
+
+  test('dividir con exactamente dos cuentas: se activa con dos filas y no admite una tercera', () => {
+    const app = entorno();
+    const w = widget(app, ['nequi', 'efectivo']);
+    app.splitToggle('t');
+    assert.equal(w.filas(), 2);
+    app.splitAgregarRow('t');
+    assert.equal(w.filas(), 2);
+  });
+});

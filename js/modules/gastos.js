@@ -147,6 +147,8 @@ function switchGastoTab(t) {
 /* ---- ESTADO VACÍO: helpers que unifican el flujo con el botón fantasma ---- */
 
 function abrirNuevoGastoVar() {
+  // Sin ninguna cuenta con saldo (ni TC con cupo) no hay de dónde sacar la plata: el sheet no se abre.
+  if (!FuentesFiltro.hayUtilizable(getFuentes(), FuentesFiltro.PRESET.SALIDA)) { toast(FuentesFiltro.MSG_SIN_SALDO, 'err'); return; }
   poblarCatSelect('gv_cat', getCatsVar());
   // Resetear split (mismo patrón que abrirRegistrarMesada en mesada.js /
   // openSheet_pagarSpotify en spotify.js)

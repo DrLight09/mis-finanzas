@@ -20,7 +20,11 @@
 
    NO usar para selects donde la plata ENTRA (destinos de mesada, cobros
    de Spotify, abonos, "Agregar dinero", destino de Transferir): ahí
-   filtrar por saldo impediría depositar en una cuenta vacía.
+   filtrar por saldo impediría depositar en una cuenta vacía. Para esos
+   destinos (traspasos y reubicaciones de Encargos) están esTC/puedeRecibir/
+   receptoras: todas las cuentas MENOS las TC (a una TC no entra plata, solo
+   se le abona deuda desde "Pagar TC"), sin mirar saldo. Se aplican en el
+   selector y otra vez al confirmar.
 
    Núcleo, carga de entrada (<script defer>) justo después de
    calc-helpers.js — usa getSaldoFuente/getFuentesSinTC (core-state.js)
@@ -46,7 +50,7 @@ const FuentesFiltro = (() => {
     PAGO_TC:  Object.freeze({ minSaldo: MIN.PAGO_TC, minEfectivo: MIN.PAGO_TC_EFECTIVO, incluirTC: false })
   });
 
-  const MSG_SIN_SALDO = 'No tenés cuentas con saldo disponible';
+  const MSG_SIN_SALDO = 'No tienes cuentas con saldo disponible';
 
   const _cents = n => Math.round((Number(n) || 0) * 100);
 
@@ -135,5 +139,26 @@ const FuentesFiltro = (() => {
     return _cents(getSaldoFuente(val)) >= _cents(min == null ? MIN.GENERAL : min);
   }
 
-  return { MIN, PRESET, MSG_SIN_SALDO, esCuenta, tcConCupo, hayTCConCupo, utilizable, filtrar, optsHtml, podar, puedeMover };
+  // ¿Hay al menos una cuenta (no un valor especial) que pase el filtro? Sirve para no abrir un
+  // formulario de salida cuando no hay de dónde sacar la plata.
+  function hayUtilizable(fuentes, opts) {
+    return filtrar(fuentes, opts).some(f => esCuenta(f.val));
+  }
+
+  // ¿La fuente es una tarjeta de crédito?
+  function esTC(val) {
+    return typeof val === 'string' && val.startsWith('tc:');
+  }
+
+  // ¿Puede RECIBIR plata propia (traspasos, reubicaciones)? Todo menos una TC. Sin filtro de saldo.
+  function puedeRecibir(val) {
+    return !esTC(val);
+  }
+
+  // Filtra una lista [{val,label}] dejando solo las que pueden recibir plata.
+  function receptoras(fuentes) {
+    return (fuentes || []).filter(f => puedeRecibir(f.val));
+  }
+
+  return { MIN, PRESET, MSG_SIN_SALDO, esCuenta, esTC, tcConCupo, hayTCConCupo, hayUtilizable, utilizable, filtrar, optsHtml, podar, puedeMover, puedeRecibir, receptoras };
 })();

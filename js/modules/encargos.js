@@ -2190,8 +2190,8 @@ function abrirTraspasoEncargo() {
   if (!_traspasoOrigenMuestraSaldoEnOpcion) _actualizarTraspasoOrigenHint(enc);
   selOrigen.onchange = function() { if(!_traspasoOrigenMuestraSaldoEnOpcion) _actualizarTraspasoOrigenHint(enc); };
 
-  // Poblar select destino con mis cuentas
-  const fuentes = getFuentes();
+  // Poblar select destino con mis cuentas que pueden recibir plata (sin tarjetas de crédito)
+  const fuentes = FuentesFiltro.receptoras(getFuentes());
   const sel = document.getElementById('traspaso_destino');
   sel.innerHTML = html`<option value="">Seleccionar cuenta</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
 
@@ -2251,6 +2251,7 @@ function confirmarTraspasoEncargo() {
 
   if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
   if (!destino) { toast('Selecciona la cuenta destino', 'err'); return; }
+  if (!FuentesFiltro.puedeRecibir(destino)) { toast('Una tarjeta de crédito no puede recibir plata', 'err'); return; }
   if (!desc) { toast('Ingresa una descripción', 'err'); return; }
 
   const enc = getEncargo(encargoActualId);
@@ -2363,8 +2364,9 @@ function abrirMoverEntreCuentasEncargo() {
   const moverEncMontoWrap = document.getElementById('moverenc_monto_wrap');
   if (moverEncMontoWrap) moverEncMontoWrap.style.display = ''; // visible por defecto (modo simple)
 
-  const fuentes = getFuentes();
-  const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc); // [{cuenta, saldo}]
+  // Sin tarjetas de crédito: ni la plata de un encargo está en una TC ni a una TC se le reubica plata.
+  const fuentes = FuentesFiltro.receptoras(getFuentes());
+  const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc).filter(c => FuentesFiltro.puedeRecibir(c.cuenta)); // [{cuenta, saldo}]
   const saldoSinCuenta = _getEncargoSaldoSinCuenta(enc);
 
   // Select origen: solo cuentas donde el encargo tiene plata (incluye "Sin especificar")
@@ -2461,7 +2463,7 @@ function _moverEncGetSplitData(){ return splitGetData('moverenc'); }
 function _moverEncGetFuentesOptions(selectedVal) {
   const enc = encargoActualId ? getEncargo(encargoActualId) : null;
   if (!enc) return html`<option value="">Elige cuenta</option>`;
-  const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
+  const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc).filter(c => FuentesFiltro.puedeRecibir(c.cuenta));
   const saldoSinCuenta = _getEncargoSaldoSinCuenta(enc);
   // Construido a mano (no vía buildFuentesOptsHtml) a propósito: ese helper
   // usa "Sin especificar" como texto neutro de "nada elegido todavía" (value=""),
@@ -2572,6 +2574,7 @@ function _confirmarMoverEncCuentasSplit(enc, destino, fecha) {
   const splits = _moverEncGetSplitData(); // [{fuente, monto}]
   if (splits.length === 0) { toast('Agrega al menos una cuenta de origen', 'err'); return; }
   if (splits.some(s => !s.fuente)) { toast('Selecciona la cuenta de origen en cada fila', 'err'); return; }
+  if (splits.some(s => FuentesFiltro.esTC(s.fuente))) { toast('Una tarjeta de crédito no puede ser cuenta de origen', 'err'); return; }
 
   const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
   if (!totalSplit) { toast('Ingresa cuánto sale de cada cuenta', 'err'); return; }
@@ -2636,6 +2639,7 @@ function confirmarMoverEncCuentas() {
   const fecha = document.getElementById('moverenc_fecha').value || hoy();
 
   if (!destino) { toast('Selecciona la cuenta de destino', 'err'); return; }
+  if (!FuentesFiltro.puedeRecibir(destino)) { toast('No puedes mover plata a una tarjeta de crédito', 'err'); return; }
 
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
@@ -2646,6 +2650,7 @@ function confirmarMoverEncCuentas() {
   if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
   const origen = document.getElementById('moverenc_origen').value;
   if (!origen) { toast('Selecciona la cuenta de origen', 'err'); return; }
+  if (FuentesFiltro.esTC(origen)) { toast('Una tarjeta de crédito no puede ser cuenta de origen', 'err'); return; }
   if (origen === destino) { toast('Origen y destino no pueden ser la misma cuenta', 'err'); return; }
 
   const esOrigenSinEspecificar = origen === '__sinesp__';
@@ -3010,7 +3015,7 @@ function abrirCompraConTC() {
   const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
   let _ctcCuentaEncMuestraSaldoEnOpcion = false;
   if (cuentasConSaldo.length === 0) {
-    const fuentes = getFuentes();
+    const fuentes = getFuentesSinTC(); // la plata de un encargo no está en una TC
     selEnc.innerHTML = html`<option value="">Sin especificar</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   } else {
     selEnc.innerHTML = html`<option value="">Sin especificar</option>${cuentasConSaldo.map(f => html`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`)}`;
@@ -3034,10 +3039,10 @@ function abrirCompraConTC() {
     if (tarjetas.length === 1) selTC.value = tarjetas[0].id;
   }
 
-  // Poblar destino del dinero (mis cuentas) — el saldo va en el hint de abajo,
+  // Poblar destino del dinero (mis cuentas, sin TC: es plata que entra) — el saldo va en el hint de abajo,
   // no en la opción (mismo patrón que traspaso_destino/spPagarFuente).
   const selDest = document.getElementById('ctc_destino');
-  const fuentes = getFuentes();
+  const fuentes = FuentesFiltro.receptoras(getFuentes());
   selDest.innerHTML = html`<option value="">Seleccionar cuenta</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   // Buscar cajita que tenga "tarjeta" o "TC" o "pago" en el nombre para pre-seleccionar
   const cajitaTC = (S.cajitas || []).find(c => {
@@ -3130,6 +3135,7 @@ function confirmarCompraConTC() {
   if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
   if (!tcId)  { toast('Selecciona la tarjeta de crédito', 'err'); return; }
   if (!destino) { toast('Selecciona a dónde va el dinero para pagar la TC', 'err'); return; }
+  if (!FuentesFiltro.puedeRecibir(destino)) { toast('Una tarjeta de crédito no puede recibir plata', 'err'); return; }
 
   const enc = getEncargo(encargoActualId);
   if (!enc) return;

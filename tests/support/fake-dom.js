@@ -2,7 +2,8 @@
 /**
  * DOM simulado con eventos, suficiente para ejercitar la capa de pantalla de los módulos
  * (lectura de inputs, escritura de textContent/innerHTML/style, listeners que se pueden
- * disparar). No es un navegador: no hay layout, ni CSS, ni parseo de HTML.
+ * disparar). No es un navegador: no hay layout, ni CSS, ni parseo de HTML (salvo armar `options`
+ * con el `value` de cada <option> al asignar innerHTML).
  *
  *   const dom = createFakeDom({ mpMonto: { value: '80000' } });
  *   ctx.document = dom.document;          // reemplaza el stub del harness
@@ -24,9 +25,17 @@ function createFakeDom(initial = {}) {
       click() { if (this.type === 'checkbox' || /^(mpp?UsarEncargo|mpQuedaDebiendo)$/.test(id)) this.checked = !this.checked; fire(id, 'change'); fire(id, 'click', { target: el }); },
       _handlers: handlers,
     };
-    // Como el DOM real: lo asignado a innerHTML se convierte a string.
+    // Como el DOM real: lo asignado a innerHTML se convierte a string y, si trae <option>, arma `options`
+    // (solo su `value`; no hay parseo de HTML más allá de eso).
     let inner = '';
-    Object.defineProperty(el, 'innerHTML', { get: () => inner, set: v => { inner = String(v); }, enumerable: true });
+    Object.defineProperty(el, 'innerHTML', {
+      get: () => inner,
+      set: v => {
+        inner = String(v);
+        el.options = Array.from(inner.matchAll(/<option\b([^>]*)>/g)).map(m => ({ value: (/\bvalue="([^"]*)"/.exec(m[1]) || [, ''])[1] }));
+      },
+      enumerable: true,
+    });
     return el;
   }
   const get = id => els[id] || (els[id] = make(id));

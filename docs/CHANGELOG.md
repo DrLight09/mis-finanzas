@@ -385,6 +385,17 @@ Verificado: `guardarChequeoNu` asignaba `c.saldo` con la lectura real de Nu sin 
 
 ## Sheets / UI
 
+### 🐛 Corregido (2026-10-24) — «Dividir ÷» dejaba activarlo con una sola cuenta y agregar más filas que cuentas (`split.js`)
+
+*(`mejoras.md` punto 3.)* **Causa raíz:** el motor genérico ya impedía repetir una cuenta entre filas (`splitActualizarOpciones`), pero no sabía cuántas cuentas ofrece cada sheet: `splitToggle` activaba el modo con cualquier número de cuentas y «+ Agregar cuenta» creaba filas sin límite (con todas las cuentas usadas, una fila nueva quedaba con un select sin opciones). El motor tampoco conoce los filtros de cada módulo; cada uno decide qué cuentas valen en su sheet a través de `getFuentesFn`.
+- **Arreglo:** `splitCuentasValidas(instId)` cuenta las `<option>` con valor que devuelve `getFuentesFn('')` (exactamente lo que el sheet ofrece). `splitToggle` no activa ÷ con menos de dos y avisa («Necesitas al menos dos cuentas para dividir»); `splitAgregarRow` no crea más filas que cuentas y avisa («Ya usaste todas las cuentas disponibles»). Vale para todos los sheets que usan el motor (Gastos, Mesada, Spotify, Préstamos y Encargos).
+- **Prueba:** `tests/nucleo.test.js` → `requisitos-y-filtros-de-sheets` (una cuenta, dos cuentas exactas, tres cuentas con tope). **Fallan sin el arreglo.**
+- **Del simulador de DOM de las pruebas (`tests/support/fake-dom.js`):** al asignar `innerHTML` ahora arma `options` con el `value` de cada `<option>`, como el navegador; el motor depende de eso y la prueba de Mesada lo necesitaba.
+
+### 🐛 Corregido (2026-10-24) — El selector «Aplica desde» de Ingresos fijos no tenía estilo (`styles.css`)
+
+**Causa raíz:** las reglas base de los campos listaban `input[type=text]`, `number` y `date`, pero no `month`; el `<input type="month" id="if_d">` se veía con el estilo crudo del navegador. **Arreglo:** `input[type=month]` entra en las tres reglas base (campo, `appearance` y alineación del valor), con las mismas clases que ya usan los demás campos; sin estilos inline ni reglas por id.
+
 ### 🔧 Cambio (2026-10-18) — App limpia: esquema 9 sin migraciones y fuera la compatibilidad con datos viejos (`core-state.js`, `periodo.js`, `diferencial.js`, `encargos.js`, `scripts/`, `sw.js`)
 **Por qué:** no hay usuarios ni backups que conservar, y mantener código que entiende formas antiguas de los datos es complejidad sin dueño. Decisión: la app nace limpia en el esquema 9.
 **Qué se hizo:** (1) `SCHEMA_BASE = 9` y `MIGRACIONES = []`: las migraciones v8 (tasa única de Nu) y v9 (Spotify en `S.spotify`) se plegaron en el modelo actual; el mecanismo queda para el próximo cambio de forma. Un backup de un esquema anterior se rechaza al importar y unos datos así se marcan (`_esquemaAnterior`) y empiezan de cero, como ya pasaba con los menores de 7. (2) `Periodo.pagosFijos` solo lee el mapa `{"<id>_YYYY-MM": {fecha, fuente, monto}}` que escribe la app: se quitan el formato en array, el valor `true` y el respaldo al monto actual del gasto fijo (un pago sin monto cuenta 0). (3) Se quitan dos alias que nadie leía: `window._difBenefs` (Encargos) y `_difRenderHistorial` (Diferencial; Encargos llama directo a `diffRenderHistorial`).
@@ -1733,6 +1744,17 @@ Con los 14 módulos de dominio completos por primera vez, un barrido sistemátic
 
 ## Encargos
 
+### 🐛 Corregido (2026-10-24) — Tarjetas de crédito como origen o destino en «Me lo regalaron», «Mover entre cuentas» y «Compra con TC» (`encargos.js`, `fuentes-filtro.js`)
+
+*(`mejoras.md` punto 3.)* **Causa raíz:** los selectores de destino de esos sheets se armaban con `getFuentes()` (que incluye las TC), pensada para «de dónde SALE la plata». Pero ahí la plata ENTRA a una cuenta tuya, y una TC no recibe plata (solo se paga o se compra; ver `tarjetas-credito.md`). Al confirmar, `sumarFuente('tc:…')` actuaba sobre la tarjeta y, en «Compra con TC», además se subía su deuda. Ninguna validación al guardar lo impedía.
+- **`fuentes-filtro.js`:** `esTC`, `puedeRecibir` y `receptoras` (todas las cuentas menos las TC, **sin filtro de saldo**: una cuenta vacía puede recibir) y `hayUtilizable`. Es la misma pieza que ya decide las cuentas de salida; el filtro por saldo de `PRESET.*` no se usa aquí a propósito.
+- **«Me lo regalaron»:** el destino ofrece `receptoras(getFuentes())` y `confirmarTraspasoEncargo()` rechaza una TC.
+- **«Mover entre cuentas»:** origen y destino sin TC (también en las filas del modo dividido) y `confirmarMoverEncCuentas()` (y su rama dividida) rechaza una TC como origen o destino.
+- **Mismo defecto, encontrado al revisar los demás sheets:** el destino de «Compra con TC» tenía el problema idéntico y se corrigió igual (selector + validación). Su cuenta de origen sin distribución por cuenta pasó de `getFuentes()` a `getFuentesSinTC()` (la plata de un encargo no está en una TC).
+- **Revisados y sin cambios:** los demás usos de `getFuentes()` son de salida (Pagar gasto fijo, Préstamos, Pagar Spotify), donde una TC con cupo sí es válida; los destinos de entrada restantes ya usaban `getFuentesSinTC()`. Las operaciones legítimas con tarjeta (pagar una TC, comprar con ella) no pasan por estos filtros.
+- **Tuteo:** el texto de «Mover entre cuentas» decía «Movés plata del encargo…»; ahora «Mueves plata del encargo…».
+- **Pruebas:** `tests/nucleo.test.js` → `requisitos-y-filtros-de-sheets` (con el `encargos.js` real: los selectores no ofrecen TC —incluido un dato raro con plata «guardada» en una TC—, la confirmación rechaza una TC como destino/origen sin tocar nada, y entre cuentas normales sigue funcionando). **Fallan sin el arreglo.**
+
 ### ✅ Corregido (2026-10-08) — Se podía borrar a mano la salida "Usado para mesada" de un encargo
 
 `deleteMovEncargo` trataba esa salida como cualquier otra: devolvía la plata al encargo, pero el pago de mesada seguía contándola y su cuenta destino (más el espejo) quedaba inflada. Ahora la reconoce con `mesadaOrigenDeMovEncargo(movId)` (`calc-helpers.js`, carga de entrada porque Encargos y Mesada son grupos lazy distintos) y avisa que se borra desde Mesada. Detecta por lo guardado en `S.mesadas`, no por una marca en el movimiento, así que cubre también las salidas anteriores a este cambio. Ver `#mesada`.
@@ -2043,6 +2065,15 @@ Fix: agregado el mismo guard de pantalla activa que ya usa `refresh()`, como con
 ---
 
 ## Spotify
+
+### 🐛 Corregido (2026-10-24) — «Pagar Spotify» se abría sin costo del plan y el aviso no era coherente con eso (`spotify.js`, `styles.css`)
+
+*(`mejoras.md` punto 2.)* Sin costo no hay cuota ni ganancia que calcular, pero el botón abría el sheet igual y el aviso solo advertía que «los cálculos no son precisos».
+- **Una sola condición:** `spCostoValido()` es verdadera solo si `S.spotify.costo` es un número finito mayor que 0 (el campo guarda `parseMoney(...) || 0`, así que vacío, 0 o texto llegan como 0). La usan el bloqueo y el aviso.
+- **Bloqueo:** `abrirPagarSpotify()` (nueva, la que escucha el botón) avisa («Configura el costo del plan para registrar pagos») y lleva el foco a `#spotifyCosto` en vez de abrir el sheet.
+- **Aviso:** ahora dice «Configura el costo del plan para empezar a registrar pagos.» con el botón «Configurar costo», y desaparece cuando el costo es válido. Se armaba con `style.cssText` (estilo inline): pasó a la clase `.sp-costo-aviso` en `styles.css`.
+- **Decisión de diseño:** la validación va en el abridor y no en `openSheet()`. `openSheet()` ejecuta los efectos del sheet y siempre lo abre; no hay un mecanismo de validación previa que reutilizar (el resto de los sheets valida en su propio abridor, p. ej. `abrirTransferir` o `abrirTraspasoEncargo`), y el botón es el único camino a este sheet.
+- **Pruebas:** `tests/nucleo.test.js` → `requisitos-y-filtros-de-sheets` (costo 0, NaN, vacío, texto y negativo no abren; 30.500 sí; el aviso aparece con el texto nuevo, sin `style`, y se quita con un costo válido). **Fallan sin el arreglo.**
 
 ### ✨ Nuevo (2026-10-06) — "Te dio un extra": pagar de más ya no se rechaza, se registra aparte
 
@@ -3364,6 +3395,12 @@ Validado con `node --check` y el mismo harness ampliado (`cuentas.js` + `busqued
 ---
 
 ## Gastos
+
+### 🐛 Corregido (2026-10-24) — «Registrar gasto» se abría aunque no hubiera ninguna cuenta con saldo (`gastos.js`, `fuentes-filtro.js`)
+
+*(`mejoras.md` punto 2.)* «¿De dónde salió la plata?» es obligatorio y su selector ya se podaba con `PRESET.SALIDA`; sin cuentas utilizables el sheet se abría con un select sin opciones. `abrirNuevoGastoVar()` ahora consulta la nueva `FuentesFiltro.hayUtilizable(getFuentes(), PRESET.SALIDA)` y, si no hay ninguna, avisa con `FuentesFiltro.MSG_SIN_SALDO` y no abre. Cuenta como utilizable una TC con cupo (un gasto también puede cargarse a una tarjeta). Cubre los tres accesos (estado vacío, botón de la lista y menú +), que pasan por esa función.
+- **Tuteo:** `MSG_SIN_SALDO` decía «No tenés cuentas con saldo disponible» (voseo) y se mostraba también como texto del select vacío de Registrar gasto, Pagar gasto fijo, Pagar Spotify y Pagar TC. Ahora: «No tienes cuentas con saldo disponible».
+- **Prueba:** `tests/nucleo.test.js` → `requisitos-y-filtros-de-sheets` (sin saldo no abre; con saldo abre; sin saldo pero con una TC con cupo abre). **Falla sin el arreglo.**
 
 ### ✨ Agregado (2026-09-20) — Registrar gasto y Pagar gasto fijo solo ofrecen cuentas con saldo ≥ $1,00 y TC con cupo
 

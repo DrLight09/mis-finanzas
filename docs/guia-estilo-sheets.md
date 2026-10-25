@@ -150,7 +150,7 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 ### Gastos
 
-**`sheet-gasto-var`** — Registrar gasto: Descripción → Monto → Categoría → ¿De dónde salió la plata? `*` → Fecha → Nota (opcional)
+**`sheet-gasto-var`** — Registrar gasto: Descripción → Monto → Categoría → ¿De dónde salió la plata? `*` → Fecha → Nota (opcional). No abre si no hay ninguna cuenta con saldo (ni TC con cupo): avisa «No tienes cuentas con saldo disponible»
 
 **`sheet-gasto-fijo`** — Gasto fijo mensual: Nombre → Monto mensual → Categoría
 
@@ -160,7 +160,7 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 ### Ingresos
 
-**`sheet-ingreso-fijo`** — Ingreso fijo mensual: Nombre → Monto mensual → Aplica desde
+**`sheet-ingreso-fijo`** — Ingreso fijo mensual: Nombre → Monto mensual → Aplica desde (`#if_d`, `type="month"`, con el mismo estilo base que los campos de texto y de fecha)
 
 ### Plata comprometida
 
@@ -184,7 +184,7 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 **`sheet-sp-hist-pend`** — Pago de lo pendiente (Spotify): Monto recibido → ¿A dónde metiste esa plata? → Fecha en que te pagó → Nota (opcional)
 
-**`sheet-pagar-spotify`** — Pagar Spotify: Monto a pagar → ¿De dónde sacas la plata? → Fecha en que pagaste → Nota (opcional)
+**`sheet-pagar-spotify`** — Pagar Spotify: Monto a pagar → ¿De dónde sacas la plata? → Fecha en que pagaste → Nota (opcional). No abre sin un costo del plan válido (ver `spotify.md`)
 
 ### Encargos
 
@@ -196,9 +196,9 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 > Nota: los dos expandibles quedan en posiciones distintas (uno antes de Fecha, el otro después de Nota) porque así está en el código actual — no es el ideal, pero tocarlo implica reordenar lógica condicional en `encargos.js`, fuera del alcance de esta limpieza de sheets estáticos.
 
-> **(÷)** = el campo trae el botón "Dividir ÷" del motor `js/core/split.js`: pasa de un select a filas cuenta + monto (mínimo 2, sin repetir cuenta, botón de quitar solo con 3 o más filas). Con el split activo, lo repartido tiene que sumar exactamente el monto total ("Yo puse la plata") o el sobrante (margen) — se valida al confirmar, antes de tocar ningún saldo. En los sheets de sobrante el bloque se muestra solo cuando hay margen libre, y al reabrir el sheet vuelve a "una sola cuenta".
+> **(÷)** = el campo trae el botón "Dividir ÷" del motor `js/core/split.js`: pasa de un select a filas cuenta + monto (mínimo 2 filas y como máximo tantas como cuentas ofrezca ese sheet, sin repetir cuenta, botón de quitar solo con 3 o más filas; con una sola cuenta disponible el botón no activa el modo dividido y avisa). Con el split activo, lo repartido tiene que sumar exactamente el monto total ("Yo puse la plata") o el sobrante (margen) — se valida al confirmar, antes de tocar ningún saldo. En los sheets de sobrante el bloque se muestra solo cuando hay margen libre, y al reabrir el sheet vuelve a "una sola cuenta".
 
-**`sheet-traspaso-encargo`** — Me lo regalaron: Descripción (opcional) → ¿Cuánto te regalaron? → ¿De qué cuenta del encargo salió? → ¿A cuál de tus cuentas entra? → Fecha
+**`sheet-traspaso-encargo`** — Me lo regalaron: Descripción (opcional) → ¿Cuánto te regalaron? → ¿De qué cuenta del encargo salió? → ¿A cuál de tus cuentas entra? (sin tarjetas de crédito) → Fecha
 
 **`sheet-transferencia-encargo`** — Pagarle a otro encargo desde este: ¿A cuál encargo le pagaste? → Descripción (opcional) → ¿Cuánto le pagaste? → ¿De qué cuenta del encargo salió? → ¿En qué cuenta quedó, para el otro encargo? → Fecha
 
@@ -208,7 +208,7 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 **`sheet-usar-parte`** — Ya la usé: ¿De dónde sacaste la plata? → [Expandible] El valor real era diferente → ¿Cuánto era en realidad? + ¿En qué cuenta te cayó ese margen? (÷)
 
-**`sheet-mover-enc-cuentas`** — Mover entre cuentas (encargo): ¿De qué cuenta sale? → ¿A qué cuenta va? → ¿Cuánto vas a mover? → Fecha
+**`sheet-mover-enc-cuentas`** — Mover entre cuentas (encargo): ¿De qué cuenta sale? → ¿A qué cuenta va? → ¿Cuánto vas a mover? → Fecha (origen y destino sin tarjetas de crédito)
 
 ### Personas / Deudores
 

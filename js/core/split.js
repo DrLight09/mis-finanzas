@@ -78,9 +78,21 @@ function crearSplitWidget(instId, cfg){
   return cfg;
 }
 
+// Cuántas cuentas distintas ofrece la instancia: las <option> con valor que devuelve cfg.getFuentesFn.
+// El motor no sabe de filtros (cada módulo decide qué cuentas valen para su sheet), así que cuenta lo
+// que ese sheet ofrece de verdad. Es el tope de filas y el requisito (mínimo 2) para poder dividir.
+function splitCuentasValidas(instId){
+  const cfg = _splitInstancias[instId]; if(!cfg) return 0;
+  const tmp = document.createElement('select');
+  tmp.innerHTML = cfg.getFuentesFn('');
+  return Array.from(tmp.options).filter(o => o.value).length;
+}
+
 function splitToggle(instId){
   const cfg = _splitInstancias[instId]; if(!cfg) return;
   const modo = !cfg.getModo();
+  // Dividir pide al menos dos cuentas distintas: con una sola no hay nada que repartir.
+  if(modo && splitCuentasValidas(instId) < 2){ toast('Necesitas al menos dos cuentas para dividir', 'err'); return; }
   cfg.setModo(modo);
   const simple = document.getElementById(cfg.simpleId);
   const split  = document.getElementById(cfg.splitId);
@@ -106,6 +118,8 @@ function splitAgregarRow(instId){
   const cfg = _splitInstancias[instId]; if(!cfg) return;
   const container = document.getElementById(cfg.rowsId);
   if(!container) return;
+  // Tope: una fila por cuenta disponible (la misma cuenta no se puede elegir dos veces).
+  if(container.children.length >= splitCuentasValidas(instId)){ toast('Ya usaste todas las cuentas disponibles', 'err'); return; }
   const id = 'spr_'+uid();
   const div = document.createElement('div');
   div.id = id;

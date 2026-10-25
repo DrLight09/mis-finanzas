@@ -137,7 +137,7 @@ y como check en cada commit/PR.
 
 ```bash
 npm install            # una vez: instala jsdom
-npm run smoke          # o: node scripts/smoke-browser.js [--verbose]
+npm run smoke          # o: node scripts/smoke-browser.js [--verbose]  (Fase 4: estados vacíos con un solo botón y Presupuestos con puntos de miles)
 ```
 
 Resultado esperado hoy: fase 2 con **0 fallos** y fase 3 con **0 usadas sin registrar, 0 sin usar y 0 duplicadas** (207 acciones usadas, 196 registradas en tiempo de ejecución, 11 más de `authgate`/`pin` que viven en módulos ES y no se pueden verificar aquí). Las líneas de la fase 1 que siempre aparecen son de entorno, no de la app: `authgate:*` y `pin:*` los registran módulos ES (`firebase-init.js`, `pin-bio.js`) que jsdom no ejecuta, y `config:signOut` / `config:abrirEliminarCuenta` dependen de ellos. Comprobado por mutación: sin registrar Nu o con un botón apuntando a una acción inexistente, la prueba falla. **No sustituye abrir la app en un navegador real** (no hay layout, CSS ni Firebase), pero habría atrapado un botón sin registrar tras cambiar de `cuentas:` a `nu:`.

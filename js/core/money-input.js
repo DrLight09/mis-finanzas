@@ -115,3 +115,36 @@ document.addEventListener('paste', function(e){
     el.dispatchEvent(new Event('input',{bubbles:true}));
   }
 });
+
+/* ---- MILES EN ENTEROS (.miles-input) ----
+   Para montos en pesos enteros (p. ej. Presupuestos mensuales): se escribe 500000 y se ve 500.000
+   mientras se teclea. NO es el estilo calculadora de .money-input (que empuja desde los centavos).
+   El punto es solo visual: al guardar se usa parseMiles(), que devuelve el número sin puntos. */
+function _milesFormatear(texto, pegado){
+  let t=String(texto==null?'':texto);
+  // Al pegar, "1.500.000,50" trae decimales: se descartan (el campo es de pesos enteros).
+  if(pegado)t=t.replace(/,\d{1,2}\s*$/,'');
+  const d=t.replace(/\D/g,'').replace(/^0+(?=\d)/,'').slice(0,12);
+  return d.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+
+function parseMiles(v){
+  if(typeof v==='number')return isFinite(v)?Math.round(v):0;
+  return parseInt(String(v==null?'':v).replace(/\D/g,''),10)||0;
+}
+
+document.addEventListener('input', function(e){
+  const el=e.target;
+  if(!el.classList||!el.classList.contains('miles-input'))return;
+  const antes=el.value;
+  const pos=el.selectionStart==null?antes.length:el.selectionStart;
+  const digitosIzq=antes.slice(0,pos).replace(/\D/g,'').length;
+  const pegado=/^insertFrom(Paste|Drop)/.test(e.inputType||'');
+  const nuevo=_milesFormatear(antes,pegado);
+  if(nuevo===antes)return;
+  el.value=nuevo;
+  // El cursor se queda junto al mismo dígito (no salta al final al formatear).
+  let n=0,p=0;
+  while(p<nuevo.length&&n<digitosIzq){if(/\d/.test(nuevo[p]))n++;p++;}
+  try{el.setSelectionRange(p,p);}catch(ex){}
+});

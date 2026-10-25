@@ -1380,6 +1380,13 @@ function emptyState(icon, title, sub, btnLabel, btnFn){
   </div>`;
 }
 
+// Muestra u oculta un elemento según el estado de la pantalla (JS, no CSS):
+// lo usan los botones de pie de lista que sobran cuando el estado vacío ya
+// trae su propio botón de acción (un solo botón por estado vacío).
+function mostrarSi(el, visible) {
+  if (el) el.style.display = visible ? '' : 'none';
+}
+
 // renderAttencion() migrada a js/modules/inicio.js — ver auditoria-tecnica.md.
 // De paso se corrigió un caso más de .innerHTML sin escapar (spNombreDe()
 // interpolado directo, mismo patrón ya visto 5 veces en otros módulos).

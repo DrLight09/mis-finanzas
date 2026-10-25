@@ -540,11 +540,12 @@ function abrirPresupuestos(){
   // numérico (S.presupuestos[cat]), pero con html`` deja de depender de que siga
   // siendo siempre así.
   lista.innerHTML = html`${cats.map((cat, i) => {
-    const val = S.presupuestos[cat] || '';
+    // Se muestra con puntos de miles (500.000); lo guardado sigue siendo el número (500000).
+    const val = S.presupuestos[cat] ? _milesFormatear(String(Math.round(S.presupuestos[cat]))) : '';
     return html`<div class="ig">
       <label class="il" for="presup-input-${i}">${cat}</label>
       <div class="an-flex-8">
-        <input type="text" inputmode="decimal" id="presup-input-${i}" class="presup-input an-presup-input" data-cat="${cat}" placeholder="Sin límite" value="${val}">
+        <input type="text" inputmode="numeric" id="presup-input-${i}" class="presup-input miles-input an-presup-input" data-cat="${cat}" placeholder="Sin límite" value="${val}">
         <span class="an-presup-mes">/mes</span>
       </div>
     </div>`;
@@ -553,10 +554,10 @@ function abrirPresupuestos(){
   lista.querySelectorAll('.presup-input').forEach(inp => {
     inp.addEventListener('change', function(){
       const cat = this.dataset.cat;
-      const val = window.parseMoney ? window.parseMoney(this.value) : parseFloat(this.value)||0;
+      const val = parseMiles(this.value); // sin puntos: nunca se guarda "1.500.000"
       if(!S.presupuestos) S.presupuestos = {};
       if(val > 0) S.presupuestos[cat] = val;
-      else delete S.presupuestos[cat];
+      else { delete S.presupuestos[cat]; this.value = ''; } // vacío o 0 = sin límite
       if(window._fbSaveToCloud) window._fbSaveToCloud();
       renderPresupuestos();
     });

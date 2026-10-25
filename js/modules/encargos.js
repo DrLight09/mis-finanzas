@@ -286,12 +286,16 @@ function encargoLibre(enc) {
 function renderEncargosList() {
   const el = document.getElementById('encargosList');
   const encargos = S.encargos||[];
+  // El estado vacío ya trae «Crear encargo»: el botón de pie solo aparece con encargos.
+  mostrarSi(document.getElementById('btn-nuevo-encargo'), encargos.length > 0);
   if (!encargos.length) {
-    el.innerHTML = html`<div class="empty-state">
-      <div class="empty-state-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg></div>
-      <div class="empty-state-title">Sin encargos</div>
-      <div class="empty-state-sub">Cuando administres plata de alguien, créa un encargo para llevar el registro.</div>
-    </div>`;
+    el.innerHTML = emptyState(
+      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg>',
+      'Sin encargos',
+      'Cuando administres plata de alguien, crea un encargo para llevar el registro.',
+      'Crear encargo',
+      { action: 'encargos:nuevo' }
+    );
     return;
   }
   el.innerHTML = html`${encargos.map(enc => {
@@ -420,7 +424,7 @@ function abrirEncargoDetalle(id) {
     });
   }
   if (!todosMovs.length) {
-    histEl.innerHTML = `<div class="empty-state enc-vacio-pad"><div class="empty-state-sub">Sin movimientos aún. Registrá entradas y salidas.</div></div>`;
+    histEl.innerHTML = `<div class="empty-state enc-vacio-pad"><div class="empty-state-sub">Sin movimientos aún. Registra entradas y salidas.</div></div>`;
   } else {
     // Helper: construye atributos data-mov-* para abrir el sheet de detalle (saldo = saldo del encargo)
     // Ya escapa a mano (escHtml) porque arma una lista de atributos, no un solo valor —
@@ -2869,29 +2873,33 @@ refresh = function() {
   }
 };
 
+// Abre el sheet «Nuevo encargo». Lo usan el botón de pie de la lista y el botón del estado vacío
+// (data-action="encargos:nuevo"): un solo camino, el select de cuentas siempre se puebla igual.
+function abrirNuevoEncargo() {
+  // Poblar select de cuentas para saldo inicial
+  const sel = document.getElementById('enc_cuenta_ini');
+  if (sel) {
+    const fuentes = getFuentesSinTC();
+    // FIX (2026-08-15, reportado por el usuario vía warning de consola
+    // "select tag was parsed within another select tag"): f.val/f.label sin
+    // escapar acá — mismo patrón que las otras 3 ocurrencias de este bug en
+    // este archivo (líneas ~1175/1184/1186) y que buildFuentesOptsHtml() en
+    // core-state.js. Nombres de cuenta personalizada son texto libre del
+    // usuario — con caracteres como <, >, & sin escapar dentro del
+    // innerHTML de un <select>, el parser del navegador puede comportarse
+    // de forma impredecible. Ver CHANGELOG.md.
+    sel.innerHTML = html`<option value="">Sin especificar</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
+  }
+  openSheet('nuevo-encargo');
+}
+
 // Init event listeners for encargos
 // (el listener vacío en DOMContentLoaded que vivía acá se sacó en la ronda
 // de lazy-loading: no hacía nada — el wiring real siempre corrió top-level
 // en el IIFE de abajo, ver auditoria-tecnica.md)
 (function initEncargosListeners(){
   const btn_nuevo = document.getElementById('btn-nuevo-encargo');
-  if (btn_nuevo) btn_nuevo.addEventListener('click', () => {
-    // Poblar select de cuentas para saldo inicial
-    const sel = document.getElementById('enc_cuenta_ini');
-    if (sel) {
-      const fuentes = getFuentesSinTC();
-      // FIX (2026-08-15, reportado por el usuario vía warning de consola
-      // "select tag was parsed within another select tag"): f.val/f.label sin
-      // escapar acá — mismo patrón que las otras 3 ocurrencias de este bug en
-      // este archivo (líneas ~1175/1184/1186) y que buildFuentesOptsHtml() en
-      // core-state.js. Nombres de cuenta personalizada son texto libre del
-      // usuario — con caracteres como <, >, & sin escapar dentro del
-      // innerHTML de un <select>, el parser del navegador puede comportarse
-      // de forma impredecible. Ver CHANGELOG.md.
-      sel.innerHTML = html`<option value="">Sin especificar</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
-    }
-    openSheet('nuevo-encargo');
-  });
+  if (btn_nuevo) btn_nuevo.addEventListener('click', () => abrirNuevoEncargo());
 
   // Mostrar/ocultar campo de cuenta inicial según si hay saldo
   const encSaldo = document.getElementById('enc_saldo');
@@ -3314,6 +3322,7 @@ function confirmarCompraConTC() {
    ═══════════════════════════════════════════════════════════════ */
 
 Events.registerAll('encargos', {
+  nuevo:                  (...args) => abrirNuevoEncargo(...args),        // botón del estado vacío (el de pie usa un listener por id)
   abrirMov:               (...args) => abrirMovEncargo(...args),          // data-args: ["entrada"] | ["salida"]
   abrirSalidaMenu:        (...args) => abrirSalidaEncargoMenu(...args),
   salidaMenuIr:           (...args) => _salidaEncMenuIr(...args),         // data-args: ["normal"|"mio"|"otroEncargo"|"tc"]

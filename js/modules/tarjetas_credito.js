@@ -409,6 +409,8 @@ function renderTCScreen(){
   hero.textContent=fmt(deudaTotal);
   if(heroCupo)heroCupo.textContent=cupoTotal?'Cupo total: '+fmt(cupoTotal):'';
 
+  // El estado vacío ya trae «Agregar tarjeta»: el botón de pie solo aparece con tarjetas.
+  mostrarSi(document.getElementById('btn-nueva-tarjeta'),tarjetas.length>0);
   if(!tarjetas.length){
     lista.innerHTML=html`<div class="empty-state">
       <div class="empty-state-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="var(--red)" stroke="none"/></svg></div>

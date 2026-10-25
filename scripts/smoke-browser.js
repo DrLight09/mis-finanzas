@@ -121,6 +121,74 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   console.log('\nFASE 2 (Cuentas/Nu con datos): botones tocados:', todas.length, '→', todas.join(' '));
   console.log('FASE 2 fallos (' + fallos.length + '):'); fallos.forEach(f => console.log('  ' + f));
 
+  // ── Fase 4: estados vacíos (mejora 1) — un único botón de acción por estado vacío, sin «svg» visible, y todo vuelve con datos ──
+  const fallos4 = [];
+  const q = sel => w.document.querySelector(sel);
+  const viz = el => !!el && el.style.display !== 'none';
+  const nBtn = el => el.querySelectorAll('.empty-state-btn').length;
+  const sinSvg = el => !/svg/i.test(el.textContent);
+  const c4 = (cond, msg) => { if (!cond) fallos4.push(msg); };
+  try {
+    ev(`mesFilter='todos'; S.gastosVar=[]; renderGastosVar()`);
+    c4(nBtn(q('#gastosVarList')) === 1 && !viz(q('.btn-open-gasto-var')), 'Gastos vacío: debe haber un solo botón (el del estado vacío)');
+    c4(!viz(q('#gvTotalCard')), 'Gastos vacío: «Total filtrado» debe estar oculto');
+    c4(sinSvg(q('#gastosVarList')), 'Gastos vacío: aparece el texto «svg»');
+    ev(`S.gastosVar=[{id:'g1',desc:'Almuerzo',monto:10000,fecha:'2020-01-15',cat:'Comida',fuente:'efectivo',clase:'gasto'}]; mesFilter='2026-10'; renderGastosVar()`);
+    c4(nBtn(q('#gastosVarList')) === 0 && viz(q('.btn-open-gasto-var')) && !viz(q('#gvTotalCard')), 'Gastos: un mes sin gastos debe dejar el botón de pie (no hay botón en su estado vacío) y ocultar el total');
+    ev(`mesFilter='todos'; renderGastosVar()`);
+    c4(nBtn(q('#gastosVarList')) === 0 && viz(q('.btn-open-gasto-var')) && viz(q('#gvTotalCard')), 'Gastos con datos: faltan el botón de pie o el total');
+
+    ev(`S.gastosFijos=[]; S.spotify.costo=0; renderGastosFijos()`);
+    c4(nBtn(q('#gastosFijosList')) === 1 && !viz(q('.btn-open-gasto-fijo')), 'Gastos fijos vacío: debe haber un solo botón');
+    ev(`S.gastosFijos=[{id:'f1',nombre:'Arriendo',monto:500000,cat:'Hogar'}]; renderGastosFijos()`);
+    c4(nBtn(q('#gastosFijosList')) === 0 && viz(q('.btn-open-gasto-fijo')), 'Gastos fijos con datos: falta el botón de pie');
+
+    ev(`S.tarjetasCredito=[]; renderTCScreen()`);
+    c4(nBtn(q('#tc-lista')) === 1 && !viz(q('#btn-nueva-tarjeta')) && sinSvg(q('#tc-lista')), 'Tarjetas vacío: un solo botón y sin «svg»');
+    ev(`S.tarjetasCredito=[{id:'t1',nombre:'Visa',cupo:1000000,deuda:0,color:'#60b0f0',ultimos4:'1234'}]; renderTCScreen()`);
+    c4(nBtn(q('#tc-lista')) === 0 && viz(q('#btn-nueva-tarjeta')), 'Tarjetas con datos: falta el botón de pie');
+
+    ev(`S.spotify.personas=[]; S.spotify.historial=[]; renderSpotify(); renderSpHistorial(); renderSpStats()`);
+    c4(nBtn(q('#spotifyList')) === 1 && !viz(q('#btn-add-spotify-persona')) && sinSvg(q('#spotifyList')), 'Spotify vacío: un solo «Agregar persona» y sin «svg»');
+    c4(!viz(q('#spStatsTitulo')), 'Spotify vacío: el título «Estadísticas» debe estar oculto');
+    c4(!!q('#spHistorial .sp-hist-vacio'), 'Spotify vacío: «Sin pagos registrados aún» debe quedar dentro del historial');
+    ev(`S.spotify.personas.push({id:'sp9',nombre:'Luz',monto:5000,pagado:false,proximoPago:'2099-01-01',fechaIngreso:'2026-10-01',ultimoDestino:'',mesesAdelantados:0}); renderSpotify(); renderSpHistorial(); renderSpStats()`);
+    c4(nBtn(q('#spotifyList')) === 0 && viz(q('#btn-add-spotify-persona')) && viz(q('#spStatsTitulo')), 'Spotify con persona: faltan el botón de pie o el título «Estadísticas»');
+
+    ev(`S.deudores=[]; S.misDeudas=[]; renderDeudoresList(); renderMisDeudasList()`);
+    const fv = q('#deudoresList'), ct = q('#misDeudasList');
+    c4(nBtn(fv) === 1 && nBtn(ct) === 1 && !viz(q('#btn-nueva-persona')) && !viz(q('#btn-nueva-deuda')), 'Préstamos vacío: un solo botón en Me deben y en Yo debo');
+    c4(fv.querySelector('.empty-state-btn').textContent.trim() === ct.querySelector('.empty-state-btn').textContent.trim(), 'Préstamos vacío: los dos botones deben llamarse igual');
+    c4(fv.querySelector('.empty-state-title').textContent !== ct.querySelector('.empty-state-title').textContent, 'Préstamos vacío: los títulos deben distinguir quién debe a quién');
+    c4(sinSvg(fv) && sinSvg(ct), 'Préstamos vacío: aparece el texto «svg»');
+    ev(`Deudas.agregar('favor',{id:'d1',nombre:'Ana',color:'#60b0f0',movimientos:[]}); Deudas.agregar('contra',{id:'d2',nombre:'Beto',color:'#f06868',movimientos:[]}); renderDeudoresList(); renderMisDeudasList()`);
+    c4(nBtn(fv) === 0 && nBtn(ct) === 0 && viz(q('#btn-nueva-persona')) && viz(q('#btn-nueva-deuda')), 'Préstamos con datos: faltan los botones de pie');
+
+    ev(`S.encargos=[]; renderEncargosList()`);
+    c4(nBtn(q('#encargosList')) === 1 && !viz(q('#btn-nuevo-encargo')), 'Encargos vacío: un solo botón');
+    q('#encargosList .empty-state-btn').dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
+    await esperar(30);
+    c4(q('#sheet-nuevo-encargo').classList.contains('open'), 'Encargos vacío: el botón del estado vacío no abre «Nuevo encargo»');
+    c4(/Sin especificar/.test(q('#enc_cuenta_ini').innerHTML), 'Encargos vacío: el botón del estado vacío no puebla el select de cuentas');
+    ev(`closeSheet('nuevo-encargo')`);
+    ev(`S.encargos=[{id:'e1',nombre:'Mamá',personaId:'',saldoInicial:0,movimientos:[],cuentas:[]}]; renderEncargosList()`);
+    c4(nBtn(q('#encargosList')) === 0 && viz(q('#btn-nuevo-encargo')), 'Encargos con datos: falta el botón de pie');
+
+    // Mejora 8: Presupuestos mensuales con puntos de miles, guardando siempre el número
+    ev(`S.presupuestos={}; S.presupuestos[getCatsVar()[0]]=500000; abrirPresupuestos()`);
+    const pi = q('#presup-input-0');
+    c4(pi && pi.value === '500.000', 'Presupuestos: 500000 debe verse 500.000 al abrir');
+    pi.value = '1500000'; pi.setSelectionRange(7, 7);
+    pi.dispatchEvent(new w.InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+    c4(pi.value === '1.500.000', 'Presupuestos: al escribir 1500000 debe verse 1.500.000');
+    pi.dispatchEvent(new w.Event('change', { bubbles: true }));
+    c4(ev(`S.presupuestos[getCatsVar()[0]]`) === 1500000, 'Presupuestos: lo guardado debe ser el número 1500000');
+    pi.value = '0'; pi.dispatchEvent(new w.Event('change', { bubbles: true }));
+    c4(ev(`getCatsVar()[0] in S.presupuestos`) === false && pi.value === '', 'Presupuestos: 0 debe quitar el límite y vaciar el campo');
+    ev(`closeSheet('presupuestos')`);
+  } catch (e) { fallos4.push('Fase 4 lanzó: ' + e.message); }
+  console.log('\nFASE 4 (estados vacíos) fallos (' + fallos4.length + '):'); fallos4.forEach(f => console.log('  ' + f));
+
   // ── Fase 3: mapa de acciones de TODO el proyecto (las usadas en index.html y en los .js vs las registradas) ──
   const leerRec = d => fs.readdirSync(d, { withFileTypes: true }).flatMap(e => e.isDirectory() ? (e.name === 'node_modules' ? [] : leerRec(path.join(d, e.name))) : [path.join(d, e.name)]);
   const sinComentarios = t => t.replace(/<!--[\s\S]*?-->/g, '').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
@@ -173,6 +241,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   if (jsFaltan.length) fallosReales.push(`${jsFaltan.length} archivo(s) .js faltante(s): ${jsFaltan.join(', ')}`);
   if (antes > 0) fallosReales.push(`${antes} error(es) no atribuible(s) a un botón durante la carga (ver --verbose)`);
   if (fallos.length) fallosReales.push(`${fallos.length} fallo(s) en FASE 2: ${fallos.join(' | ')}`);
+  if (fallos4.length) fallosReales.push(`${fallos4.length} fallo(s) en FASE 4 (estados vacíos): ${fallos4.join(' | ')}`);
   if (sinHandlerReales.length) fallosReales.push(`${sinHandlerReales.length} acción(es) sin handler real: ${sinHandlerReales.join(', ')}`);
   if (lanzanReales.length) fallosReales.push(`${lanzanReales.length} acción(es) que lanzan al tocar: ${lanzanReales.join(' | ')}`);
   if (rotas.length) fallosReales.push(`${rotas.length} acción(es) usada(s) sin registrar: ${rotas.join(', ')}`);

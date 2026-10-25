@@ -4,6 +4,25 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Mejoras de `mejoras.md`
+
+### 🎨 Estados vacíos: un solo botón de acción por sección (2026-10-25, mejora 1)
+
+**Causa:** Spotify, Gastos, Gastos fijos, Tarjetas, Préstamos y Encargos tenían un botón fijo al pie de la lista **además** del botón del estado vacío (Encargos solo tenía el de pie, sin botón en su estado vacío; Préstamos, un texto suelto).
+- **Un botón por estado vacío:** el botón de pie se muestra/oculta desde el render con `mostrarSi(el, visible)` (`core-state.js`, `style.display`; no es CSS) y solo aparece con datos. En Gastos se oculta únicamente con el filtro «todos» y sin gastos (en un mes sin gastos el estado vacío no trae botón, así que el de pie sigue siendo la acción). «Total filtrado» (`#gvTotalCard`) se oculta mientras no haya gastos.
+- **Spotify:** icono del estado vacío de trazo (personas) en vez del logo; el título «Estadísticas» (`#spStatsTitulo`) se oculta sin datos; «Sin pagos registrados aún» va en una tarjeta (`.sp-hist-vacio`, reemplaza a `.sp-vacio`) dentro del historial. `empty-state-icon` es una clase compartida: solo cambió el SVG que pasa Spotify.
+- **Préstamos:** los dos estados vacíos usan `emptyState()`; títulos distintos («Nadie te debe por ahora» / «No le debes a nadie por ahora») y el mismo botón «Agregar persona» (también el de pie de «Yo debo», antes «Agregar deuda»): ambos abren el selector de personas, no un formulario de préstamo. Se borró `.pr-vacio-10` (sin uso).
+- **Encargos:** estado vacío con `emptyState()` y botón «Crear encargo» (`encargos:nuevo`); `abrirNuevoEncargo()` se extrajo del listener para que el botón de pie y el del estado vacío usen el mismo camino. Voseo corregido en los textos tocados.
+- **Texto «svg»:** no se reproduce: el `textContent` de cada estado vacío no lo contiene y ningún SVG trae `<title>`/`<text>`; es el caso «solo al copiar», sin cambios.
+- **Prueba:** Fase 4 de `scripts/smoke-browser.js` (página real en jsdom; comprobada por mutación).
+
+### 🔢 Presupuestos mensuales: separador de miles al escribir (2026-10-25, mejora 8)
+
+`.money-input` es estilo calculadora con centavos (`500000` → `5.000,00`), así que no sirve para pesos enteros. Se añadió `.miles-input` (`money-input.js`): `_milesFormatear()` deja solo dígitos con puntos (máx. 12, sin ceros a la izquierda), el cursor queda junto al mismo dígito (conteo de dígitos a su izquierda), al pegar se descartan símbolos y decimales (`$ 1.500.000,50` → `1.500.000`). `parseMiles()` devuelve el número sin puntos y es lo que guarda `abrirPresupuestos()` (`analisis.js`); vacío o 0 quita el límite y vacía el campo. Los otros inputs no cambian.
+- **Pruebas:** bloque `miles-input` en `tests/nucleo.test.js` y el chequeo de Presupuestos en la Fase 4 del humo. `npm test`: **477/477**.
+
+---
+
 ## Libro de movimientos
 
 Documentación: [`libro-de-movimientos.md`](./libro-de-movimientos.md).

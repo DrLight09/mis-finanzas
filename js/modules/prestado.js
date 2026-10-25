@@ -380,7 +380,13 @@ const _UI_LISTA = {
     el: 'deudoresList', abrir: 'prestado:abrirDeudor',
     // Con persona vinculada, el avatar abre su perfil; si no, el detalle.
     avatarAccion: d => d.personaId ? ['prestado:abrirPerfilDeudor', d.id] : ['prestado:abrirDeudor', d.id],
-    vacio: 'Aún no has agregado personas. Puedes crear a tu papá, mamá, amigos...',
+    // Estado vacío (emptyState de core-state.js): mismo molde en las dos listas; cambian el icono,
+    // el título y la descripción, que dicen quién le debe a quién. Los dos botones abren el mismo
+    // selector de personas, por eso los dos se llaman «Agregar persona».
+    btnPie: 'btn-nueva-persona', btnAccion: 'prestado:abrirSheetNuevaPersona',
+    vacioIcono: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>',
+    vacioTitulo: 'Nadie te debe por ahora',
+    vacio: 'Agrega a quien le prestes plata para llevar el registro de lo que te debe.',
     sub: s => s > 0 ? 'Pendiente por cobrar' : s < 0 ? 'Saldo a favor de él/ella' : 'Al día',
     claseMonto: s => s > 0 ? 'c-amber' : s < 0 ? 'c-red' : 'c-green',
     monto: s => fmt(s)
@@ -388,7 +394,10 @@ const _UI_LISTA = {
   contra: {
     el: 'misDeudasList', abrir: 'prestado:abrirMiDeuda',
     avatarAccion: d => d.personaId ? ['prestado:abrirPerfilPersonaDeDeuda', d.personaId] : ['prestado:abrirMiDeuda', d.id],
-    vacio: 'Aún no registras deudas. Si alguien te presta plata, agrégala aquí.',
+    btnPie: 'btn-nueva-deuda', btnAccion: 'prestado:abrirSheetNuevaDeuda',
+    vacioIcono: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><line x1="17" y1="7" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
+    vacioTitulo: 'No le debes a nadie por ahora',
+    vacio: 'Agrega a quien te preste plata para llevar el registro de lo que le debes.',
     sub: s => s > 0 ? 'Le debes' : s < 0 ? 'Saldo a tu favor' : 'Al día',
     claseMonto: s => s > 0 ? 'c-red' : 'c-green',
     monto: s => fmt(Math.abs(s))
@@ -408,8 +417,10 @@ function _renderListaDeudas(dir) {
   // Mayor a menor: a quien más le debes / quien más te debe primero; saldados y a favor de la otra parte, después.
   const list = [...Deudas.lista(dir)].sort((a, b) => Deudas.saldo(b) - Deudas.saldo(a));
   if (dir === 'favor' && typeof _actualizarMasPersonasSub === 'function') _actualizarMasPersonasSub();
+  // El estado vacío ya trae su botón: el de pie solo aparece cuando hay personas.
+  mostrarSi(document.getElementById(ui.btnPie), list.length > 0);
   if (!list.length) {
-    el.innerHTML = html`<div class="pr-vacio pr-vacio-10">${ui.vacio}</div>`;
+    el.innerHTML = emptyState(ui.vacioIcono, ui.vacioTitulo, ui.vacio, 'Agregar persona', { action: ui.btnAccion });
     return;
   }
   el.innerHTML = html`${list.map(d => {

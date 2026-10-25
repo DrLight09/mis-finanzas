@@ -378,8 +378,10 @@ function renderSpotify(){
     statusEl.textContent='';
   }
   
+  // El estado vacío ya trae «Agregar persona»: el botón de pie solo aparece con personas.
+  mostrarSi(document.getElementById('btn-add-spotify-persona'),p.length>0);
   if(!p.length){el.innerHTML=emptyState(
-    '<svg width="20" height="20" viewBox="0 0 25 26" fill="none"><path d="M12.046 23.6856C18.257 23.6856 23.292 18.5625 23.292 12.2428C23.292 5.92312 18.257 0.800003 12.046 0.800003C5.835 0.800003 0.799988 5.92312 0.799988 12.2428C0.799988 18.5625 5.835 23.6856 12.046 23.6856Z" stroke="var(--text3)" stroke-width="1.8"/></svg>',
+    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
     'Sin personas en Spotify',
     'Agrega a las personas que comparten tu plan para hacer seguimiento de sus cobros mensuales.',
     'Agregar persona',
@@ -449,7 +451,7 @@ function renderSpHistorial(){
   const hist=total.map((h,i)=>({...h,_realIdx:i}))
     .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b._realIdx-a._realIdx))
     .slice(0,12);
-  if(!hist.length){el.innerHTML='<div class="sp-vacio">Sin pagos registrados aún.</div>';return;}
+  if(!hist.length){el.innerHTML='<div class="card card-sm sp-hist-vacio">Sin pagos registrados aún.</div>';return;}
   // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
   // Hallazgo real de paso: fuenteLabel() en `fuentesInfo` (nombre de cajita/cuenta,
   // texto libre) nunca pasaba por escHtml() acá — a diferencia del badge de
@@ -502,7 +504,11 @@ function renderSpStats(){
   const hist=S.spotify.historial||[];
   const costo=S.spotify.costo||0;
 
-  if(!personas.length&&!hist.length){
+  // Sin personas ni historial no hay nada que mostrar: el título «Estadísticas» tampoco
+  // (quedaba pegado al de «Historial de pagos», que sí lleva su mensaje de vacío).
+  const _hayStats=personas.length>0||hist.length>0;
+  mostrarSi(document.getElementById('spStatsTitulo'),_hayStats);
+  if(!_hayStats){
     el.innerHTML='';
     return;
   }

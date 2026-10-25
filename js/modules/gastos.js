@@ -244,6 +244,11 @@ function renderGastosVar() {
   // sigue oculto es lo mismo que ya lo estaba: movimientos de alcancía y
   // extras de préstamo (_esGastoVarNoReal sin ninguna de las otras banderas).
   const visibles = gastos.filter(g => !_esGastoVarNoReal(g) || g._esCompraTC || g._esPagoTC || g.esPagoGastoFijo);
+  // Sin gastos no hay nada que totalizar. Y el botón de pie se esconde solo cuando el estado
+  // vacío ya trae el suyo («Registrar primer gasto», solo con el filtro «todos»); en un mes
+  // sin gastos el estado vacío no tiene botón, así que el de pie sigue siendo la acción.
+  mostrarSi(document.getElementById('gvTotalCard'), visibles.length > 0);
+  mostrarSi(document.querySelector('.btn-open-gasto-var'), visibles.length > 0 || mesFilter !== 'todos');
   if (!visibles.length) {
     el.innerHTML = emptyState(
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 3 14 9 20 9"/><line x1="8" y1="13" x2="16" y2="13"/></svg>',
@@ -511,6 +516,8 @@ function renderGastosFijos() {
   const mesClaveTot = mesActual();
   const totalGFPagado = Periodo.gastosFijosDelMes(mesClaveTot).reduce((a, p) => a + p.monto, 0);
   document.getElementById('totalGF').textContent = fmt(totalGFPagado);
+  // El estado vacío ya trae «Agregar gasto fijo»: el botón de pie solo aparece con datos.
+  mostrarSi(document.querySelector('.btn-open-gasto-fijo'), todos.length > 0);
   if (!todos.length) {
     el.innerHTML = emptyState(
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',

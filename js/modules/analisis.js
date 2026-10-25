@@ -605,8 +605,11 @@ function renderPresupuestos(){
 }
 
 /* ---- EVENTOS: acciones con data-action="analisis:..." ---- */
+// Events llama a cada handler con (...args, elemento, evento). El botón "+ Agregar" no lleva
+// argumentos, así que sin este envoltorio abrirSheetIngresoFijo recibiría el botón como `id`,
+// no encontraría ese ingreso y saldría sin abrir el sheet.
 Events.registerAll('analisis', {
-  abrirSheetIngresoFijo,
+  abrirSheetIngresoFijo: () => abrirSheetIngresoFijo(),
   editarIngresoFijo,
   eliminarIngresoFijo,
   abrirPresupuestos,

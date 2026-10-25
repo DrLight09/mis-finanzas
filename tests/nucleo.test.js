@@ -918,3 +918,103 @@ describe('dialogo', () => {
     assert.equal(ctx._dialogResolve, null);
   });
 });
+
+describe('analisis-ingreso-fijo', () => {
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
+
+  // Se carga el despachador REAL (events.js) junto con analisis.js y se simula el clic como lo hace el navegador:
+  // Events llama al handler con (...args, elemento, evento). El botón "+ Agregar" de Ingresos fijos va con data-args="[]".
+  // Un archivo previo captura el listener de clic que events.js cuelga de `document` (y da un WeakSet, que el harness no trae).
+  const CAPTURA = path.join(require('node:fs').mkdtempSync(path.join(require('node:os').tmpdir(), 'ev-')), 'captura.js');
+  require('node:fs').writeFileSync(CAPTURA, "window.WeakSet = class { constructor(){ this.s = new Set(); } has(x){ return this.s.has(x); } add(x){ this.s.add(x); } delete(x){ return this.s.delete(x); } }; window.__clicks = []; document.addEventListener = function(t, f){ if (t === 'click') window.__clicks.push(f); };");
+
+  function entorno({ ingresosFijos = [] } = {}) {
+    const app = loadApp([CAPTURA, core('events.js'), core('core-state.js'), modulo('analisis.js')], { permissive: true });
+    Object.assign(app.S, { ingresosFijos });
+    const abiertos = [];
+    app.openSheet = id => abiertos.push(id);
+    const clic = (action, args) => app.__clicks[0]({ target: { closest: () => ({ dataset: { action, args } }) } });
+    return { app, abiertos, clic };
+  }
+
+  test('"+ Agregar" de ingresos fijos abre el sheet en modo nuevo (el botón no se cuela como id de un ingreso)', () => {
+    const { abiertos, clic } = entorno({ ingresosFijos: [{ id: 'if1', nombre: 'Sueldo', monto: 1000, desde: '2026-01' }] });
+    clic('analisis:abrirSheetIngresoFijo', '[]');
+    assert.deepEqual(abiertos, ['ingreso-fijo']);
+  });
+
+  test('editar un ingreso fijo sigue abriendo el sheet con su id', () => {
+    const { abiertos, clic } = entorno({ ingresosFijos: [{ id: 'if1', nombre: 'Sueldo', monto: 1000, desde: '2026-01' }] });
+    clic('analisis:editarIngresoFijo', '["if1"]');
+    assert.deepEqual(abiertos, ['ingreso-fijo']);
+  });
+});
+
+describe('borrar-todo-pin', () => {
+  const test = require('node:test');
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const { createFakeDom } = require('./support/fake-dom');
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
+
+  // pin-bio.js es un módulo ES (import de waitFor/hookGlobal): se carga quitando solo esas líneas de import y dando
+  // los dos nombres como no-op. Todo lo demás es el código real; configuracion.js aporta el borrarTodo real.
+  const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'pin-'));
+  const PIN_BIO = path.join(TMP, 'pin-bio.js');
+  fs.writeFileSync(PIN_BIO, 'function waitFor() {} function hookGlobal() {}\n' + fs.readFileSync(core('pin-bio.js'), 'utf8').replace(/^import .*$/gm, ''));
+
+  function entorno({ nubeOk = true } = {}) {
+    const app = loadApp([PIN_BIO, modulo('configuracion.js')], { permissive: true });
+    const dom = createFakeDom({ 'pin-config-container': {}, 'fb-loading-screen': {} });
+    app.document = dom.document;
+    const ls = app.localStorage;
+    ls.setItem('mf_pin', '1234'); ls.setItem('mf_bio_enabled', 'true'); ls.setItem('mf_bio_cred', 'credencial'); ls.setItem('mf_auth_hint', '1');
+    app.dialogo = async () => true; app.toast = () => {}; app.setTimeout = f => f();
+    app._fbUser = { uid: 'u1' };
+    app._fb = { db: {}, doc: () => ({}), setDoc: async () => { if (!nubeOk) throw new Error('sin conexión'); } };
+    app.location = { reload() { app.__recargado = true; }, href: '' };
+    const lanzados = [];
+    app._fbLoadData = () => lanzados.push('app');
+    return { app, dom, ls, lanzados };
+  }
+
+  test('borrar todos los datos elimina el PIN, su activación y la huella; al reabrir no se pide PIN', async () => {
+    const { app, dom, ls, lanzados } = entorno();
+    await app.borrarTodo();
+    assert.equal(ls.getItem('mf_pin'), null);
+    assert.equal(ls.getItem('mf_bio_enabled'), null);
+    assert.equal(ls.getItem('mf_bio_cred'), null);
+    assert.equal(ls.getItem('mf_auth_hint'), '1', 'lo que no es del PIN no se toca');
+    assert.ok(ls.getItem('mf_lastSavedAt'), 'la marca de guardado que protege contra snapshots viejos se conserva');
+    assert.equal(app.__recargado, true);
+    assert.match(dom.el('pin-config-container').innerHTML, /Activar PIN de acceso/, 'Configuración ya no lo muestra como activo');
+    // Tras recargar, el punto de entrada ya no encuentra PIN: lanza la app sin abrir la pantalla de PIN.
+    app._pinGate();
+    assert.deepEqual(lanzados, ['app']);
+  });
+
+  test('si el borrado en la nube falla, el PIN se conserva (los datos viejos pueden volver)', async () => {
+    const { app, ls } = entorno({ nubeOk: false });
+    await app.borrarTodo();
+    assert.equal(ls.getItem('mf_pin'), '1234');
+    assert.equal(ls.getItem('mf_bio_cred'), 'credencial');
+    assert.equal(app.__recargado, true);
+  });
+
+  test('si el usuario cancela la confirmación no se borra nada', async () => {
+    const { app, ls } = entorno();
+    app.dialogo = async () => false;
+    await app.borrarTodo();
+    assert.equal(ls.getItem('mf_pin'), '1234');
+    assert.notEqual(app.__recargado, true);
+  });
+});

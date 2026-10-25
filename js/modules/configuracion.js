@@ -287,6 +287,10 @@ async function borrarTodo(){
       _borradoFirebaseOk = false;
     }
   }
+  // El PIN y la huella son locales a este dispositivo y protegían datos que ya no existen. Solo se
+  // quitan si el borrado en la nube se confirmó: si falló, los datos viejos pueden volver al reabrir
+  // y tienen que seguir protegidos. Al recargar, _pinGate() ya no encuentra PIN y no lo pide.
+  if(_borradoFirebaseOk && typeof window._pinReset==='function') window._pinReset();
   if(!_borradoFirebaseOk){
     // No se pudo confirmar el borrado en la nube (ej. sin conexión). Avisar antes de
     // recargar para que el usuario sepa que debe reintentar — si no, al reabrir con

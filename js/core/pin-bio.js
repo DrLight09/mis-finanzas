@@ -290,6 +290,14 @@ import { hookGlobal } from './hook-global-module.js';
     _showPin('set-new','Elige un PIN de 4 dígitos','Este PIN protegerá el acceso a la app');
     window._pendingLaunch = false;
   };
+  // Borrar todos los datos (configuracion.js → borrarTodo): el PIN y la huella son locales a este
+  // dispositivo y protegían datos que ya no existen, así que se quitan con ellos. _delCred() borra
+  // la huella (activación y credencial); el sensor del dispositivo no se toca, solo la config de la app.
+  window._pinReset = function() {
+    _delPin();
+    _delCred();
+    _renderBtn();
+  };
   window._pinDisable = async function() {
     const ok = await dialogo('Quitar PIN','¿Seguro que quieres desactivar el PIN de acceso?','Quitar PIN',true);
     if(ok){

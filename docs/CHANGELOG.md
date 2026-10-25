@@ -2329,6 +2329,13 @@ Validado con `node --check`. **Sin verificar en navegador real.**
 
 ## Análisis financiero
 
+### 🐛 Corregido (2026-10-24) — «+ Agregar» de Ingresos fijos no abría el sheet (`analisis.js`)
+
+*(`mejoras.md` punto 7.)* **Causa raíz:** `Events` despacha cada acción como `handler(...args, elemento, evento)`. El botón «+ Agregar» va con `data-args="[]"`, así que `abrirSheetIngresoFijo(id)` recibía **el propio botón como `id`**: `_ifEditId` quedaba con un elemento del DOM, el `find` sobre `S.ingresosFijos` no encontraba ningún ingreso y la función salía por `if(!ing)return;` **sin abrir nada y sin error** (por eso la consola estaba limpia). Editar un ingreso sí funcionaba porque ahí `data-args` lleva el id.
+- **Arreglo:** la acción se registra como `() => abrirSheetIngresoFijo()` (mismo patrón que `config:signOut`), con un comentario que dice por qué. El mecanismo `data-action` no cambia.
+- **Auditoría de botones sin argumentos** (87 acciones del HTML, lectura estática): solo hay otros dos handlers cuyo primer parámetro no es el elemento. `cuentas:abrirTransferir(origenSugerido)` recibe el botón, pero lo compara con los valores de cuenta, no coincide con ninguno y se ignora (inofensivo; no se tocó). `prestado:confirmarMovimientoGuard(el)` espera el elemento a propósito.
+- **Prueba:** `tests/nucleo.test.js` → `analisis-ingreso-fijo` (usa el `events.js` real y simula el clic como el navegador: abrir en modo nuevo y editar por id). **Falla con el código anterior** y pasa con el arreglo.
+
 ### 🔧 Cambio (2026-09-21) — Ubicación del módulo y ajuste menor
 
 `analisis-financiero.md` no decía en qué archivo vive el código (`js/modules/analisis.js`) ni que `calcPatrimonioTotal()`/`snapshotPatrimonio()` se quedaron a propósito en `index.html` (los llama `save()` en cada guardado). Se agregó al final de §10. Se agregaron los ids `an-mesada-section`/`an-mesada-total` en §8. Se suavizó una mención a `MIN_DIAS_PARA_TENDENCIA` que no pude verificar contra código (esa función vive en `inicio.js`, no incluido).
@@ -3540,6 +3547,15 @@ Validado con `node --check` en ambos archivos (`core-state.js`, `inicio.js`). **
 ---
 
 ## Configuración
+
+### 🐛 Corregido (2026-10-24) — «Borrar todos los datos» dejaba activos el PIN y la huella (`configuracion.js`, `pin-bio.js`)
+
+*(`mejoras.md` punto 9.)* **Causa raíz:** `borrarTodo()` solo escribía `{}` en Firestore y recargaba. El PIN, su activación y la huella viven en `localStorage` de este dispositivo (`mf_pin`, `mf_bio_enabled`, `mf_bio_cred`), dentro del IIFE de `pin-bio.js` (módulo ES), y nada del borrado los tocaba: al recargar, `_pinGate()` seguía encontrando un PIN y lo pedía para una app ya vacía. Se revisó dónde más podía guardarse algo de esto: no hay PIN en `sessionStorage`, IndexedDB ni cookies (IndexedDB solo la usa la sesión de Firebase Auth, que a propósito sigue abierta tras borrar los datos).
+- **`pin-bio.js`:** nueva `window._pinReset()` (`_delPin()` + `_delCred()` + repintar los botones de Configuración). `_delCred()` borra la activación de la huella y el id de la credencial; el sensor del dispositivo no se toca, solo la configuración de la app.
+- **`configuracion.js`:** `borrarTodo()` la llama **solo si el borrado en la nube se confirmó**. Si falló (sin conexión), el PIN se conserva: al reabrir, el snapshot viejo de la nube puede volver y tiene que seguir protegido. Las confirmaciones de seguridad no cambian.
+- **No se reutilizó `_limpiarStorageLocal()`** (la de «Eliminar cuenta»): borra todas las claves `mf_*`, incluida `mf_lastSavedAt`, que `borrarTodo()` fija justo antes a propósito para que un snapshot viejo no pise el borrado.
+- **Pantalla de PIN al reabrir:** no hace falta tocarla; tras el reload `_pinGate()` no encuentra PIN y lanza la app directo.
+- **Prueba:** `tests/nucleo.test.js` → `borrar-todo-pin` (carga el `pin-bio.js` real quitando solo sus `import`, y el `borrarTodo()` real): tras borrar no quedan las tres claves, `mf_lastSavedAt` y `mf_auth_hint` se conservan, Configuración muestra «Activar PIN de acceso» y `_pinGate()` lanza la app sin abrir la pantalla de PIN; con la nube caída el PIN se conserva; cancelar no borra nada. **Falla con el código anterior.**
 
 ### ✅ Corregido (2026-09-28) — Código sin uso en `borrarTodo()`: `localStorage.removeItem('mf_historial_v1')`
 

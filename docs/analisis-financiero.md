@@ -42,6 +42,8 @@ Función principal que renderiza toda la pantalla: **`renderAnalisis()`**.
 
 Cada ingreso fijo vive en `S.ingresosFijos` (sueldo, freelance, etc.). `getIngresosFijosMes(mesK)` solo cuenta un ingreso si ya estaba activo ese mes (`!ing.desde || ing.desde<=mesK`), así que agregar un ingreso fijo hoy no reescribe meses pasados donde todavía no existía.
 
+El botón «+ Agregar» (`data-action="analisis:abrirSheetIngresoFijo"`, `data-args="[]"`) abre el sheet en modo nuevo y el lápiz de cada fila (`analisis:editarIngresoFijo`, con el id) lo abre en modo edición. `Events` pasa siempre el elemento y el evento al final de los argumentos, por eso `abrirSheetIngresoFijo` se registra envuelta (`() => abrirSheetIngresoFijo()`): si recibiera el botón como `id` no encontraría ningún ingreso y no abriría nada.
+
 ## 4. Comparación con el mes anterior
 
 **ID:** `an-comparacion`.

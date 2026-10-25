@@ -16,7 +16,7 @@ Es una pantalla de **utilidad/infraestructura**, no un dominio financiero: casi 
 | **Categoría predeterminada** | Las que vienen con la app (`CATS_VAR_DEFAULT` / `CATS_FIJO_DEFAULT`). Nunca se pueden eliminar. |
 | **Categoría propia** | Las que agrega el usuario. Se guardan en `S.catsVar` / `S.catsFijo`. |
 | **Copia de seguridad** | Un JSON con el contenido completo de `S`. Se puede exportar e importar. |
-| **Borrar todos los datos** | Vacía la nube y recarga; **la cuenta y la sesión siguen existiendo**. |
+| **Borrar todos los datos** | Vacía la nube, quita el PIN y la huella de este dispositivo y recarga; **la cuenta y la sesión siguen existiendo**. |
 | **Eliminar cuenta** | Borra el documento de datos *y* el usuario de Firebase Auth, limpia el almacenamiento local y cierra sesión. Vive en la "Zona de peligro" y no es parte de este módulo (ver §3). |
 | **Cerrar sesión** | Guarda una última vez, cierra sesión y recarga. Datos intactos en la nube. Tampoco es de este módulo. |
 
@@ -36,6 +36,7 @@ Las tres últimas se confunden fácil: están en la misma pantalla, con botones 
 - Es una acción destructiva con confirmación explícita.
 - Entre la confirmación y el `location.reload()` final **la app tiene que quedar bloqueada** (overlay `#fb-loading-screen`). `borrarTodo()` no vacía `S` en memoria: solo escribe el estado vacío en la nube. Si en esa ventana se pudiera tocar "Cerrar sesión", el guardado final de `_fbSignOut()` volvería a subir el `S` viejo y anularía el borrado.
 - Si no se pudo confirmar el borrado en la nube, el usuario tiene que enterarse antes del reload.
+- El PIN y la huella (`mf_pin`, `mf_bio_enabled`, `mf_bio_cred`) se quitan con los datos, **pero solo si el borrado en la nube se confirmó**: si falló, los datos viejos pueden volver al reabrir y tienen que seguir protegidos. Se hace con `window._pinReset()` (definida en `pin-bio.js`); este módulo no toca esas claves.
 
 **Categorías**
 - Una categoría predeterminada no se elimina.
@@ -102,10 +103,10 @@ Botón "Importar JSON" → se abre el selector de archivo → se lee el texto
 Botón "Borrar todos los datos" → diálogo de confirmación (si cancela: nada)
   → overlay de pantalla completa (bloquea la app)
   → si hay sesión: setDoc del documento con payload "{}" (+ mf_lastSavedAt)
-      ├─ ok    → location.reload()
-      └─ falla → toast de error, espera 2,5 s, location.reload()
+      ├─ ok    → window._pinReset() (quita PIN y huella) → location.reload()
+      └─ falla → toast de error, espera 2,5 s, location.reload() (el PIN se conserva)
 ```
-Tras el reload, la carga lee un payload vacío, lo verifica contra el servidor y arranca con el estado por defecto de `S`, con el guardado habilitado.
+Tras el reload, `_pinGate()` ya no encuentra PIN (si se quitó) y lanza la app sin pedirlo; la carga lee un payload vacío, lo verifica contra el servidor y arranca con el estado por defecto de `S`, con el guardado habilitado.
 
 **Agregar / eliminar categoría**
 ```
@@ -148,7 +149,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual
   - Los gastos variables se exportan sin pasar por `_esGastoVarNoReal()`: el CSV refleja todo lo que hay en `S.gastosVar`.
   - Los gastos fijos salen con su monto **actual** (`g.monto`), no con lo que se pagó en ese mes, y con fecha `AAAA-MM-01`; la columna Cuenta va vacía.
   - El ordenamiento de los gastos variables se hace sobre `S.gastosVar` mismo (`.sort()` in situ), así que exportar deja ese arreglo ordenado por fecha descendente en memoria, sin llamar a `save()`.
-- **Borrar todos sin conexión o sin sesión.** Sin `_fbUser`, no se toca la nube y solo se limpia lo local. Sin conexión, el `setDoc` falla y el usuario ve el aviso; al recargar con conexión, la nube todavía puede traer los datos viejos.
+- **Borrar todos sin conexión o sin sesión.** Sin `_fbUser`, no se toca la nube y solo se limpia lo local (el PIN y la huella se quitan). Sin conexión, el `setDoc` falla y el usuario ve el aviso; al recargar con conexión, la nube todavía puede traer los datos viejos.
 - **Datos de módulos desactivados.** Se siguen guardando, exportando e importando como cualquier otra parte de `S`.
 
 ---
@@ -182,7 +183,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual
 | `leerArchivoImport(e)` | Lee, valida, confirma, reemplaza `S`, guarda en la nube y recarga. |
 | `exportarCSV()` | Descarga los gastos en CSV. |
 | `toggleModulo(nombre)` | Escribe `S.modulos[nombre]`, `save()` y `applyModulos()`. |
-| `borrarTodo()` | Borra los datos de la nube con overlay de bloqueo y recarga. |
+| `borrarTodo()` | Borra los datos de la nube con overlay de bloqueo, quita el PIN y la huella si el borrado se confirmó, y recarga. |
 
 **Acciones de `Events` (`config:*`)**
 

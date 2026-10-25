@@ -37,7 +37,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/sheet-behavior.js` | de entrada (defer) | 0 | 0 |
 | `js/core/sheet-stack.js` | de entrada (defer) | 13 | 0 |
-| `js/core/split.js` | de entrada (defer) | 9 | 0 |
+| `js/core/split.js` | de entrada (defer) | 10 | 0 |
 | `js/core/wait-for-module.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 0 | 0 |
 | `js/core/wait-for.js` | de entrada (defer) | 1 | 0 |
 | `js/core/wrapped-gate.js` | de entrada (defer) | 8 | 1 |
@@ -54,7 +54,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
 | `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 34 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 131 | 1 |
-| `js/modules/spotify.js` | lazy — grupo `spotify` | 51 | 2 |
+| `js/modules/spotify.js` | lazy — grupo `spotify` | 53 | 2 |
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 31 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 107 | 1 |
 
@@ -242,7 +242,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `crearSplitWidget`, `splitActualizarBotones`, `splitActualizarOpciones`, `splitAgregarRow`, `splitGetData`, `splitOpcionesUsadas`, `splitPreview`, `splitReset`, `splitToggle`
+**Funciones:** `crearSplitWidget`, `splitActualizarBotones`, `splitActualizarOpciones`, `splitAgregarRow`, `splitCuentasValidas`, `splitGetData`, `splitOpcionesUsadas`, `splitPreview`, `splitReset`, `splitToggle`
 
 ### `js/core/wait-for-module.js`
 
@@ -362,7 +362,7 @@ Carga: lazy — grupo `prestamos`
 
 Carga: lazy — grupo `spotify`
 
-**Funciones:** `_abrirSelPersonaSpotifyEdit`, `_borrarSpHistorial`, `_initSpotifyEditPersonaSelector`, `_initSpotifyPersonaSelector`, `_ogSp`, `_onClickSpEditPersonaBtn`, `_onSelPersonaSpotify`, `_onSelPersonaSpotifyEdit`, `_spEnsureTC`, `_spExtraOpts`, `_spPagarSplitFuentesOpts`, `_spProporcionarSplits`, `_spSplitFuentesOpts`, `_syncSpDebeWrap`, `_syncSpExtraWrap`, `actualizarSpDestinoPreview`, `actualizarSpPagarPreview`, `actualizarSpResolverPreview`, `addSpotify`, `agregarSpCobSplitRow`, `agregarSpPagarSplitRow`, `confirmarPagarSpotify`, `confirmarSpDestino`, `confirmarSpResolverPendiente`, `deleteSpHistorial`, `deleteSpotify`, `deshacerAbonoPendienteSp`, `editarSpotify`, `getSpCajita`, `getSpCajitaSaldo`, `getSpCobSplitData`, `getSpPagarSplitData`, `guardarEditarSpotify`, `marcarPagoSpotify`, `nextMonthFixed`, `openSheet_pagarSpotify`, `renderSpHistorial`, `renderSpotify`, `renderSpStats`, `resolverPendienteSpHistorial`, `selSpMeses`, `spAsignarPeriodos`, `spCicloCobrosActual`, `spCobradoDePersona`, `spMontoAntesDe`, `spPeriodosVencidos`, `spResumenCicloActual`, `spSumarDias`, `spTramosDeCobro`, `toggleSpCobSplit`, `toggleSpPagarSplit`
+**Funciones:** `_abrirSelPersonaSpotifyEdit`, `_borrarSpHistorial`, `_initSpotifyEditPersonaSelector`, `_initSpotifyPersonaSelector`, `_ogSp`, `_onClickSpEditPersonaBtn`, `_onSelPersonaSpotify`, `_onSelPersonaSpotifyEdit`, `_spEnsureTC`, `_spExtraOpts`, `_spPagarSplitFuentesOpts`, `_spProporcionarSplits`, `_spSplitFuentesOpts`, `_syncSpDebeWrap`, `_syncSpExtraWrap`, `abrirPagarSpotify`, `actualizarSpDestinoPreview`, `actualizarSpPagarPreview`, `actualizarSpResolverPreview`, `addSpotify`, `agregarSpCobSplitRow`, `agregarSpPagarSplitRow`, `confirmarPagarSpotify`, `confirmarSpDestino`, `confirmarSpResolverPendiente`, `deleteSpHistorial`, `deleteSpotify`, `deshacerAbonoPendienteSp`, `editarSpotify`, `getSpCajita`, `getSpCajitaSaldo`, `getSpCobSplitData`, `getSpPagarSplitData`, `guardarEditarSpotify`, `marcarPagoSpotify`, `nextMonthFixed`, `openSheet_pagarSpotify`, `renderSpHistorial`, `renderSpotify`, `renderSpStats`, `resolverPendienteSpHistorial`, `selSpMeses`, `spAsignarPeriodos`, `spCicloCobrosActual`, `spCobradoDePersona`, `spCostoValido`, `spMontoAntesDe`, `spPeriodosVencidos`, `spResumenCicloActual`, `spSumarDias`, `spTramosDeCobro`, `toggleSpCobSplit`, `toggleSpPagarSplit`
 
 **Globales:** `SP_EMPATE_PERIODOS`, `SP_PERIODO_DIAS`
 
@@ -940,6 +940,7 @@ Ninguno.
 | `abrirNuevoGastoVar` | `js/modules/gastos.js` |
 | `abrirNuMovimiento` | `js/modules/nu.js` |
 | `abrirPagarGastoFijo` | `js/modules/gastos.js` |
+| `abrirPagarSpotify` | `js/modules/spotify.js` |
 | `abrirPagarTC` | `js/modules/tarjetas_credito.js` |
 | `abrirPerfilPersona` | `js/modules/personas.js` |
 | `abrirPresupuestos` | `js/modules/analisis.js` |
@@ -1310,9 +1311,11 @@ Ninguno.
 | `spAsignarPeriodos` | `js/modules/spotify.js` |
 | `spCicloCobrosActual` | `js/modules/spotify.js` |
 | `spCobradoDePersona` | `js/modules/spotify.js` |
+| `spCostoValido` | `js/modules/spotify.js` |
 | `splitActualizarBotones` | `js/core/split.js` |
 | `splitActualizarOpciones` | `js/core/split.js` |
 | `splitAgregarRow` | `js/core/split.js` |
+| `splitCuentasValidas` | `js/core/split.js` |
 | `splitGetData` | `js/core/split.js` |
 | `splitOpcionesUsadas` | `js/core/split.js` |
 | `splitPreview` | `js/core/split.js` |

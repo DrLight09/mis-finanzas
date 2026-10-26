@@ -118,6 +118,10 @@ describe('medeben', () => {
       extPartes: [{ tipo: 'guardar', cuenta: 'efectivo', monto: 4000 }, { tipo: 'gastar', monto: 2000, desc: 'x' }, { tipo: 'regalar', monto: 1000 }, { tipo: 'pendiente', monto: 3000 }],
     });
     assert.equal(saldo(ctx, 'efectivo'), 104000);
+    assert.equal(debe(ctx), 80000, 'solo el abono (20.000) reduce la deuda de 100.000; el extra no');
+    // El abono y el extra guardado comparten _abonoId: la cuenta los muestra como un solo movimiento (mejora 5)
+    const partesAbono = ctx.S.movimientos.filter((m) => m._abonoId === mov.id);
+    assert.deepEqual(Array.from(partesAbono, (m) => m._parteAbono).sort(), ['abono', 'extra']);
     assert.equal(ctx.S.gastosVar.length, 1);
     assert.equal(ctx._esGastoVarNoReal(ctx.S.gastosVar[0]), false, 'el extra gastado cuenta como gasto real');
     assert.equal(ctx.S.ingresosExtra.length, 1);

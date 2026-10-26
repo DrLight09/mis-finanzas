@@ -72,7 +72,7 @@ async function activarNotificaciones() {
       { merge: true }
     );
 
-    if (typeof toast === 'function') toast('Notificaciones activadas ✓', 'ok');
+    if (typeof toast === 'function') toast('Notificaciones activadas', 'ok');
   } catch (e) {
     console.error('Error activando notificaciones:', e);
     if (typeof toast === 'function') toast('No se pudo activar: ' + (e.message || e), 'err');

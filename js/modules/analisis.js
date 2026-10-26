@@ -68,7 +68,7 @@ function renderAnalisis(){
     const estado=sinMovs?'neu':sinIngresos?'neg':_cero?'neu':balance>0?'pos':'neg';
     const claseTono={pos:'c-green',neg:'c-red',neu:'an-t-muted'}[estado];
     const mes2d=MESES_NOMBRE[mesNum]+' '+anio;
-    const flecha=trazo=>`<svg class="an-hero-flecha" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${trazo}</svg>`;
+    const flecha=trazo=>`<svg aria-hidden="true" class="an-hero-flecha" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${trazo}</svg>`;
     const icono=estado==='pos'?flecha('<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>')
       :estado==='neg'?flecha('<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>'):'';
     let mensaje, monto;
@@ -194,7 +194,7 @@ function renderAnalisis(){
           <div class="an-fila-sb an-fila-sb-5">
             <div class="an-flex-8">
               <span class="an-medal">${medal}</span>
-              <span class="an-rank-nombre${esMesActual?' an-rank-nombre-act':''}">${label}${esMesActual?' ← este mes':''}</span>
+              <span class="an-rank-nombre${esMesActual?' an-rank-nombre-act':''}">${label}${esMesActual?' (este mes)':''}</span>
             </div>
             <span class="an-rank-monto">${fmt(total)}</span>
           </div>
@@ -340,7 +340,7 @@ function renderAnalisis(){
           </div>
         </div>
         <div id="_pat-wrap" class="an-pat-wrap">
-          <svg viewBox="0 0 ${W} ${H}" class="an-pat-svg">
+          <svg aria-hidden="true" viewBox="0 0 ${W} ${H}" class="an-pat-svg">
             <defs>
               <linearGradient id="pgGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stop-color="${diffColorGrad}" stop-opacity="0.25"/>
@@ -467,10 +467,10 @@ function renderIngresosFijos(){
       <div class="an-flex-10">
         <span class="an-ing-monto">${fmt(ing.monto||0)}</span>
         <button type="button" ${raw(Events.attr('analisis:editarIngresoFijo', ing.id))} class="an-btn-icono an-t-muted">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
         <button type="button" ${raw(Events.attr('analisis:eliminarIngresoFijo', ing.id))} class="an-btn-icono an-t-red">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         </button>
       </div>
     </div>`;

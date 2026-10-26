@@ -861,9 +861,15 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .health-score-num.inicio-salud-ok{color:var(--accent);}
 .health-score-num.inicio-salud-warn{color:var(--amber);}
 .health-score-num.inicio-salud-mal{color:var(--red);}
-.inicio-tip{display:flex;align-items:flex-start;gap:5px;margin-top:4px;font-size:11px;line-height:1.4;}
+.inicio-tip{display:flex;align-items:flex-start;gap:7px;margin-top:5px;font-size:11px;line-height:1.4;}
+.inicio-tip-ico{flex-shrink:0;width:14px;margin-top:1px;font-size:12px;text-align:center;}
 .inicio-tip-ok{color:var(--accent);}
+.inicio-tip-mal{color:var(--red);}
 .inicio-tip-warn{color:var(--amber);}
+.inicio-tip-info{color:var(--text2);}
+.inicio-tip-info .inicio-tip-ico{color:var(--blue);}
+button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-family:inherit;text-align:left;cursor:pointer;}
+.inicio-tip-ir{flex-shrink:0;margin:2px 0 0 auto;font-size:10px;color:var(--text3);}
 /* Proyección */
 .inicio-proy-vacio{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;min-height:100px;padding:4px 8px;}
 .inicio-proy-vacio-ico{width:34px;height:34px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
@@ -2009,6 +2015,8 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .ix-svg-230{width:15px;height:15px;fill:currentColor;vertical-align:middle;}
 .ix-div-231{font-size:12px;font-weight:600;color:var(--amber);}
 .ix-fs10-ctext3{font-size:10px;color:var(--text3);}
+.ix-movenc-dif-toggle-icon .fa-solid,.ix-movenc-mia-icon .fa-solid,.diferencial-chevron .fa-solid{font-size:12px;}
+.pe-ico-volver{vertical-align:-2px;}
 .ix-movenc-dif-toggle-icon{font-size:16px;color:var(--amber);transition:transform .2s;}
 .ix-movenc-dif-body{background:rgba(240,184,64,.04);border:1px solid rgba(240,184,64,.2);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:13px;}
 .ix-div-235{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;}

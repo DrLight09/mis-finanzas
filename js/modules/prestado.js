@@ -119,7 +119,7 @@ function _getPrestSplitFuentesOptions(selectedVal) {
   // Solo cuentas con saldo >= $1,00: de una cuenta vacía no puede salir el préstamo
   // (FuentesFiltro, js/core/fuentes-filtro.js). "Sin especificar" y "Ganancia" no se filtran.
   let out = FuentesFiltro.optsHtml(getFuentesSinTC(), { ...FuentesFiltro.PRESET.SALIDA, selectedVal });
-  out += `<option value="ganancia"${selectedVal==='ganancia'?' selected':''}><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>`;
+  out += `<option value="ganancia"${selectedVal==='ganancia'?' selected':''}><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>`;
   return out;
 }
 
@@ -143,7 +143,7 @@ function _updatePrestSplitResumen(){
   const gananciaTotal = splitData.filter(r=>r.fuente==='ganancia').reduce((a,r)=>a+(r.monto||0),0);
   if(gananciaTotal>0){
     impactos.push(html`<div class="pr-impacto pr-impacto-ok">
-      <div class="pr-imp-ok"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> ${fmt(gananciaTotal)} de este préstamo es <b>ganancia tuya</b> que aún no recibiste — no se descuenta de ninguna cuenta. Cuando te paguen el préstamo completo, esa parte se sumará como ganancia.</div>
+      <div class="pr-imp-ok"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> ${fmt(gananciaTotal)} de este préstamo es <b>ganancia tuya</b> que aún no recibiste — no se descuenta de ninguna cuenta. Cuando te paguen el préstamo completo, esa parte se sumará como ganancia.</div>
     </div>`);
   }
   splitData.forEach(r=>{
@@ -384,7 +384,7 @@ const _UI_LISTA = {
     // el título y la descripción, que dicen quién le debe a quién. Los dos botones abren el mismo
     // selector de personas, por eso los dos se llaman «Agregar persona».
     btnPie: 'btn-nueva-persona', btnAccion: 'prestado:abrirSheetNuevaPersona',
-    vacioIcono: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>',
+    vacioIcono: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>',
     vacioTitulo: 'Nadie te debe por ahora',
     vacio: 'Agrega a quien le prestes plata para llevar el registro de lo que te debe.',
     sub: s => s > 0 ? 'Pendiente por cobrar' : s < 0 ? 'Saldo a favor de él/ella' : 'Al día',
@@ -395,7 +395,7 @@ const _UI_LISTA = {
     el: 'misDeudasList', abrir: 'prestado:abrirMiDeuda',
     avatarAccion: d => d.personaId ? ['prestado:abrirPerfilPersonaDeDeuda', d.personaId] : ['prestado:abrirMiDeuda', d.id],
     btnPie: 'btn-nueva-deuda', btnAccion: 'prestado:abrirSheetNuevaDeuda',
-    vacioIcono: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><line x1="17" y1="7" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
+    vacioIcono: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><line x1="17" y1="7" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
     vacioTitulo: 'No le debes a nadie por ahora',
     vacio: 'Agrega a quien te preste plata para llevar el registro de lo que le debes.',
     sub: s => s > 0 ? 'Le debes' : s < 0 ? 'Saldo a tu favor' : 'Al día',
@@ -445,7 +445,7 @@ function _renderListaDeudas(dir) {
             ${ultimoMov ? html`<span class="pr-fecha">${ultimoMov.fecha}</span>` : ''}
           </div>
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pr-chevron" ${raw(Events.attr(ui.abrir, d.id))}><polyline points="9 18 15 12 9 6"/></svg>
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pr-chevron" ${raw(Events.attr(ui.abrir, d.id))}><polyline points="9 18 15 12 9 6"/></svg>
       </div>
     </div>`;
   })}`;
@@ -545,14 +545,14 @@ function abrirDeudor(id) {
       const saldoAntesDeuda = saldoCorriente - efectoDeuda;
       saldoCorriente = saldoAntesDeuda;
       // Destino info line
-      const arrowSvg = raw(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cuenta-svg-mid"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`);
+      const arrowSvg = raw(`<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cuenta-svg-mid"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>`);
       let destinoInfo = '';
       if (m._perdon) {
         destinoInfo = html` <span class="pr-chip pr-chip-red">se lo regalé · cuenta como gasto</span>`;
       } else if (m._viaEncargo && m._encNombre) {
         destinoInfo = html` <span class="pr-chip pr-chip-blue">encargo de ${m._encNombre}</span>`;
       } else if (m._viaAlcancia) {
-        destinoInfo = html` <span class="pr-chip pr-chip-amber">→ Alcancía</span>`;
+        destinoInfo = html` <span class="pr-chip pr-chip-amber"><i class="fa-solid fa-arrow-right"></i> Alcancía</span>`;
       } else if (m.destinos && m.destinos.length) {
         destinoInfo = html` ${arrowSvg} ${raw(m.destinos.map(r => _fuenteLabelHtml(r.fuente) + ' ' + fmt(r.monto)).join(' + '))}`;
       } else if (m.destino) {
@@ -589,7 +589,7 @@ function abrirDeudor(id) {
           <div class="pr-flex1">
             <div class="pr-fila-wrap">
               <span class="badge badge-xs ${esPrestamo ? 'bg-amber' : m._perdon ? 'bg-red' : 'bg-green'}">${esPrestamo ? 'Préstamo' : m._perdon ? 'Perdonado' : esPagoCompleto ? 'Pago completo' : 'Abono'}</span>
-              ${m._gananciaVirtual ? html` <span class="pr-chip pr-chip-ok"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
+              ${m._gananciaVirtual ? html` <span class="pr-chip pr-chip-ok"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Incluye ${fmt(m._gananciaVirtual)} de ganancia</span>` : ''}
               ${m._viaTC ? html` <span class="pr-chip pr-chip-blue">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
               ${m.nota ? html` <span class="pr-nota">${m.nota}</span>` : ''}
             </div>
@@ -600,7 +600,7 @@ function abrirDeudor(id) {
           <div class="pr-der">
             <div class="pr-monto ${esPrestamo ? 'c-amber' : 'c-green'}">${esPrestamo ? '+' : '−'} ${fmt(m.monto)}</div>
             <button type="button" class="btn-icon pr-btn-36" ${raw(Events.attr('prestado:eliminarMovDeudor', id, m.id))} data-stop-propagation="true">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </button>
           </div>
         </div>
@@ -922,7 +922,7 @@ function initMovSheet(tipo) {
   document.getElementById('mov_fuente_simple').style.display = '';
   document.getElementById('mov_fuente_split').style.display = 'none';
   { const btn = document.getElementById('mov_split_toggle');
-    if (btn) { btn.textContent = 'Dividir ÷'; btn.style.background = 'rgba(200,240,96,.1)'; btn.style.borderColor = 'rgba(200,240,96,.3)'; btn.style.color = 'var(--accent)'; } }
+    if (btn) { btn.textContent = 'Dividir'; btn.style.background = 'rgba(200,240,96,.1)'; btn.style.borderColor = 'rgba(200,240,96,.3)'; btn.style.color = 'var(--accent)'; } }
   document.getElementById('mov_split_rows').innerHTML = '';
   document.getElementById('mov_split_resumen').textContent = '';
   if(document.getElementById('mov_split_metas')) document.getElementById('mov_split_metas').innerHTML = '';
@@ -931,7 +931,7 @@ function initMovSheet(tipo) {
   document.getElementById('mov_destino_simple').style.display = '';
   document.getElementById('mov_destino_split').style.display = 'none';
   { const b = document.getElementById('mov_dest_split_toggle');
-    if (b) { b.textContent = 'Dividir ÷'; b.style.background = 'rgba(200,240,96,.1)'; b.style.borderColor = 'rgba(200,240,96,.3)'; b.style.color = 'var(--accent)'; } }
+    if (b) { b.textContent = 'Dividir'; b.style.background = 'rgba(200,240,96,.1)'; b.style.borderColor = 'rgba(200,240,96,.3)'; b.style.color = 'var(--accent)'; } }
   document.getElementById('mov_dest_split_rows').innerHTML = '';
   document.getElementById('mov_dest_split_resumen').textContent = '';
   // Reset extra (sistema de partes libres)
@@ -1268,7 +1268,7 @@ function _aplicarExtraPartes(p, mov, v) {
     if (x.tipo === 'guardar') {
       if (!x.cuenta) continue;
       sumarFuente(x.cuenta, x.monto, _og(mov.id));
-      const movExtraId = registrarMovEspejo({ cuenta: x.cuenta, flujo: 'entrada', monto: x.monto, fecha, desc: v.descGuardar, origen: 'Prestado · Me deben', clase: v.extraIngreso ? 'ingreso' : 'neutro', extra: v.extraIngreso ? { _esExtraIngreso: true } : undefined });
+      const movExtraId = registrarMovEspejo({ cuenta: x.cuenta, flujo: 'entrada', monto: x.monto, fecha, desc: v.descGuardar, origen: 'Prestado · Me deben', clase: v.extraIngreso ? 'ingreso' : 'neutro', extra: { _abonoId: mov.id, _parteAbono: 'extra', ...(v.extraIngreso ? { _esExtraIngreso: true } : {}) } });
       mov._extPartes.push({ tipo: 'guardar', cuenta: x.cuenta, monto: x.monto, movExtraId });
     } else if (x.tipo === 'gastar') {
       if (!S.gastosVar) S.gastosVar = [];
@@ -1411,7 +1411,7 @@ function _aplicarAbonoEncargo(p) {
     destinos.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto, _og(abonMovId)); });
     // Movimiento visible en el historial de cada cuenta destino (igual que el destino simple)
     destinos.forEach(r => {
-      r._movId = registrarMovEspejo({ cuenta: r.fuente, flujo: 'entrada', monto: r.monto, fecha, desc: descDestino, origen: 'Prestado · Me deben' });
+      r._movId = registrarMovEspejo({ cuenta: r.fuente, flujo: 'entrada', monto: r.monto, fecha, desc: descDestino, origen: 'Prestado · Me deben', extra: { _abonoId: abonMovId, _parteAbono: 'abono' } });
     });
     mov = {
       id: abonMovId, tipo: tipoGuardar, monto, fecha, nota,
@@ -1423,7 +1423,7 @@ function _aplicarAbonoEncargo(p) {
     if (destino) sumarFuente(destino, monto, _og(abonMovId));
     // Movimiento visible en el historial de la cuenta destino
     const abonoDestinoMovId = destino
-      ? registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc: descDestino, origen: 'Prestado · Me deben' })
+      ? registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc: descDestino, origen: 'Prestado · Me deben', extra: { _abonoId: abonMovId, _parteAbono: 'abono' } })
       : null;
     mov = {
       id: abonMovId, tipo: tipoGuardar, monto, fecha, nota, destino,
@@ -1483,14 +1483,14 @@ function _aplicarAbonoNormal(p) {
     destinos.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto, _og(idMov)); });
     // Movimiento visible en cada cuenta destino
     destinos.forEach(r => {
-      r._movId = registrarMovEspejo({ cuenta: r.fuente, flujo: 'entrada', monto: r.monto, fecha, desc, origen: 'Prestado · Me deben' });
+      r._movId = registrarMovEspejo({ cuenta: r.fuente, flujo: 'entrada', monto: r.monto, fecha, desc, origen: 'Prestado · Me deben', extra: { _abonoId: idMov, _parteAbono: 'abono' } });
     });
     mov = { id: idMov, tipo: tipoGuardar, monto, fecha, destinos: destinos.map(r => ({ fuente: r.fuente, monto: r.monto, _movId: r._movId })), nota, grupoId: p.grupoId, ts: Date.now() };
   } else {
     const abonoMovId = uid();
     sumarFuente(destino, monto, _og(abonoMovId));
     // Movimiento visible en la cuenta destino (null si no hay cuenta rastreable)
-    const abonoDestinoMovId = registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Prestado · Me deben' });
+    const abonoDestinoMovId = registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Prestado · Me deben', extra: { _abonoId: abonoMovId, _parteAbono: 'abono' } });
     mov = { id: abonoMovId, tipo: tipoGuardar, monto, fecha, destino, nota, _abonoDestinoMovId: abonoDestinoMovId, grupoId: p.grupoId, ts: Date.now() };
   }
   d.movimientos.push(mov);
@@ -1780,13 +1780,13 @@ function toggleExtraSection() {
 
 const _extTipos = {
   guardar:   { label: 'Lo guardé en cuenta', color: 'var(--blue)', clase: 'c-blue',
-    icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>' },
+    icon: '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>' },
   gastar:    { label: 'Lo gasté',             color: 'var(--amber)', clase: 'c-amber',
-    icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>' },
+    icon: '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>' },
   regalar:   { label: 'Lo regalé / lo di',   color: 'var(--purple)', clase: 'c-purple',
-    icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>' },
+    icon: '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>' },
   pendiente: { label: 'Sin decidir aún',      color: 'var(--text2)', clase: 'pr-t-text2',
-    icon: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
+    icon: '<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' },
 };
 
 function extAddParte() {
@@ -1841,7 +1841,7 @@ function extRenderPartes() {
             ${Object.entries(_extTipos).map(([k,v])=>html`<option value="${k}" ${raw(p.tipo===k?'selected':'')}>${v.label}</option>`)}
           </select>
           <span class="pr-ext-tipo-ico ${raw(tipoInfo.clase)}">${raw(tipoInfo.icon)}</span>
-          <svg class="pr-ext-tipo-flecha" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg aria-hidden="true" class="pr-ext-tipo-flecha" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <!-- Monto -->
         <input type="text" inputmode="decimal" value="${p.monto?fmtInput(p.monto):''}" placeholder="0,00"
@@ -1849,7 +1849,7 @@ function extRenderPartes() {
         <!-- Borrar -->
         <button type="button" ${raw(Events.attr('prestado:extDelParte', i))} data-stop-propagation="true"
           class="pr-ext-quitar${_extPartes.length<=1?' pr-oculto':''}">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
       ${extraDetails}
@@ -1962,7 +1962,7 @@ function abrirMiDeuda(id) {
           <div class="pr-der">
             <div class="pr-monto ${esRecibido ? 'c-red' : 'c-green'}">${esRecibido ? '+' : '−'} ${fmt(m.monto)}</div>
             <button type="button" class="btn-icon pr-btn-36" ${raw(Events.attr('prestado:eliminarMovMiDeuda', d.id, m.id))}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
             </button>
           </div>
         </div>
@@ -1992,7 +1992,7 @@ function volverMisDeudas() {
 /* ── YO DEBO: registrar un movimiento (validar → aplicar) ────────────────
    Mismas capacidades que "Me deben", con el efecto financiero que le toca a
    cada una desde el lado de quien debe:
-   - Recibido / pago repartidos entre varias cuentas (Dividir ÷): `destinos[]`
+   - Recibido / pago repartidos entre varias cuentas (Dividir): `destinos[]`
      / `fuentes[]`, cada fila con el id de su movimiento espejo para revertirla.
    - Perdón ("¿Te lo perdonaron?"): lo que faltaba se borra de la deuda sin mover
      ninguna cuenta, y SÍ es un ingreso real (tu patrimonio neto sube). Queda un
@@ -2466,14 +2466,14 @@ function _abonoEncCuentaSplitToggle() { splitToggle('abonoEncCuenta'); }
 function _abonoEncCuentaAgregarSplitRow() { splitAgregarRow('abonoEncCuenta'); }
 function _getAbonoEncCuentaSplitData() { return splitGetData('abonoEncCuenta'); }
 
-// Resetea el botón "Dividir ÷" de abonoEncCuenta a su estado visual por defecto
+// Resetea el botón "Dividir" de abonoEncCuenta a su estado visual por defecto
 // (texto Y color). Antes había 3 resets parciales sueltos que solo tocaban el
 // texto y dejaban el botón pintado de ámbar si el usuario venía de estar en
 // modo "dividir" — ver docs/CHANGELOG.md.
 function _resetEncCuentaSplitToggleStyle() {
   const btn = document.getElementById('mov_enc_cuenta_split_toggle');
   if (!btn) return;
-  btn.textContent = 'Dividir ÷';
+  btn.textContent = 'Dividir';
   btn.style.background = 'rgba(200,240,96,.1)';
   btn.style.borderColor = 'rgba(200,240,96,.3)';
   btn.style.color = 'var(--accent)';
@@ -2899,7 +2899,7 @@ function _onSelPersonaMeDeben(personaId) {
 /* ── Yo debo: "Nueva deuda" abre directamente el mismo selector ────
    Igual que Me deben: se elige (o crea) a la persona, queda la deuda
    vacía y se abre su detalle; el primer "Me prestó" se registra desde
-   ahí (con Dividir ÷, movimiento espejo, etc.). */
+   ahí (con Dividir, movimiento espejo, etc.). */
 function _onSelPersonaYoDebo(personaId) {
   const p = getPersona(personaId);
   if (!p) return;

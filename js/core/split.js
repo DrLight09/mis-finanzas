@@ -100,7 +100,7 @@ function splitToggle(instId){
   if(split)  split.style.display  = modo ? '' : 'none';
   const btn = document.getElementById(cfg.toggleId);
   if(btn){
-    btn.textContent   = modo ? 'Una sola cuenta' : 'Dividir ÷';
+    btn.textContent   = modo ? 'Una sola cuenta' : 'Dividir';
     btn.style.background  = modo ? 'rgba(240,184,64,.1)' : 'rgba(200,240,96,.1)';
     btn.style.borderColor = modo ? 'rgba(240,184,64,.3)' : 'rgba(200,240,96,.3)';
     btn.style.color       = modo ? 'var(--amber)' : 'var(--accent)';
@@ -128,7 +128,7 @@ function splitAgregarRow(instId){
     <div class="select-wrap"><select class="split-select">${cfg.getFuentesFn('')}</select></div>
     <input type="text" inputmode="decimal" placeholder="monto" class="money-input split-monto">
     <button type="button" class="split-quitar">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>`;
 
   // onchange/oninput/onclick no pasan por Events (solo despacha clicks con
@@ -213,7 +213,7 @@ function splitActualizarOpciones(instId){
   }
 }
 
-// Devuelve un widget a su estado base: modo simple, sin filas, botón "Dividir ÷".
+// Devuelve un widget a su estado base: modo simple, sin filas, botón "Dividir".
 // Se usa al reabrir un sheet (para que no quede un split viejo de la vez anterior).
 function splitReset(instId){
   const cfg = _splitInstancias[instId]; if(!cfg) return;
@@ -226,7 +226,7 @@ function splitReset(instId){
   if(split)  split.style.display  = 'none';
   if(rows)   rows.innerHTML = '';
   if(btn){
-    btn.textContent = 'Dividir ÷';
+    btn.textContent = 'Dividir';
     btn.style.background  = 'rgba(200,240,96,.1)';
     btn.style.borderColor = 'rgba(200,240,96,.3)';
     btn.style.color       = 'var(--accent)';

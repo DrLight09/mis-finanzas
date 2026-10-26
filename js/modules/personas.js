@@ -94,11 +94,11 @@ function _inyectarPersonaSheets() {
       <div id="sel-persona-buscar-wrap" class="ig pe-sel-wrap">
         <input type="text" id="sel-persona-buscar" placeholder="Buscar persona..." autocomplete="off"
           class="pe-sel-input">
-        <svg class="pe-sel-lupa" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg aria-hidden="true" class="pe-sel-lupa" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </div>
       <div id="sel-persona-lista" class="pe-sel-lista"></div>
       <button type="button" class="btn btn-ghost pe-btn-nueva" ${Events.attr('personas:abrirCrearGlobal', false)}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Nueva persona
       </button>
       <button type="button" class="btn btn-ghost pe-btn-cancelar" data-close-sheet="sel-persona">Cancelar</button>
@@ -123,7 +123,7 @@ function _inyectarPersonaSheets() {
         <div class="pe-colores" id="cpg_colores"></div>
       </div>
       <button type="button" class="btn btn-primary" ${Events.attr('personas:confirmarCrear')}>Crear persona</button>
-      <button type="button" class="btn btn-ghost pe-btn-cancelar" ${Events.attr('personas:volverASel')}>← Volver</button>
+      <button type="button" class="btn btn-ghost pe-btn-cancelar" ${Events.attr('personas:volverASel')}><svg aria-hidden="true" class="pe-ico-volver" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Volver</button>
     </div>`;
   document.body.appendChild(sheetCreate);
 
@@ -142,7 +142,7 @@ function _inyectarPersonaSheets() {
           <div id="pperf-sub" class="pe-perf-sub"></div>
         </div>
         <button type="button" class="btn-icon pe-c-accent" ${Events.attr('personas:editarDesdePerfil')} title="Editar">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
       </div>
       <div id="pperf-body"></div>
@@ -247,7 +247,7 @@ function _renderListaPersonas() {
         <div class="pe-nombre">${p.nombre}</div>
         <div class="pe-sub">${subTexto}</div>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`);
   });
 
@@ -266,7 +266,7 @@ function _renderListaPersonas() {
         <div class="pe-nombre">${d.nombre}</div>
         <div class="pe-sub">${sub}</div>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`);
   });
 
@@ -283,7 +283,7 @@ function _renderListaPersonas() {
         <div class="pe-nombre">${d.nombre}</div>
         <div class="pe-sub">${sub}</div>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`);
   });
 
@@ -352,7 +352,7 @@ function _selPersonaFiltrar() {
       ? html`<div class="pe-pad10">
           <div class="pe-sin-res">No se encontró "${q}".</div>
           <button type="button" ${raw(Events.attr('personas:selCrearDirecto'))} class="pe-btn-crear">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Crear a "${q}"
           </button>
         </div>`
@@ -383,7 +383,7 @@ function _selPersonaFiltrar() {
         <div class="pe-nombre">${p.nombre}</div>
         ${badges.length ? html`<div class="pe-badges">${badges}</div>` : ''}
       </div>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`;
   });
   lista.innerHTML = html`${items}`;
@@ -573,8 +573,8 @@ function abrirPerfilPersona(personaId) {
 
     contenido.push(html`<div class="pe-card-amber">
       <div class="pe-cab">
-        <div class="pe-cab-cap-amber"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Préstamos</div>
-        <button type="button" ${raw(Events.attr('prestado-personas:irADeudor', d.id))} class="pe-ver-detalle">Ver detalle →</button>
+        <div class="pe-cab-cap-amber"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Préstamos</div>
+        <button type="button" ${raw(Events.attr('prestado-personas:irADeudor', d.id))} class="pe-ver-detalle">Ver detalle <i class="fa-solid fa-arrow-right"></i></button>
       </div>
       <div class="pe-grid3">
         <div class="pe-celda">
@@ -635,7 +635,7 @@ function abrirPerfilPersona(personaId) {
 
     contenido.push(html`<div class="pe-card-azul">
       <div class="pe-cab">
-        <div class="pe-cab-cap-azul"><svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Encargos</div>
+        <div class="pe-cab-cap-azul"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Encargos</div>
         <span class="pe-enc-n">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>
       </div>
       <div class="pe-grid2-mb10">
@@ -664,7 +664,7 @@ function abrirPerfilPersona(personaId) {
           <div class="pe-enc-nom">${e.nota || e.nombre}</div>
           <div class="pe-enc-der">
             <div class="pe-enc-saldo">${fmt(saldoE)}</div>
-            <button type="button" ${raw(Events.attr('encargos-personas:irAEncargo', e.id))} class="pe-ver-detalle">Ver →</button>
+            <button type="button" ${raw(Events.attr('encargos-personas:irAEncargo', e.id))} class="pe-ver-detalle">Ver <i class="fa-solid fa-arrow-right"></i></button>
           </div>
         </div>`;
       })}
@@ -699,10 +699,10 @@ function abrirPerfilPersona(personaId) {
     contenido.push(html`<div class="pe-card-spotify">
       <div class="pe-cab">
         <div class="pe-cab-cap-spotify">
-          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 64 64" class="pe-sp-ico"><path d="M32 0C14.3 0 0 14.337 0 32c0 17.7 14.337 32 32 32 17.7 0 32-14.337 32-32S49.663 0 32 0zm14.68 46.184c-.573.956-1.797 1.223-2.753.65-7.532-4.588-16.975-5.62-28.14-3.097-1.07.23-2.14-.42-2.37-1.49s.42-2.14 1.49-2.37c12.196-2.79 22.67-1.606 31.082 3.556a2 2 0 0 1 .688 2.753zm3.9-8.717c-.726 1.185-2.256 1.53-3.44.84-8.602-5.276-21.716-6.805-31.885-3.747-1.338.382-2.714-.344-3.097-1.644-.382-1.338.344-2.714 1.682-3.097 11.622-3.517 26.074-1.835 35.976 4.244 1.147.688 1.49 2.217.765 3.403zm.344-9.1c-10.323-6.117-27.336-6.69-37.2-3.708-1.568.497-3.25-.42-3.747-1.988s.42-3.25 1.988-3.747c11.317-3.44 30.127-2.753 41.98 4.282 1.415.84 1.873 2.676 1.032 4.09-.765 1.453-2.638 1.912-4.053 1.07z" fill="#1ed760"/></svg>
+          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 64 64" class="pe-sp-ico"><path d="M32 0C14.3 0 0 14.337 0 32c0 17.7 14.337 32 32 32 17.7 0 32-14.337 32-32S49.663 0 32 0zm14.68 46.184c-.573.956-1.797 1.223-2.753.65-7.532-4.588-16.975-5.62-28.14-3.097-1.07.23-2.14-.42-2.37-1.49s.42-2.14 1.49-2.37c12.196-2.79 22.67-1.606 31.082 3.556a2 2 0 0 1 .688 2.753zm3.9-8.717c-.726 1.185-2.256 1.53-3.44.84-8.602-5.276-21.716-6.805-31.885-3.747-1.338.382-2.714-.344-3.097-1.644-.382-1.338.344-2.714 1.682-3.097 11.622-3.517 26.074-1.835 35.976 4.244 1.147.688 1.49 2.217.765 3.403zm.344-9.1c-10.323-6.117-27.336-6.69-37.2-3.708-1.568.497-3.25-.42-3.747-1.988s.42-3.25 1.988-3.747c11.317-3.44 30.127-2.753 41.98 4.282 1.415.84 1.873 2.676 1.032 4.09-.765 1.453-2.638 1.912-4.053 1.07z" fill="#1ed760"/></svg>
           Spotify
         </div>
-        <button type="button" ${raw(Events.attr('personas:irASpotify'))} class="pe-ver-detalle">Ver módulo →</button>
+        <button type="button" ${raw(Events.attr('personas:irASpotify'))} class="pe-ver-detalle">Ver módulo <i class="fa-solid fa-arrow-right"></i></button>
       </div>
       <div class="pe-grid2-mb8">
         <div class="pe-celda">
@@ -752,9 +752,9 @@ function abrirPerfilPersona(personaId) {
     contenido.push(html`<div class="pe-card-rojo">
       <div class="pe-cab">
         <div class="pe-cab-cap-rojo">
-          <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Le debo
+          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Le debo
         </div>
-        <button type="button" ${raw(Events.attr('prestado-personas:irAMiDeuda', primerMiDeuda.id))} class="pe-ver-detalle">Ver detalle →</button>
+        <button type="button" ${raw(Events.attr('prestado-personas:irAMiDeuda', primerMiDeuda.id))} class="pe-ver-detalle">Ver detalle <i class="fa-solid fa-arrow-right"></i></button>
       </div>
       <div class="pe-grid3">
         <div class="pe-celda">

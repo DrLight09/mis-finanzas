@@ -2074,3 +2074,49 @@ describe('cuentas-nu-archivos', () => {
     assert.deepEqual(sinNu, []);
   });
 });
+
+describe('cuentas-abono-con-extra', () => {
+  // Mejora 5: el abono de una deuda y su extra se guardan como dos movimientos (el abono es neutro, el extra es ingreso real),
+  // pero la cuenta muestra UN movimiento por lo que recibió.
+  const { test } = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const RAIZ = path.join(__dirname, '..');
+  const ARCH = ['core-state.js', 'periodo.js', 'nu-calc.js', 'calc-helpers.js', 'cuenta-efectos.js'].map(f => path.join(RAIZ, 'js', 'core', f))
+    .concat(['nu.js', 'cuentas.js'].map(f => path.join(RAIZ, 'js', 'modules', f)));
+  const espejo = (id, fuente, monto, parte, extra = {}) => ({ id, tipo: 'entrada', fuente, monto, fecha: '2026-10-20', desc: parte === 'extra' ? 'Extra de pago — Ana' : 'Abono de deuda — Ana',
+    clase: parte === 'extra' ? 'ingreso' : 'neutro', _abonoId: 'a1', _parteAbono: parte, _secundario: true, _origenSeccion: 'Prestado · Me deben', ...extra });
+  const cargar = movs => { const app = loadApp(ARCH, { permissive: true }); app.S.movimientos = movs; return app; };
+
+  test('abono y extra a la misma cuenta: una sola fila por el total', () => {
+    const app = cargar([espejo('m1', 'nequi', 50000, 'abono'), espejo('m2', 'nequi', 5000, 'extra')]);
+    const filas = Array.from(app.getMovimientosCuenta('nequi'));
+    assert.equal(filas.length, 1);
+    assert.equal(filas[0].monto, 55000);
+    assert.equal(filas[0]._movId, 'm1');
+    assert.equal(filas[0]._secundario, true, 'se sigue borrando desde el préstamo, no desde la cuenta');
+  });
+
+  test('a cuentas distintas: una fila por cuenta, cada una con la otra en «otras cuentas»', () => {
+    const app = cargar([espejo('m1', 'nequi', 50000, 'abono'), espejo('m2', 'efectivo', 5000, 'extra')]);
+    const nequi = Array.from(app.getMovimientosCuenta('nequi')), efectivo = Array.from(app.getMovimientosCuenta('efectivo'));
+    assert.equal(nequi.length, 1); assert.equal(efectivo.length, 1);
+    assert.equal(nequi[0].monto, 50000); assert.equal(efectivo[0].monto, 5000);
+    assert.deepEqual(JSON.parse(JSON.stringify(nequi[0]._otrasCuentas)), [{ fuente: 'efectivo', monto: 5000 }]);
+    assert.deepEqual(JSON.parse(JSON.stringify(efectivo[0]._otrasCuentas)), [{ fuente: 'nequi', monto: 50000 }]);
+  });
+
+  test('un abono sin extra, y un extra ajeno al abono, no se tocan', () => {
+    const app = cargar([espejo('m1', 'nequi', 50000, 'abono'), { id: 'm9', tipo: 'entrada', fuente: 'nequi', monto: 7000, fecha: '2026-10-21', desc: 'Ingreso' }]);
+    const filas = Array.from(app.getMovimientosCuenta('nequi'));
+    assert.equal(filas.length, 2);
+    assert.deepEqual(filas.map(f => f.monto).sort((a, b) => a - b), [7000, 50000]);
+  });
+
+  test('los ingresos del mes siguen contando solo el extra (el abono no es plata nueva)', () => {
+    const app = cargar([espejo('m1', 'nequi', 50000, 'abono'), espejo('m2', 'nequi', 5000, 'extra')]);
+    assert.equal(Array.from(app.entradasIngresoReal()).reduce((a, m) => a + m.monto, 0), 5000);
+  });
+});
+

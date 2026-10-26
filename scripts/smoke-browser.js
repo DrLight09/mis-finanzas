@@ -210,6 +210,16 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     r6 = esc6(50000, 80000);
     c4(r6.cls === 'an-hero-neg' && r6.monto === '-$30.000' && /has gastado más de lo que has recibido/.test(r6.msg), 'Balance con gastos > ingresos: rojo con signo -');
 
+    // Mejora 11: «Salud financiera» — el consejo del CDT es una sugerencia (no un check verde) y lleva a Cuentas
+    ev(`S.movimientos=[]; S.gastosVar=[]; S.tarjetasCredito=[]; S.cajitas=S.cajitas||[]; S.cuentas=[{id:'nequi',tipo:'nequi',saldo:9000000},{id:'efectivo',tipo:'efectivo',saldo:0}]; S.ingresosFijos=[{id:'i11',nombre:'Sueldo',monto:3000000}]; S.gastosFijos=[{id:'f11',monto:1000000}]; S.pagosGastosFijos={['f11_'+mesActual()]:{monto:1000000}}; renderHealthScore()`);
+    const tipCdt = [...w.document.querySelectorAll('#health-score-card .inicio-tip')].find(t => /CDT/.test(t.textContent));
+    c4(!!tipCdt && tipCdt.classList.contains('inicio-tip-info') && !tipCdt.classList.contains('inicio-tip-ok') && !!tipCdt.querySelector('.fa-circle-info') && !tipCdt.querySelector('svg'), 'Salud financiera: el consejo del CDT debe verse como sugerencia (ícono de información, no check verde)');
+    c4(!w.document.querySelector('#health-score-card .inicio-tip-ok'), 'Salud financiera: no debe haber checks verdes en recomendaciones');
+    tipCdt.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true }));
+    await esperar(30);
+    c4(q('#screen-cuentas').classList.contains('active'), 'Salud financiera: el consejo del CDT debe llevar a Cuentas');
+    ev(`showScreen('inicio')`);
+
     // Mejora 8: Presupuestos mensuales con puntos de miles, guardando siempre el número
     ev(`S.presupuestos={}; S.presupuestos[getCatsVar()[0]]=500000; abrirPresupuestos()`);
     const pi = q('#presup-input-0');

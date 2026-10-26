@@ -217,6 +217,64 @@ describe('calcHealthScore', () => {
     assert.ok(r.tips.some((t) => t.includes('gastando más de lo que ingresas')));
   });
 
+  test('calcHealthScore — cada consejo trae su tipo: una sugerencia (CDT) no es un logro y lleva a donde se resuelve', () => {
+    const mes = currentMonthKey();
+    const ctx = freshApp({
+      cuentas: cuentas({ nequi: 9000000 }), // 9 meses de reserva: el fondo de emergencia ya está cubierto
+      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 3000000, desde: '2020-01' }],
+      gastosFijos: [{ id: 'g1', monto: 1000000 }],
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
+    });
+    const cdt = ctx.calcHealthScore().consejos.find((c) => c.texto.includes('CDT'));
+    assert.ok(cdt, 'con ahorros que sobran se sugiere el CDT');
+    assert.equal(cdt.tipo, 'sugerencia');
+    assert.equal(cdt.ir, 'cuentas');
+  });
+
+  test('calcHealthScore — el CDT no se sugiere si las reservas no llegan a 3 meses ni con deuda de tarjeta', () => {
+    const mes = currentMonthKey();
+    const pocas = freshApp({
+      cuentas: cuentas({ nequi: 500000 }),
+      gastosFijos: [{ id: 'g1', monto: 1000000 }],
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
+    });
+    assert.ok(!pocas.calcHealthScore().tips.some((t) => t.includes('CDT')));
+    const conDeuda = freshApp({
+      cuentas: cuentas({ nequi: 9000000 }),
+      tarjetasCredito: [{ id: 'tc1', deuda: 100000, cupo: 1000000 }],
+      gastosFijos: [{ id: 'g1', monto: 1000000 }],
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
+    });
+    assert.ok(!conDeuda.calcHealthScore().tips.some((t) => t.includes('CDT')));
+  });
+
+  test('calcHealthScore — lo urgente va primero: alerta, aviso, sugerencia, ok', () => {
+    const mes = currentMonthKey();
+    const ctx = freshApp({
+      cuentas: cuentas({ nequi: 100000 }),
+      tarjetasCredito: [{ id: 'tc1', deuda: 300000, cupo: 1000000 }],
+      gastosFijos: [{ id: 'g1', monto: 50000 }],
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 50000 } },
+      gastosVar: [{ id: 'v1', monto: 1000, fecha: mes + '-01', cat: 'Comida', fuente: 'nequi' }],
+    });
+    const tipos = Array.from(ctx.calcHealthScore().consejos, (c) => c.tipo); // Array.from: el array viene de otro contexto de `vm`
+    const orden = { alerta: 0, aviso: 1, sugerencia: 2, ok: 3 };
+    assert.ok(tipos.includes('alerta') && tipos.includes('sugerencia'));
+    assert.deepEqual(tipos, [...tipos].sort((a, b) => orden[a] - orden[b]));
+  });
+
+  test('calcHealthScore — sin ingresos registrados no puede salir «Excelente» y lo avisa; sin datos no hay calificación', () => {
+    const mes = currentMonthKey();
+    const sinIngresos = freshApp({
+      cuentas: cuentas({ nequi: 9000000 }),
+      gastosFijos: [{ id: 'g1', monto: 1000000 }],
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
+    }).calcHealthScore();
+    assert.ok(sinIngresos.score <= 74);
+    assert.ok(sinIngresos.consejos.some((c) => c.texto.includes('Registra tus ingresos') && c.tipo === 'sugerencia'));
+    assert.equal(freshApp().calcHealthScore().sinDatos, true);
+  });
+
   test('calcHealthScore — score nunca baja de 0 ni sube de 100 (clamp), caso extremo', () => {
     const mes = currentMonthKey();
     const ctx = freshApp({

@@ -158,7 +158,7 @@ function abrirNuevoGastoVar() {
   document.getElementById('gvSplitRows').innerHTML = '';
   const gvToggleBtn = document.getElementById('gvSplitToggle');
   if (gvToggleBtn) {
-    gvToggleBtn.textContent = 'Dividir ÷';
+    gvToggleBtn.textContent = 'Dividir';
     gvToggleBtn.style.background = 'rgba(200,240,96,.1)';
     gvToggleBtn.style.borderColor = 'rgba(200,240,96,.3)';
     gvToggleBtn.style.color = 'var(--accent)';
@@ -251,7 +251,7 @@ function renderGastosVar() {
   mostrarSi(document.querySelector('.btn-open-gasto-var'), visibles.length > 0 || mesFilter !== 'todos');
   if (!visibles.length) {
     el.innerHTML = emptyState(
-      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 3 14 9 20 9"/><line x1="8" y1="13" x2="16" y2="13"/></svg>',
+      '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 3 14 9 20 9"/><line x1="8" y1="13" x2="16" y2="13"/></svg>',
       'Sin gastos registrados',
       mesFilter === 'todos' ? 'Aún no has registrado ningún gasto. Añade el primero para ver tu resumen mensual.' : 'No hay gastos en este mes.',
       mesFilter === 'todos' ? 'Registrar primer gasto' : '',
@@ -280,15 +280,15 @@ function renderGastosVar() {
     return html`<div class="gasto-item${raw((esFijo || esPagoTC) ? ' gasto-item-atenuado' : '')}">
       <div class="gasto-item-top">
         <div class="gasto-item-info">
-          <div class="row-name gasto-nombre-fila">${g.desc}${esSecundario ? html`<span class="gasto-chip-auto"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
+          <div class="row-name gasto-nombre-fila">${g.desc}${esSecundario ? html`<span class="gasto-chip-auto"><svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
           <div class="row-sub">${g.fecha}</div>
         </div>
         <div class="gasto-acciones">
           <span class="row-amount ${raw(claseMonto)}">${esPagoTC ? '-' : ''}${fmt(g.monto)}</span>
           ${esSecundario
-            ? html`<span title="Generado automáticamente — elimínalo desde ${g._origenSeccion || 'la sección de origen'}" class="gasto-candado"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
+            ? html`<span title="Generado automáticamente — elimínalo desde ${g._origenSeccion || 'la sección de origen'}" class="gasto-candado"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
             : html`<button type="button" class="btn-delete-hover" ${raw(Events.attr('gastos:deleteGastoVar', g.id))} title="Eliminar">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>`}
         </div>
       </div>
@@ -520,7 +520,7 @@ function renderGastosFijos() {
   mostrarSi(document.querySelector('.btn-open-gasto-fijo'), todos.length > 0);
   if (!todos.length) {
     el.innerHTML = emptyState(
-      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+      '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
       'Sin gastos fijos',
       'Agrega tus gastos recurrentes como arriendo, Netflix o servicios para tenerlos siempre visibles.',
       'Agregar gasto fijo',
@@ -550,7 +550,7 @@ function renderGastosFijos() {
         <div class="gasto-acciones">
           <span class="row-amount c-red">${fmt(x.monto)}</span>
           ${!x._virtual ? html`<button type="button" class="btn-delete-hover" ${raw(Events.attr('gastos:deleteGastoFijo', x.id))} title="Eliminar">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>` : ''}
         </div>
       </div>

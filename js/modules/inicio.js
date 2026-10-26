@@ -217,7 +217,13 @@ function calcHealthScore(){
   const S = window.S || {};
   if(!S.cajitas) return null;
   let score = 50;
-  const tips = [];
+  // Cada consejo lleva su TIPO explícito (no se deduce del texto):
+  //   ok         → algo ya cumplido o bien hecho (check verde)
+  //   alerta     → importante, hay que atenderlo (rojo, advertencia)
+  //   aviso      → conviene mirarlo (ámbar, advertencia)
+  //   sugerencia → oportunidad o tarea pendiente, no un logro (neutro, ícono de información); `ir` = pantalla donde se resuelve
+  const consejos = [];
+  const add = (texto, tipo, ir) => { consejos.push({ texto, tipo, ir: ir || '' }); };
 
   // ── Cálculos base ────────────────────────────────────────────────────
   // Patrimonio VISIBLE (sin alcancía) — mismo criterio que renderProyeccion().
@@ -277,27 +283,27 @@ function calcHealthScore(){
     const mesesCubiertos = liquidoReal / gastosMes;
     if(mesesCubiertos >= 6) score += 20;
     else if(mesesCubiertos >= 3) score += 10;
-    else { score -= 5; tips.push('Tus reservas cubren menos de 3 meses de gastos.'); }
+    else { score -= 5; add('Tus reservas cubren menos de 3 meses de gastos.','aviso'); }
   } else if(gastosMes > 0 && liquidoReal <= 0 && liquidoConCDTs > 0){
     // Tiene gastos pero su liquidez inmediata es cero — salvado solo por CDTs
-    score -= 8; tips.push('Tu liquidez disponible es muy baja — tus ahorros están en CDTs, no en cuentas libres.');
+    score -= 8; add('Tu liquidez disponible es muy baja — tus ahorros están en CDTs, no en cuentas libres.','aviso');
   } else if(liquidoReal < 0){
-    score -= 15; tips.push('Tu deuda en tarjetas supera tu patrimonio líquido.');
+    score -= 15; add('Tu deuda en tarjetas supera tu patrimonio líquido.','alerta');
   }
 
   // b) Deuda de tarjetas de crédito vs ingresos (ratio de endeudamiento TC)
   if(deudaTC > 0 && ingresosMes > 0){
     const ratioTC = deudaTC / ingresosMes;
-    if(ratioTC > 3){ score -= 15; tips.push('Tu deuda en TC supera 3 meses de ingresos — prioriza pagarla.'); }
-    else if(ratioTC > 1.5){ score -= 8; tips.push('Tu deuda en tarjetas es alta respecto a tus ingresos.'); }
+    if(ratioTC > 3){ score -= 15; add('Tu deuda en TC supera 3 meses de ingresos — prioriza pagarla.','alerta'); }
+    else if(ratioTC > 1.5){ score -= 8; add('Tu deuda en tarjetas es alta respecto a tus ingresos.','aviso'); }
     else score += 5;
   } else if(deudaTC > 0 && ingresosMes === 0){
     // Tiene deuda TC pero no registra ingresos — verificar vs patrimonio
     // CORRECCIÓN: cubrir el caso patrimonio <= 0 que antes se ignoraba
     if(patrimonio > 0 && deudaTC / patrimonio > 0.4){
-      score -= 10; tips.push('Tu deuda en tarjetas es alta — considera pagarla con tus ahorros.');
+      score -= 10; add('Tu deuda en tarjetas es alta — considera pagarla con tus ahorros.','aviso');
     } else if(patrimonio <= 0 && deudaTC > 0){
-      score -= 15; tips.push('Tienes deuda en tarjetas y tu patrimonio no la cubre — prioriza pagarla.');
+      score -= 15; add('Tienes deuda en tarjetas y tu patrimonio no la cubre — prioriza pagarla.','alerta');
     }
   }
 
@@ -307,18 +313,18 @@ function calcHealthScore(){
   if(prest > 0){
     if(liquidoReal <= 0){
       // Toda la liquidez está prestada — caso crítico
-      score -= 15; tips.push('Toda tu liquidez está prestada — no tienes nada disponible para emergencias.');
+      score -= 15; add('Toda tu liquidez está prestada — no tienes nada disponible para emergencias.','alerta');
       ratioPrest = Infinity;
     } else {
       ratioPrest = prest / liquidoReal;
       if(ratioPrest > 2){
         // Más del doble de la liquidez prestada — muy comprometido
-        score -= 18; tips.push('Tienes más del doble de tu liquidez prestada — tu situación financiera es muy vulnerable.');
+        score -= 18; add('Tienes más del doble de tu liquidez prestada — tu situación financiera es muy vulnerable.','alerta');
       } else if(ratioPrest > 1){
         // Prestó más de lo que tiene líquido
-        score -= 13; tips.push('Tienes más plata prestada que tu liquidez disponible — queda poco para emergencias.');
+        score -= 13; add('Tienes más plata prestada que tu liquidez disponible — queda poco para emergencias.','alerta');
       } else if(ratioPrest > 0.4){
-        score -= 8; tips.push('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).');
+        score -= 8; add('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).','aviso');
       }
       // ratioPrest <= 0.4: situación sana, no penalizar
     }
@@ -329,7 +335,7 @@ function calcHealthScore(){
     const ratioGasto = gastosMes / ingresosMes;
     if(ratioGasto <= 0.7) score += 10;
     else if(ratioGasto <= 0.9) score += 5;
-    else if(ratioGasto > 1){ score -= 10; tips.push('Estás gastando más de lo que ingresas este mes.'); }
+    else if(ratioGasto > 1){ score -= 10; add('Por ahora estás gastando más de lo que ingresas este mes.','aviso'); }
   }
 
   // e) CDTs activos (ahorro estructurado)
@@ -339,8 +345,9 @@ function calcHealthScore(){
   if(cdts >= 1){
     const cdtBonus = ratioPrest > 1 ? 3 : 10;
     score += cdtBonus;
-  } else if(tieneAlgo && liquidoReal > 0){
-    tips.push('Considera poner algo en un CDT para hacer crecer tus ahorros.');
+  } else if(tieneAlgo && liquidoReal > 0 && deudaTC <= 0 && (gastosMes <= 0 || liquidoReal >= gastosMes * 3)){
+    // Solo se sugiere con ahorros que sobran: fondo de emergencia cubierto (≥ 3 meses de gastos) y sin deuda de tarjeta propia.
+    add('Considera poner algo en un CDT para hacer crecer tus ahorros.','sugerencia','cuentas');
   }
 
   // f) Gastos fijos configurados (disciplina de presupuesto)
@@ -349,16 +356,27 @@ function calcHealthScore(){
   // g) Categorías diversificadas en gastos variables (registro completo)
   // CORRECCIÓN: solo penalizar si hay gastos variables — no castigar por tener solo gastos fijos
   const cats = new Set((S.gastosVar||[]).slice(-20).map(g=>g.cat));
-  if(gvMes > 0 && cats.size <= 1){ score -= 5; tips.push('Registra las categorías de tus gastos para mejor control.'); }
+  if(gvMes > 0 && cats.size <= 1){ score -= 5; add('Registra las categorías de tus gastos para mejor control.','sugerencia','gastos'); }
 
-  score = Math.max(0, Math.min(100, score));
-  if(!tips.length){
-    if(score >= 80) tips.push('¡Excelente! Tus finanzas están muy bien.');
-    else if(score >= 60) tips.push('Vas bien — diversifica tus ahorros o reduce gastos variables para subir tu puntaje.');
-    else if(tieneAlgo) tips.push('Hay espacio para mejorar: revisa tus gastos y ahorros para subir tu puntaje.');
-    else tips.push('Registra más movimientos para un análisis más preciso.');
+  // Sin ingresos registrados no se puede evaluar la disciplina de gasto ni el endeudamiento (los ratios b y d se saltan):
+  // no puede salir «Excelente», y se avisa igual que el balance de Análisis.
+  const sinIngresos = ingresosMes <= 0 && gastosMes > 0;
+  if(sinIngresos){
+    score = Math.min(score, 74);
+    add('Registra tus ingresos para que la calificación pueda evaluar tus gastos y deudas.','sugerencia');
   }
-  return { score, tips, ingresosMes, rendimientoCDTMes };
+  score = Math.max(0, Math.min(100, score));
+  if(!consejos.length){
+    if(score >= 80) add('¡Excelente! Tus finanzas están muy bien.','ok');
+    else if(score >= 60) add('Vas bien — diversifica tus ahorros o reduce gastos variables para subir tu puntaje.','sugerencia');
+    else if(tieneAlgo) add('Hay espacio para mejorar: revisa tus gastos y ahorros para subir tu puntaje.','sugerencia');
+    else add('Registra más movimientos para un análisis más preciso.','sugerencia');
+  }
+  // Lo urgente primero y las sugerencias suaves después (el orden es estable dentro de cada tipo).
+  const ORDEN = { alerta: 0, aviso: 1, sugerencia: 2, ok: 3 };
+  consejos.sort((a, b) => ORDEN[a.tipo] - ORDEN[b.tipo]);
+  const tips = consejos.map(c => c.texto); // los textos, para quien solo necesita la lista
+  return { score, tips, consejos, sinDatos: !tieneAlgo, ingresosMes, rendimientoCDTMes };
 }
 
 function renderHealthScore(){
@@ -370,8 +388,8 @@ function renderHealthScore(){
   // (con o sin datos) el alto lo debe definir el contenido, no el skeleton —
   // si no, queda espacio vacío de sobra cuando el contenido es corto.
   el.style.minHeight = '';
-  if(!res){ el.innerHTML = '<div class="inicio-salud-vacio">Registra más datos para calcular tu salud financiera.</div>'; return; }
-  const { score, tips } = res;
+  if(!res || res.sinDatos){ el.innerHTML = '<div class="inicio-salud-vacio">Registra más datos para calcular tu salud financiera.</div>'; return; }
+  const { score, consejos } = res;
   const col = score >= 75 ? 'var(--accent)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
   const claseSalud = score >= 75 ? 'inicio-salud-ok' : score >= 50 ? 'inicio-salud-warn' : 'inicio-salud-mal';
   const label = score >= 75 ? 'Excelente' : score >= 50 ? 'Regular' : 'Necesita atención';
@@ -385,17 +403,23 @@ function renderHealthScore(){
   const dash = (score / 100) * circ;
   const dasharrayAttr = lleno ? '' : `stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}"`;
   const linecap = lleno ? 'butt' : 'round';
-  const icoWarn = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
-  const icoOk = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
-  const positivosPrefijos = ['¡Excelente','Vas bien','Registra más','Considera poner'];
-  const tipsHtml = tips.map(t => {
-    const esPositivo = positivosPrefijos.some(p => t.startsWith(p));
-    const claseTip = esPositivo ? 'inicio-tip-ok' : 'inicio-tip-warn';
-    const icon = esPositivo ? icoOk : icoWarn;
-    return `<div class="inicio-tip ${claseTip}">${icon}<span>${t}</span></div>`;
+  // Un solo punto asigna color e ícono según el TIPO del consejo (no según su texto). Íconos de Font Awesome de la app.
+  const ESTILO = {
+    ok:         { clase: 'inicio-tip-ok',   ico: 'fa-circle-check' },
+    alerta:     { clase: 'inicio-tip-mal',  ico: 'fa-triangle-exclamation' },
+    aviso:      { clase: 'inicio-tip-warn', ico: 'fa-triangle-exclamation' },
+    sugerencia: { clase: 'inicio-tip-info', ico: 'fa-circle-info' }
+  };
+  const tipsHtml = consejos.map(c => {
+    const e = ESTILO[c.tipo] || ESTILO.sugerencia;
+    const cuerpo = `<i class="fa-solid ${e.ico} inicio-tip-ico"></i><span>${escHtml(c.texto)}</span>`;
+    // Un consejo accionable lleva a donde se resuelve.
+    return c.ir
+      ? `<button type="button" class="inicio-tip ${e.clase} inicio-tip-accion" ${Events.attr('inicio:irConsejo', c.ir)}>${cuerpo}<i class="fa-solid fa-arrow-right inicio-tip-ir"></i></button>`
+      : `<div class="inicio-tip ${e.clase}">${cuerpo}</div>`;
   }).join('');
   el.innerHTML = `<div class="health-ring-wrap inicio-salud-wrap">
-    <svg width="76" height="76" viewBox="0 0 76 76" class="health-ring inicio-salud-anillo">
+    <svg aria-hidden="true" width="76" height="76" viewBox="0 0 76 76" class="health-ring inicio-salud-anillo">
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="7"/>
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="${col}" stroke-width="7"
         ${dasharrayAttr}
@@ -439,7 +463,7 @@ function renderProyeccion(){
   if(!patrimonio){
     el.innerHTML = `<div class="inicio-proy-vacio">
       <div class="inicio-proy-vacio-ico">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
       </div>
       <div class="inicio-proy-vacio-titulo">Sin datos suficientes</div>
       <div class="inicio-proy-vacio-texto">Registra movimientos para ver tu proyección a 3, 6 y 12 meses.</div>
@@ -525,7 +549,7 @@ function renderProyeccion(){
 
   el.innerHTML = historialInsuficiente ? `
     <div class="inicio-proy-fila">
-      <span class="inicio-proy-etiqueta">Tendencia mensual<span class="inicio-proy-info"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
+      <span class="inicio-proy-etiqueta">Tendencia mensual<span class="inicio-proy-info"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
       <span class="inicio-proy-valor inicio-proy-valor-nulo">—</span>
     </div>
     <div class="inicio-proy-aviso">
@@ -534,7 +558,7 @@ function renderProyeccion(){
     ${deudaInfo}
   ` : `
     <div id="_proy-header" class="inicio-proy-fila inicio-proy-fila-click" data-tendencia="${tendenciaMensual}">
-      <span class="inicio-proy-etiqueta">Tendencia mensual<span class="inicio-proy-info"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
+      <span class="inicio-proy-etiqueta">Tendencia mensual<span class="inicio-proy-info"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
       <span class="inicio-proy-valor ${tendenciaMensual>=0?'inicio-proy-pos':'inicio-proy-neg'}">${tendenciaMensual>=0?'+':''}${fmt(tendenciaMensual)}</span>
     </div>
     <div id="_proy-cards-wrap" class="inicio-proy-grid">
@@ -582,7 +606,7 @@ function renderProyeccion(){
     // Cards 3m/6m/12m
     const wrap = el.querySelector('#_proy-cards-wrap');
     if(wrap){
-      function bindCard(card, e){ e.stopPropagation(); const lbl=card.dataset.proyLbl; const val=parseFloat(card.dataset.proyVal)||0; const diff=parseFloat(card.dataset.proyDiff)||0; const pct=card.dataset.proyPct; const meses=card.dataset.proyMeses; const claseDelta=diff>=0?'inicio-tt-pos':'inicio-tt-neg'; const ico=diff>=0?'↑':'↓'; showTT(`<div class="inicio-tt-titulo">Proyección a ${lbl}</div><div class="inicio-tt-fila"><span class="inicio-tt-monto">${fmt2(Math.max(0,val))}</span><span class="inicio-tt-delta ${claseDelta}">${ico} ${diff>=0?'+':''}${fmt2(diff)}</span></div><div class="inicio-tt-nota">${diff>=0?'+':''}${pct}% vs hoy · acumulado ${meses} meses</div>`); card.style.background='var(--bg4)'; setTimeout(()=>{ card.style.background='var(--bg3)'; },200); }
+      function bindCard(card, e){ e.stopPropagation(); const lbl=card.dataset.proyLbl; const val=parseFloat(card.dataset.proyVal)||0; const diff=parseFloat(card.dataset.proyDiff)||0; const pct=card.dataset.proyPct; const meses=card.dataset.proyMeses; const claseDelta=diff>=0?'inicio-tt-pos':'inicio-tt-neg'; const ico=diff>=0?'<i class="fa-solid fa-arrow-up"></i>':'<i class="fa-solid fa-arrow-down"></i>'; showTT(`<div class="inicio-tt-titulo">Proyección a ${lbl}</div><div class="inicio-tt-fila"><span class="inicio-tt-monto">${fmt2(Math.max(0,val))}</span><span class="inicio-tt-delta ${claseDelta}">${ico} ${diff>=0?'+':''}${fmt2(diff)}</span></div><div class="inicio-tt-nota">${diff>=0?'+':''}${pct}% vs hoy · acumulado ${meses} meses</div>`); card.style.background='var(--bg4)'; setTimeout(()=>{ card.style.background='var(--bg3)'; },200); }
       wrap.addEventListener('click', function(e){ const card=e.target.closest('[data-proy-key]'); if(card) bindCard(card,e); });
       wrap.addEventListener('touchend', function(e){ const card=e.target.closest('[data-proy-key]'); if(card){ e.preventDefault(); bindCard(card,e); } });
     }
@@ -721,3 +745,7 @@ _renderDispNetoTC();
   }
 })();
 
+// Consejo de «Salud financiera» accionable: abre la pantalla donde se resuelve.
+Events.registerAll('inicio', {
+  irConsejo: (destino) => { if (typeof showScreen === 'function' && document.getElementById('screen-' + destino)) showScreen(destino); }
+});

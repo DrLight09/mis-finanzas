@@ -6,6 +6,27 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Mejoras de `mejoras.md`
 
+### 💳 Abono con extra: un movimiento por lo que recibió cada cuenta (2026-10-26, mejora 5)
+
+- **Cómo se guarda:** sin cambios en saldos ni en el cálculo de ingresos: el abono (neutro) y el extra (ingreso real) siguen siendo dos movimientos. Ahora comparten `_abonoId` (id del abono) y `_parteAbono` (`'abono'`/`'extra'`), también en el abono desde un encargo.
+- **Cómo se ve:** `getMovimientosCuenta` (`cuentas.js`) junta las dos partes: a la **misma cuenta**, una fila por el total (`+$55.000`, sigue siendo `_secundario`: se borra desde el préstamo); a **cuentas distintas**, una fila por cuenta, cada una con la otra en «otras cuentas». El detalle del movimiento (`movimientos.js`) muestra el panel «Del mismo abono» con la cuenta y el importe de cada parte (abono de deuda / extra). El saldo antes/después sale de la misma lista, así que cuadra.
+- Solo el abono reduce la deuda (probado: 100.000 − abono de 20.000 = 80.000 aunque haya extra). Abonos sin extra y el historial existente no cambian.
+- **Pruebas:** bloque `cuentas-abono-con-extra` en `tests/cuentas.test.js` (misma cuenta, cuentas distintas, sin extra, ingresos) y el etiquetado en `tests/prestamos.test.js`.
+
+### 🩺 Inicio · «Salud financiera»: tipos de consejo, íconos y orden (2026-10-26, mejora 11)
+
+- **Causa:** el color y el ícono salían de **adivinar el prefijo del texto** (`positivosPrefijos`), y ahí se coló «Considera poner algo en un CDT…» (una recomendación) con el check verde de «logrado».
+- **Arreglo en el origen:** `calcHealthScore()` devuelve `consejos: [{ texto, tipo, ir }]` (`tips` sigue siendo la lista de textos). Tipos: `ok` (check verde), `alerta` (rojo), `aviso` (ámbar), `sugerencia` (ícono de información, color neutro). El render tiene **un solo** lugar que mapea tipo → clase e ícono (`fa-circle-check`, `fa-triangle-exclamation`, `fa-circle-info`: Font Awesome de la app, sin SVG sueltos de 11 px), con el tamaño y la alineación en CSS (`.inicio-tip-ico`).
+- **Orden:** alerta, aviso, sugerencia, ok. **Consejos accionables:** el del CDT lleva a Cuentas y el de categorías a Gastos (`inicio:irConsejo`).
+- **Coherencia:** el CDT solo se sugiere con ahorros que sobran (reservas ≥ 3 meses de gastos y sin deuda de tarjeta propia). Sin ingresos registrados la calificación no puede pasar de «Regular»/74 y se avisa («Registra tus ingresos…»), igual que el balance de Análisis; sin datos no hay calificación (`sinDatos`). «Por ahora estás gastando más de lo que ingresas este mes».
+- **Pruebas:** 4 en `tests/nucleo.test.js` y la comprobación del consejo del CDT (ícono, clase y navegación) en la Fase 4 del humo.
+
+### 🔣 Sin símbolos de texto como íconos + `aria-hidden` en los SVG (2026-10-26)
+
+- Fuera `› ‹ ← → ↑ ↓ ↔ ÷ ✓` de todo el texto visible y de las descripciones guardadas: los chevrones de «¿El valor real era diferente?» y de Encargos son `fa-chevron-down` (rotan al abrir; ya no se cambia el `textContent`); «Dividir ÷» → «Dividir»; «← Volver» lleva un SVG; «Ver detalle →» un `fa-arrow-right`; las flechas de «antes → después» son `fa-arrow-right`; en descripciones guardadas ahora dice «Transferencia desde/a…», «Reubicación desde/a…»; «← este mes» → «(este mes)».
+- **Guardia:** `tests/estilos.test.js` falla si reaparece uno de esos símbolos fuera de comentarios (los de archivos CRLF: el `.` de JS no cruza el `\r`, hay que partir por `/\r?\n/`).
+- **`aria-hidden="true"`** en los 288 `<svg>` decorativos (índice y JS); el «svg» que aparecía al copiar venía de ahí. Los SVG con `role`/`aria-label` (el monto oculto) se dejan. Guardia en el mismo archivo.
+
 ### 🤝 Préstamos: nombres y validaciones comunes de «Me deben» y «Yo debo» (2026-10-25, mejora 4)
 
 - **Nomenclatura:** el botón/título que crea un préstamo es «Nuevo préstamo» en Me deben y **«Nueva deuda»** en Yo debo (antes «Me prestó más»); «Registrar abono» / «Registrar pago» y «Agregar persona» (mejora 1) se quedan. El nombre dice quién presta; las dos pantallas siguen creando su propio tipo de registro.

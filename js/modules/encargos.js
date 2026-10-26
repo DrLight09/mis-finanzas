@@ -161,7 +161,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
           </div>
           <div class="enc-nu-pie">
             <span class="enc-nu-tag">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+              <svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
               ${cajitaNombre}
             </span>
             <div class="enc-nu-der">
@@ -290,7 +290,7 @@ function renderEncargosList() {
   mostrarSi(document.getElementById('btn-nuevo-encargo'), encargos.length > 0);
   if (!encargos.length) {
     el.innerHTML = emptyState(
-      '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg>',
+      '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/><line x1="12" y1="12" x2="12" y2="17"/><line x1="9.5" y1="14.5" x2="14.5" y2="14.5"/></svg>',
       'Sin encargos',
       'Cuando administres plata de alguien, crea un encargo para llevar el registro.',
       'Crear encargo',
@@ -460,7 +460,7 @@ function abrirEncargoDetalle(id) {
             <div class="enc-fila-g6">
               <span class="row-amount c-blue">${fmt(m.monto)}</span>
               <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${raw(Events.attr('encargos:deleteMov', enc.id, m.id))} title="Eliminar saldo inicial${lblCuentaIni?' (también se descuenta de '+lblCuentaIni+')':''}">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
               </button>
             </div>
           </div>
@@ -486,12 +486,12 @@ function abrirEncargoDetalle(id) {
           <div class="enc-fila-g6">
             <span class="row-amount ${esEntrada?'c-blue':esAbonoPrestamo?'c-amber':'c-red'}">${esEntrada?'+':'−'}${fmt(m.monto)}</span>
             <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${raw(Events.attr('encargos:deleteMov', enc.id, m.id))} title="Eliminar (también elimina movimientos secundarios en tus cuentas)">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
             </button>
           </div>
         </div>
         ${m.nota&&!esTcEncargo&&!esMia?html`<div class="gasto-item-meta"><span class="enc-nota">${m.nota}</span></div>`:''}
-        ${esMia?html`<div class="gasto-item-meta enc-meta-mt3"><span class="enc-meta-txt"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-meta-ico"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg>Salió de <strong class="enc-c-text2">${miaSaleLbl}</strong>${miaEntraLbl?html` · Entró a <strong class="enc-c-text2">${miaEntraLbl}</strong>`:''}</span></div>`:''}
+        ${esMia?html`<div class="gasto-item-meta enc-meta-mt3"><span class="enc-meta-txt"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-meta-ico"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg>Salió de <strong class="enc-c-text2">${miaSaleLbl}</strong>${miaEntraLbl?html` · Entró a <strong class="enc-c-text2">${miaEntraLbl}</strong>`:''}</span></div>`:''}
         <div class="gasto-item-meta">
           <span class="badge ${esEntrada?'bg-blue':esAbonoPrestamo?'bg-amber':esTcEncargo?'bg-blue':'bg-red'} enc-fs9">${esEntrada?'Entrada':esAbonoPrestamo?'Pago préstamo':esTcEncargo?'Pagado con TC':'Salida'}</span>
           ${esMia?html`<span class="badge enc-badge-yo">Yo puse la plata</span>`:''}
@@ -739,7 +739,7 @@ function crearEncargo() {
    INSTANCIA 1 — "Salió plata" de un encargo (movenc-dif)
    ═══════════════════════════════════════════════════════════════ */
 
-// Split (Dividir ÷) del sobrante del margen: true cuando el usuario repartió lo que sobra
+// Split (Dividir) del sobrante del margen: true cuando el usuario repartió lo que sobra
 // entre varias cuentas suyas en vez de una sola. Ver crearSplitWidget('movencDifMi') abajo.
 let _difMiSplitMode = false;
 
@@ -813,7 +813,7 @@ function _movEncMiaToggle() {
   if (!body) return;
   const abierto = body.style.display !== 'none';
   body.style.display = abierto ? 'none' : '';
-  if (icon) { icon.textContent = abierto ? '›' : '‹'; icon.style.transform = abierto ? '' : 'rotate(90deg)'; }
+  if (icon) icon.style.transform = abierto ? '' : 'rotate(180deg)';
   if (!abierto) {
     const saleSel  = document.getElementById('movenc_mia_cuenta_sale');
     const entraSel = document.getElementById('movenc_mia_cuenta_entra');
@@ -823,7 +823,7 @@ function _movEncMiaToggle() {
   }
 }
 
-/* Split (Dividir ÷) de "Yo puse la plata": el monto total puede haber salido de
+/* Split (Dividir) de "Yo puse la plata": el monto total puede haber salido de
    varias cuentas tuyas y/o recuperarse en varias. Cada lado tiene su propio widget. */
 let _miaSaleSplitMode  = false;
 let _miaEntraSplitMode = false;
@@ -887,9 +887,9 @@ function _movEncMiaPreview() {
   if (!_miaSaleSplitMode && !_miaEntraSplitMode) {
     const saleTxt  = sale[0].fuente  ? fuenteLabel(sale[0].fuente)  : '?';
     const entraTxt = entra[0].fuente ? fuenteLabel(entra[0].fuente) : '?';
-    el.innerHTML = html`↔ Sale ${fmt(monto)} de ${saleTxt} · Recupero ${fmt(monto)} en ${entraTxt}`;
+    el.innerHTML = html`Sale ${fmt(monto)} de ${saleTxt} · Recupero ${fmt(monto)} en ${entraTxt}`;
   } else {
-    el.innerHTML = html`↔ Sale ${_miaResumenLado(sale, monto, _miaSaleSplitMode)} · Recupero ${_miaResumenLado(entra, monto, _miaEntraSplitMode)}`;
+    el.innerHTML = html`Sale ${_miaResumenLado(sale, monto, _miaSaleSplitMode)} · Recupero ${_miaResumenLado(entra, monto, _miaEntraSplitMode)}`;
   }
 }
 
@@ -1005,14 +1005,14 @@ function _procesarDiferencial(movimiento) {
 let _usarParteEncId = null;
 let _usarParteId    = null;
 
-/* ─── Split (Dividir ÷) del sobrante del margen — fábrica para "Ya la usé" y "Compra con TC" ───
+/* ─── Split (Dividir) del sobrante del margen — fábrica para "Ya la usé" y "Compra con TC" ───
    Mismo comportamiento que el de "Registrar salida" (movencDifMi): el usuario reparte lo que
    sobra entre varias cuentas suyas. ids: {simple, split, toggle, rows, preview} (elementos del sheet). */
 function _crearSplitSobrante(instId, key, ids) {
   let modo = false;
   const ctl = {
     activo: () => modo,
-    // [{fuente,monto}] si "Dividir ÷" está activo; null si está en modo "una sola cuenta"
+    // [{fuente,monto}] si "Dividir" está activo; null si está en modo "una sola cuenta"
     getData: () => modo ? splitGetData(key) : null,
     reset: () => splitReset(key),
     toggle: () => splitToggle(key),
@@ -1164,7 +1164,7 @@ async function _confirmarUsarParte() {
     }
   }
 
-  // Validar el reparto del sobrante (si usó "Dividir ÷") ANTES de tocar ningún saldo
+  // Validar el reparto del sobrante (si usó "Dividir") ANTES de tocar ningún saldo
   const _errMiSplit = diffValidarMiCuenta('usarParte');
   if (_errMiSplit) { toast(_errMiSplit, 'err', 5000); return; }
 
@@ -1178,7 +1178,7 @@ async function _confirmarUsarParte() {
       const benefs = normales.map(b => ({ nombre: b.nombre, monto: b.monto }));
       const yoMeQuedo = Math.max(0, margen - asignadoNormal);
 
-      // Reparto del sobrante: filas de "Dividir ÷" si está activo, si no el select único
+      // Reparto del sobrante: filas de "Dividir" si está activo, si no el select único
       const repartoMi = _usarParteMi.getData();
       const filasMi = repartoMi ? repartoMi.filter(r => r.fuente && r.monto > 0) : null;
       const miCuentaSel = document.getElementById('usar_parte_dif_mi_cuenta');
@@ -1288,7 +1288,7 @@ function abrirUsarParteSheet(encId, parteId) {
   document.getElementById('usarParteSplitRows').innerHTML = '';
   const splitBtn = document.getElementById('usarParteSplitToggle');
   if (splitBtn) {
-    splitBtn.textContent = 'Dividir ÷';
+    splitBtn.textContent = 'Dividir';
     splitBtn.style.background = 'rgba(200,240,96,.1)';
     splitBtn.style.borderColor = 'rgba(200,240,96,.3)';
     splitBtn.style.color = 'var(--accent)';
@@ -1319,9 +1319,9 @@ function _difRenderHistorialParte(parte) {
   // Mostrar origen de la plata si se registró
   if (parte.fuentes && parte.fuentes.length > 0) {
     const labels = parte.fuentes.map(f => `${fuenteLabel(f.fuente)} ${fmt(f.monto)}`).join(' + ');
-    out.push(html`<span class="enc-tag-azul"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-11"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${labels}</span>`);
+    out.push(html`<span class="enc-tag-azul"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-11"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${labels}</span>`);
   } else if (parte.fuente) {
-    out.push(html`<span class="enc-tag-azul"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-11"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${fuenteLabel(parte.fuente)}</span>`);
+    out.push(html`<span class="enc-tag-azul"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-11"><path fill-rule="evenodd" d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/></svg> ${fuenteLabel(parte.fuente)}</span>`);
   }
   // Mostrar diferencial si existe
   if (parte.diferencial) {
@@ -1333,7 +1333,7 @@ function _difRenderHistorialParte(parte) {
       ? `Yo (${d.miCuentas.map(r => `${fuenteLabel(r.cuenta)} ${fmt(r.monto)}`).join(' + ')})`
       : (d.miCuenta && d.yoMeQuedo > 0 ? `Yo (${fuenteLabel(d.miCuenta)}) ${fmt(d.yoMeQuedo)}` : '');
     const todas = [benefs, miParte].filter(Boolean).join(' · ');
-    out.push(html`<span class="enc-tag-amber"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-15"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`);
+    out.push(html`<span class="enc-tag-amber"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-15"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg> margen ${fmt(d.margen)}${todas ? ': ' + todas : ''}</span>`);
   }
   return html`${out}`;
 }
@@ -1365,7 +1365,7 @@ function abrirMovEncargo(tipo) {
   const simpleModo     = document.getElementById('movenc_cuenta_simple');
   const splitModo      = document.getElementById('movenc_cuenta_split');
   const splitPreview   = document.getElementById('movenc_split_preview');
-  if (splitToggleBtn) { splitToggleBtn.textContent = 'Dividir ÷'; splitToggleBtn.style.background='rgba(200,240,96,.1)'; splitToggleBtn.style.borderColor='rgba(200,240,96,.3)'; splitToggleBtn.style.color='var(--accent)'; }
+  if (splitToggleBtn) { splitToggleBtn.textContent = 'Dividir'; splitToggleBtn.style.background='rgba(200,240,96,.1)'; splitToggleBtn.style.borderColor='rgba(200,240,96,.3)'; splitToggleBtn.style.color='var(--accent)'; }
   if (simpleModo) simpleModo.style.display = '';
   if (splitModo)  { splitModo.style.display = 'none'; document.getElementById('movencSplitRows').innerHTML = ''; }
   if (splitPreview) splitPreview.textContent = '';
@@ -1433,7 +1433,7 @@ function abrirMovEncargo(tipo) {
     if (tipo === 'salida') {
       miaWrap.style.display = '';
       if (miaBody) miaBody.style.display = 'none';
-      if (miaIcon) { miaIcon.textContent = '›'; miaIcon.style.transform = ''; }
+      if (miaIcon) miaIcon.style.transform = '';
       const saleSel  = document.getElementById('movenc_mia_cuenta_sale');
       const entraSel = document.getElementById('movenc_mia_cuenta_entra');
       if (saleSel)  saleSel.value  = '';
@@ -1578,7 +1578,7 @@ function _getEncargoSaldoEnCuenta(enc, cuentaVal) {
   return map[cuentaVal] || 0;
 }
 
-/* ── Salida dividida (Retirar plata + "Dividir ÷"): una sola fila en el historial ──
+/* ── Salida dividida (Retirar plata + "Dividir"): una sola fila en el historial ──
    (2026-09-30) Los datos NO cambian: cada cuenta del encargo sigue teniendo su propio
    registro en enc.movimientos, porque el saldo del encargo se calcula por cuenta
    (m.cuenta). Lo que cambia es la vista: las porciones de una misma salida se pintan
@@ -2086,7 +2086,7 @@ async function deleteMovEncargo(encId, movId) {
   }
 
   // Revertir el margen que entró a mis cuentas (sobrante libre del diferencial — una entrada
-  // por cuenta si se repartió con "Dividir ÷"). La compra con TC ya lo limpió arriba.
+  // por cuenta si se repartió con "Dividir"). La compra con TC ya lo limpió arriba.
   if (mov && mov.diferencial && !mov._esTcEncargo && S.movimientos) {
     S.movimientos.filter(m => m._encMovId === movId && m._esDiferencialEncargo)
       .forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _ogEnc(movId, true)); });
@@ -2242,8 +2242,8 @@ function _actualizarTraspasoPreview(enc) {
   const nuevoEnc = saldoEnc - monto;
   const nuevoCuenta = saldoCuenta + monto;
   const colorEnc = nuevoEnc < 0 ? 'enc-c-red' : 'enc-c-blue';
-  prev.innerHTML = html`<span class="${colorEnc}">Encargo (disponible): ${fmt(saldoEnc)} → ${fmt(nuevoEnc)}</span><br>
-    <span class="enc-c-accent">${fuenteLabel(destino)}: ${fmt(saldoCuenta)} → ${fmt(nuevoCuenta)}</span>
+  prev.innerHTML = html`<span class="${colorEnc}">Encargo (disponible): ${fmt(saldoEnc)} <i class="fa-solid fa-arrow-right"></i> ${fmt(nuevoEnc)}</span><br>
+    <span class="enc-c-accent">${fuenteLabel(destino)}: ${fmt(saldoCuenta)} <i class="fa-solid fa-arrow-right"></i> ${fmt(nuevoCuenta)}</span>
     ${nuevoEnc < 0 ? html`<br><span class="enc-aviso-rojo10">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : ''}`;
 }
 
@@ -2281,7 +2281,7 @@ function confirmarTraspasoEncargo() {
   enc.movimientos.push({
     id: encMovId,
     tipo: 'salida',
-    desc: desc + ' → ' + fuenteLabel(destino),
+    desc: desc + ' a ' + fuenteLabel(destino),
     monto,
     cuenta: cuentaOrigen,
     fecha,
@@ -2362,7 +2362,7 @@ function abrirMoverEntreCuentasEncargo() {
   const moverEncToggleBtn = document.getElementById('moverenc_split_toggle');
   const moverEncSimpleModo = document.getElementById('moverenc_origen_simple');
   const moverEncSplitModo  = document.getElementById('moverenc_origen_split');
-  if (moverEncToggleBtn) { moverEncToggleBtn.textContent = 'Dividir ÷'; moverEncToggleBtn.style.background = 'rgba(200,240,96,.1)'; moverEncToggleBtn.style.borderColor = 'rgba(200,240,96,.3)'; moverEncToggleBtn.style.color = 'var(--accent)'; }
+  if (moverEncToggleBtn) { moverEncToggleBtn.textContent = 'Dividir'; moverEncToggleBtn.style.background = 'rgba(200,240,96,.1)'; moverEncToggleBtn.style.borderColor = 'rgba(200,240,96,.3)'; moverEncToggleBtn.style.color = 'var(--accent)'; }
   if (moverEncSimpleModo) moverEncSimpleModo.style.display = '';
   if (moverEncSplitModo)  { moverEncSplitModo.style.display = 'none'; document.getElementById('moverencSplitRows').innerHTML = ''; }
   const moverEncMontoWrap = document.getElementById('moverenc_monto_wrap');
@@ -2389,7 +2389,7 @@ function abrirMoverEntreCuentasEncargo() {
   }
   selOrigen.innerHTML = html`<option value="">Seleccionar cuenta origen</option>${origenOpts}`;
 
-  // El botón "Dividir ÷" solo tiene sentido si hay al menos 2 cuentas de origen
+  // El botón "Dividir" solo tiene sentido si hay al menos 2 cuentas de origen
   // posibles (reales con saldo del encargo, o "Sin especificar") — con una sola
   // no hay nada que repartir.
   const origenesDisponibles = fuentesConSaldo.length + (saldoSinCuenta > 0 ? 1 : 0);
@@ -2529,7 +2529,7 @@ function _actualizarMoverEncPreview(enc) {
       const excede = s.monto > saldoEnOrigen;
       if (excede) excedeAlguna = true;
       const color = excede ? 'enc-c-red' : 'enc-c-amber';
-      return html`${i > 0 ? raw('<br>') : ''}<span class="${color}">${label} (encargo): ${fmt(saldoEnOrigen)} → ${fmt(saldoEnOrigen - s.monto)}</span>`;
+      return html`${i > 0 ? raw('<br>') : ''}<span class="${color}">${label} (encargo): ${fmt(saldoEnOrigen)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoEnOrigen - s.monto)}</span>`;
     });
 
     const cuentaDestEnc = cuentas.find(c => c.cuenta === destino);
@@ -2537,7 +2537,7 @@ function _actualizarMoverEncPreview(enc) {
     const nuevoDestino = saldoEnDestino + totalSplit;
 
     prev.innerHTML = html`${lineasOrigen}<br>
-      <span class="enc-c-blue">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} → ${fmt(nuevoDestino)}</span>
+      <span class="enc-c-blue">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} <i class="fa-solid fa-arrow-right"></i> ${fmt(nuevoDestino)}</span>
       ${excedeAlguna ? html`<br><span class="enc-aviso-rojo10">Excede lo que el encargo tiene en esa cuenta</span>` : ''}
       ${filasIncompletas ? html`<br><span class="enc-aviso-amber10">Falta elegir la cuenta en una o más filas</span>` : ''}`;
     return;
@@ -2562,8 +2562,8 @@ function _actualizarMoverEncPreview(enc) {
   const cuentaDestEnc = cuentas.find(c => c.cuenta === destino);
   const saldoEnDestino = cuentaDestEnc ? cuentaDestEnc.saldo : 0;
   const nuevoDestino = saldoEnDestino + monto;
-  prev.innerHTML = html`<span class="${colorOrigen}">${labelOrigen} (encargo): ${fmt(saldoEnOrigen)} → ${fmt(nuevoOrigen)}</span><br>
-    <span class="enc-c-blue">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} → ${fmt(nuevoDestino)}</span>
+  prev.innerHTML = html`<span class="${colorOrigen}">${labelOrigen} (encargo): ${fmt(saldoEnOrigen)} <i class="fa-solid fa-arrow-right"></i> ${fmt(nuevoOrigen)}</span><br>
+    <span class="enc-c-blue">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} <i class="fa-solid fa-arrow-right"></i> ${fmt(nuevoDestino)}</span>
     ${excede ? html`<br><span class="enc-aviso-rojo10">Excede lo que el encargo tiene en esa cuenta</span>` : ''}`;
 }
 
@@ -2609,7 +2609,7 @@ function _confirmarMoverEncCuentasSplit(enc, destino, fecha) {
     enc.movimientos.push({
       id: uid(),
       tipo: 'salida',
-      desc: 'Reubicación → ' + fuenteLabel(destino),
+      desc: 'Reubicación a ' + fuenteLabel(destino),
       monto: s.monto,
       // Si el origen es "Sin especificar" se guarda sin cuenta (mismo criterio que el modo simple)
       cuenta: esSinEsp ? '' : s.fuente,
@@ -2624,7 +2624,7 @@ function _confirmarMoverEncCuentasSplit(enc, destino, fecha) {
   enc.movimientos.push({
     id: uid(),
     tipo: 'entrada',
-    desc: 'Reubicación ← ' + labelsOrigen.join(' + '),
+    desc: 'Reubicación desde ' + labelsOrigen.join(' + '),
     monto: totalSplit,
     cuenta: destino,
     fecha,
@@ -2675,7 +2675,7 @@ function confirmarMoverEncCuentas() {
   enc.movimientos.push({
     id: uid(),
     tipo: 'salida',
-    desc: 'Reubicación → ' + fuenteLabel(destino),
+    desc: 'Reubicación a ' + fuenteLabel(destino),
     monto,
     // Si el origen es "Sin especificar" se guarda sin cuenta (así lo interpreta el resto del sistema)
     cuenta: esOrigenSinEspecificar ? '' : origen,
@@ -2687,7 +2687,7 @@ function confirmarMoverEncCuentas() {
   enc.movimientos.push({
     id: uid(),
     tipo: 'entrada',
-    desc: 'Reubicación ← ' + labelOrigen,
+    desc: 'Reubicación desde ' + labelOrigen,
     monto,
     cuenta: destino,
     fecha,
@@ -2774,8 +2774,8 @@ function _actualizarTransfEncPreview(enc) {
   const nuevoOrigen = libreOrigen - monto;
   const saldoDestino = encargoSaldo(destino);
   const colorOrigen = nuevoOrigen < 0 ? 'enc-c-red' : 'enc-c-blue';
-  prev.innerHTML = html`<span class="${colorOrigen}">${enc.nombre} (disponible): ${fmt(libreOrigen)} → ${fmt(nuevoOrigen)}</span><br>
-    <span class="enc-c-blue">${destino.nombre}: ${fmt(saldoDestino)} → ${fmt(saldoDestino + monto)}</span>
+  prev.innerHTML = html`<span class="${colorOrigen}">${enc.nombre} (disponible): ${fmt(libreOrigen)} <i class="fa-solid fa-arrow-right"></i> ${fmt(nuevoOrigen)}</span><br>
+    <span class="enc-c-blue">${destino.nombre}: ${fmt(saldoDestino)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoDestino + monto)}</span>
     ${nuevoOrigen < 0 ? html`<br><span class="enc-aviso-rojo10">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : ''}`;
 }
 
@@ -2818,7 +2818,7 @@ function confirmarTransferenciaEncargo() {
   encOrigen.movimientos.push({
     id: uid(),
     tipo: 'salida',
-    desc: desc + ' → ' + encDestino.nombre,
+    desc: desc + ' a ' + encDestino.nombre,
     monto,
     cuenta: cuentaOrigen,
     fecha,
@@ -2833,7 +2833,7 @@ function confirmarTransferenciaEncargo() {
   encDestino.movimientos.push({
     id: uid(),
     tipo: 'entrada',
-    desc: desc + ' ← ' + encOrigen.nombre,
+    desc: desc + ' desde ' + encOrigen.nombre,
     monto,
     cuenta: cuentaFisica,
     fecha,
@@ -3121,9 +3121,9 @@ function _ctcActualizarPreview() {
   const lblDest = destino ? fuenteLabel(destino) : '';
 
   const lines = [];
-  lines.push(html`<span class="enc-c-red">Encargo ${enc?enc.nombre:''}: ${fmt(saldoEncCuenta)} → ${fmt(saldoEncCuenta - monto)}</span>`);
-  if (destino) lines.push(html`<span class="enc-c-accent">${lblDest}: ${fmt(saldoDest)} → ${fmt(saldoDest + monto)}</span>`);
-  if (tc) lines.push(html`<span class="enc-c-red">Deuda ${nombreTC}: ${fmt(deudaTC)} → ${fmt(deudaTC + tcMonto)}</span>`);
+  lines.push(html`<span class="enc-c-red">Encargo ${enc?enc.nombre:''}: ${fmt(saldoEncCuenta)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoEncCuenta - monto)}</span>`);
+  if (destino) lines.push(html`<span class="enc-c-accent">${lblDest}: ${fmt(saldoDest)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoDest + monto)}</span>`);
+  if (tc) lines.push(html`<span class="enc-c-red">Deuda ${nombreTC}: ${fmt(deudaTC)} <i class="fa-solid fa-arrow-right"></i> ${fmt(deudaTC + tcMonto)}</span>`);
   if (margen > 0) lines.push(html`<span class="enc-c-accent">Diferencial tuyo: +${fmt(margen)}</span>`);
 
   prev.innerHTML = html`${lines.map((l,i)=> i===0 ? l : html`<br>${l}`)}`;
@@ -3159,7 +3159,7 @@ function confirmarCompraConTC() {
     }
   }
 
-  // Reparto del sobrante en varias cuentas (si usó "Dividir ÷") — antes de escribir nada
+  // Reparto del sobrante en varias cuentas (si usó "Dividir") — antes de escribir nada
   const _errCtcMi = diffValidarMiCuenta('ctc');
   if (_errCtcMi) { toast(_errCtcMi, 'err', 5000); return; }
 
@@ -3252,7 +3252,7 @@ function confirmarCompraConTC() {
   refresh();
   closeSheet('compra-tc-encargo');
   abrirEncargoDetalle(encargoActualId);
-  toast(`${fmt(monto)} del encargo → ${escHtml(fuenteLabel(destino))} · TC sube ${fmt(tcMonto)}`, 'ok', 4000);
+  toast(`${fmt(monto)} del encargo a ${escHtml(fuenteLabel(destino))} · TC sube ${fmt(tcMonto)}`, 'ok', 4000);
 }
 
 // Conectar el botón confirmar al cargar
@@ -3411,7 +3411,7 @@ function _initNuevoEncargoPersonaSelector() {
       class="enc-persona-btn">
       <div id="enc-persona-avatar" class="avatar enc-persona-av" style="display:none;"></div>
       <span id="enc-persona-label">Seleccionar persona...</span>
-      <svg class="enc-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <svg aria-hidden="true" class="enc-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <input type="hidden" id="enc_nombre" value="">`;
 }
@@ -3550,7 +3550,7 @@ abrirEncargoDetalle = function(id) {
     const chip = document.createElement('button');
     chip.id = 'enc-det-perfil-chip';
     chip.type = 'button';
-    chip.innerHTML = html`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-12"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg> Ver perfil completo`;
+    chip.innerHTML = html`<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-ico-12"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.029 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg> Ver perfil completo`;
     chip.style.cssText = 'font-size:10px;color:var(--text3);background:none;border:none;cursor:pointer;font-family:"DM Mono",monospace;padding:0;margin-top:2px;display:block;';
     chip.addEventListener('click', () => abrirPerfilPersona(p.id));
     anclaEl.after(chip);

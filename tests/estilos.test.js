@@ -213,3 +213,41 @@ test('la app habla de tú en todo el texto (sin voseo) — index.html y js/', ()
   assert.deepEqual(hallazgos, [], 'voseo: usa tuteo (tienes, puedes, crea…)');
 });
 
+test('sin símbolos de texto decorativos (› ‹ ← → ↑ ↓ ↔ ÷ ✓ ⚠): iconos solo con SVG o Font Awesome', () => {
+  // Un símbolo de texto se puede seleccionar y copiar y no sigue la fuente de la app. Los comentarios no cuentan.
+  const SIMBOLOS = /[›‹←→↑↓↔÷✓✔✕⚠]/;
+  const archivos = ['index.html'];
+  const recorrer = d => fs.readdirSync(path.join(__dirname, '..', d), { withFileTypes: true }).forEach(e => {
+    const rel = d + '/' + e.name;
+    if (e.isDirectory()) recorrer(rel); else if (e.name.endsWith('.js')) archivos.push(rel);
+  });
+  recorrer('js');
+  const hallazgos = [];
+  for (const f of archivos) {
+    const sinComentarios = fs.readFileSync(path.join(__dirname, '..', f), 'utf8')
+      .replace(/<!--[\s\S]*?-->/g, m => m.replace(/[^\n]/g, ''))
+      .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ''));
+    sinComentarios.split(/\r?\n/).forEach((l, i) => { // /\r?\n/: en archivos CRLF el `.` de JS no cruza el \r
+      const codigo = l.replace(/(^|\s)\/\/.*$/, '$1');
+      const m = codigo.match(SIMBOLOS);
+      if (m) hallazgos.push(`${f}:${i + 1} «${m[0]}»`);
+    });
+  }
+  assert.deepEqual(hallazgos, [], 'usa un SVG o una clase fa-solid fa-… en vez del símbolo de texto');
+});
+
+test('todo <svg> es decorativo (aria-hidden) o tiene nombre accesible (role / aria-label): el lector y «copiar» no leen «svg»', () => {
+  const archivos = ['index.html'];
+  const recorrer = d => fs.readdirSync(path.join(__dirname, '..', d), { withFileTypes: true }).forEach(e => {
+    const rel = d + '/' + e.name;
+    if (e.isDirectory()) recorrer(rel); else if (e.name.endsWith('.js')) archivos.push(rel);
+  });
+  recorrer('js');
+  const sueltos = [];
+  for (const f of archivos) {
+    const t = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+    (t.match(/<svg\b[^>]*>/g) || []).forEach(tag => { if (!/\baria-(hidden|label|labelledby)\b|\brole=/.test(tag)) sueltos.push(f + ': ' + tag.slice(0, 70)); });
+  }
+  assert.deepEqual(sueltos, [], 'agrega aria-hidden="true" al <svg> decorativo');
+});
+

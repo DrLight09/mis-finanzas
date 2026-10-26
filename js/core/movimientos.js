@@ -153,7 +153,7 @@ function abrirDetalleMov(el){
   const origenLabel = el.dataset.movOrigen || '';
   const origenHtml = origenLabel ? `
     <div class="mdet-origen">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="mdet-no-shrink"><path d="M9 18l6-6-6-6"/></svg>
+      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="mdet-no-shrink"><path d="M9 18l6-6-6-6"/></svg>
       Registrado desde <span class="mdet-origen-nombre">${escHtml(origenLabel)}</span>
     </div>` : '';
 
@@ -226,6 +226,24 @@ function abrirDetalleMov(el){
     const rm = _rawMov;
     const richParts = [];
 
+    // Abono de deuda con extra: aunque en la cuenta se ve un solo movimiento (o uno por cuenta), el detalle dice que todo
+    // viene del mismo abono, con el importe y la cuenta de cada parte.
+    if (rm._abonoId) {
+      const partes = (S.movimientos || []).filter(x => x._abonoId === rm._abonoId)
+        .sort((a, b) => (a._parteAbono === 'abono' ? 0 : 1) - (b._parteAbono === 'abono' ? 0 : 1));
+      if (partes.length > 1 && partes.some(x => x._parteAbono === 'extra')) {
+        richParts.push(`
+        <div class="mdet-caja-saldo">
+          <div class="mdet-cap-saldo">Del mismo abono</div>
+          ${partes.map(x => `<div class="mdet-otra-fila">
+            <span class="badge ${fuenteBadgeClass(x.fuente)} badge-xs">${_fuenteLabelHtml(x.fuente)}</span>
+            <span class="mdet-c-text2">${x._parteAbono === 'extra' ? 'Extra' : 'Abono de deuda'}</span>
+            <span class="mdet-oc-monto mdet-c-accent">+ ${fmt(+x.monto)}</span>
+          </div>`).join('')}
+        </div>`);
+      }
+    }
+
     // Nota del movimiento (si es distinta a la descripción principal)
     if (rm.nota && rm.nota !== desc && !/automáticamente|contable neutro/i.test(rm.nota)) {
       richParts.push(`
@@ -289,12 +307,12 @@ function abrirDetalleMov(el){
           ${benefsNorm.length ? `
           <div class="mdet-txt">
             Del margen le diste:
-            ${benefsNorm.map(b => `<span class="mdet-chip-amber"><strong>${escHtml(b.nombre)}</strong> → ${fmt(b.monto)}</span>`).join(' ')}
+            ${benefsNorm.map(b => `<span class="mdet-chip-amber"><strong>${escHtml(b.nombre)}</strong> <i class="fa-solid fa-arrow-right"></i> ${fmt(b.monto)}</span>`).join(' ')}
           </div>` : ''}
           ${benefsYoPague.length ? `
           <div class="mdet-txt">
             Pagaste de tu bolsillo por:
-            ${benefsYoPague.map(b => `<span class="mdet-chip-blue"><strong>${escHtml(b.nombre)}</strong> ${fmt(b.monto)}${b.miCuentaSalida ? ' desde ' + _fuenteLabelHtml(b.miCuentaSalida) : ''}${b.miCuentaEntrada ? ' → recuperas en ' + _fuenteLabelHtml(b.miCuentaEntrada) : ''}</span>`).join(' ')}
+            ${benefsYoPague.map(b => `<span class="mdet-chip-blue"><strong>${escHtml(b.nombre)}</strong> ${fmt(b.monto)}${b.miCuentaSalida ? ' desde ' + _fuenteLabelHtml(b.miCuentaSalida) : ''}${b.miCuentaEntrada ? ' <i class="fa-solid fa-arrow-right"></i> recuperas en ' + _fuenteLabelHtml(b.miCuentaEntrada) : ''}</span>`).join(' ')}
             <div class="mdet-nota-pie">Pusiste esa plata de tu cuenta pero se te descuenta del encargo, así que es plata neutra.</div>
           </div>` : ''}
         </div>`);
@@ -307,10 +325,10 @@ function abrirDetalleMov(el){
         <div class="mdet-panel-extra">
           <div class="mdet-cap-blue">¿A dónde fue el extra del pago? (${fmt(extraTotal)})</div>
           ${rm._extPartes.map(p => {
-            if (p.tipo==='guardar')   return `<div class="mdet-txt">→ Guardaste <strong class="mdet-c-accent">${fmt(p.monto)}</strong> en <strong>${_fuenteLabelHtml(p.cuenta)}</strong></div>`;
-            if (p.tipo==='gastar')    return `<div class="mdet-txt">→ Se usó como gasto <strong>${fmt(p.monto)}</strong></div>`;
-            if (p.tipo==='regalar')   return `<div class="mdet-txt">→ Lo regalaste: <strong>${fmt(p.monto)}</strong></div>`;
-            if (p.tipo==='pendiente') return `<div class="mdet-txt">→ Quedó sin asignar: <strong>${fmt(p.monto)}</strong></div>`;
+            if (p.tipo==='guardar')   return `<div class="mdet-txt"><i class="fa-solid fa-arrow-right"></i> Guardaste <strong class="mdet-c-accent">${fmt(p.monto)}</strong> en <strong>${_fuenteLabelHtml(p.cuenta)}</strong></div>`;
+            if (p.tipo==='gastar')    return `<div class="mdet-txt"><i class="fa-solid fa-arrow-right"></i> Se usó como gasto <strong>${fmt(p.monto)}</strong></div>`;
+            if (p.tipo==='regalar')   return `<div class="mdet-txt"><i class="fa-solid fa-arrow-right"></i> Lo regalaste: <strong>${fmt(p.monto)}</strong></div>`;
+            if (p.tipo==='pendiente') return `<div class="mdet-txt"><i class="fa-solid fa-arrow-right"></i> Quedó sin asignar: <strong>${fmt(p.monto)}</strong></div>`;
             return '';
           }).filter(Boolean).join('')}
         </div>`);
@@ -332,7 +350,7 @@ function abrirDetalleMov(el){
       richParts.push(`
         <div class="mdet-caja">
           <div class="mdet-cap-neutra">Salió de</div>
-          ${rm.fuentes.map(f=>`<div class="mdet-txt-fila"><strong>${_fuenteLabelHtml(f.fuente)}</strong> → ${fmt(f.monto)}</div>`).join('')}
+          ${rm.fuentes.map(f=>`<div class="mdet-txt-fila"><strong>${_fuenteLabelHtml(f.fuente)}</strong> <i class="fa-solid fa-arrow-right"></i> ${fmt(f.monto)}</div>`).join('')}
         </div>`);
     }
 
@@ -342,7 +360,7 @@ function abrirDetalleMov(el){
       richParts.push(`
         <div class="mdet-caja">
           <div class="mdet-cap-neutra">Entró a</div>
-          ${destinos.map(r=>`<div class="mdet-txt-fila"><strong>${_fuenteLabelHtml(r.fuente)}</strong>${r.monto ? ' → ' + fmt(r.monto) : ''}</div>`).join('')}
+          ${destinos.map(r=>`<div class="mdet-txt-fila"><strong>${_fuenteLabelHtml(r.fuente)}</strong>${r.monto ? ' <i class="fa-solid fa-arrow-right"></i> ' + fmt(r.monto) : ''}</div>`).join('')}
         </div>`);
     }
 
@@ -420,7 +438,7 @@ function abrirDetalleMov(el){
           <div class="mdet-etq-saldo">Antes</div>
           <div class="mdet-saldo-antes">${fmt(saldoAntes)}</div>
         </div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="mdet-no-shrink"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="mdet-no-shrink"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         <div class="mdet-derecha">
           <div class="mdet-etq-saldo">Después</div>
           <div class="mdet-saldo-desp ${claseMonto}">${fmt(saldoDespues)}</div>

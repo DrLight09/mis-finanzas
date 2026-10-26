@@ -165,14 +165,14 @@ function _wrappedGateMostrarBanner(){
   // misma pieza. Ver el CSS en index.html.
   el.innerHTML = `<div class="wp-blob b1"></div><div class="wp-blob b2"></div>
     <button type="button" id="wrapped-banner-close" aria-label="Cerrar">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
     </button>
     <div class="wp-segs"><i class="on"></i><i class="on a"></i><i class="on p"></i><i class="on b"></i><i></i><i></i></div>
     <div class="wrapped-banner-title">Tu resumen de ${info.anioObjetivo} ya está listo</div>
     <div class="wrapped-banner-sub">${info.diasRestantes > 0 ? `Disponible ${info.diasRestantes} día${info.diasRestantes===1?'':'s'} más — después vuelve el próximo enero` : 'Hoy es el último día para verlo'}</div>
     <div class="wrapped-banner-row">
       <button type="button" class="wrapped-banner-btn">Ver mi resumen
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="wrapped-gate-flecha"><polyline points="9 18 15 12 9 6"/></svg></button>
+        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="wrapped-gate-flecha"><polyline points="9 18 15 12 9 6"/></svg></button>
       <button type="button" class="wrapped-banner-later">Después</button>
     </div>`;
   document.body.appendChild(el);

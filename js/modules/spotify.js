@@ -346,7 +346,7 @@ function renderSpotify(){
       warnEl=document.createElement('div');
       warnEl.id='sp-costo-warn';
       warnEl.className='sp-costo-aviso';
-      warnEl.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span class="sp-costo-aviso-txt">Configura el costo del plan para empezar a registrar pagos.</span><button type="button" class="btn btn-sm sp-costo-aviso-btn">Configurar costo</button>';
+      warnEl.innerHTML='<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span class="sp-costo-aviso-txt">Configura el costo del plan para empezar a registrar pagos.</span><button type="button" class="btn btn-sm sp-costo-aviso-btn">Configurar costo</button>';
       warnEl.querySelector('button').addEventListener('click', ()=>{ const inp=document.getElementById('spotifyCosto'); if(inp){ inp.focus(); inp.select(); } });
       const spList=document.getElementById('spotifyList');
       if(spList&&spList.parentNode) spList.parentNode.insertBefore(warnEl,spList);
@@ -381,7 +381,7 @@ function renderSpotify(){
   // El estado vacío ya trae «Agregar persona»: el botón de pie solo aparece con personas.
   mostrarSi(document.getElementById('btn-add-spotify-persona'),p.length>0);
   if(!p.length){el.innerHTML=emptyState(
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
+    '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>',
     'Sin personas en Spotify',
     'Agrega a las personas que comparten tu plan para hacer seguimiento de sus cobros mensuales.',
     'Agregar persona',
@@ -410,8 +410,8 @@ function renderSpotify(){
         fechaInfo=html`<span class="badge badge-xs ${raw(vencido?'bg-red':hoy0?'bg-amber':'bg-purple')}">${vencido?'Vencido hace '+Math.abs(diasRestantes)+'d':hoy0?'Vence hoy':'Paga en '+diasRestantes+'d · '+x.proximoPago}</span>`;
       }
       const destinoBadge=x.ultimoDestinoSplit
-        ?html`<span class="badge bg-purple sp-badge-flecha"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Dividido</span>`
-        :(x.ultimoDestino?html`<span class="badge ${raw(fuenteBadgeClass(x.ultimoDestino))} sp-badge-flecha"><svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fuenteLabel(x.ultimoDestino)}</span>`:'');
+        ?html`<span class="badge bg-purple sp-badge-flecha"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> Dividido</span>`
+        :(x.ultimoDestino?html`<span class="badge ${raw(fuenteBadgeClass(x.ultimoDestino))} sp-badge-flecha"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> ${fuenteLabel(x.ultimoDestino)}</span>`:'');
       return html`<div class="sp-row">
         <div class="sp-flex-c">
           <div class="avatar">${spNombreDe(x).substring(0,2).toUpperCase()}</div>
@@ -425,8 +425,8 @@ function renderSpotify(){
         <div class="sp-acciones">
           <span class="badge sp-click ${raw(spPersonaPagadaVigente(x)?'bg-green':'bg-red')}" ${raw(Events.attr('spotify:marcarPago', i))} title="${spPersonaPagadaVigente(x)?'Ya pagó · clic para revertir':'Cobrar a '+spNombreDe(x)}">${spPersonaPagadaVigente(x)?'Pagó':'Cobrar'}</span>
           <div class="sp-flex-2">
-            <button type="button" class="btn-icon sp-btn-34 sp-btn-acento" ${raw(Events.attr('spotify:editar', i))} title="Editar"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button type="button" class="btn-icon sp-btn-34" ${raw(Events.attr('spotify:eliminar', i))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+            <button type="button" class="btn-icon sp-btn-34 sp-btn-acento" ${raw(Events.attr('spotify:editar', i))} title="Editar"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button type="button" class="btn-icon sp-btn-34" ${raw(Events.attr('spotify:eliminar', i))}><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
           </div>
         </div>
       </div>`;
@@ -490,7 +490,7 @@ function renderSpHistorial(){
         </div>
         <div class="sp-hist-der">
           <div class="sp-hist-monto ${raw(h.tipo==='pago'?'c-red':'c-green')}">${h.tipo==='pago'?'−':'+'} ${fmt(h.monto)}</div>
-          <button type="button" class="btn-icon sp-btn-36" ${raw(Events.attr('spotify:eliminarHistorial', h._realIdx))}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+          <button type="button" class="btn-icon sp-btn-36" ${raw(Events.attr('spotify:eliminarHistorial', h._realIdx))}><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
         </div>
       </div>
     </div>`;
@@ -866,7 +866,7 @@ function marcarPagoSpotify(i){
   document.getElementById('spCobSplitRows').innerHTML='';
   const spCobToggleBtn=document.getElementById('spCobSplitToggle');
   if(spCobToggleBtn){
-    spCobToggleBtn.textContent='Dividir ÷';
+    spCobToggleBtn.textContent='Dividir';
     spCobToggleBtn.style.background='rgba(200,240,96,.1)';
     spCobToggleBtn.style.borderColor='rgba(200,240,96,.3)';
     spCobToggleBtn.style.color='var(--accent)';
@@ -1237,7 +1237,7 @@ function openSheet_pagarSpotify(){
   document.getElementById('spPagarSplitRows').innerHTML='';
   const sppToggleBtn=document.getElementById('spPagarSplitToggle');
   if(sppToggleBtn){
-    sppToggleBtn.textContent='Dividir ÷';
+    sppToggleBtn.textContent='Dividir';
     sppToggleBtn.style.background='rgba(200,240,96,.1)';
     sppToggleBtn.style.borderColor='rgba(200,240,96,.3)';
     sppToggleBtn.style.color='var(--accent)';
@@ -1660,7 +1660,7 @@ function _initSpotifyPersonaSelector() {
       class="sp-persona-btn">
       <div id="sp-persona-avatar" class="avatar sp-persona-avatar" style="display:none;"></div>
       <span id="sp-persona-label">Seleccionar persona...</span>
-      <svg class="sp-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <svg aria-hidden="true" class="sp-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <input type="hidden" id="sp_n" value="">`;
 }
@@ -1696,7 +1696,7 @@ function _initSpotifyEditPersonaSelector() {
       class="sp-persona-btn">
       <div id="sp-edit-persona-avatar" class="avatar sp-persona-avatar" style="display:none;"></div>
       <span id="sp-edit-persona-label">Seleccionar persona...</span>
-      <svg id="sp-edit-persona-chevron" class="sp-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+      <svg aria-hidden="true" id="sp-edit-persona-chevron" class="sp-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <div id="sp-edit-persona-hint" class="sp-persona-hint" style="display:none;">Para asignarle este cobro a otra persona, elimina este integrante y agrega uno nuevo — así el historial no se mezcla entre los dos.</div>
     <input type="hidden" id="sp_edit_n" value="">`;

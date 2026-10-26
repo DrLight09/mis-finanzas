@@ -1350,7 +1350,7 @@ function _wrappedGraficoAnimadoSvg(serie){
   }).join('');
   const labelIni = `<text x="${coords[0].x.toFixed(1)}" y="${h-2}" font-size="9" fill="var(--text3)" text-anchor="start" font-family="'DM Mono',monospace">${_wrappedMesKaAbrev(serie[0].mesK)}</text>`;
   const labelFin = `<text x="${ultimo.x.toFixed(1)}" y="${h-2}" font-size="9" fill="var(--text3)" text-anchor="end" font-family="'DM Mono',monospace">${_wrappedMesKaAbrev(serie[serie.length-1].mesK)}</text>`;
-  return `<svg class="wrapped-svg-block" viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
+  return `<svg aria-hidden="true" class="wrapped-svg-block" viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
     <defs>
       <linearGradient id="wrappedAreaGradient" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="${color}" stop-opacity="0.35"/>
@@ -2463,7 +2463,7 @@ function _wrappedGraficoMensualSvg(meses){
   const dotsDe = (key, clase) => meses.map((m,i) => `<circle class="wrapped-mes-dot ${clase}" data-idx="${i}" cx="${xOf(i).toFixed(1)}" cy="${yOf(m[key]).toFixed(1)}" r="3.5"/>`).join('');
   const labels = meses.map((m,i) => `<text class="wrapped-mes-label" data-idx="${i}" x="${xOf(i).toFixed(1)}" y="${h-2}" font-size="9" text-anchor="middle" font-family="'DM Mono',monospace" fill="var(--text3)">${_wrappedMesKaAbrev(m.mesK)}</text>`).join('');
   const hitzones = meses.map((m,i) => `<rect data-wrapped-mesidx="${i}" x="${(xOf(i)-(stepX||w)/2).toFixed(1)}" y="0" width="${(stepX||w).toFixed(1)}" height="${h}" fill="transparent" class="wrapped-hit"/>`).join('');
-  return `<svg class="wrapped-mensual-svg wrapped-svg-block" viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
+  return `<svg aria-hidden="true" class="wrapped-mensual-svg wrapped-svg-block" viewBox="0 0 ${w} ${h}" width="100%" height="${h}">
     <path d="${pathDe('ingresos')}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="${pathDe('gastos')}" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
     <g>${dotsDe('ingresos','wrapped-dot-ingreso')}${dotsDe('gastos','wrapped-dot-gasto')}</g>
@@ -3816,11 +3816,11 @@ window.renderWrapped = function(){
   const debugOn = _wrappedDebugOn();
   const debugHtml = debugOn
     ? `<button type="button" id="wrapped-debug-toggle" aria-label="Panel de debug" title="Panel de debug">
-         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
+         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
        </button>
        <div id="wrapped-debug-panel">
          <div id="wrapped-debug-head"><span>Debug — Wrapped</span><button type="button" id="wrapped-debug-close">
-           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+           <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
          </button></div>
          <div id="wrapped-debug-body">${_wrappedDebugPanelHtml(S, slides._wrappedDebugInfo)}</div>
        </div>`
@@ -3845,7 +3845,7 @@ window.renderWrapped = function(){
       <div class="wrapped-topbar-right">
         <button type="button" id="wrapped-restart" aria-label="Volver al inicio" title="Volver al inicio"><i class="fa-solid fa-arrow-rotate-left"></i></button>
         <button type="button" id="wrapped-close" aria-label="Cerrar" title="Cerrar">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
         </button>
       </div>
     </div>

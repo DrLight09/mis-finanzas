@@ -436,7 +436,7 @@ function getFuentesSinTC(){return _listaFuentes(false);}
 function fuenteLabel(val){
   if(!val)return'Sin especificar';
   if(val==='alcancia')return'Alcancía';
-  if(val==='ganancia')return'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no desembolsada)';
+  if(val==='ganancia')return'<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no desembolsada)';
   if(val==='nequi'||val==='efectivo')return getCuentaFija(val).nombre;
   if(val.startsWith('cajita:')){
     const id=val.split(':')[1];
@@ -594,7 +594,7 @@ function load(){
   aplicarMigraciones(S);
   _ensureSpotify();
   if(S._esquemaAnterior && typeof toast==='function')
-    toast('Estos datos son de una versión anterior (esquema '+S._esquemaAnterior+') y esta versión empieza de cero. Exporta un backup si lo quieres y usa Configuración → Borrar todo.','err',12000);
+    toast('Estos datos son de una versión anterior (esquema '+S._esquemaAnterior+') y esta versión empieza de cero. Exporta un backup si lo quieres y usa la opción «Borrar todo» de Configuración.','err',12000);
   if(!S.encargos)S.encargos=[];
   if(!S.movimientos)S.movimientos=[];
   if(!Array.isArray(S.libro))S.libro=[];
@@ -1151,7 +1151,7 @@ function toast(msg, tipo='ok', dur=2800){
   //       · 'info' (neutro, azul). Los colores y el tamaño están en la clase .toast-<tipo> (CSS crítico de index.html).
   const c=document.getElementById('toast-container');
   const el=document.createElement('div');
-  const svg=(trazo,ancho)=>`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${ancho}" stroke-linecap="round" stroke-linejoin="round">${trazo}</svg>`;
+  const svg=(trazo,ancho)=>`<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${ancho}" stroke-linecap="round" stroke-linejoin="round">${trazo}</svg>`;
   const ICONOS={
     ok:svg('<polyline points="20 6 9 17 4 12"/>',3),
     salida:svg('<line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>',2.6),

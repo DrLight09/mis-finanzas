@@ -518,7 +518,7 @@ function _renderMetaAportes(){
       <input type="text" value="${ap.desc||''}" placeholder="Ej: Papá, Mamá" class="meta-aporte-desc nu-aporte-desc" data-idx="${i}">
       <input type="text" inputmode="decimal" value="${ap.monto?fmtInput(ap.monto):''}" placeholder="$0" class="money-input meta-aporte-monto nu-aporte-monto" data-idx="${i}">
       <button class="prest-split-del" ${raw(Events.attr('nu:metaAporteEliminar', i))}>
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>`)}`;
   // Reemplaza los oninput="_metaAportesTemp[i]..." inline (CSP los bloquea).
@@ -839,8 +839,8 @@ function abrirCobrarCDT(cajitaId,cdtId,esVencimientoAuto){
     const d=v-k.val;
     const abs=Math.abs(d).toFixed(2);
     if(Math.abs(d)<0.01){diff.innerHTML='<i class="fa-solid fa-check nu-ico-r4"></i>Coincide exacto con el estimado';diff.style.color='var(--accent)';}
-    else if(d>0){diff.textContent='↑ +$'+abs.replace('.',',') +' más que el estimado';diff.style.color='var(--purple)';}
-    else{diff.textContent='↓ −$'+abs.replace('.',',')+' menos que el estimado';diff.style.color='var(--text3)';}
+    else if(d>0){diff.textContent='+$'+abs.replace('.',',') +' más que el estimado';diff.style.color='var(--purple)';}
+    else{diff.textContent='−$'+abs.replace('.',',')+' menos que el estimado';diff.style.color='var(--text3)';}
   };
   openSheet('cobrar-cdt');
 }
@@ -958,10 +958,10 @@ function renderCajitas(){
     const hasMeta=!!(c.meta&&c.meta.objetivo);
     const metaPct=hasMeta?Math.min(100,(k.val/c.meta.objetivo)*100):0;
     // Badges indicadores
-    const cdtBadge=hasCDTs?html`<span class="nu-badge-cdt"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${cdts.length===1?fmt(totalCDT):cdts.length+' CDTs'}</span>`:'';
+    const cdtBadge=hasCDTs?html`<span class="nu-badge-cdt"><svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>${cdts.length===1?fmt(totalCDT):cdts.length+' CDTs'}</span>`:'';
     const metaBadge=hasMeta?html`<span class="nu-badge-meta">${metaPct.toFixed(0)}%</span>`:'';
     return html`<div class="cajita-row-hover nu-cajita-fila" id="cajita-row-${c.id}" ${raw(Events.attr('nu:abrirDetalleCajita', c.id))}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="2" stroke-linecap="round" class="nu-no-shrink"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="2" stroke-linecap="round" class="nu-no-shrink"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
       <div class="nu-cajita-cuerpo">
         <div class="nu-cajita-nombre">${c.nombre}</div>
         ${interesHoy>0.1?html`<div class="nu-cajita-dia">+${fmt(interesHoy)}/día</div>`:''}
@@ -970,7 +970,7 @@ function renderCajitas(){
       <div class="nu-cajita-der">
         <div class="nu-cajita-saldo">${fmt(k.val)}</div>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round" class="nu-no-shrink"><polyline points="9 18 15 12 9 6"/></svg>
+      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2.5" stroke-linecap="round" class="nu-no-shrink"><polyline points="9 18 15 12 9 6"/></svg>
     </div>`;
   })}`;
   if(cajitas.length>=MAX){msg.innerHTML=html`<div class="cajita-limit-msg">Límite alcanzado (${MAX}/${MAX})</div>`;btn.style.display='none';}
@@ -1129,7 +1129,7 @@ function abrirSubMeta(){
   if(!p){
     // Sin meta — mostrar formulario rápido
     el.innerHTML=html`<div class="card nu-meta-vacia">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" class="nu-mb12"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" class="nu-mb12"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       <div class="nu-meta-vacia-titulo">Sin meta configurada</div>
       <div class="nu-meta-vacia-txt">Define un objetivo de ahorro para esta cajita y lleva el seguimiento mes a mes.</div>
       <button type="button" class="btn btn-primary" ${raw(Events.attr('nu:abrirMetaCajita', c.id))}>Configurar meta</button>
@@ -1185,7 +1185,7 @@ function abrirSubCDTs(){
   let contenido='';
   if(!cdts.length){
     contenido=html`<div class="card nu-cdt-vacio">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round" class="nu-mb12"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round" class="nu-mb12"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       <div class="nu-meta-vacia-titulo">Sin CDTs activos</div>
       <div class="nu-meta-vacia-txt">Bloquea parte del saldo de esta cajita como CDT y gana intereses mientras esperas el vencimiento.</div>
     </div>`;
@@ -1217,11 +1217,11 @@ function abrirSubCDTs(){
           <button type="button" class="btn btn-ghost btn-sm nu-flex1" ${raw(Events.attr('nu:editarCDT', c.id, cdt.id))}>Editar</button>
           ${vencido
             ? html`<button type="button" class="btn btn-sm nu-btn-cobrar" ${raw(Events.attr('nu:abrirCobrarCDT', c.id, cdt.id))}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="nu-ico-chk"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="nu-ico-chk"><polyline points="20 6 9 17 4 12"/></svg>
             Cobrar CDT
           </button>`
             : html`<button type="button" class="btn btn-sm nu-btn-reinvertir" ${raw(Events.attr('nu:liberarCDTManual', c.id, cdt.id))}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="nu-ico-chk"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
+            <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" class="nu-ico-chk"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/><circle cx="12" cy="16" r="1" fill="currentColor"/></svg>
             Cerrar CDT
           </button>`}
         </div>
@@ -1230,7 +1230,7 @@ function abrirSubCDTs(){
   }
   contenido=html`${contenido}<button type="button" class="btn btn-ghost ${cdts.length?'nu-mt4':'nu-mt0'}" ${raw(Events.attr('nu:abrirCrearCDT', c.id))}>
     <span class="nu-btn-crear-ico">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       ${cdts.length?'Agregar otro CDT':'Crear CDT'}
     </span>
   </button>
@@ -1338,7 +1338,7 @@ function _nuMovRenderCajitas() {
       this.style.background = 'rgba(192,96,240,.08)';
       const selId = _nuMovCajitaSel.split(':')[1];
       const chkEl = document.getElementById('_nuMovCheck_'+selId);
-      if (chkEl) chkEl.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      if (chkEl) chkEl.innerHTML = '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';
       _nuMovActualizarPreview();
     });
   });

@@ -73,39 +73,39 @@
   const ICONOS = {
     ingreso: {
       bg: 'rgba(200,240,96,.15)',
-      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`
+      svg: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>`
     },
     gasto: {
       bg: 'rgba(240,104,104,.15)',
-      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`
+      svg: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`
     },
     prestamo: {
       bg: 'rgba(96,176,240,.15)',
-      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#60b0f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+      svg: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#60b0f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
     },
     abono: {
       bg: 'rgba(200,240,96,.12)',
-      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>`
+      svg: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#c8f060" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="20 6 9 17 4 12"/></svg>`
     },
     spotify: {
       bg: 'rgba(30,215,96,.12)',
-      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#1ed760" stroke-width="2" stroke-linecap="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M8 14.5c2.5-1 5.5-.8 7.5.5"/><path d="M7.5 11.5c3-1.3 7-1 9.5.8"/><path d="M7 8.5c3.5-1.5 8.5-1.2 11 1"/></svg>`
+      svg: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#1ed760" stroke-width="2" stroke-linecap="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M8 14.5c2.5-1 5.5-.8 7.5.5"/><path d="M7.5 11.5c3-1.3 7-1 9.5.8"/><path d="M7 8.5c3.5-1.5 8.5-1.2 11 1"/></svg>`
     },
     encargo: {
       bg: 'rgba(176,144,240,.15)',
-      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#b090f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`
+      svg: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#b090f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`
     },
     tc: {
       bg: 'rgba(240,184,64,.12)',
-      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#f0b840" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`
+      svg: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#f0b840" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`
     },
     comprometida: {
       bg: 'rgba(96,216,240,.12)',
-      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#60d8f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`
+      svg: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#60d8f0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`
     },
     corte: {
       bg: 'rgba(240,104,104,.15)',
-      svg: `<svg viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>`
+      svg: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="#f06868" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>`
     },
   };
 

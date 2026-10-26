@@ -725,8 +725,6 @@ function abrirPagarTC(tcId){
 function ptcSetMonto(val){
   const el=document.getElementById('ptc_monto');
   el.value=fmtInput(val);
-  _initMoneyInput(el);
-  _moneyDigits.set(el,String(Math.round(val*100)));
   el.dispatchEvent(new Event('input',{bubbles:true}));
   ptcActualizarPreview();
 }
@@ -850,7 +848,7 @@ function abrirDetalleTCSheet(tcId){
     // widget simplemente no se muestra esta vez — no es lo mismo que
     // "se eliminó", así que no cae acá.
     contenido+=`<div class="tc-aviso">
-      La cajita que tenías vinculada para pagar esta tarjeta ya no existe. Podés vincular una nueva desde "Editar tarjeta".
+      La cajita que tenías vinculada para pagar esta tarjeta ya no existe. Puedes vincular una nueva desde "Editar tarjeta".
     </div>`;
   }
 

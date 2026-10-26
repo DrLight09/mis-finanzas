@@ -6,6 +6,12 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Mejoras de `mejoras.md`
 
+### 🗣️ Toda la app habla de tú, sin voseo (2026-10-25)
+
+Decisión del usuario: la página usa **tuteo en todo** (antes mezclaba «tenés/registrá/vos» con «tienes/registra»). Se corrigieron ~90 textos en `index.html`, `wrapped.js`, `encargos.js`, `plata_comprometida.js`, `nu.js`, `analisis.js`, `spotify.js`, `prestado.js`, `personas.js`, `tarjetas_credito.js`, `diferencial.js` (más comentarios en `core-state.js`, `hook-global.js`, `inicio.js`) y 3 `.md` (`mis-finanzas`, `encargos`, `wrapped`, `notificaciones-push`). Ej.: «No tenés $X» → «No tienes $X», «Ingresá el monto» → «Ingresa el monto», «a vos» → «a ti».
+- **Guardia:** `tests/estilos.test.js` falla si reaparece una forma voseante en `index.html` o `js/` (límites de palabra que entienden tildes: `\b` de JS toma «registrándose» por «registrá»).
+- «acá» y las formas de pasado en primera persona («pagué», «pedí») se dejan: son españoles estándar.
+
 ### 🎨 Estados vacíos: un solo botón de acción por sección (2026-10-25, mejora 1)
 
 **Causa:** Spotify, Gastos, Gastos fijos, Tarjetas, Préstamos y Encargos tenían un botón fijo al pie de la lista **además** del botón del estado vacío (Encargos solo tenía el de pie, sin botón en su estado vacío; Préstamos, un texto suelto).
@@ -16,9 +22,18 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 - **Texto «svg»:** no se reproduce: el `textContent` de cada estado vacío no lo contiene y ningún SVG trae `<title>`/`<text>`; es el caso «solo al copiar», sin cambios.
 - **Prueba:** Fase 4 de `scripts/smoke-browser.js` (página real en jsdom; comprobada por mutación).
 
+### 💵 `.money-input` deja de ser calculadora: cursor libre y miles al escribir (2026-10-25)
+
+Petición del usuario (la app aún no tiene datos, así que se pudo cambiar a fondo): el formateo estilo calculadora empujaba los dígitos desde los centavos (`500000` → `5.000,00`) y mandaba siempre el cursor al final; no dejaba insertar un número entre otros.
+- **Un solo motor** (`_montoFormatear` en `money-input.js`) para `.money-input` (decimales opcionales) y `.miles-input` (enteros). El texto del campo es el valor: `500000` → `500.000`, `1500000,5` → `1.500.000,5`; la coma abre decimales (máx. 2) y un «.» tecleado hace de coma si el teclado no la tiene; al salir `5,5` → `5,50` y `5,` → `5`. Vacío ya no se rellena con `0,00`.
+- **Cursor:** se queda junto al mismo dígito (cuenta los dígitos/coma a su izquierda), se puede escribir, borrar o pegar en medio. Al pegar: `1.500.000,50` y `1500.50` son decimales; `1,500,000` y `1.500` son miles; el signo se ignora.
+- **Se borró:** `_moneyDigits`, `_moneyRender`, `_moneyValue`, `_initMoneyInput` (y sus usos en `cuentas.js`, `tarjetas_credito.js`, `plata_comprometida.js`), y el helper muerto `_alcInitMoneyInput`/`moneyInputAttach` de `alcancia.js` (nunca existió `moneyInputAttach`). En `plata_comprometida.js` la condición `typeof window._moneyDigits` era siempre falsa (una `const` de script clásico no cuelga de `window`) y el campo se llenaba por la rama de respaldo.
+- **`fmtInput(n)`:** enteros sin decimales (`500.000`), con decimales siempre 2 (`1.234,50`); ya no depende de ICU (`toLocaleString`).
+- **Pruebas:** bloque `money-input` en `tests/nucleo.test.js` (reemplaza a `miles-input`) y chequeo del campo real en la Fase 4 del humo.
+
 ### 🔢 Presupuestos mensuales: separador de miles al escribir (2026-10-25, mejora 8)
 
-`.money-input` es estilo calculadora con centavos (`500000` → `5.000,00`), así que no sirve para pesos enteros. Se añadió `.miles-input` (`money-input.js`): `_milesFormatear()` deja solo dígitos con puntos (máx. 12, sin ceros a la izquierda), el cursor queda junto al mismo dígito (conteo de dígitos a su izquierda), al pegar se descartan símbolos y decimales (`$ 1.500.000,50` → `1.500.000`). `parseMiles()` devuelve el número sin puntos y es lo que guarda `abrirPresupuestos()` (`analisis.js`); vacío o 0 quita el límite y vacía el campo. Los otros inputs no cambian.
+`.money-input` es estilo calculadora con centavos (`500000` → `5.000,00`) y siempre pone el cursor al final (no deja insertar un dígito en medio). El usuario probó `.miles-input` y decidió **dejarlo** para pesos enteros (Presupuestos no usa decimales). Se añadió `.miles-input` (`money-input.js`): `_milesFormatear()` deja solo dígitos con puntos (máx. 12, sin ceros a la izquierda), el cursor queda junto al mismo dígito (conteo de dígitos a su izquierda), al pegar se descartan símbolos y decimales (`$ 1.500.000,50` → `1.500.000`). `parseMiles()` devuelve el número sin puntos y es lo que guarda `abrirPresupuestos()` (`analisis.js`); vacío o 0 quita el límite y vacía el campo. Los otros inputs no cambian.
 - **Pruebas:** bloque `miles-input` en `tests/nucleo.test.js` y el chequeo de Presupuestos en la Fase 4 del humo. `npm test`: **477/477**.
 
 ---

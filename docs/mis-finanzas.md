@@ -35,7 +35,7 @@ Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<scri
 
 | Archivo | Tipo | Qué hace |
 |---|---|---|
-| `core-state.js` | clásico | El corazón de la app: objeto de estado global `S`, `save()`, `refresh()` base, `escHtml()`, formateo de dinero (`_moneyDigits`/`_moneyRender`), **el libro de movimientos** (`Libro`, la puerta única de saldos `sumarFuente`/`descontarFuente`/`ajustarSaldoCuenta`; ver `libro-de-movimientos.md`), la versión del esquema (`aplicarMigraciones`) y el resto de helpers puros que usa toda la app. |
+| `core-state.js` | clásico | El corazón de la app: objeto de estado global `S`, `save()`, `refresh()` base, `escHtml()`, formateo de dinero (`fmtInput`, `parseMoney`), **el libro de movimientos** (`Libro`, la puerta única de saldos `sumarFuente`/`descontarFuente`/`ajustarSaldoCuenta`; ver `libro-de-movimientos.md`), la versión del esquema (`aplicarMigraciones`) y el resto de helpers puros que usa toda la app. |
 | `events.js` | clásico | Despachador centralizado de clicks (`Events.on`/`attr`/`registerAll`) — reemplaza los `onclick` inline bloqueados por la CSP; un solo listener delegado en `document` para toda la app. |
 | `html-tag.js` | clásico | Primitivo `` html`` `` que escapa por defecto cualquier valor interpolado — migración gradual, módulo por módulo, para cerrar de raíz el bug recurrente de `.innerHTML` sin escapar. |
 | `calc-helpers.js` | clásico | Funciones de cálculo puras de Mesada, Tarjetas de Crédito, Préstamos (`getDeudorSaldo`) y Spotify (`spNombreDe`, `spPersonaPagadaVigente`) que Inicio necesita (para "Necesita atención"/salud financiera) en el primer render, sin tener que cargar esos módulos lazy completos. Los módulos de origen ya no las definen y las usan como globales: **todo test que cargue uno de ellos y las use tiene que cargar también `calc-helpers.js`** (ver `tests/README.md`). |
@@ -68,7 +68,7 @@ Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<scri
 
 | Archivo | Tipo | Qué hace |
 |---|---|---|
-| `money-input.js` | clásico | Auto-formateo estilo calculadora para los inputs de plata (`.money-input`): los dígitos se empujan de derecha a izquierda desde los centavos. |
+| `money-input.js` | clásico | Auto-formateo al escribir de los inputs de plata: `.money-input` (miles con puntos y decimales opcionales tras la coma) y `.miles-input` (enteros). Motor único `_montoFormatear`; el texto del campo es el valor, el cursor se mueve libre. |
 
 ## Estructura de archivos — `js/modules/`
 
@@ -130,8 +130,8 @@ Aunque cada módulo se documenta por separado, hay reglas de diseño que atravie
 | **Cuentas** | Saldos y movimientos de Nequi, efectivo, cajitas y cuentas personalizadas |
 | **Gastos** | Registro de gastos variables, con o sin tarjeta de crédito |
 | **Tarjetas de crédito** | Deuda de TC, pagos, fechas de corte y detalle de cada movimiento cargado |
-| **Préstamos → Me deben** | Plata que otras personas te deben a vos |
-| **Préstamos → Yo debo** | Plata que vos le debés a otras personas (`S.misDeudas`) |
+| **Préstamos → Me deben** | Plata que otras personas te deben a ti |
+| **Préstamos → Yo debo** | Plata que tú le debes a otras personas (`S.misDeudas`) |
 | **Encargos** | Dinero que un tercero te encarga guardar (separa el capital ajeno de cualquier interés propio que genere) |
 | **Mesada** | Mensualidad de papá y mamá, mes a mes, con manejo de pagos parciales y deuda pendiente |
 | **Spotify** | Suscripción compartida: cobro a integrantes, pago al servicio, cálculo de ganancia/pérdida del administrador |

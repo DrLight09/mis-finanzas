@@ -5,7 +5,7 @@
    correspondía" (dijo) y "lo que realmente costó/recibiste" (real).
    margen = dijo - real. El margen se reparte en partes: cada parte
    es "alguien o algo se quedó con tanto", y opcionalmente puede ser
-   un INTERCAMBIO (la plata salió de tu bolsillo y la recuperás del
+   un INTERCAMBIO (la plata salió de tu bolsillo y la recuperas del
    encargo en otra cuenta).
 
    Los 4 sheets que muestran este bloque ("Salió plata", "Pague con
@@ -329,7 +329,7 @@ function diffValidarIntercambios(instId) {
     const saldo = getSaldoFuente(b.miCuentaSalida);
     if (b.monto > saldo + 0.5) {
       const nombre = b.nombre ? `"${escHtml(b.nombre)}"` : 'una persona';
-      return `No tenés ${fmt(b.monto)} en ${escHtml(fuenteLabel(b.miCuentaSalida))} para pagarle a ${nombre}. Disponible: ${fmt(saldo)}.`;
+      return `No tienes ${fmt(b.monto)} en ${escHtml(fuenteLabel(b.miCuentaSalida))} para pagarle a ${nombre}. Disponible: ${fmt(saldo)}.`;
     }
   }
   return null;
@@ -348,7 +348,7 @@ function diffValidarMiCuenta(instId) {
   if (!diffEstaAbierto(instId)) return null;
   const calc = diffCalcular(instId);
   if (!calc || !calc.real || calc.margen <= 0 || calc.sinAsignar <= 0.5) return null;
-  if (filas.some(r => !r.fuente)) return 'Elegí la cuenta en cada fila donde se reparte el sobrante';
+  if (filas.some(r => !r.fuente)) return 'Elige la cuenta en cada fila donde se reparte el sobrante';
   const total = filas.reduce((a, r) => a + r.monto, 0);
   if (Math.abs(total - calc.sinAsignar) > 0.5) {
     return `El sobrante es ${fmt(calc.sinAsignar)} y repartiste ${fmt(total)}. Tienen que coincidir.`;

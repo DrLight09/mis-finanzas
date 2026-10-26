@@ -614,7 +614,7 @@ function renderSpStats(){
         <div class="stat-value ${cV(margen)}">${margen>=0?'+':''}${fmt(Math.abs(margen))}</div>
         <div class="sp-stat-nota2">cobras ${fmt(ingresoEstimado)} en cuotas · el plan cuesta ${costo>0?fmt(costo):'—'}</div>
       </div>
-      <div class="sp-stat-hint">proyección con tu configuración actual, no con tu frecuencia real de pago — registrá un pago a Spotify para ver el promedio real por ciclo</div>
+      <div class="sp-stat-hint">proyección con tu configuración actual, no con tu frecuencia real de pago — registra un pago a Spotify para ver el promedio real por ciclo</div>
     </div>`;
   }
 
@@ -1028,7 +1028,7 @@ function confirmarSpDestino(){
     splits=getSpCobSplitData();
     const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
     if(splits.length===0||totalSplit<=0){
-      document.getElementById('spCobPreview').textContent='Asigná el cobro a al menos una cuenta';
+      document.getElementById('spCobPreview').textContent='Asigna el cobro a al menos una cuenta';
       document.getElementById('spCobPreview').style.color='var(--red)';
       return;
     }
@@ -1471,7 +1471,7 @@ function addSpotify(){
   if(!n){toast('Ingresa el nombre','err');return;}
   const yaExisteNombre=(S.spotify.personas||[]).some(p=>(p.nombre||'').trim().toLowerCase()===n.toLowerCase());
   if(yaExisteNombre){
-    toast(`Ya hay un integrante llamado "${escHtml(n)}". Usa un nombre distinto (agregá un apellido o apodo) para no mezclar sus cobros en el historial.`,'err',4200);
+    toast(`Ya hay un integrante llamado "${escHtml(n)}". Usa un nombre distinto (agrega un apellido o apodo) para no mezclar sus cobros en el historial.`,'err',4200);
     return;
   }
   const fechaIngresoRaw=document.getElementById('sp_fecha_ingreso').value;
@@ -1698,7 +1698,7 @@ function _initSpotifyEditPersonaSelector() {
       <span id="sp-edit-persona-label">Seleccionar persona...</span>
       <svg id="sp-edit-persona-chevron" class="sp-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
-    <div id="sp-edit-persona-hint" class="sp-persona-hint" style="display:none;">Para asignarle este cobro a otra persona, eliminá este integrante y agregá uno nuevo — así el historial no se mezcla entre los dos.</div>
+    <div id="sp-edit-persona-hint" class="sp-persona-hint" style="display:none;">Para asignarle este cobro a otra persona, elimina este integrante y agrega uno nuevo — así el historial no se mezcla entre los dos.</div>
     <input type="hidden" id="sp_edit_n" value="">`;
 }
 

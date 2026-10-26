@@ -427,7 +427,7 @@ function renderProyeccion(){
   // real, y así la sigue viendo Salud financiera). Pero esta card sí muestra
   // un número puntual al usuario en cada render — si se usa el total crudo,
   // depositar en la alcancía hace que "Tendencia mensual"/3m/6m/12m salten
-  // al instante por el monto exacto del depósito, delatando "acabás de
+  // al instante por el monto exacto del depósito, delatando "acabas de
   // guardar $X" tan claro como si el gráfico de Análisis mostrara la curva
   // cruda (mismo problema que ya se corrigió ahí con valorVisible — ver
   // CHANGELOG.md#alcancía). Se resta acá también para que la sorpresa se
@@ -651,7 +651,7 @@ function _renderDispNetoTC() {
   // La app sabe distinguir deuda propia de ajena (calcDeudaAjenaDeTarjeta),
   // pero no sabe si esa parte ajena ya te la devolvieron aparte (efectivo/
   // Nequi/Nu) o sigue pendiente — calcDeudaAjenaDeTarjeta solo baja cuando
-  // hay un PAGO real a la tarjeta, no cuando recibís el reembolso por otro
+  // hay un PAGO real a la tarjeta, no cuando recibes el reembolso por otro
   // lado. Restar solo lo propio asumía sin poder verificarlo que seguía
   // pendiente; si ya te pagaron, esa plata ya está contada en tu disponible
   // Y la deuda de la tarjeta por esa parte sigue siendo 100% tuya de pagar

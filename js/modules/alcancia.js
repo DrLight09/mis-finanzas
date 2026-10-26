@@ -422,9 +422,6 @@ function _inyectarAlcanciaSheets(){
     });
   });
 
-  /* ---------- Money inputs ---------- */
-  _alcInitMoneyInput('alc_dep_monto');
-  _alcInitMoneyInput('alc_real_monto');
   /* ---------- Motor de "Dividir ÷" (js/core/split.js) ---------- */
   if(typeof crearSplitWidget === 'function'){
     crearSplitWidget('alcancia', {
@@ -455,43 +452,6 @@ function _inyectarAlcanciaSheets(){
 
 function closeSwipeSheet(sid, el){
   if(typeof closeSheet==='function') closeSheet(sid);
-}
-
-// RENOMBRADA (2026-09-10, ver CHANGELOG.md#infraestructura--seguridad):
-// se llamaba `_initMoneyInput`, mismo nombre EXACTO que la función global
-// de js/core/money-input.js — pero con firma incompatible (esta toma un
-// `id` de string, la de money-input.js toma el elemento DOM directo).
-// Al ser ambos <script> clásicos en el mismo scope global, cuando este
-// archivo cargaba (lazy, al entrar a Alcancía) su `function
-// _initMoneyInput` PISABA la definición real de money-input.js — y el
-// focusin global de money-input.js (usado por TODOS los inputs de plata
-// de la app, no solo los de Alcancía) empezaba a llamar a ESTA función en
-// su lugar, con un elemento DOM donde se esperaba un id de string. El
-// resultado: `document.getElementById(elementoDOM)` no encuentra nada,
-// esta función no hace nada, y el buffer de dígitos de money-input.js
-// nunca se inicializa — cualquier input de plata con un valor ya cargado
-// (ej. editar un gasto existente) mostraba "0,00" al primer click en vez
-// de conservar el valor. Bug real, no cosmético, y silencioso: no tira
-// ningún error, solo deja de funcionar. Ver también moneyInputAttach()
-// más abajo — nunca estuvo definida en ningún archivo del proyecto, así
-// que esta función SIEMPRE tomó la rama de fallback (que no usa el
-// mismo buffer/formateo de money-input.js) — hallazgo aparte, no
-// corregido acá porque cambiaría el comportamiento visible de los
-// inputs de Alcancía y no es lo mismo que la colisión de nombres.
-function _alcInitMoneyInput(id){
-  const el = document.getElementById(id);
-  if(!el || el._alcInited) return;
-  el._alcInited = true;
-  if(typeof moneyInputAttach === 'function'){
-    moneyInputAttach(el);
-  } else {
-    // Fallback: parseMoney/fmt nativo
-    el.addEventListener('input', function(){
-      const raw = this.value.replace(/[^\d,]/g,'').replace(',','.');
-      const n = parseFloat(raw) || 0;
-      el._rawVal = n;
-    });
-  }
 }
 
 function _getMoneyVal(id){
@@ -631,7 +591,7 @@ hookGlobal('openSheet', function(id){
       const fd = document.getElementById('alc_dep_fecha');
       if(fd) fd.value = (typeof hoy==='function'?hoy():new Date().toISOString().slice(0,10));
       const mi = document.getElementById('alc_dep_monto');
-      if(mi){ mi.value = '0,00'; if(typeof moneyInputAttach==='function') moneyInputAttach(mi); }
+      if(mi) mi.value = '';
       const desc = document.getElementById('alc_dep_desc');
       if(desc) desc.value = '';
       // Reset de orígenes: salir del modo dividido, vaciar filas y repoblar el selector
@@ -661,7 +621,7 @@ hookGlobal('openSheet', function(id){
     _inyectarAlcanciaSheets();
     setTimeout(()=>{
       const mi = document.getElementById('alc_real_monto');
-      if(mi){ mi.value = '0,00'; if(typeof moneyInputAttach==='function') moneyInputAttach(mi); }
+      if(mi) mi.value = '';
       const dest = document.getElementById('alc_destino');
       if(dest && typeof buildFuentesOptsHtml==='function'){
         dest.innerHTML = buildFuentesOptsHtml({incluirTC:false,placeholder:'Seleccionar cuenta'});

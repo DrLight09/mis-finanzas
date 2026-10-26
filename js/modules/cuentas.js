@@ -194,7 +194,7 @@ function abrirNuevaCuenta(){
   const ni=document.getElementById('nc_nombre');
   const si=document.getElementById('nc_saldo');
   if(ni)ni.value='';
-  if(si){si.value='';_moneyDigits.delete(si);}
+  if(si)si.value='';
   openSheet('nueva-cuenta');
 }
 

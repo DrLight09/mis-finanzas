@@ -2311,7 +2311,7 @@ function _actualizarBtnPrestamoTC() {
 function abrirSheetPrestamoTC() {
   if (!deudorActualId) return;
   const tcs = (S.tarjetasCredito || []).filter(tc => (tc.estado||'activa')==='activa');
-  if (!tcs.length) { toast('No tenés tarjetas de crédito activas configuradas', 'err', 3000); return; }
+  if (!tcs.length) { toast('No tienes tarjetas de crédito activas configuradas', 'err', 3000); return; }
   // Un préstamo con TC es un cargo a la tarjeta: solo tiene sentido con las que tienen cupo
   // disponible (FuentesFiltro.tcConCupo, js/core/fuentes-filtro.js). Sin ninguna, no se abre el sheet.
   const tcsConCupo = tcs.filter(tc => FuentesFiltro.tcConCupo(tc));

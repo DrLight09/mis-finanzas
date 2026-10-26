@@ -49,7 +49,7 @@ deberías recibir el push del sistema.
 
 - El secret `FIREBASE_SERVICE_ACCOUNT_KEY` nunca aparece en los logs
   de GitHub Actions (los secrets se enmascaran automáticamente), y
-  solo vos (con permisos de administrador del repo) puedes verlo/
+  solo tú (con permisos de administrador del repo) puedes verlo/
   editarlo — ni siquiera se puede volver a leer una vez guardado,
   solo reemplazar.
 - Si `checks.js` cambia en el futuro (agregás un chequeo nuevo), se

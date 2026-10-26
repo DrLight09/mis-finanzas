@@ -1382,62 +1382,101 @@ describe('historial-patrimonio', () => {
   });
 });
 
-describe('miles-input (Presupuestos mensuales)', () => {
+describe('money-input (formateo al escribir en los campos de plata)', () => {
   const test = require('node:test');
   const assert = require('node:assert/strict');
   const fs = require('node:fs'), path = require('node:path');
   const { JSDOM } = require('jsdom');
   const codigo = fs.readFileSync(path.join(__dirname, '..', 'js', 'core', 'money-input.js'), 'utf8');
-  function entorno() {
-    const dom = new JSDOM('<!doctype html><input id="i" class="miles-input"><input id="o" class="otro">', { runScripts: 'outside-only' });
+  function entorno(clase = 'money-input') {
+    const dom = new JSDOM(`<!doctype html><input id="i" class="${clase}"><input id="o" class="otro">`, { runScripts: 'outside-only' });
     const w = dom.window;
     w.eval(codigo);
     const el = w.document.getElementById('i');
-    // Simula teclear/pegar: pone el texto resultante, el cursor y dispara `input`.
-    const entrar = (valor, cursor, inputType = 'insertText') => {
+    // Simula teclear/pegar: pone el texto resultante, el cursor y dispara `input` (como lo hace el navegador).
+    const entrar = (valor, cursor, inputType = 'insertText', data = null) => {
       el.value = valor; el.setSelectionRange(cursor, cursor);
-      el.dispatchEvent(new w.InputEvent('input', { bubbles: true, inputType }));
+      el.dispatchEvent(new w.InputEvent('input', { bubbles: true, inputType, data }));
     };
-    return { w, el, entrar };
+    const salir = () => el.dispatchEvent(new w.FocusEvent('focusout', { bubbles: true }));
+    return { w, el, entrar, salir };
   }
 
-  test('500000 se ve 500.000 y 1500000 se ve 1.500.000 mientras se escribe', () => {
+  test('500000 se ve 500.000 y 1500000 se ve 1.500.000 mientras se escribe (sin centavos forzados)', () => {
     const { el, entrar } = entorno();
     entrar('500000', 6); assert.equal(el.value, '500.000');
-    entrar('1.5000000'.replace('.', ''), 8); assert.equal(el.value, '15.000.000');
     entrar('1500000', 7); assert.equal(el.value, '1.500.000');
   });
 
-  test('el cursor no salta: queda junto al mismo dígito al escribir en medio y al borrar', () => {
+  test('decimales opcionales: la coma los abre, máximo 2, y un "." tecleado a mano también', () => {
+    const { el, entrar } = entorno();
+    entrar('1.500.000,', 10); assert.equal(el.value, '1.500.000,');
+    entrar('1.500.000,5', 11); assert.equal(el.value, '1.500.000,5');
+    entrar('1.500.000,567', 13); assert.equal(el.value, '1.500.000,56');
+    entrar('1.500.000.', 10, 'insertText', '.'); assert.equal(el.value, '1.500.000,'); // teclado sin coma
+    entrar(',5', 2); assert.equal(el.value, '0,5'); assert.equal(el.selectionStart, 3);
+  });
+
+  test('al salir: 1 decimal se completa a 2 y una coma suelta se quita; los enteros no cambian', () => {
+    const { el, entrar, salir } = entorno();
+    entrar('5,5', 3); salir(); assert.equal(el.value, '5,50');
+    entrar('5,', 2); salir(); assert.equal(el.value, '5');
+    entrar('500.000', 7); salir(); assert.equal(el.value, '500.000');
+    entrar('', 0); salir(); assert.equal(el.value, ''); // vacío sigue vacío (ya no se rellena con 0,00)
+  });
+
+  test('el cursor se mueve libre: se puede insertar un número en medio y el cursor no salta al final', () => {
     const { el, entrar } = entorno();
     entrar('1.5000', 3); // escribió un 0 tras el "5": 1.5|000 → 15.000 con el cursor tras el 5
     assert.equal(el.value, '15.000'); assert.equal(el.selectionStart, 2);
-    entrar('1500', 1);   // Backspace sobre el punto de "1.500" (queda 1|500): no borra un dígito, el cursor queda tras el 1
+    entrar('1.2500', 3); // insertó un 2 entre el 1 y el 5 (1.2|500) → queda 12.500 con el cursor tras el 2
+    assert.equal(el.value, '12.500'); assert.equal(el.selectionStart, 2);
+    entrar('1500', 1);   // Backspace sobre el punto de "1.500": no borra un dígito, el cursor queda tras el 1
     assert.equal(el.value, '1.500'); assert.equal(el.selectionStart, 1);
     entrar('1.50', 4);   // borra el último dígito
     assert.equal(el.value, '150'); assert.equal(el.selectionStart, 3);
   });
 
-  test('pegar: quita símbolos y decimales ("$ 1.500.000,50" → 1.500.000), y descarta letras', () => {
+  test('pegar: "$ 1.500.000,50" y "1500.50" son decimales; "1,500,000" y "1.500" son miles; el signo se ignora', () => {
     const { el, entrar } = entorno();
-    entrar('$ 1.500.000,50', 14, 'insertFromPaste'); assert.equal(el.value, '1.500.000');
+    entrar('$ 1.500.000,50', 14, 'insertFromPaste'); assert.equal(el.value, '1.500.000,50');
+    entrar('1500.50', 7, 'insertFromPaste'); assert.equal(el.value, '1.500,50');
+    entrar('1,500,000', 9, 'insertFromPaste'); assert.equal(el.value, '1.500.000');
+    entrar('1.500', 5, 'insertFromPaste'); assert.equal(el.value, '1.500');
+    entrar('-500', 4, 'insertFromPaste'); assert.equal(el.value, '500');
     entrar('abc', 3); assert.equal(el.value, '');
   });
 
-  test('vacío, cero y ceros a la izquierda; tope de 12 dígitos', () => {
+  test('ceros a la izquierda y tope de 12 dígitos enteros', () => {
     const { el, entrar } = entorno();
-    entrar('', 0); assert.equal(el.value, '');
     entrar('0', 1); assert.equal(el.value, '0');
     entrar('05', 2); assert.equal(el.value, '5');
     entrar('1234567890123', 13); assert.equal(el.value, '123.456.789.012');
   });
 
-  test('no toca otros inputs, y parseMiles devuelve el número sin puntos', () => {
-    const { w, entrar } = entorno();
+  test('parseMoney() lee lo que deja el formateo (y fmtInput lo produce igual)', () => {
+    const { w, entrar, el } = entorno();
+    w.eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'core', 'core-state.js'), 'utf8').match(/function parseMoney[\s\S]*?\n}\n/)[0]);
+    w.eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'core', 'core-state.js'), 'utf8').match(/function fmtInput[\s\S]*?\n}\n/)[0]);
+    entrar('1500000,5', 9); assert.equal(w.parseMoney(el.value), 1500000.5);
+    entrar('500000', 6); assert.equal(w.parseMoney(el.value), 500000);
+    assert.equal(w.fmtInput(500000), '500.000');
+    assert.equal(w.fmtInput(1234.5), '1.234,50');
+    assert.equal(w.fmtInput(0), '');
+  });
+
+  test('.miles-input: solo enteros (descarta decimales al pegar y no abre coma), y parseMiles devuelve el número', () => {
+    const { w, el, entrar } = entorno('miles-input');
+    entrar('500000', 6); assert.equal(el.value, '500.000');
+    entrar('$ 1.500.000,50', 14, 'insertFromPaste'); assert.equal(el.value, '1.500.000');
+    entrar('1.500.000,', 10); assert.equal(el.value, '1.500.000');
+    assert.equal(w.parseMiles('1.500.000'), 1500000);
+    assert.equal(w.parseMiles(''), 0); assert.equal(w.parseMiles(500000), 500000);
+  });
+
+  test('no toca otros inputs', () => {
+    const { w } = entorno();
     const o = w.document.getElementById('o'); o.value = '12345'; o.dispatchEvent(new w.InputEvent('input', { bubbles: true }));
     assert.equal(o.value, '12345');
-    assert.equal(w.parseMiles('1.500.000'), 1500000);
-    assert.equal(w.parseMiles(''), 0); assert.equal(w.parseMiles('0'), 0); assert.equal(w.parseMiles(500000), 500000);
-    assert.equal(typeof w.parseMiles('1.500.000'), 'number');
   });
 });

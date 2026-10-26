@@ -585,8 +585,7 @@ describe('cdt-campos', () => {
 
 describe('chequeo-nu', () => {
   // tests/chequeo-nu.test.js — "Chequeo rápido de cajitas Nu" y "Agregar dinero" (cuentas.js)
-  // Un campo .money-input se rellena con "0,00" apenas se toca y nada lo limpia al salir (money-input.js).
-  // Para el chequeo, 0 significa "no anoté nada": antes se guardaba como lectura real, ponía la cajita en
+  // Para el chequeo, un campo vacío o en 0 significa "no anoté nada": antes se guardaba como lectura real, ponía la cajita en
   // 0 y ensuciaba S.chequeosNu.
   const { test, describe } = require('node:test');
   const assert = require('node:assert/strict');

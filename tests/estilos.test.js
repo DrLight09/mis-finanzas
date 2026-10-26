@@ -193,3 +193,23 @@ test('styles.css: un parser real (jsdom) lee tantas reglas como bloques de nivel
   const st = new JSDOM('<style></style>').window.document.querySelector('style'); st.textContent = css;
   assert.equal(st.sheet.cssRules.length, bloques);
 });
+
+test('la app habla de tú en todo el texto (sin voseo) — index.html y js/', () => {
+  // Formas voseantes inequívocas (no coinciden con ninguna forma de «tú»): tenés, podés, administrás, creá, registrá…
+  const L = '[\\wáéíóúñÁÉÍÓÚÑ]'; // \b de JS no reconoce las tildes («registrándose» no es «registrá»)
+  const VOSEO = new RegExp(`(?<!${L})(vos|tenés|podés|querés|sabés|usás|guardás|administrás|agregás|tocás|gastás|llevás|recibís|registrás|ganás|perdés|recuperás|entregás|acabás|abrís|elegí|ingresá|seleccioná|registrá|creá|agregá|escribí|confirmá|borrá|cargá|esperá|contá|ponelo|ponés|fijate|acordate|eliminá|editá|mirá|poné|pegá|usá|hacé|marcá|activá|desactivá|aceptá|cancelá|continuá|revisá|probá|intentá|volvé|dejá|completá|elegilo|mandá|cobrá|pagá|prestá|sumá|restá|tocá|deslizá|asigná|indicá|volvé)(?!${L})`);
+  const archivos = ['index.html'];
+  const recorrer = d => fs.readdirSync(path.join(__dirname, '..', d), { withFileTypes: true }).forEach(e => {
+    const rel = d + '/' + e.name;
+    if (e.isDirectory()) recorrer(rel); else if (e.name.endsWith('.js')) archivos.push(rel);
+  });
+  recorrer('js');
+  const hallazgos = [];
+  for (const f of archivos) {
+    fs.readFileSync(path.join(__dirname, '..', f), 'utf8').split('\n').forEach((l, i) => {
+      const m = l.match(VOSEO); if (m) hallazgos.push(`${f}:${i + 1} «${m[0]}»`);
+    });
+  }
+  assert.deepEqual(hallazgos, [], 'voseo: usa tuteo (tienes, puedes, crea…)');
+});
+

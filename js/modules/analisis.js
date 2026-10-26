@@ -430,7 +430,7 @@ function renderIngresosFijos(){
   if(!el)return;
   const lista=S.ingresosFijos||[];
   if(!lista.length){
-    el.innerHTML='<div class="an-vacio an-vacio-13">Sin ingresos fijos. Agregá tu sueldo, freelance u otro ingreso recurrente.</div>';
+    el.innerHTML='<div class="an-vacio an-vacio-13">Sin ingresos fijos. Agrega tu sueldo, freelance u otro ingreso recurrente.</div>';
     return;
   }
   // Migrado a html`` (ver auditoria-tecnica.md, cierre de la discrepancia
@@ -507,8 +507,8 @@ function guardarIngresoFijo(){
   const n=(document.getElementById('if_n').value||'').trim();
   const m=parseMoney(document.getElementById('if_m').value);
   const d=(document.getElementById('if_d').value||'').trim();
-  if(!n){toast('Ingresá un nombre','err');return;}
-  if(!m||m<=0){toast('Ingresá un monto válido','err');return;}
+  if(!n){toast('Ingresa un nombre','err');return;}
+  if(!m||m<=0){toast('Ingresa un monto válido','err');return;}
   if(!S.ingresosFijos)S.ingresosFijos=[];
   if(_ifEditId){
     const ing=S.ingresosFijos.find(x=>x.id===_ifEditId);

@@ -10,7 +10,7 @@ Módulo nuevo (2026-09-07). El historial de bugs corregidos (overlay invisible, 
 
 ## 1. Objetivo
 
-Da una experiencia de **revelación anual** tipo "Spotify Wrapped": un dato curioso a la vez (tu categoría del año, tu mejor y peor mes, cuánto ahorraste, tu gasto más grande), con una gráfica de patrimonio que se dibuja animada frente a vos cada vez que abrís la pantalla. **No es un dashboard de control** — para chequear "¿voy bien o mal?" en cualquier momento ya existe Análisis financiero. Wrapped a propósito nunca muestra ingresos, gastos totales ni tasa de ahorro en crudo: si lo hiciera, sería un dashboard duplicado, no una sorpresa.
+Da una experiencia de **revelación anual** tipo "Spotify Wrapped": un dato curioso a la vez (tu categoría del año, tu mejor y peor mes, cuánto ahorraste, tu gasto más grande), con una gráfica de patrimonio que se dibuja animada frente a ti cada vez que abres la pantalla. **No es un dashboard de control** — para chequear "¿voy bien o mal?" en cualquier momento ya existe Análisis financiero. Wrapped a propósito nunca muestra ingresos, gastos totales ni tasa de ahorro en crudo: si lo hiciera, sería un dashboard duplicado, no una sorpresa.
 
 **A propósito es solo anual, no mensual** (decisión tomada tras la primera versión, que sí tenía una vista de mes — ver §7): la especialidad de un "wrapped" depende de que no se vea seguido. Una versión mensual, aunque no mostrara cifras crudas, terminaba compitiendo con "Top categorías" de Análisis financiero, que ya cubre ese chequeo periódico — y aparecer cada mes le quita a Wrapped la sensación de sorpresa que es todo el punto de tenerlo.
 
@@ -180,7 +180,7 @@ Agrega cinco slides nuevos, cada uno condicionado a que su módulo dueño tenga 
 | Dominio | Lee de | Qué muestra | Función |
 |---|---|---|---|
 | Encargos | `S.encargos[].movimientos` (`tipo:'entrada'`) | Total que te encargaron cuidar en el período, sobre todos los encargos, cuántas personas distintas y cuál fue el mayor | `_wrappedCalcularEncargos` |
-| Prestado — Me deben | `S.deudores[].movimientos` (`tipo:'prestamo'`/`'abono'`/`'pago-completo'`) | Cuánto prestaste y cuánto te devolvieron en el período; quién recibió más de vos ese período (no la deuda total pendiente, que puede venir de antes) | `_wrappedCalcularPrestado` |
+| Prestado — Me deben | `S.deudores[].movimientos` (`tipo:'prestamo'`/`'abono'`/`'pago-completo'`) | Cuánto prestaste y cuánto te devolvieron en el período; quién recibió más de ti ese período (no la deuda total pendiente, que puede venir de antes) | `_wrappedCalcularPrestado` |
 | Prestado — Yo debo | `S.misDeudas[].movimientos` (`tipo:'recibido'`/`'pago'`) | Cuánto te prestaron y cuánto pagaste en el período | `_wrappedCalcularMisDeudas` |
 | Mesada | `S.mesadas.{papa,mama}.pagos` | Total recibido de papá + mamá en el período | `_wrappedCalcularMesada` |
 | Spotify | `S.spotify.historial` (`tipo:'cobro'`/`'pago'`) | Cobrado menos pagado en el período | `_wrappedCalcularSpotify` |

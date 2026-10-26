@@ -11,7 +11,7 @@
 // hubiera sido sobre-ingeniería).
 //
 // NO reemplaza a Events (js/core/events.js): Events es un dispatcher de
-// clicks, un solo handler por acción, y avisa+pisa si registrás la misma
+// clicks, un solo handler por acción, y avisa+pisa si registras la misma
 // acción dos veces — a propósito, porque su modelo es "un click, un
 // handler". hookGlobal() resuelve el caso contrario: varios módulos
 // independientes que quieren enterarse de la MISMA función global (varios

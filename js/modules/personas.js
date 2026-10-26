@@ -356,7 +356,7 @@ function _selPersonaFiltrar() {
             Crear a "${q}"
           </button>
         </div>`
-      : html`<div class="pe-vacio-12">No hay personas todavía. Creá una nueva.</div>`}`;
+      : html`<div class="pe-vacio-12">No hay personas todavía. Crea una nueva.</div>`}`;
     return;
   }
   // items: array de fragmentos html`` por persona — se interpolan directo

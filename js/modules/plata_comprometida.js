@@ -102,7 +102,7 @@ function _injectScreen(){
     <!-- Tip -->
     <div class="cp-ayuda-caja">
       <div class="cp-ayuda-cap">¿Cómo funciona?</div>
-      <div class="cp-ayuda-txt">Registrá aquí ingresos que todavía no te han llegado pero que ya sabés que van a tener destino. Cuando la plata llegue de verdad, tocás <b class="cp-c-text2">Recibir</b> y la app te guía a distribuirla sin enredos.</div>
+      <div class="cp-ayuda-txt">Registra aquí ingresos que todavía no te han llegado pero que ya sabes que van a tener destino. Cuando la plata llegue de verdad, tocas <b class="cp-c-text2">Recibir</b> y la app te guía a distribuirla sin enredos.</div>
     </div>
   `;
   main.appendChild(screen);
@@ -154,7 +154,7 @@ function _injectSheet(){
     <div class="sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-title" id="cp-sheet-title">Nuevo ingreso comprometido</div>
-      <div class="cp-form-intro">Registrá plata que todavía no llegó pero que ya tiene destino.<br>Los saldos <b class="cp-c-text">no se tocan</b> hasta que vos confirmes que llegó.</div>
+      <div class="cp-form-intro">Registra plata que todavía no llegó pero que ya tiene destino.<br>Los saldos <b class="cp-c-text">no se tocan</b> hasta que tú confirmes que llegó.</div>
 
       <div class="ig">
         <label class="il" for="cp-desc">¿Qué plata es? <span class="cp-c-red">*</span></label>
@@ -331,7 +331,7 @@ function _injectSheet(){
     <div class="sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-title">¡Llegó la plata! <i class="fa-solid fa-star cp-star"></i></div>
-      <div class="cp-rev-intro">Revisá el plan y confirma qué se va a hacer con cada parte.</div>
+      <div class="cp-rev-intro">Revisa el plan y confirma qué se va a hacer con cada parte.</div>
 
       <div id="cp-recibir-desc-card" class="cp-rev-ing">
         <div class="cp-rev-cap">Ingreso</div>
@@ -484,7 +484,7 @@ function _cpRenderLista(){
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 6V4M18 6V4"/></svg>
       </div>
       <div class="cp-vacio-tit">Sin ingresos registrados</div>
-      <div class="cp-vacio-txt">Tocá <b class="cp-c-text2">Nuevo</b> para registrar plata que va a llegar.</div>
+      <div class="cp-vacio-txt">Toca <b class="cp-c-text2">Nuevo</b> para registrar plata que va a llegar.</div>
     </div>`;
     return;
   }
@@ -696,10 +696,7 @@ function _cpAbrirEditar(id){
   _cpDestinosTmp = JSON.parse(JSON.stringify(item.destinos||[]));
   document.getElementById('cp-sheet-title').textContent = 'Editar ingreso';
   document.getElementById('cp-desc').value = item.desc||'';
-  if(typeof window._moneyDigits !== 'undefined' && window.fmtInput)
-    document.getElementById('cp-monto-total').value = fmtInput(item.montoTotal||0);
-  else
-    document.getElementById('cp-monto-total').value = String(item.montoTotal||0).replace('.',',');
+  document.getElementById('cp-monto-total').value = fmtInput(item.montoTotal||0);
   document.getElementById('cp-fecha-llegada').value = item.fechaLlegada||'';
   _cpPoblarCuentas('cp-cuenta-destino', false);
   document.getElementById('cp-cuenta-destino').value = item.cuentaDestino||'';
@@ -714,14 +711,14 @@ function _cpCancelSheet(){
 
 function _cpGuardar(){
   const desc = (document.getElementById('cp-desc').value||'').trim();
-  if(!desc){ toast('Escribí de qué plata es','err'); return; }
+  if(!desc){ toast('Escribe de qué plata es','err'); return; }
 
   const montoStr = document.getElementById('cp-monto-total').value||'';
   const monto = typeof parseMoney === 'function' ? parseMoney(montoStr) : parseFloat(montoStr.replace(/\./g,'').replace(',','.'));
-  if(!monto || monto <= 0){ toast('Ingresá el monto total','err'); return; }
+  if(!monto || monto <= 0){ toast('Ingresa el monto total','err'); return; }
 
   const fecha = document.getElementById('cp-fecha-llegada').value;
-  if(!fecha){ toast('Indicá cuándo llega','err'); return; }
+  if(!fecha){ toast('Indica cuándo llega','err'); return; }
 
   const cuentaDestino = document.getElementById('cp-cuenta-destino').value||'';
 
@@ -973,11 +970,11 @@ function _cpdSetYaPague(val){
 function _cpdConfirmar(){
   const tipo  = document.getElementById('cpd-tipo').value;
   const desc  = (document.getElementById('cpd-desc').value||'').trim();
-  if(!desc){ toast('Describí para qué es','err'); return; }
+  if(!desc){ toast('Describe para qué es','err'); return; }
 
   const montoStr = document.getElementById('cpd-monto').value||'';
   const monto = typeof parseMoney === 'function' ? parseMoney(montoStr) : parseFloat(montoStr.replace(/\./g,'').replace(',','.'));
-  if(!monto || monto <= 0){ toast('Ingresá el monto','err'); return; }
+  if(!monto || monto <= 0){ toast('Ingresa el monto','err'); return; }
 
   const personaId = document.getElementById('cpd-persona') ? document.getElementById('cpd-persona').value : '';
   const cuentaId  = document.getElementById('cpd-cuenta')  ? document.getElementById('cpd-cuenta').value  : '';
@@ -993,7 +990,7 @@ function _cpdConfirmar(){
       gastoCajita = document.getElementById('cpd-gasto-cajita') ? document.getElementById('cpd-gasto-cajita').value : '';
     } else {
       gastoTcId = document.getElementById('cpd-gasto-tc') ? document.getElementById('cpd-gasto-tc').value : '';
-      if(!gastoTcId){ toast('Elegí una tarjeta de crédito','err'); return; }
+      if(!gastoTcId){ toast('Elige una tarjeta de crédito','err'); return; }
       gastoTcCajita = document.getElementById('cpd-gasto-tc-cajita') ? document.getElementById('cpd-gasto-tc-cajita').value : '';
     }
   }
@@ -1084,7 +1081,7 @@ function _cpRenderDestinosTmp(){
   if(!_cpDestinosTmp.length){
     el.innerHTML = `<div class="cp-sd-caja">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      <div class="cp-sd-txt">Sin destinos — todo queda libre para vos.</div>
+      <div class="cp-sd-txt">Sin destinos — todo queda libre para ti.</div>
     </div>`;
   } else {
     el.innerHTML = _cpDestinosTmp.map((d,i)=>{
@@ -1306,7 +1303,7 @@ function _cpAbrirRecibir(id){
               <span class="cp-rec-it-monto">${fmt(d.monto)}</span>
             </div>`;
           }).join(''))}
-          <div class="cp-rec-nota"><i class="fa-solid fa-circle-info cp-rec-nota-ico"></i>Cuando llegue la fecha de pago, usá la plata de esas cajitas.</div>
+          <div class="cp-rec-nota"><i class="fa-solid fa-circle-info cp-rec-nota-ico"></i>Cuando llegue la fecha de pago, usa la plata de esas cajitas.</div>
         </div>`;
     } else {
       recWrap.style.display = 'none';
@@ -1504,7 +1501,7 @@ function _cpMarcarPagos(id){
     div.innerHTML = `<div class="sheet">
       <div class="sheet-handle"></div>
       <div class="sheet-title">Marcar estado de pagos</div>
-      <div class="cp-sub-intro">Tocá cada ítem para cambiar su estado.</div>
+      <div class="cp-sub-intro">Toca cada ítem para cambiar su estado.</div>
       <div id="cp-marcar-list"></div>
       <button type="button" class="btn btn-primary cp-btn-guardar-acc" ${Events.attr('cp:guardarMarcados')}>Guardar</button>
       <button type="button" class="btn btn-ghost" data-close-sheet="cp-marcar" ${Events.attr('cp:cerrarMarcar')}>Cancelar</button>
@@ -1930,10 +1927,10 @@ async function _cpEliminar(id){
         const diasG = Math.round((new Date(d.fechaPago+'T00:00:00') - new Date(hoyStr+'T00:00:00'))/86400000);
         let txtG = '', tipoG = '';
         const cajLabelG = typeof _cpFuenteLabel==='function'?_cpFuenteLabel(d.gastoCajita):d.gastoCajita;
-        if(diasG < 0){ txtG = html`Vencido: "${d.desc}" de "${item.desc}" debía pagarse el ${d.fechaPago} — tenés ${fmt(d.monto)} en ${cajLabelG}`; tipoG='red'; }
-        else if(diasG === 0){ txtG = html`¡Hoy hay que pagar "${d.desc}"! Tenés ${fmt(d.monto)} guardado`; tipoG='amber'; }
-        else if(diasG === 1){ txtG = html`Mañana vence "${d.desc}" — tenés ${fmt(d.monto)} en ${cajLabelG}`; tipoG='amber'; }
-        else if(diasG <= 3){ txtG = html`En ${diasG} días vence "${d.desc}" (${d.fechaPago}) — tenés ${fmt(d.monto)} guardado`; tipoG='amber'; }
+        if(diasG < 0){ txtG = html`Vencido: "${d.desc}" de "${item.desc}" debía pagarse el ${d.fechaPago} — tienes ${fmt(d.monto)} en ${cajLabelG}`; tipoG='red'; }
+        else if(diasG === 0){ txtG = html`¡Hoy hay que pagar "${d.desc}"! Tienes ${fmt(d.monto)} guardado`; tipoG='amber'; }
+        else if(diasG === 1){ txtG = html`Mañana vence "${d.desc}" — tienes ${fmt(d.monto)} en ${cajLabelG}`; tipoG='amber'; }
+        else if(diasG <= 3){ txtG = html`En ${diasG} días vence "${d.desc}" (${d.fechaPago}) — tienes ${fmt(d.monto)} guardado`; tipoG='amber'; }
         if(txtG){
           sec.style.display = '';
           const chipG = document.createElement('div');

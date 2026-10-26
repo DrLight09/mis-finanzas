@@ -199,7 +199,7 @@ function mesKey(d){return d?d.substring(0,7):'';}
 //                     mostrarlo (ej. justo después de elegir persona en un
 //                     selector). Default: no lo toca.
 // opts.conIniciales — si hay que escribir las iniciales en el avatar (ej. un
-//                     selector recién confirmado). Default: true. Ponelo en
+//                     selector recién confirmado). Default: true. Ponlo en
 //                     false si el avatar ya tiene sus iniciales de un render
 //                     previo y solo hace falta actualizar el color.
 // opts.alphaFondo / opts.alphaBorde — sufijo hex de opacidad para el color de
@@ -518,40 +518,15 @@ function validarSalidaFuente(fuente,monto){
 
 /* ---- LOAD / SAVE ---- */
 function fmtInput(n){
-  // Format a raw number for display in a money-input field (calculator style: always show 2 decimals)
+  // Número → texto para un campo de plata (.money-input): enteros sin decimales ("500.000"), con decimales
+  // siempre 2 ("1.234,50"). Es el mismo formato que deja el formateo al escribir (js/core/money-input.js).
   if(!n&&n!==0)return'';
   const num=parseFloat(n);
   if(isNaN(num)||num===0)return'';
-  // Always show with 2 decimals, using es-CO separators
   const cents=Math.round(Math.abs(num)*100);
-  const intPart=Math.floor(cents/100);
-  const decPart=String(cents%100).padStart(2,'0');
-  return (num<0?'-':'')+intPart.toLocaleString('es-CO')+','+decPart;
-}
-
-// Calculator-style money input: digits push right-to-left from centavos
-// Stores raw digit string per input element
-const _moneyDigits=new WeakMap();
-
-function _moneyRender(digits){
-  // digits: string of up to N digit chars, e.g. "300" → "3,00"
-  if(!digits||digits==='0'||digits==='')return'0,00';
-  // Pad to at least 3 digits so we always have 2 decimal places
-  const padded=digits.padStart(3,'0');
-  const intRaw=padded.slice(0,-2);
-  const dec=padded.slice(-2);
-  // Remove leading zeros from integer part
-  const intNum=parseInt(intRaw,10)||0;
-  const intFmt=intNum.toLocaleString('es-CO');
-  return intFmt+','+dec;
-}
-
-function _moneyValue(digits){
-  if(!digits||digits==='0')return 0;
-  const padded=digits.padStart(3,'0');
-  const intRaw=padded.slice(0,-2);
-  const dec=padded.slice(-2);
-  return parseInt(intRaw||'0',10)+(parseInt(dec,10)/100);
+  const intPart=String(Math.floor(cents/100)).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  const decPart=cents%100;
+  return (num<0?'-':'')+intPart+(decPart?','+String(decPart).padStart(2,'0'):'');
 }
 
 // Clase guardada de un movimiento ('ingreso' | 'gasto' | 'neutro' | 'ajuste'), o null si no la tiene.
@@ -848,7 +823,7 @@ function calcPatrimonioTotal(){
   // mis cuentas pero no es mía, así que se resta igual que la deuda de TC.
   const misDeudas=typeof Deudas!=='undefined'?Deudas.totalPendiente('contra'):0;
   // Restar plata comprometida ajena que está físicamente en cuentas propias
-  // (igual que se restan encargos) — es plata de otras personas que administrás
+  // (igual que se restan encargos) — es plata de otras personas que administras
   const cpAjeno = _saldoCPAjeno();
   // Alcancía: el saldo registrado es plata real tuya aunque esté "oculta"
   const alcancia = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;

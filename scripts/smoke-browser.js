@@ -174,6 +174,16 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     ev(`S.encargos=[{id:'e1',nombre:'Mamá',personaId:'',saldoInicial:0,movimientos:[],cuentas:[]}]; renderEncargosList()`);
     c4(nBtn(q('#encargosList')) === 0 && viz(q('#btn-nuevo-encargo')), 'Encargos con datos: falta el botón de pie');
 
+    // .money-input: miles al escribir y cursor que no salta (campo real de la página)
+    const gm = q('#gv_monto');
+    gm.value = '1500000,5'; gm.setSelectionRange(9, 9);
+    gm.dispatchEvent(new w.InputEvent('input', { bubbles: true, inputType: 'insertText', data: '5' }));
+    c4(gm.value === '1.500.000,5' && ev(`parseMoney(document.getElementById('gv_monto').value)`) === 1500000.5, '.money-input: 1500000,5 debe verse 1.500.000,5 y leerse como 1500000.5');
+    gm.value = '1.5000'; gm.setSelectionRange(3, 3);
+    gm.dispatchEvent(new w.InputEvent('input', { bubbles: true, inputType: 'insertText', data: '0' }));
+    c4(gm.value === '15.000' && gm.selectionStart === 2, '.money-input: escribir en medio no manda el cursor al final');
+    gm.value = '';
+
     // Mejora 8: Presupuestos mensuales con puntos de miles, guardando siempre el número
     ev(`S.presupuestos={}; S.presupuestos[getCatsVar()[0]]=500000; abrirPresupuestos()`);
     const pi = q('#presup-input-0');

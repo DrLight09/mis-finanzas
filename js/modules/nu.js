@@ -213,8 +213,7 @@ async function guardarChequeoNu(){
   inputs.forEach(inp=>{
     const raw=(inp.value||'').replace(/\./g,'').replace(',','.');
     const val=parseFloat(raw);
-    // Un campo money-input se rellena con "0,00" apenas se toca (focusin) y nada lo limpia al salir,
-    // así que 0 significa "no anoté nada", no "esta cajita tiene $0". Antes se guardaba como lectura
+    // Un campo vacío o en 0 significa "no anoté nada", no "esta cajita tiene $0". Antes se guardaba como lectura
     // real: ponía la cajita en 0 (solo con aviso si se alejaba más de max($1.000, 2%)) y ensuciaba
     // S.chequeosNu. Si de verdad quedó vacía, se registra el retiro como movimiento (lo dice el aviso).
     if(!raw||isNaN(val)||val<=0)return;
@@ -1309,7 +1308,7 @@ function _nuMovRenderCajitas() {
   if (!wrap) return;
   const cajitas = S.cajitas || [];
   if (!cajitas.length) {
-    wrap.innerHTML = '<div class="nu-sel-vacio">No tenés cajitas. Creá una primero desde la pantalla de Nu.</div>';
+    wrap.innerHTML = '<div class="nu-sel-vacio">No tienes cajitas. Crea una primero desde la pantalla de Nu.</div>';
     return;
   }
   wrap.innerHTML = html`${cajitas.map(c => {
@@ -1381,10 +1380,10 @@ function confirmarNuMovimiento() {
   const nota = document.getElementById('nuMovNota')?.value.trim() || '';
   const esApertura = _nuMovTipo === 'entrada' && (document.getElementById('nuMovEsApertura')?.checked || false);
 
-  if (!_nuMovCajitaSel) { toast('Seleccioná una cajita', 'err'); return; }
-  if (!v) { toast('Ingresá el monto', 'err'); return; }
+  if (!_nuMovCajitaSel) { toast('Selecciona una cajita', 'err'); return; }
+  if (!v) { toast('Ingresa el monto', 'err'); return; }
   if (!esApertura && !desc) {
-    toast(_nuMovTipo === 'entrada' ? 'Describí de dónde viene la plata' : 'Describí en qué se gastó', 'err');
+    toast(_nuMovTipo === 'entrada' ? 'Describe de dónde viene la plata' : 'Describe en qué se gastó', 'err');
     return;
   }
 

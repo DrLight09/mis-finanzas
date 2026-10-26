@@ -176,12 +176,12 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
     el.innerHTML = html`
       <div class="sec-title">Encargos en Nu</div>
       <div class="enc-cap-caja">
-        <div class="enc-cap-txt">Plata que administrás de otras personas, guardada en tus cajitas — los intereses que genera son tuyos</div>
+        <div class="enc-cap-txt">Plata que administras de otras personas, guardada en tus cajitas — los intereses que genera son tuyos</div>
         ${filasHtml}
         <div class="enc-tot-fila">
           <div>
             <div class="enc-nota">Total encargos en Nu</div>
-            ${totalInteresesMios >= 0.01 ? html`<div class="enc-tot-int-dia">+${fmt(totalInteresesMios)}/día que ganás vos</div>` : ''}
+            ${totalInteresesMios >= 0.01 ? html`<div class="enc-tot-int-dia">+${fmt(totalInteresesMios)}/día que ganas tú</div>` : ''}
             ${totalAcumulado > 0.5 ? html`<div class="enc-tot-acum">+${fmt(totalAcumulado)} ganados hasta hoy</div>` : ''}
           </div>
           <span class="enc-tot-val">${fmt(totalEncargosNu)}</span>
@@ -225,7 +225,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
   el.innerHTML = html`
     <div class="sec-title">Encargos en esta cuenta</div>
     <div class="enc-cap-caja">
-      <div class="enc-lista-cap">Plata que administrás de otras personas guardada aquí</div>
+      <div class="enc-lista-cap">Plata que administras de otras personas guardada aquí</div>
       ${filas.map(({enc, saldo}) => html`
         <div class="enc-lista-fila" data-encargo-id="${enc.id}" ${raw(Events.attr('encargos:abrirDesdeCuenta', enc.id))}>
           <div class="enc-lista-pers" ${raw(Events.attr('encargos:abrirDesdeCuenta', enc.id))}>
@@ -255,7 +255,7 @@ function abrirEncargoDesdeCuenta(id) {
 }
 
 /* ================================================================
-   ENCARGOS — plata de otros que administrás (NO suma al patrimonio)
+   ENCARGOS — plata de otros que administras (NO suma al patrimonio)
    ================================================================ */
 
 let encargoActualId = null;
@@ -640,10 +640,10 @@ function guardarParte() {
   const enc = getEncargo(encargoActualId);
   if (!enc) return;
   const desc = (document.getElementById('parte-desc').value || '').trim();
-  if (!desc) { toast('Escribí para qué es', 'err'); return; }
+  if (!desc) { toast('Escribe para qué es', 'err'); return; }
   const montoStr = document.getElementById('parte-monto').value || '';
   const monto = typeof parseMoney === 'function' ? parseMoney(montoStr) : parseFloat(montoStr.replace(/\./g, '').replace(',', '.'));
-  if (!monto || monto <= 0) { toast('Ingresá el monto', 'err'); return; }
+  if (!monto || monto <= 0) { toast('Ingresa el monto', 'err'); return; }
   const fecha = document.getElementById('parte-fecha').value || '';
 
   // Validar que no sobrepase el saldo
@@ -800,7 +800,7 @@ function _validarIntercambiosBenefs() { return diffValidarIntercambios('movenc')
 
 /* ─── "Yo puse la plata" — intercambio simple sin diferencial ─────
    Para cuando lo que dijiste = lo real, pero la plata no salió de la
-   cuenta del encargo elegida arriba sino de tu bolsillo, y querés
+   cuenta del encargo elegida arriba sino de tu bolsillo, y quieres
    recuperar ese monto del encargo en una de tus cuentas.
    Genera el mismo par de transferencias _intercambioSalida/_intercambioEntrada
    que el sistema de "lo pagué yo" del diferencial, pero por el monto total
@@ -902,24 +902,24 @@ function _validarMovEncMia() {
 
   if (_miaSaleSplitMode) {
     if (!sale.length) return 'Repartí de qué cuentas tuyas salió la plata';
-    if (sale.some(r => !r.fuente)) return 'Elegí la cuenta en cada fila de "sale"';
+    if (sale.some(r => !r.fuente)) return 'Elige la cuenta en cada fila de "sale"';
     const total = sale.reduce((a, r) => a + r.monto, 0);
     if (Math.abs(total - monto) > 0.5) return `Lo que sale de tus cuentas (${fmt(total)}) tiene que ser igual al monto (${fmt(monto)})`;
   } else if (!sale[0].fuente) {
-    return 'Elegí de qué cuenta tuya salió la plata';
+    return 'Elige de qué cuenta tuya salió la plata';
   }
   for (const r of sale) {
     const saldo = getSaldoFuente(r.fuente);
     if (r.monto > saldo + 0.5) {
-      return `No tenés ${fmt(r.monto)} en ${escHtml(fuenteLabel(r.fuente))}. Disponible: ${fmt(saldo)}.`;
+      return `No tienes ${fmt(r.monto)} en ${escHtml(fuenteLabel(r.fuente))}. Disponible: ${fmt(saldo)}.`;
     }
   }
 
   // Recupero: sin filas = "sin especificar" (igual que el modo simple con la opción vacía)
   if (_miaEntraSplitMode && entra.length) {
-    if (entra.some(r => !r.fuente)) return 'Elegí la cuenta en cada fila de "recupero"';
+    if (entra.some(r => !r.fuente)) return 'Elige la cuenta en cada fila de "recupero"';
     const total = entra.reduce((a, r) => a + r.monto, 0);
-    if (Math.abs(total - monto) > 0.5) return `Lo que recuperás (${fmt(total)}) tiene que ser igual al monto (${fmt(monto)})`;
+    if (Math.abs(total - monto) > 0.5) return `Lo que recuperas (${fmt(total)}) tiene que ser igual al monto (${fmt(monto)})`;
   }
   return null;
 }
@@ -1799,7 +1799,7 @@ function _movEncFaltanteCuentaHint() {
   if (faltante <= 0) { hint.textContent = ''; return; }
   const saldo = getSaldoFuente(fuenteVal);
   if (faltante > saldo + 0.5) {
-    hint.textContent = `No tenés ${fmt(faltante)} en ${fuenteLabel(fuenteVal)}. Disponible: ${fmt(saldo)}.`;
+    hint.textContent = `No tienes ${fmt(faltante)} en ${fuenteLabel(fuenteVal)}. Disponible: ${fmt(saldo)}.`;
     hint.style.color = 'var(--red)';
   } else {
     hint.textContent = `Disponible en ${fuenteLabel(fuenteVal)}: ${fmt(saldo)}`;
@@ -1852,7 +1852,7 @@ function _movEncConfirmarPrestarFaltante() {
   // archivo): getSaldoFuente() antes de escribir cualquier dato.
   const saldoFuente = getSaldoFuente(fuentePrestamo);
   if (faltante > saldoFuente + 0.5) {
-    toast(`No tenés ${fmt(faltante)} en ${escHtml(fuenteLabel(fuentePrestamo))} para prestar. Disponible: ${fmt(saldoFuente)}.`, 'err', 4500);
+    toast(`No tienes ${fmt(faltante)} en ${escHtml(fuenteLabel(fuentePrestamo))} para prestar. Disponible: ${fmt(saldoFuente)}.`, 'err', 4500);
     return;
   }
 
@@ -2708,7 +2708,7 @@ function confirmarMoverEncCuentas() {
 })();
 
 // ── TRANSFERENCIA DE PLATA ENTRE ENCARGOS ──────────────────────────────
-// Caso: A te pide que le pagues a B, y vos les guardas plata a los dos
+// Caso: A te pide que le pagues a B, y tú les guardas plata a los dos
 // (dos encargos distintos). Esa plata deja de ser de A y pasa a ser de
 // B — pero sigue siendo ajena todo el tiempo, nunca se vuelve tuya ni
 // toca tu patrimonio. Es como "Mover entre cuentas" pero cruzando dos
@@ -2749,7 +2749,7 @@ function abrirTransferenciaEncargo() {
   }
 
   // Select "dónde queda guardada esa plata ahora" para el encargo destino
-  // (ej. la tenés en Nequi mientras se la entregás físicamente a esa persona)
+  // (ej. la tienes en Nequi mientras se la entregas físicamente a esa persona)
   const selCuentaFisica = document.getElementById('transfenc_cuenta_fisica');
   selCuentaFisica.innerHTML = html`<option value="">Sin especificar</option>${fuentesSinTC.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
   if (cuentasEnc.length > 0) selCuentaFisica.value = cuentasEnc[0].cuenta;

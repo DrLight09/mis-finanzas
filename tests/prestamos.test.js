@@ -119,10 +119,12 @@ describe('medeben', () => {
     });
     assert.equal(saldo(ctx, 'efectivo'), 104000);
     assert.equal(ctx.S.gastosVar.length, 1);
+    assert.equal(ctx._esGastoVarNoReal(ctx.S.gastosVar[0]), false, 'el extra gastado cuenta como gasto real');
     assert.equal(ctx.S.ingresosExtra.length, 1);
-    const ing = ctx.S.movimientos.find((m) => m._esExtraIngreso);
-    assert.ok(ing, 'el extra guardado en una cuenta cuenta como ingreso real');
-    assert.equal(ctx._esEntradaEspejoNoIngreso(ing), false);
+    const ings = ctx.S.movimientos.filter((m) => m._esExtraIngreso);
+    assert.equal(ings.length, 2, 'el extra guardado en una cuenta Y el gastado al instante son ingreso real (plata nueva)');
+    ings.forEach((ing) => assert.equal(ctx._esEntradaEspejoNoIngreso(ing), false));
+    assert.equal(ctx.entradasIngresoReal().reduce((a, m) => a + m.monto, 0), 6000, 'ingresos: 4.000 guardados + 2.000 gastados (los 1.000 regalados no entraron)');
     assert.equal(mov._extPartes.length, 4);
     revertir(ctx, mov);
     assert.equal(saldo(ctx, 'efectivo'), 100000);
@@ -796,3 +798,41 @@ describe('totalPrestadoPendiente', () => {
     assert.equal(ctx.calcPatrimonioTotal(), 300000);
   });
 });
+
+describe('prestamos-formularios-comunes', () => {
+  // Mejora 4: «Me deben» y «Yo debo» comparten nombres de botones y validaciones comunes (mismos mensajes).
+  const { test } = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const RAIZ = path.join(__dirname, '..');
+  const ctx = loadApp([
+    path.join(RAIZ, 'js', 'core', 'core-state.js'), path.join(RAIZ, 'js', 'core', 'periodo.js'),
+    path.join(RAIZ, 'js', 'core', 'nu-calc.js'), path.join(RAIZ, 'js', 'core', 'cuenta-efectos.js'),
+    path.join(RAIZ, 'js', 'core', 'calc-helpers.js'), path.join(RAIZ, 'js', 'modules', 'prestado.js'),
+  ], { permissive: true });
+
+  test('monto vacío: el mismo mensaje y el error va al campo de cada formulario', () => {
+    const a = ctx._errMonto('mov_monto').error, b = ctx._errMonto('md_monto').error;
+    assert.equal(a.msg, 'Ingresa un monto mayor a 0');
+    assert.equal(b.msg, a.msg);
+    assert.equal(a.field, 'mov_monto'); assert.equal(b.field, 'md_monto');
+  });
+
+  test('reparto entre cuentas: un solo texto para «no suma» y la fila sin cuenta se rechaza', () => {
+    const e = ctx._errSumaCuentas(30000, 40000, 'el monto').error;
+    assert.equal(e.msg, `La suma de las cuentas (${ctx.fmt(30000)}) no coincide con el monto (${ctx.fmt(40000)})`);
+    assert.equal(ctx._errFilaSinCuenta([{ fuente: 'nequi', monto: 1 }, { fuente: '', monto: 2 }]).error.msg, 'Elige la cuenta en cada fila del reparto');
+    assert.equal(ctx._errFilaSinCuenta([{ fuente: 'nequi', monto: 1 }]), null);
+  });
+
+  test('nombres de botones: «Nuevo préstamo» (Me deben) y «Nueva deuda» (Yo debo); ya no existe «Me prestó más»', () => {
+    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    assert.ok(/Nuevo préstamo\s*<\/span>/.test(html));
+    assert.ok(/Nueva deuda\s*<\/span>/.test(html));
+    assert.ok(html.includes('id="mdMovSheetTitle">Nueva deuda</div>'));
+    assert.ok(!html.includes('Me prestó más'));
+  });
+});
+

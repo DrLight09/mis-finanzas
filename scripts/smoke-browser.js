@@ -184,6 +184,32 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c4(gm.value === '15.000' && gm.selectionStart === 2, '.money-input: escribir en medio no manda el cursor al final');
     gm.value = '';
 
+    // Mejora 4: «Yo debo» marca el monto vacío en el propio campo, igual que «Me deben»
+    ev(`abrirMiDeuda('d2'); abrirMovMiDeuda('recibido')`);
+    c4(q('#mdMovSheetTitle').textContent === 'Nueva deuda', 'Yo debo: el sheet de nueva deuda debe titularse «Nueva deuda»');
+    ev(`_injectErrorSpans()`); // en la app real lo llama firebase-sync.js (módulo ES, que jsdom no ejecuta)
+    ev(`confirmarMovMiDeuda()`);
+    c4(q('#md_monto').classList.contains('input-error') && q('#md_monto_err').textContent === 'Ingresa un monto mayor a 0', 'Yo debo: monto vacío debe marcar el campo con «Ingresa un monto mayor a 0»');
+    ev(`closeSheet('mov-mi-deuda')`);
+
+    // Mejora 6: balance de Análisis — un color, un signo y un mensaje por escenario
+    const esc6 = (ing, gas) => {
+      ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.mesadas=S.mesadas&&{}; S.ingresosFijos=${ing ? `[{id:'i6',nombre:'Sueldo',monto:${ing}}]` : '[]'};` +
+         (gas ? `S.gastosVar=[{id:'g6',desc:'Compra',monto:${gas},fecha:hoy(),cat:'Comida',fuente:'efectivo',clase:'gasto'}];` : '') + `renderAnalisis()`);
+      const h = q('#analisis-balance-hero');
+      return { cls: h.className.replace('ix-analisis-balance-hero ', ''), monto: h.querySelector('.an-hero-monto').textContent.trim(), msg: h.querySelector('.an-hero-msg').textContent.trim(), ing: q('#an-ingresos').textContent.trim() };
+    };
+    let r6 = esc6(0, 0);
+    c4(r6.cls === 'an-hero-neu' && /Aún no hay movimientos este mes/.test(r6.msg), 'Balance sin ingresos ni gastos: neutro con «Aún no hay movimientos este mes.»');
+    r6 = esc6(0, 33.33);
+    c4(r6.cls === 'an-hero-neg' && r6.monto === '-$33,33' && /Has gastado \$33,33 y aún no registras ingresos/.test(r6.msg) && /Registra tus ingresos para ver el balance del mes/.test(r6.msg) && !/Mesada/.test(r6.msg) && r6.ing === '—', 'Balance sin ingresos y con gastos: rojo, -$33,33 y mensaje de registrar ingresos');
+    r6 = esc6(100000, 30000);
+    c4(r6.cls === 'an-hero-pos' && r6.monto === '+$70.000' && /vas bien: has gastado menos de lo que has recibido/.test(r6.msg), 'Balance con ingresos > gastos: verde con signo +');
+    r6 = esc6(50000, 50000);
+    c4(r6.cls === 'an-hero-neu' && r6.monto === '$0' && /has gastado todo lo que has recibido/.test(r6.msg) && q('#an-tasa-ahorro').textContent === '0%' && q('#an-ahorrado').style.color === 'var(--text3)', 'Balance en cero: neutro, ni verde ni rojo (también en las tarjetas)');
+    r6 = esc6(50000, 80000);
+    c4(r6.cls === 'an-hero-neg' && r6.monto === '-$30.000' && /has gastado más de lo que has recibido/.test(r6.msg), 'Balance con gastos > ingresos: rojo con signo -');
+
     // Mejora 8: Presupuestos mensuales con puntos de miles, guardando siempre el número
     ev(`S.presupuestos={}; S.presupuestos[getCatsVar()[0]]=500000; abrirPresupuestos()`);
     const pi = q('#presup-input-0');

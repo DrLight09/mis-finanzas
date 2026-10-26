@@ -57,26 +57,32 @@ function renderAnalisis(){
   const balance=ingresosEstimados-gastosTotalMes;
   const _rendNu=_bal.ingresos.rendimientos||0; // intereses de cajitas y CDT incluidos en los ingresos del mes
   const _hayIngresos=ingresosEstimados-_rendNu>0; // sin ingresos operativos no hay balance que evaluar, aunque haya intereses
+  const _cero=Math.abs(balance)<0.005;        // el cero exacto no es ni ahorro ni déficit: se queda neutro
   const hero=document.getElementById('analisis-balance-hero');
   if(hero){
-    const esPositivo=balance>=0;
+    // Un estado por escenario: color (clase an-hero-pos/neg/neu), signo del monto y mensaje dicen lo mismo.
+    //   sin ingresos y sin gastos → neutro · sin ingresos y con gastos → rojo · ingresos > gastos → verde
+    //   ingresos = gastos → neutro · gastos > ingresos → rojo
     const sinIngresos=!_hayIngresos;
-    const claseTono=sinIngresos?'an-t-muted':esPositivo?'c-green':'c-red';
-    const bgColor=sinIngresos?'rgba(255,255,255,.04)':esPositivo?'rgba(200,240,96,.07)':'rgba(240,104,104,.07)';
-    const borderColor=sinIngresos?'var(--border2)':esPositivo?'rgba(200,240,96,.25)':'rgba(240,104,104,.25)';
+    const sinMovs=sinIngresos&&gastosTotalMes<0.005;
+    const estado=sinMovs?'neu':sinIngresos?'neg':_cero?'neu':balance>0?'pos':'neg';
+    const claseTono={pos:'c-green',neg:'c-red',neu:'an-t-muted'}[estado];
     const mes2d=MESES_NOMBRE[mesNum]+' '+anio;
-    const emoji=sinIngresos?'':esPositivo?'↑':' ↓';
-    let mensaje='';
-    const moduloMesadaActivo=!!(S.modulos&&S.modulos.mesada);
-    if(sinIngresos) mensaje=moduloMesadaActivo?'Registra tus ingresos en Mesada para ver el balance.':'Total gastado este mes.';
-    else if(esPositivo) mensaje='¡Vas bien! Gastaste menos de lo que entraste.';
-    else mensaje='Ojo: gastaste más de lo que entraste este mes.';
-    hero.style.cssText='border-radius:var(--radius);padding:20px;margin-bottom:10px;background:'+bgColor+';border:1px solid '+borderColor+';';
-    hero.innerHTML=`
-      <div class="an-hero-lbl ${claseTono}">${emoji} Balance de ${mes2d}</div>
-      <div class="an-hero-monto ${claseTono}">${sinIngresos?fmt(gastosTotalMes*-1):(balance>=0?'+':'')+fmt(balance)}</div>
+    const flecha=trazo=>`<svg class="an-hero-flecha" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${trazo}</svg>`;
+    const icono=estado==='pos'?flecha('<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>')
+      :estado==='neg'?flecha('<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>'):'';
+    let mensaje, monto;
+    if(sinMovs){ mensaje='Aún no hay movimientos este mes.'; monto=fmt(0); }
+    else if(sinIngresos){ mensaje=`Has gastado ${fmt(gastosTotalMes)} y aún no registras ingresos este mes. Registra tus ingresos para ver el balance del mes.`; monto=fmt(gastosTotalMes*-1); }
+    else if(_cero){ mensaje='Por ahora has gastado todo lo que has recibido este mes.'; monto=fmt(0); }
+    else if(balance>0){ mensaje='Por ahora vas bien: has gastado menos de lo que has recibido este mes.'; monto='+'+fmt(balance); }
+    else { mensaje='Por ahora has gastado más de lo que has recibido este mes.'; monto=fmt(balance); }
+    hero.className='ix-analisis-balance-hero '+{pos:'an-hero-pos',neg:'an-hero-neg',neu:'an-hero-neu'}[estado];
+    hero.innerHTML=html`
+      <div class="an-hero-lbl ${claseTono}">${raw(icono)} Balance de ${mes2d}</div>
+      <div class="an-hero-monto ${claseTono}">${monto}</div>
       <div class="an-hero-msg">${mensaje}</div>
-      ${_rendNu>0.5?`<div class="an-hero-rend">Incluye ${fmt(_rendNu)} de rendimientos de Nu <span class=\"an-opaco\">(intereses de cajitas y CDT)</span></div>`:''}
+      ${(!sinIngresos&&_rendNu>0.5)?raw(`<div class="an-hero-rend">Incluye ${fmt(_rendNu)} de rendimientos de Nu <span class="an-opaco">(intereses de cajitas y CDT)</span></div>`):''}
     `;
   }
 
@@ -216,11 +222,12 @@ function renderAnalisis(){
   if(elTasaAhorro&&elAhorrado){
     if(_hayIngresos){
       const tasa=balance/ingresosEstimados*100;
-      const esPos=balance>=0;
-      elTasaAhorro.textContent=(esPos?'+':'')+tasa.toFixed(1)+'%';
-      elTasaAhorro.style.color=esPos?'var(--accent)':'var(--red)';
+      const esPos=!_cero&&balance>0;
+      const tonoAhorro=_cero?'var(--text3)':esPos?'var(--accent)':'var(--red)';
+      elTasaAhorro.textContent=(esPos?'+':'')+(_cero?'0':tasa.toFixed(1))+'%';
+      elTasaAhorro.style.color=tonoAhorro;
       elAhorrado.textContent=(esPos?'+':'')+fmt(balance);
-      elAhorrado.style.color=esPos?'var(--accent)':'var(--red)';
+      elAhorrado.style.color=tonoAhorro;
     } else {
       elTasaAhorro.textContent='—';
       elTasaAhorro.style.color='var(--text3)';
@@ -241,6 +248,8 @@ function renderAnalisis(){
     const balancePrev=balPrev.balance;
     const ingresosPrev=balPrev.ingresos.total-(balPrev.ingresos.rendimientos||0); // solo ingresos operativos: decide si hay datos que comparar
 
+    // Este mes aún no termina y el anterior sí: la comparación es «hasta hoy contra el mes completo», así que los
+    // textos dicen «por ahora» en vez de dar el mes por cerrado («Mejoró»/«Empeoró»).
     const diffGastos=gastosTotalMes-totalPrev;
     const diffBalance=balance-balancePrev;
     const hayDatos=totalPrev>0;
@@ -261,7 +270,7 @@ function renderAnalisis(){
             </div>
             <div class="an-der">
               <div class="an-comp-val ${diffClase(diffGastos,true)}">${diffGastos===0?'=':arrow(diffGastos)} ${fmt(Math.abs(diffGastos))}</div>
-              <div class="an-comp-sub an-t-muted">${totalPrev>0?Math.abs(Math.round(diffGastos/totalPrev*100))+'%':''} ${diffGastos<0?'menos':'más'}</div>
+              <div class="an-comp-sub an-t-muted">${totalPrev>0?Math.abs(Math.round(diffGastos/totalPrev*100))+'%':''} ${diffGastos<0?'menos':'más'} por ahora</div>
             </div>
           </div>
           <div class="an-sep"></div>
@@ -273,7 +282,7 @@ function renderAnalisis(){
             </div>
             <div class="an-der">
               <div class="an-comp-val ${diffClase(diffBalance,false)}">${diffBalance===0?'=':arrow(diffBalance)} ${fmt(Math.abs(diffBalance))}</div>
-              <div class="an-comp-sub ${diffClase(diffBalance,false)}">${diffBalance>0?'Mejoró':'Empeoró'}</div>
+              <div class="an-comp-sub ${diffClase(diffBalance,false)}">${diffBalance===0?'Sin cambio por ahora':diffBalance>0?'Va mejor por ahora':'Va peor por ahora'}</div>
             </div>
           </div>`:''}
         </div>`;

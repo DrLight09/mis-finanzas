@@ -220,7 +220,7 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 **`sheet-nueva-deuda`** — Nueva deuda: ¿A quién le debes? → ¿Cuánto te prestó? → ¿A qué cuenta entró la plata? → Fecha → Nota (opcional)
 
-**`sheet-mov-mi-deuda`** — Me prestó más / Le pagué: Monto → ¿A qué cuenta entró la plata? (condicional, solo en "me prestó más") → Fecha → Nota (opcional)
+**`sheet-mov-mi-deuda`** — Nueva deuda / Registrar pago: Monto → ¿A qué cuenta entró la plata? (condicional, solo en "Nueva deuda") → Fecha → Nota (opcional)
 
 ### Préstamos (yo le presté a alguien)
 

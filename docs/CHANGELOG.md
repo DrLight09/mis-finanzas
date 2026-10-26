@@ -6,6 +6,18 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Mejoras de `mejoras.md`
 
+### 🤝 Préstamos: nombres y validaciones comunes de «Me deben» y «Yo debo» (2026-10-25, mejora 4)
+
+- **Nomenclatura:** el botón/título que crea un préstamo es «Nuevo préstamo» en Me deben y **«Nueva deuda»** en Yo debo (antes «Me prestó más»); «Registrar abono» / «Registrar pago» y «Agregar persona» (mejora 1) se quedan. El nombre dice quién presta; las dos pantallas siguen creando su propio tipo de registro.
+- **Validaciones comunes** (helpers en `prestado.js`, junto a `_planErr`): `_errMonto(campo)` (mismo «Ingresa un monto mayor a 0», ahora también en el propio campo `md_monto` de Yo debo, con su span en `_injectErrorSpans`), `_errSumaCuentas()` (un solo texto para «la suma de las cuentas no coincide», antes tres), `_errFilaSinCuenta()` (una fila del reparto con monto pero sin cuenta se rechaza también en Me deben; antes solo en Yo debo) y `_mostrarErrorPlan()` (campo o aviso, igual en los dos). Lo propio de cada lado (saldo pendiente, perdón, cupo de TC, extra) no se tocó.
+- **Pruebas:** bloque `prestamos-formularios-comunes` en `tests/prestamos.test.js` y el chequeo de Yo debo en la Fase 4 del humo.
+
+### 📊 Análisis: balance con color por escenario, mensajes de mes en curso e ingreso real (2026-10-25, mejora 6)
+
+- **Hero del balance:** un estado por escenario (tabla en `docs/analisis-financiero.md`): rojo si hay gastos sin ingresos o gastos > ingresos, verde si ingresos > gastos, neutro con el cero exacto o sin movimientos. Los colores son clases (`an-hero-pos/neg/neu`, mismos tonos de antes) y no un `style` inline; las flechas ↑/↓ de texto pasaron a SVG. Sin Mesada en los mensajes. «Tasa de ahorro» y «Ahorrado» tampoco pintan el cero. La comparación con el mes anterior dice «por ahora» (antes «Mejoró/Empeoró» con el mes sin cerrar; y 0 ya no dice «Empeoró»).
+- **Qué cuenta como ingreso (auditoría):** la regla ya era «movimiento con `clase: 'ingreso'`» (`entradasIngresoReal`) + mesada + ingresos fijos + rendimientos de Nu, y cada módulo la respeta: transferencias, espejos, abonos y devolución de capital son `neutro`; extras de Spotify, perdón recibido, margen, regalo registrado como deuda y el dinero agregado a mano son `ingreso`. **Hueco corregido:** el extra de un abono que se «gasta» al instante (`_aplicarExtraPartes`, rama normal) no contaba ni como ingreso ni como gasto; ahora entra como ingreso sin cuenta (`fuente ''`, `_prestadoDirectamente`) y como gasto real, ambos `_secundario` (se borran con el abono; `_extPartes[].ingresoId` lo revierte). El balance no cambia (neto 0), pero Ingresos, Gastos y la tasa de ahorro sí dicen lo que pasó. El extra de un abono desde encargo sigue neutro.
+- **Pruebas:** el test de extras de `tests/prestamos.test.js` cubre ingreso+gasto+reversa, y la Fase 4 del humo recorre los 5 escenarios del balance (comprobada por mutación).
+
 ### 🗣️ Toda la app habla de tú, sin voseo (2026-10-25)
 
 Decisión del usuario: la página usa **tuteo en todo** (antes mezclaba «tenés/registrá/vos» con «tienes/registra»). Se corrigieron ~90 textos en `index.html`, `wrapped.js`, `encargos.js`, `plata_comprometida.js`, `nu.js`, `analisis.js`, `spotify.js`, `prestado.js`, `personas.js`, `tarjetas_credito.js`, `diferencial.js` (más comentarios en `core-state.js`, `hook-global.js`, `inicio.js`) y 3 `.md` (`mis-finanzas`, `encargos`, `wrapped`, `notificaciones-push`). Ej.: «No tenés $X» → «No tienes $X», «Ingresá el monto» → «Ingresa el monto», «a vos» → «a ti».

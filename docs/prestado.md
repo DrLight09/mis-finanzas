@@ -130,7 +130,7 @@ m.grupoId = 'g_xxx'
 
 **`sheet-editar-mi-deuda`** — Editar deuda: Nombre → Color del avatar
 
-**`sheet-mov-mi-deuda`** — Me prestó más / Registrar pago *(el título y el label de cuenta cambian según el tipo)*: Monto → ¿Te lo perdonaron? (solo en pago; una parte o todo lo que falta) → ¿A qué cuenta entró la plata? / ¿De qué cuenta sale el pago? (con **Dividir ÷** entre varias cuentas; se oculta si es perdón) → ¿Pagaste de más? + Monto de más (solo en pago; se oculta si es perdón) → Fecha → Nota (opcional)
+**`sheet-mov-mi-deuda`** — Nueva deuda / Registrar pago *(el título y el label de cuenta cambian según el tipo)*: Monto → ¿Te lo perdonaron? (solo en pago; una parte o todo lo que falta) → ¿A qué cuenta entró la plata? / ¿De qué cuenta sale el pago? (con **Dividir ÷** entre varias cuentas; se oculta si es perdón) → ¿Pagaste de más? + Monto de más (solo en pago; se oculta si es perdón) → Fecha → Nota (opcional)
 
 ### 3.2 Tipos de movimiento (`d.movimientos[]`)
 
@@ -193,7 +193,7 @@ Un préstamo "Me deben" sin cuenta ni tarjeta de origen, un abono/pago recibido 
 
 ### 4.4 Clase de los movimientos (2026-10-09)
 
-Cada movimiento secundario lleva `clase`: los abonos recibidos, pagos de deuda y préstamos son espejos `neutro`; son `ingreso` el **extra/propina de un pago** (`extraIngreso`, `_esExtraIngreso`) y el **perdón recibido** de una deuda "Yo debo" (`_esPerdonRecibido`); son `gasto` el **perdón dado** de una deuda "Me deben" (`_esPerdonDeuda`) y el extra de una deuda gastado de inmediato (`_esExtraDeuda`); el extra de un préstamo que se gasta al instante (`_esExtraPrestamo`) es `neutro` (nunca se contó como ingreso). Un extra guardado en una **cajita de Nu** cuenta como ingreso del mes (ver `cuentas.md`).
+Cada movimiento secundario lleva `clase`: los abonos recibidos, pagos de deuda y préstamos son espejos `neutro`; son `ingreso` el **extra/propina de un pago** (`extraIngreso`, `_esExtraIngreso`; también la parte «gastar», que entra sin cuenta —`fuente ''` + `_prestadoDirectamente`— y se registra además como gasto real, neto 0) y el **perdón recibido** de una deuda "Yo debo" (`_esPerdonRecibido`); son `gasto` el **perdón dado** de una deuda "Me deben" (`_esPerdonDeuda`) y el extra de una deuda gastado de inmediato (`_esExtraDeuda`); el extra de un préstamo que se gasta al instante (`_esExtraPrestamo`) es `neutro` (nunca se contó como ingreso). Un extra guardado en una **cajita de Nu** cuenta como ingreso del mes (ver `cuentas.md`).
 
 ## 5. Meta de ahorro de cajita y "prestado"
 

@@ -530,6 +530,7 @@ function _injectErrorSpans() {
     { inputId: 'gf_m', errId: 'gf_m_err' },
     { inputId: 'np_nombre', errId: 'np_nombre_err' },
     { inputId: 'mov_monto', errId: 'mov_monto_err' },
+    { inputId: 'md_monto', errId: 'md_monto_err' },
     { inputId: 'sp_n', errId: 'sp_n_err' },
     { inputId: 'sp_m', errId: 'sp_m_err' },
   ];

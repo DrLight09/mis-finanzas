@@ -954,6 +954,8 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .an-t-blue{color:var(--blue);} .an-t-purple{color:var(--purple);} .an-t-text2{color:var(--text2);}
 .an-bg-red{background:var(--red);} .an-bg-amber{background:var(--amber);} .an-bg-accent{background:var(--accent);}
 .an-bg-blue{background:var(--blue);} .an-bg-purple{background:var(--purple);} .an-bg-text2{background:var(--text2);}
+.an-hero-pos{background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.25);} .an-hero-neg{background:rgba(240,104,104,.07);border:1px solid rgba(240,104,104,.25);} .an-hero-neu{background:rgba(255,255,255,.04);border:1px solid var(--border2);}
+.an-hero-flecha{vertical-align:-1px;}
 .an-hero-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;font-family:'DM Mono',monospace;}
 .an-hero-monto{font-size:36px;font-weight:300;letter-spacing:-2px;font-family:'DM Mono',monospace;margin:6px 0 6px;}
 .an-hero-msg{font-size:11px;color:var(--text3);}

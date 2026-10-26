@@ -758,6 +758,7 @@ function _revertirMovDeudorImpl(d, m) {
           if (p.movExtraId) borrarMovEspejo(p.cuenta, p.movExtraId);
         } else if (p.tipo === 'gastar' && p.gastoId) {
           if (S.gastosVar) S.gastosVar = S.gastosVar.filter(x => x.id !== p.gastoId);
+          if (p.ingresoId && S.movimientos) S.movimientos = S.movimientos.filter(x => x.id !== p.ingresoId);
         } else if (p.tipo === 'pendiente' && p.ingrId) {
           if (S.ingresosExtra) S.ingresosExtra = S.ingresosExtra.filter(x => x.id !== p.ingrId);
         }
@@ -1103,10 +1104,28 @@ function confirmarMovimiento() {
    _plan…/_aplicar…. Los extras ("¿pagaron de más?") los comparten las dos ramas de abono. */
 function _planErr(msg, dur) { return { error: { msg, dur } }; }
 
+// Validaciones y mensajes comunes a «Me deben» y «Yo debo» (mismo texto en los dos formularios; lo que depende de
+// quién presta o quién recibe —saldo pendiente, perdón— sigue siendo propio de cada lado).
+// Monto vacío o 0: error en el propio campo (borde rojo + texto), igual en los dos sheets.
+function _errMonto(campoId) { return { error: { field: campoId, msg: 'Ingresa un monto mayor a 0' } }; }
+// El reparto entre cuentas no suma lo que hay que repartir. `que` = «el monto», «el abono», «el valor real»…
+function _errSumaCuentas(suma, esperado, que, dur = 4000) {
+  return _planErr(`La suma de las cuentas (${fmt(suma)}) no coincide con ${que} (${fmt(esperado)})`, dur);
+}
+// Una fila del reparto con monto pero sin cuenta elegida no se puede aplicar a ningún saldo.
+function _errFilaSinCuenta(filas) {
+  return filas.some(r => !r.fuente) ? _planErr('Elige la cuenta en cada fila del reparto', 4000) : null;
+}
+// Muestra el error de un plan (los dos formularios): en el campo si trae `field`, o como aviso.
+function _mostrarErrorPlan(error) {
+  if (error.field) _markError(error.field, error.field + '_err', error.msg);
+  else toast(error.msg, 'err', error.dur || 4000);
+}
+
 function _planMovimiento() {
   const monto = parseMoney(document.getElementById('mov_monto').value) || 0;
   // Validación con foco+mensaje inline (antes vivía en un override aparte).
-  if (!monto) return { error: { field: 'mov_monto', msg: 'Ingresa un monto mayor a 0' } };
+  if (!monto) return _errMonto('mov_monto');
   if (!deudorActualId) return _planErr('Error: no hay persona seleccionada');
   const d = Deudas.porId('favor', deudorActualId);
   if (!d) return { silencio: true };
@@ -1177,10 +1196,10 @@ function _planPrestamo(base) {
   let fuentes = null, fuente = '';
   if (_prestSplitMode) {
     fuentes = splitGetData('prest');
+    const sinCuenta = _errFilaSinCuenta(fuentes);
+    if (sinCuenta) return sinCuenta;
     const totalSplit = fuentes.reduce((a, r) => a + (r.monto || 0), 0);
-    if (Math.abs(totalSplit - montoSalio) > Deudas.TOL) {
-      return _planErr(`La suma de las fuentes (${fmt(totalSplit)}) no coincide con ${hayMargen ? 'el valor real' : 'el monto'} (${fmt(montoSalio)})`, 4000);
-    }
+    if (Math.abs(totalSplit - montoSalio) > Deudas.TOL) return _errSumaCuentas(totalSplit, montoSalio, hayMargen ? 'el valor real' : 'el monto');
   } else {
     fuente = document.getElementById('mov_fuente').value;
   }
@@ -1254,8 +1273,25 @@ function _aplicarExtraPartes(p, mov, v) {
     } else if (x.tipo === 'gastar') {
       if (!S.gastosVar) S.gastosVar = [];
       const gastoId = uid();
-      S.gastosVar.push({ id: gastoId, monto: x.monto, fecha, cat: 'Varios', desc: x.desc || v.descGastar, fuente: '', ts: Date.now(), clase: 'neutro', _esExtraPrestamo: true });
-      mov._extPartes.push({ tipo: 'gastar', gastoId, monto: x.monto });
+      // Extra de un abono normal (v.extraIngreso): es plata nueva que entró aunque se gastó de una vez, así que cuenta
+      // como ingreso Y como gasto (el balance queda igual, pero Ingresos, Gastos y la tasa de ahorro dicen lo que pasó).
+      // Sin cuenta: el ingreso lleva fuente '' + _prestadoDirectamente (mismo patrón que el perdón recibido de «Yo debo»).
+      // Ambos son _secundario: solo se borran junto con el abono. En la rama de encargo (extraIngreso false) sigue neutro.
+      let ingresoId;
+      if (v.extraIngreso) {
+        ingresoId = uid();
+        if (!S.movimientos) S.movimientos = [];
+        S.movimientos.push({
+          id: ingresoId, tipo: 'entrada', fuente: '', monto: x.monto, fecha, desc: v.descGuardar, clase: 'ingreso',
+          _prestadoDirectamente: true, _esExtraIngreso: true, _secundario: true, _origenSeccion: 'Prestado · Me deben', ts: Date.now()
+        });
+      }
+      S.gastosVar.push({
+        id: gastoId, monto: x.monto, fecha, cat: 'Varios', desc: x.desc || v.descGastar, fuente: '', ts: Date.now(),
+        clase: v.extraIngreso ? 'gasto' : 'neutro', _esExtraPrestamo: true,
+        ...(v.extraIngreso ? { _secundario: true, _origenSeccion: 'Prestado · Me deben' } : {})
+      });
+      mov._extPartes.push({ tipo: 'gastar', gastoId, ingresoId, monto: x.monto });
     } else if (x.tipo === 'regalar') {
       // No entra a ninguna cuenta — solo queda registrado en el abono del deudor
       mov._extPartes.push({ tipo: 'regalar', monto: x.monto });
@@ -1323,10 +1359,10 @@ function _planAbonoEncargo(base) {
   let destinos = null, destino = '';
   if (_abonoSplitMode) {
     destinos = _getAbonoDestinoSplitData().map(r => ({ ...r }));
+    const sinCuentaPre = _errFilaSinCuenta(destinos);
+    if (sinCuentaPre) return sinCuentaPre;
     const totalSplitPre = destinos.reduce((a, r) => a + (r.monto || 0), 0);
-    if (Math.abs(totalSplitPre - monto) > Deudas.TOL) {
-      return _planErr(`La suma de cuentas (${fmt(totalSplitPre)}) no coincide con el abono (${fmt(monto)})`, 4000);
-    }
+    if (Math.abs(totalSplitPre - monto) > Deudas.TOL) return _errSumaCuentas(totalSplitPre, monto, 'el abono');
   } else {
     destino = document.getElementById('mov_destino').value;
   }
@@ -1426,10 +1462,10 @@ function _planAbonoNormal(base) {
   let destinos = null, destino = '';
   if (_abonoSplitMode) {
     destinos = _getAbonoDestinoSplitData().map(r => ({ ...r }));
+    const sinCuenta = _errFilaSinCuenta(destinos);
+    if (sinCuenta) return sinCuenta;
     const totalSplit = destinos.reduce((a, r) => a + (r.monto || 0), 0);
-    if (Math.abs(totalSplit - monto) > Deudas.TOL) {
-      return _planErr(`La suma de cuentas (${fmt(totalSplit)}) no coincide con el abono (${fmt(monto)})`, 4000);
-    }
+    if (Math.abs(totalSplit - monto) > Deudas.TOL) return _errSumaCuentas(totalSplit, monto, 'el abono');
   } else {
     destino = document.getElementById('mov_destino').value;
   }
@@ -1473,12 +1509,7 @@ function _aplicarAbonoNormal(p) {
 function _confirmarMovimientoInterno() {
   const plan = _planMovimiento();
   if (plan.silencio) return;
-  if (plan.error) {
-    if (plan.error.field) _markError(plan.error.field, plan.error.field + '_err', plan.error.msg);
-    else if (plan.error.dur) toast(plan.error.msg, 'err', plan.error.dur);
-    else toast(plan.error.msg, 'err');
-    return;
-  }
+  if (plan.error) { _mostrarErrorPlan(plan.error); return; }
   const { d, monto, perdon, tipo, enc, extraMonto } = plan;
   const perdonTodo = perdon && Math.abs(monto - plan.saldoAntes) <= Deudas.TOL_FINO;
   _aplicarMovimiento(plan);
@@ -2024,7 +2055,7 @@ function _updateMdSplitResumen() {
 
 function _mdTitulo() {
   if (_mdEsPerdon()) return 'Perdonar deuda';
-  return _mdMovTipo === 'recibido' ? 'Me prestó más' : 'Registrar pago';
+  return _mdMovTipo === 'recibido' ? 'Nueva deuda' : 'Registrar pago';
 }
 function toggleMdExtra() {
   const c = _mdEl('md_tiene_extra');
@@ -2082,23 +2113,23 @@ function _planMovMiDeuda() {
   if (!d) return null;
   const tipo = _mdMovTipo;
   const monto = parseMoney(_mdEl('md_monto').value) || 0;
-  if (!monto) return { error: 'Ingresa un monto' };
+  if (!monto) return _errMonto('md_monto');
   const fecha = _mdEl('md_fecha').value || hoy();
   const cuentaSimple = _mdEl('md_cuenta').value;
   const nota = (_mdEl('md_nota').value || '').trim();
   const perdon = _mdEsPerdon();
   const extra = _mdExtra();
   const extraChk = _mdEl('md_tiene_extra');
-  if (tipo === 'pago' && !perdon && extraChk && extraChk.checked && !extra) return { error: 'Ingresa el monto del extra' };
+  if (tipo === 'pago' && !perdon && extraChk && extraChk.checked && !extra) return _planErr('Ingresa el monto del extra');
 
   if (tipo === 'pago') {
     const saldo = Deudas.saldo(d);
     if (perdon) {
-      if (saldo <= Deudas.TOL_FINO) return { error: 'No hay saldo pendiente' };
+      if (saldo <= Deudas.TOL_FINO) return _planErr('No hay saldo pendiente');
       // Una parte o todo, pero nunca más de lo que debes: perdonar de más inventaría un ingreso.
-      if (monto > saldo + Deudas.TOL_FINO) return { error: `Solo le debes ${fmt(saldo)}: no te pueden perdonar más` };
+      if (monto > saldo + Deudas.TOL_FINO) return _planErr(`Solo le debes ${fmt(saldo)}: no te pueden perdonar más`);
     } else if (monto > saldo + Deudas.TOL) {
-      return { error: `Solo le debes ${fmt(saldo)}` };
+      return _planErr(`Solo le debes ${fmt(saldo)}`);
     }
   }
 
@@ -2108,22 +2139,23 @@ function _planMovMiDeuda() {
     const total = monto + extra;
     if (_mdSplitMode) {
       const filas = splitGetData('mdSplit');
-      if (!filas.length || filas.some(r => !r.fuente)) return { error: 'Elige la cuenta en cada fila del reparto' };
+      const sinCuenta = filas.length ? _errFilaSinCuenta(filas) : _planErr('Elige la cuenta en cada fila del reparto', 4000);
+      if (sinCuenta) return sinCuenta;
       const suma = filas.reduce((a, r) => a + r.monto, 0);
-      if (Math.abs(suma - total) > Deudas.TOL) return { error: `La suma de las cuentas (${fmt(suma)}) no coincide con ${fmt(total)}` };
+      if (Math.abs(suma - total) > Deudas.TOL) return _errSumaCuentas(suma, total, extra > 0 ? 'el total' : 'el monto');
       cuentas = filas.map(r => ({ cuenta: r.fuente, monto: r.monto }));
     } else if (cuentaSimple) {
       cuentas = [{ cuenta: cuentaSimple, monto: total }];
     }
     // Una tarjeta nunca es destino de plata que entra (regla del proyecto).
-    if (tipo === 'recibido' && cuentas.some(c => c.cuenta.startsWith('tc:'))) return { error: 'Una tarjeta de crédito no puede recibir plata' };
+    if (tipo === 'recibido' && cuentas.some(c => c.cuenta.startsWith('tc:'))) return _planErr('Una tarjeta de crédito no puede recibir plata');
     if (tipo === 'pago') {
       for (const c of cuentas) {
         const disponible = getSaldoFuente(c.cuenta); // en una tarjeta es el cupo disponible
         if (c.monto > disponible + Deudas.TOL_FINO) {
-          return { error: c.cuenta.startsWith('tc:')
+          return _planErr(c.cuenta.startsWith('tc:')
             ? `Cupo insuficiente en ${escHtml(fuenteLabel(c.cuenta))} — disponible: ${fmt(disponible)}`
-            : `En ${escHtml(fuenteLabel(c.cuenta))} solo hay ${fmt(disponible)}` };
+            : `En ${escHtml(fuenteLabel(c.cuenta))} solo hay ${fmt(disponible)}`);
         }
       }
     }
@@ -2193,7 +2225,7 @@ function _aplicarMovMiDeuda(p) {
 function confirmarMovMiDeuda() {
   const plan = _planMovMiDeuda();
   if (!plan) return;
-  if (plan.error) { toast(plan.error, 'err', 4000); return; }
+  if (plan.error) { _mostrarErrorPlan(plan.error); return; }
   const saldoAntes = Deudas.saldo(plan.d);
   _aplicarMovMiDeuda(plan);
   _verificarIntegridadSaldoDeudor(plan.d, saldoAntes, plan.tipo === 'recibido' ? plan.monto : -plan.monto);

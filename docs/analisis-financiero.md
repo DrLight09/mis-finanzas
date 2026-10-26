@@ -30,7 +30,17 @@ Función principal que renderiza toda la pantalla: **`renderAnalisis()`**.
 
 - **Ingresos estimados** = mesada del mes (si el módulo está activo) + ingresos fijos configurados + entradas reales (`Periodo.ingresosDelMes()` → `entradasIngresoReal()`): los movimientos cuya `clase` es `ingreso` (ver §9bis) en `S.movimientos`, en cuentas personalizadas y, desde 2026-10-09, en el historial de las cajitas de Nu (extras que entran directo a una cajita: extra de Spotify, extra de un pago de deuda). Los espejos (`clase: 'neutro'`: reposiciones de plata comprometida, intercambios de Encargos, Mesada, abonos de deudores, etc.) no cuentan. **Desde 2026-10-09 incluye los rendimientos de Nu** (intereses de cajitas y CDT, ver más abajo): Análisis pide `Periodo.balanceDelMes(mes, undefined, { conRendimientos: true })`.
 - **Gastos totales** = gastos variables del mes (`S.gastosVar`, excluyendo los que marca `_esGastoVarNoReal()` como no reales: pagos de gasto fijo, pagos de TC, alcancía y extras de préstamo gastados de inmediato — `_esExtraPrestamo`) + **retiros manuales** ("Restar dinero": `S.movimientos` tipo `salida_manual`, `clase: 'gasto'`, categoría **Ajuste**, agrupados con los variables; desde 2026-10-09 — es el opuesto de "Sumar dinero" y suele usarse para cuadrar gastos que se olvidaron de registrar) + gastos fijos pagados ese mes (`S.pagosGastosFijos`). `_esGastoVarNoReal()` es el mismo criterio que usan también el dashboard de Inicio, la pantalla de Gastos, el resumen de cierre de mes, Salud financiera y Presupuestos por categoría — ver §9bis.
-- **Balance** = Ingresos estimados − Gastos totales. El hero cambia de color/mensaje según sea positivo, negativo, o si no hay ingresos registrados todavía.
+- **Balance** = Ingresos estimados − Gastos totales. El hero (`#analisis-balance-hero`) tiene un estado por escenario, con la clase `an-hero-pos` (verde) / `an-hero-neg` (rojo) / `an-hero-neu` (neutro), y el color, el signo del monto y el mensaje dicen lo mismo:
+
+  | Escenario | Estado | Monto | Mensaje |
+  |---|---|---|---|
+  | Sin ingresos ni gastos | neutro | `$0` | «Aún no hay movimientos este mes.» |
+  | Sin ingresos y con gastos | rojo | `-$X` | «Has gastado $X y aún no registras ingresos este mes. Registra tus ingresos para ver el balance del mes.» |
+  | Ingresos > gastos | verde | `+$X` | «Por ahora vas bien: has gastado menos de lo que has recibido este mes.» |
+  | Ingresos = gastos | neutro | `$0` | «Por ahora has gastado todo lo que has recibido este mes.» |
+  | Gastos > ingresos | rojo | `-$X` | «Por ahora has gastado más de lo que has recibido este mes.» |
+
+  «Sin ingresos» = sin ingresos operativos (los rendimientos de Nu solos no cuentan; en ese caso la línea «Incluye … de rendimientos» tampoco se muestra). El cero exacto es neutro también en «Tasa de ahorro» y «Ahorrado este mes», que siguen en «—» mientras no haya ingresos. La comparación con el mes anterior dice «por ahora» (el mes en curso contra el anterior completo).
 - **Tasa de ahorro** = Balance / Ingresos estimados, en %. Si no hay ingresos, muestra `—`.
 - **Ahorrado este mes** = el Balance mismo, mostrado aparte con signo.
 - **Gastos fijos pagados** / **Gastos variables**: desglose simple de `gastosTotalMes` (los retiros manuales van dentro de Variables).

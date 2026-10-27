@@ -84,7 +84,7 @@ function eliminarCat(tipo,cat){
   if(tipo==='var')S.catsVar=nuevas;
   else S.catsFijo=nuevas;
   save();renderCatsConfig();
-  toast(`Categoría "${escHtml(cat)}" eliminada`,'info');
+  toast(`Categoría "${escHtml(cat)}" eliminada`,'ok');
 }
 
 /* ---- COPIA DE SEGURIDAD: EXPORTAR / IMPORTAR JSON ---- */

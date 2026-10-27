@@ -1139,7 +1139,7 @@ function confirmarSpDestino(){
   spcSplitMode=false;
   save();refresh();closeSheet('sp-destino');
   if(diferenciaSp>0){
-    toast(`Cobro registrado · ${escHtml(nombreActual)} quedó debiendo ${fmt(diferenciaSp)}`,'info',3500);
+    toast(`Cobro registrado · ${escHtml(nombreActual)} quedó debiendo ${fmt(diferenciaSp)}`,'ok',3500);
   } else {
     const sufijoExtra=extraSp>0?` · extra +${fmt(extraSp)}`:'';
     toast((meses>1?`Cobrados ${meses} períodos adelantados a ${escHtml(nombreActual)} · ${fmt(cuotaRecibida)}`:`Cobro registrado · ${escHtml(nombreActual)}`)+sufijoExtra,'ok');
@@ -1866,7 +1866,7 @@ guardarEditarSpotify = function() {
   // input oculto sigue con el nombre anterior — avisar en vez de guardarlo en silencio.
   if (_spEditPersonaPickerAbierto && !_spEditPersonaPickerConfirmado) {
     const spActual = (S.spotify.personas || [])[_spEditIdx];
-    toast(`No se seleccionó una persona nueva — se mantuvo a "${spActual ? escHtml(spActual.nombre) : 'la persona anterior'}"`, 'err', 4000);
+    toast(`No se seleccionó una persona nueva — se mantuvo a "${spActual ? escHtml(spActual.nombre) : 'la persona anterior'}"`, 'info', 4000);
   }
   // Capturar idx ANTES de llamar al original (que lo pone a null)
   const idxAntes = _spEditIdx;

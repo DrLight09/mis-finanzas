@@ -354,7 +354,7 @@ async function eliminarCuentaCustom(id){
   S.cuentas=_cuentasArr().filter(x=>x.id!==id);
   save();refresh();
   volverSelector();
-  toast(`Cuenta "${escHtml(c.nombre)}" eliminada`,'info');
+  toast(`Cuenta "${escHtml(c.nombre)}" eliminada`,'ok');
 }
 
 /* ---- Editar cuenta personalizada ---- */
@@ -732,7 +732,11 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplici
   const el = document.getElementById(elId);
   if (!el) return;
 
-  // Render filtros (siempre, aunque no haya movs)
+  // Sin movimientos no hay nada que titular ni filtrar: el CSS oculta título y filtros del bloque y queda solo el estado vacío.
+  const bloque = el.closest('.cuenta-movs-bloque');
+  if (bloque) bloque.classList.toggle('cuenta-movs-bloque-vacio', !movs.length);
+
+  // Render filtros (aunque no haya movs: quedan ocultos por el bloque vacío, y listos cuando aparezca el primero)
   const filtrosElId = filtrosElIdExplicito || ('movs-filtros-' + (cuentaKey || ''));
   if (cuentaKey) renderMovsFiltros(filtrosElId, cuentaKey, movs, accentColor);
 

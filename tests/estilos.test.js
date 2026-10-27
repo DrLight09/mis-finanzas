@@ -251,3 +251,41 @@ test('todo <svg> es decorativo (aria-hidden) o tiene nombre accesible (role / ar
   assert.deepEqual(sueltos, [], 'agrega aria-hidden="true" al <svg> decorativo');
 });
 
+// Mejora 2: los círculos decorativos del héroe siguen el color de cada héroe (variable --hero-rgb), no un --accent fijo.
+test('héroes: ::before/::after usan --hero-rgb y cada variante de color la redefine', () => {
+  const regla = sel => (CSS.match(new RegExp('(?:^|\\n)' + sel.replace(/[.:]/g, '\\$&') + '\\{[^}]*\\}')) || [''])[0];
+  for (const pseudo of ['.hero::before', '.hero::after']) {
+    const r = regla(pseudo);
+    assert.ok(r, 'existe ' + pseudo);
+    assert.ok(/rgb\(var\(--hero-rgb\)\)/.test(r), pseudo + ' usa --hero-rgb');
+    assert.ok(!/var\(--accent\)/.test(r), pseudo + ' no usa --accent fijo');
+  }
+  const html = leer('index.html');
+  const variantes = new Set();
+  for (const m of html.matchAll(/class="hero (hero-[a-z]+)[" ]/g)) variantes.add(m[1]);
+  assert.ok(variantes.size >= 2, 'hay variantes de color en index.html');
+  for (const v of variantes) {
+    assert.ok(new RegExp('\\.hero\\.' + v + '\\{[^}]*--hero-rgb:\\d+,\\d+,\\d+').test(CSS), v + ' define --hero-rgb');
+  }
+});
+
+// Mejora 8: el botón de confirmar «Eliminar cuenta» es rojo (y atenuado mientras está deshabilitado). Lleva #del-account-actions
+// delante porque `#del-account-actions button` es más específico que `#del-account-confirm` y le pisaba el color.
+test('eliminar cuenta: el botón de confirmar es rojo con una regla que gana a la genérica', () => {
+  assert.ok(/#del-account-actions #del-account-confirm\{[^}]*background:var\(--red\)/.test(CSS));
+  assert.ok(/#del-account-actions #del-account-confirm:disabled\{[^}]*opacity:\.4/.test(CSS));
+  assert.ok(!/(^|\n)#del-account-confirm\{/.test(CSS), 'sin la regla suelta que perdía por especificidad');
+});
+
+// Mejora 9: en el detalle de TODA cuenta el orden es Encargos → Movimientos (título, filtros, lista en un solo bloque que se
+// oculta sin movimientos, dejando solo el estado vacío).
+test('detalle de cuenta: Encargos antes que el bloque de Movimientos, y el bloque se oculta sin movimientos', () => {
+  const html = leer('index.html');
+  for (const [enc, titulo] of [['det-cuenta-encargos', 'Movimientos registrados</div>'], ['det-nu-encargos', 'Movimientos registrados en Nu</div>']]) {
+    const iEnc = html.indexOf('id="' + enc + '"'), iBloque = html.indexOf('class="cuenta-movs-bloque"', iEnc);
+    assert.ok(iEnc > 0 && iBloque > iEnc, enc + ' va antes de su bloque de movimientos');
+    assert.ok(html.slice(iBloque, iBloque + 400).includes(titulo), 'el título vive dentro del bloque');
+  }
+  assert.ok(/\.cuenta-movs-bloque-vacio > \.sec-title[^{]*\{display:none/.test(CSS));
+  assert.ok(leer('js/modules/cuentas.js').includes("classList.toggle('cuenta-movs-bloque-vacio', !movs.length)"));
+});

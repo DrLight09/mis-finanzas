@@ -550,7 +550,8 @@ describe('archivos-cargados', () => {
 });
 
 describe('toast', () => {
-  // toast() (core-state.js): un tipo por clase de aviso. 'salida' es la plata que sale (rojo con flecha); 'err' es un error (rojo con X).
+  // toast() (core-state.js): el color indica el RESULTADO (mejora 6). 'ok' y 'salida' = se hizo (verde; salida con flecha, plata que
+  // sale), 'warn' = se hizo con algo que revisar (ámbar), 'err' = no se hizo (rojo con X), 'info' = neutro (azul).
   const test = require('node:test');
   const assert = require('node:assert/strict');
   const path = require('node:path');
@@ -568,11 +569,25 @@ describe('toast', () => {
 
   test('cada tipo lleva su clase; salida y err se distinguen por el ícono, no solo por el color', () => {
     const { ctx, hijos } = ctxToast();
-    for (const tipo of ['ok', 'salida', 'err', 'info']) ctx.toast('mensaje ' + tipo, tipo);
-    assert.deepEqual(hijos.map(h => h.className), ['toast toast-ok', 'toast toast-salida', 'toast toast-err', 'toast toast-info']);
+    for (const tipo of ['ok', 'salida', 'warn', 'err', 'info']) ctx.toast('mensaje ' + tipo, tipo);
+    assert.deepEqual(hijos.map(h => h.className), ['toast toast-ok', 'toast toast-salida', 'toast toast-warn', 'toast toast-err', 'toast toast-info']);
     const icono = h => /<span class="toast-ico">(.*?)<\/span><span class="toast-msg">/.exec(h.innerHTML)[1];
-    assert.equal(new Set(hijos.map(icono)).size, 4, 'cuatro íconos distintos');
-    assert.ok(hijos.every((h, i) => h.innerHTML.includes('mensaje ' + ['ok', 'salida', 'err', 'info'][i])));
+    assert.equal(new Set(hijos.map(icono)).size, 5, 'cinco íconos distintos');
+    assert.ok(hijos.every((h, i) => h.innerHTML.includes('mensaje ' + ['ok', 'salida', 'warn', 'err', 'info'][i])));
+  });
+  test('todo toast() de la app usa un tipo válido y cada tipo tiene su estilo (un tipo mal escrito salía sin color)', () => {
+    const fs = require('node:fs');
+    const validos = ['ok', 'salida', 'warn', 'err', 'info'];
+    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    for (const t of validos) assert.ok(html.includes('.toast.toast-' + t + '{'), 'CSS crítico de toast-' + t);
+    const archivos = [];
+    for (const d of ['core', 'modules']) for (const f of fs.readdirSync(path.join(RAIZ, 'js', d))) if (f.endsWith('.js')) archivos.push(path.join(RAIZ, 'js', d, f));
+    const malos = [];
+    for (const f of archivos) {
+      const src = fs.readFileSync(f, 'utf8');
+      for (const m of src.matchAll(/(?<![\w.])toast\([^;\n]*?,\s*'([a-zA-Z]+)'(?:\s*,\s*\d+)?\s*\)/g)) if (!validos.includes(m[1])) malos.push(path.basename(f) + ': ' + m[1]);
+    }
+    assert.deepEqual(malos, []);
   });
   test('un error se anuncia como alerta; lo demás como estado', () => {
     const { ctx, hijos } = ctxToast();
@@ -1533,6 +1548,21 @@ describe('money-input (formateo al escribir en los campos de plata)', () => {
     assert.equal(w.fmtInput(500000), '500.000');
     assert.equal(w.fmtInput(1234.5), '1.234,50');
     assert.equal(w.fmtInput(0), '');
+  });
+
+  test('setMoneyInput() precarga con separador de miles (por elemento o por id) y limpia con 0/vacío', () => {
+    const { w, el } = entorno();
+    const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'core', 'core-state.js'), 'utf8');
+    w.eval(src.match(/function fmtInput[\s\S]*?\n}\n/)[0]);
+    w.eval(src.match(/function setMoneyInput[\s\S]*?\n}\n/)[0]);
+    w.setMoneyInput(el, 80000); assert.equal(el.value, '80.000');
+    w.setMoneyInput(el, 1234.5); assert.equal(el.value, '1.234,50');
+    w.setMoneyInput(el, 0); assert.equal(el.value, '');
+    w.setMoneyInput(el, undefined); assert.equal(el.value, '');
+    let avisos = 0; el.addEventListener('input', () => avisos++);
+    w.setMoneyInput(el, 500000); assert.equal(avisos, 0);
+    w.setMoneyInput(el, 500000, { evento: true }); assert.equal(avisos, 1);
+    assert.doesNotThrow(() => w.setMoneyInput('no-existe', 5));
   });
 
   test('.miles-input: solo enteros (descarta decimales al pegar y no abre coma), y parseMiles devuelve el número', () => {

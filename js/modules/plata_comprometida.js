@@ -92,7 +92,7 @@ function _injectScreen(){
     <!-- Lista -->
     <div class="cp-sec-cab">
       <div class="sec-title cp-mt0">Ingresos comprometidos</div>
-      <button type="button" ${Events.attr('cp:abrirNuevo')} class="cp-btn-nuevo">
+      <button type="button" ${Events.attr('cp:abrirNuevo')} class="btn-chip btn-chip-amber">
         <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Nuevo
       </button>
@@ -177,10 +177,10 @@ function _injectSheet(){
       <div class="cp-dest-cab-wrap">
         <div class="cp-dest-cab">
           <div class="il cp-mt0">¿A dónde va esta plata?</div>
-          <button type="button" ${Events.attr('cp:agregarDestino')} class="cp-btn-add-dest">+ Agregar destino</button>
+          <button type="button" ${Events.attr('cp:agregarDestino')} class="btn-chip btn-chip-accent btn-chip-sm"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar destino</button>
         </div>
         <div id="cp-destinos-list"></div>
-        <div id="cp-balance-preview" style="font-size:12px;font-family:'DM Mono',monospace;min-height:18px;padding:8px 0;"></div>
+        <div id="cp-balance-preview" class="cp-balance-prev"></div>
       </div>
 
       <button type="button" class="btn btn-primary cp-btn-guardar-amber" ${Events.attr('cp:guardar')}>Guardar</button>
@@ -479,13 +479,10 @@ function _cpRenderLista(){
   if(statLibre) statLibre.textContent = fmt(totalLibre);
 
   if(!items.length){
-    el.innerHTML = `<div class="cp-vacio-caja">
-      <div class="cp-vacio-ico">
-        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="1.7" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 6V4M18 6V4"/></svg>
-      </div>
-      <div class="cp-vacio-tit">Sin ingresos registrados</div>
-      <div class="cp-vacio-txt">Toca <b class="cp-c-text2">Nuevo</b> para registrar plata que va a llegar.</div>
-    </div>`;
+    el.innerHTML = emptyState(
+      `<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 6V4M18 6V4"/></svg>`,
+      'Sin ingresos registrados',
+      'Toca <b class="cp-c-text2">Nuevo</b> para registrar plata que va a llegar.');
     return;
   }
 
@@ -1461,7 +1458,7 @@ function _cpConfirmarRecibir(){
   _cpRecibirId = null;
 
   if(errores.length){
-    toast('Recibido con errores menores en: '+escHtml(errores.join(', ')),'err');
+    toast('Recibido con errores menores en: '+escHtml(errores.join(', ')),'warn');
   } else {
     const gananciaMsg = ganancia > 0.99
       ? ` · <b>+${fmt(ganancia)}</b> libres`

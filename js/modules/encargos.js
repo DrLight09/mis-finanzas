@@ -615,8 +615,7 @@ function editarParte(encId, parteId) {
   _parteEditId = parteId;
   document.getElementById('parte-sheet-title').textContent = 'Editar parte';
   document.getElementById('parte-desc').value = parte.desc || '';
-  if (typeof fmtInput === 'function') document.getElementById('parte-monto').value = fmtInput(parte.monto || 0);
-  else document.getElementById('parte-monto').value = String(parte.monto || 0).replace('.', ',');
+  setMoneyInput('parte-monto', parte.monto);
   document.getElementById('parte-fecha').value = parte.fecha || '';
   _actualizarPartePreview(enc);
   openSheet('parte-encargo');
@@ -681,7 +680,7 @@ async function eliminarParte(encId, parteId) {
   enc.partes = (enc.partes || []).filter(p => p.id !== parteId);
   save();
   abrirEncargoDetalle(encId);
-  toast('Parte eliminada', 'info');
+  toast('Parte eliminada', 'ok');
 }
 
 // Hook: agregar renderEncargoParts al final de abrirEncargoDetalle
@@ -1931,7 +1930,7 @@ async function deleteMovEncargo(encId, movId) {
     enc.cuentaInicial = '';
     save(); refresh();
     abrirEncargoDetalle(encId);
-    toast('Saldo inicial eliminado', 'info');
+    toast('Saldo inicial eliminado', 'ok');
     return;
   }
 
@@ -2100,7 +2099,7 @@ async function deleteMovEncargo(encId, movId) {
   // cuentas.js sin cargar tiraba ReferenceError antes de reabrir el detalle del encargo.
   if (typeof cuentaActual !== 'undefined' && cuentaActual && typeof renderDetalleCuenta==='function') renderDetalleCuenta(cuentaActual);
   abrirEncargoDetalle(encId);
-  toast('Movimiento eliminado y saldos revertidos', 'info');
+  toast('Movimiento eliminado y saldos revertidos', 'ok');
 }
 
 async function eliminarEncargoActual() {
@@ -2132,7 +2131,7 @@ async function eliminarEncargoActual() {
   save();
   volverEncargosLista();
   if(window.logCambio)logCambio('Eliminaste un encargo','','','eliminar');
-  toast('Encargo eliminado', 'info');
+  toast('Encargo eliminado', 'ok');
 }
 
 // ── MENÚ "¿A DÓNDE FUE ESA PLATA?" (salida de encargo) ─────────────────

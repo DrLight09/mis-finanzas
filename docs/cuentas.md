@@ -152,7 +152,7 @@ Cualquier cuenta (también las personalizadas): el registro vive en S.movimiento
 
 ## 7. Decisiones de diseño
 - **Una sola nomenclatura:** "Agregar dinero" / "Retirar dinero" en Nequi, Efectivo, cuentas personalizadas, Nu y cajitas (botones, títulos de sheet y movimientos del historial). Encargos conserva "Entró plata / Salió plata" porque no es una cuenta propia.
-- **Toast por tipo de operación:** `ok` verde (éxito, plata que entra), `salida` rojo con flecha (plata que sale: retirar dinero de una cuenta o de Nu), `err` rojo con X (algo salió mal), `info` azul (neutro). Cada toast lleva su ícono en un círculo del color del tipo y se anuncia como `status` (los errores, `alert`). Gastos y transferencias siguen con sus tipos actuales.
+- **Toast por resultado de la acción** (no por tipo de dato): `ok` verde (se hizo: registrar, guardar, eliminar), `salida` verde con flecha (se hizo y es plata que sale: retirar dinero de una cuenta o de Nu, registrar un gasto), `warn` ámbar (se hizo, pero con algo que revisar), `err` rojo con X (no se hizo o falló), `info` azul (neutro: nada cambió). Cada toast lleva su ícono en un círculo del color del tipo y se anuncia como `status` (los errores, `alert`). Gastos y transferencias siguen con sus tipos actuales.
 
 - **El historial de una cuenta se lee de una sola lista (`S.movimientos`) más lo que no es un movimiento de cuenta** (gastos variables, préstamos dados, transferencias, cobros de Spotify y las entradas del libro sin fila propia). `getMovimientosCuenta()` los junta en vivo; el saldo, en cambio, se guarda y se verifica contra el libro (`libro-de-movimientos.md`). Alternativa descartada: que cada módulo escribiera además una copia propia en un array de Cuentas (dos fuentes de verdad para la misma plata).
 - **Cuentas personalizadas ya no tienen convención propia.** Antes usaban `ingreso`/`egreso` en `c.movimientos`; desde 2026-10-12 todo vive en `S.movimientos` con `fuente: 'custom:ID'`, incluido el saldo inicial (`crearCuentaCustom()` escribe la apertura ahí y en el libro). Ya no queda ninguna diferencia de tipo ni de texto entre las cuentas (2026-10-18).
@@ -161,6 +161,8 @@ Cualquier cuenta (también las personalizadas): el registro vive en S.movimiento
 
 ---
 - **Ya no existe la migración `migrarCuentasLegacy()` (eliminada el 2026-10-05).** Convertía `nequiSaldo`, `efectivoSaldo` y `cuentasPersonalizadas` a `S.cuentas` en `load()`, en `importarJSON()` y en cada lectura. Se quitó porque el único documento existente ya estaba migrado y las cuentas nuevas nacen en el modelo actual. Lo único que se conserva es la garantía de `_cuentasArr()`: `S.cuentas` siempre existe y siempre trae Nequi y Efectivo. Consecuencias: (1) `_validarEstructuraJSON()` (`configuracion.js`) rechaza con un mensaje claro un backup anterior al 2026-10-01 que traiga los campos viejos y no `cuentas`, en vez de importarlo con las cuentas en cero; (2) un dispositivo con la versión anterior de la app ya no tiene quien le convierta sus campos, así que no debe volver a abrirse. Si algún día hace falta importar un backup viejo, está en el historial de git (CHANGELOG, "Modelo único de cuentas").
+
+- **Detalle de cuenta, mismo orden en todas (Nequi, Efectivo, personalizadas y Nu):** acciones → (en Nu, cajitas y «Agregar cajita») → Encargos → Movimientos. El título, los filtros y la lista de movimientos viven en un solo bloque (`.cuenta-movs-bloque`); sin movimientos el bloque se marca `cuenta-movs-bloque-vacio` (lo hace `renderMovsCuenta`) y solo se ve el estado vacío.
 
 ## 8. Referencia de implementación
 

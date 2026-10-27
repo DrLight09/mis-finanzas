@@ -444,7 +444,9 @@ describe('mesada-ui', () => {
     const { ctx, d } = ui();
     ctx.abrirRegistrarMesada('papa', '2026-3', 'Abr 2026');
     assert.equal(d.el('mpTitle').textContent, 'Papá · Abr 2026');
-    assert.equal(d.el('mpMonto').value, 80000);
+    // Precargado con separador de miles (mejora 1), igual que cuando se escribe; y se lee de vuelta como 80000.
+    assert.equal(d.el('mpMonto').value, '80.000');
+    assert.equal(ctx.parseMoney(d.el('mpMonto').value), 80000);
     d.el('mpMonto').value = '80000'; d.el('mpFecha').value = '2026-04-05'; d.el('mpDestino').value = 'nequi';
     d.fire('mpMonto', 'input');
     assert.match(d.el('mpPreview').textContent, /\+/);

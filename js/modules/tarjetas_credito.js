@@ -413,7 +413,7 @@ function renderTCScreen(){
   mostrarSi(document.getElementById('btn-nueva-tarjeta'),tarjetas.length>0);
   if(!tarjetas.length){
     lista.innerHTML=html`<div class="empty-state">
-      <div class="empty-state-icon"><svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.6" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="var(--red)" stroke="none"/></svg></div>
+      <div class="empty-state-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 15h3"/></svg></div>
       <div class="empty-state-title">Sin tarjetas de crédito</div>
       <div class="empty-state-sub">Agrega tu primera tarjeta para registrar compras y controlar tu cupo.</div>
       <button type="button" class="empty-state-btn" ${raw(Events.attr('tarjetas:nueva'))}>Agregar tarjeta</button>
@@ -619,7 +619,7 @@ function confirmarCompraTC(){
 
   closeSheet('compra-tc');
   save();refresh();renderTCScreen();
-  toast('Compra registrada — deuda: '+fmt(tc.deuda),'info',3000);
+  toast('Compra registrada — deuda: '+fmt(tc.deuda),'ok',3000);
 }
 
 // ── Cargo especial (intereses, comisiones, correcciones) ──────────
@@ -683,7 +683,7 @@ async function confirmarCargoEspecialTC(){
   closeSheet('cargo-especial-tc');
   save();refresh();renderTCScreen();
   abrirDetalleTCSheet(tc.id);
-  toast('Cargo registrado — deuda: '+fmt(tc.deuda),superaCupo?'err':'info',3500);
+  toast('Cargo registrado — deuda: '+fmt(tc.deuda),superaCupo?'warn':'ok',3500);
 }
 
 // ── Pagar TC ───────────────────────────────────────────────────────

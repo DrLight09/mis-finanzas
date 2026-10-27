@@ -142,4 +142,38 @@ describe('firebase-sync', () => {
     await hasta(() => app.S.cuentas[0] && app.S.cuentas[0].saldo === 2); await terminadas(); await esperar(30); // el lento ya terminó: si se colara, pisaría el 2 con el 1
     assert.equal(app.S.cuentas[0].saldo, 2, 'gana el último en llegar, no el que terminó de descomprimir primero');
   });
+
+  test('listener — la misma carga que llega varias veces (caché, servidor, cambio de metadatos) no avisa «Datos actualizados desde otro dispositivo»', async () => {
+    const { app, listeners } = entorno({ cuentas: [], libro: [] });
+    const avisos = [];
+    app.toast = (m) => avisos.push(m); app.window = app.window || app; app.window.toast = app.toast;
+    app.load = () => {}; app.refresh = () => {}; app.applyModulos = () => {};
+    app._fbLoadData();
+    const payload = JSON.stringify({ cuentas: [{ id: 'nequi', saldo: 9 }] });
+    // updatedAt muy posterior a lo guardado localmente (mf_lastSavedAt vacío en un dispositivo recién abierto)
+    const ts = Date.now() - 600000; // el mismo updatedAt en los tres: es el mismo documento de la nube
+    app.window.dispatchEvent = () => {};
+    const s = (extra) => ({ exists: () => true, data: () => ({ payload, updatedAt: ts }), metadata: { fromCache: false, hasPendingWrites: false, ...extra } });
+    listeners.next(s({ fromCache: true }));   // 1) caché
+    await hasta(() => app._dataLoaded || app.S.cuentas[0]); await esperar(30);
+    listeners.next(s({}));                    // 2) confirmación del servidor
+    await esperar(60);
+    listeners.next(s({}));                    // 3) mismo dato otra vez (cambio de metadatos)
+    await esperar(60);
+    assert.deepEqual(avisos.filter(m => /otro dispositivo/.test(m)), [], 'el mismo dato ya aplicado no es una actualización de otro dispositivo');
+  });
+
+  test('listener — un cambio real de otro dispositivo (updatedAt más nuevo) sí se aplica y avisa una sola vez', async () => {
+    const { app, listeners } = entorno({ cuentas: [], libro: [] });
+    const avisos = [];
+    app.toast = (m) => avisos.push(m); app.window = app.window || app; app.window.toast = app.toast; app.window.dispatchEvent = () => {};
+    app.load = () => {}; app.refresh = () => {}; app.applyModulos = () => {};
+    app._fbLoadData();
+    const base = Date.now() - 600000;
+    const s = (saldo, ts) => ({ exists: () => true, data: () => ({ payload: JSON.stringify({ cuentas: [{ id: 'nequi', saldo }] }), updatedAt: ts }), metadata: { fromCache: false, hasPendingWrites: false } });
+    listeners.next(s(1, base)); await hasta(() => app._dataLoaded); await esperar(40);
+    listeners.next(s(2, base + 120000)); await hasta(() => app.S.cuentas[0].saldo === 2); await esperar(40);
+    listeners.next(s(2, base + 120000)); await esperar(60); // repetido: no vuelve a avisar
+    assert.equal(avisos.filter(m => /otro dispositivo/.test(m)).length, 1);
+  });
 });

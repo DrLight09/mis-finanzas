@@ -783,7 +783,7 @@ async function _eliminarMovimientoImpl(btn) {
   else purgarEfectoEnHistorial(_histAntes, _histItem);
   save(); refresh();
   _rerenderCuentaActiva();
-  toast('Movimiento eliminado y saldos revertidos', 'info');
+  toast('Movimiento eliminado y saldos revertidos', 'ok');
 }
 
 // Vuelve a pintar la cuenta que está abierta (saldo + movimientos) después de

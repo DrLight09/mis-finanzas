@@ -375,7 +375,7 @@ function addGastoVar() {
       gastoObj._tcId = tcId;
       gastoObj._tcCompraId = compra.id;
       S.gastosVar.push(gastoObj);
-      toast('Compra cargada a ' + escHtml(tc.nombre) + ' — deuda: ' + fmt(tc.deuda), 'info', 3500);
+      toast('Compra cargada a ' + escHtml(tc.nombre) + ' — deuda: ' + fmt(tc.deuda), 'ok', 3500);
     } else {
       S.gastosVar.push(gastoObj);
     }

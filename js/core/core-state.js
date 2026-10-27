@@ -529,6 +529,17 @@ function fmtInput(n){
   return (num<0?'-':'')+intPart+(decPart?','+String(decPart).padStart(2,'0'):'');
 }
 
+// ÚNICA forma de precargar un valor en un input de plata (.money-input) desde JS: lo deja formateado igual que
+// cuando el usuario escribe ("80.000", no "80000"). Asignar `input.value = n` directo se ve sin separador de miles,
+// porque el formateo de money-input.js solo corre en el evento 'input'. Acepta el elemento o su id; n vacío/0/NaN limpia
+// el campo. { evento: true } además avisa 'input' para que se actualicen las vistas previas del sheet.
+function setMoneyInput(elOrId,n,opts){
+  const el=typeof elOrId==='string'?document.getElementById(elOrId):elOrId;
+  if(!el)return;
+  el.value=fmtInput(n);
+  if(opts&&opts.evento)el.dispatchEvent(new Event('input',{bubbles:true}));
+}
+
 // Clase guardada de un movimiento ('ingreso' | 'gasto' | 'neutro' | 'ajuste'), o null si no la tiene.
 // Es la ÚNICA fuente de verdad: no hay reglas de respaldo que la deduzcan de etiquetas o textos (se retiraron el 2026-10-13: la
 // app nace limpia y tests/nucleo.test.js, bloque `clase-cobertura`, exige que todo escritor la ponga al crear el movimiento).
@@ -1147,8 +1158,10 @@ function _esGastoVarNoReal(g){
 // `diferencial.js`/`diffValidarIntercambios()` (`fuenteLabel(...)` sin
 // escapar). Ver CHANGELOG.md para el detalle de esos tres.
 function toast(msg, tipo='ok', dur=2800){
-  // tipo: 'ok' (éxito / plata que entra, verde) · 'salida' (plata que sale, rojo con flecha) · 'err' (algo salió mal, rojo con X)
-  //       · 'info' (neutro, azul). Los colores y el tamaño están en la clase .toast-<tipo> (CSS crítico de index.html).
+  // El color indica el RESULTADO de la acción, no el tipo de dato: 'ok' (se hizo: registrar, guardar, eliminar; verde) · 'salida'
+  //       (se hizo y es plata que sale: verde con flecha, para distinguirla de una entrada sin confundirla con un error) · 'warn' (se
+  //       hizo, pero con algo que revisar; ámbar) · 'err' (no se hizo o falló; rojo con X) · 'info' (neutro, nada cambió; azul).
+  //       Los colores y el tamaño están en la clase .toast-<tipo> (CSS crítico de index.html, espejo en styles.css).
   const c=document.getElementById('toast-container');
   const el=document.createElement('div');
   const svg=(trazo,ancho)=>`<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${ancho}" stroke-linecap="round" stroke-linejoin="round">${trazo}</svg>`;
@@ -1156,6 +1169,7 @@ function toast(msg, tipo='ok', dur=2800){
     ok:svg('<polyline points="20 6 9 17 4 12"/>',3),
     salida:svg('<line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/>',2.6),
     err:svg('<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',3),
+    warn:svg('<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',2.5),
     info:svg('<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',2.5)
   };
   el.className='toast toast-'+tipo;

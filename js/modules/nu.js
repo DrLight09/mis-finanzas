@@ -513,11 +513,11 @@ function _renderMetaAportes(){
   const el = document.getElementById('meta_aportes_list');
   if(!el) return;
   el.innerHTML = html`${_metaAportesTemp.map((ap,i)=>html`
-    <div class="prest-split-row nu-aporte-fila">
-      <input type="text" value="${ap.desc||''}" placeholder="Ej: Papá, Mamá" class="meta-aporte-desc nu-aporte-desc" data-idx="${i}">
-      <input type="text" inputmode="decimal" value="${ap.monto?fmtInput(ap.monto):''}" placeholder="$0" class="money-input meta-aporte-monto nu-aporte-monto" data-idx="${i}">
-      <button class="prest-split-del" ${raw(Events.attr('nu:metaAporteEliminar', i))}>
-        <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <div class="split-fila">
+      <input type="text" value="${ap.desc||''}" placeholder="Ej: Papá, Mamá" class="split-desc meta-aporte-desc" data-idx="${i}">
+      <input type="text" inputmode="decimal" value="${ap.monto?fmtInput(ap.monto):''}" placeholder="$0" class="money-input split-monto meta-aporte-monto" data-idx="${i}">
+      <button type="button" class="split-quitar" aria-label="Quitar aporte" ${raw(Events.attr('nu:metaAporteEliminar', i))}>
+        <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>`)}`;
   // Reemplaza los oninput="_metaAportesTemp[i]..." inline (CSP los bloquea).
@@ -613,7 +613,7 @@ function quitarMetaCajita(){
   save();
   closeSheet('meta-cajita');
   refresh();
-  toast('Meta eliminada','info');
+  toast('Meta eliminada','ok');
 }
 
 // Sección "Préstamo con origen dividido" (togglePrestSplit / _renderPrestSplit /
@@ -658,7 +658,7 @@ async function deleteCajita(id){
   // apuntando a una cajita fantasma (mismo espíritu que eliminarTC con tcMovimientos).
   if(tcVinculadas.length) tcVinculadas.forEach(x=>{x.cajitaId=null;});
   save();refresh();
-  toast('Cajita eliminada','info');
+  toast('Cajita eliminada','ok');
   if(window.logCambio)logCambio('Eliminaste cajita "'+nombreEl+'"','',0,'eliminar');
 }
 

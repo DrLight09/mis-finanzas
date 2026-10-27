@@ -166,7 +166,7 @@ function _updatePrestSplitResumen(){
 }
 
 /* ---- FIN METAS / SPLIT ---- */
-/* ---- DEUDORES (Personas a quienes presto) ---- */
+/* ---- DEUDORES (Personas a quienes les presté dinero) ---- */
 let deudorActualId = null;
 let movTipo = 'prestamo'; // 'prestamo' | 'abono'
 

@@ -611,7 +611,7 @@ function abrirRegistrarMesada(parent, key, nombre) {
   f.parent = parent; f.key = key;
   _msEl('mpTitle').textContent = mesadaNombrePadre(parent) + ' · ' + nombre;
   _msEl('mpDesc').textContent = 'Registra cuándo te pagó y qué hiciste con esa plata.';
-  _msEl('mpMonto').value = mesadaCuotaDeKey(parent, key) || '';
+  setMoneyInput(_msEl('mpMonto'), mesadaCuotaDeKey(parent, key));
   _msEl('mpFecha').value = hoy();
   _msEl('mpNota').value = '';
   _msEl('mpPreview').textContent = '';
@@ -716,7 +716,7 @@ function confirmarMesadaPago() {
   if (!r.ok) { _mesadaMostrarError(r, 'mpPreview'); return; }
   save(); refresh();
   closeSheet('mesada-pago');
-  if (r.pendiente > 0) toast('Guardado — quedó pendiente ' + fmt(r.pendiente), 'info', 3500);
+  if (r.pendiente > 0) toast('Guardado — quedó pendiente ' + fmt(r.pendiente), 'ok', 3500);
   else if (r.usoEncargo) toast('Guardado — se descontó de lo que le tenías guardado', 'ok', 3000);
 }
 
@@ -811,7 +811,7 @@ function marcarMesadaComoPendiente(parent, key) {
     return;
   }
   save(); refresh();
-  toast('Marcado como pendiente — debe ' + fmt(r.pendiente), 'info', 3000);
+  toast('Marcado como pendiente — debe ' + fmt(r.pendiente), 'ok', 3000);
   abrirDetalleMesada(parent, key, _mesNombreDeKey(key));
 }
 
@@ -823,7 +823,7 @@ function abrirResolverPendiente(parent, key) {
   f.parent = parent; f.key = key;
   _msEl('mppTitle').textContent = mesadaNombrePadre(parent) + ' · ' + _mesNombreDeKey(key);
   _msEl('mppDesc').textContent = 'Te debía ' + fmt(info.pendiente) + '. ¿Cuánto te dio ahora?';
-  _msEl('mppMonto').value = fmtInput(info.pendiente);
+  setMoneyInput(_msEl('mppMonto'), info.pendiente);
   _msEl('mppFecha').value = hoy();
   _msEl('mppNota').value = '';
   _poblarDestinoMesada('mppDestino');

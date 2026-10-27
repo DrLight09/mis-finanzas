@@ -322,7 +322,7 @@ import { hookGlobal } from './hook-global-module.js';
       setTimeout(() => _launchApp((_intentos || 0) + 1), 50);
     } else {
       console.error('[pin-bio] window._fbLoadData nunca apareció tras 5s; firebase-init.js no cargó o falló.');
-      if (window.toast) toast('No se pudo cargar tus datos. Recarga la página.', 'error');
+      if (window.toast) toast('No se pudo cargar tus datos. Recarga la página.', 'err');
     }
   }
 
@@ -344,7 +344,7 @@ import { hookGlobal } from './hook-global-module.js';
     if(ok && await window._pinVerificar('Para quitar el PIN de acceso')){
       _delPin();
       _delCred();
-      if(window.toast) toast('PIN desactivado','info');
+      if(window.toast) toast('PIN desactivado','ok');
       _renderBtn();
       setTimeout(_renderBtn, 100);
       _renderBioBtn();
@@ -374,7 +374,7 @@ import { hookGlobal } from './hook-global-module.js';
   };
   window._bioDisable = async function() {
     const ok = await dialogo('Quitar huella','¿Quieres desactivar el desbloqueo con huella?','Quitar',true);
-    if(ok && await window._pinVerificar('Para quitar el desbloqueo con huella')){ _delCred(); if(window.toast) toast('Huella desactivada','info'); _renderBioBtn(); }
+    if(ok && await window._pinVerificar('Para quitar el desbloqueo con huella')){ _delCred(); if(window.toast) toast('Huella desactivada','ok'); _renderBioBtn(); }
   };
 
   // Registro bajo Events (docs/auditoria-tecnica.md #1). window._pinKey recibe

@@ -94,7 +94,7 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
         }
         if(bytes > PAYLOAD_AVISO_BYTES && !window._avisoTamanoMostrado) {
           window._avisoTamanoMostrado = true;
-          if(typeof toast === 'function') toast('Tus datos ocupan ' + Math.round(bytes/1024) + ' KB de 1.000 KB en la nube. Conviene archivar meses antiguos pronto.', 'info', 8000);
+          if(typeof toast === 'function') toast('Tus datos ocupan ' + Math.round(bytes/1024) + ' KB de 1.000 KB en la nube. Conviene archivar meses antiguos pronto.', 'warn', 8000);
         }
         const savedAt = Date.now();
         // FIX (2026-08-17, hallazgo #2 — el toast falso pasaba INCLUSO sin
@@ -317,6 +317,10 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
     // _initEventListeners() duplicando listeners si se llama dos veces.
     let _firstLoad = true;
     let _firstPaintDone = false;
+    // `updatedAt` de la última versión de la nube que ya se aplicó (carga inicial o actualización en vivo). `_lastSavedAt` solo cambia
+    // al guardar desde ESTE dispositivo, así que sin esto el mismo dato (caché → servidor → cambio de metadatos) seguía pareciendo
+    // «más nuevo que lo local» y se re-aplicaba avisando «Datos actualizados desde otro dispositivo» sin que nada hubiera cambiado.
+    let _remotoAplicadoTs = 0;
 
     _unsubscribeSnapshot = onSnapshot(docRef,
       { includeMetadataChanges: true },
@@ -343,6 +347,7 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
 
         if(_firstLoad) {
           const estadoCarga = _applyCloudData(snap);
+          if(snap.exists()) _remotoAplicadoTs = Math.max(_remotoAplicadoTs, (snap.data() || {}).updatedAt || 0);
           const confiable = _cargaConfiable(estadoCarga);
           console.log('[Sync] carga: estado=' + estadoCarga + ' confiable=' + confiable);
           // "Sin documento" / "payload vacío" no se cree tal cual (ver
@@ -386,7 +391,8 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
 
           // Si los datos remotos son más nuevos que lo que guardamos por última
           // vez (con margen de 5s para latencia de red y desfase de relojes), aplicar la actualización.
-          if(remoteTs > localTs + 5000) {
+          if(remoteTs > localTs + 5000 && remoteTs > _remotoAplicadoTs) {
+            _remotoAplicadoTs = remoteTs;
             console.log('[Sync] Datos más nuevos del servidor — aplicando actualización en tiempo real.');
             _applyCloudData(snap);
             // Materializar intereses antes de renderizar para minimizar diferencia con Nu

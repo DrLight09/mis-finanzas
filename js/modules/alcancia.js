@@ -239,8 +239,7 @@ function _alcSplitPreview(){
   }
   const montoInput = document.getElementById('alc_dep_monto');
   if(montoInput){
-    montoInput.value = total > 0 ? total.toFixed(2).replace('.', ',') : '';
-    montoInput.dispatchEvent(new Event('input'));
+    setMoneyInput(montoInput, total > 0 ? total : 0, { evento: true });
   }
 }
 
@@ -299,8 +298,7 @@ function _alcDeudorSaldoHintActualizar(){
   // Precarga el monto con el saldo pendiente (editable — puede ser un abono parcial)
   const montoInput = document.getElementById('alc_dep_monto');
   if(montoInput && saldo > 0){
-    montoInput.value = saldo.toFixed(2).replace('.', ',');
-    montoInput.dispatchEvent(new Event('input'));
+    setMoneyInput(montoInput, saldo, { evento: true });
   }
 }
 
@@ -330,7 +328,7 @@ function _inyectarAlcanciaSheets(){
         </div>
         <div id="alc_origen_split" style="display:none;">
           <div id="alc_split_rows"></div>
-          <button type="button" ${Events.attr('alcancia:agregarOrigen')} class="alc-btn-agregar-origen">+ Agregar otro origen</button>
+          <button type="button" ${Events.attr('alcancia:agregarOrigen')} class="btn-add-cuenta">+ Agregar otro origen</button>
           <div id="alc_split_total_hint" class="alc-split-total"></div>
         </div>
       </div>
@@ -1370,7 +1368,7 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
   if(typeof save==='function') save();
   if(typeof refresh==='function') refresh();
   window.renderAlcancia();
-  if(typeof toast==='function') toast('Depósito eliminado', 'info');
+  if(typeof toast==='function') toast('Depósito eliminado', 'ok');
 }
 
 /* Quita SOLO el lado de la alcancía de un depósito 'cobro-deuda', sin tocar

@@ -348,7 +348,6 @@ function confirmarCambioTasaNu(){
   if(el)el.value=nuTasaATexto(tasaEditada);
   S.nuRate=tasaEditada;
   save();refresh();
-  _renderTasaHistorialTag();
   closeSheet('confirmar-tasa-nu');
   if(window.toast)toast('Tasa actualizada a '+tasaEditada+'% desde '+fechaEditada,'ok',4000);
   _tasaNuPendiente=null;
@@ -619,18 +618,6 @@ function quitarMetaCajita(){
 
 // Sección "Préstamo con origen dividido" (togglePrestSplit / _renderPrestSplit /
 // _updatePrestSplitResumen) migrada a js/modules/prestado.js — ver docs/prestado.md.
-
-// Muestra un resumen corto ("9,25% hasta 05 jul · 9,30% desde 06 jul") de los últimos
-// cambios de tasa registrados.
-function _renderTasaHistorialTag(){
-  const tag=document.getElementById('nuTasaHistorialTag');
-  if(!tag)return;
-  const hist=(S.historialTasasNu||[]).slice().sort((a,b)=>a.fecha<b.fecha?-1:1);
-  if(!hist.length){tag.textContent='';return;}
-  const fmtFecha=f=>{const d=_fechaSafe(f);return d.toLocaleDateString('es-CO',{day:'2-digit',month:'short'}).replace('.','');};
-  const partes=hist.slice(-3).map(h=>String(h.tasa).replace('.',',')+'% desde '+fmtFecha(h.fecha));
-  tag.textContent=partes.join(' · ');
-}
 
 function addCajita(){
   if(!nuTasaConfigurada()){

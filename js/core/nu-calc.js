@@ -52,6 +52,20 @@ function nuTasaATexto(n){
   return String(n).replace('.',',');
 }
 
+// Aplica la tasa que el usuario confirmó en el campo (al salir o con Enter). Devuelve:
+//   'invalida' → el texto no sirve (vacío, letras, 0, más de 100): no se toca nada
+//   'igual'    → ya es la tasa vigente hoy: no hay cambio que anotar (no se crean entradas repetidas en el historial)
+//   'cambio'   → S.nuRate = tasa nueva y queda anotada en S.historialTasasNu desde hoy (la anota registrarTasaNuHistorial, nu.js)
+// No toca saldos, movimientos, rendimientos ya sellados ni CDTs (cada CDT guarda su tasa); el que llama guarda y refresca.
+function nuAplicarTasaEscrita(texto){
+  const v=nuTasaDesdeTexto(texto);
+  if(v==null)return'invalida';
+  if(nuTasaConfigurada()&&_tasaVigenteEnFecha(hoy())===v)return'igual';
+  S.nuRate=v;
+  if(typeof registrarTasaNuHistorial==='function')registrarTasaNuHistorial(hoy(),v);
+  return'cambio';
+}
+
 // Devuelve la tasa EA vigente en una fecha dada, según S.historialTasasNu.
 // Si la fecha es anterior a cualquier cambio registrado, usa la tasa base (S.nuRate).
 function _tasaVigenteEnFecha(fechaStr){

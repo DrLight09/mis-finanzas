@@ -147,7 +147,7 @@ const Loader = (function () {
     prestamos: ['js/modules/prestado.js'],
     // cuentas: REACTIVADO como lazy (2026-08-13, segundo intento). El primer
     // intento se revirtió por 3 ReferenceError encadenados al arrancar
-    // (nuTotal/getNuTasaGlobal/_renderTasaHistorialTag llamados sin guard
+    // (nuTotal/getNuTasaGlobal llamados sin guard
     // desde core-state.js y firebase-sync.js). Se recibieron y auditaron
     // los 5 archivos núcleo que faltaban (core-state.js, firebase-sync.js,
     // pin-bio.js, gastos-fijos-progress.js, mejoras.js — este último

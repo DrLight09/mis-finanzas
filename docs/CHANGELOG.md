@@ -6,6 +6,12 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Mejoras de `mejoras.md`
 
+### 🏦 Nu: cambio de tasa sin mensaje de historial y sin guardados «a medias» (2026-10-26, mejora 10)
+
+- **Investigación (Fase 1):** una sola tasa EA para todas las cajitas (`S.nuRate`) más un historial interno por tramos (`S.historialTasasNu`, `{fecha, tasa}`); cada CDT guarda la suya. Cambiarla **solo mira hacia adelante**: `calcC()` calcula el interés pendiente por tramos de tasa, así que un cambio de hoy no mueve nada y uno con fecha pasada (la sugerencia del Chequeo) solo recalcula el interés **aún no sellado**; saldos, movimientos, rendimientos ya sellados y CDTs no cambian (comprobado con números, ahora es una prueba). El historial es necesario para calcular rendimientos: se queda.
+- **Fase 2:** fuera el mensaje «9,35% desde 9 oct · …» (`#nuTasaHistorialTag` y `_renderTasaHistorialTag()`; el estilo `.ix-nutasahistorialtag` se queda porque otros textos lo usan). Efecto incorrecto que sí se quitó: el campo guardaba y anotaba en el historial **con cada tecla válida** («1» camino a «10,5» guardaba una tasa de 1 %) y creaba entradas aunque la tasa no cambiara. Ahora se aplica al salir del campo o con Enter, y solo si el valor cambió (`nuAplicarTasaEscrita()` en `nu-calc.js`: `'invalida' | 'igual' | 'cambio'`).
+- **Pruebas:** bloque `nu-cambio-de-tasa` en `tests/cuentas.test.js`.
+
 ### 💳 Abono con extra: un movimiento por lo que recibió cada cuenta (2026-10-26, mejora 5)
 
 - **Cómo se guarda:** sin cambios en saldos ni en el cálculo de ingresos: el abono (neutro) y el extra (ingreso real) siguen siendo dos movimientos. Ahora comparten `_abonoId` (id del abono) y `_parteAbono` (`'abono'`/`'extra'`), también en el abono desde un encargo.

@@ -2120,3 +2120,56 @@ describe('cuentas-abono-con-extra', () => {
   });
 });
 
+describe('nu-cambio-de-tasa', () => {
+  // Mejora 10: cambiar la tasa de Nu solo mira hacia adelante, no toca saldos ni movimientos, y solo se anota si cambió.
+  const { test } = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const RAIZ = path.join(__dirname, '..');
+  const ARCH = ['core-state.js', 'periodo.js', 'nu-calc.js', 'calc-helpers.js', 'cuenta-efectos.js'].map(f => path.join(RAIZ, 'js', 'core', f))
+    .concat([path.join(RAIZ, 'js', 'modules', 'nu.js')]);
+  function cargar() {
+    const app = loadApp(ARCH, { permissive: true });
+    const hoy = app.hoy();
+    const hace = n => { const d = new Date(hoy + 'T00:00:00'); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
+    app.S.nuRate = 9.25;
+    app.S.historialTasasNu = [{ fecha: hace(30), tasa: 9.25 }];
+    app.S.cajitas = [{ id: 'k1', nombre: 'Ahorros', saldo: 1000000, fecha: hace(20), cdts: [{ id: 'c1', monto: 500000, tasa: 11, fechaInicio: hace(10), dias: 90, rte: 7 }] }];
+    return { app, hoy, hace };
+  }
+  const foto = app => JSON.stringify({ val: app.calcC(app.S.cajitas[0]).val, cdt: app.calcCDT(app.S.cajitas[0].cdts[0]).val, saldo: app.S.cajitas[0].saldo, movs: (app.S.movimientos || []).length });
+
+  test('una tasa nueva se anota desde hoy y no cambia saldos, intereses ya ganados ni el CDT', () => {
+    const { app, hoy } = cargar(); const antes = foto(app);
+    assert.equal(app.nuAplicarTasaEscrita('10,5'), 'cambio');
+    assert.equal(app.S.nuRate, 10.5);
+    assert.equal(app.S.historialTasasNu.length, 2);
+    assert.equal(app.S.historialTasasNu[1].fecha, hoy);
+    assert.equal(foto(app), antes, 'cambiar la tasa hoy no mueve nada hacia atrás');
+  });
+
+  test('la misma tasa no anota nada, y un texto que no sirve no toca nada', () => {
+    const { app } = cargar(); const antes = foto(app);
+    assert.equal(app.nuAplicarTasaEscrita('9,25'), 'igual');
+    assert.equal(app.S.historialTasasNu.length, 1);
+    for (const malo of ['', '   ', '9abc', '9,', '0', '101', '-5', 'abc']) assert.equal(app.nuAplicarTasaEscrita(malo), 'invalida', malo);
+    assert.equal(app.S.nuRate, 9.25); assert.equal(app.S.historialTasasNu.length, 1);
+    assert.equal(foto(app), antes);
+  });
+
+  test('corregir con una fecha pasada solo recalcula el interés aún no sellado: saldos, movimientos y CDT siguen igual', () => {
+    const { app, hace } = cargar(); const antes = JSON.parse(foto(app));
+    app.registrarTasaNuHistorial(hace(8), 10.5);
+    const despues = JSON.parse(foto(app));
+    assert.ok(despues.val > antes.val, 'el interés pendiente se recalcula con la tasa corregida');
+    assert.equal(despues.saldo, antes.saldo); assert.equal(despues.movs, antes.movs); assert.equal(despues.cdt, antes.cdt);
+  });
+
+  test('el mensaje del historial de tasas ya no existe en la pantalla ni en el código', () => {
+    const fs = require('node:fs');
+    assert.ok(!fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8').includes('nuTasaHistorialTag'));
+    assert.ok(!fs.readFileSync(path.join(RAIZ, 'js', 'modules', 'nu.js'), 'utf8').includes('_renderTasaHistorialTag'));
+  });
+});
+

@@ -1048,7 +1048,6 @@
                   <span class="ix-span-075">%</span>
                 </div>
               </div>
-              <div class="ix-nutasahistorialtag" id="nuTasaHistorialTag"></div>
               <div class="ix-nutasaaviso" id="nuTasaAviso" style="display:none;">Escribe la
                 tasa EA de Nu para poder crear cajitas. Todas las cajitas usan esta misma tasa.</div>
               <button class="ix-btn-nu-chequeo" type="button" id="btn-nu-chequeo" data-action="nu:abrirChequeoNu" data-args="[]">Chequeo
@@ -4748,7 +4747,7 @@
 // LAZY (2026-08-13, segundo intento — reactivado): el primer intento
 // (docs/auditoria-tecnica.md #4) se revirtió por 3 ReferenceError
 // encadenados en el arranque — core-state.js/firebase-sync.js llamaban al
-// subsistema de Nu (nuTotal/getNuTasaGlobal/_renderTasaHistorialTag,
+// subsistema de Nu (nuTotal/getNuTasaGlobal,
 // definidas acá) sin guard. Se auditaron y corrigieron los 5 archivos
 // núcleo involucrados (core-state.js, firebase-sync.js, pin-bio.js,
 // gastos-fijos-progress.js, mejoras.js — este último fusionado con

@@ -185,29 +185,24 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
     (function(){
       const el=document.getElementById('nuTasaGlobal');
       if(el&&nuTasaConfigurada())el.value=nuTasaATexto(window.S.nuRate);
-      // FIX 2026-08-13: _renderTasaHistorialTag (cuentas.js) corre acá sin
-      // guard, dentro de _initAppUI() — que se ejecuta en CADA arranque de
-      // la app, no solo al visitar Cuentas. Con cuentas.js como grupo lazy
-      // (ver auditoria-tecnica.md), esto tumbaba el arranque completo con
-      // ReferenceError antes de llegar a _initEventListeners()/refresh().
-      // Lo demás de este bloque (registrarTasaNuHistorial) solo se dispara al
-      // escribir en #nuTasaGlobal, que vive en la pantalla de Cuentas; se guarda igual.
-      if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
       if(el){
         // La tasa es UNA para todas las cajitas (S.nuRate): solo números con coma o punto decimal, y no se puede dejar en
-        // blanco ni en 0. Mientras se escribe se quita lo que no sirve (letras, signos); un valor incompleto o inválido se
-        // ignora (se conserva la tasa anterior) y al salir del campo se restaura. Cambiarla NO recalcula nada hacia atrás:
-        // el historial de tasas (S.historialTasasNu) la aplica desde hoy y los intereses ya sellados no se reabren. Para
-        // contrastar con la app de Nu está el Chequeo rápido de cajitas.
+        // blanco ni en 0. Mientras se escribe solo se quita lo que no sirve (letras, signos): NO se guarda ni se anota nada
+        // a medias (antes cada tecla válida —«1» camino a «10,5»— guardaba una tasa de paso y la anotaba en el historial).
+        // El cambio se aplica al confirmar (salir del campo o Enter) y solo si el valor realmente cambió; un valor
+        // incompleto o inválido se descarta y se restaura la tasa anterior. Cambiarla NO recalcula nada hacia atrás: el
+        // historial interno de tasas (S.historialTasasNu) la aplica desde hoy y los intereses ya sellados no se reabren.
+        // Para contrastar con la app de Nu está el Chequeo rápido de cajitas.
         el.addEventListener('input',function(){
           const limpio=nuTasaSanear(this.value);
           if(limpio!==this.value)this.value=limpio;
-          const v=nuTasaDesdeTexto(limpio);
-          if(v==null)return;
-          window.S.nuRate=v;
-          if(typeof registrarTasaNuHistorial==='function') registrarTasaNuHistorial(hoy(),v);
-          save();refresh();
-          if(typeof _renderTasaHistorialTag==='function') _renderTasaHistorialTag();
+        });
+        el.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); this.blur(); } });
+        el.addEventListener('change',function(){
+          const r=nuAplicarTasaEscrita(this.value);
+          if(r==='invalida')return; // el blur restaura la tasa anterior
+          this.value=nuTasaATexto(window.S.nuRate);
+          if(r==='cambio'){save();refresh();}
         });
         el.addEventListener('blur',function(){
           if(nuTasaDesdeTexto(this.value)==null) this.value=nuTasaConfigurada()?nuTasaATexto(window.S.nuRate):'';

@@ -794,6 +794,8 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
     const input = document.getElementById('del-account-input');
     if(input.value.trim() !== 'ELIMINAR') return;
     if(!window._fb || !window._fbUser) return;
+    // Con PIN activo, se vuelve a pedir antes de borrar la cuenta (mejora 13). Si se cancela no se toca nada.
+    if(typeof window.pedirPinAntesDe === 'function' && !(await window.pedirPinAntesDe('Para eliminar tu cuenta y todos tus datos'))) return;
 
     // FIX (2026-09-27): antes se podía cancelar el overlay (botón "Cancelar"
     // o clic afuera) mientras el borrado seguía en curso en segundo plano —

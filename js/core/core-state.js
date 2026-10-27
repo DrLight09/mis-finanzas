@@ -1355,6 +1355,21 @@ function emptyState(icon, title, sub, btnLabel, btnFn){
   </div>`;
 }
 
+// Segundo candado de las acciones destructivas (mejora 13): con PIN activo, vuelve a pedirlo ANTES de ejecutar la acción.
+// Devuelve true si se puede seguir: no hay PIN (todo como antes) o se escribió el correcto; false si se canceló o con un PIN
+// activo no se pudo verificar (módulo del PIN sin cargar): en ese caso no se ejecuta nada. Se llama justo después de la
+// confirmación propia de cada acción: `if (!await pedirPinAntesDe('Para borrar todos los datos')) return;`
+// Acciones que lo piden: borrarTodo, importar un backup, eliminar la cuenta, quitar el PIN y quitar la huella.
+async function pedirPinAntesDe(motivo) {
+  let hayPin = false;
+  try { hayPin = !!localStorage.getItem('mf_pin'); } catch (e) { /* sin acceso a localStorage: no hay PIN que pedir */ }
+  if (!hayPin) return true;
+  if (typeof window._pinVerificar !== 'function') return false;
+  const ok = await window._pinVerificar(motivo);
+  if (!ok && typeof toast === 'function') toast('Acción cancelada', 'info');
+  return ok;
+}
+
 // Muestra u oculta un elemento según el estado de la pantalla (JS, no CSS):
 // lo usan los botones de pie de lista que sobran cuando el estado vacío ya
 // trae su propio botón de acción (un solo botón por estado vacío).

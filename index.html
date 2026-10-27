@@ -269,6 +269,7 @@
       /* ===== PIN SCREEN (segundo gate) ===== */
       #pin-screen{position:fixed;inset:0;z-index:99998;display:none;flex-direction:column;align-items:center;justify-content:center;background:var(--bg);padding:32px 24px;text-align:center;overflow:hidden;}
       #pin-screen.open{display:flex;}
+      #pin-screen.pin-verificar{z-index:1000001;}
       .pin-anim{animation:fbLoadIn .4s cubic-bezier(.22,1,.36,1) both;}
       .pin-logo{width:64px;height:64px;border-radius:18px;background:rgba(200,240,96,.10);border:1.5px solid rgba(200,240,96,.25);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
       .pin-title{font-size:22px;font-weight:700;letter-spacing:-.3px;margin-bottom:6px;}
@@ -514,6 +515,7 @@
         <div class="pin-forgot" id="pin-forgot-btn"
           data-action="pin:olvide" style="display:none;">¿Olvidaste el PIN?
           Cerrar sesión</div>
+        <div class="pin-forgot" id="pin-cancel-btn" data-action="pin:cancelar">Cancelar</div>
       </div>
       <!-- Mini-diálogo propio del PIN, dentro del pin-screen para no tener conflictos de z-index -->
       <div id="pin-dialog"

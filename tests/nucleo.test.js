@@ -1037,6 +1037,7 @@ describe('borrar-todo-pin', () => {
     const ls = app.localStorage;
     ls.setItem('mf_pin', '1234'); ls.setItem('mf_bio_enabled', 'true'); ls.setItem('mf_bio_cred', 'credencial'); ls.setItem('mf_auth_hint', '1');
     app.dialogo = async () => true; app.toast = () => {}; app.setTimeout = f => f();
+    app.pedirPinAntesDe = async () => true; // el PIN de confirmación se escribió bien (pedirPinAntesDe vive en core-state.js, ver pin-confirmar-acciones-destructivas)
     app._fbUser = { uid: 'u1' };
     app._fb = { db: {}, doc: () => ({}), setDoc: async () => { if (!nubeOk) throw new Error('sin conexión'); } };
     app.location = { reload() { app.__recargado = true; }, href: '' };
@@ -1066,6 +1067,17 @@ describe('borrar-todo-pin', () => {
     assert.equal(ls.getItem('mf_pin'), '1234');
     assert.equal(ls.getItem('mf_bio_cred'), 'credencial');
     assert.equal(app.__recargado, true);
+  });
+
+  test('si el PIN de confirmación se cancela o falla, no se borra nada (ni en la nube ni el PIN)', async () => {
+    const { app, ls } = entorno();
+    let tocoNube = false; app._fb.setDoc = async () => { tocoNube = true; };
+    app.pedirPinAntesDe = async () => false;
+    await app.borrarTodo();
+    assert.equal(tocoNube, false);
+    assert.equal(ls.getItem('mf_pin'), '1234');
+    assert.equal(ls.getItem('mf_bio_cred'), 'credencial');
+    assert.ok(!app.__recargado);
   });
 
   test('si el usuario cancela la confirmación no se borra nada', async () => {
@@ -1538,3 +1550,130 @@ describe('money-input (formateo al escribir en los campos de plata)', () => {
     assert.equal(o.value, '12345');
   });
 });
+
+describe('pin-confirmar-acciones-destructivas', () => {
+  // Mejora 13: con PIN activo, las acciones que borran datos lo piden otra vez; el PIN también se escribe con el teclado del PC.
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs'), path = require('node:path');
+  const { JSDOM } = require('jsdom');
+  const RAIZ = path.join(__dirname, '..');
+  const leer = (...p) => fs.readFileSync(path.join(RAIZ, ...p), 'utf8');
+  // pin-bio.js es un módulo ES (import de waitFor/hookGlobal): se evalúa sin los imports, con stubs.
+  const codigoPin = 'const waitFor = () => {}; const hookGlobal = () => {};\n' + leer('js', 'core', 'pin-bio.js').replace(/^import .*$/gm, '');
+  const pedir = leer('js', 'core', 'core-state.js').match(/async function pedirPinAntesDe[\s\S]*?\n}\n/)[0];
+
+  function entorno({ pin = '1234', dialogoOk = true } = {}) {
+    const dom = new JSDOM(leer('index.html'), { runScripts: 'outside-only', url: 'http://localhost/' });
+    const w = dom.window;
+    if (pin) w.localStorage.setItem('mf_pin', pin);
+    w.toast = () => {};
+    w.dialogo = async () => dialogoOk;
+    w.eval(codigoPin);
+    w.eval(pedir + '\nwindow.pedirPinAntesDe = pedirPinAntesDe;');
+    const pantalla = w.document.getElementById('pin-screen');
+    const tecla = (key, extra = {}) => w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...extra }));
+    const escribir = txt => [...txt].forEach(c => tecla(c));
+    const espera = ms => new Promise(r => setTimeout(r, ms));
+    return { w, pantalla, tecla, escribir, espera };
+  }
+
+  test('sin PIN activo todo sigue como hoy: no pide nada', async () => {
+    const { w, pantalla } = entorno({ pin: '' });
+    assert.equal(await w.pedirPinAntesDe('x'), true);
+    assert.ok(!pantalla.classList.contains('open'));
+  });
+
+  test('con PIN: se pide, se escribe con el teclado del PC y con el correcto la acción puede seguir', async () => {
+    const { w, pantalla, escribir, espera } = entorno();
+    const r = w.pedirPinAntesDe('Para borrar todos los datos');
+    assert.ok(pantalla.classList.contains('open') && pantalla.classList.contains('pin-verificar'));
+    assert.equal(w.document.getElementById('pin-title').textContent, 'Confirma con tu PIN');
+    assert.equal(w.document.getElementById('pin-sub').textContent, 'Para borrar todos los datos');
+    assert.equal(w.document.getElementById('pin-cancel-btn').style.display, '');
+    escribir('1234');
+    assert.equal(await r, true);
+    await espera(120);
+    assert.ok(!pantalla.classList.contains('open'));
+  });
+
+  test('con PIN incorrecto no pasa: se puede reintentar o cancelar, y cancelar devuelve false (no se borra nada)', async () => {
+    const { w, pantalla, escribir, tecla, espera } = entorno();
+    let resuelta = null;
+    const r = w.pedirPinAntesDe('x').then(v => { resuelta = v; });
+    escribir('1111');
+    await espera(600);
+    assert.equal(resuelta, null, 'un PIN incorrecto no resuelve la promesa');
+    assert.ok(pantalla.classList.contains('open'));
+    tecla('Escape'); await r;
+    assert.equal(resuelta, false);
+    assert.ok(!pantalla.classList.contains('open'));
+  });
+
+  test('el botón Cancelar también cancela y deja todo como estaba', async () => {
+    const { w } = entorno();
+    const r = w.pedirPinAntesDe('x');
+    w._pinCancelar();
+    assert.equal(await r, false);
+  });
+
+  test('teclado del PC: dígitos (también del teclado numérico), Retroceso, y se ignoran letras y atajos', async () => {
+    const { w, escribir, tecla, espera } = entorno();
+    const r = w.pedirPinAntesDe('x');
+    escribir('12'); tecla('a'); tecla('1', { ctrlKey: true });
+    assert.equal(['pd0', 'pd1', 'pd2', 'pd3'].filter(id => w.document.getElementById(id).classList.contains('filled')).length, 2);
+    tecla('Backspace');
+    assert.equal(['pd0', 'pd1', 'pd2', 'pd3'].filter(id => w.document.getElementById(id).classList.contains('filled')).length, 1);
+    tecla('Backspace'); escribir('1234');
+    assert.equal(await r, true);
+    await espera(120);
+    // con la pantalla cerrada, el teclado no hace nada
+    const llamadas = []; w._pinKey = d => llamadas.push(d);
+    tecla('5');
+    assert.deepEqual(llamadas, []);
+  });
+
+  test('desbloquear la app también se escribe con el teclado del PC', async () => {
+    const { w, escribir, espera } = entorno();
+    let lanzada = false; w._fbLoadData = () => { lanzada = true; };
+    w.document.getElementById('fb-loading-screen').style.display = 'flex';
+    w._pinGate();
+    escribir('1234');
+    await espera(250);
+    assert.equal(lanzada, true);
+  });
+
+  test('quitar el PIN y quitar la huella piden el PIN: con uno incorrecto o cancelado no se quita nada', async () => {
+    const { w, escribir, tecla, espera } = entorno();
+    w.localStorage.setItem('mf_bio_enabled', 'true'); w.localStorage.setItem('mf_bio_cred', 'abc');
+    const quitarPin = w._pinDisable();
+    await espera(10);
+    escribir('9999'); await espera(550);
+    tecla('Escape'); await quitarPin;
+    assert.equal(w.localStorage.getItem('mf_pin'), '1234', 'PIN incorrecto/cancelado: el PIN sigue');
+    const quitarHuella = w._bioDisable();
+    await espera(10);
+    tecla('Escape'); await quitarHuella;
+    assert.equal(w.localStorage.getItem('mf_bio_cred'), 'abc', 'cancelado: la huella sigue');
+    const ok = w._bioDisable();
+    await espera(10); escribir('1234'); await ok;
+    assert.equal(w.localStorage.getItem('mf_bio_cred'), null, 'con el PIN correcto la huella se quita');
+    const ok2 = w._pinDisable();
+    await espera(10); escribir('1234'); await ok2;
+    assert.equal(w.localStorage.getItem('mf_pin'), null, 'con el PIN correcto el PIN se quita');
+  });
+
+  test('las 5 acciones de la lista aprobada llaman al PIN antes de ejecutar', () => {
+    const cfg = leer('js', 'modules', 'configuracion.js');
+    const borrar = cfg.slice(cfg.indexOf('async function borrarTodo'));
+    assert.ok(/pedirPinAntesDe\(/.test(borrar.slice(0, borrar.indexOf("document.getElementById('fb-loading-screen')"))), 'borrar todo: el PIN va antes de tocar nada');
+    const imp = cfg.slice(cfg.indexOf('function leerArchivoImport'));
+    assert.ok(imp.indexOf('pedirPinAntesDe(') > 0 && imp.indexOf('pedirPinAntesDe(') < imp.indexOf('aplicarMigraciones(data)'), 'importar: el PIN va antes de reemplazar');
+    const fb = leer('js', 'core', 'firebase-sync.js');
+    const del = fb.slice(fb.indexOf('window._fbDeleteAccount = async function'));
+    assert.ok(del.indexOf('pedirPinAntesDe(') > 0 && del.indexOf('pedirPinAntesDe(') < del.indexOf('_fbDeleteAccountEnCurso = true'), 'eliminar cuenta: el PIN va antes de borrar');
+    const pin = leer('js', 'core', 'pin-bio.js');
+    assert.ok(/ok && await window\._pinVerificar\('Para quitar el PIN/.test(pin) && /ok && await window\._pinVerificar\('Para quitar el desbloqueo con huella/.test(pin));
+  });
+});
+

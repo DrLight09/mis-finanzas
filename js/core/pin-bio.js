@@ -28,7 +28,8 @@ import { hookGlobal } from './hook-global-module.js';
   const CRED_KEY = 'mf_bio_cred';      // credentialId (base64url) guardado
 
   let _pinBuf  = '';
-  let _pinMode = 'unlock'; // 'unlock' | 'set-new' | 'confirm-new'
+  let _pinMode = 'unlock'; // 'unlock' | 'set-new' | 'confirm-new' | 'verify' (confirmar una acción destructiva)
+  let _verifyResolve = null; // promesa pendiente de window._pinVerificar()
   let _pinTemp = '';
 
   // ── Storage ──────────────────────────────────────────────────────
@@ -94,6 +95,10 @@ import { hookGlobal } from './hook-global-module.js';
     document.getElementById('pin-title').textContent = title||'Ingresa tu PIN';
     document.getElementById('pin-sub').textContent   = sub  ||'Mis Finanzas';
     document.getElementById('pin-forgot-btn').style.display = mode==='unlock' ? '' : 'none';
+    const cancelBtn = document.getElementById('pin-cancel-btn');
+    if(cancelBtn) cancelBtn.style.display = mode==='verify' ? '' : 'none';
+    // Confirmar una acción puede pedirse con un overlay encima (p. ej. «Eliminar cuenta»): el PIN va por delante de todo.
+    document.getElementById('pin-screen').classList.toggle('pin-verificar', mode==='verify');
     _dots();
     document.getElementById('pin-screen').classList.add('open');
     // Mostrar botón biométrico sólo en modo unlock si está habilitado y hay PIN
@@ -105,7 +110,7 @@ import { hookGlobal } from './hook-global-module.js';
     }
   }
   function _hidePin() {
-    document.getElementById('pin-screen').classList.remove('open');
+    document.getElementById('pin-screen').classList.remove('open', 'pin-verificar');
     _setBioState('idle');
   }
   function _dots(err) {
@@ -160,6 +165,39 @@ import { hookGlobal } from './hook-global-module.js';
     if(_pinBuf.length>0){ _pinBuf=_pinBuf.slice(0,-1); _dots(); }
   };
 
+  // Teclado del computador: dígitos (fila superior y teclado numérico) escriben el PIN, Retroceso borra un dígito y Escape
+  // cancela una confirmación. Solo actúa con la pantalla del PIN abierta y sin el mini-diálogo encima.
+  document.addEventListener('keydown', function(e) {
+    const pantalla = document.getElementById('pin-screen');
+    if(!pantalla || !pantalla.classList.contains('open')) return;
+    const dlg = document.getElementById('pin-dialog');
+    if(dlg && dlg.style.display === 'flex') return;
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    if(/^[0-9]$/.test(e.key)) { e.preventDefault(); window._pinKey(e.key); }
+    else if(e.key === 'Backspace') { e.preventDefault(); window._pinDel(); }
+    else if(e.key === 'Escape' && _pinMode === 'verify') { e.preventDefault(); window._pinCancelar(); }
+  });
+
+  // ── Confirmar una acción destructiva con el PIN ──────────────────
+  // Devuelve una promesa: true si se escribió el PIN correcto; false si se canceló (botón o Escape). Con PIN incorrecto la
+  // pantalla se sacude y se puede reintentar o cancelar: la acción solo sigue con true. Sin PIN activo devuelve true
+  // enseguida (todo se comporta como antes). Las acciones lo llaman vía pedirPinAntesDe() (core-state.js).
+  window._pinVerificar = function(motivo) {
+    return new Promise(res => {
+      if(!_getPin()) { res(true); return; }
+      if(_verifyResolve) { res(false); return; } // ya hay una confirmación abierta
+      _verifyResolve = res;
+      _showPin('verify', 'Confirma con tu PIN', motivo || 'Esta acción borra datos');
+    });
+  };
+  function _terminarVerificacion(ok) {
+    const res = _verifyResolve;
+    _verifyResolve = null;
+    _hidePin();
+    if(res) res(ok);
+  }
+  window._pinCancelar = function() { if(_pinMode === 'verify') _terminarVerificacion(false); };
+
   // ── Trigger biométrico (botón en pantalla de unlock) ─────────────
   window._pinBioTrigger = async function() {
     if(!_bioEnabled()||!_getCredId()) return;
@@ -212,6 +250,9 @@ import { hookGlobal } from './hook-global-module.js';
     const stored = _getPin();
     if(_pinMode==='unlock') {
       if(_pinBuf===stored) { _hidePin(); _launchApp(); }
+      else _shake();
+    } else if(_pinMode==='verify') {
+      if(_pinBuf===stored) _terminarVerificacion(true);
       else _shake();
     } else if(_pinMode==='set-new') {
       _pinTemp = _pinBuf;
@@ -300,7 +341,7 @@ import { hookGlobal } from './hook-global-module.js';
   };
   window._pinDisable = async function() {
     const ok = await dialogo('Quitar PIN','¿Seguro que quieres desactivar el PIN de acceso?','Quitar PIN',true);
-    if(ok){
+    if(ok && await window._pinVerificar('Para quitar el PIN de acceso')){
       _delPin();
       _delCred();
       if(window.toast) toast('PIN desactivado','info');
@@ -333,7 +374,7 @@ import { hookGlobal } from './hook-global-module.js';
   };
   window._bioDisable = async function() {
     const ok = await dialogo('Quitar huella','¿Quieres desactivar el desbloqueo con huella?','Quitar',true);
-    if(ok){ _delCred(); if(window.toast) toast('Huella desactivada','info'); _renderBioBtn(); }
+    if(ok && await window._pinVerificar('Para quitar el desbloqueo con huella')){ _delCred(); if(window.toast) toast('Huella desactivada','info'); _renderBioBtn(); }
   };
 
   // Registro bajo Events (docs/auditoria-tecnica.md #1). window._pinKey recibe
@@ -353,6 +394,7 @@ import { hookGlobal } from './hook-global-module.js';
       del: window._pinDel,
       bioTrigger: window._pinBioTrigger,
       olvide: window._pinOlvide,
+      cancelar: window._pinCancelar,
       setNew: window._pinSetNew,
       disable: window._pinDisable,
       bioSetup: window._bioSetup,

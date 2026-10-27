@@ -181,6 +181,7 @@ function leerArchivoImport(e){
       }
       const ok=await dialogo('Importar datos','¿Reemplazar todos los datos actuales con el archivo importado? Esta acción no se puede deshacer.','Importar',true);
       if(!ok)return;
+      if(!await pedirPinAntesDe('Para reemplazar todos tus datos con el backup')){e.target.value='';return;}
       // Llevar el backup al modelo de datos actual (si falla, el catch avisa y NO se reemplaza nada).
       aplicarMigraciones(data);
       // Reemplazar CONTENIDO de S sin romper la referencia de window.S
@@ -267,6 +268,7 @@ function toggleModulo(nombre){
 async function borrarTodo(){
   const ok=await dialogo('Borrar todos los datos','¿Seguro que quieres borrar TODO? Esta acción no se puede deshacer y perderás toda tu información financiera.','Borrar todo',true);
   if(!ok)return;
+  if(!await pedirPinAntesDe('Para borrar todos los datos'))return;
   const _overlay = document.getElementById('fb-loading-screen');
   if(_overlay) _overlay.style.display = 'flex';
   // Borrar en Firebase: payload "{}" a propósito — la carga lo lee como "vacío", lo verifica

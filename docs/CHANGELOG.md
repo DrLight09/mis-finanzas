@@ -6,6 +6,13 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Mejoras de `mejoras.md`
 
+### 🔐 PIN como segundo candado de las acciones destructivas + PIN con el teclado del PC (2026-10-26, mejora 13)
+
+- **Lista aprobada por el usuario (solo PIN, sin huella):** borrar todos los datos, eliminar la cuenta, importar un backup (reemplaza todos los datos), quitar el PIN y quitar la huella. **No** lo piden: los borrados de un registro con historial (préstamo, encargo, tarjeta, cajita, persona, categoría…), los movimientos sueltos, cerrar sesión ni «¿Olvidaste el PIN?» (por definición no se sabe).
+- **Cómo funciona:** `pedirPinAntesDe(motivo)` (`core-state.js`) se llama justo después de la confirmación propia de cada acción y antes de ejecutarla. Sin PIN activo devuelve `true` (todo igual que hoy); con PIN reutiliza la pantalla de `pin-bio.js` en un modo nuevo `'verify'` («Confirma con tu PIN» + el motivo, botón **Cancelar**, va por encima de cualquier overlay). PIN incorrecto: la pantalla se sacude y se puede reintentar; cancelar (botón o Escape) devuelve `false` y no se toca nada. Con PIN activo y sin el módulo del PIN cargado no se ejecuta nada (falla cerrado).
+- **Teclado del PC en la pantalla del PIN:** dígitos (fila superior y teclado numérico), Retroceso y Escape (cancela una confirmación); vale tanto para desbloquear como para elegir el PIN y para confirmar acciones. Se ignoran letras y atajos con Ctrl/Alt/Meta, y no actúa con la pantalla cerrada ni con el mini-diálogo encima.
+- **Pruebas:** bloque `pin-confirmar-acciones-destructivas` en `tests/nucleo.test.js` (sin PIN, correcto, incorrecto, cancelar, teclado, quitar PIN/huella y orden del PIN en las 5 acciones) y un caso nuevo en `borrar-todo-pin` (PIN cancelado: no se borra nada).
+
 ### 🏦 Nu: cambio de tasa sin mensaje de historial y sin guardados «a medias» (2026-10-26, mejora 10)
 
 - **Investigación (Fase 1):** una sola tasa EA para todas las cajitas (`S.nuRate`) más un historial interno por tramos (`S.historialTasasNu`, `{fecha, tasa}`); cada CDT guarda la suya. Cambiarla **solo mira hacia adelante**: `calcC()` calcula el interés pendiente por tramos de tasa, así que un cambio de hoy no mueve nada y uno con fecha pasada (la sugerencia del Chequeo) solo recalcula el interés **aún no sellado**; saldos, movimientos, rendimientos ya sellados y CDTs no cambian (comprobado con números, ahora es una prueba). El historial es necesario para calcular rendimientos: se queda.

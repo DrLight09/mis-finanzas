@@ -11,3 +11,5 @@
 
 # Credencial privada de Firebase
 /mis-finanzas-z-firebase-adminsdk-fbsvc-d1e82930fc.json
+
+*.zip

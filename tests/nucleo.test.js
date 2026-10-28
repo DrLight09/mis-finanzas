@@ -218,7 +218,7 @@ describe('calcHealthScore', () => {
     const mes = currentMonthKey();
     const ctx = freshApp({
       cuentas: cuentas({ nequi: 2000000 }),
-      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 1000000, desde: '2020-01' }],
+      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 1000000, desde: '2020-01', cobros: [{ id: 'c1', mesCubre: mes, monto: 1000000, fecha: mes + '-01' }] }],
       gastosFijos: [{ id: 'g1', monto: 1500000 }],
       pagosGastosFijos: { ['g1_' + mes]: { monto: 1500000 } },
     });
@@ -230,7 +230,7 @@ describe('calcHealthScore', () => {
     const mes = currentMonthKey();
     const ctx = freshApp({
       cuentas: cuentas({ nequi: 9000000 }), // 9 meses de reserva: el fondo de emergencia ya está cubierto
-      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 3000000, desde: '2020-01' }],
+      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 3000000, desde: '2020-01', cobros: [{ id: 'c1', mesCubre: mes, monto: 3000000, fecha: mes + '-01' }] }],
       gastosFijos: [{ id: 'g1', monto: 1000000 }],
       pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
     });
@@ -315,7 +315,7 @@ describe('calcHealthScore', () => {
     const base = {
       cuentas: cuentas({ nequi: 1000000 }),
       gastosFijos: [{ id: 'g1', monto: 25000 }],
-      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 1000000, desde: '2020-01' }],
+      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 1000000, desde: '2020-01', cobros: [{ id: 'c1', mesCubre: mes, monto: 1000000, fecha: mes + '-01' }] }],
     };
     const inicioDeMes = freshApp({ ...base, pagosGastosFijos: { ['g1_' + mes]: { monto: 25000 }, ...pagosPrevios(1000000, 3) } }).calcHealthScore();
     assert.ok(inicioDeMes.tips.includes('Tus reservas cubren menos de 3 meses de gastos.'), 'mide contra el gasto típico, no contra el gasto parcial del mes');
@@ -331,7 +331,7 @@ describe('calcHealthScore', () => {
     const r = freshApp({
       cuentas: cuentas({ nequi: 9000000 }),
       gastosFijos: [{ id: 'g1', monto: 1 }],
-      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 20000000, desde: '2020-01' }],
+      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 20000000, desde: '2020-01', cobros: [{ id: 'c1', mesCubre: mes, monto: 20000000, fecha: mes + '-01' }] }],
       pagosGastosFijos: { ['g1_' + mes]: { monto: 5000000 }, ...pagosPrevios(1000000, 3) },
     }).calcHealthScore();
     assert.ok(!r.tips.some((t) => t.includes('reservas')));
@@ -454,10 +454,16 @@ describe('periodo', () => {
     assert.equal(P(app()).mesadaDelMes('2026-01'), 0);
   });
 
-  test('ingresosFijosDelMes — solo cuenta los que ya estaban activos ese mes', () => {
-    const ctx = app({ ingresosFijos: [{ monto: 1000, desde: '2026-01' }, { monto: 500, desde: '2026-10' }, { monto: 7 }] });
-    assert.equal(P(ctx).ingresosFijosDelMes('2026-09'), 1007);
-    assert.equal(P(ctx).ingresosFijosDelMes('2026-10'), 1507);
+  test('ingresosFijosDelMes — un ingreso fijo solo cuenta cuando se registra su cobro, en el mes de la FECHA del cobro', () => {
+    const ctx = app({ ingresosFijos: [
+      { id: 'a', monto: 1000, desde: '2026-01', cobros: [{ id: 'c1', mesCubre: '2026-09', monto: 900, fecha: '2026-09-30' }, { id: 'c2', mesCubre: '2026-09', monto: 100, fecha: '2026-10-03' }] },
+      { id: 'b', monto: 500, desde: '2026-10' },   // plantilla sin cobros: no suma nada
+      { id: 'c', monto: 7, cobros: [{ id: 'c3', mesCubre: '2026-01', monto: 7 }] }, // sin fecha: cae en el mes que cubre
+    ] });
+    assert.equal(P(ctx).ingresosFijosDelMes('2026-09'), 900);
+    assert.equal(P(ctx).ingresosFijosDelMes('2026-10'), 100, 'el cobro de septiembre que entró el 3 de octubre cuenta en octubre');
+    assert.equal(P(ctx).ingresosFijosDelMes('2026-01'), 7);
+    assert.equal(P(ctx).ingresosFijosEntradas().length, 3);
   });
 
   test('gastos fijos — se cuentan con el monto PAGADO (editar el gasto fijo no reescribe el pasado)', () => {
@@ -465,6 +471,15 @@ describe('periodo', () => {
     const g = P(ctx).gastosDelMes('2026-09');
     assert.equal(g.gfTotal, 800);
     assert.equal(P(ctx).gastosDelMes('2026-10').gfTotal, 0);
+  });
+
+  test('gastos fijos — cuentan en el mes de la FECHA del pago, no en el mes que cubren (regla de caja)', () => {
+    const ctx = app({ gastosFijos: [{ id: 'g1', nombre: 'Arriendo', monto: 800, cat: 'Hogar' }], pagosGastosFijos: { 'g1_2026-09': { fecha: '2026-10-03', monto: 800 }, 'g1_2026-08': { monto: 700 } } });
+    assert.equal(P(ctx).gastosDelMes('2026-09').gfTotal, 0, 'el arriendo de septiembre pagado en octubre no es gasto de septiembre');
+    assert.equal(P(ctx).gastosDelMes('2026-10').gfTotal, 800);
+    assert.equal(P(ctx).gastosDelMes('2026-08').gfTotal, 700, 'sin fecha, cae en el mes que cubre');
+    const p = P(ctx).pagosFijos().find(x => x.fecha === '2026-10-03');
+    assert.equal(p.mesCubre, '2026-09');
   });
 
   test('gastos fijos — un pago cuyo gasto fijo ya se eliminó SIGUE contando (con la categoría que guardó el pago)', () => {
@@ -500,7 +515,7 @@ describe('periodo', () => {
   test('balanceDelMes — ingresos (mesada + fijos + entradas reales) menos gastos, y tasa de ahorro', () => {
     const ctx = app({
       mesadas: { papa: { cuotas: { 2026: 80000 }, pagos: { '2026-8': {} } }, mama: { cuotas: {}, pagos: {} } },
-      ingresosFijos: [{ monto: 20000, desde: '2026-01' }],
+      ingresosFijos: [{ id: 'if', monto: 20000, desde: '2026-01', cobros: [{ id: 'c1', mesCubre: '2026-09', monto: 20000, fecha: '2026-09-15' }] }],
       movimientos: [{ id: 'm', tipo: 'entrada', monto: 10000, fecha: '2026-09-10', fuente: 'nequi', clase: 'ingreso' }, { id: 'e', tipo: 'entrada', monto: 999, fecha: '2026-09-11', _esEspejo: true, clase: 'neutro' }],
       gastosVar: [{ fecha: '2026-09-03', monto: 30000, cat: 'Comida', clase: 'gasto' }],
     });

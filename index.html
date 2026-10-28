@@ -2539,12 +2539,54 @@
         <div class="ig"><label class="il" for="if_m">Monto mensual</label><input
             type="text" inputmode="decimal" id="if_m" placeholder="0,00"
             class="money-input"></div>
-        <div class="ig"><label class="il" for="if_d">Aplica desde</label><input
+        <div class="ig"><label class="il" for="if_d">Lo esperas desde</label><input
             type="month" id="if_d"></div>
         <button type="button" class="btn btn-primary"
           id="btn-guardar-ingreso-fijo">Guardar</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="ingreso-fijo">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- INGRESO FIJO - Registrar cobro -->
+    <div class="overlay" id="sheet-cobro-ingreso" data-sheet-id="cobro-ingreso">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="cbTitle">Registrar cobro</div>
+        <p class="ms-desc" id="cbDesc">¿Cuánto te pagaron, cuándo y qué hiciste con esa plata?</p>
+        <div class="ig">
+          <label class="il" for="cbMonto">Monto recibido</label>
+          <input type="text" inputmode="decimal" id="cbMonto" placeholder="0" class="money-input">
+        </div>
+        <div class="ig">
+          <label class="il" for="cbMes">¿Qué mes cubre?</label>
+          <input type="month" id="cbMes">
+        </div>
+        <div class="field-header ms-mb8">
+          <label for="cbDestino" class="il ms-mb0">¿Qué hiciste con esa plata?</label>
+          <button type="button" id="cbSplitToggle" class="btn-split">Dividir</button>
+        </div>
+        <div id="cbModoSimple" class="ig">
+          <div class="select-wrap"><select id="cbDestino">
+              <option value>No especificar / lo gasté</option>
+            </select></div>
+        </div>
+        <div id="cbModoDividido" style="display:none;">
+          <div id="cbSplitRows"></div>
+          <button type="button" id="btn-add-split-row-cb" class="btn-add-cuenta ms-mb8">+ Agregar cuenta</button>
+        </div>
+        <div id="cbPreview" class="ms-preview"></div>
+        <div class="ig">
+          <label class="il" for="cbFecha">Fecha en que te pagaron</label>
+          <input type="date" id="cbFecha">
+        </div>
+        <div id="cbAvisoMes" class="ms-aviso-mes"></div>
+        <div class="ig">
+          <label class="il" for="cbNota">Nota (opcional)</label>
+          <input type="text" id="cbNota" maxlength="60" placeholder="Ej: Quincena, el resto en Nequi">
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-confirmar-cobro">Guardar cobro</button>
+        <button type="button" class="btn btn-ghost" data-close-sheet="cobro-ingreso">Cancelar</button>
       </div>
     </div>
 
@@ -4541,6 +4583,7 @@
     <script src="js/core/split.js" defer></script>
 <script src="js/core/core-state.js" defer></script>
 <script src="js/core/cuenta-efectos.js" defer></script>
+<script src="js/core/cobros.js" defer></script>
 <!--
 // js/core/html-tag.js — primitivo html`` que escapa por defecto (ver
 // auditoria-tecnica.md, "Auditoría exhaustiva de .innerHTML" — solución de

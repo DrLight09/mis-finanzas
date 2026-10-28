@@ -194,7 +194,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
 
     // Mejora 6: balance de Análisis — un color, un signo y un mensaje por escenario
     const esc6 = (ing, gas) => {
-      ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.mesadas=S.mesadas&&{}; S.ingresosFijos=${ing ? `[{id:'i6',nombre:'Sueldo',monto:${ing}}]` : '[]'};` +
+      ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.mesadas=S.mesadas&&{}; S.ingresosFijos=${ing ? `[{id:'i6',nombre:'Sueldo',monto:${ing},cobros:[{id:'c6',mesCubre:mesActual(),monto:${ing},fecha:mesActual()+'-01'}]}]` : '[]'};` +
          (gas ? `S.gastosVar=[{id:'g6',desc:'Compra',monto:${gas},fecha:hoy(),cat:'Comida',fuente:'efectivo',clase:'gasto'}];` : '') + `renderAnalisis()`);
       const h = q('#analisis-balance-hero');
       return { cls: h.className.replace('ix-analisis-balance-hero ', ''), monto: h.querySelector('.an-hero-monto').textContent.trim(), msg: h.querySelector('.an-hero-msg').textContent.trim(), ing: q('#an-ingresos').textContent.trim() };
@@ -234,7 +234,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c4(pr.querySelectorAll('.inicio-proy-card').length === 3 && !/PRELIMINAR/.test(pr.textContent), 'Proyección: con 35 días sí muestra las 3 cifras, sin chip PRELIMINAR');
 
     // Mejora 11: «Salud financiera» — el consejo del CDT es una sugerencia (no un check verde) y lleva a Cuentas
-    ev(`S.movimientos=[]; S.gastosVar=[]; S.tarjetasCredito=[]; S.cajitas=S.cajitas||[]; S.cuentas=[{id:'nequi',tipo:'nequi',saldo:9000000},{id:'efectivo',tipo:'efectivo',saldo:0}]; S.ingresosFijos=[{id:'i11',nombre:'Sueldo',monto:3000000}]; S.gastosFijos=[{id:'f11',monto:1000000}]; S.pagosGastosFijos={['f11_'+mesActual()]:{monto:1000000}}; renderHealthScore()`);
+    ev(`S.movimientos=[]; S.gastosVar=[]; S.tarjetasCredito=[]; S.cajitas=S.cajitas||[]; S.cuentas=[{id:'nequi',tipo:'nequi',saldo:9000000},{id:'efectivo',tipo:'efectivo',saldo:0}]; S.ingresosFijos=[{id:'i11',nombre:'Sueldo',monto:3000000,cobros:[{id:'c11',mesCubre:mesActual(),monto:3000000,fecha:mesActual()+'-01'}]}]; S.gastosFijos=[{id:'f11',monto:1000000}]; S.pagosGastosFijos={['f11_'+mesActual()]:{monto:1000000}}; renderHealthScore()`);
     const tipCdt = [...w.document.querySelectorAll('#health-score-card .inicio-tip')].find(t => /CDT/.test(t.textContent));
     c4(!!tipCdt && tipCdt.classList.contains('inicio-tip-info') && !tipCdt.classList.contains('inicio-tip-ok') && !!tipCdt.querySelector('.fa-circle-info') && !tipCdt.querySelector('svg'), 'Salud financiera: el consejo del CDT debe verse como sugerencia (ícono de información, no check verde)');
     c4(!w.document.querySelector('#health-score-card .inicio-tip-ok'), 'Salud financiera: no debe haber checks verdes en recomendaciones');

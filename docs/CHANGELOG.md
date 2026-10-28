@@ -6,6 +6,15 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Lista de mejoras de octubre 2026
 
+### 💵 Regla de caja completa: cobro de ingresos fijos y gastos por fecha de pago (2026-10-28, SW v72)
+
+Decisión de diseño: **todo ingreso y todo gasto cuenta en el mes de la fecha en que la plata se movió** (la que escribe quien registra), no en el mes al que «pertenece» ni en el día en que se tecleó. Tres fechas, tres papeles: *mes que cubre* = etiqueta (qué mes está pagado/cobrado), *fecha* = decide el mes, *cuándo se registra* = solo el valor por defecto del campo.
+
+- **Ingresos fijos (cambio mayor).** Antes contaban cada mes desde su fecha de inicio aunque no hubiera entrado plata, y no tocaban ninguna cuenta (si además registrabas el depósito con «Agregar dinero» se contaba doble). Ahora son una plantilla y el ingreso nace al **registrar su cobro**: botón «Cobrar» en la fila → sheet «Registrar cobro» (monto precargado, mes que cubre, fecha en que te pagaron, destino / dividir / «No especificar», nota). Dominio nuevo en `js/core/cobros.js` (sin DOM, valida antes de mutar, espejo `neutro` en la cuenta destino, revierte al borrar); `Periodo.ingresosFijosEntradas()` es la lectura única y `ingresosFijosDelMes` suma por mes de la fecha, así que Inicio, Salud, Análisis, cierre de mes y Wrapped cambian a la vez. Estado en la fila («Cobrado este mes» / «Sin cobrar este mes») y los 3 últimos cobros con ✕. Eliminar el ingreso fijo revierte antes sus cobros. Si olvidas registrar el cobro, ese mes no tiene ese ingreso (es responsabilidad de quien registra; Salud lo dice como «sin ingresos registrados»).
+- **Gastos fijos por fecha de pago.** `Periodo.pagosFijos()` devuelve `mesCubre` (de la clave, para el «Pagado» de la pantalla Gastos y la barra de progreso, que no cambian) y `mes` (el de la fecha del pago, el que cuenta); sin fecha, el mes que cubre. El arriendo de septiembre pagado el 3 de octubre es gasto de octubre.
+- **No se cambió a propósito:** la Mesada ya seguía esta regla; el selector «¿Qué hiciste con esa plata?» (con «No especificar / lo gasté» por defecto) ya resuelve el doble conteo con el saldo de cuando se carga historial, por eso no hay una categoría aparte de «solo historial»; el saldo inicial no es ingreso.
+- Pruebas: `tests/cobros.test.js` (10: sin cobros no suma, sin destino no toca saldos, espejo neutro, fecha vs mes que cubre, dividir, validaciones, borrar, eliminar el ingreso fijo, estado del mes, aviso) y las de `periodo`/`calcHealthScore` actualizadas (fixtures con cobros; gastos fijos por fecha). El smoke del navegador usa cobros en sus fixtures.
+
 ### 🔎 Revisión de Análisis financiero, Salud financiera y Proyección (2026-10-27)
 
 Una revisión (`revision-analisis-financiero.md`, hecha el 2026-10-26 con el backup real) encontró 5 puntos. Se verificaron uno por uno contra el código y los 5 se confirmaron (con una imprecisión en el 1, abajo); se corrigieron todos, el archivo se vació punto por punto y se eliminó. Pruebas **527/527** (eran 519; 8 nuevas) y `scripts/smoke-browser.js` con 7 comprobaciones nuevas en la página real. `sw.js` v71.
@@ -18,7 +27,7 @@ Una revisión (`revision-analisis-financiero.md`, hecha el 2026-10-26 con el bac
 - **5c · «Últimos N días» no contaba días (bug).** N era la cantidad de registros del historial (solo se guarda uno los días en que abres la app y guardas algo) y el eje repartía los puntos en partes iguales. Ahora el eje X reparte por **fecha** (un salto de 10 días ya no se ve igual que uno de 1 día) y el título cuenta los días que abarca la ventana (3 registros en 12 días → «Últimos 12 días»).
 - **Documentación:** `proyeccion-financiera.md`, `analisis-financiero.md`, `salud-financiera.md`, `inicio.md` y `mesada.md` al día; `mapa-codigo.md` al día (`mesadaAvisoMesPago`, `actualizarMpAvisoMes`).
 
-- **Pendiente de decidir (no se tocó):** los **ingresos fijos** cuentan cada mes desde su fecha de inicio aunque la plata no se haya registrado; para que la app refleje la vida real, lo más fiel sería contarlos solo cuando se registre su cobro (como la Mesada). Es un cambio mayor (hoy no hay un «cobrado» por mes) y queda como propuesta.
+- **Ingresos fijos:** resuelto el 2026-10-28, ver la entrada «Regla de caja completa» más abajo.
 
 ### 🐷 Alcancía: estado vacío estándar (2026-10-27)
 

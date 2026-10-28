@@ -19,21 +19,22 @@
      · en Wrapped los pagos fijos llegaban sin categoría.
 
    Reglas (todas las pantallas):
-     · Un gasto fijo pertenece al mes de su CLAVE en S.pagosGastosFijos
-       ("<id>_YYYY-MM"): es el mes que ese pago cubre. Es la misma clave que usa
-       la pantalla Gastos para marcar "Pagado" y la barra de progreso.
-     · Su monto es el que se PAGÓ (pago.monto); solo si falta cae al monto actual
-       del gasto fijo. Nunca depende de si el gasto fijo todavía existe.
+     · REGLA DE CAJA, una sola para todo: un ingreso o un gasto cuenta en el mes de la FECHA en que la plata se movió
+       (la que escribe quien registra), no en el mes al que "pertenece" ni en el día en que se tecleó.
+     · Un gasto fijo se identifica por su CLAVE en S.pagosGastosFijos ("<id>_YYYY-MM"): es el mes que ese pago cubre, y
+       sirve a la pantalla Gastos para marcar "Pagado" y a la barra de progreso. Pero CUENTA como gasto en el mes de la
+       fecha del pago (pago.fecha); sin fecha, en el mes que cubre. El arriendo de septiembre pagado el 3 de octubre es
+       gasto de octubre, igual que cualquier otra plata que sale ese día.
+     · Su monto es el que se PAGÓ (pago.monto); solo si falta cae al monto actual del gasto fijo. Nunca depende de si el
+       gasto fijo todavía existe.
      · Gasto variable real = S.gastosVar del mes que no sea _esGastoVarNoReal().
-     · Ingreso del mes = mesada + ingresos fijos + entradas reales
-       (entradasIngresoReal, core-state.js).
-     · Ingreso = plata que ENTRÓ en el mes (regla de caja): la Mesada cuenta en el mes de la
-       FECHA en que te pagaron (cada abono de un pendiente, en la suya); su clave
-       S.mesadas[padre].pagos['YYYY-<mes 0-11>'] es solo el mes que cubre, para saber qué mes
-       está pagado en la pantalla de Mesada. Pago sin monto: la cuota del año; sin fecha: el
-       mes que cubre. Es la misma regla del historial de patrimonio.
-     · Los ingresos fijos son la excepción: son un ingreso esperado y cuentan cada mes desde
-       su fecha de inicio, se haya registrado el pago o no.
+     · Ingreso del mes = mesada + ingresos fijos cobrados + entradas reales (entradasIngresoReal, core-state.js).
+     · La Mesada cuenta en el mes de la FECHA en que te pagaron (cada abono de un pendiente, en la suya); su clave
+       S.mesadas[padre].pagos['YYYY-<mes 0-11>'] es solo el mes que cubre. Pago sin monto: la cuota del año; sin fecha:
+       el mes que cubre.
+     · Un ingreso fijo (sueldo, freelance…) es una plantilla que NO suma por sí sola: cuenta cuando se registra su COBRO
+       (js/core/cobros.js), en el mes de la fecha del cobro. Si no registras el cobro, ese mes no tiene ese ingreso.
+     · Es la misma regla del historial de patrimonio y de las entradas reales.
 
    Todas las funciones reciben `estado` opcional (por defecto S): Wrapped trabaja
    sobre el estado que le pasan, no necesariamente el global.
@@ -107,11 +108,23 @@ const Periodo = (() => {
 
   const mesadaDelMes = (mes, estado) => mesadaEntradas(estado).reduce((a, e) => e.mes === mes ? a + e.monto : a, 0);
 
-  function ingresosFijosDelMes(mes, estado) {
+  // Cobros de ingresos fijos (js/core/cobros.js): cada uno cuenta en el mes de su fecha; sin fecha, en el mes que cubre.
+  // → [{ id, nombre, cobroId, mesCubre:'YYYY-MM', monto, fecha, mes:'YYYY-MM' }]
+  function ingresosFijosEntradas(estado) {
     const fijos = _st(estado).ingresosFijos;
-    if (!Array.isArray(fijos)) return 0;
-    return fijos.reduce((a, ing) => (!ing.desde || ing.desde <= mes) ? a + (ing.monto || 0) : a, 0);
+    if (!Array.isArray(fijos)) return [];
+    const out = [];
+    fijos.forEach(ing => {
+      if (!ing || !Array.isArray(ing.cobros)) return;
+      ing.cobros.forEach(c => {
+        if (!c || !(c.monto > 0)) return;
+        out.push({ id: ing.id, nombre: ing.nombre || '', cobroId: c.id, mesCubre: c.mesCubre || '', monto: c.monto, fecha: c.fecha || '', mes: c.fecha ? mesKey(c.fecha) : (c.mesCubre || '') });
+      });
+    });
+    return out;
   }
+
+  const ingresosFijosDelMes = (mes, estado) => ingresosFijosEntradas(estado).reduce((a, e) => e.mes === mes ? a + e.monto : a, 0);
 
   function ingresosDelMes(mes, estado) {
     const mesada = mesadaDelMes(mes, estado);
@@ -121,8 +134,9 @@ const Periodo = (() => {
   }
 
   /* ---- GASTOS ---- */
-  // Todos los pagos de gastos fijos, normalizados: [{id, mes, monto, fecha, cat, nombre}].
-  // S.pagosGastosFijos es un mapa {"<gfId>_YYYY-MM": {fecha, fuente, monto}}; el mes sale de la clave.
+  // Todos los pagos de gastos fijos, normalizados: [{id, mes, mesCubre, monto, fecha, cat, nombre}].
+  // S.pagosGastosFijos es un mapa {"<gfId>_YYYY-MM": {fecha, fuente, monto}}; `mesCubre` sale de la clave y `mes` (el que
+  // cuenta) de la fecha del pago.
   function pagosFijos(estado) {
     const st = _st(estado);
     const raw = st.pagosGastosFijos;
@@ -133,7 +147,8 @@ const Periodo = (() => {
       if (!p || !mes) return;
       const gf = gfs.find(x => x.id === id);
       out.push({
-        id, mes,
+        id, mesCubre: mes,
+        mes: p.fecha ? mesKey(p.fecha) : mes, // regla de caja: cuenta en el mes de la fecha del pago
         monto: p.monto || 0,
         fecha: p.fecha || '',
         cat: (gf && gf.cat) || p.cat || null,
@@ -242,7 +257,7 @@ const Periodo = (() => {
     return { mes, ingresos, gastos, balance, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }
 
-  return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosDelMes, mesadaEntradas,
+  return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, ingresosDelMes, mesadaEntradas,
            pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes };
 })();
 

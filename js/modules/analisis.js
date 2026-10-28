@@ -446,7 +446,7 @@ function renderIngresosFijos(){
   if(!el)return;
   const lista=S.ingresosFijos||[];
   if(!lista.length){
-    el.innerHTML='<div class="an-vacio an-vacio-13">Sin ingresos fijos. Agrega tu sueldo, freelance u otro ingreso recurrente.</div>';
+    el.innerHTML='<div class="an-vacio an-vacio-13">Sin ingresos fijos. Agrega tu sueldo, freelance u otro ingreso recurrente y registra su cobro cada vez que te paguen.</div>';
     return;
   }
   // Migrado a html`` (ver auditoria-tecnica.md, cierre de la discrepancia
@@ -464,22 +464,40 @@ function renderIngresosFijos(){
   // el medio). Cada `html\`...\`` interno ya devuelve un fragmento seguro;
   // `.join()` lo coacciona a string vía su propio `toString()`, sin volver
   // a escapar nada — misma coerción implícita ya validada para innerHTML.
+  const mes=mesActual();
   el.innerHTML=lista.map(ing=>{
     const desdeLabel=ing.desde?html`<span class="an-desde">desde ${ing.desde}</span>`:'';
-    return html`<div class="row an-ing-row">
-      <div class="an-col-2">
-        <span class="an-nom-13">${ing.nombre||'Sin nombre'}</span>
-        ${desdeLabel}
+    // Estado del mes en curso: un ingreso fijo solo suma cuando se registra su cobro.
+    const est=ingresoFijoEstadoMes(ing,mes);
+    const estadoHtml=est.cobrado>0
+      ?html`<span class="an-ing-estado an-ing-estado-ok">Cobrado este mes · ${fmt(est.cobrado)}</span>`
+      :(est.esperado?html`<span class="an-ing-estado an-ing-estado-pend">Sin cobrar este mes</span>`:'');
+    const recientes=cobrosDeIngresoFijo(ing).slice().sort((x,y)=>String(y.fecha||'').localeCompare(String(x.fecha||''))).slice(0,3);
+    const cobrosHtml=recientes.length?html`<div class="an-cobros">${raw(recientes.map(c=>html`<div class="an-cobro-fila">
+        <span class="an-cobro-txt">${c.fecha||''} · cubre ${cobroMesTexto(c.mesCubre)}${cobroFuentesDe(c).length?' · '+cobroFuentesDe(c).map(f=>fuenteLabel(f)).join(', '):''}</span>
+        <span class="an-cobro-acc"><span class="an-cobro-monto">+${fmt(c.monto||0)}</span>
+          <button type="button" ${raw(Events.attr('analisis:eliminarCobro', ing.id, c.id))} class="an-btn-icono an-t-muted" title="Borrar este cobro" aria-label="Borrar este cobro">
+            <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button></span>
+      </div>`).join(''))}</div>`:'';
+    return html`<div class="an-ing-bloque">
+      <div class="row an-ing-row">
+        <div class="an-col-2">
+          <span class="an-nom-13">${ing.nombre||'Sin nombre'}</span>
+          <span class="an-desde-fila">${raw(estadoHtml)}${desdeLabel}</span>
+        </div>
+        <div class="an-flex-10">
+          <span class="an-ing-monto">${fmt(ing.monto||0)}</span>
+          <button type="button" ${raw(Events.attr('analisis:cobrarIngresoFijo', ing.id))} class="btn-chip btn-chip-accent">Cobrar</button>
+          <button type="button" ${raw(Events.attr('analisis:editarIngresoFijo', ing.id))} class="an-btn-icono an-t-muted" aria-label="Editar">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button type="button" ${raw(Events.attr('analisis:eliminarIngresoFijo', ing.id))} class="an-btn-icono an-t-red" aria-label="Eliminar">
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
+        </div>
       </div>
-      <div class="an-flex-10">
-        <span class="an-ing-monto">${fmt(ing.monto||0)}</span>
-        <button type="button" ${raw(Events.attr('analisis:editarIngresoFijo', ing.id))} class="an-btn-icono an-t-muted">
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </button>
-        <button type="button" ${raw(Events.attr('analisis:eliminarIngresoFijo', ing.id))} class="an-btn-icono an-t-red">
-          <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-        </button>
-      </div>
+      ${raw(cobrosHtml)}
     </div>`;
   }).join('<div class="divider"></div>');
 }
@@ -513,10 +531,15 @@ function editarIngresoFijo(id){ abrirSheetIngresoFijo(id); }
 async function eliminarIngresoFijo(id){
   const ing=(S.ingresosFijos||[]).find(x=>x.id===id);
   if(!ing)return;
-  const ok=await dialogo('Eliminar ingreso','¿Eliminar "'+ing.nombre+'"?','Eliminar',true);
+  const cobros=cobrosDeIngresoFijo(ing);
+  const aviso=cobros.length?' Se quitarán también sus '+cobros.length+(cobros.length===1?' cobro registrado':' cobros registrados')+(cobros.some(c=>cobroFuentesDe(c).length)?' y la plata que entró a tus cuentas se descontará.':'.'):'';
+  const ok=await dialogo('Eliminar ingreso','¿Eliminar "'+ing.nombre+'"?'+aviso,'Eliminar',true);
   if(!ok)return;
+  const _histAntes=medirPatrimonioParaHistorial();
+  cobros.forEach(c=>{cobroRevertir(c);});
   S.ingresosFijos=(S.ingresosFijos||[]).filter(x=>x.id!==id);
-  save();renderIngresosFijos();renderAnalisis();
+  cobros.forEach(c=>purgarEfectoEnHistorial(_histAntes,c));
+  save();refresh();renderAnalisis();
 }
 
 function guardarIngresoFijo(){
@@ -535,6 +558,110 @@ function guardarIngresoFijo(){
   closeSheet('ingreso-fijo');
   save();renderIngresosFijos();renderAnalisis();
   toast(_ifEditId?'Ingreso actualizado':'Ingreso guardado');
+}
+
+/* ---- COBRO DE UN INGRESO FIJO ----
+   Reglas de negocio en js/core/cobros.js (cobroRegistrar / cobroBorrar). Acá solo la pantalla: leer el sheet, llamar a esas
+   reglas y repintar. Mismo molde que «Registrar pago» de Mesada: monto, fecha en que te pagaron, destino (o dividir). */
+let _cbId=null;
+let cbSplitMode=false;
+
+crearSplitWidget('cb',{
+  simpleId:'cbModoSimple',splitId:'cbModoDividido',toggleId:'cbSplitToggle',rowsId:'cbSplitRows',
+  getModo:()=>cbSplitMode,setModo:v=>{cbSplitMode=v;},
+  getFuentesFn:selectedVal=>buildFuentesOptsHtml({selectedVal,placeholder:'No especificar',incluirTC:false}),
+  onPreview:()=>actualizarCbPreview(),
+});
+
+function actualizarCbAvisoMes(){
+  const el=document.getElementById('cbAvisoMes');
+  if(el)el.textContent=cobroAvisoMes(document.getElementById('cbMes').value,document.getElementById('cbFecha').value);
+}
+
+function actualizarCbPreview(){
+  const prev=document.getElementById('cbPreview');
+  if(!prev)return;
+  const v=parseMoney(document.getElementById('cbMonto').value)||0;
+  if(!v){prev.textContent='';return;}
+  if(cbSplitMode){
+    const splits=splitGetData('cb');
+    const total=splits.reduce((a,x)=>a+x.monto,0),resto=v-total;
+    if(!splits.length){prev.textContent=fmt(v)+' por distribuir';prev.style.color='var(--text2)';return;}
+    const lineas=splits.map(x=>fuenteLabel(x.fuente||'')+': +'+fmt(x.monto)).join(' · ');
+    if(resto>0){prev.textContent=lineas+' · Sin asignar: '+fmt(resto);prev.style.color='var(--amber)';}
+    else if(resto<0){prev.textContent=lineas+' · Excede por: '+fmt(-resto);prev.style.color='var(--red)';}
+    else{prev.textContent=lineas+' · Todo distribuido';prev.style.color='var(--accent)';}
+    return;
+  }
+  const dest=document.getElementById('cbDestino').value;
+  if(dest){
+    const actual=getSaldoFuente(dest);
+    prev.textContent=fuenteLabel(dest)+': '+fmt(actual)+' + '+fmt(v)+' = '+fmt(actual+v);
+    prev.style.color='var(--accent)';
+  }else{
+    prev.textContent=fmt(v)+' registrados';
+    prev.style.color='var(--text2)';
+  }
+}
+
+function abrirCobroIngresoFijo(id){
+  const ing=(S.ingresosFijos||[]).find(x=>x.id===id);
+  if(!ing)return;
+  _cbId=id;
+  document.getElementById('cbTitle').textContent='Cobro · '+(ing.nombre||'Ingreso fijo');
+  setMoneyInput('cbMonto',ing.monto||0);
+  document.getElementById('cbMes').value=mesActual();
+  document.getElementById('cbFecha').value=hoy(); // valor por defecto: quien registra el cobro de otro día cambia la fecha
+  document.getElementById('cbNota').value='';
+  document.getElementById('cbPreview').textContent='';
+  splitReset('cb');
+  document.getElementById('cbSplitToggle').style.display='';
+  document.getElementById('cbDestino').innerHTML=buildFuentesOptsHtml({placeholder:'No especificar / lo gasté',incluirTC:false});
+  actualizarCbAvisoMes();
+  actualizarCbPreview();
+  openSheet('cobro-ingreso');
+}
+
+function confirmarCobroIngresoFijo(){
+  const r=cobroRegistrar({
+    id:_cbId,
+    mesCubre:document.getElementById('cbMes').value,
+    monto:parseMoney(document.getElementById('cbMonto').value)||0,
+    fecha:document.getElementById('cbFecha').value||hoy(),
+    nota:(document.getElementById('cbNota').value||'').trim(),
+    destino:document.getElementById('cbDestino').value,
+    splitMode:cbSplitMode,
+    splits:cbSplitMode?splitGetData('cb'):null,
+  });
+  if(!r.ok){
+    if(r.motivo==='monto-invalido')toast('Ingresa el monto que te pagaron','err');
+    else if(r.motivo==='mes-invalido')toast('Elige el mes que cubre este cobro','err');
+    else if(r.motivo==='split-excede'){const prev=document.getElementById('cbPreview');prev.textContent='El total dividido supera el monto recibido';prev.style.color='var(--red)';}
+    return;
+  }
+  closeSheet('cobro-ingreso');
+  save();refresh();renderAnalisis();
+  toast('Cobro registrado');
+}
+
+async function eliminarCobroIngresoFijo(id,cobroId){
+  const ing=(S.ingresosFijos||[]).find(x=>x.id===id);
+  const c=ing&&cobrosDeIngresoFijo(ing).find(x=>x.id===cobroId);
+  if(!c)return;
+  // Protección por antigüedad (docs/proteccion-antiguedad-movimientos.md): solo si borrar mueve el saldo de alguna cuenta.
+  const fuentes=cobroFuentesDe(c);
+  if(fuentes.length){
+    const nivel=nivelAntiguedadMovimiento(c.fecha,0,'ingreso-fijo');
+    if(nivel==='bloqueado'){await avisarMovimientoBloqueado();return;}
+    if(nivel==='viejo'){
+      const nombre=fuentes.length>1?fuentes.length+' cuentas':fuenteLabel(fuentes[0]);
+      if(!await confirmarBorrarMovimientoViejo(nombre,c.monto||0,'baja'))return;
+    }
+  }else if(!await dialogo('Borrar cobro','¿Borrar este cobro de '+fmt(c.monto||0)+'? Dejará de contar como ingreso.','Borrar',true))return;
+  const _histAntes=medirPatrimonioParaHistorial();
+  cobroBorrar(id,cobroId);
+  purgarEfectoEnHistorial(_histAntes,c);
+  save();refresh();renderAnalisis();
 }
 
 /* ---- PRESUPUESTOS ----
@@ -633,9 +760,24 @@ Events.registerAll('analisis', {
   abrirSheetIngresoFijo: () => abrirSheetIngresoFijo(),
   editarIngresoFijo,
   eliminarIngresoFijo,
+  cobrarIngresoFijo: abrirCobroIngresoFijo,
+  eliminarCobro: eliminarCobroIngresoFijo,
   abrirPresupuestos,
 });
 
 /* ---- WIRING de controles que no son data-action simples ---- */
 const _btnGuardarIngresoFijo = document.getElementById('btn-guardar-ingreso-fijo');
 if (_btnGuardarIngresoFijo) _btnGuardarIngresoFijo.addEventListener('click', guardarIngresoFijo);
+
+// Controles estáticos del sheet «Registrar cobro» (los ids ya existen en index.html).
+[
+  ['btn-confirmar-cobro','click',confirmarCobroIngresoFijo],
+  ['cbMonto','input',actualizarCbPreview],
+  ['cbDestino','change',actualizarCbPreview],
+  ['cbMes','input',actualizarCbAvisoMes],
+  ['cbMes','change',actualizarCbAvisoMes],
+  ['cbFecha','input',actualizarCbAvisoMes],
+  ['cbFecha','change',actualizarCbAvisoMes],
+  ['cbSplitToggle','click',()=>splitToggle('cb')],
+  ['btn-add-split-row-cb','click',()=>splitAgregarRow('cb')],
+].forEach(([id,evt,fn])=>{const el=document.getElementById(id);if(el)el.addEventListener(evt,fn);});

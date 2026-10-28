@@ -1821,7 +1821,6 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .ix-crgba-240-184-64-p7, .hero-label.ix-crgba-240-184-64-p7{color:rgba(240,184,64,.7);}
 .ix-alcancia-hero-saldo, .hero-amount.ix-alcancia-hero-saldo{color:var(--amber);filter:blur(8px);user-select:none;}
 .ix-mb14, .cuenta-actions.ix-mb14, .detail-header.ix-mb14{margin-bottom:14px;}
-.ix-button-045, .btn.ix-button-045{background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.3);}
 .ix-camber, .stat-value.ix-camber, .il.ix-camber{color:var(--amber);}
 .ix-ctext2-fs13, .stat-value.ix-ctext2-fs13{color:var(--text2);font-size:13px;}
 .ix-button-048, .btn.ix-button-048{background:var(--amber);color:#0a0a0a;border:none;box-shadow:0 2px 14px rgba(240,184,64,.25);margin-bottom:9px;}

@@ -824,13 +824,11 @@
             </div>
           </div>
           <div id="alcancia-no-iniciada" style="display:none;">
-            <div class="card">
-              <div class="empty-state">
-                <div class="empty-state-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 1 4 4v1h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1V6a4 4 0 0 1 4-4z"/><circle cx="12" cy="14" r="1"/></svg></div>
-                <div class="empty-state-title">No hay alcancía activa</div>
-                <div class="empty-state-sub">Inicia una nueva alcancía para empezar a guardar plata de forma oculta</div>
-                <button type="button" class="btn btn-primary ix-button-045" data-action="alcancia:iniciarNueva" data-args="[]">Iniciar alcancía</button>
-              </div>
+            <div class="empty-state">
+              <div class="empty-state-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><path d="M12 2a4 4 0 0 1 4 4v1h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1V6a4 4 0 0 1 4-4z"/><circle cx="12" cy="14" r="1"/></svg></div>
+              <div class="empty-state-title">Sin alcancía activa</div>
+              <div class="empty-state-sub">Inicia una nueva alcancía para empezar a guardar plata de forma oculta.</div>
+              <button type="button" class="empty-state-btn" data-action="alcancia:iniciarNueva" data-args="[]">Iniciar alcancía</button>
             </div>
           </div>
           <div id="alcancia-activa">

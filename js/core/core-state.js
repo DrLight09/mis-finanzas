@@ -1083,7 +1083,7 @@ function gastosMes(mesK){
 // Suma los ingresos fijos configurados que aplican para un mes dado (YYYY-MM)
 function getIngresosFijosMes(mesK){ return Periodo.ingresosFijosDelMes(mesK); }
 
-// ── CLASE EXPLÍCITA (plan-clasificacion-movimientos.md) ──
+// ── CLASE EXPLÍCITA (docs/analisis-financiero.md y docs/libro-de-movimientos.md §7) ──
 // Cada movimiento nace con `clase`: 'ingreso' (sube el patrimonio), 'gasto' (lo baja), 'neutro' (mueve plata sin cambiar el
 // patrimonio: el "espejo" de Mesada, Préstamos, Encargos, plata comprometida…) o 'ajuste' (corrección de datos, ej. la apertura
 // de una cuenta). Todo lector pasa por claseEfectivaMovimiento(): no hay otro camino que mire etiquetas ni textos.

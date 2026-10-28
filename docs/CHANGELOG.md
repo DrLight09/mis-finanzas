@@ -120,7 +120,7 @@ Con `jsdom` disponible por primera vez se pasó el comparador de cascada (`scrip
 - **Carpeta de pruebas:** el usuario la tiene como **`test/`**, no `tests/` (entregué `tests/estilos.test.js` por error). Desde ahora los archivos de prueba se entregan en `test/`. Los verificadores `analisis/cuentas/prestado/spotify/wrapped.js` resuelven la carpeta (`tests` o `test`) como ya hacía `conciliacion.js`.
 - **Falso positivo conocido:** el comparador avisa `.cajita-row-hover:hover` (border-color) en `nu.js`; viene de la palabra `border-color` dentro de `transition:` del estilo original, no de una propiedad real.
 - **`smoke-browser.js` (jsdom):** 0 errores de carga, 0 fallos en las fases 2 y 3; los 7 "sin handler" (`authgate:*`, `pin:*`) y los 4 "lanzan al tocar" (`config:signOut`, `config:abrirEliminarCuenta`) son de módulos ES de Firebase que ese entorno no carga (ya era así).
-- **Decisión CSP: opción A** (se mantiene `'unsafe-inline'` en `style-src`). Razón: ver `plan-reestructuracion.md` Paso 5. **El Paso 5 queda CERRADO.**
+- **Decisión CSP: opción A** (se mantiene `'unsafe-inline'` en `style-src`). Razón: ver `auditoria-tecnica.md` («Seguridad — pendiente»). **El Paso 5 queda CERRADO.**
 - `sw.js` v56. Pruebas: 450/450.
 
 ### 🎨 Estilos inline → clases (2026-10-23, Paso 5, tanda 18) — `index.html`
@@ -1035,6 +1035,12 @@ De paso, `guia-estilo-sheets.md` §3 quedó actualizada con 4 sheets que existí
 ---
 
 ## Infraestructura / seguridad
+
+### 🧹 Planes retirados tras verificarlos contra el código (2026-10-27)
+
+- **Se eliminaron de la raíz** `plan-reestructuracion.md`, `plan-clasificacion-movimientos.md` y `libro-de-movimientos.md` (copia idéntica a `docs/libro-de-movimientos.md`). Comprobado en el código antes de borrar: B1–B5 y B8 ya corregidos (`Configurar saldo mínimo` una sola vez, sheet `mov-cuenta-custom` fuera, `_fechaSafe` en `inicio.js`, un solo listener de cierre del tooltip de Proyección); `calcC`/`calcCDT`/`getCajitaNombre` viven en `js/core/nu-calc.js`; `Periodo` (`periodo.js`) es la definición única del mes; `save()` ya no lee inputs del DOM (esas lecturas están en `load()`, que solo pinta valores); `mesadaMonteMama`/`plataCometida` no existen; `S.schemaVersion` + `MIGRACIONES` en `core-state.js`; Paso 5 cerrado el 2026-10-24. La clasificación por `clase` está implementada y documentada en `analisis-financiero.md`; E6 (una sola lista) es `S.movimientos` y E7 se resolvió con el libro de patas de caja, no con partida doble.
+- **Lo único que se conservó** es la decisión «`clase` en vez de partida doble» y el pendiente de Encargos (`neutro` vs `tercero`), ahora en `libro-de-movimientos.md` §7. Los comentarios de código que apuntaban a `plan-clasificacion-movimientos.md` (`core-state.js`, `cuenta-efectos.js`, `tests/nucleo.test.js`) y los de `guia-estilo-sheets.md` y de la entrada del Paso 5 apuntan ahora a `analisis-financiero.md` / `auditoria-tecnica.md`. Sin cambios de comportamiento.
+- **`propuestas-estructura.md`, re-medido:** el punto 1 (estados vacíos) y el 4 (mínimo de cuentas al dividir) ya estaban hechos (mejoras 1, 3 y 4 de `mejoras.md`); el 2 (íconos) también: 290 de 293 `<svg>` llevan `aria-hidden` y los 3 restantes son el favicon y reglas CSS; el 7 (personas de Spotify) no duplica datos: cada integrante guarda `personaId` y su `nombre` se resuelve desde `S.personas` (`spNombreDe`) al guardar, así que no hace falta migración. Quedan solo el 3 (fila de movimiento compartida) y los puntos 5 y 6, que el propio documento marca como «no de forma preventiva».
 
 ### 🐛 Corrección (2026-10-10) — Los préstamos y abonos sin cuenta inflaban la tendencia y la proyección de Inicio (`core-state.js`)
 

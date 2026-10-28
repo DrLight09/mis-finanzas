@@ -64,7 +64,7 @@ function registrarMovEspejo(o) {
   reg._esEspejo = true; // por defecto un espejo NO es ingreso; `extra` lo anula si es plata nueva (_esExtraIngreso, _esPerdonRecibido, _esDiferencialEncargo)
   reg._origenSeccion = o.origen;
   if (o.extra) Object.assign(reg, o.extra);
-  // `clase` (plan-clasificacion-movimientos.md): explícita si el módulo la pasa; si no, se deduce
+  // `clase` (docs/analisis-financiero.md, «La respuesta está guardada en el movimiento»): explícita si el módulo la pasa; si no, se deduce
   // de las banderas de "plata nueva" de `extra` (hasta que cada llamador pase `clase` a mano) y,
   // por defecto, un espejo es 'neutro'. Las salidas de un espejo también son 'neutro'.
   reg.clase = _claseValida(o.clase) ? o.clase

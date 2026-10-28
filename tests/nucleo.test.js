@@ -901,7 +901,7 @@ describe('clase-movimientos', () => {
 });
 
 describe('clase-cobertura', () => {
-  // Guardia de cobertura (plan-clasificacion-movimientos.md): todo código que CREA un movimiento ingreso/gasto en
+  // Guardia de cobertura (docs/analisis-financiero.md, «La respuesta está guardada en el movimiento»): todo código que CREA un movimiento ingreso/gasto en
   // S.movimientos, S.gastosVar o cuenta.movimientos (objeto literal) debe escribir `clase`. Un módulo nuevo que
   // lo olvide rompe este test en vez de dejar el ingreso o gasto del mes mal sin avisar.
   // Quedan fuera a propósito: las salidas espejo (tipo 'salida'; 'salida_manual' SÍ lleva clase: es un gasto,

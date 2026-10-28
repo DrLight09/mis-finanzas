@@ -12,6 +12,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/bootstrap.js` | de entrada (defer) | 1 | 0 |
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
 | `js/core/calc-helpers.js` | de entrada (defer) | 15 | 0 |
+| `js/core/cobros.js` | de entrada (defer) | 14 | 1 |
 | `js/core/color-picker.js` | de entrada (defer) | 1 | 0 |
 | `js/core/core-state.js` | de entrada (defer) | 83 | 12 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
@@ -43,7 +44,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/wrapped-gate.js` | de entrada (defer) | 8 | 1 |
 | `js/modules/actividad_reciente.js` | lazy — grupo `historial` | 0 | 0 |
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 33 | 0 |
-| `js/modules/analisis.js` | lazy — grupo `analisis` | 8 | 0 |
+| `js/modules/analisis.js` | lazy — grupo `analisis` | 13 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 10 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 64 | 4 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 117 | 0 |
@@ -83,6 +84,14 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `_ensureMesadas`, `_getCuotaAnio`, `_mesNombreDeKey`, `Deudas`, `getDeudorSaldo`, `getMesadaData`, `getMiDeudaSaldo`, `getTCById`, `mesadaOrigenDeMovEncargo`, `spNombreDe`, `spPersonaPagadaVigente`, `tcCupoDisponible`, `tcCupoUsadoPct`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`
+
+### `js/core/cobros.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** `_cobroEntrar`, `_cobroSacar`, `_ogCobro`, `cobroAvisoMes`, `cobroBorrar`, `cobroFuentesDe`, `cobroMesTexto`, `cobroRegistrar`, `cobroRevertir`, `cobroRevertirTodos`, `cobrosDeIngresoFijo`, `ingresoFijoEsperadoEn`, `ingresoFijoEstadoMes`, `ingresoFijoPorId`
+
+**Globales:** `COBRO_MES_RE`
 
 ### `js/core/color-picker.js`
 
@@ -284,7 +293,7 @@ Carga: lazy — grupo `alcancia`
 
 Carga: lazy — grupo `analisis`
 
-**Funciones:** `abrirPresupuestos`, `abrirSheetIngresoFijo`, `editarIngresoFijo`, `eliminarIngresoFijo`, `guardarIngresoFijo`, `renderAnalisis`, `renderIngresosFijos`, `renderPresupuestos`
+**Funciones:** `abrirCobroIngresoFijo`, `abrirPresupuestos`, `abrirSheetIngresoFijo`, `actualizarCbAvisoMes`, `actualizarCbPreview`, `confirmarCobroIngresoFijo`, `editarIngresoFijo`, `eliminarCobroIngresoFijo`, `eliminarIngresoFijo`, `guardarIngresoFijo`, `renderAnalisis`, `renderIngresosFijos`, `renderPresupuestos`
 
 ### `js/modules/configuracion.js`
 
@@ -465,6 +474,8 @@ Ninguno.
 | `_checkGastoAlto` | `js/modules/inicio.js` |
 | `_claseValida` | `js/core/core-state.js` |
 | `_closeDialog` | `js/core/core-state.js` |
+| `_cobroEntrar` | `js/core/cobros.js` |
+| `_cobroSacar` | `js/core/cobros.js` |
 | `_colorDeuda` | `js/modules/prestado.js` |
 | `_confirmarMoverEncCuentasSplit` | `js/modules/encargos.js` |
 | `_confirmarMovimientoConGuard` | `js/modules/prestado.js` |
@@ -684,6 +695,7 @@ Ninguno.
 | `_nuMovToggleApertura` | `js/modules/nu.js` |
 | `_og` | `js/modules/prestado.js` |
 | `_ogAlc` | `js/modules/alcancia.js` |
+| `_ogCobro` | `js/core/cobros.js` |
 | `_ogCp` | `js/modules/plata_comprometida.js` |
 | `_ogCta` | `js/modules/cuentas.js` |
 | `_ogEnc` | `js/modules/encargos.js` |
@@ -917,6 +929,7 @@ Ninguno.
 | `abrirCargoEspecialTC` | `js/modules/tarjetas_credito.js` |
 | `abrirChequeoNu` | `js/modules/nu.js` |
 | `abrirCobrarCDT` | `js/modules/nu.js` |
+| `abrirCobroIngresoFijo` | `js/modules/analisis.js` |
 | `abrirCompraConTC` | `js/modules/encargos.js` |
 | `abrirCompraTC` | `js/modules/tarjetas_credito.js` |
 | `abrirCrearCDT` | `js/modules/nu.js` |
@@ -968,6 +981,8 @@ Ninguno.
 | `actualizarBotonesNu` | `js/modules/nu.js` |
 | `actualizarBotonesTransferir` | `js/modules/cuentas.js` |
 | `actualizarBotonRetirar` | `js/modules/cuentas.js` |
+| `actualizarCbAvisoMes` | `js/modules/analisis.js` |
+| `actualizarCbPreview` | `js/modules/analisis.js` |
 | `actualizarGvSplitPreview` | `js/modules/gastos.js` |
 | `actualizarMpAvisoMes` | `js/modules/mesada.js` |
 | `actualizarMppPreview` | `js/modules/mesada.js` |
@@ -1024,12 +1039,22 @@ Ninguno.
 | `clickMesDot` | `js/modules/mesada.js` |
 | `closeSheet` | `js/core/sheet-stack.js` |
 | `closeSwipeSheet` | `js/modules/alcancia.js` |
+| `COBRO_MES_RE` | `js/core/cobros.js` |
+| `cobroAvisoMes` | `js/core/cobros.js` |
+| `cobroBorrar` | `js/core/cobros.js` |
+| `cobroFuentesDe` | `js/core/cobros.js` |
+| `cobroMesTexto` | `js/core/cobros.js` |
+| `cobroRegistrar` | `js/core/cobros.js` |
+| `cobroRevertir` | `js/core/cobros.js` |
+| `cobroRevertirTodos` | `js/core/cobros.js` |
+| `cobrosDeIngresoFijo` | `js/core/cobros.js` |
 | `confirmarAgregarDinero` | `js/modules/cuentas.js` |
 | `confirmarAgregarDineroMenu` | `js/modules/cuentas.js` |
 | `confirmarBorrarMovimientoViejo` | `js/core/core-state.js` |
 | `confirmarCambioTasaNu` | `js/modules/nu.js` |
 | `confirmarCargoEspecialTC` | `js/modules/tarjetas_credito.js` |
 | `confirmarCobrarCDT` | `js/modules/nu.js` |
+| `confirmarCobroIngresoFijo` | `js/modules/analisis.js` |
 | `confirmarCompraConTC` | `js/modules/encargos.js` |
 | `confirmarCompraTC` | `js/modules/tarjetas_credito.js` |
 | `confirmarCrearCDT` | `js/modules/nu.js` |
@@ -1103,6 +1128,7 @@ Ninguno.
 | `editarParte` | `js/modules/encargos.js` |
 | `editarSpotify` | `js/modules/spotify.js` |
 | `eliminarCat` | `js/modules/configuracion.js` |
+| `eliminarCobroIngresoFijo` | `js/modules/analisis.js` |
 | `eliminarCompraTC` | `js/modules/tarjetas_credito.js` |
 | `eliminarCuentaCustom` | `js/modules/cuentas.js` |
 | `eliminarDeudorActual` | `js/modules/prestado.js` |
@@ -1193,6 +1219,9 @@ Ninguno.
 | `ICONO_EFECTIVO_SELECTOR` | `js/modules/cuentas.js` |
 | `ICONOS_CUENTA` | `js/modules/cuentas.js` |
 | `importarJSON` | `js/modules/configuracion.js` |
+| `ingresoFijoEsperadoEn` | `js/core/cobros.js` |
+| `ingresoFijoEstadoMes` | `js/core/cobros.js` |
+| `ingresoFijoPorId` | `js/core/cobros.js` |
 | `ingresosRealesDelMes` | `js/core/core-state.js` |
 | `iniciales` | `js/core/bootstrap.js` |
 | `initMovSheet` | `js/modules/prestado.js` |

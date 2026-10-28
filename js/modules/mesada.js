@@ -606,9 +606,9 @@ function _poblarDestinoMesada(selectId) {
   if (sel) sel.innerHTML = buildFuentesOptsHtml({ placeholder: 'No especificar / lo gasté', incluirTC: false });
 }
 
-// La Mesada cuenta como ingreso del mes que CUBRE (la clave del pago), no del mes en que te la pagaron. Si la fecha
-// elegida cae en otro mes se avisa antes de guardar, para que no sorprenda que el balance de este mes no la sume.
-// Devuelve el texto del aviso o '' (clave inválida, sin fecha, o la fecha cae en el mes que cubre).
+// La Mesada cuenta como ingreso del mes en que te la PAGAN (la fecha), no del mes que cubre (la clave del pago). Si son
+// distintos se dice antes de guardar, para que se entienda dónde va a aparecer la plata en Análisis. Es informativo.
+// Devuelve el texto o '' (clave inválida, sin fecha, o la fecha cae en el mes que cubre).
 function mesadaAvisoMesPago(key, fecha) {
   const k = /^(\d{4})-(\d{1,2})$/.exec(String(key || ''));
   const f = /^(\d{4})-(\d{2})-\d{2}/.exec(String(fecha || ''));
@@ -616,7 +616,7 @@ function mesadaAvisoMesPago(key, fecha) {
   if (Number(k[1]) === Number(f[1]) && Number(k[2]) === Number(f[2]) - 1) return '';
   const mesFecha = f[1] + '-' + f[2];
   const donde = mesFecha === mesActual() ? 'este mes' : _mesNombreDeKey(f[1] + '-' + (Number(f[2]) - 1));
-  return 'Este pago cuenta como ingreso de ' + _mesNombreDeKey(key) + ', no de ' + donde + '.';
+  return 'Cubre ' + _mesNombreDeKey(key) + ', pero cuenta como ingreso de ' + donde + ': el mes en que te la pagan.';
 }
 
 function actualizarMpAvisoMes() {

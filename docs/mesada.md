@@ -99,14 +99,13 @@ S.mesadaAnio  // año que se está viendo actualmente en la pantalla (nav ← �
 
 Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
 
-- El espejo de un pago de Mesada en la cuenta destino (`registrarMovEspejo` con `origen: 'Mesada'`) es `neutro`: el ingreso de la mesada se cuenta una sola vez, en `Periodo.mesadaDelMes`.
+- El espejo de un pago de Mesada en la cuenta destino (`registrarMovEspejo` con `origen: 'Mesada'`) es `neutro`: el ingreso de la mesada se cuenta una sola vez, en `Periodo.mesadaDelMes` (por la fecha del pago).
 
 ### Mes que cubre vs. fecha en que te pagaron
 
-La clave del pago (`"2026-0"` = enero 2026) es el mes que la mesada **cubre**, y es el mes en que cuenta como ingreso (balance de Análisis, Salud financiera, cierre de mes, Wrapped). La fecha del pago (`fecha`) es el día en que entró la plata, y es la que usa el historial de patrimonio. Si son de meses distintos las dos pantallas dicen cosas distintas (las dos correctas), así que:
+La clave del pago (`"2026-0"` = enero 2026) es el mes que la mesada **cubre**: sirve para saber qué mes está pagado, pendiente o perdido en esta pantalla. El **ingreso**, en cambio, cuenta en el mes de la fecha del pago (`fecha`), igual que cualquier otra plata que entra y que el historial de patrimonio: una mesada de enero que te pagan el 26 de octubre es ingreso de octubre. Cada abono de un pendiente cuenta en su propia fecha. La regla vive en `Periodo.mesadaEntradas()`/`mesadaDelMes()`; sin monto guardado se usa la cuota del año y sin fecha, el mes que cubre.
 
-- Al registrar, el sheet «Registrar pago» avisa bajo la fecha, y se actualiza al cambiarla: «Este pago cuenta como ingreso de Ene 2026, no de este mes.» (`mesadaAvisoMesPago(key, fecha)` → `#mpAvisoMes`). No bloquea nada: pagar con atraso es un caso legítimo.
-- Análisis y Salud financiera explican la diferencia cuando este mes entró plata de Mesada que cubre otro (`Periodo.mesadasCobradasEnOtroMes(mes)`, que incluye los abonos de un pendiente con su propia fecha). No cambia ninguna suma.
+Al registrar, el sheet «Registrar pago» lo dice bajo la fecha cuando no coinciden y se actualiza al cambiarla: «Cubre Ene 2026, pero cuenta como ingreso de este mes: el mes en que te la pagan.» (`mesadaAvisoMesPago(key, fecha)` → `#mpAvisoMes`). Es solo informativo: pagar con atraso es un caso legítimo.
 
 ## 5. Flujo
 

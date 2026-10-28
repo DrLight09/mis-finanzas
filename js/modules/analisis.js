@@ -71,11 +71,6 @@ function renderAnalisis(){
     const flecha=trazo=>`<svg aria-hidden="true" class="an-hero-flecha" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${trazo}</svg>`;
     const icono=estado==='pos'?flecha('<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>')
       :estado==='neg'?flecha('<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>'):'';
-    // Mesada cobrada este mes pero que pertenece a otro (la Mesada cuenta en el mes que cubre): sí entró plata y esa plata
-    // sí está en el historial de patrimonio; el balance de este mes no la suma. Se dice, para que no parezcan contradecirse.
-    const _otroMes=Periodo.mesadasCobradasEnOtroMes(mes);
-    const _otroMesTotal=_otroMes.reduce((a,o)=>a+o.monto,0);
-    const _otroMesNombres=[...new Set(_otroMes.map(o=>_mesNombreDeKey(o.key)))].join(' y ');
     let mensaje, monto;
     if(sinMovs){ mensaje='Aún no hay ingresos ni gastos que cuenten para este mes.'; monto=fmt(0); }
     else if(sinIngresos){ mensaje=`Has gastado ${fmt(gastosTotalMes)} y aún no registras ingresos este mes. Registra tus ingresos para ver el balance del mes.`; monto=fmt(gastosTotalMes*-1); }
@@ -88,7 +83,6 @@ function renderAnalisis(){
       <div class="an-hero-monto ${claseTono}">${monto}</div>
       <div class="an-hero-msg">${mensaje}</div>
       ${(!sinIngresos&&_rendNu>0.5)?raw(`<div class="an-hero-rend">Incluye ${fmt(_rendNu)} de rendimientos de Nu <span class="an-opaco">(intereses de cajitas y CDT)</span></div>`):''}
-      ${_otroMes.length?html`<div class="an-hero-rend">Entró ${fmt(_otroMesTotal)} de la Mesada este mes que cuenta como ingreso de ${_otroMesNombres}, no de ${MESES_NOMBRE[mesNum]} ${anio}.</div>`:''}
     `;
   }
 

@@ -550,15 +550,15 @@ describe('mesada-ui', () => {
   });
   function hoyISO() { return new Date().toISOString().slice(0, 10); }
 
-  test('UI — aviso si la fecha del pago cae en otro mes que el que cubre (la Mesada cuenta en el mes que cubre)', () => {
+  test('UI — aviso informativo si la fecha del pago cae en otro mes que el que cubre (la Mesada cuenta en el mes en que te pagan)', () => {
     const { ctx, d } = ui();
     ctx.abrirRegistrarMesada('papa', '2026-0', 'Ene 2026');
     // Se abre con la fecha de hoy: enero no es el mes en curso → avisa (con «este mes» si hoy es de otro mes).
     const hoyMes = ctx.mesActual();
-    assert.equal(d.el('mpAvisoMes').textContent, hoyMes === '2026-01' ? '' : 'Este pago cuenta como ingreso de Ene 2026, no de este mes.');
+    assert.equal(d.el('mpAvisoMes').textContent, hoyMes === '2026-01' ? '' : 'Cubre Ene 2026, pero cuenta como ingreso de este mes: el mes en que te la pagan.');
     // Cambiar la fecha actualiza el aviso al escribir.
     d.el('mpFecha').value = '2026-03-15'; d.fire('mpFecha', 'input');
-    assert.equal(d.el('mpAvisoMes').textContent, 'Este pago cuenta como ingreso de Ene 2026, no de Mar 2026.');
+    assert.equal(d.el('mpAvisoMes').textContent, 'Cubre Ene 2026, pero cuenta como ingreso de Mar 2026: el mes en que te la pagan.');
     d.el('mpFecha').value = '2026-01-20'; d.fire('mpFecha', 'change');
     assert.equal(d.el('mpAvisoMes').textContent, '', 'la fecha cae en el mes que cubre: sin aviso');
     d.el('mpFecha').value = ''; d.fire('mpFecha', 'input');
@@ -568,8 +568,8 @@ describe('mesada-ui', () => {
   test('UI — mesadaAvisoMesPago: casos de borde (diciembre, año distinto, clave inválida)', () => {
     const { ctx } = ui();
     assert.equal(ctx.mesadaAvisoMesPago('2026-11', '2026-12-31'), '', 'diciembre = índice 11');
-    assert.equal(ctx.mesadaAvisoMesPago('2026-11', '2027-01-02'), 'Este pago cuenta como ingreso de Dic 2026, no de Ene 2027.');
-    assert.equal(ctx.mesadaAvisoMesPago('2026-0', '2027-01-15'), 'Este pago cuenta como ingreso de Ene 2026, no de Ene 2027.', 'mismo mes de otro año también avisa');
+    assert.equal(ctx.mesadaAvisoMesPago('2026-11', '2027-01-02'), 'Cubre Dic 2026, pero cuenta como ingreso de Ene 2027: el mes en que te la pagan.');
+    assert.equal(ctx.mesadaAvisoMesPago('2026-0', '2027-01-15'), 'Cubre Ene 2026, pero cuenta como ingreso de Ene 2027: el mes en que te la pagan.', 'mismo mes de otro año también avisa');
     assert.equal(ctx.mesadaAvisoMesPago('', '2026-01-15'), '');
     assert.equal(ctx.mesadaAvisoMesPago('2026-0', 'x'), '');
   });

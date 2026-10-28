@@ -372,15 +372,7 @@ function calcHealthScore(){
   const sinIngresos = ingresosMes <= 0 && gastosMes > 0;
   if(sinIngresos){
     score = Math.min(score, 74);
-    // Mesada cobrada este mes pero que cuenta para otro (p. ej. se registró en «Ene» el pago de octubre): sí entró plata,
-    // solo que el mes que cubre es otro. Se dice en vez de pedir «registra tus ingresos» como si no hubiera entrado nada.
-    const otroMes = Periodo.mesadasCobradasEnOtroMes(mes);
-    if(otroMes.length){
-      const cuando = [...new Set(otroMes.map(o => _mesNombreDeKey(o.key)))].join(' y ');
-      add(`Este mes te entró plata de la Mesada, pero cuenta como ingreso de ${cuando}; por eso aún no hay ingresos de este mes para evaluar tus gastos.`,'sugerencia');
-    } else {
-      add('Registra tus ingresos para que la calificación pueda evaluar tus gastos y deudas.','sugerencia');
-    }
+    add('Registra tus ingresos para que la calificación pueda evaluar tus gastos y deudas.','sugerencia');
   }
   score = Math.max(0, Math.min(100, score));
   if(!consejos.length){

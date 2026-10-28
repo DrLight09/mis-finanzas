@@ -27,8 +27,13 @@
      · Gasto variable real = S.gastosVar del mes que no sea _esGastoVarNoReal().
      · Ingreso del mes = mesada + ingresos fijos + entradas reales
        (entradasIngresoReal, core-state.js).
-     · Mesada del mes = pago registrado en S.mesadas[padre].pagos['YYYY-<mes 0-11>']
-       con su monto recibido, o la cuota del año si el pago no trae monto.
+     · Ingreso = plata que ENTRÓ en el mes (regla de caja): la Mesada cuenta en el mes de la
+       FECHA en que te pagaron (cada abono de un pendiente, en la suya); su clave
+       S.mesadas[padre].pagos['YYYY-<mes 0-11>'] es solo el mes que cubre, para saber qué mes
+       está pagado en la pantalla de Mesada. Pago sin monto: la cuota del año; sin fecha: el
+       mes que cubre. Es la misma regla del historial de patrimonio.
+     · Los ingresos fijos son la excepción: son un ingreso esperado y cuentan cada mes desde
+       su fecha de inicio, se haya registrado el pago o no.
 
    Todas las funciones reciben `estado` opcional (por defecto S): Wrapped trabaja
    sobre el estado que le pasan, no necesariamente el global.
@@ -68,20 +73,39 @@ const Periodo = (() => {
   }
 
   /* ---- INGRESOS ---- */
-  function mesadaDelMes(mes, estado) {
+  // La Mesada es plata que entra el día en que te la pagan, así que cuenta como ingreso del mes de esa FECHA (regla de
+  // caja, la misma de las entradas reales y del historial de patrimonio). La clave del pago ("2026-0" = enero) es solo el
+  // mes que la mesada CUBRE: sirve para saber qué mes está pagado o pendiente en la pantalla de Mesada, no para sumar.
+  // Cada pago y cada abono de un pendiente cuenta en su propia fecha; sin fecha, cae en el mes que cubre.
+  // → [{ parent, key, mesCubre:'YYYY-MM', monto, fecha, mes:'YYYY-MM' }]  (`mes` = mes en que entró la plata)
+  function mesadaEntradas(estado) {
     const st = _st(estado);
-    if (!(st.modulos && st.modulos.mesada) || !st.mesadas || typeof st.mesadas !== 'object') return 0;
-    const [anio, mm] = String(mes).split('-').map(Number);
-    if (!anio || !mm) return 0;
-    const key = anio + '-' + (mm - 1);
-    let total = 0;
-    ['papa', 'mama'].forEach(p => {
-      const d = st.mesadas[p];
-      const info = d && d.pagos && d.pagos[key];
-      if (info) total += (info.monto || cuotaMesada(d.cuotas, anio) || 0);
+    if (!(st.modulos && st.modulos.mesada) || !st.mesadas || typeof st.mesadas !== 'object') return [];
+    const out = [];
+    ['papa', 'mama'].forEach(parent => {
+      const d = st.mesadas[parent];
+      const pagos = d && d.pagos;
+      if (!pagos) return;
+      Object.keys(pagos).forEach(key => {
+        const info = pagos[key];
+        const m = /^(\d{4})-(\d{1,2})$/.exec(key);
+        if (!info || !m) return;
+        const anio = Number(m[1]);
+        const mesCubre = anio + '-' + String(Number(m[2]) + 1).padStart(2, '0');
+        const abonos = Array.isArray(info.pendienteHistorial) ? info.pendienteHistorial : [];
+        const total = info.monto || cuotaMesada(d.cuotas, anio) || 0; // sin monto guardado: la cuota del año
+        const principal = total - abonos.reduce((a, h) => a + ((h && h.monto) || 0), 0);
+        [{ monto: principal, fecha: info.fecha }].concat(abonos.map(h => ({ monto: (h && h.monto) || 0, fecha: h && h.fecha })))
+          .forEach(pt => {
+            if (!(pt.monto > 0)) return;
+            out.push({ parent, key, mesCubre, monto: pt.monto, fecha: pt.fecha || '', mes: pt.fecha ? mesKey(pt.fecha) : mesCubre });
+          });
+      });
     });
-    return total;
+    return out;
   }
+
+  const mesadaDelMes = (mes, estado) => mesadaEntradas(estado).reduce((a, e) => e.mes === mes ? a + e.monto : a, 0);
 
   function ingresosFijosDelMes(mes, estado) {
     const fijos = _st(estado).ingresosFijos;
@@ -94,35 +118,6 @@ const Periodo = (() => {
     const fijos = ingresosFijosDelMes(mes, estado);
     const entradas = ingresosRealesDelMes(mes, estado);
     return { mesada, fijos, entradas, total: mesada + fijos + entradas };
-  }
-
-  // Plata de Mesada que ENTRÓ en `mes` (por la fecha en que te pagaron) pero que cuenta como ingreso de OTRO mes
-  // (el que cubre su clave). No cambia ninguna suma: ingresosDelMes() sigue contando la Mesada en el mes que cubre.
-  // Sirve para avisar, en las pantallas que hablan de «ingresos de este mes», que sí entró plata y por qué no suma:
-  // [{ parent, key, mesCubre:'YYYY-MM', monto, fecha }]. Incluye el pago principal y cada abono de un pendiente,
-  // cada uno con su fecha.
-  function mesadasCobradasEnOtroMes(mes, estado) {
-    const st = _st(estado);
-    if (!(st.modulos && st.modulos.mesada) || !st.mesadas || typeof st.mesadas !== 'object') return [];
-    const out = [];
-    ['papa', 'mama'].forEach(parent => {
-      const pagos = st.mesadas[parent] && st.mesadas[parent].pagos;
-      if (!pagos) return;
-      Object.keys(pagos).forEach(key => {
-        const info = pagos[key];
-        const m = /^(\d{4})-(\d{1,2})$/.exec(key);
-        if (!info || !m) return;
-        const mesCubre = m[1] + '-' + String(Number(m[2]) + 1).padStart(2, '0');
-        if (mesCubre === mes) return;
-        const abonos = Array.isArray(info.pendienteHistorial) ? info.pendienteHistorial : [];
-        const principal = (info.monto || 0) - abonos.reduce((a, h) => a + ((h && h.monto) || 0), 0);
-        const partes = [{ monto: principal, fecha: info.fecha }].concat(abonos.map(h => ({ monto: (h && h.monto) || 0, fecha: h && h.fecha })));
-        partes.forEach(pt => {
-          if (pt.monto > 0 && pt.fecha && mesKey(pt.fecha) === mes) out.push({ parent, key, mesCubre, monto: pt.monto, fecha: pt.fecha });
-        });
-      });
-    });
-    return out;
   }
 
   /* ---- GASTOS ---- */
@@ -247,7 +242,7 @@ const Periodo = (() => {
     return { mes, ingresos, gastos, balance, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }
 
-  return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosDelMes, mesadasCobradasEnOtroMes,
+  return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosDelMes, mesadaEntradas,
            pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes };
 })();
 

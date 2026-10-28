@@ -211,13 +211,13 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c4(r6.cls === 'an-hero-neg' && r6.monto === '-$30.000' && /has gastado más de lo que has recibido/.test(r6.msg), 'Balance con gastos > ingresos: rojo con signo -');
 
     // Revisión de Análisis/Salud/Proyección (2026-10-27)
-    // 3 · Mesada cobrada este mes que cubre otro: el balance de este mes no la suma, pero lo dice (no parece una contradicción)
+    // 3 · Mesada cobrada este mes que cubre otro mes: es plata de ESTE mes (regla de caja, una sola definición en Periodo)
     ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.ingresosFijos=[]; S.modulos=Object.assign({},S.modulos,{mesada:true});` +
        `const kOtro=new Date().getFullYear()+'-'+((new Date().getMonth()+1)%12); S.mesadas={papa:{cuotas:{},pagos:{[kOtro]:{monto:80000,fecha:hoy()}}},mama:{cuotas:{},pagos:{}}}; renderAnalisis()`);
     const h3 = q('#analisis-balance-hero');
-    c4(/Aún no hay ingresos ni gastos que cuenten para este mes/.test(h3.querySelector('.an-hero-msg').textContent) && /Entró \$80\.000 de la Mesada este mes que cuenta como ingreso de/.test(h3.textContent), 'Balance: mesada cobrada este mes que cubre otro mes → mensaje sin «no hay movimientos» y nota con el mes que cubre');
+    c4(h3.className.includes('an-hero-pos') && h3.querySelector('.an-hero-monto').textContent.trim() === '+$80.000' && q('#an-ingresos').textContent.trim() === '$80.000', 'Balance: una mesada cobrada este mes que cubre otro mes cuenta como ingreso de este mes (+$80.000)');
     ev(`S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}}; renderAnalisis()`);
-    c4(!/de la Mesada este mes/.test(q('#analisis-balance-hero').textContent), 'Balance: sin mesada de otro mes no hay nota');
+    c4(q('#analisis-balance-hero').className.includes('an-hero-neu') && q('#an-ingresos').textContent.trim() === '—', 'Balance: sin mesada vuelve a neutro');
     // 5b / 5c · historial de patrimonio: sin base no hay porcentaje; el título cuenta días y el eje va por fecha
     const fh = `const dia=n=>{const x=new Date();x.setDate(x.getDate()-n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};`;
     ev(fh + `S.patrimonioHistorial=[{fecha:dia(11),valor:0,valorVisible:0},{fecha:dia(10),valor:80000,valorVisible:80000},{fecha:dia(0),valor:80000,valorVisible:80000}]; renderAnalisis()`);

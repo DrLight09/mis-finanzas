@@ -346,21 +346,18 @@ describe('calcHealthScore', () => {
     assert.equal(grande - sin, 10, 'CDT de 10 % o más: bono completo');
   });
 
-  test('calcHealthScore — mesada cobrada este mes que cuenta para otro: el consejo lo explica en vez de pedir «registra tus ingresos»', () => {
+  test('calcHealthScore — una mesada de un mes anterior cobrada este mes cuenta como ingreso de este mes (regla de caja)', () => {
     const mes = currentMonthKey();
-    const hoyStr = mes + '-15';
     const ctx = freshApp({
       cuentas: cuentas({ nequi: 80000 }),
       modulos: { mesada: true },
-      mesadas: { papa: { cuotas: { '2026': 80000 }, pagos: { '2026-0': { monto: 80000, fecha: hoyStr } } } },
+      mesadas: { papa: { cuotas: { '2026': 80000 }, pagos: { '2026-0': { monto: 80000, fecha: mes + '-15' } } } }, // cubre enero, entró este mes
       gastosFijos: [{ id: 'g1', monto: 10000 }],
       pagosGastosFijos: { ['g1_' + mes]: { monto: 10000 } },
     });
     const r = ctx.calcHealthScore();
-    assert.equal(r.ingresosMes, 0, 'la Mesada sigue contando en el mes que cubre (regla única de periodo.js)');
-    assert.ok(r.score <= 74);
-    assert.ok(!r.tips.some((t) => t.includes('Registra tus ingresos')));
-    assert.ok(r.tips.some((t) => t.includes('Mesada') && t.includes('Ene 2026')));
+    assert.equal(r.ingresosMes, 80000, 'entró este mes: es ingreso de este mes');
+    assert.ok(!r.tips.some((t) => t.includes('Registra tus ingresos')), 'ya no está «sin ingresos»');
   });
 });
 
@@ -386,22 +383,30 @@ describe('periodo — ayudantes de la revisión de Análisis', () => {
     assert.deepEqual({ ...ctx.Periodo.gastoPromedioPrevio('2026-04', 3) }, { promedio: 0, meses: 0 });
   });
 
-  test('mesadasCobradasEnOtroMes — plata de Mesada que entró este mes pero cubre otro (incluye abonos de un pendiente)', () => {
+  test('mesadaDelMes — la Mesada cuenta en el mes de la FECHA en que te pagan, no en el que cubre; cada abono en la suya', () => {
     const ctx = app({
       modulos: { mesada: true },
       mesadas: {
-        papa: { cuotas: {}, pagos: {
-          '2026-0': { monto: 80000, fecha: '2026-10-26' },                      // enero cobrado en octubre
-          '2026-9': { monto: 80000, fecha: '2026-10-05' },                      // octubre cobrado en octubre: no es «otro mes»
-          '2026-8': { monto: 80000, fecha: '2026-09-30', pendienteHistorial: [{ monto: 30000, fecha: '2026-10-20' }] }, // sept: 50k en sept + abono de 30k en oct
+        papa: { cuotas: { '2026': 80000 }, pagos: {
+          '2026-0': { monto: 80000, fecha: '2026-10-26' },                      // cubre enero, cobrada en octubre
+          '2026-9': { monto: 80000, fecha: '2026-10-05' },                      // cubre octubre, cobrada en octubre
+          '2026-8': { monto: 80000, fecha: '2026-09-30', pendienteHistorial: [{ monto: 30000, fecha: '2026-10-20' }] }, // sept: 50k el 30/09 + abono de 30k el 20/10
+          '2026-1': { fecha: '2026-02-10' },                                    // sin monto guardado: la cuota del año, en febrero
+          '2026-2': { monto: 5000 },                                            // sin fecha: cae en el mes que cubre (marzo)
         } },
         mama: { cuotas: {}, pagos: {} },
       },
     });
-    const r = Array.from(ctx.Periodo.mesadasCobradasEnOtroMes('2026-10'), (o) => ({ ...o }));
-    assert.deepEqual(r.map((o) => [o.key, o.monto, o.mesCubre]), [['2026-0', 80000, '2026-01'], ['2026-8', 30000, '2026-09']]);
-    assert.equal(ctx.Periodo.ingresosDelMes('2026-10').mesada, 80000, 'no cambia ninguna suma: Octubre solo cuenta su propia mesada');
+    assert.equal(ctx.Periodo.mesadaDelMes('2026-10'), 80000 + 80000 + 30000, 'enero cobrada en oct + octubre + el abono de sept');
+    assert.equal(ctx.Periodo.mesadaDelMes('2026-09'), 50000, 'lo de septiembre que entró en septiembre');
+    assert.equal(ctx.Periodo.mesadaDelMes('2026-01'), 0, 'enero ya no recibe una plata que entró en octubre');
+    assert.equal(ctx.Periodo.mesadaDelMes('2026-02'), 80000, 'pago sin monto: la cuota del año');
+    assert.equal(ctx.Periodo.mesadaDelMes('2026-03'), 5000, 'pago sin fecha: el mes que cubre');
+    assert.equal(ctx.Periodo.ingresosDelMes('2026-10').mesada, ctx.Periodo.mesadaDelMes('2026-10'));
+    const e = Array.from(ctx.Periodo.mesadaEntradas(), (o) => ({ ...o })).find((o) => o.key === '2026-0');
+    assert.deepEqual([e.mesCubre, e.mes], ['2026-01', '2026-10']);
   });
+
 });
 
 describe('periodo', () => {

@@ -205,9 +205,8 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual
 | `_fbSaveToCloud`, `_fbSignOut`, `_abrirEliminarCuenta`, `_fbDeleteAccount`, `_importing`, `_lastSavedAt` | `firebase-sync.js` | Sí |
 | `Events.registerAll` / `Events.attr` | `events.js` | Sí (`attr` escapa los argumentos; `Events` solo despacha `click`) |
 | `getCatsVar` / `getCatsFijo` / `CATS_*_DEFAULT`, `save`, `toast`, `dialogo`, `refresh`, `fuenteLabel`, `escHtml`, `S.modulos` por defecto | `core-state.js` | Sí |
-| `html\`\`` / `raw()` | `html-tag.js` | **No** — no estaba entre los archivos disponibles |
-| `applyModulos`, `showScreen` | `sheet-stack.js` | **No** — no estaba entre los archivos disponibles |
-| Handler de `notificaciones:activar` | — | **No encontrado** en los archivos disponibles (el backend del aviso está en `notificaciones-push.md`) |
+| `html\`\`` / `raw()` | `html-tag.js` | Sí |
+| `applyModulos`, `showScreen` | `sheet-stack.js` | Sí |
+| Handler de `notificaciones:activar` | `notificaciones-push.js` | Sí (el backend del aviso está en `notificaciones-push.md`) |
 
-**Pendiente abierto**
-- Cómo interpreta `applyModulos()` un `corregirSaldo` inexistente (estado inicial del interruptor en `#cfg-corregirSaldo`, que en el HTML no trae `checked`). Requiere `sheet-stack.js`.
+**Interruptor «Saldo inicial» sin valor guardado:** `applyModulos()` (`sheet-stack.js`) lo trata como encendido: marca `#cfg-corregirSaldo` con `mod.corregirSaldo !== false`, así que solo un `false` explícito lo apaga (aunque el HTML no traiga `checked`). Cuentas y Nu usan la misma condición.

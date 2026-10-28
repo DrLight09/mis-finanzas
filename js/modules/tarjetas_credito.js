@@ -892,13 +892,15 @@ function abrirDetalleTCSheet(tcId){
     };
     contenido+=itemsLinea.slice(0,80).map(item=>{
       if(item._tipo==='saldo_inicial'){
-        return html`<div class="gasto-item tc-saldo-ini" ${raw(_tcAttrs(item,'Tarjeta de crédito',null,'Saldo inicial'))}>
-        <div class="gasto-item-top">
-          <div class="tc-flex1-min0"><div class="row-name tc-row-13">Saldo inicial</div><div class="row-sub">${item.fecha}</div></div>
-          <span class="row-amount tc-amount-text2">${fmt(item.monto)}</span>
-        </div>
-        <div class="gasto-item-meta"><span class="badge tc-badge-ini">Deuda antes de usar la app</span></div>
-      </div>`;
+        return filaMovimiento({
+          clase: 'tc-saldo-ini',
+          attrs: _tcAttrs(item,'Tarjeta de crédito',null,'Saldo inicial'),
+          nombre: 'Saldo inicial',
+          sub: item.fecha,
+          monto: fmt(item.monto),
+          montoClase: 'tc-amount-text2',
+          meta: html`<span class="badge tc-badge-ini">Deuda antes de usar la app</span>`
+        });
       }
       if(item._tipo==='compra'){
         const c=item;
@@ -910,18 +912,17 @@ function abrirDetalleTCSheet(tcId){
         const _origenC=esCargoEspecial?'Cargo especial del banco':(c._desdeCP?'Plata comprometida':'Tarjeta de crédito');
         const badgeLabel=esCargoEspecial?('Cargo especial · '+(TC_MOTIVOS_CARGO[c._motivoCargo]||'Otro')):(esFavor?'Favor cubierto':(c.cat||'Sin cat.'));
         const badgeClase=esCargoEspecial?'tc-badge-amber':(esFavor?'tc-badge-azul':'tc-badge-rojo');
-        return html`<div class="gasto-item tc-item ${esCargoEspecial?'tc-item-b-amber':(esFavor?'tc-item-b-azul':'')}" ${raw(_tcAttrs(c,_origenC,null))}>
-        <div class="gasto-item-top">
-          <div class="tc-flex1-min0"><div class="row-name tc-row-13">${c.desc}${raw(favorBadge)}</div><div class="row-sub">${c.fecha}</div></div>
-          <div class="tc-monto-fila">
-            <span class="row-amount ${esCargoEspecial?'tc-c-amber':(esFavor?'tc-c-blue':'tc-c-red')}">${fmt(c.monto)}</span>
-            <button type="button" class="btn-delete-hover" ${raw(Events.attr('tarjetas:eliminarCompra',tc.id,c.id))} data-stop-propagation="true">
-              <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-            </button>
-          </div>
-        </div>
-        <div class="gasto-item-meta"><span class="badge badge-xs ${badgeClase}">${badgeLabel}</span>${c.nota?html`<span class="tc-cupo-txt">${c.nota}</span>`:''}</div>
-      </div>`;
+        return filaMovimiento({
+          clase: 'tc-item ' + (esCargoEspecial?'tc-item-b-amber':(esFavor?'tc-item-b-azul':'')),
+          attrs: _tcAttrs(c,_origenC,null),
+          nombre: c.desc,
+          nombreExtra: raw(favorBadge),
+          sub: c.fecha,
+          monto: fmt(c.monto),
+          montoClase: esCargoEspecial?'tc-c-amber':(esFavor?'tc-c-blue':'tc-c-red'),
+          acciones: botonEliminarFila('tarjetas:eliminarCompra', [tc.id, c.id]),
+          meta: html`<span class="badge badge-xs ${badgeClase}">${badgeLabel}</span>${c.nota?html`<span class="tc-cupo-txt">${c.nota}</span>`:''}`
+        });
       }
       if(item._tipo==='tcmov'){
         const m=item;
@@ -939,36 +940,29 @@ function abrirDetalleTCSheet(tcId){
         const _origenM=esEncargo?'Encargos':(esDeuda
           ?('Préstamos · Yo debo · '+((Deudas.porId('contra',m.miDeudaId)||{}).nombre||''))
           :('Préstamos · '+((Deudas.porId('favor',m.deudorId)||{}).nombre||'')));
-        return html`<div class="gasto-item tc-item ${claseBorde}" ${raw(_tcAttrs(m,_origenM,null))}>
-        <div class="gasto-item-top">
-          <div class="tc-flex1-min0"><div class="row-name tc-row-13">${m.desc}</div><div class="row-sub">${m.fecha}</div></div>
-          <span class="row-amount ${claseMonto}">${fmt(m.monto)}</span>
-        </div>
-        <div class="gasto-item-meta">
-          <span class="badge badge-xs ${claseBadge}">${raw(iconoBadge)}${labelBadge}</span>
-          ${m.nota?html`<span class="tc-cupo-txt">${m.nota}</span>`:''}
-        </div>
-      </div>`;
+        return filaMovimiento({
+          clase: 'tc-item ' + claseBorde,
+          attrs: _tcAttrs(m,_origenM,null),
+          nombre: m.desc,
+          sub: m.fecha,
+          monto: fmt(m.monto),
+          montoClase: claseMonto,
+          meta: html`<span class="badge badge-xs ${claseBadge}">${raw(iconoBadge)}${labelBadge}</span>${m.nota?html`<span class="tc-cupo-txt">${m.nota}</span>`:''}`
+        });
       }
       const p=item;
       const descPago=p.nota?p.nota:'Abono a la deuda de '+(tc.nombre||'tu tarjeta')+' — no corresponde a una compra específica';
       const otrasPago=p.fuente?[{fuente:p.fuente,monto:-p.monto}]:null;
-      return html`<div class="gasto-item tc-item-ok" ${raw(_tcAttrs(p,'Tarjeta de crédito',otrasPago,'Abono a tu deuda'))}>
-        <div class="gasto-item-top">
-          <div class="tc-flex1-min0"><div class="row-name tc-row-13">Abono a tu deuda</div><div class="row-sub">${p.fecha}</div></div>
-          <div class="tc-monto-fila">
-            <span class="row-amount c-green">−${fmt(p.monto)}</span>
-            <button type="button" class="btn-delete-hover" ${raw(Events.attr('tarjetas:eliminarPago',tc.id,p.id))} data-stop-propagation="true">
-              <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-            </button>
-          </div>
-        </div>
-        <div class="gasto-item-meta">
-          <span class="badge bg-green badge-xs"><i class="fa-solid fa-arrow-down tc-favor-ico"></i>Reduce deuda</span>
-          <span class="badge ${fuenteBadgeClass(p.fuente)} badge-xs">Desde ${fuenteLabel(p.fuente)}</span>
-          <span class="tc-cupo-txt">${descPago}</span>
-        </div>
-      </div>`;
+      return filaMovimiento({
+        clase: 'tc-item-ok',
+        attrs: _tcAttrs(p,'Tarjeta de crédito',otrasPago,'Abono a tu deuda'),
+        nombre: 'Abono a tu deuda',
+        sub: p.fecha,
+        monto: `−${fmt(p.monto)}`,
+        montoClase: 'c-green',
+        acciones: botonEliminarFila('tarjetas:eliminarPago', [tc.id, p.id]),
+        meta: html`<span class="badge bg-green badge-xs"><i class="fa-solid fa-arrow-down tc-favor-ico"></i>Reduce deuda</span><span class="badge ${fuenteBadgeClass(p.fuente)} badge-xs">Desde ${fuenteLabel(p.fuente)}</span><span class="tc-cupo-txt">${descPago}</span>`
+      });
     }).join('');
   }
 

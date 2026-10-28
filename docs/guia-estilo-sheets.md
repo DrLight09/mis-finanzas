@@ -19,6 +19,10 @@ Los sheets y pantallas **no llevan `style="…"` en el HTML ni en los strings de
 
 ---
 
+### Filas de historial: `filaMovimiento()`
+
+Las filas de movimientos de Tarjetas, Encargos, Gastos y Cuentas se arman con `filaMovimiento({…})` y su botón de borrar con `botonEliminarFila(accion, args, titulo)` (ambos en `core-state.js`); no se escribe a mano `.gasto-item-top`. El borde o color de una variante se pide con una clase en `clase` (`tc-item-b-*`, `enc-item-b-*`), nunca con estilo en línea. Los atributos `data-mov-*` van en `attrs`. Una prueba (`tests/nucleo.test.js`, bloque `fila-movimiento`) falla si un módulo vuelve a repetir el esqueleto.
+
 ## 1. Regla general de orden
 
 Para cualquier sheet que registre un movimiento de plata, el orden es siempre:

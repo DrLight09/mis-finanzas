@@ -777,28 +777,26 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplici
     // OTRAS filas no depende del DOM sino de getMovimientosCuenta(), que sí incluye estas filas.
     const alcOculto = !!m._alcOculto;
     const puedeVerDetalle = !!m.fuente && !alcOculto;
-    return html`<div class="gasto-item${puedeVerDetalle ? ' gasto-item-click' : ''}" ${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto} ${dataFuenteReal} ${dataFecha} ${dataOrigen} ${dataOtras} ${puedeVerDetalle ? raw('data-cuenta-key="'+escHtml(cuentaKey)+'" data-action="core:abrirDetalleMov"') : ''}>
-      <div class="gasto-item-top">
-        <div class="gasto-item-info">
-          <div class="row-name gasto-nombre-fila">${m.desc}${esSecundarioHist ? html`<span class="cuenta-chip-auto"><svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
-          <div class="row-sub cuenta-mov-fecha">${m.fecha || '—'}</div>
-        </div>
-        <div class="cuenta-flex-8">
-          ${alcOculto
-            ? html`<div title="Monto oculto — se ve dentro de Alcancía" class="cuenta-monto-oculto"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" class="cuenta-svg-block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg></div>`
-            : html`<div class="cuenta-monto ${claseMonto}">${signo} ${fmt(Math.abs(m.monto))}</div>`}
-          ${puedeEliminar ? html`<button type="button" class="btn-icon cuenta-btn-del" data-action="core:eliminarMovimiento" data-stop-propagation="true" title="Eliminar movimiento"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : esSecundarioHist && m._movId ? html`<span title="Generado automáticamente — elimínalo desde ${m._origenSeccion||'la sección de origen'}" class="cuenta-mov-lock"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : ''}
-        </div>
-      </div>
-      <div class="gasto-item-meta">
+    return filaMovimiento({
+      clase: puedeVerDetalle ? 'gasto-item-click' : '',
+      attrs: html`${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto} ${dataFuenteReal} ${dataFecha} ${dataOrigen} ${dataOtras} ${puedeVerDetalle ? raw('data-cuenta-key="'+escHtml(cuentaKey)+'" data-action="core:abrirDetalleMov"') : ''}`,
+      nombreClase: 'row-name gasto-nombre-fila',
+      nombre: m.desc,
+      nombreExtra: esSecundarioHist ? html`<span class="cuenta-chip-auto"><svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : '',
+      sub: m.fecha || '—',
+      subClase: 'cuenta-mov-fecha',
+      montoHtml: alcOculto
+                ? html`<div title="Monto oculto — se ve dentro de Alcancía" class="cuenta-monto-oculto"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" class="cuenta-svg-block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg></div>`
+                : html`<div class="cuenta-monto ${claseMonto}">${signo} ${fmt(Math.abs(m.monto))}</div>`,
+      acciones: puedeEliminar ? html`<button type="button" class="btn-icon cuenta-btn-del" data-action="core:eliminarMovimiento" data-stop-propagation="true" title="Eliminar movimiento"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : esSecundarioHist && m._movId ? html`<span title="Generado automáticamente — elimínalo desde ${m._origenSeccion||'la sección de origen'}" class="cuenta-mov-lock"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : '',
+      meta: html`
         ${alcOculto ? '' : html`<span class="badge badge-xs ${bgLabel}">${tipoLabel}</span>`}
         ${(m._alcOculto || m._origen === 'Alcancía oculta') ? html`<span class="badge badge-xs cuenta-badge-alc"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
         ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?html`<span class="badge badge-xs bg-nu">${cn}</span>`:''; })()}
         ${m.cat ? html`<span class="badge badge-xs bg-blue">${m.cat}</span>` : ''}
         ${m.nota ? html`<span class="cuenta-mov-nota">${m.nota}</span>` : ''}
-        ${m.tipo === 'transferencia' && m._fuenteDestino ? html`<span class="cuenta-transf-destino"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="cuenta-transf-ico"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg> ${fuenteLabel(m._fuenteDestino||m._fuenteOrigen)}</span>` : ''}
-      </div>
-    </div>`;
+        ${m.tipo === 'transferencia' && m._fuenteDestino ? html`<span class="cuenta-transf-destino"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="cuenta-transf-ico"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg> ${fuenteLabel(m._fuenteDestino||m._fuenteOrigen)}</span>` : ''}`
+    });
   })}`;
 }
 

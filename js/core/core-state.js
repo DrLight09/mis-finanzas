@@ -1369,6 +1369,34 @@ function emptyState(icon, title, sub, btnLabel, btnFn){
   </div>`;
 }
 
+/* ---- FILA DE MOVIMIENTO COMPARTIDA ----
+   Una sola plantilla para las filas de historial de Tarjetas, Encargos, Gastos y Cuentas (antes cada módulo
+   armaba el mismo esqueleto a mano con sus propios envoltorios). Estructura: .gasto-item > .gasto-item-top
+   (nombre + fecha | monto + acciones) > bloques de meta. El aspecto (borde, color) sigue siendo una clase
+   que pasa el módulo en `clase` (tc-item-b-*, enc-item-b-*): nunca estilos en línea.
+   Opciones: clase, attrs (atributos ya escapados, p. ej. data-mov-*), nombre, nombreClase, nombreExtra (html),
+   sub, subClase, monto + montoClase (o montoHtml para un monto propio), acciones (html), antesMeta (html),
+   meta (contenido de .gasto-item-meta; sin él no se dibuja), metaClase, despues (html). Va en core-state.js,
+   igual que emptyState(): html/raw se resuelven al llamar. */
+function botonEliminarFila(accion, args, titulo) {
+  return html`<button type="button" class="btn-delete-hover" data-stop-propagation="true" ${raw(Events.attr(accion, ...(args || [])))} title="${titulo || 'Eliminar'}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>`;
+}
+
+function filaMovimiento(o) {
+  const nombreClase = o.nombreClase || 'row-name row-name-13';
+  const monto = o.montoHtml !== undefined ? o.montoHtml : html`<span class="row-amount ${o.montoClase || ''}">${o.monto}</span>`;
+  return html`<div class="gasto-item${o.clase ? ' ' + o.clase : ''}" ${raw(o.attrs || '')}>
+    <div class="gasto-item-top">
+      <div class="gasto-item-info">
+        <div class="${nombreClase}">${o.nombre}${o.nombreExtra || ''}</div>
+        <div class="row-sub${o.subClase ? ' ' + o.subClase : ''}">${o.sub}</div>
+      </div>
+      <div class="gasto-acciones">${monto}${o.acciones || ''}</div>
+    </div>
+    ${o.antesMeta || ''}${o.meta !== undefined ? html`<div class="gasto-item-meta${o.metaClase ? ' ' + o.metaClase : ''}">${o.meta}</div>` : ''}${o.despues || ''}
+  </div>`;
+}
+
 // Segundo candado de las acciones destructivas (mejora 13): con PIN activo, vuelve a pedirlo ANTES de ejecutar la acción.
 // Devuelve true si se puede seguir: no hay PIN (todo como antes) o se escribió el correcto; false si se canceló o con un PIN
 // activo no se pudo verificar (módulo del PIN sin cargar): en ese caso no se ejecuta nada. Se llama justo después de la

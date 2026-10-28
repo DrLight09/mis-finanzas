@@ -1707,3 +1707,49 @@ describe('pin-confirmar-acciones-destructivas', () => {
   });
 });
 
+describe('fila-movimiento', () => {
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const CORE = path.join(__dirname, '..', 'js', 'core');
+  const app = () => loadApp(['core-state.js', 'html-tag.js', 'events.js'].map(f => path.join(CORE, f)));
+
+  test('filaMovimiento — esqueleto: nombre y fecha | monto y acciones | meta; el texto se escapa', () => {
+    const ctx = app();
+    const h = String(ctx.filaMovimiento({ clase: 'tc-item', attrs: 'data-mov-id="7"', nombre: '<b>x</b>', sub: '2026-10-27', monto: '$ 5', montoClase: 'c-red', meta: ctx.html`<span class="badge">ok</span>` }));
+    assert.match(h, /^<div class="gasto-item tc-item" data-mov-id="7">/);
+    assert.ok(h.includes('<div class="row-name row-name-13">&lt;b&gt;x&lt;/b&gt;</div>'), 'el nombre se escapa');
+    assert.ok(h.includes('<span class="row-amount c-red">$ 5</span>'));
+    assert.ok(h.includes('<div class="gasto-item-meta"><span class="badge">ok</span></div>'));
+  });
+
+  test('filaMovimiento — sin meta no dibuja el bloque; montoHtml reemplaza al monto; antesMeta/despues van en su sitio', () => {
+    const ctx = app();
+    const h = String(ctx.filaMovimiento({ nombre: 'a', sub: 'b', montoHtml: ctx.html`<div class="cuenta-monto">9</div>`, antesMeta: ctx.html`<i>antes</i>`, despues: ctx.html`<i>despues</i>` }));
+    assert.ok(!h.includes('gasto-item-meta') && !h.includes('row-amount'));
+    assert.ok(h.includes('<div class="cuenta-monto">9</div>'));
+    assert.ok(h.indexOf('<i>antes</i>') < h.indexOf('<i>despues</i>'));
+  });
+
+  test('botonEliminarFila — acción por el despachador de eventos, sin onclick, con título escapado', () => {
+    const ctx = app();
+    const h = String(ctx.botonEliminarFila('gastos:deleteGastoVar', ['g1'], 'Quitar "x"'));
+    assert.ok(h.includes('data-action="gastos:deleteGastoVar"') && h.includes('data-stop-propagation="true"'));
+    assert.ok(!/onclick/i.test(h) && h.includes('title="Quitar &quot;x&quot;"'));
+  });
+
+  test('guardia: .gasto-item-top solo lo escribe filaMovimiento (core-state.js); ningún módulo arma la fila a mano', () => {
+    const dir = path.join(__dirname, '..', 'js');
+    const sueltos = [];
+    const recorrer = d => fs.readdirSync(d, { withFileTypes: true }).forEach(e => {
+      const f = path.join(d, e.name);
+      if (e.isDirectory()) return recorrer(f);
+      if (!f.endsWith('.js') || f.endsWith('core-state.js')) return;
+      if (fs.readFileSync(f, 'utf8').includes('class="gasto-item-top"')) sueltos.push(path.relative(dir, f));
+    });
+    recorrer(dir);
+    assert.deepEqual(sueltos, [], 'usa filaMovimiento() de core-state.js en vez de repetir el esqueleto: ' + sueltos.join(', '));
+  });
+});

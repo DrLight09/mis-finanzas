@@ -277,27 +277,22 @@ function renderGastosVar() {
         : esPagoTC
           ? [html`<span class="badge badge-xs bg-green">Pago TC</span>`]
           : [html`<span class="badge badge-xs bg-blue">${g.cat}</span>`];
-    return html`<div class="gasto-item${raw((esFijo || esPagoTC) ? ' gasto-item-atenuado' : '')}">
-      <div class="gasto-item-top">
-        <div class="gasto-item-info">
-          <div class="row-name gasto-nombre-fila">${g.desc}${esSecundario ? html`<span class="gasto-chip-auto"><svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : ''}</div>
-          <div class="row-sub">${g.fecha}</div>
-        </div>
-        <div class="gasto-acciones">
-          <span class="row-amount ${raw(claseMonto)}">${esPagoTC ? '-' : ''}${fmt(g.monto)}</span>
-          ${esSecundario
-            ? html`<span title="Generado automáticamente — elimínalo desde ${g._origenSeccion || 'la sección de origen'}" class="gasto-candado"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
-            : html`<button type="button" class="btn-delete-hover" ${raw(Events.attr('gastos:deleteGastoVar', g.id))} title="Eliminar">
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-          </button>`}
-        </div>
-      </div>
-      <div class="gasto-item-meta">
+    return filaMovimiento({
+      clase: (esFijo || esPagoTC) ? 'gasto-item-atenuado' : '',
+      nombreClase: 'row-name gasto-nombre-fila',
+      nombre: g.desc,
+      nombreExtra: esSecundario ? html`<span class="gasto-chip-auto"><svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : '',
+      sub: g.fecha,
+      monto: `${esPagoTC ? '-' : ''}${fmt(g.monto)}`,
+      montoClase: claseMonto,
+      acciones: esSecundario
+        ? html`<span title="Generado automáticamente — elimínalo desde ${g._origenSeccion || 'la sección de origen'}" class="gasto-candado"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
+        : botonEliminarFila('gastos:deleteGastoVar', [g.id]),
+      meta: html`
         ${tipoBadges}
         ${g.splits && g.splits.length ? html`<span class="badge badge-xs">Dividido: ${g.splits.map(s => fuenteLabel(s.fuente || '')).join(', ')}</span>` : (g.fuente ? html`<span class="badge badge-xs ${raw(fuenteBadgeClass(g.fuente))}">${fuenteLabel(g.fuente)}</span>` : '')}
-        ${(!(esFijo || esTC) && g.nota) ? html`<span class="gasto-nota">${g.nota}</span>` : ''}
-      </div>
-    </div>`;
+        ${(!(esFijo || esTC) && g.nota) ? html`<span class="gasto-nota">${g.nota}</span>` : ''}`
+    });
   }
 
   // Agrupar por día (visibles ya viene ordenado, así que los días quedan
@@ -544,21 +539,14 @@ function renderGastosFijos() {
     } else {
       accionHtml = html`<span class="gasto-nota">Spotify</span>`;
     }
-    return html`<div class="gasto-item">
-      <div class="gasto-item-top">
-        <div><div class="row-name row-name-13">${x.nombre}</div></div>
-        <div class="gasto-acciones">
-          <span class="row-amount c-red">${fmt(x.monto)}</span>
-          ${!x._virtual ? html`<button type="button" class="btn-delete-hover" ${raw(Events.attr('gastos:deleteGastoFijo', x.id))} title="Eliminar">
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-          </button>` : ''}
-        </div>
-      </div>
-      <div class="gasto-item-meta gasto-meta-fijo">
-        <span class="badge badge-xs bg-blue">${x.cat}</span>
-        ${accionHtml}
-      </div>
-    </div>`;
+    return filaMovimiento({
+      nombre: x.nombre,
+      monto: fmt(x.monto),
+      montoClase: 'c-red',
+      acciones: !x._virtual ? botonEliminarFila('gastos:deleteGastoFijo', [x.id]) : '',
+      metaClase: 'gasto-meta-fijo',
+      meta: html`<span class="badge badge-xs bg-blue">${x.cat}</span>${accionHtml}`
+    });
   })}`;
 }
 

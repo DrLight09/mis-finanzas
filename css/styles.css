@@ -1378,12 +1378,10 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .tc-mov-n{font-weight:400;font-size:9px;}
 .tc-vacio{font-size:12px;color:var(--text3);margin-bottom:14px;}
 .tc-saldo-ini, .gasto-item.tc-saldo-ini{margin-bottom:7px;cursor:pointer;border-left:3px solid var(--text3);}
-.tc-row-13, .row-name.tc-row-13{font-size:13px;}
 .tc-amount-text2, .row-amount.tc-amount-text2{color:var(--text2);}
 .tc-badge-ini, .badge.tc-badge-ini{font-size:9px;background:var(--bg3);color:var(--text3);}
 .tc-favor-badge{font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;}
 .tc-favor-ico, .fa-solid.tc-favor-ico{margin-right:3px;font-size:7px;}
-.tc-monto-fila{display:flex;align-items:center;gap:6px;}
 .tc-item-ok, .gasto-item.tc-item-ok{border-color:rgba(200,240,96,.3);border-left:3px solid var(--accent);margin-bottom:7px;background:rgba(200,240,96,.04);cursor:pointer;}
 .card.tc-card{margin-bottom:10px;} .card.tc-card-deuda{border-color:rgba(240,104,104,.3);}
 .tc-cupo-pct{font-size:10px;font-family:'DM Mono',monospace;} .tc-cob-pct{font-size:10px;font-weight:700;font-family:'DM Mono',monospace;}
@@ -1449,8 +1447,6 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .enc-filas{border-top:1px solid rgba(96,176,240,.15);padding-top:8px;margin-bottom:6px;}
 .enc-vacio-pad, .empty-state.enc-vacio-pad{padding:16px 0;}
 .enc-item-ent, .gasto-item.enc-item-ent{cursor:pointer;border-color:rgba(96,176,240,.2);}
-.enc-flex1{flex:1;}
-.enc-rn13, .row-name.enc-rn13{font-size:13px;}
 .enc-fila-g6{display:flex;align-items:center;gap:6px;}
 .enc-meta-mt3, .gasto-item-meta.enc-meta-mt3{margin-top:3px;}
 .enc-meta-txt{font-size:10px;color:var(--text3);display:flex;align-items:center;gap:4px;flex-wrap:wrap;}

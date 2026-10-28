@@ -454,18 +454,16 @@ function abrirEncargoDetalle(id) {
     const contenido = movsRender.map((m,i) => {
       if (m._esSaldoInicial) {
         const lblCuentaIni = m.cuenta ? fuenteLabel(m.cuenta) : '';
-        return html`<div class="gasto-item enc-item-ent" ${raw(_encAttrs(m,'Encargos · '+enc.nombre))}>
-          <div class="gasto-item-top">
-            <div class="enc-flex1"><div class="row-name enc-rn13">Saldo inicial</div><div class="row-sub">${m.fecha!=='0000-00-00'?m.fecha:''}${lblCuentaIni?' · '+lblCuentaIni:''}</div></div>
-            <div class="enc-fila-g6">
-              <span class="row-amount c-blue">${fmt(m.monto)}</span>
-              <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${raw(Events.attr('encargos:deleteMov', enc.id, m.id))} title="Eliminar saldo inicial${lblCuentaIni?' (también se descuenta de '+lblCuentaIni+')':''}">
-                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-              </button>
-            </div>
-          </div>
-          <div class="gasto-item-meta"><span class="badge bg-blue enc-fs9">Inicio</span>${lblCuentaIni?html`<span class="badge ${fuenteBadgeClass(m.cuenta)} enc-fs9">${lblCuentaIni}</span>`:''}</div>
-        </div>`;
+        return filaMovimiento({
+          clase: 'enc-item-ent',
+          attrs: _encAttrs(m,'Encargos · '+enc.nombre),
+          nombre: 'Saldo inicial',
+          sub: `${m.fecha!=='0000-00-00'?m.fecha:''}${lblCuentaIni?' · '+lblCuentaIni:''}`,
+          monto: fmt(m.monto),
+          montoClase: 'c-blue',
+          acciones: botonEliminarFila('encargos:deleteMov', [enc.id, m.id], 'Eliminar saldo inicial'+(lblCuentaIni?' (también se descuenta de '+lblCuentaIni+')':'')),
+          meta: html`<span class="badge bg-blue enc-fs9">Inicio</span>${lblCuentaIni?html`<span class="badge ${fuenteBadgeClass(m.cuenta)} enc-fs9">${lblCuentaIni}</span>`:''}`
+        });
       }
       const esEntrada = m.tipo === 'entrada';
       const lblCuenta = m._grupo ? m._grupo.map(x => (x.cuenta ? fuenteLabel(x.cuenta) : 'Sin especificar') + ' ' + fmt(x.monto)).join(' + ') : (m.cuenta ? fuenteLabel(m.cuenta) : '');
@@ -477,29 +475,22 @@ function abrirEncargoDetalle(id) {
       const miaSaleLbl  = esMia ? ((m._miaCuentas && m._miaCuentas.sale.length>1) ? _miaLbl(m._miaCuentas.sale) : fuenteLabel(m._miaCuentaSale)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
       const miaEntraLbl = esMia && m._miaCuentaEntra ? ((m._miaCuentas && m._miaCuentas.entra.length>1) ? _miaLbl(m._miaCuentas.entra) : fuenteLabel(m._miaCuentaEntra)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
       const origenEnc = esAbonoPrestamo ? ('Préstamos · ' + ((Deudas.lista('favor').find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+enc.nombre);
-      return html`<div class="gasto-item enc-item ${esEntrada?'enc-item-b-ent':esAbonoPrestamo?'enc-item-b-abono':esTcEncargo?'enc-item-b-tc':'enc-item-b-sal'}" ${raw(_encAttrs(m,origenEnc))}>
-        <div class="gasto-item-top">
-          <div class="enc-flex1-min0">
-            <div class="row-name enc-rn13">${m.desc}</div>
-            <div class="row-sub">${m.fecha}${lblCuenta?' · '+lblCuenta:''}${tcNombreLbl?' · '+tcNombreLbl:''}${esMia?' · Yo puse la plata':''}</div>
-          </div>
-          <div class="enc-fila-g6">
-            <span class="row-amount ${esEntrada?'c-blue':esAbonoPrestamo?'c-amber':'c-red'}">${esEntrada?'+':'−'}${fmt(m.monto)}</span>
-            <button type="button" class="btn-delete-hover" data-stop-propagation="true" ${raw(Events.attr('encargos:deleteMov', enc.id, m.id))} title="Eliminar (también elimina movimientos secundarios en tus cuentas)">
-              <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-            </button>
-          </div>
-        </div>
-        ${m.nota&&!esTcEncargo&&!esMia?html`<div class="gasto-item-meta"><span class="enc-nota">${m.nota}</span></div>`:''}
-        ${esMia?html`<div class="gasto-item-meta enc-meta-mt3"><span class="enc-meta-txt"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-meta-ico"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg>Salió de <strong class="enc-c-text2">${miaSaleLbl}</strong>${miaEntraLbl?html` · Entró a <strong class="enc-c-text2">${miaEntraLbl}</strong>`:''}</span></div>`:''}
-        <div class="gasto-item-meta">
+      return filaMovimiento({
+        clase: 'enc-item ' + (esEntrada?'enc-item-b-ent':esAbonoPrestamo?'enc-item-b-abono':esTcEncargo?'enc-item-b-tc':'enc-item-b-sal'),
+        attrs: _encAttrs(m,origenEnc),
+        nombre: m.desc,
+        sub: `${m.fecha}${lblCuenta?' · '+lblCuenta:''}${tcNombreLbl?' · '+tcNombreLbl:''}${esMia?' · Yo puse la plata':''}`,
+        monto: `${esEntrada?'+':'−'}${fmt(m.monto)}`,
+        montoClase: esEntrada?'c-blue':esAbonoPrestamo?'c-amber':'c-red',
+        acciones: botonEliminarFila('encargos:deleteMov', [enc.id, m.id], 'Eliminar (también elimina movimientos secundarios en tus cuentas)'),
+        antesMeta: html`${m.nota&&!esTcEncargo&&!esMia?html`<div class="gasto-item-meta"><span class="enc-nota">${m.nota}</span></div>`:''}${esMia?html`<div class="gasto-item-meta enc-meta-mt3"><span class="enc-meta-txt"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-meta-ico"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg>Salió de <strong class="enc-c-text2">${miaSaleLbl}</strong>${miaEntraLbl?html` · Entró a <strong class="enc-c-text2">${miaEntraLbl}</strong>`:''}</span></div>`:''}`,
+        meta: html`
           <span class="badge ${esEntrada?'bg-blue':esAbonoPrestamo?'bg-amber':esTcEncargo?'bg-blue':'bg-red'} enc-fs9">${esEntrada?'Entrada':esAbonoPrestamo?'Pago préstamo':esTcEncargo?'Pagado con TC':'Salida'}</span>
           ${esMia?html`<span class="badge enc-badge-yo">Yo puse la plata</span>`:''}
           ${m._grupo?raw(m._grupo.filter(x=>x.cuenta).map(x=>`<span class="badge ${fuenteBadgeClass(x.cuenta)} enc-fs9">${escHtml(fuenteLabel(x.cuenta))}</span>`).join('')):(lblCuenta?html`<span class="badge ${fuenteBadgeClass(m.cuenta)} enc-fs9">${lblCuenta}</span>`:'')}
-          ${tcNombreLbl?html`<span class="badge bg-blue enc-fs9">${tcNombreLbl}</span>`:''}
-        </div>
-        ${raw(m && m.diferencial ? diffRenderHistorial(m.diferencial) : '')}
-      </div>`;
+          ${tcNombreLbl?html`<span class="badge bg-blue enc-fs9">${tcNombreLbl}</span>`:''}`,
+        despues: raw(m && m.diferencial ? diffRenderHistorial(m.diferencial) : '')
+      });
     });
     histEl.innerHTML = html`${contenido}`;
   }

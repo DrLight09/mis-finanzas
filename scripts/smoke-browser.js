@@ -200,7 +200,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
       return { cls: h.className.replace('ix-analisis-balance-hero ', ''), monto: h.querySelector('.an-hero-monto').textContent.trim(), msg: h.querySelector('.an-hero-msg').textContent.trim(), ing: q('#an-ingresos').textContent.trim() };
     };
     let r6 = esc6(0, 0);
-    c4(r6.cls === 'an-hero-neu' && /Aún no hay movimientos este mes/.test(r6.msg), 'Balance sin ingresos ni gastos: neutro con «Aún no hay movimientos este mes.»');
+    c4(r6.cls === 'an-hero-neu' && /Aún no hay ingresos ni gastos que cuenten para este mes/.test(r6.msg), 'Balance sin ingresos ni gastos: neutro con «Aún no hay ingresos ni gastos que cuenten para este mes.»');
     r6 = esc6(0, 33.33);
     c4(r6.cls === 'an-hero-neg' && r6.monto === '-$33,33' && /Has gastado \$33,33 y aún no registras ingresos/.test(r6.msg) && /Registra tus ingresos para ver el balance del mes/.test(r6.msg) && !/Mesada/.test(r6.msg) && r6.ing === '—', 'Balance sin ingresos y con gastos: rojo, -$33,33 y mensaje de registrar ingresos');
     r6 = esc6(100000, 30000);
@@ -209,6 +209,29 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c4(r6.cls === 'an-hero-neu' && r6.monto === '$0' && /has gastado todo lo que has recibido/.test(r6.msg) && q('#an-tasa-ahorro').textContent === '0%' && q('#an-ahorrado').style.color === 'var(--text3)', 'Balance en cero: neutro, ni verde ni rojo (también en las tarjetas)');
     r6 = esc6(50000, 80000);
     c4(r6.cls === 'an-hero-neg' && r6.monto === '-$30.000' && /has gastado más de lo que has recibido/.test(r6.msg), 'Balance con gastos > ingresos: rojo con signo -');
+
+    // Revisión de Análisis/Salud/Proyección (2026-10-27)
+    // 3 · Mesada cobrada este mes que cubre otro: el balance de este mes no la suma, pero lo dice (no parece una contradicción)
+    ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.ingresosFijos=[]; S.modulos=Object.assign({},S.modulos,{mesada:true});` +
+       `const kOtro=new Date().getFullYear()+'-'+((new Date().getMonth()+1)%12); S.mesadas={papa:{cuotas:{},pagos:{[kOtro]:{monto:80000,fecha:hoy()}}},mama:{cuotas:{},pagos:{}}}; renderAnalisis()`);
+    const h3 = q('#analisis-balance-hero');
+    c4(/Aún no hay ingresos ni gastos que cuenten para este mes/.test(h3.querySelector('.an-hero-msg').textContent) && /Entró \$80\.000 de la Mesada este mes que cuenta como ingreso de/.test(h3.textContent), 'Balance: mesada cobrada este mes que cubre otro mes → mensaje sin «no hay movimientos» y nota con el mes que cubre');
+    ev(`S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}}; renderAnalisis()`);
+    c4(!/de la Mesada este mes/.test(q('#analisis-balance-hero').textContent), 'Balance: sin mesada de otro mes no hay nota');
+    // 5b / 5c · historial de patrimonio: sin base no hay porcentaje; el título cuenta días y el eje va por fecha
+    const fh = `const dia=n=>{const x=new Date();x.setDate(x.getDate()-n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};`;
+    ev(fh + `S.patrimonioHistorial=[{fecha:dia(11),valor:0,valorVisible:0},{fecha:dia(10),valor:80000,valorVisible:80000},{fecha:dia(0),valor:80000,valorVisible:80000}]; renderAnalisis()`);
+    const pat = q('#an-patrimonio-chart');
+    const pts = JSON.parse(pat.querySelector('#_pat-overlay').dataset.pts);
+    c4(pat.querySelector('.an-pat-pct').textContent.trim() === '—' && !/\+0\.0%/.test(pat.textContent), 'Historial de patrimonio: primer punto en 0 → porcentaje «—», no «+0.0%»');
+    c4(/Últimos 12 días/.test(pat.querySelector('.an-pat-tit').textContent), 'Historial de patrimonio: «Últimos N días» cuenta días de la ventana (3 registros en 12 días → 12), no registros');
+    c4(pts.length === 3 && pts[1].px < 40 && pts[2].px > 300, 'Historial de patrimonio: el eje reparte por fecha (el 2.º punto, a 1 día del 1.º, queda pegado al inicio; no a la mitad)');
+    // 2 · Proyección: con menos de 30 días no hay cifras a 3/6/12 meses
+    ev(fh + `S.cuentas=[{id:'nequi',tipo:'nequi',saldo:500000},{id:'efectivo',tipo:'efectivo',saldo:0}]; S.patrimonioHistorial=[{fecha:dia(9),valor:100000},{fecha:dia(0),valor:500000}]; renderProyeccion()`);
+    const pr = q('#proyeccion-card');
+    c4(/llevas 9 de 30 días/.test(pr.textContent) && !pr.querySelector('.inicio-proy-card') && /—/.test(pr.textContent), 'Proyección: con 9 días de historial no muestra 3/6/12 meses y dice cuánto falta (llevas 9 de 30)');
+    ev(fh + `S.patrimonioHistorial=[{fecha:dia(35),valor:100000},{fecha:dia(0),valor:500000}]; renderProyeccion()`);
+    c4(pr.querySelectorAll('.inicio-proy-card').length === 3 && !/PRELIMINAR/.test(pr.textContent), 'Proyección: con 35 días sí muestra las 3 cifras, sin chip PRELIMINAR');
 
     // Mejora 11: «Salud financiera» — el consejo del CDT es una sugerencia (no un check verde) y lleva a Cuentas
     ev(`S.movimientos=[]; S.gastosVar=[]; S.tarjetasCredito=[]; S.cajitas=S.cajitas||[]; S.cuentas=[{id:'nequi',tipo:'nequi',saldo:9000000},{id:'efectivo',tipo:'efectivo',saldo:0}]; S.ingresosFijos=[{id:'i11',nombre:'Sueldo',monto:3000000}]; S.gastosFijos=[{id:'f11',monto:1000000}]; S.pagosGastosFijos={['f11_'+mesActual()]:{monto:1000000}}; renderHealthScore()`);

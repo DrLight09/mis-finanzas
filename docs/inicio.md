@@ -36,7 +36,7 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 
 **`renderHealthScore()`** — pinta el anillo SVG y los tips de `calcHealthScore()` en `#health-score-card`. El círculo de progreso usa `transform="rotate(-90 38 38)"` para que el relleno empiece arriba (a las 12) y avance en sentido horario, en vez de arrancar en el punto por defecto de un `<circle>` SVG (a las 3) — ver `CHANGELOG.md#inicio` (2026-08-30) por qué no se usa `stroke-dashoffset` para esto.
 
-**`renderProyeccion()`** — calcula la tendencia mensual de patrimonio (trimmed mean sobre los últimos 90 días de `S.patrimonioHistorial`, con mínimo de 7 días reales para no extrapolar de un solo movimiento grande) y proyecta a 3/6/12 meses en `#proyeccion-card`. Incluye tooltips táctiles con el detalle de cada proyección.
+**`renderProyeccion()`** — calcula la tendencia mensual de patrimonio (trimmed mean sobre los últimos 90 días de `S.patrimonioHistorial`, con mínimo de 30 días reales para no extrapolar de un solo movimiento grande; con menos muestra «Tendencia en construcción: llevas N de 30 días») y proyecta a 3/6/12 meses en `#proyeccion-card`. Incluye tooltips táctiles con el detalle de cada proyección.
 
 **`_checkGastoAlto()`** — revisa si el gasto del mes supera el 80% de lo disponible (Nu + Nequi + Efectivo) y muestra/oculta el aviso en `#hero-change-indicator`. Se engancha a `refresh()` mediante monkey-patch al cargar el módulo.
 

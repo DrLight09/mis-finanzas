@@ -751,9 +751,12 @@ window.renderAlcancia = function(){
 
     if(listaEl){
       const hist = a.historial || [];
+      // Sin alcancías destapadas no hay historial que mostrar: ni título ni mensaje
+      // (el estado vacío o la alcancía activa ya dicen en qué punto está la persona).
       if(tituloEl) tituloEl.style.display = hist.length ? '' : 'none';
+      listaEl.style.display = hist.length ? '' : 'none';
       if(!hist.length){
-        listaEl.innerHTML = '<div class="feed-empty">Aún no has destapado ninguna alcancía.</div>';
+        listaEl.innerHTML = '';
       } else {
         listaEl.innerHTML = [...hist].reverse().map((h,i) => {
           const dif = (h.saldoReal||0) - (h.saldoRegistrado||0);

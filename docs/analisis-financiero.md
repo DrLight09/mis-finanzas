@@ -34,10 +34,12 @@ Función principal que renderiza toda la pantalla: **`renderAnalisis()`**.
 
   | Escenario | Estado | Monto | Mensaje |
   |---|---|---|---|
-  | Sin ingresos ni gastos | neutro | `$0` | «Aún no hay movimientos este mes.» |
+  | Sin ingresos ni gastos | neutro | `$0` | «Aún no hay ingresos ni gastos que cuenten para este mes.» |
   | Sin ingresos y con gastos | rojo | `-$X` | «Has gastado $X y aún no registras ingresos este mes. Registra tus ingresos para ver el balance del mes.» |
   | Ingresos > gastos | verde | `+$X` | «Por ahora vas bien: has gastado menos de lo que has recibido este mes.» |
   | Ingresos = gastos | neutro | `$0` | «Por ahora has gastado todo lo que has recibido este mes.» |
+
+  **Plata de Mesada cobrada este mes que cubre otro mes.** La Mesada cuenta como ingreso del mes que cubre su clave (`S.mesadas[padre].pagos['YYYY-<mes 0-11>']`), no del mes en que te la pagaron. Si este mes te entró una (p. ej. registraste en octubre el pago de enero), el balance de octubre no la suma —es lo correcto— pero el hero lo dice debajo del mensaje: «Entró $X de la Mesada este mes que cuenta como ingreso de Ene 2026, no de Oct 2026.» (`Periodo.mesadasCobradasEnOtroMes()`). El historial de patrimonio, en cambio, sí la cuenta el día en que entró la plata; la nota evita que parezca una contradicción. Mesada avisa lo mismo al registrar el pago (ver `mesada.md`).
   | Gastos > ingresos | rojo | `-$X` | «Por ahora has gastado más de lo que has recibido este mes.» |
 
   «Sin ingresos» = sin ingresos operativos (los rendimientos de Nu solos no cuentan; en ese caso la línea «Incluye … de rendimientos» tampoco se muestra). El cero exacto es neutro también en «Tasa de ahorro» y «Ahorrado este mes», que siguen en «—» mientras no haya ingresos. La comparación con el mes anterior dice «por ahora» (el mes en curso contra el anterior completo).
@@ -65,8 +67,9 @@ Repite el mismo cálculo de ingresos/gastos/balance (mismo criterio de ingreso/g
 **ID:** `an-patrimonio-chart`. Gráfica de línea con los últimos 30 puntos de `S.patrimonioHistorial`.
 
 - La serie **no** se grafica cruda: a cada punto se le resta el `montoBase` acumulado (aperturas de cuenta nuevas, correcciones de saldo inicial) para que abrir una cuenta nueva, corregir un saldo o destapar una alcancía con sobrante/faltante no se vea como un salto/caída falsa de patrimonio. (El sobrante o faltante **sí** cuenta como ingreso/gasto del mes en §2: aparece el día en que se encontró.)
-- Se usa `valorVisible` (patrimonio sin la alcancía) en vez de `valor` (patrimonio real total), tanto en la curva como en el número de encabezado ("Últimos N días: $X") y en el tooltip al tocar un punto — para no revelar el saldo/depósitos de la alcancía a través de la gráfica, mismo criterio que el hero de Inicio. Puntos guardados antes de que existiera `valorVisible` caen a `valor` como fallback. Al destapar la alcancía (`alcanciaConfirmarDestapar()`), `valorVisible` se iguala a `valor` en todo el historial: esa plata ya dejó de ser oculta, así que la curva y la tendencia la reflejan en el día en que se depositó, sin un salto único el día del destape.
-- Debajo de la gráfica se muestra el cambio total de la ventana (`diffTotal`) en monto y %. Con cambio cero (p. ej. todo en $0) se muestra `$0` y `0.0%` sin signo, en el color neutro de la app, y la línea y el degradado van en gris; solo un cambio real usa `+` con verde o `−` con rojo.
+- Se usa `valorVisible` (patrimonio sin la alcancía) en vez de `valor` (patrimonio real total), tanto en la curva como en el número de encabezado ("Últimos N días: $X", con N = los días que abarca la ventana, de la primera a la última fecha, no la cantidad de registros) y en el tooltip al tocar un punto — para no revelar el saldo/depósitos de la alcancía a través de la gráfica, mismo criterio que el hero de Inicio. Puntos guardados antes de que existiera `valorVisible` caen a `valor` como fallback. Al destapar la alcancía (`alcanciaConfirmarDestapar()`), `valorVisible` se iguala a `valor` en todo el historial: esa plata ya dejó de ser oculta, así que la curva y la tendencia la reflejan en el día en que se depositó, sin un salto único el día del destape.
+- **El eje X reparte los puntos por fecha**, no en partes iguales: un registro del historial solo se guarda los días en que se abre la app y se guarda algo, así que un salto de 10 días no se ve igual que uno de 1 día.
+- Debajo de la gráfica se muestra el cambio total de la ventana (`diffTotal`) en monto y %. Si el primer punto de la ventana vale 0 no hay base para un porcentaje y se muestra «—» (no «+0.0%»). Con cambio cero (p. ej. todo en $0) se muestra `$0` y `0.0%` sin signo, en el color neutro de la app, y la línea y el degradado van en gris; solo un cambio real usa `+` con verde o `−` con rojo.
 
 ### ¿Cómo se genera cada punto del historial? (`snapshotPatrimonio()`)
 
@@ -134,8 +137,8 @@ Estos dos bloques **no viven en `screen-analisis`**, sino en Inicio, pero se cal
 - **Salud financiera** (`health-score-card`, Inicio) — usa `calcPatrimonioTotal()`, `ingresosMes`, `liquidoReal`, deuda TC propia, gastos del mes, etc. para dar un puntaje. Comparte con esta pantalla los mismos helpers de "qué es ingreso/gasto real" (§9bis) — al estar centralizados, ya no hace falta sincronizarlos a mano entre pantallas. Documentación propia en [`salud-financiera.md`](./salud-financiera.md).
 - **Proyección financiera** (`proyeccion-card`, Inicio) — calcula una **tendencia mensual** a partir de `S.patrimonioHistorial` (los mismos snapshots del historial de patrimonio) y proyecta patrimonio a 3/6/12 meses:
   - Suma el cambio neto de patrimonio (restando `montoBase` de cada día, para no contar aperturas/ajustes como "crecimiento") sobre todos los pares de puntos consecutivos, y lo divide entre los días reales totales — un promedio ponderado por días, no un promedio de tasas diarias. **No aplica ningún recorte de outliers (trimmed mean):** el ingreso real llega en pocos días grandes, y descartar el día más alto lo trataría como ruido en vez de como ingreso — ver `proyeccion-financiera.md` §2 para el detalle.
-  - Exige al menos 7 días reales de separación entre el primer y último punto (`MIN_DIAS_PARA_TENDENCIA`, en `js/modules/inicio.js`) antes de mostrar cualquier proyección; si no hay suficiente historial, muestra un mensaje de "vuelve en unos días" en vez de un número poco confiable.
-  - Nivel de confianza escalonado: sin proyección con menos de 7 días de historial, `preliminar` (7–29 días), `normal` (30–59 días), `estable` (60+ días).
+  - Exige al menos 30 días reales de separación entre el primer y último punto (`MIN_DIAS_PARA_TENDENCIA`, en `js/modules/inicio.js`) antes de mostrar cualquier proyección; si no hay suficiente historial, muestra «Tendencia en construcción: llevas N de 30 días» en vez de un número poco confiable.
+  - Nivel de confianza: sin proyección con menos de 30 días de historial, `normal` (30–59 días), `estable` (60+ días).
 
 ## 10. Patrimonio total: `calcPatrimonioTotal()`
 

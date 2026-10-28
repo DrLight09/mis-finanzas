@@ -277,14 +277,19 @@ function calcHealthScore(){
   // ── Hay datos suficientes para evaluar? ───────────────────────────────
   const tieneAlgo = patrimonio > 0 || prest > 0 || deudaTC > 0 || gastosMes > 0;
 
-  // a) Fondo de emergencia: liquidez real vs gastos mensuales
-  // CORRECCIÓN: usamos liquidoReal (sin CDTs) — un CDT bloqueado no cubre una emergencia
-  if(gastosMes > 0 && liquidoReal > 0){
-    const mesesCubiertos = liquidoReal / gastosMes;
+  // a) Fondo de emergencia: liquidez real vs gasto mensual TÍPICO
+  // CORRECCIÓN: usamos liquidoReal (sin CDTs) — un CDT bloqueado no cubre una emergencia.
+  // El gasto de referencia es el promedio de los últimos 3 meses COMPLETOS con datos (Periodo.gastoPromedioPrevio),
+  // no el gasto del mes en curso: a los 2 días de empezar el mes apenas hay gastos, y «reservas / gastos del mes»
+  // salía en decenas de meses y regalaba +20 puntos que se iban cayendo a medida que pasaba el mes.
+  // Sin ningún mes anterior con gastos todavía no hay con qué medir: este criterio no puntúa ni aconseja.
+  const gastoRef = Periodo.gastoPromedioPrevio(mes, 3).promedio;
+  if(gastoRef > 0 && liquidoReal > 0){
+    const mesesCubiertos = liquidoReal / gastoRef;
     if(mesesCubiertos >= 6) score += 20;
     else if(mesesCubiertos >= 3) score += 10;
     else { score -= 5; add('Tus reservas cubren menos de 3 meses de gastos.','aviso'); }
-  } else if(gastosMes > 0 && liquidoReal <= 0 && liquidoConCDTs > 0){
+  } else if((gastosMes > 0 || gastoRef > 0) && liquidoReal <= 0 && liquidoConCDTs > 0){
     // Tiene gastos pero su liquidez inmediata es cero — salvado solo por CDTs
     score -= 8; add('Tu liquidez disponible es muy baja — tus ahorros están en CDTs, no en cuentas libres.','aviso');
   } else if(liquidoReal < 0){
@@ -343,10 +348,14 @@ function calcHealthScore(){
   // Solo cuando la situación de liquidez es sana merece el bonus completo
   const cdts = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).length,0);
   if(cdts >= 1){
-    const cdtBonus = ratioPrest > 1 ? 3 : 10;
-    score += cdtBonus;
-  } else if(tieneAlgo && liquidoReal > 0 && deudaTC <= 0 && (gastosMes <= 0 || liquidoReal >= gastosMes * 3)){
-    // Solo se sugiere con ahorros que sobran: fondo de emergencia cubierto (≥ 3 meses de gastos) y sin deuda de tarjeta propia.
+    // El bono es proporcional al peso del CDT en tu plata (cuentas libres + CDTs): llega completo cuando el CDT es
+    // el 10 % o más; un CDT de $1.000 dentro de $80.000 ya no regala los 10 puntos.
+    const CDT_PESO_COMPLETO = 0.10;
+    const cdtBonusMax = ratioPrest > 1 ? 3 : 10;
+    const pesoCDT = liquidoConCDTs > 0 ? cdtVal / liquidoConCDTs : 0;
+    score += Math.round(cdtBonusMax * Math.min(1, pesoCDT / CDT_PESO_COMPLETO));
+  } else if(tieneAlgo && liquidoReal > 0 && deudaTC <= 0 && (gastoRef <= 0 || liquidoReal >= gastoRef * 3)){
+    // Solo se sugiere con ahorros que sobran: fondo de emergencia cubierto (≥ 3 meses de gasto típico) y sin deuda de tarjeta propia.
     add('Considera poner algo en un CDT para hacer crecer tus ahorros.','sugerencia','cuentas');
   }
 
@@ -363,7 +372,15 @@ function calcHealthScore(){
   const sinIngresos = ingresosMes <= 0 && gastosMes > 0;
   if(sinIngresos){
     score = Math.min(score, 74);
-    add('Registra tus ingresos para que la calificación pueda evaluar tus gastos y deudas.','sugerencia');
+    // Mesada cobrada este mes pero que cuenta para otro (p. ej. se registró en «Ene» el pago de octubre): sí entró plata,
+    // solo que el mes que cubre es otro. Se dice en vez de pedir «registra tus ingresos» como si no hubiera entrado nada.
+    const otroMes = Periodo.mesadasCobradasEnOtroMes(mes);
+    if(otroMes.length){
+      const cuando = [...new Set(otroMes.map(o => _mesNombreDeKey(o.key)))].join(' y ');
+      add(`Este mes te entró plata de la Mesada, pero cuenta como ingreso de ${cuando}; por eso aún no hay ingresos de este mes para evaluar tus gastos.`,'sugerencia');
+    } else {
+      add('Registra tus ingresos para que la calificación pueda evaluar tus gastos y deudas.','sugerencia');
+    }
   }
   score = Math.max(0, Math.min(100, score));
   if(!consejos.length){
@@ -482,12 +499,13 @@ function renderProyeccion(){
   const hist = (S.patrimonioHistorial||[]).slice(-90);
   let tendenciaMensual = 0;
   let historialInsuficiente = false;
-  // Niveles: 'insuficiente' | 'preliminar' | 'normal' | 'estable'
+  // Niveles: 'insuficiente' | 'normal' | 'estable'
   let nivelConfianza = 'insuficiente';
 
-  // Mínimo de separación temporal real para confiar en una proyección. Con menos días,
-  // un solo movimiento grande se extrapola de forma absurda.
-  const MIN_DIAS_PARA_TENDENCIA = 7;
+  // Mínimo de separación temporal real para mostrar una proyección: un mes. Con menos días, un solo movimiento
+  // grande (una mesada, un pago) domina el promedio y se extrapola a 3/6/12 meses como si se repitiera cada
+  // semana (una mesada de $80.000 en una ventana de 9 días daba +$267.000 al mes, unos 3 millones al año).
+  const MIN_DIAS_PARA_TENDENCIA = 30;
 
   let diasReales = 0; // declarado en scope externo para usarlo en el template del footer
   if(hist.length >= 2){
@@ -523,9 +541,7 @@ function renderProyeccion(){
       tendenciaMensual = (cambioNetoTotal / diasReales) * 30;
 
       // Nivel de confianza escalonado según días de historial disponible
-      if(diasReales >= 60)       nivelConfianza = 'estable';
-      else if(diasReales >= 30)  nivelConfianza = 'normal';
-      else                       nivelConfianza = 'preliminar';
+      nivelConfianza = diasReales >= 60 ? 'estable' : 'normal';
     }
   } else {
     historialInsuficiente = true;
@@ -553,7 +569,7 @@ function renderProyeccion(){
       <span class="inicio-proy-valor inicio-proy-valor-nulo">—</span>
     </div>
     <div class="inicio-proy-aviso">
-      <div class="inicio-proy-aviso-txt">Aún no hay suficiente historial para proyectar.<br>Vuelve en unos días para ver tendencias y proyecciones.</div>
+      <div class="inicio-proy-aviso-txt">Tendencia en construcción: llevas ${Math.min(diasReales, MIN_DIAS_PARA_TENDENCIA)} de ${MIN_DIAS_PARA_TENDENCIA} días de historial.<br>Vuelve en unos días para ver tendencias y proyecciones.</div>
     </div>
     ${deudaInfo}
   ` : `
@@ -582,9 +598,7 @@ function renderProyeccion(){
     ${deudaInfo}
     <div class="inicio-proy-pie">
       <span class="inicio-proy-base">Basado en ${diasReales} días de historial</span>
-      ${nivelConfianza==='preliminar'
-        ? `<span class="inicio-proy-chip inicio-proy-chip-prelim">PRELIMINAR</span>`
-        : nivelConfianza==='estable'
+      ${nivelConfianza==='estable'
         ? `<span class="inicio-proy-chip inicio-proy-chip-estable">ESTABLE</span>`
         : `<span class="inicio-proy-chip inicio-proy-chip-est">estimación</span>`
       }

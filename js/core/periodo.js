@@ -96,6 +96,35 @@ const Periodo = (() => {
     return { mesada, fijos, entradas, total: mesada + fijos + entradas };
   }
 
+  // Plata de Mesada que ENTRÓ en `mes` (por la fecha en que te pagaron) pero que cuenta como ingreso de OTRO mes
+  // (el que cubre su clave). No cambia ninguna suma: ingresosDelMes() sigue contando la Mesada en el mes que cubre.
+  // Sirve para avisar, en las pantallas que hablan de «ingresos de este mes», que sí entró plata y por qué no suma:
+  // [{ parent, key, mesCubre:'YYYY-MM', monto, fecha }]. Incluye el pago principal y cada abono de un pendiente,
+  // cada uno con su fecha.
+  function mesadasCobradasEnOtroMes(mes, estado) {
+    const st = _st(estado);
+    if (!(st.modulos && st.modulos.mesada) || !st.mesadas || typeof st.mesadas !== 'object') return [];
+    const out = [];
+    ['papa', 'mama'].forEach(parent => {
+      const pagos = st.mesadas[parent] && st.mesadas[parent].pagos;
+      if (!pagos) return;
+      Object.keys(pagos).forEach(key => {
+        const info = pagos[key];
+        const m = /^(\d{4})-(\d{1,2})$/.exec(key);
+        if (!info || !m) return;
+        const mesCubre = m[1] + '-' + String(Number(m[2]) + 1).padStart(2, '0');
+        if (mesCubre === mes) return;
+        const abonos = Array.isArray(info.pendienteHistorial) ? info.pendienteHistorial : [];
+        const principal = (info.monto || 0) - abonos.reduce((a, h) => a + ((h && h.monto) || 0), 0);
+        const partes = [{ monto: principal, fecha: info.fecha }].concat(abonos.map(h => ({ monto: (h && h.monto) || 0, fecha: h && h.fecha })));
+        partes.forEach(pt => {
+          if (pt.monto > 0 && pt.fecha && mesKey(pt.fecha) === mes) out.push({ parent, key, mesCubre, monto: pt.monto, fecha: pt.fecha });
+        });
+      });
+    });
+    return out;
+  }
+
   /* ---- GASTOS ---- */
   // Todos los pagos de gastos fijos, normalizados: [{id, mes, monto, fecha, cat, nombre}].
   // S.pagosGastosFijos es un mapa {"<gfId>_YYYY-MM": {fecha, fuente, monto}}; el mes sale de la clave.
@@ -161,6 +190,16 @@ const Periodo = (() => {
     return out;
   }
 
+  // Gasto mensual típico: promedio de los últimos `n` meses ANTERIORES a `mes` que tengan gasto (meses completos;
+  // el mes en curso no entra, porque a principio de mes su total es parcial y haría ver las reservas enormes).
+  // { promedio, meses }: `meses` = cuántos meses con datos se promediaron (0 si todavía no hay ninguno).
+  function gastoPromedioPrevio(mes, n, estado) {
+    const porMes = gastosPorMes(estado);
+    const previos = Object.keys(porMes).filter(k => k < mes && porMes[k] > 0).sort().slice(-(n || 3));
+    if (!previos.length) return { promedio: 0, meses: 0 };
+    return { promedio: previos.reduce((a, k) => a + porMes[k], 0) / previos.length, meses: previos.length };
+  }
+
   // Gasto real por categoría de un mes: { cat: total }.
   function gastoPorCategoria(mes, estado) {
     const out = {};
@@ -208,8 +247,8 @@ const Periodo = (() => {
     return { mes, ingresos, gastos, balance, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }
 
-  return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosDelMes,
-           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPorCategoria, balanceDelMes };
+  return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosDelMes, mesadasCobradasEnOtroMes,
+           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes };
 })();
 
 // Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.

@@ -700,6 +700,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .ms-preview-amber{color:var(--amber);}
 /* Sin texto no ocupa lugar: el JS lo deja vacío con textContent = '' (mpPreview y mppPreview) */
 .ms-preview:empty{display:none;}
+.ms-aviso-mes{font-size:12px;line-height:1.4;color:var(--amber);margin:-6px 0 14px;}
+.ms-aviso-mes:empty{display:none;}
 .ms-chk{width:17px;height:17px;cursor:pointer;flex-shrink:0;}
 .ms-chk-blue{accent-color:var(--blue);}
 .ms-chk-amber{accent-color:var(--amber);}
@@ -900,7 +902,6 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .inicio-proy-pie{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
 .inicio-proy-base{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;}
 .inicio-proy-chip{font-size:9px;font-family:'DM Mono',monospace;border-radius:4px;padding:1px 6px;}
-.inicio-proy-chip-prelim{color:#e8a838;background:rgba(232,168,56,.12);border:1px solid rgba(232,168,56,.25);letter-spacing:.3px;}
 .inicio-proy-chip-estable{color:var(--accent);background:rgba(200,240,96,.08);border:1px solid rgba(200,240,96,.2);letter-spacing:.3px;}
 .inicio-proy-chip-est{color:var(--text3);}
 /* Tooltip de la proyección */

@@ -49,12 +49,13 @@ tendenciaMensual = (cambioNetoTotal / díasReales) * 30
 
 ### Niveles de confianza
 
-| Días de historial | Badge |
+| Días de historial | Qué se muestra |
 |---|---|
-| < 7 | Sin proyección — mensaje de espera |
-| 7–29 | PRELIMINAR (ámbar) |
-| 30–59 | estimación (sin badge) |
-| 60+ | ESTABLE (verde) |
+| < 30 | Sin cifras a 3/6/12 meses: «Tendencia en construcción: llevas N de 30 días de historial» (`MIN_DIAS_PARA_TENDENCIA = 30`) |
+| 30–59 | Tendencia y proyecciones con la marca «estimación» |
+| 60+ | Tendencia y proyecciones con la marca ESTABLE (verde) |
+
+Con menos de un mes un solo movimiento grande domina el promedio y se extrapola como si se repitiera todo el año (una mesada de $80.000 dentro de una ventana de 9 días daba +$267.000 al mes, unos $3,2 millones a 12 meses). Hasta 2026-10-27 el mínimo era 7 días y existía una marca PRELIMINAR (7–29 días) que mostraba la cifra de todos modos; se retiraron las dos (ver `CHANGELOG.md`).
 
 ---
 

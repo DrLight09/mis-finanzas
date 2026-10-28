@@ -60,11 +60,11 @@ Calcular gastosMes, ingresosMes, liquidoReal, liquidoConCDTs, deudaTC, prest (pl
   ↓
 score = 50 (base)
   ↓
-a) Fondo de emergencia: liquidoReal / gastosMes           → +20 / +10 / −5 / −8 / −15
+a) Fondo de emergencia: liquidoReal / gasto mensual típico (promedio de los últimos 3 meses completos con datos) → +20 / +10 / −5 / −8 / −15
 b) Deuda TC vs ingresos (o vs patrimonio si no hay ingresos) → +5 / −8 / −15 / −10
 c) Plata prestada a otros vs liquidoReal                   → −8 / −13 / −15 / −18
 d) Ratio gastos/ingresos (disciplina de gasto)              → +10 / +5 / −10
-e) CDTs activos (bonus reducido si hay mucho prestado sin cobrar) → +3 / +10
+e) CDTs activos: bono proporcional al peso del CDT (completo desde el 10 % de tu plata; tope reducido si hay mucho prestado sin cobrar) → 0 a +10 (0 a +3)
 f) Gastos fijos configurados (≥2)                           → +5
 g) Categorías diversificadas en gastos variables             → −5 si solo hay una
   ↓
@@ -91,6 +91,9 @@ Si hay score → anillo de progreso SVG + etiqueta (Excelente / Regular / Necesi
 - **Deuda de TC sin ingresos registrados ese mes:** en vez de no evaluar nada, compara la deuda contra el patrimonio total como respaldo (con manejo explícito del caso `patrimonio <= 0`).
 - **Toda la liquidez está prestada** (`liquidoReal <= 0` y `prest > 0`): caso crítico marcado aparte con `ratioPrest = Infinity`, para que el bonus de CDTs (factor e) también se reduzca automáticamente sin tener que repetir la condición.
 - **Mucho dinero prestado sin cobrar + CDTs activos:** el bonus de tener CDTs baja de +10 a +3 — tener ahorro estructurado no compensa igual si al mismo tiempo hay mucho riesgo de no cobrar lo prestado.
+- **Fondo de emergencia sin meses anteriores con gastos** (primer mes de uso): el criterio (a) no puntúa ni aconseja, porque no hay con qué medir. No se usa el gasto del mes en curso: a principio de mes apenas hay gastos y «reservas ÷ gastos del mes» salía en decenas de meses (+20 puntos que se iban cayendo a medida que pasaba el mes). La referencia es `Periodo.gastoPromedioPrevio(mes, 3)`: promedio de hasta 3 meses anteriores completos con gasto.
+- **CDT pequeño:** el bono es `round(tope × min(1, peso ÷ 10 %))`, con `peso = valor de los CDTs ÷ (cuentas libres + CDTs)`. Un CDT de $1.000 dentro de $81.000 (1,2 %) suma 1 punto, no 10.
+- **Mesada cobrada este mes que cubre otro mes** (p. ej. se registró en octubre el pago de enero): `ingresosMes` es 0 (la Mesada cuenta en el mes que cubre, regla única de `periodo.js`), así que sigue aplicando el tope de 74 y se saltan los criterios (b) y (d); pero el consejo ya no dice «Registra tus ingresos» sino que explica que la plata entró este mes y cuenta como ingreso de otro (`Periodo.mesadasCobradasEnOtroMes()`). **Decisión de diseño:** Salud no cuenta ese pago como ingreso de este mes, para no abrir una segunda definición de «ingreso del mes» distinta de la de Análisis, cierre de mes y Wrapped.
 - **Solo gastos fijos, sin gastos variables este mes:** el factor (g) de "categorías diversificadas" no penaliza — solo se evalúa si `gvMes > 0`.
 
 ---

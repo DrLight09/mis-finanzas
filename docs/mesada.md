@@ -101,6 +101,13 @@ Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `g
 
 - El espejo de un pago de Mesada en la cuenta destino (`registrarMovEspejo` con `origen: 'Mesada'`) es `neutro`: el ingreso de la mesada se cuenta una sola vez, en `Periodo.mesadaDelMes`.
 
+### Mes que cubre vs. fecha en que te pagaron
+
+La clave del pago (`"2026-0"` = enero 2026) es el mes que la mesada **cubre**, y es el mes en que cuenta como ingreso (balance de Análisis, Salud financiera, cierre de mes, Wrapped). La fecha del pago (`fecha`) es el día en que entró la plata, y es la que usa el historial de patrimonio. Si son de meses distintos las dos pantallas dicen cosas distintas (las dos correctas), así que:
+
+- Al registrar, el sheet «Registrar pago» avisa bajo la fecha, y se actualiza al cambiarla: «Este pago cuenta como ingreso de Ene 2026, no de este mes.» (`mesadaAvisoMesPago(key, fecha)` → `#mpAvisoMes`). No bloquea nada: pagar con atraso es un caso legítimo.
+- Análisis y Salud financiera explican la diferencia cuando este mes entró plata de Mesada que cubre otro (`Periodo.mesadasCobradasEnOtroMes(mes)`, que incluye los abonos de un pendiente con su propia fecha). No cambia ninguna suma.
+
 ## 5. Flujo
 
 ### Registrar un pago
@@ -204,7 +211,7 @@ Navegación de año (`#anioLabel`, `cambiarAnio(d)`, rango ±2 años), resumen (
 
 | Sheet | id del overlay | Campos principales | Función que abre |
 |---|---|---|---|
-| Registrar pago | `sheet-mesada-pago` | `mpMonto`, `mpFecha`, `mpDestino`, `mpModoSimple`/`mpModoDividido`, `mpQuedaDebiendo`, `mpNota`, `mpUsarEncargo` (+ `mpEncargoSel`, `mpEncargoCuentaSel`) | `abrirRegistrarMesada(parent, key, nombre)` |
+| Registrar pago | `sheet-mesada-pago` | `mpMonto`, `mpFecha`, `mpAvisoMes`, `mpDestino`, `mpModoSimple`/`mpModoDividido`, `mpQuedaDebiendo`, `mpNota`, `mpUsarEncargo` (+ `mpEncargoSel`, `mpEncargoCuentaSel`) | `abrirRegistrarMesada(parent, key, nombre)` |
 | Detalle del mes | `sheet-mesada-det` | `mdTitle`, `mdContent` (armado por JS, con clases `.ms-*`) | `abrirDetalleMesada(parent, key, nombre)` |
 | Resolver pendiente | `sheet-mesada-pend` | `mppMonto`, `mppFecha`, `mppDestino`, `mppNota`, `mppPreview`, `mppUsarEncargo` (+ `mppEncargoSel`, `mppEncargoCuentaSel`) | `abrirResolverPendiente(parent, key)` |
 
@@ -233,7 +240,7 @@ Navegación de año (`#anioLabel`, `cambiarAnio(d)`, rango ±2 años), resumen (
 |---|---|
 | `renderMesada()` | Pinta la pantalla a partir de `mesadaResumenAnio()` |
 | `clickMesDot`, `cambiarAnio` | Navegación (registrar o detalle según haya datos / ±1 año guardando antes las cuotas) |
-| `abrirRegistrarMesada`, `actualizarMpPreview`, `_syncMpDebeWrap`, `confirmarMesadaPago` | Sheet de registrar pago (lee el formulario y llama a `mesadaRegistrarPago`) |
+| `abrirRegistrarMesada`, `actualizarMpPreview`, `mesadaAvisoMesPago`/`actualizarMpAvisoMes`, `_syncMpDebeWrap`, `confirmarMesadaPago` | Sheet de registrar pago (lee el formulario y llama a `mesadaRegistrarPago`) |
 | `abrirResolverPendiente`, `actualizarMppPreview`, `confirmarPendienteMesada` | Sheet de pago de lo pendiente |
 | `abrirDetalleMesada`, `eliminarMesadaPago`, `marcarMesadaComoPendiente`, `deshacerPendienteMesada` | Detalle y acciones (el borrado aplica la protección por antigüedad antes de llamar al dominio) |
 | `_crearEncargoPicker(prefijo, estado, onCambio)` | Widget "pagó con plata de un encargo": una instancia por sheet (`mp`, `mpp`) |

@@ -606,6 +606,24 @@ function _poblarDestinoMesada(selectId) {
   if (sel) sel.innerHTML = buildFuentesOptsHtml({ placeholder: 'No especificar / lo gasté', incluirTC: false });
 }
 
+// La Mesada cuenta como ingreso del mes que CUBRE (la clave del pago), no del mes en que te la pagaron. Si la fecha
+// elegida cae en otro mes se avisa antes de guardar, para que no sorprenda que el balance de este mes no la sume.
+// Devuelve el texto del aviso o '' (clave inválida, sin fecha, o la fecha cae en el mes que cubre).
+function mesadaAvisoMesPago(key, fecha) {
+  const k = /^(\d{4})-(\d{1,2})$/.exec(String(key || ''));
+  const f = /^(\d{4})-(\d{2})-\d{2}/.exec(String(fecha || ''));
+  if (!k || !f) return '';
+  if (Number(k[1]) === Number(f[1]) && Number(k[2]) === Number(f[2]) - 1) return '';
+  const mesFecha = f[1] + '-' + f[2];
+  const donde = mesFecha === mesActual() ? 'este mes' : _mesNombreDeKey(f[1] + '-' + (Number(f[2]) - 1));
+  return 'Este pago cuenta como ingreso de ' + _mesNombreDeKey(key) + ', no de ' + donde + '.';
+}
+
+function actualizarMpAvisoMes() {
+  const el = _msEl('mpAvisoMes');
+  if (el) el.textContent = mesadaAvisoMesPago(_msFlujos.mp.key, _msVal('mpFecha'));
+}
+
 function abrirRegistrarMesada(parent, key, nombre) {
   const f = _msFlujos.mp;
   f.parent = parent; f.key = key;
@@ -613,6 +631,7 @@ function abrirRegistrarMesada(parent, key, nombre) {
   _msEl('mpDesc').textContent = 'Registra cuándo te pagó y qué hiciste con esa plata.';
   setMoneyInput(_msEl('mpMonto'), mesadaCuotaDeKey(parent, key));
   _msEl('mpFecha').value = hoy();
+  actualizarMpAvisoMes();
   _msEl('mpNota').value = '';
   _msEl('mpPreview').textContent = '';
   splitReset('mp'); // vuelve el widget de dividir a su estado base (modo simple, sin filas)
@@ -903,6 +922,8 @@ function _msCablear() {
     ['btn-confirmar-mesada',      'click',  confirmarMesadaPago],
     ['btn-confirmar-mesada-pend', 'click',  confirmarPendienteMesada],
     ['mpMonto',                   'input',  actualizarMpPreview],
+    ['mpFecha',                   'input',  actualizarMpAvisoMes],
+    ['mpFecha',                   'change', actualizarMpAvisoMes],
     ['mpDestino',                 'change', actualizarMpPreview],
     ['mpQuedaDebiendo',           'change', actualizarMpPreview],
     ['mppMonto',                  'input',  actualizarMppPreview],

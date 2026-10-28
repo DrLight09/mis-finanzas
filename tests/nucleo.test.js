@@ -140,6 +140,15 @@ describe('calcHealthScore', () => {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   }
 
+  // 'YYYY-MM' de hace n meses. El fondo de emergencia se mide contra el gasto de los meses ANTERIORES, así que
+  // los casos de reservas ponen su gasto en el mes pasado (`pagosPrevios`) y no solo en el mes en curso.
+  function mesHace(n) {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  const pagosPrevios = (monto, meses = 1) => Object.fromEntries(
+    Array.from({ length: meses }, (_, i) => ['g1_' + mesHace(i + 1), { monto }]));
+
   function freshApp(sOverrides = {}) {
     const ctx = loadApp([
       path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
@@ -168,7 +177,7 @@ describe('calcHealthScore', () => {
     const ctx = freshApp({
       cuentas: cuentas({ nequi: 6000000 }), // 6 meses de 1M de gastos
       gastosFijos: [{ id: 'g1', monto: 1000000 }],
-      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 }, ...pagosPrevios(1000000, 3) },
     });
     const r = ctx.calcHealthScore();
     assert.ok(r.score >= 70, `esperaba score alto (>=70), dio ${r.score}`);
@@ -180,7 +189,7 @@ describe('calcHealthScore', () => {
     const ctx = freshApp({
       cuentas: cuentas({ nequi: 500000 }), // 0.5 meses de 1M
       gastosFijos: [{ id: 'g1', monto: 1000000 }],
-      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 }, ...pagosPrevios(1000000, 3) },
     });
     const r = ctx.calcHealthScore();
     assert.ok(r.tips.some((t) => t.includes('menos de 3 meses')));
@@ -236,14 +245,14 @@ describe('calcHealthScore', () => {
     const pocas = freshApp({
       cuentas: cuentas({ nequi: 500000 }),
       gastosFijos: [{ id: 'g1', monto: 1000000 }],
-      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 }, ...pagosPrevios(1000000, 3) },
     });
     assert.ok(!pocas.calcHealthScore().tips.some((t) => t.includes('CDT')));
     const conDeuda = freshApp({
       cuentas: cuentas({ nequi: 9000000 }),
       tarjetasCredito: [{ id: 'tc1', deuda: 100000, cupo: 1000000 }],
       gastosFijos: [{ id: 'g1', monto: 1000000 }],
-      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 }, ...pagosPrevios(1000000, 3) },
     });
     assert.ok(!conDeuda.calcHealthScore().tips.some((t) => t.includes('CDT')));
   });
@@ -295,6 +304,103 @@ describe('calcHealthScore', () => {
     // No hay forma de leer el bonus aislado desde afuera — se verifica
     // indirectamente contra el mismo cálculo que hace la función.
     assert.ok(r.score >= 50, `esperaba score >= base (50) con el bonus de CDT sumado, dio ${r.score}`);
+  });
+
+  // ── Revisión de Análisis/Salud/Proyección (2026-10-27) ──────────────────────────────────────────────────────────
+
+  test('calcHealthScore — fondo de emergencia: a principio de mes (pocos gastos) las reservas NO salen infladas', () => {
+    // Antes: $1.000.000 / $25.000 gastados en el mes = 40 «meses» → +20 puntos. Con la referencia en los meses
+    // anteriores (gasto típico $1.000.000) son 1 mes de reservas → resta y avisa.
+    const mes = currentMonthKey();
+    const base = {
+      cuentas: cuentas({ nequi: 1000000 }),
+      gastosFijos: [{ id: 'g1', monto: 25000 }],
+      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 1000000, desde: '2020-01' }],
+    };
+    const inicioDeMes = freshApp({ ...base, pagosGastosFijos: { ['g1_' + mes]: { monto: 25000 }, ...pagosPrevios(1000000, 3) } }).calcHealthScore();
+    assert.ok(inicioDeMes.tips.includes('Tus reservas cubren menos de 3 meses de gastos.'), 'mide contra el gasto típico, no contra el gasto parcial del mes');
+    // Sin ningún mes anterior con gastos no hay con qué medir: ni puntos ni consejo de reservas.
+    const sinHistorial = freshApp({ ...base, pagosGastosFijos: { ['g1_' + mes]: { monto: 25000 } } }).calcHealthScore();
+    assert.ok(!sinHistorial.tips.some((t) => t.includes('reservas')));
+    assert.equal(sinHistorial.score, 50 + 10 /* gastos 2,5 % de los ingresos */, 'sin +20 de reservas inflado');
+  });
+
+  test('calcHealthScore — el gasto típico es el promedio de los últimos 3 meses con datos, no el del mes en curso', () => {
+    const mes = currentMonthKey();
+    // 3 meses de $1.000.000 y el mes en curso en $5.000.000: la referencia sigue siendo $1.000.000 → 9 meses de reservas (+20).
+    const r = freshApp({
+      cuentas: cuentas({ nequi: 9000000 }),
+      gastosFijos: [{ id: 'g1', monto: 1 }],
+      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 20000000, desde: '2020-01' }],
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 5000000 }, ...pagosPrevios(1000000, 3) },
+    }).calcHealthScore();
+    assert.ok(!r.tips.some((t) => t.includes('reservas')));
+    assert.ok(r.score >= 80, `esperaba +20 de reservas, dio ${r.score}`);
+  });
+
+  test('calcHealthScore — el bono del CDT es proporcional a su peso: uno de $1.000 en $80.000 ya no regala 10 puntos', () => {
+    const sin = freshApp({ cuentas: cuentas({}), cajitas: [{ id: 'n', saldo: 80000 }] }).calcHealthScore().score;
+    const diminuto = freshApp({ cuentas: cuentas({}), cajitas: [{ id: 'n', saldo: 80000, cdts: [{ monto: 1000, tasa: 9 }] }] }).calcHealthScore().score;
+    const grande = freshApp({ cuentas: cuentas({}), cajitas: [{ id: 'n', saldo: 80000, cdts: [{ monto: 40000, tasa: 9 }] }] }).calcHealthScore().score;
+    assert.equal(diminuto - sin, 1, 'CDT de 1,2 % del total: 1 punto');
+    assert.equal(grande - sin, 10, 'CDT de 10 % o más: bono completo');
+  });
+
+  test('calcHealthScore — mesada cobrada este mes que cuenta para otro: el consejo lo explica en vez de pedir «registra tus ingresos»', () => {
+    const mes = currentMonthKey();
+    const hoyStr = mes + '-15';
+    const ctx = freshApp({
+      cuentas: cuentas({ nequi: 80000 }),
+      modulos: { mesada: true },
+      mesadas: { papa: { cuotas: { '2026': 80000 }, pagos: { '2026-0': { monto: 80000, fecha: hoyStr } } } },
+      gastosFijos: [{ id: 'g1', monto: 10000 }],
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 10000 } },
+    });
+    const r = ctx.calcHealthScore();
+    assert.equal(r.ingresosMes, 0, 'la Mesada sigue contando en el mes que cubre (regla única de periodo.js)');
+    assert.ok(r.score <= 74);
+    assert.ok(!r.tips.some((t) => t.includes('Registra tus ingresos')));
+    assert.ok(r.tips.some((t) => t.includes('Mesada') && t.includes('Ene 2026')));
+  });
+});
+
+describe('periodo — ayudantes de la revisión de Análisis', () => {
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core');
+  const app = (S = {}) => { const ctx = loadApp([path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js')]); Object.assign(ctx.S, S); return ctx; };
+
+  test('gastoPromedioPrevio — promedia hasta 3 meses anteriores con gasto; ignora el mes en curso, los futuros y los meses vacíos', () => {
+    const ctx = app({
+      gastosFijos: [{ id: 'g', monto: 1 }],
+      pagosGastosFijos: {
+        'g_2026-05': { monto: 900 }, 'g_2026-06': { monto: 100 }, 'g_2026-07': { monto: 200 },
+        'g_2026-08': { monto: 300 }, 'g_2026-10': { monto: 99999 }, 'g_2026-12': { monto: 77777 },
+      },
+    });
+    const r = ctx.Periodo.gastoPromedioPrevio('2026-10', 3);
+    assert.equal(r.meses, 3);
+    assert.equal(r.promedio, 200, 'jun, jul y ago (el 05 queda fuera por ser el cuarto más viejo); oct y dic no cuentan');
+    assert.deepEqual({ ...ctx.Periodo.gastoPromedioPrevio('2026-04', 3) }, { promedio: 0, meses: 0 });
+  });
+
+  test('mesadasCobradasEnOtroMes — plata de Mesada que entró este mes pero cubre otro (incluye abonos de un pendiente)', () => {
+    const ctx = app({
+      modulos: { mesada: true },
+      mesadas: {
+        papa: { cuotas: {}, pagos: {
+          '2026-0': { monto: 80000, fecha: '2026-10-26' },                      // enero cobrado en octubre
+          '2026-9': { monto: 80000, fecha: '2026-10-05' },                      // octubre cobrado en octubre: no es «otro mes»
+          '2026-8': { monto: 80000, fecha: '2026-09-30', pendienteHistorial: [{ monto: 30000, fecha: '2026-10-20' }] }, // sept: 50k en sept + abono de 30k en oct
+        } },
+        mama: { cuotas: {}, pagos: {} },
+      },
+    });
+    const r = Array.from(ctx.Periodo.mesadasCobradasEnOtroMes('2026-10'), (o) => ({ ...o }));
+    assert.deepEqual(r.map((o) => [o.key, o.monto, o.mesCubre]), [['2026-0', 80000, '2026-01'], ['2026-8', 30000, '2026-09']]);
+    assert.equal(ctx.Periodo.ingresosDelMes('2026-10').mesada, 80000, 'no cambia ninguna suma: Octubre solo cuenta su propia mesada');
   });
 });
 

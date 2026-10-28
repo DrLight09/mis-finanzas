@@ -71,8 +71,13 @@ function renderAnalisis(){
     const flecha=trazo=>`<svg aria-hidden="true" class="an-hero-flecha" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${trazo}</svg>`;
     const icono=estado==='pos'?flecha('<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>')
       :estado==='neg'?flecha('<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>'):'';
+    // Mesada cobrada este mes pero que pertenece a otro (la Mesada cuenta en el mes que cubre): sí entró plata y esa plata
+    // sí está en el historial de patrimonio; el balance de este mes no la suma. Se dice, para que no parezcan contradecirse.
+    const _otroMes=Periodo.mesadasCobradasEnOtroMes(mes);
+    const _otroMesTotal=_otroMes.reduce((a,o)=>a+o.monto,0);
+    const _otroMesNombres=[...new Set(_otroMes.map(o=>_mesNombreDeKey(o.key)))].join(' y ');
     let mensaje, monto;
-    if(sinMovs){ mensaje='Aún no hay movimientos este mes.'; monto=fmt(0); }
+    if(sinMovs){ mensaje='Aún no hay ingresos ni gastos que cuenten para este mes.'; monto=fmt(0); }
     else if(sinIngresos){ mensaje=`Has gastado ${fmt(gastosTotalMes)} y aún no registras ingresos este mes. Registra tus ingresos para ver el balance del mes.`; monto=fmt(gastosTotalMes*-1); }
     else if(_cero){ mensaje='Por ahora has gastado todo lo que has recibido este mes.'; monto=fmt(0); }
     else if(balance>0){ mensaje='Por ahora vas bien: has gastado menos de lo que has recibido este mes.'; monto='+'+fmt(balance); }
@@ -83,6 +88,7 @@ function renderAnalisis(){
       <div class="an-hero-monto ${claseTono}">${monto}</div>
       <div class="an-hero-msg">${mensaje}</div>
       ${(!sinIngresos&&_rendNu>0.5)?raw(`<div class="an-hero-rend">Incluye ${fmt(_rendNu)} de rendimientos de Nu <span class="an-opaco">(intereses de cajitas y CDT)</span></div>`):''}
+      ${_otroMes.length?html`<div class="an-hero-rend">Entró ${fmt(_otroMesTotal)} de la Mesada este mes que cuenta como ingreso de ${_otroMesNombres}, no de ${MESES_NOMBRE[mesNum]} ${anio}.</div>`:''}
     `;
   }
 
@@ -306,8 +312,13 @@ function renderAnalisis(){
       const minV=Math.min(...valsReales);
       const rng=maxV-minV||1;
       const W=320,H=90,PAD=4;
+      // El eje X reparte los puntos por FECHA, no en partes iguales: un registro solo se guarda los días en que abres la app y
+      // guardas algo, así que un salto de 10 días no debe verse igual que uno de 1 día. (Sin fechas distintas, partes iguales.)
+      const _ms=h=>new Date(h.fecha+'T00:00:00').getTime();
+      const _t0=_ms(hist[0]), _span=_ms(hist[hist.length-1])-_t0;
+      const _diasVentana=_span>0?Math.round(_span/86400000)+1:hist.length;
       const pts=valsReales.map((v,i)=>{
-        const px=PAD+i*(W-PAD*2)/(hist.length-1);
+        const px=PAD+(_span>0?(_ms(hist[i])-_t0)/_span:i/(hist.length-1))*(W-PAD*2);
         const py=PAD+(1-(v-minV)/rng)*(H-PAD*2);
         return[px,py];
       });
@@ -327,16 +338,18 @@ function renderAnalisis(){
       const diffColorGrad=sinCambio?'#8e8e84':(diffTotal>=0?'#c8f060':'#f06868');
       const diffClasePat=sinCambio?'an-t-muted':(diffTotal>=0?'c-green':'c-red');
       const diffSigno=sinCambio?'':(diffTotal>=0?'+':'');
-      const diffPct = primeroReal!==0 ? (diffTotal/Math.abs(primeroReal)*100) : 0;
+      // Sin base (el primer punto vale 0) un porcentaje no tiene sentido: se muestra «—», no «+0.0%» junto a un cambio en pesos.
+      const diffPct = primeroReal!==0 ? diffTotal/Math.abs(primeroReal)*100 : null;
+      const diffPctTxt = diffPct===null ? '—' : (sinCambio||diffPct<0?'':'+')+diffPct.toFixed(1)+'%';
       patriEl.innerHTML=`
         <div class="an-pat-cab">
           <div>
-            <div class="an-pat-tit">Últimos ${hist.length} días</div>
+            <div class="an-pat-tit">Últimos ${_diasVentana} días</div>
             <div class="an-pat-val">${fmt(ultimo2.valorVisible!=null?ultimo2.valorVisible:ultimo2.valor)}</div>
           </div>
           <div class="an-der">
             <div class="an-pat-diff ${diffClasePat}">${diffSigno}${fmt(diffTotal)}</div>
-            <div class="an-pat-pct ${diffClasePat}">${sinCambio?'':(diffPct>=0?'+':'')}${diffPct.toFixed(1)}%</div>
+            <div class="an-pat-pct ${diffClasePat}">${diffPctTxt}</div>
           </div>
         </div>
         <div id="_pat-wrap" class="an-pat-wrap">

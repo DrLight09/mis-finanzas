@@ -34,6 +34,11 @@
        el mes que cubre.
      · Un ingreso fijo (sueldo, freelance…) es una plantilla que NO suma por sí sola: cuenta cuando se registra su COBRO
        (js/core/cobros.js), en el mes de la fecha del cobro. Si no registras el cobro, ese mes no tiene ese ingreso.
+     · Spotify: cada cuota que te pagan un integrante (y cada abono de lo que quedó debiendo) cuenta como ingreso en el mes
+       de SU fecha, y el pago del plan cuenta como gasto completo (gastosVar). Así el balance del mes refleja la caja real
+       aunque cobres semanas antes de pagar. El extra con cuenta destino ya cuenta como entrada real; el extra con «Sin
+       especificar» lo cuenta spotifyEntradas. No depende de si el módulo está activo: el gasto del plan tampoco depende.
+       Las estadísticas por ciclo de la pantalla Spotify son otra lectura y no cambian.
      · Es la misma regla del historial de patrimonio y de las entradas reales.
 
    Todas las funciones reciben `estado` opcional (por defecto S): Wrapped trabaja
@@ -126,11 +131,38 @@ const Periodo = (() => {
 
   const ingresosFijosDelMes = (mes, estado) => ingresosFijosEntradas(estado).reduce((a, e) => e.mes === mes ? a + e.monto : a, 0);
 
+  // Plata que entra por Spotify (S.spotify.historial): cada cuota cobrada, cada abono de lo que quedó debiendo y los extras
+  // sin cuenta destino, en el mes de SU fecha. → [{ id, spId, nombre, tipo:'cuota'|'abono'|'extra', monto, fecha, mes }]
+  //   · Un cobro con abonos guarda en `monto` la cuota + lo abonado (spotify.js suma el abono al registrar): se separa para que el
+  //     principal cuente en la fecha del cobro y cada abono en la suya.
+  //   · El extra con destino (extraFuente) ya cuenta como entrada real (movimiento espejo clase 'ingreso'): aquí no se repite.
+  function spotifyEntradas(estado) {
+    const sp = _st(estado).spotify;
+    const hist = sp && Array.isArray(sp.historial) ? sp.historial : [];
+    const out = [];
+    const push = (h, tipo, monto, fecha) => {
+      if (!(monto > 0)) return;
+      out.push({ id: h.id, spId: h.spId || '', nombre: h.nombre || '', tipo, monto, fecha: fecha || '', mes: fecha ? mesKey(fecha) : '' });
+    };
+    hist.forEach(h => {
+      if (!h || h.tipo !== 'cobro') return;
+      const abonos = Array.isArray(h.pendienteHistorial) ? h.pendienteHistorial : [];
+      const abonado = abonos.reduce((a, x) => a + ((x && x.monto) || 0), 0);
+      push(h, 'cuota', (h.monto || 0) - abonado, h.fecha);
+      abonos.forEach(x => { if (x) push(h, 'abono', x.monto, x.fecha || h.fecha); });
+      if (h.extra > 0 && !h.extraFuente) push(h, 'extra', h.extra, h.fecha);
+    });
+    return out;
+  }
+
+  const spotifyDelMes = (mes, estado) => spotifyEntradas(estado).reduce((a, e) => e.mes === mes ? a + e.monto : a, 0);
+
   function ingresosDelMes(mes, estado) {
     const mesada = mesadaDelMes(mes, estado);
     const fijos = ingresosFijosDelMes(mes, estado);
+    const spotify = spotifyDelMes(mes, estado);
     const entradas = ingresosRealesDelMes(mes, estado);
-    return { mesada, fijos, entradas, total: mesada + fijos + entradas };
+    return { mesada, fijos, spotify, entradas, total: mesada + fijos + spotify + entradas };
   }
 
   /* ---- GASTOS ---- */
@@ -257,7 +289,7 @@ const Periodo = (() => {
     return { mes, ingresos, gastos, balance, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }
 
-  return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, ingresosDelMes, mesadaEntradas,
+  return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, mesadaEntradas,
            pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes };
 })();
 

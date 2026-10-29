@@ -6,6 +6,16 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Lista de mejoras de octubre 2026
 
+### 🎧 Spotify en el balance del mes (2026-10-28, SW v73)
+
+El balance de Análisis decía «has gastado $50.000 y aún no registras ingresos» aunque tres integrantes habían pagado $45.000: el pago del plan contaba como gasto completo y las cuotas cobradas no contaban como nada (solo el extra era ingreso). Con tu cadencia real (cobras a los 30 días, la suscripción dura ~57 y pagas una sola vez) restar las cuotas del gasto del mes daba gasto negativo en los meses sin pago, así que se eligió la regla de caja, igual que el resto de la app.
+
+- **Cada cuota cobrada y cada abono de lo que quedó debiendo cuentan como ingreso en el mes de SU fecha; el extra sin cuenta destino también** (`Periodo.spotifyEntradas()` / `spotifyDelMes()`, nueva clave `spotify` en `ingresosDelMes`). El pago del plan sigue siendo gasto completo. El extra con destino ya contaba como entrada real y no se repite.
+- Lo leen Inicio, Salud, Análisis, cierre de mes y Wrapped (suma de ingresos). **No depende del interruptor del módulo**: el gasto del plan tampoco depende de él.
+- **Las estadísticas por ciclo de la pantalla Spotify no cambian** (En mano, Beneficio total con tu parte del plan): son otra lectura, atribuida por ciclos y no por meses. Comprobado con el historial real de tu backup viejo (ciclo del 20-jul al 15-sep: 9 cobros, $45.900 − $30.500 = $15.400 en mano, $20.483 con tu parte).
+- Con los datos de prueba: 3 × $15.000 cobrados y $50.000 pagados dan ingresos $45.000, gastos $50.000 y balance **−$5.000**, igual que «En mano».
+- Pruebas nuevas en `tests/nucleo.test.js` (4): caja real, meses sin pago, abonos y extras, módulo apagado.
+
 ### 💵 Regla de caja completa: cobro de ingresos fijos y gastos por fecha de pago (2026-10-28, SW v72)
 
 Decisión de diseño: **todo ingreso y todo gasto cuenta en el mes de la fecha en que la plata se movió** (la que escribe quien registra), no en el mes al que «pertenece» ni en el día en que se tecleó. Tres fechas, tres papeles: *mes que cubre* = etiqueta (qué mes está pagado/cobrado), *fecha* = decide el mes, *cuándo se registra* = solo el valor por defecto del campo.

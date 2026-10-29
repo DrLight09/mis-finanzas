@@ -413,6 +413,11 @@ function _wrappedMesadaMes(S, anio, mesIdx){
 function _wrappedIngresosFijosMes(S, mesK){
   return Periodo.ingresosFijosDelMes(mesK, S);
 }
+// Cuotas de Spotify cobradas en el mes (regla de caja, la misma de Inicio y Análisis). El slide propio de Spotify
+// (_wrappedCalcularSpotify) sigue siendo otra lectura: cobrado − pagado del período.
+function _wrappedSpotifyMes(S, mesK){
+  return Periodo.spotifyDelMes(mesK, S);
+}
 
 /* Extraído de `_wrappedCalcularPeriodo` (2026-09-14) para que las nuevas
    funciones de la tercera tanda (comparaciones, récords, descubrimientos,
@@ -459,14 +464,14 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
   if(tipo === 'mes' && mesK){
     const anio = parseInt(mesK.split('-')[0], 10);
     const mesIdx = parseInt(mesK.split('-')[1], 10) - 1;
-    ingresoMesadaFijos = _wrappedMesadaMes(S, anio, mesIdx) + _wrappedIngresosFijosMes(S, mesK);
+    ingresoMesadaFijos = _wrappedMesadaMes(S, anio, mesIdx) + _wrappedIngresosFijosMes(S, mesK) + _wrappedSpotifyMes(S, mesK);
   } else if(tipo === 'anio' && anioK){
     const anio = parseInt(anioK, 10);
     const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
     const mesMax = (anioK === anioActual) ? mesActualIdx : 11;
     for(let m=0; m<=mesMax; m++){
       const mesKLoop = anioK + '-' + String(m+1).padStart(2,'0');
-      ingresoMesadaFijos += _wrappedMesadaMes(S, anio, m) + _wrappedIngresosFijosMes(S, mesKLoop);
+      ingresoMesadaFijos += _wrappedMesadaMes(S, anio, m) + _wrappedIngresosFijosMes(S, mesKLoop) + _wrappedSpotifyMes(S, mesKLoop);
     }
   }
 

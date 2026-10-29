@@ -473,6 +473,50 @@ describe('periodo', () => {
     assert.equal(P(ctx).gastosDelMes('2026-10').gfTotal, 0);
   });
 
+  test('Spotify — cada cuota cobrada cuenta como ingreso en SU fecha y el pago del plan como gasto: el balance es la caja real', () => {
+    const cobro = (id, fecha, monto) => ({ id, spId: id, tipo: 'cobro', nombre: id, monto, fecha, fuente: 'nequi' });
+    const ctx = app({
+      spotify: { historial: [cobro('a', '2026-10-28', 15000), cobro('b', '2026-10-28', 15000), cobro('c', '2026-10-28', 15000), { id: 'p', tipo: 'pago', monto: 50000, fecha: '2026-10-28' }] },
+      gastosVar: [{ id: 'g', desc: 'Spotify Premium', monto: 50000, fecha: '2026-10-28', cat: 'Suscripciones', clase: 'gasto', _secundario: true, _origenSeccion: 'Spotify' }],
+    });
+    const b = P(ctx).balanceDelMes('2026-10');
+    assert.equal(b.ingresos.spotify, 45000);
+    assert.equal(b.ingresos.total, 45000);
+    assert.equal(b.gastos.total, 50000);
+    assert.equal(b.balance, -5000, 'coincide con «En mano» de la pantalla Spotify');
+  });
+
+  test('Spotify — cobrar semanas antes de pagar: los meses sin pago no tienen gasto negativo y la suma da cobrado − pagado', () => {
+    const c = (id, fecha) => ({ id, spId: id, tipo: 'cobro', monto: 5100, fecha });
+    const ctx = app({
+      spotify: { historial: [c('a', '2026-08-07'), c('b', '2026-08-16'), c('c', '2026-09-08'), { id: 'p', tipo: 'pago', monto: 10000, fecha: '2026-09-15' }] },
+      gastosVar: [{ id: 'g', desc: 'Spotify Premium', monto: 10000, fecha: '2026-09-15', cat: 'Suscripciones', clase: 'gasto' }],
+    });
+    const ago = P(ctx).balanceDelMes('2026-08'), sep = P(ctx).balanceDelMes('2026-09');
+    assert.deepEqual([ago.ingresos.total, ago.gastos.total, ago.balance], [10200, 0, 10200]);
+    assert.deepEqual([sep.ingresos.total, sep.gastos.total, sep.balance], [5100, 10000, -4900]);
+    assert.equal(ago.balance + sep.balance, 15300 - 10000);
+  });
+
+  test('Spotify — un abono de lo que quedó debiendo cuenta en SU fecha, no en la del cobro; el extra sin cuenta cuenta, con cuenta no se repite', () => {
+    const ctx = app({
+      spotify: { historial: [
+        { id: 'h1', spId: 'x', tipo: 'cobro', monto: 5100, fecha: '2026-09-28', pendiente: 0, pendienteHistorial: [{ id: 'ab', monto: 2100, fecha: '2026-10-03' }] },
+        { id: 'h2', spId: 'y', tipo: 'cobro', monto: 5100, fecha: '2026-10-05', extra: 400, extraFuente: '' },
+        { id: 'h3', spId: 'z', tipo: 'cobro', monto: 5100, fecha: '2026-10-06', extra: 700, extraFuente: 'nequi', extraMovId: 'm1' },
+      ] },
+      movimientos: [{ id: 'm1', tipo: 'entrada', clase: 'ingreso', fuente: 'nequi', monto: 700, fecha: '2026-10-06', _esExtraIngreso: true, _secundario: true, _origenSeccion: 'Spotify' }],
+    });
+    assert.equal(P(ctx).spotifyDelMes('2026-09'), 3000, 'principal del cobro (5100 − 2100 abonados)');
+    assert.equal(P(ctx).spotifyDelMes('2026-10'), 2100 + 5100 + 400 + 5100, 'abono + cuotas + extra sin cuenta');
+    assert.equal(P(ctx).ingresosDelMes('2026-10').entradas, 700, 'el extra con cuenta cuenta una sola vez, como entrada real');
+  });
+
+  test('Spotify — cuenta aunque el módulo esté apagado (el gasto del plan tampoco depende del interruptor)', () => {
+    const ctx = app({ modulos: { spotify: false }, spotify: { historial: [{ id: 'a', spId: 'a', tipo: 'cobro', monto: 5100, fecha: '2026-10-02' }] } });
+    assert.equal(P(ctx).spotifyDelMes('2026-10'), 5100);
+  });
+
   test('gastos fijos — cuentan en el mes de la FECHA del pago, no en el mes que cubren (regla de caja)', () => {
     const ctx = app({ gastosFijos: [{ id: 'g1', nombre: 'Arriendo', monto: 800, cat: 'Hogar' }], pagosGastosFijos: { 'g1_2026-09': { fecha: '2026-10-03', monto: 800 }, 'g1_2026-08': { monto: 700 } } });
     assert.equal(P(ctx).gastosDelMes('2026-09').gfTotal, 0, 'el arriendo de septiembre pagado en octubre no es gasto de septiembre');
@@ -512,7 +556,7 @@ describe('periodo', () => {
     assert.deepEqual(plano(P(ctx).gastosPorMes()), { '2026-09': 850, '2026-10': 120 });
   });
 
-  test('balanceDelMes — ingresos (mesada + fijos + entradas reales) menos gastos, y tasa de ahorro', () => {
+  test('balanceDelMes — ingresos (mesada + fijos + Spotify + entradas reales) menos gastos, y tasa de ahorro', () => {
     const ctx = app({
       mesadas: { papa: { cuotas: { 2026: 80000 }, pagos: { '2026-8': {} } }, mama: { cuotas: {}, pagos: {} } },
       ingresosFijos: [{ id: 'if', monto: 20000, desde: '2026-01', cobros: [{ id: 'c1', mesCubre: '2026-09', monto: 20000, fecha: '2026-09-15' }] }],
@@ -520,7 +564,7 @@ describe('periodo', () => {
       gastosVar: [{ fecha: '2026-09-03', monto: 30000, cat: 'Comida', clase: 'gasto' }],
     });
     const b = P(ctx).balanceDelMes('2026-09');
-    assert.deepEqual(plano(b.ingresos), { mesada: 80000, fijos: 20000, entradas: 10000, total: 110000 });
+    assert.deepEqual(plano(b.ingresos), { mesada: 80000, fijos: 20000, spotify: 0, entradas: 10000, total: 110000 });
     assert.equal(b.gastos.total, 30000);
     assert.equal(b.balance, 80000);
     assert.ok(Math.abs(b.tasaAhorro - 72.7272) < 0.01);

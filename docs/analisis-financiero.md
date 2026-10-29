@@ -151,7 +151,21 @@ Estos dos bloques **no viven en `screen-analisis`**, sino en Inicio, pero se cal
 **Ubicación:** el módulo de esta pantalla es [`js/modules/analisis.js`](../js/modules/analisis.js) (`renderAnalisis()`, ingresos fijos, presupuestos). `calcPatrimonioTotal()` y `snapshotPatrimonio()` viven en `js/core/core-state.js`, no en este módulo: `save()` las llama en cada guardado, no solo al entrar a esta pantalla. El cálculo de Nu que usa (`calcC`, `calcCDT`, `nuTotal`) está en `js/core/nu-calc.js`. `renderHealthScore()`/`renderProyeccion()` viven en `js/modules/inicio.js`.
 
 
-Es la base de todo lo anterior (historial, tendencia, proyección, salud financiera, hero de Inicio). Suma:
+Es la base de todo lo anterior (historial, tendencia, proyección, salud financiera, hero de Inicio) y **la única definición de patrimonio de la app**. El cálculo vive en `calcPatrimonioDesglose()` (mismo archivo), que devuelve cada componente (`cajitas`, `cdts`, `nequi`, `efectivo`, `custom`, `meDeben`, `alcancia`, `deudaTC`, `yoDebo`, `ajeno`) más `activos`, `pasivos`, `total` y `visible` (sin Alcancía). Las demás funciones son envoltorios:
+
+| Función | Qué devuelve | Quién la usa |
+|---|---|---|
+| `calcPatrimonioDesglose()` | todos los componentes y los totales | quien necesite el detalle |
+| `calcPatrimonioTotal()` | `total` (con Alcancía) | solo `core-state.js` |
+| `calcPatrimonioVisible()` | `visible` (sin Alcancía) | hero (vía el desglose), Proyección, Salud |
+| `medirPatrimonioParaHistorial()` / `snapshotPatrimonio()` | `{val, vis}` y el punto `valor`/`valorVisible` del historial | historial y gráfica |
+| `calcLiquidez()` | liquidez neta (ver Salud financiera) | Salud financiera |
+
+**Regla:** ningún otro archivo suma cuentas ni resta deudas a mano, ni resta la alcancía por su cuenta. Una prueba (`tests/nucleo.test.js` → «patrimonio — fuente única») recorre `js/` y falla si alguien llama `calcPatrimonioTotal()` fuera de `core-state.js` o si el hero, el snapshot o Inicio vuelven a tener su propia fórmula. Si cambia una regla (una deuda nueva, otra cuenta), se cambia en ese bloque y todo queda igual.
+
+**Deudas sin fecha.** Entre amigos casi nunca hay fecha de pago, y eso no cambia el patrimonio: «Me deben» es un activo y «Yo debo» es un pasivo, ambos completos, aunque no se sepa cuándo se cobran o se pagan. La fecha incierta solo afecta la **liquidez** (Salud financiera): lo que te deben no cuenta hasta que llega; lo que debes sí se descuenta completo.
+
+Suma:
 
 ```
 nu (cajitas Nu) + CDTs + Nequi + Efectivo + prestado (Me deben) + cuentas personalizadas + alcancía

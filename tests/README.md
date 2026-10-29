@@ -4,7 +4,7 @@ Cubre, corridas contra el código real de la app (sin copiarlo ni
 modificarlo, usando `vm` para simular cómo el navegador carga
 `<script defer>` clásicos — ver `tests/support/load-app.js`):
 
-- `calcPatrimonioTotal()` — `js/core/core-state.js`
+- `calcPatrimonioTotal()` y su fuente única `calcPatrimonioDesglose()` / `calcPatrimonioVisible()` / `calcLiquidez()` — `js/core/core-state.js`. La suite «patrimonio — fuente única» (`nucleo.test.js`) comprueba que hero, historial, `medirPatrimonioParaHistorial` y Salud dan el mismo número con deudas y alcancía, y recorre `js/` para que nadie vuelva a armar el patrimonio a mano
 - `calcHealthScore()` — `js/modules/inicio.js`
 - `calcC()`/`calcCDT()` (interés compuesto real de Nu, por tramos de
   tasa, redondeo de CDT) — `js/core/nu-calc.js`

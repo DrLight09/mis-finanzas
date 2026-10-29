@@ -14,7 +14,8 @@ Inicio es la pantalla que se ve al abrir la app: un resumen agregado de patrimon
 
 | Elemento (id) | Contenido |
 |---|---|
-| `#heroTotal` | Patrimonio total visible (excluye la alcancía oculta, ver `guia-estilo-sheets.md#alcancía`) |
+| `#heroTotal` | Patrimonio total visible (excluye la alcancía oculta, ver `guia-estilo-sheets.md#alcancía`). Sale de `calcPatrimonioDesglose().visible` (`core-state.js`), la misma cuenta del historial, la Proyección y Salud: resta tarjetas, «Yo debo» y plata ajena |
+| `#hero-formula` | Texto bajo el monto: «Cuentas + CDTs + Prestado» y, solo si existen, « − Deuda TC − Yo debo − Plata ajena» (`patrimonioFormulaTexto()`) |
 | `#hero-patrimonio-label` | "Patrimonio total" o "Patrimonio visible" (cambia si hay alcancía activa) |
 | `#hero-alcancia-indicator` | Pill ámbar "+$?? en alcancía oculta" — visible solo si `S.alcancia.saldoRegistrado > 0` |
 | `#hero-change-indicator` | Aviso "Gastos altos" cuando el gasto del mes supera el 80% de lo disponible |

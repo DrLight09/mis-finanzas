@@ -1959,3 +1959,162 @@ describe('fila-movimiento', () => {
     assert.deepEqual(sueltos, [], 'usa filaMovimiento() de core-state.js en vez de repetir el esqueleto: ' + sueltos.join(', '));
   });
 });
+
+describe('patrimonio — fuente única (hero, historial, Proyección y Salud leen del mismo cálculo)', () => {
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+
+  const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core');
+  const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR || path.join(__dirname, '..', 'js', 'modules');
+
+  const cuentas = ({ nequi = 0, efectivo = 0 } = {}) => [
+    { id: 'nequi', tipo: 'nequi', saldo: nequi },
+    { id: 'efectivo', tipo: 'efectivo', saldo: efectivo },
+  ];
+  const meDeben = (monto) => [{ id: 'd1', nombre: 'Amigo', movimientos: [{ tipo: 'prestamo', monto }] }];
+  const yoDebo = (monto) => [{ id: 'm1', nombre: 'Otro amigo', movimientos: [{ tipo: 'recibido', monto }] }];
+
+  function freshApp(sOverrides = {}, { conInicio = false } = {}) {
+    const files = [path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'), path.join(CORE_DIR, 'calc-helpers.js')];
+    if (conInicio) files.push(path.join(MODULES_DIR, 'inicio.js'));
+    const ctx = loadApp(files);
+    Object.assign(ctx.S, sOverrides);
+    return ctx;
+  }
+
+  // `document` que recuerda lo que se escribe en cada id (el stub normal devuelve un elemento nuevo en cada llamada).
+  function conDomQueRecuerda(ctx) {
+    const els = {};
+    const base = ctx.document;
+    ctx.document = Object.assign({}, base, {
+      getElementById(id) { return els[id] || (els[id] = Object.assign(base.getElementById(id), { textContent: '' })); },
+    });
+    return els;
+  }
+  const num = (txt) => Number(String(txt).replace(/[^0-9-]/g, ''));
+
+  test('lo que debes a personas se resta del patrimonio aunque esa plata esté en tus cuentas (caso Nequi $100.000 y deuda de $50.000)', () => {
+    const ctx = freshApp({ cuentas: cuentas({ nequi: 100000 }), misDeudas: yoDebo(50000) });
+    const d = ctx.calcPatrimonioDesglose();
+    assert.equal(d.nequi, 100000);
+    assert.equal(d.yoDebo, 50000);
+    assert.equal(d.total, 50000);
+    assert.equal(d.visible, 50000);
+    assert.equal(ctx.calcPatrimonioTotal(), 50000);
+    assert.equal(ctx.calcPatrimonioVisible(), 50000);
+  });
+
+  test('patrimonio neto = activos − pasivos, y «Me deben» suma aunque no tenga fecha de pago', () => {
+    const ctx = freshApp({
+      cuentas: cuentas({ nequi: 400000, efectivo: 100000 }),
+      deudores: meDeben(250000), misDeudas: yoDebo(80000),
+      tarjetasCredito: [{ id: 't1', deuda: 120000 }],
+      alcancia: { saldoRegistrado: 60000 },
+    });
+    const d = ctx.calcPatrimonioDesglose();
+    assert.equal(d.activos, 400000 + 100000 + 250000 + 60000);
+    assert.equal(d.pasivos, 120000 + 80000);
+    assert.equal(d.total, d.activos - d.pasivos);
+    assert.equal(d.visible, d.total - 60000); // sin la alcancía oculta
+  });
+
+  test('una deuda saldada (saldo ≤ 0) no resta nada', () => {
+    const ctx = freshApp({ cuentas: cuentas({ nequi: 100000 }), misDeudas: [{ id: 'm1', movimientos: [{ tipo: 'recibido', monto: 50000 }, { tipo: 'pago', monto: 50000 }] }] });
+    assert.equal(ctx.calcPatrimonioTotal(), 100000);
+  });
+
+  test('hero, historial (valorVisible), medirPatrimonioParaHistorial y Proyección dan el MISMO número, con deudas y alcancía', () => {
+    const casos = [
+      {},
+      { cuentas: cuentas({ nequi: 100000 }), misDeudas: yoDebo(50000) },
+      { cuentas: cuentas({ nequi: 700000, efectivo: 20000 }), deudores: meDeben(300000), misDeudas: yoDebo(120000), alcancia: { saldoRegistrado: 90000 }, tarjetasCredito: [{ id: 't1', deuda: 200000 }] },
+      { cuentas: cuentas({ nequi: 10000 }), misDeudas: yoDebo(500000) }, // patrimonio negativo
+    ];
+    for (const s of casos) {
+      const ctx = freshApp(s);
+      const els = conDomQueRecuerda(ctx);
+      ctx.refresh();
+      const visible = ctx.calcPatrimonioVisible();
+      assert.equal(num(els.heroTotal.textContent), Math.round(visible), 'hero');
+      ctx.snapshotPatrimonio();
+      const punto = ctx.S.patrimonioHistorial[ctx.S.patrimonioHistorial.length - 1];
+      assert.equal(punto.valorVisible, visible, 'historial');
+      assert.equal(punto.valor, ctx.calcPatrimonioTotal(), 'historial (total real)');
+      assert.equal(ctx.medirPatrimonioParaHistorial().vis, visible, 'medir');
+    }
+  });
+
+  test('el texto de la fórmula del hero solo nombra los pasivos que existen', () => {
+    const sin = freshApp({ cuentas: cuentas({ nequi: 1000 }) });
+    assert.equal(sin.patrimonioFormulaTexto(), 'Cuentas + CDTs + Prestado');
+    const con = freshApp({ cuentas: cuentas({ nequi: 1000 }), misDeudas: yoDebo(500), tarjetasCredito: [{ id: 't1', deuda: 100 }] });
+    assert.equal(con.patrimonioFormulaTexto(), 'Cuentas + CDTs + Prestado − Deuda TC − Yo debo');
+    const els = conDomQueRecuerda(con);
+    con.refresh();
+    assert.equal(els['hero-formula'].textContent, 'Cuentas + CDTs + Prestado − Deuda TC − Yo debo');
+  });
+
+  test('liquidez: suma lo disponible; resta tarjeta propia, «Yo debo» y plata ajena; NO suma «Me deben» ni CDTs ni alcancía', () => {
+    const ctx = freshApp({
+      cuentas: cuentas({ nequi: 1000000, efectivo: 200000 }),
+      deudores: meDeben(900000), misDeudas: yoDebo(300000),
+      alcancia: { saldoRegistrado: 500000 },
+      cajitas: [{ id: 'nu1', saldo: 0, cdts: [{ id: 'c1', monto: 400000, fecha: '2099-01-01', plazo: 90, tasa: 10 }] }],
+      plataComprometida: [{ recibido: true, destinos: [{ yaPague: false, tipo: 'gasto', gastoOrigen: 'cajita', gastoCajita: 'nu1', monto: 100000 }] }],
+    });
+    const l = ctx.calcLiquidez();
+    assert.equal(l.libre, 1200000);
+    assert.equal(l.yoDebo, 300000);
+    assert.equal(l.ajeno, 100000);
+    assert.equal(l.neta, 1200000 - 300000 - 100000);
+    assert.equal(l.meDeben, 900000); // se informa, pero no entra en `neta`
+    assert.equal(l.conCDTs, l.neta + l.cdts);
+  });
+
+  test('Salud: lo que debes a personas reduce los meses de reserva y la calificación lo refleja (antes salía optimista)', () => {
+    const mesHace = (n) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+    const base = { cuentas: cuentas({ nequi: 4000000 }), gastosFijos: [{ id: 'g1', monto: 1000000 }], pagosGastosFijos: { ['g1_' + mesHace(1)]: { monto: 1000000 } } };
+    const sinDeuda = freshApp(base, { conInicio: true }).calcHealthScore();
+    const conDeuda = freshApp({ ...base, misDeudas: yoDebo(3500000) }, { conInicio: true }).calcHealthScore();
+    assert.ok(!sinDeuda.tips.some((t) => t.includes('menos de 3 meses')));
+    assert.ok(conDeuda.tips.some((t) => t.includes('menos de 3 meses')), 'con $3,5M de deuda quedan $500.000 = medio mes');
+    assert.ok(conDeuda.score < sinDeuda.score);
+  });
+
+  test('Salud: si la liquidez queda negativa por deudas con personas, el consejo lo dice (no habla de tarjetas)', () => {
+    const r = freshApp({ cuentas: cuentas({ nequi: 100000 }), misDeudas: yoDebo(400000) }, { conInicio: true }).calcHealthScore();
+    assert.ok(r.tips.some((t) => t.includes('Lo que debes a personas supera tu patrimonio líquido')));
+    assert.ok(!r.tips.some((t) => t.includes('deuda en tarjetas')));
+  });
+
+  test('Salud: patrimonio (para los ratios) es el visible, con deudas a personas restadas', () => {
+    // Sin ingresos y con TC: la rama «deuda vs patrimonio» usa el patrimonio visible. Con una deuda a personas que lo deja ≤ 0 debe alertar.
+    const r = freshApp({ cuentas: cuentas({ nequi: 500000 }), misDeudas: yoDebo(500000), tarjetasCredito: [{ id: 't1', nombre: 'TC', deuda: 100000, cupo: 1000000 }] }, { conInicio: true }).calcHealthScore();
+    assert.ok(r.tips.some((t) => t.includes('tu patrimonio no la cubre')));
+  });
+
+  test('GUARDIA de estructura: nadie más arma el patrimonio a mano (una sola fuente, para que no vuelva a desalinearse)', () => {
+    const sinComentarios = (txt) => txt.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/([^:'"`])\/\/.*$/gm, '$1');
+    const archivos = [
+      ...fs.readdirSync(CORE_DIR).map((f) => path.join(CORE_DIR, f)),
+      ...fs.readdirSync(MODULES_DIR).map((f) => path.join(MODULES_DIR, f)),
+    ].filter((f) => f.endsWith('.js'));
+    const coreState = path.join(CORE_DIR, 'core-state.js');
+    for (const f of archivos) {
+      if (f === coreState) continue;
+      const code = sinComentarios(fs.readFileSync(f, 'utf8'));
+      assert.ok(!/calcPatrimonioTotal\s*\(/.test(code), path.basename(f) + ' llama calcPatrimonioTotal(): usa calcPatrimonioVisible() o calcPatrimonioDesglose()');
+    }
+    // Quien muestra o guarda el patrimonio visible no resta la alcancía por su cuenta.
+    const inicio = sinComentarios(fs.readFileSync(path.join(MODULES_DIR, 'inicio.js'), 'utf8'));
+    assert.ok(!/saldoRegistrado/.test(inicio), 'inicio.js no debe tocar la alcancía: calcPatrimonioVisible() ya la excluye');
+    const core = sinComentarios(fs.readFileSync(coreState, 'utf8'));
+    const snap = core.slice(core.indexOf('function snapshotPatrimonio'), core.indexOf('function snapshotPatrimonio') + 2500);
+    assert.ok(snap.includes('calcPatrimonioDesglose()') && !/saldoRegistrado/.test(snap), 'snapshotPatrimonio usa el desglose');
+    const refreshSrc = core.slice(core.indexOf('function refresh()'), core.indexOf('function refresh()') + 9000);
+    assert.ok(refreshSrc.includes('calcPatrimonioDesglose()') && !/disp\s*\+\s*prest/.test(refreshSrc), 'el hero usa el desglose, no su propia suma');
+  });
+});

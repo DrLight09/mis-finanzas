@@ -235,8 +235,9 @@ function calcHealthScore(){
   // haciendo que "tieneAlgo" pase de false a true, o cambiando qué tip
   // aparece) y mantiene el mismo principio en toda la app: mientras esté
   // tapada, es como si esa plata no existiera para nada visible al usuario.
-  const _alcSaldoOcultoHS = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
-  const patrimonio = (window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0) - _alcSaldoOcultoHS;
+  // Patrimonio VISIBLE (sin alcancía): una sola definición en core-state.js (calcPatrimonioVisible), la misma del hero, el historial
+  // y la Proyección. Resta TODAS las deudas (tarjetas, «Yo debo», plata ajena), así que ya no hay que corregirlo aquí.
+  const patrimonio = calcPatrimonioVisible();
   const mes = window.mesActual ? window.mesActual() : '';
 
   // Gastos e ingresos del mes: definición única en periodo.js (la misma de Análisis, cierre de mes y Wrapped).
@@ -262,22 +263,19 @@ function calcHealthScore(){
   // Se expone aparte para que la app "sepa" que ese rendimiento existe.
   const rendimientoCDTMes = Periodo.rendimientosDelMes(mes).total; // cajitas + CDTs (ver periodo.js)
 
-  // ── Liquidez real (solo cuentas disponibles, sin CDTs bloqueados) ─────
-  const nu = (S.cajitas||[]).reduce((a,c)=>a+(window.calcC?window.calcC(c).val:c.saldo||0),0);
-  const cdtVal = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+(window.calcCDT?window.calcCDT(cdt).val:cdt.monto||0),0),0);
-  // CORRECCIÓN: liquido excluye CDTs (son ahorros bloqueados, no disponibles de inmediato).
-  // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas personalizadas —
-  // registrar una entrada de encargo con esa cuenta nunca suma esa plata al saldo real (a
-  // diferencia de una cajita de Nu, donde sí forma parte de la base que gana interés), así que
-  // restarla acá producía una liquidez negativa falsa. Ver CHANGELOG.md#encargos.
-  const liquidoReal = nu + getSaldoFuente('nequi') + getSaldoFuente('efectivo')
-    + cuentasCustom().reduce((a,c)=>a+(c.saldo||0),0)
-    - deudaTC;
+  // ── Liquidez real: una sola definición en core-state.js (calcLiquidez) ─────
+  // Suma lo que se puede usar ya (cajitas, Nequi, Efectivo, cuentas propias) y resta lo que no es tuyo o ya debes: la tarjeta
+  // propia, lo que debes a personas (aunque no haya fecha de pago: entre amigos casi nunca la hay, y es plata que te pueden
+  // pedir en cualquier momento) y la plata ajena que guardas. NO suma los CDTs (bloqueados) ni lo que te deben (sin fecha
+  // cierta no es plata disponible). Ver el bloque «PATRIMONIO Y LIQUIDEZ» de core-state.js.
+  const liq = calcLiquidez();
+  const liquidoReal = liq.neta;
+  const cdtVal = liq.cdts;
   // patrimonio total sí incluye CDTs para otros cálculos
-  const liquidoConCDTs = liquidoReal + cdtVal;
+  const liquidoConCDTs = liq.conCDTs;
 
   // ── Plata prestada a otros ────────────────────────────────────────────
-  const prest = window.totalPrestadoPendiente ? window.totalPrestadoPendiente() : 0;
+  const prest = liq.meDeben;
 
   // ── Hay datos suficientes para evaluar? ───────────────────────────────
   const tieneAlgo = patrimonio > 0 || prest > 0 || deudaTC > 0 || gastosMes > 0;
@@ -298,7 +296,11 @@ function calcHealthScore(){
     // Tiene gastos pero su liquidez inmediata es cero — salvado solo por CDTs
     score -= 8; add('Tu liquidez disponible es muy baja — tus ahorros están en CDTs, no en cuentas libres.','aviso');
   } else if(liquidoReal < 0){
-    score -= 15; add('Tu deuda en tarjetas supera tu patrimonio líquido.','alerta');
+    // Qué dejó la liquidez en negativo: si solo es la tarjeta se dice como siempre; si hay deudas con personas o plata ajena, se nombran.
+    score -= 15;
+    if(liq.yoDebo <= 0 && liq.ajeno <= 0) add('Tu deuda en tarjetas supera tu patrimonio líquido.','alerta');
+    else if(liq.tcPropia <= 0 && liq.ajeno <= 0) add('Lo que debes a personas supera tu patrimonio líquido.','alerta');
+    else add('Tus deudas y la plata ajena que guardas superan tu patrimonio líquido.','alerta');
   }
 
   // b) Deuda de tarjetas de crédito vs ingresos (ratio de endeudamiento TC)
@@ -322,8 +324,8 @@ function calcHealthScore(){
   let ratioPrest = 0;
   if(prest > 0){
     if(liquidoReal <= 0){
-      // Toda la liquidez está prestada — caso crítico
-      score -= 15; add('Toda tu liquidez está prestada — no tienes nada disponible para emergencias.','alerta');
+      // Sin liquidez libre y con plata prestada sin cobrar — caso crítico (la liquidez puede estar en cero por lo prestado o por lo que debes)
+      score -= 15; add('No te queda liquidez libre y tienes plata prestada sin cobrar — no tienes nada disponible para emergencias.','alerta');
       ratioPrest = Infinity;
     } else {
       ratioPrest = prest / liquidoReal;
@@ -461,19 +463,11 @@ function renderProyeccion(){
   // formateador global decide mostrar decimales.
   const fmt = x=>Math.round(x).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).replace(/\u00a0/g,'');
   // ── Patrimonio VISIBLE (sin alcancía) ─────────────────────────────────
-  // calcPatrimonioTotal() incluye la alcancía siempre, tapada o no (es plata
-  // real, y así la sigue viendo Salud financiera). Pero esta card sí muestra
-  // un número puntual al usuario en cada render — si se usa el total crudo,
-  // depositar en la alcancía hace que "Tendencia mensual"/3m/6m/12m salten
-  // al instante por el monto exacto del depósito, delatando "acabas de
-  // guardar $X" tan claro como si el gráfico de Análisis mostrara la curva
-  // cruda (mismo problema que ya se corrigió ahí con valorVisible — ver
-  // CHANGELOG.md#alcancía). Se resta acá también para que la sorpresa se
-  // mantenga; cuando se destape, esa plata entra a una cuenta real y el
-  // patrimonio visible sube solo, de forma natural.
-  const _alcSaldoOculto = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
-  const patrimonioReal = window.calcPatrimonioTotal ? window.calcPatrimonioTotal() : 0;
-  const patrimonio = patrimonioReal - _alcSaldoOculto;
+  // Una sola definición en core-state.js (calcPatrimonioVisible): la misma del hero y de `valorVisible` en el historial, que es
+  // de donde sale la tendencia. Esta card muestra un número puntual en cada render; con el total crudo, depositar en la alcancía
+  // haría saltar 3m/6m/12m por el monto exacto del depósito y delataría la sorpresa. Cuando se destape, esa plata entra a una
+  // cuenta real y el patrimonio visible sube solo.
+  const patrimonio = (typeof calcPatrimonioVisible==='function') ? calcPatrimonioVisible() : 0;
   if(!patrimonio){
     el.innerHTML = `<div class="inicio-proy-vacio">
       <div class="inicio-proy-vacio-ico">

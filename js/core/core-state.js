@@ -813,8 +813,29 @@ function calcDeudaTcPropia() {
   return (S.tarjetasCredito||[]).reduce((a,tc)=>a+calcDeudaTcPropiaDeTarjeta(tc),0);
 }
 
-function calcPatrimonioTotal(){
-  const nu=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
+/* ---- PATRIMONIO Y LIQUIDEZ: UNA SOLA DEFINICIÓN ----------------------------------------------------------------------
+   Todo número de la app que sea «cuánto tengo» sale de calcPatrimonioDesglose() o de calcLiquidez(). Nadie más suma cuentas
+   ni resta deudas a mano: el hero de Inicio, el historial (snapshotPatrimonio, medirPatrimonioParaHistorial), la gráfica
+   de Análisis, la Proyección y Salud financiera leen de aquí. Antes cada uno tenía su propia fórmula y se desalinearon
+   (el hero no restaba «Yo debo»; Salud tampoco). Si una regla cambia (una deuda nueva, otra cuenta), se cambia en ESTE
+   bloque y todo lo demás sigue igual; tests/nucleo.test.js («patrimonio — fuente única») lo vigila.
+
+   PATRIMONIO = activos − pasivos (patrimonio NETO)
+     activos : cajitas de Nu (con su interés), CDTs, Nequi, Efectivo, cuentas propias, «Me deben» y Alcancía.
+     pasivos : deuda de tarjetas (completa), «Yo debo» (deudas con personas) y plata ajena que guardas en tus cuentas.
+   Las deudas con personas cuentan completas aunque no tengan fecha de pago: un pasivo sin vencimiento sigue siendo un pasivo
+   (entre amigos casi nunca hay fecha, y no por eso la plata deja de ser de otro). Lo mismo vale para «Me deben»: es un
+   activo aunque no sepas cuándo te pagan. La fecha incierta no cambia el patrimonio: cambia la LIQUIDEZ (ver abajo).
+   «Visible» = patrimonio sin la Alcancía (está oculta a propósito, ver alcancia.js): es lo que se muestra y se guarda en
+   `valorVisible`. El total real (con Alcancía) solo se usa por dentro.
+
+   LIQUIDEZ = lo que podrías usar ya, sin vender nada ni esperar a nadie (para el fondo de emergencia de Salud financiera).
+     suma  : cajitas, Nequi, Efectivo y cuentas propias.
+     resta : deuda de tarjeta PROPIA, «Yo debo» y plata ajena (esas tres salen de tu bolsillo o ya tienen dueño).
+     no suma: CDTs (bloqueados), «Me deben» (sin fecha cierta no es plata disponible) ni Alcancía (oculta).
+   Es a propósito asimétrica y prudente: lo que te deben no cuenta hasta que llega, lo que debes cuenta completo. */
+function calcPatrimonioDesglose(){
+  const cajitas=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
   // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas
   // personalizadas. Registrar una entrada de encargo con esa cuenta es solo
@@ -824,21 +845,63 @@ function calcPatrimonioTotal(){
   // acá contaba de menos un patrimonio que en realidad nunca se sumó. Ver
   // CHANGELOG.md#encargos.
   const nequi=getSaldoFuente('nequi');
-  const ef=getSaldoFuente('efectivo');
+  const efectivo=getSaldoFuente('efectivo');
   // Deudas (calc-helpers.js, carga de entrada) — calcPatrimonioTotal() corre en
   // CADA save() de la app (vía snapshotPatrimonio), no solo en refresh().
-  const prest=typeof Deudas!=='undefined'?Deudas.totalPendiente('favor'):0;
+  const meDeben=typeof Deudas!=='undefined'?Deudas.totalPendiente('favor'):0;
   const custom=cuentasCustom().reduce((a,c)=>a+(c.saldo||0),0);
+  // Alcancía: el saldo registrado es plata real tuya aunque esté "oculta"
+  const alcancia=(S.alcancia&&S.alcancia.saldoRegistrado)?S.alcancia.saldoRegistrado:0;
   const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
   // Lo que le debo a otras personas (S.misDeudas) — esa plata está físicamente en
   // mis cuentas pero no es mía, así que se resta igual que la deuda de TC.
-  const misDeudas=typeof Deudas!=='undefined'?Deudas.totalPendiente('contra'):0;
+  const yoDebo=typeof Deudas!=='undefined'?Deudas.totalPendiente('contra'):0;
   // Restar plata comprometida ajena que está físicamente en cuentas propias
   // (igual que se restan encargos) — es plata de otras personas que administras
-  const cpAjeno = _saldoCPAjeno();
-  // Alcancía: el saldo registrado es plata real tuya aunque esté "oculta"
-  const alcancia = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
-  return nu+cdts+nequi+ef+prest+custom+alcancia-deudaTC-misDeudas-cpAjeno;
+  const ajeno=_saldoCPAjeno();
+  const activos=cajitas+cdts+nequi+efectivo+meDeben+custom+alcancia;
+  const pasivos=deudaTC+yoDebo+ajeno;
+  const total=cajitas+cdts+nequi+efectivo+meDeben+custom+alcancia-deudaTC-yoDebo-ajeno;
+  return {
+    cajitas, cdts, nequi, efectivo, custom, meDeben, alcancia,      // activos
+    deudaTC, yoDebo, ajeno,                                         // pasivos
+    activos, pasivos,
+    total,                    // patrimonio neto real (con Alcancía)
+    visible: total-alcancia,  // el que se muestra y se guarda en el historial (sin Alcancía)
+  };
+}
+
+// Patrimonio neto real (con Alcancía). Nombre histórico: delega en calcPatrimonioDesglose().
+function calcPatrimonioTotal(){ return calcPatrimonioDesglose().total; }
+
+// Patrimonio visible (sin Alcancía): el número del hero, de la Proyección, de Salud y de `valorVisible` en el historial.
+function calcPatrimonioVisible(){ return calcPatrimonioDesglose().visible; }
+
+// Texto del hero con lo que de verdad entra en la cuenta: solo menciona los pasivos que existen hoy.
+function patrimonioFormulaTexto(d){
+  d=d||calcPatrimonioDesglose();
+  const resta=[];
+  if(d.deudaTC>0)resta.push('Deuda TC');
+  if(d.yoDebo>0)resta.push('Yo debo');
+  if(d.ajeno>0)resta.push('Plata ajena');
+  return 'Cuentas + CDTs + Prestado'+resta.map(t=>' − '+t).join('');
+}
+
+// Liquidez: lo que se puede usar ya (ver el bloque de arriba). La deuda de tarjeta es solo la PROPIA: la parte de la
+// tarjeta que es de un préstamo o un encargo se cubre con lo que te deben, que tampoco entra aquí.
+function calcLiquidez(){
+  const d=calcPatrimonioDesglose();
+  const libre=d.cajitas+d.nequi+d.efectivo+d.custom;
+  const tcPropia=typeof calcDeudaTcPropia==='function'?calcDeudaTcPropia():0;
+  const obligaciones=tcPropia+d.yoDebo+d.ajeno;
+  const neta=libre-obligaciones;
+  return {
+    libre, tcPropia, yoDebo:d.yoDebo, ajeno:d.ajeno, obligaciones,
+    neta,                    // liquidez real: la que mide el fondo de emergencia
+    cdts:d.cdts,
+    conCDTs:neta+d.cdts,     // si además se cuentan los CDTs (bloqueados, no sirven de emergencia)
+    meDeben:d.meDeben,
+  };
 }
 
 // calcC/calcCDT (nu-calc.js) y Deudas (calc-helpers.js) son núcleo de carga de
@@ -935,7 +998,8 @@ function snapshotPatrimonio(){
   if(!_patrimonioDependenciasListas()) return;
   const hoyStr=hoy();
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
-  const val=calcPatrimonioTotal();
+  const _pat=calcPatrimonioDesglose();
+  const val=_pat.total;
   if(val==null||isNaN(val)){
     // Mismo motivo que el guard de refresh() más abajo: antes esto fallaba
     // en silencio total (ni siquiera un $0 en pantalla, solo un snapshot que
@@ -947,8 +1011,7 @@ function snapshotPatrimonio(){
   // El total real (val) sí la incluye y es el que usan el health score y la proyección,
   // pero mostrar la serie cruda en la gráfica revelaría los depósitos día a día —
   // rompiendo el propósito de "ocultar" el saldo (igual que ya hace el hero de Inicio).
-  const _alcSnap=(S.alcancia&&S.alcancia.saldoRegistrado)?S.alcancia.saldoRegistrado:0;
-  const valVisible=val-_alcSnap;
+  const valVisible=_pat.visible;
   // ¿Hoy se registró algún saldo inicial (cajita nueva, Nequi, Efectivo, cuenta personalizada)
   // o se corrigió uno existente? La app ya sabe distinguir esto vía tipo:'apertura' (ver
   // crearMovimientoApertura) y vía _ajustes (ver confirmarEditarApertura). Guardamos el
@@ -993,10 +1056,9 @@ function snapshotPatrimonio(){
 // Patrimonio total y el «visible» (sin Alcancía, el que guarda valorVisible), o null si no se puede medir.
 function medirPatrimonioParaHistorial(){
   if(!_patrimonioDependenciasListas()) return null;
-  const val=calcPatrimonioTotal();
-  if(val==null||isNaN(val)) return null;
-  const alc=(S.alcancia&&S.alcancia.saldoRegistrado)?S.alcancia.saldoRegistrado:0;
-  return {val, vis:val-alc};
+  const d=calcPatrimonioDesglose();
+  if(d.total==null||isNaN(d.total)) return null;
+  return {val:d.total, vis:d.visible};
 }
 
 // Día (YYYY-MM-DD) en que el movimiento entró al patrimonio: el de su creación (ts, o la hora que lleva su id de uid()),
@@ -1466,19 +1528,22 @@ function refresh(){
     return a+(baseInteres>0?baseInteres*(Math.pow(1+tasaCajita/100,1/365)-1):0);
   },0);
 
-  const deudaTCTotal=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
-  const _cpAjenoHero=typeof _saldoCPAjeno==='function'?_saldoCPAjeno():0;
-  // Alcancía: el patrimonio real la incluye, pero el hero la oculta para mantener la sorpresa
-  const _alcSaldo = (S.alcancia && S.alcancia.saldoRegistrado) ? S.alcancia.saldoRegistrado : 0;
-  const _patrimonioVisible = disp+prest+cdts-deudaTCTotal-_cpAjenoHero; // sin alcancía
+  // El patrimonio del hero NO se arma aquí: sale de calcPatrimonioDesglose() (arriba, junto a calcPatrimonioTotal), la misma
+  // cuenta que usan el historial, la gráfica de Análisis, la Proyección y Salud. Así el hero no puede desalinearse de ellos
+  // (antes tenía su propia fórmula y no restaba «Yo debo»). `visible` = sin Alcancía, que se oculta para mantener la sorpresa.
+  const _pat=calcPatrimonioDesglose();
+  const _alcSaldo=_pat.alcancia;
+  const _patrimonioVisible=_pat.visible;
   // Red de seguridad (2026-09-26): fmt()/fmtNoCents() hacen `n||0`, así que un
   // NaN acá se mostraría como "$0" silencioso, indistinguible de un patrimonio
   // real en cero — exactamente lo que pasó con el bug de fecha sin padear en
   // un CDT (ver _fechaSafe() más arriba). Esto no arregla la causa, pero deja
   // rastro en consola para no perder otra sesión entera diagnosticando a ciegas.
   if(isNaN(_patrimonioVisible)){
-    console.error('[refresh] _patrimonioVisible dio NaN — revisar fechas corruptas u otra fuente de NaN en cajitas/CDTs/deudores/tarjetas', {disp,prest,cdts,deudaTCTotal,_cpAjenoHero});
+    console.error('[refresh] _patrimonioVisible dio NaN — revisar fechas corruptas u otra fuente de NaN en cajitas/CDTs/deudores/tarjetas', _pat);
   }
+  const _heroFormula=document.getElementById('hero-formula');
+  if(_heroFormula)_heroFormula.textContent=patrimonioFormulaTexto(_pat);
   document.getElementById('heroTotal').textContent=fmt(_patrimonioVisible);
   // Indicador de alcancía en el hero — ícono chico junto al label, no un
   // bloque aparte (docs/auditoria-tecnica.md, "Reservar espacio para

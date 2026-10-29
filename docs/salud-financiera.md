@@ -15,7 +15,8 @@ Da un puntaje único de 0 a 100 que resume qué tan sana está la situación fin
 ## 2. Conceptos importantes
 
 - **Score base:** arranca en 50 (neutro) y sube o baja según siete factores independientes (a–g, ver §5), y al final se recorta al rango [0, 100].
-- **Liquidez real (`liquidoReal`):** solo cuentas disponibles de inmediato — Nequi, efectivo, cajitas (sin CDTs) y cuentas personalizadas — restando la deuda de TC y la plata de encargos (ajena) guardada en esas cuentas. No incluye CDTs, porque están bloqueados y no sirven para una emergencia.
+- **Liquidez real (`liquidoReal`):** viene de `calcLiquidez()` (`js/core/core-state.js`, la misma fuente única del patrimonio). Suma las cuentas disponibles de inmediato — Nequi, efectivo, cajitas (sin CDTs) y cuentas personalizadas — y resta tres cosas: la deuda de TC **propia**, lo que **debes a personas** (`Yo debo`, aunque no tenga fecha de pago: es plata que te pueden pedir en cualquier momento) y la **plata ajena** que guardas en tus cuentas (plata comprometida). No incluye CDTs (bloqueados) ni lo que te deben (sin fecha cierta no es plata disponible) ni la Alcancía (oculta). Es a propósito prudente y asimétrica: lo que te deben no cuenta hasta que llega, lo que debes cuenta completo. Antes solo restaba la tarjeta y la calificación salía optimista con deudas a personas.
+- **`patrimonio`:** `calcPatrimonioVisible()` (sin Alcancía, con todas las deudas restadas). Solo sirve para saber si hay datos y para el ratio de deuda de TC cuando aún no hay ingresos.
 - **Liquidez con CDTs (`liquidoConCDTs`):** `liquidoReal` + el valor de los CDTs. Se usa solo para distinguir "no tengo nada disponible" de "tengo algo, pero está todo bloqueado".
 - **Ingresos del mes (`ingresosMes`):** mesada + ingresos reales del mes + cobros de ingresos fijos registrados (regla de caja: cuentan en el mes de su fecha). Los ratios de deuda de TC, gasto/ingreso y «sin ingresos» usan el ingreso de referencia: el mayor entre lo de este mes y el promedio de los últimos 3 meses con ingreso. Los "ingresos reales" salen de `ingresosRealesDelMes()` (`core-state.js`), la misma definición que usan Análisis financiero y Wrapped (`entradasIngresoReal()`): movimientos con `clase: 'ingreso'` en `S.movimientos`, cuentas personalizadas y (desde 2026-10-09) el historial de las cajitas de Nu (extras que entran directo a una cajita), con o sin cuenta. Desde 2026-10-04 ya no se exige que la entrada tenga cuenta.
 - **Gastos del mes (`gastosMes`):** gastos variables reales (vía `_esGastoVarNoReal()`: excluye pagos de gasto fijo, pagos de TC, alcancía y extras de préstamo gastados de inmediato) + retiros manuales ("Restar dinero", `clase: 'gasto'`, desde 2026-10-09) + gastos fijos pagados ese mes. Mismo criterio que "Gastos totales" en Análisis financiero (todo sale de `Periodo`).
@@ -89,7 +90,7 @@ Si hay score → anillo de progreso SVG + etiqueta (Excelente / Regular / Necesi
 
 - **Sin datos suficientes** (`tieneAlgo` falso): la tarjeta muestra un mensaje neutro en vez de un score de 0 o 50 que se vería como un puntaje real.
 - **Deuda de TC sin ingresos registrados ese mes:** en vez de no evaluar nada, compara la deuda contra el patrimonio total como respaldo (con manejo explícito del caso `patrimonio <= 0`).
-- **Toda la liquidez está prestada** (`liquidoReal <= 0` y `prest > 0`): caso crítico marcado aparte con `ratioPrest = Infinity`, para que el bonus de CDTs (factor e) también se reduzca automáticamente sin tener que repetir la condición.
+- **Sin liquidez libre y con plata prestada** (`liquidoReal <= 0` y `prest > 0`; el cero puede venir de lo prestado o de lo que debes): caso crítico marcado aparte con `ratioPrest = Infinity`, para que el bonus de CDTs (factor e) también se reduzca automáticamente sin tener que repetir la condición.
 - **Mucho dinero prestado sin cobrar + CDTs activos:** el bonus de tener CDTs baja de +10 a +3 — tener ahorro estructurado no compensa igual si al mismo tiempo hay mucho riesgo de no cobrar lo prestado.
 - **Fondo de emergencia sin meses anteriores con gastos** (primer mes de uso): el criterio (a) no puntúa ni aconseja, porque no hay con qué medir. No se usa el gasto del mes en curso: a principio de mes apenas hay gastos y «reservas ÷ gastos del mes» salía en decenas de meses (+20 puntos que se iban cayendo a medida que pasaba el mes). La referencia es `Periodo.gastoPromedioPrevio(mes, 3)`: promedio de hasta 3 meses anteriores completos con gasto.
 - **CDT pequeño:** el bono es `round(tope × min(1, peso ÷ 10 %))`, con `peso = valor de los CDTs ÷ (cuentas libres + CDTs)`. Un CDT de $1.000 dentro de $81.000 (1,2 %) suma 1 punto, no 10.
@@ -115,3 +116,7 @@ Si hay score → anillo de progreso SVG + etiqueta (Excelente / Regular / Necesi
 | `renderHealthScore()` | Pinta la tarjeta `#health-score-card`: anillo de progreso SVG, etiqueta (Excelente/Regular/Necesita atención) y tips |
 
 **ID del DOM:** `health-score-card` (pantalla Inicio).
+
+## Consejo de liquidez negativa según la causa
+
+Cuando `liquidoReal < 0` (−15 puntos, tipo `alerta`) el texto dice qué lo causó: solo tarjeta → «Tu deuda en tarjetas supera tu patrimonio líquido.»; solo deudas con personas → «Lo que debes a personas supera tu patrimonio líquido.»; mezcla o plata ajena → «Tus deudas y la plata ajena que guardas superan tu patrimonio líquido.»

@@ -61,7 +61,7 @@ Con menos de un mes un solo movimiento grande domina el promedio y se extrapola 
 
 ## 3. `calcPatrimonioTotal()` — qué suma y qué resta
 
-Esta función es el corazón del módulo. La proyección hereda todo lo que ella incluye o excluye.
+Esta función es el corazón del módulo. La proyección hereda todo lo que ella incluye o excluye. Desde 2026-10-29 el cálculo vive en `calcPatrimonioDesglose()` (`calcPatrimonioTotal()` es su envoltorio) y la card usa `calcPatrimonioVisible()` en vez de restar la alcancía por su cuenta; ver `analisis-financiero.md` §10.
 
 ### Suma (activos)
 

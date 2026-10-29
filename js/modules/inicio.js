@@ -249,6 +249,11 @@ function calcHealthScore(){
 
   // Ingresos del mes: mesada + ingresos fijos + entradas reales (periodo.js).
   const ingresosMes = Periodo.ingresosDelMes(mes).total;
+  // Ingreso de REFERENCIA para los ratios (b, d y «sin ingresos»): el mayor entre lo ingresado este mes y el ingreso típico de los
+  // últimos 3 meses con ingreso. Con la regla de caja el ingreso llega en pocos días (la mesada, el sueldo, las cuotas de Spotify): a
+  // principio de mes aún no ha llegado y comparar contra $0 haría ver una deuda enorme o «gastas más de lo que ingresas» cada mes
+  // antes de cobrar. Si este mes ya entró más que lo típico, manda lo de este mes; sin meses anteriores con ingreso, todo sigue igual.
+  const ingresoRef = Math.max(ingresosMes, Periodo.ingresoPromedioPrevio(mes, 3).promedio);
 
   // ── Rendimiento de CDTs generado este mes (Opción 2: patrimonio real) ──
   // Es plata que el patrimonio total ya ganó este mes, pero sigue bloqueada
@@ -297,12 +302,12 @@ function calcHealthScore(){
   }
 
   // b) Deuda de tarjetas de crédito vs ingresos (ratio de endeudamiento TC)
-  if(deudaTC > 0 && ingresosMes > 0){
-    const ratioTC = deudaTC / ingresosMes;
+  if(deudaTC > 0 && ingresoRef > 0){
+    const ratioTC = deudaTC / ingresoRef;
     if(ratioTC > 3){ score -= 15; add('Tu deuda en TC supera 3 meses de ingresos — prioriza pagarla.','alerta'); }
     else if(ratioTC > 1.5){ score -= 8; add('Tu deuda en tarjetas es alta respecto a tus ingresos.','aviso'); }
     else score += 5;
-  } else if(deudaTC > 0 && ingresosMes === 0){
+  } else if(deudaTC > 0 && ingresoRef === 0){
     // Tiene deuda TC pero no registra ingresos — verificar vs patrimonio
     // CORRECCIÓN: cubrir el caso patrimonio <= 0 que antes se ignoraba
     if(patrimonio > 0 && deudaTC / patrimonio > 0.4){
@@ -336,11 +341,11 @@ function calcHealthScore(){
   }
 
   // d) Ratio gastos/ingresos (disciplina de gasto)
-  if(ingresosMes > 0 && gastosMes > 0){
-    const ratioGasto = gastosMes / ingresosMes;
+  if(ingresoRef > 0 && gastosMes > 0){
+    const ratioGasto = gastosMes / ingresoRef;
     if(ratioGasto <= 0.7) score += 10;
     else if(ratioGasto <= 0.9) score += 5;
-    else if(ratioGasto > 1){ score -= 10; add('Por ahora estás gastando más de lo que ingresas este mes.','aviso'); }
+    else if(ratioGasto > 1){ score -= 10; add('Por ahora estás gastando más de lo que ingresas.','aviso'); }
   }
 
   // e) CDTs activos (ahorro estructurado)
@@ -369,7 +374,7 @@ function calcHealthScore(){
 
   // Sin ingresos registrados no se puede evaluar la disciplina de gasto ni el endeudamiento (los ratios b y d se saltan):
   // no puede salir «Excelente», y se avisa igual que el balance de Análisis.
-  const sinIngresos = ingresosMes <= 0 && gastosMes > 0;
+  const sinIngresos = ingresoRef <= 0 && gastosMes > 0;
   if(sinIngresos){
     score = Math.min(score, 74);
     add('Registra tus ingresos para que la calificación pueda evaluar tus gastos y deudas.','sugerencia');

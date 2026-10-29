@@ -6,6 +6,21 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Lista de mejoras de octubre 2026
 
+### 🔐 La huella ya no abre el gestor de contraseñas (2026-10-29, SW v76)
+
+- **Causa:** `_bioRegister()` creaba una credencial WebAuthn con `residentKey: 'preferred'`, o sea una **passkey** (descubrible). En Android el autenticador de la plataforma es el gestor de contraseñas, que la guarda, la sincroniza y la muestra al desbloquear. Además `_bioAuthenticate()` sin credencial guardada pedía con `allowCredentials: []`, que le deja elegir entre passkeys.
+- **Cambio (`js/core/pin-bio.js`):** credencial **no descubrible** (`residentKey: 'discouraged'`, `requireResidentKey: false`), que se queda en el sensor del dispositivo y no es una passkey; `user.id` aleatorio y nombre genérico (ya no viaja el uid de la cuenta); `hints: ['client-device']` para pedir directo el sensor del equipo; sin credencial guardada ya no se pide nada.
+- **Migración:** `mf_bio_ver`. Una huella activada con la versión anterior (passkey) se trata como desactivada y Configuración vuelve a ofrecer «Activar huella». La passkey vieja hay que borrarla a mano del gestor de contraseñas (la app no puede hacerlo).
+- **Qué sigue siendo:** un candado local de este dispositivo (la app no tiene servidor que verifique la firma). El PIN sigue siendo el acceso de respaldo.
+- Comprobado con un WebAuthn simulado (parámetros del registro y del desbloqueo, migración y borrado). **No probado en un teléfono real**: si en algún navegador el sistema igual muestra su propio aviso, es el del sistema y no el de una passkey.
+
+### 🩺 Revisión de Salud, Proyección, Nu, tarjetas y Alcancía (2026-10-29, SW v75)
+
+- **Cambio en Salud financiera.** Con la regla de caja el ingreso llega en pocos días (mesada, sueldo, cuotas de Spotify). A principio de mes todavía no ha llegado, y Salud comparaba la deuda de TC y el gasto contra $0 o contra un ingreso parcial: salía «tu deuda supera 3 meses de ingresos» o «gastas más de lo que ingresas» cada mes antes de cobrar. Ahora los ratios usan el **ingreso de referencia** = el mayor entre lo ingresado este mes y el promedio de los últimos 3 meses con ingreso (`Periodo.ingresoPromedioPrevio`, hermano de `gastoPromedioPrevio`). Sin meses anteriores con ingreso nada cambia, y el aviso «Registra tus ingresos» sigue saliendo si nunca hubo. El mensaje de gasto ya no dice «este mes».
+- **Revisado sin cambios:** Proyección (tendencia = cambio del patrimonio visible sin saldos iniciales, ≥30 días); Nu (interés diario compuesto sobre EA, por tramos de tasa y de plata de encargos, que se excluye del valor propio); Alcancía (el destape no hace saltar el patrimonio visible ni duplica saldo; sobrante = ingreso + ajuste de base, faltante = gasto); tarjetas (compra = gasto, pago = neutro, saldo inicial no es gasto, intereses y comisiones se registran a mano como «cargo especial» y cuentan como gasto).
+- **Límites conocidos, no corregidos:** la tarjeta no calcula intereses sola; la deuda de una tarjeta no baja de $0, así que un pago de más no deja «saldo a favor»; en Spotify la plata cobrada que aún no se paga al plan cuenta como patrimonio tuyo hasta el pago.
+- Pruebas: 4 nuevas en `tests/nucleo.test.js`.
+
 ### 🔍 Revisión financiera general (2026-10-28, SW v74)
 
 - **Corregido:** el sheet «Pagar Spotify» pide «Fecha en que pagaste», pero el gasto «Spotify Premium» se guardaba con la fecha de hoy. Con la regla de caja, pagar con fecha pasada movía el gasto a otro mes que el resto del pago (historial de Spotify, cargo de la tarjeta). Ahora usa la fecha escrita. Ningún otro módulo tiene este problema (Préstamos, Tarjetas y Gastos usan la fecha del formulario; el ajuste automático de Alcancía usa hoy a propósito).

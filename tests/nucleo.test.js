@@ -226,6 +226,42 @@ describe('calcHealthScore', () => {
     assert.ok(r.tips.some((t) => t.includes('gastando más de lo que ingresas')));
   });
 
+  // Meses previos con ingreso: un cobro de ingreso fijo en el día 15 de cada uno de los últimos `n` meses.
+  const ingresosPrevios = (monto, n = 3) => [{ id: 'ip', nombre: 'Sueldo', monto, desde: '2020-01', cobros: Array.from({ length: n }, (_, i) => ({ id: 'cp' + i, mesCubre: mesHace(i + 1), monto, fecha: mesHace(i + 1) + '-15' })) }];
+
+  test('calcHealthScore — a principio de mes (aún sin ingreso) la deuda de TC se mide contra el ingreso típico, no contra $0', () => {
+    const base = { cuentas: cuentas({ nequi: 3000000 }), tarjetasCredito: [{ id: 'tc1', deuda: 400000, cupo: 2000000 }] };
+    const sinHistorial = freshApp({ ...base }).calcHealthScore();
+    const conHistorial = freshApp({ ...base, ingresosFijos: ingresosPrevios(2000000) }).calcHealthScore();
+    assert.ok(!conHistorial.tips.some((t) => t.includes('Tu deuda en TC supera') || t.includes('deuda en tarjetas es alta')), 'deuda de 0,2 meses de ingreso típico: sin alertas');
+    assert.equal(conHistorial.sinDatos, false);
+    assert.ok(conHistorial.score >= sinHistorial.score);
+  });
+
+  test('calcHealthScore — «gastas más de lo que ingresas» no salta antes de cobrar si el ingreso típico alcanza; sí si el gasto lo supera', () => {
+    const mes = currentMonthKey();
+    const gasto = m => ({ gastosFijos: [{ id: 'g1', monto: m }], pagosGastosFijos: { ['g1_' + mes]: { monto: m, fecha: mes + '-02' } } });
+    const alcanza = freshApp({ cuentas: cuentas({ nequi: 2000000 }), ingresosFijos: ingresosPrevios(1000000), ...gasto(600000) }).calcHealthScore();
+    assert.ok(!alcanza.tips.some((t) => t.includes('gastando más de lo que ingresas')));
+    const noAlcanza = freshApp({ cuentas: cuentas({ nequi: 2000000 }), ingresosFijos: ingresosPrevios(1000000), ...gasto(1500000) }).calcHealthScore();
+    assert.ok(noAlcanza.tips.some((t) => t.includes('gastando más de lo que ingresas')));
+  });
+
+  test('calcHealthScore — el ingreso típico no cuenta como «ingresos registrados» si nunca hubo: sigue el aviso de registrar ingresos', () => {
+    const mes = currentMonthKey();
+    const r = freshApp({ cuentas: cuentas({ nequi: 500000 }), gastosFijos: [{ id: 'g1', monto: 100000 }], pagosGastosFijos: { ['g1_' + mes]: { monto: 100000 } } }).calcHealthScore();
+    assert.ok(r.tips.some((t) => t.includes('Registra tus ingresos')));
+  });
+
+  test('Periodo.ingresoPromedioPrevio — promedia los últimos meses completos con ingreso y deja fuera el mes en curso', () => {
+    const mes = currentMonthKey();
+    const ctx = freshApp({ ingresosFijos: [{ id: 'a', monto: 1, cobros: [
+      { id: '1', mesCubre: mesHace(1), monto: 100, fecha: mesHace(1) + '-10' }, { id: '2', mesCubre: mesHace(2), monto: 300, fecha: mesHace(2) + '-10' },
+      { id: '3', mesCubre: mes, monto: 999, fecha: mes + '-01' }] }] });
+    const r = ctx.Periodo.ingresoPromedioPrevio(mes, 3);
+    assert.deepEqual([r.promedio, r.meses], [200, 2]);
+  });
+
   test('calcHealthScore — cada consejo trae su tipo: una sugerencia (CDT) no es un logro y lleva a donde se resuelve', () => {
     const mes = currentMonthKey();
     const ctx = freshApp({

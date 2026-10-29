@@ -165,6 +165,26 @@ const Periodo = (() => {
     return { mesada, fijos, spotify, entradas, total: mesada + fijos + spotify + entradas };
   }
 
+  // Ingreso total por mes ('YYYY-MM' → pesos), con las mismas fuentes y la misma regla de caja que ingresosDelMes().
+  function ingresosPorMes(estado) {
+    const out = {};
+    const sumar = (mes, monto) => { if (mes && monto > 0) out[mes] = (out[mes] || 0) + monto; };
+    mesadaEntradas(estado).forEach(e => sumar(e.mes, e.monto));
+    ingresosFijosEntradas(estado).forEach(e => sumar(e.mes, e.monto));
+    spotifyEntradas(estado).forEach(e => sumar(e.mes, e.monto));
+    entradasIngresoReal(estado).forEach(m => sumar(mesKey(m.fecha), m.monto || 0));
+    return out;
+  }
+
+  // Ingreso mensual típico: promedio de los últimos `n` meses ANTERIORES a `mes` que tengan ingreso (el mes en curso no entra:
+  // con la regla de caja el ingreso llega en pocos días, y a principio de mes aún no ha llegado). Misma forma que gastoPromedioPrevio.
+  function ingresoPromedioPrevio(mes, n, estado) {
+    const porMes = ingresosPorMes(estado);
+    const previos = Object.keys(porMes).filter(k => k < mes && porMes[k] > 0).sort().slice(-(n || 3));
+    if (!previos.length) return { promedio: 0, meses: 0 };
+    return { promedio: previos.reduce((a, k) => a + porMes[k], 0) / previos.length, meses: previos.length };
+  }
+
   /* ---- GASTOS ---- */
   // Todos los pagos de gastos fijos, normalizados: [{id, mes, mesCubre, monto, fecha, cat, nombre}].
   // S.pagosGastosFijos es un mapa {"<gfId>_YYYY-MM": {fecha, fuente, monto}}; `mesCubre` sale de la clave y `mes` (el que
@@ -289,7 +309,7 @@ const Periodo = (() => {
     return { mes, ingresos, gastos, balance, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }
 
-  return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, mesadaEntradas,
+  return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
            pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes };
 })();
 

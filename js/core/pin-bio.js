@@ -26,6 +26,11 @@ import { hookGlobal } from './hook-global-module.js';
   const PIN_KEY  = 'mf_pin';
   const BIO_KEY  = 'mf_bio_enabled';   // 'true' si el usuario activó biometría
   const CRED_KEY = 'mf_bio_cred';      // credentialId (base64url) guardado
+  const VER_KEY  = 'mf_bio_ver';       // versión de la credencial guardada (ver BIO_VERSION)
+  // Versión 2 (2026-10-29): credencial NO descubrible (ver _bioRegister). Las de la versión 1 eran passkeys (residentKey 'preferred'):
+  // el gestor de contraseñas las guardaba y las mostraba al desbloquear. Una huella activada con la versión 1 se trata como
+  // desactivada: Configuración vuelve a ofrecer «Activar huella» y la nueva credencial ya no pasa por el gestor.
+  const BIO_VERSION = '2';
 
   let _pinBuf  = '';
   let _pinMode = 'unlock'; // 'unlock' | 'set-new' | 'confirm-new' | 'verify' (confirmar una acción destructiva)
@@ -36,11 +41,11 @@ import { hookGlobal } from './hook-global-module.js';
   function _getPin()    { try { return localStorage.getItem(PIN_KEY)||''; }catch(e){return '';} }
   function _setPin(v)   { try { localStorage.setItem(PIN_KEY,v); }catch(e){} }
   function _delPin()    { try { localStorage.removeItem(PIN_KEY); }catch(e){} }
-  function _bioEnabled(){ try { return localStorage.getItem(BIO_KEY)==='true'; }catch(e){return false;} }
-  function _setBioEnabled(v){ try { localStorage.setItem(BIO_KEY, v?'true':'false'); }catch(e){} }
+  function _bioEnabled(){ try { return localStorage.getItem(BIO_KEY)==='true' && localStorage.getItem(VER_KEY)===BIO_VERSION; }catch(e){return false;} }
+  function _setBioEnabled(v){ try { localStorage.setItem(BIO_KEY, v?'true':'false'); if(v) localStorage.setItem(VER_KEY, BIO_VERSION); else localStorage.removeItem(VER_KEY); }catch(e){} }
   function _getCredId() { try { return localStorage.getItem(CRED_KEY)||''; }catch(e){return '';} }
   function _setCredId(v){ try { localStorage.setItem(CRED_KEY,v); }catch(e){} }
-  function _delCred()   { try { localStorage.removeItem(CRED_KEY); localStorage.removeItem(BIO_KEY); }catch(e){} }
+  function _delCred()   { try { localStorage.removeItem(CRED_KEY); localStorage.removeItem(BIO_KEY); localStorage.removeItem(VER_KEY); }catch(e){} }
 
   // ── WebAuthn helpers ─────────────────────────────────────────────
   function _b64urlToUint8(b64) {
@@ -57,16 +62,23 @@ import { hookGlobal } from './hook-global-module.js';
               typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function');
   }
 
-  // Registrar nueva credential biométrica
+  // Registrar nueva credencial biométrica.
+  // Es un candado LOCAL de este dispositivo (la app no tiene servidor que verifique la firma), así que no necesita una passkey:
+  //  · residentKey 'discouraged' + requireResidentKey false → credencial NO descubrible: queda en el sensor/enclave del dispositivo
+  //    y no se sincroniza ni se ofrece en el gestor de contraseñas (Google Password Manager, iCloud, etc.). Una passkey
+  //    (descubrible) era lo que abría el gestor.
+  //  · user.id aleatorio y nombre genérico: no se expone el uid ni el correo de la cuenta.
+  //  · hints 'client-device': pide directamente el sensor de este equipo (sin ofrecer llave USB ni teléfono por QR).
   async function _bioRegister() {
-    const uid = (window._fbUser && window._fbUser.uid) || 'mf_user';
     const challenge = crypto.getRandomValues(new Uint8Array(32));
     const options = {
       challenge,
       rp: { name: 'Mis Finanzas' },
-      user: { id: _b64urlToUint8(btoa(uid).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'')), name: uid, displayName: 'Mis Finanzas' },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'Mis Finanzas', displayName: 'Mis Finanzas' },
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged', requireResidentKey: false },
+      attestation: 'none',
+      hints: ['client-device'],
       timeout: 60000,
     };
     const cred = await navigator.credentials.create({ publicKey: options });
@@ -74,14 +86,17 @@ import { hookGlobal } from './hook-global-module.js';
     return true;
   }
 
-  // Autenticar con credential existente
+  // Autenticar con la credencial guardada.
+  // Sin credencial guardada NO se pide nada: un allowCredentials vacío le deja al navegador elegir entre las passkeys del gestor.
   async function _bioAuthenticate() {
     const credId = _getCredId();
+    if(!credId) throw new Error('sin credencial biométrica');
     const challenge = crypto.getRandomValues(new Uint8Array(32));
     const options = {
       challenge,
-      allowCredentials: credId ? [{ type: 'public-key', id: _b64urlToUint8(credId) }] : [],
+      allowCredentials: [{ type: 'public-key', id: _b64urlToUint8(credId) }],
       userVerification: 'required',
+      hints: ['client-device'],
       timeout: 60000,
     };
     await navigator.credentials.get({ publicKey: options });

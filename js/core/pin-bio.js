@@ -32,15 +32,102 @@ import { hookGlobal } from './hook-global-module.js';
   // desactivada: Configuración vuelve a ofrecer «Activar huella» y la nueva credencial ya no pasa por el gestor.
   const BIO_VERSION = '2';
 
+  const FAIL_KEY = 'mf_pin_fails';     // intentos fallidos seguidos (persisten al recargar la página)
+  const LOCK_KEY = 'mf_pin_lock';      // hasta cuándo (ms) está bloqueado el teclado
+  const AUTOBLOQUEO_MS = 2 * 60 * 1000; // con la app en segundo plano más de esto, al volver se pide el PIN otra vez
+
   let _pinBuf  = '';
   let _pinMode = 'unlock'; // 'unlock' | 'set-new' | 'confirm-new' | 'verify' (confirmar una acción destructiva)
   let _verifyResolve = null; // promesa pendiente de window._pinVerificar()
   let _pinTemp = '';
+  let _subBase = 'Mis Finanzas';   // subtítulo normal de la pantalla del PIN (se restaura al terminar un bloqueo)
+  let _lockTimer = null;           // cuenta regresiva del bloqueo por intentos
+  let _relock = false;             // la pantalla del PIN es un re-bloqueo (la app ya estaba cargada): al desbloquear solo se cierra
+
+
+  // ── Seguridad del PIN: funciones PURAS (sin DOM ni almacenamiento; las prueba tests/pin-seguridad.test.js) ──
+  // INICIO-PIN-PURO
+  // SHA-256 sobre texto ASCII (el PIN, la sal y los hash en hex). Es síncrono a propósito: el resto del PIN lo es.
+  function _sha256(texto) {
+    const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+      0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+      0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+      0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    const H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    const bytes = [];
+    for (let i = 0; i < texto.length; i++) bytes.push(texto.charCodeAt(i) & 0xff);
+    const bitLen = bytes.length * 8;
+    bytes.push(0x80);
+    while (bytes.length % 64 !== 56) bytes.push(0);
+    for (let i = 7; i >= 0; i--) bytes.push(i >= 4 ? 0 : (bitLen >>> (i * 8)) & 0xff);
+    const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+    for (let o = 0; o < bytes.length; o += 64) {
+      const w = new Array(64);
+      for (let i = 0; i < 16; i++) w[i] = (bytes[o+i*4] << 24) | (bytes[o+i*4+1] << 16) | (bytes[o+i*4+2] << 8) | bytes[o+i*4+3];
+      for (let i = 16; i < 64; i++) {
+        const s0 = rotr(w[i-15], 7) ^ rotr(w[i-15], 18) ^ (w[i-15] >>> 3);
+        const s1 = rotr(w[i-2], 17) ^ rotr(w[i-2], 19) ^ (w[i-2] >>> 10);
+        w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
+      }
+      let [a, b, c, d, e, f, g, h] = H;
+      for (let i = 0; i < 64; i++) {
+        const t1 = (h + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+        const t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+      H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+    }
+    return H.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
+  }
+  // El PIN se guarda como `h1:<sal>:<hash>` (sal aleatoria por instalación + 3000 vueltas de SHA-256), no en texto. Con solo 4 dígitos
+  // ningún hash es una defensa fuerte frente a quien lea el almacenamiento del navegador: la defensa real es el bloqueo por intentos
+  // y el bloqueo automático; esto evita que el PIN se vea tal cual en el almacenamiento o en una copia.
+  const PIN_VUELTAS = 3000;
+  function _hashPin(pin, sal) {
+    let h = _sha256(sal + ':' + pin);
+    for (let i = 1; i < PIN_VUELTAS; i++) h = _sha256(h + sal + pin);
+    return h;
+  }
+  function _pinParaGuardar(pin, sal) { return 'h1:' + sal + ':' + _hashPin(pin, sal); }
+  // ¿El PIN escrito coincide con lo guardado? Acepta el formato nuevo y el anterior (4 dígitos en texto) hasta que se cambie el PIN.
+  function _pinCoincideCon(guardado, ingresado) {
+    if (!guardado || !ingresado) return false;
+    if (guardado.indexOf('h1:') === 0) {
+      const partes = guardado.split(':');
+      return partes.length === 3 && _hashPin(ingresado, partes[1]) === partes[2];
+    }
+    return ingresado === guardado;
+  }
+  // PINs que se adivinan a la primera: cuatro iguales (1111), escaleras (1234, 4321) y parejas repetidas (1212).
+  function _pinDebil(pin) {
+    return /^(\d)\1{3}$/.test(pin) || '0123456789'.indexOf(pin) !== -1 || '9876543210'.indexOf(pin) !== -1 || /^(\d\d)\1$/.test(pin);
+  }
+  // Segundos de bloqueo tras `fallos` intentos fallidos seguidos: ninguno hasta el 4.º; el 5.º bloquea 30 s y cada fallo más duplica, con tope de 15 min.
+  function _segundosDeBloqueo(fallos) {
+    return fallos < 5 ? 0 : Math.min(900, 30 * Math.pow(2, fallos - 5));
+  }
+  // FIN-PIN-PURO
 
   // ── Storage ──────────────────────────────────────────────────────
   function _getPin()    { try { return localStorage.getItem(PIN_KEY)||''; }catch(e){return '';} }
   function _setPin(v)   { try { localStorage.setItem(PIN_KEY,v); }catch(e){} }
-  function _delPin()    { try { localStorage.removeItem(PIN_KEY); }catch(e){} }
+  function _delPin()    { try { localStorage.removeItem(PIN_KEY); localStorage.removeItem(FAIL_KEY); localStorage.removeItem(LOCK_KEY); }catch(e){} }
+  function _nuevaSal()  {
+    try { const a = new Uint8Array(16); crypto.getRandomValues(a); return Array.from(a, b => b.toString(16).padStart(2, '0')).join(''); }
+    catch(e) { return Array.from({ length: 16 }, () => Math.floor(Math.random() * 256).toString(16).padStart(2, '0')).join(''); }
+  }
+  function _guardarPinNuevo(pin) { _setPin(_pinParaGuardar(pin, _nuevaSal())); _limpiarFallos(); }
+  function _lockRestanteMs() { try { return Math.max(0, Number(localStorage.getItem(LOCK_KEY) || 0) - Date.now()); }catch(e){ return 0; } }
+  function _limpiarFallos() { try { localStorage.removeItem(FAIL_KEY); localStorage.removeItem(LOCK_KEY); }catch(e){} }
+  function _registrarFallo() {
+    try {
+      const n = Number(localStorage.getItem(FAIL_KEY) || 0) + 1;
+      localStorage.setItem(FAIL_KEY, String(n));
+      const seg = _segundosDeBloqueo(n);
+      if (seg > 0) localStorage.setItem(LOCK_KEY, String(Date.now() + seg * 1000));
+    }catch(e){}
+  }
   function _bioEnabled(){ try { return localStorage.getItem(BIO_KEY)==='true' && localStorage.getItem(VER_KEY)===BIO_VERSION; }catch(e){return false;} }
   function _setBioEnabled(v){ try { localStorage.setItem(BIO_KEY, v?'true':'false'); if(v) localStorage.setItem(VER_KEY, BIO_VERSION); else localStorage.removeItem(VER_KEY); }catch(e){} }
   function _getCredId() { try { return localStorage.getItem(CRED_KEY)||''; }catch(e){return '';} }
@@ -108,7 +195,8 @@ import { hookGlobal } from './hook-global-module.js';
     _pinMode = mode;
     _pinBuf  = '';
     document.getElementById('pin-title').textContent = title||'Ingresa tu PIN';
-    document.getElementById('pin-sub').textContent   = sub  ||'Mis Finanzas';
+    _subBase = sub || 'Mis Finanzas';
+    document.getElementById('pin-sub').textContent   = _subBase;
     document.getElementById('pin-forgot-btn').style.display = mode==='unlock' ? '' : 'none';
     const cancelBtn = document.getElementById('pin-cancel-btn');
     if(cancelBtn) cancelBtn.style.display = mode==='verify' ? '' : 'none';
@@ -116,6 +204,7 @@ import { hookGlobal } from './hook-global-module.js';
     document.getElementById('pin-screen').classList.toggle('pin-verificar', mode==='verify');
     _dots();
     document.getElementById('pin-screen').classList.add('open');
+    _avisoBloqueo();
     // Mostrar botón biométrico sólo en modo unlock si está habilitado y hay PIN
     const bioBtn = document.getElementById('pin-bio-btn');
     if(bioBtn) {
@@ -125,6 +214,7 @@ import { hookGlobal } from './hook-global-module.js';
     }
   }
   function _hidePin() {
+    if(_lockTimer) { clearInterval(_lockTimer); _lockTimer = null; }
     document.getElementById('pin-screen').classList.remove('open', 'pin-verificar');
     _setBioState('idle');
   }
@@ -169,8 +259,31 @@ import { hookGlobal } from './hook-global-module.js';
     label.textContent = isIOS ? 'Face ID / Huella' : 'Usar huella';
   }
 
+  // Bloqueo por intentos: mientras dura, el teclado no escribe y el subtítulo cuenta hacia atrás.
+  function _avisoBloqueo() {
+    const sub = document.getElementById('pin-sub');
+    if(!sub) return;
+    const ms = _lockRestanteMs();
+    if(ms > 0 && _pinMode !== 'set-new' && _pinMode !== 'confirm-new') {
+      const s = Math.ceil(ms / 1000);
+      sub.textContent = 'Demasiados intentos. Intenta en ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+      if(!_lockTimer) _lockTimer = setInterval(_avisoBloqueo, 1000);
+    } else {
+      if(_lockTimer) { clearInterval(_lockTimer); _lockTimer = null; }
+      sub.textContent = _subBase;
+    }
+  }
+  function _bloqueado() { return (_pinMode === 'unlock' || _pinMode === 'verify') && _lockRestanteMs() > 0; }
+  // Desbloqueo correcto (PIN o huella): se borran los fallos y, si era un re-bloqueo, la app ya está cargada.
+  function _alDesbloquear() {
+    _limpiarFallos();
+    _hidePin();
+    if(_relock) _relock = false; else _launchApp();
+  }
+
   // ── Teclado ───────────────────────────────────────────────────────
   window._pinKey = function(d) {
+    if(_bloqueado()) return;
     if(_pinBuf.length>=4) return;
     _pinBuf += d;
     _dots();
@@ -220,7 +333,7 @@ import { hookGlobal } from './hook-global-module.js';
     try {
       await _bioAuthenticate();
       _setBioState('success');
-      setTimeout(()=>{ _hidePin(); _launchApp(); }, 350);
+      setTimeout(_alDesbloquear, 350);
     } catch(e) {
       console.warn('[Bio] Auth failed:', e.name, e.message);
       _setBioState('error');
@@ -263,18 +376,28 @@ import { hookGlobal } from './hook-global-module.js';
 
   function _submit() {
     const stored = _getPin();
-    if(_pinMode==='unlock') {
-      if(_pinBuf===stored) { _hidePin(); _launchApp(); }
-      else _shake();
-    } else if(_pinMode==='verify') {
-      if(_pinBuf===stored) _terminarVerificacion(true);
-      else _shake();
+    if(_pinMode==='unlock' || _pinMode==='verify') {
+      if(_bloqueado()) { _pinBuf=''; _dots(); return; }
+      if(_pinCoincideCon(stored, _pinBuf)) {
+        if(_pinMode==='unlock') _alDesbloquear();
+        else { _limpiarFallos(); _terminarVerificacion(true); }
+      } else {
+        _registrarFallo();
+        _shake();
+        _avisoBloqueo(); // si este fallo activó el bloqueo, la cuenta regresiva aparece de inmediato
+      }
     } else if(_pinMode==='set-new') {
+      if(_pinDebil(_pinBuf)) {
+        _shake();
+        if(window.toast) toast('Ese PIN es muy fácil de adivinar. Elige otro.','warn');
+        setTimeout(()=>_showPin('set-new','Elige un PIN de 4 dígitos','Evita repetidos o seguidos (1111, 1234)'), 450);
+        return;
+      }
       _pinTemp = _pinBuf;
       _showPin('confirm-new','Confirma el PIN','Repite los 4 dígitos');
     } else if(_pinMode==='confirm-new') {
       if(_pinBuf===_pinTemp) {
-        _setPin(_pinBuf);
+        _guardarPinNuevo(_pinBuf);
         _hidePin();
         if(window.toast) toast('PIN activado','ok');
         _renderBtn();
@@ -292,6 +415,7 @@ import { hookGlobal } from './hook-global-module.js';
     const stored = _getPin();
     if(stored) {
       document.getElementById('fb-loading-screen').style.display='none';
+      _relock = false;
       _showPin('unlock','Ingresa tu PIN','Mis Finanzas');
       // Auto-trigger biometría si está activa (sin que el usuario toque nada)
       if(_bioEnabled() && _getCredId() && _bioAvailable()) {
@@ -341,8 +465,25 @@ import { hookGlobal } from './hook-global-module.js';
     }
   }
 
+  // ── Bloqueo automático ───────────────────────────────────────────
+  // Con el PIN activo, si la app estuvo en segundo plano más de AUTOBLOQUEO_MS, al volver se pide el PIN otra vez (alguien que tome tu
+  // teléfono con la app ya abierta no ve tus finanzas). Solo cuando la sesión ya está cargada y la pantalla del PIN no está abierta.
+  let _ocultaDesde = 0;
+  document.addEventListener('visibilitychange', function() {
+    if(document.hidden) { _ocultaDesde = Date.now(); return; }
+    const fuera = _ocultaDesde ? Date.now() - _ocultaDesde : 0;
+    _ocultaDesde = 0;
+    const pantalla = document.getElementById('pin-screen');
+    if(!_getPin() || !window._fbUser || fuera < AUTOBLOQUEO_MS || (pantalla && pantalla.classList.contains('open'))) return;
+    _relock = true;
+    _showPin('unlock','Ingresa tu PIN','Mis Finanzas');
+    if(_bioEnabled() && _getCredId() && _bioAvailable()) setTimeout(window._pinBioTrigger, 400);
+  });
+
   // ── Config desde pantalla de configuración ───────────────────────
-  window._pinSetNew = function() {
+  window._pinSetNew = async function() {
+    // Cambiar un PIN que ya existe exige escribir el actual (sin PIN activo, `_pinVerificar` responde true al instante).
+    if(_getPin() && !(await window._pinVerificar('Para cambiar tu PIN'))) return;
     _showPin('set-new','Elige un PIN de 4 dígitos','Este PIN protegerá el acceso a la app');
     window._pendingLaunch = false;
   };

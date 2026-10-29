@@ -1018,6 +1018,16 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .row.an-ing-row{padding:12px 0;}
 .an-col-2{display:flex;flex-direction:column;gap:2px;flex:1;}
 .an-ing-monto{font-size:14px;font-family:'DM Mono',monospace;color:var(--accent);font-weight:600;}
+.an-ing-bloque{padding:0;}
+.an-desde-fila{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.an-ing-estado{font-size:10px;font-family:'DM Mono',monospace;}
+.an-ing-estado-ok{color:var(--accent);}
+.an-ing-estado-pend{color:var(--amber);}
+.an-cobros{padding:0 0 10px;display:flex;flex-direction:column;gap:2px;}
+.an-cobro-fila{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.an-cobro-txt{font-size:11px;color:var(--text3);}
+.an-cobro-acc{display:flex;align-items:center;gap:4px;}
+.an-cobro-monto{font-size:11px;font-family:'DM Mono',monospace;color:var(--accent);}
 .an-btn-icono{background:none;border:none;cursor:pointer;padding:4px;font-size:13px;}
 .presup-input.an-presup-input{flex:1;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;}
 .an-presup-mes{font-size:12px;color:var(--text3);flex-shrink:0;}

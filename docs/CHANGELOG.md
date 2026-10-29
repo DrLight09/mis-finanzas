@@ -6,6 +6,18 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Lista de mejoras de octubre 2026
 
+### 🔒 PIN más seguro (2026-10-29, SW v77)
+
+El PIN es un candado local (la app no tiene servidor que lo verifique) y con 4 dígitos ningún hash lo protege de quien pueda leer el almacenamiento del navegador; por eso lo que más vale es limitar los intentos y volver a bloquear. Cambios en `js/core/pin-bio.js`:
+- **Bloqueo por intentos:** 4 fallos seguidos no bloquean; el 5.º bloquea el teclado 30 s, y cada fallo más duplica el tiempo (60 s, 2 min…) con tope de 15 min. El contador y el bloqueo viven en `localStorage` (`mf_pin_fails`, `mf_pin_lock`): recargar la página no los reinicia. La pantalla muestra «Demasiados intentos. Intenta en 0:30» con cuenta regresiva. Aplica al desbloqueo y a la confirmación de acciones destructivas; un desbloqueo correcto (PIN o huella) los borra.
+- **Bloqueo automático:** con la sesión cargada, si la app estuvo en segundo plano más de 2 minutos, al volver pide el PIN otra vez (con huella si está activa). Al desbloquear no se recarga la app. No actúa sin PIN, sin sesión o con la pantalla del PIN ya abierta.
+- **PIN guardado con hash:** `h1:<sal>:<hash>` (sal aleatoria + 3000 vueltas de SHA-256 propio, síncrono) en vez de los 4 dígitos en texto. Un PIN guardado por la versión anterior sigue funcionando hasta que se cambie.
+- **PINs débiles rechazados** al crearlos: cuatro iguales (1111), escaleras (1234, 4321) y parejas repetidas (1212).
+- **Cambiar el PIN pide el actual** (antes bastaba con tener la app abierta).
+- Quitar el PIN borra también los contadores de fallos.
+- Pruebas: `tests/pin-seguridad.test.js` (11, sin jsdom: SHA-256 contra el de Node, formato guardado, compatibilidad con el PIN en texto, PINs débiles, calendario de bloqueos, bloqueo y desbloqueo, creación con hash, cambio con verificación, bloqueo automático).
+- **No cambia:** el PIN sigue siendo de 4 dígitos (pasar a 6 pide rediseñar la pantalla) y sigue siendo un candado local: quien controle el navegador puede borrar el almacenamiento y saltarlo. La protección de los datos en la nube es el inicio de sesión de Google.
+
 ### 🔐 La huella ya no abre el gestor de contraseñas (2026-10-29, SW v76)
 
 - **Causa:** `_bioRegister()` creaba una credencial WebAuthn con `residentKey: 'preferred'`, o sea una **passkey** (descubrible). En Android el autenticador de la plataforma es el gestor de contraseñas, que la guarda, la sincroniza y la muestra al desbloquear. Además `_bioAuthenticate()` sin credencial guardada pedía con `allowCredentials: []`, que le deja elegir entre passkeys.

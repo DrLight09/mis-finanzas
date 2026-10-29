@@ -28,7 +28,9 @@ meses.forEach((mes, i) => {
   const fin = H.filter(h => mesDe(h.fecha) === mes).pop();
   const d0 = prev.fecha, d1 = fin.fecha, en = f => f > d0 && f <= d1;
   const base = H.filter(h => en(h.fecha)).reduce((a, h) => a + (h.montoBase || 0), 0);
-  const ing = ctx.entradasIngresoReal().filter(m => en(m.fecha)).reduce((a, m) => a + (m.monto || 0), 0);
+  const ing = ctx.entradasIngresoReal().filter(m => en(m.fecha)).reduce((a, m) => a + (m.monto || 0), 0)
+    + ctx.Periodo.spotifyEntradas().filter(e => en(e.fecha)).reduce((a, e) => a + e.monto, 0)        // cuotas de Spotify cobradas (2026-10-28)
+    + ctx.Periodo.ingresosFijosEntradas().filter(e => en(e.fecha)).reduce((a, e) => a + e.monto, 0); // cobros de ingresos fijos
   let mesada = 0; ['papa', 'mama'].forEach(p => Object.values(((S.mesadas || {})[p] || {}).pagos || {}).forEach(x => { if (x && en(x.fecha || '')) mesada += x.monto || 0; }));
   const gv = (S.gastosVar || []).filter(g => en(g.fecha) && !ctx._esGastoVarNoReal(g)).reduce((a, g) => a + (g.monto || 0), 0);
   const ret = ctx.Periodo.retirosManuales().filter(r => en(r.fecha)).reduce((a, r) => a + r.monto, 0);

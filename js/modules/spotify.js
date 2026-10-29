@@ -1376,7 +1376,8 @@ async function confirmarPagarSpotify(){
   // Registrar también como gasto variable para que aparezca en la sección Gastos
   if(!S.gastosVar)S.gastosVar=[];
   const gastoId=_pagoRef;
-  S.gastosVar.push({id:gastoId,desc:'Spotify Premium',monto,fecha:hoy(),cat:'Suscripciones',fuente,nota:notaGasto,clase:'gasto',_secundario:true,_origenSeccion:'Spotify'});
+  // La fecha es la que escribió quien paga («Fecha en que pagaste»), no la de hoy: el balance cuenta el gasto en el mes en que salió la plata.
+  S.gastosVar.push({id:gastoId,desc:'Spotify Premium',monto,fecha:fechaPago0,cat:'Suscripciones',fuente,nota:notaGasto,clase:'gasto',_secundario:true,_origenSeccion:'Spotify'});
   // Se guarda la cuota del administrador vigente EN ESTE MOMENTO (según cuántas personas
   // hay ahora), para que si la cantidad de integrantes cambia en el futuro, la ganancia
   // de este ciclo ya pagado no se recalcule con datos de otra época.

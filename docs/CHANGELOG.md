@@ -6,6 +6,12 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Lista de mejoras de octubre 2026
 
+### 🔍 Revisión financiera general (2026-10-28, SW v74)
+
+- **Corregido:** el sheet «Pagar Spotify» pide «Fecha en que pagaste», pero el gasto «Spotify Premium» se guardaba con la fecha de hoy. Con la regla de caja, pagar con fecha pasada movía el gasto a otro mes que el resto del pago (historial de Spotify, cargo de la tarjeta). Ahora usa la fecha escrita. Ningún otro módulo tiene este problema (Préstamos, Tarjetas y Gastos usan la fecha del formulario; el ajuste automático de Alcancía usa hoy a propósito).
+- **Comprobación con `scripts/conciliacion.js`** sobre el backup viejo (convertido a mano al esquema 9): en octubre lo «sin explicar» del patrimonio bajó de $21.764 a $1.364 al contar las cuotas de Spotify, que es justo el hueco que dejaba la regla anterior. El script ahora suma también los cobros de ingresos fijos.
+- `revision-analisis-financiero.md` ya se puede borrar: sus 5 puntos están cerrados y documentados arriba.
+
 ### 🎧 Spotify en el balance del mes (2026-10-28, SW v73)
 
 El balance de Análisis decía «has gastado $50.000 y aún no registras ingresos» aunque tres integrantes habían pagado $45.000: el pago del plan contaba como gasto completo y las cuotas cobradas no contaban como nada (solo el extra era ingreso). Con tu cadencia real (cobras a los 30 días, la suscripción dura ~57 y pagas una sola vez) restar las cuotas del gasto del mes daba gasto negativo en los meses sin pago, así que se eligió la regla de caja, igual que el resto de la app.

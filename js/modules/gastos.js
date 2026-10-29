@@ -181,7 +181,14 @@ function renderMesFiltros() {
   (S.gastosVar || []).forEach(g => { if (g.fecha) meses.add(mesKey(g.fecha)); });
   Periodo.retirosManuales().forEach(r => { if (r.fecha) meses.add(mesKey(r.fecha)); }); // un mes con solo un retiro también se puede elegir
   const sorted = ['todos', ...[...meses].filter(m => m !== 'todos').sort().reverse()];
-  document.getElementById('mesFilter').innerHTML = html`${sorted.map(m => html`
+  // Con un solo mes (o ninguno) filtrar no aporta nada: «Todos» y ese mes muestran lo mismo. El filtro aparece desde el
+  // segundo mes con gastos. Si el filtro quedó en un mes que ya no existe (se borraron sus gastos), vuelve a «todos» para
+  // no dejar la lista filtrada sin forma de cambiarlo.
+  const hayVariosMeses = sorted.length > 2;
+  if (!hayVariosMeses || !sorted.includes(mesFilter)) mesFilter = 'todos';
+  const filtroEl = document.getElementById('mesFilter');
+  mostrarSi(filtroEl, hayVariosMeses);
+  filtroEl.innerHTML = !hayVariosMeses ? '' : html`${sorted.map(m => html`
     <div class="${raw('mf-chip ' + (mesFilter === m ? 'active' : ''))}" ${raw(Events.attr('gastos:setMesFiltro', m))}>
       ${m === 'todos' ? 'Todos' : MC[parseInt(m.split('-')[1]) - 1] + ' ' + m.split('-')[0]}
     </div>`)}`;
@@ -511,8 +518,9 @@ function renderGastosFijos() {
   const mesClaveTot = mesActual();
   const totalGFPagado = Periodo.gastosFijosDelMes(mesClaveTot).reduce((a, p) => a + p.monto, 0);
   document.getElementById('totalGF').textContent = fmt(totalGFPagado);
-  // El estado vacío ya trae «Agregar gasto fijo»: el botón de pie solo aparece con datos.
+  // El estado vacío ya trae «Agregar gasto fijo»: el botón de pie y el total solo aparecen con datos.
   mostrarSi(document.querySelector('.btn-open-gasto-fijo'), todos.length > 0);
+  mostrarSi(document.getElementById('gfTotalCard'), todos.length > 0);
   if (!todos.length) {
     el.innerHTML = emptyState(
       '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',

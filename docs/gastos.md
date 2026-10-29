@@ -139,7 +139,8 @@ Archivo: `js/modules/gastos.js`.
 | Función | Qué hace |
 |---|---|
 | `switchGastoTab(t)` | Cambia entre la pestaña "Gastos" (variable) y "Fijos mensuales". |
-| `renderMesFiltros()` | Arma los chips de filtro por mes y dispara `renderGastosVar()`. |
+| `renderMesFiltros()` | Arma los chips de filtro por mes y dispara `renderGastosVar()`. El filtro (`#mesFilter`) solo se muestra desde el **segundo** mes con gastos (o retiros manuales): con un solo mes «Todos» y ese mes muestran lo mismo. Si el mes filtrado deja de existir, el filtro vuelve a «todos». |
+| `renderGastosFijos()` | Pinta la lista de fijos; el «Total mensual fijo» (`#gfTotalCard`) y el botón de pie solo se muestran si hay al menos un gasto fijo (el estado vacío ya trae su botón). |
 | `setMesFiltro(m)` | Cambia el mes filtrado y vuelve a renderizar. |
 | `renderGastosVar()` | Pinta el historial de gasto variable en una sola lista ordenada (fecha desc., y dentro del día el último registrado arriba), agrupada por día con subtotal, más los totales de arriba. |
 | `_gvDiaLabel(fecha)` | Etiqueta del encabezado de día: "Hoy", "Ayer" o "sáb 19 sep" (con año si no es el actual). Arma la fecha con `new Date(y, m-1, d)`, no con `new Date('YYYY-MM-DD')` (UTC). |

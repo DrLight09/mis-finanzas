@@ -6,6 +6,13 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Lista de mejoras de octubre 2026
 
+### 🧹 Gastos: sin filtro de meses ni total fijo cuando no aportan (2026-10-29, SW v79)
+
+- **Filtro por mes (`#mesFilter`, pestaña Gastos):** solo aparece cuando hay gastos (o retiros manuales) en **dos o más meses**. Con un solo mes, «Todos» y ese mes muestran lo mismo y el filtro era un botón que no hacía nada. Si el mes filtrado deja de existir (por ejemplo se borraron sus gastos), el filtro vuelve a «todos» en vez de dejar la lista filtrada sin forma de cambiarla.
+- **«Total mensual fijo» (`#gfTotalCard`, pestaña Fijos mensuales):** se oculta mientras no haya gastos fijos, igual que ya pasaba con «Total filtrado» sin gastos variables. El estado vacío ya trae su botón de «Agregar gasto fijo».
+- Ingresos fijos (Análisis) no tiene una tarjeta equivalente, así que no cambia.
+- Pruebas: `tests/gastos-filtros.test.js` (5): sin gastos y con un solo mes el filtro se oculta; con dos meses aparece con «Todos» y un chip por mes; un mes con solo un retiro manual cuenta; el filtro huérfano vuelve a «todos»; el total fijo se oculta sin fijos y aparece con uno. Se comprobó que fallan con el comportamiento anterior.
+
 ### 🧮 Patrimonio y liquidez: una sola definición, con las deudas con personas (2026-10-29, SW v78)
 
 - **Error corregido.** El hero de Inicio calculaba el patrimonio con su propia fórmula (`disp + prest + cdts − deudaTC − plata ajena`) y no restaba «Yo debo». El historial, la gráfica de Análisis y la Proyección sí lo hacían (`calcPatrimonioTotal()`). Con Nequi en $100.000 y una deuda a una persona de $50.000, el hero decía $100.000 y la gráfica $50.000. Salud financiera tenía el mismo hueco: su liquidez restaba solo la tarjeta, así que con deudas a personas el fondo de emergencia y el ratio de lo prestado salían optimistas.

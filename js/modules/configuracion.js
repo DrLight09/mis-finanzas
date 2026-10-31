@@ -55,6 +55,25 @@ function renderCatsConfig(){
   elVar.innerHTML=html`<div class="cat-chips">${renderCatChips(getCatsVar(),CATS_VAR_DEFAULT,'var')}</div>`;
   elFijo.innerHTML=html`<div class="cat-chips">${renderCatChips(getCatsFijo(),CATS_FIJO_DEFAULT,'fijo')}</div>`;
   renderTamanoDatos();
+  renderMisWrapped();
+}
+
+// «Mis Wrapped»: los años ya guardados (S.wrappedAnios, lo escribe renderWrapped en wrapped.js la primera vez que se abre un año
+// terminado). Solo lee datos: se ve aunque el módulo de Wrapped no haya cargado y se puede abrir un año en cualquier momento del año.
+function renderMisWrapped(){
+  const el=document.getElementById('cfg-mis-wrapped');
+  if(!el)return;
+  const guardados=S.wrappedAnios||{};
+  const anios=Object.keys(guardados).sort().reverse();
+  if(!anios.length){el.innerHTML='';return;}
+  el.innerHTML=html`<div class="sec-title ix-mt4">Mis Wrapped</div>
+    <div class="card cfg-wrapped-lista">
+      ${anios.map(a=>html`<button type="button" class="cfg-wrapped-fila" ${raw(Events.attr('config:abrirWrapped',a))}>
+        <span class="cfg-wrapped-anio">${a}</span>
+        <span class="cfg-wrapped-estado">${guardados[a]&&guardados[a].estado==='insuficiente'?'No alcanzó el tiempo':'Completo'}</span>
+        <svg aria-hidden="true" class="cfg-wrapped-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>`)}
+    </div>`;
 }
 
 // «Tamaño de tus datos» (Configuración → Datos). SOLO LECTURA: mide con Cierre.tamano (js/core/cierre.js, mismo códec del guardado) y
@@ -180,7 +199,7 @@ function _validarEstructuraJSON(data){
   ['gastosFijos','ingresosFijos','movimientos','misDeudas','encargos','tarjetasCredito','personas','libro'].forEach(k=>{
     if(k in data&&!Array.isArray(data[k]))errores.push('El campo "'+k+'" debe ser un array.');
   });
-  ['pagosGastosFijos','mesadas','presupuestos'].forEach(k=>{
+  ['pagosGastosFijos','mesadas','presupuestos','wrappedAnios'].forEach(k=>{
     if(k in data&&(data[k]===null||typeof data[k]!=='object'))errores.push('El campo "'+k+'" debe ser un objeto.');
   });
   // Un backup de una versión más nueva del modelo de datos que esta app no sabe leer: importarlo lo dejaría a medio
@@ -343,6 +362,8 @@ Events.registerAll('config', {
   abrirEliminarCuenta: () => window._abrirEliminarCuenta(),
   // Accesos directos de "Herramientas" (Personas, Actividad reciente)
   irA: (screen) => showScreen(screen),
+  // «Mis Wrapped»: abre un año guardado (wrapped-gate.js lo deja listo para renderWrapped)
+  abrirWrapped: (anio) => window._wrappedAbrir(anio),
 });
 
 /* ---- WIRING de controles que no son clicks simples (change/keydown/inputs de archivo) ---- */

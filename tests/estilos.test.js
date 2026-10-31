@@ -16,7 +16,7 @@ const CONVERTIDOS = [
   { f: 'js/core/split.js', prefijos: ['split-'], permitidos: [] },
   // búsqueda global: solo quedan el color del tipo y el fondo del ícono, que salen del resultado
   { f: 'js/core/busqueda-global.js', prefijos: ['busqueda-'], permitidos: [/^(background|color):\$\{/] },
-  { f: 'js/modules/configuracion.js', prefijos: ['cat-chip', 'cfg-tamano'], permitidos: [] },
+  { f: 'js/modules/configuracion.js', prefijos: ['cat-chip', 'cfg-tamano', 'cfg-wrapped'], permitidos: [] },
   { f: 'js/modules/gastos.js', prefijos: ['gasto-', 'badge-xs', 'row-name-13'], permitidos: [] },
   // inicio: solo queda el display:none del tooltip de la proyección, que JS conmuta (showTT)
   { f: 'js/modules/inicio.js', prefijos: ['inicio-'], permitidos: ['display:none;'] },

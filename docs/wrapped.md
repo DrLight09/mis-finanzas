@@ -348,6 +348,29 @@ Verificado con dos casos simulados antes de tocar el archivo real: el caso repor
 
 ---
 
+## 7quaterdecies. Datos insuficientes («no alcanzó el tiempo») y Wrapped guardado por año
+
+**Datos suficientes.** Antes, el «estado vacío» solo salía si ninguna diapositiva de datos se generaba: con un solo gasto en el año se armaba un Wrapped de 17 diapositivas casi vacías, y la tarjeta de Configuración y el aviso de enero anunciaban «tu resumen ya está listo» sin mirar los datos. Ahora hay un criterio explícito en `js/core/wrapped-gate.js` (`_wrappedDatosAnio(año)`, código de entrada, barato, no carga `wrapped.js`):
+
+| Nivel | Condición | Qué se muestra |
+|---|---|---|
+| `nada` | ningún registro real en el año | 2 diapositivas: mensaje + cierre |
+| `poco` | hay registros, pero < 30 días distintos o < 3 meses distintos | 3: mensaje + «lo poco que hay» (días, movimientos, desde cuándo) + cierre |
+| `suficiente` | ≥ 30 días distintos **y** ≥ 3 meses distintos | el Wrapped completo |
+
+Cuenta actividad real con las mismas fuentes que `Periodo` (gastos variables reales, pagos de gastos fijos e ingresos reales; las transferencias y los ajustes no cuentan) y varios registros el mismo día son un día. Los umbrales (`WRAPPED_MIN_DIAS`, `WRAPPED_MIN_MESES`) son un ajuste de producto: se cambian en `wrapped-gate.js`. La tarjeta y el aviso adaptan su texto al nivel.
+
+**Banco de frases.** `WRAPPED_BANCO_INSUFICIENTE` (en `wrapped.js`): por nivel, ≥ 8 titulares y ≥ 8 explicaciones, y ≥ 8 frases de cierre/promesa compartidas. Tono honesto, con humor suave y sin culpa, en tuteo. Marcadores: `{anio} {dias} {registros} {desde} {minDias} {minMeses}`. Se eligen con el banco con semilla de siempre (`_wrappedBankPick`, semilla = año + nivel): el mismo año siempre da las mismas frases y no se repite ninguna dentro del mismo resumen. Para añadir frases basta añadirlas a la lista; la prueba exige un mínimo, que no haya repetidas y que todo marcador se resuelva. Las frases de «poco» pueden usar `{dias}`, `{registros}` y `{desde}`; las de «nada», no.
+
+**Wrapped guardado.** `S.wrappedAnios[AAAA] = { version, generadoEn, estado:'completo'|'insuficiente', slides:[{id,mood,confetti?,html}] }`.
+- Se guarda la primera vez que se abre un año ya terminado (también el de «no alcanzó el tiempo»: queda constancia de que se evaluó) y desde entonces **se muestra ese**, sin recalcular: el recuerdo no depende del detalle ni cambia si cambian las reglas. ≈ 4,5 KB comprimidos por año.
+- **Ver cuando quieras:** `renderWrapped(año)` acepta un año; un año guardado se abre en cualquier momento del año (Configuración → «Mis Wrapped», que lee solo `S` y funciona aunque `wrapped.js` no haya cargado). **Generar** uno nuevo sigue siendo solo para el año recién cerrado y en enero.
+- **«Ocultar saldos» no se congela:** se quita la clase `saldo-hidden` al guardar y se vuelve a poner al mostrar la diapositiva de la alcancía, según la preferencia de ese momento.
+- **Contrato de CSS:** el HTML guardado usa clases (`wrapped-*`, `c-*`, `fa-*`); renombrar o borrar una rompe en silencio los recuerdos viejos. `tests/fixtures/wrapped-clases.json` es la instantánea de referencia: una prueba falla si una clase de la lista deja de estar definida (no se renombra, se añade la nueva) y otra si el Wrapped actual usa una clase que no está en la lista (hay que añadirla).
+- **Cierre de períodos:** `S.wrappedAnios` se clasifica `congelada` y `Cierre.analizar` informa (`wrapped.requeridos` / `wrapped.faltan`, advertencia `wrapped-sin-guardar`) de los años que se tocarían sin su Wrapped guardado: no se poda un año sin él (`docs/cierre-de-periodos.md`).
+
+Pruebas: `tests/wrapped-guardado.test.js` (criterio y límites exactos, banco, instantáneas, contrato de CSS) y `scripts/smoke-wrapped.js` (`npm run smoke:wrapped`: el recorrido completo en la página real con jsdom).
+
 ## 8. Referencia de implementación
 
 ### Pantalla (`#screen-wrapped`)

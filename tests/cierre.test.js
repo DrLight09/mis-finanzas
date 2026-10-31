@@ -159,14 +159,85 @@ describe('cierre — vista previa (analizar)', () => {
     assert.equal(ctx.Cierre.corteMasReciente('2028-10-18'), '2026-09');
   });
 
-  test('anios: años con datos, de cualquier fuente (lo usa la sonda de Wrapped)', () => {
-    assert.deepEqual(plano(ctx.Cierre.anios(ctx.S)), ['2024', '2025', '2026']);
+  test('REGLA DEL WRAPPED: no se cierra ningún año sin su Wrapped guardado — el informe lista los años que se tocarían y cuáles faltan', () => {
+    assert.deepEqual(plano(informe.wrapped.requeridos), ['2024', '2025']);
+    assert.deepEqual(plano(informe.wrapped.faltan), ['2024', '2025']);
+    assert.ok(informe.advertencias.includes('wrapped-sin-guardar'));
+    const v = cargarApp(); generar(v, { dias: 900 });
+    v.S.wrappedAnios = { 2024: { version: 1, estado: 'completo', slides: [] }, 2025: { version: 1, estado: 'insuficiente', slides: [] } };
+    const r = v.Cierre.analizar(CORTE, v.S, { mesActual: MES_ACTUAL });
+    assert.deepEqual(plano(r.wrapped.faltan), [], 'con ambos guardados (también el «no alcanzó el tiempo») ya no falta ninguno');
+    assert.ok(!r.advertencias.includes('wrapped-sin-guardar'));
+    const parcial = cargarApp(); generar(parcial, { dias: 900 });
+    parcial.S.wrappedAnios = { 2024: { version: 1, estado: 'completo', slides: [] } };
+    assert.deepEqual(plano(parcial.Cierre.analizar(CORTE, parcial.S, { mesActual: MES_ACTUAL }).wrapped.faltan), ['2025']);
+  });
+
+  test('el año en curso no exige Wrapped (todavía no se puede generar) y un corte anterior solo exige los años que toca', () => {
+    const r = analizar('2024-09', ctx.S, { huella });
+    assert.deepEqual(plano(r.wrapped.requeridos), ['2024']);
+    assert.ok(!r.wrapped.requeridos.includes('2026'));
+  });
+
+  test('corteMasReciente es EXACTO en ~2.600 fechas: nunca menos de 24 meses, siempre el más reciente posible y nunca llega al año anterior al actual', () => {
+    const finMes = ym => { const [y, m] = ym.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); };
+    const sig = ym => { let [y, m] = ym.split('-').map(Number); m++; if (m > 12) { m = 1; y++; } return y + '-' + String(m).padStart(2, '0'); };
+    const menos24 = h => { const [y, m, d] = h.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1 - 24 + 1, 0)).getUTCDate(); return new Date(Date.UTC(y, m - 1 - 24, Math.min(d, t))).toISOString().slice(0, 10); };
+    const malos = [];
+    for (const d = new Date('2026-10-18T12:00:00Z'); d < new Date('2034-01-01T12:00:00Z'); d.setUTCDate(d.getUTCDate() + 1)) {
+      const h = d.toISOString().slice(0, 10), co = ctx.Cierre.corteMasReciente(h), lim = menos24(h);
+      if (finMes(co) > lim) malos.push(h + ' <24 meses');
+      if (finMes(sig(co)) <= lim) malos.push(h + ' no es el más reciente');
+      if (co > (Number(h.slice(0, 4)) - 2) + '-12') malos.push(h + ' llega al año anterior');
+    }
+    assert.deepEqual(malos, []);
+    assert.equal(ctx.Cierre.corteMasReciente('2027-03-30'), '2025-02', 'caso que desbordaba el día con Date.setMonth (30-mar − 25 meses = «feb 30»)');
+    assert.equal(ctx.Cierre.corteMasReciente('2026-10-31'), '2024-10', 'el último día del mes sí completa el mes de hace 24 meses');
+  });
+
+  describe('componentes (diagnóstico del grafo de enlaces)', () => {
+    test('en datos normales las unidades atómicas son pequeñas (un gasto + su pata = 2, una transferencia = 5) y no hay advertencias', () => {
+      assert.ok(informe.componentes.maxRegistros <= 10, 'máximo ' + informe.componentes.maxRegistros);
+      assert.ok(!informe.advertencias.includes('componente-grande'));
+      assert.ok(informe.componentes.total > 3000);
+      assert.equal(informe.componentes.mayores.length, 3);
+    });
+
+    test('con ids de formato REAL (uid(): Date.now en base 36 + 3 caracteres al azar) las unidades siguen siendo pequeñas: el enlace por valor no fusiona registros ajenos', () => {
+      const v = cargarApp();
+      let i = 0; const sufijo = n => (Math.imul(n, 2654435761) >>> 0).toString(36).slice(-3).padStart(3, 'k'); // determinista: 3 caracteres «al azar» como uid()
+      v.uid = () => (1790000000000 + 7 * (++i)).toString(36) + sufijo(i);
+      generar(v, { dias: 900 });
+      assert.ok(v.S.gastosVar[0].id.length >= 10 && !/^x\d+$/.test(v.S.gastosVar[0].id), 'ids con formato real: ' + v.S.gastosVar[0].id);
+      const r = v.Cierre.analizar(CORTE, v.S, { mesActual: MES_ACTUAL });
+      assert.ok(r.componentes.maxRegistros <= 10, 'máximo ' + r.componentes.maxRegistros);
+      assert.ok(!r.advertencias.includes('componente-grande'));
+      assert.equal(r.archivables.registros > r.candidatos.registros * 0.9, true);
+    });
+
+    test('compartir un texto largo NO enlaza: solo une un campo cuyo valor es EXACTAMENTE el id de otro registro (300 gastos con la misma descripción siguen siendo 300 unidades)', () => {
+      const v = cargarApp(); generar(v, { dias: 900 });
+      v.S.gastosVar.slice(0, 300).forEach(g => { g.desc = 'Mercado semanal de la plaza'; g.nota = 'ref x00001 dentro de un texto'; });
+      const r = v.Cierre.analizar(CORTE, v.S, { mesActual: MES_ACTUAL });
+      assert.ok(r.componentes.maxRegistros <= 10, 'máximo ' + r.componentes.maxRegistros);
+      assert.ok(!r.advertencias.includes('componente-grande'));
+    });
+
+    test('un enlace FALSO real (300 gastos cuyo campo vale exactamente el id de otro registro) forma una componente enorme: se reporta con advertencia', () => {
+      const v = cargarApp(); generar(v, { dias: 900 });
+      const ancla = v.S.gastosVar[0].id;
+      v.S.gastosVar.slice(1, 301).forEach(g => { g.campoRaro = ancla; });
+      const r = v.Cierre.analizar(CORTE, v.S, { mesActual: MES_ACTUAL });
+      assert.ok(r.componentes.maxRegistros >= 300);
+      assert.ok(r.advertencias.includes('componente-grande'));
+      assert.ok(r.componentes.mayores[0].fuentes.gastosVar >= 300);
+    });
   });
 });
 
 describe('cierre — clasificación de las claves de S', () => {
   const ctx = cargarApp();
-  const CLASES = new Set(['historica', 'entidad-con-historia', 'derivada', 'estado-actual', 'configuracion', 'meta']);
+  const CLASES = new Set(['historica', 'entidad-con-historia', 'derivada', 'congelada', 'estado-actual', 'configuracion', 'meta']);
 
   function clavesUsadasEnElCodigo() {
     const usadas = new Set();
@@ -255,6 +326,7 @@ describe('cierre — tamaño y proyección', () => {
     const viejo = ctx.Cierre.disparador(Object.assign({}, base, { antiguedad: { dias: 800 } }));
     assert.equal(viejo.recomendado, false);
     assert.equal(viejo.avisos.length, 1);
+    assert.match(viejo.avisos[0], /paginarlas/, 'la lentitud de las listas se arregla paginando, no cerrando períodos');
   });
 
   test('los umbrales de aviso y límite coinciden con los de firebase-sync.js (una sola cifra, vigilada)', () => {

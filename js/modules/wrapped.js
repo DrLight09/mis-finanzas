@@ -886,6 +886,168 @@ function _wrappedCopyPuente(key){
   ]);
 }
 
+/* ═══ WRAPPED SIN DATOS SUFICIENTES — «no alcanzó el tiempo» ═══
+   Cuando el año no tiene datos suficientes (criterio en js/core/wrapped-gate.js, `_wrappedDatosAnio`), en vez de un Wrapped de 17
+   diapositivas casi vacías se muestra un mensaje honesto, con humor suave y sin culpa: no se inventa nada. Dos niveles:
+   'nada' (ningún registro) y 'poco' (hay algo, pero menos del mínimo; se muestra lo poco que hay). Las frases se eligen con el banco
+   con semilla de siempre (`_wrappedBankPick`): para un mismo año y nivel siempre sale la misma, y no se repite ninguna dentro del mismo
+   resumen. Marcadores: {anio} {dias} {registros} {desde} {minDias} {minMeses}. Texto en tuteo (lo vigila tests/estilos.test.js).
+   Para sumar frases basta añadirlas aquí: la prueba exige un mínimo por lista y que todos los marcadores se resuelvan. */
+const WRAPPED_BANCO_INSUFICIENTE = {
+  nada: {
+    titular: [
+      'Este año no alcanzó el tiempo',
+      'Aquí no hay nada que contar… todavía',
+      'Llegamos tarde a {anio}',
+      'Un {anio} en blanco',
+      'Esta historia aún no empieza',
+      'No pudimos armar tu {anio}',
+      'El resumen quedó en pausa',
+      'Hoja en blanco',
+      'Aún no hay película que proyectar',
+      'Nada que mostrar (todavía)',
+      'Se nos acabó el tiempo antes de empezar',
+      '{anio} pasó sin dejar datos',
+    ],
+    explica: [
+      'No encontramos movimientos registrados en {anio}, así que no hay un resumen que armar.',
+      'Para contar un año hace falta que el año quede registrado. En {anio} no llegó nada a la app.',
+      'Sin registros no hay historia. Cuando empieces a anotar tus movimientos, aquí aparecerá tu resumen.',
+      'La app no alcanzó a ver nada de {anio}. No pasa nada: se empieza cuando se quiere.',
+      'Estábamos listos, pero {anio} no dejó datos con los que trabajar.',
+      'Un resumen necesita materia prima, y de {anio} no tenemos ni una pizca.',
+      'No hay movimientos de {anio}. Prometemos no inventar nada.',
+      'Todo en orden con las cuentas: simplemente no hay cuentas que contar de {anio}.',
+    ],
+  },
+  poco: {
+    titular: [
+      'No alcanzó el tiempo',
+      'Tu {anio} apenas empezaba',
+      'Llegamos a ver solo un pedacito',
+      'Todavía no hay mucho que contar',
+      'El año se acabó antes de que arrancáramos',
+      'Un resumen a medio hacer',
+      'Esto fue más un tráiler que una película',
+      'Faltó cuerda para contar {anio}',
+      'No pudimos completar tu {anio}',
+      'Un {anio} corto de datos',
+      'Poco material, mucha buena intención',
+      'Apenas alcanzamos a calentar motores',
+    ],
+    explica: [
+      'Solo alcanzamos a ver {dias} con registros, desde el {desde}. Para un resumen completo necesitamos al menos {minDias} días en {minMeses} meses distintos.',
+      'Con {registros} en {dias} no alcanza para contar una historia. Hacen falta al menos {minDias} días distintos en {minMeses} meses.',
+      'Empezaste a registrar el {desde}. Es un buen comienzo, pero {anio} se acabó antes de juntar suficiente.',
+      'Un resumen honesto necesita más que {dias} de datos. Preferimos no inventar lo que no vimos.',
+      'Lo que hay es poco para sacar conclusiones, y no queremos adivinar tu año.',
+      'Vimos {registros} desde el {desde}: la punta del iceberg, pero no el iceberg.',
+      'Con tan pocos días registrados, cualquier conclusión sería pura imaginación. Mejor esperar al próximo.',
+      'Esto se parece más a un boceto que a un retrato. Con más días registrados, el próximo sale completo.',
+    ],
+  },
+  promesa: [
+    'El próximo enero lo contamos completo.',
+    'Sigue registrando y el año que viene hay función.',
+    'Nos vemos el próximo enero, con más datos y mejores historias.',
+    'Cada movimiento que anotes hoy es una escena del próximo resumen.',
+    'Esto apenas empieza. El próximo Wrapped va a tener mucho más que decir.',
+    'Dale tiempo al tiempo: en enero hablamos.',
+    'Tu próximo año ya está empezando. Que quede registrado.',
+    'No es un adiós, es un «hasta el próximo enero».',
+    'Prepara las palomitas: el próximo año sí hay película.',
+    'Un poquito cada día y en enero habrá mucho que mostrar.',
+    'Esta vez no alcanzó; la próxima, con tus datos, seguro que sí.',
+    'Guardamos tu lugar para el próximo enero.',
+  ],
+};
+
+function _wrappedSlidesInsuficiente(datos, anioK){
+  const tier = datos.tier === 'nada' ? 'nada' : 'poco';
+  _wrappedIniciarBanco('insuf|' + anioK + '|' + tier); // misma semilla → mismas frases al volver a abrirlo
+  const banco = WRAPPED_BANCO_INSUFICIENTE[tier];
+  const n = v => Number(v).toLocaleString('es-CO');
+  const dias = n(datos.dias || 0) + ((datos.dias || 0) === 1 ? ' día' : ' días');
+  const registros = n(datos.registros || 0) + ((datos.registros || 0) === 1 ? ' movimiento' : ' movimientos');
+  const desde = datos.primera ? new Date(datos.primera + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long' }) : '';
+  const um = (typeof window !== 'undefined' && window._wrappedUmbrales) || { dias: 30, meses: 3 };
+  const valores = { anio: anioK, dias, registros, desde, minDias: um.dias, minMeses: um.meses };
+  const llenar = txt => escHtml(txt.replace(/\{(\w+)\}/g, (m, k) => (k in valores ? valores[k] : m)));
+  const titular = llenar(_wrappedBankPick('insuf-titular-' + tier, banco.titular));
+  const explica = llenar(_wrappedBankPick('insuf-explica-' + tier, banco.explica));
+  const promesa = llenar(_wrappedBankPick('insuf-promesa', WRAPPED_BANCO_INSUFICIENTE.promesa));
+
+  const slides = [{
+    id: 'insuf-titular', mood: 'amber',
+    html: `<div class="wrapped-slide-inner">
+      <div class="wrapped-eyebrow">Tu ${anioK}</div>
+      <div class="wrapped-headline">${titular}</div>
+      <div class="wrapped-sub">${explica}</div>
+    </div>`
+  }];
+  if(tier === 'poco'){
+    slides.push({
+      id: 'insuf-lo-que-hay', mood: 'accent',
+      html: `<div class="wrapped-slide-inner">
+        <div class="wrapped-eyebrow">Lo poco que alcanzamos a ver</div>
+        <div class="wrapped-headline">Esto fue lo que vimos</div>
+        <div class="wrapped-pill-list">
+          <span class="wrapped-pill">${escHtml(dias)} con registros</span>
+          <span class="wrapped-pill">${escHtml(registros)}</span>
+          ${desde ? `<span class="wrapped-pill">Desde el ${escHtml(desde)}</span>` : ''}
+        </div>
+      </div>`
+    });
+  }
+  slides.push({
+    id: 'insuf-cierre', mood: 'purple',
+    html: `<div class="wrapped-slide-inner">
+      <div class="wrapped-tag"><i class="fa-solid fa-tag"></i> Wrapped ${anioK}</div>
+      <div class="wrapped-eyebrow">Para el próximo</div>
+      <div class="wrapped-headline">${promesa}</div>
+      <div class="wrapped-cta-row">
+        <button type="button" class="wrapped-cta" data-wrapped-action="replay">Ver de nuevo</button>
+        <button type="button" class="wrapped-cta ghost" data-wrapped-action="cerrar">Cerrar</button>
+      </div>
+    </div>`
+  });
+  return slides;
+}
+
+/* ═══ WRAPPED GUARDADO POR AÑO ═══
+   `S.wrappedAnios[AAAA] = { version, generadoEn, estado:'completo'|'insuficiente', slides:[{id,mood,confetti?,html}] }` — el HTML ya armado
+   de cada diapositiva (≈ 4,5 KB comprimidos por año). Se guarda la primera vez que se abre un año ya terminado y desde entonces SE MUESTRA
+   ESE, sin recalcular: así el recuerdo no depende del detalle (que un cierre de períodos puede podar) ni cambia si cambian las reglas.
+   Lo que depende de quien mira y no del año — el desenfoque de «Ocultar saldos» — NO se congela: se quita al guardar y se aplica al mostrar.
+   OJO, contrato de CSS: el HTML guardado usa clases (wrapped-*, c-*, fa-*) que viven en este archivo/styles.css; renombrar una rompe en
+   silencio los recuerdos viejos. tests/wrapped-guardado.test.js lo vigila con una instantánea de referencia (solo se pueden AÑADIR clases). */
+const WRAPPED_SNAPSHOT_VERSION = 1;
+
+function _wrappedSinMascara(html){ return html.replace(/\s*\bsaldo-hidden\b/g, ''); }
+function _wrappedConMascara(html){
+  return html.replace(/class="(wrapped-bignum [^"]*?)"/, (m, c) => (/saldo-hidden/.test(c) ? m : 'class="' + c + ' saldo-hidden"'));
+}
+
+function _wrappedSnapshotDe(slides){
+  return {
+    version: WRAPPED_SNAPSHOT_VERSION,
+    generadoEn: hoy(),
+    estado: slides.some(sl => sl.id === 'insuf-titular') ? 'insuficiente' : 'completo',
+    slides: slides.map(sl => {
+      const o = { id: sl.id, html: _wrappedSinMascara(sl.html) };
+      if(sl.mood) o.mood = sl.mood;
+      if(sl.confetti) o.confetti = true;
+      return o;
+    })
+  };
+}
+
+// Las diapositivas guardadas listas para pintar: aquí sí se aplica la preferencia actual de ocultar saldos.
+function _wrappedSlidesDeSnapshot(snap){
+  const ocultar = _wrappedSaldosOcultos();
+  return snap.slides.map(sl => Object.assign({}, sl, { html: (ocultar && sl.id === 'alcancia') ? _wrappedConMascara(sl.html) : sl.html }));
+}
+
 function _wrappedCopyPatrimonio(patrimonio){
   const { diff, pct } = patrimonio;
   if(pct === null){
@@ -2887,7 +3049,7 @@ function _wrappedSaldosOcultos(){
   } catch(e){ return false; }
 }
 
-function _wrappedBuildSlides(S, fmt2){
+function _wrappedBuildSlides(S, fmt2, anioOpt){
   // Año que toca mostrar: decidido por js/core/wrapped-gate.js (núcleo
   // eager, siempre cargado antes que este módulo lazy) — resuelve la
   // decisión que había quedado abierta en wrapped.md §7decies. Antes
@@ -2897,9 +3059,13 @@ function _wrappedBuildSlides(S, fmt2){
   // Fallback al año en curso SOLO si wrapped-gate.js no llegó a cargar —
   // no debería pasar nunca en producción (carga antes que lazy-loader.js
   // en index.html), pero un dato faltante acá no debe romper el render.
-  const anioK = typeof window._wrappedAnioObjetivo === 'function'
+  const anioK = anioOpt ? String(anioOpt) : (typeof window._wrappedAnioObjetivo === 'function'
     ? window._wrappedAnioObjetivo()
-    : _wrappedHoy().slice(0,4);
+    : _wrappedHoy().slice(0,4));
+  // ¿Hay datos suficientes? Si no, un mensaje honesto en vez de 17 diapositivas casi vacías (criterio en wrapped-gate.js; si ese archivo
+  // no cargó —no pasa en producción— se asume que sí hay, como siempre).
+  const datosAnio = typeof window._wrappedDatosAnio === 'function' ? window._wrappedDatosAnio(anioK, S) : { tier: 'suficiente' };
+  if(datosAnio.tier !== 'suficiente') return _wrappedSlidesInsuficiente(datosAnio, anioK);
   const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
   const mesMax = (anioK === anioActual) ? mesActualIdx : 11;
   const s = _wrappedCalcularPeriodo(S, 'anio', null, anioK);
@@ -3479,14 +3645,8 @@ function _wrappedBuildSlides(S, fmt2){
   const huboAlgo = slides.length > 1; // más que solo el intro
 
   if(!huboAlgo){
-    return [{
-      id: 'vacio',
-      html: `<div class="wrapped-slide-inner">
-        <div class="wrapped-eyebrow">Tu resumen</div>
-        <div class="wrapped-headline">Todavía no hay mucho que contar</div>
-        <div class="wrapped-sub">Todavía no hay suficiente historial este año para contarte algo. Vuelve más adelante.</div>
-      </div>`
-    }];
+    // Había registros suficientes pero ninguna diapositiva de datos pudo armarse: se cuenta como «poco», con la misma voz.
+    return _wrappedSlidesInsuficiente(Object.assign({}, datosAnio, { tier: 'poco' }), anioK);
   }
 
   const lineaCierre = _wrappedCopyCierre({ anioK, patrimonio, racha, s, gastoMasGrande: s.gastoMasGrande });
@@ -3782,14 +3942,19 @@ function _wrappedSetupNav(overlay, fmt2){
 }
 
 /* ─── ENTRADA PRINCIPAL ────────────────────────────────────────────────── */
-window.renderWrapped = function(){
-  // Cinturón de seguridad, no la gate real (esa vive en
-  // js/core/wrapped-gate.js): en el uso normal de la app nunca se llega
-  // hasta acá fuera de la ventana de enero, porque la fila de "Más" que
-  // dispara esto está oculta (_wrappedGateAplicarFila). Esto solo cubre a
-  // alguien entrando por otro camino (deep link viejo, showScreen('wrapped')
-  // a mano desde la consola) — ver wrapped.md §7decies.
-  if(typeof window._wrappedDisponible === 'function' && !window._wrappedDisponible()){
+window.renderWrapped = function(anioOpt){
+  // Año a mostrar: el pedido (`renderWrapped(2026)`), el que dejó _wrappedAbrir (wrapped-gate.js, se consume) o el recién cerrado.
+  const objetivo = typeof window._wrappedAnioObjetivo === 'function' ? window._wrappedAnioObjetivo() : _wrappedHoy().slice(0,4);
+  const anioK = String(anioOpt || window._wrappedAnioVista || objetivo);
+  window._wrappedAnioVista = undefined;
+
+  const S = window.S || {};
+  const guardado = S.wrappedAnios && S.wrappedAnios[anioK];
+
+  // Cinturón de seguridad, no la gate real (esa vive en js/core/wrapped-gate.js): un Wrapped GUARDADO se puede ver siempre; GENERAR
+  // uno solo se puede para el año recién cerrado y durante la ventana de enero. Fuera de eso, quien llega por otro camino (deep link
+  // viejo, showScreen('wrapped') a mano desde la consola) vuelve a Configuración — ver wrapped.md §7decies.
+  if(!guardado && (anioK !== objetivo || (typeof window._wrappedDisponible === 'function' && !window._wrappedDisponible()))){
     if(typeof toast === 'function') toast('Tu resumen del año vuelve en enero.', 'info', 4000);
     if(typeof showScreen === 'function') showScreen('config');
     return;
@@ -3799,17 +3964,29 @@ window.renderWrapped = function(){
   // (wrapped-gate.js) no insiste si el usuario ya entró por su cuenta
   // desde el menú. Flag de UI en localStorage, no un dato financiero
   // nuevo en S (mismo criterio de siempre, ver cabecera del archivo §3).
-  if(typeof window._wrappedAnioObjetivo === 'function'){
-    try{ localStorage.setItem('mf_wrapped_visto_' + window._wrappedAnioObjetivo(), '1'); }catch(_){}
+  if(anioK === objetivo){
+    try{ localStorage.setItem('mf_wrapped_visto_' + objetivo, '1'); }catch(_){}
   }
 
-  const S = window.S || {};
   const fmt2 = typeof fmt === 'function' ? fmt : v => '$' + Math.round(v).toLocaleString('es-CO');
 
   _wrappedLogDebug(S);
   _wrappedInyectarEstilos();
 
-  const slides = _wrappedBuildSlides(S, fmt2);
+  let slides;
+  if(guardado){
+    slides = _wrappedSlidesDeSnapshot(guardado); // el recuerdo tal como se guardó: no se recalcula nada
+  } else {
+    slides = _wrappedBuildSlides(S, fmt2, anioK);
+    // Un año ya terminado se guarda la primera vez que se abre (también si «no alcanzó el tiempo»: queda constancia de que se evaluó).
+    if(anioK < _wrappedHoy().slice(0,4)){
+      try{
+        if(!S.wrappedAnios) S.wrappedAnios = {};
+        S.wrappedAnios[anioK] = _wrappedSnapshotDe(slides);
+        if(typeof save === 'function') save();
+      }catch(e){ console.warn('[wrapped] No se pudo guardar el Wrapped de ' + anioK + ':', e); }
+    }
+  }
 
   const progresoHtml = slides.map(() => `<div class="wrapped-seg"><i></i></div>`).join('');
   const slidesHtml = slides.map(sl => `<div class="wrapped-slide" data-mood="${sl.mood || 'accent'}"${sl.confetti ? ' data-confetti="1"' : ''}>${sl.html}</div>`).join('');
@@ -3818,7 +3995,7 @@ window.renderWrapped = function(){
   // la URL trae `?debug=1`/`#debug` (ver `_wrappedDebugPanelHtml`); en
   // cualquier otro caso `debugHtml` queda vacío y no se agrega nada al
   // DOM ni se paga el costo de armar las tablas.
-  const debugOn = _wrappedDebugOn();
+  const debugOn = _wrappedDebugOn() && !guardado; // el panel de debug necesita los datos del armado: un guardado no los tiene
   const debugHtml = debugOn
     ? `<button type="button" id="wrapped-debug-toggle" aria-label="Panel de debug" title="Panel de debug">
          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
@@ -3883,13 +4060,16 @@ window.renderWrapped = function(){
 
 /* Exportadas solo para poder testear los cálculos y el armado de slides
    de forma aislada — no se usan desde ningún otro archivo. */
-// Sonda de la huella (js/core/huella.js): lo que Wrapped calcula de cada año con datos — totales, mejor/peor mes, gasto más grande y
-// categoría líder (dentro de _wrappedCalcularPeriodo) y cada dominio de terceros (encargos, préstamos, mesada, Spotify, comprometida,
-// intereses y comisiones de tarjeta). Un cambio de almacenamiento no puede alterar el Wrapped de un año cerrado (docs/cierre-de-periodos.md).
-// Los años salen de Cierre.anios (js/core/cierre.js, de entrada). Corre aislada: las funciones reciben la copia como `S`.
+// Sonda de la huella (js/core/huella.js): lo que Wrapped calcula del ÚNICO año que la app puede mostrar — el recién cerrado, año actual − 1
+// (_wrappedVentana en wrapped-gate.js, que es la fuente; sin él se calcula igual desde hoy()). Cubre totales, mejor/peor mes, gasto más
+// grande y categoría líder (dentro de _wrappedCalcularPeriodo) y cada dominio de terceros (encargos, préstamos, mesada, Spotify, comprometida,
+// intereses y comisiones de tarjeta). Los años anteriores no se ven en ninguna pantalla, así que no se exige conservarlos: la política de
+// corte (Cierre.corteMasReciente, ≥ 24 meses, siempre ≤ dic de año − 2) deja intacto este año por construcción y la sonda lo comprueba.
+// Corre aislada: las funciones reciben la copia como `S`. docs/cierre-de-periodos.md.
 if(typeof Huella!=='undefined'&&typeof Huella.registrar==='function') Huella.registrar('wrapped',function(st){
   const out={};
-  (typeof Cierre!=='undefined'&&typeof Cierre.anios==='function'?Cierre.anios(st):[]).forEach(anioK=>{
+  const anioObjetivo=typeof window._wrappedAnioObjetivo==='function'?window._wrappedAnioObjetivo():String(parseInt(hoy().slice(0,4),10)-1);
+  [anioObjetivo].forEach(anioK=>{
     out[anioK]={
       periodo:_wrappedCalcularPeriodo(st,'anio',null,anioK),
       mejorPeor:_wrappedMejorPeorMesAnio(st,anioK),
@@ -3909,6 +4089,13 @@ if(typeof Huella!=='undefined'&&typeof Huella.registrar==='function') Huella.reg
 });
 
 window._wrappedInternals = {
+  WRAPPED_BANCO_INSUFICIENTE,
+  WRAPPED_SNAPSHOT_VERSION,
+  _wrappedSlidesInsuficiente,
+  _wrappedSnapshotDe,
+  _wrappedSlidesDeSnapshot,
+  _wrappedSinMascara,
+  _wrappedConMascara,
   _wrappedBankPick,
   _wrappedIniciarBanco,
   _wrappedHashStr,

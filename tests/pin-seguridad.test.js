@@ -69,8 +69,12 @@ function entorno({ pin = '1234', sesion = true } = {}) {
     setInterval: (f, ms) => { const h = setInterval(f, ms); if (h.unref) h.unref(); return h; }, clearInterval });
   vm.runInContext('const waitFor = () => {}; const hookGlobal = () => {};\n' + FUENTE.replace(/^import .*$/gm, ''), ctx);
   const espera = ms => new Promise(r => setTimeout(r, ms));
-  // Tras un PIN incorrecto el campo se vacía a los 430 ms (la sacudida): se espera ese tiempo antes del siguiente intento.
-  const escribir = async txt => { for (const c of txt) window._pinKey(c); await espera(520); };
+  // Tras escribir 4 dígitos el código envía el PIN a los 80 ms y, si es incorrecto, vacía el campo 430 ms después (la sacudida); los dígitos
+  // que lleguen antes se descartan. Se espera a esa señal real —el campo vacío o la pantalla cerrada— y no a un tiempo fijo: con 520 ms el
+  // margen era de 10 ms y la prueba fallaba bajo carga (sola pasaba; en la suite completa, con otros archivos en paralelo, a veces no).
+  const hastaQue = async cond => { for (let i = 0; i < 600 && !cond(); i++) await espera(10); };
+  const campoLleno = () => [0, 1, 2, 3].some(i => document.getElementById('pd' + i).classList.contains('filled'));
+  const escribir = async txt => { for (const c of txt) window._pinKey(c); await hastaQue(() => !campoLleno() || !abierta()); };
   const abierta = () => els['pin-screen'] && els['pin-screen'].classList.contains('open');
   const texto = id => document.getElementById(id).textContent;
   const cambiarVisibilidad = oculta => { document.hidden = oculta; (oyentes.visibilitychange || []).forEach(f => f()); };

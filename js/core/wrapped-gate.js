@@ -97,6 +97,41 @@ function _wrappedVentana(){
   return { disponible, anioObjetivo, fechaCierre, diasRestantes, forzado };
 }
 
+/* ─── ¿HAY DATOS SUFICIENTES PARA CONTAR UN AÑO? ───────────────────────
+   Un Wrapped de 17 diapositivas con un solo gasto no cuenta nada: hasta ahora el «estado vacío» solo salía si ninguna
+   diapositiva de datos se generaba. Este es el criterio explícito, en un solo sitio y barato (no carga wrapped.js, así que
+   lo usan también la tarjeta y el aviso de abajo). Cuenta actividad REAL con las mismas fuentes que Periodo (gastos
+   variables reales, pagos de gastos fijos e ingresos reales); las transferencias y ajustes no cuentan.
+     'nada'       — ningún registro en el año.
+     'poco'       — hay registros pero menos de WRAPPED_MIN_DIAS días distintos o de WRAPPED_MIN_MESES meses distintos.
+     'suficiente' — alcanza para el Wrapped completo.
+   Los umbrales son un ajuste de producto, no una regla contable: se cambian aquí (y la prueba de límites los lee). */
+const WRAPPED_MIN_DIAS = 30, WRAPPED_MIN_MESES = 3;
+
+function _wrappedDatosAnio(anioK, estado){
+  const st = estado || S, fechas = new Set(), meses = new Set();
+  let registros = 0;
+  const marcar = f => {
+    if(typeof f === 'string' && f.slice(0,4) === String(anioK)){ fechas.add(f.slice(0,10)); meses.add(f.slice(0,7)); registros++; }
+  };
+  for(let m = 1; m <= 12; m++) Periodo.gastosVarRealesDelMes(String(anioK) + '-' + String(m).padStart(2,'0'), st).forEach(g => marcar(g.fecha));
+  Periodo.pagosFijos(st).forEach(p => marcar(p.fecha));
+  entradasIngresoReal(st).forEach(e => marcar(e.fecha));
+  const orden = Array.from(fechas).sort();
+  const tier = registros === 0 ? 'nada'
+    : (fechas.size >= WRAPPED_MIN_DIAS && meses.size >= WRAPPED_MIN_MESES ? 'suficiente' : 'poco');
+  return { anio: String(anioK), tier, registros, dias: fechas.size, meses: meses.size, primera: orden[0] || null, ultima: orden[orden.length - 1] || null };
+}
+
+window._wrappedDatosAnio = _wrappedDatosAnio;
+window._wrappedUmbrales = { dias: WRAPPED_MIN_DIAS, meses: WRAPPED_MIN_MESES };
+
+// Abre el Wrapped de un año (el recién cerrado en enero, o uno ya guardado en cualquier momento). renderWrapped lee y consume el año.
+window._wrappedAbrir = function(anio){
+  window._wrappedAnioVista = String(anio);
+  if(typeof showScreen === 'function') showScreen('wrapped');
+};
+
 window._wrappedDisponible = function(){ return _wrappedVentana().disponible; };
 window._wrappedAnioObjetivo = function(){ return _wrappedVentana().anioObjetivo; };
 window._wrappedVentanaInfo = _wrappedVentana; // uso interno/debug, no público
@@ -120,6 +155,15 @@ function _wrappedGateAplicarFila(){
 
   const anio = document.getElementById('wrapped-promo-anio');
   if(anio) anio.textContent = info.anioObjetivo;
+
+  const sub = document.getElementById('wrapped-promo-sub');
+  if(sub){
+    let tier = 'suficiente';
+    try{ tier = _wrappedDatosAnio(info.anioObjetivo).tier; }catch(_){ /* sin datos legibles: se deja el texto por defecto */ }
+    sub.textContent = tier === 'suficiente' ? 'Un año entero de tus finanzas, en 60 segundos'
+      : tier === 'poco' ? 'Este año no alcanzó el tiempo. Toca para ver qué pasó.'
+      : 'Este año no hubo mucho que contar. Toca para ver el mensaje.';
+  }
 
   const dias = document.getElementById('wrapped-promo-dias');
   if(dias){
@@ -156,6 +200,10 @@ function _wrappedGateMostrarBanner(){
   if(_wrappedGateYaVisto(info.anioObjetivo)) return;
   if(document.getElementById('wrapped-banner')) return; // ya está en pantalla
 
+  let tier = 'suficiente';
+  try{ tier = _wrappedDatosAnio(info.anioObjetivo).tier; }catch(_){ /* se deja el texto por defecto */ }
+  const tituloBanner = tier === 'suficiente' ? 'Tu resumen de ' + info.anioObjetivo + ' ya está listo'
+    : 'Tu ' + info.anioObjetivo + ' no alcanzó para un resumen completo';
   const el = document.createElement('div');
   el.id = 'wrapped-banner';
   // Sin ícono decorativo: la tira de segmentos (.wp-segs, el mismo motivo
@@ -168,7 +216,7 @@ function _wrappedGateMostrarBanner(){
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
     </button>
     <div class="wp-segs"><i class="on"></i><i class="on a"></i><i class="on p"></i><i class="on b"></i><i></i><i></i></div>
-    <div class="wrapped-banner-title">Tu resumen de ${info.anioObjetivo} ya está listo</div>
+    <div class="wrapped-banner-title">${tituloBanner}</div>
     <div class="wrapped-banner-sub">${info.diasRestantes > 0 ? `Disponible ${info.diasRestantes} día${info.diasRestantes===1?'':'s'} más — después vuelve el próximo enero` : 'Hoy es el último día para verlo'}</div>
     <div class="wrapped-banner-row">
       <button type="button" class="wrapped-banner-btn">Ver mi resumen

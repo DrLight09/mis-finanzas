@@ -49,7 +49,25 @@ describe('huella', () => {
     assert.deepEqual(plano(huella.errores), {});
     assert.deepEqual(Object.keys(huella.sondas).sort(), BASE.slice().sort());
     assert.equal(Object.keys(huella.sondas.periodos).length, 33, 'un resultado por cada mes con datos');
-    assert.deepEqual(Object.keys(huella.sondas.wrapped), ['2024', '2025', '2026']);
+    assert.deepEqual(Object.keys(huella.sondas.wrapped), ['2025'], 'Wrapped solo puede mostrar el año recién cerrado (hoy 2026-10-30 → 2025)');
+  });
+
+  test('POLÍTICA DE CORTE y Wrapped: podar todo lo anterior al corte permitido deja Wrapped IDÉNTICO (el año objetivo no se toca); lo que sí cambia son los períodos, que necesitan resumen', () => {
+    const corte = ctx.Cierre.corteMasReciente(ctx.hoy()); // 2024-09
+    assert.equal(corte, '2024-09');
+    const r = ctx.Huella.verificarTransformacion(ctx.S, est => {
+      PLANAS.forEach(k => { est[k] = est[k].filter(x => String(x.fecha).slice(0, 7) > corte); });
+    }, { requeridas: BASE });
+    const raices = new Set(r.diferencias.map(d => d.ruta.split('.')[0]));
+    assert.ok(!raices.has('wrapped'), 'Wrapped intacto con un corte de política');
+    assert.ok(raices.has('periodos'), 'los períodos podados sí cambian: por eso hace falta el resumen congelado antes de podar');
+  });
+
+  test('un corte que SÍ toca el año objetivo (2025) es detectado en Wrapped: la sonda protege justo lo que la pantalla puede mostrar', () => {
+    const r = ctx.Huella.verificarTransformacion(ctx.S, est => {
+      PLANAS.forEach(k => { est[k] = est[k].filter(x => String(x.fecha).slice(0, 4) >= '2026'); });
+    }, { requeridas: BASE });
+    assert.ok(r.diferencias.some(d => d.ruta.startsWith('wrapped.2025')));
   });
 
   test('calcular es PURO y determinista: no modifica S, restaura el S global y repetirlo da la misma huella', () => {

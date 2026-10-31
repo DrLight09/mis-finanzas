@@ -3883,16 +3883,13 @@ window.renderWrapped = function(){
 
 /* Exportadas solo para poder testear los cálculos y el armado de slides
    de forma aislada — no se usan desde ningún otro archivo. */
-// Sonda de la huella (js/core/huella.js): lo que Wrapped calcula del ÚNICO año que la app puede mostrar — el recién cerrado, año actual − 1
-// (_wrappedVentana en wrapped-gate.js, que es la fuente; sin él se calcula igual desde hoy()). Cubre totales, mejor/peor mes, gasto más
-// grande y categoría líder (dentro de _wrappedCalcularPeriodo) y cada dominio de terceros (encargos, préstamos, mesada, Spotify, comprometida,
-// intereses y comisiones de tarjeta). Los años anteriores no se ven en ninguna pantalla, así que no se exige conservarlos: la política de
-// corte (Cierre.corteMasReciente, ≥ 24 meses, siempre ≤ dic de año − 2) deja intacto este año por construcción y la sonda lo comprueba.
-// Corre aislada: las funciones reciben la copia como `S`. docs/cierre-de-periodos.md.
+// Sonda de la huella (js/core/huella.js): lo que Wrapped calcula de cada año con datos — totales, mejor/peor mes, gasto más grande y
+// categoría líder (dentro de _wrappedCalcularPeriodo) y cada dominio de terceros (encargos, préstamos, mesada, Spotify, comprometida,
+// intereses y comisiones de tarjeta). Un cambio de almacenamiento no puede alterar el Wrapped de un año cerrado (docs/cierre-de-periodos.md).
+// Los años salen de Cierre.anios (js/core/cierre.js, de entrada). Corre aislada: las funciones reciben la copia como `S`.
 if(typeof Huella!=='undefined'&&typeof Huella.registrar==='function') Huella.registrar('wrapped',function(st){
   const out={};
-  const anioObjetivo=typeof window._wrappedAnioObjetivo==='function'?window._wrappedAnioObjetivo():String(parseInt(hoy().slice(0,4),10)-1);
-  [anioObjetivo].forEach(anioK=>{
+  (typeof Cierre!=='undefined'&&typeof Cierre.anios==='function'?Cierre.anios(st):[]).forEach(anioK=>{
     out[anioK]={
       periodo:_wrappedCalcularPeriodo(st,'anio',null,anioK),
       mejorPeor:_wrappedMejorPeorMesAnio(st,anioK),

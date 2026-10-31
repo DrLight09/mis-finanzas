@@ -6,17 +6,6 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Lista de mejoras de octubre 2026
 
-### 🔧 Cierre de períodos: ajustes tras revisar un análisis externo (2026-10-30, SW v81)
-
-Se contrastó cada afirmación de un análisis externo con el código y con mediciones propias (`docs/cierre-de-periodos.md` §10). Sigue sin tocarse ningún dato.
-
-- **Error propio corregido:** `Cierre.corteMasReciente` usaba `Date.setMonth` y el 29–30 de marzo devolvía un corte con menos de 24 meses. Ahora es aritmética exacta; prueba sobre ~2.600 fechas (nunca < 24 meses, siempre el más reciente, nunca llega al año anterior al actual).
-- **Sonda `wrapped` solo del año objetivo** (año actual − 1, de `_wrappedVentana`): es el único año que la app puede mostrar. `Cierre.anios` se retira (sin usos).
-- **Diagnóstico de componentes** en `Cierre.analizar`: `componentes.maxRegistros`, las 3 mayores y `advertencias:['componente-grande']` (> 100 registros). Pruebas con ids de formato real, con texto compartido (no enlaza) y con un enlace falso (300 gastos con el mismo id).
-- **Disparadores separados:** el aviso de lentitud ahora dice que se arregla paginando, no cerrando períodos.
-- **Estrategia revisada (pendiente de aprobación):** de «archivo por años» a «cierre con resumen congelado», todo en una operación (libro por componente + poda + `resumenMeses`); ver §4 del documento.
-- Pruebas: 625 en total (6 nuevas); `cargarApp` de pruebas fija `hoy()` para que Wrapped y los cortes sean deterministas.
-
 ### 🧭 Cierre de períodos, etapa 1: huella de invariantes, vista previa y medidor de tamaño (2026-10-29, SW v80)
 
 Decisión (ver `docs/cierre-de-periodos.md`): **no se poda nada todavía.** Con 5 movimientos al día el payload comprimido ronda 150 KB a los 2 años y 675 KB a los 9 (límite 1 MB), y la app nació limpia el 2026-10-18: no hay historia de 2 años hasta octubre de 2028. Además, el `resumenMensual` del diseño original no basta para Wrapped (gasto más grande, categoría líder por frecuencia, promedios, conteos) y `S.gastosVar`/`S.movimientos` se leen directamente en ~230 sitios. Se construye primero lo que cualquier estrategia posterior necesita, **sin tocar datos**:

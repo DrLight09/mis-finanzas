@@ -154,7 +154,10 @@ function tcEstadoInfo(estado){
 function _tcEsCargoExterno(m){
   return m.tipo==='cargo_encargo'||m.tipo==='cargo_prestamo'||m.tipo==='cargo_spotify'||m.tipo==='cargo_deuda';
 }
-function tcRecalcular(tc){
+// Deuda de una tarjeta calculada desde sus movimientos (saldo inicial + compras + cargos − pagos, sin los eliminados, con piso en 0).
+// PURA: no escribe nada. Es la única definición de esa cuenta: tcRecalcular la guarda en tc.deuda y la sonda «tarjetas» de la huella
+// (js/core/huella.js) la lee para comprobar que un cambio de almacenamiento no la altera.
+function tcDeudaCalculada(tc){
   if(!tc) return 0;
   let total=0;
   if(tc.saldoInicial && !tc.saldoInicial.eliminado) total+=(tc.saldoInicial.monto||0);
@@ -163,9 +166,23 @@ function tcRecalcular(tc){
     if(m.tcId===tc.id && _tcEsCargoExterno(m) && !m.eliminado) total+=(m.monto||0);
   });
   (tc.pagos||[]).forEach(p=>{ if(!p.eliminado) total-=(p.monto||0); });
-  tc.deuda=Math.max(0,total);
+  return Math.max(0,total);
+}
+function tcRecalcular(tc){
+  if(!tc) return 0;
+  tc.deuda=tcDeudaCalculada(tc);
   return tc.deuda;
 }
+
+// Sonda de la huella: deuda calculada vs guardada, cupo y estado de cada tarjeta. `coherente` detecta un tc.deuda desactualizado.
+if(typeof Huella!=='undefined'&&typeof Huella.registrar==='function') Huella.registrar('tarjetas',st=>{
+  const entidades={};
+  (st.tarjetasCredito||[]).forEach(tc=>{
+    const calculada=tcDeudaCalculada(tc), guardada=tc.deuda||0;
+    entidades[tc.id]={saldo:calculada,guardada,coherente:Math.abs(calculada-guardada)<0.01,cupo:tc.cupo||0,estado:tc.estado||'activa'};
+  });
+  return {entidades,totalDeuda:Object.keys(entidades).reduce((a,k)=>a+entidades[k].saldo,0)};
+});
 
 // ── Migración y auto-sanación ────────────────────────────────────
 // Se ejecuta en cada refresh(). Es idempotente (se puede llamar todas

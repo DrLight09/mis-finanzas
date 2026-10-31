@@ -599,6 +599,25 @@ function _ensureSpotify(){
   if(typeof S.spotify.cajitaId!=='string')S.spotify.cajitaId='';
 }
 
+/* ---- ESTADO AISLADO (huella / cierre de períodos) ----
+   conEstadoAislado(estado, fn) ejecuta `fn` SÍNCRONA con `estado` como el S global y lo restaura siempre al terminar. Existe para
+   poder calcular la huella de invariantes (js/core/huella.js) y la vista previa del cierre (js/core/cierre.js) sobre una COPIA con
+   las mismas funciones de la app (calcPatrimonioDesglose, Deudas, calcC… leen el S global): así no hay una segunda versión de
+   ninguna regla contable solo para comparar. Mientras dura, window._estadoAislado es true y save()/_fbSaveToCloud() no escriben
+   nada: un estado de prueba nunca llega a la nube. Si `fn` devuelve una promesa lanza error (su continuación correría con el S real). */
+function conEstadoAislado(estado, fn){
+  if(!estado||typeof estado!=='object')throw new Error('conEstadoAislado: se necesita un estado (objeto)');
+  if(typeof fn!=='function')throw new Error('conEstadoAislado: se necesita una función');
+  if(estado===S)return fn();
+  const prev=S,prevFlag=window._estadoAislado;
+  let r;
+  S=estado;window.S=estado;window._estadoAislado=true;
+  try{r=fn();}
+  finally{S=prev;window.S=prev;window._estadoAislado=prevFlag;}
+  if(r&&typeof r.then==='function')throw new Error('conEstadoAislado: la función debe ser síncrona');
+  return r;
+}
+
 function load(){
   // Firebase version: datos ya cargados en S por _fbLoadData()
   // Solo inicializamos campos faltantes y sincronizamos el DOM
@@ -677,6 +696,8 @@ function parsePct(v){
 // (window._fbSaveTimer lo gestiona el módulo Firebase — no declarar aquí)
 
 function save(){
+  // Estado aislado (conEstadoAislado): nunca se guarda un estado de prueba.
+  if(window._estadoAislado)return;
   // PROTECCIÓN: no guardar si los datos aún no se han cargado desde Firebase.
   // Esto evita sobreescribir datos válidos con el estado inicial vacío.
   if(window._fbLoadData && !window._dataLoaded) {

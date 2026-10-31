@@ -36,8 +36,6 @@ const Cierre = (() => {
   const _limites = () => (typeof window !== 'undefined' && window._payloadLimites) || LIMITES;
   // Disparador para pasar a la etapa siguiente (archivo por año): payload comprimido sobre este valor.
   const DISPARADOR_BYTES = 500000, DISPARADOR_ANTIGUEDAD_DIAS = 730;
-  // Una unidad atómica de más de esto registros es sospechosa (las legítimas son de 1 a ~10); ver `advertencias` en analizar().
-  const COMPONENTE_GRANDE = 100;
 
   const _lst = x => (Array.isArray(x) ? x : []);
   const _obj = x => (x && typeof x === 'object' && !Array.isArray(x) ? x : {});
@@ -148,17 +146,19 @@ const Cierre = (() => {
     return regs;
   }
 
+  /* ---- Años con datos (Wrapped y otros) ---- */
+  function anios(estado) {
+    const st = estado || S, set = new Set();
+    _fuentes.forEach(f => f.registros(st).forEach(r => { if (_fechaOk(r.fecha)) set.add(r.fecha.slice(0, 4)); }));
+    return Array.from(set).sort();
+  }
+
   /* ---- 3. VISTA PREVIA (dry-run) ---- */
   const _mesActual = () => hoy().slice(0, 7);
-  // Último mes COMPLETO con al menos `mesesMinimos` de antigüedad: el mes cuyo último día cae en o antes de (hoy − 24 meses). La cuenta es
-  // aritmética (sin Date.setMonth, que desborda el día: el 30-mar menos 25 meses caía en «feb 30» = marzo y daba un mes de más).
-  // Consecuencia que aprovecha Wrapped: el corte nunca llega al año anterior al actual (siempre queda ≤ dic de año − 2); una prueba lo recorre.
   function corteMasReciente(hoyStr) {
-    const [y, m, d] = (hoyStr || hoy()).split('-').map(Number);
-    let idx = y * 12 + (m - 1) - POLITICA.mesesMinimos;               // mes de (hoy − 24 meses), contado desde el año 0
-    const ultimoDia = new Date(Date.UTC(Math.floor(idx / 12), (idx % 12) + 1, 0)).getUTCDate();
-    if (d < ultimoDia) idx -= 1;                                      // ese mes aún no estaba completo hace 24 meses
-    return Math.floor(idx / 12) + '-' + String((idx % 12) + 1).padStart(2, '0');
+    const d = new Date((hoyStr || hoy()) + 'T12:00:00');
+    d.setMonth(d.getMonth() - POLITICA.mesesMinimos - 1); // el último mes COMPLETO con ≥ 24 meses de antigüedad
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   }
 
   // analizar(corte 'YYYY-MM', estado?, {huella?, mesActual?}) → informe. NO modifica nada. Si no se pasa `huella` la calcula con las
@@ -190,14 +190,6 @@ const Cierre = (() => {
       else r.estado = 'libre';
       const c = comps.get(r.comp) || { n: 0, libre: 0 }; c.n++; if (r.estado === 'libre') c.libre++; comps.set(r.comp, c);
     });
-    // Tamaño de las unidades atómicas sobre TODOS los registros (no solo los candidatos). Lo normal es de 1 a ~10 (un gasto y su pata del
-    // libro, una transferencia = 5). Una componente enorme delata un enlace por valor falso (dos registros que comparten un texto largo): en
-    // ese caso casi nada sería archivable y hay que investigar antes de confiar en el informe.
-    const tam = new Map();
-    regs.forEach(r => { const c = tam.get(r.comp) || { registros: 0, fuentes: {} }; c.registros++; c.fuentes[r.fuente] = (c.fuentes[r.fuente] || 0) + 1; tam.set(r.comp, c); });
-    const mayores = Array.from(tam.values()).sort((a, b) => b.registros - a.registros).slice(0, 3);
-    const advertencias = [];
-    if (mayores.length && mayores[0].registros > COMPONENTE_GRANDE) advertencias.push('componente-grande');
     const vacio = () => ({ registros: 0, bytes: 0 });
     const suma = (o, r) => { o.registros++; o.bytes += r.bytes; };
     const total = vacio(), candidatos = vacio(), archivables = vacio(), porFuente = {}, motivos = {}, detalle = [];
@@ -216,7 +208,6 @@ const Cierre = (() => {
     });
     return {
       version: VERSION, corte, fechaCorte, completo, huella: Huella.digest(huella), erroresHuella: huella.errores || {},
-      advertencias, componentes: { total: tam.size, maxRegistros: mayores.length ? mayores[0].registros : 0, mayores },
       total, candidatos, archivables: Object.assign(archivables, { unidades: compsArchivables.size }),
       bloqueados: { registros: candidatos.registros - archivables.registros, porMotivo: motivos, detalle },
       porFuente, entidades: Array.from(ents.values()).map(e => ({ id: e.id, fuente: e.fuente, registros: e.n, saldo: e.valor == null ? null : e.valor, estado: e.cerrada ? 'cerrada' : 'abierta', motivo: e.motivo })),
@@ -262,16 +253,15 @@ const Cierre = (() => {
     };
   }
 
-  // ¿Toca pasar a la etapa siguiente? Solo el tamaño comprimido lo dispara. La antigüedad es solo un aviso, y la lentitud de las listas
-  // (que no se puede medir desde aquí) es OTRO problema con otro remedio: paginar o cargar bajo demanda; cerrar/archivar períodos
-  // no la arregla si el estado completo sigue en memoria.
+  // ¿Toca pasar a la etapa siguiente? Solo el tamaño comprimido lo dispara; la antigüedad es un aviso para revisar (el segundo
+  // criterio acordado, «las listas se sienten lentas», no se puede medir desde aquí).
   function disparador(t) {
     const motivos = [], avisos = [];
     if (t.comprimido > DISPARADOR_BYTES) motivos.push('El payload comprimido (' + t.comprimido + ' bytes) pasó de ' + DISPARADOR_BYTES + '.');
-    if (t.antiguedad.dias >= DISPARADOR_ANTIGUEDAD_DIAS) avisos.push('Hay datos de más de 2 años. Si las listas se sienten lentas, el remedio es paginarlas; cerrar períodos no lo arregla.');
+    if (t.antiguedad.dias >= DISPARADOR_ANTIGUEDAD_DIAS) avisos.push('Hay datos de más de 2 años: si las listas se sienten lentas, conviene empezar el archivo por años.');
     return { recomendado: motivos.length > 0, motivos, avisos };
   }
 
-  return { VERSION, POLITICA, LIMITES, DISPARADOR_BYTES, CLASIFICACION, registrarFuente, fuentes: () => Array.from(_fuentes.values()), corteMasReciente, analizar, analizarCompleto, tamano, disparador };
+  return { VERSION, POLITICA, LIMITES, DISPARADOR_BYTES, CLASIFICACION, registrarFuente, fuentes: () => Array.from(_fuentes.values()), anios, corteMasReciente, analizar, analizarCompleto, tamano, disparador };
 })();
 if (typeof window !== 'undefined') window.Cierre = Cierre; // un `const` de nivel superior no cuelga de window: los tests lo leen como ctx.Cierre

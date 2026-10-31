@@ -23,7 +23,7 @@ modificarlo, usando `vm` para simular cómo el navegador carga
 - Me deben (registrar con `_aplicarMovimiento`, revertir con `_revertirMovDeudor`) y Yo debo (pago dividido, perdón, pago de más, pago con tarjeta) y
   `registrarMovEspejo()`/`borrarMovEspejo()` — `js/modules/prestado.js`,
   `js/core/cuenta-efectos.js`
-
+- Cierre de períodos, etapa 1 (`docs/cierre-de-periodos.md`): la huella de invariantes y su registro de sondas, `conEstadoAislado`, la verificación de transformaciones (con una transformación de referencia sin pérdida y una poda ingenua que debe detectar) — `js/core/huella.js` (`tests/huella.test.js`); la vista previa de solo lectura (grafo de enlaces por valor, entidades, clasificación de las claves de `S`) y el medidor de tamaño — `js/core/cierre.js` (`tests/cierre.test.js`). Ambas usan historia sintética de 2,7 años de `tests/support/datos-sinteticos.js`, construida con las funciones reales de la app.
 - Paso 5 (estilos inline → clases): `tests/estilos.test.js` vigila los archivos ya convertidos (ningún `style=""` estático nuevo, toda clase usada existe en `css/styles.css` o en el CSS propio del archivo, y los colores de Wrapped tienen clase). **La herramienta de conversión y sus verificadores (`scripts/paso5/`) se retiraron al cerrar el Paso 5 (2026-10-24)**; siguen en el tag de git `paso5-cerrado` por si hace falta convertir o verificar otra vez (ver `docs/guia-estilo-sheets.md` §0).
 
 Corren contra tus archivos reales, sin copiarlos.

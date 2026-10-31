@@ -21,7 +21,6 @@ const path = require('node:path');
 const { loadApp } = require('./load-app');
 
 const RAIZ = path.join(__dirname, '..', '..', 'js');
-const HOY = '2026-10-30';
 const ARCHIVOS = [
   'core/core-state.js', 'core/cuenta-efectos.js', 'core/periodo.js', 'core/nu-calc.js', 'core/calc-helpers.js', 'core/huella.js', 'core/cierre.js',
   'modules/tarjetas_credito.js', 'modules/encargos.js', 'modules/alcancia.js', 'modules/wrapped.js',
@@ -31,7 +30,6 @@ function cargarApp() {
   const ctx = loadApp(ARCHIVOS, { permissive: true });
   let n = 0;
   ctx.uid = () => 'x' + String(++n).padStart(5, '0');
-  ctx.hoy = () => HOY; // fecha fija: Wrapped apunta al año anterior al actual y los cortes dependen de «hoy»
   return ctx;
 }
 
@@ -118,4 +116,4 @@ function generar(ctx, { desde = '2024-01-01', dias = 1000, semilla = 7 } = {}) {
   return { hoyIso, desde, dias };
 }
 
-module.exports = { cargarApp, generar, estadoBase, ARCHIVOS, suma, HOY };
+module.exports = { cargarApp, generar, estadoBase, ARCHIVOS, suma };

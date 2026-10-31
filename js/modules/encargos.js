@@ -283,6 +283,18 @@ function encargoLibre(enc) {
   return Math.max(0, encargoSaldo(enc) - encargoComprometido(enc));
 }
 
+// Sonda de la huella (js/core/huella.js): saldo, comprometido, libre y reparto por cuenta de cada encargo. Un encargo es su
+// propia bolsa (enc.movimientos), fuera de S.movimientos y del libro: un cambio de almacenamiento no puede alterar nada de esto.
+if (typeof Huella !== 'undefined' && typeof Huella.registrar === 'function') Huella.registrar('encargos', st => {
+  const entidades = {};
+  (st.encargos || []).forEach(enc => {
+    const porCuenta = {};
+    _getEncargoSaldoPorCuenta(enc).forEach(c => { porCuenta[c.cuenta] = c.saldo; });
+    entidades[enc.id] = { saldo: encargoSaldo(enc), comprometido: encargoComprometido(enc), libre: encargoLibre(enc), sinCuenta: _getEncargoSaldoSinCuenta(enc), porCuenta };
+  });
+  return { entidades };
+});
+
 function renderEncargosList() {
   const el = document.getElementById('encargosList');
   const encargos = S.encargos||[];

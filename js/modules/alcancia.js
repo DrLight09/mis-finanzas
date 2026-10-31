@@ -1517,4 +1517,17 @@ if(window._dataLoaded){
   });
 }
 
+// Sonda de la huella (js/core/huella.js): saldo registrado y su copia ofuscada, depósitos y cada ciclo ya destapado (con la suma de
+// los movimientos que guarda). Vive dentro de la IIFE porque _getSaldoOfuscado es privado; corre aislada (lee el S de la copia).
+if(typeof Huella!=='undefined'&&typeof Huella.registrar==='function') Huella.registrar('alcancia',function(st){
+  const a=st.alcancia;
+  if(!a) return {existe:false,entidades:{}};
+  const suma=l=>(l||[]).reduce((x,m)=>x+((m&&m.monto)||0),0);
+  return {
+    existe:true, entidades:{alcancia:{saldo:a.saldoRegistrado||0}}, destapada:!!a._destapada, saldoRegistrado:a.saldoRegistrado||0, depositos:a.depositos||0,
+    ofuscado:st.alcanciaSaldoOfuscado?_getSaldoOfuscado():null, sumaMovimientos:suma(a.movimientos),
+    ciclos:(a.historial||[]).map(h=>({fechaFin:h.fechaFin||null,saldoRegistrado:h.saldoRegistrado||0,depositos:h.depositos||0,saldoReal:h.saldoReal==null?null:h.saldoReal,diferencia:h.diferencia==null?null:h.diferencia,sumaMovimientos:suma(h.movimientos)}))
+  };
+});
+
 })(); // end IIFE

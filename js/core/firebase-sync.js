@@ -53,6 +53,7 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
   let _savePromise = null;
   let _saveResolve = null;
   const PAYLOAD_AVISO_BYTES = 800000, PAYLOAD_LIMITE_BYTES = 1000000; // el documento de Firestore admite 1 MiB
+  window._payloadLimites = { aviso: PAYLOAD_AVISO_BYTES, limite: PAYLOAD_LIMITE_BYTES }; // los lee js/core/cierre.js (medidor de tamaño)
   // Cada guardado toma su número al empezar. Comprimir es asíncrono: si mientras tanto arrancó un guardado más nuevo, este
   // ya quedó viejo y no debe escribir después (pisaría datos más recientes en la nube).
   let _saveSeq = 0;
@@ -134,6 +135,8 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
   }
 
   window._fbSaveToCloud = function() {
+    // Estado aislado (conEstadoAislado, core-state.js): un estado de prueba jamás se escribe en la nube.
+    if(window._estadoAislado) return Promise.resolve({ok:false, reason:'isolated'});
     // PROTECCIÓN CRÍTICA: nunca guardar si los datos no se han cargado
     // desde Firestore. Evita sobreescribir la nube con datos vacíos
     // si la app se reinicia abruptamente antes de terminar de cargar.

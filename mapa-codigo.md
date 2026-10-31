@@ -12,6 +12,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/bootstrap.js` | de entrada (defer) | 1 | 0 |
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
 | `js/core/calc-helpers.js` | de entrada (defer) | 15 | 0 |
+| `js/core/cierre.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 1 | 0 |
 | `js/core/cobros.js` | de entrada (defer) | 14 | 1 |
 | `js/core/color-picker.js` | de entrada (defer) | 1 | 0 |
 | `js/core/core-state.js` | de entrada (defer) | 87 | 12 |
@@ -84,6 +85,12 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `_ensureMesadas`, `_getCuotaAnio`, `_mesNombreDeKey`, `Deudas`, `getDeudorSaldo`, `getMesadaData`, `getMiDeudaSaldo`, `getTCById`, `mesadaOrigenDeMovEncargo`, `spNombreDe`, `spPersonaPagadaVigente`, `tcCupoDisponible`, `tcCupoUsadoPct`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`
+
+### `js/core/cierre.js`
+
+Carga: sin <script> ni grupo lazy (¿lo importa otro archivo?)
+
+**Funciones:** `Cierre`
 
 ### `js/core/cobros.js`
 
@@ -1038,6 +1045,7 @@ Ninguno.
 | `CATS_FIJO_DEFAULT` | `js/core/core-state.js` |
 | `CATS_VAR_DEFAULT` | `js/core/core-state.js` |
 | `cerrarPartSheet` | `js/modules/encargos.js` |
+| `Cierre` | `js/core/cierre.js` |
 | `claseEfectivaMovimiento` | `js/core/core-state.js` |
 | `CLASES_MOV` | `js/core/core-state.js` |
 | `clickMesDot` | `js/modules/mesada.js` |

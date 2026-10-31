@@ -6,6 +6,29 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Lista de mejoras de octubre 2026
 
+### 🔧 Cierre de períodos: ajustes tras revisar un análisis externo (2026-10-30, SW v81)
+
+Se contrastó cada afirmación de un análisis externo con el código y con mediciones propias (`docs/cierre-de-periodos.md` §10). Sigue sin tocarse ningún dato.
+
+- **Error propio corregido:** `Cierre.corteMasReciente` usaba `Date.setMonth` y el 29–30 de marzo devolvía un corte con menos de 24 meses. Ahora es aritmética exacta; prueba sobre ~2.600 fechas (nunca < 24 meses, siempre el más reciente, nunca llega al año anterior al actual).
+- **Sonda `wrapped` solo del año objetivo** (año actual − 1, de `_wrappedVentana`): es el único año que la app puede mostrar. `Cierre.anios` se retira (sin usos).
+- **Diagnóstico de componentes** en `Cierre.analizar`: `componentes.maxRegistros`, las 3 mayores y `advertencias:['componente-grande']` (> 100 registros). Pruebas con ids de formato real, con texto compartido (no enlaza) y con un enlace falso (300 gastos con el mismo id).
+- **Disparadores separados:** el aviso de lentitud ahora dice que se arregla paginando, no cerrando períodos.
+- **Estrategia revisada (pendiente de aprobación):** de «archivo por años» a «cierre con resumen congelado», todo en una operación (libro por componente + poda + `resumenMeses`); ver §4 del documento.
+- Pruebas: 625 en total (6 nuevas); `cargarApp` de pruebas fija `hoy()` para que Wrapped y los cortes sean deterministas.
+
+### 🧭 Cierre de períodos, etapa 1: huella de invariantes, vista previa y medidor de tamaño (2026-10-29, SW v80)
+
+Decisión (ver `docs/cierre-de-periodos.md`): **no se poda nada todavía.** Con 5 movimientos al día el payload comprimido ronda 150 KB a los 2 años y 675 KB a los 9 (límite 1 MB), y la app nació limpia el 2026-10-18: no hay historia de 2 años hasta octubre de 2028. Además, el `resumenMensual` del diseño original no basta para Wrapped (gasto más grande, categoría líder por frecuencia, promedios, conteos) y `S.gastosVar`/`S.movimientos` se leen directamente en ~230 sitios. Se construye primero lo que cualquier estrategia posterior necesita, **sin tocar datos**:
+
+- **`js/core/huella.js` — huella de invariantes.** Registro de sondas puras `estado → objeto plano` que miden lo que NO puede cambiar si se reorganiza el almacenamiento: saldos y libro, ingresos/gastos/categorías de cada mes, deudas, patrimonio (núcleo) y tarjetas, encargos, alcancía y Wrapped por año (cada módulo registra la suya). `Huella.verificarTransformacion(estado, fn)` aplica `fn` a una copia y compara antes/después. Una sonda que falla o falta es un error, nunca un «sin diferencias».
+- **`conEstadoAislado(estado, fn)` (`core-state.js`).** Ejecuta `fn` con la copia como `S` y lo restaura siempre; mientras dura, `save()` y `_fbSaveToCloud()` no escriben nada. Evita reescribir las reglas contables solo para comparar.
+- **`js/core/cierre.js` — vista previa de solo lectura.** Describe cada fuente de historia (`registrarFuente`), enlaza registros **por valor** (un registro apunta a otro si contiene su id en cualquier campo: cubre ~25 campos de enlace sin listarlos) y calcula las unidades atómicas; una entidad (tarjeta, encargo, deuda, alcancía) solo se cierra con saldo 0 (de la sonda) e historia anterior al corte; las entidades sin sonda (Spotify, mesada, ingresos fijos, CDTs) no se cierran. `CLASIFICACION` obliga a clasificar toda clave de `S` (una prueba falla si aparece una sin clasificar).
+- **Medidor de tamaño** (`Cierre.tamano`, `Cierre.disparador`) y tarjeta «Tamaño de tus datos» en Configuración → Datos: comprimido con el mismo códec del guardado, porcentaje del límite, fecha estimada del aviso y el disparador acordado (comprimido > 500 KB).
+- **`tcDeudaCalculada(tc)`** (`tarjetas_credito.js`): la cuenta de la deuda, pura; `tcRecalcular` la guarda en `tc.deuda`.
+- `js/core/firebase-sync.js` expone `window._payloadLimites` (una sola cifra para aviso/límite; una prueba vigila que `cierre.js` no se desalinee).
+- Pruebas: `tests/huella.test.js` (18) y `tests/cierre.test.js` (28), con historia sintética de 2,7 años construida con las funciones reales (`tests/support/datos-sinteticos.js`). Incluyen una transformación de referencia sin pérdida (archivo por año + hidratar: pasa) y una poda ingenua (borrar lo anterior a 2026: la huella la detecta en períodos, Wrapped y libro).
+
 ### 🧹 Gastos: sin filtro de meses ni total fijo cuando no aportan (2026-10-29, SW v79)
 
 - **Filtro por mes (`#mesFilter`, pestaña Gastos):** solo aparece cuando hay gastos (o retiros manuales) en **dos o más meses**. Con un solo mes, «Todos» y ese mes muestran lo mismo y el filtro era un botón que no hacía nada. Si el mes filtrado deja de existir (por ejemplo se borraron sus gastos), el filtro vuelve a «todos» en vez de dejar la lista filtrada sin forma de cambiarla.

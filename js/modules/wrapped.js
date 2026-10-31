@@ -3883,6 +3883,34 @@ window.renderWrapped = function(){
 
 /* Exportadas solo para poder testear los cálculos y el armado de slides
    de forma aislada — no se usan desde ningún otro archivo. */
+// Sonda de la huella (js/core/huella.js): lo que Wrapped calcula del ÚNICO año que la app puede mostrar — el recién cerrado, año actual − 1
+// (_wrappedVentana en wrapped-gate.js, que es la fuente; sin él se calcula igual desde hoy()). Cubre totales, mejor/peor mes, gasto más
+// grande y categoría líder (dentro de _wrappedCalcularPeriodo) y cada dominio de terceros (encargos, préstamos, mesada, Spotify, comprometida,
+// intereses y comisiones de tarjeta). Los años anteriores no se ven en ninguna pantalla, así que no se exige conservarlos: la política de
+// corte (Cierre.corteMasReciente, ≥ 24 meses, siempre ≤ dic de año − 2) deja intacto este año por construcción y la sonda lo comprueba.
+// Corre aislada: las funciones reciben la copia como `S`. docs/cierre-de-periodos.md.
+if(typeof Huella!=='undefined'&&typeof Huella.registrar==='function') Huella.registrar('wrapped',function(st){
+  const out={};
+  const anioObjetivo=typeof window._wrappedAnioObjetivo==='function'?window._wrappedAnioObjetivo():String(parseInt(hoy().slice(0,4),10)-1);
+  [anioObjetivo].forEach(anioK=>{
+    out[anioK]={
+      periodo:_wrappedCalcularPeriodo(st,'anio',null,anioK),
+      mejorPeor:_wrappedMejorPeorMesAnio(st,anioK),
+      encargos:_wrappedCalcularEncargos(st,'anio',null,anioK),
+      prestado:_wrappedCalcularPrestado(st,'anio',null,anioK),
+      misDeudas:_wrappedCalcularMisDeudas(st,'anio',null,anioK),
+      mesada:_wrappedCalcularMesada(st,'anio',null,anioK),
+      spotify:_wrappedCalcularSpotify(st,'anio',null,anioK),
+      comprometida:_wrappedCalcularComprometida(st,'anio',null,anioK),
+      interesesTC:_wrappedCalcularInteresesTC(st,'anio',null,anioK),
+      comisionesTC:_wrappedCalcularComisionesTC(st,'anio',null,anioK),
+      protagonistas:_wrappedProtagonistas(st,'anio',null,anioK),
+      recuperacion:_wrappedRecuperacionMasRapida(st,anioK)
+    };
+  });
+  return out;
+});
+
 window._wrappedInternals = {
   _wrappedBankPick,
   _wrappedIniciarBanco,

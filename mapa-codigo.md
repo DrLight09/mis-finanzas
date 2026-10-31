@@ -43,11 +43,11 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/split.js` | de entrada (defer) | 10 | 0 |
 | `js/core/wait-for-module.js` | sin <script> ni grupo lazy (¿lo importa otro archivo?) | 0 | 0 |
 | `js/core/wait-for.js` | de entrada (defer) | 1 | 0 |
-| `js/core/wrapped-gate.js` | de entrada (defer) | 8 | 1 |
+| `js/core/wrapped-gate.js` | de entrada (defer) | 9 | 2 |
 | `js/modules/actividad_reciente.js` | lazy — grupo `historial` | 0 | 0 |
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 33 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 13 | 0 |
-| `js/modules/configuracion.js` | lazy — grupo `config` | 11 | 0 |
+| `js/modules/configuracion.js` | lazy — grupo `config` | 12 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 64 | 4 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 117 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 21 | 0 |
@@ -59,7 +59,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 135 | 1 |
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 53 | 2 |
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 32 | 2 |
-| `js/modules/wrapped.js` | lazy — grupo `wrapped` | 108 | 1 |
+| `js/modules/wrapped.js` | lazy — grupo `wrapped` | 113 | 3 |
 
 ## 2. Qué declara cada archivo
 
@@ -283,11 +283,11 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_wrappedGateAplicarFila`, `_wrappedGateForzado`, `_wrappedGateHoy`, `_wrappedGateLocalKey`, `_wrappedGateMarcarVisto`, `_wrappedGateMostrarBanner`, `_wrappedGateYaVisto`, `_wrappedVentana`
+**Funciones:** `_wrappedDatosAnio`, `_wrappedGateAplicarFila`, `_wrappedGateForzado`, `_wrappedGateHoy`, `_wrappedGateLocalKey`, `_wrappedGateMarcarVisto`, `_wrappedGateMostrarBanner`, `_wrappedGateYaVisto`, `_wrappedVentana`
 
-**Globales:** `WRAPPED_VENTANA_DIAS`
+**Globales:** `WRAPPED_MIN_DIAS`, `WRAPPED_VENTANA_DIAS`
 
-**Asigna a `window`:** `_wrappedAnioObjetivo`, `_wrappedDisponible`, `_wrappedVentanaInfo`
+**Asigna a `window`:** `_wrappedAbrir`, `_wrappedAnioObjetivo`, `_wrappedDisponible`, `_wrappedUmbrales`, `_wrappedVentanaInfo`
 
 ### `js/modules/actividad_reciente.js`
 
@@ -313,7 +313,7 @@ Carga: lazy — grupo `analisis`
 
 Carga: lazy — grupo `config`
 
-**Funciones:** `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `eliminarCat`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderTamanoDatos`, `toggleModulo`
+**Funciones:** `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `eliminarCat`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderMisWrapped`, `renderTamanoDatos`, `toggleModulo`
 
 ### `js/modules/cuentas.js`
 
@@ -401,9 +401,9 @@ Carga: lazy — grupo `tarjetas`
 
 Carga: lazy — grupo `wrapped`
 
-**Funciones:** `_wrappedAgruparPorCategoria`, `_wrappedAlcanciaDepositosPeriodo`, `_wrappedAnimarBarras`, `_wrappedAnimarLinea`, `_wrappedAnimarNumeros`, `_wrappedAnioYMesActual`, `_wrappedBankPick`, `_wrappedBuildSlides`, `_wrappedCalcularComisionesTC`, `_wrappedCalcularComprometida`, `_wrappedCalcularEncargos`, `_wrappedCalcularInteresesTC`, `_wrappedCalcularMesada`, `_wrappedCalcularMisDeudas`, `_wrappedCalcularPeriodo`, `_wrappedCalcularPrestado`, `_wrappedCalcularSpotify`, `_wrappedCambioDeHabitos`, `_wrappedCambioFuerte`, `_wrappedCategoriaMasConcentrada`, `_wrappedCerrar`, `_wrappedColorClase`, `_wrappedComparaciones`, `_wrappedCopyAlcancia`, `_wrappedCopyCategoria`, `_wrappedCopyCierre`, `_wrappedCopyCierrePoema`, `_wrappedCopyComisionesTC`, `_wrappedCopyComprometida`, `_wrappedCopyDesgloseMes`, `_wrappedCopyEncargos`, `_wrappedCopyFases`, `_wrappedCopyGasto`, `_wrappedCopyInteresesTC`, `_wrappedCopyIntro`, `_wrappedCopyMejorMes`, `_wrappedCopyMesada`, `_wrappedCopyMeta`, `_wrappedCopyMisDeudas`, `_wrappedCopyPatrimonio`, `_wrappedCopyPeorMes`, `_wrappedCopyPrestado`, `_wrappedCopyPuente`, `_wrappedCopyRacha`, `_wrappedCopySpotify`, `_wrappedCorteMitadAnio`, `_wrappedCuotaAnioFallback`, `_wrappedDebugOn`, `_wrappedDebugPanelHtml`, `_wrappedDescubrimientos`, `_wrappedEnRango`, `_wrappedEntradasIngreso`, `_wrappedFasesAnio`, `_wrappedFechaLuceValida`, `_wrappedFmtFechaLarga`, `_wrappedFmtSigned`, `_wrappedFraseDelAnio`, `_wrappedFrasesHtml`, `_wrappedGastoMasRandom`, `_wrappedGoTo`, `_wrappedGraficoAnimadoSvg`, `_wrappedGraficoMensualSvg`, `_wrappedHashStr`, `_wrappedHistoriasMensuales`, `_wrappedHoy`, `_wrappedIngresosFijosMes`, `_wrappedIniciarBanco`, `_wrappedInicioRachaReal`, `_wrappedInyectarEstilos`, `_wrappedItemsRealesPeriodo`, `_wrappedLanzarConfeti`, `_wrappedLimpiarNav`, `_wrappedLineaMes`, `_wrappedListaCajitas`, `_wrappedLogDebug`, `_wrappedMejorPeorMesAnio`, `_wrappedMesadaMes`, `_wrappedMesDetalleHtml`, `_wrappedMesKaAbrev`, `_wrappedMesKaNombre`, `_wrappedMetaCajita`, `_wrappedNombrePersona`, `_wrappedPatrimonioAnio`, `_wrappedPeriodoEnNumeros`, `_wrappedPersonalidad`, `_wrappedPersonasInvolucradas`, `_wrappedProtagonistas`, `_wrappedRangoFechasAnio`, `_wrappedRankingCategorias`, `_wrappedRecordsAnio`, `_wrappedRecordsHtml`, `_wrappedRecuperacionMasRapida`, `_wrappedSaldosOcultos`, `_wrappedScoreInsight`, `_wrappedSeededRandom`, `_wrappedSeleccionarMes`, `_wrappedSerieMensualAnio`, `_wrappedSerieMensualIngresoGasto`, `_wrappedSetupGraficoMensual`, `_wrappedSetupNav`, `_wrappedSiTuAnioFuera`, `_wrappedSlideBignum`, `_wrappedSpotifyMes`, `_wrappedSuscripciones`, `_wrappedTopCategoriaDe`, `_wrappedValidarDatos`, `_wrappedVisible`, `escHtml2`
+**Funciones:** `_wrappedAgruparPorCategoria`, `_wrappedAlcanciaDepositosPeriodo`, `_wrappedAnimarBarras`, `_wrappedAnimarLinea`, `_wrappedAnimarNumeros`, `_wrappedAnioYMesActual`, `_wrappedBankPick`, `_wrappedBuildSlides`, `_wrappedCalcularComisionesTC`, `_wrappedCalcularComprometida`, `_wrappedCalcularEncargos`, `_wrappedCalcularInteresesTC`, `_wrappedCalcularMesada`, `_wrappedCalcularMisDeudas`, `_wrappedCalcularPeriodo`, `_wrappedCalcularPrestado`, `_wrappedCalcularSpotify`, `_wrappedCambioDeHabitos`, `_wrappedCambioFuerte`, `_wrappedCategoriaMasConcentrada`, `_wrappedCerrar`, `_wrappedColorClase`, `_wrappedComparaciones`, `_wrappedConMascara`, `_wrappedCopyAlcancia`, `_wrappedCopyCategoria`, `_wrappedCopyCierre`, `_wrappedCopyCierrePoema`, `_wrappedCopyComisionesTC`, `_wrappedCopyComprometida`, `_wrappedCopyDesgloseMes`, `_wrappedCopyEncargos`, `_wrappedCopyFases`, `_wrappedCopyGasto`, `_wrappedCopyInteresesTC`, `_wrappedCopyIntro`, `_wrappedCopyMejorMes`, `_wrappedCopyMesada`, `_wrappedCopyMeta`, `_wrappedCopyMisDeudas`, `_wrappedCopyPatrimonio`, `_wrappedCopyPeorMes`, `_wrappedCopyPrestado`, `_wrappedCopyPuente`, `_wrappedCopyRacha`, `_wrappedCopySpotify`, `_wrappedCorteMitadAnio`, `_wrappedCuotaAnioFallback`, `_wrappedDebugOn`, `_wrappedDebugPanelHtml`, `_wrappedDescubrimientos`, `_wrappedEnRango`, `_wrappedEntradasIngreso`, `_wrappedFasesAnio`, `_wrappedFechaLuceValida`, `_wrappedFmtFechaLarga`, `_wrappedFmtSigned`, `_wrappedFraseDelAnio`, `_wrappedFrasesHtml`, `_wrappedGastoMasRandom`, `_wrappedGoTo`, `_wrappedGraficoAnimadoSvg`, `_wrappedGraficoMensualSvg`, `_wrappedHashStr`, `_wrappedHistoriasMensuales`, `_wrappedHoy`, `_wrappedIngresosFijosMes`, `_wrappedIniciarBanco`, `_wrappedInicioRachaReal`, `_wrappedInyectarEstilos`, `_wrappedItemsRealesPeriodo`, `_wrappedLanzarConfeti`, `_wrappedLimpiarNav`, `_wrappedLineaMes`, `_wrappedListaCajitas`, `_wrappedLogDebug`, `_wrappedMejorPeorMesAnio`, `_wrappedMesadaMes`, `_wrappedMesDetalleHtml`, `_wrappedMesKaAbrev`, `_wrappedMesKaNombre`, `_wrappedMetaCajita`, `_wrappedNombrePersona`, `_wrappedPatrimonioAnio`, `_wrappedPeriodoEnNumeros`, `_wrappedPersonalidad`, `_wrappedPersonasInvolucradas`, `_wrappedProtagonistas`, `_wrappedRangoFechasAnio`, `_wrappedRankingCategorias`, `_wrappedRecordsAnio`, `_wrappedRecordsHtml`, `_wrappedRecuperacionMasRapida`, `_wrappedSaldosOcultos`, `_wrappedScoreInsight`, `_wrappedSeededRandom`, `_wrappedSeleccionarMes`, `_wrappedSerieMensualAnio`, `_wrappedSerieMensualIngresoGasto`, `_wrappedSetupGraficoMensual`, `_wrappedSetupNav`, `_wrappedSinMascara`, `_wrappedSiTuAnioFuera`, `_wrappedSlideBignum`, `_wrappedSlidesDeSnapshot`, `_wrappedSlidesInsuficiente`, `_wrappedSnapshotDe`, `_wrappedSpotifyMes`, `_wrappedSuscripciones`, `_wrappedTopCategoriaDe`, `_wrappedValidarDatos`, `_wrappedVisible`, `escHtml2`
 
-**Globales:** `WRAPPED_MAX_INSIGHTS_POOL`
+**Globales:** `WRAPPED_BANCO_INSUFICIENTE`, `WRAPPED_MAX_INSIGHTS_POOL`, `WRAPPED_SNAPSHOT_VERSION`
 
 **Asigna a `window`:** `_wrappedInternals`, `renderWrapped`
 
@@ -819,6 +819,7 @@ Ninguno.
 | `_validarMovEncMia` | `js/modules/encargos.js` |
 | `_verificarIntegridadSaldoDeudor` | `js/modules/prestado.js` |
 | `_volverASelPersona` | `js/modules/personas.js` |
+| `_wrappedAbrir` | `js/core/wrapped-gate.js` (window._wrappedAbrir = …) |
 | `_wrappedAgruparPorCategoria` | `js/modules/wrapped.js` |
 | `_wrappedAlcanciaDepositosPeriodo` | `js/modules/wrapped.js` |
 | `_wrappedAnimarBarras` | `js/modules/wrapped.js` |
@@ -843,6 +844,7 @@ Ninguno.
 | `_wrappedCerrar` | `js/modules/wrapped.js` |
 | `_wrappedColorClase` | `js/modules/wrapped.js` |
 | `_wrappedComparaciones` | `js/modules/wrapped.js` |
+| `_wrappedConMascara` | `js/modules/wrapped.js` |
 | `_wrappedCopyAlcancia` | `js/modules/wrapped.js` |
 | `_wrappedCopyCategoria` | `js/modules/wrapped.js` |
 | `_wrappedCopyCierre` | `js/modules/wrapped.js` |
@@ -867,6 +869,7 @@ Ninguno.
 | `_wrappedCopySpotify` | `js/modules/wrapped.js` |
 | `_wrappedCorteMitadAnio` | `js/modules/wrapped.js` |
 | `_wrappedCuotaAnioFallback` | `js/modules/wrapped.js` |
+| `_wrappedDatosAnio` | `js/core/wrapped-gate.js` |
 | `_wrappedDebugOn` | `js/modules/wrapped.js` |
 | `_wrappedDebugPanelHtml` | `js/modules/wrapped.js` |
 | `_wrappedDescubrimientos` | `js/modules/wrapped.js` |
@@ -929,11 +932,16 @@ Ninguno.
 | `_wrappedSerieMensualIngresoGasto` | `js/modules/wrapped.js` |
 | `_wrappedSetupGraficoMensual` | `js/modules/wrapped.js` |
 | `_wrappedSetupNav` | `js/modules/wrapped.js` |
+| `_wrappedSinMascara` | `js/modules/wrapped.js` |
 | `_wrappedSiTuAnioFuera` | `js/modules/wrapped.js` |
 | `_wrappedSlideBignum` | `js/modules/wrapped.js` |
+| `_wrappedSlidesDeSnapshot` | `js/modules/wrapped.js` |
+| `_wrappedSlidesInsuficiente` | `js/modules/wrapped.js` |
+| `_wrappedSnapshotDe` | `js/modules/wrapped.js` |
 | `_wrappedSpotifyMes` | `js/modules/wrapped.js` |
 | `_wrappedSuscripciones` | `js/modules/wrapped.js` |
 | `_wrappedTopCategoriaDe` | `js/modules/wrapped.js` |
+| `_wrappedUmbrales` | `js/core/wrapped-gate.js` (window._wrappedUmbrales = …) |
 | `_wrappedValidarDatos` | `js/modules/wrapped.js` |
 | `_wrappedVentana` | `js/core/wrapped-gate.js` |
 | `_wrappedVentanaInfo` | `js/core/wrapped-gate.js` (window._wrappedVentanaInfo = …) |
@@ -1350,6 +1358,7 @@ Ninguno.
 | `renderMesFiltros` | `js/modules/gastos.js` |
 | `renderMetaProgress` | `js/modules/nu.js` |
 | `renderMisDeudasList` | `js/modules/prestado.js` |
+| `renderMisWrapped` | `js/modules/configuracion.js` |
 | `renderMovsCuenta` | `js/modules/cuentas.js` |
 | `renderMovsFiltros` | `js/modules/cuentas.js` |
 | `renderPresupuestos` | `js/modules/analisis.js` |
@@ -1447,5 +1456,8 @@ Ninguno.
 | `volverMisDeudas` | `js/modules/prestado.js` |
 | `volverSelector` | `js/modules/cuentas.js` |
 | `waitFor` | `js/core/wait-for.js` |
+| `WRAPPED_BANCO_INSUFICIENTE` | `js/modules/wrapped.js` |
 | `WRAPPED_MAX_INSIGHTS_POOL` | `js/modules/wrapped.js` |
+| `WRAPPED_MIN_DIAS` | `js/core/wrapped-gate.js` |
+| `WRAPPED_SNAPSHOT_VERSION` | `js/modules/wrapped.js` |
 | `WRAPPED_VENTANA_DIAS` | `js/core/wrapped-gate.js` |

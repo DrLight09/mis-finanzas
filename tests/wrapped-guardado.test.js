@@ -145,18 +145,50 @@ describe('wrapped — instantáneas guardadas', () => {
   let c, I, slides;
   before(() => { c = nueva(); generar(c); I = c.window._wrappedInternals; slides = I._wrappedBuildSlides(c.S, fmt, '2024'); });
 
-  test('la instantánea guarda id, mood, confetti y html; lleva versión y fecha de generación; es JSON puro', () => {
+  test('la instantánea guarda id, mood, confetti y html; lleva versión y fecha de generación (sin «estado»: lo único que se guarda es un Wrapped real); es JSON puro', () => {
     const snap = I._wrappedSnapshotDe(slides);
     assert.equal(snap.version, 1);
     assert.equal(snap.version, I.WRAPPED_SNAPSHOT_VERSION);
     assert.equal(snap.generadoEn, '2026-10-30');
-    assert.equal(snap.estado, 'completo');
+    assert.equal(snap.estado, undefined);
     assert.equal(snap.slides.length, slides.length);
     assert.ok(snap.slides.every(s => typeof s.id === 'string' && typeof s.html === 'string'));
     assert.ok(snap.slides.some(s => s.confetti === true), 'la diapositiva final trae confeti');
     assert.deepEqual(plano(snap), JSON.parse(JSON.stringify(snap)), 'solo JSON: sobrevive a un backup');
-    const msg = I._wrappedSnapshotDe(I._wrappedSlidesInsuficiente({ tier: 'nada', registros: 0, dias: 0 }, '2026'));
-    assert.equal(msg.estado, 'insuficiente');
+  });
+
+  test('GUARDAR ES EXPLÍCITO: la última diapositiva del Wrapped recién calculado trae el botón «Guardar este Wrapped»; el guardado ya viene en estado «Guardado» y sin la acción', () => {
+    const cierre = slides.find(s => s.id === 'cierre');
+    assert.equal((cierre.html.match(/data-wrapped-action="guardar"/g) || []).length, 1, 'un solo botón de guardar');
+    assert.match(cierre.html, /Guardar este Wrapped/);
+    assert.equal(slides.filter(s => s.id !== 'cierre').some(s => /data-wrapped-action="guardar"/.test(s.html)), false, 'solo en la última');
+    const snap = I._wrappedSnapshotDe(slides);
+    const guardada = snap.slides.find(s => s.id === 'cierre');
+    assert.doesNotMatch(guardada.html, /data-wrapped-action="guardar"/);
+    assert.match(guardada.html, /<button type="button" class="wrapped-cta ghost" disabled>Guardado<\/button>/);
+    assert.equal(I._wrappedMarcarGuardado(I._wrappedMarcarGuardado(slides)).find(s => s.id === 'cierre').html, I._wrappedMarcarGuardado(slides).find(s => s.id === 'cierre').html, 'marcar dos veces no cambia nada');
+    assert.match(cierre.html, /data-wrapped-action="replay"/, 'los demás botones siguen');
+  });
+
+  test('el mensaje «no alcanzó el tiempo» NO se puede guardar (no hay nada que recordar) y no trae botón de guardar', () => {
+    const mensaje = I._wrappedSlidesInsuficiente({ tier: 'poco', registros: 12, dias: 5, primera: '2026-10-18' }, '2026');
+    assert.equal(mensaje.some(s => /data-wrapped-action="guardar"/.test(s.html)), false);
+    const v = nueva();
+    let msg = null; try { v.window._wrappedInternals._wrappedGuardar(v.S, '2026', mensaje); } catch (e) { msg = String(e && e.message); }
+    assert.match(msg || '', /no alcanzó el tiempo/);
+    assert.equal(v.S.wrappedAnios, undefined, 'y no se tocó S');
+  });
+
+  test('_wrappedGuardar escribe S.wrappedAnios[año] con la instantánea y reemplaza el guardado anterior de ese año', () => {
+    const v = nueva(); generar(v, { dias: 900 });
+    const I2 = v.window._wrappedInternals;
+    const frescas = I2._wrappedBuildSlides(v.S, fmt, '2025');
+    I2._wrappedGuardar(v.S, '2025', frescas);
+    assert.equal(v.S.wrappedAnios['2025'].slides.length, frescas.length);
+    v.S.wrappedAnios['2025'].generadoEn = '2000-01-01';
+    I2._wrappedGuardar(v.S, '2025', frescas);
+    assert.equal(v.S.wrappedAnios['2025'].generadoEn, '2026-10-30', 'guardar de nuevo reemplaza (es lo que hace la actualización dentro de enero)');
+    assert.deepEqual(Object.keys(v.S.wrappedAnios), ['2025']);
   });
 
   test('pesa poco: ≈ 4–5 KB comprimidos por año (diez años no llegan a 60 KB)', () => {

@@ -159,24 +159,33 @@ describe('cierre — vista previa (analizar)', () => {
     assert.equal(ctx.Cierre.corteMasReciente('2028-10-18'), '2026-09');
   });
 
-  test('REGLA DEL WRAPPED: no se cierra ningún año sin su Wrapped guardado — el informe lista los años que se tocarían y cuáles faltan', () => {
-    assert.deepEqual(plano(informe.wrapped.requeridos), ['2024', '2025']);
-    assert.deepEqual(plano(informe.wrapped.faltan), ['2024', '2025']);
+  test('AVISO DEL WRAPPED: un año sin su Wrapped guardado se AVISA (no bloquea) — el informe lista los años con Wrapped y cuáles no están guardados', () => {
+    assert.deepEqual(plano(informe.wrapped.conWrapped), ['2024', '2025']);
+    assert.deepEqual(plano(informe.wrapped.sinGuardar), ['2024', '2025']);
     assert.ok(informe.advertencias.includes('wrapped-sin-guardar'));
+    assert.ok(informe.archivables.registros > 0, 'y el análisis sigue dando archivables: es un aviso, no un bloqueo');
     const v = cargarApp(); generar(v, { dias: 900 });
-    v.S.wrappedAnios = { 2024: { version: 1, estado: 'completo', slides: [] }, 2025: { version: 1, estado: 'insuficiente', slides: [] } };
+    v.S.wrappedAnios = { 2024: { version: 1, slides: [] }, 2025: { version: 1, slides: [] } };
     const r = v.Cierre.analizar(CORTE, v.S, { mesActual: MES_ACTUAL });
-    assert.deepEqual(plano(r.wrapped.faltan), [], 'con ambos guardados (también el «no alcanzó el tiempo») ya no falta ninguno');
+    assert.deepEqual(plano(r.wrapped.sinGuardar), [], 'con ambos guardados ya no hay nada que avisar');
     assert.ok(!r.advertencias.includes('wrapped-sin-guardar'));
     const parcial = cargarApp(); generar(parcial, { dias: 900 });
-    parcial.S.wrappedAnios = { 2024: { version: 1, estado: 'completo', slides: [] } };
-    assert.deepEqual(plano(parcial.Cierre.analizar(CORTE, parcial.S, { mesActual: MES_ACTUAL }).wrapped.faltan), ['2025']);
+    parcial.S.wrappedAnios = { 2024: { version: 1, slides: [] } };
+    assert.deepEqual(plano(parcial.Cierre.analizar(CORTE, parcial.S, { mesActual: MES_ACTUAL }).wrapped.sinGuardar), ['2025']);
   });
 
-  test('el año en curso no exige Wrapped (todavía no se puede generar) y un corte anterior solo exige los años que toca', () => {
+  test('un año SIN datos suficientes no tendría Wrapped (solo el mensaje, que no se guarda): no se avisa de él', () => {
+    const v = cargarApp(); generar(v, { dias: 900 });
+    v.window._wrappedDatosAnio = a => ({ tier: a === '2024' ? 'suficiente' : 'poco' }); // el criterio real vive en wrapped-gate.js (probado en wrapped-guardado.test.js)
+    const r = v.Cierre.analizar(CORTE, v.S, { mesActual: MES_ACTUAL });
+    assert.deepEqual(plano(r.wrapped.conWrapped), ['2024']);
+    assert.deepEqual(plano(r.wrapped.sinGuardar), ['2024']);
+  });
+
+  test('el año en curso no cuenta (todavía no se puede generar) y un corte anterior solo considera los años que toca', () => {
     const r = analizar('2024-09', ctx.S, { huella });
-    assert.deepEqual(plano(r.wrapped.requeridos), ['2024']);
-    assert.ok(!r.wrapped.requeridos.includes('2026'));
+    assert.deepEqual(plano(r.wrapped.conWrapped), ['2024']);
+    assert.ok(!r.wrapped.conWrapped.includes('2026'));
   });
 
   test('corteMasReciente es EXACTO en ~2.600 fechas: nunca menos de 24 meses, siempre el más reciente posible y nunca llega al año anterior al actual', () => {

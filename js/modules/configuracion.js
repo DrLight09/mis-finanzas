@@ -58,8 +58,8 @@ function renderCatsConfig(){
   renderMisWrapped();
 }
 
-// «Mis Wrapped»: los años ya guardados (S.wrappedAnios, lo escribe renderWrapped en wrapped.js la primera vez que se abre un año
-// terminado). Solo lee datos: se ve aunque el módulo de Wrapped no haya cargado y se puede abrir un año en cualquier momento del año.
+// «Mis Wrapped»: los años que el usuario guardó con el botón «Guardar este Wrapped» (S.wrappedAnios, ver wrapped.js). Solo lee datos: se ve
+// aunque el módulo de Wrapped no haya cargado y se puede abrir un año en cualquier momento del año. Cada año se puede eliminar.
 function renderMisWrapped(){
   const el=document.getElementById('cfg-mis-wrapped');
   if(!el)return;
@@ -68,12 +68,32 @@ function renderMisWrapped(){
   if(!anios.length){el.innerHTML='';return;}
   el.innerHTML=html`<div class="sec-title ix-mt4">Mis Wrapped</div>
     <div class="card cfg-wrapped-lista">
-      ${anios.map(a=>html`<button type="button" class="cfg-wrapped-fila" ${raw(Events.attr('config:abrirWrapped',a))}>
-        <span class="cfg-wrapped-anio">${a}</span>
-        <span class="cfg-wrapped-estado">${guardados[a]&&guardados[a].estado==='insuficiente'?'No alcanzó el tiempo':'Completo'}</span>
-        <svg aria-hidden="true" class="cfg-wrapped-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>`)}
+      ${anios.map(a=>html`<div class="cfg-wrapped-fila">
+        <button type="button" class="cfg-wrapped-abrir" ${raw(Events.attr('config:abrirWrapped',a))}>
+          <span class="cfg-wrapped-anio">${a}</span>
+          <span class="cfg-wrapped-estado">${guardados[a]&&guardados[a].generadoEn?'Guardado el '+new Date(guardados[a].generadoEn+'T12:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'}):'Guardado'}</span>
+          <svg aria-hidden="true" class="cfg-wrapped-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        ${botonEliminarFila('config:eliminarWrapped',[a],'Eliminar el Wrapped de '+a)}
+      </div>`)}
     </div>`;
+}
+
+// Eliminar un Wrapped guardado: confirmación y PIN (como «Borrar todos los datos»). Si el año sigue siendo el que se puede generar —enero—
+// se puede volver a generar y guardar; fuera de la ventana, no: por eso el aviso es distinto.
+async function eliminarWrapped(anio){
+  const info=typeof window._wrappedVentanaInfo==='function'?window._wrappedVentanaInfo():null;
+  const regenerable=!!(info&&info.disponible&&String(info.anioObjetivo)===String(anio));
+  const aviso=regenerable
+    ?'¿Eliminar el Wrapped de '+anio+'? Esta acción no se puede deshacer, pero mientras sea enero podrás generarlo de nuevo.'
+    :'¿Eliminar el Wrapped de '+anio+'? Esta acción no se puede deshacer y no podrás generarlo otra vez.';
+  const ok=await dialogo('Eliminar Wrapped '+anio,aviso,'Eliminar',true);
+  if(!ok)return;
+  if(!await pedirPinAntesDe('Para eliminar tu Wrapped de '+anio))return;
+  if(S.wrappedAnios)delete S.wrappedAnios[anio];
+  save();
+  renderMisWrapped();
+  toast('Wrapped de '+anio+' eliminado','ok');
 }
 
 // «Tamaño de tus datos» (Configuración → Datos). SOLO LECTURA: mide con Cierre.tamano (js/core/cierre.js, mismo códec del guardado) y
@@ -364,6 +384,7 @@ Events.registerAll('config', {
   irA: (screen) => showScreen(screen),
   // «Mis Wrapped»: abre un año guardado (wrapped-gate.js lo deja listo para renderWrapped)
   abrirWrapped: (anio) => window._wrappedAbrir(anio),
+  eliminarWrapped: (anio) => eliminarWrapped(anio),
 });
 
 /* ---- WIRING de controles que no son clicks simples (change/keydown/inputs de archivo) ---- */

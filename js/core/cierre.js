@@ -122,8 +122,8 @@ const Cierre = (() => {
     tarjetasCredito: 'entidad-con-historia', deudores: 'entidad-con-historia', misDeudas: 'entidad-con-historia', encargos: 'entidad-con-historia',
     alcancia: 'entidad-con-historia', spotify: 'entidad-con-historia', mesadas: 'entidad-con-historia', ingresosFijos: 'entidad-con-historia', cajitas: 'entidad-con-historia',
     alcanciaSaldoOfuscado: 'derivada',
-    // Resultado ya calculado que NO se puede recalcular tras podar el detalle (Wrapped de cada año, HTML congelado): un cierre no lo toca
-    // y exige que exista para cada año que poda (ver `wrapped` en analizar()).
+    // Resultado ya calculado que NO se puede recalcular tras podar el detalle (Wrapped que el usuario guardó, HTML congelado): un cierre no lo
+    // toca; si falta el de un año con datos suficientes, analizar() lo avisa (no lo bloquea).
     wrappedAnios: 'congelada',
     cuentas: 'estado-actual', personas: 'estado-actual', gastosFijos: 'estado-actual', plataComprometida: 'estado-actual', nuRate: 'estado-actual',
     catsVar: 'configuracion', catsFijo: 'configuracion', presupuestos: 'configuracion', modulos: 'configuracion', config: 'configuracion', mesadaAnio: 'configuracion',
@@ -201,15 +201,17 @@ const Cierre = (() => {
     const mayores = Array.from(tam.values()).sort((a, b) => b.registros - a.registros).slice(0, 3);
     const advertencias = [];
     if (mayores.length && mayores[0].registros > COMPONENTE_GRANDE) advertencias.push('componente-grande');
-    // Wrapped: el detalle es lo único de lo que se podría generar el Wrapped de un año, así que NO se cierra ningún año sin el suyo guardado
-    // (S.wrappedAnios[AAAA], también si «no alcanzó el tiempo»: basta con que conste). Aquí solo se informa; quien ejecute el cierre debe
-    // generar los que falten ANTES de podar (renderWrapped los guarda al abrirlos) o negarse.
+    // Wrapped: el detalle es lo único de lo que se podría generar el Wrapped de un año. El Wrapped es una decisión del usuario (botón «Guardar»),
+    // así que un año sin el suyo guardado NO bloquea el cierre: solo se AVISA («el Wrapped de este año no está guardado»). Un año sin datos
+    // suficientes tampoco avisa: no habría tenido Wrapped (solo el mensaje «no alcanzó el tiempo», que no se guarda).
     const anioActual = (op.mesActual || _mesActual()).slice(0, 4);
     const tocados = new Set();
     regs.forEach(r => { if (_fechaOk(r.fecha) && r.fecha.slice(0, 10) <= fechaCorte && r.fecha.slice(0, 4) < anioActual) tocados.add(r.fecha.slice(0, 4)); });
+    const hayWrapped = a => (typeof window !== 'undefined' && typeof window._wrappedDatosAnio === 'function' ? window._wrappedDatosAnio(a, st).tier === 'suficiente' : true);
+    const conWrapped = Array.from(tocados).sort().filter(hayWrapped);
     const guardadosW = _obj(st.wrappedAnios);
-    const wrappedFaltan = Array.from(tocados).sort().filter(a => !guardadosW[a]);
-    if (wrappedFaltan.length) advertencias.push('wrapped-sin-guardar');
+    const wrappedSinGuardar = conWrapped.filter(a => !guardadosW[a]);
+    if (wrappedSinGuardar.length) advertencias.push('wrapped-sin-guardar');
     const vacio = () => ({ registros: 0, bytes: 0 });
     const suma = (o, r) => { o.registros++; o.bytes += r.bytes; };
     const total = vacio(), candidatos = vacio(), archivables = vacio(), porFuente = {}, motivos = {}, detalle = [];
@@ -228,7 +230,7 @@ const Cierre = (() => {
     });
     return {
       version: VERSION, corte, fechaCorte, completo, huella: Huella.digest(huella), erroresHuella: huella.errores || {},
-      advertencias, wrapped: { requeridos: Array.from(tocados).sort(), faltan: wrappedFaltan }, componentes: { total: tam.size, maxRegistros: mayores.length ? mayores[0].registros : 0, mayores },
+      advertencias, wrapped: { conWrapped, sinGuardar: wrappedSinGuardar }, componentes: { total: tam.size, maxRegistros: mayores.length ? mayores[0].registros : 0, mayores },
       total, candidatos, archivables: Object.assign(archivables, { unidades: compsArchivables.size }),
       bloqueados: { registros: candidatos.registros - archivables.registros, porMotivo: motivos, detalle },
       porFuente, entidades: Array.from(ents.values()).map(e => ({ id: e.id, fuente: e.fuente, registros: e.n, saldo: e.valor == null ? null : e.valor, estado: e.cerrada ? 'cerrada' : 'abierta', motivo: e.motivo })),

@@ -1,7 +1,8 @@
 // Prueba de humo del Wrapped guardado y del mensaje «no alcanzó el tiempo» con la página REAL en jsdom.
-// Recorre: abrir el año recién cerrado sin datos → se guarda; reabrirlo con datos nuevos → se muestra lo guardado (no se recalcula);
-// fuera de enero: no se genera, pero sí se abre uno guardado; «Ocultar saldos» se aplica al mostrar; lista «Mis Wrapped» en Configuración
-// y su botón. La lógica pura está en tests/wrapped-guardado.test.js; esto comprueba que todo está cableado en la página.
+// Recorre: abrir NO guarda; el botón «Guardar este Wrapped» guarda; dentro de enero un guardado se actualiza al abrirlo; fuera de enero
+// queda fijo y no se genera uno nuevo; el mensaje «no alcanzó el tiempo» no se guarda; «Ocultar saldos» se aplica al mostrar; y «Mis Wrapped»
+// lista, abre y elimina (con confirmación y PIN). La lógica pura está en tests/wrapped-guardado.test.js; esto comprueba que todo está
+// cableado en la página.
 // Uso: node scripts/smoke-wrapped.js [raiz-del-repo]   (npm run smoke:wrapped; necesita `npm install`: jsdom está en devDependencies)
 // Vive en scripts/ y NO en tests/ por la misma razón que smoke-browser.js: necesita jsdom y levanta la página completa.
 const { JSDOM, ResourceLoader, VirtualConsole } = require('jsdom');
@@ -36,42 +37,73 @@ const ok = (cond, msg) => { if (cond) console.log('  ✓ ' + msg); else { fallos
   const quitar = () => { const o = overlay(); if (o) o.remove(); };
   const slidesTxt = () => Array.from(d.querySelectorAll('#wrapped-overlay .wrapped-slide')).map(s => s.textContent.replace(/\s+/g, ' ').trim());
   const gasto = (i, f) => ({ id: 'g' + String(i).padStart(5, '0'), desc: 'x', monto: 1000, fecha: f, cat: 'Otro', fuente: 'nequi', clase: 'gasto' });
+  const datos2026 = n => { for (let i = 0; i < n; i++) w.S.gastosVar.push(gasto(i + 1, '2026-' + String(10 + (i % 3)) + '-' + String(1 + Math.floor(i / 3)).padStart(2, '0'))); };
+  const botonGuardar = () => d.querySelector('#wrapped-overlay [data-wrapped-action="guardar"]');
 
-  console.log('1) Enero de 2027, sin ningún dato de 2026 → mensaje «no alcanzó el tiempo» y se guarda');
+  console.log('1) Enero de 2027, sin datos de 2026 → mensaje «no alcanzó el tiempo»; NO se guarda ni ofrece guardar');
   w.hoy = () => '2027-01-10';
   w.S.gastosVar = []; w.S.movimientos = []; delete w.S.wrappedAnios;
   w.renderWrapped();
   ok(!!overlay(), 'se abre el Wrapped');
-  const primera = slidesTxt();
-  ok(primera.length === 2, 'sin datos son 2 diapositivas (mensaje + cierre): ' + primera.length);
-  ok(/Tu 2026/.test(primera[0]), 'dice de qué año habla');
-  ok(w.S.wrappedAnios && w.S.wrappedAnios['2026'] && w.S.wrappedAnios['2026'].estado === 'insuficiente', 'queda guardado como «insuficiente»');
-  ok(w.S.wrappedAnios['2026'].version === 1 && w.S.wrappedAnios['2026'].generadoEn === '2027-01-10', 'con versión y fecha de generación');
-
-  console.log('2) Aparecen datos después: se sigue mostrando lo GUARDADO (el recuerdo no se recalcula)');
+  ok(slidesTxt().length === 2 && /Tu 2026/.test(slidesTxt()[0]), 'sin datos son 2 diapositivas (mensaje + cierre), y dicen de qué año hablan');
+  ok(!botonGuardar(), 'no hay botón de guardar en el mensaje');
+  ok(!w.S.wrappedAnios, 'y no queda nada guardado (no hay nada que recordar)');
   quitar();
-  for (let i = 0; i < 40; i++) w.S.gastosVar.push(gasto(i + 1, '2026-' + String(10 + (i % 3)).padStart(2, '0') + '-' + String(1 + Math.floor(i / 3)).padStart(2, '0')));
-  ok(w._wrappedDatosAnio('2026', w.S).tier === 'suficiente', '(con esos datos 2026 ya sería «suficiente»)');
-  w.renderWrapped('2026');
-  ok(JSON.stringify(slidesTxt()) === JSON.stringify(primera), 'las mismas 2 diapositivas, idénticas a la primera vez');
 
-  console.log('3) Fuera de enero: no se genera uno nuevo, pero sí se abre uno guardado');
+  console.log('2) Con datos suficientes: abrir NO guarda; el botón «Guardar este Wrapped» sí');
+  datos2026(45);
+  w.renderWrapped();
+  const completoTxt = slidesTxt();
+  ok(completoTxt.length > 5, 'Wrapped completo: ' + completoTxt.length + ' diapositivas');
+  ok(!w.S.wrappedAnios, 'abrirlo (aunque sea varias veces) no guarda nada');
+  quitar(); w.renderWrapped(); quitar(); w.renderWrapped();
+  ok(!w.S.wrappedAnios, '…ni siquiera la tercera vez');
+  const btn = botonGuardar();
+  ok(!!btn && /Guardar este Wrapped/.test(btn.textContent), 'la última diapositiva trae el botón «Guardar este Wrapped»');
+  if (btn) btn.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  const g = w.S.wrappedAnios && w.S.wrappedAnios['2026'];
+  ok(!!g && g.version === 1 && g.generadoEn === '2027-01-10' && g.slides.length === completoTxt.length, 'al pulsarlo queda guardado con versión, fecha y todas las diapositivas');
+  ok(!botonGuardar() && /Guardado/.test(d.querySelector('#wrapped-overlay .wrapped-cta[disabled]') ? d.querySelector('#wrapped-overlay .wrapped-cta[disabled]').textContent : ''), 'el botón pasa a «Guardado» (deshabilitado)');
+  ok(g && !g.slides.some(x => /data-wrapped-action="guardar"/.test(x.html)), 'y lo guardado ya está en estado «Guardado»');
   quitar();
+
+  console.log('3) Dentro de enero, un guardado se ACTUALIZA al abrirlo');
+  w.S.wrappedAnios['2026'].generadoEn = '2000-01-01';
+  w.S.gastosVar.push(gasto(900, '2026-12-30'));
+  w.renderWrapped();
+  ok(w.S.wrappedAnios['2026'].generadoEn === '2027-01-10', 'se recalculó y reemplazó el guardado (fecha de generación nueva)');
+  ok(!botonGuardar(), 'y como ya estaba guardado, no ofrece guardar otra vez');
+  quitar();
+
+  console.log('4) Si en enero ya no hay datos suficientes, se CONSERVA lo guardado');
+  const antes = JSON.stringify(w.S.wrappedAnios['2026']);
+  const nGuardadas = w.S.wrappedAnios['2026'].slides.length;
+  w.S.gastosVar = [];
+  w.renderWrapped();
+  ok(slidesTxt().length === nGuardadas && nGuardadas > 5, 'se sigue viendo el Wrapped guardado (' + nGuardadas + ' diapositivas) y no el mensaje de 2');
+  ok(JSON.stringify(w.S.wrappedAnios['2026']) === antes, 'y el guardado no cambió');
+  quitar();
+
+  console.log('5) Fuera de enero queda FIJO; no se genera uno nuevo pero sí se ve el guardado');
   w.hoy = () => '2027-06-10';
-  w.renderWrapped('2025'); // no hay Wrapped guardado de 2025 y ya no es enero
-  ok(!overlay(), 'un año sin guardar no se genera fuera de enero');
+  w.S.wrappedAnios['2026'].generadoEn = '2027-01-10';
+  datos2026(80); // datos nuevos: no deben cambiar el recuerdo
+  const fijo = JSON.stringify(w.S.wrappedAnios['2026']);
   w.renderWrapped('2026');
-  ok(!!overlay() && slidesTxt().length === 2, 'el guardado de 2026 se abre en junio');
-
-  console.log('4) _wrappedAbrir (lo que usa «Mis Wrapped») deja el año y renderWrapped lo consume');
+  ok(!!overlay() && slidesTxt().length === nGuardadas, 'el guardado se abre en junio');
+  ok(JSON.stringify(w.S.wrappedAnios['2026']) === fijo, 'y no se recalcula ni se reemplaza');
   quitar();
+  w.renderWrapped('2025');
+  ok(!overlay(), 'un año sin guardar no se genera fuera de enero');
+
+  console.log('6) _wrappedAbrir (lo que usa «Mis Wrapped») deja el año y renderWrapped lo consume');
   w._wrappedAbrir('2026');
   ok(!!overlay(), 'se abre por el camino real (showScreen)');
   ok(w._wrappedAnioVista === undefined, 'el año pedido se consumió (no se queda pegado)');
-
-  console.log('5) «Ocultar saldos» se aplica al MOSTRAR, no al guardar');
   quitar();
-  w.S.wrappedAnios['2025'] = { version: 1, generadoEn: '2026-01-05', estado: 'completo', slides: [
+
+  console.log('7) «Ocultar saldos» se aplica al MOSTRAR, no al guardar');
+  w.S.wrappedAnios['2025'] = { version: 1, generadoEn: '2026-01-05', slides: [
     { id: 'alcancia', mood: 'accent', html: '<div class="wrapped-slide-inner"><div class="wrapped-bignum c-amber" data-value="50000">0</div></div>' }] };
   w.localStorage.setItem('mf-saldos-ocultos', '1');
   w.renderWrapped('2025');
@@ -79,36 +111,49 @@ const ok = (cond, msg) => { if (cond) console.log('  ✓ ' + msg); else { fallos
   quitar();
   w.localStorage.removeItem('mf-saldos-ocultos');
   w.renderWrapped('2025');
-  ok(!d.querySelector('#wrapped-overlay .wrapped-bignum.saldo-hidden'), 'apagado, se ve normal (la instantánea no congeló el desenfoque)');
+  ok(!d.querySelector('#wrapped-overlay .wrapped-bignum.saldo-hidden'), 'apagado, se ve normal');
   ok(!/saldo-hidden/.test(w.S.wrappedAnios['2025'].slides[0].html), 'y lo guardado sigue sin la clase');
   quitar();
 
-  console.log('6) Configuración → «Mis Wrapped»');
+  console.log('8) Configuración → «Mis Wrapped»: lista, abre y elimina');
   w.renderCatsConfig();
   const lista = d.getElementById('cfg-mis-wrapped');
   ok(!!lista && /2026/.test(lista.textContent) && /2025/.test(lista.textContent), 'lista los años guardados');
-  ok(/No alcanzó el tiempo/.test(lista.textContent) && /Completo/.test(lista.textContent), 'indica el estado de cada uno');
+  ok(/Guardado el 10 de enero de 2027/.test(lista.textContent), 'con su fecha de guardado: ' + (lista.querySelector('.cfg-wrapped-estado') || {}).textContent);
   ok(lista.innerHTML.indexOf('2026') < lista.innerHTML.indexOf('2025'), 'el más reciente primero');
-  const boton = lista.querySelector('[data-action="config:abrirWrapped"]');
-  ok(!!boton, 'cada año es un botón con su acción');
+  const abrir = lista.querySelector('[data-action="config:abrirWrapped"]');
   let pedido = null; const original = w._wrappedAbrir; w._wrappedAbrir = a => { pedido = a; };
-  if (boton) boton.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
-  ok(pedido === '2026', 'al tocarlo se pide abrir ese año: ' + pedido);
+  if (abrir) abrir.dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+  ok(pedido === '2026', 'al tocar un año se pide abrir ese año: ' + pedido);
   w._wrappedAbrir = original;
+
+  const borrar = () => d.getElementById('cfg-mis-wrapped').querySelector('[data-action="config:eliminarWrapped"]');
+  ok(!!borrar(), 'cada año tiene su botón de eliminar');
+  let dialogos = 0, pines = 0, confirma = false, pinOk = false, textoDialogo = '';
+  w.dialogo = async (t, msg) => { dialogos++; textoDialogo = msg; return confirma; };
+  w.pedirPinAntesDe = async () => { pines++; return pinOk; };
+  const tocarBorrar = async () => { borrar().dispatchEvent(new w.MouseEvent('click', { bubbles: true })); await esperar(50); };
+  await tocarBorrar();
+  ok(dialogos === 1 && pines === 0 && !!w.S.wrappedAnios['2026'], 'si cancelas la confirmación no se pide el PIN y no se borra nada');
+  ok(/no se puede deshacer/.test(textoDialogo), 'la advertencia dice que es irreversible');
+  confirma = true; pinOk = false;
+  await tocarBorrar();
+  ok(pines === 1 && !!w.S.wrappedAnios['2026'], 'si el PIN no es correcto tampoco se borra');
+  pinOk = true;
+  await tocarBorrar();
+  ok(!w.S.wrappedAnios['2026'] && !!w.S.wrappedAnios['2025'], 'con confirmación y PIN se elimina solo ese año');
+  const aniosListados = () => Array.from(d.querySelectorAll('#cfg-mis-wrapped .cfg-wrapped-anio')).map(x => x.textContent);
+  ok(JSON.stringify(aniosListados()) === '["2025"]', 'y desaparece de la lista: ' + JSON.stringify(aniosListados()));
+  w.hoy = () => '2027-06-10';
+  w.S.wrappedAnios['2026'] = { version: 1, generadoEn: '2027-01-10', slides: [] };
+  w.renderCatsConfig(); await tocarBorrar();
+  ok(/no podrás generarlo otra vez/.test(textoDialogo), 'fuera de enero la advertencia dice que no se podrá generar de nuevo');
+  w.hoy = () => '2027-01-15';
+  w.S.wrappedAnios['2026'] = { version: 1, generadoEn: '2027-01-10', slides: [] };
+  w.renderCatsConfig(); await tocarBorrar();
+  ok(/mientras sea enero podrás generarlo de nuevo/.test(textoDialogo), 'dentro de enero la advertencia dice que se puede volver a generar');
   delete w.S.wrappedAnios; w.renderCatsConfig();
   ok(d.getElementById('cfg-mis-wrapped').innerHTML.trim() === '', 'sin años guardados no se muestra nada');
-
-  console.log('7) Con datos suficientes se guarda el Wrapped COMPLETO');
-  quitar();
-  w.hoy = () => '2026-01-10';
-  delete w.S.wrappedAnios; w.S.gastosVar = [];
-  for (let i = 0; i < 45; i++) w.S.gastosVar.push(gasto(i + 1, '2025-' + String(10 + (i % 3)) + '-' + String(1 + Math.floor(i / 3)).padStart(2, '0')));
-  w.renderWrapped();
-  const completo = w.S.wrappedAnios && w.S.wrappedAnios['2025'];
-  ok(!!completo && completo.estado === 'completo', 'queda guardado como «completo»');
-  ok(!!completo && completo.slides.length > 5 && !completo.slides.some(x => x.id.startsWith('insuf-')), 'con varias diapositivas de datos, sin mensaje de «no alcanzó»: ' + (completo ? completo.slides.length : 0));
-  ok(slidesTxt().length === (completo ? completo.slides.length : -1), 'y lo que se ve es exactamente lo guardado');
-  quitar();
 
   console.log(fallos.length ? '\n✗ FALLÓ: ' + fallos.length + ' comprobación(es)' : '\n✅ TODO OK — Wrapped guardado y «no alcanzó el tiempo» funcionan en la página real.');
   w.close();

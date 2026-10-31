@@ -82,6 +82,19 @@ describe('firebase-sync', () => {
     assert.equal(await app.decodificarPayload(escritos[0].payload), JSON.stringify(plano(app.S)));
   });
 
+  test('guardado — se serializa una sola vez y lo escrito es EXACTAMENTE JSON.stringify(S), también con valores raros; un segundo guardado sin cambios no escribe', async () => {
+    const { app, escritos } = entorno();
+    app._dataLoaded = true;
+    Object.assign(app.S, { raro: { a: undefined, b: NaN, c: Infinity, d: -0, e: [undefined, 1, null], f: { 10: 1, 2: 2, x: 3 }, g: 'ñ\u2028"\\', h: { k: undefined } } });
+    await guardar(app);
+    assert.equal(escritos.length, 1);
+    assert.equal(await app.decodificarPayload(escritos[0].payload), JSON.stringify(app.S), 'idéntico a serializar S directamente (sin pasar por un clon)');
+    assert.equal(JSON.stringify(app.S), JSON.stringify(JSON.parse(JSON.stringify(app.S))), 'y el clon era redundante: la cadena no cambia');
+    const r = await guardar(app);
+    assert.equal(escritos.length, 1, 'sin cambios no se vuelve a escribir (la comparación con el último guardado sigue funcionando)');
+    assert.equal(r && r.reason, 'no-changes');
+  });
+
   test('guardado — dos guardados seguidos: el viejo no pisa al nuevo y la nube termina con el estado más reciente', async () => {
     const { app, escritos } = entorno();
     app._dataLoaded = true;

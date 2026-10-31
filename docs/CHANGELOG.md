@@ -6,6 +6,18 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Lista de mejoras de octubre 2026
 
+### 🎁 Wrapped: guardar por decisión del usuario, eliminar, y guardado en la nube más barato (2026-10-31, SW v83)
+
+Sustituye el guardado automático del v82 (más abajo): el modelo final es el de Spotify. Detalle en `docs/wrapped.md` §7quaterdecies.
+
+- **Guardar es explícito:** abrir el Wrapped no guarda nada; la última diapositiva trae «Guardar este Wrapped» (pasa a «Guardado»). Sin guardar, se pierde al cerrar la ventana de enero. `renderWrapped` se separó en generar (`_wrappedBuildSlides`), guardar (`_wrappedGuardar`) y mostrar.
+- **Actualización dentro de enero:** al abrir un guardado se recalcula y se reemplaza (si ya no hay datos suficientes se conserva); fuera de enero queda fijo.
+- **Eliminar** en «Mis Wrapped» (botón estándar de borrar), con confirmación y PIN; la advertencia dice si se podrá volver a generar. La lista muestra «Guardado el …».
+- **El mensaje «no alcanzó el tiempo» ya no se guarda** y desaparece el campo `estado` de `S.wrappedAnios`.
+- **Cierre de períodos:** un año sin Wrapped guardado ya no bloquea ni genera: `Cierre.analizar` solo avisa (`wrapped.sinGuardar`), y no avisa de años sin datos suficientes.
+- **Guardado en la nube:** `firebase-sync.js` clonaba el estado con `JSON.parse(JSON.stringify(S))` solo para volver a serializarlo. Era ~3/4 del tiempo de ese paso (≈ 30 de 39 ms a 5 años sintéticos en Node; más en un celular) y la cadena resultante es idéntica; se serializa una vez, en el guardado normal y en el de cerrar sesión. Una prueba en `sync.test.js` fija que lo escrito es exactamente `JSON.stringify(S)` también con valores raros.
+- Pruebas: 647 (tests nuevas de botón/guardado, aviso del cierre y sin clon) y `npm run smoke:wrapped` con 36 comprobaciones en la página real. Ese recorrido atrapó un error que las pruebas de lógica no ven (una edición mía borró dos líneas de `renderWrapped`).
+
 ### 🎁 Wrapped guardado por año y «no alcanzó el tiempo» (2026-10-31, SW v82)
 
 Pedido del usuario: poder ver un Wrapped cuando quiera (no solo en enero) y, como la app aún casi no tiene datos, un mensaje especial cuando no alcanzaron. Detalle en `docs/wrapped.md` §7quaterdecies.

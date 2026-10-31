@@ -1015,13 +1015,25 @@ function _wrappedSlidesInsuficiente(datos, anioK){
 }
 
 /* ═══ WRAPPED GUARDADO POR AÑO ═══
-   `S.wrappedAnios[AAAA] = { version, generadoEn, estado:'completo'|'insuficiente', slides:[{id,mood,confetti?,html}] }` — el HTML ya armado
-   de cada diapositiva (≈ 4,5 KB comprimidos por año). Se guarda la primera vez que se abre un año ya terminado y desde entonces SE MUESTRA
-   ESE, sin recalcular: así el recuerdo no depende del detalle (que un cierre de períodos puede podar) ni cambia si cambian las reglas.
+   `S.wrappedAnios[AAAA] = { version, generadoEn, slides:[{id,mood,confetti?,html}] }` — el HTML ya armado de cada diapositiva
+   (≈ 4,5 KB comprimidos por año). Guardar es una ACCIÓN EXPLÍCITA del usuario (botón «Guardar este Wrapped» en la última diapositiva):
+   abrir el Wrapped, aunque sea mil veces, no guarda nada. Si no se guarda, se pierde al cerrar la ventana de enero (modelo Spotify).
+   Un Wrapped guardado se puede ver siempre y se puede ELIMINAR (Configuración → Mis Wrapped, con confirmación y PIN). Mientras la ventana
+   de enero siga abierta, al abrir uno guardado se recalcula y se reemplaza (así entra un movimiento de diciembre añadido tarde); pasada la
+   ventana queda fijo. Esto separa tres operaciones antes mezcladas en renderWrapped: generar (`_wrappedBuildSlides`), guardar
+   (`_wrappedGuardar`) y mostrar (`renderWrapped`). El mensaje «no alcanzó el tiempo» NUNCA se guarda: no hay nada que recordar.
+   El recuerdo no depende del detalle (que un cierre de períodos puede podar) ni cambia si cambian las reglas de cálculo.
    Lo que depende de quien mira y no del año — el desenfoque de «Ocultar saldos» — NO se congela: se quita al guardar y se aplica al mostrar.
    OJO, contrato de CSS: el HTML guardado usa clases (wrapped-*, c-*, fa-*) que viven en este archivo/styles.css; renombrar una rompe en
    silencio los recuerdos viejos. tests/wrapped-guardado.test.js lo vigila con una instantánea de referencia (solo se pueden AÑADIR clases). */
 const WRAPPED_SNAPSHOT_VERSION = 1;
+
+// Botón de la última diapositiva. Se intercambia por su versión «Guardado» cuando el año ya está guardado (y así se guarda el HTML).
+const _WRAPPED_BTN_GUARDAR = '<button type="button" class="wrapped-cta" data-wrapped-action="guardar">Guardar este Wrapped</button>';
+const _WRAPPED_BTN_GUARDADO = '<button type="button" class="wrapped-cta ghost" disabled>Guardado</button>';
+function _wrappedMarcarGuardado(slides){
+  return slides.map(sl => (sl.id === 'cierre' ? Object.assign({}, sl, { html: sl.html.replace(_WRAPPED_BTN_GUARDAR, _WRAPPED_BTN_GUARDADO) }) : sl));
+}
 
 function _wrappedSinMascara(html){ return html.replace(/\s*\bsaldo-hidden\b/g, ''); }
 function _wrappedConMascara(html){
@@ -1032,14 +1044,21 @@ function _wrappedSnapshotDe(slides){
   return {
     version: WRAPPED_SNAPSHOT_VERSION,
     generadoEn: hoy(),
-    estado: slides.some(sl => sl.id === 'insuf-titular') ? 'insuficiente' : 'completo',
-    slides: slides.map(sl => {
+    slides: _wrappedMarcarGuardado(slides).map(sl => {
       const o = { id: sl.id, html: _wrappedSinMascara(sl.html) };
       if(sl.mood) o.mood = sl.mood;
       if(sl.confetti) o.confetti = true;
       return o;
     })
   };
+}
+
+// Guardar un año (acción explícita del usuario): reemplaza el guardado de ese año si lo había. Nunca se llama con el mensaje de «no alcanzó».
+function _wrappedGuardar(S, anioK, slides){
+  if(slides.some(sl => sl.id === 'insuf-titular')) throw new Error('El mensaje «no alcanzó el tiempo» no se guarda');
+  if(!S.wrappedAnios) S.wrappedAnios = {};
+  S.wrappedAnios[anioK] = _wrappedSnapshotDe(slides);
+  if(typeof save === 'function') save();
 }
 
 // Las diapositivas guardadas listas para pintar: aquí sí se aplica la preferencia actual de ocultar saldos.
@@ -3702,6 +3721,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
       <div class="wrapped-headline">${lineaCierre}</div>
       <div class="wrapped-cierre-poema">${poemaCierre}</div>
       <div class="wrapped-cta-row">
+        ${_WRAPPED_BTN_GUARDAR}
         <button type="button" class="wrapped-cta" data-wrapped-action="replay">Ver de nuevo</button>
         <button type="button" class="wrapped-cta ghost" data-wrapped-action="cerrar">Cerrar</button>
       </div>
@@ -3851,7 +3871,22 @@ function _wrappedVisible(el){
   return true;
 }
 
-function _wrappedSetupNav(overlay, fmt2){
+// Botón «Guardar este Wrapped»: guarda el año que se está viendo y deja el botón en «Guardado».
+function _wrappedAlGuardar(boton, contexto){
+  try{
+    _wrappedGuardar(window.S || {}, contexto.anioK, contexto.slides);
+  }catch(e){
+    console.warn('[wrapped] No se pudo guardar el Wrapped:', e);
+    if(typeof toast === 'function') toast('No se pudo guardar el Wrapped.', 'err', 4000);
+    return;
+  }
+  const marca = document.createElement('div');
+  marca.innerHTML = _WRAPPED_BTN_GUARDADO;
+  boton.replaceWith(marca.firstChild);
+  if(typeof toast === 'function') toast('Wrapped guardado. Lo encuentras en Configuración, en la sección Mis Wrapped.', 'ok', 4000);
+}
+
+function _wrappedSetupNav(overlay, fmt2, contexto){
   _wrappedLimpiarNav();
 
   const slidesEls = Array.prototype.slice.call(overlay.querySelectorAll('.wrapped-slide'));
@@ -3894,6 +3929,7 @@ function _wrappedSetupNav(overlay, fmt2){
       const accion = interactivo.getAttribute('data-wrapped-action');
       if(accion === 'replay') _wrappedGoTo(0);
       else if(accion === 'cerrar') _wrappedCerrar();
+      else if(accion === 'guardar') _wrappedAlGuardar(interactivo, contexto);
       return;
     }
     const rect = contSlides.getBoundingClientRect();
@@ -3951,10 +3987,10 @@ window.renderWrapped = function(anioOpt){
   const S = window.S || {};
   const guardado = S.wrappedAnios && S.wrappedAnios[anioK];
 
-  // Cinturón de seguridad, no la gate real (esa vive en js/core/wrapped-gate.js): un Wrapped GUARDADO se puede ver siempre; GENERAR
-  // uno solo se puede para el año recién cerrado y durante la ventana de enero. Fuera de eso, quien llega por otro camino (deep link
-  // viejo, showScreen('wrapped') a mano desde la consola) vuelve a Configuración — ver wrapped.md §7decies.
-  if(!guardado && (anioK !== objetivo || (typeof window._wrappedDisponible === 'function' && !window._wrappedDisponible()))){
+  // GENERAR solo se puede para el año recién cerrado y durante la ventana de enero; VER uno guardado, siempre. Fuera de eso, quien llega por
+  // otro camino (deep link viejo, showScreen('wrapped') a mano desde la consola) vuelve a Configuración — ver wrapped.md §7decies.
+  const generable = anioK === objetivo && !(typeof window._wrappedDisponible === 'function' && !window._wrappedDisponible());
+  if(!guardado && !generable){
     if(typeof toast === 'function') toast('Tu resumen del año vuelve en enero.', 'info', 4000);
     if(typeof showScreen === 'function') showScreen('config');
     return;
@@ -3973,19 +4009,23 @@ window.renderWrapped = function(anioOpt){
   _wrappedLogDebug(S);
   _wrappedInyectarEstilos();
 
+  // Mostrar. Dentro de la ventana de enero SIEMPRE se calcula: si el año ya estaba guardado y el cálculo sigue dando un Wrapped real, el
+  // guardado se reemplaza (entra lo añadido tarde); si ya no hay datos suficientes se conserva el guardado. Fuera de la ventana, el guardado
+  // se muestra tal cual, sin recalcular nada. Abrir NUNCA guarda por sí solo: eso es el botón «Guardar» de la última diapositiva.
   let slides;
-  if(guardado){
-    slides = _wrappedSlidesDeSnapshot(guardado); // el recuerdo tal como se guardó: no se recalcula nada
-  } else {
-    slides = _wrappedBuildSlides(S, fmt2, anioK);
-    // Un año ya terminado se guarda la primera vez que se abre (también si «no alcanzó el tiempo»: queda constancia de que se evaluó).
-    if(anioK < _wrappedHoy().slice(0,4)){
-      try{
-        if(!S.wrappedAnios) S.wrappedAnios = {};
-        S.wrappedAnios[anioK] = _wrappedSnapshotDe(slides);
-        if(typeof save === 'function') save();
-      }catch(e){ console.warn('[wrapped] No se pudo guardar el Wrapped de ' + anioK + ':', e); }
+  if(generable){
+    const frescas = _wrappedBuildSlides(S, fmt2, anioK);
+    const esMensaje = frescas.some(sl => sl.id === 'insuf-titular');
+    if(guardado && esMensaje){
+      slides = _wrappedSlidesDeSnapshot(guardado);
+    } else {
+      if(guardado){
+        try{ _wrappedGuardar(S, anioK, frescas); }catch(e){ console.warn('[wrapped] No se pudo actualizar el Wrapped de ' + anioK + ':', e); }
+      }
+      slides = guardado ? _wrappedMarcarGuardado(frescas) : frescas;
     }
+  } else {
+    slides = _wrappedSlidesDeSnapshot(guardado); // el recuerdo tal como se guardó: no se recalcula nada
   }
 
   const progresoHtml = slides.map(() => `<div class="wrapped-seg"><i></i></div>`).join('');
@@ -3995,7 +4035,7 @@ window.renderWrapped = function(anioOpt){
   // la URL trae `?debug=1`/`#debug` (ver `_wrappedDebugPanelHtml`); en
   // cualquier otro caso `debugHtml` queda vacío y no se agrega nada al
   // DOM ni se paga el costo de armar las tablas.
-  const debugOn = _wrappedDebugOn() && !guardado; // el panel de debug necesita los datos del armado: un guardado no los tiene
+  const debugOn = _wrappedDebugOn() && !!slides._wrappedDebugInfo; // el panel de debug necesita los datos del armado: un guardado no los tiene
   const debugHtml = debugOn
     ? `<button type="button" id="wrapped-debug-toggle" aria-label="Panel de debug" title="Panel de debug">
          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg>
@@ -4048,7 +4088,7 @@ window.renderWrapped = function(anioOpt){
     if(panel) panel.addEventListener('click', function(e){ e.stopPropagation(); });
   }
 
-  _wrappedSetupNav(overlay, fmt2);
+  _wrappedSetupNav(overlay, fmt2, { anioK, slides });
   _wrappedGoTo(0);
 };
 
@@ -4093,6 +4133,8 @@ window._wrappedInternals = {
   WRAPPED_SNAPSHOT_VERSION,
   _wrappedSlidesInsuficiente,
   _wrappedSnapshotDe,
+  _wrappedGuardar,
+  _wrappedMarcarGuardado,
   _wrappedSlidesDeSnapshot,
   _wrappedSinMascara,
   _wrappedConMascara,

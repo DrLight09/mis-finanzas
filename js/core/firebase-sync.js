@@ -65,10 +65,11 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
       if(!window._fbUser || !window._fb){ resolve({ok:false, reason:'no-auth'}); return; }
       try {
         const {db, doc, setDoc} = window._fb;
-        // Firestore no acepta undefined — limpiamos el objeto
         if(!window.S){setSyncStatus("error","Error: datos no inicializados");resolve({ok:false, reason:'no-data'});return;}
-        const data = JSON.parse(JSON.stringify(window.S));
-        const payloadStr = JSON.stringify(data);
+        // Se serializa UNA sola vez. Antes se clonaba con JSON.parse(JSON.stringify(S)) para «limpiar los undefined» y se volvía a
+        // serializar: el clon costaba ~3/4 del tiempo de este paso y la cadena es idéntica (JSON.stringify ya descarta los undefined, y
+        // lo que va a Firestore es una cadena, no un objeto). Una prueba de sync.test.js fija esa igualdad.
+        const payloadStr = JSON.stringify(window.S);
         const miSeq = ++_saveSeq; // antes del chequeo "¿cambió algo?": un guardado sin cambios también deja viejo a uno en vuelo
         // Nada cambió desde el último guardado real (ni local ni el que
         // acabamos de recibir de la nube) — no hay razón para escribir.
@@ -692,12 +693,11 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
     if(window._fbUser && window.S && window._dataLoaded) {
       try {
         const {db, doc, setDoc} = window._fb;
-        const data = JSON.parse(JSON.stringify(window.S));
         const signOutTs = Date.now();
         try { localStorage.setItem('mf_lastSavedAt', String(signOutTs)); } catch(_){}
         await setDoc(
           doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
-          { payload: await codificarPayload(JSON.stringify(data)), updatedAt: signOutTs }
+          { payload: await codificarPayload(JSON.stringify(window.S)), updatedAt: signOutTs }
         );
       } catch(e) {
         console.warn('Error en guardado final antes de cerrar sesión:', e);

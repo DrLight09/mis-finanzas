@@ -2195,9 +2195,10 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .cfg-tamano-alerta{font-size:11px;color:var(--amber);margin-top:4px;}
 /* Configuración: «Mis Wrapped» (renderMisWrapped en configuracion.js) */
 .cfg-wrapped-lista{padding:4px 15px;margin-bottom:12px;}
-.cfg-wrapped-fila{display:flex;align-items:center;gap:10px;width:100%;padding:12px 0;background:none;border:0;border-bottom:1px solid var(--border);color:var(--text);font:inherit;cursor:pointer;text-align:left;}
+.cfg-wrapped-fila{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border);}
 .cfg-wrapped-fila:last-child{border-bottom:0;}
-.cfg-wrapped-fila:active{opacity:.7;}
+.cfg-wrapped-abrir{display:flex;align-items:center;gap:10px;flex:1;min-width:0;padding:12px 0;background:none;border:0;color:var(--text);font:inherit;cursor:pointer;text-align:left;}
+.cfg-wrapped-abrir:active{opacity:.7;}
 .cfg-wrapped-anio{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;}
 .cfg-wrapped-estado{flex:1;font-size:11px;color:var(--text3);}
 .cfg-wrapped-chevron{color:var(--text3);flex-shrink:0;}

@@ -29,7 +29,8 @@
      Huella.verificarTransformacion(estado, fn, op)  — clona, calcula, aplica fn al clon (aislado), calcula y compara
      Huella.completa(estado?)                        — async: carga módulos diferidos y calcula con SONDAS_BASE requeridas
      Huella.digest(huella)                           — resumen corto estable (para registros y mensajes)
-   Sin DOM. Carga de entrada (<script defer>) después de calc-helpers.js.
+   Sin DOM. Se carga BAJO DEMANDA (Loader, grupo 'cierre', junto con cierre.js): solo al abrir Configuración o al usarla. Los módulos registran
+   sus sondas con registrarSonda (core-state.js), que las deja en cola si este archivo aún no existe; al cargarse, aquí se vacía la cola.
    ═══════════════════════════════════════════════════════════════ */
 const Huella = (() => {
   const VERSION = 1;
@@ -161,6 +162,12 @@ const Huella = (() => {
 
   // El patrimonio con su desglose (una sola definición: calcPatrimonioDesglose).
   registrar('patrimonio', () => calcPatrimonioDesglose());
+
+  // Sondas que los módulos dejaron en cola (registrarSonda, core-state.js) antes de que este archivo existiera.
+  if (typeof window !== 'undefined') {
+    (window._sondasPendientes || []).forEach(([nombre, fn]) => registrar(nombre, fn));
+    window._sondasPendientes = [];
+  }
 
   return { VERSION, TOL, SONDAS_BASE, GRUPOS_CON_SONDA, registrar, registradas, calcular, comparar, verificarTransformacion, completa, digest };
 })();

@@ -175,7 +175,7 @@ function tcRecalcular(tc){
 }
 
 // Sonda de la huella: deuda calculada vs guardada, cupo y estado de cada tarjeta. `coherente` detecta un tc.deuda desactualizado.
-if(typeof Huella!=='undefined'&&typeof Huella.registrar==='function') Huella.registrar('tarjetas',st=>{
+registrarSonda('tarjetas',st=>{
   const entidades={};
   (st.tarjetasCredito||[]).forEach(tc=>{
     const calculada=tcDeudaCalculada(tc), guardada=tc.deuda||0;

@@ -6,6 +6,15 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Lista de mejoras de octubre 2026
 
+### 🧹 Huella y cierre bajo demanda, y aviso de tamaño sin promesas falsas (2026-10-31, SW v84)
+
+Dos observaciones de una revisión externa, verificadas contra el código antes de aplicarlas.
+
+- **Aviso de tamaño:** al pasar de 500 KB, Configuración decía «conviene empezar a archivar los años cerrados»: una acción que no existe y que ya no es la estrategia (la etapa 2 es «cerrar con resumen congelado»). Ahora dice «Tus datos ya pesan bastante; es momento de revisar el cierre de períodos». Sigue sin ofrecer botón: la función de cerrar aún no existe.
+- **`huella.js` y `cierre.js` (33,8 KB brutos, ~12 KB comprimidos) ya no se cargan al arrancar.** Son el grupo `cierre` del Loader, solo bajo demanda: el medidor de Configuración lo pide al abrirse. Matices que la observación original no veía: (1) `ensureAll()` **precarga todos los grupos** en tiempo ocioso tras el arranque, así que un grupo diferido «a secas» seguiría descargándose en cada arranque; el grupo está en `SOLO_BAJO_DEMANDA` y `ensureAll()` lo salta. (2) Las sondas de tarjetas, encargos, alcancía y Wrapped se registran al cargar sus módulos, que llegan **antes** que `huella.js`: se habrían perdido. Ahora los módulos llaman a `registrarSonda` (`core-state.js`), que deja la sonda en cola (`window._sondasPendientes`) si `Huella` aún no existe, y `huella.js` la vacía al cargarse; una prueba (con mutación comprobada) y `scripts/smoke-cierre.js` lo fijan. (3) Si la descarga falla (sin conexión), el medidor queda vacío y la pantalla no se rompe.
+- Desde la consola ahora hace falta `await Loader.ensure('cierre')` antes de usar `Huella` o `Cierre` (abrir Configuración también lo carga).
+- Pruebas: 648 y `npm run smoke:cierre` (16 comprobaciones en la página real con jsdom).
+
 ### 🎁 Wrapped: guardar por decisión del usuario, eliminar, y guardado en la nube más barato (2026-10-31, SW v83)
 
 Sustituye el guardado automático del v82 (más abajo): el modelo final es el de Spotify. Detalle en `docs/wrapped.md` §7quaterdecies.

@@ -4106,7 +4106,7 @@ window.renderWrapped = function(anioOpt){
 // intereses y comisiones de tarjeta). Los años anteriores no se ven en ninguna pantalla, así que no se exige conservarlos: la política de
 // corte (Cierre.corteMasReciente, ≥ 24 meses, siempre ≤ dic de año − 2) deja intacto este año por construcción y la sonda lo comprueba.
 // Corre aislada: las funciones reciben la copia como `S`. docs/cierre-de-periodos.md.
-if(typeof Huella!=='undefined'&&typeof Huella.registrar==='function') Huella.registrar('wrapped',function(st){
+registrarSonda('wrapped',function(st){
   const out={};
   const anioObjetivo=typeof window._wrappedAnioObjetivo==='function'?window._wrappedAnioObjetivo():String(parseInt(hoy().slice(0,4),10)-1);
   [anioObjetivo].forEach(anioK=>{

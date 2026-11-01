@@ -599,6 +599,16 @@ function _ensureSpotify(){
   if(typeof S.spotify.cajitaId!=='string')S.spotify.cajitaId='';
 }
 
+/* ---- REGISTRO DE SONDAS (huella de invariantes) ----
+   js/core/huella.js se carga BAJO DEMANDA (grupo 'cierre' del Loader: solo al abrir Configuración), mientras que los módulos con historia
+   (tarjetas, encargos, alcancía, Wrapped) se precargan al arrancar. Por eso no pueden llamar a Huella.registrar directamente: llegarían
+   antes que ella. Llaman a esto: si Huella ya existe registra la sonda; si no, la deja en cola y huella.js la registra al cargarse.
+   Así el orden de carga no importa. Una sonda nueva se registra siempre con registrarSonda, nunca con Huella.registrar. */
+function registrarSonda(nombre, fn){
+  if(typeof Huella !== 'undefined' && typeof Huella.registrar === 'function') Huella.registrar(nombre, fn);
+  else (window._sondasPendientes || (window._sondasPendientes = [])).push([nombre, fn]);
+}
+
 /* ---- ESTADO AISLADO (huella / cierre de períodos) ----
    conEstadoAislado(estado, fn) ejecuta `fn` SÍNCRONA con `estado` como el S global y lo restaura siempre al terminar. Existe para
    poder calcular la huella de invariantes (js/core/huella.js) y la vista previa del cierre (js/core/cierre.js) sobre una COPIA con

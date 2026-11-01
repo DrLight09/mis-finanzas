@@ -285,7 +285,7 @@ function encargoLibre(enc) {
 
 // Sonda de la huella (js/core/huella.js): saldo, comprometido, libre y reparto por cuenta de cada encargo. Un encargo es su
 // propia bolsa (enc.movimientos), fuera de S.movimientos y del libro: un cambio de almacenamiento no puede alterar nada de esto.
-if (typeof Huella !== 'undefined' && typeof Huella.registrar === 'function') Huella.registrar('encargos', st => {
+registrarSonda('encargos', st => {
   const entidades = {};
   (st.encargos || []).forEach(enc => {
     const porCuenta = {};

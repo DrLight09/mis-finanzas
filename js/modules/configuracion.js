@@ -98,13 +98,17 @@ async function eliminarWrapped(anio){
 
 // «Tamaño de tus datos» (Configuración → Datos). SOLO LECTURA: mide con Cierre.tamano (js/core/cierre.js, mismo códec del guardado) y
 // muestra cuánto del límite de la nube se usa y, con la historia que hay, cuándo se llegaría al aviso. No archiva ni borra nada:
-// archivar los años cerrados es la etapa siguiente (docs/cierre-de-periodos.md) y solo se plantea al pasar del disparador.
+// cerrar períodos antiguos es la etapa siguiente (docs/cierre-de-periodos.md) y solo se plantea al pasar del disparador. El aviso no ofrece
+// ningún botón porque esa función aún no existe: solo dice que ya toca revisarla.
 let _tamanoSeq=0;
 async function renderTamanoDatos(){
   const el=document.getElementById('cfg-tamano');
-  if(!el||typeof Cierre==='undefined'||typeof Cierre.tamano!=='function')return;
+  if(!el)return;
   const mi=++_tamanoSeq; // si se reabre la pantalla mientras mide, solo pinta la última medición
   try{
+    // Cierre y Huella se cargan bajo demanda (Loader, grupo 'cierre'): solo se descargan al abrir Configuración, no al arrancar la app.
+    if(typeof Loader!=='undefined'&&typeof Loader.ensure==='function')await Loader.ensure('cierre');
+    if(typeof Cierre==='undefined'||typeof Cierre.tamano!=='function')return;
     const t=await Cierre.tamano(S);
     if(mi!==_tamanoSeq)return;
     const kb=b=>Math.round(b/1000).toLocaleString('es-CO')+' KB';
@@ -119,7 +123,7 @@ async function renderTamanoDatos(){
       <progress class="cfg-tamano-barra" max="100" value="${pct.toFixed(1)}"></progress>
       <div class="cfg-tamano-cifra">${kb(t.comprimido)} de ${kb(t.limites.limite)} (${pct.toFixed(1).replace('.',',')} %)${t.comprimidoEstimado?' · estimado':''}</div>
       <div class="cfg-tamano-nota">${proy}</div>
-      ${d.recomendado?html`<div class="cfg-tamano-alerta">Tus datos ya pesan bastante: conviene empezar a archivar los años cerrados.</div>`:''}
+      ${d.recomendado?html`<div class="cfg-tamano-alerta">Tus datos ya pesan bastante; es momento de revisar el cierre de períodos.</div>`:''}
       ${d.avisos.map(a=>html`<div class="cfg-tamano-nota">${a}</div>`)}`;
   }catch(e){
     if(mi===_tamanoSeq)el.innerHTML='';

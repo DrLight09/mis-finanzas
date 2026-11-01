@@ -184,6 +184,11 @@ const Loader = (function () {
     // recién cerrado — ver js/core/wrapped-gate.js y wrapped.md §7decies).
     // ensureAll() más abajo ya no lo precarga fuera de esa ventana.
     wrapped: ['js/modules/wrapped.js'],
+    // Grupo SOLO bajo demanda (2026-10-31): huella de invariantes y cierre de períodos (~34 KB, ~12 KB comprimidos). Se usa al abrir
+    // Configuración (medidor «Tamaño de tus datos») y desde la consola. A diferencia del resto, ensureAll() NO lo precarga (ver
+    // SOLO_BAJO_DEMANDA). Orden: huella.js antes que cierre.js. Las sondas de los módulos (tarjetas, encargos, alcancía, Wrapped) llegan
+    // antes y esperan en cola (registrarSonda, core-state.js); huella.js la vacía al cargarse.
+    cierre: ['js/core/huella.js', 'js/core/cierre.js'],
   };
 
   const loaded = new Set();   // grupos ya cargados (no se vuelven a pedir)
@@ -272,8 +277,12 @@ const Loader = (function () {
   // ensureAll() corre tras 'appDataLoaded', así que S.modulos ya es el real.
   const _MODULO_DE_GRUPO = { mesada: 'mesada', spotify: 'spotify' };
 
+  // Grupos que NUNCA se precargan: se piden solo cuando se necesitan (ensure('cierre')).
+  const SOLO_BAJO_DEMANDA = new Set(['cierre']);
+
   function ensureAll() {
     const grupos = Object.keys(GROUPS).filter(g => {
+      if (SOLO_BAJO_DEMANDA.has(g)) return false;
       if (g === 'wrapped') {
         return typeof window._wrappedDisponible === 'function' && window._wrappedDisponible();
       }

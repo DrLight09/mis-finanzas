@@ -1,10 +1,10 @@
 # Cierre de períodos — documento maestro (etapa 1 hecha; etapa 2 sin empezar)
 
-**Estado: 2026-10-31.** Este es el **único documento vigente** sobre el cierre de períodos: reemplaza a todas las versiones anteriores de este archivo y al análisis externo (`analisis-cierre-etapa1*.md`). Si ves otro que diga que la etapa 2 es «archivo por años», que `S.wrappedAnios` lleva un campo `estado`, que el cierre *bloquea* por falta de Wrapped guardado o que se puede «quitar la copia duplicada» de la alcancía, **es viejo o está equivocado**.
+**Estado: 2026-10-31 (actualizado tras pasar la huella y el cierre a carga bajo demanda).** Este es el **único documento vigente** sobre el cierre de períodos: reemplaza a todas las versiones anteriores de este archivo y al análisis externo (`analisis-cierre-etapa1*.md`). Si ves otro que diga que la etapa 2 es «archivo por años», que `S.wrappedAnios` lleva un campo `estado`, que el cierre *bloquea* por falta de Wrapped guardado o que se puede «quitar la copia duplicada» de la alcancía, **es viejo o está equivocado**.
 
 ## 0. Lee esto primero (para quien retome la etapa 2)
 
-1. **Hecho y probado (etapa 1):** huella de invariantes (`js/core/huella.js`), vista previa de solo lectura y medidor de tamaño (`js/core/cierre.js`), `conEstadoAislado` (`core-state.js`), tarjeta «Tamaño de tus datos» en Configuración. **No existe ninguna ruta que modifique, archive o borre historia.**
+1. **Hecho y probado (etapa 1):** huella de invariantes (`js/core/huella.js`), vista previa de solo lectura y medidor de tamaño (`js/core/cierre.js`), `conEstadoAislado` y `registrarSonda` (`core-state.js`), tarjeta «Tamaño de tus datos» en Configuración. **No existe ninguna ruta que modifique, archive o borre historia.** `huella.js` y `cierre.js` **no se cargan al arrancar**: son el grupo `cierre` del Loader, solo bajo demanda (al abrir Configuración). Desde la consola: `await Loader.ensure('cierre')` antes de usar `Huella` o `Cierre`.
 2. **Hecho aparte, relacionado:** Wrapped guardado por el usuario (`docs/wrapped.md` §7quaterdecies), mensaje «no alcanzó el tiempo», y el guardado en la nube sin clon redundante.
 3. **Etapa 2 = «cierre con resumen congelado»**, en **una sola operación sobre un solo documento** (§5). **No** es archivo por años en varios documentos (eso es la fase D, último recurso, §6).
 4. **Cuándo:** cuando el medidor avise que el payload comprimido pasó de ~500 KB. No por fecha. Con la regla de 24 meses no hay nada que cerrar antes de octubre de 2028 (la app nació limpia el 2026-10-18).
@@ -16,15 +16,16 @@
 
 | Qué | Dónde | Notas |
 |---|---|---|
-| Huella de invariantes | `js/core/huella.js` | Registro de sondas puras; `SONDAS_BASE` = `saldos, periodos, deudas, patrimonio, tarjetas, encargos, alcancia, wrapped`; `Huella.completa()` carga los 4 grupos diferidos **por nombre** (`GRUPOS_CON_SONDA`; `Loader.ensureAll()` se salta `wrapped` fuera de enero). API: `registrar, registradas, calcular, comparar, verificarTransformacion, completa, digest`. |
+| Huella de invariantes | `js/core/huella.js` (bajo demanda) | Registro de sondas puras; `SONDAS_BASE` = `saldos, periodos, deudas, patrimonio, tarjetas, encargos, alcancia, wrapped`; `Huella.completa()` carga los 4 grupos diferidos **por nombre** (`GRUPOS_CON_SONDA`; `Loader.ensureAll()` se salta `wrapped` fuera de enero). API: `registrar, registradas, calcular, comparar, verificarTransformacion, completa, digest`. |
 | Estado aislado | `conEstadoAislado(estado, fn)` en `core-state.js` | `fn` síncrona; mientras corre, `save()` y `_fbSaveToCloud()` no escriben (`window._estadoAislado`). |
 | Vista previa y medidor | `js/core/cierre.js` | `analizar(corte, estado, {huella, mesActual})`, `analizarCompleto`, `tamano`, `disparador`, `corteMasReciente`, `registrarFuente`, `CLASIFICACION`. |
-| Sondas de módulos | `tarjetas_credito.js` (`tcDeudaCalculada`, pura), `encargos.js`, `alcancia.js`, `wrapped.js` | Registradas al cargar el módulo, con guarda `typeof Huella.registrar === 'function'`. |
+| Sondas de módulos | `tarjetas_credito.js` (`tcDeudaCalculada`, pura), `encargos.js`, `alcancia.js`, `wrapped.js` | Se registran con **`registrarSonda(nombre, fn)`** (`core-state.js`), nunca con `Huella.registrar` directo: los módulos se precargan al arrancar y `huella.js` llega después, así que la sonda espera en cola (`window._sondasPendientes`) y `huella.js` la vacía al cargarse. |
+| Carga bajo demanda | `js/core/lazy-loader.js` | Grupo `cierre: ['js/core/huella.js','js/core/cierre.js']`, en `SOLO_BAJO_DEMANDA`: `ensureAll()` (que precarga **todos** los demás grupos en tiempo ocioso tras `appDataLoaded`) **no** lo carga. `renderTamanoDatos` hace `await Loader.ensure('cierre')`; si la descarga falla (sin conexión) el medidor queda vacío y la pantalla no se rompe. |
 | Wrapped | `js/core/wrapped-gate.js` (criterio `_wrappedDatosAnio`, `_wrappedAbrir`), `js/modules/wrapped.js` | `S.wrappedAnios[AAAA] = { version, generadoEn, slides }` (sin `estado`). |
 | Medidor y «Mis Wrapped» | `js/modules/configuracion.js` (`renderTamanoDatos`, `renderMisWrapped`, `eliminarWrapped`) | Clases `cfg-tamano*` y `cfg-wrapped*` en `css/styles.css`. |
 | Datos sintéticos | `tests/support/datos-sinteticos.js` | `cargarApp(extra)`, `generar(ctx, {desde, dias, semilla})`, `HOY = '2026-10-30'`. Usa las funciones **reales** de la app. |
-| Pruebas | `tests/huella.test.js`, `tests/cierre.test.js`, `tests/wrapped-guardado.test.js`, `tests/fixtures/wrapped-clases.json` | Más `scripts/smoke-wrapped.js` (jsdom). |
-| Versión | `sw.js` → `mis-finanzas-v83` | Esquema de datos 9; la app no tiene migraciones. |
+| Pruebas | `tests/huella.test.js`, `tests/cierre.test.js`, `tests/wrapped-guardado.test.js`, `tests/fixtures/wrapped-clases.json` | Más `scripts/smoke-wrapped.js` y `scripts/smoke-cierre.js` (jsdom). |
+| Versión | `sw.js` → `mis-finanzas-v84` | Esquema de datos 9; la app no tiene migraciones. |
 
 `Cierre.analizar` devuelve: `corte, fechaCorte, completo, huella (digest), erroresHuella, advertencias, wrapped:{conWrapped, sinGuardar}, componentes:{total, maxRegistros, mayores}, total/candidatos/archivables:{registros, bytes, unidades}, bloqueados:{registros, porMotivo, detalle}, porFuente, entidades`. Motivos de bloqueo: `sin-fecha`, `entidad-abierta:{saldo-pendiente|registros-posteriores|sin-sonda}`, `enlazado-con-registro-bloqueado-o-posterior`. Advertencias: `componente-grande`, `wrapped-sin-guardar`.
 
@@ -39,7 +40,7 @@
 
 ## 3. Cuándo hacer la etapa 2
 
-- **Tamaño:** payload comprimido > ~500 KB (`Cierre.disparador`; la tarjeta de Configuración lo avisa). Medido con datos **sintéticos** (~5 movimientos/día): 2 años ≈ 134–152 KB, 5 años ≈ 327–377 KB, 9 años ≈ 675 KB; el límite de Firestore es 1 MiB y el aviso de la app 800 KB. Solo se supera con ~15 movimientos/día durante 5 años. Las cifras reales las da el medidor.
+- **Tamaño:** payload comprimido > ~500 KB (`Cierre.disparador`; la tarjeta de Configuración lo avisa con «Tus datos ya pesan bastante; es momento de revisar el cierre de períodos»: es solo un aviso, la función de cerrar aún no existe). Medido con datos **sintéticos** (~5 movimientos/día): 2 años ≈ 134–152 KB, 5 años ≈ 327–377 KB, 9 años ≈ 675 KB; el límite de Firestore es 1 MiB y el aviso de la app 800 KB. Solo se supera con ~15 movimientos/día durante 5 años. Las cifras reales las da el medidor.
 - **Lentitud de las listas** es **otro problema** con otro remedio: paginar o cargar bajo demanda. Cerrar períodos no la arregla mientras el estado completo siga en memoria.
 - **Antes de octubre de 2028 no hay nada que cerrar** (regla de 24 meses). Hacerlo antes solo tendría sentido para explorar.
 
@@ -88,7 +89,7 @@ Gastos (filtro y lista por mes) y el historial de pagos fijos de Configuración 
 Ningún registro con fecha ≤ `S.cierre.corte` (conservado o no) puede editarse ni eliminarse: si no, el resumen de su mes quedaría desactualizado. Integrar en `nivelAntiguedadMovimiento` (devolver `'bloqueado'` si `fecha ≤ fin de S.cierre.corte`, sin importar `diasBloqueo`) o en un punto único equivalente; cubrir con pruebas todos los módulos que editan/borran movimientos.
 
 ### 5.8 Flujo de usuario (Configuración → «Cerrar períodos antiguos»)
-1. Medidor y disparador visibles; el corte propuesto es `Cierre.corteMasReciente()` (no se puede elegir uno posterior).
+1. Medidor y disparador visibles (la tarjeta actual no ofrece ninguna acción: la etapa 2 debe añadir aquí el botón de «Cerrar períodos antiguos»); el corte propuesto es `Cierre.corteMasReciente()` (no se puede elegir uno posterior).
 2. **Vista previa** (`Cierre.analizarCompleto`): registros y KB a podar, ahorro estimado, bloqueados por motivo, advertencias (`componente-grande` detiene hasta investigar; `wrapped-sin-guardar` solo informa y ofrece guardar antes), entidades.
 3. **Backup JSON obligatorio** (`exportarJSON`, configuracion.js, descarga `mis-finanzas-backup-FECHA.json`). El navegador no confirma la descarga: pedir confirmación explícita («Ya lo descargué»).
 4. Confirmación + **PIN** (`pedirPinAntesDe`).
@@ -139,18 +140,20 @@ Invariantes antes = después: saldo de cada cuenta y cajita; `Libro.verificar().
 6. Suponer que `Loader.ensureAll()` carga `wrapped` (no lo hace fuera de enero).
 7. Una edición que borró dos líneas de `renderWrapped`: las pruebas de lógica no ejecutan esa función; la atrapó el recorrido en jsdom. **Toda función que arma pantalla necesita su recorrido en la página real.**
 8. Un test del PIN esperaba 520 ms fijos con 10 ms de margen sobre el código y fallaba bajo carga; ya espera la señal real. Si algo es intermitente, repetir la suite en paralelo.
-9. Afirmar «nadie usa la app» sin evidencia: sí consta en el CHANGELOG (2026-10-18: «no hay usuarios ni backups que conservar»), pero no se sabe si desde entonces hay datos propios.
+9. Pasar `huella.js` a carga bajo demanda sin más habría **perdido las sondas** de tarjetas, encargos, alcancía y Wrapped (se registran antes de que exista `Huella`); y usar un grupo diferido «a secas» no ahorra nada, porque `ensureAll()` precarga todos los grupos al arrancar salvo los de `SOLO_BAJO_DEMANDA`. Resuelto con `registrarSonda` + cola y con ese conjunto. Un aviso de la app que promete una acción inexistente («archivar») también era un error: ya es neutro.
+10. Afirmar «nadie usa la app» sin evidencia: sí consta en el CHANGELOG (2026-10-18: «no hay usuarios ni backups que conservar»), pero no se sabe si desde entonces hay datos propios.
 
 ## 9. Cómo verificar el repo
 
 ```
 npm ci                      # una vez (jsdom)
-node --test                 # 647 pruebas, 0 fallos (tarda ~45 s)
+node --test                 # 648 pruebas, 0 fallos (tarda ~45 s)
 npm run smoke               # recorrido de la página real: «TODO OK — sin fallos reales»
 npm run smoke:wrapped       # 36 comprobaciones del Wrapped en la página real
+npm run smoke:cierre        # carga bajo demanda de huella/cierre en la página real (no al arrancar, sondas en cola, sin conexión)
 node scripts/generar-mapa.js --check   # «mapa-codigo.md está al día»
 ```
-Archivos de entrada del cierre: `js/core/huella.js`, `js/core/cierre.js`, `js/core/periodo.js`, `js/core/core-state.js` (`Libro`, `conEstadoAislado`, `nivelAntiguedadMovimiento`), `js/modules/cuentas.js` (historial), `js/modules/configuracion.js` (`exportarJSON`, `renderTamanoDatos`), `js/core/firebase-sync.js`. Guardas automáticas que fallan si se olvida algo: clasificación de claves de `S`, saldo solo por la puerta única del libro, símbolos decorativos, estilos inline, tuteo, contrato de clases CSS del Wrapped guardado.
+Archivos de entrada del cierre: `js/core/huella.js`, `js/core/cierre.js`, `js/core/periodo.js`, `js/core/lazy-loader.js`, `js/core/core-state.js` (`Libro`, `conEstadoAislado`, `registrarSonda`, `nivelAntiguedadMovimiento`), `js/modules/cuentas.js` (historial), `js/modules/configuracion.js` (`exportarJSON`, `renderTamanoDatos`), `js/core/firebase-sync.js`. Guardas automáticas que fallan si se olvida algo: clasificación de claves de `S`, saldo solo por la puerta única del libro, símbolos decorativos, estilos inline, tuteo, contrato de clases CSS del Wrapped guardado.
 
 ## 10. Apéndice: Wrapped (resumen; detalle en `docs/wrapped.md` §7quaterdecies)
 
@@ -158,4 +161,4 @@ Criterio de datos suficientes (`wrapped-gate.js`): `nada` (0 registros), `poco` 
 
 ## 11. Apéndice: prompt de arranque para un chat nuevo
 
-> Voy a implementar la etapa 2 del cierre de períodos de Mis Finanzas. Te adjunto el documento maestro `cierre-de-periodos.md` y el código actual (zips de `js`, `tests`, `docs`, `scripts`, más `index.html`, `sw.js`, `css/styles.css`, `package.json`, `mapa-codigo.md`). Lee primero el documento completo (sobre todo §0, §4, §5 y §8). Antes de modificar nada: reconstruye el repo, corre `node --test`, `npm run smoke` y `npm run smoke:wrapped` y confírmame que dan lo que dice §9. Después propón el plan de implementación de §5 con los archivos a tocar y las pruebas, y espera mi aprobación antes de escribir código. No toques datos reales; usa datos sintéticos. Distingue siempre entre lo implementado, lo probado y lo pendiente, y no des nada por funcionando sin comprobarlo (incluida la página real en jsdom).
+> Voy a implementar la etapa 2 del cierre de períodos de Mis Finanzas. Te adjunto el documento maestro `cierre-de-periodos.md` y el código actual (zips de `js`, `tests`, `docs`, `scripts`, más `index.html`, `sw.js`, `css/styles.css`, `package.json`, `mapa-codigo.md`). Lee primero el documento completo (sobre todo §0, §4, §5 y §8). Antes de modificar nada: reconstruye el repo, corre `node --test`, `npm run smoke` y `npm run smoke:wrapped` y confírmame que dan lo que dice §9. Recuerda que `Huella` y `Cierre` solo existen tras `await Loader.ensure('cierre')`. Después propón el plan de implementación de §5 con los archivos a tocar y las pruebas, y espera mi aprobación antes de escribir código. No toques datos reales; usa datos sintéticos. Distingue siempre entre lo implementado, lo probado y lo pendiente, y no des nada por funcionando sin comprobarlo (incluida la página real en jsdom).

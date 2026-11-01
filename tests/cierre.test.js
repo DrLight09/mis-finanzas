@@ -376,7 +376,7 @@ describe('cierre — medidor en Configuración (renderTamanoDatos)', () => {
     const { ctx, el } = pantalla();
     ctx.Cierre.tamano = async () => ({ comprimido: 650000, comprimidoEstimado: false, limites: { aviso: 800000, limite: 1000000 }, porcentajeDelLimite: 65, antiguedad: { dias: 900 }, proyeccion: { diasHastaAviso: 400, fechaAviso: '2027-12-01', confianza: 'media' } });
     await ctx.renderTamanoDatos();
-    assert.match(String(el.innerHTML), /conviene empezar a archivar los años cerrados/);
+    assert.match(String(el.innerHTML), /es momento de revisar el cierre de períodos/);
     assert.match(String(el.innerHTML), /datos de más de 2 años/);
     ctx.Cierre.tamano = async () => { throw new Error('boom'); };
     const aviso = console.warn; console.warn = () => {};

@@ -22,7 +22,8 @@
    4. TAMAÑO: bruto por clave, comprimido (el mismo códec del guardado), proyección de cuándo se llegaría al aviso y al límite, y
       el disparador acordado para pasar de esta etapa a la siguiente.
 
-   Todo es síncrono salvo lo que comprime. Sin DOM. Carga de entrada (<script defer>) después de huella.js.
+   Todo es síncrono salvo lo que comprime. Sin DOM. Se carga BAJO DEMANDA (Loader, grupo 'cierre': huella.js y luego este archivo), solo al abrir
+   Configuración; desde la consola, `await Loader.ensure('cierre')` antes de usar `Cierre` o `Huella`.
    ═══════════════════════════════════════════════════════════════ */
 const Cierre = (() => {
   const VERSION = 1;

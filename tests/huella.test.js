@@ -237,6 +237,29 @@ describe('huella', () => {
     assert.equal(v.Huella.comparar(h, h).ok, false);
   });
 
+  test('ORDEN DE CARGA: huella.js se carga bajo demanda, DESPUÉS de los módulos; ninguna sonda se pierde (registrarSonda las deja en cola y huella.js las registra)', () => {
+    const { loadApp } = require('./support/load-app');
+    const path = require('node:path');
+    const R = f => path.join(__dirname, '..', 'js', f);
+    const base = ['core/core-state.js', 'core/cuenta-efectos.js', 'core/periodo.js', 'core/nu-calc.js', 'core/calc-helpers.js'];
+    const modulos = ['modules/tarjetas_credito.js', 'modules/encargos.js', 'modules/alcancia.js', 'modules/wrapped.js'];
+    // 1) los módulos primero (como en la página: se precargan al arrancar), huella.js y cierre.js al final (grupo 'cierre')
+    const v = loadApp(base.concat(modulos, ['core/huella.js', 'core/cierre.js']).map(R), { permissive: true });
+    assert.deepEqual(plano(v.window._sondasPendientes), [], 'la cola quedó vacía al cargar huella.js');
+    BASE.forEach(n => assert.ok(v.Huella.registradas().includes(n), 'falta la sonda ' + n + ' (se perdió al llegar huella.js después)'));
+    // 2) y las sondas que llegaron por la cola funcionan igual que las registradas directamente
+    generar(v, { dias: 120 });
+    const h = v.Huella.calcular(v.S, { requeridas: BASE });
+    assert.deepEqual(plano(h.errores), {});
+    assert.equal(Object.keys(h.sondas).length, BASE.length);
+    // 3) antes de que exista huella.js, registrarSonda deja la sonda en cola (no revienta ni la pierde)
+    const antes = loadApp(base.concat(['modules/tarjetas_credito.js']).map(R), { permissive: true });
+    assert.ok(plano(antes.window._sondasPendientes).length === 1, 'tarjetas dejó su sonda en cola');
+    // 4) después de existir, registrarSonda registra directo
+    v.registrarSonda('prueba-directa', () => ({ ok: 1 }));
+    assert.ok(v.Huella.registradas().includes('prueba-directa'));
+  });
+
   test('completa() carga por nombre los 4 grupos con sonda y NO depende de Loader.ensureAll (que se salta «wrapped» fuera de su ventana)', async () => {
     const v = cargarApp(); generar(v, { dias: 60 });
     const pedidos = [];

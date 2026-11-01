@@ -5,7 +5,8 @@
   "scripts": {
     "test": "node --test",
     "smoke": "node scripts/smoke-browser.js",
-    "smoke:wrapped": "node scripts/smoke-wrapped.js"
+    "smoke:wrapped": "node scripts/smoke-wrapped.js",
+    "smoke:cierre": "node scripts/smoke-cierre.js"
   },
   "engines": {
     "node": ">=20"

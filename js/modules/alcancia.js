@@ -1519,7 +1519,7 @@ if(window._dataLoaded){
 
 // Sonda de la huella (js/core/huella.js): saldo registrado y su copia ofuscada, depósitos y cada ciclo ya destapado (con la suma de
 // los movimientos que guarda). Vive dentro de la IIFE porque _getSaldoOfuscado es privado; corre aislada (lee el S de la copia).
-if(typeof Huella!=='undefined'&&typeof Huella.registrar==='function') Huella.registrar('alcancia',function(st){
+registrarSonda('alcancia',function(st){
   const a=st.alcancia;
   if(!a) return {existe:false,entidades:{}};
   const suma=l=>(l||[]).reduce((x,m)=>x+((m&&m.monto)||0),0);

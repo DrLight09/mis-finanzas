@@ -56,64 +56,28 @@
   }
 
   // ── TECLADO ───────────────────────────────────────────────────────────────
-  // Histéresis: se entra al modo teclado pronto (así el sheet acompaña la animación
-  // desde el principio) y se sale tarde (así un teclado que se abre y se cierra a
-  // mitad de camino no hace oscilar el layout al cruzar un único umbral).
+  // Modelo: el .overlay ocupa SIEMPRE toda la pantalla y el .sheet queda anclado
+  // al fondo de ella. Con teclado, el sheet reserva abajo un `padding-bottom`
+  // igual a la parte tapada (--kb-pad) y limita su alto a lo visible (--vv-h):
+  //   · su fondo sigue llegando al borde de la pantalla, así que mientras el
+  //     teclado sube con su animación no queda ningún hueco («sheet partido»);
+  //   · el contenido (con scroll) termina justo encima del teclado;
+  //   · los cambios de alto se animan en CSS (ver .sheet), no hay saltos.
+  // «Hay teclado» NO se deduce solo del tamaño del viewport (el navegador lo
+  // informa tarde y a veces con valores intermedios): exige además un campo de
+  // texto enfocado y visible. Si el foco se va, el espacio se libera al instante.
   var KB_ENTER_PX = 60;              // diferencia mínima para entrar al modo teclado
-  var KB_EXIT_PX = 30;               // por debajo de esto se sale
+  var KB_EXIT_PX = 30;               // por debajo de esto se sale (histéresis)
+  var SETTLE_MS = 280;               // quietud necesaria antes de corregir el scroll
   var vv = window.visualViewport;
   var kbOpen = false;
   var kbRaf = 0;
-  var lastVvChange = 0;              // última vez que el viewport cambió de medidas
-  var VV_SETTLE_MS = 110;            // sin cambios durante este tiempo = teclado quieto
-  var kbListeners = [];              // se avisa cuando cambia el estado/medidas
+  var lastLayoutChange = 0;          // última vez que cambió el layout del teclado
+  var dragFreeze = false;            // mientras se arrastra un sheet no se toca el layout
+  var syncPending = false;
+  var kbListeners = [];
 
-  function readViewport(){
-    // Con zoom de pellizco el visual viewport también se achica: no es teclado.
-    var zoomed = vv.scale && vv.scale > 1.02;
-    var diff = window.innerHeight - vv.height;
-    var open = !zoomed && diff > (kbOpen ? KB_EXIT_PX : KB_ENTER_PX);
-    return { open: open, top: vv.offsetTop, h: vv.height };
-  }
-
-  function syncViewport(){
-    kbRaf = 0;
-    var st = readViewport();
-    var changed = false;
-    if(st.open){
-      // Redondeo a 0.5px: evita reescribir variables por ruido sub-píxel.
-      var top = Math.round(st.top * 2) / 2, h = Math.round(st.h * 2) / 2;
-      if(root._kbTop !== top){ root._kbTop = top; root.style.setProperty('--vv-top', top + 'px'); changed = true; }
-      if(root._kbH !== h){ root._kbH = h; root.style.setProperty('--vv-h', h + 'px'); changed = true; }
-      if(!kbOpen){ kbOpen = true; root.classList.add('kb-open'); changed = true; }
-    } else if(kbOpen){
-      kbOpen = false;
-      root._kbTop = root._kbH = undefined;
-      root.classList.remove('kb-open');
-      root.style.removeProperty('--vv-top');
-      root.style.removeProperty('--vv-h');
-      changed = true;
-    }
-    if(changed){ lastVvChange = Date.now(); kbListeners.forEach(function(fn){ fn(); }); }
-  }
-
-  function scheduleViewportSync(){
-    if(!kbRaf) kbRaf = requestAnimationFrame(syncViewport);
-  }
-
-  if(vv){
-    vv.addEventListener('resize', scheduleViewportSync);
-    vv.addEventListener('scroll', scheduleViewportSync);
-    window.addEventListener('resize', scheduleViewportSync);
-    window.addEventListener('orientationchange', scheduleViewportSync);
-    window.addEventListener('pageshow', scheduleViewportSync);
-    syncViewport();
-  }
-
-  // ── CAMPO ENFOCADO SIEMPRE VISIBLE ────────────────────────────────────────
-  var focusEl = null, focusTimers = [], ensureRaf = 0;
-
-  // Tipos de <input> que no abren el teclado de texto: no hay nada que revelar.
+  // Tipos de <input> que no abren el teclado de texto.
   var NO_KEYBOARD_TYPES = ['checkbox','radio','range','button','submit','reset',
     'color','file','image','hidden','date','time','datetime-local','month','week'];
 
@@ -124,6 +88,82 @@
     return NO_KEYBOARD_TYPES.indexOf((el.type || 'text').toLowerCase()) === -1;
   }
 
+  // Campo de texto enfocado Y visible (uno dentro de un overlay oculto no cuenta).
+  function focusedTextField(){
+    var el = document.activeElement;
+    if(!needsKeyboard(el) || !el.getClientRects().length) return null;
+    return el;
+  }
+
+  function syncViewport(){
+    kbRaf = 0;
+    if(dragFreeze){ syncPending = true; return; }
+    if(!vv) return;
+
+    // Un campo enfocado dentro de algo que se acaba de ocultar (muchos sheets se
+    // abren/cierran con classList directo) se suelta ya: así el teclado se cierra
+    // junto con el sheet y no cuando el navegador decida limpiar el foco.
+    var ae = document.activeElement;
+    if(ae && ae !== document.body && ae !== document.documentElement &&
+       !ae.getClientRects().length && typeof ae.blur === 'function'){
+      try{ ae.blur(); }catch(_){}
+    }
+
+    var innerH = window.innerHeight;
+    var diff = innerH - vv.height;
+    var zoomed = vv.scale && vv.scale > 1.02;       // el pellizco también achica el viewport
+    var want = !zoomed && !!focusedTextField() && diff > (kbOpen ? KB_EXIT_PX : KB_ENTER_PX);
+
+    var changed = false;
+    if(want){
+      // Parte del viewport del layout que tapa el teclado (con offsetTop de iOS incluido).
+      var pad = Math.max(0, Math.round((innerH - (vv.offsetTop + vv.height)) * 2) / 2);
+      var h = Math.round(vv.height * 2) / 2;
+      if(root._kbPad !== pad){ root._kbPad = pad; root.style.setProperty('--kb-pad', pad + 'px'); changed = true; }
+      if(root._kbH !== h){ root._kbH = h; root.style.setProperty('--vv-h', h + 'px'); changed = true; }
+      if(!kbOpen){ kbOpen = true; root.classList.add('kb-open'); changed = true; }
+    } else if(kbOpen){
+      kbOpen = false;
+      root._kbPad = root._kbH = undefined;
+      root.classList.remove('kb-open');
+      root.style.removeProperty('--kb-pad');
+      root.style.removeProperty('--vv-h');
+      changed = true;
+    }
+    if(changed){ lastLayoutChange = Date.now(); kbListeners.forEach(function(fn){ fn(); }); }
+  }
+
+  function scheduleViewportSync(){
+    if(!kbRaf) kbRaf = requestAnimationFrame(syncViewport);
+  }
+  function setDragFreeze(on){
+    dragFreeze = on;
+    if(!on && syncPending){ syncPending = false; }
+    if(!on) scheduleViewportSync();
+  }
+
+  if(vv){
+    vv.addEventListener('resize', scheduleViewportSync);
+    vv.addEventListener('scroll', scheduleViewportSync);
+    window.addEventListener('resize', scheduleViewportSync);
+    window.addEventListener('orientationchange', scheduleViewportSync);
+    window.addEventListener('pageshow', scheduleViewportSync);
+    // El foco manda: al enfocar/soltar un campo se re-evalúa en el siguiente frame
+    // (así un cambio campo→campo, que dispara focusout y focusin seguidos, no parpadea).
+    document.addEventListener('focusin', scheduleViewportSync, {capture:true, passive:true});
+    document.addEventListener('focusout', scheduleViewportSync, {capture:true, passive:true});
+    // Overlays que se abren/cierran con classList directo (Personas, Plata comprometida...).
+    new MutationObserver(function(recs){
+      for(var i = 0; i < recs.length; i++){
+        if(recs[i].target.classList && recs[i].target.classList.contains('overlay')){ scheduleViewportSync(); return; }
+      }
+    }).observe(document.body || document.documentElement, {attributes:true, attributeFilter:['class'], subtree:true});
+    syncViewport();
+  }
+
+  // ── CAMPO ENFOCADO SIEMPRE VISIBLE ────────────────────────────────────────
+  var focusEl = null, focusTimers = [], ensureRaf = 0, kbSettleTimer = 0;
+
   function ensureFocusedVisible(){
     var el = focusEl;
     if(!el || !el.isConnected || document.activeElement !== el) return;
@@ -132,11 +172,11 @@
     var overlay = sheet.closest('.overlay');
     if(overlay && !overlay.classList.contains('open')) return;
     if(sheet.scrollHeight <= sheet.clientHeight + 1) return;   // nada que scrollear
-    if(fingerDown()){ queueEnsure(100); return; }              // nunca bajo un dedo
-    // Mientras el teclado todavía se mueve, medir daría posiciones a medio camino
-    // y el scroll corregiría de más (sube/baja). Se espera a que se quede quieto.
-    var sinceChange = Date.now() - lastVvChange;
-    if(sinceChange < VV_SETTLE_MS){ queueEnsure(VV_SETTLE_MS - sinceChange + 10); return; }
+    if(fingerDown() || dragFreeze){ queueEnsure(100); return; } // nunca bajo un dedo
+    // Mientras el teclado/sheet todavía se mueve, medir daría posiciones a medio
+    // camino y el scroll corregiría de más. Se espera a que se quede quieto.
+    var sinceChange = Date.now() - lastLayoutChange;
+    if(sinceChange < SETTLE_MS){ queueEnsure(SETTLE_MS - sinceChange + 10); return; }
 
     var viewTop = vv ? vv.offsetTop : 0;
     var viewBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
@@ -165,16 +205,16 @@
   function clearEnsure(){
     focusTimers.forEach(clearTimeout);
     focusTimers = [];
+    clearTimeout(kbSettleTimer);
     if(ensureRaf){ cancelAnimationFrame(ensureRaf); ensureRaf = 0; }
   }
 
   // Cuando el layout del teclado cambia, el sheet ya lo sigue (CSS). El ajuste
-  // del scroll se pide una sola vez, cuando el viewport lleva VV_SETTLE_MS quieto.
-  var kbSettleTimer = 0;
+  // del scroll se pide una sola vez, cuando lleva SETTLE_MS quieto.
   kbListeners.push(function(){
     if(!focusEl) return;
     clearTimeout(kbSettleTimer);
-    kbSettleTimer = setTimeout(ensureFocusedVisible, VV_SETTLE_MS + 10);
+    kbSettleTimer = setTimeout(ensureFocusedVisible, SETTLE_MS + 10);
   });
 
   document.addEventListener('focusin', function(e){
@@ -182,16 +222,12 @@
     if(!needsKeyboard(el) || !el.closest('.sheet')) return;
     focusEl = el;
     clearEnsure();
-    clearTimeout(kbSettleTimer);
-    // El teclado puede tardar en aparecer: tres pasadas baratas cubren los
-    // dos casos (ya estaba abierto / se abre ahora). El cambio real de layout
-    // lo cubre además el listener de arriba.
     ensureRaf = requestAnimationFrame(function(){ ensureRaf = 0; ensureFocusedVisible(); });
-    queueEnsure(120);
-    queueEnsure(380);
+    queueEnsure(150);
+    queueEnsure(450);
   });
   document.addEventListener('focusout', function(e){
-    if(e.target === focusEl){ focusEl = null; clearEnsure(); clearTimeout(kbSettleTimer); }
+    if(e.target === focusEl){ focusEl = null; clearEnsure(); }
   });
 
   // ── CIERRE POR GESTO ──────────────────────────────────────────────────────
@@ -247,7 +283,7 @@
     var startX = 0, startY = 0, originY = 0;   // originY: desplazamiento con el que empezó (rebote interrumpido)
     var curY = 0, rafId = 0, settleTimer = 0, teHandler = null;
     var samples = [];                          // [{t, y}] para la velocidad
-    var overlayEl = null, panelH = 1;
+    var overlayEl = null, panelH = 1, kbDismissed = false;
 
     function point(e){
       return e.touches && e.touches.length ? e.touches[0] :
@@ -286,13 +322,15 @@
     }
 
     function onStart(e){
-      if(e.touches && e.touches.length > 1){ disarm(); return; }   // multitoque: no es cierre
+      if(e.touches && e.touches.length > 1){ if(dragging) cancelGesture(); else disarm(); return; }   // multitoque: no es cierre
       if(settling && !panel._swipeRebound) return;                 // cerrando: ignorar
       var p = point(e);
       var rect = panel.getBoundingClientRect();
       var target = e.target;
       var inHandle = !!(handle && handle.contains(target));
-      fromGrab = inHandle || (p.clientY - rect.top) <= GRAB_ZONE_PX;
+      // La franja superior solo es «agarre» si el sheet está arriba del todo: scrolleado,
+      // esa franja es contenido y el dedo debe scrollear, no cerrar.
+      fromGrab = inHandle || ((p.clientY - rect.top) <= GRAB_ZONE_PX && scrollEl.scrollTop < 8);
 
       // Un toque sobre un campo es para el campo (cursor, selección), nunca para cerrar.
       if(!inHandle && target && target.closest && target.closest(FIELD_SELECTOR)){ disarm(); return; }
@@ -316,6 +354,7 @@
       startThreshold = fromGrab ? START_PX_GRAB : START_PX_BODY;
       curY = originY;
       samples = [{ t: Date.now(), y: p.clientY }];
+      kbDismissed = false;
       overlayEl = getOverlay();
       panelH = panel.offsetHeight || 1;
     }
@@ -339,6 +378,7 @@
         // Recomprobar justo antes de arrancar: algo pudo scrollear mientras tanto.
         if(!fromGrab && canScrollUp(e.target, panel, scrollEl)){ disarm(); return; }
         dragging = true;
+        setDragFreeze(true);    // el layout del teclado no se mueve bajo el dedo
         panel.style.transition = 'none';
         panel.style.willChange = 'transform';
         if(overlayEl && overlayEl !== panel) overlayEl.style.transition = 'none';
@@ -350,6 +390,13 @@
       // Seguimiento 1:1 hacia abajo. Nunca por encima de su sitio: un desplazamiento
       // negativo deja ver un hueco bajo el sheet.
       curY = Math.max(0, originY + dy);
+      // Como en iOS: al bajar el sheet con el teclado abierto, el teclado empieza a
+      // esconderse YA (no al soltar), así baja a la par del dedo y no queda tapando.
+      if(!kbDismissed && curY > 24){
+        kbDismissed = true;
+        var ae = document.activeElement;
+        if(ae && panel.contains(ae) && needsKeyboard(ae)) ae.blur();
+      }
       if(e.cancelable) e.preventDefault();
       schedulePaint();
 
@@ -399,6 +446,7 @@
         if(done) return;
         done = true;
         clearSettle();
+        setDragFreeze(false);
         if(close){
           // El sheet se queda fuera de pantalla hasta que closeFn lo oculta, y
           // recién ahí se limpian los estilos: sin parpadeo al volver a abrir.
@@ -464,7 +512,7 @@
     panel.addEventListener('mousedown', function(e){
       if(e.button !== 0) return;
       var rect = panel.getBoundingClientRect();
-      var inGrab = (handle && handle.contains(e.target)) || (e.clientY - rect.top) <= GRAB_ZONE_PX;
+      var inGrab = (handle && handle.contains(e.target)) || ((e.clientY - rect.top) <= GRAB_ZONE_PX && scrollEl.scrollTop < 8);
       if(!inGrab) return;
       onStart(e);
       if(!armed) return;

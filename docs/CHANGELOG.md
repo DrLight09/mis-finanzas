@@ -4,6 +4,20 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Sheets: teclado rehecho como «sheet extendido bajo el teclado» (2026-11-01, SW v87)
+
+Tres síntomas, una misma causa: el sheet se *encogía* para quedar justo encima del teclado, y el tamaño del teclado lo informa el navegador tarde y a saltos, mientras el teclado se anima por su cuenta.
+
+- **Sheet «partido» mientras sube el teclado (sheets altos como Mesada):** el sheet saltaba de golpe a su posición final y entre su borde inferior y el teclado (aún en camino) se veía el fondo. Ahora el overlay ya no cambia de tamaño: el sheet queda anclado al borde inferior de la pantalla y se **extiende por debajo del teclado** con `padding-bottom: calc(38px + var(--kb-pad))` y `max-height: calc(var(--vv-h) * .96 + var(--kb-pad))`. Su fondo siempre llega al borde, así que no hay hueco por mucho que tarde el teclado. El contenido (con scroll) termina justo encima del teclado.
+- **«Nueva persona» / «Volver» con teclado abierto (sheet que sube de más, se queda pegado ~1 s y baja de golpe):** el modo teclado dependía solo del tamaño del viewport, que seguía «achicado» un buen rato después de que el teclado ya se había ido. Ahora exige además **un campo de texto enfocado y visible**: si el foco se va (botón, otro sheet, overlay oculto) el espacio reservado se libera en el siguiente frame sin esperar al navegador. Un campo enfocado dentro de un overlay recién oculto se suelta solo (muchos sheets —Personas, Plata comprometida…— se abren y cierran con `classList` directo, sin pasar por `openSheet`/`closeSheet`); un `MutationObserver` sobre la clase `open` de los `.overlay` lo detecta.
+- **Cambios de altura animados:** `.sheet` transiciona `max-height` y `padding-bottom` (.26 s) para acompañar al teclado en vez de saltar; `prefers-reduced-motion` lo desactiva.
+- **Cerrar por gesto con teclado abierto (sheet abajo del todo y teclado a medias):** el teclado se suelta cuando el sheet baja más de 24 px (como en iOS), no al soltar el dedo, y el layout queda **congelado** durante el arrastre para que el sheet no se despegue del dedo. Se descongela al terminar (cierre o rebote).
+- **Franja de agarre:** los 56 px superiores solo agarran si el sheet está arriba del todo; scrolleado, esa franja es contenido.
+- **Ajuste de scroll del campo enfocado:** espera a que el layout del teclado lleve 280 ms quieto (incluye la transición CSS) y se hace una sola vez.
+- Variables nuevas en `<html>` (solo con teclado): `--kb-pad`, `--vv-h`. Desaparecen `--vv-top` y las reglas que redimensionaban el overlay.
+
+---
+
 ## Sheets: ajustes tras probar en el celular (2026-11-01, SW v86)
 
 - **Hueco bajo el sheet al subirlo:** el arrastre dejaba un poco de «elasticidad» hacia arriba (`y * 0.15`), que desplazaba el sheet por encima de su sitio y dejaba ver el fondo debajo. Ahora el desplazamiento nunca es negativo: el sheet solo baja, y al volver sube hasta su sitio y se detiene.

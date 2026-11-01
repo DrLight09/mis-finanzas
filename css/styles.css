@@ -171,11 +171,19 @@ textarea{resize:none;height:60px;}
    (antes se animaba la opacity del overlay entero, que arrastraba al sheet). */
 @property --ov-k{syntax:'<number>';inherits:false;initial-value:1;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,calc(.75 * var(--ov-k)));z-index:999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);overflow:hidden;}
-/* Teclado abierto (clase y variables las escribe js/core/sheet-behavior.js a partir
-   del Visual Viewport): el overlay pasa a medir EXACTAMENTE lo visible, y el sheet,
-   alineado abajo, queda pegado al teclado sin márgenes ni transiciones intermedias. */
-html.kb-open .overlay{bottom:auto;top:var(--vv-top,0px);height:var(--vv-h,100%);}
-html.kb-open .overlay .sheet{max-height:96%;}
+/* Teclado abierto. Clase y variables las escribe js/core/sheet-behavior.js (solo cuando
+   hay un campo de texto enfocado y visible Y el Visual Viewport está achicado):
+     --kb-pad  parte de la pantalla que tapa el teclado
+     --vv-h    alto visible (encima del teclado)
+   El overlay NO cambia: sigue ocupando toda la pantalla y el sheet, anclado abajo, se
+   EXTIENDE por debajo del teclado (padding-bottom = --kb-pad). Mientras el teclado sube
+   con su animación el fondo del sheet ya está ahí: nunca se ve «partido». El contenido
+   (con scroll) termina justo encima del teclado. Con max-height = --vv-h * .96 + --kb-pad
+   el borde superior queda al 4 % de lo visible. */
+html.kb-open .overlay .sheet{
+  max-height:calc(var(--vv-h) * .96 + var(--kb-pad));
+  padding-bottom:calc(38px + var(--kb-pad));
+}
 .overlay.open{display:flex;}
 /* Sheet stack: el overlay activo sube a z-index 1001; el enterrado queda en 999
    con su sheet escalaodao/apagado y sin pointer-events */
@@ -183,7 +191,10 @@ html.kb-open .overlay .sheet{max-height:96%;}
 .overlay.sheet-background{display:flex;z-index:999;background:rgba(0,0,0,.0) !important;backdrop-filter:none !important;pointer-events:none;}
 .overlay.sheet-background .sheet{transform:scale(0.93) translateY(-10px);opacity:0.3;pointer-events:none;will-change:transform,opacity;}
 .overlay.open:not(.sheet-background) .sheet{transform:scale(1) translateY(0);opacity:1;will-change:transform,opacity;}
-.sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:0 18px 38px;width:100%;max-width:430px;max-height:min(92svh,96%);overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;}
+.sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:0 18px 38px;width:100%;max-width:430px;max-height:min(92svh,96%);overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;
+  /* El alto del sheet acompaña al teclado en vez de saltar (ver bloque kb-open). */
+  transition:max-height .26s cubic-bezier(.2,.8,.2,1),padding-bottom .26s cubic-bezier(.2,.8,.2,1);}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none;}}
 /* Handle unificado — una sola definición */
 .sheet-handle{position:relative;width:40px;height:5px;background:var(--border2);border-radius:3px;margin:14px auto 20px;cursor:grab;opacity:.7;touch-action:none;-webkit-user-select:none;user-select:none;}
 /* Zona de toque ampliada: el handle mide 5px de alto, imposible de acertar con el dedo. */
@@ -604,7 +615,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
    acá, el salto de layout que la regla de arriba evita en el resto de la app
    (mov_fuente_hint/mov_destino_hint en Préstamos NO se tocan y siguen
    reservando el espacio). Con transición: el salto pasa a ser progresivo
-   (el reacomodo del teclado ya no usa transiciones: ver sheet-behavior.js) en vez de instantáneo — no elimina el
+   (misma idea que el alto del .sheet cuando aparece el teclado) en vez de instantáneo — no elimina el
    desplazamiento pero da tiempo a que el layout se asiente antes del
    siguiente toque. max-height en vez de height porque height:auto no anima. */
 #gv_fuente_hint{

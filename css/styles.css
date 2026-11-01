@@ -173,13 +173,18 @@ textarea{resize:none;height:60px;}
 .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,calc(.75 * var(--ov-k)));z-index:999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);overflow:hidden;}
 /* Teclado abierto. Clase y variables las escribe js/core/sheet-behavior.js (solo cuando
    hay un campo de texto enfocado y visible Y el Visual Viewport está achicado):
-     --kb-pad  parte de la pantalla que tapa el teclado
+     --vv-top  borde superior de lo visible (offsetTop: Android/iOS desplazan el viewport
+               visual para mostrar el campo enfocado)
      --vv-h    alto visible (encima del teclado)
-   El overlay NO cambia: sigue ocupando toda la pantalla y el sheet, anclado abajo, se
-   EXTIENDE por debajo del teclado (padding-bottom = --kb-pad). Mientras el teclado sube
-   con su animación el fondo del sheet ya está ahí: nunca se ve «partido». El contenido
-   (con scroll) termina justo encima del teclado. Con max-height = --vv-h * .96 + --kb-pad
-   el borde superior queda al 4 % de lo visible. */
+     --kb-pad  parte del layout que queda tapada por el teclado
+   El overlay empieza donde empieza lo visible (así un desplazamiento del viewport NO mueve
+   el sheet en pantalla: el overlay se desplaza con él) y sigue hasta el borde inferior del
+   layout, o sea que se EXTIENDE por debajo del teclado. El sheet, anclado abajo, reserva
+   ese tramo con padding-bottom: su fondo ya está ahí mientras el teclado sube con su
+   animación (nunca se ve «partido») y su borde superior depende solo de lo visible
+   (--vv-h) y del contenido, no del desplazamiento. Sin transiciones: el overlay cambia de
+   tamaño de golpe y el sheet debe cambiar con él, o se verían desfasados. */
+html.kb-open .overlay{top:var(--vv-top,0px);}
 html.kb-open .overlay .sheet{
   max-height:calc(var(--vv-h) * .96 + var(--kb-pad));
   padding-bottom:calc(38px + var(--kb-pad));
@@ -191,10 +196,7 @@ html.kb-open .overlay .sheet{
 .overlay.sheet-background{display:flex;z-index:999;background:rgba(0,0,0,.0) !important;backdrop-filter:none !important;pointer-events:none;}
 .overlay.sheet-background .sheet{transform:scale(0.93) translateY(-10px);opacity:0.3;pointer-events:none;will-change:transform,opacity;}
 .overlay.open:not(.sheet-background) .sheet{transform:scale(1) translateY(0);opacity:1;will-change:transform,opacity;}
-.sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:0 18px 38px;width:100%;max-width:430px;max-height:min(92svh,96%);overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;
-  /* El alto del sheet acompaña al teclado en vez de saltar (ver bloque kb-open). */
-  transition:max-height .26s cubic-bezier(.2,.8,.2,1),padding-bottom .26s cubic-bezier(.2,.8,.2,1);}
-@media (prefers-reduced-motion:reduce){.sheet{transition:none;}}
+.sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:0 18px 38px;width:100%;max-width:430px;max-height:min(92svh,96%);overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;}
 /* Handle unificado — una sola definición */
 .sheet-handle{position:relative;width:40px;height:5px;background:var(--border2);border-radius:3px;margin:14px auto 20px;cursor:grab;opacity:.7;touch-action:none;-webkit-user-select:none;user-select:none;}
 /* Zona de toque ampliada: el handle mide 5px de alto, imposible de acertar con el dedo. */

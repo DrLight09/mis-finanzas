@@ -1,105 +1,161 @@
-# Cierre de períodos (historia antigua) — etapa 1 implementada, etapa 2 diferida
+# Cierre de períodos — documento maestro (etapa 1 hecha; etapa 2 sin empezar)
 
-Estado (2026-10-30): **etapa 1 implementada y probada** (huella de invariantes, vista previa de solo lectura, medidor de tamaño) y **ajustada tras revisar un análisis externo** (§10). **No se archiva, compacta ni borra nada.** Lo que sigue (etapa 2) se implementa solo cuando se cumpla el disparador de §5 y **está pendiente de aprobación el cambio de estrategia** descrito en §4: de «archivo por años» a «cierre con resumen congelado». La propuesta original literal (una `apertura` por cuenta + `resumenMensual` + borrar) sigue descartada, por las razones de §3 que se mantienen.
+**Estado: 2026-10-31.** Este es el **único documento vigente** sobre el cierre de períodos: reemplaza a todas las versiones anteriores de este archivo y al análisis externo (`analisis-cierre-etapa1*.md`). Si ves otro que diga que la etapa 2 es «archivo por años», que `S.wrappedAnios` lleva un campo `estado`, que el cierre *bloquea* por falta de Wrapped guardado o que se puede «quitar la copia duplicada» de la alcancía, **es viejo o está equivocado**.
 
-## 1. Por qué no es urgente (medido)
-Todo el estado vive en un documento de Firestore (tope 1 MiB) y viaja comprimido. Medido con historia sintética (formas reales de movimiento, gasto y libro; ~5 movimientos/día), comprimido con el códec del guardado:
+## 0. Lee esto primero (para quien retome la etapa 2)
 
-| Antigüedad | Comprimido | Respecto al límite |
+1. **Hecho y probado (etapa 1):** huella de invariantes (`js/core/huella.js`), vista previa de solo lectura y medidor de tamaño (`js/core/cierre.js`), `conEstadoAislado` (`core-state.js`), tarjeta «Tamaño de tus datos» en Configuración. **No existe ninguna ruta que modifique, archive o borre historia.**
+2. **Hecho aparte, relacionado:** Wrapped guardado por el usuario (`docs/wrapped.md` §7quaterdecies), mensaje «no alcanzó el tiempo», y el guardado en la nube sin clon redundante.
+3. **Etapa 2 = «cierre con resumen congelado»**, en **una sola operación sobre un solo documento** (§5). **No** es archivo por años en varios documentos (eso es la fase D, último recurso, §6).
+4. **Cuándo:** cuando el medidor avise que el payload comprimido pasó de ~500 KB. No por fecha. Con la regla de 24 meses no hay nada que cerrar antes de octubre de 2028 (la app nació limpia el 2026-10-18).
+5. **El precio, que el usuario aceptó:** el detalle viejo **sale de la nube**; el backup JSON descargado antes es el único archivo de esa historia. Por eso el backup es un paso obligatorio del flujo.
+6. **Antes de escribir código:** corre las pruebas (§9) para confirmar que el estado del repo es el que describe este documento, y relee §4 (hallazgos) y §8 (errores ya cometidos).
+7. **Principio de trabajo del usuario:** si un módulo limita lo que se quiere hacer, se modifica el módulo (la página debe verse y funcionar igual de cara al usuario). Cambios quirúrgicos, sin código muerto, sin estilos inline (clases en `css/styles.css`), texto de la app en tuteo.
+
+## 1. Estado del código
+
+| Qué | Dónde | Notas |
 |---|---|---|
-| 2 años | ≈ 152 KB | 15 % |
-| 5 años | ≈ 377 KB | 38 % |
-| 9 años | ≈ 675 KB | bajo el aviso de 800 KB |
+| Huella de invariantes | `js/core/huella.js` | Registro de sondas puras; `SONDAS_BASE` = `saldos, periodos, deudas, patrimonio, tarjetas, encargos, alcancia, wrapped`; `Huella.completa()` carga los 4 grupos diferidos **por nombre** (`GRUPOS_CON_SONDA`; `Loader.ensureAll()` se salta `wrapped` fuera de enero). API: `registrar, registradas, calcular, comparar, verificarTransformacion, completa, digest`. |
+| Estado aislado | `conEstadoAislado(estado, fn)` en `core-state.js` | `fn` síncrona; mientras corre, `save()` y `_fbSaveToCloud()` no escriben (`window._estadoAislado`). |
+| Vista previa y medidor | `js/core/cierre.js` | `analizar(corte, estado, {huella, mesActual})`, `analizarCompleto`, `tamano`, `disparador`, `corteMasReciente`, `registrarFuente`, `CLASIFICACION`. |
+| Sondas de módulos | `tarjetas_credito.js` (`tcDeudaCalculada`, pura), `encargos.js`, `alcancia.js`, `wrapped.js` | Registradas al cargar el módulo, con guarda `typeof Huella.registrar === 'function'`. |
+| Wrapped | `js/core/wrapped-gate.js` (criterio `_wrappedDatosAnio`, `_wrappedAbrir`), `js/modules/wrapped.js` | `S.wrappedAnios[AAAA] = { version, generadoEn, slides }` (sin `estado`). |
+| Medidor y «Mis Wrapped» | `js/modules/configuracion.js` (`renderTamanoDatos`, `renderMisWrapped`, `eliminarWrapped`) | Clases `cfg-tamano*` y `cfg-wrapped*` en `css/styles.css`. |
+| Datos sintéticos | `tests/support/datos-sinteticos.js` | `cargarApp(extra)`, `generar(ctx, {desde, dias, semilla})`, `HOY = '2026-10-30'`. Usa las funciones **reales** de la app. |
+| Pruebas | `tests/huella.test.js`, `tests/cierre.test.js`, `tests/wrapped-guardado.test.js`, `tests/fixtures/wrapped-clases.json` | Más `scripts/smoke-wrapped.js` (jsdom). |
+| Versión | `sw.js` → `mis-finanzas-v83` | Esquema de datos 9; la app no tiene migraciones. |
 
-Solo se supera el límite con ~15 movimientos/día durante 5 años. Y la app nació limpia el 2026-10-18 (esquema 9): no habrá movimientos de 2 años hasta octubre de 2028. Las cifras reales las da el medidor (Configuración → Datos → «Tamaño de tus datos»).
+`Cierre.analizar` devuelve: `corte, fechaCorte, completo, huella (digest), erroresHuella, advertencias, wrapped:{conWrapped, sinGuardar}, componentes:{total, maxRegistros, mayores}, total/candidatos/archivables:{registros, bytes, unidades}, bloqueados:{registros, porMotivo, detalle}, porFuente, entidades`. Motivos de bloqueo: `sin-fecha`, `entidad-abierta:{saldo-pendiente|registros-posteriores|sin-sonda}`, `enlazado-con-registro-bloqueado-o-posterior`. Advertencias: `componente-grande`, `wrapped-sin-guardar`.
 
-## 2. La idea inicial, formalizada
-Si el saldo de una cuenta hasta una fecha D suma 0, quitar esas entradas no cambia el saldo. Se generaliza: reemplazar las entradas ≤ D por una sola `apertura` con esa suma (cierre de libros). Es correcta **para el saldo**; el problema es que el saldo no es lo único que lee el pasado.
+## 2. Decisiones vigentes
 
-## 3. Por qué la compactación literal no es la mejor solución para esta app
-1. **Wrapped no se puede reproducir con un resumen mensual** (usa el gasto individual más grande con descripción y fecha, la categoría líder por monto y por frecuencia, promedio, conteos, racha, mejor/peor mes y un dominio por módulo). *Matiz (§10):* eso solo importa para el año que la app puede mostrar, que es **únicamente el recién cerrado** (`_wrappedVentana`, año actual − 1). La política de corte (≥ 24 meses, siempre ≤ dic de año − 2) lo deja intacto; la sonda `wrapped` ahora comprueba solo ese año.
-2. **Lectores directos del detalle.** `S.gastosVar` se lee en 15 archivos (79 sitios) y `S.movimientos` en 15 (152). *Matiz (§10):* casi todos son altas, bajas y búsquedas por id sobre registros vivos (y los antiguos son inmutables), no agregados históricos. Los agregados por mes pasan por `Periodo`; las listas de meses viejos (pantalla Gastos, historial de pagos fijos en Configuración) mostrarían menos filas y necesitarían mostrar el resumen. Se poda solo por componentes completas, así que ningún registro queda apuntando a otro que ya no existe.
-3. **Cada módulo deriva distinto.** Libro: aditivo. Tarjetas: saldo inicial + compras + cargos − pagos con borrado lógico (`eliminado`) y **piso en 0**. Encargos: bolsa propia (`enc.movimientos`), saldo siempre derivado. Alcancía: saldo guardado + copia ofuscada, y al destapar un ciclo sus depósitos se **copian** a `historial[].movimientos`; al iniciar el siguiente, `a.movimientos` se vacía, así que después esa copia es el único registro de esos depósitos (la pantalla del historial la lee para el desglose). Una regla central única de compactación no puede respetar todo eso.
-4. **La protección por antigüedad no basta como candado.** `diasBloqueo` es configurable por el usuario; «≥ 2 años = inmutable» no está garantizado. Un cierre debe imponer su propio candado.
-5. **El guardado actual es atómico por construcción** (un solo `setDoc` del estado completo). Repartir en varios documentos solo conserva la atomicidad con `runTransaction` (expuesto en `firebase-init.js`; `writeBatch`, `collection` y `getDocs` no lo están).
-6. Una `reversion` del libro lleva la fecha de cuando se deshizo, no la del original: el corte puede partir el par. Y los registros se enlazan con ~25 campos distintos (`_encMovId`, `_transfId`, `_tcCompraId`, `origen.ref`…).
+1. La etapa 1 se conserva tal cual (huella, vista previa, medidor).
+2. Etapa 2 = cierre con resumen congelado, **una operación, un documento**. Archivo por años = último recurso.
+3. El Wrapped lo guarda el usuario con un botón; sin guardar se pierde al cerrar enero (modelo Spotify). **El cierre solo avisa** si falta el de un año con datos suficientes; no bloquea ni genera nada.
+4. La política de corte es `Cierre.corteMasReciente()`: último mes completo con ≥ 24 meses de antigüedad (exacta, probada sobre ~2.600 fechas; por construcción nunca llega al año anterior al actual).
+5. Todo cierre es manual, con vista previa, backup JSON descargado, confirmación y PIN. Nunca automático por reloj.
+6. Los cambios a módulos para mejorar la app son bienvenidos si la huella y las pruebas siguen pasando y la página se ve y funciona igual.
 
-## 4. Decisión (revisada el 2026-10-30; pendiente de aprobación)
-**Hecho (etapa 1, sin riesgo):** huella, vista previa, medidor y los ajustes de §10.
-**Recomendación para la etapa 2: «cierre con resumen congelado» en lugar de «archivo por años».** Un solo documento, una sola operación, sin varios documentos ni `runTransaction` ni sync entre dispositivos; ahorro medido similar (~57 % sobre datos sintéticos de 5 años). Pasos, **todos juntos en una sola operación de cierre** (no por fases sueltas, ver abajo):
-1. **Resumen congelado:** `S.resumenMeses[AAAA-MM]` = la salida de la sonda `periodos` de cada mes a cerrar (se calcula antes de borrar).
-2. **`Periodo` lee ese resumen** cuando el mes no tiene detalle (hoy sin resumen se comporta exactamente igual). Es el único punto de entrada de los agregados mensuales (Inicio, Análisis, Salud, Proyección, cierre de mes).
-3. **Poda solo de componentes completas** archivables según `Cierre.analizar` y entidades con saldo 0; lo bloqueado se conserva.
-4. **Libro por componente, no por cuenta:** se pliegan en una entrada `cierre` por cuenta *únicamente las patas del libro de las componentes podadas*. Si se plegara todo lo anterior al corte por cuenta (la «Fase 1» de un análisis externo), el historial de la cuenta seguiría mostrando las filas de módulo aún no podadas **más** una fila «Saldo anterior» que ya las incluye: se contaría doble, y después no se podría reconstruir cuánto de ese saldo corresponde a lo que luego se pode. Por eso el libro y el detalle se cierran juntos. Tipo propio `cierre` (no `apertura`: ese ya significa «saldo inicial de una cuenta» y tiene fila gemela en `S.movimientos`), visible en `Libro.entradasVisibles` como «Saldo anterior».
-5. **Mostrar el resumen** donde hoy hay una lista de un mes cerrado (Gastos, historial de pagos fijos).
-6. Verificación: `Huella.verificarTransformacion` sobre la copia antes de escribir (la sonda `periodos` compara el cálculo desde el detalle contra el resumen: no es tautológica) y otra vez sobre lo leído de vuelta; backup JSON descargado, vista previa, confirmación y candado propio de inmutabilidad.
+## 3. Cuándo hacer la etapa 2
 
-El archivo por años en varios documentos queda como **último recurso** (fase 3), solo si el tamaño vuelve a ser un problema sobre un estado ya recortado. El precio de esta estrategia: **el detalle viejo sale de la nube**; el backup JSON es el archivo de esa historia.
+- **Tamaño:** payload comprimido > ~500 KB (`Cierre.disparador`; la tarjeta de Configuración lo avisa). Medido con datos **sintéticos** (~5 movimientos/día): 2 años ≈ 134–152 KB, 5 años ≈ 327–377 KB, 9 años ≈ 675 KB; el límite de Firestore es 1 MiB y el aviso de la app 800 KB. Solo se supera con ~15 movimientos/día durante 5 años. Las cifras reales las da el medidor.
+- **Lentitud de las listas** es **otro problema** con otro remedio: paginar o cargar bajo demanda. Cerrar períodos no la arregla mientras el estado completo siga en memoria.
+- **Antes de octubre de 2028 no hay nada que cerrar** (regla de 24 meses). Hacerlo antes solo tendría sentido para explorar.
 
-**Política de corte:** `Cierre.corteMasReciente()` = último mes completo con ≥ 24 meses de antigüedad. Es exacta (se prueba en ~2.600 fechas) y por construcción nunca llega al año anterior al actual. *(La regla «≤ 31-dic de año − 2» tomada literal da solo 12–22 meses, no cumple los 24; la de 24 meses ya la implica.)*
+## 4. Hallazgos verificados que condicionan el diseño
 
-## 5. Disparadores (dos problemas distintos)
-- **Tamaño** → cierre (§4): se plantea cuando el payload comprimido supera ~500 KB (`Cierre.disparador`, visible en Configuración). Nunca automático por reloj.
-- **Lentitud de las listas** (no medible desde el código; aviso cuando hay datos de ≥ 2 años) → se arregla **paginando o cargando bajo demanda**, no cerrando períodos: el estado completo sigue en memoria.
+1. **Wrapped solo muestra el año recién cerrado** (año actual − 1) y solo en enero (`_wrappedVentana`; `?wrappedForzar=1` abre la ventana pero el año sigue siendo año − 1). Nada más consume los cálculos de Wrapped. El corte de política nunca lo toca. La sonda `wrapped` de la huella solo cubre ese año (`_wrappedAnioObjetivo`).
+2. **La sonda `periodos` ya es el resumen mensual** necesario: por mes `mesada, fijos, spotify, entradas, ingresos, gvTotal, gfTotal, gastos, balance, porCategoria`. Se congela antes de podar. Podar sin resumen falla la huella en `periodos` y `wrapped`.
+3. **`Periodo` es un punto de entrada estrecho para agregados mensuales.** API pública (`js/core/periodo.js`): `cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas, pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes`. Consumidores de agregados: `inicio.js`, `analisis.js`, `cuentas.js`, `core-state.js` (~l.1538), `firebase-sync.js` (~l.620). Las funciones que devuelven **listas** de registros de un mes (`gastosVarRealesDelMes, pagosFijos, retirosManuales, gastosFijosDelMes`) quedarían vacías para meses cerrados; sus consumidores de pantalla son Gastos y el historial de pagos fijos de Configuración (~l.311).
+4. **Los lectores directos de `S.gastosVar`/`S.movimientos` son sobre todo altas, bajas y búsquedas por id** sobre registros vivos (15 archivos cada uno); los antiguos son inmutables por la protección por antigüedad. Aun así, **ninguna pantalla se probó con un hueco**: es un punto abierto (§7).
+5. **Peso (sintético, 5 años):** `libro` 47 %, `gastosVar` 26 %, `movimientos` 17 %, `transferencias` 8 %. Cerrar solo el libro (una entrada por cuenta) deja la huella en 0 diferencias y ahorra ~26–28 %; con poda del detalle y resumen, ~57 %.
+6. **El libro lo lee desde fuera solo `cuentas.js`** (`Libro.entradasVisibles`, ~l.602). **No se puede cerrar el libro suelto:** el historial de cada cuenta junta filas de los módulos con las del libro; plegar todo lo anterior al corte en «Saldo anterior» con el detalle aún presente **cuenta doble**, y después no se puede saber qué parte corresponde a lo podado. Hay que plegar **por componente podada y junto con la poda**.
+7. **`apertura` ya significa «saldo inicial»** de una cuenta personalizada, con fila gemela en `S.movimientos`; reutilizarla duplicaría filas. El cierre necesita un tipo propio, `cierre`. (La rama de `cuentas.js` para `apertura` es hoy inalcanzable desde `entradasVisibles`.)
+8. **Grafo de enlaces por valor:** dos registros se enlazan solo si un campo (hasta 4 niveles) vale **exactamente** el id de otro registro (≥ 6 caracteres). Compartir un texto largo no enlaza. Los ids de `uid()` miden ~11 caracteres. Las componentes conexas son la unidad atómica. Diagnóstico: `componentes.maxRegistros` (normal 1–10; > 100 = `componente-grande`).
+9. **Entidades:** una tarjeta, encargo, deuda o la alcancía se cierran solo con saldo 0 (de la sonda) y toda su historia ≤ corte. Sin sonda (Spotify, mesada, ingresos fijos, CDT) **no se cierran**. Una entidad activa con historia posterior retiene toda su historia (conservador; medirlo con uso real).
+10. **Guardado atómico por construcción:** un solo `setDoc` del estado completo, comprimido (`codificarPayload`). Una operación de cierre sobre un solo documento hereda esa atomicidad; por eso se prefiere a repartir en varios documentos (que exigiría `runTransaction`).
+11. **Candado:** `nivelAntiguedadMovimiento(fecha, ops, modulo)` (`core-state.js`, ~l.1347) devuelve `'bloqueado'` pasados `S.config.proteccionAntiguedad.diasBloqueo` (365 por defecto, **configurable por el usuario**). No sirve como candado del cierre.
+12. **Alcancía:** al destapar, los depósitos se copian a `historial[].movimientos`; al iniciar el siguiente ciclo `a.movimientos` se vacía. Después esa copia es el **único** registro y la pantalla del historial la lee. No hay copia duplicada que quitar.
+13. **Una `reversion` del libro lleva la fecha de cuando se deshizo**, no la del original: el corte puede partir el par. Resuelto por el grafo (el par queda en una unidad).
+14. **Pagos de gastos fijos y su gasto neutro** (`S.pagosGastosFijos` ↔ `gastosVar` con `gastoFijoId`) **no están enlazados por id**; el grafo puede podar uno sin el otro. Inocuo para totales (el pago es lo que cuenta; el gasto es `neutro`), pero hay que cubrirlo con una prueba y al mostrar el historial de fijos.
+15. **Costo de guardar:** una medición previa dio ~68 ms por guardado completo (serializar, comprimir, base64) a 5 años sintéticos en Node; quitar el clon redundante de `firebase-sync.js` ahorra ~30 ms de eso (medido solo ese paso: 39 → 9 ms). En celular será varias veces más y crece lineal con el tamaño; no se midió en celular.
 
-## 6. Arquitectura de la etapa 1
-- **`js/core/huella.js` — huella de invariantes.** Registro de *sondas*: funciones puras `estado → objeto plano` que miden lo que debe **sobrevivir** (nunca cuántos registros hay). Núcleo: `saldos` (libro cuadra, saldo guardado vs suma), `periodos` (ingresos/gastos/categorías de cada mes), `deudas`, `patrimonio`. Módulos (se registran al cargarse): `tarjetas`, `encargos`, `alcancia`, `wrapped` (solo el año objetivo, año actual − 1). `SONDAS_BASE` es la lista canónica: `Huella.completa()` carga los módulos diferidos y **exige las ocho**; una sonda ausente o que lanza excepción es un error y la comparación **no** es ok. Convención de entidades: `entidades:{id:{saldo,…}}`.
-- **`conEstadoAislado(estado, fn)` (`core-state.js`).** Corre `fn` síncrona con la copia como `S` y lo restaura siempre; mientras dura, `save()` y `_fbSaveToCloud()` no escriben. Así las sondas usan las funciones reales de la app (que leen el `S` global) sin duplicar ninguna regla contable.
-- **`Huella.verificarTransformacion(estado, fn)`.** Clona, calcula, aplica `fn` al clon (aislado), calcula y compara. Es el contrato de verificación de cualquier cambio de almacenamiento: cierre, archivo por año, importar un backup, una migración.
-- **`js/core/cierre.js` — vista previa de solo lectura (`Cierre.analizar(corte)`).**
-  - *Fuentes*: dónde guarda `S` cada registro con fecha (`registrarFuente`). `CLASIFICACION` clasifica **toda** clave de primer nivel de `S`; una prueba falla si aparece una sin clasificar o si una con historia no tiene fuente.
-  - *Grafo de enlaces por valor*: dos registros están enlazados si uno contiene el id del otro en cualquier campo (hasta 4 niveles). Las componentes conexas son la **unidad atómica**: transferencias con una pata a cada lado del corte, reversiones partidas, pagos divididos y las copias de la alcancía se mueven completas o ninguna. Un campo de enlace nuevo no requiere cambios.
-  - *Entidades*: tarjeta, encargo, deuda o alcancía se cierran solo con saldo 0 (lo dice la sonda: una sola fuente) y toda su historia ≤ corte. Entidades sin sonda (Spotify, mesada, ingresos fijos, CDTs) **no se cierran**: se encienden al registrar su sonda.
-  - *Informe*: total, candidatos (≤ corte), archivables (unidades completas), bloqueados por motivo (`sin-fecha`, `entidad-abierta:*`, `enlazado-con-registro-bloqueado-o-posterior`), entidades y la **huella de antes** (`digest`) para compararla después. `completo:false` si falta alguna sonda.
-  - `corteMasReciente()` da el último mes completo con ≥ 24 meses (política); `analizar` acepta cualquier mes terminado para poder explorar y probar.
-- **Medidor** (`Cierre.tamano`, `Cierre.disparador`): bruto por clave, comprimido con el mismo códec del guardado (estimado si no hay códec), proyección de cuándo se llegaría al aviso y al límite (confianza baja con < 90 días de historia).
-- **Cómo integrar un módulo nuevo con historia:** registrar una sonda (`Huella.registrar`) con lo que debe sobrevivir y, si guarda registros con fecha, una fuente (`Cierre.registrarFuente`); clasificar su clave en `CLASIFICACION`. No se toca nada más.
+## 5. Especificación de la etapa 2 (cierre con resumen congelado)
 
-## 7. Contrato para el archivo por años (fase 3, solo si hiciera falta)
-1. **Partición:** los años cerrados pasan a documentos aparte (almacén frío); el documento vivo conserva el año en curso y lo anterior que siga abierto. Al cargar, se **hidrata** `S` completo.
-2. **Unidad:** solo componentes completas de `Cierre.analizar` (archivables); jamás registros sueltos.
-3. **Atomicidad:** vivo + archivos nuevos en **una** `runTransaction` (límite de 500 operaciones y 10 MiB; ampliar `firebase-init.js`). Si no se puede garantizar, se detiene sin escribir.
-4. **Verificación obligatoria:** `Huella.verificarTransformacion` sobre la copia antes de escribir y de nuevo sobre el estado hidratado leído de vuelta; cualquier diferencia o error de sonda aborta. La prueba de referencia (`partirPorAnio` + `hidratar`, en `tests/huella.test.js`) ya demuestra que la huella valida este tipo de transformación.
-5. **Seguridad operativa:** vista previa, **backup JSON descargado antes**, confirmación explícita, **candado propio** (los registros archivados son inmutables, independiente de `diasBloqueo`) y nunca automático por reloj.
-6. **Sync entre dispositivos:** `onSnapshot` de los archivos y manejo de dos dispositivos que archiven a la vez (versión en el documento vivo).
-7. **Importar/exportar:** el backup JSON sigue siendo el estado completo (hidratado); importar reparte de nuevo.
-8. **Puntos abiertos que la etapa 2 debe resolver:** sondas para Spotify, mesada, ingresos fijos y CDTs (hoy no se cierran); cómo colapsar una tarjeta con deuda al corte (el piso en 0 exige que el saldo bruto al corte sea ≥ 0); la alcancía NO es un candidato a ahorro de tamaño: la «copia» de depósitos de un ciclo destapado solo está duplicada entre destapar e iniciar el siguiente; después es el único registro y quitarla borraría el desglose del historial (verificado en `alcancia.js`, `alcanciaIniciarNueva` y la pantalla del historial).
+### 5.1 Principios
+Una sola operación; un solo documento; manual; verificada antes de escribir y después de leer de vuelta; si algo no se puede garantizar, **se detiene sin modificar nada** y explica el motivo. Repetirla o interrumpirla no puede duplicar ni dejar estados parciales.
 
-## 8. Limitaciones conocidas de la etapa 1
-- **Spotify y mesada** no tienen sonda propia: su efecto en ingresos/gastos queda cubierto por la sonda `periodos` y sus dominios en `wrapped`, pero no hay verificación de sus saldos pendientes.
-- La huella usa tolerancia de 1 centavo para montos y el patrimonio incluye interés de cajitas calculado por días: una comparación que cruce la medianoche podría diferir en pesos.
-- La sonda `wrapped` solo cubre el año objetivo; sigue obligando a cargar el grupo `wrapped` (~217 KB) al verificar, aceptable porque el cierre es una operación manual y rara.
-- Los pagos de gastos fijos (`S.pagosGastosFijos`) y su gasto neutro en `gastosVar` no están enlazados por id (el gasto lleva `gastoFijoId`, que es de la plantilla, no del pago): el grafo puede podar uno sin el otro. Es inocuo para los totales (el pago es lo que cuenta, el gasto es `neutro`) pero hay que tenerlo presente al mostrar el historial de fijos.
-- `Periodo` y otras funciones lanzan excepción ante registros nulos o con fecha no textual (la validación de carga ya los descarta); la huella lo reporta como error de sonda, no lo oculta.
-- No hay `ejecutar`: la etapa 1 no tiene ninguna ruta que modifique datos.
+### 5.2 Datos
+- `S.resumenMeses['AAAA-MM'] = { mesada, fijos, spotify, entradas, ingresos, gvTotal, gfTotal, gastos, balance, porCategoria }` = salida de la sonda `periodos` de cada mes a cerrar, **calculada antes de borrar** y sobre el estado completo.
+- `S.cierre = { corte: 'AAAA-MM', ejecutadoEn }` (corte más reciente ya cerrado; sirve de candado, §5.7).
+- Clasificar ambas claves en `Cierre.CLASIFICACION` (`congelada` la primera, `meta` o `configuracion` la segunda); añadirlas a la validación de importación (`_validarEstructuraJSON`, configuracion.js: lista de claves que deben ser objeto). La carga y la importación **no** descartan claves desconocidas, así que no hace falta tocar `S` por defecto ni subir el esquema: son claves opcionales. Una prueba (`clasificación`) falla si se olvida clasificarlas.
+- No se podan: `resumenMeses`, `wrappedAnios`, `patrimonioHistorial`, rendimientos y CDT, entidades abiertas, nada de lo bloqueado por `Cierre.analizar`.
 
-## 9. Pruebas
-`tests/huella.test.js` (motor, sondas, comparación, aislamiento, transformaciones, backup restaurado, datos incompletos) y `tests/cierre.test.js` (vista previa, enlaces, entidades, clasificación de claves, tamaño/proyección y el medidor de Configuración), con historia sintética de 2,7 años construida con las funciones reales (`tests/support/datos-sinteticos.js`).
+### 5.3 `Periodo` lee el resumen
+Cuando un mes tiene entrada en `S.resumenMeses`, las funciones de agregado mensual (`ingresosPorMes, gastosPorMes, gastoPorCategoria, balanceDelMes, ingresosDelMes, gastosDelMes, ingresoPromedioPrevio, gastoPromedioPrevio` y las derivadas) devuelven los valores del resumen en lugar de recalcular desde el detalle. Sin resumen se comportan **exactamente igual que hoy** (regla de oro: el cambio es no-op hasta que exista un resumen; probarlo). Las funciones de **listas** devuelven lo que quede. `ultimosMeses` y las claves de mes no cambian. Como el resumen se calculó con el detalle completo del mes (incluidos los registros que se conservan), sirve para el mes entero.
 
-## 10. Evaluación de un análisis externo de la etapa 1 (2026-10-30)
-Se verificó cada afirmación contra el código y con mediciones propias (mismo generador sintético; las cifras absolutas no predicen tu tamaño real).
+### 5.4 Poda por componentes
+Solo las componentes marcadas **archivables** por `Cierre.analizar(corte)` (todas sus piezas con fecha ≤ corte, ninguna en entidad abierta, sin `sin-fecha`) y las entidades con saldo 0. Fuentes: `libro, movimientos, gastosVar, transferencias, pagosGastosFijos, tcMovimientos, tarjetas, deudas, encargos, alcancia (ciclos), ingresosExtra, chequeosNu, historialTasasNu`. Los bloqueados se conservan.
 
-**Correcto y adoptado:**
-- Wrapped solo muestra el año recién cerrado (`_wrappedVentana`): la sonda `wrapped` pasa a cubrir solo ese año, tomando `_wrappedAnioObjetivo` como única fuente. El corte de política nunca lo toca (prueba: Wrapped idéntico al podar hasta el corte; detectado si el corte llega a 2025).
-- El libro pesa ~47 % y es derivado con un solo lector externo (`cuentas.js` vía `Libro.entradasVisibles`); cerrarlo deja la huella en 0 diferencias y ahorra ~26,5 % (el análisis decía 27,7 %). Podar el detalle sin resumen falla en `periodos` y `wrapped`, como dijo.
-- Los lectores directos de `S.gastosVar`/`S.movimientos` son sobre todo CRUD de registros vivos, no agregados históricos; mi objeción de «~230 sitios» pesaba menos de lo que escribí.
-- `maxComponente`: añadido (`componentes`, `advertencias:['componente-grande']`), con prueba de ids de formato real.
-- Separar disparadores de tamaño y de lentitud: hecho (§5).
+### 5.5 Libro: plegar por componente
+Para cada cuenta, las patas del libro **de las componentes podadas** se sustituyen por **una** entrada `tipo: 'cierre'` (`origen: { modulo: 'cierre' }`) con su suma. `Libro.verificar` debe seguir cuadrando (guardado = suma). `Libro.entradasVisibles` la muestra como «Saldo anterior» (y la rama de `cuentas.js` para ese tipo debe renderizarla); `rendimiento`, `ajuste` y `cdt` no se pliegan (crecen poco). La suma plegada no depende de pares partidos, pero sí de que se pliegue **solo** lo podado.
 
-**Incorrecto o incompleto:**
-- *«Corte ≤ 31-dic de año − 2 … cumple tus 24 meses»*: falso; da 12–22 meses. La regla de 24 meses ya implica la de Wrapped.
-- *«Dos registros que comparten un texto de 6+ caracteres se fusionan»*: no; solo enlaza un campo cuyo valor es exactamente el id de otro registro (prueba con 300 gastos de igual descripción: 300 unidades).
-- *Fase 1 «cerrar el libro» como paso independiente*: es una trampa de secuencia (ver §4.4). Debe hacerse por componente y junto con la poda.
-- *«La rama `apertura` de `cuentas.js` está sin uso»*: la rama es inalcanzable desde `entradasVisibles`, pero `apertura` ya se escribe para el saldo inicial de cuentas personalizadas, con fila gemela en `S.movimientos`; reutilizarla duplicaría filas. Se usa un tipo nuevo.
-- *«Empezar ahora»*: con la política de 24 meses no hay nada que cerrar hasta octubre de 2028, y a 5 movimientos/día el límite está a ~13 años (~18 con el libro cerrado). Lo que sí se puede y conviene hacer ahora ya está hecho: correcciones de la etapa 1.
-- *«Nadie usa la app»*: **sí consta** en el CHANGELOG (2026-10-18: «no hay usuarios ni backups que conservar») y los datos de un esquema anterior al 9 se rechazan (`_esquemaAnterior`: «empieza de cero»). Lo que no se sabe es si desde entonces se han cargado datos propios; la vista previa (`Cierre.analizarCompleto`) se puede correr sobre ellos para comprobar los ids reales. *(Una versión anterior de este documento decía «no consta»: era un error.)*
+### 5.6 Pantallas con meses sin detalle
+Gastos (filtro y lista por mes) y el historial de pagos fijos de Configuración deben mostrar el resumen del mes cerrado en lugar de una lista vacía. Revisar además: búsqueda global, actividad reciente, Prestado, Encargos, Plata comprometida (leen muchas listas). **Probar en jsdom y a mano** (esto no se ha probado).
 
-**Error propio encontrado al verificar:** `corteMasReciente` desbordaba el día con `Date.setMonth` (el 29–30 de marzo daba un mes de más). Corregido con aritmética exacta y una prueba sobre ~2.600 fechas.
+### 5.7 Candado propio
+Ningún registro con fecha ≤ `S.cierre.corte` (conservado o no) puede editarse ni eliminarse: si no, el resumen de su mes quedaría desactualizado. Integrar en `nivelAntiguedadMovimiento` (devolver `'bloqueado'` si `fecha ≤ fin de S.cierre.corte`, sin importar `diasBloqueo`) o en un punto único equivalente; cubrir con pruebas todos los módulos que editan/borran movimientos.
 
-## 11. Wrapped guardado por el usuario (implementado, 2026-10-31)
-Detalle completo y reglas en `docs/wrapped.md` §7quaterdecies. Lo que importa para el cierre:
-- `S.wrappedAnios[AAAA]` (HTML congelado, ≈ 4,5 KB comprimidos por año) es un resultado que el usuario eligió guardar (botón «Guardar este Wrapped») y que **no se puede recalcular** tras podar el detalle: clase `congelada` en `CLASIFICACION`.
-- **El cierre solo avisa, no bloquea:** `Cierre.analizar` informa `wrapped.conWrapped` (años tocados que habrían tenido Wrapped, es decir con datos suficientes) y `wrapped.sinGuardar` (los que no están guardados), con la advertencia `wrapped-sin-guardar`. Un año sin datos suficientes no avisa. No hace falta que el cierre genere nada.
-- Guardar es opcional por diseño (modelo Spotify): lo que no se guarda en enero se pierde, y podar el detalle de ese año no cambia eso.
-- **Contrato de CSS** del HTML guardado, vigilado por `tests/fixtures/wrapped-clases.json` (solo aditivo).
-- **Qué no es posible hoy:** ver el Wrapped de 2024 o 2025. La app nació limpia el 2026-10-18 y los datos de esquemas anteriores se rechazan: el primer Wrapped real es el de 2026 (enero de 2027), y con poco uso será el mensaje «no alcanzó el tiempo». Para años anteriores haría falta un importador de datos antiguos, que no existe.
+### 5.8 Flujo de usuario (Configuración → «Cerrar períodos antiguos»)
+1. Medidor y disparador visibles; el corte propuesto es `Cierre.corteMasReciente()` (no se puede elegir uno posterior).
+2. **Vista previa** (`Cierre.analizarCompleto`): registros y KB a podar, ahorro estimado, bloqueados por motivo, advertencias (`componente-grande` detiene hasta investigar; `wrapped-sin-guardar` solo informa y ofrece guardar antes), entidades.
+3. **Backup JSON obligatorio** (`exportarJSON`, configuracion.js, descarga `mis-finanzas-backup-FECHA.json`). El navegador no confirma la descarga: pedir confirmación explícita («Ya lo descargué»).
+4. Confirmación + **PIN** (`pedirPinAntesDe`).
+5. Ejecutar (§5.9), mostrar resultado (antes/después de KB, saldos iguales) y dejar constancia (`S.cierre`).
+
+### 5.9 Ejecución y verificación
+1. Clonar el estado; construir `resumenMeses` de los meses ≤ corte sobre el clon completo.
+2. Aplicar la transformación (poda + plegado del libro + `S.cierre`) **al clon**, dentro de `conEstadoAislado`.
+3. `Huella.verificarTransformacion` con `SONDAS_BASE` requeridas: la sonda `periodos` compara el cálculo desde el detalle (antes, sin resumen) con el resumen (después): **no es tautológica**. Cualquier diferencia o error de sonda aborta **sin escribir**.
+4. Escribir **una sola vez** (el `save()` normal: un `setDoc`).
+5. Releer lo escrito (`_fbLoadData`) y volver a verificar contra la huella de antes; si falla, avisar y conservar el backup.
+6. Idempotencia: ejecutar dos veces seguidas no cambia nada la segunda.
+
+### 5.10 Pruebas que deben existir (con datos sintéticos; no tocar datos reales)
+Invariantes antes = después: saldo de cada cuenta y cajita; `Libro.verificar().ok`; deuda de cada tarjeta, persona y encargo; patrimonio; `Periodo` de **todos** los meses (los cerrados contra el resumen); Wrapped del año objetivo. Casos: transferencia con una pata a cada lado del corte; `reversion` partida; préstamo abierto que cruza el corte (no se toca); tarjeta con deuda al corte; entidad sin sonda (no se cierra); pago fijo ↔ gasto neutro (§4.14); `componente-grande`; `Periodo` sin resumen idéntico a hoy; backup anterior al cierre importable; editar/eliminar un registro ≤ corte rechazado; operaciones posteriores (nuevo gasto, reversión de uno posterior) siguen funcionando; interrupción (fallo de verificación → nada escrito); repetir la operación; datos incompletos; pantallas con meses cerrados (jsdom, como `scripts/smoke-wrapped.js`).
+
+### 5.11 Documentación a actualizar al terminar
+`docs/libro-de-movimientos.md` (tipo `cierre`), `docs/proteccion-antiguedad-movimientos.md` (candado), `docs/configuracion.md`, `docs/wrapped.md` si cambia algo, `docs/arquitectura-archivos.md`, `docs/CHANGELOG.md`, `tests/README.md`, `mapa-codigo.md` (`node scripts/generar-mapa.js`), y subir `sw.js`.
+
+## 6. Descartado, y por qué
+
+| Idea | Por qué no |
+|---|---|
+| Compactación literal (una `apertura` por cuenta + `resumenMensual` + borrar) | `apertura` ya tiene otro significado; el resumen original no bastaba; dejaba lectores sin datos. La versión actual (§5) corrige las tres cosas. |
+| Cerrar el libro suelto como «fase 1» | Cuenta doble en el historial (§4.6). |
+| Archivo por años en varios documentos (fase D) | Más maquinaria (varios documentos, `runTransaction` con límites de 500 operaciones y 10 MiB, `firebase-init.js` hoy solo expone `runTransaction` y no `writeBatch/collection/getDocs`, sincronización entre dispositivos, versión por archivo, hidratar, reabrir año). Solo si el tamaño vuelve a ser problema sobre un estado ya recortado. Contrato: unidades = componentes archivables; vivo + archivos en una transacción; `Huella.verificarTransformacion` antes y después; backup, candado propio, nunca automático. El prototipo `partirPorAnio` + `hidratar` en `tests/huella.test.js` ya demuestra que la huella valida ese tipo de transformación. |
+| Quitar la «copia duplicada» de la alcancía | No es duplicada (§4.12): borraría el desglose del historial. |
+| Regla literal «corte ≤ 31-dic de año − 2» | Da 12–22 meses, no 24; la regla de 24 meses ya la implica. |
+| Generar Wrapped fuera de enero / guardado automático / bloquear el cierre por Wrapped | El modelo es el de Spotify (§2.3). |
+| Que el cierre genere los Wrapped que falten | Ya no hace falta: solo avisa. |
+| Relajar la regla de entidad abierta | Solo valdría para un archivo sin pérdida (fase D). |
+
+## 7. Lo que no se sabe
+
+- El tamaño real de los datos y la mezcla real de listas (solo hay datos sintéticos; con uso real el medidor da la cifra).
+- Si alguna pantalla se nota con un hueco tras podar (§5.6). La regla de entidades abiertas debería protegerlas; no se probó en pantalla.
+- El costo de guardar en celular (se midió en Node).
+- Cuánto retiene en la práctica la regla «una entidad se cierra o se queda completa» con encargos y préstamos muy usados.
+- Nada se probó en navegador real con datos reales; solo pruebas en Node y recorridos en jsdom con datos sintéticos.
+
+## 8. Errores ya cometidos (no volver a asumirlos)
+
+1. Cerrar el libro suelto como primera fase (duplica el historial).
+2. Dar por buena la regla «≤ 31-dic de año − 2» como equivalente a 24 meses.
+3. Creer que dos registros con un texto largo en común se enlazan (solo enlaza la igualdad exacta con un id).
+4. `corteMasReciente` con `Date.setMonth` (desbordaba el día: el 29–30 de marzo daba un corte con menos de 24 meses). Ya es aritmética exacta.
+5. Reutilizar `apertura` para el cierre; quitar la «copia duplicada» de la alcancía; ver riesgo de privacidad donde no lo había (la diapositiva muestra depósitos del período, no el saldo, y la ofuscación XOR «solo esconde el número del JSON plano»).
+6. Suponer que `Loader.ensureAll()` carga `wrapped` (no lo hace fuera de enero).
+7. Una edición que borró dos líneas de `renderWrapped`: las pruebas de lógica no ejecutan esa función; la atrapó el recorrido en jsdom. **Toda función que arma pantalla necesita su recorrido en la página real.**
+8. Un test del PIN esperaba 520 ms fijos con 10 ms de margen sobre el código y fallaba bajo carga; ya espera la señal real. Si algo es intermitente, repetir la suite en paralelo.
+9. Afirmar «nadie usa la app» sin evidencia: sí consta en el CHANGELOG (2026-10-18: «no hay usuarios ni backups que conservar»), pero no se sabe si desde entonces hay datos propios.
+
+## 9. Cómo verificar el repo
+
+```
+npm ci                      # una vez (jsdom)
+node --test                 # 647 pruebas, 0 fallos (tarda ~45 s)
+npm run smoke               # recorrido de la página real: «TODO OK — sin fallos reales»
+npm run smoke:wrapped       # 36 comprobaciones del Wrapped en la página real
+node scripts/generar-mapa.js --check   # «mapa-codigo.md está al día»
+```
+Archivos de entrada del cierre: `js/core/huella.js`, `js/core/cierre.js`, `js/core/periodo.js`, `js/core/core-state.js` (`Libro`, `conEstadoAislado`, `nivelAntiguedadMovimiento`), `js/modules/cuentas.js` (historial), `js/modules/configuracion.js` (`exportarJSON`, `renderTamanoDatos`), `js/core/firebase-sync.js`. Guardas automáticas que fallan si se olvida algo: clasificación de claves de `S`, saldo solo por la puerta única del libro, símbolos decorativos, estilos inline, tuteo, contrato de clases CSS del Wrapped guardado.
+
+## 10. Apéndice: Wrapped (resumen; detalle en `docs/wrapped.md` §7quaterdecies)
+
+Criterio de datos suficientes (`wrapped-gate.js`): `nada` (0 registros), `poco` (< 30 días o < 3 meses distintos), `suficiente`. «No alcanzó el tiempo»: 2–3 diapositivas con banco de frases (`WRAPPED_BANCO_INSUFICIENTE`), nunca se guarda. Guardar = botón «Guardar este Wrapped»; abrir no guarda; dentro de enero un guardado se recalcula y reemplaza (si ya no hay datos suficientes se conserva); fuera de enero queda fijo; eliminar en «Mis Wrapped» con confirmación y PIN; «Ocultar saldos» se aplica al mostrar. Contrato de CSS: `tests/fixtures/wrapped-clases.json` (solo aditivo). No es posible ver el Wrapped de 2024/2025: los datos de esquemas anteriores al 9 se rechazan; el primer Wrapped real es el de 2026 (enero de 2027).
+
+## 11. Apéndice: prompt de arranque para un chat nuevo
+
+> Voy a implementar la etapa 2 del cierre de períodos de Mis Finanzas. Te adjunto el documento maestro `cierre-de-periodos.md` y el código actual (zips de `js`, `tests`, `docs`, `scripts`, más `index.html`, `sw.js`, `css/styles.css`, `package.json`, `mapa-codigo.md`). Lee primero el documento completo (sobre todo §0, §4, §5 y §8). Antes de modificar nada: reconstruye el repo, corre `node --test`, `npm run smoke` y `npm run smoke:wrapped` y confírmame que dan lo que dice §9. Después propón el plan de implementación de §5 con los archivos a tocar y las pruebas, y espera mi aprobación antes de escribir código. No toques datos reales; usa datos sintéticos. Distingue siempre entre lo implementado, lo probado y lo pendiente, y no des nada por funcionando sin comprobarlo (incluida la página real en jsdom).

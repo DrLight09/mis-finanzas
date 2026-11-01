@@ -4,6 +4,20 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Sheets: el navegador redimensiona el layout con el teclado (2026-11-01, SW v89)
+
+Síntomas reportados en el sheet pequeño («¿Quién te debe?»): al abrirlo con autofocus la subida parpadeaba y se veía texto del sheet por debajo; con el gesto «atrás» (cancelado) y al cerrar el teclado, el sheet bajaba de más y luego subía. En los sheets grandes no se notaba porque su borde superior lo fija `max-height`: lo que se movía era el ancla inferior, y solo un sheet pequeño la deja ver.
+
+Causa: toda la compensación del teclado dependía de código propio que reaccionaba a medidas del `visualViewport` que el navegador entrega a saltos y a destiempo (más un estado «hay teclado» con histéresis), así que sheet y teclado podían contradecirse unos cuadros.
+
+- **`index.html`:** `<meta viewport>` con `interactive-widget=resizes-content`. En Chrome/Edge/Samsung (Android) el navegador achica el layout viewport con el teclado, así que el `.overlay` (`position:fixed; inset:0`) y el sheet anclado abajo quedan pegados a lo visible en el mismo cuadro en que se mueve el teclado, también durante el gesto «atrás». Es el comportamiento de `adjustResize` de las apps nativas y no pasa por JS.
+- **`sheet-behavior.js`:** la compensación por `visualViewport` (clase `kb-open`, `--vv-top`, `--vv-h`, `--kb-pad`) queda como **respaldo para iOS Safari y Firefox**, y se desactiva sola cuando detecta que el navegador ya achicó el layout (`restInner - innerHeight > 100 px`; una barra de direcciones mueve ~56 px y no cuenta; el giro de pantalla reinicia la referencia). Así no se compensa dos veces ni siquiera en cuadros transitorios donde `visualViewport` y `innerHeight` discrepan.
+- **Gesto de cierre con teclado visible:** ahora se decide con `keyboardVisible()`, válido en ambos modos: el deslizamiento desde el handle solo cierra el teclado; el sheet no se mueve.
+- **Ajuste de scroll del campo enfocado:** espera a que cualquier evento de viewport (también `resize` de ventana) lleve 160 ms quieto.
+- Pruebas: layout 800→700→600→520→460 y gesto «atrás» cancelado (460→500→540→520→480→460): el sheet va exactamente donde va el layout, sin bajar de más ni rebotar.
+
+---
+
 ## Sheets: corrección de la v87 — el sheet salta al abrir el teclado (2026-11-01, SW v88)
 
 La v87 anclaba el sheet al borde inferior del **layout**. Pero Android no redimensiona el layout cuando sale el teclado: **desplaza el viewport visual** (`visualViewport.offsetTop`) para mostrar el campo enfocado, y eso movía el sheet en pantalla de golpe. El cálculo se corregía después, con una transición de .26 s, y se veía como «salta, vuelve y baja».

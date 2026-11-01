@@ -56,7 +56,17 @@
   }
 
   // ── TECLADO ───────────────────────────────────────────────────────────────
-  // Modelo: con teclado, el .overlay empieza donde empieza lo VISIBLE (--vv-top) y
+  // DOS MODOS, según cómo trate el navegador al teclado:
+  //   · LAYOUT (Chrome/Edge/Samsung en Android, gracias a `interactive-widget=
+  //     resizes-content` en el <meta viewport> de index.html): el navegador achica
+  //     el layout viewport con el teclado y el .overlay (position:fixed; inset:0) y
+  //     el sheet, anclado abajo, quedan pegados a lo visible en el MISMO cuadro en
+  //     que se mueve el teclado, también durante el gesto «atrás». Este archivo no
+  //     toca nada: solo detecta el modo para no duplicar el trabajo.
+  //   · VISUAL VIEWPORT (iOS Safari, Firefox): el layout NO se achica; se compensa
+  //     con la clase kb-open y las variables CSS de abajo.
+  //
+  // Modelo del modo VISUAL VIEWPORT: con teclado, el .overlay empieza donde empieza lo VISIBLE (--vv-top) y
   // llega hasta el borde inferior del layout, o sea que se extiende por debajo del
   // teclado. El sheet, anclado abajo, reserva ese tramo con padding-bottom (--kb-pad):
   //   · su fondo ya está ahí mientras el teclado sube con su animación: nunca se ve
@@ -71,9 +81,19 @@
   var KB_ENTER_PX = 60;              // diferencia mínima para entrar al modo teclado
   var KB_EXIT_PX = 30;               // por debajo de esto se sale (histéresis)
   var SETTLE_MS = 160;               // quietud necesaria antes de corregir el scroll
+  var LAYOUT_KB_PX = 100;            // el layout se achicó al menos esto = modo LAYOUT
   var vv = window.visualViewport;
   var kbOpen = false;
+  // Mayor alto de layout visto con esta orientación (sin teclado). Una barra de
+  // direcciones que aparece/desaparece mueve ~56 px; un teclado, bastante más.
+  var restInner = window.innerHeight, restW = window.innerWidth;
+  function noteRest(){
+    if(window.innerWidth !== restW){ restW = window.innerWidth; restInner = window.innerHeight; }
+    else if(window.innerHeight > restInner) restInner = window.innerHeight;
+  }
+  function layoutShrunk(){ noteRest(); return restInner - window.innerHeight > LAYOUT_KB_PX; }
   var kbRaf = 0;
+  var focusEl = null, focusTimers = [], ensureRaf = 0, kbSettleTimer = 0;
   var lastLayoutChange = 0;          // última vez que cambió el layout del teclado
   var kbListeners = [];
 
@@ -95,6 +115,13 @@
     return el;
   }
 
+  // ¿Hay un teclado en pantalla ahora mismo? (vale para ambos modos; lo usa el gesto)
+  function keyboardVisible(){
+    if(!vv || !focusedTextField()) return false;
+    if(vv.scale && vv.scale > 1.02) return false;
+    return layoutShrunk() || (window.innerHeight - vv.height > KB_ENTER_PX);
+  }
+
   function syncViewport(){
     kbRaf = 0;
     if(!vv) return;
@@ -111,7 +138,8 @@
     var innerH = window.innerHeight;
     var diff = innerH - vv.height;
     var zoomed = vv.scale && vv.scale > 1.02;       // el pellizco también achica el viewport
-    var want = !zoomed && !!focusedTextField() && diff > (kbOpen ? KB_EXIT_PX : KB_ENTER_PX);
+    // En modo LAYOUT el navegador ya hizo el trabajo: no compensar dos veces.
+    var want = !zoomed && !layoutShrunk() && !!focusedTextField() && diff > (kbOpen ? KB_EXIT_PX : KB_ENTER_PX);
 
     var changed = false;
     if(want){
@@ -138,11 +166,21 @@
   function scheduleViewportSync(){
     if(!kbRaf) kbRaf = requestAnimationFrame(syncViewport);
   }
+  // Cualquier cambio del viewport (teclado subiendo, bajando, gesto «atrás»...) cuenta
+  // como actividad: el ajuste de scroll del campo enfocado espera a que se calme.
+  function onViewportEvent(){
+    lastLayoutChange = Date.now();
+    if(focusEl){
+      clearTimeout(kbSettleTimer);
+      kbSettleTimer = setTimeout(ensureFocusedVisible, SETTLE_MS + 10);
+    }
+    scheduleViewportSync();
+  }
 
   if(vv){
-    vv.addEventListener('resize', scheduleViewportSync);
-    vv.addEventListener('scroll', scheduleViewportSync);
-    window.addEventListener('resize', scheduleViewportSync);
+    vv.addEventListener('resize', onViewportEvent);
+    vv.addEventListener('scroll', onViewportEvent);
+    window.addEventListener('resize', onViewportEvent);
     window.addEventListener('orientationchange', scheduleViewportSync);
     window.addEventListener('pageshow', scheduleViewportSync);
     // El foco manda: al enfocar/soltar un campo se re-evalúa en el siguiente frame
@@ -159,7 +197,6 @@
   }
 
   // ── CAMPO ENFOCADO SIEMPRE VISIBLE ────────────────────────────────────────
-  var focusEl = null, focusTimers = [], ensureRaf = 0, kbSettleTimer = 0;
 
   function ensureFocusedVisible(){
     var el = focusEl;
@@ -335,7 +372,7 @@
       // un deslizamiento hacia abajo desde la zona de agarre solo cierra el teclado,
       // y el siguiente cierra el sheet. Desde el cuerpo, el dedo scrollea.
       kbPull = false;
-      if(kbOpen){
+      if(keyboardVisible()){
         if(!fromGrab){ disarm(); return; }
         kbPull = true;
       }

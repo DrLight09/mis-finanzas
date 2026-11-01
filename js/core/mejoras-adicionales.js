@@ -310,8 +310,9 @@ if ('serviceWorker' in navigator) {
     'nueva-cuenta': 'nc_nombre',
     'agregar-dinero': 'adDesc',
     'restar-dinero': 'rdDesc',
-    'mesada-pago': 'mpMonto',
-    'mesada-pend': 'mppMonto',
+    // 'mesada-pago' y 'mesada-pend' NO se enfocan a propósito: abren con el monto ya
+    // precargado (la cuota del mes / lo pendiente), que casi siempre es el correcto;
+    // el teclado saltaría sin necesidad. El campo sigue editable con un toque.
     'transferir': 'tr_monto',
   };
 

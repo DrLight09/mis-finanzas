@@ -56,17 +56,24 @@
   }
 
   // ── TECLADO ───────────────────────────────────────────────────────────────
-  var KB_MIN_PX = 120;               // diferencia mínima para considerar "teclado"
+  // Histéresis: se entra al modo teclado pronto (así el sheet acompaña la animación
+  // desde el principio) y se sale tarde (así un teclado que se abre y se cierra a
+  // mitad de camino no hace oscilar el layout al cruzar un único umbral).
+  var KB_ENTER_PX = 60;              // diferencia mínima para entrar al modo teclado
+  var KB_EXIT_PX = 30;               // por debajo de esto se sale
   var vv = window.visualViewport;
   var kbOpen = false;
   var kbRaf = 0;
+  var lastVvChange = 0;              // última vez que el viewport cambió de medidas
+  var VV_SETTLE_MS = 110;            // sin cambios durante este tiempo = teclado quieto
   var kbListeners = [];              // se avisa cuando cambia el estado/medidas
 
   function readViewport(){
     // Con zoom de pellizco el visual viewport también se achica: no es teclado.
     var zoomed = vv.scale && vv.scale > 1.02;
     var diff = window.innerHeight - vv.height;
-    return { open: !zoomed && diff > KB_MIN_PX, top: vv.offsetTop, h: vv.height };
+    var open = !zoomed && diff > (kbOpen ? KB_EXIT_PX : KB_ENTER_PX);
+    return { open: open, top: vv.offsetTop, h: vv.height };
   }
 
   function syncViewport(){
@@ -87,7 +94,7 @@
       root.style.removeProperty('--vv-h');
       changed = true;
     }
-    if(changed) kbListeners.forEach(function(fn){ fn(); });
+    if(changed){ lastVvChange = Date.now(); kbListeners.forEach(function(fn){ fn(); }); }
   }
 
   function scheduleViewportSync(){
@@ -126,6 +133,10 @@
     if(overlay && !overlay.classList.contains('open')) return;
     if(sheet.scrollHeight <= sheet.clientHeight + 1) return;   // nada que scrollear
     if(fingerDown()){ queueEnsure(100); return; }              // nunca bajo un dedo
+    // Mientras el teclado todavía se mueve, medir daría posiciones a medio camino
+    // y el scroll corregiría de más (sube/baja). Se espera a que se quede quieto.
+    var sinceChange = Date.now() - lastVvChange;
+    if(sinceChange < VV_SETTLE_MS){ queueEnsure(VV_SETTLE_MS - sinceChange + 10); return; }
 
     var viewTop = vv ? vv.offsetTop : 0;
     var viewBottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
@@ -157,12 +168,13 @@
     if(ensureRaf){ cancelAnimationFrame(ensureRaf); ensureRaf = 0; }
   }
 
-  // Cuando el layout del teclado cambia, medir en el frame siguiente: el
-  // navegador ya aplicó las variables CSS y el sheet está en su sitio final.
+  // Cuando el layout del teclado cambia, el sheet ya lo sigue (CSS). El ajuste
+  // del scroll se pide una sola vez, cuando el viewport lleva VV_SETTLE_MS quieto.
+  var kbSettleTimer = 0;
   kbListeners.push(function(){
     if(!focusEl) return;
-    if(ensureRaf) cancelAnimationFrame(ensureRaf);
-    ensureRaf = requestAnimationFrame(function(){ ensureRaf = 0; ensureFocusedVisible(); });
+    clearTimeout(kbSettleTimer);
+    kbSettleTimer = setTimeout(ensureFocusedVisible, VV_SETTLE_MS + 10);
   });
 
   document.addEventListener('focusin', function(e){
@@ -170,6 +182,7 @@
     if(!needsKeyboard(el) || !el.closest('.sheet')) return;
     focusEl = el;
     clearEnsure();
+    clearTimeout(kbSettleTimer);
     // El teclado puede tardar en aparecer: tres pasadas baratas cubren los
     // dos casos (ya estaba abierto / se abre ahora). El cambio real de layout
     // lo cubre además el listener de arriba.
@@ -178,7 +191,7 @@
     queueEnsure(380);
   });
   document.addEventListener('focusout', function(e){
-    if(e.target === focusEl){ focusEl = null; clearEnsure(); }
+    if(e.target === focusEl){ focusEl = null; clearEnsure(); clearTimeout(kbSettleTimer); }
   });
 
   // ── CIERRE POR GESTO ──────────────────────────────────────────────────────
@@ -243,6 +256,7 @@
 
     function paint(){
       rafId = 0;
+      if(!dragging) return;
       panel.style.transform = 'translate3d(0,' + curY + 'px,0)';
       if(overlayEl && overlayEl !== panel){
         var k = Math.max(0, 1 - Math.max(0, curY) / (panelH * 0.9));
@@ -333,9 +347,9 @@
         dy = p.clientY - startY;
       }
 
-      // Seguimiento 1:1 hacia abajo; hacia arriba, solo un poco de elasticidad.
-      var y = originY + dy;
-      curY = y >= 0 ? y : y * 0.15;
+      // Seguimiento 1:1 hacia abajo. Nunca por encima de su sitio: un desplazamiento
+      // negativo deja ver un hueco bajo el sheet.
+      curY = Math.max(0, originY + dy);
       if(e.cancelable) e.preventDefault();
       schedulePaint();
 
@@ -376,6 +390,10 @@
     function settle(close, v){
       settling = true;
       clearSettle();
+      // Un cuadro de arrastre aún pendiente se aplicaría DESPUÉS de iniciar la
+      // animación y devolvería el sheet a su posición anterior (se veía como
+      // «se queda arriba y baja de golpe»).
+      if(rafId){ cancelAnimationFrame(rafId); rafId = 0; }
       var done = false;
       var finish = function(){
         if(done) return;
@@ -412,7 +430,10 @@
       }
       teHandler = onTe;
       panel.addEventListener('transitionend', onTe);
-      // Forzar el estilo actual antes de activar la transición.
+      // Aplicar ya la posición final del dedo (el cuadro pendiente se descartó) y
+      // forzar ese estilo antes de activar la transición: arranca desde el dedo.
+      panel.style.transition = 'none';
+      panel.style.transform = 'translate3d(0,' + curY + 'px,0)';
       void panel.offsetHeight;
       panel.style.transition = 'transform ' + dur + 'ms ' + ease;
       panel.style.transform = 'translate3d(0,' + target + 'px,0)';

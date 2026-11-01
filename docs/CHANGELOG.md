@@ -4,6 +4,15 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Sheets: ajustes tras probar en el celular (2026-11-01, SW v86)
+
+- **Hueco bajo el sheet al subirlo:** el arrastre dejaba un poco de «elasticidad» hacia arriba (`y * 0.15`), que desplazaba el sheet por encima de su sitio y dejaba ver el fondo debajo. Ahora el desplazamiento nunca es negativo: el sheet solo baja, y al volver sube hasta su sitio y se detiene.
+- **Cierre «de golpe»:** al soltar, un cuadro de arrastre pendiente (`requestAnimationFrame`) se aplicaba DESPUÉS de iniciar la animación de cierre y devolvía el sheet a su posición anterior; se quedaba arriba hasta que el temporizador lo cerraba de golpe. `settle()` ahora cancela ese cuadro y aplica la posición final del dedo antes de animar.
+- **Temblor al abrir/cerrar el teclado rápido:** (a) un único umbral de 120 px se cruzaba varias veces durante la animación del teclado y el overlay alternaba entre «pantalla completa» y «viewport visible»; ahora hay histéresis (entra con más de 60 px, sale con menos de 30 px). (b) el ajuste de scroll del campo enfocado medía con el teclado a medio camino y corregía de más; ahora espera a que el viewport lleve 110 ms sin cambios.
+- **Mesada:** `mesada-pago` y `mesada-pend` ya no enfocan el monto al abrirse (venía precargado con la cuota del mes / lo pendiente, y el teclado saltaba sin necesidad).
+
+---
+
 ## Sheets: teclado y gesto de cierre rehechos (2026-11-01, SW v85)
 
 Causa raíz de los saltos del teclado: el sheet se reposicionaba con tres relojes distintos encadenados (debounce de 120 ms, espera a que «no hubiera toques» hasta 300 ms y una transición de `margin-bottom` de 220 ms) más una medición del campo enfocado que esperaba a todo lo anterior. Según el momento en que cayera el toque, el sheet empezaba desde abajo del todo, desde la mitad, o saltaba dos veces. Al cerrar el teclado pasaba lo mismo a la inversa (quedaba un hueco donde estaba el teclado).

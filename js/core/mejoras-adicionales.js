@@ -328,7 +328,7 @@ if ('serviceWorker' in navigator) {
     if (focusId) {
       setTimeout(() => {
         const el = document.getElementById(focusId);
-        if (el && typeof el.focus === 'function') el.focus();
+        if (el && typeof el.focus === 'function') el.focus({ preventScroll: true });   // el scroll lo decide sheet-behavior.js (solo si el campo queda tapado)
       }, 250);
     }
   }, { intervalMs: 100 });

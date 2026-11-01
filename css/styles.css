@@ -44,7 +44,8 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
    propio del panel, con z-index por encima de los 1001 que .overlay.open
    le da a su propio backdrop cuando está abierto. */
 .mas-menu{position:fixed;bottom:0;left:0;right:0;margin-left:auto;margin-right:auto;width:100%;max-width:430px;background:var(--bg2);border-radius:22px 22px 0 0;border-top:1px solid var(--border2);padding:14px 16px max(28px,env(safe-area-inset-bottom));z-index:1002;}
-.mas-menu-handle{width:44px;height:5px;background:var(--border2);border-radius:3px;margin:0 auto 18px;cursor:grab;}
+.mas-menu-handle{position:relative;width:44px;height:5px;background:var(--border2);border-radius:3px;margin:0 auto 18px;cursor:grab;touch-action:none;-webkit-user-select:none;user-select:none;}
+.mas-menu-handle::before{content:'';position:absolute;inset:-14px -44px -14px;}
 .mas-menu-title{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;font-family:'DM Mono',monospace;margin-bottom:14px;font-weight:600;}
 .mas-item{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--border);cursor:pointer;min-height:60px;transition:opacity .15s;}
 .mas-item:last-child{border-bottom:none;}
@@ -165,7 +166,16 @@ textarea{resize:none;height:60px;}
    auditoria-tecnica.md #1 y CHANGELOG.md#infraestructura--seguridad. */
 .cajita-row-hover{border:1px solid var(--border2);}
 .cajita-row-hover:hover{border-color:rgba(192,96,240,.4);}
-.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);overflow:hidden;}
+/* --ov-k: intensidad del fondo (1 = normal). sheet-behavior.js la baja mientras se
+   arrastra un sheet para cerrarlo, así se atenúa SOLO el fondo y no el sheet
+   (antes se animaba la opacity del overlay entero, que arrastraba al sheet). */
+@property --ov-k{syntax:'<number>';inherits:false;initial-value:1;}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,calc(.75 * var(--ov-k)));z-index:999;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);overflow:hidden;}
+/* Teclado abierto (clase y variables las escribe js/core/sheet-behavior.js a partir
+   del Visual Viewport): el overlay pasa a medir EXACTAMENTE lo visible, y el sheet,
+   alineado abajo, queda pegado al teclado sin márgenes ni transiciones intermedias. */
+html.kb-open .overlay{bottom:auto;top:var(--vv-top,0px);height:var(--vv-h,100%);}
+html.kb-open .overlay .sheet{max-height:96%;}
 .overlay.open{display:flex;}
 /* Sheet stack: el overlay activo sube a z-index 1001; el enterrado queda en 999
    con su sheet escalaodao/apagado y sin pointer-events */
@@ -173,9 +183,12 @@ textarea{resize:none;height:60px;}
 .overlay.sheet-background{display:flex;z-index:999;background:rgba(0,0,0,.0) !important;backdrop-filter:none !important;pointer-events:none;}
 .overlay.sheet-background .sheet{transform:scale(0.93) translateY(-10px);opacity:0.3;pointer-events:none;will-change:transform,opacity;}
 .overlay.open:not(.sheet-background) .sheet{transform:scale(1) translateY(0);opacity:1;will-change:transform,opacity;}
-.sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:0 18px 38px;width:100%;max-width:430px;max-height:92svh;overflow-y:auto;-webkit-overflow-scrolling:touch;transition:margin-bottom .22s ease,max-height .22s ease;}
+.sheet{background:var(--bg2);border-radius:22px 22px 0 0;padding:0 18px 38px;width:100%;max-width:430px;max-height:min(92svh,96%);overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;}
 /* Handle unificado — una sola definición */
-.sheet-handle{width:40px;height:5px;background:var(--border2);border-radius:3px;margin:14px auto 20px;cursor:grab;opacity:.7;}
+.sheet-handle{position:relative;width:40px;height:5px;background:var(--border2);border-radius:3px;margin:14px auto 20px;cursor:grab;opacity:.7;touch-action:none;-webkit-user-select:none;user-select:none;}
+/* Zona de toque ampliada: el handle mide 5px de alto, imposible de acertar con el dedo. */
+.sheet-handle::before{content:'';position:absolute;inset:-14px -44px -16px;}
+.sheet-handle:active{cursor:grabbing;}
 .sheet-title{font-size:18px;font-weight:700;margin-bottom:20px;letter-spacing:-.2px;}
 .progress{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:8px;}
 .progress-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .4s;}
@@ -591,8 +604,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
    acá, el salto de layout que la regla de arriba evita en el resto de la app
    (mov_fuente_hint/mov_destino_hint en Préstamos NO se tocan y siguen
    reservando el espacio). Con transición: el salto pasa a ser progresivo
-   (mismo criterio que .sheet con el reacomodo de teclado, ver entrada del
-   2026-09-24 en CHANGELOG.md) en vez de instantáneo — no elimina el
+   (el reacomodo del teclado ya no usa transiciones: ver sheet-behavior.js) en vez de instantáneo — no elimina el
    desplazamiento pero da tiempo a que el layout se asiente antes del
    siguiente toque. max-height en vez de height porque height:auto no anima. */
 #gv_fuente_hint{
@@ -1512,7 +1524,7 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .pe-sel-wrap, .ig.pe-sel-wrap{position:relative;}
 .pe-sel-input, input.pe-sel-input{padding-left:36px;}
 .pe-sel-lupa{position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;}
-.pe-sel-lista{max-height:300px;overflow-y:auto;}
+.pe-sel-lista{max-height:300px;overflow-y:auto;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;}
 .pe-btn-nueva, .btn.pe-btn-nueva{margin-top:10px;display:flex;align-items:center;justify-content:center;gap:6px;}
 .pe-btn-cancelar, .btn.pe-btn-cancelar{margin-top:6px;}
 .pe-colores{display:flex;gap:8px;flex-wrap:wrap;padding:4px 0;}
@@ -1798,7 +1810,7 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .ix-svg-006{position:absolute;left:13px;top:50%;transform:translateY(-50%);pointer-events:none;}
 .ix-busqueda-input, input.ix-busqueda-input{width:100%;padding:13px 14px 13px 38px;background:var(--bg2);border:1.5px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);font-size:15px;font-family:'DM Sans',sans-serif;outline:none;}
 .ix-btn-cerrar-busqueda{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:8px;white-space:nowrap;}
-.ix-busqueda-resultados{flex:1;overflow-y:auto;}
+.ix-busqueda-resultados{flex:1;overflow-y:auto;overscroll-behavior-y:contain;}
 .ix-div-010{display:flex;align-items:center;gap:6px;}
 .ix-hero-alcancia-badge{visibility:hidden;display:inline-flex;align-items:center;justify-content:center;color:var(--amber);flex-shrink:0;}
 .ix-mt8, .row.ix-mt8{margin-top:8px;}

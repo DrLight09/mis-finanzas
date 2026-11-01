@@ -4,6 +4,21 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Sheets: teclado y gesto de cierre rehechos (2026-11-01, SW v85)
+
+Causa raíz de los saltos del teclado: el sheet se reposicionaba con tres relojes distintos encadenados (debounce de 120 ms, espera a que «no hubiera toques» hasta 300 ms y una transición de `margin-bottom` de 220 ms) más una medición del campo enfocado que esperaba a todo lo anterior. Según el momento en que cayera el toque, el sheet empezaba desde abajo del todo, desde la mitad, o saltaba dos veces. Al cerrar el teclado pasaba lo mismo a la inversa (quedaba un hueco donde estaba el teclado).
+
+- **Teclado, una sola fuente de verdad (`js/core/sheet-behavior.js` + `.overlay` en `styles.css`).** Con el teclado abierto, `<html>` recibe la clase `kb-open` y las variables `--vv-top`/`--vv-h` (Visual Viewport), escritas en un `requestAnimationFrame` en cada `resize`/`scroll` del viewport. El `.overlay` pasa a medir exactamente lo visible y el sheet, alineado abajo, queda pegado al teclado: sin márgenes inline, sin debounce, sin esperas, sin transición de `margin-bottom`/`max-height` en `.sheet`. Funciona igual con `offsetTop` ≠ 0 (iOS). El zoom de pellizco no cuenta como teclado.
+- **Campo enfocado visible:** se mide en el frame siguiente a cada cambio de layout del teclado y tras el foco (tres pasadas baratas que no hacen nada si el campo ya se ve); nunca bajo un dedo. El autofocus de `mejoras-adicionales.js` usa `preventScroll` para que no compita con ese ajuste.
+- **Selector de persona (y cualquier lista interna con scroll):** el gesto de cierre ya no arrastra el sheet mientras la lista puede seguir scrolleando hacia arriba (antes bajaba la lista y el sheet a la vez). Se recorre desde el elemento tocado hasta el sheet buscando un contenedor con `scrollTop > 0`. `.pe-sel-lista` y `.ix-busqueda-resultados` llevan `overscroll-behavior-y: contain` para que, al llegar al final de la lista, el scroll no se encadene al sheet.
+- **Gesto de cierre:** zona de agarre (handle con área de toque ampliada + franja superior de 56 px) que controla el gesto desde el primer píxel; seguimiento 1:1; escritura por rAF; velocidad medida sobre ~100 ms; cierre o rebote con duración proporcional al recorrido; un rebote en curso se puede interrumpir con un toque nuevo; solo se atenúa el fondo (`--ov-k`), ya no la `opacity` del overlay entero, que también desvanecía el sheet. Con el teclado abierto se puede cerrar desde el handle (suelta el foco); desde el cuerpo no. Soporta ratón en la zona de agarre.
+- **Bug de pila:** los sheets inyectados después de cargar (Personas, Plata comprometida) se cerraban por gesto con `classList.remove('open')`, sin pasar por `closeSheet()`, y quedaban en `_sheetStack`; el siguiente `openSheet()` les ponía `sheet-background` (que fuerza `display:flex`) y reaparecía un sheet fantasma atenuado. Ahora todo cierre por gesto pasa por `closeSheet()`.
+- **`closeSheet()` suelta el foco** si está dentro del sheet que se cierra, para que el teclado se cierre siempre a la vez que el sheet.
+- **Alcancía:** `makeSwipeable` se expone como `window.makeSwipeable` (antes estaba encerrada en el IIFE y su `typeof makeSwipeable === 'function'` era siempre falso: sus tres sheets nunca se cerraban por gesto).
+- Eliminado el `MutationObserver` por overlay y el estado `kbState`: ya no hacen falta.
+
+---
+
 ## Lista de mejoras de octubre 2026
 
 ### 🧹 Huella y cierre bajo demanda, y aviso de tamaño sin promesas falsas (2026-10-31, SW v84)

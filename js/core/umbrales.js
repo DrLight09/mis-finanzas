@@ -31,7 +31,11 @@ const UMBRALES = (() => {
     // Runway: meses de gasto típico que cubre la liquidez (se muestra en la tarjeta de Salud y en el hero)
     runway: { critico: 1, atencion: 3 },                           // < critico = rojo; < atencion = ámbar; el resto, verde
     // Aviso «Necesita atención» (renderAttencion, inicio.js)
-    atencion: { cupoTcCasiAgotadoPct: 85, cdtAvisoDias: 7 },
+    atencion: {
+      cupoTcCasiAgotadoPct: 85, cdtAvisoDias: 7,
+      gastoFijoAvisoDias: 3,  // un gasto fijo con día de vencimiento avisa desde N días antes
+      brechaCajaDias: 7,      // lo que vence (o ya venció sin pagar) en N días se compara con tu plata disponible
+    },
     // Aviso de gasto del mes en el hero (_checkGastoAlto, inicio.js): fracción del ingreso de referencia que ya gastaste
     gastoAlto: { fraccionDelIngreso: 0.8 },
     // Hero de Inicio (calcEstadoHero, core-state.js): a partir de qué peso de «Me deben» dentro de tu patrimonio se avisa

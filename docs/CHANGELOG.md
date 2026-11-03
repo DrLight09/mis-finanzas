@@ -6,7 +6,7 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Revisión de mejoras: hallazgos financieros y de estructura (2026-11-03, SW v92)
 
-Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los escenarios negativos). Cada hallazgo se **reprodujo ejecutando el código real** antes de tocarlo; los que no se reprodujeron o no aplicaban se anotan al final. Lo que sigue pendiente quedó en `mejoras-mis-finanzas.md` (ya sin lo resuelto). Pruebas: `tests/escenarios-financieros.test.js` (nuevo, 40 pruebas) + las existentes actualizadas: 688/688. `npm run smoke` y `generar-mapa.js --check` en verde. El puntaje de Salud **cambia** para varios estados (ver cada punto): es intencional.
+Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los escenarios negativos). Cada hallazgo se **reprodujo ejecutando el código real** antes de tocarlo; los que no se reprodujeron o no aplicaban se anotan al final. Lo que sigue pendiente quedó en `mejoras-mis-finanzas.md` (ya sin lo resuelto). Pruebas: `tests/escenarios-financieros.test.js` (nuevo, 45 pruebas) + las existentes actualizadas: 693/693. `npm run smoke` y `generar-mapa.js --check` en verde. El puntaje de Salud **cambia** para varios estados (ver cada punto): es intencional.
 
 ### Salud financiera (`inicio.js`)
 
@@ -45,6 +45,14 @@ Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los es
 - **`_checkGastoAlto` comparaba contra el disponible de ahora** (que ya descuenta ese gasto) y con `disp ≤ 0` no avisaba nada. Ahora compara contra el **ingreso de referencia**: «Gastos altos» (ámbar) desde 80 %, «Gastas más de lo que ingresas» (rojo) al superarlo; sin ingresos registrados, «Sin plata disponible» solo si ya no queda. Usa clases en vez de `style.color`.
 - **Atención** ahora avisa: liquidez neta negativa (rojo), runway < 1 mes, 2–3 meses seguidos en déficit, **lo que tú debes a personas** («Le debes $X a Fulano») y **N-8 — tarjetas no activas con deuda** (se omitían todas las que no estaban «activa»). Los límites (85 % de cupo, 7 días de CDT) salen de `UMBRALES.atencion`.
 
+### Gastos fijos con día de vencimiento (P7 / N4 — funcionalidad nueva)
+
+- **N4 verificado:** `gastos.js` guardaba `{id, nombre, monto, cat}`: la app no podía avisar «el arriendo vence en 3 días» ni «ya es 25 y no está pagado», justo lo que más evita una crisis de caja (el estado sintético de los tests ya traía `dia: 5` sin que nada lo usara).
+- **Campo opcional «Día de vencimiento»** (1–31) en «Gasto fijo mensual» (`#gf_d`); vacío = sin aviso, fuera de rango = se rechaza. `Periodo.gastosFijosProgramados(mes, hoy)` (puro): los pendientes del mes con `dias` hasta el vencimiento (negativo = vencido); un «31» se recorta al último día del mes (28/29 en febrero); los pagados ese mes y los sin día no aparecen.
+- **Lista de gastos fijos:** «Vence el día 5» / «Vence en 2 días» (ámbar desde 3) / «Vence hoy» / «Venció hace N días» (rojo) mientras no esté pagado.
+- **Necesita atención:** aviso por cada gasto fijo (por vencer, hoy, vencido sin pagar) y la **brecha de caja**: «En los próximos 7 días vencen $X y tu plata disponible es $Y» (suma lo que vence en 7 días y lo vencido sin pagar, incluido el mes siguiente: el día 30 el arriendo del 1 ya está encima). Límites en `UMBRALES.atencion` (`gastoFijoAvisoDias` = 3, `brechaCajaDias` = 7).
+- No cambia ningún saldo ni la regla «un gasto fijo solo se convierte en gasto real al pagarlo». Los gastos fijos ya creados siguen igual (sin día no hay avisos). Quedan fuera, y siguen en `mejoras-mis-finanzas.md`: día para **ingresos** fijos y editar el día de un gasto fijo ya creado (hoy se borra y se vuelve a crear).
+
 ### Análisis, Wrapped y push
 
 - **Análisis — porcentaje sobre base negativa:** pasar de −$1.000.000 a −$500.000 decía «+50 %» en verde con el patrimonio aún en deuda. Ahora el % solo sobre base positiva («—» si no) y «En números rojos» si el valor final es < 0.
@@ -65,7 +73,6 @@ Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los es
 
 - **«Un test de `@property` falla»:** es de `jsdom` 30; tu `package.json` fija `^27` y pasa. No aplica.
 - **Las deudas «Yo debo» en el ratio de endeudamiento (b):** se deja la liquidez como único canal (una deuda con una persona normalmente no tiene interés ni plazo); queda en `mejoras-mis-finanzas.md` como decisión pendiente.
-- **N4 (gastos fijos sin día):** verificado y real (`gastos.js:565` guarda `{id, nombre, monto, cat}`); es funcionalidad nueva, no una corrección → sigue en `mejoras-mis-finanzas.md` (P7).
 
 ---
 

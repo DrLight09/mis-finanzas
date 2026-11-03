@@ -398,3 +398,56 @@ test('A10. la línea de VERSION de sw.js es corta: el historial de versiones viv
   assert.ok(linea && linea.length < 200, 'la línea de VERSION mide ' + (linea || '').length);
   assert.match(linea, /mis-finanzas-v\d+/);
 });
+
+/* ================= P7: gastos fijos con día de vencimiento ================= */
+test('P7. Periodo.gastosFijosProgramados: días hasta el vencimiento, ordenados; vencidos con días negativos', () => {
+  const ctx = app({ gastosFijos: [
+    { id: 'a', nombre: 'Arriendo', monto: 900000, cat: 'Vivienda', dia: 5 },
+    { id: 'b', nombre: 'Internet', monto: 80000, cat: 'Servicios', dia: 20 },
+    { id: 'c', nombre: 'Gimnasio', monto: 50000, cat: 'Salud', dia: 1 },
+  ] });
+  const r = ctx.Periodo.gastosFijosProgramados('2026-11', '2026-11-03');
+  assert.equal(JSON.stringify(r.map(g => [g.nombre, g.dias])), JSON.stringify([['Gimnasio', -2], ['Arriendo', 2], ['Internet', 17]]));
+  assert.equal(r[1].fecha, '2026-11-05');
+});
+
+test('P7. un «día 31» vence el último día de un mes corto; días inválidos y gastos sin día no entran', () => {
+  const ctx = app({ gastosFijos: [
+    { id: 'a', nombre: 'Cuota', monto: 1, dia: 31 }, { id: 'b', nombre: 'Cero', monto: 1, dia: 0 },
+    { id: 'c', nombre: 'Treinta y dos', monto: 1, dia: 32 }, { id: 'd', nombre: 'Texto', monto: 1, dia: 'x' }, { id: 'e', nombre: 'Sin día', monto: 1 },
+  ] });
+  const feb = ctx.Periodo.gastosFijosProgramados('2027-02', '2027-02-10');
+  assert.equal(feb.length, 1);
+  assert.equal(feb[0].fecha, '2027-02-28');
+  assert.equal(ctx.Periodo.gastosFijosProgramados('2028-02', '2028-02-10')[0].fecha, '2028-02-29', 'bisiesto');
+});
+
+test('P7. un gasto fijo ya pagado ese mes deja de aparecer como pendiente; el del mes siguiente sí', () => {
+  const ctx = app({ gastosFijos: [{ id: 'a', nombre: 'Arriendo', monto: 900000, dia: 5 }], pagosGastosFijos: { 'a_2026-11': { monto: 900000, fecha: '2026-11-02' } } });
+  assert.equal(ctx.Periodo.gastosFijosProgramados('2026-11', '2026-11-03').length, 0);
+  assert.equal(ctx.Periodo.gastosFijosProgramados('2026-12', '2026-11-03').length, 1);
+});
+
+test('P7. Atención avisa «vence hoy», «venció hace N días sin pagar» y la brecha de caja', () => {
+  const hoyD = new Date();
+  const diaHoy = hoyD.getDate();
+  const ctx = app({ cuentas: cuentas(100000), gastosFijos: [
+    { id: 'a', nombre: 'Arriendo', monto: 900000, dia: diaHoy },
+    { id: 'b', nombre: 'Gimnasio', monto: 50000, dia: 1 },
+  ] });
+  const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
+  const dom = createFakeDom(); ctx.document = dom.document;
+  ctx.renderAttencion();
+  const t = String(dom.el('s-attn-list').innerHTML);
+  assert.match(t, /Arriendo vence hoy/);
+  if (diaHoy >= 2) assert.match(t, /Gimnasio venció hace \d+ días? y no está pagado/);
+  assert.match(t, /En los próximos 7 días vencen .* y tu plata disponible es/, '900.000 + lo vencido vs 100.000 disponibles');
+});
+
+test('P7. con la plata alcanzando y sin vencimientos cerca, no hay alertas de gastos fijos', () => {
+  const ctx = app({ cuentas: cuentas(5000000), gastosFijos: [{ id: 'a', nombre: 'Arriendo', monto: 900000 }] });
+  const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
+  const dom = createFakeDom(); ctx.document = dom.document;
+  ctx.renderAttencion();
+  assert.ok(!/vence|venció|próximos 7 días/.test(String((dom.el('s-attn-list') || {}).innerHTML || '')));
+});

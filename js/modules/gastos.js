@@ -532,6 +532,8 @@ function renderGastosFijos() {
     return;
   }
   const mesClave = mesActual();
+  // Vencimientos pendientes del mes (solo los gastos fijos con día): ver Periodo.gastosFijosProgramados.
+  const venc = new Map(Periodo.gastosFijosProgramados(mesClave, hoy()).map(g => [g.id, g]));
   el.innerHTML = html`${todos.map((x, i) => {
     const pagos = S.pagosGastosFijos || {};
     const infoPago = (!x._virtual && x.id) ? pagos[x.id + '_' + mesClave] : null;
@@ -547,13 +549,20 @@ function renderGastosFijos() {
     } else {
       accionHtml = html`<span class="gasto-nota">Spotify</span>`;
     }
+    const g = venc.get(x.id);
+    let vencHtml = '';
+    if (g) {
+      const txt = g.dias < 0 ? `Venció hace ${-g.dias} ${-g.dias === 1 ? 'día' : 'días'}` : g.dias === 0 ? 'Vence hoy' : g.dias <= 7 ? `Vence en ${g.dias} ${g.dias === 1 ? 'día' : 'días'}` : `Vence el día ${g.dia}`;
+      const tono = g.dias < 0 ? 'gasto-vence-red' : g.dias <= UMBRALES.atencion.gastoFijoAvisoDias ? 'gasto-vence-amber' : '';
+      vencHtml = html`<span class="gasto-vence ${tono}">${txt}</span>`;
+    }
     return filaMovimiento({
       nombre: x.nombre,
       monto: fmt(x.monto),
       montoClase: 'c-red',
       acciones: !x._virtual ? botonEliminarFila('gastos:deleteGastoFijo', [x.id]) : '',
       metaClase: 'gasto-meta-fijo',
-      meta: html`<span class="badge badge-xs bg-blue">${x.cat}</span>${accionHtml}`
+      meta: html`<span class="badge badge-xs bg-blue">${x.cat}</span>${vencHtml}${accionHtml}`
     });
   })}`;
 }
@@ -562,8 +571,15 @@ function addGastoFijo() {
   const n = document.getElementById('gf_n').value.trim(), m = parseMoney(document.getElementById('gf_m').value) || 0;
   if (!n) { toast('Ingresa el nombre del gasto fijo', 'err'); return; }
   if (!m) { toast('Ingresa el monto mensual', 'err'); return; }
-  S.gastosFijos.push({ id: uid(), nombre: n, monto: m, cat: document.getElementById('gf_c').value });
+  // Día de vencimiento: opcional. Vacío = sin aviso de vencimiento; si se escribe, debe ser un día válido (1–31).
+  const diaTxt = (document.getElementById('gf_d') || { value: '' }).value.trim();
+  const dia = diaTxt === '' ? null : Number(diaTxt);
+  if (dia !== null && !(Number.isInteger(dia) && dia >= 1 && dia <= 31)) { toast('El día de vencimiento debe estar entre 1 y 31', 'err'); return; }
+  const nuevo = { id: uid(), nombre: n, monto: m, cat: document.getElementById('gf_c').value };
+  if (dia !== null) nuevo.dia = dia;
+  S.gastosFijos.push(nuevo);
   document.getElementById('gf_n').value = ''; document.getElementById('gf_m').value = '';
+  if (document.getElementById('gf_d')) document.getElementById('gf_d').value = '';
   save(); refresh(); closeSheet('gasto-fijo');
   if (window.logCambio) { const _gfn = document.getElementById('gf_n'); const _gfm = parseMoney(document.getElementById('gf_m').value); logCambio('Agregaste gasto fijo', _gfn ? _gfn.value : '', _gfm, 'gasto_fijo'); }
   toast('Gasto fijo agregado', 'ok');

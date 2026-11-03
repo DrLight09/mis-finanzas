@@ -68,10 +68,30 @@ function _itemsSituacion(items){
   if(n>0) items.push({tipo:n>=UMBRALES.salud.rachaDeficitMeses.alerta?'red':'amber',texto:html`Llevas ${n} meses seguidos gastando más de lo que ingresas (${fmt(-racha.acumulado)} en total)`});
 }
 
+// Gastos fijos con día de vencimiento (Periodo.gastosFijosProgramados): vencidos sin pagar (rojo), por vencer (ámbar) y la «brecha de
+// caja»: si lo que vence en los próximos días (más lo que ya venció sin pagar) supera tu plata disponible, se avisa antes de que pase.
+// Incluye el mes siguiente: el día 30, el arriendo del día 1 ya está a un paso.
+function _itemsGastosFijos(items, liq){
+  const hoyStr=hoy();
+  const mes=mesActual();
+  const prog=[...Periodo.gastosFijosProgramados(mes,hoyStr), ...Periodo.gastosFijosProgramados(Periodo.mesDesplazado(mes,1),hoyStr)];
+  const plural=n=>n===1?'día':'días';
+  prog.forEach(g=>{
+    if(g.dias<0) items.push({tipo:'red',texto:html`${g.nombre} venció hace ${-g.dias} ${plural(-g.dias)} y no está pagado (${fmt(g.monto)})`});
+    else if(g.dias===0) items.push({tipo:'amber',texto:html`${g.nombre} vence hoy (${fmt(g.monto)})`});
+    else if(g.dias<=UMBRALES.atencion.gastoFijoAvisoDias) items.push({tipo:'amber',texto:html`${g.nombre} vence en ${g.dias} ${plural(g.dias)} (${fmt(g.monto)})`});
+  });
+  const N=UMBRALES.atencion.brechaCajaDias;
+  const comprometido=prog.filter(g=>g.dias<=N).reduce((a,g)=>a+g.monto,0);
+  const disponible=Math.max(0,liq.neta);
+  if(comprometido>disponible) items.push({tipo:'red',texto:html`En los próximos ${N} días vencen ${fmt(comprometido)} y tu plata disponible es ${fmt(disponible)}`});
+}
+
 function renderAttencion(){
   const items=[];
   const hoyStr=hoy();
   _itemsSituacion(items);
+  _itemsGastosFijos(items, calcLiquidez());
   // Deudores con saldo pendiente
   if(typeof getDeudorSaldo==='function'){
     Deudas.lista('favor').forEach(d=>{

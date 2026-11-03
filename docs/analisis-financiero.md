@@ -119,7 +119,9 @@ Recorren `S.gastosVar` (mismo criterio de gasto real que en §2, vía `_esGastoV
 
 ## 9. Presupuestos por categoría
 
-**ID:** `an-presupuestos`, función `renderPresupuestos()`. Los límites viven en `S.presupuestos` (objeto `categoría → monto`), editables desde el sheet "Presupuestos mensuales" (`abrirPresupuestos()`). El gasto por categoría se calcula con el mismo criterio de gasto real que el resto de la pantalla (`_esGastoVarNoReal()`). Por cada categoría con presupuesto, muestra una barra de progreso (gasto del mes / límite) en verde/ámbar/rojo según el %, y dispara un toast de aviso la primera vez que alguna categoría llega a 80–99%.
+**ID:** `an-presupuestos`, función `renderPresupuestos()`. Los límites viven en `S.presupuestos` (objeto `categoría → monto`), editables desde el sheet "Presupuestos mensuales" (`abrirPresupuestos()`). El gasto por categoría se calcula con el mismo criterio de gasto real que el resto de la pantalla (`_esGastoVarNoReal()`). Por cada categoría con presupuesto, muestra una barra de progreso (gasto del mes / límite) en verde/ámbar/rojo según el %, y dispara un toast de aviso la primera vez que alguna categoría llega a 80–99 % y otro **al superar el 100 %** («Superaste el presupuesto de X por $Y»). La barra se recorta al 100 %, pero el texto muestra el exceso («$180.000 / $100.000 · +$80.000»); un límite no positivo (dato corrupto) no se divide (antes `NaN%`). Los avisos ya mostrados se guardan también en `localStorage` (`mf-presup-avisos`, clave categoría_mes, solo el mes en curso) para no repetirse tras recargar la página.
+
+**Patrimonio de los últimos N días (§5):** el porcentaje solo se calcula sobre un valor inicial **positivo**; con base ≤ 0 se muestra «—», y si el valor final sigue bajo cero, «En números rojos» (antes pasar de −$1.000.000 a −$500.000 decía «+50 %» en verde con el patrimonio todavía en deuda).
 
 ---
 

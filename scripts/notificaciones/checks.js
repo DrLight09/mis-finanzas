@@ -54,7 +54,9 @@ function spNombreDe(S, p) {
 function checkSpotifyVencido(S, hoyStr) {
   const items = [];
   if (!(S.modulos && S.modulos.spotify)) return items;
-  (S.spotifyPersonas || []).forEach((p) => {
+  // S.spotify.personas (esquema 9). Antes leía S.spotifyPersonas, que ya no existe: con un estado actual devolvía [] y el aviso de
+  // «Cobro Spotify vencido» dejó de llegar sin ningún error.
+  ((S.spotify && S.spotify.personas) || []).forEach((p) => {
     if (p.proximoPago && p.proximoPago < hoyStr && !spPersonaPagadaVigente(p, hoyStr)) {
       items.push({ tipo: 'red', texto: `Cobro Spotify de ${spNombreDe(S, p)} vencido` });
     }

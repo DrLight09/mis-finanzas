@@ -50,14 +50,38 @@
 // calculadas, sin riesgo, pero quedan igual bajo el escapado por defecto de
 // html`` sin que eso cambie cómo se ven (dígitos y texto fijo no tienen
 // caracteres especiales de HTML).
+// Situación financiera: lo más urgente, con las mismas reglas que Salud (calcLiquidez, Periodo, helpers de arriba), no con unas propias.
+// Antes «Necesita atención» no avisaba de liquidez negativa, de meses seguidos en déficit ni de que casi no te quedan meses de reserva.
+function _itemsSituacion(items){
+  const mes=mesActual();
+  const liq=calcLiquidez();
+  const gastoRef=Periodo.gastoPromedioPrevio(mes,UMBRALES.salud.mesesReferencia).promedio;
+  const cubiertos=_mesesCubiertos(liq.neta,gastoRef);
+  if(liq.neta<0){
+    items.push({tipo:'red',texto:html`Tus deudas superan la plata que tienes disponible en ${fmt(-liq.neta)}`});
+  } else if(cubiertos!==null && _nivelRunway(cubiertos)==='critico'){
+    items.push({tipo:'amber',texto:html`${_textoRunway(cubiertos)}`});
+  }
+  const ingresoTipico=Periodo.ingresoPromedioPrevio(mes,UMBRALES.salud.mesesReferencia).promedio;
+  const racha=Periodo.rachaDeficit(mes,6);
+  const n=_rachaDeficitRelevante(racha,ingresoTipico,cubiertos);
+  if(n>0) items.push({tipo:n>=UMBRALES.salud.rachaDeficitMeses.alerta?'red':'amber',texto:html`Llevas ${n} meses seguidos gastando más de lo que ingresas (${fmt(-racha.acumulado)} en total)`});
+}
+
 function renderAttencion(){
   const items=[];
   const hoyStr=hoy();
+  _itemsSituacion(items);
   // Deudores con saldo pendiente
   if(typeof getDeudorSaldo==='function'){
     Deudas.lista('favor').forEach(d=>{
       const s=getDeudorSaldo(d);
       if(s>0) items.push({tipo:'amber',texto:html`${d.nombre} te debe ${fmt(s)}`});
+    });
+    // Lo que tú debes a personas («Yo debo»): antes no aparecía en ningún aviso, solo contaba dentro de la liquidez.
+    Deudas.lista('contra').forEach(d=>{
+      const s=getDeudorSaldo(d);
+      if(s>0) items.push({tipo:'amber',texto:html`Le debes ${fmt(s)} a ${d.nombre}`});
     });
   }
   // Mesadas con pago parcial que quedó pendiente
@@ -76,14 +100,18 @@ function renderAttencion(){
   // Tarjetas de crédito con el cupo casi agotado (sin fechas — este modelo no
   // simula ciclos de facturación, solo avisa cuando el cupo disponible es bajo)
   (S.tarjetasCredito||[]).forEach(tc=>{
-    if((tc.estado||'activa')!=='activa')return;
+    if((tc.estado||'activa')!=='activa'){
+      // Una tarjeta que ya no está activa pero sigue con deuda también se debe: antes quedaba fuera de todos los avisos.
+      if((tc.deuda||0)>0) items.push({tipo:'amber',texto:html`${tc.nombre}: tarjeta ${tc.estado} con deuda de ${fmt(tc.deuda)}`,_tcId:tc.id});
+      return;
+    }
     const cupo=tc.cupo||0;
     if(!cupo)return;
     if(typeof tcCupoUsadoPct!=='function')return;
     const pct=tcCupoUsadoPct(tc);
     if(pct>=100){
       items.push({tipo:'red',texto:html`${tc.nombre}: cupo agotado — deuda ${fmt(tc.deuda||0)}`,_tcId:tc.id});
-    } else if(pct>=85){
+    } else if(pct>=UMBRALES.atencion.cupoTcCasiAgotadoPct){
       items.push({tipo:'amber',texto:html`${tc.nombre}: cupo casi agotado (${pct.toFixed(0)}% usado)`,_tcId:tc.id});
     }
   });
@@ -101,7 +129,7 @@ function renderAttencion(){
   // Cajitas con CDT próximas a vencer (7 días)
   (S.cajitas||[]).forEach(c=>{(c.cdts||[]).filter(cdt=>cdt.vence).forEach(cdt=>{
     const diasRestantes=Math.ceil((_fechaSafe(cdt.vence)-new Date())/86400000);
-    if(diasRestantes>=0&&diasRestantes<=7) items.push({tipo:'amber',texto:html`CDT "${c.nombre}" vence en ${diasRestantes}d`});
+    if(diasRestantes>=0&&diasRestantes<=UMBRALES.atencion.cdtAvisoDias) items.push({tipo:'amber',texto:html`CDT "${c.nombre}" vence en ${diasRestantes}d`});
     if(diasRestantes<0) items.push({tipo:'red',texto:html`CDT "${c.nombre}" venció — ¡libera tu plata!`});
   });});
   // Partes comprometidas de un encargo (§ "¿Para qué es esta plata?") cuya
@@ -213,6 +241,34 @@ function renderAttencion(){
 /* ====================================================
    INDICADOR DE SALUD FINANCIERA
 ==================================================== */
+/* ----------------------------------------------------------------
+   Reglas compartidas por Salud y «Necesita atención» (una sola definición: antes cada una habría tenido su copia y habrían derivado)
+   ---------------------------------------------------------------- */
+// «Runway»: cuántos meses de gasto típico cubre tu liquidez, sin contar ingresos. null si aún no hay gasto típico; 0 si la liquidez no
+// es positiva.
+function _mesesCubiertos(liquidoReal, gastoRef){
+  return gastoRef > 0 ? Math.max(0, liquidoReal) / gastoRef : null;
+}
+// Nivel del runway según UMBRALES.runway: 'critico' | 'atencion' | 'ok'.
+function _nivelRunway(meses){
+  return meses < UMBRALES.runway.critico ? 'critico' : meses < UMBRALES.runway.atencion ? 'atencion' : 'ok';
+}
+// Texto del runway («Cubres 3,4 meses de gastos»).
+function _textoRunway(meses){
+  if(meses <= 0) return 'Tu plata disponible no cubre tus gastos';
+  if(meses < 1) return 'Cubres menos de 1 mes de gastos';
+  if(meses >= 24) return 'Cubres más de 24 meses de gastos';
+  const n = meses.toFixed(1).replace('.', ',');
+  return 'Cubres ' + n + (n === '1,0' ? ' mes' : ' meses') + ' de gastos';
+}
+// Meses seguidos de déficit que merecen aviso (0 si no merecen): solo con ingreso reciente registrado (sin él, «déficit» sería solo
+// no haber anotado ingresos) y sin un fondo sólido (≥ 6 meses de gasto) que la absorba.
+function _rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos){
+  if(!(ingresoTipico > 0)) return 0;
+  if(mesesCubiertos !== null && mesesCubiertos >= UMBRALES.salud.fondoMeses.completo) return 0;
+  return racha.meses >= UMBRALES.salud.rachaDeficitMeses.aviso ? racha.meses : 0;
+}
+
 function calcHealthScore(){
   const S = window.S || {};
   if(!S.cajitas) return null;
@@ -278,46 +334,58 @@ function calcHealthScore(){
   const prest = liq.meDeben;
 
   // ── Hay datos suficientes para evaluar? ───────────────────────────────
-  const tieneAlgo = patrimonio > 0 || prest > 0 || deudaTC > 0 || gastosMes > 0;
+  // Cualquier activo o deuda cuenta como dato, también las deudas con personas y la plata ajena: antes solo contaban un patrimonio
+  // positivo, lo prestado, la tarjeta o los gastos del mes, y quien solo debía («Yo debo») veía «Registra más datos» justo cuando su
+  // situación era más delicada.
+  const tieneAlgo = patrimonio !== 0 || prest > 0 || deudaTC > 0 || liq.yoDebo > 0 || liq.ajeno > 0 || liq.libre !== 0 || liq.cdts > 0 || gastosMes > 0;
+  const U = UMBRALES.salud;
 
   // a) Fondo de emergencia: liquidez real vs gasto mensual TÍPICO
-  // CORRECCIÓN: usamos liquidoReal (sin CDTs) — un CDT bloqueado no cubre una emergencia.
-  // El gasto de referencia es el promedio de los últimos 3 meses COMPLETOS con datos (Periodo.gastoPromedioPrevio),
-  // no el gasto del mes en curso: a los 2 días de empezar el mes apenas hay gastos, y «reservas / gastos del mes»
-  // salía en decenas de meses y regalaba +20 puntos que se iban cayendo a medida que pasaba el mes.
-  // Sin ningún mes anterior con gastos todavía no hay con qué medir: este criterio no puntúa ni aconseja.
-  const gastoRef = Periodo.gastoPromedioPrevio(mes, 3).promedio;
-  if(gastoRef > 0 && liquidoReal > 0){
-    const mesesCubiertos = liquidoReal / gastoRef;
-    if(mesesCubiertos >= 6) score += 20;
-    else if(mesesCubiertos >= 3) score += 10;
-    else { score -= 5; add('Tus reservas cubren menos de 3 meses de gastos.','aviso'); }
-  } else if((gastosMes > 0 || gastoRef > 0) && liquidoReal <= 0 && liquidoConCDTs > 0){
-    // Tiene gastos pero su liquidez inmediata es cero — salvado solo por CDTs
-    score -= 8; add('Tu liquidez disponible es muy baja — tus ahorros están en CDTs, no en cuentas libres.','aviso');
+  // Se usa liquidoReal (sin CDTs sin vencer) — un CDT bloqueado no cubre una emergencia.
+  // El gasto de referencia es el promedio de los últimos meses COMPLETOS con datos (Periodo.gastoPromedioPrevio), no el gasto del mes
+  // en curso: a los 2 días de empezar el mes apenas hay gastos, y «reservas / gastos del mes» salía en decenas de meses y regalaba +20
+  // puntos que se iban cayendo a medida que pasaba el mes. Sin ningún mes anterior con gastos todavía no hay con qué medir.
+  const gastoRef = Periodo.gastoPromedioPrevio(mes, U.mesesReferencia).promedio;
+  const mesesCubiertos = _mesesCubiertos(liquidoReal, gastoRef); // «runway»: cuántos meses aguantas sin ingresos (null si no hay gasto típico)
+  let avisoDeudaTC = false; // si la deuda de tarjeta ya se avisó por liquidez negativa, (b) no la penaliza otra vez
+  if(liquidoReal > 0){
+    if(gastoRef > 0){
+      if(mesesCubiertos >= U.fondoMeses.completo) score += 20;
+      else if(mesesCubiertos >= U.fondoMeses.minimo) score += 10;
+      else { score -= 5; add(`Tus reservas cubren menos de ${U.fondoMeses.minimo} meses de gastos.`,'aviso'); }
+    }
   } else if(liquidoReal < 0){
-    // Qué dejó la liquidez en negativo: si solo es la tarjeta se dice como siempre; si hay deudas con personas o plata ajena, se nombran.
-    score -= 15;
-    if(liq.yoDebo <= 0 && liq.ajeno <= 0) add('Tu deuda en tarjetas supera tu patrimonio líquido.','alerta');
-    else if(liq.tcPropia <= 0 && liq.ajeno <= 0) add('Lo que debes a personas supera tu patrimonio líquido.','alerta');
-    else add('Tus deudas y la plata ajena que guardas superan tu patrimonio líquido.','alerta');
+    // Debes más de lo que tienes disponible. Se nombra QUÉ deuda es. Si lo cubren CDTs sin vencer es menos grave (la plata existe, solo está
+    // bloqueada). Antes un CDT mandaba este caso a «tus ahorros están en CDTs» y el consejo no decía que la liquidez era negativa.
+    const quien = (liq.yoDebo <= 0 && liq.ajeno <= 0) ? 'Tu deuda en tarjetas supera'
+      : (liq.tcPropia <= 0 && liq.ajeno <= 0) ? 'Lo que debes a personas supera'
+      : 'Tus deudas y la plata ajena que guardas superan';
+    avisoDeudaTC = liq.tcPropia > 0;
+    if(liquidoConCDTs >= 0){ score -= 8; add(`${quien} la plata que tienes disponible; lo que cubre la diferencia está en tus CDTs.`,'aviso'); }
+    else { score -= 15; add(`${quien} la plata que tienes disponible.`,'alerta'); }
+  } else if((gastosMes > 0 || gastoRef > 0) && liquidoConCDTs > 0){
+    // Liquidez justo en cero y solo CDTs sin vencer: el ahorro existe pero no está libre.
+    score -= 8; add('Tu liquidez disponible es muy baja — tus ahorros están en CDTs, no en cuentas libres.','aviso');
   }
 
   // b) Deuda de tarjetas de crédito vs ingresos (ratio de endeudamiento TC)
   if(deudaTC > 0 && ingresoRef > 0){
     const ratioTC = deudaTC / ingresoRef;
-    if(ratioTC > 3){ score -= 15; add('Tu deuda en TC supera 3 meses de ingresos — prioriza pagarla.','alerta'); }
-    else if(ratioTC > 1.5){ score -= 8; add('Tu deuda en tarjetas es alta respecto a tus ingresos.','aviso'); }
-    else score += 5;
+    if(ratioTC > U.tcSobreIngreso.critico){ score -= 15; add(`Tu deuda en TC supera ${U.tcSobreIngreso.critico} meses de ingresos — prioriza pagarla.`,'alerta'); }
+    else if(ratioTC > U.tcSobreIngreso.alto){ score -= 8; add('Tu deuda en tarjetas es alta respecto a tus ingresos.','aviso'); }
+    // Hasta 1,5 meses de ingreso es una deuda manejable: no suma ni resta. Antes SUMABA +5 por tenerla (incentivo invertido: quien
+    // no debe nada recibía 0). El punto a favor es de quien no tiene deudas propias, más abajo.
   } else if(deudaTC > 0 && ingresoRef === 0){
     // Tiene deuda TC pero no registra ingresos — verificar vs patrimonio
-    // CORRECCIÓN: cubrir el caso patrimonio <= 0 que antes se ignoraba
     if(patrimonio > 0 && deudaTC / patrimonio > 0.4){
       score -= 10; add('Tu deuda en tarjetas es alta — considera pagarla con tus ahorros.','aviso');
-    } else if(patrimonio <= 0 && deudaTC > 0){
+    } else if(patrimonio <= 0 && !avisoDeudaTC){
+      // Sin la guarda se penalizaba dos veces la MISMA deuda (−15 aquí y −15 por liquidez negativa, con dos alertas casi iguales).
       score -= 15; add('Tienes deuda en tarjetas y tu patrimonio no la cubre — prioriza pagarla.','alerta');
     }
   }
+  // Sin deudas propias y con plata disponible: lo único que se premia en endeudamiento.
+  if(deudaTC <= 0 && liq.yoDebo <= 0 && liq.ajeno <= 0 && liquidoReal > 0) score += 5;
 
   // c) Plata prestada a otros (riesgo de incobrabilidad / inmovilización)
   // Penalización escalonada por ratio — independiente del bonus de CDTs
@@ -329,50 +397,64 @@ function calcHealthScore(){
       ratioPrest = Infinity;
     } else {
       ratioPrest = prest / liquidoReal;
-      if(ratioPrest > 2){
-        // Más del doble de la liquidez prestada — muy comprometido
+      if(ratioPrest > U.prestadoSobreLiquidez.vulnerable){
         score -= 18; add('Tienes más del doble de tu liquidez prestada — tu situación financiera es muy vulnerable.','alerta');
-      } else if(ratioPrest > 1){
-        // Prestó más de lo que tiene líquido
+      } else if(ratioPrest > U.prestadoSobreLiquidez.comprometido){
         score -= 13; add('Tienes más plata prestada que tu liquidez disponible — queda poco para emergencias.','alerta');
-      } else if(ratioPrest > 0.4){
+      } else if(ratioPrest > U.prestadoSobreLiquidez.vigilar){
         score -= 8; add('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).','aviso');
       }
       // ratioPrest <= 0.4: situación sana, no penalizar
     }
   }
 
-  // d) Ratio gastos/ingresos (disciplina de gasto)
-  if(ingresoRef > 0 && gastosMes > 0){
-    const ratioGasto = gastosMes / ingresoRef;
-    if(ratioGasto <= 0.7) score += 10;
-    else if(ratioGasto <= 0.9) score += 5;
-    else if(ratioGasto > 1){ score -= 10; add('Por ahora estás gastando más de lo que ingresas.','aviso'); }
+  // d) Ritmo de gasto vs ingreso (disciplina de gasto) y h) racha de déficit.
+  // d) se mide con lo TÍPICO de los meses completos (gasto típico ÷ ingreso típico), no con «gastado hasta hoy ÷ ingreso del mes
+  // completo»: a los 3 días eso daba ≈ 0,05 y regalaba +10 puntos que se iban cayendo a medida que avanzaba el mes (el mismo defecto
+  // que ya se corrigió en el fondo de emergencia, a). Lo único que el mes en curso puede decir sin riesgo de parcialidad es que YA se
+  // pasó: si lo gastado hasta hoy supera el ingreso de referencia, el mes cierra en déficit pase lo que pase.
+  const ingresoTipico = Periodo.ingresoPromedioPrevio(mes, U.mesesReferencia).promedio;
+  // h) Tendencia: meses completos SEGUIDOS cerrando en déficit. Es la dirección que la foto de a)–c) no ve: alguien puede llevar meses
+  // gastando más de lo que entra y seguir en «Regular» porque aún tiene colchón. Un fondo sólido (≥ 6 meses) la absorbe y no puntúa.
+  const racha = Periodo.rachaDeficit(mes, 6);
+  const rachaMeses = _rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos);
+  let enDeficit = false;
+  if(rachaMeses >= U.rachaDeficitMeses.alerta){
+    score -= 15; enDeficit = true; add(`Llevas ${rachaMeses} meses seguidos gastando más de lo que ingresas.`,'alerta');
+  } else if(rachaMeses >= U.rachaDeficitMeses.aviso){
+    score -= 8; enDeficit = true; add(`Llevas ${rachaMeses} meses seguidos gastando más de lo que ingresas.`,'aviso');
   }
+  if(ingresoTipico > 0 && gastoRef > 0){
+    const ratioGasto = gastoRef / ingresoTipico;
+    if(ratioGasto <= U.gastoSobreIngreso.sano) score += 10;
+    else if(ratioGasto <= U.gastoSobreIngreso.ajustado) score += 5;
+    else if(ratioGasto > U.gastoSobreIngreso.deficit && !enDeficit){ score -= 10; enDeficit = true; add('Vienes gastando más de lo que ingresas.','aviso'); }
+  }
+  if(!enDeficit && ingresoRef > 0 && gastosMes > ingresoRef){ score -= 10; add('Por ahora estás gastando más de lo que ingresas.','aviso'); }
 
   // e) CDTs activos (ahorro estructurado)
-  // Si el riesgo de prestado es alto (ratio > 1), el CDT no compensa — bonus reducido a +3
-  // Solo cuando la situación de liquidez es sana merece el bonus completo
+  // Si el riesgo de prestado es alto (ratio > 1) o la liquidez es negativa, el CDT no compensa — bonus reducido a +3.
+  // Solo cuando la situación de liquidez es sana merece el bonus completo.
   const cdts = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).length,0);
   if(cdts >= 1){
-    // El bono es proporcional al peso del CDT en tu plata (cuentas libres + CDTs): llega completo cuando el CDT es
-    // el 10 % o más; un CDT de $1.000 dentro de $80.000 ya no regala los 10 puntos.
-    const CDT_PESO_COMPLETO = 0.10;
-    const cdtBonusMax = ratioPrest > 1 ? 3 : 10;
+    // El bono es proporcional al peso del CDT en tu plata (cuentas libres + CDTs): llega completo cuando el CDT es el 10 % o más;
+    // un CDT de $1.000 dentro de $80.000 ya no regala los 10 puntos.
+    const cdtBonusMax = (ratioPrest > U.prestadoSobreLiquidez.comprometido || liquidoReal < 0) ? 3 : 10;
     const pesoCDT = liquidoConCDTs > 0 ? cdtVal / liquidoConCDTs : 0;
-    score += Math.round(cdtBonusMax * Math.min(1, pesoCDT / CDT_PESO_COMPLETO));
-  } else if(tieneAlgo && liquidoReal > 0 && deudaTC <= 0 && (gastoRef <= 0 || liquidoReal >= gastoRef * 3)){
-    // Solo se sugiere con ahorros que sobran: fondo de emergencia cubierto (≥ 3 meses de gasto típico) y sin deuda de tarjeta propia.
+    score += Math.round(cdtBonusMax * Math.min(1, pesoCDT / U.cdtPesoCompleto));
+  } else if(tieneAlgo && liquidoReal > 0 && deudaTC <= 0 && ratioPrest <= U.prestadoSobreLiquidez.comprometido && (gastoRef <= 0 || liquidoReal >= gastoRef * U.fondoMeses.minimo)){
+    // Solo se sugiere con ahorros que sobran: fondo de emergencia cubierto (≥ 3 meses de gasto típico), sin deuda de tarjeta propia
+    // y sin tener prestado más de lo que tienes disponible (junto a «tu situación es muy vulnerable» sonaba contradictorio).
     add('Considera poner algo en un CDT para hacer crecer tus ahorros.','sugerencia','cuentas');
   }
 
-  // f) Gastos fijos configurados (disciplina de presupuesto)
-  if((S.gastosFijos||[]).length >= 2) score += 5;
-
-  // g) Categorías diversificadas en gastos variables (registro completo)
-  // CORRECCIÓN: solo penalizar si hay gastos variables — no castigar por tener solo gastos fijos
+  // f) y g) (≥ 2 gastos fijos configurados: +5; una sola categoría en gastos variables: −5) ya NO puntúan: miden cómo usas la app, no
+  // tu salud financiera, y mezclaban dos cosas distintas en un mismo número. La sugerencia de categorías se conserva como consejo.
   const cats = new Set((S.gastosVar||[]).slice(-20).map(g=>g.cat));
-  if(gvMes > 0 && cats.size <= 1){ score -= 5; add('Registra las categorías de tus gastos para mejor control.','sugerencia','gastos'); }
+  if(gvMes > 0 && cats.size <= 1) add('Registra las categorías de tus gastos para mejor control.','sugerencia','gastos');
+
+  // Sin gasto típico no se puede medir cuántos meses cubren tus reservas: se dice en vez de quedarse en un «Regular» mudo.
+  if(tieneAlgo && liquidoReal > 0 && gastoRef <= 0) add('Cuando completes un mes de gastos podremos medir cuántos meses cubren tus reservas.','sugerencia');
 
   // Sin ingresos registrados no se puede evaluar la disciplina de gasto ni el endeudamiento (los ratios b y d se saltan):
   // no puede salir «Excelente», y se avisa igual que el balance de Análisis.
@@ -392,7 +474,7 @@ function calcHealthScore(){
   const ORDEN = { alerta: 0, aviso: 1, sugerencia: 2, ok: 3 };
   consejos.sort((a, b) => ORDEN[a.tipo] - ORDEN[b.tipo]);
   const tips = consejos.map(c => c.texto); // los textos, para quien solo necesita la lista
-  return { score, tips, consejos, sinDatos: !tieneAlgo, ingresosMes, rendimientoCDTMes };
+  return { score, tips, consejos, sinDatos: !tieneAlgo, ingresosMes, rendimientoCDTMes, mesesCubiertos, rachaDeficit: rachaMeses };
 }
 
 function renderHealthScore(){
@@ -405,7 +487,7 @@ function renderHealthScore(){
   // si no, queda espacio vacío de sobra cuando el contenido es corto.
   el.style.minHeight = '';
   if(!res || res.sinDatos){ el.innerHTML = '<div class="inicio-salud-vacio">Registra más datos para calcular tu salud financiera.</div>'; return; }
-  const { score, consejos } = res;
+  const { score, consejos, mesesCubiertos } = res;
   const col = score >= 75 ? 'var(--accent)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
   const claseSalud = score >= 75 ? 'inicio-salud-ok' : score >= 50 ? 'inicio-salud-warn' : 'inicio-salud-mal';
   const label = score >= 75 ? 'Excelente' : score >= 50 ? 'Regular' : 'Necesita atención';
@@ -434,6 +516,8 @@ function renderHealthScore(){
       ? `<button type="button" class="inicio-tip ${e.clase} inicio-tip-accion" ${Events.attr('inicio:irConsejo', c.ir)}>${cuerpo}<i class="fa-solid fa-arrow-right inicio-tip-ir"></i></button>`
       : `<div class="inicio-tip ${e.clase}">${cuerpo}</div>`;
   }).join('');
+  // «Cubres X meses de gastos»: la cifra más útil en una crisis. Solo con gasto típico (sin él no hay con qué medir).
+  const runwayHtml = mesesCubiertos == null ? '' : `<div class="inicio-salud-runway inicio-runway-${_nivelRunway(mesesCubiertos)}">${_textoRunway(mesesCubiertos)}</div>`;
   el.innerHTML = `<div class="health-ring-wrap inicio-salud-wrap">
     <svg aria-hidden="true" width="76" height="76" viewBox="0 0 76 76" class="health-ring inicio-salud-anillo">
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="7"/>
@@ -445,14 +529,59 @@ function renderHealthScore(){
     </svg>
     <div class="health-details">
       <div class="health-score-num ${claseSalud}">${label}</div>
+      ${runwayHtml}
       ${tipsHtml}
     </div>
   </div>`;
 }
 
 /* ====================================================
+   HERO: estado del patrimonio (color y una línea de contexto)
+==================================================== */
+// El hero era verde fijo: un patrimonio de −$800.000 se veía igual que uno de +$8.000.000 (solo el signo «−» lo delataba), y quien
+// tenía valor pero liquidez negativa (un CDT y una tarjeta alta) veía «todo bien» mientras Salud gritaba alerta.
+// → { estado, clase (color del monto), tono ('red'|'amber'|'gris'|''), mensaje }. Prioridad: negativo > cero > liquidez negativa > prestado.
+function calcEstadoHero(d, liq){
+  d = d || calcPatrimonioDesglose();
+  liq = liq || calcLiquidez();
+  const p = d.visible;
+  if(!isFinite(p)) return { estado:'desconocido', clase:'c-green', tono:'', mensaje:'' };
+  if(p < 0) return { estado:'negativo', clase:'c-red', tono:'red', mensaje:'Debes más de lo que tienes: ' + fmtNoCents(-p) };
+  const hayDatos = (d.activos - d.alcancia) > 0 || d.pasivos > 0; // la alcancía no cuenta: está oculta a propósito
+  if(p === 0 && hayDatos) return { estado:'cero', clase:'c-text2', tono:'gris', mensaje:'Lo que tienes y lo que debes se compensan' };
+  if(liq.neta < 0) return { estado:'liquidez-negativa', clase:'c-amber', tono:'amber', mensaje:'Tienes valor, pero tus deudas superan tu plata disponible en ' + fmtNoCents(-liq.neta) };
+  // «Me deben» cuenta al 100 % en el patrimonio sin provisión de incobrabilidad: si pesa mucho, se muestra también sin eso.
+  if(liq.meDeben > 0 && liq.meDeben >= p * UMBRALES.hero.meDebenFraccion) return { estado:'prestado', clase:'c-green', tono:'gris', mensaje:'Sin contar lo que te deben: ' + fmtNoCents(p - liq.meDeben) };
+  return { estado:'sano', clase:'c-green', tono:'', mensaje:'' };
+}
+function renderHeroEstado(d){
+  const hero = document.getElementById('heroTotal');
+  if(!hero) return;
+  const e = calcEstadoHero(d);
+  ['c-green','c-red','c-amber','c-text2'].forEach(c => hero.classList.remove(c));
+  hero.classList.add(e.clase);
+  const el = document.getElementById('hero-estado');
+  if(!el) return;
+  el.textContent = e.mensaje;
+  ['red','amber','gris'].forEach(t => el.classList.remove('ix-hero-estado-' + t));
+  if(e.tono) el.classList.add('ix-hero-estado-' + e.tono);
+}
+
+/* ====================================================
    PROYECCIÓN FINANCIERA
 ==================================================== */
+// Ritmo mensual (cambio neto ÷ días × 30) de cada tercio del historial, en orden. `intervalos`: [{dias, cambio}] entre puntos
+// consecutivos. Un intervalo cae en el tercio donde está su punto medio.
+function _ritmosPorTercio(intervalos, diasTotal){
+  const t = [{d:0,c:0},{d:0,c:0},{d:0,c:0}];
+  let acum = 0;
+  intervalos.forEach(it => {
+    const i = Math.min(2, Math.floor(((acum + it.dias/2) / diasTotal) * 3));
+    t[i].d += it.dias; t[i].c += it.cambio; acum += it.dias;
+  });
+  return t.filter(x => x.d > 0).map(x => x.c / x.d * 30);
+}
+
 function renderProyeccion(){
   const el = document.getElementById('proyeccion-card');
   if(!el) return;
@@ -468,7 +597,11 @@ function renderProyeccion(){
   // haría saltar 3m/6m/12m por el monto exacto del depósito y delataría la sorpresa. Cuando se destape, esa plata entra a una
   // cuenta real y el patrimonio visible sube solo.
   const patrimonio = (typeof calcPatrimonioVisible==='function') ? calcPatrimonioVisible() : 0;
-  if(!patrimonio){
+  // «Sin datos» = no hay ningún activo visible ni deuda (la alcancía no cuenta: está oculta a propósito y no debe delatarse). Un patrimonio
+  // EXACTAMENTE cero con cuentas y deudas es un caso real (todo gastado, o cuentas compensadas con deuda), no «sin datos».
+  const _dp = (typeof calcPatrimonioDesglose==='function') ? calcPatrimonioDesglose() : null;
+  const sinNada = _dp ? ((_dp.activos - _dp.alcancia) === 0 && _dp.pasivos === 0) : !patrimonio;
+  if(sinNada){
     el.innerHTML = `<div class="inicio-proy-vacio">
       <div class="inicio-proy-vacio-ico">
         <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
@@ -487,7 +620,8 @@ function renderProyeccion(){
   // ya queda reflejado aquí, sin depender de si el usuario registró un movimiento formal.
   // Transferencias entre cuentas propias y préstamos a terceros no afectan el patrimonio
   // total, así que tampoco distorsionan este cálculo.
-  const hist = (S.patrimonioHistorial||[]).slice(-90);
+  // Últimos 120 puntos (≈ 4 meses): con 90 la ventana nunca llegaba a los 90 días que exige «estable» (89 días con un punto diario).
+  const hist = (S.patrimonioHistorial||[]).slice(-UMBRALES.proyeccion.puntosHistorial);
   let tendenciaMensual = 0;
   let historialInsuficiente = false;
   // Niveles: 'insuficiente' | 'normal' | 'estable'
@@ -496,15 +630,19 @@ function renderProyeccion(){
   // Mínimo de separación temporal real para mostrar una proyección: un mes. Con menos días, un solo movimiento
   // grande (una mesada, un pago) domina el promedio y se extrapola a 3/6/12 meses como si se repitiera cada
   // semana (una mesada de $80.000 en una ventana de 9 días daba +$267.000 al mes, unos 3 millones al año).
-  const MIN_DIAS_PARA_TENDENCIA = 30;
+  const MIN_DIAS_PARA_TENDENCIA = UMBRALES.proyeccion.diasMinimos;
 
   let diasReales = 0; // declarado en scope externo para usarlo en el template del footer
+  let ritmos = [];    // ritmo mensual de cada tercio del historial (para saber si la tendencia fue consistente)
+  const intervalos = [];
   if(hist.length >= 2){
     // Cambio neto total (sin aperturas/ajustes) y días totales transcurridos —
     // ver más abajo por qué se promedia así en vez de por-intervalo.
     let cambioNetoTotal = 0;
     for(let i=1;i<hist.length;i++){
-      const diasEntre = Math.max(1, Math.round((new Date(hist[i].fecha) - new Date(hist[i-1].fecha))/86400000));
+      // _fechaSafe: una fecha mal formada («2026-9-26») haría NaN en toda la tendencia; si aun así no se puede leer, el intervalo cuenta 1 día.
+      const _dd = Math.round((_fechaSafe(hist[i].fecha) - _fechaSafe(hist[i-1].fecha))/86400000);
+      const diasEntre = isFinite(_dd) ? Math.max(1, _dd) : 1;
       // valorVisible (sin alcancía) en vez de valor crudo — mismo motivo que
       // el patrimonio de arriba: un depósito/destape de alcancía no debe
       // aparecer como un salto de tendencia. Fallback a .valor para puntos
@@ -514,6 +652,7 @@ function renderProyeccion(){
       const cambioDelDia = (vHoy - vAyer) - (hist[i].montoBase||0);
       cambioNetoTotal += cambioDelDia;
       diasReales += diasEntre;
+      intervalos.push({ dias: diasEntre, cambio: cambioDelDia });
     }
 
     if(diasReales < MIN_DIAS_PARA_TENDENCIA){
@@ -531,8 +670,13 @@ function renderProyeccion(){
       // se cancela casi solo en la suma), sin necesitar filtrar outliers a mano.
       tendenciaMensual = (cambioNetoTotal / diasReales) * 30;
 
-      // Nivel de confianza escalonado según días de historial disponible
-      nivelConfianza = diasReales >= 60 ? 'estable' : 'normal';
+      // «Estable» exige 90 días (antes 60: dos meses de datos no son estables y la etiqueta da confianza) Y que el ritmo haya ido en la
+      // misma dirección en los tres tercios del historial. Si una compra grande cayó en un solo tercio, el ritmo no fue consistente y la
+      // proyección dice «estimación» y muestra el rango, en vez de extrapolar esa compra como si fuera un ritmo mensual.
+      ritmos = _ritmosPorTercio(intervalos, diasReales);
+      const _tol = Math.abs(tendenciaMensual) * 0.1;
+      const consistente = ritmos.length >= 3 && ritmos.every(r => r * Math.sign(tendenciaMensual) >= -_tol);
+      nivelConfianza = (diasReales >= UMBRALES.proyeccion.diasEstable && consistente) ? 'estable' : 'normal';
     }
   } else {
     historialInsuficiente = true;
@@ -543,9 +687,25 @@ function renderProyeccion(){
   const p6 = patrimonio + tendenciaMensual * 6;
   const p12 = patrimonio + tendenciaMensual * 12;
 
-  // Deuda TC propia para mostrar impacto (excluye encargos y PC)
-  const deudaTC = typeof calcDeudaTcPropia==='function' ? calcDeudaTcPropia() : 0;
-  const deudaInfo = deudaTC > 0 ? `<div class="inicio-proy-deuda">Deuda TC propia: ${fmt(deudaTC)} ya descontada del patrimonio</div>` : '';
+  // Deuda de tarjeta descontada del patrimonio: el patrimonio resta la deuda TOTAL (incluida la parte de encargos y préstamos), así que el
+  // texto muestra el total y, si difiere, cuánto de eso es propio. Antes decía «Deuda TC propia: $400.000 ya descontada» cuando se
+  // descontaban $1.000.000.
+  const deudaTCPropia = typeof calcDeudaTcPropia==='function' ? calcDeudaTcPropia() : 0;
+  const deudaTCTotal = _dp ? _dp.deudaTC : deudaTCPropia;
+  const deudaInfo = deudaTCTotal > 0
+    ? `<div class="inicio-proy-deuda">Deuda TC: ${fmt(deudaTCTotal)}${Math.abs(deudaTCTotal - deudaTCPropia) > 0.5 ? ' (propia ' + fmt(deudaTCPropia) + ')' : ''} ya descontada del patrimonio</div>` : '';
+  // Cuánto aguanta tu plata disponible si el patrimonio sigue bajando a este ritmo (solo con tendencia negativa y liquidez positiva).
+  let runwayInfo = '';
+  if(!historialInsuficiente && tendenciaMensual < 0 && typeof calcLiquidez==='function'){
+    const ln = calcLiquidez().neta;
+    if(ln > 0){
+      const m = Math.max(1, Math.round(ln / Math.abs(tendenciaMensual)));
+      if(m <= UMBRALES.proyeccion.maxMesesRunway) runwayInfo = `<div class="inicio-proy-runway">A este ritmo, tu plata disponible duraría unos ${m} ${m === 1 ? 'mes' : 'meses'}</div>`;
+    }
+  }
+  // Ritmo irregular: se muestra el rango en vez de una cifra que no representa ningún período.
+  const irregularInfo = (!historialInsuficiente && nivelConfianza !== 'estable' && ritmos.length >= 3 && (Math.max(...ritmos) - Math.min(...ritmos)) > Math.abs(tendenciaMensual))
+    ? `<div class="inicio-proy-irregular">Tu ritmo cambió mucho entre períodos (de ${fmt(Math.min(...ritmos))} a ${fmt(Math.max(...ritmos))} al mes): toma la proyección con cautela</div>` : '';
 
   // Calcular diferencias absolutas para el tooltip de cada card
   const proyCards = [
@@ -571,22 +731,26 @@ function renderProyeccion(){
     <div id="_proy-cards-wrap" class="inicio-proy-grid">
       ${proyCards.map(({lbl,key,val,meses})=>{
         const diff = val - patrimonio;
-        const pct = patrimonio > 0 ? ((diff/patrimonio)*100).toFixed(1) : '0.0';
+        // Porcentaje solo sobre una base positiva: sobre cero o negativa no significa nada (antes salía «0.0 %» fijo).
+        const pct = patrimonio > 0 ? ((diff/patrimonio)*100).toFixed(1) : '';
         return`<div
           data-proy-key="${key}"
           data-proy-lbl="${lbl}"
           data-proy-val="${val}"
           data-proy-diff="${diff}"
           data-proy-pct="${pct}"
+          data-proy-hoy="${patrimonio}"
           data-proy-meses="${meses}"
           class="inicio-proy-card">
           <div class="inicio-proy-card-k">${key}</div>
-          <div class="inicio-proy-card-v ${val>=patrimonio?'inicio-proy-pos':'inicio-proy-neg'}">${fmt(Math.max(0,val))}</div>
+          <div class="inicio-proy-card-v ${val>=patrimonio?'inicio-proy-pos':'inicio-proy-neg'}">${fmt(val)}</div>
         </div>`;
       }).join('')}
       <div id="_proy-tt" class="inicio-proy-tt" style="display:none;"></div>
     </div>
     ${deudaInfo}
+    ${runwayInfo}
+    ${irregularInfo}
     <div class="inicio-proy-pie">
       <span class="inicio-proy-base">Basado en ${diasReales} días de historial</span>
       ${nivelConfianza==='estable'
@@ -611,7 +775,9 @@ function renderProyeccion(){
     // Cards 3m/6m/12m
     const wrap = el.querySelector('#_proy-cards-wrap');
     if(wrap){
-      function bindCard(card, e){ e.stopPropagation(); const lbl=card.dataset.proyLbl; const val=parseFloat(card.dataset.proyVal)||0; const diff=parseFloat(card.dataset.proyDiff)||0; const pct=card.dataset.proyPct; const meses=card.dataset.proyMeses; const claseDelta=diff>=0?'inicio-tt-pos':'inicio-tt-neg'; const ico=diff>=0?'<i class="fa-solid fa-arrow-up"></i>':'<i class="fa-solid fa-arrow-down"></i>'; showTT(`<div class="inicio-tt-titulo">Proyección a ${lbl}</div><div class="inicio-tt-fila"><span class="inicio-tt-monto">${fmt2(Math.max(0,val))}</span><span class="inicio-tt-delta ${claseDelta}">${ico} ${diff>=0?'+':''}${fmt2(diff)}</span></div><div class="inicio-tt-nota">${diff>=0?'+':''}${pct}% vs hoy · acumulado ${meses} meses</div>`); card.style.background='var(--bg4)'; setTimeout(()=>{ card.style.background='var(--bg3)'; },200); }
+      function bindCard(card, e){ e.stopPropagation(); const lbl=card.dataset.proyLbl; const val=parseFloat(card.dataset.proyVal)||0; const diff=parseFloat(card.dataset.proyDiff)||0; const pct=card.dataset.proyPct; const meses=card.dataset.proyMeses; const hoyV=parseFloat(card.dataset.proyHoy)||0;
+        // Con base ≤ 0 no hay porcentaje: se dice qué pasa con el signo (números rojos) y se muestra el cambio absoluto.
+        const nota = (val<0 && hoyV>=0) ? 'Pasarías a números rojos' : (val>=0 && hoyV<0) ? 'Saldrías de números rojos' : pct ? `${diff>=0?'+':''}${pct}% vs hoy` : (val<0 ? 'Seguirías en números rojos' : 'vs hoy'); const claseDelta=diff>=0?'inicio-tt-pos':'inicio-tt-neg'; const ico=diff>=0?'<i class="fa-solid fa-arrow-up"></i>':'<i class="fa-solid fa-arrow-down"></i>'; showTT(`<div class="inicio-tt-titulo">Proyección a ${lbl}</div><div class="inicio-tt-fila"><span class="inicio-tt-monto">${fmt2(val)}</span><span class="inicio-tt-delta ${claseDelta}">${ico} ${diff>=0?'+':''}${fmt2(diff)}</span></div><div class="inicio-tt-nota">${nota} · acumulado ${meses} meses</div>`); card.style.background='var(--bg4)'; setTimeout(()=>{ card.style.background='var(--bg3)'; },200); }
       wrap.addEventListener('click', function(e){ const card=e.target.closest('[data-proy-key]'); if(card) bindCard(card,e); });
       wrap.addEventListener('touchend', function(e){ const card=e.target.closest('[data-proy-key]'); if(card){ e.preventDefault(); bindCard(card,e); } });
     }
@@ -634,25 +800,28 @@ function renderProyeccion(){
    ALERTA DE GASTO ALTO EN EL HERO
    ================================================================ */
 function _checkGastoAlto() {
-  // Gasto real del mes: definición única (periodo.js). Antes sumaba TODOS los gastos variables
-  // (incluidos pagos de gasto fijo y de TC, que ya estaban en el total) más TODOS los gastos
-  // fijos configurados, estuvieran pagados o no.
-  const gastoMes = Periodo.gastosDelMes(mesActual()).total;
-  const nu = nuTotal();
-  const nequi = getSaldoFuente('nequi');
-  const ef = getSaldoFuente('efectivo');
-  // Las cuentas personalizadas también son plata disponible: el "Disponible" del hero
-  // (refresh() en core-state.js) y liquidoReal (más arriba en este archivo) ya las suman.
-  const custom = cuentasCustom().reduce((a, c) => a + (c.saldo || 0), 0);
-  const disp = nu + nequi + ef + custom;
   const indicator = document.getElementById('hero-change-indicator');
   if (!indicator) return;
-  if (disp > 0 && gastoMes > disp * 0.8) {
-    indicator.textContent = 'Gastos altos';
-    indicator.style.color = 'var(--amber)';
-  } else {
-    indicator.textContent = '';
+  // Gasto real del mes: definición única (periodo.js).
+  const mes = mesActual();
+  const gastoMes = Periodo.gastosDelMes(mes).total;
+  // Contra el INGRESO (el mismo de referencia de Salud: el mayor entre lo de este mes y lo típico), no contra el disponible de ahora.
+  // Antes se comparaba con el disponible, que ya descuenta ese gasto: no medía si gastas más de lo que ingresas, y con disponible ≤ 0
+  // (justo el caso peor) no avisaba nada. Gastar «hasta hoy» más que el ingreso de referencia es déficit seguro (el mes solo puede crecer).
+  const ingresoRef = Math.max(Periodo.ingresosDelMes(mes).total, Periodo.ingresoPromedioPrevio(mes, UMBRALES.salud.mesesReferencia).promedio);
+  let nivel = '', texto = '';
+  if (ingresoRef > 0) {
+    if (gastoMes > ingresoRef) { nivel = 'red'; texto = 'Gastas más de lo que ingresas'; }
+    else if (gastoMes >= ingresoRef * UMBRALES.gastoAlto.fraccionDelIngreso) { nivel = 'amber'; texto = 'Gastos altos'; }
+  } else if (gastoMes > 0) {
+    // Sin ingresos registrados no hay contra qué comparar: solo se avisa si ya no queda plata disponible.
+    const custom = cuentasCustom().reduce((a, c) => a + (c.saldo || 0), 0);
+    const disp = nuTotal() + getSaldoFuente('nequi') + getSaldoFuente('efectivo') + custom;
+    if (disp <= 0) { nivel = 'red'; texto = 'Sin plata disponible'; }
   }
+  indicator.textContent = texto;
+  indicator.classList.remove('ix-hero-alerta-red', 'ix-hero-alerta-amber');
+  if (nivel) indicator.classList.add('ix-hero-alerta-' + nivel);
 }
 
 /* ================================================================

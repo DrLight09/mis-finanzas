@@ -29,12 +29,12 @@ calcPatrimonioTotal()         ← calcula el patrimonio real en ese instante
         ↓
 S.patrimonioHistorial[]       ← array de hasta 365 snapshots diarios
         ↓
-renderProyeccion()            ← lee los últimos 90 días y calcula tendencia
+renderProyeccion()            ← lee los últimos 120 puntos (UMBRALES.proyeccion.puntosHistorial) y calcula tendencia
 ```
 
 ### Cómo se calcula la tendencia mensual
 
-`renderProyeccion()` (en `js/modules/inicio.js`) toma los últimos 90 snapshots y recorre pares consecutivos sumando dos totales: el cambio neto de patrimonio y los días reales transcurridos entre el primer y el último punto.
+`renderProyeccion()` (en `js/modules/inicio.js`) toma los últimos 120 snapshots (≈ 4 meses; con 90 la ventana nunca llegaba a los 90 días que pide «estable») y recorre pares consecutivos sumando dos totales: el cambio neto de patrimonio y los días reales transcurridos entre el primer y el último punto.
 
 ```
 cambioDelDía = (valorVisible[i] - valorVisible[i-1]) - montoBase[i]
@@ -51,9 +51,20 @@ tendenciaMensual = (cambioNetoTotal / díasReales) * 30
 
 | Días de historial | Qué se muestra |
 |---|---|
-| < 30 | Sin cifras a 3/6/12 meses: «Tendencia en construcción: llevas N de 30 días de historial» (`MIN_DIAS_PARA_TENDENCIA = 30`) |
-| 30–59 | Tendencia y proyecciones con la marca «estimación» |
-| 60+ | Tendencia y proyecciones con la marca ESTABLE (verde) |
+| < 30 | Sin cifras a 3/6/12 meses: «Tendencia en construcción: llevas N de 30 días de historial» (`UMBRALES.proyeccion.diasMinimos`) |
+| 30–89 | Tendencia y proyecciones con la marca «estimación» |
+| 90+ y ritmo consistente | Marca ESTABLE (verde). «Consistente» = el ritmo mensual de cada uno de los tres **tercios** del historial (`_ritmosPorTercio`) va en la misma dirección que la tendencia total (tolerancia del 10 %) |
+| 90+ pero ritmo irregular | «estimación» y una línea con el rango («Tu ritmo cambió mucho entre períodos (de −$X a +$Y al mes)»): una compra grande en un solo tercio ya no se extrapola como ritmo mensual ni se llama «estable» |
+
+### Valores negativos y patrimonio en cero
+
+- Las tarjetas de 3/6/12 meses muestran el valor **con signo** (antes `Math.max(0, valor)` los mostraba como `$0`, justo cuando la proyección era peor: −$1.100.000 aparecía como «$0»).
+- El **porcentaje** solo se calcula sobre una base positiva; con patrimonio ≤ 0 se omite y la nota dice «Pasarías a números rojos», «Seguirías en números rojos» o «Saldrías de números rojos».
+- «Sin datos» solo si no hay **ningún** activo visible ni deuda (la alcancía no cuenta: está oculta). Un patrimonio exactamente 0 con cuentas y deudas es un dato real y sí se proyecta.
+- Fechas del historial leídas con `_fechaSafe` (una «2026-9-26» sin cero no produce `NaN`).
+- **«A este ritmo, tu plata disponible duraría unos N meses»:** solo con tendencia negativa y liquidez neta positiva (`calcLiquidez().neta ÷ |tendencia|`, máximo `UMBRALES.proyeccion.maxMesesRunway`). Es una extrapolación del ritmo del patrimonio, no el runway de gastos de la tarjeta de Salud.
+- **Texto de deuda de tarjeta:** «Deuda TC: $total (propia $x) ya descontada del patrimonio» — el patrimonio resta la deuda TOTAL (incluida la de encargos y préstamos), así que se muestra el total y cuánto es propio.
+
 
 Con menos de un mes un solo movimiento grande domina el promedio y se extrapola como si se repitiera todo el año (una mesada de $80.000 dentro de una ventana de 9 días daba +$267.000 al mes, unos $3,2 millones a 12 meses). Hasta 2026-10-27 el mínimo era 7 días y existía una marca PRELIMINAR (7–29 días) que mostraba la cifra de todos modos; se retiraron las dos (ver `CHANGELOG.md`).
 

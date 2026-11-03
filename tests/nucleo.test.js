@@ -152,7 +152,7 @@ describe('calcHealthScore', () => {
   function freshApp(sOverrides = {}) {
     const ctx = loadApp([
       path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
-      path.join(CORE_DIR, 'calc-helpers.js'),
+      path.join(CORE_DIR, 'calc-helpers.js'), path.join(CORE_DIR, 'umbrales.js'),
       path.join(MODULES_DIR, 'inicio.js'),
     ]);
     Object.assign(ctx.S, sOverrides);
@@ -195,7 +195,7 @@ describe('calcHealthScore', () => {
     assert.ok(r.tips.some((t) => t.includes('menos de 3 meses')));
   });
 
-  test('calcHealthScore — liquidez negativa (deuda TC > patrimonio líquido) penaliza -15', () => {
+  test('calcHealthScore — liquidez negativa (deuda TC > plata disponible) penaliza -15', () => {
     const ctx = freshApp({
       cuentas: cuentas({ nequi: 100000 }),
       tarjetasCredito: [{ id: 'tc1', deuda: 300000, cupo: 1000000 }],
@@ -203,15 +203,17 @@ describe('calcHealthScore', () => {
       pagosGastosFijos: { ['g1_' + currentMonthKey()]: { monto: 50000 } },
     });
     const r = ctx.calcHealthScore();
-    assert.ok(r.tips.some((t) => t.includes('deuda en tarjetas supera tu patrimonio líquido')));
+    assert.ok(r.tips.some((t) => t.includes('Tu deuda en tarjetas supera la plata que tienes disponible')));
   });
 
-  test('calcHealthScore — deuda TC alta y patrimonio que no la cubre (rama sin ingresos registrados)', () => {
+  test('calcHealthScore — deuda TC alta sin ingresos registrados: una sola alerta (no se penaliza dos veces la misma deuda)', () => {
     const ctx = freshApp({
       tarjetasCredito: [{ id: 'tc1', deuda: 800000, cupo: 1000000 }],
     });
     const r = ctx.calcHealthScore();
-    assert.ok(r.tips.some((t) => t.includes('patrimonio no la cubre')));
+    assert.ok(r.tips.some((t) => t.includes('Tu deuda en tarjetas supera la plata que tienes disponible')));
+    assert.ok(!r.tips.some((t) => t.includes('patrimonio no la cubre')), 'antes salía una segunda alerta casi igual (−15 otra vez)');
+    assert.equal(r.score, 35, '50 − 15 por liquidez negativa; la misma deuda no resta de nuevo');
   });
 
   test('calcHealthScore — gastando más de lo que ingresa este mes avisa', () => {
@@ -357,8 +359,9 @@ describe('calcHealthScore', () => {
     assert.ok(inicioDeMes.tips.includes('Tus reservas cubren menos de 3 meses de gastos.'), 'mide contra el gasto típico, no contra el gasto parcial del mes');
     // Sin ningún mes anterior con gastos no hay con qué medir: ni puntos ni consejo de reservas.
     const sinHistorial = freshApp({ ...base, pagosGastosFijos: { ['g1_' + mes]: { monto: 25000 } } }).calcHealthScore();
-    assert.ok(!sinHistorial.tips.some((t) => t.includes('reservas')));
-    assert.equal(sinHistorial.score, 50 + 10 /* gastos 2,5 % de los ingresos */, 'sin +20 de reservas inflado');
+    assert.ok(!sinHistorial.tips.some((t) => t.includes('menos de 3 meses')), 'sin gasto típico no se puntúa ni se aconseja sobre las reservas');
+    assert.ok(sinHistorial.tips.some((t) => t.includes('Cuando completes un mes de gastos')), 'pero se explica por qué todavía no hay medición');
+    assert.equal(sinHistorial.score, 50 + 5 /* sin deudas */, 'ni +20 de reservas inflado ni +10 gratis por un mes que apenas empieza (el ratio de gasto mide meses completos)');
   });
 
   test('calcHealthScore — el gasto típico es el promedio de los últimos 3 meses con datos, no el del mes en curso', () => {
@@ -367,7 +370,7 @@ describe('calcHealthScore', () => {
     const r = freshApp({
       cuentas: cuentas({ nequi: 9000000 }),
       gastosFijos: [{ id: 'g1', monto: 1 }],
-      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 20000000, desde: '2020-01', cobros: [{ id: 'c1', mesCubre: mes, monto: 20000000, fecha: mes + '-01' }] }],
+      ingresosFijos: [...ingresosPrevios(5000000), { id: 'i1', nombre: 'Sueldo', monto: 20000000, desde: '2020-01', cobros: [{ id: 'c1', mesCubre: mes, monto: 20000000, fecha: mes + '-01' }] }],
       pagosGastosFijos: { ['g1_' + mes]: { monto: 5000000 }, ...pagosPrevios(1000000, 3) },
     }).calcHealthScore();
     assert.ok(!r.tips.some((t) => t.includes('reservas')));
@@ -646,9 +649,12 @@ describe('migraciones', () => {
       ctx.S.spotify = { costo: '12000' }; ctx._ensureSpotify();
       assert.deepEqual(plano(ctx.S.spotify), { personas: [], costo: 12000, cajitaId: '', historial: [] });
     });
-    test('guardia: ningún archivo de la app usa las cuatro llaves sueltas de antes (S.spotifyPersonas/Costo/CajitaId/Historial)', () => {
+    test('guardia: ningún archivo de la app NI de scripts/ usa las cuatro llaves sueltas de antes (S.spotifyPersonas/Costo/CajitaId/Historial)', () => {
+      // scripts/notificaciones/checks.js quedaba fuera del recorrido y por eso siguió leyendo S.spotifyPersonas tras la migración (v36).
       const fs = require('fs'), dir = path.join(CORE_DIR, '..');
-      const archivos = ['core', 'modules'].flatMap(d => fs.readdirSync(path.join(dir, d)).filter(f => f.endsWith('.js')).map(f => path.join(dir, d, f)));
+      const raiz = path.join(dir, '..');
+      const archivos = ['core', 'modules'].flatMap(d => fs.readdirSync(path.join(dir, d)).filter(f => f.endsWith('.js')).map(f => path.join(dir, d, f)))
+        .concat(['scripts', path.join('scripts', 'notificaciones')].flatMap(d => fs.readdirSync(path.join(raiz, d)).filter(f => f.endsWith('.js')).map(f => path.join(raiz, d, f))));
       const mal = [];
       for (const f of archivos) {
         const t = fs.readFileSync(f, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
@@ -821,7 +827,7 @@ describe('ingreso-real', () => {
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
   const BASE = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js')];
-  const TODO = [...BASE, modulo('nu.js'), modulo('cuentas.js'), modulo('inicio.js'), modulo('analisis.js'), core('wrapped-gate.js'), modulo('wrapped.js')];
+  const TODO = [...BASE, core('umbrales.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('inicio.js'), modulo('analisis.js'), core('wrapped-gate.js'), modulo('wrapped.js')];
   const MES = '2026-10';
 
   const cuentas = (custom = []) => [
@@ -1979,7 +1985,7 @@ describe('patrimonio — fuente única (hero, historial, Proyección y Salud lee
 
   function freshApp(sOverrides = {}, { conInicio = false } = {}) {
     const files = [path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'), path.join(CORE_DIR, 'calc-helpers.js')];
-    if (conInicio) files.push(path.join(MODULES_DIR, 'inicio.js'));
+    if (conInicio) files.push(path.join(CORE_DIR, 'umbrales.js'), path.join(MODULES_DIR, 'inicio.js'));
     const ctx = loadApp(files);
     Object.assign(ctx.S, sOverrides);
     return ctx;
@@ -2086,14 +2092,15 @@ describe('patrimonio — fuente única (hero, historial, Proyección y Salud lee
 
   test('Salud: si la liquidez queda negativa por deudas con personas, el consejo lo dice (no habla de tarjetas)', () => {
     const r = freshApp({ cuentas: cuentas({ nequi: 100000 }), misDeudas: yoDebo(400000) }, { conInicio: true }).calcHealthScore();
-    assert.ok(r.tips.some((t) => t.includes('Lo que debes a personas supera tu patrimonio líquido')));
+    assert.ok(r.tips.some((t) => t.includes('Lo que debes a personas supera la plata que tienes disponible')));
     assert.ok(!r.tips.some((t) => t.includes('deuda en tarjetas')));
   });
 
-  test('Salud: patrimonio (para los ratios) es el visible, con deudas a personas restadas', () => {
-    // Sin ingresos y con TC: la rama «deuda vs patrimonio» usa el patrimonio visible. Con una deuda a personas que lo deja ≤ 0 debe alertar.
+  test('Salud: con una deuda a personas que deja el patrimonio visible ≤ 0 y una tarjeta, alerta UNA vez, nombrando ambas deudas', () => {
     const r = freshApp({ cuentas: cuentas({ nequi: 500000 }), misDeudas: yoDebo(500000), tarjetasCredito: [{ id: 't1', nombre: 'TC', deuda: 100000, cupo: 1000000 }] }, { conInicio: true }).calcHealthScore();
-    assert.ok(r.tips.some((t) => t.includes('tu patrimonio no la cubre')));
+    const alertas = r.consejos.filter((c) => c.tipo === 'alerta');
+    assert.equal(alertas.length, 1);
+    assert.ok(alertas[0].texto.includes('Tus deudas y la plata ajena que guardas superan la plata que tienes disponible'));
   });
 
   test('GUARDIA de estructura: nadie más arma el patrimonio a mano (una sola fuente, para que no vuelva a desalinearse)', () => {

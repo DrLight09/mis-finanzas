@@ -683,8 +683,13 @@ function _wrappedPatrimonioAnio(S, anioK){
   let montoBaseAcumulado = 0;
   hist.forEach(p => { if(p !== primero) montoBaseAcumulado += (p.montoBase||0); });
   const diff = (val(ultimo) - val(primero)) - montoBaseAcumulado;
-  const pct = val(primero) !== 0 ? (diff/Math.abs(val(primero)))*100 : null;
-  return { diff, pct };
+  // Porcentaje solo sobre una base POSITIVA y proporcionada: sobre una base negativa o minúscula no significa nada (+39.900 % al empezar
+  // con $5.000; −800 % al pasar de −$100.000 a −$900.000; «casi se duplicó» al pasar de −$900.000 a −$100.000, que sigue en deuda).
+  // Sin porcentaje, el texto habla de montos y de cruzar el cero (ver _wrappedCopyPatrimonio). Tope de ±300 % para presentar uno.
+  let pct = val(primero) > 0 ? (diff/val(primero))*100 : null;
+  if(pct !== null && Math.abs(pct) > 300) pct = null;
+  // inicio/fin: el patrimonio visible al empezar y al terminar el año (para saber si se cruzó el cero).
+  return { diff, pct, inicio: val(primero), fin: val(ultimo) };
 }
 
 /* ─── Serie mensual de patrimonio (Enero → mes actual) para el gráfico
@@ -1067,10 +1072,38 @@ function _wrappedSlidesDeSnapshot(snap){
   return snap.slides.map(sl => Object.assign({}, sl, { html: (ocultar && sl.id === 'alcancia') ? _wrappedConMascara(sl.html) : sl.html }));
 }
 
-function _wrappedCopyPatrimonio(patrimonio){
-  const { diff, pct } = patrimonio;
-  if(pct === null){
-    return diff >= 0
+// Frase sobre el patrimonio del año. `ctx` (opcional): { balance, gastoMasGrande } del año, para explicar la CAUSA de una caída.
+function _wrappedCopyPatrimonio(patrimonio, ctx){
+  const { diff, pct, inicio, fin } = patrimonio;
+  const sabeCero = Number.isFinite(inicio) && Number.isFinite(fin);
+  const aRojos = sabeCero && inicio >= 0 && fin < 0;   // cruzó a deuda
+  const deRojos = sabeCero && inicio < 0 && fin >= 0;  // salió de deuda
+  const sigueRojos = sabeCero && inicio < 0 && fin < 0;
+  let frase;
+  if(aRojos){
+    frase = _wrappedBankPick('patrimonio-entraRojos', [
+      'terminaste el año debiendo más de lo que tienes.',
+      'tu patrimonio cruzó a números rojos este año.',
+      'este año pasaste de tener a deber más de lo que tienes.',
+    ]);
+  } else if(deRojos){
+    frase = _wrappedBankPick('patrimonio-saleRojos', [
+      'saliste de números rojos este año.',
+      'empezaste debiendo más de lo que tenías y terminaste con el patrimonio en positivo.',
+      'este año dejaste atrás los números rojos.',
+    ]);
+  } else if(sigueRojos){
+    frase = diff >= 0
+      ? _wrappedBankPick('patrimonio-rojosMejora', [
+          'sigues debiendo más de lo que tienes, pero la deuda neta bajó este año.',
+          'tu patrimonio sigue en números rojos, aunque terminó menos hundido que al empezar.',
+        ])
+      : _wrappedBankPick('patrimonio-rojosEmpeora', [
+          'terminaste el año debiendo más que al empezarlo.',
+          'tu patrimonio siguió en números rojos y se hundió más este año.',
+        ]);
+  } else if(pct === null){
+    frase = diff >= 0
       ? _wrappedBankPick('patrimonio-sinBase-sube', [
           'tu patrimonio creció este año.',
           'tu patrimonio terminó más arriba de donde empezó.',
@@ -1081,36 +1114,54 @@ function _wrappedCopyPatrimonio(patrimonio){
           'tu patrimonio terminó más abajo de donde empezó.',
           'este año tu patrimonio fue para abajo.',
         ]);
+  } else {
+    const pctTxt = Math.abs(Math.round(pct));
+    if(diff >= 0){
+      if(pct >= 50) frase = _wrappedBankPick('patrimonio-fuerte', [
+        `fue un año grande: tu patrimonio subió +${pctTxt}%.`,
+        `+${pctTxt}%. Este año tu patrimonio jugó en otra liga.`,
+        pct >= 90 ? `tu patrimonio casi se duplicó este año (+${pctTxt}%).` : `tu patrimonio creció más de la mitad este año (+${pctTxt}%).`,
+        `pocas veces un año rinde +${pctTxt}% — este fue de esos.`,
+      ]);
+      else if(pct >= 15) frase = _wrappedBankPick('patrimonio-medio', [
+        `tu patrimonio creció con fuerza este año (+${pctTxt}%).`,
+        `+${pctTxt}% de crecimiento — nada de qué quejarse.`,
+        `este año tu plata trabajó de verdad (+${pctTxt}%).`,
+      ]);
+      else frase = _wrappedBankPick('patrimonio-leve', [
+        `tu patrimonio subió un poco este año (+${pctTxt}%).`,
+        `+${pctTxt}%, sin hacer ruido pero yendo para arriba.`,
+        `no fue un año explosivo, pero tu patrimonio sí subió (+${pctTxt}%).`,
+      ]);
+    } else if(pct <= -15) frase = _wrappedBankPick('patrimonio-cayoFuerte', [
+      `este año le exigiste bastante al bolsillo (-${pctTxt}%).`,
+      `-${pctTxt}%. Este año pesó, y se nota.`,
+      `no fue un año fácil para tu patrimonio (-${pctTxt}%).`,
+    ]);
+    else if(pct <= -5) frase = _wrappedBankPick('patrimonio-cayoModerado', [
+      `tu patrimonio bajó este año (-${pctTxt}%): vale la pena mirar por qué.`,
+      `-${pctTxt}%. No fue un buen año para tu patrimonio.`,
+      `tu patrimonio cerró un ${pctTxt}% más abajo de donde empezó.`,
+    ]);
+    else frase = _wrappedBankPick('patrimonio-cayoLeve', [
+      `tu patrimonio bajó un poco este año (-${pctTxt}%).`,
+      `-${pctTxt}%, una caída pequeña.`,
+      `apenas bajó (-${pctTxt}%).`,
+    ]);
   }
-  const pctTxt = Math.abs(Math.round(pct));
-  if(diff >= 0){
-    if(pct >= 50) return _wrappedBankPick('patrimonio-fuerte', [
-      `fue un año grande: tu patrimonio subió +${pctTxt}%.`,
-      `+${pctTxt}%. Este año tu patrimonio jugó en otra liga.`,
-      `tu patrimonio casi se ${pct>=90?'duplicó':'redondeó'} este año (+${pctTxt}%).`,
-      `pocas veces un año rinde +${pctTxt}% — este fue de esos.`,
-    ]);
-    if(pct >= 15) return _wrappedBankPick('patrimonio-medio', [
-      `tu patrimonio creció con fuerza este año (+${pctTxt}%).`,
-      `+${pctTxt}% de crecimiento — nada de qué quejarse.`,
-      `este año tu plata trabajó de verdad (+${pctTxt}%).`,
-    ]);
-    return _wrappedBankPick('patrimonio-leve', [
-      `tu patrimonio subió un poco este año (+${pctTxt}%).`,
-      `+${pctTxt}%, sin hacer ruido pero yendo para arriba.`,
-      `no fue un año explosivo, pero tu patrimonio sí subió (+${pctTxt}%).`,
-    ]);
+  // Causa de la caída (solo si bajó y se conocen los datos del año): una compra, o gastar más de lo ingresado, o algo que no explican
+  // los ingresos y gastos (deudas, ajustes). Sin esto la frase solo decía CUÁNTO bajó.
+  if(diff < 0 && ctx){
+    const caida = -diff, g = ctx.gastoMasGrande;
+    if(g && g.monto > 0 && g.monto >= 0.7 * caida){
+      frase += ` Casi toda la caída fue por una compra: ${escHtml(String(g.desc || 'un gasto'))} (${fmt(g.monto)}).`;
+    } else if(Number.isFinite(ctx.balance)){
+      frase += ctx.balance < 0
+        ? ` Gastaste ${fmt(-ctx.balance)} más de lo que ingresaste.`
+        : ' Tus ingresos superaron tus gastos, pero el patrimonio bajó: revisa deudas o ajustes.';
+    }
   }
-  if(pct <= -25) return _wrappedBankPick('patrimonio-cayoFuerte', [
-    `este año le exigiste bastante al bolsillo (-${pctTxt}%).`,
-    `-${pctTxt}%. Este año pesó, y se nota.`,
-    `no fue un año fácil para tu patrimonio (-${pctTxt}%).`,
-  ]);
-  return _wrappedBankPick('patrimonio-cayoLeve', [
-    `tu patrimonio bajó un poco este año (-${pctTxt}%).`,
-    `-${pctTxt}%, sin ser dramático.`,
-    `bajó un poco, nada que no se recupere (-${pctTxt}%).`,
-  ]);
+  return frase;
 }
 
 function _wrappedCopyCategoria(topCategoria){
@@ -3212,7 +3263,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
     let bignum = '', sub = '';
     if(patrimonio && Number.isFinite(patrimonio.diff)){
       bignum = `<div class="wrapped-bignum ${patrimonio.diff >= 0 ? 'c-green' : 'c-red'}" data-value="${patrimonio.diff}" data-signed="1">0</div>`;
-      sub = `<div class="wrapped-sub">${_wrappedCopyPatrimonio(patrimonio)}</div>`;
+      sub = `<div class="wrapped-sub">${_wrappedCopyPatrimonio(patrimonio, { balance: s.balance, gastoMasGrande: s.gastoMasGrande })}</div>`;
     }
     slides.push({
       id: 'patrimonio',

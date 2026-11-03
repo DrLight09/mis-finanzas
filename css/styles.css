@@ -108,6 +108,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
 .c-blue{color:var(--blue);}
 .c-purple{color:var(--purple);}
 .c-red{color:var(--red);}
+.c-text2{color:var(--text2);}
 .c-nu{color:var(--nu-light);}
 .sec-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin:18px 0 8px;font-family:'DM Mono',monospace;}
 .row{display:flex;align-items:center;justify-content:space-between;}
@@ -925,6 +926,12 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .inicio-proy-vacio-titulo{font-size:12px;font-weight:600;color:var(--text2);}
 .inicio-proy-vacio-texto{font-size:11px;color:var(--text3);line-height:1.5;max-width:210px;}
 .inicio-proy-deuda{font-size:10px;color:var(--red);margin-top:5px;font-family:'DM Mono',monospace;}
+.inicio-proy-runway{font-size:10px;color:var(--amber);margin-top:5px;font-family:'DM Mono',monospace;}
+.inicio-proy-irregular{font-size:10px;color:var(--text3);margin-top:5px;line-height:1.4;font-family:'DM Mono',monospace;}
+.inicio-salud-runway{font-size:12px;margin:2px 0 8px;font-family:'DM Mono',monospace;}
+.inicio-runway-ok{color:var(--accent);}
+.inicio-runway-atencion{color:var(--amber);}
+.inicio-runway-critico{color:var(--red);}
 .inicio-proy-fila{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:2px 0;}
 .inicio-proy-fila.inicio-proy-fila-click{cursor:pointer;}
 .inicio-proy-etiqueta{font-size:12px;color:var(--text2);}
@@ -1845,6 +1852,13 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .ix-mt8, .row.ix-mt8{margin-top:8px;}
 .ix-fs11-ctext3{font-size:11px;color:var(--text3);}
 .ix-hero-change-indicator{font-size:10px;font-family:'DM Mono',monospace;color:var(--text3);}
+.ix-hero-alerta-amber{color:var(--amber);}
+.ix-hero-alerta-red{color:var(--red);}
+.ix-hero-estado{font-size:11px;line-height:14px;min-height:14px;margin:0 0 2px;color:var(--text3);}
+.ix-hero-estado:empty{min-height:0 !important;}
+.ix-hero-estado-red{color:var(--red);}
+.ix-hero-estado-amber{color:var(--amber);}
+.ix-hero-estado-gris{color:var(--text2);}
 .ix-s-disp-neto-tc{font-size:9px;font-family:'DM Mono',monospace;color:var(--text3);margin-top:4px;margin-bottom:8px;}
 .ix-cff4da6, .stat-value.ix-cff4da6{color:#ff4da6;}
 .ix-mb9, .card.ix-mb9, .grid2.ix-mb9{margin-bottom:9px;}

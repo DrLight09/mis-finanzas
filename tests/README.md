@@ -79,6 +79,8 @@ MIS_FINANZAS_CORE_DIR=./ruta/a/core MIS_FINANZAS_MODULES_DIR=./ruta/a/modules np
 Todo test que cargue `core-state.js` debe cargar también `periodo.js` y
 `nu-calc.js`, en el mismo orden que `index.html`:
 `core-state.js` → `periodo.js` → `nu-calc.js` → `calc-helpers.js` → `cuenta-efectos.js` → módulos.
+Todo test que cargue `inicio.js` tiene que cargar además `umbrales.js` (antes que `inicio.js`): los límites de Salud, Atención y Proyección salen de ahí.
+`tests/escenarios-financieros.test.js` fija los escenarios negativos y de borde (deuda, patrimonio negativo, CDT vencido o sin tasa, caída sostenida, Wrapped con base ≤ 0, presupuestos, push).
 `calcPatrimonioTotal()` llama a `calcC`/`calcCDT` (nu-calc.js) sin guards,
 `_getCuotaAnio()` (calc-helpers.js) delega en `Periodo.cuotaMesada`, y Inicio,
 Análisis y Wrapped leen el mes de `Periodo`. Sin ellos: `ReferenceError` en modo

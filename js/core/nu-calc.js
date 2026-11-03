@@ -221,9 +221,30 @@ function rendimientoCajitaPorMes(c){
 // 4. Rendimiento neto = bruto_redondeado - RTE
 // 5. Total neto = monto + rendimiento neto
 // Verificado con dos CDTs reales: replica exactamente los valores de la app Nu.
+// Tasa E.A. (en %) de un CDT. Un CDT sin tasa (dato editado a mano, importado o corrupto) hacía NaN en calcCDT → NaN en el
+// patrimonio → snapshotPatrimonio dejaba de grabar el historial en silencio (mismo fallo que el de la fecha sin cero, otra puerta).
+// Sin tasa válida se toma 0 %: el capital se conserva, no hay rendimiento, y queda UNA advertencia por CDT en consola.
+const _cdtSinTasaAvisados=new Set();
+function _tasaCDT(cdt){
+  const t=Number(cdt&&cdt.tasa);
+  if(cdt&&cdt.tasa!==''&&cdt.tasa!=null&&isFinite(t)&&t>=0)return t;
+  const id=cdt&&cdt.id;
+  if(!_cdtSinTasaAvisados.has(id)){_cdtSinTasaAvisados.add(id);console.warn('[calcCDT] CDT sin tasa válida (id: '+id+') — se calcula sin rendimiento. Revisa su tasa en la cajita.');}
+  return 0;
+}
+
+// ¿El CDT ya venció? Misma regla que el aviso «venció — ¡libera tu plata!» de Inicio: desde el día SIGUIENTE al de vencimiento.
+// Un CDT vencido ya no está bloqueado (la plata se puede retirar), aunque siga registrado en la cajita hasta que lo liberes.
+function cdtVencido(cdt,ahora){
+  if(!cdt||!cdt.vence)return false;
+  const v=_fechaSafe(cdt.vence);
+  if(isNaN(v))return false;
+  return Math.ceil((v-(ahora||new Date()))/86400000)<0;
+}
+
 function calcCDT(cdt){
   if(!cdt||!cdt.monto||!cdt.inicio)return{val:cdt?cdt.monto:0,ganado:0,ganado_bruto:0,retencion:0,dias:0};
-  const rate=cdt.tasa/100;
+  const rate=_tasaCDT(cdt)/100;
   const rte=(cdt.rte!=null?cdt.rte:4)/100; // retención en fuente (default 4%)
   const desde=_fechaSafe(cdt.inicio);
   const hasta=cdt.vence?_fechaSafe(cdt.vence):new Date();
@@ -244,7 +265,7 @@ function calcCDT(cdt){
 // Rendimiento neto acumulado de un CDT después de N días (misma fórmula que calcCDT, sin fechas).
 function _rendimientoCDTaDias(cdt,dias){
   if(dias<=0)return 0;
-  const rate=cdt.tasa/100;
+  const rate=_tasaCDT(cdt)/100;
   const rte=(cdt.rte!=null?cdt.rte:4)/100;
   const ganado_bruto_exacto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
   const ganado_bruto=Math.round(ganado_bruto_exacto*2)/2;

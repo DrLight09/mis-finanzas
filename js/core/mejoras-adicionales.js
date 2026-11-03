@@ -27,7 +27,7 @@
   const SALDOS_OCULTOS_KEY = 'mf-saldos-ocultos';
   let _saldosOcultos = localStorage.getItem(SALDOS_OCULTOS_KEY) === '1';
   const MONEY_SELECTORS = [
-    '#heroTotal','#s-disp','#s-nu','#s-ef','#s-nequi','#s-prest','#s-cdt',
+    '#heroTotal','#hero-estado','#s-disp','#s-nu','#s-ef','#s-nequi','#s-prest','#s-cdt',
     '#s-gf','#s-gv','#s-gtotal','.hero-amount','.stat-value','.row-amount',
     '#det-cuenta-saldo','#nuTotalDisp','.cajita-val','#tc-hero-cupo'
   ];

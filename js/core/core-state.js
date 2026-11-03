@@ -863,7 +863,8 @@ function calcDeudaTcPropia() {
    LIQUIDEZ = lo que podrías usar ya, sin vender nada ni esperar a nadie (para el fondo de emergencia de Salud financiera).
      suma  : cajitas, Nequi, Efectivo y cuentas propias.
      resta : deuda de tarjeta PROPIA, «Yo debo» y plata ajena (esas tres salen de tu bolsillo o ya tienen dueño).
-     no suma: CDTs (bloqueados), «Me deben» (sin fecha cierta no es plata disponible) ni Alcancía (oculta).
+     no suma: CDTs sin vencer (bloqueados), «Me deben» (sin fecha cierta no es plata disponible) ni Alcancía (oculta).
+     sí suma: un CDT ya VENCIDO (cdtVencido, nu-calc.js): la plata se puede retirar aunque sigas sin «liberarla» en la cajita.
    Es a propósito asimétrica y prudente: lo que te deben no cuenta hasta que llega, lo que debes cuenta completo. */
 function calcPatrimonioDesglose(){
   const cajitas=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
@@ -883,7 +884,10 @@ function calcPatrimonioDesglose(){
   const custom=cuentasCustom().reduce((a,c)=>a+(c.saldo||0),0);
   // Alcancía: el saldo registrado es plata real tuya aunque esté "oculta"
   const alcancia=(S.alcancia&&S.alcancia.saldoRegistrado)?S.alcancia.saldoRegistrado:0;
-  const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
+  // Math.max(0, …) por tarjeta: un saldo a favor (tc.deuda negativo: pagaste de más; el flujo normal de pagos lo recorta en 0, así que
+  // solo llega por datos importados o editados a mano) no es plata disponible ni un activo — hay que pedir el reembolso o esperar a que
+  // se aplique a compras futuras. Sumarlo inflaba el patrimonio y lo hacía distinto del «neto de tarjetas» de Inicio, que ya lo trata así.
+  const deudaTC=(S.tarjetasCredito||[]).reduce((a,tc)=>a+Math.max(0,tc.deuda||0),0);
   // Lo que le debo a otras personas (S.misDeudas) — esa plata está físicamente en
   // mis cuentas pero no es mía, así que se resta igual que la deuda de TC.
   const yoDebo=typeof Deudas!=='undefined'?Deudas.totalPendiente('contra'):0;
@@ -923,14 +927,21 @@ function patrimonioFormulaTexto(d){
 function calcLiquidez(){
   const d=calcPatrimonioDesglose();
   const libre=d.cajitas+d.nequi+d.efectivo+d.custom;
+  // CDT ya vencidos: dejaron de estar bloqueados. Antes seguían fuera de la liquidez hasta «liberarlos», y con 20 M vencidos y nada en
+  // cuentas la Salud decía «tus ahorros están en CDTs» aunque ya se podían cobrar (Inicio sí avisa «venció — ¡libera tu plata!»).
+  const ahora=new Date();
+  const cdtsVencidos=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+(cdtVencido(cdt,ahora)?calcCDT(cdt).val:0),0),0);
   const tcPropia=typeof calcDeudaTcPropia==='function'?calcDeudaTcPropia():0;
   const obligaciones=tcPropia+d.yoDebo+d.ajeno;
-  const neta=libre-obligaciones;
+  const neta=libre+cdtsVencidos-obligaciones;
+  const cdtsBloqueados=d.cdts-cdtsVencidos;
   return {
     libre, tcPropia, yoDebo:d.yoDebo, ajeno:d.ajeno, obligaciones,
     neta,                    // liquidez real: la que mide el fondo de emergencia
-    cdts:d.cdts,
-    conCDTs:neta+d.cdts,     // si además se cuentan los CDTs (bloqueados, no sirven de emergencia)
+    cdts:d.cdts,             // todos los CDTs (vencidos o no): es la parte del patrimonio
+    cdtsVencidos,            // ya sumados en `neta`
+    cdtsBloqueados,          // los que aún no vencen: no sirven de emergencia
+    conCDTs:neta+cdtsBloqueados, // si además se cuentan los CDTs bloqueados (= libre + cdts − obligaciones)
     meDeben:d.meDeben,
   };
 }
@@ -1576,6 +1587,8 @@ function refresh(){
   const _heroFormula=document.getElementById('hero-formula');
   if(_heroFormula)_heroFormula.textContent=patrimonioFormulaTexto(_pat);
   document.getElementById('heroTotal').textContent=fmt(_patrimonioVisible);
+  // Color y mensaje del hero según la situación real (negativo, liquidez negativa…): calcEstadoHero/renderHeroEstado viven en inicio.js.
+  if(typeof renderHeroEstado==='function')renderHeroEstado(_pat);
   // Indicador de alcancía en el hero — ícono chico junto al label, no un
   // bloque aparte (docs/auditoria-tecnica.md, "Reservar espacio para
   // #hero-alcancia-indicator (CLS)"): al vivir en la misma línea/alto que el

@@ -431,6 +431,7 @@ describe('yodebo', () => {
       path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
       path.join(CORE_DIR, 'cuenta-efectos.js'),
       path.join(CORE_DIR, 'calc-helpers.js'),
+      path.join(CORE_DIR, 'umbrales.js'),
       path.join(MODULES_DIR, 'inicio.js'),
       path.join(MODULES_DIR, 'prestado.js'),
       path.join(MODULES_DIR, 'tarjetas_credito.js'),

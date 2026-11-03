@@ -4,6 +4,71 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Revisión de mejoras: hallazgos financieros y de estructura (2026-11-03, SW v92)
+
+Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los escenarios negativos). Cada hallazgo se **reprodujo ejecutando el código real** antes de tocarlo; los que no se reprodujeron o no aplicaban se anotan al final. Lo que sigue pendiente quedó en `mejoras-mis-finanzas.md` (ya sin lo resuelto). Pruebas: `tests/escenarios-financieros.test.js` (nuevo, 40 pruebas) + las existentes actualizadas: 688/688. `npm run smoke` y `generar-mapa.js --check` en verde. El puntaje de Salud **cambia** para varios estados (ver cada punto): es intencional.
+
+### Salud financiera (`inicio.js`)
+
+- **F3 — `tieneAlgo` ignoraba las deudas con personas.** Con «Yo debo» $500.000 y $100.000 en Nequi el score era 35 y `sinDatos: true`: la tarjeta decía «Registra más datos» justo en la situación más delicada. Ahora cuentan el patrimonio ≠ 0, las deudas con personas, la plata ajena, los saldos y los CDTs.
+- **F4 — tener deuda de tarjeta SUMABA +5.** Mismo ahorro e ingreso: sin deuda 50, deuda de 1× el ingreso **55**, deuda de ~2,9× 42. Incentivo invertido. Ahora hasta 1,5× el ingreso no puntúa; el **+5 es para quien no tiene deudas propias** (tarjeta, «Yo debo» ni plata ajena) y tiene liquidez positiva. Orden resultante: sin deuda > deuda manejable > deuda alta.
+- **N-3 — la misma deuda se penalizaba dos veces** (−15 por liquidez negativa y −15 por «tu patrimonio no la cubre», dos alertas casi iguales: tarjeta de 3 M sin ahorro → score 20). Ahora una sola alerta (score 35). *Es en parte decisión de diseño:* los dos criterios miden cosas distintas, por eso solo se evita avisar dos veces **lo mismo**; la rama «patrimonio no la cubre» sigue existiendo cuando la liquidez no es negativa.
+- **N-2 — el consejo de liquidez negativa callaba la deuda cuando había un CDT.** La rama «tus ahorros están en CDTs» (−8) se evaluaba antes que `liquidoReal < 0`. Ahora la liquidez negativa se evalúa primero: con CDTs sin vencer que la cubren es un **aviso** (−8) que nombra la deuda («Tu deuda en tarjetas supera la plata que tienes disponible; lo que cubre la diferencia está en tus CDTs»); sin CDT es una **alerta** (−15). Se eliminó la jerga «patrimonio líquido» de los textos.
+- **Ratio gasto/ingreso con mes parcial.** `gastosMes` (hasta hoy) ÷ ingreso de un mes completo daba ≈ 0,05 el día 3 y regalaba **+10 puntos** (gastar $50.000 → 60 vs 50 sin gastar) que se iban cayendo durante el mes; el mismo defecto ya corregido en el fondo de emergencia. Ahora el criterio (d) usa el gasto típico ÷ ingreso típico de los **meses completos**; el mes en curso solo puede decir que YA se pasó del ingreso («Por ahora estás gastando más de lo que ingresas»).
+- **N1 — nada detectaba una caída sostenida.** Nuevo criterio (h): **2 meses completos seguidos en déficit −8 (aviso), 3 o más −15 (alerta)**, con `Periodo.rachaDeficit()`. No aplica sin ingreso reciente registrado (sería solo no haber anotado ingresos) ni con un fondo sólido (≥ 6 meses). Si aplica, sustituye al −10 de «ratio > 1» (no se penaliza dos veces). También aparece en «Necesita atención».
+- **Runway visible.** La tarjeta de Salud muestra «Cubres 3,4 meses de gastos» (verde / ámbar < 3 / rojo < 1 mes); `calcHealthScore` devuelve `mesesCubiertos` y `rachaDeficit`.
+- **Bono de CDT con liquidez negativa.** Daba hasta +10 con la alerta de liquidez negativa activa (CDT de 1 M + tarjeta de 300.000 + 100.000 en Nequi: 45 = 50 − 15 + 10). Ahora el tope baja a +3 también cuando `liquidoReal < 0` (antes solo con mucho prestado).
+- **N-9 — se sugería «poner algo en un CDT» junto a «tu situación es muy vulnerable».** La sugerencia exige además que lo prestado no supere tu liquidez.
+- **«Configurar la app» ya no puntúa.** (f) +5 por ≥ 2 gastos fijos y (g) −5 por una sola categoría medían uso de la app, no salud financiera. Se conserva la sugerencia de categorías como consejo.
+- **Sin gasto típico:** con ahorros y sin ningún mes completo con gastos, un consejo explica por qué aún no se mide el fondo («Cuando completes un mes de gastos…»), en vez de un «Regular» mudo.
+- **N-1 — el ingreso de referencia era un «fantasma».** `ingresoPromedioPrevio` tomaba los últimos 3 meses *con ingreso* sin importar cuándo fueron: con ingresos de hace 10–12 meses y 4 sin cobrar, la referencia seguía en 4 M, los ratios puntuaban contra plata que ya no entra y desaparecía «Registra tus ingresos». Ahora ambos promedios (ingreso y gasto) se limitan a los **últimos 6 meses calendario** (`Periodo.VENTANA_REFERENCIA_MESES`).
+- **Umbrales centralizados:** `js/core/umbrales.js` (`UMBRALES`, congelado a fondo) con los límites de Salud, runway, Atención, gasto alto, hero y Proyección. Los puntos de cada criterio siguen en `calcHealthScore`. Los helpers `_mesesCubiertos`, `_nivelRunway`, `_textoRunway` y `_rachaDeficitRelevante` los comparten Salud y Atención (una sola definición).
+
+### Núcleo (`core-state.js`, `nu-calc.js`, `periodo.js`)
+
+- **N-5 — un saldo a favor en una tarjeta (`tc.deuda < 0`) sumaba como activo:** `deuda −500.000` con 100.000 en cuentas → patrimonio 600.000 y liquidez 100.000 (`_renderDispNetoTC` sí lo recortaba). Ahora `Math.max(0, deuda)` por tarjeta. El flujo normal de pagos nunca deja la deuda negativa (se recorta en 0): solo ocurría con datos importados o editados a mano.
+- **N-6 — un CDT sin `tasa` dejaba el patrimonio en `NaN`** y `snapshotPatrimonio` dejaba de grabar el historial sin avisar (otra puerta al mismo fallo del CDT con fecha sin cero). `_tasaCDT()` toma 0 % (capital sin rendimiento) y deja una advertencia por CDT en consola.
+- **N-7 — un CDT ya vencido seguía fuera de la liquidez:** con 20 M vencidos y nada en cuentas, la liquidez neta era 0 y el consejo decía «tus ahorros están en CDTs» (Atención sí avisaba «venció — ¡libera tu plata!»). Nuevo `cdtVencido()` (desde el día siguiente al vencimiento, la misma regla del aviso); `calcLiquidez()` los suma a `neta` y devuelve `cdtsVencidos` y `cdtsBloqueados`; `conCDTs = neta + cdtsBloqueados` (igual a `libre + cdts − obligaciones`).
+
+### Proyección (`inicio.js`)
+
+- **F1 — los negativos se mostraban como `$0`.** Patrimonio −200.000 bajando 150.000/mes: las tarjetas a 3/6/12 meses decían `$0 $0 $0` y el tooltip «$0 · 0.0 %» (`Math.max(0, val)` en dos sitios). Ahora el valor con **signo** (−$1.100.000 a 6 meses); sin porcentaje sobre una base ≤ 0 y la nota dice «Pasarías / Seguirías / Saldrías de números rojos».
+- **Patrimonio exactamente 0 ya no es «sin datos»** (`if(!patrimonio)`): «sin datos» solo si no hay ningún activo visible ni deuda (la alcancía no cuenta, para no delatarla).
+- **«ESTABLE» desde 60 días era demasiado optimista.** Ahora pide 90 días **y** que el ritmo de cada tercio del historial vaya en la misma dirección (`_ritmosPorTercio`); si no, «estimación» y una línea con el rango («Tu ritmo cambió mucho entre períodos (de −$X a +$Y al mes)»). La ventana del historial pasó de 90 a 120 puntos (`UMBRALES.proyeccion.puntosHistorial`): con 90 la ventana nunca llegaba a 90 días (89 con un punto diario).
+- **N-4 — texto falso:** decía «Deuda TC propia: $400.000 ya descontada» cuando el patrimonio descuenta la deuda **total** ($1.000.000). Ahora «Deuda TC: $1.000.000 (propia $400.000) ya descontada del patrimonio».
+- **«A este ritmo, tu plata disponible duraría unos N meses»** con tendencia negativa y liquidez positiva.
+- **Fechas** del historial con `_fechaSafe` (una «2026-9-26» no produce `NaN`); también en el eje de la gráfica de patrimonio de Análisis.
+
+### Hero y «Necesita atención» (`inicio.js`, `index.html`, `styles.css`)
+
+- **F2 — el hero era verde fijo:** un patrimonio de −$800.000 se veía igual que uno de +$8.000.000. Nuevo `calcEstadoHero()`/`renderHeroEstado()` (la prioridad: negativo > cero > liquidez negativa > prestado): **rojo** + «Debes más de lo que tienes: $X»; **neutro** si es 0; **ámbar** + «Tienes valor, pero tus deudas superan tu plata disponible en $X» (patrimonio positivo con liquidez negativa: el hero decía «todo bien» y la Salud gritaba alerta); y «Sin contar lo que te deben: $X» cuando lo prestado pesa ≥ 25 % del patrimonio. Elemento `#hero-estado` (colapsa con `:empty`, se oculta con «ocultar saldos»).
+- **`_checkGastoAlto` comparaba contra el disponible de ahora** (que ya descuenta ese gasto) y con `disp ≤ 0` no avisaba nada. Ahora compara contra el **ingreso de referencia**: «Gastos altos» (ámbar) desde 80 %, «Gastas más de lo que ingresas» (rojo) al superarlo; sin ingresos registrados, «Sin plata disponible» solo si ya no queda. Usa clases en vez de `style.color`.
+- **Atención** ahora avisa: liquidez neta negativa (rojo), runway < 1 mes, 2–3 meses seguidos en déficit, **lo que tú debes a personas** («Le debes $X a Fulano») y **N-8 — tarjetas no activas con deuda** (se omitían todas las que no estaban «activa»). Los límites (85 % de cupo, 7 días de CDT) salen de `UMBRALES.atencion`.
+
+### Análisis, Wrapped y push
+
+- **Análisis — porcentaje sobre base negativa:** pasar de −$1.000.000 a −$500.000 decía «+50 %» en verde con el patrimonio aún en deuda. Ahora el % solo sobre base positiva («—» si no) y «En números rojos» si el valor final es < 0.
+- **Presupuestos:** (a) **avisan al superar el 100 %** («Superaste el presupuesto de X por $Y»), antes solo entre 80 y 99 %; (b) el texto muestra el exceso («$180.000 / $100.000 · +$80.000») aunque la barra se recorte; (c) un límite no positivo ya no da `NaN%` de ancho; (d) los avisos ya mostrados se guardan en `localStorage` (`mf-presup-avisos`, solo el mes en curso) para no repetirse tras recargar.
+- **F5 — Wrapped con base mínima o negativa** decía «casi se duplicó (+39900%)» (de $5.000 a $2 M), «casi se redondeó» (de −$900.000 a −$100.000, que **sigue en deuda**) y «−160 %» al cruzar a deuda. `_wrappedPatrimonioAnio` devuelve `pct` solo sobre base positiva y con |pct| ≤ 300 %, más `inicio`/`fin`; `_wrappedCopyPatrimonio` habla del **cruce de cero** (entró / salió / sigue en números rojos), usa **tres niveles de caída** (leve < 5 %, moderada 5–15 %, fuerte ≥ 15 %; antes un −24 % era «bajó un poco, nada que no se recupere»), corrige «redondeó» y añade la **causa** de la caída (una compra ≥ 70 % de la caída, gastar más de lo ingresado, o «ingresos superaron gastos pero el patrimonio bajó: revisa deudas o ajustes»; el texto del usuario va escapado).
+- **F6 — las notificaciones push no veían Spotify.** `checks.js` leía `S.spotifyPersonas`, que desde la migración (esquema 9) es `S.spotify.personas`: «Cobro Spotify vencido» dejó de llegar sin ningún error. Corregido, y el guardián de `tests/nucleo.test.js` que prohíbe las llaves sueltas ahora recorre también `scripts/` (por eso F6 se había escapado).
+
+### Infraestructura
+
+- **A10 — `sw.js`:** la línea de `VERSION` arrastraba un comentario de ~12 KB (el historial ya está aquí). Queda `const VERSION = 'mis-finanzas-v92'; // bump manual…` y un test que impide que vuelva a crecer. Versión 92.
+- `mapa-codigo.md` regenerado (53 archivos). Los tests que cargan `inicio.js` cargan ahora `umbrales.js` (ver `tests/README.md`); `estilos.test.js` conoce `inicio-runway-*` como clase armada.
+
+### Pruebas actualizadas (fijaban justo los defectos)
+
+`nucleo.test.js`: el +10 por «gastos 2,5 % de los ingresos» de un mes que apenas empieza (ahora 55 = 50 + 5 sin deudas), el +10 del ratio en «el gasto típico es el promedio de los últimos 3 meses» (ahora trae ingresos previos), los textos «patrimonio líquido», y la doble alerta de una deuda sin ingresos. Los cuatro cargadores de `inicio.js` suman `umbrales.js`.
+
+### Revisado y NO cambiado (con el porqué)
+
+- **«Un test de `@property` falla»:** es de `jsdom` 30; tu `package.json` fija `^27` y pasa. No aplica.
+- **Las deudas «Yo debo» en el ratio de endeudamiento (b):** se deja la liquidez como único canal (una deuda con una persona normalmente no tiene interés ni plazo); queda en `mejoras-mis-finanzas.md` como decisión pendiente.
+- **N4 (gastos fijos sin día):** verificado y real (`gastos.js:565` guarda `{id, nombre, monto, cat}`); es funcionalidad nueva, no una corrección → sigue en `mejoras-mis-finanzas.md` (P7).
+
+---
+
 ## Sheets: el teclado ya no mueve el layout, el sheet se desliza con él (2026-11-01, SW v91)
 
 Síntomas: en sheets pequeños (p. ej. «¿Quién te debe?» sin personas) el sheet aparecía abajo, saltaba al abrir el teclado y al cerrarlo bajaba y subía de golpe.

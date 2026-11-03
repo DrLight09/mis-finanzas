@@ -14,11 +14,12 @@ Inicio es la pantalla que se ve al abrir la app: un resumen agregado de patrimon
 
 | Elemento (id) | Contenido |
 |---|---|
-| `#heroTotal` | Patrimonio total visible (excluye la alcancía oculta, ver `guia-estilo-sheets.md#alcancía`). Sale de `calcPatrimonioDesglose().visible` (`core-state.js`), la misma cuenta del historial, la Proyección y Salud: resta tarjetas, «Yo debo» y plata ajena |
+| `#heroTotal` | Patrimonio total visible (excluye la alcancía oculta, ver `guia-estilo-sheets.md#alcancía`). Sale de `calcPatrimonioDesglose().visible` (`core-state.js`), la misma cuenta del historial, la Proyección y Salud: resta tarjetas, «Yo debo» y plata ajena | El color y el mensaje de abajo cambian con la situación (ver `#hero-estado`).
 | `#hero-formula` | Texto bajo el monto: «Cuentas + CDTs + Prestado» y, solo si existen, « − Deuda TC − Yo debo − Plata ajena» (`patrimonioFormulaTexto()`) |
 | `#hero-patrimonio-label` | "Patrimonio total" o "Patrimonio visible" (cambia si hay alcancía activa) |
 | `#hero-alcancia-indicator` | Pill ámbar "+$?? en alcancía oculta" — visible solo si `S.alcancia.saldoRegistrado > 0` |
-| `#hero-change-indicator` | Aviso "Gastos altos" cuando el gasto del mes supera el 80% de lo disponible |
+| `#hero-estado` | Una línea de contexto bajo el monto, y el color de `#heroTotal`: **rojo** si el patrimonio es negativo («Debes más de lo que tienes: $X»), **neutro** si es exactamente 0, **ámbar** si hay patrimonio pero la liquidez neta es negativa («Tienes valor, pero tus deudas superan tu plata disponible en $X»), y neutro con «Sin contar lo que te deben: $X» cuando lo prestado pesa ≥ 25 % del patrimonio (`UMBRALES.hero`). Vacío (colapsado) en el caso sano. Lo calcula `calcEstadoHero()` y lo pinta `renderHeroEstado()` (`inicio.js`), que `refresh()` llama |
+| `#hero-change-indicator` | Aviso de gasto del mes: «Gastos altos» (ámbar) si ya gastaste ≥ 80 % del ingreso de referencia del mes, «Gastas más de lo que ingresas» (rojo) si lo superaste; sin ingresos registrados, «Sin plata disponible» solo si ya no te queda |
 | `#s-disp`, `#s-nu`, `#s-ef`, `#s-nequi`, `#s-prest`, `#s-cdt` | Grid de saldos por cuenta |
 | `#s-disp-neto-tc` | Línea completa, chica, debajo del `grid3` de Disponible/Nu libre/Efectivo (fuera de las celdas `.stat`, para no afectar su altura — 2026-09-20) — "Neto de TC" (disponible menos la deuda TOTAL de TC, sin descontar lo ajeno). Vacía si no hay nada que restar; no reemplaza a `#s-disp` |
 | `#s-gf`, `#s-gv`, `#s-gtotal` | Gastos del mes: fijos, variables, total |
@@ -31,7 +32,7 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 
 ## 3. Funciones (`js/modules/inicio.js`)
 
-**`renderAttencion()`** — arma la lista de alertas ("Necesita atención") a partir de: deudores con saldo pendiente, mesadas con pago parcial, tarjetas con cupo casi agotado o agotado, cobros de Spotify vencidos, y CDTs por vencer o vencidos. Controla también el estado abierto/cerrado de la sección (persistido en `sessionStorage`, con detección de items nuevos vía fingerprint).
+**`renderAttencion()`** — arma la lista de alertas ("Necesita atención") a partir de: deudores con saldo pendiente, mesadas con pago parcial, tarjetas con cupo casi agotado o agotado, cobros de Spotify vencidos, y CDTs por vencer o vencidos. Controla también el estado abierto/cerrado de la sección (persistido en `sessionStorage`, con detección de items nuevos vía fingerprint). Además, al principio, la **situación financiera** con las mismas reglas que la Salud (`_itemsSituacion`): liquidez neta negativa (rojo), runway crítico (< 1 mes de gasto, ámbar) y racha de déficit (2 meses ámbar, 3 rojo). También lo que **tú debes** a personas («Yo debo») y las tarjetas **no activas con deuda**. Los límites vienen de `UMBRALES.atencion`.
 
 **`calcHealthScore()`** — calcula el puntaje de salud financiera (0-100) a partir de: fondo de emergencia (liquidez vs gastos mensuales), ratio de deuda TC vs ingresos, plata prestada a otros vs liquidez, ratio gastos/ingresos, CDTs activos, gastos fijos configurados, y diversidad de categorías de gasto. Devuelve `{ score, tips, ingresosMes, rendimientoCDTMes }`; `rendimientoCDTMes` (informativo, no entra en `ingresosMes`) trae desde 2026-10-09 los rendimientos del mes de cajitas + CDT (`Periodo.rendimientosDelMes`). Los gastos del mes incluyen los retiros manuales ("Restar dinero") y los ingresos incluyen los extras guardados en cajitas, ambos vía `Periodo`.
 
@@ -39,7 +40,7 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 
 **`renderProyeccion()`** — calcula la tendencia mensual de patrimonio (trimmed mean sobre los últimos 90 días de `S.patrimonioHistorial`, con mínimo de 30 días reales para no extrapolar de un solo movimiento grande; con menos muestra «Tendencia en construcción: llevas N de 30 días») y proyecta a 3/6/12 meses en `#proyeccion-card`. Incluye tooltips táctiles con el detalle de cada proyección.
 
-**`_checkGastoAlto()`** — revisa si el gasto del mes supera el 80% de lo disponible (Nu + Nequi + Efectivo) y muestra/oculta el aviso en `#hero-change-indicator`. Se engancha a `refresh()` mediante monkey-patch al cargar el módulo.
+**`_checkGastoAlto()`** — compara el gasto del mes contra el **ingreso de referencia** (el mayor entre lo ingresado este mes y el ingreso típico; el mismo de la Salud), no contra lo disponible (que ya descuenta ese gasto y con disponible ≤ 0 no avisaba nada). `UMBRALES.gastoAlto.fraccionDelIngreso` = 0,8. Se engancha a `refresh()` mediante `hookGlobal`. Usa clases (`ix-hero-alerta-*`), no estilos inline.
 
 **`_renderDispNetoTC()`** — pinta `#s-disp-neto-tc` con `window._dispActualHoy` (el mismo `disp` que `refresh()`, en `core-state.js`, acaba de usar para pintar `#s-disp` — no se recalcula acá, ver `CHANGELOG.md#inicio` 2026-09-20) menos la deuda TOTAL de las tarjetas de crédito (con piso en 0 por tarjeta, para que un saldo a favor no reste del total), sin descontar lo confirmado como ajeno — la app no puede saber si esa parte ajena ya te la devolvieron por fuera de un pago a la tarjeta, así que asume el peor caso. Vacía el texto si no hay nada que restar. Se engancha a `refresh()` en el mismo monkey-patch que `_checkGastoAlto()`, DESPUÉS de que `refresh()` original corra (para que `window._dispActualHoy` ya esté actualizado).
 

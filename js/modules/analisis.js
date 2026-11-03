@@ -308,7 +308,7 @@ function renderAnalisis(){
       const W=320,H=90,PAD=4;
       // El eje X reparte los puntos por FECHA, no en partes iguales: un registro solo se guarda los días en que abres la app y
       // guardas algo, así que un salto de 10 días no debe verse igual que uno de 1 día. (Sin fechas distintas, partes iguales.)
-      const _ms=h=>new Date(h.fecha+'T00:00:00').getTime();
+      const _ms=h=>_fechaSafe(h.fecha).getTime(); // tolera «2026-9-26» (sin cero), igual que la Proyección
       const _t0=_ms(hist[0]), _span=_ms(hist[hist.length-1])-_t0;
       const _diasVentana=_span>0?Math.round(_span/86400000)+1:hist.length;
       const pts=valsReales.map((v,i)=>{
@@ -332,9 +332,12 @@ function renderAnalisis(){
       const diffColorGrad=sinCambio?'#8e8e84':(diffTotal>=0?'#c8f060':'#f06868');
       const diffClasePat=sinCambio?'an-t-muted':(diffTotal>=0?'c-green':'c-red');
       const diffSigno=sinCambio?'':(diffTotal>=0?'+':'');
-      // Sin base (el primer punto vale 0) un porcentaje no tiene sentido: se muestra «—», no «+0.0%» junto a un cambio en pesos.
-      const diffPct = primeroReal!==0 ? diffTotal/Math.abs(primeroReal)*100 : null;
-      const diffPctTxt = diffPct===null ? '—' : (sinCambio||diffPct<0?'':'+')+diffPct.toFixed(1)+'%';
+      // Sin base positiva (el primer punto vale 0 o es negativo) un porcentaje no tiene sentido: pasar de −$1.000.000 a −$500.000 daba
+      // «+50 %» en verde con el patrimonio todavía en deuda. Se muestra «—» y, si el valor final sigue bajo cero, «En números rojos».
+      const diffPct = primeroReal>0 ? diffTotal/primeroReal*100 : null;
+      const enRojos = ultimoReal<0;
+      const diffPctTxt = enRojos ? 'En números rojos' : diffPct===null ? '—' : (sinCambio||diffPct<0?'':'+')+diffPct.toFixed(1)+'%';
+      const diffClasePct = enRojos ? 'c-red' : diffClasePat;
       patriEl.innerHTML=`
         <div class="an-pat-cab">
           <div>
@@ -343,7 +346,7 @@ function renderAnalisis(){
           </div>
           <div class="an-der">
             <div class="an-pat-diff ${diffClasePat}">${diffSigno}${fmt(diffTotal)}</div>
-            <div class="an-pat-pct ${diffClasePat}">${diffPctTxt}</div>
+            <div class="an-pat-pct ${diffClasePct}">${diffPctTxt}</div>
           </div>
         </div>
         <div id="_pat-wrap" class="an-pat-wrap">
@@ -717,7 +720,19 @@ function renderPresupuestos(){
   // (cambiar de pantalla, guardar, etc.), así que resetear acá hacía que el
   // toast de "80%+" reapareciera en cada refresh mientras la categoría
   // siguiera entre 80% y 100%. Ver CHANGELOG.md / auditoria-tecnica.md.
-  if(!window._presupWarnedKeys) window._presupWarnedKeys = new Set();
+  const mesPresup = window.mesActual ? window.mesActual() : '';
+  // Los avisos ya mostrados se guardan también en localStorage (clave categoría_mes): en memoria solos, cada recarga de la página
+  // volvía a avisar lo mismo. Solo se conservan los del mes en curso.
+  if(!window._presupWarnedKeys){
+    window._presupWarnedKeys = new Set();
+    try { JSON.parse(localStorage.getItem('mf-presup-avisos')||'[]').forEach(k => { if(String(k).includes('_'+mesPresup)) window._presupWarnedKeys.add(k); }); } catch(e) {}
+  }
+  const avisarUnaVez = (key) => {
+    if(window._presupWarnedKeys.has(key)) return false;
+    window._presupWarnedKeys.add(key);
+    try { localStorage.setItem('mf-presup-avisos', JSON.stringify([...window._presupWarnedKeys])); } catch(e) {}
+    return true;
+  };
   const presup = S.presupuestos || {};
   const cats = Object.keys(presup);
   if(!cats.length){ el.innerHTML='<div class="an-vacio an-vacio-c8">Sin presupuestos configurados. Toca "Editar" para definirlos.</div>'; return; }
@@ -733,17 +748,23 @@ function renderPresupuestos(){
   el.innerHTML = html`${cats.map(cat => {
     const limite = presup[cat];
     const gasto = gastoCat[cat]||0;
-    const pct = Math.min(100, Math.round(gasto/limite*100));
-    const tono = pct >= 100 ? 'red' : pct >= 80 ? 'amber' : 'accent';
+    // pctReal puede pasar de 100 (la barra se recorta, el aviso y el texto no); con un límite no positivo (dato corrupto) no se divide:
+    // antes 0/0 daba NaN y la barra quedaba con ancho «NaN%».
+    const pctReal = limite > 0 ? Math.round(gasto/limite*100) : (gasto > 0 ? Infinity : 0);
+    const pct = Math.min(100, pctReal);
+    const exceso = limite > 0 && gasto > limite ? gasto - limite : 0;
+    const tono = pctReal >= 100 ? 'red' : pctReal >= 80 ? 'amber' : 'accent';
     const warnKey = cat+'_'+mes;
-    if(pct >= 80 && pct < 100 && !window._presupWarnedKeys.has(warnKey)) {
-      window._presupWarnedKeys.add(warnKey);
+    if(pctReal >= 80 && pctReal < 100 && avisarUnaVez(warnKey)) {
       if(window.toast) window.toast(`¡Atención! Llevas ${pct}% del presupuesto de ${escHtml(cat)}`,'info',4000);
+    } else if(pctReal >= 100 && avisarUnaVez(warnKey+'_sobre')) {
+      // Antes el aviso solo existía entre 80 % y 99 %: al SUPERAR el presupuesto no avisaba nada.
+      if(window.toast) window.toast(`Superaste el presupuesto de ${escHtml(cat)}${exceso>0?' por '+fmt(exceso):''}`,'warn',4500);
     }
     return html`<div class="presup-row">
       <div class="presup-label-row">
         <span class="an-nom-12">${cat}</span>
-        <span class="an-presup-uso an-t-${raw(tono)}">${fmt(gasto)} / ${fmt(limite)}</span>
+        <span class="an-presup-uso an-t-${raw(tono)}">${fmt(gasto)} / ${fmt(limite)}${exceso>0?' · +'+fmt(exceso):''}</span>
       </div>
       <div class="presup-bar">
         <div class="presup-bar-fill an-bg-${raw(tono)}" style="width:${pct}%;"></div>

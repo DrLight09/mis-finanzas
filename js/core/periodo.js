@@ -78,6 +78,19 @@ const Periodo = (() => {
     return out;
   }
 
+  // Meses calendario hacia atrás que cuentan como «recientes» para el ingreso y el gasto TÍPICOS. Un ingreso de hace un año no es
+  // el ingreso de hoy: sin este límite, quien dejó de cobrar hace 4 meses seguía con el ingreso de entonces como referencia (los
+  // ratios de Salud se medían contra plata que ya no entra y desaparecía el aviso «Registra tus ingresos»). Lo mismo con el gasto:
+  // el fondo de emergencia se mide contra lo que gastas ahora, no contra lo que gastabas hace un año. Si ningún mes de la ventana
+  // tiene datos, no hay referencia (promedio 0), igual que antes cuando no había ningún mes.
+  const VENTANA_REFERENCIA_MESES = 6;
+
+  // Los últimos `n` meses con total > 0, anteriores a `mes` (completos) y dentro de la ventana, del más viejo al más nuevo.
+  function _mesesDeReferencia(porMes, mes, n) {
+    const desde = mesDesplazado(mes, -VENTANA_REFERENCIA_MESES);
+    return Object.keys(porMes).filter(k => k < mes && k >= desde && porMes[k] > 0).sort().slice(-(n || 3));
+  }
+
   /* ---- INGRESOS ---- */
   // La Mesada es plata que entra el día en que te la pagan, así que cuenta como ingreso del mes de esa FECHA (regla de
   // caja, la misma de las entradas reales y del historial de patrimonio). La clave del pago ("2026-0" = enero) es solo el
@@ -180,7 +193,7 @@ const Periodo = (() => {
   // con la regla de caja el ingreso llega en pocos días, y a principio de mes aún no ha llegado). Misma forma que gastoPromedioPrevio.
   function ingresoPromedioPrevio(mes, n, estado) {
     const porMes = ingresosPorMes(estado);
-    const previos = Object.keys(porMes).filter(k => k < mes && porMes[k] > 0).sort().slice(-(n || 3));
+    const previos = _mesesDeReferencia(porMes, mes, n);
     if (!previos.length) return { promedio: 0, meses: 0 };
     return { promedio: previos.reduce((a, k) => a + porMes[k], 0) / previos.length, meses: previos.length };
   }
@@ -252,12 +265,13 @@ const Periodo = (() => {
     return out;
   }
 
-  // Gasto mensual típico: promedio de los últimos `n` meses ANTERIORES a `mes` que tengan gasto (meses completos;
+  // Gasto mensual típico: promedio de los últimos `n` meses ANTERIORES a `mes` que tengan gasto, dentro de los últimos
+  // VENTANA_REFERENCIA_MESES (meses completos;
   // el mes en curso no entra, porque a principio de mes su total es parcial y haría ver las reservas enormes).
   // { promedio, meses }: `meses` = cuántos meses con datos se promediaron (0 si todavía no hay ninguno).
   function gastoPromedioPrevio(mes, n, estado) {
     const porMes = gastosPorMes(estado);
-    const previos = Object.keys(porMes).filter(k => k < mes && porMes[k] > 0).sort().slice(-(n || 3));
+    const previos = _mesesDeReferencia(porMes, mes, n);
     if (!previos.length) return { promedio: 0, meses: 0 };
     return { promedio: previos.reduce((a, k) => a + porMes[k], 0) / previos.length, meses: previos.length };
   }
@@ -309,8 +323,24 @@ const Periodo = (() => {
     return { mes, ingresos, gastos, balance, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }
 
+  // Racha de déficit: cuántos meses COMPLETOS seguidos, terminando en el mes anterior a `mes`, cerraron con balance negativo (gastaste
+  // más de lo que entró, flujo de caja operativo, sin rendimientos: la misma base de Salud y del cierre de mes). Un mes sin ningún
+  // movimiento ni ingreso ni gasto no es déficit ni superávit: corta la racha (no hay nada que juzgar). `max` limita cuántos meses
+  // se miran hacia atrás (6 por defecto). → { meses: n, balances: [{ mes, balance }] con el más reciente primero, acumulado } donde
+  // `acumulado` es la suma (negativa) de lo que se perdió en toda la racha.
+  function rachaDeficit(mes, max, estado) {
+    const balances = [];
+    for (let i = 1; i <= (max || 6); i++) {
+      const m = mesDesplazado(mes, -i);
+      const b = balanceDelMes(m, estado);
+      if (!(b.ingresos.total > 0 || b.gastos.total > 0) || b.balance >= 0) break;
+      balances.push({ mes: m, balance: b.balance });
+    }
+    return { meses: balances.length, balances, acumulado: balances.reduce((a, x) => a + x.balance, 0) };
+  }
+
   return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
-           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes };
+           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
 })();
 
 // Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.

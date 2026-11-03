@@ -319,7 +319,7 @@ function abrirNuevaTarjeta(){
   tcSelColor(null);
   document.getElementById('btn-guardar-tc').textContent='Guardar tarjeta';
   openSheet('nueva-tc');
-  setTimeout(()=>document.getElementById('tc_nombre').focus(),200);
+  focusSheetField('tc_nombre');
 }
 
 function abrirEditarTC(id){
@@ -606,7 +606,7 @@ function abrirCompraTC(tcId){
   document.getElementById('tcc_nota').value='';
   poblarCatSelect('tcc_cat',getCatsVar());
   openSheet('compra-tc');
-  setTimeout(()=>document.getElementById('tcc_desc').focus(),200);
+  focusSheetField('tcc_desc');
 }
 
 function confirmarCompraTC(){
@@ -660,7 +660,7 @@ function abrirCargoEspecialTC(tcId){
   document.getElementById('tcx_fecha').value=hoy();
   document.getElementById('tcx_nota').value='';
   openSheet('cargo-especial-tc');
-  setTimeout(()=>document.getElementById('tcx_desc').focus(),200);
+  focusSheetField('tcx_desc');
 }
 
 async function confirmarCargoEspecialTC(){
@@ -736,7 +736,7 @@ function abrirPagarTC(tcId){
   document.getElementById('ptc-fuente-saldo').textContent='';
 
   openSheet('pagar-tc');
-  setTimeout(()=>document.getElementById('ptc_monto').focus(),200);
+  focusSheetField('ptc_monto');
 }
 
 function ptcSetMonto(val){

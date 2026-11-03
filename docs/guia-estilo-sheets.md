@@ -306,3 +306,25 @@ Al destapar se generan hasta 3 movimientos automáticos, y **no son intercambiab
 - `_esAlcanciaIngreso: true` identifica los ingresos reales generados al momento del depósito (regalo, mandado, yo-directo, partes sin cuenta de un depósito dividido). Son tipo `'entrada'` y **sí aparecen** en el feed porque son ingresos reales visibles.
 - Al destapar, `S.alcancia.saldoRegistrado` se resetea a `0` — necesario porque `calcPatrimonioTotal()` suma ese campo mientras está activa; si no se reseteara, el dinero quedaría contado dos veces.
 - El historial (`entradaHist`) **incluye** `movimientos: [...a.movimientos]` para que las tarjetas de historial muestren el desglose por tipo. Sin esto, `_alcDesgloseHtml` no tendría de dónde sacar el desglose de los ciclos anteriores.
+
+---
+
+## 4. Teclado, entrada y posición del sheet (contrato)
+
+Reglas para que un sheet suba y baje con el teclado sin saltos. Código: `js/core/sheet-behavior.js` (§ TECLADO) y `css/styles.css` (bloque «Sheet y teclado: contrato»).
+
+**Por qué antes saltaba.** El teclado se anima por su cuenta (~300 ms) y el navegador le avisa a la página de golpe (resize / `visualViewport`). Todo diseño donde el sheet *sigue al layout* lo teletransporta al valor final antes de que llegue el teclado (hueco al subir, tapado al bajar). Medido con el diseño anterior: salto de 330 px en un solo cuadro. Con el actual: ≤ 37 px por cuadro al subir (≤ 81 al bajar) y ninguna inversión de sentido.
+
+**Cómo funciona ahora**
+1. El `.overlay` **nunca** cambia de tamaño por el teclado.
+2. `sheet-behavior.js` publica `--kb` (alto del teclado que tapa la pantalla) y, solo en iOS/Firefox, `--pan` (desplazamiento del viewport visual) en `<html>`.
+3. El `.sheet` usa `translate: 0 calc(var(--kb) * -1)` y baja su `max-height` con `--kb`, ambos con `transition` (`--kb-ms`, `--kb-ease`; la bajada tiene su propia curva). `translate` es una propiedad individual: no pisa el `transform` del gesto de cierre ni el de la pila de sheets.
+4. Fuente de `--kb`: **VirtualKeyboard API** (Chrome/Edge/Samsung) con un sheet abierto la página pasa a `overlaysContent = true` (el teclado se dibuja encima y el fondo no se reacomoda); fuera de los sheets el navegador se comporta como siempre y se suelta el modo solo cuando el teclado ya se fue. En el resto: `innerHeight - visualViewport.height` con un campo de texto enfocado.
+5. Entrada: el sheet sube desde abajo (`sheet-in`, `--sheet-in-ms`) y el fondo se enciende. Cerrar es instantáneo; el gesto de arrastre anima su propio recorrido.
+
+**Al crear o tocar un sheet**
+- Para enfocar su primer campo usa `focusSheetField('id')` (o el elemento). **No** `setTimeout(...focus(), 200)`: el ayudante enfoca en el frame correcto (teclado y entrada arrancan juntos) y, si ya hay teclado abierto (pasar de un sheet a otro), pasa el foco sin cerrarlo ni reabrirlo. Opción `{select:true}` para seleccionar el contenido.
+- No leas `visualViewport`/`innerHeight` para posicionar un sheet, no pongas `margin`/`padding-bottom`/`height` por JS según el teclado ni cambies el tamaño del `.overlay`.
+- No agregues `transition` a `.sheet` sin incluir `translate` y `max-height`.
+- Un sheet con campos y mucho contenido scrollea internamente (`.sheet` es el contenedor de scroll); `ensureFocusedVisible` solo corrige si el campo queda tapado y espera a que la transición termine.
+- Tras un deploy, abre la app dos veces (la primera instala el SW nuevo) y confirma el build con `#sheetdebug`: el panel muestra la fuente de teclado activa, `--kb` y la **latencia** entre enfocar y el primer `--kb > 0`. Si esa latencia fuera alta en algún teléfono (el navegador avisa tarde del teclado), el sheet empezaría a subir tarde: sería el momento de añadir una predicción con la última altura conocida.

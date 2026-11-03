@@ -606,7 +606,7 @@ function abrirNuevaParte() {
   document.getElementById('parte-fecha').value = '';
   _actualizarPartePreview(enc);
   openSheet('parte-encargo');
-  setTimeout(() => { const d = document.getElementById('parte-desc'); if(d) d.focus(); }, 200);
+  focusSheetField('parte-desc');
 }
 
 function editarParte(encId, parteId) {
@@ -2212,7 +2212,7 @@ function abrirTraspasoEncargo() {
   document.getElementById('traspaso_monto').oninput = function() { _actualizarTraspasoPreview(enc); };
 
   openSheet('traspaso-encargo');
-  setTimeout(()=>document.getElementById('traspaso_monto').focus(), 200);
+  focusSheetField('traspaso_monto');
 }
 
 function _actualizarTraspasoOrigenHint(enc) {
@@ -2426,7 +2426,7 @@ function abrirMoverEntreCuentasEncargo() {
   };
 
   openSheet('mover-enc-cuentas');
-  setTimeout(() => document.getElementById('moverenc_monto').focus(), 220);
+  focusSheetField('moverenc_monto');
 }
 
 function _actualizarMoverEncOrigenHint(enc) {
@@ -2761,7 +2761,7 @@ function abrirTransferenciaEncargo() {
   document.getElementById('transfenc_monto').oninput = function() { _actualizarTransfEncPreview(enc); };
 
   openSheet('transferencia-encargo');
-  setTimeout(()=>document.getElementById('transfenc_monto').focus(), 200);
+  focusSheetField('transfenc_monto');
 }
 
 function _actualizarTransfEncPreview(enc) {
@@ -3065,7 +3065,7 @@ function abrirCompraConTC() {
   _ctcActualizarPreview();
 
   openSheet('compra-tc-encargo');
-  setTimeout(() => { const d = document.getElementById('ctc_desc'); if(d) d.focus(); }, 200);
+  focusSheetField('ctc_desc');
 }
 
 function _ctcActualizarCuentaEncHint() {

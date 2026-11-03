@@ -326,7 +326,7 @@ function abrirSelPersona(callback, titulo, opts) {
   if (buscarEl) buscarEl.value = '';
   _selPersonaFiltrar();
   document.getElementById('sheet-sel-persona').classList.add('open');
-  setTimeout(() => { if (buscarEl) buscarEl.focus(); }, 200);
+  focusSheetField(buscarEl);
 }
 
 function _selPersonaFiltrar() {
@@ -428,7 +428,7 @@ function _abrirCrearPersonaGlobal(desdeListaPersonas) {
   if (!desdeListaPersonas) {
     document.getElementById('sheet-sel-persona').classList.remove('open');
   }
-  setTimeout(() => document.getElementById('cpg_nombre').focus(), 200);
+  focusSheetField('cpg_nombre');
 }
 
 function _volverASelPersona() {
@@ -473,7 +473,7 @@ function abrirEditarPersonaGlobal(personaId) {
   document.getElementById('epg_nombre').value = p.nombre;
   _renderColorPicker('epg_colores', '_epgColorSel');
   document.getElementById('sheet-editar-persona-global').classList.add('open');
-  setTimeout(() => document.getElementById('epg_nombre').focus(), 200);
+  focusSheetField('epg_nombre');
 }
 
 function _guardarEditarPersonaGlobal() {

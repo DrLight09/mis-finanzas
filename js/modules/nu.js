@@ -1287,7 +1287,7 @@ function abrirNuMovimiento(tipo) {
   _nuMovRenderCajitas();
 
   openSheet('nu-movimiento');
-  setTimeout(() => document.getElementById('nuMovDesc').focus(), 200);
+  focusSheetField('nuMovDesc');
 }
 
 function _nuMovRenderCajitas() {

@@ -828,7 +828,7 @@ function abrirAgregarDinero(fuente,nombre){
   const inp=document.getElementById('adDesc');
   if(inp)inp.placeholder='Ej: Mesada, regalo, venta, sueldo...';
   openSheet('agregar-dinero');
-  setTimeout(()=>document.getElementById('adDesc').focus(),200);
+  focusSheetField('adDesc');
 }
 
 /* ---- SALDO INICIAL / APERTURA — núcleo reutilizable ----
@@ -1056,7 +1056,7 @@ function abrirEditarApertura(fuente){
   document.getElementById('eaMonto').value='';
   document.getElementById('eaPreview').textContent='';
   openSheet('editar-apertura');
-  setTimeout(()=>document.getElementById('eaMonto').focus(),200);
+  focusSheetField('eaMonto');
 }
 
 function confirmarEditarApertura(){
@@ -1123,7 +1123,7 @@ function abrirRestarDinero(fuente,nombre){
   if(rdNotaEl)rdNotaEl.value='';
   document.getElementById('rdPreview').textContent='';
   openSheet('restar-dinero');
-  setTimeout(()=>document.getElementById('rdDesc').focus(),200);
+  focusSheetField('rdDesc');
 }
 
 document.addEventListener('input',function(e){
@@ -1237,7 +1237,7 @@ function abrirTransferir(origenSugerido) {
   document.getElementById('tr_preview').textContent = '';
   actualizarTransfPreview();
   openSheet('transferir');
-  setTimeout(() => document.getElementById('tr_monto').focus(), 200);
+  focusSheetField('tr_monto');
 }
 
 // Reconstruye el <select> #selId a partir de `fuentes` (ya filtrada por

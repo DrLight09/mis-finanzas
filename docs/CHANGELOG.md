@@ -4,6 +4,22 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Sheets: el teclado ya no mueve el layout, el sheet se desliza con él (2026-11-01, SW v91)
+
+Síntomas: en sheets pequeños (p. ej. «¿Quién te debe?» sin personas) el sheet aparecía abajo, saltaba al abrir el teclado y al cerrarlo bajaba y subía de golpe.
+
+Causa raíz (medida en Chromium con un banco de pruebas que simula Android: el layout se achica al instante y el teclado desliza ~300 ms por su cuenta): el sheet dependía del layout, así que se **teletransportaba 330 px en un solo cuadro** hasta 308 px por delante del teclado al subir y, al cerrar, caía de golpe mientras el teclado aún lo tapaba. Las versiones v85–v89 compensaban en JS ese salto (variables, márgenes, histéresis) sin quitarlo; era un problema de estructura, no de ajuste.
+
+- **Diseño nuevo (`sheet-behavior.js` + `styles.css`):** el overlay no cambia de tamaño; una sola variable `--kb` (y `--pan` en iOS) la escribe el JS; el sheet se desplaza con `translate` + transición (curvas de subida y bajada afinadas contra varias curvas de teclado). Con la VirtualKeyboard API (Chrome/Edge/Samsung) la página entra en `overlaysContent` solo mientras hay un sheet abierto, así el fondo no se reacomoda y se dibuja bajo el teclado. Fuera de sheets, comportamiento del navegador intacto. Resto de navegadores: `visualViewport`.
+- **Resultado medido:** paso máximo por cuadro 330 → 37 px al subir (81 al bajar); hueco visible junto al teclado 308 → ≤ 16 px al subir (≤ ~50 al bajar, contra curvas de teclado extremas); 0 inversiones de sentido; sheet alto con borde superior estable; borde en pantalla constante cuando iOS desplaza el viewport; interrupciones (abrir/cerrar el teclado a mitad) se redirigen sin saltos.
+- **Entrada animada** (`sheet-in`, `overlay-in`), respeta `prefers-reduced-motion`. Va en `.overlay.open`, así que cubre `openSheet()` y los `classList` directos; volver al sheet de abajo no la repite.
+- **`focusSheetField(idOEl, {select})`** reemplaza los 19 `setTimeout(…focus(), 200)` de Personas, Cuentas, Nu, Encargos, Tarjetas y Plata comprometida, y el autofocus de `mejoras-adicionales.js`: teclado y entrada arrancan juntos, y al pasar de un sheet a otro (p. ej. «Nueva persona» / «Volver») el teclado no se cierra y reabre.
+- Eliminado: `kb-open` como reglas de layout, `--vv-top`, `--vv-h`, `--kb-pad`, el estado `kbOpen` y el ajuste del `padding-bottom` del sheet. `html.kb-open` queda solo como marca.
+- `#sheetdebug` muestra ahora la fuente del teclado, `--kb`, `--pan` y la latencia foco → teclado.
+- **No verificado en un teléfono real:** las pruebas simulan la geometría del teclado; la VirtualKeyboard API y iOS dependen del navegador. Contrato y guía de depuración en `guia-estilo-sheets.md` §4.
+
+---
+
 ## Service Worker: ya no guarda copias viejas + panel de diagnóstico de sheets (2026-11-01, SW v90)
 
 Motivo: tras varias iteraciones de sheets el comportamiento no cambiaba en el celular. Se reprodujo en un servidor de prueba con `Cache-Control: max-age=600` (lo que manda GitHub Pages): con el SW anterior, tras un deploy la caché del SW **seguía guardando la copia vieja** de los JS/CSS, porque la «revalidación» de `staleWhileRevalidate` salía de la caché HTTP del navegador y no del servidor.

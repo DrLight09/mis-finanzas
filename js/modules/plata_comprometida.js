@@ -682,7 +682,7 @@ function _cpAbrirNuevo(){
   document.getElementById('cp-cuenta-destino').value = '';
   _cpRenderDestinosTmp();
   openSheet('cp-nuevo');
-  setTimeout(()=>document.getElementById('cp-desc').focus(), 200);
+  focusSheetField('cp-desc');
 };
 
 function _cpAbrirEditar(id){
@@ -802,7 +802,7 @@ function _cpAgregarDestino(){
   // Activar "reposicion" por defecto con UI de tarjeta
   _cpdSetTipo('reposicion');
   openSheet('cp-destino');
-  setTimeout(()=>document.getElementById('cpd-desc').focus(), 200);
+  focusSheetField('cpd-desc');
 };
 
 function _cpdTipoChange(){

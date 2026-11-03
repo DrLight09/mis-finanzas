@@ -52,7 +52,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 64 | 4 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 117 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 21 | 0 |
-| `js/modules/inicio.js` | de entrada (defer) | 14 | 0 |
+| `js/modules/inicio.js` | de entrada (defer) | 15 | 0 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 58 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 57 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
@@ -346,7 +346,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_checkGastoAlto`, `_itemsSituacion`, `_mesesCubiertos`, `_nivelRunway`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_textoRunway`, `calcEstadoHero`, `calcHealthScore`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderProyeccion`
+**Funciones:** `_checkGastoAlto`, `_itemsGastosFijos`, `_itemsSituacion`, `_mesesCubiertos`, `_nivelRunway`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_textoRunway`, `calcEstadoHero`, `calcHealthScore`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderProyeccion`
 
 **Asigna a `window`:** `refresh`
 
@@ -635,6 +635,7 @@ Ninguno.
 | `_irAEncargo` | `js/modules/encargos.js` |
 | `_irAMiDeuda` | `js/modules/prestado.js` |
 | `_irASpotify` | `js/modules/personas.js` |
+| `_itemsGastosFijos` | `js/modules/inicio.js` |
 | `_itemsSituacion` | `js/modules/inicio.js` |
 | `_libroPata` | `js/core/core-state.js` |
 | `_listaFuentes` | `js/core/core-state.js` |

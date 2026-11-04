@@ -126,7 +126,7 @@ const Cierre = (() => {
     // Resultado ya calculado que NO se puede recalcular tras podar el detalle (Wrapped que el usuario guardó, HTML congelado): un cierre no lo
     // toca; si falta el de un año con datos suficientes, analizar() lo avisa (no lo bloquea).
     wrappedAnios: 'congelada',
-    cuentas: 'estado-actual', personas: 'estado-actual', gastosFijos: 'estado-actual', plataComprometida: 'estado-actual', nuRate: 'estado-actual',
+    cuentas: 'estado-actual', personas: 'estado-actual', gastosFijos: 'estado-actual', bienes: 'estado-actual', plataComprometida: 'estado-actual', nuRate: 'estado-actual',
     catsVar: 'configuracion', catsFijo: 'configuracion', presupuestos: 'configuracion', modulos: 'configuracion', config: 'configuracion', mesadaAnio: 'configuracion',
     schemaVersion: 'meta', _esquemaAnterior: 'meta', _ultimoMesVisto: 'meta', _ajustesBaseLog: 'meta', cdts: 'meta', nequiSaldo: 'meta', efectivoSaldo: 'meta', cuentasPersonalizadas: 'meta',
   };

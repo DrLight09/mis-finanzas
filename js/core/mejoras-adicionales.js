@@ -29,7 +29,7 @@
   const MONEY_SELECTORS = [
     '#heroTotal','#hero-estado','#s-disp','#s-nu','#s-ef','#s-nequi','#s-prest','#s-cdt',
     '#s-gf','#s-gv','#s-gtotal','.hero-amount','.stat-value','.row-amount',
-    '#det-cuenta-saldo','#nuTotalDisp','.cajita-val','#tc-hero-cupo'
+    '#det-cuenta-saldo','#nuTotalDisp','.cajita-val','#tc-hero-cupo','.an-bien-monto'
   ];
   // #det-cuenta-saldo: saldo del detalle de Nequi, Efectivo y cuentas personalizadas (una sola
   // pantalla; reemplaza a #det-nequi-saldo, #det-ef-saldo y #det-custom-saldo). Los saldos del

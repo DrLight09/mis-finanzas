@@ -37,7 +37,7 @@ Registrar en qué se va la plata mes a mes, separando lo que es puntual (gasto v
   cat: 'Alimentación',
   fuente: 'cajita:xxx',     // o 'nequi' | 'efectivo' | 'custom:xxx' | 'tc:xxx'
   nota: 'opcional',
-  grande: true,             // opcional: «compra grande» (no habitual), ver «Compra grande» más abajo
+  grande: true,             // opcional: true = «compra grande» (la marcó el usuario), false = «no lo es» (decisión del usuario); ausente = sin decisión (se detecta sola), ver «Compra grande»
 
   // Solo si nació de pagar un gasto fijo:
   esPagoGastoFijo: true,
@@ -79,7 +79,7 @@ No tiene campo de "pagado" — eso vive aparte, en `S.pagosGastosFijos`, precisa
 
 ### Compra grande (`gv.grande`) — un golpe real que no es un hábito
 
-Una moto o un computador son un **golpe real** al patrimonio y a la liquidez, pero **no un hábito**. Marcar un gasto variable como «compra grande» (casilla del formulario, o el botón «Marcar grande» de la fila; los gastos desde 500.000 lo muestran) no lo oculta de nada que mida lo que **tienes**, y sí lo separa de lo que mide cómo **gastas cada mes**:
+Una moto o un computador son un **golpe real** al patrimonio y a la liquidez, pero **no un hábito**. Una compra grande no se oculta de nada que mida lo que **tienes**, y sí se separa de lo que mide cómo **gastas cada mes**:
 
 | Medida | ¿Cuenta la compra grande? |
 |---|---|
@@ -88,10 +88,33 @@ Una moto o un computador son un **golpe real** al patrimonio y a la liquidez, pe
 
 Así, comprar una moto de 15 M con 20 M de ahorro deja el runway en 5 meses (el golpe es real), pero no convierte «gastas 16 M al mes» en el ritmo de los próximos meses, ni dispara «llevas 2 meses seguidos en déficit», ni deja la Proyección en «estimación» para siempre.
 
-- **Antes de guardar:** al escribir el monto (desde 500.000), el formulario muestra el impacto (`calcImpactoCompra`, `inicio.js`): «Es el 75 % de tu plata disponible y el 60 % de tu patrimonio. Después cubrirías 5,0 meses de gastos (hoy: 20,0 meses)». En ámbar bajo 3 meses y en rojo bajo 1 mes, o si con eso tus deudas superarían tu plata disponible. Pagar con tarjeta pesa igual (la deuda propia resta de la liquidez neta). Si el gasto es ≥ 30 % de lo disponible o ≥ 2 meses de gasto típico (`UMBRALES.compraGrande`), la casilla se **sugiere** marcada; si la cambias a mano, ya no se toca.
-- **Después:** `toggleCompraGrande(id)` marca o quita la marca de un gasto ya registrado (la moto de hace dos semanas). Es una propiedad del propio gasto: no guarda estado aparte, todo se recalcula solo.
-- **Dónde se ve:** etiqueta «Compra grande» en la lista; en Análisis, el balance del mes dice «Incluye $X en una compra grande (Moto) · sin ella, tu balance del mes fue +$Y» (sin esconder que el balance real es el real); en la Proyección, «Sin contar tu compra grande (Moto: $X), tu ritmo es +$Y al mes. Ya está descontada de tu patrimonio de hoy; la proyección no la repite»; en Salud, si dejó las reservas bajas, «Tu compra grande reciente (Moto, $X) pesa en tus reservas: antes de otro gasto grande, reconstruir tu fondo es la prioridad».
-- **No se infiere sola:** solo se sugiere; la marca la pone el usuario. Los gastos fijos no se marcan (ya son recurrentes por definición). Lo que **no** hace (pendiente en `mejoras-mis-finanzas.md`, P5.2): registrar el **bien** (una moto vale algo, aunque se deprecie) como un activo no líquido aparte.
+**Quién decide: tú mandas, y si no dices nada, la app lo detecta.** `Periodo.compraGrandeEstado(g, umbral)` devuelve `'si'`, `'auto'` o `'no'`:
+
+- `g.grande === true` → **sí**: la marcaste tú (casilla del formulario o botón de la fila).
+- `g.grande === false` → **no**: dijiste que no lo es. Se respeta siempre, aunque sea una moto, y no cambia sola.
+- sin decisión → **auto** si el gasto supera lo que normalmente gastas en **un mes entero** (`Periodo.umbralCompraGrande()`: la **mediana** del gasto mensual de los meses completos anteriores, mínimo 500.000, y al menos 2 meses de historia; con menos no se detecta sola). La mediana y no el promedio es a propósito: una moto no la mueve, y el umbral depende solo del pasado, no de cuánto tienes hoy, así que una compra no pasa de «normal» a «grande» con el tiempo. Los retiros manuales («Restar dinero») no se detectan solos: no son una compra.
+
+Por qué detectar sola y no solo sugerir: una marca que depende de acordarse falla justo cuando importa (la moto sin marcar volvía a leerse como hábito), y el formulario solo cubre lo registrado desde ahí, no las compras con tarjeta ni lo anterior. Es visible (etiqueta «Compra grande · automática») y reversible (botón «No es compra grande»).
+
+- **Antes de guardar:** al escribir el monto (desde 500.000), el formulario muestra el impacto (`calcImpactoCompra`, `inicio.js`): «Es el 75 % de tu plata disponible y el 60 % de tu patrimonio. Después cubrirías 5,0 meses de gastos (hoy: 20,0 meses)». En ámbar bajo 3 meses y en rojo bajo 1 mes, o si con eso tus deudas superarían tu plata disponible. Pagar con tarjeta pesa igual (la deuda propia resta de la liquidez neta). Si el gasto es ≥ 30 % de lo disponible o ≥ 2 meses de gasto típico (`UMBRALES.compraGrande`), la casilla se **marca sola**; si la cambias a mano, ya no se toca. Al guardar, la decisión de la casilla queda **explícita** (`true`; o `false` si no la marcaste en un gasto desde 500.000), para que la detección no te la cambie después.
+- **Después:** `toggleCompraGrande(id)` corrige un gasto ya registrado (la moto de hace dos semanas): si contaba como grande pasa a «no» y si no, a «sí»; siempre guarda una decisión explícita. Es una propiedad del propio gasto: no guarda estado aparte, todo se recalcula solo.
+- **Dónde se ve:** etiqueta en la lista; en Análisis, «Incluye $X en una compra grande (Moto) · sin ella, tu balance del mes fue +$Y» (el balance real, que decide el color, no cambia); en la Proyección, «Sin contar tu compra grande (Moto: $X), tu ritmo es +$Y al mes. Ya está descontada de tu patrimonio de hoy; la proyección no la repite»; en Salud, si dejó las reservas bajas, «Tu compra grande reciente (Moto, $X) pesa en tus reservas: antes de otro gasto grande, reconstruir tu fondo es la prioridad».
+- Los gastos fijos no se marcan (ya son recurrentes por definición). Una compra grande suele ser un **bien** (una moto vale algo): se registra aparte con «Registrar como bien», ver `S.bienes[]` abajo.
+
+### `S.bienes[]` — activos no líquidos (una moto, un computador)
+
+```js
+{ id: 'uuid', nombre: 'Moto', valor: 14000000, fecha: '2026-10-20', depreciacionAnual: 15, origenGastoId: 'uuid-del-gasto' }
+//                              ↑ lo que vale en `fecha`    ↑ % al año (opcional)  ↑ opcional: el gasto con el que se compró
+```
+
+Una moto de 15 M no «desaparece»: vale algo, aunque se deprecie. Pero **va aparte, a propósito**:
+
+- El **patrimonio financiero** (hero de Inicio, historial, Proyección, Salud) sigue siendo lo que te protege en una emergencia. Meter el bien adentro escondería el golpe de la compra justo cuando más importa verlo.
+- Un bien **nunca entra en la liquidez ni en el runway** (`calcLiquidez` no los mira): no se pueden gastar sin venderlos. Salud tampoco los mira (una prueba lo fija: con y sin bienes, el resultado de Salud es idéntico).
+- El valor es una **estimación del usuario**: la app no sabe lo que vale tu moto. `valor` es lo que vale en `fecha`; con `depreciacionAnual` (% al año, **compuesto**: 10 M al 10 % anual valen 8,1 M tras 2 años, no 8) baja desde esa fecha (`calcValorBien`). Para revaluarlo se edita el valor y la fecha. Una fecha futura no lo revaloriza, y una ilegible no produce `NaN`.
+- **Dónde:** el botón «Registrar como bien» aparece en la fila de un gasto que es una compra grande (marcada o detectada) y abre el sheet con nombre, monto y fecha del gasto ya cargados (`abrirSheetBien(idGasto)`); el bien guarda `origenGastoId` y la fila pasa a decir «Bien registrado». Borrar el bien **no** toca el gasto. En **Análisis**, una tarjeta «Bienes» (solo si hay) muestra el valor estimado, el «Patrimonio con bienes» (`calcPatrimonioConBienes` = patrimonio financiero + bienes, **solo para mostrar aparte**) y cada bien con Editar y Quitar.
+- `S.bienes` viaja a la nube y a los respaldos con el resto del estado; el import rechaza un respaldo donde `bienes` no sea un array; el cierre de períodos lo clasifica como `estado-actual`.
 
 ### `S.pagosGastosFijos{}` — registro de qué se pagó cada mes
 

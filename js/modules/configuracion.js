@@ -220,7 +220,7 @@ function _validarEstructuraJSON(data){
   if('nuRate' in data&&data.nuRate!==null&&typeof data.nuRate!=='number'){
     errores.push('El campo "nuRate" debe ser un número (o null si no se configuró).');
   }
-  ['gastosFijos','ingresosFijos','movimientos','misDeudas','encargos','tarjetasCredito','personas','libro'].forEach(k=>{
+  ['gastosFijos','ingresosFijos','movimientos','misDeudas','encargos','tarjetasCredito','personas','libro','bienes'].forEach(k=>{
     if(k in data&&!Array.isArray(data[k]))errores.push('El campo "'+k+'" debe ser un array.');
   });
   ['pagosGastosFijos','mesadas','presupuestos','wrappedAnios'].forEach(k=>{

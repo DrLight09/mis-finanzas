@@ -1800,6 +1800,7 @@
           <div class="card ix-div-147">
             <div class="ix-minw100pct" id="an-patrimonio-chart"></div>
           </div>
+          <div id="an-bienes"></div>
           <div class="sec-title">Top categorías este mes</div>
           <div id="an-cats-mes" class="card ix-p12-15-mb9"></div>
           <div class="sec-title">Gastos por mes (últimos 12)</div>
@@ -2537,6 +2538,28 @@
           id="btn-guardar-gasto-fijo">Guardar</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="gasto-fijo">Cancelar</button>
+      </div>
+    </div>
+
+    <!-- BIEN (moto, computador…) -->
+    <div class="overlay" id="sheet-bien" data-sheet-id="bien">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title" id="bien-sheet-title">Registrar bien</div>
+        <div class="ig"><label class="il" for="bien_n">Nombre</label><input
+            type="text" id="bien_n" maxlength="30" placeholder="Ej: Moto, Computador"></div>
+        <div class="ig"><label class="il" for="bien_v">Valor estimado hoy</label><input
+            type="text" inputmode="decimal" id="bien_v" placeholder="0,00"
+            class="money-input"></div>
+        <div class="ig"><label class="il" for="bien_f">Valor a la fecha</label><input
+            type="date" id="bien_f"></div>
+        <div class="ig"><label class="il" for="bien_d">Se deprecia al año, % (opcional)</label><input
+            type="text" inputmode="decimal" id="bien_d" maxlength="5" placeholder="Ej: 15 — con el tiempo vale menos"></div>
+        <div class="ix-gv-impacto">Es una estimación tuya y va aparte: no cuenta en tu plata disponible ni en tu patrimonio del inicio, porque no se puede gastar sin venderlo.</div>
+        <button type="button" class="btn btn-primary"
+          id="btn-guardar-bien">Guardar</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="bien">Cancelar</button>
       </div>
     </div>
 

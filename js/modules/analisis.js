@@ -25,6 +25,27 @@
    ═══════════════════════════════════════════════════════════════ */
 
 /* ---- ANÁLISIS FINANCIERO ---- */
+// Bienes (una moto, un computador): activos no líquidos, APARTE del patrimonio financiero. Solo aparece si hay bienes registrados.
+function renderBienes(){
+  const el=document.getElementById('an-bienes');
+  if(!el)return;
+  const b=calcBienes();
+  if(!b.items.length){el.innerHTML='';return;}
+  el.innerHTML=html`<div class="sec-title">Bienes</div>
+    <div class="card an-bienes-card">
+      <div class="an-bienes-res"><span>Valor estimado de tus bienes</span><b class="an-bien-monto">${fmt(b.total)}</b></div>
+      <div class="an-bienes-res"><span>Patrimonio con bienes</span><b class="an-bien-monto">${fmt(calcPatrimonioConBienes())}</b></div>
+      ${b.items.map(x=>html`<div class="an-bien-fila">
+        <div class="an-bien-info"><div class="an-bien-nom">${x.nombre}</div>
+          <div class="an-bien-sub">${x.depreciacionAnual>0?'Se deprecia '+String(x.depreciacionAnual).replace('.',',')+' % al año · ':''}registrado en ${fmt(x.valor)}</div></div>
+        <div class="an-bien-der"><span class="an-bien-monto">${fmt(x.valorEstimado)}</span>
+          <button type="button" class="gasto-btn-editar" ${raw(Events.attr('gastos:abrirEditarBien',x.id))}>Editar</button>
+          <button type="button" class="gasto-btn-editar" ${raw(Events.attr('gastos:eliminarBien',x.id))}>Quitar</button></div>
+      </div>`)}
+      <div class="an-bienes-nota">Es una estimación tuya y va aparte: no cuenta en tu plata disponible ni en el patrimonio del inicio, porque no se puede gastar sin venderlo.</div>
+    </div>`;
+}
+
 function renderAnalisis(){
   const mes=mesActual();
   const MESES_NOMBRE=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -291,6 +312,7 @@ function renderAnalisis(){
   }
 
   // ── Historial de patrimonio ────────────────────────────────────────────
+  renderBienes();
   const patriEl=document.getElementById('an-patrimonio-chart');
   if(patriEl){
     const hist=(S.patrimonioHistorial||[]).slice(-30); // últimos 30 días

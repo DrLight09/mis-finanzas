@@ -168,9 +168,12 @@ function actualizarGvImpacto() {
 function toggleCompraGrande(id) {
   const g = (S.gastosVar || []).find(x => x.id === id);
   if (!g) return;
-  if (g.grande) delete g.grande; else g.grande = true;
+  // Se guarda SIEMPRE una decisión explícita (true/false): lo que el usuario dice manda sobre la detección automática, y no cambia
+  // sola si más adelante cambia su historial.
+  const eraGrande = Periodo.compraGrandeEstado(g, Periodo.umbralCompraGrande()) !== 'no';
+  g.grande = !eraGrande;
   save(); refresh();
-  toast(g.grande ? 'Marcada como compra grande: cuenta completa en tu patrimonio, pero no como gasto habitual' : 'Ya no es una compra grande', 'ok');
+  toast(g.grande ? 'Marcada como compra grande: cuenta completa en tu patrimonio, pero no como gasto habitual' : 'Listo: ya no cuenta como compra grande', 'ok');
 }
 
 function abrirNuevoGastoVar() {
@@ -209,6 +212,72 @@ function _gfPoblar(g) {
   const d = document.getElementById('gf_d');
   if (d) d.value = g && g.dia ? String(g.dia) : '';
   if (g && g.cat) document.getElementById('gf_c').value = g.cat;
+}
+
+/* ---- BIENES (una moto, un computador): activos no líquidos, aparte del patrimonio financiero (ver calcBienes en core-state.js) ---- */
+let _bienEditId = null;     // id del bien que se edita (null = uno nuevo)
+let _bienOrigenId = null;   // id del gasto del que nace («Registrar como bien»)
+
+function _bienPoblar(b) {
+  document.getElementById('bien-sheet-title').textContent = _bienEditId ? 'Editar bien' : 'Registrar bien';
+  document.getElementById('bien_n').value = b ? (b.nombre || '') : '';
+  document.getElementById('bien_v').value = b && b.valor ? fmtInput(b.valor) : '';
+  document.getElementById('bien_f').value = b && b.fecha ? b.fecha : hoy();
+  document.getElementById('bien_d').value = b && b.depreciacionAnual ? String(b.depreciacionAnual).replace('.', ',') : '';
+}
+
+// Desde un gasto marcado como compra grande: el bien nace con su nombre, su monto como valor inicial y su fecha.
+function abrirSheetBien(origenGastoId) {
+  _bienEditId = null;
+  _bienOrigenId = origenGastoId || null;
+  const g = _bienOrigenId ? (S.gastosVar || []).find(x => x.id === _bienOrigenId) : null;
+  _bienPoblar(g ? { nombre: g.desc, valor: g.monto, fecha: g.fecha } : null);
+  openSheet('bien');
+}
+
+function abrirEditarBien(id) {
+  const b = (S.bienes || []).find(x => x.id === id);
+  if (!b) return;
+  _bienEditId = id;
+  _bienOrigenId = b.origenGastoId || null;
+  _bienPoblar(b);
+  openSheet('bien');
+}
+
+function guardarBien() {
+  const nombre = document.getElementById('bien_n').value.trim();
+  const valor = parseMoney(document.getElementById('bien_v').value);
+  const fecha = document.getElementById('bien_f').value;
+  const depTxt = document.getElementById('bien_d').value.trim().replace(',', '.');
+  if (!nombre) { toast('Ponle un nombre al bien', 'err'); return; }
+  if (!(valor > 0)) { toast('Ingresa el valor estimado', 'err'); return; }
+  if (!fecha) { toast('Indica la fecha de ese valor', 'err'); return; }
+  const dep = depTxt === '' ? null : Number(depTxt);
+  if (dep !== null && !(isFinite(dep) && dep >= 0 && dep <= 100)) { toast('La depreciación debe estar entre 0 y 100 %', 'err'); return; }
+  if (!S.bienes) S.bienes = [];
+  const editando = _bienEditId ? S.bienes.find(x => x.id === _bienEditId) : null;
+  const datos = { nombre, valor, fecha };
+  if (dep) datos.depreciacionAnual = dep;
+  if (editando) {
+    Object.assign(editando, datos);
+    if (!dep) delete editando.depreciacionAnual;
+  } else {
+    const nuevo = { id: uid(), ...datos };
+    if (_bienOrigenId) nuevo.origenGastoId = _bienOrigenId;
+    S.bienes.push(nuevo);
+  }
+  _bienEditId = null; _bienOrigenId = null;
+  save(); refresh(); closeSheet('bien');
+  if (window.logCambio) logCambio(editando ? 'Editaste un bien' : 'Registraste un bien', nombre, valor, 'bien');
+  toast(editando ? 'Bien actualizado' : 'Bien registrado: va aparte de tu plata disponible', 'ok');
+}
+
+async function eliminarBien(id) {
+  const ok = await dialogo('Eliminar bien', '¿Seguro que quieres quitar este bien? El gasto con el que lo compraste no se toca.', 'Eliminar', true);
+  if (!ok) return;
+  S.bienes = (S.bienes || []).filter(x => x.id !== id);
+  save(); refresh();
+  toast('Bien eliminado', 'ok');
 }
 
 function abrirNuevoGastoFijo() {
@@ -323,6 +392,9 @@ function renderGastosVar() {
     return;
   }
 
+  // Umbral de detección automática, UNA vez para toda la lista (no por fila).
+  const umbralGrande = Periodo.umbralCompraGrande();
+
   function itemHtml(g) {
     const esFijo = !!g.esPagoGastoFijo;
     const esTC = !!g._esCompraTC;
@@ -340,11 +412,20 @@ function renderGastosVar() {
         : esPagoTC
           ? [html`<span class="badge badge-xs bg-green">Pago TC</span>`]
           : [html`<span class="badge badge-xs bg-blue">${g.cat}</span>`];
-    // «Compra grande»: etiqueta y, en gastos propios de monto relevante (o ya marcados), un botón para marcar/quitar.
-    if (g.grande && !esFijo) tipoBadges.push(html`<span class="badge badge-xs gasto-badge-grande">Compra grande</span>`);
-    const puedeMarcar = !esFijo && !esPagoTC && !esSecundario && ((g.monto || 0) >= UMBRALES.compraGrande.minimo || g.grande);
+    // «Compra grande»: etiqueta («automática» si la detectó la app, no el usuario) y, en gastos propios de monto relevante o ya
+    // grandes, un botón para corregirla en cualquiera de los dos sentidos.
+    const estGrande = (esFijo || esPagoTC || esSecundario) ? 'no' : Periodo.compraGrandeEstado(g, umbralGrande);
+    if (estGrande !== 'no') tipoBadges.push(html`<span class="badge badge-xs gasto-badge-grande">${estGrande === 'auto' ? 'Compra grande · automática' : 'Compra grande'}</span>`);
+    // Una compra grande suele ser un bien (una moto vale algo): si aún no se registró como tal, se ofrece, aparte del patrimonio.
+    if (estGrande !== 'no') {
+      tipoBadges.push((S.bienes || []).some(b => b.origenGastoId === g.id)
+        ? html`<span class="badge badge-xs bg-blue">Bien registrado</span>`
+        : html`<button type="button" class="gasto-btn-editar" data-stop-propagation="true" ${raw(Events.attr('gastos:abrirSheetBien', g.id))}>Registrar como bien</button>`);
+    }
+    const puedeMarcar = !esFijo && !esPagoTC && !esSecundario && (estGrande !== 'no' || (g.monto || 0) >= Periodo.COMPRA_GRANDE_AUTO.minimo);
+    const etiquetaBtn = estGrande === 'auto' ? 'No es compra grande' : estGrande === 'si' ? 'Quitar «grande»' : 'Marcar grande';
     const btnGrande = puedeMarcar
-      ? html`<button type="button" class="gasto-btn-editar" data-stop-propagation="true" ${raw(Events.attr('gastos:toggleCompraGrande', g.id))}>${g.grande ? 'Quitar «grande»' : 'Marcar grande'}</button>` : '';
+      ? html`<button type="button" class="gasto-btn-editar" data-stop-propagation="true" ${raw(Events.attr('gastos:toggleCompraGrande', g.id))}>${etiquetaBtn}</button>` : '';
     return filaMovimiento({
       clase: (esFijo || esPagoTC) ? 'gasto-item-atenuado' : '',
       nombreClase: 'row-name gasto-nombre-fila',
@@ -427,7 +508,13 @@ function addGastoVar() {
   if (!S.gastosVar) S.gastosVar = [];
   const esTCFuente = fuente && fuente.startsWith('tc:');
   const gastoObj = { id: compraId, desc, monto, fecha: fechaGasto, cat: catGasto, fuente, splits: splits || undefined, nota: notaGasto, clase: 'gasto' };
-  if ((document.getElementById('gv_grande') || {}).checked) gastoObj.grande = true;
+  // La decisión de la casilla se guarda explícita: true si la marcó; false si no la marcó en un gasto desde el monto mínimo (así la
+  // detección automática no se la cambia después). En gastos pequeños no se guarda nada (no hay nada que decidir).
+  const _gvChkEl = document.getElementById('gv_grande');
+  if (_gvChkEl) {
+    if (_gvChkEl.checked) gastoObj.grande = true;
+    else if (monto >= Periodo.COMPRA_GRANDE_AUTO.minimo) gastoObj.grande = false;
+  }
   // Si la fuente es TC, registrar la compra a través del mismo servicio que
   // usa el módulo de tarjetas (tcCrearCompra) — misma lógica, un solo lugar.
   if (esTCFuente) {
@@ -799,6 +886,8 @@ const _gBtnGVSave = document.getElementById('btn-guardar-gasto-var');
 // pegado a la versión sin validar. Mismo motivo que editarSpotify en
 // spotify.js. Ídem addGastoFijo.
 if (_gBtnGVSave) _gBtnGVSave.addEventListener('click', () => addGastoVar());
+const _gBtnBienSave = document.getElementById('btn-guardar-bien');
+if (_gBtnBienSave) _gBtnBienSave.addEventListener('click', () => guardarBien());
 const _gBtnGFSave = document.getElementById('btn-guardar-gasto-fijo');
 if (_gBtnGFSave) _gBtnGFSave.addEventListener('click', () => addGastoFijo());
 const _gBtnPGFConfirm = document.getElementById('btn-confirmar-pagar-gf');
@@ -833,4 +922,7 @@ Events.registerAll('gastos', {
   abrirNuevoGastoFijo,
   abrirEditarGastoFijo,
   toggleCompraGrande,
+  abrirSheetBien,
+  abrirEditarBien,
+  eliminarBien,
 });

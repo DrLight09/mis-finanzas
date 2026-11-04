@@ -86,6 +86,7 @@ let S={
   deudores:[],misDeudas:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
   spotify:{personas:[],costo:0,cajitaId:'',historial:[]}, // todo el estado de Spotify en una llave (migración v9); ver _ensureSpotify()
   gastosFijos:[],
+  bienes:[], // activos NO líquidos (una moto, un computador): {id,nombre,valor,fecha,depreciacionAnual?,origenGastoId?}; ver calcBienes()
   pagosGastosFijos:{},
   gastosVar:[],
   encargos:[],
@@ -911,6 +912,32 @@ function calcPatrimonioTotal(){ return calcPatrimonioDesglose().total; }
 
 // Patrimonio visible (sin Alcancía): el número del hero, de la Proyección, de Salud y de `valorVisible` en el historial.
 function calcPatrimonioVisible(){ return calcPatrimonioDesglose().visible; }
+
+/* ================================================================
+   BIENES (una moto, un computador) — activos NO líquidos, aparte del patrimonio financiero
+   ================================================================
+   Una moto de 15 M no «desaparece»: vale algo, aunque se deprecie. Pero va APARTE a propósito:
+     · el patrimonio financiero (el del hero, el historial, la Proyección) sigue siendo lo que te protege en una emergencia; meter el
+       bien adentro escondería el golpe de la compra justo cuando más importa verlo;
+     · nunca entra en la liquidez ni en el runway (calcLiquidez no los mira): no se pueden gastar sin venderlos.
+   El valor es una ESTIMACIÓN del usuario: la app no sabe lo que vale tu moto. `valor` es lo que vale en `fecha`; con
+   `depreciacionAnual` (% al año, compuesto) baja desde esa fecha. Para revaluarlo, el usuario edita el valor y la fecha.
+   ================================================================ */
+function calcValorBien(b, hoyStr){
+  const v=Number(b&&b.valor)||0;
+  const dep=Number(b&&b.depreciacionAnual)||0;
+  if(!(dep>0)||!(b&&b.fecha))return v;
+  const anios=(_fechaSafe(hoyStr||hoy())-_fechaSafe(b.fecha))/(365.25*86400000);
+  if(!isFinite(anios))return v;
+  return Math.round(v*Math.pow(1-Math.min(dep,100)/100,Math.max(0,anios)));
+}
+// → { items:[{id,nombre,valor,fecha,depreciacionAnual,origenGastoId,valorEstimado}], total }
+function calcBienes(hoyStr){
+  const items=(S.bienes||[]).map(b=>({id:b.id,nombre:b.nombre,valor:b.valor||0,fecha:b.fecha,depreciacionAnual:b.depreciacionAnual||0,origenGastoId:b.origenGastoId,valorEstimado:calcValorBien(b,hoyStr)}));
+  return {items,total:items.reduce((a,x)=>a+x.valorEstimado,0)};
+}
+// Patrimonio financiero + bienes (valor estimado). Solo para mostrarlo APARTE (Análisis): no reemplaza al patrimonio del hero.
+function calcPatrimonioConBienes(hoyStr){ return calcPatrimonioVisible()+calcBienes(hoyStr).total; }
 
 // Texto del hero con lo que de verdad entra en la cuenta: solo menciona los pasivos que existen hoy.
 function patrimonioFormulaTexto(d){

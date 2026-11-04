@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laboratorio de Cajitas — Nu</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#F7F5FB;
+    --card:#FFFFFF;
+    --ink:#1A1025;
+    --accent:#820AD1;
+    --accent-soft:#F1E4FB;
+    --accent-line:#D9C4F2;
+    --positive:#0E9F6E;
+    --positive-soft:#E4F7EF;
+    --negative:#E11D48;
+    --muted:#7C7391;
+    --rule:#E4DEF0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    padding:32px 16px 80px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px;margin:0 auto;}
+
+  header{margin-bottom:28px;}
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:600;
+    display:flex;align-items:center;gap:8px;
+  }
+  .eyebrow::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block;}
+  h1{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:30px;
+    font-weight:700;
+    margin:6px 0 6px;
+    letter-spacing:-0.01em;
+  }
+  .sub{color:var(--muted);font-size:14.5px;line-height:1.5;max-width:56ch;}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--rule);
+    border-radius:14px;
+    padding:22px;
+    margin-bottom:18px;
+  }
+  .card h2{
+    font-family:'Space Grotesk',sans-serif;
+    font-size:15px;
+    margin:0 0 14px;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:10px;
+  }
+  .card h2 .tag{
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px;
+    color:var(--muted);
+    font-weight:400;
+  }
+
+  /* Setup: cajita chips as receipt strips */
+  .cajita-setup{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+  .cajita-row{
+    display:grid;
+    grid-template-columns:1.2fr 1fr 1fr auto;
+    gap:10px;
+    align-items:center;
+    padding:10px 12px;
+    border:1px dashed var(--accent-line);
+    border-radius:10px;
+    background:var(--accent-soft);
+  }
+  .cajita-row input[type=text], .cajita-row input[type=number], .cajita-row input[type=date]{
+    font-family:'JetBrains Mono',monospace;
+    border:1px solid var(--rule);
+    border-radius:7px;
+    padding:8px 10px;
+    font-size:13px;
+    background:#fff;
+    color:var(--ink);
+    width:100%;
+  }
+  .cajita-row .swatch{
+    width:10px;height:10px;border-radius:50%;
+  }
+  .cajita-row .del{
+    background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:4px 8px;
+  }
+  .cajita-row .del:hover{color:var(--negative);}
+
+  .add-cajita{
+    margin-top:12px;
+    background:none;
+    border:1px dashed var(--accent-line);
+    color:var(--accent);
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    padding:9px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    width:100%;
+  }
+  .add-cajita:hover{background:var(--accent-soft);}
+
+  /* Daily entry */
+  .entry-date{
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px;
+    border:1px solid var(--rule);
+    border-radius:7px;
+    padding:8px 10px;
+    margin-bottom:14px;
+    background:#fff;
+    color:var(--ink);
+  }
+  .entry-grid{display:flex;flex-direction:column;gap:10px;}
+  .entry-line{
+    display:grid;
+    grid-template-columns:22px 1fr 140px;
+    gap:10px;
+    align-items:center;
+  }
+  .entry-line .dot{width:10px;height:10px;border-radius:50%;}
+  .entry-line label{font-size:13px;color:var(--ink);font-weight:500;}
+  .entry-line small{display:block;font-family:'JetBrains Mono',monospace;color:var(--muted);font-size:11px;margin-top:1px;}
+  .entry-line input{
+    font-family:'JetBrains Mono',monospace;
+    font-size:14px;
+    text-align:right;
+    border:1px solid var(--rule);
+    border-radius:7px;
+    padding:9px 10px;
+    background:#fff;
+    color:var(--ink);
+  }
+  .entry-line input:focus, .cajita-row input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+
+  .save-btn{
+    margin-top:16px;
+    width:100%;
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    padding:12px;
+    border-radius:9px;
+    cursor:pointer;
+    transition:transform .08s ease, opacity .15s ease;
+  }
+  .save-btn:hover{opacity:.92;}
+  .save-btn:active{transform:scale(0.99);}
+  .save-btn:disabled{opacity:.5;cursor:default;}
+
+  .status{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--positive);
+    margin-top:10px;
+    min-height:16px;
+  }
+  .status.err{color:var(--negative);}
+
+  /* Ledger / receipt strip per cajita */
+  .ledger{border:1px solid var(--rule);border-radius:14px;overflow:hidden;margin-bottom:14px;background:var(--card);}
+  .ledger-head{
+    padding:14px 18px;
+    display:flex;justify-content:space-between;align-items:baseline;
+    border-bottom:1px dashed var(--rule);
+  }
+  .ledger-head .name{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px;}
+  .ledger-head .name .swatch{width:9px;height:9px;border-radius:50%;}
+  .ledger-head .meta{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--muted);text-align:right;}
+  .ledger-scroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:12px;min-width:620px;}
+  thead th{
+    text-align:right;
+    font-weight:500;
+    color:var(--muted);
+    padding:9px 18px;
+    font-size:10.5px;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    border-bottom:1px solid var(--rule);
+  }
+  thead th:first-child{text-align:left;}
+  tbody td{padding:9px 18px;text-align:right;border-bottom:1px dotted var(--rule);}
+  tbody td:first-child{text-align:left;color:var(--muted);}
+  tbody tr:last-child td{border-bottom:none;}
+  .delta.pos{color:var(--positive);}
+  .delta.neg{color:var(--negative);}
+  .rate{color:var(--muted);}
+  .diff.ok{color:var(--positive);}
+  .diff.off{color:var(--negative);font-weight:600;}
+  .empty-row td{text-align:center;color:var(--muted);padding:16px;font-style:normal;}
+
+  .actions{display:flex;gap:10px;margin-top:6px;}
+  .btn-secondary{
+    flex:1;
+    background:#fff;
+    border:1px solid var(--rule);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:13px;
+    padding:11px;
+    border-radius:9px;
+    cursor:pointer;
+  }
+  .btn-secondary:hover{background:var(--accent-soft);border-color:var(--accent-line);}
+  .btn-secondary.danger:hover{background:#FEECEF;border-color:#F4B8C4;color:var(--negative);}
+  input[type=file]{display:none;}
+
+  footer{
+    text-align:center;
+    color:var(--muted);
+    font-size:11.5px;
+    font-family:'JetBrains Mono',monospace;
+    margin-top:20px;
+    line-height:1.7;
+  }
+
+  @media (max-width:480px){
+    .cajita-row{grid-template-columns:1fr;}
+    .entry-line{grid-template-columns:16px 1fr 110px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Experimento · Interés diario</div>
+    <h1>Laboratorio de Cajitas</h1>
+    <p class="sub">Registra el saldo exacto de cada cajita, un dato por día. Con suficientes días vamos a poder reconstruir cómo Nu calcula y redondea el interés.</p>
+  </header>
+
+  <div class="card">
+    <h2>Cajitas de prueba <span class="tag" id="totalTag">total: $0</span></h2>
+    <div class="cajita-setup" id="cajitaSetup"></div>
+    <button class="add-cajita" id="addCajitaBtn">+ agregar otra cajita</button>
+  </div>
+
+  <div class="card">
+    <h2>Tasa EA esperada <span class="tag">la que dice tener tu cajita en Nu ahora mismo</span></h2>
+    <div class="cajita-row" style="grid-template-columns:1fr auto;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="swatch" style="background:var(--accent)"></span>
+        <span style="font-size:13.5px;font-weight:500;">Tasa EA (%)</span>
+      </div>
+      <input type="number" step="0.01" id="tasaEAInput" style="width:110px;text-align:right;" placeholder="9.25">
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-top:10px;line-height:1.5;">
+      Metes la tasa que Nu dice estar pagando ahora mismo. La app calcula, día a día, cuánto <b>debería</b> valer cada cajita con interés compuesto diario a esa tasa, y lo compara contra lo que anotaste de verdad. Si coincide, la fórmula de Nu es la misma que está usando la app. Si no, ahí está el descuadre. Si la tasa cambia a mitad del experimento, solo actualiza este valor: aplica desde ese día hacia adelante, sin tocar lo ya comparado.
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Registro de hoy <span class="tag">1 lectura por día, entre 12 p.m. y 11 p.m.</span></h2>
+    <input type="date" class="entry-date" id="entryDate">
+    <div class="entry-grid" id="entryGrid"></div>
+    <button class="save-btn" id="saveBtn">Guardar lectura de hoy</button>
+    <div class="status" id="statusMsg"></div>
+  </div>
+
+  <div id="ledgers"></div>
+
+  <div class="card">
+    <div class="actions">
+      <button class="btn-secondary" id="exportBtn">Exportar JSON</button>
+      <button class="btn-secondary" id="importBtn">Importar JSON</button>
+      <button class="btn-secondary danger" id="resetBtn">Borrar todo</button>
+    </div>
+    <input type="file" id="fileInput" accept="application/json">
+  </div>
+
+  <footer>se guarda en este navegador, atado a este mismo archivo · si cambias de navegador, celular, o borras datos de navegación, se pierde · exporta seguido</footer>
+</div>
+
+<script>
+const PALETTE = ['#820AD1','#0E9F6E','#E7A100','#2563EB','#DB2777','#0891B2'];
+
+const DEFAULT_CAJITAS = [
+  {id:'a', name:'Prueba A', initial:10000.00, startDate: todayStr()},
+  {id:'b', name:'Prueba B', initial:100317.45, startDate: todayStr()},
+  {id:'c', name:'Prueba C', initial:500729.88, startDate: todayStr()},
+  {id:'d', name:'Prueba D', initial:2200952.67, startDate: todayStr()},
+];
+
+let state = { cajitas: [], entries: [], tasaHistorial: [] };
+let loaded = false;
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function fmtCOP(n){
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return '$' + n.toLocaleString('es-CO', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function todayStr(){
+  const d = new Date();
+  const off = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - off*60000);
+  return local.toISOString().slice(0,10);
+}
+
+function diffDays(a, b){
+  return Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00')) / 86400000);
+}
+
+// Tasa EA vigente en una fecha dada, según el historial que se va guardando
+// cada vez que editas el campo "Tasa EA esperada". Si aún no hay ningún
+// registro anterior a esa fecha, usa el más antiguo que exista (o null si no hay ninguno).
+function getTasaVigente(dateStr){
+  const hist = (state.tasaHistorial||[]).slice().sort((a,b)=> a.date<b.date?-1:(a.date>b.date?1:0));
+  if (!hist.length) return null;
+  let tasa = null;
+  for (const h of hist){ if (h.date <= dateStr) tasa = h.tasa; else break; }
+  return tasa !== null ? tasa : hist[0].tasa;
+}
+
+// Parte el rango [desdeStr, hastaStr] en tramos según cuándo cambió la tasa esperada,
+// igual que hace la app principal, para poder proyectar el saldo esperado con precisión
+// incluso si ajustaste la tasa a mitad del experimento.
+function segmentosTasa(desdeStr, hastaStr){
+  const cambios = (state.tasaHistorial||[])
+    .filter(h => h.date > desdeStr && h.date <= hastaStr)
+    .sort((a,b)=> a.date<b.date?-1:1);
+  const puntos = [desdeStr, ...cambios.map(h=>h.date), hastaStr];
+  const segs = [];
+  for (let i=0;i<puntos.length-1;i++){
+    const dias = diffDays(puntos[i], puntos[i+1]);
+    if (dias<=0) continue;
+    segs.push({ dias, tasa: getTasaVigente(puntos[i]) });
+  }
+  return segs;
+}
+
+// Saldo esperado según interés compuesto diario con la(s) tasa(s) que estuvieron vigentes.
+// Devuelve null si no hay ninguna tasa registrada para ese tramo (no hay con qué comparar).
+function saldoEsperado(prevBalance, desdeStr, hastaStr){
+  const segs = segmentosTasa(desdeStr, hastaStr);
+  if (!segs.length || segs.some(s=>s.tasa===null)) return null;
+  let val = prevBalance;
+  segs.forEach(seg=>{
+    const tasaDiaria = Math.pow(1 + seg.tasa/100, 1/365) - 1;
+    val = val * Math.pow(1 + tasaDiaria, seg.dias);
+  });
+  return val;
+}
+
+const LS_KEY = 'lab_cajitas_nu_data';
+
+async function loadState(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw){
+      state = JSON.parse(raw);
+      if (!state.tasaHistorial) state.tasaHistorial = [];
+      state.cajitas.forEach(c=>{ if(!c.startDate) c.startDate = todayStr(); });
+    } else {
+      state = { cajitas: DEFAULT_CAJITAS.map(c=>({...c})), entries: [], tasaHistorial: [] };
+      await saveState();
+    }
+  } catch(e){
+    state = { cajitas: DEFAULT_CAJITAS.map(c=>({...c})), entries: [], tasaHistorial: [] };
+  }
+  loaded = true;
+  renderAll();
+}
+
+async function saveState(){
+  try{
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+  } catch(e){
+    setStatus('No se pudo guardar en este navegador. Exporta el JSON como respaldo.', true);
+  }
+}
+
+function setStatus(msg, isErr){
+  const el = document.getElementById('statusMsg');
+  el.textContent = msg;
+  el.className = 'status' + (isErr ? ' err' : '');
+  if (!isErr) setTimeout(()=>{ if(el.textContent===msg) el.textContent=''; }, 3500);
+}
+
+function renderAll(){
+  renderCajitaSetup();
+  renderEntryGrid();
+  renderTasaInput();
+  renderLedgers();
+}
+
+function renderTasaInput(){
+  const el = document.getElementById('tasaEAInput');
+  if (!el || document.activeElement === el) return;
+  const date = document.getElementById('entryDate') ? document.getElementById('entryDate').value : todayStr();
+  const t = getTasaVigente(date || todayStr());
+  el.value = t !== null ? t : '';
+}
+
+function renderCajitaSetup(){
+  const wrap = document.getElementById('cajitaSetup');
+  wrap.innerHTML = '';
+  let total = 0;
+  state.cajitas.forEach((c, i)=>{
+    total += Number(c.initial)||0;
+    if (!c.startDate) c.startDate = todayStr();
+    const row = document.createElement('div');
+    row.className = 'cajita-row';
+    const color = PALETTE[i % PALETTE.length];
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="swatch" style="background:${color}"></span>
+        <input type="text" value="${c.name}" data-field="name" data-id="${c.id}">
+      </div>
+      <input type="number" step="0.01" value="${c.initial}" data-field="initial" data-id="${c.id}">
+      <input type="date" value="${c.startDate}" data-field="startDate" data-id="${c.id}" title="fecha en que quedó ese saldo inicial en Nu">
+      <button class="del" data-id="${c.id}" title="eliminar cajita">✕</button>
+    `;
+    wrap.appendChild(row);
+  });
+  document.getElementById('totalTag').textContent = 'total: ' + fmtCOP(total);
+
+  wrap.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      const id = e.target.dataset.id, field = e.target.dataset.field;
+      const c = state.cajitas.find(x=>x.id===id);
+      if (!c) return;
+      c[field] = field==='initial' ? (parseFloat(e.target.value)||0) : e.target.value;
+      saveState();
+      renderAll();
+    });
+  });
+  wrap.querySelectorAll('.del').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.cajitas = state.cajitas.filter(c=>c.id!==btn.dataset.id);
+      state.entries = state.entries.filter(en=>en.cajitaId!==btn.dataset.id);
+      saveState();
+      renderAll();
+    });
+  });
+}
+
+function renderEntryGrid(){
+  const grid = document.getElementById('entryGrid');
+  const dateInput = document.getElementById('entryDate');
+  if (!dateInput.value) dateInput.value = todayStr();
+  const date = dateInput.value;
+
+  grid.innerHTML = '';
+  state.cajitas.forEach((c,i)=>{
+    const color = PALETTE[i % PALETTE.length];
+    const existing = state.entries.find(e=>e.cajitaId===c.id && e.date===date);
+    const prevEntries = state.entries.filter(e=>e.cajitaId===c.id && e.date<date).sort((a,b)=>a.date<b.date?1:-1);
+    const prevVal = prevEntries[0] ? prevEntries[0].balance : c.initial;
+
+    const line = document.createElement('div');
+    line.className = 'entry-line';
+    line.innerHTML = `
+      <span class="dot" style="background:${color}"></span>
+      <label>${c.name}<small>anterior: ${fmtCOP(prevVal)}</small></label>
+      <input type="number" step="0.01" placeholder="0.00" data-id="${c.id}" value="${existing ? existing.balance : ''}">
+    `;
+    grid.appendChild(line);
+  });
+}
+
+function renderLedgers(){
+  const wrap = document.getElementById('ledgers');
+  wrap.innerHTML = '';
+  const TOLERANCIA = 1; // pesos de margen por redondeo de centavos
+  const EPS = 0.001; // margen para comparar floats al identificar el modo de redondeo
+  const modoGlobal = { redondea:0, trunca:0, arriba:0, ninguno:0, ambiguo:0 };
+
+  state.cajitas.forEach((c,i)=>{
+    const color = PALETTE[i % PALETTE.length];
+    const entries = state.entries
+      .filter(e=>e.cajitaId===c.id)
+      .sort((a,b)=> a.date<b.date?-1:1);
+
+    const box = document.createElement('div');
+    box.className = 'ledger';
+    let rowsHtml = '';
+    let coinciden = 0, comparables = 0;
+    const modoCajita = { redondea:0, trunca:0, arriba:0, ninguno:0, ambiguo:0 };
+
+    if (entries.length === 0){
+      rowsHtml = `<tr class="empty-row"><td colspan="6">aún no hay lecturas guardadas</td></tr>`;
+    } else {
+      let prevBalance = c.initial;
+      let prevDate = c.startDate || entries[0].date;
+      entries.forEach(e=>{
+        const delta = e.balance - prevBalance;
+        const deltaClass = delta > 0 ? 'pos' : (delta < 0 ? 'neg' : '');
+
+        const dias = diffDays(prevDate, e.date);
+        const esperado = dias > 0 ? saldoEsperado(prevBalance, prevDate, e.date) : null;
+        let esperadoHtml = '<span class="rate">—</span>';
+        let veredictoHtml = '<span class="rate">sin tasa</span>';
+        let modoHtml = '';
+
+        if (dias <= 0 && delta !== 0){
+          veredictoHtml = '<span class="rate" title="La fecha de creación de esta cajita es el mismo día que este registro, pero ya hubo crecimiento. Si el saldo inicial es de un día anterior, corrige la fecha de creación arriba.">⚠ ajusta fecha de creación</span>';
+        } else if (esperado !== null){
+          comparables++;
+          const diff = e.balance - esperado;
+          const coincide = Math.abs(diff) <= TOLERANCIA;
+          if (coincide) coinciden++;
+          esperadoHtml = fmtCOP(esperado) + `<div style="font-size:9.5px;color:var(--muted);">(${esperado.toFixed(4)})</div>`;
+          veredictoHtml = coincide
+            ? `<span class="diff ok">✓ igual</span>`
+            : `<span class="diff off">✗ ${diff>=0?'+':''}${fmtCOP(diff)}</span>`;
+
+          // Detectar si Nu truncó, redondeó, o redondeó hacia arriba el centavo
+          const floor2 = Math.floor(esperado*100)/100;
+          const round2 = Math.round(esperado*100)/100;
+          const ceil2 = Math.ceil(esperado*100)/100;
+          let modo;
+          if (Math.abs(floor2-ceil2) < EPS){ modo = 'ambiguo'; }
+          else if (Math.abs(e.balance-round2) < EPS){ modo = 'redondea'; }
+          else if (Math.abs(e.balance-floor2) < EPS){ modo = 'trunca'; }
+          else if (Math.abs(e.balance-ceil2) < EPS){ modo = 'arriba'; }
+          else { modo = 'ninguno'; }
+          modoCajita[modo]++; modoGlobal[modo]++;
+          const modoLabel = {redondea:'redondea', trunca:'trunca', arriba:'redondea arriba', ninguno:'sin patrón', ambiguo:'sin info hoy'}[modo];
+          const modoColor = {redondea:'var(--positive)', trunca:'var(--accent)', arriba:'#E7A100', ninguno:'var(--negative)', ambiguo:'var(--muted)'}[modo];
+          modoHtml = `<div style="font-size:10px;color:${modoColor};margin-top:2px;">${modoLabel}</div>`;
+        }
+
+        rowsHtml += `<tr>
+          <td>${e.date}</td>
+          <td>${fmtCOP(e.balance)}</td>
+          <td class="delta ${deltaClass}">${delta>=0?'+':''}${fmtCOP(delta)}</td>
+          <td class="rate">${esperadoHtml}</td>
+          <td>${veredictoHtml}${modoHtml}</td>
+        </tr>`;
+        prevBalance = e.balance;
+        prevDate = e.date;
+      });
+    }
+
+    const resumen = comparables
+      ? ` · coincide en ${coinciden}/${comparables} día${comparables===1?'':'s'}`
+      : ' · pon la tasa EA para comparar';
+    const modoResumen = (modoCajita.redondea+modoCajita.trunca+modoCajita.arriba+modoCajita.ninguno) > 0
+      ? ` · redondea:${modoCajita.redondea} trunca:${modoCajita.trunca} arriba:${modoCajita.arriba} sin-patrón:${modoCajita.ninguno}`
+      : '';
+
+    box.innerHTML = `
+      <div class="ledger-head">
+        <div class="name"><span class="swatch" style="background:${color}"></span>${c.name}</div>
+        <div class="meta">inicial ${fmtCOP(c.initial)} · ${c.startDate}${resumen}${modoResumen}</div>
+      </div>
+      <div class="ledger-scroll">
+        <table>
+          <thead><tr><th>fecha</th><th>saldo real</th><th>Δ real</th><th>esperado</th><th>¿coincide?</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    `;
+    wrap.appendChild(box);
+  });
+
+  const totalModo = modoGlobal.redondea+modoGlobal.trunca+modoGlobal.arriba+modoGlobal.ninguno;
+  if (totalModo > 0){
+    const patronBox = document.createElement('div');
+    patronBox.className = 'card';
+    const ganador = Object.entries({redondea:modoGlobal.redondea,trunca:modoGlobal.trunca,arriba:modoGlobal.arriba})
+      .sort((a,b)=>b[1]-a[1])[0];
+    const labelGanador = {redondea:'redondeo estándar (nearest cent)', trunca:'trunca (floor)', arriba:'siempre redondea hacia arriba'}[ganador[0]];
+    patronBox.innerHTML = `
+      <h2>Patrón de redondeo detectado <span class="tag">${totalModo} lectura${totalModo===1?'':'s'} comparable${totalModo===1?'':'s'}</span></h2>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.9;">
+        <div>✓ redondea (nearest cent): <b>${modoGlobal.redondea}</b></div>
+        <div>◧ trunca (floor): <b>${modoGlobal.trunca}</b></div>
+        <div>▲ redondea hacia arriba: <b>${modoGlobal.arriba}</b></div>
+        <div style="color:${modoGlobal.ninguno>0?'var(--negative)':'var(--muted)'}">✗ sin patrón / raro: <b>${modoGlobal.ninguno}</b></div>
+        ${modoGlobal.ambiguo>0?`<div style="color:var(--muted)">— sin info (valor ya exacto): <b>${modoGlobal.ambiguo}</b></div>`:''}
+      </div>
+      ${ganador[1]>0?`<div style="margin-top:10px;font-size:13px;font-weight:600;color:var(--accent);">Con lo que hay hasta ahora, todo apunta a: ${labelGanador}.</div>`:''}
+      ${modoGlobal.ninguno>0?`<div style="margin-top:6px;font-size:11.5px;color:var(--negative);">Hay ${modoGlobal.ninguno} lectura(s) que no calzan con ningún modo de redondeo — revisa si se anotó bien el saldo o si esa cajita tiene algo distinto (encargos, tasa distinta, etc).</div>`:''}
+    `;
+    document.getElementById('ledgers').before(patronBox);
+  }
+}
+
+document.getElementById('addCajitaBtn').addEventListener('click', ()=>{
+  state.cajitas.push({id: uid(), name: 'Nueva cajita', initial: 0});
+  saveState();
+  renderAll();
+});
+
+document.getElementById('entryDate').addEventListener('change', ()=>{
+  renderEntryGrid();
+  renderTasaInput();
+});
+
+document.getElementById('tasaEAInput').addEventListener('change', ()=>{
+  const el = document.getElementById('tasaEAInput');
+  const v = parseFloat(el.value);
+  if (isNaN(v)) return;
+  const date = document.getElementById('entryDate').value || todayStr();
+  if (!state.tasaHistorial) state.tasaHistorial = [];
+  const idx = state.tasaHistorial.findIndex(h=>h.date===date);
+  if (idx>=0) state.tasaHistorial[idx].tasa = v; else state.tasaHistorial.push({date, tasa:v});
+  state.tasaHistorial.sort((a,b)=> a.date<b.date?-1:1);
+  saveState();
+  setStatus(`Tasa ${v}% registrada desde ${date}.`, false);
+  renderLedgers();
+});
+
+document.getElementById('saveBtn').addEventListener('click', async ()=>{
+  const date = document.getElementById('entryDate').value;
+  if (!date){ setStatus('Elige una fecha primero.', true); return; }
+  const inputs = document.querySelectorAll('#entryGrid input');
+  let savedCount = 0;
+  inputs.forEach(inp=>{
+    const val = inp.value;
+    if (val === '') return;
+    const cajitaId = inp.dataset.id;
+    const balance = parseFloat(val);
+    if (isNaN(balance)) return;
+    const idx = state.entries.findIndex(e=>e.cajitaId===cajitaId && e.date===date);
+    const record = {id: idx>=0?state.entries[idx].id:uid(), cajitaId, date, balance, ts: Date.now()};
+    if (idx>=0) state.entries[idx] = record; else state.entries.push(record);
+    savedCount++;
+  });
+  if (savedCount === 0){ setStatus('No pusiste ningún saldo para guardar.', true); return; }
+  await saveState();
+  setStatus(`Guardado: ${savedCount} lectura(s) para ${date}.`, false);
+  renderAll();
+});
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    cajitas: state.cajitas,
+    tasaHistorial: state.tasaHistorial || [],
+    entries: state.entries.sort((a,b)=> a.cajitaId===b.cajitaId ? (a.date<b.date?-1:1) : a.cajitaId.localeCompare(b.cajitaId))
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cajitas-nu-experimento-${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  setStatus('JSON exportado. Mándaselo a Claude cuando quieras el análisis.', false);
+});
+
+document.getElementById('importBtn').addEventListener('click', ()=>{
+  document.getElementById('fileInput').click();
+});
+
+document.getElementById('fileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async (ev)=>{
+    try{
+      const data = JSON.parse(ev.target.result);
+      if (!data.cajitas || !data.entries) throw new Error('formato inválido');
+      state = { cajitas: data.cajitas, entries: data.entries, tasaHistorial: data.tasaHistorial || [] };
+      await saveState();
+      renderAll();
+      setStatus('Datos importados correctamente.', false);
+    } catch(err){
+      setStatus('Ese archivo no tiene el formato esperado.', true);
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+document.getElementById('resetBtn').addEventListener('click', async ()=>{
+  if (!confirm('¿Borrar todas las cajitas y lecturas guardadas en este dispositivo? Esto no se puede deshacer.')) return;
+  state = { cajitas: DEFAULT_CAJITAS.map(c=>({...c})), entries: [], tasaHistorial: [] };
+  await saveState();
+  renderAll();
+  setStatus('Todo borrado. Cajitas reiniciadas a los valores por defecto.', false);
+});
+
+loadState();
+</script>
+</body>
+</html>

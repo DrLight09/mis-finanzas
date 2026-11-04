@@ -238,11 +238,49 @@ const Periodo = (() => {
       .map(m => ({ id: m.id, monto: m.monto || 0, fecha: m.fecha, cat: 'Ajuste', desc: m.desc || m.nota || 'Retiro manual', fuente: m.fuente, clase: 'gasto', _esRetiroManual: true }));
   }
 
-  // «Compra grande»: un gasto variable que el usuario marcó (`g.grande === true`) por ser grande y NO habitual (una moto, un computador).
-  // Es un golpe REAL al patrimonio, a la liquidez y a los meses que cubres: por eso `gastos.total`, el patrimonio y la liquidez la
-  // cuentan completa. Lo que no es, es un hábito: las medidas de FLUJO (el gasto «típico», el ratio gasto/ingreso, la racha de déficit,
-  // la pendiente de la Proyección) la separan, para que una moto de 15 M no se lea como «gastas 15 M al mes».
-  const esCompraGrande = g => !!g && g.grande === true;
+  // «Compra grande»: un gasto variable grande y NO habitual (una moto, un computador). Es un golpe REAL al patrimonio, a la liquidez y a
+  // los meses que cubres: por eso `gastos.total`, el patrimonio y la liquidez la cuentan completa. Lo que no es, es un hábito: las
+  // medidas de FLUJO (el gasto «típico», el ratio gasto/ingreso, la racha de déficit, la pendiente de la Proyección) la separan, para que
+  // una moto de 15 M no se lea como «gastas 15 M al mes».
+  //
+  // Quién decide: el USUARIO manda, y si no ha dicho nada, se detecta sola.
+  //   · g.grande === true  → «sí» (la marcó él)
+  //   · g.grande === false → «no» (dijo que no lo es; se respeta siempre, aunque el monto parezca grande)
+  //   · sin decisión       → «auto» si el gasto supera lo que normalmente gastas en UN MES entero (ver umbralCompraGrande), si no «no».
+  // Una marca que depende de acordarse falla justo cuando importa (la moto sin marcar volvía a leerse como hábito), y el formulario solo
+  // cubre lo registrado desde ahí (no las compras de tarjeta ni lo anterior). La detección es visible («automática») y reversible.
+  const COMPRA_GRANDE_AUTO = Object.freeze({
+    minimo: 500000,        // por debajo de esto nunca se detecta sola (ruido). Igual a UMBRALES.compraGrande.minimo (lo verifica una prueba)
+    vecesLaMediana: 1,     // un solo gasto ≥ 1× la mediana de tu gasto mensual es extraordinario
+    mesesMinimos: 2,       // con menos meses completos de historia no hay con qué juzgar: no se detecta sola
+    ventana: 6,            // meses anteriores que entran a la mediana
+  });
+
+  // Umbral en pesos desde el cual un gasto SIN decisión del usuario es una compra grande: la mediana de tu gasto mensual de los meses
+  // anteriores (el más reciente puede estar en curso y se descarta), con el mínimo de COMPRA_GRANDE_AUTO. Infinity si no hay historia
+  // suficiente. La mediana (no el promedio) es a propósito: una moto en un mes no mueve la mediana, y el umbral depende solo del
+  // pasado, no de cuánto tienes hoy, así que una compra no cambia de «normal» a «grande» (ni al revés) con el paso del tiempo.
+  function umbralCompraGrande(estado) {
+    const porMes = gastosPorMes(estado); // sin opciones: no llama a esCompraGrande (sin recursión)
+    const meses = Object.keys(porMes).filter(k => porMes[k] > 0).sort();
+    meses.pop();
+    const base = meses.slice(-COMPRA_GRANDE_AUTO.ventana).map(k => porMes[k]).sort((a, b) => a - b);
+    if (base.length < COMPRA_GRANDE_AUTO.mesesMinimos) return Infinity;
+    const m = Math.floor(base.length / 2);
+    const mediana = base.length % 2 ? base[m] : (base[m - 1] + base[m]) / 2;
+    return Math.max(COMPRA_GRANDE_AUTO.minimo, mediana * COMPRA_GRANDE_AUTO.vecesLaMediana);
+  }
+
+  // 'si' | 'auto' | 'no' para un gasto. `umbral` = umbralCompraGrande() (calcúlalo UNA vez al recorrer varios gastos). Los retiros manuales
+  // («Restar dinero», cuadrar lo registrado con lo real) no se detectan solos: no son una compra.
+  function compraGrandeEstado(g, umbral) {
+    if (!g) return 'no';
+    if (g.grande === true) return 'si';
+    if (g.grande === false || g._esRetiroManual) return 'no';
+    // El mínimo se aplica también aquí (no solo dentro de umbralCompraGrande): un gasto pequeño nunca se detecta solo, pase lo que pase.
+    return (g.monto || 0) >= Math.max(COMPRA_GRANDE_AUTO.minimo, umbral === undefined ? Infinity : umbral) ? 'auto' : 'no';
+  }
+  const esCompraGrande = (g, umbral) => compraGrandeEstado(g, umbral) !== 'no';
 
   const gastosVarRealesDelMes = (mes, estado) =>
     (_st(estado).gastosVar || []).filter(g => mesKey(g.fecha) === mes && !_esGastoVarNoReal(g))
@@ -255,7 +293,8 @@ const Periodo = (() => {
     const fijos = gastosFijosDelMes(mes, estado);
     const gvTotal = variables.reduce((a, g) => a + (g.monto || 0), 0);
     const gfTotal = fijos.reduce((a, p) => a + p.monto, 0);
-    const extraordinarios = variables.filter(esCompraGrande);
+    const umbral = umbralCompraGrande(estado);
+    const extraordinarios = variables.filter(g => esCompraGrande(g, umbral));
     const extraTotal = extraordinarios.reduce((a, g) => a + (g.monto || 0), 0);
     // total = TODO lo que salió (real). recurrenteTotal = lo mismo sin las compras grandes (el ritmo del mes).
     return { variables, fijos, gvTotal, gfTotal, total: gvTotal + gfTotal, items: [...variables, ...fijos], extraordinarios, extraTotal, recurrenteTotal: gvTotal + gfTotal - extraTotal };
@@ -264,7 +303,8 @@ const Periodo = (() => {
   // Compras grandes con fecha en (desde, hasta] — `desde` excluida, `hasta` incluida, ambas 'YYYY-MM-DD'. Para ajustar la pendiente
   // del patrimonio entre dos fotos del historial: lo que cayó ese intervalo por una compra grande no es el ritmo del usuario.
   function comprasGrandesEntre(desde, hasta, estado) {
-    return (_st(estado).gastosVar || []).filter(g => esCompraGrande(g) && !_esGastoVarNoReal(g) && g.fecha > desde && g.fecha <= hasta);
+    const umbral = umbralCompraGrande(estado);
+    return (_st(estado).gastosVar || []).filter(g => esCompraGrande(g, umbral) && !_esGastoVarNoReal(g) && g.fecha > desde && g.fecha <= hasta);
   }
 
   // Total de gasto real por mes: { 'YYYY-MM': total } con todos los meses que tienen datos.
@@ -272,9 +312,10 @@ const Periodo = (() => {
   function gastosPorMes(estado, opciones) {
     const out = {};
     const sinExtra = !!(opciones && opciones.sinExtraordinarios);
+    const umbral = sinExtra ? umbralCompraGrande(estado) : Infinity;
     (_st(estado).gastosVar || []).forEach(g => {
       if (_esGastoVarNoReal(g)) return;
-      if (sinExtra && esCompraGrande(g)) return;
+      if (sinExtra && esCompraGrande(g, umbral)) return;
       const k = mesKey(g.fecha);
       if (k) out[k] = (out[k] || 0) + (g.monto || 0);
     });
@@ -393,7 +434,7 @@ const Periodo = (() => {
   }
 
   return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
-           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, diaDelMes, esCompraGrande, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
+           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, diaDelMes, esCompraGrande, compraGrandeEstado, umbralCompraGrande, COMPRA_GRANDE_AUTO, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
 })();
 
 // Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.

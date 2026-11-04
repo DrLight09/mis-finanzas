@@ -539,12 +539,13 @@ test('P7b. un gasto fijo nuevo después de editar otro NO sobrescribe al editado
 
 /* ================= Compra grande (una moto): golpe real al stock, no un hábito del flujo ================= */
 const moto = (monto, mes, extra = {}) => ({ id: 'moto', desc: 'Moto', monto, fecha: mes + '-10', cat: 'Transporte', fuente: 'nequi', clase: 'gasto', ...extra });
-// 3 meses de ingreso 3 M y gasto fijo 1 M; ahorro de `ahorro` DESPUÉS de comprar la moto el mes pasado
+// 3 meses de ingreso 3 M y gasto fijo 1 M; ahorro de `ahorro` DESPUÉS de comprar la moto el mes pasado.
+// grande: true = la marcó el usuario · false = el usuario dijo que NO es compra grande · undefined = sin decisión (la app la detecta)
 const conMoto = (grande, ahorro = 5000000) => ({
   cuentas: cuentas(ahorro),
   ingresosFijos: ingresosEn(3000000, ultimosN(6)),
   ...gastosEn(1000000, ultimosN(3)),
-  gastosVar: [moto(15000000, mesHace(1), grande ? { grande: true } : {})],
+  gastosVar: [moto(15000000, mesHace(1), grande === undefined ? {} : { grande })],
 });
 
 test('Compra grande: el gasto real del mes la cuenta completa, y separa lo recurrente y lo extraordinario', () => {
@@ -560,7 +561,7 @@ test('Compra grande: el gasto real del mes la cuenta completa, y separa lo recur
 
 test('Compra grande: el gasto TÍPICO no se infla con la moto (y sin la marca sí)', () => {
   assert.equal(app(conMoto(true)).Periodo.gastoPromedioPrevio(mesAct, 3).promedio, 1000000);
-  assert.ok(app(conMoto(false)).Periodo.gastoPromedioPrevio(mesAct, 3).promedio > 1000000, 'sin marcar, la moto parece un gasto habitual');
+  assert.ok(app(conMoto(false)).Periodo.gastoPromedioPrevio(mesAct, 3).promedio > 1000000, 'si el usuario dijo que NO es compra grande, se respeta: la moto cuenta como gasto habitual');
 });
 
 test('Compra grande: el golpe es REAL en Salud (runway sobre la liquidez que queda) y no se lee como déficit habitual', () => {
@@ -576,8 +577,8 @@ test('Compra grande: el golpe es REAL en Salud (runway sobre la liquidez que que
 test('Compra grande: la racha de déficit usa el balance recurrente (una moto sola no cuenta como racha)', () => {
   const ctx = app({ ingresosFijos: ingresosEn(3000000, ultimosN(6)), ...gastosEn(1000000, ultimosN(6)), gastosVar: [moto(15000000, mesHace(1), { grande: true }), moto(15000000, mesHace(2), { grande: true, id: 'm2' })] });
   assert.equal(ctx.Periodo.rachaDeficit(mesAct, 6).meses, 0);
-  const sin = app({ ingresosFijos: ingresosEn(3000000, ultimosN(6)), ...gastosEn(1000000, ultimosN(6)), gastosVar: [moto(15000000, mesHace(1)), moto(15000000, mesHace(2), { id: 'm2' })] });
-  assert.equal(sin.Periodo.rachaDeficit(mesAct, 6).meses, 2, 'sin marcar son dos meses de «déficit»');
+  const sin = app({ ingresosFijos: ingresosEn(3000000, ultimosN(6)), ...gastosEn(1000000, ultimosN(6)), gastosVar: [moto(15000000, mesHace(1), { grande: false }), moto(15000000, mesHace(2), { id: 'm2', grande: false })] });
+  assert.equal(sin.Periodo.rachaDeficit(mesAct, 6).meses, 2, 'si el usuario dijo que no son compras grandes, son dos meses de «déficit»');
 });
 
 test('Compra grande reciente que dejó las reservas bajas: Salud la nombra y dice qué hacer', () => {
@@ -643,13 +644,13 @@ test('Gastos: la casilla «compra grande» sigue a la sugerencia del monto hasta
   assert.equal(el('gv-impacto').textContent, '');
 });
 
-test('Gastos: marcar o quitar «grande» en un gasto ya registrado cambia solo esa propiedad', () => {
+test('Gastos: marcar o quitar «grande» guarda siempre una decisión explícita (true/false)', () => {
   const { ctx, toasts } = gastosApp({ gastosVar: [{ id: 'g1', desc: 'Moto', monto: 15000000, fecha: mesAct + '-02', cat: 'Transporte', clase: 'gasto' }] });
   ctx.toggleCompraGrande('g1');
   assert.equal(ctx.S.gastosVar[0].grande, true);
   assert.ok(toasts.some(m => m.includes('compra grande')));
   ctx.toggleCompraGrande('g1');
-  assert.ok(!('grande' in ctx.S.gastosVar[0]));
+  assert.equal(ctx.S.gastosVar[0].grande, false, 'dijo que no: se guarda false, no se borra (si no, la detección automática podría volver a marcarla)');
 });
 
 test('Análisis: el balance del mes muestra la compra grande incluida y cómo habría sido sin ella (sin esconder el golpe)', () => {
@@ -660,4 +661,149 @@ test('Análisis: el balance del mes muestra la compra grande incluida y cómo ha
   assert.match(h, /Incluye \$?15\.000\.000 en una compra grande \(Moto\)/);
   assert.match(h, /sin ella, tu balance del mes fue/);
   assert.match(h, /Por ahora has gastado más de lo que has recibido este mes/, 'el estado real sigue siendo el real');
+});
+
+/* ---- Detección automática de la compra grande (el usuario manda; si no dijo nada, se detecta) ---- */
+// 6 meses de historia con 1 M de gasto fijo al mes
+const historia6 = () => ({ ingresosFijos: ingresosEn(3000000, ultimosN(6)), ...gastosEn(1000000, ultimosN(6)) });
+
+test('Compra grande automática: un gasto que supera tu gasto mensual normal se detecta solo, sin que marques nada', () => {
+  const ctx = app({ ...historia6(), gastosVar: [moto(15000000, mesHace(1))] });
+  const P = ctx.Periodo;
+  assert.equal(P.umbralCompraGrande(), 1000000, 'la mediana de tu gasto mensual (los meses anteriores)');
+  assert.equal(P.compraGrandeEstado(ctx.S.gastosVar[0], P.umbralCompraGrande()), 'auto');
+  assert.equal(P.gastoPromedioPrevio(mesAct, 3).promedio, 1000000, 'sin que marques nada, la moto no infla tu gasto típico');
+  assert.equal(P.gastosDelMes(mesHace(1)).extraTotal, 15000000);
+  assert.equal(P.rachaDeficit(mesAct, 6).meses, 0);
+});
+
+test('Compra grande automática: lo que decide el usuario manda, en los dos sentidos, y no cambia sola', () => {
+  const si = app({ ...historia6(), gastosVar: [moto(600000, mesHace(1), { grande: true })] });
+  assert.equal(si.Periodo.compraGrandeEstado(si.S.gastosVar[0], si.Periodo.umbralCompraGrande()), 'si', 'marcado a mano, aunque no pase el umbral');
+  const no = app({ ...historia6(), gastosVar: [moto(15000000, mesHace(1), { grande: false })] });
+  assert.equal(no.Periodo.compraGrandeEstado(no.S.gastosVar[0], no.Periodo.umbralCompraGrande()), 'no', 'dijo que NO: se respeta aunque sea una moto');
+  assert.equal(no.Periodo.gastosDelMes(mesHace(1)).extraTotal, 0);
+});
+
+test('Compra grande automática: no se detecta sola sin historia suficiente, bajo el mínimo, ni en retiros manuales', () => {
+  const sinHist = app({ gastosVar: [moto(15000000, mesHace(1))] });
+  assert.equal(sinHist.Periodo.umbralCompraGrande(), Infinity, 'con menos de 2 meses completos no hay con qué juzgar');
+  assert.equal(sinHist.Periodo.compraGrandeEstado(sinHist.S.gastosVar[0], sinHist.Periodo.umbralCompraGrande()), 'no');
+  const ctx = app({ ...historia6() });
+  assert.equal(ctx.Periodo.umbralCompraGrande(), 1000000);
+  assert.equal(ctx.Periodo.compraGrandeEstado({ monto: 400000 }, 100), 'no', 'bajo el mínimo de 500.000 nunca');
+  assert.equal(ctx.Periodo.compraGrandeEstado({ monto: 5000000, _esRetiroManual: true }, 1000000), 'no', 'un retiro manual para cuadrar no es una compra');
+  assert.equal(ctx.Periodo.COMPRA_GRANDE_AUTO.minimo, ctx.UMBRALES.compraGrande.minimo, 'una sola cifra de mínimo en periodo.js y umbrales.js');
+});
+
+test('Compra grande automática: la mediana no se mueve con la moto, así que un gasto normal sigue siendo normal', () => {
+  const ctx = app({ ...historia6(), gastosVar: [moto(15000000, mesHace(2)), { id: 'c', desc: 'Mercado', monto: 700000, fecha: mesHace(3) + '-05', cat: 'Alimentación', clase: 'gasto' }] });
+  assert.equal(ctx.Periodo.umbralCompraGrande(), 1000000 + 0, 'mediana de los meses anteriores: robusta a un mes con moto');
+  const mercado = ctx.S.gastosVar[1];
+  assert.equal(ctx.Periodo.compraGrandeEstado(mercado, ctx.Periodo.umbralCompraGrande()), 'no');
+});
+
+test('Compra grande automática: la Proyección y Salud la tratan igual que a una marcada, y la lista dice «automática»', () => {
+  const r = score({ cuentas: cuentas(5000000), ...historia6(), gastosVar: [moto(15000000, mesHace(1))] });
+  assert.equal(r.mesesCubiertos, 5, 'el golpe es real y el gasto típico no se infla');
+  assert.ok(r.tips.some(t => t.includes('Tu compra grande reciente (Moto')));
+  const h = proyeccion({ cuentas: cuentas(3000000), patrimonioHistorial: (() => { const x = historial(100, 3000000, 10000); x.forEach((p, i) => { if (i >= 50) { p.valor -= 5000000; p.valorVisible -= 5000000; } }); return x; })(), ...historia6(), gastosVar: [{ id: 'm', desc: 'Moto', monto: 5000000, fecha: historial(100, 0, 0)[50].fecha, cat: 'Transporte', fuente: 'nequi', clase: 'gasto' }] });
+  assert.match(h, /Sin contar tu compra grande \(Moto/, 'detectada sola');
+});
+
+/* ================= P5.2: bienes (una moto vale algo, pero va aparte) ================= */
+const haceAnios = n => { const d = new Date(); d.setFullYear(d.getFullYear() - n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+test('Bienes: el valor baja con la depreciación anual compuesta desde su fecha; sin depreciación se queda igual; nunca por debajo de 0', () => {
+  const ctx = app();
+  assert.equal(ctx.calcValorBien({ valor: 15000000, fecha: haceAnios(3) }), 15000000, 'sin depreciación, vale lo que dijiste');
+  assert.equal(ctx.calcValorBien({ valor: 10000000, fecha: haceAnios(1), depreciacionAnual: 15 }) / 1000000 | 0, 8, '≈ 8,5 M tras un año al 15 %');
+  const dosAnios = ctx.calcValorBien({ valor: 10000000, fecha: haceAnios(2), depreciacionAnual: 10 });
+  assert.ok(Math.abs(dosAnios - 8100000) < 40000, 'compuesto: 10 M × 0,9² = 8,1 M, no 8 M');
+  assert.equal(ctx.calcValorBien({ valor: 10000000, fecha: '2999-01-01', depreciacionAnual: 20 }), 10000000, 'una fecha futura no revaloriza');
+  assert.equal(ctx.calcValorBien({ valor: 10000000, fecha: haceAnios(5), depreciacionAnual: 100 }), 0);
+  assert.ok(Number.isFinite(ctx.calcValorBien({ valor: 5, fecha: 'basura', depreciacionAnual: 10 })), 'una fecha ilegible no produce NaN');
+});
+
+test('Bienes: van APARTE: no cambian el patrimonio del inicio, ni la liquidez, ni el runway, ni la Salud', () => {
+  const base = { cuentas: cuentas(5000000), ...gastosEn(1000000, ultimosN(3)), ingresosFijos: ingresosEn(3000000, ultimosN(3)) };
+  const sin = app(base);
+  const con = app({ ...base, bienes: [{ id: 'b', nombre: 'Moto', valor: 15000000, fecha: haceAnios(0) }] });
+  assert.equal(con.calcPatrimonioVisible(), sin.calcPatrimonioVisible(), 'el hero no cambia');
+  assert.equal(con.calcPatrimonioTotal(), sin.calcPatrimonioTotal());
+  assert.equal(con.calcLiquidez().neta, sin.calcLiquidez().neta, 'un bien no se puede gastar sin venderlo');
+  assert.equal(JSON.stringify(con.calcHealthScore()), JSON.stringify(sin.calcHealthScore()), 'la Salud ni lo mira');
+  assert.equal(con.calcPatrimonioConBienes(), 5000000 + 15000000, 'solo el patrimonio CON bienes los suma');
+  assert.equal(con.calcBienes().total, 15000000);
+});
+
+test('Bienes: la moto marcada como compra grande baja el patrimonio financiero (el golpe se ve) y el bien aparece aparte', () => {
+  const ctx = app({ cuentas: cuentas(5000000), bienes: [{ id: 'b', nombre: 'Moto', valor: 14000000, fecha: haceAnios(0), origenGastoId: 'moto' }] });
+  assert.equal(ctx.calcPatrimonioVisible(), 5000000, 'después de pagar 15 M, queda lo que queda');
+  assert.equal(ctx.calcPatrimonioConBienes(), 19000000, 'con la moto, a su valor estimado (menos que lo que costó)');
+});
+
+test('Bienes: abrir desde un gasto pre-llena nombre, valor y fecha; guardar enlaza el gasto de origen', () => {
+  const { ctx, el, toasts } = gastosApp({ gastosVar: [{ id: 'moto', desc: 'Moto', monto: 15000000, fecha: '2026-10-20', cat: 'Transporte', clase: 'gasto', grande: true }] });
+  ctx.abrirSheetBien('moto');
+  assert.equal(el('bien_n').value, 'Moto');
+  assert.equal(el('bien_f').value, '2026-10-20');
+  assert.match(el('bien_v').value, /15\.000\.000/);
+  assert.equal(el('bien-sheet-title').textContent, 'Registrar bien');
+  el('bien_d').value = '15,5';
+  ctx.guardarBien();
+  assert.equal(ctx.S.bienes.length, 1);
+  assert.equal(ctx.S.bienes[0].origenGastoId, 'moto');
+  assert.equal(ctx.S.bienes[0].valor, 15000000);
+  assert.equal(ctx.S.bienes[0].depreciacionAnual, 15.5);
+  assert.ok(toasts.some(m => m.includes('Bien registrado')));
+});
+
+test('Bienes: validaciones (nombre, valor, fecha, depreciación 0–100) y la edición conserva el id sin duplicar', () => {
+  const { ctx, el, toasts } = gastosApp({ bienes: [{ id: 'b1', nombre: 'Moto', valor: 14000000, fecha: '2026-10-20', depreciacionAnual: 10 }] });
+  ctx.abrirSheetBien();
+  ctx.guardarBien(); assert.ok(toasts.at(-1).includes('nombre'));
+  el('bien_n').value = 'PC'; ctx.guardarBien(); assert.ok(toasts.at(-1).includes('valor'));
+  el('bien_v').value = '3.000.000,00'; el('bien_f').value = ''; ctx.guardarBien(); assert.ok(toasts.at(-1).includes('fecha'));
+  el('bien_f').value = '2026-11-01'; el('bien_d').value = '120'; ctx.guardarBien(); assert.ok(toasts.at(-1).includes('entre 0 y 100'));
+  assert.equal(ctx.S.bienes.length, 1, 'nada se guardó mientras algo era inválido');
+  ctx.abrirEditarBien('b1');
+  assert.equal(el('bien_n').value, 'Moto'); assert.equal(el('bien_d').value, '10');
+  assert.equal(el('bien-sheet-title').textContent, 'Editar bien');
+  el('bien_v').value = '12.000.000,00'; el('bien_d').value = '';
+  ctx.guardarBien();
+  assert.equal(ctx.S.bienes.length, 1); assert.equal(ctx.S.bienes[0].id, 'b1'); assert.equal(ctx.S.bienes[0].valor, 12000000);
+  assert.ok(!('depreciacionAnual' in ctx.S.bienes[0]), 'dejar la depreciación vacía la quita');
+});
+
+test('Bienes: quitar un bien no toca el gasto con el que se compró', async () => {
+  const { ctx } = gastosApp({ gastosVar: [{ id: 'moto', desc: 'Moto', monto: 15000000, fecha: '2026-10-20', clase: 'gasto', grande: true }], bienes: [{ id: 'b', nombre: 'Moto', valor: 1, fecha: '2026-10-20', origenGastoId: 'moto' }] });
+  ctx.dialogo = async () => true;
+  await ctx.eliminarBien('b');
+  assert.equal(ctx.S.bienes.length, 0);
+  assert.equal(ctx.S.gastosVar.length, 1);
+});
+
+test('Bienes: la tarjeta de Análisis solo aparece si hay bienes, muestra el valor aparte y escapa el nombre', () => {
+  const vacio = analisis({ cuentas: cuentas(5000000) });
+  vacio.ctx.document.getElementById = id => vacio.dom.el(id);
+  vacio.ctx.renderBienes();
+  assert.equal(String(vacio.dom.el('an-bienes').innerHTML), '');
+  const { ctx, dom } = analisis({ cuentas: cuentas(5000000), bienes: [{ id: 'b', nombre: 'Moto <b>', valor: 15000000, fecha: haceAnios(0), depreciacionAnual: 12 }] });
+  ctx.document.getElementById = id => dom.el(id);
+  ctx.renderBienes();
+  const h = String(dom.el('an-bienes').innerHTML);
+  assert.match(h, /Moto &lt;b&gt;/);
+  assert.match(h, /Valor estimado de tus bienes/);
+  assert.match(h, /Patrimonio con bienes/);
+  assert.match(h, /20\.000\.000/, '5 M en cuentas + 15 M de moto');
+  assert.match(h, /Se deprecia 12 % al año/);
+  assert.match(h, /no cuenta en tu plata disponible/);
+});
+
+test('Bienes: el respaldo con bienes que no son un array se rechaza al importar', () => {
+  const ctx = loadApp([CORE('core-state.js'), MOD('configuracion.js')], { permissive: true });
+  const errores = ctx._validarEstructuraJSON({ cuentas: [], bienes: 'no-array' });
+  assert.ok(errores.some(e => e.includes('"bienes" debe ser un array')));
+  assert.equal(ctx._validarEstructuraJSON({ cuentas: [], bienes: [] }).length, 0);
 });

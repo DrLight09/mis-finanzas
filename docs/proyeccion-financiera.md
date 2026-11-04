@@ -56,6 +56,10 @@ tendenciaMensual = (cambioNetoTotal / díasReales) * 30
 | 90+ y ritmo consistente | Marca ESTABLE (verde). «Consistente» = el ritmo mensual de cada uno de los tres **tercios** del historial (`_ritmosPorTercio`) va en la misma dirección que la tendencia total (tolerancia del 10 %) |
 | 90+ pero ritmo irregular | «estimación» y una línea con el rango («Tu ritmo cambió mucho entre períodos (de −$X a +$Y al mes)»): una compra grande en un solo tercio ya no se extrapola como ritmo mensual ni se llama «estable» |
 
+### Compras grandes (una moto)
+
+Las compras marcadas como «compra grande» (`gv.grande`, ver `docs/gastos.md`) bajaron el patrimonio, y ese golpe **ya está** en el valor de hoy (el punto de partida de la proyección). Lo que no es, es un ritmo: para la pendiente, en cada intervalo del historial se suma de vuelta lo que cayó por una compra grande de esa fecha (`Periodo.comprasGrandesEntre`). Sin esto, una moto de 15 M se extrapolaba como −15 M cada mes, o la tendencia quedaba en «estimación» para siempre. La tarjeta lo dice sin esconderlo: «Sin contar tu compra grande (Moto: $15.000.000), tu ritmo es +$300.000 al mes. Ya está descontada de tu patrimonio de hoy; la proyección no la repite». Si la compra no está marcada, nada cambia (la proyección no adivina: se limita a mostrar «estimación» y el rango cuando el ritmo no fue parejo).
+
 ### Valores negativos y patrimonio en cero
 
 - Las tarjetas de 3/6/12 meses muestran el valor **con signo** (antes `Math.max(0, valor)` los mostraba como `$0`, justo cuando la proyección era peor: −$1.100.000 aparecía como «$0»).

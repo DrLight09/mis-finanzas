@@ -146,10 +146,40 @@ function switchGastoTab(t) {
 
 /* ---- ESTADO VACÍO: helpers que unifican el flujo con el botón fantasma ---- */
 
+// ¿El usuario ya decidió a mano si es una compra grande? Mientras no, la casilla sigue a la sugerencia según el monto.
+let _gvGrandeManual = false;
+
+// Impacto del gasto ANTES de guardarlo (calcImpactoCompra, inicio.js): qué parte de tu plata disponible es y cuántos meses cubrirías
+// después. Y sugiere marcar la casilla de compra grande cuando el monto lo amerita (sin pisar lo que el usuario ya eligió).
+function actualizarGvImpacto() {
+  const el = document.getElementById('gv-impacto');
+  const chk = document.getElementById('gv_grande');
+  if (!el || typeof calcImpactoCompra !== 'function') return;
+  const monto = parseMoney(document.getElementById('gv_monto').value) || 0;
+  const imp = calcImpactoCompra(monto);
+  el.textContent = imp ? imp.texto : '';
+  ['red', 'amber'].forEach(t => el.classList.remove('ix-gv-impacto-' + t));
+  if (imp && (imp.nivel === 'red' || imp.nivel === 'amber')) el.classList.add('ix-gv-impacto-' + imp.nivel);
+  if (chk && !_gvGrandeManual) chk.checked = !!(imp && imp.grande);
+}
+
+// Marcar o quitar «compra grande» a un gasto ya registrado (p. ej. la moto de hace dos semanas). Es una propiedad del propio gasto
+// (`grande`), no un estado aparte: todo lo demás (patrimonio, liquidez, Salud) se recalcula solo.
+function toggleCompraGrande(id) {
+  const g = (S.gastosVar || []).find(x => x.id === id);
+  if (!g) return;
+  if (g.grande) delete g.grande; else g.grande = true;
+  save(); refresh();
+  toast(g.grande ? 'Marcada como compra grande: cuenta completa en tu patrimonio, pero no como gasto habitual' : 'Ya no es una compra grande', 'ok');
+}
+
 function abrirNuevoGastoVar() {
   // Sin ninguna cuenta con saldo (ni TC con cupo) no hay de dónde sacar la plata: el sheet no se abre.
   if (!FuentesFiltro.hayUtilizable(getFuentes(), FuentesFiltro.PRESET.SALIDA)) { toast(FuentesFiltro.MSG_SIN_SALDO, 'err'); return; }
   poblarCatSelect('gv_cat', getCatsVar());
+  _gvGrandeManual = false;
+  const _gvChk = document.getElementById('gv_grande'); if (_gvChk) _gvChk.checked = false;
+  const _gvImp = document.getElementById('gv-impacto'); if (_gvImp) _gvImp.textContent = '';
   // Resetear split (mismo patrón que abrirRegistrarMesada en mesada.js /
   // openSheet_pagarSpotify en spotify.js)
   gvSplitMode = false;
@@ -310,6 +340,11 @@ function renderGastosVar() {
         : esPagoTC
           ? [html`<span class="badge badge-xs bg-green">Pago TC</span>`]
           : [html`<span class="badge badge-xs bg-blue">${g.cat}</span>`];
+    // «Compra grande»: etiqueta y, en gastos propios de monto relevante (o ya marcados), un botón para marcar/quitar.
+    if (g.grande && !esFijo) tipoBadges.push(html`<span class="badge badge-xs gasto-badge-grande">Compra grande</span>`);
+    const puedeMarcar = !esFijo && !esPagoTC && !esSecundario && ((g.monto || 0) >= UMBRALES.compraGrande.minimo || g.grande);
+    const btnGrande = puedeMarcar
+      ? html`<button type="button" class="gasto-btn-editar" data-stop-propagation="true" ${raw(Events.attr('gastos:toggleCompraGrande', g.id))}>${g.grande ? 'Quitar «grande»' : 'Marcar grande'}</button>` : '';
     return filaMovimiento({
       clase: (esFijo || esPagoTC) ? 'gasto-item-atenuado' : '',
       nombreClase: 'row-name gasto-nombre-fila',
@@ -320,7 +355,7 @@ function renderGastosVar() {
       montoClase: claseMonto,
       acciones: esSecundario
         ? html`<span title="Generado automáticamente — elimínalo desde ${g._origenSeccion || 'la sección de origen'}" class="gasto-candado"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>`
-        : botonEliminarFila('gastos:deleteGastoVar', [g.id]),
+        : html`${btnGrande}${botonEliminarFila('gastos:deleteGastoVar', [g.id])}`,
       meta: html`
         ${tipoBadges}
         ${g.splits && g.splits.length ? html`<span class="badge badge-xs">Dividido: ${g.splits.map(s => fuenteLabel(s.fuente || '')).join(', ')}</span>` : (g.fuente ? html`<span class="badge badge-xs ${raw(fuenteBadgeClass(g.fuente))}">${fuenteLabel(g.fuente)}</span>` : '')}
@@ -392,6 +427,7 @@ function addGastoVar() {
   if (!S.gastosVar) S.gastosVar = [];
   const esTCFuente = fuente && fuente.startsWith('tc:');
   const gastoObj = { id: compraId, desc, monto, fecha: fechaGasto, cat: catGasto, fuente, splits: splits || undefined, nota: notaGasto, clase: 'gasto' };
+  if ((document.getElementById('gv_grande') || {}).checked) gastoObj.grande = true;
   // Si la fuente es TC, registrar la compra a través del mismo servicio que
   // usa el módulo de tarjetas (tcCrearCompra) — misma lógica, un solo lugar.
   if (esTCFuente) {
@@ -421,6 +457,8 @@ function addGastoVar() {
   document.getElementById('gv_desc').value = '';
   document.getElementById('gv_monto').value = '';
   document.getElementById('gv_nota').value = '';
+  const _gvChk2 = document.getElementById('gv_grande'); if (_gvChk2) _gvChk2.checked = false;
+  _gvGrandeManual = false;
   document.getElementById('gv_fecha').value = hoy();
   gvSplitMode = false;
   save(); refresh(); closeSheet('gasto-var');
@@ -781,6 +819,9 @@ const _gGvBtnAddRow = document.getElementById('btn-add-gv-split-row');
 if (_gGvBtnAddRow) _gGvBtnAddRow.addEventListener('click', agregarGvSplitRow);
 const _gGvMonto = document.getElementById('gv_monto');
 if (_gGvMonto) _gGvMonto.addEventListener('input', actualizarGvSplitPreview);
+if (_gGvMonto) _gGvMonto.addEventListener('input', actualizarGvImpacto);
+const _gGvGrande = document.getElementById('gv_grande');
+if (_gGvGrande) _gGvGrande.addEventListener('change', () => { _gvGrandeManual = true; });
 
 /* ---- Registro de acciones en el sistema centralizado de eventos ---- */
 Events.registerAll('gastos', {
@@ -791,4 +832,5 @@ Events.registerAll('gastos', {
   abrirNuevoGastoVar,
   abrirNuevoGastoFijo,
   abrirEditarGastoFijo,
+  toggleCompraGrande,
 });

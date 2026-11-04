@@ -37,6 +37,7 @@ Registrar en qué se va la plata mes a mes, separando lo que es puntual (gasto v
   cat: 'Alimentación',
   fuente: 'cajita:xxx',     // o 'nequi' | 'efectivo' | 'custom:xxx' | 'tc:xxx'
   nota: 'opcional',
+  grande: true,             // opcional: «compra grande» (no habitual), ver «Compra grande» más abajo
 
   // Solo si nació de pagar un gasto fijo:
   esPagoGastoFijo: true,
@@ -75,6 +76,22 @@ Registrar en qué se va la plata mes a mes, separando lo que es puntual (gasto v
 **Qué hace el día:** (1) en la lista, un texto «Vence el día 5» / «Vence en 2 días» (ámbar desde 3 días, `UMBRALES.atencion.gastoFijoAvisoDias`) / «Vence hoy» / «Venció hace N días» (rojo) mientras no esté pagado ese mes; (2) en «Necesita atención» de Inicio: el aviso de cada uno y la **brecha de caja** («En los próximos 7 días vencen $X y tu plata disponible es $Y»), que suma lo que vence en `UMBRALES.atencion.brechaCajaDias` días más lo ya vencido sin pagar, también del mes siguiente. **Editar:** el botón «Editar» de cada fila abre el mismo sheet con los datos cargados (`abrirEditarGastoFijo`; título «Editar gasto fijo»): sirve para ponerle o cambiarle el día, el monto o la categoría sin borrarlo. Conserva el `id`, así que los pagos de meses anteriores (`pagosGastosFijos`, que guardan su propio monto) no se tocan; dejar el día vacío lo quita. No cambia ningún saldo ni la regla de que un gasto fijo solo se convierte en gasto real al pagarlo.
 
 No tiene campo de "pagado" — eso vive aparte, en `S.pagosGastosFijos`, precisamente para poder tener un estado de pago distinto cada mes sin duplicar la plantilla.
+
+### Compra grande (`gv.grande`) — un golpe real que no es un hábito
+
+Una moto o un computador son un **golpe real** al patrimonio y a la liquidez, pero **no un hábito**. Marcar un gasto variable como «compra grande» (casilla del formulario, o el botón «Marcar grande» de la fila; los gastos desde 500.000 lo muestran) no lo oculta de nada que mida lo que **tienes**, y sí lo separa de lo que mide cómo **gastas cada mes**:
+
+| Medida | ¿Cuenta la compra grande? |
+|---|---|
+| Patrimonio, liquidez (`calcLiquidez`), «meses que cubres» (runway), Salud (a, b, c), gasto real del mes (`gastosDelMes.total`), balance real | **Sí, completa** |
+| Gasto **típico** (`Periodo.gastoPromedioPrevio`), ratio gasto/ingreso (d), racha de déficit (h, balance recurrente), pendiente de la Proyección | **No** (es flujo, y una moto no se repite) |
+
+Así, comprar una moto de 15 M con 20 M de ahorro deja el runway en 5 meses (el golpe es real), pero no convierte «gastas 16 M al mes» en el ritmo de los próximos meses, ni dispara «llevas 2 meses seguidos en déficit», ni deja la Proyección en «estimación» para siempre.
+
+- **Antes de guardar:** al escribir el monto (desde 500.000), el formulario muestra el impacto (`calcImpactoCompra`, `inicio.js`): «Es el 75 % de tu plata disponible y el 60 % de tu patrimonio. Después cubrirías 5,0 meses de gastos (hoy: 20,0 meses)». En ámbar bajo 3 meses y en rojo bajo 1 mes, o si con eso tus deudas superarían tu plata disponible. Pagar con tarjeta pesa igual (la deuda propia resta de la liquidez neta). Si el gasto es ≥ 30 % de lo disponible o ≥ 2 meses de gasto típico (`UMBRALES.compraGrande`), la casilla se **sugiere** marcada; si la cambias a mano, ya no se toca.
+- **Después:** `toggleCompraGrande(id)` marca o quita la marca de un gasto ya registrado (la moto de hace dos semanas). Es una propiedad del propio gasto: no guarda estado aparte, todo se recalcula solo.
+- **Dónde se ve:** etiqueta «Compra grande» en la lista; en Análisis, el balance del mes dice «Incluye $X en una compra grande (Moto) · sin ella, tu balance del mes fue +$Y» (sin esconder que el balance real es el real); en la Proyección, «Sin contar tu compra grande (Moto: $X), tu ritmo es +$Y al mes. Ya está descontada de tu patrimonio de hoy; la proyección no la repite»; en Salud, si dejó las reservas bajas, «Tu compra grande reciente (Moto, $X) pesa en tus reservas: antes de otro gasto grande, reconstruir tu fondo es la prioridad».
+- **No se infiere sola:** solo se sugiere; la marca la pone el usuario. Los gastos fijos no se marcan (ya son recurrentes por definición). Lo que **no** hace (pendiente en `mejoras-mis-finanzas.md`, P5.2): registrar el **bien** (una moto vale algo, aunque se deprecie) como un activo no líquido aparte.
 
 ### `S.pagosGastosFijos{}` — registro de qué se pagó cada mes
 

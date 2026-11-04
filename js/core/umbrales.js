@@ -28,6 +28,12 @@ const UMBRALES = (() => {
       cdtPesoCompleto: 0.10,                                       // el CDT puntúa completo cuando pesa ≥ 10 % de tu plata (cuentas libres + CDTs)
       rachaDeficitMeses: { aviso: 2, alerta: 3 },                  // meses completos seguidos con balance negativo
     },
+    // «Compra grande» (una moto, un computador): cuándo se sugiere marcarla y se muestra su impacto ANTES de pagarla (gastos.js, calcImpactoCompra)
+    compraGrande: {
+      minimo: 500000,          // por debajo de esto no se muestra impacto ni se sugiere la marca (ruido)
+      fraccionLiquidez: 0.3,   // se sugiere si el gasto es ≥ 30 % de tu plata disponible…
+      mesesDeGasto: 2,         // …o ≥ 2 meses de tu gasto típico
+    },
     // Runway: meses de gasto típico que cubre la liquidez (se muestra en la tarjeta de Salud y en el hero)
     runway: { critico: 1, atencion: 3 },                           // < critico = rojo; < atencion = ámbar; el resto, verde
     // Aviso «Necesita atención» (renderAttencion, inicio.js)

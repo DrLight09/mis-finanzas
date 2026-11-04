@@ -874,6 +874,7 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 /* ── Gastos (lista de gastos variables y fijos, sheet de pago de fijo) — Paso 5, tanda 3 (2026-10-20) ── */
 .badge.badge-xs{font-size:9px;}
 .badge.gasto-badge-fijo{background:rgba(200,240,96,.1);color:var(--accent);border:1px solid rgba(200,240,96,.2);}
+.badge.gasto-badge-grande{background:rgba(255,170,60,.12);color:var(--amber);border:1px solid rgba(255,170,60,.25);}
 .badge.gasto-badge-pagado{background:rgba(100,220,100,.15);color:#4caf50;border:1px solid rgba(100,220,100,.3);padding:3px 7px;}
 .gasto-item.gasto-item-atenuado{opacity:.75;}
 .gasto-item-info{flex:1;min-width:0;}
@@ -884,6 +885,10 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .row-amount.gasto-monto-fijo{color:var(--text2);}
 .gasto-candado{display:flex;align-items:center;justify-content:center;padding:4px;color:var(--text3);opacity:.4;}
 .gasto-nota{font-size:10px;color:var(--text3);}
+.ix-gv-impacto{font-size:12px;line-height:1.45;min-height:18px;margin:-4px 0 10px;color:var(--text2);}
+.ix-gv-impacto:empty{min-height:0 !important;}
+.ix-gv-impacto-red{color:var(--red);}
+.ix-gv-impacto-amber{color:var(--amber);}
 .gasto-vence{font-size:10px;color:var(--text3);margin-right:auto;margin-left:8px;font-family:'DM Mono',monospace;}
 .gasto-vence-amber{color:var(--amber);}
 .gasto-vence-red{color:var(--red);}
@@ -930,6 +935,7 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .inicio-proy-vacio-titulo{font-size:12px;font-weight:600;color:var(--text2);}
 .inicio-proy-vacio-texto{font-size:11px;color:var(--text3);line-height:1.5;max-width:210px;}
 .inicio-proy-deuda{font-size:10px;color:var(--red);margin-top:5px;font-family:'DM Mono',monospace;}
+.inicio-proy-extra{font-size:10px;color:var(--text2);margin-top:5px;line-height:1.4;font-family:'DM Mono',monospace;}
 .inicio-proy-runway{font-size:10px;color:var(--amber);margin-top:5px;font-family:'DM Mono',monospace;}
 .inicio-proy-irregular{font-size:10px;color:var(--text3);margin-top:5px;line-height:1.4;font-family:'DM Mono',monospace;}
 .inicio-salud-runway{font-size:12px;margin:2px 0 8px;font-family:'DM Mono',monospace;}

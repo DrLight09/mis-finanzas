@@ -1,10 +1,8 @@
-# Documentos locales que no quiero subir
-/Mejoras_pendientes.md
-/CONTINUAR.md
-/laboratorio-cajitas-nu.html
-/subir.sh
-/mejoras.md
-/propuesta-renombres.md
+# Dependencias
 /node_modules/
-/mejoras-mis-finanzas.md
-*.zip
+
+# Documentos y archivos locales que no quiero subir
+/*.md
+/*.zip
+/subir.sh
+/laboratorio-cajitas-nu.html

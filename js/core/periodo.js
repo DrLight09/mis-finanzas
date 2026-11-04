@@ -238,6 +238,12 @@ const Periodo = (() => {
       .map(m => ({ id: m.id, monto: m.monto || 0, fecha: m.fecha, cat: 'Ajuste', desc: m.desc || m.nota || 'Retiro manual', fuente: m.fuente, clase: 'gasto', _esRetiroManual: true }));
   }
 
+  // «Compra grande»: un gasto variable que el usuario marcó (`g.grande === true`) por ser grande y NO habitual (una moto, un computador).
+  // Es un golpe REAL al patrimonio, a la liquidez y a los meses que cubres: por eso `gastos.total`, el patrimonio y la liquidez la
+  // cuentan completa. Lo que no es, es un hábito: las medidas de FLUJO (el gasto «típico», el ratio gasto/ingreso, la racha de déficit,
+  // la pendiente de la Proyección) la separan, para que una moto de 15 M no se lea como «gastas 15 M al mes».
+  const esCompraGrande = g => !!g && g.grande === true;
+
   const gastosVarRealesDelMes = (mes, estado) =>
     (_st(estado).gastosVar || []).filter(g => mesKey(g.fecha) === mes && !_esGastoVarNoReal(g))
       .concat(retirosManuales(estado).filter(r => mesKey(r.fecha) === mes));
@@ -249,14 +255,26 @@ const Periodo = (() => {
     const fijos = gastosFijosDelMes(mes, estado);
     const gvTotal = variables.reduce((a, g) => a + (g.monto || 0), 0);
     const gfTotal = fijos.reduce((a, p) => a + p.monto, 0);
-    return { variables, fijos, gvTotal, gfTotal, total: gvTotal + gfTotal, items: [...variables, ...fijos] };
+    const extraordinarios = variables.filter(esCompraGrande);
+    const extraTotal = extraordinarios.reduce((a, g) => a + (g.monto || 0), 0);
+    // total = TODO lo que salió (real). recurrenteTotal = lo mismo sin las compras grandes (el ritmo del mes).
+    return { variables, fijos, gvTotal, gfTotal, total: gvTotal + gfTotal, items: [...variables, ...fijos], extraordinarios, extraTotal, recurrenteTotal: gvTotal + gfTotal - extraTotal };
+  }
+
+  // Compras grandes con fecha en (desde, hasta] — `desde` excluida, `hasta` incluida, ambas 'YYYY-MM-DD'. Para ajustar la pendiente
+  // del patrimonio entre dos fotos del historial: lo que cayó ese intervalo por una compra grande no es el ritmo del usuario.
+  function comprasGrandesEntre(desde, hasta, estado) {
+    return (_st(estado).gastosVar || []).filter(g => esCompraGrande(g) && !_esGastoVarNoReal(g) && g.fecha > desde && g.fecha <= hasta);
   }
 
   // Total de gasto real por mes: { 'YYYY-MM': total } con todos los meses que tienen datos.
-  function gastosPorMes(estado) {
+  // `opciones.sinExtraordinarios`: deja fuera las compras grandes (el flujo recurrente).
+  function gastosPorMes(estado, opciones) {
     const out = {};
+    const sinExtra = !!(opciones && opciones.sinExtraordinarios);
     (_st(estado).gastosVar || []).forEach(g => {
       if (_esGastoVarNoReal(g)) return;
+      if (sinExtra && esCompraGrande(g)) return;
       const k = mesKey(g.fecha);
       if (k) out[k] = (out[k] || 0) + (g.monto || 0);
     });
@@ -270,7 +288,9 @@ const Periodo = (() => {
   // el mes en curso no entra, porque a principio de mes su total es parcial y haría ver las reservas enormes).
   // { promedio, meses }: `meses` = cuántos meses con datos se promediaron (0 si todavía no hay ninguno).
   function gastoPromedioPrevio(mes, n, estado) {
-    const porMes = gastosPorMes(estado);
+    // «Típico»: sin las compras grandes (una moto en un mes no es el gasto de ese mes). El fondo de emergencia se mide contra lo que
+    // gastas normalmente; la moto ya bajó la liquidez (el numerador), no debe además inflar el denominador.
+    const porMes = gastosPorMes(estado, { sinExtraordinarios: true });
     const previos = _mesesDeReferencia(porMes, mes, n);
     if (!previos.length) return { promedio: 0, meses: 0 };
     return { promedio: previos.reduce((a, k) => a + porMes[k], 0) / previos.length, meses: previos.length };
@@ -320,7 +340,9 @@ const Periodo = (() => {
       : base;
     const gastos = gastosDelMes(mes, estado);
     const balance = ingresos.total - gastos.total;
-    return { mes, ingresos, gastos, balance, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
+    // balanceRecurrente: el balance sin las compras grandes (el ritmo del mes). `balance` sigue siendo el real.
+    const balanceRecurrente = balance + gastos.extraTotal;
+    return { mes, ingresos, gastos, balance, balanceRecurrente, extraordinarios: gastos.extraTotal, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }
 
   // Día de un mes «YYYY-MM» (entero 1–31, recortado al último día del mes: un «31» cae el 28 en febrero) y cuántos días faltan desde
@@ -362,14 +384,16 @@ const Periodo = (() => {
     for (let i = 1; i <= (max || 6); i++) {
       const m = mesDesplazado(mes, -i);
       const b = balanceDelMes(m, estado);
-      if (!(b.ingresos.total > 0 || b.gastos.total > 0) || b.balance >= 0) break;
-      balances.push({ mes: m, balance: b.balance });
+      // Se mide el balance RECURRENTE: un mes de déficit solo por una compra grande aislada no es un hábito de gastar más de lo que
+      // entra (el golpe ya lo cuentan la liquidez y el runway). Un mes con solo la compra grande y nada más no tiene qué juzgar.
+      if (!(b.ingresos.total > 0 || b.gastos.recurrenteTotal > 0) || b.balanceRecurrente >= 0) break;
+      balances.push({ mes: m, balance: b.balanceRecurrente });
     }
     return { meses: balances.length, balances, acumulado: balances.reduce((a, x) => a + x.balance, 0) };
   }
 
   return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
-           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, diaDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
+           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, diaDelMes, esCompraGrande, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
 })();
 
 // Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.

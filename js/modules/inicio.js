@@ -289,13 +289,50 @@ function _mesesCubiertos(liquidoReal, gastoRef){
 function _nivelRunway(meses){
   return meses < UMBRALES.runway.critico ? 'critico' : meses < UMBRALES.runway.atencion ? 'atencion' : 'ok';
 }
+// «3,4 meses» / «1 mes» / «menos de 1 mes» / «más de 24 meses».
+function _fmtMeses(meses){
+  if(meses < 1) return 'menos de 1 mes';
+  if(meses >= 24) return 'más de 24 meses';
+  const n = meses.toFixed(1).replace('.', ',');
+  return n === '1,0' ? '1 mes' : n + ' meses';
+}
 // Texto del runway («Cubres 3,4 meses de gastos»).
 function _textoRunway(meses){
   if(meses <= 0) return 'Tu plata disponible no cubre tus gastos';
-  if(meses < 1) return 'Cubres menos de 1 mes de gastos';
-  if(meses >= 24) return 'Cubres más de 24 meses de gastos';
-  const n = meses.toFixed(1).replace('.', ',');
-  return 'Cubres ' + n + (n === '1,0' ? ' mes' : ' meses') + ' de gastos';
+  return 'Cubres ' + _fmtMeses(meses) + ' de gastos';
+}
+
+// Impacto de un gasto grande ANTES de hacerlo: qué parte de tu plata disponible es y cuántos meses de gastos cubrirías después.
+// `grande` = sugerencia de marcarlo como compra grande (UMBRALES.compraGrande). Pagar con tarjeta pesa igual: la deuda propia resta de
+// la liquidez neta (calcLiquidez) lo mismo que si saliera de una cuenta. → { monto, grande, pctLiquidez, pctPatrimonio, antes, despues,
+// netaDespues, nivel ('red'|'amber'|'gris'), texto } — null si el monto es menor al mínimo (no hay nada que advertir).
+function calcImpactoCompra(monto){
+  const C = UMBRALES.compraGrande;
+  if(!(monto >= C.minimo)) return null;
+  const liq = calcLiquidez();
+  const gastoRef = Periodo.gastoPromedioPrevio(mesActual(), UMBRALES.salud.mesesReferencia).promedio;
+  const netaDespues = liq.neta - monto;
+  const antes = _mesesCubiertos(liq.neta, gastoRef);
+  const despues = _mesesCubiertos(netaDespues, gastoRef);
+  const pctLiquidez = liq.neta > 0 ? monto / liq.neta : null;
+  const patrimonio = calcPatrimonioVisible();
+  const pctPatrimonio = patrimonio > 0 ? monto / patrimonio : null;
+  const grande = (pctLiquidez !== null && pctLiquidez >= C.fraccionLiquidez) || (gastoRef > 0 && monto >= C.mesesDeGasto * gastoRef) || netaDespues < 0;
+  const pct = x => Math.round(x * 100) + ' %';
+  let texto, nivel;
+  if(netaDespues < 0){
+    nivel = 'red';
+    texto = 'Con esto tus deudas superarían tu plata disponible en ' + fmtNoCents(-netaDespues) + '.';
+  } else {
+    const partes = [];
+    if(pctLiquidez !== null) partes.push('Es el ' + pct(pctLiquidez) + ' de tu plata disponible' + (pctPatrimonio !== null ? ' y el ' + pct(pctPatrimonio) + ' de tu patrimonio' : '') + '.');
+    if(despues !== null){
+      partes.push('Después cubrirías ' + _fmtMeses(despues) + ' de gastos' + (antes !== null ? ' (hoy: ' + _fmtMeses(antes) + ')' : '') + '.');
+      nivel = _nivelRunway(despues) === 'critico' ? 'red' : _nivelRunway(despues) === 'atencion' ? 'amber' : 'gris';
+    } else nivel = 'gris';
+    texto = partes.join(' ');
+  }
+  return { monto, grande, pctLiquidez, pctPatrimonio, antes, despues, netaDespues, nivel, texto };
 }
 // Meses seguidos de déficit que merecen aviso (0 si no merecen): solo con ingreso reciente registrado (sin él, «déficit» sería solo
 // no haber anotado ingresos) y sin un fondo sólido (≥ 6 meses de gasto) que la absorba.
@@ -489,6 +526,16 @@ function calcHealthScore(){
   const cats = new Set((S.gastosVar||[]).slice(-20).map(g=>g.cat));
   if(gvMes > 0 && cats.size <= 1) add('Registra las categorías de tus gastos para mejor control.','sugerencia','gastos');
 
+  // Una compra grande reciente (marcada por el usuario) que dejó las reservas bajas: no resta puntos propios (la liquidez baja y el
+  // runway ya lo cuentan), pero se nombra para que la causa no sea un misterio y se sepa qué hacer: reconstruir el fondo.
+  const _d90 = _fechaSafe(hoy()); _d90.setDate(_d90.getDate() - 90);
+  const _desde90 = _d90.getFullYear() + '-' + String(_d90.getMonth() + 1).padStart(2, '0') + '-' + String(_d90.getDate()).padStart(2, '0');
+  const _cgRecientes = Periodo.comprasGrandesEntre(_desde90, hoy());
+  if(_cgRecientes.length && (mesesCubiertos === null || mesesCubiertos < U.fondoMeses.completo)){
+    const _mayor = _cgRecientes.slice().sort((a, b) => (b.monto||0) - (a.monto||0))[0];
+    add(`Tu compra grande reciente (${_mayor.desc || 'sin nombre'}, ${fmt(_mayor.monto||0)}) pesa en tus reservas: antes de otro gasto grande, reconstruir tu fondo es la prioridad.`,'sugerencia');
+  }
+
   // Sin gasto típico no se puede medir cuántos meses cubren tus reservas: se dice en vez de quedarse en un «Regular» mudo.
   if(tieneAlgo && liquidoReal > 0 && gastoRef <= 0) add('Cuando completes un mes de gastos podremos medir cuántos meses cubren tus reservas.','sugerencia');
 
@@ -671,6 +718,7 @@ function renderProyeccion(){
   let diasReales = 0; // declarado en scope externo para usarlo en el template del footer
   let ritmos = [];    // ritmo mensual de cada tercio del historial (para saber si la tendencia fue consistente)
   const intervalos = [];
+  const comprasGrandes = []; // compras grandes dentro de la ventana: son un golpe real (ya está en el patrimonio de hoy), no un ritmo
   if(hist.length >= 2){
     // Cambio neto total (sin aperturas/ajustes) y días totales transcurridos —
     // ver más abajo por qué se promedia así en vez de por-intervalo.
@@ -685,7 +733,11 @@ function renderProyeccion(){
       // del historial guardados antes de que existiera valorVisible.
       const vHoy  = (hist[i].valorVisible!=null)   ? hist[i].valorVisible   : hist[i].valor;
       const vAyer = (hist[i-1].valorVisible!=null) ? hist[i-1].valorVisible : hist[i-1].valor;
-      const cambioDelDia = (vHoy - vAyer) - (hist[i].montoBase||0);
+      // Una compra grande de ese intervalo (marcada por el usuario) bajó el patrimonio, pero no es su RITMO: se suma de vuelta para la
+      // pendiente. Sin esto, una moto de 15 M se extrapolaba como −15 M cada mes (o dejaba la tendencia en «estimación» para siempre).
+      const _cg = Periodo.comprasGrandesEntre(hist[i-1].fecha, hist[i].fecha);
+      _cg.forEach(g => comprasGrandes.push(g));
+      const cambioDelDia = (vHoy - vAyer) - (hist[i].montoBase||0) + _cg.reduce((a, g) => a + (g.monto||0), 0);
       cambioNetoTotal += cambioDelDia;
       diasReales += diasEntre;
       intervalos.push({ dias: diasEntre, cambio: cambioDelDia });
@@ -730,6 +782,11 @@ function renderProyeccion(){
   const deudaTCTotal = _dp ? _dp.deudaTC : deudaTCPropia;
   const deudaInfo = deudaTCTotal > 0
     ? `<div class="inicio-proy-deuda">Deuda TC: ${fmt(deudaTCTotal)}${Math.abs(deudaTCTotal - deudaTCPropia) > 0.5 ? ' (propia ' + fmt(deudaTCPropia) + ')' : ''} ya descontada del patrimonio</div>` : '';
+  // Compras grandes dentro de la ventana: se dice en claro que bajaron el patrimonio (ya está descontado del punto de partida) y que la
+  // proyección usa el ritmo SIN ellas. No se esconde el golpe: solo se separa de lo que se repite.
+  const _cgTotal = comprasGrandes.reduce((a, g) => a + (g.monto||0), 0);
+  const extraInfo = (!historialInsuficiente && comprasGrandes.length)
+    ? `<div class="inicio-proy-extra">Sin contar ${comprasGrandes.length === 1 ? 'tu compra grande' : 'tus compras grandes'} (${comprasGrandes.slice(0, 2).map(g => escHtml(String(g.desc || 'una compra'))).join(', ')}: ${fmt(_cgTotal)}), tu ritmo es ${tendenciaMensual >= 0 ? '+' : ''}${fmt(tendenciaMensual)} al mes. Ya está descontada de tu patrimonio de hoy; la proyección no la repite.</div>` : '';
   // Cuánto aguanta tu plata disponible si el patrimonio sigue bajando a este ritmo (solo con tendencia negativa y liquidez positiva).
   let runwayInfo = '';
   if(!historialInsuficiente && tendenciaMensual < 0 && typeof calcLiquidez==='function'){
@@ -785,6 +842,7 @@ function renderProyeccion(){
       <div id="_proy-tt" class="inicio-proy-tt" style="display:none;"></div>
     </div>
     ${deudaInfo}
+    ${extraInfo}
     ${runwayInfo}
     ${irregularInfo}
     <div class="inicio-proy-pie">

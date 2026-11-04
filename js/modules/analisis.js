@@ -469,7 +469,7 @@ function renderIngresosFijos(){
   // a escapar nada — misma coerción implícita ya validada para innerHTML.
   const mes=mesActual();
   el.innerHTML=lista.map(ing=>{
-    const desdeLabel=ing.desde?html`<span class="an-desde">desde ${ing.desde}</span>`:'';
+    const desdeLabel=ing.desde?html`<span class="an-desde">desde ${ing.desde}${ing.dia?' · día '+ing.dia:''}</span>`:(ing.dia?html`<span class="an-desde">día ${ing.dia}</span>`:'');
     // Estado del mes en curso: un ingreso fijo solo suma cuando se registra su cobro.
     const est=ingresoFijoEstadoMes(ing,mes);
     const estadoHtml=est.cobrado>0
@@ -511,6 +511,7 @@ function abrirSheetIngresoFijo(id){
   const nEl=document.getElementById('if_n');
   const mEl=document.getElementById('if_m');
   const dEl=document.getElementById('if_d');
+  const diaEl=document.getElementById('if_dia');
   // Mes actual como default para "desde"
   const mesHoy=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0');
   if(_ifEditId){
@@ -520,11 +521,13 @@ function abrirSheetIngresoFijo(id){
     if(nEl)nEl.value=ing.nombre||'';
     if(mEl)mEl.value=fmtInput(ing.monto||0);
     if(dEl)dEl.value=ing.desde||mesHoy;
+    if(diaEl)diaEl.value=ing.dia?String(ing.dia):'';
   } else {
     if(titleEl)titleEl.textContent='Ingreso fijo mensual';
     if(nEl)nEl.value='';
     if(mEl)mEl.value='';
     if(dEl)dEl.value=mesHoy;
+    if(diaEl)diaEl.value='';
   }
   openSheet('ingreso-fijo');
 }
@@ -551,12 +554,18 @@ function guardarIngresoFijo(){
   const d=(document.getElementById('if_d').value||'').trim();
   if(!n){toast('Ingresa un nombre','err');return;}
   if(!m||m<=0){toast('Ingresa un monto válido','err');return;}
+  // Día en que te llega (opcional): vacío = no se avisa si tarda; si se escribe, un día válido (1–31).
+  const diaTxt=((document.getElementById('if_dia')||{value:''}).value||'').trim();
+  const dia=diaTxt===''?null:Number(diaTxt);
+  if(dia!==null&&!(Number.isInteger(dia)&&dia>=1&&dia<=31)){toast('El día debe estar entre 1 y 31','err');return;}
   if(!S.ingresosFijos)S.ingresosFijos=[];
   if(_ifEditId){
     const ing=S.ingresosFijos.find(x=>x.id===_ifEditId);
-    if(ing){ing.nombre=n;ing.monto=m;ing.desde=d||undefined;}
+    if(ing){ing.nombre=n;ing.monto=m;ing.desde=d||undefined;if(dia!==null)ing.dia=dia;else delete ing.dia;}
   } else {
-    S.ingresosFijos.push({id:uid(),nombre:n,monto:m,desde:d||undefined});
+    const nuevo={id:uid(),nombre:n,monto:m,desde:d||undefined};
+    if(dia!==null)nuevo.dia=dia;
+    S.ingresosFijos.push(nuevo);
   }
   closeSheet('ingreso-fijo');
   save();renderIngresosFijos();renderAnalisis();

@@ -323,6 +323,19 @@ const Periodo = (() => {
     return { mes, ingresos, gastos, balance, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }
 
+  // Día de un mes «YYYY-MM» (entero 1–31, recortado al último día del mes: un «31» cae el 28 en febrero) y cuántos días faltan desde
+  // `hoyStr`: { dia, fecha:'YYYY-MM-DD', dias } (0 = hoy, negativo = ya pasó). null si `dia` no es un entero 1–31. Lo comparten los
+  // gastos fijos (vencimiento) y los ingresos fijos (día esperado).
+  function diaDelMes(dia, mes, hoyStr) {
+    const d = Number(dia);
+    if (!Number.isInteger(d) || d < 1 || d > 31) return null;
+    const [y, m] = String(mes).split('-').map(Number);
+    const real = Math.min(d, new Date(y, m, 0).getDate());
+    const [hy, hm, hd] = String(hoyStr).split('-').map(Number);
+    return { dia: real, fecha: mes + '-' + String(real).padStart(2, '0'),
+      dias: Math.round((Date.UTC(y, m - 1, real) - Date.UTC(hy, hm - 1, hd)) / 86400000) };
+  }
+
   // Gastos fijos con día de vencimiento (`gf.dia`, entero 1–31, opcional) que todavía NO se han pagado en `mes`. El día se recorta al
   // último día del mes (un «31» vence el 28 en febrero). `dias` = días desde `hoyStr` hasta el vencimiento: 0 = vence hoy, negativo = ya
   // venció. Un gasto fijo sin día no aparece aquí (la app no inventa un vencimiento: solo avisa de lo que el usuario dijo).
@@ -330,18 +343,11 @@ const Periodo = (() => {
   function gastosFijosProgramados(mes, hoyStr, estado) {
     const st = _st(estado);
     const pagados = new Set(pagosFijos(estado).filter(p => p.mesCubre === mes).map(p => p.id));
-    const [y, m] = String(mes).split('-').map(Number);
-    const ultimo = new Date(y, m, 0).getDate();
-    const [hy, hm, hd] = String(hoyStr).split('-').map(Number);
-    const hoyUTC = Date.UTC(hy, hm - 1, hd);
     const out = [];
     (st.gastosFijos || []).forEach(gf => {
-      const d = Number(gf.dia);
-      if (!Number.isInteger(d) || d < 1 || d > 31 || pagados.has(gf.id)) return;
-      const dia = Math.min(d, ultimo);
-      out.push({ id: gf.id, nombre: gf.nombre, monto: gf.monto || 0, cat: gf.cat, dia,
-        fecha: mes + '-' + String(dia).padStart(2, '0'),
-        dias: Math.round((Date.UTC(y, m - 1, dia) - hoyUTC) / 86400000) });
+      const f = diaDelMes(gf.dia, mes, hoyStr);
+      if (!f || pagados.has(gf.id)) return;
+      out.push({ id: gf.id, nombre: gf.nombre, monto: gf.monto || 0, cat: gf.cat, dia: f.dia, fecha: f.fecha, dias: f.dias });
     });
     return out.sort((a, b) => a.dias - b.dias);
   }
@@ -363,7 +369,7 @@ const Periodo = (() => {
   }
 
   return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
-           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
+           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, diaDelMes, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
 })();
 
 // Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.

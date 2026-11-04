@@ -2514,7 +2514,7 @@
     <div class="overlay" id="sheet-gasto-fijo" data-sheet-id="gasto-fijo">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title">Gasto fijo mensual</div>
+        <div class="sheet-title" id="gf-sheet-title">Gasto fijo mensual</div>
         <div class="ig"><label class="il" for="gf_n">Nombre</label><input
             type="text" id="gf_n" maxlength="30" placeholder="Ej: Arriendo"></div>
         <div class="ig"><label class="il" for="gf_m">Monto mensual</label><input
@@ -2546,6 +2546,8 @@
             class="money-input"></div>
         <div class="ig"><label class="il" for="if_d">Lo esperas desde</label><input
             type="month" id="if_d"></div>
+        <div class="ig"><label class="il" for="if_dia">Día en que te llega (opcional)</label><input
+            type="text" inputmode="numeric" id="if_dia" maxlength="2" placeholder="Ej: 30 — te avisamos si ese día pasa y no lo has registrado"></div>
         <button type="button" class="btn btn-primary"
           id="btn-guardar-ingreso-fijo">Guardar</button>
         <button type="button" class="btn btn-ghost"

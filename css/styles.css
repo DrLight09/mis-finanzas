@@ -887,6 +887,7 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .gasto-vence{font-size:10px;color:var(--text3);margin-right:auto;margin-left:8px;font-family:'DM Mono',monospace;}
 .gasto-vence-amber{color:var(--amber);}
 .gasto-vence-red{color:var(--red);}
+.gasto-btn-editar{background:none;border:1px solid var(--border2);border-radius:7px;color:var(--text2);font-size:11px;padding:3px 8px;margin-right:6px;cursor:pointer;}
 .gasto-dia{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:0 2px;margin:16px 0 6px;}
 .gasto-dia.gasto-dia-primero{margin:2px 0 6px;}
 .gasto-dia-label{font-size:11px;font-weight:600;color:var(--text2);}

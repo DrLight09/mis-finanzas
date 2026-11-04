@@ -87,11 +87,27 @@ function _itemsGastosFijos(items, liq){
   if(comprometido>disponible) items.push({tipo:'red',texto:html`En los próximos ${N} días vencen ${fmt(comprometido)} y tu plata disponible es ${fmt(disponible)}`});
 }
 
+// Ingresos fijos con día esperado (`ing.dia`): si ya pasó ese día del mes y aún no se registró NINGÚN cobro de este mes, avisa (ámbar:
+// no es una deuda tuya, pero es plata que contabas y que todavía no está). Con un cobro parcial registrado no avisa: ya hay algo.
+function _itemsIngresosFijos(items){
+  if(typeof ingresoFijoEstadoMes!=='function')return;
+  const hoyStr=hoy();
+  const mes=mesActual();
+  (S.ingresosFijos||[]).forEach(ing=>{
+    const f=Periodo.diaDelMes(ing.dia,mes,hoyStr);
+    if(!f||f.dias>=0)return;
+    const est=ingresoFijoEstadoMes(ing,mes);
+    if(!est.esperado||est.cobrado>0)return;
+    items.push({tipo:'amber',texto:html`${ing.nombre||'Un ingreso fijo'} debía llegar el día ${f.dia} y aún no lo registras (${fmt(ing.monto||0)})`});
+  });
+}
+
 function renderAttencion(){
   const items=[];
   const hoyStr=hoy();
   _itemsSituacion(items);
   _itemsGastosFijos(items, calcLiquidez());
+  _itemsIngresosFijos(items);
   // Deudores con saldo pendiente
   if(typeof getDeudorSaldo==='function'){
     Deudas.lista('favor').forEach(d=>{

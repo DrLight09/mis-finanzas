@@ -6,7 +6,7 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Revisión de mejoras: hallazgos financieros y de estructura (2026-11-03, SW v92)
 
-Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los escenarios negativos). Cada hallazgo se **reprodujo ejecutando el código real** antes de tocarlo; los que no se reprodujeron o no aplicaban se anotan al final. Lo que sigue pendiente quedó en `mejoras-mis-finanzas.md` (ya sin lo resuelto). Pruebas: `tests/escenarios-financieros.test.js` (nuevo, 45 pruebas) + las existentes actualizadas: 693/693. `npm run smoke` y `generar-mapa.js --check` en verde. El puntaje de Salud **cambia** para varios estados (ver cada punto): es intencional.
+Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los escenarios negativos). Cada hallazgo se **reprodujo ejecutando el código real** antes de tocarlo; los que no se reprodujeron o no aplicaban se anotan al final. Lo que sigue pendiente quedó en `mejoras-mis-finanzas.md` (ya sin lo resuelto). Pruebas: `tests/escenarios-financieros.test.js` (nuevo, 51 pruebas) + las existentes actualizadas: 699/699. `npm run smoke` y `generar-mapa.js --check` en verde. El puntaje de Salud **cambia** para varios estados (ver cada punto): es intencional.
 
 ### Salud financiera (`inicio.js`)
 
@@ -51,7 +51,9 @@ Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los es
 - **Campo opcional «Día de vencimiento»** (1–31) en «Gasto fijo mensual» (`#gf_d`); vacío = sin aviso, fuera de rango = se rechaza. `Periodo.gastosFijosProgramados(mes, hoy)` (puro): los pendientes del mes con `dias` hasta el vencimiento (negativo = vencido); un «31» se recorta al último día del mes (28/29 en febrero); los pagados ese mes y los sin día no aparecen.
 - **Lista de gastos fijos:** «Vence el día 5» / «Vence en 2 días» (ámbar desde 3) / «Vence hoy» / «Venció hace N días» (rojo) mientras no esté pagado.
 - **Necesita atención:** aviso por cada gasto fijo (por vencer, hoy, vencido sin pagar) y la **brecha de caja**: «En los próximos 7 días vencen $X y tu plata disponible es $Y» (suma lo que vence en 7 días y lo vencido sin pagar, incluido el mes siguiente: el día 30 el arriendo del 1 ya está encima). Límites en `UMBRALES.atencion` (`gastoFijoAvisoDias` = 3, `brechaCajaDias` = 7).
-- No cambia ningún saldo ni la regla «un gasto fijo solo se convierte en gasto real al pagarlo». Los gastos fijos ya creados siguen igual (sin día no hay avisos). Quedan fuera, y siguen en `mejoras-mis-finanzas.md`: día para **ingresos** fijos y editar el día de un gasto fijo ya creado (hoy se borra y se vuelve a crear).
+- No cambia ningún saldo ni la regla «un gasto fijo solo se convierte en gasto real al pagarlo». Los gastos fijos ya creados siguen igual (sin día no hay avisos).
+- **Editar un gasto fijo** (antes solo se podía borrar y recrear, perdiendo nombre y categoría): botón «Editar» en cada fila que abre el mismo sheet cargado (`abrirEditarGastoFijo`); conserva el `id`, así los pagos anteriores no se tocan; dejar el día vacío lo quita; un día fuera de 1–31 se rechaza sin cambiar nada. De paso, el registro de cambios («Agregaste gasto fijo») guardaba nombre y monto **vacíos** porque los leía después de limpiar el formulario; ahora los lee antes.
+- **Ingresos fijos con «Día en que te llega» (opcional)**: se guarda en `ing.dia`, se muestra en la fila y, si ese día ya pasó y no hay **ningún** cobro registrado ese mes, «Necesita atención» avisa («Sueldo debía llegar el día 30 y aún no lo registras», ámbar: no es una deuda tuya, pero sí plata que contabas). Con un cobro parcial, sin día o antes de «desde», no avisa. `Periodo.diaDelMes()` (nuevo, puro) es el helper común del día del mes (recorta al último día; devuelve `null` si no es un entero 1–31).
 
 ### Análisis, Wrapped y push
 

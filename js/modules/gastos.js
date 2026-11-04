@@ -168,8 +168,34 @@ function abrirNuevoGastoVar() {
   openSheet('gasto-var');
 }
 
+// Id del gasto fijo que se está editando (null = uno nuevo). Mismo molde que el sheet de «Ingreso fijo».
+let _gfEditId = null;
+
+function _gfPoblar(g) {
+  const t = document.getElementById('gf-sheet-title');
+  if (t) t.textContent = g ? 'Editar gasto fijo' : 'Gasto fijo mensual';
+  document.getElementById('gf_n').value = g ? (g.nombre || '') : '';
+  document.getElementById('gf_m').value = g ? fmtInput(g.monto || 0) : '';
+  const d = document.getElementById('gf_d');
+  if (d) d.value = g && g.dia ? String(g.dia) : '';
+  if (g && g.cat) document.getElementById('gf_c').value = g.cat;
+}
+
 function abrirNuevoGastoFijo() {
+  _gfEditId = null;
   poblarCatSelect('gf_c', getCatsFijo());
+  _gfPoblar(null);
+  openSheet('gasto-fijo');
+}
+
+// Editar un gasto fijo (p. ej. ponerle o cambiarle el día de vencimiento) sin borrarlo y perder su nombre y categoría. Los pagos ya
+// registrados guardan su propio monto y mes: cambiar el monto de la plantilla no los toca.
+function abrirEditarGastoFijo(id) {
+  const g = (S.gastosFijos || []).find(x => x.id === id);
+  if (!g) return;
+  _gfEditId = id;
+  poblarCatSelect('gf_c', getCatsFijo());
+  _gfPoblar(g);
   openSheet('gasto-fijo');
 }
 
@@ -560,7 +586,7 @@ function renderGastosFijos() {
       nombre: x.nombre,
       monto: fmt(x.monto),
       montoClase: 'c-red',
-      acciones: !x._virtual ? botonEliminarFila('gastos:deleteGastoFijo', [x.id]) : '',
+      acciones: !x._virtual ? html`<button type="button" class="gasto-btn-editar" data-stop-propagation="true" ${raw(Events.attr('gastos:abrirEditarGastoFijo', x.id))}>Editar</button>${botonEliminarFila('gastos:deleteGastoFijo', [x.id])}` : '',
       metaClase: 'gasto-meta-fijo',
       meta: html`<span class="badge badge-xs bg-blue">${x.cat}</span>${vencHtml}${accionHtml}`
     });
@@ -575,14 +601,23 @@ function addGastoFijo() {
   const diaTxt = (document.getElementById('gf_d') || { value: '' }).value.trim();
   const dia = diaTxt === '' ? null : Number(diaTxt);
   if (dia !== null && !(Number.isInteger(dia) && dia >= 1 && dia <= 31)) { toast('El día de vencimiento debe estar entre 1 y 31', 'err'); return; }
-  const nuevo = { id: uid(), nombre: n, monto: m, cat: document.getElementById('gf_c').value };
-  if (dia !== null) nuevo.dia = dia;
-  S.gastosFijos.push(nuevo);
+  const cat = document.getElementById('gf_c').value;
+  const editando = _gfEditId ? (S.gastosFijos || []).find(x => x.id === _gfEditId) : null;
+  if (editando) {
+    editando.nombre = n; editando.monto = m; editando.cat = cat;
+    if (dia !== null) editando.dia = dia; else delete editando.dia;
+  } else {
+    const nuevo = { id: uid(), nombre: n, monto: m, cat };
+    if (dia !== null) nuevo.dia = dia;
+    S.gastosFijos.push(nuevo);
+  }
+  _gfEditId = null;
   document.getElementById('gf_n').value = ''; document.getElementById('gf_m').value = '';
   if (document.getElementById('gf_d')) document.getElementById('gf_d').value = '';
   save(); refresh(); closeSheet('gasto-fijo');
-  if (window.logCambio) { const _gfn = document.getElementById('gf_n'); const _gfm = parseMoney(document.getElementById('gf_m').value); logCambio('Agregaste gasto fijo', _gfn ? _gfn.value : '', _gfm, 'gasto_fijo'); }
-  toast('Gasto fijo agregado', 'ok');
+  // El nombre y el monto se leen ANTES de limpiar el formulario (antes se leían después y el registro de cambios guardaba vacío).
+  if (window.logCambio) logCambio(editando ? 'Editaste gasto fijo' : 'Agregaste gasto fijo', n, m, 'gasto_fijo');
+  toast(editando ? 'Gasto fijo actualizado' : 'Gasto fijo agregado', 'ok');
 }
 
 async function deleteGastoFijo(id) {
@@ -755,4 +790,5 @@ Events.registerAll('gastos', {
   abrirPagarGastoFijo,
   abrirNuevoGastoVar,
   abrirNuevoGastoFijo,
+  abrirEditarGastoFijo,
 });

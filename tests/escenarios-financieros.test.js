@@ -451,3 +451,88 @@ test('P7. con la plata alcanzando y sin vencimientos cerca, no hay alertas de ga
   ctx.renderAttencion();
   assert.ok(!/vence|venció|próximos 7 días/.test(String((dom.el('s-attn-list') || {}).innerHTML || '')));
 });
+
+/* ================= P7b: día esperado de ingresos fijos y edición de gastos fijos ================= */
+test('P7b. Periodo.diaDelMes: recorta al último día, cuenta días y rechaza lo que no es 1–31', () => {
+  const { Periodo } = app();
+  assert.equal(JSON.stringify(Periodo.diaDelMes(30, '2026-11', '2026-11-03')), JSON.stringify({ dia: 30, fecha: '2026-11-30', dias: 27 }));
+  assert.equal(Periodo.diaDelMes(31, '2027-02', '2027-02-10').fecha, '2027-02-28');
+  assert.equal(Periodo.diaDelMes(1, '2026-11', '2026-11-03').dias, -2);
+  [0, 32, 'x', null, undefined, 1.5].forEach(v => assert.equal(Periodo.diaDelMes(v, '2026-11', '2026-11-03'), null, String(v)));
+});
+
+function atencionConIngresos(sObj) {
+  const ctx = app(sObj, [CORE('cobros.js')]);
+  const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
+  const dom = createFakeDom(); ctx.document = dom.document;
+  ctx.renderAttencion();
+  return String((dom.el('s-attn-list') || {}).innerHTML || '');
+}
+
+test('P7b. un ingreso fijo con día esperado que ya pasó y sin cobro registrado este mes avisa', () => {
+  if (new Date().getDate() < 2) return; // el día 1 no hay un «día 1» ya pasado
+  const t = atencionConIngresos({ cuentas: cuentas(5000000), ingresosFijos: [{ id: 'i', nombre: 'Sueldo', monto: 2000000, desde: '2020-01', dia: 1 }] });
+  assert.match(t, /Sueldo debía llegar el día 1 y aún no lo registras/);
+});
+
+test('P7b. con un cobro de este mes registrado, o sin día esperado, o con el día todavía por llegar, no avisa', () => {
+  if (new Date().getDate() < 2) return;
+  const cobrado = atencionConIngresos({ cuentas: cuentas(5000000), ingresosFijos: [{ id: 'i', nombre: 'Sueldo', monto: 2000000, desde: '2020-01', dia: 1, cobros: [{ id: 'c', mesCubre: mesAct, monto: 2000000, fecha: mesAct + '-01' }] }] });
+  assert.ok(!/debía llegar/.test(cobrado));
+  const sinDia = atencionConIngresos({ cuentas: cuentas(5000000), ingresosFijos: [{ id: 'i', nombre: 'Sueldo', monto: 2000000, desde: '2020-01' }] });
+  assert.ok(!/debía llegar/.test(sinDia));
+  const futuro = atencionConIngresos({ cuentas: cuentas(5000000), ingresosFijos: [{ id: 'i', nombre: 'Sueldo', monto: 2000000, desde: '2020-01', dia: 31 }] });
+  assert.ok(!/debía llegar/.test(futuro) || new Date().getDate() >= 28, 'el día 31 todavía no pasó');
+  const aunNoEmpieza = atencionConIngresos({ cuentas: cuentas(5000000), ingresosFijos: [{ id: 'i', nombre: 'Sueldo', monto: 2000000, desde: '2099-01', dia: 1 }] });
+  assert.ok(!/debía llegar/.test(aunNoEmpieza), 'todavía no lo esperas (desde en el futuro)');
+});
+
+/* ---- editar un gasto fijo (gastos.js) ---- */
+function gastosApp(sObj) {
+  const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('html-tag.js'), CORE('umbrales.js'), MOD('gastos.js')], { permissive: true });
+  Object.assign(ctx.S, sObj);
+  const valores = {};
+  const el = id => (valores[id] = valores[id] || { value: '', textContent: '', classList: { add() {}, remove() {} } });
+  ctx.document = { getElementById: id => el(id), querySelectorAll: () => [], querySelector: () => null };
+  ctx.window.document = ctx.document;
+  const toasts = []; ctx.toast = (m, t) => toasts.push(m); ctx.poblarCatSelect = () => {};
+  ctx.openSheet = () => {}; ctx.closeSheet = () => {}; ctx.save = () => {}; ctx.refresh = () => {};
+  return { ctx, el, toasts };
+}
+
+test('P7b. editar un gasto fijo cambia el día sin crear otro, conserva el id y no toca los pagos ya registrados', () => {
+  const { ctx, el, toasts } = gastosApp({ gastosFijos: [{ id: 'a', nombre: 'Arriendo', monto: 900000, cat: 'Vivienda' }], pagosGastosFijos: { 'a_2026-10': { monto: 900000, fecha: '2026-10-05' } } });
+  ctx.abrirEditarGastoFijo('a');
+  assert.equal(el('gf_n').value, 'Arriendo');
+  assert.equal(el('gf-sheet-title').textContent, 'Editar gasto fijo');
+  el('gf_d').value = '5';
+  el('gf_m').value = '950.000,00';
+  ctx.addGastoFijo();
+  assert.equal(ctx.S.gastosFijos.length, 1);
+  assert.equal(ctx.S.gastosFijos[0].id, 'a');
+  assert.equal(ctx.S.gastosFijos[0].dia, 5);
+  assert.equal(ctx.S.pagosGastosFijos['a_2026-10'].monto, 900000, 'el pago de octubre conserva su monto');
+  assert.ok(toasts.includes('Gasto fijo actualizado'));
+});
+
+test('P7b. dejar el día vacío al editar lo quita; un día fuera de 1–31 se rechaza y no cambia nada', () => {
+  const { ctx, el, toasts } = gastosApp({ gastosFijos: [{ id: 'a', nombre: 'Arriendo', monto: 900000, cat: 'Vivienda', dia: 5 }] });
+  ctx.abrirEditarGastoFijo('a');
+  el('gf_d').value = '40';
+  ctx.addGastoFijo();
+  assert.equal(ctx.S.gastosFijos[0].dia, 5);
+  assert.ok(toasts.some(m => m.includes('entre 1 y 31')));
+  el('gf_d').value = '';
+  ctx.addGastoFijo();
+  assert.ok(!('dia' in ctx.S.gastosFijos[0]));
+});
+
+test('P7b. un gasto fijo nuevo después de editar otro NO sobrescribe al editado', () => {
+  const { ctx, el } = gastosApp({ gastosFijos: [{ id: 'a', nombre: 'Arriendo', monto: 900000, cat: 'Vivienda' }] });
+  ctx.abrirEditarGastoFijo('a');
+  ctx.abrirNuevoGastoFijo();
+  el('gf_n').value = 'Internet'; el('gf_m').value = '80.000,00'; el('gf_c').value = 'Servicios';
+  ctx.addGastoFijo();
+  assert.equal(ctx.S.gastosFijos.length, 2);
+  assert.equal(ctx.S.gastosFijos[0].nombre, 'Arriendo');
+});

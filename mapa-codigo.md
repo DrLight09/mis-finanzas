@@ -51,8 +51,8 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/configuracion.js` | lazy — grupo `config` | 13 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 64 | 4 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 117 | 0 |
-| `js/modules/gastos.js` | de entrada (defer) | 23 | 0 |
-| `js/modules/inicio.js` | de entrada (defer) | 16 | 0 |
+| `js/modules/gastos.js` | de entrada (defer) | 25 | 0 |
+| `js/modules/inicio.js` | de entrada (defer) | 18 | 0 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 58 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 57 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
@@ -340,13 +340,13 @@ Carga: lazy — grupo `encargos`
 
 Carga: de entrada (defer)
 
-**Funciones:** `_gfPoblar`, `_gvDiaLabel`, `_ogGv`, `abrirEditarGastoFijo`, `abrirNuevoGastoFijo`, `abrirNuevoGastoVar`, `abrirPagarGastoFijo`, `actualizarGvSplitPreview`, `addGastoFijo`, `addGastoVar`, `agregarGvSplitRow`, `confirmarPagarGastoFijo`, `deleteGastoFijo`, `deleteGastoVar`, `getGvSplitData`, `getGvSplitFuentesOptions`, `pgfActualizarSaldo`, `renderGastosFijos`, `renderGastosVar`, `renderMesFiltros`, `setMesFiltro`, `switchGastoTab`, `toggleGvSplit`
+**Funciones:** `_gfPoblar`, `_gvDiaLabel`, `_ogGv`, `abrirEditarGastoFijo`, `abrirNuevoGastoFijo`, `abrirNuevoGastoVar`, `abrirPagarGastoFijo`, `actualizarGvImpacto`, `actualizarGvSplitPreview`, `addGastoFijo`, `addGastoVar`, `agregarGvSplitRow`, `confirmarPagarGastoFijo`, `deleteGastoFijo`, `deleteGastoVar`, `getGvSplitData`, `getGvSplitFuentesOptions`, `pgfActualizarSaldo`, `renderGastosFijos`, `renderGastosVar`, `renderMesFiltros`, `setMesFiltro`, `switchGastoTab`, `toggleCompraGrande`, `toggleGvSplit`
 
 ### `js/modules/inicio.js`
 
 Carga: de entrada (defer)
 
-**Funciones:** `_checkGastoAlto`, `_itemsGastosFijos`, `_itemsIngresosFijos`, `_itemsSituacion`, `_mesesCubiertos`, `_nivelRunway`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_textoRunway`, `calcEstadoHero`, `calcHealthScore`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderProyeccion`
+**Funciones:** `_checkGastoAlto`, `_fmtMeses`, `_itemsGastosFijos`, `_itemsIngresosFijos`, `_itemsSituacion`, `_mesesCubiertos`, `_nivelRunway`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_textoRunway`, `calcEstadoHero`, `calcHealthScore`, `calcImpactoCompra`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderProyeccion`
 
 **Asigna a `window`:** `refresh`
 
@@ -588,6 +588,7 @@ Ninguno.
 | `_espejoLista` | `js/core/cuenta-efectos.js` |
 | `_fechaSafe` | `js/core/core-state.js` |
 | `_fechasCambioEncargoEnCajita` | `js/core/nu-calc.js` |
+| `_fmtMeses` | `js/modules/inicio.js` |
 | `_fmtTiempo` | `js/modules/alcancia.js` |
 | `_fuenteLabelHtml` | `js/core/movimientos.js` |
 | `_getA` | `js/modules/alcancia.js` |
@@ -1027,6 +1028,7 @@ Ninguno.
 | `actualizarBotonRetirar` | `js/modules/cuentas.js` |
 | `actualizarCbAvisoMes` | `js/modules/analisis.js` |
 | `actualizarCbPreview` | `js/modules/analisis.js` |
+| `actualizarGvImpacto` | `js/modules/gastos.js` |
 | `actualizarGvSplitPreview` | `js/modules/gastos.js` |
 | `actualizarMpAvisoMes` | `js/modules/mesada.js` |
 | `actualizarMppPreview` | `js/modules/mesada.js` |
@@ -1068,6 +1070,7 @@ Ninguno.
 | `calcDeudaTcPropiaDeTarjeta` | `js/core/core-state.js` |
 | `calcEstadoHero` | `js/modules/inicio.js` |
 | `calcHealthScore` | `js/modules/inicio.js` |
+| `calcImpactoCompra` | `js/modules/inicio.js` |
 | `calcLiquidez` | `js/core/core-state.js` |
 | `calcMetaProgreso` | `js/modules/nu.js` |
 | `calcPatrimonioDesglose` | `js/core/core-state.js` |
@@ -1453,6 +1456,7 @@ Ninguno.
 | `toast` | `js/core/core-state.js` |
 | `toggleAbonoSplit` | `js/modules/prestado.js` |
 | `toggleAdApertura` | `js/modules/cuentas.js` |
+| `toggleCompraGrande` | `js/modules/gastos.js` |
 | `toggleDesdeEncargo` | `js/modules/prestado.js` |
 | `toggleExtraSection` | `js/modules/prestado.js` |
 | `toggleGvSplit` | `js/modules/gastos.js` |

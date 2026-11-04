@@ -52,7 +52,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 64 | 4 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 117 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 30 | 0 |
-| `js/modules/inicio.js` | de entrada (defer) | 18 | 0 |
+| `js/modules/inicio.js` | de entrada (defer) | 21 | 0 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 58 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 57 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
@@ -346,7 +346,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_checkGastoAlto`, `_fmtMeses`, `_itemsGastosFijos`, `_itemsIngresosFijos`, `_itemsSituacion`, `_mesesCubiertos`, `_nivelRunway`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_textoRunway`, `calcEstadoHero`, `calcHealthScore`, `calcImpactoCompra`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderProyeccion`
+**Funciones:** `_checkGastoAlto`, `_eventosCaja`, `_fechaCorta`, `_fmtMeses`, `_itemsGastosFijos`, `_itemsIngresosFijos`, `_itemsSituacion`, `_mesesCubiertos`, `_nivelRunway`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_textoRunway`, `calcCalendarioCaja`, `calcEstadoHero`, `calcHealthScore`, `calcImpactoCompra`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderProyeccion`
 
 **Asigna a `window`:** `refresh`
 
@@ -587,6 +587,8 @@ Ninguno.
 | `_esEntradaEspejoNoIngreso` | `js/core/core-state.js` |
 | `_esGastoVarNoReal` | `js/core/core-state.js` |
 | `_espejoLista` | `js/core/cuenta-efectos.js` |
+| `_eventosCaja` | `js/modules/inicio.js` |
+| `_fechaCorta` | `js/modules/inicio.js` |
 | `_fechaSafe` | `js/core/core-state.js` |
 | `_fechasCambioEncargoEnCajita` | `js/core/nu-calc.js` |
 | `_fmtMeses` | `js/modules/inicio.js` |
@@ -1068,6 +1070,7 @@ Ninguno.
 | `cajitasChequeables` | `js/core/nu-calc.js` |
 | `calcBienes` | `js/core/core-state.js` |
 | `calcC` | `js/core/nu-calc.js` |
+| `calcCalendarioCaja` | `js/modules/inicio.js` |
 | `calcCDT` | `js/core/nu-calc.js` |
 | `calcDeudaAjenaDeTarjeta` | `js/core/core-state.js` |
 | `calcDeudaTcPropia` | `js/core/core-state.js` |

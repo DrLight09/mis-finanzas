@@ -56,6 +56,21 @@ tendenciaMensual = (cambioNetoTotal / díasReales) * 30
 | 90+ y ritmo consistente | Marca ESTABLE (verde). «Consistente» = el ritmo mensual de cada uno de los tres **tercios** del historial (`_ritmosPorTercio`) va en la misma dirección que la tendencia total (tolerancia del 10 %) |
 | 90+ pero ritmo irregular | «estimación» y una línea con el rango («Tu ritmo cambió mucho entre períodos (de −$X a +$Y al mes)»): una compra grande en un solo tercio ya no se extrapola como ritmo mensual ni se llama «estable» |
 
+### Calendario de caja a 30 días (lo ya programado)
+
+La proyección de 3/6/12 meses extrapola el **pasado**. El calendario de caja mira lo que ya se **sabe** del futuro y responde «¿se me acaba la plata antes del día 30, y cuándo?». No depende de la tendencia: se muestra también sin historial. Lo calcula `calcCalendarioCaja()` (`inicio.js`) con la función pura `Periodo.saldoProyectado(saldoInicial, eventos, hoy, dias)`, partiendo de la **liquidez neta** de hoy (`calcLiquidez().neta`, que ya descuenta lo que debes: por eso no hay evento de tarjeta, pagarla no la cambia).
+
+| Evento | Qué hace | Detalle |
+|---|---|---|
+| Gasto fijo con día, sin pagar | **Sale** en su fecha | El vencido sin pagar sale hoy (es lo primero que saldrá). Recurre el mes siguiente si cae dentro del horizonte |
+| Ingreso fijo con día, sin cobrar | **Entra** en su fecha | Solo si su día **no** ha pasado: uno atrasado no se da por hecho (igual que «lo que te deben» no cuenta hasta que llega) |
+| CDT que vence | **Entra** (capital + rendimiento) | Desde el día siguiente al vencimiento (`cdtVencido`) |
+
+- **Se evalúa al cierre de cada día:** las entradas y salidas del mismo día se **netean** (no se sabe en qué orden pasan: un «déficit» de media mañana por el orden sería una falsa alarma; sueldo y arriendo el mismo día no alertan).
+- **Resultado:** `puntos` (saldo tras cada día con eventos), `minimo` (el día más bajo) y `primerDeficit` (el primer día en negativo y qué lo causó: la mayor salida de ese día). `primerDeficit` solo existe si hoy no estás ya en negativo (eso ya lo dicen el hero, la Salud y Atención).
+- **En la tarjeta:** «Próximos 30 días, con lo ya programado (gastos e ingresos fijos, CDT que vencen): tu plata disponible pasaría de $X a $Y. Lo más bajo: $Z el 12 de nov. El 5 de nov quedaría en −$W (vence Arriendo)». **En Atención** (rojo): «El 5 de nov tu plata disponible quedaría en −$W (vence Arriendo: $900.000)».
+- Solo ve lo que registraste con día: un gasto o ingreso fijo sin día no aparece. Horizonte en `UMBRALES.caja.horizonteDias`.
+
 ### Compras grandes (una moto)
 
 Las compras marcadas como «compra grande» (`gv.grande`, ver `docs/gastos.md`) bajaron el patrimonio, y ese golpe **ya está** en el valor de hoy (el punto de partida de la proyección). Lo que no es, es un ritmo: para la pendiente, en cada intervalo del historial se suma de vuelta lo que cayó por una compra grande de esa fecha (`Periodo.comprasGrandesEntre`). Sin esto, una moto de 15 M se extrapolaba como −15 M cada mes, o la tendencia quedaba en «estimación» para siempre. La tarjeta lo dice sin esconderlo: «Sin contar tu compra grande (Moto: $15.000.000), tu ritmo es +$300.000 al mes. Ya está descontada de tu patrimonio de hoy; la proyección no la repite». La compra no tiene que estar marcada: si el usuario no ha decidido, se detecta sola cuando supera su gasto mensual normal (`Periodo.compraGrandeEstado`, ver `docs/gastos.md`); y si dijo que **no** es una compra grande, se respeta y cuenta como ritmo. Con menos de 2 meses de historia no se detecta nada sola (la proyección se limita a mostrar «estimación» y el rango cuando el ritmo no fue parejo).

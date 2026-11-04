@@ -34,13 +34,14 @@ const UMBRALES = (() => {
       fraccionLiquidez: 0.3,   // se sugiere si el gasto es ≥ 30 % de tu plata disponible…
       mesesDeGasto: 2,         // …o ≥ 2 meses de tu gasto típico
     },
+    // Calendario de caja (inicio.js, _eventosCaja + Periodo.saldoProyectado): cuántos días hacia adelante se mira lo ya programado
+    caja: { horizonteDias: 30 },
     // Runway: meses de gasto típico que cubre la liquidez (se muestra en la tarjeta de Salud y en el hero)
     runway: { critico: 1, atencion: 3 },                           // < critico = rojo; < atencion = ámbar; el resto, verde
     // Aviso «Necesita atención» (renderAttencion, inicio.js)
     atencion: {
       cupoTcCasiAgotadoPct: 85, cdtAvisoDias: 7,
       gastoFijoAvisoDias: 3,  // un gasto fijo con día de vencimiento avisa desde N días antes
-      brechaCajaDias: 7,      // lo que vence (o ya venció sin pagar) en N días se compara con tu plata disponible
     },
     // Aviso de gasto del mes en el hero (_checkGastoAlto, inicio.js): fracción del ingreso de referencia que ya gastaste
     gastoAlto: { fraccionDelIngreso: 0.8 },

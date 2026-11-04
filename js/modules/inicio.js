@@ -68,10 +68,54 @@ function _itemsSituacion(items){
   if(n>0) items.push({tipo:n>=UMBRALES.salud.rachaDeficitMeses.alerta?'red':'amber',texto:html`Llevas ${n} meses seguidos gastando más de lo que ingresas (${fmt(-racha.acumulado)} en total)`});
 }
 
+// «5 de nov» para un 'YYYY-MM-DD'.
+function _fechaCorta(f){
+  const m=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const [y,mm,d]=String(f).split('-').map(Number);
+  return d+' de '+m[mm-1];
+}
+
+// Eventos de caja CONOCIDOS de antemano, para Periodo.saldoProyectado (el calendario de caja):
+//   · sale: cada gasto fijo con día que aún no se paga (el vencido sin pagar se cuenta hoy: es lo primero que saldrá);
+//   · entra: cada ingreso fijo con día esperado que aún no llegó y cuyo día NO ha pasado (uno atrasado no se da por hecho: igual que
+//     «lo que te deben» no cuenta hasta que llega) y cada CDT que vence dentro del horizonte (desde el día siguiente al vencimiento ya
+//     es plata libre, ver cdtVencido).
+// Mira el mes actual y el siguiente (el día 30, el arriendo del día 1 ya está a un paso). No hay evento de tarjeta ni de deudas: la
+// liquidez neta (calcLiquidez) ya viene descontando lo que debes, pagarlo no la cambia.
+function _eventosCaja(hoyStr, dias){
+  const ev=[];
+  const mes=mesActual();
+  [mes,Periodo.mesDesplazado(mes,1)].forEach(m=>{
+    Periodo.gastosFijosProgramados(m,hoyStr).forEach(g=>ev.push({fecha:g.dias<0?hoyStr:g.fecha,monto:-g.monto,tipo:'gasto',texto:g.nombre}));
+    (S.ingresosFijos||[]).forEach(ing=>{
+      const f=Periodo.diaDelMes(ing.dia,m,hoyStr);
+      if(!f||f.dias<0||typeof ingresoFijoEstadoMes!=='function')return;
+      const est=ingresoFijoEstadoMes(ing,m);
+      if(!est.esperado||est.cobrado>0)return;
+      ev.push({fecha:f.fecha,monto:ing.monto||0,tipo:'ingreso',texto:ing.nombre||'Ingreso fijo'});
+    });
+  });
+  (S.cajitas||[]).forEach(c=>(c.cdts||[]).forEach(cdt=>{
+    const v=cdt&&cdt.vence?_fechaSafe(cdt.vence):null;
+    if(!v||isNaN(v))return;
+    v.setDate(v.getDate()+1);
+    const fecha=v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');
+    if(fecha>hoyStr)ev.push({fecha,monto:calcCDT(cdt).val,tipo:'cdt',texto:'CDT de '+(c.nombre||'una cajita')});
+  }));
+  return ev;
+}
+
+// Calendario de caja desde hoy: { saldoProyectado… } con lo ya programado en el horizonte (UMBRALES.caja.horizonteDias).
+function calcCalendarioCaja(){
+  const H=UMBRALES.caja.horizonteDias;
+  const hoyStr=hoy();
+  return Periodo.saldoProyectado(calcLiquidez().neta,_eventosCaja(hoyStr,H),hoyStr,H);
+}
+
 // Gastos fijos con día de vencimiento (Periodo.gastosFijosProgramados): vencidos sin pagar (rojo), por vencer (ámbar) y la «brecha de
-// caja»: si lo que vence en los próximos días (más lo que ya venció sin pagar) supera tu plata disponible, se avisa antes de que pase.
-// Incluye el mes siguiente: el día 30, el arriendo del día 1 ya está a un paso.
-function _itemsGastosFijos(items, liq){
+// caja»: si con lo ya programado en los próximos 30 días (gastos fijos que salen, ingresos fijos y CDT que entran) tu plata disponible
+// se va a quedar en negativo, se avisa el día exacto y qué lo causa, antes de que pase.
+function _itemsGastosFijos(items){
   const hoyStr=hoy();
   const mes=mesActual();
   const prog=[...Periodo.gastosFijosProgramados(mes,hoyStr), ...Periodo.gastosFijosProgramados(Periodo.mesDesplazado(mes,1),hoyStr)];
@@ -81,10 +125,11 @@ function _itemsGastosFijos(items, liq){
     else if(g.dias===0) items.push({tipo:'amber',texto:html`${g.nombre} vence hoy (${fmt(g.monto)})`});
     else if(g.dias<=UMBRALES.atencion.gastoFijoAvisoDias) items.push({tipo:'amber',texto:html`${g.nombre} vence en ${g.dias} ${plural(g.dias)} (${fmt(g.monto)})`});
   });
-  const N=UMBRALES.atencion.brechaCajaDias;
-  const comprometido=prog.filter(g=>g.dias<=N).reduce((a,g)=>a+g.monto,0);
-  const disponible=Math.max(0,liq.neta);
-  if(comprometido>disponible) items.push({tipo:'red',texto:html`En los próximos ${N} días vencen ${fmt(comprometido)} y tu plata disponible es ${fmt(disponible)}`});
+  const cal=calcCalendarioCaja();
+  if(cal.primerDeficit){
+    const d=cal.primerDeficit;
+    items.push({tipo:'red',texto:html`El ${_fechaCorta(d.fecha)} tu plata disponible quedaría en ${fmt(d.saldo)}${d.evento?html` (vence ${d.evento.texto}: ${fmt(-d.evento.monto)})`:''}`});
+  }
 }
 
 // Ingresos fijos con día esperado (`ing.dia`): si ya pasó ese día del mes y aún no se registró NINGÚN cobro de este mes, avisa (ámbar:
@@ -106,7 +151,7 @@ function renderAttencion(){
   const items=[];
   const hoyStr=hoy();
   _itemsSituacion(items);
-  _itemsGastosFijos(items, calcLiquidez());
+  _itemsGastosFijos(items);
   _itemsIngresosFijos(items);
   // Deudores con saldo pendiente
   if(typeof getDeudorSaldo==='function'){
@@ -787,6 +832,15 @@ function renderProyeccion(){
   const _cgTotal = comprasGrandes.reduce((a, g) => a + (g.monto||0), 0);
   const extraInfo = (!historialInsuficiente && comprasGrandes.length)
     ? `<div class="inicio-proy-extra">Sin contar ${comprasGrandes.length === 1 ? 'tu compra grande' : 'tus compras grandes'} (${comprasGrandes.slice(0, 2).map(g => escHtml(String(g.desc || 'una compra'))).join(', ')}: ${fmt(_cgTotal)}), tu ritmo es ${tendenciaMensual >= 0 ? '+' : ''}${fmt(tendenciaMensual)} al mes. Ya está descontada de tu patrimonio de hoy; la proyección no la repite.</div>` : '';
+  // Calendario de caja a 30 días con lo ya programado (sin necesidad de historial: no depende de la tendencia).
+  const cal = calcCalendarioCaja();
+  let cajaInfo = '';
+  if(cal.puntos.length){
+    const bajo = (cal.minimo.fecha !== hoy() && cal.minimo.saldo < cal.saldoInicial) ? ` Lo más bajo: ${fmt(cal.minimo.saldo)} el ${_fechaCorta(cal.minimo.fecha)}.` : '';
+    const aviso = cal.primerDeficit
+      ? ` <span class="inicio-proy-caja-red">El ${_fechaCorta(cal.primerDeficit.fecha)} quedaría en ${fmt(cal.primerDeficit.saldo)}${cal.primerDeficit.evento ? ' (vence ' + escHtml(String(cal.primerDeficit.evento.texto)) + ')' : ''}.</span>` : '';
+    cajaInfo = `<div class="inicio-proy-caja">Próximos ${UMBRALES.caja.horizonteDias} días, con lo ya programado (gastos e ingresos fijos, CDT que vencen): tu plata disponible pasaría de ${fmt(cal.saldoInicial)} a ${fmt(cal.final)}.${bajo}${aviso}</div>`;
+  }
   // Cuánto aguanta tu plata disponible si el patrimonio sigue bajando a este ritmo (solo con tendencia negativa y liquidez positiva).
   let runwayInfo = '';
   if(!historialInsuficiente && tendenciaMensual < 0 && typeof calcLiquidez==='function'){
@@ -816,6 +870,7 @@ function renderProyeccion(){
       <div class="inicio-proy-aviso-txt">Tendencia en construcción: llevas ${Math.min(diasReales, MIN_DIAS_PARA_TENDENCIA)} de ${MIN_DIAS_PARA_TENDENCIA} días de historial.<br>Vuelve en unos días para ver tendencias y proyecciones.</div>
     </div>
     ${deudaInfo}
+    ${cajaInfo}
   ` : `
     <div id="_proy-header" class="inicio-proy-fila inicio-proy-fila-click" data-tendencia="${tendenciaMensual}">
       <span class="inicio-proy-etiqueta">Tendencia mensual<span class="inicio-proy-info"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
@@ -842,6 +897,7 @@ function renderProyeccion(){
       <div id="_proy-tt" class="inicio-proy-tt" style="display:none;"></div>
     </div>
     ${deudaInfo}
+    ${cajaInfo}
     ${extraInfo}
     ${runwayInfo}
     ${irregularInfo}

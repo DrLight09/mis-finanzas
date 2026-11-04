@@ -6,7 +6,7 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ## Revisión de mejoras: hallazgos financieros y de estructura (2026-11-03, SW v92)
 
-Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los escenarios negativos). Cada hallazgo se **reprodujo ejecutando el código real** antes de tocarlo; los que no se reprodujeron o no aplicaban se anotan al final. Lo que sigue pendiente quedó en `mejoras-mis-finanzas.md` (ya sin lo resuelto). Pruebas: `tests/escenarios-financieros.test.js` (nuevo, 75 pruebas) + las existentes actualizadas: 723/723. `npm run smoke` y `generar-mapa.js --check` en verde. El puntaje de Salud **cambia** para varios estados (ver cada punto): es intencional.
+Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los escenarios negativos). Cada hallazgo se **reprodujo ejecutando el código real** antes de tocarlo; los que no se reprodujeron o no aplicaban se anotan al final. Lo que sigue pendiente quedó en `mejoras-mis-finanzas.md` (ya sin lo resuelto). Pruebas: `tests/escenarios-financieros.test.js` (nuevo, 81 pruebas) + las existentes actualizadas: 729/729. `npm run smoke` y `generar-mapa.js --check` en verde. El puntaje de Salud **cambia** para varios estados (ver cada punto): es intencional.
 
 ### Salud financiera (`inicio.js`)
 
@@ -68,6 +68,14 @@ Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los es
 - **El bien como activo aparte (P5.2):** una moto vale algo aunque se deprecie. Nueva colección `S.bienes[]` (`{id, nombre, valor, fecha, depreciacionAnual?, origenGastoId?}`) con `calcValorBien` (depreciación anual compuesta desde la fecha, nunca bajo 0, sin `NaN`), `calcBienes` y `calcPatrimonioConBienes`. **Va aparte a propósito:** el patrimonio del inicio sigue siendo el financiero (meter la moto adentro escondería el golpe de la compra justo cuando más importa verlo), y los bienes nunca entran en la liquidez ni en el runway ni en la Salud (una prueba compara Salud con y sin bienes y es idéntica). El valor es una estimación del usuario.
   - **Cómo se registra:** botón «Registrar como bien» en la fila de una compra grande (abre el sheet con nombre, monto y fecha cargados; la fila pasa a «Bien registrado»); editable y quitable desde la tarjeta «Bienes» de Análisis, que además muestra «Patrimonio con bienes». Quitar el bien no toca el gasto.
   - **Infraestructura:** `bienes` en el estado inicial, clasificado como `estado-actual` en el cierre de períodos, validado como array al importar un respaldo, y `.an-bien-monto` entra en «ocultar saldos».
+
+### Calendario de caja a 30 días (P7 horizonte / B4-2 «con lo programado»)
+
+- **Diseño mejor que lo anotado:** en vez de solo ampliar la alerta de 7 a 30 días (que sumaba lo que vence sin ver lo que entra), un **calendario de caja** día a día con lo ya programado: **sale** cada gasto fijo con día sin pagar (el vencido, hoy; recurre el mes siguiente si cae en el horizonte); **entra** cada ingreso fijo con día esperado que aún no llega y cuyo día no ha pasado (uno atrasado **no** se da por hecho, igual que «lo que te deben» no cuenta hasta que llega) y cada CDT que vence (capital + rendimiento, desde el día siguiente). Parte de la liquidez neta de hoy, que ya descuenta lo que debes (por eso no hay evento de tarjeta).
+- **`Periodo.saldoProyectado`** (puro): evalúa al **cierre de cada día** neteando entradas y salidas del mismo día (sueldo y arriendo el mismo día no dan una falsa alarma), devuelve `puntos`, `minimo` y `primerDeficit` (el primer día en negativo y su causa; solo si hoy no estás ya en negativo). `_eventosCaja` / `calcCalendarioCaja` (`inicio.js`) arman los eventos. `UMBRALES.caja.horizonteDias` = 30 (se quitó `atencion.brechaCajaDias`).
+- **Atención** (rojo): «El 5 de nov tu plata disponible quedaría en −$X (vence Arriendo: $Y)» — reemplaza el viejo «En los próximos 7 días vencen…». **Proyección:** una línea «Próximos 30 días, con lo ya programado…: tu plata disponible pasaría de $X a $Y. Lo más bajo: …», también sin historial.
+- **B4-2** («modo con lo programado» de la Proyección de 3/6/12 meses) **no** se hizo como ajuste de esa pendiente: mezclar lo programado con una tendencia histórica que ya lo contiene sería contar dos veces. Lo útil era el calendario de caja.
+- **Pruebas:** 6 nuevas, y mutaciones manuales (quitar el límite del horizonte y la regla de «ya negativo» hacen fallar las pruebas). Una prueba mía asumía mal que el gasto fijo no recurre el mes siguiente.
 
 ### Análisis, Wrapped y push
 

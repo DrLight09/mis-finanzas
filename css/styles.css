@@ -935,6 +935,8 @@ button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-fami
 .inicio-proy-vacio-titulo{font-size:12px;font-weight:600;color:var(--text2);}
 .inicio-proy-vacio-texto{font-size:11px;color:var(--text3);line-height:1.5;max-width:210px;}
 .inicio-proy-deuda{font-size:10px;color:var(--red);margin-top:5px;font-family:'DM Mono',monospace;}
+.inicio-proy-caja{font-size:10px;color:var(--text2);margin-top:5px;line-height:1.4;font-family:'DM Mono',monospace;}
+.inicio-proy-caja-red{color:var(--red);}
 .inicio-proy-extra{font-size:10px;color:var(--text2);margin-top:5px;line-height:1.4;font-family:'DM Mono',monospace;}
 .inicio-proy-runway{font-size:10px;color:var(--amber);margin-top:5px;font-family:'DM Mono',monospace;}
 .inicio-proy-irregular{font-size:10px;color:var(--text3);margin-top:5px;line-height:1.4;font-family:'DM Mono',monospace;}

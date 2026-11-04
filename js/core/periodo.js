@@ -415,6 +415,37 @@ const Periodo = (() => {
     return out.sort((a, b) => a.dias - b.dias);
   }
 
+  // Calendario de caja (puro): cómo evoluciona un saldo (tu plata disponible, neta de deudas) día a día con eventos CONOCIDOS de antemano.
+  // `eventos`: [{ fecha:'YYYY-MM-DD', monto (+ entra / − sale), texto, tipo? }]. Solo cuentan los de [hoyStr, hoyStr + dias]. Se evalúa al
+  // CIERRE de cada día (las entradas y salidas del mismo día se netean: no se sabe en qué orden pasan, y un «déficit» de media mañana
+  // por el orden sería una falsa alarma). → { saldoInicial, final, limite, puntos:[{fecha, saldo, neto, eventos}], minimo:{fecha, saldo},
+  // primerDeficit:{fecha, saldo, evento}|null }. `primerDeficit` solo si el saldo inicial no era ya negativo (si ya lo es, no es una
+  // sorpresa futura: ya lo dice el resto de la app); `evento` es la mayor salida de ese día (lo que lo causó).
+  function saldoProyectado(saldoInicial, eventos, hoyStr, dias) {
+    const [hy, hm, hd] = String(hoyStr).split('-').map(Number);
+    const f = new Date(Date.UTC(hy, hm - 1, hd + (dias || 0)));
+    const limite = f.getUTCFullYear() + '-' + String(f.getUTCMonth() + 1).padStart(2, '0') + '-' + String(f.getUTCDate()).padStart(2, '0');
+    const porDia = {};
+    (eventos || []).forEach(e => {
+      if (!e || !isFinite(e.monto) || e.monto === 0 || e.fecha < hoyStr || e.fecha > limite) return;
+      (porDia[e.fecha] = porDia[e.fecha] || []).push(e);
+    });
+    let saldo = saldoInicial;
+    let minimo = { fecha: hoyStr, saldo: saldoInicial };
+    let primerDeficit = null;
+    const puntos = Object.keys(porDia).sort().map(fecha => {
+      const evs = porDia[fecha];
+      const neto = evs.reduce((a, e) => a + e.monto, 0);
+      saldo += neto;
+      if (saldo < minimo.saldo) minimo = { fecha, saldo };
+      if (saldo < 0 && !primerDeficit && saldoInicial >= 0) {
+        primerDeficit = { fecha, saldo, evento: evs.filter(e => e.monto < 0).sort((a, b) => a.monto - b.monto)[0] || evs[0] };
+      }
+      return { fecha, saldo, neto, eventos: evs };
+    });
+    return { saldoInicial, final: saldo, limite, puntos, minimo, primerDeficit };
+  }
+
   // Racha de déficit: cuántos meses COMPLETOS seguidos, terminando en el mes anterior a `mes`, cerraron con balance negativo (gastaste
   // más de lo que entró, flujo de caja operativo, sin rendimientos: la misma base de Salud y del cierre de mes). Un mes sin ningún
   // movimiento ni ingreso ni gasto no es déficit ni superávit: corta la racha (no hay nada que juzgar). `max` limita cuántos meses
@@ -434,7 +465,7 @@ const Periodo = (() => {
   }
 
   return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
-           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, diaDelMes, esCompraGrande, compraGrandeEstado, umbralCompraGrande, COMPRA_GRANDE_AUTO, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
+           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, diaDelMes, saldoProyectado, esCompraGrande, compraGrandeEstado, umbralCompraGrande, COMPRA_GRANDE_AUTO, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
 })();
 
 // Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.

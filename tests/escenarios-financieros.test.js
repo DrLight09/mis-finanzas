@@ -441,7 +441,7 @@ test('P7. Atención avisa «vence hoy», «venció hace N días sin pagar» y la
   const t = String(dom.el('s-attn-list').innerHTML);
   assert.match(t, /Arriendo vence hoy/);
   if (diaHoy >= 2) assert.match(t, /Gimnasio venció hace \d+ días? y no está pagado/);
-  assert.match(t, /En los próximos 7 días vencen .* y tu plata disponible es/, '900.000 + lo vencido vs 100.000 disponibles');
+  assert.match(t, /tu plata disponible quedaría en -\$?850\.000 \(vence Arriendo: \$?900\.000\)/, '100.000 − 900.000 de arriendo − 50.000 del gimnasio vencido, el mismo día');
 });
 
 test('P7. con la plata alcanzando y sin vencimientos cerca, no hay alertas de gastos fijos', () => {
@@ -806,4 +806,76 @@ test('Bienes: el respaldo con bienes que no son un array se rechaza al importar'
   const errores = ctx._validarEstructuraJSON({ cuentas: [], bienes: 'no-array' });
   assert.ok(errores.some(e => e.includes('"bienes" debe ser un array')));
   assert.equal(ctx._validarEstructuraJSON({ cuentas: [], bienes: [] }).length, 0);
+});
+
+/* ================= Calendario de caja a 30 días (lo ya programado) ================= */
+test('Calendario: Periodo.saldoProyectado netea cada día, mira solo el horizonte, calcula el mínimo y el primer déficit', () => {
+  const { Periodo } = app();
+  const ev = [
+    { fecha: '2026-11-05', monto: -900000, texto: 'Arriendo' },
+    { fecha: '2026-11-05', monto: 2000000, texto: 'Sueldo' },      // mismo día: se netea (no se sabe el orden)
+    { fecha: '2026-11-12', monto: -1500000, texto: 'Seguro' },
+    { fecha: '2026-11-20', monto: 500000, texto: 'CDT' },
+    { fecha: '2026-12-30', monto: -9999999, texto: 'Fuera del horizonte' },
+    { fecha: '2026-11-02', monto: -5, texto: 'Ya pasó' },
+  ];
+  const r = Periodo.saldoProyectado(300000, ev, '2026-11-03', 30);
+  assert.equal(r.limite, '2026-12-03');
+  assert.equal(r.puntos.length, 3);
+  assert.equal(r.puntos[0].saldo, 300000 - 900000 + 2000000, 'entradas y salidas del mismo día se netean: sin falso déficit');
+  assert.equal(r.puntos[1].saldo, 1400000 - 1500000);
+  assert.equal(r.final, -100000 + 500000);
+  assert.equal(JSON.stringify(r.minimo), JSON.stringify({ fecha: '2026-11-12', saldo: -100000 }));
+  assert.equal(r.primerDeficit.fecha, '2026-11-12');
+  assert.equal(r.primerDeficit.evento.texto, 'Seguro', 'lo que lo causó: la mayor salida de ese día');
+});
+
+test('Calendario: si el saldo ya es negativo hoy no es una «sorpresa futura»; sin eventos no hay puntos', () => {
+  const { Periodo } = app();
+  assert.equal(Periodo.saldoProyectado(-50000, [{ fecha: '2026-11-05', monto: -1, texto: 'x' }], '2026-11-03', 30).primerDeficit, null);
+  const vacio = Periodo.saldoProyectado(1000, [], '2026-11-03', 30);
+  assert.equal(vacio.puntos.length, 0); assert.equal(vacio.final, 1000); assert.equal(vacio.primerDeficit, null);
+});
+
+const hoyISO = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+test('Calendario: _eventosCaja usa gastos fijos sin pagar (el vencido, hoy), ingresos esperados por llegar y CDT que vencen; no el ingreso atrasado ni lo pagado', () => {
+  const hoyD = new Date(), dia = hoyD.getDate();
+  const ctx = app({ cuentas: cuentas(100000),
+    gastosFijos: [{ id: 'a', nombre: 'Arriendo', monto: 900000, dia }, { id: 'p', nombre: 'Pagado', monto: 1, dia }, { id: 's', nombre: 'Sin día', monto: 5 }],
+    pagosGastosFijos: { ['p_' + mesAct]: { monto: 1, fecha: hoyISO() } },
+    ingresosFijos: [{ id: 'i', nombre: 'Sueldo', monto: 2000000, desde: '2020-01', dia }],
+    cajitas: cdt({ vence: (() => { const d = new Date(); d.setDate(d.getDate() + 10); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })() }) }, [CORE('cobros.js')]);
+  const ev = ctx._eventosCaja(hoyISO(), 30);
+  const textos = ev.map(e => e.texto);
+  assert.ok(textos.includes('Arriendo'));
+  assert.ok(!ev.some(e => e.texto === 'Pagado' && e.fecha.startsWith(mesAct)), 'pagado este mes: no sale otra vez este mes (sí recurre el mes siguiente si cae en el horizonte)');
+  assert.ok(!textos.includes('Sin día'));
+  assert.ok(textos.includes('Sueldo'), 'ingreso esperado hoy y sin cobrar');
+  assert.ok(textos.some(t => t.startsWith('CDT de')), 'CDT que vence dentro del horizonte');
+  const cdtEv = ev.find(e => e.tipo === 'cdt');
+  assert.ok(cdtEv.monto > 1000000, 'capital + rendimiento');
+});
+
+test('Calendario: un ingreso fijo atrasado NO se da por hecho como entrada (igual que lo que te deben)', () => {
+  if (new Date().getDate() < 2) return;
+  const ctx = app({ cuentas: cuentas(100000), ingresosFijos: [{ id: 'i', nombre: 'Sueldo', monto: 2000000, desde: '2020-01', dia: 1 }] }, [CORE('cobros.js')]);
+  assert.ok(!ctx._eventosCaja(hoyISO(), 30).some(e => e.texto === 'Sueldo' && e.fecha <= hoyISO()));
+});
+
+test('Calendario: con el sueldo el mismo día que el arriendo no hay déficit; sin el sueldo, sí (y Atención lo dice con el día y la causa)', () => {
+  const dia = new Date().getDate();
+  const base = { cuentas: cuentas(100000), gastosFijos: [{ id: 'a', nombre: 'Arriendo', monto: 900000, dia }] };
+  const sinSueldo = atencionConIngresos(base);
+  assert.match(sinSueldo, /tu plata disponible quedaría en -\$?800\.000 \(vence Arriendo/);
+  const conSueldo = atencionConIngresos({ ...base, ingresosFijos: [{ id: 'i', nombre: 'Sueldo', monto: 2000000, desde: '2020-01', dia }] });
+  assert.ok(!/tu plata disponible quedaría/.test(conSueldo), 'el sueldo del mismo día cubre el arriendo');
+});
+
+test('Calendario: la Proyección lo muestra aunque no haya historial (de a cuánto pasa tu plata, lo más bajo y el día del déficit)', () => {
+  const dia = new Date().getDate();
+  const h = proyeccion({ cuentas: cuentas(100000), gastosFijos: [{ id: 'a', nombre: 'Arriendo <x>', monto: 900000, dia }] });
+  assert.match(h, /Próximos 30 días, con lo ya programado/);
+  assert.match(h, /pasaría de \$?100\.000 a -/, 'termina en negativo: el gasto fijo recurre el mes siguiente si cae dentro de los 30 días');
+  assert.match(h, /quedaría en -\$?800\.000 \(vence Arriendo &lt;x&gt;\)/, 'escapa el nombre');
 });

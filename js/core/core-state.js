@@ -144,34 +144,21 @@ let pagoIdx=null;
 let pagoDestino='';
 // mesFilter/gastoTab: migrados a js/modules/gastos.js
 
-/* ---- DINERO: el ÚNICO formateador de pesos ----
-   Dinero.fmt(n, { decimales, redondeo, signo }) → '$1.234.567' / '$1.234,50' / '-$500' / '+$500'.
-     decimales: 'auto' (por defecto: centavos solo si los hay) | 0 (sin centavos) | 2 (siempre dos).
-     redondeo:  'redondear' (por defecto) | 'truncar' — solo importa con decimales:0 (el selector de Cuentas trunca a propósito).
-     signo:     true → antepone '+' a los positivos (variaciones: «+$20.000»).
-   fmt() y fmtNoCents() son atajos de esta función; ninguna pantalla debe armar su propio `toLocaleString(…currency…)` (Proyección
-   tenía dos copias con Intl + un .replace del espacio duro; la salida era la misma, pero eran dos sitios más que mantener y
-   alinear). NaN/undefined/null se muestran como $0 (nunca «$NaN»). `compacto` ($1,2 M) NO existe todavía a propósito: ninguna
-   pantalla lo necesita y una opción sin uso es código muerto — agregarlo aquí cuando haya dónde usarlo. */
-const Dinero = (() => {
-  function fmt(n, o) {
-    o = o || {};
-    let num = Number(n); if (!isFinite(num)) num = 0;
-    const dec = o.decimales === undefined || o.decimales === null ? 'auto' : o.decimales;
-    const cents = dec === 0
-      ? (o.redondeo === 'truncar' ? Math.trunc(num) : Math.round(num)) * 100
-      : Math.round(num * 100);
-    const abs = Math.abs(cents);
-    const ent = Math.floor(abs / 100), dd = abs % 100;
-    const sign = cents < 0 ? '-' : (o.signo && cents > 0 ? '+' : '');
-    const decimales = dec === 2 || (dec === 'auto' && dd !== 0) ? ',' + String(dd).padStart(2, '0') : '';
-    return sign + '$' + ent.toLocaleString('es-CO') + decimales;
-  }
-  return { fmt };
-})();
-if (typeof window !== 'undefined') window.Dinero = Dinero;
-function fmt(n){ return Dinero.fmt(n); }
-function fmtNoCents(n){ return Dinero.fmt(n, { decimales: 0, redondeo: 'truncar' }); }
+function fmt(n){
+  const num=n||0;
+  const cents=Math.round(num*100);
+  const intPart=Math.floor(Math.abs(cents)/100);
+  const decPart=Math.abs(cents)%100;
+  const sign=cents<0?'-':'';
+  if(decPart===0){return sign+'$'+intPart.toLocaleString('es-CO');}
+  return sign+'$'+intPart.toLocaleString('es-CO')+','+String(decPart).padStart(2,'0');
+}
+function fmtNoCents(n){
+  const num=n||0;
+  const sign=num<0?'-':'';
+  const intPart=Math.floor(Math.abs(num));
+  return sign+'$'+intPart.toLocaleString('es-CO');
+}
 // Formato del saldo en el selector de Cuentas (todas las cuentas, fijas y personalizadas,
 // pasan por acá desde renderSelectorCuentas() en cuentas.js). Hoy: solo entero con puntos de
 // mil, truncado. Cambiar el formato del selector (redondear, agregar "COP", etc.) es editar
@@ -311,14 +298,6 @@ const Libro = (() => {
     return out;
   }
 
-  // Fábrica del «origen» de las patas de saldo de un módulo: `const _ogGv = Libro.origen('gastos');` y después
-  // `_ogGv(ref)` → { origen:{ modulo:'gastos', ref } } al aplicar, `_ogGv(ref, true)` → { …, rev:true } al revertir (se pasa como
-  // `opts` de sumarFuente/descontarFuente). Antes cada módulo repetía su propia copia de esta función (11 `_og*` idénticas);
-  // un módulo nuevo solo declara su nombre. `ref`/`rev` ausentes no dejan la clave en la entrada (nada de `rev: undefined`).
-  function origen(modulo) {
-    return (ref, rev) => ({ origen: { modulo, ...(ref ? { ref } : {}), ...(rev ? { rev: true } : {}) } });
-  }
-
   // Contexto de origen para código SÍNCRONO: Libro.conOrigen({modulo, ref, rev}, () => { sumarFuente(...); ... }).
   function conOrigen(origen, fn) { const prev = _ctx; _ctx = origen; try { return fn(); } finally { _ctx = prev; } }
 
@@ -359,7 +338,7 @@ const Libro = (() => {
     return _arr((estado || S).libro).filter(l => l && esCuenta(l.cuenta) && (l.tipo === 'rendimiento' || l.tipo === 'ajuste' || l.tipo === 'cdt'));
   }
 
-  return { esCuenta, registrar, origen, conOrigen, verificar, entradasVisibles, saldo, TOL };
+  return { esCuenta, registrar, conOrigen, verificar, entradasVisibles, saldo, TOL };
 })();
 if (typeof window !== 'undefined') window.Libro = Libro; // los tests lo leen como ctx.Libro
 

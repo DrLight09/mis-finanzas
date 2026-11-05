@@ -196,7 +196,31 @@ const Salud = (() => {
     return f;
   }
 
-  return { fraseTendencia, pilares, estado, tendenciaPatrimonio, fechaAgotamiento, accionesUrgentes, ESTADOS };
+  // P8 — simulador «¿y si…?». Recalcula con las MISMAS métricas de la situación (`m`, de _situacion()) sin tocar nada guardado.
+  //   ajustes: { gastoPct (0–50: gastar ese % menos), ingresoExtra ($ al mes), pagoDeuda ($ de una vez a la deuda propia) }
+  //   m.costoDeuda: intereses mensuales de la deuda propia con tasa conocida (0 si no hay).
+  // → { balance, balanceBase, mejoraMensual, gastoTipico, mesesCubiertos, deudaPropia, mesesLibre (n | null), ahorroIntereses }
+  // Pagar deuda con efectivo NO cambia la liquidez NETA (baja el efectivo y la deuda a la vez), así que las reservas no se mueven por eso:
+  // el beneficio es menos deuda e intereses. La simulación lo dice tal cual.
+  function simular(m, ajustes) {
+    const a = ajustes || {};
+    const gastoBase = m.gastoTipico || 0, ingresoBase = m.ingresoTipico || 0;
+    const gasto = gastoBase * (1 - Math.min(50, Math.max(0, a.gastoPct || 0)) / 100);
+    const ingreso = ingresoBase + Math.max(0, a.ingresoExtra || 0);
+    const balance = ingreso - gasto, balanceBase = ingresoBase - gastoBase;
+    const deuda0 = m.deudaPropia || 0;
+    const pago = Math.min(Math.max(0, a.pagoDeuda || 0), deuda0);
+    const deuda = deuda0 - pago;
+    return {
+      balance, balanceBase, mejoraMensual: balance - balanceBase, gastoTipico: gasto,
+      mesesCubiertos: gasto > 0 && m.liquidezNeta > 0 ? m.liquidezNeta / gasto : null,
+      deudaPropia: deuda,
+      mesesLibre: deuda <= 0 ? 0 : balance > 0 ? Math.ceil(deuda / balance) : null,
+      ahorroIntereses: deuda0 > 0 ? (m.costoDeuda || 0) * pago / deuda0 : 0,
+    };
+  }
+
+  return { simular, fraseTendencia, pilares, estado, tendenciaPatrimonio, fechaAgotamiento, accionesUrgentes, ESTADOS };
 })();
 if (typeof window !== 'undefined') window.Salud = Salud;
 if (typeof module !== 'undefined' && module.exports) module.exports = Salud;

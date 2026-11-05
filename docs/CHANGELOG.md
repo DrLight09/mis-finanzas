@@ -4,6 +4,14 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Simulador «¿y si…?» y consejos con acción (2026-11-05, SW v99)
+
+- **P8 — Simulador** en Análisis (`#an-simulador`, `renderSimulador`): tres deslizadores (gastar −0…30 %, ingresar +$ al mes, pagar $ a las deudas propias) que recalculan balance mensual típico, meses de reservas, tiempo para salir de deuda y ahorro de intereses (con la tasa E.A. de las tarjetas). Cálculo puro en `Salud.simular(m, ajustes)` sobre las mismas métricas de `_situacion()`; no guarda nada. Pagar deuda no cambia la liquidez neta (baja efectivo y deuda a la vez) y el simulador lo refleja.
+- **P9 — Consejos con acción:** todos los consejos de alerta/aviso del puntaje (reservas, deudas, tarjetas, prestado, déficit) llevan ahora `ir` (cuentas, tarjetas, prestamos, gastos o analisis) y se pintan como botón con flecha. Test que lo garantiza en tres escenarios difíciles.
+- Tests: `P8`, `P9`.
+
+---
+
 ## Wrapped honesto y cierres mensuales de patrimonio (2026-11-05, SW v98)
 
 - **`S.patrimonioCierres`** (nuevo, sin límite): `{ 'AAAA-MM': {valor, valorVisible, base} }`, el último valor de cada mes y la suma de sus aperturas. Se rellena en cada `snapshotPatrimonio()` desde la serie diaria (también meses previos a esta versión) y un mes cuyos días ya se podaron conserva su cierre. Clasificada `historica` en `cierre.js` y con su fuente descrita.

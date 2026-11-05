@@ -389,7 +389,7 @@ function calcHealthScore(){
     if(gastoRef > 0){
       if(mesesCubiertos >= U.fondoMeses.completo) score += 20;
       else if(mesesCubiertos >= U.fondoMeses.minimo) score += 10;
-      else { score -= 5; add(`Tus reservas cubren menos de ${U.fondoMeses.minimo} meses de gastos.`,'aviso'); }
+      else { score -= 5; add(`Tus reservas cubren menos de ${U.fondoMeses.minimo} meses de gastos.`,'aviso','cuentas'); }
     }
   } else if(liquidoReal < 0){
     // Debes más de lo que tienes disponible. Se nombra QUÉ deuda es. Si lo cubren CDTs sin vencer es menos grave (la plata existe, solo está
@@ -398,27 +398,27 @@ function calcHealthScore(){
       : (liq.tcPropia <= 0 && liq.ajeno <= 0) ? 'Lo que debes a personas supera'
       : 'Tus deudas y la plata ajena que guardas superan';
     avisoDeudaTC = liq.tcPropia > 0;
-    if(liquidoConCDTs >= 0){ score -= 8; add(`${quien} la plata que tienes disponible; lo que cubre la diferencia está en tus CDTs.`,'aviso'); }
-    else { score -= 15; add(`${quien} la plata que tienes disponible.`,'alerta'); }
+    if(liquidoConCDTs >= 0){ score -= 8; add(`${quien} la plata que tienes disponible; lo que cubre la diferencia está en tus CDTs.`,'aviso','prestamos'); }
+    else { score -= 15; add(`${quien} la plata que tienes disponible.`,'alerta','prestamos'); }
   } else if((gastosMes > 0 || gastoRef > 0) && liquidoConCDTs > 0){
     // Liquidez justo en cero y solo CDTs sin vencer: el ahorro existe pero no está libre.
-    score -= 8; add('Tu liquidez disponible es muy baja — tus ahorros están en CDTs, no en cuentas libres.','aviso');
+    score -= 8; add('Tu liquidez disponible es muy baja — tus ahorros están en CDTs, no en cuentas libres.','aviso','cuentas');
   }
 
   // b) Deuda de tarjetas de crédito vs ingresos (ratio de endeudamiento TC)
   if(deudaTC > 0 && ingresoRef > 0){
     const ratioTC = deudaTC / ingresoRef;
-    if(ratioTC > U.tcSobreIngreso.critico){ score -= 15; add(`Tu deuda en TC supera ${U.tcSobreIngreso.critico} meses de ingresos — prioriza pagarla.`,'alerta'); }
-    else if(ratioTC > U.tcSobreIngreso.alto){ score -= 8; add('Tu deuda en tarjetas es alta respecto a tus ingresos.','aviso'); }
+    if(ratioTC > U.tcSobreIngreso.critico){ score -= 15; add(`Tu deuda en TC supera ${U.tcSobreIngreso.critico} meses de ingresos — prioriza pagarla.`,'alerta','tarjetas'); }
+    else if(ratioTC > U.tcSobreIngreso.alto){ score -= 8; add('Tu deuda en tarjetas es alta respecto a tus ingresos.','aviso','tarjetas'); }
     // Hasta 1,5 meses de ingreso es una deuda manejable: no suma ni resta. Antes SUMABA +5 por tenerla (incentivo invertido: quien
     // no debe nada recibía 0). El punto a favor es de quien no tiene deudas propias, más abajo.
   } else if(deudaTC > 0 && ingresoRef === 0){
     // Tiene deuda TC pero no registra ingresos — verificar vs patrimonio
     if(patrimonio > 0 && deudaTC / patrimonio > 0.4){
-      score -= 10; add('Tu deuda en tarjetas es alta — considera pagarla con tus ahorros.','aviso');
+      score -= 10; add('Tu deuda en tarjetas es alta — considera pagarla con tus ahorros.','aviso','tarjetas');
     } else if(patrimonio <= 0 && !avisoDeudaTC){
       // Sin la guarda se penalizaba dos veces la MISMA deuda (−15 aquí y −15 por liquidez negativa, con dos alertas casi iguales).
-      score -= 15; add('Tienes deuda en tarjetas y tu patrimonio no la cubre — prioriza pagarla.','alerta');
+      score -= 15; add('Tienes deuda en tarjetas y tu patrimonio no la cubre — prioriza pagarla.','alerta','tarjetas');
     }
   }
   // Sin deudas propias y con plata disponible: lo único que se premia en endeudamiento.
@@ -430,16 +430,16 @@ function calcHealthScore(){
   if(prest > 0){
     if(liquidoReal <= 0){
       // Sin liquidez libre y con plata prestada sin cobrar — caso crítico (la liquidez puede estar en cero por lo prestado o por lo que debes)
-      score -= 15; add('No te queda liquidez libre y tienes plata prestada sin cobrar — no tienes nada disponible para emergencias.','alerta');
+      score -= 15; add('No te queda liquidez libre y tienes plata prestada sin cobrar — no tienes nada disponible para emergencias.','alerta','prestamos');
       ratioPrest = Infinity;
     } else {
       ratioPrest = prest / liquidoReal;
       if(ratioPrest > U.prestadoSobreLiquidez.vulnerable){
-        score -= 18; add('Tienes más del doble de tu liquidez prestada — tu situación financiera es muy vulnerable.','alerta');
+        score -= 18; add('Tienes más del doble de tu liquidez prestada — tu situación financiera es muy vulnerable.','alerta','prestamos');
       } else if(ratioPrest > U.prestadoSobreLiquidez.comprometido){
-        score -= 13; add('Tienes más plata prestada que tu liquidez disponible — queda poco para emergencias.','alerta');
+        score -= 13; add('Tienes más plata prestada que tu liquidez disponible — queda poco para emergencias.','alerta','prestamos');
       } else if(ratioPrest > U.prestadoSobreLiquidez.vigilar){
-        score -= 8; add('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).','aviso');
+        score -= 8; add('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).','aviso','prestamos');
       }
       // ratioPrest <= 0.4: situación sana, no penalizar
     }
@@ -457,17 +457,17 @@ function calcHealthScore(){
   const rachaMeses = _rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos);
   let enDeficit = false;
   if(rachaMeses >= U.rachaDeficitMeses.alerta){
-    score -= 15; enDeficit = true; add(`Llevas ${rachaMeses} meses seguidos gastando más de lo que ingresas.`,'alerta');
+    score -= 15; enDeficit = true; add(`Llevas ${rachaMeses} meses seguidos gastando más de lo que ingresas.`,'alerta','gastos');
   } else if(rachaMeses >= U.rachaDeficitMeses.aviso){
-    score -= 8; enDeficit = true; add(`Llevas ${rachaMeses} meses seguidos gastando más de lo que ingresas.`,'aviso');
+    score -= 8; enDeficit = true; add(`Llevas ${rachaMeses} meses seguidos gastando más de lo que ingresas.`,'aviso','gastos');
   }
   if(ingresoTipico > 0 && gastoRef > 0){
     const ratioGasto = gastoRef / ingresoTipico;
     if(ratioGasto <= U.gastoSobreIngreso.sano) score += 10;
     else if(ratioGasto <= U.gastoSobreIngreso.ajustado) score += 5;
-    else if(ratioGasto > U.gastoSobreIngreso.deficit && !enDeficit){ score -= 10; enDeficit = true; add('Vienes gastando más de lo que ingresas.','aviso'); }
+    else if(ratioGasto > U.gastoSobreIngreso.deficit && !enDeficit){ score -= 10; enDeficit = true; add('Vienes gastando más de lo que ingresas.','aviso','gastos'); }
   }
-  if(!enDeficit && ingresoRef > 0 && gastosMes > ingresoRef){ score -= 10; add('Por ahora estás gastando más de lo que ingresas.','aviso'); }
+  if(!enDeficit && ingresoRef > 0 && gastosMes > ingresoRef){ score -= 10; add('Por ahora estás gastando más de lo que ingresas.','aviso','gastos'); }
 
   // e) CDTs activos (ahorro estructurado)
   // Si el riesgo de prestado es alto (ratio > 1) o la liquidez es negativa, el CDT no compensa — bonus reducido a +3.
@@ -497,7 +497,7 @@ function calcHealthScore(){
   const _cgRecientes = Periodo.comprasGrandesEntre(_desde90, hoy());
   if(_cgRecientes.length && (mesesCubiertos === null || mesesCubiertos < U.fondoMeses.completo)){
     const _mayor = _cgRecientes.slice().sort((a, b) => (b.monto||0) - (a.monto||0))[0];
-    add(`Tu compra grande reciente (${_mayor.desc || 'sin nombre'}, ${fmt(_mayor.monto||0)}) pesa en tus reservas: antes de otro gasto grande, reconstruir tu fondo es la prioridad.`,'sugerencia');
+    add(`Tu compra grande reciente (${_mayor.desc || 'sin nombre'}, ${fmt(_mayor.monto||0)}) pesa en tus reservas: antes de otro gasto grande, reconstruir tu fondo es la prioridad.`,'sugerencia','cuentas');
   }
 
   // Sin gasto típico no se puede medir cuántos meses cubren tus reservas: se dice en vez de quedarse en un «Regular» mudo.
@@ -508,13 +508,13 @@ function calcHealthScore(){
   const sinIngresos = ingresoRef <= 0 && gastosMes > 0;
   if(sinIngresos){
     score = Math.min(score, 74);
-    add('Registra tus ingresos para que la calificación pueda evaluar tus gastos y deudas.','sugerencia');
+    add('Registra tus ingresos para que la calificación pueda evaluar tus gastos y deudas.','sugerencia','analisis');
   }
   score = Math.max(0, Math.min(100, score));
   if(!consejos.length){
     if(score >= 80) add('¡Excelente! Tus finanzas están muy bien.','ok');
     else if(score >= 60) add('Vas bien — diversifica tus ahorros o reduce gastos variables para subir tu puntaje.','sugerencia');
-    else if(tieneAlgo) add('Hay espacio para mejorar: revisa tus gastos y ahorros para subir tu puntaje.','sugerencia');
+    else if(tieneAlgo) add('Hay espacio para mejorar: revisa tus gastos y ahorros para subir tu puntaje.','sugerencia','gastos');
     else add('Registra más movimientos para un análisis más preciso.','sugerencia');
   }
   // Lo urgente primero y las sugerencias suaves después (el orden es estable dentro de cada tipo).

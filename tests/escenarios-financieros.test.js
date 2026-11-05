@@ -1058,3 +1058,34 @@ test('B7. cierres mensuales: se rellenan desde la serie diaria y sobreviven a la
   ctx.snapshotPatrimonio();
   assert.equal(ctx.S.patrimonioCierres['2025-12'].valor, 120, 'un mes sin puntos en la serie conserva su cierre');
 });
+
+test('P9. en situaciones difíciles todo consejo de alerta o aviso lleva una acción con destino', () => {
+  const escenarios = [
+    { cuentas: cuentas(100000), misDeudas: yoDebo(500000) },
+    { cuentas: cuentas(300000), tarjetasCredito: [{ id: 't', deuda: 2900000, cupo: 5000000 }], ingresosFijos: ingresosEn(1000000, ultimosN(3)) },
+    { cuentas: cuentas(100000), ...gastosEn(900000, ultimosN(3)), ingresosFijos: ingresosEn(500000, ultimosN(3)) },
+  ];
+  for (const e of escenarios) {
+    const r = score(e);
+    const sinIr = r.consejos.filter(c => (c.tipo === 'alerta' || c.tipo === 'aviso') && !c.ir);
+    assert.deepEqual(Array.from(sinIr.map(c => c.texto)), []);
+  }
+});
+
+test('P8. simulador: gastar menos e ingresar más mejora el balance; pagar deuda no cambia la liquidez neta pero baja la deuda y los intereses', () => {
+  const { Salud } = app({});
+  const m = { gastoTipico: 1000000, ingresoTipico: 1200000, liquidezNeta: 3000000, deudaPropia: 2000000, costoDeuda: 40000 };
+  const base = Salud.simular(m, {});
+  assert.equal(base.balance, 200000);
+  assert.equal(base.mesesLibre, 10);
+  const r = Salud.simular(m, { gastoPct: 10, ingresoExtra: 100000 });
+  assert.equal(r.balance, 400000);
+  assert.equal(r.mejoraMensual, 200000);
+  assert.equal(r.mesesLibre, 5);
+  const p = Salud.simular(m, { pagoDeuda: 1000000 });
+  assert.equal(p.deudaPropia, 1000000);
+  assert.equal(p.ahorroIntereses, 20000);
+  assert.equal(p.mesesCubiertos, base.mesesCubiertos, 'la liquidez neta no cambia al pagar deuda');
+  assert.equal(Salud.simular({ ...m, ingresoTipico: 900000 }, {}).mesesLibre, null, 'con balance negativo la deuda no baja');
+  assert.equal(Salud.simular(m, { pagoDeuda: 9e9 }).deudaPropia, 0, 'no se paga más de lo que se debe');
+});

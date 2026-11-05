@@ -325,6 +325,7 @@ function renderAnalisis(){
   // ── Historial de patrimonio ────────────────────────────────────────────
   renderBienes();
   renderConciliacion();
+  renderSimulador();
   const patriEl=document.getElementById('an-patrimonio-chart');
   if(patriEl){
     // Ventana elegible (30 / 90 / 365 días): por FECHA, no por número de registros (un registro solo se guarda los días que usas la app).
@@ -490,6 +491,41 @@ function renderAnalisis(){
 /* ---- ¿POR QUÉ CAMBIÓ MI PATRIMONIO? (conciliación, Periodo.conciliar) ---- */
 // Del último mes completo con dos fotos del patrimonio. Lo que no se explica con ingresos y gastos se muestra aparte, sin alarmismo: puede ser
 // un préstamo sin cuenta o un ajuste sin clasificar. Por debajo de UMBRALES.conciliacion.minimo (ruido de redondeo, intereses) no se muestra.
+// P8 — «¿Y si…?»: tres deslizadores que recalculan el balance, los meses de reservas y el tiempo para salir de deuda. No guarda nada.
+let _anSim={gastoPct:0,ingresoExtra:0,pagoDeuda:0};
+function renderSimulador(){
+  const el=document.getElementById('an-simulador');
+  if(!el) return;
+  if(typeof _situacion!=='function'||typeof Salud==='undefined'||!Salud.simular){ el.innerHTML=''; return; }
+  const m=_situacion();
+  if(!m||m.sinDatos||!(m.gastoTipico>0||m.ingresoTipico>0)){ el.innerHTML=''; return; }
+  m.costoDeuda=(typeof _deudasPropias==='function'&&typeof PlanDeudas!=='undefined')?_deudasPropias().reduce((a,d)=>a+PlanDeudas.costoMensual(d.saldo,d.tasaEA),0):0;
+  const maxIng=Math.max(100000,Math.round((m.ingresoTipico||m.gastoTipico)*0.5/50000)*50000);
+  const maxPago=Math.max(0,Math.round(m.deudaPropia));
+  const fila=(id,etq,min,max,paso,val)=>`<label class="an-sim-fila"><span class="an-sim-etq">${etq}</span><input type="range" class="an-sim-rng" id="${id}" min="${min}" max="${max}" step="${paso}" value="${val}"><span class="an-sim-val" id="${id}-v"></span></label>`;
+  el.innerHTML=`<div class="sec-title">¿Y si…?</div><div class="card an-sim">
+    ${fila('an-sim-gasto','Gastara menos',0,30,5,_anSim.gastoPct)}
+    ${fila('an-sim-ing','Ingresara más al mes',0,maxIng,10000,_anSim.ingresoExtra)}
+    ${maxPago>0?fila('an-sim-pago','Pagara a mis deudas',0,maxPago,Math.max(1000,Math.round(maxPago/50/1000)*1000),Math.min(_anSim.pagoDeuda,maxPago)):''}
+    <div class="an-sim-res" id="an-sim-res"></div>
+    <div class="an-sim-nota">Estimación con tus promedios recientes; no guarda nada.</div></div>`;
+  const pintar=()=>{
+    const g=id=>{const x=document.getElementById(id);return x?Number(x.value)||0:0;};
+    _anSim={gastoPct:g('an-sim-gasto'),ingresoExtra:g('an-sim-ing'),pagoDeuda:g('an-sim-pago')};
+    const set=(id,t)=>{const x=document.getElementById(id);if(x)x.textContent=t;};
+    set('an-sim-gasto-v','−'+_anSim.gastoPct+' %'); set('an-sim-ing-v','+'+fmt(_anSim.ingresoExtra)); set('an-sim-pago-v',fmt(_anSim.pagoDeuda));
+    const r=Salud.simular(m,_anSim);
+    const sg=n=>(n>=0?'+':'−')+fmt(Math.abs(n));
+    const lineas=[`Balance mensual típico: <b class="${r.balance>=0?'c-green':'c-red'}">${sg(r.balance)}</b>`+(Math.abs(r.mejoraMensual)>=1?` <span class="an-opaco">(${sg(r.mejoraMensual)} frente a hoy)</span>`:'')];
+    if(r.mesesCubiertos!=null) lineas.push(`Tus reservas cubrirían <b>${r.mesesCubiertos.toFixed(1).replace('.',',')}</b> meses de gastos`);
+    if(m.deudaPropia>0) lineas.push(r.deudaPropia<=0?'Quedarías <b>sin deudas propias</b>':`Deuda propia: <b>${fmt(r.deudaPropia)}</b>`+(r.mesesLibre!=null?` · libre en unos <b>${r.mesesLibre}</b> ${r.mesesLibre===1?'mes':'meses'} con ese ritmo`:' · con este balance no baja'));
+    if(r.ahorroIntereses>=1) lineas.push(`Te ahorrarías cerca de <b>${fmt(r.ahorroIntereses)}</b> al mes en intereses`);
+    const res=document.getElementById('an-sim-res'); if(res) res.innerHTML=lineas.map(l=>`<div class="an-sim-lin">${l}</div>`).join('');
+  };
+  el.querySelectorAll('.an-sim-rng').forEach(x=>x.addEventListener('input',pintar));
+  pintar();
+}
+
 function renderConciliacion(){
   const el=document.getElementById('an-conciliacion');
   if(!el)return;

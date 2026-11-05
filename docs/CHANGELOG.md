@@ -4,6 +4,15 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Presupuestos con ritmo y «¿pagar o ahorrar?» (2026-11-05, SW v100)
+
+- **Presupuestos:** cada uno muestra «A día 10 ya llevas 70 % (lo esperado: 33 %)» cuando vas 15 puntos o más por delante del mes (desde el día 5, y solo si aún no te pasaste). `Periodo.ritmoPresupuesto` (pura). Además, aviso si la **suma de presupuestos supera tu ingreso típico** (promedio de 3 meses).
+- **Plan de deudas:** línea con `PlanDeudas.pagarConviene`: «Tu cajita rinde 9 % y «Visa» cuesta 28 %: pagarla con lo ahorrado te sale a favor» (o lo contrario). Solo si hay tasa en la tarjeta y tasa de Nu.
+- Tests: `P-presup`, `P3`.
+- **Sigue pendiente:** sugerir en el editor de presupuestos el promedio de 3 meses por categoría, tasa para «Yo debo», «Apartar $X», ingreso extraordinario, push de gastos fijos y los refactores A1/A2/A4/A3-2.
+
+---
+
 ## Simulador «¿y si…?» y consejos con acción (2026-11-05, SW v99)
 
 - **P8 — Simulador** en Análisis (`#an-simulador`, `renderSimulador`): tres deslizadores (gastar −0…30 %, ingresar +$ al mes, pagar $ a las deudas propias) que recalculan balance mensual típico, meses de reservas, tiempo para salir de deuda y ahorro de intereses (con la tasa E.A. de las tarjetas). Cálculo puro en `Salud.simular(m, ajustes)` sobre las mismas métricas de `_situacion()`; no guarda nada. Pagar deuda no cambia la liquidez neta (baja efectivo y deuda a la vez) y el simulador lo refleja.

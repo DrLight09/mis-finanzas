@@ -858,6 +858,11 @@ function renderPresupuestos(){
   // de aviso al 80% se queda con escHtml() a mano (no es un innerHTML, toast()
   // no pasa por html``) — mismo criterio ya documentado en
   // auditoria-tecnica.md sobre por qué no se tocó la firma de toast() en general.
+  const ritmoDe = (gasto, limite) => Periodo.ritmoPresupuesto(gasto, limite, hoy());
+  // La suma de los presupuestos no debería superar lo que ingresas de forma típica.
+  const sumaPresup = cats.reduce((a,c)=>a+(presup[c]>0?presup[c]:0),0);
+  const ingTip = Periodo.ingresoPromedioPrevio(mes, 3).promedio;
+  const avisoSuma = ingTip>0 && sumaPresup>ingTip ? html`<div class="an-presup-ritmo an-t-amber">Tus presupuestos suman ${fmt(sumaPresup)}, más de lo que ingresas en un mes típico (${fmt(ingTip)}).</div>` : '';
   el.innerHTML = html`${cats.map(cat => {
     const limite = presup[cat];
     const gasto = gastoCat[cat]||0;
@@ -882,8 +887,9 @@ function renderPresupuestos(){
       <div class="presup-bar">
         <div class="presup-bar-fill an-bg-${raw(tono)}" style="width:${pct}%;"></div>
       </div>
+      ${ritmoDe(gasto,limite).adelantado?html`<div class="an-presup-ritmo">A día ${ritmoDe(gasto,limite).dia} ya llevas ${ritmoDe(gasto,limite).usadoPct} % (lo esperado: ${ritmoDe(gasto,limite).esperadoPct} %)</div>`:''}
     </div>`;
-  })}`;
+  })}${avisoSuma}`;
 }
 
 /* ---- EVENTOS: acciones con data-action="analisis:..." ---- */

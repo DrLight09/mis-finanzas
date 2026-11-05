@@ -1089,3 +1089,20 @@ test('P8. simulador: gastar menos e ingresar más mejora el balance; pagar deuda
   assert.equal(Salud.simular({ ...m, ingresoTipico: 900000 }, {}).mesesLibre, null, 'con balance negativo la deuda no baja');
   assert.equal(Salud.simular(m, { pagoDeuda: 9e9 }).deudaPropia, 0, 'no se paga más de lo que se debe');
 });
+
+test('P-presup. ritmoPresupuesto avisa solo si vas ≥15 puntos adelantado, desde el día 5 y sin haberte pasado', () => {
+  const { Periodo } = app({});
+  const r = Periodo.ritmoPresupuesto(700000, 1000000, '2026-11-10');
+  assert.equal(r.esperadoPct, 33); assert.equal(r.usadoPct, 70); assert.equal(r.adelantado, true);
+  assert.equal(Periodo.ritmoPresupuesto(700000, 1000000, '2026-11-03').adelantado, false, 'muy pronto en el mes');
+  assert.equal(Periodo.ritmoPresupuesto(400000, 1000000, '2026-11-10').adelantado, false, 'ritmo normal');
+  assert.equal(Periodo.ritmoPresupuesto(1200000, 1000000, '2026-11-10').adelantado, false, 'ya se pasó: lo dice el presupuesto');
+});
+
+test('P3. el plan de deudas compara la tasa de la tarjeta con lo que rinde la cajita', () => {
+  const ctx = app({ cuentas: cuentas(100000), nuRate: 9, tarjetasCredito: [{ id: 't', nombre: 'Visa', deuda: 500000, cupo: 1000000, tasaEA: 28 }] });
+  const el = { innerHTML: '' };
+  ctx.document.getElementById = id => id === 'plan-deudas-card' ? el : null;
+  ctx.renderPlanDeudas();
+  assert.match(el.innerHTML, /Tu cajita rinde 9 % y «Visa» cuesta 28 %/);
+});

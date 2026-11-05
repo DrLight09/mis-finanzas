@@ -641,12 +641,20 @@ function renderPlanDeudas(){
   else if(plan.baja) resumen = `A tu ritmo (te sobran ${fmt(balance)} al mes), quedarías libre de deuda en ~${plan.mesesLibre} ${plan.mesesLibre === 1 ? 'mes' : 'meses'}.`;
   else resumen = `Con tu ritmo actual la deuda no baja. Necesitarías liberar ~${fmt(plan.necesitasLiberar)} al mes para quedar libre en ${plan.meta} meses.`;
   const costo = plan.costoMensualTotal > 0 ? `<div class="inicio-plan-costo">Tu deuda con tasa te cuesta ≈ ${fmt(plan.costoMensualTotal)} al mes en intereses.</div>` : '';
+  // ¿Conviene pagar con lo ahorrado? Se compara la deuda más cara con lo que rinde la cajita de Nu (si ambas tasas existen).
+  let conviene = '';
+  const masCara = plan.orden.filter(x => x.tasaEA > 0).sort((a, b) => b.tasaEA - a.tasaEA)[0];
+  const rendNu = typeof nuTasaConfigurada === 'function' && nuTasaConfigurada() ? Number(S.nuRate) : null;
+  const pc = masCara && rendNu != null ? PlanDeudas.pagarConviene(masCara.tasaEA, rendNu) : null;
+  if(pc) conviene = `<div class="inicio-plan-costo">${pc.conviene
+    ? `Tu cajita rinde ${escHtml(String(rendNu).replace('.', ','))} % y «${escHtml(masCara.nombre)}» cuesta ${escHtml(String(masCara.tasaEA).replace('.', ','))} %: pagarla con lo ahorrado te sale a favor.`
+    : `Tu cajita rinde ${escHtml(String(rendNu).replace('.', ','))} %, más de lo que cuesta «${escHtml(masCara.nombre)}» (${escHtml(String(masCara.tasaEA).replace('.', ','))} %): no tiene afán de pagarla con lo ahorrado.`}</div>`;
   const sinTasa = !conTasa && (S.tarjetasCredito || []).some(t => calcDeudaTcPropiaDeTarjeta(t) > 0) ? '<div class="inicio-plan-nota">Agrega la tasa E.A. en cada tarjeta para ver cuánto te cuesta.</div>' : '';
   const filas = plan.orden.map((x, i) => `<div class="inicio-plan-fila"><span class="inicio-plan-n">${i + 1}</span><span class="inicio-plan-nom">${escHtml(x.nombre)}</span><span class="inicio-plan-tasa">${x.tasaEA ? escHtml(String(x.tasaEA).replace('.', ',')) + ' % E.A.' : 'sin tasa'}</span><span class="inicio-plan-monto">${fmt(x.saldo)}</span></div>`).join('');
   const btn = (id, txt) => `<button type="button" class="inicio-plan-est ${plan.estrategia === id ? 'inicio-plan-est-on' : ''}" ${Events.attr('inicio:planEstrategia', id)}>${txt}</button>`;
   el.innerHTML = `<div class="card inicio-plan">
     <div class="inicio-plan-tit">Plan de salida de deudas</div>
-    <div class="inicio-plan-resumen">${resumen}</div>${costo}
+    <div class="inicio-plan-resumen">${resumen}</div>${costo}${conviene}
     <div class="inicio-plan-ests">${btn('avalancha', 'Más cara primero')}${btn('bola', 'Más pequeña primero')}</div>
     ${filas}${sinTasa}
   </div>`;

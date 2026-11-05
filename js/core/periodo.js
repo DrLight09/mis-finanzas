@@ -519,7 +519,18 @@ const Periodo = (() => {
     return { meses, conDatos: c.length, superavit: c.filter(x => x.balance >= 0).length, deficit: c.filter(x => x.balance < 0).length, acumulado: c.reduce((a, x) => a + x.balance, 0) };
   }
 
-  return { resumenFlujo, cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
+  // Ritmo de un presupuesto: ¿vas más rápido de lo que avanza el mes? `hoyStr` 'AAAA-MM-DD'. Solo avisa si el mes ya tiene 5 días, el gasto
+  // supera lo esperado por 15 puntos o más y el presupuesto aún no se pasó (si se pasó, ya lo dice el propio presupuesto).
+  // → { dia, diasMes, esperadoPct, usadoPct, adelantado }
+  function ritmoPresupuesto(gasto, limite, hoyStr) {
+    const [a, m, d] = String(hoyStr).split('-').map(Number);
+    const diasMes = new Date(a, m, 0).getDate();
+    const esperadoPct = Math.round(d / diasMes * 100);
+    const usadoPct = limite > 0 ? Math.round((gasto || 0) / limite * 100) : 0;
+    return { dia: d, diasMes, esperadoPct, usadoPct, adelantado: limite > 0 && d >= 5 && usadoPct < 100 && usadoPct - esperadoPct >= 15 };
+  }
+
+  return { ritmoPresupuesto, resumenFlujo, cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
            pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, gastosFijosSinDia, conciliar, diaDelMes, saldoProyectado, esCompraGrande, compraGrandeEstado, umbralCompraGrande, COMPRA_GRANDE_AUTO, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
 })();
 

@@ -1028,3 +1028,33 @@ test('B5. fraseTendencia: causa principal según el signo del flujo', () => {
   assert.match(S.fraseTendencia(100, 30, 0, 5000000), /estable/);
   assert.equal(S.fraseTendencia(null, 30, 0, 0), '');
 });
+
+test('B7. Wrapped mide el año completo con el cierre de diciembre anterior aunque la serie diaria ya no tenga enero', () => {
+  const ctx = wrapped();
+  const st = {
+    patrimonioHistorial: [{ fecha: '2026-01-20', valor: 900, valorVisible: 900 }, { fecha: '2026-06-01', valor: 1200, valorVisible: 1200 }],
+    patrimonioCierres: { '2025-12': { valor: 1000, valorVisible: 1000, base: 0 }, '2026-01': { valor: 900, valorVisible: 900, base: 0 }, '2026-06': { valor: 1200, valorVisible: 1200, base: 100 } },
+  };
+  const p = ctx._wrappedPatrimonioAnio(st, '2026');
+  assert.equal(p.inicio, 1000);
+  assert.equal(p.fin, 1200);
+  assert.equal(p.diff, 100, 'sube 200 pero 100 fueron aperturas, no crecimiento');
+});
+
+test('B7. «balance honesto»: patrimonio en rojo o gastos sin ingresos → año difícil; año sano → null', () => {
+  const ctx = wrapped();
+  assert.equal(ctx._wrappedAnioDificil({ fin: -5, diff: 10 }, { totalGastos: 1, totalIngresos: 5, balance: 4 }), 'patrimonio');
+  assert.equal(ctx._wrappedAnioDificil({ fin: 50, diff: -10 }, { totalGastos: 9, totalIngresos: 5, balance: -4 }), 'patrimonio');
+  assert.equal(ctx._wrappedAnioDificil({ fin: 50, diff: 10 }, { totalGastos: 9, totalIngresos: 0, balance: -9 }), 'sin-ingresos');
+  assert.equal(ctx._wrappedAnioDificil({ fin: 50, diff: 10 }, { totalGastos: 3, totalIngresos: 5, balance: 2 }), null);
+});
+
+test('B7. cierres mensuales: se rellenan desde la serie diaria y sobreviven a la poda', () => {
+  const ctx = app({ cuentas: cuentas(500000), patrimonioHistorial: [{ fecha: '2025-12-30', valor: 100, valorVisible: 100 }, { fecha: '2025-12-31', valor: 120, valorVisible: 120, montoBase: 20 }] });
+  ctx.snapshotPatrimonio();
+  assert.equal(ctx.S.patrimonioCierres['2025-12'].valor, 120);
+  assert.equal(ctx.S.patrimonioCierres['2025-12'].base, 20);
+  ctx.S.patrimonioHistorial = ctx.S.patrimonioHistorial.filter(h => h.fecha > '2026');
+  ctx.snapshotPatrimonio();
+  assert.equal(ctx.S.patrimonioCierres['2025-12'].valor, 120, 'un mes sin puntos en la serie conserva su cierre');
+});

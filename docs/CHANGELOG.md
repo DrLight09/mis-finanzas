@@ -4,6 +4,18 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Wrapped honesto y cierres mensuales de patrimonio (2026-11-05, SW v98)
+
+- **`S.patrimonioCierres`** (nuevo, sin límite): `{ 'AAAA-MM': {valor, valorVisible, base} }`, el último valor de cada mes y la suma de sus aperturas. Se rellena en cada `snapshotPatrimonio()` desde la serie diaria (también meses previos a esta versión) y un mes cuyos días ya se podaron conserva su cierre. Clasificada `historica` en `cierre.js` y con su fuente descrita.
+- **Wrapped** mide el año completo con el cierre de diciembre anterior (antes, a mediados de enero la serie de 365 días ya no tenía el 1 de enero). Sin ese cierre usa la serie diaria como siempre.
+- **«Balance honesto»** (`_wrappedAnioDificil`): si el año cierra con patrimonio negativo, o cayó con gastos sobre ingresos, o hubo gastos sin ningún ingreso registrado, la portada cambia a un tono sobrio («Un año exigente, contado sin maquillaje») y el cierre no lanza confeti. Los números y demás diapositivas no cambian.
+- **Análisis:** en estado Presión o Crisis, el balance del mes añade una línea que pide priorizar deudas y gastos fijos.
+- Limitación: si se elimina un movimiento viejo, `purgarEfectoEnHistorial` corrige la serie diaria pero no los cierres de meses ya podados.
+- Pendiente de B7: opción de no abrir/guardar en silencio el Wrapped de un año malo.
+- Tests: 3 nuevos en `escenarios-financieros`.
+
+---
+
 ## Análisis: ventana de patrimonio, frase-resumen, ingreso+gasto y racha (2026-11-05, SW v97)
 
 - **Gráfica de patrimonio** con selector 30 días / 90 días / 1 año (por fecha, no por número de registros) y una **frase-resumen** debajo con la causa principal (`Salud.fraseTendencia`, pura): «Tu patrimonio bajó $X en los últimos 3 meses. La causa principal: gastaste $Y más de lo que ingresó». La ventana es solo de vista (no se guarda).

@@ -672,24 +672,45 @@ function _wrappedHistoriasMensuales(S, anioK, mesMax){
    Mismo criterio que analisis-financiero.md §5: `valorVisible` (sin
    alcancía) y se resta el `montoBase` acumulado para no contar
    aperturas/ajustes como crecimiento real. */
+// 'patrimonio' (cierra en rojo, o cayó con gastos sobre ingresos) · 'sin-ingresos' (hay gastos y ningún ingreso) · null (año normal).
+function _wrappedAnioDificil(patrimonio, s){
+  if(s && s.totalGastos > 0 && !(s.totalIngresos > 0)) return 'sin-ingresos';
+  if(patrimonio && Number.isFinite(patrimonio.fin) && (patrimonio.fin < 0 || (patrimonio.diff < 0 && s && s.balance < 0))) return 'patrimonio';
+  return null;
+}
+
 function _wrappedPatrimonioAnio(S, anioK){
-  const hist = (S.patrimonioHistorial || [])
-    .filter(p => (p.fecha||'').slice(0,4) === anioK)
-    .slice()
-    .sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
-  if(hist.length < 2) return null;
   const val = p => (typeof p.valorVisible === 'number') ? p.valorVisible : (p.valor||0);
-  const primero = hist[0], ultimo = hist[hist.length-1];
-  let montoBaseAcumulado = 0;
-  hist.forEach(p => { if(p !== primero) montoBaseAcumulado += (p.montoBase||0); });
-  const diff = (val(ultimo) - val(primero)) - montoBaseAcumulado;
+  const cierres = S.patrimonioCierres || {};
+  // Con el cierre de diciembre del año anterior el año se mide COMPLETO (la serie diaria se poda a 365 días y a mediados de enero ya no
+  // conserva el 1 de enero). Sin él, se usa la serie diaria como siempre.
+  const previo = cierres[(Number(anioK) - 1) + '-12'];
+  const delAnio = Object.keys(cierres).filter(k => k.slice(0,4) === String(anioK)).sort();
+  let inicio, fin, diff;
+  if(previo && delAnio.length){
+    inicio = val(previo);
+    fin = val(cierres[delAnio[delAnio.length - 1]]);
+    const baseAnio = delAnio.reduce((a, k) => a + (cierres[k].base || 0), 0);
+    diff = (fin - inicio) - baseAnio;
+  } else {
+    const hist = (S.patrimonioHistorial || [])
+      .filter(p => (p.fecha||'').slice(0,4) === anioK)
+      .slice()
+      .sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
+    if(hist.length < 2) return null;
+    const primero = hist[0], ultimo = hist[hist.length-1];
+    let montoBaseAcumulado = 0;
+    hist.forEach(p => { if(p !== primero) montoBaseAcumulado += (p.montoBase||0); });
+    inicio = val(primero); fin = val(ultimo);
+    diff = (fin - inicio) - montoBaseAcumulado;
+  }
   // Porcentaje solo sobre una base POSITIVA y proporcionada: sobre una base negativa o minúscula no significa nada (+39.900 % al empezar
   // con $5.000; −800 % al pasar de −$100.000 a −$900.000; «casi se duplicó» al pasar de −$900.000 a −$100.000, que sigue en deuda).
   // Sin porcentaje, el texto habla de montos y de cruzar el cero (ver _wrappedCopyPatrimonio). Tope de ±300 % para presentar uno.
-  let pct = val(primero) > 0 ? (diff/val(primero))*100 : null;
+  let pct = inicio > 0 ? (diff/inicio)*100 : null;
   if(pct !== null && Math.abs(pct) > UMBRALES.wrapped.patrimonio.tope) pct = null;
   // inicio/fin: el patrimonio visible al empezar y al terminar el año (para saber si se cruzó el cero).
-  return { diff, pct, inicio: val(primero), fin: val(ultimo) };
+  return { diff, pct, inicio, fin };
 }
 
 /* ─── Serie mensual de patrimonio (Enero → mes actual) para el gráfico
@@ -3220,10 +3241,19 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
     ? `Movimiento por movimiento, desde el ${_wrappedFmtFechaLarga(rangoFechas.inicio)} hasta el ${_wrappedFmtFechaLarga(rangoFechas.fin)}.`
     : 'Lo repasamos un dato a la vez.';
 
+  // «Balance honesto»: un año con patrimonio negativo al cierre, patrimonio cayendo con gastos sobre ingresos, o gastos sin ningún ingreso
+  // registrado no se abre con fiesta. Mismos datos, otra portada y sin confeti; los números y las demás diapositivas no cambian.
+  const dificil = _wrappedAnioDificil(patrimonio, s);
   slides.push({
     id: 'intro',
-    mood: 'purple',
-    html: `<div class="wrapped-slide-inner">
+    mood: dificil ? 'accent' : 'purple',
+    html: dificil
+      ? `<div class="wrapped-slide-inner">
+      <div class="wrapped-eyebrow">Tu balance ${anioK}</div>
+      <div class="wrapped-headline">${dificil === 'sin-ingresos' ? 'Este año faltan ingresos en tus registros.' : 'Un año exigente, contado sin maquillaje.'}</div>
+      <div class="wrapped-sub">${dificil === 'sin-ingresos' ? 'Registraste gastos pero ningún ingreso, así que el balance no está completo. Aun así, esto es lo que se ve.' : 'Lo importante de un año así es saber dónde estás parado. Esto es lo que pasó.'} ${introSub}</div>
+    </div>`
+      : `<div class="wrapped-slide-inner">
       <div class="wrapped-tag"><i class="fa-solid fa-tag"></i> Wrapped ${anioK}</div>
       <div class="wrapped-eyebrow">Tu resumen ${anioK}</div>
       <div class="wrapped-headline">${_wrappedCopyIntro()}</div>
@@ -3765,7 +3795,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
   slides.push({
     id: 'cierre',
     mood: 'purple',
-    confetti: true,
+    confetti: !dificil,
     html: `<div class="wrapped-slide-inner">
       <div class="wrapped-tag"><i class="fa-solid fa-tag"></i> Wrapped ${anioK}</div>
       <div class="wrapped-eyebrow">Eso fue ${anioK}</div>
@@ -4197,6 +4227,7 @@ window._wrappedInternals = {
   _wrappedInicioRachaReal,
   _wrappedMejorPeorMesAnio,
   _wrappedPatrimonioAnio,
+  _wrappedAnioDificil,
   _wrappedSerieMensualAnio,
   _wrappedGraficoAnimadoSvg,
   _wrappedMesKaNombre,

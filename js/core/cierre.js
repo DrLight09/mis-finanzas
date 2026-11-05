@@ -62,6 +62,8 @@ const Cierre = (() => {
   _plana('chequeosNu', 'Chequeos de Nu', 'chequeosNu');
   _plana('historialTasasNu', 'Historial de tasas de Nu', 'historialTasasNu');
   _plana('patrimonioHistorial', 'Historial de patrimonio', 'patrimonioHistorial');
+  registrarFuente({ clave: 'patrimonioCierres', etiqueta: 'Cierres mensuales de patrimonio', raiz: ['patrimonioCierres'], registros: st =>
+    Object.keys(_obj(st.patrimonioCierres)).map(k => ({ obj: _obj(st.patrimonioCierres[k]), id: 'pc:' + k, entidad: null, fecha: k + '-01' })) });
   registrarFuente({ clave: 'pagosGastosFijos', etiqueta: 'Pagos de gastos fijos', raiz: ['pagosGastosFijos'], registros: st =>
     Object.keys(_obj(st.pagosGastosFijos)).map(k => { const p = _obj(st.pagosGastosFijos[k]); return { obj: p, id: 'gf:' + k, entidad: null, fecha: p.fecha || (k.split('_').pop() + '-01') }; }) });
   registrarFuente({ clave: 'tcMovimientos', etiqueta: 'Cargos de tarjetas', raiz: ['tcMovimientos'], sonda: 'tarjetas', registros: st =>
@@ -119,7 +121,7 @@ const Cierre = (() => {
      registros con fecha que un cierre pueda mover. Una clave nueva sin clasificar hace fallar la prueba `clasificacion`. */
   const CLASIFICACION = {
     libro: 'historica', movimientos: 'historica', gastosVar: 'historica', transferencias: 'historica', ingresosExtra: 'historica',
-    chequeosNu: 'historica', historialTasasNu: 'historica', patrimonioHistorial: 'historica', pagosGastosFijos: 'historica', tcMovimientos: 'historica',
+    chequeosNu: 'historica', historialTasasNu: 'historica', patrimonioHistorial: 'historica', patrimonioCierres: 'historica', pagosGastosFijos: 'historica', tcMovimientos: 'historica',
     tarjetasCredito: 'entidad-con-historia', deudores: 'entidad-con-historia', misDeudas: 'entidad-con-historia', encargos: 'entidad-con-historia',
     alcancia: 'entidad-con-historia', spotify: 'entidad-con-historia', mesadas: 'entidad-con-historia', ingresosFijos: 'entidad-con-historia', cajitas: 'entidad-con-historia',
     alcanciaSaldoOfuscado: 'derivada',

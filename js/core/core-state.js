@@ -97,6 +97,7 @@ let S={
   catsFijo:[],
   cuentas:[{id:'nequi',tipo:'nequi',saldo:0},{id:'efectivo',tipo:'efectivo',saldo:0}],
   patrimonioHistorial:[],
+  patrimonioCierres:{},
   tarjetasCredito:[],
   ingresosFijos:[],
   alcancia:null,
@@ -664,6 +665,7 @@ function load(){
   if(!S.catsVar)S.catsVar=[];
   if(!S.catsFijo)S.catsFijo=[];
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
+  if(!S.patrimonioCierres||typeof S.patrimonioCierres!=='object')S.patrimonioCierres={};
   if(!S.personas)S.personas=[];
   if(!S.ingresosFijos)S.ingresosFijos=[];
   if(!S.misDeudas)S.misDeudas=[];
@@ -1091,6 +1093,30 @@ function _ajusteDeudasSinCuentaPorFecha(){
   return r;
 }
 
+// Cierre de cada mes (un punto por mes, SIN límite): la serie diaria se poda a 365 días, y a mediados de enero ya no queda el 1 de enero
+// del año anterior, así que el Wrapped no podía medir el año completo. Cada mes guarda su último valor y la suma de los montos de apertura
+// (`base`, lo que no es crecimiento real). Se rellena desde la serie diaria (también los meses anteriores a esta versión) y se vuelve a
+// calcular en cada snapshot solo con lo que la serie aún conserva; un mes cuyos días ya se podaron conserva su cierre.
+function _actualizarCierresPatrimonio(){
+  if(!S.patrimonioCierres||typeof S.patrimonioCierres!=='object')S.patrimonioCierres={};
+  const porMes={};
+  (S.patrimonioHistorial||[]).forEach(h=>{
+    if(!h||!h.fecha)return;
+    const m=h.fecha.slice(0,7);
+    const g=porMes[m]||(porMes[m]={ult:null,base:0});
+    if(!g.ult||h.fecha>=g.ult.fecha)g.ult=h;
+    g.base+=(h.montoBase||0);
+  });
+  const mesesSerie=Object.keys(porMes).sort();
+  mesesSerie.forEach((m,i)=>{
+    const g=porMes[m];
+    const previo=S.patrimonioCierres[m];
+    // El primer mes de una serie ya podada (365 puntos) puede estar incompleto: sus aperturas anteriores solo viven en el cierre guardado.
+    const recortado=i===0&&previo&&(S.patrimonioHistorial||[]).length>=365;
+    S.patrimonioCierres[m]={valor:g.ult.valor,valorVisible:(g.ult.valorVisible!=null?g.ult.valorVisible:g.ult.valor),base:recortado?previo.base:g.base};
+  });
+}
+
 function snapshotPatrimonio(){
   if(!_patrimonioDependenciasListas()) return;
   const hoyStr=hoy();
@@ -1136,6 +1162,7 @@ function snapshotPatrimonio(){
     if(montoAperturaHoy!==0)punto.montoBase=montoAperturaHoy;
     S.patrimonioHistorial.push(punto);
   }
+  _actualizarCierresPatrimonio();
   if(S.patrimonioHistorial.length>365)S.patrimonioHistorial=S.patrimonioHistorial.slice(-365);
   // (No localStorage — Firebase lo guarda _fbSaveToCloud)
 }

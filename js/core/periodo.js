@@ -508,7 +508,18 @@ const Periodo = (() => {
     return { mes, desde: d0, hasta: d1, delta, base, ingresos, gastos, rendimientos, explicado, sinExplicar: delta - base - explicado };
   }
 
-  return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
+  // Resumen de flujo de los últimos `n` meses (el actual incluido): ingreso, gasto y balance de cada uno, cuántos cerraron en superávit o déficit
+  // y el acumulado. Un mes sin ningún movimiento no cuenta ni como superávit ni como déficit.
+  function resumenFlujo(n, hasta, estado) {
+    const meses = ultimosMeses(n, hasta).map(m => {
+      const b = balanceDelMes(m, estado);
+      return { mes: m, ingresos: b.ingresos.total, gastos: b.gastos.total, balance: b.balance, conDatos: b.ingresos.total > 0 || b.gastos.total > 0 };
+    });
+    const c = meses.filter(x => x.conDatos);
+    return { meses, conDatos: c.length, superavit: c.filter(x => x.balance >= 0).length, deficit: c.filter(x => x.balance < 0).length, acumulado: c.reduce((a, x) => a + x.balance, 0) };
+  }
+
+  return { resumenFlujo, cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
            pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, gastosFijosSinDia, conciliar, diaDelMes, saldoProyectado, esCompraGrande, compraGrandeEstado, umbralCompraGrande, COMPRA_GRANDE_AUTO, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
 })();
 

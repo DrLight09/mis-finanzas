@@ -1010,3 +1010,21 @@ test('P1. calcEstadoSituacion marca «serio» solo en presión/crisis y la franj
   assert.ok(el.innerHTML.includes(e.etiqueta));
   assert.equal(app({}).calcEstadoSituacion(), null, 'sin datos no hay estado');
 });
+
+test('B5. resumenFlujo cuenta superávit/déficit solo en meses con movimiento y acumula', () => {
+  const m1 = mesHace(1), m2 = mesHace(2);
+  const ctx = app({ cuentas: cuentas(0), ingresosFijos: ingresosEn(1000000, [m2, m1]), ...gastosEn(1500000, [m1]) });
+  const r = ctx.Periodo.resumenFlujo(6, mesAct);
+  assert.equal(r.meses.length, 6);
+  assert.equal(r.deficit, 1);
+  assert.equal(r.superavit, 1);
+  assert.equal(r.acumulado, r.meses.reduce((a, x) => a + x.balance, 0));
+});
+
+test('B5. fraseTendencia: causa principal según el signo del flujo', () => {
+  const S = app({}).Salud;
+  assert.match(S.fraseTendencia(-420000, 90, -310000, 5000000), /bajó \$420\.000 en los últimos 3 meses.*gastaste \$310\.000 más/);
+  assert.match(S.fraseTendencia(200000, 30, 250000, 1000000), /subió.*ingresos/);
+  assert.match(S.fraseTendencia(100, 30, 0, 5000000), /estable/);
+  assert.equal(S.fraseTendencia(null, 30, 0, 0), '');
+});

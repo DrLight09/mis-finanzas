@@ -46,6 +46,7 @@ function renderBienes(){
     </div>`;
 }
 
+let _anPatDias=30; // ventana de la gráfica de patrimonio (solo vista; no se guarda)
 function renderAnalisis(){
   const mes=mesActual();
   const MESES_NOMBRE=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -150,20 +151,28 @@ function renderAnalisis(){
   }
 
   // ── Gráfico de barras — últimos 12 meses ──────────────────────────────
-  const hoy12=Periodo.ultimosMeses(12,mes).map(k=>({k,label:MESES_NOMBRE[parseInt(k.split('-')[1])-1],total:Periodo.gastosDelMes(k).total}));
-  const maxBar=Math.max(...hoy12.map(x=>x.total),1);
+  const flujo12=Periodo.resumenFlujo(12,mes);
+  const hoy12=flujo12.meses.map(x=>({k:x.mes,label:MESES_NOMBRE[parseInt(x.mes.split('-')[1])-1],total:x.gastos,ing:x.ingresos}));
+  const maxBar=Math.max(...hoy12.map(x=>Math.max(x.total,x.ing)),1);
   const barEl=document.getElementById('an-grafico-barras');
   const labEl=document.getElementById('an-grafico-labels');
   if(barEl&&labEl){
-    barEl.innerHTML=hoy12.map(({k,total,label},idx)=>{
+    // Gasto (barra principal) junto al ingreso (barra fina verde): un déficit sostenido se ve de un vistazo.
+    barEl.innerHTML=hoy12.map(({k,total,ing,label})=>{
       const pct=Math.max(total>0?Math.round((total/maxBar)*100):0,2);
+      const pctI=Math.max(ing>0?Math.round((ing/maxBar)*100):0,2);
       const esMesActual=k===mes;
-      return`<div data-bar-label="${label}" data-bar-val="${total}" data-bar-mes="${k}" class="an-bar ${esMesActual?'an-bar-act':'an-bar-inact'}" style="height:${pct}%;min-height:${total>0?4:2}px;"></div>`;
+      return`<div class="an-bar-par" data-bar-label="${label}" data-bar-val="${total}" data-bar-ing="${ing}" data-bar-mes="${k}"><div class="an-bar ${esMesActual?'an-bar-act':'an-bar-inact'}" style="height:${pct}%;min-height:${total>0?4:2}px;"></div><div class="an-bar an-bar-ing" style="height:${pctI}%;min-height:${ing>0?4:2}px;"></div></div>`;
     }).join('');
     labEl.innerHTML=hoy12.map(({label,k})=>{
       const esMesActual=k===mes;
       return`<div class="an-bar-lbl ${esMesActual?'an-bar-lbl-act':''}">${label}</div>`;
     }).join('');
+    const resEl=document.getElementById('an-flujo-resumen');
+    if(resEl){
+      const f6=Periodo.resumenFlujo(6,mes);
+      resEl.innerHTML=f6.conDatos?`<div class="an-flujo-txt">Últimos 6 meses: <b>${f6.superavit}</b> en superávit, <b>${f6.deficit}</b> en déficit · acumulado <b class="${f6.acumulado>=0?'c-green':'c-red'}">${f6.acumulado>=0?'+':'−'}${fmt(Math.abs(f6.acumulado))}</b></div><div class="an-flujo-leyenda"><span class="an-flujo-pt an-flujo-pt-gasto"></span>Gasto <span class="an-flujo-pt an-flujo-pt-ing"></span>Ingreso</div>`:'';
+    }
     // Event delegation en el contenedor — funciona para touch y click
     barEl.ontouchstart = barEl.onclick = function(e){
       const bar = e.target.closest('[data-bar-val]');
@@ -171,15 +180,16 @@ function renderAnalisis(){
       const fmt2 = fmt;
       const label = bar.dataset.barLabel || '';
       const val = parseFloat(bar.dataset.barVal) || 0;
+      const ingVal = parseFloat(bar.dataset.barIng) || 0;
       // Limpiar tooltip previo
       const old = document.getElementById('_bar-tt');
       if(old){ old.remove(); if(old._lastBar === bar){ return; } }
-      if(!val) return;
+      if(!val&&!ingVal) return;
       const tt = document.createElement('div');
       tt.id = '_bar-tt';
       tt._lastBar = bar;
       tt.style.cssText = 'position:fixed;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:9px 13px;font-family:\'DM Mono\',monospace;z-index:99999;pointer-events:none;box-shadow:0 4px 24px rgba(0,0,0,.8);text-align:center;min-width:90px;';
-      tt.innerHTML = `<div class="an-tt-lbl">${label}</div><div class="an-tt-val ${val>0?'an-tt-val-pos':''}">${fmt2(val)}</div>`;
+      tt.innerHTML = `<div class="an-tt-lbl">${label}</div><div class="an-tt-val ${val>0?'an-tt-val-pos':''}">Gasto ${fmt2(val)}</div><div class="an-tt-val">Ingreso ${fmt2(ingVal)}</div>`;
       document.body.appendChild(tt);
       const rect = bar.getBoundingClientRect();
       const ttW = tt.offsetWidth || 110;
@@ -316,7 +326,12 @@ function renderAnalisis(){
   renderConciliacion();
   const patriEl=document.getElementById('an-patrimonio-chart');
   if(patriEl){
-    const hist=(S.patrimonioHistorial||[]).slice(-30); // últimos 30 días
+    // Ventana elegible (30 / 90 / 365 días): por FECHA, no por número de registros (un registro solo se guarda los días que usas la app).
+    const ventana=_anPatDias;
+    const corte=(()=>{const d=_fechaSafe(hoy());d.setDate(d.getDate()-ventana);return d;})();
+    const todo=S.patrimonioHistorial||[];
+    let hist=todo.filter(h=>_fechaSafe(h.fecha)>=corte);
+    if(hist.length<2) hist=todo.slice(-Math.min(todo.length,Math.max(2,hist.length)));
     if(hist.length<2){
       patriEl.innerHTML='<div class="an-vacio an-vacio-c20">Aún no hay suficiente historial. Vuelve mañana.</div>';
     } else {
@@ -362,7 +377,12 @@ function renderAnalisis(){
       const enRojos = ultimoReal<0;
       const diffPctTxt = enRojos ? 'En números rojos' : diffPct===null ? '—' : (sinCambio||diffPct<0?'':'+')+diffPct.toFixed(1)+'%';
       const diffClasePct = enRojos ? 'c-red' : diffClasePat;
+      const _mesesVent=Math.max(1,Math.min(12,Math.round(_diasVentana/30)));
+      const _flujoVent=Periodo.resumenFlujo(_mesesVent,mes);
+      const frasePat=Salud.fraseTendencia(diffTotal,_diasVentana,_flujoVent.conDatos?_flujoVent.acumulado:null,primeroReal);
+      const selector=[30,90,365].map(d=>`<button type="button" class="an-pat-sel${d===ventana?' an-pat-sel-on':''}" ${Events.attr('analisis:patDias',d)}>${d===365?'1 año':d+' días'}</button>`).join('');
       patriEl.innerHTML=`
+        <div class="an-pat-sels">${selector}</div>
         <div class="an-pat-cab">
           <div>
             <div class="an-pat-tit">Últimos ${_diasVentana} días</div>
@@ -392,7 +412,8 @@ function renderAnalisis(){
         <div class="an-pat-pie">
           <span class="an-pat-fecha">${primero.fecha.slice(5)}</span>
           <span class="an-pat-fecha">${ultimo2.fecha.slice(5)}</span>
-        </div>`;
+        </div>
+        ${frasePat?`<div class="an-pat-frase">${escHtml(frasePat)}</div>`:''}`;
       // Bind touch/click on the transparent overlay
       (function(){
         const overlay = patriEl.querySelector('#_pat-overlay');
@@ -838,6 +859,7 @@ Events.registerAll('analisis', {
   eliminarIngresoFijo,
   cobrarIngresoFijo: abrirCobroIngresoFijo,
   eliminarCobro: eliminarCobroIngresoFijo,
+  patDias: d=>{ if(d!==30&&d!==90&&d!==365) return; _anPatDias=d; renderAnalisis(); },
   abrirPresupuestos,
 });
 

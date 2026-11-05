@@ -23,7 +23,6 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/firebase-sync.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/fuentes-filtro.js` | de entrada (defer) | 1 | 0 |
 | `js/core/gastos-fijos-progress.js` | de entrada (defer) | 0 | 0 |
-| `js/core/hook-global-module.js` | sin <script>, sin grupo lazy y sin import (posible código muerto) | 0 | 0 |
 | `js/core/hook-global.js` | de entrada (defer) | 1 | 0 |
 | `js/core/html-tag.js` | de entrada (defer) | 3 | 0 |
 | `js/core/huella.js` | lazy — grupo `cierre` | 1 | 0 |
@@ -45,7 +44,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/sheet-stack.js` | de entrada (defer) | 13 | 0 |
 | `js/core/split.js` | de entrada (defer) | 10 | 0 |
 | `js/core/umbrales.js` | de entrada (defer) | 1 | 0 |
-| `js/core/wait-for-module.js` | módulo ES — importado por `js/core/firebase-sync.js`, `js/core/hook-global-module.js`, `js/core/pin-bio.js` | 0 | 0 |
+| `js/core/wait-for-module.js` | módulo ES — importado por `js/core/firebase-sync.js`, `js/core/pin-bio.js` | 0 | 0 |
 | `js/core/wait-for.js` | de entrada (defer) | 1 | 0 |
 | `js/core/wrapped-gate.js` | de entrada (defer) | 9 | 2 |
 | `js/modules/actividad_reciente.js` | lazy — grupo `historial` | 0 | 0 |
@@ -160,12 +159,6 @@ Carga: de entrada (defer)
 ### `js/core/gastos-fijos-progress.js`
 
 Carga: de entrada (defer)
-
-**Funciones:** —
-
-### `js/core/hook-global-module.js`
-
-Carga: sin <script>, sin grupo lazy y sin import (posible código muerto)
 
 **Funciones:** —
 
@@ -297,7 +290,7 @@ Carga: de entrada (defer)
 
 ### `js/core/wait-for-module.js`
 
-Carga: módulo ES — importado por `js/core/firebase-sync.js`, `js/core/hook-global-module.js`, `js/core/pin-bio.js`
+Carga: módulo ES — importado por `js/core/firebase-sync.js`, `js/core/pin-bio.js`
 
 **Funciones:** —
 

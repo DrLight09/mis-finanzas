@@ -2337,3 +2337,16 @@ button.inicio-pilar-accion{cursor:pointer;}
 .inicio-franja-ambar .inicio-franja-etq{color:var(--amber);}
 .inicio-franja-rojo{border-color:rgba(240,96,96,.5);}
 .inicio-franja-rojo .inicio-franja-etq{color:var(--red);}
+
+.an-bar-par{flex:1;display:flex;align-items:flex-end;gap:1px;height:100%;cursor:pointer;}
+.an-bar-par .an-bar{flex:1;}
+.an-bar-par .an-bar-ing{background:var(--blue);opacity:.75;border:none;}
+.an-flujo-txt{margin-top:10px;font-size:12px;color:var(--text2);}
+.an-flujo-leyenda{margin-top:4px;font-size:10px;color:var(--text3);display:flex;align-items:center;gap:6px;}
+.an-flujo-pt{display:inline-block;width:8px;height:8px;border-radius:2px;}
+.an-flujo-pt-gasto{background:var(--border2);border:1px solid var(--text3);}
+.an-flujo-pt-ing{background:var(--blue);}
+.an-pat-sels{display:flex;gap:6px;margin-bottom:8px;}
+.an-pat-sel{font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);}
+.an-pat-sel-on{border-color:var(--accent);color:var(--accent);}
+.an-pat-frase{margin-top:8px;font-size:12px;line-height:1.4;color:var(--text2);}

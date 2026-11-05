@@ -178,7 +178,25 @@ const Salud = (() => {
     return { meses: Math.max(1, Math.round(dias / 30)), dias, fecha: iso, mes: iso.slice(0, 7) };
   }
 
-  return { pilares, estado, tendenciaPatrimonio, fechaAgotamiento, accionesUrgentes, ESTADOS };
+  // B5 — frase-resumen bajo la gráfica de patrimonio. delta: cambio real del patrimonio en la ventana; balance: suma de los balances
+  // (ingresos − gastos) de los meses que cubre. Dice QUÉ pasó y, si los datos lo sostienen, la causa principal.
+  function fraseTendencia(delta, dias, balance, base) {
+    if (delta == null || !isFinite(delta) || !(dias > 0)) return '';
+    const plano = Math.abs(delta) < Math.max(1, Math.abs(base || 0) * 0.005);
+    const periodo = dias >= 60 ? 'los últimos ' + Math.round(dias / 30) + ' meses' : 'los últimos ' + dias + ' días';
+    if (plano) return 'Tu patrimonio se mantuvo estable en ' + periodo + '.';
+    const sube = delta > 0;
+    let f = 'Tu patrimonio ' + (sube ? 'subió ' : 'bajó ') + _monto(Math.abs(delta)) + ' en ' + periodo + '.';
+    if (balance != null && isFinite(balance) && Math.abs(balance) >= 1) {
+      if (!sube && balance < 0) f += ' La causa principal: gastaste ' + _monto(-balance) + ' más de lo que ingresó.';
+      else if (sube && balance > 0) f += ' Se explica por ingresos ' + _monto(balance) + ' por encima de tus gastos.';
+      else if (!sube && balance >= 0) f += ' Tus ingresos cubrieron los gastos, así que revisa deudas, retiros o valores que cambiaron.';
+      else f += ' Subió aunque los gastos superaron a los ingresos: algo más (rendimientos, valor de bienes, deuda que bajó) lo compensó.';
+    }
+    return f;
+  }
+
+  return { fraseTendencia, pilares, estado, tendenciaPatrimonio, fechaAgotamiento, accionesUrgentes, ESTADOS };
 })();
 if (typeof window !== 'undefined') window.Salud = Salud;
 if (typeof module !== 'undefined' && module.exports) module.exports = Salud;

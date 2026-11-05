@@ -4,6 +4,16 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Análisis: ventana de patrimonio, frase-resumen, ingreso+gasto y racha (2026-11-05, SW v97)
+
+- **Gráfica de patrimonio** con selector 30 días / 90 días / 1 año (por fecha, no por número de registros) y una **frase-resumen** debajo con la causa principal (`Salud.fraseTendencia`, pura): «Tu patrimonio bajó $X en los últimos 3 meses. La causa principal: gastaste $Y más de lo que ingresó». La ventana es solo de vista (no se guarda).
+- **Barras de 12 meses** ahora muestran gasto (barra principal) e ingreso (azul) juntos, con tooltip de los dos, y debajo «Últimos 6 meses: N en superávit, M en déficit · acumulado ±$X».
+- `Periodo.resumenFlujo(n, hasta)` (nuevo): ingreso, gasto y balance por mes + conteo y acumulado; un mes sin movimiento no cuenta.
+- Tests: 2 nuevos en `escenarios-financieros`; el loader de `historial-patrimonio` carga `umbrales.js` y `salud.js`.
+- **Pendiente de B5:** ingreso recurrente vs extraordinario (casilla en ingresos).
+
+---
+
 ## «Sin base» y franja de estado bajo el hero (2026-11-05, SW v96)
 
 - Salud: con saldos pero sin historial (sin gasto típico, sin meses completos, sin tendencia) la tarjeta dice **«Sin base»** en gris, con una línea que explica por qué, en vez de un «Regular» de piso.

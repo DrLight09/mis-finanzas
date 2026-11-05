@@ -144,21 +144,34 @@ let pagoIdx=null;
 let pagoDestino='';
 // mesFilter/gastoTab: migrados a js/modules/gastos.js
 
-function fmt(n){
-  const num=n||0;
-  const cents=Math.round(num*100);
-  const intPart=Math.floor(Math.abs(cents)/100);
-  const decPart=Math.abs(cents)%100;
-  const sign=cents<0?'-':'';
-  if(decPart===0){return sign+'$'+intPart.toLocaleString('es-CO');}
-  return sign+'$'+intPart.toLocaleString('es-CO')+','+String(decPart).padStart(2,'0');
-}
-function fmtNoCents(n){
-  const num=n||0;
-  const sign=num<0?'-':'';
-  const intPart=Math.floor(Math.abs(num));
-  return sign+'$'+intPart.toLocaleString('es-CO');
-}
+/* ---- DINERO: el ÚNICO formateador de pesos ----
+   Dinero.fmt(n, { decimales, redondeo, signo }) → '$1.234.567' / '$1.234,50' / '-$500' / '+$500'.
+     decimales: 'auto' (por defecto: centavos solo si los hay) | 0 (sin centavos) | 2 (siempre dos).
+     redondeo:  'redondear' (por defecto) | 'truncar' — solo importa con decimales:0 (el selector de Cuentas trunca a propósito).
+     signo:     true → antepone '+' a los positivos (variaciones: «+$20.000»).
+   fmt() y fmtNoCents() son atajos de esta función; ninguna pantalla debe armar su propio `toLocaleString(…currency…)` (Proyección
+   tenía dos copias con Intl + un .replace del espacio duro; la salida era la misma, pero eran dos sitios más que mantener y
+   alinear). NaN/undefined/null se muestran como $0 (nunca «$NaN»). `compacto` ($1,2 M) NO existe todavía a propósito: ninguna
+   pantalla lo necesita y una opción sin uso es código muerto — agregarlo aquí cuando haya dónde usarlo. */
+const Dinero = (() => {
+  function fmt(n, o) {
+    o = o || {};
+    let num = Number(n); if (!isFinite(num)) num = 0;
+    const dec = o.decimales === undefined || o.decimales === null ? 'auto' : o.decimales;
+    const cents = dec === 0
+      ? (o.redondeo === 'truncar' ? Math.trunc(num) : Math.round(num)) * 100
+      : Math.round(num * 100);
+    const abs = Math.abs(cents);
+    const ent = Math.floor(abs / 100), dd = abs % 100;
+    const sign = cents < 0 ? '-' : (o.signo && cents > 0 ? '+' : '');
+    const decimales = dec === 2 || (dec === 'auto' && dd !== 0) ? ',' + String(dd).padStart(2, '0') : '';
+    return sign + '$' + ent.toLocaleString('es-CO') + decimales;
+  }
+  return { fmt };
+})();
+if (typeof window !== 'undefined') window.Dinero = Dinero;
+function fmt(n){ return Dinero.fmt(n); }
+function fmtNoCents(n){ return Dinero.fmt(n, { decimales: 0, redondeo: 'truncar' }); }
 // Formato del saldo en el selector de Cuentas (todas las cuentas, fijas y personalizadas,
 // pasan por acá desde renderSelectorCuentas() en cuentas.js). Hoy: solo entero con puntos de
 // mil, truncado. Cambiar el formato del selector (redondear, agregar "COP", etc.) es editar
@@ -298,6 +311,14 @@ const Libro = (() => {
     return out;
   }
 
+  // Fábrica del «origen» de las patas de saldo de un módulo: `const _ogGv = Libro.origen('gastos');` y después
+  // `_ogGv(ref)` → { origen:{ modulo:'gastos', ref } } al aplicar, `_ogGv(ref, true)` → { …, rev:true } al revertir (se pasa como
+  // `opts` de sumarFuente/descontarFuente). Antes cada módulo repetía su propia copia de esta función (11 `_og*` idénticas);
+  // un módulo nuevo solo declara su nombre. `ref`/`rev` ausentes no dejan la clave en la entrada (nada de `rev: undefined`).
+  function origen(modulo) {
+    return (ref, rev) => ({ origen: { modulo, ...(ref ? { ref } : {}), ...(rev ? { rev: true } : {}) } });
+  }
+
   // Contexto de origen para código SÍNCRONO: Libro.conOrigen({modulo, ref, rev}, () => { sumarFuente(...); ... }).
   function conOrigen(origen, fn) { const prev = _ctx; _ctx = origen; try { return fn(); } finally { _ctx = prev; } }
 
@@ -338,7 +359,7 @@ const Libro = (() => {
     return _arr((estado || S).libro).filter(l => l && esCuenta(l.cuenta) && (l.tipo === 'rendimiento' || l.tipo === 'ajuste' || l.tipo === 'cdt'));
   }
 
-  return { esCuenta, registrar, conOrigen, verificar, entradasVisibles, saldo, TOL };
+  return { esCuenta, registrar, origen, conOrigen, verificar, entradasVisibles, saldo, TOL };
 })();
 if (typeof window !== 'undefined') window.Libro = Libro; // los tests lo leen como ctx.Libro
 
@@ -961,9 +982,16 @@ function calcLiquidez(){
   const tcPropia=typeof calcDeudaTcPropia==='function'?calcDeudaTcPropia():0;
   const obligaciones=tcPropia+d.yoDebo+d.ajeno;
   const neta=libre+cdtsVencidos-obligaciones;
+  // Peor caso: la deuda de tarjeta COMPLETA (incluye la parte ajena: el banco cobra el 100 %, y la app no sabe si ya te devolvieron esa plata).
+  // `neta` es el escenario «lo ajeno de la tarjeta me lo pagan»; `netaPeorCaso` es «lo pago todo yo». Los dos son verdad, según el caso.
+  const tcs=S.tarjetasCredito||[];
+  const tcTotal=tcs.reduce((a,tc)=>a+Math.max(0,tc.deuda||0),0);
+  const saldoAFavorTC=tcs.reduce((a,tc)=>a+Math.max(0,-(tc.deuda||0)),0);
+  const netaPeorCaso=libre+cdtsVencidos-(tcTotal+d.yoDebo+d.ajeno);
   const cdtsBloqueados=d.cdts-cdtsVencidos;
   return {
     libre, tcPropia, yoDebo:d.yoDebo, ajeno:d.ajeno, obligaciones,
+    tcTotal, saldoAFavorTC, netaPeorCaso,
     neta,                    // liquidez real: la que mide el fondo de emergencia
     cdts:d.cdts,             // todos los CDTs (vencidos o no): es la parte del patrimonio
     cdtsVencidos,            // ya sumados en `neta`
@@ -1361,12 +1389,15 @@ document.getElementById('dialog-overlay').addEventListener('click',function(e){
 // devuelven YYYY-MM-DD con ceros a la izquierda) — apareció por una edición
 // manual de datos fuera de la app. Este helper cierra la puerta para
 // cualquier otra vía futura (import, script, edición directa en Firebase).
-function _fechaSafe(fechaStr){
+// `hora` (opcional, 0 por defecto) fija la hora local: _fechaSafe(f, 12) reemplaza a new Date(f+'T12:00:00') en las lecturas de
+// visualización o de diferencia de días (el mediodía evita que un cambio de hora o una zona horaria lleve el día a otro al formatear).
+// Acepta también 'AAAA-MM-DDTHH:MM…' (toma solo la parte de la fecha), porque algunos registros guardan la hora.
+function _fechaSafe(fechaStr, hora){
   if(!fechaStr) return new Date(NaN);
-  const partes=String(fechaStr).split('-').map(Number);
+  const partes=String(fechaStr).split('T')[0].split('-').map(Number);
   if(partes.length!==3||partes.some(isNaN)) return new Date(NaN);
   const [anio,mes,dia]=partes;
-  return new Date(anio,mes-1,dia); // hora local 00:00:00, sin pasar por el parser de strings ISO
+  return new Date(anio,mes-1,dia,hora||0); // hora local, sin pasar por el parser de strings ISO
 }
 
 /* ---- PROTECCIÓN POR ANTIGÜEDAD DE MOVIMIENTOS ---- */
@@ -1556,7 +1587,47 @@ function mostrarSi(el, visible) {
 
 // ── Guards de carga bajo demanda para cuentas.js (FIX 2026-08-13) ──────────
 
+/* ---- REFRESH: un registro en vez de una cadena de parches ----
+   Antes `window.refresh` se envolvía a mano en inicio.js, encargos.js, actividad_reciente.js y (con hookGlobal) en otros cuatro
+   archivos: un error en un parche cortaba a los siguientes y el resultado dependía del orden de carga. Ahora cada módulo registra su
+   parte con Refresh.registrar(id, fn, { pantalla, orden }) y refresh() las recorre en orden, cada una en su try/catch con log:
+   una que falle no silencia a las demás.
+     · id        — único: registrar otra vez el mismo id REEMPLAZA la anterior (un módulo lazy que se carga dos veces no se duplica).
+     · pantalla  — opcional, 'encargos' o ['encargos','historial']: la parte solo corre si esa pantalla (#screen-<nombre>) está activa.
+                   Es lo que permite no renderizar pantallas que nadie está viendo; sin `pantalla` corre siempre (como antes).
+     · orden     — opcional (100 por defecto): menor corre antes; a igual orden, el orden de registro.
+   El cuerpo de refresh() de siempre (hero, cuentas, listas) vive en _refreshNucleo() y corre primero. */
+const Refresh = (() => {
+  const partes = []; // { id, fn, pantallas, orden, n }
+  let n = 0;
+  const activa = nombre => { const el = typeof document !== 'undefined' && document.getElementById('screen-' + nombre); return !!(el && el.classList.contains('active')); };
+  function registrar(id, fn, opts) {
+    if (typeof id !== 'string' || !id || typeof fn !== 'function') throw new Error('Refresh.registrar(id, fn, opts): id (texto) y fn (función) son obligatorios');
+    const o = opts || {};
+    const pantallas = o.pantalla == null ? null : [].concat(o.pantalla);
+    const i = partes.findIndex(p => p.id === id);
+    const parte = { id, fn, pantallas, orden: o.orden == null ? 100 : o.orden, n: i >= 0 ? partes[i].n : n++ };
+    if (i >= 0) partes[i] = parte; else partes.push(parte);
+    partes.sort((a, b) => a.orden - b.orden || a.n - b.n);
+  }
+  function ejecutar() {
+    partes.slice().forEach(p => {
+      if (p.pantallas && !p.pantallas.some(activa)) return;
+      try { p.fn(); } catch (e) { console.error('[Refresh:' + p.id + ']', e); }
+    });
+  }
+  const quitar = id => { const i = partes.findIndex(p => p.id === id); if (i >= 0) partes.splice(i, 1); };
+  const registrados = () => partes.map(p => ({ id: p.id, pantalla: p.pantallas, orden: p.orden }));
+  return { registrar, ejecutar, quitar, registrados };
+})();
+if (typeof window !== 'undefined') window.Refresh = Refresh;
+
 function refresh(){
+  _refreshNucleo();
+  Refresh.ejecutar();
+}
+
+function _refreshNucleo(){
   // Auto-sanación de tarjetas de crédito: agrega campos nuevos, infiere el
   // saldo inicial de tarjetas migradas y recalcula la deuda de cada una a
   // partir de sus movimientos (regla de consistencia). Es idempotente.

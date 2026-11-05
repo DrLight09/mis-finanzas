@@ -71,7 +71,7 @@ function _getSaldoOfuscado(){
 /* ─── TIEMPO ────────────────────────────────────────────────────────────── */
 function _diasDesde(fechaStr){
   if(!fechaStr) return 0;
-  const inicio = new Date(fechaStr + 'T12:00:00');
+  const inicio = _fechaSafe(fechaStr, 12);
   const ahora  = new Date();
   return Math.max(0, Math.round((ahora - inicio) / 86400000));
 }

@@ -19,7 +19,7 @@ const CONVERTIDOS = [
   { f: 'js/modules/configuracion.js', prefijos: ['cat-chip', 'cfg-tamano', 'cfg-wrapped'], permitidos: [] },
   { f: 'js/modules/gastos.js', prefijos: ['gasto-', 'badge-xs', 'row-name-13'], permitidos: [] },
   // inicio: solo queda el display:none del tooltip de la proyección, que JS conmuta (showTT)
-  { f: 'js/modules/inicio.js', prefijos: ['inicio-'], armadas: ['inicio-runway-'], permitidos: ['display:none;'] },
+  { f: 'js/modules/inicio.js', prefijos: ['inicio-'], armadas: ['inicio-runway-', 'inicio-estado-', 'inicio-pilar-'], permitidos: ['display:none;'] },
   // sueltos de 1-6 estilos
   { f: 'js/modules/mesada.js', prefijos: ['badge-xs'], permitidos: [] },
   { f: 'js/core/wrapped-gate.js', prefijos: ['wrapped-gate-'], permitidos: [] },

@@ -168,7 +168,7 @@ function renderAnalisis(){
     barEl.ontouchstart = barEl.onclick = function(e){
       const bar = e.target.closest('[data-bar-val]');
       if(!bar) return;
-      const fmt2 = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
+      const fmt2 = fmt;
       const label = bar.dataset.barLabel || '';
       const val = parseFloat(bar.dataset.barVal) || 0;
       // Limpiar tooltip previo
@@ -313,6 +313,7 @@ function renderAnalisis(){
 
   // ── Historial de patrimonio ────────────────────────────────────────────
   renderBienes();
+  renderConciliacion();
   const patriEl=document.getElementById('an-patrimonio-chart');
   if(patriEl){
     const hist=(S.patrimonioHistorial||[]).slice(-30); // últimos 30 días
@@ -403,7 +404,7 @@ function renderAnalisis(){
         const svgW = parseInt(overlay.dataset.w);
         const svgH = parseInt(overlay.dataset.h);
         const diffCol = overlay.dataset.diffcolor;
-        const fmt2 = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
+        const fmt2 = fmt;
         const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
         function getClosest(rect, clientX){
           const relX = (clientX - rect.left) / rect.width; // 0-1
@@ -462,6 +463,28 @@ function renderAnalisis(){
       })();
     }
   }
+}
+
+/* ---- ¿POR QUÉ CAMBIÓ MI PATRIMONIO? (conciliación, Periodo.conciliar) ---- */
+// Del último mes completo con dos fotos del patrimonio. Lo que no se explica con ingresos y gastos se muestra aparte, sin alarmismo: puede ser
+// un préstamo sin cuenta o un ajuste sin clasificar. Por debajo de UMBRALES.conciliacion.minimo (ruido de redondeo, intereses) no se muestra.
+function renderConciliacion(){
+  const el=document.getElementById('an-conciliacion');
+  if(!el)return;
+  const c=Periodo.conciliar(Periodo.mesAnterior(mesActual()));
+  if(!c){ el.innerHTML=''; return; }
+  const nombreMes=(['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][Number(c.mes.slice(5,7))-1])||c.mes;
+  const delta=c.delta-c.base;                       // sin saldos iniciales ni ajustes: lo que de verdad cambió
+  const verbo=delta<0?'bajó':'subió';
+  const sin=c.sinExplicar;
+  const hayRaro=Math.abs(sin)>=UMBRALES.conciliacion.minimo;
+  el.innerHTML=html`<div class="card an-conc">
+    <div class="an-conc-tit">¿Por qué cambió tu patrimonio?</div>
+    <div class="an-conc-txt">En ${nombreMes} tu patrimonio ${verbo} ${fmt(Math.abs(delta))}. ${
+      c.explicado>=0?'Entró más de lo que salió':'Salió más de lo que entró'} (${fmt(Math.abs(c.explicado))}${c.rendimientos>0?', con '+fmt(c.rendimientos)+' de rendimientos':''}).</div>
+    ${hayRaro?html`<div class="an-conc-raro">Quedan <b>${fmt(Math.abs(sin))}</b> sin explicar: revisa movimientos sin cuenta, préstamos y ajustes de ese mes.</div>`
+      :html`<div class="an-conc-ok">Todo cuadra: ingresos y gastos explican el cambio.</div>`}
+  </div>`;
 }
 
 /* ---- INGRESOS FIJOS ---- */

@@ -94,7 +94,7 @@ let gvSplitMode = false;
 // vacía no puede salir plata. Sin TC en modo dividido (ver comentario de arriba).
 // ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogGv(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'gastos', ref:<id del gasto> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogGv = (ref, rev) => ({ origen: { modulo: 'gastos', ref, rev: rev || undefined } });
+const _ogGv = Libro.origen('gastos');
 
 function getGvSplitFuentesOptions(selectedVal) {
   return FuentesFiltro.optsHtml(getFuentesSinTC(), {

@@ -27,6 +27,12 @@ const UMBRALES = (() => {
       gastoSobreIngreso: { sano: 0.7, ajustado: 0.9, deficit: 1 }, // gasto típico ÷ ingreso típico
       cdtPesoCompleto: 0.10,                                       // el CDT puntúa completo cuando pesa ≥ 10 % de tu plata (cuentas libres + CDTs)
       rachaDeficitMeses: { aviso: 2, alerta: 3 },                  // meses completos seguidos con balance negativo
+      // Pilares con semáforo y estado de situación (salud.js)
+      pilares: {
+        deuda: { ingresoAmbar: 1.5, ingresoRojo: 3, activosAmbar: 0.5, activosRojo: 1 }, // deuda propia (tarjeta + «Yo debo») ÷ ingreso típico, y ÷ tus activos líquidos
+        flujo: { meses: 3, ambar: 1, rojo: 2 },                    // de los últimos 3 meses completos: 1 en déficit = ámbar; 2 o más = rojo
+        tendencia: { dias: 90, minDias: 30, planoPct: 3 },         // patrimonio a 90 días; con menos de 30 días de historial no se opina; ±3 % es «plano»
+      },
     },
     // «Compra grande» (una moto, un computador): cuándo se sugiere marcarla y se muestra su impacto ANTES de pagarla (gastos.js, calcImpactoCompra)
     compraGrande: {
@@ -42,11 +48,31 @@ const UMBRALES = (() => {
     atencion: {
       cupoTcCasiAgotadoPct: 85, cdtAvisoDias: 7,
       gastoFijoAvisoDias: 3,  // un gasto fijo con día de vencimiento avisa desde N días antes
+      gastoFijoSinDiaDesde: 25, // un gasto fijo SIN día y aún sin pagar este mes avisa desde este día del mes (el mes ya casi termina)
     },
     // Aviso de gasto del mes en el hero (_checkGastoAlto, inicio.js): fracción del ingreso de referencia que ya gastaste
     gastoAlto: { fraccionDelIngreso: 0.8 },
     // Hero de Inicio (calcEstadoHero, core-state.js): a partir de qué peso de «Me deben» dentro de tu patrimonio se avisa
     hero: { meDebenFraccion: 0.25 },
+    // Plan de salida de deudas (plan-deudas.js)
+    deudas: { metaMeses: 24 }, // si la deuda no baja a tu ritmo, cuánto liberar al mes para quedar libre en este plazo
+    // Conciliación del patrimonio (Periodo.conciliar, tarjeta de Análisis, scripts/conciliacion.js)
+    conciliacion: { minimo: 30000 }, // menos que esto sin explicar es ruido (redondeos, intereses de Nu y de tarjeta): no se muestra
+    // Wrapped (wrapped-gate.js y wrapped.js): cuándo se puede abrir, cuánto dato hace falta y dónde cambia el tono de las frases
+    wrapped: {
+      ventanaDias: 31,       // el Wrapped del año anterior está disponible del 1 al 31 de enero
+      minDias: 30,           // días distintos con registros para contar un año completo (menos = «poco»)
+      minMeses: 3,           // meses distintos con registros (menos = «poco»)
+      patrimonio: {          // variación del patrimonio del año, en %
+        caidaLeve: 5,        // hasta −5 %: «bajó un poco»; de −5 a −15 %: «bajó»; desde −15 %: «cayó fuerte»
+        caidaFuerte: 15,
+        crecimientoMedio: 15, // desde +15 %: «creció con fuerza»; desde +50 %: «año grande»
+        crecimientoFuerte: 50,
+        tope: 300,           // por encima de ±300 % no se presenta porcentaje (base demasiado pequeña)
+      },
+      compraExplicaCaida: 0.7, // una sola compra «explica» la caída si es ≥ 70 % de lo que bajó el patrimonio
+      cambioFuerte: 0.7,       // una mitad del año concentra ≥ 70 % (la otra ≤ 30 %) → hubo una «fase»
+    },
     // Proyección (renderProyeccion, inicio.js)
     proyeccion: {
       diasMinimos: 30,       // por debajo, un solo movimiento grande domina el promedio: no se proyecta
@@ -58,3 +84,5 @@ const UMBRALES = (() => {
 })();
 // Visible también como window.UMBRALES (igual que Periodo en periodo.js): lo lee quien accede a los globales por window, p. ej. las pruebas.
 if (typeof window !== 'undefined') window.UMBRALES = UMBRALES;
+// Y como módulo CommonJS para quien corre en Node sin navegador (scripts/notificaciones, vía reglas.js).
+if (typeof module !== 'undefined' && module.exports) module.exports = UMBRALES;

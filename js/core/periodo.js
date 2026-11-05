@@ -415,6 +415,17 @@ const Periodo = (() => {
     return out.sort((a, b) => a.dias - b.dias);
   }
 
+  // Gastos fijos SIN día de vencimiento que todavía no se han pagado en `mes` (todos son mensuales). La app no inventa un vencimiento para
+  // ellos, pero «ya es 25 y el arriendo no está pagado» merece un aviso suave (ver la regla 'gastos-fijos-sin-dia' en reglas.js).
+  // → [{ id, nombre, monto, cat }] en el orden en que están guardados.
+  function gastosFijosSinDia(mes, estado) {
+    const st = _st(estado);
+    const pagados = new Set(pagosFijos(estado).filter(p => p.mesCubre === mes).map(p => p.id));
+    return (st.gastosFijos || [])
+      .filter(gf => !diaDelMes(gf.dia, mes, mes + '-01') && !pagados.has(gf.id))
+      .map(gf => ({ id: gf.id, nombre: gf.nombre, monto: gf.monto || 0, cat: gf.cat }));
+  }
+
   // Calendario de caja (puro): cómo evoluciona un saldo (tu plata disponible, neta de deudas) día a día con eventos CONOCIDOS de antemano.
   // `eventos`: [{ fecha:'YYYY-MM-DD', monto (+ entra / − sale), texto, tipo? }]. Solo cuentan los de [hoyStr, hoyStr + dias]. Se evalúa al
   // CIERRE de cada día (las entradas y salidas del mismo día se netean: no se sabe en qué orden pasan, y un «déficit» de media mañana
@@ -464,8 +475,41 @@ const Periodo = (() => {
     return { meses: balances.length, balances, acumulado: balances.reduce((a, x) => a + x.balance, 0) };
   }
 
+  /* ---- CONCILIACIÓN: «¿por qué cambió mi patrimonio?» ----
+     Compara lo que CAMBIÓ el patrimonio en un mes contra lo que explican los ingresos, gastos y rendimientos que registra la app:
+         sinExplicar = Δpatrimonio − montoBase − (ingresos + rendimientos − gastos)
+     `montoBase` son los saldos iniciales y ajustes (una cuenta nueva con saldo no es plata ganada). Lo que queda sin explicar son
+     movimientos que tocan el patrimonio sin estar clasificados como ingreso o gasto (un préstamo sin cuenta, un ajuste olvidado…):
+     por eso además de informar sirve de alarma de integridad de los datos. Es una guía, no una igualdad exacta: el patrimonio se
+     fotografía una vez al día (al guardar) y los movimientos van por su fecha, y hay intereses de Nu y de tarjeta.
+     Se mide entre la última foto de un mes ANTERIOR y la última foto de `mes` (los movimientos van por esa misma ventana de fechas).
+     Usa el valor VISIBLE del patrimonio (sin Alcancía), igual que el hero y la gráfica de Análisis; lo que se mueve a la Alcancía ya
+     entra en montoBase. Es la ÚNICA definición: la usan la tarjeta de Análisis y scripts/conciliacion.js.
+     → { mes, desde, hasta, delta, base, ingresos, gastos, rendimientos, explicado, sinExplicar } o null si el mes no tiene dos fotos. */
+  function conciliar(mes, estado) {
+    const st = _st(estado);
+    const H = (st.patrimonioHistorial || []).filter(h => h && h.fecha).slice().sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
+    const mk = h => String(h.fecha).slice(0, 7);
+    const prev = H.filter(h => mk(h) < mes).pop();
+    const fin = H.filter(h => mk(h) === mes).pop();
+    if (!prev || !fin) return null;
+    const d0 = prev.fecha, d1 = fin.fecha, en = f => !!f && f > d0 && f <= d1;
+    const val = h => (typeof h.valorVisible === 'number' ? h.valorVisible : (h.valor || 0));
+    const sum = (arr, f) => arr.filter(x => en(x.fecha)).reduce((a, x) => a + (f ? f(x) : (x.monto || 0)), 0);
+    const base = H.filter(h => en(h.fecha)).reduce((a, h) => a + (h.montoBase || 0), 0);
+    let mesada = 0;
+    ['papa', 'mama'].forEach(par => Object.values(((st.mesadas || {})[par] || {}).pagos || {}).forEach(x => { if (x && en(x.fecha)) mesada += x.monto || 0; }));
+    const ingresos = sum(entradasIngresoReal(estado)) + sum(spotifyEntradas(estado)) + sum(ingresosFijosEntradas(estado)) + mesada;
+    const gastos = (st.gastosVar || []).filter(g => en(g.fecha) && !_esGastoVarNoReal(g)).reduce((a, g) => a + (g.monto || 0), 0)
+      + sum(retirosManuales(estado)) + sum(pagosFijos(estado));
+    const rendimientos = rendimientosDelMes(mes, estado).total;
+    const explicado = ingresos - gastos + rendimientos;
+    const delta = val(fin) - val(prev);
+    return { mes, desde: d0, hasta: d1, delta, base, ingresos, gastos, rendimientos, explicado, sinExplicar: delta - base - explicado };
+  }
+
   return { cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
-           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, diaDelMes, saldoProyectado, esCompraGrande, compraGrandeEstado, umbralCompraGrande, COMPRA_GRANDE_AUTO, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
+           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, gastosFijosSinDia, conciliar, diaDelMes, saldoProyectado, esCompraGrande, compraGrandeEstado, umbralCompraGrande, COMPRA_GRANDE_AUTO, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
 })();
 
 // Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.

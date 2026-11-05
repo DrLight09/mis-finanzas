@@ -152,7 +152,7 @@ describe('calcHealthScore', () => {
   function freshApp(sOverrides = {}) {
     const ctx = loadApp([
       path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
-      path.join(CORE_DIR, 'calc-helpers.js'), path.join(CORE_DIR, 'umbrales.js'),
+      path.join(CORE_DIR, 'calc-helpers.js'), path.join(CORE_DIR, 'umbrales.js'), path.join(CORE_DIR, 'reglas.js'), path.join(CORE_DIR, 'salud.js'), path.join(CORE_DIR, 'plan-deudas.js'),
       path.join(MODULES_DIR, 'inicio.js'),
     ]);
     Object.assign(ctx.S, sOverrides);
@@ -827,7 +827,7 @@ describe('ingreso-real', () => {
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
   const BASE = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js')];
-  const TODO = [...BASE, core('umbrales.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('inicio.js'), modulo('analisis.js'), core('wrapped-gate.js'), modulo('wrapped.js')];
+  const TODO = [...BASE, core('umbrales.js'), core('reglas.js'), core('salud.js'), core('plan-deudas.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('inicio.js'), modulo('analisis.js'), core('wrapped-gate.js'), modulo('wrapped.js')];
   const MES = '2026-10';
 
   const cuentas = (custom = []) => [
@@ -1985,7 +1985,7 @@ describe('patrimonio — fuente única (hero, historial, Proyección y Salud lee
 
   function freshApp(sOverrides = {}, { conInicio = false } = {}) {
     const files = [path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'), path.join(CORE_DIR, 'calc-helpers.js')];
-    if (conInicio) files.push(path.join(CORE_DIR, 'umbrales.js'), path.join(MODULES_DIR, 'inicio.js'));
+    if (conInicio) files.push(path.join(CORE_DIR, 'umbrales.js'), path.join(CORE_DIR, 'reglas.js'), path.join(CORE_DIR, 'salud.js'), path.join(CORE_DIR, 'plan-deudas.js'), path.join(MODULES_DIR, 'inicio.js'));
     const ctx = loadApp(files);
     Object.assign(ctx.S, sOverrides);
     return ctx;
@@ -2123,5 +2123,75 @@ describe('patrimonio — fuente única (hero, historial, Proyección y Salud lee
     assert.ok(snap.includes('calcPatrimonioDesglose()') && !/saldoRegistrado/.test(snap), 'snapshotPatrimonio usa el desglose');
     const refreshSrc = core.slice(core.indexOf('function refresh()'), core.indexOf('function refresh()') + 9000);
     assert.ok(refreshSrc.includes('calcPatrimonioDesglose()') && !/disp\s*\+\s*prest/.test(refreshSrc), 'el hero usa el desglose, no su propia suma');
+  });
+});
+
+describe('dinero y fechas — una sola función para formatear pesos y otra para leer fechas', () => {
+  const test = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs'), path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const RAIZ = path.join(__dirname, '..');
+  const CORE = path.join(RAIZ, 'js', 'core');
+  const app = () => loadApp(['core-state.js', 'calc-helpers.js'].map(f => path.join(CORE, f)), { permissive: true });
+
+  test('Dinero.fmt — decimales auto/0/2, redondeo, signo, y NaN/undefined/null → $0 (nunca «$NaN»)', () => {
+    const { Dinero } = app();
+    const f = (n, o) => Dinero.fmt(n, o);
+    assert.deepEqual([f(1234567), f(1234.5), f(-500), f(0), f(NaN), f(undefined), f(null)], ['$1.234.567', '$1.234,50', '-$500', '$0', '$0', '$0', '$0']);
+    assert.deepEqual([f(1234.5, { decimales: 0 }), f(1234.5, { decimales: 0, redondeo: 'truncar' }), f(-1234.5, { decimales: 0, redondeo: 'truncar' })], ['$1.235', '$1.234', '-$1.234']);
+    assert.equal(f(500, { decimales: 2 }), '$500,00');
+    assert.equal(f(1234.5, { decimales: 2 }), '$1.234,50');
+    assert.deepEqual([f(500, { signo: true }), f(-500, { signo: true }), f(0, { signo: true })], ['+$500', '-$500', '$0']);
+    assert.equal(f(-0.004), '$0', 'un negativo que redondea a cero no muestra «-$0»');
+  });
+
+  test('fmt() y fmtNoCents() son atajos de Dinero.fmt: mismo resultado que las llamadas con opciones', () => {
+    const { Dinero, fmt, fmtNoCents } = app();
+    for (const n of [0, 1, 999, 1000, 1999.99, 12345.67, -0.5, -1234.5, 2500000]) {
+      assert.equal(fmt(n), Dinero.fmt(n), 'fmt(' + n + ')');
+      assert.equal(fmtNoCents(n), Dinero.fmt(n, { decimales: 0, redondeo: 'truncar' }), 'fmtNoCents(' + n + ')');
+    }
+    assert.equal(fmtNoCents(-0.5), '$0', 'antes daba «-$0»');
+    assert.equal(fmtNoCents(1999.99), '$1.999', 'el selector de Cuentas trunca a propósito');
+  });
+
+  test('una fecha SIN ceros (2099-1-5) se lee igual que 2099-01-05 en los módulos que antes hacían new Date(str+"T00:00:00")', () => {
+    // Con el parser de strings ISO la fecha sin padding daba Invalid Date y cualquier comparación salía false en silencio.
+    const { spPersonaPagadaVigente } = app();
+    assert.equal(spPersonaPagadaVigente({ pagado: true, proximoPago: '2099-01-05' }), true);
+    assert.equal(spPersonaPagadaVigente({ pagado: true, proximoPago: '2099-1-5' }), true, 'sin ceros también es futura');
+    assert.equal(spPersonaPagadaVigente({ pagado: true, proximoPago: '2000-1-5' }), false, 'sin ceros y pasada: el pago ya no está vigente');
+  });
+
+  // ── Guardas estáticas: que no vuelvan a aparecer las copias que se eliminaron ──
+  const sinComentarios = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
+  const archivosJs = () => ['core', 'modules'].flatMap(d => fs.readdirSync(path.join(RAIZ, 'js', d)).map(f => path.join(RAIZ, 'js', d, f))).filter(f => f.endsWith('.js'));
+
+  test('guarda: ningún js/ arma su propio formato de moneda (Intl/toLocaleString con currency) — todo pasa por Dinero.fmt', () => {
+    const malos = archivosJs().filter(f => /style\s*:\s*['"]currency['"]/.test(sinComentarios(fs.readFileSync(f, 'utf8')))).map(f => path.relative(RAIZ, f));
+    assert.deepEqual(malos, []);
+  });
+
+  test('_fechaSafe(f, hora): fija la hora local, tolera fechas sin ceros y el sufijo T…; el mediodía no cambia de día al formatear', () => {
+    const { _fechaSafe } = app();
+    assert.equal(_fechaSafe('2099-1-5').getDate(), 5);
+    assert.equal(_fechaSafe('2099-1-5').getHours(), 0);
+    assert.equal(_fechaSafe('2099-1-5', 12).getHours(), 12);
+    assert.equal(_fechaSafe('2026-11-04T09:30:00', 12).getDate(), 4, 'ignora la hora guardada');
+    assert.ok(isNaN(_fechaSafe('')) && isNaN(_fechaSafe('x-y-z')) && isNaN(_fechaSafe(null, 12)));
+    assert.equal(_fechaSafe('2026-12-31', 12).toISOString().slice(0, 10), '2026-12-31', 'sin saltar de día al pasar a ISO');
+  });
+
+  test('guarda: ningún js/ lee una fecha con new Date(x+"T00:00:00") — se usa _fechaSafe (tolera fechas sin ceros y no depende del parser)', () => {
+    const re = /new Date\([^;]*?\+\s*['"]T(?:00|12):00:00['"]\s*\)/; // T00:00:00 → _fechaSafe(x); T12:00:00 → _fechaSafe(x, 12)
+    const malos = archivosJs().filter(f => re.test(sinComentarios(fs.readFileSync(f, 'utf8')))).map(f => path.relative(RAIZ, f));
+    assert.deepEqual(malos, []);
+  });
+
+  test('guarda: cada módulo declara su origen con Libro.origen(...) — no se vuelven a copiar las funciones _og*', () => {
+    const re = /(?:const|let|var)\s+_og\w*\s*=\s*\(?\s*ref\b|function\s+_og\w*\s*\(\s*ref\b/;
+    const malos = archivosJs().filter(f => re.test(sinComentarios(fs.readFileSync(f, 'utf8')))).map(f => path.relative(RAIZ, f));
+    assert.deepEqual(malos, []);
   });
 });

@@ -127,7 +127,7 @@ const Cierre = (() => {
     // toca; si falta el de un año con datos suficientes, analizar() lo avisa (no lo bloquea).
     wrappedAnios: 'congelada',
     cuentas: 'estado-actual', personas: 'estado-actual', gastosFijos: 'estado-actual', bienes: 'estado-actual', plataComprometida: 'estado-actual', nuRate: 'estado-actual',
-    catsVar: 'configuracion', catsFijo: 'configuracion', presupuestos: 'configuracion', modulos: 'configuracion', config: 'configuracion', mesadaAnio: 'configuracion',
+    catsVar: 'configuracion', catsFijo: 'configuracion', presupuestos: 'configuracion', modulos: 'configuracion', config: 'configuracion', mesadaAnio: 'configuracion', planDeudasEstrategia: 'configuracion',
     schemaVersion: 'meta', _esquemaAnterior: 'meta', _ultimoMesVisto: 'meta', _ajustesBaseLog: 'meta', cdts: 'meta', nequiSaldo: 'meta', efectivoSaldo: 'meta', cuentasPersonalizadas: 'meta',
   };
 
@@ -260,14 +260,14 @@ const Cierre = (() => {
     _fuentes.forEach(f => f.registros(st).forEach(r => { if (_fechaOk(r.fecha)) fechas.push(r.fecha.slice(0, 10)); }));
     fechas.sort();
     const masAntigua = fechas[0] || null;
-    const dias = masAntigua ? Math.max(1, Math.round((new Date(hoyStr + 'T12:00:00') - new Date(masAntigua + 'T12:00:00')) / 864e5) + 1) : 0;
+    const dias = masAntigua ? Math.max(1, Math.round((_fechaSafe(hoyStr, 12) - _fechaSafe(masAntigua, 12)) / 864e5) + 1) : 0;
     const ratio = bruto ? comprimido / bruto : 0;
     // Lo que crece con el tiempo = las claves con historia (aproximación: incluye los campos fijos de cada entidad, que son pocos).
     const bytesHistoria = porClave.filter(k => ['historica', 'entidad-con-historia'].includes(CLASIFICACION[k.clave])).reduce((a, k) => a + k.bytes, 0);
     const lim = _limites();
     const porDia = dias ? bytesHistoria * ratio / dias : 0;
     const hasta = tope => (porDia > 0 ? Math.max(0, Math.round((tope - comprimido) / porDia)) : null);
-    const fechaEn = d => { if (d == null) return null; const x = new Date(hoyStr + 'T12:00:00'); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+    const fechaEn = d => { if (d == null) return null; const x = _fechaSafe(hoyStr, 12); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
     const dAviso = hasta(lim.aviso), dLimite = hasta(lim.limite);
     return {
       bruto, comprimido, comprimidoEstimado: estimado, porClave, limites: lim,

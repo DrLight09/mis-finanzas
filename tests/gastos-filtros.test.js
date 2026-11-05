@@ -11,7 +11,7 @@ const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR || path.join(__dirname,
 function app(S = {}) {
   const ctx = loadApp([
     path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
-    path.join(CORE_DIR, 'calc-helpers.js'), path.join(CORE_DIR, 'html-tag.js'), path.join(CORE_DIR, 'umbrales.js'), path.join(MODULES_DIR, 'gastos.js'),
+    path.join(CORE_DIR, 'calc-helpers.js'), path.join(CORE_DIR, 'html-tag.js'), path.join(CORE_DIR, 'umbrales.js'), path.join(CORE_DIR, 'reglas.js'), path.join(CORE_DIR, 'salud.js'), path.join(CORE_DIR, 'plan-deudas.js'), path.join(MODULES_DIR, 'gastos.js'),
   ], { permissive: true });
   Object.assign(ctx.S, S);
   // document que recuerda el estado de cada id (el stub normal devuelve un elemento nuevo en cada llamada)

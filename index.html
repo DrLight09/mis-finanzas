@@ -749,6 +749,9 @@
             </div>
           </div>
 
+          <!-- PLAN DE DEUDAS (renderPlanDeudas, inicio.js): vacío si no hay deudas propias -->
+          <div id="plan-deudas-card"></div>
+
           <!-- PROYECCIÓN -->
           <div class="sec-title">Proyección financiera</div>
           <!-- Mismo criterio que health-score-card (ver comentario arriba);
@@ -1801,6 +1804,7 @@
             <div class="ix-minw100pct" id="an-patrimonio-chart"></div>
           </div>
           <div id="an-bienes"></div>
+          <div id="an-conciliacion"></div>
           <div class="sec-title">Top categorías este mes</div>
           <div id="an-cats-mes" class="card ix-p12-15-mb9"></div>
           <div class="sec-title">Gastos por mes (últimos 12)</div>
@@ -4633,6 +4637,9 @@
 -->
 <script src="js/core/html-tag.js" defer></script>
 <script src="js/core/umbrales.js" defer></script>
+<script src="js/core/reglas.js" defer></script>
+<script src="js/core/salud.js" defer></script>
+<script src="js/core/plan-deudas.js" defer></script>
 <script src="js/core/periodo.js" defer></script>
 <script src="js/core/nu-calc.js" defer></script>
 <script src="js/core/calc-helpers.js" defer></script>
@@ -4904,6 +4911,9 @@
         <div class="ig"><label class="il" for="tc_cupo">Cupo total <span class="ix-cred">*</span></label><input
             type="text" inputmode="decimal"
             id="tc_cupo" placeholder="0,00" class="money-input"></div>
+        <div class="ig"><label class="il" for="tc_tasa">Tasa E.A. <span class="ix-span-262">(opcional, en %)</span></label><input
+            type="text" inputmode="decimal"
+            id="tc_tasa" placeholder="Ej: 28" maxlength="6"></div>
         <div class="ig"><label class="il" for="tc_cajita_vinculada">Cajita para
             pagarla <span class="ix-span-262">(opcional)</span></label>
           <div class="select-wrap"><select id="tc_cajita_vinculada">

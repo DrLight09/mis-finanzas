@@ -71,7 +71,7 @@ function renderMisWrapped(){
       ${anios.map(a=>html`<div class="cfg-wrapped-fila">
         <button type="button" class="cfg-wrapped-abrir" ${raw(Events.attr('config:abrirWrapped',a))}>
           <span class="cfg-wrapped-anio">${a}</span>
-          <span class="cfg-wrapped-estado">${guardados[a]&&guardados[a].generadoEn?'Guardado el '+new Date(guardados[a].generadoEn+'T12:00:00').toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'}):'Guardado'}</span>
+          <span class="cfg-wrapped-estado">${guardados[a]&&guardados[a].generadoEn?'Guardado el '+_fechaSafe(guardados[a].generadoEn, 12).toLocaleDateString('es-CO',{day:'numeric',month:'long',year:'numeric'}):'Guardado'}</span>
           <svg aria-hidden="true" class="cfg-wrapped-chevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
         ${botonEliminarFila('config:eliminarWrapped',[a],'Eliminar el Wrapped de '+a)}
@@ -116,7 +116,7 @@ async function renderTamanoDatos(){
     const p=t.proyeccion, d=Cierre.disparador(t);
     let proy='Aún no hay historia suficiente para proyectar el crecimiento.';
     if(p.diasHastaAviso!=null&&p.fechaAviso){
-      const cuando=new Date(p.fechaAviso+'T12:00:00').toLocaleDateString('es-CO',{month:'long',year:'numeric'});
+      const cuando=_fechaSafe(p.fechaAviso, 12).toLocaleDateString('es-CO',{month:'long',year:'numeric'});
       proy=p.confianza==='baja'?'Con tan poca historia aún no se puede proyectar con fiabilidad.':'Al ritmo actual llegarías al aviso de tamaño hacia '+cuando+'.';
     }
     el.innerHTML=html`<div class="cfg-tamano-titulo">Tamaño de tus datos</div>

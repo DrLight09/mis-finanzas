@@ -2863,17 +2863,11 @@ function confirmarTransferenciaEncargo() {
 })();
 
 // Hook into refresh
-const _origRefreshEncargos = refresh;
-refresh = function() {
-  _origRefreshEncargos();
-  if (document.getElementById('screen-encargos')?.classList.contains('active')) {
-    if (encargoActualId) {
-      abrirEncargoDetalle(encargoActualId);
-    } else {
-      renderEncargosList();
-    }
-  }
-};
+// (solo si la pantalla de Encargos está activa: lo garantiza `pantalla`, ya no un if a mano)
+Refresh.registrar('encargos-pantalla', () => {
+  if (encargoActualId) abrirEncargoDetalle(encargoActualId);
+  else renderEncargosList();
+}, { pantalla: 'encargos' });
 
 // Abre el sheet «Nuevo encargo». Lo usan el botón de pie de la lista y el botón del estado vacío
 // (data-action="encargos:nuevo"): un solo camino, el select de cuentas siempre se puebla igual.

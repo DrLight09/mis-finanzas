@@ -4,6 +4,68 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Liquidez: neta vs. peor caso, saldo a favor aparte (2026-11-05, SW v95)
+
+- `calcLiquidez()` ahora devuelve `tcTotal`, `saldoAFavorTC` y `netaPeorCaso` (= libre + CDT vencidos − deuda TC completa − Yo debo − ajeno), además de `neta` (que solo resta la parte propia de la tarjeta). `netaPeorCaso ≤ neta` siempre.
+- Inicio: la línea «Neto de TC» pasó a «Neto de tarjetas» y muestra «Saldo a favor en tarjeta» como dato aparte (no cuenta como disponible). Si solo hay saldo a favor, la línea lo muestra sin restar nada.
+- `docs/cuentas.md`: GMF 4×1000 y comisiones quedan documentados como limitación conocida.
+- Test `B1` en `escenarios-financieros.test.js`.
+
+---
+
+## Reglas unificadas, pilares de salud, plan de deudas y cimientos de despliegue (2026-11-05, SW v94)
+
+Origen: `mejoras-mis-finanzas.md`. Cada punto se comprobó en el código antes de tocarlo. Pruebas: **787/787** (51 nuevas: `reglas`, `salud`, `plan-deudas`, `refresh`, `sw-sellado` y escenarios de B6/P3/P6); `generar-mapa.js --check` y `npm run smoke` (la página real en jsdom) en verde. Nada de esto se probó en un navegador con datos reales: lo visual (pilares, plan de deudas, tarjeta de conciliación, aviso de versión) está verificado por jsdom y por lectura.
+
+### Cimientos
+- **A6 — fechas, resuelto.** `_fechaSafe(f, hora)` acepta una hora local y el sufijo `T…`; las 7 lecturas `new Date(x + 'T12:00:00')` (`wrapped.js`, `alcancia.js`, `configuracion.js` ×2, `actividad_reciente.js`, `cierre.js` ×2) pasaron a `_fechaSafe(x, 12)` y la guarda de `nucleo.test.js` ahora prohíbe también `T12:00:00`.
+- **A8 — umbrales de Wrapped, resuelto.** Ventana (31 días), mínimos de datos (30 días / 3 meses), caídas y crecimientos (−5/−15 %, +15/+50 %), tope ±300 %, 70 % de «una compra explica la caída» y 70/30 de «fase» viven en `UMBRALES.wrapped`. `wrapped-gate.js` y `wrapped.js` los leen de ahí. Los tests cargan `umbrales.js`.
+- **A7 — `Refresh.registrar(id, fn, { pantalla, orden })`.** `refresh()` ya no es una cadena de parches: el cuerpo de siempre es `_refreshNucleo()` y después corre un registro. Cada parte va en su `try/catch` con log (una que falle ya no silencia a las siguientes), el mismo `id` reemplaza (un módulo lazy cargado dos veces no se duplica) y `pantalla` permite no renderizar lo que nadie ve. Migrados los 7 parches (`inicio`, `encargos`, `actividad_reciente`, `mejoras-adicionales`, `gastos-fijos-progress`, `plata_comprometida`, `pin-bio`). Se eliminó `hook-global-module.js` (su único importador era `pin-bio.js`). Una guarda impide volver a parchear `window.refresh`. Las partes sin `pantalla` conservan el comportamiento anterior (corren siempre).
+- **A10 — Service Worker sellado.** `scripts/sellar-sw.js` calcula un SHA-256 (12 caracteres) de `index.html`, `manifest`, `css/`, `js/` e `icons/` y lo escribe en `sw.js` (`const BUILD`). La caché se llama `VERSION-BUILD`: **aunque se olvide subir `VERSION`, un cambio en cualquier archivo desplegable renombra la caché**. `tests/sw-sellado.test.js` (dentro de `npm test`) falla si el sello quedó viejo: **antes de desplegar, `node scripts/sellar-sw.js`**. Además, al activarse un SW nuevo en una pestaña ya abierta aparece la barra «Hay una versión nueva · Actualizar» (no recarga sola para no perder lo que se esté escribiendo; no sale en la primera instalación).
+
+### A9 — una sola lista de reglas de alerta
+- **`js/core/reglas.js` (puro, corre en Node).** `Reglas.registrar({ id, canales, evaluar(ctx) })`; canales `atencion` y `push`. «Necesita atención» (`renderAttencion`) ahora solo arma los *hechos* (`_ctxReglas()`) y pinta lo que devuelve `Reglas.evaluar('atencion', ctx)`; los textos son plano y los escapa `html\`\``. `scripts/notificaciones/checks.js` **ya no tiene copia propia**: importa `reglas.js` (`../../js/core/`, así que el workflow debe hacer checkout del repo completo, que es lo normal con `actions/checkout`). Hay una prueba de **paridad**: Atención y push dicen exactamente lo mismo en las reglas compartidas (Spotify, CDT, encargos).
+- Las funciones de runway (`_mesesCubiertos`, `_nivelRunway`, `_fmtMeses`, `_textoRunway`, `_rachaDeficitRelevante`) se definen ahora en `Reglas`; en `inicio.js` quedan como envoltorios de una línea para no tocar a sus llamadores.
+- **Cambio visible en el push:** el aviso de encargos ahora dice «… es hoy — esa plata ya está comprometida» / «venció hace Nd sin usarse — sigue comprometida» (el texto de Atención; antes el push tenía una versión más corta). El aviso de CDT y de Spotify no cambia.
+- **Límite conocido:** las reglas que necesitan cálculos de la app (liquidez, calendario de caja, saldos de deudores) no corren en el push, porque el script solo tiene `S`; sin `api` se callan. Subirlas exigiría que `periodo.js`/`core-state.js` corran sin navegador.
+
+### B6 — alertas que faltaban
+- **Patrimonio negativo** entra a la lista de Atención (rojo, con enlace a Análisis).
+- **Gasto fijo sin día de vencimiento:** «Ya es 27 y el arriendo aún no está pagado este mes» desde el día `UMBRALES.atencion.gastoFijoSinDiaDesde` (25), solo para fijos sin día y sin pagar (`Periodo.gastosFijosSinDia`). Ámbar.
+- Se dejó **fuera** «patrimonio cayendo N meses» (B6-2): el pilar de Tendencia y el estado «Atención» ya cubren la señal con una ventana de 90 días; falta la pendiente por mes natural (B4-1).
+
+### B3 + P1 — pilares con semáforo y estado de situación (`js/core/salud.js`, puro)
+- La tarjeta de Salud muestra, además del número, **cuatro pilares** (Liquidez, Deuda, Flujo, Tendencia), cada uno enlazado a la pantalla donde se actúa, y el **estado global de cinco niveles** (Creciendo / Estable / Atención / Presión / Crisis). Presión y Crisis: «Lo urgente primero» con hasta 3 acciones concretas (ver y priorizar deudas, cobrar lo que te deben, revisar gastos), sin celebración y sin ocultar cifras. Un patrimonio negativo **nunca** se muestra como «Creciendo», aunque esté mejorando.
+- **Deuda mira más que la tarjeta:** el pilar usa `tcPropia + yoDebo` contra el ingreso típico *y* contra los activos líquidos, muestra los dos ratios y manda el peor. **El puntaje (criterio b) no cambia:** meter «Yo debo» ahí volvería a penalizar dos veces lo que ya penaliza la liquidez (el hallazgo N-3).
+- **Tendencia:** `Salud.tendenciaPatrimonio` (90 días, sin depósitos ni retiros: `montoBase`; mínimo 30 días de historial). Con base no positiva no hay porcentaje y se compara contra un cuarto del gasto mensual típico.
+- Umbrales en `UMBRALES.salud.pilares`. Escenarios en `tests/salud.test.js` y `tests/escenarios-financieros.test.js`.
+- **No se hizo la «franja bajo el hero»**: el estado vive dentro de la tarjeta de Salud; moverlo bajo el hero es CSS y un contenedor nuevo, y el tono por estado en Análisis y Wrapped queda pendiente.
+
+### P4 — runway con fecha
+- La Proyección, con tendencia negativa y liquidez positiva, dice «…duraría unos 3 meses, **hasta febrero de 2027**» (`Salud.fechaAgotamiento`, mismo cálculo de antes más la fecha).
+
+### P6 — «¿por qué cambió mi patrimonio?»
+- `Periodo.conciliar(mes)` es ahora la **única** definición de la conciliación (`scripts/conciliacion.js` la usa en vez de su copia). Tarjeta nueva en Análisis (`#an-conciliacion`): «En octubre tu patrimonio bajó $430.000. Salió más de lo que entró ($180.000). Quedan **$250.000 sin explicar**: revisa movimientos sin cuenta, préstamos y ajustes». Por debajo de `UMBRALES.conciliacion.minimo` ($30.000) dice «Todo cuadra». Usa el patrimonio visible (sin Alcancía), como el hero y la gráfica.
+
+### P2 + P3 — costo de la deuda y plan de salida (`js/core/plan-deudas.js`, puro)
+- **Tasa E.A. opcional por tarjeta** (campo en el formulario; vacío = no se calcula, respeta «no simular al banco»; 0–100 %).
+- **Tarjeta «Plan de salida de deudas»** en Inicio: deudas propias (la parte propia de cada tarjeta + «Yo debo»), orden **avalancha** (más cara primero; por defecto si hay alguna tasa) o **bola de nieve** (más pequeña primero; por defecto sin tasas), elegible y guardado en `S.planDeudasEstrategia`. Con balance promedio positivo: «libre de deuda en ~N meses» (simulación mes a mes con efecto cascada); con balance ≤ 0 o menor que los intereses: «con tu ritmo actual la deuda no baja: necesitarías liberar ~$X al mes para quedar libre en 24 meses». Costo mensual en intereses cuando hay tasa. `PlanDeudas.pagarConviene` (cajita 9 % vs tarjeta 28 %) está listo y probado pero **sin pantalla todavía**.
+- Es una estimación: no modela cuotas mínimas, comisiones ni cambios de tasa. Las deudas «Yo debo» no tienen campo de tasa (se asume 0). No incluye aún el botón «Apartar $X para esta deuda» (no existe un mecanismo de «apartar» en la app).
+
+---
+
+## Cimientos de la revisión de mejoras: origen del libro, formato de pesos y fechas (2026-11-04, SW v93)
+
+Origen: `mejoras-mis-finanzas.md`. Cada punto se comprobó en el código antes de tocarlo; dos afirmaciones del documento resultaron falsas (abajo). Pruebas: 736/736 (`tests/nucleo.test.js` y `tests/libro.test.js` ampliados); `generar-mapa.js --check` en verde.
+
+- **A3-1 — `Libro.origen(modulo)`.** Había 11 copias de `_og*` (`_ogGv`, `_ogEnc`, `_ogSp`, `_ogMes`, `_ogTc`, `_ogAlc`, `_ogCta`, `_ogMov`, `_ogCobro`, `_ogCp`, `_og`) con la misma forma salvo que unas dejaban `rev: undefined` y otras omitían la clave. Ahora cada módulo hace `const _ogGv = Libro.origen('gastos');` y la entrada del libro no lleva claves vacías. Misma semántica (`_og(ref)` aplica, `_og(ref, true)` revierte). `_ogDif` (diferencial) no se tocó: es un objeto por llamada, no una función. Guarda estática: ningún archivo vuelve a declarar `_og*(ref…)` a mano.
+- **A5 — `Dinero.fmt(n, { decimales, redondeo, signo })`.** Un solo formateador de pesos en `core-state.js`; `fmt()` y `fmtNoCents()` son atajos. Se eliminaron las dos copias con `Intl` de Proyección (`inicio.js`) y los respaldos `window.fmt || …` de `analisis.js`, `alcancia.js`, `actividad_reciente.js`, `firebase-sync.js` y `wrapped.js`. Efecto visible: ninguno (la salida era la misma); lo que cambia es que hay un solo sitio que mantener. Mejora menor: `fmtNoCents(-0.5)` ya no da «-$0». **Se descartó `compacto` ($1,2 M):** ninguna pantalla lo usa y una opción sin consumidor es código muerto. Guarda estática: ningún `js/` usa `style:'currency'`.
+- **A6 — fechas.** 28 lecturas `new Date(x + 'T00:00:00')` pasaron a `_fechaSafe(x)`: `spotify.js` (15), `plata_comprometida.js` (9), `personas.js` (3), `encargos.js` (2) y `calc-helpers.js` (1); el documento solo listaba los dos primeros. Con una fecha sin ceros (`2099-1-5`) el parser ISO daba Invalid Date y toda comparación salía `false` sin avisar (ej. «¿sigue vigente el pago?»). Prueba con fechas sin ceros y guarda estática. Quedan fuera las lecturas con `'T12:00:00'` (solo visualización/diferencias de días; ver `mejoras-mis-finanzas.md`).
+- **A11 — mapa de código.** `generar-mapa.js` ahora reconoce `import` estáticos y dinámicos: `hook-global-module.js`, `wait-for-module.js` y `payload-codec.js` aparecen como «módulo ES — importado por …». **Falso en el documento:** no eran código muerto (`pin-bio.js`, `firebase-sync.js` y `cierre.js` los importan); no se borra nada. El generador además normaliza CRLF/LF: con el árbol de trabajo en CRLF (Windows) las regex de declaraciones no calzaban y `--check` fallaba solo en la máquina local.
+- **Falso en el documento (A5):** «la misma cifra se ve distinta según la pantalla». Proyección ya mostraba `$1.234.567` igual que `fmt()` (su `.replace` del espacio duro sí funcionaba); el problema real era la duplicación, no la cifra.
+
+---
+
 ## Revisión de mejoras: hallazgos financieros y de estructura (2026-11-03, SW v92)
 
 Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los escenarios negativos). Cada hallazgo se **reprodujo ejecutando el código real** antes de tocarlo; los que no se reprodujeron o no aplicaban se anotan al final. Lo que sigue pendiente quedó en `mejoras-mis-finanzas.md` (ya sin lo resuelto). Pruebas: `tests/escenarios-financieros.test.js` (nuevo, 81 pruebas) + las existentes actualizadas: 729/729. `npm run smoke` y `generar-mapa.js --check` en verde. El puntaje de Salud **cambia** para varios estados (ver cada punto): es intencional.

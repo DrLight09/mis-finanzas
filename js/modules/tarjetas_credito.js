@@ -312,6 +312,7 @@ function abrirNuevaTarjeta(){
   document.getElementById('tc_banco').value='';
   document.getElementById('tc_franquicia').value='Visa';
   document.getElementById('tc_cupo').value='';
+  document.getElementById('tc_tasa').value='';
   document.getElementById('tc_deuda_ini').value='';
   document.getElementById('tc-deuda-ini-grupo').style.display='';
   document.getElementById('tc-estado-grupo').style.display='none';
@@ -331,6 +332,7 @@ function abrirEditarTC(id){
   document.getElementById('tc_banco').value=tc.banco||'';
   document.getElementById('tc_franquicia').value=tc.franquicia||'Visa';
   document.getElementById('tc_cupo').value=tc.cupo?fmtInput(tc.cupo):'';
+  document.getElementById('tc_tasa').value=tc.tasaEA?String(tc.tasaEA).replace('.',','):'';
   document.getElementById('tc-deuda-ini-grupo').style.display='none';
   document.getElementById('tc_estado').value=tc.estado||'activa';
   document.getElementById('tc-estado-grupo').style.display='';
@@ -360,6 +362,10 @@ function guardarTC(){
     if(cupoEl)cupoEl.focus();
     return;
   }
+  // Tasa E.A. opcional (P2): vacío = no se calcula costo de la deuda (la app no simula al banco). Entre 0 y 100 %.
+  const tasaTxt=(document.getElementById('tc_tasa').value||'').trim().replace(',','.');
+  const tasaEA=tasaTxt===''?null:Number(tasaTxt);
+  if(tasaEA!==null&&(!isFinite(tasaEA)||tasaEA<0||tasaEA>100)){toast('La tasa E.A. debe estar entre 0 y 100','err');return;}
   const cajitaSel=document.getElementById('tc_cajita_vinculada');
   const cajitaId=cajitaSel&&cajitaSel.value?cajitaSel.value:null;
   if(!S.tarjetasCredito)S.tarjetasCredito=[];
@@ -371,6 +377,7 @@ function guardarTC(){
       tc.banco=banco;
       tc.franquicia=franquicia;
       tc.cupo=cupo;
+      if(tasaEA===null) delete tc.tasaEA; else tc.tasaEA=tasaEA;
       tc.color=_tcColorSel;
       tc.cajitaId=cajitaId;
       const estadoSel=document.getElementById('tc_estado');
@@ -384,6 +391,7 @@ function guardarTC(){
     const nuevo={
       id:uid(),nombre,banco,franquicia,color:_tcColorSel,
       cupo,deuda:0,estado:'activa',cajitaId,
+      ...(tasaEA!==null?{tasaEA}:{}),
       saldoInicial:deudaIni>0?{id:uid(),monto:deudaIni,fecha:hoy(),nota:'Saldo inicial',eliminado:false}:null,
       compras:[],pagos:[],
       creadoEn:hoy()

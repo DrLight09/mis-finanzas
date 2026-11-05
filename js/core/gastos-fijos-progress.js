@@ -45,7 +45,7 @@
       pagados === total ? 'Sin pagos pendientes' : `${total-pagados} pendiente${total-pagados!==1?'s':''}`;
   }
 
-  // Hook into refresh — ver js/core/hook-global.js
-  hookGlobal('refresh', updateFijosProgress);
+  // Hook into refresh — ver Refresh en js/core/core-state.js
+  Refresh.registrar('gastos-fijos-progress', updateFijosProgress);
   setTimeout(updateFijosProgress, 200);
 })();

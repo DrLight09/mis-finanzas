@@ -50,30 +50,76 @@
 // calculadas, sin riesgo, pero quedan igual bajo el escapado por defecto de
 // html`` sin que eso cambie cómo se ven (dígitos y texto fijo no tienen
 // caracteres especiales de HTML).
-// Situación financiera: lo más urgente, con las mismas reglas que Salud (calcLiquidez, Periodo, helpers de arriba), no con unas propias.
-// Antes «Necesita atención» no avisaba de liquidez negativa, de meses seguidos en déficit ni de que casi no te quedan meses de reserva.
-function _itemsSituacion(items){
+// Las REGLAS de «Necesita atención» (qué avisar y con qué texto) viven en js/core/reglas.js y las comparte el push (scripts/notificaciones).
+// Aquí solo se arman los HECHOS que las reglas necesitan (`_ctxReglas`) y se pinta el resultado.
+// Situación: las métricas que leen Salud (pilares, estado) y las reglas de situación — una sola vez por render, con las definiciones
+// únicas de la app (calcLiquidez, Periodo, calcPatrimonioVisible).
+function _situacion(){
   const mes=mesActual();
+  const U=UMBRALES.salud;
   const liq=calcLiquidez();
-  const gastoRef=Periodo.gastoPromedioPrevio(mes,UMBRALES.salud.mesesReferencia).promedio;
-  const cubiertos=_mesesCubiertos(liq.neta,gastoRef);
-  if(liq.neta<0){
-    items.push({tipo:'red',texto:html`Tus deudas superan la plata que tienes disponible en ${fmt(-liq.neta)}`});
-  } else if(cubiertos!==null && _nivelRunway(cubiertos)==='critico'){
-    items.push({tipo:'amber',texto:html`${_textoRunway(cubiertos)}`});
-  }
-  const ingresoTipico=Periodo.ingresoPromedioPrevio(mes,UMBRALES.salud.mesesReferencia).promedio;
+  const gastoTipico=Periodo.gastoPromedioPrevio(mes,U.mesesReferencia).promedio;
+  const ingresoTipico=Periodo.ingresoPromedioPrevio(mes,U.mesesReferencia).promedio;
+  const ingresosMes=Periodo.ingresosDelMes(mes).total;
+  const ingresoRef=Math.max(ingresosMes,ingresoTipico);
   const racha=Periodo.rachaDeficit(mes,6);
-  const n=_rachaDeficitRelevante(racha,ingresoTipico,cubiertos);
-  if(n>0) items.push({tipo:n>=UMBRALES.salud.rachaDeficitMeses.alerta?'red':'amber',texto:html`Llevas ${n} meses seguidos gastando más de lo que ingresas (${fmt(-racha.acumulado)} en total)`});
+  const balances=[];
+  for(let i=1;i<=UMBRALES.salud.pilares.flujo.meses;i++){
+    const b=Periodo.balanceDelMes(Periodo.mesDesplazado(mes,-i));
+    if(b.ingresos.total>0||b.gastos.recurrenteTotal>0) balances.push(b.balanceRecurrente); // un mes sin movimiento no es superávit ni déficit
+  }
+  const patrimonio=calcPatrimonioVisible();
+  return {
+    patrimonio, liquidezNeta:liq.neta, activosLiquidos:liq.libre+liq.cdtsVencidos,
+    tcPropia:liq.tcPropia, deudaPropia:liq.tcPropia+liq.yoDebo, meDeben:liq.meDeben,
+    ingresoTipico, ingresoRef, gastoTipico, mesesCubiertos:_mesesCubiertos(liq.neta,gastoTipico),
+    racha, balances, deficitMesActual:ingresoRef>0&&Periodo.gastosDelMes(mes).total>ingresoRef,
+    tendencia:Salud.tendenciaPatrimonio(S.patrimonioHistorial,hoy()),
+    sinDatos:patrimonio===0&&liq.libre===0&&liq.cdts===0&&liq.tcPropia===0&&liq.yoDebo===0&&liq.meDeben===0&&liq.ajeno===0&&Periodo.gastosDelMes(mes).total===0,
+  };
 }
 
-// «5 de nov» para un 'YYYY-MM-DD'.
-function _fechaCorta(f){
-  const m=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-  const [y,mm,d]=String(f).split('-').map(Number);
-  return d+' de '+m[mm-1];
+// El contexto de las reglas del canal 'atencion'. `api`: lo que solo la app sabe calcular. Cada función se omite si su módulo (lazy) aún no
+// cargó, y la regla correspondiente simplemente no dice nada (mismo criterio de antes con los `typeof … === 'function'`).
+function _ctxReglas(){
+  const hoyStr=hoy(), mes=mesActual();
+  const api={
+    gastosFijosProgramados:()=>[...Periodo.gastosFijosProgramados(mes,hoyStr),...Periodo.gastosFijosProgramados(Periodo.mesDesplazado(mes,1),hoyStr)],
+    gastosFijosSinDia:()=>Periodo.gastosFijosSinDia(mes),
+    calendarioCaja:calcCalendarioCaja,
+  };
+  if(typeof ingresoFijoEstadoMes==='function'){
+    api.ingresosFijosAtrasados=()=>{
+      const out=[];
+      (S.ingresosFijos||[]).forEach(ing=>{
+        const f=Periodo.diaDelMes(ing.dia,mes,hoyStr);
+        if(!f||f.dias>=0)return;
+        const est=ingresoFijoEstadoMes(ing,mes);
+        if(!est.esperado||est.cobrado>0)return;
+        out.push({nombre:ing.nombre||'Un ingreso fijo',dia:f.dia,monto:ing.monto||0});
+      });
+      return out;
+    };
+  }
+  if(typeof getDeudorSaldo==='function'){
+    api.deudas=tipo=>Deudas.lista(tipo).map(d=>({nombre:d.nombre,saldo:getDeudorSaldo(d)}));
+  }
+  if(S.modulos&&S.modulos.mesada&&typeof getMesadaData==='function'){
+    api.mesadaPendientes=()=>{
+      const out=[];
+      ['papa','mama'].forEach(parent=>{
+        const data=getMesadaData(parent);
+        Object.keys(data).forEach(k=>{ const info=data[k]; if(info&&info.pendiente>0) out.push({quien:parent==='papa'?'Papá':'Mamá',mes:_mesNombreDeKey(k),pendiente:info.pendiente}); });
+      });
+      return out;
+    };
+  }
+  if(typeof tcCupoUsadoPct==='function') api.tcCupoUsadoPct=tcCupoUsadoPct;
+  return { hoy:hoyStr, mes, S, fmt, umbrales:UMBRALES, situacion:_situacion(), api };
 }
+
+// «5 de nov» para un 'YYYY-MM-DD' (una sola definición: Reglas.fechaCorta).
+function _fechaCorta(f){ return Reglas.fechaCorta(f); }
 
 // Eventos de caja CONOCIDOS de antemano, para Periodo.saldoProyectado (el calendario de caja):
 //   · sale: cada gasto fijo con día que aún no se paga (el vencido sin pagar se cuenta hoy: es lo primero que saldrá);
@@ -112,121 +158,9 @@ function calcCalendarioCaja(){
   return Periodo.saldoProyectado(calcLiquidez().neta,_eventosCaja(hoyStr,H),hoyStr,H);
 }
 
-// Gastos fijos con día de vencimiento (Periodo.gastosFijosProgramados): vencidos sin pagar (rojo), por vencer (ámbar) y la «brecha de
-// caja»: si con lo ya programado en los próximos 30 días (gastos fijos que salen, ingresos fijos y CDT que entran) tu plata disponible
-// se va a quedar en negativo, se avisa el día exacto y qué lo causa, antes de que pase.
-function _itemsGastosFijos(items){
-  const hoyStr=hoy();
-  const mes=mesActual();
-  const prog=[...Periodo.gastosFijosProgramados(mes,hoyStr), ...Periodo.gastosFijosProgramados(Periodo.mesDesplazado(mes,1),hoyStr)];
-  const plural=n=>n===1?'día':'días';
-  prog.forEach(g=>{
-    if(g.dias<0) items.push({tipo:'red',texto:html`${g.nombre} venció hace ${-g.dias} ${plural(-g.dias)} y no está pagado (${fmt(g.monto)})`});
-    else if(g.dias===0) items.push({tipo:'amber',texto:html`${g.nombre} vence hoy (${fmt(g.monto)})`});
-    else if(g.dias<=UMBRALES.atencion.gastoFijoAvisoDias) items.push({tipo:'amber',texto:html`${g.nombre} vence en ${g.dias} ${plural(g.dias)} (${fmt(g.monto)})`});
-  });
-  const cal=calcCalendarioCaja();
-  if(cal.primerDeficit){
-    const d=cal.primerDeficit;
-    items.push({tipo:'red',texto:html`El ${_fechaCorta(d.fecha)} tu plata disponible quedaría en ${fmt(d.saldo)}${d.evento?html` (vence ${d.evento.texto}: ${fmt(-d.evento.monto)})`:''}`});
-  }
-}
-
-// Ingresos fijos con día esperado (`ing.dia`): si ya pasó ese día del mes y aún no se registró NINGÚN cobro de este mes, avisa (ámbar:
-// no es una deuda tuya, pero es plata que contabas y que todavía no está). Con un cobro parcial registrado no avisa: ya hay algo.
-function _itemsIngresosFijos(items){
-  if(typeof ingresoFijoEstadoMes!=='function')return;
-  const hoyStr=hoy();
-  const mes=mesActual();
-  (S.ingresosFijos||[]).forEach(ing=>{
-    const f=Periodo.diaDelMes(ing.dia,mes,hoyStr);
-    if(!f||f.dias>=0)return;
-    const est=ingresoFijoEstadoMes(ing,mes);
-    if(!est.esperado||est.cobrado>0)return;
-    items.push({tipo:'amber',texto:html`${ing.nombre||'Un ingreso fijo'} debía llegar el día ${f.dia} y aún no lo registras (${fmt(ing.monto||0)})`});
-  });
-}
-
 function renderAttencion(){
-  const items=[];
-  const hoyStr=hoy();
-  _itemsSituacion(items);
-  _itemsGastosFijos(items);
-  _itemsIngresosFijos(items);
-  // Deudores con saldo pendiente
-  if(typeof getDeudorSaldo==='function'){
-    Deudas.lista('favor').forEach(d=>{
-      const s=getDeudorSaldo(d);
-      if(s>0) items.push({tipo:'amber',texto:html`${d.nombre} te debe ${fmt(s)}`});
-    });
-    // Lo que tú debes a personas («Yo debo»): antes no aparecía en ningún aviso, solo contaba dentro de la liquidez.
-    Deudas.lista('contra').forEach(d=>{
-      const s=getDeudorSaldo(d);
-      if(s>0) items.push({tipo:'amber',texto:html`Le debes ${fmt(s)} a ${d.nombre}`});
-    });
-  }
-  // Mesadas con pago parcial que quedó pendiente
-  if(S.modulos&&S.modulos.mesada&&typeof getMesadaData==='function'){
-    ['papa','mama'].forEach(parent=>{
-      const data=getMesadaData(parent);
-      const pNombre=parent==='papa'?'Papá':'Mamá';
-      Object.keys(data).forEach(k=>{
-        const info=data[k];
-        if(info&&info.pendiente>0){
-          items.push({tipo:'amber',texto:html`${pNombre} te debe ${fmt(info.pendiente)} de la mesada de ${_mesNombreDeKey(k)}`});
-        }
-      });
-    });
-  }
-  // Tarjetas de crédito con el cupo casi agotado (sin fechas — este modelo no
-  // simula ciclos de facturación, solo avisa cuando el cupo disponible es bajo)
-  (S.tarjetasCredito||[]).forEach(tc=>{
-    if((tc.estado||'activa')!=='activa'){
-      // Una tarjeta que ya no está activa pero sigue con deuda también se debe: antes quedaba fuera de todos los avisos.
-      if((tc.deuda||0)>0) items.push({tipo:'amber',texto:html`${tc.nombre}: tarjeta ${tc.estado} con deuda de ${fmt(tc.deuda)}`,_tcId:tc.id});
-      return;
-    }
-    const cupo=tc.cupo||0;
-    if(!cupo)return;
-    if(typeof tcCupoUsadoPct!=='function')return;
-    const pct=tcCupoUsadoPct(tc);
-    if(pct>=100){
-      items.push({tipo:'red',texto:html`${tc.nombre}: cupo agotado — deuda ${fmt(tc.deuda||0)}`,_tcId:tc.id});
-    } else if(pct>=UMBRALES.atencion.cupoTcCasiAgotadoPct){
-      items.push({tipo:'amber',texto:html`${tc.nombre}: cupo casi agotado (${pct.toFixed(0)}% usado)`,_tcId:tc.id});
-    }
-  });
-  // Spotify personas vencidas (solo si el módulo está activo)
-  if(S.modulos&&S.modulos.spotify&&typeof spPersonaPagadaVigente==='function'&&typeof spNombreDe==='function'){
-    (S.spotify.personas||[]).forEach(p=>{
-      if(p.proximoPago&&p.proximoPago<hoyStr&&!spPersonaPagadaVigente(p)){
-        // spNombreDe() devuelve texto libre (nombre de persona) — html`` lo
-        // escapa por defecto. Mismo hallazgo que motivó el fix original con
-        // escHtml() a mano (2026-07-22), ahora bajo la protección automática.
-        items.push({tipo:'red',texto:html`Cobro Spotify de ${spNombreDe(p)} vencido`});
-      }
-    });
-  }
-  // Cajitas con CDT próximas a vencer (7 días)
-  (S.cajitas||[]).forEach(c=>{(c.cdts||[]).filter(cdt=>cdt.vence).forEach(cdt=>{
-    const diasRestantes=Math.ceil((_fechaSafe(cdt.vence)-new Date())/86400000);
-    if(diasRestantes>=0&&diasRestantes<=UMBRALES.atencion.cdtAvisoDias) items.push({tipo:'amber',texto:html`CDT "${c.nombre}" vence en ${diasRestantes}d`});
-    if(diasRestantes<0) items.push({tipo:'red',texto:html`CDT "${c.nombre}" venció — ¡libera tu plata!`});
-  });});
-  // Partes comprometidas de un encargo (§ "¿Para qué es esta plata?") cuya
-  // fecha de uso ya está cerca. Desde 1 día antes avisa en ámbar; si ya
-  // pasó la fecha y sigue sin marcarse "ya la usé", avisa en rojo — esa
-  // plata sigue comprometida y sin usar.
-  (S.encargos||[]).forEach(enc=>{
-    (enc.partes||[]).filter(p=>!p.usada&&p.fecha).forEach(p=>{
-      const dias=Math.round((_fechaSafe(p.fecha)-_fechaSafe(hoyStr))/86400000);
-      if(dias<0){
-        items.push({tipo:'red',texto:html`${enc.nombre}: "${p.desc}" (${fmt(p.monto)}) venció hace ${Math.abs(dias)}d sin usarse — sigue comprometida`});
-      } else if(dias<=1){
-        items.push({tipo:'amber',texto:html`${enc.nombre}: "${p.desc}" (${fmt(p.monto)}) es ${dias===0?'hoy':'mañana'} — esa plata ya está comprometida`});
-      }
-    });
-  });
+  // Las reglas devuelven TEXTO PLANO; html`` lo escapa (nombres de personas, tarjetas, encargos… son texto libre del usuario).
+  const items=Reglas.evaluar('atencion',_ctxReglas()).map(it=>({tipo:it.tipo,texto:html`${it.texto}`}));
   const sec=document.getElementById('s-attn-section');
   const list=document.getElementById('s-attn-list');
   if(!items.length){sec.style.display='none';return;}
@@ -327,25 +261,14 @@ function renderAttencion(){
    ---------------------------------------------------------------- */
 // «Runway»: cuántos meses de gasto típico cubre tu liquidez, sin contar ingresos. null si aún no hay gasto típico; 0 si la liquidez no
 // es positiva.
-function _mesesCubiertos(liquidoReal, gastoRef){
-  return gastoRef > 0 ? Math.max(0, liquidoReal) / gastoRef : null;
-}
+// (la definición vive en js/core/reglas.js: la comparten Salud, Atención y el push; aquí quedan los nombres que ya usaba el resto del módulo)
+function _mesesCubiertos(liquidoReal, gastoRef){ return Reglas.mesesCubiertos(liquidoReal, gastoRef); }
 // Nivel del runway según UMBRALES.runway: 'critico' | 'atencion' | 'ok'.
-function _nivelRunway(meses){
-  return meses < UMBRALES.runway.critico ? 'critico' : meses < UMBRALES.runway.atencion ? 'atencion' : 'ok';
-}
+function _nivelRunway(meses){ return Reglas.nivelRunway(meses, UMBRALES); }
 // «3,4 meses» / «1 mes» / «menos de 1 mes» / «más de 24 meses».
-function _fmtMeses(meses){
-  if(meses < 1) return 'menos de 1 mes';
-  if(meses >= 24) return 'más de 24 meses';
-  const n = meses.toFixed(1).replace('.', ',');
-  return n === '1,0' ? '1 mes' : n + ' meses';
-}
+function _fmtMeses(meses){ return Reglas.fmtMeses(meses); }
 // Texto del runway («Cubres 3,4 meses de gastos»).
-function _textoRunway(meses){
-  if(meses <= 0) return 'Tu plata disponible no cubre tus gastos';
-  return 'Cubres ' + _fmtMeses(meses) + ' de gastos';
-}
+function _textoRunway(meses){ return Reglas.textoRunway(meses); }
 
 // Impacto de un gasto grande ANTES de hacerlo: qué parte de tu plata disponible es y cuántos meses de gastos cubrirías después.
 // `grande` = sugerencia de marcarlo como compra grande (UMBRALES.compraGrande). Pagar con tarjeta pesa igual: la deuda propia resta de
@@ -381,11 +304,7 @@ function calcImpactoCompra(monto){
 }
 // Meses seguidos de déficit que merecen aviso (0 si no merecen): solo con ingreso reciente registrado (sin él, «déficit» sería solo
 // no haber anotado ingresos) y sin un fondo sólido (≥ 6 meses de gasto) que la absorba.
-function _rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos){
-  if(!(ingresoTipico > 0)) return 0;
-  if(mesesCubiertos !== null && mesesCubiertos >= UMBRALES.salud.fondoMeses.completo) return 0;
-  return racha.meses >= UMBRALES.salud.rachaDeficitMeses.aviso ? racha.meses : 0;
-}
+function _rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos){ return Reglas.rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos, UMBRALES); }
 
 function calcHealthScore(){
   const S = window.S || {};
@@ -646,7 +565,20 @@ function renderHealthScore(){
   }).join('');
   // «Cubres X meses de gastos»: la cifra más útil en una crisis. Solo con gasto típico (sin él no hay con qué medir).
   const runwayHtml = mesesCubiertos == null ? '' : `<div class="inicio-salud-runway inicio-runway-${_nivelRunway(mesesCubiertos)}">${_textoRunway(mesesCubiertos)}</div>`;
-  el.innerHTML = `<div class="health-ring-wrap inicio-salud-wrap">
+  // Estado global (5 niveles) y cuatro pilares con semáforo: el número solo no dice CUÁL de las cuatro cosas va mal. Ver js/core/salud.js.
+  const sit = _situacion();
+  const est = Salud.estado(sit);
+  const irBtn = (ir, cuerpo, clase) => ir
+    ? `<button type="button" class="${clase} inicio-pilar-accion" ${Events.attr('inicio:irConsejo', ir)}>${cuerpo}</button>`
+    : `<div class="${clase}">${cuerpo}</div>`;
+  const estadoHtml = !est ? '' : `<div class="inicio-estado inicio-estado-${est.tono}">
+      <div class="inicio-estado-cab"><span class="inicio-estado-etq">${escHtml(est.etiqueta)}</span><span class="inicio-estado-frase">${escHtml(est.frase)}</span></div>
+      ${est.acciones.map(a => irBtn(a.ir, `<i class="fa-solid fa-arrow-right inicio-estado-ico"></i><span>${escHtml(a.texto)}</span>`, 'inicio-estado-accion')).join('')}
+    </div>`;
+  const pilaresHtml = `<div class="inicio-pilares">${Salud.pilares(sit).map(p =>
+    irBtn(p.ir, `<span class="inicio-pilar-punto inicio-pilar-${p.nivel}" aria-hidden="true"></span><span class="inicio-pilar-tit">${escHtml(p.titulo)}</span><span class="inicio-pilar-txt">${escHtml(p.texto)}</span>`, 'inicio-pilar')
+  ).join('')}</div>`;
+  el.innerHTML = `${estadoHtml}<div class="health-ring-wrap inicio-salud-wrap">
     <svg aria-hidden="true" width="76" height="76" viewBox="0 0 76 76" class="health-ring inicio-salud-anillo">
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="7"/>
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="${col}" stroke-width="7"
@@ -660,8 +592,63 @@ function renderHealthScore(){
       ${runwayHtml}
       ${tipsHtml}
     </div>
+  </div>${pilaresHtml}`;
+}
+
+/* ====================================================
+   PLAN DE DEUDAS (P2 + P3) — cálculo en js/core/plan-deudas.js
+==================================================== */
+// Deudas PROPIAS: la parte de cada tarjeta que es tuya (no encargos ni plata de otros) y lo que debes a personas. La tasa E.A. es opcional (tarjeta).
+function _deudasPropias(){
+  const out = [];
+  (S.tarjetasCredito || []).forEach(tc => {
+    const saldo = typeof calcDeudaTcPropiaDeTarjeta === 'function' ? calcDeudaTcPropiaDeTarjeta(tc) : 0;
+    if(saldo > 0) out.push({ id: tc.id, nombre: tc.nombre, tipo: 'tarjeta', saldo, tasaEA: tc.tasaEA > 0 ? tc.tasaEA : null });
+  });
+  if(typeof Deudas !== 'undefined' && typeof getDeudorSaldo === 'function'){
+    Deudas.lista('contra').forEach(d => { const saldo = getDeudorSaldo(d); if(saldo > 0) out.push({ id: d.id, nombre: d.nombre, tipo: 'persona', saldo, tasaEA: null }); });
+  }
+  return out;
+}
+// Lo que sobra al mes, en promedio, de los últimos meses completos con movimiento (balance recurrente: sin compras grandes aisladas).
+function _balancePromedioReciente(){
+  const mes = mesActual(), v = [];
+  for(let i = 1; i <= UMBRALES.salud.pilares.flujo.meses; i++){
+    const b = Periodo.balanceDelMes(Periodo.mesDesplazado(mes, -i));
+    if(b.ingresos.total > 0 || b.gastos.recurrenteTotal > 0) v.push(b.balanceRecurrente);
+  }
+  return v.length ? v.reduce((a, x) => a + x, 0) / v.length : null;
+}
+function planDeudasDatos(){
+  const deudas = _deudasPropias();
+  if(!deudas.length) return null;
+  const conTasa = deudas.some(d => d.tasaEA);
+  const est = S.planDeudasEstrategia === 'bola' || S.planDeudasEstrategia === 'avalancha' ? S.planDeudasEstrategia : (conTasa ? 'avalancha' : 'bola');
+  const balance = _balancePromedioReciente();
+  return { plan: PlanDeudas.construir({ deudas, balancePromedio: balance, estrategia: est, metaMeses: UMBRALES.deudas.metaMeses }), balance, conTasa };
+}
+function renderPlanDeudas(){
+  const el = document.getElementById('plan-deudas-card');
+  if(!el) return;
+  const d = planDeudasDatos();
+  if(!d){ el.innerHTML = ''; return; }
+  const { plan, balance, conTasa } = d;
+  let resumen;
+  if(balance === null) resumen = 'Aún no hay meses completos para calcular cuánto te sobra al mes.';
+  else if(plan.baja) resumen = `A tu ritmo (te sobran ${fmt(balance)} al mes), quedarías libre de deuda en ~${plan.mesesLibre} ${plan.mesesLibre === 1 ? 'mes' : 'meses'}.`;
+  else resumen = `Con tu ritmo actual la deuda no baja. Necesitarías liberar ~${fmt(plan.necesitasLiberar)} al mes para quedar libre en ${plan.meta} meses.`;
+  const costo = plan.costoMensualTotal > 0 ? `<div class="inicio-plan-costo">Tu deuda con tasa te cuesta ≈ ${fmt(plan.costoMensualTotal)} al mes en intereses.</div>` : '';
+  const sinTasa = !conTasa && (S.tarjetasCredito || []).some(t => calcDeudaTcPropiaDeTarjeta(t) > 0) ? '<div class="inicio-plan-nota">Agrega la tasa E.A. en cada tarjeta para ver cuánto te cuesta.</div>' : '';
+  const filas = plan.orden.map((x, i) => `<div class="inicio-plan-fila"><span class="inicio-plan-n">${i + 1}</span><span class="inicio-plan-nom">${escHtml(x.nombre)}</span><span class="inicio-plan-tasa">${x.tasaEA ? escHtml(String(x.tasaEA).replace('.', ',')) + ' % E.A.' : 'sin tasa'}</span><span class="inicio-plan-monto">${fmt(x.saldo)}</span></div>`).join('');
+  const btn = (id, txt) => `<button type="button" class="inicio-plan-est ${plan.estrategia === id ? 'inicio-plan-est-on' : ''}" ${Events.attr('inicio:planEstrategia', id)}>${txt}</button>`;
+  el.innerHTML = `<div class="card inicio-plan">
+    <div class="inicio-plan-tit">Plan de salida de deudas</div>
+    <div class="inicio-plan-resumen">${resumen}</div>${costo}
+    <div class="inicio-plan-ests">${btn('avalancha', 'Más cara primero')}${btn('bola', 'Más pequeña primero')}</div>
+    ${filas}${sinTasa}
   </div>`;
 }
+Refresh.registrar('inicio-plan-deudas', renderPlanDeudas, { pantalla: 'inicio' });
 
 /* ====================================================
    HERO: estado del patrimonio (color y una línea de contexto)
@@ -718,7 +705,7 @@ function renderProyeccion(){
   // a 3/6/12 meses no aportan nada (es una estimación, no un saldo exacto) y solo
   // generan ruido visual. No se usa window.fmt aquí para no depender de si ese
   // formateador global decide mostrar decimales.
-  const fmt = x=>Math.round(x).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).replace(/\u00a0/g,'');
+  const fmt = x=>Dinero.fmt(x,{decimales:0});
   // ── Patrimonio VISIBLE (sin alcancía) ─────────────────────────────────
   // Una sola definición en core-state.js (calcPatrimonioVisible): la misma del hero y de `valorVisible` en el historial, que es
   // de donde sale la tendencia. Esta card muestra un número puntual en cada render; con el total crudo, depositar en la alcancía
@@ -846,8 +833,13 @@ function renderProyeccion(){
   if(!historialInsuficiente && tendenciaMensual < 0 && typeof calcLiquidez==='function'){
     const ln = calcLiquidez().neta;
     if(ln > 0){
-      const m = Math.max(1, Math.round(ln / Math.abs(tendenciaMensual)));
-      if(m <= UMBRALES.proyeccion.maxMesesRunway) runwayInfo = `<div class="inicio-proy-runway">A este ritmo, tu plata disponible duraría unos ${m} ${m === 1 ? 'mes' : 'meses'}</div>`;
+      const ag = Salud.fechaAgotamiento(ln, tendenciaMensual, hoy());
+      const m = ag.meses;
+      if(m <= UMBRALES.proyeccion.maxMesesRunway){
+        const NM = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+        const hasta = NM[Number(ag.mes.slice(5,7)) - 1] + ' de ' + ag.mes.slice(0,4); // P4: «hasta {mes}», no solo «unos N meses»
+        runwayInfo = `<div class="inicio-proy-runway">A este ritmo, tu plata disponible duraría unos ${m} ${m === 1 ? 'mes' : 'meses'}, hasta ${hasta}</div>`;
+      }
     }
   }
   // Ritmo irregular: se muestra el rango en vez de una cifra que no representa ningún período.
@@ -911,7 +903,7 @@ function renderProyeccion(){
 
   // Bind listeners DESPUÉS de setear innerHTML
   (function(){
-    const fmt2 = x=>Math.round(x).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).replace(/\u00a0/g,'');
+    const fmt2 = x=>Dinero.fmt(x,{decimales:0});
     const tt = el.querySelector('#_proy-tt');
     if(!tt) return;
     function showTT(html){ tt.innerHTML=html; tt.style.display='block'; clearTimeout(window._proyTT_t); window._proyTT_t=setTimeout(()=>{ tt.style.display='none'; },3000); }
@@ -1015,30 +1007,33 @@ function _renderDispNetoTC() {
   // esperar a que se aplique a compras futuras), así que tampoco debe
   // inflar el "peor caso" de Neto por encima de Disponible.
   const deudaTCTotal = (S.tarjetasCredito||[]).reduce((a,tc)=>a+Math.max(0,tc.deuda||0), 0);
-  if (!deudaTCTotal || deudaTCTotal <= 0) { el.textContent = ''; return; }
+  const aFavor = (S.tarjetasCredito||[]).reduce((a,tc)=>a+Math.max(0,-(tc.deuda||0)), 0);
+  if (!deudaTCTotal || deudaTCTotal <= 0) {
+    // Solo saldo a favor: no resta nada, pero se muestra aparte (no es plata disponible hasta que te la devuelvan).
+    el.textContent = aFavor > 0 ? `Saldo a favor en tarjeta: ${fmt(aFavor)} (no cuenta como disponible)` : '';
+    el.style.color = 'var(--text3)';
+    return;
+  }
   // Ya NO se recalcula "disponible" acá (nu+nequi+ef+customTotal por
   // separado) — eso ya causó dos veces que Neto quedara desalineado de
   // Disponible por pequeñas diferencias entre este cálculo y el real. Se
   // usa directamente window._dispActualHoy, el MISMO número que refresh()
   // (core-state.js) acaba de usar para pintar #s-disp — por definición no
-  // se pueden desalinear. refresh() llama a _origRefreshInicio() (que
+  // se pueden desalinear. refresh() corre _refreshNucleo() (que
   // setea window._dispActualHoy) ANTES de llamar a esta función, así que
   // siempre llega actualizado.
   const disp = window._dispActualHoy || 0;
   const neto = disp - deudaTCTotal;
-  el.textContent = `Neto de TC: ${fmt(neto)}`;
+  el.textContent = `Neto de tarjetas: ${fmt(neto)}` + (aFavor > 0 ? ` · Saldo a favor en tarjeta: ${fmt(aFavor)}` : '');
   el.style.color = neto < 0 ? 'var(--red)' : 'var(--text3)';
 }
 
 // Hook _checkGastoAlto/_renderDispNetoTC en refresh. refresh() se define en core-state.js, que
 // carga antes que este módulo; calcC/nuTotal (nu-calc.js) también son núcleo de entrada, así que
 // no hace falta ningún reintento ni guard por carga lazy.
-const _origRefreshInicio = window.refresh;
-window.refresh = function() {
-  if (_origRefreshInicio) _origRefreshInicio.apply(this, arguments);
-  _checkGastoAlto();
-  _renderDispNetoTC();
-};
+// Se registran con Refresh (core-state.js) y corren después de _refreshNucleo(), que es quien deja listo window._dispActualHoy.
+Refresh.registrar('inicio-gasto-alto', _checkGastoAlto);
+Refresh.registrar('inicio-neto-tc', _renderDispNetoTC);
 
 // Primer intento inmediato al cargar el módulo, sin esperar al próximo
 // refresh() real.
@@ -1071,5 +1066,6 @@ _renderDispNetoTC();
 
 // Consejo de «Salud financiera» accionable: abre la pantalla donde se resuelve.
 Events.registerAll('inicio', {
+  planEstrategia: (id) => { if(id !== 'avalancha' && id !== 'bola') return; S.planDeudasEstrategia = id; save(); renderPlanDeudas(); },
   irConsejo: (destino) => { if (typeof showScreen === 'function' && document.getElementById('screen-' + destino)) showScreen(destino); }
 });

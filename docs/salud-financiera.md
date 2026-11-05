@@ -136,3 +136,14 @@ Si hay score → anillo de progreso SVG + etiqueta (Excelente / Regular / Necesi
 ## Consejo de liquidez negativa según la causa
 
 Cuando `liquidoReal < 0` el texto dice qué lo causó: solo tarjeta → «Tu deuda en tarjetas supera la plata que tienes disponible»; solo deudas con personas → «Lo que debes a personas supera la plata que tienes disponible»; mezcla o plata ajena → «Tus deudas y la plata ajena que guardas superan la plata que tienes disponible». Si los CDTs sin vencer cubren la diferencia, el consejo es un **aviso** (−8) y añade «lo que cubre la diferencia está en tus CDTs»; si no, una **alerta** (−15). («Patrimonio líquido» era jerga: ya no se usa en los textos.)
+
+## Pilares con semáforo y estado de situación (2026-11-05)
+
+Además del puntaje, la tarjeta muestra cuatro pilares (**Liquidez, Deuda, Flujo, Tendencia**) y un estado global de cinco niveles (**Creciendo, Estable, Atención, Presión, Crisis**). Todo se calcula en `js/core/salud.js` (puro) a partir de un único objeto de métricas que arma `_situacion()` en `inicio.js`; la misma `_situacion()` alimenta las reglas de «Necesita atención» (`js/core/reglas.js`).
+
+- **Liquidez:** meses de gasto cubiertos con la liquidez neta (< 1 rojo, 1–3 ámbar, ≥ 3 verde; negativa = rojo).
+- **Deuda:** `tcPropia + yoDebo` frente al ingreso típico (> 3× rojo, 1,5–3× ámbar) y frente a los activos líquidos (> 100 % rojo, > 50 % ámbar); manda el peor. **No cambia el puntaje** (criterio b sigue mirando solo la tarjeta, para no penalizar dos veces con la liquidez).
+- **Flujo:** de los últimos 3 meses completos, 0 en déficit verde, 1 ámbar, 2+ rojo.
+- **Tendencia:** patrimonio a 90 días sin depósitos ni retiros (`Salud.tendenciaPatrimonio`); necesita 30 días de historial.
+- **Estado:** crisis > presión > atención > creciendo > estable (reglas en el comentario de `Salud.estado`). Presión y crisis no celebran y proponen hasta 3 acciones con enlace. Patrimonio negativo nunca es «Creciendo».
+- Límites en `UMBRALES.salud.pilares`; pruebas en `tests/salud.test.js`.

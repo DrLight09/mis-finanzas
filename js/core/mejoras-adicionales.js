@@ -234,7 +234,7 @@
   // pin-bio.js — ver js/core/hook-global.js para el porqué de sacarlo a
   // un solo lugar. Sin tope de intentos, igual que antes: refresh()
   // siempre termina existiendo.
-  hookGlobal('refresh', _renderMejoras, { intervalMs: 100 });
+  Refresh.registrar('mejoras-render', _renderMejoras);
 
   // Llamar directamente cuando Firebase termina de cargar los datos.
   // Necesario porque los módulos type="module" se ejecutan DESPUÉS que los scripts
@@ -286,7 +286,40 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/mis-finanzas/sw.js', { scope: '/mis-finanzas/' })
     .then(() => console.info('[SW] Registrado correctamente'))
     .catch(err => console.info('[SW] No disponible:', err.message));
+
+  // «Hay una versión nueva». El SW nuevo se activa solo (skipWaiting + clients.claim), pero esta pestaña ya tiene cargado el index.html
+  // y los .js de la versión anterior: si además abre un módulo lazy, lo baja de la caché NUEVA y se mezclan dos versiones. Recargar
+  // lo resuelve, y no se hace solo para no perder lo que el usuario esté escribiendo. `controllerchange` también salta en la primera
+  // instalación (no había controlador), y ahí no hay nada que avisar: por eso se compara contra si ya había uno al cargar la página.
+  // Ver scripts/sellar-sw.js y docs/CHANGELOG.md (2026-11-05).
+  const _teniaControlador = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (_teniaControlador) mostrarAvisoNuevaVersion(); });
 } // fin if ('serviceWorker' in navigator)
+
+function mostrarAvisoNuevaVersion() {
+  if (document.getElementById('sw-aviso')) return; // ya está visible: varios cambios seguidos no apilan avisos
+  const barra = document.createElement('div');
+  barra.id = 'sw-aviso';
+  barra.className = 'sw-aviso';
+  barra.setAttribute('role', 'status');
+  const texto = document.createElement('span');
+  texto.className = 'sw-aviso-texto';
+  texto.textContent = 'Hay una versión nueva de la app.';
+  const recargar = document.createElement('button');
+  recargar.type = 'button';
+  recargar.className = 'sw-aviso-btn';
+  recargar.textContent = 'Actualizar';
+  recargar.addEventListener('click', () => location.reload());
+  const luego = document.createElement('button');
+  luego.type = 'button';
+  luego.className = 'sw-aviso-cerrar';
+  luego.setAttribute('aria-label', 'Cerrar');
+  luego.textContent = '×';
+  luego.addEventListener('click', () => barra.remove());
+  barra.append(texto, recargar, luego);
+  document.body.appendChild(barra);
+}
+window.mostrarAvisoNuevaVersion = mostrarAvisoNuevaVersion;
 
 /* ================================================================
    NAVEGACIÓN POR GESTOS — manejado por makeSwipeable(), en

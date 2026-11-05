@@ -63,7 +63,7 @@
 (function(){
 'use strict';
 
-const WRAPPED_VENTANA_DIAS = 31; // 1-31 de enero. Ver nota arriba.
+const WRAPPED_VENTANA_DIAS = UMBRALES.wrapped.ventanaDias; // 1-31 de enero. Ver nota arriba. El valor vive en umbrales.js.
 
 function _wrappedGateHoy(){
   return typeof hoy === 'function' ? hoy() : new Date().toISOString().slice(0,10);
@@ -105,8 +105,8 @@ function _wrappedVentana(){
      'nada'       — ningún registro en el año.
      'poco'       — hay registros pero menos de WRAPPED_MIN_DIAS días distintos o de WRAPPED_MIN_MESES meses distintos.
      'suficiente' — alcanza para el Wrapped completo.
-   Los umbrales son un ajuste de producto, no una regla contable: se cambian aquí (y la prueba de límites los lee). */
-const WRAPPED_MIN_DIAS = 30, WRAPPED_MIN_MESES = 3;
+   Los umbrales son un ajuste de producto, no una regla contable: se cambian en js/core/umbrales.js (UMBRALES.wrapped; la prueba de límites los lee). */
+const WRAPPED_MIN_DIAS = UMBRALES.wrapped.minDias, WRAPPED_MIN_MESES = UMBRALES.wrapped.minMeses; // los valores viven en umbrales.js
 
 function _wrappedDatosAnio(anioK, estado){
   const st = estado || S, fechas = new Set(), meses = new Set();

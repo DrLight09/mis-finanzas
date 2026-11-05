@@ -14,7 +14,7 @@ const CORE = f => path.join(RAIZ, 'js', 'core', f);
 const MOD = f => path.join(RAIZ, 'js', 'modules', f);
 
 function app(sObj = {}, extra = []) {
-  const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('umbrales.js'), MOD('inicio.js'), ...extra]);
+  const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('umbrales.js'), CORE('reglas.js'), CORE('salud.js'), CORE('plan-deudas.js'), MOD('inicio.js'), ...extra]);
   Object.assign(ctx.S, sObj);
   return ctx;
 }
@@ -489,7 +489,7 @@ test('P7b. con un cobro de este mes registrado, o sin día esperado, o con el d�
 
 /* ---- editar un gasto fijo (gastos.js) ---- */
 function gastosApp(sObj) {
-  const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('html-tag.js'), CORE('umbrales.js'), MOD('inicio.js'), MOD('gastos.js')], { permissive: true });
+  const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('html-tag.js'), CORE('umbrales.js'), CORE('reglas.js'), CORE('salud.js'), CORE('plan-deudas.js'), MOD('inicio.js'), MOD('gastos.js')], { permissive: true });
   Object.assign(ctx.S, sObj);
   const valores = {};
   const el = id => (valores[id] = valores[id] || { value: '', textContent: '', classList: { add() {}, remove() {} } });
@@ -878,4 +878,114 @@ test('Calendario: la Proyección lo muestra aunque no haya historial (de a cuán
   assert.match(h, /Próximos 30 días, con lo ya programado/);
   assert.match(h, /pasaría de \$?100\.000 a -/, 'termina en negativo: el gasto fijo recurre el mes siguiente si cae dentro de los 30 días');
   assert.match(h, /quedaría en -\$?800\.000 \(vence Arriendo &lt;x&gt;\)/, 'escapa el nombre');
+});
+
+/* ================= Reglas compartidas (reglas.js), pilares y estado en la app ================= */
+function pintarAtencion(ctx) {
+  const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
+  const dom = createFakeDom(); ctx.document = dom.document;
+  ctx.renderAttencion();
+  return String((dom.el('s-attn-list') || {}).innerHTML || '');
+}
+
+test('B6. Atención lista el patrimonio negativo (antes solo el hero lo mostraba en rojo)', () => {
+  const t = pintarAtencion(app({ cuentas: cuentas(100000), misDeudas: yoDebo(900000) }));
+  assert.match(t, /Tu patrimonio es negativo: debes/);
+});
+
+test('B6. Periodo.gastosFijosSinDia: solo los fijos sin día y sin pagar en el mes', () => {
+  const { Periodo } = app({ gastosFijos: [
+    { id: 'a', nombre: 'Arriendo', monto: 900000 },            // sin día, sin pagar → entra
+    { id: 'b', nombre: 'Gas', monto: 60000 },                    // sin día, pagado → no
+    { id: 'c', nombre: 'Gym', monto: 50000, dia: 3 },            // con día → lo cubre gastosFijosProgramados
+  ], pagosGastosFijos: { ['b_' + mesAct]: { monto: 60000, fecha: mesAct + '-02' } } });
+  assert.deepEqual(Periodo.gastosFijosSinDia(mesAct).map(g => g.nombre), ['Arriendo']);
+  assert.deepEqual(Periodo.gastosFijosSinDia(mesHace(1)).map(g => g.nombre), ['Arriendo', 'Gas'], 'otro mes: ninguno está pagado');
+});
+
+test('B6. «Ya es N y el arriendo no está pagado»: solo desde el día configurado y solo sin día de vencimiento', () => {
+  const dia = new Date().getDate();
+  const t = pintarAtencion(app({ cuentas: cuentas(5000000), gastosFijos: [{ id: 'a', nombre: 'Arriendo', monto: 900000 }] }));
+  const hay = /Arriendo aún no está pagado este mes/.test(t);
+  assert.equal(hay, dia >= 25, 'avisa solo desde el día 25 (hoy es ' + dia + ')');
+});
+
+test('Salud en la app: el estado y los 4 pilares salen de las mismas métricas que Atención y se pintan en la tarjeta', () => {
+  const ctx = app({ cuentas: cuentas(100000), misDeudas: yoDebo(900000) });
+  const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
+  const dom = createFakeDom(); ctx.document = dom.document;
+  ctx.renderHealthScore();
+  const h = String(dom.el('health-score-card').innerHTML);
+  assert.match(h, /inicio-estado-rojo/, 'patrimonio negativo con liquidez negativa = crisis');
+  assert.match(h, /Lo urgente primero/);
+  assert.equal((h.match(/class="inicio-pilar /g) || []).length, 4);
+  assert.match(h, /inicio-pilar-rojo/);
+});
+
+/* ================= P6: conciliación («¿por qué cambió mi patrimonio?») ================= */
+const hp = (fecha, valor, extra = {}) => ({ fecha, valor, valorVisible: valor, ...extra });
+test('P6. Periodo.conciliar: lo que no explican ingresos y gastos queda «sin explicar», y los saldos iniciales (montoBase) no cuentan', () => {
+  const m = mesHace(1), p = mesHace(2);
+  const { Periodo } = app({
+    patrimonioHistorial: [hp(p + '-28', 1000000), hp(m + '-10', 1000000 + 500000, { montoBase: 500000 }), hp(m + '-28', 1000000 + 500000 - 180000 - 250000)],
+    gastosVar: [{ id: 'g', fecha: m + '-12', monto: 180000, cat: 'Otro', desc: 'x' }],
+  });
+  const c = Periodo.conciliar(m);
+  assert.equal(c.delta, 70000, 'delta del valor visible: 1.500.000 − 430.000 − 1.000.000');
+  assert.equal(c.base, 500000);
+  assert.equal(c.gastos, 180000);
+  assert.equal(c.explicado, -180000);
+  assert.equal(c.sinExplicar, -250000, 'la plata que desapareció sin ser gasto ni ingreso');
+  assert.equal(Periodo.conciliar(p), null, 'sin una foto anterior no hay con qué comparar');
+});
+
+test('P6. la tarjeta de Análisis avisa lo sin explicar y, si todo cuadra, lo dice', () => {
+  const m = mesHace(1), p = mesHace(2);
+  const pintar = hist => {
+    const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('html-tag.js'), CORE('umbrales.js'), CORE('cobros.js'), MOD('analisis.js')], { permissive: true });
+    Object.assign(ctx.S, { patrimonioHistorial: hist, gastosVar: [{ id: 'g', fecha: m + '-12', monto: 180000, cat: 'Otro', desc: 'x' }] });
+    const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
+    const dom = createFakeDom(); ctx.document = dom.document; dom.el('an-conciliacion');
+    ctx.renderConciliacion();
+    return String(dom.el('an-conciliacion').innerHTML);
+  };
+  const raro = pintar([hp(p + '-28', 1000000), hp(m + '-28', 1000000 - 180000 - 250000)]);
+  assert.match(raro, /bajó \$?430\.000/); assert.match(raro, /250\.000<\/b> sin explicar/);
+  const ok = pintar([hp(p + '-28', 1000000), hp(m + '-28', 1000000 - 180000)]);
+  assert.match(ok, /Todo cuadra/); assert.doesNotMatch(ok, /sin explicar/);
+  assert.equal(pintar([hp(m + '-28', 5)]), '', 'sin historial previo no pinta nada');
+});
+
+/* ================= P2/P3: plan de salida de deudas en Inicio ================= */
+test('P3. el plan de deudas lista tus deudas propias (no las ajenas), con tasa opcional y el ritmo de pago', () => {
+  const m1 = mesHace(1), m2 = mesHace(2), m3 = mesHace(3);
+  const ctx = app({
+    cuentas: cuentas(0),
+    ingresosFijos: ingresosEn(2000000, [m1, m2, m3]), ...gastosEn(1500000, [m1, m2, m3]),
+    misDeudas: yoDebo(600000),
+    tarjetasCredito: [{ id: 't', nombre: 'Visa', deuda: 1000000, cupo: 5000000, tasaEA: 28 }],
+  });
+  const d = ctx.planDeudasDatos();
+  assert.deepEqual(Array.from(d.plan.orden, x => x.nombre), ['Visa', 'Fulano'], 'avalancha por defecto con una tasa: la tarjeta primero');
+  assert.equal(d.plan.saldoTotal, 1600000);
+  assert.equal(Math.round(d.balance), 500000, 'te sobran 500.000 al mes');
+  assert.equal(d.plan.baja, true);
+  assert.ok(d.plan.mesesLibre >= 4 && d.plan.mesesLibre <= 5);
+  assert.ok(Math.abs(d.plan.costoMensualTotal - 20785) < 2, '28 % E.A. sobre 1.000.000');
+});
+
+test('P3. con balance negativo la deuda «no baja» y se dice cuánto liberar; sin deudas propias no hay plan', () => {
+  const m1 = mesHace(1);
+  const c = app({ ingresosFijos: ingresosEn(1000000, [m1]), ...gastosEn(1500000, [m1]), misDeudas: yoDebo(600000) }).planDeudasDatos();
+  assert.equal(c.plan.baja, false); assert.ok(c.plan.necesitasLiberar > 0);
+  assert.equal(app({ cuentas: cuentas(1000) }).planDeudasDatos(), null);
+});
+
+test('B1. calcLiquidez expone neta (lo ajeno de la tarjeta lo pagan) y netaPeorCaso (toda la deuda de tarjeta es tuya) + saldo a favor aparte', () => {
+  const ctx = app({ cuentas: cuentas(1000000), tarjetasCredito: [{ id: 't', deuda: 400000, cupo: 1000000 }, { id: 'u', deuda: -50000, cupo: 1000000 }] });
+  const l = ctx.calcLiquidez();
+  assert.equal(l.tcTotal, 400000);
+  assert.equal(l.saldoAFavorTC, 50000);
+  assert.equal(l.netaPeorCaso, 600000);
+  assert.ok(l.netaPeorCaso <= l.neta + 1e-9, 'el peor caso nunca supera a la neta');
 });

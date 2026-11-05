@@ -1999,11 +1999,7 @@ function _cpInit(){
   // appDataLoaded, mucho después de que refresh() ya exista), pero
   // hookGlobal() de paso cierra ese caso límite: si no existiera, esperaría
   // en vez de rendirse.
-  hookGlobal('refresh', function(){
-    // Actualizar stats si la pantalla está activa
-    const screen = document.getElementById('screen-comprometida');
-    if(screen && screen.classList.contains('active')) _cpRenderLista();
-  });
+  Refresh.registrar('comprometida-lista', function(){ _cpRenderLista(); }, { pantalla: 'comprometida' }); // solo con la pantalla activa
 
   // Render inicial si hay datos
   if(window.S && (window.S.plataComprometida||[]).length) _cpRenderLista();

@@ -52,9 +52,12 @@ deberías recibir el push del sistema.
   solo tú (con permisos de administrador del repo) puedes verlo/
   editarlo — ni siquiera se puede volver a leer una vez guardado,
   solo reemplazar.
-- Si `checks.js` cambia en el futuro (agregás un chequeo nuevo), se
-  edita en `scripts/notificaciones/checks.js` — es el mismo patrón de
-  registro extensible (`CHECKS`) que ya tenías.
+- Los chequeos ya no viven en `checks.js`: están en `js/core/reglas.js`
+  y los comparte con la sección «Necesita atención» de la app. Para
+  sumar un aviso al push se escribe una regla allí con el canal
+  `'push'` (ver el comentario de cabecera de `reglas.js`). `checks.js`
+  solo la evalúa con el estado `S` y la fecha de hoy, así que el
+  workflow tiene que hacer checkout del repo completo.
 - El cron de GitHub Actions es "mejor esfuerzo": en momentos de mucha
   carga en GitHub puede atrasarse algunos minutos respecto al horario
   exacto. Para un aviso diario esto no importa.

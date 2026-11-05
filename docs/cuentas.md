@@ -204,3 +204,7 @@ Los sheets de Nu (`nu-movimiento`, `crear-cdt`, `cobrar-cdt`, `meta-cajita`, `ch
 | `getAperturaMov(fuente)` | Busca el movimiento de apertura vigente en `S.movimientos` (por `fuente`) |
 | `abrirNuevaCuenta()` / `crearCuentaCustom()` / `editarCuentaCustom()` / `eliminarCuentaCustom()` | CRUD de cuentas personalizadas — `crearCuentaCustom()` escribe el saldo inicial como apertura en `S.movimientos` y en el libro |
 
+
+## Limitaciones conocidas
+
+- **GMF (4×1000) y comisiones bancarias:** la app no las calcula ni las descuenta de los saldos. Si tu banco las cobra, registra el cargo como un gasto o ajusta el saldo; mientras tanto el saldo de la app puede quedar unos pesos por encima del real.

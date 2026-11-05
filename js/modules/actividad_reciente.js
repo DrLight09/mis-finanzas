@@ -393,7 +393,7 @@
     if (!fechaStr || fechaStr === '0000-00-00') return 'Sin fecha';
     var hoyStr = (typeof hoy === 'function') ? hoy() : new Date().toISOString().slice(0, 10);
     if (fechaStr === hoyStr) return 'Hoy';
-    var dHoy = new Date(hoyStr + 'T12:00:00');
+    var dHoy = _fechaSafe(hoyStr, 12);
     dHoy.setDate(dHoy.getDate() - 1);
     var ayerStr = dHoy.toISOString().slice(0, 10);
     if (fechaStr === ayerStr) return 'Ayer';
@@ -503,14 +503,9 @@
   });
 
   // Wrap refresh() para mantener el feed actualizado
-  var _origRefresh = window.refresh;
-  window.refresh = function() {
-    if (typeof _origRefresh === 'function') _origRefresh.apply(this, arguments);
-    var activa = document.querySelector('.screen.active');
-    if (activa && activa.id === 'screen-historial') renderFeedActividad();
-    // El badge (mas-historial-sub / cfg-historial-sub) lo actualiza renderFeedActividad
-    // con el texto correcto — no se toca aquí para evitar mostrar totales brutos.
-  };
+  // El badge (mas-historial-sub / cfg-historial-sub) lo actualiza renderFeedActividad
+  // con el texto correcto — no se toca aquí para evitar mostrar totales brutos.
+  Refresh.registrar('actividad-feed', function() { renderFeedActividad(); }, { pantalla: 'historial' });
 
   // logCambio sigue existiendo como no-op para no romper el código que lo llama
   window.logCambio = function(){ /* no-op: el feed ahora lee de S directamente */ };

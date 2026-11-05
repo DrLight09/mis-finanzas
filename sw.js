@@ -1,5 +1,9 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v92'; // bump manual en cada despliegue; qué cambió en cada versión vive en docs/CHANGELOG.md (no aquí)
+const VERSION = 'mis-finanzas-v95'; // bump manual en cada despliegue; qué cambió en cada versión vive en docs/CHANGELOG.md (no aquí)
+// Huella del contenido desplegable: la sella `node scripts/sellar-sw.js` (y `npm test` falla si quedó vieja). Así, aunque se olvide
+// subir VERSION, la caché cambia de nombre en cuanto cambia cualquier archivo y no se sirven los .js anteriores.
+const BUILD = '08951c8b9723'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
+const CACHE = VERSION + '-' + BUILD;
 
 const APP_SHELL = [
   '/mis-finanzas/',
@@ -50,7 +54,7 @@ const CACHE_FONTS = [
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(VERSION)
+    caches.open(CACHE)
       // cache:'reload' salta la caché HTTP: sin esto, un SW nuevo podía guardar una
       // copia vieja del index.html que la caché HTTP (GitHub Pages: 10 min) aún tenía.
       .then(cache => cache.addAll(APP_SHELL.map(u => new Request(u, { cache: 'reload' }))))
@@ -62,7 +66,7 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== VERSION).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
     )
   );
   self.clients.claim();
@@ -113,7 +117,7 @@ self.addEventListener('fetch', e => {
 // Escribir en caché es "mejor esfuerzo": si falla (respuesta cortada por una
 // recarga, sin conexión, cuota), no debe convertirse en un error sin manejar.
 function guardarEnCache(request, response) {
-  return caches.open(VERSION)
+  return caches.open(CACHE)
     .then(cache => cache.put(request, response))
     .catch(() => {});
 }

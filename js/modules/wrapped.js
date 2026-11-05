@@ -687,7 +687,7 @@ function _wrappedPatrimonioAnio(S, anioK){
   // con $5.000; −800 % al pasar de −$100.000 a −$900.000; «casi se duplicó» al pasar de −$900.000 a −$100.000, que sigue en deuda).
   // Sin porcentaje, el texto habla de montos y de cruzar el cero (ver _wrappedCopyPatrimonio). Tope de ±300 % para presentar uno.
   let pct = val(primero) > 0 ? (diff/val(primero))*100 : null;
-  if(pct !== null && Math.abs(pct) > 300) pct = null;
+  if(pct !== null && Math.abs(pct) > UMBRALES.wrapped.patrimonio.tope) pct = null;
   // inicio/fin: el patrimonio visible al empezar y al terminar el año (para saber si se cruzó el cero).
   return { diff, pct, inicio: val(primero), fin: val(ultimo) };
 }
@@ -974,7 +974,7 @@ function _wrappedSlidesInsuficiente(datos, anioK){
   const n = v => Number(v).toLocaleString('es-CO');
   const dias = n(datos.dias || 0) + ((datos.dias || 0) === 1 ? ' día' : ' días');
   const registros = n(datos.registros || 0) + ((datos.registros || 0) === 1 ? ' movimiento' : ' movimientos');
-  const desde = datos.primera ? new Date(datos.primera + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long' }) : '';
+  const desde = datos.primera ? _fechaSafe(datos.primera, 12).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' }) : '';
   const um = (typeof window !== 'undefined' && window._wrappedUmbrales) || { dias: 30, meses: 3 };
   const valores = { anio: anioK, dias, registros, desde, minDias: um.dias, minMeses: um.meses };
   const llenar = txt => escHtml(txt.replace(/\{(\w+)\}/g, (m, k) => (k in valores ? valores[k] : m)));
@@ -1117,13 +1117,13 @@ function _wrappedCopyPatrimonio(patrimonio, ctx){
   } else {
     const pctTxt = Math.abs(Math.round(pct));
     if(diff >= 0){
-      if(pct >= 50) frase = _wrappedBankPick('patrimonio-fuerte', [
+      if(pct >= UMBRALES.wrapped.patrimonio.crecimientoFuerte) frase = _wrappedBankPick('patrimonio-fuerte', [
         `fue un año grande: tu patrimonio subió +${pctTxt}%.`,
         `+${pctTxt}%. Este año tu patrimonio jugó en otra liga.`,
         pct >= 90 ? `tu patrimonio casi se duplicó este año (+${pctTxt}%).` : `tu patrimonio creció más de la mitad este año (+${pctTxt}%).`,
         `pocas veces un año rinde +${pctTxt}% — este fue de esos.`,
       ]);
-      else if(pct >= 15) frase = _wrappedBankPick('patrimonio-medio', [
+      else if(pct >= UMBRALES.wrapped.patrimonio.crecimientoMedio) frase = _wrappedBankPick('patrimonio-medio', [
         `tu patrimonio creció con fuerza este año (+${pctTxt}%).`,
         `+${pctTxt}% de crecimiento — nada de qué quejarse.`,
         `este año tu plata trabajó de verdad (+${pctTxt}%).`,
@@ -1133,12 +1133,12 @@ function _wrappedCopyPatrimonio(patrimonio, ctx){
         `+${pctTxt}%, sin hacer ruido pero yendo para arriba.`,
         `no fue un año explosivo, pero tu patrimonio sí subió (+${pctTxt}%).`,
       ]);
-    } else if(pct <= -15) frase = _wrappedBankPick('patrimonio-cayoFuerte', [
+    } else if(pct <= -UMBRALES.wrapped.patrimonio.caidaFuerte) frase = _wrappedBankPick('patrimonio-cayoFuerte', [
       `este año le exigiste bastante al bolsillo (-${pctTxt}%).`,
       `-${pctTxt}%. Este año pesó, y se nota.`,
       `no fue un año fácil para tu patrimonio (-${pctTxt}%).`,
     ]);
-    else if(pct <= -5) frase = _wrappedBankPick('patrimonio-cayoModerado', [
+    else if(pct <= -UMBRALES.wrapped.patrimonio.caidaLeve) frase = _wrappedBankPick('patrimonio-cayoModerado', [
       `tu patrimonio bajó este año (-${pctTxt}%): vale la pena mirar por qué.`,
       `-${pctTxt}%. No fue un buen año para tu patrimonio.`,
       `tu patrimonio cerró un ${pctTxt}% más abajo de donde empezó.`,
@@ -1153,7 +1153,7 @@ function _wrappedCopyPatrimonio(patrimonio, ctx){
   // los ingresos y gastos (deudas, ajustes). Sin esto la frase solo decía CUÁNTO bajó.
   if(diff < 0 && ctx){
     const caida = -diff, g = ctx.gastoMasGrande;
-    if(g && g.monto > 0 && g.monto >= 0.7 * caida){
+    if(g && g.monto > 0 && g.monto >= UMBRALES.wrapped.compraExplicaCaida * caida){
       frase += ` Casi toda la caída fue por una compra: ${escHtml(String(g.desc || 'un gasto'))} (${fmt(g.monto)}).`;
     } else if(Number.isFinite(ctx.balance)){
       frase += ctx.balance < 0
@@ -1978,8 +1978,8 @@ function _wrappedCambioFuerte(primera, segunda){
   if(primera <= 0 || segunda <= 0) return null;
   const total = primera + segunda;
   const shareSegunda = segunda / total;
-  if(shareSegunda >= 0.70) return { direccion: 'crecio', shareSegunda };
-  if(shareSegunda <= 0.30) return { direccion: 'cayo', shareSegunda };
+  if(shareSegunda >= UMBRALES.wrapped.cambioFuerte) return { direccion: 'crecio', shareSegunda };
+  if(shareSegunda <= 1 - UMBRALES.wrapped.cambioFuerte) return { direccion: 'cayo', shareSegunda };
   return null;
 }
 function _wrappedFasesAnio(S, anioK, mesMax){
@@ -4055,7 +4055,7 @@ window.renderWrapped = function(anioOpt){
     try{ localStorage.setItem('mf_wrapped_visto_' + objetivo, '1'); }catch(_){}
   }
 
-  const fmt2 = typeof fmt === 'function' ? fmt : v => '$' + Math.round(v).toLocaleString('es-CO');
+  const fmt2 = fmt; // se inyecta en las funciones de copy (_wrappedCopy*) para que sigan siendo puras
 
   _wrappedLogDebug(S);
   _wrappedInyectarEstilos();

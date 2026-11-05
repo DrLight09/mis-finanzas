@@ -50,7 +50,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/wrapped-gate.js` | de entrada (defer) | 9 | 2 |
 | `js/modules/actividad_reciente.js` | lazy — grupo `historial` | 0 | 0 |
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 32 | 0 |
-| `js/modules/analisis.js` | lazy — grupo `analisis` | 15 | 0 |
+| `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 13 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 63 | 4 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 116 | 0 |
@@ -335,7 +335,7 @@ Carga: lazy — grupo `alcancia`
 
 Carga: lazy — grupo `analisis`
 
-**Funciones:** `abrirCobroIngresoFijo`, `abrirPresupuestos`, `abrirSheetIngresoFijo`, `actualizarCbAvisoMes`, `actualizarCbPreview`, `confirmarCobroIngresoFijo`, `editarIngresoFijo`, `eliminarCobroIngresoFijo`, `eliminarIngresoFijo`, `guardarIngresoFijo`, `renderAnalisis`, `renderBienes`, `renderConciliacion`, `renderIngresosFijos`, `renderPresupuestos`
+**Funciones:** `abrirCobroIngresoFijo`, `abrirPresupuestos`, `abrirSheetIngresoFijo`, `actualizarCbAvisoMes`, `actualizarCbPreview`, `confirmarCobroIngresoFijo`, `editarIngresoFijo`, `eliminarCobroIngresoFijo`, `eliminarIngresoFijo`, `guardarIngresoFijo`, `renderAnalisis`, `renderBienes`, `renderConciliacion`, `renderIngresosFijos`, `renderPresupuestos`, `renderSimulador`
 
 ### `js/modules/configuracion.js`
 
@@ -1427,6 +1427,7 @@ Ninguno.
 | `renderPresupuestos` | `js/modules/analisis.js` |
 | `renderProyeccion` | `js/modules/inicio.js` |
 | `renderSelectorCuentas` | `js/modules/cuentas.js` |
+| `renderSimulador` | `js/modules/analisis.js` |
 | `renderSpHistorial` | `js/modules/spotify.js` |
 | `renderSpotify` | `js/modules/spotify.js` |
 | `renderSpStats` | `js/modules/spotify.js` |

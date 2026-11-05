@@ -989,3 +989,24 @@ test('B1. calcLiquidez expone neta (lo ajeno de la tarjeta lo pagan) y netaPeorC
   assert.equal(l.netaPeorCaso, 600000);
   assert.ok(l.netaPeorCaso <= l.neta + 1e-9, 'el peor caso nunca supera a la neta');
 });
+
+test('B3. con saldos pero sin historial la tarjeta de Salud dice «Sin base», no «Regular»', () => {
+  const ctx = app({ cuentas: cuentas(500000) });
+  const el = { innerHTML: '', style: {} };
+  ctx.document.getElementById = id => id === 'health-score-card' ? el : null;
+  ctx.renderHealthScore();
+  assert.ok(el.innerHTML.includes('Sin base'));
+  assert.ok(!el.innerHTML.includes('Regular'));
+});
+
+test('P1. calcEstadoSituacion marca «serio» solo en presión/crisis y la franja se pinta bajo el hero', () => {
+  const crisis = app({ cuentas: cuentas(0), misDeudas: yoDebo(900000) });
+  const e = crisis.calcEstadoSituacion();
+  assert.ok(e && e.serio, 'patrimonio negativo y sin liquidez → serio');
+  const el = { hidden: true, innerHTML: '', className: '' };
+  crisis.document.getElementById = id => id === 'inicio-franja-estado' ? el : null;
+  crisis.renderFranjaEstado();
+  assert.equal(el.hidden, false);
+  assert.ok(el.innerHTML.includes(e.etiqueta));
+  assert.equal(app({}).calcEstadoSituacion(), null, 'sin datos no hay estado');
+});

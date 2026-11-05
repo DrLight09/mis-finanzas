@@ -924,6 +924,7 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .inicio-salud-arco{transition:stroke-dasharray .8s cubic-bezier(.4,0,.2,1);}
 .health-score-num.inicio-salud-ok{color:var(--accent);}
 .health-score-num.inicio-salud-warn{color:var(--amber);}
+.health-score-num.inicio-salud-base{color:var(--text3);}
 .health-score-num.inicio-salud-mal{color:var(--red);}
 .inicio-tip{display:flex;align-items:flex-start;gap:7px;margin-top:5px;font-size:11px;line-height:1.4;}
 .inicio-tip-ico{flex-shrink:0;width:14px;margin-top:1px;font-size:12px;text-align:center;}
@@ -2325,3 +2326,14 @@ button.inicio-pilar-accion{cursor:pointer;}
 .cfg-wrapped-anio{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;}
 .cfg-wrapped-estado{flex:1;font-size:11px;color:var(--text3);}
 .cfg-wrapped-chevron{color:var(--text3);flex-shrink:0;}
+
+.inicio-franja{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;margin:-4px 0 10px;padding:7px 12px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);font-size:12px;}
+.inicio-franja[hidden]{display:none;}
+.inicio-franja-etq{font-weight:700;letter-spacing:.02em;}
+.inicio-franja-frase{color:var(--text2);}
+.inicio-franja-verde{border-color:rgba(200,240,96,.35);}
+.inicio-franja-verde .inicio-franja-etq{color:var(--accent);}
+.inicio-franja-ambar{border-color:rgba(240,176,64,.45);}
+.inicio-franja-ambar .inicio-franja-etq{color:var(--amber);}
+.inicio-franja-rojo{border-color:rgba(240,96,96,.5);}
+.inicio-franja-rojo .inicio-franja-etq{color:var(--red);}

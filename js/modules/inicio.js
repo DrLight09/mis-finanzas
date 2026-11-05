@@ -535,9 +535,12 @@ function renderHealthScore(){
   el.style.minHeight = '';
   if(!res || res.sinDatos){ el.innerHTML = '<div class="inicio-salud-vacio">Registra más datos para calcular tu salud financiera.</div>'; return; }
   const { score, consejos, mesesCubiertos } = res;
-  const col = score >= 75 ? 'var(--accent)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
-  const claseSalud = score >= 75 ? 'inicio-salud-ok' : score >= 50 ? 'inicio-salud-warn' : 'inicio-salud-mal';
-  const label = score >= 75 ? 'Excelente' : score >= 50 ? 'Regular' : 'Necesita atención';
+  // «Sin base»: hay saldos pero ningún historial (sin gasto típico, sin meses completos, sin tendencia). El 50 de piso sería un «Regular» inventado.
+  const sit = _situacion();
+  const sinBase = !(sit.gastoTipico > 0) && !(sit.balances || []).length && !sit.tendencia;
+  const col = sinBase ? 'var(--text3)' : score >= 75 ? 'var(--accent)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
+  const claseSalud = sinBase ? 'inicio-salud-base' : score >= 75 ? 'inicio-salud-ok' : score >= 50 ? 'inicio-salud-warn' : 'inicio-salud-mal';
+  const label = sinBase ? 'Sin base' : score >= 75 ? 'Excelente' : score >= 50 ? 'Regular' : 'Necesita atención';
   const r = 28, circ = 2 * Math.PI * r;
   // A score=100 el patrón dash/gap (dash=circ, gap=circ) con linecap round deja
   // una costura visible donde el trazo se "cierra" sobre sí mismo — el cap
@@ -566,7 +569,6 @@ function renderHealthScore(){
   // «Cubres X meses de gastos»: la cifra más útil en una crisis. Solo con gasto típico (sin él no hay con qué medir).
   const runwayHtml = mesesCubiertos == null ? '' : `<div class="inicio-salud-runway inicio-runway-${_nivelRunway(mesesCubiertos)}">${_textoRunway(mesesCubiertos)}</div>`;
   // Estado global (5 niveles) y cuatro pilares con semáforo: el número solo no dice CUÁL de las cuatro cosas va mal. Ver js/core/salud.js.
-  const sit = _situacion();
   const est = Salud.estado(sit);
   const irBtn = (ir, cuerpo, clase) => ir
     ? `<button type="button" class="${clase} inicio-pilar-accion" ${Events.attr('inicio:irConsejo', ir)}>${cuerpo}</button>`
@@ -589,6 +591,7 @@ function renderHealthScore(){
     </svg>
     <div class="health-details">
       <div class="health-score-num ${claseSalud}">${label}</div>
+      ${sinBase ? '<div class="inicio-salud-runway">Aún no hay historial para calificarte: el puntaje aparecerá con tus primeros meses.</div>' : ''}
       ${runwayHtml}
       ${tipsHtml}
     </div>
@@ -681,6 +684,24 @@ function renderHeroEstado(d){
   ['red','amber','gris'].forEach(t => el.classList.remove('ix-hero-estado-' + t));
   if(e.tono) el.classList.add('ix-hero-estado-' + e.tono);
 }
+
+// Estado de situación (Creciendo … Crisis) o null sin datos. Lo leen la franja de Inicio y cualquier pantalla que deba ajustar el tono
+// (Análisis, Wrapped): con `serio` (presión o crisis) no se celebra, se habla claro y se señala la acción.
+function calcEstadoSituacion(){
+  const est = Salud.estado(_situacion());
+  return est ? Object.assign({ serio: est.id === 'presion' || est.id === 'crisis' }, est) : null;
+}
+// Franja bajo el hero: una línea con el estado y su frase. Toca para ver el detalle en la tarjeta de Salud.
+function renderFranjaEstado(){
+  const el = document.getElementById('inicio-franja-estado');
+  if(!el) return;
+  const est = calcEstadoSituacion();
+  if(!est){ el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.className = { verde: 'inicio-franja inicio-franja-verde', ambar: 'inicio-franja inicio-franja-ambar', rojo: 'inicio-franja inicio-franja-rojo' }[est.tono] || 'inicio-franja';
+  el.innerHTML = `<span class="inicio-franja-etq">${escHtml(est.etiqueta)}</span><span class="inicio-franja-frase">${escHtml(est.frase)}</span>`;
+}
+Refresh.registrar('inicio-franja-estado', renderFranjaEstado, { pantalla: 'inicio' });
 
 /* ====================================================
    PROYECCIÓN FINANCIERA

@@ -4,6 +4,15 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## «Sin base» y franja de estado bajo el hero (2026-11-05, SW v96)
+
+- Salud: con saldos pero sin historial (sin gasto típico, sin meses completos, sin tendencia) la tarjeta dice **«Sin base»** en gris, con una línea que explica por qué, en vez de un «Regular» de piso.
+- Inicio: nueva **franja bajo el hero** (`#inicio-franja-estado`) con el estado (Creciendo / Estable / Atención / Presión / Crisis) y su frase. Se pinta con `Refresh` (`inicio-franja-estado`). Oculta sin datos.
+- `calcEstadoSituacion()` (inicio.js) devuelve el estado con `serio` (presión o crisis) para que otras pantallas ajusten el tono. **Pendiente:** que Análisis y Wrapped lo usen (va con B7).
+- Tests `B3` y `P1`.
+
+---
+
 ## Liquidez: neta vs. peor caso, saldo a favor aparte (2026-11-05, SW v95)
 
 - `calcLiquidez()` ahora devuelve `tcTotal`, `saldoAFavorTC` y `netaPeorCaso` (= libre + CDT vencidos − deuda TC completa − Yo debo − ajeno), además de `neta` (que solo resta la parte propia de la tarjeta). `netaPeorCaso ≤ neta` siempre.

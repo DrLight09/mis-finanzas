@@ -55,7 +55,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 63 | 4 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 116 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 29 | 0 |
-| `js/modules/inicio.js` | de entrada (defer) | 24 | 0 |
+| `js/modules/inicio.js` | de entrada (defer) | 26 | 0 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 57 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 57 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
@@ -367,7 +367,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_balancePromedioReciente`, `_checkGastoAlto`, `_ctxReglas`, `_deudasPropias`, `_eventosCaja`, `_fechaCorta`, `_fmtMeses`, `_mesesCubiertos`, `_nivelRunway`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_situacion`, `_textoRunway`, `calcCalendarioCaja`, `calcEstadoHero`, `calcHealthScore`, `calcImpactoCompra`, `planDeudasDatos`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderPlanDeudas`, `renderProyeccion`
+**Funciones:** `_balancePromedioReciente`, `_checkGastoAlto`, `_ctxReglas`, `_deudasPropias`, `_eventosCaja`, `_fechaCorta`, `_fmtMeses`, `_mesesCubiertos`, `_nivelRunway`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_situacion`, `_textoRunway`, `calcCalendarioCaja`, `calcEstadoHero`, `calcEstadoSituacion`, `calcHealthScore`, `calcImpactoCompra`, `planDeudasDatos`, `renderAttencion`, `renderFranjaEstado`, `renderHealthScore`, `renderHeroEstado`, `renderPlanDeudas`, `renderProyeccion`
 
 ### `js/modules/mesada.js`
 
@@ -1086,6 +1086,7 @@ Ninguno.
 | `calcDeudaTcPropia` | `js/core/core-state.js` |
 | `calcDeudaTcPropiaDeTarjeta` | `js/core/core-state.js` |
 | `calcEstadoHero` | `js/modules/inicio.js` |
+| `calcEstadoSituacion` | `js/modules/inicio.js` |
 | `calcHealthScore` | `js/modules/inicio.js` |
 | `calcImpactoCompra` | `js/modules/inicio.js` |
 | `calcLiquidez` | `js/core/core-state.js` |
@@ -1405,6 +1406,7 @@ Ninguno.
 | `renderEncargoParts` | `js/modules/encargos.js` |
 | `renderEncargosEnCuenta` | `js/modules/encargos.js` |
 | `renderEncargosList` | `js/modules/encargos.js` |
+| `renderFranjaEstado` | `js/modules/inicio.js` |
 | `renderGastosFijos` | `js/modules/gastos.js` |
 | `renderGastosVar` | `js/modules/gastos.js` |
 | `renderHealthScore` | `js/modules/inicio.js` |

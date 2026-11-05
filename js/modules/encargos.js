@@ -47,7 +47,7 @@
 // _ogEnc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'encargos', ref:<id del movimiento del encargo> }.
 // Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace). `opts.exacto` ya no existe: el saldo
 // nunca se recorta en 0 (ver descontarFuente en core-state.js).
-const _ogEnc = (ref, rev) => ({ origen: { modulo: 'encargos', ref, rev: rev || undefined } });
+const _ogEnc = Libro.origen('encargos');
 
 function editarEncargoActual() {
   if (!encargoActualId) return;
@@ -548,7 +548,7 @@ function renderEncargoParts(enc) {
     const hoyStr = hoy();
     let fechaInfo = '';
     if (p.fecha) {
-      const dias = Math.round((new Date(p.fecha + 'T00:00:00') - new Date(hoyStr + 'T00:00:00')) / 86400000);
+      const dias = Math.round((_fechaSafe(p.fecha) - _fechaSafe(hoyStr)) / 86400000);
       if (dias < 0) fechaInfo = `<span class="enc-venc-rojo">venció hace ${Math.abs(dias)}d</span>`;
       else if (dias === 0) fechaInfo = `<span class="enc-venc-rojo">hoy</span>`;
       else if (dias === 1) fechaInfo = `<span class="enc-venc-amber">mañana</span>`;

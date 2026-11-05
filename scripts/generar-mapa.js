@@ -47,7 +47,9 @@ const SOLO_CHEQUEAR = process.argv.includes('--check');
 
 // ── utilidades ──────────────────────────────────────────────────
 function leer(rel) {
-  return fs.readFileSync(path.join(RAIZ, rel), 'utf8');
+  // Siempre con saltos LF: en Windows (core.autocrlf) el árbol de trabajo trae CRLF, y con `\r` al final de línea las regex de
+  // declaraciones (`(.*)$`) no calzaban: el mapa salía distinto según el sistema y `--check` fallaba solo en la máquina local.
+  return fs.readFileSync(path.join(RAIZ, rel), 'utf8').replace(/\r\n?/g, '\n');
 }
 function existe(rel) {
   return fs.existsSync(path.join(RAIZ, rel));
@@ -124,6 +126,31 @@ function gruposLazy() {
   return mapa;
 }
 
+// import estáticos (`import … from './x.js'`) y dinámicos (`import('./x.js')`) entre archivos de js/: ruta → [quién la importa].
+// Sin esto, un módulo ES que solo carga otro archivo (pin-bio.js → hook-global-module.js → wait-for-module.js; firebase-sync.js y
+// cierre.js → payload-codec.js) aparecía como «sin <script>» y parecía código muerto.
+function importadosPor() {
+  const mapa = new Map();
+  for (const carpeta of CARPETAS) {
+    if (!existe(carpeta)) continue;
+    for (const nombre of fs.readdirSync(path.join(RAIZ, carpeta)).sort()) {
+      if (!nombre.endsWith('.js')) continue;
+      const desde = `${carpeta}/${nombre}`;
+      const codigo = sinComentarios(leer(desde));
+      const res = [/\bimport\s*(?:[^'"()]*?\bfrom\s*)?['"](\.{1,2}\/[^'"]+\.js)['"]/g, /\bimport\s*\(\s*['"](\.{1,2}\/[^'"]+\.js)['"]/g];
+      for (const re of res) {
+        let m;
+        while ((m = re.exec(codigo))) {
+          const destino = path.posix.normalize(path.posix.join(carpeta, m[1]));
+          if (!mapa.has(destino)) mapa.set(destino, new Set());
+          mapa.get(destino).add(desde);
+        }
+      }
+    }
+  }
+  return mapa;
+}
+
 // ── 2. qué declara cada archivo ────────────────────────────────
 function declaraciones(codigo) {
   const funciones = new Set();
@@ -155,6 +182,7 @@ function cmp(a, b) { return a.localeCompare(b, 'en', { sensitivity: 'base' }) ||
 // ── 3. armar el mapa ───────────────────────────────────────────
 const carga = cargaDesdeIndex();
 const lazy = gruposLazy();
+const importadores = importadosPor();
 
 const archivos = [];
 for (const carpeta of CARPETAS) {
@@ -166,7 +194,8 @@ for (const carpeta of CARPETAS) {
     let cargaTxt;
     if (lazy.has(ruta)) cargaTxt = `lazy — grupo \`${lazy.get(ruta)}\``;
     else if (carga.has(ruta)) cargaTxt = carga.get(ruta) === 'module' ? 'de entrada (módulo ES)' : `de entrada (${carga.get(ruta)})`;
-    else cargaTxt = 'sin <script> ni grupo lazy (¿lo importa otro archivo?)';
+    else if (importadores.has(ruta)) cargaTxt = 'módulo ES — importado por ' + [...importadores.get(ruta)].sort().map(r => `\`${r}\``).join(', ');
+    else cargaTxt = 'sin <script>, sin grupo lazy y sin import (posible código muerto)';
     archivos.push({ ruta, cargaTxt, funciones, globales, enWindow });
   }
 }
@@ -257,7 +286,7 @@ L.push('');
 const resultado = L.join('\n');
 
 if (SOLO_CHEQUEAR) {
-  const actual = fs.existsSync(SALIDA) ? fs.readFileSync(SALIDA, 'utf8') : null;
+  const actual = fs.existsSync(SALIDA) ? fs.readFileSync(SALIDA, 'utf8').replace(/\r\n?/g, '\n') : null;
   if (actual === resultado) {
     console.log('mapa-codigo.md está al día.');
     process.exit(0);

@@ -243,7 +243,7 @@ function _verificarIntegridadSaldoDeudor(d, saldoAntes, deltaEsperado) {
 // ── Libro (core-state.js): origen de cada cambio de saldo ────────────────────────────────────────────────
 // _og(ref): al aplicar un movimiento, cada sumar/descontarFuente deja en el libro { modulo:'prestado', ref:<id del movimiento> }.
 // _enReversion(ref, fn): al revertir, todo lo que fn() mueva queda como tipo 'reversion' con el id del movimiento revertido.
-const _og = ref => ({ origen: { modulo: 'prestado', ref } });
+const _og = Libro.origen('prestado');
 const _enReversion = (ref, fn) => Libro.conOrigen({ modulo: 'prestado', ref, rev: true }, fn);
 // Revierte el efecto de UN abono sobre su cuenta destino: quita el movimiento espejo del
 // historial y descuenta el saldo que había sumado. Si el abono guardó el id del espejo

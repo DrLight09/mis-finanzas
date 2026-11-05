@@ -45,7 +45,7 @@ let cuentaActual = '';
 // todas las demás comparten #cuentas-detalle-simple.
 // ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogCta(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'cuentas', ref:<id del movimiento o de la transferencia> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogCta = (ref, rev) => ({ origen: { modulo: 'cuentas', ref, rev: rev || undefined } });
+const _ogCta = Libro.origen('cuentas');
 
 // Al cambiar de cuenta o volver al selector, cada cuenta con pantalla propia (Nu) deja en blanco su estado interno.
 function _reiniciarPantallasCuenta() {

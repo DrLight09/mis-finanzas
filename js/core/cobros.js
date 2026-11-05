@@ -38,7 +38,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 // Libro (core-state.js): cada sumar/descontarFuente deja { modulo:'ingreso-fijo', ref:<id del espejo> }; rev=true es la reversión.
-const _ogCobro = (ref, rev) => ({ origen: { modulo: 'ingreso-fijo', ref, rev: rev || undefined } });
+const _ogCobro = Libro.origen('ingreso-fijo');
 
 const COBRO_MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 

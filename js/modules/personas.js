@@ -568,7 +568,7 @@ function abrirPerfilPersona(personaId) {
     const mayorPrestamo = prestamos.length ? prestamos.reduce((mx, m) => m.monto > mx.monto ? m : mx, prestamos[0]) : null;
     const mayorAbono    = abonos.length    ? abonos.reduce((mx, m) => m.monto > mx.monto ? m : mx, abonos[0])       : null;
     const cuantasveces  = prestamos.length;
-    const diasDesde     = movs.length ? Math.floor((new Date() - new Date(movs[0].fecha + 'T00:00:00')) / 86400000) : null;
+    const diasDesde     = movs.length ? Math.floor((new Date() - _fechaSafe(movs[0].fecha)) / 86400000) : null;
     const ultimoMov     = movs.length ? movs[movs.length - 1] : null;
 
     contenido.push(html`<div class="pe-card-amber">
@@ -674,7 +674,7 @@ function abrirPerfilPersona(personaId) {
   // ── Sección Spotify ──
   if (spEntry) {
     const diasRestantes = spEntry.proximoPago
-      ? Math.ceil((new Date(spEntry.proximoPago + 'T00:00:00') - new Date()) / 86400000)
+      ? Math.ceil((_fechaSafe(spEntry.proximoPago) - new Date()) / 86400000)
       : null;
     const vencido = diasRestantes !== null && diasRestantes < 0;
     const hoy0    = diasRestantes === 0;
@@ -692,7 +692,7 @@ function abrirPerfilPersona(personaId) {
     const totalCobradoSp = histSp.reduce((a, h) => a + (h.monto || 0), 0);
     const mayorCobroSp   = histSp.length ? histSp.reduce((mx, h) => h.monto > mx.monto ? h : mx, histSp[0]) : null;
     const diasEnPlan     = spEntry.fechaIngreso
-      ? Math.floor((new Date() - new Date(spEntry.fechaIngreso + 'T00:00:00')) / 86400000)
+      ? Math.floor((new Date() - _fechaSafe(spEntry.fechaIngreso)) / 86400000)
       : null;
     const mesesEstimados = diasEnPlan !== null ? Math.floor(diasEnPlan / 30) : null;
 

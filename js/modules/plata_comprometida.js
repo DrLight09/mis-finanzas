@@ -381,9 +381,7 @@ let _cpdYaPagueVal = false;        // ¿ya pagó/cargó? (destino "Gasto"/"Otro"
 /* ── HELPERS ─────────────────────────────────────────────────────── */
 // Origen de las patas de saldo de este módulo (libro-de-movimientos.md §3.3). `ref` es el id del destino que causó el
 // movimiento (o el del ingreso comprometido, para el sobrante); quien lo deshace pasa el mismo `ref` con rev=true.
-function _ogCp(ref, rev){
-  return { origen: { modulo: 'plata-comprometida', ...(ref ? { ref } : {}), ...(rev ? { rev: true } : {}) } };
-}
+const _ogCp = Libro.origen('plata-comprometida');
 
 function _cpData(){
   if(!window.S) return [];
@@ -592,7 +590,7 @@ function _cpRenderLista(){
     (item.destinos||[]).some(d => d.tipo==='gasto' && !d.yaPague && d.gastoOrigen==='cajita' && d.gastoCajita)
   );
   if(recibidosConPendientes.length){
-    const hoyMs = new Date(hoy()+'T00:00:00').getTime();
+    const hoyMs = _fechaSafe(hoy()).getTime();
     contenido += '<div class="sec-title cp-mt14">Plata guardada para pagar</div>';
     recibidosConPendientes.sort((a,b)=>(b.fechaRecibido||'').localeCompare(a.fechaRecibido||'')).slice(0,5).forEach(item=>{
       // Gastos pendientes de cajita con plata guardada
@@ -610,7 +608,7 @@ function _cpRenderLista(){
             const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
             let fechaInfo = '';
             if(d.fechaPago){
-              const diasFecha = Math.round((new Date(d.fechaPago+'T00:00:00').getTime() - hoyMs)/86400000);
+              const diasFecha = Math.round((_fechaSafe(d.fechaPago).getTime() - hoyMs)/86400000);
               let colorFecha = 'cp-c-text3';
               let iconoFecha = 'fa-calendar';
               let textoFecha = 'Pagar el '+d.fechaPago;
@@ -633,7 +631,7 @@ function _cpRenderLista(){
 
       const tieneUrgente = gastosGuardados.some(d => {
         if(!d.fechaPago) return false;
-        const dias = Math.round((new Date(d.fechaPago+'T00:00:00').getTime() - hoyMs)/86400000);
+        const dias = Math.round((_fechaSafe(d.fechaPago).getTime() - hoyMs)/86400000);
         return dias <= 3;
       });
 
@@ -660,8 +658,8 @@ function _cpRenderLista(){
 
 function _cpDiasHastaStr(fecha){
   if(!fecha) return { texto:'Sin fecha definida', urgente:false };
-  const hoyMs = new Date(hoy()+'T00:00:00').getTime();
-  const llegaMs = new Date(fecha+'T00:00:00').getTime();
+  const hoyMs = _fechaSafe(hoy()).getTime();
+  const llegaMs = _fechaSafe(fecha).getTime();
   const dias = Math.round((llegaMs - hoyMs)/86400000);
   if(dias < 0)  return { texto:`Llegaba hace ${Math.abs(dias)} día${Math.abs(dias)!==1?'s':''} — ¿ya recibiste?`, urgente:true };
   if(dias === 0) return { texto:'Llega hoy', urgente:true };
@@ -1896,7 +1894,7 @@ async function _cpEliminar(id){
     const hoyStr = hoy();
     items.filter(i=>!i.recibido).forEach(item => {
       const dias = item.fechaLlegada
-        ? Math.round((new Date(item.fechaLlegada+'T00:00:00')-new Date(hoyStr+'T00:00:00'))/86400000)
+        ? Math.round((_fechaSafe(item.fechaLlegada)-_fechaSafe(hoyStr))/86400000)
         : null;
       if(dias === null) return;
       let txt = '', tipo = '';
@@ -1921,7 +1919,7 @@ async function _cpEliminar(id){
       (item.destinos||[]).filter(d =>
         d.tipo === 'gasto' && !d.yaPague && d.gastoOrigen === 'cajita' && d.gastoCajita && d.fechaPago
       ).forEach(d => {
-        const diasG = Math.round((new Date(d.fechaPago+'T00:00:00') - new Date(hoyStr+'T00:00:00'))/86400000);
+        const diasG = Math.round((_fechaSafe(d.fechaPago) - _fechaSafe(hoyStr))/86400000);
         let txtG = '', tipoG = '';
         const cajLabelG = typeof _cpFuenteLabel==='function'?_cpFuenteLabel(d.gastoCajita):d.gastoCajita;
         if(diasG < 0){ txtG = html`Vencido: "${d.desc}" de "${item.desc}" debía pagarse el ${d.fechaPago} — tienes ${fmt(d.monto)} en ${cajLabelG}`; tipoG='red'; }

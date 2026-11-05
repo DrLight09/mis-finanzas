@@ -4055,7 +4055,7 @@ window.renderWrapped = function(anioOpt){
     try{ localStorage.setItem('mf_wrapped_visto_' + objetivo, '1'); }catch(_){}
   }
 
-  const fmt2 = typeof fmt === 'function' ? fmt : v => '$' + Math.round(v).toLocaleString('es-CO');
+  const fmt2 = fmt; // se inyecta en las funciones de copy (_wrappedCopy*) para que sigan siendo puras
 
   _wrappedLogDebug(S);
   _wrappedInyectarEstilos();

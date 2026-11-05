@@ -718,7 +718,7 @@ function renderProyeccion(){
   // a 3/6/12 meses no aportan nada (es una estimación, no un saldo exacto) y solo
   // generan ruido visual. No se usa window.fmt aquí para no depender de si ese
   // formateador global decide mostrar decimales.
-  const fmt = x=>Math.round(x).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).replace(/\u00a0/g,'');
+  const fmt = x=>Dinero.fmt(x,{decimales:0});
   // ── Patrimonio VISIBLE (sin alcancía) ─────────────────────────────────
   // Una sola definición en core-state.js (calcPatrimonioVisible): la misma del hero y de `valorVisible` en el historial, que es
   // de donde sale la tendencia. Esta card muestra un número puntual en cada render; con el total crudo, depositar en la alcancía
@@ -911,7 +911,7 @@ function renderProyeccion(){
 
   // Bind listeners DESPUÉS de setear innerHTML
   (function(){
-    const fmt2 = x=>Math.round(x).toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}).replace(/\u00a0/g,'');
+    const fmt2 = x=>Dinero.fmt(x,{decimales:0});
     const tt = el.querySelector('#_proy-tt');
     if(!tt) return;
     function showTT(html){ tt.innerHTML=html; tt.style.display='block'; clearTimeout(window._proyTT_t); window._proyTT_t=setTimeout(()=>{ tt.style.display='none'; },3000); }

@@ -123,7 +123,7 @@ const TC_MOTIVOS_CARGO = {
 // Spotify, se cuenta contra la cuenta/tarjeta afectada en su lugar).
 // ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogTc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'tarjetas', ref:<id del pago de la tarjeta> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogTc = (ref, rev) => ({ origen: { modulo: 'tarjetas', ref, rev: rev || undefined } });
+const _ogTc = Libro.origen('tarjetas');
 
 function _tcOpsPosteriores(tc, fecha, excludeId){
   if(!fecha)return 0;

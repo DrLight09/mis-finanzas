@@ -26,7 +26,7 @@ const _ALC_KEY = 0x4D;
 const _ALC_ICONO_OCULTO = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" class="alc-svg-block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg>';
 // ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogAlc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'alcancia', ref:<id del depósito> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogAlc = (ref, rev) => ({ origen: { modulo: 'alcancia', ref, rev: rev || undefined } });
+const _ogAlc = Libro.origen('alcancia');
 
 function _alcEncode(saldo){
   const raw = JSON.stringify({s: saldo});
@@ -91,7 +91,7 @@ function _fmtTiempo(dias){
  */
 function _alcDesgloseHtml(movimientos, fmtFn){
   if(!movimientos || !movimientos.length) return '';
-  const f = typeof fmtFn === 'function' ? fmtFn : v => '$' + Math.round(v).toLocaleString('es-CO');
+  const f = typeof fmtFn === 'function' ? fmtFn : fmt;
 
   // Acumular por categoría
   let yo      = 0; // yo-directo + yo-cuenta + tu parte del split + cobro-deuda (es plata tuya)
@@ -543,7 +543,7 @@ function _alcWrappedBarrasSvg(hist){
    Alcancía). '' si no hay al menos 2 ciclos destapados para comparar. */
 function _alcWrappedProgresoHtml(hist, fmtFn){
   if(!hist || hist.length < 2) return '';
-  const fmt2 = fmtFn || (typeof fmt==='function' ? fmt : v=>'$'+Math.round(v).toLocaleString('es-CO'));
+  const fmt2 = fmtFn || fmt;
   const racha = _alcRachaAhorro(hist);
   const mejor = _alcMejorCiclo(hist);
   const ultimo = hist[hist.length-1];
@@ -766,8 +766,7 @@ window.renderAlcancia = function(){
           const difColor = Math.abs(dif) < 1 ? 'alc-c-text3' : dif > 0 ? 'alc-c-accent' : 'alc-c-red';
           const histIdx = hist.length - i; // número de alcancía (1-based, más reciente = mayor)
           const desgloseId = 'alc-hist-desglose-' + histIdx;
-          const desgloseFmt = typeof fmt === 'function' ? fmt : v => '$' + Math.round(v).toLocaleString('es-CO');
-          const desgloseHtml = _alcDesgloseHtml(h.movimientos || [], desgloseFmt);
+          const desgloseHtml = _alcDesgloseHtml(h.movimientos || [], fmt);
           return `
           <div class="card card-sm alc-fila-mb8">
             <div class="row alc-fila-mb6">
@@ -1131,7 +1130,7 @@ window.alcanciaConfirmarDestapar = function(){
   // ── Preparar resultado para mostrar
   const resBody = document.getElementById('alc-resultado-body');
   if(resBody){
-    const fmt2 = typeof fmt==='function' ? fmt : v=>'$'+Math.round(v).toLocaleString('es-CO');
+    const fmt2 = fmt;
     const hist = a.historial;
     const prev = hist.length >= 2 ? hist[hist.length - 2] : null;
     let comparHtml = '';

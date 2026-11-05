@@ -614,7 +614,7 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
     // Solo mostrar resumen si había un mes anterior registrado y es diferente al actual
     if(!ultimoMesVisto || ultimoMesVisto === mesHoy) return;
     // Calcular datos del mes que acaba de cerrar
-    const fmt = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
+    const fmt = window.fmt; // núcleo (core-state.js): si hay window.S, fmt ya existe
     const S = window.S;
     const mesK = ultimoMesVisto;
     const totalGastos = Periodo.gastosDelMes(mesK).total;

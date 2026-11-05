@@ -65,7 +65,7 @@ let sppSplitMode=false;
 // ── Libro (core-state.js): origen de cada cambio de saldo ────────────────────────────────────────────────
 // _ogSp(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'spotify', ref:<id del registro de spotifyHistorial,
 // o del pago> }. Con rev=true es una reversión (tipo 'reversion'). `opts.exacto` ya no existe: el saldo no se recorta en 0.
-const _ogSp = (ref, rev) => ({ origen: { modulo: 'spotify', ref, rev: rev || undefined } });
+const _ogSp = Libro.origen('spotify');
 
 function _spProporcionarSplits(splits,montoParcial,montoTotal){
   if(!splits||!splits.length||montoTotal<=0||montoParcial<=0)return null;
@@ -140,8 +140,8 @@ function spPeriodosVencidos(p,fechaCorte,estricto){
   // un ciclo largo y luego se le venció OTRO sin pagarlo, "total cobrado ≥ una cuota"
   // ya daba pend=0 aunque en la realidad debía el período nuevo. Ver CHANGELOG.md.
   if(!p||!p.proximoPago)return 0;
-  const corte=new Date(fechaCorte+'T00:00:00');
-  let cursor=new Date(p.proximoPago+'T00:00:00');
+  const corte=_fechaSafe(fechaCorte);
+  let cursor=_fechaSafe(p.proximoPago);
   let n=0;
   // `estricto`: no cuenta el período que empieza EXACTAMENTE el día de corte (ver
   // SP_EMPATE_PERIODOS más abajo — ese período ya pertenece al ciclo nuevo).
@@ -170,7 +170,7 @@ function nextMonthFixed(dateStr, mesesAdelantar){
   // Avanza N*30 dias desde la fechaProximoPago (no desde hoy ni desde cuando pago)
   // Ej: si la proxima fecha era el 8-jun y pago el 5-jun o el 10-jun, la siguiente es 8-jun + 30d
   if(!dateStr)return'';
-  const d=new Date(dateStr+'T00:00:00');
+  const d=_fechaSafe(dateStr);
   const dias=(mesesAdelantar||1)*30;
   d.setDate(d.getDate()+dias);
   return d.toISOString().split('T')[0];
@@ -196,7 +196,7 @@ const SP_PERIODO_DIAS=30;
 const SP_EMPATE_PERIODOS=2;
 
 function spSumarDias(fechaStr,dias){
-  const d=new Date(fechaStr+'T00:00:00');
+  const d=_fechaSafe(fechaStr);
   d.setDate(d.getDate()+dias);
   return d.toISOString().split('T')[0];
 }
@@ -391,8 +391,8 @@ function renderSpotify(){
     // Ordenar por proximidad al próximo pago: vencidos primero (más negativos), luego más próximos
     const pOrdenado=[...p].map((x,i)=>({...x,_origIdx:i})).sort((a,b)=>{
       const far=99999;
-      const dA=a.proximoPago?Math.ceil((new Date(a.proximoPago+'T00:00:00')-new Date())/86400000):far;
-      const dB=b.proximoPago?Math.ceil((new Date(b.proximoPago+'T00:00:00')-new Date())/86400000):far;
+      const dA=a.proximoPago?Math.ceil((_fechaSafe(a.proximoPago)-new Date())/86400000):far;
+      const dB=b.proximoPago?Math.ceil((_fechaSafe(b.proximoPago)-new Date())/86400000):far;
       return dA-dB;
     });
     // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2):
@@ -404,7 +404,7 @@ function renderSpotify(){
     const i=x._origIdx;
       let fechaInfo='';
       if(x.proximoPago){
-        const diasRestantes=Math.ceil((new Date(x.proximoPago+'T00:00:00')-new Date())/86400000);
+        const diasRestantes=Math.ceil((_fechaSafe(x.proximoPago)-new Date())/86400000);
         const vencido=diasRestantes<0;
         const hoy0=diasRestantes===0;
         fechaInfo=html`<span class="badge badge-xs ${raw(vencido?'bg-red':hoy0?'bg-amber':'bg-purple')}">${vencido?'Vencido hace '+Math.abs(diasRestantes)+'d':hoy0?'Vence hoy':'Paga en '+diasRestantes+'d · '+x.proximoPago}</span>`;
@@ -1459,7 +1459,7 @@ async function confirmarPagarSpotify(){
   // volver a Pendiente solo porque yo ya le pagué a Spotify.
   (S.spotify.personas||[]).forEach(p=>{
     const hoy0=new Date();hoy0.setHours(0,0,0,0);
-    const sigueVigente=p.proximoPago&&new Date(p.proximoPago+'T00:00:00')>hoy0;
+    const sigueVigente=p.proximoPago&&_fechaSafe(p.proximoPago)>hoy0;
     if(!sigueVigente)p.pagado=false;
   });
   sppSplitMode=false;
@@ -1478,7 +1478,7 @@ function addSpotify(){
   const fechaIngresoRaw=document.getElementById('sp_fecha_ingreso').value;
   if(!fechaIngresoRaw){toast('Ingresa la fecha de ingreso','err');return;}
   // proximoPago = fechaIngreso + 30 dias (primer cobro)
-  const dIng=new Date(fechaIngresoRaw+'T00:00:00');
+  const dIng=_fechaSafe(fechaIngresoRaw);
   dIng.setDate(dIng.getDate()+30);
   const proximoPago=dIng.toISOString().split('T')[0];
   S.spotify.personas.push({id:uid(),nombre:n,monto:m,pagado:false,proximoPago,fechaIngreso:fechaIngresoRaw,ultimoDestino:'',ultimoDestinoSplit:false,mesesAdelantados:1});
@@ -1530,13 +1530,13 @@ function guardarEditarSpotify() {
         // Es una corrección de una fecha de ingreso que ya se venía usando (no la primera
         // vez que se define): desplazar proximoPago por la misma cantidad de días que
         // cambió la fecha de ingreso, para no perder los períodos que ya se pagaron.
-        const deltaDias = Math.round((new Date(fechaIngresoRaw + 'T00:00:00') - new Date(fechaAnterior + 'T00:00:00')) / 86400000);
-        const dProx = new Date(p.proximoPago + 'T00:00:00');
+        const deltaDias = Math.round((_fechaSafe(fechaIngresoRaw) - _fechaSafe(fechaAnterior)) / 86400000);
+        const dProx = _fechaSafe(p.proximoPago);
         dProx.setDate(dProx.getDate() + deltaDias);
         p.proximoPago = dProx.toISOString().split('T')[0];
       } else {
         // No había fecha de ingreso previa: es la primera vez que se calcula, cálculo normal.
-        const dIng = new Date(fechaIngresoRaw + 'T00:00:00');
+        const dIng = _fechaSafe(fechaIngresoRaw);
         dIng.setDate(dIng.getDate() + 30);
         p.proximoPago = dIng.toISOString().split('T')[0];
       }
@@ -1914,8 +1914,8 @@ renderSpotify = function() {
   // Ordenar igual que en renderSpotify
   const pOrdenado = [...p].map((x, i) => ({ ...x, _origIdx: i })).sort((a, b) => {
     const far = 99999;
-    const dA = a.proximoPago ? Math.ceil((new Date(a.proximoPago + 'T00:00:00') - new Date()) / 86400000) : far;
-    const dB = b.proximoPago ? Math.ceil((new Date(b.proximoPago + 'T00:00:00') - new Date()) / 86400000) : far;
+    const dA = a.proximoPago ? Math.ceil((_fechaSafe(a.proximoPago) - new Date()) / 86400000) : far;
+    const dB = b.proximoPago ? Math.ceil((_fechaSafe(b.proximoPago) - new Date()) / 86400000) : far;
     return dA - dB;
   });
   const rows = lista.querySelectorAll('.sp-row');

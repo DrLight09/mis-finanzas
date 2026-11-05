@@ -409,7 +409,7 @@
     if (!el) return;
 
     var Sx = window.S || {};
-    var f  = window.fmt || function(v){ return '$' + Math.round(v).toLocaleString('es-CO'); };
+    var f  = window.fmt;
 
     // Recopilar y mezclar todas las fuentes
     var todos = [].concat(

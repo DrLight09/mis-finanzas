@@ -24,6 +24,21 @@ describe('libro', () => {
   }
   const saldo = (ctx, id) => ctx.S.cuentas.concat(ctx.S.cajitas).find(c => c.id === id).saldo;
 
+  test('Libro.origen — fábrica del origen por módulo: sin ref/rev no deja claves vacías; con rev marca la reversión', () => {
+    const ctx = app();
+    const og = ctx.Libro.origen('gastos');
+    assert.deepEqual(plano(og()), { origen: { modulo: 'gastos' } });
+    assert.deepEqual(plano(og('g1')), { origen: { modulo: 'gastos', ref: 'g1' } });
+    assert.deepEqual(plano(og('g1', true)), { origen: { modulo: 'gastos', ref: 'g1', rev: true } });
+    assert.equal('rev' in og('g1').origen, false, 'rev ausente no deja `rev: undefined` en la entrada');
+    // Pasada como `opts` de la puerta única, queda en el libro tal cual y la entrada de reversión se tipa sola.
+    ctx.sumarFuente('nequi', 100, { ...og('g1'), fecha: '2026-10-01' });
+    ctx.descontarFuente('nequi', 100, { ...og('g1', true), fecha: '2026-10-02' });
+    assert.deepEqual(plano(ctx.S.libro.map(l => [l.tipo, l.monto, l.origen.modulo, l.origen.ref, l.origen.rev === true])),
+      [['movimiento', 100, 'gastos', 'g1', false], ['reversion', -100, 'gastos', 'g1', true]]);
+    assert.equal(ctx.Libro.verificar().ok, true);
+  });
+
   test('registrar — tipo "movimiento" y origen "sin-origen" por defecto; solo cuentas con saldo; monto 0 no entra', () => {
     const ctx = app();
     const id = ctx.Libro.registrar('nequi', 100, { fecha: '2026-10-01' });

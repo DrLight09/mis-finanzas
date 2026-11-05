@@ -171,6 +171,6 @@ function spPersonaPagadaVigente(p){
   if(!p||!p.pagado)return false;
   if(!p.proximoPago)return true;
   const hoy0=new Date();hoy0.setHours(0,0,0,0);
-  const prox=new Date(p.proximoPago+'T00:00:00');
+  const prox=_fechaSafe(p.proximoPago);
   return prox>hoy0;
 }

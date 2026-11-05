@@ -81,7 +81,7 @@
 // archivo que evitan acoplarse a un módulo de dominio específico.
 // ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogMov(ref, rev): al borrar un movimiento desde el feed o el historial de una cuenta, todo lo que se devuelve queda en el libro como reversión de ese movimiento (ref = id borrado). Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogMov = (ref, rev) => ({ origen: { modulo: 'movimientos', ref, rev: rev || undefined } });
+const _ogMov = Libro.origen('movimientos');
 
 function _fuenteLabelHtml(code){
   const raw = fuenteLabel(code);

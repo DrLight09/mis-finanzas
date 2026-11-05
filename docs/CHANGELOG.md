@@ -4,6 +4,18 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Cimientos de la revisión de mejoras: origen del libro, formato de pesos y fechas (2026-11-04, SW v93)
+
+Origen: `mejoras-mis-finanzas.md`. Cada punto se comprobó en el código antes de tocarlo; dos afirmaciones del documento resultaron falsas (abajo). Pruebas: 736/736 (`tests/nucleo.test.js` y `tests/libro.test.js` ampliados); `generar-mapa.js --check` en verde.
+
+- **A3-1 — `Libro.origen(modulo)`.** Había 11 copias de `_og*` (`_ogGv`, `_ogEnc`, `_ogSp`, `_ogMes`, `_ogTc`, `_ogAlc`, `_ogCta`, `_ogMov`, `_ogCobro`, `_ogCp`, `_og`) con la misma forma salvo que unas dejaban `rev: undefined` y otras omitían la clave. Ahora cada módulo hace `const _ogGv = Libro.origen('gastos');` y la entrada del libro no lleva claves vacías. Misma semántica (`_og(ref)` aplica, `_og(ref, true)` revierte). `_ogDif` (diferencial) no se tocó: es un objeto por llamada, no una función. Guarda estática: ningún archivo vuelve a declarar `_og*(ref…)` a mano.
+- **A5 — `Dinero.fmt(n, { decimales, redondeo, signo })`.** Un solo formateador de pesos en `core-state.js`; `fmt()` y `fmtNoCents()` son atajos. Se eliminaron las dos copias con `Intl` de Proyección (`inicio.js`) y los respaldos `window.fmt || …` de `analisis.js`, `alcancia.js`, `actividad_reciente.js`, `firebase-sync.js` y `wrapped.js`. Efecto visible: ninguno (la salida era la misma); lo que cambia es que hay un solo sitio que mantener. Mejora menor: `fmtNoCents(-0.5)` ya no da «-$0». **Se descartó `compacto` ($1,2 M):** ninguna pantalla lo usa y una opción sin consumidor es código muerto. Guarda estática: ningún `js/` usa `style:'currency'`.
+- **A6 — fechas.** 28 lecturas `new Date(x + 'T00:00:00')` pasaron a `_fechaSafe(x)`: `spotify.js` (15), `plata_comprometida.js` (9), `personas.js` (3), `encargos.js` (2) y `calc-helpers.js` (1); el documento solo listaba los dos primeros. Con una fecha sin ceros (`2099-1-5`) el parser ISO daba Invalid Date y toda comparación salía `false` sin avisar (ej. «¿sigue vigente el pago?»). Prueba con fechas sin ceros y guarda estática. Quedan fuera las lecturas con `'T12:00:00'` (solo visualización/diferencias de días; ver `mejoras-mis-finanzas.md`).
+- **A11 — mapa de código.** `generar-mapa.js` ahora reconoce `import` estáticos y dinámicos: `hook-global-module.js`, `wait-for-module.js` y `payload-codec.js` aparecen como «módulo ES — importado por …». **Falso en el documento:** no eran código muerto (`pin-bio.js`, `firebase-sync.js` y `cierre.js` los importan); no se borra nada. El generador además normaliza CRLF/LF: con el árbol de trabajo en CRLF (Windows) las regex de declaraciones no calzaban y `--check` fallaba solo en la máquina local.
+- **Falso en el documento (A5):** «la misma cifra se ve distinta según la pantalla». Proyección ya mostraba `$1.234.567` igual que `fmt()` (su `.replace` del espacio duro sí funcionaba); el problema real era la duplicación, no la cifra.
+
+---
+
 ## Revisión de mejoras: hallazgos financieros y de estructura (2026-11-03, SW v92)
 
 Origen: `mejoras-mis-finanzas.md` (análisis de la lógica financiera con los escenarios negativos). Cada hallazgo se **reprodujo ejecutando el código real** antes de tocarlo; los que no se reprodujeron o no aplicaban se anotan al final. Lo que sigue pendiente quedó en `mejoras-mis-finanzas.md` (ya sin lo resuelto). Pruebas: `tests/escenarios-financieros.test.js` (nuevo, 81 pruebas) + las existentes actualizadas: 729/729. `npm run smoke` y `generar-mapa.js --check` en verde. El puntaje de Salud **cambia** para varios estados (ver cada punto): es intencional.

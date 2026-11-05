@@ -168,7 +168,7 @@ function renderAnalisis(){
     barEl.ontouchstart = barEl.onclick = function(e){
       const bar = e.target.closest('[data-bar-val]');
       if(!bar) return;
-      const fmt2 = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
+      const fmt2 = fmt;
       const label = bar.dataset.barLabel || '';
       const val = parseFloat(bar.dataset.barVal) || 0;
       // Limpiar tooltip previo
@@ -403,7 +403,7 @@ function renderAnalisis(){
         const svgW = parseInt(overlay.dataset.w);
         const svgH = parseInt(overlay.dataset.h);
         const diffCol = overlay.dataset.diffcolor;
-        const fmt2 = window.fmt || (x=>x.toLocaleString('es-CO',{style:'currency',currency:'COP',maximumFractionDigits:0}));
+        const fmt2 = fmt;
         const MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
         function getClosest(rect, clientX){
           const relX = (clientX - rect.left) / rect.width; // 0-1

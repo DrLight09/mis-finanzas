@@ -616,7 +616,7 @@ function quitarMetaCajita(){
   toast('Meta eliminada','ok');
 }
 
-// Sección "Préstamo con origen dividido" (togglePrestSplit / _renderPrestSplit /
+// Sección "Préstamo con origen dividido" (_sp_prest.toggle / _renderPrestSplit /
 // _updatePrestSplitResumen) migrada a js/modules/prestado.js — ver docs/prestado.md.
 
 function addCajita(){

@@ -24,7 +24,7 @@ describe('medeben', () => {
       path.join(CORE_DIR, 'core-state.js'),
       path.join(CORE_DIR, 'cuenta-efectos.js'),
       path.join(CORE_DIR, 'calc-helpers.js'),
-      path.join(MODULES_DIR, 'prestado.js'),
+      path.join(CORE_DIR, 'split.js'), path.join(MODULES_DIR, 'prestado.js'),
       path.join(MODULES_DIR, 'tarjetas_credito.js'),
     ], { permissive: true });
     Object.assign(ctx.S, {
@@ -367,7 +367,7 @@ describe('prestamo-margen', () => {
   const { createFakeDom } = require('./support/fake-dom');
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), core('diferencial.js'), modulo('prestado.js')];
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), core('diferencial.js'), core('split.js'), modulo('prestado.js')];
 
   function cargar(inst) {
     const app = loadApp(ARCHIVOS, { permissive: true });
@@ -433,7 +433,7 @@ describe('yodebo', () => {
       path.join(CORE_DIR, 'calc-helpers.js'),
       path.join(CORE_DIR, 'umbrales.js'), path.join(CORE_DIR, 'reglas.js'), path.join(CORE_DIR, 'salud.js'), path.join(CORE_DIR, 'plan-deudas.js'),
       path.join(MODULES_DIR, 'inicio.js'),
-      path.join(MODULES_DIR, 'prestado.js'),
+      path.join(CORE_DIR, 'split.js'), path.join(MODULES_DIR, 'prestado.js'),
       path.join(MODULES_DIR, 'tarjetas_credito.js'),
     ], { permissive: true });
     Object.assign(ctx.S, {
@@ -713,7 +713,7 @@ describe('totalPrestadoPendiente', () => {
     const ctx = loadApp([
       path.join(CORE_DIR, 'core-state.js'),
       path.join(CORE_DIR, 'calc-helpers.js'),
-      path.join(MODULES_DIR, 'prestado.js'),
+      path.join(CORE_DIR, 'split.js'), path.join(MODULES_DIR, 'prestado.js'),
     ], { permissive: true });
     Object.assign(ctx.S, sOverrides);
     return ctx;
@@ -815,7 +815,7 @@ describe('prestamos-formularios-comunes', () => {
   const ctx = loadApp([
     path.join(RAIZ, 'js', 'core', 'core-state.js'), path.join(RAIZ, 'js', 'core', 'periodo.js'),
     path.join(RAIZ, 'js', 'core', 'nu-calc.js'), path.join(RAIZ, 'js', 'core', 'cuenta-efectos.js'),
-    path.join(RAIZ, 'js', 'core', 'calc-helpers.js'), path.join(RAIZ, 'js', 'modules', 'prestado.js'),
+    path.join(RAIZ, 'js', 'core', 'calc-helpers.js'), path.join(RAIZ, 'js', 'core', 'split.js'), path.join(RAIZ, 'js', 'modules', 'prestado.js'),
   ], { permissive: true });
 
   test('monto vacío: el mismo mensaje y el error va al campo de cada formulario', () => {

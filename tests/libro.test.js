@@ -147,7 +147,7 @@ describe('libro-modulos', () => {
   const { loadApp } = require('./support/load-app');
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), core('periodo.js'), core('nu-calc.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('mesada.js'), modulo('encargos.js')];
+  const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), core('periodo.js'), core('nu-calc.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('mesada.js'), core('split.js'), modulo('encargos.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
   function cargar() {

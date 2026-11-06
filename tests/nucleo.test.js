@@ -1372,7 +1372,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
 
   // ── Punto 2: requisitos para abrir los sheets ────────────────────────────────────────────────
   test('«Pagar Spotify» no abre sin costo válido (vacío, 0, NaN, texto) y abre con costo', () => {
-    const app = entorno([modulo('spotify.js')], { htmlBase: '<input id="spotifyCosto">' });
+    const app = entorno([core('split.js'), modulo('spotify.js')], { htmlBase: '<input id="spotifyCosto">' });
     app.S.spotify = { ...(app.S.spotify || {}), personas: [], historial: [] };
     for (const malo of [0, NaN, undefined, '', 'abc', -5]) {
       app.S.spotify.costo = malo; app.abiertos.length = 0; app.toasts.length = 0;
@@ -1388,7 +1388,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
   });
 
   test('aviso de Spotify: misma condición que el bloqueo, con el texto nuevo, sin estilos inline, y desaparece con un costo válido', () => {
-    const app = entorno([modulo('spotify.js')], { htmlBase: '<div id="padre"><div id="spotifyList"></div></div><input id="spotifyCosto">' });
+    const app = entorno([core('split.js'), modulo('spotify.js')], { htmlBase: '<div id="padre"><div id="spotifyList"></div></div><input id="spotifyCosto">' });
     app.S.spotify = { costo: 0, personas: [], historial: [] };
     app.renderSpotify();
     const aviso = app.document.getElementById('sp-costo-warn');
@@ -1422,7 +1422,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
   const HTML_ENC = '<select id="traspaso_destino"></select><select id="traspaso_origen"></select><select id="moverenc_destino"></select><select id="moverenc_origen"></select>';
 
   test('«Me lo regalaron»: el destino no ofrece tarjetas de crédito', () => {
-    const app = entorno([modulo('encargos.js')], { encargos: ENC(), htmlBase: HTML_ENC });
+    const app = entorno([core('split.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: HTML_ENC });
     app.abrirEncargoDetalle('e1');
     app.abrirTraspasoEncargo();
     assert.deepEqual(app.abiertos.slice(-1), ['traspaso-encargo']);
@@ -1430,7 +1430,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
   });
 
   test('«Me lo regalaron»: al confirmar rechaza una TC como destino (aunque el selector no la ofrezca) y sigue funcionando con una cuenta', () => {
-    const app = entorno([modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="traspaso_destino"><input id="traspaso_origen">' });
+    const app = entorno([core('split.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="traspaso_destino"><input id="traspaso_origen">' });
     app.abrirEncargoDetalle('e1');
     const enc = app.S.encargos[0];
     ponerValores(app, { traspaso_monto: '40000', traspaso_desc: 'regalo', traspaso_fecha: '2026-10-24', traspaso_origen: '', traspaso_destino: 'tc:t1' });
@@ -1446,7 +1446,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
 
   test('«Mover entre cuentas»: ni origen ni destino ofrecen tarjetas de crédito', () => {
     const enc = ENC(); enc[0].movimientos.push({ id: 'm2', tipo: 'entrada', monto: 5000, cuenta: 'tc:t1', fecha: '2026-10-01' }); // dato raro: plata "guardada" en una TC
-    const app = entorno([modulo('encargos.js')], { encargos: enc, htmlBase: HTML_ENC });
+    const app = entorno([core('split.js'), modulo('encargos.js')], { encargos: enc, htmlBase: HTML_ENC });
     app.abrirEncargoDetalle('e1');
     app.abrirMoverEntreCuentasEncargo();
     assert.deepEqual(opciones(app.document, 'moverenc_destino'), ['', 'nequi', 'efectivo']);
@@ -1454,7 +1454,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
   });
 
   test('«Mover entre cuentas»: al confirmar rechaza una TC como destino o como origen; entre cuentas sigue funcionando', () => {
-    const app = entorno([modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="moverenc_destino"><input id="moverenc_origen">' });
+    const app = entorno([core('split.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="moverenc_destino"><input id="moverenc_origen">' });
     app.abrirEncargoDetalle('e1');
     const enc = app.S.encargos[0];
     ponerValores(app, { moverenc_monto: '10000', moverenc_fecha: '2026-10-24', moverenc_origen: 'nequi', moverenc_destino: 'tc:t1' });
@@ -1470,12 +1470,12 @@ describe('requisitos-y-filtros-de-sheets', () => {
   });
 
   test('«Compra con TC» de un encargo: el destino de la plata no ofrece TC y al confirmar rechaza una', () => {
-    const app = entorno([modulo('encargos.js')], { encargos: ENC(), htmlBase: '<select id="ctc_destino"></select><select id="ctc_cuenta_enc"></select><select id="ctc_tarjeta"></select>' });
+    const app = entorno([core('split.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<select id="ctc_destino"></select><select id="ctc_cuenta_enc"></select><select id="ctc_tarjeta"></select>' });
     app.abrirEncargoDetalle('e1');
     app.abrirCompraConTC();
     assert.deepEqual(app.abiertos.slice(-1), ['compra-tc-encargo']);
     assert.deepEqual(opciones(app.document, 'ctc_destino'), ['', 'nequi', 'efectivo']);
-    const app2 = entorno([modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="ctc_destino"><input id="ctc_tarjeta"><input id="ctc_cuenta_enc">' });
+    const app2 = entorno([core('split.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="ctc_destino"><input id="ctc_tarjeta"><input id="ctc_cuenta_enc">' });
     app2.abrirEncargoDetalle('e1');
     ponerValores(app2, { ctc_desc: 'Zapatos', ctc_monto: '1000', ctc_tarjeta: 't1', ctc_destino: 'tc:t1', ctc_nota: '', ctc_fecha: '2026-10-24' });
     app2.confirmarCompraConTC();
@@ -1495,6 +1495,22 @@ describe('requisitos-y-filtros-de-sheets', () => {
     });
     return { modo: () => modo, filas: () => app.document.getElementById('t_rows').children.length };
   }
+
+  test('dividir: crearSplitWidget devuelve la API completa (toggle/addRow/data/reset/preview) sin envoltorios por módulo', () => {
+    const app = entorno();
+    let modo = false;
+    const api = app.crearSplitWidget('t', {
+      simpleId: 't_simple', splitId: 't_split', toggleId: 't_btn', rowsId: 't_rows',
+      getModo: () => modo, setModo: v => { modo = v; },
+      getFuentesFn: () => '<option value="">Elige cuenta</option><option value="nequi">nequi</option><option value="efectivo">efectivo</option>',
+      onPreview() {},
+    });
+    assert.deepEqual(Object.keys(api).sort(), ['addRow', 'data', 'instId', 'preview', 'reset', 'toggle']);
+    api.toggle();
+    assert.equal(modo, true);
+    assert.equal(app.document.getElementById('t_rows').children.length, 2);
+    assert.deepEqual(Array.from(api.data()), [], 'sin cuenta ni monto elegidos no hay datos');
+  });
 
   test('dividir: con una sola cuenta válida no se activa', () => {
     const app = entorno();
@@ -1543,7 +1559,7 @@ describe('historial-patrimonio', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
   const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'),
-    modulo('tarjetas_credito.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('gastos.js'), core('movimientos.js'), core('html-tag.js'), core('umbrales.js'), core('salud.js'), core('fuentes-filtro.js'), modulo('analisis.js')];
+    modulo('tarjetas_credito.js'), modulo('nu.js'), modulo('cuentas.js'), core('split.js'), modulo('gastos.js'), core('movimientos.js'), core('html-tag.js'), core('umbrales.js'), core('salud.js'), core('fuentes-filtro.js'), modulo('analisis.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
   const dia = off => { const d = new Date(Date.now() + off * 864e5); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   const ts = off => { const d = new Date(Date.now() + off * 864e5); d.setHours(12, 0, 0, 0); return d.getTime(); };

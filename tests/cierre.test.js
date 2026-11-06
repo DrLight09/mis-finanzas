@@ -296,7 +296,8 @@ describe('cierre — tamaño y proyección', () => {
   });
 
   test('con el MISMO códec que usa el guardado (js/core/payload-codec.js) el tamaño medido es el real', async () => {
-    const codec = await import(path.join(RAIZ, 'js', 'core', 'payload-codec.js'));
+    // import() de ESM exige una URL file:// (en Windows una ruta suelta «C:\\…» da ERR_UNSUPPORTED_ESM_URL_SCHEME).
+    const codec = await import(require('node:url').pathToFileURL(path.join(RAIZ, 'js', 'core', 'payload-codec.js')).href);
     const real = (await codec.codificarPayload(JSON.stringify(ctx.S))).length;
     const t = await ctx.Cierre.tamano(ctx.S, { hoy: HOY, comprimir: async txt => (await codec.codificarPayload(txt)).length });
     assert.equal(t.comprimido, real);

@@ -489,7 +489,7 @@ test('P7b. con un cobro de este mes registrado, o sin dÃ­a esperado, o con el dÃ
 
 /* ---- editar un gasto fijo (gastos.js) ---- */
 function gastosApp(sObj) {
-  const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('html-tag.js'), CORE('umbrales.js'), CORE('reglas.js'), CORE('salud.js'), CORE('plan-deudas.js'), MOD('inicio.js'), MOD('gastos.js')], { permissive: true });
+  const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('html-tag.js'), CORE('umbrales.js'), CORE('reglas.js'), CORE('salud.js'), CORE('plan-deudas.js'), MOD('inicio.js'), CORE('split.js'), MOD('gastos.js')], { permissive: true });
   Object.assign(ctx.S, sObj);
   const valores = {};
   const el = id => (valores[id] = valores[id] || { value: '', textContent: '', classList: { add() {}, remove() {} } });

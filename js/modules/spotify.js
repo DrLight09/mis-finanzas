@@ -87,25 +87,19 @@ function _spPagarSplitFuentesOpts(selectedVal){
   return FuentesFiltro.optsHtml(getFuentesSinTC(),{...FuentesFiltro.PRESET.SPOTIFY,selectedVal,placeholder:'Selecciona una cuenta...',sinOpcionesTexto:FuentesFiltro.MSG_SIN_SALDO});
 }
 
-crearSplitWidget('spc', {
+const _sp_spc = crearSplitWidget('spc', {
   simpleId:'spCobModoSimple', splitId:'spCobModoDividido', toggleId:'spCobSplitToggle', rowsId:'spCobSplitRows',
   getModo:()=>spcSplitMode, setModo:v=>{spcSplitMode=v;},
   getFuentesFn:_spSplitFuentesOpts,
   onPreview:actualizarSpDestinoPreview
 });
-function toggleSpCobSplit(){ splitToggle('spc'); }
-function agregarSpCobSplitRow(){ splitAgregarRow('spc'); }
-function getSpCobSplitData(){ return splitGetData('spc'); }
 
-crearSplitWidget('spp', {
+const _sp_spp = crearSplitWidget('spp', {
   simpleId:'spPagarModoSimple', splitId:'spPagarModoDividido', toggleId:'spPagarSplitToggle', rowsId:'spPagarSplitRows',
   getModo:()=>sppSplitMode, setModo:v=>{sppSplitMode=v;},
   getFuentesFn:_spPagarSplitFuentesOpts,
   onPreview:actualizarSpPagarPreview
 });
-function toggleSpPagarSplit(){ splitToggle('spp'); }
-function agregarSpPagarSplitRow(){ splitAgregarRow('spp'); }
-function getSpPagarSplitData(){ return splitGetData('spp'); }
 
 function getSpCajita(){
   // Finds or returns null for the Spotify cajita
@@ -982,7 +976,7 @@ function actualizarSpDestinoPreview(){
   const recibidoSplit=(montoRecInp||montoRecInp===0)?montoRecInp:montoEsperadoSplit;
   // Si dio de más, el extra tiene su propio destino: el split reparte solo la cuota.
   const monto=Math.min(recibidoSplit,montoEsperadoSplit);
-  const splits=getSpCobSplitData();
+  const splits=_sp_spc.data();
   const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
   const restante=monto-totalSplit;
   if(splits.length===0){prev.textContent=fmt(monto)+' por distribuir';prev.style.color='var(--text2)';return;}
@@ -1025,7 +1019,7 @@ function confirmarSpDestino(){
   let splits=null;
   let spDestinoSel='';
   if(spcSplitMode){
-    splits=getSpCobSplitData();
+    splits=_sp_spc.data();
     const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
     if(splits.length===0||totalSplit<=0){
       document.getElementById('spCobPreview').textContent='Asigna el cobro a al menos una cuenta';
@@ -1268,7 +1262,7 @@ async function actualizarSpPagarPreview(){
   if(sppSplitMode){
     fuenteInfo.textContent='';
     const monto=parseMoney(document.getElementById('spPagarMonto').value)||0;
-    const splits=getSpPagarSplitData();
+    const splits=_sp_spp.data();
     if(!monto){prev.textContent='';return;}
     const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
     const restante=monto-totalSplit;
@@ -1336,7 +1330,7 @@ async function confirmarPagarSpotify(){
     // Modo dividido: sin TC (ver comentario junto a spcSplitMode/sppSplitMode
     // más arriba) — todo o nada, valida saldo en CADA cuenta antes de
     // descontar de cualquiera, para no dejar el pago a medias si una falla.
-    splits=getSpPagarSplitData();
+    splits=_sp_spp.data();
     const totalSplit=splits.reduce((a,s)=>a+s.monto,0);
     if(splits.length===0||Math.abs(totalSplit-monto)>1){
       const prev=document.getElementById('spPagarPreview');
@@ -1593,14 +1587,14 @@ if (_spPagarMonto) _spPagarMonto.addEventListener('input', actualizarSpPagarPrev
 
 // ── Split de fuentes — cobro (spc) y pago (spp), ver crearSplitWidget arriba ──
 const _spCobSplitToggle = document.getElementById('spCobSplitToggle');
-if (_spCobSplitToggle) _spCobSplitToggle.addEventListener('click', toggleSpCobSplit);
+if (_spCobSplitToggle) _spCobSplitToggle.addEventListener('click', _sp_spc.toggle);
 const _spCobBtnAddRow = document.getElementById('btn-add-spcob-split-row');
-if (_spCobBtnAddRow) _spCobBtnAddRow.addEventListener('click', agregarSpCobSplitRow);
+if (_spCobBtnAddRow) _spCobBtnAddRow.addEventListener('click', _sp_spc.addRow);
 
 const _spPagarSplitToggle = document.getElementById('spPagarSplitToggle');
-if (_spPagarSplitToggle) _spPagarSplitToggle.addEventListener('click', toggleSpPagarSplit);
+if (_spPagarSplitToggle) _spPagarSplitToggle.addEventListener('click', _sp_spp.toggle);
 const _spPagarBtnAddRow = document.getElementById('btn-add-spp-split-row');
-if (_spPagarBtnAddRow) _spPagarBtnAddRow.addEventListener('click', agregarSpPagarSplitRow);
+if (_spPagarBtnAddRow) _spPagarBtnAddRow.addEventListener('click', _sp_spp.addRow);
 
 /* ═══════════════════════════════════════════════════════════════
    REGISTRO DE EVENTOS (funciones base — la integración con Personas

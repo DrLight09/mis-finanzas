@@ -66,7 +66,7 @@
    entre filas. */
 let _prestSplitMode = false;
 
-crearSplitWidget('prest', {
+const _sp_prest = crearSplitWidget('prest', {
   simpleId:'mov_fuente_simple', splitId:'mov_fuente_split', toggleId:'mov_split_toggle', rowsId:'mov_split_rows',
   getModo:()=>_prestSplitMode, setModo:v=>{_prestSplitMode=v;},
   getFuentesFn:_getPrestSplitFuentesOptions,
@@ -107,8 +107,6 @@ function _prestMontoSalida() {
 function _movDifToggle() { diffToggle('prestamoDif'); }
 function _movDifResumen() { diffResumen('prestamoDif'); }
 
-function togglePrestSplit(){ splitToggle('prest'); }
-function _prestAddSplitRow(){ splitAgregarRow('prest'); }
 
 // Un préstamo dado nunca sale de una tarjeta de crédito propia (eso es
 // "Préstamo con TC", un flujo aparte) — mismo filtro que ya usa
@@ -1317,7 +1315,7 @@ function _planAbonoEncargo(base) {
   // ¿La plata del encargo sale de VARIAS cuentas a la vez?
   let encCuentaSplits = null;
   if (_abonoEncCuentaSplitMode) {
-    const splits = _getAbonoEncCuentaSplitData().filter(s => s.fuente && s.monto > 0);
+    const splits = _sp_abonoEncCuenta.data().filter(s => s.fuente && s.monto > 0);
     if (!splits.length) return _planErr('Agrega al menos una cuenta del encargo con monto');
     const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
     if (Math.abs(totalSplit - monto) > Deudas.TOL) {
@@ -1358,7 +1356,7 @@ function _planAbonoEncargo(base) {
   // Destino(s) de la plata del abono
   let destinos = null, destino = '';
   if (_abonoSplitMode) {
-    destinos = _getAbonoDestinoSplitData().map(r => ({ ...r }));
+    destinos = _sp_abonoDestino.data().map(r => ({ ...r }));
     const sinCuentaPre = _errFilaSinCuenta(destinos);
     if (sinCuentaPre) return sinCuentaPre;
     const totalSplitPre = destinos.reduce((a, r) => a + (r.monto || 0), 0);
@@ -1461,7 +1459,7 @@ function _planAbonoNormal(base) {
   if (ex.error) return ex;
   let destinos = null, destino = '';
   if (_abonoSplitMode) {
-    destinos = _getAbonoDestinoSplitData().map(r => ({ ...r }));
+    destinos = _sp_abonoDestino.data().map(r => ({ ...r }));
     const sinCuenta = _errFilaSinCuenta(destinos);
     if (sinCuenta) return sinCuenta;
     const totalSplit = destinos.reduce((a, r) => a + (r.monto || 0), 0);
@@ -1717,16 +1715,13 @@ let _abonoEncId        = '';
 let _abonoEncCuenta    = '';
 let _extPartes         = []; // sistema de partes libres del extra
 
-crearSplitWidget('abonoDestino', {
+const _sp_abonoDestino = crearSplitWidget('abonoDestino', {
   simpleId:'mov_destino_simple', splitId:'mov_destino_split', toggleId:'mov_dest_split_toggle', rowsId:'mov_dest_split_rows',
   getModo:()=>_abonoSplitMode, setModo:v=>{_abonoSplitMode=v;},
   getFuentesFn:_getAbonoDestinoFuentesOptions,
   onPreview:abonoSplitResumen
 });
 
-function toggleAbonoSplit(){ splitToggle('abonoDestino'); }
-function abonoAddSplitRow(){ splitAgregarRow('abonoDestino'); }
-function _getAbonoDestinoSplitData(){ return splitGetData('abonoDestino'); }
 
 // El destino de un abono nunca es una tarjeta de crédito (una TC jamás es
 // destino de plata entrante) — mismo filtro que ya aplicaba getFuentesSinTC()
@@ -1742,7 +1737,7 @@ function _getAbonoDestinoFuentesOptions(selectedVal) {
 
 function abonoSplitResumen() {
   const monto = parseMoney(document.getElementById('mov_monto').value)||0;
-  const total = _getAbonoDestinoSplitData().reduce((a,r)=>a+(r.monto||0),0);
+  const total = _sp_abonoDestino.data().reduce((a,r)=>a+(r.monto||0),0);
   const diff  = monto - total;
   const el    = document.getElementById('mov_dest_split_resumen');
   if(!el) return;
@@ -2015,7 +2010,7 @@ function _getMdSplitFuentesOptions(selectedVal) {
   return FuentesFiltro.optsHtml(getFuentes(), { ...FuentesFiltro.PRESET.SALIDA, selectedVal, placeholder: 'Elige cuenta' });
 }
 
-crearSplitWidget('mdSplit', {
+const _sp_mdSplit = crearSplitWidget('mdSplit', {
   simpleId: 'md_cuenta_simple', splitId: 'md_cuenta_split', toggleId: 'md_split_toggle', rowsId: 'md_split_rows',
   getModo: () => _mdSplitMode, setModo: v => { _mdSplitMode = v; },
   getFuentesFn: _getMdSplitFuentesOptions,
@@ -2037,8 +2032,6 @@ function _mdExtra() {
 function _mdTotalCuentas() {
   return (parseMoney((_mdEl('md_monto') || {}).value) || 0) + _mdExtra();
 }
-function toggleMdSplit() { splitToggle('mdSplit'); }
-function _mdAddSplitRow() { splitAgregarRow('mdSplit'); }
 
 function _updateMdSplitResumen() {
   const resEl = _mdEl('md_split_resumen');
@@ -2454,7 +2447,7 @@ function confirmarPrestamoTC() {
    500mil sale de ambas a la vez). Reutiliza el motor genérico de splits. ── */
 let _abonoEncCuentaSplitMode = false;
 
-crearSplitWidget('abonoEncCuenta', {
+const _sp_abonoEncCuenta = crearSplitWidget('abonoEncCuenta', {
   simpleId: 'mov_enc_cuenta_simple', splitId: 'mov_enc_cuenta_split',
   toggleId: 'mov_enc_cuenta_split_toggle', rowsId: 'mov_enc_cuenta_split_rows',
   getModo: () => _abonoEncCuentaSplitMode, setModo: v => { _abonoEncCuentaSplitMode = v; },
@@ -2462,9 +2455,6 @@ crearSplitWidget('abonoEncCuenta', {
   onPreview: _abonoEncCuentaSplitPreview
 });
 
-function _abonoEncCuentaSplitToggle() { splitToggle('abonoEncCuenta'); }
-function _abonoEncCuentaAgregarSplitRow() { splitAgregarRow('abonoEncCuenta'); }
-function _getAbonoEncCuentaSplitData() { return splitGetData('abonoEncCuenta'); }
 
 // Resetea el botón "Dividir" de abonoEncCuenta a su estado visual por defecto
 // (texto Y color). Antes había 3 resets parciales sueltos que solo tocaban el
@@ -2490,7 +2480,7 @@ function _abonoEncCuentaSplitPreview() {
   if (!el) return;
   const monto = parseMoney(document.getElementById('mov_monto').value) || 0;
   const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null;
-  const splits = _getAbonoEncCuentaSplitData();
+  const splits = _sp_abonoEncCuenta.data();
   if (!splits.length) { el.textContent = ''; return; }
   const total = splits.reduce((a, s) => a + (s.monto || 0), 0);
   const restante = monto - total;
@@ -2637,17 +2627,17 @@ Events.registerAll('prestado', {
   abrirSheetAbono: _abrirSheetAbono,
   abrirSheetPagoCompleto: _abrirSheetPagoCompleto,
   confirmarMovimientoGuard: _confirmarMovimientoConGuard,
-  togglePrestSplit: togglePrestSplit,
-  prestAddSplitRow: _prestAddSplitRow,
-  toggleMdSplit: toggleMdSplit,
-  mdAddSplitRow: _mdAddSplitRow,
+  togglePrestSplit: _sp_prest.toggle,
+  prestAddSplitRow: _sp_prest.addRow,
+  toggleMdSplit: _sp_mdSplit.toggle,
+  mdAddSplitRow: _sp_mdSplit.addRow,
   movDifToggle: _movDifToggle,
-  toggleAbonoSplit: toggleAbonoSplit,
-  abonoAddSplitRow: abonoAddSplitRow,
+  toggleAbonoSplit: _sp_abonoDestino.toggle,
+  abonoAddSplitRow: _sp_abonoDestino.addRow,
   extAddParte: extAddParte,
   extDelParte: extDelParte,
-  abonoEncCuentaSplitToggle: _abonoEncCuentaSplitToggle,
-  abonoEncCuentaAgregarSplitRow: _abonoEncCuentaAgregarSplitRow,
+  abonoEncCuentaSplitToggle: _sp_abonoEncCuenta.toggle,
+  abonoEncCuentaAgregarSplitRow: _sp_abonoEncCuenta.addRow,
 
   // Préstamo con TC
   abrirSheetPrestamoTC: abrirSheetPrestamoTC,

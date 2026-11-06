@@ -53,15 +53,15 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 13 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 63 | 4 |
-| `js/modules/encargos.js` | lazy — grupo `encargos` | 116 | 0 |
-| `js/modules/gastos.js` | de entrada (defer) | 29 | 0 |
+| `js/modules/encargos.js` | lazy — grupo `encargos` | 102 | 0 |
+| `js/modules/gastos.js` | de entrada (defer) | 26 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 26 | 0 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 57 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 57 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
 | `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
-| `js/modules/prestado.js` | lazy — grupo `prestamos` | 134 | 1 |
-| `js/modules/spotify.js` | lazy — grupo `spotify` | 52 | 2 |
+| `js/modules/prestado.js` | lazy — grupo `prestamos` | 124 | 1 |
+| `js/modules/spotify.js` | lazy — grupo `spotify` | 46 | 2 |
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 31 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 117 | 3 |
 
@@ -355,13 +355,13 @@ Carga: lazy — grupo `cuentas`
 
 Carga: lazy — grupo `encargos`
 
-**Funciones:** `_actualizarMovEncCuentaHint`, `_actualizarMoverEncDestinoHint`, `_actualizarMoverEncOrigenHint`, `_actualizarMoverEncPreview`, `_actualizarPartePreview`, `_actualizarTransfEncPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_confirmarMoverEncCuentasSplit`, `_confirmarUsarParte`, `_crearSplitSobrante`, `_ctcActualizarCuentaEncHint`, `_ctcActualizarDestinoHint`, `_ctcActualizarPreview`, `_ctcDifResumen`, `_ctcDifToggle`, `_ctcMiAgregarRow`, `_ctcMiSplitToggle`, `_difAddBenef`, `_difMiAgregarRow`, `_difMiSplitPreview`, `_difMiSplitToggle`, `_difRemoveBenef`, `_difRenderHistorialParte`, `_difResumen`, `_difSetCuentaEntrada`, `_difSetCuentaSalida`, `_difSetMonto`, `_difSetNombre`, `_difToggle`, `_difTogglePagoYo`, `_encAbrirSelectorPersonaNueva`, `_encGrupoSplit`, `_encSplitCarrier`, `_encSplitKey`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_getUsarParteFuentesOptions`, `_getUsarParteSplitData`, `_initNuevoEncargoPersonaSelector`, `_irAEncargo`, `_miaEntraAgregarRow`, `_miaEntraSplitToggle`, `_miaLeerCuentas`, `_miaMontoEfectivo`, `_miaResumenLado`, `_miaSaleAgregarRow`, `_miaSaleSplitToggle`, `_movEncActualizarFaltante`, `_movEncAgregarSplitRow`, `_movEncConfirmarPrestarFaltante`, `_movEncFaltanteCuentaHint`, `_movEncGetFuentesOptions`, `_movEncGetSplitData`, `_movEncMiaPreview`, `_movEncMiaToggle`, `_movEncSplitPreview`, `_movEncSplitToggle`, `_moverEncAgregarSplitRow`, `_moverEncGetFuentesOptions`, `_moverEncGetSplitData`, `_moverEncSplitPreview`, `_moverEncSplitToggle`, `_onSelPersonaNuevoEncargo`, `_procesarDiferencial`, `_procesarMovEncMia`, `_salidaEncMenuIr`, `_usarParteAddBenef`, `_usarParteAgregarSplitRow`, `_usarParteDifResumen`, `_usarParteDifToggle`, `_usarParteFuentePreview`, `_usarParteMiAgregarRow`, `_usarParteMiSplitToggle`, `_usarParteRemoveBenef`, `_usarParteSetMonto`, `_usarParteSetNombre`, `_usarParteSplitToggle`, `_validarIntercambiosBenefs`, `_validarMovEncMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMovEncargo`, `abrirMoverEntreCuentasEncargo`, `abrirNuevaParte`, `abrirNuevoEncargo`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMovEncargo`, `confirmarMoverEncCuentas`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
+**Funciones:** `_actualizarMovEncCuentaHint`, `_actualizarMoverEncDestinoHint`, `_actualizarMoverEncOrigenHint`, `_actualizarMoverEncPreview`, `_actualizarPartePreview`, `_actualizarTransfEncPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_confirmarMoverEncCuentasSplit`, `_confirmarUsarParte`, `_crearSplitSobrante`, `_ctcActualizarCuentaEncHint`, `_ctcActualizarDestinoHint`, `_ctcActualizarPreview`, `_ctcDifResumen`, `_ctcDifToggle`, `_ctcMiAgregarRow`, `_ctcMiSplitToggle`, `_difAddBenef`, `_difMiSplitPreview`, `_difRemoveBenef`, `_difRenderHistorialParte`, `_difResumen`, `_difSetCuentaEntrada`, `_difSetCuentaSalida`, `_difSetMonto`, `_difSetNombre`, `_difToggle`, `_difTogglePagoYo`, `_encAbrirSelectorPersonaNueva`, `_encGrupoSplit`, `_encSplitCarrier`, `_encSplitKey`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_getUsarParteFuentesOptions`, `_initNuevoEncargoPersonaSelector`, `_irAEncargo`, `_miaLeerCuentas`, `_miaMontoEfectivo`, `_miaResumenLado`, `_movEncActualizarFaltante`, `_movEncConfirmarPrestarFaltante`, `_movEncFaltanteCuentaHint`, `_movEncGetFuentesOptions`, `_movEncMiaPreview`, `_movEncMiaToggle`, `_movEncSplitPreview`, `_moverEncGetFuentesOptions`, `_moverEncSplitPreview`, `_moverEncSplitToggle`, `_onSelPersonaNuevoEncargo`, `_procesarDiferencial`, `_procesarMovEncMia`, `_salidaEncMenuIr`, `_usarParteAddBenef`, `_usarParteDifResumen`, `_usarParteDifToggle`, `_usarParteFuentePreview`, `_usarParteMiAgregarRow`, `_usarParteMiSplitToggle`, `_usarParteRemoveBenef`, `_usarParteSetMonto`, `_usarParteSetNombre`, `_validarIntercambiosBenefs`, `_validarMovEncMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMovEncargo`, `abrirMoverEntreCuentasEncargo`, `abrirNuevaParte`, `abrirNuevoEncargo`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMovEncargo`, `confirmarMoverEncCuentas`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
 
 ### `js/modules/gastos.js`
 
 Carga: de entrada (defer)
 
-**Funciones:** `_bienPoblar`, `_gfPoblar`, `_gvDiaLabel`, `abrirEditarBien`, `abrirEditarGastoFijo`, `abrirNuevoGastoFijo`, `abrirNuevoGastoVar`, `abrirPagarGastoFijo`, `abrirSheetBien`, `actualizarGvImpacto`, `actualizarGvSplitPreview`, `addGastoFijo`, `addGastoVar`, `agregarGvSplitRow`, `confirmarPagarGastoFijo`, `deleteGastoFijo`, `deleteGastoVar`, `eliminarBien`, `getGvSplitData`, `getGvSplitFuentesOptions`, `guardarBien`, `pgfActualizarSaldo`, `renderGastosFijos`, `renderGastosVar`, `renderMesFiltros`, `setMesFiltro`, `switchGastoTab`, `toggleCompraGrande`, `toggleGvSplit`
+**Funciones:** `_bienPoblar`, `_gfPoblar`, `_gvDiaLabel`, `abrirEditarBien`, `abrirEditarGastoFijo`, `abrirNuevoGastoFijo`, `abrirNuevoGastoVar`, `abrirPagarGastoFijo`, `abrirSheetBien`, `actualizarGvImpacto`, `actualizarGvSplitPreview`, `addGastoFijo`, `addGastoVar`, `confirmarPagarGastoFijo`, `deleteGastoFijo`, `deleteGastoVar`, `eliminarBien`, `getGvSplitFuentesOptions`, `guardarBien`, `pgfActualizarSaldo`, `renderGastosFijos`, `renderGastosVar`, `renderMesFiltros`, `setMesFiltro`, `switchGastoTab`, `toggleCompraGrande`
 
 ### `js/modules/inicio.js`
 
@@ -401,7 +401,7 @@ Carga: lazy — grupo `comprometida`
 
 Carga: lazy — grupo `prestamos`
 
-**Funciones:** `_abonoEncCuentaAgregarSplitRow`, `_abonoEncCuentaSplitPreview`, `_abonoEncCuentaSplitToggle`, `_abrirMovMiDeudaPago`, `_abrirMovMiDeudaRecibido`, `_abrirPerfilDesdeDeudor`, `_abrirPerfilDesdeDeudorActual`, `_abrirPerfilDesdeMiDeuda`, `_abrirPerfilDesdeMiDeudaActual`, `_abrirSheetAbono`, `_abrirSheetNuevaDeuda`, `_abrirSheetNuevaPersona`, `_abrirSheetNuevoPrestamo`, `_abrirSheetPagoCompleto`, `_actualizarBtnPrestamoTC`, `_actualizarEncPreview`, `_aplicarAbonoEncargo`, `_aplicarAbonoNormal`, `_aplicarExtraPartes`, `_aplicarMovimiento`, `_aplicarMovMiDeuda`, `_aplicarPerdon`, `_aplicarPrestamo`, `_autoCerrarGruposEnCero`, `_autoGrupoIdMov`, `_colorDeuda`, `_confirmarMovimientoConGuard`, `_confirmarMovimientoInterno`, `_crearGrupoDeudor`, `_deudaCuentasDe`, `_deudaOpsPosteriores`, `_deudaTieneCuentaAfectada`, `_enReversion`, `_errFilaSinCuenta`, `_errMonto`, `_errSumaCuentas`, `_getAbonoDestinoFuentesOptions`, `_getAbonoDestinoSplitData`, `_getAbonoEncCuentaFuentesOptions`, `_getAbonoEncCuentaSplitData`, `_getMdSplitFuentesOptions`, `_getOrCrearHistorico`, `_getPrestSplitFuentesOptions`, `_gruposAbiertos`, `_htmlHistorialPorGrupos`, `_initGrupoSelector`, `_initMovGrupoSelector`, `_irADeudor`, `_irAMiDeuda`, `_mdAddSplitRow`, `_mdEl`, `_mdEsPerdon`, `_mdExtra`, `_mdPickColor`, `_mdTitulo`, `_mdTotalCuentas`, `_mostrarErrorPlan`, `_movDifResumen`, `_movDifToggle`, `_movEsPerdon`, `_movTieneEncargoVinculado`, `_onMovMontoInput`, `_onSelPersonaMeDeben`, `_onSelPersonaYoDebo`, `_pintarEncabezadoDeuda`, `_pintarTabPrestamos`, `_planAbonoEncargo`, `_planAbonoNormal`, `_planErr`, `_planExtra`, `_planMovimiento`, `_planMovMiDeuda`, `_planPrestamo`, `_prEnsureAlcancia`, `_prestAddSplitRow`, `_prestMontoSalida`, `_prtcDifResumen`, `_prtcDifToggle`, `_renderListaDeudas`, `_resetEncCuentaSplitToggleStyle`, `_resolverGrupoIdMov`, `_resolverGrupoIdSel`, `_revertirDestinoAbono`, `_revertirDestinosAbono`, `_revertirMovDeudor`, `_revertirMovDeudorImpl`, `_revertirMovMiDeuda`, `_revertirMovMiDeudaImpl`, `_updateMdSplitResumen`, `_updatePrestSplitResumen`, `_verificarIntegridadSaldoDeudor`, `abonoAddSplitRow`, `abonoSplitResumen`, `abrirDeudor`, `abrirMiDeuda`, `abrirMovMiDeuda`, `abrirSheetPrestamoTC`, `cambiarTabPrestamos`, `confirmarMovimiento`, `confirmarMovMiDeuda`, `confirmarPrestamoTC`, `editarDeudorActual`, `editarMiDeudaActual`, `eliminarDeudorActual`, `eliminarMiDeuda`, `eliminarMovDeudor`, `eliminarMovMiDeuda`, `extAddParte`, `extDelParte`, `extRenderPartes`, `extResumenPartes`, `extSetCuenta`, `extSetDesc`, `extSetMonto`, `extSetQuien`, `extSetTipo`, `fuenteLabel2`, `getGrupoSaldo`, `guardarEditarMiDeuda`, `initMovSheet`, `onChangeMov_enc_cuenta`, `onChangeMov_enc_sel`, `renderDeudoresList`, `renderMisDeudasList`, `toggleAbonoSplit`, `toggleDesdeEncargo`, `toggleExtraSection`, `toggleMdExtra`, `toggleMdPerdon`, `toggleMdSplit`, `toggleMovPerdon`, `togglePrestSplit`, `volverDeudores`, `volverMisDeudas`
+**Funciones:** `_abonoEncCuentaSplitPreview`, `_abrirMovMiDeudaPago`, `_abrirMovMiDeudaRecibido`, `_abrirPerfilDesdeDeudor`, `_abrirPerfilDesdeDeudorActual`, `_abrirPerfilDesdeMiDeuda`, `_abrirPerfilDesdeMiDeudaActual`, `_abrirSheetAbono`, `_abrirSheetNuevaDeuda`, `_abrirSheetNuevaPersona`, `_abrirSheetNuevoPrestamo`, `_abrirSheetPagoCompleto`, `_actualizarBtnPrestamoTC`, `_actualizarEncPreview`, `_aplicarAbonoEncargo`, `_aplicarAbonoNormal`, `_aplicarExtraPartes`, `_aplicarMovimiento`, `_aplicarMovMiDeuda`, `_aplicarPerdon`, `_aplicarPrestamo`, `_autoCerrarGruposEnCero`, `_autoGrupoIdMov`, `_colorDeuda`, `_confirmarMovimientoConGuard`, `_confirmarMovimientoInterno`, `_crearGrupoDeudor`, `_deudaCuentasDe`, `_deudaOpsPosteriores`, `_deudaTieneCuentaAfectada`, `_enReversion`, `_errFilaSinCuenta`, `_errMonto`, `_errSumaCuentas`, `_getAbonoDestinoFuentesOptions`, `_getAbonoEncCuentaFuentesOptions`, `_getMdSplitFuentesOptions`, `_getOrCrearHistorico`, `_getPrestSplitFuentesOptions`, `_gruposAbiertos`, `_htmlHistorialPorGrupos`, `_initGrupoSelector`, `_initMovGrupoSelector`, `_irADeudor`, `_irAMiDeuda`, `_mdEl`, `_mdEsPerdon`, `_mdExtra`, `_mdPickColor`, `_mdTitulo`, `_mdTotalCuentas`, `_mostrarErrorPlan`, `_movDifResumen`, `_movDifToggle`, `_movEsPerdon`, `_movTieneEncargoVinculado`, `_onMovMontoInput`, `_onSelPersonaMeDeben`, `_onSelPersonaYoDebo`, `_pintarEncabezadoDeuda`, `_pintarTabPrestamos`, `_planAbonoEncargo`, `_planAbonoNormal`, `_planErr`, `_planExtra`, `_planMovimiento`, `_planMovMiDeuda`, `_planPrestamo`, `_prEnsureAlcancia`, `_prestMontoSalida`, `_prtcDifResumen`, `_prtcDifToggle`, `_renderListaDeudas`, `_resetEncCuentaSplitToggleStyle`, `_resolverGrupoIdMov`, `_resolverGrupoIdSel`, `_revertirDestinoAbono`, `_revertirDestinosAbono`, `_revertirMovDeudor`, `_revertirMovDeudorImpl`, `_revertirMovMiDeuda`, `_revertirMovMiDeudaImpl`, `_updateMdSplitResumen`, `_updatePrestSplitResumen`, `_verificarIntegridadSaldoDeudor`, `abonoSplitResumen`, `abrirDeudor`, `abrirMiDeuda`, `abrirMovMiDeuda`, `abrirSheetPrestamoTC`, `cambiarTabPrestamos`, `confirmarMovimiento`, `confirmarMovMiDeuda`, `confirmarPrestamoTC`, `editarDeudorActual`, `editarMiDeudaActual`, `eliminarDeudorActual`, `eliminarMiDeuda`, `eliminarMovDeudor`, `eliminarMovMiDeuda`, `extAddParte`, `extDelParte`, `extRenderPartes`, `extResumenPartes`, `extSetCuenta`, `extSetDesc`, `extSetMonto`, `extSetQuien`, `extSetTipo`, `fuenteLabel2`, `getGrupoSaldo`, `guardarEditarMiDeuda`, `initMovSheet`, `onChangeMov_enc_cuenta`, `onChangeMov_enc_sel`, `renderDeudoresList`, `renderMisDeudasList`, `toggleDesdeEncargo`, `toggleExtraSection`, `toggleMdExtra`, `toggleMdPerdon`, `toggleMovPerdon`, `volverDeudores`, `volverMisDeudas`
 
 **Globales:** `PERSONA_COLORES_MD`
 
@@ -411,7 +411,7 @@ Carga: lazy — grupo `prestamos`
 
 Carga: lazy — grupo `spotify`
 
-**Funciones:** `_abrirSelPersonaSpotifyEdit`, `_borrarSpHistorial`, `_initSpotifyEditPersonaSelector`, `_initSpotifyPersonaSelector`, `_onClickSpEditPersonaBtn`, `_onSelPersonaSpotify`, `_onSelPersonaSpotifyEdit`, `_spEnsureTC`, `_spExtraOpts`, `_spPagarSplitFuentesOpts`, `_spProporcionarSplits`, `_spSplitFuentesOpts`, `_syncSpDebeWrap`, `_syncSpExtraWrap`, `abrirPagarSpotify`, `actualizarSpDestinoPreview`, `actualizarSpPagarPreview`, `actualizarSpResolverPreview`, `addSpotify`, `agregarSpCobSplitRow`, `agregarSpPagarSplitRow`, `confirmarPagarSpotify`, `confirmarSpDestino`, `confirmarSpResolverPendiente`, `deleteSpHistorial`, `deleteSpotify`, `deshacerAbonoPendienteSp`, `editarSpotify`, `getSpCajita`, `getSpCajitaSaldo`, `getSpCobSplitData`, `getSpPagarSplitData`, `guardarEditarSpotify`, `marcarPagoSpotify`, `nextMonthFixed`, `openSheet_pagarSpotify`, `renderSpHistorial`, `renderSpotify`, `renderSpStats`, `resolverPendienteSpHistorial`, `selSpMeses`, `spAsignarPeriodos`, `spCicloCobrosActual`, `spCobradoDePersona`, `spCostoValido`, `spMontoAntesDe`, `spPeriodosVencidos`, `spResumenCicloActual`, `spSumarDias`, `spTramosDeCobro`, `toggleSpCobSplit`, `toggleSpPagarSplit`
+**Funciones:** `_abrirSelPersonaSpotifyEdit`, `_borrarSpHistorial`, `_initSpotifyEditPersonaSelector`, `_initSpotifyPersonaSelector`, `_onClickSpEditPersonaBtn`, `_onSelPersonaSpotify`, `_onSelPersonaSpotifyEdit`, `_spEnsureTC`, `_spExtraOpts`, `_spPagarSplitFuentesOpts`, `_spProporcionarSplits`, `_spSplitFuentesOpts`, `_syncSpDebeWrap`, `_syncSpExtraWrap`, `abrirPagarSpotify`, `actualizarSpDestinoPreview`, `actualizarSpPagarPreview`, `actualizarSpResolverPreview`, `addSpotify`, `confirmarPagarSpotify`, `confirmarSpDestino`, `confirmarSpResolverPendiente`, `deleteSpHistorial`, `deleteSpotify`, `deshacerAbonoPendienteSp`, `editarSpotify`, `getSpCajita`, `getSpCajitaSaldo`, `guardarEditarSpotify`, `marcarPagoSpotify`, `nextMonthFixed`, `openSheet_pagarSpotify`, `renderSpHistorial`, `renderSpotify`, `renderSpStats`, `resolverPendienteSpHistorial`, `selSpMeses`, `spAsignarPeriodos`, `spCicloCobrosActual`, `spCobradoDePersona`, `spCostoValido`, `spMontoAntesDe`, `spPeriodosVencidos`, `spResumenCicloActual`, `spSumarDias`, `spTramosDeCobro`
 
 **Globales:** `SP_EMPATE_PERIODOS`, `SP_PERIODO_DIAS`
 
@@ -442,9 +442,7 @@ Ninguno.
 | Nombre | Archivo |
 |---|---|
 | `_aBase64` | `js/core/payload-codec.js` |
-| `_abonoEncCuentaAgregarSplitRow` | `js/modules/prestado.js` |
 | `_abonoEncCuentaSplitPreview` | `js/modules/prestado.js` |
-| `_abonoEncCuentaSplitToggle` | `js/modules/prestado.js` |
 | `_abrirConfirmarTasaNu` | `js/modules/nu.js` |
 | `_abrirCrearPersonaGlobal` | `js/modules/personas.js` |
 | `_abrirListaPersonas` | `js/modules/personas.js` |
@@ -583,9 +581,7 @@ Ninguno.
 | `_difAddBenef` | `js/modules/encargos.js` |
 | `_diffActualizarMiCuenta` | `js/core/diferencial.js` |
 | `_diffFuentesOptsHtml` | `js/core/diferencial.js` |
-| `_difMiAgregarRow` | `js/modules/encargos.js` |
 | `_difMiSplitPreview` | `js/modules/encargos.js` |
-| `_difMiSplitToggle` | `js/modules/encargos.js` |
 | `_difRemoveBenef` | `js/modules/encargos.js` |
 | `_difRenderHistorialParte` | `js/modules/encargos.js` |
 | `_difResumen` | `js/modules/encargos.js` |
@@ -619,9 +615,7 @@ Ninguno.
 | `_fuenteLabelHtml` | `js/core/movimientos.js` |
 | `_getA` | `js/modules/alcancia.js` |
 | `_getAbonoDestinoFuentesOptions` | `js/modules/prestado.js` |
-| `_getAbonoDestinoSplitData` | `js/modules/prestado.js` |
 | `_getAbonoEncCuentaFuentesOptions` | `js/modules/prestado.js` |
-| `_getAbonoEncCuentaSplitData` | `js/modules/prestado.js` |
 | `_getCuotaAnio` | `js/core/calc-helpers.js` |
 | `_getEncargoSaldoEnCuenta` | `js/modules/encargos.js` |
 | `_getEncargoSaldoPorCuenta` | `js/modules/encargos.js` |
@@ -633,7 +627,6 @@ Ninguno.
 | `_getPrestSplitFuentesOptions` | `js/modules/prestado.js` |
 | `_getSaldoOfuscado` | `js/modules/alcancia.js` |
 | `_getUsarParteFuentesOptions` | `js/modules/encargos.js` |
-| `_getUsarParteSplitData` | `js/modules/encargos.js` |
 | `_gfPoblar` | `js/modules/gastos.js` |
 | `_gruposAbiertos` | `js/modules/prestado.js` |
 | `_guardarEditarPersonaGlobal` | `js/modules/personas.js` |
@@ -667,7 +660,6 @@ Ninguno.
 | `_listaFuentes` | `js/core/core-state.js` |
 | `_locallyModified` | `js/core/core-state.js` (window._locallyModified = …) |
 | `_markError` | `js/core/sheet-stack.js` |
-| `_mdAddSplitRow` | `js/modules/prestado.js` |
 | `_mdEl` | `js/modules/prestado.js` |
 | `_mdEsPerdon` | `js/modules/prestado.js` |
 | `_mdExtra` | `js/modules/prestado.js` |
@@ -688,13 +680,9 @@ Ninguno.
 | `_mesesCubiertos` | `js/modules/inicio.js` |
 | `_mesNombreDeKey` | `js/core/calc-helpers.js` |
 | `_metaAporteEliminar` | `js/modules/nu.js` |
-| `_miaEntraAgregarRow` | `js/modules/encargos.js` |
-| `_miaEntraSplitToggle` | `js/modules/encargos.js` |
 | `_miaLeerCuentas` | `js/modules/encargos.js` |
 | `_miaMontoEfectivo` | `js/modules/encargos.js` |
 | `_miaResumenLado` | `js/modules/encargos.js` |
-| `_miaSaleAgregarRow` | `js/modules/encargos.js` |
-| `_miaSaleSplitToggle` | `js/modules/encargos.js` |
 | `_miDeudaEditColor` | `js/modules/prestado.js` (window._miDeudaEditColor = …) |
 | `_milesFormatear` | `js/core/money-input.js` |
 | `_montoAlEscribir` | `js/core/money-input.js` |
@@ -709,18 +697,13 @@ Ninguno.
 | `_movDifResumen` | `js/modules/prestado.js` |
 | `_movDifToggle` | `js/modules/prestado.js` |
 | `_movEncActualizarFaltante` | `js/modules/encargos.js` |
-| `_movEncAgregarSplitRow` | `js/modules/encargos.js` |
 | `_movEncConfirmarPrestarFaltante` | `js/modules/encargos.js` |
 | `_movEncFaltanteCuentaHint` | `js/modules/encargos.js` |
 | `_movEncGetFuentesOptions` | `js/modules/encargos.js` |
-| `_movEncGetSplitData` | `js/modules/encargos.js` |
 | `_movEncMiaPreview` | `js/modules/encargos.js` |
 | `_movEncMiaToggle` | `js/modules/encargos.js` |
 | `_movEncSplitPreview` | `js/modules/encargos.js` |
-| `_movEncSplitToggle` | `js/modules/encargos.js` |
-| `_moverEncAgregarSplitRow` | `js/modules/encargos.js` |
 | `_moverEncGetFuentesOptions` | `js/modules/encargos.js` |
-| `_moverEncGetSplitData` | `js/modules/encargos.js` |
 | `_moverEncSplitPreview` | `js/modules/encargos.js` |
 | `_moverEncSplitToggle` | `js/modules/encargos.js` |
 | `_movEsPerdon` | `js/modules/prestado.js` |
@@ -763,7 +746,6 @@ Ninguno.
 | `_planPrestamo` | `js/modules/prestado.js` |
 | `_poblarDestinoMesada` | `js/modules/mesada.js` |
 | `_prEnsureAlcancia` | `js/modules/prestado.js` |
-| `_prestAddSplitRow` | `js/modules/prestado.js` |
 | `_prestMontoSalida` | `js/modules/prestado.js` |
 | `_previewDisponible` | `js/modules/mesada.js` |
 | `_previewSplit` | `js/modules/mesada.js` |
@@ -836,7 +818,6 @@ Ninguno.
 | `_updateMetaCuotaPreview` | `js/modules/nu.js` |
 | `_updatePrestSplitResumen` | `js/modules/prestado.js` |
 | `_usarParteAddBenef` | `js/modules/encargos.js` |
-| `_usarParteAgregarSplitRow` | `js/modules/encargos.js` |
 | `_usarParteDifResumen` | `js/modules/encargos.js` |
 | `_usarParteDifToggle` | `js/modules/encargos.js` |
 | `_usarParteFuentePreview` | `js/modules/encargos.js` |
@@ -845,7 +826,6 @@ Ninguno.
 | `_usarParteRemoveBenef` | `js/modules/encargos.js` |
 | `_usarParteSetMonto` | `js/modules/encargos.js` |
 | `_usarParteSetNombre` | `js/modules/encargos.js` |
-| `_usarParteSplitToggle` | `js/modules/encargos.js` |
 | `_validarEstructuraJSON` | `js/modules/configuracion.js` |
 | `_validarIntercambiosBenefs` | `js/modules/encargos.js` |
 | `_validarMovEncMia` | `js/modules/encargos.js` |
@@ -982,7 +962,6 @@ Ninguno.
 | `_wrappedVentana` | `js/core/wrapped-gate.js` |
 | `_wrappedVentanaInfo` | `js/core/wrapped-gate.js` (window._wrappedVentanaInfo = …) |
 | `_wrappedVisible` | `js/modules/wrapped.js` |
-| `abonoAddSplitRow` | `js/modules/prestado.js` |
 | `abonoSplitResumen` | `js/modules/prestado.js` |
 | `abrirAgregarDinero` | `js/modules/cuentas.js` |
 | `abrirCargoEspecialTC` | `js/modules/tarjetas_credito.js` |
@@ -1059,9 +1038,6 @@ Ninguno.
 | `addGastoVar` | `js/modules/gastos.js` |
 | `addSpotify` | `js/modules/spotify.js` |
 | `agregarCat` | `js/modules/configuracion.js` |
-| `agregarGvSplitRow` | `js/modules/gastos.js` |
-| `agregarSpCobSplitRow` | `js/modules/spotify.js` |
-| `agregarSpPagarSplitRow` | `js/modules/spotify.js` |
 | `ajustarSaldoCuenta` | `js/core/core-state.js` |
 | `alcanciaAgregarOrigen` | `js/modules/alcancia.js` (window.alcanciaAgregarOrigen = …) |
 | `alcanciaConfirmarDeposito` | `js/modules/alcancia.js` (window.alcanciaConfirmarDeposito = …) |
@@ -1264,7 +1240,6 @@ Ninguno.
 | `getFuentesOptions` | `js/modules/mesada.js` |
 | `getFuentesSinTC` | `js/core/core-state.js` |
 | `getGrupoSaldo` | `js/modules/prestado.js` |
-| `getGvSplitData` | `js/modules/gastos.js` |
 | `getGvSplitFuentesOptions` | `js/modules/gastos.js` |
 | `getIconoData` | `js/modules/cuentas.js` |
 | `getIngresosFijosMes` | `js/core/core-state.js` |
@@ -1279,8 +1254,6 @@ Ninguno.
 | `getSaldoFuente` | `js/core/core-state.js` |
 | `getSpCajita` | `js/modules/spotify.js` |
 | `getSpCajitaSaldo` | `js/modules/spotify.js` |
-| `getSpCobSplitData` | `js/modules/spotify.js` |
-| `getSpPagarSplitData` | `js/modules/spotify.js` |
 | `getTCById` | `js/core/calc-helpers.js` |
 | `guardarBien` | `js/modules/gastos.js` |
 | `guardarCDT` | `js/modules/nu.js` |
@@ -1490,21 +1463,15 @@ Ninguno.
 | `tcRecalcular` | `js/modules/tarjetas_credito.js` |
 | `tcSelColor` | `js/modules/tarjetas_credito.js` |
 | `toast` | `js/core/core-state.js` |
-| `toggleAbonoSplit` | `js/modules/prestado.js` |
 | `toggleAdApertura` | `js/modules/cuentas.js` |
 | `toggleCompraGrande` | `js/modules/gastos.js` |
 | `toggleDesdeEncargo` | `js/modules/prestado.js` |
 | `toggleExtraSection` | `js/modules/prestado.js` |
-| `toggleGvSplit` | `js/modules/gastos.js` |
 | `toggleMdExtra` | `js/modules/prestado.js` |
 | `toggleMdPerdon` | `js/modules/prestado.js` |
-| `toggleMdSplit` | `js/modules/prestado.js` |
 | `toggleMetaMinWrap` | `js/modules/nu.js` |
 | `toggleModulo` | `js/modules/configuracion.js` |
 | `toggleMovPerdon` | `js/modules/prestado.js` |
-| `togglePrestSplit` | `js/modules/prestado.js` |
-| `toggleSpCobSplit` | `js/modules/spotify.js` |
-| `toggleSpPagarSplit` | `js/modules/spotify.js` |
 | `totalMisDeudasPendiente` | `js/core/calc-helpers.js` |
 | `totalPrestadoPendiente` | `js/core/calc-helpers.js` |
 | `TR_MIN_EFECTIVO` | `js/modules/cuentas.js` |

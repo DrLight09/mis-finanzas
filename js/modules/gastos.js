@@ -107,15 +107,12 @@ function getGvSplitFuentesOptions(selectedVal) {
    js/core/sheet-stack.js (poblarFuente + FuentesFiltro.podar: solo cuentas con saldo >= $1,00
    y TC con cupo disponible). No se puebla acá. */
 
-crearSplitWidget('gv', {
+const gvSplit = crearSplitWidget('gv', {
   simpleId: 'gvModoSimple', splitId: 'gvModoDividido', toggleId: 'gvSplitToggle', rowsId: 'gvSplitRows',
   getModo: () => gvSplitMode, setModo: v => { gvSplitMode = v; },
   getFuentesFn: getGvSplitFuentesOptions,
   onPreview: actualizarGvSplitPreview
 });
-function toggleGvSplit() { splitToggle('gv'); }
-function agregarGvSplitRow() { splitAgregarRow('gv'); }
-function getGvSplitData() { return splitGetData('gv'); }
 
 // Preview del split de gasto — mismo estilo que actualizarSpPagarPreview
 // en spotify.js (modo dividido: todo o nada, sin margen de "sin asignar").
@@ -123,7 +120,7 @@ function actualizarGvSplitPreview() {
   const prev = document.getElementById('gvSplitPreview');
   if (!prev) return;
   const monto = parseMoney(document.getElementById('gv_monto').value) || 0;
-  const splits = getGvSplitData();
+  const splits = gvSplit.data();
   if (!monto) { prev.textContent = ''; return; }
   const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
   const restante = monto - totalSplit;
@@ -480,7 +477,7 @@ function addGastoVar() {
   let fuente = '';
   let splits = null;
   if (gvSplitMode) {
-    splits = getGvSplitData();
+    splits = gvSplit.data();
     const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
     if (splits.length === 0 || Math.abs(totalSplit - monto) > 1) {
       const prev = document.getElementById('gvSplitPreview');
@@ -903,9 +900,9 @@ if (_gGvFuente) _gGvFuente.addEventListener('change', () => mostrarAlertaFuente(
 
 // ── Split de fuentes — gasto variable (gv), ver crearSplitWidget arriba ──
 const _gGvSplitToggle = document.getElementById('gvSplitToggle');
-if (_gGvSplitToggle) _gGvSplitToggle.addEventListener('click', toggleGvSplit);
+if (_gGvSplitToggle) _gGvSplitToggle.addEventListener('click', gvSplit.toggle);
 const _gGvBtnAddRow = document.getElementById('btn-add-gv-split-row');
-if (_gGvBtnAddRow) _gGvBtnAddRow.addEventListener('click', agregarGvSplitRow);
+if (_gGvBtnAddRow) _gGvBtnAddRow.addEventListener('click', gvSplit.addRow);
 const _gGvMonto = document.getElementById('gv_monto');
 if (_gGvMonto) _gGvMonto.addEventListener('input', actualizarGvSplitPreview);
 if (_gGvMonto) _gGvMonto.addEventListener('input', actualizarGvImpacto);

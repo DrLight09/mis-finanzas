@@ -762,14 +762,12 @@ diffRegistrarInstancia('movenc', {
   onResumen: () => _difMiSplitPreview()
 });
 
-crearSplitWidget('movencDifMi', {
+const _sp_movencDifMi = crearSplitWidget('movencDifMi', {
   simpleId: 'movenc_dif_mi_simple', splitId: 'movenc_dif_mi_split', toggleId: 'movenc_dif_mi_toggle', rowsId: 'movencDifMiRows',
   getModo: () => _difMiSplitMode, setModo: v => { _difMiSplitMode = v; },
   getFuentesFn: sel => buildFuentesOptsHtml({ selectedVal: sel, incluirTC: false, placeholder: 'Elegir cuenta' }),
   onPreview: () => _difMiSplitPreview()
 });
-function _difMiSplitToggle() { splitToggle('movencDifMi'); }
-function _difMiAgregarRow() { splitAgregarRow('movencDifMi'); }
 
 function _difMiSplitPreview() {
   const el = document.getElementById('movenc_dif_mi_preview');
@@ -830,22 +828,18 @@ function _movEncMiaToggle() {
 let _miaSaleSplitMode  = false;
 let _miaEntraSplitMode = false;
 
-crearSplitWidget('miaSale', {
+const _sp_miaSale = crearSplitWidget('miaSale', {
   simpleId: 'movenc_mia_sale_simple', splitId: 'movenc_mia_sale_split', toggleId: 'movenc_mia_sale_toggle', rowsId: 'miaSaleRows',
   getModo: () => _miaSaleSplitMode, setModo: v => { _miaSaleSplitMode = v; },
   getFuentesFn: sel => _diffFuentesOptsHtml(sel, true),
   onPreview: () => _movEncMiaPreview()
 });
-crearSplitWidget('miaEntra', {
+const _sp_miaEntra = crearSplitWidget('miaEntra', {
   simpleId: 'movenc_mia_entra_simple', splitId: 'movenc_mia_entra_split', toggleId: 'movenc_mia_entra_toggle', rowsId: 'miaEntraRows',
   getModo: () => _miaEntraSplitMode, setModo: v => { _miaEntraSplitMode = v; },
   getFuentesFn: sel => _diffFuentesOptsHtml(sel, false),
   onPreview: () => _movEncMiaPreview()
 });
-function _miaSaleSplitToggle()  { splitToggle('miaSale'); }
-function _miaSaleAgregarRow()   { splitAgregarRow('miaSale'); }
-function _miaEntraSplitToggle() { splitToggle('miaEntra'); }
-function _miaEntraAgregarRow()  { splitAgregarRow('miaEntra'); }
 
 // Monto que realmente puso el usuario de su bolsillo (2026-09-30): si el bloque
 // "El valor real era diferente" está abierto y el real es válido (0 < real < monto),
@@ -1085,14 +1079,13 @@ function _usarParteDifResumen() { diffResumen('usarParte'); }
 let _usarParteSplitMode = false;
 let _usarParteMargenPendiente = null;
 
-crearSplitWidget('usarParte', {
+const _sp_usarParte = crearSplitWidget('usarParte', {
   simpleId:'usarParteModoSimple', splitId:'usarParteModoDividido', toggleId:'usarParteSplitToggle', rowsId:'usarParteSplitRows',
   getModo:()=>_usarParteSplitMode, setModo:v=>{_usarParteSplitMode=v;},
   getFuentesFn:_getUsarParteFuentesOptions,
   onPreview:_usarParteFuentePreview
 });
 
-function _usarParteSplitToggle(){ splitToggle('usarParte'); }
 
 function _getUsarParteFuentesOptions(selectedVal) {
   const enc = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
@@ -1103,9 +1096,7 @@ function _getUsarParteFuentesOptions(selectedVal) {
   return buildFuentesOptsHtml({ selectedVal, mostrarSaldo: true, fuentesCustom: fuentesConSaldo });
 }
 
-function _usarParteAgregarSplitRow(){ splitAgregarRow('usarParte'); }
 
-function _getUsarParteSplitData(){ return splitGetData('usarParte'); }
 
 function _usarParteFuentePreview() {
   const el = document.getElementById('usar-parte-fuente-preview');
@@ -1116,7 +1107,7 @@ function _usarParteFuentePreview() {
   if (!monto) { el.textContent = ''; return; }
 
   if (_usarParteSplitMode) {
-    const splits = _getUsarParteSplitData();
+    const splits = _sp_usarParte.data();
     const total = splits.reduce((a, s) => a + s.monto, 0);
     const restante = monto - total;
     if (splits.length === 0) { el.textContent = ''; return; }
@@ -1149,7 +1140,7 @@ async function _confirmarUsarParte() {
   // Leer origen de la plata (fuente simple o split)
   let fuentesOrigen = [];
   if (_usarParteSplitMode) {
-    fuentesOrigen = _getUsarParteSplitData();
+    fuentesOrigen = _sp_usarParte.data();
   } else {
     const sel = document.getElementById('usar_parte_fuente');
     const val = sel ? sel.value : '';
@@ -1480,14 +1471,13 @@ function _actualizarMovEncCuentaHint(enc, cuentaVal) {
 /* ─── Split de fuente en "Retirar plata" del encargo ─────────────── */
 let _movEncSplitMode = false;
 
-crearSplitWidget('movenc', {
+const _sp_movenc = crearSplitWidget('movenc', {
   simpleId:'movenc_cuenta_simple', splitId:'movenc_cuenta_split', toggleId:'movenc_split_toggle', rowsId:'movencSplitRows',
   getModo:()=>_movEncSplitMode, setModo:v=>{_movEncSplitMode=v;},
   getFuentesFn:_movEncGetFuentesOptions,
   onPreview:_movEncSplitPreview
 });
 
-function _movEncSplitToggle(){ splitToggle('movenc'); }
 
 function _movEncGetFuentesOptions(selectedVal) {
   const enc = encargoActualId ? getEncargo(encargoActualId) : null;
@@ -1500,9 +1490,7 @@ function _movEncGetFuentesOptions(selectedVal) {
   return buildFuentesOptsHtml({ selectedVal, mostrarSaldo: true, fuentesCustom: cuentasConSaldo });
 }
 
-function _movEncAgregarSplitRow(){ splitAgregarRow('movenc'); }
 
-function _movEncGetSplitData(){ return splitGetData('movenc'); }
 
 function _movEncSplitPreview() {
   const el = document.getElementById('movenc_split_preview');
@@ -1510,7 +1498,7 @@ function _movEncSplitPreview() {
     const montoTotal = parseMoney(document.getElementById('movenc_monto').value) || 0;
     if (!_movEncSplitMode) { el.textContent = ''; }
     else {
-      const splits  = _movEncGetSplitData();
+      const splits  = _sp_movenc.data();
       const asignado = splits.reduce((a, s) => a + s.monto, 0);
       const restante = montoTotal - asignado;
       if (splits.length === 0) { el.textContent = ''; }
@@ -1619,7 +1607,7 @@ function confirmarMovEncargo() {
 
   if (movEncargoTipo === 'salida' && _movEncSplitMode) {
     // ── MODO SPLIT ──────────────────────────────────────────────────
-    const splits = _movEncGetSplitData();
+    const splits = _sp_movenc.data();
     const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
     if (splits.length === 0) { toast('Agrega al menos una cuenta en el split', 'err'); return; }
     if (Math.abs(totalSplit - monto) > 0.5) {
@@ -2456,15 +2444,13 @@ function _actualizarMoverEncDestinoHint() {
    UsarParte (js/core/split.js), instancia propia 'moverenc'. */
 let _moverEncSplitMode = false;
 
-crearSplitWidget('moverenc', {
+const _sp_moverenc = crearSplitWidget('moverenc', {
   simpleId:'moverenc_origen_simple', splitId:'moverenc_origen_split', toggleId:'moverenc_split_toggle', rowsId:'moverencSplitRows',
   getModo:()=>_moverEncSplitMode, setModo:v=>{_moverEncSplitMode=v;},
   getFuentesFn:_moverEncGetFuentesOptions,
   onPreview:_moverEncSplitPreview
 });
 
-function _moverEncAgregarSplitRow(){ splitAgregarRow('moverenc'); }
-function _moverEncGetSplitData(){ return splitGetData('moverenc'); }
 
 function _moverEncGetFuentesOptions(selectedVal) {
   const enc = encargoActualId ? getEncargo(encargoActualId) : null;
@@ -2503,7 +2489,7 @@ function _actualizarMoverEncPreview(enc) {
   if (!prev) return;
 
   if (_moverEncSplitMode) {
-    const splits = _moverEncGetSplitData(); // [{fuente, monto}]
+    const splits = _sp_moverenc.data(); // [{fuente, monto}]
     if (splits.length === 0 || !destino) { prev.innerHTML = ''; return; }
     // Filas con monto pero sin cuenta elegida todavía: no cuentan para el
     // cálculo, solo se avisan aparte (evita mostrar matemática sin sentido
@@ -2577,7 +2563,7 @@ function _actualizarMoverEncPreview(enc) {
 // total. No se agrupan para borrado — igual que esa salida dividida, cada
 // parte queda como un registro independiente en el historial del encargo.
 function _confirmarMoverEncCuentasSplit(enc, destino, fecha) {
-  const splits = _moverEncGetSplitData(); // [{fuente, monto}]
+  const splits = _sp_moverenc.data(); // [{fuente, monto}]
   if (splits.length === 0) { toast('Agrega al menos una cuenta de origen', 'err'); return; }
   if (splits.some(s => !s.fuente)) { toast('Selecciona la cuenta de origen en cada fila', 'err'); return; }
   if (splits.some(s => FuentesFiltro.esTC(s.fuente))) { toast('Una tarjeta de crédito no puede ser cuenta de origen', 'err'); return; }
@@ -3324,28 +3310,28 @@ Events.registerAll('encargos', {
   salidaMenuIr:           (...args) => _salidaEncMenuIr(...args),         // data-args: ["normal"|"mio"|"otroEncargo"|"tc"]
   abrirMoverCuentas:      (...args) => abrirMoverEntreCuentasEncargo(...args),
   moverEncSplitToggle:      (...args) => _moverEncSplitToggle(...args),
-  moverEncAgregarSplitRow:  (...args) => _moverEncAgregarSplitRow(...args),
+  moverEncAgregarSplitRow:  (...args) => _sp_moverenc.addRow(...args),
   abrirNuevaParte:        (...args) => abrirNuevaParte(...args),
-  movSplitToggle:         (...args) => _movEncSplitToggle(...args),
-  movAgregarSplitRow:     (...args) => _movEncAgregarSplitRow(...args),
+  movSplitToggle:         (...args) => _sp_movenc.toggle(...args),
+  movAgregarSplitRow:     (...args) => _sp_movenc.addRow(...args),
   difToggle:              (...args) => _difToggle(...args),
   difAddBenef:            (...args) => _difAddBenef(...args),
   miaToggle:              (...args) => _movEncMiaToggle(...args),
-  miaSaleSplitToggle:     (...args) => _miaSaleSplitToggle(...args),
-  miaSaleAgregarRow:      (...args) => _miaSaleAgregarRow(...args),
-  miaEntraSplitToggle:    (...args) => _miaEntraSplitToggle(...args),
-  miaEntraAgregarRow:     (...args) => _miaEntraAgregarRow(...args),
-  difMiSplitToggle:       (...args) => _difMiSplitToggle(...args),
+  miaSaleSplitToggle:     (...args) => _sp_miaSale.toggle(...args),
+  miaSaleAgregarRow:      (...args) => _sp_miaSale.addRow(...args),
+  miaEntraSplitToggle:    (...args) => _sp_miaEntra.toggle(...args),
+  miaEntraAgregarRow:     (...args) => _sp_miaEntra.addRow(...args),
+  difMiSplitToggle:       (...args) => _sp_movencDifMi.toggle(...args),
   ctcMiSplitToggle:       (...args) => _ctcMiSplitToggle(...args),
   ctcMiAgregarRow:        (...args) => _ctcMiAgregarRow(...args),
   usarParteMiSplitToggle: (...args) => _usarParteMiSplitToggle(...args),
   usarParteMiAgregarRow:  (...args) => _usarParteMiAgregarRow(...args),
-  difMiAgregarRow:        (...args) => _difMiAgregarRow(...args),
+  difMiAgregarRow:        (...args) => _sp_movencDifMi.addRow(...args),
   confirmarPrestarFaltante: (...args) => _movEncConfirmarPrestarFaltante(...args),
   guardarParte:           (...args) => guardarParte(...args),
   cerrarParteSheet:       (...args) => cerrarPartSheet(...args),
-  usarParteSplitToggle:   (...args) => _usarParteSplitToggle(...args),
-  usarParteAgregarSplitRow: (...args) => _usarParteAgregarSplitRow(...args),
+  usarParteSplitToggle:   (...args) => _sp_usarParte.toggle(...args),
+  usarParteAgregarSplitRow: (...args) => _sp_usarParte.addRow(...args),
   usarParteDifToggle:     (...args) => _usarParteDifToggle(...args),
   usarParteAddBenef:      (...args) => _usarParteAddBenef(...args),
   confirmarUsarParte:     (...args) => _confirmarUsarParte(...args),

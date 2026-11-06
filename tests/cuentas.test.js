@@ -278,7 +278,7 @@ describe('calcC-calcCDT', () => {
       path.join(CORE_DIR, 'calc-helpers.js'),
       path.join(MODULES_DIR, 'nu.js'),
       path.join(MODULES_DIR, 'cuentas.js'),
-      path.join(MODULES_DIR, 'prestado.js'),
+      path.join(CORE_DIR, 'split.js'), path.join(MODULES_DIR, 'prestado.js'),
     ], { permissive: true });
     Object.assign(ctx.S, sOverrides);
     return ctx;
@@ -1196,7 +1196,7 @@ describe('spotify-cajita', () => {
   function freshApp(S = {}) {
     const ctx = loadApp([
       path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
-      path.join(CORE_DIR, 'calc-helpers.js'), path.join(MODULES_DIR, 'spotify.js'),
+      path.join(CORE_DIR, 'calc-helpers.js'), path.join(CORE_DIR, 'split.js'), path.join(MODULES_DIR, 'spotify.js'),
     ], { permissive: true });
     Object.assign(ctx.S, S);
     return ctx;
@@ -1226,7 +1226,7 @@ describe('gastos-ida-y-vuelta', () => {
   const { createFakeDom } = require('./support/fake-dom');
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('tarjetas_credito.js'), modulo('gastos.js')];
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('tarjetas_credito.js'), core('split.js'), modulo('gastos.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
   function entorno(campos) {
@@ -1277,7 +1277,7 @@ describe('eliminar-movimiento', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
   const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'),
-    modulo('tarjetas_credito.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('gastos.js'), core('movimientos.js')];
+    modulo('tarjetas_credito.js'), modulo('nu.js'), modulo('cuentas.js'), core('split.js'), modulo('gastos.js'), core('movimientos.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
   const HOY = '2026-10-13';
 

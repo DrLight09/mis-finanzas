@@ -4,6 +4,17 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## A1: `crearSplitWidget` devuelve la API; fuera 37 envoltorios (2026-11-05, SW v105)
+
+- `crearSplitWidget(inst, cfg)` ahora **devuelve** `{ toggle, addRow, data, reset, preview, instId }`. Cada módulo la guarda (`const _sp_prest = crearSplitWidget('prest', …)`) y llama `_sp_prest.data()` en vez de tener `splitGetData('prest')` envuelto en una función propia.
+- Migradas **gastos** (3 envoltorios), **spotify** (6), **préstamos** (10) y **encargos** (14): se borraron 33 funciones de una línea y sus referencias (registros de `Events`, listeners) apuntan a la API. Los nombres de acción de `data-action` no cambiaron.
+- `split.js` usa `var _splitInstancias`, así que cargarlo dos veces (tests con varios cargadores) ya no falla; los loaders de los tests cargan `split.js` antes de gastos/spotify/prestado/encargos.
+- No migrado (no tenían envoltorios, solo lambdas en un listener): `mesada`, `analisis` (`cb`), `alcancia`, y la fábrica `_crearSplitSobrante` de encargos.
+- Test nuevo: la API completa de `crearSplitWidget`.
+- **Para probar en el navegador:** dividir entre cuentas en Gasto, pago de Spotify, nuevo préstamo, abono a un préstamo, mover/usar parte de un encargo.
+
+---
+
 ## Tasa E.A. en «Yo debo» (2026-11-05, SW v104)
 
 - «Editar deuda» (Yo debo) tiene el campo opcional **Tasa E.A.** (0–100 %, vacío = sin intereses). Se guarda como `tasaEA` en la deuda y entra al costo mensual y al plan de salida (`_deudasPropias`). Test `P2`.

@@ -278,7 +278,7 @@ describe('calcC-calcCDT', () => {
       path.join(CORE_DIR, 'calc-helpers.js'),
       path.join(MODULES_DIR, 'nu.js'),
       path.join(MODULES_DIR, 'cuentas.js'),
-      path.join(CORE_DIR, 'split.js'), path.join(MODULES_DIR, 'prestado.js'),
+      path.join(CORE_DIR, 'split.js'), path.join(CORE_DIR, 'diferencial.js'), path.join(MODULES_DIR, 'prestado.js'),
     ], { permissive: true });
     Object.assign(ctx.S, sOverrides);
     return ctx;

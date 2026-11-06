@@ -38,7 +38,8 @@ function buildFuentesOptsHtml({
   incluirTC = true,
   mostrarSaldo = false,
   placeholder = 'Sin especificar',
-  fuentesCustom = null
+  fuentesCustom = null,
+  placeholderDeshabilitado = false
 } = {}) {
   const fuentes = fuentesCustom ?? (incluirTC ? getFuentes() : getFuentesSinTC());
   const opts = fuentes
@@ -56,7 +57,37 @@ function buildFuentesOptsHtml({
     })
     .filter(Boolean)
     .join('');
-  return `<option value="">${placeholder}</option>${opts}`;
+  const ph = placeholderDeshabilitado ? ` disabled${selectedVal ? '' : ' selected'}` : '';
+  return `<option value=""${ph}>${placeholder}</option>${opts}`;
+}
+
+/**
+ * opcionesCuenta — LA función para «¿de qué cuenta?» / «¿a qué cuenta?» (A2). Cada pantalla declara su configuración en vez de escribir
+ * su propia función de <option>s; todas pasan por buildFuentesOptsHtml (escapa) o FuentesFiltro (filtra por saldo/cupo).
+ *   sentido        'sale' (plata que SALE: cuentas con saldo ≥ $1 y tarjetas con cupo) | null (plata que ENTRA o sin filtro de saldo)
+ *   preset         clave de FuentesFiltro.PRESET si no es la de salida ('SPOTIFY': saldo ≥ $50)
+ *   tarjetas       incluir tarjetas de crédito (por defecto no: solo se piden cuando la plata sale con tarjeta)
+ *   soloDe         lista { cuenta, label, saldo } a ofrecer en lugar de todas (p. ej. las cuentas de un encargo); [] = ninguna, null = todas
+ *   mostrarSaldo   «Nombre ($saldo)»
+ *   placeholder / placeholderDeshabilitado / sinOpcionesTexto
+ *   extra          HTML de opciones al final, o función (selectedVal) → HTML (p. ej. «Ganancia (no salió plata)» de préstamos)
+ */
+function opcionesCuenta({ selectedVal = '', sentido = null, preset = null, tarjetas = false, soloDe = null, mostrarSaldo = false,
+  placeholder, placeholderDeshabilitado = false, sinOpcionesTexto, extra = '' } = {}) {
+  const hayCustom = Array.isArray(soloDe); // `soloDe: []` = «ninguna» (solo el placeholder); `null` = todas
+  let out;
+  if (sentido === 'sale' && !hayCustom) {
+    const base = { ...FuentesFiltro.PRESET[preset || 'SALIDA'], selectedVal };
+    if (placeholder !== undefined) base.placeholder = placeholder;
+    if (sinOpcionesTexto !== undefined) base.sinOpcionesTexto = sinOpcionesTexto;
+    out = FuentesFiltro.optsHtml(tarjetas ? getFuentes() : getFuentesSinTC(), base);
+  } else {
+    const o = { selectedVal, incluirTC: tarjetas, mostrarSaldo, placeholderDeshabilitado };
+    if (placeholder !== undefined) o.placeholder = placeholder;
+    if (hayCustom) o.fuentesCustom = soloDe;
+    out = buildFuentesOptsHtml(o);
+  }
+  return out + (typeof extra === 'function' ? extra(selectedVal) : extra);
 }
 
 /* ---- Resto del motor de Diferencial (diffRenderPartes, diffCalcular, diffResumen,

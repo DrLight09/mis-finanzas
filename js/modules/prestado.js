@@ -69,7 +69,8 @@ let _prestSplitMode = false;
 const _sp_prest = crearSplitWidget('prest', {
   simpleId:'mov_fuente_simple', splitId:'mov_fuente_split', toggleId:'mov_split_toggle', rowsId:'mov_split_rows',
   getModo:()=>_prestSplitMode, setModo:v=>{_prestSplitMode=v;},
-  getFuentesFn:_getPrestSplitFuentesOptions,
+  // Solo cuentas con saldo >= $1: de una cuenta vacía no puede salir el préstamo.
+  fuentes:()=>({ sentido:'sale', extra:_optGanancia }),
   onPreview:_updatePrestSplitResumen
 });
 
@@ -79,7 +80,7 @@ const _sp_prest = crearSplitWidget('prest', {
    El margen (dijo - real) es un ingreso mío, pero nunca tocó una cuenta (quedó prestado
    directamente) → mismo criterio que "Préstamo con TC" (instancia 'prtc'): ingreso fantasma
    fuente:'' (permiteMiCuenta:false), enlazado al préstamo para poder borrarlo con él. */
-diffRegistrarInstancia('prestamoDif', {
+const _dif_prestamoDif = diffRegistrarInstancia('prestamoDif', {
   ids: { wrap: 'mov-dif-wrap', body: 'mov-dif-body', icon: 'mov-dif-icon', real: 'mov_dif_real', resumen: 'mov-dif-resumen' },
   permiteBeneficiarios: false,
   permiteIntercambio: false,
@@ -104,8 +105,6 @@ function _prestMontoSalida() {
   return (real > 0 && real < monto - 0.5) ? real : monto;
 }
 
-function _movDifToggle() { diffToggle('prestamoDif'); }
-function _movDifResumen() { diffResumen('prestamoDif'); }
 
 
 // Un préstamo dado nunca sale de una tarjeta de crédito propia (eso es
@@ -113,13 +112,8 @@ function _movDifResumen() { diffResumen('prestamoDif'); }
 // _getAbonoDestinoFuentesOptions más abajo. Se agrega además la opción
 // "ganancia" (plata virtual que nunca salió de ninguna cuenta), propia
 // de esta instancia.
-function _getPrestSplitFuentesOptions(selectedVal) {
-  // Solo cuentas con saldo >= $1,00: de una cuenta vacía no puede salir el préstamo
-  // (FuentesFiltro, js/core/fuentes-filtro.js). "Sin especificar" y "Ganancia" no se filtran.
-  let out = FuentesFiltro.optsHtml(getFuentesSinTC(), { ...FuentesFiltro.PRESET.SALIDA, selectedVal });
-  out += `<option value="ganancia"${selectedVal==='ganancia'?' selected':''}><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>`;
-  return out;
-}
+// «Ganancia»: el préstamo no salió de ninguna cuenta (no filtra por saldo).
+const _optGanancia = selectedVal => `<option value="ganancia"${selectedVal==='ganancia'?' selected':''}><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no salió plata)</option>`;
 
 function _updatePrestSplitResumen(){
   const splitData = splitGetData('prest');
@@ -1718,7 +1712,7 @@ let _extPartes         = []; // sistema de partes libres del extra
 const _sp_abonoDestino = crearSplitWidget('abonoDestino', {
   simpleId:'mov_destino_simple', splitId:'mov_destino_split', toggleId:'mov_dest_split_toggle', rowsId:'mov_dest_split_rows',
   getModo:()=>_abonoSplitMode, setModo:v=>{_abonoSplitMode=v;},
-  getFuentesFn:_getAbonoDestinoFuentesOptions,
+  fuentes:{},
   onPreview:abonoSplitResumen
 });
 
@@ -1726,14 +1720,6 @@ const _sp_abonoDestino = crearSplitWidget('abonoDestino', {
 // El destino de un abono nunca es una tarjeta de crédito (una TC jamás es
 // destino de plata entrante) — mismo filtro que ya aplicaba getFuentesSinTC()
 // en el render casero que reemplaza este bloque.
-function _getAbonoDestinoFuentesOptions(selectedVal) {
-  const fuentes = getFuentesSinTC();
-  let out = '<option value="">Sin especificar</option>';
-  for (const f of fuentes) {
-    out += `<option value="${f.val}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`;
-  }
-  return out;
-}
 
 function abonoSplitResumen() {
   const monto = parseMoney(document.getElementById('mov_monto').value)||0;
@@ -2003,17 +1989,12 @@ function volverMisDeudas() {
 let _mdMovTipo = 'recibido';
 let _mdSplitMode = false;
 
-function _getMdSplitFuentesOptions(selectedVal) {
-  // 'recibido' = plata que entra: sin tarjetas (nunca son destino) y sin filtrar por saldo.
-  // 'pago' = plata que sale: cuentas con saldo >= $1,00 y tarjetas con cupo disponible.
-  if (_mdMovTipo === 'recibido') return buildFuentesOptsHtml({ selectedVal, placeholder: 'Elige cuenta', incluirTC: false });
-  return FuentesFiltro.optsHtml(getFuentes(), { ...FuentesFiltro.PRESET.SALIDA, selectedVal, placeholder: 'Elige cuenta' });
-}
 
 const _sp_mdSplit = crearSplitWidget('mdSplit', {
   simpleId: 'md_cuenta_simple', splitId: 'md_cuenta_split', toggleId: 'md_split_toggle', rowsId: 'md_split_rows',
   getModo: () => _mdSplitMode, setModo: v => { _mdSplitMode = v; },
-  getFuentesFn: _getMdSplitFuentesOptions,
+  // 'recibido' = plata que entra: sin tarjetas ni filtro de saldo. 'pago' = plata que sale: cuentas con saldo y tarjetas con cupo.
+  fuentes: () => _mdMovTipo === 'recibido' ? { placeholder: 'Elige cuenta' } : { sentido: 'sale', tarjetas: true, placeholder: 'Elige cuenta' },
   onPreview: _updateMdSplitResumen
 });
 
@@ -2308,7 +2289,7 @@ async function eliminarMiDeuda() {
 
 /* ── PRÉSTAMO CON TARJETA DE CRÉDITO ─────────────────────────────────────── */
 
-diffRegistrarInstancia('prtc', {
+const _dif_prtc = diffRegistrarInstancia('prtc', {
   ids: { wrap: 'prtc-dif-wrap', body: 'prtc-dif-body', icon: 'prtc-dif-icon', real: 'prtc_dif_real', resumen: 'prtc-dif-resumen' },
   permiteBeneficiarios: false,
   permiteIntercambio: false,
@@ -2319,8 +2300,6 @@ diffRegistrarInstancia('prtc', {
 });
 
 // Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual
-function _prtcDifToggle() { diffToggle('prtc'); }
-function _prtcDifResumen() { diffResumen('prtc'); }
 
 // El botón "Préstamo con TC" se ve atenuado (y al tocarlo explica por qué no se puede, ver
 // abrirSheetPrestamoTC) cuando ninguna TC activa tiene cupo disponible. No usa `disabled`
@@ -2451,7 +2430,7 @@ const _sp_abonoEncCuenta = crearSplitWidget('abonoEncCuenta', {
   simpleId: 'mov_enc_cuenta_simple', splitId: 'mov_enc_cuenta_split',
   toggleId: 'mov_enc_cuenta_split_toggle', rowsId: 'mov_enc_cuenta_split_rows',
   getModo: () => _abonoEncCuentaSplitMode, setModo: v => { _abonoEncCuentaSplitMode = v; },
-  getFuentesFn: _getAbonoEncCuentaFuentesOptions,
+  fuentes: () => { const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null; return { mostrarSaldo: true, soloDe: enc ? _getEncargoSaldoPorCuenta(enc) : [] }; },
   onPreview: _abonoEncCuentaSplitPreview
 });
 
@@ -2469,11 +2448,6 @@ function _resetEncCuentaSplitToggleStyle() {
   btn.style.color = 'var(--accent)';
 }
 
-function _getAbonoEncCuentaFuentesOptions(selectedVal) {
-  const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null;
-  const cuentasConSaldo = enc ? _getEncargoSaldoPorCuenta(enc) : [];
-  return buildFuentesOptsHtml({ selectedVal, mostrarSaldo: true, fuentesCustom: cuentasConSaldo });
-}
 
 function _abonoEncCuentaSplitPreview() {
   const el = document.getElementById('mov_enc_cuenta_split_resumen');
@@ -2631,7 +2605,7 @@ Events.registerAll('prestado', {
   prestAddSplitRow: _sp_prest.addRow,
   toggleMdSplit: _sp_mdSplit.toggle,
   mdAddSplitRow: _sp_mdSplit.addRow,
-  movDifToggle: _movDifToggle,
+  movDifToggle: _dif_prestamoDif.toggle,
   toggleAbonoSplit: _sp_abonoDestino.toggle,
   abonoAddSplitRow: _sp_abonoDestino.addRow,
   extAddParte: extAddParte,
@@ -2641,7 +2615,7 @@ Events.registerAll('prestado', {
 
   // Préstamo con TC
   abrirSheetPrestamoTC: abrirSheetPrestamoTC,
-  prtcDifToggle: _prtcDifToggle,
+  prtcDifToggle: _dif_prtc.toggle,
   confirmarPrestamoTC: confirmarPrestamoTC,
 
   // Yo debo
@@ -2668,7 +2642,7 @@ Events.registerAll('prestado', {
   if (movMonto) movMonto.addEventListener('input', () => {
     // Con "El valor era diferente" abierto, "dijiste" cambia con el monto: refresca el resumen
     // (que a su vez refresca el split si está abierto). Si no, solo el split.
-    if (diffEstaAbierto('prestamoDif')) _movDifResumen();
+    if (diffEstaAbierto('prestamoDif')) _dif_prestamoDif.resumen();
     else if (_prestSplitMode) _updatePrestSplitResumen();
     _onMovMontoInput();
   });
@@ -2693,8 +2667,8 @@ Events.registerAll('prestado', {
   ['md_monto', 'input', _updateMdSplitResumen],
   ['md_extra_monto', 'input', _updateMdSplitResumen],
   ['mov_extra_monto', 'input', extResumenPartes],
-  ['prtc_dif_real', 'input', _prtcDifResumen],
-  ['mov_dif_real', 'input', _movDifResumen],
+  ['prtc_dif_real', 'input', _dif_prtc.resumen],
+  ['mov_dif_real', 'input', _dif_prestamoDif.resumen],
 ].forEach(([elId, evt, fn]) => {
   const el = document.getElementById(elId);
   if (el) el.addEventListener(evt, fn);

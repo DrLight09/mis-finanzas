@@ -745,7 +745,7 @@ function crearEncargo() {
 // entre varias cuentas suyas en vez de una sola. Ver crearSplitWidget('movencDifMi') abajo.
 let _difMiSplitMode = false;
 
-diffRegistrarInstancia('movenc', {
+const _dif_movenc = diffRegistrarInstancia('movenc', {
   ids: {
     wrap: 'movenc-dif-wrap', body: 'movenc-dif-body', icon: 'movenc-dif-toggle-icon',
     real: 'movenc_dif_real', partesList: 'movenc-dif-beneficiarios',
@@ -787,16 +787,6 @@ function _difMiSplitPreview() {
 }
 
 // Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual, cero cambios de markup
-function _difToggle() { diffToggle('movenc'); }
-function _difAddBenef() { diffAddParte('movenc'); }
-function _difRemoveBenef(i) { diffRemoveParte('movenc', i); }
-function _difSetNombre(i, v) { diffSetNombre('movenc', i, v); }
-function _difSetMonto(i, v) { diffSetMonto('movenc', i, v); }
-function _difTogglePagoYo(i) { diffTogglePagoYo('movenc', i); }
-function _difSetCuentaSalida(i, v) { diffSetCuentaSalida('movenc', i, v); }
-function _difSetCuentaEntrada(i, v) { diffSetCuentaEntrada('movenc', i, v); }
-function _difResumen() { diffResumen('movenc'); }
-function _validarIntercambiosBenefs() { return diffValidarIntercambios('movenc'); }
 
 /* ─── "Yo puse la plata" — intercambio simple sin diferencial ─────
    Para cuando lo que dijiste = lo real, pero la plata no salió de la
@@ -1046,7 +1036,7 @@ const _usarParteMi = _crearSplitSobrante('usarParte', 'usarParteMi', {
 function _usarParteMiSplitToggle() { _usarParteMi.toggle(); }
 function _usarParteMiAgregarRow() { _usarParteMi.agregar(); }
 
-diffRegistrarInstancia('usarParte', {
+const _dif_usarParte = diffRegistrarInstancia('usarParte', {
   ids: {
     wrap: 'usar-parte-dif-wrap', body: 'usar-parte-dif-body', icon: 'usar-parte-dif-icon',
     real: 'usar_parte_dif_real', partesList: 'usar-parte-dif-benefs',
@@ -1068,12 +1058,6 @@ diffRegistrarInstancia('usarParte', {
 });
 
 // Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual
-function _usarParteDifToggle() { diffToggle('usarParte'); }
-function _usarParteAddBenef() { diffAddParte('usarParte'); }
-function _usarParteRemoveBenef(i) { diffRemoveParte('usarParte', i); }
-function _usarParteSetNombre(i, v) { diffSetNombre('usarParte', i, v); }
-function _usarParteSetMonto(i, v) { diffSetMonto('usarParte', i, v); }
-function _usarParteDifResumen() { diffResumen('usarParte'); }
 
 /* ─── Fuente (origen) en "Ya la usé" ──────────────────────────── */
 let _usarParteSplitMode = false;
@@ -1082,18 +1066,15 @@ let _usarParteMargenPendiente = null;
 const _sp_usarParte = crearSplitWidget('usarParte', {
   simpleId:'usarParteModoSimple', splitId:'usarParteModoDividido', toggleId:'usarParteSplitToggle', rowsId:'usarParteSplitRows',
   getModo:()=>_usarParteSplitMode, setModo:v=>{_usarParteSplitMode=v;},
-  getFuentesFn:_getUsarParteFuentesOptions,
+  fuentes:_usarParteFuentes,
   onPreview:_usarParteFuentePreview
 });
 
 
-function _getUsarParteFuentesOptions(selectedVal) {
+// Solo las cuentas donde el encargo tiene plata guardada.
+function _usarParteFuentes() {
   const enc = _usarParteEncId ? getEncargo(_usarParteEncId) : null;
-  const fuentesConSaldo = enc ? _getEncargoSaldoPorCuenta(enc) : [];
-  // Solo mostrar las cuentas donde el encargo tiene plata guardada.
-  // Los items de fuentesConSaldo tienen { cuenta, label, saldo } — buildFuentesOptsHtml
-  // los normaliza via { val: f.val ?? f.cuenta }.
-  return buildFuentesOptsHtml({ selectedVal, mostrarSaldo: true, fuentesCustom: fuentesConSaldo });
+  return { mostrarSaldo: true, soloDe: enc ? _getEncargoSaldoPorCuenta(enc) : [] };
 }
 
 
@@ -1289,7 +1270,7 @@ function abrirUsarParteSheet(encId, parteId) {
   // Poblar select con fuentes, preseleccionando la de mayor saldo en el encargo
   const sel = document.getElementById('usar_parte_fuente');
   if (sel) {
-    sel.innerHTML = _getUsarParteFuentesOptions('');
+    sel.innerHTML = opcionesCuenta(_usarParteFuentes());
     // Preseleccionar la cuenta con más saldo del encargo
     const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
     if (cuentasConSaldo.length > 0) {
@@ -1474,21 +1455,12 @@ let _movEncSplitMode = false;
 const _sp_movenc = crearSplitWidget('movenc', {
   simpleId:'movenc_cuenta_simple', splitId:'movenc_cuenta_split', toggleId:'movenc_split_toggle', rowsId:'movencSplitRows',
   getModo:()=>_movEncSplitMode, setModo:v=>{_movEncSplitMode=v;},
-  getFuentesFn:_movEncGetFuentesOptions,
+  // Con distribución por cuenta: solo las cuentas del encargo con su saldo. Sin distribución: todas las fuentes (con tarjetas), sin saldo.
+  fuentes:()=>{ const enc = encargoActualId ? getEncargo(encargoActualId) : null; const l = enc ? _getEncargoSaldoPorCuenta(enc) : []; return l.length ? { mostrarSaldo: true, soloDe: l } : { tarjetas: true }; },
   onPreview:_movEncSplitPreview
 });
 
 
-function _movEncGetFuentesOptions(selectedVal) {
-  const enc = encargoActualId ? getEncargo(encargoActualId) : null;
-  const cuentasConSaldo = enc ? _getEncargoSaldoPorCuenta(enc) : [];
-  // Si el encargo no tiene distribución por cuenta, mostrar todas las fuentes sin saldo.
-  // Con distribución, mostrar solo las cuentas del encargo con su saldo.
-  if (cuentasConSaldo.length === 0) {
-    return buildFuentesOptsHtml({ selectedVal });
-  }
-  return buildFuentesOptsHtml({ selectedVal, mostrarSaldo: true, fuentesCustom: cuentasConSaldo });
-}
 
 
 
@@ -1627,7 +1599,7 @@ function confirmarMovEncargo() {
       }
     }
     // Validar intercambios antes de registrar
-    const _errIntSplit = _validarIntercambiosBenefs();
+    const _errIntSplit = _dif_movenc.validarIntercambios();
     if (_errIntSplit) { toast(_errIntSplit, 'err', 5000); return; }
     const _errMiaSplit = _validarMovEncMia();
     if (_errMiaSplit) { toast(_errMiaSplit, 'err', 5000); return; }
@@ -1686,7 +1658,7 @@ function confirmarMovEncargo() {
       ts: Date.now()
     };
     if (movEncargoTipo === 'salida') {
-      const _errInt = _validarIntercambiosBenefs();
+      const _errInt = _dif_movenc.validarIntercambios();
       if (_errInt) { toast(_errInt, 'err', 5000); return; }
       const _errMia = _validarMovEncMia();
       if (_errMia) { toast(_errMia, 'err', 5000); return; }
@@ -2958,7 +2930,7 @@ const _ctcMi = _crearSplitSobrante('ctc', 'ctcMi', {
 function _ctcMiSplitToggle() { _ctcMi.toggle(); }
 function _ctcMiAgregarRow() { _ctcMi.agregar(); }
 
-diffRegistrarInstancia('ctc', {
+const _dif_ctc = diffRegistrarInstancia('ctc', {
   ids: {
     wrap: 'ctc-dif-wrap', body: 'ctc-dif-body', icon: 'ctc-dif-icon',
     real: 'ctc_dif_real', resumen: 'ctc-dif-resumen',
@@ -2979,8 +2951,6 @@ diffRegistrarInstancia('ctc', {
 });
 
 // Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual
-function _ctcDifToggle() { diffToggle('ctc'); }
-function _ctcDifResumen() { diffResumen('ctc'); }
 
 function abrirCompraConTC() {
   const enc = getEncargo(encargoActualId);
@@ -3258,20 +3228,20 @@ function confirmarCompraConTC() {
    ═══════════════════════════════════════════════════════════════ */
 [
   ['movenc_monto', 'input', _movEncSplitPreview],
-  ['movenc_monto', 'input', _difResumen],
+  ['movenc_monto', 'input', _dif_movenc.resumen],
   ['movenc_monto', 'input', _movEncMiaPreview],
   ['movenc_dif_real', 'input', _movEncMiaPreview],
   ['movenc_mia_cuenta_sale', 'change', _movEncMiaPreview],
   ['movenc_mia_cuenta_entra', 'change', _movEncMiaPreview],
   ['movenc_faltante_cuenta', 'change', _movEncFaltanteCuentaHint],
   ['ctc_monto', 'input', _ctcActualizarPreview],
-  ['ctc_monto', 'input', _ctcDifResumen],
+  ['ctc_monto', 'input', _dif_ctc.resumen],
   ['ctc_cuenta_enc', 'change', _ctcActualizarPreview],
   ['ctc_tarjeta', 'change', _ctcActualizarPreview],
   ['ctc_destino', 'change', _ctcActualizarPreview],
-  ['movenc_dif_real', 'input', _difResumen],
-  ['ctc_dif_real', 'input', _ctcDifResumen],
-  ['usar_parte_dif_real', 'input', _usarParteDifResumen],
+  ['movenc_dif_real', 'input', _dif_movenc.resumen],
+  ['ctc_dif_real', 'input', _dif_ctc.resumen],
+  ['usar_parte_dif_real', 'input', _dif_usarParte.resumen],
 ].forEach(([elId, evt, fn]) => {
   const el = document.getElementById(elId);
   if (el) el.addEventListener(evt, fn);
@@ -3314,8 +3284,8 @@ Events.registerAll('encargos', {
   abrirNuevaParte:        (...args) => abrirNuevaParte(...args),
   movSplitToggle:         (...args) => _sp_movenc.toggle(...args),
   movAgregarSplitRow:     (...args) => _sp_movenc.addRow(...args),
-  difToggle:              (...args) => _difToggle(...args),
-  difAddBenef:            (...args) => _difAddBenef(...args),
+  difToggle:              (...args) => _dif_movenc.toggle(...args),
+  difAddBenef:            (...args) => _dif_movenc.addParte(...args),
   miaToggle:              (...args) => _movEncMiaToggle(...args),
   miaSaleSplitToggle:     (...args) => _sp_miaSale.toggle(...args),
   miaSaleAgregarRow:      (...args) => _sp_miaSale.addRow(...args),
@@ -3332,10 +3302,10 @@ Events.registerAll('encargos', {
   cerrarParteSheet:       (...args) => cerrarPartSheet(...args),
   usarParteSplitToggle:   (...args) => _sp_usarParte.toggle(...args),
   usarParteAgregarSplitRow: (...args) => _sp_usarParte.addRow(...args),
-  usarParteDifToggle:     (...args) => _usarParteDifToggle(...args),
-  usarParteAddBenef:      (...args) => _usarParteAddBenef(...args),
+  usarParteDifToggle:     (...args) => _dif_usarParte.toggle(...args),
+  usarParteAddBenef:      (...args) => _dif_usarParte.addParte(...args),
   confirmarUsarParte:     (...args) => _confirmarUsarParte(...args),
-  ctcDifToggle:           (...args) => _ctcDifToggle(...args),
+  ctcDifToggle:           (...args) => _dif_ctc.toggle(...args),
   // Con argumentos dinámicos (id de encargo / movimiento / parte):
   abrirDetalle:           (...args) => abrirEncargoDetalle(...args),       // (encId)
   abrirDesdeCuenta:       (...args) => abrirEncargoDesdeCuenta(...args),   // (encId)

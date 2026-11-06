@@ -24,7 +24,7 @@ const RAIZ = path.join(__dirname, '..', '..', 'js');
 const HOY = '2026-10-30';
 const ARCHIVOS = [
   'core/core-state.js', 'core/cuenta-efectos.js', 'core/umbrales.js', 'core/periodo.js', 'core/nu-calc.js', 'core/calc-helpers.js', 'core/huella.js', 'core/cierre.js',
-  'modules/tarjetas_credito.js', 'modules/encargos.js', 'modules/alcancia.js', 'modules/wrapped.js',
+  'core/split.js', 'core/diferencial.js', 'modules/tarjetas_credito.js', 'modules/encargos.js', 'modules/alcancia.js', 'modules/wrapped.js',
 ].map(f => path.join(RAIZ, f));
 
 function cargarApp(extra) {

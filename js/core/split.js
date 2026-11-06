@@ -77,7 +77,13 @@ var _splitInstancias = _splitInstancias || {}; // `var`: cargarlo dos veces (tes
 // (`const gvSplit = crearSplitWidget('gv', {...})`) y llama `gvSplit.toggle()` / `gvSplit.data()`, en vez de escribir (y registrar) 4–5
 // envoltorios de una línea por instancia. Las instancias que aún tienen los envoltorios de siempre siguen funcionando igual: las funciones
 // `splitToggle(instId)` & co. no cambiaron.
+// `cfg.fuentes` (declarativo, A2): objeto —o función que lo devuelve, para lo que cambia con la pantalla— con las opciones de
+// opcionesCuenta(); reemplaza a `getFuentesFn` escrito a mano. `getFuentesFn` sigue valiendo para casos especiales.
 function crearSplitWidget(instId, cfg){
+  if (!cfg.getFuentesFn && cfg.fuentes) {
+    const decl = cfg.fuentes;
+    cfg.getFuentesFn = sel => opcionesCuenta({ ...(typeof decl === 'function' ? decl() : decl), selectedVal: sel });
+  }
   _splitInstancias[instId] = cfg;
   return {
     instId,

@@ -1146,3 +1146,27 @@ test('P2. la tasa E.A. de una deuda «Yo debo» entra al costo de la deuda y al 
   assert.equal(d[0].tasaEA, 24);
   assert.ok(ctx.planDeudasDatos().plan.costoMensualTotal > 0);
 });
+
+test('A2. opcionesCuenta: una sola función para «¿de qué cuenta?» con la configuración declarativa de cada pantalla', () => {
+  const ctx = app({ cuentas: cuentas(500000) }, [CORE('fuentes-filtro.js')]);
+  const val = html => Array.from(html.matchAll(/<option value="([^"]*)"/g)).map(m => m[1]).filter(Boolean);
+  const todas = val(ctx.opcionesCuenta({}));
+  assert.ok(todas.includes('nequi') && todas.includes('efectivo'), 'sin filtro: plata que entra, cualquier cuenta');
+  const sale = val(ctx.opcionesCuenta({ sentido: 'sale' }));
+  assert.ok(sale.includes('nequi') && !sale.includes('efectivo'), 'plata que sale: no se ofrece una cuenta vacía');
+  assert.deepEqual(val(ctx.opcionesCuenta({ soloDe: [] })), [], 'soloDe vacío = ninguna cuenta (encargo sin plata)');
+  const delEnc = ctx.opcionesCuenta({ soloDe: [{ cuenta: 'nequi', label: 'Nequi', saldo: 1000 }], mostrarSaldo: true });
+  assert.deepEqual(val(delEnc), ['nequi']);
+  assert.match(delEnc, /Nequi \(\$\s?1\.000\)/);
+  assert.match(ctx.opcionesCuenta({ placeholder: 'Selecciona…', placeholderDeshabilitado: true }), /<option value="" disabled selected>Selecciona…/);
+  assert.match(ctx.opcionesCuenta({ selectedVal: 'nequi', placeholder: 'X', placeholderDeshabilitado: true }), /<option value="" disabled>X/);
+  assert.match(ctx.opcionesCuenta({ extra: sel => `<option value="g"${sel === 'g' ? ' selected' : ''}>G</option>`, selectedVal: 'g' }), /<option value="g" selected>G<\/option>$/);
+});
+
+test('A2. crearSplitWidget acepta `fuentes` declarativo (objeto o función) en lugar de getFuentesFn', () => {
+  const ctx = app({ cuentas: cuentas(500000) }, [CORE('fuentes-filtro.js'), CORE('split.js')]);
+  let modo = false;
+  ctx.crearSplitWidget('x', { simpleId: 'a', splitId: 'b', toggleId: 'c', rowsId: 'd', getModo: () => modo, setModo: v => { modo = v; }, fuentes: () => ({ placeholder: 'Elige' }), onPreview() {} });
+  const html = ctx._splitInstancias ? ctx._splitInstancias.x.getFuentesFn('nequi') : null;
+  assert.ok(html && html.includes('Elige') && html.includes('value="nequi" selected'));
+});

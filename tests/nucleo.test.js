@@ -1422,7 +1422,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
   const HTML_ENC = '<select id="traspaso_destino"></select><select id="traspaso_origen"></select><select id="moverenc_destino"></select><select id="moverenc_origen"></select>';
 
   test('«Me lo regalaron»: el destino no ofrece tarjetas de crédito', () => {
-    const app = entorno([core('split.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: HTML_ENC });
+    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: HTML_ENC });
     app.abrirEncargoDetalle('e1');
     app.abrirTraspasoEncargo();
     assert.deepEqual(app.abiertos.slice(-1), ['traspaso-encargo']);
@@ -1430,7 +1430,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
   });
 
   test('«Me lo regalaron»: al confirmar rechaza una TC como destino (aunque el selector no la ofrezca) y sigue funcionando con una cuenta', () => {
-    const app = entorno([core('split.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="traspaso_destino"><input id="traspaso_origen">' });
+    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="traspaso_destino"><input id="traspaso_origen">' });
     app.abrirEncargoDetalle('e1');
     const enc = app.S.encargos[0];
     ponerValores(app, { traspaso_monto: '40000', traspaso_desc: 'regalo', traspaso_fecha: '2026-10-24', traspaso_origen: '', traspaso_destino: 'tc:t1' });
@@ -1446,7 +1446,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
 
   test('«Mover entre cuentas»: ni origen ni destino ofrecen tarjetas de crédito', () => {
     const enc = ENC(); enc[0].movimientos.push({ id: 'm2', tipo: 'entrada', monto: 5000, cuenta: 'tc:t1', fecha: '2026-10-01' }); // dato raro: plata "guardada" en una TC
-    const app = entorno([core('split.js'), modulo('encargos.js')], { encargos: enc, htmlBase: HTML_ENC });
+    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: enc, htmlBase: HTML_ENC });
     app.abrirEncargoDetalle('e1');
     app.abrirMoverEntreCuentasEncargo();
     assert.deepEqual(opciones(app.document, 'moverenc_destino'), ['', 'nequi', 'efectivo']);
@@ -1454,7 +1454,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
   });
 
   test('«Mover entre cuentas»: al confirmar rechaza una TC como destino o como origen; entre cuentas sigue funcionando', () => {
-    const app = entorno([core('split.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="moverenc_destino"><input id="moverenc_origen">' });
+    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="moverenc_destino"><input id="moverenc_origen">' });
     app.abrirEncargoDetalle('e1');
     const enc = app.S.encargos[0];
     ponerValores(app, { moverenc_monto: '10000', moverenc_fecha: '2026-10-24', moverenc_origen: 'nequi', moverenc_destino: 'tc:t1' });
@@ -1470,12 +1470,12 @@ describe('requisitos-y-filtros-de-sheets', () => {
   });
 
   test('«Compra con TC» de un encargo: el destino de la plata no ofrece TC y al confirmar rechaza una', () => {
-    const app = entorno([core('split.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<select id="ctc_destino"></select><select id="ctc_cuenta_enc"></select><select id="ctc_tarjeta"></select>' });
+    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<select id="ctc_destino"></select><select id="ctc_cuenta_enc"></select><select id="ctc_tarjeta"></select>' });
     app.abrirEncargoDetalle('e1');
     app.abrirCompraConTC();
     assert.deepEqual(app.abiertos.slice(-1), ['compra-tc-encargo']);
     assert.deepEqual(opciones(app.document, 'ctc_destino'), ['', 'nequi', 'efectivo']);
-    const app2 = entorno([core('split.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="ctc_destino"><input id="ctc_tarjeta"><input id="ctc_cuenta_enc">' });
+    const app2 = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="ctc_destino"><input id="ctc_tarjeta"><input id="ctc_cuenta_enc">' });
     app2.abrirEncargoDetalle('e1');
     ponerValores(app2, { ctc_desc: 'Zapatos', ctc_monto: '1000', ctc_tarjeta: 't1', ctc_destino: 'tc:t1', ctc_nota: '', ctc_fecha: '2026-10-24' });
     app2.confirmarCompraConTC();

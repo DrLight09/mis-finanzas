@@ -73,31 +73,20 @@ function _spProporcionarSplits(splits,montoParcial,montoTotal){
   return splits.map(s=>({fuente:s.fuente,monto:Math.round(s.monto*factor)}));
 }
 
-function _spSplitFuentesOpts(selectedVal){
-  const fuentes=getFuentesSinTC();
-  return '<option value="" disabled'+(selectedVal?'':' selected')+'>Selecciona una cuenta...</option>'
-    +fuentes.map(f=>`<option value="${f.val}"${f.val===selectedVal?' selected':''}>${escHtml(f.label)}</option>`).join('');
-}
 
-// Opciones del split de PAGO a Spotify (plata que SALE): solo cuentas con saldo >= $50
-// (FuentesFiltro.PRESET.SPOTIFY, js/core/fuentes-filtro.js). Aparte de _spSplitFuentesOpts a
-// propósito: esa la comparte el split de COBRO ('spc'), donde la plata ENTRA y una cuenta
-// vacía es un destino válido — no debe filtrarse por saldo.
-function _spPagarSplitFuentesOpts(selectedVal){
-  return FuentesFiltro.optsHtml(getFuentesSinTC(),{...FuentesFiltro.PRESET.SPOTIFY,selectedVal,placeholder:'Selecciona una cuenta...',sinOpcionesTexto:FuentesFiltro.MSG_SIN_SALDO});
-}
-
+// Split de PAGO a Spotify (plata que SALE): solo cuentas con saldo >= $50 (PRESET.SPOTIFY). Distinto del de COBRO ('spc'): allí la
+// plata ENTRA y una cuenta vacía es un destino válido, así que no se filtra por saldo.
 const _sp_spc = crearSplitWidget('spc', {
   simpleId:'spCobModoSimple', splitId:'spCobModoDividido', toggleId:'spCobSplitToggle', rowsId:'spCobSplitRows',
   getModo:()=>spcSplitMode, setModo:v=>{spcSplitMode=v;},
-  getFuentesFn:_spSplitFuentesOpts,
+  fuentes:{ placeholder:'Selecciona una cuenta...', placeholderDeshabilitado:true },
   onPreview:actualizarSpDestinoPreview
 });
 
 const _sp_spp = crearSplitWidget('spp', {
   simpleId:'spPagarModoSimple', splitId:'spPagarModoDividido', toggleId:'spPagarSplitToggle', rowsId:'spPagarSplitRows',
   getModo:()=>sppSplitMode, setModo:v=>{sppSplitMode=v;},
-  getFuentesFn:_spPagarSplitFuentesOpts,
+  fuentes:{ sentido:'sale', preset:'SPOTIFY', placeholder:'Selecciona una cuenta...', sinOpcionesTexto:FuentesFiltro.MSG_SIN_SALDO },
   onPreview:actualizarSpPagarPreview
 });
 

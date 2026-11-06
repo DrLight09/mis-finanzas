@@ -242,7 +242,7 @@ describe('huella', () => {
     const path = require('node:path');
     const R = f => path.join(__dirname, '..', 'js', f);
     const base = ['core/core-state.js', 'core/cuenta-efectos.js', 'core/periodo.js', 'core/nu-calc.js', 'core/calc-helpers.js'];
-    const modulos = ['modules/tarjetas_credito.js', 'modules/encargos.js', 'modules/alcancia.js', 'modules/wrapped.js'];
+    const modulos = ['core/split.js', 'core/diferencial.js', 'modules/tarjetas_credito.js', 'modules/encargos.js', 'modules/alcancia.js', 'modules/wrapped.js'];
     // 1) los módulos primero (como en la página: se precargan al arrancar), huella.js y cierre.js al final (grupo 'cierre')
     const v = loadApp(base.concat(modulos, ['core/huella.js', 'core/cierre.js']).map(R), { permissive: true });
     assert.deepEqual(plano(v.window._sondasPendientes), [], 'la cola quedó vacía al cargar huella.js');

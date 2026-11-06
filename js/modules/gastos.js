@@ -96,12 +96,6 @@ let gvSplitMode = false;
 // _ogGv(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'gastos', ref:<id del gasto> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogGv = Libro.origen('gastos');
 
-function getGvSplitFuentesOptions(selectedVal) {
-  return FuentesFiltro.optsHtml(getFuentesSinTC(), {
-    ...FuentesFiltro.PRESET.SALIDA, selectedVal,
-    placeholder: 'Selecciona una cuenta...', sinOpcionesTexto: FuentesFiltro.MSG_SIN_SALDO
-  });
-}
 
 /* gv_fuente (modo simple, "¿De dónde salió la plata?"): lo puebla openSheet('gasto-var') en
    js/core/sheet-stack.js (poblarFuente + FuentesFiltro.podar: solo cuentas con saldo >= $1,00
@@ -110,7 +104,7 @@ function getGvSplitFuentesOptions(selectedVal) {
 const gvSplit = crearSplitWidget('gv', {
   simpleId: 'gvModoSimple', splitId: 'gvModoDividido', toggleId: 'gvSplitToggle', rowsId: 'gvSplitRows',
   getModo: () => gvSplitMode, setModo: v => { gvSplitMode = v; },
-  getFuentesFn: getGvSplitFuentesOptions,
+  fuentes: { sentido: 'sale', placeholder: 'Selecciona una cuenta...', sinOpcionesTexto: FuentesFiltro.MSG_SIN_SALDO },
   onPreview: actualizarGvSplitPreview
 });
 

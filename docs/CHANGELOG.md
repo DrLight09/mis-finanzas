@@ -4,6 +4,16 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## A2 + A4: `opcionesCuenta` y API del diferencial (2026-11-06, SW v106)
+
+- **A4 — Diferencial:** `diffRegistrarInstancia(inst, cfg)` ahora devuelve la API (`toggle, addParte, removeParte, setNombre, setMonto, togglePagoYo, setCuentaSalida, setCuentaEntrada, resumen, validarIntercambios, estaAbierto, reset`). Se eliminaron **22 envoltorios** de una línea en `encargos.js` (movenc, usarParte, ctc) y `prestado.js` (prestamoDif, prtc), con sus referencias. Ojo para probar: el bloque «dijiste / real» (diferencial) en pago de encargo, usar parte de encargo, cobro de TC y préstamos.
+- **A2 — «¿De qué cuenta?»:** nueva `opcionesCuenta({ sentido, preset, tarjetas, soloDe, mostrarSaldo, placeholder, placeholderDeshabilitado, sinOpcionesTexto, extra, selectedVal })` en `core-state.js` (sobre `buildFuentesOptsHtml` y `FuentesFiltro`; escapa todo). `crearSplitWidget` acepta `fuentes: {…}` (o función que lo devuelve) en lugar de escribir `getFuentesFn`. Migradas 8 funciones de `<option>`s: gastos, spotify (cobro y pago), préstamos (nuevo préstamo con «Ganancia», abono destino, mov. de deuda propia, abono a encargo) y encargos (usar parte, mov. de encargo). Queda aparte `_moverEncGetFuentesOptions` (HTML a mano a propósito, ver su comentario) y `mesada` (no es un split).
+- `soloDe: []` significa «ninguna cuenta» (encargo sin plata) y `null` «todas»; así se conserva el comportamiento que tenía cada pantalla.
+- `diferencial.js` y `split.js` usan `var` para sus tablas de instancias (cargarlos dos veces en tests no falla); los loaders de tests los cargan antes de encargos/prestado.
+- Tests: 2 nuevos (`opcionesCuenta` y `fuentes` declarativo).
+
+---
+
 ## A1: `crearSplitWidget` devuelve la API; fuera 37 envoltorios (2026-11-05, SW v105)
 
 - `crearSplitWidget(inst, cfg)` ahora **devuelve** `{ toggle, addRow, data, reset, preview, instId }`. Cada módulo la guarda (`const _sp_prest = crearSplitWidget('prest', …)`) y llama `_sp_prest.data()` en vez de tener `splitGetData('prest')` envuelto en una función propia.

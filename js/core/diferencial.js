@@ -62,7 +62,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 // Registro de instancias activas: { [instanciaId]: { cfg, partes, abierto } }
-const _diffInstancias = {};
+var _diffInstancias = _diffInstancias || {}; // `var`: cargarlo dos veces (tests con varios cargadores) no falla
 
 /**
  * Crea (o resetea) una instancia del motor de diferencial.
@@ -82,9 +82,25 @@ const _diffInstancias = {};
  *   descMargen: (movimiento) => string — prefijo de la descripción del ingreso del sobrante libre
  *   onToggle / onResumen: hooks opcionales para sheets con comportamiento extra (preview de saldos, etc.)
  */
+// Devuelve la API de la instancia (`const _dif_ctc = diffRegistrarInstancia('ctc', {...})` → `_dif_ctc.toggle()`, `_dif_ctc.resumen()`…):
+// los módulos ya no escriben un envoltorio de una línea por cada función y por cada instancia.
 function diffRegistrarInstancia(instId, cfg) {
   _diffInstancias[instId] = { cfg, partes: [], abierto: false };
-  return _diffInstancias[instId];
+  return {
+    instId,
+    toggle: () => diffToggle(instId),
+    addParte: () => diffAddParte(instId),
+    removeParte: i => diffRemoveParte(instId, i),
+    setNombre: (i, v) => diffSetNombre(instId, i, v),
+    setMonto: (i, v) => diffSetMonto(instId, i, v),
+    togglePagoYo: i => diffTogglePagoYo(instId, i),
+    setCuentaSalida: (i, v) => diffSetCuentaSalida(instId, i, v),
+    setCuentaEntrada: (i, v) => diffSetCuentaEntrada(instId, i, v),
+    resumen: () => diffResumen(instId),
+    validarIntercambios: () => diffValidarIntercambios(instId),
+    estaAbierto: () => diffEstaAbierto(instId),
+    reset: () => diffReset(instId),
+  };
 }
 
 function diffInst(instId) { return _diffInstancias[instId]; }
